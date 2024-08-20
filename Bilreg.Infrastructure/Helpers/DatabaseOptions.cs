@@ -6,4 +6,5 @@ public class DatabaseOptions
 
     public string ServerName { get; set; }
     public string DbName { get; set; }
+    public string DbTest { get; set; }
 }
