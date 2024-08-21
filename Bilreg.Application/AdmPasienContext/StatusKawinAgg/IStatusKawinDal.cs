@@ -13,7 +13,7 @@ namespace Bilreg.Application.AdmPasienContext.StatusKawinAgg
                 IUpdate<StatusKawinModel>,
                 IDelete<IStatusKawinKey>,
                 IGetData<StatusKawinModel, IStatusKawinKey>,
-                IListData<IStatusKawinKey>
+                IListData<StatusKawinModel>
 
     {
 

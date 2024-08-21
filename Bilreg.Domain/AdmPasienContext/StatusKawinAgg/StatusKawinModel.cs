@@ -10,7 +10,7 @@ namespace Bilreg.Domain.AdmPasienContext.StatusKawinAgg
     {
         // Constructor
         private StatusKawinModel(string id, string name)
-            => (StatusKawinId, StatusKawin) = (id, name);
+            => (StatusKawinId, StatusKawinName) = (id, name);
         
         // Factory Method
         public static StatusKawinModel Create(string id, string name)
@@ -18,7 +18,7 @@ namespace Bilreg.Domain.AdmPasienContext.StatusKawinAgg
 
         // Properties
         public string StatusKawinId { get; private set; }
-        public string StatusKawin { get; private set; }
+        public string StatusKawinName { get; private set; }
     }
 
     public interface IStatusKawinKey
