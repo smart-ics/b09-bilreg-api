@@ -157,6 +157,7 @@ namespace Bilreg.Infrastructure.AdmPasienContext.AgamaAgg
             var actual = _sut.GetData(expeted);
             actual.Should().BeEquivalentTo(expeted);
         }
+        
         [Fact]
         public void ListDataTest()
         {
