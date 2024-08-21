@@ -48,7 +48,7 @@ public class SukuSaveHandlerTest
     public void GivenNullRequest_ThenThrowEx()
     {
         //  ARRANGE
-        SukuSaveCommand request = null;
+        SukuSaveCommand? request = null;
         
         //  ACT
         var ex = async () => await _sut.Handle(request, CancellationToken.None);

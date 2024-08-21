@@ -53,6 +53,19 @@ namespace Bilreg.Application.AdmPasienContext.StatusKawinAgg
             _skut = new StatusKawinSaveHandler(_writer.Object);
         }
 
+        [Fact]
+        public void GivenNullRequest_ThenThrowEx()
+        {
+            //  ARRANGE
+            StatusKawinSaveCommand? request = null;
+
+            //  ACT
+            var ex = async () => await _skut.Handle(request, CancellationToken.None);
+
+            //  ASSERT
+            ex.Should().ThrowAsync<ArgumentNullException>();
+        }
+
 
         [Fact]
         public void GivenStatusKawinIdEmpty_ThenThrowEx()
@@ -64,6 +77,19 @@ namespace Bilreg.Application.AdmPasienContext.StatusKawinAgg
             var ex = async () => await _skut.Handle(request, CancellationToken.None);
 
             //  Assert
+            ex.Should().ThrowAsync<ArgumentException>();
+        }
+
+        [Fact]
+        public void GivenSukuNameEmpty_ThenThrowEx()
+        {
+            //  ARRANGE
+            var request = new StatusKawinSaveCommand("A", "");
+
+            //  ACT
+            var ex = async () => await _skut.Handle(request, CancellationToken.None);
+
+            //  ASSERT
             ex.Should().ThrowAsync<ArgumentException>();
         }
     }
