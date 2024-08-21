@@ -35,8 +35,8 @@ public class SukuSaveHandler : IRequestHandler<SukuSaveCommand>
 
 public class SukuSaveHandlerTest
 {
-    private SukuSaveHandler _sut;
-    private Mock<ISukuWriter> _writer;
+    private readonly SukuSaveHandler _sut;
+    private readonly Mock<ISukuWriter> _writer;
 
     public SukuSaveHandlerTest()
     {
@@ -48,7 +48,7 @@ public class SukuSaveHandlerTest
     public void GivenNullRequest_ThenThrowEx()
     {
         //  ARRANGE
-        SukuSaveCommand request = null;
+        SukuSaveCommand request = null!;
         
         //  ACT
         var ex = async () => await _sut.Handle(request, CancellationToken.None);
