@@ -23,6 +23,6 @@ namespace Bilreg.Domain.AdmPasienContext.StatusKawinAgg
 
     public interface IStatusKawinKey
     {
-        string StatusKawin { get;}
+        string StatusKawinId { get;}
     }
 }
