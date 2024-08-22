@@ -29,7 +29,7 @@ namespace Bilreg.Infrastructure.AdmPasienContext.PekerjaanDkAgg
         {
             //  QUERY
             const string sql = @"
-                INSERT INTO ta_pekerjaan(fs_kd_pekerjaan_dk, fs_nm_pekerjaan_dk)
+                INSERT INTO ta_pekerjaan_dk(fs_kd_pekerjaan_dk, fs_nm_pekerjaan_dk)
                 VALUES (@fs_kd_pekerjaan_dk, @fs_nm_pekerjaan_dk)";
 
             //  PARAM
@@ -46,7 +46,7 @@ namespace Bilreg.Infrastructure.AdmPasienContext.PekerjaanDkAgg
         {
             //  QUERY
             const string sql = @"
-                UPDATE ta_pekerjaan
+                UPDATE ta_pekerjaan_dk
                 SET fs_nm_pekerjaan_dk = @fs_nm_pekerjaan_dk
                 WHERE fs_kd_pekerjaan_dk = @fs_kd_pekerjaan_dk";
 
@@ -64,7 +64,7 @@ namespace Bilreg.Infrastructure.AdmPasienContext.PekerjaanDkAgg
         {
             //  QUERY
             const string sql = @"
-                DELETE FROM ta_pekerjaan
+                DELETE FROM ta_pekerjaan_dk
                 WHERE fs_kd_pekerjaan_dk = @fs_kd_pekerjaan_dk";
 
             //  PARAM
@@ -80,7 +80,7 @@ namespace Bilreg.Infrastructure.AdmPasienContext.PekerjaanDkAgg
         {
             const string sql = @"
                 SELECT fs_kd_pekerjaan_dk, fs_nm_pekerjaan_dk
-                FROM ta_pekerjaan
+                FROM ta_pekerjaan_dk
                 WHERE fs_kd_pekerjaan_dk = @fs_kd_pekerjaan_dk";
 
             var dp = new DynamicParameters();
@@ -95,7 +95,7 @@ namespace Bilreg.Infrastructure.AdmPasienContext.PekerjaanDkAgg
         {
             const string sql = @"
                 SELECT fs_kd_pekerjaan_dk, fs_nm_pekerjaan_dk
-                FROM ta_pekerjaan";
+                FROM ta_pekerjaan_dk";
 
             using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
             var result = conn.Read<PekerjaanDkDto>(sql);
