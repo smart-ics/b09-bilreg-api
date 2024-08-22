@@ -44,7 +44,7 @@ namespace Bilreg.Api.AdmisiSubModul.PasienContext
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> ListData()
         {
             var query = new PendidikanDkListQuery();
             var response = await _mediator.Send(query);
