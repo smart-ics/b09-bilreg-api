@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.AdmPasienContext.StatusKawinAgg;
+﻿using Bilreg.Domain.AdmPasienContext.StatusKawinDkAgg;
 using FluentAssertions;
 using MediatR;
 using Moq;
@@ -9,24 +9,24 @@ using System.Text;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace Bilreg.Application.AdmPasienContext.StatusKawinAgg
+namespace Bilreg.Application.AdmPasienContext.StatusKawinDkAgg
 {
-    public record StatusKawinDeleteCommand(string StatusKawinId) : IRequest, IStatusKawinKey;
+    public record StatusKawinDkDeleteCommand(string StatusKawinDkId) : IRequest, IStatusKawinDkKey;
 
-    public class StatusKawinDeleteHandler : IRequestHandler<StatusKawinDeleteCommand>
+    public class StatusKawinDkDeleteHandler : IRequestHandler<StatusKawinDkDeleteCommand>
     {
-        private readonly IStatusKawinWriter _writer;
+        private readonly IStatusKawinDkWriter _writer;
 
-        public StatusKawinDeleteHandler(IStatusKawinWriter writer)
+        public StatusKawinDkDeleteHandler(IStatusKawinDkWriter writer)
         {
             _writer = writer;
         }
 
-        public Task Handle(StatusKawinDeleteCommand request, CancellationToken cancellationToken)
+        public Task Handle(StatusKawinDkDeleteCommand request, CancellationToken cancellationToken)
         {
             // Guard
             ArgumentNullException.ThrowIfNull(request);
-            ArgumentException.ThrowIfNullOrWhiteSpace(request.StatusKawinId);
+            ArgumentException.ThrowIfNullOrWhiteSpace(request.StatusKawinDkId);
 
             //Write
             _writer.Delete(request);
@@ -35,15 +35,15 @@ namespace Bilreg.Application.AdmPasienContext.StatusKawinAgg
 
     }
 
-    public class StatusKawinDeleteHandlerTest
+    public class StatusKawinDkDeleteHandlerTest
     {
-        private readonly StatusKawinDeleteHandler _skut;
-        private readonly Mock<IStatusKawinWriter> _writer;
+        private readonly StatusKawinDkDeleteHandler _skut;
+        private readonly Mock<IStatusKawinDkWriter> _writer;
 
-        public StatusKawinDeleteHandlerTest()
+        public StatusKawinDkDeleteHandlerTest()
         {
-            _writer = new Mock<IStatusKawinWriter>();
-            _skut = new StatusKawinDeleteHandler(_writer.Object);
+            _writer = new Mock<IStatusKawinDkWriter>();
+            _skut = new StatusKawinDkDeleteHandler(_writer.Object);
         }
 
         [Fact]
@@ -57,10 +57,10 @@ namespace Bilreg.Application.AdmPasienContext.StatusKawinAgg
         }
 
         [Fact]
-        public void GivenEmptyStatusKawinId_ThenThrowEx()
+        public void GivenEmptyStatusKawinDkId_ThenThrowEx()
         {
             //  ARRANG
-            var request = new StatusKawinDeleteCommand("");
+            var request = new StatusKawinDkDeleteCommand("");
 
             //  ACT
             var act = async () => await _skut.Handle(request, CancellationToken.None);
@@ -73,7 +73,7 @@ namespace Bilreg.Application.AdmPasienContext.StatusKawinAgg
         public void GivenValidRequest_ThenDeleteData()
         {
             //  ARRANG
-            var request = new StatusKawinDeleteCommand("1");
+            var request = new StatusKawinDkDeleteCommand("1");
 
             //  ACT
             var act = async () => await _skut.Handle(request, CancellationToken.None);

@@ -1,5 +1,5 @@
 ﻿using Bilreg.Application.AdmPasienContext.StatusKawinAgg;
-using Bilreg.Domain.AdmPasienContext.StatusKawinAgg;
+using Bilreg.Domain.AdmPasienContext.StatusKawinDkAgg;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
 using FluentAssertions;
@@ -17,15 +17,15 @@ using Xunit;
 
 namespace Bilreg.Infrastructure.AdmPasienContext.StatusKawinAgg
 {
-    public class StatusKawinDal : IStatusKawinDal
+    public class StatusKawinDkDal : IStatusKawinDkDal
     {
         private readonly DatabaseOptions _opt;
 
-        public StatusKawinDal(IOptions<DatabaseOptions> opt)
+        public StatusKawinDkDal(IOptions<DatabaseOptions> opt)
         {
             _opt = opt.Value;
         }
-        public void Insert(StatusKawinModel model)
+        public void Insert(StatusKawinDkModel model)
         {
             //  QUERY
             const string sql = @"
@@ -34,15 +34,15 @@ namespace Bilreg.Infrastructure.AdmPasienContext.StatusKawinAgg
 
             //  PARAM
             var dp = new DynamicParameters();
-            dp.AddParam("@fs_kd_status_kawin_dk", model.StatusKawinId, SqlDbType.VarChar);
-            dp.AddParam("@fs_nm_status_kawin_dk", model.StatusKawinName, SqlDbType.VarChar);
+            dp.AddParam("@fs_kd_status_kawin_dk", model.StatusKawinDkId, SqlDbType.VarChar);
+            dp.AddParam("@fs_nm_status_kawin_dk", model.StatusKawinDkName, SqlDbType.VarChar);
 
             //  EXECUTE
             using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
             conn.Execute(sql, dp);
         }
 
-        public void Update(StatusKawinModel model)
+        public void Update(StatusKawinDkModel model)
         {
             //  QUERY
             const string sql = @"
@@ -52,8 +52,8 @@ namespace Bilreg.Infrastructure.AdmPasienContext.StatusKawinAgg
 
             //  PARAM
             var dp = new DynamicParameters();
-            dp.AddParam("@fs_kd_status_kawin_dk", model.StatusKawinId, SqlDbType.VarChar);
-            dp.AddParam("@fs_nm_status_kawin_dk", model.StatusKawinName, SqlDbType.VarChar);
+            dp.AddParam("@fs_kd_status_kawin_dk", model.StatusKawinDkId, SqlDbType.VarChar);
+            dp.AddParam("@fs_nm_status_kawin_dk", model.StatusKawinDkName, SqlDbType.VarChar);
 
             //  EXECUTE
             using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
@@ -61,21 +61,21 @@ namespace Bilreg.Infrastructure.AdmPasienContext.StatusKawinAgg
 
         }
 
-        public void Delete(IStatusKawinKey key)
+        public void Delete(IStatusKawinDkKey key)
         {
             //Query
             const string sql = @"DELETE FROM ta_status_kawin_dk 
                                  WHERE fs_kd_status_kawin_dk = @fs_kd_status_kawin_dk;";
             //Param
             var dp = new DynamicParameters();
-            dp.AddParam("@fs_kd_status_kawin_dk", key.StatusKawinId, SqlDbType.VarChar);
+            dp.AddParam("@fs_kd_status_kawin_dk", key.StatusKawinDkId, SqlDbType.VarChar);
 
             //Execute
             using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
             conn.Execute(sql, dp);
         }
 
-        public StatusKawinModel GetData(IStatusKawinKey key)
+        public StatusKawinDkModel GetData(IStatusKawinDkKey key)
         {
             const string sql = @"
             SELECT  fs_kd_status_kawin_dk, fs_nm_status_kawin_dk
@@ -83,14 +83,14 @@ namespace Bilreg.Infrastructure.AdmPasienContext.StatusKawinAgg
             WHERE fs_kd_status_kawin_dk = @fs_kd_status_kawin_dk;";
 
             var dp = new DynamicParameters();
-            dp.AddParam("@fs_kd_status_kawin_dk", key.StatusKawinId, SqlDbType.VarChar);
+            dp.AddParam("@fs_kd_status_kawin_dk", key.StatusKawinDkId, SqlDbType.VarChar);
 
             using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
             var result = conn.ReadSingle<StatusKawinDto>(sql, dp);
             return result?.ToModel();
         }
 
-        public IEnumerable<StatusKawinModel> ListData()
+        public IEnumerable<StatusKawinDkModel> ListData()
         {
             const string sql = @"
             SELECT  fs_kd_status_kawin_dk, fs_nm_status_kawin_dk
@@ -105,7 +105,7 @@ namespace Bilreg.Infrastructure.AdmPasienContext.StatusKawinAgg
         {
             public string fs_kd_status_kawin_dk { get; set; }
             public string fs_nm_status_kawin_dk { get; set; }
-            public StatusKawinModel ToModel() => StatusKawinModel.Create(fs_kd_status_kawin_dk, fs_nm_status_kawin_dk);
+            public StatusKawinDkModel ToModel() => StatusKawinDkModel.Create(fs_kd_status_kawin_dk, fs_nm_status_kawin_dk);
 
         }
 
@@ -114,18 +114,18 @@ namespace Bilreg.Infrastructure.AdmPasienContext.StatusKawinAgg
 
     public class StatusKawinDalTest
     {
-        private readonly StatusKawinDal _skut;
+        private readonly StatusKawinDkDal _skut;
 
         public StatusKawinDalTest()
         {
-            _skut = new StatusKawinDal(ConnStringHelper.GetTestEnv());
+            _skut = new StatusKawinDkDal(ConnStringHelper.GetTestEnv());
         }
 
         [Fact]
         public void InsertTest()
         {
             using var trans = TransHelper.NewScope();
-            var expeted = StatusKawinModel.Create("A", "B");
+            var expeted = StatusKawinDkModel.Create("A", "B");
             _skut.Insert(expeted);
         }
 
@@ -133,13 +133,13 @@ namespace Bilreg.Infrastructure.AdmPasienContext.StatusKawinAgg
         public void UpdateTest()
         {
             using var trans = TransHelper.NewScope();
-            _skut.Update(StatusKawinModel.Create("A", "B"));
+            _skut.Update(StatusKawinDkModel.Create("A", "B"));
         }
         [Fact]
         public void DeleteTest()
         {
             using var trans = TransHelper.NewScope();
-            var expeted = StatusKawinModel.Create("A", "B");
+            var expeted = StatusKawinDkModel.Create("A", "B");
             _skut.Delete(expeted);
         }
 
@@ -147,7 +147,7 @@ namespace Bilreg.Infrastructure.AdmPasienContext.StatusKawinAgg
         public void GetDataTest()
         {
             using var trans = TransHelper.NewScope();
-            var expected = StatusKawinModel.Create("A", "B");
+            var expected = StatusKawinDkModel.Create("A", "B");
             _skut.Insert(expected);
             var actual = _skut.GetData(expected);
             actual.Should().BeEquivalentTo(expected);
@@ -157,7 +157,7 @@ namespace Bilreg.Infrastructure.AdmPasienContext.StatusKawinAgg
         public void GivenNotExistDate_ThenReturnNull()
         {
             using var trans = TransHelper.NewScope();
-            var expected = StatusKawinModel.Create("A", "B");
+            var expected = StatusKawinDkModel.Create("A", "B");
             var actual = _skut.GetData(expected);
             actual.Should().BeNull();
         }
@@ -166,10 +166,10 @@ namespace Bilreg.Infrastructure.AdmPasienContext.StatusKawinAgg
         public void ListDataTest()
         {
             using var trans = TransHelper.NewScope();
-            var expeted = StatusKawinModel.Create("A", "B");
+            var expeted = StatusKawinDkModel.Create("A", "B");
             _skut.Insert(expeted);
             var actual = _skut.ListData();
-            actual.Should().BeEquivalentTo(new List<StatusKawinModel> { expeted });
+            actual.Should().BeEquivalentTo(new List<StatusKawinDkModel> { expeted });
         }
     }
 }

@@ -1,5 +1,4 @@
-﻿using Bilreg.Application.AdmPasienContext.AgamaContext;
-using Bilreg.Application.AdmPasienContext.StatusKawinAgg;
+﻿using Bilreg.Application.AdmPasienContext.StatusKawinDkAgg;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -9,18 +8,18 @@ namespace Bilreg.Api.AdmisiSubModul.PasienContext
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class StatusKawinController : ControllerBase
+    public class StatusKawinDkController : ControllerBase
     {
 
         private readonly IMediator _mediator;
 
-        public StatusKawinController(IMediator mediator)
+        public StatusKawinDkController(IMediator mediator)
         {
             _mediator = mediator;
         }
 
         [HttpPost]
-        public async Task<IActionResult> Save(StatusKawinSaveCommand cmd)
+        public async Task<IActionResult> Save(StatusKawinDkSaveCommand cmd)
         {
             await _mediator.Send(cmd);
             return Ok(new JSendOk("Done"));
@@ -30,7 +29,7 @@ namespace Bilreg.Api.AdmisiSubModul.PasienContext
         [Route("{id}")]
         public async Task<IActionResult> Delete(string id)
         {
-            var cmd = new StatusKawinDeleteCommand(id);
+            var cmd = new StatusKawinDkDeleteCommand(id);
             await _mediator.Send(cmd);
             return Ok(new JSendOk("Done"));
         }
@@ -38,7 +37,7 @@ namespace Bilreg.Api.AdmisiSubModul.PasienContext
         [HttpGet]
         public async Task<IActionResult> ListData()
         {
-            var cmd = new StatusKawinListQuery();
+            var cmd = new StatusKawinDkListQuery();
             var result = await _mediator.Send(cmd);
             return Ok(new JSendOk(result));
         }
@@ -47,7 +46,7 @@ namespace Bilreg.Api.AdmisiSubModul.PasienContext
         [Route("{id}")]
         public async Task<IActionResult> GetData(string id)
         {
-            var cmd = new StatusKawinGetQuery(id);
+            var cmd = new StatusKawinDkGetQuery(id);
             var result = await _mediator.Send(cmd);
             return Ok(new JSendOk(result));
         }
