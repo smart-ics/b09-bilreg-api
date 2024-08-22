@@ -1,6 +1,6 @@
-﻿using Bilreg.Application.AdmPasienContext.PekerjaanAgg;
-using Bilreg.Domain.AdmPasienContext.PekerjaanAgg;
-using Bilreg.Infrastructure.AdmPasienContext.PekerjaanAgg;
+﻿using Bilreg.Application.AdmPasienContext.PekerjaanDkAgg;
+using Bilreg.Domain.AdmPasienContext.PekerjaanDkAgg;
+using Bilreg.Infrastructure.AdmPasienContext.PekerjaanDkAgg;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
 using FluentAssertions;
@@ -14,18 +14,18 @@ using System.Data.SqlClient;
 using System.Linq;
 using Xunit;
 
-namespace Bilreg.Infrastructure.AdmPasienContext.PekerjaanAgg
+namespace Bilreg.Infrastructure.AdmPasienContext.PekerjaanDkAgg
 {
-    public class PekerjaanDal : IPekerjaanDal
+    public class PekerjaanDkDal : IPekerjaanDkDal
     {
         private readonly DatabaseOptions _opt;
 
-        public PekerjaanDal(IOptions<DatabaseOptions> opt)
+        public PekerjaanDkDal(IOptions<DatabaseOptions> opt)
         {
             _opt = opt.Value;
         }
 
-        public void Insert(PekerjaanModel model)
+        public void Insert(PekerjaanDkModel model)
         {
             //  QUERY
             const string sql = @"
@@ -34,15 +34,15 @@ namespace Bilreg.Infrastructure.AdmPasienContext.PekerjaanAgg
 
             //  PARAM
             var dp = new DynamicParameters();
-            dp.AddParam("@fs_kd_pekerjaan_dk", model.PekerjaanId, SqlDbType.VarChar);
-            dp.AddParam("@fs_nm_pekerjaan_dk", model.PekerjaanName, SqlDbType.VarChar);
+            dp.AddParam("@fs_kd_pekerjaan_dk", model.PekerjaanDkId, SqlDbType.VarChar);
+            dp.AddParam("@fs_nm_pekerjaan_dk", model.PekerjaanDkName, SqlDbType.VarChar);
 
             //  EXECUTE
             using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
             conn.Execute(sql, dp);
         }
 
-        public void Update(PekerjaanModel model)
+        public void Update(PekerjaanDkModel model)
         {
             //  QUERY
             const string sql = @"
@@ -52,15 +52,15 @@ namespace Bilreg.Infrastructure.AdmPasienContext.PekerjaanAgg
 
             //  PARAM
             var dp = new DynamicParameters();
-            dp.AddParam("@fs_kd_pekerjaan_dk", model.PekerjaanId, SqlDbType.VarChar);
-            dp.AddParam("@fs_nm_pekerjaan_dk", model.PekerjaanName, SqlDbType.VarChar);
+            dp.AddParam("@fs_kd_pekerjaan_dk", model.PekerjaanDkId, SqlDbType.VarChar);
+            dp.AddParam("@fs_nm_pekerjaan_dk", model.PekerjaanDkName, SqlDbType.VarChar);
 
             //  EXECUTE
             using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
             conn.Execute(sql, dp);
         }
 
-        public void Delete(IPekerjaanKey key)
+        public void Delete(IPekerjaanDkKey key)
         {
             //  QUERY
             const string sql = @"
@@ -69,14 +69,14 @@ namespace Bilreg.Infrastructure.AdmPasienContext.PekerjaanAgg
 
             //  PARAM
             var dp = new DynamicParameters();
-            dp.AddParam("@fs_kd_pekerjaan_dk", key.PekerjaanId, SqlDbType.VarChar);
+            dp.AddParam("@fs_kd_pekerjaan_dk", key.PekerjaanDkId, SqlDbType.VarChar);
 
             //  EXECUTE
             using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
             conn.Execute(sql, dp);
         }
 
-        public PekerjaanModel GetData(IPekerjaanKey key)
+        public PekerjaanDkModel GetData(IPekerjaanDkKey key)
         {
             const string sql = @"
                 SELECT fs_kd_pekerjaan_dk, fs_nm_pekerjaan_dk
@@ -84,68 +84,68 @@ namespace Bilreg.Infrastructure.AdmPasienContext.PekerjaanAgg
                 WHERE fs_kd_pekerjaan_dk = @fs_kd_pekerjaan_dk";
 
             var dp = new DynamicParameters();
-            dp.AddParam("@fs_kd_pekerjaan_dk", key.PekerjaanId, SqlDbType.VarChar);
+            dp.AddParam("@fs_kd_pekerjaan_dk", key.PekerjaanDkId, SqlDbType.VarChar);
 
             using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-            var result = conn.ReadSingle<PekerjaanDto>(sql, dp);
+            PekerjaanDkDto result = conn.ReadSingle<PekerjaanDkDto>(sql, dp);
             return result?.ToModel();
         }
 
-        public IEnumerable<PekerjaanModel> ListData()
+        public IEnumerable<PekerjaanDkModel> ListData()
         {
             const string sql = @"
                 SELECT fs_kd_pekerjaan_dk, fs_nm_pekerjaan_dk
                 FROM ta_pekerjaan";
 
             using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-            var result = conn.Read<PekerjaanDto>(sql);
+            var result = conn.Read<PekerjaanDkDto>(sql);
             return result?.Select(x => x.ToModel());
         }
     }
 
-    public class PekerjaanDto
+    public class PekerjaanDkDto
     {
         public string fs_kd_pekerjaan_dk { get; set; }
         public string fs_nm_pekerjaan_dk { get; set; }
-        public PekerjaanModel ToModel() => PekerjaanModel.Create(fs_kd_pekerjaan_dk, fs_nm_pekerjaan_dk);
+        public PekerjaanDkModel ToModel() => PekerjaanDkModel.Create(fs_kd_pekerjaan_dk, fs_nm_pekerjaan_dk);
     }
 }
 
-public class PekerjaanDalTest
+public class PekerjaanDkDalTest
 {
-    private readonly PekerjaanDal _sut;
+    private readonly PekerjaanDkDal _sut;
 
-    public PekerjaanDalTest()
+    public PekerjaanDkDalTest()
     {
-        _sut = new PekerjaanDal(ConnStringHelper.GetTestEnv());
+        _sut = new PekerjaanDkDal(ConnStringHelper.GetTestEnv());
     }
 
     [Fact]
     public void InsertTest()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Insert(PekerjaanModel.Create("A", "B"));
+        _sut.Insert(PekerjaanDkModel.Create("A", "B"));
     }
 
     [Fact]
     public void UpdateTest()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Update(PekerjaanModel.Create("A", "B"));
+        _sut.Update(PekerjaanDkModel.Create("A", "B"));
     }
 
     [Fact]
     public void DeleteTest()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Delete(PekerjaanModel.Create("A", "B"));
+        _sut.Delete(PekerjaanDkModel.Create("A", "B"));
     }
 
     [Fact]
     public void GetDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = PekerjaanModel.Create("A", "B");
+        var expected = PekerjaanDkModel.Create("A", "B");
         _sut.Insert(expected);
         var actual = _sut.GetData(expected);
         actual.Should().BeEquivalentTo(expected);
@@ -155,7 +155,7 @@ public class PekerjaanDalTest
     public void GivenNotExistDate_ThenReturnNull()
     {
         using var trans = TransHelper.NewScope();
-        var expected = PekerjaanModel.Create("A", "B");
+        var expected = PekerjaanDkModel.Create("A", "B");
         var actual = _sut.GetData(expected);
         actual.Should().BeNull();
     }
@@ -164,8 +164,8 @@ public class PekerjaanDalTest
     public void ListDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = new List<PekerjaanModel> { PekerjaanModel.Create("A", "B") };
-        _sut.Insert(PekerjaanModel.Create("A", "B"));
+        var expected = new List<PekerjaanDkModel> { PekerjaanDkModel.Create("A", "B") };
+        _sut.Insert(PekerjaanDkModel.Create("A", "B"));
         var actual = _sut.ListData();
         actual.Should().BeEquivalentTo(expected);
     }

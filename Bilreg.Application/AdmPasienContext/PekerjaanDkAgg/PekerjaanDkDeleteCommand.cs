@@ -1,27 +1,27 @@
-﻿using Bilreg.Domain.AdmPasienContext.PekerjaanAgg;
+﻿using Bilreg.Domain.AdmPasienContext.PekerjaanDkAgg;
 using FluentAssertions;
 using MediatR;
 using Moq;
 using Xunit;
 
-namespace Bilreg.Application.AdmPasienContext.PekerjaanAgg;
+namespace Bilreg.Application.AdmPasienContext.PekerjaanDkAgg;
 
-public record PekerjaanDeleteCommand(string PekerjaanId) : IRequest, IPekerjaanKey;
+public record PekerjaanDkDeleteCommand(string PekerjaanDkId) : IRequest, IPekerjaanDkKey;
 
-public class PekerjaanDeleteHandler : IRequestHandler<PekerjaanDeleteCommand>
+public class PekerjaanDkDeleteHandler : IRequestHandler<PekerjaanDkDeleteCommand>
 {
-    private readonly IPekerjaanWriter _writer;
+    private readonly IPekerjaanDkWriter _writer;
 
-    public PekerjaanDeleteHandler(IPekerjaanWriter writer)
+    public PekerjaanDkDeleteHandler(IPekerjaanDkWriter writer)
     {
         _writer = writer;
     }
 
-    public Task Handle(PekerjaanDeleteCommand request, CancellationToken cancellationToken)
+    public Task Handle(PekerjaanDkDeleteCommand request, CancellationToken cancellationToken)
     {
         //  GUARD
         ArgumentNullException.ThrowIfNull(request);
-        ArgumentException.ThrowIfNullOrWhiteSpace(request.PekerjaanId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.PekerjaanDkId);
 
         //  WRITE
         _writer.Delete(request);
@@ -29,15 +29,15 @@ public class PekerjaanDeleteHandler : IRequestHandler<PekerjaanDeleteCommand>
     }
 }
 
-public class PekerjaanDeleteHandlerTest
+public class PekerjaanDkDeleteHandlerTest
 {
-    private readonly PekerjaanDeleteHandler _sut;
-    private readonly Mock<IPekerjaanWriter> _writer;
+    private readonly PekerjaanDkDeleteHandler _sut;
+    private readonly Mock<IPekerjaanDkWriter> _writer;
         
-    public PekerjaanDeleteHandlerTest()
+    public PekerjaanDkDeleteHandlerTest()
     {
-        _writer = new Mock<IPekerjaanWriter>();
-        _sut = new PekerjaanDeleteHandler(_writer.Object);
+        _writer = new Mock<IPekerjaanDkWriter>();
+        _sut = new PekerjaanDkDeleteHandler(_writer.Object);
     }
 
     [Fact]
@@ -51,10 +51,10 @@ public class PekerjaanDeleteHandlerTest
     }
 
     [Fact]
-    public void GivenEmptyPekerjaanId_ThenThrowEx()
+    public void GivenEmptyPekerjaanDkId_ThenThrowEx()
     {
         //  ARRANG
-        var request = new PekerjaanDeleteCommand("");
+        var request = new PekerjaanDkDeleteCommand("");
         
         //  ACT
         var act = async () => await _sut.Handle(request, CancellationToken.None);
@@ -67,7 +67,7 @@ public class PekerjaanDeleteHandlerTest
     public void GivenValidRequest_ThenDeleteData()
     {
         //  ARRANG
-        var request = new PekerjaanDeleteCommand("PEK0001");
+        var request = new PekerjaanDkDeleteCommand("PEK0001");
         
         //  ACT
         var act = async () => await _sut.Handle(request, CancellationToken.None);
