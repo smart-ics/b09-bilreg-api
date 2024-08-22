@@ -81,7 +81,7 @@ namespace Bilreg.Application.AdmPasienContext.StatusKawinAgg
         }
 
         [Fact]
-        public void GivenSukuNameEmpty_ThenThrowEx()
+        public void GivenStatusKawinNameEmpty_ThenThrowEx()
         {
             //  ARRANGE
             var request = new StatusKawinSaveCommand("A", "");

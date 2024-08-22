@@ -27,17 +27,17 @@ namespace Bilreg.Infrastructure.AdmPasienContext.StatusKawinAgg
         }
         public void Insert(StatusKawinModel model)
         {
-            //  Query
+            //  QUERY
             const string sql = @"
-                INSERT INTO ta_status_kawin_dk(fs_kd_status_kawin_dk, fs_nm_status_kawin_dk)
+                INSERT INTO ta_status_kawin_dk (fs_kd_status_kawin_dk, fs_nm_status_kawin_dk)
                 VALUES (@fs_kd_status_kawin_dk, @fs_nm_status_kawin_dk)";
 
-            //  Param
+            //  PARAM
             var dp = new DynamicParameters();
             dp.AddParam("@fs_kd_status_kawin_dk", model.StatusKawinId, SqlDbType.VarChar);
             dp.AddParam("@fs_nm_status_kawin_dk", model.StatusKawinName, SqlDbType.VarChar);
 
-            //  Execute
+            //  EXECUTE
             using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
             conn.Execute(sql, dp);
         }
@@ -47,8 +47,8 @@ namespace Bilreg.Infrastructure.AdmPasienContext.StatusKawinAgg
             //  QUERY
             const string sql = @"
                 UPDATE ta_status_kawin_dk
-                SET fs_nm_status_kawin_dk = @fs_nm_status_kawin_dk;
-                WHERE fs_kd_status_kawin_dk = @fs_kd_status_kawin_dk";
+                SET fs_nm_status_kawin_dk = @fs_nm_status_kawin_dk
+                WHERE fs_kd_status_kawin_dk = @fs_kd_status_kawin_dk;";
 
             //  PARAM
             var dp = new DynamicParameters();
@@ -65,7 +65,7 @@ namespace Bilreg.Infrastructure.AdmPasienContext.StatusKawinAgg
         {
             //Query
             const string sql = @"DELETE FROM ta_status_kawin_dk 
-                                 WHERE @fs_kd_status_kawin_dk";
+                                 WHERE fs_kd_status_kawin_dk = @fs_kd_status_kawin_dk;";
             //Param
             var dp = new DynamicParameters();
             dp.AddParam("@fs_kd_status_kawin_dk", key.StatusKawinId, SqlDbType.VarChar);
@@ -80,7 +80,7 @@ namespace Bilreg.Infrastructure.AdmPasienContext.StatusKawinAgg
             const string sql = @"
             SELECT  fs_kd_status_kawin_dk, fs_nm_status_kawin_dk
             FROM ta_status_kawin_dk
-            WHERE fs_kd_status_kawin_dk = @fs_kd_status_kawin_dk";
+            WHERE fs_kd_status_kawin_dk = @fs_kd_status_kawin_dk;";
 
             var dp = new DynamicParameters();
             dp.AddParam("@fs_kd_status_kawin_dk", key.StatusKawinId, SqlDbType.VarChar);
@@ -94,18 +94,19 @@ namespace Bilreg.Infrastructure.AdmPasienContext.StatusKawinAgg
         {
             const string sql = @"
             SELECT  fs_kd_status_kawin_dk, fs_nm_status_kawin_dk
-            FROM ta_status_kawin_dk ";
+            FROM ta_status_kawin_dk;";
 
             using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
             var result = conn.Read<StatusKawinDto>(sql);
-            return result?.Select(x => x.ToModel());
+            return result?.Select(x => x.ToModel())!;
         }
 
         public class StatusKawinDto
         {
             public string fs_kd_status_kawin_dk { get; set; }
-            public string fs_nm_kd_status_kawin_dk { get; set; }
-            public StatusKawinModel ToModel() => StatusKawinModel.Create(fs_kd_status_kawin_dk, fs_nm_kd_status_kawin_dk);
+            public string fs_nm_status_kawin_dk { get; set; }
+            public StatusKawinModel ToModel() => StatusKawinModel.Create(fs_kd_status_kawin_dk, fs_nm_status_kawin_dk);
+
         }
 
 
@@ -124,7 +125,8 @@ namespace Bilreg.Infrastructure.AdmPasienContext.StatusKawinAgg
         public void InsertTest()
         {
             using var trans = TransHelper.NewScope();
-            _skut.Insert(StatusKawinModel.Create("A", "B"));
+            var expeted = StatusKawinModel.Create("A", "B");
+            _skut.Insert(expeted);
         }
 
         [Fact]
@@ -137,7 +139,8 @@ namespace Bilreg.Infrastructure.AdmPasienContext.StatusKawinAgg
         public void DeleteTest()
         {
             using var trans = TransHelper.NewScope();
-            _skut.Delete(StatusKawinModel.Create("A", "B"));
+            var expeted = StatusKawinModel.Create("A", "B");
+            _skut.Delete(expeted);
         }
 
         [Fact]
@@ -163,10 +166,10 @@ namespace Bilreg.Infrastructure.AdmPasienContext.StatusKawinAgg
         public void ListDataTest()
         {
             using var trans = TransHelper.NewScope();
-            var expected = new List<StatusKawinModel> { StatusKawinModel.Create("A", "B") };
-            _skut.Insert(StatusKawinModel.Create("A", "B"));
+            var expeted = StatusKawinModel.Create("A", "B");
+            _skut.Insert(expeted);
             var actual = _skut.ListData();
-            actual.Should().BeEquivalentTo(expected);
+            actual.Should().BeEquivalentTo(new List<StatusKawinModel> { expeted });
         }
     }
 }

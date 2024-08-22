@@ -10,6 +10,7 @@ namespace Bilreg.Application.AdmPasienContext.StatusKawinAgg
 {
     public interface IStatusKawinWriter : INunaWriterWithReturn<StatusKawinModel>
     {
+        void Delete(IStatusKawinKey statuskawinKey);
     }
     public class StatusKawinWriter : IStatusKawinWriter
     {
@@ -33,6 +34,12 @@ namespace Bilreg.Application.AdmPasienContext.StatusKawinAgg
             }
             return model;
         }
+
+        public void Delete(IStatusKawinKey statuskawinKey)
+        {
+            _statuskawinDal.Delete(statuskawinKey);
+        }
+
     }
 }
 

@@ -1,4 +1,5 @@
-﻿using Bilreg.Application.AdmPasienContext.StatusKawinAgg;
+﻿using Bilreg.Application.AdmPasienContext.AgamaContext;
+using Bilreg.Application.AdmPasienContext.StatusKawinAgg;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -24,5 +25,32 @@ namespace Bilreg.Api.AdmisiSubModul.PasienContext
             await _mediator.Send(cmd);
             return Ok(new JSendOk("Done"));
         }
+
+        [HttpDelete]
+        [Route("{id}")]
+        public async Task<IActionResult> Delete(string id)
+        {
+            var cmd = new StatusKawinDeleteCommand(id);
+            await _mediator.Send(cmd);
+            return Ok(new JSendOk("Done"));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ListData()
+        {
+            var cmd = new StatusKawinListQuery();
+            var result = await _mediator.Send(cmd);
+            return Ok(new JSendOk(result));
+        }
+
+        [HttpGet]
+        [Route("{id}")]
+        public async Task<IActionResult> GetData(string id)
+        {
+            var cmd = new StatusKawinGetQuery(id);
+            var result = await _mediator.Send(cmd);
+            return Ok(new JSendOk(result));
+        }
+
     }
 }
