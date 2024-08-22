@@ -3,9 +3,12 @@ using Nuna.Lib.CleanArchHelper;
 
 namespace Bilreg.Application.AdmPasienContext.PendidikanDkAgg;
 
-public interface IPendidikanDkWriter: INunaWriterWithReturn<PendidikanDkModel> {}
+public interface IPendidikanDkWriter : INunaWriterWithReturn<PendidikanDkModel>
+{
+    void Delete(IPendidikanDkKey pendidikanDkKey);
+}
 
-public class PendidikanDkWriter: IPendidikanDkWriter
+public class PendidikanDkWriter : IPendidikanDkWriter
 {
     private readonly IPendidikanDkDal _pendidikanDkDal;
 
@@ -23,5 +26,10 @@ public class PendidikanDkWriter: IPendidikanDkWriter
             _pendidikanDkDal.Update(model);
 
         return model;
+    }
+
+    public void Delete(IPendidikanDkKey pendidikanDkKey)
+    {
+        _pendidikanDkDal.Delete(pendidikanDkKey);
     }
 }
