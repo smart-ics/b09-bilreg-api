@@ -2,7 +2,7 @@
 using Bilreg.Domain.AdmPasienContext.PekerjaanAgg;
 using Nuna.Lib.CleanArchHelper;
 
-namespace Bilreg.Application.AdmPasienContext.PekerjaanContext
+namespace Bilreg.Application.AdmPasienContext.PekerjaanAgg
 {
     public interface IPekerjaanWriter : INunaWriterWithReturn<PekerjaanModel>
     {

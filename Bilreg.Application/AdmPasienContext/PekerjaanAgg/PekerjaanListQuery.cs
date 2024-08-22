@@ -5,7 +5,7 @@ using MediatR;
 using Moq;
 using Xunit;
 
-namespace Bilreg.Application.AdmPasienContext.PekerjaanContext;
+namespace Bilreg.Application.AdmPasienContext.PekerjaanAgg;
 
 public record PekerjaanListQuery() : IRequest<IEnumerable<PekerjaanListResponse>>;
 

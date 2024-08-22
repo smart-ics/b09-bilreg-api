@@ -1,5 +1,4 @@
 ﻿using Bilreg.Application.AdmPasienContext.PekerjaanAgg;
-using Bilreg.Application.AdmPasienContext.PekerjaanContext;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;

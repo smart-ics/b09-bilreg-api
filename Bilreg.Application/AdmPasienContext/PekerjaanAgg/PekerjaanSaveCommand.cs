@@ -3,7 +3,7 @@ using MediatR;
 using FluentAssertions;
 using Moq;
 using Xunit;
-using Bilreg.Application.AdmPasienContext.PekerjaanContext;
+using Bilreg.Application.AdmPasienContext.PekerjaanAgg;
 
 namespace Bilreg.Application.AdmPasienContext.PekerjaanAgg
 {
