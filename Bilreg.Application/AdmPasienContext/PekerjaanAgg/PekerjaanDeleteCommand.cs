@@ -33,7 +33,7 @@ public class PekerjaanDeleteHandlerTest
 {
     private readonly PekerjaanDeleteHandler _sut;
     private readonly Mock<IPekerjaanWriter> _writer;
-
+        
     public PekerjaanDeleteHandlerTest()
     {
         _writer = new Mock<IPekerjaanWriter>();
@@ -43,11 +43,11 @@ public class PekerjaanDeleteHandlerTest
     [Fact]
     public void GivenNullRequest_ThenThrowEx()
     {
-        //   ACT
-        var act = async () => await _sut.Handle(null!, CancellationToken.None);
-
-        //   ASSERT
-        act.Should().ThrowAsync<ArgumentNullException>();
+       //   ACT
+       var act = async () => await _sut.Handle(null!, CancellationToken.None);
+       
+       //   ASSERT
+       act.Should().ThrowAsync<ArgumentNullException>();       
     }
 
     [Fact]
@@ -55,23 +55,23 @@ public class PekerjaanDeleteHandlerTest
     {
         //  ARRANG
         var request = new PekerjaanDeleteCommand("");
-
+        
         //  ACT
         var act = async () => await _sut.Handle(request, CancellationToken.None);
-
+        
         //  ASSERT
         act.Should().ThrowAsync<ArgumentException>();
     }
-
+    
     [Fact]
     public void GivenValidRequest_ThenDeleteData()
     {
         //  ARRANG
         var request = new PekerjaanDeleteCommand("PEK0001");
-
+        
         //  ACT
         var act = async () => await _sut.Handle(request, CancellationToken.None);
-
+        
         //  ASSERT
         act.Should().NotThrowAsync();
     }

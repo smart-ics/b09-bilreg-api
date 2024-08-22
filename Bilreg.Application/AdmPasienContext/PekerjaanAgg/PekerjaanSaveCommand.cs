@@ -11,9 +11,9 @@ namespace Bilreg.Application.AdmPasienContext.PekerjaanAgg
 
     public class PekerjaanSaveHandler : IRequestHandler<PekerjaanSaveCommand>
     {
-        private readonly PekerjaanWriter _writer;
+        private readonly IPekerjaanWriter _writer;
 
-        public PekerjaanSaveHandler(PekerjaanWriter writer)
+        public PekerjaanSaveHandler(IPekerjaanWriter writer)
         {
             _writer = writer;
         }
@@ -37,11 +37,11 @@ namespace Bilreg.Application.AdmPasienContext.PekerjaanAgg
     public class PekerjaanSaveHandlerTest
     {
         private PekerjaanSaveHandler _sut;
-        private Mock<PekerjaanWriter> _writer;
+        private Mock<IPekerjaanWriter> _writer;
 
         public PekerjaanSaveHandlerTest()
         {
-            _writer = new Mock<PekerjaanWriter>();
+            _writer = new Mock<IPekerjaanWriter>();
             _sut = new PekerjaanSaveHandler(_writer.Object);
         }
 
