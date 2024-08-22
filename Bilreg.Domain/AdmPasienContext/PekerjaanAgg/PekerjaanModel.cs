@@ -11,6 +11,7 @@ namespace Bilreg.Domain.AdmPasienContext.PekerjaanAgg
             PekerjaanName = name;
         }
 
+        //  FACTORY METHODS
         public static PekerjaanModel Create(string id, string name)
         {
             return new PekerjaanModel(id, name);
