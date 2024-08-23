@@ -26,3 +26,4 @@ namespace Bilreg.Domain.AdmPasienContext.StatusKawinDkAgg
         string StatusKawinDkId { get;}
     }
 }
+
