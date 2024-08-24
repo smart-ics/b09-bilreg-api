@@ -87,7 +87,7 @@ public TipeLayananDkDalTest()
 public void GetDataTest()
 {
     using var trans = TransHelper.NewScope();
-    var expected = TipeLayananDkModel.Create("01", "Penyakit Dalam");
+    var expected = TipeLayananDkModel.Create("1", "UNIT BEDAH");
     _sut.GetData(expected);
     var actual = _sut.GetData(expected);
     actual.Should().BeEquivalentTo(expected);
@@ -99,8 +99,8 @@ public void GetDataTest()
         using var trans = TransHelper.NewScope();
 
         // Insert data baru
-        var expected1 = TipeLayananDkModel.Create("99", "Penyakit Kaki");
-        var expected2 = TipeLayananDkModel.Create("100", "Penyakit Tangan");
+        var expected1 = TipeLayananDkModel.Create("9", "Pijet");
+        var expected2 = TipeLayananDkModel.Create("10", "Kretek");
         _sut.Insert(expected1);
         _sut.Insert(expected2);
 
@@ -108,8 +108,8 @@ public void GetDataTest()
         var actual = _sut.ListData().ToList();
 
         // Assert
-        actual.Should().Contain(x => x.TipeLayananDkId == "99" && x.TipeLayananDkName == "Penyakit Kaki");
-        actual.Should().Contain(x => x.TipeLayananDkId == "100" && x.TipeLayananDkName == "Penyakit Tangan");
+        actual.Should().Contain(x => x.TipeLayananDkId == "9" && x.TipeLayananDkName == "Pijet");
+        actual.Should().Contain(x => x.TipeLayananDkId == "10" && x.TipeLayananDkName == "Kretek");
     }
 
 }
