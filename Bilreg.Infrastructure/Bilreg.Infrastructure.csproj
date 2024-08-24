@@ -24,4 +24,9 @@
     <ProjectReference Include="..\Bilreg.Application\Bilreg.Application.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="PasienContext\DemografiSub\" />
+    <Folder Include="PasienContext\StatusSosialSub\" />
+  </ItemGroup>
+
 </Project>

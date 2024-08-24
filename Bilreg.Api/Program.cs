@@ -1,5 +1,4 @@
 using Bilreg.Api.Configurations;
-using Ners.Api.Configurations;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);

@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
-namespace Ners.Api.Configurations;
+namespace Bilreg.Api.Configurations;
 
 public static class PresentationService
 {

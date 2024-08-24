@@ -21,4 +21,8 @@
     <ProjectReference Include="..\Bilreg.Domain\Bilreg.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="PasienContext\StatusSosialSub\" />
+  </ItemGroup>
+
 </Project>

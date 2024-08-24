@@ -4,7 +4,7 @@ using Serilog.AspNetCore;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
-namespace Ners.Api.Configurations;
+namespace Bilreg.Api.Configurations;
 
 public static class SerilogConfiguration
 {
