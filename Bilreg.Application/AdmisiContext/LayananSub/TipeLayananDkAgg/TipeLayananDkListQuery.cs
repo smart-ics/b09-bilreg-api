@@ -47,7 +47,7 @@ public class TipeLayananDkListHandlerTest
     }
 
     [Fact]
-    public void GivenNoData_ThenThrowKeyNotFoundException()
+    public async Task GivenNoData_ThenThrowKeyNotFoundException()
     {
         // ARRANGE
         var request = new TipeLayananDkListQuery();
@@ -58,7 +58,7 @@ public class TipeLayananDkListHandlerTest
         Func<Task> act = () => _sut.Handle(request, CancellationToken.None);
 
         // ASSERT
-        act.Should().ThrowAsync<KeyNotFoundException>();
+        await act.Should().ThrowAsync<KeyNotFoundException>();
     }
 
     [Fact]
@@ -74,6 +74,8 @@ public class TipeLayananDkListHandlerTest
         var act = await _sut.Handle(request, CancellationToken.None);
 
         // ASSERT
-        act.Should().BeEquivalentTo(expected.Select(x => new TipeLayananDkListResponse(x.TipeLayananDkId, x.TipeLayananDkName)));
+        var expectedResponses = expected.Select(x => new TipeLayananDkListResponse(x.TipeLayananDkId, x.TipeLayananDkName));
+        await Task.Run(() => act.Should().BeEquivalentTo(expectedResponses));
     }
+
 }

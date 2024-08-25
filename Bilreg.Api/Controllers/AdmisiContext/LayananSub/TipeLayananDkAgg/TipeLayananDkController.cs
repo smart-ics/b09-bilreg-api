@@ -9,11 +9,11 @@ namespace Bilreg.Api.Controllers.AdmisiContext.LayananSub.TipeLayananDkAgg
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class TipeLayananController : ControllerBase
+    public class TipeLayananDkController : ControllerBase
     {
         private readonly IMediator _mediator;
 
-        public TipeLayananController(IMediator mediator)
+        public TipeLayananDkController(IMediator mediator)
         {
             _mediator = mediator;
         }

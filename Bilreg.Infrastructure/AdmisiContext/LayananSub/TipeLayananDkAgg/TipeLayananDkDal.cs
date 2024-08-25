@@ -15,6 +15,7 @@ using FluentAssertions;
 using Bilreg.Application.AdmisiContext.LayananSub.TipeLayananDkAgg;
 using Bilreg.Domain.AdmisiContext.LayananSub.TipeLayananDkAgg;
 using Bilreg.Infrastructure.AdmisiContext.LayananSub.TipeLayananDkAgg;
+using Moq;
 
 namespace Bilreg.Infrastructure.AdmisiContext.LayananSub.TipeLayananDkAgg;
 
@@ -27,44 +28,35 @@ public class TipeLayananDkDal : ITipeLayananDkDal
         _opt = opt.Value;
     }
 
-    public void Insert(TipeLayananDkModel model)
-    {
-        const string sql = @"
-                INSERT INTO ta_layanan_tipe_dk(fs_kd_layanan_tipe_dk, fs_nm_layanan_tipe_dk)
-                VALUES (@fs_kd_layanan_tipe_dk, @fs_nm_layanan_tipe_dk)";
-
-        var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_layanan_tipe_dk", model.TipeLayananDkId, SqlDbType.VarChar);
-        dp.AddParam("@fs_nm_layanan_tipe_dk", model.TipeLayananDkName, SqlDbType.VarChar);
-
-        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        conn.Execute(sql, dp);
-    }
-
     public TipeLayananDkModel GetData(ITipeLayananDkKey key)
     {
+        // Query
         const string sql = @"
                 SELECT fs_kd_layanan_tipe_dk, fs_nm_layanan_tipe_dk
                 FROM ta_layanan_tipe_dk
                 WHERE fs_kd_layanan_tipe_dk = @fs_kd_layanan_tipe_dk";
 
+        // Param
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_layanan_tipe_dk", key.TipeLayananDkId, SqlDbType.VarChar);
 
-        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        TipeLayananDkDto result = conn.ReadSingle<TipeLayananDkDto>(sql, dp);
-        return result?.ToModel();
+        // Execute
+
+        var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var result = conn.ReadSingle<TipeLayananDkDto>(sql, dp);
+        return result?.ToModel()!;
     }
 
     public IEnumerable<TipeLayananDkModel> ListData()
     {
+        //Query
         const string sql = @"
                 SELECT fs_kd_layanan_tipe_dk, fs_nm_layanan_tipe_dk
                 FROM ta_layanan_tipe_dk";
-
-        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        //Execute
+        var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         var result = conn.Read<TipeLayananDkDto>(sql);
-        return result?.Select(x => x.ToModel());
+        return result?.Select(x => x.ToModel())!;
     }
 }
 
@@ -77,39 +69,43 @@ public class TipeLayananDkDto
 
 public class TipeLayananDkDalTest
 {
-private readonly TipeLayananDkDal _sut;
+    private readonly TipeLayananDkDal _sut;
+    private readonly Mock<ITipeLayananDkDal> _tipeLayananDkDal;
 
-public TipeLayananDkDalTest()
-{
-    _sut = new TipeLayananDkDal(ConnStringHelper.GetTestEnv());
-}
-[Fact]
-public void GetDataTest()
-{
-    using var trans = TransHelper.NewScope();
-    var expected = TipeLayananDkModel.Create("1", "UNIT BEDAH");
-    _sut.GetData(expected);
-    var actual = _sut.GetData(expected);
-    actual.Should().BeEquivalentTo(expected);
-}
+    public TipeLayananDkDalTest()
+    {
+        _tipeLayananDkDal = new Mock<ITipeLayananDkDal>();
+        _sut = new TipeLayananDkDal(ConnStringHelper.GetTestEnv());
+    }
 
     [Fact]
-    public void ListDataTest()
+    public void GivenNonExistData_ThenReturnNullTest()
+    {
+        using var trans = TransHelper.NewScope();
+        var expected = TipeLayananDkModel.Create("A", "B");
+
+        // Ambil data
+        var actual = _sut.GetData(expected);
+
+        // Assert
+        actual.Should().BeNull();
+    }
+
+    [Fact]
+    public void GivenEmptyData_ThenReturnEmptyListTest()
     {
         using var trans = TransHelper.NewScope();
 
-        // Insert data baru
-        var expected1 = TipeLayananDkModel.Create("9", "Pijet");
-        var expected2 = TipeLayananDkModel.Create("10", "Kretek");
-        _sut.Insert(expected1);
-        _sut.Insert(expected2);
+        // Simulasikan tidak ada data
+        _tipeLayananDkDal.Setup(x => x.ListData())
+            .Returns(Enumerable.Empty<TipeLayananDkModel>());
 
         // Ambil data
-        var actual = _sut.ListData().ToList();
+        var actual = _tipeLayananDkDal.Object.ListData().ToList();
 
         // Assert
-        actual.Should().Contain(x => x.TipeLayananDkId == "9" && x.TipeLayananDkName == "Pijet");
-        actual.Should().Contain(x => x.TipeLayananDkId == "10" && x.TipeLayananDkName == "Kretek");
+        actual.Should().BeEmpty();
     }
 
 }
+

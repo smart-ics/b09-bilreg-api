@@ -28,7 +28,7 @@ public class TipeLayananDkGetHandler : IRequestHandler<TipeLayananDkGetQuery, Ti
     {
         // QUERY
         var result = _tipeLayananDkDal.GetData(request) ??
-            throw new KeyNotFoundException($"TipeLayanan not found: {request.TipeLayananDkId}");
+            throw new KeyNotFoundException($"Tipe Layanan not found ");
 
         // RESPONSE
         var response = new TipeLayananDkGetResponse(result.TipeLayananDkId, result.TipeLayananDkName);
@@ -48,7 +48,7 @@ public class TipeLayananDkGetHandlerTest
     }
 
     [Fact]
-    public void GivenInvalidTipeLayananDkId_ThenThrowKeyNotFoundException()
+    public async Task GivenInvalidTipeLayananDkId_ThenThrowKeyNotFoundException()
     {
         // ARRANGE
         var request = new TipeLayananDkGetQuery("123");
@@ -56,10 +56,10 @@ public class TipeLayananDkGetHandlerTest
             .Returns(null as TipeLayananDkModel);
 
         // ACT
-        Func<Task> act = () => _sut.Handle(request, CancellationToken.None);
+        var act = async () => await _sut.Handle(request, CancellationToken.None);
 
         // ASSERT
-        act.Should().ThrowAsync<KeyNotFoundException>();
+        await act.Should().ThrowAsync<KeyNotFoundException>();
     }
 
     [Fact]
@@ -72,9 +72,11 @@ public class TipeLayananDkGetHandlerTest
             .Returns(expected);
 
         // ACT
-        var act = await _sut.Handle(request, CancellationToken.None);
+        var actual = await _sut.Handle(request, CancellationToken.None);
 
         // ASSERT
-        act.Should().BeEquivalentTo(expected);
+        await Task.Run(() => actual.Should().BeEquivalentTo(expected));
     }
+
+
 }
