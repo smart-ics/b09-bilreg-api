@@ -23,11 +23,15 @@ public class KecamatanSaveHandler: IRequestHandler<KecamatanSaveCommand>
 
     public Task Handle(KecamatanSaveCommand request, CancellationToken cancellationToken)
     {
-        // GUARD
+        //  GUARD
         ArgumentNullException.ThrowIfNull(request);
         ArgumentException.ThrowIfNullOrWhiteSpace(request.KecamatanId);
         ArgumentException.ThrowIfNullOrWhiteSpace(request.KecamatanName);
-        ArgumentException.ThrowIfNullOrWhiteSpace(request.KabupatenId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.KabupatenId); 
+        
+        if(!request.KecamatanId[..4].Equals(request.KabupatenId))
+            throw new ArgumentException($"KecamatanId: {request.KecamatanId} and KabupatenId: {request.KabupatenId} inconsistent");
+        
         var kabupaten = _kabupatenDal.GetData(request)
             ?? throw new KeyNotFoundException($"Kabupaten id: {request.KabupatenId} not found");
 
@@ -89,7 +93,7 @@ public class KecamatanSaveHandlerTest
     [Fact]
     public async Task GivenInvalidKabupatenId_ThenThrowKeyNotFoundException_Test()
     {
-        KecamatanSaveCommand request = new KecamatanSaveCommand("A", "B", "C");
+        KecamatanSaveCommand request = new KecamatanSaveCommand("1111ABC", "B", "1111");
         _kabupatenDal.Setup(x => x.GetData(It.IsAny<IKabupatenKey>()))
             .Returns(null as KabupatenModel);
         
@@ -100,18 +104,26 @@ public class KecamatanSaveHandlerTest
     [Fact]
     public async Task GivenValidRequest_ThenCreateExpectedObject_Test()
     {
-        var expected = KecamatanModel.Create("A", "B");
-        expected.Set(KabupatenModel.Create("C", "D"));
-        var request = new KecamatanSaveCommand("A", "B", "C");
+        var expected = KecamatanModel.Create("1111ABC", "B");
+        expected.Set(KabupatenModel.Create("1111", "D"));
+        var request = new KecamatanSaveCommand("1111ABC", "B", "1111");
         KecamatanModel actual = null;
 
         _kabupatenDal.Setup(x => x.GetData(It.IsAny<IKabupatenKey>()))
-            .Returns(KabupatenModel.Create("C", "D"));
+            .Returns(KabupatenModel.Create("1111", "D"));
         _writer.Setup(x => x.Save(It.IsAny<KecamatanModel>()))
             .Callback((KecamatanModel k) => actual = k);
         
         await _sut.Handle(request, CancellationToken.None);
         
         actual.Should().BeEquivalentTo(expected);
+    }
+
+    [Fact]
+    public async Task GivenInvalid4FirstCharKecamatanId_ThenThrowArgumentException_Test()
+    {
+        var request = new KecamatanSaveCommand("1111ABC", "B", "1112");
+        var actual = async () => await _sut.Handle(request, CancellationToken.None);
+        await actual.Should().ThrowAsync<ArgumentException>();
     }
 }
