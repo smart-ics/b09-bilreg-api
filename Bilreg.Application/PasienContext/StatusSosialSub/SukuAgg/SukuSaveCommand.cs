@@ -45,7 +45,7 @@ public class SukuSaveHandlerTest
     }
 
     [Fact]
-    public void GivenNullRequest_ThenThrowEx()
+    public async Task GivenNullRequest_ThenThrowEx()
     {
         //  ARRANGE
         SukuSaveCommand request = null!;
@@ -54,11 +54,11 @@ public class SukuSaveHandlerTest
         var ex = async () => await _sut.Handle(request, CancellationToken.None);
 
         //  ASSERT
-        ex.Should().ThrowAsync<ArgumentNullException>();
+        await ex.Should().ThrowAsync<ArgumentNullException>();
     }
     
     [Fact]
-    public void GivenSukuIdEmpty_ThenThrowEx()
+    public async Task  GivenSukuIdEmpty_ThenThrowEx()
     {
         //  ARRANGE
         var request = new SukuSaveCommand("", "B");
@@ -67,10 +67,10 @@ public class SukuSaveHandlerTest
         var ex = async () => await _sut.Handle(request, CancellationToken.None);
 
         //  ASSERT
-        ex.Should().ThrowAsync<ArgumentException>();
+        await ex.Should().ThrowAsync<ArgumentException>();
     }
     [Fact]
-    public void GivenSukuNameEmpty_ThenThrowEx()
+    public async Task GivenSukuNameEmpty_ThenThrowEx()
     {
         //  ARRANGE
         var request = new SukuSaveCommand("A", "");
@@ -79,6 +79,6 @@ public class SukuSaveHandlerTest
         var ex = async () => await _sut.Handle(request, CancellationToken.None);
 
         //  ASSERT
-        ex.Should().ThrowAsync<ArgumentException>();
+        await ex.Should().ThrowAsync<ArgumentException>();
     }
 }
