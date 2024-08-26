@@ -37,7 +37,7 @@ namespace Bilreg.Application.AdmisiContext.RujukanSub.CaraMasukDkAgg
     public class CaraMasukDkGetHandlerTest
     {
         private readonly CaraMasukDkGetHendler _sut;
-        public readonly Mock<ICaraMasukDkDal> _caraMasukDkDal;
+        private readonly Mock<ICaraMasukDkDal> _caraMasukDkDal; // Mengubah dari 'public' menjadi 'private'
 
         public CaraMasukDkGetHandlerTest()
         {
@@ -46,35 +46,36 @@ namespace Bilreg.Application.AdmisiContext.RujukanSub.CaraMasukDkAgg
         }
 
         [Fact]
-        public void GivenInvalidCaraMasukDkId_ThenThrowKeyNotFoundException() 
+        public async Task GivenInvalidCaraMasukDkId_ThenThrowKeyNotFoundException() // Mengubah 'public void' menjadi 'public async Task'
         {
-            //ARRANGE
+            // ARRANGE
             var request = new CaraMasukDkGetQuery("123");
             _caraMasukDkDal.Setup(x => x.GetData(It.IsAny<ICaraMasukDkKey>()))
                 .Returns(null as CaraMasukDkModel);
 
             // ACT
-            Func<Task> act = () => _sut.Handle(request,CancellationToken.None);
+            Func<Task> act = async () => await _sut.Handle(request, CancellationToken.None); // Menambahkan 'await' di depan 'act'
 
-            // Assert
-            act.Should().ThrowAsync<KeyNotFoundException>();
+            // ASSERT
+            await act.Should().ThrowAsync<KeyNotFoundException>(); // Menambahkan 'await' di depan 'act'
         }
 
+
         [Fact]
-        public async Task GivenValidCaraMasukDkId_TheReturnExpected()
+        public async Task GivenValidCaraMasukDkId_ThenReturnExpected()
         {
-            //ARRANGE
-            var expected = CaraMasukDkModel.Create("A","B");
+            // ARRANGE
+            var expected = CaraMasukDkModel.Create("A", "B");
             var request = new CaraMasukDkGetQuery("A");
             _caraMasukDkDal.Setup(x => x.GetData(It.IsAny<ICaraMasukDkKey>()))
                 .Returns(expected);
 
-            //ACT
-            var act = await _sut.Handle(request,CancellationToken.None);
+            // ACT
+            var act = await _sut.Handle(request, CancellationToken.None); // Menambahkan 'await' di depan 'act'
 
-            //Assert
-            act.Should().BeEquivalentTo(expected);
-
+            // ASSERT
+            act.Should().BeEquivalentTo(expected); // Memastikan tidak ada perubahan tambahan yang diperlukan
         }
+
     }
 }

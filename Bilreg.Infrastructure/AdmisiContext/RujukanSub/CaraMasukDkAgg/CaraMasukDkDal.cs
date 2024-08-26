@@ -26,40 +26,13 @@ namespace Bilreg.Infrastructure.AdmisiContext.RujukanSub.CaraMasukDkAgg
             _opt = opt.Value;
         }
 
-        public void Insert(CaraMasukDkModel model)
-        {
-            const string sql = @"
-            INSERT INTO ta_cara_masuk_dk(fs_kd_cara_masuk_dk, fs_nm_cara_masuk_dk)
-            VALUES (@fs_kd_cara_masuk_dk, @fs_nm_cara_masuk_dk)";
-
-            var dp = new DynamicParameters();
-            dp.AddParam("@fs_kd_cara_masuk_dk", model.CaraMasukDkId, SqlDbType.VarChar);
-            dp.AddParam("@fs_nm_cara_masuk_dk", model.CaraMasukDkName, SqlDbType.VarChar);
-
-            using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-            conn.Execute(sql, dp);
-        }
-
-        public void Delete(string caraMasukDkId)
-        {
-            const string sql = @"
-            DELETE FROM ta_cara_masuk_dk
-            WHERE fs_kd_cara_masuk_dk = @fs_kd_cara_masuk_dk";
-
-            var dp = new DynamicParameters();
-            dp.AddParam("@fs_kd_cara_masuk_dk", caraMasukDkId, SqlDbType.VarChar);
-
-            using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-            conn.Execute(sql, dp);
-        }
-
-
+        // Menghapus metode Delete dan Insert karena data readonly
         public CaraMasukDkModel GetData(ICaraMasukDkKey key)
         {
             const string sql = @"
-        SELECT fs_kd_cara_masuk_dk, fs_nm_cara_masuk_dk
-        FROM ta_cara_masuk_dk
-        WHERE fs_kd_cara_masuk_dk = @fs_kd_cara_masuk_dk";
+            SELECT fs_kd_cara_masuk_dk, fs_nm_cara_masuk_dk
+            FROM ta_cara_masuk_dk
+            WHERE fs_kd_cara_masuk_dk = @fs_kd_cara_masuk_dk";
 
             var dp = new DynamicParameters();
             dp.AddParam("@fs_kd_cara_masuk_dk", key.CaraMasukDkId, SqlDbType.VarChar);
@@ -68,7 +41,6 @@ namespace Bilreg.Infrastructure.AdmisiContext.RujukanSub.CaraMasukDkAgg
             var result = conn.ReadSingle<CaraMasukDkDto>(sql, dp);
             return result?.ToModel();
         }
-
 
         public IEnumerable<CaraMasukDkModel> ListData()
         {
@@ -80,59 +52,49 @@ namespace Bilreg.Infrastructure.AdmisiContext.RujukanSub.CaraMasukDkAgg
             var result = conn.Read<CaraMasukDkDto>(sql);
             return result?.Select(x => x.ToModel());
         }
+    }
 
-        public class CaraMasukDkDto
+
+    public class CaraMasukDkDto
         {
             public string fs_kd_cara_masuk_dk { get; set; }
             public string fs_nm_cara_masuk_dk { get; set; }
             public CaraMasukDkModel ToModel() => CaraMasukDkModel.Create(fs_kd_cara_masuk_dk, fs_nm_cara_masuk_dk);
         }
 
-        public class CaraMasukDkDalTest
+    public class CaraMasukDkDalTest
+    {
+        private readonly CaraMasukDkDal _sut;
+
+        public CaraMasukDkDalTest()
         {
-            private readonly CaraMasukDkDal _sut;
+            _sut = new CaraMasukDkDal(ConnStringHelper.GetTestEnv());
+        }
 
-            public CaraMasukDkDalTest()
-            {
-                _sut = new CaraMasukDkDal(ConnStringHelper.GetTestEnv());
-            }
+        [Fact]
+        public void GetDataTest()
+        {
+            // ARRANGE
+            var testData = CaraMasukDkModel.Create("9", "KUNJUNGAN RUMAH");
 
-            [Fact]
-            public void GetDataTest()
-            {
-                //ARRANGE
-                using var trans = TransHelper.NewScope();
-                var testData = CaraMasukDkModel.Create("9", "KUNJUNGAN RUMAH");
-                _sut.Delete(testData.CaraMasukDkId);
-                _sut.Insert(testData);
+            // ACT
+            var actual = _sut.GetData(testData);
 
-                // ACT
-                var actual = _sut.GetData(testData);
+            // ASSERT
+            actual.Should().BeEquivalentTo(testData);
+        }
 
-                // ASSERT
-                actual.Should().BeEquivalentTo(testData);
-            }
+        [Fact]
+        public void ListDataTest()
+        {
+            
+            // ACT
+            var actual = _sut.ListData().ToList();
 
-
-
-            [Fact]
-            public void ListDataTest()
-            {
-                using var trans = TransHelper.NewScope();
-
-                // Insert data baru
-                var expected1 = CaraMasukDkModel.Create("A", "B");
-                var expected2 = CaraMasukDkModel.Create("B", "A");
-                _sut.Insert(expected1);
-                _sut.Insert(expected2);
-
-                // Ambil data
-                var actual = _sut.ListData().ToList();
-
-                // Assert
-                actual.Should().Contain(x => x.CaraMasukDkId == "8" && x.CaraMasukDkName == "DATANG SENDIRI");
-                actual.Should().Contain(x => x.CaraMasukDkId == "9" && x.CaraMasukDkName == "KUNJUNGAN RUMAH");
-            }
+            // ASSERT
+            actual.Should().Contain(x => x.CaraMasukDkId == "8" && x.CaraMasukDkName == "DATANG SENDIRI");
+            actual.Should().Contain(x => x.CaraMasukDkId == "9" && x.CaraMasukDkName == "KUNJUNGAN RUMAH");
         }
     }
+
 }

@@ -13,6 +13,7 @@ namespace Bilreg.Application.AdmisiContext.RujukanSub.CaraMasukDkAgg
 {
     public record CaraMasukDkListQuery() : IRequest<IEnumerable<CaraMasukDkListResponse>>;
     public record CaraMasukDkListResponse(string CaraMasukDkId, string CaraMasukDkName);
+
     public class CaraMasukDkListHandler : IRequestHandler<CaraMasukDkListQuery, IEnumerable<CaraMasukDkListResponse>>
     {
         private readonly ICaraMasukDkDal _caraMasukDkDal;
@@ -44,7 +45,7 @@ namespace Bilreg.Application.AdmisiContext.RujukanSub.CaraMasukDkAgg
         }
 
         [Fact]
-        public void GivenNoData_ThenThrowKeyNotFoundException()
+        public async Task GivenNoData_ThenThrowKeyNotFoundException()
         {
             // ARRANGE
             var request = new CaraMasukDkListQuery();
@@ -55,7 +56,7 @@ namespace Bilreg.Application.AdmisiContext.RujukanSub.CaraMasukDkAgg
             Func<Task> act = () => _sut.Handle(request, CancellationToken.None);
 
             // ASSERT
-            act.Should().ThrowAsync<KeyNotFoundException>();
+            await act.Should().ThrowAsync<KeyNotFoundException>();
         }
 
         [Fact]
