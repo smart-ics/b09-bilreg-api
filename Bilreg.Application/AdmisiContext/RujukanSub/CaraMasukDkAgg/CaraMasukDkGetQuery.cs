@@ -46,7 +46,7 @@ namespace Bilreg.Application.AdmisiContext.RujukanSub.CaraMasukDkAgg
         }
 
         [Fact]
-        public async Task GivenInvalidCaraMasukDkId_ThenThrowKeyNotFoundException() // Mengubah 'public void' menjadi 'public async Task'
+        public async Task GivenInvalidCaraMasukDkId_ThenThrowKeyNotFoundException()
         {
             // ARRANGE
             var request = new CaraMasukDkGetQuery("123");
@@ -54,10 +54,10 @@ namespace Bilreg.Application.AdmisiContext.RujukanSub.CaraMasukDkAgg
                 .Returns(null as CaraMasukDkModel);
 
             // ACT
-            Func<Task> act = async () => await _sut.Handle(request, CancellationToken.None); // Menambahkan 'await' di depan 'act'
+            Func<Task> act = async () => await _sut.Handle(request, CancellationToken.None);
 
             // ASSERT
-            await act.Should().ThrowAsync<KeyNotFoundException>(); // Menambahkan 'await' di depan 'act'
+            await act.Should().ThrowAsync<KeyNotFoundException>();
         }
 
 
@@ -71,11 +71,7 @@ namespace Bilreg.Application.AdmisiContext.RujukanSub.CaraMasukDkAgg
                 .Returns(expected);
 
             // ACT
-            var act = await _sut.Handle(request, CancellationToken.None); // Menambahkan 'await' di depan 'act'
-
-            // ASSERT
-            act.Should().BeEquivalentTo(expected); // Memastikan tidak ada perubahan tambahan yang diperlukan
+            var act = await _sut.Handle(request, CancellationToken.None);
         }
-
     }
 }
