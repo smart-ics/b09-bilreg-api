@@ -1,12 +1,54 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Bilreg.Application.PasienContext.DemografiSub.KecamatanAgg;
+using MediatR;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Nuna.Lib.ActionResultHelper;
 
-namespace Bilreg.Api.Controllers.PasienContext.DemografiSub;
-
-public class KecamatanController : Controller
+namespace Bilreg.Api.Controllers.PasienContext.DemografiSub
 {
-    // GET
-    public IActionResult Index()
+    [Route("api/[controller]")]
+    [ApiController]
+    public class KecamatanController : ControllerBase
     {
-        return View();
+        private readonly IMediator _mediator;
+
+        public KecamatanController(IMediator mediator)
+        {
+            _mediator = mediator;
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Save(KecamatanSaveCommand cmd)
+        {
+            await _mediator.Send(cmd);
+            return Ok(new JSendOk("Done"));
+        }
+
+        [HttpDelete]
+        [Route("{id}")]
+        public async Task<IActionResult> Delete(string id)
+        {
+            var cmd = new KecamatanDeleteCommand(id);
+            await _mediator.Send(cmd);
+            return Ok(new JSendOk("Done"));
+        }
+
+        [HttpGet]
+        [Route("{id}")]
+        public async Task<IActionResult> GetData(string id)
+        {
+            var query = new KecamatanGetQuery(id);
+            var response = await _mediator.Send(query);
+            return Ok(new JSendOk(response));
+        }
+
+        [HttpGet]
+        [Route("List/{kabupatenId}")]
+        public async Task<IActionResult> ListData(string kabupatenId)
+        {
+            var query = new KecamatanListQuery(kabupatenId);
+            var response = await _mediator.Send(query);
+            return Ok(new JSendOk(response));
+        }
     }
 }
