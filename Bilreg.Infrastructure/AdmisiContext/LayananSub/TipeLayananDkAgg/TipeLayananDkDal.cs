@@ -70,41 +70,39 @@ public class TipeLayananDkDto
 public class TipeLayananDkDalTest
 {
     private readonly TipeLayananDkDal _sut;
-    private readonly Mock<ITipeLayananDkDal> _tipeLayananDkDal;
 
     public TipeLayananDkDalTest()
     {
-        _tipeLayananDkDal = new Mock<ITipeLayananDkDal>();
         _sut = new TipeLayananDkDal(ConnStringHelper.GetTestEnv());
     }
 
     [Fact]
     public void GivenNonExistData_ThenReturnNullTest()
     {
+        //  ARRANGE
         using var trans = TransHelper.NewScope();
         var expected = TipeLayananDkModel.Create("A", "B");
 
-        // Ambil data
+        // ACT
         var actual = _sut.GetData(expected);
 
-        // Assert
+        // ASSERT
         actual.Should().BeNull();
     }
 
     [Fact]
     public void GivenEmptyData_ThenReturnEmptyListTest()
     {
+        //  ARRANGE
         using var trans = TransHelper.NewScope();
+        var expected = TipeLayananDkModel.Create("2", "UNIT DARURAT");
 
-        // Simulasikan tidak ada data
-        _tipeLayananDkDal.Setup(x => x.ListData())
-            .Returns(Enumerable.Empty<TipeLayananDkModel>());
+        //  ACT
+        var result = _sut.ListData().ToList();
 
-        // Ambil data
-        var actual = _tipeLayananDkDal.Object.ListData().ToList();
-
-        // Assert
-        actual.Should().BeEmpty();
+        //  ASSERT
+        var actual = result.First(x => x.TipeLayananDkId == "2");
+        actual.Should().BeEquivalentTo(expected);
     }
 
 }
