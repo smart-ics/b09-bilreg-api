@@ -2,11 +2,6 @@
 using FluentAssertions;
 using MediatR;
 using Moq;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Xunit;
 
 namespace Bilreg.Application.AdmisiContext.PetugasMedisSub.SatTugasAgg
@@ -40,8 +35,8 @@ namespace Bilreg.Application.AdmisiContext.PetugasMedisSub.SatTugasAgg
 
     public class SatuanTugasSaveHandlerTest
     {
-        private SatuanTugasSaveHandler _sut;
-        private Mock<ISatuanTugasWriter> _writer;
+        private readonly SatuanTugasSaveHandler _sut;
+        private readonly Mock<ISatuanTugasWriter> _writer;
 
         public SatuanTugasSaveHandlerTest()
         {
@@ -52,8 +47,6 @@ namespace Bilreg.Application.AdmisiContext.PetugasMedisSub.SatTugasAgg
         [Fact]
         public async Task GivenNullRequest_ThenThrowEx()
         {
-            // ARRANGE
-            SatuanTugasSaveCommand request = null;
             // ACT
             var act = async () => await _sut.Handle(null!, CancellationToken.None);
 

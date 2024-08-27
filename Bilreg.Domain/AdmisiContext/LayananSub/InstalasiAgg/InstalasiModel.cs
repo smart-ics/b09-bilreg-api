@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Bilreg.Domain.AdmisiContext.LayananSub.InstalasiAgg
+﻿namespace Bilreg.Domain.AdmisiContext.LayananSub.InstalasiAgg
 {
 
     public class InstalasiModel : IInstalasiKey

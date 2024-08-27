@@ -2,20 +2,13 @@
 using Dapper;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.TransactionHelper;
-using System;
-using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Data;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Xunit;
 using Nuna.Lib.DataAccessHelper;
 using FluentAssertions;
 using Bilreg.Application.AdmisiContext.LayananSub.TipeLayananDkAgg;
 using Bilreg.Domain.AdmisiContext.LayananSub.TipeLayananDkAgg;
-using Bilreg.Infrastructure.AdmisiContext.LayananSub.TipeLayananDkAgg;
-using Moq;
 
 namespace Bilreg.Infrastructure.AdmisiContext.LayananSub.TipeLayananDkAgg;
 

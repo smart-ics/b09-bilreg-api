@@ -4,15 +4,9 @@ using Bilreg.Infrastructure.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
-using System;
-using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Data;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using FluentAssertions;
-using Nuna.Lib.TransactionHelper;
 using Xunit;
 
 namespace Bilreg.Infrastructure.AdmisiContext.RujukanSub.CaraMasukDkAgg
