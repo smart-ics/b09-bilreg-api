@@ -1,6 +1,5 @@
 ﻿using Bilreg.Application.AdmisiContext.PetugasMedisSub.SmfAgg;
 using MediatR;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
 

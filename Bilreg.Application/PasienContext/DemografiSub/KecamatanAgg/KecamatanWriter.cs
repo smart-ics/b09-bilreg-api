@@ -1,5 +1,4 @@
 using Bilreg.Domain.PasienContext.DemografiSub.KecamatanAgg;
-using FluentAssertions;
 using Moq;
 using Nuna.Lib.CleanArchHelper;
 using Xunit;

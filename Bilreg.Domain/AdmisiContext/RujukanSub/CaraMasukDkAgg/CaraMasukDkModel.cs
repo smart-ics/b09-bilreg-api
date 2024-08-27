@@ -1,12 +1,4 @@
-﻿using Bilreg.Domain.PasienContext.StatusSosialSub.PekerjaanDkAgg;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Bilreg.Domain.AdmisiContext.RujukanSub.CaraMasukDkAgg
+﻿namespace Bilreg.Domain.AdmisiContext.RujukanSub.CaraMasukDkAgg
 {
     public class CaraMasukDkModel : ICaraMasukDkKey
     {

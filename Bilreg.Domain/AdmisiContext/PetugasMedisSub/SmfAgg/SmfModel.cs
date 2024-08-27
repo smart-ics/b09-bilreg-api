@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Bilreg.Domain.AdmisiContext.PetugasMedisSub.SmfAgg
+﻿namespace Bilreg.Domain.AdmisiContext.PetugasMedisSub.SmfAgg
 {
     public class SmfModel : ISmfKey
     {

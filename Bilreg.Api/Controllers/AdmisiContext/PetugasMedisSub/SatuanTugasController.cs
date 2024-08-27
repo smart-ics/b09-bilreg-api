@@ -1,24 +1,25 @@
-using Bilreg.Application.PasienContext.DemografiSub.KecamatanAgg;
+﻿using Bilreg.Application.AdmisiContext.PetugasMedisSub.SatTugasAgg;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
 
-namespace Bilreg.Api.Controllers.PasienContext.DemografiSub
+namespace Bilreg.Api.Controllers.AdmisiContext.PetugasMedisSub
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class KecamatanController : ControllerBase
+    public class SatuanTugasController : ControllerBase
     {
         private readonly IMediator _mediator;
 
-        public KecamatanController(IMediator mediator)
+        public SatuanTugasController(IMediator mediator)
         {
             _mediator = mediator;
         }
 
         [HttpPost]
-        public async Task<IActionResult> Save(KecamatanSaveCommand cmd)
+        public async Task<IActionResult> Save(SatuanTugasSaveCommand cmd)
         {
+            // The command now includes a boolean field "IsMedis" that needs to be handled
             await _mediator.Send(cmd);
             return Ok(new JSendOk("Done"));
         }
@@ -27,8 +28,8 @@ namespace Bilreg.Api.Controllers.PasienContext.DemografiSub
         [Route("{id}")]
         public async Task<IActionResult> Delete(string id)
         {
-            var cmd = new KecamatanDeleteCommand(id);
-            await _mediator.Send(cmd);
+            var command = new SatuanTugasDeleteCommand(id);
+            await _mediator.Send(command);
             return Ok(new JSendOk("Done"));
         }
 
@@ -36,16 +37,15 @@ namespace Bilreg.Api.Controllers.PasienContext.DemografiSub
         [Route("{id}")]
         public async Task<IActionResult> GetData(string id)
         {
-            var query = new KecamatanGetQuery(id);
+            var query = new SatuanTugasGetQuery(id);
             var response = await _mediator.Send(query);
             return Ok(new JSendOk(response));
         }
 
         [HttpGet]
-        [Route("List/{kabupatenId}")]
-        public async Task<IActionResult> ListData(string kabupatenId)
+        public async Task<IActionResult> ListData()
         {
-            var query = new KecamatanListQuery(kabupatenId);
+            var query = new SatuanTugasListQuery();
             var response = await _mediator.Send(query);
             return Ok(new JSendOk(response));
         }

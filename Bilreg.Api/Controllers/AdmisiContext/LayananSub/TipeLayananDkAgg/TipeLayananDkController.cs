@@ -1,7 +1,5 @@
 ﻿using Bilreg.Application.AdmisiContext.LayananSub.TipeLayananDkAgg;
-using Bilreg.Application.PasienContext.StatusSosialSub.PekerjaanDkAgg;
 using MediatR;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
 
