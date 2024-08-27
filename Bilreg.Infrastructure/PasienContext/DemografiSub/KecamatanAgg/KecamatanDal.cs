@@ -3,13 +3,17 @@ using System.Data.SqlClient;
 using Bilreg.Application.PasienContext.DemografiSub.KecamatanAgg;
 using Bilreg.Domain.PasienContext.DemografiSub.KabupatenAgg;
 using Bilreg.Domain.PasienContext.DemografiSub.KecamatanAgg;
+using Bilreg.Domain.PasienContext.DemografiSub.PropinsiAgg;
 using Bilreg.Infrastructure.Helpers;
+using Bilreg.Infrastructure.PasienContext.DemografiSub.KabupatenAgg;
 using Dapper;
 using FluentAssertions;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
 using Nuna.Lib.TransactionHelper;
 using Xunit;
+using Xunit.Abstractions;
+using Xunit.Sdk;
 
 namespace Bilreg.Infrastructure.PasienContext.DemografiSub.KecamatanAgg;
 
@@ -71,9 +75,11 @@ public class KecamatanDal: IKecamatanDal
     {
         const string sql = @"
             SELECT kec.fs_kd_kecamatan, kec.fs_nm_kecamatan, kec.fs_kd_kabupaten,
-                ISNULL(kab.fs_nm_kabupaten, '') fs_nm_kabupaten
+                ISNULL(kab.fs_nm_kabupaten, '') fs_nm_kabupaten, kab.fs_kd_propinsi,
+                ISNULL(prop.fs_nm_propinsi, '') fs_nm_propinsi
             FROM ta_kecamatan kec
                 LEFT JOIN ta_kabupaten kab ON kec.fs_kd_kabupaten = kab.fs_kd_kabupaten
+                LEFT JOIN ta_propinsi prop ON kab.fs_kd_propinsi = prop.fs_kd_propinsi
             WHERE kec.fs_kd_kecamatan = @fs_kd_kecamatan";
 
         var dp = new DynamicParameters();
@@ -88,9 +94,11 @@ public class KecamatanDal: IKecamatanDal
     {
         const string sql = @"
             SELECT kec.fs_kd_kecamatan, kec.fs_nm_kecamatan, kec.fs_kd_kabupaten,
-                ISNULL(kab.fs_nm_kabupaten, '') fs_nm_kabupaten
+                ISNULL(kab.fs_nm_kabupaten, '') fs_nm_kabupaten, kab.fs_kd_propinsi,
+                ISNULL(prop.fs_nm_propinsi, '') fs_nm_propinsi
             FROM ta_kecamatan kec
                 LEFT JOIN ta_kabupaten kab ON kec.fs_kd_kabupaten = kab.fs_kd_kabupaten
+                LEFT JOIN ta_propinsi prop ON kab.fs_kd_propinsi = prop.fs_kd_propinsi
             WHERE kec.fs_kd_kabupaten = @fs_kd_kabupaten";
 
         var dp = new DynamicParameters();
@@ -105,10 +113,12 @@ public class KecamatanDal: IKecamatanDal
 public class KecamatanDalTest
 {
     private readonly KecamatanDal _sut;
+    private readonly KabupatenDal _kabupatenDal;
     
     public KecamatanDalTest()
     {
         _sut = new KecamatanDal(ConnStringHelper.GetTestEnv());
+        _kabupatenDal = new KabupatenDal(ConnStringHelper.GetTestEnv());
     }
 
     [Fact]
@@ -116,7 +126,8 @@ public class KecamatanDalTest
     {
         using var trans = TransHelper.NewScope();
         var kecamatan = KecamatanModel.Create("A", "B");
-        var kabupaten = KabupatenModel.Create("C", "");
+        var kabupaten = KabupatenModel.Create("C", "D");
+        kabupaten.Set(PropinsiModel.Create("E", "F"));
         kecamatan.Set(kabupaten);
         _sut.Insert(kecamatan);
     }
@@ -126,7 +137,8 @@ public class KecamatanDalTest
     {
         using var trans = TransHelper.NewScope();
         var kecamatan = KecamatanModel.Create("A", "B");
-        var kabupaten = KabupatenModel.Create("C", "");
+        var kabupaten = KabupatenModel.Create("C", "D");
+        kabupaten.Set(PropinsiModel.Create("E", "F"));
         kecamatan.Set(kabupaten);
         _sut.Update(kecamatan);
     }
@@ -136,7 +148,8 @@ public class KecamatanDalTest
     {
         using var trans = TransHelper.NewScope();
         var kecamatan = KecamatanModel.Create("A", "B");
-        var kabupaten = KabupatenModel.Create("C", "");
+        var kabupaten = KabupatenModel.Create("C", "D");
+        kabupaten.Set(PropinsiModel.Create("E", "F"));
         kecamatan.Set(kabupaten);
         _sut.Delete(kecamatan);
     }
@@ -146,10 +159,14 @@ public class KecamatanDalTest
     {
         using var trans = TransHelper.NewScope();
         var expected = KecamatanModel.Create("A", "B");
-        var kabupaten = KabupatenModel.Create("C", "");
+        var kabupaten = KabupatenModel.Create("C", "D");
+        var propinsi = PropinsiModel.Create("E", "");
+        kabupaten.Set(propinsi);
         expected.Set(kabupaten);
         
+        _kabupatenDal.Insert(kabupaten);
         _sut.Insert(expected);
+        
         var actual = _sut.GetData(expected);
         actual.Should().BeEquivalentTo(expected);
     }
@@ -159,10 +176,13 @@ public class KecamatanDalTest
     {
         using var trans = TransHelper.NewScope();
         var expected = KecamatanModel.Create("A", "B");
-        var kabupaten = KabupatenModel.Create("C", "");
+        var kabupaten = KabupatenModel.Create("C", "D");
+        kabupaten.Set(PropinsiModel.Create("E", "F"));
         expected.Set(kabupaten);
         
+        _kabupatenDal.Insert(kabupaten);
         _sut.Insert(expected);
+        
         var actual = _sut.ListData(kabupaten);
         _ = actual.Select(x => x.Should().BeEquivalentTo(expected));
     }

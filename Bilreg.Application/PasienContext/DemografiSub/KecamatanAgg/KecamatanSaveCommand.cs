@@ -1,6 +1,7 @@
 using Bilreg.Application.PasienContext.DemografiSub.KabupatenAgg;
 using Bilreg.Domain.PasienContext.DemografiSub.KabupatenAgg;
 using Bilreg.Domain.PasienContext.DemografiSub.KecamatanAgg;
+using Bilreg.Domain.PasienContext.DemografiSub.PropinsiAgg;
 using FluentAssertions;
 using MediatR;
 using Moq;
@@ -105,12 +106,15 @@ public class KecamatanSaveHandlerTest
     public async Task GivenValidRequest_ThenCreateExpectedObject_Test()
     {
         var expected = KecamatanModel.Create("1111ABC", "B");
-        expected.Set(KabupatenModel.Create("1111", "D"));
+        var kabupaten = KabupatenModel.Create("1111", "D");
+        kabupaten.Set(PropinsiModel.Create("11", "E"));
+        expected.Set(kabupaten);
+        
         var request = new KecamatanSaveCommand("1111ABC", "B", "1111");
         KecamatanModel actual = null;
 
         _kabupatenDal.Setup(x => x.GetData(It.IsAny<IKabupatenKey>()))
-            .Returns(KabupatenModel.Create("1111", "D"));
+            .Returns(kabupaten);
         _writer.Setup(x => x.Save(It.IsAny<KecamatanModel>()))
             .Callback((KecamatanModel k) => actual = k);
         
