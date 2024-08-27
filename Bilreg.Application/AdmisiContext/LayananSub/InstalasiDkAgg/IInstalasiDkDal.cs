@@ -9,9 +9,6 @@ using System.Threading.Tasks;
 namespace Bilreg.Application.AdmisiContext.LayananSub.InstalasiDkAgg
 {
     public interface IInstalasiDkDal :
-        IInsert<InstalasiDkModel>,
-        IUpdate<InstalasiDkModel>,
-        IDelete<IInstalasiDkKey>,
         IGetData<InstalasiDkModel, IInstalasiDkKey>,
         IListData<InstalasiDkModel>
     {

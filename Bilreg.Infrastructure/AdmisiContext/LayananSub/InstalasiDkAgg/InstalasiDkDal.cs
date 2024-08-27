@@ -26,57 +26,6 @@ namespace Bilreg.Infrastructure.AdmisiContext.LayananSub.InstalasiDkAgg
             _opt = opt.Value;
         }
 
-        public void Insert(InstalasiDkModel model)
-        {
-            // QUERY
-            const string sql = @"
-                INSERT INTO ta_instalasi_dk(fs_kd_instalasi_dk, fs_nm_instalasi_dk)
-                VALUES (@fs_kd_instalasi_dk, @fs_nm_instalasi_dk)";
-
-            // PARAM
-            var dp = new DynamicParameters();
-            dp.AddParam("@fs_kd_instalasi_dk", model.InstalasiDkId, SqlDbType.VarChar);
-            dp.AddParam("@fs_nm_instalasi_dk", model.InstalasiDkName, SqlDbType.VarChar);
-
-            // EXECUTE
-            using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-            conn.Execute(sql, dp);
-        }
-
-        public void Update(InstalasiDkModel model)
-        {
-            // QUERY
-            const string sql = @"
-                UPDATE ta_instalasi_dk
-                SET fs_nm_instalasi_dk = @fs_nm_instalasi_dk
-                WHERE fs_kd_instalasi_dk = @fs_kd_instalasi_dk";
-
-            // PARAM
-            var dp = new DynamicParameters();
-            dp.AddParam("@fs_kd_instalasi_dk", model.InstalasiDkId, SqlDbType.VarChar);
-            dp.AddParam("@fs_nm_instalasi_dk", model.InstalasiDkName, SqlDbType.VarChar);
-
-            // EXECUTE
-            using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-            conn.Execute(sql, dp);
-        }
-
-        public void Delete(IInstalasiDkKey key)
-        {
-            // QUERY
-            const string sql = @"
-                DELETE FROM ta_instalasi_dk
-                WHERE fs_kd_instalasi_dk = @fs_kd_instalasi_dk";
-
-            // PARAM
-            var dp = new DynamicParameters();
-            dp.AddParam("@fs_kd_instalasi_dk", key.InstalasiDkId, SqlDbType.VarChar);
-
-            // EXECUTE
-            using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-            conn.Execute(sql, dp);
-        }
-
         public InstalasiDkModel GetData(IInstalasiDkKey key)
         {
             const string sql = @"
@@ -121,53 +70,22 @@ namespace Bilreg.Infrastructure.AdmisiContext.LayananSub.InstalasiDkAgg
         }
 
         [Fact]
-        public void InsertTest()
-        {
-            using var trans = TransHelper.NewScope();
-            _sut.Insert(InstalasiDkModel.Create("A", "B"));
-        }
-
-        [Fact]
-        public void UpdateTest()
-        {
-            using var trans = TransHelper.NewScope();
-            _sut.Update(InstalasiDkModel.Create("A", "B"));
-        }
-
-        [Fact]
-        public void DeleteTest()
-        {
-            using var trans = TransHelper.NewScope();
-            _sut.Delete(InstalasiDkModel.Create("A", "B"));
-        }
-
-        [Fact]
         public void GetDataTest()
         {
             using var trans = TransHelper.NewScope();
-            var expected = InstalasiDkModel.Create("A", "B");
-            _sut.Insert(expected);
+            var expected = InstalasiDkModel.Create("1", "RAWAT DARURAT");
             var actual = _sut.GetData(expected);
             actual.Should().BeEquivalentTo(expected);
-        }
-
-        [Fact]
-        public void GivenNotExistDate_ThenReturnNull()
-        {
-            using var trans = TransHelper.NewScope();
-            var expected = InstalasiDkModel.Create("A", "B");
-            var actual = _sut.GetData(expected);
-            actual.Should().BeNull();
         }
 
         [Fact]
         public void ListDataTest()
         {
             using var trans = TransHelper.NewScope();
-            var expected = new List<InstalasiDkModel> { InstalasiDkModel.Create("A", "B") };
-            _sut.Insert(InstalasiDkModel.Create("A", "B"));
+            var expected = InstalasiDkModel.Create("1", "RAWAT DARURAT");
             var actual = _sut.ListData();
-            actual.Should().BeEquivalentTo(expected);
+            var actualFirst = actual.First(x => x.InstalasiDkId == "1");
+            actualFirst.Should().BeEquivalentTo(expected);
         }
     }
 

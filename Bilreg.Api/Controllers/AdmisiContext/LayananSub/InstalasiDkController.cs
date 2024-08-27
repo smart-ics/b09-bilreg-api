@@ -17,22 +17,6 @@ namespace Bilreg.Api.Controllers.AdmisiContext.LayananSub
             _mediator = mediator;
         }
 
-        [HttpPost]
-        public async Task<IActionResult> Save(InstalasiDkSaveCommand cmd)
-        {
-            await _mediator.Send(cmd);
-            return Ok(new JSendOk("Done"));
-        }
-
-        [HttpDelete]
-        [Route("{id}")]
-        public async Task<IActionResult> Delete(string id)
-        {
-            var command = new InstalasiDkDeleteCommand(id);
-            await _mediator.Send(command);
-            return Ok(new JSendOk("Done"));
-        }
-
         [HttpGet]
         [Route("{id}")]
         public async Task<IActionResult> GetData(string id)
