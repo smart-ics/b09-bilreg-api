@@ -115,7 +115,7 @@ public class KelurahanDal: IKelurahanDal
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         var result = conn.Read<KelurahanDto>(sql, dp);
-        return result.Select(x => x.ToModel());
+        return result?.Select(x => x.ToModel())!;
     }
 
     public IEnumerable<KelurahanModel> ListData(string filter)
@@ -136,7 +136,7 @@ public class KelurahanDal: IKelurahanDal
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         var result = conn.Read<KelurahanDto>(sql, dp);
-        return result.Select(x => x.ToModel());
+        return result?.Select(x => x.ToModel())!;
     }
 }
 
