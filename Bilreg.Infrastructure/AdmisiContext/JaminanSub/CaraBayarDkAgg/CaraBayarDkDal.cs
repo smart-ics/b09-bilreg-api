@@ -81,11 +81,12 @@ public class CaraBayarDkDalTest
     {
         // ARRANGE
         using var trans = TransHelper.NewScope();
-        
+        var exepected = CaraBayarDkModel.Create("1", "Membayar Sendiri");
         // ACT
         var actual = _sut.ListData();
         
         // ASSERT
-        actual.Should().BeNull();
+        var actualFirst = actual.First(x => x.CaraBayarDkId == "1");
+        actualFirst.Should().BeEquivalentTo(exepected);
     }
 }
