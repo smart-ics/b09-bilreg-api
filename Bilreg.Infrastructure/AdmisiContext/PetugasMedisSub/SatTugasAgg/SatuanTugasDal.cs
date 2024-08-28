@@ -106,22 +106,22 @@ public class SatuanTugasDal : ISatuanTugasDal
     }
 }
 
-public class SatuanTugasDto
-{
-    public string fs_kd_sat_tugas { get; set; }
-    public string fs_nm_sat_tugas { get; set; }
-    public bool fb_sat_medis { get; set; }
-    public SatuanTugasModel ToModel() => SatuanTugasModel.Create(fs_kd_sat_tugas, fs_nm_sat_tugas, fb_sat_medis);
-}
-
-public class SatuanTugasDalTest
-{
-    private readonly SatuanTugasDal _sut;
-
-    public SatuanTugasDalTest()
+    public class SatuanTugasDto
     {
-        _sut = new SatuanTugasDal(ConnStringHelper.GetTestEnv());
+        public string fs_kd_sat_tugas { get; set; }
+        public string fs_nm_sat_tugas { get; set; }
+        public bool fb_sat_medis { get; set; }
+        public SatuanTugasModel ToModel() => SatuanTugasModel.Create(fs_kd_sat_tugas, fs_nm_sat_tugas, fb_sat_medis);
     }
+
+    public class SatuanTugasDalTest
+    {
+        private readonly SatuanTugasDal _sut;
+
+        public SatuanTugasDalTest()
+        {
+            _sut = new SatuanTugasDal(ConnStringHelper.GetTestEnv());
+        }
 
     [Fact]
     public void InsertTest()
