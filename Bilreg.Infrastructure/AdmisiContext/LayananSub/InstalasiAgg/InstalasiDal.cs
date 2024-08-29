@@ -79,7 +79,8 @@ namespace Bilreg.Infrastructure.AdmisiContext.LayananSub.InstalasiAgg
             const string sql = @"
             SELECT ins.fs_kd_instalasi,
                    ins.fs_nm_instalasi,
-                   ins.fs_kd_instalasi_dk,ISNULL(indk.fs_nm_instalasi_dk, '')
+                   ins.fs_kd_instalasi_dk, 
+                   ISNULL(indk.fs_nm_instalasi_dk, '')
                    fs_nm_instalasi_dk
             FROM ta_instalasi ins
             LEFT JOIN ta_instalasi_dk indk ON ins.fs_kd_instalasi_dk = indk.fs_kd_instalasi_dk
@@ -101,8 +102,7 @@ namespace Bilreg.Infrastructure.AdmisiContext.LayananSub.InstalasiAgg
                    ins.fs_kd_instalasi_dk,
                    ISNULL(indk.fs_nm_instalasi_dk, '') AS fs_nm_instalasi_dk
             FROM ta_instalasi AS ins
-            LEFT JOIN ta_instalasi_dk AS indk 
-                ON ins.fs_kd_instalasi_dk = indk.fs_kd_instalasi_dk
+            LEFT JOIN ta_instalasi_dk AS indk ON ins.fs_kd_instalasi_dk = indk.fs_kd_instalasi_dk
             WHERE ins.fs_kd_instalasi_dk = @fs_kd_instalasi_dk";
 
 
@@ -117,13 +117,12 @@ namespace Bilreg.Infrastructure.AdmisiContext.LayananSub.InstalasiAgg
         public IEnumerable<InstalasiModel> ListData()
         {
             const string sql = @"
-        SELECT ins.fs_kd_instalasi, 
-               ins.fs_nm_instalasi, 
-               ins.fs_kd_instalasi_dk,
-               ISNULL(indk.fs_nm_instalasi_dk, '') AS fs_nm_instalasi_dk
-        FROM ta_instalasi AS ins
-        LEFT JOIN ta_instalasi_dk AS indk 
-            ON ins.fs_kd_instalasi_dk = indk.fs_kd_instalasi_dk";
+            SELECT ins.fs_kd_instalasi, 
+                   ins.fs_nm_instalasi, 
+                   ins.fs_kd_instalasi_dk,
+                   ISNULL(indk.fs_nm_instalasi_dk, '') AS fs_nm_instalasi_dk
+            FROM ta_instalasi AS ins
+            LEFT JOIN ta_instalasi_dk AS indk ON ins.fs_kd_instalasi_dk = indk.fs_kd_instalasi_dk";
 
             using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
             var result = conn.Read<InstalasiDto>(sql);

@@ -39,7 +39,7 @@ namespace Bilreg.Application.AdmisiContext.LayananSub.InstalasiAgg
 
             // RESPONSE
             var response = result.Select(x
-                => new InstalasiListResponse(x.InstalasiId, x.InstalasiName, x.InstalasiDkId, x.InstalaiDkName));
+                => new InstalasiListResponse(x.InstalasiId, x.InstalasiName, x.InstalasiDkId, x.InstalasiDkName));
             return Task.FromResult(response);
         }
     }
