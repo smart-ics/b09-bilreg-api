@@ -1,9 +1,9 @@
 ﻿namespace Bilreg.Domain.AdmisiContext.LayananSub.LayananAgg;
 
-public class LayananModel : ILayananKey
+public class LayananModel(string id, string name) : ILayananKey
 {
-    public string LayananId { get; private set; }
-    public string LayananName { get; private set; }
+    public string LayananId { get; private set; } = id;
+    public string LayananName { get; private set; } = name;
 }
 
 public interface ILayananKey

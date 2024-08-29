@@ -1,36 +1,66 @@
 ﻿using Bilreg.Domain.AdmisiContext.LayananSub.LayananAgg;
+using Bilreg.Domain.AdmisiContext.PetugasMedisSub.SatTugasAgg;
 using Bilreg.Domain.AdmisiContext.PetugasMedisSub.SmfAgg;
 
 namespace Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasAgg;
 
-public class PetugasMedisModel
+public class PetugasMedisModel(string id, string name)
 {
-    private  PetugasMedisModel(string id, string name)
-    {
-        PetugasId = id;
-        PetugasName = name;
-    }
-    public string PetugasId { get; private set; }
-    public string PetugasName { get; private set; }
-    public string NamaSingkat { get; private set; }
-    public string SmfId { get; private set; }
-    public string SmfName { get; private set; }
+    #region PROPERTIES
+    public string PetugasId { get; private set; } = id;
+    public string PetugasName { get; private set; } = name;
+    public string NamaSingkat { get; private set; } = string.Empty;
+    public string SmfId { get; private set; } = string.Empty;
+    public string SmfName { get; private set; } = string.Empty;
+    public List<PetugasMedisSatTugasModel> ListSatTugas { get; private set; } = [];
+    public List<PetugasMedisLayananModel> ListLayanan { get; private set; } = [];
+    #endregion
 
-    public static PetugasMedisModel Create(string id, string name)
-        => new PetugasMedisModel(id, name);
+    #region BEHAVIOUR
+
     public void Set(SmfModel smf)
-        => (SmfId, SmfName) = (smf.SmfId, smf.SmfName)      ;
-}
-
-public class PetugasMedisSatTugasModel
-{
-    public string PetugasId { get; private set; }
-    public string SatTugasId { get; private set; }
-    public string SatTugasName { get; private set; }
-
-    private PetugasMedisSatTugasModel(string petugasId)
     {
+        ArgumentNullException.ThrowIfNull(smf);
+        ArgumentException.ThrowIfNullOrWhiteSpace(smf.SmfId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(smf.SmfName);
         
+        (SmfId, SmfName) = (smf.SmfId, smf.SmfName);
     }
-}
+    
+    public void Add(SatuanTugasModel satTugas)
+    {
+        ArgumentNullException.ThrowIfNull(satTugas);
+        ArgumentException.ThrowIfNullOrWhiteSpace(satTugas.SatuanTugasId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(satTugas.SatuanTugasName);
+        if (ListSatTugas.Any(x => x.SatTugasId == satTugas.SatuanTugasId))
+            throw new ArgumentException("Add Satuan Tugas Failed: Duplicated");
+        
+        var newSatTugas = new PetugasMedisSatTugasModel(PetugasId, satTugas.SatuanTugasId, satTugas.SatuanTugasName);
+        ListSatTugas.Add(newSatTugas);
+    }
+    
+    public void Remove(Predicate<PetugasMedisSatTugasModel> predicate) 
+        => _ = ListSatTugas.RemoveAll(predicate);
+    
+    public void Add(LayananModel layanan)
+    {
+        ArgumentNullException.ThrowIfNull(layanan);
+        ArgumentException.ThrowIfNullOrWhiteSpace(layanan.LayananId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(layanan.LayananName);
+        if (ListLayanan.Any(x => x.LayananId == layanan.LayananId))
+            throw new ArgumentException("Add Layanan Failed: Duplicated");
+        
+        var newLayanan = new PetugasMedisLayananModel(PetugasId, layanan.LayananId, layanan.LayananName);
+        ListLayanan.Add(newLayanan);
+    }
+    
+    public void Remove(Predicate<PetugasMedisLayananModel> predicate)
+        => _ = ListLayanan.RemoveAll(predicate);
 
+    public void SetAsSatTugasUtama(Predicate<PetugasMedisSatTugasModel> predicate)
+    {
+        ListSatTugas.ForEach(x => x.UnsetUtama());
+        ListSatTugas.Find(predicate)?.SetUtama();
+    }
+    #endregion
+}

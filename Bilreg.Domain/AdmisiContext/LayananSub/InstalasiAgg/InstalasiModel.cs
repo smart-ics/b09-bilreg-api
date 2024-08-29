@@ -1,8 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Bilreg.Domain.AdmisiContext.LayananSub.InstalasiDkAgg;
 
 namespace Bilreg.Domain.AdmisiContext.LayananSub.InstalasiAgg
 {
@@ -25,7 +21,7 @@ namespace Bilreg.Domain.AdmisiContext.LayananSub.InstalasiAgg
         
         public void Set(InstalasiDkModel instalasiDk)
         {
-            if (instalasiDk == null) throw new ArgumentNullException(nameof(instalasiDk));
+            ArgumentNullException.ThrowIfNull(instalasiDk);
             InstalasiDkId = instalasiDk.InstalasiDkId;
             InstalasiDkName = instalasiDk.InstalasiDkName;
         }
