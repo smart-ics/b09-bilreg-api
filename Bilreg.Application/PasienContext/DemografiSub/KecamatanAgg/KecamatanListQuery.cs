@@ -7,16 +7,18 @@ using Xunit;
 
 namespace Bilreg.Application.PasienContext.DemografiSub.KecamatanAgg;
 
-public record KecamatanListQuery(string KabupatenId): IRequest<IEnumerable<KecamatanListResponse>>, IKabupatenKey;
+public record KecamatanListQuery(string KabupatenId) : IRequest<IEnumerable<KecamatanListResponse>>, IKabupatenKey;
 
 public record KecamatanListResponse(
     string KecamatanId,
     string KecamatanName,
     string KabupatenId,
-    string KabupatenName
-    );
-    
-public class KecamatanListHandler: IRequestHandler<KecamatanListQuery, IEnumerable<KecamatanListResponse>>
+    string KabupatenName,
+    string PropinsiId,
+    string PropinsiName
+);
+
+public class KecamatanListHandler : IRequestHandler<KecamatanListQuery, IEnumerable<KecamatanListResponse>>
 {
     private readonly IKecamatanDal _kecamatanDal;
 
@@ -25,15 +27,17 @@ public class KecamatanListHandler: IRequestHandler<KecamatanListQuery, IEnumerab
         _kecamatanDal = kecamatanDal;
     }
 
-    public Task<IEnumerable<KecamatanListResponse>> Handle(KecamatanListQuery request, CancellationToken cancellationToken)
+    public Task<IEnumerable<KecamatanListResponse>> Handle(KecamatanListQuery request,
+        CancellationToken cancellationToken)
     {
         // QUERY
         var result = _kecamatanDal.ListData(request)
-            ?? throw new KeyNotFoundException("Kecamatan not found");
-        
+                     ?? throw new KeyNotFoundException("Kecamatan not found");
+
         // RESPONSE
         var response = result.Select(x
-            => new KecamatanListResponse(x.KecamatanId, x.KecamatanName, x.KabupatenId, x.KabupatenName));
+            => new KecamatanListResponse(x.KecamatanId, x.KecamatanName, x.KabupatenId, x.KabupatenName, x.PropinsiId,
+                x.PropinsiName));
         return Task.FromResult(response);
     }
 }
@@ -55,7 +59,7 @@ public class KecamatanListHandlerTest
         var request = new KecamatanListQuery("A");
         _kecamatanDal.Setup(x => x.ListData(It.IsAny<IKabupatenKey>()))
             .Returns(null as IEnumerable<KecamatanModel>);
-        
+
         var actual = async () => await _sut.Handle(request, CancellationToken.None);
         await actual.Should().ThrowAsync<KeyNotFoundException>();
     }
@@ -67,10 +71,11 @@ public class KecamatanListHandlerTest
         var expected = new List<KecamatanModel>() { KecamatanModel.Create("A", "B") };
         _kecamatanDal.Setup(x => x.ListData(It.IsAny<IKabupatenKey>()))
             .Returns(expected);
-        
+
         var actual = await _sut.Handle(request, CancellationToken.None);
         var expectedResponse = expected.Select(x
-            => new KecamatanListResponse(x.KecamatanId, x.KecamatanName, x.KabupatenId, x.KabupatenName));
+            => new KecamatanListResponse(x.KecamatanId, x.KecamatanName, x.KabupatenId, x.KabupatenName, x.PropinsiId,
+                x.PropinsiName));
 
         actual.Should().BeEquivalentTo(expectedResponse);
     }

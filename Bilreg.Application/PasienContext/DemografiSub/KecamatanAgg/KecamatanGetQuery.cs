@@ -1,5 +1,6 @@
 using Bilreg.Domain.PasienContext.DemografiSub.KabupatenAgg;
 using Bilreg.Domain.PasienContext.DemografiSub.KecamatanAgg;
+using Bilreg.Domain.PasienContext.DemografiSub.PropinsiAgg;
 using FluentAssertions;
 using MediatR;
 using Moq;
@@ -13,7 +14,10 @@ public record KecamatanGetResponse(
     string KecamatanId,
     string KecamatanName,
     string KabupatenId,
-    string KabupatenName);
+    string KabupatenName,
+    string PropinsiId,
+    string PropinsiName
+    );
     
 public class KecamatanGetHandler: IRequestHandler<KecamatanGetQuery, KecamatanGetResponse>
 {
@@ -32,7 +36,7 @@ public class KecamatanGetHandler: IRequestHandler<KecamatanGetQuery, KecamatanGe
 
         // RESPONSE
         var response = new KecamatanGetResponse(result.KecamatanId, result.KecamatanName, result.KabupatenId,
-            result.KabupatenName);
+            result.KabupatenName, result.PropinsiId, result.PropinsiName);
         return Task.FromResult(response);
     }
 }
@@ -64,7 +68,9 @@ public class KecamatanGetHandlerTest
     {
         var request = new KecamatanGetQuery("A");
         var expected = KecamatanModel.Create("A", "B");
-        expected.Set(KabupatenModel.Create("C", "D"));
+        var kabupaten = KabupatenModel.Create("C", "D");
+        kabupaten.Set(PropinsiModel.Create("E", "F"));
+        expected.Set(kabupaten);
         _kecamatanDal.Setup(x => x.GetData(It.IsAny<IKecamatanKey>()))
             .Returns(expected);
         
