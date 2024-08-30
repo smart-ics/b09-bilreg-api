@@ -1,4 +1,5 @@
-﻿INSERT INTO ta_kelas_dk(fs_kd_kelas_dk,fs_nm_kelas_dk)VALUES
+﻿INSERT INTO ta_kelas_dk(fs_kd_kelas_dk,fs_nm_kelas_dk)
+VALUES
 ('1','KELAS VVIP'),
 ('2','KELAS VIP'),
 ('3','KELAS I'),
