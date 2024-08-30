@@ -59,7 +59,6 @@ namespace Bilreg.Infrastructure.BillContext.RoomChargeSub.KelasAgg
             var dp = new DynamicParameters();
             dp.AddParam("@fs_kd_kelas", model.KelasId, SqlDbType.VarChar);
             dp.AddParam("@fs_nm_kelas", model.KelasName, SqlDbType.VarChar);
-            dp.AddParam("@fb_aktif", model.IsAktif, SqlDbType.VarChar);
             dp.AddParam("@fs_kd_kelas_dk", model.KelasDkId, SqlDbType.VarChar);
 
             using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
