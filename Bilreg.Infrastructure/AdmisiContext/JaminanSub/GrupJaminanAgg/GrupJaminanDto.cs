@@ -12,7 +12,11 @@ public class GrupJaminanDto
     public GrupJaminanModel ToModel()
     {
         var grupJaminan = GrupJaminanModel.Create(fs_kd_grup_jaminan, fs_nm_grup_jaminan, fs_keterangan);
-        grupJaminan.Set(fb_karyawan);
+
+        if (fb_karyawan)
+            grupJaminan.SetKaryawan();
+        else
+            grupJaminan.UnSetKaryawan();
         return grupJaminan;
     }
 }

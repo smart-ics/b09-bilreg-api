@@ -63,7 +63,7 @@ public class GrupJaminanGetHandlerTest
     {
         var request = new GrupJaminanGetQuery("A");
         var expected = GrupJaminanModel.Create("A", "B", "C");
-        expected.Set(false);
+        expected.UnSetKaryawan();
         var expectedResponse =
             new GrupJaminanGetResponse(expected.GrupJaminanId, expected.GrupJaminanName, expected.IsKaryawan, expected.Keterangan);
         _grupJaminanDal.Setup(x => x.GetData(It.IsAny<IGrupJaminanKey>()))

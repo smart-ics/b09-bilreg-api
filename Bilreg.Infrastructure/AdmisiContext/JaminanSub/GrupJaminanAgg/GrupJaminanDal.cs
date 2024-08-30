@@ -92,19 +92,6 @@ public class GrupJaminanDal: IGrupJaminanDal
         var result = conn.Read<GrupJaminanDto>(sql);
         return result?.Select(x => x.ToModel())!;
     }
-
-    public void SetAsKaryawan(IGrupJaminanKey key)
-    {
-        const string sql = @"
-            UPDATE ta_grup_jaminan
-            SET fb_karyawan = CASE fs_kd_grup_jaminan WHEN @fs_kd_grup_jaminan THEN 1 ELSE 0 END";
-
-        var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_grup_jaminan", key.GrupJaminanId, SqlDbType.VarChar);
-
-        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        conn.Execute(sql, dp);
-    }
 }
 
 public class GrupJaminanDalTest
@@ -158,14 +145,5 @@ public class GrupJaminanDalTest
         _sut.Insert(expected);
         var actual = _sut.ListData();
         _ = actual.Select(x => x.Should().BeEquivalentTo(expected));
-    }
-
-    [Fact]
-    public void SetAsKaryawanTest()
-    {
-        using var trans = TransHelper.NewScope();
-        var expected = GrupJaminanModel.Create("A", "B", "C");
-        expected.Set(true);
-        _sut.SetAsKaryawan(expected);
     }
 }

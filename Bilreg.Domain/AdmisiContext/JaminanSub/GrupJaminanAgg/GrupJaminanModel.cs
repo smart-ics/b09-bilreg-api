@@ -15,7 +15,8 @@ public class GrupJaminanModel: IGrupJaminanKey
         IsKaryawan = false;
     }
 
-    public void Set(bool isKaryawan) => (IsKaryawan) = (isKaryawan);
+    public void SetKaryawan() => IsKaryawan = true;
+    public void UnSetKaryawan() => IsKaryawan = false;
     
     public static GrupJaminanModel Create(string id, string name, string keterangan) => new GrupJaminanModel(id, name, keterangan);
 }

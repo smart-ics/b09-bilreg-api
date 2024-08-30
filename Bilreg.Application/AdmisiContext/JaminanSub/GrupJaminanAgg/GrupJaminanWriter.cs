@@ -8,7 +8,6 @@ namespace Bilreg.Application.AdmisiContext.JaminanSub.GrupJaminanAgg;
 public interface IGrupJaminanWriter: INunaWriterWithReturn<GrupJaminanModel>
 {
     public void Delete(IGrupJaminanKey key);
-    public void SetAsKaryawan(IGrupJaminanKey key);
 }
 
 public class GrupJaminanWriter: IGrupJaminanWriter
@@ -33,11 +32,6 @@ public class GrupJaminanWriter: IGrupJaminanWriter
     public void Delete(IGrupJaminanKey key)
     {
         _grupJaminanDal.Delete(key);
-    }
-
-    public void SetAsKaryawan(IGrupJaminanKey key)
-    {
-        _grupJaminanDal.SetAsKaryawan(key);
     }
 }
 

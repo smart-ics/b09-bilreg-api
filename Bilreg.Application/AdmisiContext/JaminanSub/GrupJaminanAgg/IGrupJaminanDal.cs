@@ -10,5 +10,4 @@ public interface IGrupJaminanDal:
     IGetData<GrupJaminanModel, IGrupJaminanKey>,
     IListData<GrupJaminanModel>
 {
-    public void SetAsKaryawan(IGrupJaminanKey key);
 }
