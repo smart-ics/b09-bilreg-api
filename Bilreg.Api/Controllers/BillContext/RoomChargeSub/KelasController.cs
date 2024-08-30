@@ -23,5 +23,13 @@ namespace Bilreg.Api.Controllers.BillContext.RoomChargeSub
             await _mediator.Send(cmd);
             return Ok(new JSendOk("Done"));
         }
+
+        [HttpGet]
+        public async Task<IActionResult> ListData()
+        {
+            var query = new KelasListQuery();
+            var response = await _mediator.Send(query);
+            return Ok(new JSendOk(response));
+        }
     }
 }

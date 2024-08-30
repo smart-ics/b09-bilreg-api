@@ -12,7 +12,7 @@ using Xunit;
 
 namespace Bilreg.Application.BillContext.RoomChargeSub.KelasAgg
 {
-    public record KelasSaveCommand(string KelasId, string KelasName, string IsAktif, string KelasDkId):IRequest,IKelasKey,IKelasDkKey;
+    public record KelasSaveCommand(string KelasId, string KelasName, string KelasDkId):IRequest,IKelasKey,IKelasDkKey;
 
     public class KelasSaveHandler : IRequestHandler<KelasSaveCommand>
     {
@@ -32,11 +32,10 @@ namespace Bilreg.Application.BillContext.RoomChargeSub.KelasAgg
             ArgumentNullException.ThrowIfNull(request);
             ArgumentException.ThrowIfNullOrWhiteSpace(request.KelasId);
             ArgumentException.ThrowIfNullOrWhiteSpace(request.KelasName);
-            ArgumentException.ThrowIfNullOrWhiteSpace(request.IsAktif);
             ArgumentException.ThrowIfNullOrWhiteSpace(request.KelasDkId);
 
             // Build
-            var kelas = KelasModel.Create(request.KelasId, request.KelasName, request.IsAktif,request.KelasDkId);
+            var kelas = KelasModel.Create(request.KelasId, request.KelasName,null,request.KelasDkId);
 
             // Write
             _writter.Save(kelas);
@@ -68,7 +67,7 @@ namespace Bilreg.Application.BillContext.RoomChargeSub.KelasAgg
         [Fact]
         public async Task GivenEmptyGrupJaminanId_ThenThrowArgumentException_Test()
         {
-            var request = new KelasSaveCommand("", "B", "C","D");
+            var request = new KelasSaveCommand("", "B", "C");
             var actual = async () => await _sut.Handle(request, CancellationToken.None);
             await actual.Should().ThrowAsync<ArgumentException>();
         }
@@ -76,7 +75,7 @@ namespace Bilreg.Application.BillContext.RoomChargeSub.KelasAgg
         [Fact]
         public async Task GivenEmptyGrupJaminanName_ThenThrowArgumentException_Test()
         {
-            var request = new KelasSaveCommand("A", "", "C"," ");
+            var request = new KelasSaveCommand("A", "", "C");
             var actual = async () => await _sut.Handle(request, CancellationToken.None);
             await actual.Should().ThrowAsync<ArgumentException>();
         }
@@ -84,7 +83,7 @@ namespace Bilreg.Application.BillContext.RoomChargeSub.KelasAgg
         [Fact]
         public async Task GivenValidRequest_ThenCreateExpectedObject_Test()
         {
-            var request = new KelasSaveCommand("A", "B", "C","D");
+            var request = new KelasSaveCommand("A", "B", "C");
             var expected = KelasModel.Create("A", "B", "C","");
             KelasModel actual = null;
             _writer.Setup(x => x.Save(It.IsAny<KelasModel>()))

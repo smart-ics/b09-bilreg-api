@@ -30,8 +30,8 @@ namespace Bilreg.Domain.BillContext.RoomChargeSub.KelasAgg
 
         }
 
-        public static KelasModel Create(string id, string name, string isAktif, string kelasDkId)
-            => new KelasModel(id, name, isAktif, kelasDkId);
+        public static KelasModel Create(string id, string name,string isAktif, string kelasDkId)
+            => new KelasModel(id, name,isAktif, kelasDkId);
     }
 
     public interface IKelasKey

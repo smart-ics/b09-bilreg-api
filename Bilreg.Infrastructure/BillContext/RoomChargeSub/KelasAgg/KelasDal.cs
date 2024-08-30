@@ -54,7 +54,7 @@ namespace Bilreg.Infrastructure.BillContext.RoomChargeSub.KelasAgg
         {
             const string sql = @"
             INSERT INTO ta_kelas (fs_kd_kelas, fs_nm_kelas, fb_aktif, fs_kd_kelas_dk) 
-            VALUES (@fs_kd_kelas, @fs_nm_kelas, @fb_aktif, @fs_kd_kelas_dk)";
+            VALUES (@fs_kd_kelas, @fs_nm_kelas, '1', @fs_kd_kelas_dk)";
 
             var dp = new DynamicParameters();
             dp.AddParam("@fs_kd_kelas", model.KelasId, SqlDbType.VarChar);
@@ -68,7 +68,13 @@ namespace Bilreg.Infrastructure.BillContext.RoomChargeSub.KelasAgg
 
         public IEnumerable<KelasModel> ListData()
         {
-            throw new NotImplementedException();
+            const string sql = @"
+            SELECT fs_kd_kelas, fs_nm_kelas, fb_aktif, fs_kd_kelas_dk
+            FROM ta_kelas
+            ";
+            using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+            var result = conn.Read<KelasDto>(sql);
+            return result?.Select(x => x.ToModel());
         }
 
         public void Update(KelasModel model)
