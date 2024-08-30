@@ -8,14 +8,14 @@ using System.Threading.Tasks;
 
 namespace Bilreg.Application.AdmisiContext.LayananSub.InstalasiAgg
 {
-    public interface InstalasiWriter : INunaWriterWithReturn<InstalasiModel>
+    public interface IInstalasiWriter : INunaWriterWithReturn<InstalasiModel>
     {
         public void Delete(IInstalasiKey key);
     }
-    public class IInstalasiWriter : InstalasiWriter
+    public class InstalasiWriter : IInstalasiWriter
     {
         private readonly IInstalasiDal _instalasiDal;
-        public IInstalasiWriter(IInstalasiDal instalasiDal)
+        public InstalasiWriter(IInstalasiDal instalasiDal)
         {
             _instalasiDal = instalasiDal;
         }
