@@ -2,11 +2,6 @@
 using FluentAssertions;
 using MediatR;
 using Moq;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Xunit;
 
 namespace Bilreg.Application.AdmisiContext.LayananSub.InstalasiAgg
@@ -14,9 +9,9 @@ namespace Bilreg.Application.AdmisiContext.LayananSub.InstalasiAgg
     public record InstalasiDeleteCommand(string InstalasiId): IRequest,IInstalasiKey;
     public class InstalasiDeleteHandler : IRequestHandler<InstalasiDeleteCommand>
     {
-        private readonly InstalasiWriter _writer;
+        private readonly IInstalasiWriter _writer;
 
-        public InstalasiDeleteHandler(InstalasiWriter instalasiWriter)
+        public InstalasiDeleteHandler(IInstalasiWriter instalasiWriter)
         {
             _writer = instalasiWriter;
         }
@@ -36,11 +31,11 @@ namespace Bilreg.Application.AdmisiContext.LayananSub.InstalasiAgg
     public class InstalasiDeleteHandlerTest
     {
         private readonly InstalasiDeleteHandler _sut;
-        private readonly Mock<InstalasiWriter> _writer;
+        private readonly Mock<IInstalasiWriter> _writer;
 
         public InstalasiDeleteHandlerTest()
         {
-            _writer = new Mock<InstalasiWriter>();
+            _writer = new Mock<IInstalasiWriter>();
             _sut = new InstalasiDeleteHandler(_writer.Object);
         }
 
