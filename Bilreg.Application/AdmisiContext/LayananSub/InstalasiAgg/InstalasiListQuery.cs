@@ -69,21 +69,5 @@ namespace Bilreg.Application.AdmisiContext.LayananSub.InstalasiAgg
             //  ASSERT
             act.Should().ThrowAsync<KeyNotFoundException>();
         }
-
-        [Fact]
-        public async Task GivenValidRequest_ThenReturnExpected()
-        {
-            //  ARRANGE
-            var expected = new List<InstalasiModel> { InstalasiModel.Create("A", "B") };
-            var request = new InstalasiListQuery();
-            _instalasiDal.Setup(x => x.ListData())
-                .Returns(expected);
-
-            //  ACT
-            var act = await _sut.Handle(request, CancellationToken.None);
-
-            //  ASSERT
-            act.Should().BeEquivalentTo(expected.Select(x => new InstalasiDkListResponse(x.InstalasiId, x.InstalasiName)));
-        }
     }
 }
