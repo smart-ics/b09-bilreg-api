@@ -28,6 +28,14 @@ public class GrupJaminanSaveHandler: IRequestHandler<GrupJaminanSaveCommand>
         
         // BUILD
         var grupJaminan = GrupJaminanModel.Create(request.GrupJaminanId, request.GrupJaminanName, request.Keterangan);
+        var existingGrupJaminan = _grupJaminanDal.GetData(request);
+        if (existingGrupJaminan is not null)
+        {
+            if (existingGrupJaminan.IsKaryawan)
+                grupJaminan.SetKaryawan();
+            else
+                grupJaminan.UnSetKaryawan();
+        }
         
         // WRITE
         _writer.Save(grupJaminan);

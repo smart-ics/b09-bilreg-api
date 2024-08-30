@@ -42,12 +42,14 @@ public class GrupJaminanDal: IGrupJaminanDal
         const string sql = @"
             UPDATE ta_grup_jaminan
             SET fs_nm_grup_jaminan = @fs_nm_grup_jaminan,
+                fb_karyawan = @fb_karyawan,
                 fs_keterangan = @fs_keterangan
             WHERE fs_kd_grup_jaminan = @fs_kd_grup_jaminan";
         
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_grup_jaminan", model.GrupJaminanId, SqlDbType.VarChar);
         dp.AddParam("@fs_nm_grup_jaminan", model.GrupJaminanName, SqlDbType.VarChar);
+        dp.AddParam("@fb_karyawan", model.IsKaryawan, SqlDbType.Bit);
         dp.AddParam("@fs_keterangan", model.Keterangan, SqlDbType.VarChar);
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
