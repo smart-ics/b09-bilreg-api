@@ -47,7 +47,7 @@ public class JaminanModel: IJaminanKey
         Alamat1 = string.Empty;
         Alamat2 = string.Empty;
         Kota = string.Empty;
-        IsAktif = false;
+        IsAktif = true;
         CaraBayarDkId = string.Empty;
         CaraBayarDkName = string.Empty;
         GrupJaminanId = string.Empty;

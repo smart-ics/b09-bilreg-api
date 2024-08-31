@@ -6,7 +6,8 @@ namespace Bilreg.Application.AdmisiContext.JaminanSub.JaminanAgg;
 public interface IJaminanDal:
     IInsert<JaminanModel>,
     IUpdate<JaminanModel>,
-    IGetData<JaminanModel, IJaminanKey>
+    IGetData<JaminanModel, IJaminanKey>,
+    IListData<JaminanModel>
 {
     
 }
