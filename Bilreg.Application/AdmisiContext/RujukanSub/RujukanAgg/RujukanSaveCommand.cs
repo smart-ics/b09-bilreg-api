@@ -62,45 +62,45 @@ public class RujukanSaveHandler : IRequestHandler<RujukanSaveCommand>
     }
 }
 public class RujukanSaveHandlerTest
-{
-    private readonly Mock<IRujukanDal> _rujukanDal;
-    private readonly Mock<IRujukanWriter> _writer;
-    private readonly RujukanSaveHandler _sut;
-
-    public RujukanSaveHandlerTest()
     {
-        _rujukanDal = new Mock<IRujukanDal>();
-        _writer = new Mock<IRujukanWriter>();
-        _sut = new RujukanSaveHandler(_rujukanDal.Object, _writer.Object);
+        private readonly Mock<IRujukanDal> _rujukanDal;
+        private readonly Mock<IRujukanWriter> _writer;
+        private readonly RujukanSaveHandler _sut;
+
+        public RujukanSaveHandlerTest()
+        {
+            _rujukanDal = new Mock<IRujukanDal>();
+            _writer = new Mock<IRujukanWriter>();
+            _sut = new RujukanSaveHandler(_rujukanDal.Object, _writer.Object);
+        }
+
+        [Fact]
+        public async Task GivenNullRequest_ThenThrowArgumentNullException_Test()
+        {
+            RujukanSaveCommand request = null;
+
+            Func<Task> act = async () => await _sut.Handle(request, CancellationToken.None);
+
+            await act.Should().ThrowAsync<ArgumentNullException>();
+        }
+
+        [Fact]
+        public async Task GivenEmptyRujukanId_ThenThrowArgumentException_Test()
+        {
+            var request = new RujukanSaveCommand("", "ValidName");
+
+            Func<Task> act = async () => await _sut.Handle(request, CancellationToken.None);
+
+            await act.Should().ThrowAsync<ArgumentException>();
+        }
+
+        [Fact]
+        public async Task GivenEmptyRujukanName_ThenThrowArgumentException_Test()
+        {
+            var request = new RujukanSaveCommand("ValidId", "");
+
+            Func<Task> act = async () => await _sut.Handle(request, CancellationToken.None);
+
+            await act.Should().ThrowAsync<ArgumentException>();
+        }
     }
-
-    [Fact]
-    public async Task GivenNullRequest_ThenThrowArgumentNullException_Test()
-    {
-        RujukanSaveCommand request = null;
-
-        Func<Task> act = async () => await _sut.Handle(request, CancellationToken.None);
-
-        await act.Should().ThrowAsync<ArgumentNullException>();
-    }
-
-    [Fact]
-    public async Task GivenEmptyRujukanId_ThenThrowArgumentException_Test()
-    {
-        var request = new RujukanSaveCommand("", "ValidName");
-
-        Func<Task> act = async () => await _sut.Handle(request, CancellationToken.None);
-
-        await act.Should().ThrowAsync<ArgumentException>();
-    }
-
-    [Fact]
-    public async Task GivenEmptyRujukanName_ThenThrowArgumentException_Test()
-    {
-        var request = new RujukanSaveCommand("ValidId", "");
-
-        Func<Task> act = async () => await _sut.Handle(request, CancellationToken.None);
-
-        await act.Should().ThrowAsync<ArgumentException>();
-    }
-}

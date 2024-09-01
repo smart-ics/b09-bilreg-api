@@ -11,6 +11,7 @@ using Xunit;
 
 namespace Bilreg.Application.AdmisiContext.RujukanSub.RujukanAgg;
 public record RujukanActivateCommand(string RujukanId) : IRequest, IRujukanKey;
+
 public class RujukanActivateHandler : IRequestHandler<RujukanActivateCommand>
 {
     private readonly IRujukanDal _rujukanDal;
@@ -96,3 +97,4 @@ public class RujukanActivateHandlerTest
         actual?.IsAktif.Should().BeTrue();
     }
 }
+

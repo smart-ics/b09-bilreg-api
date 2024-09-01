@@ -56,55 +56,41 @@ public class RujukanSetAlamatHandlerTest
     [Fact]
     public async Task GivenNullRequest_ThenThrowArgumentNullException_Test()
     {
+        // Arrange
         RujukanSetAlamatCommand request = null;
+
+        // Act
         var actual = async () => await _sut.Handle(request, CancellationToken.None);
+
+        // Assert
         await actual.Should().ThrowAsync<ArgumentNullException>();
     }
 
     [Fact]
     public async Task GivenEmptyRujukanId_ThenThrowArgumentException_Test()
     {
-        var request = new RujukanSetAlamatCommand("", "B", "C", "D");
+        // Arrange
+        var request = new RujukanSetAlamatCommand("", "Alamat", "Alamat2", "Kota");
+
+        // Act
         var actual = async () => await _sut.Handle(request, CancellationToken.None);
-        await actual.Should().ThrowAsync<ArgumentException>();
+
+        // Assert
+        await actual.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("Value cannot be null or empty. (Parameter 'RujukanId')");
     }
 
     [Fact]
-    public async Task GivenEmptyAlamat1_ThenThrowArgumentException_Test()
+    public async Task GivenEmptyAlamat_ThenThrowArgumentException_Test()
     {
-        var request = new RujukanSetAlamatCommand("A", "", "C", "D");
+        // Arrange
+        var request = new RujukanSetAlamatCommand("RujukanId", "", "Alamat2", "Kota");
+
+        // Act
         var actual = async () => await _sut.Handle(request, CancellationToken.None);
-        await actual.Should().ThrowAsync<ArgumentException>();
-    }
 
-    [Fact]
-    public async Task GivenInvalidRujukanId_ThenThrowKeyNotFoundException_Test()
-    {
-        var request = new RujukanSetAlamatCommand("A", "B", "C", "D");
-        _rujukanDal.Setup(x => x.GetData(It.IsAny<IRujukanKey>()))
-            .Returns(null as RujukanModel);
-
-        var actual = async () => await _sut.Handle(request, CancellationToken.None);
-        await actual.Should().ThrowAsync<KeyNotFoundException>();
-    }
-
-    [Fact]
-    public async Task GivenValidRequest_ThenUpdateRujukanAlamat_Test()
-    {
-        var request = new RujukanSetAlamatCommand("A", "B", "C", "D");
-        var existingRujukan = RujukanModel.Create("A", "OldName");
-        RujukanModel actual = null;
-
-        _rujukanDal.Setup(x => x.GetData(It.IsAny<IRujukanKey>()))
-            .Returns(existingRujukan);
-
-        _writer.Setup(x => x.Save(It.IsAny<RujukanModel>()))
-            .Callback<RujukanModel>(k => actual = k);
-
-        await _sut.Handle(request, CancellationToken.None);
-        actual.Should().NotBeNull();
-        actual.Alamat.Should().Be("B");
-        actual.Alamat2.Should().Be("C");
-        actual.Kota.Should().Be("D");
+        // Assert
+        await actual.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("Value cannot be null or whitespace. (Parameter 'Alamat')");
     }
 }

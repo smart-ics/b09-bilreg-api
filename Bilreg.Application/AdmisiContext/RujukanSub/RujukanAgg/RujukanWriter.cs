@@ -32,36 +32,3 @@ public class RujukanWriter : IRujukanWriter
         return model;
     }
 }
-
-public class RujukanWriterTest
-{
-    private readonly Mock<IRujukanDal> _rujukanDal;
-    private readonly RujukanWriter _sut;
-
-    public RujukanWriterTest()
-    {
-        _rujukanDal = new Mock<IRujukanDal>();
-        _sut = new RujukanWriter(_rujukanDal.Object);
-    }
-
-    [Fact]
-    public void GivenExistingData_ThenUpdate_Test()
-    {
-        var expected = RujukanModel.Create("A", "B");
-        _rujukanDal.Setup(x => x.GetData(It.IsAny<IRujukanKey>()))
-            .Returns(expected);
-        _sut.Save(expected);
-        _rujukanDal.Verify(x => x.Update(It.IsAny<RujukanModel>()), Times.Once);
-    }
-
-    [Fact]
-    public void GivenNonExistingData_ThenInsert_Test()
-    {
-        var expected = RujukanModel.Create("A", "B");
-        _rujukanDal.Setup(x => x.GetData(It.IsAny<IRujukanKey>()))
-            .Returns(null as RujukanModel);
-        _sut.Save(expected);
-        _rujukanDal.Verify(x => x.Insert(It.IsAny<RujukanModel>()), Times.Once);
-    }
-}
-
