@@ -74,7 +74,7 @@ namespace Bilreg.Infrastructure.BillContext.RoomChargeSub.KelasDkAgg
         public void GetDataTest()
         {
             using var trans = TransHelper.NewScope();
-            var expected = KelasDkModel.Create("1", "KELAS VVIP");
+            var expected = KelasDkModel.Create("1", "VVIP");
             var actual = _sut.GetData(expected);
             actual.Should().BeEquivalentTo(expected);
         }
@@ -83,7 +83,7 @@ namespace Bilreg.Infrastructure.BillContext.RoomChargeSub.KelasDkAgg
         public void ListDataTest()
         {
             using var trans = TransHelper.NewScope();
-            var expected = KelasDkModel.Create("1", "KELAS VVIP");
+            var expected = KelasDkModel.Create("1", "VVIP");
             var actual = _sut.ListData();
             var actualFirst = actual.First(x => x.KelasDkId == "1");
             actualFirst.Should().BeEquivalentTo(expected);

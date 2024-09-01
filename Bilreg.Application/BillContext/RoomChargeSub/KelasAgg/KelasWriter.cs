@@ -10,7 +10,7 @@ namespace Bilreg.Application.BillContext.RoomChargeSub.KelasAgg
 {
     public interface IKelasWriter : INunaWriterWithReturn<KelasModel>
     {
-        public void Delete(IKelasKey key);
+
     }
     public class KelasWriter : IKelasWriter
     {
@@ -29,9 +29,6 @@ namespace Bilreg.Application.BillContext.RoomChargeSub.KelasAgg
                 _kelasDal.Update(model);
             return model;
         }
-        public void Delete(IKelasKey key)
-        {
-            _kelasDal.Delete(key);
-        }
+
     }
 }

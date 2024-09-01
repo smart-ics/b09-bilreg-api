@@ -12,7 +12,7 @@ using Xunit;
 namespace Bilreg.Application.BillContext.RoomChargeSub.KelasAgg
 {
     public record KelasListQuery() : IRequest<IEnumerable<KelasListResponse>>;
-    public record KelasListResponse(string KelasId, string KelasName, string isAktif, string kelasDkId);
+    public record KelasListResponse(string KelasId, string KelasName, bool isAktif, string kelasDkId);
     public class KelasListHandler : IRequestHandler<KelasListQuery, IEnumerable<KelasListResponse>>
     {
         private readonly IKelasDal _kelasDal;
@@ -61,7 +61,7 @@ namespace Bilreg.Application.BillContext.RoomChargeSub.KelasAgg
         public async Task GivenValidRequest_ThenReturnExpected()
         {
             //  ARRANGE
-            var expected = new List<KelasModel> { KelasModel.Create("A", "B","C","D") };
+            var expected = new List<KelasModel> { KelasModel.Create("A", "B","C") };
             var request = new KelasListQuery();
             _kelasDal.Setup(x => x.ListData())
                 .Returns(expected);
