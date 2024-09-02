@@ -39,6 +39,7 @@ public class GrupJaminanSetAsKaryawanHandler: IRequestHandler<GrupJaminanSetAsKa
         //  WRITE
         if (currentGrupJaminanKaryawan is not null)
             _writer.Save(currentGrupJaminanKaryawan);
+        
         _writer.Save(thisGrupJaminan);
         return Task.CompletedTask;
     }
