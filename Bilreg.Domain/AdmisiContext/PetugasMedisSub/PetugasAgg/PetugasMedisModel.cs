@@ -1,20 +1,19 @@
 ﻿using Bilreg.Domain.AdmisiContext.LayananSub.LayananAgg;
 using Bilreg.Domain.AdmisiContext.PetugasMedisSub.SatTugasAgg;
 using Bilreg.Domain.AdmisiContext.PetugasMedisSub.SmfAgg;
-using CommunityToolkit.Diagnostics;
 
 namespace Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasAgg;
 
 public class PetugasMedisModel(string id, string name) : IPetugasMedisKey
 {
     #region PROPERTIES
-    public string PetugasMedisId { get; private set; } = id;
-    public string PetugasMedisName { get; private set; } = name;
-    public string NamaSingkat { get; private set; } = string.Empty;
-    public string SmfId { get; private set; } = string.Empty;
-    public string SmfName { get; private set; } = string.Empty;
-    public List<PetugasMedisSatTugasModel> ListSatTugas { get; private set; } = [];
-    public List<PetugasMedisLayananModel> ListLayanan { get; private set; } = [];
+    public string PetugasMedisId { get; protected set; } = id;
+    public string PetugasMedisName { get; protected set; } = name;
+    public string NamaSingkat { get; protected set; } = string.Empty;
+    public string SmfId { get; protected set; } = string.Empty;
+    public string SmfName { get; protected set; } = string.Empty;
+    public List<PetugasMedisSatTugasModel> ListSatTugas { get; protected set; } = [];
+    public List<PetugasMedisLayananModel> ListLayanan { get; protected set; } = [];
     #endregion
 
     #region BEHAVIOUR
@@ -33,6 +32,9 @@ public class PetugasMedisModel(string id, string name) : IPetugasMedisKey
         var newSatTugas = new PetugasMedisSatTugasModel(PetugasMedisId, satTugas.SatuanTugasId, satTugas.SatuanTugasName);
         ListSatTugas.Add(newSatTugas);
     }
+
+    public void SetNama(string namaLengkap, string namaSingkat) 
+        => (PetugasMedisName, NamaSingkat) = (namaLengkap, namaSingkat);
 
     public void Attach(IEnumerable<PetugasMedisSatTugasModel> listSatTugas)
     {

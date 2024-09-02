@@ -22,4 +22,11 @@ public class PetugasMedisController : Controller
         await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));
     }
+
+    [HttpPatch]
+    public async Task<IActionResult> AddLayanan(PetugasMedisAddLayananCommand cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
 }

@@ -4,8 +4,11 @@ using Bilreg.Application.AdmisiContext.PetugasMedisSub.PetugasMedisAgg;
 using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasAgg;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
+using FluentAssertions;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
+using Nuna.Lib.TransactionHelper;
+using Xunit;
 
 namespace Bilreg.Infrastructure.AdmisiContext.PetugasMedisSub.PetugasMedisAgg;
 
@@ -54,7 +57,7 @@ public class PetugasMedisLayananDal : IPetugasMedisLayananDal
         const string sql = @"
             SELECT 
                 aa.fs_kd_peg, aa.fs_kd_layanan, aa.fb_utama,
-                ISNULL(bb.fs_nm_layanan, '') AS bb.fs_nm_layanan
+                ISNULL(bb.fs_nm_layanan, '') AS fs_nm_layanan
             FROM 
                 td_peg_layanan aa
                 LEFT JOIN ta_layanan bb ON aa.fs_kd_layanan = bb.fs_kd_layanan
@@ -65,25 +68,53 @@ public class PetugasMedisLayananDal : IPetugasMedisLayananDal
         dp.AddParam("@fs_kd_peg", filter.PetugasMedisId, SqlDbType.VarChar);
         
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        var result = conn.Query<PetugasMedisLayananDto>(sql, dp);
-        var response = result.Select(x => x.ToModel());
-        return response;
+        return conn.Query<PetugasMedisLayananDto>(sql, dp);
     }
 }
 
-public class PetugasMedisLayananDto
+public class PetugasMedisLayananDto() : PetugasMedisLayananModel(string.Empty, string.Empty, string.Empty)
 {
-    public string fs_kd_peg { get; set; }
-    public string fs_kd_layanan { get; set; }
-    public string fs_nm_layanan { get; set; }
-    public bool fb_utama { get; set; }
+    public string fs_kd_peg { get => PetugasMedisId; set => PetugasMedisId = value; }
+    public string fs_kd_layanan { get =>LayananId; set => LayananId = value; }
+    public string fs_nm_layanan { get => LayananName; set => LayananName = value; }
+    public bool fb_utama { get => IsUtama; set => IsUtama = value; }
+}
 
-    public PetugasMedisLayananModel ToModel()
+public class PetugasMedisLayananTest
+{
+    private readonly PetugasMedisLayananDal _sut;
+
+    public PetugasMedisLayananTest()
     {
-        var result = new PetugasMedisLayananModel(fs_kd_peg, fs_kd_layanan, fs_nm_layanan);
-        if (fb_utama) result.SetUtama();
-        else result.UnsetUtama();
-        
-        return result;
+        _sut = new PetugasMedisLayananDal(ConnStringHelper.GetTestEnv());
+    }
+
+    [Fact]
+    public void InsertTest()
+    {
+        using var trans = TransHelper.NewScope();
+        var expected = new PetugasMedisLayananModel("A", "B", "C");
+        expected.SetUtama();
+        _sut.Insert(new List<PetugasMedisLayananModel>{expected});
+    }
+    
+    [Fact]
+    public void DeleteTest()
+    {
+        using var trans = TransHelper.NewScope();
+        var expected = new PetugasMedisLayananModel("A", "B", "C");
+        expected.SetUtama();
+        _sut.Delete(expected);
+    }
+
+    [Fact]
+    public void ListDataTest()
+    {
+        using var trans = TransHelper.NewScope();
+        var expected = new PetugasMedisLayananModel("A", "B", "");
+        expected.SetUtama();
+        _sut.Insert(new List<PetugasMedisLayananModel>{expected});
+        var actual = _sut.ListData(expected);
+        actual.Should().BeEquivalentTo(new List<PetugasMedisLayananModel>{expected});
     }
 }

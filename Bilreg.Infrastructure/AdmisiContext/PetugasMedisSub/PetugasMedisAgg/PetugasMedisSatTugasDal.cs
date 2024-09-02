@@ -4,8 +4,11 @@ using Bilreg.Application.AdmisiContext.PetugasMedisSub.PetugasMedisAgg;
 using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasAgg;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
+using FluentAssertions;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
+using Nuna.Lib.TransactionHelper;
+using Xunit;
 
 namespace Bilreg.Infrastructure.AdmisiContext.PetugasMedisSub.PetugasMedisAgg;
 
@@ -55,10 +58,10 @@ public class PetugasMedisSatTugasDal : IPetugasMedisSatTugasDal
         const string sql = @"
             SELECT 
                 aa.fs_kd_peg, aa.fs_kd_sat_tugas, aa.fn_utama,
-                ISNULL(bb.fs_nm_sat_tugas, '') AS bb.fs_nm_sat_tugas
+                ISNULL(bb.fs_nm_sat_tugas, '') AS fs_nm_sat_tugas
             FROM 
                 td_peg_sat_tugas aa
-                LEFT JOIN ta_sat_tugas bb ON aa.fs_kd_sat_tugas = bb.fs_kd_sat_tugas
+                LEFT JOIN td_sat_tugas bb ON aa.fs_kd_sat_tugas = bb.fs_kd_sat_tugas
             WHERE 
                 aa.fs_kd_peg = @fs_kd_peg";
         
@@ -66,24 +69,53 @@ public class PetugasMedisSatTugasDal : IPetugasMedisSatTugasDal
         dp.AddParam("@fs_kd_peg", filter.PetugasMedisId, SqlDbType.VarChar);
         
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        var result = conn.Query<PetugasMedisSatTugasDto>(sql, dp);
-        var response = result.Select(x => x.ToModel());
-        return response;
+        return conn.Query<PetugasMedisSatTugasDto>(sql, dp);
     }
 }
 
-public class PetugasMedisSatTugasDto
+public class PetugasMedisSatTugasDto() : PetugasMedisSatTugasModel(string.Empty, string.Empty, string.Empty)
 {
-    public string fs_kd_peg { get; set; }
-    public string fs_kd_sat_tugas { get; set; }
-    public string fs_nm_sat_tugas { get; set; }
-    public int fn_utama { get; set; }
+    public string fs_kd_peg { get => PetugasMedisId; set => PetugasMedisId = value; }
+    public string fs_kd_sat_tugas { get => SatTugasId; set => SatTugasId = value; }
+    public string fs_nm_sat_tugas { get => SatTugasName; set => SatTugasName = value; }
+    public int fn_utama { get => Convert.ToInt16(IsUtama); set => IsUtama = Convert.ToBoolean(value); }
+}
 
-    public PetugasMedisSatTugasModel ToModel()
+public class PetugasMedisSatTugasDalTest
+{
+    private readonly PetugasMedisSatTugasDal _sut;
+
+    public PetugasMedisSatTugasDalTest()
     {
-        var result = new PetugasMedisSatTugasModel(fs_kd_peg, fs_kd_sat_tugas, fs_nm_sat_tugas);
-        if (fn_utama == 0) result.SetUtama();
-        else result.UnsetUtama();
-        return result;
+        _sut = new PetugasMedisSatTugasDal(ConnStringHelper.GetTestEnv());
+    }
+
+    [Fact]
+    public void InsertTest()
+    {
+        using var trans = TransHelper.NewScope();
+        var expected = new PetugasMedisSatTugasModel("A", "B", "C");
+        expected.SetUtama();
+        _sut.Insert(new List<PetugasMedisSatTugasModel> { expected });
+    }
+
+    [Fact]
+    public void DeleteTest()
+    {
+        using var trans = TransHelper.NewScope();
+        var expected = new PetugasMedisSatTugasModel("A", "B", "C");
+        expected.SetUtama();
+        _sut.Delete(expected);
+    }
+
+    [Fact]
+    public void ListDataTest()
+    {
+        using var trans = TransHelper.NewScope();
+        var expected = new PetugasMedisSatTugasModel("A", "B", "");
+        expected.SetUtama();
+        _sut.Insert(new List<PetugasMedisSatTugasModel> { expected });
+        var actual = _sut.ListData(expected);
+        actual.Should().BeEquivalentTo(new List<PetugasMedisSatTugasModel> { expected });
     }
 }
