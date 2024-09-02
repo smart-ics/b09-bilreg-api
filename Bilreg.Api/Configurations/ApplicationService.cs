@@ -1,5 +1,6 @@
 ﻿using System.Reflection;
 using Bilreg.Application;
+using Bilreg.Application.AdmisiContext.PetugasMedisSub.PetugasMedisAgg;
 using FluentValidation;
 using Nuna.Lib.AutoNumberHelper;
 using Nuna.Lib.CleanArchHelper;
@@ -48,6 +49,16 @@ public static class ApplicationService
                     .UsingRegistrationStrategy(RegistrationStrategy.Skip)
                     .AsSelfWithInterfaces()
                     .WithScopedLifetime()
+                .FromAssemblyOf<ApplicationAssemblyAnchor>()
+                    .AddClasses(c => c.AssignableTo(typeof(IFactoryLoadOrNull<,>)))
+                    .UsingRegistrationStrategy(RegistrationStrategy.Skip)
+                    .AsSelfWithInterfaces()
+                    .WithScopedLifetime()                 
+                .FromAssemblyOf<ApplicationAssemblyAnchor>()
+                    .AddClasses(c => c.AssignableTo(typeof(IFactoryLoad<,>)))
+                    .UsingRegistrationStrategy(RegistrationStrategy.Skip)
+                    .AsSelfWithInterfaces()
+                    .WithScopedLifetime()                 
             );
         return services;
     }

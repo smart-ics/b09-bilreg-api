@@ -11,4 +11,6 @@ public class PetugasMedisSatTugasModel(string petugasId, string satTugasId, stri
     //  BEHAVIOUR
     public void SetUtama() => IsUtama = true;
     public void UnsetUtama() => IsUtama = false;
+    public void SetId(string id) => PetugasId = id;
+    
 }
