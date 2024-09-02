@@ -1,4 +1,4 @@
-﻿INSERT INTO tc_kelas_rs (fs_kd_kelas, fs_nm_kelas, fn_nilai)
+﻿INSERT INTO tc_kelas_rs (fs_kd_kelas_rs, fs_nm_kelas_rs, fn_nilai)
 SELECT '1', 'Tingkat I', 5 UNION
 SELECT '2', 'Tingkat II', 4 UNION
 SELECT 'A', 'Kelas A', 3 UNION
