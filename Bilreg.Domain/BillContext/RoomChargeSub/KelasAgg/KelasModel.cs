@@ -27,6 +27,12 @@ namespace Bilreg.Domain.BillContext.RoomChargeSub.KelasAgg
         public void Set(KelasDkModel kelasDk)
         {
             KelasDkId = kelasDk.KelasDkId;
+            KelasDkName = kelasDk.KelasDkName;
+        }
+
+        public void SetName(string name)
+        {
+            KelasName = name;
         }
         public void SetAktif() => IsAktif = true;
         public void UnSetAktif() => IsAktif = false;

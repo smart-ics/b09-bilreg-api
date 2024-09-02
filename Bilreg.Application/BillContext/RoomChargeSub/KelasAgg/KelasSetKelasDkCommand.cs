@@ -4,11 +4,6 @@ using Bilreg.Domain.BillContext.RoomChargeSub.KelasDkAgg;
 using FluentAssertions;
 using MediatR;
 using Moq;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Xunit;
 
 namespace Bilreg.Application.BillContext.RoomChargeSub.KelasAgg
@@ -31,19 +26,19 @@ namespace Bilreg.Application.BillContext.RoomChargeSub.KelasAgg
 
         public Task Handle(KelasSetKelasDkCommand request, CancellationToken cancellationToken)
         {
-            // Guard
+            //  GUARD
             ArgumentNullException.ThrowIfNull(request);
             ArgumentException.ThrowIfNullOrWhiteSpace(request.KelasId);
             ArgumentException.ThrowIfNullOrWhiteSpace(request.KelasDkId);
-            
-            // BUILD
             var kelas = _kelasDal.GetData(request)
-            ?? throw new KeyNotFoundException($"Kelas id {request.KelasId} not found");
+                ?? throw new KeyNotFoundException($"Kelas id {request.KelasId} not found");
             var kelasDk = _kelasDkDal.GetData(request)
-            ?? throw new KeyNotFoundException($"Kelas dk id {request.KelasDkId} not found"); 
-
+                ?? throw new KeyNotFoundException($"Kelas dk id {request.KelasDkId} not found"); 
+            
+            //  BUILD
             kelas.Set(kelasDk);
-            // WRITE
+            
+            //  WRITE
             _writer.Save(kelas);
             return Task.CompletedTask;
         }

@@ -11,19 +11,19 @@ using Xunit;
 
 namespace Bilreg.Application.BillContext.RoomChargeSub.KelasAgg
 {
-    public record KelasSetStatusAktifCommand(string KelasId) : IRequest, IKelasKey;
-    public class KelasActivateHandler : IRequestHandler<KelasSetStatusAktifCommand>
+    public record KelasDeactivateCommand(string KelasId) : IRequest, IKelasKey;
+    public class KelasDeadActivateHandler : IRequestHandler<KelasDeactivateCommand>
     {
         private readonly IKelasDal _kelasDal;
         private readonly IKelasWriter _writer;
 
-        public KelasActivateHandler(IKelasDal kelasDal, IKelasWriter writer)
+        public KelasDeadActivateHandler(IKelasDal kelasDal, IKelasWriter writer)
         {
             _kelasDal = kelasDal;
             _writer = writer;
         }
 
-        public Task Handle(KelasSetStatusAktifCommand request, CancellationToken cancellationToken)
+        public Task Handle(KelasDeactivateCommand request, CancellationToken cancellationToken)
         {
             // GUARD
             ArgumentNullException.ThrowIfNull(request);
@@ -33,30 +33,31 @@ namespace Bilreg.Application.BillContext.RoomChargeSub.KelasAgg
                 ?? throw new KeyNotFoundException($"Kelas id {request.KelasId} not found");
 
             // BUILD
-            statusKelas.SetAktif();
+            statusKelas.UnSetAktif();
 
             // WRITE
             _writer.Save(statusKelas);
             return Task.CompletedTask;
         }
     }
-    public class KelasActivateHandlerTest
+
+    public class KelasDeadActivateHandlerTest
     {
         private readonly Mock<IKelasDal> _kelasDal;
         private readonly Mock<IKelasWriter> _writer;
-        private readonly KelasActivateHandler _sut;
+        private readonly KelasDeadActivateHandler _sut;
 
-        public KelasActivateHandlerTest()
+        public KelasDeadActivateHandlerTest()
         {
             _kelasDal = new Mock<IKelasDal>();
             _writer = new Mock<IKelasWriter>();
-            _sut = new KelasActivateHandler(_kelasDal.Object, _writer.Object);
+            _sut = new KelasDeadActivateHandler(_kelasDal.Object, _writer.Object);
         }
 
         [Fact]
         public async Task GivenNullRequest_ThenThrowArgumentNullException_Test()
         {
-            KelasSetStatusAktifCommand request = null;
+            KelasDeactivateCommand request = null;
             var actual = async () => await _sut.Handle(request, CancellationToken.None);
             await actual.Should().ThrowAsync<ArgumentNullException>();
         }
@@ -64,15 +65,15 @@ namespace Bilreg.Application.BillContext.RoomChargeSub.KelasAgg
         [Fact]
         public async Task GivenEmptyKelasId_ThenThrowArgumentException_Test()
         {
-            var request = new KelasSetStatusAktifCommand("");
+            var request = new KelasDeactivateCommand("");
             var actual = async () => await _sut.Handle(request, CancellationToken.None);
             await actual.Should().ThrowAsync<ArgumentException>();
         }
 
         [Fact]
-        public async Task GivenInvalidKelas_ThenThrowKeyNotFoundException_Test()
+        public async Task GivenInvalidKelasId_ThenThrowKeyNotFoundException_Test()
         {
-            var request = new KelasSetStatusAktifCommand("A");
+            var request = new KelasDeactivateCommand("A");
             _kelasDal.Setup(x => x.GetData(It.IsAny<IKelasKey>()))
                 .Returns(null as KelasModel);
 
@@ -83,9 +84,9 @@ namespace Bilreg.Application.BillContext.RoomChargeSub.KelasAgg
         [Fact]
         public async Task GivenValidRequest_ThenCreateExpectedObject_Test()
         {
-            var request = new KelasSetStatusAktifCommand("A");
+            var request = new KelasDeactivateCommand("A");
             var expected = KelasModel.Create("A", "B");
-            expected.SetAktif();
+            expected.UnSetAktif();
             KelasModel actual = null;
             _kelasDal.Setup(x => x.GetData(It.IsAny<IKelasKey>()))
                 .Returns(expected);
@@ -94,7 +95,7 @@ namespace Bilreg.Application.BillContext.RoomChargeSub.KelasAgg
                 .Callback<KelasModel>(k => actual = k);
 
             await _sut.Handle(request, CancellationToken.None);
-            actual?.IsAktif.Should().BeTrue();
+            actual?.IsAktif.Should().BeFalse();
         }
     }
 }

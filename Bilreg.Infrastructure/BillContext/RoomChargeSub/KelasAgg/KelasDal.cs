@@ -5,6 +5,7 @@ using Dapper;
 using Microsoft.Extensions.Options;
 using System.Data.SqlClient;
 using System.Data;
+using Bilreg.Domain.BillContext.RoomChargeSub.KelasDkAgg;
 using Nuna.Lib.DataAccessHelper;
 using Nuna.Lib.TransactionHelper;
 using Xunit;
@@ -24,12 +25,14 @@ public class KelasDal : IKelasDal
     public void Insert(KelasModel model)
     {
         const string sql = @"
-            INSERT INTO ta_kelas (fs_kd_kelas, fs_nm_kelas, fb_aktif) 
-            VALUES (@fs_kd_kelas, @fs_nm_kelas, '1')";
+            INSERT INTO ta_kelas (fs_kd_kelas, fs_nm_kelas, fb_aktif, fs_kd_kelas_dk) 
+            VALUES (@fs_kd_kelas, @fs_nm_kelas, @fb_aktif, @fs_kd_kelas_dk)";
 
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_kelas", model.KelasId, SqlDbType.VarChar);
         dp.AddParam("@fs_nm_kelas", model.KelasName, SqlDbType.VarChar);
+        dp.AddParam("@fb_aktif", model.IsAktif, SqlDbType.Bit);
+        dp.AddParam("@fs_kd_kelas_dk", model.KelasDkId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -38,77 +41,85 @@ public class KelasDal : IKelasDal
     public void Update(KelasModel model)
     {
         const string sql = @"
-            UPDATE ta_kelas
+            UPDATE 
+                ta_kelas
             SET 
-            fs_nm_kelas = @KelasName,
-            fs_kd_kelas_dk = @KelasDkId,
-            fb_aktif = @IsAktif
-            WHERE fs_kd_kelas = @KelasId";
+                fs_nm_kelas = @fs_kd_kelas,
+                fs_kd_kelas_dk = @fs_nm_kelas,
+                fb_aktif = @fb_aktif
+            WHERE 
+                fs_kd_kelas = @fs_kd_kelas_dk";
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@fs_kd_kelas", model.KelasId, SqlDbType.VarChar);
+        dp.AddParam("@fs_nm_kelas", model.KelasName, SqlDbType.VarChar);
+        dp.AddParam("@fb_aktif", model.IsAktif, SqlDbType.Bit);
+        dp.AddParam("@fs_kd_kelas_dk", model.KelasDkId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        conn.Execute(sql, new { model.KelasId, model.KelasName, model.KelasDkId,model.IsAktif });
+        conn.Execute(sql, dp);
     }
 
     public void Delete(IKelasKey key)
     {
-        throw new NotImplementedException();
-    }
-
-    public KelasModel GetData(IKelasKey key)
-    {
         const string sql = @"
-            SELECT aa.fs_kd_kelas, aa.fs_nm_kelas, aa.fb_aktif,
-            bb.fs_kd_kelas_dk
-            FROM ta_kelas aa
-            LEFT JOIN ta_kelas_dk bb ON aa.fs_kd_kelas_dk = bb.fs_kd_kelas_dk
-            WHERE aa.fs_kd_kelas = @fs_kd_kelas
-            ";
+            DELETE FROM 
+                ta_kelas
+            WHERE 
+                fs_kd_kelas = @fs_kd_kelas";
 
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_kelas", key.KelasId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        KelasDto result = conn.ReadSingle<KelasDto>(sql, dp);
-        return result?.ToModel()!;
+        conn.Execute(sql, dp);
+    }
+
+    public KelasModel GetData(IKelasKey key)
+    {
+        const string sql = @"
+            SELECT 
+                aa.fs_kd_kelas, aa.fs_nm_kelas, aa.fb_aktif, aa.fs_kd_kelas_dk,
+                ISNULL(bb.fs_nm_kelas_dk, '') fs_nm_kelas_dk
+            FROM 
+                ta_kelas aa
+                LEFT JOIN ta_kelas_dk bb ON aa.fs_kd_kelas_dk = bb.fs_kd_kelas_dk
+            WHERE 
+                aa.fs_kd_kelas = @fs_kd_kelas ";
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@fs_kd_kelas", key.KelasId, SqlDbType.VarChar);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.ReadSingle<KelasDto>(sql, dp);
     }
 
     public IEnumerable<KelasModel> ListData()
     {
         const string sql = @"
-            SELECT fs_kd_kelas, fs_nm_kelas, fb_aktif, fs_kd_kelas_dk
-            FROM ta_kelas
-            ";
+            SELECT 
+                aa.fs_kd_kelas, aa.fs_nm_kelas, aa.fb_aktif, aa.fs_kd_kelas_dk,
+                ISNULL(bb.fs_nm_kelas_dk, '') fs_nm_kelas_dk
+            FROM 
+                ta_kelas aa
+                LEFT JOIN ta_kelas_dk bb ON aa.fs_kd_kelas_dk = bb.fs_kd_kelas_dk ";
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        var result = conn.Read<KelasDto>(sql);
-        return result?.Select(x => x.ToModel());
+        return conn.Read<KelasDto>(sql);
     }
 
 
     public class KelasDto : KelasModel
     {
-        public string fs_kd_kelas { get; set; }
-        public string fs_nm_kelas { get; set; }
-        public bool fb_aktif { get; set; }
-        public string fs_kd_kelas_dk { get; set; }
-
-
-        public KelasModel ToModel()
-        {
-            var kelas = KelasModel.Create(fs_kd_kelas, fs_nm_kelas);
-
-            if (fb_aktif)
-                kelas.SetAktif();
-            else
-                kelas.UnSetAktif();
-
-            return kelas;
-        }
+        public string fs_kd_kelas { get => KelasId; set => KelasId = value; }
+        public string fs_nm_kelas { get => KelasName; set => KelasName = value; }
+        public bool fb_aktif { get => IsAktif; set => IsAktif = value; }
+        public string fs_kd_kelas_dk { get => KelasDkId; set => KelasDkId = value; }
+        public string fs_nm_kelas_dk { get => KelasDkName; set => KelasDkName = value; }
 
         public KelasDto() : base(string.Empty, string.Empty)
         {
         }
     }
-
 }
 
 public class KelasDalTest
@@ -141,6 +152,8 @@ public class KelasDalTest
     {
         using var trans = TransHelper.NewScope();
         var expected = KelasModel.Create("101", "KELAS FLAT EARTH");
+        var kelasDk = KelasDkModel.Create("A", "");
+        expected.Set(kelasDk);
         _sut.Insert(expected);
         var actual = _sut.GetData(expected);
         actual.Should().BeEquivalentTo(expected);

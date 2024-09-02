@@ -27,18 +27,19 @@ namespace Bilreg.Application.BillContext.RoomChargeSub.KelasAgg
 
         public Task Handle(KelasSaveCommand request, CancellationToken cancellationToken)
         {
-            // Guard
+            //  GUARD
             ArgumentNullException.ThrowIfNull(request);
             ArgumentException.ThrowIfNullOrWhiteSpace(request.KelasId);
             ArgumentException.ThrowIfNullOrWhiteSpace(request.KelasName);
 
-            // Build
-            var kelas = KelasModel.Create(request.KelasId, request.KelasName);
-
-            // Write
+            //  BUILD
+            var kelas = _kelasDal.GetData(request)
+                ?? KelasModel.Create(request.KelasId, request.KelasName);
+            kelas.SetName(request.KelasName);
+            
+            //  WRITE
             _writter.Save(kelas);
             return Task.CompletedTask;
-
         }
     }
 

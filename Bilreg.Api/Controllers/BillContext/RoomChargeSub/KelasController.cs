@@ -44,7 +44,7 @@ namespace Bilreg.Api.Controllers.BillContext.RoomChargeSub
         [Route("Activate/{id}")]
         public async Task<IActionResult> Activate(string id)
         {
-            var cmd = new KelasSetStatusAktifCommand(id);
+            var cmd = new KelasActivateCommand(id);
             await _mediator.Send(cmd);
             return Ok(new JSendOk("Done"));
         }
@@ -53,7 +53,7 @@ namespace Bilreg.Api.Controllers.BillContext.RoomChargeSub
         [Route("Deactivate/{id}")]
         public async Task<IActionResult> Deactivate(string id)
         {
-            var cmd = new KelasSetStatusTidakAktifCommand(id);
+            var cmd = new KelasDeactivateCommand(id);
             await _mediator.Send(cmd);
             return Ok(new JSendOk("Done"));
         }
