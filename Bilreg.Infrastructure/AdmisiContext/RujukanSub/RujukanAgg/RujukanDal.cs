@@ -140,10 +140,8 @@ public class RujukanDal : IRujukanDal
 public class RujukanDto : RujukanModel
 {
     public string fs_kd_rujukan { get => RujukanId; set => RujukanId = value; }
-
     public string fs_nm_rujukan { get => RujukanName; set => RujukanName = value; }
     public string fs_alm_rujukan { get => Alamat; set => Alamat = value; }
-
     public string fs_alm2_rujukan { get => Alamat2; set => Alamat2 = value; }
     public string fs_kota_rujukan { get => Kota; set => Kota = value; }
     public string fs_tlp_rujukan { get => NoTelp; set => NoTelp = value; }
@@ -157,7 +155,6 @@ public class RujukanDto : RujukanModel
 
     public RujukanDto() : base(string.Empty, string.Empty)
     {
-        
     }
 }
 public class RujukanDalTest
