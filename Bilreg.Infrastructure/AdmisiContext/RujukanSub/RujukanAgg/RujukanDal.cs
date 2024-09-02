@@ -34,14 +34,12 @@ public class RujukanDal : IRujukanDal
             INSERT INTO ta_rujukan (
                 fs_kd_rujukan, fs_nm_rujukan, fb_aktif, fs_alm_rujukan, 
                 fs_alm2_rujukan, fs_kota_rujukan, fs_tlp_rujukan, 
-                fs_kd_rujukan_tipe, fs_nm_rujukan_tipe, fs_kd_kelas, 
-                fs_nm_kelas, fs_kd_cara_masuk_dk, fs_nm_cara_masuk_dk
+                fs_kd_rujukan_tipe, fs_kd_kelas_rs, fs_kd_cara_masuk_dk
             )
             VALUES (
                 @fs_kd_rujukan, @fs_nm_rujukan, @fb_aktif, @fs_alm_rujukan, 
                 @fs_alm2_rujukan, @fs_kota_rujukan, @fs_tlp_rujukan, 
-                @fs_kd_rujukan_tipe, @fs_nm_rujukan_tipe, @fs_kd_kelas, 
-                @fs_nm_kelas, @fs_kd_cara_masuk_dk, @fs_nm_cara_masuk_dk
+                @fs_kd_rujukan_tipe, @fs_kd_kelas_rs,@fs_kd_cara_masuk_dk 
             )";
 
         var dp = new DynamicParameters();
@@ -53,11 +51,8 @@ public class RujukanDal : IRujukanDal
         dp.AddParam("@fs_kota_rujukan", model.Kota, SqlDbType.VarChar);
         dp.AddParam("@fs_tlp_rujukan", model.NoTelp, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_rujukan_tipe", model.TipeRujukanId, SqlDbType.VarChar);
-        dp.AddParam("@fs_nm_rujukan_tipe", model.TipeRujukanName, SqlDbType.VarChar);
-        dp.AddParam("@fs_kd_kelas", model.KelasRujukanId, SqlDbType.VarChar);
-        dp.AddParam("@fs_nm_kelas", model.KelasRujukanName, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_kelas_rs", model.KelasRujukanId, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_cara_masuk_dk", model.CaraMasukDkId, SqlDbType.VarChar);
-        dp.AddParam("@fs_nm_cara_masuk_dk", model.CaraMasukDkName, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -75,11 +70,8 @@ public class RujukanDal : IRujukanDal
                 fs_kota_rujukan = @fs_kota_rujukan,
                 fs_tlp_rujukan = @fs_tlp_rujukan,
                 fs_kd_rujukan_tipe = @fs_kd_rujukan_tipe,
-                fs_nm_rujukan_tipe = @fs_nm_rujukan_tipe,
-                fs_kd_kelas = @fs_kd_kelas,
-                fs_nm_kelas = @fs_nm_kelas,
-                fs_kd_cara_masuk_dk = @fs_kd_cara_masuk_dk,
-                fs_nm_cara_masuk_dk = @fs_nm_cara_masuk_dk
+                fs_kd_kelas_rs = @fs_kd_kelas_rs,
+                fs_kd_cara_masuk_dk = @fs_kd_cara_masuk_dk
             WHERE fs_kd_rujukan = @fs_kd_rujukan";
 
         var dp = new DynamicParameters();
@@ -91,11 +83,8 @@ public class RujukanDal : IRujukanDal
         dp.AddParam("@fs_kota_rujukan", model.Kota, SqlDbType.VarChar);
         dp.AddParam("@fs_tlp_rujukan", model.NoTelp, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_rujukan_tipe", model.TipeRujukanId, SqlDbType.VarChar);
-        dp.AddParam("@fs_nm_rujukan_tipe", model.TipeRujukanName, SqlDbType.VarChar);
-        dp.AddParam("@fs_kd_kelas", model.KelasRujukanId, SqlDbType.VarChar);
-        dp.AddParam("@fs_nm_kelas", model.KelasRujukanName, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_kelas_rs", model.KelasRujukanId, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_cara_masuk_dk", model.CaraMasukDkId, SqlDbType.VarChar);
-        dp.AddParam("@fs_nm_cara_masuk_dk", model.CaraMasukDkName, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -107,13 +96,14 @@ public class RujukanDal : IRujukanDal
             SELECT
                 aa.fs_kd_rujukan, aa.fs_nm_rujukan, aa.fb_aktif, aa.fs_alm_rujukan,
                 aa.fs_alm2_rujukan, aa.fs_kota_rujukan, aa.fs_tlp_rujukan,
-                aa.fs_kd_rujukan_tipe, ISNULL(bb.fs_nm_rujukan_tipe, '') fs_nm_rujukan_tipe,
-                aa.fs_kd_kelas, ISNULL(cc.fs_nm_kelas, '') fs_nm_kelas, 
+                aa.fs_kd_rujukan_tipe, aa.fs_kd_kelas_rs, aa.fs_kd_cara_masuk_dk, 
+                ISNULL(bb.fs_nm_rujukan_tipe, '') fs_nm_rujukan_tipe,
+                ISNULL(cc.fs_nm_kelas_rs, '') fs_nm_kelas_rs,
                 ISNULL(cc.fn_nilai, 0) fn_nilai,
-                aa.fs_kd_cara_masuk_dk, ISNULL(dd.fs_nm_cara_masuk_dk, '') fs_nm_cara_masuk_dk
+                ISNULL(dd.fs_nm_cara_masuk_dk, '') fs_nm_cara_masuk_dk
             FROM ta_rujukan aa
             LEFT JOIN ta_rujukan_tipe bb ON aa.fs_kd_rujukan_tipe = bb.fs_kd_rujukan_tipe
-            LEFT JOIN tc_kelas_rs cc ON aa.fs_kd_kelas = cc.fs_kd_kelas
+            LEFT JOIN tc_kelas_rs cc ON aa.fs_kd_kelas_rs = cc.fs_kd_kelas_rs
             LEFT JOIN ta_cara_masuk_dk dd ON aa.fs_kd_cara_masuk_dk = dd.fs_kd_cara_masuk_dk
             WHERE aa.fs_kd_rujukan = @fs_kd_rujukan";
 
@@ -122,7 +112,7 @@ public class RujukanDal : IRujukanDal
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         var result = conn.ReadSingle<RujukanDto>(sql, dp);
-        return result?.ToModel()!;
+        return result;
     }
 
     public IEnumerable<RujukanModel> ListData()
@@ -131,61 +121,43 @@ public class RujukanDal : IRujukanDal
             SELECT
                 aa.fs_kd_rujukan, aa.fs_nm_rujukan, aa.fb_aktif, aa.fs_alm_rujukan,
                 aa.fs_alm2_rujukan, aa.fs_kota_rujukan, aa.fs_tlp_rujukan,
-                aa.fs_kd_rujukan_tipe, ISNULL(bb.fs_nm_rujukan_tipe, '') fs_nm_rujukan_tipe,
-                aa.fs_kd_kelas, ISNULL(cc.fs_nm_kelas, '') fs_nm_kelas,
-                ISNULL(cc.fn_nilai, 0) fn_nilai,
-                aa.fs_kd_cara_masuk_dk, ISNULL(dd.fs_nm_cara_masuk_dk, '') fs_nm_cara_masuk_dk
+                aa.fs_kd_rujukan_tipe, aa.fs_kd_kelas_rs, aa.fs_kd_cara_masuk_dk, 
+                ISNULL(bb.fs_nm_rujukan_tipe, '') fs_nm_rujukan_tipe,
+                ISNULL(cc.fs_nm_kelas_rs, '') fs_nm_kelas_rs,
+                ISNULL(dd.fs_nm_cara_masuk_dk, '') fs_nm_cara_masuk_dk
             FROM ta_rujukan aa
             LEFT JOIN ta_rujukan_tipe bb ON aa.fs_kd_rujukan_tipe = bb.fs_kd_rujukan_tipe
-            LEFT JOIN tc_kelas_rs cc ON aa.fs_kd_kelas = cc.fs_kd_kelas
+            LEFT JOIN tc_kelas_rs cc ON aa.fs_kd_kelas_rs = cc.fs_kd_kelas_rs
             LEFT JOIN ta_cara_masuk_dk dd ON aa.fs_kd_cara_masuk_dk = dd.fs_kd_cara_masuk_dk";
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         var result = conn.Read<RujukanDto>(sql);
-        return result?.Select(x => x.ToModel())!;
+        return result;
     }
 }
 
 
-public class RujukanDto
+public class RujukanDto : RujukanModel
 {
-    public string fs_kd_rujukan { get; set; }
-    public string fs_nm_rujukan { get; set; }
-    public string fs_alm_rujukan { get; set; }
-    public string fs_alm2_rujukan { get; set; }
-    public string fs_kota_rujukan { get; set; }
-    public string fs_tlp_rujukan { get; set; }
-    public bool fb_aktif { get; set; }
-    public string fs_kd_rujukan_tipe { get; set; }
-    public string fs_nm_rujukan_tipe { get; set; }
-    public string fs_kd_kelas { get; set; }
-    public string fs_nm_kelas { get; set; } 
-    public decimal nilai { get; set; } 
-    public string fs_kd_cara_masuk_dk { get; set; }
-    public string fs_nm_cara_masuk_dk { get; set; }
+    public string fs_kd_rujukan { get => RujukanId; set => RujukanId = value; }
 
-    public RujukanModel ToModel()
+    public string fs_nm_rujukan { get => RujukanName; set => RujukanName = value; }
+    public string fs_alm_rujukan { get => Alamat; set => Alamat = value; }
+
+    public string fs_alm2_rujukan { get => Alamat2; set => Alamat2 = value; }
+    public string fs_kota_rujukan { get => Kota; set => Kota = value; }
+    public string fs_tlp_rujukan { get => NoTelp; set => NoTelp = value; }
+    public bool fb_aktif { get => IsAktif; set => IsAktif = value; }
+    public string fs_kd_rujukan_tipe { get => TipeRujukanId; set => TipeRujukanId = value; }
+    public string fs_nm_rujukan_tipe { get => TipeRujukanName; set => TipeRujukanName = value; }
+    public string fs_kd_kelas_rs { get => KelasRujukanId; set => KelasRujukanId = value; }
+    public string fs_nm_kelas { get => KelasRujukanName; set => KelasRujukanName = value; } 
+    public string fs_kd_cara_masuk_dk { get => CaraMasukDkId; set => CaraMasukDkId = value; }
+    public string fs_nm_cara_masuk_dk { get => CaraMasukDkName; set => CaraMasukDkName = value; }
+
+    public RujukanDto() : base(string.Empty, string.Empty)
     {
-        var rujukan = RujukanModel.Create(fs_kd_rujukan, fs_nm_rujukan);
-
-        rujukan.SetAlamat(fs_alm_rujukan, fs_alm2_rujukan, fs_kota_rujukan);
-        rujukan.SetNoTelp(fs_tlp_rujukan);
-
-        var tipeRujukan = TipeRujukanModel.Create(fs_kd_rujukan_tipe, fs_nm_rujukan_tipe);
-        rujukan.SetTipeRujukan(tipeRujukan);
-
-        var kelasRujukan = KelasRujukanModel.Create(fs_kd_kelas, fs_nm_kelas, nilai);
-        rujukan.SetKelasRujukan(kelasRujukan);
-
-        var caraMasukDk = CaraMasukDkModel.Create(fs_kd_cara_masuk_dk, fs_nm_cara_masuk_dk);
-        rujukan.SetCaraMasukDk(caraMasukDk);
-
-        if (fb_aktif)
-            rujukan.SetAktif();
-        else
-            rujukan.UnSetAktif(); 
-
-        return rujukan;
+        
     }
 }
 public class RujukanDalTest

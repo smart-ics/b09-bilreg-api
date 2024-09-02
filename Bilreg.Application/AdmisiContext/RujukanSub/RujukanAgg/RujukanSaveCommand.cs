@@ -34,27 +34,9 @@ public class RujukanSaveHandler : IRequestHandler<RujukanSaveCommand>
         ArgumentException.ThrowIfNullOrWhiteSpace(request.RujukanName);
 
         // BUILD
-        var rujukan = RujukanModel.Create(request.RujukanId, request.RujukanName);
-        var existingRujukan = _rujukanDal.GetData(request);
-        if (existingRujukan is not null)
-        {
-            if (existingRujukan.IsAktif)
-                rujukan.SetAktif();
-            else
-                rujukan.UnSetAktif();
-
-            rujukan.SetAlamat(existingRujukan.Alamat, existingRujukan.Alamat2, existingRujukan.Kota);
-            rujukan.SetNoTelp(existingRujukan.NoTelp);
-
-            var tipeRujukan = TipeRujukanModel.Create(existingRujukan.TipeRujukanId, existingRujukan.TipeRujukanName);
-            rujukan.SetTipeRujukan(tipeRujukan);
-
-            var kelasRujukan = KelasRujukanModel.Create(existingRujukan.KelasRujukanId, existingRujukan.KelasRujukanName, existingRujukan.Nilai);
-            rujukan.SetKelasRujukan(kelasRujukan);
-
-            var setCaraMasukDk = CaraMasukDkModel.Create(existingRujukan.CaraMasukDkId, existingRujukan.CaraMasukDkName);
-            rujukan.SetCaraMasukDk(setCaraMasukDk);
-        }
+        var rujukan = _rujukanDal.GetData(request)
+            ?? RujukanModel.Create(request.RujukanId, request.RujukanName);
+        rujukan.SetName(request.RujukanName);
 
         // WRITE
         _writer.Save(rujukan);
@@ -79,7 +61,7 @@ public class RujukanSaveHandlerTest
         {
             RujukanSaveCommand request = null;
 
-            Func<Task> act = async () => await _sut.Handle(request, CancellationToken.None);
+            var act = async () => await _sut.Handle(request, CancellationToken.None);
 
             await act.Should().ThrowAsync<ArgumentNullException>();
         }
@@ -89,7 +71,7 @@ public class RujukanSaveHandlerTest
         {
             var request = new RujukanSaveCommand("", "ValidName");
 
-            Func<Task> act = async () => await _sut.Handle(request, CancellationToken.None);
+            var act = async () => await _sut.Handle(request, CancellationToken.None);
 
             await act.Should().ThrowAsync<ArgumentException>();
         }
@@ -99,7 +81,7 @@ public class RujukanSaveHandlerTest
         {
             var request = new RujukanSaveCommand("ValidId", "");
 
-            Func<Task> act = async () => await _sut.Handle(request, CancellationToken.None);
+            var act = async () => await _sut.Handle(request, CancellationToken.None);
 
             await act.Should().ThrowAsync<ArgumentException>();
         }
