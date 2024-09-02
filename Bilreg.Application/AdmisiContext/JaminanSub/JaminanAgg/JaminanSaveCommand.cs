@@ -29,25 +29,10 @@ public class JaminanSaveHandler : IRequestHandler<JaminanSaveCommand>
         ArgumentException.ThrowIfNullOrWhiteSpace(request.JaminanName);
 
         // BUILD
-        var jaminan = JaminanModel.Create(request.JaminanId, request.JaminanName);
-        var existingJaminan = _jaminanDal.GetData(request);
-        if (existingJaminan is not null)
-        {
-            if (existingJaminan.IsAktif)
-                jaminan.SetAktif();
-            else
-                jaminan.UnSetAktif();
+        var jaminan = _jaminanDal.GetData(request)
+            ?? JaminanModel.Create(request.JaminanId, request.JaminanName);
 
-            jaminan.SetAlamat(existingJaminan.Alamat1, existingJaminan.Alamat2, existingJaminan.Kota);
-            jaminan.SetBenefitMou(existingJaminan.BenefitMou);
-
-            var caraBayarDk = CaraBayarDkModel.Create(existingJaminan.CaraBayarDkId, existingJaminan.CaraBayarDkName);
-            jaminan.SetCaraBayar(caraBayarDk);
-
-            var grupJaminan = GrupJaminanModel.Create(existingJaminan.GrupJaminanId, existingJaminan.GrupJaminanName,
-                string.Empty);
-            jaminan.SetGrupJaminan(grupJaminan);
-        }
+        jaminan.SetName(request.JaminanName);
 
         // WRITE
         _writer.Save(jaminan);

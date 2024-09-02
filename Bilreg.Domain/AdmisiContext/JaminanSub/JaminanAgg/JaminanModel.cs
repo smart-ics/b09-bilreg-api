@@ -28,6 +28,11 @@ public class JaminanModel: IJaminanKey
         Kota = kota;
     }
 
+    public void SetName(string name)
+    {
+        JaminanName = name;
+    }
+
     public void SetCaraBayar(CaraBayarDkModel caraBayarDk)
     {
         CaraBayarDkId = caraBayarDk.CaraBayarDkId;
