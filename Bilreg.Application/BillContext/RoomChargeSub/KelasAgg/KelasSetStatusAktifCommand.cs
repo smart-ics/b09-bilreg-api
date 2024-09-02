@@ -84,7 +84,7 @@ namespace Bilreg.Application.BillContext.RoomChargeSub.KelasAgg
         public async Task GivenValidRequest_ThenCreateExpectedObject_Test()
         {
             var request = new KelasSetStatusAktifCommand("A");
-            var expected = KelasModel.Create("A", "B", "C");
+            var expected = KelasModel.Create("A", "B");
             expected.SetAktif();
             KelasModel actual = null;
             _kelasDal.Setup(x => x.GetData(It.IsAny<IKelasKey>()))

@@ -61,7 +61,7 @@ namespace Bilreg.Application.BillContext.RoomChargeSub.KelasAgg
         public async Task GivenValidRequest_ThenReturnExpected()
         {
             //  ARRANGE
-            var expected = new List<KelasModel> { KelasModel.Create("A", "B","C") };
+            var expected = new List<KelasModel> { KelasModel.Create("A", "B") };
             var request = new KelasListQuery();
             _kelasDal.Setup(x => x.ListData())
                 .Returns(expected);

@@ -11,8 +11,8 @@ namespace Bilreg.Application.BillContext.RoomChargeSub.KelasAgg
 {
     public interface IKelasDal :
         IInsert<KelasModel>,
+        IDelete<IKelasKey>,
         IUpdate<KelasModel>,
-        IUpdate<KelasModel,KelasDkModel>,
         IGetData<KelasModel,IKelasKey>,
         IListData<KelasModel>
         ;

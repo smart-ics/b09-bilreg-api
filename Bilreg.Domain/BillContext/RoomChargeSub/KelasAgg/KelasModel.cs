@@ -9,18 +9,19 @@ namespace Bilreg.Domain.BillContext.RoomChargeSub.KelasAgg
 {
     public class KelasModel : IKelasKey
     {
-        public string KelasId { get; private set; }
-        public string KelasName { get; private set; }
-        public bool IsAktif { get; private set; }
-        public string KelasDkId { get; private set; }
-        public string KelasDkName { get; private set; }
+        public string KelasId { get; protected set; }
+        public string KelasName { get; protected set; }
+        public bool IsAktif { get; protected set; }
+        public string KelasDkId { get; protected set; }
+        public string KelasDkName { get; protected set; }
 
-        public KelasModel(string id, string name, string kelasDkId)
+        
+        public KelasModel(string id, string name)
         {
             KelasId = id;
             KelasName = name;
             IsAktif = true;
-            KelasDkId = kelasDkId;
+            KelasDkId = string.Empty;
         }
 
         public void Set(KelasDkModel kelasDk)
@@ -30,8 +31,8 @@ namespace Bilreg.Domain.BillContext.RoomChargeSub.KelasAgg
         public void SetAktif() => IsAktif = true;
         public void UnSetAktif() => IsAktif = false;
 
-        public static KelasModel Create(string id, string name, string kelasDkId)
-            => new KelasModel(id, name, kelasDkId);
+        public static KelasModel Create(string id, string name)
+            => new KelasModel(id, name);
 
     }
 
