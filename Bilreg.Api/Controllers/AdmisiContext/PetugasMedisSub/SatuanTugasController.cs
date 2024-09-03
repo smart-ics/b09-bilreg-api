@@ -19,7 +19,6 @@ namespace Bilreg.Api.Controllers.AdmisiContext.PetugasMedisSub
         [HttpPost]
         public async Task<IActionResult> Save(SatuanTugasSaveCommand cmd)
         {
-            // The command now includes a boolean field "IsMedis" that needs to be handled
             await _mediator.Send(cmd);
             return Ok(new JSendOk("Done"));
         }

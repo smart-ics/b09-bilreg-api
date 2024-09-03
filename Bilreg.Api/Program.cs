@@ -21,6 +21,7 @@ app
     .UseSerilogRequestLogging(SerilogConfiguration.SerilogRequestLoggingOption)
     .UseMiddleware<ErrorHandlerMiddleware>() 
     .UseHttpsRedirection() 
+    
     .UseRouting() 
     .UseCors("corsapp") 
     .UseAuthentication() 
