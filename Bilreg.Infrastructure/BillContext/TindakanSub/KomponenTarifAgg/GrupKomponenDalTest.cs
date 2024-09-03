@@ -1,4 +1,5 @@
-﻿using Bilreg.Domain.BillContext.TindakanSub.KomponenTarifAgg;
+﻿using Bilreg.Domain.AdmisiContext.JaminanSub.JaminanAgg;
+using Bilreg.Domain.BillContext.TindakanSub.KomponenTarifAgg;
 using Bilreg.Infrastructure.Helpers;
 using FluentAssertions;
 using Nuna.Lib.TransactionHelper;
@@ -28,10 +29,50 @@ namespace Bilreg.Infrastructure.BillContext.TindakanSub.KomponenTarifAgg
         {
             using var trans = TransHelper.NewScope();
             var expected = new GrupKomponenModel("A", "B");
+            var gk = new GrupKomponenModel("C","");
+            expected.Set(gk);
             _sut.Insert(expected);
+
 
             var actual = _sut.GetData(expected);
             actual.Should().BeEquivalentTo(expected);
         }
+        [Fact]
+        public void ListTest()
+        {
+            using var trans = TransHelper.NewScope();
+            var expected = new GrupKomponenModel("A", "B");
+            var gk = new GrupKomponenModel("C", "");
+            expected.Set(gk);
+            _sut.Insert(expected);
+
+            var actual = _sut.ListData();
+            actual.Should().ContainEquivalentOf(expected);
+
+        }
+
+        [Fact]
+        public void DeleteTest()
+        {
+            using var trans = TransHelper.NewScope();
+            var expected = new GrupKomponenModel("A","B");
+            var gk = new GrupKomponenModel("C","D");
+
+            expected.Set(gk);
+            _sut.Delete(expected);
+        }
+
+        [Fact]
+        public void UpdateTest()
+        {
+            using var trans = TransHelper.NewScope();
+            var expected = new GrupKomponenModel("A", "B");
+            var gk = new GrupKomponenModel("C","D");
+            expected.Set(gk);
+
+            _sut.Update(expected);
+        }
+
+
     }
 }

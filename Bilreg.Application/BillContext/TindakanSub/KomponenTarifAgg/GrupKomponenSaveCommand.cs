@@ -10,24 +10,27 @@ namespace Bilreg.Application.BillContext.TindakanSub.KomponenTarifAgg
         private readonly IGrupKomponenDal _grupKomponenDal;
         private readonly GrupKomponenWriter _writer;
 
+        public GrupKomponenSaveHandler(IGrupKomponenDal grupKomponenDal, GrupKomponenWriter writer)
+        {
+            _grupKomponenDal = grupKomponenDal;
+            _writer = writer;
+        }
+
         public Task Handle(GrupKomponenSaveCommand request, CancellationToken cancellationToken)
         {
             // GUARD
             ArgumentNullException.ThrowIfNull(request);
             ArgumentException.ThrowIfNullOrWhiteSpace(request.GrupKomponenId);
             ArgumentException.ThrowIfNullOrWhiteSpace(request.GrupKomponenName);
-            var grupKomponenData = _grupKomponenDal.GetData(request)
-                ?? throw new KeyNotFoundException($"Grup Komponen with id{request.GrupKomponenId} not found.");
 
-            // BUILD
+            //  BUILD
             var grupKomponen = _grupKomponenDal.GetData(request)
                 ?? new GrupKomponenModel(request.GrupKomponenId, request.GrupKomponenName);
-            
-            grupKomponen.Set(grupKomponenData);
+            grupKomponen.SetName(request.GrupKomponenName);
+            grupKomponen.Set(grupKomponen);
 
             // WRITE
             _ = _writer.Save(grupKomponen);
-
             return Task.CompletedTask;
 
 
