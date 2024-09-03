@@ -29,7 +29,7 @@ public class PetugasMedisFactory : AggFactory<PetugasMedisModel, IPetugasMedisKe
         var listSatTugas = _petugasMedisSatTugasDal.ListData(key)
             ?? new List<PetugasMedisSatTugasModel>();
         petugasMedis.Attach(listSatTugas);
-        
+
         return petugasMedis;
     }
 }
