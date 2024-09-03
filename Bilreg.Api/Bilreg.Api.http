@@ -1,6 +1,11 @@
 @Bilreg.Api_HostAddress = http://localhost:5189
 
-GET {{Bilreg.Api_HostAddress}}/weatherforecast/
+POST {{Bilreg.Api_HostAddress}}/api/Kelas
+Content-Type: application/json
 Accept: application/json
 
-###
+{
+  "kelasId": "102",
+  "kelasName": "Kelas Olahraga"
+}
+
