@@ -12,6 +12,7 @@ public class PetugasMedisModel(string id, string name) : IPetugasMedisKey
     public string NamaSingkat { get; protected set; } = string.Empty;
     public string SmfId { get; protected set; } = string.Empty;
     public string SmfName { get; protected set; } = string.Empty;
+
     public List<PetugasMedisSatTugasModel> ListSatTugas { get; protected set; } = [];
     public List<PetugasMedisLayananModel> ListLayanan { get; protected set; } = [];
     #endregion
@@ -26,16 +27,15 @@ public class PetugasMedisModel(string id, string name) : IPetugasMedisKey
         
         (SmfId, SmfName) = (smf.SmfId, smf.SmfName);
     }
-    
+    public void SetNama(string namaLengkap, string namaSingkat)
+        => (PetugasMedisName, NamaSingkat) = (namaLengkap, namaSingkat);
+
+
     public void Add(SatuanTugasModel satTugas)
     {
         var newSatTugas = new PetugasMedisSatTugasModel(PetugasMedisId, satTugas.SatuanTugasId, satTugas.SatuanTugasName);
         ListSatTugas.Add(newSatTugas);
     }
-
-    public void SetNama(string namaLengkap, string namaSingkat) 
-        => (PetugasMedisName, NamaSingkat) = (namaLengkap, namaSingkat);
-
     public void Attach(IEnumerable<PetugasMedisSatTugasModel> listSatTugas)
     {
         ArgumentNullException.ThrowIfNull(listSatTugas);
@@ -46,10 +46,10 @@ public class PetugasMedisModel(string id, string name) : IPetugasMedisKey
             throw new ArgumentException($"SatuanTugas Name kosong");
         ListSatTugas.AddRange(list);
     }
-    
     public void Remove(Predicate<PetugasMedisSatTugasModel> predicate) 
         => _ = ListSatTugas.RemoveAll(predicate);
     
+
     public void Add(LayananModel layanan)
     {
         var newLayanan = new PetugasMedisLayananModel(PetugasMedisId, layanan.LayananId, layanan.LayananName);
@@ -67,7 +67,6 @@ public class PetugasMedisModel(string id, string name) : IPetugasMedisKey
     }
     public void Remove(Predicate<PetugasMedisLayananModel> predicate)
         => _ = ListLayanan.RemoveAll(predicate);
-
     public void SetAsSatTugasUtama(Predicate<PetugasMedisSatTugasModel> predicate)
     {
         ListSatTugas.ForEach(x => x.UnsetUtama());
