@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 namespace Bilreg.Application.BillContext.RekapCetakSub.GrupRekapCetakAgg;
 public interface IGrupRekapCetakWriter : INunaWriterWithReturn<GrupRekapCetakModel>
 {
+    public void Delete(IGrupRekapCetakKey key);
 }
 public class GrupRekapCetakWriter : IGrupRekapCetakWriter
 {

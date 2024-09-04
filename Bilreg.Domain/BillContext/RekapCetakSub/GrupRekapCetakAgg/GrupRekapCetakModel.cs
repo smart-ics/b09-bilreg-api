@@ -7,8 +7,8 @@ using System.Threading.Tasks;
 namespace Bilreg.Domain.BillContext.RekapCetakSub.GrupRekapCetakAgg;
 public  class GrupRekapCetakModel(string id, string name) : IGrupRekapCetakKey
 {
-    public string GrupRekapCetakId { get; set; } = id;
-    public string GrupRekapCrtakName { get; set; } = name;
+    public string GrupRekapCetakId { get; protected set; } = id;
+    public string GrupRekapCetakName { get; protected set; } = name;
 }
 public interface IGrupRekapCetakKey
 {
