@@ -41,5 +41,14 @@ namespace Bilreg.Api.Controllers.BillContext.TindakanSub
 
             return Ok(result);
         }
+
+        [HttpDelete]
+        [Route("{id}")]
+        public async Task<IActionResult> Delete(string id)
+        {
+            var cmd = new GrupKomponenDeleteCommand(id);
+            await _mediator.Send(cmd);
+            return Ok(new JSendOk("Done"));
+        }
     }
 }
