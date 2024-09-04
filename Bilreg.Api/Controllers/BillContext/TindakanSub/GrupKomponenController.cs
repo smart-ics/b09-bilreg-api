@@ -1,4 +1,5 @@
-﻿using Bilreg.Application.BillContext.TindakanSub.KomponenTarifAgg;
+﻿using Bilreg.Application.BillContext.RoomChargeSub.KelasDkAgg;
+using Bilreg.Application.BillContext.TindakanSub.KomponenTarifAgg;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -22,6 +23,23 @@ namespace Bilreg.Api.Controllers.BillContext.TindakanSub
         {
             await _mediator.Send(cmd);
             return Ok(new JSendOk("Done"));
+        }
+        
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetGrupKomponenById(string id)
+        {
+            var query = new GrupKomponenGetQuery(id);
+            var response = _mediator.Send(query);
+            return Ok(new JSendOk(response));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ListData()
+        {
+            var query = new GrupKomponenListQuery();
+            var result = await _mediator.Send(query);
+
+            return Ok(result);
         }
     }
 }
