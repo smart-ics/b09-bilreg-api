@@ -64,7 +64,7 @@ public class AmbulanceKomponenDal: IAmbulanceKomponenDal
     }
 }
 
-public class AmbulanceKomponenDto() : AmbulanceKomponenModel(string.Empty, string.Empty, decimal.Zero)
+public class AmbulanceKomponenDto() : AmbulanceKomponenModel(string.Empty, string.Empty, decimal.Zero, false)
 {
     public string fs_kd_transport { get => AmbulanceId; set => AmbulanceId = value; }
     public string fs_kd_detil_tarif { get => KomponenId; set => KomponenId = value; }

@@ -10,7 +10,7 @@ using Xunit;
 
 namespace Bilreg.Application.BillContext.TransportSub.AmbulanceAgg;
 
-public record AmbulanceAddKomponenCommand(string AmbulanceId, string KomponenId, decimal NilaiTarif):
+public record AmbulanceAddKomponenCommand(string AmbulanceId, string KomponenId, decimal NilaiTarif, bool IsTetap):
     IRequest, IAmbulanceKey, IKomponenTarifKey;
     
 public class AmbulanceAddKomponenHandler: IRequestHandler<AmbulanceAddKomponenCommand>
@@ -37,7 +37,7 @@ public class AmbulanceAddKomponenHandler: IRequestHandler<AmbulanceAddKomponenCo
         
         // BUILD
         var ambulance = _factory.Load(request);
-        var ambulanceKomponen = new AmbulanceKomponenModel(ambulance.AmbulanceId, request.KomponenId, request.NilaiTarif);
+        var ambulanceKomponen = new AmbulanceKomponenModel(ambulance.AmbulanceId, request.KomponenId, request.NilaiTarif, request.IsTetap);
         ambulance.Add(ambulanceKomponen);
         
         // WRITE
@@ -72,7 +72,7 @@ public class AmbulanceAddKomponenHandlerTest
     [Fact]
     public async Task GivenEmptyAmbulanceId_ThenThrowArgumentException()
     {
-        var request = new AmbulanceAddKomponenCommand("", "B", 1);
+        var request = new AmbulanceAddKomponenCommand("", "B", 1, false);
         var actual = async () => await _sut.Handle(request, CancellationToken.None);
         await actual.Should().ThrowAsync<ArgumentException>();
     }
@@ -80,7 +80,7 @@ public class AmbulanceAddKomponenHandlerTest
     [Fact]
     public async Task GivenEmptyKomponenId_ThenThrowArgumentException()
     {
-        var request = new AmbulanceAddKomponenCommand("A", "", 1);
+        var request = new AmbulanceAddKomponenCommand("A", "", 1, false);
         var actual = async () => await _sut.Handle(request, CancellationToken.None);
         await actual.Should().ThrowAsync<ArgumentException>();
     }
@@ -88,7 +88,7 @@ public class AmbulanceAddKomponenHandlerTest
     [Fact]
     public async Task GivenInvalidAmbulanceId_ThenThrowKeyNotFoundException()
     {
-        var request = new AmbulanceAddKomponenCommand("A", "B", 1);
+        var request = new AmbulanceAddKomponenCommand("A", "B", 1, false);
         _factory.Setup(x => x.Load(It.IsAny<IAmbulanceKey>()))
             .Throws<KeyNotFoundException>();
         
@@ -99,7 +99,7 @@ public class AmbulanceAddKomponenHandlerTest
     [Fact]
     public async Task GivenInvalidKomponenId_ThenThrowKeyNotFoundException()
     {
-        var request = new AmbulanceAddKomponenCommand("A", "B", 1);
+        var request = new AmbulanceAddKomponenCommand("A", "B", 1, false);
         _komponenTarifDal.Setup(x => x.GetData(It.IsAny<IKomponenTarifKey>()))
             .Returns(null as KomponenTarifModel);
         

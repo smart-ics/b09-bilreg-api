@@ -19,7 +19,7 @@ public class AmbulanceKomponenDalTest
     public void InsertTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = new AmbulanceKomponenModel("A", "B", 1);
+        var expected = new AmbulanceKomponenModel("A", "B", 1, false);
         _sut.Insert(new List<AmbulanceKomponenModel>{expected});
     }
     
@@ -27,7 +27,7 @@ public class AmbulanceKomponenDalTest
     public void DeleteTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = new AmbulanceKomponenModel("A", "B", 1);
+        var expected = new AmbulanceKomponenModel("A", "B", 1, false);
         _sut.Delete(expected);
     }
     
@@ -35,7 +35,7 @@ public class AmbulanceKomponenDalTest
     public void ListDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = new AmbulanceKomponenModel("A", "B", 1);
+        var expected = new AmbulanceKomponenModel("A", "B", 1, false);
         _sut.Insert(new List<AmbulanceKomponenModel>{expected});
         var actual = _sut.ListData(expected);
         actual.Should().BeEquivalentTo(new List<AmbulanceKomponenModel>{expected});
