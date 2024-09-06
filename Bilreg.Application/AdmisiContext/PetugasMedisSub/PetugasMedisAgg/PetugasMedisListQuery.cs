@@ -7,27 +7,13 @@ using Xunit;
 namespace Bilreg.Application.AdmisiContext.PetugasMedisSub.PetugasMedisAgg;
 
 public record PetugasMedisListQuery() : IRequest<IEnumerable<PetugasMedisListResponse>>;
-public record PetugasMedisSatTugasListResponse(
-    string PetugasMedisId,
-    string SatTugasId,
-    string SatTugasName,
-    bool IsUtama
-);
-
-public record PetugasMedisLayananListResponse(
-    string PetugasMedisId,
-    string LayananId,
-    string LayananName
-);
 
 public record PetugasMedisListResponse(
     string PetugasMedisId,
     string PetugasMedisName,
     string NamaSingkat,
     string SmfId,
-    string SmfName,
-    IEnumerable<PetugasMedisSatTugasListResponse> ListSatTugas,
-    IEnumerable<PetugasMedisLayananListResponse> ListLayanan
+    string SmfName
 );
 
 public class PetugasMedisListHandler : IRequestHandler<PetugasMedisListQuery, IEnumerable<PetugasMedisListResponse>>
@@ -49,29 +35,8 @@ public class PetugasMedisListHandler : IRequestHandler<PetugasMedisListQuery, IE
             ?? throw new KeyNotFoundException("Petugas Medis not found");
 
         // RESPONSE
-        var response = listPetugasMedis.Select(BuildPetugasMedisListItem);
-        return Task.FromResult(response);
-    }
-
-    private PetugasMedisListResponse BuildPetugasMedisListItem(IPetugasMedisKey key)
-    {
-        var petugasMedis = _factory.Load(key);
-        var listSatTugas = petugasMedis.ListSatTugas.Select(x =>
-            new PetugasMedisSatTugasListResponse(x.PetugasMedisId, x.SatTugasId, x.SatTugasName, x.IsUtama));
-        var listLayanan = petugasMedis.ListLayanan.Select(x =>
-            new PetugasMedisLayananListResponse(x.PetugasMedisId, x.LayananId, x.LayananName));
-
-        var response = new PetugasMedisListResponse(
-            petugasMedis.PetugasMedisId,
-            petugasMedis.PetugasMedisName,
-            petugasMedis.NamaSingkat,
-            petugasMedis.SmfId,
-            petugasMedis.SmfName,
-            listSatTugas,
-            listLayanan
-        );
-
-        return response;
+        return Task.FromResult(listPetugasMedis.Select(x => new PetugasMedisListResponse(
+            x.PetugasMedisId, x.PetugasMedisName, x.NamaSingkat, x.SmfId, x.SmfName)));
     }
 }
 

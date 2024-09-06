@@ -31,14 +31,7 @@ public class SetSatTugasUtamaHandler : IRequestHandler<SetSatTugasUtamaCommand>
 
         // BUILD
         var petugasMedis = _factory.Load(request);
-
-        var satTugas = petugasMedis.ListSatTugas
-          .Find(x => x.SatTugasId == request.SatuanTugasId)
-          ?? throw new KeyNotFoundException($"Satuan Tugas with ID {request.SatuanTugasId} not found.");
-
-        satTugas.SetUtama();
-
-        petugasMedis.SyncId();
+        petugasMedis.SetAsSatTugasUtama(x => x.SatTugasId == request.SatuanTugasId);
 
         // WRITE
         _ = _writer.Save(petugasMedis);

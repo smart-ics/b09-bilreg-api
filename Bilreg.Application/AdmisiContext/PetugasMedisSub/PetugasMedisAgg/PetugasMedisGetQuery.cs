@@ -9,14 +9,12 @@ namespace Bilreg.Application.AdmisiContext.PetugasMedisSub.PetugasMedisAgg;
 public record PetugasMedisGetQuery(string PetugasMedisId) : IRequest<PetugasMedisGetResponse>, IPetugasMedisKey;
 
 public record PetugasMedisSatTugasGetResponse(
-    string PetugasMedisId,
     string SatTugasId,
     string SatTugasName,
     bool IsUtama
 );
 
 public record PetugasMedisLayananGetResponse(
-    string PetugasMedisId,
     string LayananId,
     string LayananName
 );
@@ -47,7 +45,6 @@ public class PetugasMedisGetHandler : IRequestHandler<PetugasMedisGetQuery, Petu
 
         var listSatTugas = petugasMedis.ListSatTugas.Select(x =>
             new PetugasMedisSatTugasGetResponse(
-                petugasMedis.PetugasMedisId,
                 x.SatTugasId,
                 x.SatTugasName,
                 x.IsUtama
@@ -55,7 +52,6 @@ public class PetugasMedisGetHandler : IRequestHandler<PetugasMedisGetQuery, Petu
    
         var listLayanan = petugasMedis.ListLayanan.Select(x =>
             new PetugasMedisLayananGetResponse(
-                petugasMedis.PetugasMedisId,
                 x.LayananId,
                 x.LayananName
             ));

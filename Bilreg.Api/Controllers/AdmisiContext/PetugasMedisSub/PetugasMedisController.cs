@@ -24,7 +24,7 @@ public class PetugasMedisController : Controller
     }
 
     [HttpPatch]
-    [Route("AddLayanan")]
+    [Route("addLayanan")]
     public async Task<IActionResult> AddLayanan(PetugasMedisAddLayananCommand cmd)
     {
         await _mediator.Send(cmd);
@@ -32,7 +32,7 @@ public class PetugasMedisController : Controller
     }
 
     [HttpPost]
-    [Route("RemoveLayanan")]
+    [Route("removeLayanan")]
     public async Task<IActionResult> RemoveLayanan(PetugasMedisRemoveLayananCommand cmd)
     {
         await _mediator.Send(cmd);
@@ -40,7 +40,7 @@ public class PetugasMedisController : Controller
     }
 
     [HttpPatch]
-    [Route("AddSatTugas")]
+    [Route("addSatTugas")]
     public async Task<IActionResult> AddSatTugas(PetugasMedisAddSatTugasCommand cmd)
     {
         await _mediator.Send(cmd);
@@ -48,7 +48,7 @@ public class PetugasMedisController : Controller
     }
 
     [HttpPost]
-    [Route("RemoveSatTugas")]
+    [Route("removeSatTugas")]
     public async Task<IActionResult> RemoveSatTugas(PetugasMedisRemoveSatTugasCommand cmd)
     {
         await _mediator.Send(cmd);
@@ -56,7 +56,7 @@ public class PetugasMedisController : Controller
     }
 
     [HttpPut]
-    [Route("SetAsSatTugasUtama")]
+    [Route("setSatTugasUtama")]
     public async Task<IActionResult> SetAsSatTugasUtama(SetSatTugasUtamaCommand cmd)
     {
         await _mediator.Send(cmd);
@@ -64,7 +64,7 @@ public class PetugasMedisController : Controller
     }
 
     [HttpPut]
-    [Route("UnSetAsSatTugasUtama")]
+    [Route("UnSetSatTugasUtama")]
     public async Task<IActionResult> UnSetAsSatTugasUtama(UnSetSatTugasUtamaCommand cmd)
     {
         await _mediator.Send(cmd);
@@ -72,25 +72,19 @@ public class PetugasMedisController : Controller
     }
 
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetData(string id, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetData(string id)
     {
         var query = new PetugasMedisGetQuery(id);
-        var response = await _mediator.Send(query, cancellationToken);
-
-        if (response == null)
-        {
-            return NotFound($"Petugas Medis with ID {id} not found.");
-        }
-
-        return Ok(response);
+        var response = await _mediator.Send(query);
+        return Ok(new JSendOk(response));
     }
 
     [HttpGet("list")]
-    public async Task<IActionResult> GetPetugasMedisList(CancellationToken cancellationToken)
+    public async Task<IActionResult> ListData()
     {
         var query = new PetugasMedisListQuery();
-        var result = await _mediator.Send(query, cancellationToken);
-        return Ok(result);
+        var result = await _mediator.Send(query);
+        return Ok(new JSendOk(result));
     }
 
 }
