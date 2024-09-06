@@ -2,6 +2,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Nuna.Lib.ActionResultHelper;
 
 namespace Bilreg.Api.Controllers.BillContext.RekapCetakSub
 {
@@ -20,13 +21,7 @@ namespace Bilreg.Api.Controllers.BillContext.RekapCetakSub
         {
             var query = new RekapCetakDkGetQuery(id);
             var result = await _mediator.Send(query);
-
-            if (result == null)
-            {
-                return NotFound(new { Message = $"RekapCetakDk with id {id} not found" });
-            }
-
-            return Ok(result);
+            return Ok(new JSendOk(result));
         }
 
         [HttpGet]
@@ -34,8 +29,7 @@ namespace Bilreg.Api.Controllers.BillContext.RekapCetakSub
         {
             var query = new RekapCetakDkListQuery();
             var result = await _mediator.Send(query);
-
-            return Ok(result);
+            return Ok(new JSendOk(result));
         }
     }
 }
