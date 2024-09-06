@@ -1,6 +1,12 @@
 @Bilreg.Api_HostAddress = http://localhost:5189
 
-GET {{Bilreg.Api_HostAddress}}/weatherforecast/
+POST {{Bilreg.Api_HostAddress}}/api/RekapKomponen
+Content-Type: application/json
 Accept: application/json
 
-###
+{
+  "rekapKomponenId": "1",
+  "rekapKomponenName": "test",
+  "rekapKomponenUrut": 1
+}
+

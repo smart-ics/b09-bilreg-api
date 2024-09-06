@@ -10,6 +10,7 @@ public class AmbulanceKomponenModel(string ambulanceId, string komponenId, decim
     public decimal NilaiTarif { get; protected set; } = nilaiTarif;
     public bool IsTetap { get; protected set; } = false;
 
+
     // BEHAVIOUR
     public void SetTetap() => IsTetap = true;
     public void UnSetTetap() => IsTetap = false;
