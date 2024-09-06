@@ -75,12 +75,12 @@ public class PetugasMedisAddLayananHandlerTest
             .Callback<PetugasMedisModel>(x => actual = x);
         //  ACT
         _ = _sut.Handle(request, CancellationToken.None);
-        
+
         //  ASSERT
         actual.ListLayanan.Count.Should().Be(1);
         actual.ListLayanan.First().LayananId.Should().Be("L1");
     }
-    
+
     [Fact]
     public void GivenInvalidPetugMedisId_ThenShouldThrowKeyNotFoundException()
     {
@@ -90,14 +90,14 @@ public class PetugasMedisAddLayananHandlerTest
             .Returns(new LayananModel("L1", "L2"));
         _factory.Setup(x => x.Load(It.IsAny<IPetugasMedisKey>()))
             .Throws<KeyNotFoundException>();
-        
+
         //  ACT
         Action act = () => _sut.Handle(request, CancellationToken.None);
-        
+
         //  ASSERT
         act.Should().Throw<KeyNotFoundException>();
     }
-    
+
     [Fact]
     public void GivenInvalidLayananId_ThenShouldThrowKeyNotFoundException()
     {
@@ -105,10 +105,11 @@ public class PetugasMedisAddLayananHandlerTest
         var request = new PetugasMedisAddLayananCommand("A", "B");
         _layananDal.Setup(x => x.GetData(It.IsAny<ILayananKey>()))
             .Returns(null as LayananModel);
-        
+
         //  ACT
         Action act = () => _sut.Handle(request, CancellationToken.None);
-        
+
         //  ASSERT
         act.Should().Throw<KeyNotFoundException>();
-    }}
+    }
+}
