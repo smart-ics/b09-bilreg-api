@@ -26,4 +26,8 @@
     <ProjectReference Include="..\Bilreg.Infrastructure\Bilreg.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Controllers\BillContext\TindakanSub\" />
+  </ItemGroup>
+
 </Project>
