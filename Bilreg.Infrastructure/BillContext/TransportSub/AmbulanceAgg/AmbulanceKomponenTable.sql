@@ -4,3 +4,8 @@ CREATE TABLE ta_transport2 (
    fn_tarif DECIMAL(20) NOT NULL CONSTRAINT DF_ta_transport2_fn_tarif DEFAULT (0),
    fb_tetap BIT NOT NULL CONSTRAINT DF_ta_transport2_fb_tetap DEFAULT (0),
 )
+GO
+
+CREATE INDEX IX_ta_transport2_fs_kd_transport
+   ON ta_transport2(fs_kd_transport)
+GO
