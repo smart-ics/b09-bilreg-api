@@ -22,7 +22,7 @@ namespace Bilreg.Api.Controllers.BillContext.TindakanSub.TipeRek
         public async Task<IActionResult> GetTipeRekId(string id)
         {
             var query = new TipeRekGetQuery(id);
-            var response = _mediator.Send(query);
+            var response = await _mediator.Send(query);
             return Ok(new JSendOk(response));
         }
 
@@ -31,8 +31,7 @@ namespace Bilreg.Api.Controllers.BillContext.TindakanSub.TipeRek
         {
             var query = new TipeRekListQuery();
             var result = await _mediator.Send(query);
-
-            return Ok(result);
+            return Ok(new JSendOk(result));
         }
     }
 }

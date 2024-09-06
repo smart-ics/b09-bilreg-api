@@ -24,17 +24,13 @@ namespace Bilreg.Infrastructure.BillContext.TindakanSub.TindakanAgg.TipeRek
         public TipeRekModel GetData(ITipeRekKey key)
         {
             const string sql = @"
-            SELECT
-                FS_KD_REK_TIPE,
-                FS_NM_REK_TIPE,
-                FB_NERACA,
-                FN_URUT,
-                FS_DK
-            FROM 
-                T_REK_TIPE
-            WHERE
-                FS_KD_REK_TIPE = @fs_kd_rek_tipe;
-        ";
+                SELECT
+                    fs_kd_rek_tipe, fs_nm_rek_tipe, fb_neraca,
+                    fn_urut, fs_dk
+                FROM 
+                    t_rek_tipe
+                WHERE
+                    fs_kd_rek_tipe = @fs_kd_rek_tipe ";
             var dp = new DynamicParameters();
             dp.AddParam("@fs_kd_rek_tipe", key.TipeRekId, SqlDbType.VarChar);
 
@@ -45,15 +41,11 @@ namespace Bilreg.Infrastructure.BillContext.TindakanSub.TindakanAgg.TipeRek
         public IEnumerable<TipeRekModel> ListData()
         {
             const string sql = @"
-            SELECT
-                FS_KD_REK_TIPE,
-                FS_NM_REK_TIPE,
-                FB_NERACA,
-                FN_URUT,
-                FS_DK
-            FROM
-                T_REK_TIPE
-        ";
+                SELECT
+                    fs_kd_rek_tipe, fs_nm_rek_tipe, fb_neraca,
+                    fn_urut, fs_dk
+                FROM 
+                    t_rek_tipe ";
             using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
             return conn.Read<TipeRekDto>(sql);
         }
