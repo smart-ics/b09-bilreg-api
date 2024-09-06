@@ -30,6 +30,7 @@ public class SukuController : ControllerBase
         await _mediator.Send(new SukuDeleteCommand(id));
         return Ok(new JSendOk("Done"));
     }
+    
     [HttpGet]
     [Route("{id}")]
     public async Task<IActionResult> GetData(string id)
@@ -37,6 +38,7 @@ public class SukuController : ControllerBase
         var result = await _mediator.Send(new SukuGetQuery(id));
         return Ok(new JSendOk(result));
     }
+    
     [HttpGet]
     public async Task<IActionResult> ListData()
     {
