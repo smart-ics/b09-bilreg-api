@@ -19,8 +19,6 @@ namespace Bilreg.Infrastructure.BillContext.TindakanSub.KomponenTarifAgg
         public void InsertTest() {
             using var trans = TransHelper.NewScope();
             var expected = new GrupKomponenModel("A", "B");
-            var gk = new GrupKomponenModel("A", "B");
-            expected.Set(gk);
             _sut.Insert(expected);
         }
 
@@ -29,8 +27,6 @@ namespace Bilreg.Infrastructure.BillContext.TindakanSub.KomponenTarifAgg
         {
             using var trans = TransHelper.NewScope();
             var expected = new GrupKomponenModel("A", "B");
-            var gk = new GrupKomponenModel("C","");
-            expected.Set(gk);
             _sut.Insert(expected);
 
 
@@ -42,8 +38,6 @@ namespace Bilreg.Infrastructure.BillContext.TindakanSub.KomponenTarifAgg
         {
             using var trans = TransHelper.NewScope();
             var expected = new GrupKomponenModel("A", "B");
-            var gk = new GrupKomponenModel("C", "");
-            expected.Set(gk);
             _sut.Insert(expected);
 
             var actual = _sut.ListData();
@@ -56,9 +50,6 @@ namespace Bilreg.Infrastructure.BillContext.TindakanSub.KomponenTarifAgg
         {
             using var trans = TransHelper.NewScope();
             var expected = new GrupKomponenModel("A","B");
-            var gk = new GrupKomponenModel("C","D");
-
-            expected.Set(gk);
             _sut.Delete(expected);
         }
 
@@ -67,12 +58,7 @@ namespace Bilreg.Infrastructure.BillContext.TindakanSub.KomponenTarifAgg
         {
             using var trans = TransHelper.NewScope();
             var expected = new GrupKomponenModel("A", "B");
-            var gk = new GrupKomponenModel("C","D");
-            expected.Set(gk);
-
             _sut.Update(expected);
         }
-
-
     }
 }

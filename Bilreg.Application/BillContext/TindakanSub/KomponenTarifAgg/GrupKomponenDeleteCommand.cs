@@ -9,7 +9,7 @@ namespace Bilreg.Application.BillContext.TindakanSub.KomponenTarifAgg
     {
         private readonly IGrupKomponenWriter _writer;
 
-        public GrupKomponenDeleteHandler(GrupKomponenWriter writer)
+        public GrupKomponenDeleteHandler(IGrupKomponenWriter writer)
         {
             _writer = writer;
         }

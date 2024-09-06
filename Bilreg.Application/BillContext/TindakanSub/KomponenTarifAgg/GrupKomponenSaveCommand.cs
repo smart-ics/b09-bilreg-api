@@ -26,8 +26,6 @@ namespace Bilreg.Application.BillContext.TindakanSub.KomponenTarifAgg
             //  BUILD
             var grupKomponen = _grupKomponenDal.GetData(request)
                 ?? new GrupKomponenModel(request.GrupKomponenId, request.GrupKomponenName);
-            grupKomponen.SetName(request.GrupKomponenName);
-            grupKomponen.Set(grupKomponen);
 
             // WRITE
             _ = _writer.Save(grupKomponen);
