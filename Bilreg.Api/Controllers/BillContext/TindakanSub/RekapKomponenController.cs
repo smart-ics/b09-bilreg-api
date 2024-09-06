@@ -23,11 +23,20 @@ namespace Bilreg.Api.Controllers.BillContext.TindakanSub
             return Ok(new JSendOk("Done"));
         }
 
+        [HttpDelete]
+        [Route("{id}")]
+        public async Task<IActionResult> Delete(string id)
+        {
+            var cmd = new RekapKomponenDeleteCommand(id);
+            await _mediator.Send(cmd);
+            return Ok(new JSendOk("Done"));
+        }
+
         [HttpGet("{id}")]
         public async Task<IActionResult> GetRekapKomponenById(string id)
         {
             var query = new RekapKomponenGetQuery(id);
-            var response = _mediator.Send(query);
+            var response = await _mediator.Send(query);
             return Ok(new JSendOk(response));
         }
 
@@ -38,15 +47,6 @@ namespace Bilreg.Api.Controllers.BillContext.TindakanSub
             var result = await _mediator.Send(query);
 
             return Ok(result);
-        }
-
-        [HttpDelete]
-        [Route("{id}")]
-        public async Task<IActionResult> Delete(string id)
-        {
-            var cmd = new RekapKomponenDeleteCommand(id);
-            await _mediator.Send(cmd);
-            return Ok(new JSendOk("Done"));
         }
     }
 }

@@ -17,6 +17,50 @@ namespace Bilreg.Infrastructure.BillContext.TindakanSub.RekapKomponenAgg
             _opt = opt.Value;
         }
 
+        public void Insert(RekapKomponenModel model)
+        {
+            const string sql = @"
+            INSERT INTO ta_rekap_komponen(
+                fs_kd_rekap_komponen,
+                fs_nm_rekap_komponen,
+                fn_urut
+            )
+            VALUES(
+                @fs_kd_rekap_komponen,
+                @fs_nm_rekap_komponen,
+                @fn_urut
+            );";
+
+            var dp = new DynamicParameters();
+            dp.AddParam("@fs_kd_rekap_komponen", model.RekapKomponenId, SqlDbType.VarChar);
+            dp.AddParam("@fs_nm_rekap_komponen", model.RekapKomponenName, SqlDbType.VarChar);
+            dp.AddParam("@fn_urut", model.RekapKomponenUrut, SqlDbType.Decimal);
+
+            using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+            conn.Execute(sql, dp);
+        }
+
+        public void Update(RekapKomponenModel model)
+        {
+            const string sql = @"
+                UPDATE
+                    ta_rekap_komponen
+                SET
+                    fs_kd_rekap_komponen= @fs_kd_rekap_komponen,
+                    fs_nm_rekap_komponen= @fs_nm_rekap_komponen,
+                    fn_urut= @fn_urut
+                WHERE
+                    fs_kd_rekap_komponen= @fs_kd_rekap_komponen
+                ";
+            var dp = new DynamicParameters();
+            dp.AddParam("@fs_kd_rekap_komponen", model.RekapKomponenId,SqlDbType.VarChar);
+            dp.AddParam("@fs_nm_rekap_komponen", model.RekapKomponenId,SqlDbType.VarChar);
+            dp.AddParam("fn_urut", model.RekapKomponenId,SqlDbType.VarChar);
+
+            using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+            conn.Execute(sql, dp);
+        }
+
         public void Delete(IRekapKomponenKey key)
         {
             const string sql = @"
@@ -52,29 +96,6 @@ namespace Bilreg.Infrastructure.BillContext.TindakanSub.RekapKomponenAgg
             return conn.ReadSingle<RekapKomponenDto>(sql,dp);
         }
 
-        public void Insert(RekapKomponenModel model)
-        {
-            const string sql = @"
-            INSERT INTO ta_rekap_komponen(
-                fs_kd_rekap_komponen,
-                fs_nm_rekap_komponen,
-                fn_urut
-            )
-            VALUES(
-                @fs_kd_rekap_komponen,
-                @fs_nm_rekap_komponen,
-                @fn_urut
-            );";
-
-            var dp = new DynamicParameters();
-            dp.AddParam("@fs_kd_rekap_komponen", model.RekapKomponenId, SqlDbType.VarChar);
-            dp.AddParam("@fs_nm_rekap_komponen", model.RekapKomponenName, SqlDbType.VarChar);
-            dp.AddParam("@fn_urut", model.RekapKomponenUrut, SqlDbType.Decimal);
-
-            using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-            conn.Execute(sql, dp);
-        }
-
         public IEnumerable<RekapKomponenModel> ListData()
         {
             const string sql = @"
@@ -90,34 +111,12 @@ namespace Bilreg.Infrastructure.BillContext.TindakanSub.RekapKomponenAgg
             using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
             return conn.Read<RekapKomponenDto>(sql);
         }
-
-        public void Update(RekapKomponenModel model)
-        {
-            const string sql = @"
-                UPDATE
-                    ta_rekap_komponen
-                SET
-                    fs_kd_rekap_komponen= @fs_kd_rekap_komponen,
-                    fs_nm_rekap_komponen= @fs_nm_rekap_komponen,
-                    fn_urut= @fn_urut
-                WHERE
-                    fs_kd_rekap_komponen= @fs_kd_rekap_komponen
-                ";
-            var dp = new DynamicParameters();
-            dp.AddParam("@fs_kd_rekap_komponen", model.RekapKomponenId,SqlDbType.VarChar);
-            dp.AddParam("@fs_nm_rekap_komponen", model.RekapKomponenId,SqlDbType.VarChar);
-            dp.AddParam("fn_urut", model.RekapKomponenId,SqlDbType.VarChar);
-
-            using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-            conn.Execute(sql, dp);
-        }
     }
 
     public class RekapKomponenDto:RekapKomponenModel
     {
         public RekapKomponenDto(): base(string.Empty, string.Empty, decimal.Zero)
         {
-
         }
         public string fs_kd_rekap_komponen { get => RekapKomponenId; set => RekapKomponenId = value; }
         public string fs_nm_rekap_komponen { get => RekapKomponenName; set => RekapKomponenName = value; }

@@ -2,8 +2,6 @@
 {
     public class RekapKomponenModel(string rekapKomponenId, string rekapKomponenName, decimal rekapKomponenUrut) :IRekapKomponenKey
     {
-        
-
         public string RekapKomponenId { get; protected set; } = rekapKomponenId;
         public string RekapKomponenName { get; protected set; } = rekapKomponenName;
         public decimal RekapKomponenUrut { get; protected set; } = rekapKomponenUrut;
@@ -22,11 +20,9 @@
         public void SetUrut(decimal urut)
         {
             RekapKomponenUrut = urut > 0
-        ? urut
-        : throw new ArgumentException("RekapKomponenUrut must be greater than zero.", nameof(urut));
-
+                ? urut
+                : throw new ArgumentException("RekapKomponenUrut must be greater than zero.", nameof(urut));
         }
-
     }
 
     public interface IRekapKomponenKey
