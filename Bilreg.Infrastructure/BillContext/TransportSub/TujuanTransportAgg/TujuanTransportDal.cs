@@ -27,8 +27,8 @@ public class TujuanTransportDal: ITujuanTransportDal
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_tujuan_transport", model.TujuanTransportId, SqlDbType.VarChar);
         dp.AddParam("@fs_nm_tujuan_transport", model.TujuanTransportName, SqlDbType.VarChar);
-        dp.AddParam("@fn_konstanta", model.Konstanta, SqlDbType.VarChar);
-        dp.AddParam("@fb_perkiraan", model.IsPerkiraan, SqlDbType.VarChar);
+        dp.AddParam("@fn_konstanta", model.Konstanta, SqlDbType.Decimal);
+        dp.AddParam("@fb_perkiraan", model.IsPerkiraan, SqlDbType.Bit);
         dp.AddParam("@fs_kd_default_transport", model.DefaultAmbulanceId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
@@ -50,8 +50,8 @@ public class TujuanTransportDal: ITujuanTransportDal
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_tujuan_transport", model.TujuanTransportId, SqlDbType.VarChar);
         dp.AddParam("@fs_nm_tujuan_transport", model.TujuanTransportName, SqlDbType.VarChar);
-        dp.AddParam("@fn_konstanta", model.Konstanta, SqlDbType.VarChar);
-        dp.AddParam("@fb_perkiraan", model.IsPerkiraan, SqlDbType.VarChar);
+        dp.AddParam("@fn_konstanta", model.Konstanta, SqlDbType.Decimal);
+        dp.AddParam("@fb_perkiraan", model.IsPerkiraan, SqlDbType.Bit);
         dp.AddParam("@fs_kd_default_transport", model.DefaultAmbulanceId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
