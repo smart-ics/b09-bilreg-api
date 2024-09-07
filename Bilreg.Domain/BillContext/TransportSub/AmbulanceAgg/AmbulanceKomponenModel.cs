@@ -2,13 +2,14 @@ using Bilreg.Domain.BillContext.TindakanSub.KomponenTarifAgg;
 
 namespace Bilreg.Domain.BillContext.TransportSub.AmbulanceAgg;
 
-public class AmbulanceKomponenModel(string ambulanceId, string komponenId, decimal nilaiTarif, bool isTetap): IAmbulanceKey, IKomponenTarifKey
+public class AmbulanceKomponenModel(string ambulanceId, string komponenId, decimal nilaiTarif): IAmbulanceKey, IKomponenTarifKey
 { 
     // PROPERTIES
     public string AmbulanceId { get; protected set; } = ambulanceId;
     public string KomponenId { get; protected set; } = komponenId;
     public decimal NilaiTarif { get; protected set; } = nilaiTarif;
-    public bool IsTetap { get; protected set; } = isTetap;
+    public bool IsTetap { get; protected set; } = false;
+
 
     // BEHAVIOUR
     public void SetTetap() => IsTetap = true;
