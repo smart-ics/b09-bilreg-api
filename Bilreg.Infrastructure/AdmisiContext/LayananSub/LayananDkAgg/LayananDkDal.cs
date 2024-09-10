@@ -24,21 +24,15 @@ namespace Bilreg.Infrastructure.AdmisiContext.LayananSub.LayananDkAgg
         public LayananDkModel GetData(ILayananDkKey key)
         {
             const string sql = @"
-            SELECT
-                FS_KD_LAYANAN_DK ,
-                FS_NM_LAYANAN_DK ,
-                FN_RAWAT_INAP,
-                FN_RAWAT_JALAN,
-                FN_KESEHATAN_JIWA,
-                FN_BEDAH,
-                FN_RUJUKAN,
-                FN_KUNJ_RUMAH,
-                FN_LAYANAN_SUB
-            FROM 
-                TA_LAYANAN_DK
-            WHERE
-                FS_KD_LAYANAN_DK = @fs_kd_layanan_dk
-            ";
+                SELECT
+                    fs_kd_layanan_dk, fs_nm_layanan_dk, fn_rawat_inap,
+                    fn_rawat_jalan, fn_kesehatan_jiwa, fn_bedah,
+                    fn_rujukan, fn_kunj_rumah, fn_layanan_sub
+                FROM 
+                    ta_layanan_dk
+                WHERE
+                    FS_KD_LAYANAN_DK = @fs_kd_layanan_dk
+                ";
             var dp = new DynamicParameters();
             dp.AddParam("@fs_kd_layanan_dk", key.LayananDkId, SqlDbType.VarChar);
 
@@ -49,19 +43,12 @@ namespace Bilreg.Infrastructure.AdmisiContext.LayananSub.LayananDkAgg
         public IEnumerable<LayananDkModel> ListData()
         {
             const string sql = @"
-            SELECT
-                FS_KD_LAYANAN_DK ,
-                FS_NM_LAYANAN_DK ,
-                FN_RAWAT_INAP,
-                FN_RAWAT_JALAN,
-                FN_KESEHATAN_JIWA,
-                FN_BEDAH,
-                FN_RUJUKAN,
-                FN_KUNJ_RUMAH,
-                FN_LAYANAN_SUB
-            FROM 
-                TA_LAYANAN_DK
-            ";
+                SELECT
+                    fs_kd_layanan_dk, fs_nm_layanan_dk, fn_rawat_inap,
+                    fn_rawat_jalan, fn_kesehatan_jiwa, fn_bedah,
+                    fn_rujukan, fn_kunj_rumah, fn_layanan_sub
+                FROM 
+                    ta_layanan_dk ";
             using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
             return conn.Read<LayananDkDto>(sql);
         }
@@ -97,27 +84,18 @@ namespace Bilreg.Infrastructure.AdmisiContext.LayananSub.LayananDkAgg
     public class LayananDkDto : LayananDkModel
     {
         public LayananDkDto() : base(
-         string.Empty,
-         string.Empty,
-         decimal.Zero,
-         decimal.Zero,
-         decimal.Zero,
-         decimal.Zero,
-         decimal.Zero,
-         decimal.Zero,
-         decimal.Zero
-         )
+            string.Empty, string.Empty, 0, 0, 0, 0, 0, 0, 0)
         {
         }
         public string fs_kd_layanan_dk { get => LayananDkId; set => LayananDkId = value; }
         public string fs_nm_layanan_dk { get => LayananDkName; set => LayananDkName = value; }
-        public decimal fn_rawat_inap  { get => RawatInapCode; set => RawatInapCode = value; }
-        public decimal fn_rawat_jalan  { get => RawatJalanCode; set => RawatJalanCode = value; }
-        public decimal fn_kesehatan_jiwa  { get => KesehatanJiwaCode; set => KesehatanJiwaCode = value; }
-        public decimal fn_bedah  { get => BedahCode; set => BedahCode = value; }
-        public decimal fn_rujukan { get => RujukanCode; set => RujukanCode = value; }
-        public decimal fn_kunj_rumah  { get => KunjunganRumahCode; set => KunjunganRumahCode = value; }
-        public decimal fn_layanan_sub { get => LayananSubCode; set => LayananSubCode = value; }
+        public int fn_rawat_inap  { get => RawatInapCode; set => RawatInapCode = value; }
+        public int fn_rawat_jalan  { get => RawatJalanCode; set => RawatJalanCode = value; }
+        public int fn_kesehatan_jiwa  { get => KesehatanJiwaCode; set => KesehatanJiwaCode = value; }
+        public int fn_bedah  { get => BedahCode; set => BedahCode = value; }
+        public int fn_rujukan { get => RujukanCode; set => RujukanCode = value; }
+        public int fn_kunj_rumah  { get => KunjunganRumahCode; set => KunjunganRumahCode = value; }
+        public int fn_layanan_sub { get => LayananSubCode; set => LayananSubCode = value; }
 
     }
 }
