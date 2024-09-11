@@ -103,32 +103,23 @@ public class LayananDal : ILayananDal
     {
         const string sql = @"
             SELECT 
-                aa.FS_KD_LAYANAN,
-                aa.FS_NM_LAYANAN,
-                aa.FB_AKTIF,
-                bb.FS_KD_INSTALASI,
-                ISNULL(bb.FS_NM_INSTALASI,''),
-                cc.FS_KD_LAYANAN_DK,
-                ISNULL(cc.FS_NM_LAYANAN_DK,''),
-                dd.FS_KD_LAYANAN_TIPE_DK,
-                ISNULL(dd.FS_NM_LAYANAN_TIPE_DK,''),
-                ee.FS_KD_SMF,
-                ISNULL(ee.FS_NM_SMF,''),
-                ff.FS_KD_PEG,
-                ISNULL(ff.FS_NM_PEG,'') 
+                aa.fs_kd_layanan, aa.fs_nm_layanan, aa.fb_aktif,
+                aa.fs_kd_instalasi, aa.fs_kd_layanan_dk,
+                aa.fs_kd_layanan_tipe_dk, aa.fs_kd_smf,
+                aa.fs_kd_peg,
+                ISNULL(bb.fs_nm_instalasi,'') AS fs_nm_instalasi,
+                ISNULL(cc.fs_nm_layanan_dk,'') AS fs_nm_layanan_dk,
+                ISNULL(dd.fs_nm_layanan_tipe_dk,'') AS fs_nm_layanan_tipe_dk,
+                ISNULL(ee.fs_nm_smf,'') AS fs_nm_smf,
+                ISNULL(ff.fs_nm_peg,'') AS fs_nm_peg 
             FROM 
                 ta_layanan aa
-            LEFT JOIN 
-                ta_instalasi bb ON aa.FS_KD_INSTALASI = bb.FS_KD_INSTALASI
-            LEFT JOIN 
-                ta_layanan_dk cc ON aa.FS_KD_LAYANAN_DK = cc.FS_KD_LAYANAN_DK
-            LEFT JOIN 
-                ta_layanan_tipe_dk dd ON aa.FS_KD_LAYANAN_TIPE_DK = dd.FS_KD_LAYANAN_TIPE_DK
-            LEFT JOIN 
-                ta_smf ee ON aa.FS_KD_SMF = ee.FS_KD_SMF
-            LEFT JOIN 
-                td_peg ff ON aa.FS_KD_MEDIS = ff.FS_KD_PEG
-            WHERE aa.FS_KD_LAYANAN = @FS_KD_LAYANAN     
+                LEFT JOIN ta_instalasi bb ON aa.fs_kd_instalasi = bb.fs_kd_instalasi
+                LEFT JOIN ta_layanan_dk cc ON aa.fs_kd_layanan_dk = cc.fs_kd_layanan_dk
+                LEFT JOIN ta_layanan_tipe_dk dd ON aa.fs_kd_layanan_tipe_dk = dd.fs_kd_layanan_tipe_dk
+                LEFT JOIN ta_smf ee ON aa.fs_kd_smf = ee.fs_kd_smf
+                LEFT JOIN td_peg ff ON aa.fs_kd_medis = ff.fs_kd_peg
+            WHERE aa.fs_kd_layanan = @fs_kd_layanan     
         ";
         
         var dp = new DynamicParameters();
@@ -142,33 +133,23 @@ public class LayananDal : ILayananDal
     public IEnumerable<LayananModel> ListData()
     {
         const string sql = @"
-        SELECT 
-            aa.FS_KD_LAYANAN,
-            aa.FS_NM_LAYANAN,
-            aa.FB_AKTIF,
-            bb.FS_KD_INSTALASI,
-            ISNULL(bb.FS_NM_INSTALASI, '') AS FS_NM_INSTALASI,
-            cc.FS_KD_LAYANAN_DK,
-            ISNULL(cc.FS_NM_LAYANAN_DK, '') AS FS_NM_LAYANAN_DK,
-            dd.FS_KD_LAYANAN_TIPE_DK,
-            ISNULL(dd.FS_NM_LAYANAN_TIPE_DK, '') AS FS_NM_LAYANAN_TIPE_DK,
-            ee.FS_KD_SMF,
-            ISNULL(ee.FS_NM_SMF, '') AS FS_NM_SMF,
-            ff.FS_KD_PEG,
-            ISNULL(ff.FS_NM_PEG, '') AS FS_NM_PEG
-        FROM 
-            ta_layanan aa
-        LEFT JOIN 
-            ta_instalasi bb ON aa.FS_KD_INSTALASI = bb.FS_KD_INSTALASI
-        LEFT JOIN 
-            ta_layanan_dk cc ON aa.FS_KD_LAYANAN_DK = cc.FS_KD_LAYANAN_DK
-        LEFT JOIN 
-            ta_layanan_tipe_dk dd ON aa.FS_KD_LAYANAN_TIPE_DK = dd.FS_KD_LAYANAN_TIPE_DK
-        LEFT JOIN 
-            ta_smf ee ON aa.FS_KD_SMF = ee.FS_KD_SMF
-        LEFT JOIN 
-            td_peg ff ON aa.FS_KD_MEDIS = ff.FS_KD_PEG
-    ";
+            SELECT 
+                aa.fs_kd_layanan, aa.fs_nm_layanan, aa.fb_aktif,
+                aa.fs_kd_instalasi, aa.fs_kd_layanan_dk,
+                aa.fs_kd_layanan_tipe_dk, aa.fs_kd_smf,
+                aa.fs_kd_medis,
+                ISNULL(bb.fs_nm_instalasi,'') AS fs_nm_instalasi,
+                ISNULL(cc.fs_nm_layanan_dk,'') AS fs_nm_layanan_dk,
+                ISNULL(dd.fs_nm_layanan_tipe_dk,'') AS fs_nm_layanan_tipe_dk,
+                ISNULL(ee.fs_nm_smf,'') AS fs_nm_smf,
+                ISNULL(ff.fs_nm_peg,'') AS fs_nm_peg 
+            FROM 
+                ta_layanan aa
+                LEFT JOIN ta_instalasi bb ON aa.fs_kd_instalasi = bb.fs_kd_instalasi
+                LEFT JOIN ta_layanan_dk cc ON aa.fs_kd_layanan_dk = cc.fs_kd_layanan_dk
+                LEFT JOIN ta_layanan_tipe_dk dd ON aa.fs_kd_layanan_tipe_dk = dd.fs_kd_layanan_tipe_dk
+                LEFT JOIN ta_smf ee ON aa.fs_kd_smf = ee.fs_kd_smf
+                LEFT JOIN td_peg ff ON aa.fs_kd_medis = ff.fs_kd_peg ";
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         var result = conn.Read<LayananDto>(sql);
@@ -178,19 +159,19 @@ public class LayananDal : ILayananDal
 
 public class LayananDto : LayananModel
 {
-        public string FS_KD_LAYANAN{ get => LayananId; set => LayananId = value; }
-        public string FS_NM_LAYANAN{ get => LayananName; set => LayananName = value; }
-        public bool FB_AKTIF{get => IsAktif; set => IsAktif  = value; }
-        public string FS_KD_INSTALASI{ get => InstalasiId ; set => InstalasiId = value; }
-        public string FS_NM_INSTALASI{ get => InstalasiName; set => InstalasiName = value; }
-        public string FS_KD_LAYANAN_DK{ get => LayananDkId ; set => LayananDkId = value; }
-        public string FS_NM_LAYANAN_DK{ get => LayananDkName; set => LayananDkName = value; }
-        public string FS_KD_LAYANAN_TIPE_DK{ get => LayananTipeDkId; set => LayananTipeDkId = value; }
-        public string FS_NM_LAYANAN_TIPE_DK{ get => LayananTipeDkName; set => LayananTipeDkName = value; }
-        public string FS_KD_SMF{ get => SmfId; set => SmfId = value; }
-        public string FS_NM_SMF{ get => SmfName; set => SmfName = value; }
-        public string FS_KD_PEG{ get => PetugasMedisId; set => PetugasMedisId = value; }
-        public string FS_NM_PEG{ get => PetugasMedisName; set => PetugasMedisName = value; }
+        public string fs_kd_layanan{ get => LayananId; set => LayananId = value; }
+        public string fs_nm_layanan{ get => LayananName; set => LayananName = value; }
+        public bool fb_aktif{get => IsAktif; set => IsAktif  = value; }
+        public string fs_kd_instalasi{ get => InstalasiId ; set => InstalasiId = value; }
+        public string fs_nm_instalasi{ get => InstalasiName; set => InstalasiName = value; }
+        public string fs_kd_layanan_dk{ get => LayananDkId ; set => LayananDkId = value; }
+        public string fs_nm_layanan_dk{ get => LayananDkName; set => LayananDkName = value; }
+        public string fs_kd_layanan_tipe_dk{ get => LayananTipeDkId; set => LayananTipeDkId = value; }
+        public string fs_nm_layanan_tipe_dk{ get => LayananTipeDkName; set => LayananTipeDkName = value; }
+        public string fs_kd_smf{ get => SmfId; set => SmfId = value; }
+        public string fs_nm_smf{ get => SmfName; set => SmfName = value; }
+        public string fs_kd_peg{ get => PetugasMedisId; set => PetugasMedisId = value; }
+        public string fs_nm_peg{ get => PetugasMedisName; set => PetugasMedisName = value; }
         public LayananDto() : base(string.Empty, string.Empty)
     {
     }
