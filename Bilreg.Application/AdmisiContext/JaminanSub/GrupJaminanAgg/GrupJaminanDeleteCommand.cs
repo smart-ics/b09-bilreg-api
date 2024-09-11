@@ -1,4 +1,5 @@
 using Bilreg.Domain.AdmisiContext.JaminanSub.GrupJaminanAgg;
+using CommunityToolkit.Diagnostics;
 using FluentAssertions;
 using MediatR;
 using Moq;
@@ -22,6 +23,7 @@ public class GrupJaminanDeleteHandler: IRequestHandler<GrupJaminanDeleteCommand>
         // GUARD
         ArgumentNullException.ThrowIfNull(request);
         ArgumentException.ThrowIfNullOrWhiteSpace(request.GrupJaminanId);
+
         
         // WRITER
         _writer.Delete(request);
