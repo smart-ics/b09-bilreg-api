@@ -1,10 +1,9 @@
 ﻿using Bilreg.Application.AdmisiContext.LayananSub.LayananDkAgg;
 using MediatR;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
 
-namespace Bilreg.Api.Controllers.AdmisiContext.LayananSub.LayananDkAgg
+namespace Bilreg.Api.Controllers.AdmisiContext.LayananSub
 {
     [Route("api/[controller]")]
     [ApiController]

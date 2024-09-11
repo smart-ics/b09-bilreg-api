@@ -3,7 +3,7 @@ using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
 
-namespace Bilreg.Api.Controllers.AdmisiContext.LayananSub.TipeLayananDkAgg
+namespace Bilreg.Api.Controllers.AdmisiContext.LayananSub
 {
     [Route("api/[controller]")]
     [ApiController]

@@ -26,7 +26,7 @@ namespace Bilreg.Api.Controllers.AdmisiContext.LayananSub
         [Route("{id}")]
         public async Task<IActionResult> GetData(string id)
         {
-            var query = new LayananGetQuery(id);
+            var query = new LayananGetCompleteQuery(id);
             var response = await _mediator.Send(query);
             return Ok(new JSendOk(response));
         }

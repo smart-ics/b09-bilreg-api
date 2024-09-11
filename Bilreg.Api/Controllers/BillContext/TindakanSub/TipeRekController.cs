@@ -1,10 +1,9 @@
 ﻿using Bilreg.Application.BillContext.TindakanSub.KomponenTarifAgg.TipeRek;
 using MediatR;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
 
-namespace Bilreg.Api.Controllers.BillContext.TindakanSub.TipeRek
+namespace Bilreg.Api.Controllers.BillContext.TindakanSub
 {
     [Route("api/[controller]")]
     [ApiController]

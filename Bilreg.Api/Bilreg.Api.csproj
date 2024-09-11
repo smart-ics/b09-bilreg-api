@@ -27,8 +27,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Controllers\AdmisiContext\PendaftaranSub\" />
     <Folder Include="Controllers\BillContext\TransportSub\" />
-    <Folder Include="Controllers\BillContext\TindakanSub\" />
   </ItemGroup>
 
 </Project>
