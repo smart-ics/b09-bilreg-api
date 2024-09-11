@@ -12,13 +12,13 @@ namespace Bilreg.Application.AdmisiContext.LayananSub.LayananAgg
         string InstalasiId
         ) : IRequest, ILayananKey, IInstalasiKey;
 
-    public class LayananSaveCommandHandler : IRequestHandler<LayananSaveCommand>
+    public class LayananSaveHandler : IRequestHandler<LayananSaveCommand>
     {
         private readonly ILayananDal _layananDal;
         private readonly IInstalasiDal _instalasiDal;
         private readonly ILayananWriter _writer;
 
-        public LayananSaveCommandHandler(ILayananDal layananDal,IInstalasiDal instalasiDal, ILayananWriter writer)
+        public LayananSaveHandler(ILayananDal layananDal,IInstalasiDal instalasiDal, ILayananWriter writer)
         {
             _layananDal = layananDal;
             _instalasiDal = instalasiDal;
@@ -37,7 +37,6 @@ namespace Bilreg.Application.AdmisiContext.LayananSub.LayananAgg
 
             var layanan = _layananDal.GetData(request)
                 ?? new LayananModel(request.LayananId, request.LayananName);
-
 
             layanan.SetInstalasi(request.InstalasiId);
             _writer.Save(layanan);
