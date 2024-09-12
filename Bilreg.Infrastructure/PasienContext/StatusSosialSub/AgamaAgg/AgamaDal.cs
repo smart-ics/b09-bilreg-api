@@ -86,8 +86,7 @@ namespace Bilreg.Infrastructure.PasienContext.StatusSosialSub.AgamaAgg
 
             //  EXECUTE
             using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-            var result = conn.ReadSingle<AgamaDto>(sql, dp);
-            return result?.ToModel()!;
+            return conn.ReadSingle<AgamaDto>(sql, dp);
         }
 
         public IEnumerable<AgamaModel> ListData()
@@ -99,18 +98,16 @@ namespace Bilreg.Infrastructure.PasienContext.StatusSosialSub.AgamaAgg
 
             //  EXECUTE
             using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-            var result = conn.Read<AgamaDto>(sql);
-            return result?.Select(x => x.ToModel())!;
+            return conn.Read<AgamaDto>(sql);
         }
 
-        public class AgamaDto
+        public class AgamaDto : AgamaModel
         {
-            public string fs_kd_agama { get; set; }
-            public string fs_nm_agama { get; set; }
+            public string fs_kd_agama { get => AgamaId; set => AgamaId = value; }
+            public string fs_nm_agama { get => AgamaName; set => AgamaName = value; }
 
-            public AgamaModel ToModel()
+            public AgamaDto() : base(string.Empty, string.Empty)
             {
-                return AgamaModel.Create(fs_kd_agama, fs_nm_agama);
             }
         }
     }
@@ -128,21 +125,21 @@ namespace Bilreg.Infrastructure.PasienContext.StatusSosialSub.AgamaAgg
         public void InsertTest()
         {
             using var trans = TransHelper.NewScope();
-            var expeted = AgamaModel.Create("A", "B");
+            var expeted = new AgamaModel("A", "B");
             _sut.Insert(expeted);
         }
         [Fact]
         public void UpdateTest()
         {
             using var trans = TransHelper.NewScope();
-            var expeted = AgamaModel.Create("A", "B");
+            var expeted = new AgamaModel("A", "B");
             _sut.Update(expeted);
         }
         [Fact]
         public void DeleteTest()
         {
             using var trans = TransHelper.NewScope();
-            var expeted = AgamaModel.Create("A", "B");
+            var expeted = new AgamaModel("A", "B");
             _sut.Delete(expeted);
         }
 
@@ -150,7 +147,7 @@ namespace Bilreg.Infrastructure.PasienContext.StatusSosialSub.AgamaAgg
         public void GetDataTest()
         {
             using var trans = TransHelper.NewScope();
-            var expeted = AgamaModel.Create("A", "B");
+            var expeted = new AgamaModel("A", "B");
             _sut.Insert(expeted);
             var actual = _sut.GetData(expeted);
             actual.Should().BeEquivalentTo(expeted);
@@ -160,7 +157,7 @@ namespace Bilreg.Infrastructure.PasienContext.StatusSosialSub.AgamaAgg
         public void ListDataTest()
         {
             using var trans = TransHelper.NewScope();
-            var expeted = AgamaModel.Create("A", "B");
+            var expeted = new AgamaModel("A", "B");
             _sut.Insert(expeted);
             var actual = _sut.ListData();
             actual.Should().BeEquivalentTo(new List<AgamaModel>{expeted});
