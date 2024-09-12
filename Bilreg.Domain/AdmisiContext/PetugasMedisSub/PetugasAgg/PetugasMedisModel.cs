@@ -1,6 +1,7 @@
 ﻿using Bilreg.Domain.AdmisiContext.LayananSub.LayananAgg;
 using Bilreg.Domain.AdmisiContext.PetugasMedisSub.SatTugasAgg;
 using Bilreg.Domain.AdmisiContext.PetugasMedisSub.SmfAgg;
+using CommunityToolkit.Diagnostics;
 
 namespace Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasAgg;
 
@@ -52,6 +53,7 @@ public class PetugasMedisModel(string id, string name) : IPetugasMedisKey
 
     public void Add(LayananModel layanan)
     {
+        Guard.IsNotNull(layanan);
         var newLayanan = new PetugasMedisLayananModel(PetugasMedisId, layanan.LayananId, layanan.LayananName);
         ListLayanan.Add(newLayanan);
     }
