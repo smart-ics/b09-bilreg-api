@@ -62,7 +62,7 @@ public class PekerjaanDkListHandlerTest
     public async Task GivenValidRequest_ThenReturnExpected()
     {
         //  ARRANGE
-        var expected = new List<PekerjaanDkModel> { PekerjaanDkModel.Create("A", "B") };
+        var expected = new List<PekerjaanDkModel> { new PekerjaanDkModel("A", "B") };
         var request = new PekerjaanDkListQuery();
         _pekerjaanDkDal.Setup(x => x.ListData())
             .Returns(expected);

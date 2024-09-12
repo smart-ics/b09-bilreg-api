@@ -25,7 +25,7 @@ namespace Bilreg.Application.PasienContext.StatusSosialSub.PekerjaanDkAgg
             ArgumentException.ThrowIfNullOrWhiteSpace(request.PekerjaanDkName);
 
             //  BUILD
-            var pekerjaanDk = PekerjaanDkModel.Create(request.PekerjaanDkId, request.PekerjaanDkName);
+            var pekerjaanDk = new PekerjaanDkModel(request.PekerjaanDkId, request.PekerjaanDkName);
 
             //  WRITE
             _writer.Save(pekerjaanDk);
