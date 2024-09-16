@@ -10,7 +10,8 @@ builder.Configuration
 builder.Services
     .AddApplication(builder.Configuration)
     .AddInfrastructure(builder.Configuration)
-    .AddPresentation(builder.Configuration);
+    .AddPresentation(builder.Configuration)
+    .AddDomain(builder.Configuration);
 
 builder.Host
     .UseSerilog(SerilogConfiguration.ContextConfiguration);
