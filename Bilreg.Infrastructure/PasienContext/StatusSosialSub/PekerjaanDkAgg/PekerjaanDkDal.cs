@@ -83,8 +83,7 @@ public class PekerjaanDkDal : IPekerjaanDkDal
         dp.AddParam("@fs_kd_pekerjaan_dk", key.PekerjaanDkId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        PekerjaanDkDto result = conn.ReadSingle<PekerjaanDkDto>(sql, dp);
-        return result?.ToModel();
+        return conn.ReadSingle<PekerjaanDkDto>(sql, dp);
     }
 
     public IEnumerable<PekerjaanDkModel> ListData()
@@ -94,16 +93,17 @@ public class PekerjaanDkDal : IPekerjaanDkDal
                 FROM ta_pekerjaan_dk";
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        var result = conn.Read<PekerjaanDkDto>(sql);
-        return result?.Select(x => x.ToModel());
+        return conn.Read<PekerjaanDkDto>(sql);
     }
 }
 
-public class PekerjaanDkDto
+internal class PekerjaanDkDto : PekerjaanDkModel
 {
-    public string fs_kd_pekerjaan_dk { get; set; }
-    public string fs_nm_pekerjaan_dk { get; set; }
-    public PekerjaanDkModel ToModel() => PekerjaanDkModel.Create(fs_kd_pekerjaan_dk, fs_nm_pekerjaan_dk);
+    public string fs_kd_pekerjaan_dk { get => PekerjaanDkId; set => PekerjaanDkId = value; }
+    public string fs_nm_pekerjaan_dk { get => PekerjaanDkName; set => PekerjaanDkName = value; }
+    public PekerjaanDkDto() : base(string.Empty, string.Empty)
+    {
+    }
 }
 
 public class PekerjaanDkDalTest
@@ -119,28 +119,28 @@ public class PekerjaanDkDalTest
     public void InsertTest()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Insert(PekerjaanDkModel.Create("A", "B"));
+        _sut.Insert(new PekerjaanDkModel("A", "B"));
     }
 
     [Fact]
     public void UpdateTest()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Update(PekerjaanDkModel.Create("A", "B"));
+        _sut.Update(new PekerjaanDkModel("A", "B"));
     }
 
     [Fact]
     public void DeleteTest()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Delete(PekerjaanDkModel.Create("A", "B"));
+        _sut.Delete(new PekerjaanDkModel("A", "B"));
     }
 
     [Fact]
     public void GetDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = PekerjaanDkModel.Create("A", "B");
+        var expected = new PekerjaanDkModel("A", "B");
         _sut.Insert(expected);
         var actual = _sut.GetData(expected);
         actual.Should().BeEquivalentTo(expected);
@@ -150,7 +150,7 @@ public class PekerjaanDkDalTest
     public void GivenNotExistDate_ThenReturnNull()
     {
         using var trans = TransHelper.NewScope();
-        var expected = PekerjaanDkModel.Create("A", "B");
+        var expected = new PekerjaanDkModel("A", "B");
         var actual = _sut.GetData(expected);
         actual.Should().BeNull();
     }
@@ -159,8 +159,8 @@ public class PekerjaanDkDalTest
     public void ListDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = new List<PekerjaanDkModel> { PekerjaanDkModel.Create("A", "B") };
-        _sut.Insert(PekerjaanDkModel.Create("A", "B"));
+        var expected = new List<PekerjaanDkModel> { new PekerjaanDkModel("A", "B") };
+        _sut.Insert(new PekerjaanDkModel("A", "B"));
         var actual = _sut.ListData();
         actual.Should().BeEquivalentTo(expected);
     }

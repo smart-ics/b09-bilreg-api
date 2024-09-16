@@ -28,12 +28,12 @@ public class KelasRujukanDal : IKelasRujukanDal
     public KelasRujukanModel GetData(IKelasRujukanKey key)
     {
         const string sql = @"
-            SELECT fs_kd_kelas, fs_nm_kelas, fn_nilai
+            SELECT fs_kd_kelas_rs, fs_nm_kelas_rs, fn_nilai
             FROM tc_kelas_rs
-            WHERE fs_kd_kelas = @fs_kd_kelas";
+            WHERE fs_kd_kelas_rs = @fs_kd_kelas_rs";
 
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_kelas", key.KelasRujukanId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_kelas_rs", key.KelasRujukanId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         var result = conn.ReadSingle<KelasRujukanDto>(sql, dp);
@@ -43,7 +43,7 @@ public class KelasRujukanDal : IKelasRujukanDal
     public IEnumerable<KelasRujukanModel> ListData()
     {
         const string sql = @"
-            SELECT fs_kd_kelas, fs_nm_kelas, fn_nilai
+            SELECT fs_kd_kelas_rs, fs_nm_kelas_rs, fn_nilai
             FROM tc_kelas_rs";
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
@@ -54,11 +54,11 @@ public class KelasRujukanDal : IKelasRujukanDal
 
 public class KelasRujukanDto
 {
-    public string fs_kd_kelas { get; set; }
-    public string fs_nm_kelas { get; set; }
+    public string fs_kd_kelas_rs { get; set; }
+    public string fs_nm_kelas_rs { get; set; }
     public decimal fn_nilai { get; set; }
 
-    public KelasRujukanModel ToModel() => KelasRujukanModel.Create(fs_kd_kelas, fs_nm_kelas, fn_nilai);
+    public KelasRujukanModel ToModel() => KelasRujukanModel.Create(fs_kd_kelas_rs, fs_nm_kelas_rs, fn_nilai);
 }
 
 

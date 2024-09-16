@@ -62,7 +62,7 @@ public class AgamaListHandlerTest
     public async Task GivenValidRequest_ThenReturnExpected()
     {
         //  ARRANGE
-        var expected = new List<AgamaModel>{AgamaModel.Create("A", "B")};
+        var expected = new List<AgamaModel>{new AgamaModel("A", "B")};
         var request = new AgamaListQuery();
         _agamaDal.Setup(x => x.ListData())
             .Returns(expected);

@@ -61,7 +61,7 @@ public class PekerjaanDkGetHandlerTest
     public async Task GivenValidPekerjaanDkId_ThenReturnExpected()
     {
         //  ARRANGE
-        var expected = PekerjaanDkModel.Create("A", "B");
+        var expected = new PekerjaanDkModel("A", "B");
         var request = new PekerjaanDkGetQuery("A");
         _pekerjaanDkDal.Setup(x => x.GetData(It.IsAny<IPekerjaanDkKey>()))
             .Returns(expected);

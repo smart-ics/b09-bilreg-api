@@ -1,44 +1,47 @@
 ﻿namespace Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
 
-public class PasienModel
+public partial class PasienModel(string pasienId, string pasienName)
+    : IPasienKey
 {
-    public string PasienId { get; private set; }
-    public string PasienName { get; private set; }
-    public DateTime TglLahir { get; private set; }
-    public string Gender { get; private set; }
-    public DateTime TglMedrec { get; private set; }
-    public string IbuKandung { get; private set; }
-    public string GolDarah { get; private set; }
+    public string PasienId { get; protected set; } = pasienId;
+    public string PasienName { get; protected set; } = pasienName;
+    public string NickName { get; protected set; }
+    public string TempatLahir { get; protected set; }
+    public DateTime TglLahir { get; protected set; }
+    public string Gender { get; protected set; }
+    public DateTime TglMedrec { get; protected set; }
+    public string IbuKandung { get; protected set; }
+    public string GolDarah { get; protected set; }
     
-    //  TODO: Sampe disini
-    public string StatusNikahId { get; private set; }
-    public string StatusNikahName { get; private set; }
+    public string StatusNikahId { get; protected set; }
+    public string StatusNikahName { get; protected set; }
+    public string AgamaId { get; protected set; }
+    public string AgamaName { get; protected set; }
+    public string SukuId { get; protected set; }
+    public string SukuName { get; protected set; }
+    public string PekerjaanDkId { get; protected set; }
+    public string PekerjaanDkName { get; protected set; }
+    public string PendidikanDkId { get; protected set; }
+    public string PendidikanDkName { get; protected set; }
     
-    public AlamatObj Alamat { get; private set; }
-    public KelurahanObj Kelurahan { get; private set; }
-    public IdentitasObj Identitas { get; private set; }
-    public ContanctObj Contact { get; private set; }
+    public string Alamat { get; protected set; }
+    public string Alamat2 { get; protected set; }
+    public string Alamat3 { get; protected set; }
+    public string Kota { get; protected set; }
+    public string KodePos { get; protected set; }
+    
+    public string KelurahanId { get; protected set; }
+    public string KelurahanName { get; protected set; }
+    public string KecamatanName { get; protected set; }
+    public string KabupatenName { get; protected set; }
+    public string PropinsiName { get; protected set; }
+
+    public string JenisId { get; protected set; }
+    public string NomorId { get; protected set; }
+    public string NomorKk { get; protected set; }
+    
+    public string Email { get; protected set; }
+    public string NoTelp { get; protected set; }
+    public string NoHp { get; protected set; }
 }
 
-public record AlamatObj(
-    string Alamat, 
-    string Alamat2, 
-    string Alamat3, 
-    string Kota, 
-    string KodePos);
-public record KelurahanObj(
-    string Id,
-    string Name, 
-    string KecamatanName, 
-    string KabupatenName, 
-    string PropinsiName);
-
-public record IdentitasObj(
-    string JenisId,
-    string NomorId,
-    string NomorKk);
-
-public record ContanctObj(
-    string Email, 
-    string NoTelp,
-    string NoHp); 

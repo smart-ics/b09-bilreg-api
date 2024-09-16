@@ -12,7 +12,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.8" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.8" />
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="8.0.4" />
-    <PackageReference Include="Nuna.Lib.NetStandard" Version="3.1.127" />
+    <PackageReference Include="Nuna.Lib.NetStandard" Version="3.1.132" />
     <PackageReference Include="Scrutor" Version="4.2.2" />
     <PackageReference Include="Serilog.AspNetCore" Version="8.0.2" />
     <PackageReference Include="Serilog.Enrichers.ClientInfo" Version="2.1.1" />

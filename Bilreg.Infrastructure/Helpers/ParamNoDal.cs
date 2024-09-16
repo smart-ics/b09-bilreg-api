@@ -8,7 +8,7 @@ using Nuna.Lib.DataAccessHelper;
 
 namespace Bilreg.Infrastructure.Helpers;
 
-public class ParamNoDal : INunaCounterDal
+public class ParamNoDal : INunaCounterDal, INunaCounterDecDal
 {
     private readonly DatabaseOptions _opt;
     public ParamNoDal(IOptions<DatabaseOptions> opt)
@@ -17,58 +17,15 @@ public class ParamNoDal : INunaCounterDal
     }
     public string? GetNewHexNumber(string prefix)
     {
-        const string sql = @"
-            SELECT
-                Prefix, HexVal
-            FROM
-                NERS_ParamNo
-            WHERE
-                Prefix = @Prefix ";
-
-        var dp = new DynamicParameters();
-        dp.AddParam("@Prefix", prefix, SqlDbType.VarChar);
-
-        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        var dr = conn.ReadSingle<ParamNoDto>(sql, dp);
-        return dr?.HexVal;
+        throw new NotImplementedException();
     }
-
     public void UpdateNewHexNumber(string prefix, string hexValue)
     {
-        const string sql = @"
-            UPDATE
-                NERS_ParamNo
-            SET
-                HexVal = @HexVal
-            WHERE
-                Prefix = @Prefix ";
-
-        var dp = new DynamicParameters();
-        dp.AddParam("@Prefix", prefix, SqlDbType.VarChar);
-        dp.AddParam("@HexVal", hexValue, SqlDbType.VarChar);
-
-        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        conn.Execute(sql, dp);
+        throw new NotImplementedException();
     }
-
     public void InsertNewHexNumber(string prefix, string hexValue)
     {
-
-
-        const string sql = @"
-            INSERT INTO 
-                NERS_ParamNo (
-                    Prefix, HexVal)
-            VALUES (
-                    @Prefix, @HexVal)";
-
-        var dp = new DynamicParameters();
-        dp.AddParam("@Prefix", prefix, SqlDbType.VarChar);
-        dp.AddParam("@HexVal", hexValue, SqlDbType.VarChar);
-
-
-        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        conn.Execute(sql, dp);
+        throw new NotImplementedException();
     }
 
     [PublicAPI]
@@ -76,5 +33,46 @@ public class ParamNoDal : INunaCounterDal
     {
         public string Prefix { get; set; }
         public string HexVal { get; set; }
+    }
+
+    public long GetNewDecNumber(string anchor)
+    {
+        const string sql = @"
+            SELECT fn_value
+            FROM tz_parameter_no
+            WHERE fs_kd_parameter = @fs_kd_parameter";
+        
+        var dp = new DynamicParameters();
+        dp.AddParam("@fs_kd_parameter", anchor, SqlDbType.VarChar);
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var dr = conn.ReadSingle<long>(sql, dp);
+        return dr;
+    }
+
+    public void UpdateNewDecNumber(string anchor, long decValue)
+    {
+        const string sql = @"
+            UPDATE tz_parameter_no
+            SET fn_value = @fn_value
+            WHERE fs_kd_parameter = @fs_kd_parameter";
+        
+        var dp = new DynamicParameters();
+        dp.AddParam("@fs_kd_parameter", anchor, SqlDbType.VarChar);
+        dp.AddParam("@fn_value", decValue, SqlDbType.BigInt);
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        conn.Execute(sql, dp);
+    }
+
+    public void InsertNewDecNumber(string anchor, long decValue)
+    {
+        const string sql = @"
+            INSERT INTO tz_parameter_no(fs_kd_parameter, fn_value)
+            VALUES (@fs_kd_parameter, @fn_value)";
+        
+        var dp = new DynamicParameters();
+        dp.AddParam("@fs_kd_parameter", anchor, SqlDbType.VarChar);
+        dp.AddParam("@fn_value", decValue, SqlDbType.BigInt);
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        conn.Execute(sql, dp);
     }
 }

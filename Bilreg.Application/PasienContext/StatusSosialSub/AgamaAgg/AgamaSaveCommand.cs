@@ -25,7 +25,7 @@ namespace Bilreg.Application.PasienContext.StatusSosialSub.AgamaAgg
             ArgumentException.ThrowIfNullOrWhiteSpace(request.AgamaName);
 
             //  BUILD
-            var agama = AgamaModel.Create(request.AgamaId, request.AgamaName);
+            var agama = new AgamaModel(request.AgamaId, request.AgamaName);
 
             //  WRITE
             _ = _writer.Save(agama);

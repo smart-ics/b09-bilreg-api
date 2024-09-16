@@ -61,7 +61,7 @@ public class AgamaGetHandlerTest
     public async Task GivenValidAgamaId_ThenReturnExpected()
     {
         //  ARRANGE
-        var expected = AgamaModel.Create("A", "B");
+        var expected = new AgamaModel("A", "B");
         var request = new AgamaGetQuery("A");
         _agamaDal.Setup(x => x.GetData(It.IsAny<IAgamaKey>()))
             .Returns(expected);
