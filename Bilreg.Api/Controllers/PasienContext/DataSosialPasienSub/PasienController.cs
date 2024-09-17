@@ -22,5 +22,11 @@ public class PasienController : Controller
         await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));
     }
-    
+    [HttpPut]
+    [Route("setAlamat/")]
+    public async Task<IActionResult> SetAlamat(PasienSetAlamatCommand cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
 }
