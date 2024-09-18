@@ -33,15 +33,24 @@ public class PasienController : Controller
     }
     
     [HttpPut]
-    [Route("setContact/")]
+    [Route("SetContact")]
     public async Task<IActionResult> Save(PasienSetContactCommand cmd)
     {
         await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));
     }
 
-    [Route("setAlamat/")]
+    [HttpPut]
+    [Route("SetAlamat")]
     public async Task<IActionResult> SetAlamat(PasienSetAlamatCommand cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+    
+    [HttpPut]
+    [Route("SetKeluarga")]
+    public async Task<IActionResult> SetKeluarga(PasienSetKeluargaCommand cmd)
     {
         await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));

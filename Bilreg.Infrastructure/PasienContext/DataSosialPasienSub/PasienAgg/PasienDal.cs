@@ -33,7 +33,10 @@ public class PasienDal : IPasienDal
                 fs_alm_pasien, fs_alm2_pasien, fs_alm3_pasien, 
                 fs_kota_pasien, fs_kd_pos_pasien, fs_kd_kelurahan, 
                 fs_jenis_id, fs_kd_identitas, fs_no_kk, 
-                fs_email, fs_tlp_pasien, fs_no_hp)
+                fs_email, fs_tlp_pasien, fs_no_hp,
+                fs_nm_keluarga, fs_hub_keluarga, fs_telp_keluarga,
+                fs_alm1_keluarga, fs_alm2_keluarga, fs_kota_keluarga,
+                fs_kd_pos_keluarga)
             VALUES(
                 @fs_mr, @fs_nm_pasien, @fs_nm_alias, @fs_temp_lahir, @fd_tgl_lahir, 
                 @fs_jns_kelamin, @fd_tgl_mr, @fs_nm_ibu_kandung, @fs_gol_darah, 
@@ -42,7 +45,10 @@ public class PasienDal : IPasienDal
                 @fs_alm_pasien, @fs_alm2_pasien, @fs_alm3_pasien, 
                 @fs_kota_pasien, @fs_kd_pos_pasien, @fs_kd_kelurahan, 
                 @fs_jenis_id, @fs_kd_identitas, @fs_no_kk, 
-                @fs_email, @fs_tlp_pasien, @fs_no_hp) ";
+                @fs_email, @fs_tlp_pasien, @fs_no_hp,
+                @fs_nm_keluarga, @fs_hub_keluarga, @fs_telp_keluarga,
+                @fs_alm1_keluarga, @fs_alm2_keluarga, @fs_kota_keluarga,
+                @fs_kd_pos_keluarga)";
         
         var dp = new DynamicParameters();
         dp.AddParam("@fs_mr", model.PasienId, SqlDbType.VarChar);
@@ -76,6 +82,14 @@ public class PasienDal : IPasienDal
         dp.AddParam("@fs_email", model.Email, SqlDbType.VarChar);
         dp.AddParam("@fs_tlp_pasien", model.NoTelp, SqlDbType.VarChar);
         dp.AddParam("@fs_no_hp", model.NoHp, SqlDbType.VarChar);
+        
+        dp.AddParam("@fs_nm_keluarga", model.KeluargaName, SqlDbType.VarChar);
+        dp.AddParam("@fs_hub_keluarga", model.KeluargaRelasi, SqlDbType.VarChar);
+        dp.AddParam("@fs_telp_keluarga", model.KeluargaNoTelp, SqlDbType.VarChar);
+        dp.AddParam("@fs_alm1_keluarga", model.KeluargaAlamat1, SqlDbType.VarChar);
+        dp.AddParam("@fs_alm2_keluarga", model.KeluargaAlamat2, SqlDbType.VarChar);
+        dp.AddParam("@fs_kota_keluarga", model.KeluargaKota, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_pos_keluarga", model.KeluargaKodePos, SqlDbType.VarChar);
 
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -113,7 +127,15 @@ public class PasienDal : IPasienDal
                 
                 fs_email = @fs_email,
                 fs_tlp_pasien = @fs_tlp_pasien,
-                fs_no_hp = @fs_no_hp
+                fs_no_hp = @fs_no_hp,
+                
+                fs_nm_keluarga = @fs_nm_keluarga,
+                fs_hub_keluarga = @fs_hub_keluarga,
+                fs_telp_keluarga = @fs_telp_keluarga,
+                fs_alm1_keluarga = @fs_alm1_keluarga,
+                fs_alm2_keluarga = @fs_alm2_keluarga,
+                fs_kota_keluarga = @fs_kota_keluarga,
+                fs_kd_pos_keluarga = @fs_kd_pos_keluarga
             WHERE 
                 fs_mr = @fs_mr";
         
@@ -149,6 +171,14 @@ public class PasienDal : IPasienDal
         dp.AddParam("@fs_email", model.Email, SqlDbType.VarChar);
         dp.AddParam("@fs_tlp_pasien", model.NoTelp, SqlDbType.VarChar);
         dp.AddParam("@fs_no_hp", model.NoHp, SqlDbType.VarChar);
+        
+        dp.AddParam("@fs_nm_keluarga", model.KeluargaName, SqlDbType.VarChar);
+        dp.AddParam("@fs_hub_keluarga", model.KeluargaRelasi, SqlDbType.VarChar);
+        dp.AddParam("@fs_telp_keluarga", model.KeluargaNoTelp, SqlDbType.VarChar);
+        dp.AddParam("@fs_alm1_keluarga", model.KeluargaAlamat1, SqlDbType.VarChar);
+        dp.AddParam("@fs_alm2_keluarga", model.KeluargaAlamat2, SqlDbType.VarChar);
+        dp.AddParam("@fs_kota_keluarga", model.KeluargaKota, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_pos_keluarga", model.KeluargaKodePos, SqlDbType.VarChar);
 
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -179,6 +209,8 @@ public class PasienDal : IPasienDal
                 aa.fs_kota_pasien, aa.fs_kd_pos_pasien, aa.fs_kd_kelurahan, 
                 aa.fs_jenis_id, aa.fs_kd_identitas, aa.fs_no_kk, 
                 aa.fs_email, aa.fs_tlp_pasien, aa.fs_no_hp,
+                aa.fs_nm_keluarga, aa.fs_hub_keluarga, aa.fs_telp_keluarga,
+                aa.fs_alm1_keluarga, aa.fs_alm2_keluarga, aa.fs_kota_keluarga, aa.fs_kd_pos_keluarga,
                 ISNULL(bb.fs_nm_status_kawin_dk, '') AS fs_nm_status_kawin_dk,
                 ISNULL(cc.fs_nm_agama,'') AS fs_nm_agama,
                 ISNULL(dd.fs_nm_suku, '') AS fs_nm_suku,
@@ -220,6 +252,8 @@ public class PasienDal : IPasienDal
                 aa.fs_kota_pasien, aa.fs_kd_pos_pasien, aa.fs_kd_kelurahan, 
                 aa.fs_jenis_id, aa.fs_kd_identitas, aa.fs_no_kk, 
                 aa.fs_email, aa.fs_tlp_pasien, aa.fs_no_hp,
+                aa.fs_nm_keluarga, aa.fs_hub_keluarga, aa.fs_telp_keluarga,
+                aa.fs_alm1_keluarga, aa.fs_alm2_keluarga, aa.fs_kota_keluarga, aa.fs_kd_pos_keluarga,
                 ISNULL(bb.fs_nm_status_kawin_dk, '') AS fs_nm_status_kawin_dk,
                 ISNULL(cc.fs_nm_agama,'') AS fs_nm_agama,
                 ISNULL(dd.fs_nm_suku, '') AS fs_nm_suku,
@@ -291,6 +325,14 @@ internal class PasienDto() : PasienModel(string.Empty, string.Empty)
     public string fs_email {get => Email; set => Email = value;}
     public string fs_tlp_pasien {get => NoTelp; set => NoTelp = value;}
     public string fs_no_hp {get => NoHp; set => NoHp = value;}
+    
+    public string fs_nm_keluarga {get => KeluargaName; set => KeluargaName = value;}
+    public string fs_hub_keluarga {get => KeluargaRelasi; set => KeluargaRelasi = value;}
+    public string fs_telp_keluarga {get => KeluargaNoTelp; set => KeluargaNoTelp = value;}
+    public string fs_alm1_keluarga {get => KeluargaAlamat1; set => KeluargaAlamat1 = value;}
+    public string fs_alm2_keluarga {get => KeluargaAlamat2; set => KeluargaAlamat2 = value;}
+    public string fs_kota_keluarga {get => KeluargaKota; set => KeluargaKota = value;}
+    public string fs_kd_pos_keluarga {get => KeluargaKodePos; set => KeluargaKodePos = value;}
 }
 
 public class PasienDalTest
@@ -314,22 +356,38 @@ public class PasienDalTest
         fs_nm_ibu_kandung = "H",
         fs_gol_darah = "I",
         fs_kd_status_kawin_dk = "J",
+        fs_nm_status_kawin_dk = "",
         fs_kd_agama = "K",
-        fs_kd_suku = "L",
+        fs_nm_agama = "",
+        fs_kd_suku = "L", 
+        fs_nm_suku = "",
         fs_kd_pekerjaan_dk = "M",
+        fs_nm_pekerjaan_dk = "",
         fs_kd_pendidikan_dk = "N",
+        fs_nm_pendidikan_dk = "",
         fs_alm_pasien = "O",
         fs_alm2_pasien = "P",
         fs_alm3_pasien = "Q",
         fs_kota_pasien = "R",
         fs_kd_pos_pasien = "S",
         fs_kd_kelurahan = "T",
+        fs_nm_kelurahan = "",
+        fs_nm_kecamatan = "",
+        fs_nm_kabupaten = "",
+        fs_nm_propinsi = "",
         fs_jenis_id = "U",
         fs_kd_identitas = "V",
         fs_no_kk = "W",
         fs_email = "X",
         fs_tlp_pasien = "Y",
-        fs_no_hp = "Z"
+        fs_no_hp = "Z",
+        fs_nm_keluarga = "AA",
+        fs_hub_keluarga = "BB",
+        fs_telp_keluarga = "081xx",
+        fs_alm1_keluarga = "CC",
+        fs_alm2_keluarga = "DD",
+        fs_kota_keluarga = "EE",
+        fs_kd_pos_keluarga = "528xx",
     };
     
     [Fact]
