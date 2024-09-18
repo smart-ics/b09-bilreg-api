@@ -33,7 +33,18 @@
     
     CONSTRAINT PK_tc_mr PRIMARY KEY CLUSTERED (fs_mr)
 )
+GO
 
+ALTER TABLE tc_mr
+ADD 
+    fs_nm_keluarga VARCHAR(35) NOT NULL CONSTRAINT DF_tc_mr_fs_nm_keluarga DEFAULT (''),
+    fs_hub_keluarga VARCHAR(35) NOT NULL CONSTRAINT DF_tc_mr_fs_hub_keluarga DEFAULT (''),
+    fs_telp_keluarga VARCHAR(35) NOT NULL CONSTRAINT DF_tc_mr_fs_telp_keluarga DEFAULT (''),
+    fs_alm1_keluarga VARCHAR(40) NOT NULL CONSTRAINT DF_tc_mr_fs_alm1_keluarga DEFAULT (''),
+    fs_alm2_keluarga VARCHAR(40) NOT NULL CONSTRAINT DF_tc_mr_fs_alm2_keluarga DEFAULT (''),
+    fs_kota_keluarga VARCHAR(20) NOT NULL CONSTRAINT DF_tc_mr_fs_kota_keluarga DEFAULT (''),
+    fs_kd_pos_keluarga VARCHAR(5) NOT NULL CONSTRAINT DF_tc_mr_fs_kd_pos_keluarga DEFAULT ('')
+GO
 
 -- ** FS_MR
 -- ** FS_NM_PASIEN
