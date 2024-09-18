@@ -24,6 +24,7 @@ public class PasienController : Controller
     }
     
     [HttpPut]
+    [Route("setContact/")]
     public async Task<IActionResult> Save(PasienSetContactCommand cmd)
     {
         await _mediator.Send(cmd);
