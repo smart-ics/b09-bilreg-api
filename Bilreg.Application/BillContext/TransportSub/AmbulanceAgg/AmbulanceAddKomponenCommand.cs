@@ -11,7 +11,7 @@ using Xunit;
 namespace Bilreg.Application.BillContext.TransportSub.AmbulanceAgg;
 
 public record AmbulanceAddKomponenCommand(string AmbulanceId, string KomponenId, decimal NilaiTarif, bool IsTetap):
-    IRequest, IAmbulanceKey, IKomponenTarifKey;
+    IRequest, IAmbulanceKey, IKomponenKey;
     
 public class AmbulanceAddKomponenHandler: IRequestHandler<AmbulanceAddKomponenCommand>
 {
@@ -100,8 +100,8 @@ public class AmbulanceAddKomponenHandlerTest
     public async Task GivenInvalidKomponenId_ThenThrowKeyNotFoundException()
     {
         var request = new AmbulanceAddKomponenCommand("A", "B", 1, false);
-        _komponenTarifDal.Setup(x => x.GetData(It.IsAny<IKomponenTarifKey>()))
-            .Returns(null as KomponenTarifModel);
+        _komponenTarifDal.Setup(x => x.GetData(It.IsAny<IKomponenKey>()))
+            .Returns(null as KomponenModel);
         
         var actual = async () => await _sut.Handle(request, CancellationToken.None);
         await actual.Should().ThrowAsync<KeyNotFoundException>();

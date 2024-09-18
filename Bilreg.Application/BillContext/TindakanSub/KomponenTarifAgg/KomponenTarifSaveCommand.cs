@@ -8,7 +8,7 @@ using Xunit;
 
 namespace Bilreg.Application.BillContext.TindakanSub.KomponenTarifAgg;
 
-public record KomponenTarifSaveCommand(string KomponenId, string KomponenName): IRequest, IKomponenTarifKey;
+public record KomponenTarifSaveCommand(string KomponenId, string KomponenName): IRequest, IKomponenKey;
 
 public class KomponenTarifSaveHandler: IRequestHandler<KomponenTarifSaveCommand>
 {
@@ -27,7 +27,7 @@ public class KomponenTarifSaveHandler: IRequestHandler<KomponenTarifSaveCommand>
         Guard.IsNotWhiteSpace(request.KomponenName);
         
         // BUILD
-        var komponenTarif = new KomponenTarifModel(request.KomponenId, request.KomponenName);
+        var komponenTarif = new KomponenModel(request.KomponenId, request.KomponenName);
         
         // WRITE
         _writer.Save(komponenTarif);

@@ -2,7 +2,7 @@ using Bilreg.Domain.BillContext.TindakanSub.KomponenTarifAgg;
 
 namespace Bilreg.Domain.BillContext.TransportSub.AmbulanceAgg;
 
-public class AmbulanceKomponenModel(string ambulanceId, string komponenId, decimal nilaiTarif, bool isTetap): IAmbulanceKey, IKomponenTarifKey
+public class AmbulanceKomponenModel(string ambulanceId, string komponenId, decimal nilaiTarif, bool isTetap): IAmbulanceKey, IKomponenKey
 { 
     // PROPERTIES
     public string AmbulanceId { get; protected set; } = ambulanceId;
