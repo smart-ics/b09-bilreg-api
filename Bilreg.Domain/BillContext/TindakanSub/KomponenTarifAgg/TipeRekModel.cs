@@ -1,4 +1,4 @@
-﻿namespace Bilreg.Domain.BillContext.TindakanSub.KomponenTarifAgg.TipeRek
+﻿namespace Bilreg.Domain.BillContext.TindakanSub.KomponenTarifAgg
 {
     public class TipeRekModel(string tipeRekId, string tipeRekName, bool isNeraca, decimal noUrut, string debetKredit) : ITipeRekKey
     {

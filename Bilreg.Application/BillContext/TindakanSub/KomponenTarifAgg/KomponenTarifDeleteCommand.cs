@@ -8,7 +8,7 @@ using Xunit;
 
 namespace Bilreg.Application.BillContext.TindakanSub.KomponenTarifAgg;
 
-public record KomponenTarifDeleteCommand(string KomponenId): IRequest, IKomponenTarifKey;
+public record KomponenTarifDeleteCommand(string KomponenId): IRequest, IKomponenKey;
 
 public class KomponenTarifDeleteHandler: IRequestHandler<KomponenTarifDeleteCommand>
 {

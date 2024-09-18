@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Folder Include="AdmisiContext\RegSub\GrupKarcisAgg\" />
     <Folder Include="PasienContext\StatusSosialSub\" />
     <Folder Include="PaymentContext\" />
   </ItemGroup>

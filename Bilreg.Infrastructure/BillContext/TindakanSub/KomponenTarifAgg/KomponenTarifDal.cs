@@ -20,7 +20,7 @@ public class KomponenTarifDal: IKomponenTarifDal
     {
         _opt = opt.Value;
     }
-    public void Insert(KomponenTarifModel model)
+    public void Insert(KomponenModel model)
     {
         const string sql = @"
             INSERT INTO ta_detil_tarif (fs_kd_detil_tarif, fs_nm_detil_tarif)
@@ -34,7 +34,7 @@ public class KomponenTarifDal: IKomponenTarifDal
         conn.Execute(sql, dp);
     }
 
-    public void Update(KomponenTarifModel model)
+    public void Update(KomponenModel model)
     {
         const string sql = @"
             UPDATE
@@ -52,7 +52,7 @@ public class KomponenTarifDal: IKomponenTarifDal
         conn.Execute(sql, dp);
     }
 
-    public void Delete(IKomponenTarifKey key)
+    public void Delete(IKomponenKey key)
     {
         const string sql = @"
             DELETE FROM 
@@ -67,7 +67,7 @@ public class KomponenTarifDal: IKomponenTarifDal
         conn.Execute(sql, dp);
     }
 
-    public KomponenTarifModel GetData(IKomponenTarifKey key)
+    public KomponenModel GetData(IKomponenKey key)
     {
         const string sql = @"
             SELECT fs_kd_detil_tarif, fs_nm_detil_tarif
@@ -80,23 +80,23 @@ public class KomponenTarifDal: IKomponenTarifDal
         dp.AddParam("@fs_kd_detil_tarif", key.KomponenId, SqlDbType.VarChar);
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        var result = conn.ReadSingle<KomponenTarifDto>(sql, dp);
+        var result = conn.ReadSingle<KomponenDto>(sql, dp);
         return result;
     }
 
-    public IEnumerable<KomponenTarifModel> ListData()
+    public IEnumerable<KomponenModel> ListData()
     {
         const string sql = @"
             SELECT fs_kd_detil_tarif, fs_nm_detil_tarif
             FROM ta_detil_tarif";
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        var result = conn.Read<KomponenTarifDto>(sql);
+        var result = conn.Read<KomponenDto>(sql);
         return result;
     }
 }
 
-public class KomponenTarifDto() : KomponenTarifModel(string.Empty, String.Empty)
+public class KomponenDto() : KomponenModel(string.Empty, String.Empty)
 {
     public string fs_kd_detil_tarif { get => KomponenId; set => KomponenId = value; }
     public string fs_nm_detil_tarif { get => KomponenName; set => KomponenName = value; }

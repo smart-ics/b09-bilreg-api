@@ -8,7 +8,7 @@ using Xunit;
 
 namespace Bilreg.Application.BillContext.TindakanSub.KomponenTarifAgg;
 
-public record KomponenTarifGetQuery(string KomponenId): IRequest<KomponenTarifGetResponse>, IKomponenTarifKey;
+public record KomponenTarifGetQuery(string KomponenId): IRequest<KomponenTarifGetResponse>, IKomponenKey;
 
 public record KomponenTarifGetResponse(string KomponenId, string KomponenName);
 
@@ -48,8 +48,8 @@ public class KomponenTarifGetHandlerTest
     public async Task GivenInvalidKomponenId_ThenThrowKeyNotFoundException_Test()
     {
         var request = new KomponenTarifGetQuery("A");
-        _komponenTarifDal.Setup(x => x.GetData(It.IsAny<IKomponenTarifKey>()))
-            .Returns(null as KomponenTarifModel);
+        _komponenTarifDal.Setup(x => x.GetData(It.IsAny<IKomponenKey>()))
+            .Returns(null as KomponenModel);
         
         var actual = async () => await _sut.Handle(request, CancellationToken.None);
         await actual.Should().ThrowAsync<KeyNotFoundException>();
@@ -59,10 +59,10 @@ public class KomponenTarifGetHandlerTest
     public async Task GivenValidKomponenId_ThenReturnExpected_Test()
     {
         var request = new KomponenTarifGetQuery("A");
-        var expected = new KomponenTarifModel("A", "B");
+        var expected = new KomponenModel("A", "B");
         var expectedResponse =
             new KomponenTarifGetResponse(expected.KomponenId, expected.KomponenName);
-        _komponenTarifDal.Setup(x => x.GetData(It.IsAny<IKomponenTarifKey>()))
+        _komponenTarifDal.Setup(x => x.GetData(It.IsAny<IKomponenKey>()))
             .Returns(expected);
         
         var actual = await _sut.Handle(request, CancellationToken.None);

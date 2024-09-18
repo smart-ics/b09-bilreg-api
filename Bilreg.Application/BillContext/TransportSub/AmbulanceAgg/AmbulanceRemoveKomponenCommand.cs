@@ -9,7 +9,7 @@ using Xunit;
 
 namespace Bilreg.Application.BillContext.TransportSub.AmbulanceAgg;
 
-public record AmbulanceRemoveKomponenCommand(string AmbulanceId, string KomponenId) : IRequest, IAmbulanceKey, IKomponenTarifKey;
+public record AmbulanceRemoveKomponenCommand(string AmbulanceId, string KomponenId) : IRequest, IAmbulanceKey, IKomponenKey;
 public class AmbulanceRemoveKomponenHandler: IRequestHandler<AmbulanceRemoveKomponenCommand>
 {
     private readonly IFactoryLoad<AmbulanceModel, IAmbulanceKey> _factory;

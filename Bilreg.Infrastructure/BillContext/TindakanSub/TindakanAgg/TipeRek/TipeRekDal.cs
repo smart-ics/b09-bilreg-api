@@ -1,5 +1,4 @@
 ﻿using Bilreg.Application.BillContext.TindakanSub.KomponenTarifAgg.TipeRek;
-using Bilreg.Domain.BillContext.TindakanSub.KomponenTarifAgg.TipeRek;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
 using FluentAssertions;
@@ -7,6 +6,7 @@ using Microsoft.Extensions.Options;
 using Nuna.Lib.TransactionHelper;
 using System.Data.SqlClient;
 using System.Data;
+using Bilreg.Domain.BillContext.TindakanSub.KomponenTarifAgg;
 using Xunit;
 using Nuna.Lib.DataAccessHelper;
 

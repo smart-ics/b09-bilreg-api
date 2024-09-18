@@ -4,10 +4,10 @@ using Nuna.Lib.DataAccessHelper;
 namespace Bilreg.Application.BillContext.TindakanSub.KomponenTarifAgg;
 
 public interface IKomponenTarifDal:
-    IInsert<KomponenTarifModel>,
-    IUpdate<KomponenTarifModel>,
-    IDelete<IKomponenTarifKey>,
-    IGetData<KomponenTarifModel, IKomponenTarifKey>,
-    IListData<KomponenTarifModel>
+    IInsert<KomponenModel>,
+    IUpdate<KomponenModel>,
+    IDelete<IKomponenKey>,
+    IGetData<KomponenModel, IKomponenKey>,
+    IListData<KomponenModel>
 {
 }
