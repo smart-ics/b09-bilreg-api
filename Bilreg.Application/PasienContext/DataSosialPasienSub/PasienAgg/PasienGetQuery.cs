@@ -14,12 +14,13 @@ public record PasienGetQuery(string PasienId): IRequest<PasienGetResponse>, IPas
 
 public record PasienGetResponse(
     string PasienId,
+    string NomorMedrec,
     string PasienName,
     string NickName,
     string TempatLahir,
-    DateTime TglLahir,
+    string TglLahir,
     string Gender,
-    DateTime TglMedrec,
+    string TglMedrec,
     string IbuKandung,
     string GolDarah,
     string StatusNikahId,
@@ -47,8 +48,7 @@ public record PasienGetResponse(
     string NomorKk,
     string Email,
     string NoTelp,
-    string NoHp,
-    string SimplePasienId
+    string NoHp
 );
 
 public class PasienGetHandler: IRequestHandler<PasienGetQuery, PasienGetResponse>
@@ -75,7 +75,7 @@ public class PasienGetHandler: IRequestHandler<PasienGetQuery, PasienGetResponse
         pasien.RemoveNull();
         
         // RESPONSE
-        var response = BuildPasienData(pasien);
+        var response = BuildPasienResponse(pasien);
         return Task.FromResult(response);
     }
 
@@ -92,7 +92,7 @@ public class PasienGetHandler: IRequestHandler<PasienGetQuery, PasienGetResponse
             return new PasienGetQuery(pasienId);
     }
 
-    private string GetSimplePasienId(string pasienId)
+    private string GetNomorMedrec(string pasienId)
     {
         var breakPasienId = pasienId[7..]
             .Chunk(2)
@@ -101,16 +101,17 @@ public class PasienGetHandler: IRequestHandler<PasienGetQuery, PasienGetResponse
         return breakPasienId.Join("-");
     }
 
-    private PasienGetResponse BuildPasienData(PasienModel pasien)
+    private PasienGetResponse BuildPasienResponse(PasienModel pasien)
     {
         return new PasienGetResponse(
             pasien.PasienId,
+            GetNomorMedrec(pasien.PasienId),
             pasien.PasienName,
             pasien.NickName,
             pasien.TempatLahir,
-            pasien.TglLahir,
+            pasien.TglLahir.ToString(DateFormatEnum.YMD),
             pasien.Gender,
-            pasien.TglMedrec,
+            pasien.TglMedrec.ToString(DateFormatEnum.YMD),
             pasien.IbuKandung,
             pasien.GolDarah,
             pasien.StatusNikahId,
@@ -138,8 +139,7 @@ public class PasienGetHandler: IRequestHandler<PasienGetQuery, PasienGetResponse
             pasien.NomorKk,
             pasien.Email,
             pasien.NoTelp,
-            pasien.NoHp,
-            GetSimplePasienId(pasien.PasienId)
+            pasien.NoHp
         );
     }
 }
