@@ -67,7 +67,7 @@ public class PasienGetHandler: IRequestHandler<PasienGetQuery, PasienGetResponse
     {
         // GUARD
         Guard.IsTrue(request.PasienId.IsValidA(x => x.Length is 6 or 8 or 15));
-        
+        //x => GENDER_LIST.Contains(x))
         // QUERY
         var pasienGetQuery = GetPasienId(request.PasienId);
         var pasien = _pasienDal.GetData(pasienGetQuery)
