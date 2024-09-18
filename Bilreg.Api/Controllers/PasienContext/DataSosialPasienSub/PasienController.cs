@@ -40,6 +40,7 @@ public class PasienController : Controller
         return Ok(new JSendOk("Done"));
     }
 
+    [HttpPut]
     [Route("setAlamat/")]
     public async Task<IActionResult> SetAlamat(PasienSetAlamatCommand cmd)
     {
