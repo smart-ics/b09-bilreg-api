@@ -6,9 +6,9 @@ using Xunit;
 
 namespace Bilreg.Application.BillContext.TindakanSub.KomponenTarifAgg;
 
-public interface IKomponenTarifWriter: INunaWriterWithReturn<KomponenTarifModel>
+public interface IKomponenTarifWriter: INunaWriterWithReturn<KomponenModel>
 {
-    public void Delete(IKomponenTarifKey key);
+    public void Delete(IKomponenKey key);
 }
 
 public class KomponenTarifWriter: IKomponenTarifWriter
@@ -20,7 +20,7 @@ public class KomponenTarifWriter: IKomponenTarifWriter
         _komponenTarifDal = komponenTarifDal;
     }
 
-    public KomponenTarifModel Save(KomponenTarifModel model)
+    public KomponenModel Save(KomponenModel model)
     {
         var komponenTarifDb = _komponenTarifDal.GetData(model);
         if (komponenTarifDb is null)
@@ -30,7 +30,7 @@ public class KomponenTarifWriter: IKomponenTarifWriter
         return model;
     }
 
-    public void Delete(IKomponenTarifKey key)
+    public void Delete(IKomponenKey key)
     {
         _komponenTarifDal.Delete(key);
     }
@@ -50,20 +50,20 @@ public class KomponenTarifWriterTest
     [Fact]
     public void GivenExistingData_ThenUpdate_Test()
     {
-        var expected = new KomponenTarifModel("A", "B");
-        _komponenTarifDal.Setup(x => x.GetData(It.IsAny<IKomponenTarifKey>()))
+        var expected = new KomponenModel("A", "B");
+        _komponenTarifDal.Setup(x => x.GetData(It.IsAny<IKomponenKey>()))
             .Returns(expected);
         _sut.Save(expected);
-        _komponenTarifDal.Verify(x => x.Update(It.IsAny<KomponenTarifModel>()), Times.Once);
+        _komponenTarifDal.Verify(x => x.Update(It.IsAny<KomponenModel>()), Times.Once);
     }
 
     [Fact]
     public void GivenNonExistingData_ThenInsert_Test()
     {
-        var expected = new KomponenTarifModel("A", "B");
-        _komponenTarifDal.Setup(x => x.GetData(It.IsAny<IKomponenTarifKey>()))
-            .Returns(null as KomponenTarifModel);
+        var expected = new KomponenModel("A", "B");
+        _komponenTarifDal.Setup(x => x.GetData(It.IsAny<IKomponenKey>()))
+            .Returns(null as KomponenModel);
         _sut.Save(expected);
-        _komponenTarifDal.Verify(x => x.Insert(It.IsAny<KomponenTarifModel>()), Times.Once);
+        _komponenTarifDal.Verify(x => x.Insert(It.IsAny<KomponenModel>()), Times.Once);
     }
 }

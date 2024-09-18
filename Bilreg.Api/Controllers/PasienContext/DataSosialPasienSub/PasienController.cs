@@ -22,6 +22,15 @@ public class PasienController : Controller
         await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));
     }
+
+    [HttpGet]
+    [Route("{id}")]
+    public async Task<IActionResult> GetData(string id)
+    {
+        var query = new PasienGetQuery(id);
+        var response = await _mediator.Send(query);
+        return Ok(new JSendOk(response));
+    }
     
     [HttpPut]
     [Route("setContact/")]
@@ -30,5 +39,11 @@ public class PasienController : Controller
         await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));
     }
-    
+
+    [Route("setAlamat/")]
+    public async Task<IActionResult> SetAlamat(PasienSetAlamatCommand cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
 }

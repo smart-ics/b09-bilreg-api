@@ -50,7 +50,7 @@ public class KomponenTarifListHandlerTest
     {
         var request = new KomponenTarifListQuery();
         _komponenTarifDal.Setup(x => x.ListData())
-            .Returns(null as IEnumerable<KomponenTarifModel>);
+            .Returns(null as IEnumerable<KomponenModel>);
         
         var actual = async () => await _sut.Handle(request, CancellationToken.None);
         await actual.Should().ThrowAsync<KeyNotFoundException>();
@@ -60,8 +60,8 @@ public class KomponenTarifListHandlerTest
     public async Task GivenValidRequest_ThenReturnExpected_Test()
     {
         var request = new KomponenTarifListQuery();
-        var expected = new KomponenTarifModel("A", "B");
-        var komponenTarifList = new List<KomponenTarifModel>() { expected };
+        var expected = new KomponenModel("A", "B");
+        var komponenTarifList = new List<KomponenModel>() { expected };
         _komponenTarifDal.Setup(x => x.ListData())
             .Returns(komponenTarifList);
         var actual = await _sut.Handle(request, CancellationToken.None);

@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.BillContext.TindakanSub.KomponenTarifAgg.TipeRek;
+﻿using Bilreg.Domain.BillContext.TindakanSub.KomponenTarifAgg;
 using Nuna.Lib.DataAccessHelper;
 namespace Bilreg.Application.BillContext.TindakanSub.KomponenTarifAgg.TipeRek
 {

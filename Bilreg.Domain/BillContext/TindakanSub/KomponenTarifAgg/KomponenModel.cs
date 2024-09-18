@@ -1,6 +1,6 @@
 namespace Bilreg.Domain.BillContext.TindakanSub.KomponenTarifAgg;
 
-public class KomponenTarifModel(string id, string name): IKomponenTarifKey
+public class KomponenModel(string id, string name): IKomponenKey
 {
     #region PROPERTIES
 
@@ -10,7 +10,7 @@ public class KomponenTarifModel(string id, string name): IKomponenTarifKey
     #endregion
 }
 
-public interface IKomponenTarifKey
+public interface IKomponenKey
 {
     string KomponenId { get; }
 }
