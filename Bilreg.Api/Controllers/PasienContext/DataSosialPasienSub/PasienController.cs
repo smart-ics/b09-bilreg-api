@@ -32,4 +32,11 @@ public class PasienController : Controller
         return Ok(new JSendOk(response));
     }
     
+    [HttpPut]
+    [Route("setAlamat/")]
+    public async Task<IActionResult> SetAlamat(PasienSetAlamatCommand cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
 }
