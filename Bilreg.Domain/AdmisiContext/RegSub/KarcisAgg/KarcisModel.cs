@@ -8,13 +8,13 @@ public partial class KarcisModel(string id, string name) : IKarcisKey, IInstalas
     public string KarcisId { get; protected set; }
     public string KarcisName { get; protected set; }
     
-    //  TODO: sampai sini => jika readonly, bagaimana solusi saat read?
     public decimal Nilai { get => ListKomponen.Sum(x => x.Nilai); }
     
     public string InstalasiDkId { get; protected set; }
     public string InstalasiDkName { get; protected set; }
     
     public string RekapCetakId { get; protected set; }
+    public string RekapCetakName { get; protected set; }
     public string TarifId { get; protected set; }
     public string TarifName { get; protected set; }
     

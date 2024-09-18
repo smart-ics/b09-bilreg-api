@@ -12,7 +12,7 @@ public partial class PasienModel(string pasienId, string pasienName)
     public DateTime TglMedrec { get; protected set; }
     public string IbuKandung { get; protected set; }
     public string GolDarah { get; protected set; }
-    
+
     public string StatusNikahId { get; protected set; }
     public string StatusNikahName { get; protected set; }
     public string AgamaId { get; protected set; }
@@ -23,13 +23,13 @@ public partial class PasienModel(string pasienId, string pasienName)
     public string PekerjaanDkName { get; protected set; }
     public string PendidikanDkId { get; protected set; }
     public string PendidikanDkName { get; protected set; }
-    
+
     public string Alamat { get; protected set; }
     public string Alamat2 { get; protected set; }
     public string Alamat3 { get; protected set; }
     public string Kota { get; protected set; }
     public string KodePos { get; protected set; }
-    
+
     public string KelurahanId { get; protected set; }
     public string KelurahanName { get; protected set; }
     public string KecamatanName { get; protected set; }
@@ -39,9 +39,16 @@ public partial class PasienModel(string pasienId, string pasienName)
     public string JenisId { get; protected set; }
     public string NomorId { get; protected set; }
     public string NomorKk { get; protected set; }
-    
+
     public string Email { get; protected set; }
     public string NoTelp { get; protected set; }
     public string NoHp { get; protected set; }
-}
 
+    public string KeluargaName { get; protected set; }
+    public string KeluargaRelasi { get; protected set; }
+    public string KeluargaNoTelp { get; protected set; }
+    public string KeluargaAlamat1 { get; protected set; }
+    public string KeluargaAlamat2 { get; protected set; }
+    public string KeluargaKota { get; protected set; }
+    public string KeluargaKodePos { get; protected set; }
+}

@@ -72,4 +72,16 @@ public partial class PasienModel
         PendidikanDkId = pendidikanDkId;
         PendidikanDkName = pendidikanDkName;
     }
+    
+    public void SetKeluarga(string name, string relasi, string noTelp, string alamat1, string alamat2,
+        string kota, string kodePos)
+    {
+        KeluargaName = name;
+        KeluargaRelasi = relasi;
+        KeluargaNoTelp = noTelp;
+        KeluargaAlamat1 = alamat1;
+        KeluargaAlamat2 = alamat2;
+        KeluargaKota = kota;
+        KeluargaKodePos = kodePos;
+    }
 }
