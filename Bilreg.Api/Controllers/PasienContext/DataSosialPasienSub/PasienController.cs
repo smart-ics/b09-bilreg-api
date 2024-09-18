@@ -33,6 +33,13 @@ public class PasienController : Controller
     }
     
     [HttpPut]
+    [Route("setContact/")]
+    public async Task<IActionResult> Save(PasienSetContactCommand cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
     [Route("setAlamat/")]
     public async Task<IActionResult> SetAlamat(PasienSetAlamatCommand cmd)
     {
