@@ -23,4 +23,11 @@ public class PasienController : Controller
         return Ok(new JSendOk("Done"));
     }
     
+    [HttpPut]
+    public async Task<IActionResult> Save(PasienSetContactCommand cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+    
 }
