@@ -9,4 +9,5 @@ public class KarcisKomponenModel(string karcisId,
     public string KomponenId { get; protected set; } = komponenId;
     public string KomponenName { get; protected set; } = komponenName;
     public decimal Nilai { get; protected set; } = nilai;
+    public void SetKarcisId(string id) => KarcisId = id;
 }

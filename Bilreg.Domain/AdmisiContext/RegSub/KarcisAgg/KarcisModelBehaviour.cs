@@ -51,6 +51,11 @@ public partial class KarcisModel
     {
         ListKomponen.Clear();
         ListKomponen.AddRange(listKomponen);
-        
+    }
+
+    public void SyncId()
+    {
+        ListKomponen.ForEach(x => x.SetKarcisId(KarcisId));
+        ListLayanan.ForEach(x => x.SetKarcisId(KarcisId));
     }
 }
