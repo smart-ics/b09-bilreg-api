@@ -1,6 +1,6 @@
 ﻿namespace Bilreg.Domain.BillContext.TindakanSub.JenisTarifAgg;
 
-public interface JenisTarifKey
+public interface IJenisTarifKey
 {
     string JenisTarifId { get; }
 }

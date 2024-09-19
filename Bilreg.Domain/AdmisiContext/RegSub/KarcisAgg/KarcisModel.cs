@@ -14,6 +14,7 @@ public partial class KarcisModel(string id, string name) : IKarcisKey, IInstalas
     public string InstalasiDkName { get; protected set; }
     
     public string RekapCetakId { get; protected set; }
+    public string RekapCetakName { get; protected set; }
     public string TarifId { get; protected set; }
     public string TarifName { get; protected set; }
     

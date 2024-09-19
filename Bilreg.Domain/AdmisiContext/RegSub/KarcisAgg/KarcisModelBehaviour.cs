@@ -1,5 +1,6 @@
 ﻿using Bilreg.Domain.AdmisiContext.LayananSub.InstalasiDkAgg;
 using Bilreg.Domain.AdmisiContext.LayananSub.LayananAgg;
+using Bilreg.Domain.BillContext.RekapCetakSub.RekapCetakAgg;
 using Bilreg.Domain.BillContext.TindakanSub.KomponenTarifAgg;
 using Bilreg.Domain.BillContext.TindakanSub.TarifAgg;
 using Nuna.Lib.ValidationHelper;
@@ -12,6 +13,12 @@ public partial class KarcisModel
     {
         InstalasiDkId = instalasiDk.InstalasiDkId;
         InstalasiDkName = instalasiDk.InstalasiDkName;
+    }
+
+    public void SetRekapCetak(RekapCetakModel rekapCetak)
+    {
+        RekapCetakId = rekapCetak.RekapCetakId;
+        RekapCetakName = rekapCetak.RekapCetakName;
     }
 
     public void Activate() => IsAktif = true;
