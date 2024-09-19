@@ -2,7 +2,7 @@
 
 namespace Bilreg.Domain.BillContext.RekapCetakSub.RekapCetakAgg;
 
-public class RekapCetakModel(string id, string name) : IRekapCetakKey
+public partial class RekapCetakModel(string id, string name) : IRekapCetakKey
 {
     public string RekapCetakId { get; protected set; } = id;
     public string RekapCetakName { get; protected set; } = name;
