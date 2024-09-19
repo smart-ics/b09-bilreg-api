@@ -55,4 +55,13 @@ public class PasienController : Controller
         await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));
     }
+    
+    [HttpGet]
+    [Route("ByTglMedRec/{tglMedRec}")]
+    public async Task<IActionResult> ListDataBytglMedRec(string tglMedRec)
+    {
+        var query = new PasienListQuery(tglMedRec);
+        var response = await _mediator.Send(query);
+        return Ok(new JSendOk(response));
+    }
 }
