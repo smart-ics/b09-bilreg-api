@@ -282,6 +282,49 @@ public class PasienDal : IPasienDal
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<PasienDto>(sql, dp);
     }
+
+    public IEnumerable<PasienModel> ListData(Periode filter)
+    {
+        const string sql = @"
+            SELECT 
+                aa.fs_mr, aa.fs_nm_pasien, aa.fs_nm_alias, aa.fs_temp_lahir, aa.fd_tgl_lahir, 
+                aa.fs_jns_kelamin, aa.fd_tgl_mr, aa.fs_nm_ibu_kandung, aa.fs_gol_darah, 
+                aa.fs_kd_status_kawin_dk, aa.fs_kd_agama, aa.fs_kd_suku, 
+                aa.fs_kd_pekerjaan_dk, aa.fs_kd_pendidikan_dk,
+                aa.fs_alm_pasien, aa.fs_alm2_pasien, aa.fs_alm3_pasien, 
+                aa.fs_kota_pasien, aa.fs_kd_pos_pasien, aa.fs_kd_kelurahan, 
+                aa.fs_jenis_id, aa.fs_kd_identitas, aa.fs_no_kk, 
+                aa.fs_email, aa.fs_tlp_pasien, aa.fs_no_hp,
+                aa.fs_nm_keluarga, aa.fs_hub_keluarga, aa.fs_telp_keluarga,
+                aa.fs_alm1_keluarga, aa.fs_alm2_keluarga, aa.fs_kota_keluarga, aa.fs_kd_pos_keluarga,
+                ISNULL(bb.fs_nm_status_kawin_dk, '') AS fs_nm_status_kawin_dk,
+                ISNULL(cc.fs_nm_agama,'') AS fs_nm_agama,
+                ISNULL(dd.fs_nm_suku, '') AS fs_nm_suku,
+                ISNULL(ee.fs_nm_pekerjaan_dk, '') AS fs_nm_pekerjaan_dk,
+                ISNULL(ff.fs_nm_pendidikan_dk, '') AS fs_nm_pendidikan_dk,
+                ISNULL(gg.fs_nm_kelurahan, '') AS fs_nm_kelurahan,
+                ISNULL(hh.fs_nm_kecamatan, '') AS fs_nm_kecamatan,
+                ISNULL(ii.fs_nm_kabupaten, '') AS fs_nm_kabupaten,
+                ISNULL(jj.fs_nm_propinsi, '') AS fs_nm_propinsi
+
+            FROM tc_mr aa
+                LEFT JOIN ta_status_kawin_dk bb ON aa.fs_kd_status_kawin_dk = bb.fs_kd_status_kawin_dk
+                LEFT JOIN ta_agama cc ON aa.fs_kd_agama = cc.fs_kd_agama
+                LEFT JOIN ta_suku dd ON aa.fs_kd_suku = dd.fs_kd_suku
+                LEFT JOIN ta_pekerjaan_dk ee ON aa.fs_kd_pekerjaan_dk = ee.fs_kd_pekerjaan_dk
+                LEFT JOIN ta_pendidikan_dk ff ON aa.fs_kd_pendidikan_dk = ff.fs_kd_pendidikan_dk
+                LEFT JOIN ta_kelurahan gg ON aa.fs_kd_kelurahan = gg.fs_kd_kelurahan
+                LEFT JOIN ta_kecamatan hh ON gg.fs_kd_kecamatan = hh.fs_kd_kecamatan
+                LEFT JOIN ta_kabupaten ii ON hh.fs_kd_kabupaten = ii.fs_kd_kabupaten
+                LEFT JOIN ta_propinsi jj ON ii.fs_kd_propinsi = jj.fs_kd_propinsi
+            WHERE aa.fd_tgl_mr = @fd_tgl_mr ";
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@fd_tgl_mr", filter.Tgl1.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
+
+        var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<PasienDto>(sql, dp);
+    }
 }
 
 internal class PasienDto() : PasienModel(string.Empty, string.Empty)
