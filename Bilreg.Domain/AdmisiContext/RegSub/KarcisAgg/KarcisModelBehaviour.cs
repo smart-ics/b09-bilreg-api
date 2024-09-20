@@ -3,7 +3,6 @@ using Bilreg.Domain.AdmisiContext.LayananSub.LayananAgg;
 using Bilreg.Domain.BillContext.RekapCetakSub.RekapCetakAgg;
 using Bilreg.Domain.BillContext.TindakanSub.KomponenTarifAgg;
 using Bilreg.Domain.BillContext.TindakanSub.TarifAgg;
-using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Domain.AdmisiContext.RegSub.KarcisAgg;
 
