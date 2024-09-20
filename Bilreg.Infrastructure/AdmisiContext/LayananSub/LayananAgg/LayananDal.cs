@@ -106,7 +106,7 @@ public class LayananDal : ILayananDal
                 aa.fs_kd_layanan, aa.fs_nm_layanan, aa.fb_aktif,
                 aa.fs_kd_instalasi, aa.fs_kd_layanan_dk,
                 aa.fs_kd_layanan_tipe_dk, aa.fs_kd_smf,
-                aa.fs_kd_peg,
+                aa.fs_kd_medis,
                 ISNULL(bb.fs_nm_instalasi,'') AS fs_nm_instalasi,
                 ISNULL(cc.fs_nm_layanan_dk,'') AS fs_nm_layanan_dk,
                 ISNULL(dd.fs_nm_layanan_tipe_dk,'') AS fs_nm_layanan_tipe_dk,
