@@ -10,7 +10,7 @@ public partial class RekapCetakModel
     public void SetLevel(int level) => Level = level;
     public void SetAsGrupBaru(bool value) => IsGrupBaru = value;
 
-    public void SetRekapCetak(GrupRekapCetakModel grupRekapCetak)
+    public void SetGrupRekapCetak(GrupRekapCetakModel grupRekapCetak)
     {
         Guard.IsNotNull(grupRekapCetak);
 
