@@ -8,6 +8,7 @@ namespace Bilreg.Domain.AdmisiContext.RegSub.KarcisAgg;
 
 public partial class KarcisModel
 {
+    public void SetName(string name) => KarcisName = name;
     public void SetInstalasiDk(InstalasiDkModel instalasiDk)
     {
         InstalasiDkId = instalasiDk.InstalasiDkId;

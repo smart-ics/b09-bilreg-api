@@ -46,6 +46,7 @@ public class KarcisSaveHandler: IRequestHandler<KarcisSaveCommand>
         // BUILD
         var karcis = _factory.LoadOrNull(request)
             ?? new KarcisModel(request.KarcisId, request.KarcisName);
+        karcis.SetName(request.KarcisName);
         karcis.SetInstalasiDk(instalasiDk);
         karcis.SetRekapCetak(rekapCetak);
         

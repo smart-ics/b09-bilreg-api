@@ -21,14 +21,14 @@ public class KarcisFactory : AggFactory<KarcisModel, IKarcisKey>
     protected override KarcisModel LoadAggregate(IKarcisKey key)
     {
         var karcis = _karcisDal.GetData(key)
-            ?? throw new KeyNotFoundException($"{key.KarcisId} not found");
+            ?? throw new KeyNotFoundException($"Karcis with id: {key.KarcisId} not found");
 
         var listKomponen = _karcisKomponenDal.ListData(key)
             ?? new List<KarcisKomponenModel>();
         karcis.Attach(listKomponen);
 
         var listLayanan = _karcisLayananDal.ListData(key)
-                          ?? new List<KarcisLayananModel>();
+            ?? new List<KarcisLayananModel>();
         karcis.Attach(listLayanan);
 
         return karcis;
