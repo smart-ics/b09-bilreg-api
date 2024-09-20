@@ -24,12 +24,10 @@ public record KarcisListResponse(
 
 public class KarcisListHandler: IRequestHandler<KarcisListQuery, IEnumerable<KarcisListResponse>>
 {
-    private readonly IFactoryLoad<KarcisModel, IKarcisKey> _factory;
     private readonly IKarcisDal _karcisDal;
     
-    public KarcisListHandler(IFactoryLoad<KarcisModel, IKarcisKey> factory, IKarcisDal karcisDal)
+    public KarcisListHandler(IKarcisDal karcisDal)
     {
-        _factory = factory;
         _karcisDal = karcisDal;
     }
 
@@ -40,39 +38,32 @@ public class KarcisListHandler: IRequestHandler<KarcisListQuery, IEnumerable<Kar
             ?? throw new KeyNotFoundException("Karcis not found");
 
         // RESPONSE
-        var response = karcisList.Select(BuildKarcisListItem);
+        var response = karcisList.Select(x => 
+            new KarcisListResponse(
+                x.KarcisId,
+                x.KarcisName,
+                x.Nilai,
+                x.InstalasiDkId,
+                x.InstalasiDkName,
+                x.RekapCetakId,
+                x.RekapCetakName,
+                x.TarifId,
+                x.TarifName,
+                x.IsAktif
+            ));
         return Task.FromResult(response);
-    }
-
-    private KarcisListResponse BuildKarcisListItem(IKarcisKey key)
-    {
-        var karcis = _factory.Load(key);
-        return new KarcisListResponse(
-            karcis.KarcisId,
-            karcis.KarcisName,
-            karcis.Nilai,
-            karcis.InstalasiDkId,
-            karcis.InstalasiDkName,
-            karcis.RekapCetakId,
-            karcis.RekapCetakName,
-            karcis.TarifId,
-            karcis.TarifName,
-            karcis.IsAktif
-        );
     }
 }
 
 public class KarcisListHandlerTest
 {
-    private readonly Mock<IFactoryLoad<KarcisModel, IKarcisKey>> _factory;
     private readonly Mock<IKarcisDal> _karcisDal;
     private readonly KarcisListHandler _sut;
 
     public KarcisListHandlerTest()
     {
-        _factory = new Mock<IFactoryLoad<KarcisModel, IKarcisKey>>();
         _karcisDal = new Mock<IKarcisDal>();
-        _sut = new KarcisListHandler(_factory.Object, _karcisDal.Object);
+        _sut = new KarcisListHandler(_karcisDal.Object);
     }
 
     [Fact]

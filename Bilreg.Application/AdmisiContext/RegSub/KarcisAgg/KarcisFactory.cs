@@ -26,6 +26,7 @@ public class KarcisFactory : AggFactory<KarcisModel, IKarcisKey>
         var listKomponen = _karcisKomponenDal.ListData(key)
             ?? new List<KarcisKomponenModel>();
         karcis.Attach(listKomponen);
+        karcis.SetNilai();
 
         var listLayanan = _karcisLayananDal.ListData(key)
             ?? new List<KarcisLayananModel>();

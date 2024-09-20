@@ -33,6 +33,7 @@ public class KarcisRemoveKomponenHandler: IRequestHandler<KarcisRemoveKomponenCo
         // BUILD
         var karcis = _factory.Load(request);
         karcis.RemoveKomponen(x => x.KomponenId == request.KomponenId);
+        karcis.SetNilai();
         
         // WRITE
         _ = _writer.Save(karcis);

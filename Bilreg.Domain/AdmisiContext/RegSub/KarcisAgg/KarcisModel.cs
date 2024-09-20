@@ -7,8 +7,8 @@ public partial class KarcisModel(string id, string name) : IKarcisKey, IInstalas
 {
     public string KarcisId { get; protected set; } = id;
     public string KarcisName { get; protected set; } = name;
-    
-    public decimal Nilai { get => ListKomponen.Sum(x => x.Nilai); }
+
+    public decimal Nilai { get; protected set; }
 
     public string InstalasiDkId { get; protected set; } = string.Empty;
     public string InstalasiDkName { get; protected set; } = string.Empty;

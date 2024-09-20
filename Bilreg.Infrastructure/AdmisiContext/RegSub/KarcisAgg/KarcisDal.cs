@@ -21,12 +21,13 @@ public class KarcisDal: IKarcisDal
     public void Insert(KarcisModel model)
     {
         const string sql = @"
-            INSERT INTO ta_karcis(fs_kd_karcis, fs_nm_karcis, fs_kd_instalasi_dk, fs_kd_rekap_cetak, fs_kd_tarif, fb_aktif)
-            VALUES(@fs_kd_karcis, @fs_nm_karcis, @fs_kd_instalasi_dk, @fs_kd_rekap_cetak, @fs_kd_tarif, @fb_aktif)";
+            INSERT INTO ta_karcis(fs_kd_karcis, fs_nm_karcis, fn_karcis, fs_kd_instalasi_dk, fs_kd_rekap_cetak, fs_kd_tarif, fb_aktif)
+            VALUES(@fs_kd_karcis, @fs_nm_karcis, @fn_karcis, @fs_kd_instalasi_dk, @fs_kd_rekap_cetak, @fs_kd_tarif, @fb_aktif)";
 
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_karcis", model.KarcisId, SqlDbType.VarChar);
         dp.AddParam("@fs_nm_karcis", model.KarcisName, SqlDbType.VarChar);
+        dp.AddParam("@fn_karcis", model.Nilai, SqlDbType.Decimal);
         dp.AddParam("@fs_kd_instalasi_dk", model.InstalasiDkId, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_rekap_cetak", model.RekapCetakId, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_tarif", model.TarifId, SqlDbType.VarChar);
@@ -42,6 +43,7 @@ public class KarcisDal: IKarcisDal
             UPDATE ta_karcis
             SET 
                 fs_nm_karcis = @fs_nm_karcis,
+                fn_karcis = @fn_karcis,
                 fs_kd_instalasi_dk = @fs_kd_instalasi_dk,
                 fs_kd_rekap_cetak = @fs_kd_rekap_cetak,
                 fs_kd_tarif = @fs_kd_tarif,
@@ -52,6 +54,7 @@ public class KarcisDal: IKarcisDal
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_karcis", model.KarcisId, SqlDbType.VarChar);
         dp.AddParam("@fs_nm_karcis", model.KarcisName, SqlDbType.VarChar);
+        dp.AddParam("@fn_karcis", model.Nilai, SqlDbType.Decimal);
         dp.AddParam("@fs_kd_instalasi_dk", model.InstalasiDkId, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_rekap_cetak", model.RekapCetakId, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_tarif", model.TarifId, SqlDbType.VarChar);
@@ -85,7 +88,7 @@ public class KarcisDal: IKarcisDal
     {
         return @"
             SELECT
-                aa.fs_kd_karcis, aa.fs_nm_karcis, aa.fs_kd_instalasi_dk,
+                aa.fs_kd_karcis, aa.fs_nm_karcis, aa.fn_karcis, aa.fs_kd_instalasi_dk,
                 aa.fs_kd_rekap_cetak, aa.fs_kd_tarif, aa.fb_aktif,
                 ISNULL(bb.fs_nm_instalasi_dk, '') AS fs_nm_instalasi_dk,
                 ISNULL(cc.fs_nm_rekap_cetak_tarif, '') AS fs_nm_rekap_cetak,
@@ -101,6 +104,7 @@ public class KarcisDto() : KarcisModel(string.Empty, string.Empty)
 {
     public string fs_kd_karcis { get => KarcisId; set => KarcisId = value; } 
     public string fs_nm_karcis { get => KarcisName; set => KarcisName = value; }
+    public decimal fn_karcis { get => Nilai; set => Nilai = value; }
     public string fs_kd_instalasi_dk { get => InstalasiDkId; set => InstalasiDkId = value; } 
     public string fs_nm_instalasi_dk { get => InstalasiDkName; set => InstalasiDkName = value; } 
     public string fs_kd_rekap_cetak { get => RekapCetakId; set => RekapCetakId = value; } 

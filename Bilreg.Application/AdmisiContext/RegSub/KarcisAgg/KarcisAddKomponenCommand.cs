@@ -37,6 +37,7 @@ public class KarcisAddKomponenHandler: IRequestHandler<KarcisAddKomponenCommand>
         // BUILD
         var karcis = _factory.Load(request);
         karcis.AddKomponen(komponen, request.Nilai);
+        karcis.SetNilai();
         
         // WRITER
         _ = _writer.Save(karcis);
