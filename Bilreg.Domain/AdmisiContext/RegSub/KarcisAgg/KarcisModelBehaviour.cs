@@ -3,12 +3,13 @@ using Bilreg.Domain.AdmisiContext.LayananSub.LayananAgg;
 using Bilreg.Domain.BillContext.RekapCetakSub.RekapCetakAgg;
 using Bilreg.Domain.BillContext.TindakanSub.KomponenTarifAgg;
 using Bilreg.Domain.BillContext.TindakanSub.TarifAgg;
-using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Domain.AdmisiContext.RegSub.KarcisAgg;
 
 public partial class KarcisModel
 {
+    public void SetName(string name) => KarcisName = name;
+    public void SetNilai() => Nilai = ListKomponen.Sum(x => x.Nilai);
     public void SetInstalasiDk(InstalasiDkModel instalasiDk)
     {
         InstalasiDkId = instalasiDk.InstalasiDkId;
@@ -58,6 +59,11 @@ public partial class KarcisModel
     {
         ListKomponen.Clear();
         ListKomponen.AddRange(listKomponen);
-        
+    }
+
+    public void SyncId()
+    {
+        ListKomponen.ForEach(x => x.SetKarcisId(KarcisId));
+        ListLayanan.ForEach(x => x.SetKarcisId(KarcisId));
     }
 }
