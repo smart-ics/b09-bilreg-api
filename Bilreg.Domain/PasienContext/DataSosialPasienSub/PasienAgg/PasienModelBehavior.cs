@@ -1,5 +1,4 @@
 ﻿using Bilreg.Domain.PasienContext.DemografiSub.KelurahanAgg;
-using CommunityToolkit.Diagnostics;
 
 namespace Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
 
@@ -83,5 +82,13 @@ public partial class PasienModel
         KeluargaAlamat2 = alamat2;
         KeluargaKota = kota;
         KeluargaKodePos = kodePos;
+    }
+
+    public string GetNoMedrec()
+    {
+        if (PasienId.Length < 15)
+            return string.Empty;
+        var lastEight = PasienId[^8..];
+        return $"{lastEight[..2]}-{lastEight.Substring(2, 2)}-{lastEight.Substring(4, 2)}-{lastEight.Substring(6, 2)}";
     }
 }
