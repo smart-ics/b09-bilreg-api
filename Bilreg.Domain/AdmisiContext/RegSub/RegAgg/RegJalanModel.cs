@@ -2,7 +2,7 @@
 
 namespace Bilreg.Domain.AdmisiContext.RegSub.RegAgg;
 
-public class RegJalanModel : AbstractRegModel
+public partial class RegJalanModel : AbstractRegModel
 {
     public RegJalanModel(string regId, PasienModel pasien)
     {
@@ -13,6 +13,7 @@ public class RegJalanModel : AbstractRegModel
         NoMedRec = pasien.GetNoMedrec();
         TglLahir = pasien.TglLahir;
         Gender = pasien.Gender;
+        ListLayanan = new List<RegJalanLayananModel>();
     }
 
     public string KarcisId { get; protected set; } = string.Empty;

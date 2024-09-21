@@ -4,40 +4,71 @@ using Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
 
 namespace Bilreg.Domain.AdmisiContext.RegSub.RegAgg;
 
-public abstract partial class AbstractRegModel
+public class RegBuilder : AbstractRegModel
 {
-    public void SetRegDate(DateTime dateTime) => RegDate = dateTime;
+    public RegBuilder Create(string regId, string userId)
+    {
+        RegId = regId;
+        UserId = userId;
+        return this;
+    }
+    
+    public RegBuilder SetRegDate(DateTime dateTime)
+    {
+        RegDate = dateTime;
+        return this;
+    }
 
-    public void SetRegOut(DateTime dateTime) => RegOutDate = dateTime;
+    public RegBuilder Discharge(DateTime regOutDate, string userId)
+    {
+        RegOutDate = regOutDate;
+        UserIdOut = userId;
+        return this;
+    }
 
-    public void Void() => VoidDate = DateTime.Now;
-    public void CancelVoid() => VoidDate = new DateTime(3000, 1, 1);
+    public RegBuilder Void(string userId)
+    {
+        VoidDate = DateTime.Now;
+        UserIdVoid = userId;
+        return this;
+    }
 
-    public void SetPasien(PasienModel pasien)
+    public RegBuilder CancelVoid()
+    {
+        VoidDate = new DateTime(3000, 1, 1);
+        UserIdVoid = string.Empty;
+        return this;
+    }
+
+    public RegBuilder WithPasien(PasienModel pasien)
     {
         PasienId = pasien.PasienId;
         NoMedRec = pasien.GetNoMedrec();
         PasienName = pasien.PasienName;
         TglLahir = pasien.TglLahir;
         Gender = pasien.Gender;
+        return this;
     }
-
-    public void UsingInsurance(TipeJaminanModel tipeJaminan)
+    
+    public RegBuilder UsingAsuransi(TipeJaminanModel tipeJaminan)
     {
         TipeJaminanId = tipeJaminan.TipeJaminanId;
         TipeJaminanName = tipeJaminan.TipeJaminanName;
         JaminanId = tipeJaminan.JaminanId;
         JaminanName = tipeJaminan.JaminanName;
+        return this;
     }
 
-    public void BayarSendiri()
+    public RegBuilder UsingBayarSendiri()
     {
-        TipeJaminanId = "00000";
-        TipeJaminanName = "UMUM [BAYAR SENDIRI]";
-        
+        TipeJaminanId = TIPEJAMINAN_UMUM_ID;
+        TipeJaminanName = TIPEJAMINAN_UMUM_NAME;
+        JaminanId = JAMINAN_UMUM_ID;
+        JaminanName = JAMINAN_UMUM_NAME;
+        return this;
     }
-    
-    public void Rujukan(RujukanModel rujukan, string rujukanReffNo, DateTime rujukanDate)
+
+    public RegBuilder AsPasienRujukan(RujukanModel rujukan, string rujukanReffNo, DateTime rujukanDate)
     {
         CaraMasukDkId = rujukan.CaraMasukDkId;
         CaraMasukDkName = rujukan.CaraMasukDkName;
@@ -45,15 +76,17 @@ public abstract partial class AbstractRegModel
         RujukanName = rujukan.RujukanName;
         RujukanReffNo = rujukanReffNo;
         RujukanDate = rujukanDate;
+        return this;
     }
 
-    public void DatangSendiri()
+    public RegBuilder  AsPasienDatangSendiri()
     {
-        CaraMasukDkId = "8";
-        CaraMasukDkName = "DATANG SENDIRI";
+        CaraMasukDkId = CARAMASUK_DATANGSENDIRI_ID;
+        CaraMasukDkName = CARAMASUK_DATANGSENDIRI_NAME;
         RujukanId = string.Empty;
         RujukanName = string.Empty;
         RujukanReffNo = string.Empty;
         RujukanDate = new DateTime(3000,1,1);
+        return this;
     }
 }
