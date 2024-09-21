@@ -29,12 +29,40 @@ public class PasienFindDuplicatedHandler : IRequestHandler<PasienFindFastDuplica
         var pasien = _pasienDal.GetData(request)
             ?? throw new KeyNotFoundException($"Pasien id :{request.PasienId} not found");
         
-        var result = _pasienDal.ListData(pasien.TglLahir)
+        var listPasien = _pasienDal.ListData(pasien.TglLahir)?.ToList()
             ?? throw new KeyNotFoundException($"Data Pasien not Found");
+        
+        var resultJw = FindSimiliarity(listPasien, pasien.PasienName);
+        var resultEjaan = FindEjaanLamaBaru(listPasien, pasien.PasienName);
+
+        var result = resultJw.Union(resultEjaan);
         
         var response = result.Select(BuildPasienResponse);
         return Task.FromResult(response);
     }
+
+    private static IEnumerable<PasienModel> FindEjaanLamaBaru(
+        IEnumerable<PasienModel> listPasien, string pasienPasienName)
+    {
+        throw new NotImplementedException();
+    }
+
+    private static IEnumerable<PasienModel> FindSimiliarity(
+        IEnumerable<PasienModel> listPasien, string name)
+    {
+        //  hitung nilai Jaro Winkler Value
+        var listPasienJwValue = listPasien.Select(x => new
+        {
+            Pasien = x,
+            JaroWinklerValue = x.PasienName.Similiarity(name)
+        });
+        //  filter yang lebih dari 0.75
+        var result = listPasienJwValue
+            .Where(x => x.JaroWinklerValue >= 0.75)
+            .Select(x => x.Pasien);
+        return result;
+    }
+
     private PasienFindFastDuplicatedResponse BuildPasienResponse(PasienModel pasien)
     {
         // Return respon sementara
