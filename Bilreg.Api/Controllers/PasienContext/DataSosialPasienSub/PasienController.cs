@@ -55,4 +55,31 @@ public class PasienController : Controller
         await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));
     }
+    
+    [HttpGet]
+    [Route("ByTglMedRec/{tglMedRec}")]
+    public async Task<IActionResult> ListDataBytglMedRec(string tglMedRec)
+    {
+        var query = new PasienListQuery(tglMedRec);
+        var response = await _mediator.Send(query);
+        return Ok(new JSendOk(response));
+    }
+    
+    [HttpGet]
+    [Route("FindFastDataDuplicated/{id}")]
+    public async Task<IActionResult> FindFastDataDuplicated(string id)
+    {
+        var query = new PasienFindFastDuplicated(id);
+        var response = await _mediator.Send(query);
+        return Ok(new JSendOk(response));
+    }
+    
+    [HttpGet]
+    [Route("FindThoroughDataDuplicated/{id}")]
+    public async Task<IActionResult> FindThoroughDataDuplicated(string id)
+    {
+        var query = new PasienFindThoroughDuplicated(id);
+        var response = await _mediator.Send(query);
+        return Ok(new JSendOk(response));
+    }
 }
