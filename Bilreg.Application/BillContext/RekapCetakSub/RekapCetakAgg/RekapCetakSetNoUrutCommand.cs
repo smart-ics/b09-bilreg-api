@@ -28,13 +28,30 @@ public class RekapCetakSetNoUrutHandler : IRequestHandler<RekapCetakSetNoUrutCom
         Guard.IsNotNullOrWhiteSpace(request.RekapCetakId);
         
         // BUILD
-        var rekapCetak = _rekapCetakDal.GetData(request)
-            ?? throw new KeyNotFoundException($"rekap cetak {request.RekapCetakId} not found");
+        var rekapCetakList = _rekapCetakDal.ListData()
+            ?? throw new KeyNotFoundException("Rekap Cetak not found");
+
+        var list = rekapCetakList.ToList().OrderBy(x => x.NoUrut).ToList();
+        var rekapCetak = list.First(x => x.RekapCetakId == request.RekapCetakId);
+        var noUrutAwal = rekapCetak.NoUrut;
         
         rekapCetak.SetNoUrut(request.NoUrut);
         
+        var isAscending = noUrutAwal > request.NoUrut;
+        var startIndex = request.NoUrut - 1;
+        var endIndex = noUrutAwal - 1;
+        var step = isAscending ? 1 : -1;
+
+        for (var i = startIndex; i != endIndex; i += step)
+        {
+            var index = (i + list.Count) % list.Count;
+
+            var newNoUrut = list[index].NoUrut + (isAscending ? 1 : -1);
+            list[index].SetNoUrut(newNoUrut);
+        }
+        
         // WRITE
-        _writer.Save(rekapCetak);
+       list.ForEach(x => _writer.Save(x));
         return Task.CompletedTask;
 
     }
