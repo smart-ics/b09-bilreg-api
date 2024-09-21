@@ -267,6 +267,18 @@ public class PasienDal : IPasienDal
                 LEFT JOIN ta_kecamatan hh ON gg.fs_kd_kecamatan = hh.fs_kd_kecamatan
                 LEFT JOIN ta_kabupaten ii ON hh.fs_kd_kabupaten = ii.fs_kd_kabupaten
                 LEFT JOIN ta_propinsi jj ON ii.fs_kd_propinsi = jj.fs_kd_propinsi ";
+
+    public IEnumerable<PasienModel> ListData(string filter)
+    {
+        var sql = $@"{SelectFromClause()} 
+            WHERE aa.fs_nm_pasien = @fs_nm_pasien ";
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@fs_nm_pasien", filter, SqlDbType.VarChar);
+
+        var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<PasienDto>(sql, dp);
+    }
 }
 
 public class PasienDalTest

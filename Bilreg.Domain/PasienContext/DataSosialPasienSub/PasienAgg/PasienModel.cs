@@ -43,7 +43,7 @@ public partial class PasienModel(string pasienId, string pasienName)
     public string Email { get; protected set; }
     public string NoTelp { get; protected set; }
     public string NoHp { get; protected set; }
-
+    
     public string KeluargaName { get; protected set; }
     public string KeluargaRelasi { get; protected set; }
     public string KeluargaNoTelp { get; protected set; }
@@ -51,4 +51,8 @@ public partial class PasienModel(string pasienId, string pasienName)
     public string KeluargaAlamat2 { get; protected set; }
     public string KeluargaKota { get; protected set; }
     public string KeluargaKodePos { get; protected set; }
+    
+    public string NoMedrecInduk { get; protected set;}
+    public string IsAktif { get; protected set;}
+    
 }
