@@ -64,4 +64,22 @@ public class PasienController : Controller
         var response = await _mediator.Send(query);
         return Ok(new JSendOk(response));
     }
+    
+    [HttpGet]
+    [Route("FindFastDataDuplicated/{id}")]
+    public async Task<IActionResult> FindFastDataDuplicated(string id)
+    {
+        var query = new PasienFindFastDuplicated(id);
+        var response = await _mediator.Send(query);
+        return Ok(new JSendOk(response));
+    }
+    
+    [HttpGet]
+    [Route("FindThoroughDataDuplicated/{id}")]
+    public async Task<IActionResult> FindThoroughDataDuplicated(string id)
+    {
+        var query = new PasienFindThoroughDuplicated(id);
+        var response = await _mediator.Send(query);
+        return Ok(new JSendOk(response));
+    }
 }
