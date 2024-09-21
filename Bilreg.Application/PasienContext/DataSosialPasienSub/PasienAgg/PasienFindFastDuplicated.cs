@@ -24,7 +24,7 @@ public class PasienFindDuplicatedHandler : IRequestHandler<PasienFindFastDuplica
 
     }
     
-    public Task<IEnumerable<PasienFindFastDuplicatedResponse>> Handle(PasienFindFastDuplicated request, CancellationToken cancellationToken)
+    public async Task<IEnumerable<PasienFindFastDuplicatedResponse>> Handle(PasienFindFastDuplicated request, CancellationToken cancellationToken)
     {
         var pasien = _pasienDal.GetData(request)
             ?? throw new KeyNotFoundException($"Pasien id :{request.PasienId} not found");
@@ -38,13 +38,33 @@ public class PasienFindDuplicatedHandler : IRequestHandler<PasienFindFastDuplica
         var result = resultJw.Union(resultEjaan);
         
         var response = result.Select(BuildPasienResponse);
-        return Task.FromResult(response);
+        return await Task.FromResult(response);
     }
 
     private static IEnumerable<PasienModel> FindEjaanLamaBaru(
         IEnumerable<PasienModel> listPasien, string pasienPasienName)
     {
-        throw new NotImplementedException();
+        var spellingVariations = new Dictionary<string, string>
+        {
+            { "Dj", "J"}, 
+            { "Tj", "C"}, 
+            { "Sj", "Sy"},
+            { "Oe", "U"},
+            { "Dh", "D"},
+            { "J" , "Y"}
+        };
+        var possibleNameVariants = new List<string> { pasienPasienName };
+        possibleNameVariants.AddRange(
+            from entry in spellingVariations 
+            where pasienPasienName.Contains(entry.Key) 
+            select pasienPasienName.Replace(entry.Key, entry.Value));
+
+        var result = listPasien.Where(pasien =>
+            possibleNameVariants.Any(
+                variant => pasien.PasienName.Equals(variant, StringComparison.OrdinalIgnoreCase
+                )));
+        return result;
+        
     }
 
     private static IEnumerable<PasienModel> FindSimiliarity(
