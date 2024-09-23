@@ -96,4 +96,10 @@ public partial class PasienModel(string PasienId, string PasienName)
     public string KeluargaKota { get; protected set; } = string.Empty;
     [JsonInclude]
     public string KeluargaKodePos { get; protected set; } = string.Empty;
+    
+    [JsonInclude]
+    public string NoMedrecInduk { get; protected set;}
+    [JsonInclude]
+    public string IsAktif { get; protected set;}
+    
 }

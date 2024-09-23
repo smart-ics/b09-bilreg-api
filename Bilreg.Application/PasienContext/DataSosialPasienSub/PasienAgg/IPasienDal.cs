@@ -10,6 +10,7 @@ public interface IPasienDal :
     IDelete<PasienModel>,
     IGetData<PasienModel, IPasienKey>,
     IListData<PasienModel, DateTime>,
-    IListData<PasienModel, Periode>
+    IListData<PasienModel, Periode>,
+    IListData<PasienModel,string>
 {
 }
