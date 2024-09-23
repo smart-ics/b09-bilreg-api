@@ -17,7 +17,6 @@ public abstract class AbstractRegModel
     public string UserId { get; protected set; } = string.Empty;
     public DateTime RegOutDate { get; protected set; } = DefaultDate;
     public string UserIdOut { get; protected set; } = string.Empty;
-    
     public DateTime VoidDate { get; protected set; } = DefaultDate;
     public string UserIdVoid { get; protected set; } = string.Empty;
     
