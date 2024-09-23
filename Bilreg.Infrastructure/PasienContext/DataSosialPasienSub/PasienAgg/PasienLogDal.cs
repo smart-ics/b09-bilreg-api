@@ -52,7 +52,7 @@ public class PasienLogDalTest
     public void Insert_Test()
     {
         using var trans = TransHelper.NewScope();
-        var expected = new PasienLogModel("A", DateTime.Now, "C", "D");
+        var expected = new PasienLogModel("A", "B", "C");
         _sut.Insert(expected);
     }
 }

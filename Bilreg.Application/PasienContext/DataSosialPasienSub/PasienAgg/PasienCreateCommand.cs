@@ -18,7 +18,8 @@ public record PasienCreateCommand(
     string NickName,
     string Gender,
     string IbuKandung,
-    string GolDarah) : IRequest<PasienCreateResponse>;
+    string GolDarah,
+    string UserId) : IRequest<PasienCreateResponse>;
 
 public record PasienCreateResponse(string PasienId);
 
@@ -27,21 +28,25 @@ public class PasienCreateHandler : IRequestHandler<PasienCreateCommand, PasienCr
     private readonly IParamSistemDal _paramSistemDal;
     private readonly INunaCounterBL _counter;
     private readonly IPasienWriter _writer;
+    private readonly IPasienLogWriter _logWriter;
     private readonly ITglJamProvider _dateTime;
 
     private const string KODE_RS_PARAM_KEY = "RS__XXXXXX_KODE";
     private const string NO_MR_PARAM_KEY = "NOMR";
     private const string FORMAT_TGL_YMD = "yyyy-MM-dd";
     private const string GENDER_LIST = "LPWMF10";
+    private const string ACTIVITY_NAME = "PasienCreate";
 
     public PasienCreateHandler(IParamSistemDal paramSistemDal, 
         INunaCounterBL counter, 
-        IPasienWriter writer, 
+        IPasienWriter writer,
+        IPasienLogWriter logWriter,
         ITglJamProvider dateTime)
     {
         _paramSistemDal = paramSistemDal;
         _counter = counter;
         _writer = writer;
+        _logWriter = logWriter;
         _dateTime = dateTime;
     }
 
@@ -67,8 +72,14 @@ public class PasienCreateHandler : IRequestHandler<PasienCreateCommand, PasienCr
         pasien.SetTglMedrec(_dateTime.Now);
         pasien.RemoveNull();
         
+        var changes = PropertyChangeHelper.GetChanges(new PasienModel(), pasien);
+        var pasienLog = new PasienLogModel(pasienId, ACTIVITY_NAME, request.UserId);
+        pasienLog.SetChangeLog(changes);
+        
         //  WRITE
         var pasienResult = _writer.Save(pasien);
+        _ = _logWriter.Save(pasienLog);
+        
         var result = new PasienCreateResponse(pasienResult.PasienId);
         return Task.FromResult(result);
     }
