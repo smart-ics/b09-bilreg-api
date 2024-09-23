@@ -1,4 +1,4 @@
-﻿using Bilreg.Application.AdmisiContext.PetugasMedisSub.PetugasMedisAgg;
+using Bilreg.Application.AdmisiContext.PetugasMedisSub.PetugasMedisAgg;
 using Bilreg.Domain.AdmisiContext.RegSub.KarcisAgg;
 
 namespace Bilreg.Application.AdmisiContext.RegSub.KarcisAgg;
