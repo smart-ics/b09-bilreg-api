@@ -33,24 +33,8 @@ public class RekapCetakSetNoUrutHandler : IRequestHandler<RekapCetakSetNoUrutCom
             ?? throw new KeyNotFoundException("Rekap Cetak not found");
 
         var list = rekapCetakList.ToList().OrderBy(x => x.NoUrut).ToList();
-        var result = ReOrderAdinath(list, request.RekapCetakId, request.NoUrut);
+        var result = ReOrderJude(list, request.RekapCetakId, request.NoUrut);
 
-        // var rekapCetak = list.First(x => x.RekapCetakId == request.RekapCetakId);
-        // var noUrutAwal = rekapCetak.NoUrut;
-        //
-        // rekapCetak.SetNoUrut(request.NoUrut);
-        // var isAscending = noUrutAwal > request.NoUrut;
-        // var startIndex = request.NoUrut - 1;
-        // var endIndex = noUrutAwal - 1;
-        // var step = isAscending ? 1 : -1;
-        //
-        // for (var i = startIndex; i != endIndex; i += step)
-        // {
-        //     var index = (i + list.Count) % list.Count;
-        //
-        //     var newNoUrut = list[index].NoUrut + (isAscending ? 1 : -1);
-        //     list[index].SetNoUrut(newNoUrut);
-        // }
         
         // WRITE
        list.ForEach(x => _writer.Save(x));
