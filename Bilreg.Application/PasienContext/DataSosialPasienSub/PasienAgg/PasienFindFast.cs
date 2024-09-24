@@ -54,21 +54,37 @@ public class PasienFindFastHandler : IRequestHandler<PasienFindFast, IEnumerable
             { "Sj", "Sy"},
             { "Oe", "U"},
             { "Dh", "D"},
-            { "J" , "Y"}
+            { "J", "Y" }
         };
-        var possibleNameVariants = new List<string> { pasienPasienName };
-        possibleNameVariants.AddRange(
-            from entry in spellingVariations 
-            where pasienPasienName.Contains(entry.Key) 
-            select pasienPasienName.Replace(entry.Key, entry.Value));
+
+        var possibleNameVariants = spellingVariations.Aggregate(
+            new List<string> { pasienPasienName },
+            (variants, entry) => variants.Concat(
+                variants.Where(name => name.Contains(entry.Key, StringComparison.OrdinalIgnoreCase))
+                    .Select(name => name.Replace(entry.Key, entry.Value, StringComparison.OrdinalIgnoreCase))
+            ).ToList()
+        );
 
         var result = listPasien.Where(pasien =>
-            possibleNameVariants.Any(
-                variant => pasien.PasienName.Equals(variant, StringComparison.OrdinalIgnoreCase
-                )));
+        {
+            var pasienVariants = spellingVariations.Aggregate(
+                new List<string> { pasien.PasienName },
+                (variants, entry) => variants.Concat(
+                    variants.Where(name => name.Contains(entry.Key, StringComparison.OrdinalIgnoreCase))
+                        .Select(name => name.Replace(entry.Key, entry.Value, StringComparison.OrdinalIgnoreCase))
+                ).ToList()
+            );
+
+            return possibleNameVariants.Any(variant =>
+                pasienVariants.Any(pasienVariant =>
+                    pasienVariant.Equals(variant, StringComparison.OrdinalIgnoreCase)
+                )
+            );
+        });
+
         return result;
-        
     }
+
 
     private static IEnumerable<PasienModel> FindSimiliarity(
         IEnumerable<PasienModel> listPasien, string name)
