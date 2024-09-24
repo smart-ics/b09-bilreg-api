@@ -210,7 +210,7 @@ public class PasienFindFastTest
         
         //  ASSERT
         response.Should().ContainEquivalentOf(faker1);
-        response.Should().ContainEquivalentOf(faker1A);
+        response.Should().ContainEquivalentOf(faker1B);
     }    
 
     [Fact]
