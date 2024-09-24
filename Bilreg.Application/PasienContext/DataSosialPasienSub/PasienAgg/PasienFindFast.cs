@@ -45,37 +45,37 @@ public class PasienFindFastHandler : IRequestHandler<PasienFindFast, IEnumerable
     }
 
     private static IEnumerable<PasienModel> FindEjaanLamaBaru(
-        IEnumerable<PasienModel> listPasien, string pasienPasienName)
+        List<PasienModel> listPasien, string basedName)
     {
         var spellingVariations = new Dictionary<string, string>
         {
-            { "Dj", "J"}, 
-            { "Tj", "C"}, 
-            { "Sj", "Sy"},
-            { "Oe", "U"},
-            { "Dh", "D"},
-            { "J", "Y" }
+            { "dj", "j" },
+            { "tj", "c" },
+            { "sj", "sy" },
+            { "oe", "u" },
+            { "dh", "d" },
+            { "j", "y" }
         };
 
-        var possibleNameVariants = spellingVariations.Aggregate(
-            new List<string> { pasienPasienName },
-            (variants, entry) => variants.Concat(
-                variants.Where(name => name.Contains(entry.Key, StringComparison.OrdinalIgnoreCase))
+        var basedVariationNames = spellingVariations
+            .Aggregate(new List<string> { basedName }, (variants, entry) => variants
+                .Concat(variants
+                    .Where(name => name.Contains(entry.Key, StringComparison.OrdinalIgnoreCase))
                     .Select(name => name.Replace(entry.Key, entry.Value, StringComparison.OrdinalIgnoreCase))
-            ).ToList()
-        );
-
+                ).ToList()
+            );
+        
         var result = listPasien.Where(pasien =>
         {
-            var pasienVariants = spellingVariations.Aggregate(
-                new List<string> { pasien.PasienName },
-                (variants, entry) => variants.Concat(
-                    variants.Where(name => name.Contains(entry.Key, StringComparison.OrdinalIgnoreCase))
+            var pasienVariants = spellingVariations
+                .Aggregate( new List<string> { pasien.PasienName }, (variants, entry) => variants
+                    .Concat(variants
+                        .Where(name => name.Contains(entry.Key, StringComparison.OrdinalIgnoreCase))
                         .Select(name => name.Replace(entry.Key, entry.Value, StringComparison.OrdinalIgnoreCase))
                 ).ToList()
             );
-
-            return possibleNameVariants.Any(variant =>
+        
+            return basedVariationNames.Any(variant =>
                 pasienVariants.Any(pasienVariant =>
                     pasienVariant.Equals(variant, StringComparison.OrdinalIgnoreCase)
                 )
@@ -192,6 +192,26 @@ public class PasienFindFastTest
         //  ASSERT
         response.First().PasienId.Should().Be("A");
     }
+    
+    [Fact]
+    public async Task GivenNamaSamaSebagian_ThenReturnThePasienWithEjaanBaru()
+    {
+        //  ARRANGE
+        var faker1 = new PasienModel("A", "Budi Subur Husnuloh");
+        var faker2 = new PasienModel("B", "Boedi Soeboer Hoesnoeloh");
+        var faker1A = new PasienModel("C", "Sunardinata");
+        var faker1B = new PasienModel("D", "Budi Subur");
+        _pasienDal.Setup(x => x.ListData(It.IsAny<DateTime>())).Returns(new List<PasienModel> {faker1, faker1A, faker1B});
+        _pasienDal.Setup(x => x.GetData(It.IsAny<IPasienKey>())).Returns(faker2);
+        var request = new PasienFindFast("A");
+        
+        //  ACT
+        var response = await _sut.Handle(request, CancellationToken.None);
+        
+        //  ASSERT
+        response.Should().ContainEquivalentOf(faker1);
+        response.Should().ContainEquivalentOf(faker1A);
+    }    
 
     [Fact]
     public async Task GivenSoekarno_ThenReturnSukarto_BecauseJaroWinkler_NotEjaan()
