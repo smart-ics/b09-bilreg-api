@@ -4,6 +4,7 @@ using Bilreg.Application.PasienContext.DataSosialPasienSub.PasienAgg;
 using Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
+using FluentAssertions;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
 using Nuna.Lib.TransactionHelper;
@@ -21,21 +22,54 @@ public class PasienLogDal: IPasienLogDal
         _opt = opt.Value;
     }
 
-    public void Insert(PasienLogModel model)
+    public void Insert(IEnumerable<PasienLogModel> listModel)
+    {
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        using var bcp = new SqlBulkCopy(conn);
+        
+        conn.Open();
+        bcp.AddMap("PasienId", "PasienId");
+        bcp.AddMap("LogDate", "LogDate");
+        bcp.AddMap("Activity", "Activity");
+        bcp.AddMap("UserId", "UserId");
+        bcp.AddMap("ChangeLog", "ChangeLog");
+
+        var fetched = listModel.ToList();
+        bcp.BatchSize = fetched.Count;
+        bcp.DestinationTableName = "BILREG_PasienLog";
+        bcp.WriteToServer(fetched.AsDataTable());
+    }
+
+    public void Delete(IPasienKey key)
     {
         const string sql = @"
-            INSERT INTO BILREG_PasienLog (PasienId, LogDate, Activity, UserId, ChangeLog)
-            VALUES (@PasienId, @LogDate, @Activity, @UserId, @ChangeLog)";
+            DELETE FROM 
+                BILREG_PasienLog
+            WHERE
+                PasienId = @PasienId";
 
         var dp = new DynamicParameters();
-        dp.AddParam("@PasienId", model.PasienId, SqlDbType.VarChar);
-        dp.AddParam("@LogDate", model.LogDate.ToString(DateFormatEnum.YMD_HMS), SqlDbType.VarChar);
-        dp.AddParam("@Activity", model.Activity, SqlDbType.VarChar);
-        dp.AddParam("@UserId", model.UserId, SqlDbType.VarChar);
-        dp.AddParam("@ChangeLog", model.ChangeLog, SqlDbType.VarChar);
+        dp.AddParam("@PasienId", key.PasienId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
+    }
+
+    public IEnumerable<PasienLogModel> ListData(IPasienKey filter)
+    {
+        const string sql = @"
+            SELECT
+                PasienId, LogDate, Activity, UserId, ChangeLog
+            FROM
+                BILREG_PasienLog
+            WHERE
+                PasienId = @PasienId";
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@PasienId", filter.PasienId, SqlDbType.VarChar);
+        
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<PasienLogDto>(sql, dp);
     }
 }
 
@@ -47,12 +81,30 @@ public class PasienLogDalTest
     {
         _sut = new PasienLogDal(ConnStringHelper.GetTestEnv());
     }
-
+    
     [Fact]
     public void Insert_Test()
     {
         using var trans = TransHelper.NewScope();
         var expected = new PasienLogModel("A", "B", "C");
-        _sut.Insert(expected);
+        _sut.Insert(new List<PasienLogModel>() {expected});
+    }
+    
+    [Fact]
+    public void DeleteTest()
+    {
+        using var trans = TransHelper.NewScope();
+        var expected = new PasienLogModel("A", "B", "C");
+        _sut.Delete(expected);
+    }
+
+    [Fact]
+    public void ListData_Test()
+    {
+        using var trans = TransHelper.NewScope();
+        var expected = new PasienLogModel("A", "B", "C");
+        _sut.Insert(new List<PasienLogModel>(){expected});
+        var actual = _sut.ListData(expected);
+        actual.Should().ContainEquivalentOf(expected);
     }
 }

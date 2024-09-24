@@ -1,7 +1,15 @@
+using System.Text.Json;
+
 namespace Bilreg.Application.Helpers;
 
 internal static class PropertyChangeHelper
 {
+    public static TResult? CloneObject<TIn, TResult>(TIn source)
+    {
+        var json = JsonSerializer.Serialize(source);
+        return JsonSerializer.Deserialize<TResult>(json);
+    }
+    
     public static List<ChangeLog>? GetChanges<T>(T oldEntry, T newEntry)
     {
         List<ChangeLog> logs = [];

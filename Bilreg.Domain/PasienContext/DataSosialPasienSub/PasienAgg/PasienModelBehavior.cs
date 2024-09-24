@@ -84,4 +84,18 @@ public partial class PasienModel
         KeluargaKota = kota;
         KeluargaKodePos = kodePos;
     }
+
+    public void Attach(IEnumerable<PasienLogModel> listLog)
+    {
+        ListLog.Clear();
+        ListLog.AddRange(listLog);
+    }
+
+    public void Add(PasienLogModel log)
+    {
+        if (log.ChangeLog != string.Empty)
+            ListLog.Add(log);
+    }
+
+    public void SyncId() => ListLog.ForEach(x => x.SetPasienId(PasienId));
 }

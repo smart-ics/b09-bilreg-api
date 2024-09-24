@@ -1,3 +1,4 @@
+using Bilreg.Application.AdmisiContext.PetugasMedisSub.PetugasMedisAgg;
 using Bilreg.Application.Helpers;
 using Bilreg.Application.PasienContext.DemografiSub.KelurahanAgg;
 using Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
@@ -24,19 +25,17 @@ public record PasienSetAlamatCommand(
 
 public class PasienSetAlamatHandler : IRequestHandler<PasienSetAlamatCommand>
 {
-    private readonly IPasienDal _pasienDal;
+    private readonly IFactoryLoad<PasienModel, IPasienKey> _factory;
     private readonly IPasienWriter _writer;
-    private readonly IPasienLogWriter _logWriter;
     private readonly IKelurahanDal _kelurahanDal;
     
     private const string ACTIVITY_NAME = "PasienSetAlamat";
 
-    public PasienSetAlamatHandler(IPasienDal pasienDal,IKelurahanDal kelurahanDal, IPasienWriter writer, IPasienLogWriter logWriter)
+    public PasienSetAlamatHandler(IFactoryLoad<PasienModel, IPasienKey> factory,IKelurahanDal kelurahanDal, IPasienWriter writer)
     {
-        _pasienDal = pasienDal;
+        _factory = factory;
         _kelurahanDal = kelurahanDal;
         _writer = writer;
-        _logWriter = logWriter;
     }
 
     public Task Handle(PasienSetAlamatCommand request, CancellationToken cancellationToken)
@@ -50,14 +49,12 @@ public class PasienSetAlamatHandler : IRequestHandler<PasienSetAlamatCommand>
         Guard.IsNotEmpty(request.Kota);
         Guard.IsNotEmpty(request.KodePos);
         Guard.IsNotEmpty(request.KelurahanId);
-        
-        // BUILD
-        var pasien = _pasienDal.GetData(request)
-            ?? throw new KeyNotFoundException($"Pasien id {request.PasienId} not found");
         var kelurahan = _kelurahanDal.GetData(request)
             ?? throw new KeyNotFoundException($"Kelurahan id {request.KelurahanId} not found");
         
-        var originalPasienData = pasien.CloneObject();
+        // BUILD
+        var pasien = _factory.Load(request);
+        var originalPasienData = PropertyChangeHelper.CloneObject<PasienModel, PasienModelSerializable>(pasien);
         pasien.SetAddress(
             request.Alamat1,
             request.Alamat2,
@@ -70,29 +67,27 @@ public class PasienSetAlamatHandler : IRequestHandler<PasienSetAlamatCommand>
         var changes = PropertyChangeHelper.GetChanges(originalPasienData, pasien);
         var pasienLog = new PasienLogModel(request.PasienId, ACTIVITY_NAME, request.UserId);
         pasienLog.SetChangeLog(changes);
+        pasien.Add(pasienLog);
         
         // WRITE
         _ = _writer.Save(pasien);
-        _ = _logWriter.Save(pasienLog);
         return Task.CompletedTask;
     }
 }
 
 public class PasienSetAlamatCommandTest
 {
-    private readonly Mock<IPasienDal> _pasienDal;
+    private readonly Mock<IFactoryLoad<PasienModel, IPasienKey>> _factory;
     private readonly Mock<IKelurahanDal> _kelurahanDal;
     private readonly Mock<IPasienWriter> _writer;
-    private readonly Mock<IPasienLogWriter> _logWriter;
     private readonly PasienSetAlamatHandler _sut;
         
     public PasienSetAlamatCommandTest()
     {
-        _pasienDal = new Mock<IPasienDal>();
+        _factory = new Mock<IFactoryLoad<PasienModel, IPasienKey>>();
         _kelurahanDal = new Mock<IKelurahanDal>();
         _writer = new Mock<IPasienWriter>();
-        _logWriter = new Mock<IPasienLogWriter>();
-        _sut = new PasienSetAlamatHandler(_pasienDal.Object, _kelurahanDal.Object, _writer.Object, _logWriter.Object);
+        _sut = new PasienSetAlamatHandler(_factory.Object, _kelurahanDal.Object, _writer.Object);
     }
 
     [Fact]

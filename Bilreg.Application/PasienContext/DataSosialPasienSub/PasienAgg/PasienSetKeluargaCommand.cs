@@ -1,3 +1,5 @@
+using System.Text.Json;
+using Bilreg.Application.AdmisiContext.PetugasMedisSub.PetugasMedisAgg;
 using Bilreg.Application.Helpers;
 using Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
 using CommunityToolkit.Diagnostics;
@@ -23,17 +25,15 @@ public record PasienSetKeluargaCommand(
 
 public class PasienSetKeluargaHandler : IRequestHandler<PasienSetKeluargaCommand>
 {
-    private readonly IPasienDal _pasienDal;
+    private readonly IFactoryLoad<PasienModel, IPasienKey> _factory;
     private readonly IPasienWriter _writer;
-    private readonly IPasienLogWriter _logWriter;
     
     private const string ACTIVITY_NAME = "PasienSetKeluarga";
 
-    public PasienSetKeluargaHandler(IPasienDal pasienDal, IPasienWriter writer, IPasienLogWriter logWriter)
+    public PasienSetKeluargaHandler(IFactoryLoad<PasienModel, IPasienKey> factory, IPasienWriter writer)
     {
-        _pasienDal = pasienDal;
+        _factory = factory;
         _writer = writer;
-        _logWriter = logWriter;
     }
 
     public Task Handle(PasienSetKeluargaCommand request, CancellationToken cancellationToken)
@@ -49,37 +49,33 @@ public class PasienSetKeluargaHandler : IRequestHandler<PasienSetKeluargaCommand
         Guard.IsNotWhiteSpace(request.KeluargaKodePos);
 
         // BUILD
-        var pasien = _pasienDal.GetData(request)
-            ?? throw new KeyNotFoundException($"Pasien with id: {request.PasienId} not found");
-       
-        var originalPasienData = pasien.CloneObject();
+        var pasien = _factory.Load(request);
+        var originalPasienData = PropertyChangeHelper.CloneObject<PasienModel, PasienModelSerializable>(pasien); 
         pasien.SetKeluarga(request.KeluargaName, request.KeluargaRelasi, request.KeluargaNoTelp,
             request.KeluargaAlamat1, request.KeluargaAlamat2, request.KeluargaKota, request.KeluargaKodePos);
 
         var changes = PropertyChangeHelper.GetChanges(originalPasienData, pasien);
         var pasienLog = new PasienLogModel(request.PasienId, ACTIVITY_NAME, request.UserId);
         pasienLog.SetChangeLog(changes);
+        pasien.Add(pasienLog);
         
         // WRITE
         _ = _writer.Save(pasien);
-        _ = _logWriter.Save(pasienLog);
         return Task.CompletedTask;
     }
 }
 
 public class PasienSetKeluargaHandlerTest
 {
-    private readonly Mock<IPasienDal> _pasienDal;
+    private readonly Mock<IFactoryLoad<PasienModel, IPasienKey>> _factory;
     private readonly Mock<IPasienWriter> _writer;
-    private readonly Mock<IPasienLogWriter> _logWriter;
     private readonly PasienSetKeluargaHandler _sut;
 
     public PasienSetKeluargaHandlerTest()
     {
-        _pasienDal = new Mock<IPasienDal>();
+        _factory = new Mock<IFactoryLoad<PasienModel, IPasienKey>>();
         _writer = new Mock<IPasienWriter>();
-        _logWriter = new Mock<IPasienLogWriter>();
-        _sut = new PasienSetKeluargaHandler(_pasienDal.Object, _writer.Object, _logWriter.Object);
+        _sut = new PasienSetKeluargaHandler(_factory.Object, _writer.Object);
     }
 
     [Fact]
@@ -150,8 +146,8 @@ public class PasienSetKeluargaHandlerTest
     public async Task GivenInvalidPasienId_ThenThrowKeyNotFoundException()
     {
         var request = new PasienSetKeluargaCommand("A", "B", "C", "D", "E", "F", "G", "H", "I");
-        _pasienDal.Setup(x => x.GetData(It.IsAny<IPasienKey>()))
-            .Returns(null as PasienModel);
+        _factory.Setup(x => x.Load(It.IsAny<IPasienKey>()))
+            .Throws<KeyNotFoundException>();
         var actual = async () => await _sut.Handle(request, CancellationToken.None);
         await actual.Should().ThrowAsync<KeyNotFoundException>();
     }

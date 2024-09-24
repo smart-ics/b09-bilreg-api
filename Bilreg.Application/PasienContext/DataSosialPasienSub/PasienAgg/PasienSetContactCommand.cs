@@ -1,4 +1,5 @@
-﻿using Bilreg.Application.Helpers;
+﻿using Bilreg.Application.AdmisiContext.PetugasMedisSub.PetugasMedisAgg;
+using Bilreg.Application.Helpers;
 using Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
 using CommunityToolkit.Diagnostics;
 using FluentAssertions;
@@ -23,17 +24,15 @@ public record PasienSetContactCommand(
 
 public class PasienSetContactHandler : IRequestHandler<PasienSetContactCommand>
 {
-    private readonly IPasienDal _pasienDal;
+    private readonly IFactoryLoad<PasienModel, IPasienKey> _factory;
     private readonly IPasienWriter _writer;
-    private readonly IPasienLogWriter _logWriter;
     
     private const string ACTIVITY_NAME = "PasienSetContact";
 
-    public PasienSetContactHandler(IPasienDal pasienDal, IPasienWriter writer, IPasienLogWriter logWriter)
+    public PasienSetContactHandler(IFactoryLoad<PasienModel, IPasienKey> factory, IPasienWriter writer)
     {
-        _pasienDal = pasienDal;
+        _factory = factory;
         _writer = writer;
-        _logWriter = logWriter;
     }
     
     public Task Handle(PasienSetContactCommand request, CancellationToken cancellationToken)
@@ -49,37 +48,33 @@ public class PasienSetContactHandler : IRequestHandler<PasienSetContactCommand>
         Guard.IsNotEmpty(request.NoHp);
         
         // BUILD
-        var pasien = _pasienDal.GetData(request)
-            ?? throw new KeyNotFoundException($"Pasien id {request.PasienId} not found");
-
-        var originalPasienData = pasien.CloneObject();
+        var pasien = _factory.Load(request);
+        var originalPasienData = PropertyChangeHelper.CloneObject<PasienModel, PasienModelSerializable>(pasien); 
         pasien.SetContact(request.Email, request.NoTelp, request.NoHp);
         pasien.SetIdentitas(request.JenisId, request.NomorId, request.NomorKk);
         
         var changes = PropertyChangeHelper.GetChanges(originalPasienData, pasien);
         var pasienLog = new PasienLogModel(request.PasienId, ACTIVITY_NAME, request.UserId);
         pasienLog.SetChangeLog(changes);
+        pasien.Add(pasienLog);
         
         // WRITE
         _ = _writer.Save(pasien);
-        _ = _logWriter.Save(pasienLog);
         return Task.CompletedTask;
     }
 }
 
 public class PasienSetContactHandlerTest
 {
-    private readonly Mock<IPasienDal> _pasienDal;
+    private readonly Mock<IFactoryLoad<PasienModel, IPasienKey>> _factory;
     private readonly Mock<IPasienWriter> _writer;
-    private readonly Mock<IPasienLogWriter> _logWriter;
     private readonly PasienSetContactHandler _sut;
     
     public PasienSetContactHandlerTest()
     {
-        _pasienDal = new Mock<IPasienDal>();
+        _factory = new Mock<IFactoryLoad<PasienModel, IPasienKey>>();
         _writer = new Mock<IPasienWriter>();
-        _logWriter = new Mock<IPasienLogWriter>();
-        _sut = new PasienSetContactHandler(_pasienDal.Object, _writer.Object, _logWriter.Object);
+        _sut = new PasienSetContactHandler(_factory.Object, _writer.Object);
     }
 
     [Fact]

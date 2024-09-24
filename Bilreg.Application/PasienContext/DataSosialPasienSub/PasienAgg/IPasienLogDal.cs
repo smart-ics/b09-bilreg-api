@@ -4,6 +4,8 @@ using Nuna.Lib.DataAccessHelper;
 namespace Bilreg.Application.PasienContext.DataSosialPasienSub.PasienAgg;
 
 public interface IPasienLogDal:
-    IInsert<PasienLogModel>
+    IInsertBulk<PasienLogModel>,
+    IDelete<IPasienKey>,
+    IListData<PasienLogModel, IPasienKey>
 {
 }

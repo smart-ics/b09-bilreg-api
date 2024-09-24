@@ -28,7 +28,6 @@ public class PasienCreateHandler : IRequestHandler<PasienCreateCommand, PasienCr
     private readonly IParamSistemDal _paramSistemDal;
     private readonly INunaCounterBL _counter;
     private readonly IPasienWriter _writer;
-    private readonly IPasienLogWriter _logWriter;
     private readonly ITglJamProvider _dateTime;
 
     private const string KODE_RS_PARAM_KEY = "RS__XXXXXX_KODE";
@@ -40,13 +39,11 @@ public class PasienCreateHandler : IRequestHandler<PasienCreateCommand, PasienCr
     public PasienCreateHandler(IParamSistemDal paramSistemDal, 
         INunaCounterBL counter, 
         IPasienWriter writer,
-        IPasienLogWriter logWriter,
         ITglJamProvider dateTime)
     {
         _paramSistemDal = paramSistemDal;
         _counter = counter;
         _writer = writer;
-        _logWriter = logWriter;
         _dateTime = dateTime;
     }
 
@@ -72,14 +69,13 @@ public class PasienCreateHandler : IRequestHandler<PasienCreateCommand, PasienCr
         pasien.SetTglMedrec(_dateTime.Now);
         pasien.RemoveNull();
         
-        var changes = PropertyChangeHelper.GetChanges(new PasienModel(), pasien);
+        var changes = PropertyChangeHelper.GetChanges(new PasienModelSerializable(), pasien);
         var pasienLog = new PasienLogModel(pasienId, ACTIVITY_NAME, request.UserId);
         pasienLog.SetChangeLog(changes);
+        pasien.Add(pasienLog);
         
         //  WRITE
         var pasienResult = _writer.Save(pasien);
-        _ = _logWriter.Save(pasienLog);
-        
         var result = new PasienCreateResponse(pasienResult.PasienId);
         return Task.FromResult(result);
     }
