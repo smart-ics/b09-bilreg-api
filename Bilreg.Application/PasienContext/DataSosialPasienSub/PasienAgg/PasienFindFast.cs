@@ -36,14 +36,16 @@ public class PasienFindFastHandler : IRequestHandler<PasienFindFast, IEnumerable
             ?? throw new KeyNotFoundException($"Data Pasien not Found");
         
         var resultJw = FindSimiliarity(listPasien, pasien.PasienName);
+        
         var variasiEjaan = GenerateVariasiEjaan(pasien.PasienName);
+        
         var distinctWords = variasiEjaan
             .SelectMany(x => x.Split(' ', StringSplitOptions.RemoveEmptyEntries))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
-        var resultEjaanReorder = FindByWords(listPasien, distinctWords, pasien.PasienName);
+        var resultEjaanByWords = FindByWords(listPasien, distinctWords, pasien.PasienName);
         
-        var result = resultJw.Union(resultEjaanReorder);
+        var result = resultJw.Union(resultEjaanByWords);
         
         var response = result.Select(BuildPasienResponse);
         return await Task.FromResult(response);
@@ -59,7 +61,10 @@ public class PasienFindFastHandler : IRequestHandler<PasienFindFast, IEnumerable
         {
             var pasienNameClean = RemovePunctuation(pasien.PasienName);
             var listWords = pasienNameClean.Split(' ');
-            var found = listWords.Count(wordPasien => wordsVariasiEjaan.Any(item => item.Equals(wordPasien, StringComparison.CurrentCultureIgnoreCase)));
+            var found = listWords
+                .Count(wordPasien => wordsVariasiEjaan
+                    .Any(item => item
+                        .Equals(wordPasien, StringComparison.CurrentCultureIgnoreCase)));
             if (found >= wordCountMin)
                 result.Add(pasien);
         }
