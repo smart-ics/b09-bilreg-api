@@ -28,11 +28,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Areas\BangsalController\Controllers\" />
-    <Folder Include="Areas\BangsalController\Data\" />
-    <Folder Include="Areas\BangsalController\Models\" />
-    <Folder Include="Areas\BangsalController\Views\" />
-    <Folder Include="BillContext\TindakanSub\GrupTarifDkAgg\" />
     <Folder Include="Controllers\AdmisiContext\PendaftaranSub\" />
     <Folder Include="Controllers\AdmisiContext\RegSub\" />
     <Folder Include="Controllers\BillContext\TransportSub\" />
