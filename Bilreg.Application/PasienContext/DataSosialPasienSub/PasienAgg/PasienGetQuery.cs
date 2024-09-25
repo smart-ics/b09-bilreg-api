@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Text.Json;
 using Bilreg.Application.AdmisiContext.PetugasMedisSub.PetugasMedisAgg;
 using Bilreg.Application.Helpers;
 using Bilreg.Application.PasienContext.ParamContext.ParamSistemAgg;
@@ -18,7 +19,13 @@ public record PasienLogGetResponse(
     string LogDate,
     string Activity,
     string UserId,
-    string ChangeLog
+    IEnumerable<PasienChangeLogResponse> ChangeLog
+);
+
+public record PasienChangeLogResponse(
+    string PropertyName,
+    string OldValue,
+    string NewValue
 );
 
 public record PasienGetResponse(
@@ -119,8 +126,11 @@ public class PasienGetHandler: IRequestHandler<PasienGetQuery, PasienGetResponse
 
     private PasienGetResponse BuildPasienResponse(PasienModel pasien)
     {
-        var listLog = pasien.ListLog.Select(x => 
-            new PasienLogGetResponse(x.LogDate, x.Activity, x.UserId, x.ChangeLog));
+        var listLog = pasien.ListLog.Select(x =>
+        {
+            var changeLogs = JsonSerializer.Deserialize<List<PasienChangeLogResponse>>(x.ChangeLog);
+            return new PasienLogGetResponse(x.LogDate, x.Activity, x.UserId, changeLogs ?? []);
+        });
         
         return new PasienGetResponse(
             pasien.PasienId,
