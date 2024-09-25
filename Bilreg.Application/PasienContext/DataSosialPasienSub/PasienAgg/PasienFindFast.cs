@@ -45,46 +45,72 @@ public class PasienFindFastHandler : IRequestHandler<PasienFindFast, IEnumerable
     }
 
     private static IEnumerable<PasienModel> FindEjaanLamaBaru(
-        List<PasienModel> listPasien, string basedName)
+    List<PasienModel> listPasien, string basedName)
+{
+    var spellingVariations = new Dictionary<string, string>
     {
-        var spellingVariations = new Dictionary<string, string>
-        {
-            { "dj", "j" },
-            { "tj", "c" },
-            { "sj", "sy" },
-            { "oe", "u" },
-            { "dh", "d" },
-            { "j", "y" }
-        };
+        { "dj", "j" },
+        { "tj", "c" },
+        { "sj", "sy" },
+        { "oe", "u" },
+        { "dh", "d" },
+        { "j", "y" }
+    };
 
-        var basedVariationNames = spellingVariations
-            .Aggregate(new List<string> { basedName }, (variants, entry) => variants
+    var basedVariationNames = spellingVariations
+        .Aggregate(new List<string> { basedName }, (variants, entry) => variants
+            .Concat(variants
+                .Where(name => name.Contains(entry.Key, StringComparison.OrdinalIgnoreCase))
+                .Select(name => name.Replace(entry.Key, entry.Value, StringComparison.OrdinalIgnoreCase))
+            ).ToList()
+        );
+
+    var basedVariationSubstrings = basedVariationNames
+        .SelectMany(GenerateSubstrings)
+        .Distinct()
+        .ToList();
+
+    var result = listPasien.Where(pasien =>
+    {
+        var pasienVariants = spellingVariations
+            .Aggregate(new List<string> { pasien.PasienName }, (variants, entry) => variants
                 .Concat(variants
                     .Where(name => name.Contains(entry.Key, StringComparison.OrdinalIgnoreCase))
                     .Select(name => name.Replace(entry.Key, entry.Value, StringComparison.OrdinalIgnoreCase))
                 ).ToList()
             );
-        
-        var result = listPasien.Where(pasien =>
-        {
-            var pasienVariants = spellingVariations
-                .Aggregate( new List<string> { pasien.PasienName }, (variants, entry) => variants
-                    .Concat(variants
-                        .Where(name => name.Contains(entry.Key, StringComparison.OrdinalIgnoreCase))
-                        .Select(name => name.Replace(entry.Key, entry.Value, StringComparison.OrdinalIgnoreCase))
-                ).ToList()
-            );
-        
-            return basedVariationNames.Any(variant =>
-                pasienVariants.Any(pasienVariant =>
-                    pasienVariant.Equals(variant, StringComparison.OrdinalIgnoreCase)
-                )
-            );
-        });
+        var pasienSubstrings = pasienVariants
+            .SelectMany(GenerateSubstrings)
+            .Distinct()
+            .ToList();
 
-        return result;
+        
+        return basedVariationSubstrings.Any(variant =>
+            pasienSubstrings.Any(pasienVariant =>
+                pasienVariant.Equals(variant, StringComparison.OrdinalIgnoreCase)
+            )
+        );
+    });
+
+    return result;
+}
+
+private static IEnumerable<string> GenerateSubstrings(string name)
+{
+    var splitName = name.Split(" ");
+    var substrings = new List<string>();
+
+    for (int length = 2; length <= splitName.Length; length++)
+    {
+        for (int start = 0; start <= splitName.Length - length; start++)
+        {
+            var end = start + length;
+            substrings.Add(splitName[start..end].Join(" "));
+        }
     }
 
+    return substrings;
+}
 
     private static IEnumerable<PasienModel> FindSimiliarity(
         IEnumerable<PasienModel> listPasien, string name)
@@ -209,8 +235,8 @@ public class PasienFindFastTest
         var response = await _sut.Handle(request, CancellationToken.None);
         
         //  ASSERT
-        response.Should().ContainEquivalentOf(faker1);
-        response.Should().ContainEquivalentOf(faker1B);
+        response.Should().ContainEquivalentOf(new PasienFindFastResponse(faker1.PasienId, faker1.PasienName, faker1.TglLahir.ToString(DateFormatEnum.YMD), faker1.TglMedrec.ToString(DateFormatEnum.YMD)));
+        response.Should().ContainEquivalentOf(new PasienFindFastResponse(faker1B.PasienId, faker1B.PasienName, faker1B.TglLahir.ToString(DateFormatEnum.YMD), faker1B.TglMedrec.ToString(DateFormatEnum.YMD)));
     }    
 
     [Fact]
