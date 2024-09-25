@@ -15,13 +15,14 @@ public class BangsalSaveHandler : IRequestHandler<BangsalSaveCommand>
     private readonly IBangsalDal _bangsalDal;
     private readonly ILayananDal _layananDal;
     private readonly IBangsalWriter _writer;
-
-    public BangsalSaveHandler(IBangsalDal bangsalDal, ILayananDal layananDal, IBangsalWriter writer)
+    
+    public BangsalSaveHandler(IBangsalWriter writer, IBangsalDal bangsalDal, ILayananDal layananDal)
     {
         _bangsalDal = bangsalDal;
         _layananDal = layananDal;
         _writer = writer;
     }
+
     public Task Handle(BangsalSaveCommand request, CancellationToken cancellationToken)
     {
         // GUARD

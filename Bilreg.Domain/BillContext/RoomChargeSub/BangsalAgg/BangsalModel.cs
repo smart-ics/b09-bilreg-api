@@ -3,7 +3,7 @@ using CommunityToolkit.Diagnostics;
 
 namespace Bilreg.Domain.BillContext.RoomChargeSub.BangsalAgg;
 
-public partial class BangsalModel (string id, string name) : IBangsalKey
+public class BangsalModel (string id, string name) : IBangsalKey
 {
     public string BangsalId { get; protected set; } = id;
     public string BangsalName { get; protected set; } = name;

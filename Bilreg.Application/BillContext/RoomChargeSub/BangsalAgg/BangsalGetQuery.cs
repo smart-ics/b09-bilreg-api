@@ -1,5 +1,8 @@
 ﻿using Bilreg.Domain.BillContext.RoomChargeSub.BangsalAgg;
+using FluentAssertions;
 using MediatR;
+using Moq;
+using Xunit;
 
 namespace Bilreg.Application.BillContext.RoomChargeSub.BangsalAgg;
 
@@ -36,5 +39,40 @@ public class BangsalGetHandler : IRequestHandler<BangsalGetQuery, BangsalGetResp
         
         return Task.FromResult(response);
 
+    }
+}
+
+public class BangsalGetHandlerTest
+{
+    private readonly Mock<IBangsalDal> _bangsalDal;
+    private readonly BangsalGetHandler _sut;
+
+    public BangsalGetHandlerTest()
+    {
+        _bangsalDal = new Mock<IBangsalDal>();
+        _sut = new BangsalGetHandler(_bangsalDal.Object);
+    }
+
+    [Fact]
+    public async Task GivenInvalidBangsalId_ThenThrowKeyNotFoundException()
+    {
+        var request = new BangsalGetQuery("A");
+        _bangsalDal.Setup(x => x.GetData(It.IsAny<IBangsalKey>()))
+            .Returns(null as BangsalModel);
+        var actual = async () => await _sut.Handle(request, CancellationToken.None);
+        await actual.Should().ThrowAsync<KeyNotFoundException>();
+        
+    }
+    
+    [Fact]
+    public async Task GivenvalidBangsalId_ThenThrowKeyNotFoundException()
+    {
+        var request = new BangsalGetQuery("A");
+        var expected = new BangsalModel("A","B");
+        _bangsalDal.Setup(x => x.GetData(It.IsAny<IBangsalKey>()))
+            .Returns(expected);
+        var actual = await _sut.Handle(request, CancellationToken.None);
+        actual.Should().BeEquivalentTo(expected);
+        
     }
 }

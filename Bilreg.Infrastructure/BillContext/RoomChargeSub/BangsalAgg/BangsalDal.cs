@@ -28,9 +28,9 @@ public class BangsalDal : IBangsalDal
                 @fs_kd_bangsal, @fs_nm_bangsal, @fs_kd_layanan)";
 
         var dp = new DynamicParameters();
-        dp.AddParam("fs_kd_bangsal", model.BangsalId, SqlDbType.VarChar);
-        dp.AddParam("fs_nm_bangsal", model.BangsalName, SqlDbType.VarChar);
-        dp.AddParam("fs_kd_layanan", model.LayananId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_bangsal", model.BangsalId, SqlDbType.VarChar);
+        dp.AddParam("@fs_nm_bangsal", model.BangsalName, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_layanan", model.LayananId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -47,9 +47,9 @@ public class BangsalDal : IBangsalDal
                 fs_kd_bangsal  = @fs_kd_bangsal";
 
         var dp = new DynamicParameters();
-        dp.AddParam("fs_kd_bangsal", model.BangsalId, SqlDbType.VarChar);
-        dp.AddParam("fs_nm_bangsal", model.BangsalName, SqlDbType.VarChar);
-        dp.AddParam("fs_kd_layanan", model.LayananId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_bangsal", model.BangsalId, SqlDbType.VarChar);
+        dp.AddParam("@fs_nm_bangsal", model.BangsalName, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_layanan", model.LayananId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -64,7 +64,7 @@ public class BangsalDal : IBangsalDal
                 fs_kd_bangsal  = @fs_kd_bangsal";
 
         var dp = new DynamicParameters();
-        dp.AddParam("fs_kd_bangsal", key.BangsalId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_bangsal", key.BangsalId, SqlDbType.VarChar);
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -85,7 +85,7 @@ public class BangsalDal : IBangsalDal
                 fs_kd_bangsal  = @fs_kd_bangsal";
 
         var dp = new DynamicParameters();
-        dp.AddParam("fs_kd_bangsal", key.BangsalId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_bangsal", key.BangsalId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.ReadSingle<BangsalDto>(sql, dp);
@@ -110,9 +110,75 @@ public class BangsalDal : IBangsalDal
 
 public class BangsalDto() : BangsalModel("","")
 {
+    public void SetTestDataBangsal()
+    {
+        BangsalId = "A";
+        BangsalName = "B";
+        LayananId = "C";
+        LayananName = "";
+    }
+        
     public string fs_kd_bangsal { get => BangsalId; set => BangsalId = value; }
     public string fs_nm_bangsal { get => BangsalName; set => BangsalName = value; }
     public string fs_kd_layanan { get => LayananId; set => LayananId = value; }
     public string fs_nm_layanan { get => LayananName; set => LayananName = value; }
+}
+
+public class BangsalDalTest
+{
+    private readonly BangsalDal _sut;
+
+    public BangsalDalTest()
+    {
+        _sut = new BangsalDal(ConnStringHelper.GetTestEnv());
+    }
+
+    [Fact]
+    public void Insert_Test()
+    {
+        using var trans = TransHelper.NewScope();
+        var expected = new BangsalDto();
+        expected.SetTestDataBangsal();
+        _sut.Insert(expected);
+    }
     
+    [Fact]
+    public void Update_Test()
+    {
+        using var trans = TransHelper.NewScope();
+        var expected = new BangsalDto();
+        expected.SetTestDataBangsal();
+        _sut.Update(expected);
+    }
+    
+    [Fact]
+    public void Delete_Test()
+    {
+        using var trans = TransHelper.NewScope();
+        var expected = new BangsalDto();
+        expected.SetTestDataBangsal();
+        _sut.Delete(expected);
+    }
+    
+    [Fact]
+    public void GetData_Test()
+    {
+        using var trans = TransHelper.NewScope();
+        var expected = new BangsalDto();
+        expected.SetTestDataBangsal();
+        _sut.Insert(expected);
+        var actual = _sut.GetData(expected);
+        actual.Should().BeEquivalentTo(expected);
+    }
+    
+    [Fact]
+    public void ListData_Test()
+    {
+        using var trans = TransHelper.NewScope();
+        var expected = new BangsalDto();
+        expected.SetTestDataBangsal();
+        _sut.Insert(expected);
+        var actual = _sut.ListData();
+        actual.Should().ContainEquivalentOf(expected);
+    }
 }
