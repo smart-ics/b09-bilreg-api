@@ -28,7 +28,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="BillContext\TindakanSub\GrupTarifDkAgg\" />
     <Folder Include="Controllers\AdmisiContext\PendaftaranSub\" />
     <Folder Include="Controllers\AdmisiContext\RegSub\" />
     <Folder Include="Controllers\BillContext\TransportSub\" />
