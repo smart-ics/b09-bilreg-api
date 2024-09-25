@@ -1,3 +1,6 @@
+using System.Collections;
+using System.Text.Json;
+using Bilreg.Application.AdmisiContext.PetugasMedisSub.PetugasMedisAgg;
 using Bilreg.Application.Helpers;
 using Bilreg.Application.PasienContext.ParamContext.ParamSistemAgg;
 using Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
@@ -11,6 +14,19 @@ using Xunit;
 namespace Bilreg.Application.PasienContext.DataSosialPasienSub.PasienAgg;
 
 public record PasienGetQuery(string PasienId): IRequest<PasienGetResponse>, IPasienKey;
+
+public record PasienLogGetResponse(
+    string LogDate,
+    string Activity,
+    string UserId,
+    IEnumerable<PasienChangeLogResponse> ChangeLog
+);
+
+public record PasienChangeLogResponse(
+    string PropertyName,
+    string OldValue,
+    string NewValue
+);
 
 public record PasienGetResponse(
     string PasienId,
@@ -55,30 +71,30 @@ public record PasienGetResponse(
     string KeluargaAlamat1,
     string KeluargaAlamat2,
     string KeluargaKota,
-    string KeluargaKodePos
+    string KeluargaKodePos,
+    IEnumerable<PasienLogGetResponse> ListLog
 );
 
 public class PasienGetHandler: IRequestHandler<PasienGetQuery, PasienGetResponse>
 {
     private readonly IParamSistemDal _paramSistemDal;
-    private readonly IPasienDal _pasienDal;
+    private readonly IFactoryLoad<PasienModel, IPasienKey> _factory;
     private const string KODE_RS_PARAM_KEY = "RS__XXXXXX_KODE";
 
-    public PasienGetHandler(IParamSistemDal paramSistemDal, IPasienDal pasienDal)
+    public PasienGetHandler(IParamSistemDal paramSistemDal, IFactoryLoad<PasienModel, IPasienKey> factory)
     {
         _paramSistemDal = paramSistemDal;
-        _pasienDal = pasienDal;
+        _factory = factory;
     }
 
     public Task<PasienGetResponse> Handle(PasienGetQuery request, CancellationToken cancellationToken)
     {
         // GUARD
         Guard.IsTrue(request.PasienId.IsValidA(x => x.Length is 6 or 8 or 15));
-        //x => GENDER_LIST.Contains(x))
+        
         // QUERY
         var pasienGetQuery = GetPasienId(request.PasienId);
-        var pasien = _pasienDal.GetData(pasienGetQuery)
-            ?? throw new KeyNotFoundException($"Data pasien with id: {pasienGetQuery.PasienId} not found");
+        var pasien = _factory.Load(pasienGetQuery);
         pasien.RemoveNull();
         
         // RESPONSE
@@ -110,6 +126,12 @@ public class PasienGetHandler: IRequestHandler<PasienGetQuery, PasienGetResponse
 
     private PasienGetResponse BuildPasienResponse(PasienModel pasien)
     {
+        var listLog = pasien.ListLog.Select(x =>
+        {
+            var changeLogs = JsonSerializer.Deserialize<List<PasienChangeLogResponse>>(x.ChangeLog);
+            return new PasienLogGetResponse(x.LogDate, x.Activity, x.UserId, changeLogs ?? []);
+        });
+        
         return new PasienGetResponse(
             pasien.PasienId,
             GetNomorMedrec(pasien.PasienId),
@@ -153,7 +175,8 @@ public class PasienGetHandler: IRequestHandler<PasienGetQuery, PasienGetResponse
             pasien.KeluargaAlamat1,
             pasien.KeluargaAlamat2,
             pasien.KeluargaKota,
-            pasien.KeluargaKodePos
+            pasien.KeluargaKodePos,
+            listLog
         );
     }
 }
@@ -161,14 +184,14 @@ public class PasienGetHandler: IRequestHandler<PasienGetQuery, PasienGetResponse
 public class PasienGetQueryHandlerTest
 {
     private readonly Mock<IParamSistemDal> _paramSistemDal;
-    private readonly Mock<IPasienDal> _pasienDal;
+    private readonly Mock<IFactoryLoad<PasienModel, IPasienKey>> _factory;
     private readonly PasienGetHandler _sut;
 
     public PasienGetQueryHandlerTest()
     {
         _paramSistemDal = new Mock<IParamSistemDal>();
-        _pasienDal = new Mock<IPasienDal>();
-        _sut = new PasienGetHandler(_paramSistemDal.Object, _pasienDal.Object);
+        _factory = new Mock<IFactoryLoad<PasienModel, IPasienKey>>();
+        _sut = new PasienGetHandler(_paramSistemDal.Object, _factory.Object);
     }
 
     [Fact]
@@ -184,8 +207,8 @@ public class PasienGetQueryHandlerTest
     {
         var request = new PasienGetQuery("1234567000000AA");
         var expected = new PasienModel("1234567000000AA", "AA");
-        _pasienDal.Setup(x => x.GetData(It.IsAny<IPasienKey>()))
-            .Returns(null as PasienModel);
+        _factory.Setup(x => x.Load(It.IsAny<IPasienKey>()))
+            .Throws<KeyNotFoundException>();
         var actual = async () => await _sut.Handle(request, CancellationToken.None);
         await actual.Should().ThrowAsync<KeyNotFoundException>();
     }
@@ -195,7 +218,7 @@ public class PasienGetQueryHandlerTest
     {
         var request = new PasienGetQuery("1234567000000AA");
         var expected = new PasienModel("1234567000000AA", "AA");
-        _pasienDal.Setup(x => x.GetData(It.IsAny<IPasienKey>()))
+        _factory.Setup(x => x.Load(It.IsAny<IPasienKey>()))
             .Returns(expected);
         var actual = await _sut.Handle(request, CancellationToken.None);
         actual.Should().BeEquivalentTo(expected);
