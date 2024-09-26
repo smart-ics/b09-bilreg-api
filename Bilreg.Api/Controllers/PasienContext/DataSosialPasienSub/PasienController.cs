@@ -69,7 +69,7 @@ public class PasienController : Controller
     [Route("FindFastDataDuplicated/{id}")]
     public async Task<IActionResult> FindFastDataDuplicated(string id)
     {
-        var query = new PasienFindFastDuplicated(id);
+        var query = new PasienFindFast(id);
         var response = await _mediator.Send(query);
         return Ok(new JSendOk(response));
     }
