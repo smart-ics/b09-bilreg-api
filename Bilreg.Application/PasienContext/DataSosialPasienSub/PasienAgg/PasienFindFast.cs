@@ -38,7 +38,6 @@ public class PasienFindFastHandler : IRequestHandler<PasienFindFast, IEnumerable
         var resultJw = FindSimiliarity(listPasien, pasien.PasienName);
         
         var variasiEjaan = GenerateVariasiEjaan(pasien.PasienName);
-        
         var distinctWords = variasiEjaan
             .SelectMany(x => x.Split(' ', StringSplitOptions.RemoveEmptyEntries))
             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -56,19 +55,15 @@ public class PasienFindFastHandler : IRequestHandler<PasienFindFast, IEnumerable
     {
         var variasiWordCount = searchKeyword.Split(' ').Length;
         var wordCountMin = Math.Min(variasiWordCount, 2);
-        var result = new List<PasienModel>();
-        foreach (var pasien in listPasien)
-        {
-            var pasienNameClean = RemovePunctuation(pasien.PasienName);
-            var listWords = pasienNameClean.Split(' ');
-            var found = listWords
+        return (from pasien in listPasien 
+            let pasienNameClean = RemovePunctuation(pasien.PasienName) 
+            let listWords = pasienNameClean.Split(' ') 
+            let found = listWords
                 .Count(wordPasien => wordsVariasiEjaan
                     .Any(item => item
-                        .Equals(wordPasien, StringComparison.CurrentCultureIgnoreCase)));
-            if (found >= wordCountMin)
-                result.Add(pasien);
-        }
-        return result;
+                        .Equals(wordPasien, StringComparison.CurrentCultureIgnoreCase))) 
+            where found >= wordCountMin 
+            select pasien).ToList();
     }
 
     private static string RemovePunctuation(string input)
@@ -145,7 +140,7 @@ public class PasienFindFastTest
     }
 
     [Fact]
-    public async Task GivenSimiliarPasienName_ThenReturnThePasien()
+    public async Task T01_GivenSimiliarPasienName_ThenReturnThePasien()
     {
         //  ARRANGE
         var faker1 = new PasienModel("A", "Alexander Suryaputra");
@@ -162,7 +157,7 @@ public class PasienFindFastTest
     }
 
     [Fact]
-    public async Task GivenNotSimiliarPasienName_ThenReturnThePasien()
+    public async Task T02_GivenNotSimiliarPasienName_ThenReturnThePasien()
     {
         //  ARRANGE
         var faker1 = new PasienModel("A", "Budi Cahyadi");
@@ -179,7 +174,7 @@ public class PasienFindFastTest
     }
 
     [Fact]
-    public async Task GivenEjaanLamaPasienName_ThenReturnThePasienWithEjaanBaru()
+    public async Task T03_GivenEjaanLamaPasienName_ThenReturnThePasienWithEjaanBaru()
     {
         //  ARRANGE
         var faker1 = new PasienModel("A", "Budi Subur Husnuloh");
@@ -196,7 +191,7 @@ public class PasienFindFastTest
     }
     
     [Fact]
-    public async Task GivenEjaanBaruPasienName_ThenReturnThePasienWithEjaanLama()
+    public async Task T04_GivenEjaanBaruPasienName_ThenReturnThePasienWithEjaanLama()
     {
         //  ARRANGE
         var faker1 = new PasienModel("A", "Boedi Soeboer Hoesnoeloh");
@@ -213,16 +208,16 @@ public class PasienFindFastTest
     }
     
     [Fact]
-    public async Task GivenNamaSamaSebagian_ThenReturnThePasienWithEjaanBaru()
+    public async Task T05_GivenNamaSamaSebagianEjaanLama_ThenReturnThePasienWithEjaanBaru()
     {
         //  ARRANGE
         var faker1 = new PasienModel("A", "Budi Subur Husnuloh");
-        var faker2 = new PasienModel("B", "Boedi Soeboer Hoesnoeloh");
+        var faker2 = new PasienModel("B", "Boedi Soeboer");
         var faker1A = new PasienModel("C", "Sunardinata");
         var faker1B = new PasienModel("D", "Budi Subur");
         _pasienDal.Setup(x => x.ListData(It.IsAny<DateTime>())).Returns(new List<PasienModel> {faker1, faker1A, faker1B});
         _pasienDal.Setup(x => x.GetData(It.IsAny<IPasienKey>())).Returns(faker2);
-        var request = new PasienFindFast("A");
+        var request = new PasienFindFast("B");
         
         //  ACT
         var response = await _sut.Handle(request, CancellationToken.None);
@@ -232,7 +227,27 @@ public class PasienFindFastTest
     }    
 
     [Fact]
-    public async Task GivenUrutanNamaBerbeda_ThenReturnThePasien()
+    public async Task T06_GivenNamaSamaSebagianEjaanBaru_ThenReturnThePasienWithEjaanLama()
+    {
+        //  ARRANGE
+        var faker1 = new PasienModel("A", "Boedi Soeboer Hoesnoeloh");
+        var faker2 = new PasienModel("B", "Budi Subur");
+        var faker1A = new PasienModel("C", "Sunardinata");
+        var faker1B = new PasienModel("D", "Budi Subur");
+        _pasienDal.Setup(x => x.ListData(It.IsAny<DateTime>())).Returns(new List<PasienModel> {faker1, faker1A, faker1B});
+        _pasienDal.Setup(x => x.GetData(It.IsAny<IPasienKey>())).Returns(faker2);
+        var request = new PasienFindFast("B");
+        
+        //  ACT
+        var response = await _sut.Handle(request, CancellationToken.None);
+        
+        //  ASSERT
+        response.Select(x => x.PasienId).Should().BeEquivalentTo("A","D");
+    }    
+
+    
+    [Fact]
+    public async Task T07_GivenUrutanNamaBerbeda_ThenReturnThePasien()
     {
         //  ARRANGE
         var faker1 = new PasienModel("A", "Agung Deindra Susanto");
@@ -249,7 +264,7 @@ public class PasienFindFastTest
     }    
 
     [Fact]
-    public async Task GivenFullName_ThenReturnFirstAndLastName()
+    public async Task T08_GivenFullName_ThenReturnFirstAndLastName()
     {
         //  ARRANGE
         var faker1 = new PasienModel("A", "Amanda Farel");
@@ -265,7 +280,7 @@ public class PasienFindFastTest
         response.Select(x => x.PasienId).Should().BeEquivalentTo("A");
     }    
     [Fact]
-    public async Task GivenFirstAndLastName_ThenReturnFullName()
+    public async Task T09_GivenFirstAndLastName_ThenReturnFullName()
     {
         //  ARRANGE
         var faker1 = new PasienModel("A", "Amanda Jessica Farel");
@@ -282,7 +297,7 @@ public class PasienFindFastTest
     }   
     
     [Fact]
-    public async Task GivenNawaWithGelar_ThenReturnNamaTanpaGelar()
+    public async Task T10_GivenNawaWithGelar_ThenReturnNamaTanpaGelar()
     {
         //  ARRANGE
         var faker1 = new PasienModel("A", "Budi Susanto ");
@@ -299,7 +314,7 @@ public class PasienFindFastTest
     }    
     
     [Fact]
-    public async Task GivenNamaTanpaGelar_ThenReturnNamaWithGelar()
+    public async Task T11_GivenNamaTanpaGelar_ThenReturnNamaWithGelar()
     {
         //  ARRANGE
         var faker1 = new PasienModel("A", "Budi Susanto, S.Kom");
@@ -316,11 +331,45 @@ public class PasienFindFastTest
     }   
     
     [Fact]
-    public async Task GivenNamaSatuKata_ThenReturnPasien()
+    public async Task T12_GivenNamaSatuKata_ThenReturnFullName()
     {
         //  ARRANGE
         var faker1 = new PasienModel("A", "Budi Susanto, S.Kom");
         var faker2 = new PasienModel("B", "Susanto");
+        _pasienDal.Setup(x => x.ListData(It.IsAny<DateTime>())).Returns(new List<PasienModel> {faker1});
+        _pasienDal.Setup(x => x.GetData(It.IsAny<IPasienKey>())).Returns(faker2);
+        var request = new PasienFindFast("B");
+        
+        //  ACT
+        var response = await _sut.Handle(request, CancellationToken.None);
+        
+        //  ASSERT
+        response.Select(x => x.PasienId).Should().BeEquivalentTo("A");
+    }       
+    
+    [Fact]
+    public async Task T13_GivenNamaTengahDisingkat_ThenReturnFullName()
+    {
+        //  ARRANGE
+        var faker1 = new PasienModel("A", "Budi Susanto Kurniawan");
+        var faker2 = new PasienModel("B", "Budi S. Kurniawan ");
+        _pasienDal.Setup(x => x.ListData(It.IsAny<DateTime>())).Returns(new List<PasienModel> {faker1});
+        _pasienDal.Setup(x => x.GetData(It.IsAny<IPasienKey>())).Returns(faker2);
+        var request = new PasienFindFast("B");
+        
+        //  ACT
+        var response = await _sut.Handle(request, CancellationToken.None);
+        
+        //  ASSERT
+        response.Select(x => x.PasienId).Should().BeEquivalentTo("A");
+    }       
+
+    [Fact]
+    public async Task T14_GivenFullName_ThenReturnNamaTengahDisingkat()
+    {
+        //  ARRANGE
+        var faker1 = new PasienModel("A", "Budi Susanto Kurniawan");
+        var faker2 = new PasienModel("B", "Budi S. Kurniawan ");
         _pasienDal.Setup(x => x.ListData(It.IsAny<DateTime>())).Returns(new List<PasienModel> {faker1});
         _pasienDal.Setup(x => x.GetData(It.IsAny<IPasienKey>())).Returns(faker2);
         var request = new PasienFindFast("B");
