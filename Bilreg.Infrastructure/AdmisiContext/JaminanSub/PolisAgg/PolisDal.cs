@@ -7,7 +7,6 @@ using Bilreg.Infrastructure.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
-using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Infrastructure.AdmisiContext.JaminanSub.PolisAgg;
 
@@ -24,21 +23,24 @@ public class PolisDal : IPolisDal
     {
         const string sql = @"
             INSERT INTO ta_polis(
-                fs_kd_polis, fs_no_polis, fs_atas_nama, fd_txpired, 
-                fs_kd_tipe_jaminan, fb_cover_rj)
+                fs_kd_polis, fs_no_polis, fs_atas_nama, fd_expired, 
+                fs_kd_tipe_jaminan, fb_cover_rj, fs_kd_kelas_ri)
             VALUES(
-                @fs_kd_polis, @fs_no_polis, @fs_atas_nama, @fd_txpired, 
-                @fs_kd_tipe_jaminan, @fb_cover_rj
+                @fs_kd_polis, @fs_no_polis, @fs_atas_nama, @fd_expired, 
+                @fs_kd_tipe_jaminan, @fb_cover_rj, @fs_kd_kelas_ri
             )";
 
         var dp = new DynamicParameters();
-
         dp.AddParam("@fs_kd_polis", model.PolisId, SqlDbType.VarChar);
         dp.AddParam("@fs_no_polis", model.NoPolis, SqlDbType.VarChar);
         dp.AddParam("@fs_atas_nama", model.AtasNama, SqlDbType.VarChar);
-        dp.AddParam("@fd_txpired", model.ExpiredDate.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
+        dp.AddParam("@fd_expired", model.ExpiredDate.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
         dp.AddParam("@fs_kd_tipe_jaminan", model.TipeJaminanId, SqlDbType.VarChar);
         dp.AddParam("@fb_cover_rj", model.IsCoverRajal, SqlDbType.Bit);
+        dp.AddParam("@fs_kd_kelas_ri", model.KelasId, SqlDbType.VarChar);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        conn.Execute(sql, dp);
     }
 
     public void Update(PolisModel model)
@@ -48,9 +50,10 @@ public class PolisDal : IPolisDal
             SET 
                 fs_no_polis = @fs_no_polis,
                 fs_atas_nama = @fs_atas_nama,
-                fd_txpired = @fd_txpired,
+                fd_expired = @fd_expired,
                 fs_kd_tipe_jaminan = @fs_kd_tipe_jaminan,
-                fb_cover_rj = @fb_cover_rj
+                fb_cover_rj = @fb_cover_rj,
+                fs_kd_kelas_ri = @fs_kd_kelas_ri
             WHERE fs_kd_polis = @fs_kd_polis";
 
         var dp = new DynamicParameters();
@@ -58,9 +61,10 @@ public class PolisDal : IPolisDal
         dp.AddParam("@fs_kd_polis", model.PolisId, SqlDbType.VarChar);
         dp.AddParam("@fs_no_polis", model.NoPolis, SqlDbType.VarChar);
         dp.AddParam("@fs_atas_nama", model.AtasNama, SqlDbType.VarChar);
-        dp.AddParam("@fd_txpired", model.ExpiredDate.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
+        dp.AddParam("@fd_expired", model.ExpiredDate.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
         dp.AddParam("@fs_kd_tipe_jaminan", model.TipeJaminanId, SqlDbType.VarChar);
         dp.AddParam("@fb_cover_rj", model.IsCoverRajal, SqlDbType.Bit);
+        dp.AddParam("@fs_kd_kelas_ri", model.KelasId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -84,10 +88,16 @@ public class PolisDal : IPolisDal
     {
         const string sql = @"
             SELECT
-                fs_kd_polis, fs_no_polis, fs_atas_nama,
-                fd_txpired, fs_kd_tipe_jaminan, fb_cover_rj
-            FROM ta_polis
-            WHERE fs_kd_polis = @fs_kd_polis";
+                aa.fs_kd_polis, aa.fs_no_polis, aa.fs_atas_nama, aa.fd_expired, 
+                aa.fs_kd_tipe_jaminan, aa.fb_cover_rj, aa.fs_kd_kelas_ri,
+                ISNULL(bb.fs_nm_tipe_jaminan, '') fs_nm_tipe_jaminan,
+                ISNULL(cc.fs_nm_kelas, '') fs_nm_kelas_ri
+            FROM 
+                ta_polis aa
+                LEFT JOIN ta_tipe_jaminan bb ON aa.fs_kd_tipe_jaminan = bb.fs_kd_tipe_jaminan
+                LEFT JOIN ta_kelas cc ON aa.fs_kd_kelas_ri = cc.fs_kd_kelas
+            WHERE 
+                fs_kd_polis = @fs_kd_polis";
 
         var dp = new DynamicParameters();
 
@@ -99,27 +109,30 @@ public class PolisDal : IPolisDal
 
     public IEnumerable<PolisModel> ListData(IPasienKey filter)
     {
-        throw new NotImplementedException();
+        const string sql = @"
+            SELECT
+                aa.fs_kd_polis, aa.fs_no_polis, aa.fs_atas_nama, aa.fd_expired, 
+                aa.fs_kd_tipe_jaminan, aa.fb_cover_rj, aa.fs_kd_kelas_ri,
+                ISNULL(bb.fs_nm_tipe_jaminan, '') fs_nm_tipe_jaminan,
+                ISNULL(cc.fs_nm_kelas, '') fs_nm_kelas_ri
+            FROM 
+                ta_polis aa
+                LEFT JOIN ta_tipe_jaminan bb ON aa.fs_kd_tipe_jaminan = bb.fs_kd_tipe_jaminan
+                LEFT JOIN ta_kelas cc ON aa.fs_kd_kelas_ri = cc.fs_kd_kelas
+                LEFT JOIN ta_polis_cover dd ON aa.fs_kd_polis = dd.fs_kd_polis
+            WHERE 
+                dd.fs_mr = @fs_mr";
+
+        var dp = new DynamicParameters();
+
+        dp.AddParam("@fs_mr", filter.PasienId, SqlDbType.VarChar);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<PolisDto>(sql, dp);
     }
 
     public IEnumerable<PolisModel> ListData(string filter)
     {
         throw new NotImplementedException();
     }
-}
-
-internal class PolisDto : PolisModel
-{
-    public PolisDto() : base(string.Empty)
-    {
-    }
-    public string fs_kd_polis {get => PolisId; set => PolisId = value;}
-    public string fs_kd_tipe_jaminan {get => TipeJaminanId; set => TipeJaminanId = value;}
-    public string fs_nm_tipe_jaminan {get => TipeJaminanName; set => TipeJaminanName = value}
-    public string fs_no_polis {get => NoPolis; set => NoPolis = value;}
-    public string fs_atas_nama {get => AtasNama; set => AtasNama = value;}
-    public string fd_expired {get => ExpiredDate.ToString("yyyy-MM-dd"); set => ExpiredDate = value.ToDate(DateFormatEnum.YMD);}
-    public string fs_kd_kelas_ri {get => KelasId; set => KelasId = value;}
-    public string fs_nm_kelas_ri {get => KelasName; set => KelasName = value;}
-    public bool fb_cover_rj {get => IsCoverRajal; set => IsCoverRajal = value;}
 }

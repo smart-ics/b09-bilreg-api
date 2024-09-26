@@ -9,7 +9,6 @@ public interface IPolisDal :
     IUpdate<PolisModel>,
     IDelete<IPolisKey>,
     IGetData<PolisModel, IPolisKey>,
-    IListData<PolisModel, IPasienKey>,
-    IListData<PolisModel, string>
+    IListData<PolisModel, IPasienKey>
 {
 }
