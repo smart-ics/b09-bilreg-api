@@ -52,7 +52,8 @@ public partial class PasienModel(string pasienId, string pasienName)
     public string KeluargaKota { get; protected set; }
     public string KeluargaKodePos { get; protected set; }
     
-    public string NoMedrecInduk { get; protected set;}
-    public string IsAktif { get; protected set;}
-    
+    public string NoMedrecInduk { get; protected set; }
+    public string IsAktif { get; protected set; }
+
+    public List<PasienLogModel> ListLog { get; protected set; } = [];
 }

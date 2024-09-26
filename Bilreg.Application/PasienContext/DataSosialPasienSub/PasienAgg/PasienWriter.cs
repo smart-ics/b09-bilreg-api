@@ -12,11 +12,13 @@ public class PasienWriter : IPasienWriter
 {
     private readonly IPasienDal _pasienDal;
     private readonly IValidator<PasienModel> _validator;
+    private readonly IPasienLogDal _pasienLogDal;
 
-    public PasienWriter(IPasienDal pasienDal, IValidator<PasienModel> validator)
+    public PasienWriter(IPasienDal pasienDal, IValidator<PasienModel> validator, IPasienLogDal pasienLogDal)
     {
         _pasienDal = pasienDal;
         _validator = validator;
+        _pasienLogDal = pasienLogDal;
     }
 
     public PasienModel Save(PasienModel model)
@@ -30,6 +32,10 @@ public class PasienWriter : IPasienWriter
             _pasienDal.Insert(model);
         else
             _pasienDal.Update(model);
+        
+        model.SyncId();
+        _pasienLogDal.Delete(model);
+        _pasienLogDal.Insert(model.ListLog);
 
         return model;
     }

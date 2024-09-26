@@ -18,7 +18,8 @@ public record PasienCreateCommand(
     string NickName,
     string Gender,
     string IbuKandung,
-    string GolDarah) : IRequest<PasienCreateResponse>;
+    string GolDarah,
+    string UserId) : IRequest<PasienCreateResponse>;
 
 public record PasienCreateResponse(string PasienId);
 
@@ -33,10 +34,11 @@ public class PasienCreateHandler : IRequestHandler<PasienCreateCommand, PasienCr
     private const string NO_MR_PARAM_KEY = "NOMR";
     private const string FORMAT_TGL_YMD = "yyyy-MM-dd";
     private const string GENDER_LIST = "LPWMF10";
+    private const string ACTIVITY_NAME = "PasienCreate";
 
     public PasienCreateHandler(IParamSistemDal paramSistemDal, 
         INunaCounterBL counter, 
-        IPasienWriter writer, 
+        IPasienWriter writer,
         ITglJamProvider dateTime)
     {
         _paramSistemDal = paramSistemDal;
@@ -66,6 +68,11 @@ public class PasienCreateHandler : IRequestHandler<PasienCreateCommand, PasienCr
             request.IbuKandung, request.GolDarah);
         pasien.SetTglMedrec(_dateTime.Now);
         pasien.RemoveNull();
+        
+        var changes = PropertyChangeHelper.GetChanges(new PasienModelSerializable(), pasien);
+        var pasienLog = new PasienLogModel(pasienId, ACTIVITY_NAME, request.UserId);
+        pasienLog.SetChangeLog(changes);
+        pasien.Add(pasienLog);
         
         //  WRITE
         var pasienResult = _writer.Save(pasien);
