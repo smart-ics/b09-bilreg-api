@@ -55,15 +55,19 @@ public class PasienFindFastHandler : IRequestHandler<PasienFindFast, IEnumerable
     {
         var variasiWordCount = searchKeyword.Split(' ').Length;
         var wordCountMin = Math.Min(variasiWordCount, 2);
-        return (from pasien in listPasien 
-            let pasienNameClean = RemovePunctuation(pasien.PasienName) 
-            let listWords = pasienNameClean.Split(' ') 
-            let found = listWords
+        var result = new List<PasienModel>();
+        foreach (var pasien in listPasien)
+        {
+            var pasienNameClean = RemovePunctuation(pasien.PasienName);
+            var listWords = pasienNameClean.Split(' ');
+            var found = listWords
                 .Count(wordPasien => wordsVariasiEjaan
                     .Any(item => item
-                        .Equals(wordPasien, StringComparison.CurrentCultureIgnoreCase))) 
-            where found >= wordCountMin 
-            select pasien).ToList();
+                        .Equals(wordPasien, StringComparison.CurrentCultureIgnoreCase)));
+            if (found >= wordCountMin)
+                result.Add(pasien);
+        }
+        return result;
     }
 
     private static string RemovePunctuation(string input)
