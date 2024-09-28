@@ -1,4 +1,4 @@
-﻿﻿using Bilreg.Domain.BillContext.RoomChargeSub.BangsalAgg;
+﻿using Bilreg.Domain.BillContext.RoomChargeSub.BangsalAgg;
 using CommunityToolkit.Diagnostics;
 using FluentAssertions;
 using MediatR;

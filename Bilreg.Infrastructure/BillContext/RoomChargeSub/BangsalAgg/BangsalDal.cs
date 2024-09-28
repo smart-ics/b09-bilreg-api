@@ -1,4 +1,4 @@
-﻿﻿using System.Data;
+﻿using System.Data;
 using System.Data.SqlClient;
 using Bilreg.Application.BillContext.RoomChargeSub.BangsalAgg;
 using Bilreg.Domain.BillContext.RoomChargeSub.BangsalAgg;
