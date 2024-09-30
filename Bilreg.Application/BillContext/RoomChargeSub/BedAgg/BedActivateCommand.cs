@@ -30,7 +30,7 @@ public class BedActivateHandler : IRequestHandler<BedActivateCommand>
         var status = _bedDal.GetData(request)
             ?? throw new KeyNotFoundException($"BedId {request.BedId} Not Active");
         
-        status.SetAktif();
+        status.Activate();
         _writer.Save(status);
         return Task.CompletedTask;
     }

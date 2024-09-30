@@ -10,17 +10,17 @@ public class BedModel(string id, string name) : IBedKey
     public string BedName { get; protected set; } = name;
     public string Keterangan { get; protected set; }
     public bool IsAktif { get; protected set; } = true;
-    
-    public string KamarId { get; protected set; }
-    public string KamarName { get; protected set; }
+
+    public string KamarId { get; protected set; } = string.Empty;
+    public string KamarName { get; protected set; } = string.Empty;
     
     public string BangsalId { get; protected set; } = string.Empty;
     public string BangsalName { get; protected set; } = string.Empty;
     
     // METHOD
     public void SetKeterangan(string keterangan) => Keterangan = keterangan;
-    public void SetAktif() => IsAktif = true;
-    public void UnSetAktif() => IsAktif = false;
+    public void Activate() => IsAktif = true;
+    public void Deactivate() => IsAktif = false;
 
     public void SetKamar(KamarModel kamar)
     {

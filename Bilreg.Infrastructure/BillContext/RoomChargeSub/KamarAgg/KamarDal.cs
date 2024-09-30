@@ -24,16 +24,16 @@ public class KamarDal : IKamarDal
     {
         const string sql = @"
             INSERT INTO ta_kamar(
-                fs_kd_kamar,fs_nm_kamar,
-                fs_ket1,fs_ket2,fs_ket3,
-                fn_jumlah,fn_pakai,fn_kotor,
-                fn_rusak,fs_kd_bangsal,fs_kd_kelas
+                fs_kd_kamar, fs_nm_kamar,
+                fs_ket1, fs_ket2, fs_ket3,
+                fn_jumlah, fn_pakai, fn_kotor,
+                fn_rusak, fs_kd_bangsal, fs_kd_kelas
                 )
             VALUES(
-                @fs_kd_kamar,@fs_nm_kamar,
-                @fs_ket1,@fs_ket2,@fs_ket3,
-                @fn_jumlah,@fn_pakai,@fn_kotor,
-                @fn_rusak,@fs_kd_bangsal,@fs_kd_kelas
+                @fs_kd_kamar, @fs_nm_kamar,
+                @fs_ket1, @fs_ket2, @fs_ket3,
+                @fn_jumlah, @fn_pakai, @fn_kotor,
+                @fn_rusak, @fs_kd_bangsal, @fs_kd_kelas
                 )";
 
         var dp = new DynamicParameters();
@@ -58,32 +58,32 @@ public class KamarDal : IKamarDal
         const string sql = @"
                 UPDATE ta_kamar
                 SET 
-                     fs_kd_kamar= @fs_kd_kamar,
-                     fs_nm_kamar= @fs_nm_kamar,
-                     fs_ket1= @fs_ket1,
-                     fs_ket2= @fs_ket2,
-                     fs_ket3= @fs_ket3,
-                     fn_jumlah= @fn_jumlah,
-                     fn_pakai= @fn_pakai,
-                     fn_kotor= @fn_kotor,
-                     fn_rusak= @fn_rusak,
-                     fs_kd_bangsal= @fs_kd_bangsal,
-                     fs_kd_kelas= @fs_kd_kelas
+                     fs_kd_kamar = @fs_kd_kamar,
+                     fs_nm_kamar = @fs_nm_kamar,
+                     fs_ket1 = @fs_ket1,
+                     fs_ket2 = @fs_ket2,
+                     fs_ket3 = @fs_ket3,
+                     fn_jumlah = @fn_jumlah,
+                     fn_pakai = @fn_pakai,
+                     fn_kotor = @fn_kotor,
+                     fn_rusak = @fn_rusak,
+                     fs_kd_bangsal = @fs_kd_bangsal,
+                     fs_kd_kelas = @fs_kd_kelas
                  WHERE 
                     fs_kd_kamar = @fs_kd_kamar";
 
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_kamar",model.KamarId ,SqlDbType.VarChar);
-        dp.AddParam("@fs_nm_kamar",model.KamarName ,SqlDbType.VarChar);
-        dp.AddParam("@fs_ket1",model.Ket1 ,SqlDbType.VarChar);
-        dp.AddParam("@fs_ket2",model.Ket2 ,SqlDbType.VarChar);
-        dp.AddParam("@fs_ket3",model.Ket3 ,SqlDbType.VarChar);
-        dp.AddParam("@fn_jumlah",model.JumlahKamar ,SqlDbType.Decimal);
-        dp.AddParam("@fn_pakai",model.JumlahKamarPakai ,SqlDbType.Decimal);
-        dp.AddParam("@fn_kotor",model.JumlahKamarKotor ,SqlDbType.Decimal);
-        dp.AddParam("@fn_rusak",model.JumlahKamarRusak ,SqlDbType.Decimal);
-        dp.AddParam("@fs_kd_bangsal",model.BangsalId ,SqlDbType.VarChar);
-        dp.AddParam("@fs_kd_kelas",model.KelasId ,SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_kamar", model.KamarId, SqlDbType.VarChar);
+        dp.AddParam("@fs_nm_kamar", model.KamarName, SqlDbType.VarChar);
+        dp.AddParam("@fs_ket1", model.Ket1, SqlDbType.VarChar);
+        dp.AddParam("@fs_ket2", model.Ket2, SqlDbType.VarChar);
+        dp.AddParam("@fs_ket3", model.Ket3, SqlDbType.VarChar);
+        dp.AddParam("@fn_jumlah", model.JumlahKamar, SqlDbType.Decimal);
+        dp.AddParam("@fn_pakai", model.JumlahKamarPakai, SqlDbType.Decimal);
+        dp.AddParam("@fn_kotor", model.JumlahKamarKotor, SqlDbType.Decimal);
+        dp.AddParam("@fn_rusak", model.JumlahKamarRusak, SqlDbType.Decimal);
+        dp.AddParam("@fs_kd_bangsal", model.BangsalId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_kelas", model.KelasId,  SqlDbType.VarChar);
         
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);

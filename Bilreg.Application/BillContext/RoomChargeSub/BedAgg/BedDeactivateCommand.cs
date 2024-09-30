@@ -30,7 +30,7 @@ public class BedDeactivateHandler : IRequestHandler<BedDeactivateCommand>
         var statusDeactive = _bedDal.GetData(request)
             ?? throw new KeyNotFoundException($"The bed {request.BedId} Active");
         
-        statusDeactive.UnSetAktif();
+        statusDeactive.Deactivate();
         _writer.Save(statusDeactive);
         return Task.CompletedTask;
     }
