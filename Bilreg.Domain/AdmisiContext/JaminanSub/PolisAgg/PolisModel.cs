@@ -12,6 +12,8 @@ public partial class PolisModel : IPolisKey, ITipeJaminanKey, IKelasKey
 
     public string TipeJaminanId { get; protected set; } = string.Empty;
     public string TipeJaminanName { get; protected set; } = string.Empty;
+    public string JaminanId { get; protected set; } = string.Empty;
+    public string JaminanName { get; protected set; } = string.Empty;
     
     public string KelasId { get; protected set; } = string.Empty;
     public string KelasName { get; protected set; } = string.Empty;

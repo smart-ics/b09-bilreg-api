@@ -3,7 +3,7 @@ using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Infrastructure.PasienContext.DataSosialPasienSub.PasienAgg;
 
-internal class PasienDto() : PasienModel(string.Empty, string.Empty)
+internal class PasienDto() : PasienModel(string.Empty)
 {
     public string fs_mr { get => PasienId; set => PasienId = value; }
     public string fs_nm_pasien {get => PasienName; set => PasienName = value;}

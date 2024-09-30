@@ -4,15 +4,9 @@ namespace Bilreg.Domain.AdmisiContext.RegSub.RegAgg;
 
 public partial class RegJalanModel : AbstractRegModel
 {
-    public RegJalanModel(string regId, PasienModel pasien)
+    public RegJalanModel()
     {
         JenisReg = JenisRegEnum.RegJalan;
-        RegDate = DateTime.Now;
-        PasienId = pasien.PasienId;
-        PasienName = pasien.PasienId;
-        NoMedRec = pasien.GetNoMedrec();
-        TglLahir = pasien.TglLahir;
-        Gender = pasien.Gender;
         ListLayanan = new List<RegJalanLayananModel>();
     }
 

@@ -68,7 +68,7 @@ public class PolisDalTest
         using var trans = TransHelper.NewScope();
         var faker = Faker();
         _sut.Insert(Faker());
-        var actual = _sut.ListData(new PasienModel("A", "B"));
+        var actual = _sut.ListData(new PasienModel("A"));
     }
     
     

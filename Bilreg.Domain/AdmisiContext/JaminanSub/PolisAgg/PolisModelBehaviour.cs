@@ -85,6 +85,8 @@ public class PolisBuilder : PolisModel
         
         TipeJaminanId = tipeJaminan.TipeJaminanId;
         TipeJaminanName = tipeJaminan.TipeJaminanName;
+        JaminanId = tipeJaminan.JaminanId;
+        JaminanName = tipeJaminan.JaminanName;
 
         return this;
     }

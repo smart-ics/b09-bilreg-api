@@ -206,7 +206,7 @@ public class PasienGetQueryHandlerTest
     public async Task GivenInvalidPasienId_ThenThrowKeyNotFoundException()
     {
         var request = new PasienGetQuery("1234567000000AA");
-        var expected = new PasienModel("1234567000000AA", "AA");
+        var expected = new PasienModel("1234567000000AA");
         _factory.Setup(x => x.Load(It.IsAny<IPasienKey>()))
             .Throws<KeyNotFoundException>();
         var actual = async () => await _sut.Handle(request, CancellationToken.None);
@@ -217,7 +217,7 @@ public class PasienGetQueryHandlerTest
     public async Task GivenValidPasienId_ThenReturnExpected()
     {
         var request = new PasienGetQuery("1234567000000AA");
-        var expected = new PasienModel("1234567000000AA", "AA");
+        var expected = new PasienModel("1234567000000AA");
         _factory.Setup(x => x.Load(It.IsAny<IPasienKey>()))
             .Returns(expected);
         var actual = await _sut.Handle(request, CancellationToken.None);

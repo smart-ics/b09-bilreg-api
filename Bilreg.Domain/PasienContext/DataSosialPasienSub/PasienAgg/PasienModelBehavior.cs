@@ -6,10 +6,12 @@ namespace Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
 public partial class PasienModel
 {
     public void SetPersonalInfo(
+        string namaLengkap,
         string tempatLahir, DateTime tglLahir,
         string nickName, string gender, 
         string ibuKandung, string golDarah)
     {
+        PasienName = namaLengkap;
         TempatLahir = tempatLahir;
         TglLahir = tglLahir;
         NickName = nickName;
