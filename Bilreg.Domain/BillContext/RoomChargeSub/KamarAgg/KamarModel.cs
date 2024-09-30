@@ -6,8 +6,7 @@ namespace Bilreg.Domain.BillContext.RoomChargeSub.KamarAgg;
 
 public class KamarModel(
     string KamarId,
-    string KamarName
-    ): IKamarKey
+    string KamarName): IKamarKey
 {
     public string KamarId { get; protected set; } = KamarId;
     public string KamarName { get; protected set; } = KamarName;

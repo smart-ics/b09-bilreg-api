@@ -9,9 +9,9 @@ public interface IKamarDal:
     IInsert<KamarModel>,
     IUpdate<KamarModel>,
     IDelete<IKamarKey>,
-    IGetData<KamarModel,IKamarKey>,
-    IListData<KamarModel,IBangsalKey>,
-    IListData<KamarModel,IKelasKey>
+    IGetData<KamarModel, IKamarKey>,
+    IListData<KamarModel, IBangsalKey>,
+    IListData<KamarModel, IKelasKey>
 {
     
 }

@@ -27,16 +27,16 @@ public class KamarDal : IKamarDal
     {
         const string sql = @"
             INSERT INTO ta_kamar(
-                fs_kd_kamar,fs_nm_kamar,
-                fs_ket1,fs_ket2,fs_ket3,
-                fn_jumlah,fn_pakai,fn_kotor,
-                fn_rusak,fs_kd_bangsal,fs_kd_kelas
+                fs_kd_kamar, fs_nm_kamar,
+                fs_ket1, fs_ket2, fs_ket3,
+                fn_jumlah, fn_pakai, fn_kotor,
+                fn_rusak, fs_kd_bangsal, fs_kd_kelas
                 )
             VALUES(
-                @fs_kd_kamar,@fs_nm_kamar,
-                @fs_ket1,@fs_ket2,@fs_ket3,
-                @fn_jumlah,@fn_pakai,@fn_kotor,
-                @fn_rusak,@fs_kd_bangsal,@fs_kd_kelas
+                @fs_kd_kamar, @fs_nm_kamar,
+                @fs_ket1, @fs_ket2, @fs_ket3,
+                @fn_jumlah, @fn_pakai, @fn_kotor,
+                @fn_rusak, @fs_kd_bangsal, @fs_kd_kelas
                 )";
 
         var dp = new DynamicParameters();
@@ -61,17 +61,17 @@ public class KamarDal : IKamarDal
         const string sql = @"
                 UPDATE ta_kamar
                 SET 
-                     fs_kd_kamar= @fs_kd_kamar,
-                     fs_nm_kamar= @fs_nm_kamar,
-                     fs_ket1= @fs_ket1,
-                     fs_ket2= @fs_ket2,
-                     fs_ket3= @fs_ket3,
-                     fn_jumlah= @fn_jumlah,
-                     fn_pakai= @fn_pakai,
-                     fn_kotor= @fn_kotor,
-                     fn_rusak= @fn_rusak,
-                     fs_kd_bangsal= @fs_kd_bangsal,
-                     fs_kd_kelas= @fs_kd_kelas
+                     fs_kd_kamar = @fs_kd_kamar,
+                     fs_nm_kamar = @fs_nm_kamar,
+                     fs_ket1 = @fs_ket1,
+                     fs_ket2 = @fs_ket2,
+                     fs_ket3 = @fs_ket3,
+                     fn_jumlah = @fn_jumlah,
+                     fn_pakai = @fn_pakai,
+                     fn_kotor = @fn_kotor,
+                     fn_rusak = @fn_rusak,
+                     fs_kd_bangsal = @fs_kd_bangsal,
+                     fs_kd_kelas = @fs_kd_kelas
                  WHERE 
                     fs_kd_kamar = @fs_kd_kamar";
 

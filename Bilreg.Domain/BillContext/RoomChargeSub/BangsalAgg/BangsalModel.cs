@@ -21,4 +21,4 @@ public class BangsalModel (string id, string name) : IBangsalKey
 public interface IBangsalKey
 {
     string BangsalId { get; }
-}
+}   
