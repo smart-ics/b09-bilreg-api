@@ -68,14 +68,14 @@ public class RegCaraMasukVoTest
     private RegCaraMasukVo _sut;
 
     [Fact]
-    public void GivenDatangSendiri_AndRujukanEmpty_WhenCreate_ThenSuccess()
+    public void T01_GivenDatangSendiri_AndRujukanEmpty_WhenCreate_ThenSuccess()
     {
         //  Arrange
         var caraMasuk = CaraMasukDkModel.Create("8", "A");
         _sut = RegCaraMasukVo.Create(caraMasuk, null!, "", new DateTime(3000, 1, 1), "", "", "", "");
     }
     [Fact]
-    public void GivenDatangSendiri_ButRujukanNotEmpty_WhenCreate_ThenThrowError()
+    public void T02_GivenDatangSendiri_ButRujukanNotEmpty_WhenCreate_ThenThrowError()
     {
         //  Arrange
         var caraMasuk = CaraMasukDkModel.Create("8", "A");
@@ -85,7 +85,7 @@ public class RegCaraMasukVoTest
     }
 
     [Fact]
-    public void GivenCaraMasukRujukan_AndRujukanNotEmpty_WhenCreate_ThenSuccess()
+    public void T03_GivenCaraMasukRujukan_AndRujukanNotEmpty_WhenCreate_ThenSuccess()
     {
         //  Arrange
         var caraMasuk = CaraMasukDkModel.Create("1", "A");
@@ -95,7 +95,7 @@ public class RegCaraMasukVoTest
     }
 
     [Fact]
-    public void GivenCaraMasukRujukan_ButRujukanEmpty_WhenCreate_ThenThrowError()
+    public void T04_GivenCaraMasukRujukan_ButRujukanEmpty_WhenCreate_ThenThrowError()
     {
         //  Arrange
         var caraMasuk = CaraMasukDkModel.Create("1", "A");
@@ -104,7 +104,7 @@ public class RegCaraMasukVoTest
     }
 
     [Fact]
-    public void GivenCaraMasukRujukan_ButRujukanHasDifferentCaraMasuk_WhenCreate_ThenThrowError()
+    public void T05_GivenCaraMasukRujukan_ButRujukanHasDifferentCaraMasuk_WhenCreate_ThenThrowError()
     {
         //  Arrange
         var caraMasuk = CaraMasukDkModel.Create("1", "A");
