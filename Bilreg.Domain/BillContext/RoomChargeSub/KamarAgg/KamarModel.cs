@@ -6,8 +6,7 @@ namespace Bilreg.Domain.BillContext.RoomChargeSub.KamarAgg;
 
 public class KamarModel(
     string KamarId,
-    string KamarName
-): IKamarKey
+    string KamarName): IKamarKey
 {
     public string KamarId { get; protected set; } = KamarId;
     public string KamarName { get; protected set; } = KamarName;
@@ -16,15 +15,15 @@ public class KamarModel(
     public string Ket2 { get; protected set; } = string.Empty;
     public string Ket3 { get; protected set; } = string.Empty;
     
-    public decimal JumlahKamar { get; protected set; }
-    public decimal JumlahKamarPakai { get; protected set; }
-    public decimal JumlahKamarKotor { get; protected set; }
-    public decimal JumlahKamarRusak { get; protected set; }
+    public int JumlahKamar { get; protected set; }
+    public int JumlahKamarPakai { get; protected set; }
+    public int JumlahKamarKotor { get; protected set; }
+    public int JumlahKamarRusak { get; protected set; }
     
-    public string BangsalId { get; protected set; } = string.Empty;
+    public string BangsalId { get; set; } = string.Empty;
     public string BangsalName { get; protected set; } = string.Empty;
     
-    public string KelasId { get;protected set; } = string.Empty;
+    public string KelasId { get; set; } = string.Empty;
     public string KelasName { get; protected set; } = string.Empty;
 
     public void SetBangsal(BangsalModel bangsal)
