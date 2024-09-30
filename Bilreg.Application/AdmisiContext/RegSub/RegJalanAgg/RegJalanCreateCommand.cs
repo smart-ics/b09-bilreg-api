@@ -63,23 +63,13 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanCreateCommand, RegJ
     {
         //  GUARD
         GuardInput(request);
-        var pasien = _pasienDal.GetData(request) 
-            ?? throw new KeyNotFoundException($"Pasien id {request.PasienId} not found")
-        
-        var tipeJaminan = _tipeJaminanDal.GetData(request)
-            ?? throw new KeyNotFoundException($"Tipe jaminan id {request.TipeJaminanId} not found");
-
+        var pasien = _pasienDal.GetData(request); 
+        var tipeJaminan = _tipeJaminanDal.GetData(request);
         var polis = _polisDal.GetData(request);
-        
-        var caraMasukDk = _caraMasukDkDal.GetData(request)
-            ?? throw new KeyNotFoundException($"Cara masuk id {request.CaraMasukDkId} not found");
-
+        var caraMasukDk = _caraMasukDkDal.GetData(request);
         var rujukan = _rujukanDal.GetData(request);
-        
-        var layanan = _layananDal.GetData(request)
-                      ?? throw new KeyNotFoundException($"Layanan id {request.LayananId} not found");
-        var dokter = _dokterDal.GetData(new PetugasMedisModel(request.DokterId, string.Empty))
-                     ?? throw new KeyNotFoundException($"Dokter id {request.DokterId} not found");
+        var layanan = _layananDal.GetData(request);
+        var dokter = _dokterDal.GetData(new PetugasMedisModel(request.DokterId, string.Empty));
 
         // var newRegId = _counter.GenerateDec("NOREG", "RG", 10, string.Empty);
         var regJalan = new RegBuilder()

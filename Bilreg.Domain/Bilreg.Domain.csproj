@@ -8,7 +8,6 @@
 
   <ItemGroup>
     <Folder Include="AdmisiContext\RegSub\GrupKarcisAgg\" />
-    <Folder Include="AdmisiContext\RegSub\RegAgg\ValueObjects\" />
     <Folder Include="PasienContext\StatusSosialSub\" />
     <Folder Include="PaymentContext\" />
   </ItemGroup>

@@ -1,7 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.JaminanSub.PolisAgg;
-using Bilreg.Domain.AdmisiContext.JaminanSub.TipeJaminanAgg;
-
-namespace Bilreg.Domain.AdmisiContext.RegSub.RegAgg;
+﻿namespace Bilreg.Domain.AdmisiContext.RegSub.RegAgg;
 
 public abstract partial class AbstractRegModel : IRegKey
 {
@@ -31,6 +28,7 @@ public abstract partial class AbstractRegModel : IRegKey
     public string Gender { get; protected set; } = string.Empty;
     #endregion
 
+    public RegPasienVo Pasien { get; protected set; }
     public RegTipeJaminanVo TipeJaminan { get; protected set; }
     public RegCaraMasukVo CaraMasuk { get; protected set; }
 
@@ -40,64 +38,3 @@ public interface IRegKey
 {
     string RegId { get; }
 }
-
-public class RegTipeJaminanVo
-{
-    private RegTipeJaminanVo(){}
-
-    public static RegTipeJaminanVo Create(TipeJaminanModel tipeJaminan, PolisModel polis)
-    {
-        
-        return new RegTipeJaminanVo
-        {
-            TipeJaminanId = tipeJaminan.TipeJaminanId,
-            TipeJaminanName = tipeJaminan.TipeJaminanName,
-            JaminanId = tipeJaminan.JaminanId,
-            JaminanName = tipeJaminan.JaminanName,
-            PolisId = polis.PolisId,
-            PolisAtasNama = polis.AtasNama,
-            KelasJaminanId = polis.KelasId,
-            KelasJaminanName = polis.KelasName
-        };
-    }
-
-    protected RegTipeJaminanVo Load(string tipeJaminanId, string tipeJaminanName,
-        string jaminanId, string jaminanName,
-        string polisId, string polisAtasNama,
-        string kelasJaminanId, string kelasJaminanName)
-    {
-        TipeJaminanId = tipeJaminanId;
-        TipeJaminanName = jaminanName;
-        JaminanId = jaminanId;
-        JaminanName = jaminanName;
-        PolisId = polisId;
-        PolisAtasNama = polisAtasNama;
-        KelasJaminanId = kelasJaminanId;
-        KelasJaminanName = kelasJaminanName;
-    }
-    
-    public string TipeJaminanId { get; protected set; } = string.Empty;
-    public string TipeJaminanName {get; protected set;} = string.Empty;
-    public string JaminanId {get; protected set;} = string.Empty;
-    public string JaminanName {get; protected set;} = string.Empty;
-    public string PolisId {get; protected set;} = string.Empty;
-    public string PolisAtasNama {get; protected set;} = string.Empty;
-    public string KelasJaminanId {get; protected set;} = string.Empty;
-    public string KelasJaminanName {get; protected set;} = string.Empty;
-
-    
-};
-
-public record RegCaraMasukVo(
-    string CaraMasukDkId,
-    string CaraMasukDkName,
-    string RujukanId,
-    string RujukanName,
-    string RujukanReffNo,
-    DateTime RujukanDate,
-    string IcdCode,
-    string IcdName,
-    string UraianDokter,
-    string Anamnese
-    );
-

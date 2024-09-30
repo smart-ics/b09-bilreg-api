@@ -3,52 +3,55 @@ using Bilreg.Domain.AdmisiContext.JaminanSub.TipeJaminanAgg;
 using Bilreg.Domain.AdmisiContext.RujukanSub.CaraMasukDkAgg;
 using Bilreg.Domain.AdmisiContext.RujukanSub.RujukanAgg;
 using Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
+using CommunityToolkit.Diagnostics;
 
 namespace Bilreg.Domain.AdmisiContext.RegSub.RegAgg;
 
-public abstract partial class AbstractRegModel //: AbstractRegModel
+public class RegBuilder : AbstractRegModel
 {
-    public AbstractRegModel SetRegId(string regId)
+    public RegBuilder SetRegId(string regId)
     {
         RegId = regId;
         return this;
     }
     
-    public AbstractRegModel SetUser(string userId)
+    public RegBuilder SetUser(string userId)
     {
         UserId = userId;
         return this;
     }
     
-    public AbstractRegModel SetRegDate(DateTime dateTime)
+    public RegBuilder SetRegDate(DateTime dateTime)
     {
         RegDate = dateTime;
         return this;
     }
 
-    public AbstractRegModel Discharge(DateTime regOutDate, string userId)
+    public RegBuilder Discharge(DateTime regOutDate, string userId)
     {
         RegOutDate = regOutDate;
         UserIdOut = userId;
         return this;
     }
 
-    public AbstractRegModel Void(string userId)
+    public RegBuilder Void(string userId)
     {
         VoidDate = DateTime.Now;
         UserIdVoid = userId;
         return this;
     }
 
-    public AbstractRegModel CancelVoid()
+    public RegBuilder CancelVoid()
     {
         VoidDate = new DateTime(3000, 1, 1);
         UserIdVoid = string.Empty;
         return this;
     }
 
-    public AbstractRegModel WithPasien(PasienModel pasien)
+    public RegBuilder WithPasien(PasienModel pasien)
     {
+        Guard.IsNotNull(pasien);
+        
         PasienId = pasien.PasienId;
         NoMedRec = pasien.GetNoMedrec();
         PasienName = pasien.PasienName;
@@ -56,28 +59,8 @@ public abstract partial class AbstractRegModel //: AbstractRegModel
         Gender = pasien.Gender;
         return this;
     }
-    
-    public AbstractRegModel WithJaminanAsuransi(PolisModel polis)
-    {
-        PolisId = polis.PolisId;
-        PolisAtasNama = polis.AtasNama;
-        TipeJaminanId = polis.TipeJaminanId;
-        TipeJaminanName = polis.TipeJaminanName;
-        JaminanId = polis.JaminanId;
-        JaminanName = polis.JaminanName;
-        return this;
-    }
 
-    public AbstractRegModel WithJaminanBayarSendiri()
-    {
-        TipeJaminanId = TIPEJAMINAN_UMUM_ID;
-        TipeJaminanName = TIPEJAMINAN_UMUM_NAME;
-        JaminanId = JAMINAN_UMUM_ID;
-        JaminanName = JAMINAN_UMUM_NAME;
-        return this;
-    }
-
-    public AbstractRegModel WithJaminan(TipeJaminanModel tipeJaminan, PolisModel polis)
+    public RegBuilder WithJaminan(TipeJaminanModel tipeJaminan, PolisModel polis)
     {
         if (tipeJaminan.TipeJaminanId == TIPEJAMINAN_UMUM_ID)
         {
@@ -101,7 +84,7 @@ public abstract partial class AbstractRegModel //: AbstractRegModel
         return this;
     }
 
-    public AbstractRegModel WithCaraMasuk(CaraMasukDkModel caraMasukDk, RujukanModel rujukan)
+    public RegBuilder WithCaraMasuk(CaraMasukDkModel caraMasukDk, RujukanModel rujukan)
     {
         if (caraMasukDk.CaraMasukDkId == "8")
         {
@@ -123,28 +106,5 @@ public abstract partial class AbstractRegModel //: AbstractRegModel
         }
         return this;
 
-    }
-    
-
-    public AbstractRegModel UsingCaraMasukRujukan(RujukanModel rujukan, string rujukanReffNo, DateTime rujukanDate)
-    {
-        CaraMasukDkId = rujukan.CaraMasukDkId;
-        CaraMasukDkName = rujukan.CaraMasukDkName;
-        RujukanId = rujukan.RujukanId;
-        RujukanName = rujukan.RujukanName;
-        RujukanReffNo = rujukanReffNo;
-        RujukanDate = rujukanDate;
-        return this;
-    }
-
-    public RegBuilder UsingCaraMasukDatangSendiri()
-    {
-        CaraMasukDkId = CARAMASUK_DATANGSENDIRI_ID;
-        CaraMasukDkName = CARAMASUK_DATANGSENDIRI_NAME;
-        RujukanId = string.Empty;
-        RujukanName = string.Empty;
-        RujukanReffNo = string.Empty;
-        RujukanDate = new DateTime(3000,1,1);
-        return this;
     }
 }
