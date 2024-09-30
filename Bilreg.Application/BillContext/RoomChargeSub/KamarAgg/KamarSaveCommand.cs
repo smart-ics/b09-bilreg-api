@@ -35,6 +35,7 @@ public class KamarSaveHandler : IRequestHandler<KamarSaveCommand>
 
     public Task Handle(KamarSaveCommand request, CancellationToken cancellationToken)
     {
+        //  GUARD
         Guard.IsNotNull(request);
         Guard.IsNotNullOrWhiteSpace(request.KamarId);
         Guard.IsNotNull(request.KamarName);
@@ -43,17 +44,14 @@ public class KamarSaveHandler : IRequestHandler<KamarSaveCommand>
         Guard.IsNotNull(request.Ket1);
         Guard.IsNotNull(request.Ket2);
         Guard.IsNotNull(request.Ket3);
-        
-        var kamar = _kamarDal.GetData(request)
-            ?? new KamarModel(request.KamarId,
-                              request.KamarName);
-        
         var bangsal = _bangsalDal.GetData(request) 
             ?? throw new KeyNotFoundException($"Bangsal with id {request.BangsalId} not found");
-        
         var kelas = _kelasDal.GetData(request) 
             ?? throw new KeyNotFoundException($"Kelas with id {request.KelasId} not found");
         
+        //  BUILD
+        var kamar = _kamarDal.GetData(request)
+            ?? new KamarModel(request.KamarId, request.KamarName);
         kamar.SetKet(request.Ket1,request.Ket2,request.Ket3);
         kamar.SetBangsal(bangsal);
         kamar.SetKelas(kelas);

@@ -1,4 +1,4 @@
-using Bilreg.Domain.BillContext.RoomChargeSub.BangsalAgg;
+﻿using Bilreg.Domain.BillContext.RoomChargeSub.BangsalAgg;
 using Bilreg.Domain.BillContext.RoomChargeSub.KelasAgg;
 using CommunityToolkit.Diagnostics;
 
@@ -16,10 +16,10 @@ public class KamarModel(
     public string Ket2 { get; protected set; } = string.Empty;
     public string Ket3 { get; protected set; } = string.Empty;
     
-    public decimal JumlahKamar { get; protected set; }
-    public decimal JumlahKamarPakai { get; protected set; }
-    public decimal JumlahKamarKotor { get; protected set; }
-    public decimal JumlahKamarRusak { get; protected set; }
+    public int JumlahKamar { get; protected set; }
+    public int JumlahKamarPakai { get; protected set; }
+    public int JumlahKamarKotor { get; protected set; }
+    public int JumlahKamarRusak { get; protected set; }
     
     public string BangsalId { get; set; } = string.Empty;
     public string BangsalName { get; protected set; } = string.Empty;
