@@ -62,48 +62,11 @@ public class RegBuilder : AbstractRegModel
 
     public RegBuilder WithJaminan(TipeJaminanModel tipeJaminan, PolisModel polis)
     {
-        if (tipeJaminan.TipeJaminanId == TIPEJAMINAN_UMUM_ID)
-        {
-            TipeJaminanName = TIPEJAMINAN_UMUM_NAME;
-            JaminanId = JAMINAN_UMUM_ID;
-            JaminanName = JAMINAN_UMUM_NAME;
-            PolisId = string.Empty;
-            KelasJaminanId = string.Empty;
-            KelasJaminanName = string.Empty;
-        }
-        else
-        {
-            TipeJaminanId = polis.TipeJaminanId;
-            TipeJaminanName = polis.TipeJaminanName;
-            JaminanId = polis.JaminanId;
-            JaminanName = polis.JaminanName;
-            PolisId = polis.PolisId;
-            KelasJaminanId = polis.KelasId;
-            KelasJaminanName = polis.KelasName;
-        }
         return this;
     }
 
     public RegBuilder WithCaraMasuk(CaraMasukDkModel caraMasukDk, RujukanModel rujukan)
     {
-        if (caraMasukDk.CaraMasukDkId == "8")
-        {
-            CaraMasukDkId = CARAMASUK_DATANGSENDIRI_ID;
-            CaraMasukDkName = CARAMASUK_DATANGSENDIRI_NAME;
-            RujukanId = string.Empty;
-            RujukanName = string.Empty;
-            RujukanReffNo = string.Empty;
-            RujukanDate = new DateTime(3000,1,1);
-        }
-        else
-        {
-            CaraMasukDkId = rujukan.CaraMasukDkId;
-            CaraMasukDkName = rujukan.CaraMasukDkName;
-            RujukanId = rujukan.RujukanId;
-            RujukanName = rujukan.RujukanName;
-            RujukanReffNo = rujukan.rujukanReffNo;
-            RujukanDate = rujukanDate;
-        }
         return this;
 
     }
