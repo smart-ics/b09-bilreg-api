@@ -19,17 +19,25 @@ public class TipeKamarSetDefaultHandler : IRequestHandler<TipeKamarSetDefault>
 
     public Task Handle(TipeKamarSetDefault request, CancellationToken cancellationToken)
     {
-        Guard.IsNotNullOrWhiteSpace(request.TipeKamarId);
-
-        var tipeKamarList = _tipeKamarDal.ListData()
-                            ?? throw new KeyNotFoundException("Tipe Kamar not Found");
-
-        tipeKamarList.ToList().ForEach(kamar =>
-        {
-            (kamar.TipeKamarId == request.TipeKamarId ? (Action)kamar.SetDefault : kamar.ResetDefault)();
-            _writer.Save(kamar);
-        });
+        //  GUARD
+        Guard.IsNotNull(request);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.TipeKamarId);
+        var tipeKamar = _tipeKamarDal.GetData(request)
+                              ?? throw new KeyNotFoundException($"Tipe Kamar with id {request.TipeKamarId} not found");
         
+        //  BUILD
+        var list = _tipeKamarDal.ListData();
+        var currentDefault = list.FirstOrDefault(x => x.IsDefault);
+        if (currentDefault is not null)
+            currentDefault.ResetDefault();
+        
+        tipeKamar.SetDefault();
+
+        //  WRITE
+        if (currentDefault is not null)
+            _writer.Save(currentDefault);
+        
+        _writer.Save(tipeKamar);
         return Task.CompletedTask;
     }
 }
