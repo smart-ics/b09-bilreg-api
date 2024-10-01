@@ -1,5 +1,8 @@
 ﻿using Bilreg.Domain.BillContext.TindakanSub.TipeTarifAgg;
+using FluentAssertions;
 using MediatR;
+using Moq;
+using Xunit;
 
 namespace Bilreg.Application.BillContext.TindakanSub.TipeTarifAgg;
 
@@ -35,5 +38,27 @@ public class TipeTarifGetHandler : IRequestHandler<TipeTarifGetQuery, TipeTarifG
             );
         
         return Task.FromResult(response);
+    }
+}
+
+public class TipeTarifGetHandlerTest
+{
+    private readonly Mock<ITipeTarifDal> _tipeTarifDal;
+    private readonly TipeTarifGetHandler _sut;
+
+    public TipeTarifGetHandlerTest()
+    {
+        _tipeTarifDal = new Mock<ITipeTarifDal>();
+        _sut = new TipeTarifGetHandler(_tipeTarifDal.Object);
+    }
+
+    [Fact]
+    public async Task GivenInvalidTipeTarifId_ThenThrowKeyNotFoundException_Test()
+    {
+        var request = new TipeTarifGetQuery("A");
+        _tipeTarifDal.Setup(x => x.GetData(It.IsAny<TipeTarifGetQuery>()))
+            .Returns(null as TipeTarifModel);
+        var actual = async () => await _sut.Handle(request, new CancellationToken());
+        await actual.Should().ThrowAsync<KeyNotFoundException>();
     }
 }

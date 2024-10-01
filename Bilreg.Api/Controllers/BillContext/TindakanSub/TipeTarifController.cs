@@ -51,21 +51,29 @@ namespace Bilreg.Api.Controllers.BillContext.TindakanSub
             return Ok(new JSendOk("Done"));
         }
 
-        [HttpGet]
-        [Route("{id}")]
-        public async Task<IActionResult> GetData(string id)
+        [HttpPut]
+        [Route("SetNoUrut")]
+        public async Task<IActionResult> SetNoUrut(TipeTarifSetNoUrutCommand cmd)
         {
-            var cmd = new TipeTarifGetQuery(id);
             await _mediator.Send(cmd);
             return Ok(new JSendOk("Done"));
         }
 
         [HttpGet]
+        [Route("{id}")]
+        public async Task<IActionResult> GetData(string id)
+        {
+            var query = new TipeTarifGetQuery(id);
+            var response = await _mediator.Send(query);
+            return Ok(new JSendOk(response));
+        }
+
+        [HttpGet]
         public async Task<IActionResult> ListData()
         {
-            var cmd = new TipeTarifListQuery();
-            await _mediator.Send(cmd);
-            return Ok(new JSendOk("Done"));
+            var query = new TipeTarifListQuery();
+            var response = await _mediator.Send(query);
+            return Ok(new JSendOk(response));
         }
         
     }

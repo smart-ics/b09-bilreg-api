@@ -1,6 +1,9 @@
 ﻿using Bilreg.Domain.BillContext.TindakanSub.TipeTarifAgg;
 using CommunityToolkit.Diagnostics;
+using FluentAssertions;
 using MediatR;
+using Moq;
+using Xunit;
 
 namespace Bilreg.Application.BillContext.TindakanSub.TipeTarifAgg;
 
@@ -29,6 +32,35 @@ public class  TipeTarifActivateHandler : IRequestHandler<TipeTarifActivateComman
         status.Activate();
         _writer.Save(status);
         return Task.CompletedTask;
+    }
+}
 
+public class TipeTarifActivateHandlerTest
+{
+    private readonly Mock<ITipeTarifDal> _tipeTarifDal;
+    private readonly Mock<ITipeTarifWriter> _writer;
+    private readonly TipeTarifActivateHandler _sut;
+
+    public TipeTarifActivateHandlerTest()
+    {
+        _tipeTarifDal = new Mock<ITipeTarifDal>();
+        _writer = new Mock<ITipeTarifWriter>();
+        _sut = new TipeTarifActivateHandler(_tipeTarifDal.Object, _writer.Object);
+    }
+
+    [Fact]
+    public async Task GivenNullRequest_ThenThrowArgumentNullException_Test()
+    {
+        TipeTarifActivateCommand request = null;
+        var actual = async () => await _sut.Handle(request, CancellationToken.None);
+        await actual.Should().ThrowAsync<ArgumentNullException>();
+    }
+    
+    [Fact]
+    public async Task GivenEmptyTipeTarifId_ThenThrowArgumentException_Test()
+    {
+        var request = new TipeTarifActivateCommand("");
+        var actual = async () => await _sut.Handle(request, CancellationToken.None);
+        await actual.Should().ThrowAsync<ArgumentException>();
     }
 }
