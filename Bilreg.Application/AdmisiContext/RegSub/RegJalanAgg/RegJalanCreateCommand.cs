@@ -63,6 +63,8 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanCreateCommand, RegJ
     {
         //  GUARD
         GuardInput(request);
+        
+        //  BUILD
         var pasien = _pasienDal.GetData(request); 
         var tipeJaminan = _tipeJaminanDal.GetData(request);
         var polis = _polisDal.GetData(request);
@@ -72,12 +74,12 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanCreateCommand, RegJ
         var dokter = _dokterDal.GetData(new PetugasMedisModel(request.DokterId, string.Empty));
 
         // var newRegId = _counter.GenerateDec("NOREG", "RG", 10, string.Empty);
-        var regJalan = new RegBuilder()
+        var reg = new RegBuilder()
             .SetRegDate(DateTime.Now)
             .WithPasien(pasien)
             .WithJaminan(tipeJaminan, polis)
             .WithCaraMasuk(caraMasukDk, rujukan);
-
+            //.AddLayanan(layanan, dokter, request.noAntrian);
         
             
 

@@ -1,4 +1,6 @@
-﻿namespace Bilreg.Domain.AdmisiContext.RegSub.RegAgg;
+﻿using Bilreg.Domain.AdmisiContext.RegSub.RegAgg.ValueObjects;
+
+namespace Bilreg.Domain.AdmisiContext.RegSub.RegAgg;
 
 public abstract partial class AbstractRegModel : IRegKey
 {
@@ -31,6 +33,7 @@ public abstract partial class AbstractRegModel : IRegKey
     public RegPasienVo Pasien { get; protected set; }
     public RegTipeJaminanVo TipeJaminan { get; protected set; }
     public RegCaraMasukVo CaraMasuk { get; protected set; }
+    public LampiranRujukanVo LampiranRujukan { get; protected set; }
 
 }
 
