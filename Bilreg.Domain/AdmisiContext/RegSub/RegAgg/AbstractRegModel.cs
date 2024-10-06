@@ -1,39 +1,98 @@
 ﻿using Bilreg.Domain.AdmisiContext.RegSub.RegAgg.ValueObjects;
+using CommunityToolkit.Diagnostics;
 
 namespace Bilreg.Domain.AdmisiContext.RegSub.RegAgg;
 
-public abstract partial class AbstractRegModel : IRegKey
+public abstract class AbstractRegModel : IRegKey
 {
     private static readonly DateTime DefaultDate = new DateTime(3000, 1, 1);
-
-    private const string TIPEJAMINAN_UMUM_ID = "00000";
-    private const string TIPEJAMINAN_UMUM_NAME = "UMUM [BAYAR SENDIRI]";
-    private const string JAMINAN_UMUM_ID = "000";
-    private const string JAMINAN_UMUM_NAME = "UMUM";
     private const string CARAMASUK_DATANGSENDIRI_ID = "8";
-    private const string CARAMASUK_DATANGSENDIRI_NAME = "DATANG SENDIRI";
     
-    public string RegId { get; protected set; } = string.Empty;
-    public DateTime RegDate { get; protected set; } = DefaultDate;
-    public string UserId { get; protected set; } = string.Empty;
-    public DateTime RegOutDate { get; protected set; } = DefaultDate;
-    public string UserIdOut { get; protected set; } = string.Empty;
-    public DateTime VoidDate { get; protected set; } = DefaultDate;
-    public string UserIdVoid { get; protected set; } = string.Empty;
-    public JenisRegEnum JenisReg { get; protected set; }
-    
-    #region PASIEN
-    public string PasienId { get; protected set; } = string.Empty;
-    public string NoMedRec { get; protected set; } = string.Empty;
-    public string PasienName { get; protected set; } = string.Empty;
-    public DateTime TglLahir { get; protected set; } = DefaultDate;
-    public string Gender { get; protected set; } = string.Empty;
-    #endregion
+    public string RegId { get; private set; }
+    public JenisRegEnum JenisReg { get; private set; }
+    public TglJamTrsVo TglJamTrs { get; private set; }
+    public VoidFlagVo VoidFlag { get; private set; }
+    public RegOutFlagVo RegOutFlag { get; private set; }
 
-    public RegPasienVo Pasien { get; protected set; }
-    public RegTipeJaminanVo TipeJaminan { get; protected set; }
-    public RegCaraMasukVo CaraMasuk { get; protected set; }
-    public LampiranRujukanVo LampiranRujukan { get; protected set; }
+    public RegPasienVo Pasien { get; private set; }
+    public RegTipeJaminanVo TipeJaminan { get; private set; }
+    public RegCaraMasukVo CaraMasuk { get; private set; }
+    public LampiranRujukanVo LampiranRujukan { get; private set; }
+    
+    
+    protected AbstractRegModel(string regId)
+    {
+        RegId = regId;
+    }
+
+    protected AbstractRegModel(string regId, TglJamTrsVo tglJamTrs,
+        VoidFlagVo voidStamp, RegOutFlagVo regOut, RegPasienVo pasien, 
+        RegTipeJaminanVo tipeJaminan, RegCaraMasukVo caraMasuk,
+        LampiranRujukanVo lampiranRujukan)
+    {
+        RegId = regId;
+        TglJamTrs = tglJamTrs;
+        VoidFlag = voidStamp;
+        RegOutFlag = regOut;
+
+        Pasien = pasien;
+        TipeJaminan = tipeJaminan;
+        CaraMasuk = caraMasuk;
+        LampiranRujukan = lampiranRujukan;
+    }
+
+    public void SetTglJamTrs(TglJamTrsVo tglJamTrs)
+    {
+        if (VoidFlag.IsVoid)
+            throw new ArgumentException("Register sudah void");
+
+        TglJamTrs = tglJamTrs;
+    }
+
+
+    public void SetRegOutFlag(RegOutFlagVo regOutFlag)
+    {
+        if (regOutFlag.RegOutDate < TglJamTrs.TglJam)
+            throw new ArgumentException("RegOutDate invalid, harus setelah tanggal masuk");
+
+        if (VoidFlag.IsVoid)
+            throw new ArgumentException("Register sudah void");
+        
+        RegOutFlag = regOutFlag;
+    }
+
+    public void SetVoidFlag(VoidFlagVo voidFlag)
+    {
+        if (voidFlag.VoidDate == DefaultDate)
+            throw new ArgumentException("VoidDate invalid");
+        VoidFlag = voidFlag;
+    }
+    
+    public void SetPasien(RegPasienVo pasien)
+    {
+        Guard.IsNotNull(pasien);
+        Pasien = pasien;
+    }
+    public void SetJaminan(RegTipeJaminanVo tipeJaminan)
+    {
+        Guard.IsNotNull(tipeJaminan);
+        TipeJaminan = tipeJaminan;
+    }
+
+    public void SetCaraMasuk(RegCaraMasukVo caraMasuk)
+    {
+        Guard.IsNotNull(caraMasuk);
+        CaraMasuk = caraMasuk;
+    }
+    
+    public void SetLampiranRujukan(LampiranRujukanVo lampiranRujukan)
+    {
+        Guard.IsNotNull(lampiranRujukan);
+        if (CaraMasuk.CaraMasukDkId == CARAMASUK_DATANGSENDIRI_ID)
+            throw new ArgumentException($"Cara Masuk Datang Sendiri tidak perlu Lampuran Rujukan");
+        
+        LampiranRujukan = lampiranRujukan;
+    }
 
 }
 

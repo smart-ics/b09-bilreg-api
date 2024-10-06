@@ -12,6 +12,7 @@ using Bilreg.Domain.AdmisiContext.LayananSub.LayananAgg;
 using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasAgg;
 using Bilreg.Domain.AdmisiContext.RegSub.KarcisAgg;
 using Bilreg.Domain.AdmisiContext.RegSub.RegAgg;
+using Bilreg.Domain.AdmisiContext.RegSub.RegAgg.ValueObjects;
 using Bilreg.Domain.AdmisiContext.RujukanSub.CaraMasukDkAgg;
 using Bilreg.Domain.AdmisiContext.RujukanSub.RujukanAgg;
 using Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
@@ -73,14 +74,11 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanCreateCommand, RegJ
         var layanan = _layananDal.GetData(request);
         var dokter = _dokterDal.GetData(new PetugasMedisModel(request.DokterId, string.Empty));
 
-        // var newRegId = _counter.GenerateDec("NOREG", "RG", 10, string.Empty);
-        var reg = new RegBuilder()
-            .SetRegDate(DateTime.Now)
-            .WithPasien(pasien)
-            .WithJaminan(tipeJaminan, polis)
-            .WithCaraMasuk(caraMasukDk, rujukan);
-            //.AddLayanan(layanan, dokter, request.noAntrian);
-        
+        var newRegId = _counter.GenerateDec("NOREG", "RG", 10, string.Empty);
+        var reg = new RegJalanModel(newRegId);
+        reg.SetPasien(new RegPasienVo(pasien));
+        reg.SetJaminan(new RegTipeJaminanVo(tipeJaminan, polis));
+        reg.SetCaraMasuk(new RegCaraMasukVo(caraMasukDk, rujukan));
             
 
         throw new NotImplementedException();

@@ -77,6 +77,7 @@ public record RegTipeJaminanVo
 
     private void ValidateAsuransi()
     {
+        //  pasien asuransi => data polis harus ada
         Guard.IsNotNullOrEmpty(PolisId);
         Guard.IsNotNullOrEmpty(PolisAtasNama);
         Guard.IsNotNullOrEmpty(KelasJaminanId);
@@ -91,7 +92,7 @@ public class  RegTipeJaminanVoTest
     private RegTipeJaminanVo _sut = null!;
     
     [Fact]
-    public void T01_GivenJaminanUmum_AndPolisEmpty_WhenCreate_ThenSuccess()
+    public void T01_GivenJaminanUmum_AndPolisEmpty_ThenSuccess()
     {
         var tipeJaminan = new TipeJaminanModel("00000", "A1");
         tipeJaminan.Set(new JaminanModel("B", "B1"));
@@ -100,7 +101,7 @@ public class  RegTipeJaminanVoTest
     }
 
     [Fact]
-    public void T02_GivenJaminanUmum_ButPolisNotEmpty_WhenCreate_ThenThrowError()
+    public void T02_GivenJaminanUmum_ButPolisNotEmpty_ThenThrowError()
     {
         var tipeJaminan = new TipeJaminanModel("00000", "A1");
         tipeJaminan.Set(new JaminanModel("B", "B1"));
@@ -110,7 +111,7 @@ public class  RegTipeJaminanVoTest
     }
 
     [Fact]
-    public void T03_GivenJaminanAsuransi_AndPolisNotEmpty_WhenCreate_ThenSuccess()
+    public void T03_GivenJaminanAsuransi_AndPolisNotEmpty_ThenSuccess()
     {
         var tipeJaminan = new TipeJaminanModel("00001", "A1");
         tipeJaminan.Set(new JaminanModel("B", "B1"));
@@ -122,7 +123,7 @@ public class  RegTipeJaminanVoTest
     }
     
     [Fact]
-    public void T04_GivenJaminanAsuransi_ButPolisEmpty_WhenCreate_ThenThrowError()
+    public void T04_GivenJaminanAsuransi_ButPolisEmpty_ThenThrowError()
     {
         var tipeJaminan = new TipeJaminanModel("00001", "A1");
         tipeJaminan.Set(new JaminanModel("B", "B1"));
@@ -132,7 +133,7 @@ public class  RegTipeJaminanVoTest
     }
 
     [Fact]
-    public void T05_GivenJaminanAsuransi_ButTipeJaminanPolisDifferent_WhenCreate_ThenThrowError()
+    public void T05_GivenJaminanAsuransi_ButTipeJaminanPolisDifferent_ThenThrowError()
     {
         var tipeJaminan = new TipeJaminanModel("00001", "A1");
         tipeJaminan.Set(new JaminanModel("B", "B1"));
