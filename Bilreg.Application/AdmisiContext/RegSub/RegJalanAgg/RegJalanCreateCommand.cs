@@ -5,7 +5,9 @@ using Bilreg.Application.AdmisiContext.PetugasMedisSub.PetugasMedisAgg;
 using Bilreg.Application.AdmisiContext.RegSub.KarcisAgg;
 using Bilreg.Application.AdmisiContext.RujukanSub.CaraMasukDkAgg;
 using Bilreg.Application.AdmisiContext.RujukanSub.RujukanAgg;
+using Bilreg.Application.BillContext.RoomChargeSub.KelasAgg;
 using Bilreg.Application.PasienContext.DataSosialPasienSub.PasienAgg;
+using Bilreg.Application.PasienContext.ParamContext.ParamSistemAgg;
 using Bilreg.Domain.AdmisiContext.JaminanSub.PolisAgg;
 using Bilreg.Domain.AdmisiContext.JaminanSub.TipeJaminanAgg;
 using Bilreg.Domain.AdmisiContext.LayananSub.LayananAgg;
@@ -15,6 +17,7 @@ using Bilreg.Domain.AdmisiContext.RegSub.RegAgg;
 using Bilreg.Domain.AdmisiContext.RegSub.RegAgg.ValueObjects;
 using Bilreg.Domain.AdmisiContext.RujukanSub.CaraMasukDkAgg;
 using Bilreg.Domain.AdmisiContext.RujukanSub.RujukanAgg;
+using Bilreg.Domain.BillContext.RoomChargeSub.KelasAgg;
 using Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
 using CommunityToolkit.Diagnostics;
 using MediatR;
@@ -26,7 +29,7 @@ public record RegJalanCreateCommand(
     string PasienId, string RegDate, 
     string TipeJaminanId, string PolisId, 
     string CaraMasukDkId, string RujukanId, string KarcisId,
-    string LayananId, string DokterId, int noAntrian) 
+    string LayananId, string DokterId, int NoAntrian) 
     : IRequest<RegJalanCreateResponse>, IPasienKey,
         ILayananKey, ITipeJaminanKey, IPolisKey, ICaraMasukDkKey,
         IRujukanKey, IKarcisKey;
@@ -44,10 +47,13 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanCreateCommand, RegJ
     private readonly ICaraMasukDkDal _caraMasukDkDal;
     private readonly IRujukanDal _rujukanDal;
     private readonly IKarcisDal _karcisDal;
+    private readonly IRegWriter _regWriter;
+    private readonly IParamSistemDal _paramSistemDal;
+    private readonly IKelasDal _kelasDal;
 
     public RegJalanCreateHandler(INunaCounterBL counter, IPasienDal pasienDal, ILayananDal layananDal,
         IPetugasMedisDal dokterDal, ITipeJaminanDal tipeJaminanDal, IPolisDal polisDal, ICaraMasukDkDal caraMasukDkDal,
-        IRujukanDal rujukanDal, IKarcisDal karcisDal)
+        IRujukanDal rujukanDal, IKarcisDal karcisDal, IParamSistemDal paramSistemDal, IKelasDal kelasDal)
     {
         _counter = counter;
         _pasienDal = pasienDal;
@@ -58,6 +64,8 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanCreateCommand, RegJ
         _caraMasukDkDal = caraMasukDkDal;
         _rujukanDal = rujukanDal;
         _karcisDal = karcisDal;
+        _paramSistemDal = paramSistemDal;
+        _kelasDal = kelasDal;
     }
 
     public Task<RegJalanCreateResponse> Handle(RegJalanCreateCommand request, CancellationToken cancellationToken)
@@ -71,16 +79,26 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanCreateCommand, RegJ
         var polis = _polisDal.GetData(request);
         var caraMasukDk = _caraMasukDkDal.GetData(request);
         var rujukan = _rujukanDal.GetData(request);
+        var karcis = _karcisDal.GetData(request);
         var layanan = _layananDal.GetData(request);
         var dokter = _dokterDal.GetData(new PetugasMedisModel(request.DokterId, string.Empty));
-
+        var kelasRajalId = _paramSistemDal.GetData("SIS_XXXXXX_KELAS_RJ")?.Value ?? string.Empty;
+        var kelas = _kelasDal.GetData(new KelasModel(kelasRajalId, ""));
+        
         var newRegId = _counter.GenerateDec("NOREG", "RG", 10, string.Empty);
         var reg = new RegJalanModel(newRegId);
         reg.SetPasien(new RegPasienVo(pasien));
         reg.SetJaminan(new RegTipeJaminanVo(tipeJaminan, polis));
-        reg.SetCaraMasuk(new RegCaraMasukVo(caraMasukDk, rujukan));
-            
+        reg.SetCaraMasuk(new RegCaraMasukVo(caraMasukDk, rujukan)); 
+        reg.SetKarcisTarif(new KarcisTarifVo(karcis));
+        reg.SetKelas(new RegKelasVo(kelas));
+        reg.AddLayanan(new RegJalanLayananVo(layanan, dokter, request.NoAntrian));
 
+        // regMasuk.Register(reg);
+        //
+        // //  WRITE
+        // _regWriter.RegMasuk(reg);
+        //
         throw new NotImplementedException();
     }
 
@@ -96,7 +114,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanCreateCommand, RegJ
         Guard.IsNotEmpty(request.CaraMasukDkId);
         Guard.IsNotEmpty(request.RujukanId);
         Guard.IsNotEmpty(request.KarcisId);
-        Guard.IsGreaterThanOrEqualTo(request.noAntrian, 0);
+        Guard.IsGreaterThanOrEqualTo(request.NoAntrian, 0);
     }
 
 

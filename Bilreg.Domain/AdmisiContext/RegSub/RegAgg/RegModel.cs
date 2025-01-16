@@ -3,7 +3,7 @@ using CommunityToolkit.Diagnostics;
 
 namespace Bilreg.Domain.AdmisiContext.RegSub.RegAgg;
 
-public abstract class AbstractRegModel : IRegKey
+public partial class RegModel : IRegKey
 {
     private static readonly DateTime DefaultDate = new DateTime(3000, 1, 1);
     private const string CARAMASUK_DATANGSENDIRI_ID = "8";
@@ -11,59 +11,45 @@ public abstract class AbstractRegModel : IRegKey
     public string RegId { get; private set; }
     public JenisRegEnum JenisReg { get; private set; }
     public TglJamTrsVo TglJamTrs { get; private set; }
-    public VoidFlagVo VoidFlag { get; private set; }
-    public RegOutFlagVo RegOutFlag { get; private set; }
+    public ActivityFlagVo VoidFlag { get; private set; } = new(new DateTime(3000, 1, 1), "");
 
     public RegPasienVo Pasien { get; private set; }
     public RegTipeJaminanVo TipeJaminan { get; private set; }
     public RegCaraMasukVo CaraMasuk { get; private set; }
-    public LampiranRujukanVo LampiranRujukan { get; private set; }
+    public KarcisTarifVo KarcisTarif { get; private set; }
+    public RegKelasVo Kelas { get; private set; }
     
-    
-    protected AbstractRegModel(string regId)
+    #region METHOD
+    public RegModel(string regId)
     {
         RegId = regId;
     }
 
-    protected AbstractRegModel(string regId, TglJamTrsVo tglJamTrs,
-        VoidFlagVo voidStamp, RegOutFlagVo regOut, RegPasienVo pasien, 
-        RegTipeJaminanVo tipeJaminan, RegCaraMasukVo caraMasuk,
-        LampiranRujukanVo lampiranRujukan)
+    public RegModel(string regId, TglJamTrsVo tglJamTrs,
+        ActivityFlagVo voidFlag, RegPasienVo pasien, 
+        RegTipeJaminanVo tipeJaminan, RegCaraMasukVo caraMasuk)
     {
         RegId = regId;
         TglJamTrs = tglJamTrs;
-        VoidFlag = voidStamp;
-        RegOutFlag = regOut;
+        VoidFlag = voidFlag;
 
         Pasien = pasien;
         TipeJaminan = tipeJaminan;
         CaraMasuk = caraMasuk;
-        LampiranRujukan = lampiranRujukan;
     }
 
     public void SetTglJamTrs(TglJamTrsVo tglJamTrs)
     {
-        if (VoidFlag.IsVoid)
+        if (VoidFlag.IsFlagged)
             throw new ArgumentException("Register sudah void");
 
         TglJamTrs = tglJamTrs;
     }
 
 
-    public void SetRegOutFlag(RegOutFlagVo regOutFlag)
+    public void SetVoidFlag(ActivityFlagVo voidFlag)
     {
-        if (regOutFlag.RegOutDate < TglJamTrs.TglJam)
-            throw new ArgumentException("RegOutDate invalid, harus setelah tanggal masuk");
-
-        if (VoidFlag.IsVoid)
-            throw new ArgumentException("Register sudah void");
-        
-        RegOutFlag = regOutFlag;
-    }
-
-    public void SetVoidFlag(VoidFlagVo voidFlag)
-    {
-        if (voidFlag.VoidDate == DefaultDate)
+        if (voidFlag.ActivityDate == DefaultDate)
             throw new ArgumentException("VoidDate invalid");
         VoidFlag = voidFlag;
     }
@@ -71,32 +57,46 @@ public abstract class AbstractRegModel : IRegKey
     public void SetPasien(RegPasienVo pasien)
     {
         Guard.IsNotNull(pasien);
+        if (VoidFlag.IsFlagged)
+            throw new ArgumentException("Register sudah void");
+
         Pasien = pasien;
     }
+    
     public void SetJaminan(RegTipeJaminanVo tipeJaminan)
     {
         Guard.IsNotNull(tipeJaminan);
+        if (VoidFlag.IsFlagged)
+            throw new ArgumentException("Register sudah void");
+
         TipeJaminan = tipeJaminan;
     }
 
     public void SetCaraMasuk(RegCaraMasukVo caraMasuk)
     {
         Guard.IsNotNull(caraMasuk);
+        if (VoidFlag.IsFlagged)
+            throw new ArgumentException("Register sudah void");
+
         CaraMasuk = caraMasuk;
     }
     
-    public void SetLampiranRujukan(LampiranRujukanVo lampiranRujukan)
+    public void SetKarcisTarif(KarcisTarifVo karcisTarif)
     {
-        Guard.IsNotNull(lampiranRujukan);
-        if (CaraMasuk.CaraMasukDkId == CARAMASUK_DATANGSENDIRI_ID)
-            throw new ArgumentException($"Cara Masuk Datang Sendiri tidak perlu Lampuran Rujukan");
-        
-        LampiranRujukan = lampiranRujukan;
+        Guard.IsNotNull(karcisTarif);
+        if (VoidFlag.IsFlagged)
+            throw new ArgumentException("Register sudah void");
+
+        KarcisTarif = karcisTarif;
     }
 
-}
+    public void SetKelas(RegKelasVo regKelas)
+    {
+        Guard.IsNotNull(regKelas);
+        if (VoidFlag.IsFlagged)
+            throw new ArgumentException("Register sudah void");
 
-public interface IRegKey
-{
-    string RegId { get; }
+        Kelas = regKelas;            
+    }
+    #endregion    
 }

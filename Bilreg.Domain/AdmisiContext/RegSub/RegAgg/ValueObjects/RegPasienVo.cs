@@ -18,6 +18,9 @@ public record RegPasienVo
 
     public RegPasienVo(PasienModel pasien)
     {
+        Guard.IsNotNull(pasien);
+        Guard.IsNotNullOrEmpty(pasien.PasienName);
+
         PasienId = pasien.PasienId;
         PasienName = pasien.PasienName;
         NoMedRec = pasien.GetNoMedrec();
@@ -25,9 +28,6 @@ public record RegPasienVo
         Gender = pasien.Gender;
 
         Validate();
-        //  GUARD
-        Guard.IsNotNull(pasien);
-        Guard.IsNotNullOrEmpty(pasien.PasienName);
     }
 
     public RegPasienVo(string pasienId, string pasienName, string noMedrec, DateTime tglLahie, string gender)
@@ -46,6 +46,7 @@ public record RegPasienVo
         Guard.IsNotNullOrEmpty(PasienId);
         Guard.IsNotNullOrEmpty(PasienName);
         Guard.IsNotNullOrEmpty(NoMedRec);
+        
         if(!ValidGender.Contains(Gender))
             throw new ArgumentException($"'{Gender}' is not a valid gender");
         if (TglLahir <= new DateTime(1900, 1, 1))

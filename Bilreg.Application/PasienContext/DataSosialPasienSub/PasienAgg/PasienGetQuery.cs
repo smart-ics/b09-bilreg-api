@@ -8,6 +8,7 @@ using CommunityToolkit.Diagnostics;
 using FluentAssertions;
 using MediatR;
 using Moq;
+using Nuna.Lib.CleanArchHelper;
 using Nuna.Lib.ValidationHelper;
 using Xunit;
 
