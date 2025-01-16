@@ -1,10 +1,14 @@
 ﻿namespace Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
 
-public partial class PasienModel(string pasienId, string pasienName)
+public partial class PasienModel(string pasienId)
     : IPasienKey
 {
+    public PasienModel(string pasienId, string pasienName) : this(pasienId)
+    {
+        PasienName = pasienName;
+    }
     public string PasienId { get; protected set; } = pasienId;
-    public string PasienName { get; protected set; } = pasienName;
+    public string PasienName { get; protected set; } = string.Empty;
     public string NickName { get; protected set; }
     public string TempatLahir { get; protected set; }
     public DateTime TglLahir { get; protected set; }

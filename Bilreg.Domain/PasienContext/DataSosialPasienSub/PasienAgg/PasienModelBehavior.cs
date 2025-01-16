@@ -6,10 +6,12 @@ namespace Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
 public partial class PasienModel
 {
     public void SetPersonalInfo(
+        string namaLengkap,
         string tempatLahir, DateTime tglLahir,
         string nickName, string gender, 
         string ibuKandung, string golDarah)
     {
+        PasienName = namaLengkap;
         TempatLahir = tempatLahir;
         TglLahir = tglLahir;
         NickName = nickName;
@@ -98,4 +100,12 @@ public partial class PasienModel
     }
 
     public void SyncId() => ListLog.ForEach(x => x.SetPasienId(PasienId));
+
+    public string GetNoMedrec()
+    {
+        if (PasienId.Length < 15)
+            return string.Empty;
+        var lastEight = PasienId[^8..];
+        return $"{lastEight[..2]}-{lastEight.Substring(2, 2)}-{lastEight.Substring(4, 2)}-{lastEight.Substring(6, 2)}";
+    }
 }

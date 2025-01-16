@@ -1,5 +1,6 @@
 using Bilreg.Application.AdmisiContext.PetugasMedisSub.PetugasMedisAgg;
 using Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
+using Nuna.Lib.CleanArchHelper;
 
 namespace Bilreg.Application.PasienContext.DataSosialPasienSub.PasienAgg;
 

@@ -1,4 +1,5 @@
 ﻿using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasAgg;
+using Nuna.Lib.CleanArchHelper;
 
 namespace Bilreg.Application.AdmisiContext.PetugasMedisSub.PetugasMedisAgg;
 

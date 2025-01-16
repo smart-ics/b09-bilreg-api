@@ -61,8 +61,8 @@ public class PasienCreateHandler : IRequestHandler<PasienCreateCommand, PasienCr
         
         //  BUILD
         var pasienId = NewPasienId();
-        var pasien = new PasienModel(pasienId, request.PasienName);
-        pasien.SetPersonalInfo(request.TempatLahir,
+        var pasien = new PasienModel(pasienId);
+        pasien.SetPersonalInfo(request.PasienName, request.TempatLahir,
             request.TglLahir.ToDate(DateFormatEnum.YMD),
             request.NickName, request.Gender, 
             request.IbuKandung, request.GolDarah);

@@ -3,6 +3,7 @@ using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasAgg;
 using Bilreg.Domain.AdmisiContext.PetugasMedisSub.SmfAgg;
 using CommunityToolkit.Diagnostics;
 using MediatR;
+using Nuna.Lib.CleanArchHelper;
 
 namespace Bilreg.Application.AdmisiContext.PetugasMedisSub.PetugasMedisAgg;
 
