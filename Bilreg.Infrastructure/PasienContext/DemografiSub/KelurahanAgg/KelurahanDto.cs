@@ -27,13 +27,10 @@ public class KelurahanDto
 
     public KelurahanModel ToModel()
     {
-        var kelurahan = KelurahanModel.Create(fs_kd_kelurahan, fs_nm_kelurahan, fs_kd_pos);
-        var kecamatan = KecamatanModel.Create(fs_kd_kecamatan, fs_nm_kecamatan);
-        var kabupaten = KabupatenModel.Create(fs_kd_kabupaten, fs_nm_kabupaten);
-        var propinsi = PropinsiModel.Create(fs_kd_propinsi, fs_nm_propinsi);
-        kabupaten.Set(propinsi);
-        kecamatan.Set(kabupaten);
-        kelurahan.Set(kecamatan);
+        var propinsi = new PropinsiModel(fs_kd_propinsi, fs_nm_propinsi);
+        var kabupaten = new KabupatenModel(fs_kd_kabupaten, fs_nm_kabupaten, propinsi);
+        var kecamatan = new KecamatanModel(fs_kd_kecamatan, fs_nm_kecamatan, kabupaten);
+        var kelurahan = new KelurahanModel(fs_kd_kelurahan, fs_nm_kelurahan, fs_kd_pos, kecamatan);
         return kelurahan;
     }
 }

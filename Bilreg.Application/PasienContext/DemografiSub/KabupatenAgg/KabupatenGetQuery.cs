@@ -25,7 +25,7 @@ public class KabupatenGetHandler : IRequestHandler<KabupatenGetQuery, KabupatenG
         var result = _kabupatenDal.GetData(request)
             ?? throw new KeyNotFoundException($"KabupatenId not found: {request.KabupatenId}");
         var response = new KabupatenGetResponse(
-            result.KabupatenId, result.KabupatenName, result.PropinsiId, result.PropinsiName);
+            result.KabupatenId, result.KabupatenName, result.Propinsi.PropinsiId, result.Propinsi.PropinsiName);
         return Task.FromResult(response);
     }
 }

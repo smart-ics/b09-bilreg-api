@@ -39,9 +39,6 @@ public partial class PasienModel
     {
         KelurahanId = kelurahan.KelurahanId;
         KelurahanName = kelurahan.KelurahanName;
-        KecamatanName = kelurahan.KecamatanName;
-        KabupatenName = kelurahan.KabupatenName;
-        PropinsiName = kelurahan.PropinsiName;
     }
 
     public void SetIdentitas(string jenisId, string nomorId, string nomorKk)

@@ -20,11 +20,10 @@ public class KecamatanDto
 
     public KecamatanModel ToModel()
     {
-        var kecamatan = KecamatanModel.Create(fs_kd_kecamatan, fs_nm_kecamatan);
-        var kabupaten = KabupatenModel.Create(fs_kd_kabupaten, fs_nm_kabupaten);
-        var propinsi = PropinsiModel.Create(fs_kd_propinsi, fs_nm_propinsi);
-        kabupaten.Set(propinsi);
-        kecamatan.Set(kabupaten);
+        var propinsi = new PropinsiModel(fs_kd_propinsi, fs_nm_propinsi);
+        var kabupaten = new KabupatenModel(fs_kd_kabupaten, fs_nm_kabupaten, propinsi);
+        var kecamatan = new KecamatanModel(fs_kd_kecamatan, fs_nm_kecamatan, kabupaten);
+
         return kecamatan;
     }
 }

@@ -5,16 +5,15 @@ namespace Bilreg.Infrastructure.PasienContext.DemografiSub.KabupatenAgg;
 
 public class KabupatenDto
 {
-    public string fs_kd_kabupaten { get; set; }
-    public string fs_nm_kabupaten { get; set; }
-    public string fs_kd_propinsi { get; set; }
-    public string fs_nm_propinsi { get; set; }
+    public string KabupatenId { get; set; }
+    public string KabupatenName { get; set; }
+    public string PropinsiId { get; set; }
+    public string PropinsiName { get; set; }
 
     public KabupatenModel ToModel()
     {
-        var response = KabupatenModel.Create(fs_kd_kabupaten, fs_nm_kabupaten);
-        var propinsi = PropinsiModel.Create(fs_kd_propinsi, fs_nm_propinsi);
-        response.Set(propinsi);
+        var propinsi = new PropinsiModel(PropinsiId, PropinsiName);
+        var response = new KabupatenModel(KabupatenId, KabupatenName, propinsi);
         return response;
     }
 }

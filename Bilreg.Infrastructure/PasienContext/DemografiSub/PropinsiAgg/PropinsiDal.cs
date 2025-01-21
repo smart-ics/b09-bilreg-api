@@ -4,8 +4,11 @@ using Bilreg.Application.PasienContext.DemografiSub.PropinsiAgg;
 using Bilreg.Domain.PasienContext.DemografiSub.PropinsiAgg;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
+using FluentAssertions;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
+using Nuna.Lib.TransactionHelper;
+using Xunit;
 
 namespace Bilreg.Infrastructure.PasienContext.DemografiSub.PropinsiAgg;
 
@@ -65,7 +68,7 @@ public class PropinsiDal : IPropinsiDal
     public PropinsiModel GetData(IPropinsiKey key)
     {
         const string sql = @"
-            SELECT fs_kd_propinsi, fs_nm_propinsi
+            SELECT fs_kd_propinsi PropinsiId, fs_nm_propinsi PropinsiName
             FROM ta_propinsi
             WHERE fs_kd_propinsi = @fs_kd_propinsi";
 
@@ -73,8 +76,8 @@ public class PropinsiDal : IPropinsiDal
         dp.AddParam("@fs_kd_propinsi", key.PropinsiId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        var result = conn.ReadSingle<PropinsiDto>(sql, dp);
-        return result.ToModel();
+        var result = conn.ReadSingle<PropinsiModel>(sql, dp);
+        return result; //.ToModel();
     }
 
     public IEnumerable<PropinsiModel> ListData()
@@ -87,5 +90,55 @@ public class PropinsiDal : IPropinsiDal
         var result = conn.Read<PropinsiDto>(sql);
         var response = result.Select(x => x.ToModel());
         return response;
+    }
+}
+
+public class PropinsiDalTest
+{
+    private readonly PropinsiDal _sut;
+
+    public PropinsiDalTest()
+    {
+        _sut = new PropinsiDal(ConnStringHelper.GetTestEnv());
+    }
+
+    [Fact]
+    public void InsertTest()
+    {
+        using var trans = TransHelper.NewScope();
+        _sut.Insert(new PropinsiModel("A", "B"));
+    }
+    
+    [Fact]
+    public void UpdateTest()
+    {
+        using var trans = TransHelper.NewScope();
+        _sut.Update(new PropinsiModel("A", "B"));
+    }
+
+    [Fact]
+    public void DeleteTest()
+    {
+        using var trans = TransHelper.NewScope();
+        _sut.Delete(new PropinsiModel("A",""));
+    }
+    
+    [Fact]
+    public void GetTest()
+    {
+        using var trans = TransHelper.NewScope();
+        var exp = new PropinsiModel("A", "B");
+        _sut.Insert(exp);
+        var actual = _sut.GetData(exp);
+        actual.Should().BeEquivalentTo(exp);
+    }
+    [Fact]
+    public void ListDataTest()
+    {
+        using var trans = TransHelper.NewScope();
+        var exp = new PropinsiModel("A", "B");
+        _sut.Insert(exp);
+        var actual = _sut.ListData();
+        actual.Should().BeEquivalentTo(new List<PropinsiModel>(){exp});
     }
 }

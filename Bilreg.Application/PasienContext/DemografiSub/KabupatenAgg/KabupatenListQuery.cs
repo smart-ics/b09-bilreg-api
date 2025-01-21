@@ -6,8 +6,7 @@ namespace Bilreg.Application.PasienContext.DemografiSub.KabupatenAgg;
 public record KabupatenListQuery(string PropinsiId) 
     : IRequest<IEnumerable<KabupatenListResponse>>, IPropinsiKey;
 
-public record KabupatenListResponse(string KabupatenId, string KabupatenName, 
-    string PropinsiId, string PropinsiName);
+public record KabupatenListResponse(string KabupatenId, string KabupatenName);
 
 public class KabuaptenListHandler : IRequestHandler<KabupatenListQuery, IEnumerable<KabupatenListResponse>>
 {
@@ -23,7 +22,7 @@ public class KabuaptenListHandler : IRequestHandler<KabupatenListQuery, IEnumera
         var listKab = _kabupatenDal.ListData(request)
             ?? throw new KeyNotFoundException($"Kabupaten not founld");
         var response = listKab.Select(x => new KabupatenListResponse(
-            x.KabupatenId, x.KabupatenName, x.PropinsiId, x.PropinsiName));
+            x.KabupatenId, x.KabupatenName));
         return Task.FromResult(response);
     }
 }

@@ -1,6 +1,5 @@
 using System.Data;
 using System.Data.SqlClient;
-using Bilreg.Application.PasienContext.DemografiSub.KabupatenAgg;
 using Bilreg.Application.PasienContext.DemografiSub.KelurahanAgg;
 using Bilreg.Domain.PasienContext.DemografiSub.KabupatenAgg;
 using Bilreg.Domain.PasienContext.DemografiSub.KecamatanAgg;
@@ -12,7 +11,6 @@ using Bilreg.Infrastructure.PasienContext.DemografiSub.KecamatanAgg;
 using Dapper;
 using FluentAssertions;
 using Microsoft.Extensions.Options;
-using Moq;
 using Nuna.Lib.DataAccessHelper;
 using Nuna.Lib.TransactionHelper;
 using Xunit;
@@ -37,7 +35,7 @@ public class KelurahanDal: IKelurahanDal
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_kelurahan", model.KelurahanId, SqlDbType.VarChar);
         dp.AddParam("@fs_nm_kelurahan", model.KelurahanName, SqlDbType.VarChar);
-        dp.AddParam("@fs_kd_kecamatan", model.KecamatanId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_kecamatan", model.Kecamatan.KecamatanId, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_pos", model.KodePos, SqlDbType.VarChar);
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
@@ -56,7 +54,7 @@ public class KelurahanDal: IKelurahanDal
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_kelurahan", model.KelurahanId, SqlDbType.VarChar);
         dp.AddParam("@fs_nm_kelurahan", model.KelurahanName, SqlDbType.VarChar);
-        dp.AddParam("@fs_kd_kecamatan", model.KecamatanId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_kecamatan", model.Kecamatan.KecamatanId, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_pos", model.KodePos, SqlDbType.VarChar);
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
@@ -157,13 +155,10 @@ public class KelurahanDalTest
     public void InsertTest()
     {
         using var trans = TransHelper.NewScope();
-        var kelurahan = KelurahanModel.Create("A", "B", "C");
-        var kecamatan = KecamatanModel.Create("D", "E");
-        var kabupaten = KabupatenModel.Create("F", "G");
-        var propinsi = PropinsiModel.Create("H", "I");
-        kabupaten.Set(propinsi);
-        kecamatan.Set(kabupaten);
-        kelurahan.Set(kecamatan);
+        var propinsi = new PropinsiModel("H", "");
+        var kabupaten = new KabupatenModel("F", "G", propinsi);
+        var kecamatan = new KecamatanModel("D", "E", kabupaten);
+        var kelurahan = new KelurahanModel("A", "B", "C", kecamatan);
         _sut.Insert(kelurahan);
     }
 
@@ -171,13 +166,11 @@ public class KelurahanDalTest
     public void UpdateTest()
     {
         using var trans = TransHelper.NewScope();
-        var kelurahan = KelurahanModel.Create("A", "B", "C");
-        var kecamatan = KecamatanModel.Create("D", "E");
-        var kabupaten = KabupatenModel.Create("F", "G");
-        var propinsi = PropinsiModel.Create("H", "I");
-        kabupaten.Set(propinsi);
-        kecamatan.Set(kabupaten);
-        kelurahan.Set(kecamatan);
+        var propinsi = new PropinsiModel("H", "");
+        var kabupaten = new KabupatenModel("F", "G", propinsi);
+        var kecamatan = new KecamatanModel("D", "E", kabupaten);
+        var kelurahan = new KelurahanModel("A", "B", "C", kecamatan);
+
         _sut.Update(kelurahan);
     }
 
@@ -185,13 +178,11 @@ public class KelurahanDalTest
     public void DeleteTest()
     {
         using var trans = TransHelper.NewScope();
-        var kelurahan = KelurahanModel.Create("A", "B", "C");
-        var kecamatan = KecamatanModel.Create("D", "E");
-        var kabupaten = KabupatenModel.Create("F", "G");
-        var propinsi = PropinsiModel.Create("H", "I");
-        kabupaten.Set(propinsi);
-        kecamatan.Set(kabupaten);
-        kelurahan.Set(kecamatan);
+        var propinsi = new PropinsiModel("H", "");
+        var kabupaten = new KabupatenModel("F", "G", propinsi);
+        var kecamatan = new KecamatanModel("D", "E", kabupaten);
+        var kelurahan = new KelurahanModel("A", "B", "C", kecamatan);
+        
         _sut.Delete(kelurahan);
     }
 
@@ -199,14 +190,11 @@ public class KelurahanDalTest
     public void GetDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = KelurahanModel.Create("A", "B", "C");
-        var kecamatan = KecamatanModel.Create("D", "E");
-        var kabupaten = KabupatenModel.Create("F", "G");
-        var propinsi = PropinsiModel.Create("H", "");
-        kabupaten.Set(propinsi);
-        kecamatan.Set(kabupaten);
-        expected.Set(kecamatan);
-        
+        var propinsi = new PropinsiModel("H", "");
+        var kabupaten = new KabupatenModel("F", "G", propinsi);
+        var kecamatan = new KecamatanModel("D", "E", kabupaten);
+        var expected = new KelurahanModel("A", "B", "C", kecamatan);
+
         _kecamatanDal.Insert(kecamatan);
         _kabupatenDal.Insert(kabupaten);
         _sut.Insert(expected);
@@ -219,14 +207,11 @@ public class KelurahanDalTest
     public void ListDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = KelurahanModel.Create("A", "B", "C");
-        var kecamatan = KecamatanModel.Create("D", "E");
-        var kabupaten = KabupatenModel.Create("F", "G");
-        var propinsi = PropinsiModel.Create("H", "");
-        kabupaten.Set(propinsi);
-        kecamatan.Set(kabupaten);
-        expected.Set(kecamatan);
-        
+        var propinsi = new PropinsiModel("H", "");
+        var kabupaten = new KabupatenModel("F", "G", propinsi);
+        var kecamatan = new KecamatanModel("D", "E", kabupaten);
+        var expected = new KelurahanModel("A", "B", "C", kecamatan);
+
         _kecamatanDal.Insert(kecamatan);
         _kabupatenDal.Insert(kabupaten);
         _sut.Insert(expected);
@@ -240,14 +225,11 @@ public class KelurahanDalTest
     {
         using var trans = TransHelper.NewScope();
         const string keyword = "B";
-        var expected = KelurahanModel.Create("A", "ABC", "C");
-        var kecamatan = KecamatanModel.Create("D", "E");
-        var kabupaten = KabupatenModel.Create("F", "G");
-        var propinsi = PropinsiModel.Create("H", "");
-        kabupaten.Set(propinsi);
-        kecamatan.Set(kabupaten);
-        expected.Set(kecamatan);
-        
+        var propinsi = new PropinsiModel("H", "");
+        var kabupaten = new KabupatenModel("F", "G", propinsi);
+        var kecamatan = new KecamatanModel("D", "E", kabupaten);
+        var expected = new KelurahanModel("A", "ABC", "C", kecamatan);
+
         _kecamatanDal.Insert(kecamatan);
         _kabupatenDal.Insert(kabupaten);
         _sut.Insert(expected);
