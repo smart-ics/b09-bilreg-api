@@ -9,9 +9,9 @@ public class KelurahanModel: IKelurahanKey
 {
     public KelurahanModel(string id, string name, string kodePos, KecamatanModel kecamatan)
     {
-        Guard.IsNullOrEmpty(id);
-        Guard.IsNullOrEmpty(name);
-        Guard.IsNull(kecamatan);
+        Guard.IsNotNullOrEmpty(id);
+        Guard.IsNotNullOrEmpty(name);
+        Guard.IsNotNull(kecamatan);
         
         KelurahanId = id;
         KelurahanName = name;

@@ -29,8 +29,10 @@ public class KelurahanDal: IKelurahanDal
     public void Insert(KelurahanModel model)
     {
         const string sql = @"
-            INSERT INTO ta_kelurahan (fs_kd_kelurahan, fs_nm_kelurahan, fs_kd_kecamatan, fs_kd_pos)
-            VALUES (@fs_kd_kelurahan, @fs_nm_kelurahan, @fs_kd_kecamatan, @fs_kd_pos)";
+            INSERT INTO ta_kelurahan 
+                (fs_kd_kelurahan, fs_nm_kelurahan, fs_kd_kecamatan, fs_kd_pos)
+            VALUES 
+                (@fs_kd_kelurahan, @fs_nm_kelurahan, @fs_kd_kecamatan, @fs_kd_pos)";
 
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_kelurahan", model.KelurahanId, SqlDbType.VarChar);
@@ -45,11 +47,14 @@ public class KelurahanDal: IKelurahanDal
     public void Update(KelurahanModel model)
     {
         const string sql = @"
-            UPDATE ta_kelurahan
-            SET fs_nm_kelurahan = @fs_nm_kelurahan,
+            UPDATE 
+                ta_kelurahan
+            SET 
+                fs_nm_kelurahan = @fs_nm_kelurahan,
                 fs_kd_kecamatan = @fs_kd_kecamatan,
                 fs_kd_pos = @fs_kd_pos
-            WHERE fs_kd_kelurahan = @fs_kd_kelurahan";
+            WHERE 
+                fs_kd_kelurahan = @fs_kd_kelurahan";
 
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_kelurahan", model.KelurahanId, SqlDbType.VarChar);
@@ -77,15 +82,23 @@ public class KelurahanDal: IKelurahanDal
     public KelurahanModel GetData(IKelurahanKey key)
     {
         const string sql = @"
-            SELECT kel.fs_kd_kelurahan, kel.fs_nm_kelurahan, kel.fs_kd_pos, kel.fs_kd_kecamatan,
-                ISNULL(kec.fs_nm_kecamatan, '') fs_nm_kecamatan, kec.fs_kd_kabupaten,
-                ISNULL(kab.fs_nm_kabupaten, '') fs_nm_kabupaten, kab.fs_kd_propinsi,
-                ISNULL(prop.fs_nm_propinsi, '') fs_nm_propinsi
-            FROM ta_kelurahan kel
-                LEFT JOIN ta_kecamatan kec ON kel.fs_kd_kecamatan = kec.fs_kd_kecamatan
-                LEFT JOIN ta_kabupaten kab ON kec.fs_kd_kabupaten = kab.fs_kd_kabupaten
-                LEFT JOIN ta_propinsi prop ON kab.fs_kd_propinsi = prop.fs_kd_propinsi
-            WHERE kel.fs_kd_kelurahan = @fs_kd_kelurahan";
+            SELECT 
+                aa.fs_kd_kelurahan AS KelurahanId, 
+                aa.fs_nm_kelurahan AS KelurahanName, 
+                aa.fs_kd_pos AS KodePos, 
+                aa.fs_kd_kecamatan AS KecamatanId,
+                ISNULL(bb.fs_nm_kecamatan, '') AS KecamatanName, 
+                ISNULL(bb.fs_kd_kabupaten, '') AS KabupatenId,
+                ISNULL(cc.fs_nm_kabupaten, '') AS KabupatenName, 
+                ISNULL(cc.fs_kd_propinsi, '') AS PropinsiId,
+                ISNULL(dd.fs_nm_propinsi, '') AS PropinsiName
+            FROM 
+                ta_kelurahan aa
+                LEFT JOIN ta_kecamatan bb ON aa.fs_kd_kecamatan = bb.fs_kd_kecamatan
+                LEFT JOIN ta_kabupaten cc ON bb.fs_kd_kabupaten = cc.fs_kd_kabupaten
+                LEFT JOIN ta_propinsi dd ON cc.fs_kd_propinsi = dd.fs_kd_propinsi
+            WHERE 
+                aa.fs_kd_kelurahan = @fs_kd_kelurahan";
         
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_kelurahan", key.KelurahanId, SqlDbType.VarChar);
@@ -98,15 +111,23 @@ public class KelurahanDal: IKelurahanDal
     public IEnumerable<KelurahanModel> ListData(IKecamatanKey filter)
     {
         const string sql = @"
-            SELECT kel.fs_kd_kelurahan, kel.fs_nm_kelurahan, kel.fs_kd_pos, kel.fs_kd_kecamatan,
-                ISNULL(kec.fs_nm_kecamatan, '') fs_nm_kecamatan, kec.fs_kd_kabupaten,
-                ISNULL(kab.fs_nm_kabupaten, '') fs_nm_kabupaten, kab.fs_kd_propinsi,
-                ISNULL(prop.fs_nm_propinsi, '') fs_nm_propinsi
-            FROM ta_kelurahan kel
-                LEFT JOIN ta_kecamatan kec ON kel.fs_kd_kecamatan = kec.fs_kd_kecamatan
-                LEFT JOIN ta_kabupaten kab ON kec.fs_kd_kabupaten = kab.fs_kd_kabupaten
-                LEFT JOIN ta_propinsi prop ON kab.fs_kd_propinsi = prop.fs_kd_propinsi
-            WHERE kel.fs_kd_kecamatan = @fs_kd_kecamatan";
+            SELECT 
+                aa.fs_kd_kelurahan AS KelurahanId, 
+                aa.fs_nm_kelurahan AS KelurahanName, 
+                aa.fs_kd_pos AS KodePos, 
+                aa.fs_kd_kecamatan AS KecamatanId,
+                ISNULL(bb.fs_nm_kecamatan, '') AS KecamatanName, 
+                ISNULL(bb.fs_kd_kabupaten, '') AS KabupatenId,
+                ISNULL(cc.fs_nm_kabupaten, '') AS KabupatenName, 
+                ISNULL(cc.fs_kd_propinsi, '') AS PropinsiId,
+                ISNULL(dd.fs_nm_propinsi, '') AS PropinsiName
+            FROM 
+                ta_kelurahan aa
+                LEFT JOIN ta_kecamatan bb ON aa.fs_kd_kecamatan = bb.fs_kd_kecamatan
+                LEFT JOIN ta_kabupaten cc ON bb.fs_kd_kabupaten = cc.fs_kd_kabupaten
+                LEFT JOIN ta_propinsi dd ON cc.fs_kd_propinsi = dd.fs_kd_propinsi
+            WHERE 
+                aa.fs_kd_kecamatan = @fs_kd_kecamatan";
 
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_kecamatan", filter.KecamatanId, SqlDbType.VarChar);
@@ -119,21 +140,28 @@ public class KelurahanDal: IKelurahanDal
     public IEnumerable<KelurahanModel> ListData(string filter)
     {
         const string sql = @"
-            SELECT kel.fs_kd_kelurahan, kel.fs_nm_kelurahan, kel.fs_kd_pos, kel.fs_kd_kecamatan,
-                ISNULL(kec.fs_nm_kecamatan, '') fs_nm_kecamatan, kec.fs_kd_kabupaten,
-                ISNULL(kab.fs_nm_kabupaten, '') fs_nm_kabupaten, kab.fs_kd_propinsi,
-                ISNULL(prop.fs_nm_propinsi, '') fs_nm_propinsi
-            FROM ta_kelurahan kel
-                LEFT JOIN ta_kecamatan kec ON kel.fs_kd_kecamatan = kec.fs_kd_kecamatan
-                LEFT JOIN ta_kabupaten kab ON kec.fs_kd_kabupaten = kab.fs_kd_kabupaten
-                LEFT JOIN ta_propinsi prop ON kab.fs_kd_propinsi = prop.fs_kd_propinsi
-            WHERE kel.fs_nm_kelurahan LIKE '%' + @keyword + '%'";
+            SELECT 
+                aa.fs_kd_kelurahan AS KelurahanId, 
+                aa.fs_nm_kelurahan AS KelurahanName, 
+                aa.fs_kd_pos AS KodePos, 
+                aa.fs_kd_kecamatan AS KecamatanId,
+                ISNULL(bb.fs_nm_kecamatan, '') AS KabupatenName, 
+                ISNULL(bb.fs_kd_kabupaten, '') AS KabupatenId,
+                ISNULL(cc.fs_nm_kabupaten, '') AS KabupatenName, 
+                ISNULL(cc.fs_kd_propinsi, '') AS PropinsiId,
+                ISNULL(dd.fs_nm_propinsi, '') AS PropinsiName
+            FROM 
+                ta_kelurahan aa
+                LEFT JOIN ta_kecamatan bb ON aa.fs_kd_kecamatan = bb.fs_kd_kecamatan
+                LEFT JOIN ta_kabupaten cc ON bb.fs_kd_kabupaten = cc.fs_kd_kabupaten
+                LEFT JOIN ta_propinsi dd ON cc.fs_kd_propinsi = dd.fs_kd_propinsi
+            WHERE 
+                aa.fs_nm_kelurahan LIKE @keyword ";
 
-        var dp = new DynamicParameters();
-        dp.AddParam("@keyword", filter, SqlDbType.VarChar);
+        var parameters = new { keyword = $"%{filter}%" };
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        var result = conn.Read<KelurahanDto>(sql, dp);
+        var result = conn.Query<KelurahanDto>(sql, parameters);
         return result?.Select(x => x.ToModel())!;
     }
 }
@@ -190,7 +218,7 @@ public class KelurahanDalTest
     public void GetDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var propinsi = new PropinsiModel("H", "");
+        var propinsi = new PropinsiModel("H", "I");
         var kabupaten = new KabupatenModel("F", "G", propinsi);
         var kecamatan = new KecamatanModel("D", "E", kabupaten);
         var expected = new KelurahanModel("A", "B", "C", kecamatan);
@@ -200,32 +228,33 @@ public class KelurahanDalTest
         _sut.Insert(expected);
         
         var actual = _sut.GetData(expected);
-        actual.Should().BeEquivalentTo(expected);
+        actual.Should().BeEquivalentTo(expected, opt => opt.Excluding(y => y.Kecamatan.Kabupaten.Propinsi));
     }
 
     [Fact]
     public void ListDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var propinsi = new PropinsiModel("H", "");
+        var propinsi = new PropinsiModel("H", "I");
         var kabupaten = new KabupatenModel("F", "G", propinsi);
         var kecamatan = new KecamatanModel("D", "E", kabupaten);
         var expected = new KelurahanModel("A", "B", "C", kecamatan);
-
+        
         _kecamatanDal.Insert(kecamatan);
         _kabupatenDal.Insert(kabupaten);
         _sut.Insert(expected);
         
         var actual = _sut.ListData(kecamatan);
-        _ = actual.Select(x => x.Should().BeEquivalentTo(expected));
+        _ = actual.Select(x => x.Should().BeEquivalentTo(expected, opt => opt.Excluding(y => y.Kecamatan.Kabupaten.Propinsi)));
     }
     
     [Fact]
     public void SearchDataTest()
     {
         using var trans = TransHelper.NewScope();
+        
         const string keyword = "B";
-        var propinsi = new PropinsiModel("H", "");
+        var propinsi = new PropinsiModel("H", "I");
         var kabupaten = new KabupatenModel("F", "G", propinsi);
         var kecamatan = new KecamatanModel("D", "E", kabupaten);
         var expected = new KelurahanModel("A", "ABC", "C", kecamatan);

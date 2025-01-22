@@ -87,9 +87,8 @@ public class PropinsiDal : IPropinsiDal
             FROM ta_propinsi ";
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        var result = conn.Read<PropinsiDto>(sql);
-        var response = result.Select(x => x.ToModel());
-        return response;
+        var result = conn.Read<PropinsiModel>(sql);
+        return result;
     }
 }
 

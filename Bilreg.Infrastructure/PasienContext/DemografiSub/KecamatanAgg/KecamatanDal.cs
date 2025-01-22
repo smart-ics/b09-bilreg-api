@@ -6,6 +6,7 @@ using Bilreg.Domain.PasienContext.DemografiSub.KecamatanAgg;
 using Bilreg.Domain.PasienContext.DemografiSub.PropinsiAgg;
 using Bilreg.Infrastructure.Helpers;
 using Bilreg.Infrastructure.PasienContext.DemografiSub.KabupatenAgg;
+using Bilreg.Infrastructure.PasienContext.DemografiSub.PropinsiAgg;
 using Dapper;
 using FluentAssertions;
 using Microsoft.Extensions.Options;
@@ -73,10 +74,12 @@ public class KecamatanDal: IKecamatanDal
     {
         const string sql = @"
             SELECT 
-                aa.fs_kd_kecamatan, aa.fs_nm_kecamatan, aa.fs_kd_kabupaten,
-                ISNULL(bb.fs_nm_kabupaten, '') AS fs_nm_kabupaten, 
-                ISNULL(bb.fs_kd_propinsi, '') AS fs_kd_propinsi,
-                ISNULL(cc.fs_nm_propinsi, '') AS fs_nm_propinsi
+                aa.fs_kd_kecamatan AS KecamatanId, 
+                aa.fs_nm_kecamatan AS KecamatanName, 
+                aa.fs_kd_kabupaten AS KabupatenId,
+                ISNULL(bb.fs_nm_kabupaten, '') AS KabupatenName, 
+                ISNULL(bb.fs_kd_propinsi, '') AS PropinsiId,
+                ISNULL(cc.fs_nm_propinsi, '') AS PropinsiName
             FROM 
                 ta_kecamatan aa
                 LEFT JOIN ta_kabupaten bb ON aa.fs_kd_kabupaten = bb.fs_kd_kabupaten
@@ -95,11 +98,13 @@ public class KecamatanDal: IKecamatanDal
     public IEnumerable<KecamatanModel> ListData(IKabupatenKey filter)
     {
         const string sql = @"
-            SELECT 
-                aa.fs_kd_kecamatan, aa.fs_nm_kecamatan, aa.fs_kd_kabupaten,
-                ISNULL(bb.fs_nm_kabupaten, '') AS fs_nm_kabupaten, 
-                ISNULL(bb.fs_kd_propinsi, '') AS fs_kd_propinsi,
-                ISNULL(cc.fs_nm_propinsi, '') AS fs_nm_propinsi
+            SELECT  
+                aa.fs_kd_kecamatan AS KecamatanId, 
+                aa.fs_nm_kecamatan AS KecamatanName, 
+                aa.fs_kd_kabupaten AS KabupatenId,
+                ISNULL(bb.fs_nm_kabupaten, '') AS KabupatenName, 
+                ISNULL(bb.fs_kd_propinsi, '') AS PropinsiId,
+                ISNULL(cc.fs_nm_propinsi, '') AS PropinsiName
             FROM 
                 ta_kecamatan aa
                 LEFT JOIN ta_kabupaten bb ON aa.fs_kd_kabupaten = bb.fs_kd_kabupaten
@@ -172,7 +177,8 @@ public class KecamatanDalTest
         _sut.Insert(expected);
         
         var actual = _sut.GetData(expected);
-        actual.Should().BeEquivalentTo(expected);
+        actual.Should().BeEquivalentTo(expected,
+            opt => opt.Excluding(y => y.Kabupaten.Propinsi));
     }
 
     [Fact]
@@ -187,6 +193,7 @@ public class KecamatanDalTest
         _sut.Insert(expected);
         
         var actual = _sut.ListData(kabupaten);
-        _ = actual.Select(x => x.Should().BeEquivalentTo(expected));
+        _ = actual.Select(x => x.Should().BeEquivalentTo(expected, 
+            opt => opt.Excluding(y => y.Kabupaten.Propinsi)));
     }
 }

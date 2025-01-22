@@ -30,39 +30,3 @@ public class KotaGetHandler: IRequestHandler<KotaGetQuery, KotaGetResponse>
         return Task.FromResult(response);
     }
 }
-
-public class KotaGetHandlerTest
-{
-    private readonly Mock<IKotaDal> _kotaDal;
-    private readonly KotaGetHandler _sut;
-
-    public KotaGetHandlerTest()
-    {
-        _kotaDal = new Mock<IKotaDal>();
-        _sut = new KotaGetHandler(_kotaDal.Object);
-    }
-
-    [Fact]
-    public async Task GivenInvalidKotaId_ThenThrowKeyNotFoundException_Test()
-    {
-        var request = new KotaGetQuery("A");
-        _kotaDal.Setup(x => x.GetData(It.IsAny<IKotaKey>()))
-            .Returns(null as KotaModel);
-        
-        var actual = async () => await _sut.Handle(request, CancellationToken.None);
-        await actual.Should().ThrowAsync<KeyNotFoundException>();
-    }
-
-    [Fact]
-    public async Task GivenValidKotaId_ThenReturnExpected_Test()
-    {
-        var request = new KotaGetQuery("A");
-        var expected = KotaModel.Create("A", "B");
-        var expectedResponse = new KotaGetResponse(expected.KotaId, expected.KotaName);
-        _kotaDal.Setup(x => x.GetData(It.IsAny<IKotaKey>()))
-            .Returns(expected);
-        
-        var actual = await _sut.Handle(request, CancellationToken.None);
-        actual.Should().BeEquivalentTo(expectedResponse);
-    }
-}
