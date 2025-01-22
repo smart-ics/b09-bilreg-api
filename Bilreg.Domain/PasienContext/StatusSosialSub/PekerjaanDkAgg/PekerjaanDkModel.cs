@@ -2,18 +2,21 @@
 
 public class PekerjaanDkModel : IPekerjaanDkKey
 {
-    //  CONSTRUCTORS
     public PekerjaanDkModel(string id, string name)
     {
+        if (id == string.Empty ^ name == string.Empty)
+            throw new ArgumentException(("Invalid pekerjaan dk."));
+        
         PekerjaanDkId = id;
         PekerjaanDkName = name;
     }
+
+    public static PekerjaanDkModel Default => new PekerjaanDkModel(string.Empty, string.Empty);
 
     public PekerjaanDkModel()
     {
     }
         
-    //  PROPERTIES
     public string PekerjaanDkId { get; protected set; }
     public string PekerjaanDkName { get; protected set; }
 }

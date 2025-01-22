@@ -23,7 +23,7 @@ public record RegPasienVo
 
         PasienId = pasien.PasienId;
         PasienName = pasien.PasienName;
-        NoMedRec = pasien.GetNoMedrec();
+        //NoMedRec = pasien.GetNoMedrec();
         TglLahir = pasien.TglLahir;
         Gender = pasien.Gender;
 

@@ -16,21 +16,6 @@ public class SukuController : ControllerBase
         _mediator = mediator;
     }
 
-    [HttpPost]
-    public async Task<IActionResult> Save(SukuSaveCommand cmd)
-    {
-        await _mediator.Send(cmd);
-        return Ok(new JSendOk("Done"));
-    }
-
-    [HttpDelete]
-    [Route("{id}")]
-    public async Task<IActionResult> Delete(string id)
-    {
-        await _mediator.Send(new SukuDeleteCommand(id));
-        return Ok(new JSendOk("Done"));
-    }
-    
     [HttpGet]
     [Route("{id}")]
     public async Task<IActionResult> GetData(string id)

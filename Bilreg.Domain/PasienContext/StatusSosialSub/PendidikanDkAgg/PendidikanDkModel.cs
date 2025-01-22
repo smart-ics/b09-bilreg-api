@@ -2,15 +2,21 @@ namespace Bilreg.Domain.PasienContext.StatusSosialSub.PendidikanDkAgg;
 
 public class PendidikanDkModel: IPendidikanDkKey
 {
-    //  CONSTRUCTOR
     public PendidikanDkModel(string id, string name)
-        => (PendidikanDkId, PendidikanDkName) = (id, name);
+    {
+        if (id == string.Empty ^ name == string.Empty)
+            throw new ArgumentException("Invalid PendidikanDk");
+        
+        PendidikanDkId = id;
+        PendidikanDkName = name;
+    }
+    
+    public static PendidikanDkModel Default => new PendidikanDkModel(string.Empty, string.Empty);
 
     public PendidikanDkModel()
     {
     }
     
-    //  PROPERTIES
     public string PendidikanDkId { get; private set; }
     public string PendidikanDkName { get; private set; }
 }

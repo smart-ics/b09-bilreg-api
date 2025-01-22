@@ -1,63 +1,62 @@
-﻿namespace Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
+﻿using Bilreg.Domain.PasienContext.DemografiSub.KelurahanAgg;
+using Bilreg.Domain.PasienContext.StatusSosialSub.AgamaAgg;
+using Bilreg.Domain.PasienContext.StatusSosialSub.PekerjaanDkAgg;
+using Bilreg.Domain.PasienContext.StatusSosialSub.PendidikanDkAgg;
+using Bilreg.Domain.PasienContext.StatusSosialSub.StatusKawinDkAgg;
+using Bilreg.Domain.PasienContext.StatusSosialSub.SukuAgg;
 
-public partial class PasienModel(string pasienId)
+namespace Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
+
+public partial class PasienModel
     : IPasienKey
 {
-    public PasienModel(string pasienId, string pasienName) : this(pasienId)
+    public PasienModel(string pasienId, string pasienName, DateTime tglLahir, string gender)
     {
+        PasienId = pasienId;
         PasienName = pasienName;
+        TglLahir = tglLahir;
+        Gender = gender;
+
+        Address = AddressObj.Default;
+        StatusKawinDk = StatusKawinDkModel.Default;
+        Agama = AgamaModel.Default;;
+        Suku = SukuModel.Default;
+        PekerjaanDk = PekerjaanDkModel.Default;
+        PendidikanDk = PendidikanDkModel.Default;
     }
-    public string PasienId { get; protected set; } = pasienId;
-    public string PasienName { get; protected set; } = string.Empty;
-    public string NickName { get; protected set; }
-    public string TempatLahir { get; protected set; }
-    public DateTime TglLahir { get; protected set; }
-    public string Gender { get; protected set; }
-    public DateTime TglMedrec { get; protected set; }
-    public string IbuKandung { get; protected set; }
-    public string GolDarah { get; protected set; }
+    public string PasienId { get; private set; } 
+    public string PasienName { get; private set; }
+    public DateTime TglLahir { get; private set; }
+    public string Gender { get; private set; }
+    public string NickName { get; private set; } = string.Empty;
+    public string TempatLahir { get; private set; } = string.Empty;
+    public DateTime TglMedrec { get; private set; } = DateTime.Now;
+    public string IbuKandung { get; private set; } = string.Empty;
+    public string GolDarah { get; private set; } = string.Empty;
 
-    public string StatusNikahId { get; protected set; }
-    public string StatusNikahName { get; protected set; }
-    public string AgamaId { get; protected set; }
-    public string AgamaName { get; protected set; }
-    public string SukuId { get; protected set; }
-    public string SukuName { get; protected set; }
-    public string PekerjaanDkId { get; protected set; }
-    public string PekerjaanDkName { get; protected set; }
-    public string PendidikanDkId { get; protected set; }
-    public string PendidikanDkName { get; protected set; }
+    public StatusKawinDkModel StatusKawinDk { get; private set; }
+    public AgamaModel Agama { get; private set; }
+    public SukuModel Suku { get; private set; }
+    public PekerjaanDkModel PekerjaanDk { get; private set; }
+    public PendidikanDkModel PendidikanDk { get; private set; }
 
-    public string Alamat { get; protected set; }
-    public string Alamat2 { get; protected set; }
-    public string Alamat3 { get; protected set; }
-    public string Kota { get; protected set; }
-    public string KodePos { get; protected set; }
-
-    public string KelurahanId { get; protected set; }
-    public string KelurahanName { get; protected set; }
-    public string KecamatanName { get; protected set; }
-    public string KabupatenName { get; protected set; }
-    public string PropinsiName { get; protected set; }
-
-    public string JenisId { get; protected set; }
-    public string NomorId { get; protected set; }
-    public string NomorKk { get; protected set; }
-
-    public string Email { get; protected set; }
-    public string NoTelp { get; protected set; }
-    public string NoHp { get; protected set; }
+    public AddressObj Address { get; private set; } 
+    public KelurahanModel Kelurahan { get; private set; }
+    public IdentityObj Identity { get; private set; } 
+    public ContactObj Contact { get; private set; }
+    public KeluargaObj Keluarga { get; private set; }
     
-    public string KeluargaName { get; protected set; }
-    public string KeluargaRelasi { get; protected set; }
-    public string KeluargaNoTelp { get; protected set; }
-    public string KeluargaAlamat1 { get; protected set; }
-    public string KeluargaAlamat2 { get; protected set; }
-    public string KeluargaKota { get; protected set; }
-    public string KeluargaKodePos { get; protected set; }
-    
-    public string NoMedrecInduk { get; protected set; }
-    public string IsAktif { get; protected set; }
-
-    public List<PasienLogModel> ListLog { get; protected set; } = [];
+    public string NoMedrecInduk { get; private set; }
+    public bool IsAktif { get; private set; }
 }
+
+public record AddressObj(string Alamat, string Alamat2, string Alamat3, string Kota, string KodePos)
+{
+    public static AddressObj Default => new AddressObj(string.Empty, string.Empty, string.Empty, string.Empty, string.Empty);
+};
+
+public record IdentityObj(string JenisId, string NomorId, string NomorKk);
+
+public record ContactObj(string Email, string NoTelp, string NoHp);
+
+public record KeluargaObj(string Name, string Relasi, ContactObj Contact, AddressObj Address);
