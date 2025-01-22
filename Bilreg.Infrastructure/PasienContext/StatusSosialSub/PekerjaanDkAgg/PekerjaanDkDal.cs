@@ -75,34 +75,32 @@ public class PekerjaanDkDal : IPekerjaanDkDal
     public PekerjaanDkModel GetData(IPekerjaanDkKey key)
     {
         const string sql = @"
-                SELECT fs_kd_pekerjaan_dk, fs_nm_pekerjaan_dk
-                FROM ta_pekerjaan_dk
-                WHERE fs_kd_pekerjaan_dk = @fs_kd_pekerjaan_dk";
+                SELECT 
+                    fs_kd_pekerjaan_dk PekerjaanDkId, 
+                    fs_nm_pekerjaan_dk PekerjaanDkName
+                FROM 
+                    ta_pekerjaan_dk
+                WHERE 
+                    fs_kd_pekerjaan_dk = @fs_kd_pekerjaan_dk";
 
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_pekerjaan_dk", key.PekerjaanDkId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.ReadSingle<PekerjaanDkDto>(sql, dp);
+        return conn.ReadSingle<PekerjaanDkModel>(sql, dp);
     }
 
     public IEnumerable<PekerjaanDkModel> ListData()
     {
         const string sql = @"
-                SELECT fs_kd_pekerjaan_dk, fs_nm_pekerjaan_dk
-                FROM ta_pekerjaan_dk";
+                SELECT 
+                    fs_kd_pekerjaan_dk PekerjaanDkId, 
+                    fs_nm_pekerjaan_dk PekerjaanDkName
+                FROM 
+                    ta_pekerjaan_dk ";
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<PekerjaanDkDto>(sql);
-    }
-}
-
-internal class PekerjaanDkDto : PekerjaanDkModel
-{
-    public string fs_kd_pekerjaan_dk { get => PekerjaanDkId; set => PekerjaanDkId = value; }
-    public string fs_nm_pekerjaan_dk { get => PekerjaanDkName; set => PekerjaanDkName = value; }
-    public PekerjaanDkDto() : base(string.Empty, string.Empty)
-    {
+        return conn.Read<PekerjaanDkModel>(sql);
     }
 }
 

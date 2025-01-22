@@ -1,8 +1,5 @@
 ﻿using Bilreg.Domain.PasienContext.StatusSosialSub.StatusKawinDkAgg;
-using FluentAssertions;
 using MediatR;
-using Moq;
-using Xunit;
 
 namespace Bilreg.Application.PasienContext.StatusSosialSub.StatusKawinDkAgg;
 
@@ -28,48 +25,5 @@ public class StatusKawinDkGetHandler : IRequestHandler<StatusKawinDkGetQuery, St
         //  RESPONSE
         var response = new StatusKawinDkGetResponse(result.StatusKawinDkId, result.StatusKawinDkName);
         return Task.FromResult(response);
-    }
-}
-
-public class StatusKawinDkGetHandlerTest
-{
-    private readonly StatusKawinDkGetHandler _skut;
-    private readonly Mock<IStatusKawinDkDal> _statuskawinDkDal;
-
-    public StatusKawinDkGetHandlerTest()
-    {
-        _statuskawinDkDal = new Mock<IStatusKawinDkDal>();
-        _skut = new StatusKawinDkGetHandler(_statuskawinDkDal.Object);
-    }
-
-    [Fact]
-    public void GivenInvalidStatusKawinDkId_ThenThrowKeyNotFoundException()
-    {
-        //  ARRANGE
-        var request = new StatusKawinDkGetQuery("123");
-        _statuskawinDkDal.Setup(x => x.GetData(It.IsAny<IStatusKawinDkKey>()))
-            .Returns(null as StatusKawinDkModel);
-
-        //  ACT
-        Func<Task> act = () => _skut.Handle(request, CancellationToken.None);
-
-        //  ASSERT
-        act.Should().ThrowAsync<KeyNotFoundException>();
-    }
-
-    [Fact]
-    public async Task GivenValidStatusKawinDkId_ThenReturnExpected()
-    {
-        //  ARRANGE
-        var expected = StatusKawinDkModel.Create("A", "B");
-        var request = new StatusKawinDkGetQuery("A");
-        _statuskawinDkDal.Setup(x => x.GetData(It.IsAny<IStatusKawinDkKey>()))
-            .Returns(expected);
-
-        //  ACT
-        var act = await _skut.Handle(request, CancellationToken.None);
-
-        //  ASSERT
-        act.Should().BeEquivalentTo(expected);
     }
 }

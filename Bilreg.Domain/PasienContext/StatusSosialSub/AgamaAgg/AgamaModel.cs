@@ -9,6 +9,9 @@
             AgamaName = name;
         }
 
+        public AgamaModel()
+        {
+        }
         //  PROPERTIES
         public string AgamaId { get; protected set; }
         public string AgamaName { get; protected set; }

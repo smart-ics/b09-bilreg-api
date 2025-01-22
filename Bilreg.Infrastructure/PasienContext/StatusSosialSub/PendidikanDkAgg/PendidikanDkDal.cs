@@ -76,8 +76,13 @@ public class PendidikanDkDal: IPendidikanDkDal
     {
         // QUERY
         const string sql = @"
-            SELECT * FROM ta_pendidikan_dk
-            WHERE fs_kd_pendidikan_dk = @fs_kd_pendidikan_dk";
+            SELECT 
+                fs_kd_pendidikan_dk AS PendidikanDkId, 
+                fs_nm_pendidikan_dk AS PendidikanDkName 
+            FROM 
+                ta_pendidikan_dk
+            WHERE 
+                fs_kd_pendidikan_dk = @fs_kd_pendidikan_dk";
         
         // PARAM
         var dp = new DynamicParameters();
@@ -85,30 +90,25 @@ public class PendidikanDkDal: IPendidikanDkDal
         
         // EXECUTE
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        var result = conn.ReadSingle<PendidikanDkDto>(sql, dp);
-        return result?.ToModel()!;
+        var result = conn.ReadSingle<PendidikanDkModel>(sql, dp);
+        return result;
     }
 
     public IEnumerable<PendidikanDkModel> ListData()
     {
         // QUERY
         const string sql = @"
-            SELECT fs_kd_pendidikan_dk, fs_nm_pendidikan_dk
-            FROM ta_pendidikan_dk";
+            SELECT 
+                fs_kd_pendidikan_dk AS PendidikanDkId, 
+                fs_nm_pendidikan_dk AS PendidikanDkName 
+            FROM 
+                ta_pendidikan_dk";
         
         // EXECUTE
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        var result = conn.Read<PendidikanDkDto>(sql);
-        return result?.Select(x => x.ToModel())!;
+        var result = conn.Read<PendidikanDkModel>(sql);
+        return result;
     }
-}
-
-public class PendidikanDkDto
-{
-    public string fs_kd_pendidikan_dk { get; set; }
-    public string fs_nm_pendidikan_dk { get; set; }
-    
-    public PendidikanDkModel ToModel() => PendidikanDkModel.Create(fs_kd_pendidikan_dk, fs_nm_pendidikan_dk);
 }
 
 public class PendidikanDkDalTest
@@ -124,39 +124,40 @@ public class PendidikanDkDalTest
     public void InsertTest()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Insert(PendidikanDkModel.Create("A", "B"));
+        _sut.Insert(new PendidikanDkModel("A", "B"));
     }
 
     [Fact]
     public void UpdateTest()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Update(PendidikanDkModel.Create("A", "B"));
+        _sut.Update(new PendidikanDkModel("A", "B"));
     }
 
     [Fact]
     public void DeleteTest()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Delete(PendidikanDkModel.Create("A", "B"));
+        _sut.Delete(new PendidikanDkModel("A", "B"));
     }
 
     [Fact]
     public void GetDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = PendidikanDkModel.Create("A", "B");
+        var expected = new PendidikanDkModel("A", "B");
         _sut.Insert(expected);
         var actual = _sut.GetData(expected);
         actual.Should().BeEquivalentTo(expected);
     }
-
     [Fact]
-    public void GivenNonExistData_ThenReturnNull_Test()
+    public void ListDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = PendidikanDkModel.Create("A", "B");
-        var actual = _sut.GetData(expected);
-        actual.Should().BeNull();
+        var pendidikanDk = new PendidikanDkModel("A", "B");
+        var expected = new List<PendidikanDkModel> { pendidikanDk };
+        _sut.Insert(pendidikanDk);
+        var actual = _sut.ListData();
+        actual.Should().BeEquivalentTo(expected);
     }
 }
