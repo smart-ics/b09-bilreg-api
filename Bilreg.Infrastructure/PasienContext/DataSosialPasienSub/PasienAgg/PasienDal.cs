@@ -2,6 +2,13 @@
 using System.Data.SqlClient;
 using Bilreg.Application.PasienContext.DataSosialPasienSub.PasienAgg;
 using Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
+using Bilreg.Domain.PasienContext.DemografiSub.KecamatanAgg;
+using Bilreg.Domain.PasienContext.DemografiSub.KelurahanAgg;
+using Bilreg.Domain.PasienContext.StatusSosialSub.AgamaAgg;
+using Bilreg.Domain.PasienContext.StatusSosialSub.PekerjaanDkAgg;
+using Bilreg.Domain.PasienContext.StatusSosialSub.PendidikanDkAgg;
+using Bilreg.Domain.PasienContext.StatusSosialSub.StatusKawinDkAgg;
+using Bilreg.Domain.PasienContext.StatusSosialSub.SukuAgg;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
 using FluentAssertions;
@@ -61,11 +68,11 @@ public class PasienDal : IPasienDal
         dp.AddParam("@fs_mr", model.PasienId, SqlDbType.VarChar);
         dp.AddParam("@fs_nm_pasien", model.PasienName, SqlDbType.VarChar);
         dp.AddParam("@fd_tgl_lahir", model.TglLahir.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
-        dp.AddParam("@fs_jns_kelamin", model.Gender, SqlDbType.VarChar);
+        dp.AddParam("@fs_jns_kelamin", model.Gender.ToString(), SqlDbType.VarChar);
         dp.AddParam("@fs_nm_alias", model.NickName, SqlDbType.VarChar);
         dp.AddParam("@fs_temp_lahir", model.TempatLahir, SqlDbType.VarChar);
         dp.AddParam("@fs_nm_ibu_kandung", model.IbuKandung, SqlDbType.VarChar);
-        dp.AddParam("@fs_gol_darah", model.GolDarah, SqlDbType.VarChar);
+        dp.AddParam("@fs_gol_darah", model.GolDarah.ToString(), SqlDbType.VarChar);
         //      administrative
         dp.AddParam("@fs_alm_pasien", model.Address.Alamat, SqlDbType.VarChar);
         dp.AddParam("@fs_alm2_pasien", model.Address.Alamat2, SqlDbType.VarChar);
@@ -95,7 +102,7 @@ public class PasienDal : IPasienDal
         dp.AddParam("@fs_kd_pekerjaan_dk", model.Pekerjaan.PekerjaanDkId, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_pendidikan_dk", model.Pendidikan.PendidikanDkId, SqlDbType.VarChar);
         //      olah berkas
-        dp.AddParam("@fd_tgl_mr", model.TglMedrec.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
+        dp.AddParam("@fd_tgl_mr", model.TglMedRec.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
         dp.AddParam("fb_aktif", model.IsAktif, SqlDbType.Bit);
 
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
@@ -155,11 +162,11 @@ public class PasienDal : IPasienDal
         dp.AddParam("@fs_mr", model.PasienId, SqlDbType.VarChar);
         dp.AddParam("@fs_nm_pasien", model.PasienName, SqlDbType.VarChar);
         dp.AddParam("@fd_tgl_lahir", model.TglLahir.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
-        dp.AddParam("@fs_jns_kelamin", model.Gender, SqlDbType.VarChar);
+        dp.AddParam("@fs_jns_kelamin", model.Gender.ToString(), SqlDbType.VarChar);
         dp.AddParam("@fs_nm_alias", model.NickName, SqlDbType.VarChar);
         dp.AddParam("@fs_temp_lahir", model.TempatLahir, SqlDbType.VarChar);
         dp.AddParam("@fs_nm_ibu_kandung", model.IbuKandung, SqlDbType.VarChar);
-        dp.AddParam("@fs_gol_darah", model.GolDarah, SqlDbType.VarChar);
+        dp.AddParam("@fs_gol_darah", model.GolDarah.ToString(), SqlDbType.VarChar);
         //      administrative
         dp.AddParam("@fs_alm_pasien", model.Address.Alamat, SqlDbType.VarChar);
         dp.AddParam("@fs_alm2_pasien", model.Address.Alamat2, SqlDbType.VarChar);
@@ -189,7 +196,7 @@ public class PasienDal : IPasienDal
         dp.AddParam("@fs_kd_pekerjaan_dk", model.Pekerjaan.PekerjaanDkId, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_pendidikan_dk", model.Pendidikan.PendidikanDkId, SqlDbType.VarChar);
         //      olah berkas
-        dp.AddParam("@fd_tgl_mr", model.TglMedrec.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
+        dp.AddParam("@fd_tgl_mr", model.TglMedRec.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
         dp.AddParam("fb_aktif", model.IsAktif, SqlDbType.Bit);
 
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
@@ -210,7 +217,7 @@ public class PasienDal : IPasienDal
         conn.Execute(sql, dp);
     }
 
-    public PasienModel GetData(IPasienKey key)
+    public PasienModel? GetData(IPasienKey key)
     {
         var sql = $@"{SelectFromClause()} 
             WHERE fs_mr = @fs_mr ";
@@ -219,22 +226,26 @@ public class PasienDal : IPasienDal
         dp.AddParam("@fs_mr", key.PasienId, SqlDbType.VarChar);
 
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.ReadSingle<PasienDto>(sql, dp);
+        var dto = conn.ReadSingle<PasienDto>(sql, dp);
+
+        return dto?.ToModel();
     }
 
-    public IEnumerable<PasienModel> ListData(DateTime filter)
+    public IEnumerable<PasienModel>? ListData(DateTime tglLahir)
     {
         var sql = $@"{SelectFromClause()} 
             WHERE aa.fd_tgl_lahir = @fd_tgl_lahir ";
 
         var dp = new DynamicParameters();
-        dp.AddParam("@fd_tgl_lahir", filter.Date.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
+        dp.AddParam("@fd_tgl_lahir", tglLahir.Date.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
 
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<PasienDto>(sql, dp);
+        var dto = conn.Read<PasienDto>(sql, dp);
+        var result = dto?.Select(x => x.ToModel());
+        return result;
     }
 
-    public IEnumerable<PasienModel> ListData(Periode filter)
+    public IEnumerable<PasienModel>? ListData(Periode filter)
     {
         var sql = $@"{SelectFromClause()} 
             WHERE aa.fd_tgl_mr BETWEEN @tgl1 AND @tgl2 ";
@@ -244,10 +255,12 @@ public class PasienDal : IPasienDal
         dp.AddParam("@tgl2", filter.Tgl2.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
 
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<PasienDto>(sql, dp);
+        var dto = conn.Read<PasienDto>(sql, dp);
+        var result = dto?.Select(x => x.ToModel());
+        return result;
     }
 
-    public IEnumerable<PasienModel> ListData(string filter)
+    public IEnumerable<PasienModel>? ListData(string filter)
     {
         var sql = $@"{SelectFromClause()} 
             WHERE aa.fs_nm_pasien = @fs_nm_pasien ";
@@ -256,7 +269,9 @@ public class PasienDal : IPasienDal
         dp.AddParam("@fs_nm_pasien", filter, SqlDbType.VarChar);
 
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<PasienDto>(sql, dp);
+        var dto =  conn.Read<PasienDto>(sql, dp);
+        var result = dto?.Select(x => x.ToModel());
+        return result;
     }
     private static string SelectFromClause() =>
         @"
@@ -312,52 +327,27 @@ public class PasienDalTest
         _sut = new PasienDal(ConnStringHelper.GetTestEnv());
     }
 
-    private static PasienDto Faker() => new PasienDto
+    private static PasienModel Faker()
     {
-        fs_mr = "A",
-        fs_nm_pasien = "B",
-        fs_nm_alias = "C",
-        fs_temp_lahir = "D",
-        fd_tgl_lahir = "2000-01-02",
-        fs_jns_kelamin = "F",
-        fd_tgl_mr = "2000-01-03",
-        fs_nm_ibu_kandung = "H",
-        fs_gol_darah = "I",
-        fs_kd_status_kawin_dk = "J",
-        fs_nm_status_kawin_dk = "",
-        fs_kd_agama = "K",
-        fs_nm_agama = "",
-        fs_kd_suku = "L", 
-        fs_nm_suku = "",
-        fs_kd_pekerjaan_dk = "M",
-        fs_nm_pekerjaan_dk = "",
-        fs_kd_pendidikan_dk = "N",
-        fs_nm_pendidikan_dk = "",
-        fs_alm_pasien = "O",
-        fs_alm2_pasien = "P",
-        fs_alm3_pasien = "Q",
-        fs_kota_pasien = "R",
-        fs_kd_pos_pasien = "S",
-        fs_kd_kelurahan = "T",
-        fs_nm_kelurahan = "",
-        fs_nm_kecamatan = "",
-        fs_nm_kabupaten = "",
-        fs_nm_propinsi = "",
-        fs_jenis_id = "U",
-        fs_kd_identitas = "V",
-        fs_no_kk = "W",
-        fs_email = "X",
-        fs_tlp_pasien = "Y",
-        fs_no_hp = "Z",
-        fs_nm_keluarga = "AA",
-        fs_hub_keluarga = "BB",
-        fs_telp_keluarga = "081xx",
-        fs_alm1_keluarga = "CC",
-        fs_alm2_keluarga = "DD",
-        fs_kota_keluarga = "EE",
-        fs_kd_pos_keluarga = "528xx",
-    };
-    
+        var result = new PasienModel("A", "B", new DateTime(2002,3,4), new GenderType("F"));
+        result.SetPersonalInfo("C", "D", "E", new GolDarahType("A"));
+        result.SetAdministrativeInfo(
+            AddressType.Default,  
+            KelurahanModel.Default, 
+            IdentityType.Default, 
+            ContactType.Default, 
+            KeluargaType.Default);
+        result.SetStatusSosial(
+            StatusKawinDkModel.Default,
+            AgamaModel.Default,
+            SukuModel.Default,
+            PekerjaanDkModel.Default,
+            PendidikanDkModel.Default
+            );
+        return result;
+    }
+
+
     [Fact]
     public void InsertTest()
     {
@@ -393,7 +383,7 @@ public class PasienDalTest
     {
         using var trans = TransHelper.NewScope();
         _sut.Insert(Faker());
-        var actual = _sut.ListData(new DateTime(2000,1,2));
+        var actual = _sut.ListData(new DateTime(2002,3,4));
         actual.Should().ContainEquivalentOf(Faker());
     }
 }

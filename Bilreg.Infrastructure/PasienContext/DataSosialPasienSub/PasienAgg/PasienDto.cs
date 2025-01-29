@@ -3,6 +3,11 @@ using Bilreg.Domain.PasienContext.DemografiSub.KabupatenAgg;
 using Bilreg.Domain.PasienContext.DemografiSub.KecamatanAgg;
 using Bilreg.Domain.PasienContext.DemografiSub.KelurahanAgg;
 using Bilreg.Domain.PasienContext.DemografiSub.PropinsiAgg;
+using Bilreg.Domain.PasienContext.StatusSosialSub.AgamaAgg;
+using Bilreg.Domain.PasienContext.StatusSosialSub.PekerjaanDkAgg;
+using Bilreg.Domain.PasienContext.StatusSosialSub.PendidikanDkAgg;
+using Bilreg.Domain.PasienContext.StatusSosialSub.StatusKawinDkAgg;
+using Bilreg.Domain.PasienContext.StatusSosialSub.SukuAgg;
 using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Infrastructure.PasienContext.DataSosialPasienSub.PasienAgg;
@@ -67,15 +72,16 @@ internal class PasienDto
     public string fd_tgl_mr {get; set;}
     public bool fb_aktif { get; set; }
 
-    public PasienModel ToPasienModel()
+    public PasienModel ToModel()
     {
+        //      personal info
         var tglLahir = fd_tgl_lahir.ToDate(DateFormatEnum.YMD);
         var gender = new GenderType(fs_jns_kelamin);
         var pasien = new PasienModel(fs_mr, fs_nm_pasien, tglLahir, gender);
-
         var golDarah = new GolDarahType(fs_gol_darah);
         pasien.SetPersonalInfo(fs_nm_alias, fs_temp_lahir, fs_nm_ibu_kandung, golDarah);
 
+        //      administrative  
         var address = new AddressType(fs_alm_pasien, fs_alm2_pasien, 
             fs_alm3_pasien, fs_kota_pasien, fs_kd_pos_pasien);
         var propinsi = new PropinsiModel(fs_kd_propinsi, fs_nm_propinsi);
@@ -85,12 +91,24 @@ internal class PasienDto
             fs_kd_pos_pasien, kecamatan);
         var identitas = new IdentityType(fs_jenis_id, fs_kd_identitas, fs_no_kk);
         var contact = new ContactType(fs_email, fs_tlp_pasien, fs_no_hp);
-        var contactKeluarga = new ContactType("", fs_telp_keluarga, "");
-        var addressKeluarga = new AddressType(fs_alm1_keluarga, fs_alm2_keluarga, "", 
+        var contactKeluarga = new ContactType(string.Empty, fs_telp_keluarga, string.Empty);
+        var addressKeluarga = new AddressType(fs_alm1_keluarga, fs_alm2_keluarga, string.Empty, 
                 fs_kota_pasien, fs_kd_pos_keluarga);
         var keluarga = new KeluargaType(fs_nm_keluarga, fs_hub_keluarga, 
             contactKeluarga, addressKeluarga);
         pasien.SetAdministrativeInfo(address, kelurahan, identitas, contact, keluarga);
+        
+        //      status sosial
+        var statusKawin = new StatusKawinDkModel(fs_kd_status_kawin_dk, fs_nm_status_kawin_dk);
+        var agama = new AgamaModel(fs_kd_agama, fs_nm_agama);
+        var suku = new SukuModel(fs_kd_suku, fs_nm_suku);
+        var pekerjaan = new PekerjaanDkModel(fs_kd_pekerjaan_dk, fs_nm_pekerjaan_dk);
+        var pendidikan = new PendidikanDkModel(fs_kd_pendidikan_dk, fs_nm_pendidikan_dk);
+        pasien.SetStatusSosial(statusKawin, agama, suku, pekerjaan, pendidikan);
+
+        //      olah berkas
+        var tglMedRec = fd_tgl_mr.ToDate(DateFormatEnum.YMD);
+        pasien.SetTglMedRec(tglMedRec);
         
         return pasien;
     }

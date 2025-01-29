@@ -50,8 +50,7 @@ public class PasienModel : IPasienKey
     public PekerjaanDkModel Pekerjaan { get; private set; } = PekerjaanDkModel.Default;
     public PendidikanDkModel Pendidikan { get; private set; } = PendidikanDkModel.Default;
     //      olah berkas
-    public DateTime TglMedrec { get; private set; } = DateTime.Now;
-    public string PasienIdInduk { get; private set; } = string.Empty;
+    public DateTime TglMedRec { get; private set; } = DateTime.Now.Date;
     public bool IsAktif { get; private set; } = true;
 
     public void SetPersonalInfo(string nickName, string tempatLahir, string ibuKandung,
@@ -83,8 +82,8 @@ public class PasienModel : IPasienKey
         Pendidikan = pendidikan;
     }
 
-    public static PasienModel Load(string asdf)
+    public void SetTglMedRec(DateTime tglMedRec)
     {
-        
+        TglMedRec = tglMedRec;
     }
 }

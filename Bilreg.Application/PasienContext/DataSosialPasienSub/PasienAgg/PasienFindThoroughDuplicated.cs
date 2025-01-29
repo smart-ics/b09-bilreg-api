@@ -41,7 +41,7 @@ public class PasienFindThoroughDuplicatedHandler : IRequestHandler<PasienFindTho
             pasien.PasienId,
             pasien.PasienName,
             pasien.TglLahir.ToString(DateFormatEnum.YMD),
-            pasien.TglMedrec.ToString(DateFormatEnum.YMD)
+            pasien.TglMedRec.ToString(DateFormatEnum.YMD)
         );
     }
 }

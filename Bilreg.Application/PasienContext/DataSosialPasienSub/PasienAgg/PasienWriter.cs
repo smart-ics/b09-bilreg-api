@@ -12,7 +12,7 @@ public class PasienWriter : IPasienWriter
 {
     private readonly IPasienDal _pasienDal;
 
-    public PasienWriter(IPasienDal pasienDal, IValidator<PasienModel> validator)
+    public PasienWriter(IPasienDal pasienDal)
     {
         _pasienDal = pasienDal;
     }
