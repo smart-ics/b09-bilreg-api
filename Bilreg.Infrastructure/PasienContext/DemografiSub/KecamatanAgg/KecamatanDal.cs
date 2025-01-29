@@ -136,9 +136,7 @@ public class KecamatanDalTest
     public void InsertTest()
     {
         using var trans = TransHelper.NewScope();
-        var propinsi = new PropinsiModel("E", "F");
-        var kabupaten = new KabupatenModel("C", "D", propinsi);
-        var kecamatan = new KecamatanModel("A", "B", kabupaten);
+        var kecamatan = new KecamatanModel("A", "B", KabupatenModel.Default);
 
         _sut.Insert(kecamatan);
     }
@@ -147,9 +145,7 @@ public class KecamatanDalTest
     public void UpdateTest()
     {
         using var trans = TransHelper.NewScope();
-        var propinsi = new PropinsiModel("E", "F");
-        var kabupaten = new KabupatenModel("C", "D", propinsi);
-        var kecamatan = new KecamatanModel("A", "B", kabupaten);
+        var kecamatan = new KecamatanModel("A", "B", KabupatenModel.Default);
 
         _sut.Update(kecamatan);
     }
@@ -158,9 +154,7 @@ public class KecamatanDalTest
     public void DeleteTest()
     {
         using var trans = TransHelper.NewScope();
-        var propinsi = new PropinsiModel("E", "F");
-        var kabupaten = new KabupatenModel("C", "D", propinsi);
-        var kecamatan = new KecamatanModel("A", "B", kabupaten);
+        var kecamatan = new KecamatanModel("A", "B", KabupatenModel.Default);
 
         _sut.Delete(kecamatan);
     }
@@ -169,11 +163,8 @@ public class KecamatanDalTest
     public void GetDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var propinsi = new PropinsiModel("E", "F");
-        var kabupaten = new KabupatenModel("C", "D", propinsi);
-        var expected = new KecamatanModel("A", "B", kabupaten);
+        var expected = new KecamatanModel("A", "B", KabupatenModel.Default);
 
-        _kabupatenDal.Insert(kabupaten);
         _sut.Insert(expected);
         
         var actual = _sut.GetData(expected);
@@ -185,15 +176,11 @@ public class KecamatanDalTest
     public void ListDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var propinsi = new PropinsiModel("E", "F");
-        var kabupaten = new KabupatenModel("C", "D", propinsi);
-        var expected = new KecamatanModel("A", "B", kabupaten);
+        var expected = new KecamatanModel("A", "B", KabupatenModel.Default);
 
-        _kabupatenDal.Insert(kabupaten);
         _sut.Insert(expected);
         
-        var actual = _sut.ListData(kabupaten);
-        _ = actual.Select(x => x.Should().BeEquivalentTo(expected, 
-            opt => opt.Excluding(y => y.Kabupaten.Propinsi)));
+        var actual = _sut.ListData(KabupatenModel.Default);
+        _ = actual.Select(x => x.Should().BeEquivalentTo(expected));
     }
 }

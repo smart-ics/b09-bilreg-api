@@ -68,9 +68,13 @@ public class PropinsiDal : IPropinsiDal
     public PropinsiModel GetData(IPropinsiKey key)
     {
         const string sql = @"
-            SELECT fs_kd_propinsi PropinsiId, fs_nm_propinsi PropinsiName
-            FROM ta_propinsi
-            WHERE fs_kd_propinsi = @fs_kd_propinsi";
+            SELECT 
+                fs_kd_propinsi AS PropinsiId, 
+                fs_nm_propinsi AS PropinsiName
+            FROM 
+                ta_propinsi
+            WHERE 
+                fs_kd_propinsi = @fs_kd_propinsi";
 
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_propinsi", key.PropinsiId, SqlDbType.VarChar);
@@ -83,8 +87,11 @@ public class PropinsiDal : IPropinsiDal
     public IEnumerable<PropinsiModel> ListData()
     {
         const string sql = @"
-            SELECT fs_kd_propinsi, fs_nm_propinsi
-            FROM ta_propinsi ";
+            SELECT 
+                fs_kd_propinsi AS PropinsiId, 
+                fs_nm_propinsi AS PropinsiName
+            FROM 
+                ta_propinsi ";
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         var result = conn.Read<PropinsiModel>(sql);
@@ -119,7 +126,7 @@ public class PropinsiDalTest
     public void DeleteTest()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Delete(new PropinsiModel("A",""));
+        _sut.Delete(new PropinsiModel("A","A1"));
     }
     
     [Fact]

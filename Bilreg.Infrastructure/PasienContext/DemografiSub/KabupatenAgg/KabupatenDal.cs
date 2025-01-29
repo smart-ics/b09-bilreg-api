@@ -132,8 +132,7 @@ public class KabupatenDalTest
     public void InsertTest()
     {
         using var trans = TransHelper.NewScope();
-        var prop = new PropinsiModel("C", "D");
-        var kab = new KabupatenModel("A", "B", prop);
+        var kab = new KabupatenModel("A", "B", PropinsiModel.Default);
         _sut.Insert(kab);
     }
 
@@ -141,9 +140,7 @@ public class KabupatenDalTest
     public void UpdateTest()
     {
         using var trans = TransHelper.NewScope();
-        var prop = new PropinsiModel("C", "D");
-        var kab = new KabupatenModel("A", "B", prop);
-
+        var kab = new KabupatenModel("A", "B", PropinsiModel.Default);
         _sut.Update(kab);
     }
 
@@ -151,8 +148,7 @@ public class KabupatenDalTest
     public void DeleteTest()
     {
         using var trans = TransHelper.NewScope();
-        var prop = new PropinsiModel("C", "D");
-        var kab = new KabupatenModel("A", "B", prop);
+        var kab = new KabupatenModel("A", "B", PropinsiModel.Default);
         _sut.Insert(kab);
         _sut.Delete(kab);
     }
@@ -161,20 +157,17 @@ public class KabupatenDalTest
     public void GetDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var prop = new PropinsiModel("C", "D");
-        var kab = new KabupatenModel("A", "B", prop);
+        var kab = new KabupatenModel("A", "B", PropinsiModel.Default);
         _sut.Insert(kab);
         var actual = _sut.GetData(kab);
-        actual.Should().BeEquivalentTo(kab, opt =>
-            opt.Excluding(x => x.Propinsi.PropinsiName));
+        actual.Should().BeEquivalentTo(kab);
     }
 
     [Fact]
     public void ListDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var prop = new PropinsiModel("C", "D");
-        var kab = new KabupatenModel("A", "B", prop);
+        var kab = new KabupatenModel("A", "B", PropinsiModel.Default);
         _sut.Insert(kab);
         var actual = _sut.GetData(kab);
         actual.Should().BeEquivalentTo(kab, opt =>

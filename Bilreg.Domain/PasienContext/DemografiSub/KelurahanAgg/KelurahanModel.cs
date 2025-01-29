@@ -1,16 +1,16 @@
-using Bilreg.Domain.PasienContext.DemografiSub.KabupatenAgg;
 using Bilreg.Domain.PasienContext.DemografiSub.KecamatanAgg;
-using Bilreg.Domain.PasienContext.DemografiSub.PropinsiAgg;
 using CommunityToolkit.Diagnostics;
 
 namespace Bilreg.Domain.PasienContext.DemografiSub.KelurahanAgg;
 
 public class KelurahanModel: IKelurahanKey
 {
-    public KelurahanModel(string id, string name, string kodePos, KecamatanModel kecamatan)
+    public KelurahanModel(string id, string name, 
+        string kodePos, KecamatanModel kecamatan)
     {
-        Guard.IsNotNullOrEmpty(id);
-        Guard.IsNotNullOrEmpty(name);
+        if (id == string.Empty ^ name == string.Empty)
+            throw new ArgumentException("Invalid Kelurahan");
+        
         Guard.IsNotNull(kecamatan);
         
         KelurahanId = id;
@@ -19,13 +19,11 @@ public class KelurahanModel: IKelurahanKey
         Kecamatan = kecamatan;
     }
 
+    public static KelurahanModel Default => 
+        new KelurahanModel(string.Empty, string.Empty, 
+            string.Empty, KecamatanModel.Default);
     public string KelurahanId { get; private set; }
     public string KelurahanName { get; private set; }
     public KecamatanModel Kecamatan { get; private set; }
     public string KodePos { get; private set; }
-}
-
-public interface IKelurahanKey
-{
-    string KelurahanId { get; }
 }

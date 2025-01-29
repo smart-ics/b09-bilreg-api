@@ -4,59 +4,87 @@ using Bilreg.Domain.PasienContext.StatusSosialSub.PekerjaanDkAgg;
 using Bilreg.Domain.PasienContext.StatusSosialSub.PendidikanDkAgg;
 using Bilreg.Domain.PasienContext.StatusSosialSub.StatusKawinDkAgg;
 using Bilreg.Domain.PasienContext.StatusSosialSub.SukuAgg;
+using CommunityToolkit.Diagnostics;
 
 namespace Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
 
-public partial class PasienModel
-    : IPasienKey
+public class PasienModel : IPasienKey
 {
-    public PasienModel(string pasienId, string pasienName, DateTime tglLahir, string gender)
+    public PasienModel(string pasienId, string pasienName, 
+        DateTime tglLahir, GenderType gender)
     {
+        Guard.IsNotEmpty(pasienId);
+        Guard.IsNotEmpty(pasienName);
+        Guard.IsGreaterThan(tglLahir, new DateTime(1900, 1, 1));
+        
         PasienId = pasienId;
         PasienName = pasienName;
         TglLahir = tglLahir;
         Gender = gender;
-
-        Address = AddressObj.Default;
-        StatusKawinDk = StatusKawinDkModel.Default;
-        Agama = AgamaModel.Default;;
-        Suku = SukuModel.Default;
-        PekerjaanDk = PekerjaanDkModel.Default;
-        PendidikanDk = PendidikanDkModel.Default;
     }
+    
+    //  MANDATORY PROPERTIES
     public string PasienId { get; private set; } 
     public string PasienName { get; private set; }
     public DateTime TglLahir { get; private set; }
-    public string Gender { get; private set; }
+    public GenderType Gender { get; private set; }
+    
+    //  OPTIONAL PROPERTIES
+    //      personal info
     public string NickName { get; private set; } = string.Empty;
     public string TempatLahir { get; private set; } = string.Empty;
-    public DateTime TglMedrec { get; private set; } = DateTime.Now;
     public string IbuKandung { get; private set; } = string.Empty;
-    public string GolDarah { get; private set; } = string.Empty;
-
-    public StatusKawinDkModel StatusKawinDk { get; private set; }
-    public AgamaModel Agama { get; private set; }
-    public SukuModel Suku { get; private set; }
-    public PekerjaanDkModel PekerjaanDk { get; private set; }
-    public PendidikanDkModel PendidikanDk { get; private set; }
-
-    public AddressObj Address { get; private set; } 
-    public KelurahanModel Kelurahan { get; private set; }
-    public IdentityObj Identity { get; private set; } 
-    public ContactObj Contact { get; private set; }
-    public KeluargaObj Keluarga { get; private set; }
+    public GolDarahType GolDarah { get; private set; } = GolDarahType.Default;
     
-    public string NoMedrecInduk { get; private set; }
-    public bool IsAktif { get; private set; }
+    //      administrative info
+    public AddressType Address { get; private set; } = AddressType.Default;
+    public KelurahanModel Kelurahan { get; private set; } = KelurahanModel.Default;
+    public IdentityType Identity { get; private set; }  = IdentityType.Default;
+    public ContactType Contact { get; private set; } = ContactType.Default;
+    public KeluargaType Keluarga { get; private set; } = KeluargaType.Default;
+    
+    //      status sosial
+    public StatusKawinDkModel StatusKawin { get; private set; } = StatusKawinDkModel.Default;
+    public AgamaModel Agama { get; private set; } = AgamaModel.Default;
+    public SukuModel Suku { get; private set; } = SukuModel.Default;
+    public PekerjaanDkModel Pekerjaan { get; private set; } = PekerjaanDkModel.Default;
+    public PendidikanDkModel Pendidikan { get; private set; } = PendidikanDkModel.Default;
+    //      olah berkas
+    public DateTime TglMedrec { get; private set; } = DateTime.Now;
+    public string PasienIdInduk { get; private set; } = string.Empty;
+    public bool IsAktif { get; private set; } = true;
+
+    public void SetPersonalInfo(string nickName, string tempatLahir, string ibuKandung,
+        GolDarahType golDarah)
+    {
+        NickName = nickName;
+        TempatLahir = tempatLahir;
+        IbuKandung = ibuKandung;
+        GolDarah = golDarah;
+    }
+
+    public void SetAdministrativeInfo(AddressType address, KelurahanModel kelurahan,
+        IdentityType identitas, ContactType contact, KeluargaType keluarga)
+    {
+        Address = address;
+        Kelurahan = kelurahan;
+        Identity = identitas;
+        Contact = contact;
+        Keluarga = keluarga;
+    }
+
+    public void SetStatusSosial(StatusKawinDkModel statusKawin, AgamaModel agama,
+        SukuModel suku, PekerjaanDkModel pekerjaan, PendidikanDkModel pendidikan)
+    {
+        StatusKawin = statusKawin;
+        Agama = agama;
+        Suku = suku;
+        Pekerjaan = pekerjaan;
+        Pendidikan = pendidikan;
+    }
+
+    public static PasienModel Load(string asdf)
+    {
+        
+    }
 }
-
-public record AddressObj(string Alamat, string Alamat2, string Alamat3, string Kota, string KodePos)
-{
-    public static AddressObj Default => new AddressObj(string.Empty, string.Empty, string.Empty, string.Empty, string.Empty);
-};
-
-public record IdentityObj(string JenisId, string NomorId, string NomorKk);
-
-public record ContactObj(string Email, string NoTelp, string NoHp);
-
-public record KeluargaObj(string Name, string Relasi, ContactObj Contact, AddressObj Address);

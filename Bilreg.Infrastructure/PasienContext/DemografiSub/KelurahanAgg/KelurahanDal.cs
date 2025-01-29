@@ -1,13 +1,9 @@
 using System.Data;
 using System.Data.SqlClient;
 using Bilreg.Application.PasienContext.DemografiSub.KelurahanAgg;
-using Bilreg.Domain.PasienContext.DemografiSub.KabupatenAgg;
 using Bilreg.Domain.PasienContext.DemografiSub.KecamatanAgg;
 using Bilreg.Domain.PasienContext.DemografiSub.KelurahanAgg;
-using Bilreg.Domain.PasienContext.DemografiSub.PropinsiAgg;
 using Bilreg.Infrastructure.Helpers;
-using Bilreg.Infrastructure.PasienContext.DemografiSub.KabupatenAgg;
-using Bilreg.Infrastructure.PasienContext.DemografiSub.KecamatanAgg;
 using Dapper;
 using FluentAssertions;
 using Microsoft.Extensions.Options;
@@ -69,8 +65,10 @@ public class KelurahanDal: IKelurahanDal
     public void Delete(IKelurahanKey key)
     {
         const string sql = @"
-            DELETE FROM ta_kelurahan
-            WHERE fs_kd_kelurahan = @fs_kd_kelurahan";
+            DELETE FROM
+                ta_kelurahan
+            WHERE 
+                fs_kd_kelurahan = @fs_kd_kelurahan";
 
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_kelurahan", key.KelurahanId, SqlDbType.VarChar);
@@ -169,24 +167,17 @@ public class KelurahanDal: IKelurahanDal
 public class KelurahanDalTest
 {
     private readonly KelurahanDal _sut;
-    private readonly KecamatanDal _kecamatanDal;
-    private readonly KabupatenDal _kabupatenDal;
 
     public KelurahanDalTest()
     {
         _sut = new KelurahanDal(ConnStringHelper.GetTestEnv());
-        _kecamatanDal = new KecamatanDal(ConnStringHelper.GetTestEnv());
-        _kabupatenDal = new KabupatenDal(ConnStringHelper.GetTestEnv());
     }
 
     [Fact]
     public void InsertTest()
     {
         using var trans = TransHelper.NewScope();
-        var propinsi = new PropinsiModel("H", "");
-        var kabupaten = new KabupatenModel("F", "G", propinsi);
-        var kecamatan = new KecamatanModel("D", "E", kabupaten);
-        var kelurahan = new KelurahanModel("A", "B", "C", kecamatan);
+        var kelurahan = new KelurahanModel("A", "B", "C", KecamatanModel.Default);
         _sut.Insert(kelurahan);
     }
 
@@ -194,10 +185,7 @@ public class KelurahanDalTest
     public void UpdateTest()
     {
         using var trans = TransHelper.NewScope();
-        var propinsi = new PropinsiModel("H", "");
-        var kabupaten = new KabupatenModel("F", "G", propinsi);
-        var kecamatan = new KecamatanModel("D", "E", kabupaten);
-        var kelurahan = new KelurahanModel("A", "B", "C", kecamatan);
+        var kelurahan = new KelurahanModel("A", "B", "C", KecamatanModel.Default);
 
         _sut.Update(kelurahan);
     }
@@ -206,10 +194,7 @@ public class KelurahanDalTest
     public void DeleteTest()
     {
         using var trans = TransHelper.NewScope();
-        var propinsi = new PropinsiModel("H", "");
-        var kabupaten = new KabupatenModel("F", "G", propinsi);
-        var kecamatan = new KecamatanModel("D", "E", kabupaten);
-        var kelurahan = new KelurahanModel("A", "B", "C", kecamatan);
+        var kelurahan = new KelurahanModel("A", "B", "C", KecamatanModel.Default);
         
         _sut.Delete(kelurahan);
     }
@@ -218,13 +203,7 @@ public class KelurahanDalTest
     public void GetDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var propinsi = new PropinsiModel("H", "I");
-        var kabupaten = new KabupatenModel("F", "G", propinsi);
-        var kecamatan = new KecamatanModel("D", "E", kabupaten);
-        var expected = new KelurahanModel("A", "B", "C", kecamatan);
-
-        _kecamatanDal.Insert(kecamatan);
-        _kabupatenDal.Insert(kabupaten);
+        var expected = new KelurahanModel("A", "B", "C", KecamatanModel.Default);
         _sut.Insert(expected);
         
         var actual = _sut.GetData(expected);
@@ -235,17 +214,12 @@ public class KelurahanDalTest
     public void ListDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var propinsi = new PropinsiModel("H", "I");
-        var kabupaten = new KabupatenModel("F", "G", propinsi);
-        var kecamatan = new KecamatanModel("D", "E", kabupaten);
-        var expected = new KelurahanModel("A", "B", "C", kecamatan);
+        var expected = new KelurahanModel("A", "B", "C", KecamatanModel.Default);
         
-        _kecamatanDal.Insert(kecamatan);
-        _kabupatenDal.Insert(kabupaten);
         _sut.Insert(expected);
         
-        var actual = _sut.ListData(kecamatan);
-        _ = actual.Select(x => x.Should().BeEquivalentTo(expected, opt => opt.Excluding(y => y.Kecamatan.Kabupaten.Propinsi)));
+        var actual = _sut.ListData(KecamatanModel.Default);
+        _ = actual.Select(x => x.Should().BeEquivalentTo(expected));
     }
     
     [Fact]
@@ -254,13 +228,8 @@ public class KelurahanDalTest
         using var trans = TransHelper.NewScope();
         
         const string keyword = "B";
-        var propinsi = new PropinsiModel("H", "I");
-        var kabupaten = new KabupatenModel("F", "G", propinsi);
-        var kecamatan = new KecamatanModel("D", "E", kabupaten);
-        var expected = new KelurahanModel("A", "ABC", "C", kecamatan);
+        var expected = new KelurahanModel("A", "ABC", "C", KecamatanModel.Default);
 
-        _kecamatanDal.Insert(kecamatan);
-        _kabupatenDal.Insert(kabupaten);
         _sut.Insert(expected);
         
         var actual = _sut.ListData(keyword);
