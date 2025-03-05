@@ -74,7 +74,10 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanCreateCommand, RegJ
         GuardInput(request);
         
         //  BUILD
-        var pasien = _pasienDal.GetData(request); 
+        var pasien = _pasienDal
+            .GetData2(request)
+            .OrThrowNotFoundException()
+            .Value; 
         var tipeJaminan = _tipeJaminanDal.GetData(request);
         var polis = _polisDal.GetData(request);
         var caraMasukDk = _caraMasukDkDal.GetData(request);

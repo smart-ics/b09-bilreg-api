@@ -25,8 +25,10 @@ public class SukuDal : ISukuDal
     {
         //  QUERY
         const string sql = @"
-                INSERT INTO ta_suku(fs_kd_suku, fs_nm_suku)
-                VALUES (@fs_kd_suku, @fs_nm_suku)";
+            INSERT INTO 
+                ta_suku(fs_kd_suku, fs_nm_suku)
+            VALUES 
+                (@fs_kd_suku, @fs_nm_suku)";
 
         //  PARAM
         var dp = new DynamicParameters();
@@ -42,9 +44,9 @@ public class SukuDal : ISukuDal
     {
         //  QUERY
         const string sql = @"
-                UPDATE ta_suku
-                SET fs_nm_suku = @fs_nm_suku
-                WHERE fs_kd_suku = @fs_kd_suku";
+            UPDATE ta_suku
+            SET fs_nm_suku = @fs_nm_suku
+            WHERE fs_kd_suku = @fs_kd_suku";
 
         //  PARAM
         var dp = new DynamicParameters();
@@ -72,38 +74,41 @@ public class SukuDal : ISukuDal
         conn.Execute(sql, dp);
     }
 
-    public SukuModel GetData(ISukuKey key)
+    public GetDataResult<SukuModel> GetData2(ISukuKey key)
     {
         const string sql = @"
-            SELECT  fs_kd_suku, fs_nm_suku
-            FROM ta_suku
-            WHERE fs_kd_suku = @fs_kd_suku";
+            SELECT  
+                fs_kd_suku AS SukuId, 
+                fs_nm_suku AS SukuName
+            FROM 
+                ta_suku
+            WHERE 
+                fs_kd_suku = @fs_kd_suku";
 
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_suku", key.SukuId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        var result = conn.ReadSingle<SukuDto>(sql, dp);
-        return result?.ToModel();
+        var data = conn.ReadSingle<SukuModel>(sql, dp);
+        var result = new GetDataResult<SukuModel>(data, key.SukuId);
+        return result;
     }
 
-    public IEnumerable<SukuModel> ListData()
+    public ListDataResult<SukuModel> ListData2()
     {
         const string sql = @"
-            SELECT  fs_kd_suku, fs_nm_suku
-            FROM ta_suku ";
+            SELECT  
+                fs_kd_suku AS SukuId, 
+                fs_nm_suku AS SukuName
+            FROM 
+                ta_suku";
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        var result = conn.Read<SukuDto>(sql);
-        return result?.Select(x => x.ToModel());
+        var list  = conn.Read<SukuModel>(sql);
+        var result = new ListDataResult<SukuModel>(list);
+        return result;
     }
-}
 
-public class SukuDto
-{
-    public string fs_kd_suku { get; set; }
-    public string fs_nm_suku { get; set; }
-    public SukuModel ToModel() => SukuModel.Create(fs_kd_suku, fs_nm_suku);
 }
 
 public class SukuDalTest
@@ -119,29 +124,29 @@ public class SukuDalTest
     public void InsertTest()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Insert(SukuModel.Create("A", "B"));
+        _sut.Insert(new SukuModel("A", "B"));
     }
 
     [Fact]
     public void UpdateTest()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Update(SukuModel.Create("A", "B"));
+        _sut.Update(new SukuModel("A", "B"));
     }
     [Fact]
     public void DeleteTest()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Delete(SukuModel.Create("A", "B"));
+        _sut.Delete(new SukuModel("A", "B"));
     }
 
     [Fact]
     public void GetDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = SukuModel.Create("A", "B");
+        var expected = new SukuModel("A", "B");
         _sut.Insert(expected);
-        var actual = _sut.GetData(expected);
+        var actual = _sut.GetData2(expected).Value;
         actual.Should().BeEquivalentTo(expected);
     }
 
@@ -149,8 +154,8 @@ public class SukuDalTest
     public void GivenNotExistDate_ThenReturnNull()
     {
         using var trans = TransHelper.NewScope();
-        var expected = SukuModel.Create("A", "B");
-        var actual = _sut.GetData(expected);
+        var expected = new SukuModel("A", "B");
+        var actual = _sut.GetData2(expected).Value;
         actual.Should().BeNull();
     }
 
@@ -158,9 +163,9 @@ public class SukuDalTest
     public void ListDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = new List<SukuModel> {SukuModel.Create("A", "B")};
-        _sut.Insert(SukuModel.Create("A", "B"));
-        var actual = _sut.ListData();
+        var expected = new List<SukuModel> {new SukuModel("A", "B")};
+        _sut.Insert(new SukuModel("A", "B"));
+        var actual = _sut.ListData2().Value;
         actual.Should().BeEquivalentTo(expected);
     }
 }

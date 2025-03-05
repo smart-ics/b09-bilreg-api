@@ -2,8 +2,20 @@
 
 public class PropinsiModel : IPropinsiKey
 {
-    private PropinsiModel(string id, string name) => (PropinsiId, PropinsiName) = (id, name);
-    public static PropinsiModel Create(string id, string name) => new PropinsiModel(id, name);
+    public PropinsiModel(string id, string name)
+    {
+        if (id == string.Empty ^ name == string.Empty)
+            throw new ArgumentException("Invalid Propinsi");
+        
+        PropinsiId = id;
+        PropinsiName = name;
+    }
+
+    public static PropinsiModel Default => new PropinsiModel(string.Empty, string.Empty);
+    
+    public PropinsiModel()
+    {
+    }
     public string PropinsiId { get; private set; }
     public string PropinsiName { get; private set; }
 }

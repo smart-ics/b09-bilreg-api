@@ -7,8 +7,8 @@ namespace Bilreg.Application.PasienContext.StatusSosialSub.SukuAgg
         IInsert<SukuModel>,
         IUpdate<SukuModel>,
         IDelete<ISukuKey>,
-        IGetData<SukuModel, ISukuKey>,
-        IListData<SukuModel>
+        IGetData2<SukuModel, ISukuKey>,
+        IListData2<SukuModel>
     {
     }
 }

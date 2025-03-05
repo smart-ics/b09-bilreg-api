@@ -1,5 +1,8 @@
 using Bilreg.Application.PasienContext.DemografiSub.KabupatenAgg;
+using Bilreg.Domain.PasienContext.DemografiSub.KabupatenAgg;
+using Bilreg.Domain.PasienContext.DemografiSub.KecamatanAgg;
 using Bilreg.Domain.PasienContext.DemografiSub.KelurahanAgg;
+using Bilreg.Domain.PasienContext.DemografiSub.PropinsiAgg;
 using FluentAssertions;
 using MediatR;
 using Moq;
@@ -37,8 +40,11 @@ public class KelurahanSearchHandler: IRequestHandler<KelurahanSearchQuery, IEnum
             ?? throw new KeyNotFoundException($"Kelurahan {request.Keyword} not found");
         
         // RESPONSE
-        var response = result.Select(x => new KelurahanSearchResponse(x.KelurahanId, x.KelurahanName, x.KecamatanId,
-            x.KecamatanName, x.KabupatenId, x.KabupatenName, x.PropinsiId, x.PropinsiName, x.KodePos));
+        var response = result.Select(x => new KelurahanSearchResponse(
+            x.KelurahanId, x.KelurahanName, x.Kecamatan.KecamatanId, x.Kecamatan.KecamatanName,
+            x.Kecamatan.Kabupaten.KabupatenId, x.Kecamatan.Kabupaten.KabupatenName,
+            x.Kecamatan.Kabupaten.Propinsi.PropinsiId, x.Kecamatan.Kabupaten.Propinsi.PropinsiName, 
+            x.KodePos));
         return Task.FromResult(response);
     }
 }
@@ -69,13 +75,21 @@ public class KelurahanSearchHandlerTest
     public async Task GivenValidRequest_ThenReturnExpected_Test()
     {
         var request = new KelurahanSearchQuery("A");
-        var expected = new List<KelurahanModel>() { KelurahanModel.Create("A", "B", "C") };
+        var expected = new List<KelurahanModel>() 
+            { new KelurahanModel("A", "B", "B1",
+                new KecamatanModel("C","D", 
+                    new KabupatenModel("E","F", new PropinsiModel("G","H")))) 
+            };
         _kelurahanDal.Setup(x => x.ListData(It.IsAny<string>()))
             .Returns(expected);
         
         var actual = await _sut.Handle(request, CancellationToken.None);
-        var expectedResponse = expected.Select(x => new KelurahanListResponse(x.KelurahanId, x.KelurahanName,
-            x.KecamatanId, x.KecamatanName, x.KabupatenId, x.KabupatenName, x.PropinsiId, x.PropinsiName, x.KodePos));
+        var expectedResponse = expected.Select(x => new KelurahanListResponse(
+            x.KelurahanId, x.KelurahanName,
+            x.Kecamatan.KecamatanId, x.Kecamatan.KecamatanName, 
+            x.Kecamatan.Kabupaten.KabupatenId, x.Kecamatan.Kabupaten.KabupatenName, 
+            x.Kecamatan.Kabupaten.Propinsi.PropinsiId, x.Kecamatan.Kabupaten.Propinsi.PropinsiId, 
+            x.KodePos));
         actual.Should().BeEquivalentTo(expectedResponse);
     }
 }

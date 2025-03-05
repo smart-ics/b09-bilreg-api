@@ -7,8 +7,8 @@ namespace Bilreg.Application.PasienContext.StatusSosialSub.PekerjaanDkAgg
         IInsert<PekerjaanDkModel>,
         IUpdate<PekerjaanDkModel>,
         IDelete<IPekerjaanDkKey>,
-        IGetData<PekerjaanDkModel, IPekerjaanDkKey>,
-        IListData<PekerjaanDkModel>
+        IGetData2<PekerjaanDkModel, IPekerjaanDkKey>,
+        IListData2<PekerjaanDkModel>
     {
     }
 }

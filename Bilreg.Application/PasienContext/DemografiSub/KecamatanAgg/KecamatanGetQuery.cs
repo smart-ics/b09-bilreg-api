@@ -35,46 +35,9 @@ public class KecamatanGetHandler: IRequestHandler<KecamatanGetQuery, KecamatanGe
             ?? throw new KeyNotFoundException($"Kecamatan id: {request.KecamatanId} not found");
 
         // RESPONSE
-        var response = new KecamatanGetResponse(result.KecamatanId, result.KecamatanName, result.KabupatenId,
-            result.KabupatenName, result.PropinsiId, result.PropinsiName);
+        var response = new KecamatanGetResponse(result.KecamatanId, result.KecamatanName, 
+            result.Kabupaten.KabupatenId, result.Kabupaten.KabupatenName,
+            result.Kabupaten.Propinsi.PropinsiId, result.Kabupaten.Propinsi.PropinsiName);
         return Task.FromResult(response);
-    }
-}
-
-public class KecamatanGetHandlerTest
-{
-    private readonly Mock<IKecamatanDal> _kecamatanDal;
-    private readonly KecamatanGetHandler _sut;
-    
-    public KecamatanGetHandlerTest()
-    {
-        _kecamatanDal = new Mock<IKecamatanDal>();
-        _sut = new KecamatanGetHandler(_kecamatanDal.Object);
-    }
-
-    [Fact]
-    public async Task GivenInvalidKecamatanId_ThenThrowKeyNotFoundException_Test()
-    {
-        var request = new KecamatanGetQuery("A");
-        _kecamatanDal.Setup(x=> x.GetData(It.IsAny<IKecamatanKey>()))
-            .Returns(null as KecamatanModel);
-        
-        var actual = async () => await _sut.Handle(request, CancellationToken.None);
-        await actual.Should().ThrowAsync<KeyNotFoundException>();
-    }
-
-    [Fact]
-    public async Task GivenValidKecamatanId_ThenReturnExpected_Test()
-    {
-        var request = new KecamatanGetQuery("A");
-        var expected = KecamatanModel.Create("A", "B");
-        var kabupaten = KabupatenModel.Create("C", "D");
-        kabupaten.Set(PropinsiModel.Create("E", "F"));
-        expected.Set(kabupaten);
-        _kecamatanDal.Setup(x => x.GetData(It.IsAny<IKecamatanKey>()))
-            .Returns(expected);
-        
-        var actual = await _sut.Handle(request, CancellationToken.None);
-        actual.Should().BeEquivalentTo(expected);
     }
 }

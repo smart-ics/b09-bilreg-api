@@ -1,49 +1,40 @@
-using Bilreg.Domain.PasienContext.DemografiSub.KabupatenAgg;
 using Bilreg.Domain.PasienContext.DemografiSub.KecamatanAgg;
-using Bilreg.Domain.PasienContext.DemografiSub.PropinsiAgg;
+using CommunityToolkit.Diagnostics;
+using Xunit;
 
 namespace Bilreg.Domain.PasienContext.DemografiSub.KelurahanAgg;
 
 public class KelurahanModel: IKelurahanKey
 {
-    public KelurahanModel(string id, string name, string kodePos)
+    public KelurahanModel(string id, string name, 
+        string kodePos, KecamatanModel kecamatan)
     {
+        if (id == string.Empty ^ name == string.Empty)
+            throw new ArgumentException("Invalid Kelurahan");
+        
+        Guard.IsNotNull(kecamatan);
+        
         KelurahanId = id;
         KelurahanName = name;
         KodePos = kodePos;
-        KecamatanId = string.Empty;
-        KecamatanName = string.Empty;
-        KabupatenId = string.Empty;
-        KabupatenName = string.Empty;
-        PropinsiId = string.Empty;
-        PropinsiName = string.Empty;
+        Kecamatan = kecamatan;
     }
 
-    public static KelurahanModel Create(string id, string name, string kodePos) 
-        => new KelurahanModel(id, name, kodePos);
-
-    public void Set(KecamatanModel kecamatan)
-    {
-        KecamatanId = kecamatan.KecamatanId;
-        KecamatanName = kecamatan.KecamatanName;
-        KabupatenId = kecamatan.KabupatenId;
-        KabupatenName = kecamatan.KabupatenName;
-        PropinsiId = kecamatan.PropinsiId;
-        PropinsiName = kecamatan.PropinsiName;
-    }
-    
+    public static KelurahanModel Default => 
+        new KelurahanModel(string.Empty, string.Empty, 
+            string.Empty, KecamatanModel.Default);
     public string KelurahanId { get; private set; }
     public string KelurahanName { get; private set; }
-    public string KecamatanId { get; private set; }
-    public string KecamatanName { get; private set; }
-    public string KabupatenId { get; private set; }
-    public string KabupatenName { get; private set; }
-    public string PropinsiId { get; private set; }
-    public string PropinsiName { get; private set; }
+    public KecamatanModel Kecamatan { get; private set; }
     public string KodePos { get; private set; }
+    public KelurahanViewType ToViewType() 
+        => new(KelurahanId, KelurahanName, 
+            Kecamatan.KecamatanName, Kecamatan.Kabupaten.KabupatenName, 
+            Kecamatan.Kabupaten.Propinsi.PropinsiName);
 }
 
-public interface IKelurahanKey
-{
-    string KelurahanId { get; }
-}
+public record KelurahanViewType(string KelurahanId,
+    string KelurahanName,
+    string KecamatanName,
+    string KabupatenName,
+    string PropinsiName);

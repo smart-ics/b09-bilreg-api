@@ -1,23 +1,22 @@
-﻿namespace Bilreg.Domain.PasienContext.StatusSosialSub.StatusKawinDkAgg
+﻿using CommunityToolkit.Diagnostics;
+
+namespace Bilreg.Domain.PasienContext.StatusSosialSub.StatusKawinDkAgg;
+
+public class StatusKawinDkModel : IStatusKawinDkKey
 {
-    public class StatusKawinDkModel : IStatusKawinDkKey
+    public StatusKawinDkModel(string id, string name)
     {
-        // Constructor
-        private StatusKawinDkModel(string id, string name)
-            => (StatusKawinDkId, StatusKawinDkName) = (id, name);
+        if (id == string.Empty ^ name == string.Empty) 
+            throw new ArgumentException(("Invalid status kawin dk."));
         
-        // Factory Method
-        public static StatusKawinDkModel Create(string id, string name)
-        => new StatusKawinDkModel(id, name);
-
-        // Properties
-        public string StatusKawinDkId { get; private set; }
-        public string StatusKawinDkName { get; private set; }
+        StatusKawinDkId = id;
+        StatusKawinDkName = name;
     }
+    public static StatusKawinDkModel Default => new(string.Empty, string.Empty);
 
-    public interface IStatusKawinDkKey
+    public StatusKawinDkModel()
     {
-        string StatusKawinDkId { get;}
     }
+    public string StatusKawinDkId { get; private set; }
+    public string StatusKawinDkName { get; private set; }
 }
-

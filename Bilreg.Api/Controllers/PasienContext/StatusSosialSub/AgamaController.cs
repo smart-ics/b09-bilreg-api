@@ -15,22 +15,6 @@ namespace Bilreg.Api.Controllers.PasienContext.StatusSosialSub
         {
             _mediator = mediator;
         }
-
-        [HttpPost]
-        public async Task<IActionResult> Save(AgamaSaveCommand cmd)
-        {
-            await _mediator.Send(cmd);
-            return Ok(new JSendOk("Done"));
-        }
-
-        [HttpDelete]
-        [Route("{id}")]
-        public async Task<IActionResult> Delete(string id)
-        {
-            var cmd = new AgamaDeleteCommand(id);
-            await _mediator.Send(cmd);
-            return Ok(new JSendOk("Done"));
-        }
         
         [HttpGet]
         [Route("{id}")]

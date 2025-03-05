@@ -6,25 +6,24 @@ namespace Bilreg.Infrastructure.PasienContext.DemografiSub.KecamatanAgg;
 
 public class KecamatanDto
 {
-    public string fs_kd_kecamatan { get; set; }
+    public string KecamatanId { get; set; }
     
-    public string fs_nm_kecamatan { get; set; }
+    public string KecamatanName { get; set; }
     
-    public string fs_kd_kabupaten { get; set; }
+    public string KabupatenId { get; set; }
     
-    public string fs_nm_kabupaten { get; set; }
+    public string KabupatenName { get; set; }
     
-    public string fs_kd_propinsi { get; set; }
+    public string PropinsiId { get; set; }  
     
-    public string fs_nm_propinsi { get; set; }
+    public string PropinsiName { get; set; }
 
     public KecamatanModel ToModel()
     {
-        var kecamatan = KecamatanModel.Create(fs_kd_kecamatan, fs_nm_kecamatan);
-        var kabupaten = KabupatenModel.Create(fs_kd_kabupaten, fs_nm_kabupaten);
-        var propinsi = PropinsiModel.Create(fs_kd_propinsi, fs_nm_propinsi);
-        kabupaten.Set(propinsi);
-        kecamatan.Set(kabupaten);
+        var propinsi = new PropinsiModel(PropinsiId, PropinsiName);
+        var kabupaten = new KabupatenModel(KabupatenId, KabupatenName, propinsi);
+        var kecamatan = new KecamatanModel(KecamatanId, KecamatanName, kabupaten);
+
         return kecamatan;
     }
 }

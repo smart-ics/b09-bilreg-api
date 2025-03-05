@@ -8,9 +8,9 @@ public interface IPasienDal :
     IInsert<PasienModel>,
     IUpdate<PasienModel>,
     IDelete<PasienModel>,
-    IGetData<PasienModel, IPasienKey>,
-    IListData<PasienModel, DateTime>,
-    IListData<PasienModel, Periode>,
-    IListData<PasienModel,string>
+    IGetData2<PasienModel, IPasienKey>,
+    IListData2<PasienModel, DateTime>,
+    IListData2<PasienModel, Periode>,
+    IListData2<PasienModel,string>
 {
 }

@@ -16,22 +16,6 @@ public class KecamatanController : ControllerBase
         _mediator = mediator;
     }
 
-    [HttpPost]
-    public async Task<IActionResult> Save(KecamatanSaveCommand cmd)
-    {
-        await _mediator.Send(cmd);
-        return Ok(new JSendOk("Done"));
-    }
-
-    [HttpDelete]
-    [Route("{id}")]
-    public async Task<IActionResult> Delete(string id)
-    {
-        var cmd = new KecamatanDeleteCommand(id);
-        await _mediator.Send(cmd);
-        return Ok(new JSendOk("Done"));
-    }
-
     [HttpGet]
     [Route("{id}")]
     public async Task<IActionResult> GetData(string id)

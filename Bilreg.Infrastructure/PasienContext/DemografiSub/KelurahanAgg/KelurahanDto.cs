@@ -7,33 +7,30 @@ namespace Bilreg.Infrastructure.PasienContext.DemografiSub.KelurahanAgg;
 
 public class KelurahanDto
 {
-    public string fs_kd_kelurahan { get; set; }
+    public string KelurahanId { get; set; }
     
-    public string fs_nm_kelurahan { get; set; }
+    public string KelurahanName { get; set; }
     
-    public string fs_kd_pos { get; set; }
+    public string KodePos { get; set; }
     
-    public string fs_kd_kecamatan { get; set; }
+    public string KecamatanId { get; set; }
     
-    public string fs_nm_kecamatan { get; set; }
+    public string KecamatanName { get; set; }
     
-    public string fs_kd_kabupaten { get; set; }
+    public string KabupatenId { get; set; }
     
-    public string fs_nm_kabupaten { get; set; }
+    public string KabupatenName { get; set; }
     
-    public string fs_kd_propinsi { get; set; }
+    public string PropinsiId { get; set; }
     
-    public string fs_nm_propinsi { get; set; }
+    public string PropinsiName { get; set; }
 
     public KelurahanModel ToModel()
     {
-        var kelurahan = KelurahanModel.Create(fs_kd_kelurahan, fs_nm_kelurahan, fs_kd_pos);
-        var kecamatan = KecamatanModel.Create(fs_kd_kecamatan, fs_nm_kecamatan);
-        var kabupaten = KabupatenModel.Create(fs_kd_kabupaten, fs_nm_kabupaten);
-        var propinsi = PropinsiModel.Create(fs_kd_propinsi, fs_nm_propinsi);
-        kabupaten.Set(propinsi);
-        kecamatan.Set(kabupaten);
-        kelurahan.Set(kecamatan);
+        var propinsi = new PropinsiModel(PropinsiId, PropinsiName);
+        var kabupaten = new KabupatenModel(KabupatenId, KabupatenName, propinsi);
+        var kecamatan = new KecamatanModel(KecamatanId, KecamatanName, kabupaten);
+        var kelurahan = new KelurahanModel(KelurahanId, KelurahanName, KodePos, kecamatan);
         return kelurahan;
     }
 }

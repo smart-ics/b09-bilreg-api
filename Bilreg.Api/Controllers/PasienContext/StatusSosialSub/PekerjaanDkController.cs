@@ -16,21 +16,6 @@ namespace Bilreg.Api.Controllers.PasienContext.StatusSosialSub
             _mediator = mediator;
         }
 
-        [HttpPost]
-        public async Task<IActionResult> Save(PekerjaanDkSaveCommand cmd)
-        {
-            await _mediator.Send(cmd);
-            return Ok(new JSendOk("Done"));
-        }
-
-        [HttpDelete]
-        [Route("{id}")]
-        public async Task<IActionResult> Delete(string id)
-        {
-            var command = new PekerjaanDkDeleteCommand(id);
-            await _mediator.Send(command);
-            return Ok(new JSendOk("Done"));
-        }
 
         [HttpGet]
         [Route("{id}")]

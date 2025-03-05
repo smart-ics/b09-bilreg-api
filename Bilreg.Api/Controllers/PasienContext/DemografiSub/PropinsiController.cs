@@ -15,11 +15,4 @@ public class PropinsiController : ControllerBase
     {
         _mediator = mediator;
     }
-
-    [HttpPost]
-    public async Task<IActionResult> Save(SukuSaveCommand cmd)
-    {
-        await _mediator.Send(cmd);
-        return Ok(new JSendOk("Done"));
-    }
 }

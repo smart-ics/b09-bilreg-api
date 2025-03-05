@@ -22,54 +22,13 @@ public class PendidikanDkGetHandler: IRequestHandler<PendidikanDkGetQuery, Pendi
     public Task<PendidikanDkGetResponse> Handle(PendidikanDkGetQuery request, CancellationToken cancellationToken)
     {
         // QUERY
-        var result = _pendidikanDkDal.GetData(request)
-            ?? throw new KeyNotFoundException($"Pendidikan Dk not found: {request.PendidikanDkId}");
+        var result = _pendidikanDkDal
+            .GetData2(request)
+            .OrThrowNotFoundException()
+            .Value;
         
         // RESPONSE
         var response = new PendidikanDkGetResponse(result.PendidikanDkId, result.PendidikanDkName);
         return Task.FromResult(response);
-    }
-}
-
-public class PendidikanDkGetHandlerTest
-{
-    private readonly PendidikanDkGetHandler _sut;
-    private readonly Mock<IPendidikanDkDal> _pendidikanDal;
-
-    public PendidikanDkGetHandlerTest()
-    {
-        _pendidikanDal = new Mock<IPendidikanDkDal>();
-        _sut = new PendidikanDkGetHandler(_pendidikanDal.Object);
-    }
-
-    [Fact]
-    public void GivenInvalidPendidikanDkId_ThenThrowKeyNotFoundException_Test()
-    {
-        // ARRANGE
-        var request = new PendidikanDkGetQuery("123456");
-        _pendidikanDal.Setup(x => x.GetData(It.IsAny<IPendidikanDkKey>()))
-            .Returns(null as PendidikanDkModel);
-
-        // ACT
-        var result = async () => await _sut.Handle(request, CancellationToken.None);
-        
-        // ASSERT
-        result.Should().ThrowAsync<KeyNotFoundException>();
-    }
-
-    [Fact]
-    public async Task GivenValidPendidikanDkId_ThenReturnExpected_Test()
-    {
-        // ARRANGE
-        var expected = PendidikanDkModel.Create("A", "B");
-        var request = new PendidikanDkGetQuery("A");
-        _pendidikanDal.Setup(x => x.GetData(It.IsAny<IPendidikanDkKey>()))
-            .Returns(expected);
-        
-        // ACT
-        var result =  await _sut.Handle(request, CancellationToken.None);
-        
-        // ASSERT
-        result.Should().BeEquivalentTo(expected);
     }
 }

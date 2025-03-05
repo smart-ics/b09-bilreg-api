@@ -7,8 +7,8 @@ public interface IPendidikanDkDal:
     IInsert<PendidikanDkModel>,
     IUpdate<PendidikanDkModel>,
     IDelete<IPendidikanDkKey>,
-    IGetData<PendidikanDkModel, IPendidikanDkKey>,
-    IListData<PendidikanDkModel>
+    IGetData2<PendidikanDkModel, IPendidikanDkKey>,
+    IListData2<PendidikanDkModel>
 {
     
 }

@@ -2,6 +2,13 @@
 using System.Data.SqlClient;
 using Bilreg.Application.PasienContext.DataSosialPasienSub.PasienAgg;
 using Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
+using Bilreg.Domain.PasienContext.DemografiSub.KecamatanAgg;
+using Bilreg.Domain.PasienContext.DemografiSub.KelurahanAgg;
+using Bilreg.Domain.PasienContext.StatusSosialSub.AgamaAgg;
+using Bilreg.Domain.PasienContext.StatusSosialSub.PekerjaanDkAgg;
+using Bilreg.Domain.PasienContext.StatusSosialSub.PendidikanDkAgg;
+using Bilreg.Domain.PasienContext.StatusSosialSub.StatusKawinDkAgg;
+using Bilreg.Domain.PasienContext.StatusSosialSub.SukuAgg;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
 using FluentAssertions;
@@ -26,70 +33,77 @@ public class PasienDal : IPasienDal
     {
         const string sql = @"
             INSERT INTO tc_mr(
-                fs_mr, fs_nm_pasien, fs_nm_alias, fs_temp_lahir, fd_tgl_lahir, 
-                fs_jns_kelamin, fd_tgl_mr, fs_nm_ibu_kandung, fs_gol_darah, 
+                --personal info
+                fs_mr, fs_nm_pasien, fd_tgl_lahir, fs_jns_kelamin, 
+                fs_nm_alias, fs_temp_lahir, fs_nm_ibu_kandung, fs_gol_darah, 
+                -- administrative
+                fs_alm_pasien, fs_alm2_pasien, fs_alm3_pasien, 
+                fs_kota_pasien, fs_kd_pos_pasien, 
+                fs_kd_kelurahan, fs_jenis_id, fs_kd_identitas, fs_no_kk, 
+                fs_email, fs_tlp_pasien, fs_no_hp,
+                fs_nm_keluarga, fs_hub_keluarga, fs_telp_keluarga,       
+                fs_alm1_keluarga, fs_alm2_keluarga, fs_kota_keluarga,
+                fs_kd_pos_keluarga,              
+                -- status sosial                              
                 fs_kd_status_kawin_dk, fs_kd_agama, fs_kd_suku, 
                 fs_kd_pekerjaan_dk, fs_kd_pendidikan_dk, 
-                fs_alm_pasien, fs_alm2_pasien, fs_alm3_pasien, 
-                fs_kota_pasien, fs_kd_pos_pasien, fs_kd_kelurahan, 
-                fs_jenis_id, fs_kd_identitas, fs_no_kk, 
-                fs_email, fs_tlp_pasien, fs_no_hp,
-                fs_nm_keluarga, fs_hub_keluarga, fs_telp_keluarga,
-                fs_alm1_keluarga, fs_alm2_keluarga, fs_kota_keluarga,
-                fs_kd_pos_keluarga)
+                -- olah berkas
+                 fd_tgl_mr, fb_aktif)
             VALUES(
-                @fs_mr, @fs_nm_pasien, @fs_nm_alias, @fs_temp_lahir, @fd_tgl_lahir, 
-                @fs_jns_kelamin, @fd_tgl_mr, @fs_nm_ibu_kandung, @fs_gol_darah, 
+                @fs_mr, @fs_nm_pasien, @fd_tgl_lahir, @fs_jns_kelamin, 
+                @fs_nm_alias, @fs_temp_lahir, @fs_nm_ibu_kandung, @fs_gol_darah, 
+                @fs_alm_pasien, @fs_alm2_pasien, @fs_alm3_pasien, 
+                @fs_kota_pasien, @fs_kd_pos_pasien, 
+                @fs_kd_kelurahan, @fs_jenis_id, @fs_kd_identitas, @fs_no_kk, 
+                @fs_email, @fs_tlp_pasien, @fs_no_hp,
+                @fs_nm_keluarga, @fs_hub_keluarga, @fs_telp_keluarga,       
+                @fs_alm1_keluarga, @fs_alm2_keluarga, @fs_kota_keluarga,
+                @fs_kd_pos_keluarga,              
                 @fs_kd_status_kawin_dk, @fs_kd_agama, @fs_kd_suku, 
                 @fs_kd_pekerjaan_dk, @fs_kd_pendidikan_dk, 
-                @fs_alm_pasien, @fs_alm2_pasien, @fs_alm3_pasien, 
-                @fs_kota_pasien, @fs_kd_pos_pasien, @fs_kd_kelurahan, 
-                @fs_jenis_id, @fs_kd_identitas, @fs_no_kk, 
-                @fs_email, @fs_tlp_pasien, @fs_no_hp,
-                @fs_nm_keluarga, @fs_hub_keluarga, @fs_telp_keluarga,
-                @fs_alm1_keluarga, @fs_alm2_keluarga, @fs_kota_keluarga,
-                @fs_kd_pos_keluarga)";
+                @fd_tgl_mr, @fb_aktif)";
 
         var dp = new DynamicParameters();
+        //      personal info
         dp.AddParam("@fs_mr", model.PasienId, SqlDbType.VarChar);
         dp.AddParam("@fs_nm_pasien", model.PasienName, SqlDbType.VarChar);
-        dp.AddParam("@fs_nm_alias", model.NickName, SqlDbType.VarChar);
-
-        dp.AddParam("@fs_temp_lahir", model.TempatLahir, SqlDbType.VarChar);
         dp.AddParam("@fd_tgl_lahir", model.TglLahir.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
-        dp.AddParam("@fs_jns_kelamin", model.Gender, SqlDbType.VarChar);
-        dp.AddParam("@fd_tgl_mr", model.TglMedrec.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
+        dp.AddParam("@fs_jns_kelamin", model.Gender.ToString(), SqlDbType.VarChar);
+        dp.AddParam("@fs_nm_alias", model.NickName, SqlDbType.VarChar);
+        dp.AddParam("@fs_temp_lahir", model.TempatLahir, SqlDbType.VarChar);
         dp.AddParam("@fs_nm_ibu_kandung", model.IbuKandung, SqlDbType.VarChar);
-        dp.AddParam("@fs_gol_darah", model.GolDarah, SqlDbType.VarChar);
-
-        dp.AddParam("@fs_kd_status_kawin_dk", model.StatusNikahId, SqlDbType.VarChar);
-        dp.AddParam("@fs_kd_agama", model.AgamaId, SqlDbType.VarChar);
-        dp.AddParam("@fs_kd_suku", model.SukuId, SqlDbType.VarChar);
-        dp.AddParam("@fs_kd_pekerjaan_dk", model.PekerjaanDkId, SqlDbType.VarChar);
-        dp.AddParam("@fs_kd_pendidikan_dk", model.PendidikanDkId, SqlDbType.VarChar);
-
-        dp.AddParam("@fs_alm_pasien", model.Alamat, SqlDbType.VarChar);
-        dp.AddParam("@fs_alm2_pasien", model.Alamat2, SqlDbType.VarChar);
-        dp.AddParam("@fs_alm3_pasien", model.Alamat3, SqlDbType.VarChar);
-        dp.AddParam("@fs_kota_pasien", model.Kota, SqlDbType.VarChar);
-        dp.AddParam("@fs_kd_pos_pasien", model.KodePos, SqlDbType.VarChar);
-        dp.AddParam("@fs_kd_kelurahan", model.KelurahanId, SqlDbType.VarChar);
-
-        dp.AddParam("@fs_jenis_id", model.JenisId, SqlDbType.VarChar);
-        dp.AddParam("@fs_kd_identitas", model.NomorId, SqlDbType.VarChar);
-        dp.AddParam("@fs_no_kk", model.NomorKk, SqlDbType.VarChar);
-
-        dp.AddParam("@fs_email", model.Email, SqlDbType.VarChar);
-        dp.AddParam("@fs_tlp_pasien", model.NoTelp, SqlDbType.VarChar);
-        dp.AddParam("@fs_no_hp", model.NoHp, SqlDbType.VarChar);
-
-        dp.AddParam("@fs_nm_keluarga", model.KeluargaName, SqlDbType.VarChar);
-        dp.AddParam("@fs_hub_keluarga", model.KeluargaRelasi, SqlDbType.VarChar);
-        dp.AddParam("@fs_telp_keluarga", model.KeluargaNoTelp, SqlDbType.VarChar);
-        dp.AddParam("@fs_alm1_keluarga", model.KeluargaAlamat1, SqlDbType.VarChar);
-        dp.AddParam("@fs_alm2_keluarga", model.KeluargaAlamat2, SqlDbType.VarChar);
-        dp.AddParam("@fs_kota_keluarga", model.KeluargaKota, SqlDbType.VarChar);
-        dp.AddParam("@fs_kd_pos_keluarga", model.KeluargaKodePos, SqlDbType.VarChar);
+        dp.AddParam("@fs_gol_darah", model.GolDarah.ToString(), SqlDbType.VarChar);
+        //      administrative
+        dp.AddParam("@fs_alm_pasien", model.Address.Alamat, SqlDbType.VarChar);
+        dp.AddParam("@fs_alm2_pasien", model.Address.Alamat2, SqlDbType.VarChar);
+        dp.AddParam("@fs_alm3_pasien", model.Address.Alamat3, SqlDbType.VarChar);
+        dp.AddParam("@fs_kota_pasien", model.Address.Kota, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_pos_pasien", model.Address.KodePos, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_kelurahan", model.Kelurahan.KelurahanId, SqlDbType.VarChar);
+        //
+        dp.AddParam("@fs_jenis_id", model.Identity.JenisId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_identitas", model.Identity.NomorId, SqlDbType.VarChar);
+        dp.AddParam("@fs_no_kk", model.Identity.NomorKk, SqlDbType.VarChar);
+        dp.AddParam("@fs_email", model.Contact.Email, SqlDbType.VarChar);
+        dp.AddParam("@fs_tlp_pasien", model.Contact.NoTelp, SqlDbType.VarChar);
+        dp.AddParam("@fs_no_hp", model.Contact.NoHp, SqlDbType.VarChar);
+        //
+        dp.AddParam("@fs_nm_keluarga", model.Keluarga.Name, SqlDbType.VarChar);
+        dp.AddParam("@fs_hub_keluarga", model.Keluarga.Relasi, SqlDbType.VarChar);
+        dp.AddParam("@fs_telp_keluarga", model.Keluarga.Contact.NoTelp, SqlDbType.VarChar);
+        dp.AddParam("@fs_alm1_keluarga", model.Keluarga.Address.Alamat, SqlDbType.VarChar);
+        dp.AddParam("@fs_alm2_keluarga", model.Keluarga.Address.Alamat2, SqlDbType.VarChar);
+        dp.AddParam("@fs_kota_keluarga", model.Keluarga.Address.Kota, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_pos_keluarga", model.Keluarga.Address.KodePos, SqlDbType.VarChar);
+        //      status sosial
+        dp.AddParam("@fs_kd_status_kawin_dk", model.StatusKawin.StatusKawinDkId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_agama", model.Agama.AgamaId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_suku", model.Suku.SukuId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_pekerjaan_dk", model.Pekerjaan.PekerjaanDkId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_pendidikan_dk", model.Pendidikan.PendidikanDkId, SqlDbType.VarChar);
+        //      olah berkas
+        dp.AddParam("@fd_tgl_mr", model.TglMedRec.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
+        dp.AddParam("fb_aktif", model.IsAktif, SqlDbType.Bit);
 
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -98,87 +112,92 @@ public class PasienDal : IPasienDal
     public void Update(PasienModel model)
     {
         const string sql = @"
-            UPDATE tc_mr
-            SET fs_nm_pasien = @fs_nm_pasien,
-                fs_nm_alias = @fs_nm_alias,
-                fs_temp_lahir = @fs_temp_lahir,
+            UPDATE 
+                tc_mr
+            SET 
+                fs_nm_pasien = @fs_nm_pasien,
                 fd_tgl_lahir = @fd_tgl_lahir,
                 fs_jns_kelamin = @fs_jns_kelamin,
-                fd_tgl_mr = @fd_tgl_mr,
+
+                fs_nm_alias = @fs_nm_alias,
+                fs_temp_lahir = @fs_temp_lahir,
                 fs_nm_ibu_kandung = @fs_nm_ibu_kandung,
                 fs_gol_darah = @fs_gol_darah,
-                
-                fs_kd_status_kawin_dk = @fs_kd_status_kawin_dk,
-                fs_kd_agama = @fs_kd_agama,
-                fs_kd_suku = @fs_kd_suku,
-                fs_kd_pekerjaan_dk = @fs_kd_pekerjaan_dk,
-                fs_kd_pendidikan_dk = @fs_kd_pendidikan_dk,
-                
+
                 fs_alm_pasien = @fs_alm_pasien,
                 fs_alm2_pasien = @fs_alm2_pasien,
                 fs_alm3_pasien = @fs_alm3_pasien,
                 fs_kota_pasien = @fs_kota_pasien,
                 fs_kd_pos_pasien = @fs_kd_pos_pasien,
                 fs_kd_kelurahan = @fs_kd_kelurahan,
-                
+
                 fs_jenis_id = @fs_jenis_id,
                 fs_kd_identitas = @fs_kd_identitas,
                 fs_no_kk = @fs_no_kk,
-                
                 fs_email = @fs_email,
                 fs_tlp_pasien = @fs_tlp_pasien,
                 fs_no_hp = @fs_no_hp,
-                
+
                 fs_nm_keluarga = @fs_nm_keluarga,
                 fs_hub_keluarga = @fs_hub_keluarga,
                 fs_telp_keluarga = @fs_telp_keluarga,
                 fs_alm1_keluarga = @fs_alm1_keluarga,
                 fs_alm2_keluarga = @fs_alm2_keluarga,
                 fs_kota_keluarga = @fs_kota_keluarga,
-                fs_kd_pos_keluarga = @fs_kd_pos_keluarga
+                fs_kd_pos_keluarga = @fs_kd_pos_keluarga,
+
+                fs_kd_status_kawin_dk = @fs_kd_status_kawin_dk,
+                fs_kd_agama = @fs_kd_agama,
+                fs_kd_suku = @fs_kd_suku,
+                fs_kd_pekerjaan_dk = @fs_kd_pekerjaan_dk,
+                fs_kd_pendidikan_dk = @fs_kd_pendidikan_dk,
+
+                fd_tgl_mr = @fd_tgl_mr,
+                fb_aktif = @fb_aktif
             WHERE 
                 fs_mr = @fs_mr";
 
         var dp = new DynamicParameters();
+        //      personal info
         dp.AddParam("@fs_mr", model.PasienId, SqlDbType.VarChar);
         dp.AddParam("@fs_nm_pasien", model.PasienName, SqlDbType.VarChar);
-        dp.AddParam("@fs_nm_alias", model.NickName, SqlDbType.VarChar);
-
-        dp.AddParam("@fs_temp_lahir", model.TempatLahir, SqlDbType.VarChar);
         dp.AddParam("@fd_tgl_lahir", model.TglLahir.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
-        dp.AddParam("@fs_jns_kelamin", model.Gender, SqlDbType.VarChar);
-        dp.AddParam("@fd_tgl_mr", model.TglMedrec.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
+        dp.AddParam("@fs_jns_kelamin", model.Gender.ToString(), SqlDbType.VarChar);
+        dp.AddParam("@fs_nm_alias", model.NickName, SqlDbType.VarChar);
+        dp.AddParam("@fs_temp_lahir", model.TempatLahir, SqlDbType.VarChar);
         dp.AddParam("@fs_nm_ibu_kandung", model.IbuKandung, SqlDbType.VarChar);
-        dp.AddParam("@fs_gol_darah", model.GolDarah, SqlDbType.VarChar);
-
-        dp.AddParam("@fs_kd_status_kawin_dk", model.StatusNikahId, SqlDbType.VarChar);
-        dp.AddParam("@fs_kd_agama", model.AgamaId, SqlDbType.VarChar);
-        dp.AddParam("@fs_kd_suku", model.SukuId, SqlDbType.VarChar);
-        dp.AddParam("@fs_kd_pekerjaan_dk", model.PekerjaanDkId, SqlDbType.VarChar);
-        dp.AddParam("@fs_kd_pendidikan_dk", model.PendidikanDkId, SqlDbType.VarChar);
-
-        dp.AddParam("@fs_alm_pasien", model.Alamat, SqlDbType.VarChar);
-        dp.AddParam("@fs_alm2_pasien", model.Alamat2, SqlDbType.VarChar);
-        dp.AddParam("@fs_alm3_pasien", model.Alamat3, SqlDbType.VarChar);
-        dp.AddParam("@fs_kota_pasien", model.Kota, SqlDbType.VarChar);
-        dp.AddParam("@fs_kd_pos_pasien", model.KodePos, SqlDbType.VarChar);
-        dp.AddParam("@fs_kd_kelurahan", model.KelurahanId, SqlDbType.VarChar);
-
-        dp.AddParam("@fs_jenis_id", model.JenisId, SqlDbType.VarChar);
-        dp.AddParam("@fs_kd_identitas", model.NomorId, SqlDbType.VarChar);
-        dp.AddParam("@fs_no_kk", model.NomorKk, SqlDbType.VarChar);
-
-        dp.AddParam("@fs_email", model.Email, SqlDbType.VarChar);
-        dp.AddParam("@fs_tlp_pasien", model.NoTelp, SqlDbType.VarChar);
-        dp.AddParam("@fs_no_hp", model.NoHp, SqlDbType.VarChar);
-
-        dp.AddParam("@fs_nm_keluarga", model.KeluargaName, SqlDbType.VarChar);
-        dp.AddParam("@fs_hub_keluarga", model.KeluargaRelasi, SqlDbType.VarChar);
-        dp.AddParam("@fs_telp_keluarga", model.KeluargaNoTelp, SqlDbType.VarChar);
-        dp.AddParam("@fs_alm1_keluarga", model.KeluargaAlamat1, SqlDbType.VarChar);
-        dp.AddParam("@fs_alm2_keluarga", model.KeluargaAlamat2, SqlDbType.VarChar);
-        dp.AddParam("@fs_kota_keluarga", model.KeluargaKota, SqlDbType.VarChar);
-        dp.AddParam("@fs_kd_pos_keluarga", model.KeluargaKodePos, SqlDbType.VarChar);
+        dp.AddParam("@fs_gol_darah", model.GolDarah.ToString(), SqlDbType.VarChar);
+        //      administrative
+        dp.AddParam("@fs_alm_pasien", model.Address.Alamat, SqlDbType.VarChar);
+        dp.AddParam("@fs_alm2_pasien", model.Address.Alamat2, SqlDbType.VarChar);
+        dp.AddParam("@fs_alm3_pasien", model.Address.Alamat3, SqlDbType.VarChar);
+        dp.AddParam("@fs_kota_pasien", model.Address.Kota, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_pos_pasien", model.Address.KodePos, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_kelurahan", model.Kelurahan.KelurahanId, SqlDbType.VarChar);
+        //
+        dp.AddParam("@fs_jenis_id", model.Identity.JenisId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_identitas", model.Identity.NomorId, SqlDbType.VarChar);
+        dp.AddParam("@fs_no_kk", model.Identity.NomorKk, SqlDbType.VarChar);
+        dp.AddParam("@fs_email", model.Contact.Email, SqlDbType.VarChar);
+        dp.AddParam("@fs_tlp_pasien", model.Contact.NoTelp, SqlDbType.VarChar);
+        dp.AddParam("@fs_no_hp", model.Contact.NoHp, SqlDbType.VarChar);
+        //
+        dp.AddParam("@fs_nm_keluarga", model.Keluarga.Name, SqlDbType.VarChar);
+        dp.AddParam("@fs_hub_keluarga", model.Keluarga.Relasi, SqlDbType.VarChar);
+        dp.AddParam("@fs_telp_keluarga", model.Keluarga.Contact.NoTelp, SqlDbType.VarChar);
+        dp.AddParam("@fs_alm1_keluarga", model.Keluarga.Address.Alamat, SqlDbType.VarChar);
+        dp.AddParam("@fs_alm2_keluarga", model.Keluarga.Address.Alamat2, SqlDbType.VarChar);
+        dp.AddParam("@fs_kota_keluarga", model.Keluarga.Address.Kota, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_pos_keluarga", model.Keluarga.Address.KodePos, SqlDbType.VarChar);
+        //      status sosial
+        dp.AddParam("@fs_kd_status_kawin_dk", model.StatusKawin.StatusKawinDkId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_agama", model.Agama.AgamaId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_suku", model.Suku.SukuId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_pekerjaan_dk", model.Pekerjaan.PekerjaanDkId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_pendidikan_dk", model.Pendidikan.PendidikanDkId, SqlDbType.VarChar);
+        //      olah berkas
+        dp.AddParam("@fd_tgl_mr", model.TglMedRec.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
+        dp.AddParam("fb_aktif", model.IsAktif, SqlDbType.Bit);
 
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -187,9 +206,10 @@ public class PasienDal : IPasienDal
     public void Delete(PasienModel key)
     {
         const string sql = @"
-            DELETE FROM tc_mr
-            WHERE fs_mr = @fs_mr ";
-
+            DELETE FROM 
+                tc_mr
+            WHERE 
+                fs_mr = @fs_mr ";
         var dp = new DynamicParameters();
         dp.AddParam("@fs_mr", key.PasienId, SqlDbType.VarChar);
 
@@ -197,7 +217,7 @@ public class PasienDal : IPasienDal
         conn.Execute(sql, dp);
     }
 
-    public PasienModel GetData(IPasienKey key)
+    public GetDataResult<PasienModel> GetData2(IPasienKey key)
     {
         var sql = $@"{SelectFromClause()} 
             WHERE fs_mr = @fs_mr ";
@@ -206,22 +226,28 @@ public class PasienDal : IPasienDal
         dp.AddParam("@fs_mr", key.PasienId, SqlDbType.VarChar);
 
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.ReadSingle<PasienDto>(sql, dp);
+        var dto = conn.ReadSingle<PasienDto>(sql, dp);
+        var pasien = dto?.ToModel();
+        var result = new GetDataResult<PasienModel>(pasien, key.PasienId);
+        return result;
     }
 
-    public IEnumerable<PasienModel> ListData(DateTime filter)
+    public ListDataResult<PasienModel> ListData2(DateTime tglLahir)
     {
         var sql = $@"{SelectFromClause()} 
             WHERE aa.fd_tgl_lahir = @fd_tgl_lahir ";
 
         var dp = new DynamicParameters();
-        dp.AddParam("@fd_tgl_lahir", filter.Date.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
+        dp.AddParam("@fd_tgl_lahir", tglLahir.Date.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
 
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<PasienDto>(sql, dp);
+        var dto = conn.Read<PasienDto>(sql, dp);
+        var pasien = dto?.Select(x => x.ToModel());
+        var result = new ListDataResult<PasienModel>(pasien);
+        return result;
     }
 
-    public IEnumerable<PasienModel> ListData(Periode filter)
+    public ListDataResult<PasienModel> ListData2(Periode filter)
     {
         var sql = $@"{SelectFromClause()} 
             WHERE aa.fd_tgl_mr BETWEEN @tgl1 AND @tgl2 ";
@@ -231,44 +257,13 @@ public class PasienDal : IPasienDal
         dp.AddParam("@tgl2", filter.Tgl2.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
 
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<PasienDto>(sql, dp);
+        var dto = conn.Read<PasienDto>(sql, dp);
+        var pasien = dto?.Select(x => x.ToModel());
+        var result  = new ListDataResult<PasienModel>(pasien);
+        return result;
     }
 
-    private static string SelectFromClause() =>
-        @"
-            SELECT 
-                aa.fs_mr, aa.fs_nm_pasien, aa.fs_nm_alias, aa.fs_temp_lahir, aa.fd_tgl_lahir, 
-                aa.fs_jns_kelamin, aa.fd_tgl_mr, aa.fs_nm_ibu_kandung, aa.fs_gol_darah, 
-                aa.fs_kd_status_kawin_dk, aa.fs_kd_agama, aa.fs_kd_suku, 
-                aa.fs_kd_pekerjaan_dk, aa.fs_kd_pendidikan_dk,
-                aa.fs_alm_pasien, aa.fs_alm2_pasien, aa.fs_alm3_pasien, 
-                aa.fs_kota_pasien, aa.fs_kd_pos_pasien, aa.fs_kd_kelurahan, 
-                aa.fs_jenis_id, aa.fs_kd_identitas, aa.fs_no_kk, 
-                aa.fs_email, aa.fs_tlp_pasien, aa.fs_no_hp,
-                aa.fs_nm_keluarga, aa.fs_hub_keluarga, aa.fs_telp_keluarga,
-                aa.fs_alm1_keluarga, aa.fs_alm2_keluarga, aa.fs_kota_keluarga, aa.fs_kd_pos_keluarga,
-                ISNULL(bb.fs_nm_status_kawin_dk, '') AS fs_nm_status_kawin_dk,
-                ISNULL(cc.fs_nm_agama,'') AS fs_nm_agama,
-                ISNULL(dd.fs_nm_suku, '') AS fs_nm_suku,
-                ISNULL(ee.fs_nm_pekerjaan_dk, '') AS fs_nm_pekerjaan_dk,
-                ISNULL(ff.fs_nm_pendidikan_dk, '') AS fs_nm_pendidikan_dk,
-                ISNULL(gg.fs_nm_kelurahan, '') AS fs_nm_kelurahan,
-                ISNULL(hh.fs_nm_kecamatan, '') AS fs_nm_kecamatan,
-                ISNULL(ii.fs_nm_kabupaten, '') AS fs_nm_kabupaten,
-                ISNULL(jj.fs_nm_propinsi, '') AS fs_nm_propinsi 
-
-            FROM tc_mr aa
-                LEFT JOIN ta_status_kawin_dk bb ON aa.fs_kd_status_kawin_dk = bb.fs_kd_status_kawin_dk
-                LEFT JOIN ta_agama cc ON aa.fs_kd_agama = cc.fs_kd_agama
-                LEFT JOIN ta_suku dd ON aa.fs_kd_suku = dd.fs_kd_suku
-                LEFT JOIN ta_pekerjaan_dk ee ON aa.fs_kd_pekerjaan_dk = ee.fs_kd_pekerjaan_dk
-                LEFT JOIN ta_pendidikan_dk ff ON aa.fs_kd_pendidikan_dk = ff.fs_kd_pendidikan_dk
-                LEFT JOIN ta_kelurahan gg ON aa.fs_kd_kelurahan = gg.fs_kd_kelurahan
-                LEFT JOIN ta_kecamatan hh ON gg.fs_kd_kecamatan = hh.fs_kd_kecamatan
-                LEFT JOIN ta_kabupaten ii ON hh.fs_kd_kabupaten = ii.fs_kd_kabupaten
-                LEFT JOIN ta_propinsi jj ON ii.fs_kd_propinsi = jj.fs_kd_propinsi ";
-
-    public IEnumerable<PasienModel> ListData(string filter)
+    public ListDataResult<PasienModel> ListData2(string filter)
     {
         var sql = $@"{SelectFromClause()} 
             WHERE aa.fs_nm_pasien = @fs_nm_pasien ";
@@ -277,8 +272,55 @@ public class PasienDal : IPasienDal
         dp.AddParam("@fs_nm_pasien", filter, SqlDbType.VarChar);
 
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<PasienDto>(sql, dp);
+        var dto =  conn.Read<PasienDto>(sql, dp);
+        var pasien = dto?.Select(x => x.ToModel());
+        var result = new ListDataResult<PasienModel>(pasien);
+        return result;
     }
+    
+    private static string SelectFromClause() =>
+        @"
+            SELECT 
+                aa.fs_mr, aa.fs_nm_pasien, aa.fd_tgl_lahir, aa.fs_jns_kelamin, 
+                aa.fs_nm_alias, aa.fs_temp_lahir, aa.fs_nm_ibu_kandung, aa.fs_gol_darah, 
+                --      administrative
+                aa.fs_alm_pasien, aa.fs_alm2_pasien, aa.fs_alm3_pasien, 
+                aa.fs_kota_pasien, aa.fs_kd_pos_pasien, 
+                aa.fs_kd_kelurahan, aa.fs_jenis_id, aa.fs_kd_identitas, aa.fs_no_kk, 
+                aa.fs_email, aa.fs_tlp_pasien, aa.fs_no_hp,
+                aa.fs_nm_keluarga, aa.fs_hub_keluarga, aa.fs_telp_keluarga,       
+                aa.fs_alm1_keluarga, aa.fs_alm2_keluarga, aa.fs_kota_keluarga,
+                aa.fs_kd_pos_keluarga,              
+                --      status sosial                              
+                aa.fs_kd_status_kawin_dk, aa.fs_kd_agama, aa.fs_kd_suku, 
+                aa.fs_kd_pekerjaan_dk, aa.fs_kd_pendidikan_dk, 
+                --      olah berkas
+                aa.fd_tgl_mr, aa.fb_aktif,
+                ISNULL(bb.fs_nm_kelurahan, '') AS fs_nm_kelurahan,
+                ISNULL(bb.fs_kd_kecamatan, '') AS fs_kd_kecamatan,
+                ISNULL(cc.fs_nm_kecamatan, '') AS fs_nm_kecamatan,
+                ISNULL(cc.fs_kd_kabupaten, '') AS fs_kd_kabupaten,
+                ISNULL(dd.fs_nm_kabupaten, '') AS fs_nm_kabupaten,
+                ISNULL(dd.fs_kd_propinsi, '') AS fs_kd_propinsi,
+                ISNULL(ee.fs_nm_propinsi, '') AS fs_nm_propinsi, 
+                ISNULL(ff.fs_nm_status_kawin_dk, '') AS fs_nm_status_kawin_dk,
+                ISNULL(gg.fs_nm_agama,'') AS fs_nm_agama,
+                ISNULL(hh.fs_nm_suku, '') AS fs_nm_suku,
+                ISNULL(ii.fs_nm_pekerjaan_dk, '') AS fs_nm_pekerjaan_dk,
+                ISNULL(jj.fs_nm_pendidikan_dk, '') AS fs_nm_pendidikan_dk
+
+            FROM 
+                tc_mr aa
+                LEFT JOIN ta_kelurahan bb ON aa.fs_kd_kelurahan = bb.fs_kd_kelurahan
+                LEFT JOIN ta_kecamatan cc ON bb.fs_kd_kecamatan = cc.fs_kd_kecamatan
+                LEFT JOIN ta_kabupaten dd ON cc.fs_kd_kabupaten = dd.fs_kd_kabupaten
+                LEFT JOIN ta_propinsi ee ON dd.fs_kd_propinsi = ee.fs_kd_propinsi 
+                LEFT JOIN ta_status_kawin_dk ff ON aa.fs_kd_status_kawin_dk = ff.fs_kd_status_kawin_dk
+                LEFT JOIN ta_agama gg ON aa.fs_kd_agama = gg.fs_kd_agama
+                LEFT JOIN ta_suku hh ON aa.fs_kd_suku = hh.fs_kd_suku
+                LEFT JOIN ta_pekerjaan_dk ii ON aa.fs_kd_pekerjaan_dk = ii.fs_kd_pekerjaan_dk
+                LEFT JOIN ta_pendidikan_dk jj ON aa.fs_kd_pendidikan_dk = jj.fs_kd_pendidikan_dk ";
+
 }
 
 public class PasienDalTest
@@ -290,52 +332,27 @@ public class PasienDalTest
         _sut = new PasienDal(ConnStringHelper.GetTestEnv());
     }
 
-    private static PasienDto Faker() => new PasienDto
+    private static PasienModel Faker()
     {
-        fs_mr = "A",
-        fs_nm_pasien = "B",
-        fs_nm_alias = "C",
-        fs_temp_lahir = "D",
-        fd_tgl_lahir = "2000-01-02",
-        fs_jns_kelamin = "F",
-        fd_tgl_mr = "2000-01-03",
-        fs_nm_ibu_kandung = "H",
-        fs_gol_darah = "I",
-        fs_kd_status_kawin_dk = "J",
-        fs_nm_status_kawin_dk = "",
-        fs_kd_agama = "K",
-        fs_nm_agama = "",
-        fs_kd_suku = "L", 
-        fs_nm_suku = "",
-        fs_kd_pekerjaan_dk = "M",
-        fs_nm_pekerjaan_dk = "",
-        fs_kd_pendidikan_dk = "N",
-        fs_nm_pendidikan_dk = "",
-        fs_alm_pasien = "O",
-        fs_alm2_pasien = "P",
-        fs_alm3_pasien = "Q",
-        fs_kota_pasien = "R",
-        fs_kd_pos_pasien = "S",
-        fs_kd_kelurahan = "T",
-        fs_nm_kelurahan = "",
-        fs_nm_kecamatan = "",
-        fs_nm_kabupaten = "",
-        fs_nm_propinsi = "",
-        fs_jenis_id = "U",
-        fs_kd_identitas = "V",
-        fs_no_kk = "W",
-        fs_email = "X",
-        fs_tlp_pasien = "Y",
-        fs_no_hp = "Z",
-        fs_nm_keluarga = "AA",
-        fs_hub_keluarga = "BB",
-        fs_telp_keluarga = "081xx",
-        fs_alm1_keluarga = "CC",
-        fs_alm2_keluarga = "DD",
-        fs_kota_keluarga = "EE",
-        fs_kd_pos_keluarga = "528xx",
-    };
-    
+        var result = new PasienModel("A", "B", new DateTime(2002,3,4), new GenderType("F"));
+        result.SetPersonalInfo("C", "D", "E", new GolDarahType("A"));
+        result.SetAdministrativeInfo(
+            AddressType.Default,  
+            KelurahanModel.Default, 
+            IdentityType.Default, 
+            ContactType.Default, 
+            KeluargaType.Default);
+        result.SetStatusSosial(
+            StatusKawinDkModel.Default,
+            AgamaModel.Default,
+            SukuModel.Default,
+            PekerjaanDkModel.Default,
+            PendidikanDkModel.Default
+            );
+        return result;
+    }
+
+
     [Fact]
     public void InsertTest()
     {
@@ -362,7 +379,7 @@ public class PasienDalTest
     {
         using var trans = TransHelper.NewScope();
         _sut.Insert(Faker());
-        var actual = _sut.GetData(Faker());
+        var actual = _sut.GetData2(Faker()).Value;
         actual.Should().BeEquivalentTo(Faker());
     }
     
@@ -371,7 +388,7 @@ public class PasienDalTest
     {
         using var trans = TransHelper.NewScope();
         _sut.Insert(Faker());
-        var actual = _sut.ListData(new DateTime(2000,1,2));
+        var actual = _sut.ListData2(new DateTime(2002,3,4)).Value;
         actual.Should().ContainEquivalentOf(Faker());
     }
 }
