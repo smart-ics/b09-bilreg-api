@@ -1,36 +1,23 @@
-using System.Collections;
-using System.Text.Json;
-using Bilreg.Application.AdmisiContext.PetugasMedisSub.PetugasMedisAgg;
 using Bilreg.Application.Helpers;
 using Bilreg.Application.PasienContext.ParamContext.ParamSistemAgg;
 using Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
+using Bilreg.Domain.PasienContext.DemografiSub.KelurahanAgg;
+using Bilreg.Domain.PasienContext.StatusSosialSub.AgamaAgg;
+using Bilreg.Domain.PasienContext.StatusSosialSub.PekerjaanDkAgg;
+using Bilreg.Domain.PasienContext.StatusSosialSub.PendidikanDkAgg;
+using Bilreg.Domain.PasienContext.StatusSosialSub.StatusKawinDkAgg;
+using Bilreg.Domain.PasienContext.StatusSosialSub.SukuAgg;
 using CommunityToolkit.Diagnostics;
-using FluentAssertions;
 using MediatR;
-using Moq;
-using Nuna.Lib.CleanArchHelper;
 using Nuna.Lib.ValidationHelper;
-using Xunit;
 
 namespace Bilreg.Application.PasienContext.DataSosialPasienSub.PasienAgg;
 
 public record PasienGetQuery(string PasienId): IRequest<PasienGetResponse>, IPasienKey;
 
-public record PasienLogGetResponse(
-    string LogDate,
-    string Activity,
-    string UserId,
-    IEnumerable<PasienChangeLogResponse> ChangeLog
-);
-
-public record PasienChangeLogResponse(
-    string PropertyName,
-    string OldValue,
-    string NewValue
-);
-
 public record PasienGetResponse(
     string PasienId,
+    string NomorMedrec,
     string PasienName,
     string TempatLahir,
     string TglLahir,
@@ -39,27 +26,27 @@ public record PasienGetResponse(
     string IbuKandung,
     string GolDarah,
     AddressType Address,
-    string KelurahanId,
+    KelurahanViewType Kelurahan,
     IdentityType Identity,
     ContactType Contact,
     KeluargaType Keluarga,
-    string StatusKawinId,
-    string AgamaId,
-    string SukuId,
-    string PendidikanDkId,
-    string PekerjaanDkId
+    StatusKawinDkModel StatusKawin,
+    AgamaModel Agama,
+    SukuModel Suku,
+    PendidikanDkModel PendidikanDk,
+    PekerjaanDkModel PekerjaanDk
 );
 
 public class PasienGetHandler: IRequestHandler<PasienGetQuery, PasienGetResponse>
 {
     private readonly IParamSistemDal _paramSistemDal;
-    private readonly IFactoryLoad<PasienModel, IPasienKey> _factory;
+    private readonly IPasienDal _pasienDal;
     private const string KODE_RS_PARAM_KEY = "RS__XXXXXX_KODE";
 
-    public PasienGetHandler(IParamSistemDal paramSistemDal, IFactoryLoad<PasienModel, IPasienKey> factory)
+    public PasienGetHandler(IParamSistemDal paramSistemDal, IPasienDal pasienDal)
     {
         _paramSistemDal = paramSistemDal;
-        _factory = factory;
+        _pasienDal = pasienDal;
     }
 
     public Task<PasienGetResponse> Handle(PasienGetQuery request, CancellationToken cancellationToken)
@@ -69,8 +56,10 @@ public class PasienGetHandler: IRequestHandler<PasienGetQuery, PasienGetResponse
         
         // QUERY
         var pasienGetQuery = GetPasienId(request.PasienId);
-        var pasien = _factory.Load(pasienGetQuery);
-        pasien.RemoveNull();
+        var pasien = _pasienDal
+            .GetData2(pasienGetQuery)
+            .OrThrowNotFoundException()
+            .Value;
         
         // RESPONSE
         var response = BuildPasienResponse(pasien);
@@ -81,16 +70,16 @@ public class PasienGetHandler: IRequestHandler<PasienGetQuery, PasienGetResponse
     {
         var kodeRsEncrypted = _paramSistemDal.GetData(KODE_RS_PARAM_KEY)?.Value ?? string.Empty;
         var kodeRs = X1EncryptionHelper.DecodingNeo(kodeRsEncrypted);
-        
-        if (pasienId.Length is 6)
-            return new PasienGetQuery($"{kodeRs}00{pasienId}");
-        else if (pasienId.Length is 8)
-            return new PasienGetQuery($"{kodeRs}{pasienId}");
-        else
-            return new PasienGetQuery(pasienId);
+
+        return pasienId.Length switch
+        {
+            6 => new PasienGetQuery($"{kodeRs}00{pasienId}"),
+            8 => new PasienGetQuery($"{kodeRs}{pasienId}"),
+            _ => new PasienGetQuery(pasienId)
+        };
     }
 
-    private string GetNomorMedrec(string pasienId)
+    private static string GetNomorMedrec(string pasienId)
     {
         var breakPasienId = pasienId[7..]
             .Chunk(2)
@@ -99,103 +88,29 @@ public class PasienGetHandler: IRequestHandler<PasienGetQuery, PasienGetResponse
         return breakPasienId.Join("-");
     }
 
-    private PasienGetResponse BuildPasienResponse(PasienModel pasien)
+    private static PasienGetResponse BuildPasienResponse(PasienModel pasien)
     {
-        var listLog = pasien.ListLog.Select(x =>
-        {
-            var changeLogs = JsonSerializer.Deserialize<List<PasienChangeLogResponse>>(x.ChangeLog);
-            return new PasienLogGetResponse(x.LogDate, x.Activity, x.UserId, changeLogs ?? []);
-        });
         
         return new PasienGetResponse(
-            pasien.PasienId,
+            pasien.PasienId, 
             GetNomorMedrec(pasien.PasienId),
             pasien.PasienName,
-            pasien.NickName,
             pasien.TempatLahir,
             pasien.TglLahir.ToString(DateFormatEnum.YMD),
-            pasien.Gender,
-            pasien.TglMedrec.ToString(DateFormatEnum.YMD),
+            pasien.NickName,
+            pasien.Gender.ToString(),
             pasien.IbuKandung,
-            pasien.GolDarah,
-            pasien.StatusNikahId,
-            pasien.StatusNikahName,
-            pasien.AgamaId,
-            pasien.AgamaName,
-            pasien.SukuId,
-            pasien.SukuName,
-            pasien.PekerjaanDkId,
-            pasien.PekerjaanDkName,
-            pasien.PendidikanDkId,
-            pasien.PendidikanDkName,
-            pasien.Alamat,
-            pasien.Alamat2,
-            pasien.Alamat3,
-            pasien.Kota,
-            pasien.KodePos,
-            pasien.KelurahanId,
-            pasien.KelurahanName,
-            pasien.KecamatanName,
-            pasien.KabupatenName,
-            pasien.PropinsiName,
-            pasien.JenisId,
-            pasien.NomorId,
-            pasien.NomorKk,
-            pasien.Email,
-            pasien.NoTelp,
-            pasien.NoHp,
-            pasien.KeluargaName,
-            pasien.KeluargaRelasi,
-            pasien.KeluargaNoTelp,
-            pasien.KeluargaAlamat1,
-            pasien.KeluargaAlamat2,
-            pasien.KeluargaKota,
-            pasien.KeluargaKodePos,
-            listLog
+            pasien.GolDarah.ToString(),
+            pasien.Address,
+            pasien.Kelurahan.ToViewType(),
+            pasien.Identity,
+            pasien.Contact,
+            pasien.Keluarga,
+            pasien.StatusKawin,
+            pasien.Agama,
+            pasien.Suku,
+            pasien.Pendidikan,
+            pasien.Pekerjaan
         );
-    }
-}
-
-public class PasienGetQueryHandlerTest
-{
-    private readonly Mock<IParamSistemDal> _paramSistemDal;
-    private readonly Mock<IFactoryLoad<PasienModel, IPasienKey>> _factory;
-    private readonly PasienGetHandler _sut;
-
-    public PasienGetQueryHandlerTest()
-    {
-        _paramSistemDal = new Mock<IParamSistemDal>();
-        _factory = new Mock<IFactoryLoad<PasienModel, IPasienKey>>();
-        _sut = new PasienGetHandler(_paramSistemDal.Object, _factory.Object);
-    }
-
-    [Fact]
-    public async Task GivenInvalidLengthPasienId_ThenThrowArgumentException()
-    {
-        var request = new PasienGetQuery("AA");
-        var actual = async () => await _sut.Handle(request, CancellationToken.None);
-        await actual.Should().ThrowAsync<ArgumentException>();
-    }
-    
-    [Fact]
-    public async Task GivenInvalidPasienId_ThenThrowKeyNotFoundException()
-    {
-        var request = new PasienGetQuery("1234567000000AA");
-        var expected = new PasienModel("1234567000000AA");
-        _factory.Setup(x => x.Load(It.IsAny<IPasienKey>()))
-            .Throws<KeyNotFoundException>();
-        var actual = async () => await _sut.Handle(request, CancellationToken.None);
-        await actual.Should().ThrowAsync<KeyNotFoundException>();
-    }
-
-    [Fact]
-    public async Task GivenValidPasienId_ThenReturnExpected()
-    {
-        var request = new PasienGetQuery("1234567000000AA");
-        var expected = new PasienModel("1234567000000AA");
-        _factory.Setup(x => x.Load(It.IsAny<IPasienKey>()))
-            .Returns(expected);
-        var actual = await _sut.Handle(request, CancellationToken.None);
-        actual.Should().BeEquivalentTo(expected);
     }
 }

@@ -1,4 +1,4 @@
-﻿###
+﻿### 1. Create Pasien
 POST https://localhost:44376/api/Pasien
 Content-Type: application/json
 Accept-Language: en-US,en;q=0.5
@@ -13,7 +13,7 @@ Accept-Language: en-US,en;q=0.5
   "GolDarah": "B"
 }
 
-### Update Lengkap
+### 2. Update Lengkap
 PUT https://localhost:44376/api/Pasien/administrativeInfo
 Content-Type: application/json
 Accept-Language: en-US,en;q=0.5
@@ -61,7 +61,7 @@ Accept-Language: en-US,en;q=0.5
   "pekerjaanDkId": "004"
 }
 
-### Update status-kawin = kosong
+### 3. Update status-kawin = kosong
 PUT https://localhost:44376/api/Pasien/administrativeInfo
 Content-Type: application/json
 Accept-Language: en-US,en;q=0.5
@@ -109,7 +109,7 @@ Accept-Language: en-US,en;q=0.5
   "pekerjaanDkId": "004"
 }
 
-### Update with invalid value (status-kawin = 99)
+### 4. Update with invalid value (status-kawin = 99)
 PUT https://localhost:44376/api/Pasien/administrativeInfo
 Content-Type: application/json
 Accept-Language: en-US,en;q=0.5
@@ -157,3 +157,7 @@ Accept-Language: en-US,en;q=0.5
   "pekerjaanDkId": "004"
 }
 
+### 5. Get Pasien
+GET https://localhost:44376/api/Pasien/517102000000046
+Content-Type: application/json
+Accept-Language: en-US,en;q=0.5

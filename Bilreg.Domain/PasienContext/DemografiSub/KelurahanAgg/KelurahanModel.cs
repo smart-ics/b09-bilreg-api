@@ -27,4 +27,14 @@ public class KelurahanModel: IKelurahanKey
     public string KelurahanName { get; private set; }
     public KecamatanModel Kecamatan { get; private set; }
     public string KodePos { get; private set; }
+    public KelurahanViewType ToViewType() 
+        => new(KelurahanId, KelurahanName, 
+            Kecamatan.KecamatanName, Kecamatan.Kabupaten.KabupatenName, 
+            Kecamatan.Kabupaten.Propinsi.PropinsiName);
 }
+
+public record KelurahanViewType(string KelurahanId,
+    string KelurahanName,
+    string KecamatanName,
+    string KabupatenName,
+    string PropinsiName);
