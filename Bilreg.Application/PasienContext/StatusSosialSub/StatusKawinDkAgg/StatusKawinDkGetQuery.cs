@@ -19,9 +19,11 @@ public class StatusKawinDkGetHandler : IRequestHandler<StatusKawinDkGetQuery, St
     public Task<StatusKawinDkGetResponse> Handle(StatusKawinDkGetQuery request, CancellationToken cancellationToken)
     {
         //  QUERY
-        var result = _statuskawinDkDal.GetData(request)
-                     ?? throw new KeyNotFoundException($"Status Kawin not found: {request.StatusKawinDkId}");
-
+        var result = _statuskawinDkDal
+            .GetData2(request)
+            .OrThrowNotFoundException()
+            .Value;
+        
         //  RESPONSE
         var response = new StatusKawinDkGetResponse(result.StatusKawinDkId, result.StatusKawinDkName);
         return Task.FromResult(response);

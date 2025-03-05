@@ -22,8 +22,9 @@ public class PendidikanDkListHandler : IRequestHandler<PendidikanDkListQuery, IE
     public Task<IEnumerable<PendidikanDkListResponse>> Handle(PendidikanDkListQuery request, CancellationToken cancellationToken)
     {
         // QUERY
-        var result = _pendidikanDkDal.ListData()
-            ?? throw new KeyNotFoundException("Pendidikan Dk not found");
+        var result = _pendidikanDkDal
+            .ListData2()
+            .Value;
 
         // RESPONSE
         var response = result.Select(x => new PendidikanDkListResponse(x.PendidikanDkId, x.PendidikanDkName));

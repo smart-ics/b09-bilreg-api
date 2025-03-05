@@ -1,5 +1,6 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
+using Bilreg.Application.PasienContext.DataSosialPasienSub.PasienAgg;
 using Bilreg.Application.PasienContext.StatusSosialSub.StatusKawinDkAgg;
 using Bilreg.Domain.PasienContext.StatusSosialSub.StatusKawinDkAgg;
 using Bilreg.Infrastructure.Helpers;
@@ -76,7 +77,7 @@ public class StatusKawinDkDal : IStatusKawinDkDal
         conn.Execute(sql, dp);
     }
 
-    public StatusKawinDkModel GetData(IStatusKawinDkKey key)
+    public GetDataResult<StatusKawinDkModel> GetData2(IStatusKawinDkKey key)
     {
         const string sql = @"
             SELECT  
@@ -91,11 +92,12 @@ public class StatusKawinDkDal : IStatusKawinDkDal
         dp.AddParam("@fs_kd_status_kawin_dk", key.StatusKawinDkId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        var result = conn.ReadSingle<StatusKawinDkModel>(sql, dp);
+        var data = conn.ReadSingle<StatusKawinDkModel>(sql, dp);
+        var result = new GetDataResult<StatusKawinDkModel>(data, key.StatusKawinDkId);
         return result;
     }
 
-    public IEnumerable<StatusKawinDkModel> ListData()
+    public ListDataResult<StatusKawinDkModel> ListData2()
     {
         const string sql = @"
             SELECT  
@@ -105,7 +107,8 @@ public class StatusKawinDkDal : IStatusKawinDkDal
                 ta_status_kawin_dk ";
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        var result = conn.Read<StatusKawinDkModel>(sql);
+        var list = conn.Read<StatusKawinDkModel>(sql);
+        var result = new ListDataResult<StatusKawinDkModel>(list);
         return result;
     }
 }
@@ -149,17 +152,28 @@ public class StatusKawinDalTest
         using var trans = TransHelper.NewScope();
         var expected = new StatusKawinDkModel("A", "B");
         _sut.Insert(expected);
-        var actual = _sut.GetData(expected);
+        var actual = _sut.GetData2(expected).Value;
         actual.Should().BeEquivalentTo(expected);
     }
 
+    [Fact]
+    public void GivenNotExistData_WhenGetData_ThenReturnDefault()
+    {
+        using var trans = TransHelper.NewScope();
+        var expected = new StatusKawinDkModel("A", "B");
+        _sut.Insert(expected);
+        var actual = _sut.GetData2(new StatusKawinDkKey("A1")).Value;
+        actual.Should().BeEquivalentTo(StatusKawinDkModel.Default);
+    }
+
+    
     [Fact]
     public void ListDataTest()
     {
         using var trans = TransHelper.NewScope();
         var expeted = new StatusKawinDkModel("A", "B");
         _sut.Insert(expeted);
-        var actual = _sut.ListData();
+        var actual = _sut.ListData2().Value;
         actual.Should().BeEquivalentTo(new List<StatusKawinDkModel> { expeted });
     }
 }

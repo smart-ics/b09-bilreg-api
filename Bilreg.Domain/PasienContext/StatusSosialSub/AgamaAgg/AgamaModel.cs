@@ -15,6 +15,6 @@ public class AgamaModel : IAgamaKey
     {
     }
 
-    public string AgamaId { get; protected set; }
-    public string AgamaName { get; protected set; }
+    public string AgamaId { get; private set; }
+    public string AgamaName { get; private set; }
 }

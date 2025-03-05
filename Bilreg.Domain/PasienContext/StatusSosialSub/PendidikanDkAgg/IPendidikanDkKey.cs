@@ -4,3 +4,5 @@ public interface IPendidikanDkKey
 {
     string PendidikanDkId {get;}
 }
+
+public record PendidikanDkKey(string PendidikanDkId) : IPendidikanDkKey;

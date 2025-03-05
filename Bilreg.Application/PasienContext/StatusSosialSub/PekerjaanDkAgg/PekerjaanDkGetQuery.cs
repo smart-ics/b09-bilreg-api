@@ -19,8 +19,10 @@ public class PekerjaanDkGetHandler : IRequestHandler<PekerjaanDkGetQuery, Pekerj
     public Task<PekerjaanDkGetResponse> Handle(PekerjaanDkGetQuery request, CancellationToken cancellationToken)
     {
         //  QUERY
-        var result = _pekerjaanDkDal.GetData(request)
-            ?? throw new KeyNotFoundException($"Pekerjaan not found: {request.PekerjaanDkId}");
+        var result = _pekerjaanDkDal
+            .GetData2(request)
+            .OrThrowNotFoundException()
+            .Value;
 
         //  RESPONSE
         var response = new PekerjaanDkGetResponse(result.PekerjaanDkId, result.PekerjaanDkName);

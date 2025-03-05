@@ -22,7 +22,7 @@ public class AgamaListHandler : IRequestHandler<AgamaListQuery, IEnumerable<Agam
     public Task<IEnumerable<AgamaListResponse>> Handle(AgamaListQuery request, CancellationToken cancellationToken)
     {
         //  QUERY
-        var result = _agamaDal.ListData()
+        var result = _agamaDal.ListData2().Value
             ?? throw new KeyNotFoundException($"Agama not found");
 
         //  RESPONSE

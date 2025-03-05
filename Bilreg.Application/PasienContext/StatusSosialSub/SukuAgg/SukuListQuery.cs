@@ -1,8 +1,4 @@
-﻿using Bilreg.Domain.PasienContext.StatusSosialSub.SukuAgg;
-using FluentAssertions;
-using MediatR;
-using Moq;
-using Xunit;
+﻿using MediatR;
 
 namespace Bilreg.Application.PasienContext.StatusSosialSub.SukuAgg;
 
@@ -14,16 +10,15 @@ public class SukuListHandler : IRequestHandler<SukuListQuery, IEnumerable<SukuLi
 {
     private readonly ISukuDal _sukuDal;
 
-    public SukuListHandler(ISukuDal SukuDal)
+    public SukuListHandler(ISukuDal sukuDal)
     {
-        _sukuDal = SukuDal;
+        _sukuDal = sukuDal;
     }
 
     public Task<IEnumerable<SukuListResponse>> Handle(SukuListQuery request, CancellationToken cancellationToken)
     {
         //  QUERY
-        var result = _sukuDal.ListData()
-            ?? throw new KeyNotFoundException($"Suku not found");
+        var result = _sukuDal.ListData2().Value;
 
         //  RESPONSE
         var response = result.Select(x => new SukuListResponse(x.SukuId, x.SukuName));

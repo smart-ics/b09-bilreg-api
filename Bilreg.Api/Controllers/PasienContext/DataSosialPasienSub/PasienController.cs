@@ -23,6 +23,13 @@ public class PasienController : Controller
         return Ok(new JSendOk("Done"));
     }
 
+    [HttpPut]
+    [Route("administrativeInfo")]
+    public async Task<IActionResult> SetAdministrativeInfo(PasienUpdateCommand cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
     // [HttpGet]
     // [Route("{id}")]
     // public async Task<IActionResult> GetData(string id)
@@ -73,13 +80,5 @@ public class PasienController : Controller
     //     var response = await _mediator.Send(query);
     //     return Ok(new JSendOk(response));
     // }
-    
-    [HttpGet]
-    [Route("FindThoroughDataDuplicated/{id}")]
-    public async Task<IActionResult> FindThoroughDataDuplicated(string id)
-    {
-        var query = new PasienFindThoroughDuplicated(id);
-        var response = await _mediator.Send(query);
-        return Ok(new JSendOk(response));
-    }
+
 }

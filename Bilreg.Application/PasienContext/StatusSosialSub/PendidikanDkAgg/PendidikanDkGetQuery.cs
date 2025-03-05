@@ -22,8 +22,10 @@ public class PendidikanDkGetHandler: IRequestHandler<PendidikanDkGetQuery, Pendi
     public Task<PendidikanDkGetResponse> Handle(PendidikanDkGetQuery request, CancellationToken cancellationToken)
     {
         // QUERY
-        var result = _pendidikanDkDal.GetData(request)
-            ?? throw new KeyNotFoundException($"Pendidikan Dk not found: {request.PendidikanDkId}");
+        var result = _pendidikanDkDal
+            .GetData2(request)
+            .OrThrowNotFoundException()
+            .Value;
         
         // RESPONSE
         var response = new PendidikanDkGetResponse(result.PendidikanDkId, result.PendidikanDkName);

@@ -22,8 +22,10 @@ public class SukuGetHandler : IRequestHandler<SukuGetQuery, SukuGetResponse>
     public Task<SukuGetResponse> Handle(SukuGetQuery request, CancellationToken cancellationToken)
     {
         //  QUERY
-        var result = _SukuDal.GetData(request)
-            ?? throw new KeyNotFoundException($"Suku not found: {request.SukuId}");
+        var result = _SukuDal
+            .GetData2(request)
+            .OrThrowNotFoundException()
+            .Value; 
 
         //  RESPONSE
         var response = new SukuGetResponse(result.SukuId, result.SukuName);

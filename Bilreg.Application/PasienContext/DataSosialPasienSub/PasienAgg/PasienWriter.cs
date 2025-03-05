@@ -19,8 +19,8 @@ public class PasienWriter : IPasienWriter
 
     public PasienModel Save(PasienModel model)
     {
-        var pasienDb = _pasienDal.GetData(model);
-        if (pasienDb is null)
+        var pasienDb = _pasienDal.GetData2(model);
+        if (pasienDb.IsExist)
             _pasienDal.Insert(model);
         else
             _pasienDal.Update(model);

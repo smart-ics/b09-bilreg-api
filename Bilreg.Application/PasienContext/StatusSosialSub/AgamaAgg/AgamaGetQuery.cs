@@ -2,6 +2,7 @@
 using FluentAssertions;
 using MediatR;
 using Moq;
+using Nuna.Lib.ValidationHelper;
 using Xunit;
 
 namespace Bilreg.Application.PasienContext.StatusSosialSub.AgamaAgg;
@@ -22,8 +23,10 @@ public class AgamaGetHandler : IRequestHandler<AgamaGetQuery, AgamaGetResponse>
     public Task<AgamaGetResponse> Handle(AgamaGetQuery request, CancellationToken cancellationToken)
     {
         //  QUERY
-        var result = _agamaDal.GetData(request)
-            ?? throw new KeyNotFoundException($"Agama not found: {request.AgamaId}");
+        var result = _agamaDal
+            .GetData2(request)
+            .OrThrowNotFoundException()
+            .Value;
 
         //  RESPONSE
         var response = new AgamaGetResponse(result.AgamaId, result.AgamaName);

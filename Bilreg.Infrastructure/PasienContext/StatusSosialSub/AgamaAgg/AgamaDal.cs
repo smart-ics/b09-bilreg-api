@@ -25,8 +25,8 @@ public class AgamaDal : IAgamaDal
     {
         //  QUERY
         const string sql = @"
-                INSERT INTO ta_agama (fs_kd_agama, fs_nm_agama)
-                VALUES (@fs_kd_agama, @fs_nm_agama)";
+            INSERT INTO ta_agama (fs_kd_agama, fs_nm_agama)
+            VALUES (@fs_kd_agama, @fs_nm_agama)";
 
         //  PARAM
         var dp = new DynamicParameters();
@@ -42,9 +42,9 @@ public class AgamaDal : IAgamaDal
     {
         //  QUERY
         const string sql = @"
-                UPDATE  ta_agama 
-                SET fs_nm_agama = @fs_nm_agama
-                WHERE fs_kd_agama = @fs_kd_agama";
+            UPDATE  ta_agama 
+            SET fs_nm_agama = @fs_nm_agama
+            WHERE fs_kd_agama = @fs_kd_agama";
 
         //  PARAM
         var dp = new DynamicParameters();
@@ -72,16 +72,16 @@ public class AgamaDal : IAgamaDal
         conn.Execute(sql, dp);
     }
 
-    public AgamaModel GetData(IAgamaKey key)
+    public GetDataResult<AgamaModel> GetData2(IAgamaKey key)
     {
         //  QUERY
         const string sql = @"
-                SELECT 
-                    fs_kd_agama AgamaId, fs_nm_agama AgamaName
-                FROM 
-                    ta_agama
-                WHERE 
-                    fs_kd_agama = @fs_kd_agama";
+            SELECT 
+                fs_kd_agama AgamaId, fs_nm_agama AgamaName
+            FROM 
+                ta_agama
+            WHERE 
+                fs_kd_agama = @fs_kd_agama";
 
         //  PARAM
         var dp = new DynamicParameters();
@@ -89,22 +89,26 @@ public class AgamaDal : IAgamaDal
 
         //  EXECUTE
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.ReadSingle<AgamaModel>(sql, dp);
+        var data = conn.ReadSingle<AgamaModel>(sql, dp);
+        var result = new GetDataResult<AgamaModel>(data, key.AgamaId);
+        return result;
     }
 
-    public IEnumerable<AgamaModel> ListData()
+    public ListDataResult<AgamaModel> ListData2()
     {
         //  QUERY
         const string sql = @"
-                SELECT 
-                    fs_kd_agama AgamaId, 
-                    fs_nm_agama AgamaName
-                FROM 
-                    ta_agama ";
+            SELECT 
+                fs_kd_agama AgamaId, 
+                fs_nm_agama AgamaName
+            FROM 
+                ta_agama ";
 
         //  EXECUTE
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<AgamaModel>(sql);
+        var list = conn.Read<AgamaModel>(sql);
+        var result = new ListDataResult<AgamaModel>(list);
+        return result;
     }
 }
 
@@ -145,7 +149,7 @@ public class AgamaDalTest
         using var trans = TransHelper.NewScope();
         var expeted = new AgamaModel("A", "B");
         _sut.Insert(expeted);
-        var actual = _sut.GetData(expeted);
+        var actual = _sut.GetData2(expeted).Value;
         actual.Should().BeEquivalentTo(expeted);
     }
         
@@ -155,7 +159,7 @@ public class AgamaDalTest
         using var trans = TransHelper.NewScope();
         var expeted = new AgamaModel("A", "B");
         _sut.Insert(expeted);
-        var actual = _sut.ListData();
+        var actual = _sut.ListData2().Value;
         actual.Should().BeEquivalentTo(new List<AgamaModel>{expeted});
     }
 }

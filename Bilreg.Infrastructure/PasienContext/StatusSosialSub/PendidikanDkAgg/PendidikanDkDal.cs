@@ -72,7 +72,7 @@ public class PendidikanDkDal: IPendidikanDkDal
         conn.Execute(sql, dp);
     }
 
-    public PendidikanDkModel GetData(IPendidikanDkKey key)
+    public GetDataResult<PendidikanDkModel> GetData2(IPendidikanDkKey key)
     {
         // QUERY
         const string sql = @"
@@ -90,11 +90,12 @@ public class PendidikanDkDal: IPendidikanDkDal
         
         // EXECUTE
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        var result = conn.ReadSingle<PendidikanDkModel>(sql, dp);
+        var data = conn.ReadSingle<PendidikanDkModel>(sql, dp);
+        var result = new GetDataResult<PendidikanDkModel>(data, key.PendidikanDkId);
         return result;
     }
 
-    public IEnumerable<PendidikanDkModel> ListData()
+    public ListDataResult<PendidikanDkModel> ListData2()
     {
         // QUERY
         const string sql = @"
@@ -106,7 +107,8 @@ public class PendidikanDkDal: IPendidikanDkDal
         
         // EXECUTE
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        var result = conn.Read<PendidikanDkModel>(sql);
+        var list = conn.Read<PendidikanDkModel>(sql);
+        var result = new ListDataResult<PendidikanDkModel>(list);
         return result;
     }
 }
@@ -147,7 +149,7 @@ public class PendidikanDkDalTest
         using var trans = TransHelper.NewScope();
         var expected = new PendidikanDkModel("A", "B");
         _sut.Insert(expected);
-        var actual = _sut.GetData(expected);
+        var actual = _sut.GetData2(expected).Value;
         actual.Should().BeEquivalentTo(expected);
     }
     [Fact]
@@ -157,7 +159,7 @@ public class PendidikanDkDalTest
         var pendidikanDk = new PendidikanDkModel("A", "B");
         var expected = new List<PendidikanDkModel> { pendidikanDk };
         _sut.Insert(pendidikanDk);
-        var actual = _sut.ListData();
+        var actual = _sut.ListData2().Value;
         actual.Should().BeEquivalentTo(expected);
     }
 }

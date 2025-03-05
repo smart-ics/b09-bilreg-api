@@ -13,10 +13,10 @@ public class StatusKawinDkModel : IStatusKawinDkKey
         StatusKawinDkName = name;
     }
     public static StatusKawinDkModel Default => new(string.Empty, string.Empty);
+
     public StatusKawinDkModel()
     {
     }
-
     public string StatusKawinDkId { get; private set; }
     public string StatusKawinDkName { get; private set; }
 }

@@ -217,7 +217,7 @@ public class PasienDal : IPasienDal
         conn.Execute(sql, dp);
     }
 
-    public PasienModel? GetData(IPasienKey key)
+    public GetDataResult<PasienModel> GetData2(IPasienKey key)
     {
         var sql = $@"{SelectFromClause()} 
             WHERE fs_mr = @fs_mr ";
@@ -227,11 +227,12 @@ public class PasienDal : IPasienDal
 
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         var dto = conn.ReadSingle<PasienDto>(sql, dp);
-
-        return dto?.ToModel();
+        var pasien = dto?.ToModel();
+        var result = new GetDataResult<PasienModel>(pasien, key.PasienId);
+        return result;
     }
 
-    public IEnumerable<PasienModel>? ListData(DateTime tglLahir)
+    public ListDataResult<PasienModel> ListData2(DateTime tglLahir)
     {
         var sql = $@"{SelectFromClause()} 
             WHERE aa.fd_tgl_lahir = @fd_tgl_lahir ";
@@ -241,11 +242,12 @@ public class PasienDal : IPasienDal
 
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         var dto = conn.Read<PasienDto>(sql, dp);
-        var result = dto?.Select(x => x.ToModel());
+        var pasien = dto?.Select(x => x.ToModel());
+        var result = new ListDataResult<PasienModel>(pasien);
         return result;
     }
 
-    public IEnumerable<PasienModel>? ListData(Periode filter)
+    public ListDataResult<PasienModel> ListData2(Periode filter)
     {
         var sql = $@"{SelectFromClause()} 
             WHERE aa.fd_tgl_mr BETWEEN @tgl1 AND @tgl2 ";
@@ -256,11 +258,12 @@ public class PasienDal : IPasienDal
 
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         var dto = conn.Read<PasienDto>(sql, dp);
-        var result = dto?.Select(x => x.ToModel());
+        var pasien = dto?.Select(x => x.ToModel());
+        var result  = new ListDataResult<PasienModel>(pasien);
         return result;
     }
 
-    public IEnumerable<PasienModel>? ListData(string filter)
+    public ListDataResult<PasienModel> ListData2(string filter)
     {
         var sql = $@"{SelectFromClause()} 
             WHERE aa.fs_nm_pasien = @fs_nm_pasien ";
@@ -270,9 +273,11 @@ public class PasienDal : IPasienDal
 
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         var dto =  conn.Read<PasienDto>(sql, dp);
-        var result = dto?.Select(x => x.ToModel());
+        var pasien = dto?.Select(x => x.ToModel());
+        var result = new ListDataResult<PasienModel>(pasien);
         return result;
     }
+    
     private static string SelectFromClause() =>
         @"
             SELECT 
@@ -374,7 +379,7 @@ public class PasienDalTest
     {
         using var trans = TransHelper.NewScope();
         _sut.Insert(Faker());
-        var actual = _sut.GetData(Faker());
+        var actual = _sut.GetData2(Faker()).Value;
         actual.Should().BeEquivalentTo(Faker());
     }
     
@@ -383,7 +388,7 @@ public class PasienDalTest
     {
         using var trans = TransHelper.NewScope();
         _sut.Insert(Faker());
-        var actual = _sut.ListData(new DateTime(2002,3,4));
+        var actual = _sut.ListData2(new DateTime(2002,3,4)).Value;
         actual.Should().ContainEquivalentOf(Faker());
     }
 }

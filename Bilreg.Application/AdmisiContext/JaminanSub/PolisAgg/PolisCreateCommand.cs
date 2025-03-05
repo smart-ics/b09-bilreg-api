@@ -57,8 +57,10 @@ public class PolisCreateHandler : IRequestHandler<PolisCreateCommand, PolisCreat
         Guard.IsNotEmpty(request.ExpiredDate);
         request.ExpiredDate.IsValidDateYmd(); 
         Guard.IsNotEmpty(request.KelasRanapId);
-        var pasien = _pasienDal.GetData(request)
-            ?? throw new KeyNotFoundException($"Pasien id {request.PasienId} not found");
+        var pasien = _pasienDal
+            .GetData2(request)
+            .OrThrowNotFoundException()
+            .Value;
         var tipeJaminan = _tipeJaminanDal.GetData(request)
             ?? throw new KeyNotFoundException($"Tipe jaminan id {request.TipeJaminanId} not found");
         var kelas = _kelasDal.GetData(new KelasModel(request.KelasRanapId, ""))

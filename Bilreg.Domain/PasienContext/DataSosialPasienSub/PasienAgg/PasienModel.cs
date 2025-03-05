@@ -10,6 +10,9 @@ namespace Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
 
 public class PasienModel : IPasienKey
 {
+    public static IPasienKey Key(string pasienId) 
+        => new PasienModel(pasienId, string.Empty, new DateTime(2000,1,1), GenderType.Default);
+    
     public PasienModel(string pasienId, string pasienName, 
         DateTime tglLahir, GenderType gender)
     {
@@ -22,6 +25,7 @@ public class PasienModel : IPasienKey
         TglLahir = tglLahir;
         Gender = gender;
     }
+
     
     //  MANDATORY PROPERTIES
     public string PasienId { get; private set; } 

@@ -19,8 +19,8 @@ public class AgamaWriter : IAgamaWriter
 
     public AgamaModel Save(AgamaModel model)
     {
-        var agamaDb = _agamaDal.GetData(model);
-        if (agamaDb == null)
+        var agamaDb = _agamaDal.GetData2(model);
+        if (agamaDb.IsExist)
             _agamaDal.Insert(model);
         else
             _agamaDal.Update(model);

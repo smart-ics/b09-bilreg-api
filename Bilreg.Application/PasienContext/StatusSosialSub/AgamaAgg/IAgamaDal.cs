@@ -7,7 +7,7 @@ public interface IAgamaDal :
     IInsert<AgamaModel>,
     IUpdate<AgamaModel>,
     IDelete<IAgamaKey>,
-    IGetData<AgamaModel, IAgamaKey>,
-    IListData<AgamaModel>
+    IGetData2<AgamaModel, IAgamaKey>,
+    IListData2<AgamaModel>
 {
 }

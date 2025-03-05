@@ -56,7 +56,7 @@ public class PasienCreateHandler : IRequestHandler<PasienCreateCommand, PasienCr
             request.TglLahir.ToDate(), gender);
         pasien.SetPersonalInfo(request.NickName, request.TempatLahir, 
             request.IbuKandung, new GolDarahType(request.GolDarah));
-        
+
         //  WRITE
         var pasienResult = _writer.Save(pasien);
         var result = new PasienCreateResponse(pasienResult.PasienId);

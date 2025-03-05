@@ -25,8 +25,8 @@ public class PekerjaanDkDal : IPekerjaanDkDal
     {
         //  QUERY
         const string sql = @"
-                INSERT INTO ta_pekerjaan_dk(fs_kd_pekerjaan_dk, fs_nm_pekerjaan_dk)
-                VALUES (@fs_kd_pekerjaan_dk, @fs_nm_pekerjaan_dk)";
+            INSERT INTO ta_pekerjaan_dk(fs_kd_pekerjaan_dk, fs_nm_pekerjaan_dk)
+            VALUES (@fs_kd_pekerjaan_dk, @fs_nm_pekerjaan_dk)";
 
         //  PARAM
         var dp = new DynamicParameters();
@@ -42,9 +42,9 @@ public class PekerjaanDkDal : IPekerjaanDkDal
     {
         //  QUERY
         const string sql = @"
-                UPDATE ta_pekerjaan_dk
-                SET fs_nm_pekerjaan_dk = @fs_nm_pekerjaan_dk
-                WHERE fs_kd_pekerjaan_dk = @fs_kd_pekerjaan_dk";
+            UPDATE ta_pekerjaan_dk
+            SET fs_nm_pekerjaan_dk = @fs_nm_pekerjaan_dk
+            WHERE fs_kd_pekerjaan_dk = @fs_kd_pekerjaan_dk";
 
         //  PARAM
         var dp = new DynamicParameters();
@@ -72,35 +72,39 @@ public class PekerjaanDkDal : IPekerjaanDkDal
         conn.Execute(sql, dp);
     }
 
-    public PekerjaanDkModel GetData(IPekerjaanDkKey key)
+    public GetDataResult<PekerjaanDkModel> GetData2(IPekerjaanDkKey key)
     {
         const string sql = @"
-                SELECT 
-                    fs_kd_pekerjaan_dk PekerjaanDkId, 
-                    fs_nm_pekerjaan_dk PekerjaanDkName
-                FROM 
-                    ta_pekerjaan_dk
-                WHERE 
-                    fs_kd_pekerjaan_dk = @fs_kd_pekerjaan_dk";
+            SELECT 
+                fs_kd_pekerjaan_dk PekerjaanDkId, 
+                fs_nm_pekerjaan_dk PekerjaanDkName
+            FROM 
+                ta_pekerjaan_dk
+            WHERE 
+                fs_kd_pekerjaan_dk = @fs_kd_pekerjaan_dk";
 
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_pekerjaan_dk", key.PekerjaanDkId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.ReadSingle<PekerjaanDkModel>(sql, dp);
+        var data = conn.ReadSingle<PekerjaanDkModel>(sql, dp);
+        var result = new GetDataResult<PekerjaanDkModel>(data, key.PekerjaanDkId);
+        return result;
     }
 
-    public IEnumerable<PekerjaanDkModel> ListData()
+    public ListDataResult<PekerjaanDkModel> ListData2()
     {
         const string sql = @"
-                SELECT 
-                    fs_kd_pekerjaan_dk PekerjaanDkId, 
-                    fs_nm_pekerjaan_dk PekerjaanDkName
-                FROM 
-                    ta_pekerjaan_dk ";
+            SELECT 
+                fs_kd_pekerjaan_dk PekerjaanDkId, 
+                fs_nm_pekerjaan_dk PekerjaanDkName
+            FROM 
+                ta_pekerjaan_dk ";
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<PekerjaanDkModel>(sql);
+        var list = conn.Read<PekerjaanDkModel>(sql);
+        var result = new ListDataResult<PekerjaanDkModel>(list);
+        return result;
     }
 }
 
@@ -140,7 +144,7 @@ public class PekerjaanDkDalTest
         using var trans = TransHelper.NewScope();
         var expected = new PekerjaanDkModel("A", "B");
         _sut.Insert(expected);
-        var actual = _sut.GetData(expected);
+        var actual = _sut.GetData2(expected).Value;
         actual.Should().BeEquivalentTo(expected);
     }
 
@@ -149,7 +153,7 @@ public class PekerjaanDkDalTest
     {
         using var trans = TransHelper.NewScope();
         var expected = new PekerjaanDkModel("A", "B");
-        var actual = _sut.GetData(expected);
+        var actual = _sut.GetData2(expected).Value;
         actual.Should().BeNull();
     }
 
@@ -159,7 +163,7 @@ public class PekerjaanDkDalTest
         using var trans = TransHelper.NewScope();
         var expected = new List<PekerjaanDkModel> { new PekerjaanDkModel("A", "B") };
         _sut.Insert(new PekerjaanDkModel("A", "B"));
-        var actual = _sut.ListData();
+        var actual = _sut.ListData2().Value;
         actual.Should().BeEquivalentTo(expected);
     }
 }

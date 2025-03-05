@@ -19,8 +19,8 @@ public class SukuWriter : ISukuWriter
 
     public SukuModel Save(SukuModel model)
     {
-        var sukuDb = _sukuDal.GetData(model);
-        if (sukuDb is null)
+        var sukuDb = _sukuDal.GetData2(model);
+        if (sukuDb.IsExist)
             _sukuDal.Insert(model);
         else
             _sukuDal.Update(model);

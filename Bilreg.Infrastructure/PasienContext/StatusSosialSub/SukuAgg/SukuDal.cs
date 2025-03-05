@@ -74,7 +74,7 @@ public class SukuDal : ISukuDal
         conn.Execute(sql, dp);
     }
 
-    public SukuModel GetData(ISukuKey key)
+    public GetDataResult<SukuModel> GetData2(ISukuKey key)
     {
         const string sql = @"
             SELECT  
@@ -89,11 +89,12 @@ public class SukuDal : ISukuDal
         dp.AddParam("@fs_kd_suku", key.SukuId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        var result = conn.ReadSingle<SukuModel>(sql, dp);
+        var data = conn.ReadSingle<SukuModel>(sql, dp);
+        var result = new GetDataResult<SukuModel>(data, key.SukuId);
         return result;
     }
 
-    public IEnumerable<SukuModel> ListData()
+    public ListDataResult<SukuModel> ListData2()
     {
         const string sql = @"
             SELECT  
@@ -103,9 +104,11 @@ public class SukuDal : ISukuDal
                 ta_suku";
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        var result = conn.Read<SukuModel>(sql);
+        var list  = conn.Read<SukuModel>(sql);
+        var result = new ListDataResult<SukuModel>(list);
         return result;
     }
+
 }
 
 public class SukuDalTest
@@ -143,7 +146,7 @@ public class SukuDalTest
         using var trans = TransHelper.NewScope();
         var expected = new SukuModel("A", "B");
         _sut.Insert(expected);
-        var actual = _sut.GetData(expected);
+        var actual = _sut.GetData2(expected).Value;
         actual.Should().BeEquivalentTo(expected);
     }
 
@@ -152,7 +155,7 @@ public class SukuDalTest
     {
         using var trans = TransHelper.NewScope();
         var expected = new SukuModel("A", "B");
-        var actual = _sut.GetData(expected);
+        var actual = _sut.GetData2(expected).Value;
         actual.Should().BeNull();
     }
 
@@ -162,7 +165,7 @@ public class SukuDalTest
         using var trans = TransHelper.NewScope();
         var expected = new List<SukuModel> {new SukuModel("A", "B")};
         _sut.Insert(new SukuModel("A", "B"));
-        var actual = _sut.ListData();
+        var actual = _sut.ListData2().Value;
         actual.Should().BeEquivalentTo(expected);
     }
 }

@@ -22,8 +22,9 @@ public class StatusKawinDkListHandler : IRequestHandler<StatusKawinDkListQuery, 
     public Task<IEnumerable<StatusKawinDkListResponse>> Handle(StatusKawinDkListQuery request, CancellationToken cancellationToken)
     {
         //  QUERY
-        var result = _statuskawinDkDal.ListData()
-            ?? throw new KeyNotFoundException($"StatusKawinDk not found");
+        var result = _statuskawinDkDal
+            .ListData2()
+            .Value;
 
         //  RESPONSE
         var response = result.Select(x => new StatusKawinDkListResponse(x.StatusKawinDkId, x.StatusKawinDkName));

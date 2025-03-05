@@ -18,8 +18,3 @@ public class SukuModel : ISukuKey
     public string SukuId { get; private set; }
     public string SukuName { get; private set; }
 }
-
-public interface ISukuKey
-{
-    string SukuId {get;}
-}
