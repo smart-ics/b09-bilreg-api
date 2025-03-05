@@ -1,137 +1,133 @@
-// using Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
-// using FluentAssertions;
-// using MediatR;
-// using Moq;
-// using Nuna.Lib.ValidationHelper;
-// using Xunit;
-//
-// namespace Bilreg.Application.PasienContext.DataSosialPasienSub.PasienAgg;
-//
-// public record PasienFindFast(string PasienId) : IRequest<IEnumerable<PasienFindFastResponse>>, IPasienKey;
-//
-// public record PasienFindFastResponse(
-//     string PasienId,
-//     string PasienName,
-//     string TglLahir,
-//     string TglMedrec
-// );
-//
-// public class PasienFindFastHandler : IRequestHandler<PasienFindFast, IEnumerable<PasienFindFastResponse>>
-// {
-//     private readonly IPasienDal _pasienDal;
-//
-//
-//     public PasienFindFastHandler(IPasienDal pasienDal)
-//     {
-//         _pasienDal = pasienDal;
-//
-//     }
-//     
-//     public async Task<IEnumerable<PasienFindFastResponse>> Handle(PasienFindFast request, CancellationToken cancellationToken)
-//     {
-//         var pasien = _pasienDal.GetData(request)
-//             ?? throw new KeyNotFoundException($"Pasien id :{request.PasienId} not found");
-//         
-//         var listPasien = _pasienDal.ListData(pasien.TglLahir)?.ToList()
-//             ?? throw new KeyNotFoundException($"Data Pasien not Found");
-//         
-//         var resultJw = FindSimiliarity(listPasien, pasien.PasienName);
-//         
-//         var variasiEjaan = GenerateVariasiEjaan(pasien.PasienName);
-//         var distinctWords = variasiEjaan
-//             .SelectMany(x => x.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-//             .Distinct(StringComparer.OrdinalIgnoreCase)
-//             .ToList();
-//         var resultEjaanByWords = FindByWords(listPasien, distinctWords, pasien.PasienName);
-//         
-//         var result = resultJw.Union(resultEjaanByWords);
-//         
-//         var response = result.Select(BuildPasienResponse);
-//         return await Task.FromResult(response);
-//     }
-//
-//     private IEnumerable<PasienModel> FindByWords(IEnumerable<PasienModel> listPasien, 
-//         IEnumerable<string> wordsVariasiEjaan, string searchKeyword)
-//     {
-//         var variasiWordCount = searchKeyword.Split(' ').Length;
-//         var wordCountMin = Math.Min(variasiWordCount, 2);
-//         var result = new List<PasienModel>();
-//         foreach (var pasien in listPasien)
-//         {
-//             var pasienNameClean = RemovePunctuation(pasien.PasienName);
-//             var listWords = pasienNameClean.Split(' ');
-//             var found = listWords
-//                 .Count(wordPasien => wordsVariasiEjaan
-//                     .Any(item => item
-//                         .Equals(wordPasien, StringComparison.CurrentCultureIgnoreCase)));
-//             if (found >= wordCountMin)
-//                 result.Add(pasien);
-//         }
-//         return result;
-//     }
-//
-//     private static string RemovePunctuation(string input)
-//     {
-//         return new string(input.Where(c => !char.IsPunctuation(c)).ToArray());
-//     }
-//
-//     private record Ejaan(string Eja1, string Eja2);
-//
-//     private static List<string> GenerateVariasiEjaan(string originName)
-//     {
-//         var spellingVariations = new List<Ejaan>
-//         {
-//             new("dj", "j"), new("j", "dj"),
-//             new("tj", "c"), new("c", "tj"), 
-//             new("sj", "sy"), new("sy", "sj"), 
-//             new("oe", "u"), new("u", "oe"),
-//             new("dh", "d"), new("d", "dh"),
-//             new("j", "y"), new("y", "j"),
-//             new("i", "ie"), new("ie", "i")
-//         };
-//
-//         var cleanOriginName = RemovePunctuation(originName);
-//         
-//         //  membuat collection variasi ejaan original name
-//         //  contoh: Budi Agung Sutejo => Boedi Agoeng Soetedjo
-//         var result = spellingVariations
-//             .Aggregate(new List<string> { cleanOriginName }, (variants, entry) => variants
-//                 .Concat(variants
-//                     .Where(name => name.Contains(entry.Eja1, StringComparison.OrdinalIgnoreCase))
-//                     .Select(name => name.Replace(entry.Eja1, entry.Eja2, StringComparison.OrdinalIgnoreCase))
-//                 ).Distinct().ToList()
-//             );
-//         return result;
-//     }
-//
-//     private static IEnumerable<PasienModel> FindSimiliarity(
-//         IEnumerable<PasienModel> listPasien, string name)
-//     {
-//         //  hitung nilai Jaro Winkler Value
-//         var listPasienJwValue = listPasien.Select(x => new
-//         {
-//             Pasien = x,
-//             JaroWinklerValue = x.PasienName.Similiarity(name)
-//         });
-//         //  filter yang lebih dari 0.75
-//         var result = listPasienJwValue
-//             .Where(x => x.JaroWinklerValue >= 0.75)
-//             .Select(x => x.Pasien);
-//         return result;
-//     }
-//
-//     private PasienFindFastResponse BuildPasienResponse(PasienModel pasien)
-//     {
-//         // Return respon sementara
-//         return new PasienFindFastResponse(
-//             pasien.PasienId,
-//             pasien.PasienName,
-//             pasien.TglLahir.ToString(DateFormatEnum.YMD),
-//             pasien.TglMedrec.ToString(DateFormatEnum.YMD)
-//         );
-//     }
-// }
-//
+using Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
+using MediatR;
+using Nuna.Lib.ValidationHelper;
+
+namespace Bilreg.Application.PasienContext.DataSosialPasienSub.PasienAgg;
+
+public record PasienFindFast(string TglLahir, string PasienName) : IRequest<IEnumerable<PasienFindFastResponse>>;
+
+public record PasienFindFastResponse(
+    string PasienId,
+    string NomorMedrec,
+    string PasienName,
+    string TglLahir
+);
+
+public class PasienFindFastHandler : IRequestHandler<PasienFindFast, IEnumerable<PasienFindFastResponse>>
+{
+    private readonly IPasienDal _pasienDal;
+
+
+    public PasienFindFastHandler(IPasienDal pasienDal)
+    {
+        _pasienDal = pasienDal;
+
+    }
+    
+    public async Task<IEnumerable<PasienFindFastResponse>> Handle(PasienFindFast request, CancellationToken cancellationToken)
+    {
+        var tglLahir = request.TglLahir.ToDate(DateFormatEnum.YMD); 
+        var listPasien = _pasienDal
+            .ListData2(tglLahir)
+            .Value;
+        
+        var resultJw = FindSimiliarity(listPasien, request.PasienName);
+        var variasiEjaan = GenerateVariasiEjaan(request.PasienName);
+        var distinctWords = variasiEjaan
+            .SelectMany(x => x.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var resultEjaanByWords = FindByWords(listPasien, distinctWords, request.PasienName);
+        var result = resultJw.Union(resultEjaanByWords);
+        
+        var response = result.Select(BuildPasienResponse);
+        return await Task.FromResult(response);
+    }
+
+    private static IEnumerable<PasienModel> FindByWords(
+        IEnumerable<PasienModel> listPasien, 
+        IEnumerable<string> wordsVariasiEjaan, 
+        string searchKeyword)
+    {
+        var variasiWordCount = searchKeyword.Split(' ').Length;
+        var wordCountMin = Math.Min(variasiWordCount, 2);
+        var result = new List<PasienModel>();
+        foreach (var pasien in listPasien)
+        {
+            var pasienNameClean = RemovePunctuation(pasien.PasienName);
+            var listWords = pasienNameClean.Split(' ');
+            var found = listWords
+                .Count(wordPasien => wordsVariasiEjaan
+                    .Any(item => item
+                        .Equals(wordPasien, StringComparison.CurrentCultureIgnoreCase)));
+            if (found >= wordCountMin)
+                result.Add(pasien);
+        }
+        return result;
+    }
+
+    private static string RemovePunctuation(string input)
+    {
+        return new string(input.Where(c => !char.IsPunctuation(c)).ToArray());
+    }
+
+    private record Ejaan(string Eja1, string Eja2);
+
+    private static IEnumerable<string> GenerateVariasiEjaan(string originName)
+    {
+        var spellingVariations = new List<Ejaan>
+        {
+            new("dj", "j"), new("j", "dj"),
+            new("tj", "c"), new("c", "tj"), 
+            new("sj", "sy"), new("sy", "sj"), 
+            new("oe", "u"), new("u", "oe"),
+            new("dh", "d"), new("d", "dh"),
+            new("j", "y"), new("y", "j"),
+            new("i", "ie"), new("ie", "i")
+        };
+
+        var cleanOriginName = RemovePunctuation(originName);
+        
+        //  membuat collection variasi ejaan original name
+        //  contoh: Budi Agung Sutejo => Boedi Agoeng Soetedjo
+        var result = spellingVariations
+            .Aggregate(new List<string> { cleanOriginName }, (variants, entry) => variants
+                .Concat(variants
+                    .Where(name => name.Contains(entry.Eja1, StringComparison.OrdinalIgnoreCase))
+                    .Select(name => name.Replace(entry.Eja1, entry.Eja2, StringComparison.OrdinalIgnoreCase))
+                ).Distinct().ToList()
+            );
+        return result;
+    }
+
+    private static IEnumerable<PasienModel> FindSimiliarity(
+        IEnumerable<PasienModel> listPasien, string name)
+    {
+        //  hitung nilai Jaro Winkler Value
+        var listPasienJwValue = listPasien.Select(x => new
+        {
+            Pasien = x,
+            JaroWinklerValue = x.PasienName.Similiarity(name)
+        });
+        //  filter yang lebih dari 0.75
+        var result = listPasienJwValue
+            .Where(x => x.JaroWinklerValue >= 0.75)
+            .Select(x => x.Pasien);
+        return result;
+    }
+
+    private static PasienFindFastResponse BuildPasienResponse(PasienModel pasien)
+    {
+        // Return respon sementara
+        return new PasienFindFastResponse(
+            pasien.PasienId,
+            pasien.GetNomorMedrec(),
+            pasien.PasienName,
+            pasien.TglLahir.ToString(DateFormatEnum.YMD)
+        );
+    }
+}
+
 // public class PasienFindFastTest
 // {
 //     private readonly PasienFindFastHandler _sut;
@@ -149,7 +145,7 @@
 //         //  ARRANGE
 //         var faker1 = new PasienModel("A", "Alexander Suryaputra");
 //         var faker2 = new PasienModel("B", "Alexandria  Suryaputra");
-//         _pasienDal.Setup(x => x.ListData(It.IsAny<DateTime>())).Returns(new List<PasienModel> {faker1});
+//         _pasienDal.Setup(x => x.ListData2(It.IsAny<DateTime>())).Returns(new List<PasienModel> {faker1});
 //         _pasienDal.Setup(x => x.GetData(It.IsAny<IPasienKey>())).Returns(faker2);
 //         var request = new PasienFindFast("A");
 //         
@@ -385,4 +381,4 @@
 //         response.Select(x => x.PasienId).Should().BeEquivalentTo("A");
 //     }       
 // }
-//
+

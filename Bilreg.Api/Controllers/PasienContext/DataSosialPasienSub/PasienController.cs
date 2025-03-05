@@ -38,4 +38,14 @@ public class PasienController : Controller
         var response = await _mediator.Send(query);
         return Ok(new JSendOk(response));
     }
+        
+    [HttpGet]
+    [Route("find/{tglLahirYmd}/{pasienName}")]
+    public async Task<IActionResult> GetData(string tglLahirYmd, string pasienName)
+    {
+        var query = new PasienFindFast(tglLahirYmd, pasienName);
+        var response = await _mediator.Send(query);
+        return Ok(new JSendOk(response));
+    }
+
 }

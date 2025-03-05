@@ -5,6 +5,7 @@ using Bilreg.Domain.PasienContext.StatusSosialSub.PendidikanDkAgg;
 using Bilreg.Domain.PasienContext.StatusSosialSub.StatusKawinDkAgg;
 using Bilreg.Domain.PasienContext.StatusSosialSub.SukuAgg;
 using CommunityToolkit.Diagnostics;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
 
@@ -56,6 +57,16 @@ public class PasienModel : IPasienKey
     //      olah berkas
     public DateTime TglMedRec { get; private set; } = DateTime.Now.Date;
     public bool IsAktif { get; private set; } = true;
+    public string GetNomorMedrec()
+    {
+        var pasienId = PasienId;
+        var breakPasienId = pasienId[7..]
+            .Chunk(2)
+            .Select(x => new string(x))
+            .ToList();
+        //  merge breakPasienId to string
+        return breakPasienId.Join("-");
+    }
 
     public void SetPersonalInfo(string nickName, string tempatLahir, string ibuKandung,
         GolDarahType golDarah)

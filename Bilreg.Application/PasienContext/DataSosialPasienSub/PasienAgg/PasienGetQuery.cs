@@ -79,21 +79,12 @@ public class PasienGetHandler: IRequestHandler<PasienGetQuery, PasienGetResponse
         };
     }
 
-    private static string GetNomorMedrec(string pasienId)
-    {
-        var breakPasienId = pasienId[7..]
-            .Chunk(2)
-            .Select(x => new string(x))
-            .ToList();
-        return breakPasienId.Join("-");
-    }
-
     private static PasienGetResponse BuildPasienResponse(PasienModel pasien)
     {
         
         return new PasienGetResponse(
             pasien.PasienId, 
-            GetNomorMedrec(pasien.PasienId),
+            pasien.GetNomorMedrec(),
             pasien.PasienName,
             pasien.TempatLahir,
             pasien.TglLahir.ToString(DateFormatEnum.YMD),
