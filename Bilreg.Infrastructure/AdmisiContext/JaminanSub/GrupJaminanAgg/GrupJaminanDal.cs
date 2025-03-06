@@ -42,11 +42,14 @@ public class GrupJaminanDal: IGrupJaminanDal
     public void Update(GrupJaminanModel model)
     {
         const string sql = @"
-            UPDATE ta_grup_jaminan
-            SET fs_nm_grup_jaminan = @fs_nm_grup_jaminan,
+            UPDATE 
+                ta_grup_jaminan
+            SET 
+                fs_nm_grup_jaminan = @fs_nm_grup_jaminan,
                 fb_karyawan = @fb_karyawan,
                 fs_keterangan = @fs_keterangan
-            WHERE fs_kd_grup_jaminan = @fs_kd_grup_jaminan";
+            WHERE 
+                fs_kd_grup_jaminan = @fs_kd_grup_jaminan";
         
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_grup_jaminan", model.GrupJaminanId, SqlDbType.VarChar);
@@ -61,8 +64,10 @@ public class GrupJaminanDal: IGrupJaminanDal
     public void Delete(IGrupJaminanKey key)
     {
         const string sql = @"
-            DELETE FROM ta_grup_jaminan
-            WHERE fs_kd_grup_jaminan = @fs_kd_grup_jaminan";
+            DELETE FROM 
+                ta_grup_jaminan
+            WHERE 
+                fs_kd_grup_jaminan = @fs_kd_grup_jaminan";
         
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_grup_jaminan", key.GrupJaminanId, SqlDbType.VarChar);

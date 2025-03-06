@@ -135,7 +135,9 @@ public class JaminanDal: IJaminanDal
             FROM 
                 ta_jaminan aa
                 LEFT JOIN ta_cara_bayar_dk bb ON aa.fs_kd_cara_bayar_dk = bb.fs_kd_cara_bayar_dk
-                LEFT JOIN ta_grup_jaminan cc ON aa.fs_kd_grup_jaminan = cc.fs_kd_grup_jaminan";
+                LEFT JOIN ta_grup_jaminan cc ON aa.fs_kd_grup_jaminan = cc.fs_kd_grup_jaminan
+            WHERE
+                aa.fb_aktif = 1 ";
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         var list = conn.Read<JaminanDto>(sql)?.ToList() ?? new List<JaminanDto>();
