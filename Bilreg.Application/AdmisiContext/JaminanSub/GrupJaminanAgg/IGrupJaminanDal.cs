@@ -7,7 +7,7 @@ public interface IGrupJaminanDal:
     IInsert<GrupJaminanModel>,
     IUpdate<GrupJaminanModel>,
     IDelete<IGrupJaminanKey>,
-    IGetData<GrupJaminanModel, IGrupJaminanKey>,
-    IListData<GrupJaminanModel>
+    IGetData2<GrupJaminanModel, IGrupJaminanKey>,
+    IListData2<GrupJaminanModel>
 {
 }
