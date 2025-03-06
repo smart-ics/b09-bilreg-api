@@ -29,7 +29,7 @@ public class JaminanModel : IJaminanKey
         CaraBayarDkModel.Default, GrupJaminanModel.Default,
         string.Empty);
     
-    public JaminanViewType ToViewType => new JaminanViewType(
+    public JaminanViewType ToViewType() => new JaminanViewType(
         JaminanId, JaminanName, 
         CaraBayarDk.CaraBayarDkName, 
         GrupJaminan.GrupJaminanName);
