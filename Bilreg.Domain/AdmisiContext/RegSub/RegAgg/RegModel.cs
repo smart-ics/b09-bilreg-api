@@ -1,4 +1,5 @@
 ﻿using Bilreg.Domain.AdmisiContext.RegSub.RegAgg.ValueObjects;
+using Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
 using CommunityToolkit.Diagnostics;
 
 namespace Bilreg.Domain.AdmisiContext.RegSub.RegAgg;
@@ -10,10 +11,10 @@ public partial class RegModel : IRegKey
     
     public string RegId { get; private set; }
     public JenisRegEnum JenisReg { get; private set; }
-    public TglJamTrsVo TglJamTrs { get; private set; }
-    public ActivityFlagVo VoidFlag { get; private set; } = new(new DateTime(3000, 1, 1), "");
+    public TglJamTrsType TglJamTrs { get; private set; }
+    public VoidFlagType VoidFlag { get; private set; } = new(new DateTime(3000, 1, 1), "");
+    public PasienViewType Pasien { get; private set; }
 
-    public RegPasienVo Pasien { get; private set; }
     public RegTipeJaminanVo TipeJaminan { get; private set; }
     public RegCaraMasukVo CaraMasuk { get; private set; }
     public KarcisTarifVo KarcisTarif { get; private set; }
@@ -25,8 +26,8 @@ public partial class RegModel : IRegKey
         RegId = regId;
     }
 
-    public RegModel(string regId, TglJamTrsVo tglJamTrs,
-        ActivityFlagVo voidFlag, RegPasienVo pasien, 
+    public RegModel(string regId, TglJamTrsType tglJamTrs,
+        VoidFlagType voidFlag, RegPasienVo pasien, 
         RegTipeJaminanVo tipeJaminan, RegCaraMasukVo caraMasuk)
     {
         RegId = regId;
@@ -38,18 +39,18 @@ public partial class RegModel : IRegKey
         CaraMasuk = caraMasuk;
     }
 
-    public void SetTglJamTrs(TglJamTrsVo tglJamTrs)
+    public void SetTglJamTrs(TglJamTrsType tglJamTrs)
     {
-        if (VoidFlag.IsFlagged)
+        if (VoidFlag.IsVoid)
             throw new ArgumentException("Register sudah void");
 
         TglJamTrs = tglJamTrs;
     }
 
 
-    public void SetVoidFlag(ActivityFlagVo voidFlag)
+    public void SetVoidFlag(VoidFlagType voidFlag)
     {
-        if (voidFlag.ActivityDate == DefaultDate)
+        if (voidFlag.VoidDate == DefaultDate)
             throw new ArgumentException("VoidDate invalid");
         VoidFlag = voidFlag;
     }
@@ -57,7 +58,7 @@ public partial class RegModel : IRegKey
     public void SetPasien(RegPasienVo pasien)
     {
         Guard.IsNotNull(pasien);
-        if (VoidFlag.IsFlagged)
+        if (VoidFlag.IsVoid)
             throw new ArgumentException("Register sudah void");
 
         Pasien = pasien;
@@ -66,7 +67,7 @@ public partial class RegModel : IRegKey
     public void SetJaminan(RegTipeJaminanVo tipeJaminan)
     {
         Guard.IsNotNull(tipeJaminan);
-        if (VoidFlag.IsFlagged)
+        if (VoidFlag.IsVoid)
             throw new ArgumentException("Register sudah void");
 
         TipeJaminan = tipeJaminan;
@@ -75,7 +76,7 @@ public partial class RegModel : IRegKey
     public void SetCaraMasuk(RegCaraMasukVo caraMasuk)
     {
         Guard.IsNotNull(caraMasuk);
-        if (VoidFlag.IsFlagged)
+        if (VoidFlag.IsVoid)
             throw new ArgumentException("Register sudah void");
 
         CaraMasuk = caraMasuk;
@@ -84,7 +85,7 @@ public partial class RegModel : IRegKey
     public void SetKarcisTarif(KarcisTarifVo karcisTarif)
     {
         Guard.IsNotNull(karcisTarif);
-        if (VoidFlag.IsFlagged)
+        if (VoidFlag.IsVoid)
             throw new ArgumentException("Register sudah void");
 
         KarcisTarif = karcisTarif;
@@ -93,7 +94,7 @@ public partial class RegModel : IRegKey
     public void SetKelas(RegKelasVo regKelas)
     {
         Guard.IsNotNull(regKelas);
-        if (VoidFlag.IsFlagged)
+        if (VoidFlag.IsVoid)
             throw new ArgumentException("Register sudah void");
 
         Kelas = regKelas;            

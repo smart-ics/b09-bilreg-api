@@ -8,7 +8,7 @@ public class RegRujukanModel : RegModel
     {
     }
 
-    public RegRujukanModel(string regId, TglJamTrsVo tglJamTrs, ActivityFlagVo voidFlag, 
+    public RegRujukanModel(string regId, TglJamTrsType tglJamTrs, VoidFlagType voidFlag, 
         RegPasienVo pasien, RegTipeJaminanVo tipeJaminan, RegCaraMasukVo caraMasuk) : base(regId, tglJamTrs, voidFlag, pasien, tipeJaminan, caraMasuk)
     {
     }

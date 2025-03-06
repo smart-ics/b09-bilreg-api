@@ -16,9 +16,9 @@ public class RegModelTest()
     {
         //  ARRANGE
         var reg = new RegModel("A");
-        reg.SetVoidFlag(new ActivityFlagVo(DateTime.Now, "B"));
+        reg.SetVoidFlag(new VoidFlagType(DateTime.Now, "B"));
         //  ACT
-        var actual = () => reg.SetTglJamTrs(new TglJamTrsVo(DateTime.Now, "C"));
+        var actual = () => reg.SetTglJamTrs(new TglJamTrsType(DateTime.Now, "C"));
         //  ASSERT
         actual.Should().Throw<ArgumentException>();
     }
@@ -28,7 +28,7 @@ public class RegModelTest()
     {
         //  ARRANGE
         var reg = new RegModel("A");
-        reg.SetVoidFlag(new ActivityFlagVo(DateTime.Now, "B"));
+        reg.SetVoidFlag(new VoidFlagType(DateTime.Now, "B"));
         var px = new RegPasienVo("C1", "C2", "C3", DateTime.Now, "L");
         //  ACT
         var actual = () => reg.SetPasien(px);
@@ -41,7 +41,7 @@ public class RegModelTest()
     {
         //  ARRANGE
         var reg = new RegModel("A");
-        reg.SetVoidFlag(new ActivityFlagVo(DateTime.Now, "B"));
+        reg.SetVoidFlag(new VoidFlagType(DateTime.Now, "B"));
         var tipeJmn = new RegTipeJaminanVo("C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8");
         //  ACT
         var actual = () => reg.SetJaminan(tipeJmn);
@@ -55,7 +55,7 @@ public class RegModelTest()
     {
         //  ARRANGE
         var reg = new RegModel("A");
-        reg.SetVoidFlag(new ActivityFlagVo(DateTime.Now, "B"));
+        reg.SetVoidFlag(new VoidFlagType(DateTime.Now, "B"));
         var caraMasuk = new RegCaraMasukVo("C1", "C2", "C3", "C4");
         //  ACT
         var actual = () => reg.SetCaraMasuk(caraMasuk);

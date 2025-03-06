@@ -11,9 +11,6 @@ namespace Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
 
 public class PasienModel : IPasienKey
 {
-    public static IPasienKey Key(string pasienId) 
-        => new PasienModel(pasienId, string.Empty, new DateTime(2000,1,1), GenderType.Default);
-    
     public PasienModel(string pasienId, string pasienName, 
         DateTime tglLahir, GenderType gender)
     {
@@ -101,4 +98,5 @@ public class PasienModel : IPasienKey
     {
         TglMedRec = tglMedRec;
     }
+    public PasienViewType ToViewType() => new PasienViewType(PasienId, GetNomorMedrec(), PasienName, TglLahir, Gender);
 }

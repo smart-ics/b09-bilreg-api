@@ -21,7 +21,7 @@ public class RegJalanModel : RegModel
     {
     }
 
-    public RegJalanModel(string regId, TglJamTrsVo tglJamTrs, ActivityFlagVo voidFlag, RegPasienVo pasien, RegTipeJaminanVo tipeJaminan, RegCaraMasukVo caraMasuk) : base(regId, tglJamTrs, voidFlag, pasien, tipeJaminan, caraMasuk)
+    public RegJalanModel(string regId, TglJamTrsType tglJamTrs, VoidFlagType voidFlag, RegPasienVo pasien, RegTipeJaminanVo tipeJaminan, RegCaraMasukVo caraMasuk) : base(regId, tglJamTrs, voidFlag, pasien, tipeJaminan, caraMasuk)
     {
     }
 }
