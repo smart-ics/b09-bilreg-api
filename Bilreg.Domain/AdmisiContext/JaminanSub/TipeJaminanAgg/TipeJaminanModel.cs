@@ -27,11 +27,14 @@ public class TipeJaminanModel : ITipeJaminanKey
 
     public static TipeJaminanModel Default => new TipeJaminanModel(
         string.Empty, string.Empty, false, JaminanModel.Default);
+
+    public TipeJaminanViewType ToViewType() => new TipeJaminanViewType(TipeJaminanId, TipeJaminanName);
     
     public string TipeJaminanId { get; private set; }
     public string TipeJaminanName { get; private set; }
     public bool IsAktif { get; private set; }
     public JaminanViewType Jaminan { get; private set; }
-   
-
 }
+
+public record TipeJaminanViewType(
+    string TipeJaminanId, string TipeJaminanName);
