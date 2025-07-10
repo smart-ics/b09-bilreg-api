@@ -1,28 +1,22 @@
-﻿namespace Bilreg.Domain.AdmisiContext.RujukanSub.CaraMasukDkAgg
+﻿namespace Bilreg.Domain.AdmisiContext.RujukanSub.CaraMasukDkAgg;
+
+public class CaraMasukDkModel : ICaraMasukDkKey
 {
-    public class CaraMasukDkModel : ICaraMasukDkKey
+    public  CaraMasukDkModel(string id, string name)
     {
-        // Constructor
-        private CaraMasukDkModel(string id, string name)
-        {
-            CaraMasukDkId = id;
-            CaraMasukDkName = name;
-        }
+        if (id == string.Empty ^ name == string.Empty)
+            throw new ArgumentException("CaraMasukDK invalid");
 
-        // Factory Method
-        public static CaraMasukDkModel Create(string id, string name)
-        {
-            return new CaraMasukDkModel(id, name);
-        }
-
-        // Properties
-        public string CaraMasukDkId { get; private set; }
-        public string CaraMasukDkName { get; private set; }
+        CaraMasukDkId = id;
+        CaraMasukDkName = name;
     }
 
-    public interface ICaraMasukDkKey
-    {
-        string CaraMasukDkId { get; }
-    }
+    public static CaraMasukDkModel Default => new CaraMasukDkModel(string.Empty, string.Empty);
 
+    public CaraMasukDkModel()
+    {
+    }
+    
+    public string CaraMasukDkId { get; private set; }
+    public string CaraMasukDkName { get; private set; }
 }

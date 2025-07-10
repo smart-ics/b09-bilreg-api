@@ -8,7 +8,7 @@ public interface IKelurahanKey
     string KelurahanId { get; }
 }
 
-public class KelurahanKey : IKelurahanKey
+public record KelurahanKey : IKelurahanKey
 {
     public KelurahanKey(string kelurahanId)
     {

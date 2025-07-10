@@ -21,13 +21,17 @@ public class CaraBayarDkDal: ICaraBayarDkDal
         _opt = opt.Value;
     }
     
-    public CaraBayarDkModel GetData(ICaraBayarDkKey key)
+    public GetDataResult<CaraBayarDkModel> GetData2(ICaraBayarDkKey key)
     {
         // QUERY
-        var sql = @"
-            SELECT fs_kd_cara_bayar_dk, fs_nm_cara_bayar_dk
-            FROM ta_cara_bayar_dk
-            WHERE fs_kd_cara_bayar_dk = @fs_kd_cara_bayar_dk";
+        const string sql = @"
+            SELECT 
+                fs_kd_cara_bayar_dk AS CaraBayarDkId, 
+                fs_nm_cara_bayar_dk AS CaraBayarDkName
+            FROM 
+                ta_cara_bayar_dk
+            WHERE 
+                fs_kd_cara_bayar_dk = @fs_kd_cara_bayar_dk";
 
         // PARAM
         var dp = new DynamicParameters();
@@ -35,21 +39,25 @@ public class CaraBayarDkDal: ICaraBayarDkDal
         
         // EXECUTE
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        var result = conn.ReadSingle<CaraBayarDkDto>(sql, dp);
-        return result?.ToModel()!;
+        var data = conn.ReadSingle<CaraBayarDkModel>(sql, dp);
+        var result = new GetDataResult<CaraBayarDkModel>(data, key.CaraBayarDkId);
+        return result;
     }
 
-    public IEnumerable<CaraBayarDkModel> ListData()
+    public ListDataResult<CaraBayarDkModel> ListData2()
     {
         // QUERY
-        var sql = @"
-            SELECT fs_kd_cara_bayar_dk, fs_nm_cara_bayar_dk
-            FROM ta_cara_bayar_dk";
+        const string sql = @"
+            SELECT 
+                fs_kd_cara_bayar_dk AS CaraBayarDkId, 
+                fs_nm_cara_bayar_dk AS CaraBayarDkName
+            FROM 
+                ta_cara_bayar_dk";
 
-        // EXECUTE
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        var result = conn.Read<CaraBayarDkDto>(sql);
-        return result?.Select(x => x.ToModel())!;
+        var list = conn.Read<CaraBayarDkModel>(sql);
+        var result = new ListDataResult<CaraBayarDkModel>(list);
+        return result;
     }
 }
 
@@ -67,10 +75,10 @@ public class CaraBayarDkDalTest
     {
         // ARRANGE
         using var trans = TransHelper.NewScope();
-        var expected = CaraBayarDkModel.Create("A", "B");
+        var expected = new CaraBayarDkModel("A", "B");
 
         // ACT
-        var actual = _sut.GetData(expected);
+        var actual = _sut.GetData2(expected).Value;
         
         // ASSERT
         actual.Should().BeNull();
@@ -81,9 +89,9 @@ public class CaraBayarDkDalTest
     {
         // ARRANGE
         using var trans = TransHelper.NewScope();
-        var exepected = CaraBayarDkModel.Create("1", "Membayar Sendiri");
+        var exepected = new CaraBayarDkModel("1", "Membayar Sendiri");
         // ACT
-        var actual = _sut.ListData();
+        var actual = _sut.ListData2().Value;
         
         // ASSERT
         var actualFirst = actual.First(x => x.CaraBayarDkId == "1");

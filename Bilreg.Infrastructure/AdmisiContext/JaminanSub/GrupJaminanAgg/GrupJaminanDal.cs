@@ -24,8 +24,10 @@ public class GrupJaminanDal: IGrupJaminanDal
     public void Insert(GrupJaminanModel model)
     {
         const string sql = @"
-            INSERT INTO ta_grup_jaminan (fs_kd_grup_jaminan, fs_nm_grup_jaminan, fb_karyawan, fs_keterangan)
-            VALUES (@fs_kd_grup_jaminan, @fs_nm_grup_jaminan, @fb_karyawan, @fs_keterangan)";
+            INSERT INTO ta_grup_jaminan 
+                (fs_kd_grup_jaminan, fs_nm_grup_jaminan, fb_karyawan, fs_keterangan)
+            VALUES 
+                (@fs_kd_grup_jaminan, @fs_nm_grup_jaminan, @fb_karyawan, @fs_keterangan)";
 
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_grup_jaminan", model.GrupJaminanId, SqlDbType.VarChar);
@@ -40,11 +42,14 @@ public class GrupJaminanDal: IGrupJaminanDal
     public void Update(GrupJaminanModel model)
     {
         const string sql = @"
-            UPDATE ta_grup_jaminan
-            SET fs_nm_grup_jaminan = @fs_nm_grup_jaminan,
+            UPDATE 
+                ta_grup_jaminan
+            SET 
+                fs_nm_grup_jaminan = @fs_nm_grup_jaminan,
                 fb_karyawan = @fb_karyawan,
                 fs_keterangan = @fs_keterangan
-            WHERE fs_kd_grup_jaminan = @fs_kd_grup_jaminan";
+            WHERE 
+                fs_kd_grup_jaminan = @fs_kd_grup_jaminan";
         
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_grup_jaminan", model.GrupJaminanId, SqlDbType.VarChar);
@@ -59,8 +64,10 @@ public class GrupJaminanDal: IGrupJaminanDal
     public void Delete(IGrupJaminanKey key)
     {
         const string sql = @"
-            DELETE FROM ta_grup_jaminan
-            WHERE fs_kd_grup_jaminan = @fs_kd_grup_jaminan";
+            DELETE FROM 
+                ta_grup_jaminan
+            WHERE 
+                fs_kd_grup_jaminan = @fs_kd_grup_jaminan";
         
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_grup_jaminan", key.GrupJaminanId, SqlDbType.VarChar);
@@ -69,30 +76,43 @@ public class GrupJaminanDal: IGrupJaminanDal
         conn.Execute(sql, dp);
     }
 
-    public GrupJaminanModel GetData(IGrupJaminanKey key)
+    public GetDataResult<GrupJaminanModel> GetData2(IGrupJaminanKey key)
     {
         const string sql = @"
-            SELECT fs_kd_grup_jaminan, fs_nm_grup_jaminan, fb_karyawan, fs_keterangan
-            FROM ta_grup_jaminan
-            WHERE fs_kd_grup_jaminan = @fs_kd_grup_jaminan";
+            SELECT 
+                fs_kd_grup_jaminan AS GrupJaminanId, 
+                fs_nm_grup_jaminan AS GrupJaminanName, 
+                fb_karyawan AS IsKaryawan, 
+                fs_keterangan AS Keterangan
+            FROM 
+                ta_grup_jaminan
+            WHERE 
+                fs_kd_grup_jaminan = @fs_kd_grup_jaminan";
         
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_grup_jaminan", key.GrupJaminanId, SqlDbType.VarChar);
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        var result = conn.ReadSingle<GrupJaminanDto>(sql, dp);
-        return result?.ToModel()!;
+        var data = conn.ReadSingle<GrupJaminanModel>(sql, dp);
+        var result = new GetDataResult<GrupJaminanModel>(data, key.GrupJaminanId);
+        return result;
     }
 
-    public IEnumerable<GrupJaminanModel> ListData()
+    public ListDataResult<GrupJaminanModel> ListData2()
     {
         const string sql = @"
-            SELECT fs_kd_grup_jaminan, fs_nm_grup_jaminan, fb_karyawan, fs_keterangan
-            FROM ta_grup_jaminan";
+            SELECT 
+                fs_kd_grup_jaminan AS GrupJaminanId, 
+                fs_nm_grup_jaminan AS GrupJaminanName, 
+                fb_karyawan AS IsKaryawan, 
+                fs_keterangan AS Keterangan
+            FROM 
+                ta_grup_jaminan";
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        var result = conn.Read<GrupJaminanDto>(sql);
-        return result?.Select(x => x.ToModel())!;
+        var list = conn.Read<GrupJaminanModel>(sql);
+        var result = new ListDataResult<GrupJaminanModel>(list);
+        return result;
     }
 }
 
@@ -109,7 +129,7 @@ public class GrupJaminanDalTest
     public void InsertTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = GrupJaminanModel.Create("A", "B", "C");
+        var expected = new GrupJaminanModel("A", "B", true, "C");
         _sut.Insert(expected);
     }
     
@@ -117,7 +137,7 @@ public class GrupJaminanDalTest
     public void UpdateTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = GrupJaminanModel.Create("A", "B", "C");
+        var expected = new GrupJaminanModel("A", "B", true, "C");
         _sut.Update(expected);
     }
     
@@ -125,7 +145,7 @@ public class GrupJaminanDalTest
     public void DeleteTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = GrupJaminanModel.Create("A", "B", "C");
+        var expected = new GrupJaminanModel("A", "B", true, "C");
         _sut.Delete(expected);
     }
 
@@ -133,9 +153,9 @@ public class GrupJaminanDalTest
     public void GetDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = GrupJaminanModel.Create("A", "B", "C");
+        var expected = new GrupJaminanModel("A", "B", true, "C");
         _sut.Insert(expected);
-        var actual = _sut.GetData(expected);
+        var actual = _sut.GetData2(expected).Value;
         actual.Should().BeEquivalentTo(expected);
     }
 
@@ -143,9 +163,9 @@ public class GrupJaminanDalTest
     public void ListDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = GrupJaminanModel.Create("A", "B", "C");
+        var expected = new GrupJaminanModel("A", "B", true, "C");
         _sut.Insert(expected);
-        var actual = _sut.ListData();
+        var actual = _sut.ListData2().Value;
         _ = actual.Select(x => x.Should().BeEquivalentTo(expected));
     }
 }

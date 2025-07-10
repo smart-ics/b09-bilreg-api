@@ -1,9 +1,8 @@
-﻿GET https://localhost:44376/api/TipeJaminan/ACA01
+﻿GET https://localhost:44376/api/GrupJaminan/ASK
 Content-Type: application/json
 Accept-Language: en-US,en;q=0.5
 
 ###
-
-GET https://localhost:44376/api/TipeJaminan
+GET https://localhost:44376/api/GrupJaminan
 Content-Type: application/json
 Accept-Language: en-US,en;q=0.5

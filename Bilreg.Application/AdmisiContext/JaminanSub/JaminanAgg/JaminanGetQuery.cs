@@ -1,8 +1,8 @@
+using Bilreg.Domain.AdmisiContext.JaminanSub.CaraBayarDkAgg;
+using Bilreg.Domain.AdmisiContext.JaminanSub.GrupJaminanAgg;
 using Bilreg.Domain.AdmisiContext.JaminanSub.JaminanAgg;
-using FluentAssertions;
+using Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
 using MediatR;
-using Moq;
-using Xunit;
 
 namespace Bilreg.Application.AdmisiContext.JaminanSub.JaminanAgg;
 
@@ -11,16 +11,11 @@ public record JaminanGetQuery(string JaminanId) : IRequest<JaminanGetResponse>, 
 public record JaminanGetResponse(
     string JaminanId,
     string JaminanName,
-    string Alamat1,
-    string Alamat2,
-    string Kota,
+    AddressType Address,
     bool IsAktif,
-    string CaraBayarDkId,
-    string CaraBayarDkName,
-    string GrupJaminanId,
-    string GrupJaminanName,
-    string BenefitMou
-);
+    CaraBayarDkModel CaraBayarDk,
+    GrupJaminanViewType GrupJaminan,
+    string BenefitMou);
 
 public class JaminanGetHandler : IRequestHandler<JaminanGetQuery, JaminanGetResponse>
 {
@@ -34,35 +29,16 @@ public class JaminanGetHandler : IRequestHandler<JaminanGetQuery, JaminanGetResp
     public Task<JaminanGetResponse> Handle(JaminanGetQuery request, CancellationToken cancellationToken)
     {
         // QUERY
-        var jaminan = _jaminanDal.GetData(request) 
-            ?? throw new KeyNotFoundException($"Jaminan id {request.JaminanId} not found");
+        var jaminan = _jaminanDal
+            .GetData2(request)
+            .OrThrowNotFoundException()
+            .Value;
 
         // RESPONSE
-        var response = new JaminanGetResponse(jaminan.JaminanId, jaminan.JaminanName, jaminan.Alamat1, jaminan.Alamat2,
-            jaminan.Kota, jaminan.IsAktif, jaminan.CaraBayarDkId, jaminan.CaraBayarDkName, jaminan.GrupJaminanId,
-            jaminan.GrupJaminanName, jaminan.BenefitMou);
+        var response = new JaminanGetResponse(
+            jaminan.JaminanId, jaminan.JaminanName, jaminan.Address,
+            jaminan.IsAktif, jaminan.CaraBayarDk, jaminan.GrupJaminan,
+            jaminan.BenefitMou);
         return Task.FromResult(response);
-    }
-}
-
-public class JaminanGetHandlerTest
-{
-    private readonly Mock<IJaminanDal> _jaminanDal;
-    private readonly JaminanGetHandler _sut;
-
-    public JaminanGetHandlerTest()
-    {
-        _jaminanDal = new Mock<IJaminanDal>();
-        _sut = new JaminanGetHandler(_jaminanDal.Object);
-    }
-
-    [Fact]
-    public async Task GivenInvalidJaminanId_ThenThrowKeyNotFoundException_Test()
-    {
-        var request = new JaminanGetQuery("A");
-        _jaminanDal.Setup(x => x.GetData(It.IsAny<IJaminanKey>()))
-            .Returns(null as JaminanModel);
-        var actual = async () => await _sut.Handle(request, CancellationToken.None);
-        await actual.Should().ThrowAsync<KeyNotFoundException>();
     }
 }

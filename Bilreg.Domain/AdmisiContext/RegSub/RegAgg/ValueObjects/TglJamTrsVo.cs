@@ -4,12 +4,14 @@ using Xunit;
 
 namespace Bilreg.Domain.AdmisiContext.RegSub.RegAgg.ValueObjects;
 
-public record TglJamTrsVo
+public record TglJamTrsType
 {
     public DateTime TglJam {get;} 
     public string UserId {get;}
+    public string TglTrs => TglJam.ToString("yyyy-MM-dd");
+    public string JamTrs => TglJam.ToString("HH:mm:ss");
 
-    public TglJamTrsVo(DateTime date, string userId)
+    public TglJamTrsType(DateTime date, string userId)
     {
         TglJam = date;
         UserId = userId;
@@ -29,20 +31,20 @@ public class TglJamTrsVoTest
     [Fact]
     public void T01_GivenValidArg_ThenSuccess()
     {
-        var actual = new TglJamTrsVo(new DateTime(2024, 10, 6), "A");
+        var actual = new TglJamTrsType(new DateTime(2024, 10, 6), "A");
     }
 
     [Fact]
     public void T02_GivenEmptyTrsDate_ThenThrowEx()
     {
-        var actual = () => new TglJamTrsVo(new DateTime(3000, 1, 1), "A");
+        var actual = () => new TglJamTrsType(new DateTime(3000, 1, 1), "A");
         actual.Should().Throw<ArgumentException>();
     }
     
     [Fact]
     public void T03_GivenEmptyUserId_ThenThrowEx()
     {
-        var actual = () => new TglJamTrsVo(new DateTime(2024, 10, 6), "");
+        var actual = () => new TglJamTrsType(new DateTime(2024, 10, 6), "");
         actual.Should().Throw<ArgumentException>();
     }
     

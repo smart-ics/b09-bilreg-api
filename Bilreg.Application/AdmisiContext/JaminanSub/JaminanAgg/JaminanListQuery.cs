@@ -1,3 +1,5 @@
+using Bilreg.Domain.AdmisiContext.JaminanSub.CaraBayarDkAgg;
+using Bilreg.Domain.AdmisiContext.JaminanSub.GrupJaminanAgg;
 using Bilreg.Domain.AdmisiContext.JaminanSub.JaminanAgg;
 using FluentAssertions;
 using MediatR;
@@ -11,16 +13,8 @@ public record JaminanListQuery() : IRequest<IEnumerable<JaminanListResponse>>;
 public record JaminanListResponse(
     string JaminanId,
     string JaminanName,
-    string Alamat1,
-    string Alamat2,
-    string Kota,
-    bool IsAktif,
-    string CaraBayarDkId,
     string CaraBayarDkName,
-    string GrupJaminanId,
-    string GrupJaminanName,
-    string BenefitMou
-);
+    string GrupJaminanName);
 
 public class JaminanListHandler : IRequestHandler<JaminanListQuery, IEnumerable<JaminanListResponse>>
 {
@@ -34,36 +28,16 @@ public class JaminanListHandler : IRequestHandler<JaminanListQuery, IEnumerable<
     public Task<IEnumerable<JaminanListResponse>> Handle(JaminanListQuery request, CancellationToken cancellationToken)
     {
         // QUERY
-        var listJaminan = _jaminanDal.ListData()
-            ?? throw new KeyNotFoundException("Jaminan not found");
+        var listJaminan = _jaminanDal
+            .ListData2()
+            .Value;
 
         // RESPONSE
-        var response = listJaminan.Select(x 
-            => new JaminanListResponse(x.JaminanId, x.JaminanName, x.Alamat1, x.Alamat2,
-                x.Kota, x.IsAktif, x.CaraBayarDkId, x.CaraBayarDkName, x.GrupJaminanId,
-                x.GrupJaminanName, x.BenefitMou));
+        var response = listJaminan
+            .Select(x => new JaminanListResponse(
+                x.JaminanId, x.JaminanName, 
+                x.CaraBayarDk.CaraBayarDkName, 
+                x.GrupJaminan.GrupJaminanName));
         return Task.FromResult(response);
-    }
-}
-
-public class JaminanListHandlerTest
-{
-    private readonly Mock<IJaminanDal> _jaminanDal;
-    private readonly JaminanListHandler _sut;
-
-    public JaminanListHandlerTest()
-    {
-        _jaminanDal = new Mock<IJaminanDal>();
-        _sut = new JaminanListHandler(_jaminanDal.Object);
-    }
-
-    [Fact]
-    public async Task GivenNoData_ThenThrowKeyNotFoundException_Test()
-    {
-        var request = new JaminanListQuery();
-        _jaminanDal.Setup(x => x.ListData())
-            .Returns(null as IEnumerable<JaminanModel>);
-        var actual = async () => await _sut.Handle(request, CancellationToken.None);
-        await actual.Should().ThrowAsync<KeyNotFoundException>();
     }
 }

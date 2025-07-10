@@ -32,9 +32,3 @@ public class KelurahanModel: IKelurahanKey
             Kecamatan.KecamatanName, Kecamatan.Kabupaten.KabupatenName, 
             Kecamatan.Kabupaten.Propinsi.PropinsiName);
 }
-
-public record KelurahanViewType(string KelurahanId,
-    string KelurahanName,
-    string KecamatanName,
-    string KabupatenName,
-    string PropinsiName);

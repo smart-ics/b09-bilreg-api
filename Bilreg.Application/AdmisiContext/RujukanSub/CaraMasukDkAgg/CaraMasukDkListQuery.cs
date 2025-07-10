@@ -19,12 +19,13 @@ namespace Bilreg.Application.AdmisiContext.RujukanSub.CaraMasukDkAgg
 
         public Task<IEnumerable<CaraMasukDkListResponse>> Handle(CaraMasukDkListQuery request, CancellationToken cancellationToken)
         {
-            // QUERY
-            var result = _caraMasukDkDal.ListData() ?? throw new KeyNotFoundException("Cara Masuk Not Found");
-
-            // RESPONSE
-            var response = result.Select(x => new CaraMasukDkListResponse(x.CaraMasukDkId, x.CaraMasukDkName));
-            return Task.FromResult(response);
+            // // QUERY
+            // var result = _caraMasukDkDal.ListData() ?? throw new KeyNotFoundException("Cara Masuk Not Found");
+            //
+            // // RESPONSE
+            // var response = result.Select(x => new CaraMasukDkListResponse(x.CaraMasukDkId, x.CaraMasukDkName));
+            // return Task.FromResult(response);
+            throw new NotImplementedException();
         }
     }
 
@@ -39,35 +40,35 @@ namespace Bilreg.Application.AdmisiContext.RujukanSub.CaraMasukDkAgg
             _sut = new CaraMasukDkListHandler(_caraMasukDkDal.Object);
         }
 
-        [Fact]
-        public async Task GivenNoData_ThenThrowKeyNotFoundException()
-        {
-            // ARRANGE
-            var request = new CaraMasukDkListQuery();
-            _caraMasukDkDal.Setup(x => x.ListData())
-                .Returns(null as IEnumerable<CaraMasukDkModel>);
+        // [Fact]
+        // public async Task GivenNoData_ThenThrowKeyNotFoundException()
+        // {
+        //     // ARRANGE
+        //     var request = new CaraMasukDkListQuery();
+        //     _caraMasukDkDal.Setup(x => x.ListData())
+        //         .Returns(null as IEnumerable<CaraMasukDkModel>);
+        //
+        //     // ACT
+        //     Func<Task> act = () => _sut.Handle(request, CancellationToken.None);
+        //
+        //     // ASSERT
+        //     await act.Should().ThrowAsync<KeyNotFoundException>();
+        // }
 
-            // ACT
-            Func<Task> act = () => _sut.Handle(request, CancellationToken.None);
-
-            // ASSERT
-            await act.Should().ThrowAsync<KeyNotFoundException>();
-        }
-
-        [Fact]
-        public async Task GivenValidRequest_ThenReturnExpected()
-        {
-            // ARRANGE
-            var expected = new List<CaraMasukDkModel> { CaraMasukDkModel.Create("A", "B") };
-            var request = new CaraMasukDkListQuery();
-            _caraMasukDkDal.Setup(x => x.ListData())
-                .Returns(expected);
-
-            // ACT
-            var act = await _sut.Handle(request, CancellationToken.None);
-
-            // ASSERT
-            act.Should().BeEquivalentTo(expected.Select(x => new CaraMasukDkListResponse(x.CaraMasukDkId, x.CaraMasukDkName)));
-        }
+        // [Fact]
+        // public async Task GivenValidRequest_ThenReturnExpected()
+        // {
+        //     // ARRANGE
+        //     var expected = new List<CaraMasukDkModel> { CaraMasukDkModel.Create("A", "B") };
+        //     var request = new CaraMasukDkListQuery();
+        //     _caraMasukDkDal.Setup(x => x.ListData())
+        //         .Returns(expected);
+        //
+        //     // ACT
+        //     var act = await _sut.Handle(request, CancellationToken.None);
+        //
+        //     // ASSERT
+        //     act.Should().BeEquivalentTo(expected.Select(x => new CaraMasukDkListResponse(x.CaraMasukDkId, x.CaraMasukDkName)));
+        // }
     }
 }

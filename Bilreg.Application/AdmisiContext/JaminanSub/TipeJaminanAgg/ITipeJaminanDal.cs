@@ -8,9 +8,9 @@ namespace Bilreg.Application.AdmisiContext.JaminanSub.TipeJaminanAgg
         IInsert<TipeJaminanModel>,
         IUpdate<TipeJaminanModel>,
         IDelete<ITipeJaminanKey>,
-        IGetData<TipeJaminanModel, ITipeJaminanKey>,
-        IListData<TipeJaminanModel>,
-        IListData<TipeJaminanModel, IJaminanKey>
+        IGetData2<TipeJaminanModel, ITipeJaminanKey>,
+        IListData2<TipeJaminanModel>,
+        IListData2<TipeJaminanModel, IJaminanKey>
     {
     }
 }
