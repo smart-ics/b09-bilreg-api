@@ -8,10 +8,10 @@ builder.Configuration
     .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", true, true);
 
 builder.Services
+    .AddDomain(builder.Configuration)
     .AddApplication(builder.Configuration)
     .AddInfrastructure(builder.Configuration)
-    .AddPresentation(builder.Configuration)
-    .AddDomain(builder.Configuration);
+    .AddPresentation(builder.Configuration);
 
 builder.Host
     .UseSerilog(SerilogConfiguration.ContextConfiguration);
@@ -31,3 +31,6 @@ app
     .UseSwaggerUI(); 
 
 app.Run();
+
+
+
