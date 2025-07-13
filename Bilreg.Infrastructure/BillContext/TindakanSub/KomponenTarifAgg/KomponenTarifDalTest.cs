@@ -1,4 +1,4 @@
-using Bilreg.Domain.BillContext.TindakanSub.KomponenTarifAgg;
+using Bilreg.Domain.BillContext.TindakanSub.TarifFeature;
 using Bilreg.Infrastructure.Helpers;
 using FluentAssertions;
 using Nuna.Lib.TransactionHelper;
@@ -19,7 +19,7 @@ public class KomponenTarifDalTest
     public void InsertTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = new KomponenModel("A", "B");
+        var expected = new KomponenType("A", "B");
         _sut.Insert(expected);
     }
 
@@ -27,7 +27,7 @@ public class KomponenTarifDalTest
     public void UpdateTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = new KomponenModel("A", "B");
+        var expected = new KomponenType("A", "B");
         _sut.Update(expected);
     }
 
@@ -35,7 +35,7 @@ public class KomponenTarifDalTest
     public void DeleteTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = new KomponenModel("A", "B");
+        var expected = new KomponenType("A", "B");
         _sut.Delete(expected);
     }
     
@@ -43,7 +43,7 @@ public class KomponenTarifDalTest
     public void GetDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = new KomponenModel("A", "B");
+        var expected = new KomponenType("A", "B");
         _sut.Insert(expected);
         var actual = _sut.GetData(expected);
         actual.Should().BeEquivalentTo(expected);
@@ -53,7 +53,7 @@ public class KomponenTarifDalTest
     public void ListDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = new KomponenModel("A", "B");
+        var expected = new KomponenType("A", "B");
         _sut.Insert(expected);
         var actual = _sut.ListData();
         actual.Should().ContainEquivalentOf(expected);

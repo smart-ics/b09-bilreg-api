@@ -1,10 +1,10 @@
 ﻿using Ardalis.GuardClauses;
 
-namespace Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasAgg;
+namespace Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
 
-public class PetugasMedisSatTugasModel
+public class PetugasMedisSatTugasType
 {
-    public PetugasMedisSatTugasModel(SatTugasType satTugas, bool isUtama)
+    public PetugasMedisSatTugasType(SatTugasType satTugas, bool isUtama)
     {
         Guard.Against.Null(satTugas);
         SatTugas = satTugas;

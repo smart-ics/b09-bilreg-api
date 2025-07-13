@@ -1,13 +1,13 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Domain.PasienContext;
 
-namespace Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasAgg;
+namespace Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
 
 public record PetugasMedisType : IPetugasMedisKey
 {
     public PetugasMedisType(string petugasMedisId, string petugasMedisName, string namaSingkat, 
-        IEnumerable<PetugasMedisLayananModel> listLayanan, 
-        IEnumerable<PetugasMedisSatTugasModel> listSatTugas)
+        IEnumerable<PetugasMedisLayananType> listLayanan, 
+        IEnumerable<PetugasMedisSatTugasType> listSatTugas)
     {
         Guard.Against.NullOrWhiteSpace(petugasMedisId, nameof(petugasMedisId));
         Guard.Against.NullOrWhiteSpace(petugasMedisName, nameof(petugasMedisName));
@@ -27,12 +27,14 @@ public record PetugasMedisType : IPetugasMedisKey
     public string PetugasMedisName { get; init; }
     public string NamaSingkat { get; init; }
     public SmfType Smf { get; init; }
-    public IEnumerable<PetugasMedisLayananModel> PetugasMedisLayanan { get; init; }
-    public IEnumerable<PetugasMedisSatTugasModel> PetugasMedisSatTugas { get; init; }
+    public IEnumerable<PetugasMedisLayananType> PetugasMedisLayanan { get; init; }
+    public IEnumerable<PetugasMedisSatTugasType> PetugasMedisSatTugas { get; init; }
+    
+    public PetugasMedisReff ToReff() => new (PetugasMedisId, PetugasMedisName);
     
     public static PetugasMedisType Default => new("-", "-", "-", 
-        new List<PetugasMedisLayananModel>(), 
-        new List<PetugasMedisSatTugasModel>());
+        new List<PetugasMedisLayananType>(), 
+        new List<PetugasMedisSatTugasType>());
     public static IPetugasMedisKey Key(string id) => Default with { PetugasMedisId = id };
 }
 
@@ -40,3 +42,5 @@ public interface IPetugasMedisKey
 {
     string PetugasMedisId {get;}
 }
+
+public record PetugasMedisReff(string PetugasMedisId, string PetugasMedisName);

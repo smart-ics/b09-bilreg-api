@@ -16,8 +16,8 @@ public record SukuType : ISukuKey
     public string SukuId { get; init; }
     public string SukuName { get; init; }
     
-    public static ISukuKey Key(string id) => new SukuType(id, "-");
     public static SukuType Default => new("-", "-");
+    public static ISukuKey Key(string id) => Default with { SukuId = id };
 }
 
 public interface ISukuKey

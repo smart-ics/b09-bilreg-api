@@ -1,5 +1,4 @@
 ﻿using Bilreg.Application.BillContext.TindakanSub.KomponenTarifAgg;
-using Bilreg.Domain.BillContext.TindakanSub.KomponenTarifAgg;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;
@@ -17,7 +16,7 @@ namespace Bilreg.Infrastructure.BillContext.TindakanSub.KomponenTarifAgg
         {
             _opt = opt.Value;
         }
-        public void Insert(GrupKomponenModel model)
+        public void Insert(GrupKomponenType type)
         {
             const string sql = @"
                 INSERT INTO ta_grup_detil_tarif(
@@ -29,14 +28,14 @@ namespace Bilreg.Infrastructure.BillContext.TindakanSub.KomponenTarifAgg
                     @fs_nm_grup_detil_tarif
                 )";
             var dp = new DynamicParameters();
-            dp.AddParam("@fs_kd_grup_detil_tarif", model.GrupKomponenId, SqlDbType.VarChar);
-            dp.AddParam("@fs_nm_grup_detil_tarif", model.GrupKomponenName, SqlDbType.VarChar);
+            dp.AddParam("@fs_kd_grup_detil_tarif", type.GrupKomponenId, SqlDbType.VarChar);
+            dp.AddParam("@fs_nm_grup_detil_tarif", type.GrupKomponenName, SqlDbType.VarChar);
 
             using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
             conn.Execute(sql, dp);
         }
 
-        public void Update(GrupKomponenModel model)
+        public void Update(GrupKomponenType type)
         {
             const string sql= @"
                 UPDATE 
@@ -47,8 +46,8 @@ namespace Bilreg.Infrastructure.BillContext.TindakanSub.KomponenTarifAgg
                     fs_kd_grup_detil_tarif = @fs_kd_grup_detil_tarif
                 ";
             var dp = new DynamicParameters();
-            dp.AddParam("@fs_kd_grup_detil_tarif", model.GrupKomponenId, SqlDbType.VarChar);
-            dp.AddParam("@fs_nm_grup_detil_tarif", model.GrupKomponenId, SqlDbType.VarChar);
+            dp.AddParam("@fs_kd_grup_detil_tarif", type.GrupKomponenId, SqlDbType.VarChar);
+            dp.AddParam("@fs_nm_grup_detil_tarif", type.GrupKomponenId, SqlDbType.VarChar);
 
             using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
             conn.Execute(sql, dp);
@@ -68,7 +67,7 @@ namespace Bilreg.Infrastructure.BillContext.TindakanSub.KomponenTarifAgg
             using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
             conn.Execute(sql, dp);
         }
-        public GrupKomponenModel GetData(IGrupKomponenKey key)
+        public GrupKomponenType GetData(IGrupKomponenKey key)
         {
             const string sql = @"
                 SELECT
@@ -87,7 +86,7 @@ namespace Bilreg.Infrastructure.BillContext.TindakanSub.KomponenTarifAgg
         }
 
 
-        public IEnumerable<GrupKomponenModel> ListData()
+        public IEnumerable<GrupKomponenType> ListData()
         {
             const string sql = @"
                 SELECT
@@ -104,7 +103,7 @@ namespace Bilreg.Infrastructure.BillContext.TindakanSub.KomponenTarifAgg
 
     }
 
-    public class GrupKomponenDto : GrupKomponenModel
+    public class GrupKomponenDto : GrupKomponenType
     {
         public GrupKomponenDto() : base(string.Empty, string.Empty)
         {

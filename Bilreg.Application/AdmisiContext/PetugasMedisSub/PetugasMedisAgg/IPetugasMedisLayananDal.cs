@@ -1,11 +1,11 @@
-﻿using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasAgg;
+﻿using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
 using Nuna.Lib.DataAccessHelper;
 
 namespace Bilreg.Application.AdmisiContext.PetugasMedisSub.PetugasMedisAgg;
 
 public interface IPetugasMedisLayananDal :
-    IInsertBulk<PetugasMedisLayananModel>,
+    IInsertBulk<PetugasMedisLayananType>,
     IDelete<IPetugasMedisKey>,
-    IListData<PetugasMedisLayananModel, IPetugasMedisKey>
+    IListData<PetugasMedisLayananType, IPetugasMedisKey>
 {
 }

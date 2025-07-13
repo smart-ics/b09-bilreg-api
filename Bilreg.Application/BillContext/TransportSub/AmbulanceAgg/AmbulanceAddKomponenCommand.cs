@@ -1,6 +1,6 @@
 using Bilreg.Application.AdmisiContext.PetugasMedisSub.PetugasMedisAgg;
 using Bilreg.Application.BillContext.TindakanSub.KomponenTarifAgg;
-using Bilreg.Domain.BillContext.TindakanSub.KomponenTarifAgg;
+using Bilreg.Domain.BillContext.TindakanSub.TarifFeature;
 using Bilreg.Domain.BillContext.TransportSub.AmbulanceAgg;
 using CommunityToolkit.Diagnostics;
 using FluentAssertions;
@@ -102,7 +102,7 @@ public class AmbulanceAddKomponenHandlerTest
     {
         var request = new AmbulanceAddKomponenCommand("A", "B", 1, false);
         _komponenTarifDal.Setup(x => x.GetData(It.IsAny<IKomponenKey>()))
-            .Returns(null as KomponenModel);
+            .Returns(null as KomponenType);
         
         var actual = async () => await _sut.Handle(request, CancellationToken.None);
         await actual.Should().ThrowAsync<KeyNotFoundException>();

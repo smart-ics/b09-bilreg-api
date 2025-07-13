@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasAgg;
+﻿using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
 using Bilreg.Domain.AdmisiContext.PetugasMedisSub.SatTugasAgg;
 using CommunityToolkit.Diagnostics;
 using FluentAssertions;
@@ -31,7 +31,7 @@ public class PetugasMedisRemoveSatTugasHandler : IRequestHandler<PetugasMedisRem
 
         // BUILD
         var petugasMedis = _factory.Load(request);
-        petugasMedis.Remove((PetugasMedisSatTugasModel x) => x.SatTugasId == request.SatuanTugasId);
+        petugasMedis.Remove((PetugasMedisSatTugasType x) => x.SatTugasId == request.SatuanTugasId);
 
         // WRITE
         _=_writer.Save(petugasMedis);
@@ -123,7 +123,7 @@ public class PetugasMedisRemoveSatTugasHandlerTest
         await _sut.Handle(request, CancellationToken.None);
 
         // ASSERT
-        petugasMedis.Verify(x => x.Remove(It.IsAny<Predicate<PetugasMedisSatTugasModel>>()), Times.Once);
+        petugasMedis.Verify(x => x.Remove(It.IsAny<Predicate<PetugasMedisSatTugasType>>()), Times.Once);
         _writer.Verify(x => x.Save(petugasMedis.Object), Times.Once);
     }
 }

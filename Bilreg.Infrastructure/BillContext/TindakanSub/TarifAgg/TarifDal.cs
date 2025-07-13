@@ -1,7 +1,7 @@
 using System.Data;
 using System.Data.SqlClient;
 using Bilreg.Application.BillContext.TindakanSub.TarifAgg;
-using Bilreg.Domain.BillContext.TindakanSub.TarifAgg;
+using Bilreg.Domain.BillContext.TindakanSub.TarifFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;

@@ -1,4 +1,4 @@
-using Bilreg.Domain.BillContext.TindakanSub.TarifAgg;
+using Bilreg.Domain.BillContext.TindakanSub.TarifFeature;
 using Nuna.Lib.DataAccessHelper;
 
 namespace Bilreg.Application.BillContext.TindakanSub.TarifAgg;

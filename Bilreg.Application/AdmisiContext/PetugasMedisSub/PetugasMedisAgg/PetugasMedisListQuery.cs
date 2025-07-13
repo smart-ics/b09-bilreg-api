@@ -1,5 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasAgg;
-using FluentAssertions;
+﻿using FluentAssertions;
 using MediatR;
 using Moq;
 using Xunit;

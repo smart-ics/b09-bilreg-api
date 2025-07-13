@@ -1,5 +1,4 @@
 ﻿using Bilreg.Domain.AdmisiContext.JaminanSub.JaminanAgg;
-using Bilreg.Domain.BillContext.TindakanSub.KomponenTarifAgg;
 using Bilreg.Infrastructure.Helpers;
 using FluentAssertions;
 using Nuna.Lib.TransactionHelper;
@@ -18,7 +17,7 @@ namespace Bilreg.Infrastructure.BillContext.TindakanSub.KomponenTarifAgg
         [Fact]
         public void InsertTest() {
             using var trans = TransHelper.NewScope();
-            var expected = new GrupKomponenModel("A", "B");
+            var expected = new GrupKomponenType("A", "B");
             _sut.Insert(expected);
         }
 
@@ -26,7 +25,7 @@ namespace Bilreg.Infrastructure.BillContext.TindakanSub.KomponenTarifAgg
         public void GetTest()
         {
             using var trans = TransHelper.NewScope();
-            var expected = new GrupKomponenModel("A", "B");
+            var expected = new GrupKomponenType("A", "B");
             _sut.Insert(expected);
 
 
@@ -37,7 +36,7 @@ namespace Bilreg.Infrastructure.BillContext.TindakanSub.KomponenTarifAgg
         public void ListTest()
         {
             using var trans = TransHelper.NewScope();
-            var expected = new GrupKomponenModel("A", "B");
+            var expected = new GrupKomponenType("A", "B");
             _sut.Insert(expected);
 
             var actual = _sut.ListData();
@@ -49,7 +48,7 @@ namespace Bilreg.Infrastructure.BillContext.TindakanSub.KomponenTarifAgg
         public void DeleteTest()
         {
             using var trans = TransHelper.NewScope();
-            var expected = new GrupKomponenModel("A","B");
+            var expected = new GrupKomponenType("A","B");
             _sut.Delete(expected);
         }
 
@@ -57,7 +56,7 @@ namespace Bilreg.Infrastructure.BillContext.TindakanSub.KomponenTarifAgg
         public void UpdateTest()
         {
             using var trans = TransHelper.NewScope();
-            var expected = new GrupKomponenModel("A", "B");
+            var expected = new GrupKomponenType("A", "B");
             _sut.Update(expected);
         }
     }

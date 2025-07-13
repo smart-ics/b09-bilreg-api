@@ -6,7 +6,7 @@ using Microsoft.Extensions.Options;
 using Nuna.Lib.TransactionHelper;
 using System.Data.SqlClient;
 using System.Data;
-using Bilreg.Domain.BillContext.TindakanSub.KomponenTarifAgg;
+using Bilreg.Domain.BillContext.TindakanSub.TarifFeature;
 using Xunit;
 using Nuna.Lib.DataAccessHelper;
 

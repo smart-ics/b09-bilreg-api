@@ -1,11 +1,11 @@
 ﻿using Bilreg.Application.BillContext.TindakanSub.RekapKomponenAgg;
-using Bilreg.Domain.BillContext.TindakanSub.KomponenTarifAgg;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
 using System.Data;
 using System.Data.SqlClient;
+using Bilreg.Domain.BillContext.TindakanSub.TarifFeature;
 
 namespace Bilreg.Infrastructure.BillContext.TindakanSub.RekapKomponenAgg
 {

@@ -1,5 +1,5 @@
 using Bilreg.Application.AdmisiContext.JaminanSub.GrupJaminanAgg;
-using Bilreg.Domain.BillContext.TindakanSub.KomponenTarifAgg;
+using Bilreg.Domain.BillContext.TindakanSub.TarifFeature;
 using CommunityToolkit.Diagnostics;
 using FluentAssertions;
 using MediatR;

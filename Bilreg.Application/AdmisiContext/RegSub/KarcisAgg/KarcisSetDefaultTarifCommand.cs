@@ -1,7 +1,7 @@
 using Bilreg.Application.AdmisiContext.PetugasMedisSub.PetugasMedisAgg;
 using Bilreg.Application.BillContext.TindakanSub.TarifAgg;
 using Bilreg.Domain.AdmisiContext.RegSub.KarcisAgg;
-using Bilreg.Domain.BillContext.TindakanSub.TarifAgg;
+using Bilreg.Domain.BillContext.TindakanSub.TarifFeature;
 using CommunityToolkit.Diagnostics;
 using FluentAssertions;
 using MediatR;

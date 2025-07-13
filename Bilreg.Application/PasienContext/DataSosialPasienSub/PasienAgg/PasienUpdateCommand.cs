@@ -13,6 +13,7 @@ using Bilreg.Domain.PasienContext.StatusSosialSub.PendidikanDkAgg;
 using Bilreg.Domain.PasienContext.StatusSosialSub.StatusKawinDkAgg;
 using Bilreg.Domain.PasienContext.SukuFeature;
 using MediatR;
+using SukuType = Bilreg.Domain.BillContext.TindakanSub.KomponenTarifAgg.SukuType;
 
 namespace Bilreg.Application.PasienContext.DataSosialPasienSub.PasienAgg;
 

@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasAgg;
+﻿using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
 using Nuna.Lib.CleanArchHelper;
 
 namespace Bilreg.Application.AdmisiContext.PetugasMedisSub.PetugasMedisAgg;
@@ -24,11 +24,11 @@ public class PetugasMedisFactory : AggFactory<PetugasMedisModel, IPetugasMedisKe
             ?? throw new KeyNotFoundException($"{key.PetugasMedisId} not found");
 
         var listLayanan = _petugasMedisLayananDal.ListData(key)
-            ?? new List<PetugasMedisLayananModel>();
+            ?? new List<PetugasMedisLayananType>();
         petugasMedis.Attach(listLayanan);
 
         var listSatTugas = _petugasMedisSatTugasDal.ListData(key)
-            ?? new List<PetugasMedisSatTugasModel>();
+            ?? new List<PetugasMedisSatTugasType>();
         petugasMedis.Attach(listSatTugas);
 
         return petugasMedis;

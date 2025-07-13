@@ -1,5 +1,5 @@
 using Bilreg.Application.AdmisiContext.JaminanSub.JaminanAgg;
-using Bilreg.Domain.BillContext.TindakanSub.KomponenTarifAgg;
+using Bilreg.Domain.BillContext.TindakanSub.TarifFeature;
 using CommunityToolkit.Diagnostics;
 using FluentAssertions;
 using MediatR;
@@ -27,7 +27,7 @@ public class KomponenTarifSaveHandler: IRequestHandler<KomponenTarifSaveCommand>
         Guard.IsNotWhiteSpace(request.KomponenName);
         
         // BUILD
-        var komponenTarif = new KomponenModel(request.KomponenId, request.KomponenName);
+        var komponenTarif = new KomponenType(request.KomponenId, request.KomponenName);
         
         // WRITE
         _writer.Save(komponenTarif);

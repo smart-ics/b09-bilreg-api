@@ -1,5 +1,5 @@
 ﻿using Bilreg.Application.AdmisiContext.PetugasMedisSub.SatTugasAgg;
-using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasAgg;
+using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
 using Bilreg.Domain.AdmisiContext.PetugasMedisSub.SatTugasAgg;
 using CommunityToolkit.Diagnostics;
 using FluentAssertions;

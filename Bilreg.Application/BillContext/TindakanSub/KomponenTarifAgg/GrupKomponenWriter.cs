@@ -1,9 +1,8 @@
-﻿using Bilreg.Domain.BillContext.TindakanSub.KomponenTarifAgg;
-using Nuna.Lib.CleanArchHelper;
+﻿using Nuna.Lib.CleanArchHelper;
 
 namespace Bilreg.Application.BillContext.TindakanSub.KomponenTarifAgg
 {
-    public interface IGrupKomponenWriter : INunaWriterWithReturn<GrupKomponenModel>
+    public interface IGrupKomponenWriter : INunaWriterWithReturn<GrupKomponenType>
     {
         public void Delete(IGrupKomponenKey key);
     }
@@ -14,14 +13,14 @@ namespace Bilreg.Application.BillContext.TindakanSub.KomponenTarifAgg
         {
             _grupKomponenDal = grupKomponenDal;
         }
-        public GrupKomponenModel Save(GrupKomponenModel model)
+        public GrupKomponenType Save(GrupKomponenType type)
         {
-            var grupKomponenDb = _grupKomponenDal.GetData(model);
+            var grupKomponenDb = _grupKomponenDal.GetData(type);
             if (grupKomponenDb is null)
-                _grupKomponenDal.Insert(model);
+                _grupKomponenDal.Insert(type);
             else
-                _grupKomponenDal.Update(model);
-            return model;
+                _grupKomponenDal.Update(type);
+            return type;
         }
         public void Delete(IGrupKomponenKey key)
         {

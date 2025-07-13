@@ -1,7 +1,7 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
 using Bilreg.Application.AdmisiContext.PetugasMedisSub.PetugasMedisAgg;
-using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasAgg;
+using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
 using FluentAssertions;
@@ -21,7 +21,7 @@ public class PetugasMedisSatTugasDal : IPetugasMedisSatTugasDal
         _opt = opt.Value;
     }
 
-    public void Insert(IEnumerable<PetugasMedisSatTugasModel> listModel)
+    public void Insert(IEnumerable<PetugasMedisSatTugasType> listModel)
     {
         //  INSERT BULK
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
@@ -53,7 +53,7 @@ public class PetugasMedisSatTugasDal : IPetugasMedisSatTugasDal
         conn.Execute(sql, dp);
     }
 
-    public IEnumerable<PetugasMedisSatTugasModel> ListData(IPetugasMedisKey filter)
+    public IEnumerable<PetugasMedisSatTugasType> ListData(IPetugasMedisKey filter)
     {
         const string sql = @"
             SELECT 
@@ -73,7 +73,7 @@ public class PetugasMedisSatTugasDal : IPetugasMedisSatTugasDal
     }
 }
 
-public class PetugasMedisSatTugasDto() : PetugasMedisSatTugasModel(string.Empty, string.Empty, string.Empty)
+public class PetugasMedisSatTugasDto() : PetugasMedisSatTugasType(string.Empty, string.Empty, string.Empty)
 {
     public string fs_kd_peg { get => PetugasMedisId; set => PetugasMedisId = value; }
     public string fs_kd_sat_tugas { get => SatTugasId; set => SatTugasId = value; }
@@ -94,16 +94,16 @@ public class PetugasMedisSatTugasDalTest
     public void InsertTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = new PetugasMedisSatTugasModel("A", "B", "C");
+        var expected = new PetugasMedisSatTugasType("A", "B", "C");
         expected.SetUtama();
-        _sut.Insert(new List<PetugasMedisSatTugasModel> { expected });
+        _sut.Insert(new List<PetugasMedisSatTugasType> { expected });
     }
 
     [Fact]
     public void DeleteTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = new PetugasMedisSatTugasModel("A", "B", "C");
+        var expected = new PetugasMedisSatTugasType("A", "B", "C");
         expected.SetUtama();
         _sut.Delete(expected);
     }
@@ -112,10 +112,10 @@ public class PetugasMedisSatTugasDalTest
     public void ListDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = new PetugasMedisSatTugasModel("A", "B", "");
+        var expected = new PetugasMedisSatTugasType("A", "B", "");
         expected.SetUtama();
-        _sut.Insert(new List<PetugasMedisSatTugasModel> { expected });
+        _sut.Insert(new List<PetugasMedisSatTugasType> { expected });
         var actual = _sut.ListData(expected);
-        actual.Should().BeEquivalentTo(new List<PetugasMedisSatTugasModel> { expected });
+        actual.Should().BeEquivalentTo(new List<PetugasMedisSatTugasType> { expected });
     }
 }

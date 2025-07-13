@@ -9,6 +9,7 @@ using Bilreg.Domain.PasienContext.StatusSosialSub.PekerjaanDkAgg;
 using Bilreg.Domain.PasienContext.StatusSosialSub.PendidikanDkAgg;
 using Bilreg.Domain.PasienContext.StatusSosialSub.StatusKawinDkAgg;
 using Nuna.Lib.ValidationHelper;
+using SukuType = Bilreg.Domain.BillContext.TindakanSub.KomponenTarifAgg.SukuType;
 
 namespace Bilreg.Infrastructure.PasienContext.DataSosialPasienSub.PasienAgg;
 

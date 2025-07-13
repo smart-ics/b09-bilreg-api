@@ -1,7 +1,7 @@
 using System.Data;
 using System.Data.SqlClient;
 using Bilreg.Application.BillContext.TindakanSub.KomponenTarifAgg;
-using Bilreg.Domain.BillContext.TindakanSub.KomponenTarifAgg;
+using Bilreg.Domain.BillContext.TindakanSub.TarifFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
 using FluentAssertions;
@@ -20,21 +20,21 @@ public class KomponenTarifDal: IKomponenTarifDal
     {
         _opt = opt.Value;
     }
-    public void Insert(KomponenModel model)
+    public void Insert(KomponenType type)
     {
         const string sql = @"
             INSERT INTO ta_detil_tarif (fs_kd_detil_tarif, fs_nm_detil_tarif)
             VALUES(@fs_kd_detil_tarif, @fs_nm_detil_tarif)";
 
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_detil_tarif", model.KomponenId, SqlDbType.VarChar);
-        dp.AddParam("@fs_nm_detil_tarif", model.KomponenName, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_detil_tarif", type.KomponenId, SqlDbType.VarChar);
+        dp.AddParam("@fs_nm_detil_tarif", type.KomponenName, SqlDbType.VarChar);
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
 
-    public void Update(KomponenModel model)
+    public void Update(KomponenType type)
     {
         const string sql = @"
             UPDATE
@@ -45,8 +45,8 @@ public class KomponenTarifDal: IKomponenTarifDal
                 fs_kd_detil_tarif = @fs_kd_detil_tarif";
 
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_detil_tarif", model.KomponenId, SqlDbType.VarChar);
-        dp.AddParam("@fs_nm_detil_tarif", model.KomponenName, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_detil_tarif", type.KomponenId, SqlDbType.VarChar);
+        dp.AddParam("@fs_nm_detil_tarif", type.KomponenName, SqlDbType.VarChar);
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -67,7 +67,7 @@ public class KomponenTarifDal: IKomponenTarifDal
         conn.Execute(sql, dp);
     }
 
-    public KomponenModel GetData(IKomponenKey key)
+    public KomponenType GetData(IKomponenKey key)
     {
         const string sql = @"
             SELECT fs_kd_detil_tarif, fs_nm_detil_tarif
@@ -84,7 +84,7 @@ public class KomponenTarifDal: IKomponenTarifDal
         return result;
     }
 
-    public IEnumerable<KomponenModel> ListData()
+    public IEnumerable<KomponenType> ListData()
     {
         const string sql = @"
             SELECT fs_kd_detil_tarif, fs_nm_detil_tarif
@@ -96,7 +96,7 @@ public class KomponenTarifDal: IKomponenTarifDal
     }
 }
 
-public class KomponenDto() : KomponenModel(string.Empty, String.Empty)
+public class KomponenDto() : KomponenType(string.Empty, String.Empty)
 {
     public string fs_kd_detil_tarif { get => KomponenId; set => KomponenId = value; }
     public string fs_nm_detil_tarif { get => KomponenName; set => KomponenName = value; }

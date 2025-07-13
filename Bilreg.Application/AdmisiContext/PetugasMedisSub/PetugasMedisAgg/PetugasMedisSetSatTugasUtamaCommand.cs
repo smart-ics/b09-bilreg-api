@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasAgg;
+﻿using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
 using Bilreg.Domain.AdmisiContext.PetugasMedisSub.SatTugasAgg;
 using CommunityToolkit.Diagnostics;
 using FluentAssertions;
@@ -102,7 +102,7 @@ public class SetSatTugasUtamaHandlerTest
         var petugasMedis = new Mock<PetugasMedisModel>();
 
         petugasMedis.Setup(x => x.ListSatTugas)
-            .Returns(new List<PetugasMedisSatTugasModel>());
+            .Returns(new List<PetugasMedisSatTugasType>());
 
         _factory.Setup(x => x.Load(It.IsAny<IPetugasMedisKey>()))
             .Returns(petugasMedis.Object);
@@ -120,11 +120,11 @@ public class SetSatTugasUtamaHandlerTest
     {
         // ARRANGE
         var request = new SetSatTugasUtamaCommand("PetugasMedis123", "SatTugas123");
-        var satTugas = new Mock<PetugasMedisSatTugasModel>();
+        var satTugas = new Mock<PetugasMedisSatTugasType>();
         var petugasMedis = new Mock<PetugasMedisModel>();
 
         petugasMedis.Setup(x => x.ListSatTugas)
-            .Returns(new List<PetugasMedisSatTugasModel> { satTugas.Object });
+            .Returns(new List<PetugasMedisSatTugasType> { satTugas.Object });
 
         _factory.Setup(x => x.Load(It.IsAny<IPetugasMedisKey>()))
             .Returns(petugasMedis.Object);

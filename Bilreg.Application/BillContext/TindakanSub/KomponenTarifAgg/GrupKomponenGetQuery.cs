@@ -1,5 +1,4 @@
-﻿using Bilreg.Domain.BillContext.TindakanSub.KomponenTarifAgg;
-using MediatR;
+﻿using MediatR;
 
 namespace Bilreg.Application.BillContext.TindakanSub.KomponenTarifAgg
 {

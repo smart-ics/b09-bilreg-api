@@ -1,5 +1,5 @@
 using Bilreg.Domain.AdmisiContext.RegSub.KarcisAgg;
-using Bilreg.Domain.BillContext.TindakanSub.TarifAgg;
+using Bilreg.Domain.BillContext.TindakanSub.TarifFeature;
 using Bilreg.Infrastructure.Helpers;
 using FluentAssertions;
 using Nuna.Lib.TransactionHelper;

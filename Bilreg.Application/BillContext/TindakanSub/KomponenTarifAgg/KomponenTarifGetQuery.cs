@@ -1,6 +1,6 @@
 using Bilreg.Application.AdmisiContext.JaminanSub.GrupJaminanAgg;
 using Bilreg.Domain.AdmisiContext.JaminanSub.GrupJaminanAgg;
-using Bilreg.Domain.BillContext.TindakanSub.KomponenTarifAgg;
+using Bilreg.Domain.BillContext.TindakanSub.TarifFeature;
 using FluentAssertions;
 using MediatR;
 using Moq;
@@ -49,7 +49,7 @@ public class KomponenTarifGetHandlerTest
     {
         var request = new KomponenTarifGetQuery("A");
         _komponenTarifDal.Setup(x => x.GetData(It.IsAny<IKomponenKey>()))
-            .Returns(null as KomponenModel);
+            .Returns(null as KomponenType);
         
         var actual = async () => await _sut.Handle(request, CancellationToken.None);
         await actual.Should().ThrowAsync<KeyNotFoundException>();
@@ -59,7 +59,7 @@ public class KomponenTarifGetHandlerTest
     public async Task GivenValidKomponenId_ThenReturnExpected_Test()
     {
         var request = new KomponenTarifGetQuery("A");
-        var expected = new KomponenModel("A", "B");
+        var expected = new KomponenType("A", "B");
         var expectedResponse =
             new KomponenTarifGetResponse(expected.KomponenId, expected.KomponenName);
         _komponenTarifDal.Setup(x => x.GetData(It.IsAny<IKomponenKey>()))

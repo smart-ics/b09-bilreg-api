@@ -18,6 +18,7 @@ using Nuna.Lib.DataAccessHelper;
 using Nuna.Lib.TransactionHelper;
 using Nuna.Lib.ValidationHelper;
 using Xunit;
+using SukuType = Bilreg.Domain.BillContext.TindakanSub.KomponenTarifAgg.SukuType;
 
 namespace Bilreg.Infrastructure.PasienContext.DataSosialPasienSub.PasienAgg;
 

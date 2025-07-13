@@ -1,5 +1,5 @@
 ﻿using Bilreg.Application.AdmisiContext.PetugasMedisSub.SmfAgg;
-using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasAgg;
+using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
 using Bilreg.Domain.AdmisiContext.PetugasMedisSub.SmfAgg;
 using CommunityToolkit.Diagnostics;
 using MediatR;

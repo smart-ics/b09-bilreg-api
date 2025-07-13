@@ -1,7 +1,7 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
 using Bilreg.Application.AdmisiContext.PetugasMedisSub.PetugasMedisAgg;
-using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasAgg;
+using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
 using FluentAssertions;
@@ -21,7 +21,7 @@ public class PetugasMedisLayananDal : IPetugasMedisLayananDal
         _opt = opt.Value;
     }
 
-    public void Insert(IEnumerable<PetugasMedisLayananModel> listModel)
+    public void Insert(IEnumerable<PetugasMedisLayananType> listModel)
     {
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         using var bcp = new SqlBulkCopy(conn);
@@ -52,7 +52,7 @@ public class PetugasMedisLayananDal : IPetugasMedisLayananDal
         conn.Execute(sql, dp);
     }
 
-    public IEnumerable<PetugasMedisLayananModel> ListData(IPetugasMedisKey filter)
+    public IEnumerable<PetugasMedisLayananType> ListData(IPetugasMedisKey filter)
     {
         const string sql = @"
             SELECT 
@@ -72,7 +72,7 @@ public class PetugasMedisLayananDal : IPetugasMedisLayananDal
     }
 }
 
-public class PetugasMedisLayananDto() : PetugasMedisLayananModel(string.Empty, string.Empty, string.Empty)
+public class PetugasMedisLayananDto() : PetugasMedisLayananType(string.Empty, string.Empty, string.Empty)
 {
     public string fs_kd_peg { get => PetugasMedisId; set => PetugasMedisId = value; }
     public string fs_kd_layanan { get =>LayananId; set => LayananId = value; }
@@ -93,16 +93,16 @@ public class PetugasMedisLayananTest
     public void InsertTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = new PetugasMedisLayananModel("A", "B", "C");
+        var expected = new PetugasMedisLayananType("A", "B", "C");
         expected.SetUtama();
-        _sut.Insert(new List<PetugasMedisLayananModel>{expected});
+        _sut.Insert(new List<PetugasMedisLayananType>{expected});
     }
     
     [Fact]
     public void DeleteTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = new PetugasMedisLayananModel("A", "B", "C");
+        var expected = new PetugasMedisLayananType("A", "B", "C");
         expected.SetUtama();
         _sut.Delete(expected);
     }
@@ -111,10 +111,10 @@ public class PetugasMedisLayananTest
     public void ListDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = new PetugasMedisLayananModel("A", "B", "");
+        var expected = new PetugasMedisLayananType("A", "B", "");
         expected.SetUtama();
-        _sut.Insert(new List<PetugasMedisLayananModel>{expected});
+        _sut.Insert(new List<PetugasMedisLayananType>{expected});
         var actual = _sut.ListData(expected);
-        actual.Should().BeEquivalentTo(new List<PetugasMedisLayananModel>{expected});
+        actual.Should().BeEquivalentTo(new List<PetugasMedisLayananType>{expected});
     }
 }

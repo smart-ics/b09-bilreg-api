@@ -1,5 +1,4 @@
-﻿using Bilreg.Domain.BillContext.TindakanSub.KomponenTarifAgg;
-using MediatR;
+﻿using MediatR;
 
 namespace Bilreg.Application.BillContext.TindakanSub.KomponenTarifAgg
 {
@@ -25,7 +24,7 @@ namespace Bilreg.Application.BillContext.TindakanSub.KomponenTarifAgg
 
             //  BUILD
             var grupKomponen = _grupKomponenDal.GetData(request)
-                ?? new GrupKomponenModel(request.GrupKomponenId, request.GrupKomponenName);
+                ?? new GrupKomponenType(request.GrupKomponenId, request.GrupKomponenName);
 
             // WRITE
             _ = _writer.Save(grupKomponen);

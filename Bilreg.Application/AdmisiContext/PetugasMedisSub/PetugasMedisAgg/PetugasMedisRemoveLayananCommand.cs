@@ -1,5 +1,5 @@
 ﻿using Bilreg.Domain.AdmisiContext.LayananSub.LayananAgg;
-using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasAgg;
+using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
 using CommunityToolkit.Diagnostics;
 using FluentAssertions;
 using MediatR;
@@ -31,7 +31,7 @@ public class PetugasMedisRemoveLayananHandler : IRequestHandler<PetugasMedisRemo
 
         // BUILD
         var petugasMedis = _factory.Load(request);
-        petugasMedis.Remove((PetugasMedisLayananModel x) => x.LayananId == request.LayananId);
+        petugasMedis.Remove((PetugasMedisLayananType x) => x.LayananId == request.LayananId);
 
         // WRITE
         _ = _writer.Save(petugasMedis);
@@ -123,7 +123,7 @@ public class PetugasMedisRemoveLayananHandlerTest
         await _sut.Handle(request, CancellationToken.None);
 
         // ASSERT
-        petugasMedis.Verify(x => x.Remove(It.IsAny<Predicate<PetugasMedisLayananModel>>()), Times.Once);
+        petugasMedis.Verify(x => x.Remove(It.IsAny<Predicate<PetugasMedisLayananType>>()), Times.Once);
         _writer.Verify(x => x.Save(petugasMedis.Object), Times.Once);
     }
 }
