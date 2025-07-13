@@ -5,7 +5,6 @@ using Bilreg.Application.PasienContext.StatusSosialSub.PendidikanDkAgg;
 using Bilreg.Application.PasienContext.StatusSosialSub.StatusKawinDkAgg;
 using Bilreg.Application.PasienContext.StatusSosialSub.SukuAgg;
 using Bilreg.Domain.PasienContext;
-using Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
 using Bilreg.Domain.PasienContext.DemografiSub.KelurahanAgg;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.PasienContext.StatusSosialSub.AgamaAgg;
@@ -21,7 +20,7 @@ public record PasienUpdateCommand(
     string PasienId,
     AlamatType Alamat,
     string KelurahanId,
-    IdentificationType Identification,
+    IdentitasType Identitas,
     ContactType Contact,
     PasienKeluargaType PasienKeluarga,
     string StatusKawinId,
@@ -71,7 +70,7 @@ public class PasienUpdateHandler : IRequestHandler<PasienUpdateCommand>
         var kelurahan = _kelurahanDal
             .GetData(new KelurahanKey(request.KelurahanId))
             ?? throw new KeyNotFoundException($"Kelurahan id : '{request.KelurahanId}' not found");
-        pasien.SetAdministrativeInfo(request.Alamat, kelurahan, request.Identification, 
+        pasien.SetAdministrativeInfo(request.Alamat, kelurahan, request.Identitas, 
             request.Contact, request.PasienKeluarga);
 
         var statusKawin = _statusKawinDkDal

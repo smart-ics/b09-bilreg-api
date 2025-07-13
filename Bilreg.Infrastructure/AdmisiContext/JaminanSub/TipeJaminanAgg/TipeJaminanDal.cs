@@ -9,7 +9,6 @@ using System.Data;
 using System.Data.SqlClient;
 using Bilreg.Domain.AdmisiContext.JaminanSub.CaraBayarDkAgg;
 using Bilreg.Domain.AdmisiContext.JaminanSub.GrupJaminanAgg;
-using Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
 
 namespace Bilreg.Infrastructure.AdmisiContext.JaminanSub.TipeJaminanAgg;
 

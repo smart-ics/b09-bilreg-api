@@ -1,5 +1,4 @@
 ﻿using Bilreg.Domain.PasienContext;
-using Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
 using Bilreg.Domain.PasienContext.DemografiSub.KabupatenAgg;
 using Bilreg.Domain.PasienContext.DemografiSub.KecamatanAgg;
 using Bilreg.Domain.PasienContext.DemografiSub.KelurahanAgg;
@@ -90,7 +89,7 @@ internal class PasienDto
         var kecamatan = new KecamatanType(fs_kd_kecamatan, fs_nm_kecamatan, kabupaten);
         var kelurahan = new KelurahanModel(fs_kd_kelurahan, fs_nm_kelurahan, 
             fs_kd_pos_pasien, kecamatan);
-        var identitas = new IdentificationType(fs_jenis_id, fs_kd_identitas, fs_no_kk);
+        var identitas = new IdentitasType(fs_jenis_id, fs_kd_identitas, fs_no_kk);
         var contact = new ContactType(fs_email, fs_tlp_pasien, fs_no_hp);
         var contactKeluarga = new ContactType(string.Empty, fs_telp_keluarga, string.Empty);
         var addressKeluarga = new AlamatType(fs_alm1_keluarga, fs_alm2_keluarga, string.Empty, 

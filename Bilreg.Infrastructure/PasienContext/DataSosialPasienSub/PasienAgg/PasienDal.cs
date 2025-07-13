@@ -2,7 +2,6 @@
 using System.Data.SqlClient;
 using Bilreg.Application.PasienContext.DataSosialPasienSub.PasienAgg;
 using Bilreg.Domain.PasienContext;
-using Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
 using Bilreg.Domain.PasienContext.DemografiSub.KecamatanAgg;
 using Bilreg.Domain.PasienContext.DemografiSub.KelurahanAgg;
 using Bilreg.Domain.PasienContext.PasienFeature;
@@ -83,12 +82,12 @@ public class PasienDal : IPasienDal
         dp.AddParam("@fs_kd_pos_pasien", model.Address.KodePos, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_kelurahan", model.Kelurahan.KelurahanId, SqlDbType.VarChar);
         //
-        dp.AddParam("@fs_jenis_id", model.Identification.JenisId, SqlDbType.VarChar);
-        dp.AddParam("@fs_kd_identitas", model.Identification.NomorId, SqlDbType.VarChar);
-        dp.AddParam("@fs_no_kk", model.Identification.NomorKk, SqlDbType.VarChar);
-        dp.AddParam("@fs_email", model.Contact.Email, SqlDbType.VarChar);
-        dp.AddParam("@fs_tlp_pasien", model.Contact.NoTelp, SqlDbType.VarChar);
-        dp.AddParam("@fs_no_hp", model.Contact.NoHp, SqlDbType.VarChar);
+        dp.AddParam("@fs_jenis_id", model.ListIdentification.JenisId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_identitas", model.ListIdentification.NomorId, SqlDbType.VarChar);
+        dp.AddParam("@fs_no_kk", model.ListIdentification.NomorKk, SqlDbType.VarChar);
+        dp.AddParam("@fs_email", model.ListContact.Email, SqlDbType.VarChar);
+        dp.AddParam("@fs_tlp_pasien", model.ListContact.NoTelp, SqlDbType.VarChar);
+        dp.AddParam("@fs_no_hp", model.ListContact.NoHp, SqlDbType.VarChar);
         //
         dp.AddParam("@fs_nm_keluarga", model.PasienKeluarga.Name, SqlDbType.VarChar);
         dp.AddParam("@fs_hub_keluarga", model.PasienKeluarga.Relasi, SqlDbType.VarChar);
@@ -177,12 +176,12 @@ public class PasienDal : IPasienDal
         dp.AddParam("@fs_kd_pos_pasien", model.Address.KodePos, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_kelurahan", model.Kelurahan.KelurahanId, SqlDbType.VarChar);
         //
-        dp.AddParam("@fs_jenis_id", model.Identification.JenisId, SqlDbType.VarChar);
-        dp.AddParam("@fs_kd_identitas", model.Identification.NomorId, SqlDbType.VarChar);
-        dp.AddParam("@fs_no_kk", model.Identification.NomorKk, SqlDbType.VarChar);
-        dp.AddParam("@fs_email", model.Contact.Email, SqlDbType.VarChar);
-        dp.AddParam("@fs_tlp_pasien", model.Contact.NoTelp, SqlDbType.VarChar);
-        dp.AddParam("@fs_no_hp", model.Contact.NoHp, SqlDbType.VarChar);
+        dp.AddParam("@fs_jenis_id", model.ListIdentification.JenisId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_identitas", model.ListIdentification.NomorId, SqlDbType.VarChar);
+        dp.AddParam("@fs_no_kk", model.ListIdentification.NomorKk, SqlDbType.VarChar);
+        dp.AddParam("@fs_email", model.ListContact.Email, SqlDbType.VarChar);
+        dp.AddParam("@fs_tlp_pasien", model.ListContact.NoTelp, SqlDbType.VarChar);
+        dp.AddParam("@fs_no_hp", model.ListContact.NoHp, SqlDbType.VarChar);
         //
         dp.AddParam("@fs_nm_keluarga", model.PasienKeluarga.Name, SqlDbType.VarChar);
         dp.AddParam("@fs_hub_keluarga", model.PasienKeluarga.Relasi, SqlDbType.VarChar);
@@ -341,7 +340,7 @@ public class PasienDalTest
         result.SetAdministrativeInfo(
             AddressType.Default,  
             KelurahanModel.Default, 
-            IdentificationType.Default, 
+            IdentitasType.Default, 
             ContactType.Default, 
             PasienKeluargaType.Default);
         result.SetStatusSosial(

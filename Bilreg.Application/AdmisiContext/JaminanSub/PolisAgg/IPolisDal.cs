@@ -1,5 +1,4 @@
 ﻿using Bilreg.Domain.AdmisiContext.JaminanSub.PolisAgg;
-using Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Nuna.Lib.DataAccessHelper;
 

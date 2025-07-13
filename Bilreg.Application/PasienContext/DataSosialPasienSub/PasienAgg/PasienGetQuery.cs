@@ -1,6 +1,5 @@
 using Bilreg.Application.Helpers;
 using Bilreg.Application.PasienContext.ParamContext.ParamSistemAgg;
-using Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
 using Bilreg.Domain.PasienContext.DemografiSub.KelurahanAgg;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.PasienContext.StatusSosialSub.AgamaAgg;
@@ -94,8 +93,8 @@ public class PasienGetHandler: IRequestHandler<PasienGetQuery, PasienGetResponse
             pasien.GolDarah.ToString(),
             pasien.Alamat,
             pasien.Kelurahan.ToViewType(),
-            pasien.Identification,
-            pasien.Contact,
+            pasien.ListIdentification,
+            pasien.ListContact,
             pasien.PasienKeluarga,
             pasien.StatusKawin,
             pasien.Agama,

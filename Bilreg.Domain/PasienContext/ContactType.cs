@@ -1,6 +1,6 @@
 ﻿using Ardalis.GuardClauses;
 
-namespace Bilreg.Domain.PasienContext.PasienFeature;
+namespace Bilreg.Domain.PasienContext;
 
 public record ContactType
 {

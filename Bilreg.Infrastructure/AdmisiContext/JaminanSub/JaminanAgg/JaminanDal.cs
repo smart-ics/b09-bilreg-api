@@ -4,7 +4,6 @@ using Bilreg.Application.AdmisiContext.JaminanSub.JaminanAgg;
 using Bilreg.Domain.AdmisiContext.JaminanSub.CaraBayarDkAgg;
 using Bilreg.Domain.AdmisiContext.JaminanSub.GrupJaminanAgg;
 using Bilreg.Domain.AdmisiContext.JaminanSub.JaminanAgg;
-using Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
 using FluentAssertions;
