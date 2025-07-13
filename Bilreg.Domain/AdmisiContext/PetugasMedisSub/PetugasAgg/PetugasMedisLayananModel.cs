@@ -1,14 +1,17 @@
-﻿namespace Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasAgg;
+﻿using Bilreg.Domain.AdmisiContext.LayananSub.LayananAgg;
+using Ardalis.GuardClauses;
+namespace Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasAgg;
 
-public class PetugasMedisLayananModel(string petugasId, string layananId, string layananName) : IPetugasMedisKey
+public class PetugasMedisLayananModel
 {
-    public string PetugasMedisId { get; protected set; } = petugasId;
-    public string LayananId { get; protected set; } = layananId;
-    public string LayananName { get; protected set; } = layananName;
-    public bool IsUtama { get; protected set; }
+    public PetugasMedisLayananModel(LayananReff layanan, bool isUtama)
+    {
+        Guard.Against.Null(layanan);
+        
+        Layanan = layanan;
+        IsUtama = isUtama;
+    }
 
-    
-    public void SetUtama() => IsUtama = true;
-    public void UnsetUtama() => IsUtama = false;
-    public void SetId(string id) => PetugasMedisId = id;
+    public LayananReff Layanan { get; init; }
+    public bool IsUtama { get; init; }
 }

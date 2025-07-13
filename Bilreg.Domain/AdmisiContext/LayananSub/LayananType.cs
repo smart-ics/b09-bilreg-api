@@ -33,6 +33,8 @@ public record LayananType : ILayananKey
     public LayananDkReff LayananDk { get; init; }
     public TipeLayananDkType TipeLayananDk { get; init; }
     
+    public LayananReff ToReff() => new(LayananId, LayananName);
+    
     public static LayananType Default => new("-", "-", true,
         InstalasiType.Default.ToReff(), InstalasiDkType.Default, 
         LayananDkType.Default.ToReff(), TipeLayananDkType.Default);
@@ -43,3 +45,5 @@ public interface ILayananKey
 {
     string LayananId {get;}
 }
+
+public record LayananReff(string LayananId, string LayananName) : ILayananKey;
