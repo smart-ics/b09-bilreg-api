@@ -2,11 +2,12 @@ using Bilreg.Application.Helpers;
 using Bilreg.Application.PasienContext.ParamContext.ParamSistemAgg;
 using Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
 using Bilreg.Domain.PasienContext.DemografiSub.KelurahanAgg;
+using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.PasienContext.StatusSosialSub.AgamaAgg;
 using Bilreg.Domain.PasienContext.StatusSosialSub.PekerjaanDkAgg;
 using Bilreg.Domain.PasienContext.StatusSosialSub.PendidikanDkAgg;
 using Bilreg.Domain.PasienContext.StatusSosialSub.StatusKawinDkAgg;
-using Bilreg.Domain.PasienContext.StatusSosialSub.SukuAgg;
+using Bilreg.Domain.PasienContext.SukuFeature;
 using CommunityToolkit.Diagnostics;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
@@ -25,14 +26,13 @@ public record PasienGetResponse(
     string Gender,
     string IbuKandung,
     string GolDarah,
-    AddressType Address,
-    KelurahanViewType Kelurahan,
+    AddressType AKelurahanReffahanViewType Kelurahan,
     IdentityType Identity,
     ContactType Contact,
     KeluargaType Keluarga,
     StatusKawinDkModel StatusKawin,
     AgamaModel Agama,
-    SukuModel Suku,
+    SukuType Suku,
     PendidikanDkModel PendidikanDk,
     PekerjaanDkModel PekerjaanDk
 );
@@ -92,16 +92,16 @@ public class PasienGetHandler: IRequestHandler<PasienGetQuery, PasienGetResponse
             pasien.Gender.ToString(),
             pasien.IbuKandung,
             pasien.GolDarah.ToString(),
-            pasien.Address,
+            pasien.Alamat,
             pasien.Kelurahan.ToViewType(),
-            pasien.Identity,
+            pasien.Identification,
             pasien.Contact,
-            pasien.Keluarga,
+            pasien.PasienKeluarga,
             pasien.StatusKawin,
             pasien.Agama,
             pasien.Suku,
             pasien.Pendidikan,
-            pasien.Pekerjaan
+            pasien.PekerjaanDk
         );
     }
 }

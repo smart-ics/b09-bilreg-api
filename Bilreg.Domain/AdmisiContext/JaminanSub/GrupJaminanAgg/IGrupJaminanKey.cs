@@ -1,5 +1,4 @@
-﻿using CommunityToolkit.Diagnostics;
-
+﻿
 namespace Bilreg.Domain.AdmisiContext.JaminanSub.GrupJaminanAgg;
 
 public interface IGrupJaminanKey

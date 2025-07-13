@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.PasienContext.StatusSosialSub.SukuAgg;
+﻿using Bilreg.Domain.PasienContext.SukuFeature;
 using FluentAssertions;
 using MediatR;
 using Moq;

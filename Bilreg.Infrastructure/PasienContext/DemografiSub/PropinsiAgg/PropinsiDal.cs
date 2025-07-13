@@ -21,7 +21,7 @@ public class PropinsiDal : IPropinsiDal
         _opt = opt.Value;
     }
 
-    public void Insert(PropinsiModel model)
+    public void Insert(PropinsiType type)
     {
         const string sql = @"
             INSERT INTO ta_propinsi
@@ -30,14 +30,14 @@ public class PropinsiDal : IPropinsiDal
                 @fs_kd_propinsi, @fs_nm_propinsi)";
 
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_propinsi", model.PropinsiId, SqlDbType.VarChar);
-        dp.AddParam("@fs_nm_propinsi", model.PropinsiName, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_propinsi", type.PropinsiId, SqlDbType.VarChar);
+        dp.AddParam("@fs_nm_propinsi", type.PropinsiName, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
 
-    public void Update(PropinsiModel model)
+    public void Update(PropinsiType type)
     {
         const string sql = @"
             UPDATE ta_propinsi
@@ -45,8 +45,8 @@ public class PropinsiDal : IPropinsiDal
             WHERE fs_kd_propinsi = @fs_kd_propinsi";
 
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_propinsi", model.PropinsiId, SqlDbType.VarChar);
-        dp.AddParam("@fs_nm_propinsi", model.PropinsiName, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_propinsi", type.PropinsiId, SqlDbType.VarChar);
+        dp.AddParam("@fs_nm_propinsi", type.PropinsiName, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -65,7 +65,7 @@ public class PropinsiDal : IPropinsiDal
         conn.Execute(sql, dp);
     }
 
-    public PropinsiModel GetData(IPropinsiKey key)
+    public PropinsiType GetData(IPropinsiKey key)
     {
         const string sql = @"
             SELECT 
@@ -80,11 +80,11 @@ public class PropinsiDal : IPropinsiDal
         dp.AddParam("@fs_kd_propinsi", key.PropinsiId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        var result = conn.ReadSingle<PropinsiModel>(sql, dp);
+        var result = conn.ReadSingle<PropinsiType>(sql, dp);
         return result; //.ToModel();
     }
 
-    public IEnumerable<PropinsiModel> ListData()
+    public IEnumerable<PropinsiType> ListData()
     {
         const string sql = @"
             SELECT 
@@ -94,7 +94,7 @@ public class PropinsiDal : IPropinsiDal
                 ta_propinsi ";
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        var result = conn.Read<PropinsiModel>(sql);
+        var result = conn.Read<PropinsiType>(sql);
         return result;
     }
 }
@@ -112,28 +112,28 @@ public class PropinsiDalTest
     public void InsertTest()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Insert(new PropinsiModel("A", "B"));
+        _sut.Insert(new PropinsiType("A", "B"));
     }
     
     [Fact]
     public void UpdateTest()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Update(new PropinsiModel("A", "B"));
+        _sut.Update(new PropinsiType("A", "B"));
     }
 
     [Fact]
     public void DeleteTest()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Delete(new PropinsiModel("A","A1"));
+        _sut.Delete(new PropinsiType("A","A1"));
     }
     
     [Fact]
     public void GetTest()
     {
         using var trans = TransHelper.NewScope();
-        var exp = new PropinsiModel("A", "B");
+        var exp = new PropinsiType("A", "B");
         _sut.Insert(exp);
         var actual = _sut.GetData(exp);
         actual.Should().BeEquivalentTo(exp);
@@ -142,9 +142,9 @@ public class PropinsiDalTest
     public void ListDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var exp = new PropinsiModel("A", "B");
+        var exp = new PropinsiType("A", "B");
         _sut.Insert(exp);
         var actual = _sut.ListData();
-        actual.Should().BeEquivalentTo(new List<PropinsiModel>(){exp});
+        actual.Should().BeEquivalentTo(new List<PropinsiType>(){exp});
     }
 }

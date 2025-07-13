@@ -1,4 +1,5 @@
 ﻿using Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
+using Bilreg.Domain.PasienContext.PasienFeature;
 
 namespace Bilreg.Domain.AdmisiContext.JaminanSub.PolisAgg;
 

@@ -8,12 +8,11 @@
 
   <ItemGroup>
     <Folder Include="AdmisiContext\RegSub\GrupKarcisAgg\" />
-    <Folder Include="PasienContext\StatusSosialSub\" />
     <Folder Include="PaymentContext\" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="CommunityToolkit.Diagnostics" Version="8.3.0" />
+    <PackageReference Include="Ardalis.GuardClauses" Version="5.0.0" />
     <PackageReference Include="FluentAssertions" Version="6.12.0" />
     <PackageReference Include="FluentValidation" Version="11.9.2" />
     <PackageReference Include="FluentValidation.Validators.UnitTestExtension" Version="1.11.0.2" />

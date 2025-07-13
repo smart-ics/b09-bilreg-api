@@ -77,8 +77,8 @@ public class KelurahanSearchHandlerTest
         var request = new KelurahanSearchQuery("A");
         var expected = new List<KelurahanModel>() 
             { new KelurahanModel("A", "B", "B1",
-                new KecamatanModel("C","D", 
-                    new KabupatenModel("E","F", new PropinsiModel("G","H")))) 
+                new KecamatanType("C","D", 
+                    new KabupatenType("E","F", new PropinsiType("G","H")))) 
             };
         _kelurahanDal.Setup(x => x.ListData(It.IsAny<string>()))
             .Returns(expected);

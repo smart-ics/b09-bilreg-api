@@ -27,9 +27,9 @@ public class KelurahanDto
 
     public KelurahanModel ToModel()
     {
-        var propinsi = new PropinsiModel(PropinsiId, PropinsiName);
-        var kabupaten = new KabupatenModel(KabupatenId, KabupatenName, propinsi);
-        var kecamatan = new KecamatanModel(KecamatanId, KecamatanName, kabupaten);
+        var propinsi = new PropinsiType(PropinsiId, PropinsiName);
+        var kabupaten = new KabupatenType(KabupatenId, KabupatenName, propinsi);
+        var kecamatan = new KecamatanType(KecamatanId, KecamatanName, kabupaten);
         var kelurahan = new KelurahanModel(KelurahanId, KelurahanName, KodePos, kecamatan);
         return kelurahan;
     }

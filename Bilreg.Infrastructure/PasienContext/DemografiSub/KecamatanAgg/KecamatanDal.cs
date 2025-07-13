@@ -25,22 +25,22 @@ public class KecamatanDal: IKecamatanDal
         _opt = opt.Value;
     }
     
-    public void Insert(KecamatanModel model)
+    public void Insert(KecamatanType type)
     {
         const string sql = @"
             INSERT INTO ta_kecamatan (fs_kd_kecamatan, fs_nm_kecamatan, fs_kd_kabupaten) 
             VALUES (@fs_kd_kecamatan, @fs_nm_kecamatan, @fs_kd_kabupaten)";
 
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_kecamatan", model.KecamatanId, SqlDbType.VarChar);
-        dp.AddParam("@fs_nm_kecamatan", model.KecamatanName, SqlDbType.VarChar);
-        dp.AddParam("@fs_kd_kabupaten", model.Kabupaten.KabupatenId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_kecamatan", type.KecamatanId, SqlDbType.VarChar);
+        dp.AddParam("@fs_nm_kecamatan", type.KecamatanName, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_kabupaten", type.Kabupaten.KabupatenId, SqlDbType.VarChar);
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
 
-    public void Update(KecamatanModel model)
+    public void Update(KecamatanType type)
     {
         const string sql = @"
             UPDATE ta_kecamatan
@@ -49,9 +49,9 @@ public class KecamatanDal: IKecamatanDal
             WHERE fs_kd_kecamatan = @fs_kd_kecamatan";
         
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_kecamatan", model.KecamatanId, SqlDbType.VarChar);
-        dp.AddParam("@fs_nm_kecamatan", model.KecamatanName, SqlDbType.VarChar);
-        dp.AddParam("@fs_kd_kabupaten", model.Kabupaten.KabupatenId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_kecamatan", type.KecamatanId, SqlDbType.VarChar);
+        dp.AddParam("@fs_nm_kecamatan", type.KecamatanName, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_kabupaten", type.Kabupaten.KabupatenId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -70,7 +70,7 @@ public class KecamatanDal: IKecamatanDal
         conn.Execute(sql, dp);
     }
 
-    public KecamatanModel GetData(IKecamatanKey key)
+    public KecamatanType GetData(IKecamatanKey key)
     {
         const string sql = @"
             SELECT 
@@ -95,7 +95,7 @@ public class KecamatanDal: IKecamatanDal
         return result?.ToModel()!;
     }
 
-    public IEnumerable<KecamatanModel> ListData(IKabupatenKey filter)
+    public IEnumerable<KecamatanType> ListData(IKabupatenKey filter)
     {
         const string sql = @"
             SELECT  
@@ -136,7 +136,7 @@ public class KecamatanDalTest
     public void InsertTest()
     {
         using var trans = TransHelper.NewScope();
-        var kecamatan = new KecamatanModel("A", "B", KabupatenModel.Default);
+        var kecamatan = new KecamatanType("A", "B", KabupatenType.Default);
 
         _sut.Insert(kecamatan);
     }
@@ -145,7 +145,7 @@ public class KecamatanDalTest
     public void UpdateTest()
     {
         using var trans = TransHelper.NewScope();
-        var kecamatan = new KecamatanModel("A", "B", KabupatenModel.Default);
+        var kecamatan = new KecamatanType("A", "B", KabupatenType.Default);
 
         _sut.Update(kecamatan);
     }
@@ -154,7 +154,7 @@ public class KecamatanDalTest
     public void DeleteTest()
     {
         using var trans = TransHelper.NewScope();
-        var kecamatan = new KecamatanModel("A", "B", KabupatenModel.Default);
+        var kecamatan = new KecamatanType("A", "B", KabupatenType.Default);
 
         _sut.Delete(kecamatan);
     }
@@ -163,7 +163,7 @@ public class KecamatanDalTest
     public void GetDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = new KecamatanModel("A", "B", KabupatenModel.Default);
+        var expected = new KecamatanType("A", "B", KabupatenType.Default);
 
         _sut.Insert(expected);
         
@@ -176,11 +176,11 @@ public class KecamatanDalTest
     public void ListDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = new KecamatanModel("A", "B", KabupatenModel.Default);
+        var expected = new KecamatanType("A", "B", KabupatenType.Default);
 
         _sut.Insert(expected);
         
-        var actual = _sut.ListData(KabupatenModel.Default);
+        var actual = _sut.ListData(KabupatenType.Default);
         _ = actual.Select(x => x.Should().BeEquivalentTo(expected));
     }
 }

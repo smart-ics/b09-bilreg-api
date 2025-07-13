@@ -22,7 +22,7 @@ public class KabupatenDal : IKabupatenDal
         _opt = opt.Value;
     }
 
-    public void Insert(KabupatenModel model)
+    public void Insert(KabupatenType type)
     {
         const string sql = @"
             INSERT INTO ta_kabupaten
@@ -31,15 +31,15 @@ public class KabupatenDal : IKabupatenDal
                 (@fs_kd_kabupaten, @fs_nm_kabupaten, @fs_kd_propinsi)";
 
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_kabupaten", model.KabupatenId, SqlDbType.VarChar);
-        dp.AddParam("@fs_nm_kabupaten", model.KabupatenName, SqlDbType.VarChar);
-        dp.AddParam("@fs_kd_propinsi", model.Propinsi.PropinsiId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_kabupaten", type.KabupatenId, SqlDbType.VarChar);
+        dp.AddParam("@fs_nm_kabupaten", type.KabupatenName, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_propinsi", type.Propinsi.PropinsiId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
 
-    public void Update(KabupatenModel model)
+    public void Update(KabupatenType type)
     {
         const string sql = @"
             UPDATE 
@@ -51,9 +51,9 @@ public class KabupatenDal : IKabupatenDal
                 fs_kd_kabupaten = @fs_kd_kabupaten";
 
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_kabupaten", model.KabupatenId, SqlDbType.VarChar);
-        dp.AddParam("@fs_nm_kabupaten", model.KabupatenName, SqlDbType.VarChar);
-        dp.AddParam("@fs_kd_propinsi", model.Propinsi.PropinsiId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_kabupaten", type.KabupatenId, SqlDbType.VarChar);
+        dp.AddParam("@fs_nm_kabupaten", type.KabupatenName, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_propinsi", type.Propinsi.PropinsiId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -74,7 +74,7 @@ public class KabupatenDal : IKabupatenDal
         conn.Execute(sql, dp);
     }
 
-    public KabupatenModel GetData(IKabupatenKey key)
+    public KabupatenType GetData(IKabupatenKey key)
     {
         const string sql = @"
             SELECT 
@@ -96,7 +96,7 @@ public class KabupatenDal : IKabupatenDal
         return result?.ToModel();
     }
 
-    public IEnumerable<KabupatenModel> ListData(IPropinsiKey filter)
+    public IEnumerable<KabupatenType> ListData(IPropinsiKey filter)
     {
         const string sql = @"
             SELECT 
@@ -132,7 +132,7 @@ public class KabupatenDalTest
     public void InsertTest()
     {
         using var trans = TransHelper.NewScope();
-        var kab = new KabupatenModel("A", "B", PropinsiModel.Default);
+        var kab = new KabupatenType("A", "B", PropinsiType.Default);
         _sut.Insert(kab);
     }
 
@@ -140,7 +140,7 @@ public class KabupatenDalTest
     public void UpdateTest()
     {
         using var trans = TransHelper.NewScope();
-        var kab = new KabupatenModel("A", "B", PropinsiModel.Default);
+        var kab = new KabupatenType("A", "B", PropinsiType.Default);
         _sut.Update(kab);
     }
 
@@ -148,7 +148,7 @@ public class KabupatenDalTest
     public void DeleteTest()
     {
         using var trans = TransHelper.NewScope();
-        var kab = new KabupatenModel("A", "B", PropinsiModel.Default);
+        var kab = new KabupatenType("A", "B", PropinsiType.Default);
         _sut.Insert(kab);
         _sut.Delete(kab);
     }
@@ -157,7 +157,7 @@ public class KabupatenDalTest
     public void GetDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var kab = new KabupatenModel("A", "B", PropinsiModel.Default);
+        var kab = new KabupatenType("A", "B", PropinsiType.Default);
         _sut.Insert(kab);
         var actual = _sut.GetData(kab);
         actual.Should().BeEquivalentTo(kab);
@@ -167,7 +167,7 @@ public class KabupatenDalTest
     public void ListDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var kab = new KabupatenModel("A", "B", PropinsiModel.Default);
+        var kab = new KabupatenType("A", "B", PropinsiType.Default);
         _sut.Insert(kab);
         var actual = _sut.GetData(kab);
         actual.Should().BeEquivalentTo(kab, opt =>

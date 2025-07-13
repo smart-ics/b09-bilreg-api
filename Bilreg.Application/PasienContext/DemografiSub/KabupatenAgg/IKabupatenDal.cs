@@ -5,10 +5,10 @@ using Nuna.Lib.DataAccessHelper;
 namespace Bilreg.Application.PasienContext.DemografiSub.KabupatenAgg;
 
 public interface IKabupatenDal :
-    IInsert<KabupatenModel>,
-    IUpdate<KabupatenModel>,
+    IInsert<KabupatenType>,
+    IUpdate<KabupatenType>,
     IDelete<IKabupatenKey>,
-    IGetData<KabupatenModel, IKabupatenKey>,
-    IListData<KabupatenModel, IPropinsiKey>
+    IGetData<KabupatenType, IKabupatenKey>,
+    IListData<KabupatenType, IPropinsiKey>
 {
 }

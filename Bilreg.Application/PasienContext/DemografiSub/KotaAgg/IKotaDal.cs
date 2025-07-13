@@ -4,11 +4,11 @@ using Nuna.Lib.DataAccessHelper;
 namespace Bilreg.Application.PasienContext.DemografiSub.KotaAgg;
 
 public interface IKotaDal:
-    IInsert<KotaModel>,
-    IUpdate<KotaModel>,
+    IInsert<KotaType>,
+    IUpdate<KotaType>,
     IDelete<IKotaKey>,
-    IGetData<KotaModel, IKotaKey>,
-    IListData<KotaModel>
+    IGetData<KotaType, IKotaKey>,
+    IListData<KotaType>
 {
     
 }

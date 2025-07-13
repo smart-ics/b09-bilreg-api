@@ -18,11 +18,11 @@ public class KecamatanDto
     
     public string PropinsiName { get; set; }
 
-    public KecamatanModel ToModel()
+    public KecamatanType ToModel()
     {
-        var propinsi = new PropinsiModel(PropinsiId, PropinsiName);
-        var kabupaten = new KabupatenModel(KabupatenId, KabupatenName, propinsi);
-        var kecamatan = new KecamatanModel(KecamatanId, KecamatanName, kabupaten);
+        var propinsi = new PropinsiType(PropinsiId, PropinsiName);
+        var kabupaten = new KabupatenType(KabupatenId, KabupatenName, propinsi);
+        var kecamatan = new KecamatanType(KecamatanId, KecamatanName, kabupaten);
 
         return kecamatan;
     }

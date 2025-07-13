@@ -4,24 +4,26 @@ using Bilreg.Application.PasienContext.StatusSosialSub.PekerjaanDkAgg;
 using Bilreg.Application.PasienContext.StatusSosialSub.PendidikanDkAgg;
 using Bilreg.Application.PasienContext.StatusSosialSub.StatusKawinDkAgg;
 using Bilreg.Application.PasienContext.StatusSosialSub.SukuAgg;
+using Bilreg.Domain.PasienContext;
 using Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
 using Bilreg.Domain.PasienContext.DemografiSub.KelurahanAgg;
+using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.PasienContext.StatusSosialSub.AgamaAgg;
 using Bilreg.Domain.PasienContext.StatusSosialSub.PekerjaanDkAgg;
 using Bilreg.Domain.PasienContext.StatusSosialSub.PendidikanDkAgg;
 using Bilreg.Domain.PasienContext.StatusSosialSub.StatusKawinDkAgg;
-using Bilreg.Domain.PasienContext.StatusSosialSub.SukuAgg;
+using Bilreg.Domain.PasienContext.SukuFeature;
 using MediatR;
 
 namespace Bilreg.Application.PasienContext.DataSosialPasienSub.PasienAgg;
 
 public record PasienUpdateCommand(
     string PasienId,
-    AddressType Address,
+    AlamatType Alamat,
     string KelurahanId,
-    IdentityType Identity,
+    IdentificationType Identification,
     ContactType Contact,
-    KeluargaType Keluarga,
+    PasienKeluargaType PasienKeluarga,
     string StatusKawinId,
     string AgamaId,
     string SukuId,
@@ -69,8 +71,8 @@ public class PasienUpdateHandler : IRequestHandler<PasienUpdateCommand>
         var kelurahan = _kelurahanDal
             .GetData(new KelurahanKey(request.KelurahanId))
             ?? throw new KeyNotFoundException($"Kelurahan id : '{request.KelurahanId}' not found");
-        pasien.SetAdministrativeInfo(request.Address, kelurahan, request.Identity, 
-            request.Contact, request.Keluarga);
+        pasien.SetAdministrativeInfo(request.Alamat, kelurahan, request.Identification, 
+            request.Contact, request.PasienKeluarga);
 
         var statusKawin = _statusKawinDkDal
             .GetData2(new StatusKawinDkKey(request.StatusKawinId))
@@ -86,7 +88,7 @@ public class PasienUpdateHandler : IRequestHandler<PasienUpdateCommand>
 
         var suku = _sukuDal
             .GetData2(new SukuKey(request.SukuId))
-            .OrMapEmptyTo(SukuModel.Default)
+            .OrMapEmptyTo(SukuType.Default)
             .OrThrowNotFoundException()
             .Value;
         

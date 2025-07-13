@@ -1,6 +1,6 @@
-﻿using CommunityToolkit.Diagnostics;
+﻿using Ardalis.GuardClauses;
 
-namespace Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
+namespace Bilreg.Domain.PasienContext.PasienFeature;
 
 public interface IPasienKey
 {
@@ -11,7 +11,7 @@ public class PasienKey : IPasienKey
 {
     public PasienKey(string pasienId)
     {
-        Guard.IsNotNullOrWhiteSpace(pasienId);
+        Guard.Against.NullOrWhiteSpace(pasienId);
         PasienId = pasienId;
     }
     public string PasienId { get; }

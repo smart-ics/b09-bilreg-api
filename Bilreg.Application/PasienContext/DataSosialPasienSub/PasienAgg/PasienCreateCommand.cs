@@ -1,7 +1,9 @@
 ﻿using System.Transactions;
 using Bilreg.Application.Helpers;
 using Bilreg.Application.PasienContext.ParamContext.ParamSistemAgg;
+using Bilreg.Domain.PasienContext;
 using Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
+using Bilreg.Domain.PasienContext.PasienFeature;
 using CommunityToolkit.Diagnostics;
 using MediatR;
 using Nuna.Lib.AutoNumberHelper;

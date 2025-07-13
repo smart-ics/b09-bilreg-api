@@ -21,21 +21,21 @@ public class KotaDal: IKotaDal
         _opt = opt.Value;
     }
 
-    public void Insert(KotaModel model)
+    public void Insert(KotaType type)
     {
         const string sql = @"
             INSERT INTO ta_kota (fs_kd_kota, fs_nm_kota)
             VALUES  (@fs_kd_kota, @fs_nm_kota)";
 
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_kota", model.KotaId, SqlDbType.VarChar);
-        dp.AddParam("@fs_nm_kota", model.KotaName, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_kota", type.KotaId, SqlDbType.VarChar);
+        dp.AddParam("@fs_nm_kota", type.KotaName, SqlDbType.VarChar);
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
 
-    public void Update(KotaModel model)
+    public void Update(KotaType type)
     {
         const string sql = @"
             UPDATE ta_kota
@@ -43,8 +43,8 @@ public class KotaDal: IKotaDal
             WHERE fs_kd_kota = @fs_kd_kota";
         
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_kota", model.KotaId, SqlDbType.VarChar);
-        dp.AddParam("@fs_nm_kota", model.KotaName, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_kota", type.KotaId, SqlDbType.VarChar);
+        dp.AddParam("@fs_nm_kota", type.KotaName, SqlDbType.VarChar);
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -63,7 +63,7 @@ public class KotaDal: IKotaDal
         conn.Execute(sql, dp);
     }
 
-    public KotaModel GetData(IKotaKey key)
+    public KotaType GetData(IKotaKey key)
     {
         const string sql = @"
             SELECT fs_kd_kota KotaId, fs_nm_kota KotaName
@@ -74,18 +74,18 @@ public class KotaDal: IKotaDal
         dp.AddParam("@fs_kd_kota", key.KotaId, SqlDbType.VarChar);
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        var result = conn.ReadSingle<KotaModel>(sql, dp);
+        var result = conn.ReadSingle<KotaType>(sql, dp);
         return result;
     }
 
-    public IEnumerable<KotaModel> ListData()
+    public IEnumerable<KotaType> ListData()
     {
         const string sql = @"
             SELECT fs_kd_kota KotaId, fs_nm_kota KotaName
             FROM ta_kota";
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        var result = conn.Read<KotaModel>(sql);
+        var result = conn.Read<KotaType>(sql);
         return result;
     }
 }
@@ -103,7 +103,7 @@ public class KotaDalTest
     public void InsertTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = new KotaModel("A", "B");
+        var expected = new KotaType("A", "B");
         _sut.Insert(expected);
     }
 
@@ -111,7 +111,7 @@ public class KotaDalTest
     public void UpdateTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = new KotaModel("A", "B");
+        var expected = new KotaType("A", "B");
         _sut.Update(expected);
     }
 
@@ -119,7 +119,7 @@ public class KotaDalTest
     public void DeleteTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = new KotaModel("A", "B");
+        var expected = new KotaType("A", "B");
         _sut.Delete(expected);
     }
 
@@ -127,7 +127,7 @@ public class KotaDalTest
     public void GetDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = new KotaModel("A", "B");
+        var expected = new KotaType("A", "B");
         _sut.Insert(expected);
         var actual = _sut.GetData(expected);
         actual.Should().BeEquivalentTo(expected);
@@ -137,7 +137,7 @@ public class KotaDalTest
     public void ListDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = new KotaModel("A", "B");
+        var expected = new KotaType("A", "B");
         _sut.Insert(expected);
         var actual = _sut.ListData();
         _ = actual.Select(x => x.Should().BeEquivalentTo(expected));

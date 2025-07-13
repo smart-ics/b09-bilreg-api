@@ -5,7 +5,7 @@ using Xunit;
 
 namespace Bilreg.Application.PasienContext.DemografiSub.KotaAgg;
 
-public interface IKotaWriter: INunaWriterWithReturn<KotaModel>
+public interface IKotaWriter: INunaWriterWithReturn<KotaType>
 {
     public void Delete(IKotaKey key);
 }
@@ -19,14 +19,14 @@ public class KotaWriter : IKotaWriter
         _kotaDal = kotaDal;
     }
 
-    public KotaModel Save(KotaModel model)
+    public KotaType Save(KotaType type)
     {
-        var kotaDb = _kotaDal.GetData(model);
+        var kotaDb = _kotaDal.GetData(type);
         if (kotaDb is null)
-            _kotaDal.Insert(model);
+            _kotaDal.Insert(type);
         else
-            _kotaDal.Update(model);
-        return model;
+            _kotaDal.Update(type);
+        return type;
     }
 
     public void Delete(IKotaKey key)

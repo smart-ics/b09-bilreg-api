@@ -177,7 +177,7 @@ public class KelurahanDalTest
     public void InsertTest()
     {
         using var trans = TransHelper.NewScope();
-        var kelurahan = new KelurahanModel("A", "B", "C", KecamatanModel.Default);
+        var kelurahan = new KelurahanModel("A", "B", "C", KecamatanType.Default);
         _sut.Insert(kelurahan);
     }
 
@@ -185,7 +185,7 @@ public class KelurahanDalTest
     public void UpdateTest()
     {
         using var trans = TransHelper.NewScope();
-        var kelurahan = new KelurahanModel("A", "B", "C", KecamatanModel.Default);
+        var kelurahan = new KelurahanModel("A", "B", "C", KecamatanType.Default);
 
         _sut.Update(kelurahan);
     }
@@ -194,7 +194,7 @@ public class KelurahanDalTest
     public void DeleteTest()
     {
         using var trans = TransHelper.NewScope();
-        var kelurahan = new KelurahanModel("A", "B", "C", KecamatanModel.Default);
+        var kelurahan = new KelurahanModel("A", "B", "C", KecamatanType.Default);
         
         _sut.Delete(kelurahan);
     }
@@ -203,7 +203,7 @@ public class KelurahanDalTest
     public void GetDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = new KelurahanModel("A", "B", "C", KecamatanModel.Default);
+        var expected = new KelurahanModel("A", "B", "C", KecamatanType.Default);
         _sut.Insert(expected);
         
         var actual = _sut.GetData(expected);
@@ -214,11 +214,11 @@ public class KelurahanDalTest
     public void ListDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = new KelurahanModel("A", "B", "C", KecamatanModel.Default);
+        var expected = new KelurahanModel("A", "B", "C", KecamatanType.Default);
         
         _sut.Insert(expected);
         
-        var actual = _sut.ListData(KecamatanModel.Default);
+        var actual = _sut.ListData(KecamatanType.Default);
         _ = actual.Select(x => x.Should().BeEquivalentTo(expected));
     }
     
@@ -228,7 +228,7 @@ public class KelurahanDalTest
         using var trans = TransHelper.NewScope();
         
         const string keyword = "B";
-        var expected = new KelurahanModel("A", "ABC", "C", KecamatanModel.Default);
+        var expected = new KelurahanModel("A", "ABC", "C", KecamatanType.Default);
 
         _sut.Insert(expected);
         

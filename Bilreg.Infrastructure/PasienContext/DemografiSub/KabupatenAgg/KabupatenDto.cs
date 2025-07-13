@@ -10,10 +10,10 @@ public class KabupatenDto
     public string PropinsiId { get; set; }
     public string PropinsiName { get; set; }
 
-    public KabupatenModel ToModel()
+    public KabupatenType ToModel()
     {
-        var propinsi = new PropinsiModel(PropinsiId, PropinsiName);
-        var response = new KabupatenModel(KabupatenId, KabupatenName, propinsi);
+        var propinsi = new PropinsiType(PropinsiId, PropinsiName);
+        var response = new KabupatenType(KabupatenId, KabupatenName, propinsi);
         return response;
     }
 }

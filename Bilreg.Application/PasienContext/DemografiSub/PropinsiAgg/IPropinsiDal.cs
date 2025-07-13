@@ -4,10 +4,10 @@ using Nuna.Lib.DataAccessHelper;
 namespace Bilreg.Application.PasienContext.DemografiSub.PropinsiAgg;
 
 public interface IPropinsiDal :
-    IInsert<PropinsiModel>,
-    IUpdate<PropinsiModel>,
+    IInsert<PropinsiType>,
+    IUpdate<PropinsiType>,
     IDelete<IPropinsiKey>,
-    IGetData<PropinsiModel, IPropinsiKey>,
-    IListData<PropinsiModel>
+    IGetData<PropinsiType, IPropinsiKey>,
+    IListData<PropinsiType>
 {
 }

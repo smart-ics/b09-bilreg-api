@@ -1,9 +1,9 @@
-﻿using Bilreg.Domain.PasienContext.StatusSosialSub.SukuAgg;
+﻿using Bilreg.Domain.PasienContext.SukuFeature;
 using Nuna.Lib.CleanArchHelper;
 
 namespace Bilreg.Application.PasienContext.StatusSosialSub.SukuAgg;
 
-public interface ISukuWriter : INunaWriterWithReturn<SukuModel>
+public interface ISukuWriter : INunaWriterWithReturn<SukuType>
 {
     void Delete(ISukuKey sukuKey);
 }
@@ -17,15 +17,15 @@ public class SukuWriter : ISukuWriter
         _sukuDal = sukuDal;
     }
 
-    public SukuModel Save(SukuModel model)
+    public SukuType Save(SukuType type)
     {
-        var sukuDb = _sukuDal.GetData2(model);
+        var sukuDb = _sukuDal.GetData2(type);
         if (sukuDb.IsExist)
-            _sukuDal.Insert(model);
+            _sukuDal.Insert(type);
         else
-            _sukuDal.Update(model);
+            _sukuDal.Update(type);
 
-        return model;
+        return type;
     }
 
     public void Delete(ISukuKey sukuKey)

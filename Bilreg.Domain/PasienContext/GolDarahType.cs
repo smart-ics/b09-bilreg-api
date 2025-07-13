@@ -1,6 +1,8 @@
-﻿using Xunit;
+﻿using Ardalis.GuardClauses;
+using Bilreg.Domain.Helpers;
+using Xunit;
 
-namespace Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
+namespace Bilreg.Domain.PasienContext;
 
 public class GolDarahType
 {
@@ -9,9 +11,8 @@ public class GolDarahType
         
     public GolDarahType(string value)
     {
+        Guard.Against.NotInAllowedValues(value.ToUpper(), AllowedValues, nameof(value));
         _value = value.ToUpper();
-        if (Array.IndexOf(AllowedValues, _value) == -1)
-            throw new ArgumentException("Invalid GolDarah");
     }
 
     public override string ToString()
@@ -20,6 +21,10 @@ public class GolDarahType
     }
     
     public static GolDarahType Default => new("O");
+    public static GolDarahType A => new("A");
+    public static GolDarahType B => new("B");
+    public static GolDarahType AB => new("AB");
+    public static GolDarahType O => new("O");
 }
 
 public class GolDarahTypeTest

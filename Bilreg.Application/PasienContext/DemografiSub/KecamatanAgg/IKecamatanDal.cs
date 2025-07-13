@@ -5,11 +5,11 @@ using Nuna.Lib.DataAccessHelper;
 namespace Bilreg.Application.PasienContext.DemografiSub.KecamatanAgg;
 
 public interface IKecamatanDal: 
-    IInsert<KecamatanModel>,
-    IUpdate<KecamatanModel>,
+    IInsert<KecamatanType>,
+    IUpdate<KecamatanType>,
     IDelete<IKecamatanKey>,
-    IGetData<KecamatanModel, IKecamatanKey>,
-    IListData<KecamatanModel, IKabupatenKey>
+    IGetData<KecamatanType, IKecamatanKey>,
+    IListData<KecamatanType, IKabupatenKey>
 {
     
 }
