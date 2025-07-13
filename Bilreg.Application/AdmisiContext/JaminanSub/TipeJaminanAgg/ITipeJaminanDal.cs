@@ -1,5 +1,5 @@
-﻿using Bilreg.Domain.AdmisiContext.JaminanSub.JaminanAgg;
-using Bilreg.Domain.AdmisiContext.JaminanSub.TipeJaminanAgg;
+﻿using Bilreg.Domain.AdmisiContext.JaminanSub;
+using Bilreg.Domain.AdmisiContext.JaminanSub.JaminanAgg;
 using Nuna.Lib.DataAccessHelper;
 
 namespace Bilreg.Application.AdmisiContext.JaminanSub.TipeJaminanAgg

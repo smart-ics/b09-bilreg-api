@@ -1,5 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.JaminanSub.TipeJaminanAgg;
-using Bilreg.Domain.BillContext.RoomChargeSub.KelasAgg;
+﻿using Bilreg.Domain.BillContext.RoomChargeSub.KelasAgg;
 
 namespace Bilreg.Domain.AdmisiContext.JaminanSub.PolisAgg;
 

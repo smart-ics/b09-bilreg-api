@@ -1,5 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.JaminanSub.TipeJaminanAgg;
-using Bilreg.Domain.AdmisiContext.RegSub.RegAgg.ValueObjects;
+﻿using Bilreg.Domain.AdmisiContext.RegSub.RegAgg.ValueObjects;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using CommunityToolkit.Diagnostics;
 

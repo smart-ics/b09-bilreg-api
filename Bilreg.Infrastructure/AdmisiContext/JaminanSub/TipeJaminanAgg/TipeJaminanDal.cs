@@ -1,12 +1,12 @@
 ﻿using Bilreg.Application.AdmisiContext.JaminanSub.TipeJaminanAgg;
 using Bilreg.Domain.AdmisiContext.JaminanSub.JaminanAgg;
-using Bilreg.Domain.AdmisiContext.JaminanSub.TipeJaminanAgg;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
 using System.Data;
 using System.Data.SqlClient;
+using Bilreg.Domain.AdmisiContext.JaminanSub;
 using Bilreg.Domain.AdmisiContext.JaminanSub.CaraBayarDkAgg;
 using Bilreg.Domain.AdmisiContext.JaminanSub.GrupJaminanAgg;
 

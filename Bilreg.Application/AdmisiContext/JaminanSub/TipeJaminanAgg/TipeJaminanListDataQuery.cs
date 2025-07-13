@@ -4,7 +4,6 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Bilreg.Domain.AdmisiContext.JaminanSub.JaminanAgg;
-using Bilreg.Domain.AdmisiContext.JaminanSub.TipeJaminanAgg;
 using MediatR;
 
 namespace Bilreg.Application.AdmisiContext.JaminanSub.TipeJaminanAgg;
