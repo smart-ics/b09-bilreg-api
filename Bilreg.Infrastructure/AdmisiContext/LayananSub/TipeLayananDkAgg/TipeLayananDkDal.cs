@@ -8,7 +8,7 @@ using Xunit;
 using Nuna.Lib.DataAccessHelper;
 using FluentAssertions;
 using Bilreg.Application.AdmisiContext.LayananSub.TipeLayananDkAgg;
-using Bilreg.Domain.AdmisiContext.LayananSub.TipeLayananDkAgg;
+using Bilreg.Domain.AdmisiContext.LayananSub;
 
 namespace Bilreg.Infrastructure.AdmisiContext.LayananSub.TipeLayananDkAgg;
 

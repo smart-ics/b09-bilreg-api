@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.LayananSub.TipeLayananDkAgg;
+﻿using Bilreg.Domain.AdmisiContext.LayananSub;
 using FluentAssertions;
 using MediatR;
 using Moq;

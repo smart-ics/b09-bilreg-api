@@ -1,6 +1,6 @@
 ﻿using Bilreg.Application.AdmisiContext.LayananSub.TipeLayananDkAgg;
+using Bilreg.Domain.AdmisiContext.LayananSub;
 using Bilreg.Domain.AdmisiContext.LayananSub.LayananAgg;
-using Bilreg.Domain.AdmisiContext.LayananSub.TipeLayananDkAgg;
 using CommunityToolkit.Diagnostics;
 using MediatR;
 

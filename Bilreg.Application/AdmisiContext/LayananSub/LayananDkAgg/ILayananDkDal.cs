@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.LayananSub.LayananDkAgg;
+﻿using Bilreg.Domain.AdmisiContext.LayananSub;
 using Nuna.Lib.DataAccessHelper;
 
 namespace Bilreg.Application.AdmisiContext.LayananSub.LayananDkAgg

@@ -2,6 +2,7 @@
 
 namespace Bilreg.Domain.AdmisiContext.JaminanSub.PolisAgg;
 
+// TODO: Refactor Polis Model to Rich-Domain-Model
 public partial class PolisModel : IPolisKey, ITipeJaminanKey, IKelasKey
 {
     public string PolisId { get; protected set; } = string.Empty;
