@@ -1,7 +1,7 @@
 ﻿using JetBrains.Annotations;
 using MediatR;
 
-namespace Bilreg.Application.PasienContext.StatusSosialSub.SukuAgg;
+namespace Bilreg.Application.PasienContext.StatusSosialFeature;
 
 public record SukuListQuery : IRequest<IEnumerable<SukuListResponse>>;
 
@@ -20,6 +20,7 @@ public class SukuListHandler : IRequestHandler<SukuListQuery, IEnumerable<SukuLi
     public Task<IEnumerable<SukuListResponse>> Handle(SukuListQuery request, CancellationToken cancellationToken)
         => _sukuDal.ListData()
             .Match(
-                onSome: x => Task.FromResult(x.Select(y => new SukuListResponse(y.SukuId, y.SukuName))),
+                onSome: x => Task.FromResult(x.Select(y 
+                    => new SukuListResponse(y.SukuId, y.SukuName))),
                 onNone: () => throw new KeyNotFoundException($"Suku not found"));
 }

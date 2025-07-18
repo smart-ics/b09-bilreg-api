@@ -1,6 +1,6 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
-using Bilreg.Application.PasienContext.StatusSosialSub.SukuAgg;
+using Bilreg.Application.PasienContext.StatusSosialFeature;
 using Bilreg.Domain.PasienContext;
 using Bilreg.Domain.PasienContext.StatusSosialFeature;
 using Bilreg.Infrastructure.Helpers;

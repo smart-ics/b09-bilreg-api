@@ -2,7 +2,7 @@
 using JetBrains.Annotations;
 using MediatR;
 
-namespace Bilreg.Application.PasienContext.StatusSosialSub.SukuAgg;
+namespace Bilreg.Application.PasienContext.StatusSosialFeature;
 
 public record SukuGetQuery(string SukuId) : IRequest<SukuGetResponse>;
 
