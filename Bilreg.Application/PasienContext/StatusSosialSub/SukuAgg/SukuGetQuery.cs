@@ -1,34 +1,26 @@
-﻿// using Bilreg.Domain.PasienContext.SukuFeature;
-// using FluentAssertions;
-// using MediatR;
-// using Moq;
-// using Xunit;
-//
-// namespace Bilreg.Application.PasienContext.StatusSosialSub.SukuAgg;
-//
-// public record SukuGetQuery(string SukuId) : IRequest<SukuGetResponse>, ISukuKey;
-//
-// public record SukuGetResponse(string SukuId, string SukuName);
-//
-// public class SukuGetHandler : IRequestHandler<SukuGetQuery, SukuGetResponse>
-// {
-//     private readonly ISukuDal _SukuDal;
-//
-//     public SukuGetHandler(ISukuDal SukuDal)
-//     {
-//         _SukuDal = SukuDal;
-//     }
-//
-//     public Task<SukuGetResponse> Handle(SukuGetQuery request, CancellationToken cancellationToken)
-//     {
-//         //  QUERY
-//         var result = _SukuDal
-//             .GetData2(request)
-//             .OrThrowNotFoundException()
-//             .Value; 
-//
-//         //  RESPONSE
-//         var response = new SukuGetResponse(result.SukuId, result.SukuName);
-//         return Task.FromResult(response);
-//     }
-// }
+﻿using Bilreg.Domain.PasienContext.StatusSosialFeature;
+using JetBrains.Annotations;
+using MediatR;
+
+namespace Bilreg.Application.PasienContext.StatusSosialSub.SukuAgg;
+
+public record SukuGetQuery(string SukuId) : IRequest<SukuGetResponse>;
+
+[PublicAPI]
+public record SukuGetResponse(string SukuId, string SukuName);
+
+public class SukuGetHandler : IRequestHandler<SukuGetQuery, SukuGetResponse>
+{
+    private readonly ISukuDal _sukuDal;
+
+    public SukuGetHandler(ISukuDal sukuDal)
+    {
+        _sukuDal = sukuDal;
+    }
+
+    public Task<SukuGetResponse> Handle(SukuGetQuery request, CancellationToken cancellationToken)
+    =>  _sukuDal.GetData(SukuType.Key(request.SukuId))
+            .Match(
+                onSome: x => Task.FromResult(new SukuGetResponse(x.SukuId, x.SukuName)), 
+                onNone: () => throw new KeyNotFoundException($"Suku {request.SukuId} not found"));
+}

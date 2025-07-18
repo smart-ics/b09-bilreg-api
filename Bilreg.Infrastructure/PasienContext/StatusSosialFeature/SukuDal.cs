@@ -23,55 +23,46 @@ public class SukuDal : ISukuDal
         _opt = opt.Value;
     }
 
-    public void Insert(SukuType type)
+    public void Insert(SukuType model)
     {
-        //  QUERY
         const string sql = @"
             INSERT INTO 
                 ta_suku(fs_kd_suku, fs_nm_suku)
             VALUES 
                 (@fs_kd_suku, @fs_nm_suku)";
 
-        //  PARAM
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_suku", type.SukuId, SqlDbType.VarChar);
-        dp.AddParam("@fs_nm_suku", type.SukuName, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_suku", model.SukuId, SqlDbType.VarChar);
+        dp.AddParam("@fs_nm_suku", model.SukuName, SqlDbType.VarChar);
 
-        //  EXECUTE
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
 
-    public void Update(SukuType type)
+    public void Update(SukuType model)
     {
-        //  QUERY
         const string sql = @"
             UPDATE ta_suku
             SET fs_nm_suku = @fs_nm_suku
             WHERE fs_kd_suku = @fs_kd_suku";
 
-        //  PARAM
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_suku", type.SukuId, SqlDbType.VarChar);
-        dp.AddParam("@fs_nm_suku", type.SukuName, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_suku", model.SukuId, SqlDbType.VarChar);
+        dp.AddParam("@fs_nm_suku", model.SukuName, SqlDbType.VarChar);
 
-        //  EXECUTE
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
 
     public void Delete(ISukuKey key)
     {
-        //  QUERY
         const string sql = @"
-                DELETE FROM ta_suku
-                WHERE fs_kd_suku = @fs_kd_suku";
+            DELETE FROM ta_suku
+            WHERE fs_kd_suku = @fs_kd_suku";
 
-        //  PARAM
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_suku", key.SukuId, SqlDbType.VarChar);
 
-        //  EXECUTE
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
@@ -146,7 +137,7 @@ public class SukuDalTest
     }
 
     [Fact]
-    public void ListDataTest()
+    public void UT5_ListDataTest()
     {
         using var trans = TransHelper.NewScope();
         var expected = new List<SukuType> {new SukuType("A", "B")};
