@@ -1,17 +1,20 @@
 ﻿using Ardalis.GuardClauses;
-using Bilreg.Domain.AdmisiContext.JaminanSub.JaminanAgg;
 
 namespace Bilreg.Domain.AdmisiContext.JaminanSub;
 
 public record TipeJaminanType : ITipeJaminanKey
 {
-    public TipeJaminanType(string tipeJaminanId, string tipeJaminanName)
+    public TipeJaminanType(string tipeJaminanId, string tipeJaminanName, 
+        bool isAktif, JaminanReff jaminan)
     {
         Guard.Against.NullOrWhiteSpace(tipeJaminanId, nameof(tipeJaminanId));
         Guard.Against.NullOrWhiteSpace(tipeJaminanName, nameof(tipeJaminanName));
+        Guard.Against.Null(jaminan, nameof(jaminan));
 
         TipeJaminanId = tipeJaminanId;
         TipeJaminanName = tipeJaminanName;
+        IsAktif = isAktif;
+        Jaminan = jaminan;
     }
     
     public string TipeJaminanId { get; init; }
@@ -20,8 +23,8 @@ public record TipeJaminanType : ITipeJaminanKey
     public JaminanReff Jaminan { get; init; }
     
     public TipeJaminanReff ToReff() => new TipeJaminanReff(TipeJaminanId, TipeJaminanName); 
-    public static ITipeJaminanKey Key(string id) => new TipeJaminanType(id, "-");
-    public static TipeJaminanType Default => new("-", "-");
+    public static TipeJaminanType Default => new("-", "-", true, JaminanType.Default.ToReff());
+    public static ITipeJaminanKey Key(string id) => Default with { TipeJaminanId = id };
 }
 
 public interface ITipeJaminanKey

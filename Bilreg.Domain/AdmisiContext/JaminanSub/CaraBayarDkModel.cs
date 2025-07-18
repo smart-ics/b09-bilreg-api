@@ -1,6 +1,6 @@
 using Ardalis.GuardClauses;
 
-namespace Bilreg.Domain.AdmisiContext.JaminanSub.CaraBayarDkFeature;
+namespace Bilreg.Domain.AdmisiContext.JaminanSub;
 
 public record CaraBayarDkType : ICaraBayarDkKey
 {

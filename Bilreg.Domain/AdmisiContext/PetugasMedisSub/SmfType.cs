@@ -1,6 +1,6 @@
 ﻿using Ardalis.GuardClauses;
 
-namespace Bilreg.Domain.PasienContext;
+namespace Bilreg.Domain.AdmisiContext.PetugasMedisSub;
 
 public record SmfType : ISmfKey
 {

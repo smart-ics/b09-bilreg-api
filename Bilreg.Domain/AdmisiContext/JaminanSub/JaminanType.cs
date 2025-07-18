@@ -1,9 +1,7 @@
 ﻿using Ardalis.GuardClauses;
-using Bilreg.Domain.AdmisiContext.JaminanSub.CaraBayarDkFeature;
-using Bilreg.Domain.AdmisiContext.JaminanSub.GrupJaminanAgg;
-using Bilreg.Domain.PasienContext;
+using Bilreg.Domain.PasienContext.PasienFeature;
 
-namespace Bilreg.Domain.AdmisiContext.JaminanSub.JaminanAgg;
+namespace Bilreg.Domain.AdmisiContext.JaminanSub;
 
 public record JaminanType : IJaminanKey
 {

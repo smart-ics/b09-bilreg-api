@@ -2,7 +2,6 @@
 using System.Text.Json;
 using FluentValidation;
 using Nuna.Lib.ActionResultHelper;
-using Nuna.Lib.ExceptionHelper;
 
 namespace Bilreg.Api.Configurations;
 
@@ -29,7 +28,6 @@ public class ErrorHandlerMiddleware
             string? status;
             switch (error)
             {
-                case InvalidModelException:
                 case ArgumentException:
                 case ValidationException:
                 case InvalidOperationException:

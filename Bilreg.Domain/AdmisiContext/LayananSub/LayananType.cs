@@ -1,6 +1,6 @@
 ﻿using Ardalis.GuardClauses;
 
-namespace Bilreg.Domain.AdmisiContext.LayananSub.LayananAgg;
+namespace Bilreg.Domain.AdmisiContext.LayananSub;
 
 public record LayananType : ILayananKey
 {

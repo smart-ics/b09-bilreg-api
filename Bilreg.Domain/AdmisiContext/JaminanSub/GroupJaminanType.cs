@@ -1,6 +1,6 @@
 ﻿using Ardalis.GuardClauses;
 
-namespace Bilreg.Domain.AdmisiContext.JaminanSub.GrupJaminanAgg;
+namespace Bilreg.Domain.AdmisiContext.JaminanSub;
 
 public record GroupJaminanType : IGroupJaminanKey
 {

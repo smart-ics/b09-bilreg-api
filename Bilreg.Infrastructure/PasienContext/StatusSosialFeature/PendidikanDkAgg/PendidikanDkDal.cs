@@ -1,0 +1,165 @@
+// using System.Data;
+// using System.Data.SqlClient;
+// using Bilreg.Application.PasienContext.StatusSosialSub.PendidikanDkAgg;
+// using Bilreg.Domain.PasienContext.StatusSosialSub.PendidikanDkAgg;
+// using Bilreg.Infrastructure.Helpers;
+// using Dapper;
+// using FluentAssertions;
+// using Microsoft.Extensions.Options;
+// using Nuna.Lib.DataAccessHelper;
+// using Nuna.Lib.TransactionHelper;
+// using Xunit;
+//
+// namespace Bilreg.Infrastructure.PasienContext.StatusSosialSub.PendidikanDkAgg;
+//
+// public class PendidikanDkDal: IPendidikanDkDal
+// {
+//     private readonly DatabaseOptions _opt;
+//
+//     public PendidikanDkDal(IOptions<DatabaseOptions> opt)
+//     {
+//         _opt = opt.Value;
+//     }
+//
+//     public void Insert(PendidikanDkModel model)
+//     {
+//         // QUERY
+//         const string sql = @"
+//             INSERT INTO ta_pendidikan_dk(fs_kd_pendidikan_dk, fs_nm_pendidikan_dk)
+//             VALUES(@fs_kd_pendidikan_dk, @fs_nm_pendidikan_dk)";
+//         
+//         // PARAM
+//         var dp = new DynamicParameters();
+//         dp.AddParam("@fs_kd_pendidikan_dk", model.PendidikanDkId, SqlDbType.VarChar);
+//         dp.AddParam("@fs_nm_pendidikan_dk", model.PendidikanDkName, SqlDbType.VarChar);
+//         
+//         // EXECUTE
+//         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+//         conn.Execute(sql, dp);
+//     }
+//
+//     public void Update(PendidikanDkModel model)
+//     {
+//         // QUERY
+//         const string sql = @"
+//             UPDATE ta_pendidikan_dk
+//             SET fs_nm_pendidikan_dk = @fs_nm_pendidikan_dk
+//             WHERE fs_kd_pendidikan_dk = @fs_kd_pendidikan_dk";
+//         
+//         // PARAM
+//         var dp = new DynamicParameters();
+//         dp.AddParam("@fs_kd_pendidikan_dk", model.PendidikanDkId, SqlDbType.VarChar);
+//         dp.AddParam("@fs_nm_pendidikan_dk", model.PendidikanDkName, SqlDbType.VarChar);
+//         
+//         // EXECUTE
+//         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+//         conn.Execute(sql, dp);
+//     }
+//
+//     public void Delete(IPendidikanDkKey key)
+//     {
+//         // QUERY
+//         const string sql = @"
+//             DELETE FROM ta_pendidikan_dk
+//             WHERE fs_kd_pendidikan_dk = @fs_kd_pendidikan_dk";
+//         
+//         // PARAM
+//         var dp = new DynamicParameters();
+//         dp.AddParam("@fs_kd_pendidikan_dk", key.PendidikanDkId, SqlDbType.VarChar);
+//         
+//         // EXECUTE
+//         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+//         conn.Execute(sql, dp);
+//     }
+//
+//     public GetDataResult<PendidikanDkModel> GetData2(IPendidikanDkKey key)
+//     {
+//         // QUERY
+//         const string sql = @"
+//             SELECT 
+//                 fs_kd_pendidikan_dk AS PendidikanDkId, 
+//                 fs_nm_pendidikan_dk AS PendidikanDkName 
+//             FROM 
+//                 ta_pendidikan_dk
+//             WHERE 
+//                 fs_kd_pendidikan_dk = @fs_kd_pendidikan_dk";
+//         
+//         // PARAM
+//         var dp = new DynamicParameters();
+//         dp.AddParam("@fs_kd_pendidikan_dk", key.PendidikanDkId, SqlDbType.VarChar);
+//         
+//         // EXECUTE
+//         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+//         var data = conn.ReadSingle<PendidikanDkModel>(sql, dp);
+//         var result = new GetDataResult<PendidikanDkModel>(data, key.PendidikanDkId);
+//         return result;
+//     }
+//
+//     public ListDataResult<PendidikanDkModel> ListData2()
+//     {
+//         // QUERY
+//         const string sql = @"
+//             SELECT 
+//                 fs_kd_pendidikan_dk AS PendidikanDkId, 
+//                 fs_nm_pendidikan_dk AS PendidikanDkName 
+//             FROM 
+//                 ta_pendidikan_dk";
+//         
+//         // EXECUTE
+//         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+//         var list = conn.Read<PendidikanDkModel>(sql);
+//         var result = new ListDataResult<PendidikanDkModel>(list);
+//         return result;
+//     }
+// }
+//
+// public class PendidikanDkDalTest
+// {
+//     private readonly PendidikanDkDal _sut;
+//
+//     public PendidikanDkDalTest()
+//     {
+//         _sut = new PendidikanDkDal(ConnStringHelper.GetTestEnv());
+//     }
+//
+//     [Fact]
+//     public void InsertTest()
+//     {
+//         using var trans = TransHelper.NewScope();
+//         _sut.Insert(new PendidikanDkModel("A", "B"));
+//     }
+//
+//     [Fact]
+//     public void UpdateTest()
+//     {
+//         using var trans = TransHelper.NewScope();
+//         _sut.Update(new PendidikanDkModel("A", "B"));
+//     }
+//
+//     [Fact]
+//     public void DeleteTest()
+//     {
+//         using var trans = TransHelper.NewScope();
+//         _sut.Delete(new PendidikanDkModel("A", "B"));
+//     }
+//
+//     [Fact]
+//     public void GetDataTest()
+//     {
+//         using var trans = TransHelper.NewScope();
+//         var expected = new PendidikanDkModel("A", "B");
+//         _sut.Insert(expected);
+//         var actual = _sut.GetData2(expected).Value;
+//         actual.Should().BeEquivalentTo(expected);
+//     }
+//     [Fact]
+//     public void ListDataTest()
+//     {
+//         using var trans = TransHelper.NewScope();
+//         var pendidikanDk = new PendidikanDkModel("A", "B");
+//         var expected = new List<PendidikanDkModel> { pendidikanDk };
+//         _sut.Insert(pendidikanDk);
+//         var actual = _sut.ListData2().Value;
+//         actual.Should().BeEquivalentTo(expected);
+//     }
+// }

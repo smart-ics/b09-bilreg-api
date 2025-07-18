@@ -1,5 +1,5 @@
 ﻿using Ardalis.GuardClauses;
-using Bilreg.Domain.AdmisiContext.LayananSub.LayananAgg;
+using Bilreg.Domain.AdmisiContext.LayananSub;
 
 namespace Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
 

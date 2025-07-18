@@ -1,6 +1,6 @@
 ﻿using Ardalis.GuardClauses;
 
-namespace Bilreg.Domain.PasienContext;
+namespace Bilreg.Domain.BillContext.RekapCetakSub;
 
 public record RekapCetakDkType : IRekapCetakDkKey
 {
