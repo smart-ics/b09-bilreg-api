@@ -47,4 +47,20 @@ public class StatusSosialController : ControllerBase
         var result = await _mediator.Send(new StatusKawinDkListQuery());
         return Ok(new JSendOk(result));
     }
+
+    [HttpGet]
+    [Route("pendidikanDk/{id}")]
+    public async Task<IActionResult> GetDataPendidikanDk(string id)
+    {
+        var result = await _mediator.Send(new PendidikanDkGetQuery(id));
+        return Ok(new JSendOk(result));
+    }
+    
+    [HttpGet]
+    [Route("pendidikanDk")]
+    public async Task<IActionResult> ListDataPendidikanDk()
+    {
+        var result = await _mediator.Send(new PendidikanDkListQuery());
+        return Ok(new JSendOk(result));
+    }
 }

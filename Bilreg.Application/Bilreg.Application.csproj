@@ -28,7 +28,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="PasienContext\StatusSosialFeature\StatusKawinDkAgg\" />
+    <Folder Include="PasienContext\StatusSosialFeature\PendidikanDkAgg\" />
   </ItemGroup>
 
 </Project>
