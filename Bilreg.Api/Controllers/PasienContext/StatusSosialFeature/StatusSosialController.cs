@@ -63,4 +63,19 @@ public class StatusSosialController : ControllerBase
         var result = await _mediator.Send(new PendidikanDkListQuery());
         return Ok(new JSendOk(result));
     }
+    [HttpGet]
+    [Route("pekerjaanDk/{id}")]
+    public async Task<IActionResult> GetDataPekerjaanDk(string id)
+    {
+        var result = await _mediator.Send(new PekerjaanDkGetQuery(id));
+        return Ok(new JSendOk(result));
+    }
+    
+    [HttpGet]
+    [Route("pekerjaanDk")]
+    public async Task<IActionResult> ListDataPekerjaanDk()
+    {
+        var result = await _mediator.Send(new PekerjaanDkListQuery());
+        return Ok(new JSendOk(result));
+    }    
 }
