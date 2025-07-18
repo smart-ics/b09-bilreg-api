@@ -19,11 +19,15 @@ public record KabupatenType : IKabupatenKey
     public string KabupatenName { get; init; }
     public PropinsiType Propinsi { get; init; }
 
-    public static IKabupatenKey Key(string id) => new KabupatenType(id, "-", PropinsiType.Default);
+    public KabupatenReff ToReff() => new(KabupatenId, KabupatenName);
+    
     public static KabupatenType Default => new("-", "-", PropinsiType.Default);
+    public static IKabupatenKey Key(string id) => Default with { KabupatenId = id };
 }
 
 public interface IKabupatenKey
 {
     string KabupatenId {get;}
 }
+
+public record KabupatenReff(string KabupatenId, string KabupatenName);
