@@ -1,7 +1,6 @@
 ﻿// using System.Transactions;
 // using Bilreg.Application.Helpers;
 // using Bilreg.Application.PasienContext.ParamContext.ParamSistemAgg;
-// using Bilreg.Domain.PasienContext;
 // using Bilreg.Domain.PasienContext.PasienFeature;
 // using CommunityToolkit.Diagnostics;
 // using MediatR;
@@ -9,7 +8,7 @@
 // using Nuna.Lib.TransactionHelper;
 // using Nuna.Lib.ValidationHelper;
 //
-// namespace Bilreg.Application.PasienContext.DataSosialPasienSub.PasienAgg;
+// namespace Bilreg.Application.PasienContext.PasienFeature;
 //
 // public record PasienCreateCommand(
 //     string PasienName,
@@ -26,7 +25,6 @@
 // {
 //     private readonly IParamSistemDal _paramSistemDal;
 //     private readonly INunaCounterBL _counter;
-//     private readonly IPasienWriter _writer;
 //     private readonly ITglJamProvider _dateTime;
 //
 //     private const string KODE_RS_PARAM_KEY = "RS__XXXXXX_KODE";
@@ -35,12 +33,10 @@
 //
 //     public PasienCreateHandler(IParamSistemDal paramSistemDal, 
 //         INunaCounterBL counter, 
-//         IPasienWriter writer,
 //         ITglJamProvider dateTime)
 //     {
 //         _paramSistemDal = paramSistemDal;
 //         _counter = counter;
-//         _writer = writer;
 //         _dateTime = dateTime;
 //     }
 //

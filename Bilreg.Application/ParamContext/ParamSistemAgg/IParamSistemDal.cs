@@ -1,7 +1,7 @@
 ﻿using Bilreg.Domain.ParamContext;
 using Nuna.Lib.DataAccessHelper;
 
-namespace Bilreg.Application.PasienContext.ParamContext.ParamSistemAgg;
+namespace Bilreg.Application.ParamContext.ParamSistemAgg;
 
 public interface IParamSistemDal :
     IInsert<ParamSistemModel>,

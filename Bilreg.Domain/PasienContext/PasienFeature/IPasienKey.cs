@@ -6,13 +6,3 @@ public interface IPasienKey
 {
     string PasienId { get; }
 }
-
-public class PasienKey : IPasienKey
-{
-    public PasienKey(string pasienId)
-    {
-        Guard.Against.NullOrWhiteSpace(pasienId);
-        PasienId = pasienId;
-    }
-    public string PasienId { get; }
-}

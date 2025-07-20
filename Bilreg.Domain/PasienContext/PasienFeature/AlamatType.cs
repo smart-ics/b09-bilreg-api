@@ -12,8 +12,7 @@ public record AlamatType
         Guard.Against.Null(kota, nameof(kota));
         Guard.Against.OutOfRange(kota.Length, nameof(kota), 0, 30, "Kota maksimal 30 karakter");
 
-        Guard.Against.Null(kodePos, nameof(kodePos));
-        Guard.Against.OutOfRange(kodePos.Length, nameof(kodePos), 5, 5, "KodePos harus tepat 5 karakter");
+        Guard.Against.NullOrWhiteSpace(kodePos, nameof(kodePos));
 
         Alamat = alamat;
         Kota = kota;
@@ -24,5 +23,5 @@ public record AlamatType
     public string Kota { get; init; }
     public string KodePos { get; init; }
     
-    public static AlamatType Default => new AlamatType([], "-", "-");
+    public static AlamatType Default => new AlamatType(["-", "-", "-"], "-", "-");
 }

@@ -1,5 +1,6 @@
 ﻿using Bilreg.Infrastructure;
 using Bilreg.Infrastructure.Helpers;
+using Bilreg.Infrastructure.PasienContext.PasienFeature;
 using Nuna.Lib.AutoNumberHelper;
 using Nuna.Lib.CleanArchHelper;
 using Nuna.Lib.DataAccessHelper;
@@ -17,6 +18,8 @@ public static class InfrastructureService
             .AddScoped<INunaCounterDal, ParamNoDal>()
             .AddScoped<INunaCounterDecDal, ParamNoDal>()
             .AddScoped<ITglJamProvider, TglJamProvider>()
+            .AddSingleton<IGenderDal, GenderDal>()
+            
             .AddMemoryCache();
         
         services

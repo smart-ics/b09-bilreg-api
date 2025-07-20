@@ -71,8 +71,8 @@ public class AgamaDal : IAgamaDal
     {
         const string sql = @"
             SELECT 
-                fs_kd_agama AS AgamaId, 
-                fs_nm_agama AS AgamaName
+                fs_kd_agama AS fs_kd_agama, 
+                fs_nm_agama AS fs_nm_agama
             FROM ta_agama
             WHERE fs_kd_agama = @fs_kd_agama";
 

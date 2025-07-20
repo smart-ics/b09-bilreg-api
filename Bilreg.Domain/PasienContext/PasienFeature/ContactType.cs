@@ -19,6 +19,7 @@ public enum JenisContactEnum
 {
     Other,
     Phone,
+    Mobile,
     Email,
     Fax,
 }
