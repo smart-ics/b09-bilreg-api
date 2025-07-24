@@ -1,7 +1,7 @@
 using Bilreg.Domain.PasienContext.StatusSosialFeature;
 using Nuna.Lib.DataAccessHelper;
 
-namespace Bilreg.Application.PasienContext.DemografiSub;
+namespace Bilreg.Application.PasienContext.DemografiFeature;
 
 public interface IKotaDal :
     IInsert<KotaType>,

@@ -1,4 +1,5 @@
-﻿using Bilreg.Infrastructure;
+﻿using Bilreg.Application.PasienContext.PasienFeature;
+using Bilreg.Infrastructure;
 using Bilreg.Infrastructure.Helpers;
 using Bilreg.Infrastructure.PasienContext.PasienFeature;
 using Nuna.Lib.AutoNumberHelper;
@@ -69,6 +70,26 @@ public static class InfrastructureService
                     .WithScopedLifetime()
                 .FromAssemblyOf<InfrastructureAssemblyAnchor>()
                     .AddClasses(c => c.AssignableTo(typeof(IRequestResponseService<,>)))
+                    .UsingRegistrationStrategy(RegistrationStrategy.Skip)
+                    .AsSelfWithInterfaces()
+                    .WithScopedLifetime()
+                .FromAssemblyOf<InfrastructureAssemblyAnchor>()
+                    .AddClasses(c => c.AssignableTo(typeof(ISaveChange<>)))
+                    .UsingRegistrationStrategy(RegistrationStrategy.Skip)
+                    .AsSelfWithInterfaces()
+                    .WithScopedLifetime()
+                .FromAssemblyOf<InfrastructureAssemblyAnchor>()
+                    .AddClasses(c => c.AssignableTo(typeof(ISaveChange<,>)))
+                    .UsingRegistrationStrategy(RegistrationStrategy.Skip)
+                    .AsSelfWithInterfaces()
+                    .WithScopedLifetime()
+                .FromAssemblyOf<InfrastructureAssemblyAnchor>()
+                    .AddClasses(c => c.AssignableTo(typeof(IDeleteEntity<>)))
+                    .UsingRegistrationStrategy(RegistrationStrategy.Skip)
+                    .AsSelfWithInterfaces()
+                    .WithScopedLifetime()
+                .FromAssemblyOf<InfrastructureAssemblyAnchor>()
+                    .AddClasses(c => c.AssignableTo(typeof(ILoadEntity<,>)))
                     .UsingRegistrationStrategy(RegistrationStrategy.Skip)
                     .AsSelfWithInterfaces()
                     .WithScopedLifetime()

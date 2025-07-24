@@ -1,4 +1,5 @@
-﻿using Bilreg.Domain.PasienContext.DemografiFeature;
+﻿using Bilreg.Application.PasienContext.PasienFeature;
+using Bilreg.Domain.PasienContext.DemografiFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.PasienContext.StatusSosialFeature;
 using Nuna.Lib.ValidationHelper;
@@ -22,9 +23,12 @@ public class PasienDto
         fs_temp_lahir = model.TempatLahir;
         fs_nm_ibu_kandung = model.IbuKandung;
         fs_gol_darah = model.GolDarah.ToString();
-        fs_alm_pasien = model.AlamatDomisili.Alamat[0];
-        fs_alm2_pasien = model.AlamatDomisili.Alamat[1];
-        fs_alm3_pasien = model.AlamatDomisili.Alamat[2];
+        
+        var listAlamat = model.AlamatKtp.Normalize3Address();
+        fs_alm_pasien = listAlamat[0];
+        fs_alm2_pasien = listAlamat[1];
+        fs_alm3_pasien = listAlamat[2];
+        
         fs_kota_pasien = model.AlamatDomisili.Kota;
         fs_kd_pos_pasien = model.AlamatDomisili.KodePos;
         fs_kd_kelurahan = model.Kelurahan.KelurahanId;
@@ -45,8 +49,11 @@ public class PasienDto
         fs_nm_keluarga = model.PasienKeluarga.Name;
         fs_hub_keluarga = model.PasienKeluarga.Relasi;
         fs_telp_keluarga = model.PasienKeluarga.Contact.ContactDetail;
-        fs_alm1_keluarga = model.PasienKeluarga.Alamat.Alamat[0];
-        fs_alm2_keluarga = model.PasienKeluarga.Alamat.Alamat[1];
+        
+        var listAlamatKlg = model.PasienKeluarga.Alamat.Normalize3Address();
+        fs_alm1_keluarga = listAlamatKlg[0];
+        fs_alm2_keluarga = listAlamatKlg[1];
+        
         fs_kota_keluarga = model.PasienKeluarga.Alamat.Kota;
         fs_kd_pos_keluarga = model.PasienKeluarga.Alamat.KodePos;
         
@@ -121,6 +128,9 @@ public class PasienDto
 
     public PasienModel ToModel(IGenderDal genderDal)
     {
+        this.ToDefaultString();
+        fs_gol_darah = fs_gol_darah == "-" ? "O" : fs_gol_darah;
+
         //      personal info
         var tglLahir = fd_tgl_lahir.ToDate(DateFormatEnum.YMD);
         var gender = genderDal.GetData(fs_jns_kelamin).Value;
@@ -165,6 +175,34 @@ public class PasienDto
             tglMedRec, fb_aktif);
 
         return pasien;
-    //
+    }
+}
+
+public static class DtoExtensions
+{
+    public static void ToDefaultString<T>(this T obj)
+    {
+        if (EqualityComparer<T>.Default.Equals(obj, default))
+        {
+            return;
+        }
+    
+        var properties = from p in typeof(T).GetProperties()
+            where p.PropertyType == typeof(string) &&
+                  p.CanRead &&
+                  p.CanWrite
+            select p;
+
+        foreach (var property in properties)
+        {
+            var value = (string)property.GetValue(obj, null);
+            if (!string.IsNullOrEmpty(value)) 
+                continue;
+            var replacement = property.Name.StartsWith("fd", StringComparison.OrdinalIgnoreCase) 
+                ? "3000-01-01" 
+                : "-";
+                
+            property.SetValue(obj, replacement, null);
+        }
     }
 }

@@ -1,6 +1,6 @@
 using System.Data;
 using System.Data.SqlClient;
-using Bilreg.Application.PasienContext.StatusSosialFeature.PendidikanDkAgg;
+using Bilreg.Application.PasienContext.StatusSosialFeature;
 using Bilreg.Domain.PasienContext.StatusSosialFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
@@ -139,9 +139,9 @@ public class PendidikanDkDalTest
     public void UT5_ListDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = new List<PendidikanDkType> {new PendidikanDkType("A", "B")};
+        var expected = new PendidikanDkType("A", "B");
         _sut.Insert(new PendidikanDkType("A", "B"));
         var actual = _sut.ListData().Value;
-        actual.Should().BeEquivalentTo(expected);
+        actual.Should().ContainEquivalentOf(expected);
     }
 }

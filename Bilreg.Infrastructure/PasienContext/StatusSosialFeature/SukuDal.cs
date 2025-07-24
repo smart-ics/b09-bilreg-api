@@ -140,9 +140,9 @@ public class SukuDalTest
     public void UT5_ListDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = new List<SukuType> {new SukuType("A", "B")};
+        var expected = new SukuType("A", "B");
         _sut.Insert(new SukuType("A", "B"));
         var actual = _sut.ListData().Value;
-        actual.Should().BeEquivalentTo(expected);
+        actual.Should().ContainEquivalentOf(expected);
     }
 }

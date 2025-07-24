@@ -12,18 +12,10 @@ using Xunit;
 
 namespace Bilreg.Infrastructure.PasienContext.PasienFeature;
 
-public record Pasien2Dto(
-    string PasienId,
-    string AlamatKtp1,
-    string AlamatKtp2,
-    string AlamatKtp3,
-    string AlamatKtpKota,
-    string AlamatKtpKodePos);
-
 public interface IPasien2Dal : 
     IInsert<Pasien2Dto>,
     IUpdate<Pasien2Dto>,
-    IDelete<Pasien2Dto>,
+    IDelete<IPasienKey>,
     IGetDataMayBe<Pasien2Dto, IPasienKey>{}
 
 public class Pasien2Dal : IPasien2Dal
@@ -83,7 +75,7 @@ public class Pasien2Dal : IPasien2Dal
         conn.Execute(sql, dp);
     }
 
-    public void Delete(Pasien2Dto key)
+    public void Delete(IPasienKey key)
     {
         const string sql = @"
             DELETE FROM

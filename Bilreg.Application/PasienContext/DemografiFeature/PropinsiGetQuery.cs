@@ -1,9 +1,8 @@
 ﻿using Bilreg.Domain.PasienContext.DemografiFeature;
-using Bilreg.Domain.PasienContext.StatusSosialFeature;
 using JetBrains.Annotations;
 using MediatR;
 
-namespace Bilreg.Application.PasienContext.DemografiSub;
+namespace Bilreg.Application.PasienContext.DemografiFeature;
 
 public record PropinsiGetQuery(string PropinsiId) : IRequest<PropinsiGetResponse>;
 

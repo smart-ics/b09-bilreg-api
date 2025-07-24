@@ -2,7 +2,7 @@ using Bilreg.Domain.PasienContext.DemografiFeature;
 using JetBrains.Annotations;
 using MediatR;
 
-namespace Bilreg.Application.PasienContext.DemografiSub;
+namespace Bilreg.Application.PasienContext.DemografiFeature;
 
 public record KelurahanGetQuery(string KelurahanId) : IRequest<KelurahanGetResponse>;
 

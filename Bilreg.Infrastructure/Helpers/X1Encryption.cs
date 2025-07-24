@@ -1,8 +1,7 @@
 ﻿using FluentAssertions;
-using Microsoft.VisualBasic;
 using Xunit;
 
-namespace Bilreg.Application.Helpers;
+namespace Bilreg.Infrastructure.Helpers;
 
 internal static class X1EncryptionHelper
 {

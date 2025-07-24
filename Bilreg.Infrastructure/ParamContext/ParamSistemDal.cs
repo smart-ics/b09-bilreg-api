@@ -1,6 +1,5 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
-using Bilreg.Application.ParamContext.ParamSistemAgg;
 using Bilreg.Domain.ParamContext;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;

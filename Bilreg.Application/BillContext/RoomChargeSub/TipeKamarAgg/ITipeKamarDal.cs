@@ -1,6 +1,7 @@
+using Bilreg.Domain.BillContext.RoomChargeSub.TipeKamarAgg;
 using Nuna.Lib.DataAccessHelper;
 
-namespace Bilreg.Domain.BillContext.RoomChargeSub.TipeKamarAgg;
+namespace Bilreg.Application.BillContext.RoomChargeSub.TipeKamarAgg;
 
 public interface ITipeKamarDal :
     IInsert<TipeKamarModel>,

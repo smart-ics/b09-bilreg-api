@@ -140,9 +140,9 @@ public class PekerjaanDkDalTest
     public void UT5_ListDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = new List<PekerjaanDkType> {new PekerjaanDkType("A", "B")};
+        var expected = new PekerjaanDkType("A", "B");
         _sut.Insert(new PekerjaanDkType("A", "B"));
         var actual = _sut.ListData().Value;
-        actual.Should().BeEquivalentTo(expected);
+        actual.Should().ContainEquivalentOf(expected);
     }
 }

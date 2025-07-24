@@ -1,7 +1,6 @@
-﻿using System.Data;
+using System.Data;
 using System.Data.SqlClient;
-using Bilreg.Application.PasienContext.StatusSosialFeature;
-using Bilreg.Domain.PasienContext;
+using Bilreg.Application.PasienContext.DemografiFeature;
 using Bilreg.Domain.PasienContext.StatusSosialFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
@@ -12,125 +11,125 @@ using Nuna.Lib.PatternHelper;
 using Nuna.Lib.TransactionHelper;
 using Xunit;
 
-namespace Bilreg.Infrastructure.PasienContext.StatusSosialFeature;
+namespace Bilreg.Infrastructure.PasienContext.DemografiSub;
 
-public class AgamaDal : IAgamaDal
+public class KotaDal : IKotaDal
 {
     private readonly DatabaseOptions _opt;
 
-    public AgamaDal(IOptions<DatabaseOptions> opt)
+    public KotaDal(IOptions<DatabaseOptions> opt)
     {
         _opt = opt.Value;
     }
 
-    public void Insert(AgamaType model)
+    public void Insert(KotaType model)
     {
         const string sql = @"
             INSERT INTO 
-                ta_agama(fs_kd_agama, fs_nm_agama)
+                ta_kota(fs_kd_kota, fs_nm_kota)
             VALUES 
-                (@fs_kd_agama, @fs_nm_agama)";
+                (@fs_kd_kota, @fs_nm_kota)";
 
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_agama", model.AgamaId, SqlDbType.VarChar);
-        dp.AddParam("@fs_nm_agama", model.AgamaName, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_kota", model.KotaId, SqlDbType.VarChar);
+        dp.AddParam("@fs_nm_kota", model.KotaName, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
 
-    public void Update(AgamaType model)
+    public void Update(KotaType model)
     {
         const string sql = @"
-            UPDATE ta_agama
-            SET fs_nm_agama = @fs_nm_agama
-            WHERE fs_kd_agama = @fs_kd_agama";
+            UPDATE ta_kota
+            SET fs_nm_kota = @fs_nm_kota
+            WHERE fs_kd_kota = @fs_kd_kota";
 
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_agama", model.AgamaId, SqlDbType.VarChar);
-        dp.AddParam("@fs_nm_agama", model.AgamaName, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_kota", model.KotaId, SqlDbType.VarChar);
+        dp.AddParam("@fs_nm_kota", model.KotaName, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
 
-    public void Delete(IAgamaKey key)
+    public void Delete(IKotaKey key)
     {
         const string sql = @"
-            DELETE FROM ta_agama
-            WHERE fs_kd_agama = @fs_kd_agama";
+            DELETE FROM ta_kota
+            WHERE fs_kd_kota = @fs_kd_kota";
 
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_agama", key.AgamaId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_kota", key.KotaId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
 
-    public MayBe<AgamaType> GetData(IAgamaKey key)
+    public MayBe<KotaType> GetData(IKotaKey key)
     {
         const string sql = @"
             SELECT 
-                fs_kd_agama AS AgamaId, 
-                fs_nm_agama AS AgamaName
-            FROM ta_agama
-            WHERE fs_kd_agama = @fs_kd_agama";
+                fs_kd_kota AS KotaId, 
+                fs_nm_kota AS KotaName
+            FROM ta_kota
+            WHERE fs_kd_kota = @fs_kd_kota";
 
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_agama", key.AgamaId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_kota", key.KotaId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return MayBe.From(conn.ReadSingle<AgamaType>(sql, dp));
+        return MayBe.From(conn.ReadSingle<KotaType>(sql, dp));
     }
 
-    public MayBe<IEnumerable<AgamaType>> ListData()
+    public MayBe<IEnumerable<KotaType>> ListData()
     {
         const string sql = @"
             SELECT  
-                fs_kd_agama AS AgamaId, 
-                fs_nm_agama AS AgamaName
-            FROM  ta_agama";
+                fs_kd_kota AS KotaId, 
+                fs_nm_kota AS KotaName
+            FROM  ta_kota";
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return MayBe.From(conn.Read<AgamaType>(sql));
+        return MayBe.From(conn.Read<KotaType>(sql));
     }
 
 }
 
-public class AgamaDalTest
+public class KotaDalTest
 {
-    private readonly AgamaDal _sut;
+    private readonly KotaDal _sut;
 
-    public AgamaDalTest()
+    public KotaDalTest()
     {
-        _sut = new AgamaDal(ConnStringHelper.GetTestEnv());
+        _sut = new KotaDal(ConnStringHelper.GetTestEnv());
     }
 
     [Fact]
     public void UT1_InsertTest()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Insert(new AgamaType("A", "B"));
+        _sut.Insert(new KotaType("A", "B"));
     }
 
     [Fact]
     public void UT2_UpdateTest()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Update(new AgamaType("A", "B"));
+        _sut.Update(new KotaType("A", "B"));
     }
     [Fact]
     public void UT3_DeleteTest()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Delete(new AgamaType("A", "B"));
+        _sut.Delete(new KotaType("A", "B"));
     }
 
     [Fact]
     public void UT4_GetDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = new AgamaType("A", "B");
+        var expected = new KotaType("A", "B");
         _sut.Insert(expected);
         var actual = _sut.GetData(expected).Value;
         actual.Should().BeEquivalentTo(expected);
@@ -140,8 +139,8 @@ public class AgamaDalTest
     public void UT5_ListDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = new AgamaType("A", "B");
-        _sut.Insert(new AgamaType("A", "B"));
+        var expected = new KotaType("A", "B");
+        _sut.Insert(new KotaType("A", "B"));
         var actual = _sut.ListData().Value;
         actual.Should().ContainEquivalentOf(expected);
     }

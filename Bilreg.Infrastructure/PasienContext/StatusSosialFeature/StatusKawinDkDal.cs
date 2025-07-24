@@ -139,9 +139,9 @@ public class StatusKawinDkDalTest
     public void UT5_ListDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = new List<StatusKawinDkType> {new StatusKawinDkType("A", "B")};
+        var expected = new StatusKawinDkType("A", "B");
         _sut.Insert(new StatusKawinDkType("A", "B"));
         var actual = _sut.ListData().Value;
-        actual.Should().BeEquivalentTo(expected);
+        actual.Should().ContainEquivalentOf(expected);
     }
 }

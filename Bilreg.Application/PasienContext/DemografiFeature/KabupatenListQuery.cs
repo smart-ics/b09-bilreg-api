@@ -2,7 +2,7 @@
 using JetBrains.Annotations;
 using MediatR;
 
-namespace Bilreg.Application.PasienContext.DemografiSub;
+namespace Bilreg.Application.PasienContext.DemografiFeature;
 
 public record KabupatenListQuery(string PropinsiId) : IRequest<IEnumerable<KabupatenListResponse>>;
 

@@ -1,4 +1,3 @@
-using Bilreg.Application.PasienContext.StatusSosialFeature.PendidikanDkAgg;
 using Bilreg.Domain.PasienContext.StatusSosialFeature;
 using JetBrains.Annotations;
 using MediatR;

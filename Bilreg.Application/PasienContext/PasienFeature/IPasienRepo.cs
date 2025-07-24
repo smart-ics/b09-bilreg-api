@@ -5,11 +5,11 @@ using Nuna.Lib.DataAccessHelper;
 namespace Bilreg.Application.PasienContext.PasienFeature;
 
 public interface IPasienRepo : 
-    ISaveChange<PasienModel>,
+    ISaveChange<PasienModel, IPasienKey>,
     ILoadEntity<PasienModel, IPasienKey>,
-    IDeleteEntity<PasienModel>,
-    IListData<PasienReff, SearchKeyword>
+    IDeleteEntity<IPasienKey>,
+    IListDataMayBe<PasienReff, SearchKeyword>
 {
 }
 
-public record SearchKeyword(string Keyword);
+public record SearchKeyword(string Value);

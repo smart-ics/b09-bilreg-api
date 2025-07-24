@@ -49,7 +49,7 @@ public class PasienModel : IPasienKey, IPasienPersonalInfo, IPasienAdministrativ
     #region PROPERTIES
     //      personal info
     //          MANDATORY PROPERTIES
-    public string PasienId { get; init; } 
+    public string PasienId { get; private set; } 
     public string PasienName { get; init; }
     public DateTime TglLahir { get; init; }
     public GenderType Gender { get; init; }
@@ -153,31 +153,36 @@ public class PasienModel : IPasienKey, IPasienPersonalInfo, IPasienAdministrativ
     {
         TglMedRec = tglMedRec;
     }
+    
+    public PasienReff ToReff() => new PasienReff(PasienId, PasienName, TglLahir, Gender);
+    
+    public void SetPasienId(string id) => PasienId = id;
+    
     #endregion
     
     #region STATIC FACTORY METHOD
-    public static PasienModel CreateNew(string pasienId, string pasienName,
+
+    private const string NEW_ID = "[NEW]";
+    public static PasienModel CreateNew(string pasienName,
         DateTime tglLahir, GenderType gender)
     {
-        Guard.Against.NullOrWhiteSpace(pasienId, nameof(pasienId));
         Guard.Against.NullOrWhiteSpace(pasienName, nameof(pasienName));
         Guard.Against.Null(gender, nameof(gender));
-        return new PasienModel(pasienId, pasienName, tglLahir, gender,
+        return new PasienModel(NEW_ID, pasienName, tglLahir, gender,
             "-", "-", "-", GolDarahType.Default, AlamatType.Default, AlamatType.Default,
             KelurahanType.Default, IdentitasType.Default, IdentitasType.Default,
             [], PasienKeluargaType.Default, StatusKawinDkType.Default, 
             AgamaType.Default, SukuType.Default, PekerjaanDkType.Default, PendidikanDkType.Default, 
             DateTime.Now, true);
     }
-    public static PasienModel Default => CreateNew("-", "-", new DateTime (3000,1,1), GenderType.Default);
+    public static PasienModel Default => CreateNew("-", new DateTime (3000,1,1), GenderType.Default);
     public static IPasienKey Key(string id)
     {
-        var result = CreateNew(id, "-", new DateTime (3000,1,1), GenderType.Default);
+        var result = CreateNew("-", new DateTime (3000,1,1), GenderType.Default);
         return result;        
     } 
     #endregion
 
-    public PasienReff ToReff() => new PasienReff(PasienId, PasienName, TglLahir, Gender);
 }
 
 public class PasienModelTest
@@ -186,7 +191,7 @@ public class PasienModelTest
     public void UT1_Given8DigitsPatientId_WhenFormatted_ThenReturnShortId()
     {
         const string pasienId = "340407012345678";
-        var pasien = PasienModel.CreateNew(pasienId, "Pasien", new DateTime(2000, 1, 1), GenderType.Default);
+        var pasien = PasienModel.CreateNew("Pasien", new DateTime(2000, 1, 1), GenderType.Default);
         var shortId = pasien.GetNomorMedrec();
         shortId.Should().Be("12-34-56-78");
     }

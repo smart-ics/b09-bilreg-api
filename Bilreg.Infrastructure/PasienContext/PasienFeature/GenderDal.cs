@@ -1,5 +1,6 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
+using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
@@ -9,9 +10,6 @@ using Nuna.Lib.PatternHelper;
 
 namespace Bilreg.Infrastructure.PasienContext.PasienFeature;
 
-public interface IGenderDal : 
-    IGetDataMayBe<GenderType, string>
-{ }
 public class GenderDal : IGenderDal
 {
     private readonly DatabaseOptions _opt;

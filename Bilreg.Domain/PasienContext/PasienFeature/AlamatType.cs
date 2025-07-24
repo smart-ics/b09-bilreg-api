@@ -7,7 +7,6 @@ public record AlamatType
     public AlamatType(string[] alamat, string kota, string kodePos)
     {
         Guard.Against.Null(alamat, nameof(alamat));
-        Guard.Against.OutOfRange(alamat.Length, nameof(alamat), 0, 3, "Alamat maksimal 3 baris");        
         
         Guard.Against.Null(kota, nameof(kota));
         Guard.Against.OutOfRange(kota.Length, nameof(kota), 0, 30, "Kota maksimal 30 karakter");
