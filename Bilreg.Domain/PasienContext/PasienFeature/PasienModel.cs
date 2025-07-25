@@ -179,6 +179,7 @@ public class PasienModel : IPasienKey, IPasienPersonalInfo, IPasienAdministrativ
     public static IPasienKey Key(string id)
     {
         var result = CreateNew("-", new DateTime (3000,1,1), GenderType.Default);
+        result.SetPasienId(id);
         return result;        
     } 
     #endregion

@@ -54,9 +54,10 @@ public class PasienRepo : IPasienRepo
             _pasien2Dal.Insert(Pasien2Dto.Create(model));
         
         trans.Complete();
-        
-        return Result<IPasienKey>.Success(PasienModel.Key(model.PasienId));
+        return Result<IPasienKey>.Success(model);
     }
+    
+    
 
     public MayBe<PasienModel> LoadEntity(IPasienKey key)
     {
