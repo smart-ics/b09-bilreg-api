@@ -1,13 +1,20 @@
-﻿using Bilreg.Domain.BillContext.TindakanSub.KomponenTarifAgg;
+﻿using Ardalis.GuardClauses;
+using Bilreg.Domain.BillContext.TindakanSub.TarifFeature;
 
 namespace Bilreg.Domain.AdmisiContext.RegSub.KarcisAgg;
 
-public class KarcisKomponenModel(string karcisId, 
-    string komponenId, string komponenName, decimal nilai) : IKarcisKey, IKomponenKey
+public record KarcisKomponenModel 
 {
-    public string KarcisId { get; protected set; } = karcisId;
-    public string KomponenId { get; protected set; } = komponenId;
-    public string KomponenName { get; protected set; } = komponenName;
-    public decimal Nilai { get; protected set; } = nilai;
-    public void SetKarcisId(string id) => KarcisId = id;
+    public KarcisKomponenModel(KomponenReff komponenTarif, decimal nilai)
+    {
+        Guard.Against.Null(komponenTarif, nameof(komponenTarif));
+        Guard.Against.NegativeOrZero(nilai, nameof(nilai));
+        
+        KomponenTarif = komponenTarif;
+        Nilai = nilai;
+    }
+    public KomponenReff KomponenTarif { get; init; }
+    public decimal Nilai { get; init; }
+    
+    public static KarcisKomponenModel Default => new(KomponenType.Default.ToReff(), 0);
 }

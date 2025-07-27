@@ -1,5 +1,5 @@
 using Bilreg.Application.AdmisiContext.PetugasMedisSub.PetugasMedisAgg;
-using Bilreg.Domain.BillContext.TindakanSub.KomponenTarifAgg;
+using Bilreg.Domain.BillContext.TindakanSub.TarifFeature;
 using Bilreg.Domain.BillContext.TransportSub.AmbulanceAgg;
 using CommunityToolkit.Diagnostics;
 using FluentAssertions;

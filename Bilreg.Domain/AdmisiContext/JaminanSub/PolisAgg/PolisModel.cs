@@ -1,8 +1,8 @@
-﻿using Bilreg.Domain.AdmisiContext.JaminanSub.TipeJaminanAgg;
-using Bilreg.Domain.BillContext.RoomChargeSub.KelasAgg;
+﻿using Bilreg.Domain.BillContext.RoomChargeSub.KelasAgg;
 
 namespace Bilreg.Domain.AdmisiContext.JaminanSub.PolisAgg;
 
+// TODO: Refactor Polis Model to Rich-Domain-Model
 public partial class PolisModel : IPolisKey, ITipeJaminanKey, IKelasKey
 {
     public string PolisId { get; protected set; } = string.Empty;

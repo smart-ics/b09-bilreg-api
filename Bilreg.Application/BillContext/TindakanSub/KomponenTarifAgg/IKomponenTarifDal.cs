@@ -1,13 +1,13 @@
-using Bilreg.Domain.BillContext.TindakanSub.KomponenTarifAgg;
+using Bilreg.Domain.BillContext.TindakanSub.TarifFeature;
 using Nuna.Lib.DataAccessHelper;
 
 namespace Bilreg.Application.BillContext.TindakanSub.KomponenTarifAgg;
 
 public interface IKomponenTarifDal:
-    IInsert<KomponenModel>,
-    IUpdate<KomponenModel>,
+    IInsert<KomponenType>,
+    IUpdate<KomponenType>,
     IDelete<IKomponenKey>,
-    IGetData<KomponenModel, IKomponenKey>,
-    IListData<KomponenModel>
+    IGetData<KomponenType, IKomponenKey>,
+    IListData<KomponenType>
 {
 }

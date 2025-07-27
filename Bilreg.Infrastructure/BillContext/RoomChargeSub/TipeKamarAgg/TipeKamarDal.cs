@@ -1,5 +1,6 @@
 using System.Data;
 using System.Data.SqlClient;
+using Bilreg.Application.BillContext.RoomChargeSub.TipeKamarAgg;
 using Bilreg.Domain.BillContext.RoomChargeSub.TipeKamarAgg;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;

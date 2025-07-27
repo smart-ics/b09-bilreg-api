@@ -1,0 +1,163 @@
+﻿### 1. Create Pasien
+POST https://localhost:44376/api/Pasien
+Content-Type: application/json
+Accept-Language: en-US,en;q=0.5
+
+{
+  "PasienName": "Agus Budiono",
+  "TempatLahir": "Jakarta",
+  "TglLahir": "1979-05-15",
+  "NickName": "Ade",
+  "Gender": "M",
+  "IbuKandung": "Wati Sukeni",
+  "GolDarah": "B"
+}
+
+### 2. Update Lengkap
+PUT https://localhost:44376/api/Pasien/administrativeInfo
+Content-Type: application/json
+Accept-Language: en-US,en;q=0.5
+
+{
+  "pasienId": "517102000000046",
+  "address": {
+    "alamat": "Perum Istana Pulau Es Blok C/2",
+    "alamat2": "RT 3 / RW 2 Ngestiharjo, Ngaglik",
+    "alamat3": "Sleman",
+    "kota": "Yogyakarta",
+    "kodePos": "55283"
+  },
+  "kelurahanId": "0010010101",
+  "identity": {
+    "jenisId": "KTP",
+    "nomorId": "3404062007770005",
+    "nomorKk": "-"
+  },
+  "contact": {
+    "email": "drury_yl@email.com",
+    "noTelp": "-",
+    "noHp": "087822211676"
+  },
+  "keluarga": {
+    "name": "Susi",
+    "relasi": "Istri",
+    "contact": {
+      "email": "dee_sooshe@yahoo.com",
+      "noTelp": "123123",
+      "noHp": "087822211676"
+    },
+    "address": {
+      "alamat": "sda",
+      "alamat2": "juga sama",
+      "alamat3": "dengan apart saya",
+      "kota": "Tegal",
+      "kodePos": "57912"
+    }
+  },
+  "statusKawinId": "2",
+  "agamaId": "3",
+  "sukuId": "000",
+  "pendidikanDkId": "1",
+  "pekerjaanDkId": "004"
+}
+
+### 3. Update status-kawin = kosong
+PUT https://localhost:44376/api/Pasien/administrativeInfo
+Content-Type: application/json
+Accept-Language: en-US,en;q=0.5
+
+{
+  "pasienId": "517102000000046",
+  "address": {
+    "alamat": "Perum Istana Pulau Es Blok C/2",
+    "alamat2": "RT 3 / RW 2 Ngestiharjo, Ngaglik",
+    "alamat3": "Sleman",
+    "kota": "Yogyakarta",
+    "kodePos": "55283"
+  },
+  "kelurahanId": "0010010101",  
+  "identity": {
+    "jenisId": "KTP",
+    "nomorId": "3404062007770005",
+    "nomorKk": "-"
+  },
+  "contact": {
+    "email": "drury_yl@email.com",
+    "noTelp": "-",
+    "noHp": "087822211676"
+  },
+  "keluarga": {
+    "name": "Susi",
+    "relasi": "Istri",
+    "contact": {
+      "email": "dee_sooshe@yahoo.com",
+      "noTelp": "123123",
+      "noHp": "087822211676"
+    },
+    "address": {
+      "alamat": "sda",
+      "alamat2": "juga sama",
+      "alamat3": "dengan apart saya",
+      "kota": "Tegal",
+      "kodePos": "57912"
+    }
+  },
+  "statusKawinId": "",
+  "agamaId": "3",
+  "sukuId": "000",
+  "pendidikanDkId": "1",
+  "pekerjaanDkId": "004"
+}
+
+### 4. Update with invalid value (status-kawin = 99)
+PUT https://localhost:44376/api/Pasien/administrativeInfo
+Content-Type: application/json
+Accept-Language: en-US,en;q=0.5
+
+{
+  "pasienId": "517102000000046",
+  "address": {
+    "alamat": "Perum Istana Pulau Es Blok C/2",
+    "alamat2": "RT 3 / RW 2 Ngestiharjo, Ngaglik",
+    "alamat3": "Sleman",
+    "kota": "Yogyakarta",
+    "kodePos": "55283"
+  },
+  "kelurahanId": "0010010101",
+  "identity": {
+    "jenisId": "KTP",
+    "nomorId": "3404062007770005",
+    "nomorKk": "-"
+  },
+  "contact": {
+    "email": "drury_yl@email.com",
+    "noTelp": "-",
+    "noHp": "087822211676"
+  },
+  "keluarga": {
+    "name": "Susi",
+    "relasi": "Istri",
+    "contact": {
+      "email": "dee_sooshe@yahoo.com",
+      "noTelp": "123123",
+      "noHp": "087822211676"
+    },
+    "address": {
+      "alamat": "sda",
+      "alamat2": "juga sama",
+      "alamat3": "dengan apart saya",
+      "kota": "Tegal",
+      "kodePos": "57912"
+    }
+  },
+  "statusKawinId": "99",
+  "agamaId": "3",
+  "sukuId": "000",
+  "pendidikanDkId": "1",
+  "pekerjaanDkId": "004"
+}
+
+### 5. Get Pasien
+GET https://localhost:44376/api/Pasien/517102000000046
+Content-Type: application/json
+Accept-Language: en-US,en;q=0.5

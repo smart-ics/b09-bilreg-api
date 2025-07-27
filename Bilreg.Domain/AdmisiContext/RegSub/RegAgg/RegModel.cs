@@ -1,7 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.JaminanSub.TipeJaminanAgg;
-using Bilreg.Domain.AdmisiContext.RegSub.RegAgg.ValueObjects;
-using Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
-using CommunityToolkit.Diagnostics;
+﻿using Bilreg.Domain.AdmisiContext.RegSub.RegAgg.ValueObjects;
 
 namespace Bilreg.Domain.AdmisiContext.RegSub.RegAgg;
 
@@ -11,15 +8,15 @@ public class RegModel : IRegKey
     private const string CARAMASUK_DATANGSENDIRI_ID = "8";
     
     public string RegId { get; private set; }
-    public JenisRegEnum JenisReg { get; private set; }
-    public TglJamTrsType TglJamTrs { get; private set; }
-    public VoidFlagType VoidFlag { get; private set; } = new(new DateTime(3000, 1, 1), "");
-    public PasienViewType Pasien { get; private set; }
-
-    public TipeJaminanViewType TipeJaminan { get; private set; }
-    public RegCaraMasukVo CaraMasuk { get; private set; }
-    public KarcisTarifVo KarcisTarif { get; private set; }
-    public RegKelasVo Kelas { get; private set; }
+    // public JenisRegEnum JenisReg { get; private set; }
+    // public TglJamTrsType TglJamTrs { get; private set; }
+    // public VoidFlagType VoidFlag { get; private set; } = new(new DateTime(3000, 1, 1), "");
+    // public PasienReff Pasien { get; private set; }
+    //
+    // public TipeJaminanViewType TipeJaminan { get; private set; }
+    // public RegCaraMasukVo CaraMasuk { get; private set; }
+    // public KarcisTarifVo KarcisTarif { get; private set; }
+    // public RegKelasVo Kelas { get; private set; }
     
     // #region METHOD
     // public RegModel(string regId)
