@@ -7,7 +7,7 @@ public record JaminanType : IJaminanKey
 {
     public JaminanType(string jaminanId, string jaminanName,
         bool isAKtif, AlamatType alamat, CaraBayarDkType caraBayarDk, 
-        GroupJaminanType grupJaminan)
+        GroupJaminanReff grupJaminan)
     {
         Guard.Against.NullOrWhiteSpace(jaminanId, nameof(jaminanId));
         Guard.Against.NullOrWhiteSpace(jaminanName, nameof(jaminanName));
@@ -28,13 +28,13 @@ public record JaminanType : IJaminanKey
     public bool IsAktif { get; init; }
     public AlamatType Alamat { get; init; }
     public CaraBayarDkType CaraBayarDk { get; init; }
-    public GroupJaminanType GrupJaminan { get; init; }
+    public GroupJaminanReff GrupJaminan { get; init; }
 
     public JaminanReff ToReff() => new(JaminanId, JaminanName);
     
     public static JaminanType Default => new("-", "-", true, 
         AlamatType.Default, CaraBayarDkType.Default, 
-        GroupJaminanType.Default);
+        GroupJaminanType.Default.ToReff());
     public static IJaminanKey Key(string id) => Default with { JaminanId = id };
 }
 
