@@ -1,5 +1,4 @@
-﻿
-using MediatR;
+﻿using MediatR;
 
 namespace Bilreg.Application.AdmisiContext.JaminanSub.TipeJaminanAgg;
 
@@ -20,21 +19,11 @@ public class TipeJaminanListHandler : IRequestHandler<TipeJaminanListQuery, IEnu
         _tipeJaminanDal = tipeJaminanDal;
     }
 
-    public Task<IEnumerable<TipeJaminanListResponse>> Handle(TipeJaminanListQuery request, CancellationToken cancellationToken)
-    {
-        var listTipeJaminan = _tipeJaminanDal
-            .ListData().Value;
-
-        if (listTipeJaminan is null) throw new KeyNotFoundException("data not found");
-
-        var response = listTipeJaminan
-            .OrderBy(x => x.TipeJaminanId)
-            .Select(x => new TipeJaminanListResponse(
-                x.TipeJaminanId,
-                x.TipeJaminanName,
-                x.Jaminan.JaminanId,
-                x.Jaminan.JaminanName));
-
-        return Task.FromResult(response);
-    }
+    public Task<IEnumerable<TipeJaminanListResponse>> Handle(TipeJaminanListQuery request, 
+        CancellationToken cancellationToken)
+        => _tipeJaminanDal.ListData()
+        .Match(
+            onSome: x => Task.FromResult(x.Select(y
+                => new TipeJaminanListResponse(y.TipeJaminanId, y.TipeJaminanName, y.Jaminan.JaminanId, y.Jaminan.JaminanName))),
+            onNone: () => throw new KeyNotFoundException($"TipeJaminan not found"));
 }

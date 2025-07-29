@@ -21,17 +21,8 @@ public class GrupJaminanGetHandler : IRequestHandler<GrupJaminanGetQuery, GrupJa
     }
 
     public Task<GrupJaminanGetResponse> Handle(GrupJaminanGetQuery request, CancellationToken cancellationToken)
-    {
-        // QUERY
-        var result = _groupJaminanDal
-            .GetData(request);
-        if (result is null)
-            throw new KeyNotFoundException($"GroupJaminan {request.GroupJaminanId} not found");
-
-        // RESPONSE
-        var response = new GrupJaminanGetResponse(
-            result.GroupJaminanId, result.GroupJaminanName,
-            result.IsKaryawan, result.Keterangan);
-        return Task.FromResult(response);
-    }
+        => _groupJaminanDal.GetData(request)
+        .Match(
+            onSome: x => Task.FromResult(new GrupJaminanGetResponse(x.GroupJaminanId, x.GroupJaminanName, x.IsKaryawan, x.Keterangan)),
+            onNone: () => throw new KeyNotFoundException($"GroupJaminan {request.GroupJaminanId} not found"));
 }

@@ -1,5 +1,4 @@
-﻿using Bilreg.Application.BillContext.RoomChargeSub.TipeKamarAgg;
-using Bilreg.Domain.AdmisiContext.JaminanSub;
+﻿using Bilreg.Domain.AdmisiContext.JaminanSub;
 using MediatR;
 
 namespace Bilreg.Application.AdmisiContext.JaminanSub.TipeJaminanAgg;
@@ -23,22 +22,11 @@ public class TipeJaminaByJaminanListHandler : IRequestHandler<TipeJaminaByJamina
         _tipeJaminanDal = tipeJaminanDal;
     }
 
-    public Task<IEnumerable<TipeJaminanByJaminanListResponse>> Handle(TipeJaminaByJaminanListQuery request, CancellationToken cancellationToken)
-    {
-        var listTipeJaminan = _tipeJaminanDal
-            .ListData(request).Value;
-
-        if (listTipeJaminan is null) 
-            throw new KeyNotFoundException($"TipeJaminan by Jaminan {request.JaminanId} not found");
-
-        var response = listTipeJaminan
-            .OrderBy(x => x.TipeJaminanId)
-            .Select(x => new TipeJaminanByJaminanListResponse(
-                x.TipeJaminanId,
-                x.TipeJaminanName,
-                x.Jaminan.JaminanId,
-                x.Jaminan.JaminanName));
-
-        return Task.FromResult(response);
-    }
+    public Task<IEnumerable<TipeJaminanByJaminanListResponse>> Handle(TipeJaminaByJaminanListQuery request,
+        CancellationToken cancellationToken)
+        => _tipeJaminanDal.ListData(request)
+        .Match(
+            onSome: x => Task.FromResult(x.Select(y
+                => new TipeJaminanByJaminanListResponse(y.TipeJaminanId, y.TipeJaminanName, y.Jaminan.JaminanId, y.Jaminan.JaminanName))),
+            onNone: () => throw new KeyNotFoundException($"TipeJaminan by Jaminan {request.JaminanId} not found"));
 }

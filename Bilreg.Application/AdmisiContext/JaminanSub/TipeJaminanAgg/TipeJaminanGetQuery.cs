@@ -20,16 +20,9 @@ public class TipeJaminanGetHandler : IRequestHandler<TipeJaminanGetQuery, TipeJa
     }
 
     public Task<TipeJaminanGetResponse> Handle(TipeJaminanGetQuery request, CancellationToken cancellationToken)
-    {
-        var tipeJaminan = _tipeJaminanDal
-            .GetData(request).Value;
-        
-        if (tipeJaminan is null) throw new KeyNotFoundException($"Tipe Jaminan {request.TipeJaminanId} nnot found");
-        
-        var response = new TipeJaminanGetResponse(
-            tipeJaminan.TipeJaminanId, tipeJaminan.TipeJaminanName,
-            tipeJaminan.Jaminan);
-
-        return Task.FromResult(response);
-    }
+        => _tipeJaminanDal.GetData(request)
+        .Match(
+            onSome: x => Task.FromResult(new TipeJaminanGetResponse(x.TipeJaminanId, x.TipeJaminanName, x.Jaminan)), 
+            onNone: () => throw new KeyNotFoundException($"TipeJaminan {request.TipeJaminanId} not found"));
+   
 }

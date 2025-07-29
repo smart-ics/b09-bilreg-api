@@ -1,7 +1,6 @@
 using Bilreg.Domain.AdmisiContext.JaminanSub;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
-using Nuna.Lib.PatternHelper;
 
 namespace Bilreg.Application.AdmisiContext.JaminanSub.JaminanAgg;
 
@@ -25,16 +24,9 @@ public class JaminanGetHandler : IRequestHandler<JaminanGetQuery, JaminanGetResp
     }
 
     public Task<JaminanGetResponse> Handle(JaminanGetQuery request, CancellationToken cancellationToken)
-    {
-        // QUERY
-        var jaminan = _jaminanDal
-            .GetData(request).Value;
-        if (jaminan is null)
-            throw new KeyNotFoundException($"Jaminan {request.JaminanId} not found");
-        // RESPONSE
-        var response = new JaminanGetResponse(
-            jaminan.JaminanId, jaminan.JaminanName, jaminan.Alamat,
-            jaminan.IsAktif, jaminan.CaraBayarDk, jaminan.GroupJaminan);
-        return Task.FromResult(response);
-    }
+        => _jaminanDal.GetData(request)
+        .Match(
+            onSome: x => Task.FromResult(new JaminanGetResponse(x.JaminanId, x.JaminanName, x.Alamat,
+                x.IsAktif, x.CaraBayarDk, x.GroupJaminan)),
+            onNone: () => throw new KeyNotFoundException($"Jaminan {request.JaminanId} not found"));
 }

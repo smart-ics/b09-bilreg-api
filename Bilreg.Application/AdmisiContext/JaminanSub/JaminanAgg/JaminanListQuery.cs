@@ -20,18 +20,9 @@ public class JaminanListHandler : IRequestHandler<JaminanListQuery, IEnumerable<
     }
 
     public Task<IEnumerable<JaminanListResponse>> Handle(JaminanListQuery request, CancellationToken cancellationToken)
-    {
-        // QUERY
-        var listJaminan = _jaminanDal
-            .ListData().Value;
-        if (listJaminan is null) throw new KeyNotFoundException("data not found");
-
-        // RESPONSE
-        var response = listJaminan
-            .Select(x => new JaminanListResponse(
-                x.JaminanId, x.JaminanName,
-                x.CaraBayarDk.CaraBayarDkName,
-                x.GroupJaminan.GroupJaminanName));
-        return Task.FromResult(response);
-    }
+        => _jaminanDal.ListData()
+        .Match(
+            onSome: x => Task.FromResult(x.Select(y
+                => new JaminanListResponse(y.JaminanId, y.JaminanName, y.CaraBayarDk.CaraBayarDkName, y.GroupJaminan.GroupJaminanName))),
+            onNone: () => throw new KeyNotFoundException("Jaminan not found"));
 }

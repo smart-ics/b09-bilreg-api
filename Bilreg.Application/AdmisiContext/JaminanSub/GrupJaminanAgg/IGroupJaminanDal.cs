@@ -7,7 +7,7 @@ public interface IGroupJaminanDal :
     IInsert<GroupJaminanType>,
     IUpdate<GroupJaminanType>,
     IDelete<IGroupJaminanKey>,
-    IGetData<GroupJaminanType, IGroupJaminanKey>,
-    IListData<GroupJaminanType>
+    IGetDataMayBe<GroupJaminanType, IGroupJaminanKey>,
+    IListDataMayBe<GroupJaminanType>
 {
 }

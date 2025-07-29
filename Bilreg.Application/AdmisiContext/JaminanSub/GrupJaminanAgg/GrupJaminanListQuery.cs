@@ -21,15 +21,9 @@ public class GrupJaminanListHandler : IRequestHandler<GrupJaminanListQuery, IEnu
     }
 
     public Task<IEnumerable<GrupJaminanListResponse>> Handle(GrupJaminanListQuery request, CancellationToken cancellationToken)
-    {
-        var result = _groupJaminanDal
-            .ListData();
-        if (result is null)
-            throw new KeyNotFoundException("GroupJaminan not found");
-        var response = result.Select(x =>
-            new GrupJaminanListResponse(
-                x.GroupJaminanId, x.GroupJaminanName,
-                x.IsKaryawan, x.Keterangan));
-        return Task.FromResult(response);
-    }
+        => _groupJaminanDal.ListData()
+        .Match(
+            onSome: x => Task.FromResult(x.Select(y
+                => new GrupJaminanListResponse(y.GroupJaminanId, y.GroupJaminanName, y.IsKaryawan, y.Keterangan))),
+            onNone: () => throw new KeyNotFoundException("GroupJaminan not found"));
 }

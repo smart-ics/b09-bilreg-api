@@ -7,6 +7,7 @@ using Dapper;
 using FluentAssertions;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
+using Nuna.Lib.PatternHelper;
 using Nuna.Lib.TransactionHelper;
 using Xunit;
 
@@ -76,42 +77,42 @@ public class GrupJaminanDal : IGroupJaminanDal
         conn.Execute(sql, dp);
     }
 
-    
-    public GroupJaminanType GetData(IGroupJaminanKey key)
+    public MayBe<GroupJaminanType> GetData(IGroupJaminanKey key)
     {
         const string sql = @"
-             SELECT 
-                 fs_kd_grup_jaminan AS GroupJaminanId, 
-                 fs_nm_grup_jaminan AS GroupJaminanName, 
-                 fb_karyawan AS IsKaryawan, 
-                 fs_keterangan AS Keterangan
-             FROM 
-                 ta_grup_jaminan
-             WHERE 
-                 fs_kd_grup_jaminan = @fs_kd_grup_jaminan";
+                 SELECT 
+                     fs_kd_grup_jaminan AS GroupJaminanId, 
+                     fs_nm_grup_jaminan AS GroupJaminanName, 
+                     fb_karyawan AS IsKaryawan, 
+                     fs_keterangan AS Keterangan
+                 FROM 
+                     ta_grup_jaminan
+                 WHERE 
+                     fs_kd_grup_jaminan = @fs_kd_grup_jaminan";
 
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_grup_jaminan", key.GroupJaminanId, SqlDbType.VarChar);
-
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.ReadSingle<GroupJaminanType>(sql, dp);
+        return MayBe
+            .From(conn.ReadSingle<GroupJaminanType>(sql, dp));
     }
 
-    public IEnumerable<GroupJaminanType> ListData()
+    public MayBe<IEnumerable<GroupJaminanType>> ListData()
     {
         const string sql = @"
-             SELECT 
-                 fs_kd_grup_jaminan AS GroupJaminanId, 
-                 fs_nm_grup_jaminan AS GroupJaminanName, 
-                 fb_karyawan AS IsKaryawan, 
-                 fs_keterangan AS Keterangan
-             FROM 
-                 ta_grup_jaminan";
+                 SELECT 
+                     fs_kd_grup_jaminan AS GroupJaminanId, 
+                     fs_nm_grup_jaminan AS GroupJaminanName, 
+                     fb_karyawan AS IsKaryawan, 
+                     fs_keterangan AS Keterangan
+                 FROM 
+                     ta_grup_jaminan ";
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<GroupJaminanType>(sql);
-        
+        return MayBe
+            .From(conn.Read<GroupJaminanType>(sql));
     }
+
 }
 
 public class GrupJaminanDalTest
@@ -153,7 +154,7 @@ public class GrupJaminanDalTest
         using var trans = TransHelper.NewScope();
         var expected = new GroupJaminanType("A", "B", true, "C");
         _sut.Insert(expected);
-        var actual = _sut.GetData(expected);
+        var actual = _sut.GetData(expected).Value;
         actual.Should().BeEquivalentTo(expected);
     }
 
@@ -163,7 +164,7 @@ public class GrupJaminanDalTest
         using var trans = TransHelper.NewScope();
         var expected = new GroupJaminanType("A", "B", true, "C");
         _sut.Insert(expected);
-        var actual = _sut.ListData();
-        _ = actual.Select(x => x.Should().BeEquivalentTo(expected));
+        var actual = _sut.ListData().Value;
+        actual.Should().ContainEquivalentOf(expected);
     }
 }
