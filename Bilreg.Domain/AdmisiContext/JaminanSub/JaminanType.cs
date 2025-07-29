@@ -20,7 +20,7 @@ public record JaminanType : IJaminanKey
         IsAktif = isAKtif;
         Alamat = alamat;
         CaraBayarDk = caraBayarDk;
-        GrupJaminan = grupJaminan;
+        GroupJaminan = grupJaminan;
     }
     
     public string JaminanId { get; init; }
@@ -28,7 +28,7 @@ public record JaminanType : IJaminanKey
     public bool IsAktif { get; init; }
     public AlamatType Alamat { get; init; }
     public CaraBayarDkType CaraBayarDk { get; init; }
-    public GroupJaminanReff GrupJaminan { get; init; }
+    public GroupJaminanReff GroupJaminan { get; init; }
 
     public JaminanReff ToReff() => new(JaminanId, JaminanName);
     
