@@ -12,6 +12,7 @@ using Nuna.Lib.TransactionHelper;
 using System.Data;
 using System.Data.SqlClient;
 using System.Runtime.Intrinsics.Arm;
+using Bilreg.Infrastructure.PasienContext.PasienFeature;
 using Xunit;
 
 namespace Bilreg.Infrastructure.AdmisiContext.JaminanSub.JaminanAgg;
@@ -35,11 +36,13 @@ public class JaminanDal : IJaminanDal
                  @fs_kd_jaminan, @fs_nm_jaminan, @fs_alm1_jaminan, @fs_alm2_jaminan,
                  @fs_kota_jaminan, @fb_aktif, @fs_kd_cara_bayar_dk, @fs_kd_grup_jaminan )";
 
+        var listAlamat = model.Alamat.Normalize3Address();
+        
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_jaminan", model.JaminanId, SqlDbType.VarChar);
         dp.AddParam("@fs_nm_jaminan", model.JaminanName, SqlDbType.VarChar);
-        dp.AddParam("@fs_alm1_jaminan", model.Alamat.Alamat[0], SqlDbType.VarChar);
-        dp.AddParam("@fs_alm2_jaminan", model.Alamat.Alamat[1], SqlDbType.VarChar);
+        dp.AddParam("@fs_alm1_jaminan", listAlamat[0], SqlDbType.VarChar);
+        dp.AddParam("@fs_alm2_jaminan", listAlamat[1], SqlDbType.VarChar);
         dp.AddParam("@fs_kota_jaminan", model.Alamat.Kota, SqlDbType.VarChar);
 
         dp.AddParam("@fb_aktif", model.IsAktif, SqlDbType.Bit);
@@ -65,12 +68,14 @@ public class JaminanDal : IJaminanDal
                  fs_kd_grup_jaminan = @fs_kd_grup_jaminan
              WHERE 
                  fs_kd_jaminan = @fs_kd_jaminan";
-
+        
+        var listAlamat = model.Alamat.Normalize3Address();
+        
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_jaminan", model.JaminanId, SqlDbType.VarChar);
         dp.AddParam("@fs_nm_jaminan", model.JaminanName, SqlDbType.VarChar);
-        dp.AddParam("@fs_alm1_jaminan", model.Alamat.Alamat[0], SqlDbType.VarChar);
-        dp.AddParam("@fs_alm2_jaminan", model.Alamat.Alamat[1], SqlDbType.VarChar);
+        dp.AddParam("@fs_alm1_jaminan", listAlamat[0], SqlDbType.VarChar);
+        dp.AddParam("@fs_alm2_jaminan", listAlamat[1], SqlDbType.VarChar);
         dp.AddParam("@fs_kota_jaminan", model.Alamat.Kota, SqlDbType.VarChar);
 
         dp.AddParam("@fb_aktif", model.IsAktif, SqlDbType.Bit);
@@ -165,8 +170,9 @@ public class JaminanDalTest
     [Fact]
     public void InsertTest()
     {
+        var alamat = new AlamatType([], "C", "D");
         using var trans = TransHelper.NewScope();
-        var expected = new JaminanType("A", "B", false, AlamatType.Default, 
+        var expected = new JaminanType("A", "B", false, alamat, 
             CaraBayarDkType.Default, GroupJaminanType.Default.ToReff());
         _sut.Insert(expected);
     }
@@ -184,7 +190,7 @@ public class JaminanDalTest
     public void DeleteTest()
     {
         using var trans = TransHelper.NewScope();
-        var key = new JaminanType("A", "B", false, AlamatType.Default,
+        var key =  new JaminanType("A", "B", false, AlamatType.Default,
             CaraBayarDkType.Default, GroupJaminanType.Default.ToReff());
         _sut.Delete(key);
     }
