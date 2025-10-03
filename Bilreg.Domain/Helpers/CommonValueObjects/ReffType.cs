@@ -1,4 +1,4 @@
-﻿namespace Emr25.Domain.HelpersContext.CommonValueObjects;
+﻿namespace Bilreg.Domain.Helpers.CommonValueObjects;
 
 public record ReffType(string ReffId, string ReffKind)
 {
