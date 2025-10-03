@@ -18,17 +18,11 @@ public class PasienTrackerModel
     public ServicePointType ServicePoint { get; init; }
     public ServicePointStatusEnum Status { get; init; }
 
-    public static PasienTrackerModel Create(
-        VisitorType visitor,
-        ServicePointType servicePoint,
-        ServicePointStatusEnum status)
-    {
-        Guard.Against.Null(visitor, nameof(visitor));
-        Guard.Against.Null(servicePoint, nameof(servicePoint));
-        Guard.Against.Null(status, nameof(status));
+    
+    public static PasienTrackerModel Create()
 
-        return new PasienTrackerModel(visitor, servicePoint, status);
-    }
+
+
 
     public static PasienTrackerModel Load(
         VisitorType visitor,
