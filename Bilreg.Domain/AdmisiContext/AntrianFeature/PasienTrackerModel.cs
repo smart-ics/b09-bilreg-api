@@ -17,9 +17,8 @@ public class PasienTrackerModel
     public VisitorType Visitor { get; init; }
     public ServicePointType ServicePoint { get; init; }
     public ServicePointStatusEnum Status { get; init; }
-}
 
-public static PasienTrackerModel Create(
+    public static PasienTrackerModel Create(
         VisitorType visitor,
         ServicePointType servicePoint,
         ServicePointStatusEnum status)
@@ -41,5 +40,7 @@ public static PasienTrackerModel Create(
     public static PasienTrackerModel Default => new PasienTrackerModel(
         VisitorType.Default,
         ServicePointType.Default,
-        ServicePointStatusEnum.Opened 
+        ServicePointStatusEnum.Opened
     );
+}
+
