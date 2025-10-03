@@ -16,4 +16,12 @@ public class AntrianModel
     public TimeSpan StartTime { get; init; }
     public TimeSpan EndTime { get; init; }
     public ServicePointType ServicePoint { get; init; }
+
+
+    public static AntrianModel Default => new AntrianModel(
+        "-", DateTime.MaxValue, TimeSpan.Zero, TimeSpan.Zero         
+    )
+    {
+        ServicePoint = ServicePointType.Default 
+    };
 }
