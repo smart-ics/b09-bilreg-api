@@ -5,11 +5,8 @@
 public record ServicePointType(
     string ServicePointId,
     string ServicePointName,
-    ServicePointStatusEnum Status,
-    AntrianModel Antrian)
+    ServicePointStatusEnum Status)
 {
-    public static ServicePointType Default => new
-    (
-        "-", "-", ServicePointStatusEnum.Opened, AntrianModel.Default
-    );
+    public static ServicePointType Default => 
+        new ServicePointType("-", "-", ServicePointStatusEnum.Opened);
 }

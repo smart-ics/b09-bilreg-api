@@ -66,4 +66,8 @@ public record PersonType
     public AlamatType Alamat { get; init; } 
     public ContactType Contact { get; init; }
     public IdentitasType Identity { get; init; }
+
+    public static PersonType Default =>
+        new PersonType("-", new DateTime(3000, 1, 1), AlamatType.Default, 
+            ContactType.Default, IdentitasType.Default);
 }

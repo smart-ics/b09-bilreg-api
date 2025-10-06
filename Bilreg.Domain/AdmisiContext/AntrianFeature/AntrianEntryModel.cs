@@ -2,12 +2,11 @@
 
 public class AntrianEntryModel
 {
-    public AntrianEntryModel() { }
-    public AntrianEntryModel(string antrianId, string noUrut, 
+    #region CREATION
+    public AntrianEntryModel(int noUrut, 
         VisitorType visitor, AntrianStatusEnum status, 
         DateTime createdAt, DateTime servedAt, DateTime doneAt)
     {
-        AntrianId = antrianId;
         NoUrut = noUrut;
         Visitor = visitor;
         Status = status;
@@ -16,14 +15,21 @@ public class AntrianEntryModel
         DoneAt = doneAt;
     }
 
-    public string AntrianId { get; init; }
-    public string NoUrut { get; set; }
+    public static AntrianEntryModel Default => 
+        new AntrianEntryModel(-1, VisitorType.Default, AntrianStatusEnum.Waiting,
+            DateTime.Now, new DateTime(3000, 1, 1), new DateTime(3000, 1, 1));
+    #endregion
+    
+    #region PROPERTIES
+    public int NoUrut { get; private set; }
     public VisitorType Visitor { get; private set; }
     public AntrianStatusEnum Status { get; private set; }
     public DateTime CreatedAt { get; init; }
     public DateTime ServedAt { get; private set; }
     public DateTime DoneAt { get; private set; }
-
+    #endregion
+    
+    #region METHOD BEHAVIOUR
     public void AssignPasien(PasienTrackerModel pasienTracker)
     {
         var visitor = pasienTracker.Visitor;
@@ -41,15 +47,6 @@ public class AntrianEntryModel
         DoneAt = DateTime.Now;
         Status = AntrianStatusEnum.Done;
     }
+    #endregion
 
-    public static AntrianEntryModel Deafult => new()
-    {
-        AntrianId = "-",
-        NoUrut = "-",
-        Visitor = VisitorType.Default,
-        Status = AntrianStatusEnum.Waiting,
-        CreatedAt = DateTime.Now,
-        ServedAt = DateTime.Now,
-        DoneAt = DateTime.Now
-    };
 }

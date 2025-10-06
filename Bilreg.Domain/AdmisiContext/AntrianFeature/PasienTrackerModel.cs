@@ -35,8 +35,7 @@ public class PasienTrackerModel
     public static PasienTrackerModel Create(PersonType person)
     {
         var visitor = new VisitorType("-", person.PersonName, person.BirthDate, "-");
-        var servicePoint = new ServicePointType("-", "-", ServicePointStatusEnum.Opened, 
-            AntrianModel.Default);
+        var servicePoint = new ServicePointType("-", "-", ServicePointStatusEnum.Opened);
 
         return new PasienTrackerModel(visitor, servicePoint, 
             ServicePointStatusEnum.Opened, new List<PasienTrackerEventModel>());
