@@ -9,6 +9,7 @@ namespace Bilreg.Domain.AdmisiContext.AntrianFeature;
 public class PasienTrackerModel
 {
     private readonly List<PasienTrackerEventModel> _listEvent;
+    
     public PasienTrackerModel(
         VisitorType visitor, 
         ServicePointType servicePoint, 
@@ -23,7 +24,7 @@ public class PasienTrackerModel
         Status = status;
         _listEvent = listEvent;
     }
-
+    
     
     public string TrackerId { get; init; }
     public VisitorType Visitor { get; init; }

@@ -77,17 +77,16 @@ public class AntrianModel : IAntrianKey
             ? _listEntry.Max(x => x.NoUrut) + 1 
             : 1; 
         
-        var entry = new AntrianEntryModel(noUrut, visitor, 
-            AntrianStatusEnum.Waiting, DateTime.Now,
-            new DateTime(3000,1,1), new DateTime(3000, 1, 1));
+        var entry = AntrianEntryModel.Create(noUrut, visitor);
         _listEntry.Add(entry);
     }
     public void AddEntry()
     {
-        var noUrut = _listEntry.Max(x => x.NoUrut) + 1;
-        var entry = new AntrianEntryModel(noUrut, VisitorType.Default, 
-            AntrianStatusEnum.Waiting, 
-            DateTime.Now, new DateTime(3000, 1, 1), new DateTime(3000, 1, 1));
+        
+        var noUrut = _listEntry.Count != 0 
+            ? _listEntry.Max(x => x.NoUrut) + 1 
+            : 1; 
+        var entry = AntrianEntryModel.Create(noUrut, VisitorType.Default);
         _listEntry.Add(entry); 
     }
     #endregion

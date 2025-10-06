@@ -52,4 +52,17 @@ public class AntrianModelTest
         //  assert
         antrian.ListEntry.Should().HaveCount(1);
     }
+
+    [Fact]
+    public void T06_WhenAddEntry_ThenNewEntryCreated()
+    {
+        //  arrange
+        var servicePoint = ServicePointType.Default with { Status = ServicePointStatusEnum.Opened };
+        var antrian = AntrianModel.Create(servicePoint);
+        //  act
+        antrian.AddEntry();
+        //  assert
+        antrian.ListEntry.Should().HaveCount(1);
+    }
+    
 }

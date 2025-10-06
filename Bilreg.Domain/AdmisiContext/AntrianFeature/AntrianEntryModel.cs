@@ -1,4 +1,10 @@
-﻿namespace Bilreg.Domain.AdmisiContext.AntrianFeature;
+﻿using Ardalis.GuardClauses;
+using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.PasienContext.PasienFeature;
+using FluentAssertions;
+using Xunit;
+
+namespace Bilreg.Domain.AdmisiContext.AntrianFeature;
 
 public class AntrianEntryModel
 {
@@ -15,6 +21,13 @@ public class AntrianEntryModel
         DoneAt = doneAt;
     }
 
+    public static AntrianEntryModel Create(int noUrut, VisitorType visitor)
+    {
+        var newEntry = new AntrianEntryModel(noUrut, visitor, AntrianStatusEnum.Waiting, DateTime.Now,
+            new DateTime(3000, 1, 1), new DateTime(3000, 1, 1));
+        return newEntry;
+    }
+    
     public static AntrianEntryModel Default => 
         new AntrianEntryModel(-1, VisitorType.Default, AntrianStatusEnum.Waiting,
             DateTime.Now, new DateTime(3000, 1, 1), new DateTime(3000, 1, 1));
@@ -32,6 +45,7 @@ public class AntrianEntryModel
     #region METHOD BEHAVIOUR
     public void AssignPasien(PasienTrackerModel pasienTracker)
     {
+        Guard.Against.Null(pasienTracker, nameof(pasienTracker));
         var visitor = pasienTracker.Visitor;
         Visitor = visitor;
     }
@@ -44,9 +58,49 @@ public class AntrianEntryModel
 
     public void Done()
     { 
-        DoneAt = DateTime.Now;
+        if (ServedAt == new DateTime(3000,1,1))
+            throw new ArgumentException("Pasien belum dilayani");
+
+        var now = DateTime.Now;
+        if (ServedAt >= now)
+            throw new ArgumentException("Pasien belum dilayani");
+        
+        DoneAt = now;
         Status = AntrianStatusEnum.Done;
     }
     #endregion
 
+}
+
+public class AntrianEntryModelTest
+{
+    [Fact]
+    public void T01_GivenNotServe_WhenDone_ThrowException()
+    {
+        var entry = AntrianEntryModel.Create(1, VisitorType.Default);
+        var actual = () => entry.Done();
+        actual.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void T02_GivenServed_WhenDone_ThenSuccess()
+    {
+        var entry = AntrianEntryModel.Create(1, VisitorType.Default);
+        entry.Serve();
+        var actual = () => entry.Done();
+        actual.Should().NotThrow<ArgumentException>();
+    }
+
+    [Fact]
+    public void T03_GivenValidVisitor_WhenAssign_ThrowSuccess()
+    {
+        var entry = AntrianEntryModel.Create(1, VisitorType.Default);
+        var person = new PersonType("A", new DateTime(2024, 1, 1),
+            AlamatType.Default, ContactType.Default, IdentitasType.Default);
+        var tracker = PasienTrackerModel.Create(person);
+        entry.AssignPasien(tracker);
+        
+        entry.Visitor.Should().Be(tracker.Visitor);
+    }
+    
 }
