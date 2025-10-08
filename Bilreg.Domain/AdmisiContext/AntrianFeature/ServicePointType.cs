@@ -1,9 +1,12 @@
 ﻿namespace Bilreg.Domain.AdmisiContext.AntrianFeature;
 
-public record ServicePointType
+
+
+public record ServicePointType(
+    string ServicePointId,
+    string ServicePointName,
+    ServicePointStatusEnum Status)
 {
-    public string ServicePointId { get; init; }
-    public string ServicePointName { get; init; }
-    public ServicePointStatusEnum Status { get; init; }
-    public AntrianModel Antrian { get; init; }
+    public static ServicePointType Default => 
+        new ServicePointType("-", "-", ServicePointStatusEnum.Opened);
 }

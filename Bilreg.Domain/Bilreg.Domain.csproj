@@ -19,6 +19,10 @@
     <PackageReference Include="Nuna.Lib.NetStandard" Version="3.3.155" />
     <PackageReference Include="Ulid" Version="1.3.4" />
     <PackageReference Include="xunit" Version="2.9.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 
 </Project>

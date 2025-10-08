@@ -33,6 +33,10 @@ public record JadwalPraktekType : IJadwalPraktekKey
         
         return new JadwalPraktekType(newId, dokter.ToReff(), dokter.Smf, hari, jamMulai, jamSelesai);
     }
+    
+    public static JadwalPraktekType Default =>
+        new JadwalPraktekType("", PetugasMedisType.Default.ToReff(), SmfType.Default, DayOfWeek.Monday, 
+            new TimeSpan(0, 0, 0), new TimeSpan(0, 0, 0));
 }
 
 public interface IJadwalPraktekKey
