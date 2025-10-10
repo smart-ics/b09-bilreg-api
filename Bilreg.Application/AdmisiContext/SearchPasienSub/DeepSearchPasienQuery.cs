@@ -1,4 +1,5 @@
-﻿using Bilreg.Domain.AdmisiContext.SearchPasienSub;
+﻿using Ardalis.GuardClauses;
+using Bilreg.Domain.AdmisiContext.SearchPasienSub;
 using MediatR;
 
 namespace Bilreg.Application.AdmisiContext.SearchPasienSub;
@@ -16,54 +17,17 @@ public class DeepSeachPasienHandler : IRequestHandler<DeepSearchPasienQuery, IEn
 
     public Task<IEnumerable<SearchPasienModel>> Handle(DeepSearchPasienQuery request, CancellationToken cancellationToken)
     {
-        var listData = _deepSearchDal.ListData()
+        Guard.Against.NullOrWhiteSpace(request.Keyword, nameof(request.Keyword));
+        if (request.Keyword.Length < 2)
+            throw new ArgumentException("Keyword terlalu pendek (minimal 2 karakter).");
+
+        var keyword = request.Keyword.Trim();
+        var result = _deepSearchDal.ListData(request.Keyword)
             .Match(
                 some => some,
-                () => throw new InvalidOperationException("data not found")
+                () => throw new KeyNotFoundException("data not found")
             );
-        var result = new List<SearchPasienModel>();
-        var pasienByName = SearchByPasienName(listData, request.Keyword);
-        var pasienByTglLahir = SearchByTglLahir(listData, request.Keyword);
-        var pasienByPasienId = SearchByPasienId(listData, request.Keyword);
-        var pasienByRegId = SearchByRegId(listData, request.Keyword); 
 
-        result.AddRange(pasienByName);
-        result.AddRange(pasienByTglLahir);
-        result.AddRange(pasienByPasienId);
-        result.AddRange(pasienByRegId);
-
-        return Task.FromResult(result.AsEnumerable());
-    }
-
-    private IEnumerable<SearchPasienModel> SearchByPasienName(IEnumerable<SearchPasienModel> listData , string name)
-    {
-        var result = listData
-            .Where(x => x.PasienName.ToLower().Contains(name.ToLower()))
-            .ToList() ?? new List<SearchPasienModel>();
-        return result;
-    }
-
-    private IEnumerable<SearchPasienModel> SearchByTglLahir(IEnumerable<SearchPasienModel> listData, string tgllahir)
-    {
-        var result = listData
-            .Where(x => x.TglLahir.ToString("yyyy-MM-dd") == tgllahir)
-            .ToList() ?? new List<SearchPasienModel>();
-        return result;
-    }
-
-    private IEnumerable<SearchPasienModel> SearchByPasienId(IEnumerable<SearchPasienModel> listData, string pasienId)
-    {
-        var result = listData
-            .Where(x => x.PasienId == pasienId)
-            .ToList() ?? new List<SearchPasienModel>();
-        return result;
-    }
-
-    private IEnumerable<SearchPasienModel> SearchByRegId(IEnumerable<SearchPasienModel> listData, string regId)
-    {
-        var result = listData
-            .Where(x => x.RegId == regId)
-            .ToList() ?? new List<SearchPasienModel>();
-        return result;
+        return Task.FromResult(result.Distinct());
     }
 }

@@ -4,6 +4,6 @@ using Nuna.Lib.DataAccessHelper;
 namespace Bilreg.Application.AdmisiContext.SearchPasienSub;
 
 public interface IDeepSearchPasienDal :
-    IListDataMayBe<SearchPasienModel>
+    IListDataMayBe<SearchPasienModel, string>
 {
 }
