@@ -42,24 +42,24 @@ public class QuickSearchPasienHandle : IRequestHandler<QuickSearchPasienQuery, I
 
     }
 
-    #region Private_Helper
     private Func<IEnumerable<SearchPasienModel>, string, IEnumerable<SearchPasienModel>> DetermineSearchStrategy(string keyword)
     => keyword switch
     {
         _ when IsTanggal(keyword) => SearchByTglLahir,
         _ when IsNumeric(keyword) => (data, key) => SearchByPasienId(data, key)
                                         .Concat(SearchByNik(data, keyword)),
-        _ =>                         (data, key) => SearchByPasienName(data, key)
+        _ => (data, key) => SearchByPasienName(data, key)
                                         .Concat(SearchByRegId(data, key))
     };
 
+    #region Private_Helper
     private static bool IsTanggal(string keyword)
         => DateTime.TryParseExact(keyword, "yyyy-MM-dd", null, 
             System.Globalization.DateTimeStyles.None, out _);
 
     private static bool IsNumeric(string keyword)
         => keyword.All(char.IsDigit);
-
+    #region ByTgllahir
     private IEnumerable<SearchPasienModel> SearchByTglLahir(IEnumerable<SearchPasienModel> listData, string tgllahir)
     {
         var result = listData
@@ -67,7 +67,8 @@ public class QuickSearchPasienHandle : IRequestHandler<QuickSearchPasienQuery, I
             ?.ToList() ?? new List<SearchPasienModel>();
         return result;
     }
-
+    #endregion
+    #region ByPasienId
     private IEnumerable<SearchPasienModel> SearchByPasienId(IEnumerable<SearchPasienModel> listData, string pasienId)
     {
         var result = listData
@@ -75,7 +76,8 @@ public class QuickSearchPasienHandle : IRequestHandler<QuickSearchPasienQuery, I
             ?.ToList() ?? new List<SearchPasienModel>();
         return result;
     }
-
+    #endregion
+    #region ByRegId
     private IEnumerable<SearchPasienModel> SearchByRegId(IEnumerable<SearchPasienModel> listData, string regId)
     {
         var result = listData
@@ -83,7 +85,8 @@ public class QuickSearchPasienHandle : IRequestHandler<QuickSearchPasienQuery, I
             ?.ToList() ?? new List<SearchPasienModel>();
         return result;
     }
-
+    #endregion
+    #region ByNik
     private IEnumerable<SearchPasienModel> SearchByNik(IEnumerable<SearchPasienModel> listData, string nik)
     {
         var result = listData
@@ -91,7 +94,8 @@ public class QuickSearchPasienHandle : IRequestHandler<QuickSearchPasienQuery, I
             ?.ToList() ?? new List<SearchPasienModel>();
         return result;
     }
-    #region search_Name
+    #endregion
+    #region ByName
     private IEnumerable<SearchPasienModel> SearchByPasienName(IEnumerable<SearchPasienModel> listData, string name)
     {
         var similarPasienName = FindSimilarity(listData, name);
@@ -106,7 +110,7 @@ public class QuickSearchPasienHandle : IRequestHandler<QuickSearchPasienQuery, I
 
         return result;
     }
-    private record Ejaan(string Eja1, string Eja2);
+    
     private static IEnumerable<SearchPasienModel> FindSimilarity(IEnumerable<SearchPasienModel> listData,
         string keyword)
     {
@@ -116,11 +120,12 @@ public class QuickSearchPasienHandle : IRequestHandler<QuickSearchPasienQuery, I
             JaroWinklerValue = x.PasienName.Similiarity(keyword)
         });
         var result = listPasienJaroWinkler
-            .Where(x => x.JaroWinklerValue >= 0.75)
+            .Where(x => x.JaroWinklerValue >= 0.85)
             .Select(x => x.Pasien);
         return result;
     }
 
+    private record Ejaan(string Eja1, string Eja2);
     private static IEnumerable<string> GenerateVariasiEjaan(string originName)
     {
         var spellingVariations = new List<Ejaan>
@@ -152,7 +157,8 @@ public class QuickSearchPasienHandle : IRequestHandler<QuickSearchPasienQuery, I
     }
 
     private static IEnumerable<SearchPasienModel> FindByWords(IEnumerable<SearchPasienModel> listData,
-        IEnumerable<string> variasiEjaan, string searchKeyword)
+        IEnumerable<string> variasiEjaan, 
+        string searchKeyword)
     {
         var variasiWordCount = searchKeyword.Split(' ').Length;
         var wordCountMin = Math.Min(variasiWordCount, 2);
