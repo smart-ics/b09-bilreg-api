@@ -40,6 +40,7 @@ public class AntrianEntryModel
     public DateTime CreatedAt { get; init; }
     public DateTime ServedAt { get; private set; }
     public DateTime DoneAt { get; private set; }
+    
     #endregion
     
     #region METHOD BEHAVIOUR

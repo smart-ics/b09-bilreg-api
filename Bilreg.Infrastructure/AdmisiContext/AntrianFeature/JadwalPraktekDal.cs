@@ -2,6 +2,8 @@
 using System.Data.SqlClient;
 using Bilreg.Application.AdmisiContext.JadwalFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
+using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.AdmisiContext.LayananSub;
 using Bilreg.Domain.AdmisiContext.PetugasMedisSub;
 using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
 using Bilreg.Infrastructure.Helpers;
@@ -32,7 +34,6 @@ public class JadwalPraktekDal : IJadwalPraktekDal
         var dp = new DynamicParameters();
         dp.AddParam("@JadwalPraktekId", model.JadwalPraktekId, SqlDbType.VarChar);
         dp.AddParam("@DokterId", model.Dokter.PetugasMedisId, SqlDbType.VarChar);
-        dp.AddParam("@SmfId", model.Smf.SmfId, SqlDbType.VarChar);
         dp.AddParam("@Hari", model.Hari, SqlDbType.Int);
         dp.AddParam("@JamMulai", model.JamMulai.ToString(@"hh\:mm"), SqlDbType.VarChar);
         dp.AddParam("@JamSelesai", model.JamSelesai.ToString(@"hh\:mm"), SqlDbType.VarChar);
@@ -47,7 +48,6 @@ public class JadwalPraktekDal : IJadwalPraktekDal
             UPDATE BILRG_JadwalPraktek 
             SET 
                 DokterId = @DokterId,
-                SmfId = @SmfId,
                 Hari = @Hari,
                 JamMulai = @JamMulai,
                 JamSelesai = @JamSelesai
@@ -57,7 +57,6 @@ public class JadwalPraktekDal : IJadwalPraktekDal
         var dp = new DynamicParameters();
         dp.AddParam("@JadwalPraktekId", model.JadwalPraktekId, SqlDbType.VarChar);
         dp.AddParam("@DokterId", model.Dokter.PetugasMedisId, SqlDbType.VarChar);
-        dp.AddParam("@SmfId", model.Smf.SmfId, SqlDbType.VarChar);
         dp.AddParam("@Hari", model.Hari, SqlDbType.Int);
         dp.AddParam("@JamMulai", model.JamMulai.ToString(@"hh\:mm"), SqlDbType.VarChar);
         dp.AddParam("@JamSelesai", model.JamSelesai.ToString(@"hh\:mm"), SqlDbType.VarChar);
@@ -83,13 +82,14 @@ public class JadwalPraktekDal : IJadwalPraktekDal
     {
         const string sql = @"
             SELECT
-                aa.JadwalPraktekId, aa.DokterId, aa.SmfId, aa.Hari, aa.JamMulai, aa.JamSelesai,
+                aa.JadwalPraktekId, aa.DokterId, aa.LayananId, 
+                aa.Hari, aa.JamMulai, aa.JamSelesai,
                 ISNULL(bb.fs_nm_peg, '-') AS DokterName,
-                ISNULL(cc.fs_nm_smf, '-') AS SmfName
+                ISNULL(cc.fs_nm_layanan, '-') AS LayananName
             FROM 
                 BILRG_JadwalPraktek aa
                 LEFT JOIN td_peg bb ON aa.DokterId = bb.fs_kd_peg
-                LEFT JOIN ta_smf cc ON aa.SmfId = cc.fs_kd_smf
+                LEFT JOIN ta_layanan cc ON aa.fs_kd_layanan = cc.fs_kd_layanan
             WHERE
                 aa.JadwalPraktekId = @JadwalPraktekId";
         
@@ -102,17 +102,18 @@ public class JadwalPraktekDal : IJadwalPraktekDal
             .Map(x => x.ToModel());
     }
 
-    public MayBe<IEnumerable<JadwalPraktekType>> ListData(IPetugasMedisKey filter)
+    public IEnumerable<JadwalPraktekType> ListData(IPetugasMedisKey filter)
     {
         const string sql = @"
             SELECT
-                aa.JadwalPraktekId, aa.DokterId, aa.SmfId, aa.Hari, aa.JamMulai, aa.JamSelesai,
+                aa.JadwalPraktekId, aa.DokterId, aa.LayananId, 
+                aa.Hari, aa.JamMulai, aa.JamSelesai,
                 ISNULL(bb.fs_nm_peg, '-') AS DokterName,
-                ISNULL(cc.fs_nm_smf, '-') AS SmfName
+                ISNULL(cc.fs_nm_layanan, '-') AS LayananName
             FROM 
                 BILRG_JadwalPraktek aa
                 LEFT JOIN td_peg bb ON aa.DokterId = bb.fs_kd_peg
-                LEFT JOIN ta_smf cc ON aa.SmfId = cc.fs_kd_smf
+                LEFT JOIN ta_layanan cc ON aa.fs_kd_layanan = cc.fs_kd_layanan
             WHERE
                 aa.DokterId = @DokterId";
         
@@ -120,12 +121,12 @@ public class JadwalPraktekDal : IJadwalPraktekDal
         dp.AddParam("@DokterId", filter.PetugasMedisId, SqlDbType.VarChar);
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return MayBe
-            .From(conn.Read<JadwalPraktekDto>(sql, dp))
-            .Map(x => x.Select(y => y.ToModel()));
+        var listDto = conn.Read<JadwalPraktekDto>(sql, dp);
+        var result = listDto.Select(x => x.ToModel());
+        return result;
     }
 
-    public MayBe<IEnumerable<JadwalPraktekType>> ListData(ISmfKey filter)
+    public IEnumerable<JadwalPraktekType> ListData(ISmfKey filter)
     {
         const string sql = @"
             SELECT
@@ -143,29 +144,29 @@ public class JadwalPraktekDal : IJadwalPraktekDal
         dp.AddParam("@SmfId", filter.SmfId, SqlDbType.VarChar);
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return MayBe
-            .From(conn.Read<JadwalPraktekDto>(sql, dp))
-            .Map(x => x.Select(y => y.ToModel()));
+        var listDto = conn.Read<JadwalPraktekDto>(sql, dp);
+        var result = listDto.Select(x => x.ToModel());
+        return result;
     }
 }
 
 public record JadwalPraktekDto(
     string JadwalPraktekId,
     string DokterId,
-    string SmfId,
+    string LayananId,
     int Hari,
     string JamMulai,
     string JamSelesai,
     string DokterName,
-    string SmfName)
+    string LayananName)
 {
     public JadwalPraktekType ToModel()
     {
         var dokter = new PetugasMedisReff(DokterId, DokterName);
-        var smf = new SmfType(SmfId, SmfName);
         var hari = (DayOfWeek)Hari;
-        var jamMulai = TimeSpan.Parse(JamMulai);
-        var jamSelesai = TimeSpan.Parse(JamSelesai);
-        return new JadwalPraktekType(JadwalPraktekId, dokter, smf, hari, jamMulai, jamSelesai);
+        var layanan = new LayananReff(LayananId, LayananName); 
+        var jamMulai = TimeOnly.Parse(JamMulai);
+        var jamSelesai = TimeOnly.Parse(JamSelesai);
+        return new JadwalPraktekType(JadwalPraktekId, dokter, layanan, hari, jamMulai, jamSelesai);
     }
 }

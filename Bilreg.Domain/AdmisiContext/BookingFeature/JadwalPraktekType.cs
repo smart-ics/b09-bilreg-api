@@ -1,42 +1,42 @@
-﻿using Bilreg.Domain.AdmisiContext.PetugasMedisSub;
+﻿using Ardalis.GuardClauses;
+using Bilreg.Domain.AdmisiContext.LayananSub;
 using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
-using Ardalis.GuardClauses;
 
-namespace Bilreg.Domain.AdmisiContext.AntrianFeature;
+namespace Bilreg.Domain.AdmisiContext.BookingFeature;
 
 public record JadwalPraktekType : IJadwalPraktekKey
 {
     public JadwalPraktekType(string jadwalPraktekId, 
-        PetugasMedisReff dokter, SmfType smf, DayOfWeek hari, 
-        TimeSpan jamMulai, TimeSpan jamSelesai)
+        PetugasMedisReff dokter, LayananReff layanan, 
+        DayOfWeek hari, TimeOnly jamMulai, TimeOnly jamSelesai)
     {
         JadwalPraktekId = jadwalPraktekId;
         Dokter = dokter;
-        Smf = smf;
+        Layanan = layanan;
         Hari = hari;
         JamMulai = jamMulai;
         JamSelesai = jamSelesai;
     }
     public string JadwalPraktekId { get; init; }
     public PetugasMedisReff Dokter { get; init; }
-    public SmfType Smf { get; init; }
+    public LayananReff Layanan { get; init; }
     public DayOfWeek Hari { get; init; }
-    public TimeSpan JamMulai { get; init; }
-    public TimeSpan JamSelesai { get; init; }
-
+    public TimeOnly JamMulai { get; init; }
+    public TimeOnly JamSelesai { get; init; }
+    
     public static JadwalPraktekType Create(PetugasMedisType dokter,
-        DayOfWeek hari, TimeSpan jamMulai, TimeSpan jamSelesai)
+        LayananReff layanan, DayOfWeek hari, TimeOnly jamMulai, TimeOnly jamSelesai)
     {
         var newId = Ulid.NewUlid().ToString();
         Guard.Against.Null(dokter, nameof(dokter));
         Guard.Against.Null(dokter.Smf, nameof(dokter.Smf));
         
-        return new JadwalPraktekType(newId, dokter.ToReff(), dokter.Smf, hari, jamMulai, jamSelesai);
+        return new JadwalPraktekType(newId, dokter.ToReff(), layanan, hari, jamMulai, jamSelesai);
     }
     
     public static JadwalPraktekType Default =>
-        new JadwalPraktekType("", PetugasMedisType.Default.ToReff(), SmfType.Default, DayOfWeek.Monday, 
-            new TimeSpan(0, 0, 0), new TimeSpan(0, 0, 0));
+        new JadwalPraktekType("", PetugasMedisType.Default.ToReff(), LayananType.Default.ToReff(), DayOfWeek.Monday, 
+            new TimeOnly(0, 0), new TimeOnly(0, 0));
 }
 
 public interface IJadwalPraktekKey

@@ -1,68 +1,273 @@
 ﻿using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.AdmisiContext.LayananSub;
+using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
 using FluentAssertions;
+using Moq;
 using Xunit;
 
 namespace Bilreg.Domain.AdmisiContext.AntrianFeature;
 
-public class AntrianModelTest
+public class AntrianFactoryTests
 {
-    [Fact]
-    public void T01_GivenValidDateAndDayJadwal_WhenCrete_ThenCreateSuccess()
+    private readonly Mock<IAntrianSequencer> _mockAntrianSequencer;
+    private readonly AntrianFactory _sut;
+
+    public AntrianFactoryTests()
     {
-        var antrianDate = DateOnly.FromDateTime(new DateTime(2025, 10, 7));
-        var jadwalPraktek = JadwalPraktekType.Default with { Hari = DayOfWeek.Tuesday };
-        var actual = AntrianModel.Create(antrianDate,  jadwalPraktek);
-        actual.Should().NotBeNull();
+        _mockAntrianSequencer = new Mock<IAntrianSequencer>();
+        _sut = new AntrianFactory(_mockAntrianSequencer.Object);
+    }
+
+    #region Create(DateOnly, JadwalPraktekType) Tests
+
+    [Fact]
+    public void UT01_Given_ValidAntrianDateAndJadwalPraktek_When_CreateIsCalled_Then_ShouldReturnAntrianModelWithCorrectProperties()
+    {
+        // Arrange
+        var antrianDate = new DateOnly(2025, 10, 13); // Monday
+        var dokter = CreatePetugasMedisType("DOK001", "Dr. John Doe");
+        var jadwalPraktek = CreateJadwalPraktekType(dokter, DayOfWeek.Monday, 
+            new TimeOnly(8, 0), new TimeOnly(12, 0));
+
+        // Act
+        var result = _sut.Create(antrianDate, jadwalPraktek);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.AntrianId.Should().NotBeNullOrEmpty();
+        result.AntrianDate.Should().Be(antrianDate);
+        result.StartTime.Should().Be(new TimeOnly(8, 0));
+        result.EndTime.Should().Be(new TimeOnly(12, 0));
+        result.SequenceTag.Should().Be("DOK001"); // Space-free version
+        result.AntrianDescription.Should().Be("Praktek Dokter DOK001");
+        result.ListEntry.Should().BeEmpty();
     }
 
     [Fact]
-    public void T02_GivenInvalidDateAndDayJadwal_WhenCrete_ThenThrowEx()
+    public void UT02_Given_DokterIdWithSpaces_When_CreateIsCalled_Then_ShouldReplaceSpacesWithDollarSignInSequenceTag()
     {
-        var antrianDate = DateOnly.FromDateTime(new DateTime(2025, 10, 7));
-        var jadwalPraktek = JadwalPraktekType.Default with { Hari = DayOfWeek.Monday };
-        var actual = () => AntrianModel.Create(antrianDate, jadwalPraktek);
-        actual.Should().Throw<ArgumentException>();
-    }
-    
-    [Fact]
-    public void T03_GivenValidServicePoint_WhenCrete_ThenCreateSuccess()
-    {
-        var servicePoint = ServicePointType.Default;
-        var actual = AntrianModel.Create(servicePoint);
-        actual.Should().NotBeNull();
-    }
-    
-    [Fact]
-    public void T04_GivenClosedServicePoint_WhenCrete_ThenThrowEx()
-    {
-        var servicePoint = ServicePointType.Default with { Status = ServicePointStatusEnum.Closed };
-        var actual = () => AntrianModel.Create(servicePoint);
-        actual.Should().Throw<ArgumentException>();
+        // Arrange
+        var antrianDate = new DateOnly(2025, 10, 13); // Monday
+        var dokter = CreatePetugasMedisType("DOK 001 A", "Dr. John Doe");
+        var jadwalPraktek = CreateJadwalPraktekType(dokter, DayOfWeek.Monday, 
+            new TimeOnly(8, 0), new TimeOnly(12, 0));
+
+        // Act
+        var result = _sut.Create(antrianDate, jadwalPraktek);
+
+        // Assert
+        result.SequenceTag.Should().Be("DOK$001$A");
     }
 
     [Fact]
-    public void T05_GivenValidPasienTracker_WhenAddEntry_ThenAddSuccess()
+    public void UT03_Given_NullJadwalPraktek_When_CreateIsCalled_Then_ShouldThrowArgumentNullException()
     {
-        //  arrange
-        var servicePoint = ServicePointType.Default with { Status = ServicePointStatusEnum.Opened };
-        var antrian = AntrianModel.Create(servicePoint);
-        var pasienTracker = PasienTrackerModel.Create(PersonType.Default);
-        //  act
-        antrian.AddEntry(pasienTracker);
-        //  assert
-        antrian.ListEntry.Should().HaveCount(1);
+        // Arrange
+        var antrianDate = new DateOnly(2025, 10, 13);
+
+        // Act
+        Action act = () => _sut.Create(antrianDate, null!);
+
+        // Assert
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("jadwalPraktek");
     }
 
     [Fact]
-    public void T06_WhenAddEntry_ThenNewEntryCreated()
+    public void UT04_Given_AntrianDateNotMatchingJadwalPraktekDay_When_CreateIsCalled_Then_ShouldThrowArgumentException()
     {
-        //  arrange
-        var servicePoint = ServicePointType.Default with { Status = ServicePointStatusEnum.Opened };
-        var antrian = AntrianModel.Create(servicePoint);
-        //  act
-        antrian.AddEntry();
-        //  assert
-        antrian.ListEntry.Should().HaveCount(1);
+        // Arrange
+        var antrianDate = new DateOnly(2025, 10, 14); // Tuesday
+        var dokter = CreatePetugasMedisType("DOK001", "Dr. John Doe");
+        var jadwalPraktek = CreateJadwalPraktekType(dokter, DayOfWeek.Monday, 
+            new TimeOnly(8, 0), new TimeOnly(12, 0));
+
+        // Act
+        Action act = () => _sut.Create(antrianDate, jadwalPraktek);
+
+        // Assert
+        act.Should().Throw<ArgumentException>()
+            .WithParameterName("antrianDate")
+            .WithMessage("14-10-2025 bukan hari (Monday).*");
     }
-    
+
+    [Theory]
+    [InlineData(DayOfWeek.Monday, 2025, 10, 13)]
+    [InlineData(DayOfWeek.Tuesday, 2025, 10, 14)]
+    [InlineData(DayOfWeek.Wednesday, 2025, 10, 15)]
+    [InlineData(DayOfWeek.Thursday, 2025, 10, 16)]
+    [InlineData(DayOfWeek.Friday, 2025, 10, 17)]
+    [InlineData(DayOfWeek.Saturday, 2025, 10, 18)]
+    [InlineData(DayOfWeek.Sunday, 2025, 10, 19)]
+    public void UT05_Given_AntrianDateMatchingJadwalPraktekDay_When_CreateIsCalled_Then_ShouldSucceed(
+        DayOfWeek dayOfWeek, int year, int month, int day)
+    {
+        // Arrange
+        var antrianDate = new DateOnly(year, month, day);
+        var dokter = CreatePetugasMedisType("DOK001", "Dr. John Doe");
+        var jadwalPraktek = CreateJadwalPraktekType(dokter, dayOfWeek, 
+            new TimeOnly(8, 0), new TimeOnly(12, 0));
+
+        // Act
+        var result = _sut.Create(antrianDate, jadwalPraktek);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.AntrianDate.Should().Be(antrianDate);
+        result.AntrianDate.DayOfWeek.Should().Be(dayOfWeek);
+    }
+
+    #endregion
+
+    #region Create(ServicePointType) Tests
+
+    [Fact]
+    public void UT06_Given_ValidServicePoint_When_CreateIsCalled_Then_ShouldReturnAntrianModelWithCorrectProperties()
+    {
+        // Arrange
+        var servicePoint = new ServicePointType("SP001", "Loket Pendaftaran");
+        var expectedDate = DateOnly.FromDateTime(DateTime.Now);
+
+        // Act
+        var result = _sut.Create(servicePoint);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.AntrianId.Should().NotBeNullOrEmpty();
+        result.AntrianDate.Should().Be(expectedDate);
+        result.StartTime.Should().Be(TimeOnly.MinValue);
+        result.EndTime.Should().Be(TimeOnly.MaxValue);
+        result.SequenceTag.Should().Be("SP001");
+        result.AntrianDescription.Should().Be("Loket Pendaftaran");
+        result.ListEntry.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void UT07_Given_NullServicePoint_When_CreateIsCalled_Then_ShouldThrowArgumentNullException()
+    {
+        // Arrange
+        ServicePointType servicePoint = null!;
+
+        // Act
+        Action act = () => _sut.Create(servicePoint);
+
+        // Assert
+        act.Should().Throw<ArgumentNullException>()
+            .WithParameterName("servicePoint");
+    }
+
+    [Fact]
+    public void UT08_Given_ServicePointWithSpecialCharacters_When_CreateIsCalled_Then_ShouldUseServicePointCodeAsSequenceTag()
+    {
+        // Arrange
+        var servicePoint = new ServicePointType("SP-001-A", "Loket Khusus");
+
+        // Act
+        var result = _sut.Create(servicePoint);
+
+        // Assert
+        result.SequenceTag.Should().Be("SP-001-A");
+    }
+
+    #endregion
+
+    #region Default Property Tests
+
+    [Fact]
+    public void UT09_Given_Factory_When_DefaultPropertyIsAccessed_Then_ShouldReturnDefaultAntrianModel()
+    {
+        // Arrange & Act
+        var result = _sut.Default;
+
+        // Assert
+        result.Should().NotBeNull();
+        result.AntrianId.Should().Be("-");
+        result.AntrianDate.Should().Be(new DateOnly(3000, 1, 1));
+        result.StartTime.Should().Be(TimeOnly.MinValue);
+        result.EndTime.Should().Be(TimeOnly.MinValue);
+        result.SequenceTag.Should().Be("-");
+        result.AntrianDescription.Should().Be("-");
+        result.ListEntry.Should().BeEmpty();
+    }
+
+    #endregion
+
+    #region Key Method Tests
+
+    [Fact]
+    public void UT10_Given_ValidId_When_KeyIsCalled_Then_ShouldReturnAntrianModelWithSpecifiedId()
+    {
+        // Arrange
+        var expectedId = "ANTRIAN-123";
+
+        // Act
+        var result = _sut.Key(expectedId);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.AntrianId.Should().Be(expectedId);
+    }
+
+    [Fact]
+    public void UT11_Given_EmptyId_When_KeyIsCalled_Then_ShouldReturnAntrianModelWithEmptyId()
+    {
+        // Arrange
+        var expectedId = string.Empty;
+
+        // Act
+        var result = _sut.Key(expectedId);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.AntrianId.Should().Be(expectedId);
+    }
+
+    [Fact]
+    public void UT12_Given_NullId_When_KeyIsCalled_Then_ShouldReturnAntrianModelWithNullId()
+    {
+        // Arrange
+        string expectedId = null!;
+
+        // Act
+        var result = _sut.Key(expectedId);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.AntrianId.Should().BeNull();
+    }
+
+    #endregion
+
+    #region Helper Methods
+
+    private PetugasMedisType CreatePetugasMedisType(string id, string name)
+    {
+        var petugasMedis = new PetugasMedisType(
+            id,
+            name,
+            "Dr. J",
+            new List<PetugasMedisLayananType>(),
+            new List<PetugasMedisSatTugasType>());
+
+        return petugasMedis;
+    }
+
+    private JadwalPraktekType CreateJadwalPraktekType(
+        PetugasMedisType dokter, 
+        DayOfWeek hari, 
+        TimeOnly jamMulai, 
+        TimeOnly jamSelesai)
+    {
+        var layanan = new LayananReff("LAY001", "Poli Umum");
+        
+        return new JadwalPraktekType(
+            Ulid.NewUlid().ToString(),
+            dokter.ToReff(),
+            layanan,
+            hari,
+            jamMulai,
+            jamSelesai);
+    }
+
+    #endregion
 }

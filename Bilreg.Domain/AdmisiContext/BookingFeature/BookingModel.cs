@@ -1,73 +1,61 @@
-﻿using Bilreg.Domain.AdmisiContext.LayananSub;
-using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
-using Bilreg.Domain.Helpers.CommonValueObjects;
-using Bilreg.Domain.PasienContext.PasienFeature;
+﻿using Bilreg.Domain.Helpers.CommonValueObjects;
 using Ardalis.GuardClauses;
+using Bilreg.Domain.AdmisiContext.AntrianFeature;
 
 namespace Bilreg.Domain.AdmisiContext.BookingFeature;
 
-public class BookingModel
+public class BookingModel : IBookingKey
 {
-    public BookingModel(string bookindId, AuditTrailType auditTrail, PersonType person, DateOnly tglBerobat)
+    private readonly List<BookingKunjunganModel> _listKunjungan;
+    
+    #region CREATION
+    public BookingModel(string bookindId, AuditTrailType auditTrail, 
+        PersonType person, DateOnly tglBerobat, IEnumerable<BookingKunjunganModel> listKunjungan)
     {
-        BookindId = bookindId;
+        BookingId = bookindId;
         AuditTrail = auditTrail;
         Person = person;
         TglBerobat = tglBerobat;
-        ListKunjungan = [];
+        _listKunjungan = listKunjungan.ToList();
     }
-
-    public string BookindId { get; init; }
+    
+    public static BookingModel Default => new("-", AuditTrailType.Default, 
+        PersonType.Default, DateOnly.FromDateTime(DateTime.Now), []);
+    
+    public static IBookingKey Key(string id) => new BookingModel(id, AuditTrailType.Default, 
+        PersonType.Default, DateOnly.FromDateTime(DateTime.Now), []);
+    
+    public static BookingModel Create(PersonType person, DateOnly tglBerobat, JadwalPraktekType jadwal)
+    {
+        Guard.Against.Null(person, nameof(person));
+        Guard.Against.Null(tglBerobat);
+        Guard.Against.Null(jadwal, nameof(jadwal));
+        
+        if (tglBerobat.DayOfWeek != jadwal.Hari)
+            throw new ArgumentException("Tanggal berobat tidak sesuai dengan jadwal");
+        
+        var newId = Ulid.NewUlid().ToString();
+        var result = new BookingModel(newId, AuditTrailType.Create("", DateTime.Now), person, tglBerobat, []);
+        result.AddKunjungan(jadwal);
+        return result;
+    }
+    
+    #endregion
+    
+    #region PROPERTIES
+    public string BookingId { get; init; }
     public AuditTrailType AuditTrail { get; init; }
     public PersonType Person { get; init; }
-    
     public DateOnly TglBerobat { get; init; }
-    public List<BookingKunjunganType> ListKunjungan { get; private set; }
-}
-
-public record BookingKunjunganType
-{
-    public BookingKunjunganType(LayananReff layanan, PetugasMedisReff dokter, 
-        TimeOnly jamPraktek, int nomorAntrian)
+    public IEnumerable<BookingKunjunganModel> ListKunjungan => _listKunjungan;
+    #endregion
+    
+    #region BEHAVIOUR
+    public void AddKunjungan(JadwalPraktekType jadwal)
     {
-        Guard.Against.Null(layanan, nameof(layanan));
-        Guard.Against.Null(dokter, nameof(dokter));
-
-        Layanan = layanan;
-        Dokter = dokter;
-        JamPraktek = jamPraktek;
-        NomorAntrian = nomorAntrian;
+        var newKunjungan = BookingKunjunganModel.Create(jadwal.Layanan, jadwal.Dokter, 
+            jadwal.JamMulai);
+        _listKunjungan.Add(newKunjungan);
     }
-    public LayananReff Layanan { get; init; } 
-    public PetugasMedisReff Dokter { get; init; }
-    public TimeOnly JamPraktek { get; init; }
-    public int NomorAntrian { get; init; }
-}
-
-public record PersonType
-{
-    public PersonType(string personName, DateTime birthDate, 
-        AlamatType alamat, ContactType contact, IdentitasType identity)
-    {
-        Guard.Against.NullOrWhiteSpace(personName, nameof(personName));
-        Guard.Against.Null(birthDate, nameof(birthDate));
-        Guard.Against.Null(alamat, nameof(alamat));
-        Guard.Against.Null(contact, nameof(contact));
-        Guard.Against.Null(identity, nameof(identity));
-        
-        PersonName = personName;
-        BirthDate = birthDate;
-        Alamat = alamat;
-        Contact = contact;
-        Identity = identity;
-    }
-    public string PersonName { get; init; } 
-    public DateTime BirthDate { get; init; } 
-    public AlamatType Alamat { get; init; } 
-    public ContactType Contact { get; init; }
-    public IdentitasType Identity { get; init; }
-
-    public static PersonType Default =>
-        new PersonType("-", new DateTime(3000, 1, 1), AlamatType.Default, 
-            ContactType.Default, IdentitasType.Default);
+    #endregion
 }

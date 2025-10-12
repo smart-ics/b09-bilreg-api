@@ -29,10 +29,10 @@ public class AntrianEntryModelTest
     {
         var entry = AntrianEntryModel.Create(1, VisitorType.Default);
         var person = new PersonType("A", new DateTime(2024, 1, 1),
-            AlamatType.Default, ContactType.Default, IdentitasType.Default);
+            GenderType.Default,  AlamatType.Default, ContactType.Default, IdentitasType.Default);
         var tracker = PasienTrackerModel.Create(person);
         entry.AssignPasien(tracker);
-
+    
         entry.Visitor.Should().Be(tracker.Visitor);
     }
 }

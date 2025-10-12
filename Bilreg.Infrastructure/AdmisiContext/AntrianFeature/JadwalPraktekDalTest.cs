@@ -1,4 +1,6 @@
 ﻿using Bilreg.Domain.AdmisiContext.AntrianFeature;
+using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.AdmisiContext.LayananSub;
 using Bilreg.Domain.AdmisiContext.PetugasMedisSub;
 using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
 using Bilreg.Infrastructure.Helpers;
@@ -19,8 +21,8 @@ public class JadwalPraktekDalTest
 
     private static JadwalPraktekType Faker() =>
         new("A", new PetugasMedisReff("B", "C"), 
-            new SmfType("D", "E"), DayOfWeek.Friday, 
-            new TimeSpan(1, 2,0), new TimeSpan(4, 5, 0));
+            new LayananReff("D", "E"), DayOfWeek.Friday, 
+            new TimeOnly(1, 2,0), new TimeOnly(4, 5, 0));
     
     [Fact]
     public void UT1_InsertTest()
@@ -51,7 +53,7 @@ public class JadwalPraktekDalTest
         var actual = _sut.GetData(Faker());
         actual.Value.Should().BeEquivalentTo(Faker(), opt => 
             opt.Excluding(x => x.Dokter.PetugasMedisName)
-                .Excluding(x => x.Smf.SmfName));
+                .Excluding(x => x.Layanan.LayananName));
     }
     
     [Fact]
@@ -61,9 +63,9 @@ public class JadwalPraktekDalTest
         using var trans = TransHelper.NewScope();
         _sut.Insert(Faker());
         var actual = _sut.ListData(filter);
-        actual.Value.Should().ContainEquivalentOf(Faker(), opt => 
+        actual.Should().ContainEquivalentOf(Faker(), opt => 
             opt.Excluding(x => x.Dokter.PetugasMedisName)
-                .Excluding(x => x.Smf.SmfName));
+                .Excluding(x => x.Layanan.LayananName));
     }
 
     [Fact]
@@ -73,9 +75,9 @@ public class JadwalPraktekDalTest
         using var trans = TransHelper.NewScope();
         _sut.Insert(Faker());
         var actual = _sut.ListData(filter);
-        actual.Value.Should().ContainEquivalentOf(Faker(), opt => 
+        actual.Should().ContainEquivalentOf(Faker(), opt => 
             opt.Excluding(x => x.Dokter.PetugasMedisName)
-                .Excluding(x => x.Smf.SmfName));
+                .Excluding(x => x.Layanan.LayananName));
     }
     
     
@@ -93,5 +95,4 @@ public class JadwalPraktekDalTest
         var duration = TimeSpan.Parse(durationStr);
         duration.Should().Be(new TimeSpan(14, 53, 0));;
     }
-    
 }

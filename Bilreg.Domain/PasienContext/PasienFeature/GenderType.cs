@@ -22,10 +22,8 @@ public record GenderType : IGenderKey
     public SexDkEnum Sex { get; init; }
     public GenderReff ToReff => new(Symbol, Description);
     
-    
     public static IGenderKey Key(string id) => new GenderType(id, "-", SexDkEnum.Female);
     public static GenderType Default => new("-", "-", SexDkEnum.Female);
-    
 }
 
 public record GenderReff(string Symbol, string Description); 

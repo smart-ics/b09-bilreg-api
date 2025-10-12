@@ -9,7 +9,7 @@ public class PasienTrackerModelTest
 {
     private static PersonType CreatePersonFaker() 
         => new("John Doe", new DateTime(1990, 5, 10), 
-            AlamatType.Default, ContactType.Default, IdentitasType.Default);
+            GenderType.Default,  AlamatType.Default, ContactType.Default, IdentitasType.Default);
 
     [Fact]
     public void UT1_GivenValidPerson_WhenCreateCalled_ThenReturnValidInstance()
