@@ -1,12 +1,17 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.SearchPasienSub;
+using Bilreg.Domain.PasienContext.PasienFeature;
+using FluentAssertions;
 using MediatR;
+using Moq;
+using Nuna.Lib.PatternHelper;
+using Xunit;
 
 namespace Bilreg.Application.AdmisiContext.SearchPasienSub;
 
-public record DeepSearchPasienQuery(string Keyword) : IRequest<IEnumerable<SearchPasienModel>>;
+public record DeepSearchPasienQuery(string Keyword) : IRequest<IEnumerable<SearchPasienType>>;
 
-public class DeepSearchPasienHandler : IRequestHandler<DeepSearchPasienQuery, IEnumerable<SearchPasienModel>>
+public class DeepSearchPasienHandler : IRequestHandler<DeepSearchPasienQuery, IEnumerable<SearchPasienType>>
 {
     private readonly IDeepSearchPasienDal _deepSearchDal;
 
@@ -15,88 +20,106 @@ public class DeepSearchPasienHandler : IRequestHandler<DeepSearchPasienQuery, IE
         _deepSearchDal = deepSearchDal;
     }
 
-    public Task<IEnumerable<SearchPasienModel>> Handle(DeepSearchPasienQuery request, CancellationToken cancellationToken)
+    public Task<IEnumerable<SearchPasienType>> Handle(DeepSearchPasienQuery request, CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.Keyword, nameof(request.Keyword));
         if (request.Keyword.Length < 2)
             throw new ArgumentException("Keyword terlalu pendek (minimal 2 karakter).");
-        var result = new List<SearchPasienModel>();
-        var keyword = request.Keyword.Trim();
-        if (keyword.All(char.IsLetter))
-            result.AddRange(SearchByPasienName(keyword));
-        else
-            result.AddRange(Search(keyword));
+
+        var searchTypes = SearchPasienType.Create(request.Keyword);
+
+        var result = _deepSearchDal.ListData(searchTypes)
+            .Match(
+                    some => some,
+                    () => throw new KeyNotFoundException($"data pasien {request.Keyword} not found")
+                );
 
         return Task.FromResult(result.Distinct());
     }
 
-    #region ByNotName
-    private IEnumerable<SearchPasienModel> Search(string keyword)
-    {
-        var result = _deepSearchDal.ListData(keyword)
-                .Match(
-                    some => some,
-                    () => throw new KeyNotFoundException("data not found")
-                );
-        return result;
-    }
-    #endregion
     
-    #region ByName
-    private IEnumerable<SearchPasienModel> SearchByPasienName(string name)
-    {
-        var variasiEjaan = GenerateVariasiEjaan(name);
-        var listKeyword = variasiEjaan
-            .SelectMany(x => x.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-        listKeyword.Add(name);
-        
-        var result = FindByWords(listKeyword);
+}
 
-        return result;
+
+public class DeepSearchPasienTest
+{
+    private readonly DeepSearchPasienHandler _sut;
+    private readonly Mock<IDeepSearchPasienDal> _dal;
+
+    public DeepSearchPasienTest()
+    {
+        _dal = new Mock<IDeepSearchPasienDal>();
+        _sut = new DeepSearchPasienHandler(_dal.Object);
     }
 
-    private record Ejaan(string Eja1, string Eja2);
-    private static IEnumerable<string> GenerateVariasiEjaan(string originName)
+    [Fact]
+    public async Task T01_GivenValidName_WhenDeepSearch_ThenReturnPasien()
     {
-        var spellingVariations = new List<Ejaan>
-         {
-             new("dj", "j"), new("j", "dj"),
-             new("tj", "c"), new("c", "tj"),
-             new("sj", "sy"), new("sy", "sj"),
-             new("oe", "u"), new("u", "oe"),
-             new("dh", "d"), new("d", "dh"),
-             new("j", "y"), new("y", "j"),
-             new("i", "ie"), new("ie", "i")
-         };
+        // ARRANGE
+        var faker1 = new SearchPasienType("A", "Andi", new DateTime(2001, 09, 13), GenderType.Default,
+            IdentitasType.Default, "-", AlamatType.Default, "-", "-");
+        var faker2 = new SearchPasienType("B", "Andhi", new DateTime(2000, 08, 19), GenderType.Default,
+            IdentitasType.Default, "-", AlamatType.Default, "-", "-");
+        var listFacker = new List<SearchPasienType> { faker1, faker2 };
 
-        var cleanOriginName = RemovePunctuation(originName);
+        _dal.Setup(x => x.ListData(It.IsAny<IEnumerable<SearchPasienType>>()))
+            .Returns(MayBe.From<IEnumerable<SearchPasienType>>(listFacker));
 
-        // collection variasi ejaan original name
-        var result = spellingVariations
-            .Aggregate(new List<string> { cleanOriginName }, (variants, entry) => variants
-                .Concat(variants
-                    .Where(name => name.Contains(entry.Eja1, StringComparison.OrdinalIgnoreCase))
-                    .Select(name => name.Replace(entry.Eja1, entry.Eja2, StringComparison.OrdinalIgnoreCase))
-                ).Distinct().ToList()
-            );
-        return result;
-    }
-    private static string RemovePunctuation(string input)
-    {
-        return new string(input.Where(c => !char.IsPunctuation(c)).ToArray());
+        var request = new DeepSearchPasienQuery("Andi");
+
+        // ACT
+        var response = await _sut.Handle(request, CancellationToken.None);
+
+        // ASSERT
+        response.First().PasienId.Should().Be("A");
     }
 
-    private IEnumerable<SearchPasienModel> FindByWords(IEnumerable<string> variasiEjaan)
+    [Fact]
+    public async Task T02_GivenValidName_WhenDeepSearch_ThenReturnListSimilarPasienName()
     {
-        var result = _deepSearchDal.ListData(variasiEjaan)
-            .Match(
-                    some => some,
-                    () => new List<SearchPasienModel>()
-                );
+        // ARRANGE
+        var faker1 = new SearchPasienType("A", "Suhardi Wijaya", new DateTime(2001, 09, 13), GenderType.Default,
+            IdentitasType.Default, "-", AlamatType.Default, "-", "-");
+        var faker2 = new SearchPasienType("B", "Soehardi", new DateTime(2000, 08, 19), GenderType.Default,
+            IdentitasType.Default, "-", AlamatType.Default, "-", "-");
+        var faker3 = new SearchPasienType("C", "Agus", new DateTime(1999, 02, 19), GenderType.Default,
+            IdentitasType.Default, "-", AlamatType.Default, "-", "-");
+        var listFacker = new List<SearchPasienType> { faker1, faker2 };
 
-        return result;
+        _dal.Setup(x => x.ListData(It.IsAny<IEnumerable<SearchPasienType>>()))
+            .Returns(MayBe.From<IEnumerable<SearchPasienType>>(listFacker));
+
+        var request = new DeepSearchPasienQuery("hardi");
+
+        // ACT
+        var response = await _sut.Handle(request, CancellationToken.None);
+
+        // ASSERT
+        response.Select(x => x.PasienId).Should().BeEquivalentTo("A", "B");
     }
-    #endregion
+
+    //[Fact]
+    //public async Task T03_GivenValidTglLahir_WhenDeepSearch_ThenReturnPasien()
+    //{
+    //    // ARRANGE
+    //    var faker1 = new SearchPasienType("A", "Suhardi Wijaya", new DateTime(2001, 9, 13), GenderType.Default,
+    //        IdentitasType.Default, "-", AlamatType.Default, "-", "-");
+    //    var faker2 = new SearchPasienType("B", "Soehardi", new DateTime(2000, 8, 19), GenderType.Default,
+    //        IdentitasType.Default, "-", AlamatType.Default, "-", "-");
+    //    var faker3 = new SearchPasienType("C", "Agus", new DateTime(1999, 2, 19), GenderType.Default,
+    //        IdentitasType.Default, "-", AlamatType.Default, "-", "-");
+    //    var listFacker = new List<SearchPasienType> { faker1, faker2, faker3 };
+
+    //    _dal.Setup(x => x.ListData(It.IsAny<string>()))
+    //        .Returns(MayBe.From<IEnumerable<SearchPasienType>>(listFacker));
+
+    //    var request = new DeepSearchPasienQuery("1999-02-19");
+
+    //    // ACT
+    //    var response = await _sut.Handle(request, CancellationToken.None);
+
+    //    // ASSERT
+    //    response.First().PasienId.Should().Be("C");
+    //}
+
 }

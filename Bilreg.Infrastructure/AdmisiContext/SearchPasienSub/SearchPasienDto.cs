@@ -21,7 +21,7 @@ public class SearchPasienDto
     public string RegId { get; set; }
     public string BookingId { get; set; }
 
-    public SearchPasienModel ToModel()
+    public SearchPasienType ToModel()
     {
         var alamat = new AlamatType([AlamatPasien], Kota, KodePos);
         var identitas = new IdentitasType(JenisId, NoId);
@@ -29,7 +29,7 @@ public class SearchPasienDto
         var sekDk = GenderId == "0" ? SexDkEnum.Female : SexDkEnum.Male;
 
         var gender = new GenderType("", GenderName, sekDk);
-        var pasien = new SearchPasienModel(PasienId, PasienName, TglLahir.ToDate("yyyy-MM-dd"),
+        var pasien = new SearchPasienType(PasienId, PasienName, TglLahir.ToDate("yyyy-MM-dd"),
             gender, identitas, IbuKandung, alamat, RegId, BookingId);
         return pasien;
 

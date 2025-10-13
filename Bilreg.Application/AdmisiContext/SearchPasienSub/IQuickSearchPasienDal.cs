@@ -5,6 +5,6 @@ using Nuna.Lib.ValidationHelper;
 namespace Bilreg.Application.AdmisiContext.SearchPasienSub;
 
 public interface IQuickSearchPasienDal : 
-    IListDataMayBe<SearchPasienModel, Periode>
+    IListDataMayBe<SearchPasienType, Periode>
 {
 }

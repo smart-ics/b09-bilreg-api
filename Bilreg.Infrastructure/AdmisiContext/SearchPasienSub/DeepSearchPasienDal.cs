@@ -14,20 +14,67 @@ namespace Bilreg.Infrastructure.AdmisiContext.SearchPasienSub;
 public class DeepSearchPasienDal : IDeepSearchPasienDal
 {
     private readonly DatabaseOptions _opt;
-
+    private readonly DynamicParameters dp;
     public DeepSearchPasienDal(IOptions<DatabaseOptions> opt)
     {
         _opt = opt.Value;
+        dp = new DynamicParameters();
     }
-    public MayBe<IEnumerable<SearchPasienModel>> ListData(string keyword)
+    //public MayBe<IEnumerable<SearchPasienType>> ListData(string keyword)
+    //{
+    //    var sql = @$"{SelectClause()}
+    //        WHERE
+    //            aa.fs_mr LIKE @keyword 
+    //         OR aa.fd_tgl_lahir LIKE @keyword
+    //         OR cc.NoId LIKE @keyword";
+    //    var dp = new DynamicParameters();
+    //    dp.AddParam("@keyword", keyword, SqlDbType.VarChar);
+
+    //    using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+    //    var datas = MayBe
+    //        .From(conn.Read<SearchPasienDto>(sql, dp))
+    //        .Map(x => x.Select(y => y.ToModel()));
+    //    return datas;
+    //}
+
+    //public MayBe<IEnumerable<SearchPasienType>> ListData(IEnumerable<string> filter)
+    //{
+    //    var listFilter = filter.Skip(1)
+    //        .Select(x => $"OR aa.fs_nm_pasien LIKE '%{x}%'")
+    //        .ToList();
+
+    //    var sql = @$"{SelectClause()}
+    //        WHERE
+    //            aa.fs_nm_pasien LIKE '%{filter.First()}%'
+    //        {string.Join(" ", listFilter)}";
+
+    //    using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+    //    var datas = MayBe
+    //        .From(conn.Read<SearchPasienDto>(sql))
+    //        .Map(x => x.Select(y => y.ToModel()));
+    //    return datas;
+
+    //}
+
+    public MayBe<IEnumerable<SearchPasienType>> ListData(IEnumerable<SearchPasienType> filter)
     {
-        var sql = @$"{SelectClause()}
-            WHERE
-                aa.fs_mr LIKE @keyword 
-	            OR aa.fd_tgl_lahir LIKE @keyword
-	            OR cc.NoID LIKE @keyword";
-        var dp = new DynamicParameters();
-        dp.AddParam("@keyword", keyword, SqlDbType.VarChar);
+        string sql = string.Empty;
+        if (!string.IsNullOrWhiteSpace(filter.First().PasienId))
+            sql = $@"{SelectClause} {WhereClausePasienId(filter.First().PasienId)}";
+
+        
+        if (filter.First().TglLahir.Year != 3000)
+            sql = $@"{SelectClause} {WhereClauseTglLahir(filter.First().TglLahir.ToString("yyyy-MM-dd"))}";
+
+        if (!string.IsNullOrWhiteSpace(filter.First().PasienName))
+        {
+            var namaArray = filter
+                .Select(x => x.PasienName)
+                .Distinct()
+                .ToArray();
+            sql = $@"{SelectClause} {WhereClausePasienName(namaArray)}";
+
+        }
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         var datas = MayBe
@@ -36,24 +83,41 @@ public class DeepSearchPasienDal : IDeepSearchPasienDal
         return datas;
     }
 
-    public MayBe<IEnumerable<SearchPasienModel>> ListData(IEnumerable<string> filter)
+
+    private string WhereClauseTglLahir(string tglLahir)
     {
-        var listFilter = filter.Skip(1)
+        var result = 
+            @"WHERE
+                        aa.fd_tgl_lahir = @Keyword";
+        //var dp = new DynamicParameters();
+        dp.AddParam("@Keyword", tglLahir, SqlDbType.VarChar);
+        return result;
+    }
+    private string WhereClausePasienId(string pasienId)
+    {
+        var result =
+            @"WHERE
+                        aa.fs_mr = @Keyword";
+        //var dp = new DynamicParameters();
+        dp.AddParam("@Keyword", pasienId, SqlDbType.VarChar);
+        return result;
+    }
+
+    private string WhereClausePasienName(IEnumerable<string> pasienNames)
+    {
+        var listFilter = pasienNames.Skip(1)
             .Select(x => $"OR aa.fs_nm_pasien LIKE '%{x}%'")
             .ToList();
 
-        var sql = @$"{SelectClause()}
-            WHERE
-                aa.fs_nm_pasien LIKE '%{filter.First()}%'
-            {string.Join(" ", listFilter)}";
+        var result = @$"
+                WHERE
+                    aa.fs_nm_pasien LIKE '%{pasienNames.First()}%'
+                {string.Join(" ", listFilter)}";
 
-        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        var datas = MayBe
-            .From(conn.Read<SearchPasienDto>(sql))
-            .Map(x => x.Select(y => y.ToModel()));
-        return datas;
-
+        return result;
     }
+
+
 
     private static string SelectClause() => @"
         SELECT
@@ -71,4 +135,6 @@ public class DeepSearchPasienDal : IDeepSearchPasienDal
 	        tc_mr aa
 	        LEFT JOIN ta_jenis_kelamin bb ON aa.fs_jns_kelamin = bb.fs_kd_jenis_kelamin
 	        LEFT JOIN tc_mr_id cc ON aa.fs_mr = cc.fs_mr AND cc.JenisID = 'KTP'";
+
+    
 }

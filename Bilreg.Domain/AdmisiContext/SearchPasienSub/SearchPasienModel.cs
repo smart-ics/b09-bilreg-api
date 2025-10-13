@@ -1,13 +1,16 @@
-﻿using Bilreg.Domain.AdmisiContext.RegSub.RegAgg.ValueObjects;
+﻿using Ardalis.GuardClauses;
+using Bilreg.Domain.AdmisiContext.RegSub.RegAgg.ValueObjects;
 using Bilreg.Domain.PasienContext.PasienFeature;
+using Bilreg.Domain.PasienContext.StatusSosialFeature;
+using Nuna.Lib.ValidationHelper;
+using System.Text.RegularExpressions;
 
 namespace Bilreg.Domain.AdmisiContext.SearchPasienSub;
 
-public class SearchPasienModel : IPasienKey, IRegKey
+public record SearchPasienType : IPasienKey, IRegKey
 {
     #region FACTORY
-    public SearchPasienModel() { }
-    public SearchPasienModel(string pasienId, 
+    public SearchPasienType(string pasienId, 
         string pasienName, 
         DateTime tglLahir, 
         GenderType gender, 
@@ -17,6 +20,9 @@ public class SearchPasienModel : IPasienKey, IRegKey
         string regId, 
         string bookingId)
     {
+        Guard.Against.NullOrWhiteSpace(pasienId, nameof(pasienId));
+        Guard.Against.NullOrWhiteSpace(pasienName, nameof(pasienName));
+
         PasienId = pasienId;
         PasienName = pasienName;
         TglLahir = tglLahir;
@@ -28,22 +34,22 @@ public class SearchPasienModel : IPasienKey, IRegKey
         BookingId = bookingId;
     }
 
-    public static SearchPasienModel Load(string pasienId,
-        string pasienName,
-        DateTime tglLahir,
-        GenderType gender,
-        IdentitasType identitas,
-        string ibuKandung,
-        AlamatType alamat,
-        string regId,
-        string bookingId)
-        => new SearchPasienModel(pasienId, pasienName, 
-            tglLahir, gender, identitas, ibuKandung, alamat, regId, bookingId);
-    
-    public static SearchPasienModel Default => new SearchPasienModel(
+    public static SearchPasienType Default => new SearchPasienType(
         "-", "-", new DateTime(3000,1,1), GenderType.Default, IdentitasType.Default, 
         "-", AlamatType.Default, "-", "-");
-    
+
+
+    public static IEnumerable<SearchPasienType> Create(string keyword)
+    {
+        return keyword switch
+        {
+            var k when IsTglLahir(k) => new[] { ByTglLahir(k) },
+            var k when IsRG(k)       => new[] { ByRegId(k) },
+            var k when IsBooking(k)  => new[] { ByBooking(k) },
+            _                        => ByName(keyword)
+        };
+    }
+
     #endregion
 
     #region PROPERTIES
@@ -59,6 +65,67 @@ public class SearchPasienModel : IPasienKey, IRegKey
     #endregion
 
     #region BEHAVIOR
+    private static bool IsTglLahir(string keyword) =>
+    DateTime.TryParseExact(keyword, "yyyy-MM-dd", null,
+        System.Globalization.DateTimeStyles.None, out _);
+
+    private static bool IsRG(string keyword) =>
+        Regex.IsMatch(keyword, @"^RG\d+$", RegexOptions.IgnoreCase);
+
+    private static bool IsBooking(string keyword) =>
+    Regex.IsMatch(keyword, @"^(BH|BO)\d+$", RegexOptions.IgnoreCase);
+
+    private static SearchPasienType ByTglLahir(string keyword) =>
+        Default with { TglLahir = keyword.ToDate("yyyy-MM-dd") };
+
+    private static SearchPasienType ByRegId(string keyword) =>
+        Default with { RegId = keyword };
+
+    private static SearchPasienType ByBooking(string keyword) =>
+        Default with { BookingId = keyword };
+
+    private static IEnumerable<SearchPasienType> ByName(string keyword)
+    {
+        var varianNamas = GenerateVariasiEjaan(keyword);
+        var result = varianNamas.ToList()
+            .Select(x => SearchPasienType.Default with { PasienName = x });
+        return result;
+    }
+
+
+    private record Ejaan(string Eja1, string Eja2);
+    private static IEnumerable<string> GenerateVariasiEjaan(string originName)
+    {
+        var spellingVariations = new List<Ejaan>
+         {
+             new("dj", "j"), new("j", "dj"),
+             new("tj", "c"), new("c", "tj"),
+             new("sj", "sy"), new("sy", "sj"),
+             new("oe", "u"), new("u", "oe"),
+             new("dh", "d"), new("d", "dh"),
+             new("j", "y"), new("y", "j"),
+             new("i", "ie"), new("ie", "i")
+         };
+
+        var cleanOriginName = RemovePunctuation(originName);
+
+        // collection variasi ejaan original name
+        var result = spellingVariations
+            .Aggregate(new List<string> { cleanOriginName }, (variants, entry) => variants
+                .Concat(variants
+                    .Where(name => name.Contains(entry.Eja1, StringComparison.OrdinalIgnoreCase))
+                    .Select(name => name.Replace(entry.Eja1, entry.Eja2, StringComparison.OrdinalIgnoreCase))
+                ).Distinct().ToList()
+            );
+        return result;
+    }
+    private static string RemovePunctuation(string input)
+    {
+        return new string(input.Where(c => !char.IsPunctuation(c)).ToArray());
+    }
+
+
 
     #endregion
+
 }
