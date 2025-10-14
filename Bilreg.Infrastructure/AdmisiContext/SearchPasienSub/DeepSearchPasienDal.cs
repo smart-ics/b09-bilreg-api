@@ -59,20 +59,20 @@ public class DeepSearchPasienDal : IDeepSearchPasienDal
     public MayBe<IEnumerable<SearchPasienType>> ListData(IEnumerable<SearchPasienType> filter)
     {
         string sql = string.Empty;
-        if (!string.IsNullOrWhiteSpace(filter.First().PasienId))
-            sql = $@"{SelectClause} {WhereClausePasienId(filter.First().PasienId)}";
+        if (filter.First().PasienId != "-")
+            sql = $@"{SelectClause()} {WhereClausePasienId(filter.First().PasienId)}";
 
         
         if (filter.First().TglLahir.Year != 3000)
-            sql = $@"{SelectClause} {WhereClauseTglLahir(filter.First().TglLahir.ToString("yyyy-MM-dd"))}";
+            sql = $@"{SelectClause()} {WhereClauseTglLahir(filter.First().TglLahir.ToString("yyyy-MM-dd"))}";
 
-        if (!string.IsNullOrWhiteSpace(filter.First().PasienName))
+        if (filter.First().PasienName != "-")
         {
             var namaArray = filter
                 .Select(x => x.PasienName)
                 .Distinct()
                 .ToArray();
-            sql = $@"{SelectClause} {WhereClausePasienName(namaArray)}";
+            sql = $@"{SelectClause()} {WhereClausePasienName(namaArray)}";
 
         }
 
@@ -82,7 +82,6 @@ public class DeepSearchPasienDal : IDeepSearchPasienDal
             .Map(x => x.Select(y => y.ToModel()));
         return datas;
     }
-
 
     private string WhereClauseTglLahir(string tglLahir)
     {
@@ -96,10 +95,9 @@ public class DeepSearchPasienDal : IDeepSearchPasienDal
     private string WhereClausePasienId(string pasienId)
     {
         var result =
-            @"WHERE
-                        aa.fs_mr = @Keyword";
-        //var dp = new DynamicParameters();
-        dp.AddParam("@Keyword", pasienId, SqlDbType.VarChar);
+            @$"WHERE
+                        aa.fs_mr LIKE '%{ pasienId }%'";
+        
         return result;
     }
 
@@ -134,7 +132,8 @@ public class DeepSearchPasienDal : IDeepSearchPasienDal
         FROM
 	        tc_mr aa
 	        LEFT JOIN ta_jenis_kelamin bb ON aa.fs_jns_kelamin = bb.fs_kd_jenis_kelamin
-	        LEFT JOIN tc_mr_id cc ON aa.fs_mr = cc.fs_mr AND cc.JenisID = 'KTP'";
+	        LEFT JOIN tc_mr_id cc ON aa.fs_mr = cc.fs_mr AND cc.JenisID = 'KTP'
+            LEFT JOIN ta_jenis_kelamin dd ON aa.fs_jns_kelamin = dd.fs_kd_jenis_kelamin";
 
     
 }

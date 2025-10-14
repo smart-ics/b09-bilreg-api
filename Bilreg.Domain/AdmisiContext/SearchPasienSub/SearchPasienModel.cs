@@ -1,7 +1,6 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.RegSub.RegAgg.ValueObjects;
 using Bilreg.Domain.PasienContext.PasienFeature;
-using Bilreg.Domain.PasienContext.StatusSosialFeature;
 using Nuna.Lib.ValidationHelper;
 using System.Text.RegularExpressions;
 
@@ -46,6 +45,7 @@ public record SearchPasienType : IPasienKey, IRegKey
             var k when IsTglLahir(k) => new[] { ByTglLahir(k) },
             var k when IsRG(k)       => new[] { ByRegId(k) },
             var k when IsBooking(k)  => new[] { ByBooking(k) },
+            var k when IsPasienId(k) => new[] { ByPasienId(k) },
             _                        => ByName(keyword)
         };
     }
@@ -72,8 +72,14 @@ public record SearchPasienType : IPasienKey, IRegKey
     private static bool IsRG(string keyword) =>
         Regex.IsMatch(keyword, @"^RG\d+$", RegexOptions.IgnoreCase);
 
+    private static bool IsPasienId(string keyword) =>
+        keyword.All(char.IsDigit);
+
     private static bool IsBooking(string keyword) =>
     Regex.IsMatch(keyword, @"^(BH|BO)\d+$", RegexOptions.IgnoreCase);
+
+    private static SearchPasienType ByPasienId(string keyword) =>
+        Default with { PasienId = keyword };
 
     private static SearchPasienType ByTglLahir(string keyword) =>
         Default with { TglLahir = keyword.ToDate("yyyy-MM-dd") };
