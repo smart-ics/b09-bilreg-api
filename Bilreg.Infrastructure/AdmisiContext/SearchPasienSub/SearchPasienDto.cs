@@ -27,8 +27,8 @@ public class SearchPasienDto
         var identitas = new IdentitasType(JenisId, NoId);
         
         var sekDk = GenderId == "0" ? SexDkEnum.Female : SexDkEnum.Male;
-
         var gender = new GenderType("", GenderName, sekDk);
+
         var pasien = new SearchPasienType(PasienId, PasienName, TglLahir.ToDate("yyyy-MM-dd"),
             gender, identitas, IbuKandung, alamat, RegId, BookingId);
         return pasien;
