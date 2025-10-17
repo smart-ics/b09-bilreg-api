@@ -1,22 +1,21 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.Helpers;
 
 
 namespace Bilreg.Domain.AdmisiContext.AntrianFeature;
 
-public interface IAntrianFactory
+public interface IAntrianFactory : IFactory<AntrianModel, IAntrianKey>
 {
     AntrianModel Create(DateOnly antrianDate, JadwalPraktekType jadwalPraktek);
     AntrianModel Create(ServicePointType servicePoint);
-    AntrianModel Default { get; }
-    IAntrianKey Key(string id);
 }
 
 public class AntrianFactory : IAntrianFactory
 {
-    private readonly IAntrianSequencer _antrianSequencer;
+    private readonly ISequencer _antrianSequencer;
 
-    public AntrianFactory(IAntrianSequencer antrianSequencer)
+    public AntrianFactory(ISequencer antrianSequencer)
     {
         _antrianSequencer = antrianSequencer;
     }

@@ -1,0 +1,48 @@
+﻿using System.Data;
+using System.Data.SqlClient;
+using Bilreg.Application.AdmisiContext.BookingFeature;
+using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
+using Bilreg.Infrastructure.Helpers;
+using Dapper;
+using Microsoft.Extensions.Options;
+using Nuna.Lib.DataAccessHelper;
+using Nuna.Lib.PatternHelper;
+
+namespace Bilreg.Infrastructure.AdmisiContext.BookingFeature;
+
+public class JadwalPraktekRepo : IJadwalPraktekRepo
+{
+    private readonly JadwalPraktekDal _dal;
+    public JadwalPraktekRepo(IOptions<DatabaseOptions> opt)
+    {
+        _dal = new JadwalPraktekDal(opt);
+    }
+
+    public void SaveChanges(JadwalPraktekType model)
+    {
+        LoadEntity(model)
+            .Match(
+                onSome: _ => _dal.Update(JadwalPraktekDto.FromModel(model)),
+                onNone: () => _dal.Insert(JadwalPraktekDto.FromModel(model))
+            );
+    }
+    
+    public MayBe<JadwalPraktekType> LoadEntity(IJadwalPraktekKey key)
+    {
+        var result = _dal.GetData(key);
+        var model = result?.ToModel();
+        return MayBe.From(model!);
+    }
+
+    public void DeleteEntity(IJadwalPraktekKey key)
+        => _dal.Delete(key);
+
+    public IEnumerable<JadwalPraktekType> ListData(IPetugasMedisKey filter)
+    {
+        var result = _dal.ListData(filter);
+        var model = result?.Select(x => x.ToModel())?
+            .ToList() ?? [];
+        return model;
+    }
+}

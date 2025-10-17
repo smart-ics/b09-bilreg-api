@@ -1,6 +1,5 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
-using Bilreg.Application.AdmisiContext.JadwalFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
@@ -19,14 +18,14 @@ public record BookingCreateResponse (string BookingId, int NoAntrian);
 
 public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCreateResponse>
 {
-    private readonly IJadwalPraktekDal _jadwalPraktekDal;
+    private readonly IJadwalPraktekRepo _jadwalPraktekRepo;
     private readonly IGenderDal _genderDal;
     private readonly IAntrianRepo _antrianRepo;
     private readonly IAntrianFactory _antrianFactory;
-    public BookingCreateHandler(IJadwalPraktekDal jadwalPraktekDal, 
+    public BookingCreateHandler(IJadwalPraktekRepo jadwalPraktekRepo, 
         IGenderDal genderDal, IAntrianRepo antrianRepo, IAntrianFactory antrianFactory)
     {
-        _jadwalPraktekDal = jadwalPraktekDal;
+        _jadwalPraktekRepo = jadwalPraktekRepo;
         _genderDal = genderDal;
         _antrianRepo = antrianRepo;
         _antrianFactory = antrianFactory;
@@ -47,10 +46,10 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
 
         //  get jadwal
         var dokter = PetugasMedisType.Key(request.DokterId);
-        var listJadwal = _jadwalPraktekDal.ListData(dokter)?.ToList() ?? [];
+        var listJadwal = _jadwalPraktekRepo.ListData(dokter)?.ToList() ?? [];
         var jamMulai = TimeOnly.Parse(request.JamMulai);
         var jadwal = listJadwal.FirstOrDefault(x => x.JamMulai == jamMulai) 
-                     ?? throw new ArgumentException("Jadwal tidak ditemukan");
+            ?? throw new ArgumentException("Jadwal tidak ditemukan");
 
         //  create booking
         var tglBerobat = DateOnly.Parse(request.TglBerobat);

@@ -1,8 +1,4 @@
 ﻿using Ardalis.GuardClauses;
-using Bilreg.Domain.AdmisiContext.BookingFeature;
-using Bilreg.Domain.PasienContext.PasienFeature;
-using FluentAssertions;
-using Xunit;
 
 namespace Bilreg.Domain.AdmisiContext.AntrianFeature;
 

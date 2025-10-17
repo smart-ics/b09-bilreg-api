@@ -1,17 +1,18 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.Helpers;
 
 namespace Bilreg.Domain.AdmisiContext.AntrianFeature;
 
 public class AntrianModel : IAntrianKey, IAntrianHeaderView
 {
     private readonly List<AntrianEntryModel> _listEntry;
-    private readonly IAntrianSequencer _antrianSequencer;
+    private readonly ISequencer _sequencer;
     
     #region CREATION
     public AntrianModel(string antrianId, DateOnly antrianDate, TimeOnly startTime, TimeOnly endTime,
         string sequenceTag, string antrianDesc, IEnumerable<AntrianEntryModel> listEntry, 
-        IAntrianSequencer antrianSequencer)
+        ISequencer sequencer)
     {
         AntrianId = antrianId;
         AntrianDate = antrianDate;
@@ -21,7 +22,7 @@ public class AntrianModel : IAntrianKey, IAntrianHeaderView
         AntrianDescription = antrianDesc;
         _listEntry = listEntry.ToList();
 
-        _antrianSequencer = antrianSequencer;
+        _sequencer = sequencer;
 
     }
     #endregion
@@ -40,14 +41,14 @@ public class AntrianModel : IAntrianKey, IAntrianHeaderView
     public void AddEntry(PasienTrackerModel pasienTracker)
     {
         var visitor = pasienTracker.Visitor;
-        var noUrut = _antrianSequencer.GetNextNoUrut(SequenceTag); 
+        var noUrut = _sequencer.GetNextNoUrut(SequenceTag); 
         
         var entry = AntrianEntryModel.Create(noUrut, visitor);
         _listEntry.Add(entry);
     }
     public void AddEntry()
     {
-        var noUrut = _antrianSequencer.GetNextNoUrut(SequenceTag); 
+        var noUrut = _sequencer.GetNextNoUrut(SequenceTag); 
         var entry = AntrianEntryModel.Create(noUrut, VisitorType.Default);
         _listEntry.Add(entry); 
     }

@@ -1,6 +1,6 @@
-﻿namespace Bilreg.Domain.AdmisiContext.AntrianFeature;
+﻿namespace Bilreg.Domain.Helpers;
 
-public interface IAntrianSequencer
+public interface ISequencer
 {
     void CreateSequence(string sequenceTag);
     int  GetNextNoUrut(string sequenceTag);

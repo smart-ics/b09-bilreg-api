@@ -1,6 +1,7 @@
 ﻿using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananSub;
 using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
+using Bilreg.Domain.Helpers;
 using FluentAssertions;
 using Moq;
 using Xunit;
@@ -9,12 +10,12 @@ namespace Bilreg.Domain.AdmisiContext.AntrianFeature;
 
 public class AntrianFactoryTests
 {
-    private readonly Mock<IAntrianSequencer> _mockAntrianSequencer;
+    private readonly Mock<ISequencer> _mockAntrianSequencer;
     private readonly AntrianFactory _sut;
 
     public AntrianFactoryTests()
     {
-        _mockAntrianSequencer = new Mock<IAntrianSequencer>();
+        _mockAntrianSequencer = new Mock<ISequencer>();
         _sut = new AntrianFactory(_mockAntrianSequencer.Object);
     }
 
