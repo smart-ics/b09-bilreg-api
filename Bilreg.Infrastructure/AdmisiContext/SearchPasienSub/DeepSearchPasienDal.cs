@@ -7,7 +7,6 @@ using Nuna.Lib.DataAccessHelper;
 using Nuna.Lib.PatternHelper;
 using System.Data;
 using System.Data.SqlClient;
-using System.Runtime.Intrinsics.Arm;
 
 namespace Bilreg.Infrastructure.AdmisiContext.SearchPasienSub;
 
@@ -20,42 +19,7 @@ public class DeepSearchPasienDal : IDeepSearchPasienDal
         _opt = opt.Value;
         dp = new DynamicParameters();
     }
-    //public MayBe<IEnumerable<SearchPasienType>> ListData(string keyword)
-    //{
-    //    var sql = @$"{SelectClause()}
-    //        WHERE
-    //            aa.fs_mr LIKE @keyword 
-    //         OR aa.fd_tgl_lahir LIKE @keyword
-    //         OR cc.NoId LIKE @keyword";
-    //    var dp = new DynamicParameters();
-    //    dp.AddParam("@keyword", keyword, SqlDbType.VarChar);
-
-    //    using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-    //    var datas = MayBe
-    //        .From(conn.Read<SearchPasienDto>(sql, dp))
-    //        .Map(x => x.Select(y => y.ToModel()));
-    //    return datas;
-    //}
-
-    //public MayBe<IEnumerable<SearchPasienType>> ListData(IEnumerable<string> filter)
-    //{
-    //    var listFilter = filter.Skip(1)
-    //        .Select(x => $"OR aa.fs_nm_pasien LIKE '%{x}%'")
-    //        .ToList();
-
-    //    var sql = @$"{SelectClause()}
-    //        WHERE
-    //            aa.fs_nm_pasien LIKE '%{filter.First()}%'
-    //        {string.Join(" ", listFilter)}";
-
-    //    using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-    //    var datas = MayBe
-    //        .From(conn.Read<SearchPasienDto>(sql))
-    //        .Map(x => x.Select(y => y.ToModel()));
-    //    return datas;
-
-    //}
-
+    
     public MayBe<IEnumerable<SearchPasienType>> ListData(IEnumerable<SearchPasienType> filter)
     {
         string sql = string.Empty;

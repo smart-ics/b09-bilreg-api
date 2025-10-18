@@ -25,16 +25,28 @@ public class DeepSearchPasienHandler : IRequestHandler<DeepSearchPasienQuery, IE
         Guard.Against.NullOrWhiteSpace(request.Keyword, nameof(request.Keyword));
         if (request.Keyword.Length < 2)
             throw new ArgumentException("Keyword terlalu pendek (minimal 2 karakter).");
+        
+        var parts = request.Keyword
+            .Split(';')
+            .Select(x => x.Trim())
+            .ToArray();
 
-        var searchTypes = SearchPasienType.Create(request.Keyword);
+        var allResults = new List<SearchPasienType>();
 
-        var result = _deepSearchDal.ListData(searchTypes)
-            .Match(
+        foreach (var part in parts)
+        {
+            var searchTypes = SearchPasienType.Create(part);
+
+            var result = _deepSearchDal.ListData(searchTypes)
+                .Match(
                     some => some,
-                    () => throw new KeyNotFoundException($"data pasien {request.Keyword} not found")
+                    () => new List<SearchPasienType>()
                 );
 
-        return Task.FromResult(result.Distinct());
+            allResults.AddRange(result);
+        }
+
+        return Task.FromResult(allResults.Distinct());
     }
 
     

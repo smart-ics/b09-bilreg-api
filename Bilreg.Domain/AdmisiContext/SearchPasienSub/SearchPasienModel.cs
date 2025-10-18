@@ -40,14 +40,16 @@ public record SearchPasienType : IPasienKey, IRegKey
 
     public static IEnumerable<SearchPasienType> Create(string keyword)
     {
+        var pasien = SearchPasienType.Default;
         return keyword switch
         {
-            var k when IsTglLahir(k) => new[] { ByTglLahir(k) },
-            var k when IsRG(k)       => new[] { ByRegId(k) },
-            var k when IsBooking(k)  => new[] { ByBooking(k) },
-            var k when IsPasienId(k) => new[] { ByPasienId(k) },
-            _                        => ByName(keyword)
+            var k when IsTglLahir(k) => new[] { ByTglLahir(pasien, k) },
+            var k when IsRG(k) => new[] { ByRegId(pasien, k) },
+            var k when IsBooking(k) => new[] { ByBooking(pasien, k) },
+            var k when IsPasienId(k) => new[] { ByPasienId(pasien, k) },
+            _ => ByName(pasien, keyword)
         };
+
     }
 
     #endregion
@@ -78,24 +80,21 @@ public record SearchPasienType : IPasienKey, IRegKey
     private static bool IsBooking(string keyword) =>
     Regex.IsMatch(keyword, @"^(BH|BO)\d+$", RegexOptions.IgnoreCase);
 
-    private static SearchPasienType ByPasienId(string keyword) =>
-        Default with { PasienId = keyword };
 
-    private static SearchPasienType ByTglLahir(string keyword) =>
-        Default with { TglLahir = keyword.ToDate("yyyy-MM-dd") };
+    private static SearchPasienType ByPasienId(SearchPasienType pasien, string keyword) =>
+        pasien with { PasienId = keyword };
 
-    private static SearchPasienType ByRegId(string keyword) =>
-        Default with { RegId = keyword };
-
-    private static SearchPasienType ByBooking(string keyword) =>
-        Default with { BookingId = keyword };
-
-    private static IEnumerable<SearchPasienType> ByName(string keyword)
+    private static SearchPasienType ByTglLahir(SearchPasienType pasien, string keyword) =>
+        pasien with { TglLahir = keyword.ToDate("yyyy-MM-dd") };
+    private static SearchPasienType ByRegId(SearchPasienType pasien, string keyword) =>
+         pasien with { RegId = keyword };
+        
+    private static SearchPasienType ByBooking(SearchPasienType pasien, string keyword) =>
+        pasien with { BookingId = keyword };
+    private static IEnumerable<SearchPasienType> ByName(SearchPasienType pasien, string keyword)
     {
         var varianNamas = GenerateVariasiEjaan(keyword);
-        var result = varianNamas.ToList()
-            .Select(x => SearchPasienType.Default with { PasienName = x });
-        return result;
+        return varianNamas.Select(x => pasien with { PasienName = x });
     }
 
 

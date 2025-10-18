@@ -6,9 +6,7 @@ using MediatR;
 using Moq;
 using Nuna.Lib.PatternHelper;
 using Nuna.Lib.ValidationHelper;
-using System.Xml.Serialization;
 using Xunit;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Bilreg.Application.AdmisiContext.SearchPasienSub;
 
