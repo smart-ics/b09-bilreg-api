@@ -24,8 +24,4 @@
     <ProjectReference Include="..\Bilreg.Application\Bilreg.Application.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="AdmisiContext\AntrianFeature\" />
-  </ItemGroup>
-
 </Project>

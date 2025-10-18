@@ -19,8 +19,6 @@ public static class InfrastructureService
             .AddScoped<INunaCounterDal, ParamNoDal>()
             .AddScoped<INunaCounterDecDal, ParamNoDal>()
             .AddScoped<ITglJamProvider, TglJamProvider>()
-            .AddSingleton<IGenderDal, GenderDal>()
-            
             .AddMemoryCache();
         
         services

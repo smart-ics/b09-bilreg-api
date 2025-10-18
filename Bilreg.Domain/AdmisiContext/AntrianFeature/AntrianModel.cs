@@ -38,18 +38,19 @@ public class AntrianModel : IAntrianKey, IAntrianHeaderView
     #endregion
 
     #region METHODS BEHAVIOR    
-    public void AddEntry(PasienTrackerModel pasienTracker)
+    public AntrianEntryModel AddEntry(PasienTrackerModel pasienTracker)
     {
-        var visitor = pasienTracker.Visitor;
+        var visitor = pasienTracker.Person;
         var noUrut = _sequencer.GetNextNoUrut(SequenceTag); 
         
         var entry = AntrianEntryModel.Create(noUrut, visitor);
         _listEntry.Add(entry);
+        return entry;
     }
     public void AddEntry()
     {
         var noUrut = _sequencer.GetNextNoUrut(SequenceTag); 
-        var entry = AntrianEntryModel.Create(noUrut, VisitorType.Default);
+        var entry = AntrianEntryModel.Create(noUrut, PersonType.Default);
         _listEntry.Add(entry); 
     }
     public static string GenSequenceTag(DateOnly tglAntrian, JadwalPraktekType jadwal)
@@ -68,7 +69,6 @@ public class AntrianModel : IAntrianKey, IAntrianHeaderView
         var sequenceTag = $"AN{tglAntrian:yyMMdd}_{servicePoint.ServicePointCode}";
         return sequenceTag;
     }
-
     #endregion
 }
 

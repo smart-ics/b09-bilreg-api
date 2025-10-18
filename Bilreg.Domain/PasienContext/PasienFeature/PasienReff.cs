@@ -4,4 +4,4 @@ public record PasienReff(
     string PasienId,
     string PasienName,
     DateTime TglLahir,    
-    GenderType Gender);
+    string Gender);

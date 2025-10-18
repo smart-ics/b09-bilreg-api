@@ -1,12 +1,9 @@
 ﻿using System.Data;
-using System.Data.SqlClient;
 using Bilreg.Application.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
 using Bilreg.Infrastructure.Helpers;
-using Dapper;
 using Microsoft.Extensions.Options;
-using Nuna.Lib.DataAccessHelper;
 using Nuna.Lib.PatternHelper;
 
 namespace Bilreg.Infrastructure.AdmisiContext.BookingFeature;

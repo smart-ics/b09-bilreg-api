@@ -20,15 +20,11 @@ public record PasienCreateResponse(string PasienId);
 
 public class PasienCreateHandler : IRequestHandler<PasienCreateCommand, PasienCreateResponse>
 {
-    private readonly IGenderDal _genderDal;
     private readonly IPasienRepo _pasienRepo;
-    
     private const string FORMAT_TGL_YMD = "yyyy-MM-dd";
-    
 
-    public PasienCreateHandler(IGenderDal genderDal, IPasienRepo pasienRepo)
+    public PasienCreateHandler(IPasienRepo pasienRepo)
     {
-        _genderDal = genderDal;
         _pasienRepo = pasienRepo;
     }
 
@@ -39,10 +35,8 @@ public class PasienCreateHandler : IRequestHandler<PasienCreateCommand, PasienCr
         Guard.IsTrue(request.TglLahir.IsValidTgl(FORMAT_TGL_YMD));
         
         //  BUILD
-        var gender = _genderDal.GetData(request.Gender)
-            .GetValueOrThrow("Gender Invalid");
         var pasien = PasienModel.CreateNew(request.PasienName,
-            request.TglLahir.ToDate(), gender);
+            request.TglLahir.ToDate(), request.Gender);
         pasien.SetPersonalInfo(request.NickName, request.TempatLahir, 
             request.IbuKandung, new GolDarahType(request.GolDarah));
 

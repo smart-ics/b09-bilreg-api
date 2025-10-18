@@ -17,7 +17,7 @@ public class PasienDto
         fs_mr = model.PasienId;
         fs_nm_pasien = model.PasienName;
         fd_tgl_lahir = model.TglLahir.ToString("yyyy-MM-dd");
-        fs_jns_kelamin = model.Gender.Symbol;
+        fs_jns_kelamin = model.Gender;
 
         fs_nm_alias = model.NickName;
         fs_temp_lahir = model.TempatLahir;
@@ -126,14 +126,14 @@ public class PasienDto
     public bool fb_aktif { get; set; }
     #endregion
 
-    public PasienModel ToModel(IGenderDal genderDal)
+    public PasienModel ToModel()
     {
         this.ToDefaultString();
         fs_gol_darah = fs_gol_darah == "-" ? "O" : fs_gol_darah;
 
         //      personal info
         var tglLahir = fd_tgl_lahir.ToDate(DateFormatEnum.YMD);
-        var gender = genderDal.GetData(fs_jns_kelamin).Value;
+        var gender = fs_jns_kelamin;
         var golDarah = new GolDarahType(fs_gol_darah);
         
         //      administrative  

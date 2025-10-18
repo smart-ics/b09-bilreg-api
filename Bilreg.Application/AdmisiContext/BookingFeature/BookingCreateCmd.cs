@@ -6,6 +6,7 @@ using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
+using Nuna.Lib.ValidationHelper;
 
 
 namespace Bilreg.Application.AdmisiContext.BookingFeature;
@@ -19,30 +20,29 @@ public record BookingCreateResponse (string BookingId, int NoAntrian);
 public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCreateResponse>
 {
     private readonly IJadwalPraktekRepo _jadwalPraktekRepo;
-    private readonly IGenderDal _genderDal;
     private readonly IAntrianRepo _antrianRepo;
     private readonly IAntrianFactory _antrianFactory;
-    public BookingCreateHandler(IJadwalPraktekRepo jadwalPraktekRepo, 
-        IGenderDal genderDal, IAntrianRepo antrianRepo, IAntrianFactory antrianFactory)
+    private readonly IBookingRepo _bookingRepo;
+    private readonly IPasienTrackerRepo _trackerRepo;
+    public BookingCreateHandler(IJadwalPraktekRepo jadwalPraktekRepo,
+        IAntrianRepo antrianRepo, 
+        IAntrianFactory antrianFactory, IBookingRepo bookingRepo)
     {
         _jadwalPraktekRepo = jadwalPraktekRepo;
-        _genderDal = genderDal;
         _antrianRepo = antrianRepo;
         _antrianFactory = antrianFactory;
+        _bookingRepo = bookingRepo;
     }
 
     public Task<BookingCreateResponse> Handle(BookingCreateCmd request, CancellationToken cancellationToken)
     {
         //  create person
-        var gender = _genderDal.GetData(request.Gender)
-                .GetValueOrThrow("Gender invalid");
-        var person = new PersonType(
-            request.PasienName,
-            DateTime.Parse(request.TglLahir),
-            gender,
-            new AlamatType([request.Alamat], "-", "-"),
-            new ContactType(JenisContactEnum.Phone, request.NoTelp),
-            IdentitasType.Default);
+        var tglLahir = DateOnly.ParseExact(request.TglLahir, "yyyy-MM-dd");
+        var alamat = new AlamatType([request.Alamat], "-", "-");
+        var contact = new ContactType(JenisContactEnum.Phone, request.NoTelp); 
+        var person = new PersonInfoType(
+            request.PasienName, tglLahir, request.Gender, 
+            alamat, contact, IdentitasType.Default);
 
         //  get jadwal
         var dokter = PetugasMedisType.Key(request.DokterId);
@@ -63,8 +63,12 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
             _antrianFactory.Create(tglBerobat, jadwal) :
             _antrianRepo.LoadEntity(antrianView).Value;
         var tracker = PasienTrackerModel.Create(booking.Person);
-        antrian.AddEntry(tracker);
-        
-        throw new NotImplementedException();
+        var antEntry = antrian.AddEntry(tracker);
+        booking.AssignNoAntrian(antEntry.NoUrut);
+
+        _bookingRepo.SaveChanges(booking);
+        _antrianRepo.SaveChanges(antrian);
+        _pasienTrackerRepo
+
     }
 }

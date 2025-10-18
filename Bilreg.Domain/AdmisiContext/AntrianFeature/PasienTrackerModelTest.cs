@@ -7,9 +7,9 @@ namespace Bilreg.Domain.AdmisiContext.AntrianFeature;
 
 public class PasienTrackerModelTest
 {
-    private static PersonType CreatePersonFaker() 
-        => new("John Doe", new DateTime(1990, 5, 10), 
-            GenderType.Default,  AlamatType.Default, ContactType.Default, IdentitasType.Default);
+    private static PersonInfoType CreatePersonFaker() 
+        => new("John Doe", new DateOnly(1990, 5, 10), 
+            "-",  AlamatType.Default, ContactType.Default, IdentitasType.Default);
 
     [Fact]
     public void UT1_GivenValidPerson_WhenCreateCalled_ThenReturnValidInstance()
@@ -22,8 +22,8 @@ public class PasienTrackerModelTest
 
         // Assert
         tracker.Should().NotBeNull();
-        tracker.TrackerId.Should().NotBeNullOrWhiteSpace();
-        tracker.Visitor.Should().NotBeNull();
+        tracker.PasienTrackerId.Should().NotBeNullOrWhiteSpace();
+        tracker.Person.Should().NotBeNull();
         tracker.Events.Should().BeEmpty();
     }
 
@@ -34,8 +34,8 @@ public class PasienTrackerModelTest
         var tracker = PasienTrackerModel.Default;
 
         // Assert
-        tracker.TrackerId.Should().Be("-");
-        tracker.Visitor.Should().Be(VisitorType.Default);
+        tracker.PasienTrackerId.Should().Be("-");
+        tracker.Person.Should().Be(PersonType.Default);
         tracker.Events.Should().BeEmpty();
     }
 

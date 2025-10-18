@@ -1,11 +1,12 @@
 ﻿using Ardalis.GuardClauses;
+using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 
 namespace Bilreg.Domain.AdmisiContext.BookingFeature;
 
-public record PersonType
+public record PersonInfoType
 {
-    public PersonType(string personName, DateTime birthDate, GenderType gender, 
+    public PersonInfoType(string personName, DateOnly birthDate, string gender, 
         AlamatType alamat, ContactType contact, IdentitasType identity)
     {
         Guard.Against.NullOrWhiteSpace(personName, nameof(personName));
@@ -16,20 +17,21 @@ public record PersonType
         Guard.Against.Null(identity, nameof(identity));
         
         PersonName = personName;
-        BirthDate = birthDate;
+        TglLahir = birthDate;
         Gender = gender;
         Alamat = alamat;
         Contact = contact;
         Identity = identity;
     }
+
+    public static PersonInfoType Default =>
+        new PersonInfoType("-", new DateOnly(3000, 1, 1), "-", AlamatType.Default,
+            ContactType.Default, IdentitasType.Default);
+
     public string PersonName { get; init; } 
-    public DateTime BirthDate { get; init; } 
-    public GenderType Gender { get; init; }
+    public DateOnly TglLahir { get; init; } 
+    public string Gender { get; init; }
     public AlamatType Alamat { get; init; } 
     public ContactType Contact { get; init; }
     public IdentitasType Identity { get; init; }
-
-    public static PersonType Default =>
-        new PersonType("-", new DateTime(3000, 1, 1), GenderType.Default, AlamatType.Default, 
-            ContactType.Default, IdentitasType.Default);
 }
