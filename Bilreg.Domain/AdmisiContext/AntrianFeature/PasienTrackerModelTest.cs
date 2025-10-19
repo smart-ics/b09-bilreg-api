@@ -24,7 +24,7 @@ public class PasienTrackerModelTest
         tracker.Should().NotBeNull();
         tracker.PasienTrackerId.Should().NotBeNullOrWhiteSpace();
         tracker.Person.Should().NotBeNull();
-        tracker.Events.Should().BeEmpty();
+        tracker.ListEvent.Should().BeEmpty();
     }
 
     [Fact]
@@ -36,7 +36,7 @@ public class PasienTrackerModelTest
         // Assert
         tracker.PasienTrackerId.Should().Be("-");
         tracker.Person.Should().Be(PersonType.Default);
-        tracker.Events.Should().BeEmpty();
+        tracker.ListEvent.Should().BeEmpty();
     }
 
     [Fact]
@@ -44,15 +44,15 @@ public class PasienTrackerModelTest
     {
         // Arrange
         var tracker = PasienTrackerModel.Create(CreatePersonFaker());
-        var beforeCount = tracker.Events.Count();
+        var beforeCount = tracker.ListEvent.Count();
 
         // Act
         tracker.AddEvent("Registered", "REF001");
 
         // Assert
-        tracker.Events.Count().Should().Be(beforeCount + 1);
-        tracker.Events.Last().EventName.Should().Be("Registered");
-        tracker.Events.Last().ReffId.Should().Be("REF001");
+        tracker.ListEvent.Count().Should().Be(beforeCount + 1);
+        tracker.ListEvent.Last().EventName.Should().Be("Registered");
+        tracker.ListEvent.Last().ReffId.Should().Be("REF001");
     }
 
     [Theory]

@@ -43,7 +43,7 @@ public class PasienTrackerModel : IPasienTrackerKey
     public string PasienTrackerId { get; init; }
     public PersonType Person { get; init; }
     public DateOnly VisitDate { get; init; }
-    public IEnumerable<PasienTrackerEventType> Events => _listEvent;
+    public IEnumerable<PasienTrackerEventType> ListEvent => _listEvent;
     #endregion
 
     #region METHOD BEHAVIOUR

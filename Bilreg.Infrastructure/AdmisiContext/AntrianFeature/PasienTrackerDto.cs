@@ -18,11 +18,11 @@ public record PasienTrackerDto(
         return result;
     }
     
-    public PasienTrackerModel ToModel()
+    public PasienTrackerModel ToModel(IEnumerable<PasienTrackerEventType> listEvent)
     {
         var person = new PersonType(PersonName, DateOnly.FromDateTime(TglLahir));
         var visitDate = DateOnly.FromDateTime(VisitDate);
-        var result = new PasienTrackerModel(PasienTrackerId, person, visitDate, []); 
+        var result = new PasienTrackerModel(PasienTrackerId, person, visitDate, listEvent); 
         return result;
     }   
 }

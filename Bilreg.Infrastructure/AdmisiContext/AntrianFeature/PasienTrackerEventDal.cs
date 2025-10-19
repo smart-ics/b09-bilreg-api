@@ -13,8 +13,8 @@ public interface IPasienTrackerEventDal :
     IUpdate<PasienTrackerEventDto>,
     IListData<PasienTrackerEventDto, IPasienTrackerKey>
 {
-    void Delete(IPasienTrackerKey key, int noUrut);
-    PasienTrackerEventDto GetData(IPasienTrackerKey key, int noUrut);
+    void Delete(string pasienTrackerId, int noUrut);
+    PasienTrackerEventDto GetData(string pasienTrackerId, int noUrut);
 }
 
 public class PasienTrackerEventDal : IPasienTrackerEventDal
@@ -68,7 +68,7 @@ public class PasienTrackerEventDal : IPasienTrackerEventDal
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
-    public void Delete(IPasienTrackerKey key, int noUrut)
+    public void Delete(string pasienTrackerId, int noUrut)
     {
         const string sql = """
             DELETE
@@ -79,14 +79,14 @@ public class PasienTrackerEventDal : IPasienTrackerEventDal
             """;
         
         var dp = new DynamicParameters();
-        dp.AddParam("@PasienTrackerId", key.PasienTrackerId, SqlDbType.VarChar);
+        dp.AddParam("@PasienTrackerId", pasienTrackerId, SqlDbType.VarChar);
         dp.AddParam("@NoUrut", noUrut, SqlDbType.Int);
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
 
-    public PasienTrackerEventDto GetData(IPasienTrackerKey key, int noUrut)
+    public PasienTrackerEventDto GetData(string pasienTrackerId, int noUrut)
     {
         const string sql = """
             SELECT 
@@ -99,7 +99,7 @@ public class PasienTrackerEventDal : IPasienTrackerEventDal
             """;
         
         var dp = new DynamicParameters();
-        dp.AddParam("@PasienTrackerId", key.PasienTrackerId, SqlDbType.VarChar);
+        dp.AddParam("@PasienTrackerId", pasienTrackerId, SqlDbType.VarChar);
         dp.AddParam("@NoUrut", noUrut, SqlDbType.Int);
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
