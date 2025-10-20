@@ -4,6 +4,7 @@ using Bilreg.Domain.PasienContext.PasienFeature;
 using FluentAssertions;
 using MediatR;
 using Moq;
+using Nuna.Lib.DataTypeExtension;
 using Nuna.Lib.PatternHelper;
 using System.Text.RegularExpressions;
 using Xunit;
@@ -34,9 +35,6 @@ public class DeepSearchPasienHandler : IRequestHandler<DeepSearchPasienQuery, IE
             .ToList();
 
         var allResults = new List<SearchPasienType>();
-        //var pasien = SearchPasienType.Default;
-        //var partName = parts.Where( x => IsPasienName(x)).First() ?? string.Empty;
-        //parts.Remove(partName);
 
         var dataSearch = SearchPasienType.GenData(parts);
 
