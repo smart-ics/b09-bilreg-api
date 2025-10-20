@@ -1,8 +1,11 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.RegSub.RegAgg.ValueObjects;
 using Bilreg.Domain.PasienContext.PasienFeature;
+using Newtonsoft.Json.Serialization;
 using Nuna.Lib.ValidationHelper;
+using System.Reflection;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 
 namespace Bilreg.Domain.AdmisiContext.SearchPasienSub;
 
@@ -38,16 +41,14 @@ public record SearchPasienType : IPasienKey, IRegKey
         "-", AlamatType.Default, "-", "-");
 
 
-    public static IEnumerable<SearchPasienType> Create(string keyword)
+    public static SearchPasienType CreateNotName(SearchPasienType pasien, string keyword)
     {
-        var pasien = SearchPasienType.Default;
         return keyword switch
         {
-            var k when IsTglLahir(k) => new[] { ByTglLahir(pasien, k) },
-            var k when IsRG(k) => new[] { ByRegId(pasien, k) },
-            var k when IsBooking(k) => new[] { ByBooking(pasien, k) },
-            var k when IsPasienId(k) => new[] { ByPasienId(pasien, k) },
-            _ => ByName(pasien, keyword)
+            var k when IsTglLahir(k) => ByTglLahir(pasien, k) ,
+            var k when IsRG(k) => ByRegId(pasien, k) ,
+            var k when IsBooking(k) => ByBooking(pasien, k),
+            var k when IsPasienId(k) =>  ByPasienId(pasien, k)
         };
 
     }
@@ -57,12 +58,12 @@ public record SearchPasienType : IPasienKey, IRegKey
     #region PROPERTIES
     public string PasienId { get; init; }
     public string PasienName { get; init; }
-    public DateTime TglLahir { get; init; }
+    public DateTime TglLahir { get; private set; }
     public GenderType Gender {  get; init; }
     public IdentitasType Identitas { get; init; }
     public string IbuKandung { get; init; }
     public AlamatType AlamatDomisili { get; init; }
-    public  string RegId { get; init; }
+    public  string RegId { get; private set; }
     public string BookingId { get; init; }
     #endregion
 
@@ -80,21 +81,58 @@ public record SearchPasienType : IPasienKey, IRegKey
     private static bool IsBooking(string keyword) =>
     Regex.IsMatch(keyword, @"^(BH|BO)\d+$", RegexOptions.IgnoreCase);
 
+    private static bool IsPasienName(string keyword) =>
+        Regex.IsMatch(keyword, @"^[A-Za-z\s]+$");
 
     private static SearchPasienType ByPasienId(SearchPasienType pasien, string keyword) =>
         pasien with { PasienId = keyword };
 
     private static SearchPasienType ByTglLahir(SearchPasienType pasien, string keyword) =>
         pasien with { TglLahir = keyword.ToDate("yyyy-MM-dd") };
+
     private static SearchPasienType ByRegId(SearchPasienType pasien, string keyword) =>
          pasien with { RegId = keyword };
         
     private static SearchPasienType ByBooking(SearchPasienType pasien, string keyword) =>
         pasien with { BookingId = keyword };
-    private static IEnumerable<SearchPasienType> ByName(SearchPasienType pasien, string keyword)
+    
+    
+    public static IEnumerable<SearchPasienType> GenData(List<string> parts)
     {
-        var varianNamas = GenerateVariasiEjaan(keyword);
-        return varianNamas.Select(x => pasien with { PasienName = x });
+        var partName = parts.FirstOrDefault(IsPasienName);
+        var hasName = !string.IsNullOrWhiteSpace(partName);
+
+        if (hasName)
+            parts.Remove(partName);
+
+        var result = new List<SearchPasienType>();
+
+        if (hasName)
+        {
+            // jika ada nama -> buat varian ejaan
+            var varianNamas = GenerateVariasiEjaan(partName!);
+            result = varianNamas
+                .Select(x => SearchPasienType.Default with { PasienName = x })
+                .ToList();
+        }
+        else
+        {
+            // jika tidak ada nama -> mulai dari 1 default saja
+            result.Add(SearchPasienType.Default);
+        }
+
+        // proses bagian lain (tgl lahir, rg, booking, dll)
+        foreach (var part in parts)
+        {
+            for (int i = 0; i < result.Count; i++)
+            {
+                result[i] = CreateNotName(result[i], part);
+            }
+        }
+
+        return result;
+
+
     }
 
 

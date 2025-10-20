@@ -5,6 +5,7 @@ using FluentAssertions;
 using MediatR;
 using Moq;
 using Nuna.Lib.PatternHelper;
+using System.Text.RegularExpressions;
 using Xunit;
 
 namespace Bilreg.Application.AdmisiContext.SearchPasienSub;
@@ -28,29 +29,29 @@ public class DeepSearchPasienHandler : IRequestHandler<DeepSearchPasienQuery, IE
         
         var parts = request.Keyword
             .Split(';')
+            .Select(x => x.ToLower())
             .Select(x => x.Trim())
-            .ToArray();
+            .ToList();
 
         var allResults = new List<SearchPasienType>();
+        //var pasien = SearchPasienType.Default;
+        //var partName = parts.Where( x => IsPasienName(x)).First() ?? string.Empty;
+        //parts.Remove(partName);
 
-        foreach (var part in parts)
-        {
-            var searchTypes = SearchPasienType.Create(part);
+        var dataSearch = SearchPasienType.GenData(parts);
 
-            var result = _deepSearchDal.ListData(searchTypes)
-                .Match(
-                    some => some,
-                    () => new List<SearchPasienType>()
-                );
+        var result = _deepSearchDal.ListData(dataSearch)
+            .Match(
+                some => some,
+                () => new List<SearchPasienType>()
+            );
 
-            allResults.AddRange(result);
-        }
-
-        return Task.FromResult(allResults.Distinct());
+        
+        return Task.FromResult(result.Distinct());
     }
 
-    
 }
+
 
 
 public class DeepSearchPasienTest
