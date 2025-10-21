@@ -45,7 +45,8 @@ public class PasienTrackerRepo : IPasienTrackerRepo
 
     public void DeleteEntity(IPasienTrackerKey key)
     {
-        throw new NotImplementedException();
+        _pasienTrackerdal.Delete(key);
+        _pasienTrackerEventDal.Delete(key);
     }
 
     #region HELPER

@@ -14,6 +14,7 @@ namespace Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
 public interface IPasienTrackerEventDal :
     IInsert<PasienTrackerEventDto>,
     IUpdate<PasienTrackerEventDto>,
+    IDelete<IPasienTrackerKey>,
     IListData<PasienTrackerEventDto, IPasienTrackerKey>
 {
     void Delete(string pasienTrackerId, int noUrut);
@@ -129,6 +130,24 @@ public class PasienTrackerEventDal : IPasienTrackerEventDal
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<PasienTrackerEventDto>(sql, dp);
     }
+
+    public void Delete(IPasienTrackerKey key)
+    {
+        const string sql = """
+           SELECT 
+               PasienTrackerId, NoUrut, EventName, EventDate, ReffId
+           FROM
+               BILRG_PasienTrackerEvent 
+           WHERE
+               PasienTrackerId = @PasienTrackerId
+           """;
+        
+        var dp = new DynamicParameters();
+        dp.AddParam("@PasienTrackerId", key.PasienTrackerId, SqlDbType.VarChar);
+        
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        conn.Execute(sql, dp);
+    }
 }
 
 public class PasienTrackerEventDalTest
@@ -159,7 +178,13 @@ public class PasienTrackerEventDalTest
         _sut.Delete("A", 2);
     }
     [Fact]
-    public void UT4_GetDataTest()
+    public void UT4_DeleteAllTest()
+    {
+        using var trans = TransHelper.NewScope();
+        _sut.Delete(FakerKey());
+    }
+    [Fact]
+    public void UT5_GetDataTest()
     {
         using var trans = TransHelper.NewScope();
         _sut.Insert(Faker());
@@ -167,12 +192,11 @@ public class PasienTrackerEventDalTest
         actual.Should().BeEquivalentTo(Faker());
     }
     [Fact]
-    public void UT5_GetDataTest()
+    public void UT6_ListDataTest()
     {
         using var trans = TransHelper.NewScope();
         _sut.Insert(Faker());
         var actual = _sut.ListData(FakerKey());
         actual.Should().ContainEquivalentOf(Faker());
     }
-    
 }
