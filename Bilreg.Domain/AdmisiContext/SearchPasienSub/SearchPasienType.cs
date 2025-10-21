@@ -22,8 +22,6 @@ public record SearchPasienType : IPasienKey, IRegKey
         string regId, 
         string bookingId)
     {
-        Guard.Against.NullOrWhiteSpace(pasienId, nameof(pasienId));
-        Guard.Against.NullOrWhiteSpace(pasienName, nameof(pasienName));
 
         PasienId = pasienId;
         PasienName = pasienName;
