@@ -1,12 +1,9 @@
-﻿using Ardalis.GuardClauses;
-using Bilreg.Application.AdmisiContext.AntrianFeature;
-using Bilreg.Application.PasienContext.PasienFeature;
+﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
-using Nuna.Lib.ValidationHelper;
 
 
 namespace Bilreg.Application.AdmisiContext.BookingFeature;
@@ -26,12 +23,14 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
     private readonly IPasienTrackerRepo _trackerRepo;
     public BookingCreateHandler(IJadwalPraktekRepo jadwalPraktekRepo,
         IAntrianRepo antrianRepo, 
-        IAntrianFactory antrianFactory, IBookingRepo bookingRepo)
+        IAntrianFactory antrianFactory, IBookingRepo bookingRepo, 
+        IPasienTrackerRepo trackerRepo)
     {
         _jadwalPraktekRepo = jadwalPraktekRepo;
         _antrianRepo = antrianRepo;
         _antrianFactory = antrianFactory;
         _bookingRepo = bookingRepo;
+        _trackerRepo = trackerRepo;
     }
 
     public Task<BookingCreateResponse> Handle(BookingCreateCmd request, CancellationToken cancellationToken)
@@ -68,7 +67,9 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
 
         _bookingRepo.SaveChanges(booking);
         _antrianRepo.SaveChanges(antrian);
-        _pasienTrackerRepo
+        _trackerRepo.SaveChanges(tracker);
 
+        return Task.FromResult(new BookingCreateResponse(
+            booking.BookingId, antEntry.NoUrut));
     }
 }

@@ -3,8 +3,11 @@ using System.Data.SqlClient;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
+using FluentAssertions;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
+using Nuna.Lib.TransactionHelper;
+using Xunit;
 
 namespace Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
 
@@ -41,6 +44,9 @@ public class PasienTrackerEventDal : IPasienTrackerEventDal
         dp.AddParam("@EventName", dto.EventName, SqlDbType.VarChar);
         dp.AddParam("@EventDate", dto.EventDate, SqlDbType.DateTime);
         dp.AddParam("@ReffId", dto.ReffId, SqlDbType.VarChar);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        conn.Execute(sql, dp);
     }
 
     public void Update(PasienTrackerEventDto dto)
@@ -71,7 +77,7 @@ public class PasienTrackerEventDal : IPasienTrackerEventDal
     public void Delete(string pasienTrackerId, int noUrut)
     {
         const string sql = """
-            DELETE
+            DELETE FROM
               BILRG_PasienTrackerEvent
             WHERE
               PasienTrackerId = @PasienTrackerId
@@ -123,4 +129,50 @@ public class PasienTrackerEventDal : IPasienTrackerEventDal
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<PasienTrackerEventDto>(sql, dp);
     }
+}
+
+public class PasienTrackerEventDalTest
+{
+    private readonly PasienTrackerEventDal _sut = new PasienTrackerEventDal(ConnStringHelper.GetTestEnv());
+
+    private static PasienTrackerEventDto Faker()
+        => new PasienTrackerEventDto("A", 2, "B", new DateTime(2025, 1, 2), "C");
+    private static IPasienTrackerKey FakerKey()
+        => new PasienTrackerModel("A", PersonType.Default, new DateOnly(3000,1,1), []);
+    
+    [Fact]
+    public void UT1_InsertTest()
+    {
+        using var trans = TransHelper.NewScope();
+        _sut.Insert(Faker());
+    }
+    [Fact]
+    public void UT2_UpdateTest()
+    {
+        using var trans = TransHelper.NewScope();
+        _sut.Update(Faker());
+    }
+    [Fact]
+    public void UT3_DeleteTest()
+    {
+        using var trans = TransHelper.NewScope();
+        _sut.Delete("A", 2);
+    }
+    [Fact]
+    public void UT4_GetDataTest()
+    {
+        using var trans = TransHelper.NewScope();
+        _sut.Insert(Faker());
+        var actual = _sut.GetData("A", 2);
+        actual.Should().BeEquivalentTo(Faker());
+    }
+    [Fact]
+    public void UT5_GetDataTest()
+    {
+        using var trans = TransHelper.NewScope();
+        _sut.Insert(Faker());
+        var actual = _sut.ListData(FakerKey());
+        actual.Should().ContainEquivalentOf(Faker());
+    }
+    
 }

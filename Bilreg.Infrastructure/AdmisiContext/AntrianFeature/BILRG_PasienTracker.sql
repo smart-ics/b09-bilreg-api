@@ -4,5 +4,5 @@
     TglLahir DATETIME NOT NULL CONSTRAINT DF_BILRG_PasienTracker_TglLahir DEFAULT('3000-01-01'),
     VisitDate DATETIME NOT NULL CONSTRAINT DF_BILRG_PasienTracker_VisitDate DEFAULT('3000-01-01'),
     
-    CONSTRAINT PK_BILRG_PasienTracker PRIMARY KEY CLUSTERED (PasienTrackerId, NoUrut)
+    CONSTRAINT PK_BILRG_PasienTracker PRIMARY KEY CLUSTERED (PasienTrackerId)
 )

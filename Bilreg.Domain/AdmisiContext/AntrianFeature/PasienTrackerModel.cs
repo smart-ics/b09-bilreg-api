@@ -39,6 +39,9 @@ public class PasienTrackerModel : IPasienTrackerKey
         new List<PasienTrackerEventType>());
     #endregion
 
+    public static IPasienTrackerKey Key(string id) => new PasienTrackerModel(id, PersonType.Default,
+        new DateOnly(3000, 1, 1), []);
+    
     #region PROPERTIES
     public string PasienTrackerId { get; init; }
     public PersonType Person { get; init; }
