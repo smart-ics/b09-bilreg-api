@@ -6,6 +6,7 @@ using MediatR;
 using Moq;
 using Nuna.Lib.DataTypeExtension;
 using Nuna.Lib.PatternHelper;
+using Nuna.Lib.ValidationHelper;
 using System.Text.RegularExpressions;
 using Xunit;
 
@@ -109,28 +110,72 @@ public class DeepSearchPasienTest
         response.Select(x => x.PasienId).Should().BeEquivalentTo("A", "B");
     }
 
-    //[Fact]
-    //public async Task T03_GivenValidTglLahir_WhenDeepSearch_ThenReturnPasien()
-    //{
-    //    // ARRANGE
-    //    var faker1 = new SearchPasienType("A", "Suhardi Wijaya", new DateTime(2001, 9, 13), GenderType.Default,
-    //        IdentitasType.Default, "-", AlamatType.Default, "-", "-");
-    //    var faker2 = new SearchPasienType("B", "Soehardi", new DateTime(2000, 8, 19), GenderType.Default,
-    //        IdentitasType.Default, "-", AlamatType.Default, "-", "-");
-    //    var faker3 = new SearchPasienType("C", "Agus", new DateTime(1999, 2, 19), GenderType.Default,
-    //        IdentitasType.Default, "-", AlamatType.Default, "-", "-");
-    //    var listFacker = new List<SearchPasienType> { faker1, faker2, faker3 };
+    [Fact]
+    public async Task T03_GivenValidTglLahir_WhenDeepSearch_ThenReturnPasien()
+    {
+        // ARRANGE
+        var faker1 = new SearchPasienType("A", "Suhardi Wijaya", new DateTime(2001, 9, 13), GenderType.Default,
+            IdentitasType.Default, "-", AlamatType.Default, "-", "-");
+        var faker2 = new SearchPasienType("B", "Soehardi", new DateTime(2000, 8, 19), GenderType.Default,
+            IdentitasType.Default, "-", AlamatType.Default, "-", "-");
+        var faker3 = new SearchPasienType("C", "Agus", new DateTime(1999, 2, 19), GenderType.Default,
+            IdentitasType.Default, "-", AlamatType.Default, "-", "-");
+        var listFacker = new List<SearchPasienType> { faker1, faker2, faker3 };
 
-    //    _dal.Setup(x => x.ListData(It.IsAny<string>()))
-    //        .Returns(MayBe.From<IEnumerable<SearchPasienType>>(listFacker));
+        _dal.Setup(x => x.ListData(It.IsAny<IEnumerable<SearchPasienType>>()))
+            .Returns<IEnumerable<SearchPasienType>>(searchParams =>
+            {
+                var tanggalDicari = searchParams.First().TglLahir;
+                var hasil = listFacker.Where(x => x.TglLahir == tanggalDicari);
+                return MayBe.From<IEnumerable<SearchPasienType>>(hasil);
+            });
 
-    //    var request = new DeepSearchPasienQuery("1999-02-19");
+        var request = new DeepSearchPasienQuery("1999-02-19");
 
-    //    // ACT
-    //    var response = await _sut.Handle(request, CancellationToken.None);
+        // ACT
+        var response = await _sut.Handle(request, CancellationToken.None);
 
-    //    // ASSERT
-    //    response.First().PasienId.Should().Be("C");
-    //}
+        // ASSERT
+        response.Select(x => x.PasienId).Should().BeEquivalentTo("C");
+    }
 
+    [Fact]
+    public async Task T04_GivenValidNameAndTglLahir_WhenDeepSearch_ThenReturnPasien()
+    {
+        // ARRANGE
+        var faker1 = new SearchPasienType("A", "Suhardi Wijaya", new DateTime(2001, 9, 13), GenderType.Default,
+            IdentitasType.Default, "-", AlamatType.Default, "-", "-");
+        var faker2 = new SearchPasienType("B", "Soehardi", new DateTime(2001, 9, 13), GenderType.Default,
+            IdentitasType.Default, "-", AlamatType.Default, "-", "-");
+        var faker3 = new SearchPasienType("C", "Agus", new DateTime(1999, 2, 19), GenderType.Default,
+            IdentitasType.Default, "-", AlamatType.Default, "-", "-");
+        var listFacker = new List<SearchPasienType> { faker1, faker2, faker3 };
+
+        _dal.Setup(x => x.ListData(It.IsAny<IEnumerable<SearchPasienType>>()))
+            .Returns<IEnumerable<SearchPasienType>>(searchParams =>
+            {
+                // Ambil yang punya nama + tgl lahir
+                var first = searchParams.First();
+                var tanggalDicari = first.TglLahir;
+                var namaVariasi = searchParams
+                    .Where(x => x.HasPasienName)
+                    .Select(x => x.PasienName.ToLower())
+                    .ToList();
+
+                var hasil = listFacker.Where(x =>
+                    x.TglLahir == tanggalDicari &&
+                    namaVariasi.Any(v => x.PasienName.ToLower().Contains(v))
+                );
+
+                return MayBe.From<IEnumerable<SearchPasienType>>(hasil);
+            });
+
+        var request = new DeepSearchPasienQuery("Suhardi; 2001-09-13");
+
+        // ACT
+        var response = await _sut.Handle(request, CancellationToken.None);
+
+        // ASSERT
+        response.Select(x => x.PasienId).Should().BeEquivalentTo("A", "B");
+    }
 }

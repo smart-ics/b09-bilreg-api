@@ -165,7 +165,17 @@ public record SearchPasienType : IPasienKey, IRegKey
         return new string(input.Where(c => !char.IsPunctuation(c)).ToArray());
     }
 
-
+    #region CHECKERS
+    public bool HasPasienId => !string.IsNullOrWhiteSpace(PasienId) && PasienId != "-";
+    public bool HasPasienName => !string.IsNullOrWhiteSpace(PasienName) && PasienName != "-";
+    public bool HasTglLahir => TglLahir != default && TglLahir != new DateTime(3000, 1, 1);
+    public bool HasGender => Gender != null && Gender != GenderType.Default;
+    public bool HasIdentitas => Identitas != null && Identitas != IdentitasType.Default;
+    public bool HasIbuKandung => !string.IsNullOrWhiteSpace(IbuKandung) && IbuKandung != "-";
+    public bool HasAlamat => AlamatDomisili != null && AlamatDomisili != AlamatType.Default;
+    public bool HasRegId => !string.IsNullOrWhiteSpace(RegId) && RegId != "-";
+    public bool HasBookingId => !string.IsNullOrWhiteSpace(BookingId) && BookingId != "-";
+    #endregion
 
     #endregion
 
