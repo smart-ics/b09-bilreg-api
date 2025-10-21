@@ -8,7 +8,7 @@ public record GenderType : IGenderKey
 {
     public GenderType(string symbol, string description, SexDkEnum sex)
     {
-        Guard.Against.NullOrWhiteSpace(symbol, nameof(symbol));
+        Guard.Against.Null(symbol, nameof(symbol));
         Guard.Against.NullOrWhiteSpace(description, nameof(description));
         Guard.Against.OutOfRange((int)sex, nameof(sex), 0, 1);
         
