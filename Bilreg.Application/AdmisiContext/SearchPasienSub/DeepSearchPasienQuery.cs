@@ -12,9 +12,19 @@ using Xunit;
 
 namespace Bilreg.Application.AdmisiContext.SearchPasienSub;
 
-public record DeepSearchPasienQuery(string Keyword) : IRequest<IEnumerable<SearchPasienType>>;
+public record DeepSearchPasienQuery(string Keyword) : IRequest<IEnumerable<DeepSearchPasienResponse>>;
 
-public class DeepSearchPasienHandler : IRequestHandler<DeepSearchPasienQuery, IEnumerable<SearchPasienType>>
+public record DeepSearchPasienResponse(
+        string PasienId,
+        string PasienName,
+        string TglLahir,
+        GenderType Gender,
+        IdentitasType Identitas,
+        string IbuKandung,
+        AlamatType Alamat,
+        string RegId,
+        string BookingId);
+public class DeepSearchPasienHandler : IRequestHandler<DeepSearchPasienQuery, IEnumerable<DeepSearchPasienResponse>>
 {
     private readonly IDeepSearchPasienDal _deepSearchDal;
 
@@ -23,7 +33,7 @@ public class DeepSearchPasienHandler : IRequestHandler<DeepSearchPasienQuery, IE
         _deepSearchDal = deepSearchDal;
     }
 
-    public Task<IEnumerable<SearchPasienType>> Handle(DeepSearchPasienQuery request, CancellationToken cancellationToken)
+    public Task<IEnumerable<DeepSearchPasienResponse>> Handle(DeepSearchPasienQuery request, CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.Keyword, nameof(request.Keyword));
         if (request.Keyword.Length < 2)
@@ -35,17 +45,18 @@ public class DeepSearchPasienHandler : IRequestHandler<DeepSearchPasienQuery, IE
             .Select(x => x.Trim())
             .ToList();
 
-        var allResults = new List<SearchPasienType>();
-
         var dataSearch = SearchPasienType.GenData(parts);
 
-        var result = _deepSearchDal.ListData(dataSearch)
+        var dataResult = _deepSearchDal.ListData(dataSearch)
             .Match(
                 some => some,
                 () => new List<SearchPasienType>()
             );
+        var result = dataResult.Select(x => new DeepSearchPasienResponse(
+                x.PasienId, x.PasienName, x.TglLahir.ToString("yyyy-MM-dd"),
+                x.Gender, x.Identitas, x.IbuKandung, x.AlamatDomisili, x.RegId, x.BookingId
+            )).OrderBy(x => x.PasienName);
 
-        
         return Task.FromResult(result.Distinct());
     }
 
@@ -83,7 +94,7 @@ public class DeepSearchPasienTest
         var response = await _sut.Handle(request, CancellationToken.None);
 
         // ASSERT
-        response.First().PasienId.Should().Be("A");
+        response.First().PasienId.Should().Be("B");
     }
 
     [Fact]

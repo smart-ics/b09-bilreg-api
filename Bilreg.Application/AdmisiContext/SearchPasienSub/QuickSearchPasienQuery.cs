@@ -10,9 +10,20 @@ using Xunit;
 
 namespace Bilreg.Application.AdmisiContext.SearchPasienSub;
 
-public record QuickSearchPasienQuery(string Keyword) : IRequest<IEnumerable<SearchPasienType>>;
+public record QuickSearchPasienQuery(string Keyword) : IRequest<IEnumerable<QuickSearchPasienResponse>>;
 
-public class QuickSearchPasienHandler : IRequestHandler<QuickSearchPasienQuery, IEnumerable<SearchPasienType>>
+public record QuickSearchPasienResponse(
+        string PasienId,
+        string PasienName,
+        string TglLahir,
+        GenderType Gender,
+        IdentitasType Identitas,
+        string IbuKandung,
+        AlamatType Alamat,
+        string RegId,
+        string BookingId);
+
+public class QuickSearchPasienHandler : IRequestHandler<QuickSearchPasienQuery, IEnumerable<QuickSearchPasienResponse>>
 {
     private readonly IQuickSearchPasienDal _quickSearchPasienDal;
 
@@ -21,7 +32,7 @@ public class QuickSearchPasienHandler : IRequestHandler<QuickSearchPasienQuery, 
         _quickSearchPasienDal = quickSearchPasienDal;
     }
 
-    public Task<IEnumerable<SearchPasienType>> Handle(QuickSearchPasienQuery request, CancellationToken cancellationToken)
+    public Task<IEnumerable<QuickSearchPasienResponse>> Handle(QuickSearchPasienQuery request, CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.Keyword, nameof(request.Keyword));
         if (request.Keyword.Length < 2)
@@ -39,15 +50,20 @@ public class QuickSearchPasienHandler : IRequestHandler<QuickSearchPasienQuery, 
 
         var dataSearch = SearchPasienType.GenData(parts);
 
-
         var listData = _quickSearchPasienDal.ListData(periode)
             .Match(
                 some => some,
                 () => throw new ArgumentException("data not found")
             );
-        var result = SearchData(listData, dataSearch).Any()
+
+        var dataResult = SearchData(listData, dataSearch).Any()
             ? SearchData(listData, dataSearch)
-            : throw new KeyNotFoundException("Data pasien tidak ditemukan");
+            : new List<SearchPasienType>();
+
+        var result = dataResult.Select(x => new QuickSearchPasienResponse(
+                x.PasienId, x.PasienName, x.TglLahir.ToString("yyyy-MM-dd"), 
+                x.Gender, x.Identitas, x.IbuKandung, x.AlamatDomisili, x.RegId, x.BookingId
+            )).OrderBy(x => x.PasienName);
 
         return Task.FromResult(result.Distinct());
 
@@ -60,7 +76,7 @@ public class QuickSearchPasienHandler : IRequestHandler<QuickSearchPasienQuery, 
             .Where(dp => dataSearch.Any(sp =>
                 (
                     // PasienId
-                    sp.HasPasienId && dp.PasienId == sp.PasienId
+                    sp.HasPasienId && dp.PasienId.Contains(sp.PasienId)
                 )
                 ||
                 (
