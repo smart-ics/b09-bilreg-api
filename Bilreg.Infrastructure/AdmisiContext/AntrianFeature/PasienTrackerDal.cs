@@ -131,7 +131,7 @@ public class PasienTrackerDalTest
     private readonly PasienTrackerDal _sut = new(ConnStringHelper.GetTestEnv());
 
     private static PasienTrackerDto Faker()
-        => new PasienTrackerDto("A", "B", new DateTime(2025, 12, 1), new DateTime(2025, 2, 3));
+        => new PasienTrackerDto("A", "B", new DateTime(2025, 12, 1), new DateTime(2025, 12, 2));
     
     private static IPasienTrackerKey FakerKey()
         => PasienTrackerModel.Key("A");
@@ -171,8 +171,7 @@ public class PasienTrackerDalTest
     {
         using var trans = TransHelper.NewScope();
         _sut.Insert(Faker());
-        var actual = _sut.ListData(new Periode(new DateTime(2025, 12, 1), new DateTime(2025, 2, 3)));
+        var actual = _sut.ListData(new Periode(new DateTime(2025, 12, 1), new DateTime(2025, 12, 3)));
         actual.Should().ContainEquivalentOf(Faker());
-        _sut.Delete(FakerKey());
     }
 }
