@@ -45,4 +45,3 @@ public class PasienCreateHandler : IRequestHandler<PasienCreateCommand, PasienCr
         return Task.FromResult(new PasienCreateResponse(result.Value.PasienId));
     }
 }
-

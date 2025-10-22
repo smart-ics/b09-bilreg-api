@@ -51,6 +51,13 @@ public class AntrianFactory : IAntrianFactory
             sequenceTag, servicePoint.ServicePointName, new List<AntrianEntryModel>(), 
             _antrianSequencer);
     }
+
+    public AntrianModel Load(string antrianId, DateOnly antrianDate, TimeOnly startTime, TimeOnly endTime,
+        string sequenceTag, string antrianDesc, IEnumerable<AntrianEntryModel> listEntry)
+    {
+        return new AntrianModel(antrianId, antrianDate, startTime, endTime, 
+            sequenceTag, antrianDesc, listEntry, _antrianSequencer);
+    }
     
     public AntrianModel Default => new AntrianModel(
         "-", DateOnly.FromDateTime(new DateTime(3000, 1, 1)), TimeOnly.MinValue, TimeOnly.MinValue,

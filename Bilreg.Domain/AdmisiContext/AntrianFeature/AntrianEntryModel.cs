@@ -11,7 +11,7 @@ public class AntrianEntryModel
     {
         NoUrut = noUrut;
         Visitor = visitor;
-        Status = status;
+        AntrianStatus = status;
         CreatedAt = createdAt;
         ServedAt = servedAt;
         DoneAt = doneAt;
@@ -32,7 +32,7 @@ public class AntrianEntryModel
     #region PROPERTIES
     public int NoUrut { get; private set; }
     public PersonType Visitor { get; private set; }
-    public AntrianStatusEnum Status { get; private set; }
+    public AntrianStatusEnum AntrianStatus { get; private set; }
     public DateTime CreatedAt { get; init; }
     public DateTime ServedAt { get; private set; }
     public DateTime DoneAt { get; private set; }
@@ -50,7 +50,7 @@ public class AntrianEntryModel
     public void Serve()
     {
         ServedAt = DateTime.Now;
-        Status = AntrianStatusEnum.InService;
+        AntrianStatus = AntrianStatusEnum.InService;
     }
 
     public void Done()
@@ -63,7 +63,7 @@ public class AntrianEntryModel
             throw new ArgumentException("Pasien belum dilayani");
         
         DoneAt = now;
-        Status = AntrianStatusEnum.Done;
+        AntrianStatus = AntrianStatusEnum.Done;
     }
     #endregion
 

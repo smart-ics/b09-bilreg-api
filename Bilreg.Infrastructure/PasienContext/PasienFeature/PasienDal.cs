@@ -16,8 +16,8 @@ public interface IPasienDal :
     IInsert<PasienDto>,
     IUpdate<PasienDto>,
     IDelete<IPasienKey>,
-    IGetDataMayBe<PasienDto, IPasienKey>,
-    IListDataMayBe<PasienDto, DateTime>
+    IGetData<PasienDto, IPasienKey>,
+    IListData<PasienDto, DateTime>
 {
 }
 
@@ -29,7 +29,6 @@ public class PasienDal : IPasienDal
     {
         _opt = opt.Value;
     }
-
 
     public void Insert(PasienDto model)
     {
@@ -201,30 +200,31 @@ public class PasienDal : IPasienDal
         conn.Execute(sql, dp);
     }
 
-    public MayBe<PasienDto> GetData(IPasienKey key)
+    public PasienDto GetData(IPasienKey key)
     {
-        const string sql = @"
+        const string sql = """
             SELECT 
-                fs_mr, fs_nm_pasien, fd_tgl_lahir, fs_jns_kelamin,
-                fs_nm_alias, fs_temp_lahir, fs_nm_ibu_kandung, fs_gol_darah,
-                fs_alm_pasien, fs_alm2_pasien, fs_alm3_pasien, fs_kota_pasien,
-                fs_kd_pos_pasien, fs_kd_kelurahan, fs_jenis_id, fs_kd_identitas,
-                fs_no_kk, fs_email, fs_tlp_pasien, fs_no_hp,
-                fs_nm_keluarga, fs_hub_keluarga, fs_telp_keluarga, fs_alm1_keluarga,
-                fs_alm2_keluarga, fs_kota_keluarga, fs_kd_pos_keluarga,
-                fs_kd_status_kawin_dk, fs_kd_agama, fs_kd_suku, fs_kd_pekerjaan_dk,
-                fs_kd_pendidikan_dk, fd_tgl_mr, fb_aktif
+               fs_mr, fs_nm_pasien, fd_tgl_lahir, fs_jns_kelamin,
+               fs_nm_alias, fs_temp_lahir, fs_nm_ibu_kandung, fs_gol_darah,
+               fs_alm_pasien, fs_alm2_pasien, fs_alm3_pasien, fs_kota_pasien,
+               fs_kd_pos_pasien, fs_kd_kelurahan, fs_jenis_id, fs_kd_identitas,
+               fs_no_kk, fs_email, fs_tlp_pasien, fs_no_hp,
+               fs_nm_keluarga, fs_hub_keluarga, fs_telp_keluarga, fs_alm1_keluarga,
+               fs_alm2_keluarga, fs_kota_keluarga, fs_kd_pos_keluarga,
+               fs_kd_status_kawin_dk, fs_kd_agama, fs_kd_suku, fs_kd_pekerjaan_dk,
+               fs_kd_pendidikan_dk, fd_tgl_mr, fb_aktif
             FROM tc_mr
-            WHERE fs_mr = @fs_mr";
+            WHERE fs_mr = @fs_mr
+            """;
 
         var dp = new DynamicParameters();
         dp.AddParam("@fs_mr", key.PasienId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return MayBe.From(conn.ReadSingle<PasienDto>(sql, dp));
+        return conn.ReadSingle<PasienDto>(sql, dp);
     }
 
-    public MayBe<IEnumerable<PasienDto>> ListData(DateTime filter)
+    public IEnumerable<PasienDto> ListData(DateTime filter)
     {
         const string sql = @"
             SELECT 
@@ -244,7 +244,7 @@ public class PasienDal : IPasienDal
         dp.AddParam("@fd_tgl_lahir", filter.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return MayBe.From(conn.Read<PasienDto>(sql, dp));
+        return conn.Read<PasienDto>(sql, dp);
     }
 }
 
@@ -323,7 +323,7 @@ public class PasienDalTest
         using var trans = TransHelper.NewScope();
         var expected = PasienDtoFaker();
         _sut.Insert(expected);
-        var actual = _sut.GetData(PasienModel.Key(expected.fs_mr)).Value;
+        var actual = _sut.GetData(PasienModel.Key(expected.fs_mr));
         actual.Should().BeEquivalentTo(expected);
     }
 
@@ -333,7 +333,7 @@ public class PasienDalTest
         using var trans = TransHelper.NewScope();
         var expected = PasienDtoFaker();
         _sut.Insert(expected);
-        var actual = _sut.ListData(DateTime.Now).Value;
+        var actual = _sut.ListData(DateTime.Now);
         actual.Should().ContainEquivalentOf(expected);
     }
 }

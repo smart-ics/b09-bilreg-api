@@ -171,6 +171,8 @@ public class PasienTrackerDalTest
     {
         using var trans = TransHelper.NewScope();
         _sut.Insert(Faker());
+        var actual = _sut.ListData(new Periode(new DateTime(2025, 12, 1), new DateTime(2025, 2, 3)));
+        actual.Should().ContainEquivalentOf(Faker());
         _sut.Delete(FakerKey());
     }
 }

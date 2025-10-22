@@ -4,6 +4,7 @@ using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
+using Nuna.Lib.TransactionHelper;
 
 
 namespace Bilreg.Application.AdmisiContext.BookingFeature;
@@ -65,9 +66,13 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         var antEntry = antrian.AddEntry(tracker);
         booking.AssignNoAntrian(antEntry.NoUrut);
 
+        //  persisting
+        using var trans = TransHelper.NewScope();
         _bookingRepo.SaveChanges(booking);
         _antrianRepo.SaveChanges(antrian);
         _trackerRepo.SaveChanges(tracker);
+        trans.Complete();
+        
 
         return Task.FromResult(new BookingCreateResponse(
             booking.BookingId, antEntry.NoUrut));
