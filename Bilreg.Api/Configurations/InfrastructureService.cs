@@ -1,4 +1,5 @@
 ﻿using Bilreg.Application.PasienContext.PasienFeature;
+using Bilreg.Domain.Helpers;
 using Bilreg.Infrastructure;
 using Bilreg.Infrastructure.Helpers;
 using Bilreg.Infrastructure.PasienContext.PasienFeature;
@@ -19,6 +20,7 @@ public static class InfrastructureService
             .AddScoped<INunaCounterDal, ParamNoDal>()
             .AddScoped<INunaCounterDecDal, ParamNoDal>()
             .AddScoped<ITglJamProvider, TglJamProvider>()
+            .AddScoped<ISequencer, Sequencer>()
             .AddMemoryCache();
         
         services

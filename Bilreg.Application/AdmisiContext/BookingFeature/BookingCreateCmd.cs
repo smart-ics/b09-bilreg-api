@@ -23,9 +23,8 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
     private readonly IBookingRepo _bookingRepo;
     private readonly IPasienTrackerRepo _trackerRepo;
     public BookingCreateHandler(IJadwalPraktekRepo jadwalPraktekRepo,
-        IAntrianRepo antrianRepo, 
-        IAntrianFactory antrianFactory, IBookingRepo bookingRepo, 
-        IPasienTrackerRepo trackerRepo)
+        IAntrianRepo antrianRepo, IAntrianFactory antrianFactory, 
+        IBookingRepo bookingRepo, IPasienTrackerRepo trackerRepo)
     {
         _jadwalPraktekRepo = jadwalPraktekRepo;
         _antrianRepo = antrianRepo;
