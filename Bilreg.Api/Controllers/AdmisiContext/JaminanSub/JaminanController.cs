@@ -33,5 +33,14 @@ namespace Bilreg.Api.Controllers.AdmisiContext.JaminanSub
             var response = await _mediator.Send(query);
             return Ok(new JSendOk(response));
         }
+
+        [HttpGet]
+        [Route("search/{keyword}")]
+        public async Task<IActionResult> Search(string keyword)
+        {
+            var query = new JaminanSearchQuery(keyword);
+            var response = await _mediator.Send(query);
+            return Ok(new JSendOk(response));
+        }
     }
 }

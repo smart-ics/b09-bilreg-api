@@ -1,66 +1,41 @@
-﻿// using Bilreg.Domain.AdmisiContext.RujukanSub.RujukanAgg;
-// using FluentAssertions;
-// using MediatR;
-// using Moq;
-// using System;
-// using System.Collections.Generic;
-// using System.Linq;
-// using System.Text;
-// using System.Threading.Tasks;
-// using Xunit;
-//
-// namespace Bilreg.Application.AdmisiContext.RujukanSub.RujukanAgg;
-// public record RujukanGetQuery(string RujukanId) : IRequest<RujukanGetResponse>, IRujukanKey;
-// public record RujukanGetResponse(
-//     string RujukanId,
-//     string RujukanName,
-//     bool IsAktif,
-//     string Alamat,
-//     string Alamat2,
-//     string Kota,
-//     string Telepon,
-//     string RujukanTipeId,
-//     string RujukanTipeName,
-//     string KelasId,
-//     string KelasName,
-//     string CaraMasukDkId,
-//     string CaraMasukDkName
-// );
-// public class RujukanGetHandler : IRequestHandler<RujukanGetQuery, RujukanGetResponse>
-// {
-//     private readonly IRujukanDal _rujukanDal;
-//
-//     public RujukanGetHandler(IRujukanDal rujukanDal)
-//     {
-//         _rujukanDal = rujukanDal;
-//     }
-//
-//     public Task<RujukanGetResponse> Handle(RujukanGetQuery request, CancellationToken cancellationToken)
-//     {
-//         // QUERY
-//         var rujukan = _rujukanDal.GetData(request)
-//             ?? throw new KeyNotFoundException($"Rujukan id {request.RujukanId} not found");
-//
-//         // RESPONSE
-//         var response = new RujukanGetResponse(
-//             rujukan.RujukanId,
-//             rujukan.RujukanName,
-//             rujukan.IsAktif,
-//             rujukan.Alamat,
-//             rujukan.Alamat2,
-//             rujukan.Kota,
-//             rujukan.NoTelp,
-//             rujukan.TipeRujukanId,
-//             rujukan.TipeRujukanName,
-//             rujukan.KelasRujukanId,
-//             rujukan.KelasRujukanName,
-//             rujukan.CaraMasukDkId,
-//             rujukan.CaraMasukDkName
-//         );
-//
-//         return Task.FromResult(response);
-//     }
-// }
+﻿using Bilreg.Domain.AdmisiContext.RujukanSub;
+using Bilreg.Domain.PasienContext.PasienFeature;
+using MediatR;
+
+namespace Bilreg.Application.AdmisiContext.RujukanSub.RujukanAgg;
+public record RujukanGetQuery(string RujukanId) : IRequest<RujukanGetResponse>, IRujukanKey;
+public record RujukanGetResponse(
+    string RujukanId,
+    string RujukanName,
+    bool IsAktif,
+    AlamatType Alamat,
+    string Telepon,
+    string RujukanTipeId,
+    string RujukanTipeName,
+    string KelasId,
+    string KelasName,
+    string CaraMasukDkId,
+    string CaraMasukDkName
+);
+public class RujukanGetHandler : IRequestHandler<RujukanGetQuery, RujukanGetResponse>
+{
+    private readonly IRujukanDal _rujukanDal;
+
+    public RujukanGetHandler(IRujukanDal rujukanDal)
+    {
+        _rujukanDal = rujukanDal;
+    }
+    public Task<RujukanGetResponse> Handle(RujukanGetQuery request, CancellationToken cancellationToken)
+        => _rujukanDal.GetData(RujukanType.Key(request.RujukanId))
+        .Match(
+            onSome: x => Task.FromResult(new RujukanGetResponse(x.RujukanId, x.RujukanName, x.IsAktif,
+                x.Alamat, x.Alamat.Kota, x.TipeRujukan.TipeRujukanId,
+                x.TipeRujukan.TipeRujukanName, x.KelasRujukan.KelasRujukanId, x.KelasRujukan.KelasRujukanName,
+                x.CaraMasukDk.CaraMasukDkId, x.CaraMasukDk.CaraMasukDkName)),
+            onNone: () => throw new KeyNotFoundException($"Rujukan {request.RujukanId} not found"));
+    
+}
+
 // public class RujukanGetHandlerTest
 // {
 //     private readonly Mock<IRujukanDal> _rujukanDal;

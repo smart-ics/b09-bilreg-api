@@ -17,7 +17,7 @@ public record LayananType : ILayananKey
 
         LayananId = layananId;
         LayananName = layananName;
-        IsAKtif = isAKtif;
+        IsAktif = isAKtif;
         Instalasi = instalasi;
         InstalasiDk = instalasiDk;
         LayananDk = layananDk;
@@ -26,7 +26,7 @@ public record LayananType : ILayananKey
     
     public string LayananId { get; init; }
     public string LayananName { get; init; }
-    public bool IsAKtif { get; init; }
+    public bool IsAktif { get; init; }
     
     public InstalasiReff Instalasi { get; init; }
     public InstalasiDkType InstalasiDk { get; init; }
