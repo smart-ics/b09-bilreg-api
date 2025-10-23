@@ -28,7 +28,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="AdmisiContext\JadwalFeature\" />
     <Folder Include="ParamContext\ParamSistemAgg\" />
   </ItemGroup>
 
