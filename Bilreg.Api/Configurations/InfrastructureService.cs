@@ -1,4 +1,5 @@
 ﻿using Bilreg.Application.PasienContext.PasienFeature;
+using Bilreg.Domain.Helpers;
 using Bilreg.Infrastructure;
 using Bilreg.Infrastructure.Helpers;
 using Bilreg.Infrastructure.PasienContext.PasienFeature;
@@ -19,12 +20,12 @@ public static class InfrastructureService
             .AddScoped<INunaCounterDal, ParamNoDal>()
             .AddScoped<INunaCounterDecDal, ParamNoDal>()
             .AddScoped<ITglJamProvider, TglJamProvider>()
-            .AddSingleton<IGenderDal, GenderDal>()
-            
+            .AddScoped<ISequencer, Sequencer>()
             .AddMemoryCache();
         
         services
-            .Configure<DatabaseOptions>(configuration.GetSection(DatabaseOptions.SECTION_NAME));
+            .Configure<DatabaseOptions>(configuration.GetSection(DatabaseOptions.SECTION_NAME))
+            .Configure<PasienContextOptions>(configuration.GetSection(PasienContextOptions.SECTION_NAME));
 
         services
             .Scan(selector => selector

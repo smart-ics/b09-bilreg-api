@@ -1,9 +1,7 @@
-﻿using Ardalis.GuardClauses;
-using Bilreg.Domain.Helpers.CommonValueObjects;
+﻿namespace Bilreg.Domain.AdmisiContext.AntrianFeature;
 
-namespace Bilreg.Domain.AdmisiContext.AntrianFeature;
-
-public record PasienTrackerEventType(string EventName, DateTime EventTime, string ReffId)
+public record PasienTrackerEventType(int NoUrut, string EventName, 
+    DateTime EventDate, string ReffId) 
 {
-    public static PasienTrackerEventType Default => new("-", new DateTime(3000, 1, 1), "-");
+    public static PasienTrackerEventType Default => new(0, "-", new DateTime(3000, 1, 1), "-");
 }

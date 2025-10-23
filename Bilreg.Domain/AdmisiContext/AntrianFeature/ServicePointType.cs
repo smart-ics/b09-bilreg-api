@@ -2,11 +2,15 @@
 
 
 
-public record ServicePointType(
-    string ServicePointId,
-    string ServicePointName,
-    ServicePointStatusEnum Status)
+public record ServicePointType(string ServicePointCode, string ServicePointName) : IServicePointKey
 {
-    public static ServicePointType Default => 
-        new ServicePointType("-", "-", ServicePointStatusEnum.Opened);
+    public static ServicePointType Default =>
+        new("-", "-");
+
 }
+
+public interface IServicePointKey
+{
+    string ServicePointCode { get; }
+}
+

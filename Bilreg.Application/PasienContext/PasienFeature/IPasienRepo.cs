@@ -7,9 +7,6 @@ namespace Bilreg.Application.PasienContext.PasienFeature;
 public interface IPasienRepo : 
     ISaveChange<PasienModel, IPasienKey>,
     ILoadEntity<PasienModel, IPasienKey>,
-    IDeleteEntity<IPasienKey>,
-    IListDataMayBe<PasienReff, SearchKeyword>
+    IDeleteEntity<IPasienKey>
 {
 }
-
-public record SearchKeyword(string Value);

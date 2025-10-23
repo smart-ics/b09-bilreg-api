@@ -16,7 +16,7 @@ public interface IPasien2Dal :
     IInsert<Pasien2Dto>,
     IUpdate<Pasien2Dto>,
     IDelete<IPasienKey>,
-    IGetDataMayBe<Pasien2Dto, IPasienKey>{}
+    IGetData<Pasien2Dto, IPasienKey>{}
 
 public class Pasien2Dal : IPasien2Dal
 {
@@ -90,7 +90,7 @@ public class Pasien2Dal : IPasien2Dal
         conn.Execute(sql, dp);
     }
 
-    public MayBe<Pasien2Dto> GetData(IPasienKey key)
+    public Pasien2Dto GetData(IPasienKey key)
     {
         const string sql = @"
             SELECT
@@ -103,7 +103,7 @@ public class Pasien2Dal : IPasien2Dal
         dp.AddParam("@PasienId", key.PasienId, SqlDbType.VarChar);
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return MayBe.From(conn.ReadSingle<Pasien2Dto>(sql, dp));
+        return conn.ReadSingle<Pasien2Dto>(sql, dp);
     }
 }
 
@@ -147,7 +147,7 @@ public class Pasien2DalTest
         using var trans = TransHelper.NewScope();
         var faker = Faker();
         _sut.Insert(faker);
-        var actual = _sut.GetData(PasienModel.Key("A")).Value;
+        var actual = _sut.GetData(PasienModel.Key("A"));
         actual.Should().BeEquivalentTo(faker);
     }
 }

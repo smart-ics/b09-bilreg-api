@@ -2,7 +2,6 @@ using Bilreg.Application.AdmisiContext.JaminanSub.JaminanAgg;
 using Bilreg.Domain.AdmisiContext.JaminanSub;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Infrastructure.Helpers;
-using Bilreg.Infrastructure.PasienContext.DemografiSub.KabupatenAgg;
 using Dapper;
 using FluentAssertions;
 using Microsoft.Extensions.Options;
@@ -11,7 +10,6 @@ using Nuna.Lib.PatternHelper;
 using Nuna.Lib.TransactionHelper;
 using System.Data;
 using System.Data.SqlClient;
-using System.Runtime.Intrinsics.Arm;
 using Bilreg.Infrastructure.PasienContext.PasienFeature;
 using Xunit;
 

@@ -7,7 +7,7 @@ public interface IPasienPersonalInfo : IPasienKey
 {
     string PasienName { get; }
     DateTime TglLahir { get; }
-    GenderType Gender { get; }
+    string Gender { get; }
 
     string NickName { get; }
     string TempatLahir { get; }
