@@ -23,4 +23,13 @@ public class SearchPasienController : Controller
         var response = await _mediator.Send(query);
         return Ok(new JSendOk(response));
     }
+
+    [HttpGet]
+    [Route("quick/{keyword}")]
+    public async Task<IActionResult> QuickSearch(string keyword)
+    {
+        var query = new QuickSearchPasienQuery(keyword);
+        var response = await _mediator.Send(query);
+        return Ok(new JSendOk(response));
+    }
 }
