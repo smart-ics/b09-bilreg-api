@@ -18,7 +18,7 @@ public record DeepSearchPasienResponse(
         string PasienId,
         string PasienName,
         string TglLahir,
-        GenderType Gender,
+        string Gender,
         IdentitasType Identitas,
         string IbuKandung,
         AlamatType Alamat,
@@ -79,9 +79,9 @@ public class DeepSearchPasienTest
     public async Task T01_GivenValidName_WhenDeepSearch_ThenReturnPasien()
     {
         // ARRANGE
-        var faker1 = new SearchPasienType("A", "Andi", new DateTime(2001, 09, 13), GenderType.Default,
+        var faker1 = new SearchPasienType("A", "Andi", new DateTime(2001, 09, 13), "P",
             IdentitasType.Default, "-", AlamatType.Default, "-", "-");
-        var faker2 = new SearchPasienType("B", "Andhi", new DateTime(2000, 08, 19), GenderType.Default,
+        var faker2 = new SearchPasienType("B", "Andhi", new DateTime(2000, 08, 19), "-",
             IdentitasType.Default, "-", AlamatType.Default, "-", "-");
         var listFacker = new List<SearchPasienType> { faker1, faker2 };
 
@@ -101,11 +101,11 @@ public class DeepSearchPasienTest
     public async Task T02_GivenValidName_WhenDeepSearch_ThenReturnListSimilarPasienName()
     {
         // ARRANGE
-        var faker1 = new SearchPasienType("A", "Suhardi Wijaya", new DateTime(2001, 09, 13), GenderType.Default,
+        var faker1 = new SearchPasienType("A", "Suhardi Wijaya", new DateTime(2001, 09, 13), "-",
             IdentitasType.Default, "-", AlamatType.Default, "-", "-");
-        var faker2 = new SearchPasienType("B", "Soehardi", new DateTime(2000, 08, 19), GenderType.Default,
+        var faker2 = new SearchPasienType("B", "Soehardi", new DateTime(2000, 08, 19), "-",
             IdentitasType.Default, "-", AlamatType.Default, "-", "-");
-        var faker3 = new SearchPasienType("C", "Agus", new DateTime(1999, 02, 19), GenderType.Default,
+        var faker3 = new SearchPasienType("C", "Agus", new DateTime(1999, 02, 19), "-",
             IdentitasType.Default, "-", AlamatType.Default, "-", "-");
         var listFacker = new List<SearchPasienType> { faker1, faker2 };
 
@@ -125,11 +125,11 @@ public class DeepSearchPasienTest
     public async Task T03_GivenValidTglLahir_WhenDeepSearch_ThenReturnPasien()
     {
         // ARRANGE
-        var faker1 = new SearchPasienType("A", "Suhardi Wijaya", new DateTime(2001, 9, 13), GenderType.Default,
+        var faker1 = new SearchPasienType("A", "Suhardi Wijaya", new DateTime(2001, 9, 13), "-",
             IdentitasType.Default, "-", AlamatType.Default, "-", "-");
-        var faker2 = new SearchPasienType("B", "Soehardi", new DateTime(2000, 8, 19), GenderType.Default,
+        var faker2 = new SearchPasienType("B", "Soehardi", new DateTime(2000, 8, 19), "-",
             IdentitasType.Default, "-", AlamatType.Default, "-", "-");
-        var faker3 = new SearchPasienType("C", "Agus", new DateTime(1999, 2, 19), GenderType.Default,
+        var faker3 = new SearchPasienType("C", "Agus", new DateTime(1999, 2, 19), "-",
             IdentitasType.Default, "-", AlamatType.Default, "-", "-");
         var listFacker = new List<SearchPasienType> { faker1, faker2, faker3 };
 
@@ -154,11 +154,11 @@ public class DeepSearchPasienTest
     public async Task T04_GivenValidNameAndTglLahir_WhenDeepSearch_ThenReturnPasien()
     {
         // ARRANGE
-        var faker1 = new SearchPasienType("A", "Suhardi Wijaya", new DateTime(2001, 9, 13), GenderType.Default,
+        var faker1 = new SearchPasienType("A", "Suhardi Wijaya", new DateTime(2001, 9, 13), "-",
             IdentitasType.Default, "-", AlamatType.Default, "-", "-");
-        var faker2 = new SearchPasienType("B", "Soehardi", new DateTime(2001, 9, 13), GenderType.Default,
+        var faker2 = new SearchPasienType("B", "Soehardi", new DateTime(2001, 9, 13), "-",
             IdentitasType.Default, "-", AlamatType.Default, "-", "-");
-        var faker3 = new SearchPasienType("C", "Agus", new DateTime(1999, 2, 19), GenderType.Default,
+        var faker3 = new SearchPasienType("C", "Agus", new DateTime(1999, 2, 19), "-",
             IdentitasType.Default, "-", AlamatType.Default, "-", "-");
         var listFacker = new List<SearchPasienType> { faker1, faker2, faker3 };
 
