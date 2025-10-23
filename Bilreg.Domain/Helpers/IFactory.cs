@@ -1,7 +1,6 @@
 ﻿namespace Bilreg.Domain.Helpers;
 
-public interface IFactory<out T, out TKey>
+public interface IFactory<out T>
 {
     T Default { get; }
-    TKey Key(string id);
 }

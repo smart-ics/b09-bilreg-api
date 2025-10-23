@@ -72,7 +72,6 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         _antrianRepo.SaveChanges(antrian);
         _trackerRepo.SaveChanges(tracker);
         trans.Complete();
-        
 
         return Task.FromResult(new BookingCreateResponse(
             booking.BookingId, antEntry.NoUrut));

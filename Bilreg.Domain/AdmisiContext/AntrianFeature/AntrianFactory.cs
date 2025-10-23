@@ -5,7 +5,7 @@ using Bilreg.Domain.Helpers;
 
 namespace Bilreg.Domain.AdmisiContext.AntrianFeature;
 
-public interface IAntrianFactory : IFactory<AntrianModel, IAntrianKey>
+public interface IAntrianFactory : IFactory<AntrianModel>
 {
     AntrianModel Create(DateOnly antrianDate, JadwalPraktekType jadwalPraktek);
     AntrianModel Create(ServicePointType servicePoint);
@@ -62,13 +62,4 @@ public class AntrianFactory : IAntrianFactory
     public AntrianModel Default => new AntrianModel(
         "-", DateOnly.FromDateTime(new DateTime(3000, 1, 1)), TimeOnly.MinValue, TimeOnly.MinValue,
         "-","-", new List<AntrianEntryModel>(), _antrianSequencer);
-
-    public IAntrianKey Key(string id)
-    {
-        var result = new AntrianModel(id, DateOnly.FromDateTime(DateTime.Now),
-            TimeOnly.MinValue, TimeOnly.MinValue, "-", "-",
-            new List<AntrianEntryModel>(), _antrianSequencer);
-        return result;
-    }
-
 }

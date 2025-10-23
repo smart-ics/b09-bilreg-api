@@ -5,7 +5,7 @@ using Ardalis.GuardClauses;
 
 namespace Bilreg.Domain.AdmisiContext.BookingFeature;
 
-public interface IJadwalPraktekFactory : IFactory<JadwalPraktekType, IJadwalPraktekKey>
+public interface IJadwalPraktekFactory : IFactory<JadwalPraktekType>
 {
     JadwalPraktekType Create(PetugasMedisType dokter,
         LayananReff layanan, DayOfWeek hari, TimeOnly jamMulai, TimeOnly jamSelesai);

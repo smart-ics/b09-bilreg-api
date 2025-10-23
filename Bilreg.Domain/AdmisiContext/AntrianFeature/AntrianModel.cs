@@ -25,6 +25,14 @@ public class AntrianModel : IAntrianKey, IAntrianHeaderView
         _sequencer = sequencer;
 
     }
+    public static IAntrianKey Key(string id)
+    {
+        var result = new AntrianModel(id, DateOnly.FromDateTime(DateTime.Now),
+            TimeOnly.MinValue, TimeOnly.MinValue, "-", "-",
+            new List<AntrianEntryModel>(), null!);
+        return result;
+    }
+
     #endregion
     
     #region PROPERTIES

@@ -193,52 +193,6 @@ public class AntrianFactoryTests
 
     #endregion
 
-    #region Key Method Tests
-
-    [Fact]
-    public void UT10_Given_ValidId_When_KeyIsCalled_Then_ShouldReturnAntrianModelWithSpecifiedId()
-    {
-        // Arrange
-        var expectedId = "ANTRIAN-123";
-
-        // Act
-        var result = _sut.Key(expectedId);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.AntrianId.Should().Be(expectedId);
-    }
-
-    [Fact]
-    public void UT11_Given_EmptyId_When_KeyIsCalled_Then_ShouldReturnAntrianModelWithEmptyId()
-    {
-        // Arrange
-        var expectedId = string.Empty;
-
-        // Act
-        var result = _sut.Key(expectedId);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.AntrianId.Should().Be(expectedId);
-    }
-
-    [Fact]
-    public void UT12_Given_NullId_When_KeyIsCalled_Then_ShouldReturnAntrianModelWithNullId()
-    {
-        // Arrange
-        string expectedId = null!;
-
-        // Act
-        var result = _sut.Key(expectedId);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.AntrianId.Should().BeNull();
-    }
-
-    #endregion
-
     #region Helper Methods
 
     private PetugasMedisType CreatePetugasMedisType(string id, string name)

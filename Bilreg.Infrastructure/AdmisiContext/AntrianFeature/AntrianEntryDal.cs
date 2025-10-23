@@ -14,10 +14,11 @@ namespace Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
 public interface IAntrianEntryDal :
     IInsert<AntrianEntryDto>,
     IUpdate<AntrianEntryDto>,
-    IListData<AntrianEntryDto, string>
+    IDelete<IAntrianKey>,
+    IListData<AntrianEntryDto, IAntrianKey>
 {
-    void Delete(string key, int noUrut);
-    AntrianEntryDto GetData(string key, int noUrut);
+    void Delete(IAntrianKey key, int noUrut);
+    AntrianEntryDto GetData(IAntrianKey key, int noUrut);
 }
 
 public class AntrianEntryDal : IAntrianEntryDal
@@ -82,7 +83,7 @@ public class AntrianEntryDal : IAntrianEntryDal
         conn.Execute(sql, dp);
     }
 
-    public void Delete(string key, int noUrut)
+    public void Delete(IAntrianKey key, int noUrut)
     {
         const string sql = """
            DELETE FROM
@@ -93,14 +94,31 @@ public class AntrianEntryDal : IAntrianEntryDal
            """;
 
         var dp = new DynamicParameters();
-        dp.AddParam("@AntrianId", key, SqlDbType.VarChar); 
+        dp.AddParam("@AntrianId", key.AntrianId, SqlDbType.VarChar); 
         dp.AddParam("@NoUrut", noUrut, SqlDbType.Int);	 
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
 
-    public AntrianEntryDto GetData(string key, int noUrut)
+    public void Delete(IAntrianKey key)
+    {
+        const string sql = """
+           DELETE FROM
+                BILRG_AntrianEntry
+           WHERE
+               AntrianId = @AntrianId 
+           """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@AntrianId", key.AntrianId, SqlDbType.VarChar); 
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        conn.Execute(sql, dp);
+    }
+
+    
+    public AntrianEntryDto GetData(IAntrianKey key, int noUrut)
     {
         const string sql = """
            SELECT
@@ -114,14 +132,14 @@ public class AntrianEntryDal : IAntrianEntryDal
            """;
 
         var dp = new DynamicParameters();
-        dp.AddParam("@AntrianId", key, SqlDbType.VarChar); 
+        dp.AddParam("@AntrianId", key.AntrianId, SqlDbType.VarChar); 
         dp.AddParam("@NoUrut", noUrut, SqlDbType.Int);	 
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.ReadSingle<AntrianEntryDto>(sql, dp);
     }
 
-    public IEnumerable<AntrianEntryDto> ListData(string antrianId)
+    public IEnumerable<AntrianEntryDto> ListData(IAntrianKey filter)
     {
         const string sql = """
             SELECT
@@ -134,7 +152,7 @@ public class AntrianEntryDal : IAntrianEntryDal
             """;
 
         var dp = new DynamicParameters();
-        dp.AddParam("@AntrianId", antrianId, SqlDbType.VarChar); 
+        dp.AddParam("@AntrianId", filter.AntrianId, SqlDbType.VarChar); 
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<AntrianEntryDto>(sql, dp);
@@ -150,6 +168,7 @@ public class AntrianEntryDalTest
             new DateTime(2025, 10, 1),
             new DateTime(2025, 10, 2),
             new DateTime(2025, 10, 3));
+    private static IAntrianKey Key() => AntrianModel.Key("A");
 
     [Fact]
     public void UT1_InsertTest()
@@ -169,7 +188,7 @@ public class AntrianEntryDalTest
     public void UT3_DeleteTest()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Delete("A", 1);
+        _sut.Delete(Key(), 1);
     }
 
     [Fact]
@@ -177,7 +196,7 @@ public class AntrianEntryDalTest
     {
         using var trans = TransHelper.NewScope();
         _sut.Insert(Faker());
-        var actual = _sut.GetData("A", 1);
+        var actual = _sut.GetData(Key(), 1);
         actual.Should().BeEquivalentTo(Faker());
     }
 
@@ -186,7 +205,7 @@ public class AntrianEntryDalTest
     {
         using var trans = TransHelper.NewScope();
         _sut.Insert(Faker());
-        var actual = _sut.ListData("A");
+        var actual = _sut.ListData(Key());
         actual.Should().ContainEquivalentOf(Faker());
     }
 }

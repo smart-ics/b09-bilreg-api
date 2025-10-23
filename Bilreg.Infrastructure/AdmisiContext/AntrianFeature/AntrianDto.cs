@@ -18,7 +18,7 @@ public record AntrianDto(string AntrianId, DateTime AntrianDate,
         return result;
     }
 
-    public AntrianModel ToModel(ISequencer sequencer)
+    public AntrianModel ToModel(IEnumerable<AntrianEntryModel> listEntry, ISequencer sequencer)
     {
         var result = new AntrianModel(
             AntrianId,
@@ -26,7 +26,9 @@ public record AntrianDto(string AntrianId, DateTime AntrianDate,
             TimeOnly.Parse(StartTime),
             TimeOnly.Parse(EndTime),
             SequenceTag,
-            AntrianDescription,[], sequencer);
+            AntrianDescription,
+            listEntry, 
+            sequencer);
         return result;
     }
 }
