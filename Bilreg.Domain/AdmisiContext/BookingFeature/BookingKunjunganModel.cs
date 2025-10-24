@@ -1,5 +1,6 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.LayananSub;
+using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
 using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
 
 namespace Bilreg.Domain.AdmisiContext.BookingFeature;

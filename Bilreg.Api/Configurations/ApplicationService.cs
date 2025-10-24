@@ -1,6 +1,5 @@
 ﻿using System.Reflection;
 using Bilreg.Application;
-using Bilreg.Application.AdmisiContext.PetugasMedisSub.PetugasMedisAgg;
 using FluentValidation;
 using Nuna.Lib.AutoNumberHelper;
 using Nuna.Lib.CleanArchHelper;

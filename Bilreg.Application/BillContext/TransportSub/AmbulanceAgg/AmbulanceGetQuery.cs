@@ -1,4 +1,3 @@
-using Bilreg.Application.AdmisiContext.PetugasMedisSub.PetugasMedisAgg;
 using Bilreg.Domain.BillContext.TransportSub.AmbulanceAgg;
 using FluentAssertions;
 using MediatR;
