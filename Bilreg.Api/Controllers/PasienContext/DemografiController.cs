@@ -17,6 +17,24 @@ public class DemografiController : Controller
     }
 
     [HttpGet]
+    [Route("negara/{id}")]
+    public async Task<IActionResult> GetDataNegara(string id)
+    {
+        var query = new NegaraGetQuery(id);
+        var response = await _mediator.Send(query);
+        return Ok(new JSendOk(response));
+    }
+
+    [HttpGet]
+    [Route("negara")]
+    public async Task<IActionResult> ListDataNegara()
+    {
+        var query = new NegaraListQuery();
+        var response = await _mediator.Send(query);
+        return Ok(new JSendOk(response));
+    }
+
+    [HttpGet]
     [Route("propinsi/{id}")]
     public async Task<IActionResult> GetDataPropinsi(string id)
     {
