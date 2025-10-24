@@ -6,11 +6,18 @@ namespace Bilreg.Domain.PasienContext.PasienFeature;
 
 public class GolDarahType
 {
-    private static readonly string[] AllowedValues = ["A", "B", "AB", "O"];
+    private static readonly string[] AllowedValues = ["A", "B", "AB", "O", "-"];
     private readonly string _value;
         
     public GolDarahType(string value)
     {
+        value = value.Trim();
+        if (value == "")
+            value = "-";
+
+        if (value == "0")
+            value = "O";
+        
         Guard.Against.NotInAllowedValues(value.ToUpper(), AllowedValues, nameof(value));
         _value = value.ToUpper();
     }

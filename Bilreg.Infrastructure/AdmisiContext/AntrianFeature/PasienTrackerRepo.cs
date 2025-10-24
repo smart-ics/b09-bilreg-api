@@ -1,6 +1,7 @@
 ﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Nuna.Lib.PatternHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
 
@@ -47,6 +48,19 @@ public class PasienTrackerRepo : IPasienTrackerRepo
     {
         _pasienTrackerdal.Delete(key);
         _pasienTrackerEventDal.Delete(key);
+    }
+
+    public IEnumerable<PasienTrackerView> ListData(Periode visitDate, DateOnly tglLahir)
+    {
+        var listData = _pasienTrackerdal.ListData(visitDate)?.ToList() ?? [];
+        var tglLahirDt = tglLahir.ToDateTime(TimeOnly.MinValue);
+        var listTglLahir = listData
+            .Where(x => x.TglLahir == tglLahirDt)
+            .Select(x => new PasienTrackerView(
+                x.PasienTrackerId, 
+                new PersonType(x.PersonName, DateOnly.FromDateTime(x.TglLahir)),
+                DateOnly.FromDateTime(x.VisitDate)));
+        return listTglLahir;
     }
 
     #region HELPER

@@ -50,5 +50,4 @@ public class Sequencer : ISequencer
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.ExecuteScalar<int>(sql);
     }
-
 }

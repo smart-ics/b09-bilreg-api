@@ -16,8 +16,18 @@ public class JadwalPraktekController : ControllerBase
         _mediator = mediator;
     }
     
+    [HttpGet]
+    [Route("{dokterId}")]
+    public async Task<IActionResult> ListByDokter(string dokterId)
+    {
+        var query = new JadwalPraktekListQuery(dokterId);
+        var response = await _mediator.Send(query);
+        return Ok(new JSendOk(response));
+    }
+    
+    
     [HttpPost]
-    public async Task<IActionResult> Save(JadwalPraktekCreateCommand cmd)
+    public async Task<IActionResult> Save(JadwalPraktekCreateCmd cmd)
     {
         var response = await _mediator.Send(cmd);
         return Ok(new JSendOk(response));

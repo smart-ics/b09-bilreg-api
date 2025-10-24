@@ -8,8 +8,8 @@ public record SukuType : ISukuKey
 {
     public SukuType(string sukuId, string sukuName)
     {
-        Guard.Against.NullOrWhiteSpace(sukuId, nameof(sukuId));
-        Guard.Against.NullOrWhiteSpace(sukuName, nameof(sukuName));
+        Guard.Against.Null(sukuId, nameof(sukuId));
+        Guard.Against.Null(sukuName, nameof(sukuName));
 
         SukuId = sukuId;
         SukuName = sukuName;
