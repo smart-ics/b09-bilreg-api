@@ -9,7 +9,8 @@ public class SearchPasienDto
     public string PasienId { get; set; }
     public string PasienName { get; set; }
     public string TglLahir { get; set; }
-    public string Gender { get; set; }
+    public string GenderId { get; set; }
+    public string GenderName { get; set; }
 
     public string JenisId { get; set; }
     public string NoId { get; set; }
@@ -26,7 +27,7 @@ public class SearchPasienDto
         var identitas = new IdentitasType(JenisId, NoId);
         
         var pasien = new SearchPasienType(PasienId, PasienName, TglLahir.ToDate("yyyy-MM-dd"),
-            Gender, identitas, IbuKandung, alamat, RegId, BookingId);
+            GenderId, GenderName, identitas, IbuKandung, alamat, RegId, BookingId);
         return pasien;
 
     }
@@ -37,7 +38,8 @@ public class SearcQuickhPasienDto
     public string PasienId { get; set; }
     public string PasienName { get; set; }
     public DateTime TglLahir { get; set; }
-    public string Gender { get; set; }
+    public string GenderId { get; set; }
+    public string GenderName { get; set; }
 
     public string JenisId { get; set; }
     public string NoId { get; set; }
@@ -54,7 +56,7 @@ public class SearcQuickhPasienDto
         var identitas = new IdentitasType(JenisId, NoId);
 
         var pasien = new SearchPasienType(PasienId, PasienName, TglLahir,
-            Gender, identitas, IbuKandung, alamat, RegId, BookingId);
+            GenderId, GenderName, identitas, IbuKandung, alamat, RegId, BookingId);
         return pasien;
 
     }

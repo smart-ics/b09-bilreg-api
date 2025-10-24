@@ -1,11 +1,7 @@
-﻿using Ardalis.GuardClauses;
-using Bilreg.Domain.AdmisiContext.RegSub.RegAgg.ValueObjects;
+﻿using Bilreg.Domain.AdmisiContext.RegSub.RegAgg.ValueObjects;
 using Bilreg.Domain.PasienContext.PasienFeature;
-using Newtonsoft.Json.Serialization;
 using Nuna.Lib.ValidationHelper;
-using System.Reflection;
 using System.Text.RegularExpressions;
-using System.Xml.Linq;
 
 namespace Bilreg.Domain.AdmisiContext.SearchPasienSub;
 
@@ -15,7 +11,8 @@ public record SearchPasienType : IPasienKey, IRegKey
     public SearchPasienType(string pasienId, 
         string pasienName, 
         DateTime tglLahir, 
-        string gender, 
+        string genderId,
+        string genderName,
         IdentitasType identitas,
         string ibuKandung, 
         AlamatType alamat,
@@ -26,7 +23,8 @@ public record SearchPasienType : IPasienKey, IRegKey
         PasienId = pasienId;
         PasienName = pasienName;
         TglLahir = tglLahir;
-        Gender = gender;
+        GenderId = genderId;
+        GenderName = genderName;
         Identitas = identitas;
         IbuKandung = ibuKandung;
         AlamatDomisili = alamat;
@@ -35,7 +33,7 @@ public record SearchPasienType : IPasienKey, IRegKey
     }
 
     public static SearchPasienType Default => new SearchPasienType(
-        "-", "-", new DateTime(3000,1,1), "-", IdentitasType.Default, 
+        "-", "-", new DateTime(3000,1,1), "-", "-", IdentitasType.Default, 
         "-", AlamatType.Default, "-", "-");
 
 
@@ -58,7 +56,8 @@ public record SearchPasienType : IPasienKey, IRegKey
     public string PasienId { get; init; }
     public string PasienName { get; init; }
     public DateTime TglLahir { get; private set; }
-    public string Gender {  get; init; }
+    public string GenderId { get; set; }
+    public string GenderName { get; set; }
     public IdentitasType Identitas { get; init; }
     public string IbuKandung { get; init; }
     public AlamatType AlamatDomisili { get; init; }
@@ -170,7 +169,7 @@ public record SearchPasienType : IPasienKey, IRegKey
     public bool HasPasienId => !string.IsNullOrWhiteSpace(PasienId) && PasienId != "-";
     public bool HasPasienName => !string.IsNullOrWhiteSpace(PasienName) && PasienName != "-";
     public bool HasTglLahir => TglLahir != default && TglLahir != new DateTime(3000, 1, 1);
-    public bool HasGender => !string.IsNullOrEmpty(Gender);
+    public bool HasGender => !string.IsNullOrEmpty(GenderId);
     public bool HasIdentitas => Identitas != null && Identitas != IdentitasType.Default;
     public bool HasIbuKandung => !string.IsNullOrWhiteSpace(IbuKandung) && IbuKandung != "-";
     public bool HasAlamat => AlamatDomisili != null && AlamatDomisili != AlamatType.Default;
