@@ -88,7 +88,7 @@ public class PetugasMedisLayananTest
     private readonly PetugasMedisLayananDal _sut = new(ConnStringHelper.GetTestEnv());
 
     private static PetugasMedisLayananDto Faker()
-        => new PetugasMedisLayananDto("A", "B", "C", true);
+        => new PetugasMedisLayananDto("A", "B", 1, "C");
     
     [Fact]
     public void InsertTest()

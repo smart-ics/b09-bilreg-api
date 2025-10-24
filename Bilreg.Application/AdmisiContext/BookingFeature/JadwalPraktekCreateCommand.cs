@@ -1,6 +1,7 @@
-﻿using Bilreg.Application.AdmisiContext.PetugasMedisSub;
+﻿using Bilreg.Application.AdmisiContext.LayananFeature.LayananAgg;
+using Bilreg.Application.AdmisiContext.PetugasMedisSub;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
-using Bilreg.Domain.AdmisiContext.LayananSub;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
 using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
 using MediatR;
@@ -18,14 +19,17 @@ public class JadwalPraktekCreateHandler : IRequestHandler<JadwalPraktekCreateCom
     private readonly IJadwalPraktekRepo _jadwalRepo;
     private readonly IJadwalPraktekFactory _jadwalFactory;
     private readonly IPetugasMedisRepo _petugasRepo;
+    private readonly ILayananRepo _layananRepo;
 
     public JadwalPraktekCreateHandler(IJadwalPraktekRepo jadwalRepo, 
         IJadwalPraktekFactory jadwalFactory, 
-        IPetugasMedisRepo petugasRepo)
+        IPetugasMedisRepo petugasRepo, 
+        ILayananRepo layananRepo)
     {
         _jadwalRepo = jadwalRepo;
         _jadwalFactory = jadwalFactory;
         _petugasRepo = petugasRepo;
+        _layananRepo = layananRepo;
     }
 
     public Task<JadwalPraktekCreateResponse> Handle(JadwalPraktekCreateCommand request, CancellationToken cancellationToken)
@@ -34,30 +38,35 @@ public class JadwalPraktekCreateHandler : IRequestHandler<JadwalPraktekCreateCom
         var dokterKey = PetugasMedisType.Key(request.DokterId);
         var dokter = _petugasRepo.LoadEntity(dokterKey)
             .GetValueOrThrow("Dokter tidak ditemukan");
+        var layananKey = LayananType.Key(request.LayananId);
+        var layanan = _layananRepo.LoadEntity(layananKey)
+            .GetValueOrThrow("Layanan tidak ditemukan");
         
-        // var layananKey = LayananType.Key(request.LayananId);
-        // var layanan = _layanRepo.LoadEntity(layananKey)
-        //     .GetValueOrThrow("Layanan tidak ditemukan");
-        
+        //  BUILD
         var listJadwal = _jadwalRepo.ListData(dokterKey)?.ToList() ?? [];
         var thisJadwal = listJadwal
             .Where(x => x.Hari == (DayOfWeek)request.Hari)
-            .FirstOrDefault(x => x.JamMulai == TimeOnly.Parse(request.JamMulai));
-        if (thisJadwal is null)
-            thisJadwal = CreateJadwal(request);
+            .FirstOrDefault(x => x.JamMulai == TimeOnly.Parse(request.JamMulai)) 
+            ?? CreateJadwal(request, dokter, layanan);
+        thisJadwal = thisJadwal with
+        {
+            JamSelesai = TimeOnly.Parse(request.JamSelesai),
+            Layanan = layanan.ToReff()
+        };
         
-        // var layanan = 
-        // thisJadwal = thisJadwal with
-        // {
-        //     JamSelesai = TimeOnly.Parse(request.JamSelesai),
-        //     Layanan = LayananType.Key(request.LayananId)
-        // };
-        throw new NotImplementedException();
-
+        //  WRITE
+        _jadwalRepo.SaveChanges(thisJadwal);
+        return Task.FromResult(new JadwalPraktekCreateResponse(thisJadwal.JadwalPraktekId));
     }
 
-    private JadwalPraktekType? CreateJadwal(JadwalPraktekCreateCommand request)
+    private JadwalPraktekType CreateJadwal(JadwalPraktekCreateCommand request, 
+        PetugasMedisType dokter, LayananType layanan)
     {
-        throw new NotImplementedException();
+        var jadwal = _jadwalFactory.Create(
+            dokter, layanan, 
+            (DayOfWeek)request.Hari, 
+            TimeOnly.Parse(request.JamMulai),
+            TimeOnly.Parse(request.JamSelesai));
+        return jadwal;
     }
 }
