@@ -29,7 +29,7 @@ public class PasienTrackerModel : IPasienTrackerKey
     {
         var newId = Ulid.NewUlid().ToString();
         var visitor = new PersonType(booking.Person.PersonName, booking.Person.TglLahir);
-        var result = new PasienTrackerModel(newId, visitor, DateOnly.FromDateTime(DateTime.Now), 
+        var result = new PasienTrackerModel(newId, visitor, booking.TglBerobat, 
             new List<PasienTrackerEventType>());
         result.AddEvent("BOOKING", booking.BookingId);
         return result;

@@ -6,32 +6,35 @@ public class AntrianEntryModel
 {
     #region CREATION
     public AntrianEntryModel(int noUrut, 
-        PersonType visitor, AntrianStatusEnum status, 
+        PersonType visitor, IPasienTrackerKey tracker,
+        AntrianStatusEnum status, 
         DateTime createdAt, DateTime servedAt, DateTime doneAt)
     {
         NoUrut = noUrut;
         Visitor = visitor;
+        Tracker = tracker;
         AntrianStatus = status;
         CreatedAt = createdAt;
         ServedAt = servedAt;
         DoneAt = doneAt;
     }
 
-    public static AntrianEntryModel Create(int noUrut, PersonType visitor)
+    public static AntrianEntryModel Create(int noUrut, PersonType visitor, IPasienTrackerKey tracker)
     {
-        var newEntry = new AntrianEntryModel(noUrut, visitor, AntrianStatusEnum.Waiting, DateTime.Now,
+        var newEntry = new AntrianEntryModel(noUrut, visitor, tracker, AntrianStatusEnum.Waiting, DateTime.Now,
             new DateTime(3000, 1, 1), new DateTime(3000, 1, 1));
         return newEntry;
     }
     
     public static AntrianEntryModel Default => 
-        new AntrianEntryModel(-1, PersonType.Default, AntrianStatusEnum.Waiting,
+        new AntrianEntryModel(-1, PersonType.Default, PasienTrackerModel.Default, AntrianStatusEnum.Waiting,
             DateTime.Now, new DateTime(3000, 1, 1), new DateTime(3000, 1, 1));
     #endregion
     
     #region PROPERTIES
     public int NoUrut { get; private set; }
     public PersonType Visitor { get; private set; }
+    public IPasienTrackerKey Tracker { get; private set; }
     public AntrianStatusEnum AntrianStatus { get; private set; }
     public DateTime CreatedAt { get; init; }
     public DateTime ServedAt { get; private set; }

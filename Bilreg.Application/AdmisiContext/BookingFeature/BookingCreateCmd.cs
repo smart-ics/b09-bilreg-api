@@ -2,6 +2,7 @@
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.Helpers;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
@@ -88,9 +89,13 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
     private void ThrowExceptionIfTrackerExists(BookingModel booking)
     {
         var periodeVisit = new Periode(booking.TglBerobat.ToDateTime(TimeOnly.MinValue));
-        var listTracker = _trackerRepo.ListData(periodeVisit, booking.Person.TglLahir);
-        
-        if (listTracker.Any())
-            throw new ArgumentException("Tracker sudah ada");
+        var listTracker = _trackerRepo.ListData(periodeVisit, booking.Person.TglLahir)?.ToList() 
+                          ?? [];
+        var personNameEyd = booking.Person.PersonName.NormalizeToEyd();
+        var duplicated = listTracker
+            .FirstOrDefault(x => x.Person.PersonName.NormalizeToEyd() == personNameEyd);
+
+        if (duplicated is not null)
+            throw new ArgumentException("Pasien terdeteksi di tracker. Booking terduplikasi");
     }
 }
