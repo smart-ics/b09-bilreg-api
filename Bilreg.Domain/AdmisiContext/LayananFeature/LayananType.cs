@@ -1,18 +1,16 @@
 ﻿using Ardalis.GuardClauses;
 
-namespace Bilreg.Domain.AdmisiContext.LayananSub;
+namespace Bilreg.Domain.AdmisiContext.LayananFeature;
 
 public record LayananType : ILayananKey
 {
     #region CREATION
     public LayananType(string layananId, string layananName, bool isAKtif,
-        InstalasiReff instalasi, InstalasiDkType instalasiDk,
-        LayananDkReff layananDk, TipeLayananDkType tipeLayananDk)
+        InstalasiReff instalasi, LayananDkReff layananDk, TipeLayananDkType tipeLayananDk)
     {
         Guard.Against.NullOrWhiteSpace(layananId, nameof(layananId));
         Guard.Against.NullOrWhiteSpace(layananName, nameof(layananName));
         Guard.Against.Null(instalasi, nameof(instalasi));
-        Guard.Against.Null(instalasiDk, nameof(instalasiDk));
         Guard.Against.Null(layananDk, nameof(layananDk));
         Guard.Against.Null(tipeLayananDk, nameof(tipeLayananDk));
 
@@ -20,13 +18,12 @@ public record LayananType : ILayananKey
         LayananName = layananName;
         IsAKtif = isAKtif;
         Instalasi = instalasi;
-        InstalasiDk = instalasiDk;
         LayananDk = layananDk;
         TipeLayananDk = tipeLayananDk;
     }
     public static LayananType Default => new("-", "-", true,
-        InstalasiType.Default.ToReff(), InstalasiDkType.Default, 
-        LayananDkType.Default.ToReff(), TipeLayananDkType.Default);
+        InstalasiType.Default.ToReff(), LayananDkType.Default.ToReff(), 
+        TipeLayananDkType.Default);
 
     public static ILayananKey Key(string id) => Default with { LayananId = id };
     #endregion
@@ -37,7 +34,6 @@ public record LayananType : ILayananKey
     public bool IsAKtif { get; init; }
     
     public InstalasiReff Instalasi { get; init; }
-    public InstalasiDkType InstalasiDk { get; init; }
     public LayananDkReff LayananDk { get; init; }
     public TipeLayananDkType TipeLayananDk { get; init; }
     #endregion

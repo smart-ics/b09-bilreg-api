@@ -1,6 +1,6 @@
 ﻿using Ardalis.GuardClauses;
 
-namespace Bilreg.Domain.AdmisiContext.LayananSub;
+namespace Bilreg.Domain.AdmisiContext.LayananFeature;
 
 public record TipeLayananDkType : ITipeLayananDkKey
 {

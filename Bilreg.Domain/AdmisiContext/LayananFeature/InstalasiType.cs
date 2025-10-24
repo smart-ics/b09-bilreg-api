@@ -1,7 +1,6 @@
 using Ardalis.GuardClauses;
-using Bilreg.Domain.PasienContext;
 
-namespace Bilreg.Domain.AdmisiContext.LayananSub;
+namespace Bilreg.Domain.AdmisiContext.LayananFeature;
 
 public record InstalasiType : IInstalasiKey
 {
