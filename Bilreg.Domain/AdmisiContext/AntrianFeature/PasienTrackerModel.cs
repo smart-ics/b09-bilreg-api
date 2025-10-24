@@ -11,36 +11,42 @@ using Xunit;
 
 namespace Bilreg.Domain.AdmisiContext.AntrianFeature;
 
-
-public class PasienTrackerModel
+public class PasienTrackerModel : IPasienTrackerKey
 {
     private readonly List<PasienTrackerEventType> _listEvent;
 
     #region CREATION
     public PasienTrackerModel(string trackerId,
-        VisitorType visitor,  IEnumerable<PasienTrackerEventType> listEvent)
+        PersonType person,  DateOnly visitDate, 
+        IEnumerable<PasienTrackerEventType> listEvent)
     {
-        TrackerId = trackerId; 
-        Visitor = visitor;
+        PasienTrackerId = trackerId; 
+        Person = person;
+        VisitDate = visitDate;
         _listEvent = listEvent.ToList() ?? [];;
     }
-    public static PasienTrackerModel Create(PersonType person)
+    public static PasienTrackerModel Create(PersonInfoType person)
     {
         var newId = Ulid.NewUlid().ToString();
-        var visitor = new VisitorType(person.PersonName, DateOnly.FromDateTime(person.BirthDate), DateTime.Now);
+        var visitor = new PersonType(person.PersonName, person.TglLahir);
 
-        return new PasienTrackerModel(newId, visitor, new List<PasienTrackerEventType>());
+        return new PasienTrackerModel(newId, visitor, new DateOnly(3000,1,1), new List<PasienTrackerEventType>());
     }
     public static PasienTrackerModel Default => new PasienTrackerModel(
         "-",
-        VisitorType.Default,
+        PersonType.Default, 
+        new DateOnly(3000,1,1),
         new List<PasienTrackerEventType>());
     #endregion
 
+    public static IPasienTrackerKey Key(string id) => new PasienTrackerModel(id, PersonType.Default,
+        new DateOnly(3000, 1, 1), []);
+    
     #region PROPERTIES
-    public string TrackerId { get; init; }
-    public VisitorType Visitor { get; init; }
-    public IEnumerable<PasienTrackerEventType> Events => _listEvent;
+    public string PasienTrackerId { get; init; }
+    public PersonType Person { get; init; }
+    public DateOnly VisitDate { get; init; }
+    public IEnumerable<PasienTrackerEventType> ListEvent => _listEvent;
     #endregion
 
     #region METHOD BEHAVIOUR
@@ -48,10 +54,17 @@ public class PasienTrackerModel
     {
         Guard.Against.NullOrWhiteSpace(eventName, nameof(eventName));
         Guard.Against.NullOrWhiteSpace(reffId, nameof(reffId));
-        var newEvent = new PasienTrackerEventType(eventName, DateTime.Now, reffId);
+        var noUrut = _listEvent.Select(x => x.NoUrut).DefaultIfEmpty(0).Max();
+        noUrut++;
+        var newEvent = new PasienTrackerEventType(noUrut, eventName, DateTime.Now, reffId);
         _listEvent.Add(newEvent);
     }
     #endregion
+}
+
+public interface IPasienTrackerKey
+{
+    string PasienTrackerId { get; }
 }
 
 

@@ -2,7 +2,7 @@
 
 public class AuditTrailType
 {
-    private AuditTrailType(AuditInfoType created, AuditInfoType modified, AuditInfoType voided)
+    public AuditTrailType(AuditInfoType created, AuditInfoType modified, AuditInfoType voided)
     {
         Created = created;
         Modified = modified;

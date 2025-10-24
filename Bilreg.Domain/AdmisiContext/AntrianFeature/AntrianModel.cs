@@ -1,93 +1,81 @@
 ﻿using Ardalis.GuardClauses;
+using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.Helpers;
 
 namespace Bilreg.Domain.AdmisiContext.AntrianFeature;
 
-public class AntrianModel : IAntrianKey
+public class AntrianModel : IAntrianKey, IAntrianHeaderView
 {
     private readonly List<AntrianEntryModel> _listEntry;
+    private readonly ISequencer _sequencer;
     
     #region CREATION
-    public AntrianModel(string antrianId, DateOnly antrianDate, TimeSpan startTime, TimeSpan endTime,
-        ServicePointType servicePoint, IEnumerable<AntrianEntryModel> listEntry)
+    public AntrianModel(string antrianId, DateOnly antrianDate, TimeOnly startTime, TimeOnly endTime,
+        string sequenceTag, string antrianDesc, IEnumerable<AntrianEntryModel> listEntry, 
+        ISequencer sequencer)
     {
         AntrianId = antrianId;
         AntrianDate = antrianDate;
         StartTime = startTime;
         EndTime = endTime;
-        ServicePoint = servicePoint;
+        SequenceTag = sequenceTag;
+        AntrianDescription = antrianDesc;
         _listEntry = listEntry.ToList();
 
-    }
-    public static AntrianModel Create(DateOnly antrianDate, JadwalPraktekType jadwalPraktek)
-    {
-        Guard.Against.Null(jadwalPraktek, nameof(jadwalPraktek));
-        if (antrianDate.DayOfWeek != jadwalPraktek.Hari)
-            throw new ArgumentException($"{antrianDate:dd-MM-yyyy} bukan hari ({jadwalPraktek.Hari.ToString()}).",
-                nameof(antrianDate));
-        
-        var newId = Ulid.NewUlid().ToString();
-        var result = new AntrianModel(newId, antrianDate, jadwalPraktek.JamMulai, 
-            jadwalPraktek.JamSelesai, ServicePointType.Default, new List<AntrianEntryModel>());
-        return result;
-    }
-    
-    public static AntrianModel Create(ServicePointType servicePoint)
-    {
-        Guard.Against.Null(servicePoint, nameof(servicePoint));
-        if (servicePoint.Status != ServicePointStatusEnum.Opened)
-            throw new ArgumentException($"{servicePoint.ServicePointName} belum buka.", nameof(servicePoint));
-        
-        var newId = Ulid.NewUlid().ToString();
-        
-        var antrianDate = DateOnly.FromDateTime(DateTime.Now);
-        var mulai = TimeSpan.MinValue;
-        var selesai = TimeSpan.MaxValue;
-        
-        return new AntrianModel(newId, antrianDate, mulai, selesai, 
-            servicePoint , new List<AntrianEntryModel>());
-    }
+        _sequencer = sequencer;
 
-    public static AntrianModel Default => new AntrianModel(
-        "-", DateOnly.FromDateTime(new DateTime(3000, 1, 1)), TimeSpan.Zero, TimeSpan.Zero,
-        ServicePointType.Default, new List<AntrianEntryModel>());
-
+    }
     public static IAntrianKey Key(string id)
     {
         var result = new AntrianModel(id, DateOnly.FromDateTime(DateTime.Now),
-            TimeSpan.MinValue, TimeSpan.MinValue, ServicePointType.Default,
-            new List<AntrianEntryModel>());
+            TimeOnly.MinValue, TimeOnly.MinValue, "-", "-",
+            new List<AntrianEntryModel>(), null!);
         return result;
     }
+
     #endregion
     
     #region PROPERTIES
     public string AntrianId { get; init; }
     public DateOnly AntrianDate { get; init; }
-    public TimeSpan StartTime { get; init; }
-    public TimeSpan EndTime { get; init; }
-    public ServicePointType ServicePoint { get; init; }
+    public TimeOnly StartTime { get; init; }
+    public TimeOnly EndTime { get; init; }
+    public string SequenceTag { get; init; }
+    public string AntrianDescription { get; init; }
     public IEnumerable<AntrianEntryModel> ListEntry => _listEntry;
     #endregion
 
     #region METHODS BEHAVIOR    
-    public void AddEntry(PasienTrackerModel pasienTracker)
+    public AntrianEntryModel AddEntry(PasienTrackerModel pasienTracker)
     {
-        var visitor = pasienTracker.Visitor;
-        var noUrut = _listEntry.Count != 0 
-            ? _listEntry.Max(x => x.NoUrut) + 1 
-            : 1; 
+        var visitor = pasienTracker.Person;
+        var noUrut = _sequencer.GetNextNoUrut(SequenceTag); 
         
         var entry = AntrianEntryModel.Create(noUrut, visitor);
         _listEntry.Add(entry);
+        return entry;
     }
     public void AddEntry()
     {
-        
-        var noUrut = _listEntry.Count != 0 
-            ? _listEntry.Max(x => x.NoUrut) + 1 
-            : 1; 
-        var entry = AntrianEntryModel.Create(noUrut, VisitorType.Default);
+        var noUrut = _sequencer.GetNextNoUrut(SequenceTag); 
+        var entry = AntrianEntryModel.Create(noUrut, PersonType.Default);
         _listEntry.Add(entry); 
+    }
+    public static string GenSequenceTag(DateOnly tglAntrian, JadwalPraktekType jadwal)
+    {
+        Guard.Against.Null(jadwal, nameof(jadwal));
+        Guard.Against.Null(tglAntrian, nameof(tglAntrian));
+        
+        var sequenceTag = $"AN{tglAntrian:yyMMdd}_{jadwal.Dokter.PetugasMedisId.Replace(' ', '$')}";
+        return sequenceTag;
+    }
+    public static string GenSequenceTag(DateOnly tglAntrian, ServicePointType servicePoint)
+    {
+        Guard.Against.Null(servicePoint, nameof(servicePoint));
+        Guard.Against.Null(tglAntrian, nameof(tglAntrian));
+        
+        var sequenceTag = $"AN{tglAntrian:yyMMdd}_{servicePoint.ServicePointCode}";
+        return sequenceTag;
     }
     #endregion
 }
@@ -95,4 +83,11 @@ public class AntrianModel : IAntrianKey
 public interface IAntrianKey
 {
     string AntrianId { get; }
+}
+
+public interface IAntrianHeaderView : IAntrianKey
+{
+    public DateOnly AntrianDate { get;  }
+    public TimeOnly StartTime { get;  }
+    public string SequenceTag { get;  }
 }

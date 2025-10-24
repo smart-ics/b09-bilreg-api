@@ -7,9 +7,9 @@ namespace Bilreg.Domain.AdmisiContext.AntrianFeature;
 
 public class PasienTrackerModelTest
 {
-    private static PersonType CreatePersonFaker() 
-        => new("John Doe", new DateTime(1990, 5, 10), 
-            AlamatType.Default, ContactType.Default, IdentitasType.Default);
+    private static PersonInfoType CreatePersonFaker() 
+        => new("John Doe", new DateOnly(1990, 5, 10), 
+            "-",  AlamatType.Default, ContactType.Default, IdentitasType.Default);
 
     [Fact]
     public void UT1_GivenValidPerson_WhenCreateCalled_ThenReturnValidInstance()
@@ -22,9 +22,9 @@ public class PasienTrackerModelTest
 
         // Assert
         tracker.Should().NotBeNull();
-        tracker.TrackerId.Should().NotBeNullOrWhiteSpace();
-        tracker.Visitor.Should().NotBeNull();
-        tracker.Events.Should().BeEmpty();
+        tracker.PasienTrackerId.Should().NotBeNullOrWhiteSpace();
+        tracker.Person.Should().NotBeNull();
+        tracker.ListEvent.Should().BeEmpty();
     }
 
     [Fact]
@@ -34,9 +34,9 @@ public class PasienTrackerModelTest
         var tracker = PasienTrackerModel.Default;
 
         // Assert
-        tracker.TrackerId.Should().Be("-");
-        tracker.Visitor.Should().Be(VisitorType.Default);
-        tracker.Events.Should().BeEmpty();
+        tracker.PasienTrackerId.Should().Be("-");
+        tracker.Person.Should().Be(PersonType.Default);
+        tracker.ListEvent.Should().BeEmpty();
     }
 
     [Fact]
@@ -44,15 +44,15 @@ public class PasienTrackerModelTest
     {
         // Arrange
         var tracker = PasienTrackerModel.Create(CreatePersonFaker());
-        var beforeCount = tracker.Events.Count();
+        var beforeCount = tracker.ListEvent.Count();
 
         // Act
         tracker.AddEvent("Registered", "REF001");
 
         // Assert
-        tracker.Events.Count().Should().Be(beforeCount + 1);
-        tracker.Events.Last().EventName.Should().Be("Registered");
-        tracker.Events.Last().ReffId.Should().Be("REF001");
+        tracker.ListEvent.Count().Should().Be(beforeCount + 1);
+        tracker.ListEvent.Last().EventName.Should().Be("Registered");
+        tracker.ListEvent.Last().ReffId.Should().Be("REF001");
     }
 
     [Theory]

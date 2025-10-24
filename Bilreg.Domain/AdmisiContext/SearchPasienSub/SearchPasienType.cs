@@ -15,7 +15,7 @@ public record SearchPasienType : IPasienKey, IRegKey
     public SearchPasienType(string pasienId, 
         string pasienName, 
         DateTime tglLahir, 
-        GenderType gender, 
+        string gender, 
         IdentitasType identitas,
         string ibuKandung, 
         AlamatType alamat,
@@ -35,7 +35,7 @@ public record SearchPasienType : IPasienKey, IRegKey
     }
 
     public static SearchPasienType Default => new SearchPasienType(
-        "-", "-", new DateTime(3000,1,1), GenderType.Default, IdentitasType.Default, 
+        "-", "-", new DateTime(3000,1,1), "-", IdentitasType.Default, 
         "-", AlamatType.Default, "-", "-");
 
 
@@ -43,10 +43,11 @@ public record SearchPasienType : IPasienKey, IRegKey
     {
         return keyword switch
         {
-            var k when IsTglLahir(k) => ByTglLahir(pasien, k) ,
-            var k when IsRG(k) => ByRegId(pasien, k) ,
-            var k when IsBooking(k) => ByBooking(pasien, k),
-            var k when IsPasienId(k) =>  ByPasienId(pasien, k)
+            _ when IsTglLahir(keyword) => ByTglLahir(pasien, keyword) ,
+            _ when IsRG(keyword) => ByRegId(pasien, keyword) ,
+            _ when IsBooking(keyword) => ByBooking(pasien, keyword),
+            _ when IsPasienId(keyword) =>  ByPasienId(pasien, keyword),
+            _ => throw new ArgumentOutOfRangeException(nameof(keyword), keyword, null)
         };
 
     }
@@ -57,7 +58,7 @@ public record SearchPasienType : IPasienKey, IRegKey
     public string PasienId { get; init; }
     public string PasienName { get; init; }
     public DateTime TglLahir { get; private set; }
-    public GenderType Gender {  get; init; }
+    public string Gender {  get; init; }
     public IdentitasType Identitas { get; init; }
     public string IbuKandung { get; init; }
     public AlamatType AlamatDomisili { get; init; }
@@ -169,7 +170,7 @@ public record SearchPasienType : IPasienKey, IRegKey
     public bool HasPasienId => !string.IsNullOrWhiteSpace(PasienId) && PasienId != "-";
     public bool HasPasienName => !string.IsNullOrWhiteSpace(PasienName) && PasienName != "-";
     public bool HasTglLahir => TglLahir != default && TglLahir != new DateTime(3000, 1, 1);
-    public bool HasGender => Gender != null && Gender != GenderType.Default;
+    public bool HasGender => !string.IsNullOrEmpty(Gender);
     public bool HasIdentitas => Identitas != null && Identitas != IdentitasType.Default;
     public bool HasIbuKandung => !string.IsNullOrWhiteSpace(IbuKandung) && IbuKandung != "-";
     public bool HasAlamat => AlamatDomisili != null && AlamatDomisili != AlamatType.Default;

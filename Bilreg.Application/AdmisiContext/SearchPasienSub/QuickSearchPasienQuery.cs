@@ -10,9 +10,20 @@ using Xunit;
 
 namespace Bilreg.Application.AdmisiContext.SearchPasienSub;
 
-public record QuickSearchPasienQuery(string Keyword) : IRequest<IEnumerable<SearchPasienType>>;
+public record QuickSearchPasienQuery(string Keyword) : IRequest<IEnumerable<QuickSearchPasienResponse>>;
 
-public class QuickSearchPasienHandler : IRequestHandler<QuickSearchPasienQuery, IEnumerable<SearchPasienType>>
+public record QuickSearchPasienResponse(
+        string PasienId,
+        string PasienName,
+        string TglLahir,
+        string Gender,
+        IdentitasType Identitas,
+        string IbuKandung,
+        AlamatType Alamat,
+        string RegId,
+        string BookingId);
+
+public class QuickSearchPasienHandler : IRequestHandler<QuickSearchPasienQuery, IEnumerable<QuickSearchPasienResponse>>
 {
     private readonly IQuickSearchPasienDal _quickSearchPasienDal;
 
@@ -21,7 +32,7 @@ public class QuickSearchPasienHandler : IRequestHandler<QuickSearchPasienQuery, 
         _quickSearchPasienDal = quickSearchPasienDal;
     }
 
-    public Task<IEnumerable<SearchPasienType>> Handle(QuickSearchPasienQuery request, CancellationToken cancellationToken)
+    public Task<IEnumerable<QuickSearchPasienResponse>> Handle(QuickSearchPasienQuery request, CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.Keyword, nameof(request.Keyword));
         if (request.Keyword.Length < 2)
@@ -39,15 +50,20 @@ public class QuickSearchPasienHandler : IRequestHandler<QuickSearchPasienQuery, 
 
         var dataSearch = SearchPasienType.GenData(parts);
 
-
         var listData = _quickSearchPasienDal.ListData(periode)
             .Match(
                 some => some,
                 () => throw new ArgumentException("data not found")
             );
-        var result = SearchData(listData, dataSearch).Any()
+
+        var dataResult = SearchData(listData, dataSearch).Any()
             ? SearchData(listData, dataSearch)
-            : throw new KeyNotFoundException("Data pasien tidak ditemukan");
+            : new List<SearchPasienType>();
+
+        var result = dataResult.Select(x => new QuickSearchPasienResponse(
+                x.PasienId, x.PasienName, x.TglLahir.ToString("yyyy-MM-dd"), 
+                x.Gender, x.Identitas, x.IbuKandung, x.AlamatDomisili, x.RegId, x.BookingId
+            )).OrderBy(x => x.PasienName);
 
         return Task.FromResult(result.Distinct());
 
@@ -60,7 +76,7 @@ public class QuickSearchPasienHandler : IRequestHandler<QuickSearchPasienQuery, 
             .Where(dp => dataSearch.Any(sp =>
                 (
                     // PasienId
-                    sp.HasPasienId && dp.PasienId == sp.PasienId
+                    sp.HasPasienId && dp.PasienId.Contains(sp.PasienId)
                 )
                 ||
                 (
@@ -112,9 +128,9 @@ public class QuickSearchPasienTest
     public async Task T01_GivenValidName_WhenQuickSearch_ThenReturnPasien()
     {
         // ARRANGE
-        var faker1 = new SearchPasienType("A", "Andi", new DateTime(2001, 09,13), GenderType.Default, 
+        var faker1 = new SearchPasienType("A", "Andi", new DateTime(2001, 09,13), "-", 
             IdentitasType.Default, "-",AlamatType.Default, "-", "-");
-        var faker2 = new SearchPasienType("B", "Budi", new DateTime(2000, 08, 19), GenderType.Default,
+        var faker2 = new SearchPasienType("B", "Budi", new DateTime(2000, 08, 19), "-",
             IdentitasType.Default, "-", AlamatType.Default, "-", "-");
         var listFacker = new List<SearchPasienType> { faker1, faker2 };
         
@@ -134,11 +150,11 @@ public class QuickSearchPasienTest
     public async Task T02_GivenValidName_WhenQuickSearch_ThenReturnListSimilarPasienName()
     {
         // ARRANGE
-        var faker1 = new SearchPasienType("A", "Suhardi Wijaya", new DateTime(2001, 09, 13), GenderType.Default,
+        var faker1 = new SearchPasienType("A", "Suhardi Wijaya", new DateTime(2001, 09, 13), "-",
             IdentitasType.Default, "-", AlamatType.Default, "-", "-");
-        var faker2 = new SearchPasienType("B", "Soehardi", new DateTime(2000, 08, 19), GenderType.Default,
+        var faker2 = new SearchPasienType("B", "Soehardi", new DateTime(2000, 08, 19), "-",
             IdentitasType.Default, "-", AlamatType.Default, "-", "-");
-        var faker3 = new SearchPasienType("C", "Agus", new DateTime(1999, 02, 19), GenderType.Default,
+        var faker3 = new SearchPasienType("C", "Agus", new DateTime(1999, 02, 19), "-",
             IdentitasType.Default, "-", AlamatType.Default, "-", "-");
         var listFacker = new List<SearchPasienType> { faker1, faker2 };
 
@@ -158,11 +174,11 @@ public class QuickSearchPasienTest
     public async Task T03_GivenValidTglLahir_WhenQuickSearch_ThenReturnPasien()
     {
         // ARRANGE
-        var faker1 = new SearchPasienType("A", "Suhardi Wijaya", new DateTime(2001, 9, 13), GenderType.Default,
+        var faker1 = new SearchPasienType("A", "Suhardi Wijaya", new DateTime(2001, 9, 13), "-",
             IdentitasType.Default, "-", AlamatType.Default, "-", "-");
-        var faker2 = new SearchPasienType("B", "Soehardi", new DateTime(2000, 8, 19), GenderType.Default,
+        var faker2 = new SearchPasienType("B", "Soehardi", new DateTime(2000, 8, 19), "-",
             IdentitasType.Default, "-", AlamatType.Default, "-", "-");
-        var faker3 = new SearchPasienType("C", "Agus", new DateTime(1999, 2, 19), GenderType.Default,
+        var faker3 = new SearchPasienType("C", "Agus", new DateTime(1999, 2, 19), "-",
             IdentitasType.Default, "-", AlamatType.Default, "-", "-");
         var listFacker = new List<SearchPasienType> { faker1, faker2, faker3 };
 
@@ -182,9 +198,9 @@ public class QuickSearchPasienTest
     public async Task T04_GivenValidPasienId_WhenQuickSearch_ThenReturnPasien()
     {
         // ARRANGE
-        var faker1 = new SearchPasienType("121", "Andi", new DateTime(2001, 09, 13), GenderType.Default,
+        var faker1 = new SearchPasienType("121", "Andi", new DateTime(2001, 09, 13), "-",
             IdentitasType.Default, "-", AlamatType.Default, "-", "-");
-        var faker2 = new SearchPasienType("122", "Budi", new DateTime(2000, 08, 19), GenderType.Default,
+        var faker2 = new SearchPasienType("122", "Budi", new DateTime(2000, 08, 19), "-",
             IdentitasType.Default, "-", AlamatType.Default, "-", "-");
         var listFacker = new List<SearchPasienType> { faker1, faker2 };
 
@@ -204,9 +220,9 @@ public class QuickSearchPasienTest
     public async Task T05_GivenValidRegId_WhenQuickSearch_ThenReturnPasien()
     {
         // ARRANGE
-        var faker1 = new SearchPasienType("121", "Andi", new DateTime(2001, 09, 13), GenderType.Default,
+        var faker1 = new SearchPasienType("121", "Andi", new DateTime(2001, 09, 13), "-",
             IdentitasType.Default, "-", AlamatType.Default, "RG001", "-");
-        var faker2 = new SearchPasienType("122", "Budi", new DateTime(2000, 08, 19), GenderType.Default,
+        var faker2 = new SearchPasienType("122", "Budi", new DateTime(2000, 08, 19), "-",
             IdentitasType.Default, "-", AlamatType.Default, "RG002", "-");
         var listFacker = new List<SearchPasienType> { faker1, faker2 };
 
@@ -226,9 +242,9 @@ public class QuickSearchPasienTest
     public async Task T06_GivenKeywordNamaAndTgllahir_WhenQuickSearch_ThenReturnpasien()
     {
         // ARRANGE
-        var faker1 = new SearchPasienType("121", "Andi", new DateTime(2001, 09, 13), GenderType.Default,
+        var faker1 = new SearchPasienType("121", "Andi", new DateTime(2001, 09, 13), "-",
             IdentitasType.Default, "-", AlamatType.Default, "RG001", "-");
-        var faker2 = new SearchPasienType("122", "Budi", new DateTime(2000, 08, 19), GenderType.Default,
+        var faker2 = new SearchPasienType("122", "Budi", new DateTime(2000, 08, 19), "-",
             IdentitasType.Default, "-", AlamatType.Default, "RG002", "-");
         var listFacker = new List<SearchPasienType> { faker1, faker2 };
 

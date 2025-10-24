@@ -10,7 +10,7 @@ public class PasienModel : IPasienKey, IPasienPersonalInfo, IPasienAdministrativ
 {
     private readonly List<ContactType> _listContact;
     public PasienModel(
-        string pasienId, string pasienName, DateTime tglLahir, GenderType gender, 
+        string pasienId, string pasienName, DateTime tglLahir, string gender, 
         string nickName, string tempatLahir, string ibuKandung, GolDarahType golDarah, 
         AlamatType alamatDomisili, AlamatType alamatKtp, KelurahanType kelurahan, 
         IdentitasType identitas, IdentitasType kartuKeluarga, 
@@ -52,7 +52,7 @@ public class PasienModel : IPasienKey, IPasienPersonalInfo, IPasienAdministrativ
     public string PasienId { get; private set; } 
     public string PasienName { get; init; }
     public DateTime TglLahir { get; init; }
-    public GenderType Gender { get; init; }
+    public string Gender { get; init; }
     //
     public string NickName { get; private set; }
     public string TempatLahir { get; private set; }
@@ -164,7 +164,7 @@ public class PasienModel : IPasienKey, IPasienPersonalInfo, IPasienAdministrativ
 
     private const string NEW_ID = "[NEW]";
     public static PasienModel CreateNew(string pasienName,
-        DateTime tglLahir, GenderType gender)
+        DateTime tglLahir, string gender)
     {
         Guard.Against.NullOrWhiteSpace(pasienName, nameof(pasienName));
         Guard.Against.Null(gender, nameof(gender));
@@ -175,10 +175,10 @@ public class PasienModel : IPasienKey, IPasienPersonalInfo, IPasienAdministrativ
             AgamaType.Default, SukuType.Default, PekerjaanDkType.Default, PendidikanDkType.Default, 
             DateTime.Now, true);
     }
-    public static PasienModel Default => CreateNew("-", new DateTime (3000,1,1), GenderType.Default);
+    public static PasienModel Default => CreateNew("-", new DateTime (3000,1,1), "-");
     public static IPasienKey Key(string id)
     {
-        var result = CreateNew("-", new DateTime (3000,1,1), GenderType.Default);
+        var result = CreateNew("-", new DateTime (3000,1,1), "-");
         result.SetPasienId(id);
         return result;        
     } 
@@ -192,7 +192,7 @@ public class PasienModelTest
     public void UT1_Given8DigitsPatientId_WhenFormatted_ThenReturnShortId()
     {
         const string pasienId = "340407012345678";
-        var pasien = PasienModel.CreateNew("Pasien", new DateTime(2000, 1, 1), GenderType.Default);
+        var pasien = PasienModel.CreateNew("Pasien", new DateTime(2000, 1, 1), "-");
         var shortId = pasien.GetNomorMedrec();
         shortId.Should().Be("12-34-56-78");
     }

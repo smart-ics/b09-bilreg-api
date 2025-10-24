@@ -51,7 +51,7 @@ public class QuickSearchPasienDal : IQuickSearchPasienDal
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         var datas = MayBe
-            .From(conn.Read<SearchPasienDto>(sql, dp))
+            .From(conn.Read<SearcQuickhPasienDto>(sql, dp))
             .Map(x => x.Select(y => y.ToModel()));
         return datas;
     }

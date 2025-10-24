@@ -63,7 +63,7 @@ public class Pasien2DtoTest
         var alamat = new string[] { "Baris-1", "Baris-2", "Baris-3" };
         var alamatType = new AlamatType(alamat, "Kota", "Kode Pos");
         var pasien = new PasienModel(
-            "A", "B", DateTime.Now, GenderType.Default, "nick", "X1", "X2", GolDarahType.Default,
+            "A", "B", DateTime.Now, "-", "nick", "X1", "X2", GolDarahType.Default,
             AlamatType.Default, alamatType, KelurahanType.Default, 
             IdentitasType.Default, IdentitasType.Default,
             [], PasienKeluargaType.Default, StatusKawinDkType.Default, AgamaType.Default, SukuType.Default,
@@ -82,7 +82,7 @@ public class Pasien2DtoTest
         var alamat = new[] { "Baris-1", ""};
         var alamatType = new AlamatType(alamat, "Kota", "Kode Pos");
         var pasien = new PasienModel(
-            "A", "B", DateTime.Now, GenderType.Default, "nick", "X1", "X2", GolDarahType.Default,
+            "A", "B", DateTime.Now, "-", "nick", "X1", "X2", GolDarahType.Default,
             AlamatType.Default, alamatType, KelurahanType.Default, 
             IdentitasType.Default, IdentitasType.Default,
             [], PasienKeluargaType.Default, StatusKawinDkType.Default, AgamaType.Default, SukuType.Default,
@@ -101,7 +101,7 @@ public class Pasien2DtoTest
         var alamat = new[] { "Baris-1"};
         var alamatType = new AlamatType(alamat, "Kota", "Kode Pos");
         var pasien = new PasienModel(
-            "A", "B", DateTime.Now, GenderType.Default, "nick", "X1", "X2", GolDarahType.Default,
+            "A", "B", DateTime.Now, "-", "nick", "X1", "X2", GolDarahType.Default,
             AlamatType.Default, alamatType, KelurahanType.Default, 
             IdentitasType.Default, IdentitasType.Default,
             [], PasienKeluargaType.Default, StatusKawinDkType.Default, AgamaType.Default, SukuType.Default,
