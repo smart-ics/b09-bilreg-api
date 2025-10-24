@@ -1,4 +1,5 @@
 ﻿using Ardalis.GuardClauses;
+using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.PasienContext.DemografiFeature;
 using Bilreg.Domain.PasienContext.StatusSosialFeature;
 using FluentAssertions;
@@ -157,6 +158,10 @@ public class PasienModel : IPasienKey, IPasienPersonalInfo, IPasienAdministrativ
     public PasienReff ToReff() => new PasienReff(PasienId, PasienName, TglLahir, Gender);
     
     public void SetPasienId(string id) => PasienId = id;
+    
+    public PersonInfoType ToPersonInfoType() => new PersonInfoType(
+        PasienName, DateOnly.FromDateTime(TglLahir), Gender, AlamatDomisili, 
+        _listContact.FirstOrDefault() ?? ContactType.Default, Identitas);
     
     #endregion
     
