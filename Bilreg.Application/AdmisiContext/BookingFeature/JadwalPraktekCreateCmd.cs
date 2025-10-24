@@ -3,18 +3,17 @@ using Bilreg.Application.AdmisiContext.PetugasMedisSub;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
-using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
 using MediatR;
 
 namespace Bilreg.Application.AdmisiContext.BookingFeature;
 
-public record JadwalPraktekCreateCommand(
+public record JadwalPraktekCreateCmd(
     string DokterId, string LayananId, int Hari,
     string JamMulai, string JamSelesai) : IRequest<JadwalPraktekCreateResponse>;
 
 public record JadwalPraktekCreateResponse(string JadwalPraktekId);
 
-public class JadwalPraktekCreateHandler : IRequestHandler<JadwalPraktekCreateCommand, JadwalPraktekCreateResponse>
+public class JadwalPraktekCreateHandler : IRequestHandler<JadwalPraktekCreateCmd, JadwalPraktekCreateResponse>
 {
     private readonly IJadwalPraktekRepo _jadwalRepo;
     private readonly IJadwalPraktekFactory _jadwalFactory;
@@ -32,7 +31,7 @@ public class JadwalPraktekCreateHandler : IRequestHandler<JadwalPraktekCreateCom
         _layananRepo = layananRepo;
     }
 
-    public Task<JadwalPraktekCreateResponse> Handle(JadwalPraktekCreateCommand request, CancellationToken cancellationToken)
+    public Task<JadwalPraktekCreateResponse> Handle(JadwalPraktekCreateCmd request, CancellationToken cancellationToken)
     {
         //  GUARD
         var dokterKey = PetugasMedisType.Key(request.DokterId);
@@ -59,7 +58,7 @@ public class JadwalPraktekCreateHandler : IRequestHandler<JadwalPraktekCreateCom
         return Task.FromResult(new JadwalPraktekCreateResponse(thisJadwal.JadwalPraktekId));
     }
 
-    private JadwalPraktekType CreateJadwal(JadwalPraktekCreateCommand request, 
+    private JadwalPraktekType CreateJadwal(JadwalPraktekCreateCmd request, 
         PetugasMedisType dokter, LayananType layanan)
     {
         var jadwal = _jadwalFactory.Create(

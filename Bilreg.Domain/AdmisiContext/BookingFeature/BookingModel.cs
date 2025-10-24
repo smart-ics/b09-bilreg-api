@@ -16,6 +16,7 @@ public class BookingModel : IBookingKey
         AuditTrailType auditTrail)
     {
         BookingId = bookindId;
+        BookingDate = bookingDate;
         Person = person;
         TglBerobat = tglBerobat;
         JamPraktek = jamPraktek;

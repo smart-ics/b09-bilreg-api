@@ -4,7 +4,7 @@ using Bilreg.Domain.Helpers;
 
 namespace Bilreg.Domain.AdmisiContext.AntrianFeature;
 
-public class AntrianModel : IAntrianKey, IAntrianHeaderView
+public class AntrianModel : IAntrianKey
 {
     private readonly List<AntrianEntryModel> _listEntry;
     private readonly ISequencer _sequencer;
@@ -85,9 +85,9 @@ public interface IAntrianKey
     string AntrianId { get; }
 }
 
-public interface IAntrianHeaderView : IAntrianKey
-{
-    public DateOnly AntrianDate { get;  }
-    public TimeOnly StartTime { get;  }
-    public string SequenceTag { get;  }
-}
+public record AntrianHeaderView(
+    string AntrianId,
+    string AntrianDescription,
+    DateOnly AntrianDate,
+    TimeOnly StartTime,
+    string SequenceTag) : IAntrianKey;
