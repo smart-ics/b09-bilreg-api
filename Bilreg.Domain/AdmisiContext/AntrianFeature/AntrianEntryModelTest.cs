@@ -30,7 +30,9 @@ public class AntrianEntryModelTest
         var entry = AntrianEntryModel.Create(1, PersonType.Default);
         var person = new PersonInfoType("A", DateOnly.Parse("2024-01-01"),
             "-",  AlamatType.Default, ContactType.Default, IdentitasType.Default);
-        var tracker = PasienTrackerModel.Create(person);
+        var booking = BookingModel.Create(person, new DateOnly(2025, 10, 24), 
+            JadwalPraktekType.Default);
+        var tracker = PasienTrackerModel.Create(booking);
         entry.AssignPasien(tracker);
     
         entry.Visitor.Should().Be(tracker.Person);

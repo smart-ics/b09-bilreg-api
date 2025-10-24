@@ -12,19 +12,24 @@ public class PasienTrackerModelTest
             "-",  AlamatType.Default, ContactType.Default, IdentitasType.Default);
 
     [Fact]
-    public void UT1_GivenValidPerson_WhenCreateCalled_ThenReturnValidInstance()
+    public void UT1_GivenBooking_WhenCreateCalled_ThenAsExpected()
     {
         // Arrange
-        var person = CreatePersonFaker();
+        var person = new PersonInfoType("A", new DateOnly(2000, 1, 2), "P", 
+            AlamatType.Default, ContactType.Default, IdentitasType.Default);
+        var jadwal = JadwalPraktekType.Default with { Hari = DayOfWeek.Friday };
+        var booking = BookingModel.Create(person, new DateOnly(2025, 10, 24), 
+            jadwal);
 
         // Act
-        var tracker = PasienTrackerModel.Create(person);
+        var tracker = PasienTrackerModel.Create(booking);
 
         // Assert
         tracker.Should().NotBeNull();
         tracker.PasienTrackerId.Should().NotBeNullOrWhiteSpace();
-        tracker.Person.Should().NotBeNull();
-        tracker.ListEvent.Should().BeEmpty();
+        tracker.Person.PersonName.Should().Be(person.PersonName);
+        tracker.Person.TglLahir.Should().Be(person.TglLahir);
+        tracker.ListEvent.Should().NotBeEmpty();
     }
 
     [Fact]
@@ -37,54 +42,6 @@ public class PasienTrackerModelTest
         tracker.PasienTrackerId.Should().Be("-");
         tracker.Person.Should().Be(PersonType.Default);
         tracker.ListEvent.Should().BeEmpty();
-    }
-
-    [Fact]
-    public void UT3_GivenValidEventData_WhenAddEventCalled_ThenEventIsAddedToList()
-    {
-        // Arrange
-        var tracker = PasienTrackerModel.Create(CreatePersonFaker());
-        var beforeCount = tracker.ListEvent.Count();
-
-        // Act
-        tracker.AddEvent("Registered", "REF001");
-
-        // Assert
-        tracker.ListEvent.Count().Should().Be(beforeCount + 1);
-        tracker.ListEvent.Last().EventName.Should().Be("Registered");
-        tracker.ListEvent.Last().ReffId.Should().Be("REF001");
-    }
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("   ")]
-    public void UT4_GivenInvalidEventName_WhenAddEventCalled_ThenThrowArgumentException(string invalidName)
-    {
-        // Arrange
-        var tracker = PasienTrackerModel.Create(CreatePersonFaker());
-
-        // Act
-        var act = () => tracker.AddEvent(invalidName, "REF001");
-
-        // Assert
-        act.Should().Throw<ArgumentException>();
-    }
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("   ")]
-    public void UT5_GivenInvalidReffId_WhenAddEventCalled_ThenThrowArgumentException(string invalidReffId)
-    {
-        // Arrange
-        var tracker = PasienTrackerModel.Create(CreatePersonFaker());
-
-        // Act
-        var act = () => tracker.AddEvent("Registered", invalidReffId);
-
-        // Assert
-        act.Should().Throw<ArgumentException>();
     }
 }
 
