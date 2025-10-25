@@ -6,8 +6,8 @@ public record SmfType : ISmfKey
 {
     public SmfType(string smfId, string smfName)
     {
-        Guard.Against.NullOrWhiteSpace(smfId, nameof(smfId));
-        Guard.Against.NullOrWhiteSpace(smfName, nameof(smfName));
+        //Guard.Against.NullOrWhiteSpace(smfId, nameof(smfId));
+        //Guard.Against.NullOrWhiteSpace(smfName, nameof(smfName));
 
         SmfId = smfId;
         SmfName = smfName;

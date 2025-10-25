@@ -6,6 +6,6 @@ namespace Bilreg.Application.AdmisiContext.PetugasMedisSub.PetugasMedisAgg;
 public interface IPetugasMedisSatTugasDal :
     IInsertBulk<PetugasMedisSatTugasType>,
     IDelete<IPetugasMedisKey>,
-    IListData<PetugasMedisSatTugasType, IPetugasMedisKey>
+    IListDataMayBe<PetugasMedisSatTugasType, IPetugasMedisKey>
 {
 }

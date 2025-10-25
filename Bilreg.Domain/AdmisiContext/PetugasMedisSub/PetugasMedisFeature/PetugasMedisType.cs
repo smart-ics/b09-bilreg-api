@@ -5,7 +5,8 @@ namespace Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
 
 public record PetugasMedisType : IPetugasMedisKey
 {
-    public PetugasMedisType(string petugasMedisId, string petugasMedisName, string namaSingkat, 
+    public PetugasMedisType(string petugasMedisId, string petugasMedisName, string namaSingkat,
+        SmfType smf,
         IEnumerable<PetugasMedisLayananType> listLayanan, 
         IEnumerable<PetugasMedisSatTugasType> listSatTugas)
     {
@@ -19,6 +20,7 @@ public record PetugasMedisType : IPetugasMedisKey
         PetugasMedisId = petugasMedisId;
         PetugasMedisName = petugasMedisName;
         NamaSingkat = namaSingkat;
+        Smf = smf;
         PetugasMedisLayanan = listLayananFtch;
         PetugasMedisSatTugas = listSatTugasFtch;
     }
@@ -32,7 +34,7 @@ public record PetugasMedisType : IPetugasMedisKey
     
     public PetugasMedisReff ToReff() => new (PetugasMedisId, PetugasMedisName);
     
-    public static PetugasMedisType Default => new("-", "-", "-", 
+    public static PetugasMedisType Default => new("-", "-", "-", SmfType.Default,
         new List<PetugasMedisLayananType>(), 
         new List<PetugasMedisSatTugasType>());
     public static IPetugasMedisKey Key(string id) => Default with { PetugasMedisId = id };

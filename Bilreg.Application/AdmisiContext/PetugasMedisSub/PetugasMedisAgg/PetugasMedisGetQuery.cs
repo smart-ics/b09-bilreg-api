@@ -1,75 +1,68 @@
-﻿// using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
-// using FluentAssertions;
-// using MediatR;
-// using Moq;
-// using Xunit;
-//
-// namespace Bilreg.Application.AdmisiContext.PetugasMedisSub.PetugasMedisAgg;
-//
-// public record PetugasMedisGetQuery(string PetugasMedisId) : IRequest<PetugasMedisGetResponse>, IPetugasMedisKey;
-//
-// public record PetugasMedisSatTugasGetResponse(
-//     string SatTugasId,
-//     string SatTugasName,
-//     bool IsUtama
-// );
-//
-// public record PetugasMedisLayananGetResponse(
-//     string LayananId,
-//     string LayananName
-// );
-//
-// public record PetugasMedisGetResponse(
-//     string PetugasMedisId,
-//     string PetugasMedisName,
-//     string NamaSingkat,
-//     string SmfId,
-//     string SmfName,
-//     IEnumerable<PetugasMedisSatTugasGetResponse> ListSatTugas,
-//     IEnumerable<PetugasMedisLayananGetResponse> ListLayanan
-// );
-//
-// public class PetugasMedisGetHandler : IRequestHandler<PetugasMedisGetQuery, PetugasMedisGetResponse>
-// {
-//     private readonly PetugasMedisFactory _factory;
-//
-//     public PetugasMedisGetHandler(PetugasMedisFactory factory)
-//     {
-//         _factory = factory;
-//     }
-//
-//     public async Task<PetugasMedisGetResponse> Handle(PetugasMedisGetQuery request, CancellationToken cancellationToken)
-//     {
-//         // QUERY
-//         var petugasMedis = _factory.Load(request);
-//
-//         var listSatTugas = petugasMedis.ListSatTugas.Select(x =>
-//             new PetugasMedisSatTugasGetResponse(
-//                 x.SatTugasId,
-//                 x.SatTugasName,
-//                 x.IsUtama
-//             ));
-//    
-//         var listLayanan = petugasMedis.ListLayanan.Select(x =>
-//             new PetugasMedisLayananGetResponse(
-//                 x.LayananId,
-//                 x.LayananName
-//             ));
-//
-//         // RESPONSE
-//         var response = new PetugasMedisGetResponse(
-//             petugasMedis.PetugasMedisId,
-//             petugasMedis.PetugasMedisName,
-//             petugasMedis.NamaSingkat,
-//             petugasMedis.SmfId,
-//             petugasMedis.SmfName,
-//             listSatTugas,
-//             listLayanan
-//         );
-//
-//         return response;
-//     }
-// }
+﻿using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
+using MediatR;
+
+namespace Bilreg.Application.AdmisiContext.PetugasMedisSub.PetugasMedisAgg;
+
+public record PetugasMedisGetQuery(string PetugasMedisId) : IRequest<PetugasMedisGetResponse>, IPetugasMedisKey;
+
+public record PetugasMedisSatTugasGetResponse(
+    string SatTugasId,
+    string SatTugasName,
+    bool IsUtama
+);
+
+public record PetugasMedisLayananGetResponse(
+    string LayananId,
+    string LayananName
+);
+
+public record PetugasMedisGetResponse(
+    string PetugasMedisId,
+    string PetugasMedisName,
+    string NamaSingkat,
+    string SmfId,
+    string SmfName,
+    IEnumerable<PetugasMedisSatTugasGetResponse> ListSatTugas,
+    IEnumerable<PetugasMedisLayananGetResponse> ListLayanan
+);
+
+public class PetugasMedisGetHandler : IRequestHandler<PetugasMedisGetQuery, PetugasMedisGetResponse>
+{
+    private readonly PetugasMedisFactory _factory;
+
+    public PetugasMedisGetHandler(PetugasMedisFactory factory)
+    {
+        _factory = factory;
+    }
+    public Task<PetugasMedisGetResponse> Handle(PetugasMedisGetQuery request, CancellationToken cancellationToken)
+    {
+        var ptgMedis = _factory.Load(request);
+        var listSatTugas = ptgMedis.PetugasMedisSatTugas.Select(x =>
+            new PetugasMedisSatTugasGetResponse(
+                x.SatTugas.SatTugasId,
+                x.SatTugas.SatTugasName,
+                x.IsUtama
+            ));
+
+        var listLayanan = ptgMedis.PetugasMedisLayanan.Select(x =>
+            new PetugasMedisLayananGetResponse(
+                x.Layanan.LayananId,
+                x.Layanan.LayananName
+            ));
+
+        // RESPONSE
+        var response = new PetugasMedisGetResponse(
+            ptgMedis.PetugasMedisId,
+            ptgMedis.PetugasMedisName,
+            ptgMedis.NamaSingkat,
+            ptgMedis.Smf.SmfId,
+            ptgMedis.Smf.SmfName,
+            listSatTugas,
+            listLayanan
+        );
+        return Task.FromResult(response);
+    }
+}
 //
 // public class PetugasMedisGetHandlerTest
 // {

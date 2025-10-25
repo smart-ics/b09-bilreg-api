@@ -25,8 +25,9 @@ public static class InfrastructureService
         
         services
             .Configure<DatabaseOptions>(configuration.GetSection(DatabaseOptions.SECTION_NAME))
-            .Configure<PasienContextOptions>(configuration.GetSection(PasienContextOptions.SECTION_NAME));
-
+            .Configure<PasienContextOptions>(configuration.GetSection(PasienContextOptions.SECTION_NAME))
+            .Configure<PetugasMedisOptions>(configuration.GetSection(PetugasMedisOptions.SECTION_NAME));
+            
         services
             .Scan(selector => selector
                 .FromAssemblyOf<InfrastructureAssemblyAnchor>()

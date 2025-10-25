@@ -1,43 +1,36 @@
-﻿// using FluentAssertions;
-// using MediatR;
-// using Moq;
-// using Xunit;
-//
-// namespace Bilreg.Application.AdmisiContext.PetugasMedisSub.PetugasMedisAgg;
-//
-// public record PetugasMedisListQuery() : IRequest<IEnumerable<PetugasMedisListResponse>>;
-//
-// public record PetugasMedisListResponse(
-//     string PetugasMedisId,
-//     string PetugasMedisName,
-//     string NamaSingkat,
-//     string SmfId,
-//     string SmfName
-// );
-//
-// public class PetugasMedisListHandler : IRequestHandler<PetugasMedisListQuery, IEnumerable<PetugasMedisListResponse>>
-// {
-//     private readonly PetugasMedisFactory _factory;
-//     private readonly IPetugasMedisDal _petugasMedisDal;
-//
-//     public PetugasMedisListHandler(PetugasMedisFactory factory, IPetugasMedisDal petugasMedisDal)
-//     {
-//         _factory = factory;
-//         _petugasMedisDal = petugasMedisDal;
-//     }
-//
-//     public Task<IEnumerable<PetugasMedisListResponse>> Handle(PetugasMedisListQuery request,
-//         CancellationToken cancellationToken)
-//     {
-//         // QUERY
-//         var listPetugasMedis = _petugasMedisDal.ListData()
-//             ?? throw new KeyNotFoundException("Petugas Medis not found");
-//
-//         // RESPONSE
-//         return Task.FromResult(listPetugasMedis.Select(x => new PetugasMedisListResponse(
-//             x.PetugasMedisId, x.PetugasMedisName, x.NamaSingkat, x.SmfId, x.SmfName)));
-//     }
-// }
+﻿using MediatR;
+
+namespace Bilreg.Application.AdmisiContext.PetugasMedisSub.PetugasMedisAgg;
+
+public record PetugasMedisListQuery() : IRequest<IEnumerable<PetugasMedisListResponse>>;
+
+public record PetugasMedisListResponse(
+    string PetugasMedisId,
+    string PetugasMedisName,
+    string NamaSingkat,
+    string SmfId,
+    string SmfName
+);
+
+public class PetugasMedisListHandler : IRequestHandler<PetugasMedisListQuery, IEnumerable<PetugasMedisListResponse>>
+{
+    private readonly IPetugasMedisDal _petugasMedisDal;
+
+    public PetugasMedisListHandler(IPetugasMedisDal petugasMedisDal)
+    {
+        _petugasMedisDal = petugasMedisDal;
+    }
+
+    public Task<IEnumerable<PetugasMedisListResponse>> Handle(PetugasMedisListQuery request,
+        CancellationToken cancellationToken)
+        => _petugasMedisDal.ListData()
+        .Match(
+            onSome: x => Task.FromResult(x.Select(y
+                => new PetugasMedisListResponse(y.PetugasMedisId, y.PetugasMedisName, y.NamaSingkat,
+                    y.Smf.SmfId, y.Smf.SmfName))),
+            onNone: () => throw new KeyNotFoundException("Petugas Medis not found")
+            );
+}
 //
 // public class PetugasMedisListHandlerTest
 // {
