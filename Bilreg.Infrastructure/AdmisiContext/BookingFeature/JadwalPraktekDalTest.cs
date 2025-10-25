@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
-using Bilreg.Domain.AdmisiContext.LayananSub;
+using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
 using Bilreg.Domain.AdmisiContext.PetugasMedisSub;
 using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
 using Bilreg.Infrastructure.Helpers;

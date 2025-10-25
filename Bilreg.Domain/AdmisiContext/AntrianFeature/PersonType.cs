@@ -1,4 +1,6 @@
-﻿namespace Bilreg.Domain.AdmisiContext.AntrianFeature;
+﻿using System.Text.RegularExpressions;
+
+namespace Bilreg.Domain.AdmisiContext.AntrianFeature;
 
 public record PersonType(string PersonName, DateOnly TglLahir)
 {

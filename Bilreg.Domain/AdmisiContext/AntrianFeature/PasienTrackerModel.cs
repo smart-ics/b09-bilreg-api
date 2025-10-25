@@ -25,13 +25,16 @@ public class PasienTrackerModel : IPasienTrackerKey
         VisitDate = visitDate;
         _listEvent = listEvent.ToList() ?? [];;
     }
-    public static PasienTrackerModel Create(PersonInfoType person)
+    public static PasienTrackerModel Create(BookingModel booking)
     {
         var newId = Ulid.NewUlid().ToString();
-        var visitor = new PersonType(person.PersonName, person.TglLahir);
-
-        return new PasienTrackerModel(newId, visitor, new DateOnly(3000,1,1), new List<PasienTrackerEventType>());
+        var visitor = new PersonType(booking.Person.PersonName, booking.Person.TglLahir);
+        var result = new PasienTrackerModel(newId, visitor, booking.TglBerobat, 
+            new List<PasienTrackerEventType>());
+        result.AddEvent("BOOKING", booking.BookingId);
+        return result;
     }
+
     public static PasienTrackerModel Default => new PasienTrackerModel(
         "-",
         PersonType.Default, 

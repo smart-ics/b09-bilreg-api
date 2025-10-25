@@ -30,25 +30,26 @@ public class AntrianEntryDal : IAntrianEntryDal
         _opt = opt.Value;
     }
 
-    public void Insert(AntrianEntryDto model)
+    public void Insert(AntrianEntryDto dto)
     {
         const string sql = """
             INSERT INTO BILRG_AntrianEntry(
                 AntrianId, NoUrut, PersonName, AntrianStatus,
-                CreatedAt, ServedAt, DoneAt) 
+                PasienTrackerId, CreatedAt, ServedAt, DoneAt) 
             VALUES(
                 @AntrianId, @NoUrut, @PersonName, @AntrianStatus,
-                @CreatedAt, @ServedAt, @DoneAt)
+                @PasienTrackerId, @CreatedAt, @ServedAt, @DoneAt)
             """;
 
         var dp = new DynamicParameters();
-        dp.AddParam("@AntrianId", model.AntrianId, SqlDbType.VarChar); 
-        dp.AddParam("@NoUrut", model.NoUrut, SqlDbType.Int);	 
-        dp.AddParam("@PersonName", model.PersonName, SqlDbType.VarChar);	 
-        dp.AddParam("@AntrianStatus", model.AntrianStatus, SqlDbType.Int);	
-        dp.AddParam("@CreatedAt", model.CreatedAt, SqlDbType.DateTime);	 
-        dp.AddParam("@ServedAt", model.ServedAt, SqlDbType.DateTime);	 
-        dp.AddParam("@DoneAt", model.DoneAt, SqlDbType.DateTime);
+        dp.AddParam("@AntrianId", dto.AntrianId, SqlDbType.VarChar); 
+        dp.AddParam("@NoUrut", dto.NoUrut, SqlDbType.Int);	 
+        dp.AddParam("@PersonName", dto.PersonName, SqlDbType.VarChar);
+        dp.AddParam("@PasienTrackerId", dto.PasienTrackerId, SqlDbType.VarChar);
+        dp.AddParam("@AntrianStatus", dto.AntrianStatus, SqlDbType.Int);	
+        dp.AddParam("@CreatedAt", dto.CreatedAt, SqlDbType.DateTime);	 
+        dp.AddParam("@ServedAt", dto.ServedAt, SqlDbType.DateTime);	 
+        dp.AddParam("@DoneAt", dto.DoneAt, SqlDbType.DateTime);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -61,6 +62,7 @@ public class AntrianEntryDal : IAntrianEntryDal
                 BILRG_AntrianEntry
            SET
                PersonName = @PersonName, 
+               PasienTrackerId = @PasienTrackerId,
                AntrianStatus = @AntrianStatus,
                CreatedAt = @CreatedAt, 
                ServedAt = @ServedAt, 
@@ -73,7 +75,8 @@ public class AntrianEntryDal : IAntrianEntryDal
         var dp = new DynamicParameters();
         dp.AddParam("@AntrianId", model.AntrianId, SqlDbType.VarChar); 
         dp.AddParam("@NoUrut", model.NoUrut, SqlDbType.Int);	 
-        dp.AddParam("@PersonName", model.PersonName, SqlDbType.VarChar);	 
+        dp.AddParam("@PersonName", model.PersonName, SqlDbType.VarChar);
+        dp.AddParam("@PasienTrackerId", model.PasienTrackerId, SqlDbType.VarChar);
         dp.AddParam("@AntrianStatus", model.AntrianStatus, SqlDbType.Int);	
         dp.AddParam("@CreatedAt", model.CreatedAt, SqlDbType.DateTime);	 
         dp.AddParam("@ServedAt", model.ServedAt, SqlDbType.DateTime);	 
@@ -122,8 +125,8 @@ public class AntrianEntryDal : IAntrianEntryDal
     {
         const string sql = """
            SELECT
-               AntrianId, NoUrut, PersonName, AntrianStatus,
-               CreatedAt, ServedAt, DoneAt
+               AntrianId, NoUrut, PersonName, PasienTrackerId, 
+               AntrianStatus, CreatedAt, ServedAt, DoneAt
            FROM
                 BILRG_AntrianEntry
            WHERE
@@ -143,8 +146,8 @@ public class AntrianEntryDal : IAntrianEntryDal
     {
         const string sql = """
             SELECT
-               AntrianId, NoUrut, PersonName, AntrianStatus,
-               CreatedAt, ServedAt, DoneAt
+            AntrianId, NoUrut, PersonName, PasienTrackerId, 
+            AntrianStatus, CreatedAt, ServedAt, DoneAt
             FROM
                 BILRG_AntrianEntry
             WHERE
@@ -164,7 +167,7 @@ public class AntrianEntryDalTest
     private readonly AntrianEntryDal _sut = new(ConnStringHelper.GetTestEnv());
 
     private static AntrianEntryDto Faker()
-        => new AntrianEntryDto("A", 1, "B", 2,
+        => new AntrianEntryDto("A", 1, "B", "C", 2,
             new DateTime(2025, 10, 1),
             new DateTime(2025, 10, 2),
             new DateTime(2025, 10, 3));

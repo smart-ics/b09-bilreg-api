@@ -2,6 +2,7 @@
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.Helpers;
 using Nuna.Lib.PatternHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
 
@@ -53,9 +54,13 @@ public class AntrianRepo : IAntrianRepo
         _antrianEntryDal.Delete(key);
     }
 
-    public IEnumerable<IAntrianHeaderView> ListData(DateOnly filter)
+    public IEnumerable<AntrianHeaderView> ListData(DateOnly filter)
     {
-        throw new NotImplementedException();
+        var periode = new Periode(filter.ToDateTime(TimeOnly.MinValue));
+        var listDto = _antrianDal.ListData(periode)?.ToList() ?? [];
+        var result = listDto.Select(x => new AntrianHeaderView(x.AntrianId, x.AntrianDescription, 
+            DateOnly.FromDateTime(x.AntrianDate),TimeOnly.Parse(x.StartTime), x.SequenceTag));
+        return result;
     }
  
     #region HELPER

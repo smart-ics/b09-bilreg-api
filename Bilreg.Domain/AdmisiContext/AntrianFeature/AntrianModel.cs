@@ -4,7 +4,7 @@ using Bilreg.Domain.Helpers;
 
 namespace Bilreg.Domain.AdmisiContext.AntrianFeature;
 
-public class AntrianModel : IAntrianKey, IAntrianHeaderView
+public class AntrianModel : IAntrianKey
 {
     private readonly List<AntrianEntryModel> _listEntry;
     private readonly ISequencer _sequencer;
@@ -51,14 +51,14 @@ public class AntrianModel : IAntrianKey, IAntrianHeaderView
         var visitor = pasienTracker.Person;
         var noUrut = _sequencer.GetNextNoUrut(SequenceTag); 
         
-        var entry = AntrianEntryModel.Create(noUrut, visitor);
+        var entry = AntrianEntryModel.Create(noUrut, visitor, pasienTracker);
         _listEntry.Add(entry);
         return entry;
     }
     public void AddEntry()
     {
         var noUrut = _sequencer.GetNextNoUrut(SequenceTag); 
-        var entry = AntrianEntryModel.Create(noUrut, PersonType.Default);
+        var entry = AntrianEntryModel.Create(noUrut, PersonType.Default, PasienTrackerModel.Key("-"));
         _listEntry.Add(entry); 
     }
     public static string GenSequenceTag(DateOnly tglAntrian, JadwalPraktekType jadwal)
@@ -85,9 +85,9 @@ public interface IAntrianKey
     string AntrianId { get; }
 }
 
-public interface IAntrianHeaderView : IAntrianKey
-{
-    public DateOnly AntrianDate { get;  }
-    public TimeOnly StartTime { get;  }
-    public string SequenceTag { get;  }
-}
+public record AntrianHeaderView(
+    string AntrianId,
+    string AntrianDescription,
+    DateOnly AntrianDate,
+    TimeOnly StartTime,
+    string SequenceTag) : IAntrianKey;

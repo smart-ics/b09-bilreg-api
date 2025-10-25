@@ -1,6 +1,7 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
-using Bilreg.Domain.AdmisiContext.LayananSub;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
 using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
 using Bilreg.Domain.Helpers.CommonValueObjects;
 
@@ -15,6 +16,7 @@ public class BookingModel : IBookingKey
         AuditTrailType auditTrail)
     {
         BookingId = bookindId;
+        BookingDate = bookingDate;
         Person = person;
         TglBerobat = tglBerobat;
         JamPraktek = jamPraktek;

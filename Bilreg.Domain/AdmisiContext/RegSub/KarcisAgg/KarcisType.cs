@@ -1,5 +1,5 @@
 ﻿using Ardalis.GuardClauses;
-using Bilreg.Domain.AdmisiContext.LayananSub;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.BillContext.RekapCetakSub;
 using Bilreg.Domain.BillContext.TindakanSub.TarifFeature;
 
