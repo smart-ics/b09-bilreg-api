@@ -1,5 +1,6 @@
 ﻿using Bilreg.Application.AdmisiContext.PetugasMedisSub;
 using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.PetugasMedisSub;
 using Nuna.Lib.PatternHelper;
 
 namespace Bilreg.Infrastructure.AdmisiContext.PetugasMedisFeature;
@@ -50,8 +51,24 @@ public class PetugasMedisRepo : IPetugasMedisRepo
         _ptgMedisLayananDal.Delete(key);
     }
 
-    public IEnumerable<PetugasMedisView> ListData()
+    public IEnumerable<PetugasMedisView> ListData(ISatTugasKey filter)
     {
-        throw new NotImplementedException();
+        var pegSatTugasMeds = _ptgMedisSatTugasDal.ListData(filter) ?? [];
+        var listPeg = _petugasMedisDal.ListData() ?? [];
+
+        var result =
+        from peg in listPeg
+        join sat in pegSatTugasMeds
+            on peg.fs_kd_peg equals sat.fs_kd_peg
+        group sat by peg into g
+        select new PetugasMedisView(
+            PetugasMedisId: g.Key.fs_kd_peg,
+            PetugasMedisName: g.Key.fs_nm_peg,
+            NamaSingkat: g.Key.fs_nm_alias,
+            Smf: new SmfType(g.Key.fs_kd_smf, g.Key.fs_nm_smf),
+            ListSatTugas: g.Select(x => x.ToModel())
+        );
+
+        return result;
     }
 }

@@ -25,10 +25,10 @@ public class PetugasMedisController : Controller
         return Ok(new JSendOk(response));
     }
 
-    [HttpGet("list")]
-    public async Task<IActionResult> ListData()
+    [HttpGet("list/{satTugasId}")]
+    public async Task<IActionResult> ListData(string satTugasId)
     {
-        var query = new PetugasMedisListQuery();
+        var query = new PetugasMedisListQuery(satTugasId);
         var result = await _mediator.Send(query);
         return Ok(new JSendOk(result));
     }

@@ -114,6 +114,8 @@ public class PetugasMedisDal : IPetugasMedisDal
             FROM 
                 td_peg aa
                 LEFT JOIN ta_smf bb ON aa.fs_kd_smf = bb.fs_kd_smf
+            WHERE 
+                aa.fb_aktif_Dinas = 1
             ORDER BY 
                 aa.fs_kd_peg
             """;

@@ -1,6 +1,4 @@
-﻿using Ardalis.GuardClauses;
-using Bilreg.Domain.AdmisiContext.PetugasMedisSub;
-using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
+﻿using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
 
 namespace Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
 
