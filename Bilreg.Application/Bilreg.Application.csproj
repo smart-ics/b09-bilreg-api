@@ -29,7 +29,6 @@
 
   <ItemGroup>
     <Folder Include="AdmisiContext\PetugasMedisFeature\PetugasMedisAgg\" />
-    <Folder Include="ParamContext\ParamSistemAgg\" />
   </ItemGroup>
 
 </Project>

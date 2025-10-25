@@ -1,4 +1,4 @@
-﻿using Bilreg.Application.AdmisiContext.SearchPasienSub;
+﻿using Bilreg.Application.PasienContext.PasienFeature;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
@@ -15,14 +15,14 @@ public class SearchPasienController : Controller
     {
         _mediator = mediator;
     }
-    [HttpGet]
-    [Route("deep/{keyword}")]
-    public async Task<IActionResult> GetData(string keyword)
-    {
-        var query = new DeepSearchPasienQuery(keyword);
-        var response = await _mediator.Send(query);
-        return Ok(new JSendOk(response));
-    }
+    // [HttpGet]
+    // [Route("deep/{keyword}")]
+    // public async Task<IActionResult> GetData(string keyword)
+    // {
+    //     var query = new DeepSearchPasienQuery(keyword);
+    //     var response = await _mediator.Send(query);
+    //     return Ok(new JSendOk(response));
+    // }
 
     [HttpGet]
     [Route("quick/{keyword}")]

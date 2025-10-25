@@ -1,5 +1,6 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
+using Bilreg.Application.ParamContext.ParamSistemAgg;
 using Bilreg.Domain.ParamContext;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
@@ -9,7 +10,7 @@ using Nuna.Lib.DataAccessHelper;
 using Nuna.Lib.TransactionHelper;
 using Xunit;
 
-namespace Bilreg.Infrastructure.ParamContext.ParamSistemAgg;
+namespace Bilreg.Infrastructure.ParamContext;
 
 public class ParamSistemDal : IParamSistemDal
 {
