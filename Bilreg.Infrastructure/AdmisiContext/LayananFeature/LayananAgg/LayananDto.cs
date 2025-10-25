@@ -18,7 +18,7 @@ public record LayananDto(
         => new(
             model.LayananId,
             model.LayananName,
-            model.IsAKtif,
+            model.IsAktif,
             model.Instalasi.InstalasiId,
             model.LayananDk.LayananDkId,
             model.TipeLayananDk.TipeLayananDkId,

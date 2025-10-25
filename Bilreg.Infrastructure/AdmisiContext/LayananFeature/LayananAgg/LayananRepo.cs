@@ -33,4 +33,11 @@ public class LayananRepo : ILayananRepo
     {
         _layananDal.Delete(key);
     }
+
+    public IEnumerable<LayananType> ListData()
+    {
+        var listDto = _layananDal.ListData()?.ToList() ?? [];
+        var result = listDto.Select(x => x.ToModel());
+        return result;
+    }
 }

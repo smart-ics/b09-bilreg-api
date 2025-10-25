@@ -28,7 +28,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="AdmisiContext\PetugasMedisSub\PetugasMedisAgg\" />
+    <Folder Include="AdmisiContext\PetugasMedisFeature\PetugasMedisAgg\" />
     <Folder Include="ParamContext\ParamSistemAgg\" />
   </ItemGroup>
 

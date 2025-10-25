@@ -1,7 +1,7 @@
-﻿using Bilreg.Domain.AdmisiContext.LayananSub;
+﻿using Bilreg.Domain.AdmisiContext.LayananFeature;
 using MediatR;
 
-namespace Bilreg.Application.AdmisiContext.LayananSub.LayananAgg;
+namespace Bilreg.Application.AdmisiContext.LayananFeature.LayananAgg;
 
 public record LayananGetQuery(string LayananId) : IRequest<LayananGetResponse>, ILayananKey;
 public record LayananGetResponse(
@@ -9,30 +9,28 @@ public record LayananGetResponse(
     string LayananName,
     bool IsAktif,
     string InstalasiId,
-    string InstalasiName,
-    string InstalasiDkId,
-    string InstalasiDkName,
-    string LayananDkId,
-    string LayananDkName,
-    string LayananTipeDkId,
-    string LayananTipeDkName
-    );
+    string InstalasiName);
 
 public class LayananGetHandler : IRequestHandler<LayananGetQuery, LayananGetResponse>
 {
-    private readonly ILayananDal _layananDal;
+    private readonly ILayananRepo _layananRepo;
 
-    public LayananGetHandler(ILayananDal layananDal)
+    public LayananGetHandler(ILayananRepo layananRepo)
     {
-        _layananDal = layananDal;
+        _layananRepo = layananRepo;
     }
+
     public Task<LayananGetResponse> Handle(LayananGetQuery request, CancellationToken cancellationToken)
-        => _layananDal.GetData(LayananType.Key(request.LayananId))
-        .Match(
-            onSome: x => Task.FromResult(new LayananGetResponse(x.LayananId, x.LayananName,
-                            x.IsAktif, x.Instalasi.InstalasiId, x.Instalasi.InstalasiName,
-                            x.InstalasiDk.InstalasiDkId, x.InstalasiDk.InstalasiDkName,
-                            x.LayananDk.LayananDkId, x.LayananDk.LayananDkName,
-                            x.TipeLayananDk.TipeLayananDkId, x.TipeLayananDk.TipeLayananDkName)),
-            onNone: () => throw new KeyNotFoundException($"Layanan {request.LayananId} not found"));
+    {
+        var lyn = _layananRepo.LoadEntity(LayananType.Key(request.LayananId))
+            .Match(
+                onSome: x => x,
+                onNone: () => throw new KeyNotFoundException($"Layanan {request.LayananId} not found"));
+        
+        
+        
+        var response = new LayananGetResponse(lyn.LayananId, lyn.LayananName,
+            lyn.IsAktif, lyn.Instalasi.InstalasiId, lyn.Instalasi.InstalasiName);
+        return Task.FromResult(response);
+    }
 }

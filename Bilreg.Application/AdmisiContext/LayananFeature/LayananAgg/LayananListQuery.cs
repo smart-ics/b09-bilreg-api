@@ -1,6 +1,6 @@
 ﻿using MediatR;
 
-namespace Bilreg.Application.AdmisiContext.LayananSub.LayananAgg
+namespace Bilreg.Application.AdmisiContext.LayananFeature.LayananAgg
 {
     public record LayananListQuery() : IRequest<IEnumerable<LayananListResponse>>;
 
@@ -13,20 +13,21 @@ namespace Bilreg.Application.AdmisiContext.LayananSub.LayananAgg
         );
     public class LayananListHandler : IRequestHandler<LayananListQuery, IEnumerable<LayananListResponse>>
     {
-        private readonly ILayananDal _layananDal;
+        private readonly ILayananRepo _layananRepo;
 
-        public LayananListHandler(ILayananDal layananDal)
+        public LayananListHandler(ILayananRepo layananRepo)
         {
-            _layananDal = layananDal;
+            _layananRepo = layananRepo;
         }
 
-        public Task<IEnumerable<LayananListResponse>> Handle(LayananListQuery request, CancellationToken cancellationToken)
-                => _layananDal.ListData()
-                    .Match(
-                        onSome: x => Task.FromResult(x.Select(y
-                            => new LayananListResponse(y.LayananId, y.LayananName,
-                                y.IsAktif, y.Instalasi.InstalasiId, y.Instalasi.InstalasiName))),
-                        onNone: () => throw new KeyNotFoundException("data not found"));
-        
+        public Task<IEnumerable<LayananListResponse>> Handle(LayananListQuery request,
+            CancellationToken cancellationToken)
+        {
+            var listLyn = _layananRepo.ListData()?.ToList() ?? [];
+            var response = listLyn
+                .Select(x => new LayananListResponse(x.LayananId, x.LayananName,
+                    x.IsAktif, x.Instalasi.InstalasiId, x.Instalasi.InstalasiName));
+            return Task.FromResult(response);
+        }
     }
 }
