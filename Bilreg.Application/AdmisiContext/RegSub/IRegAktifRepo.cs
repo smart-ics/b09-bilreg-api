@@ -9,7 +9,7 @@ public interface IRegAktifRepo :
     ISaveChange<RegAktifModel>,
     ILoadEntity<RegAktifModel, IRegKey>,
     IDelete<IRegKey>,
-    IListData<RegAktifModel, Periode>,
+    IListData<RegAktifModel, Periode>
 {
     
 }

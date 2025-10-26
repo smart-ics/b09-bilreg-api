@@ -116,9 +116,9 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         var periodeVisit = new Periode(booking.TglBerobat.ToDateTime(TimeOnly.MinValue));
         var listTracker = _trackerRepo.ListData(periodeVisit, booking.Person.TglLahir)?.ToList() 
                           ?? [];
-        var personNameEyd = booking.Person.PersonName.NormalizeToEyd();
+        var personNameEyd = booking.Person.PersonName.ToEyd();
         var duplicated = listTracker
-            .FirstOrDefault(x => x.Person.PersonName.NormalizeToEyd() == personNameEyd);
+            .FirstOrDefault(x => x.Person.PersonName.ToEyd() == personNameEyd);
 
         if (duplicated is not null)
             throw new ArgumentException("Pasien terdeteksi di tracker. Booking terduplikasi");

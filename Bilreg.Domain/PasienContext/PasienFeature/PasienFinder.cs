@@ -6,18 +6,16 @@ namespace Bilreg.Domain.PasienContext.PasienFeature;
 
 public record PasienFinder(
     string PasienId,
-    string PasienName,
     string TglLahir,
-    string IbuKandung,
-    string Alamat,
     string RegId,
-    string BookingId)
+    string BookingId,
+    string[] StringVariants)
 {
     public static PasienFinder CreateNew(string keyword, string pasienIdPrefix)
     {
         keyword = keyword.ToUpper();
         if (string.IsNullOrWhiteSpace(keyword))
-            return new PasienFinder("", "", "", "", "", "", "");
+            return new PasienFinder("", "", "", "", []);
 
         var tokens = keyword.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
@@ -25,9 +23,7 @@ public record PasienFinder(
         var regId = "";
         var bookingId = "";
         var tglLahir = "";
-        var pasienName = "";
-        var ibuKandung = "";
-        var alamat = "";
+        string[] stringVariants = [];
 
         foreach (var token in tokens)
         {
@@ -58,26 +54,45 @@ public record PasienFinder(
 
             if (isFormattedData) continue;
             
-            // Anything else: name, mother, address
-            var normalize = token.NormalizeToEyd();
-            pasienName = AppendText(pasienName, normalize);
-            ibuKandung = AppendText(ibuKandung, normalize);
-            alamat = AppendText(alamat, token);
+            var variants = MutateStringVariants(token);
+            stringVariants = stringVariants.Concat(variants).ToArray();
         }
 
         return new PasienFinder(
-            PasienId: pasienId.ToUpper(),
-            PasienName: pasienName.ToUpper().Trim(),
+            PasienId: pasienId,
             TglLahir: tglLahir,
-            IbuKandung: ibuKandung.ToUpper().Trim(),
-            Alamat: alamat.ToUpper().Trim(),
             RegId: regId,
-            BookingId: bookingId
-        );
+            BookingId: bookingId,
+            stringVariants);
     }
 
     // ========== PRIVATE HELPERS ==========
+    private static string[] MutateStringVariants(string token)
+    {
+        var result = new string[] { token };
+        //  convert to eyd
+        var eyd = token.ToEyd();
+        if (token != eyd)
+            result = result.Append(eyd).ToArray();
+        
+        //  convert to ejaan lama
+        var ejaanLama = token.ToEjaanLama();
+        if (token != ejaanLama)
+            result = result.Append(ejaanLama).ToArray();
+        
+        //  normalize
+        var normalize = token.ToNormal();
+        if (token != normalize)
+            result = result.Append(normalize).ToArray();
 
+        //  remove double char
+        var removedDoubleChar = token.RemoveDoubleChar();
+        if (token != removedDoubleChar)
+            result = result.Append(removedDoubleChar).ToArray();
+        
+        return result;
+    }
+    
     private static string TryParseRegisterId(string token)
     {
         if (token.StartsWith("RG", StringComparison.OrdinalIgnoreCase))

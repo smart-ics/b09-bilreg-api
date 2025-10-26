@@ -77,85 +77,84 @@ public class PasienFinderTests
         result.TglLahir.Should().Be(expectedDate);
     }
 
-    [Fact]
-    public void Given_TextKeyword_When_CreateNew_Then_ShouldAssignToNameMotherAndAddress()
+    [Theory]
+    [InlineData("Agus", "AGOES")]
+    [InlineData("Tjandra", "CANDRA")]
+    [InlineData("Noordin", "NURDIN")]
+    [InlineData("Yudhis", "YUDIS")]
+    [InlineData("Benny", "BENY")]
+    public void Given_TextKeyword_When_CreateNew_Then_ShouldAssignStringVariants(string keyword, string expected)
     {
-        // Arrange
-        const string keyword = "Agus Budiman";
-
         // Act
         var result = PasienFinder.CreateNew(keyword, PREFIX);
 
         // Assert
-        result.PasienName.Should().Be("AGUS BUDIMAN");
-        result.IbuKandung.Should().Be("AGUS BUDIMAN");
-        result.Alamat.Should().Be("AGUS BUDIMAN");
+        result.StringVariants.Should().ContainMatch(expected.ToUpper());
     }
 
-    [Fact]
-    public void Given_MultipleTokens_When_CreateNew_Then_ShouldParseEachProperly()
-    {
-        // Arrange
-        const string keyword = "John 2020-05-21 RG12";
-            
-        // Act
-        var result = PasienFinder.CreateNew(keyword, PREFIX);
-
-        // Assert
-        result.PasienName.Should().Be("JOHN");
-        result.TglLahir.Should().Be("2020-05-21");
-        result.RegId.Should().Be("RG00000012");
+     [Fact]
+     public void Given_MultipleTokens_When_CreateNew_Then_ShouldParseEachProperly()
+     {
+         // Arrange
+         const string keyword = "John 2020-05-21 RG12";
+             
+         // Act
+         var result = PasienFinder.CreateNew(keyword, PREFIX);
+    
+         // Assert
+         result.StringVariants.Should().ContainMatch("JOHN");
+         result.TglLahir.Should().Be("2020-05-21");
+         result.RegId.Should().Be("RG00000012");
+     }
+    
+     [Fact]
+     public void Given_MultipleTokensIncludingBookingAndLocation_When_CreateNew_Then_ShouldParseBookingAndAddress()
+     {
+         // Arrange
+         const string keyword = "BK3 Maria Jakarta";
+    
+         // Act
+         var result = PasienFinder.CreateNew(keyword, PREFIX);
+    
+         // Assert
+         result.BookingId.Should().Be("BK00000003");
+         result.StringVariants.Should().ContainMatch("MARIA");
+         result.StringVariants.Should().ContainMatch("JAKARTA");
+     }
+    
+     [Fact]
+     public void Given_EmptyKeyword_When_CreateNew_Then_ShouldReturnEmptyFinder()
+     {
+         // Arrange
+         const string keyword = " ";
+    
+         // Act
+         var result = PasienFinder.CreateNew(keyword, PREFIX);
+    
+         // Assert
+         result.PasienId.Should().BeEmpty();
+         result.RegId.Should().BeEmpty();
+         result.BookingId.Should().BeEmpty();
+         result.TglLahir.Should().BeEmpty();
+         result.StringVariants.Should().BeEmpty();
+     }
+    
+     [Fact]
+     public void Given_EjaanLama_When_CreateNew_Then_NameShouldBeEyd()
+     {
+         // Arrange
+         const string keyword = "Tjandra Soemitro Djayadi";
+    
+         // Act
+         var result = PasienFinder.CreateNew(keyword, PREFIX);
+    
+         // Assert
+         result.PasienId.Should().BeEmpty();
+         result.RegId.Should().BeEmpty();
+         result.BookingId.Should().BeEmpty();
+         result.TglLahir.Should().BeEmpty();
+         result.StringVariants.Should().ContainMatch("CANDRA");
+         result.StringVariants.Should().ContainMatch("SUMITRO");
+         result.StringVariants.Should().ContainMatch("JAYADI");
     }
-
-    [Fact]
-    public void Given_MultipleTokensIncludingBookingAndLocation_When_CreateNew_Then_ShouldParseBookingAndAddress()
-    {
-        // Arrange
-        const string keyword = "BK3 Maria Jakarta";
-
-        // Act
-        var result = PasienFinder.CreateNew(keyword, PREFIX);
-
-        // Assert
-        result.BookingId.Should().Be("BK00000003");
-        result.PasienName.Should().Be("MARIA JAKARTA");
-        result.Alamat.Should().Be("MARIA JAKARTA");
-    }
-
-    [Fact]
-    public void Given_EmptyKeyword_When_CreateNew_Then_ShouldReturnEmptyFinder()
-    {
-        // Arrange
-        const string keyword = " ";
-
-        // Act
-        var result = PasienFinder.CreateNew(keyword, PREFIX);
-
-        // Assert
-        result.PasienId.Should().BeEmpty();
-        result.RegId.Should().BeEmpty();
-        result.BookingId.Should().BeEmpty();
-        result.PasienName.Should().BeEmpty();
-        result.TglLahir.Should().BeEmpty();
-        result.IbuKandung.Should().BeEmpty();
-        result.Alamat.Should().BeEmpty();
-    }
-
-    [Fact]
-    public void Given_EjaanLama_When_CreateNew_Then_NameShouldBeEyd()
-    {
-        // Arrange
-        const string keyword = "Tjandra Soemitro Djayadi";
-
-        // Act
-        var result = PasienFinder.CreateNew(keyword, PREFIX);
-
-        // Assert
-        result.PasienId.Should().BeEmpty();
-        result.RegId.Should().BeEmpty();
-        result.BookingId.Should().BeEmpty();
-        result.PasienName.Should().Be("CANDRA SUMITRO JAYADI");
-        result.TglLahir.Should().BeEmpty();
-        result.IbuKandung.Should().Be("CANDRA SUMITRO JAYADI");
-        result.Alamat.Should().Be("TJANDRA SOEMITRO DJAYADI");
-    }}
+}
