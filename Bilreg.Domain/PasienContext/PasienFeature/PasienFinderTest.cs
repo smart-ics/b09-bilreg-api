@@ -78,31 +78,32 @@ public class PasienFinderTests
     }
 
     [Theory]
-    [InlineData("Agus", "AGOES")]
-    [InlineData("Tjandra", "CANDRA")]
-    [InlineData("Noordin", "NURDIN")]
-    [InlineData("Yudhis", "YUDIS")]
-    [InlineData("Benny", "BENY")]
-    public void Given_TextKeyword_When_CreateNew_Then_ShouldAssignStringVariants(string keyword, string expected)
+    [InlineData("AGUS", new string[] { "AGUS", "AGOES"})]
+    [InlineData("TJANDRA", new string[] { "TJANDRA", "CANDRA"})]
+    [InlineData("NOORDIN", new string[] { "NOORDIN", "NURDIN", "NORDIN"})]
+    [InlineData("YUDHIS", new string[] { "YUDHIS", "YOEDHIS", "YUDIS"})]
+    [InlineData("BENNY", new string[] { "BENNY", "BENY"})]
+    public void Given_TextKeyword_When_CreateNew_Then_ShouldAssignStringVariants(string keyword, string[] expected)
     {
         // Act
         var result = PasienFinder.CreateNew(keyword, PREFIX);
 
         // Assert
-        result.StringVariants.Should().ContainMatch(expected.ToUpper());
+        result.StringVariants.Should().ContainKey(keyword);
+        result.StringVariants[keyword].Should().BeEquivalentTo(expected);
     }
 
      [Fact]
      public void Given_MultipleTokens_When_CreateNew_Then_ShouldParseEachProperly()
      {
          // Arrange
-         const string keyword = "John 2020-05-21 RG12";
+         const string keyword = "Budi 2020-05-21 RG12";
              
          // Act
          var result = PasienFinder.CreateNew(keyword, PREFIX);
     
          // Assert
-         result.StringVariants.Should().ContainMatch("JOHN");
+         result.StringVariants["BUDI"].Should().BeEquivalentTo(["BUDI", "BOEDI"]);
          result.TglLahir.Should().Be("2020-05-21");
          result.RegId.Should().Be("RG00000012");
      }
@@ -118,8 +119,8 @@ public class PasienFinderTests
     
          // Assert
          result.BookingId.Should().Be("BK00000003");
-         result.StringVariants.Should().ContainMatch("MARIA");
-         result.StringVariants.Should().ContainMatch("JAKARTA");
+         result.StringVariants["MARIA"].Should().BeEquivalentTo(["MARIA"]);
+         result.StringVariants["JAKARTA"].Should().BeEquivalentTo(["JAKARTA", "DJAKARTA"]);
      }
     
      [Fact]
@@ -153,8 +154,8 @@ public class PasienFinderTests
          result.RegId.Should().BeEmpty();
          result.BookingId.Should().BeEmpty();
          result.TglLahir.Should().BeEmpty();
-         result.StringVariants.Should().ContainMatch("CANDRA");
-         result.StringVariants.Should().ContainMatch("SUMITRO");
-         result.StringVariants.Should().ContainMatch("JAYADI");
+         result.StringVariants["TJANDRA"].Should().BeEquivalentTo(["TJANDRA", "CANDRA"]);
+         result.StringVariants["SOEMITRO"].Should().BeEquivalentTo(["SOEMITRO", "SUMITRO"]);
+         result.StringVariants["DJAYADI"].Should().BeEquivalentTo(["DJAYADI", "JAYADI"]);
     }
 }

@@ -13,21 +13,21 @@ using Xunit;
 namespace Bilreg.Infrastructure.PasienContext.PasienFeature;
 
 public interface IPasien2Dal : 
-    IInsert<Pasien2Dto>,
-    IUpdate<Pasien2Dto>,
+    IInsert<PasienKtpDto>,
+    IUpdate<PasienKtpDto>,
     IDelete<IPasienKey>,
-    IGetData<Pasien2Dto, IPasienKey>{}
+    IGetData<PasienKtpDto, IPasienKey>{}
 
-public class Pasien2Dal : IPasien2Dal
+public class PasienKtpDal : IPasien2Dal
 {
     private readonly DatabaseOptions _opt;
 
-    public Pasien2Dal(IOptions<DatabaseOptions>  opt)
+    public PasienKtpDal(IOptions<DatabaseOptions>  opt)
     {
         _opt = opt.Value;
     }
 
-    public void Insert(Pasien2Dto model)
+    public void Insert(PasienKtpDto model)
     {
         const string sql = @"
             INSERT INTO BILRG_Pasien(
@@ -49,7 +49,7 @@ public class Pasien2Dal : IPasien2Dal
         conn.Execute(sql, dp);
     }
 
-    public void Update(Pasien2Dto model)
+    public void Update(PasienKtpDto model)
     {
         const string sql = @"
             UPDATE
@@ -90,7 +90,7 @@ public class Pasien2Dal : IPasien2Dal
         conn.Execute(sql, dp);
     }
 
-    public Pasien2Dto GetData(IPasienKey key)
+    public PasienKtpDto GetData(IPasienKey key)
     {
         const string sql = @"
             SELECT
@@ -103,20 +103,20 @@ public class Pasien2Dal : IPasien2Dal
         dp.AddParam("@PasienId", key.PasienId, SqlDbType.VarChar);
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.ReadSingle<Pasien2Dto>(sql, dp);
+        return conn.ReadSingle<PasienKtpDto>(sql, dp);
     }
 }
 
-public class Pasien2DalTest
+public class PasienKtpDalTest
 {
-    private readonly Pasien2Dal _sut;
-    public Pasien2DalTest()
+    private readonly PasienKtpDal _sut;
+    public PasienKtpDalTest()
     {
-        _sut = new Pasien2Dal(ConnStringHelper.GetTestEnv());
+        _sut = new PasienKtpDal(ConnStringHelper.GetTestEnv());
     }
     
-    private Pasien2Dto Faker()
-    => new Pasien2Dto( "A", "B", "C", "D", "E", "F" );
+    private PasienKtpDto Faker()
+    => new PasienKtpDto( "A", "B", "C", "D", "E", "F" );
     
     [Fact]
     public void UT1_InserTest()

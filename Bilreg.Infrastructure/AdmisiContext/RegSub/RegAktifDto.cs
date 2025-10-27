@@ -33,7 +33,8 @@ public record RegAktifDto(
     
     public RegAktifModel ToModel()
     {
-        var pasienReff = new PasienReff(PasienId, PasienName, TglLahir.ToDate("yyyy-MM-dd"), Gender);
+        var tglLahir = DateOnly.Parse(TglLahir);
+        var pasienReff = new PasienReff(PasienId, PasienName,  tglLahir, Gender);
         var layananReff = new LayananReff(LayananId, LayananName);
         var dokterReff = new PetugasMedisReff(DokterId, DokterName);
         var tipeJaminanReff = new TipeJaminanReff(TipeJaminanId, TipeJaminanName);

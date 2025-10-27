@@ -6,16 +6,16 @@ using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
 
 namespace Bilreg.Domain.AdmisiContext.BookingFeature;
 
-public interface IJadwalPraktekFactory : IFactory<JadwalPraktekType>
+public interface IJadwalPraktekNunaFactory : INunaFactory<JadwalPraktekType>
 {
     JadwalPraktekType Create(PetugasMedisType dokter,
         LayananType layanan, DayOfWeek hari, TimeOnly jamMulai, TimeOnly jamSelesai);
 }
-public class JadwalPraktekFactory : IJadwalPraktekFactory
+public class JadwalPraktekNunaFactory : IJadwalPraktekNunaFactory
 {
     private readonly ISequencer _sequencer;
 
-    public JadwalPraktekFactory(ISequencer sequencer)
+    public JadwalPraktekNunaFactory(ISequencer sequencer)
     {
         _sequencer = sequencer;
     }

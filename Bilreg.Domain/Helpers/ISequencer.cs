@@ -6,3 +6,7 @@ public interface ISequencer
     int  GetNextNoUrut(string sequenceTag);
 }
 
+public interface ISequencerManual
+{
+    long GetNextNoUrut(string sequenceTag, string description);
+}

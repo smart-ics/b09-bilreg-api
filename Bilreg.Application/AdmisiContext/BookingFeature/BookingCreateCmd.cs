@@ -94,7 +94,7 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         var pasienKey = PasienModel.Key(request.PasienId);
         var pasien = _pasienRepo.LoadEntity(pasienKey)
             .Match(
-                onSome: x => x.ToPersonInfoType(),
+                onSome: x => x.Person,
                 onNone: () => throw new KeyNotFoundException($"Pasien id {request.PasienId} not found")
             );
         return pasien;

@@ -203,7 +203,7 @@ public class RegAktifDalTest
     public void DeleteTest()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Delete(Faker());
+        _sut.Delete(FakerKey());
     }
 
     [Fact]

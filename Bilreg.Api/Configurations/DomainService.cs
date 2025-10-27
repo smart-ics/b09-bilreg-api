@@ -18,7 +18,7 @@ public static class DomainService
         services
             .AddValidatorsFromAssembly(Assembly.Load(DOMAIN_ASSEMBLY))
             .AddScoped<IAntrianFactory, AntrianFactory>()
-            .AddScoped<IJadwalPraktekFactory, JadwalPraktekFactory>()
+            .AddScoped<IJadwalPraktekNunaFactory, JadwalPraktekNunaFactory>()
             ;
         
         return services;

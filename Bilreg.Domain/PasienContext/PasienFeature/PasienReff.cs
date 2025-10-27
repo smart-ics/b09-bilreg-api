@@ -3,5 +3,5 @@
 public record PasienReff(
     string PasienId,
     string PasienName,
-    DateTime TglLahir,    
+    DateOnly TglLahir,    
     string Gender);

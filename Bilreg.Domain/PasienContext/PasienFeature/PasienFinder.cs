@@ -9,7 +9,7 @@ public record PasienFinder(
     string TglLahir,
     string RegId,
     string BookingId,
-    string[] StringVariants)
+    Dictionary<string, string[]> StringVariants)
 {
     public static PasienFinder CreateNew(string keyword, string pasienIdPrefix)
     {
@@ -23,7 +23,7 @@ public record PasienFinder(
         var regId = "";
         var bookingId = "";
         var tglLahir = "";
-        string[] stringVariants = [];
+        Dictionary<string, string[]> stringVariants = [];
 
         foreach (var token in tokens)
         {
@@ -55,7 +55,7 @@ public record PasienFinder(
             if (isFormattedData) continue;
             
             var variants = MutateStringVariants(token);
-            stringVariants = stringVariants.Concat(variants).ToArray();
+            stringVariants.Add(token, variants);
         }
 
         return new PasienFinder(
@@ -74,11 +74,13 @@ public record PasienFinder(
         var eyd = token.ToEyd();
         if (token != eyd)
             result = result.Append(eyd).ToArray();
-        
-        //  convert to ejaan lama
-        var ejaanLama = token.ToEjaanLama();
-        if (token != ejaanLama)
-            result = result.Append(ejaanLama).ToArray();
+        else
+        {
+            //  convert to ejaan lama
+            var ejaanLama = token.ToEjaanLama();
+            if (token != ejaanLama)
+                result = result.Append(ejaanLama).ToArray();
+        }
         
         //  normalize
         var normalize = token.ToNormal();

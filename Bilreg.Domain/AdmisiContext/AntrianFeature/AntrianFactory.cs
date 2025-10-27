@@ -5,7 +5,7 @@ using Bilreg.Domain.Helpers;
 
 namespace Bilreg.Domain.AdmisiContext.AntrianFeature;
 
-public interface IAntrianFactory : IFactory<AntrianModel>
+public interface IAntrianFactory : INunaFactory<AntrianModel>
 {
     AntrianModel Create(DateOnly antrianDate, JadwalPraktekType jadwalPraktek);
     AntrianModel Create(ServicePointType servicePoint);
