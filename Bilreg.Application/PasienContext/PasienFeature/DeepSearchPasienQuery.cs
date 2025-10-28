@@ -39,6 +39,7 @@ public class DeepSearchPasienHandler : IRequestHandler<DeepSearchPasienQuery, IE
             throw new ArgumentException("Keyword terlalu pendek (minimal 3 karakter).");
         var kodeRs = _paramSistemDal.GetData(KODE_RS_PARAM_KEY)?.Value ?? string.Empty;
         var finder = PasienFinder.CreateNew(request.Keyword, kodeRs);
+
         var datasource = new List<PasienFinder>();
         if (request.SearchMode == "QUICK")
             datasource = DataSourceQuickSearch(request.Keyword);

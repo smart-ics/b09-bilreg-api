@@ -6,6 +6,7 @@ using System.Reflection;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.Helpers;
+using Bilreg.Infrastructure.ParamContext;
 
 namespace Bilreg.Api.Configurations;
 
@@ -19,6 +20,9 @@ public static class DomainService
             .AddValidatorsFromAssembly(Assembly.Load(DOMAIN_ASSEMBLY))
             .AddScoped<IAntrianFactory, AntrianFactory>()
             .AddScoped<IJadwalPraktekNunaFactory, JadwalPraktekNunaFactory>()
+            .AddScoped<IPasienFactory, PasienFactory>()
+            .AddScoped<ISequencerManual, SequencerManual>()
+            .AddScoped<IGetKodeRsService, GetKodeRsService>()
             ;
         
         return services;
