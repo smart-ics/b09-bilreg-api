@@ -8,7 +8,8 @@ namespace Bilreg.Domain.PasienContext.PasienFeature;
 
 public interface IPasienFactory : INunaFactory<PasienModel>
 {
-    PasienModel CreateFromPerson(PersonInfoType person);
+    PasienModel CreateFromPerson(PersonInfoType person, string nickName,
+        string tempatLahir, GolDarahType golDarah, string namaIbuKandung);
 }
 public interface IGetKodeRsService : INunaService<string>
 {
@@ -26,13 +27,14 @@ public class PasienFactory : IPasienFactory
         _getKodeRs = getKodeRs;
     }
 
-    public PasienModel CreateFromPerson(PersonInfoType person)
+    public PasienModel CreateFromPerson(PersonInfoType person, string nickName,
+        string tempatLahir, GolDarahType golDarah, string namaIbuKandung)
     {
         var newNumber = _sequencer.GetNextNoUrut("NOMR", "Nomor Medical Record");
         var kodeRs = _getKodeRs.Execute();
         var newId = $"{kodeRs}{newNumber:D8}";
-        var newPasien = new PasienModel(newId, person, "-", "-", GolDarahType.Default, 
-            "-", AlamatType.Default, KelurahanType.Default, IdentitasType.Default, 
+        var newPasien = new PasienModel(newId, person, nickName, tempatLahir, golDarah, 
+            namaIbuKandung, AlamatType.Default, KelurahanType.Default, IdentitasType.Default, 
             new List<ContactType>(), PasienKeluargaType.Default, 
             AgamaType.Default, SukuType.Default, StatusKawinDkType.Default, 
             PendidikanDkType.Default, PekerjaanDkType.Default, 

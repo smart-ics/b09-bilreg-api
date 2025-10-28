@@ -7,15 +7,26 @@ using Xunit;
 
 namespace Bilreg.Infrastructure.PasienContext.PasienFeature;
 
+
+// ReSharper disable InconsistentNaming
 public record PasienKtpDto(
-    string PasienId,
-    string AlamatKtp1,
-    string AlamatKtp2,
-    string AlamatKtp3,
-    string AlamatKtpKota,
-    string AlamatKtpKodePos) : IPasienKey
+    string fs_kd_mr, string fs_nik, string fs_nama_ktp, string fs_alm_ktp,
+    string fs_rt_ktp, string fs_rw_ktp, string fs_kd_kelurahan_ktp, string fs_kelurahan_ktp, 
+    string fs_kd_kecamatan_ktp, string fs_kecamatan_ktp, string fs_kd_kabupaten_ktp, string fs_kabupaten_ktp,
+    string fs_kd_propinsi_ktp, string fs_propinsi_ktp,
+    string fs_tempat_lahir, string fs_sex, string fd_tgl_lahir, string fs_gol_darah)
 {
-    public AlamatType GetAlamatKtp() 
+    public static PasienKtpDto FromModel(PasienModel model)
+    {
+        var noKtp = model.Person.Identity.NomorId;
+        var alamat = model.AlamatKtp.Alamat[0] ?? "-";
+        var alamat2 = model.AlamatKtp.Alamat[1] ?? "-";
+        var alamat3 = model.AlamatKtp.Alamat[2] ?? "-";
+        var result = new PasienKtpDto(
+            model.PasienId, model.Person, noKtp, alamat, alamat2, alamat3,
+            
+            )
+    } 
         => new([AlamatKtp1, AlamatKtp2, AlamatKtp3], AlamatKtpKota, AlamatKtpKodePos);
     
     public static PasienKtpDto Create(PasienModel model)

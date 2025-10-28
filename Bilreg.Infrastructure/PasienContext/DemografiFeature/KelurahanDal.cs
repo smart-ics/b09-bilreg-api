@@ -1,6 +1,5 @@
 using System.Data;
 using System.Data.SqlClient;
-using Bilreg.Application.PasienContext.DemografiFeature;
 using Bilreg.Domain.PasienContext.DemografiFeature;
 using Bilreg.Infrastructure.Helpers;
 using Bilreg.Infrastructure.PasienContext.DemografiSub.KecamatanAgg;
@@ -12,8 +11,17 @@ using Nuna.Lib.PatternHelper;
 using Nuna.Lib.TransactionHelper;
 using Xunit;
 
-namespace Bilreg.Infrastructure.PasienContext.DemografiSub.KelurahanAgg;
+namespace Bilreg.Infrastructure.PasienContext.DemografiFeature;
 
+public interface IKelurahanDal :
+    IInsert<KelurahanDto>,
+    IUpdate<KelurahanDto>,
+    IDelete<IKelurahanKey>,
+    IGetData<KelurahanDto, IKelurahanKey>,
+    IListData<KelurahanDto, IKecamatanKey>,
+    IListData<KelurahanDto, string>
+{
+}
 public class KelurahanDal : IKelurahanDal
 {
     private readonly DatabaseOptions _opt;
@@ -23,7 +31,7 @@ public class KelurahanDal : IKelurahanDal
         _opt = opt.Value;
     }
 
-    public void Insert(KelurahanType model)
+    public void Insert(KelurahanDto dto)
     {
         const string sql = @"
             INSERT INTO 
@@ -32,15 +40,15 @@ public class KelurahanDal : IKelurahanDal
                 (@fs_kd_kelurahan, @fs_nm_kelurahan, @fs_kd_kecamatan)";
 
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_kelurahan", model.KelurahanId, SqlDbType.VarChar);
-        dp.AddParam("@fs_nm_kelurahan", model.KelurahanName, SqlDbType.VarChar);
-        dp.AddParam("@fs_kd_kecamatan", model.Kecamatan.KecamatanId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_kelurahan", dto.fs_kd_kelurahan, SqlDbType.VarChar);
+        dp.AddParam("@fs_nm_kelurahan", dto.fs_nm_kelurahan, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_kecamatan", dto.fs_kd_kecamatan, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
 
-    public void Update(KelurahanType model)
+    public void Update(KelurahanDto dto)
     {
         const string sql = @"
             UPDATE ta_kelurahan
@@ -49,9 +57,9 @@ public class KelurahanDal : IKelurahanDal
             WHERE fs_kd_kelurahan = @fs_kd_kelurahan";
 
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_kelurahan", model.KelurahanId, SqlDbType.VarChar);
-        dp.AddParam("@fs_nm_kelurahan", model.KelurahanName, SqlDbType.VarChar);
-        dp.AddParam("@fs_kd_kecamatan", model.Kecamatan.KecamatanId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_kelurahan", dto.fs_kd_kelurahan, SqlDbType.VarChar);
+        dp.AddParam("@fs_nm_kelurahan", dto.fs_nm_kelurahan, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_kecamatan", dto.fs_kd_kecamatan, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -70,7 +78,7 @@ public class KelurahanDal : IKelurahanDal
         conn.Execute(sql, dp);
     }
 
-    public MayBe<KelurahanType> GetData(IKelurahanKey key)
+    public KelurahanDto GetData(IKelurahanKey key)
     {
         const string sql = @"
             SELECT 
@@ -91,12 +99,10 @@ public class KelurahanDal : IKelurahanDal
         dp.AddParam("@fs_kd_kelurahan", key.KelurahanId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return MayBe
-            .From(conn.ReadSingle<KelurahanDto>(sql, dp))
-            .Map(x => x.ToModel());
+        return conn.ReadSingle<KelurahanDto>(sql, dp);
     }
 
-    public MayBe<IEnumerable<KelurahanType>> ListData(IKecamatanKey filter)
+    public IEnumerable<KelurahanDto> ListData(IKecamatanKey filter)
     {
         const string sql = @"
             SELECT 
@@ -118,11 +124,39 @@ public class KelurahanDal : IKelurahanDal
         dp.AddParam("@fs_kd_kecamatan", filter.KecamatanId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return MayBe
-            .From(conn.Read<KelurahanDto>(sql, dp))
-            .Map(x => x.Select(y => y.ToModel()));
+        return conn.Read<KelurahanDto>(sql, dp);
     }
+    private static string EscapeForContains(string term)
+    {
+        return "\"" + term.Replace("\"", "\"\"") + "*\"";
+    }
+    public IEnumerable<KelurahanDto> ListData(string filter)
+    {
+        var clearFilter = EscapeForContains(filter);
+        var containerKel = $"CONTAINS(fs_nm_kelurahan, '{clearFilter}')";
+        var containerKec = $"CONTAINS(fs_nm_kecamatan, '{clearFilter}')";
+        
+        var sql = $"""
+            SELECT 
+                aa.fs_kd_kelurahan, aa.fs_nm_kelurahan, aa.fs_kd_kecamatan,
+                ISNULL(bb.fs_nm_kecamatan, '-') fs_nm_kecamatan,
+                ISNULL(bb.fs_kd_kabupaten, '-') fs_kd_kabupaten,
+                ISNULL(cc.fs_nm_kabupaten, '-') fs_nm_kabupaten,
+                ISNULL(cc.fs_kd_propinsi, '-') fs_kd_propinsi,
+                ISNULL(dd.fs_nm_propinsi, '-') fs_nm_propinsi
+            FROM 
+                ta_kelurahan aa
+                LEFT JOIN ta_kecamatan bb ON aa.fs_kd_kecamatan = bb.fs_kd_kecamatan
+                LEFT JOIN ta_kabupaten cc ON bb.fs_kd_kabupaten = cc.fs_kd_kabupaten
+                LEFT JOIN ta_propinsi dd ON cc.fs_kd_propinsi = dd.fs_kd_propinsi
+            WHERE 
+                {containerKel}
+                OR {containerKec}
+            """;
 
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<KelurahanDto>(sql) ?? [];
+    }
 }
 
 public class KelurahanDalTest
@@ -134,11 +168,8 @@ public class KelurahanDalTest
         _sut = new KelurahanDal(ConnStringHelper.GetTestEnv());
     }
 
-    private static KelurahanType Faker() =>
-        new KelurahanType("A", "B",
-            KecamatanType.Default.ToReff(),
-            KabupatenType.Default.ToReff(),
-            PropinsiType.Default);
+    private static KelurahanDto Faker() =>
+        new KelurahanDto("A", "B", "C", "D", "E", "F", "G", "H");
     [Fact]
     public void UT1_InsertTest()
     {
@@ -165,7 +196,7 @@ public class KelurahanDalTest
         using var trans = TransHelper.NewScope();
         var expected = Faker();
         _sut.Insert(expected);
-        var actual = _sut.GetData(expected).Value;
+        var actual = _sut.GetData(KelurahanType.Key("A"));
         actual.Should().BeEquivalentTo(expected);
     }
 
@@ -175,7 +206,7 @@ public class KelurahanDalTest
         using var trans = TransHelper.NewScope();
         var expected = Faker();
         _sut.Insert(expected);
-        var actual = _sut.ListData(KecamatanType.Key("-")).Value;
+        var actual = _sut.ListData(KecamatanType.Key("C"));
         actual.Should().ContainEquivalentOf(expected);
     }
 }

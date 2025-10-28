@@ -105,6 +105,35 @@ public class PasienModel : IPasienKey
         return shortId;        
     }
 
+    public void UpdateAdminInfo(AlamatType alamatKtp, KelurahanType kelurahan, 
+        IdentitasType kartuKeluarga, ContactType email, ContactType noHp,
+        PasienKeluargaType pasienKeluarga)
+    {
+        alamatKtp ??= AlamatType.Default;
+        kelurahan ??= KelurahanType.Default;
+        kartuKeluarga ??= IdentitasType.Default;
+        email ??= ContactType.Default;
+        noHp ??= ContactType.Default;
+        pasienKeluarga ??= PasienKeluargaType.Default;
+        
+        AlamatKtp = alamatKtp;
+        Kelurahan = kelurahan;
+        KartuKeluarga = kartuKeluarga;
+        PasienKeluarga = pasienKeluarga;
+
+        if (email is not null)
+        {
+            _listContact.RemoveAll(x => x.JenisContact == JenisContactEnum.Email);
+            _listContact.Add(email);
+        }
+
+        if (noHp is not null)
+        {
+            _listContact.RemoveAll(x => x.JenisContact == JenisContactEnum.Mobile);
+            _listContact.Add(noHp);
+        }
+    }
+    
     public void SetAdministrativeInfo(AlamatType alamatKtp,
         KelurahanType kelurahan, IdentitasType kartuKeluarga, 
         IEnumerable<ContactType> listContact, PasienKeluargaType keluarga)

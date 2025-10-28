@@ -7,13 +7,13 @@ using Nuna.Lib.ValidationHelper;
 namespace Bilreg.Application.PasienContext.PasienFeature;
 
 public record PasienCreateCommand(
-    string PasienName,
-    string TempatLahir,
-    string TglLahir,
-    string NickName,
-    string Gender,
-    string IbuKandung,
-    string GolDarah) : IRequest<PasienCreateResponse>;
+    string PasienName, string TempatLahir, string TglLahir,
+    string Gender, string NickName, string IbuKandung, string GolDarah,
+    //
+    string Alamat1, string Alamat2, string Alamat3,
+    string Kota, string KodePos,
+    //
+    string NoTelp, string NoKtp) : IRequest<PasienCreateResponse>;
 
 public record PasienCreateResponse(string PasienId);
 
@@ -37,11 +37,16 @@ public class PasienCreateHandler : IRequestHandler<PasienCreateCommand, PasienCr
         
         //  BUILD
         var tglLahir = DateOnly.Parse(request.TglLahir);
+        var alamat = new AlamatType(
+            [request.Alamat1, request.Alamat2, request.Alamat3],
+            request.Kota, request.KodePos);
+        var contactPhone = new ContactType(JenisContactEnum.Phone, request.NoTelp);
+        var identitasKtp = IdentitasType.Ktp(request.NoKtp);
         var person = new PersonInfoType(request.PasienName, tglLahir, request.Gender,
-            AlamatType.Default, ContactType.Default, IdentitasType.Default);
-        var pasien = _pasienFactory.CreateFromPerson(person);
-        // TODO: set semua property di awal
-        
+            alamat, contactPhone, IdentitasType.Default);
+        var golDarah = new GolDarahType(request.GolDarah);
+        var pasien = _pasienFactory.CreateFromPerson(person, request.NickName, request.TempatLahir, golDarah, request.IbuKandung);
+
         //  WRITE
         var result = _pasienRepo.SaveChanges(pasien);
         return Task.FromResult(new PasienCreateResponse(result.Value.PasienId));

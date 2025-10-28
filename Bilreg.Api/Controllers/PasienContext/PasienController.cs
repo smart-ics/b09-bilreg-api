@@ -23,29 +23,11 @@ public class PasienController : Controller
         return Ok(new JSendOk(result));
     }
 
-    // [HttpPut]
-    // public async Task<IActionResult> Update(PasienUpdateCommand cmd)
-    // {
-    //     await _mediator.Send(cmd);
-    //     return Ok(new JSendOk("Done"));
-    // }
-    //
-    // [HttpGet]
-    // [Route("{id}")]
-    // public async Task<IActionResult> GetData(string id)
-    // {
-    //     var query = new PasienGetQuery(id);
-    //     var response = await _mediator.Send(query);
-    //     return Ok(new JSendOk(response));
-    // }
-    //     
-    // [HttpGet]
-    // [Route("find/{tglLahirYmd}/{pasienName}")]
-    // public async Task<IActionResult> GetData(string tglLahirYmd, string pasienName)
-    // {
-    //     var query = new PasienFindFast(tglLahirYmd, pasienName);
-    //     var response = await _mediator.Send(query);
-    //     return Ok(new JSendOk(response));
-    // }
-
+    [HttpPut]
+    [Route("administrativeInfo")]
+    public async Task<IActionResult> Create(PasienUpdateAdminInfoCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
 }

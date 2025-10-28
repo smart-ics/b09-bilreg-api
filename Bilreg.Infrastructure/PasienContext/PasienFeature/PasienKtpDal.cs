@@ -12,13 +12,13 @@ using Xunit;
 
 namespace Bilreg.Infrastructure.PasienContext.PasienFeature;
 
-public interface IPasien2Dal : 
+public interface IPasienKtpDal : 
     IInsert<PasienKtpDto>,
     IUpdate<PasienKtpDto>,
     IDelete<IPasienKey>,
     IGetData<PasienKtpDto, IPasienKey>{}
 
-public class PasienKtpDal : IPasien2Dal
+public class PasienKtpDal : IPasienKtpDal
 {
     private readonly DatabaseOptions _opt;
 
