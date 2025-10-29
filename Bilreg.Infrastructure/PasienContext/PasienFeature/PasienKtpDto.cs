@@ -1,4 +1,5 @@
-﻿using Bilreg.Domain.PasienContext.PasienFeature;
+﻿using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.PasienContext.DemografiFeature;
 using Bilreg.Domain.PasienContext.StatusSosialFeature;
 using FluentAssertions;
@@ -6,7 +7,7 @@ using Xunit;
 
 namespace Bilreg.Infrastructure.PasienContext.PasienFeature;
 
-public record Pasien2Dto(
+public record PasienKtpDto(
     string PasienId,
     string AlamatKtp1,
     string AlamatKtp2,
@@ -17,11 +18,11 @@ public record Pasien2Dto(
     public AlamatType GetAlamatKtp() 
         => new([AlamatKtp1, AlamatKtp2, AlamatKtp3], AlamatKtpKota, AlamatKtpKodePos);
     
-    public static Pasien2Dto Create(PasienModel model)
+    public static PasienKtpDto Create(PasienModel model)
     {
         var listAlamat = model.AlamatKtp.Normalize3Address();
 
-        return new Pasien2Dto(
+        return new PasienKtpDto(
             model.PasienId,
             listAlamat[0],
             listAlamat[1],
@@ -55,20 +56,21 @@ public static class StringArrayExtensions
 
 
 
-public class Pasien2DtoTest
+public class PasienKtpDtoTest
 {
     [Fact]
     public void UT2_Given3String_WhenCreate_ThenAsExpected()
     {
         var alamat = new string[] { "Baris-1", "Baris-2", "Baris-3" };
         var alamatType = new AlamatType(alamat, "Kota", "Kode Pos");
-        var pasien = new PasienModel(
-            "A", "B", DateTime.Now, "-", "nick", "X1", "X2", GolDarahType.Default,
-            AlamatType.Default, alamatType, KelurahanType.Default, 
-            IdentitasType.Default, IdentitasType.Default,
-            [], PasienKeluargaType.Default, StatusKawinDkType.Default, AgamaType.Default, SukuType.Default,
-            PekerjaanDkType.Default, PendidikanDkType.Default, DateTime.Now, true);
-        var dto = Pasien2Dto.Create(pasien);
+        var person = new PersonInfoType("B", DateOnly.FromDateTime(DateTime.Now), "P",
+            AlamatType.Default, ContactType.Default, IdentitasType.Default);
+        var pasien = new PasienModel("A", person, "B", "C", GolDarahType.AB,
+            "ibu kandung", alamatType,KelurahanType.Default, 
+            IdentitasType.Default, [], PasienKeluargaType.Default, 
+            AgamaType.Default, SukuType.Default, StatusKawinDkType.Default,
+            PendidikanDkType.Default, PekerjaanDkType.Default, DateTime.Now, true);
+        var dto = PasienKtpDto.Create(pasien);
 
         dto.Should().NotBeNull();
         dto.AlamatKtp1.Should().Be("Baris-1");
@@ -81,13 +83,14 @@ public class Pasien2DtoTest
     {
         var alamat = new[] { "Baris-1", ""};
         var alamatType = new AlamatType(alamat, "Kota", "Kode Pos");
-        var pasien = new PasienModel(
-            "A", "B", DateTime.Now, "-", "nick", "X1", "X2", GolDarahType.Default,
-            AlamatType.Default, alamatType, KelurahanType.Default, 
-            IdentitasType.Default, IdentitasType.Default,
-            [], PasienKeluargaType.Default, StatusKawinDkType.Default, AgamaType.Default, SukuType.Default,
-            PekerjaanDkType.Default, PendidikanDkType.Default, DateTime.Now, true);
-        var dto = Pasien2Dto.Create(pasien);
+        var person = new PersonInfoType("B", DateOnly.FromDateTime(DateTime.Now), "P",
+            AlamatType.Default, ContactType.Default, IdentitasType.Default);
+        var pasien = new PasienModel("A", person, "B", "C", GolDarahType.AB,
+            "ibu kandung", alamatType,KelurahanType.Default, 
+            IdentitasType.Default, [], PasienKeluargaType.Default, 
+            AgamaType.Default, SukuType.Default, StatusKawinDkType.Default,
+            PendidikanDkType.Default, PekerjaanDkType.Default, DateTime.Now, true);
+        var dto = PasienKtpDto.Create(pasien);
 
         dto.Should().NotBeNull();
         dto.AlamatKtp1.Should().Be("Baris-1");
@@ -100,13 +103,14 @@ public class Pasien2DtoTest
     {
         var alamat = new[] { "Baris-1"};
         var alamatType = new AlamatType(alamat, "Kota", "Kode Pos");
-        var pasien = new PasienModel(
-            "A", "B", DateTime.Now, "-", "nick", "X1", "X2", GolDarahType.Default,
-            AlamatType.Default, alamatType, KelurahanType.Default, 
-            IdentitasType.Default, IdentitasType.Default,
-            [], PasienKeluargaType.Default, StatusKawinDkType.Default, AgamaType.Default, SukuType.Default,
-            PekerjaanDkType.Default, PendidikanDkType.Default, DateTime.Now, true);
-        var dto = Pasien2Dto.Create(pasien);
+        var person = new PersonInfoType("B", DateOnly.FromDateTime(DateTime.Now), "P",
+            AlamatType.Default, ContactType.Default, IdentitasType.Default);
+        var pasien = new PasienModel("A", person, "B", "C", GolDarahType.AB,
+            "ibu kandung", alamatType,KelurahanType.Default, 
+            IdentitasType.Default, [], PasienKeluargaType.Default, 
+            AgamaType.Default, SukuType.Default, StatusKawinDkType.Default,
+            PendidikanDkType.Default, PekerjaanDkType.Default, DateTime.Now, true);
+        var dto = PasienKtpDto.Create(pasien);
 
         dto.Should().NotBeNull();
         dto.AlamatKtp1.Should().Be("Baris-1");

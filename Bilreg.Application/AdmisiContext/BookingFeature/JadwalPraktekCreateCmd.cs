@@ -16,17 +16,17 @@ public record JadwalPraktekCreateResponse(string JadwalPraktekId);
 public class JadwalPraktekCreateHandler : IRequestHandler<JadwalPraktekCreateCmd, JadwalPraktekCreateResponse>
 {
     private readonly IJadwalPraktekRepo _jadwalRepo;
-    private readonly IJadwalPraktekFactory _jadwalFactory;
+    private readonly IJadwalPraktekNunaFactory _jadwalNunaFactory;
     private readonly IPetugasMedisRepo _petugasRepo;
     private readonly ILayananRepo _layananRepo;
 
     public JadwalPraktekCreateHandler(IJadwalPraktekRepo jadwalRepo, 
-        IJadwalPraktekFactory jadwalFactory, 
+        IJadwalPraktekNunaFactory jadwalNunaFactory, 
         IPetugasMedisRepo petugasRepo, 
         ILayananRepo layananRepo)
     {
         _jadwalRepo = jadwalRepo;
-        _jadwalFactory = jadwalFactory;
+        _jadwalNunaFactory = jadwalNunaFactory;
         _petugasRepo = petugasRepo;
         _layananRepo = layananRepo;
     }
@@ -61,7 +61,7 @@ public class JadwalPraktekCreateHandler : IRequestHandler<JadwalPraktekCreateCmd
     private JadwalPraktekType CreateJadwal(JadwalPraktekCreateCmd request, 
         PetugasMedisType dokter, LayananType layanan)
     {
-        var jadwal = _jadwalFactory.Create(
+        var jadwal = _jadwalNunaFactory.Create(
             dokter, layanan, 
             (DayOfWeek)request.Hari, 
             TimeOnly.Parse(request.JamMulai),

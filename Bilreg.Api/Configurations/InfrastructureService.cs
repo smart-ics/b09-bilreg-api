@@ -2,6 +2,7 @@
 using Bilreg.Domain.Helpers;
 using Bilreg.Infrastructure;
 using Bilreg.Infrastructure.Helpers;
+using Bilreg.Infrastructure.ParamContext;
 using Bilreg.Infrastructure.PasienContext.PasienFeature;
 using Nuna.Lib.AutoNumberHelper;
 using Nuna.Lib.CleanArchHelper;

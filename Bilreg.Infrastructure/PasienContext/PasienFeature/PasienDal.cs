@@ -1,5 +1,6 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
+using System.Text;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
@@ -8,6 +9,7 @@ using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
 using Nuna.Lib.PatternHelper;
 using Nuna.Lib.TransactionHelper;
+using Nuna.Lib.ValidationHelper;
 using Xunit;
 
 namespace Bilreg.Infrastructure.PasienContext.PasienFeature;
@@ -19,6 +21,7 @@ public interface IPasienDal :
     IGetData<PasienDto, IPasienKey>,
     IListData<PasienDto, DateTime>
 {
+    IEnumerable<PasienDto> ListDataByName(Dictionary<string, string[]> listName);
 }
 
 public class PasienDal : IPasienDal
@@ -32,28 +35,42 @@ public class PasienDal : IPasienDal
 
     public void Insert(PasienDto model)
     {
-        const string sql = @"
+        const string sql = """
             INSERT INTO tc_mr(
                 fs_mr, fs_nm_pasien, fd_tgl_lahir, fs_jns_kelamin,
                 fs_nm_alias, fs_temp_lahir, fs_nm_ibu_kandung, fs_gol_darah,
                 fs_alm_pasien, fs_alm2_pasien, fs_alm3_pasien, fs_kota_pasien, 
-                fs_kd_pos_pasien, fs_kd_kelurahan, fs_jenis_id, fs_kd_identitas,
-                fs_no_kk, fs_email, fs_tlp_pasien, fs_no_hp,
-                fs_nm_keluarga, fs_hub_keluarga, fs_telp_keluarga, fs_alm1_keluarga,
-                fs_alm2_keluarga, fs_kota_keluarga, fs_kd_pos_keluarga,
-                fs_kd_status_kawin_dk, fs_kd_agama, fs_kd_suku, fs_kd_pekerjaan_dk,
-                fs_kd_pendidikan_dk, fd_tgl_mr, fb_aktif
-            ) VALUES (
+                fs_kd_pos_pasien, fs_kd_kelurahan, 
+                --
+                fs_jenis_id, fs_kd_identitas, fs_no_kk, 
+                fs_email, fs_tlp_pasien, fs_no_hp,
+                --
+                fs_nm_keluarga, fs_hub_keluarga, fs_telp_keluarga, 
+                fs_alm1_keluarga, fs_alm2_keluarga, 
+                fs_kota_keluarga, fs_kd_pos_keluarga,
+                --
+                fs_kd_agama, fs_kd_suku, fs_kd_status_kawin_dk, 
+                fs_kd_pendidikan_dk, fs_kd_pekerjaan_dk,
+                --
+                fd_tgl_mr, fb_aktif) 
+            VALUES (
                 @fs_mr, @fs_nm_pasien, @fd_tgl_lahir, @fs_jns_kelamin,
                 @fs_nm_alias, @fs_temp_lahir, @fs_nm_ibu_kandung, @fs_gol_darah,
-                @fs_alm_pasien, @fs_alm2_pasien, @fs_alm3_pasien, @fs_kota_pasien,
-                @fs_kd_pos_pasien, @fs_kd_kelurahan, @fs_jenis_id, @fs_kd_identitas,
-                @fs_no_kk, @fs_email, @fs_tlp_pasien, @fs_no_hp,
-                @fs_nm_keluarga, @fs_hub_keluarga, @fs_telp_keluarga, @fs_alm1_keluarga,
-                @fs_alm2_keluarga, @fs_kota_keluarga, @fs_kd_pos_keluarga,
-                @fs_kd_status_kawin_dk, @fs_kd_agama, @fs_kd_suku, @fs_kd_pekerjaan_dk,
-                @fs_kd_pendidikan_dk, @fd_tgl_mr, @fb_aktif
-            )";
+                @fs_alm_pasien, @fs_alm2_pasien, @fs_alm3_pasien, @fs_kota_pasien, 
+                @fs_kd_pos_pasien, @fs_kd_kelurahan, 
+                --
+                @fs_jenis_id, @fs_kd_identitas, @fs_no_kk, 
+                @fs_email, @fs_tlp_pasien, @fs_no_hp,
+                --
+                @fs_nm_keluarga, @fs_hub_keluarga, @fs_telp_keluarga, 
+                @fs_alm1_keluarga, @fs_alm2_keluarga, 
+                @fs_kota_keluarga, @fs_kd_pos_keluarga,
+                --
+                @fs_kd_agama, @fs_kd_suku, @fs_kd_status_kawin_dk, 
+                @fs_kd_pendidikan_dk, @fs_kd_pekerjaan_dk,
+                --
+                @fd_tgl_mr, @fb_aktif)
+            """;
 
         var dp = new DynamicParameters();
         dp.AddParam("@fs_mr", model.fs_mr, SqlDbType.VarChar);
@@ -88,11 +105,11 @@ public class PasienDal : IPasienDal
         dp.AddParam("@fs_kota_keluarga", model.fs_kota_keluarga, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_pos_keluarga", model.fs_kd_pos_keluarga, SqlDbType.VarChar);
         
-        dp.AddParam("@fs_kd_status_kawin_dk", model.fs_kd_status_kawin_dk, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_agama", model.fs_kd_agama, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_suku", model.fs_kd_suku, SqlDbType.VarChar);
-        dp.AddParam("@fs_kd_pekerjaan_dk", model.fs_kd_pekerjaan_dk, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_status_kawin_dk", model.fs_kd_status_kawin_dk, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_pendidikan_dk", model.fs_kd_pendidikan_dk, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_pekerjaan_dk", model.fs_kd_pekerjaan_dk, SqlDbType.VarChar);
         
         dp.AddParam("@fd_tgl_mr", model.fd_tgl_mr, SqlDbType.VarChar);
         dp.AddParam("@fb_aktif", model.fb_aktif, SqlDbType.Bit);
@@ -103,7 +120,7 @@ public class PasienDal : IPasienDal
 
     public void Update(PasienDto model)
     {
-        const string sql = @"
+        const string sql = """
             UPDATE tc_mr
             SET 
                 fs_nm_pasien = @fs_nm_pasien,
@@ -119,12 +136,14 @@ public class PasienDal : IPasienDal
                 fs_kota_pasien = @fs_kota_pasien,
                 fs_kd_pos_pasien = @fs_kd_pos_pasien,
                 fs_kd_kelurahan = @fs_kd_kelurahan,
+                --
                 fs_jenis_id = @fs_jenis_id,
                 fs_kd_identitas = @fs_kd_identitas,
                 fs_no_kk = @fs_no_kk,
                 fs_email = @fs_email,
                 fs_tlp_pasien = @fs_tlp_pasien,
                 fs_no_hp = @fs_no_hp,
+                --
                 fs_nm_keluarga = @fs_nm_keluarga,
                 fs_hub_keluarga = @fs_hub_keluarga,
                 fs_telp_keluarga = @fs_telp_keluarga,
@@ -132,14 +151,18 @@ public class PasienDal : IPasienDal
                 fs_alm2_keluarga = @fs_alm2_keluarga,
                 fs_kota_keluarga = @fs_kota_keluarga,
                 fs_kd_pos_keluarga = @fs_kd_pos_keluarga,
-                fs_kd_status_kawin_dk = @fs_kd_status_kawin_dk,
+                --
                 fs_kd_agama = @fs_kd_agama,
                 fs_kd_suku = @fs_kd_suku,
-                fs_kd_pekerjaan_dk = @fs_kd_pekerjaan_dk,
+                fs_kd_status_kawin_dk = @fs_kd_status_kawin_dk,
                 fs_kd_pendidikan_dk = @fs_kd_pendidikan_dk,
+                fs_kd_pekerjaan_dk = @fs_kd_pekerjaan_dk,
+                --
                 fd_tgl_mr = @fd_tgl_mr,
                 fb_aktif = @fb_aktif
-            WHERE fs_mr = @fs_mr";
+            WHERE 
+                fs_mr = @fs_mr
+            """;
 
         var dp = new DynamicParameters();
         dp.AddParam("@fs_mr", model.fs_mr, SqlDbType.VarChar);
@@ -174,11 +197,11 @@ public class PasienDal : IPasienDal
         dp.AddParam("@fs_kota_keluarga", model.fs_kota_keluarga, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_pos_keluarga", model.fs_kd_pos_keluarga, SqlDbType.VarChar);
         
-        dp.AddParam("@fs_kd_status_kawin_dk", model.fs_kd_status_kawin_dk, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_agama", model.fs_kd_agama, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_suku", model.fs_kd_suku, SqlDbType.VarChar);
-        dp.AddParam("@fs_kd_pekerjaan_dk", model.fs_kd_pekerjaan_dk, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_status_kawin_dk", model.fs_kd_status_kawin_dk, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_pendidikan_dk", model.fs_kd_pendidikan_dk, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_pekerjaan_dk", model.fs_kd_pekerjaan_dk, SqlDbType.VarChar);
         
         dp.AddParam("@fd_tgl_mr", model.fd_tgl_mr, SqlDbType.VarChar);
         dp.AddParam("@fb_aktif", model.fb_aktif, SqlDbType.Bit);
@@ -189,9 +212,10 @@ public class PasienDal : IPasienDal
     
     public void Delete(IPasienKey key)
     {
-        const string sql = @"
+        const string sql = """
             DELETE FROM tc_mr
-            WHERE fs_mr = @fs_mr";
+            WHERE fs_mr = @fs_mr
+            """;
 
         var dp = new DynamicParameters();
         dp.AddParam("@fs_mr", key.PasienId, SqlDbType.VarChar);
@@ -204,17 +228,48 @@ public class PasienDal : IPasienDal
     {
         const string sql = """
             SELECT 
-               fs_mr, fs_nm_pasien, fd_tgl_lahir, fs_jns_kelamin,
-               fs_nm_alias, fs_temp_lahir, fs_nm_ibu_kandung, fs_gol_darah,
-               fs_alm_pasien, fs_alm2_pasien, fs_alm3_pasien, fs_kota_pasien,
-               fs_kd_pos_pasien, fs_kd_kelurahan, fs_jenis_id, fs_kd_identitas,
-               fs_no_kk, fs_email, fs_tlp_pasien, fs_no_hp,
-               fs_nm_keluarga, fs_hub_keluarga, fs_telp_keluarga, fs_alm1_keluarga,
-               fs_alm2_keluarga, fs_kota_keluarga, fs_kd_pos_keluarga,
-               fs_kd_status_kawin_dk, fs_kd_agama, fs_kd_suku, fs_kd_pekerjaan_dk,
-               fs_kd_pendidikan_dk, fd_tgl_mr, fb_aktif
-            FROM tc_mr
-            WHERE fs_mr = @fs_mr
+                aa.fs_mr, aa.fs_nm_pasien, aa.fd_tgl_lahir, aa.fs_jns_kelamin,
+                aa.fs_nm_alias, aa.fs_temp_lahir, aa.fs_nm_ibu_kandung, aa.fs_gol_darah,
+                aa.fs_alm_pasien, aa.fs_alm2_pasien, aa.fs_alm3_pasien, aa.fs_kota_pasien, 
+                aa.fs_kd_pos_pasien, aa.fs_kd_kelurahan, 
+                --
+                aa.fs_jenis_id, aa.fs_kd_identitas, aa.fs_no_kk, 
+                aa.fs_email, aa.fs_tlp_pasien, aa.fs_no_hp,
+                --
+                aa.fs_nm_keluarga, aa.fs_hub_keluarga, aa.fs_telp_keluarga, 
+                aa.fs_alm1_keluarga, aa.fs_alm2_keluarga, 
+                aa.fs_kota_keluarga, aa.fs_kd_pos_keluarga,
+                --
+                aa.fs_kd_agama, aa.fs_kd_suku, aa.fs_kd_status_kawin_dk, 
+                aa.fs_kd_pendidikan_dk, aa.fs_kd_pekerjaan_dk,
+                --
+                aa.fd_tgl_mr, aa.fb_aktif,
+                --
+                ISNULL(bb.fs_nm_kelurahan, '-') AS fs_nm_kelurahan,
+                ISNULL(bb.fs_kd_kecamatan, '-') AS fs_kd_kecamatan,
+                ISNULL(cc.fs_nm_kecamatan, '-') AS fs_nm_kecamatan,
+                ISNULL(cc.fs_kd_kabupaten, '-') AS fs_kd_kabupaten,
+                ISNULL(dd.fs_nm_kabupaten, '-') AS fs_nm_kabupaten,
+                ISNULL(dd.fs_kd_propinsi, '-') AS fs_kd_propinsi,
+                ISNULL(ee.fs_nm_propinsi, '-') AS fs_nm_propinsi,
+                ISNULL(ff.fs_nm_agama, '-') AS fs_nm_agama,
+                ISNULL(gg.fs_nm_suku, '-') AS fs_nm_suku,
+                ISNULL(hh.fs_nm_status_kawin_dk, '-') AS fs_nm_status_kawin_dk,
+                ISNULL(ii.fs_nm_pendidikan_dk, '-') AS fs_nm_pendidikan_dk,
+                ISNULL(jj.fs_nm_pekerjaan_dk, '-') AS fs_nm_pekerjaan_dk
+            FROM 
+                tc_mr aa
+                LEFT JOIN ta_kelurahan bb ON aa.fs_kd_kelurahan = bb.fs_kd_kelurahan
+                LEFT JOIN ta_kecamatan cc ON bb.fs_kd_kecamatan = cc.fs_kd_kecamatan
+                LEFT JOIN ta_kabupaten dd ON cc.fs_kd_kabupaten = dd.fs_kd_kabupaten
+                LEFT JOIN ta_propinsi ee ON dd.fs_kd_propinsi = ee.fs_kd_propinsi
+                LEFT JOIN ta_agama ff ON aa.fs_kd_agama = ff.fs_kd_agama
+                LEFT JOIN ta_suku gg ON aa.fs_kd_suku = gg.fs_kd_suku
+                LEFT JOIN ta_status_kawin_dk hh ON aa.fs_kd_status_kawin_dk = hh.fs_kd_status_kawin_dk
+                LEFT JOIN ta_pendidikan_dk ii ON aa.fs_kd_pendidikan_dk = ii.fs_kd_pendidikan_dk
+                LEFT JOIN ta_pekerjaan_dk jj ON aa.fs_kd_pekerjaan_dk = jj.fs_kd_pekerjaan_dk
+            WHERE 
+                fs_mr = @fs_mr
             """;
 
         var dp = new DynamicParameters();
@@ -224,117 +279,212 @@ public class PasienDal : IPasienDal
         return conn.ReadSingle<PasienDto>(sql, dp);
     }
 
-    public IEnumerable<PasienDto> ListData(DateTime filter)
+    public IEnumerable<PasienDto> ListData(DateTime tglLahir)
     {
-        const string sql = @"
+        const string sql = """
             SELECT 
-                fs_mr, fs_nm_pasien, fd_tgl_lahir, fs_jns_kelamin,
-                fs_nm_alias, fs_temp_lahir, fs_nm_ibu_kandung, fs_gol_darah,
-                fs_alm_pasien, fs_alm2_pasien, fs_alm3_pasien, fs_kota_pasien,
-                fs_kd_pos_pasien, fs_kd_kelurahan, fs_jenis_id, fs_kd_identitas,
-                fs_no_kk, fs_email, fs_tlp_pasien, fs_no_hp,
-                fs_nm_keluarga, fs_hub_keluarga, fs_telp_keluarga, fs_alm1_keluarga,
-                fs_alm2_keluarga, fs_kota_keluarga, fs_kd_pos_keluarga,
-                fs_kd_status_kawin_dk, fs_kd_agama, fs_kd_suku, fs_kd_pekerjaan_dk,
-                fs_kd_pendidikan_dk, fd_tgl_mr, fb_aktif
-            FROM tc_mr
-            WHERE fd_tgl_lahir = @fd_tgl_lahir";
+                aa.fs_mr, aa.fs_nm_pasien, aa.fd_tgl_lahir, aa.fs_jns_kelamin,
+                aa.fs_nm_alias, aa.fs_temp_lahir, aa.fs_nm_ibu_kandung, aa.fs_gol_darah,
+                aa.fs_alm_pasien, aa.fs_alm2_pasien, aa.fs_alm3_pasien, aa.fs_kota_pasien, 
+                aa.fs_kd_pos_pasien, aa.fs_kd_kelurahan, 
+                --
+                aa.fs_jenis_id, aa.fs_kd_identitas, aa.fs_no_kk, 
+                aa.fs_email, aa.fs_tlp_pasien, aa.fs_no_hp,
+                --
+                aa.fs_nm_keluarga, aa.fs_hub_keluarga, aa.fs_telp_keluarga, 
+                aa.fs_alm1_keluarga, aa.fs_alm2_keluarga, 
+                aa.fs_kota_keluarga, aa.fs_kd_pos_keluarga,
+                --
+                aa.fs_kd_agama, aa.fs_kd_suku, aa.fs_kd_status_kawin_dk, 
+                aa.fs_kd_pendidikan_dk, aa.fs_kd_pekerjaan_dk,
+                --
+                aa.fd_tgl_mr, aa.fb_aktif,
+                --
+                ISNULL(bb.fs_nm_kelurahan, '-') AS fs_nm_kelurahan,
+                ISNULL(bb.fs_kd_kecamatan, '-') AS fs_kd_kecamatan,
+                ISNULL(cc.fs_nm_kecamatan, '-') AS fs_nm_kecamatan,
+                ISNULL(cc.fs_kd_kabupaten, '-') AS fs_kd_kabupaten,
+                ISNULL(dd.fs_nm_kabupaten, '-') AS fs_nm_kabupaten,
+                ISNULL(dd.fs_kd_propinsi, '-') AS fs_kd_propinsi,
+                ISNULL(ee.fs_nm_propinsi, '-') AS fs_nm_propinsi,
+                ISNULL(ff.fs_nm_agama, '-') AS fs_nm_agama,
+                ISNULL(gg.fs_nm_suku, '-') AS fs_nm_suku,
+                ISNULL(hh.fs_nm_status_kawin_dk, '-') AS fs_nm_status_kawin_dk,
+                ISNULL(ii.fs_nm_pendidikan_dk, '-') AS fs_nm_pendidikan_dk,
+                ISNULL(jj.fs_nm_pekerjaan_dk, '-') AS fs_nm_pekerjaan_dk
+            FROM 
+                tc_mr aa
+                LEFT JOIN ta_kelurahan bb ON aa.fs_kd_kelurahan = bb.fs_kd_kelurahan
+                LEFT JOIN ta_kecamatan cc ON bb.fs_kd_kecamatan = cc.fs_kd_kecamatan
+                LEFT JOIN ta_kabupaten dd ON cc.fs_kd_kabupaten = dd.fs_kd_kabupaten
+                LEFT JOIN ta_propinsi ee ON dd.fs_kd_propinsi = ee.fs_kd_propinsi
+                LEFT JOIN ta_agama ff ON aa.fs_kd_agama = ff.fs_kd_agama
+                LEFT JOIN ta_suku gg ON aa.fs_kd_suku = gg.fs_kd_suku
+                LEFT JOIN ta_status_kawin_dk hh ON aa.fs_kd_status_kawin_dk = hh.fs_kd_status_kawin_dk
+                LEFT JOIN ta_pendidikan_dk ii ON aa.fs_kd_pendidikan_dk = ii.fs_kd_pendidikan_dk
+                LEFT JOIN ta_pekerjaan_dk jj ON aa.fs_kd_pekerjaan_dk = jj.fs_kd_pekerjaan_dk
+            WHERE 
+                aa.fd_tgl_lahir = @TglLahir
+            """;
 
         var dp = new DynamicParameters();
-        dp.AddParam("@fd_tgl_lahir", filter.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
+        dp.AddParam("@TglLahir", tglLahir.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<PasienDto>(sql, dp);
+    }
+    
+    private static string EscapeForContains(string term)
+    {
+        return "\"" + term.Replace("\"", "\"\"") + "*\"";
+    }
+    public IEnumerable<PasienDto> ListDataByName(Dictionary<string, string[]> listName)
+    {
+        var containers = listName
+            .Select(item =>
+            {
+                var listVariant = item.Value.Select(EscapeForContains);
+                return $"CONTAINS(fs_nm_pasien, '{string.Join(" OR ", listVariant)}')";
+            });
+
+        var whereClause = string.Join(" AND ", containers);
+        
+        var sql = $"""
+            SELECT 
+                aa.fs_mr, aa.fs_nm_pasien, aa.fd_tgl_lahir, aa.fs_jns_kelamin,
+                aa.fs_nm_alias, aa.fs_temp_lahir, aa.fs_nm_ibu_kandung, aa.fs_gol_darah,
+                aa.fs_alm_pasien, aa.fs_alm2_pasien, aa.fs_alm3_pasien, aa.fs_kota_pasien, 
+                aa.fs_kd_pos_pasien, aa.fs_kd_kelurahan, 
+                --
+                aa.fs_jenis_id, aa.fs_kd_identitas, aa.fs_no_kk, 
+                aa.fs_email, aa.fs_tlp_pasien, aa.fs_no_hp,
+                --
+                aa.fs_nm_keluarga, aa.fs_hub_keluarga, aa.fs_telp_keluarga, 
+                aa.fs_alm1_keluarga, aa.fs_alm2_keluarga, 
+                aa.fs_kota_keluarga, aa.fs_kd_pos_keluarga,
+                --
+                aa.fs_kd_agama, aa.fs_kd_suku, aa.fs_kd_status_kawin_dk, 
+                aa.fs_kd_pendidikan_dk, aa.fs_kd_pekerjaan_dk,
+                --
+                aa.fd_tgl_mr, aa.fb_aktif,
+                --
+                ISNULL(bb.fs_nm_kelurahan, '-') AS fs_nm_kelurahan,
+                ISNULL(bb.fs_kd_kecamatan, '-') AS fs_kd_kecamatan,
+                ISNULL(cc.fs_nm_kecamatan, '-') AS fs_nm_kecamatan,
+                ISNULL(cc.fs_kd_kabupaten, '-') AS fs_kd_kabupaten,
+                ISNULL(dd.fs_nm_kabupaten, '-') AS fs_nm_kabupaten,
+                ISNULL(dd.fs_kd_propinsi, '-') AS fs_kd_propinsi,
+                ISNULL(ee.fs_nm_propinsi, '-') AS fs_nm_propinsi,
+                ISNULL(ff.fs_nm_agama, '-') AS fs_nm_agama,
+                ISNULL(gg.fs_nm_suku, '-') AS fs_nm_suku,
+                ISNULL(hh.fs_nm_status_kawin_dk, '-') AS fs_nm_status_kawin_dk,
+                ISNULL(ii.fs_nm_pendidikan_dk, '-') AS fs_nm_pendidikan_dk,
+                ISNULL(jj.fs_nm_pekerjaan_dk, '-') AS fs_nm_pekerjaan_dk
+            FROM 
+                tc_mr aa
+                LEFT JOIN ta_kelurahan bb ON aa.fs_kd_kelurahan = bb.fs_kd_kelurahan
+                LEFT JOIN ta_kecamatan cc ON bb.fs_kd_kecamatan = cc.fs_kd_kecamatan
+                LEFT JOIN ta_kabupaten dd ON cc.fs_kd_kabupaten = dd.fs_kd_kabupaten
+                LEFT JOIN ta_propinsi ee ON dd.fs_kd_propinsi = ee.fs_kd_propinsi
+                LEFT JOIN ta_agama ff ON aa.fs_kd_agama = ff.fs_kd_agama
+                LEFT JOIN ta_suku gg ON aa.fs_kd_suku = gg.fs_kd_suku
+                LEFT JOIN ta_status_kawin_dk hh ON aa.fs_kd_status_kawin_dk = hh.fs_kd_status_kawin_dk
+                LEFT JOIN ta_pendidikan_dk ii ON aa.fs_kd_pendidikan_dk = ii.fs_kd_pendidikan_dk
+                LEFT JOIN ta_pekerjaan_dk jj ON aa.fs_kd_pekerjaan_dk = jj.fs_kd_pekerjaan_dk
+            WHERE {whereClause}
+            """;
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var results = conn.Read<PasienDto>(sql) ?? [];
+        return results;
     }
 }
 
 public class PasienDalTest
 {
-    private readonly PasienDal _sut;
+    private readonly PasienDal _sut = new(ConnStringHelper.GetTestEnv());
 
-    public PasienDalTest()
-    {
-        _sut = new PasienDal(ConnStringHelper.GetTestEnv());
-    }
+    private static PasienDto Faker()
+    => new PasienDto("A1", "A2", "2000-02-03", "A", "A4", "A5", "A6", "B", 
+        "B1", "B2", "B3", "B4", "B5", "B6", 
+        "C", "C1", "C2", "C3", "C4", "C5", 
+        "D1", "D2", "D3", "D4", "D5", "D6", "D7",
+        "E", "F", "G", "H", "I", "F1", true, "-", "-", "-", "-", "-", "-", 
+        "-", "-", "-", "-", "-", "-");
 
     [Fact]
     public void UT1_InserTest()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Insert(new PasienDto(PasienModel.Default));
+        _sut.Insert(Faker());
     }
     
     [Fact]
     public void UT2_InserTest()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Update(new PasienDto(PasienModel.Default));
+        _sut.Update(Faker());
     }
     
     [Fact]
     public void UT3_DeleteTest()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Delete(PasienModel.Key("A"));
+        _sut.Delete(PasienModel.Key("A1"));
     }
     
-    private PasienDto PasienDtoFaker() 
-        => new PasienDto
-        {
-            fs_mr = "A",
-            fs_nm_pasien = "B",
-            fd_tgl_lahir = DateTime.Now.ToString("yyyy-MM-dd"),
-            fs_jns_kelamin = "C",
-            fs_nm_alias = "D",
-            fs_temp_lahir = "E",
-            fs_nm_ibu_kandung = "F",
-            fs_gol_darah = "G",
-            fs_alm_pasien = "H",
-            fs_alm2_pasien = "I",
-            fs_alm3_pasien = "J",
-            fs_kota_pasien = "K",
-            fs_kd_pos_pasien = "L",
-            fs_kd_kelurahan = "M",
-            fs_jenis_id = "N",
-            fs_kd_identitas = "O",
-            fs_no_kk = "P",
-            fs_email = "Q",
-            fs_tlp_pasien = "R",
-            fs_no_hp = "S",
-            fs_nm_keluarga = "T",
-            fs_hub_keluarga = "U",
-            fs_telp_keluarga = "V",     
-            fs_alm1_keluarga = "W",
-            fs_alm2_keluarga = "X",
-            fs_kota_keluarga = "Y",
-            fs_kd_pos_keluarga = "Z",
-            fs_kd_status_kawin_dk = "1",
-            fs_kd_agama = "2",
-            fs_kd_suku = "3",
-            fs_kd_pekerjaan_dk = "4",
-            fs_kd_pendidikan_dk = "5",
-            fd_tgl_mr = DateTime.Now.ToString("yyyy-MM-dd"),
-            fb_aktif = true
-        };
-        
     [Fact]
     public void UT4_GetDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = PasienDtoFaker();
-        _sut.Insert(expected);
-        var actual = _sut.GetData(PasienModel.Key(expected.fs_mr));
-        actual.Should().BeEquivalentTo(expected);
+        _sut.Insert(Faker());
+        var actual = _sut.GetData(PasienModel.Key("A1"));
+        actual.Should().BeEquivalentTo(Faker(),
+            opt => opt
+                .Excluding(x => x.fs_nm_kelurahan)
+                .Excluding(x => x.fs_nm_kecamatan)
+                .Excluding(x => x.fs_nm_kabupaten)
+                .Excluding(x => x.fs_nm_propinsi)
+                .Excluding(x => x.fs_nm_agama)
+                .Excluding(x => x.fs_nm_suku)
+                .Excluding(x => x.fs_nm_status_kawin_dk)
+                .Excluding(x => x.fs_nm_pendidikan_dk)
+                .Excluding(x => x.fs_nm_pekerjaan_dk)
+            );
     }
 
     [Fact]
     public void UT5_ListDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var expected = PasienDtoFaker();
-        _sut.Insert(expected);
-        var actual = _sut.ListData(DateTime.Now);
-        actual.Should().ContainEquivalentOf(expected);
+        _sut.Insert(Faker());
+        var actual = _sut.ListData(new DateTime(2000,2,3));
+        actual.Should().ContainEquivalentOf(Faker(),
+            opt => opt
+                .Excluding(x => x.fs_nm_kelurahan)
+                .Excluding(x => x.fs_nm_kecamatan)
+                .Excluding(x => x.fs_nm_kabupaten)
+                .Excluding(x => x.fs_nm_propinsi)
+                .Excluding(x => x.fs_nm_agama)
+                .Excluding(x => x.fs_nm_suku)
+                .Excluding(x => x.fs_nm_status_kawin_dk)
+                .Excluding(x => x.fs_nm_pendidikan_dk)
+                .Excluding(x => x.fs_nm_pekerjaan_dk)
+        );
+
+    }
+
+    [Fact]
+    public void  UT6_ListDataByNameTest()
+    {
+        using var trans = TransHelper.NewScope();
+        _sut.Insert(Faker());
+        Dictionary<string, string[]> names = new()
+        {
+            { "A2", ["A2"] }
+        };
+        var actual = _sut.ListDataByName(names);
+
     }
 }
 

@@ -2,38 +2,37 @@
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.PasienContext.DemografiFeature;
 using Bilreg.Domain.PasienContext.StatusSosialFeature;
-using FluentAssertions;
-using Xunit;
 
 namespace Bilreg.Domain.PasienContext.PasienFeature;
 
-public class PasienModel : IPasienKey, IPasienPersonalInfo, IPasienAdministrativeInfo, IPasienStatusSosial
+public class PasienModel : IPasienKey
 {
     private readonly List<ContactType> _listContact;
-    public PasienModel(
-        string pasienId, string pasienName, DateTime tglLahir, string gender, 
-        string nickName, string tempatLahir, string ibuKandung, GolDarahType golDarah, 
-        AlamatType alamatDomisili, AlamatType alamatKtp, KelurahanType kelurahan, 
-        IdentitasType identitas, IdentitasType kartuKeluarga, 
-        IEnumerable<ContactType> listContact, PasienKeluargaType keluarga, 
-        StatusKawinDkType statusKawinDk, AgamaType agama, SukuType suku, 
-        PekerjaanDkType pekerjaanDk, PendidikanDkType pendidikanDk, 
+    
+    public PasienModel(string pasienId, PersonInfoType person,  
+        string nickName, string tempatLahir, GolDarahType golDarah, string namaIbuKandung, 
+        AlamatType alamatKtp, KelurahanType kelurahan, 
+        //
+        IdentitasType kartuKeluarga, 
+        IEnumerable<ContactType> listContact, 
+        //
+        PasienKeluargaType keluarga, 
+        //
+        AgamaType agama, SukuType suku, StatusKawinDkType statusKawinDk, 
+        PendidikanDkType pendidikanDk, PekerjaanDkType pekerjaanDk, 
+        //
         DateTime tglMedRec, bool isAktif)
     {
         PasienId = pasienId;
-        PasienName = pasienName;
-        TglLahir = tglLahir;
-        Gender = gender;
+        Person = person;
         NickName = nickName;
         TempatLahir = tempatLahir;
-        IbuKandung = ibuKandung;
         GolDarah = golDarah;
+        NamaIbuKandung = namaIbuKandung;
         
-        AlamatDomisili = alamatDomisili;
         AlamatKtp = alamatKtp;
         Kelurahan = kelurahan;
         
-        Identitas = identitas;
         KartuKeluarga = kartuKeluarga;
         PasienKeluarga = keluarga;
         StatusKawin = statusKawinDk;
@@ -43,28 +42,40 @@ public class PasienModel : IPasienKey, IPasienPersonalInfo, IPasienAdministrativ
         PendidikanDk = pendidikanDk;
         TglMedRec = tglMedRec;
         IsAktif = isAktif;
-        
+
         _listContact = listContact.ToList();
     }
 
+    public static PasienModel Default => new PasienModel("-",
+        PersonInfoType.Default, "-", "-", GolDarahType.Default, "-", 
+        AlamatType.Default, KelurahanType.Default, IdentitasType.Default, 
+        new List<ContactType>(), PasienKeluargaType.Default, 
+        AgamaType.Default, SukuType.Default, StatusKawinDkType.Default, 
+        PendidikanDkType.Default, PekerjaanDkType.Default, 
+        DateTime.MinValue, false);
+    
+    public static IPasienKey Key(string id) => new PasienModel(id,
+        PersonInfoType.Default, "-", "-", GolDarahType.Default, "-", 
+        AlamatType.Default, KelurahanType.Default, IdentitasType.Default, 
+        new List<ContactType>(), PasienKeluargaType.Default, 
+        AgamaType.Default, SukuType.Default, StatusKawinDkType.Default, 
+        PendidikanDkType.Default, PekerjaanDkType.Default, 
+        DateTime.MinValue, false);
+
+
+
     #region PROPERTIES
     //      personal info
-    //          MANDATORY PROPERTIES
     public string PasienId { get; private set; } 
-    public string PasienName { get; init; }
-    public DateTime TglLahir { get; init; }
-    public string Gender { get; init; }
-    //
+    public PersonInfoType Person { get; init; }
     public string NickName { get; private set; }
     public string TempatLahir { get; private set; }
-    public string IbuKandung { get; private set; } 
-    public GolDarahType GolDarah { get; private set; } 
+    public GolDarahType GolDarah { get; private set; }
+    public string NamaIbuKandung { get; private set; }
     
     //      administrative info
     public AlamatType AlamatKtp { get; private set; }
-    public AlamatType AlamatDomisili { get; private set; }
     public KelurahanType Kelurahan { get; private set; } 
-    public IdentitasType Identitas { get; private set; }
     public IdentitasType KartuKeluarga { get; private set; }
     public IEnumerable<ContactType> ListContact => _listContact;
     public PasienKeluargaType PasienKeluarga { get; private set; } 
@@ -94,27 +105,12 @@ public class PasienModel : IPasienKey, IPasienPersonalInfo, IPasienAdministrativ
         return shortId;        
     }
 
-    public void SetPersonalInfo(string nickName, string tempatLahir, string ibuKandung,
-        GolDarahType golDarah)
-    {
-        Guard.Against.NullOrWhiteSpace(nickName, nameof(nickName));
-        Guard.Against.NullOrWhiteSpace(tempatLahir, nameof(tempatLahir));
-        Guard.Against.NullOrWhiteSpace(ibuKandung, nameof(ibuKandung));
-        
-        NickName = nickName;
-        TempatLahir = tempatLahir;
-        IbuKandung = ibuKandung;
-        GolDarah = golDarah;
-    }
-
-    public void SetAdministrativeInfo(AlamatType alamatDomisili, AlamatType alamatKtp,
-        KelurahanType kelurahan, IdentitasType identitas, IdentitasType kartuKeluarga, 
+    public void SetAdministrativeInfo(AlamatType alamatKtp,
+        KelurahanType kelurahan, IdentitasType kartuKeluarga, 
         IEnumerable<ContactType> listContact, PasienKeluargaType keluarga)
     {
-        Guard.Against.Null(alamatDomisili, nameof(alamatDomisili));
         Guard.Against.Null(alamatKtp, nameof(alamatKtp));
         Guard.Against.Null(kelurahan, nameof(kelurahan));
-        Guard.Against.Null(identitas, nameof(identitas));
         Guard.Against.Null(kartuKeluarga, nameof(kartuKeluarga));
         Guard.Against.Null(keluarga, nameof(keluarga));
         
@@ -124,10 +120,8 @@ public class PasienModel : IPasienKey, IPasienPersonalInfo, IPasienAdministrativ
         if (kartuKeluarga.JenisId != "KK")
             throw new ArgumentException("Jenis Kartu Keluarga harus KK");
 
-        AlamatDomisili = alamatDomisili; 
         AlamatKtp = alamatKtp;
         Kelurahan = kelurahan;
-        Identitas = identitas;
         KartuKeluarga = kartuKeluarga;
         PasienKeluarga = keluarga;
         _listContact.Clear();
@@ -155,50 +149,8 @@ public class PasienModel : IPasienKey, IPasienPersonalInfo, IPasienAdministrativ
         TglMedRec = tglMedRec;
     }
     
-    public PasienReff ToReff() => new PasienReff(PasienId, PasienName, TglLahir, Gender);
-    
-    public void SetPasienId(string id) => PasienId = id;
-    
-    public PersonInfoType ToPersonInfoType() => new PersonInfoType(
-        PasienName, DateOnly.FromDateTime(TglLahir), Gender, AlamatDomisili, 
-        _listContact.FirstOrDefault() ?? ContactType.Default, Identitas);
+    public PasienReff ToReff() => new PasienReff(PasienId, Person.PersonName, 
+        Person.TglLahir, Person.Gender);
     
     #endregion
-    
-    #region STATIC FACTORY METHOD
-
-    private const string NEW_ID = "[NEW]";
-    public static PasienModel CreateNew(string pasienName,
-        DateTime tglLahir, string gender)
-    {
-        Guard.Against.NullOrWhiteSpace(pasienName, nameof(pasienName));
-        Guard.Against.Null(gender, nameof(gender));
-        return new PasienModel(NEW_ID, pasienName, tglLahir, gender,
-            "-", "-", "-", GolDarahType.Default, AlamatType.Default, AlamatType.Default,
-            KelurahanType.Default, IdentitasType.Default, IdentitasType.Default,
-            [], PasienKeluargaType.Default, StatusKawinDkType.Default, 
-            AgamaType.Default, SukuType.Default, PekerjaanDkType.Default, PendidikanDkType.Default, 
-            DateTime.Now, true);
-    }
-    public static PasienModel Default => CreateNew("-", new DateTime (3000,1,1), "-");
-    public static IPasienKey Key(string id)
-    {
-        var result = CreateNew("-", new DateTime (3000,1,1), "-");
-        result.SetPasienId(id);
-        return result;        
-    } 
-    #endregion
-
-}
-
-public class PasienModelTest
-{
-    [Fact]
-    public void UT1_Given8DigitsPatientId_WhenFormatted_ThenReturnShortId()
-    {
-        const string pasienId = "340407012345678";
-        var pasien = PasienModel.CreateNew("Pasien", new DateTime(2000, 1, 1), "-");
-        var shortId = pasien.GetNomorMedrec();
-        shortId.Should().Be("12-34-56-78");
-    }
 }

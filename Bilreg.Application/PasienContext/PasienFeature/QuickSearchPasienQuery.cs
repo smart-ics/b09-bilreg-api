@@ -8,7 +8,7 @@ using Nuna.Lib.PatternHelper;
 using Nuna.Lib.ValidationHelper;
 using Xunit;
 
-namespace Bilreg.Application.AdmisiContext.SearchPasienSub;
+namespace Bilreg.Application.PasienContext.PasienFeature;
 
 public record QuickSearchPasienQuery(string Keyword) : IRequest<IEnumerable<QuickSearchPasienResponse>>;
 

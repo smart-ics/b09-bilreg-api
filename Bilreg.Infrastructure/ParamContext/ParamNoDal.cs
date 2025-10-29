@@ -1,12 +1,13 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
+using Bilreg.Infrastructure.Helpers;
 using Dapper;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.AutoNumberHelper;
 using Nuna.Lib.DataAccessHelper;
 
-namespace Bilreg.Infrastructure.Helpers;
+namespace Bilreg.Infrastructure.ParamContext;
 
 public class ParamNoDal : INunaCounterDal, INunaCounterDecDal
 {

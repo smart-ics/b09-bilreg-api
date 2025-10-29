@@ -94,7 +94,7 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         var pasienKey = PasienModel.Key(request.PasienId);
         var pasien = _pasienRepo.LoadEntity(pasienKey)
             .Match(
-                onSome: x => x.ToPersonInfoType(),
+                onSome: x => x.Person,
                 onNone: () => throw new KeyNotFoundException($"Pasien id {request.PasienId} not found")
             );
         return pasien;
@@ -116,9 +116,9 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         var periodeVisit = new Periode(booking.TglBerobat.ToDateTime(TimeOnly.MinValue));
         var listTracker = _trackerRepo.ListData(periodeVisit, booking.Person.TglLahir)?.ToList() 
                           ?? [];
-        var personNameEyd = booking.Person.PersonName.NormalizeToEyd();
+        var personNameEyd = booking.Person.PersonName.ToEyd();
         var duplicated = listTracker
-            .FirstOrDefault(x => x.Person.PersonName.NormalizeToEyd() == personNameEyd);
+            .FirstOrDefault(x => x.Person.PersonName.ToEyd() == personNameEyd);
 
         if (duplicated is not null)
             throw new ArgumentException("Pasien terdeteksi di tracker. Booking terduplikasi");

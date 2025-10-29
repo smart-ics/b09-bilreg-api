@@ -1,5 +1,4 @@
-﻿using Bilreg.Application.AdmisiContext.SearchPasienSub;
-using Bilreg.Domain.AdmisiContext.SearchPasienSub;
+﻿using Bilreg.Domain.AdmisiContext.SearchPasienSub;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;
@@ -8,6 +7,7 @@ using Nuna.Lib.DataTypeExtension;
 using Nuna.Lib.PatternHelper;
 using System.Data;
 using System.Data.SqlClient;
+using Bilreg.Application.PasienContext.PasienFeature;
 
 namespace Bilreg.Infrastructure.AdmisiContext.SearchPasienSub;
 

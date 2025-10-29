@@ -1,8 +1,7 @@
-﻿using Bilreg.Domain.PasienContext.PasienFeature;
+﻿using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.PasienContext.PasienFeature;
 using CommunityToolkit.Diagnostics;
 using MediatR;
-using Nuna.Lib.AutoNumberHelper;
-using Nuna.Lib.PatternHelper;
 using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.PasienContext.PasienFeature;
@@ -21,11 +20,13 @@ public record PasienCreateResponse(string PasienId);
 public class PasienCreateHandler : IRequestHandler<PasienCreateCommand, PasienCreateResponse>
 {
     private readonly IPasienRepo _pasienRepo;
+    private readonly IPasienFactory _pasienFactory;
     private const string FORMAT_TGL_YMD = "yyyy-MM-dd";
 
-    public PasienCreateHandler(IPasienRepo pasienRepo)
+    public PasienCreateHandler(IPasienRepo pasienRepo, IPasienFactory pasienFactory)
     {
         _pasienRepo = pasienRepo;
+        _pasienFactory = pasienFactory;
     }
 
     public Task<PasienCreateResponse> Handle(PasienCreateCommand request, CancellationToken cancellationToken)
@@ -35,11 +36,12 @@ public class PasienCreateHandler : IRequestHandler<PasienCreateCommand, PasienCr
         Guard.IsTrue(request.TglLahir.IsValidTgl(FORMAT_TGL_YMD));
         
         //  BUILD
-        var pasien = PasienModel.CreateNew(request.PasienName,
-            request.TglLahir.ToDate(), request.Gender);
-        pasien.SetPersonalInfo(request.NickName, request.TempatLahir, 
-            request.IbuKandung, new GolDarahType(request.GolDarah));
-
+        var tglLahir = DateOnly.Parse(request.TglLahir);
+        var person = new PersonInfoType(request.PasienName, tglLahir, request.Gender,
+            AlamatType.Default, ContactType.Default, IdentitasType.Default);
+        var pasien = _pasienFactory.CreateFromPerson(person);
+        // TODO: set semua property di awal
+        
         //  WRITE
         var result = _pasienRepo.SaveChanges(pasien);
         return Task.FromResult(new PasienCreateResponse(result.Value.PasienId));
