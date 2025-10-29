@@ -102,7 +102,7 @@ public class DemografiController : Controller
     [Route("kecamatan/list/{kabupatenId}")]
     public async Task<IActionResult> ListDataKecamatan(string kabupatenId)
     {
-        var query = new KabupatenListQuery(kabupatenId);
+        var query = new KecamatanListQuery(kabupatenId);
         var response = await _mediator.Send(query);
         return Ok(new JSendOk(response));
     }
