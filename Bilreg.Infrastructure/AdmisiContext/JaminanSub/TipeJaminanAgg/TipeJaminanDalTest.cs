@@ -1,100 +1,63 @@
-﻿// using Bilreg.Domain.AdmisiContext.JaminanSub.JaminanAgg;
-// using Bilreg.Domain.AdmisiContext.JaminanSub.TipeJaminanAgg;
-// using Bilreg.Infrastructure.Helpers;
-// using FluentAssertions;
-// using Nuna.Lib.TransactionHelper;
-// using System;
-// using System.Collections.Generic;
-// using System.Linq;
-// using System.Text;
-// using System.Threading.Tasks;
-// using Xunit;
-//
-// namespace Bilreg.Infrastructure.AdmisiContext.JaminanSub.TipeJaminanAgg
-// {
-//     public class TipeJaminanDalTest
-//     {
-//         private readonly TipeJaminanDal _sut;
-//
-//         public TipeJaminanDalTest()
-//         {
-//             _sut = new TipeJaminanDal(ConnStringHelper.GetTestEnv());
-//         }
-//
-//         [Fact]
-//         public void InsertTest()
-//         {
-//             using var trans = TransHelper.NewScope();
-//             var expected = new TipeJaminanModel("A", "B");
-//             var jmn = new JaminanModel("C", "D");
-//             expected.Set(jmn);
-//             expected.Activate();
-//
-//             _sut.Insert(expected);
-//         }
-//
-//         [Fact]
-//         public void UpdateTest()
-//         {
-//             using var trans = TransHelper.NewScope();
-//             var expected = new TipeJaminanModel("A", "B");
-//             var jmn = new JaminanModel("C", "D");
-//             expected.Set(jmn);
-//             expected.Activate();
-//
-//             _sut.Update(expected);
-//         }
-//         [Fact]
-//         public void DeleteTest()
-//         {
-//             using var trans = TransHelper.NewScope();
-//             var expected = new TipeJaminanModel("A", "B");
-//             var jmn = new JaminanModel("C", "D");
-//             expected.Set(jmn);
-//             expected.Activate();
-//
-//             _sut.Delete(expected);
-//         }
-//
-//         [Fact]
-//         public void GetTest()
-//         {
-//             using var trans = TransHelper.NewScope();
-//             var expected = new TipeJaminanModel("A", "B");
-//             var jmn = new JaminanModel("C", "");
-//             expected.Set(jmn);
-//             expected.Activate();
-//             _sut.Insert(expected);
-//
-//             var actual = _sut.GetData(expected);
-//             actual.Should().BeEquivalentTo(expected);
-//         }
-//         [Fact]
-//         public void ListDataTest()
-//         {
-//             using var trans = TransHelper.NewScope();
-//             var expected = new TipeJaminanModel("A", "B");
-//             var jmn = new JaminanModel("C", "");
-//             expected.Set(jmn);
-//             expected.Activate();
-//             _sut.Insert(expected);
-//
-//             var actual = _sut.ListData();
-//             actual.Should().ContainEquivalentOf(expected);
-//         }
-//         [Fact]
-//         public void ListDataByJaminanIdTest()
-//         {
-//             using var trans = TransHelper.NewScope();
-//             var expected = new TipeJaminanModel("A", "B");
-//             var jmn = new JaminanModel("C", "");
-//             expected.Set(jmn);
-//             expected.Activate();
-//             _sut.Insert(expected);
-//
-//             var actual = _sut.ListData(jmn);
-//             actual.Should().ContainEquivalentOf(expected);
-//         }
-//
-//     }
-// }
+﻿using Bilreg.Domain.AdmisiContext.JaminanSub;
+using Bilreg.Infrastructure.Helpers;
+using FluentAssertions;
+using Nuna.Lib.TransactionHelper;
+using Xunit;
+
+namespace Bilreg.Infrastructure.AdmisiContext.JaminanSub.TipeJaminanAgg;
+
+public class TipeJaminanDalTest
+{
+    private readonly TipeJaminanDal _sut = new(ConnStringHelper.GetTestEnv());
+
+    private static TipeJaminanDto Faker()
+        => new TipeJaminanDto("A", "B", true, "C", "D", "E", "F");
+
+    private static ITipeJaminanKey FakerKey()
+        => TipeJaminanType.Key("A");
+
+    [Fact]
+    public void InsertTest()
+    {
+        using var trans = TransHelper.NewScope();
+        _sut.Insert(Faker());
+    }
+    
+    [Fact]
+    public void UpdateTest()
+    {
+        using var trans = TransHelper.NewScope();
+        _sut.Update(Faker());
+    }
+
+    [Fact]
+    public void DeleteTest()
+    {
+        using var trans = TransHelper.NewScope();
+        _sut.Delete(FakerKey());
+    }
+
+    [Fact]
+    public void GetDataTest()
+    {
+        using var trans = TransHelper.NewScope();
+        _sut.Insert(Faker());
+        var actual = _sut.GetData(FakerKey());
+        actual.Should().BeEquivalentTo(Faker(), 
+            opt => opt.Excluding(x => x.fs_nm_jaminan)
+                .Excluding(x => x.fs_kd_cara_bayar_dk)
+                .Excluding(x => x.fs_nm_cara_bayar_dk));
+    }
+    
+    [Fact]
+    public void ListDataTest()
+    {
+        using var trans = TransHelper.NewScope();
+        _sut.Insert(Faker());
+        var actual = _sut.ListData();
+        actual.Should().ContainEquivalentOf(Faker(),
+            opt => opt.Excluding(x => x.fs_nm_jaminan)
+                .Excluding(x => x.fs_kd_cara_bayar_dk)
+                .Excluding(x => x.fs_nm_cara_bayar_dk));
+    }
+}
