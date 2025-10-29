@@ -1,11 +1,11 @@
-﻿using Bilreg.Domain.AdmisiContext.RegSub.KarcisAgg;
+﻿using Bilreg.Domain.AdmisiContext.RegFeature.KarcisAgg;
 using Nuna.Lib.DataAccessHelper;
 
 namespace Bilreg.Application.AdmisiContext.RegSub.KarcisAgg;
 
 public interface IKarcisKomponenDal :
-    IInsertBulk<KarcisKomponenModel>,
+    IInsertBulk<KarcisKomponenType>,
     IDelete<IKarcisKey>,
-    IListData<KarcisKomponenModel, IKarcisKey>
+    IListData<KarcisKomponenType, IKarcisKey>
 {
 }

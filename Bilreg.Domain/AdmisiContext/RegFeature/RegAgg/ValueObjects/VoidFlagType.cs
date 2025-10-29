@@ -1,8 +1,7 @@
 ﻿using FluentAssertions;
-using Microsoft.VisualStudio.TestPlatform.ObjectModel;
 using Xunit;
 
-namespace Bilreg.Domain.AdmisiContext.RegSub.RegAgg.ValueObjects;
+namespace Bilreg.Domain.AdmisiContext.RegFeature.RegAgg.ValueObjects;
 
 public record VoidFlagType
 {

@@ -1,5 +1,5 @@
 using Ardalis.GuardClauses;
-using Bilreg.Domain.AdmisiContext.PetugasMedisSub;
+using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
 
 namespace Bilreg.Domain.BillContext.TindakanSub.TarifFeature;
 

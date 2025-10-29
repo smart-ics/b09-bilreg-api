@@ -2,7 +2,7 @@ using Ardalis.GuardClauses;
 using FluentAssertions;
 using Xunit;
 
-namespace Bilreg.Domain.PasienContext.StatusSosialFeature;
+namespace Bilreg.Domain.PasienContext.DemografiFeature;
 
 public record KotaType : IKotaKey
 {

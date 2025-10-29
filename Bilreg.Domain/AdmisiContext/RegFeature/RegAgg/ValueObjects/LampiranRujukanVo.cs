@@ -1,4 +1,4 @@
-﻿namespace Bilreg.Domain.AdmisiContext.RegSub.RegAgg.ValueObjects;
+﻿namespace Bilreg.Domain.AdmisiContext.RegFeature.RegAgg.ValueObjects;
 
 public record LampiranRujukanVo(
     string RujukanReffNo,

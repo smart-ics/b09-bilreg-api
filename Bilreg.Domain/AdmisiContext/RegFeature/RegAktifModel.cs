@@ -1,10 +1,10 @@
 ﻿using Bilreg.Domain.AdmisiContext.JaminanSub;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
-using Bilreg.Domain.AdmisiContext.RegSub.RegAgg.ValueObjects;
+using Bilreg.Domain.AdmisiContext.RegFeature.RegAgg.ValueObjects;
 using Bilreg.Domain.PasienContext.PasienFeature;
 
-namespace Bilreg.Domain.AdmisiContext.RegSub;
+namespace Bilreg.Domain.AdmisiContext.RegFeature;
 
 public class RegAktifModel : IRegKey
 {

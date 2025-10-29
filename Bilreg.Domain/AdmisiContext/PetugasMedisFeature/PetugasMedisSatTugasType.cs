@@ -1,6 +1,6 @@
 ﻿using Ardalis.GuardClauses;
 
-namespace Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
+namespace Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
 
 public class PetugasMedisSatTugasType
 {

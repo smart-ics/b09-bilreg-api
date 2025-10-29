@@ -1,6 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
-
-namespace Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+﻿namespace Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
 
 public record PetugasMedisType : IPetugasMedisKey
 {

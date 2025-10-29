@@ -1,5 +1,5 @@
-﻿using Bilreg.Domain.AdmisiContext.RegSub;
-using Bilreg.Domain.AdmisiContext.RegSub.RegAgg.ValueObjects;
+﻿using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature.RegAgg.ValueObjects;
 using Nuna.Lib.DataAccessHelper;
 using Nuna.Lib.ValidationHelper;
 
