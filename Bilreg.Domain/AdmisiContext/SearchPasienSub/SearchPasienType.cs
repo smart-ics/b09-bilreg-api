@@ -1,7 +1,7 @@
 ﻿using Bilreg.Domain.PasienContext.PasienFeature;
 using Nuna.Lib.ValidationHelper;
 using System.Text.RegularExpressions;
-using Bilreg.Domain.AdmisiContext.RegFeature.RegAgg.ValueObjects;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 
 namespace Bilreg.Domain.AdmisiContext.SearchPasienSub;
 

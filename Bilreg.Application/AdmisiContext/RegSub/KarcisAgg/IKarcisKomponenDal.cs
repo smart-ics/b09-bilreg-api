@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.RegFeature.KarcisAgg;
+﻿using Bilreg.Domain.AdmisiContext.RegFeature;
 using Nuna.Lib.DataAccessHelper;
 
 namespace Bilreg.Application.AdmisiContext.RegSub.KarcisAgg;

@@ -1,7 +1,7 @@
 ﻿using FluentAssertions;
 using Xunit;
 
-namespace Bilreg.Domain.AdmisiContext.RegFeature.RegAgg.ValueObjects;
+namespace Bilreg.Domain.AdmisiContext.RegFeature;
 
 public record VoidFlagType
 {

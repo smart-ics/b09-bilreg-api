@@ -1,6 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.RegFeature.RegAgg.ValueObjects;
-
-namespace Bilreg.Domain.AdmisiContext.RegFeature.RegAgg;
+﻿namespace Bilreg.Domain.AdmisiContext.RegFeature;
 
 public class RegModel : IRegKey
 {

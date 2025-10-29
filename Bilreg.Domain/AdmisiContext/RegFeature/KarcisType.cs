@@ -2,7 +2,7 @@
 using Bilreg.Domain.BillContext.RekapCetakSub;
 using Bilreg.Domain.BillContext.TindakanSub.TarifFeature;
 
-namespace Bilreg.Domain.AdmisiContext.RegFeature.KarcisAgg;
+namespace Bilreg.Domain.AdmisiContext.RegFeature;
 
 public record KarcisType : IKarcisKey
 {
