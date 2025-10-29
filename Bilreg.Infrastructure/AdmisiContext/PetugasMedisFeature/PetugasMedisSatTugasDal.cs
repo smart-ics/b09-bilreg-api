@@ -1,6 +1,7 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
 using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.PetugasMedisSub;
 using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
@@ -15,7 +16,8 @@ namespace Bilreg.Infrastructure.AdmisiContext.PetugasMedisFeature;
 public interface IPetugasMedisSatTugasDal :
     IInsertBulk<PetugasMedisSatTugasDto>,
     IDelete<IPetugasMedisKey>,
-    IListData<PetugasMedisSatTugasDto, IPetugasMedisKey>
+    IListData<PetugasMedisSatTugasDto, IPetugasMedisKey>,
+    IListData<PetugasMedisSatTugasDto, ISatTugasKey>
 {
 }
 
@@ -77,6 +79,26 @@ public class PetugasMedisSatTugasDal : IPetugasMedisSatTugasDal
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_peg", filter.PetugasMedisId, SqlDbType.VarChar);
         
+        var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Query<PetugasMedisSatTugasDto>(sql, dp);
+    }
+
+    public IEnumerable<PetugasMedisSatTugasDto> ListData(ISatTugasKey filter)
+    {
+        const string sql = """
+            SELECT 
+                aa.fs_kd_peg, aa.fs_kd_sat_tugas, aa.fn_utama,
+                ISNULL(bb.fs_nm_sat_tugas, '') AS fs_nm_sat_tugas
+            FROM 
+                td_peg_sat_tugas aa
+                LEFT JOIN td_sat_tugas bb ON aa.fs_kd_sat_tugas = bb.fs_kd_sat_tugas
+            WHERE 
+                aa.fs_kd_sat_tugas = @fs_kd_sat_tugas
+            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@fs_kd_sat_tugas", filter.SatTugasId, SqlDbType.VarChar);
+
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Query<PetugasMedisSatTugasDto>(sql, dp);
     }
