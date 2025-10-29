@@ -34,7 +34,7 @@ public class PasienFactory : IPasienFactory
         var kodeRs = _getKodeRs.Execute();
         var newId = $"{kodeRs}{newNumber:D8}";
         var newPasien = new PasienModel(newId, person, nickName, tempatLahir, golDarah, 
-            namaIbuKandung, AlamatType.Default, KelurahanType.Default, IdentitasType.Default, 
+            namaIbuKandung, KtpType.Default,  KelurahanType.Default, IdentitasType.Default, 
             new List<ContactType>(), PasienKeluargaType.Default, 
             AgamaType.Default, SukuType.Default, StatusKawinDkType.Default, 
             PendidikanDkType.Default, PekerjaanDkType.Default, 

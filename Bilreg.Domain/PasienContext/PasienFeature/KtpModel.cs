@@ -14,7 +14,7 @@ namespace Bilreg.Domain.PasienContext.PasienFeature;
 public record KtpType
 {
     public KtpType(string nik, AlamatType alamat, string rt, string rw, 
-        KelurahanReff kelurahan)
+        KelurahanType kelurahan)
     {
         Nik = nik;
         Alamat = alamat;
@@ -22,9 +22,10 @@ public record KtpType
         Rw = rw;
         Kelurahan = kelurahan;
     }
+    public static KtpType Default => new("-", AlamatType.Default, "-", "-", KelurahanType.Default);
     public string Nik { get; init; }
     public AlamatType Alamat { get; init; }
     public string Rt { get; init; }
     public string Rw { get; init; }
-    public KelurahanReff Kelurahan { get; init; }
+    public KelurahanType Kelurahan { get; init; }
 }

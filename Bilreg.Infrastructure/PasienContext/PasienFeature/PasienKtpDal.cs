@@ -26,82 +26,125 @@ public class PasienKtpDal : IPasienKtpDal
     {
         _opt = opt.Value;
     }
-
-    public void Insert(PasienKtpDto model)
+    public void Insert(PasienKtpDto dto)
     {
-        const string sql = @"
-            INSERT INTO BILRG_Pasien(
-                PasienId, AlamatKtp1, AlamatKtp2, 
-                AlamatKtp3, AlamatKtpKota, AlamatKtpKodePos)
+        const string sql = """
+            INSERT INTO tc_mr_ktp(
+               fs_kd_mr, fs_nik, fs_nama_ktp, fs_alm_ktp, fs_rt_ktp, fs_rw_ktp,  
+               fs_kd_kelurahan_ktp, fs_kelurahan_ktp, fs_kd_kecamatan_ktp, fs_kecamatan_ktp, 
+               fs_kd_kabupaten_ktp, fs_kabupaten_ktp, fs_kd_propinsi_ktp, fs_propinsi_ktp, 
+               fs_tempat_lahir, fs_sex, fd_tgl_lahir, fs_gol_darah)
             VALUES(
-                @PasienId, @AlamatKtp1, @AlamatKtp2, 
-                @AlamatKtp3, @AlamatKtpKota, @AlamatKtpKodePos)";
-        
+               @fs_kd_mr, @fs_nik, @fs_nama_ktp, @fs_alm_ktp, @fs_rt_ktp, @fs_rw_ktp,  
+               @fs_kd_kelurahan_ktp, @fs_kelurahan_ktp, @fs_kd_kecamatan_ktp, @fs_kecamatan_ktp, 
+               @fs_kd_kabupaten_ktp, @fs_kabupaten_ktp, @fs_kd_propinsi_ktp, @fs_propinsi_ktp, 
+               @fs_tempat_lahir, @fs_sex, @fd_tgl_lahir, @fs_gol_darah)
+            """;
         var dp = new DynamicParameters();
-        dp.AddParam("@PasienId", model.PasienId, SqlDbType.VarChar);
-        dp.AddParam("@AlamatKtp1", model.AlamatKtp1, SqlDbType.VarChar);
-        dp.AddParam("@AlamatKtp2", model.AlamatKtp2, SqlDbType.VarChar);
-        dp.AddParam("@AlamatKtp3", model.AlamatKtp3, SqlDbType.VarChar);
-        dp.AddParam("@AlamatKtpKota", model.AlamatKtpKota, SqlDbType.VarChar);      
-        dp.AddParam("@AlamatKtpKodePos", model.AlamatKtpKodePos, SqlDbType.VarChar);
-        
+        dp.AddParam("@fs_kd_mr", dto.fs_kd_mr, SqlDbType.VarChar); 
+        dp.AddParam("@fs_nik", dto.fs_nik, SqlDbType.VarChar); 
+        dp.AddParam("@fs_nama_ktp", dto.fs_nama_ktp, SqlDbType.VarChar); 
+        dp.AddParam("@fs_alm_ktp", dto.fs_alm_ktp, SqlDbType.VarChar); 
+        dp.AddParam("@fs_rt_ktp", dto.fs_rt_ktp, SqlDbType.VarChar); 
+        dp.AddParam("@fs_rw_ktp", dto.fs_rw_ktp, SqlDbType.VarChar);  
+        dp.AddParam("@fs_kd_kelurahan_ktp", dto.fs_kd_kelurahan_ktp, SqlDbType.VarChar); 
+        dp.AddParam("@fs_kelurahan_ktp", dto.fs_kelurahan_ktp, SqlDbType.VarChar); 
+        dp.AddParam("@fs_kd_kecamatan_ktp", dto.fs_kd_kecamatan_ktp, SqlDbType.VarChar); 
+        dp.AddParam("@fs_kecamatan_ktp", dto.fs_kecamatan_ktp, SqlDbType.VarChar); 
+        dp.AddParam("@fs_kd_kabupaten_ktp", dto.fs_kd_kabupaten_ktp, SqlDbType.VarChar); 
+        dp.AddParam("@fs_kabupaten_ktp", dto.fs_kabupaten_ktp, SqlDbType.VarChar); 
+        dp.AddParam("@fs_kd_propinsi_ktp", dto.fs_kd_propinsi_ktp, SqlDbType.VarChar); 
+        dp.AddParam("@fs_propinsi_ktp", dto.fs_propinsi_ktp, SqlDbType.VarChar); 
+        dp.AddParam("@fs_tempat_lahir", dto.fs_tempat_lahir, SqlDbType.VarChar); 
+        dp.AddParam("@fs_sex", dto.fs_sex, SqlDbType.VarChar); 
+        dp.AddParam("@fd_tgl_lahir", dto.fd_tgl_lahir, SqlDbType.VarChar); 
+        dp.AddParam("@fs_gol_darah", dto.fs_gol_darah, SqlDbType.VarChar);
+
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
 
-    public void Update(PasienKtpDto model)
+    public void Update(PasienKtpDto dto)
     {
-        const string sql = @"
-            UPDATE
-                BILRG_Pasien
+        const string sql = """
+            UPDATE 
+                tc_mr_ktp
             SET
-                AlamatKtp1 = @AlamatKtp1, 
-                AlamatKtp2 = @AlamatKtp2, 
-                AlamatKtp3 = @AlamatKtp3, 
-                AlamatKtpKota = @AlamatKtpKota, 
-                AlamatKtpKodePos = @AlamatKtpKodePos
+               fs_nik = @fs_nik, 
+               fs_nama_ktp = @fs_nama_ktp, 
+               fs_alm_ktp = @fs_alm_ktp, 
+               fs_rt_ktp = @fs_rt_ktp, 
+               fs_rw_ktp = @fs_rw_ktp,  
+               fs_kd_kelurahan_ktp = @fs_kd_kelurahan_ktp, 
+               fs_kelurahan_ktp = @fs_kelurahan_ktp, 
+               fs_kd_kecamatan_ktp = @fs_kd_kecamatan_ktp, 
+               fs_kecamatan_ktp = @fs_kecamatan_ktp, 
+               fs_kd_kabupaten_ktp = @fs_kd_kabupaten_ktp, 
+               fs_kabupaten_ktp = @fs_kabupaten_ktp, 
+               fs_kd_propinsi_ktp = @fs_kd_propinsi_ktp, 
+               fs_propinsi_ktp = @fs_propinsi_ktp, 
+               fs_tempat_lahir = @fs_tempat_lahir, 
+               fs_sex = @fs_sex, 
+               fd_tgl_lahir = @fd_tgl_lahir, 
+               fs_gol_darah = @fs_gol_darah
             WHERE
-                PasienId = @PasienId ";
-        
+               fs_kd_mr = @fs_kd_mr
+            """;
         var dp = new DynamicParameters();
-        dp.AddParam("@PasienId", model.PasienId, SqlDbType.VarChar);
-        dp.AddParam("@AlamatKtp1", model.AlamatKtp1, SqlDbType.VarChar);
-        dp.AddParam("@AlamatKtp2", model.AlamatKtp2, SqlDbType.VarChar);
-        dp.AddParam("@AlamatKtp3", model.AlamatKtp3, SqlDbType.VarChar);
-        dp.AddParam("@AlamatKtpKota", model.AlamatKtpKota, SqlDbType.VarChar);      
-        dp.AddParam("@AlamatKtpKodePos", model.AlamatKtpKodePos, SqlDbType.VarChar);
-        
+        dp.AddParam("@fs_kd_mr", dto.fs_kd_mr, SqlDbType.VarChar); 
+        dp.AddParam("@fs_nik", dto.fs_nik, SqlDbType.VarChar); 
+        dp.AddParam("@fs_nama_ktp", dto.fs_nama_ktp, SqlDbType.VarChar); 
+        dp.AddParam("@fs_alm_ktp", dto.fs_alm_ktp, SqlDbType.VarChar); 
+        dp.AddParam("@fs_rt_ktp", dto.fs_rt_ktp, SqlDbType.VarChar); 
+        dp.AddParam("@fs_rw_ktp", dto.fs_rw_ktp, SqlDbType.VarChar);  
+        dp.AddParam("@fs_kd_kelurahan_ktp", dto.fs_kd_kelurahan_ktp, SqlDbType.VarChar); 
+        dp.AddParam("@fs_kelurahan_ktp", dto.fs_kelurahan_ktp, SqlDbType.VarChar); 
+        dp.AddParam("@fs_kd_kecamatan_ktp", dto.fs_kd_kecamatan_ktp, SqlDbType.VarChar); 
+        dp.AddParam("@fs_kecamatan_ktp", dto.fs_kecamatan_ktp, SqlDbType.VarChar); 
+        dp.AddParam("@fs_kd_kabupaten_ktp", dto.fs_kd_kabupaten_ktp, SqlDbType.VarChar); 
+        dp.AddParam("@fs_kabupaten_ktp", dto.fs_kabupaten_ktp, SqlDbType.VarChar); 
+        dp.AddParam("@fs_kd_propinsi_ktp", dto.fs_kd_propinsi_ktp, SqlDbType.VarChar); 
+        dp.AddParam("@fs_propinsi_ktp", dto.fs_propinsi_ktp, SqlDbType.VarChar); 
+        dp.AddParam("@fs_tempat_lahir", dto.fs_tempat_lahir, SqlDbType.VarChar); 
+        dp.AddParam("@fs_sex", dto.fs_sex, SqlDbType.VarChar); 
+        dp.AddParam("@fd_tgl_lahir", dto.fd_tgl_lahir, SqlDbType.VarChar); 
+        dp.AddParam("@fs_gol_darah", dto.fs_gol_darah, SqlDbType.VarChar);
+
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
 
     public void Delete(IPasienKey key)
     {
-        const string sql = @"
-            DELETE FROM
-                BILRG_Pasien
+        const string sql = """
+            DELETE FROM 
+                tc_mr_ktp
             WHERE
-                PasienId = @PasienId ";
-        
+               fs_kd_mr = @fs_kd_mr
+            """;
         var dp = new DynamicParameters();
-        dp.AddParam("@PasienId", key.PasienId, SqlDbType.VarChar);
-        
+        dp.AddParam("@fs_kd_mr", key.PasienId, SqlDbType.VarChar); 
+
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
 
     public PasienKtpDto GetData(IPasienKey key)
     {
-        const string sql = @"
-            SELECT
-                PasienId, AlamatKtp1, AlamatKtp2, 
-                AlamatKtp3, AlamatKtpKota, AlamatKtpKodePos
-            FROM BILRG_Pasien
-            WHERE PasienId = @PasienId";
-        
+        const string sql = """
+            SELECT 
+                fs_kd_mr, fs_nik, fs_nama_ktp, fs_alm_ktp, fs_rt_ktp, fs_rw_ktp,  
+                fs_kd_kelurahan_ktp, fs_kelurahan_ktp, fs_kd_kecamatan_ktp, fs_kecamatan_ktp, 
+                fs_kd_kabupaten_ktp, fs_kabupaten_ktp, fs_kd_propinsi_ktp, fs_propinsi_ktp, 
+                fs_tempat_lahir, fs_sex, fd_tgl_lahir, fs_gol_darah
+            FROM
+                tc_mr_ktp
+            WHERE
+               fs_kd_mr = @fs_kd_mr
+            """;
         var dp = new DynamicParameters();
-        dp.AddParam("@PasienId", key.PasienId, SqlDbType.VarChar);
-        
+        dp.AddParam("@fs_kd_mr", key.PasienId, SqlDbType.VarChar); 
+
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.ReadSingle<PasienKtpDto>(sql, dp);
     }
@@ -109,45 +152,60 @@ public class PasienKtpDal : IPasienKtpDal
 
 public class PasienKtpDalTest
 {
-    private readonly PasienKtpDal _sut;
-    public PasienKtpDalTest()
-    {
-        _sut = new PasienKtpDal(ConnStringHelper.GetTestEnv());
-    }
-    
-    private PasienKtpDto Faker()
-    => new PasienKtpDto( "A", "B", "C", "D", "E", "F" );
-    
+    private readonly PasienKtpDal _sut = new(ConnStringHelper.GetTestEnv());
+
+    private static PasienKtpDto Faker()
+        => new PasienKtpDto(
+            fs_kd_mr: "A",
+            fs_nik: "B",
+            fs_nama_ktp: "C",
+            fs_alm_ktp: "D",
+            fs_rt_ktp: "E",
+            fs_rw_ktp: "F",
+            fs_kd_kelurahan_ktp: "G",
+            fs_kelurahan_ktp: "H",
+            fs_kd_kecamatan_ktp: "I",
+            fs_kecamatan_ktp: "J",
+            fs_kd_kabupaten_ktp: "K",
+            fs_kabupaten_ktp: "L",
+            fs_kd_propinsi_ktp: "M",
+            fs_propinsi_ktp: "N",
+            fs_tempat_lahir: "O",
+            fs_sex: "P",
+            fd_tgl_lahir: "01012000",
+            fs_gol_darah: "Q"
+        );
+
+    private static IPasienKey FakerKey()
+        => PasienModel.Key("A");
+
     [Fact]
-    public void UT1_InserTest()
+    public void InsertTest()
     {
         using var trans = TransHelper.NewScope();
         _sut.Insert(Faker());
     }
     
     [Fact]
-    public void UT2_UpdateTest()
+    public void UpdateTest()
     {
         using var trans = TransHelper.NewScope();
-        var faker = Faker();
-        _sut.Update(faker);
+        _sut.Update(Faker());
     }
-    
+
     [Fact]
-    public void UT3_DeleteTest()
+    public void DeleteTest()
     {
         using var trans = TransHelper.NewScope();
-        var faker = Faker();
-        _sut.Delete(faker);
+        _sut.Delete(FakerKey());
     }
-    
+
     [Fact]
-    public void UT4_GetDataTest()
+    public void GetDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var faker = Faker();
-        _sut.Insert(faker);
-        var actual = _sut.GetData(PasienModel.Key("A"));
-        actual.Should().BeEquivalentTo(faker);
+        _sut.Insert(Faker());
+        var actual = _sut.GetData(FakerKey());
+        actual.Should().BeEquivalentTo(Faker());
     }
 }

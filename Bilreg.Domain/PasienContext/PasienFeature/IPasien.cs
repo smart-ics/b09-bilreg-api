@@ -3,21 +3,6 @@ using Bilreg.Domain.PasienContext.StatusSosialFeature;
 
 namespace Bilreg.Domain.PasienContext.PasienFeature;
 
-public interface IPasienPersonalInfo : IPasienKey
-{
-    string PasienName { get; }
-    DateTime TglLahir { get; }
-    string Gender { get; }
-
-    string NickName { get; }
-    string TempatLahir { get; }
-    string IbuKandung { get; }
-    GolDarahType GolDarah { get; }
-    
-    DateTime TglMedRec { get; }
-    bool IsAktif { get; }
-}
-
 public interface IPasienAdministrativeInfo : IPasienKey
 {
     AlamatType AlamatKtp { get; }
