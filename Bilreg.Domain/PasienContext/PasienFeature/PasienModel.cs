@@ -30,7 +30,7 @@ public class PasienModel : IPasienKey
         GolDarah = golDarah;
         NamaIbuKandung = namaIbuKandung;
         
-        AlamatKtp = alamatKtp;
+        Ktp = alamatKtp;
         Kelurahan = kelurahan;
         
         KartuKeluarga = kartuKeluarga;
@@ -74,7 +74,7 @@ public class PasienModel : IPasienKey
     public string NamaIbuKandung { get; private set; }
     
     //      administrative info
-    public AlamatType AlamatKtp { get; private set; }
+    public KtpType Ktp { get; private set; }
     public KelurahanType Kelurahan { get; private set; } 
     public IdentitasType KartuKeluarga { get; private set; }
     public IEnumerable<ContactType> ListContact => _listContact;
@@ -116,7 +116,7 @@ public class PasienModel : IPasienKey
         noHp ??= ContactType.Default;
         pasienKeluarga ??= PasienKeluargaType.Default;
         
-        AlamatKtp = alamatKtp;
+        Ktp = alamatKtp;
         Kelurahan = kelurahan;
         KartuKeluarga = kartuKeluarga;
         PasienKeluarga = pasienKeluarga;
@@ -149,7 +149,7 @@ public class PasienModel : IPasienKey
         if (kartuKeluarga.JenisId != "KK")
             throw new ArgumentException("Jenis Kartu Keluarga harus KK");
 
-        AlamatKtp = alamatKtp;
+        Ktp = alamatKtp;
         Kelurahan = kelurahan;
         KartuKeluarga = kartuKeluarga;
         PasienKeluarga = keluarga;

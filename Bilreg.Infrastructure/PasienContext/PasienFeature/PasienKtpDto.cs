@@ -19,9 +19,9 @@ public record PasienKtpDto(
     public static PasienKtpDto FromModel(PasienModel model)
     {
         var noKtp = model.Person.Identity.NomorId;
-        var alamat = model.AlamatKtp.Alamat[0] ?? "-";
-        var alamat2 = model.AlamatKtp.Alamat[1] ?? "-";
-        var alamat3 = model.AlamatKtp.Alamat[2] ?? "-";
+        var alamat = model.Ktp.Alamat[0] ?? "-";
+        var alamat2 = model.Ktp.Alamat[1] ?? "-";
+        var alamat3 = model.Ktp.Alamat[2] ?? "-";
         var result = new PasienKtpDto(
             model.PasienId, model.Person, noKtp, alamat, alamat2, alamat3,
             
@@ -31,15 +31,15 @@ public record PasienKtpDto(
     
     public static PasienKtpDto Create(PasienModel model)
     {
-        var listAlamat = model.AlamatKtp.Normalize3Address();
+        var listAlamat = model.Ktp.Normalize3Address();
 
         return new PasienKtpDto(
             model.PasienId,
             listAlamat[0],
             listAlamat[1],
             listAlamat[2],
-            model.AlamatKtp.Kota,
-            model.AlamatKtp.KodePos);
+            model.Ktp.Kota,
+            model.Ktp.KodePos);
     }
 }
 
