@@ -1,28 +1,21 @@
-using Bilreg.Domain.PasienContext.DemografiFeature;
-using JetBrains.Annotations;
 using MediatR;
 
 namespace Bilreg.Application.PasienContext.DemografiFeature;
 
-public record KelurahanListQuery(string KecamatanId) : IRequest<IEnumerable<KelurahanListResponse>>;
-
-[PublicAPI]
-public record KelurahanListResponse(string KelurahanId, string KelurahanName, 
-    KecamatanReff Kecamatan, KabupatenReff Kabupaten, PropinsiType Propinsi);
-
-public class KelurahanListHandler : IRequestHandler<KelurahanListQuery, IEnumerable<KelurahanListResponse>>
+public record KelurahanListQuery(string Keyword) : IRequest<IEnumerable<KelurahanView>>;
+public class KelurahanListHandler : IRequestHandler<KelurahanListQuery, IEnumerable<KelurahanView>>
 {
-    private readonly IKelurahanDal _kelurahanDal;
+    private readonly IKelurahanRepo _kelurahanRepo;
 
-    public KelurahanListHandler(IKelurahanDal kelurahanDal)
+    public KelurahanListHandler(IKelurahanRepo kelurahanRepo)
     {
-        _kelurahanDal = kelurahanDal;
+        _kelurahanRepo = kelurahanRepo;
     }
 
-    public Task<IEnumerable<KelurahanListResponse>> Handle(KelurahanListQuery request, CancellationToken cancellationToken)
-        => _kelurahanDal.ListData(KecamatanType.Key(request.KecamatanId))
-            .Match(
-                onSome: x => Task.FromResult(x.Select(y 
-                    => new KelurahanListResponse(y.KelurahanId, y.KelurahanName, y.Kecamatan, y.Kabupaten, y.Propinsi))),
-                onNone: () => throw new KeyNotFoundException($"Kelurahan not found"));
+    public Task<IEnumerable<KelurahanView>> Handle(KelurahanListQuery request,
+        CancellationToken cancellationToken)
+    {
+        var result = _kelurahanRepo.ListData(request.Keyword);
+        return Task.FromResult(result);
+    }
 }

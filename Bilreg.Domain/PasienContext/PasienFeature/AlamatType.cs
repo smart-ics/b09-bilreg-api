@@ -1,4 +1,5 @@
 ﻿using Ardalis.GuardClauses;
+using Bilreg.Domain.PasienContext.DemografiFeature;
 
 namespace Bilreg.Domain.PasienContext.PasienFeature;
 
@@ -22,5 +23,5 @@ public record AlamatType
     public string Kota { get; init; }
     public string KodePos { get; init; }
     
-    public static AlamatType Default => new AlamatType(["-", "-"], "-", "-");
+    public static AlamatType Default => new AlamatType(["-", "-", "-"],  "-", "-");
 }

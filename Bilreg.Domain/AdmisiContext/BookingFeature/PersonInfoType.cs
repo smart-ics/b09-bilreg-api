@@ -6,18 +6,18 @@ namespace Bilreg.Domain.AdmisiContext.BookingFeature;
 
 public record PersonInfoType
 {
-    public PersonInfoType(string personName, DateOnly birthDate, string gender, 
+    public PersonInfoType(string personName, DateOnly tglLahir, string gender, 
         AlamatType alamat, ContactType contact, IdentitasType identity)
     {
         Guard.Against.NullOrWhiteSpace(personName, nameof(personName));
         Guard.Against.Null(gender, nameof(gender));
-        Guard.Against.Null(birthDate, nameof(birthDate));
+        Guard.Against.Null(tglLahir, nameof(tglLahir));
         Guard.Against.Null(alamat, nameof(alamat));
         Guard.Against.Null(contact, nameof(contact));
         Guard.Against.Null(identity, nameof(identity));
         
         PersonName = personName;
-        TglLahir = birthDate;
+        TglLahir = tglLahir;
         Gender = gender;
         Alamat = alamat;
         Contact = contact;

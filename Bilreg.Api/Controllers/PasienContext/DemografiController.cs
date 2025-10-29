@@ -118,12 +118,11 @@ public class DemografiController : Controller
     }
 
     [HttpGet]
-    [Route("kelurahan/list/{kecId}")]
-    public async Task<IActionResult> ListDataKelurahan(string kecId)
+    [Route("kelurahan/list/{keyword}")]
+    public async Task<IActionResult> ListDataKelurahan(string keyword)
     {
-        var query = new KelurahanListQuery(kecId);
+        var query = new KelurahanListQuery(keyword);
         var response = await _mediator.Send(query);
         return Ok(new JSendOk(response));
     }
-    
 }

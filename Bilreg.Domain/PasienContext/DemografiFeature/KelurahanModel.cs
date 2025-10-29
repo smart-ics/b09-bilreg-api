@@ -38,4 +38,7 @@ public interface IKelurahanKey
     string KelurahanId {get;}
 }
 
-public record KelurahanReff(string KelurahanId, string KelurahanName);
+public record KelurahanReff(string KelurahanId, string KelurahanName)
+{
+    public static KelurahanReff Default => new("-", "-");
+};

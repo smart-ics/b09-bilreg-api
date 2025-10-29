@@ -34,3 +34,6 @@ ROLLBACK TRANSACTION;
         THROW;
 END CATCH
 END;
+----
+GRANT EXECUTE ON sp_tz_parameter_no_getnextvalue TO bilregUser;
+GO

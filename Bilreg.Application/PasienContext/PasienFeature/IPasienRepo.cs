@@ -9,8 +9,10 @@ public interface IPasienRepo :
     ISaveChange<PasienModel, IPasienKey>,
     ILoadEntity<PasienModel, IPasienKey>,
     IDeleteEntity<IPasienKey>,
-    IListData<IPasienPersonalInfo, PasienFinder>
+    IListData<PasienPersonView, string>
 {
 }
 
-public record PasienPersonView(string PasienId, PersonInfoType Person);
+public record PasienPersonView(
+    string PasienId,
+    PersonInfoType Person);

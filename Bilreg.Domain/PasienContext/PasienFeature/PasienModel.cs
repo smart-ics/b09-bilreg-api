@@ -11,7 +11,7 @@ public class PasienModel : IPasienKey
     
     public PasienModel(string pasienId, PersonInfoType person,  
         string nickName, string tempatLahir, GolDarahType golDarah, string namaIbuKandung, 
-        AlamatType alamatKtp, KelurahanType kelurahan, 
+        KtpType ktp, KelurahanType kelurahan, 
         //
         IdentitasType kartuKeluarga, 
         IEnumerable<ContactType> listContact, 
@@ -30,7 +30,7 @@ public class PasienModel : IPasienKey
         GolDarah = golDarah;
         NamaIbuKandung = namaIbuKandung;
         
-        AlamatKtp = alamatKtp;
+        Ktp = ktp;
         Kelurahan = kelurahan;
         
         KartuKeluarga = kartuKeluarga;
@@ -48,7 +48,7 @@ public class PasienModel : IPasienKey
 
     public static PasienModel Default => new PasienModel("-",
         PersonInfoType.Default, "-", "-", GolDarahType.Default, "-", 
-        AlamatType.Default, KelurahanType.Default, IdentitasType.Default, 
+        KtpType.Default, KelurahanType.Default, IdentitasType.Default, 
         new List<ContactType>(), PasienKeluargaType.Default, 
         AgamaType.Default, SukuType.Default, StatusKawinDkType.Default, 
         PendidikanDkType.Default, PekerjaanDkType.Default, 
@@ -56,7 +56,7 @@ public class PasienModel : IPasienKey
     
     public static IPasienKey Key(string id) => new PasienModel(id,
         PersonInfoType.Default, "-", "-", GolDarahType.Default, "-", 
-        AlamatType.Default, KelurahanType.Default, IdentitasType.Default, 
+        KtpType.Default,KelurahanType.Default, IdentitasType.Default, 
         new List<ContactType>(), PasienKeluargaType.Default, 
         AgamaType.Default, SukuType.Default, StatusKawinDkType.Default, 
         PendidikanDkType.Default, PekerjaanDkType.Default, 
@@ -74,7 +74,7 @@ public class PasienModel : IPasienKey
     public string NamaIbuKandung { get; private set; }
     
     //      administrative info
-    public AlamatType AlamatKtp { get; private set; }
+    public KtpType Ktp { get; private set; }
     public KelurahanType Kelurahan { get; private set; } 
     public IdentitasType KartuKeluarga { get; private set; }
     public IEnumerable<ContactType> ListContact => _listContact;
@@ -105,11 +105,40 @@ public class PasienModel : IPasienKey
         return shortId;        
     }
 
-    public void SetAdministrativeInfo(AlamatType alamatKtp,
+    public void UpdateAdminInfo(KtpType ktp, KelurahanType kelurahan, 
+        IdentitasType kartuKeluarga, ContactType email, ContactType noHp,
+        PasienKeluargaType pasienKeluarga)
+    {
+        ktp ??= KtpType.Default;
+        kelurahan ??= KelurahanType.Default;
+        kartuKeluarga ??= IdentitasType.Default;
+        email ??= ContactType.Default;
+        noHp ??= ContactType.Default;
+        pasienKeluarga ??= PasienKeluargaType.Default;
+        
+        Ktp = ktp;
+        Kelurahan = kelurahan;
+        KartuKeluarga = kartuKeluarga;
+        PasienKeluarga = pasienKeluarga;
+
+        if (email is not null)
+        {
+            _listContact.RemoveAll(x => x.JenisContact == JenisContactEnum.Email);
+            _listContact.Add(email);
+        }
+
+        if (noHp is not null)
+        {
+            _listContact.RemoveAll(x => x.JenisContact == JenisContactEnum.Mobile);
+            _listContact.Add(noHp);
+        }
+    }
+    
+    public void SetAdministrativeInfo(KtpType ktp,
         KelurahanType kelurahan, IdentitasType kartuKeluarga, 
         IEnumerable<ContactType> listContact, PasienKeluargaType keluarga)
     {
-        Guard.Against.Null(alamatKtp, nameof(alamatKtp));
+        Guard.Against.Null(ktp, nameof(ktp));
         Guard.Against.Null(kelurahan, nameof(kelurahan));
         Guard.Against.Null(kartuKeluarga, nameof(kartuKeluarga));
         Guard.Against.Null(keluarga, nameof(keluarga));
@@ -120,7 +149,7 @@ public class PasienModel : IPasienKey
         if (kartuKeluarga.JenisId != "KK")
             throw new ArgumentException("Jenis Kartu Keluarga harus KK");
 
-        AlamatKtp = alamatKtp;
+        Ktp = ktp;
         Kelurahan = kelurahan;
         KartuKeluarga = kartuKeluarga;
         PasienKeluarga = keluarga;

@@ -12,15 +12,15 @@ public record KelurahanGetResponse(string KelurahanId, string KelurahanName,
 
 public class KelurahanGetHandler : IRequestHandler<KelurahanGetQuery, KelurahanGetResponse>
 {
-    private readonly IKelurahanDal _kelurahanDal;
+    private readonly IKelurahanRepo _kelurahanRepo;
 
-    public KelurahanGetHandler(IKelurahanDal kelurahanDal)
+    public KelurahanGetHandler(IKelurahanRepo kelurahanRepo)
     {
-        _kelurahanDal = kelurahanDal;
+        _kelurahanRepo = kelurahanRepo;
     }
 
     public Task<KelurahanGetResponse> Handle(KelurahanGetQuery request, CancellationToken cancellationToken)
-        =>  _kelurahanDal.GetData(KelurahanType.Key(request.KelurahanId))
+        =>  _kelurahanRepo.LoadEntity(KelurahanType.Key(request.KelurahanId))
             .Match(
                 onSome: x => Task.FromResult(new KelurahanGetResponse(x.KelurahanId, x.KelurahanName,
                     x.Kabupaten, x.Propinsi)), 

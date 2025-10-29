@@ -8,6 +8,18 @@ public record KelurahanDto(string fs_kd_kelurahan, string fs_nm_kelurahan,
     string fs_kd_kabupaten, string fs_nm_kabupaten, 
     string fs_kd_propinsi, string fs_nm_propinsi)
 {
+    public static KelurahanDto FromModel(KelurahanType kelurahan)
+    {
+        return new KelurahanDto(
+            kelurahan.KelurahanId,
+            kelurahan.KelurahanName,
+            kelurahan.Kecamatan.KecamatanId,
+            kelurahan.Kecamatan.KecamatanName,
+            kelurahan.Kabupaten.KabupatenId,
+            kelurahan.Kabupaten.KabupatenName,
+            kelurahan.Propinsi.PropinsiId,
+            kelurahan.Propinsi.PropinsiName);
+    }
     public KelurahanType ToModel()
     {
         var propinsi = new PropinsiType(fs_kd_propinsi, fs_nm_propinsi);
