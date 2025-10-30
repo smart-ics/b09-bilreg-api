@@ -2,6 +2,7 @@
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.PasienContext.DemografiFeature;
 using Bilreg.Domain.PasienContext.StatusSosialFeature;
+using static System.Net.WebRequestMethods;
 
 namespace Bilreg.Domain.PasienContext.PasienFeature;
 
@@ -67,7 +68,7 @@ public class PasienModel : IPasienKey
     #region PROPERTIES
     //      personal info
     public string PasienId { get; private set; } 
-    public PersonInfoType Person { get; init; }
+    public PersonInfoType Person { get; private set; }
     public string NickName { get; private set; }
     public string TempatLahir { get; private set; }
     public GolDarahType GolDarah { get; private set; }
@@ -133,7 +134,21 @@ public class PasienModel : IPasienKey
             _listContact.Add(noHp);
         }
     }
+    public void SetPersonInfo(PersonInfoType person, string tempatLahir)
+    {
+        Guard.Against.Null(person, nameof(person));
+        Guard.Against.NullOrWhiteSpace(tempatLahir, nameof(tempatLahir));
+        Person = person;
+        TempatLahir = tempatLahir;
+    }
     
+    public void SetDataKtp(KtpType ktp)
+    {
+        Guard.Against.Null(ktp, nameof(ktp));
+        Ktp = ktp;
+    }
+
+
     public void SetAdministrativeInfo(KtpType ktp,
         KelurahanType kelurahan, IdentitasType kartuKeluarga, 
         IEnumerable<ContactType> listContact, PasienKeluargaType keluarga)
