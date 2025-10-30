@@ -19,7 +19,7 @@ public static class DomainService
         services
             .AddValidatorsFromAssembly(Assembly.Load(DOMAIN_ASSEMBLY))
             .AddScoped<IAntrianFactory, AntrianFactory>()
-            .AddScoped<IJadwalPraktekNunaFactory, JadwalPraktekNunaFactory>()
+            .AddScoped<IJadwalPraktekFactory, JadwalPraktekFactory>()
             .AddScoped<IPasienFactory, PasienFactory>()
             .AddScoped<ISequencerManual, SequencerManual>()
             .AddScoped<IGetKodeRsService, GetKodeRsService>()

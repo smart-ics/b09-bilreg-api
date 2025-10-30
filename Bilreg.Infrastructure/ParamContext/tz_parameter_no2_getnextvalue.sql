@@ -1,6 +1,6 @@
-﻿CREATE OR ALTER PROCEDURE sp_tz_parameter_no_getnextvalue
-    @fs_kd_parameter VARCHAR(100),
-    @fs_nm_parameter VARCHAR(100) = NULL
+﻿CREATE OR ALTER PROCEDURE sp_tz_parameter_no2_getnextvalue
+    @fs_prefix VARCHAR(100),
+    @fs_modul VARCHAR(100)
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -11,20 +11,19 @@ BEGIN
 
     BEGIN TRY
         -- Try to update existing record with UPDLOCK and ROWLOCK to prevent lock escalation
-        UPDATE tz_parameter_no WITH (UPDLOCK, ROWLOCK, READPAST)
+        UPDATE tz_parameter_no2 WITH (UPDLOCK, ROWLOCK, READPAST)
         SET @next_value = fn_value,
             fn_value = fn_value + 1
-        WHERE fs_kd_parameter = @fs_kd_parameter;
+        WHERE fs_prefix = @fs_prefix
+          AND fs_modul = @fs_modul;
 
         -- If no rows were updated, insert new record
         IF @next_value IS NULL
             BEGIN
                 SET @next_value = 1;
 
-                INSERT INTO tz_parameter_no
-                (fs_kd_parameter, fs_nm_parameter, fn_value)
-                VALUES
-                    (@fs_kd_parameter, ISNULL(@fs_nm_parameter, @fs_kd_parameter), 2);
+                INSERT INTO tz_parameter_no2 (fs_prefix, fs_modul, fn_value)
+                VALUES (@fs_prefix, @fs_modul, 2);
             END
 
         COMMIT TRANSACTION;
@@ -37,5 +36,5 @@ BEGIN
     END CATCH
 END;
 ----
-GRANT EXECUTE ON sp_tz_parameter_no_getnextvalue TO bilregUser;
+    GRANT EXECUTE ON sp_tz_parameter_no2_getnextvalue TO bilregUser;
 GO

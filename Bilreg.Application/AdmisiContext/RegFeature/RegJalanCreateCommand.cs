@@ -1,6 +1,7 @@
 ﻿using Bilreg.Application.AdmisiContext.JaminanFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.AdmisiContext.JaminanSub;
+using Bilreg.Domain.AdmisiContext.JaminanSub.PolisAgg;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
 
@@ -16,7 +17,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanCreateCommand, RegJ
 {
     private readonly IPasienRepo _pasienRepo;
     private readonly ITipeJaminanRepo _tipeJaminanRepo;
-
+    private const string BAYAR_SENDIRI = "1";
     public RegJalanCreateHandler(IPasienRepo pasienRepo, 
         ITipeJaminanRepo tipeJaminanRepo)
     {
@@ -30,7 +31,10 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanCreateCommand, RegJ
             .GetValueOrThrow("Pasien tidak ditemukan");
         var tipeJaminan = _tipeJaminanRepo.LoadEntity(TipeJaminanType.Key(request.TipeJaminanId))
             .GetValueOrThrow("Tipe Jaminan invalid");
-        //if (jaminan)
+        //var polis = PolisModel.Default;
+        if (tipeJaminan.CaraBayarDk.CaraBayarDkId != BAYAR_SENDIRI)
+            throw new NotImplementedException();
+        
         throw new NotImplementedException();
     }
 }
