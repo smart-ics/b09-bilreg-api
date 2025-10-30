@@ -24,9 +24,9 @@ public record IdentitasType
     public static IdentitasType Default => new IdentitasType("-", "-");
     public static IdentitasType Ktp(string noKtp)
     {
-        const string regexFormula = @"^\d{16}$";
-        if (!Regex.IsMatch(noKtp, regexFormula))
-            throw new ArgumentException("Nomor KTP tidak valid");
+        //const string regexFormula = @"^\d{16}$";
+        //if (!Regex.IsMatch(noKtp, regexFormula))
+        //    throw new ArgumentException("Nomor KTP tidak valid");
         return new IdentitasType("KTP", noKtp);
     }
 

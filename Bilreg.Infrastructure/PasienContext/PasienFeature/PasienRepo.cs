@@ -61,7 +61,8 @@ public class PasienRepo : IPasienRepo
             alamat, contact, identitas);
 
         //  fetch ktp-dto
-        var ktpDto = _pasienKtpDal.GetData(key);
+        var ktpDto = _pasienKtpDal.GetData(key) ?? PasienKtpDto.Default;
+
         var alamatKtp = new AlamatType([ktpDto.fs_alm_ktp], "-", "-");
         var kelurahanKtp = new KelurahanType(ktpDto.fs_kd_kelurahan_ktp, ktpDto.fs_kelurahan_ktp,
             new KecamatanReff(ktpDto.fs_kd_kecamatan_ktp, ktpDto.fs_kecamatan_ktp),
@@ -94,16 +95,27 @@ public class PasienRepo : IPasienRepo
     {
         var kodeRs = _getKodeRsSvc.Execute();
         var pasienFinder = PasienFinder.CreateNew(keyword, kodeRs);
+        var listPasienByPasienId = new List<PasienPersonView>();
+        var listPasienByTglLahir = new List<PasienPersonView>();
+        var listPasienByName = new List<PasienPersonView>();
+
         if (pasienFinder.PasienId != string.Empty)
-            return ListPasienByPasienId(pasienFinder.PasienId);
-        
+            listPasienByPasienId = ListPasienByPasienId(pasienFinder.PasienId);
+
         if (pasienFinder.TglLahir != string.Empty)
-            return ListPasienByTglLahir(pasienFinder.TglLahir);
+            listPasienByTglLahir =  ListPasienByTglLahir(pasienFinder.TglLahir);
         
         if (pasienFinder.StringVariants.Count > 0)
-            return ListPasienByName(pasienFinder.StringVariants);
-        
-        return new List<PasienPersonView>();
+            listPasienByName = ListPasienByName(pasienFinder.StringVariants);
+
+        var result = listPasienByPasienId
+            .Concat(listPasienByTglLahir)
+            .Concat(listPasienByName)
+            .DistinctBy(x => x.PasienId);
+
+        if (result.Count() > 200)
+            throw new ArgumentException("Data terlalu banyak, gunakan keyword lebih spesifik");
+        return result;
     }
     
     #region PRIVATE HELPER
@@ -118,7 +130,7 @@ public class PasienRepo : IPasienRepo
             pasienDb.Value.Person);
         return [result];
     }
-    private IEnumerable<PasienPersonView> ListPasienByTglLahir(string tglLahir)
+    private List<PasienPersonView> ListPasienByTglLahir(string tglLahir)
     {
         var pasienDb = _pasienDal.ListData(tglLahir.ToDate(DateFormatEnum.YMD));
         if (pasienDb is null)
@@ -134,10 +146,10 @@ public class PasienRepo : IPasienRepo
                     [x.fs_alm_pasien, x.fs_alm2_pasien, x.fs_alm3_pasien],
                     x.fs_kota_pasien, x.fs_kd_pos_pasien),
                 new ContactType(JenisContactEnum.Phone, x.fs_tlp_pasien),
-                IdentitasType.Ktp(x.fs_kd_identitas))));
+                IdentitasType.Ktp(x.fs_kd_identitas)))).ToList();
         return result;
     }
-    private IEnumerable<PasienPersonView> ListPasienByName(Dictionary<string, string[]> stringVariants)
+    private List<PasienPersonView> ListPasienByName(Dictionary<string, string[]> stringVariants)
     {
         var pasienDb = _pasienDal.ListDataByName(stringVariants);
         if (pasienDb is null)
@@ -153,7 +165,7 @@ public class PasienRepo : IPasienRepo
                     [x.fs_alm_pasien, x.fs_alm2_pasien, x.fs_alm3_pasien],
                     x.fs_kota_pasien, x.fs_kd_pos_pasien),
                 new ContactType(JenisContactEnum.Phone, x.fs_tlp_pasien),
-                IdentitasType.Ktp(x.fs_kd_identitas))));
+                IdentitasType.Ktp(x.fs_kd_identitas)))).ToList();
         return result;
     }
     #endregion
