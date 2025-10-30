@@ -30,4 +30,13 @@ public class PasienController : Controller
         await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));
     }
+
+    [HttpGet]
+    [Route("search/{keyword}")]
+    public async Task<IActionResult> Search(string keyword)
+    {
+        var query = new PasienSearchQuery(keyword);
+        var result = await _mediator.Send(query);
+        return Ok(new JSendOk(result));
+    }
 }

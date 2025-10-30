@@ -29,7 +29,10 @@ public record PasienKtpDto(
             model.TempatLahir, model.Person.TglLahir.ToString("yyyy-MM-dd"), model.Person.Gender,
             model.GolDarah.ToString());
         return result;
-    } 
+    }
+    public static PasienKtpDto Default 
+        => new PasienKtpDto("-", "-", "-", "-", "-", "-",
+        "-", "-", "-", "-", "-", "-", "-", "-", "-", "-", "-","-");
 }
 
 public static class StringArrayExtensions
