@@ -134,11 +134,12 @@ public class PasienModel : IPasienKey
             _listContact.Add(noHp);
         }
     }
-    public void SetPersonInfo(PersonInfoType person, string tempatLahir)
+    public void SetPersonInfo(PersonInfoType person, GolDarahType golDarah, string tempatLahir)
     {
         Guard.Against.Null(person, nameof(person));
         Guard.Against.NullOrWhiteSpace(tempatLahir, nameof(tempatLahir));
         Person = person;
+        GolDarah = golDarah;
         TempatLahir = tempatLahir;
     }
     
@@ -148,7 +149,11 @@ public class PasienModel : IPasienKey
         Ktp = ktp;
     }
 
-
+    public void AddContact(ContactType contact)
+    {
+        Guard.Against.Null(contact, nameof(contact));
+        _listContact.Add(contact);
+    }
     public void SetAdministrativeInfo(KtpType ktp,
         KelurahanType kelurahan, IdentitasType kartuKeluarga, 
         IEnumerable<ContactType> listContact, PasienKeluargaType keluarga)

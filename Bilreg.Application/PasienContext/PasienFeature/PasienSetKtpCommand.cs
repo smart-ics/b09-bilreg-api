@@ -1,5 +1,4 @@
 ﻿using Bilreg.Application.PasienContext.DemografiFeature;
-using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.PasienContext.DemografiFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
@@ -9,12 +8,10 @@ using Nuna.Lib.ValidationHelper;
 namespace Bilreg.Application.PasienContext.PasienFeature;
 
 public record PasienSetKtpCommand(string PasienId, string Nik, 
-    string AlamtaKtp1, string AlamatKtp2, string AlamatKtp3,
+    string AlamtaKtp1, string AlamatKtp2, string AlamatKtp3, string GolDarah,
     string Gender, string TempatLahir, string TglLahir, string Agama, string StatusKawin,
     string KotaKtp, string KodePosKtp, string Rt, string Rw, string KelurahanKtpId) : 
     IRequest, IPasienKey;
-
-
 
 public class PasienSetKtpHandler : IRequestHandler<PasienSetKtpCommand>
 {
@@ -48,9 +45,10 @@ public class PasienSetKtpHandler : IRequestHandler<PasienSetKtpCommand>
                 onNone: () => throw new ArgumentException("Invalid Kelurahan KTP")); 
         
         var ktp = new KtpType(request.Nik, alamat, request.Rt, request.Rw, kelurahan);
-        
-        pasien.SetPersonInfo(person, request.TempatLahir);
+        var golDarah = new GolDarahType(request.GolDarah);
+        pasien.SetPersonInfo(person, golDarah, request.TempatLahir);
         pasien.SetDataKtp(ktp);
+        
 
         _pasienRepo.SaveChanges(pasien);
         return Task.CompletedTask;

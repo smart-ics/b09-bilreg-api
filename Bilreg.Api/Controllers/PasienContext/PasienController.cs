@@ -39,4 +39,46 @@ public class PasienController : Controller
         var result = await _mediator.Send(query);
         return Ok(new JSendOk(result));
     }
+
+    [HttpPost]
+    [Route("match")]
+    public async Task<IActionResult> Match(PasienCekPersonCommand cmd)
+    {
+        var result = await _mediator.Send(cmd);
+        return Ok(new JSendOk(result));
+    }
+
+
+    [HttpPatch]
+    [Route("ktp")]
+    public async Task<IActionResult> SetDataKpt(PasienSetKtpCommand cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
+    [HttpPatch]
+    [Route("addContact")]
+    public async Task<IActionResult> AddContact(PasienAddContactCommand cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
+    [HttpPatch]
+    [Route("statusSosial")]
+    public async Task<IActionResult> SetStatusSosial(PasienSetStatusSosialCommand cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
+    [HttpPatch]
+    [Route("keluarga")]
+    public async Task<IActionResult> SetKeluarga(PasienSetDataKeluargaCommand cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
 }

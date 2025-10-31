@@ -19,14 +19,14 @@ public record PasienKtpDto(
     public static PasienKtpDto FromModel(PasienModel model)
     {
         var ktp = model.Ktp;
-        var alamat = string.Join(",", ktp.Alamat);
+        var alamat = string.Join(",", ktp.Alamat.Alamat);
         var result = new PasienKtpDto(
             model.PasienId, ktp.Nik, model.Person.PersonName, alamat,
             ktp.Rt, ktp.Rw, ktp.Kelurahan.KelurahanId, ktp.Kelurahan.KelurahanName,
             ktp.Kelurahan.Kecamatan.KecamatanId, ktp.Kelurahan.Kecamatan.KecamatanName,
             ktp.Kelurahan.Kabupaten.KabupatenId, ktp.Kelurahan.Kabupaten.KabupatenName,
             ktp.Kelurahan.Propinsi.PropinsiId, ktp.Kelurahan.Propinsi.PropinsiName,
-            model.TempatLahir, model.Person.TglLahir.ToString("yyyy-MM-dd"), model.Person.Gender,
+            model.TempatLahir, model.Person.Gender, model.Person.TglLahir.ToString("yyyy-MM-dd"), 
             model.GolDarah.ToString());
         return result;
     }
