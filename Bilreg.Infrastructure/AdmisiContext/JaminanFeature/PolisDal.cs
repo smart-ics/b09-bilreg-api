@@ -17,7 +17,7 @@ public interface IPolisDal :
     IUpdate<PolisDto>,
     IDelete<IPolisKey>,
     IGetData<PolisDto, IPolisKey>,
-    IListData<PolisDto, IPasienKey>
+    IListData<PolisViewDto, IPasienKey>
 {
 }
 public class PolisDal : IPolisDal
@@ -120,19 +120,22 @@ public class PolisDal : IPolisDal
         return conn.ReadSingle<PolisDto>(sql, dp);
     }
 
-    public IEnumerable<PolisDto> ListData(IPasienKey filter)
+    public IEnumerable<PolisViewDto> ListData(IPasienKey filter)
     {
         const string sql = """
             SELECT
-                aa.fs_kd_polis, aa.fs_kd_tipe_jaminan, aa.fs_kd_kelas_ri, 
-                aa.fs_no_polis, aa.fs_atas_nama, aa.fd_expired, aa.fb_cover_rj, 
-                ISNULL(bb.fs_nm_tipe_jaminan, '') fs_nm_tipe_jaminan,
-                ISNULL(cc.fs_nm_kelas, '') fs_nm_kelas
+                aa.fs_kd_polis, aa.fs_no_polis, aa.fs_atas_nama, 
+                aa.fs_kd_tipe_jaminan, aa.fd_expired,
+                ISNULL(bb.fs_mr, '') AS fs_mr,
+                ISNULL(cc.fs_nm_pasien, '') AS fs_nm_pasien,
+                ISNULL(cc.fd_tgl_lahir, '') AS fd_tgl_lahir,
+                ISNULL(cc.fs_jns_kelamin, '') AS fs_jns_kelamin,
+                ISNULL(dd.fs_nm_tipe_jaminan, '') AS fs_nm_tipe_jaminan
             FROM 
                 ta_polis aa
-                LEFT JOIN ta_tipe_jaminan bb ON aa.fs_kd_tipe_jaminan = bb.fs_kd_tipe_jaminan
-                LEFT JOIN ta_kelas cc ON aa.fs_kd_kelas_ri = cc.fs_kd_kelas
-                LEFT JOIN ta_polis_cover dd ON aa.fs_kd_polis = dd.fs_kd_polis
+                LEFT JOIN ta_polis_cover bb ON aa.fs_kd_polis = bb.fs_kd_polis
+                LEFT JOIN tc_mr cc ON bb.fs_mr = cc.fs_mr
+                LEFT JOIN ta_tipe_jaminan dd ON aa.fs_kd_tipe_jaminan = dd.fs_kd_tipe_jaminan
             WHERE 
                 dd.fs_mr = @fs_mr
             """;
@@ -142,7 +145,7 @@ public class PolisDal : IPolisDal
         dp.AddParam("@fs_mr", filter.PasienId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<PolisDto>(sql, dp);
+        return conn.Read<PolisViewDto>(sql, dp);
     }
 }
 

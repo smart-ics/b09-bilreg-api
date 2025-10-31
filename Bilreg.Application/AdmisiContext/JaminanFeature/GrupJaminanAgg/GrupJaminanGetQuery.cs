@@ -1,7 +1,7 @@
 using Bilreg.Domain.AdmisiContext.JaminanSub;
 using MediatR;
 
-namespace Bilreg.Application.AdmisiContext.JaminanSub.GrupJaminanAgg;
+namespace Bilreg.Application.AdmisiContext.JaminanFeature.GrupJaminanAgg;
 
 public record GrupJaminanGetQuery(string GroupJaminanId) : IRequest<GrupJaminanGetResponse>, IGroupJaminanKey;
 

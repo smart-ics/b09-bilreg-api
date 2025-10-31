@@ -1,6 +1,6 @@
 ﻿using Bilreg.Domain.AdmisiContext.JaminanSub;
 
-namespace Bilreg.Infrastructure.AdmisiContext.JaminanSub.TipeJaminanAgg;
+namespace Bilreg.Infrastructure.AdmisiContext.JaminanFeature.TipeJaminanAgg;
 
 public record TipeJaminanDto(
     string fs_kd_tipe_jaminan, 

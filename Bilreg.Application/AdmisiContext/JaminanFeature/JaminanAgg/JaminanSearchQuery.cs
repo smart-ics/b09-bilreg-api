@@ -1,7 +1,7 @@
 ﻿using Ardalis.GuardClauses;
 using MediatR;
 
-namespace Bilreg.Application.AdmisiContext.JaminanSub.JaminanAgg;
+namespace Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
 
 public record JaminanSearchQuery(string Keyword) : IRequest<IEnumerable<JaminanSearchResponse>>;
 

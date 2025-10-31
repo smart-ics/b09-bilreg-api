@@ -1,7 +1,7 @@
 using Bilreg.Domain.AdmisiContext.JaminanSub;
 using Bilreg.Domain.PasienContext.PasienFeature;
 
-namespace Bilreg.Infrastructure.AdmisiContext.JaminanSub.JaminanAgg;
+namespace Bilreg.Infrastructure.AdmisiContext.JaminanFeature.JaminanAgg;
 
 public class JaminanDto
 {

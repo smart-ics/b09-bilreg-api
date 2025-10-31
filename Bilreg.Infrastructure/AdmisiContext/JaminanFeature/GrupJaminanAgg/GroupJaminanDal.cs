@@ -1,6 +1,6 @@
 using System.Data;
 using System.Data.SqlClient;
-using Bilreg.Application.AdmisiContext.JaminanSub.GrupJaminanAgg;
+using Bilreg.Application.AdmisiContext.JaminanFeature.GrupJaminanAgg;
 using Bilreg.Domain.AdmisiContext.JaminanSub;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
@@ -11,7 +11,7 @@ using Nuna.Lib.PatternHelper;
 using Nuna.Lib.TransactionHelper;
 using Xunit;
 
-namespace Bilreg.Infrastructure.AdmisiContext.JaminanSub.GrupJaminanAgg;
+namespace Bilreg.Infrastructure.AdmisiContext.JaminanFeature.GrupJaminanAgg;
 
 public class GrupJaminanDal : IGroupJaminanDal
 {

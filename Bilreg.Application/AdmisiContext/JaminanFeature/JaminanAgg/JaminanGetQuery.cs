@@ -2,7 +2,7 @@ using Bilreg.Domain.AdmisiContext.JaminanSub;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
 
-namespace Bilreg.Application.AdmisiContext.JaminanSub.JaminanAgg;
+namespace Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
 
 public record JaminanGetQuery(string JaminanId) : IRequest<JaminanGetResponse>, IJaminanKey;
 

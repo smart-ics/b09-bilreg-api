@@ -1,7 +1,7 @@
 using Bilreg.Domain.AdmisiContext.JaminanSub;
 using Nuna.Lib.DataAccessHelper;
 
-namespace Bilreg.Application.AdmisiContext.JaminanSub.CaraBayarDkAgg;
+namespace Bilreg.Application.AdmisiContext.JaminanFeature.CaraBayarDkAgg;
 
 public interface ICaraBayarDkDal :
     IGetData<CaraBayarDkType, ICaraBayarDkKey>,

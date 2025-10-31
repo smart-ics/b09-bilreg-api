@@ -1,7 +1,7 @@
 ﻿using Bilreg.Domain.AdmisiContext.JaminanSub;
 using Nuna.Lib.DataAccessHelper;
 
-namespace Bilreg.Infrastructure.AdmisiContext.JaminanSub.TipeJaminanAgg;
+namespace Bilreg.Infrastructure.AdmisiContext.JaminanFeature.TipeJaminanAgg;
 
 public interface ITipeJaminanDal :
     IInsert<TipeJaminanDto>,

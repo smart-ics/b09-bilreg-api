@@ -1,6 +1,6 @@
 using System.Data;
 using System.Data.SqlClient;
-using Bilreg.Application.AdmisiContext.JaminanSub.CaraBayarDkAgg;
+using Bilreg.Application.AdmisiContext.JaminanFeature.CaraBayarDkAgg;
 using Bilreg.Domain.AdmisiContext.JaminanSub;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
@@ -10,7 +10,7 @@ using Nuna.Lib.DataAccessHelper;
 using Nuna.Lib.TransactionHelper;
 using Xunit;
 
-namespace Bilreg.Infrastructure.AdmisiContext.JaminanSub.CaraBayarDkAgg;
+namespace Bilreg.Infrastructure.AdmisiContext.JaminanFeature.CaraBayarDkAgg;
 
 public class CaraBayarDkDal : ICaraBayarDkDal
 {

@@ -1,6 +1,6 @@
 using MediatR;
 
-namespace Bilreg.Application.AdmisiContext.JaminanSub.JaminanAgg;
+namespace Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
 
 public record JaminanListQuery() : IRequest<IEnumerable<JaminanListResponse>>;
 

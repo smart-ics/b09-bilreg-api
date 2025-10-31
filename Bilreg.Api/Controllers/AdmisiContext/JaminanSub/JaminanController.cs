@@ -1,4 +1,4 @@
-using Bilreg.Application.AdmisiContext.JaminanSub.JaminanAgg;
+using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;

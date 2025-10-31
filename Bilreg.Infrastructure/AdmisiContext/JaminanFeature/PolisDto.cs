@@ -1,4 +1,8 @@
-﻿using Bilreg.Domain.AdmisiContext.JaminanSub.PolisAgg;
+﻿using Bilreg.Application.AdmisiContext.JaminanFeature;
+using Bilreg.Domain.AdmisiContext.JaminanSub;
+using Bilreg.Domain.AdmisiContext.JaminanSub.PolisAgg;
+using Bilreg.Domain.BillContext.BedUsageFeature;
+using Bilreg.Domain.PasienContext.PasienFeature;
 
 // resharper disable inconsistentnaming
 namespace Bilreg.Infrastructure.AdmisiContext.JaminanFeature;
@@ -28,5 +32,39 @@ public record PolisDto(
             model.TipeJaminan.TipeJaminanName,
             model.Kelas.KelasName);
     }
+
+    public PolisModel ToModel(IEnumerable<PolisCoverModel> listCover)
+    {
+        var result = new PolisModel(
+            fs_kd_polis, fs_no_polis, fs_atas_nama,
+            new TipeJaminanReff(fs_kd_tipe_jaminan, fs_nm_tipe_jaminan),
+            new KelasReff(fs_kd_kelas_ri, fs_nm_kelas),
+            DateOnly.ParseExact(fs_nm_kelas, "yyyy-MM-dd", null),
+            fb_cover_rj, listCover?.ToList() ?? []);
+        return result;
+    }
 }
 
+public record PolisViewDto(
+    string fs_kd_polis,
+    string fs_no_polis,
+    string fs_atas_nama,
+    string fs_kd_tipe_jaminan,
+    string fd_tgl_expired,
+    //
+    string fs_mr,
+    string fs_nm_pasien,
+    string fd_tgl_lahir,
+    string fs_jns_kelamin,
+    string fs_nm_tipe_jaminan)
+{
+    public PolisView ToModel()
+    {
+        var result = new PolisView(
+            fs_kd_polis, fs_no_polis, fs_atas_nama,
+            new PasienReff(fs_mr, fs_nm_pasien, DateOnly.Parse(fd_tgl_lahir), fs_jns_kelamin),
+            new TipeJaminanReff(fs_kd_tipe_jaminan, fs_nm_tipe_jaminan),
+            DateOnly.Parse(fd_tgl_expired));
+        return result;
+    }
+}

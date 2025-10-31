@@ -4,7 +4,7 @@ using FluentAssertions;
 using Nuna.Lib.TransactionHelper;
 using Xunit;
 
-namespace Bilreg.Infrastructure.AdmisiContext.JaminanSub.TipeJaminanAgg;
+namespace Bilreg.Infrastructure.AdmisiContext.JaminanFeature.TipeJaminanAgg;
 
 public class TipeJaminanDalTest
 {

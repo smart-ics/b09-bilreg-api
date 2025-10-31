@@ -1,13 +1,13 @@
-﻿using Bilreg.Domain.AdmisiContext.JaminanSub;
+﻿using System.Data;
+using System.Data.SqlClient;
+using Bilreg.Domain.AdmisiContext.JaminanSub;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
-using System.Data;
-using System.Data.SqlClient;
 
 // ReSharper disable InconsistentNaming
-namespace Bilreg.Infrastructure.AdmisiContext.JaminanSub.TipeJaminanAgg;
+namespace Bilreg.Infrastructure.AdmisiContext.JaminanFeature.TipeJaminanAgg;
 
 public class TipeJaminanDal : ITipeJaminanDal
 {

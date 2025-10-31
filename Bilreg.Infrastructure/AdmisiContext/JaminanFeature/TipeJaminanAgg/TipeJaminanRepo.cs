@@ -2,7 +2,7 @@
 using Bilreg.Domain.AdmisiContext.JaminanSub;
 using Nuna.Lib.PatternHelper;
 
-namespace Bilreg.Infrastructure.AdmisiContext.JaminanSub.TipeJaminanAgg;
+namespace Bilreg.Infrastructure.AdmisiContext.JaminanFeature.TipeJaminanAgg;
 
 public class TipeJaminanRepo : ITipeJaminanRepo
 {

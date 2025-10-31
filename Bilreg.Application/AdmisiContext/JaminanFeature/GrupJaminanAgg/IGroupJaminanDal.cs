@@ -1,7 +1,7 @@
 using Bilreg.Domain.AdmisiContext.JaminanSub;
 using Nuna.Lib.DataAccessHelper;
 
-namespace Bilreg.Application.AdmisiContext.JaminanSub.GrupJaminanAgg;
+namespace Bilreg.Application.AdmisiContext.JaminanFeature.GrupJaminanAgg;
 
 public interface IGroupJaminanDal :
     IInsert<GroupJaminanType>,
