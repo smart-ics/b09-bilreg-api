@@ -1,3 +1,4 @@
+using Bilreg.Domain.PasienContext.DemografiFeature;
 using Bilreg.Domain.PasienContext.StatusSosialFeature;
 using JetBrains.Annotations;
 using MediatR;

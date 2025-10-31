@@ -1,0 +1,30 @@
+﻿using Bilreg.Application.AdmisiContext.RujukanFeature.RujukanAgg;
+using Bilreg.Domain.AdmisiContext.RujukanSub;
+using Nuna.Lib.PatternHelper;
+
+namespace Bilreg.Infrastructure.AdmisiContext.RujukanSub.RujukanAgg;
+
+public class RujukanRepo : IRujukanRepo
+{
+    private readonly IRujukanDal _rujukanDal;
+
+    public RujukanRepo(IRujukanDal rujukanDal)
+    {
+        _rujukanDal = rujukanDal;
+    }
+
+    public MayBe<RujukanType> LoadEntity(IRujukanKey key)
+    {
+        var dto = _rujukanDal.GetData(key);
+        var model = dto?.ToModel();
+        return MayBe.From(model!);
+    }
+
+    public IEnumerable<RujukanType> ListData(ITipeRujukanKey filter)
+    {
+        var result = _rujukanDal.ListData(filter);
+        var model = result?.Select(x => x.ToModel())?
+            .ToList() ?? [];
+        return model;
+    }
+}

@@ -1,6 +1,7 @@
 using System.Data;
 using System.Data.SqlClient;
 using Bilreg.Application.PasienContext.DemografiFeature;
+using Bilreg.Domain.PasienContext.DemografiFeature;
 using Bilreg.Domain.PasienContext.StatusSosialFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;

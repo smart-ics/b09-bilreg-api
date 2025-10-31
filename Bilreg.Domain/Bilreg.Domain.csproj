@@ -7,6 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Folder Include="BillContext\BedUsageFeature\KelasAgg\" />
+    <Folder Include="BillContext\BedUsageFeature\KelasDkAgg\" />
     <Folder Include="PaymentContext\" />
   </ItemGroup>
 

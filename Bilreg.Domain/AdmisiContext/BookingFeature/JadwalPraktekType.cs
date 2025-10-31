@@ -1,6 +1,5 @@
 ﻿using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
-using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
 
 namespace Bilreg.Domain.AdmisiContext.BookingFeature;
 

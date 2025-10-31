@@ -4,8 +4,8 @@ using Dapper;
 using Microsoft.Extensions.Options;
 using System.Data.SqlClient;
 using System.Data;
+using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
 using Nuna.Lib.DataAccessHelper;
-using Bilreg.Domain.AdmisiContext.PetugasMedisSub;
 
 namespace Bilreg.Infrastructure.AdmisiContext.PetugasMedisSub.SatTugasAgg;
 public class SatuanTugasDal : ISatuanTugasDal

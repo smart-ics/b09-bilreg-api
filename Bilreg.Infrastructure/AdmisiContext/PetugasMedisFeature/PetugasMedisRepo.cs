@@ -1,6 +1,5 @@
 ﻿using Bilreg.Application.AdmisiContext.PetugasMedisSub;
 using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
-using Bilreg.Domain.AdmisiContext.PetugasMedisSub;
 using Nuna.Lib.PatternHelper;
 
 namespace Bilreg.Infrastructure.AdmisiContext.PetugasMedisFeature;

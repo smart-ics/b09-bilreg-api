@@ -1,7 +1,7 @@
 ﻿using Bilreg.Domain.AdmisiContext.JaminanSub;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
-using Bilreg.Domain.AdmisiContext.RegSub;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Nuna.Lib.ValidationHelper;
 

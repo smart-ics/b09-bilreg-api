@@ -1,24 +1,72 @@
-﻿using Bilreg.Domain.BillContext.RoomChargeSub.KelasAgg;
+﻿using Bilreg.Domain.BillContext.BedUsageFeature;
+using Bilreg.Domain.PasienContext.PasienFeature;
+using Ardalis.GuardClauses;
 
 namespace Bilreg.Domain.AdmisiContext.JaminanSub.PolisAgg;
 
-// TODO: Refactor Polis Model to Rich-Domain-Model
-public partial class PolisModel : IPolisKey, ITipeJaminanKey, IKelasKey
+public class PolisModel : IPolisKey
 {
-    public string PolisId { get; protected set; } = string.Empty;
-    public string NoPolis { get; protected set; } = string.Empty;
-    public string AtasNama { get; protected set; } = string.Empty;
-    public DateTime ExpiredDate { get; protected set; } = new DateTime(3000, 1, 1);
+    private readonly List<PolisCoverModel> _listCover;
 
-    public string TipeJaminanId { get; protected set; } = string.Empty;
-    public string TipeJaminanName { get; protected set; } = string.Empty;
-    public string JaminanId { get; protected set; } = string.Empty;
-    public string JaminanName { get; protected set; } = string.Empty;
+    #region CREATION
+    public PolisModel(string polisId, string noPolis, string atasNama, 
+        TipeJaminanReff tipeJaminan, KelasReff kelas, DateOnly expiredDate,
+        bool isCoverRajal, List<PolisCoverModel> listCover)
+    {
+        PolisId = polisId;
+        NoPolis = noPolis;
+        AtasNama = atasNama;
+        TipeJaminan = tipeJaminan;
+        Kelas = kelas;
+        ExpiredDate = expiredDate;
+        IsCoverRajal = isCoverRajal;
+        _listCover = listCover;
+    }
+
+    public static PolisModel Default => new PolisModel("-", "-", "-",
+        TipeJaminanType.Default.ToReff(), KelasType.Default.ToReff(), 
+        new DateOnly(3000,1,1), false, []);
+
+    public static IPolisKey Key(string id) => new PolisModel(id, "-", "-",
+        TipeJaminanType.Default.ToReff(), KelasType.Default.ToReff(),
+        new DateOnly(3000,1,1), false, []);
+    #endregion
     
-    public string KelasId { get; protected set; } = string.Empty;
-    public string KelasName { get; protected set; } = string.Empty;
-    public bool IsCoverRajal { get; protected set; } = false;
-    public List<PolisCoverModel> ListCover { get; protected set; } = [];
+    #region PROPERTIES
+    public string PolisId { get; init; }
+    public string NoPolis { get; init; } 
+    public string AtasNama { get; init; } 
+    public DateOnly ExpiredDate { get; init; } 
+
+    public TipeJaminanReff TipeJaminan { get; init; }
+    public KelasReff Kelas { get; init; }
+    public bool IsCoverRajal { get; init; }
+    public IEnumerable<PolisCoverModel> ListCover => _listCover;
+    #endregion
+    
+    #region BEHAVIOUR
+    public void AddCoverage(PasienModel pasien, StatusPesertaType status)
+    {
+        Guard.Against.Null(pasien, nameof(pasien));
+        Guard.Against.Null(status, nameof(status));
+        
+        var duplicate = _listCover.FirstOrDefault(x => x.Pasien.PasienId == pasien.PasienId);
+        if (duplicate != null)
+            throw new ArgumentException("Cover already exists");
+        var newCoverage = new PolisCoverModel(PolisId, pasien.ToReff(), status);
+        _listCover.Add(newCoverage);
+    }
+    
+    public void RemoveCoverage(PasienModel pasien)
+    {
+        Guard.Against.Null(pasien, nameof(pasien));
+        
+        var cover = _listCover.FirstOrDefault(x => x.Pasien.PasienId == pasien.PasienId);
+        if (cover == null)
+            throw new ArgumentException("Cover not found");
+        _listCover.Remove(cover);
+    }
+    #endregion
 }
 
 

@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.PetugasMedisSub;
+﻿using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
 using Nuna.Lib.DataAccessHelper;
 
 namespace Bilreg.Application.AdmisiContext.PetugasMedisSub.SatTugasAgg

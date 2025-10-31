@@ -1,4 +1,4 @@
-﻿using Bilreg.Application.AdmisiContext.RujukanSub.RujukanAgg;
+﻿using Bilreg.Application.AdmisiContext.RujukanFeature.RujukanAgg;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
@@ -91,9 +91,10 @@ namespace Bilreg.Api.Controllers.AdmisiContext.RujukanSub
         }
 
         [HttpGet]
-        public async Task<IActionResult> ListData()
+        [Route("list/{tipeRujukanId}")]
+        public async Task<IActionResult> ListData(string tipeRujukanId)
         {
-            var query = new RujukanListQuery();
+            var query = new RujukanListQuery(tipeRujukanId);
             var response = await _mediator.Send(query);
             return Ok(new JSendOk(response));
         }

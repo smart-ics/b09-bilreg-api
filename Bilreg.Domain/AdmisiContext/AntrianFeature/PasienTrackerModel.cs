@@ -1,6 +1,5 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
-using Bilreg.Domain.AdmisiContext.RegSub.RegAgg.ValueObjects;
 using Bilreg.Domain.Helpers.CommonValueObjects;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using FluentAssertions;

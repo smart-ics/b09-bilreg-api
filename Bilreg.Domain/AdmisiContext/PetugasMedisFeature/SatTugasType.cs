@@ -1,6 +1,6 @@
 ﻿using Ardalis.GuardClauses;
 
-namespace Bilreg.Domain.AdmisiContext.PetugasMedisSub;
+namespace Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
 
 public record SatTugasType : ISatTugasKey
 {
