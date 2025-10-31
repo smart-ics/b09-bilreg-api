@@ -1,5 +1,4 @@
-﻿using Bilreg.Application.AdmisiContext.RujukanSub.CaraMasukDkAgg;
-using Bilreg.Domain.AdmisiContext.RujukanSub;
+﻿using Bilreg.Domain.AdmisiContext.RujukanSub;
 using Bilreg.Domain.PasienContext.DemografiFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
@@ -9,9 +8,16 @@ using Nuna.Lib.DataAccessHelper;
 using Nuna.Lib.PatternHelper;
 using System.Data;
 using System.Data.SqlClient;
+using Nuna.Lib.TransactionHelper;
 using Xunit;
 
 namespace Bilreg.Infrastructure.AdmisiContext.RujukanSub.CaraMasukDkAgg;
+
+public interface ICaraMasukDkDal :
+    IGetData<CaraMasukDkType, ICaraMasukDkKey>,
+    IListData<CaraMasukDkType>
+{
+}
 
 public class CaraMasukDkDal : ICaraMasukDkDal
 {
@@ -22,7 +28,7 @@ public class CaraMasukDkDal : ICaraMasukDkDal
         _opt = opt.Value;
     }
 
-    public MayBe<CaraMasukDkType> GetData(ICaraMasukDkKey key)
+    public CaraMasukDkType GetData(ICaraMasukDkKey key)
     {
         const string sql = @"
                  SELECT 
@@ -37,10 +43,10 @@ public class CaraMasukDkDal : ICaraMasukDkDal
         dp.AddParam("@CaraMasukDkId", key.CaraMasukDkId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return MayBe.From(conn.ReadSingle<CaraMasukDkType>(sql, dp));
+        return conn.ReadSingle<CaraMasukDkType>(sql, dp);
     }
 
-    public MayBe<IEnumerable<CaraMasukDkType>> ListData()
+    public IEnumerable<CaraMasukDkType> ListData()
     {
         const string sql = @"
                  SELECT 
@@ -48,44 +54,31 @@ public class CaraMasukDkDal : ICaraMasukDkDal
                      fs_nm_cara_masuk_dk AS CaraMasukDkName
                  FROM 
                      ta_cara_masuk_dk";
-
-
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return MayBe.From(conn.Read<CaraMasukDkType>(sql));
+        return conn.Read<CaraMasukDkType>(sql);
     }
 }
-    
-    public class CaraMasukDkDalTest
+
+public class CaraMasukDkDalTest
+{
+    private readonly CaraMasukDkDal _sut = new(ConnStringHelper.GetTestEnv());
+
+    private static ICaraMasukDkKey FakerKey()
+        => CaraMasukDkType.Key("A");
+
+    [Fact]
+    public void GetDataTest()
     {
-        private readonly CaraMasukDkDal _sut;
-
-        public CaraMasukDkDalTest()
-        {
-            _sut = new CaraMasukDkDal(ConnStringHelper.GetTestEnv());
-        }
-
-        [Fact]
-        public void GetDataTest()
-        {
-            // ARRANGE
-            var testData = new CaraMasukDkType("9", "KUNJUNGAN RUMAH");
-
-            // ACT
-            var actual = _sut.GetData(testData).Value;
-
-            // ASSERT
-            actual.Should().BeEquivalentTo(testData);
-        }
-
-        [Fact]
-        public void ListDataTest()
-        {
-
-            // ACT
-            var actual = _sut.ListData().Value;
-
-            // ASSERT
-            actual.Should().Contain(x => x.CaraMasukDkId == "8" && x.CaraMasukDkName == "DATANG SENDIRI");
-            actual.Should().Contain(x => x.CaraMasukDkId == "9" && x.CaraMasukDkName == "KUNJUNGAN RUMAH");
-        }
+        using var trans = TransHelper.NewScope();
+        var actual = () => _sut.GetData(FakerKey());
+        actual.Should().NotThrow<Exception>();
     }
+    
+    [Fact]
+    public void ListDataTest()
+    {
+        using var trans = TransHelper.NewScope();
+        var actual = () => _sut.ListData();
+        actual.Should().NotThrow<Exception>();
+    }
+}

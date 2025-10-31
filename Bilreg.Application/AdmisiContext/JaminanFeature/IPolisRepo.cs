@@ -16,4 +16,4 @@ public interface IPolisRepo :
 public record PolisView(
     string PolisId, string NoPolis, string AtasName, 
     PasienReff Pasien, TipeJaminanReff TipeJaminan,
-    DateOnly TglExpired);
+    DateOnly TglExpired) : IPolisKey;
