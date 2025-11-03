@@ -1,4 +1,4 @@
-using Bilreg.Domain.AdmisiContext.JaminanSub;
+using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using MediatR;
 
 namespace Bilreg.Application.AdmisiContext.JaminanFeature.GrupJaminanAgg;

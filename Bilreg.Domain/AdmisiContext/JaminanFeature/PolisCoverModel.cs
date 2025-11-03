@@ -1,6 +1,6 @@
 ﻿using Bilreg.Domain.PasienContext.PasienFeature;
 
-namespace Bilreg.Domain.AdmisiContext.JaminanSub.PolisAgg;
+namespace Bilreg.Domain.AdmisiContext.JaminanFeature;
 
 public record PolisCoverModel : IPolisKey
 {

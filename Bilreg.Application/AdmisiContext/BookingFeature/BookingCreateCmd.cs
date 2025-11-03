@@ -48,8 +48,11 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         //      cek jadwal
         var dokter = PetugasMedisType.Key(request.DokterId);
         var listJadwal = _jadwalPraktekRepo.ListData(dokter)?.ToList() ?? [];
+        var hari = DateOnly.Parse(request.TglBerobat).DayOfWeek;
         var jamMulai = TimeOnly.Parse(request.JamMulai);
-        var jadwal = listJadwal.FirstOrDefault(x => x.JamMulai == jamMulai) 
+        var jadwal = listJadwal
+             .Where(x => x.Hari == hari)
+             .FirstOrDefault(x => x.JamMulai == jamMulai) 
             ?? throw new ArgumentException("Jadwal tidak ditemukan");
 
         //  create person

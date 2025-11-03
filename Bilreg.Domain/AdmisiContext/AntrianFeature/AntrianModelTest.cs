@@ -67,7 +67,7 @@ public class AntrianFactoryTests
         var antrianDate = new DateOnly(2025, 10, 13);
 
         // Act
-        Action act = () => _sut.Create(antrianDate, null!);
+        Action act = () => _sut.Create(antrianDate, (JadwalPraktekType)null!);
 
         // Assert
         act.Should().Throw<ArgumentNullException>()

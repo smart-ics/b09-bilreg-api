@@ -50,3 +50,5 @@ public interface IKarcisKey
 {
     string KarcisId {get;}
 }
+
+public record KarcisReff(string KarcisId, string KarcisName);

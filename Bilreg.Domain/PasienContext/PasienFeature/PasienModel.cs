@@ -2,6 +2,7 @@
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.PasienContext.DemografiFeature;
 using Bilreg.Domain.PasienContext.StatusSosialFeature;
+using static System.Net.WebRequestMethods;
 
 namespace Bilreg.Domain.PasienContext.PasienFeature;
 
@@ -67,7 +68,7 @@ public class PasienModel : IPasienKey
     #region PROPERTIES
     //      personal info
     public string PasienId { get; private set; } 
-    public PersonInfoType Person { get; init; }
+    public PersonInfoType Person { get; private set; }
     public string NickName { get; private set; }
     public string TempatLahir { get; private set; }
     public GolDarahType GolDarah { get; private set; }
@@ -105,18 +106,16 @@ public class PasienModel : IPasienKey
         return shortId;        
     }
 
-    public void UpdateAdminInfo(KtpType ktp, KelurahanType kelurahan, 
+    public void UpdateAdminInfo(KelurahanType kelurahan, 
         IdentitasType kartuKeluarga, ContactType email, ContactType noHp,
         PasienKeluargaType pasienKeluarga)
     {
-        ktp ??= KtpType.Default;
         kelurahan ??= KelurahanType.Default;
         kartuKeluarga ??= IdentitasType.Default;
         email ??= ContactType.Default;
         noHp ??= ContactType.Default;
         pasienKeluarga ??= PasienKeluargaType.Default;
         
-        Ktp = ktp;
         Kelurahan = kelurahan;
         KartuKeluarga = kartuKeluarga;
         PasienKeluarga = pasienKeluarga;
@@ -133,7 +132,33 @@ public class PasienModel : IPasienKey
             _listContact.Add(noHp);
         }
     }
+    public void SetPersonInfo(PersonInfoType person, GolDarahType golDarah, string tempatLahir)
+    {
+        Guard.Against.Null(person, nameof(person));
+        Guard.Against.NullOrWhiteSpace(tempatLahir, nameof(tempatLahir));
+        Person = person;
+        GolDarah = golDarah;
+        TempatLahir = tempatLahir;
+    }
     
+    public void SetDataKtp(KtpType ktp)
+    {
+        Guard.Against.Null(ktp, nameof(ktp));
+        Ktp = ktp;
+    }
+
+    public void SyncFromKtp(string pasienName, DateOnly tglLahir,
+        string tempatLahir, string gender, string golDarah)
+    {
+        Person = new PersonInfoType(pasienName, tglLahir, gender, Person.Alamat, Person.Contact, Person.Identity);
+        GolDarah = new GolDarahType(golDarah);
+        TempatLahir = tempatLahir;
+    }
+    public void AddContact(ContactType contact)
+    {
+        Guard.Against.Null(contact, nameof(contact));
+        _listContact.Add(contact);
+    }
     public void SetAdministrativeInfo(KtpType ktp,
         KelurahanType kelurahan, IdentitasType kartuKeluarga, 
         IEnumerable<ContactType> listContact, PasienKeluargaType keluarga)

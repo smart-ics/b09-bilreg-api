@@ -14,7 +14,6 @@ public class PasienRepo : IPasienRepo
     private readonly IPasienDal _pasienDal;
     private readonly IPasienKtpDal _pasienKtpDal;
     private readonly IGetKodeRsService _getKodeRsSvc;
-    
     public PasienRepo(IPasienDal pasienDal, 
         IPasienKtpDal pasienKtpDal, 
         IGetKodeRsService getKodeRsSvc)
@@ -71,13 +70,45 @@ public class PasienRepo : IPasienRepo
         var ktp = new KtpType(ktpDto.fs_nik, alamatKtp, ktpDto.fs_rt_ktp, ktpDto.fs_rw_ktp,
             kelurahanKtp);
 
+        var propinsi = new PropinsiType(dto.fs_kd_propinsi, dto.fs_nm_propinsi);
+        var kabupatenReff = new KabupatenReff(dto.fs_kd_kabupaten, dto.fs_nm_kabupaten);
+        var kecamatanReff = new KecamatanReff(dto.fs_kd_kecamatan, dto.fs_nm_kecamatan);
+        var kelurahan = string.IsNullOrWhiteSpace(dto.fs_kd_kelurahan)
+            ? KelurahanType.Default
+            : new KelurahanType(dto.fs_kd_kelurahan, dto.fs_nm_kelurahan, kecamatanReff, kabupatenReff, propinsi );
+
+
+        var contactKeluarga = new ContactType(JenisContactEnum.Phone, dto.fs_telp_keluarga ?? "-");
+        var almKeluarga = new AlamatType([dto.fs_alm1_keluarga, dto.fs_alm2_keluarga], dto.fs_kota_keluarga, dto.fs_kd_pos_keluarga);
+        var pasienKeluarga = new PasienKeluargaType(dto.fs_nm_keluarga, "", contactKeluarga, almKeluarga);
+
+        var agama = string.IsNullOrWhiteSpace(dto.fs_kd_agama)
+            ? AgamaType.Default
+            : new AgamaType(dto.fs_kd_agama, dto.fs_nm_agama);
+
+        var suku = string.IsNullOrWhiteSpace(dto.fs_kd_suku)
+            ? SukuType.Default
+            : new SukuType(dto.fs_kd_suku, dto.fs_nm_suku);
+
+        var statusKawin = string.IsNullOrWhiteSpace(dto.fs_kd_status_kawin_dk)
+            ? StatusKawinDkType.Default
+            : new StatusKawinDkType(dto.fs_kd_status_kawin_dk, dto.fs_nm_status_kawin_dk);
+        
+        var pendidikan = string.IsNullOrWhiteSpace(dto.fs_kd_pendidikan_dk) 
+            ? PendidikanDkType.Default 
+            : new PendidikanDkType(dto.fs_kd_pendidikan_dk, dto.fs_nm_pendidikan_dk);
+        
+        var pekerjaan = string.IsNullOrWhiteSpace(dto.fs_kd_pekerjaan_dk) 
+            ? PekerjaanDkType.Default
+            : new PekerjaanDkType(dto.fs_kd_pekerjaan_dk, dto.fs_nm_pekerjaan_dk);
+
         var pasien = new PasienModel(key.PasienId,
             person, dto.fs_nm_alias, dto.fs_temp_lahir, new GolDarahType(dto.fs_gol_darah),
             dto.fs_nm_ibu_kandung, 
-            ktp, KelurahanType.Default, IdentitasType.Default, 
-            new List<ContactType>(), PasienKeluargaType.Default, 
-            AgamaType.Default, SukuType.Default, StatusKawinDkType.Default, 
-            PendidikanDkType.Default, PekerjaanDkType.Default, 
+            ktp, kelurahan, IdentitasType.Default, 
+            new List<ContactType>(), pasienKeluarga, 
+            agama, suku, statusKawin, 
+            pendidikan, pekerjaan, 
             DateTime.MinValue, false);
 
         return MayBe.From(pasien);

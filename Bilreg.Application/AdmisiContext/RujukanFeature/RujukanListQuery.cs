@@ -2,7 +2,7 @@
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
 
-namespace Bilreg.Application.AdmisiContext.RujukanFeature.RujukanAgg;
+namespace Bilreg.Application.AdmisiContext.RujukanFeature;
 public record RujukanListQuery(string TipeRujukanId) : IRequest<IEnumerable<RujukanListResponse>>;
 public record RujukanListResponse(
     string RujukanId,

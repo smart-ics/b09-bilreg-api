@@ -6,7 +6,8 @@ public record LayananType : ILayananKey
 {
     #region CREATION
     public LayananType(string layananId, string layananName, bool isAKtif,
-        InstalasiReff instalasi, LayananDkReff layananDk, TipeLayananDkType tipeLayananDk)
+        InstalasiReff instalasi, LayananDkReff layananDk, 
+        TipeLayananDkType tipeLayananDk, InstalasiDkType instalasiDk)
     {
         Guard.Against.NullOrWhiteSpace(layananId, nameof(layananId));
         Guard.Against.NullOrWhiteSpace(layananName, nameof(layananName));
@@ -20,10 +21,11 @@ public record LayananType : ILayananKey
         Instalasi = instalasi;
         LayananDk = layananDk;
         TipeLayananDk = tipeLayananDk;
+        InstalasiDk = instalasiDk;
     }
     public static LayananType Default => new("-", "-", true,
         InstalasiType.Default.ToReff(), LayananDkType.Default.ToReff(), 
-        TipeLayananDkType.Default);
+        TipeLayananDkType.Default, InstalasiDkType.Default);
 
     public static ILayananKey Key(string id) => Default with { LayananId = id };
     #endregion
@@ -36,6 +38,8 @@ public record LayananType : ILayananKey
     public InstalasiReff Instalasi { get; init; }
     public LayananDkReff LayananDk { get; init; }
     public TipeLayananDkType TipeLayananDk { get; init; }
+    public InstalasiDkType InstalasiDk { get; init; }
+    
     #endregion
     
     public LayananReff ToReff() => new(LayananId, LayananName);

@@ -1,5 +1,6 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
 using Bilreg.Domain.Helpers;
 
 namespace Bilreg.Domain.AdmisiContext.AntrianFeature;
@@ -67,6 +68,14 @@ public class AntrianModel : IAntrianKey
         Guard.Against.Null(tglAntrian, nameof(tglAntrian));
         
         var sequenceTag = $"AN{tglAntrian:yyMMdd}_{jadwal.Dokter.PetugasMedisId.Replace(' ', '$')}";
+        return sequenceTag;
+    }
+    public static string GenSequenceTag(DateOnly tglAntrian, PetugasMedisType dokter)
+    {
+        Guard.Against.Null(dokter, nameof(dokter));
+        Guard.Against.Null(tglAntrian, nameof(tglAntrian));
+        
+        var sequenceTag = $"AN{tglAntrian:yyMMdd}_{dokter.PetugasMedisId.Replace(' ', '$')}";
         return sequenceTag;
     }
     public static string GenSequenceTag(DateOnly tglAntrian, ServicePointType servicePoint)

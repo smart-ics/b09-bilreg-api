@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.JaminanSub.PolisAgg;
+﻿using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Infrastructure.Helpers;
 using FluentAssertions;
 using Nuna.Lib.TransactionHelper;

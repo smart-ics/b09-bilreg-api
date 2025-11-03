@@ -1,4 +1,5 @@
-﻿using Bilreg.Application.PasienContext.PasienFeature;
+﻿using Bilreg.Application.PasienContext.DataSosialPasienSub.PasienAgg;
+using Bilreg.Application.PasienContext.PasienFeature;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
@@ -32,6 +33,16 @@ public class PasienController : Controller
     }
 
     [HttpGet]
+    [Route("{id}")]
+    public async Task<IActionResult> GetData(string id)
+    {
+        var query = new PasienGetQuery(id);
+        var result = await _mediator.Send(query);
+        return Ok(new JSendOk(result));
+    }
+
+
+    [HttpGet]
     [Route("search/{keyword}")]
     public async Task<IActionResult> Search(string keyword)
     {
@@ -39,4 +50,31 @@ public class PasienController : Controller
         var result = await _mediator.Send(query);
         return Ok(new JSendOk(result));
     }
+
+    [HttpPatch]
+    [Route("ktp")]
+    public async Task<IActionResult> SetDataKpt(PasienSetKtpCommand cmd)
+    {
+        var result = await _mediator.Send(cmd);
+        return Ok(new JSendOk(result));
+    }
+
+    [HttpPatch]
+    [Route("addContact")]
+    public async Task<IActionResult> AddContact(PasienAddContactCommand cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
+    [HttpPatch]
+    [Route("demografi")]
+    public async Task<IActionResult> SetStatusSosial(PasienSetDemografiCommand cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
+
+
 }

@@ -3,7 +3,7 @@ using Bilreg.Domain.BillContext.BedUsageFeature;
 using Bilreg.Domain.Helpers;
 using Bilreg.Domain.PasienContext.PasienFeature;
 
-namespace Bilreg.Domain.AdmisiContext.JaminanSub.PolisAgg;
+namespace Bilreg.Domain.AdmisiContext.JaminanFeature;
 
 public interface IPolisFactory
 {

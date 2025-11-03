@@ -3,7 +3,7 @@ using Bilreg.Domain.AdmisiContext.RegFeature;
 using Nuna.Lib.PatternHelper;
 using Nuna.Lib.ValidationHelper;
 
-namespace Bilreg.Infrastructure.AdmisiContext.RegSub;
+namespace Bilreg.Infrastructure.AdmisiContext.RegFeature;
 
 public class RegAktifRepo : IRegAktifRepo
 {

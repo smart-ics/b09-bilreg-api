@@ -1,6 +1,6 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
-using Bilreg.Domain.AdmisiContext.JaminanSub.PolisAgg;
+using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;

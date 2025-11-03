@@ -1,4 +1,4 @@
-using Bilreg.Domain.AdmisiContext.JaminanSub;
+using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Nuna.Lib.DataAccessHelper;
 
 namespace Bilreg.Application.AdmisiContext.JaminanFeature.CaraBayarDkAgg;
