@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.JaminanSub.PolisAgg;
+﻿using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 
 namespace Bilreg.Infrastructure.AdmisiContext.JaminanFeature;

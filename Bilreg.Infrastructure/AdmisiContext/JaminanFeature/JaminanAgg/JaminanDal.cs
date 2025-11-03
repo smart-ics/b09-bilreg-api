@@ -1,7 +1,7 @@
 using System.Data;
 using System.Data.SqlClient;
 using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
-using Bilreg.Domain.AdmisiContext.JaminanSub;
+using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Infrastructure.Helpers;
 using Bilreg.Infrastructure.PasienContext.PasienFeature;

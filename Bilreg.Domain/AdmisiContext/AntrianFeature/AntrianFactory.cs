@@ -1,5 +1,6 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
 using Bilreg.Domain.Helpers;
 
 
@@ -9,6 +10,7 @@ public interface IAntrianFactory : INunaFactory<AntrianModel>
 {
     AntrianModel Create(DateOnly antrianDate, JadwalPraktekType jadwalPraktek);
     AntrianModel Create(ServicePointType servicePoint);
+    AntrianModel Create(DateOnly antrianDate, PetugasMedisType dokter);
 }
 
 public class AntrianFactory : IAntrianFactory
@@ -50,6 +52,20 @@ public class AntrianFactory : IAntrianFactory
         return new AntrianModel(newId, antrianDate, mulai, selesai, 
             sequenceTag, servicePoint.ServicePointName, new List<AntrianEntryModel>(), 
             _antrianSequencer);
+    }
+
+    public AntrianModel Create(DateOnly antrianDate, PetugasMedisType dokter)
+    {
+        Guard.Against.Null(dokter, nameof(dokter));
+
+        var newId = Ulid.NewUlid().ToString();
+        var sequenceTag = AntrianModel.GenSequenceTag(antrianDate, dokter);
+        var antrianDesc = $"Praktek Dokter {dokter.PetugasMedisName}";
+        
+        var result = new AntrianModel(newId, antrianDate, jadwalPraktek.JamMulai, 
+            jadwalPraktek.JamSelesai,sequenceTag, antrianDesc, 
+            new List<AntrianEntryModel>(), _antrianSequencer);
+        return result;
     }
 
     public AntrianModel Load(string antrianId, DateOnly antrianDate, TimeOnly startTime, TimeOnly endTime,

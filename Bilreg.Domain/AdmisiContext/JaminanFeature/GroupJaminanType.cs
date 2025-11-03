@@ -1,9 +1,8 @@
 ﻿using Ardalis.GuardClauses;
-using Bilreg.Domain.PasienContext.DemografiFeature;
 using FluentAssertions;
 using Xunit;
 
-namespace Bilreg.Domain.AdmisiContext.JaminanSub;
+namespace Bilreg.Domain.AdmisiContext.JaminanFeature;
 
 public record GroupJaminanType : IGroupJaminanKey
 {
