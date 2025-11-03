@@ -147,6 +147,13 @@ public class PasienModel : IPasienKey
         Ktp = ktp;
     }
 
+    public void SyncFromKtp(string pasienName, DateOnly tglLahir,
+        string tempatLahir, string gender, string golDarah)
+    {
+        Person = new PersonInfoType(pasienName, tglLahir, gender, Person.Alamat, Person.Contact, Person.Identity);
+        GolDarah = new GolDarahType(golDarah);
+        TempatLahir = tempatLahir;
+    }
     public void AddContact(ContactType contact)
     {
         Guard.Against.Null(contact, nameof(contact));

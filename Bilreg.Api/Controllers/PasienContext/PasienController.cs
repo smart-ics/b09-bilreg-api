@@ -51,21 +51,12 @@ public class PasienController : Controller
         return Ok(new JSendOk(result));
     }
 
-    [HttpPost]
-    [Route("match")]
-    public async Task<IActionResult> Match(PasienCekPersonCommand cmd)
-    {
-        var result = await _mediator.Send(cmd);
-        return Ok(new JSendOk(result));
-    }
-
-
     [HttpPatch]
     [Route("ktp")]
     public async Task<IActionResult> SetDataKpt(PasienSetKtpCommand cmd)
     {
-        await _mediator.Send(cmd);
-        return Ok(new JSendOk("Done"));
+        var result = await _mediator.Send(cmd);
+        return Ok(new JSendOk(result));
     }
 
     [HttpPatch]
