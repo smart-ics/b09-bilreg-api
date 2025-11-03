@@ -3,9 +3,8 @@ using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
-using Nuna.Lib.ValidationHelper;
 
-namespace Bilreg.Infrastructure.AdmisiContext.RegSub;
+namespace Bilreg.Infrastructure.AdmisiContext.RegFeature;
 
 public record RegAktifDto(
     string RegId, DateTime RegDate, string PasienId, string JenisRawat, 

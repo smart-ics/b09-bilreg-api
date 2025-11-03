@@ -84,7 +84,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             .LoadEntity(LayananType.Key(request.LayananId))
             .GetValueOrThrow("Layanan invalid");
         if (layanan.InstalasiDk == InstalasiDkType.RawatInap)
-            throw new ArgumentException("Layanan Rawat Inap tidak bisa digunakan di Registrasi Rawat Jalan")
+            throw new ArgumentException("Layanan Rawat Inap tidak bisa digunakan di Registrasi Rawat Jalan");
         var dokter = _dokterRepo
             .LoadEntity(PetugasMedisType.Key(request.DokterId))
             .GetValueOrThrow("Dokter invalid");
@@ -120,33 +120,6 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         //  TODO: Lanjutkan ke Layanan, Dokter dan NoAntrian
         // (Cek juga apakah booking atau bukan)
         throw new NotImplementedException();
-    }
-
-    private AntrianModel FindAntrian(PetugasMedisType dokter, string regDate)
-    {
-        //  cari jadwal dulu
-        var listJadwal = _jadwalPraktekRepo.ListData(dokter)?.ToList() ?? [];
-        var tglBerobat = DateOnly.Parse(regDate);
-        var hari = tglBerobat.DayOfWeek;
-        JadwalPraktekType jadwal;
-        var jadwalCandidate = listJadwal
-            .Where(x => x.Hari == hari)?
-            .ToList() ?? [];
-        if (jadwalCandidate.Count == 1)
-            jadwal = jadwalCandidate.First();
-        else
-            jadwal = JadwalPraktekType.Default with {
-                Dokter = dokter.ToReff(),
-                Hari = hari,
-                JamMulai = TimeOnly.Parse("00:00:00"),
-                JamSelesai = TimeOnly.Parse("23:59:59")
-            };
-        var listAntrian = _antrianRepo.ListData(tglBerobat);
-        var sequenceTag = AntrianModel.GenSequenceTag(tglBerobat, dokter);
-        var antrianView = listAntrian.FirstOrDefault(x => x.SequenceTag == sequenceTag);
-        var antrian = antrianView is null ? 
-            _antrianFactory.Create(tglBerobat, jadwal) :
-            _antrianRepo.LoadEntity(antrianView).Value;            
     }
 
     private PolisModel FindPolis(PasienModel pasien, TipeJaminanType tipeJaminan)
