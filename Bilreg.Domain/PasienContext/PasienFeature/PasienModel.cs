@@ -106,18 +106,16 @@ public class PasienModel : IPasienKey
         return shortId;        
     }
 
-    public void UpdateAdminInfo(KtpType ktp, KelurahanType kelurahan, 
+    public void UpdateAdminInfo(KelurahanType kelurahan, 
         IdentitasType kartuKeluarga, ContactType email, ContactType noHp,
         PasienKeluargaType pasienKeluarga)
     {
-        ktp ??= KtpType.Default;
         kelurahan ??= KelurahanType.Default;
         kartuKeluarga ??= IdentitasType.Default;
         email ??= ContactType.Default;
         noHp ??= ContactType.Default;
         pasienKeluarga ??= PasienKeluargaType.Default;
         
-        Ktp = ktp;
         Kelurahan = kelurahan;
         KartuKeluarga = kartuKeluarga;
         PasienKeluarga = pasienKeluarga;

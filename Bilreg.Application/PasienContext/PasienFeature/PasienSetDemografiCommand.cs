@@ -5,11 +5,11 @@ using MediatR;
 
 namespace Bilreg.Application.PasienContext.PasienFeature;
 
-public record PasienSetStatusSosialCommand(string PasienId, string StatusKawinId,
+public record PasienSetDemografiCommand(string PasienId, string StatusKawinId,
     string AgamaId, string SukuId, string PekerjaanId,
     string PendidikanId) : IRequest, IPasienKey;
 
-public class PasienSetStatusSosialHandler : IRequestHandler<PasienSetStatusSosialCommand>
+public class PasienSetDemografiHandler : IRequestHandler<PasienSetDemografiCommand>
 {
     private readonly IPasienRepo _pasienRepo;
     private readonly IStatusKawinDkDal _statisKawinDal;
@@ -17,7 +17,7 @@ public class PasienSetStatusSosialHandler : IRequestHandler<PasienSetStatusSosia
     private readonly ISukuDal _sukuDal;
     private readonly IPekerjaanDkDal _pekerjaanDal;
     private readonly IPendidikanDkDal _pendidikanDkDal;
-    public PasienSetStatusSosialHandler(IPasienRepo pasienRepo,
+    public PasienSetDemografiHandler(IPasienRepo pasienRepo,
         IStatusKawinDkDal statisKawinDal,
         IAgamaDal agamaDal,
         ISukuDal sukuDal,
@@ -32,7 +32,7 @@ public class PasienSetStatusSosialHandler : IRequestHandler<PasienSetStatusSosia
         _pendidikanDkDal = pendidikanDkDal;
     }
 
-    public Task Handle(PasienSetStatusSosialCommand request, CancellationToken cancellationToken)
+    public Task Handle(PasienSetDemografiCommand request, CancellationToken cancellationToken)
     {
         var pasien = _pasienRepo.LoadEntity(PasienModel.Key(request.PasienId))
             .Match(
