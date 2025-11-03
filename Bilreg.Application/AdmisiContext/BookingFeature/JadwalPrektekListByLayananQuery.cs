@@ -28,6 +28,19 @@ public class JadwalPrektekListByLayananHandler : IRequestHandler<JadwalPrektekLi
         var lyn = LayananType.Key(request.LayananId);
         var listJadwal = _jadwalRepo.ListData(lyn)?.ToList() ?? [];
 
-        throw new NotImplementedException();
+        var result = listJadwal
+            .GroupBy(x => new { x.Dokter.PetugasMedisId, x.Dokter.PetugasMedisName })
+            .Select(g => new JadwalPrektekListByLayananResponse(
+                g.Key.PetugasMedisId,
+                g.Key.PetugasMedisName,
+                g.OrderBy(j => j.Hari)
+                 .Select(j => new JadwalPraktekDokterByLynHariResponse(
+                     j.Hari.ToString(),
+                     j.JamMulai.ToString("HH:mm"),
+                     j.JamSelesai.ToString("HH:mm")
+                 ))
+            ));
+
+        return Task.FromResult( result );
     }
 }
