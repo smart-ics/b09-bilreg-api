@@ -1,4 +1,5 @@
 ﻿using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
 using Nuna.Lib.DataAccessHelper;
 
@@ -8,6 +9,7 @@ public interface IJadwalPraktekRepo :
     ISaveChange<JadwalPraktekType>,
     ILoadEntity<JadwalPraktekType, IJadwalPraktekKey>,
     IDeleteEntity<IJadwalPraktekKey>,
-    IListData<JadwalPraktekType, IPetugasMedisKey>
+    IListData<JadwalPraktekType, IPetugasMedisKey>,
+    IListData<JadwalPraktekType, ILayananKey>
 {
 }

@@ -1,6 +1,7 @@
 ﻿using System.Data;
 using Bilreg.Application.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
 using Bilreg.Infrastructure.Helpers;
 using Microsoft.Extensions.Options;
@@ -38,6 +39,14 @@ public class JadwalPraktekRepo : IJadwalPraktekRepo
     public IEnumerable<JadwalPraktekType> ListData(IPetugasMedisKey filter)
     {
         var result = _dal.ListData(filter);
+        var model = result?.Select(x => x.ToModel())?
+            .ToList() ?? [];
+        return model;
+    }
+
+    public IEnumerable<JadwalPraktekType> ListData(ILayananKey lyn)
+    {
+        var result = _dal.ListData(lyn);
         var model = result?.Select(x => x.ToModel())?
             .ToList() ?? [];
         return model;
