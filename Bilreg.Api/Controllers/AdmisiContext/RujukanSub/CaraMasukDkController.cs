@@ -1,4 +1,4 @@
-﻿using Bilreg.Application.AdmisiContext.RujukanSub.CaraMasukDkAgg;
+﻿using Bilreg.Application.AdmisiContext.RujukanFeature;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;

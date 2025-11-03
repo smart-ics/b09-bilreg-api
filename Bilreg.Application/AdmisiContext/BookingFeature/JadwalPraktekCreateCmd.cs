@@ -16,12 +16,12 @@ public record JadwalPraktekCreateResponse(string JadwalPraktekId);
 public class JadwalPraktekCreateHandler : IRequestHandler<JadwalPraktekCreateCmd, JadwalPraktekCreateResponse>
 {
     private readonly IJadwalPraktekRepo _jadwalRepo;
-    private readonly IJadwalPraktekNunaFactory _jadwalNunaFactory;
+    private readonly IJadwalPraktekFactory _jadwalNunaFactory;
     private readonly IPetugasMedisRepo _petugasRepo;
     private readonly ILayananRepo _layananRepo;
 
     public JadwalPraktekCreateHandler(IJadwalPraktekRepo jadwalRepo, 
-        IJadwalPraktekNunaFactory jadwalNunaFactory, 
+        IJadwalPraktekFactory jadwalNunaFactory, 
         IPetugasMedisRepo petugasRepo, 
         ILayananRepo layananRepo)
     {

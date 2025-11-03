@@ -24,4 +24,8 @@
     <ProjectReference Include="..\Bilreg.Application\Bilreg.Application.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="AdmisiContext\JaminanFeature\PolisAgg\" />
+  </ItemGroup>
+
 </Project>

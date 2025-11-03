@@ -1,7 +1,7 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 
-namespace Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
+namespace Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
 
 public class PetugasMedisLayananType
 {

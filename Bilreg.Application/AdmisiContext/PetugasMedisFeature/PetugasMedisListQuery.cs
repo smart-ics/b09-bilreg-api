@@ -1,6 +1,5 @@
 ﻿using Bilreg.Application.AdmisiContext.PetugasMedisSub;
-using Bilreg.Domain.AdmisiContext.PetugasMedisSub;
-using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
 using MediatR;
 
 namespace Bilreg.Application.AdmisiContext.PetugasMedisFeature;

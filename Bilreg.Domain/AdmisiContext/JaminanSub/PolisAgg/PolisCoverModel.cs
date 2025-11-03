@@ -2,19 +2,35 @@
 
 namespace Bilreg.Domain.AdmisiContext.JaminanSub.PolisAgg;
 
-public partial class 
-    PolisCoverModel : IPolisKey, IPasienKey
+public record PolisCoverModel : IPolisKey
 {
-    public PolisCoverModel(string id)
+    public PolisCoverModel(string polisId, PasienReff pasien, StatusPesertaType status)
     {
-        PolisId = id;
+        PolisId = polisId;
+        Pasien = pasien;
+        Status = status;
     }
-
-    public string PolisId { get; protected set; }
-    public string PasienId { get; protected set; }
-    public string PasienName { get; protected set; }
-    public string Status { get; protected set; }
-    public string StatusDesc { get; protected set; }
+    public string PolisId { get; init; }
+    public PasienReff Pasien { get; init; }
+    public StatusPesertaType Status { get; init; }
     public DateTime ExpiredDate { get; protected set; }
+}
+
+public record StatusPesertaType(string StatusCode, string StatusDesc)
+{
+    public static StatusPesertaType Create(string statusCode)
+    {
+        var statusDesc = statusCode switch
+        {
+            "P" => "Peserta",
+            "S" => "Suami",
+            "I" => "Istri",
+            "A" => "Anak",
+            "O" => "Orang Tua",
+            "X" => "Lainnya",
+            _ => throw new ArgumentException("Invalid status code")
+        };
+        return new StatusPesertaType(statusCode, statusDesc);
+    }
 }
 

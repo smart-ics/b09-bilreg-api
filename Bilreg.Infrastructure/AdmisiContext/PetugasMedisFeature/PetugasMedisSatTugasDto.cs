@@ -1,6 +1,4 @@
 ﻿using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
-using Bilreg.Domain.AdmisiContext.PetugasMedisSub;
-using Bilreg.Domain.AdmisiContext.PetugasMedisSub.PetugasMedisFeature;
 
 // ReSharper disable InconsistentNaming
 namespace Bilreg.Infrastructure.AdmisiContext.PetugasMedisFeature;

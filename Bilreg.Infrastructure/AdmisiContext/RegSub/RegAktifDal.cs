@@ -1,7 +1,6 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
-using Bilreg.Domain.AdmisiContext.RegSub.RegAgg;
-using Bilreg.Domain.AdmisiContext.RegSub.RegAgg.ValueObjects;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
 using FluentAssertions;
