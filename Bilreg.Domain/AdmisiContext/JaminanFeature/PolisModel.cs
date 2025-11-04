@@ -1,8 +1,8 @@
-﻿using Bilreg.Domain.BillContext.BedUsageFeature;
+﻿using Ardalis.GuardClauses;
+using Bilreg.Domain.BillContext.BedUsageFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
-using Ardalis.GuardClauses;
 
-namespace Bilreg.Domain.AdmisiContext.JaminanSub.PolisAgg;
+namespace Bilreg.Domain.AdmisiContext.JaminanFeature;
 
 public class PolisModel : IPolisKey
 {

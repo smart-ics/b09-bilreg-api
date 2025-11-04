@@ -1,7 +1,7 @@
 using System.Data;
 using System.Data.SqlClient;
 using Bilreg.Application.AdmisiContext.JaminanFeature.CaraBayarDkAgg;
-using Bilreg.Domain.AdmisiContext.JaminanSub;
+using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
 using FluentAssertions;

@@ -1,5 +1,5 @@
 ﻿using Bilreg.Application.AdmisiContext.JaminanFeature;
-using Bilreg.Domain.AdmisiContext.JaminanSub;
+using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Nuna.Lib.PatternHelper;
 
 namespace Bilreg.Infrastructure.AdmisiContext.JaminanFeature.TipeJaminanAgg;

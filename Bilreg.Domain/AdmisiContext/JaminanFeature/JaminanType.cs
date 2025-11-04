@@ -1,7 +1,7 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Domain.PasienContext.PasienFeature;
 
-namespace Bilreg.Domain.AdmisiContext.JaminanSub;
+namespace Bilreg.Domain.AdmisiContext.JaminanFeature;
 
 public record JaminanType : IJaminanKey
 {

@@ -1,0 +1,125 @@
+using System.Data;
+using System.Data.SqlClient;
+using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Infrastructure.Helpers;
+using Dapper;
+using FluentAssertions;
+using Microsoft.Extensions.Options;
+using Nuna.Lib.DataAccessHelper;
+using Nuna.Lib.TransactionHelper;
+using Xunit;
+
+namespace Bilreg.Infrastructure.AdmisiContext.RegFeature;
+
+
+public interface IKarcisLayananDal :
+    IInsertBulk<KarcisLayananDto>,
+    IDelete<IKarcisKey>,
+    IListData<KarcisLayananDto, IKarcisKey>
+{
+}
+
+public class KarcisLayananDal: IKarcisLayananDal
+{
+    private readonly DatabaseOptions _opt;
+
+    public KarcisLayananDal(IOptions<DatabaseOptions> opt)
+    {
+        _opt = opt.Value;
+    }
+
+    public void Insert(IEnumerable<KarcisLayananDto> listModel)
+    {
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        using var bcp = new SqlBulkCopy(conn);
+        
+        conn.Open();
+        bcp.AddMap("fs_kd_karcis", "fs_kd_karcis");
+        bcp.AddMap("fs_kd_layanan", "fs_kd_layanan");
+
+        var fetched = listModel.ToList();
+        bcp.BatchSize = fetched.Count;
+        bcp.DestinationTableName = "ta_karcis3";
+        bcp.WriteToServer(fetched.AsDataTable());
+    }
+
+    public void Delete(IKarcisKey key)
+    {
+        const string sql = @"
+            DELETE FROM
+                ta_karcis3
+            WHERE
+                fs_kd_karcis = @fs_kd_karcis";
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@fs_kd_karcis", key.KarcisId, SqlDbType.VarChar);
+        
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        conn.Execute(sql, dp);
+    }
+
+    public IEnumerable<KarcisLayananDto> ListData(IKarcisKey filter)
+    {
+        const string sql = @"
+            SELECT 
+                aa.fs_kd_karcis, aa.fs_kd_layanan,
+                ISNULL(bb.fs_nm_layanan, '') AS fs_nm_layanan
+            FROM ta_karcis3 aa
+                LEFT JOIN ta_layanan bb ON aa.fs_kd_layanan = bb.fs_kd_layanan
+            WHERE
+                aa.fs_kd_karcis = @fs_kd_karcis";
+        
+        var dp = new DynamicParameters();
+        dp.AddParam("@fs_kd_karcis", filter.KarcisId, SqlDbType.VarChar);
+        
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<KarcisLayananDto>(sql, dp);
+    }
+}
+
+public class KarcisLayananDalTest
+{
+    private readonly KarcisLayananDal _sut = new(ConnStringHelper.GetTestEnv());
+
+    private static IEnumerable<KarcisLayananDto> FakerList()
+        => new List<KarcisLayananDto>
+        {
+            new KarcisLayananDto(
+                fs_kd_karcis: "A",
+                fs_kd_layanan: "B",
+                fs_nm_layanan: "C"
+            ),
+            new KarcisLayananDto(
+                fs_kd_karcis: "A",
+                fs_kd_layanan: "D",
+                fs_nm_layanan: "E"
+            )
+        };
+
+    private static IKarcisKey FakerKey()
+        => new KarcisKey("A");
+
+    [Fact]
+    public void InsertTest()
+    {
+        using var trans = TransHelper.NewScope();
+        _sut.Insert(FakerList());
+    }
+
+    [Fact]
+    public void DeleteTest()
+    {
+        using var trans = TransHelper.NewScope();
+        _sut.Delete(FakerKey());
+    }
+
+    [Fact]
+    public void ListDataTest()
+    {
+        using var trans = TransHelper.NewScope();
+        _sut.Insert(FakerList());
+        var actual = _sut.ListData(FakerKey());
+        actual.Should().BeEquivalentTo(FakerList(),
+            opt => opt.Excluding(x => x.fs_nm_layanan));
+    }
+}

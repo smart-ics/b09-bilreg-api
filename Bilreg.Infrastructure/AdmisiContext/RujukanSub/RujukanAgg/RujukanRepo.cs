@@ -1,4 +1,4 @@
-﻿using Bilreg.Application.AdmisiContext.RujukanFeature.RujukanAgg;
+﻿using Bilreg.Application.AdmisiContext.RujukanFeature;
 using Bilreg.Domain.AdmisiContext.RujukanSub;
 using Nuna.Lib.PatternHelper;
 

@@ -10,7 +10,7 @@ using Nuna.Lib.TransactionHelper;
 using Nuna.Lib.ValidationHelper;
 using Xunit;
 
-namespace Bilreg.Infrastructure.AdmisiContext.RegSub;
+namespace Bilreg.Infrastructure.AdmisiContext.RegFeature;
 
 public interface IRegAktifDal :
     IInsert<RegAktifDto>,

@@ -11,8 +11,10 @@ public record LayananDto(
     string fs_kd_layanan_dk,
     string fs_kd_layanan_tipe_dk,
     string fs_nm_instalasi,
+    string fs_kd_instalasi_dk,
     string fs_nm_layanan_dk,
-    string fs_nm_layanan_tipe_dk)
+    string fs_nm_layanan_tipe_dk,
+    string fs_nm_instalasi_dk)
 {
     public static LayananDto FromModel(LayananType model)
         => new(
@@ -23,14 +25,18 @@ public record LayananDto(
             model.LayananDk.LayananDkId,
             model.TipeLayananDk.TipeLayananDkId,
             model.Instalasi.InstalasiName,
+            model.InstalasiDk.InstalasiDkId,
             model.LayananDk.LayananDkName,
-            model.TipeLayananDk.TipeLayananDkName);
+            model.TipeLayananDk.TipeLayananDkName,
+            model.InstalasiDk.InstalasiDkName);
 
     public LayananType ToModel()
     {
         var instalasi = new InstalasiReff(fs_kd_instalasi, fs_nm_instalasi);
         var layananDk = new LayananDkReff(fs_kd_layanan_dk, fs_nm_layanan_dk);
         var tipeLayananDk = new TipeLayananDkType(fs_kd_layanan_tipe_dk, fs_nm_layanan_tipe_dk);
-        return new LayananType(fs_kd_layanan, fs_nm_layanan, fb_aktif, instalasi, layananDk, tipeLayananDk);
+        var instalasiDk = new InstalasiDkType(fs_kd_instalasi_dk, fs_nm_instalasi_dk);
+        return new LayananType(fs_kd_layanan, fs_nm_layanan, fb_aktif, 
+            instalasi, layananDk, tipeLayananDk, instalasiDk);
     }
 }
