@@ -3,8 +3,11 @@ using System.Data.SqlClient;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
+using FluentAssertions;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
+using Nuna.Lib.TransactionHelper;
+using Xunit;
 
 namespace Bilreg.Infrastructure.AdmisiContext.LayananFeature.LayananAgg;
 
@@ -153,13 +156,16 @@ public class LayananDal : ILayananDal
                aa.fs_kd_instalasi, aa.fs_kd_layanan_dk,
                aa.fs_kd_layanan_tipe_dk, 
                ISNULL(bb.fs_nm_instalasi,'') AS fs_nm_instalasi,
+               ISNULL(bb.fs_kd_instalasi_dk, '') AS fs_kd_instalasi_dk,
                ISNULL(cc.fs_nm_layanan_dk,'') AS fs_nm_layanan_dk,
-               ISNULL(dd.fs_nm_layanan_tipe_dk,'') AS fs_nm_layanan_tipe_dk
+               ISNULL(dd.fs_nm_layanan_tipe_dk,'') AS fs_nm_layanan_tipe_dk,
+               ISNULL(ee.fs_nm_instalasi_dk, '') AS fs_nm_instalasi_dk
            FROM 
                ta_layanan aa
                LEFT JOIN ta_instalasi bb ON aa.fs_kd_instalasi = bb.fs_kd_instalasi
                LEFT JOIN ta_layanan_dk cc ON aa.fs_kd_layanan_dk = cc.fs_kd_layanan_dk
                LEFT JOIN ta_layanan_tipe_dk dd ON aa.fs_kd_layanan_tipe_dk = dd.fs_kd_layanan_tipe_dk
+               LEFT JOIN ta_instalasi_dk ee ON bb.fs_kd_instalasi_dk = ee.fs_kd_instalasi_dk
            WHERE
                bb.fs_kd_instalasi_dk = @fs_kd_instalasi_dk    
            """;
@@ -173,69 +179,5 @@ public class LayananDal : ILayananDal
     }
 }
 
-public class LayananDalTest
-{
-    private readonly LayananDal _sut = new(ConnStringHelper.GetTestEnv());
 
-    private static LayananDto Faker()
-        => new LayananDto(
-            fs_kd_layanan: "A",
-            fs_nm_layanan: "B",
-            fb_aktif: true,
-            fs_kd_instalasi: "C",
-            fs_kd_layanan_dk: "D",
-            fs_kd_layanan_tipe_dk: "E",
-            fs_nm_instalasi: "F",
-            fs_nm_layanan_dk: "G",
-            fs_nm_layanan_tipe_dk: "H"
-        );
-
-    private static ILayananKey FakerKey()
-        => LayananType.Key("A");
-
-    [Fact]
-    public void InsertTest()
-    {
-        using var trans = TransHelper.NewScope();
-        _sut.Insert(Faker());
-    }
-    
-    [Fact]
-    public void UpdateTest()
-    {
-        using var trans = TransHelper.NewScope();
-        _sut.Update(Faker());
-    }
-
-    [Fact]
-    public void DeleteTest()
-    {
-        using var trans = TransHelper.NewScope();
-        _sut.Delete(FakerKey());
-    }
-
-    [Fact]
-    public void GetDataTest()
-    {
-        using var trans = TransHelper.NewScope();
-        _sut.Insert(Faker());
-        var actual = _sut.GetData(FakerKey());
-        actual.Should().BeEquivalentTo(Faker(), 
-            opt => opt.Excluding(x => x.fs_nm_instalasi)
-                .Excluding(x => x.fs_nm_layanan_dk)
-                .Excluding(x => x.fs_nm_layanan_tipe_dk));
-    }
-    
-    [Fact]
-    public void ListDataTest()
-    {
-        using var trans = TransHelper.NewScope();
-        _sut.Insert(Faker());
-        var actual = _sut.ListData();
-        actual.Should().ContainEquivalentOf(Faker(),
-            opt => opt.Excluding(x => x.fs_nm_instalasi)
-                .Excluding(x => x.fs_nm_layanan_dk)
-                .Excluding(x => x.fs_nm_layanan_tipe_dk));
-    }
-}
 

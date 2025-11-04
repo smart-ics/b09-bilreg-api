@@ -9,6 +9,7 @@ public interface IJadwalPraktekRepo :
     ISaveChange<JadwalPraktekType>,
     ILoadEntity<JadwalPraktekType, IJadwalPraktekKey>,
     IDeleteEntity<IJadwalPraktekKey>,
+    IListData<JadwalPraktekType>,
     IListData<JadwalPraktekType, IPetugasMedisKey>,
     IListData<JadwalPraktekType, ILayananKey>
 {

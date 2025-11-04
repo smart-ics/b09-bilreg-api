@@ -1,6 +1,5 @@
 ﻿using Bilreg.Application.AdmisiContext.BookingFeature;
 using MediatR;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
 
@@ -29,11 +28,19 @@ public class JadwalPraktekController : ControllerBase
     [Route("layanan/{layananId}")]
     public async Task<IActionResult> ListbyLayanan(string layananId)
     {
-        var query = new JadwalPrektekListByLayananQuery(layananId);
+        var query = new JadwalPraktekListByLayananQuery(layananId);
         var result = await _mediator.Send(query);
         return Ok(new JSendOk(result));
     }
-    
+
+    [HttpGet]
+    [Route("search/{keyword}")]
+    public async Task<IActionResult> SearchJadwal(string keyword)
+    {
+        var query = new JadwalPraktekSearchQuery(keyword);
+        var result = await _mediator.Send(query);
+        return Ok(new JSendOk(result));
+    }
 
     [HttpPost]
     public async Task<IActionResult> Save(JadwalPraktekCreateCmd cmd)
