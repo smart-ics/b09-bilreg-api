@@ -1,4 +1,5 @@
-﻿using Bilreg.Application.PasienContext.DemografiFeature;
+﻿using Ardalis.GuardClauses;
+using Bilreg.Application.PasienContext.DemografiFeature;
 using Bilreg.Application.PasienContext.StatusSosialFeature;
 using Bilreg.Domain.PasienContext.DemografiFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
@@ -48,6 +49,14 @@ public class PasienSetDemografiHandler : IRequestHandler<PasienSetDemografiComma
 
     public Task Handle(PasienSetDemografiCommand request, CancellationToken cancellationToken)
     {
+        Guard.Against.NullOrWhiteSpace(request.PasienId, nameof(request.PasienId));
+        Guard.Against.NullOrWhiteSpace(request.KelurahanId, nameof(request.KelurahanId));
+        Guard.Against.NullOrWhiteSpace(request.StatusKawinId, nameof(request.StatusKawinId));
+        Guard.Against.NullOrWhiteSpace(request.AgamaId, nameof(request.AgamaId));
+        Guard.Against.NullOrWhiteSpace(request.SukuId, nameof(request.SukuId));
+        Guard.Against.NullOrWhiteSpace(request.PekerjaanId, nameof(request.PekerjaanId));
+        Guard.Against.NullOrWhiteSpace(request.PendidikanId, nameof(request.PendidikanId));
+
         _pasien = _pasienRepo.LoadEntity(PasienModel.Key(request.PasienId))
             .Match(
                 onSome: x => x,
@@ -58,52 +67,6 @@ public class PasienSetDemografiHandler : IRequestHandler<PasienSetDemografiComma
             request.Relasi, request.Alamat1Keluarga, request.Alamat2Keluarga);
 
         SetDemografi(request.StatusKawinId, request.AgamaId, request.SukuId, request.PekerjaanId, request.PendidikanId);
-
-        //var statusKawinDk = _statisKawinDal.GetData(StatusKawinDkType.Key(request.StatusKawinId))
-        //    .Match(
-        //        onSome: x => x,
-        //        onNone: () => throw new KeyNotFoundException($"Status Kawin id {request.StatusKawinId} not found")
-        //    );
-
-        //var agama = _agamaDal.GetData(AgamaType.Key(request.AgamaId))
-        //    .Match(
-        //        onSome: x => x,
-        //        onNone : () => throw new KeyNotFoundException($"Agama Id {request.AgamaId} not found")
-        //    );
-
-        //var suku = _sukuDal.GetData(SukuType.Key(request.SukuId))
-        //    .Match(
-        //        onSome: x => x,
-        //        onNone: () => throw new KeyNotFoundException($"Agama Id {request.AgamaId} not found")
-        //    );
-
-        //var pekerjaan = _pekerjaanDal.GetData(PekerjaanDkType.Key(request.PekerjaanId))
-        //    .Match(
-        //        onSome: x => x,
-        //        onNone: () => throw new KeyNotFoundException($"Pekerjaan Id {request.PekerjaanId} not found")
-        //    );
-
-        //var pendidikan = _pendidikanDkDal.GetData(PendidikanDkType.Key(request.PendidikanId))
-        //    .Match(
-        //        onSome: x => x,
-        //        onNone: () => throw new KeyNotFoundException($"Pendidikan Id {request.PendidikanId} not found")
-        //    );
-
-
-        //var kelurahan = _kelurahanRepo.LoadEntity(KelurahanType.Key(request.KelurahanId))
-        //    .Match(
-        //        onSome: x => x,
-        //        onNone: () => throw new ArgumentException("Invalid Kelurahan ID"));
-        //var kartuKeluarga = IdentitasType.Kk(request.NoKartuKeluarga);
-        //var email = new ContactType(JenisContactEnum.Email, request.Email);
-        //var noHp = new ContactType(JenisContactEnum.Mobile, request.NoHp);
-        //var noTelpKeluarga = new ContactType(JenisContactEnum.Phone, request.NoTelpKeluarga);
-        //var keluarga = new PasienKeluargaType(request.NamaKeluarga, request.Relasi, noTelpKeluarga,
-        //    new AlamatType([request.Alamat1Keluarga, request.Alamat2Keluarga, "-"], "-", "-"));
-
-
-        //pasien.UpdateAdminInfo(kelurahan, kartuKeluarga, email, noHp, keluarga);
-        //pasien.SetStatusSosial(statusKawinDk, agama, suku, pekerjaan, pendidikan);
 
         _pasienRepo.SaveChanges(_pasien);
 
