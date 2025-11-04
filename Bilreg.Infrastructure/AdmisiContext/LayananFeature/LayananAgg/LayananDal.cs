@@ -16,7 +16,8 @@ public interface ILayananDal :
     IUpdate<LayananDto>,
     IDelete<ILayananKey>,
     IGetData<LayananDto, ILayananKey>,
-    IListData<LayananDto>
+    IListData<LayananDto>,
+    IListData<LayananDto, IInstalasiDkKey>
 { }
 
 public class LayananDal : ILayananDal
@@ -138,6 +139,33 @@ public class LayananDal : ILayananDal
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         var result = conn.Read<LayananDto>(sql);
+        return result;
+    }
+
+    public IEnumerable<LayananDto> ListData(IInstalasiDkKey filter)
+    {
+        const string sql = """
+           SELECT 
+               aa.fs_kd_layanan, aa.fs_nm_layanan, aa.fb_aktif,
+               aa.fs_kd_instalasi, aa.fs_kd_layanan_dk,
+               aa.fs_kd_layanan_tipe_dk, 
+               ISNULL(bb.fs_nm_instalasi,'') AS fs_nm_instalasi,
+               ISNULL(cc.fs_nm_layanan_dk,'') AS fs_nm_layanan_dk,
+               ISNULL(dd.fs_nm_layanan_tipe_dk,'') AS fs_nm_layanan_tipe_dk
+           FROM 
+               ta_layanan aa
+               LEFT JOIN ta_instalasi bb ON aa.fs_kd_instalasi = bb.fs_kd_instalasi
+               LEFT JOIN ta_layanan_dk cc ON aa.fs_kd_layanan_dk = cc.fs_kd_layanan_dk
+               LEFT JOIN ta_layanan_tipe_dk dd ON aa.fs_kd_layanan_tipe_dk = dd.fs_kd_layanan_tipe_dk
+           WHERE
+               bb.fs_kd_instalasi_dk = @fs_kd_instalasi_dk    
+           """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@fs_kd_instalasi_dk", filter.InstalasiDkId, SqlDbType.VarChar);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var result = conn.Read<LayananDto>(sql, dp);
         return result;
     }
 }

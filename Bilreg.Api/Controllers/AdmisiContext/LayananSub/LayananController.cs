@@ -98,6 +98,13 @@ namespace Bilreg.Api.Controllers.AdmisiContext.LayananSub
             var response = await _mediator.Send(query);
             return Ok(new JSendOk(response));
         }
-
+        [HttpGet]
+        [Route("{instalasiDkId}/list")]
+        public async Task<IActionResult> ListDataByInstalasiDkId(string instalasiDkId)
+        {
+            var query = new LayananListByInstalasiDkQuery(instalasiDkId);
+            var response = await _mediator.Send(query);
+            return Ok(new JSendOk(response));
+        }
     }
 }
