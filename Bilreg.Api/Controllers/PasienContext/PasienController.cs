@@ -24,14 +24,6 @@ public class PasienController : Controller
         return Ok(new JSendOk(result));
     }
 
-    [HttpPut]
-    [Route("administrativeInfo")]
-    public async Task<IActionResult> Create(PasienUpdateAdminInfoCmd cmd)
-    {
-        await _mediator.Send(cmd);
-        return Ok(new JSendOk("Done"));
-    }
-
     [HttpGet]
     [Route("{id}")]
     public async Task<IActionResult> GetData(string id)
