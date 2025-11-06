@@ -67,6 +67,12 @@ public class PolisModel : IPolisKey
         _listCover.Remove(cover);
     }
     #endregion
+
+    public PolisReff ToReff()
+        => new PolisReff(PolisId, NoPolis, AtasNama);
 }
 
-
+public record PolisReff(
+    string PolisId,
+    string NoPolis,
+    string AtasName);

@@ -6,6 +6,7 @@ using FluentAssertions;
 using System.ComponentModel.DataAnnotations;
 using System.Net.Http.Headers;
 using System.Net.WebSockets;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Xunit;
 
 namespace Bilreg.Domain.AdmisiContext.AntrianFeature;
@@ -34,6 +35,15 @@ public class PasienTrackerModel : IPasienTrackerKey
         return result;
     }
 
+    public static PasienTrackerModel Create(RegModel reg)
+    {
+        var newId = Ulid.NewUlid().ToString();
+        var visitor = new PersonType(reg.Pasien.PasienName, reg.Pasien.TglLahir);
+        var result = new PasienTrackerModel(newId, visitor, reg.RegDate, 
+            new List<PasienTrackerEventType>());
+        result.AddEvent("REGISTER", reg.RegId);
+        return result;
+    }
     public static PasienTrackerModel Default => new PasienTrackerModel(
         "-",
         PersonType.Default, 

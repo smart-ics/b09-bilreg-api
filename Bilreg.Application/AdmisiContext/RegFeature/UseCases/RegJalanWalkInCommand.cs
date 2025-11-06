@@ -1,8 +1,8 @@
 ﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.BookingFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature;
-using Bilreg.Application.AdmisiContext.LayananFeature.LayananAgg;
-using Bilreg.Application.AdmisiContext.PetugasMedisSub;
+using Bilreg.Application.AdmisiContext.LayananFeature;
+using Bilreg.Application.AdmisiContext.PetugasMedisFeature;
 using Bilreg.Application.AdmisiContext.RujukanFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
@@ -10,17 +10,21 @@ using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
-using Bilreg.Domain.AdmisiContext.RujukanSub;
+using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.AdmisiContext.RujukanFeature;
+using Bilreg.Domain.Helpers.CommonValueObjects;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
+using Nuna.Lib.TransactionHelper;
 
 namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 
-public record RegJalanWalkInCommand(string PasienId, string RegDate, 
-    string TipeJaminanId, string CaraMasukDkId, string RujukanId,
-    string DokterId,string LayananId, string JamPraktek, string KarcisId) : IRequest<RegJalanCreateResponse>; 
+public record RegJalanWalkInCommand(string PasienId, string UserId,
+    string TipeJaminanId, string CaraMasukDkId, string RujukanId, string DokterId,
+    string LayananId, string JamPraktek, string KarcisId) 
+    : IRequest<RegJalanCreateResponse>; 
  
-public record RegJalanCreateResponse(string RegId);
+public record RegJalanCreateResponse(string RegId, int NoAntrian);
 
 public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJalanCreateResponse>
 {
@@ -34,6 +38,11 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
     private readonly IAntrianFactory _antrianFactory;
     private readonly IAntrianRepo _antrianRepo;
     private readonly IJadwalPraktekRepo _jadwalPraktekRepo;
+    private readonly IKarcisRepo _karcisRepo;
+    private readonly IRegFactory _regFactory;
+    private readonly IRegRepo _regRepo;
+    private readonly IPasienTrackerRepo _trackerRepo;
+
     private const string BAYAR_SENDIRI = "1";
     
     public RegJalanCreateHandler(IPasienRepo pasienRepo, 
@@ -45,7 +54,11 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         IPetugasMedisRepo dokterRepo, 
         IAntrianFactory antrianFactory, 
         IAntrianRepo antrianRepo, 
-        IJadwalPraktekRepo jadwalRepo)
+        IJadwalPraktekRepo jadwalRepo, 
+        IRegFactory regFactory, 
+        IKarcisRepo karcisRepo, 
+        IRegRepo regRepo, 
+        IPasienTrackerRepo trackerRepo)
     {
         _pasienRepo = pasienRepo;
         _tipeJaminanRepo = tipeJaminanRepo;
@@ -57,6 +70,10 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         _antrianFactory = antrianFactory;
         _antrianRepo = antrianRepo;
         _jadwalPraktekRepo = jadwalRepo;
+        _regFactory = regFactory;
+        _karcisRepo = karcisRepo;
+        _regRepo = regRepo;
+        _trackerRepo = trackerRepo;
     }
 
     public Task<RegJalanCreateResponse> Handle(RegJalanWalkInCommand request, CancellationToken cancellationToken)
@@ -73,27 +90,29 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
 
         var caraMasuk = _caraMasukDkRepo
             .LoadEntity(CaraMasukDkType.Key(request.CaraMasukDkId))
-            .GetValueOrThrow("Cara Masuk invalid");
+            .GetValueOrThrow("'Cara Masuk' not found");
         var rujukan = caraMasuk == CaraMasukDkType.DatangSendiri ?
             RujukanType.Default :
             _rujukanRepo
                 .LoadEntity(RujukanType.Key(request.RujukanId))
-                .GetValueOrThrow("Rujukan invalid");
+                .GetValueOrThrow("'Rujukan' not found");
         
         var layanan = _layananRepo
             .LoadEntity(LayananType.Key(request.LayananId))
-            .GetValueOrThrow("Layanan invalid");
+            .GetValueOrThrow("'Layanan' not found");
         if (layanan.InstalasiDk == InstalasiDkType.RawatInap)
             throw new ArgumentException("Layanan Rawat Inap tidak bisa digunakan di Registrasi Rawat Jalan");
         var dokter = _dokterRepo
             .LoadEntity(PetugasMedisType.Key(request.DokterId))
-            .GetValueOrThrow("Dokter invalid");
+            .GetValueOrThrow("Dokter not found");
+        var karcis = _karcisRepo.LoadEntity(KarcisType.Key(request.KarcisId))
+            .GetValueOrThrow("Karcis not found");
         
         //  ambil nomor antrian
         //      pertama coba cari jadwal dokter ybs
         //      jika tidak ditemukan maka create antrian 1 full day (mulai jam 00 s.d 23)
         var listJadwal = _jadwalPraktekRepo.ListData(dokter)?.ToList() ?? [];
-        var tglBerobat = DateOnly.Parse(request.RegDate);
+        var tglBerobat = DateOnly.FromDateTime(DateTime.Now);
         var hari = tglBerobat.DayOfWeek;
         var listJadwalHari = listJadwal
             .Where(x => x.Hari == hari)?.ToList() ?? [];
@@ -115,11 +134,20 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         var antrianView = listAntrian.FirstOrDefault(x => x.SequenceTag == sequenceTag);
         var antrian = antrianView is null ? 
             _antrianFactory.Create(tglBerobat, jadwal) :
-            _antrianRepo.LoadEntity(antrianView).Value;    
+            _antrianRepo.LoadEntity(antrianView).Value;
+        var regMasukAudit = new AuditInfoType(request.UserId, DateTime.Now);
+        var reg = _regFactory.CreateRegRajalWalkIn(pasien, regMasukAudit, 
+            tipeJaminan, polis, caraMasuk, rujukan, dokter, layanan, karcis);
+        var tracker = PasienTrackerModel.Create(reg);
         
-        //  TODO: Lanjutkan ke Layanan, Dokter dan NoAntrian
-        // (Cek juga apakah booking atau bukan)
-        throw new NotImplementedException();
+        using var trans = TransHelper.NewScope();
+        var antEntry = antrian.AddEntry(tracker);
+        _regRepo.SaveChanges(reg);
+        _antrianRepo.SaveChanges(antrian);
+        _trackerRepo.SaveChanges(tracker);
+        trans.Complete();
+
+        return Task.FromResult(new RegJalanCreateResponse(reg.RegId, antEntry.NoUrut));
     }
 
     private PolisModel FindPolis(PasienModel pasien, TipeJaminanType tipeJaminan)

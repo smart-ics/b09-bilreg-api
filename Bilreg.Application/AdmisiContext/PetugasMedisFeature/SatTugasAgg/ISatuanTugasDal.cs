@@ -1,7 +1,7 @@
 ﻿using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
 using Nuna.Lib.DataAccessHelper;
 
-namespace Bilreg.Application.AdmisiContext.PetugasMedisSub.SatTugasAgg
+namespace Bilreg.Application.AdmisiContext.PetugasMedisFeature.SatTugasAgg
 {
     public interface ISatuanTugasDal :
     //IInsert<SatuanTugasModel>,

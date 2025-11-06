@@ -1,4 +1,4 @@
-﻿using Bilreg.Application.AdmisiContext.PetugasMedisSub.SatTugasAgg;
+﻿using Bilreg.Application.AdmisiContext.PetugasMedisFeature.SatTugasAgg;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;

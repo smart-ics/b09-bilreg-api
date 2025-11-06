@@ -1,5 +1,5 @@
 ﻿using Bilreg.Application.AdmisiContext.RujukanFeature;
-using Bilreg.Domain.AdmisiContext.RujukanSub;
+using Bilreg.Domain.AdmisiContext.RujukanFeature;
 using Nuna.Lib.PatternHelper;
 
 namespace Bilreg.Infrastructure.AdmisiContext.RujukanSub.RujukanAgg;

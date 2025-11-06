@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.RujukanSub;
+﻿using Bilreg.Domain.AdmisiContext.RujukanFeature;
 using MediatR;
 
 namespace Bilreg.Application.AdmisiContext.RujukanFeature;

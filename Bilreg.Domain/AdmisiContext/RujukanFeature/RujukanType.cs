@@ -1,7 +1,7 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Domain.PasienContext.PasienFeature;
 
-namespace Bilreg.Domain.AdmisiContext.RujukanSub;
+namespace Bilreg.Domain.AdmisiContext.RujukanFeature;
 
 public record RujukanType : IRujukanKey
 {
@@ -49,9 +49,13 @@ public record RujukanType : IRujukanKey
     public TipeRujukanType TipeRujukan { get; init; }
     public KelasRujukanReff KelasRujukan { get; init; }
     public CaraMasukDkType CaraMasukDk { get; init; }
+
+    public RujukanReff ToReff() => new RujukanReff(RujukanId, RujukanName);
 }
 
 public interface IRujukanKey
 {
     string RujukanId {get;}
 }
+
+public record RujukanReff(string RujukanId, string RujukanName);

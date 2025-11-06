@@ -1,25 +1,149 @@
-﻿using Bilreg.Domain.PasienContext.PasienFeature;
+﻿using Bilreg.Domain.AdmisiContext.JaminanFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.RujukanFeature;
+using Bilreg.Domain.BillContext.BedUsageFeature;
+using Bilreg.Domain.BillContext.TindakanSub.TarifFeature;
+using Bilreg.Domain.Helpers.CommonValueObjects;
+using Bilreg.Domain.PasienContext.PasienFeature;
 
 namespace Bilreg.Domain.AdmisiContext.RegFeature;
 
 public class RegModel : IRegKey
 {
-    private static readonly DateTime DefaultDate = new DateTime(3000, 1, 1);
-    private const string CARAMASUK_DATANGSENDIRI_ID = "8";
+    private readonly List<RegKomponenType> _listKomponen;
+
+    #region  CREATION
+    public RegModel(string regId, DateOnly regDate,
+        AuditInfoType regMasukAudit, AuditInfoType regKeluarAudit, AuditInfoType regCancelOutAudit,
+        JenisRegEnum jenisReg, PasienReff pasien, TipeJaminanReff tipeJaminan, 
+        PolisReff polis, KelasReff kelas, CaraMasukDkType caraMasukDk, RujukanReff rujukan, 
+        PetugasMedisReff dokter, LayananReff layanan, KarcisReff karcis, 
+        IEnumerable<RegKomponenType> listKomponen)
+    {
+        RegId = regId;
+        RegDate = regDate;
+        RegMasukAudit = regMasukAudit;
+        RegKeluarAudit = regKeluarAudit;
+        RegCancelOutAudit = regCancelOutAudit;
+        JenisReg = jenisReg;
+        Pasien = pasien;
+        TipeJaminan = tipeJaminan;
+        Polis = polis;
+        Kelas = kelas;
+        CaraMasukDk = caraMasukDk;
+        Rujukan = rujukan;
+        Dokter = dokter;
+        Layanan = layanan;
+        Karcis = karcis;
+        _listKomponen = listKomponen.ToList();
+    }
+
+    public static RegModel Default => new RegModel("-", new DateOnly(3000, 1, 1),
+        AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default,
+        JenisRegEnum.RegJalan, PasienModel.Default.ToReff(), TipeJaminanType.Default.ToReff(),
+        PolisModel.Default.ToReff(), KelasType.Default.ToReff(), CaraMasukDkType.Default,
+        RujukanType.Default.ToReff(), PetugasMedisType.Default.ToReff(), LayananType.Default.ToReff(),
+        KarcisType.Default.ToReff(), []);
     
-    public string RegId { get; init; }
-    public DateOnly TglReg { get; init; }
+    public static IRegKey Key(string id) => new RegModel(id, new DateOnly(3000, 1, 1),
+        AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default,
+        JenisRegEnum.RegJalan, PasienModel.Default.ToReff(), TipeJaminanType.Default.ToReff(),
+        PolisModel.Default.ToReff(), KelasType.Default.ToReff(), CaraMasukDkType.Default,
+        RujukanType.Default.ToReff(), PetugasMedisType.Default.ToReff(), LayananType.Default.ToReff(),
+        KarcisType.Default.ToReff(), []);
+    #endregion
+
+
+    #region PROPERTIES
+    //      entitas identity
+    public string RegId { get; init; } 
+    public DateOnly RegDate { get; init; }
+    public AuditInfoType RegMasukAudit { get; init; }
+    public AuditInfoType RegKeluarAudit { get; private set;}
+    public AuditInfoType RegCancelOutAudit { get; private set; }
+    public bool IsAktif => RegKeluarAudit == AuditInfoType.Default;
+    public JenisRegEnum JenisReg { get; init; }
+    //      siapa yang berobat
     public PasienReff Pasien { get; init; }
-    public JenisRegEnum JenisReg { get; private set; }
-    // public TglJamTrsType TglJamTrs { get; private set; }
-    // public VoidFlagType VoidFlag { get; private set; } = new(new DateTime(3000, 1, 1), "");
-    // public PasienReff Pasien { get; private set; }
+    //      bagaimana bayarnya
+    public TipeJaminanReff TipeJaminan { get; private set; }
+    public PolisReff Polis { get; private set; }
+    public KelasReff Kelas { get; private set; }
+    //      dari mana asalnya
+    public CaraMasukDkType CaraMasukDk { get; private set; }
+    public RujukanReff Rujukan { get; private set; }
+    //      ke mana (catat tujuan utama di header)
+    public PetugasMedisReff Dokter { get; private set; }
+    public LayananReff Layanan { get; private set; }
+    public KarcisReff Karcis { get; private set; }
     //
-    // public TipeJaminanViewType TipeJaminan { get; private set; }
-    // public RegCaraMasukVo CaraMasuk { get; private set; }
-    // public KarcisTarifVo KarcisTarif { get; private set; }
-    // public RegKelasVo Kelas { get; private set; }
+    public IEnumerable<RegKomponenType> ListKomponen => _listKomponen;
+    #endregion
     
-    public static IRegKey Key(string id) => new RegModel{RegId = id};    
+    #region BEHAVIOUR
+    public RegReff ToReff()=> new RegReff(RegId, Pasien.PasienId, Pasien.PasienName);
+    public void ApplyJaminan(TipeJaminanType tipeJaminan, PolisModel polis)
+    {
+        if (polis.TipeJaminan != tipeJaminan.ToReff())
+            throw new ArgumentException("Polis tidak sesuai dengan tipe jaminan");
+        if (polis.ListCover.All(x => x.Pasien.PasienId != Pasien.PasienId))
+            throw new ArgumentException($"Polis '{polis.NoPolis}' tidak meng-cover pasien '{Pasien.PasienName}'");
+        
+        TipeJaminan = tipeJaminan.ToReff();
+        Polis = polis.ToReff();
+    }
+
+    public void SpecifyCaraMasuk(CaraMasukDkType caraMasukDk, RujukanType rujukan)
+    {
+        if (caraMasukDk == CaraMasukDkType.DatangSendiri)
+            if (rujukan == RujukanType.Default)
+            {
+                CaraMasukDk = caraMasukDk;
+                Rujukan = rujukan.ToReff();
+                return;
+            }
+            else
+            {
+                throw new ArgumentException("Rujukan tidak valid");
+            }
+
+        if (rujukan.CaraMasukDk != caraMasukDk)
+            throw new ArgumentException($"""
+                 Cara Masuk Rujukan {rujukan.RujukanName} adalah {rujukan.CaraMasukDk.CaraMasukDkName}.
+                 Registrasi gagal
+                 """);
+
+        CaraMasukDk = caraMasukDk;
+        Rujukan = rujukan.ToReff();
+    }
+    
+    public void AssignVisitTo(PetugasMedisType dokter, LayananType layanan, KarcisType karcis)
+    {
+        if (karcis.ListLayanan.All(x => x.LayananId != layanan.LayananId))
+            throw new ArgumentException($"Layanan {layanan.LayananName} tidak terdaftar di karcis {karcis.KarcisName}");
+        
+        Dokter = dokter.ToReff();
+        Layanan = layanan.ToReff();
+        Karcis = karcis.ToReff();
+        
+        _listKomponen.Clear();
+        _listKomponen.AddRange(karcis.ListKomponen
+            .Select(x => new RegKomponenType(x.KomponenTarif, dokter.ToReff(), x.Nilai, 0)));
+    }
+
+    #endregion
 }
 
+public record RegKomponenType(
+    KomponenReff Komponen,
+    PetugasMedisReff PetugasMedis,
+    decimal Nilai,
+    decimal Diskon);
+
+public record RegReff(
+    string RegId,
+    string PasienId,
+    string PasienName);
+    
+    

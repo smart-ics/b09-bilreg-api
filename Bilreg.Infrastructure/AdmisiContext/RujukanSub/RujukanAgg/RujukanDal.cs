@@ -1,10 +1,10 @@
-﻿using Bilreg.Domain.AdmisiContext.RujukanSub;
-using Bilreg.Infrastructure.Helpers;
+﻿using Bilreg.Infrastructure.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
 using System.Data;
 using System.Data.SqlClient;
+using Bilreg.Domain.AdmisiContext.RujukanFeature;
 
 //  resharper disable inconsistentnaming
 namespace Bilreg.Infrastructure.AdmisiContext.RujukanSub.RujukanAgg;

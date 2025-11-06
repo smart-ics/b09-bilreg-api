@@ -1,6 +1,6 @@
 ﻿using Ardalis.GuardClauses;
 
-namespace Bilreg.Domain.AdmisiContext.RujukanSub;
+namespace Bilreg.Domain.AdmisiContext.RujukanFeature;
 
 public record KelasRujukanType : IKelasRujukanKey
 {
