@@ -24,6 +24,13 @@ public class PasienController : Controller
         return Ok(new JSendOk(result));
     }
 
+    [HttpPost]
+    [Route("createByKtp")]
+    public async Task<IActionResult> CreateByKtp(PasienCreateByKtpCommand cmd)
+    {
+        var result = await _mediator.Send(cmd);
+        return Ok(new JSendOk(result));
+    }
     [HttpGet]
     [Route("{id}")]
     public async Task<IActionResult> GetData(string id)
