@@ -1,13 +1,6 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
-using Bilreg.Domain.Helpers.CommonValueObjects;
-using Bilreg.Domain.PasienContext.PasienFeature;
-using FluentAssertions;
-using System.ComponentModel.DataAnnotations;
-using System.Net.Http.Headers;
-using System.Net.WebSockets;
 using Bilreg.Domain.AdmisiContext.RegFeature;
-using Xunit;
 
 namespace Bilreg.Domain.AdmisiContext.AntrianFeature;
 
