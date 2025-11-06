@@ -47,7 +47,7 @@ public class AntrianDal : IAntrianDal
         dp.AddParam("@AntrianId", dto.AntrianId, SqlDbType.VarChar); 
         dp.AddParam("@AntrianDate", dto.AntrianDate, SqlDbType.DateTime);	 
         dp.AddParam("@StartTime", dto.StartTime, SqlDbType.VarChar);	 
-        dp.AddParam("@EndTime", dto.StartTime, SqlDbType.VarChar);	
+        dp.AddParam("@EndTime", dto.EndTime, SqlDbType.VarChar);	
         dp.AddParam("@SequenceTag", dto.SequenceTag, SqlDbType.VarChar);	 
         dp.AddParam("@AntrianDescription", dto.AntrianDescription, SqlDbType.VarChar);
 
