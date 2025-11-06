@@ -20,6 +20,7 @@ public class SequencerManual : ISequencerManual
         var result = sequenceTag switch
         {
             "NOMR" => GetTzParamNo(sequenceTag, description),
+            "NOREG" => GetTzParamNo(sequenceTag, description),
             "PS-POLIS" => GetTzParamNo2("PS", ""),
             _ => throw new ArgumentOutOfRangeException(nameof(sequenceTag), sequenceTag, null)
         };

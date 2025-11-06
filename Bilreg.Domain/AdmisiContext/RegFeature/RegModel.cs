@@ -12,6 +12,7 @@ namespace Bilreg.Domain.AdmisiContext.RegFeature;
 public class RegModel : IRegKey
 {
     private readonly List<RegKomponenType> _listKomponen;
+    private const string BAYAR_SENDIRI = "00000";
 
     #region  CREATION
     public RegModel(string regId, DateOnly regDate,
@@ -85,8 +86,16 @@ public class RegModel : IRegKey
     public RegReff ToReff()=> new RegReff(RegId, Pasien.PasienId, Pasien.PasienName);
     public void ApplyJaminan(TipeJaminanType tipeJaminan, PolisModel polis)
     {
+        if (tipeJaminan.TipeJaminanId == BAYAR_SENDIRI)
+        {
+            TipeJaminan = tipeJaminan.ToReff();
+            Polis = PolisModel.Default.ToReff();
+            return;
+        }
+
         if (polis.TipeJaminan != tipeJaminan.ToReff())
             throw new ArgumentException("Polis tidak sesuai dengan tipe jaminan");
+
         if (polis.ListCover.All(x => x.Pasien.PasienId != Pasien.PasienId))
             throw new ArgumentException($"Polis '{polis.NoPolis}' tidak meng-cover pasien '{Pasien.PasienName}'");
         
@@ -97,16 +106,11 @@ public class RegModel : IRegKey
     public void SpecifyCaraMasuk(CaraMasukDkType caraMasukDk, RujukanType rujukan)
     {
         if (caraMasukDk == CaraMasukDkType.DatangSendiri)
-            if (rujukan == RujukanType.Default)
-            {
-                CaraMasukDk = caraMasukDk;
-                Rujukan = rujukan.ToReff();
-                return;
-            }
-            else
-            {
-                throw new ArgumentException("Rujukan tidak valid");
-            }
+        {
+            CaraMasukDk = caraMasukDk;
+            Rujukan = rujukan.ToReff();
+            return;
+        }
 
         if (rujukan.CaraMasukDk != caraMasukDk)
             throw new ArgumentException($"""

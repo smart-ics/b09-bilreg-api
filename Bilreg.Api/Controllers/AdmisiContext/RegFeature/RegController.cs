@@ -19,7 +19,7 @@ public class RegController : Controller
      [HttpPost]
      public async Task<IActionResult> Save(RegJalanWalkInCommand cmd)
      {
-         await _mediator.Send(cmd);
-         return Ok(new JSendOk("Done"));
+         var result = await _mediator.Send(cmd);
+         return Ok(new JSendOk(result));
      }
 }
