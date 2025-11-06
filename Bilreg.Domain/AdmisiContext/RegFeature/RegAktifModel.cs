@@ -46,6 +46,4 @@ public class RegAktifModel : IRegKey
         Dokter = dokter;
     }
     #endregion
-    
-    
 }

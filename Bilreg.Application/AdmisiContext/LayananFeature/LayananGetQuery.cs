@@ -1,7 +1,7 @@
 ﻿using Bilreg.Domain.AdmisiContext.LayananFeature;
 using MediatR;
 
-namespace Bilreg.Application.AdmisiContext.LayananFeature.LayananAgg;
+namespace Bilreg.Application.AdmisiContext.LayananFeature;
 
 public record LayananGetQuery(string LayananId) : IRequest<LayananGetResponse>, ILayananKey;
 public record LayananGetResponse(

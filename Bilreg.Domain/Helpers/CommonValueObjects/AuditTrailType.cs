@@ -39,5 +39,9 @@ public class AuditTrailType
 
 public record AuditInfoType(string UserId, DateTime Timestamp)
 {
+    public AuditInfoType(string userId, string tgl, string jam) :
+        this(userId, DateTime.ParseExact($"{tgl} {jam}", "yyyy-MM-dd HH:mm:ss", null))
+    {
+    }
     public static AuditInfoType Default => new("", new DateTime(3000,1,1));
 };

@@ -1,6 +1,6 @@
 ﻿using MediatR;
 
-namespace Bilreg.Application.AdmisiContext.LayananFeature.LayananAgg
+namespace Bilreg.Application.AdmisiContext.LayananFeature
 {
     public record LayananListQuery() : IRequest<IEnumerable<LayananListResponse>>;
 

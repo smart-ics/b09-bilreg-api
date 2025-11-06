@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.RujukanSub;
+﻿using Bilreg.Domain.AdmisiContext.RujukanFeature;
 using Nuna.Lib.DataAccessHelper;
 
 namespace Bilreg.Application.AdmisiContext.RujukanFeature;

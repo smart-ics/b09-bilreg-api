@@ -1,5 +1,5 @@
-﻿using Bilreg.Application.AdmisiContext.LayananFeature.LayananAgg;
-using Bilreg.Application.AdmisiContext.PetugasMedisSub;
+﻿using Bilreg.Application.AdmisiContext.LayananFeature;
+using Bilreg.Application.AdmisiContext.PetugasMedisFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;

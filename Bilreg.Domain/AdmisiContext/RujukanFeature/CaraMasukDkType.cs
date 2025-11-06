@@ -1,6 +1,6 @@
 ﻿using Ardalis.GuardClauses;
 
-namespace Bilreg.Domain.AdmisiContext.RujukanSub;
+namespace Bilreg.Domain.AdmisiContext.RujukanFeature;
 
 public record CaraMasukDkType : ICaraMasukDkKey
 {
@@ -17,6 +17,11 @@ public record CaraMasukDkType : ICaraMasukDkKey
     public static CaraMasukDkType Default => new CaraMasukDkType("-", "-");
     public static ICaraMasukDkKey Key(string id) => new CaraMasukDkType(id, "-");
     public static CaraMasukDkType DatangSendiri => new("8", "DATANG SENDIRI");
+    public static CaraMasukDkType RujukanRs => new("1", "RUJUKAN RSU/RSK/RB");
+    public static CaraMasukDkType RujukanPuskesmas => new("2", "RUJUKAN PUSKESMAS");
+    public static CaraMasukDkType RujukanDokter => new("3", "RUJUKAN DR/DRG");
+
+    
     #endregion
     
     public string CaraMasukDkId { get; init; }

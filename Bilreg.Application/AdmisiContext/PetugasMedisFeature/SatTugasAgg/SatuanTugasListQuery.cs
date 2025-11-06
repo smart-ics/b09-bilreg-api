@@ -1,6 +1,6 @@
 ﻿using MediatR;
 
-namespace Bilreg.Application.AdmisiContext.PetugasMedisSub.SatTugasAgg;
+namespace Bilreg.Application.AdmisiContext.PetugasMedisFeature.SatTugasAgg;
 public record SatuanTugasListQuery : IRequest<IEnumerable<SatuanTugasListResponse>>;
 
 public record SatuanTugasListResponse(string SatuanTugasId, string SatuanTugasName, bool IsMedis);
