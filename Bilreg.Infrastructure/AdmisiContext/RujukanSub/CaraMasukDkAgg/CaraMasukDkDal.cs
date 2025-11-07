@@ -1,5 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.RujukanSub;
-using Bilreg.Domain.PasienContext.DemografiFeature;
+﻿using Bilreg.Domain.PasienContext.DemografiFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
 using FluentAssertions;
@@ -8,6 +7,7 @@ using Nuna.Lib.DataAccessHelper;
 using Nuna.Lib.PatternHelper;
 using System.Data;
 using System.Data.SqlClient;
+using Bilreg.Domain.AdmisiContext.RujukanFeature;
 using Nuna.Lib.TransactionHelper;
 using Xunit;
 

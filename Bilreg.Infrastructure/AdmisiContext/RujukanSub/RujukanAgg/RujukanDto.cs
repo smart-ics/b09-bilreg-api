@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.RujukanSub;
+﻿using Bilreg.Domain.AdmisiContext.RujukanFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 
 namespace Bilreg.Infrastructure.AdmisiContext.RujukanSub.RujukanAgg;

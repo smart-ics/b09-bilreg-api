@@ -1,4 +1,4 @@
-﻿using Bilreg.Application.AdmisiContext.PetugasMedisSub;
+﻿using Bilreg.Application.AdmisiContext.PetugasMedisFeature;
 using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
 using Nuna.Lib.PatternHelper;
 

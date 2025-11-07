@@ -5,6 +5,7 @@ using FluentValidation;
 using System.Reflection;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.Helpers;
 using Bilreg.Infrastructure.ParamContext;
 
@@ -23,6 +24,9 @@ public static class DomainService
             .AddScoped<IPasienFactory, PasienFactory>()
             .AddScoped<ISequencerManual, SequencerManual>()
             .AddScoped<IGetKodeRsService, GetKodeRsService>()
+            .AddScoped<IRegFactory, RegFactory>()
+            .AddScoped<IGetKelasRajalService, GetKelasRajalService>()
+        
             ;
         
         return services;

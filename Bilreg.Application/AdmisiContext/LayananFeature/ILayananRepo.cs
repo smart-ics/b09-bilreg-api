@@ -1,7 +1,7 @@
 ﻿using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Nuna.Lib.DataAccessHelper;
 
-namespace Bilreg.Application.AdmisiContext.LayananFeature.LayananAgg;
+namespace Bilreg.Application.AdmisiContext.LayananFeature;
 
 public interface ILayananRepo :
     ISaveChange<LayananType>,

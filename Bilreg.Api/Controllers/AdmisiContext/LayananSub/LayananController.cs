@@ -1,4 +1,4 @@
-﻿using Bilreg.Application.AdmisiContext.LayananFeature.LayananAgg;
+﻿using Bilreg.Application.AdmisiContext.LayananFeature;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
