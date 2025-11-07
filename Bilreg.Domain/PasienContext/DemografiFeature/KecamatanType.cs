@@ -7,11 +7,6 @@ public record KecamatanType : IKecamatanKey
     public KecamatanType(string kecamatanId, string kecamatanName, 
         KabupatenReff kabupaten, PropinsiType propinsi)
     {
-        Guard.Against.NullOrWhiteSpace(kecamatanId, nameof(kecamatanId));
-        Guard.Against.NullOrWhiteSpace(kecamatanName, nameof(kecamatanName));
-        Guard.Against.Null(kabupaten, nameof(kabupaten));
-        Guard.Against.Null(propinsi, nameof(propinsi));
-        
         KecamatanId = kecamatanId;
         KecamatanName = kecamatanName;
         Kabupaten = kabupaten;

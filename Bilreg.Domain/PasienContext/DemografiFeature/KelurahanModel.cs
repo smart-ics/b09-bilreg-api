@@ -7,12 +7,6 @@ public record KelurahanType : IKelurahanKey
     public KelurahanType(string kelurahanId, string kelurahanName, 
         KecamatanReff kecamatan, KabupatenReff kabupaten, PropinsiType propinsi)
     {
-        Guard.Against.NullOrWhiteSpace(kelurahanId, nameof(kelurahanId));
-        Guard.Against.NullOrWhiteSpace(kelurahanName, nameof(kelurahanName));
-        Guard.Against.Null(kecamatan, nameof(kecamatan));
-        Guard.Against.Null(kabupaten, nameof(kabupaten));
-        Guard.Against.Null(propinsi, nameof(propinsi));
-
         KelurahanId = kelurahanId;
         KelurahanName = kelurahanName;
         Kecamatan = kecamatan;

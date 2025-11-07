@@ -109,7 +109,7 @@ public class PasienRepo : IPasienRepo
             new List<ContactType>(), pasienKeluarga, 
             agama, suku, statusKawin, 
             pendidikan, pekerjaan, 
-            DateTime.MinValue, false);
+            DateTime.MinValue, dto.fb_aktif);
 
         return MayBe.From(pasien);
     }
