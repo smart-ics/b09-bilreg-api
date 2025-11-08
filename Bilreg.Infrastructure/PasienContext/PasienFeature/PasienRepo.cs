@@ -149,7 +149,7 @@ public class PasienRepo : IPasienRepo
             .DistinctBy(x => x.PasienId);
 
         if (result.Count() > 200)
-            throw new ArgumentException("Data terlalu banyak, gunakan keyword lebih spesifik");
+            throw new ApplicationException($"Ada {result.Count()} data dengan keyword '{keyword}', gunakan keyword lebih spesifik");
         return result;
     }
     

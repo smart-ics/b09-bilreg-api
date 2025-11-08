@@ -1,7 +1,9 @@
-﻿using System.Net;
-using System.Text.Json;
-using FluentValidation;
+﻿using FluentValidation;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Nuna.Lib.ActionResultHelper;
+using System.Net;
+using System.Text.Json;
 
 namespace Bilreg.Api.Configurations;
 
@@ -28,6 +30,10 @@ public class ErrorHandlerMiddleware
             string? status;
             switch (error)
             {
+                case ApplicationException:
+                    response.StatusCode = (int)HttpStatusCode.BadRequest;
+                    status = "Too Much Data";
+                    break;
                 case ArgumentException:
                 case ValidationException:
                 case InvalidOperationException:
@@ -39,6 +45,7 @@ public class ErrorHandlerMiddleware
                     response.StatusCode = (int)HttpStatusCode.BadRequest;
                     status = "Data Not Found";
                     break;
+                
                 default:
                     // unhandled error
                     response.StatusCode = (int)HttpStatusCode.InternalServerError;
