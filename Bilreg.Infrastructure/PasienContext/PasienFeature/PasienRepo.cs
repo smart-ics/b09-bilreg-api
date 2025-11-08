@@ -101,12 +101,16 @@ public class PasienRepo : IPasienRepo
         var pekerjaan = string.IsNullOrWhiteSpace(dto.fs_kd_pekerjaan_dk) 
             ? PekerjaanDkType.Default
             : new PekerjaanDkType(dto.fs_kd_pekerjaan_dk, dto.fs_nm_pekerjaan_dk);
+        
+        var phonePasien = new ContactType(JenisContactEnum.Mobile, dto.fs_no_hp);
+        var email = new ContactType(JenisContactEnum.Email, dto.fs_email);
+        var listContact = new List<ContactType>{ email, phonePasien };
 
         var pasien = new PasienModel(key.PasienId,
             person, dto.fs_nm_alias, dto.fs_temp_lahir, new GolDarahType(dto.fs_gol_darah),
             dto.fs_nm_ibu_kandung, 
             ktp, kelurahan, IdentitasType.Default, 
-            new List<ContactType>(), pasienKeluarga, 
+            listContact, pasienKeluarga, 
             agama, suku, statusKawin, 
             pendidikan, pekerjaan, 
             DateTime.MinValue, dto.fb_aktif);
