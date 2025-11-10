@@ -25,11 +25,11 @@ public record RegDto(
             model.RegMasukAudit.Timestamp.ToString("HH:mm:ss"),
             model.RegMasukAudit.UserId,
             //
-            model.RegKeluarAudit.Timestamp.ToString("yyyy:MM:dd"),
+            model.RegKeluarAudit.Timestamp.ToString("yyyy-MM-dd"),
             model.RegKeluarAudit.Timestamp.ToString("HH:mm:ss"),
             model.RegKeluarAudit.UserId,
             //
-            model.RegCancelOutAudit.Timestamp.ToString("yyyy:MM:dd"),
+            model.RegCancelOutAudit.Timestamp.ToString("yyyy-MM-dd"),
             model.RegCancelOutAudit.Timestamp.ToString("HH:mm:ss"),
             model.RegCancelOutAudit.UserId,
             //
