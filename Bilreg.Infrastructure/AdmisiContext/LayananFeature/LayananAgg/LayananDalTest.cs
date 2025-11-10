@@ -22,7 +22,7 @@ public class LayananDalTest
         using var trans = TransHelper.NewScope();
         _sut.Insert(Faker());
     }
-    
+
     [Fact]
     public void UpdateTest()
     {
@@ -43,14 +43,14 @@ public class LayananDalTest
         using var trans = TransHelper.NewScope();
         _sut.Insert(Faker());
         var actual = _sut.GetData(FakerKey());
-        actual.Should().BeEquivalentTo(Faker(), 
+        actual.Should().BeEquivalentTo(Faker(),
             opt => opt.Excluding(x => x.fs_nm_instalasi)
                 .Excluding(x => x.fs_kd_instalasi_dk)
                 .Excluding(x => x.fs_nm_layanan_dk)
                 .Excluding(x => x.fs_nm_layanan_tipe_dk)
                 .Excluding(x => x.fs_nm_instalasi_dk));
     }
-    
+
     [Fact]
     public void ListDataTest()
     {
@@ -64,4 +64,28 @@ public class LayananDalTest
                 .Excluding(x => x.fs_nm_layanan_tipe_dk)
                 .Excluding(x => x.fs_nm_instalasi_dk));
     }
+
+    [Fact]
+    public void ListData_ByInstalasiDk_ShouldReturnFilteredData()
+    {
+        using var trans = TransHelper.NewScope();
+
+        // arrange
+        var layanan = Faker() with { fs_kd_instalasi_dk = "G" };
+        _sut.Insert(layanan);
+        var filter = InstalasiDkType.Key("G");
+
+        // act
+        var actual = _sut.ListData(filter);
+
+        // assert
+        actual.Should().ContainEquivalentOf(layanan,
+            opt => opt
+                .Excluding(x => x.fs_nm_instalasi)
+                .Excluding(x => x.fs_kd_instalasi_dk)
+                .Excluding(x => x.fs_nm_layanan_dk)
+                .Excluding(x => x.fs_nm_layanan_tipe_dk)
+                .Excluding(x => x.fs_nm_instalasi_dk));
+    }
+
 }

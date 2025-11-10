@@ -8,9 +8,6 @@ public record PropinsiType : IPropinsiKey
 {
     public PropinsiType(string propinsiId, string propinsiName)
     {
-        Guard.Against.NullOrWhiteSpace(propinsiId, nameof(propinsiId));
-        Guard.Against.NullOrWhiteSpace(propinsiName, nameof(propinsiName));
-
         PropinsiId = propinsiId;
         PropinsiName = propinsiName;
     }

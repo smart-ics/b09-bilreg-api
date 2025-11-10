@@ -6,10 +6,6 @@ public record KabupatenType : IKabupatenKey
 {
     public KabupatenType(string kabupatenId, string kabupatenName, PropinsiType propinsi)
     {
-        Guard.Against.NullOrWhiteSpace(kabupatenId, nameof(kabupatenId));
-        Guard.Against.NullOrWhiteSpace(kabupatenName, nameof(kabupatenName));
-        Guard.Against.Null(propinsi, nameof(propinsi));
-
         KabupatenId = kabupatenId;
         KabupatenName = kabupatenName;
         Propinsi = propinsi;

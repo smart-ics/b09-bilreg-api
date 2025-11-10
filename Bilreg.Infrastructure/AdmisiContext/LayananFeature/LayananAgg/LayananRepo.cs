@@ -40,4 +40,11 @@ public class LayananRepo : ILayananRepo
         var result = listDto.Select(x => x.ToModel());
         return result;
     }
+
+    public IEnumerable<LayananType> ListData(IInstalasiDkKey instalasiKey)
+    {
+        var listDto = _layananDal.ListData(instalasiKey)?.ToList() ?? [];
+        var result = listDto.Select(x => x.ToModel());
+        return result;
+    }
 }

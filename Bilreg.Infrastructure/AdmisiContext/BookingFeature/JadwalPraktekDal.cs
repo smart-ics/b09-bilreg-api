@@ -1,6 +1,7 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
@@ -123,6 +124,50 @@ public class JadwalPraktekDal
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         var result = conn.Read<JadwalPraktekDto>(sql, dp);
+        return result;
+    }
+
+    public IEnumerable<JadwalPraktekDto> ListData(ILayananKey lyn)
+    {
+        const string sql = """
+            SELECT
+               aa.JadwalPraktekId, aa.DokterId, aa.LayananId, 
+               aa.Hari, aa.JamMulai, aa.JamSelesai,
+               ISNULL(bb.fs_nm_peg, '-') AS DokterName,
+               ISNULL(cc.fs_nm_layanan, '-') AS LayananName
+            FROM 
+               BILRG_JadwalPraktek aa
+               LEFT JOIN td_peg bb ON aa.DokterId = bb.fs_kd_peg
+               LEFT JOIN ta_layanan cc ON aa.LayananId = cc.fs_kd_layanan
+            WHERE
+               aa.LayananId = @LayananId
+            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@LayananId", lyn.LayananId, SqlDbType.VarChar);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var result = conn.Read<JadwalPraktekDto>(sql, dp);
+        return result;
+    }
+
+    public IEnumerable<JadwalPraktekDto> ListData()
+    {
+        const string sql = """
+            SELECT
+               aa.JadwalPraktekId, aa.DokterId, aa.LayananId, 
+               aa.Hari, aa.JamMulai, aa.JamSelesai,
+               ISNULL(bb.fs_nm_peg, '-') AS DokterName,
+               ISNULL(cc.fs_nm_layanan, '-') AS LayananName
+            FROM 
+               BILRG_JadwalPraktek aa
+               LEFT JOIN td_peg bb ON aa.DokterId = bb.fs_kd_peg
+               LEFT JOIN ta_layanan cc ON aa.LayananId = cc.fs_kd_layanan
+            """;
+
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var result = conn.Read<JadwalPraktekDto>(sql);
         return result;
     }
 }
