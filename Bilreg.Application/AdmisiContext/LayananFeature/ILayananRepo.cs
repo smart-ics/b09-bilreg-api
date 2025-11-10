@@ -7,6 +7,7 @@ public interface ILayananRepo :
     ISaveChange<LayananType>,
     ILoadEntity<LayananType, ILayananKey>,
     IDelete<ILayananKey>,
-    IListData<LayananType>
+    IListData<LayananType>,
+    IListData<LayananType, IInstalasiDkKey>
 {
 }

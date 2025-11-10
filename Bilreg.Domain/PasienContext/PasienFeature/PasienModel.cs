@@ -106,6 +106,33 @@ public class PasienModel : IPasienKey
         return shortId;        
     }
 
+    public string GetUmur()
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+
+        if (Person.TglLahir > today)
+            return "0 tahun, 0 bulan, 0 hari";
+
+        int tahun = today.Year - Person.TglLahir.Year;
+        int bulan = today.Month - Person.TglLahir.Month;
+        int hari = today.Day - Person.TglLahir.Day;
+
+        if (hari < 0)
+        {
+            bulan--;
+            var prevMonth = today.AddMonths(-1);
+            hari += DateTime.DaysInMonth(prevMonth.Year, prevMonth.Month);
+        }
+
+        if (bulan < 0)
+        {
+            tahun--;
+            bulan += 12;
+        }
+
+        return $"{tahun} tahun, {bulan} bulan, {hari} hari";
+    }
+
     public void UpdateAdminInfo(KelurahanType kelurahan, 
         IdentitasType kartuKeluarga, ContactType email, ContactType noHp,
         PasienKeluargaType pasienKeluarga)

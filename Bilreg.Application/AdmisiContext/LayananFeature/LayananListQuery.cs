@@ -25,6 +25,7 @@ namespace Bilreg.Application.AdmisiContext.LayananFeature
         {
             var listLyn = _layananRepo.ListData()?.ToList() ?? [];
             var response = listLyn
+                .OrderBy(x => x.LayananName)
                 .Select(x => new LayananListResponse(x.LayananId, x.LayananName,
                     x.IsAktif, x.Instalasi.InstalasiId, x.Instalasi.InstalasiName));
             return Task.FromResult(response);

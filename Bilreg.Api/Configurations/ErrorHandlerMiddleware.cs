@@ -1,7 +1,10 @@
-﻿using System.Net;
-using System.Text.Json;
-using FluentValidation;
+﻿using FluentValidation;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Nuna.Lib.ActionResultHelper;
+using System.Net;
+using System.Text.Json;
+using Bilreg.Application.Helpers;
 
 namespace Bilreg.Api.Configurations;
 
@@ -38,6 +41,10 @@ public class ErrorHandlerMiddleware
                     // not found error
                     response.StatusCode = (int)HttpStatusCode.BadRequest;
                     status = "Data Not Found";
+                    break;
+                case TooManyResultsException:
+                    response.StatusCode = (int)HttpStatusCode.UnprocessableEntity;
+                    status = "Too Many Results";
                     break;
                 default:
                     // unhandled error

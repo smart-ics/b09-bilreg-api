@@ -9,7 +9,7 @@ using Nuna.Lib.ValidationHelper;
 namespace Bilreg.Application.PasienContext.PasienFeature;
 
 public record PasienSetKtpCommand(string PasienId, string PasienName, string Nik, 
-    string AlamtaKtp1, string AlamatKtp2, string AlamatKtp3, string GolDarah,
+    string AlamatKtp, string GolDarah,
     string Gender, string TempatLahir, string TglLahir, string Agama, string StatusKawin,
     string KotaKtp, string KodePosKtp, string Rt, string Rw, string KelurahanKtpId,
     bool IsForceUpdate) : IRequest<PasienSetKtpResponse>, IPasienKey;
@@ -62,9 +62,9 @@ public class PasienSetKtpHandler : IRequestHandler<PasienSetKtpCommand, PasienSe
             request.GolDarah, request.TempatLahir);
         var isDifferent = oriPerson != ktpPerson;
 
-        var alamat = new AlamatType([request.AlamtaKtp1, request.AlamatKtp2, request.AlamatKtp3], 
+        var alamatKtp = new AlamatType([request.AlamatKtp], 
             request.KotaKtp, request.KodePosKtp);
-        var ktp = new KtpType(request.Nik, alamat, request.Rt, request.Rw, kelurahan);
+        var ktp = new KtpType(request.Nik, alamatKtp, request.Rt, request.Rw, kelurahan);
         pasien.SetDataKtp(ktp);
 
         //  WRITE
