@@ -144,12 +144,9 @@ public class PasienRepo : IPasienRepo
             listPasienByName = ListPasienByName(pasienFinder.StringVariants);
 
         var result = listPasienByPasienId
-            .Concat(listPasienByTglLahir)
-            .Concat(listPasienByName)
-            .DistinctBy(x => x.PasienId);
+            .Union(listPasienByTglLahir)
+            .Union(listPasienByName);
 
-        if (result.Count() > 200)
-            throw new ApplicationException($"Ada {result.Count()} data dengan keyword '{keyword}', gunakan keyword lebih spesifik");
         return result;
     }
     
