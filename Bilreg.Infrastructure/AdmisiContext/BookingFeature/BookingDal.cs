@@ -36,12 +36,12 @@ public class BookingDal : IBookingDal
         const string sql = """
             INSERT INTO BILRG_Booking (
                 BookingId, BookingDate,
-                PasienName, TglLahir, Gender, Alamat,
+                PasienName, TglLahir, Gender, Alamat, PasienId,
                 TglBerobat, JamPraktek, LayananId, DokterId, NoAntrian,
                 CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
             VALUES (
                 @BookingId, @BookingDate,
-                @PasienName, @TglLahir, @Gender, @Alamat,
+                @PasienName, @TglLahir, @Gender, @Alamat, @PasienId,
                 @TglBerobat, @JamPraktek, @LayananId, @DokterId, @NoAntrian,
                 @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
             """;
@@ -54,6 +54,7 @@ public class BookingDal : IBookingDal
         dp.AddParam("@TglLahir", dto.TglLahir, SqlDbType.DateTime);
         dp.AddParam("@Gender", dto.Gender, SqlDbType.VarChar);
         dp.AddParam("@Alamat", dto.Alamat, SqlDbType.VarChar);
+        dp.AddParam("@PasienId", dto.PasienId, SqlDbType.VarChar);
         
         dp.AddParam("@TglBerobat", dto.TglBerobat, SqlDbType.DateTime);
         dp.AddParam("@JamPraktek", dto.JamPraktek, SqlDbType.VarChar);
@@ -82,6 +83,7 @@ public class BookingDal : IBookingDal
                TglLahir = @TglLahir,
                Gender = @Gender,
                Alamat = @Alamat,
+               PasienId = @PasienId,
                TglBerobat = @TglBerobat,
                JamPraktek = @JamPraktek,
                LayananId = @LayananId,
@@ -104,6 +106,7 @@ public class BookingDal : IBookingDal
         dp.AddParam("@TglLahir", dto.TglLahir, SqlDbType.DateTime);
         dp.AddParam("@Gender", dto.Gender, SqlDbType.VarChar);
         dp.AddParam("@Alamat", dto.Alamat, SqlDbType.VarChar);
+        dp.AddParam("@PasienId", dto.PasienId, SqlDbType.VarChar);
         
         dp.AddParam("@TglBerobat", dto.TglBerobat, SqlDbType.DateTime);
         dp.AddParam("@JamPraktek", dto.JamPraktek, SqlDbType.VarChar);
@@ -141,7 +144,7 @@ public class BookingDal : IBookingDal
         const string sql = """
             SELECT
                 aa.BookingId, aa.BookingDate,
-                aa.PasienName, aa.TglLahir, aa.Gender, aa.Alamat,
+                aa.PasienName, aa.TglLahir, aa.Gender, aa.Alamat, aa.PasienId,
                 aa.TglBerobat, aa.JamPraktek, aa.LayananId, aa.DokterId, aa.NoAntrian,
                 aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
                 ISNULL(bb.fs_nm_layanan, '') AS LayananName,
@@ -166,7 +169,7 @@ public class BookingDal : IBookingDal
         const string sql = """
            SELECT
                aa.BookingId, aa.BookingDate,
-               aa.PasienName, aa.TglLahir, aa.Gender, aa.Alamat,
+               aa.PasienName, aa.TglLahir, aa.Gender, aa.Alamat, aa.PasienId,
                aa.TglBerobat, aa.JamPraktek, aa.LayananId, aa.DokterId, aa.NoAntrian,
                aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
                ISNULL(bb.fs_nm_layanan, '') AS LayananName,
@@ -194,7 +197,7 @@ public class BookingDal : IBookingDal
         const string sql = """
             SELECT
                aa.BookingId, aa.BookingDate,
-               aa.PasienName, aa.TglLahir, aa.Gender, aa.Alamat,
+               aa.PasienName, aa.TglLahir, aa.Gender, aa.Alamat, aa.PasienId,
                aa.TglBerobat, aa.JamPraktek, aa.LayananId, aa.DokterId, aa.NoAntrian,
                aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
                ISNULL(bb.fs_nm_layanan, '') AS LayananName,
@@ -230,6 +233,7 @@ public class BookingDalTest
             TglLahir: new DateTime(2000, 1, 1),
             Gender: "C",
             Alamat: "D",
+            PasienId: "D1",
             TglBerobat: new DateTime(2024, 1, 2),
             JamPraktek: "E",
             LayananId: "F",

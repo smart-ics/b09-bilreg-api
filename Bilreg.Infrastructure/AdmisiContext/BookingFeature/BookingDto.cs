@@ -11,7 +11,7 @@ public record BookingDto(
     //      main table
     string BookingId, DateTime BookingDate,     
     string PasienName, DateTime TglLahir, string Gender, string Alamat,
-    DateTime TglBerobat, string JamPraktek, 
+    string PasienId, DateTime TglBerobat, string JamPraktek, 
     string LayananId, string DokterId, int NoAntrian,
     string CrtUser, DateTime CrtDate, string UpdUser, 
     DateTime UpdDate, string VodUser,DateTime VodDate,
@@ -30,6 +30,7 @@ public record BookingDto(
             //      pasien
             model.Person.PersonName, birthDate,
             model.Person.Gender, model.Person.Alamat.Alamat[0],
+            model.PasienId, 
             //      tujuan berobat
             tglBerobat, jamPraktek, 
             model.Layanan.LayananId, model.Dokter.PetugasMedisId, model.NoAntrian,
@@ -58,7 +59,7 @@ public record BookingDto(
         var layanan = new LayananReff(LayananId, LayananName);
         var dokter = new PetugasMedisReff(DokterId, DokterName);
         var jamPraktek = TimeOnly.Parse(JamPraktek);
-        var result = new BookingModel(BookingId, BookingDate, person,
+        var result = new BookingModel(BookingId, BookingDate, person, PasienId, 
             tglBerobat, jamPraktek, layanan, dokter, NoAntrian, auditTrail);
         return result;
     }
