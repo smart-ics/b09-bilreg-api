@@ -4,3 +4,12 @@ CREATE TABLE ta_tarif (
     
     CONSTRAINT PK_ta_tarif PRIMARY KEY CLUSTERED (fs_kd_tarif)
 )
+
+
+CREATE FULLTEXT CATALOG TarifCatalog AS DEFAULT;
+GO
+
+CREATE FULLTEXT INDEX ON ta_tarif(fs_nm_tarif)
+KEY INDEX PK_ta_tarif
+WITH STOPLIST = SYSTEM;
+GO
