@@ -95,7 +95,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         var antrian = ResolveAntrian(tglBerobat, dokter, jadwal);
 
         var regMasukAudit = new AuditInfoType(request.UserId, DateTime.Now);
-        var reg = _regFactory.CreateRegRajalWalkIn(pasien, regMasukAudit,
+        var reg = _regFactory.CreateRegRajal(pasien, regMasukAudit,
             tipeJaminan, polis, caraMasuk, rujukan, dokter, layanan, karcis);
 
         var tracker = PasienTrackerModel.Create(reg);

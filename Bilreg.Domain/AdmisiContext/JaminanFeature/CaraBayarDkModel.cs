@@ -18,6 +18,7 @@ public record CaraBayarDkType : ICaraBayarDkKey
     
     public static ICaraBayarDkKey Key(string id) => new CaraBayarDkType(id, "-");
     public static CaraBayarDkType Default => new("-", "-");
+    public static CaraBayarDkType BayarSendiri => new("1", "Membayar Sendiri");
 }
 
 public interface ICaraBayarDkKey
