@@ -1,4 +1,5 @@
 ﻿using Bilreg.Application.AdmisiContext.BookingFeature;
+using Bilreg.Application.AdmisiContext.BookingFeature.UseCases;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
@@ -22,4 +23,21 @@ public class BookingController : ControllerBase
         var response = await _mediator.Send(cmd);
         return Ok(new JSendOk(response));
     }
+
+    [HttpPatch]
+    [Route("genPasien")]
+    public async Task<IActionResult> ResolvePasienId(BokGenPasienFromBookingCmd cmd)
+    {
+        var result = await _mediator.Send(cmd);
+        return Ok(new JSendOk(result));
+    }
+    
+    [HttpPatch]
+    [Route("resolvePasienId")]
+    public async Task<IActionResult> ResolvePasienId(BookingResolvePasienIdCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
 }

@@ -36,6 +36,9 @@ public record JaminanType : IJaminanKey
         AlamatType.Default, CaraBayarDkType.Default, 
         GroupJaminanType.Default.ToReff());
     public static IJaminanKey Key(string id) => Default with { JaminanId = id };
+    public static JaminanType Umum => new("000", "Umum", true, 
+        AlamatType.Default, CaraBayarDkType.BayarSendiri, 
+        GroupJaminanType.Default.ToReff());
 }
 
 public interface IJaminanKey

@@ -4,10 +4,11 @@ using Bilreg.Domain.PasienContext.PasienFeature;
 
 namespace Bilreg.Domain.AdmisiContext.BookingFeature;
 
-public record PersonInfoType
+public record PersonInfoType : PersonType
 {
     public PersonInfoType(string personName, DateOnly tglLahir, string gender, 
-        AlamatType alamat, ContactType contact, IdentitasType identity)
+        AlamatType alamat, ContactType contact, IdentitasType identity) 
+        : base(personName, tglLahir)
     {
         Guard.Against.NullOrWhiteSpace(personName, nameof(personName));
         Guard.Against.Null(gender, nameof(gender));
@@ -24,12 +25,10 @@ public record PersonInfoType
         Identity = identity;
     }
 
-    public static PersonInfoType Default =>
+    public new static PersonInfoType Default =>
         new PersonInfoType("-", new DateOnly(3000, 1, 1), "-", AlamatType.Default,
             ContactType.Default, IdentitasType.Default);
 
-    public string PersonName { get; init; } 
-    public DateOnly TglLahir { get; init; } 
     public string Gender { get; init; }
     public AlamatType Alamat { get; init; } 
     public ContactType Contact { get; init; }

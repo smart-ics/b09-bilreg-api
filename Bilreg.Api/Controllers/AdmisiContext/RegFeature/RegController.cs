@@ -17,9 +17,19 @@ public class RegController : Controller
     }
 
      [HttpPost]
+     [Route("rajalWalkIn")]
      public async Task<IActionResult> Save(RegJalanWalkInCommand cmd)
      {
          var result = await _mediator.Send(cmd);
          return Ok(new JSendOk(result));
      }
+
+     [HttpPost]
+     [Route("rajalByBooking")]
+     public async Task<IActionResult> Save(RegJalanByBookingCmd cmd)
+     {
+         var result = await _mediator.Send(cmd);
+         return Ok(new JSendOk(result));
+     }
+
 }

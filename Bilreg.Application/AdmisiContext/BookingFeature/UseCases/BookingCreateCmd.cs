@@ -9,8 +9,7 @@ using MediatR;
 using Nuna.Lib.TransactionHelper;
 using Nuna.Lib.ValidationHelper;
 
-
-namespace Bilreg.Application.AdmisiContext.BookingFeature;
+namespace Bilreg.Application.AdmisiContext.BookingFeature.UseCases;
 
 public record BookingCreateCmd(string PasienId,string PasienName, string TglLahir, 
     string Gender, string Alamat, string NoTelp, 
