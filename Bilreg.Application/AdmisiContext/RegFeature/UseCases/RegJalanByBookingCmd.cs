@@ -68,20 +68,27 @@ public class RegJalanByBookingHandler
             dokter,
             layanan,
             karcis);
+        booking.AssignReg(reg);
 
         //  WRITE
         using var trans = TransHelper.NewScope();
         _regRepo.SaveChanges(reg);
+        _bookingRepo.SaveChanges(booking);
         trans.Complete();
         return Task.FromResult(new RegJalanByBookingResponse(reg.RegId, booking.NoAntrian));
     }
 
     //  PRIVATE HELPER
-    private BookingModel LoadBooking(string id) =>
-        _bookingRepo.LoadEntity(BookingModel.Key(id))
+    private BookingModel LoadBooking(string id)
+    {
+        var booking = _bookingRepo.LoadEntity(BookingModel.Key(id))
             .Match(
                 onSome: x => x,
                 onNone: () => throw new KeyNotFoundException($"Booking {id} tidak ditemukan"));
+        if (booking.HasBeenRegistered())
+            throw new ArgumentException($"Booking {id} sudah teregister di {booking.Reg.RegId}");
+        return booking;
+    }
 
     private PasienModel LoadPasien(string id) =>
         _pasienRepo.LoadEntity(PasienModel.Key(id))
