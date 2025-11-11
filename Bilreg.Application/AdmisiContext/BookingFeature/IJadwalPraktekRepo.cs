@@ -11,6 +11,7 @@ public interface IJadwalPraktekRepo :
     IDeleteEntity<IJadwalPraktekKey>,
     IListData<JadwalPraktekType>,
     IListData<JadwalPraktekType, IPetugasMedisKey>,
-    IListData<JadwalPraktekType, ILayananKey>
+    IListData<JadwalPraktekType, ILayananKey>,
+    IListData<JadwalPraktekType, ILayananDkKey>
 {
 }

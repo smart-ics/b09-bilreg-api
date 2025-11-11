@@ -27,7 +27,7 @@ public class JadwalPraktekDal
             VALUES (
                @JadwalPraktekId, @DokterId, @LayananId, @Hari, @JamMulai, @JamSelesai)
             """;
-        
+
         var dp = new DynamicParameters();
         dp.AddParam("@JadwalPraktekId", dto.JadwalPraktekId, SqlDbType.VarChar);
         dp.AddParam("@DokterId", dto.DokterId, SqlDbType.VarChar);
@@ -35,7 +35,7 @@ public class JadwalPraktekDal
         dp.AddParam("@Hari", dto.Hari, SqlDbType.Int);
         dp.AddParam("@JamMulai", dto.JamMulai, SqlDbType.VarChar);
         dp.AddParam("@JamSelesai", dto.JamSelesai, SqlDbType.VarChar);
-        
+
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
@@ -72,10 +72,10 @@ public class JadwalPraktekDal
             DELETE FROM BILRG_JadwalPraktek 
             WHERE JadwalPraktekId = @JadwalPraktekId
             """;
-    
+
         var dp = new DynamicParameters();
         dp.AddParam("@JadwalPraktekId", key.JadwalPraktekId, SqlDbType.VarChar);
-    
+
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
@@ -87,18 +87,21 @@ public class JadwalPraktekDal
                aa.JadwalPraktekId, aa.DokterId, aa.LayananId, 
                aa.Hari, aa.JamMulai, aa.JamSelesai,
                ISNULL(bb.fs_nm_peg, '-') AS DokterName,
-               ISNULL(cc.fs_nm_layanan, '-') AS LayananName
+               ISNULL(cc.fs_nm_layanan, '-') AS LayananName,
+               ISNULL(cc.fs_kd_layanan_dk,'') AS LayananDkId,
+               ISNULL(dd.fs_nm_layanan_dk,'') AS LayananDkName
             FROM 
                BILRG_JadwalPraktek aa
                LEFT JOIN td_peg bb ON aa.DokterId = bb.fs_kd_peg
                LEFT JOIN ta_layanan cc ON aa.LayananId = cc.fs_kd_layanan
+               LEFT JOIN ta_layanan_dk dd ON cc.fs_kd_layanan_dk = dd.fs_kd_layanan_dk
             WHERE
                aa.JadwalPraktekId = @JadwalPraktekId
             """;
-        
+
         var dp = new DynamicParameters();
         dp.AddParam("@JadwalPraktekId", key.JadwalPraktekId, SqlDbType.VarChar);
-        
+
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.ReadSingle<JadwalPraktekDto>(sql, dp);
     }
@@ -110,18 +113,21 @@ public class JadwalPraktekDal
                aa.JadwalPraktekId, aa.DokterId, aa.LayananId, 
                aa.Hari, aa.JamMulai, aa.JamSelesai,
                ISNULL(bb.fs_nm_peg, '-') AS DokterName,
-               ISNULL(cc.fs_nm_layanan, '-') AS LayananName
+               ISNULL(cc.fs_nm_layanan, '-') AS LayananName,
+               ISNULL(cc.fs_kd_layanan_dk,'') AS LayananDkId,
+               ISNULL(dd.fs_nm_layanan_dk,'') AS LayananDkName
             FROM 
                BILRG_JadwalPraktek aa
                LEFT JOIN td_peg bb ON aa.DokterId = bb.fs_kd_peg
                LEFT JOIN ta_layanan cc ON aa.LayananId = cc.fs_kd_layanan
+               LEFT JOIN ta_layanan_dk dd ON cc.fs_kd_layanan_dk = dd.fs_kd_layanan_dk
             WHERE
                aa.DokterId = @DokterId
             """;
-        
+
         var dp = new DynamicParameters();
         dp.AddParam("@DokterId", filter.PetugasMedisId, SqlDbType.VarChar);
-        
+
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         var result = conn.Read<JadwalPraktekDto>(sql, dp);
         return result;
@@ -134,11 +140,14 @@ public class JadwalPraktekDal
                aa.JadwalPraktekId, aa.DokterId, aa.LayananId, 
                aa.Hari, aa.JamMulai, aa.JamSelesai,
                ISNULL(bb.fs_nm_peg, '-') AS DokterName,
-               ISNULL(cc.fs_nm_layanan, '-') AS LayananName
+               ISNULL(cc.fs_nm_layanan, '-') AS LayananName,
+               ISNULL(cc.fs_kd_layanan_dk,'') AS LayananDkId,
+               ISNULL(dd.fs_nm_layanan_dk,'') AS LayananDkName
             FROM 
                BILRG_JadwalPraktek aa
                LEFT JOIN td_peg bb ON aa.DokterId = bb.fs_kd_peg
                LEFT JOIN ta_layanan cc ON aa.LayananId = cc.fs_kd_layanan
+               LEFT JOIN ta_layanan_dk dd ON cc.fs_kd_layanan_dk = dd.fs_kd_layanan_dk
             WHERE
                aa.LayananId = @LayananId
             """;
@@ -158,16 +167,46 @@ public class JadwalPraktekDal
                aa.JadwalPraktekId, aa.DokterId, aa.LayananId, 
                aa.Hari, aa.JamMulai, aa.JamSelesai,
                ISNULL(bb.fs_nm_peg, '-') AS DokterName,
-               ISNULL(cc.fs_nm_layanan, '-') AS LayananName
+               ISNULL(cc.fs_nm_layanan, '-') AS LayananName,
+               ISNULL(cc.fs_kd_layanan_dk,'') AS LayananDkId,
+               ISNULL(dd.fs_nm_layanan_dk,'') AS LayananDkName
             FROM 
                BILRG_JadwalPraktek aa
                LEFT JOIN td_peg bb ON aa.DokterId = bb.fs_kd_peg
                LEFT JOIN ta_layanan cc ON aa.LayananId = cc.fs_kd_layanan
+               LEFT JOIN ta_layanan_dk dd ON cc.fs_kd_layanan_dk = dd.fs_kd_layanan_dk
             """;
 
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         var result = conn.Read<JadwalPraktekDto>(sql);
+        return result;
+    }
+
+    public IEnumerable<JadwalPraktekDto> ListData(ILayananDkKey lynDk)
+    {
+        const string sql = """
+            SELECT
+               aa.JadwalPraktekId, aa.DokterId, aa.LayananId, 
+               aa.Hari, aa.JamMulai, aa.JamSelesai,
+               ISNULL(bb.fs_nm_peg, '-') AS DokterName,
+               ISNULL(cc.fs_nm_layanan, '-') AS LayananName,
+               ISNULL(cc.fs_kd_layanan_dk,'') AS LayananDkId,
+               ISNULL(dd.fs_nm_layanan_dk,'') AS LayananDkName
+            FROM 
+               BILRG_JadwalPraktek aa
+               LEFT JOIN td_peg bb ON aa.DokterId = bb.fs_kd_peg
+               LEFT JOIN ta_layanan cc ON aa.LayananId = cc.fs_kd_layanan
+               LEFT JOIN ta_layanan_dk dd ON cc.fs_kd_layanan_dk = dd.fs_kd_layanan_dk
+            WHERE
+               cc.fs_kd_layanan_dk = @LayananDkId
+            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@LayananDkId", lynDk.LayananDkId, SqlDbType.VarChar);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var result = conn.Read<JadwalPraktekDto>(sql, dp);
         return result;
     }
 }

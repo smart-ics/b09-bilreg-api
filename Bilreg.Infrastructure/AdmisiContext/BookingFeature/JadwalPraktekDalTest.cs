@@ -18,7 +18,7 @@ public class JadwalPraktekDalTest
     }
 
     private static JadwalPraktekDto Faker() =>
-        new("A", "B", "C", 5, "08:00", "10:00", "","");
+        new("A", "B", "C", 5, "08:00", "10:00", "","", "D", "E");
     private static IJadwalPraktekKey Key => JadwalPraktekType.Key("A"); 
     [Fact]
     public void UT1_InsertTest()

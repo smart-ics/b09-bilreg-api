@@ -32,6 +32,15 @@ public class JadwalPraktekController : ControllerBase
         var result = await _mediator.Send(query);
         return Ok(new JSendOk(result));
     }
+    
+    [HttpGet]
+    [Route("layananDk/{layananDkId}")]
+    public async Task<IActionResult> ListbyLayananDk(string layananDkId)
+    {
+        var query = new JadwalPraktekListByLayananDkQuery(layananDkId);
+        var result = await _mediator.Send(query);
+        return Ok(new JSendOk(result));
+    }
 
     [HttpGet]
     [Route("search/{keyword}")]
