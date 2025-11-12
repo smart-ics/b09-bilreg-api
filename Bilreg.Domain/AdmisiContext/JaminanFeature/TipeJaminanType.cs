@@ -4,6 +4,7 @@ namespace Bilreg.Domain.AdmisiContext.JaminanFeature;
 
 public record TipeJaminanType : ITipeJaminanKey
 {
+    #region CREATION
     public TipeJaminanType(string tipeJaminanId, string tipeJaminanName, 
         bool isAktif, JaminanReff jaminan, CaraBayarDkType caraBayarDk)
     {
@@ -18,6 +19,14 @@ public record TipeJaminanType : ITipeJaminanKey
         Jaminan = jaminan;
         CaraBayarDk = caraBayarDk;
     }
+    public static TipeJaminanType Default => new("-", "-", true, 
+        JaminanType.Default.ToReff(), CaraBayarDkType.Default);
+    public static ITipeJaminanKey Key(string id) => Default with { TipeJaminanId = id };
+    public static TipeJaminanType BayarSendiri =>
+        new("00000", "Membayar Sendiri", true, 
+            JaminanType.Umum.ToReff(), CaraBayarDkType.BayarSendiri);
+
+    #endregion
     
     public string TipeJaminanId { get; init; }
     public string TipeJaminanName { get; init; }
@@ -26,9 +35,6 @@ public record TipeJaminanType : ITipeJaminanKey
     public CaraBayarDkType CaraBayarDk { get; init; }
     
     public TipeJaminanReff ToReff() => new TipeJaminanReff(TipeJaminanId, TipeJaminanName); 
-    public static TipeJaminanType Default => new("-", "-", true, 
-        JaminanType.Default.ToReff(), CaraBayarDkType.Default);
-    public static ITipeJaminanKey Key(string id) => Default with { TipeJaminanId = id };
 }
 
 public interface ITipeJaminanKey

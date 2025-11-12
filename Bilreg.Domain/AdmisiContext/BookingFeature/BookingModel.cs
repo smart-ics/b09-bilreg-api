@@ -2,7 +2,9 @@
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.Helpers.CommonValueObjects;
+using Bilreg.Domain.PasienContext.PasienFeature;
 
 namespace Bilreg.Domain.AdmisiContext.BookingFeature;
 
@@ -10,13 +12,15 @@ public class BookingModel : IBookingKey
 {
     #region CREATION
     public BookingModel(string bookindId, DateTime bookingDate, 
-        PersonInfoType person, DateOnly tglBerobat, TimeOnly jamPraktek,
+        PersonInfoType person, string pasienId, RegReff reg, DateOnly tglBerobat, TimeOnly jamPraktek,
         LayananReff layanan, PetugasMedisReff dokter,  int noAntrian,
         AuditTrailType auditTrail)
     {
         BookingId = bookindId;
         BookingDate = bookingDate;
         Person = person;
+        PasienId = pasienId;
+        Reg = reg;
         TglBerobat = tglBerobat;
         JamPraktek = jamPraktek;
         Layanan = layanan;
@@ -26,12 +30,12 @@ public class BookingModel : IBookingKey
     }
 
     public static BookingModel Default => new("-", new DateTime(3000,1,1),
-        PersonInfoType.Default, DateOnly.MinValue, TimeOnly.MinValue, 
+        PersonInfoType.Default, "-", RegModel.Default.ToReff(), DateOnly.MinValue, TimeOnly.MinValue, 
         LayananType.Default.ToReff(), PetugasMedisType.Default.ToReff(), 0, 
         AuditTrailType.Default);
     
     public static IBookingKey Key(string id) => new BookingModel(id, new DateTime(3000,1,1), 
-        PersonInfoType.Default, DateOnly.MinValue, TimeOnly.MinValue, 
+        PersonInfoType.Default, "-", RegModel.Default.ToReff(), DateOnly.MinValue, TimeOnly.MinValue, 
         LayananType.Default.ToReff(), PetugasMedisType.Default.ToReff(), 0, 
         AuditTrailType.Default);
     
@@ -45,7 +49,7 @@ public class BookingModel : IBookingKey
             throw new ArgumentException("Tanggal berobat tidak sesuai dengan jadwal");
         
         var newId = Ulid.NewUlid().ToString();
-        var result = new BookingModel(newId, DateTime.Now, person, 
+        var result = new BookingModel(newId, DateTime.Now, person, "-", RegModel.Default.ToReff(), 
             tglBerobat, jadwal.JamMulai, jadwal.Layanan, jadwal.Dokter,  -1, 
             AuditTrailType.Create("", DateTime.Now));
         return result;
@@ -57,6 +61,8 @@ public class BookingModel : IBookingKey
     public DateTime BookingDate { get; init; }
     public AuditTrailType AuditTrail { get; init; }
     public PersonInfoType Person { get; init; }
+    public string PasienId { get; private set; }
+    public RegReff Reg { get; private set; }
     public DateOnly TglBerobat { get; init; }
     public TimeOnly JamPraktek { get; init; }
     public LayananReff Layanan { get; init; }
@@ -69,5 +75,21 @@ public class BookingModel : IBookingKey
     {
         NoAntrian = noAntrian;
     }
+
+    public void ResolvePasienId(PasienModel pasien)
+    {
+        if (!Person.IsSimilar(pasien.Person))
+            throw new ArgumentException("Pasien tidak sesuai dengan booking");
+
+        PasienId = pasien.PasienId;
+    }
+    public void AssignReg(RegModel reg)
+    {
+        if (reg.Pasien.PasienId != PasienId)
+            throw new ArgumentException("Kode MR di Registrasi tidak sesuai dengan booking");
+        Reg = reg.ToReff();
+    }
+    public bool HasBeenRegistered() 
+        => Reg.RegId is not ("" or "-");
     #endregion
 }

@@ -16,7 +16,7 @@ public interface IGetKelasRajalService : INunaService<KelasType>
 
 public interface IRegFactory 
 {
-    RegModel CreateRegRajalWalkIn(PasienModel pasien, 
+    RegModel CreateRegRajal(PasienModel pasien, 
         AuditInfoType regMasukAudit, TipeJaminanType tipeJaminan, PolisModel polis,
         CaraMasukDkType caraMasukDk, RujukanType rujukan, 
         PetugasMedisType dokter, LayananType layanan, KarcisType karcis);
@@ -36,7 +36,7 @@ public class RegFactory : IRegFactory
         _getKelasRajalService = getKelasRajalService;
     }
 
-    public RegModel CreateRegRajalWalkIn(PasienModel pasien, 
+    public RegModel CreateRegRajal(PasienModel pasien, 
         AuditInfoType regMasukAudit, TipeJaminanType tipeJaminan, 
         PolisModel polis, CaraMasukDkType caraMasukDk, RujukanType rujukan, 
         PetugasMedisType dokter, LayananType layanan, KarcisType karcis)
