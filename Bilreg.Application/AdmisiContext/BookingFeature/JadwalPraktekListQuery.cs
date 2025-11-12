@@ -11,6 +11,7 @@ public record JadwalPraktekListResponse(
     string LayananId, string LayananName,
     IEnumerable<JadwalPraktekListHariResponse> ListHari);
 public record JadwalPraktekListHariResponse(
+    string JadwalPraktekId,
     string Hari,
     string JamMulai,
     string JamSelesai);
@@ -39,6 +40,7 @@ public class JadwalPraktekListHandler : IRequestHandler<JadwalPraktekListQuery, 
                 g.Key.LayananName,
                 g.OrderBy(j => j.Hari).ThenBy(j => j.JamMulai)
                  .Select(j => new JadwalPraktekListHariResponse(
+                     j.JadwalPraktekId,
                      j.Hari.ToString(),
                      j.JamMulai.ToString("HH:mm"),
                      j.JamSelesai.ToString("HH:mm")
