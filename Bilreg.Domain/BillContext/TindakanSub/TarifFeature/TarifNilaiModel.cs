@@ -19,6 +19,8 @@ public class TarifNilaiModel : INilaiTarifKey
         TglExpired = tglExpired;
         _listKomponen = listKomponen.ToList();
     }
+
+
     #endregion
 
     #region PROPERTIES
@@ -27,12 +29,27 @@ public class TarifNilaiModel : INilaiTarifKey
     public string TarifName { get; init; }
     public DateOnly TglBerlaku { get; init; }
     public DateOnly TglExpired { get; init; }
+    public long TotalNilai { get; private set; }
     public IEnumerable<TarifNilaiKomponenModel> ListKomponen => _listKomponen;
     #endregion
 }
 
 public class TarifNilaiKomponenModel
 {
+    public TarifNilaiKomponenModel(string tarifNilaiId, 
+        string tarifId, string tarifName, 
+        KelasReff kelas, TipeTarifModel tipeTarif, 
+        DetilTarifType detilTarif, long nilai)
+    {
+        TarifNilaiId = tarifNilaiId;
+        TarifId = tarifId;
+        TarifName = tarifName;
+        Kelas = kelas;
+        TipeTarif = tipeTarif;
+        DetilTarif = detilTarif;
+        Nilai = nilai;
+    }
+
     public string TarifNilaiId { get; init; }
     public string TarifId { get; init; }
     public string TarifName { get; init; }

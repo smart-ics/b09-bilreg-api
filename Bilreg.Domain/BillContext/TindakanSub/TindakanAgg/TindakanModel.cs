@@ -83,10 +83,11 @@ public class TindakanTarifModel
 
 public class TindakanTarifDetilModel
 {
-    public TindakanTarifDetilModel(string tindakanId, string detilTarifId, 
+    public TindakanTarifDetilModel(string tindakanId, TarifReff tarif, string detilTarifId, 
         string detilTarifName, PetugasMedisReff petugasMedis, long nilai)
     {
         TindakanId = tindakanId;
+        Tarif = tarif;
         DetilTarifId = detilTarifId;
         DetilTarifName = detilTarifName;
         PetugasMedis = petugasMedis;
@@ -94,6 +95,7 @@ public class TindakanTarifDetilModel
     }
 
     public string TindakanId { get; init; }
+    public TarifReff Tarif { get; init; }
     public string DetilTarifId { get; init; }
     public string DetilTarifName { get; init; }
     public PetugasMedisReff PetugasMedis { get; init; }
