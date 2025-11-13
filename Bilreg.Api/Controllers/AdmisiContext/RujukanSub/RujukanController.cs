@@ -98,6 +98,15 @@ namespace Bilreg.Api.Controllers.AdmisiContext.RujukanSub
             var response = await _mediator.Send(query);
             return Ok(new JSendOk(response));
         }
+
+        [HttpGet]
+        [Route("{caraMasukDkId}/list")]
+        public async Task<IActionResult> ListDataByCaraMasuk(string caraMasukDkId)
+        {
+            var query = new RujukanListByCaraMasukDkQuery(caraMasukDkId);
+            var response = await _mediator.Send(query);
+            return Ok(new JSendOk(response));
+        }
     }
 
 }

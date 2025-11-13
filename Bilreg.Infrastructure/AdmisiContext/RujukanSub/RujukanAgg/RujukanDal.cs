@@ -14,7 +14,8 @@ public interface IRujukanDal :
     IUpdate<RujukanDto>,
     IDelete<IRujukanKey>,
     IGetData<RujukanDto, IRujukanKey>,
-    IListData<RujukanDto, ITipeRujukanKey>
+    IListData<RujukanDto, ITipeRujukanKey>,
+    IListData<RujukanDto, ICaraMasukDkKey>
 {
 }
 
@@ -157,6 +158,34 @@ public class RujukanDal : IRujukanDal
         var dp = new DynamicParameters();
         dp.AddParam("@TipeRujukanId", tipeRujukan.TipeRujukanId, SqlDbType.VarChar);
         
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var result = conn.Read<RujukanDto>(sql, dp);
+        return result;
+    }
+
+    public IEnumerable<RujukanDto> ListData(ICaraMasukDkKey caraMasukDkKey)
+    {
+        const string sql = """
+            SELECT
+                aa.fs_kd_rujukan, aa.fs_nm_rujukan, aa.fs_alm_rujukan,
+                aa.fs_alm2_rujukan, aa.fs_kota_rujukan, aa.fs_tlp_rujukan,
+                aa.fs_kd_rujukan_tipe, aa.fs_kd_kelas_rs, aa.fs_kd_cara_masuk_dk,
+                aa.fb_aktif, 
+                ISNULL(bb.fs_nm_rujukan_tipe, '') fs_nm_rujukan_tipe,
+                ISNULL(cc.fs_nm_kelas_rs, '') fs_nm_kelas_rs,
+                ISNULL(dd.fs_nm_cara_masuk_dk, '') fs_nm_cara_masuk_dk
+            FROM ta_rujukan aa
+                LEFT JOIN ta_rujukan_tipe bb ON aa.fs_kd_rujukan_tipe = bb.fs_kd_rujukan_tipe
+                LEFT JOIN tc_kelas_rs cc ON aa.fs_kd_kelas_rs = cc.fs_kd_kelas_rs
+                LEFT JOIN ta_cara_masuk_dk dd ON aa.fs_kd_cara_masuk_dk = dd.fs_kd_cara_masuk_dk
+            WHERE
+                aa.fs_kd_cara_masuk_dk = @CaraMasukDkId
+                AND aa.fb_aktif = 1
+            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@CaraMasukDkId", caraMasukDkKey.CaraMasukDkId, SqlDbType.VarChar);
+
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         var result = conn.Read<RujukanDto>(sql, dp);
         return result;

@@ -1,24 +1,42 @@
-﻿// using Bilreg.Application.AdmisiContext.JaminanSub.PolisAgg;
-// using MediatR;
-// using Microsoft.AspNetCore.Mvc;
-// using Nuna.Lib.ActionResultHelper;
-//
-// namespace Bilreg.Api.Controllers.AdmisiContext.JaminanSub;
-//
-// [Route("api/[controller]")]
-// [ApiController]
-// public class PolisController : Controller
-// {
-//     private readonly IMediator _mediator;
-//
-//     public PolisController(IMediator mediator)
-//     {
-//         _mediator = mediator;
-//     }
-//     [HttpPost]
-//     public async Task<IActionResult> Save(PolisCreateCommand cmd)
-//     {
-//         await _mediator.Send(cmd);
-//         return Ok(new JSendOk("Done"));
-//     }
-// }
+﻿using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
+using MediatR;
+using Microsoft.AspNetCore.Mvc;
+using Nuna.Lib.ActionResultHelper;
+
+namespace Bilreg.Api.Controllers.AdmisiContext.JaminanSub;
+
+[Route("api/[controller]")]
+[ApiController]
+public class PolisController : Controller
+{
+    private readonly IMediator _mediator;
+
+    public PolisController(IMediator mediator)
+    {
+        _mediator = mediator;
+    }
+    //[HttpPost]
+    //public async Task<IActionResult> Save(PolisCreateCommand cmd)
+    //{
+    //    await _mediator.Send(cmd);
+    //    return Ok(new JSendOk("Done"));
+    //}
+
+    [HttpGet]
+    [Route("{id}")]
+    public async Task<IActionResult> GetData(string id)
+    {
+        var query = new PolisGetQuery(id);
+        var response = await _mediator.Send(query);
+        return Ok(new JSendOk(response));
+    }
+
+    [HttpGet]
+    [Route("list/{pasienId}")]
+    public async Task<IActionResult> ListData(string pasienId)
+    {
+        var query = new PolisListQuery(pasienId);
+        var response = await _mediator.Send(query);
+        return Ok(new JSendOk(response));
+    }
+}
