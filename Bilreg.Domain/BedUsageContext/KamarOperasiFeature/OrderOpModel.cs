@@ -1,0 +1,164 @@
+﻿using Ardalis.GuardClauses;
+using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.Helpers.CommonValueObjects;
+using Bilreg.Domain.PasienContext.PasienFeature;
+
+namespace Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
+
+public class OrderOpModel : IOrderOpKey
+{
+    private readonly List<OrderOpStateHistType> _listHistory;
+    
+    #region CREATION
+
+    public OrderOpModel(
+        string orderOpId, DateTime orderDate, AuditTrailType auditTrail,
+        PasienReff pasien, RegReff reg,
+        Icd10Type icd10, JenisOperasiType jenisOperasi, string namaOperasi,
+        PetugasMedisReff dokter, int estimasiDurasiInMinutes, DateTime preferedDate, string specialEquipment,
+        OrderOpStateEnum orderOpState, IEnumerable<OrderOpStateHistType> listHistory)
+    {
+        OrderOpId = orderOpId;
+        OrderDate = orderDate;
+        AuditTrail = auditTrail;
+
+        Pasien = pasien;
+        Reg = reg;
+
+        Icd10 = icd10;
+        JenisOperasi = jenisOperasi;
+        NamaOperasi = namaOperasi;
+
+        Dokter = dokter;
+        EstimasiDurasiInMinutes = estimasiDurasiInMinutes;
+        PreferedDate = preferedDate;
+        SpecialEquipment = specialEquipment;
+
+        OrderOpState = orderOpState;
+        _listHistory = listHistory?.ToList() ?? [];
+    }
+
+    public static OrderOpModel Default => new OrderOpModel(
+        "-", new DateTime(3000, 1, 1), AuditTrailType.Default,
+        PasienModel.Default.ToReff(), RegModel.Default.ToReff(),
+        Icd10Type.Default, JenisOperasiType.Default, "-",
+        PetugasMedisType.Default.ToReff(), 0, 
+        new DateTime(3000, 1, 1), "-",
+        OrderOpStateEnum.Requested, []);
+    
+    public static IOrderOpKey Key(string id) => new OrderOpModel( 
+        id, new DateTime(3000, 1, 1), AuditTrailType.Default,
+        PasienModel.Default.ToReff(), RegModel.Default.ToReff(),
+        Icd10Type.Default, JenisOperasiType.Default, "-",
+        PetugasMedisType.Default.ToReff(), 0, 
+        new DateTime(3000, 1, 1), "-",
+        OrderOpStateEnum.Requested, []);
+    
+    public static OrderOpModel CreateByPasien(PasienModel pasien, string userId)
+    {
+        Guard.Against.Null(pasien, nameof(pasien));
+        
+        var auditTrail = AuditTrailType.Create(userId, DateTime.Now);
+        var stateHist = new OrderOpStateHistType(0, OrderOpStateEnum.Requested, DateTime.Now);
+        var result = new OrderOpModel(
+            Ulid.NewUlid().ToString(), DateTime.Now, auditTrail, 
+            pasien.ToReff(), RegModel.Default.ToReff(),
+            Icd10Type.Default, JenisOperasiType.Default, "-",
+            PetugasMedisType.Default.ToReff(), 
+            0, new DateTime(3000,1,1),
+            "-", OrderOpStateEnum.Requested, [stateHist]);
+        return result;
+    }
+    public static OrderOpModel CreateByReg(RegModel reg, string userId)
+    {
+        Guard.Against.Null(reg, nameof(reg));
+        
+        var auditTrail = AuditTrailType.Create(userId, DateTime.Now);
+        var pasien = reg.Pasien;
+        var stateHist = new OrderOpStateHistType(0, OrderOpStateEnum.Requested, DateTime.Now);
+        var result = new OrderOpModel(
+            Ulid.NewUlid().ToString(), DateTime.Now, auditTrail, 
+            pasien, reg.ToReff(),
+            Icd10Type.Default, JenisOperasiType.Default, "-",
+            PetugasMedisType.Default.ToReff(), 
+            0, new DateTime(3000,1,1),
+            "-", OrderOpStateEnum.Requested, [stateHist]);
+        return result;
+    }
+    #endregion
+    
+    #region PROPERTIES
+    public string OrderOpId { get; init; }
+    public DateTime OrderDate { get; init; }
+    public AuditTrailType AuditTrail { get; private set; }
+    
+    public PasienReff Pasien { get; init; }
+    public RegReff Reg { get; init; }
+    
+    public Icd10Type Icd10 { get; private set;}
+    public JenisOperasiType JenisOperasi { get; private set; }
+    public string NamaOperasi { get; private set; }
+    
+    public PetugasMedisReff Dokter { get; private set;}
+    public int EstimasiDurasiInMinutes { get; private set; }
+    public DateTime PreferedDate { get; private set; }
+    public string SpecialEquipment { get; private set; }
+    
+    public OrderOpStateEnum OrderOpState { get; private set; }
+
+    public IEnumerable<OrderOpStateHistType> ListHistory => _listHistory;
+    #endregion
+
+    #region BEHAVIORS
+    public void SetKlinis(Icd10Type icd10, JenisOperasiType jenisOperasi, string namaOperasi)
+    {
+        Guard.Against.Null(icd10, nameof(icd10));
+        Guard.Against.Null(jenisOperasi, nameof(jenisOperasi));
+        Guard.Against.NullOrWhiteSpace(namaOperasi, nameof(namaOperasi));
+        
+        Icd10 = icd10;
+        JenisOperasi = jenisOperasi;
+        NamaOperasi = namaOperasi;
+    }
+
+    public void OperationalRequest(PetugasMedisType dokterDpjp,
+        int estimasiDurasi, DateTime preferedDate, string specialEquipment)
+    {
+        Guard.Against.Null(dokterDpjp, nameof(dokterDpjp));
+        Guard.Against.NullOrWhiteSpace(specialEquipment, nameof(specialEquipment));
+        Guard.Against.Negative(estimasiDurasi, nameof(estimasiDurasi));
+        
+        if (preferedDate < DateTime.Now)
+            throw new ArgumentException("Perefered Date invalid");
+
+        Dokter = dokterDpjp.ToReff();
+        EstimasiDurasiInMinutes = estimasiDurasi;
+        PreferedDate = preferedDate;
+        SpecialEquipment = specialEquipment;
+    }
+    #endregion    
+    
+}
+
+public record OrderOpStateHistType(int NoUrut, OrderOpStateEnum OrderOpState, DateTime StateTimestamp)
+{
+    public static OrderOpStateHistType Default 
+        => new OrderOpStateHistType(0, OrderOpStateEnum.Requested, new DateTime(3000,1,1));
+};
+
+public enum OrderOpStateEnum
+{
+    Requested,
+    Scheduled,
+    PreOpCleared,
+    InProgress,
+    InRecovery,
+    Completed,
+    Cancelled
+}
+
+public interface IOrderOpKey
+{
+    string OrderOpId { get; }
+}
