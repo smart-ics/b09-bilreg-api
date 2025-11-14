@@ -3,6 +3,7 @@ using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
 using System;
@@ -11,7 +12,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Bilreg.Domain.BedUsageContext.KamarOperasiFeature.UseCases
+namespace Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases
 {
     public record OkCreateOrderOpByRegCmd(
         string RegId, string DiagCode, string JenisOperasiId, string NamaOperasi, 
