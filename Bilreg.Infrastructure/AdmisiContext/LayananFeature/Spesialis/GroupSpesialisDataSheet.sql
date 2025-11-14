@@ -1,7 +1,7 @@
-﻿DELETE BILRG_GroupSpesialisasi
+﻿DELETE BILRG_GroupSpesialis
 GO
 
-INSERT INTO BILRG_GroupSpesialisasi
+INSERT INTO BILRG_GroupSpesialis
 SELECT 'UMM', 'Umum' UNION
 SELECT 'INT', 'Penyakit Dalam' UNION
 SELECT 'ANK', 'Anak' UNION

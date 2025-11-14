@@ -1,4 +1,5 @@
 ﻿using Bilreg.Application.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
 using Nuna.Lib.PatternHelper;
 
@@ -69,5 +70,13 @@ public class PetugasMedisRepo : IPetugasMedisRepo
         );
 
         return result;
+    }
+
+    public IEnumerable<PetugasMedisLayananView> ListData(ISatTugasKey satTgsKey, IInstalasiDkKey instDkKey)
+    {
+        var listPtgMdsLyn = _ptgMedisLayananDal.ListData(satTgsKey, instDkKey)?.ToList()
+            ?? throw new ArgumentException("Petugas medis layanan not found");
+
+        return listPtgMdsLyn;
     }
 }

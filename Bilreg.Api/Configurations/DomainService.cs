@@ -1,13 +1,14 @@
-﻿using Bilreg.Domain.PasienContext.PasienFeature;
-using Bilreg.Infrastructure.Helpers;
-using Bilreg.Infrastructure.PasienContext.PasienFeature;
-using FluentValidation;
-using System.Reflection;
+﻿using Bilreg.Application.ParamContext.ParamSistemAgg;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.Helpers;
+using Bilreg.Domain.PasienContext.PasienFeature;
+using Bilreg.Infrastructure.Helpers;
 using Bilreg.Infrastructure.ParamContext;
+using Bilreg.Infrastructure.PasienContext.PasienFeature;
+using FluentValidation;
+using System.Reflection;
 
 namespace Bilreg.Api.Configurations;
 
@@ -26,6 +27,7 @@ public static class DomainService
             .AddScoped<IGetKodeRsService, GetKodeRsService>()
             .AddScoped<IRegFactory, RegFactory>()
             .AddScoped<IGetKelasRajalService, GetKelasRajalService>()
+            .AddScoped<IGetSatuanTugasMedisService, GetSatuanTugasMedisService>()
         
             ;
         
