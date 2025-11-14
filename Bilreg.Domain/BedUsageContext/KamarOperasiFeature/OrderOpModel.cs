@@ -141,7 +141,7 @@ public class OrderOpModel : IOrderOpKey
     
 }
 
-public record OrderOpStateHistType(int NoUrut, OrderOpStateEnum OrderOpState, DateTime StateTimestampe)
+public record OrderOpStateHistType(int NoUrut, OrderOpStateEnum OrderOpState, DateTime StateTimestamp)
 {
     public static OrderOpStateHistType Default 
         => new OrderOpStateHistType(0, OrderOpStateEnum.Requested, new DateTime(3000,1,1));
