@@ -21,7 +21,7 @@ public class JadwalPraktekFactory : IJadwalPraktekFactory
 
     public JadwalPraktekType Default =>
         new JadwalPraktekType("-", PetugasMedisType.Default.ToReff(), 
-            LayananType.Default.ToReff(), LayananDkType.Default.ToReff(),
+            LayananType.Default.ToReff(), LayananDkType.Default.ToReff(), GroupSpesialisType.Default,
             DayOfWeek.Monday, new TimeOnly(0, 0), new TimeOnly(0, 0), 0);
     
     public IJadwalPraktekKey Key(string id)
@@ -36,6 +36,7 @@ public class JadwalPraktekFactory : IJadwalPraktekFactory
         var newNumber = _sequencer.GetNextNoUrut("BILRG_JadwalPraktek");
         var newId = $"JADW{newNumber:D3}";
         return new JadwalPraktekType(newId, dokter.ToReff(), layanan.ToReff(), 
-            LayananDkType.Default.ToReff() , hari, jamMulai, jamSelesai, maxPasien);
+            LayananDkType.Default.ToReff(), GroupSpesialisType.Default, 
+            hari, jamMulai, jamSelesai, maxPasien);
     }
 }

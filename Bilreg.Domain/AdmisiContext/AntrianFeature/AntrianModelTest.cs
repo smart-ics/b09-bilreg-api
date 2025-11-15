@@ -222,6 +222,7 @@ public class AntrianFactoryTests
             dokter.ToReff(),
             layanan,
             layananDk,
+            GroupSpesialisType.Default,
             hari,
             jamMulai,
             jamSelesai,
