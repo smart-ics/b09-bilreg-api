@@ -7,17 +7,17 @@ namespace Bilreg.Api.Controllers.BedUsageContext.KamarOperasiFeature;
 
 [Route("api/[controller]")]
 [ApiController]
-public class KamarOperasiController : ControllerBase
+public class OrderOpController : ControllerBase
 {
     private readonly IMediator _mediator;
 
-    public KamarOperasiController(IMediator mediator)
+    public OrderOpController(IMediator mediator)
     {
         _mediator = mediator;
     }
 
     [HttpPost]
-    [Route("CreateOrderOpByReg")]
+    [Route("CreateByReg")]
     public async Task<IActionResult> CreateOrderByReg(OkCreateOrderOpByRegCmd cmd)
     {
         var response = await _mediator.Send(cmd);
@@ -25,7 +25,7 @@ public class KamarOperasiController : ControllerBase
     }
 
     [HttpPost]
-    [Route("CreateOrderOpByPasien")]
+    [Route("CreateByPasien")]
     public async Task<IActionResult> CreateOrderByPasien(OkCreateOrderOpByPasienCmd cmd)
     {
         var response = await _mediator.Send(cmd);
