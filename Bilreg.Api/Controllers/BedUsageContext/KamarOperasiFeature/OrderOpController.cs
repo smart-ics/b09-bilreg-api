@@ -31,4 +31,13 @@ public class OrderOpController : ControllerBase
         var response = await _mediator.Send(cmd);
         return Ok(new JSendOk(response));
     }
+
+    [HttpGet]
+    [Route("List/{tglOrder}")]
+    public async Task<IActionResult> ListOrder(string tglOrder)
+    {
+        var query = new OkOrderOpListQuery(tglOrder);
+        var response = await _mediator.Send(query);
+        return Ok(new JSendOk(response));
+    }
 }

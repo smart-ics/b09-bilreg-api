@@ -72,7 +72,7 @@ public class RegRepo : IRegRepo
         var regJmnDto = _regJaminanDal.GetData(key) ?? new RegJaminanDto("-", "-", "-", "-");
         var polis = new PolisReff(regJmnDto.fs_kd_polis, regJmnDto.fs_no_polis,
             regJmnDto.fs_atas_nama);
-        }
+
         //  komponen
         var regJaminanDto = _regJaminanDal.GetData(key) ?? new RegJaminanDto("-", "-", "-", "-");
         var listKomponenDto = _regKomponenDal.ListData(key)?.ToList() ?? [];
