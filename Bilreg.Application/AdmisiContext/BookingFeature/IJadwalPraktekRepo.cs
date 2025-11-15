@@ -12,6 +12,7 @@ public interface IJadwalPraktekRepo :
     IListData<JadwalPraktekType>,
     IListData<JadwalPraktekType, IPetugasMedisKey>,
     IListData<JadwalPraktekType, ILayananKey>,
-    IListData<JadwalPraktekType, ILayananDkKey>
+    IListData<JadwalPraktekType, ILayananDkKey>,
+    IListData<JadwalPraktekType, IGroupSpesialisKey>
 {
 }

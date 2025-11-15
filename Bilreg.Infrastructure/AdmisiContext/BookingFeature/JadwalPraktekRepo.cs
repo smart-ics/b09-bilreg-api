@@ -67,4 +67,12 @@ public class JadwalPraktekRepo : IJadwalPraktekRepo
             .ToList() ?? [];
         return model;
     }
+
+    public IEnumerable<JadwalPraktekType> ListData(IGroupSpesialisKey grpSpesialis)
+    {
+        var result = _dal.ListData(grpSpesialis);
+        var model = result?.Select(x => x.ToModel())?
+            .ToList() ?? [];
+        return model;
+    }
 }

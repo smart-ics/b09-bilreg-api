@@ -92,12 +92,15 @@ public class JadwalPraktekDal
                ISNULL(bb.fs_nm_peg, '-') AS DokterName,
                ISNULL(cc.fs_nm_layanan, '-') AS LayananName,
                ISNULL(cc.fs_kd_layanan_dk,'') AS LayananDkId,
-               ISNULL(dd.fs_nm_layanan_dk,'') AS LayananDkName
+               ISNULL(dd.fs_nm_layanan_dk,'') AS LayananDkName,
+               ISNULL(cc.GroupSpesialisId,'') AS GroupSpesialisId,
+               ISNULL(ee.GroupSpesialisName,'') AS GroupSpesialisName
             FROM 
                BILRG_JadwalPraktek aa
                LEFT JOIN td_peg bb ON aa.DokterId = bb.fs_kd_peg
                LEFT JOIN ta_layanan cc ON aa.LayananId = cc.fs_kd_layanan
                LEFT JOIN ta_layanan_dk dd ON cc.fs_kd_layanan_dk = dd.fs_kd_layanan_dk
+               LEFT JOIN BILRG_GroupSpesialis ee ON cc.GroupSpesialisId = ee.GroupSpesialisId
             WHERE
                aa.JadwalPraktekId = @JadwalPraktekId
             """;
@@ -118,12 +121,15 @@ public class JadwalPraktekDal
                ISNULL(bb.fs_nm_peg, '-') AS DokterName,
                ISNULL(cc.fs_nm_layanan, '-') AS LayananName,
                ISNULL(cc.fs_kd_layanan_dk,'') AS LayananDkId,
-               ISNULL(dd.fs_nm_layanan_dk,'') AS LayananDkName
+               ISNULL(dd.fs_nm_layanan_dk,'') AS LayananDkName,
+               ISNULL(cc.GroupSpesialisId,'') AS GroupSpesialisId,
+               ISNULL(ee.GroupSpesialisName,'') AS GroupSpesialisName
             FROM 
                BILRG_JadwalPraktek aa
                LEFT JOIN td_peg bb ON aa.DokterId = bb.fs_kd_peg
                LEFT JOIN ta_layanan cc ON aa.LayananId = cc.fs_kd_layanan
                LEFT JOIN ta_layanan_dk dd ON cc.fs_kd_layanan_dk = dd.fs_kd_layanan_dk
+               LEFT JOIN BILRG_GroupSpesialis ee ON cc.GroupSpesialisId = ee.GroupSpesialisId
             WHERE
                aa.DokterId = @DokterId
             """;
@@ -145,12 +151,15 @@ public class JadwalPraktekDal
                ISNULL(bb.fs_nm_peg, '-') AS DokterName,
                ISNULL(cc.fs_nm_layanan, '-') AS LayananName,
                ISNULL(cc.fs_kd_layanan_dk,'') AS LayananDkId,
-               ISNULL(dd.fs_nm_layanan_dk,'') AS LayananDkName
+               ISNULL(dd.fs_nm_layanan_dk,'') AS LayananDkName,
+               ISNULL(cc.GroupSpesialisId,'') AS GroupSpesialisId,
+               ISNULL(ee.GroupSpesialisName,'') AS GroupSpesialisName
             FROM 
                BILRG_JadwalPraktek aa
                LEFT JOIN td_peg bb ON aa.DokterId = bb.fs_kd_peg
                LEFT JOIN ta_layanan cc ON aa.LayananId = cc.fs_kd_layanan
                LEFT JOIN ta_layanan_dk dd ON cc.fs_kd_layanan_dk = dd.fs_kd_layanan_dk
+               LEFT JOIN BILRG_GroupSpesialis ee ON cc.GroupSpesialisId = ee.GroupSpesialisId
             WHERE
                aa.LayananId = @LayananId
             """;
@@ -172,12 +181,15 @@ public class JadwalPraktekDal
                ISNULL(bb.fs_nm_peg, '-') AS DokterName,
                ISNULL(cc.fs_nm_layanan, '-') AS LayananName,
                ISNULL(cc.fs_kd_layanan_dk,'') AS LayananDkId,
-               ISNULL(dd.fs_nm_layanan_dk,'') AS LayananDkName
+               ISNULL(dd.fs_nm_layanan_dk,'') AS LayananDkName,
+               ISNULL(cc.GroupSpesialisId,'') AS GroupSpesialisId,
+               ISNULL(ee.GroupSpesialisName,'') AS GroupSpesialisName
             FROM 
                BILRG_JadwalPraktek aa
                LEFT JOIN td_peg bb ON aa.DokterId = bb.fs_kd_peg
                LEFT JOIN ta_layanan cc ON aa.LayananId = cc.fs_kd_layanan
                LEFT JOIN ta_layanan_dk dd ON cc.fs_kd_layanan_dk = dd.fs_kd_layanan_dk
+               LEFT JOIN BILRG_GroupSpesialis ee ON cc.GroupSpesialisId = ee.GroupSpesialisId
             """;
 
 
@@ -195,18 +207,51 @@ public class JadwalPraktekDal
                ISNULL(bb.fs_nm_peg, '-') AS DokterName,
                ISNULL(cc.fs_nm_layanan, '-') AS LayananName,
                ISNULL(cc.fs_kd_layanan_dk,'') AS LayananDkId,
-               ISNULL(dd.fs_nm_layanan_dk,'') AS LayananDkName
+               ISNULL(dd.fs_nm_layanan_dk,'') AS LayananDkName,
+               ISNULL(cc.GroupSpesialisId,'') AS GroupSpesialisId,
+               ISNULL(ee.GroupSpesialisName,'') AS GroupSpesialisName
             FROM 
                BILRG_JadwalPraktek aa
                LEFT JOIN td_peg bb ON aa.DokterId = bb.fs_kd_peg
                LEFT JOIN ta_layanan cc ON aa.LayananId = cc.fs_kd_layanan
                LEFT JOIN ta_layanan_dk dd ON cc.fs_kd_layanan_dk = dd.fs_kd_layanan_dk
+               LEFT JOIN BILRG_GroupSpesialis ee ON cc.GroupSpesialisId = ee.GroupSpesialisId
             WHERE
                cc.fs_kd_layanan_dk = @LayananDkId
             """;
 
         var dp = new DynamicParameters();
         dp.AddParam("@LayananDkId", lynDk.LayananDkId, SqlDbType.VarChar);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var result = conn.Read<JadwalPraktekDto>(sql, dp);
+        return result;
+    }
+
+    public IEnumerable<JadwalPraktekDto> ListData(IGroupSpesialisKey grpSpesialis)
+    {
+        const string sql = """
+            SELECT
+               aa.JadwalPraktekId, aa.DokterId, aa.LayananId, 
+               aa.Hari, aa.JamMulai, aa.JamSelesai, aa.MaxPasien,
+               ISNULL(bb.fs_nm_peg, '-') AS DokterName,
+               ISNULL(cc.fs_nm_layanan, '-') AS LayananName,
+               ISNULL(cc.fs_kd_layanan_dk,'') AS LayananDkId,
+               ISNULL(dd.fs_nm_layanan_dk,'') AS LayananDkName,
+               ISNULL(cc.GroupSpesialisId,'') AS GroupSpesialisId,
+               ISNULL(ee.GroupSpesialisName,'') AS GroupSpesialisName
+            FROM 
+               BILRG_JadwalPraktek aa
+               LEFT JOIN td_peg bb ON aa.DokterId = bb.fs_kd_peg
+               LEFT JOIN ta_layanan cc ON aa.LayananId = cc.fs_kd_layanan
+               LEFT JOIN ta_layanan_dk dd ON cc.fs_kd_layanan_dk = dd.fs_kd_layanan_dk
+               LEFT JOIN BILRG_GroupSpesialis ee ON cc.GroupSpesialisId = ee.GroupSpesialisId
+            WHERE
+               cc.GroupSpesialisId = @GroupSpesialisId
+            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@GroupSpesialisId", grpSpesialis.GroupSpesialisId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         var result = conn.Read<JadwalPraktekDto>(sql, dp);

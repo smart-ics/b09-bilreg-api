@@ -7,6 +7,7 @@ namespace Bilreg.Application.AdmisiContext.BookingFeature;
 public interface IBookingRepo :
     ISaveChange<BookingModel>,
     ILoadEntity<BookingModel, IBookingKey>,
-    IDeleteEntity<IBookingKey>
+    IDeleteEntity<IBookingKey>,
+    IListData<BookingModel, Periode>
 {
 }
