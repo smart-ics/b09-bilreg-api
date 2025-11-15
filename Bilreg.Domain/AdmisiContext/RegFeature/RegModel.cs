@@ -3,7 +3,7 @@ using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
 using Bilreg.Domain.AdmisiContext.RujukanFeature;
 using Bilreg.Domain.BillContext.BedUsageFeature;
-using Bilreg.Domain.BillContext.TindakanSub.TarifFeature;
+using Bilreg.Domain.BillContext.TindakanFeature;
 using Bilreg.Domain.Helpers.CommonValueObjects;
 using Bilreg.Domain.PasienContext.PasienFeature;
 

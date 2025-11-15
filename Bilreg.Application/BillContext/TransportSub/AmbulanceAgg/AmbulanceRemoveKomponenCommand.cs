@@ -1,4 +1,4 @@
-using Bilreg.Domain.BillContext.TindakanSub.TarifFeature;
+using Bilreg.Domain.BillContext.TindakanFeature;
 using Bilreg.Domain.BillContext.TransportSub.AmbulanceAgg;
 using CommunityToolkit.Diagnostics;
 using FluentAssertions;
