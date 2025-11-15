@@ -12,7 +12,7 @@ public record JadwalPraktekSearchResponse(
     IEnumerable<JadwalPraktekSearchHariResponse> ListHari);
 
 public record JadwalPraktekSearchHariResponse(
-    string Hari, string JamMulai, string JamSelesai);
+    string JadwalPraktekId, string Hari, string JamMulai, string JamSelesai);
 
 public class JadwalPrektekSearchHandler : IRequestHandler<JadwalPraktekSearchQuery, IEnumerable<JadwalPraktekSearchResponse>>
 {
@@ -50,6 +50,7 @@ public class JadwalPrektekSearchHandler : IRequestHandler<JadwalPraktekSearchQue
                 g.Key.LayananId,
                 g.Key.LayananName,
                 g.Select(x => new JadwalPraktekSearchHariResponse(
+                    JadwalPraktekId: x.JadwalPraktekId,
                     Hari: x.Hari.ToString(),
                     JamMulai: x.JamMulai.ToString("HH:mm"),
                     JamSelesai: x.JamSelesai.ToString("HH:mm")

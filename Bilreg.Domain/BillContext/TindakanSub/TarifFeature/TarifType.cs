@@ -6,9 +6,6 @@ public record TarifType : ITarifKey
 {
     public TarifType(string tarifId, string tarifName)
     {
-        Guard.Against.NullOrWhiteSpace(tarifId, nameof(tarifId));
-        Guard.Against.NullOrWhiteSpace(tarifName, nameof(tarifName));
-
         TarifId = tarifId;
         TarifName = tarifName;
     }

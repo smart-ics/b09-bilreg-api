@@ -69,15 +69,12 @@ public class RegRepo : IRegRepo
         var layanan = new LayananReff(regDto.fs_kd_layanan, regDto.fs_nm_layanan);
         var karcis = new KarcisReff(regDto.fs_kd_karcis, regDto.fs_nm_karcis);
         // polis
-        PolisReff polis = new PolisReff("-", "-", "-");
-        var regJmnDto = _regJaminanDal.GetData(key);
-        if (regJmnDto != null)
-        {
-            polis = new PolisReff(regJmnDto.fs_kd_polis, regJmnDto.fs_no_polis,
+        var regJmnDto = _regJaminanDal.GetData(key) ?? new RegJaminanDto("-", "-", "-", "-");
+        var polis = new PolisReff(regJmnDto.fs_kd_polis, regJmnDto.fs_no_polis,
             regJmnDto.fs_atas_nama);
         }
         //  komponen
-        var regJaminanDto = _regJaminanDal.GetData(key);
+        var regJaminanDto = _regJaminanDal.GetData(key) ?? new RegJaminanDto("-", "-", "-", "-");
         var listKomponenDto = _regKomponenDal.ListData(key)?.ToList() ?? [];
         //  main object
         var result = new RegModel(

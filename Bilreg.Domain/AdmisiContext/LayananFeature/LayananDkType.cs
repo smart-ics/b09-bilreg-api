@@ -5,13 +5,11 @@ namespace Bilreg.Domain.AdmisiContext.LayananFeature;
 public record LayananDkType : ILayananDkKey
 {
     public LayananDkType(string layananDkId, string layananDkName,
-        int rawatInapCode = 0, int rawatJalanCode = 0, int kesehatanJiwaCode = 0, 
-        int bedahCode = 0, int rujukanCode = 0, int kunjunganRumahCode = 0, 
-        int layananSubCode = 0)
+        int rawatInapCode, int rawatJalanCode, int kesehatanJiwaCode, 
+        int bedahCode, int rujukanCode, int kunjunganRumahCode, 
+        int layananSubCode)
     {
-        Guard.Against.NullOrWhiteSpace(layananDkId, nameof(layananDkId));
-        Guard.Against.NullOrWhiteSpace(layananDkName, nameof(layananDkName));
-
+        
         LayananDkId = layananDkId;
         LayananDkName = layananDkName;
         RawatInapCode = rawatInapCode;
@@ -25,13 +23,13 @@ public record LayananDkType : ILayananDkKey
     
     public string LayananDkId { get; init; }
     public string LayananDkName { get; init; }
-    public int RawatInapCode { get; protected set; }
-    public int RawatJalanCode { get; protected set; }
-    public int KesehatanJiwaCode { get; protected set; }
-    public int BedahCode { get; protected set; }
-    public int RujukanCode { get; protected set; }
-    public int KunjunganRumahCode { get; protected set; }
-    public int LayananSubCode { get; protected set; }
+    public int RawatInapCode { get; init; }
+    public int RawatJalanCode { get; init; }
+    public int KesehatanJiwaCode { get; init; }
+    public int BedahCode { get; init; }
+    public int RujukanCode { get; init; }
+    public int KunjunganRumahCode { get; init; }
+    public int LayananSubCode { get; init; }
     
     public LayananDkReff ToReff() => new(LayananDkId, LayananDkName);
     

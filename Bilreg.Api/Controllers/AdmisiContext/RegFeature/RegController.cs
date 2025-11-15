@@ -32,4 +32,22 @@ public class RegController : Controller
          return Ok(new JSendOk(result));
      }
 
+
+    [HttpGet]
+    [Route("{id}")]
+    public async Task<IActionResult> GetData(string id)
+    {
+        var query = new RegGetQuery(id);
+        var response = await _mediator.Send(query);
+        return Ok(new JSendOk(response));
+    }
+
+    [HttpGet]
+    [Route("list/{tglMasukYmd}/{layananId}")]
+    public async Task<IActionResult> ListData(string tglMasukYmd, string layananId)
+    {
+        var query = new RegListQuery(tglMasukYmd, layananId);
+        var response = await _mediator.Send(query);
+        return Ok(new JSendOk(response));
+    }
 }
