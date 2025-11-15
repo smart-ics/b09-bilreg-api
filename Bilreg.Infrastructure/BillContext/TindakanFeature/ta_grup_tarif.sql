@@ -4,3 +4,4 @@
 
    CONSTRAINT PK_ta_grup_tarif PRIMARY KEY CLUSTERED (fs_kd_grup_tarif)
 )
+    
