@@ -1,6 +1,7 @@
 ﻿using Bilreg.Application.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Nuna.Lib.PatternHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature;
 
@@ -45,5 +46,14 @@ public class OrderOpRepo : IOrderOpRepo
     {
         _orderOpDal.Delete(key);
         _orderOpStateHistDal.Delete(key);
+    }
+
+    public IEnumerable<OrderOpView> ListData(Periode filter)
+    {
+        var listDto = _orderOpDal.ListData(filter)?.ToList() ?? [];
+        var result = listDto.Select(x => new OrderOpView(x.OrderOpId, x.RegId, x.PasienId, x.PasienName, x.NamaOperasi,
+            new JenisOperasiType(x.JenisOperasiId, x.fs_nm_jenis_operasi), x.PreferedDate));
+
+        return result;
     }
 }
