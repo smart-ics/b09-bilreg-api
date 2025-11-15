@@ -1,6 +1,6 @@
 ﻿using Bilreg.Domain.BillContext.TindakanFeature;
 
-namespace Bilreg.Infrastructure.BillContext.TindakanFeature.TindakanAgg;
+namespace Bilreg.Infrastructure.BillContext.TindakanFeature;
 
 // resharper disable inconsistentnaming
 public record GroupKomponenDto(string fs_kd_grup_detil_tarif, string fs_nm_grup_detil_tarif)

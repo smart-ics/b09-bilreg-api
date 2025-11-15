@@ -1,7 +1,6 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
 using Bilreg.Domain.BillContext.TindakanFeature;
-using Bilreg.Infrastructure.BillContext.TindakanFeature.TindakanAgg;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
 using FluentAssertions;

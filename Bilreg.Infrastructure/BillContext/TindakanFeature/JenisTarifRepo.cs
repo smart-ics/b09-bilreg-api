@@ -7,52 +7,53 @@ using Xunit;
 
 namespace Bilreg.Infrastructure.BillContext.TindakanFeature;
 
-public class GroupKomponenRepo : IGroupKomponenRepo
+public class JenisTarifRepo : IJenisTarifRepo
 {
-    private readonly IGroupKomponenDal _groupKomponenDal;
-    public GroupKomponenRepo(IGroupKomponenDal groupKomponenDal)
+    private readonly IJenisTarifDal _jenisTarifDal;
+    public JenisTarifRepo(IJenisTarifDal jenisTarifDal)
     {
-        _groupKomponenDal = groupKomponenDal;
+        _jenisTarifDal = jenisTarifDal;
     }
-    public void SaveChanges(GroupKomponenType model)
+    public void SaveChanges(JenisTarifType model)
     {
         LoadEntity(model)
             .Match(
-                onSome: _ => _groupKomponenDal.Update(GroupKomponenDto.FromModel(model)),
-                onNone: () => _groupKomponenDal.Insert(GroupKomponenDto.FromModel(model)));
+                onSome: _ => _jenisTarifDal.Update(JenisTarifDto.FromModel(model)),
+                onNone: () => _jenisTarifDal.Insert(JenisTarifDto.FromModel(model)));
     }
 
-    public MayBe<GroupKomponenType> LoadEntity(IGroupKomponenKey key)
+    public MayBe<JenisTarifType> LoadEntity(IJenisTarifKey key)
     {   
-        var dto = _groupKomponenDal.GetData(key);
+        var dto = _jenisTarifDal.GetData(key);
         if (dto is null)
-            return MayBe<GroupKomponenType>.None;
+            return MayBe<JenisTarifType>.None;
         var model = dto.ToModel();
         return MayBe.From(model);
     }
 
-    public void DeleteEntity(IGroupKomponenKey key)
+    public void DeleteEntity(IJenisTarifKey key)
     {
-        _groupKomponenDal.Delete(key);
+        _jenisTarifDal.Delete(key);
     }
 
-    public IEnumerable<GroupKomponenType> ListData()
+    public IEnumerable<JenisTarifType> ListData()
     {
-        var listDto = _groupKomponenDal.ListData()?.ToList() ?? [];
+        var listDto = _jenisTarifDal.ListData()?.ToList() ?? [];
         var result = listDto.Select(x => x.ToModel()).ToList();
         return result;
     }
 }
 
-public class GroupKomponenRepoTests
-{
-    private readonly Mock<IGroupKomponenDal> _groupKomponenDalMock;
-    private readonly GroupKomponenRepo _repository;
 
-    public GroupKomponenRepoTests()
+public class JenisTarifRepoTests
+{
+    private readonly Mock<IJenisTarifDal> _jenisTarifDalMock;
+    private readonly JenisTarifRepo _repository;
+
+    public JenisTarifRepoTests()
     {
-        _groupKomponenDalMock = new Mock<IGroupKomponenDal>();
-        _repository = new GroupKomponenRepo(_groupKomponenDalMock.Object);
+        _jenisTarifDalMock = new Mock<IJenisTarifDal>();
+        _repository = new JenisTarifRepo(_jenisTarifDalMock.Object);
     }
 
     [Fact]
@@ -60,16 +61,16 @@ public class GroupKomponenRepoTests
     {
         // Arrange
         var existingModel = CreateTestModel();
-        _groupKomponenDalMock
-            .Setup(x => x.GetData(It.IsAny<IGroupKomponenKey>()))
+        _jenisTarifDalMock
+            .Setup(x => x.GetData(It.IsAny<IJenisTarifKey>()))
             .Returns(CreateTestDto());
 
         // Act
         _repository.SaveChanges(existingModel);
 
         // Assert
-        _groupKomponenDalMock.Verify(x => x.Update(It.IsAny<GroupKomponenDto>()), Times.Once);
-        _groupKomponenDalMock.Verify(x => x.Insert(It.IsAny<GroupKomponenDto>()), Times.Never);
+        _jenisTarifDalMock.Verify(x => x.Update(It.IsAny<JenisTarifDto>()), Times.Once);
+        _jenisTarifDalMock.Verify(x => x.Insert(It.IsAny<JenisTarifDto>()), Times.Never);
     }
 
     [Fact]
@@ -78,16 +79,16 @@ public class GroupKomponenRepoTests
         // Arrange
         var newModel = CreateTestModel();
         var key = CreateTestKey();
-        _groupKomponenDalMock
+        _jenisTarifDalMock
             .Setup(x => x.GetData(key))
-            .Returns((GroupKomponenDto)null!);
+            .Returns((JenisTarifDto)null!);
 
         // Act
         _repository.SaveChanges(newModel);
 
         // Assert
-        _groupKomponenDalMock.Verify(x => x.Insert(It.IsAny<GroupKomponenDto>()), Times.Once);
-        _groupKomponenDalMock.Verify(x => x.Update(It.IsAny<GroupKomponenDto>()), Times.Never);
+        _jenisTarifDalMock.Verify(x => x.Insert(It.IsAny<JenisTarifDto>()), Times.Once);
+        _jenisTarifDalMock.Verify(x => x.Update(It.IsAny<JenisTarifDto>()), Times.Never);
     }
 
     [Fact]
@@ -96,7 +97,7 @@ public class GroupKomponenRepoTests
         // Arrange
         var expectedDto = CreateTestDto();
         var key = CreateTestKey();
-        _groupKomponenDalMock
+        _jenisTarifDalMock
             .Setup(x => x.GetData(key))
             .Returns(expectedDto);
 
@@ -115,9 +116,9 @@ public class GroupKomponenRepoTests
     {
         // Arrange
         var key = CreateTestKey();
-        _groupKomponenDalMock
+        _jenisTarifDalMock
             .Setup(x => x.GetData(key))
-            .Returns((GroupKomponenDto)null!);
+            .Returns((JenisTarifDto)null!);
 
         // Act
         var result = _repository.LoadEntity(key);
@@ -139,32 +140,32 @@ public class GroupKomponenRepoTests
         _repository.DeleteEntity(key);
 
         // Assert
-        _groupKomponenDalMock.Verify(x => x.Delete(key), Times.Once);
+        _jenisTarifDalMock.Verify(x => x.Delete(key), Times.Once);
     }
 
     [Fact]
     public void UT6_GivenEmptyList_WhenListData_ThenEmptyListIsReturned()
     {
         // Arrange
-        _groupKomponenDalMock
+        _jenisTarifDalMock
             .Setup(x => x.ListData())
-            .Returns((IEnumerable<GroupKomponenDto>)null!);
+            .Returns((IEnumerable<JenisTarifDto>)null!);
 
         // Act
         var result = _repository.ListData();
 
         // Assert
-        var groupKomponenTypes = result.ToList();
-        groupKomponenTypes.Should().NotBeNull();
-        groupKomponenTypes.Should().BeEmpty();
+        var jenisTarifTypes = result.ToList();
+        jenisTarifTypes.Should().NotBeNull();
+        jenisTarifTypes.Should().BeEmpty();
     }
 
     [Fact]
     public void UT7_GivenListWithItems_WhenListData_ThenListWithModelsIsReturned()
     {
         // Arrange
-        var dtos = new List<GroupKomponenDto> { CreateTestDto(), CreateTestDto() };
-        _groupKomponenDalMock
+        var dtos = new List<JenisTarifDto> { CreateTestDto(), CreateTestDto() };
+        _jenisTarifDalMock
             .Setup(x => x.ListData())
             .Returns(dtos);
 
@@ -172,15 +173,15 @@ public class GroupKomponenRepoTests
         var result = _repository.ListData();
 
         // Assert
-        var groupKomponenTypes = result.ToList();
-        groupKomponenTypes.Should().NotBeNull();
-        groupKomponenTypes.Count.Should().Be(2);
+        var jenisTarifTypes = result.ToList();
+        jenisTarifTypes.Should().NotBeNull();
+        jenisTarifTypes.Count.Should().Be(2);
     }
 
-    private static GroupKomponenType CreateTestModel()
-        => GroupKomponenType.Default;
-    private static GroupKomponenDto CreateTestDto()
-        => GroupKomponenDto.FromModel(GroupKomponenType.Default); 
-    private static IGroupKomponenKey CreateTestKey()
-        => GroupKomponenType.Key("A"); 
+    private static JenisTarifType CreateTestModel()
+        => JenisTarifType.Default;
+    private static JenisTarifDto CreateTestDto()
+        => JenisTarifDto.FromModel(JenisTarifType.Default); 
+    private static IJenisTarifKey CreateTestKey()
+        => JenisTarifType.Key("A"); 
 }
