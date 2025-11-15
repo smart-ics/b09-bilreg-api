@@ -7,7 +7,7 @@ public record JadwalPraktekType : IJadwalPraktekKey
 {
     public JadwalPraktekType(string jadwalPraktekId, 
         PetugasMedisReff dokter, LayananReff layanan, LayananDkReff layanandk,
-        DayOfWeek hari, TimeOnly jamMulai, TimeOnly jamSelesai)
+        DayOfWeek hari, TimeOnly jamMulai, TimeOnly jamSelesai, int maxPasien)
     {
         JadwalPraktekId = jadwalPraktekId;
         Dokter = dokter;
@@ -16,11 +16,12 @@ public record JadwalPraktekType : IJadwalPraktekKey
         Hari = hari;
         JamMulai = jamMulai;
         JamSelesai = jamSelesai;
+        MaxPasien = maxPasien;
     }
     public static JadwalPraktekType Default 
         => new("-", PetugasMedisType.Default.ToReff(), LayananType.Default.ToReff(), 
             LayananDkType.Default.ToReff(),
-            DayOfWeek.Monday, TimeOnly.MinValue, TimeOnly.MinValue);
+            DayOfWeek.Monday, TimeOnly.MinValue, TimeOnly.MinValue, 0);
     public static IJadwalPraktekKey Key(string id) => Default with { JadwalPraktekId = id };
     
     public string JadwalPraktekId { get; init; }
@@ -30,6 +31,7 @@ public record JadwalPraktekType : IJadwalPraktekKey
     public DayOfWeek Hari { get; init; }
     public TimeOnly JamMulai { get; init; }
     public TimeOnly JamSelesai { get; init; }
+    public int MaxPasien {  get; init; }
 }
 
 public interface IJadwalPraktekKey

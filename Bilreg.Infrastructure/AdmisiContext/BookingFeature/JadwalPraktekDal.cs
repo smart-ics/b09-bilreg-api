@@ -23,9 +23,9 @@ public class JadwalPraktekDal
     {
         const string sql = """
             INSERT INTO BILRG_JadwalPraktek(
-               JadwalPraktekId, DokterId, LayananId, Hari, JamMulai, JamSelesai)
+               JadwalPraktekId, DokterId, LayananId, Hari, JamMulai, JamSelesai, MaxPasien)
             VALUES (
-               @JadwalPraktekId, @DokterId, @LayananId, @Hari, @JamMulai, @JamSelesai)
+               @JadwalPraktekId, @DokterId, @LayananId, @Hari, @JamMulai, @JamSelesai, @MaxPasien)
             """;
 
         var dp = new DynamicParameters();
@@ -35,6 +35,7 @@ public class JadwalPraktekDal
         dp.AddParam("@Hari", dto.Hari, SqlDbType.Int);
         dp.AddParam("@JamMulai", dto.JamMulai, SqlDbType.VarChar);
         dp.AddParam("@JamSelesai", dto.JamSelesai, SqlDbType.VarChar);
+        dp.AddParam("@MaxPasien", dto.MaxPasien, SqlDbType.Int);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -49,7 +50,8 @@ public class JadwalPraktekDal
                LayananId = @LayananId,
                Hari = @Hari,
                JamMulai = @JamMulai,
-               JamSelesai = @JamSelesai
+               JamSelesai = @JamSelesai,
+               MaxPasien = @MaxPasien
             WHERE 
                JadwalPraktekId = @JadwalPraktekId
             """;
@@ -61,6 +63,7 @@ public class JadwalPraktekDal
         dp.AddParam("@Hari", dto.Hari, SqlDbType.Int);
         dp.AddParam("@JamMulai", dto.JamMulai, SqlDbType.VarChar);
         dp.AddParam("@JamSelesai", dto.JamSelesai, SqlDbType.VarChar);
+        dp.AddParam("@MaxPasien", dto.MaxPasien, SqlDbType.Int);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -85,7 +88,7 @@ public class JadwalPraktekDal
         const string sql = """
             SELECT
                aa.JadwalPraktekId, aa.DokterId, aa.LayananId, 
-               aa.Hari, aa.JamMulai, aa.JamSelesai,
+               aa.Hari, aa.JamMulai, aa.JamSelesai, aa.MaxPasien,
                ISNULL(bb.fs_nm_peg, '-') AS DokterName,
                ISNULL(cc.fs_nm_layanan, '-') AS LayananName,
                ISNULL(cc.fs_kd_layanan_dk,'') AS LayananDkId,
@@ -111,7 +114,7 @@ public class JadwalPraktekDal
         const string sql = """
             SELECT
                aa.JadwalPraktekId, aa.DokterId, aa.LayananId, 
-               aa.Hari, aa.JamMulai, aa.JamSelesai,
+               aa.Hari, aa.JamMulai, aa.JamSelesai, aa.MaxPasien,
                ISNULL(bb.fs_nm_peg, '-') AS DokterName,
                ISNULL(cc.fs_nm_layanan, '-') AS LayananName,
                ISNULL(cc.fs_kd_layanan_dk,'') AS LayananDkId,
@@ -138,7 +141,7 @@ public class JadwalPraktekDal
         const string sql = """
             SELECT
                aa.JadwalPraktekId, aa.DokterId, aa.LayananId, 
-               aa.Hari, aa.JamMulai, aa.JamSelesai,
+               aa.Hari, aa.JamMulai, aa.JamSelesai, aa.MaxPasien, 
                ISNULL(bb.fs_nm_peg, '-') AS DokterName,
                ISNULL(cc.fs_nm_layanan, '-') AS LayananName,
                ISNULL(cc.fs_kd_layanan_dk,'') AS LayananDkId,
@@ -165,7 +168,7 @@ public class JadwalPraktekDal
         const string sql = """
             SELECT
                aa.JadwalPraktekId, aa.DokterId, aa.LayananId, 
-               aa.Hari, aa.JamMulai, aa.JamSelesai,
+               aa.Hari, aa.JamMulai, aa.JamSelesai, aa.MaxPasien,
                ISNULL(bb.fs_nm_peg, '-') AS DokterName,
                ISNULL(cc.fs_nm_layanan, '-') AS LayananName,
                ISNULL(cc.fs_kd_layanan_dk,'') AS LayananDkId,
@@ -188,7 +191,7 @@ public class JadwalPraktekDal
         const string sql = """
             SELECT
                aa.JadwalPraktekId, aa.DokterId, aa.LayananId, 
-               aa.Hari, aa.JamMulai, aa.JamSelesai,
+               aa.Hari, aa.JamMulai, aa.JamSelesai, aa.MaxPasien,
                ISNULL(bb.fs_nm_peg, '-') AS DokterName,
                ISNULL(cc.fs_nm_layanan, '-') AS LayananName,
                ISNULL(cc.fs_kd_layanan_dk,'') AS LayananDkId,

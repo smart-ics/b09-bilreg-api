@@ -14,7 +14,8 @@ public record JadwalPraktekListHariResponse(
     string JadwalPraktekId,
     string Hari,
     string JamMulai,
-    string JamSelesai);
+    string JamSelesai,
+    int MaxPasien);
 
 public class JadwalPraktekListHandler : IRequestHandler<JadwalPraktekListQuery, IEnumerable<JadwalPraktekListResponse>>
 {
@@ -43,7 +44,8 @@ public class JadwalPraktekListHandler : IRequestHandler<JadwalPraktekListQuery, 
                      j.JadwalPraktekId,
                      j.Hari.ToString(),
                      j.JamMulai.ToString("HH:mm"),
-                     j.JamSelesai.ToString("HH:mm")
+                     j.JamSelesai.ToString("HH:mm"),
+                     j.MaxPasien
                  ))
             ));
 
