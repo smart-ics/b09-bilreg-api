@@ -24,7 +24,7 @@ public class PolisRepo : IPolisRepo
 
     public MayBe<PolisModel> LoadEntity(IPolisKey key)
     {
-        var hdr = _polisDal.GetData(key);
+        var hdr = _polisDal.GetData(key); 
         var listCover = _polisCoverDal.ListData(key)?.ToList() ?? [];
         var listCoverModel = listCover.Select(x => x.ToModel());
         var model = hdr?.ToModel(listCoverModel);
@@ -39,7 +39,7 @@ public class PolisRepo : IPolisRepo
 
     public IEnumerable<PolisView> ListData(IPasienKey filter)
     {
-        var listDto = _polisDal.ListData(filter);
+        var listDto = _polisDal.ListData(filter)?.ToList() ?? [];
         var result = listDto.Select(x => new PolisView(
             x.fs_kd_polis,
             x.fs_no_polis,
