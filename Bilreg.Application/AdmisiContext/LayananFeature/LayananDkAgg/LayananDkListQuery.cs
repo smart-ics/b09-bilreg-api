@@ -1,48 +1,29 @@
-﻿// using MediatR;
-//
-// namespace Bilreg.Application.AdmisiContext.LayananSub.LayananDkAgg;
-//
-// public record LayananDkListQuery() : IRequest<IEnumerable<LayananDkListQueryResponse>>;
-//
-// public record LayananDkListQueryResponse(
-//     string LayananDkId,
-//     string LayananDkName,
-//     int RawatInapCode,
-//     int RawatJalanCode,
-//     int KesehatanJiwaCode,
-//     int BedahCode,
-//     int RujukanCode,
-//     int KunjunganRumahCode,
-//     int LayananSubCode
-// );
-//
-// public class LayananDkListQueryHandler : IRequestHandler<LayananDkListQuery, IEnumerable<LayananDkListQueryResponse>>
-// {
-//     private readonly ILayananDkDal _layananDkDal;
-//
-//     public LayananDkListQueryHandler(ILayananDkDal layananDkDal)
-//     {
-//         _layananDkDal = layananDkDal;
-//     }
-//
-//     public Task<IEnumerable<LayananDkListQueryResponse>> Handle(LayananDkListQuery request, CancellationToken cancellationToken)
-//     {
-//         var result = _layananDkDal.ListData()
-//             ?? throw new KeyNotFoundException($"LayananDk not found.");
-//
-//         var response = result.Select(x => new LayananDkListQueryResponse(
-//             x.LayananDkId,
-//             x.LayananDkName,
-//             x.RawatInapCode,
-//             x.RawatJalanCode,
-//             x.KesehatanJiwaCode,
-//             x.BedahCode,
-//             x.RujukanCode,
-//             x.KunjunganRumahCode,
-//             x.LayananSubCode
-//         ));
-//
-//         return Task.FromResult(response);
-//     }
-//
-// }
+﻿using Bilreg.Application.AdmisiContext.LayananFeature.TipeLayananDkAgg;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
+using MediatR;
+
+namespace Bilreg.Application.AdmisiContext.LayananSub.LayananDkAgg;
+
+public record LayananDkListQuery() : IRequest<IEnumerable<LayananDkListResponse>>;
+public record LayananDkListResponse(
+    string LayananDkId,
+    string LayananDkName);
+public class LayananDkListHandler : IRequestHandler<LayananDkListQuery, IEnumerable<LayananDkListResponse>>
+{
+    private readonly ILayananDkRepo _lynDkRepo;
+
+    public LayananDkListHandler(ILayananDkRepo lynDkRepo)
+    {
+        _lynDkRepo = lynDkRepo;
+    }
+
+    public Task<IEnumerable<LayananDkListResponse>> Handle(LayananDkListQuery request, CancellationToken cancellationToken)
+    {
+        var listLynDk = _lynDkRepo.ListData()?.ToList() ?? [];
+        var response = listLynDk
+            .OrderBy(x => x.LayananDkName)
+            .Select(x => new LayananDkListResponse(x.LayananDkId, x.LayananDkName));
+        
+        return Task.FromResult(response);
+    }
+}

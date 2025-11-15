@@ -125,7 +125,7 @@ public class PolisDal : IPolisDal
         const string sql = """
             SELECT
                 aa.fs_kd_polis, aa.fs_no_polis, aa.fs_atas_nama, 
-                aa.fs_kd_tipe_jaminan, aa.fd_expired,
+                aa.fs_kd_tipe_jaminan, aa.fd_expired AS fd_tgl_expired,
                 ISNULL(bb.fs_mr, '') AS fs_mr,
                 ISNULL(cc.fs_nm_pasien, '') AS fs_nm_pasien,
                 ISNULL(cc.fd_tgl_lahir, '') AS fd_tgl_lahir,
@@ -137,7 +137,7 @@ public class PolisDal : IPolisDal
                 LEFT JOIN tc_mr cc ON bb.fs_mr = cc.fs_mr
                 LEFT JOIN ta_tipe_jaminan dd ON aa.fs_kd_tipe_jaminan = dd.fs_kd_tipe_jaminan
             WHERE 
-                dd.fs_mr = @fs_mr
+                bb.fs_mr = @fs_mr
             """;
 
         var dp = new DynamicParameters();

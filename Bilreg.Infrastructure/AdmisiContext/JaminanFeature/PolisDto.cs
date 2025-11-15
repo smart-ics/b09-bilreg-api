@@ -38,7 +38,7 @@ public record PolisDto(
             fs_kd_polis, fs_no_polis, fs_atas_nama,
             new TipeJaminanReff(fs_kd_tipe_jaminan, fs_nm_tipe_jaminan),
             new KelasReff(fs_kd_kelas_ri, fs_nm_kelas),
-            DateOnly.ParseExact(fs_nm_kelas, "yyyy-MM-dd", null),
+            DateOnly.ParseExact(fd_expired, "yyyy-MM-dd", null),
             fb_cover_rj, listCover?.ToList() ?? []);
         return result;
     }

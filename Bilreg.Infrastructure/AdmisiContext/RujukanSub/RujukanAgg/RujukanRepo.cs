@@ -27,4 +27,12 @@ public class RujukanRepo : IRujukanRepo
             .ToList() ?? [];
         return model;
     }
+
+    public IEnumerable<RujukanType> ListData(ICaraMasukDkKey caraMasuk)
+    {
+        var result = _rujukanDal.ListData(caraMasuk);
+        var model = result?.Select(x => x.ToModel())?
+            .ToList() ?? [];
+        return model;
+    }
 }

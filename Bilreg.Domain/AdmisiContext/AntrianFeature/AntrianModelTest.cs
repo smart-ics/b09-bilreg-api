@@ -215,11 +215,12 @@ public class AntrianFactoryTests
         TimeOnly jamSelesai)
     {
         var layanan = new LayananReff("LAY001", "Poli Umum");
-        
+        var layananDk = new LayananDkReff("1", "UMUM");
         return new JadwalPraktekType(
             Ulid.NewUlid().ToString(),
             dokter.ToReff(),
             layanan,
+            layananDk,
             hari,
             jamMulai,
             jamSelesai);
