@@ -32,7 +32,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Controllers\AdmisiContext\PendaftaranSub\" />
     <Folder Include="Controllers\BillContext\TransportSub\" />
   </ItemGroup>
 

@@ -29,7 +29,6 @@
 
   <ItemGroup>
     <Folder Include="AdmisiContext\LayananFeature\LayananAgg\" />
-    <Folder Include="AdmisiContext\PetugasMedisFeature\PetugasMedisAgg\" />
   </ItemGroup>
 
 </Project>

@@ -1,6 +1,6 @@
 ﻿using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.BillContext.RekapCetakSub;
-using Bilreg.Domain.BillContext.TindakanSub.TarifFeature;
+using Bilreg.Domain.BillContext.TindakanFeature;
 
 namespace Bilreg.Domain.AdmisiContext.RegFeature;
 
