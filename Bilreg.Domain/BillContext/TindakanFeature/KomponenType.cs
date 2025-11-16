@@ -5,19 +5,20 @@ namespace Bilreg.Domain.BillContext.TindakanFeature;
 
 public record KomponenType : IKomponenKey
 {
+    private readonly List<SatTugasType> _listSatTugas;
+    
     #region CREATION
     public KomponenType(string komponenId, string komponenName, 
-        GroupKomponenType groupKomponen, IList<SatTugasType> listSatTugas)
+        GroupKomponenType groupKomponen, IEnumerable<SatTugasType> listSatTugas)
     {
-        Guard.Against.NullOrWhiteSpace(komponenId, nameof(komponenId));
-        Guard.Against.NullOrWhiteSpace(komponenName, nameof(komponenName));
-        Guard.Against.Null(groupKomponen, nameof(groupKomponen));
-        Guard.Against.Null(listSatTugas, nameof(listSatTugas));
+        Guard.Against.NullOrWhiteSpace(komponenId);
+        Guard.Against.NullOrWhiteSpace(komponenName);
+        Guard.Against.Null(groupKomponen);
 
         KomponenId = komponenId;
         KomponenName = komponenName;
         GroupKomponen = groupKomponen;
-        ListSatTugas = listSatTugas.ToList();
+        _listSatTugas = listSatTugas?.ToList() ?? [];
     }
     public static KomponenType Default => new("-", "-", GroupKomponenType.Default, []);
     public static IKomponenKey Key(string id) => Default with { KomponenId = id };
@@ -27,7 +28,7 @@ public record KomponenType : IKomponenKey
     public string KomponenId { get; init; }
     public string KomponenName { get; init; }
     public GroupKomponenType GroupKomponen { get; init; }
-    public IReadOnlyList<SatTugasType> ListSatTugas { get; init; }
+    public IEnumerable<SatTugasType> ListSatTugas { get; init; }
     #endregion
     
     #region BEHAVIOR

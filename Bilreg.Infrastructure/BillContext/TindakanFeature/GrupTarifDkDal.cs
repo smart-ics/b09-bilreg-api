@@ -32,11 +32,11 @@ public class GroupTarifDkDal : IGroupTarifDkDal
     public void Insert(GroupTarifDkDto dto)
     {
         const string sql = """
-                           INSERT INTO ta_grup_tarif_dk(
-                               fs_kd_grup_tarif_dk, fs_nm_grup_tarif_dk)
-                           VALUES( 
-                               @fs_kd_grup_tarif_dk, @fs_nm_grup_tarif_dk)
-                           """;
+           INSERT INTO ta_grup_tarif_dk(
+               fs_kd_grup_tarif_dk, fs_nm_grup_tarif_dk)
+           VALUES( 
+               @fs_kd_grup_tarif_dk, @fs_nm_grup_tarif_dk)
+           """;
 
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_grup_tarif_dk", dto.fs_kd_grup_tarif_dk, SqlDbType.VarChar);
