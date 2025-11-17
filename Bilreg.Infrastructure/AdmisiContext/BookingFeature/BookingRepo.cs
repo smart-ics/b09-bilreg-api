@@ -47,4 +47,11 @@ public class BookingRepo : IBookingRepo
         var models = listDto.Select(x => x.ToModel()) ?? [];
         return models;
     }
+
+    public IEnumerable<BookingModel> ListDataTglBerobat(Periode periode)
+    {
+        var listDto = _bookingDal.ListPerTglBerobat(periode)?.ToList() ?? [];
+        var models = listDto?.Select(x => x.ToModel()) ?? [];
+        return models;
+    }
 }

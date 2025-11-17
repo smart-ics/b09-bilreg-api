@@ -26,7 +26,7 @@ public class PraktekDokterController : Controller
 
     [HttpPost]
     [Route("dokter")]
-    public async Task<IActionResult> PraktekDokterDokter(PraktekDokterPeriodeGroupSpesialisListQuery cmd)
+    public async Task<IActionResult> PraktekDokterDokter(PraktekDokterPeriodeDokterListQuery cmd)
     {
         var response = await _mediator.Send(cmd);
         return Ok(new JSendOk(response));

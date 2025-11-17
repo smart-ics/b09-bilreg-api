@@ -10,4 +10,5 @@ public interface IBookingRepo :
     IDeleteEntity<IBookingKey>,
     IListData<BookingModel, Periode>
 {
+    IEnumerable<BookingModel> ListDataTglBerobat(Periode periode);
 }
