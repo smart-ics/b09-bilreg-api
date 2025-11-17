@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi.Writers;
 using Nuna.Lib.ActionResultHelper;
 
-namespace Bilreg.Api.Controllers.AdmisiContext.PetugasMedisSub;
+namespace Bilreg.Api.Controllers.AdmisiContext.PpaPetugasMedisFeature;
 
 [Route("api/[controller]")]
 [ApiController]
