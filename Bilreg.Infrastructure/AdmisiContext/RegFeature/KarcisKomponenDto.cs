@@ -1,5 +1,5 @@
 ﻿using Bilreg.Domain.AdmisiContext.RegFeature;
-using Bilreg.Domain.BillContext.TindakanSub.TarifFeature;
+using Bilreg.Domain.BillContext.TindakanFeature;
 
 //  resharper disable inconsistentnaming
 namespace Bilreg.Infrastructure.AdmisiContext.RegFeature;

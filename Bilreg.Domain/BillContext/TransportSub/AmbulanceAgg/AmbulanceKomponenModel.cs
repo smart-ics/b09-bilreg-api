@@ -1,4 +1,4 @@
-using Bilreg.Domain.BillContext.TindakanSub.TarifFeature;
+using Bilreg.Domain.BillContext.TindakanFeature;
 
 namespace Bilreg.Domain.BillContext.TransportSub.AmbulanceAgg;
 
