@@ -121,7 +121,6 @@ public class PraktekDokterPeriodeDokterListHandler : IRequestHandler<PraktekDokt
                 )
             ).ToList() ?? [];
 
-
         var jadwalNoQueue = (
                 from tgl in listTgl
                 let jadwalTgl = jadwals.Where(j => j.Hari == tgl.DayOfWeek).ToList()

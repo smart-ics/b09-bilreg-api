@@ -62,7 +62,6 @@ public class PraktekDokterPeriodeGroupSpesialisListHandler :
             )?.ToList() ?? [];
         
         // PROJECTION
-
         var result = GenResult(listTgl, antrians, jadwals);
 
         // RETURN
