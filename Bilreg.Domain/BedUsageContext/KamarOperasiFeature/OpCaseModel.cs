@@ -7,26 +7,27 @@ public class OpCaseModel : IOrderOpKey
 {
     #region CREATION
     public OpCaseModel(string orderOpId, OrderOpReff orderOp, 
-        PasienReff pasien, RegReff reg, ScheduleOpReff scheduleOp, 
-        DischergeOpReff dischargeOp, OrderOpStateEnum opState)
+        PasienReff pasien, RegReff reg, UrgencyLevelEnum urgencyLevel,
+        ScheduleOpReff scheduleOp, DischergeOpReff dischargeOp, OrderOpStateEnum opState)
     {
         OrderOpId = orderOpId;
         OrderOp = orderOp;
         Pasien = pasien;
         Reg = reg;
+        UrgencyLevel = urgencyLevel;
         ScheduleOp = scheduleOp;
         DischargeOp = dischargeOp;
         OpState = opState;
     }
     public static OpCaseModel Default => new OpCaseModel(
         "-", OrderOpModel.Default.ToReff(), PasienModel.Default.ToReff(), RegModel.Default.ToReff(),
-        ScheduleOpReff.Default, DischergeOpReff.Default, OrderOpStateEnum.Requested);
+        UrgencyLevelEnum.Elective, ScheduleOpReff.Default, DischergeOpReff.Default, OrderOpStateEnum.Requested);
 
     public static OpCaseModel Create(OrderOpModel orderOp)
     {
         var result = new OpCaseModel(orderOp.OrderOpId, orderOp.ToReff(),
-            orderOp.Pasien, orderOp.Reg, ScheduleOpReff.Default,
-            DischergeOpReff.Default, OrderOpStateEnum.Requested);
+            orderOp.Pasien, orderOp.Reg, orderOp.UrgencyLevel,
+            ScheduleOpReff.Default, DischergeOpReff.Default, OrderOpStateEnum.Requested);
         return result;
     }
     #endregion
@@ -36,6 +37,8 @@ public class OpCaseModel : IOrderOpKey
     public OrderOpReff OrderOp { get; init; }
     public PasienReff Pasien { get; init; }
     public RegReff Reg { get; private set; }
+    public UrgencyLevelEnum UrgencyLevel { get; private set; }
+
     public ScheduleOpReff ScheduleOp { get; private set; }
     public DischergeOpReff DischargeOp { get; private set; }
     public OrderOpStateEnum OpState { get; private set; }

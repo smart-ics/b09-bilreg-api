@@ -6,14 +6,12 @@ using System.Globalization;
 
 namespace Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
 
-public record OkOrderOpListQuery(string TglOrderYMD) : IRequest<IEnumerable<OkOrderOpListResponse>>;
+public record OkOrderOpListQuery() : IRequest<IEnumerable<OkOrderOpListResponse>>;
 
-public record OkOrderOpListResponse(string OrderOpId, 
-    string RegId, string PasienId, string PasienName,
+public record OkOrderOpListResponse(string OrderOpId,
+    string PasienId, string PasienName,
     string DokterId, string DokterName,
-    string Icd10Id, string Diagnosa,
-    string NamaOperasi, string JenisOperasiId, string JenisOperasiName,
-    string PreferedDate);
+    string TglOperasi, string StatusOrderOp);
 
 public class OkOrderOpListHandler :
     IRequestHandler<OkOrderOpListQuery, IEnumerable<OkOrderOpListResponse>>

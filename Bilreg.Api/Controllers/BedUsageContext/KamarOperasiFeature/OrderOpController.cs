@@ -33,8 +33,8 @@ public class OrderOpController : ControllerBase
     }
 
     [HttpGet]
-    [Route("List/{tglOrder}")]
-    public async Task<IActionResult> ListOrder(string tglOrder)
+    [Route("List")]
+    public async Task<IActionResult> ListOrder()
     {
         var query = new OkOrderOpListQuery(tglOrder);
         var response = await _mediator.Send(query);
