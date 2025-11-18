@@ -14,7 +14,7 @@ public record PetugasMedisSpesialisLayanListResponse(
 public record PetugasMedisSpesialisLayananDokterListResponse(
     string LayananId, 
     string LayananName,
-    string DokteId,
+    string DokterId,
     string DokterName);
 
 public class PetugasMededisLayananHandler : IRequestHandler<PetugasMedisSpesialisLayananListQuery, IEnumerable<PetugasMedisSpesialisLayanListResponse>>

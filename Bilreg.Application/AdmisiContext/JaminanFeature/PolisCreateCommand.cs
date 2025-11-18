@@ -1,17 +1,15 @@
-﻿//using System.Transactions;
-//using Bilreg.Application.AdmisiContext.JaminanSub.TipeJaminanAgg;
-//using Bilreg.Application.BillContext.RoomChargeSub.KelasAgg;
+﻿//using Bilreg.Application.AdmisiContext.JaminanFeature;
+//using Bilreg.Application.BillContext.BedUsageFeature;
 //using Bilreg.Application.Helpers;
-//using Bilreg.Application.PasienContext.DataSosialPasienSub.PasienAgg;
-//using Bilreg.Domain.AdmisiContext.JaminanSub.PolisAgg;
-//using Bilreg.Domain.AdmisiContext.JaminanSub.TipeJaminanAgg;
-//using Bilreg.Domain.BillContext.RoomChargeSub.KelasAgg;
-//using Bilreg.Domain.PasienContext.DataSosialPasienSub.PasienAgg;
+//using Bilreg.Application.PasienContext.PasienFeature;
+//using Bilreg.Domain.AdmisiContext.JaminanFeature;
+//using Bilreg.Domain.BillContext.BedUsageFeature;
+//using Bilreg.Domain.PasienContext.PasienFeature;
 //using CommunityToolkit.Diagnostics;
 //using MediatR;
-//using Nuna.Lib.AutoNumberHelper;
-//using Nuna.Lib.TransactionHelper;
-//using Nuna.Lib.ValidationHelper;
+//using System.Data.SqlTypes;
+//using System.Diagnostics.Eventing.Reader;
+//using System.Globalization;
 
 //namespace Bilreg.Application.AdmisiContext.JaminanSub.PolisAgg;
 
@@ -29,21 +27,23 @@
 
 //public class PolisCreateHandler : IRequestHandler<PolisCreateCommand, PolisCreateResponse>
 //{
-//    private readonly IPasienDal _pasienDal;
-//    private readonly ITipeJaminanDal _tipeJaminanDal;
-//    private readonly IKelasDal _kelasDal;
-//    private readonly IPolisWriter _writer;
-//    private readonly INunaCounterBL _counter;
+//    private readonly IPasienRepo _pasienRepo;
+//    private readonly ITipeJaminanRepo _tipeJaminanRepo;
+//    private readonly IKelasRepo _kelasRepo;
+//    private readonly IPolisFactory _polisFactory;
+//    private readonly IPolisRepo _polisRepo;
 
-//    public PolisCreateHandler(IPasienDal pasienDal,
-//        ITipeJaminanDal tipeJaminanDal,
-//        IPolisWriter writer, IKelasDal kelasDal, INunaCounterBL counter)
+//    public PolisCreateHandler(IPasienRepo pasienRepo,
+//        ITipeJaminanRepo tipeJaminanRepo,
+//        IKelasRepo kelasRepo,
+//        IPolisFactory polisFactory,
+//        IPolisRepo polisRepo)
 //    {
-//        _pasienDal = pasienDal;
-//        _tipeJaminanDal = tipeJaminanDal;
-//        _writer = writer;
-//        _kelasDal = kelasDal;
-//        _counter = counter;
+//        _pasienRepo = pasienRepo;
+//        _tipeJaminanRepo = tipeJaminanRepo;
+//        _kelasRepo = kelasRepo;
+//        _polisFactory = polisFactory;
+//        _polisRepo = polisRepo;
 //    }
 
 //    public Task<PolisCreateResponse> Handle(PolisCreateCommand request, CancellationToken cancellationToken)
@@ -57,32 +57,66 @@
 //        Guard.IsNotEmpty(request.ExpiredDate);
 //        request.ExpiredDate.IsValidDateYmd();
 //        Guard.IsNotEmpty(request.KelasRanapId);
-//        var pasien = _pasienDal
-//            .GetData2(request)
-//            .OrThrowNotFoundException()
-//            .Value;
-//        var tipeJaminan = _tipeJaminanDal.GetData(request)
-//            ?? throw new KeyNotFoundException($"Tipe jaminan id {request.TipeJaminanId} not found");
-//        var kelas = _kelasDal.GetData(new KelasModel(request.KelasRanapId, ""))
-//            ?? throw new KeyNotFoundException($"Kelas id {request.KelasRanapId} not found");
 
 //        //  BUILD
-//        string newId;
-//        using (var trans = TransHelper.NewScope(IsolationLevel.Serializable))
-//        {
-//            newId = _counter.GenerateDec("PS", "PS", 10, string.Empty);
-//            trans.Complete();
-//        }
-//        var polis = new PolisBuilder(newId);
-//        polis
-//            .SetPolisDetail(request.NoPolis, request.AtasName, request.ExpiredDate.ToDate(DateFormatEnum.YMD))
-//            .SetIsCoverRajal(request.IsCoverRajal)
-//            .WithKelas(kelas)
-//            .WithTipeJaminan(tipeJaminan)
-//            .AddCover(pasien, "P");
+//        var pasien = _pasienRepo.LoadEntity(request)
+//            .Match(
+//                onSome: x => x,
+//                onNone: () => throw new KeyNotFoundException($"pasien {request.PasienId} not found")
+//            );
+//        var tipeJaminan = _tipeJaminanRepo.LoadEntity(request)
+//            .Match(
+//                onSome: x => x,
+//                onNone: () => throw new KeyNotFoundException($"tipe jaminan {request.TipeJaminanId} not found")
+//            );
 
-//        //  WRITE
-//        _writer.Save(polis);
-//        return Task.FromResult(new PolisCreateResponse(polis.PolisId));
+//        var kelas = _kelasRepo.LoadEntity(KelasType.Key(request.KelasRanapId))
+//            .Match(
+//                onSome: x => x,
+//                onNone: () => throw new KeyNotFoundException($"kelas {request.KelasRanapId} not found")
+//            );
+
+//        var polis = CekPeserta(pasien, request);
+//        if (polis is null)
+//        {
+//            polis = CreatePolis(request, pasien, kelas, tipeJaminan);
+//            _pasienRepo.SaveChanges(polis);
+//        }
+            
+//        else
+//            return Task.FromResult(new PolisCreateResponse(polis.PolisId));
+
+        
+//    }
+
+//    private PolisModel CekPeserta(PasienModel pasien, ITipeJaminanKey tipeJaminanKey)
+//    {
+//        var listPeserta = _polisRepo.ListData(pasien);
+//        var peserta = listPeserta
+//            .Where(x => x.TipeJaminan.TipeJaminanId == tipeJaminanKey.TipeJaminanId)
+//            .FirstOrDefault();
+
+//        if (peserta is null)
+//            return PolisModel.Default;
+
+//        var polis = _polisRepo.LoadEntity(PolisModel.Key(peserta.PolisId))
+//            .Match(
+//                onSome: x => x,
+//                onNone: () => PolisModel.Default
+//            );
+//        return polis;
+//    }
+
+//    private PolisModel CreatePolis(PolisCreateCommand cmd, PasienModel pasien, KelasType kelas,
+//        TipeJaminanType tipeJaminan)
+//    {
+//        var statusPeserta = StatusPesertaType.Create("P");
+//        DateOnly expiredDate = DateOnly.ParseExact(cmd.ExpiredDate, "yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+//        var polis = _polisFactory.Create(pasien, tipeJaminan, kelas,
+//            cmd.NoPolis, cmd.AtasName, statusPeserta, expiredDate,
+//            cmd.IsCoverRajal);
+
+//        return polis;
 //    }
 //}

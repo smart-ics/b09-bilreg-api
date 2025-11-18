@@ -49,8 +49,8 @@ public class PraktekDokterPeriodeDokterListHandler : IRequestHandler<PraktekDokt
             var antrian = _antrianRepo.ListData(x)?.ToList() ?? [];
             listAntrian.AddRange(antrian);
         }
-        listAntrian.Where(x => x.SequenceTag.Split('_')[1].Trim() == request.DokterId);
-        var antrians = listAntrian
+        var listAntreanDokter = listAntrian.Where(x => x.SequenceTag.Split('_')[1].Trim() == request.DokterId);
+        var antrians = listAntreanDokter
             .Select(x =>
             _antrianRepo.LoadEntity(x)
                 .Match(
