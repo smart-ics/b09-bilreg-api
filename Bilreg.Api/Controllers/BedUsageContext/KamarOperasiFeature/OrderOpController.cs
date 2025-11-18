@@ -75,5 +75,5 @@ public record OrderOpResponse(
     string DokterId,
     string DokterName,
     string TglOperasi,
-    string StatusOrderOp
+    string OrderOpState
 );
