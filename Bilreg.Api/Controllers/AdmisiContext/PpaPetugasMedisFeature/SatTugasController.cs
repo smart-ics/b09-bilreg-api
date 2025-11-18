@@ -1,5 +1,4 @@
-﻿using Bilreg.Application.AdmisiContext.PetugasMedisFeature.UseCases;
-using MediatR;
+﻿using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
 

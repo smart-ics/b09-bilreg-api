@@ -1,6 +1,7 @@
 ﻿using Bilreg.Application.ParamContext.ParamSistemAgg;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.Helpers;
 using Bilreg.Domain.PasienContext.PasienFeature;
@@ -28,7 +29,7 @@ public static class DomainService
             .AddScoped<IRegFactory, RegFactory>()
             .AddScoped<IGetKelasRajalService, GetKelasRajalService>()
             .AddScoped<IGetSatuanTugasMedisService, GetSatuanTugasMedisService>()
-        
+            .AddScoped<IPolisFactory, PolisFactory>()
             ;
         
         return services;

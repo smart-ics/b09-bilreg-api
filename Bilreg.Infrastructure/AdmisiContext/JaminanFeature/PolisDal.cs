@@ -34,20 +34,23 @@ public class PolisDal : IPolisDal
         const string sql = """
             INSERT INTO ta_polis(
                 fs_kd_polis, fs_no_polis, fs_atas_nama, fd_expired, 
-                fs_kd_tipe_jaminan, fb_cover_rj, fs_kd_kelas_ri)
+                fs_kd_tipe_jaminan, fb_cover_rj, fs_kd_kelas_ri
+                )
             VALUES(
                 @fs_kd_polis, @fs_no_polis, @fs_atas_nama, @fd_expired, 
-                @fs_kd_tipe_jaminan, @fb_cover_rj, @fs_kd_kelas_ri)
+                @fs_kd_tipe_jaminan, @fb_cover_rj, @fs_kd_kelas_ri
+                )
             """;
 
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_polis", dto.fs_kd_polis, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_tipe_jaminan", dto.fs_kd_tipe_jaminan, SqlDbType.VarChar);
         dp.AddParam("@fs_no_polis", dto.fs_no_polis, SqlDbType.VarChar);
         dp.AddParam("@fs_atas_nama", dto.fs_atas_nama, SqlDbType.VarChar);
         dp.AddParam("@fd_expired", dto.fd_expired, SqlDbType.VarChar);
-        dp.AddParam("@fs_kd_tipe_jaminan", dto.fs_kd_tipe_jaminan, SqlDbType.VarChar);
-        dp.AddParam("@fb_cover_rj", dto.fb_cover_rj, SqlDbType.Bit);
         dp.AddParam("@fs_kd_kelas_ri", dto.fs_kd_kelas_ri, SqlDbType.VarChar);
+        dp.AddParam("@fb_cover_rj", dto.fb_cover_rj, SqlDbType.Bit);
+
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);

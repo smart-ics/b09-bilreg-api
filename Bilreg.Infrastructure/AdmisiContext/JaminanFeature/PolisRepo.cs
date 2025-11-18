@@ -19,7 +19,16 @@ public class PolisRepo : IPolisRepo
 
     public void SaveChanges(PolisModel model)
     {
-        throw new NotImplementedException();
+        LoadEntity(model)
+            .Match(
+                onSome: _ => _polisDal.Update(PolisDto.FromModel(model)),
+                onNone: () => _polisDal.Insert(PolisDto.FromModel(model))
+            );
+
+        var listCover = model.ListCover.Select(x => PolisCoverDto.FromModel(x)).ToList();
+        
+        _polisCoverDal.Delete(model);
+        _polisCoverDal.Insert(listCover);
     }
 
     public MayBe<PolisModel> LoadEntity(IPolisKey key)
