@@ -137,6 +137,7 @@ public class OrderOpModel : IOrderOpKey
         PreferedDate = preferedDate;
         SpecialEquipment = specialEquipment;
     }
+    public OrderOpReff ToReff() => new OrderOpReff(OrderOpId, OrderDate, NamaOperasi);
     #endregion    
     
 }
@@ -152,9 +153,9 @@ public enum OrderOpStateEnum
     Requested,
     Scheduled,
     PreOpCleared,
-    InProgress,
-    InRecovery,
-    Completed,
+    OpStarted,
+    RecoveryStarted,
+    Discharged,
     Cancelled
 }
 
@@ -162,3 +163,5 @@ public interface IOrderOpKey
 {
     string OrderOpId { get; }
 }
+
+public record OrderOpReff(string OrderOpId, DateTime OrderDate, string NamaOperasi);
