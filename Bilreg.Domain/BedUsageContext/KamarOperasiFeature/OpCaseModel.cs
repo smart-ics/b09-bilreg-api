@@ -17,7 +17,7 @@ public class OpCaseModel : IOrderOpKey
         UrgencyLevel = urgencyLevel;
         ScheduleOp = scheduleOp;
         DischargeOp = dischargeOp;
-        OpState = opState;
+        OrderOpState = opState;
     }
     public static OpCaseModel Default => new OpCaseModel(
         "-", OrderOpModel.Default.ToReff(), PasienModel.Default.ToReff(), RegModel.Default.ToReff(),
@@ -41,13 +41,13 @@ public class OpCaseModel : IOrderOpKey
 
     public ScheduleOpReff ScheduleOp { get; private set; }
     public DischergeOpReff DischargeOp { get; private set; }
-    public OrderOpStateEnum OpState { get; private set; }
+    public OrderOpStateEnum OrderOpState { get; private set; }
 
     public OpCaseReff? ActiveOpCase
     {
         get
         {
-            return OpState switch
+            return OrderOpState switch
             {
                 OrderOpStateEnum.Requested => ToReff(),
                 OrderOpStateEnum.Scheduled => ToReff(),
@@ -73,7 +73,7 @@ public class OpCaseModel : IOrderOpKey
         DischargeOp = discharge;
     }
     public OpCaseReff ToReff() => new OpCaseReff(OrderOp.OrderOpId, OrderOp.OrderDate,
-        Pasien, OpState);
+        Pasien, OrderOpState);
     #endregion
 }
 

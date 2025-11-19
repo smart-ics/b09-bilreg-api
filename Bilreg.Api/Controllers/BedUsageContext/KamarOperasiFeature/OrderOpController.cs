@@ -36,7 +36,7 @@ public class OrderOpController : ControllerBase
     [Route("List")]
     public async Task<IActionResult> ListOrder()
     {
-        var query = new OkOrderOpListQuery(tglOrder);
+        var query = new OkOrderOpListQuery();
         var response = await _mediator.Send(query);
         return Ok(new JSendOk(response));
     }

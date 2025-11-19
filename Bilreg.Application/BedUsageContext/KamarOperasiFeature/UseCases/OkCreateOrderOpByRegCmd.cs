@@ -3,6 +3,7 @@ using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
+using Bilreg.Domain.Helpers;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
 using Nuna.Lib.ValidationHelper;
@@ -10,8 +11,8 @@ using Nuna.Lib.ValidationHelper;
 namespace Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
 
 public record OkCreateOrderOpByRegCmd(
-    string RegId, string DiagCode, string JenisOperasiId, string NamaOperasi, 
-    string DokterDpjpId, int EstimasiDurasiInMinutes, string PreferedDate,
+    string RegId, string DiagCode, string JenisOperasiId, string NamaOperasi,
+    string UrgencyLevel, string DokterDpjpId, int EstimasiDurasiInMinutes, string PreferedDate,
     string SpecialEquipment, string UserId, bool IsForceCreate)
     : IRequest<OkCreateOrderOpByRegResponse>;
 
@@ -36,18 +37,23 @@ public class OkCreateOrderOpByRegHandler
     private readonly IJenisOperasiRepo _jenisOperasiRepo;
     private readonly IPetugasMedisRepo _dokterRepo;
 
+    private readonly IOpCaseRepo _opCaseRepo;
+
     public OkCreateOrderOpByRegHandler(
         IOrderOpRepo orderOpRepo,
         IRegRepo regRepo,
         IIcd10Repo icdRepo,
         IJenisOperasiRepo jenisOperasiRepo,
-        IPetugasMedisRepo dokterRepo)
+        IPetugasMedisRepo dokterRepo,
+        IOpCaseRepo opCaseRepo)
     {
         _orderOpRepo = orderOpRepo;
         _regRepo = regRepo;
         _icdRepo = icdRepo;
         _jenisOperasiRepo = jenisOperasiRepo;
         _dokterRepo = dokterRepo;
+
+        _opCaseRepo = opCaseRepo;
     }
 
     public Task<OkCreateOrderOpByRegResponse> Handle(
@@ -69,9 +75,12 @@ public class OkCreateOrderOpByRegHandler
         var dokter = LoadDokter(request.DokterDpjpId);
         var orderOp = CreateOrder(reg, icd, jenisOp, dokter, request);
 
+        var opCase = OpCaseModel.Create(orderOp);
+
         //  WRITE
         using var trans = TransHelper.NewScope();
         _orderOpRepo.SaveChanges(orderOp);
+        _opCaseRepo.SaveChanges(opCase);
         trans.Complete();
         return Task.FromResult(RespondSuccess(orderOp));
     }
@@ -108,7 +117,8 @@ public class OkCreateOrderOpByRegHandler
     {
         var orderOp = OrderOpModel.CreateByReg(reg, req.UserId);
 
-        orderOp.SetKlinis(icd, jenisOp, req.NamaOperasi);
+        orderOp.SetKlinis(icd, jenisOp, req.NamaOperasi,
+            req.UrgencyLevel.ToEnumOrDefault<UrgencyLevelEnum>(UrgencyLevelEnum.Elective));
 
         orderOp.OperationalRequest(
             dokter,

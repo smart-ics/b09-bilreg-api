@@ -53,7 +53,7 @@ public class OpCaseDal : IOpCaseDal
         dp.AddParam("@ScheduledDate", dto.ScheduledDate, SqlDbType.DateTime);
         dp.AddParam("@DischargeOpId", dto.DischargeOpId, SqlDbType.VarChar);
         dp.AddParam("@DischargedDate", dto.DischargedDate, SqlDbType.DateTime);
-        dp.AddParam("@OrderOpState", dto.OpState, SqlDbType.Int);
+        dp.AddParam("@OrderOpState", dto.OrderOpState, SqlDbType.Int);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -87,7 +87,7 @@ public class OpCaseDal : IOpCaseDal
         dp.AddParam("@ScheduledDate", dto.ScheduledDate, SqlDbType.DateTime);
         dp.AddParam("@DischargeOpId", dto.DischargeOpId, SqlDbType.VarChar);
         dp.AddParam("@DischargedDate", dto.DischargedDate, SqlDbType.DateTime);
-        dp.AddParam("@OrderOpState", dto.OpState, SqlDbType.Int);
+        dp.AddParam("@OrderOpState", dto.OrderOpState, SqlDbType.Int);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -174,7 +174,7 @@ public class OpCaseDalTest
             ScheduledDate: new DateTime(2024, 1, 2, 8, 0, 0),
             DischargeOpId: "F",
             DischargedDate: new DateTime(2024, 1, 3, 12, 0, 0),
-            OpState: 1,
+            OrderOpState: 1,
             PasienName: "G",
             TglLahir: "2000-01-01",
             Gender: "H"

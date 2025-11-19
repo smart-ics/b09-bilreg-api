@@ -14,7 +14,7 @@ public record OpCaseDto(
     DateTime ScheduledDate,
     string DischargeOpId,
     DateTime DischargedDate,
-    int OpState,
+    int OrderOpState,
     //
     string PasienName,
     string TglLahir,
@@ -30,7 +30,7 @@ public record OpCaseDto(
             model.ScheduleOp.ScheduledDate,
             model.DischargeOp.DischargeOpId,
             model.DischargeOp.DischargedDate,
-            (int)model.OpState,
+            (int)model.OrderOpState,
             model.Pasien.PasienName, tglLahir, model.Pasien.Gender);
         return result;
     }
@@ -44,8 +44,8 @@ public record OpCaseDto(
             new RegReff(RegId, PasienId, PasienName);
         var schedule = new ScheduleOpReff(ScheduleOpId, ScheduledDate);
         var discharge = new DischergeOpReff(DischargeOpId, DischargedDate);
-        var result = new OpCaseModel(OrderOpId, orderOp, pasien, reg, schedule, discharge,
-            (OrderOpStateEnum)OpState);
+        var result = new OpCaseModel(OrderOpId, orderOp, pasien, reg, UrgencyLevelEnum.Elective,
+            schedule, discharge, (OrderOpStateEnum)OrderOpState);
         return result;
     }
 }

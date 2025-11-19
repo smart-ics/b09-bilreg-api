@@ -143,7 +143,6 @@ public class OrderOpModel : IOrderOpKey
     }
     public OrderOpReff ToReff() => new OrderOpReff(OrderOpId, OrderDate, NamaOperasi);
     #endregion
-    
 }
 
 public record OrderOpStateHistType(int NoUrut, OrderOpStateEnum OrderOpState, DateTime StateTimestamp)
