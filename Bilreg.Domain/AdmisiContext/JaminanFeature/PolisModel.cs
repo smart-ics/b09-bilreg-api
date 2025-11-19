@@ -64,6 +64,8 @@ public class PolisModel : IPolisKey
         var cover = _listCover.FirstOrDefault(x => x.Pasien.PasienId == pasien.PasienId);
         if (cover == null)
             throw new ArgumentException("Cover not found");
+        if (cover.Status.StatusCode == "P")
+            throw new KeyNotFoundException($"Pasien ini adalah peserta utama di polis {cover.PolisId}");
         _listCover.Remove(cover);
     }
     #endregion

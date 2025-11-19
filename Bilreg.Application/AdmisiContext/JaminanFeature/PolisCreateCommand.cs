@@ -69,7 +69,6 @@ public class PolisCreateHandler : IRequestHandler<PolisCreateCommand, PolisCreat
                 onSome: x => x,
                 onNone: () => throw new KeyNotFoundException($"tipe jaminan {request.TipeJaminanId} not found")
             );
-
         var kelas = _kelasRepo.LoadEntity(KelasType.Key(request.KelasRanapId))
             .Match(
                 onSome: x => x,
@@ -84,26 +83,20 @@ public class PolisCreateHandler : IRequestHandler<PolisCreateCommand, PolisCreat
         }
 
         return Task.FromResult(new PolisCreateResponse(polis.PolisId));
-
-
     }
 
-    private PolisModel? CekPeserta(PasienModel pasien, ITipeJaminanKey tipeJaminanKey)
+    private PolisModel? CekPeserta(PasienModel pasien, ITipeJaminanKey key)
     {
         var peserta = _polisRepo.ListData(pasien)
-            .FirstOrDefault(x => x.TipeJaminan.TipeJaminanId == tipeJaminanKey.TipeJaminanId);
+            .FirstOrDefault(x => x.TipeJaminan.TipeJaminanId == key.TipeJaminanId);
 
         if (peserta is null)
             return null;
 
-        var polis = _polisRepo.LoadEntity(PolisModel.Key(peserta.PolisId))
-            .Match(
-                onSome: x => x,
-                onNone: () => null
-            );
-
-        return polis!;
+        return _polisRepo.LoadEntity(PolisModel.Key(peserta.PolisId))
+            .Match(x => x, () => null);
     }
+
 
 
     private PolisModel CreatePolis(PolisCreateCommand cmd, PasienModel pasien, KelasType kelas,

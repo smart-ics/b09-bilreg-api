@@ -31,9 +31,9 @@ public class PolisCoverDal : IPolisCoverDal
         using var bcp = new SqlBulkCopy(conn);
         
         conn.Open();
-        bcp.AddMap("fs_kd_polis", "fs_kd_polis");
-        bcp.AddMap("fs_mr", "fs_mr");
-        bcp.AddMap("fs_kd_status", "fs_kd_status");
+        bcp.AddMap("fs_kd_polis", "FS_KD_POLIS");
+        bcp.AddMap("fs_mr", "FS_MR");
+        bcp.AddMap("fs_kd_status", "FS_KD_STATUS");
 
         var fetched = listModel.ToList();
         bcp.BatchSize = fetched.Count;

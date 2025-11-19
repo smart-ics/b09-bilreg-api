@@ -1,9 +1,11 @@
 ﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Application.Helpers;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using CommunityToolkit.Diagnostics;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
 using System.Linq;
@@ -34,6 +36,12 @@ public class PraktekDokterPeriodeDokterListHandler : IRequestHandler<PraktekDokt
 
     public Task<IEnumerable<PraktekDokterPeriodeDokterListResponse>> Handle(PraktekDokterPeriodeDokterListQuery request, CancellationToken cancellationToken)
     {
+        // GUARD
+        Guard.IsNotNull(request);
+        Guard.IsNotEmpty(request.DokterId);
+        request.TglYmdAwal.IsValidDateYmd();
+        request.TglYmdAkhir.IsValidDateYmd();
+
         // BUILD
         var tglawal = request.TglYmdAwal.ToDate("yyyy-MM-dd");
         var tglAkhir = request.TglYmdAkhir.ToDate("yyyy-MM-dd");

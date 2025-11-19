@@ -1,10 +1,11 @@
-﻿using Ardalis.GuardClauses;
-using Bilreg.Application.AdmisiContext.AntrianFeature;
+﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Application.Helpers;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using CommunityToolkit.Diagnostics;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
 
@@ -35,7 +36,10 @@ public class PraktekDokterPeriodeGroupSpesialisListHandler :
     public Task<IEnumerable<PraktekDokterPeriodeGroupSpesialisListResponse>> Handle(PraktekDokterPeriodeGroupSpesialisListQuery request, CancellationToken cancellationToken)
     {
         // GUARD
-        Guard.Against.NullOrWhiteSpace(request.GroupSpesialisId, nameof(request.GroupSpesialisId));
+        Guard.IsNotNull(request);
+        Guard.IsNotEmpty(request.GroupSpesialisId);
+        request.TglYmdAwal.IsValidDateYmd();
+        request.TglYmdAkhir.IsValidDateYmd();
 
         // BUILD
         var tglawal = request.TglYmdAwal.ToDate("yyyy-MM-dd");
