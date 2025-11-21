@@ -67,6 +67,15 @@ public class OrderOpController : ControllerBase
         return Ok(new { data = fakeData });
     }
 
+    [HttpGet]
+    [Route("Dokter/List")]
+    public async Task<IActionResult> ListDokter()
+    {
+        var qry = new OkListDokterQuery();
+        var response = await _mediator.Send(qry);
+        return Ok(new JSendOk(response));
+    }
+
 }
 public record OrderOpResponse(
     string OrderId,

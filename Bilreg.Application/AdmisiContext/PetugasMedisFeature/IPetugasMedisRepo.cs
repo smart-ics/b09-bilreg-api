@@ -9,7 +9,8 @@ public interface IPetugasMedisRepo :
     ILoadEntity<PetugasMedisType, IPetugasMedisKey>,
     IDeleteEntity<IPetugasMedisKey>,
     IListData<PetugasMedisView, ISatTugasKey>,
-    IListData<PetugasMedisLayananView, ISatTugasKey, IInstalasiDkKey>
+    IListData<PetugasMedisLayananView, ISatTugasKey, IInstalasiDkKey>,
+    IListData<PetugasMedisType, ISatTugasKey, IEnumerable<IGroupSpesialisKey>>
 {
 }
 

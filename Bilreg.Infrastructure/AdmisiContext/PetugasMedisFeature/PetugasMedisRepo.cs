@@ -79,4 +79,38 @@ public class PetugasMedisRepo : IPetugasMedisRepo
 
         return listPtgMdsLyn;
     }
+
+    public IEnumerable<PetugasMedisType> ListData(ISatTugasKey satTugasKey, IEnumerable<IGroupSpesialisKey> listOfgroupSpesialKey)
+    {
+        var listDokter = _ptgMedisLayananDal.ListData(satTugasKey) ?? [];
+        var listPeg = _petugasMedisDal.ListData() ?? [];
+
+        var filterIds = new HashSet<string>(
+            listOfgroupSpesialKey.Select(f => f.GroupSpesialisId), StringComparer.OrdinalIgnoreCase);
+
+        var result = listDokter
+            .Where(x => filterIds.Contains(x.GroupSpesialisId) & 
+                        x.fb_utama == 1)
+            .Select(x =>
+            {
+                var ptgMedis = listPeg.FirstOrDefault(y => y.fs_kd_peg == x.fs_kd_peg)
+                    ?? new PetugasMedisDto("", "", "", "", "");
+                var listLyn = listDokter
+                    .Where(dokLyn => dokLyn.fs_kd_peg == x.fs_kd_peg);
+                var listSatTgs = _ptgMedisSatTugasDal.ListData(PetugasMedisType.Key(x.fs_kd_peg)) ?? [];
+                return new PetugasMedisType(
+                    x.fs_kd_peg,
+                    x.fs_nm_peg,
+                    ptgMedis.fs_nm_alias,
+                    new SmfType(ptgMedis.fs_kd_smf, ptgMedis.fs_nm_smf),
+                    listLyn.Select(lyn => new PetugasMedisLayananType(
+                        new LayananReff(lyn.fs_kd_layanan, lyn.fs_nm_layanan), Convert.ToBoolean(lyn.fb_utama))),
+                    new List<PetugasMedisSatTugasType>());
+                    //listSatTgs.Select(stg => new PetugasMedisSatTugasType(
+                    //    new SatTugasType(stg.fs_kd_sat_tugas, stg.fs_nm_sat_tugas, ptgMedis.)),
+                    //    Convert.ToBoolean(stg.fn_utama));
+            });
+
+        return result;
+    }
 }
