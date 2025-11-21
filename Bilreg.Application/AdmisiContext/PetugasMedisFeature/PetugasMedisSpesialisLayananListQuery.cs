@@ -37,6 +37,7 @@ public class PetugasMededisLayananHandler : IRequestHandler<PetugasMedisSpesiali
             throw new KeyNotFoundException("data not found");
 
         var result = listPtgMds
+                     .Where(x => x.fb_utama == 1)
                      .GroupBy(x => new { x.GroupSpesialisId, x.GroupSpesialisName })
                      .Select(g => new PetugasMedisSpesialisLayanListResponse
                      (
