@@ -46,7 +46,7 @@ public class PetugasMedisController : Controller
     [Route("groupSpesialis/list")]
     public async Task<IActionResult> ListGroupSpesialis()
     {
-        var query = new PpaSpesialisLayananListQuery();
+        var query = new PpaListDokterByGroupSpesialisQuery();
         var response = await _mediator.Send(query);
         return Ok(new JSendOk(response));
     }

@@ -4,32 +4,30 @@ using MediatR;
 
 namespace Bilreg.Application.AdmisiContext.PpaFeature.UseCases;
 
-public record PpaSpesialisLayananListQuery() : IRequest<IEnumerable<PpaSpesialisLayanListResponse>>;
+public record PpaListDokterByGroupSpesialisQuery() : IRequest<IEnumerable<PpaListDokterByGroupSpesialisResponseDokter>>;
 
-public record PpaSpesialisLayanListResponse(
+public record PpaListDokterByGroupSpesialisResponse(
     string GroupSpesialisId,
     string GroupSpesialisName, 
-    IEnumerable<PpaSpesialisLayananDokterListResponse> ListDokter);
+    IEnumerable<PpaListDokterByGroupSpesialisResponseDokter> ListDokter);
 
-public record PpaSpesialisLayananDokterListResponse(
+public record PpaListDokterByGroupSpesialisResponseDokter(
     string LayananId, 
     string LayananName,
     string DokterId,
     string DokterName);
 
-public class PpaLayananHandler : IRequestHandler<PpaSpesialisLayananListQuery, IEnumerable<PpaSpesialisLayanListResponse>>
+public class PpaLayananHandler : IRequestHandler<PpaListDokterByGroupSpesialisQuery, IEnumerable<PpaListDokterByGroupSpesialisResponseDokter>>
 {
-    private readonly IGetSatuanTugasMedisService _getSatTugasMedisSvc;
     private readonly IPpaRepo _ppaRepo;
-    public PpaLayananHandler(IGetSatuanTugasMedisService getSatTugasMedisSvc, 
-        IPpaRepo ppaRepo)
+    public PpaLayananHandler(IPpaRepo ppaRepo)
     {
-        _getSatTugasMedisSvc = getSatTugasMedisSvc;
         _ppaRepo = ppaRepo;
     }
 
-    public Task<IEnumerable<PpaSpesialisLayanListResponse>> Handle(PpaSpesialisLayananListQuery request, CancellationToken cancellationToken)
+    public Task<IEnumerable<PpaListDokterByGroupSpesialisResponseDokter>> Handle(PpaListDokterByGroupSpesialisQuery request, CancellationToken cancellationToken)
     {
+        var listDokter = _ppaRepo.ListData()
         // var satTgsMed = _getSatTugasMedisSvc.Execute();
         // var instalasiDK = InstalasiDkType.Key("2");
         //

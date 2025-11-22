@@ -15,7 +15,7 @@ public interface IPetugasMedisSatTugasDal :
     IInsertBulk<PpaSatTugasDto>,
     IDelete<IPpaKey>,
     IListData<PpaSatTugasDto, IPpaKey>,
-    IListData<PpaSatTugasDto, ISatTugasKey>
+    IListData<PpaSatTugasDto, IProfesiKey>
 {
 }
 
@@ -84,7 +84,7 @@ public class PpaSatTugasDal : IPetugasMedisSatTugasDal
         return conn.Query<PpaSatTugasDto>(sql, dp);
     }
 
-    public IEnumerable<PpaSatTugasDto> ListData(ISatTugasKey filter)
+    public IEnumerable<PpaSatTugasDto> ListData(IProfesiKey filter)
     {
         const string sql = """
             SELECT 
@@ -97,11 +97,11 @@ public class PpaSatTugasDal : IPetugasMedisSatTugasDal
                 LEFT JOIN td_sat_tugas bb ON aa.fs_kd_sat_tugas = bb.fs_kd_sat_tugas
                 LEFT JOIN BILRG_Profesi cc ON bb.fs_kd_profesi = cc.ProfesiId    
             WHERE 
-                aa.fs_kd_sat_tugas = @fs_kd_sat_tugas
+                bb.fs_kd_profesi = @fs_kd_profesi
             """;
 
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_sat_tugas", filter.SatTugasId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_profesi", filter.ProfesiId, SqlDbType.VarChar);
 
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Query<PpaSatTugasDto>(sql, dp);

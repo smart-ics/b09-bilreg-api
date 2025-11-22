@@ -34,13 +34,13 @@ public class PpaLayananListHandler : IRequestHandler<PpaLayananListQuery, IEnume
         var listPtgMds = _ppaRepo.ListData(satTgsMed, instalasiDK)?.ToList() ??
             throw new KeyNotFoundException("data not found");
 
-        var result = listPtgMds.Where(x => x.LayananId == request.LayananId)
-            .GroupBy(y => new { fs_kd_layanan = y.LayananId, y.fs_nm_layanan })
+        var result = listPtgMds.Where(x => x.Layanan.LayananId == request.LayananId)
+            .GroupBy(y => new { fs_kd_layanan = y.Layanan.LayananId, y.Layanan.LayananName })
             .Select(g => new PpaLayananListResponse
                 (
-                    g.Key.fs_kd_layanan, g.Key.fs_nm_layanan,
+                    g.Key.fs_kd_layanan, g.Key.LayananName,
                     g.Select(j => new PpaLayananDokterResponse(
-                        j.PpaId, j.fs_nm_peg))
+                        j.PpaId, j.PpaName))
                 ));
         return Task.FromResult(result);
     }

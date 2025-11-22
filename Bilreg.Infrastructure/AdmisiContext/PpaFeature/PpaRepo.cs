@@ -51,7 +51,7 @@ public class PpaRepo : IPpaRepo
         _ptgMedisLayananDal.Delete(key);
     }
 
-    public IEnumerable<PetugasMedisView> ListData(ISatTugasKey filter)
+    public IEnumerable<PpaView> ListData(IProfesiKey filter)
     {
         var pegSatTugasMeds = _ptgMedisSatTugasDal.ListData(filter) ?? [];
         var listPeg = _petugasMedisDal.ListData() ?? [];
@@ -61,55 +61,13 @@ public class PpaRepo : IPpaRepo
         join sat in pegSatTugasMeds
             on peg.fs_kd_peg equals sat.fs_kd_peg
         group sat by peg into g
-        select new PetugasMedisView(
+        select new PpaView(
             PetugasMedisId: g.Key.fs_kd_peg,
             PetugasMedisName: g.Key.fs_nm_peg,
             NamaSingkat: g.Key.fs_nm_alias,
             Smf: new SmfType(g.Key.fs_kd_smf, g.Key.fs_nm_smf),
             ListSatTugas: g.Select(x => x.ToModel())
         );
-
-        return result;
-    }
-
-    public IEnumerable<PpaLayananView> ListData(ISatTugasKey satTgsKey, IInstalasiDkKey instDkKey)
-    {
-        var listPtgMdsLyn = _ptgMedisLayananDal.ListData(satTgsKey, instDkKey)?.ToList()
-            ?? throw new ArgumentException("Petugas medis layanan not found");
-
-        return listPtgMdsLyn;
-    }
-
-    public IEnumerable<PpaType> ListData(ISatTugasKey satTugasKey, IEnumerable<IGroupSpesialisKey> listOfgroupSpesialKey)
-    {
-        var listDokter = _ptgMedisLayananDal.ListData(satTugasKey) ?? [];
-        var listPeg = _petugasMedisDal.ListData() ?? [];
-
-        var filterIds = new HashSet<string>(
-            listOfgroupSpesialKey.Select(f => f.GroupSpesialisId), StringComparer.OrdinalIgnoreCase);
-
-        var result = listDokter
-            .Where(x => filterIds.Contains(x.GroupSpesialisId) & 
-                        x.fb_utama == 1)
-            .Select(x =>
-            {
-                var ptgMedis = listPeg.FirstOrDefault(y => y.fs_kd_peg == x.PpaId)
-                    ?? new PpaDto("", "", "", "", "");
-                var listLyn = listDokter
-                    .Where(dokLyn => dokLyn.PpaId == x.PpaId);
-                var listSatTgs = _ptgMedisSatTugasDal.ListData(PpaType.Key(x.PpaId)) ?? [];
-                return new PpaType(
-                    x.PpaId,
-                    x.fs_nm_peg,
-                    ptgMedis.fs_nm_alias,
-                    new SmfType(ptgMedis.fs_kd_smf, ptgMedis.fs_nm_smf),
-                    listLyn.Select(lyn => new PpaLayananType(
-                        new LayananReff(lyn.LayananId, lyn.fs_nm_layanan), Convert.ToBoolean(lyn.fb_utama))),
-                    new List<PpaSatTugasType>());
-                    //listSatTgs.Select(stg => new PetugasMedisSatTugasType(
-                    //    new SatTugasType(stg.fs_kd_sat_tugas, stg.fs_nm_sat_tugas, ptgMedis.)),
-                    //    Convert.ToBoolean(stg.fn_utama));
-            });
 
         return result;
     }

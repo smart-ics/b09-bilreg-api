@@ -16,9 +16,3 @@ public class PpaLayananType
     public LayananReff Layanan { get; init; }
     public bool IsUtama { get; init; }
 }
-
-public record PpaLayananView(
-    string PpaId,
-    string PpaName,
-    LayananReff Layanan,
-    GroupSpesialisType GroupSpesialis);
