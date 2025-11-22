@@ -2,7 +2,7 @@
 using System.Data.SqlClient;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
-using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;
@@ -112,7 +112,7 @@ public class JadwalPraktekDal
         return conn.ReadSingle<JadwalPraktekDto>(sql, dp);
     }
 
-    public IEnumerable<JadwalPraktekDto> ListData(IPetugasMedisKey filter)
+    public IEnumerable<JadwalPraktekDto> ListData(IPpaKey filter)
     {
         const string sql = """
             SELECT
@@ -135,7 +135,7 @@ public class JadwalPraktekDal
             """;
 
         var dp = new DynamicParameters();
-        dp.AddParam("@DokterId", filter.PetugasMedisId, SqlDbType.VarChar);
+        dp.AddParam("@DokterId", filter.PpaId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         var result = conn.Read<JadwalPraktekDto>(sql, dp);

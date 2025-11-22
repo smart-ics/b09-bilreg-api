@@ -1,5 +1,5 @@
 ﻿using Bilreg.Domain.AdmisiContext.LayananFeature;
-using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Nuna.Lib.DataAccessHelper;
@@ -19,4 +19,4 @@ public record RegView(
     string RegId, string TglMasuk,
     PasienReff Pasien,
     LayananReff Layanan,
-    PetugasMedisReff Dokter);
+    PpaReff Dokter);

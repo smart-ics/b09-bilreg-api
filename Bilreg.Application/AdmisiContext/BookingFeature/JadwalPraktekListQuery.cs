@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+﻿using Bilreg.Domain.AdmisiContext.PpaFeature;
 using MediatR;
 
 namespace Bilreg.Application.AdmisiContext.BookingFeature;
@@ -28,7 +28,7 @@ public class JadwalPraktekListHandler : IRequestHandler<JadwalPraktekListQuery, 
 
     public Task<IEnumerable<JadwalPraktekListResponse>> Handle(JadwalPraktekListQuery request, CancellationToken cancellationToken)
     {
-        var dokter = PetugasMedisType.Key(request.DokterId);
+        var dokter = PpaType.Key(request.DokterId);
         var listJadwal = _jadwalPraktekRepo.ListData(dokter)?.ToList() ?? [];
 
         var result = listJadwal

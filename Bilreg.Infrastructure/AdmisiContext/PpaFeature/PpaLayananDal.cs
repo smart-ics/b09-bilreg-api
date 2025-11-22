@@ -1,7 +1,7 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
-using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
 using FluentAssertions;
@@ -10,27 +10,27 @@ using Nuna.Lib.DataAccessHelper;
 using Nuna.Lib.TransactionHelper;
 using Xunit;
 
-namespace Bilreg.Infrastructure.AdmisiContext.PetugasMedisFeature;
+namespace Bilreg.Infrastructure.AdmisiContext.PpaFeature;
 
-public interface IPetugasMedisLayananDal : 
-    IInsertBulk<PetugasMedisLayananDto>,
-    IDelete<IPetugasMedisKey>,
-    IListData<PetugasMedisLayananDto, IPetugasMedisKey>,
-    IListData<PetugasMedisLayananView, ISatTugasKey, IInstalasiDkKey>,
-    IListData<PetugasMedisLayananView, ISatTugasKey>
+public interface IPpaLayananDal : 
+    IInsertBulk<PpaLayananDto>,
+    IDelete<IPpaKey>,
+    IListData<PpaLayananDto, IPpaKey>,
+    IListData<PpaLayananView, ISatTugasKey, IInstalasiDkKey>,
+    IListData<PpaLayananView, ISatTugasKey>
 {
 }
 
-public class PetugasMedisLayananDal : IPetugasMedisLayananDal
+public class PpaLayananDal : IPpaLayananDal
 {
     private readonly DatabaseOptions _opt;
 
-    public PetugasMedisLayananDal(IOptions<DatabaseOptions> opt)
+    public PpaLayananDal(IOptions<DatabaseOptions> opt)
     {
         _opt = opt.Value;
     }
 
-    public void Insert(IEnumerable<PetugasMedisLayananDto> listModel)
+    public void Insert(IEnumerable<PpaLayananDto> listModel)
     {
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         using var bcp = new SqlBulkCopy(conn);
@@ -46,7 +46,7 @@ public class PetugasMedisLayananDal : IPetugasMedisLayananDal
         bcp.WriteToServer(fetched.AsDataTable());
     }
 
-    public void Delete(IPetugasMedisKey key)
+    public void Delete(IPpaKey key)
     {
         const string sql = """
             DELETE FROM 
@@ -56,13 +56,13 @@ public class PetugasMedisLayananDal : IPetugasMedisLayananDal
             """;
         
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_peg", key.PetugasMedisId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_peg", key.PpaId, SqlDbType.VarChar);
         
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
 
-    public IEnumerable<PetugasMedisLayananDto> ListData(IPetugasMedisKey filter)
+    public IEnumerable<PpaLayananDto> ListData(IPpaKey filter)
     {
         const string sql = """
             SELECT 
@@ -76,13 +76,13 @@ public class PetugasMedisLayananDal : IPetugasMedisLayananDal
             """;
         
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_peg", filter.PetugasMedisId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_peg", filter.PpaId, SqlDbType.VarChar);
         
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Query<PetugasMedisLayananDto>(sql, dp);
+        return conn.Query<PpaLayananDto>(sql, dp);
     }
 
-    public IEnumerable<PetugasMedisLayananView> ListData(ISatTugasKey satTgsKey, IInstalasiDkKey instalasiDkKey)
+    public IEnumerable<PpaLayananView> ListData(ISatTugasKey satTgsKey, IInstalasiDkKey instalasiDkKey)
     {
         const string sql = """
             SELECT 
@@ -108,10 +108,10 @@ public class PetugasMedisLayananDal : IPetugasMedisLayananDal
         dp.AddParam("@InstalasiDkId", instalasiDkKey.InstalasiDkId, SqlDbType.VarChar);
 
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Query<PetugasMedisLayananView>(sql, dp);
+        return conn.Query<PpaLayananView>(sql, dp);
     }
 
-    public IEnumerable<PetugasMedisLayananView> ListData(ISatTugasKey filter)
+    public IEnumerable<PpaLayananView> ListData(ISatTugasKey filter)
     {
         const string sql = @"
             SELECT
@@ -136,39 +136,39 @@ public class PetugasMedisLayananDal : IPetugasMedisLayananDal
         dp.AddParam("@SatTugasMedisId", filter.SatTugasId, SqlDbType.VarChar);
 
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Query<PetugasMedisLayananView>(sql, dp);
+        return conn.Query<PpaLayananView>(sql, dp);
     }
 }
 
 
 
-public class PetugasMedisLayananTest
+public class PpaLayananTest
 {
-    private readonly PetugasMedisLayananDal _sut = new(ConnStringHelper.GetTestEnv());
+    private readonly PpaLayananDal _sut = new(ConnStringHelper.GetTestEnv());
 
-    private static PetugasMedisLayananDto Faker()
-        => new PetugasMedisLayananDto("A", "B", 1, "C");
+    private static PpaLayananDto Faker()
+        => new PpaLayananDto("A", "B", 1, "C");
     
     [Fact]
     public void InsertTest()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Insert(new List<PetugasMedisLayananDto>{Faker()});
+        _sut.Insert(new List<PpaLayananDto>{Faker()});
     }
     
     [Fact]
     public void DeleteTest()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Delete(PetugasMedisType.Key("A"));
+        _sut.Delete(PpaType.Key("A"));
     }
 
     [Fact]
     public void ListDataTest()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Insert(new List<PetugasMedisLayananDto>{Faker()});
-        var actual = _sut.ListData(PetugasMedisType.Key("A"));
+        _sut.Insert(new List<PpaLayananDto>{Faker()});
+        var actual = _sut.ListData(PpaType.Key("A"));
         actual.Should().ContainEquivalentOf(Faker());
     }
 }

@@ -1,23 +1,24 @@
 ﻿using Ardalis.GuardClauses;
 
-namespace Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+namespace Bilreg.Domain.AdmisiContext.PpaFeature;
 
 public record SatTugasType : ISatTugasKey
 {
     #region CREATION
-    public SatTugasType(string satTugasId, string satTugasName, bool isMedis)
+    public SatTugasType(string satTugasId, string satTugasName, ProfesiType profesi)
     {
         SatTugasId = satTugasId;
         SatTugasName = satTugasName;
-        IsMedis = isMedis;
+        Profesi = profesi;
     }
-    public static SatTugasType Create(string satTugasId, string satTugasName, bool isMedis)
+    public static SatTugasType Create(string satTugasId, string satTugasName, ProfesiType profesi)
     {
         Guard.Against.NullOrWhiteSpace(satTugasId);
         Guard.Against.NullOrWhiteSpace(satTugasName);
-        return new SatTugasType(satTugasId, satTugasName, isMedis);
+        Guard.Against.Null(profesi);
+        return new SatTugasType(satTugasId, satTugasName, profesi);
     }
-    public static SatTugasType Default => new("-", "-", false);
+    public static SatTugasType Default => new("-", "-", ProfesiType.Default);
     public static ISatTugasKey Key(string id) => Default with { SatTugasId = id };
     #endregion
     
@@ -25,17 +26,11 @@ public record SatTugasType : ISatTugasKey
     public string SatTugasId { get; init; }
     public string SatTugasName { get; init; }
     public bool IsMedis { get; init; }
+    public ProfesiType Profesi { get; init; }
     #endregion
-    
-    #region BEHAVIOUR
-    public SatTugasReff ToReff() => new(SatTugasId, SatTugasName);
-    #endregion
-    
 }
 
 public interface ISatTugasKey
 {
     string SatTugasId {get;}
 }
-
-public record SatTugasReff(string SatTugasId, string SatTugasName);

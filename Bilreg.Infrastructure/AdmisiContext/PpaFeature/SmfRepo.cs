@@ -1,11 +1,11 @@
-﻿using Bilreg.Application.AdmisiContext.PetugasMedisFeature;
-using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+﻿using Bilreg.Application.AdmisiContext.PpaFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using FluentAssertions;
 using Moq;
 using Nuna.Lib.PatternHelper;
 using Xunit;
 
-namespace Bilreg.Infrastructure.AdmisiContext.PetugasMedisFeature;
+namespace Bilreg.Infrastructure.AdmisiContext.PpaFeature;
 
 public class SmfRepo : ISmfRepo
 {

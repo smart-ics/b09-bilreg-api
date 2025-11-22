@@ -1,7 +1,7 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
-using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.Helpers.CommonValueObjects;
 using Bilreg.Domain.PasienContext.PasienFeature;
@@ -13,7 +13,7 @@ public class BookingModel : IBookingKey
     #region CREATION
     public BookingModel(string bookindId, DateTime bookingDate, 
         PersonInfoType person, string pasienId, RegReff reg, DateOnly tglBerobat, TimeOnly jamPraktek,
-        LayananReff layanan, PetugasMedisReff dokter,  int noAntrian,
+        LayananReff layanan, PpaReff dokter,  int noAntrian,
         AuditTrailType auditTrail)
     {
         BookingId = bookindId;
@@ -31,12 +31,12 @@ public class BookingModel : IBookingKey
 
     public static BookingModel Default => new("-", new DateTime(3000,1,1),
         PersonInfoType.Default, "-", RegModel.Default.ToReff(), DateOnly.MinValue, TimeOnly.MinValue, 
-        LayananType.Default.ToReff(), PetugasMedisType.Default.ToReff(), 0, 
+        LayananType.Default.ToReff(), PpaType.Default.ToReff(), 0, 
         AuditTrailType.Default);
     
     public static IBookingKey Key(string id) => new BookingModel(id, new DateTime(3000,1,1), 
         PersonInfoType.Default, "-", RegModel.Default.ToReff(), DateOnly.MinValue, TimeOnly.MinValue, 
-        LayananType.Default.ToReff(), PetugasMedisType.Default.ToReff(), 0, 
+        LayananType.Default.ToReff(), PpaType.Default.ToReff(), 0, 
         AuditTrailType.Default);
     
     public static BookingModel Create(PersonInfoType person, DateOnly tglBerobat, JadwalPraktekType jadwal)
@@ -66,7 +66,7 @@ public class BookingModel : IBookingKey
     public DateOnly TglBerobat { get; init; }
     public TimeOnly JamPraktek { get; init; }
     public LayananReff Layanan { get; init; }
-    public PetugasMedisReff Dokter { get; init; }
+    public PpaReff Dokter { get; init; }
     public int NoAntrian { get; private set; }
     #endregion
 

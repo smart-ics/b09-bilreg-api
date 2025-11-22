@@ -1,6 +1,6 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
-using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
 using FluentAssertions;
@@ -9,119 +9,119 @@ using Nuna.Lib.DataAccessHelper;
 using Nuna.Lib.TransactionHelper;
 using Xunit;
 
-namespace Bilreg.Infrastructure.AdmisiContext.PetugasMedisFeature;
+namespace Bilreg.Infrastructure.AdmisiContext.PpaFeature;
 
-public interface ISmfDal :
-    IInsert<SmfDto>,
-    IUpdate<SmfDto>,
-    IDelete<ISmfKey>,
-    IGetData<SmfDto, ISmfKey>,
-    IListData<SmfDto>
+public interface IProfesiDal :
+    IInsert<ProfesiType>,
+    IUpdate<ProfesiType>,
+    IDelete<IProfesiKey>,
+    IGetData<ProfesiType, IProfesiKey>,
+    IListData<ProfesiType>
 {
 }
 
-public class SmfDal : ISmfDal
+public class ProfesiDal : IProfesiDal
 {
     private readonly DatabaseOptions _opt;
 
-    public SmfDal(IOptions<DatabaseOptions> opt)
+    public ProfesiDal(IOptions<DatabaseOptions> opt)
     {
         _opt = opt.Value;
     }
     
-    public void Insert(SmfDto dto)
+    public void Insert(ProfesiType dto)
     {
         const string sql = """
-            INSERT INTO ta_smf(
-                fs_kd_smf, fs_nm_smf)
+            INSERT INTO BILRG_Profesi(
+                ProfesiId, ProfesiName)
             VALUES( 
-                @fs_kd_smf, @fs_nm_smf)
+                @ProfesiId, @ProfesiName)
             """;
 
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_smf", dto.fs_kd_smf, SqlDbType.VarChar);
-        dp.AddParam("@fs_nm_smf", dto.fs_nm_smf, SqlDbType.VarChar);
+        dp.AddParam("@ProfesiId", dto.ProfesiId, SqlDbType.VarChar);
+        dp.AddParam("@ProfesiName", dto.ProfesiName, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
 
-    public void Update(SmfDto dto)
+    public void Update(ProfesiType dto)
     {
         const string sql = @"
            UPDATE 
-               ta_smf
+               BILRG_Profesi
            SET
-               fs_nm_smf = @fs_nm_smf
+               ProfesiName = @ProfesiName
            WHERE
-               fs_kd_smf = @fs_kd_smf";
+               ProfesiId = @ProfesiId";
 
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_smf", dto.fs_kd_smf, SqlDbType.VarChar);
-        dp.AddParam("@fs_nm_smf", dto.fs_nm_smf, SqlDbType.VarChar);
+        dp.AddParam("@ProfesiId", dto.ProfesiId, SqlDbType.VarChar);
+        dp.AddParam("@ProfesiName", dto.ProfesiName, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
 
-    public void Delete(ISmfKey key)
+    public void Delete(IProfesiKey key)
     {
         const string sql = @"
            DELETE FROM 
-                ta_smf
+                BILRG_Profesi
            WHERE
-               fs_kd_smf = @fs_kd_smf";
+               ProfesiId = @ProfesiId";
         
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_smf", key.SmfId, SqlDbType.VarChar);
+        dp.AddParam("@ProfesiId", key.ProfesiId, SqlDbType.VarChar);
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
 
-    public SmfDto GetData(ISmfKey key)
+    public ProfesiType GetData(IProfesiKey key)
     {
         const string sql = @"
            SELECT
-               fs_kd_smf,
-               fs_nm_smf
+               ProfesiId,
+               ProfesiName
            FROM 
-               ta_smf
+               BILRG_Profesi
            WHERE
-               fs_kd_smf = @fs_kd_smf";
+               ProfesiId = @ProfesiId";
         
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_smf", key.SmfId, SqlDbType.VarChar);
+        dp.AddParam("@ProfesiId", key.ProfesiId, SqlDbType.VarChar);
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        var result = conn.ReadSingle<SmfDto>(sql, dp);
+        var result = conn.ReadSingle<ProfesiType>(sql, dp);
         return result;
     }
 
-    public IEnumerable<SmfDto> ListData()
+    public IEnumerable<ProfesiType> ListData()
     {
         const string sql = """
             SELECT
-                fs_kd_smf,
-                fs_nm_smf
+                ProfesiId,
+                ProfesiName
             FROM 
-                ta_smf
+                BILRG_Profesi
             """;
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<SmfDto>(sql);
+        return conn.Read<ProfesiType>(sql);
     }
 }
 
-public class SmfDalTest
+public class ProfesiDalTest
 {
-    private readonly SmfDal _sut = new(ConnStringHelper.GetTestEnv());
+    private readonly ProfesiDal _sut = new(ConnStringHelper.GetTestEnv());
 
-    private static SmfDto Faker()
-        => new SmfDto("A", "B");
+    private static ProfesiType Faker()
+        => ProfesiType.Create("A", "B");
 
-    private static ISmfKey FakerKey()
-        => SmfType.Default with { SmfId = "A" };
+    private static IProfesiKey FakerKey()
+        => ProfesiType.Default with { ProfesiId = "A" };
 
     [Fact]
     public void InsertTest()

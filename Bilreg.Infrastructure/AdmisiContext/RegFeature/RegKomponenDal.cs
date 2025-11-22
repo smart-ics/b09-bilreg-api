@@ -1,7 +1,7 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
 using System.Runtime.InteropServices.ComTypes;
-using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BillContext.TindakanFeature;
 using Bilreg.Infrastructure.Helpers;
@@ -43,7 +43,7 @@ public record RegKomponenDto(
     {
         var model = new RegKomponenType(
             new KomponenReff(fs_kd_detil_tarif, fs_nm_detil_tarif),
-            new PetugasMedisReff(fs_kd_petugas_medis, fs_nm_petugas_medis),
+            new PpaReff(fs_kd_petugas_medis, fs_nm_petugas_medis),
             fn_tarif, fn_diskon);
         return model;
     }

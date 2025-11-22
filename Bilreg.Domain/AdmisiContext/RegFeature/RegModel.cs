@@ -1,6 +1,6 @@
 ﻿using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
-using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RujukanFeature;
 using Bilreg.Domain.BillContext.BedUsageFeature;
 using Bilreg.Domain.BillContext.TindakanFeature;
@@ -19,7 +19,7 @@ public class RegModel : IRegKey
         AuditInfoType regMasukAudit, AuditInfoType regKeluarAudit, AuditInfoType regCancelOutAudit,
         JenisRegEnum jenisReg, PasienReff pasien, TipeJaminanReff tipeJaminan, 
         PolisReff polis, KelasReff kelas, CaraMasukDkType caraMasukDk, RujukanReff rujukan, 
-        PetugasMedisReff dokter, LayananReff layanan, KarcisReff karcis, 
+        PpaReff dokter, LayananReff layanan, KarcisReff karcis, 
         IEnumerable<RegKomponenType> listKomponen)
     {
         RegId = regId;
@@ -44,14 +44,14 @@ public class RegModel : IRegKey
         AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default,
         JenisRegEnum.RegJalan, PasienModel.Default.ToReff(), TipeJaminanType.Default.ToReff(),
         PolisModel.Default.ToReff(), KelasType.Default.ToReff(), CaraMasukDkType.Default,
-        RujukanType.Default.ToReff(), PetugasMedisType.Default.ToReff(), LayananType.Default.ToReff(),
+        RujukanType.Default.ToReff(), PpaType.Default.ToReff(), LayananType.Default.ToReff(),
         KarcisType.Default.ToReff(), []);
     
     public static IRegKey Key(string id) => new RegModel(id, new DateOnly(3000, 1, 1),
         AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default,
         JenisRegEnum.RegJalan, PasienModel.Default.ToReff(), TipeJaminanType.Default.ToReff(),
         PolisModel.Default.ToReff(), KelasType.Default.ToReff(), CaraMasukDkType.Default,
-        RujukanType.Default.ToReff(), PetugasMedisType.Default.ToReff(), LayananType.Default.ToReff(),
+        RujukanType.Default.ToReff(), PpaType.Default.ToReff(), LayananType.Default.ToReff(),
         KarcisType.Default.ToReff(), []);
     #endregion
 
@@ -75,7 +75,7 @@ public class RegModel : IRegKey
     public CaraMasukDkType CaraMasukDk { get; private set; }
     public RujukanReff Rujukan { get; private set; }
     //      ke mana (catat tujuan utama di header)
-    public PetugasMedisReff Dokter { get; private set; }
+    public PpaReff Dokter { get; private set; }
     public LayananReff Layanan { get; private set; }
     public KarcisReff Karcis { get; private set; }
     //
@@ -122,7 +122,7 @@ public class RegModel : IRegKey
         Rujukan = rujukan.ToReff();
     }
     
-    public void AssignVisitTo(PetugasMedisType dokter, LayananType layanan, KarcisType karcis)
+    public void AssignVisitTo(PpaType dokter, LayananType layanan, KarcisType karcis)
     {
         if (karcis.ListLayanan.All(x => x.LayananId != layanan.LayananId))
             throw new ArgumentException($"Layanan {layanan.LayananName} tidak terdaftar di karcis {karcis.KarcisName}");
@@ -141,7 +141,7 @@ public class RegModel : IRegKey
 
 public record RegKomponenType(
     KomponenReff Komponen,
-    PetugasMedisReff PetugasMedis,
+    PpaReff PetugasMedis,
     decimal Nilai,
     decimal Diskon);
 

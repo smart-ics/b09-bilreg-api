@@ -1,39 +1,39 @@
-﻿using Bilreg.Application.AdmisiContext.PetugasMedisFeature;
+﻿using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
-using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Nuna.Lib.PatternHelper;
 
-namespace Bilreg.Infrastructure.AdmisiContext.PetugasMedisFeature;
+namespace Bilreg.Infrastructure.AdmisiContext.PpaFeature;
 
-public class PetugasMedisRepo : IPetugasMedisRepo
+public class PpaRepo : IPpaRepo
 {
-    private readonly IPetugasMedisDal _petugasMedisDal;
+    private readonly IPpaDal _petugasMedisDal;
     private readonly IPetugasMedisSatTugasDal _ptgMedisSatTugasDal;
-    private readonly IPetugasMedisLayananDal _ptgMedisLayananDal;
+    private readonly IPpaLayananDal _ptgMedisLayananDal;
 
-    public PetugasMedisRepo(IPetugasMedisDal petugasMedisDal, 
+    public PpaRepo(IPpaDal petugasMedisDal, 
         IPetugasMedisSatTugasDal ptgMedisSatTugasDal, 
-        IPetugasMedisLayananDal ptgMedisLayananDal)
+        IPpaLayananDal ptgMedisLayananDal)
     {
         _petugasMedisDal = petugasMedisDal;
         _ptgMedisSatTugasDal = ptgMedisSatTugasDal;
         _ptgMedisLayananDal = ptgMedisLayananDal;
     }
 
-    public void SaveChanges(PetugasMedisType model)
+    public void SaveChanges(PpaType model)
     {
         LoadEntity(model)
             .Match(
-                onSome: _ => _petugasMedisDal.Update(PetugasMedisDto.FromModel(model)),
-                onNone: () => _petugasMedisDal.Insert(PetugasMedisDto.FromModel(model))
+                onSome: _ => _petugasMedisDal.Update(PpaDto.FromModel(model)),
+                onNone: () => _petugasMedisDal.Insert(PpaDto.FromModel(model))
             );
         _ptgMedisSatTugasDal.Delete(model);
         _ptgMedisLayananDal.Delete(model);
-        _ptgMedisSatTugasDal.Insert(model.ListSatTugas.Select(x => PetugasMedisSatTugasDto.Create(model, x)));
-        _ptgMedisLayananDal.Insert(model.ListLayanan.Select(x => PetugasMedisLayananDto.Create(model, x)));
+        _ptgMedisSatTugasDal.Insert(model.ListSatTugas.Select(x => PpaSatTugasDto.Create(model, x)));
+        _ptgMedisLayananDal.Insert(model.ListLayanan.Select(x => PpaLayananDto.Create(model, x)));
     }
 
-    public MayBe<PetugasMedisType> LoadEntity(IPetugasMedisKey key)
+    public MayBe<PpaType> LoadEntity(IPpaKey key)
     {
         var hdr = _petugasMedisDal.GetData(key);
         var listSatTgs = _ptgMedisSatTugasDal.ListData(key)?.ToList() ?? [];
@@ -44,7 +44,7 @@ public class PetugasMedisRepo : IPetugasMedisRepo
         return MayBe.From(model!);
     }
 
-    public void DeleteEntity(IPetugasMedisKey key)
+    public void DeleteEntity(IPpaKey key)
     {
         _petugasMedisDal.Delete(key);
         _ptgMedisSatTugasDal.Delete(key);
@@ -72,7 +72,7 @@ public class PetugasMedisRepo : IPetugasMedisRepo
         return result;
     }
 
-    public IEnumerable<PetugasMedisLayananView> ListData(ISatTugasKey satTgsKey, IInstalasiDkKey instDkKey)
+    public IEnumerable<PpaLayananView> ListData(ISatTugasKey satTgsKey, IInstalasiDkKey instDkKey)
     {
         var listPtgMdsLyn = _ptgMedisLayananDal.ListData(satTgsKey, instDkKey)?.ToList()
             ?? throw new ArgumentException("Petugas medis layanan not found");
@@ -80,7 +80,7 @@ public class PetugasMedisRepo : IPetugasMedisRepo
         return listPtgMdsLyn;
     }
 
-    public IEnumerable<PetugasMedisType> ListData(ISatTugasKey satTugasKey, IEnumerable<IGroupSpesialisKey> listOfgroupSpesialKey)
+    public IEnumerable<PpaType> ListData(ISatTugasKey satTugasKey, IEnumerable<IGroupSpesialisKey> listOfgroupSpesialKey)
     {
         var listDokter = _ptgMedisLayananDal.ListData(satTugasKey) ?? [];
         var listPeg = _petugasMedisDal.ListData() ?? [];
@@ -93,19 +93,19 @@ public class PetugasMedisRepo : IPetugasMedisRepo
                         x.fb_utama == 1)
             .Select(x =>
             {
-                var ptgMedis = listPeg.FirstOrDefault(y => y.fs_kd_peg == x.fs_kd_peg)
-                    ?? new PetugasMedisDto("", "", "", "", "");
+                var ptgMedis = listPeg.FirstOrDefault(y => y.fs_kd_peg == x.PpaId)
+                    ?? new PpaDto("", "", "", "", "");
                 var listLyn = listDokter
-                    .Where(dokLyn => dokLyn.fs_kd_peg == x.fs_kd_peg);
-                var listSatTgs = _ptgMedisSatTugasDal.ListData(PetugasMedisType.Key(x.fs_kd_peg)) ?? [];
-                return new PetugasMedisType(
-                    x.fs_kd_peg,
+                    .Where(dokLyn => dokLyn.PpaId == x.PpaId);
+                var listSatTgs = _ptgMedisSatTugasDal.ListData(PpaType.Key(x.PpaId)) ?? [];
+                return new PpaType(
+                    x.PpaId,
                     x.fs_nm_peg,
                     ptgMedis.fs_nm_alias,
                     new SmfType(ptgMedis.fs_kd_smf, ptgMedis.fs_nm_smf),
-                    listLyn.Select(lyn => new PetugasMedisLayananType(
-                        new LayananReff(lyn.fs_kd_layanan, lyn.fs_nm_layanan), Convert.ToBoolean(lyn.fb_utama))),
-                    new List<PetugasMedisSatTugasType>());
+                    listLyn.Select(lyn => new PpaLayananType(
+                        new LayananReff(lyn.LayananId, lyn.fs_nm_layanan), Convert.ToBoolean(lyn.fb_utama))),
+                    new List<PpaSatTugasType>());
                     //listSatTgs.Select(stg => new PetugasMedisSatTugasType(
                     //    new SatTugasType(stg.fs_kd_sat_tugas, stg.fs_nm_sat_tugas, ptgMedis.)),
                     //    Convert.ToBoolean(stg.fn_utama));

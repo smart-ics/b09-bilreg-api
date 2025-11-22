@@ -1,6 +1,6 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
-using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
 using FluentAssertions;
@@ -9,27 +9,27 @@ using Nuna.Lib.DataAccessHelper;
 using Nuna.Lib.TransactionHelper;
 using Xunit;
 
-namespace Bilreg.Infrastructure.AdmisiContext.PetugasMedisFeature;
+namespace Bilreg.Infrastructure.AdmisiContext.PpaFeature;
 
-public interface IPetugasMedisDal :
-    IInsert<PetugasMedisDto>,
-    IUpdate<PetugasMedisDto>,
-    IDelete<IPetugasMedisKey>,
-    IGetData<PetugasMedisDto, IPetugasMedisKey>,
-    IListData<PetugasMedisDto>
+public interface IPpaDal :
+    IInsert<PpaDto>,
+    IUpdate<PpaDto>,
+    IDelete<IPpaKey>,
+    IGetData<PpaDto, IPpaKey>,
+    IListData<PpaDto>
 {
 }
 
-public class PetugasMedisDal : IPetugasMedisDal
+public class PpaDal : IPpaDal
 {
     private readonly DatabaseOptions _opt;
 
-    public PetugasMedisDal(IOptions<DatabaseOptions> opt)
+    public PpaDal(IOptions<DatabaseOptions> opt)
     {
         _opt = opt.Value;
     }
 
-    public void Insert(PetugasMedisDto dto)
+    public void Insert(PpaDto dto)
     {
         const string sql = """
             INSERT INTO td_peg( fs_kd_peg, fs_nm_peg, fs_nm_alias, fs_kd_smf)
@@ -46,7 +46,7 @@ public class PetugasMedisDal : IPetugasMedisDal
         conn.Execute(sql, dp);
     }
 
-    public void Update(PetugasMedisDto dto)
+    public void Update(PpaDto dto)
     {
         const string sql = """
             UPDATE 
@@ -69,7 +69,7 @@ public class PetugasMedisDal : IPetugasMedisDal
         conn.Execute(sql, dp);
     }
 
-    public void Delete(IPetugasMedisKey key)
+    public void Delete(IPpaKey key)
     {
         const string sql = """
             DELETE FROM 
@@ -79,13 +79,13 @@ public class PetugasMedisDal : IPetugasMedisDal
             """;
         
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_peg", key.PetugasMedisId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_peg", key.PpaId, SqlDbType.VarChar);
         
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
 
-    public PetugasMedisDto GetData(IPetugasMedisKey key)
+    public PpaDto GetData(IPpaKey key)
     {
         const string sql = """
             SELECT 
@@ -99,13 +99,13 @@ public class PetugasMedisDal : IPetugasMedisDal
             """;
 
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_peg", key.PetugasMedisId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_peg", key.PpaId, SqlDbType.VarChar);
         
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.ReadSingle<PetugasMedisDto>(sql, dp);
+        return conn.ReadSingle<PpaDto>(sql, dp);
     }
 
-    public IEnumerable<PetugasMedisDto> ListData()
+    public IEnumerable<PpaDto> ListData()
     {
         const string sql = """
             SELECT 
@@ -121,19 +121,19 @@ public class PetugasMedisDal : IPetugasMedisDal
             """;
         
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Query<PetugasMedisDto>(sql).ToList();
+        return conn.Query<PpaDto>(sql).ToList();
     }
 }
 
-public class PetugasMedisDalTest
+public class PpaDalTest
 {
-    private readonly PetugasMedisDal _sut = new(ConnStringHelper.GetTestEnv());
+    private readonly PpaDal _sut = new(ConnStringHelper.GetTestEnv());
 
-    private static PetugasMedisDto Faker()
-        => new PetugasMedisDto("A", "B", "C", "D", "E");
+    private static PpaDto Faker()
+        => new PpaDto("A", "B", "C", "D", "E");
 
-    private static IPetugasMedisKey FakerKey()
-        => PetugasMedisType.Default with { PetugasMedisId = "A" };
+    private static IPpaKey FakerKey()
+        => PpaType.Default with { PpaId = "A" };
 
     [Fact]
     public void InsertTest()

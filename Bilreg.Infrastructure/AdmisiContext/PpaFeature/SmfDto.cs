@@ -1,6 +1,6 @@
-﻿using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+﻿using Bilreg.Domain.AdmisiContext.PpaFeature;
 
-namespace Bilreg.Infrastructure.AdmisiContext.PetugasMedisFeature;
+namespace Bilreg.Infrastructure.AdmisiContext.PpaFeature;
 
 // ReSharper disable InconsistentNaming
 public record SmfDto(string fs_kd_smf, string fs_nm_smf)

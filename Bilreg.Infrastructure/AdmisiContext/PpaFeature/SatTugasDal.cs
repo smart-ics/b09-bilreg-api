@@ -1,7 +1,6 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
-using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
-using Bilreg.Infrastructure.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
 using FluentAssertions;
@@ -9,6 +8,8 @@ using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
 using Nuna.Lib.TransactionHelper;
 using Xunit;
+
+namespace Bilreg.Infrastructure.AdmisiContext.PpaFeature;
 
 public interface ISatTugasDal :
     IInsert<SatTugasDto>,
@@ -31,16 +32,16 @@ public class SatTugasDal : ISatTugasDal
     public void Insert(SatTugasDto dto)
     {
         const string sql = """
-            INSERT INTO td_sat_tugas(
-                fs_kd_sat_tugas, fs_nm_sat_tugas, fb_sat_medis)
-            VALUES( 
-                @fs_kd_sat_tugas, @fs_nm_sat_tugas, @fb_sat_medis)
-            """;
+                           INSERT INTO td_sat_tugas(
+                               fs_kd_sat_tugas, fs_nm_sat_tugas, fs_kd_profesi)
+                           VALUES( 
+                               @fs_kd_sat_tugas, @fs_nm_sat_tugas, @fs_kd_profesi)
+                           """;
 
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_sat_tugas", dto.fs_kd_sat_tugas, SqlDbType.VarChar);
         dp.AddParam("@fs_nm_sat_tugas", dto.fs_nm_sat_tugas, SqlDbType.VarChar);
-        dp.AddParam("@fb_sat_medis", dto.fb_sat_medis, SqlDbType.Bit);
+        dp.AddParam("@fs_kd_profesi", dto.fs_kd_profesi, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -53,14 +54,14 @@ public class SatTugasDal : ISatTugasDal
                td_sat_tugas
            SET
                fs_nm_sat_tugas = @fs_nm_sat_tugas,
-               fb_sat_medis = @fb_sat_medis
+               fs_kd_profesi = @fs_kd_profesi
            WHERE
                fs_kd_sat_tugas = @fs_kd_sat_tugas";
 
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_sat_tugas", dto.fs_kd_sat_tugas, SqlDbType.VarChar);
         dp.AddParam("@fs_nm_sat_tugas", dto.fs_nm_sat_tugas, SqlDbType.VarChar);
-        dp.AddParam("@fb_sat_medis", dto.fb_sat_medis, SqlDbType.Bit);
+        dp.AddParam("@fs_kd_profesi", dto.fs_kd_profesi, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -83,15 +84,16 @@ public class SatTugasDal : ISatTugasDal
 
     public SatTugasDto GetData(ISatTugasKey key)
     {
-        const string sql = @"
-           SELECT
-               fs_kd_sat_tugas,
-               fs_nm_sat_tugas,
-               fb_sat_medis
-           FROM 
-               td_sat_tugas
-           WHERE
-               fs_kd_sat_tugas = @fs_kd_sat_tugas";
+        const string sql = """
+                           SELECT
+                               aa.fs_kd_sat_tugas, aa.fs_nm_sat_tugas, aa.fs_kd_profesi,
+                               ISNULL(bb.fs_nm_profesi, '') AS fs_nm_profesi
+                           FROM 
+                               td_sat_tugas aa
+                               LEFT JOIN BILRG_Profesi bb ON aa.fs_kd_profesi = bb.ProfesiId
+                           WHERE
+                               fs_kd_sat_tugas = @fs_kd_sat_tugas
+                           """;
         
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_sat_tugas", key.SatTugasId, SqlDbType.VarChar);
@@ -104,13 +106,13 @@ public class SatTugasDal : ISatTugasDal
     public IEnumerable<SatTugasDto> ListData()
     {
         const string sql = """
-            SELECT
-                fs_kd_sat_tugas,
-                fs_nm_sat_tugas,
-                fb_sat_medis
-            FROM 
-                td_sat_tugas
-            """;
+                           SELECT
+                               aa.fs_kd_sat_tugas, aa.fs_nm_sat_tugas, aa.fs_kd_profesi,
+                               ISNULL(bb.fs_nm_profesi, '') AS fs_nm_profesi
+                           FROM 
+                               td_sat_tugas aa
+                               LEFT JOIN BILRG_Profesi bb ON aa.fs_kd_profesi = bb.ProfesiId
+                           """;
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<SatTugasDto>(sql);
@@ -122,7 +124,7 @@ public class SatTugasDalTest
     private readonly SatTugasDal _sut = new(ConnStringHelper.GetTestEnv());
 
     private static SatTugasDto Faker()
-        => new SatTugasDto("A", "B", true);
+        => new SatTugasDto("A", "B", "C", "D");
 
     private static ISatTugasKey FakerKey()
         => SatTugasType.Default with { SatTugasId = "A" };
@@ -154,7 +156,8 @@ public class SatTugasDalTest
         using var trans = TransHelper.NewScope();
         _sut.Insert(Faker());
         var actual = _sut.GetData(FakerKey());
-        actual.Should().BeEquivalentTo(Faker());
+        actual.Should().BeEquivalentTo(Faker(),
+            opt => opt.Excluding(x => x.fs_nm_profesi));;
     }
     
     [Fact]
@@ -163,6 +166,7 @@ public class SatTugasDalTest
         using var trans = TransHelper.NewScope();
         _sut.Insert(Faker());
         var actual = _sut.ListData();
-        actual.Should().ContainEquivalentOf(Faker());
+        actual.Should().ContainEquivalentOf(Faker(),
+            opt => opt.Excluding(x => x.fs_nm_profesi));
     }
 }

@@ -1,6 +1,6 @@
 ﻿using Ardalis.GuardClauses;
 
-namespace Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+namespace Bilreg.Domain.AdmisiContext.PpaFeature;
 public record SmfType : ISmfKey
 {
     #region CREATION

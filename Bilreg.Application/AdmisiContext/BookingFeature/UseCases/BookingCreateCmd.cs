@@ -2,7 +2,7 @@
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
-using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.Helpers;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
@@ -45,7 +45,7 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         if (request.PasienId.Trim() != string.Empty && request.PasienName.Trim() != string.Empty)
             throw new ArgumentException("Kosongkan PasienName jika booking menggunakan PasienId");
         //      cek jadwal
-        var dokter = PetugasMedisType.Key(request.DokterId);
+        var dokter = PpaType.Key(request.DokterId);
         var listJadwal = _jadwalPraktekRepo.ListData(dokter)?.ToList() ?? [];
         var hari = DateOnly.Parse(request.TglBerobat).DayOfWeek;
         var jamMulai = TimeOnly.Parse(request.JamMulai);

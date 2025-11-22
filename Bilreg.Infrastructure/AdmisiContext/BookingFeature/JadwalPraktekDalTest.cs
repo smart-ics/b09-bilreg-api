@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
-using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Infrastructure.Helpers;
 using FluentAssertions;
 using Nuna.Lib.TransactionHelper;
@@ -55,7 +55,7 @@ public class JadwalPraktekDalTest
     [Fact]
     public void UT5_ListDataDokterTest()
     {
-        var filter = PetugasMedisType.Key("B");
+        var filter = PpaType.Key("B");
         using var trans = TransHelper.NewScope();
         _sut.Insert(Faker());
         var actual = _sut.ListData(filter);

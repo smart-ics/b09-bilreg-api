@@ -1,10 +1,10 @@
 ﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
-using Bilreg.Application.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.Helpers;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
-using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using CommunityToolkit.Diagnostics;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
@@ -15,7 +15,7 @@ public record PraktekDokterPeriodeGroupSpesialisListQuery(string TglYmdAwal, str
     IRequest<IEnumerable<PraktekDokterPeriodeGroupSpesialisListResponse>>, IGroupSpesialisKey;
 
 public record PraktekDokterPeriodeGroupSpesialisListResponse(
-    string Tanggal, PetugasMedisReff Dokter, LayananReff Layanan, 
+    string Tanggal, PpaReff Dokter, LayananReff Layanan, 
     string JamMulaiPraktek, int JumlahPasien, int MaxPasien);
 
 public class PraktekDokterPeriodeGroupSpesialisListHandler :
@@ -23,10 +23,10 @@ public class PraktekDokterPeriodeGroupSpesialisListHandler :
 {
     private readonly IAntrianRepo _antrianRepo;
     private readonly IJadwalPraktekRepo _jadwalPraktekRepo;
-    private readonly IPetugasMedisRepo _ptgMedRepo;
+    private readonly IPpaRepo _ptgMedRepo;
     public PraktekDokterPeriodeGroupSpesialisListHandler(IAntrianRepo antrianRepo,
         IJadwalPraktekRepo jadwalPraktekRepo,
-        IPetugasMedisRepo ptgMedRepo)
+        IPpaRepo ptgMedRepo)
     {
         _antrianRepo = antrianRepo;
         _jadwalPraktekRepo = jadwalPraktekRepo;
@@ -82,12 +82,12 @@ public class PraktekDokterPeriodeGroupSpesialisListHandler :
         return listTanggal;
 
     }
-    private PetugasMedisType GetPetugasMedis(IPetugasMedisKey key)
+    private PpaType GetPetugasMedis(IPpaKey key)
     {
         return _ptgMedRepo.LoadEntity(key)
             .Match(
                 onSome: x => x,
-                onNone: () => PetugasMedisType.Default
+                onNone: () => PpaType.Default
             );
     }
 
@@ -109,8 +109,8 @@ public class PraktekDokterPeriodeGroupSpesialisListHandler :
                 select new PraktekDokterPeriodeGroupSpesialisListResponse(
                     tgl.ToString("yyyy-MM-dd"),
                     jadwal?.Dokter
-                        ?? new PetugasMedisReff(dokterIdFromTag, 
-                        GetPetugasMedis(PetugasMedisType.Key(dokterIdFromTag)).PetugasMedisName),
+                        ?? new PpaReff(dokterIdFromTag, 
+                        GetPetugasMedis(PpaType.Key(dokterIdFromTag)).PpaName),
                     jadwal?.Layanan
                         ?? new LayananReff("-", "TANPA JADWAL"),
                     (jadwal?.JamMulai ?? a.StartTime).ToString("HH:mm"),

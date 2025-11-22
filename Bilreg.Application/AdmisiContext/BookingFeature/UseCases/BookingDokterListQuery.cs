@@ -1,6 +1,6 @@
 ﻿using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
-using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
@@ -17,7 +17,7 @@ public record BookingDokterListResponse(
     string TglBerobat,
     string JamPraktek,
     LayananReff Layanan,
-    PetugasMedisReff Dokter,
+    PpaReff Dokter,
     int NoAntrian);
 
 public class BookingDokterListHandler : IRequestHandler<BookingDokterListQuery, IEnumerable<BookingDokterListResponse>>

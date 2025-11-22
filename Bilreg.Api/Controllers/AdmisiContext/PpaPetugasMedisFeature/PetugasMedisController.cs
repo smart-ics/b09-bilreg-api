@@ -1,4 +1,5 @@
-﻿using Bilreg.Application.AdmisiContext.PetugasMedisFeature;
+﻿using Bilreg.Application.AdmisiContext.PpaFeature;
+using Bilreg.Application.AdmisiContext.PpaFeature.UseCases;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi.Writers;
@@ -20,7 +21,7 @@ public class PetugasMedisController : Controller
     [HttpGet("{id}")]
     public async Task<IActionResult> GetData(string id)
     {
-        var query = new PetugasMedisGetQuery(id);
+        var query = new PpaGetQuery(id);
         var response = await _mediator.Send(query);
         return Ok(new JSendOk(response));
     }
@@ -28,7 +29,7 @@ public class PetugasMedisController : Controller
     [HttpGet("list/{satTugasId}")]
     public async Task<IActionResult> ListData(string satTugasId)
     {
-        var query = new PetugasMedisListQuery(satTugasId);
+        var query = new PpaListQuery(satTugasId);
         var result = await _mediator.Send(query);
         return Ok(new JSendOk(result));
     }
@@ -36,7 +37,7 @@ public class PetugasMedisController : Controller
     [HttpGet("{layananId}/list")]
     public async Task<IActionResult> ListDataLayanan(string layananId)
     {
-        var query = new PetugasMedisLayananListQuery(layananId);
+        var query = new PpaLayananListQuery(layananId);
         var result = await _mediator.Send(query);
         return Ok(new JSendOk(result));
     }
@@ -45,7 +46,7 @@ public class PetugasMedisController : Controller
     [Route("groupSpesialis/list")]
     public async Task<IActionResult> ListGroupSpesialis()
     {
-        var query = new PetugasMedisSpesialisLayananListQuery();
+        var query = new PpaSpesialisLayananListQuery();
         var response = await _mediator.Send(query);
         return Ok(new JSendOk(response));
     }

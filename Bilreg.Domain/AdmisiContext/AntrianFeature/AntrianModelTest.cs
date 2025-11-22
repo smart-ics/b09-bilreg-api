@@ -1,6 +1,6 @@
 ﻿using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
-using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.Helpers;
 using FluentAssertions;
 using Moq;
@@ -195,21 +195,21 @@ public class AntrianFactoryTests
 
     #region Helper Methods
 
-    private PetugasMedisType CreatePetugasMedisType(string id, string name)
+    private PpaType CreatePetugasMedisType(string id, string name)
     {
-        var petugasMedis = new PetugasMedisType(
+        var petugasMedis = new PpaType(
             id,
             name,
             "Dr. J",
             SmfType.Default,
-            new List<PetugasMedisLayananType>(),
-            new List<PetugasMedisSatTugasType>());
+            new List<PpaLayananType>(),
+            new List<PpaSatTugasType>());
 
         return petugasMedis;
     }
 
     private JadwalPraktekType CreateJadwalPraktekType(
-        PetugasMedisType dokter, 
+        PpaType dokter, 
         DayOfWeek hari, 
         TimeOnly jamMulai, 
         TimeOnly jamSelesai,

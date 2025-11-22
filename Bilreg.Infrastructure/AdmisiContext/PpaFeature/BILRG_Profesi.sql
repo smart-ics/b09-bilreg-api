@@ -1,0 +1,8 @@
+﻿CREATE TABLE BILRG_Profesi(
+      ProfesiId VARCHAR(5) NOT NULL CONSTRAINT DF_BILRG_Profesi_ProfesiId DEFAULT(''),
+      ProfesiName VARCHAR(15) NOT NULL CONSTRAINT DF_BILRG_Profesi_ProfesiName DEFAULT(''),
+
+      CONSTRAINT PK_BILRG_Profesi PRIMARY KEY CLUSTERED (ProfesiId)
+);
+GO
+

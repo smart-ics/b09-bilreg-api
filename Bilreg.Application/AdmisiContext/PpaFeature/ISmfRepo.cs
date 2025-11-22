@@ -1,7 +1,7 @@
-﻿using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+﻿using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Nuna.Lib.DataAccessHelper;
 
-namespace Bilreg.Application.AdmisiContext.PetugasMedisFeature;
+namespace Bilreg.Application.AdmisiContext.PpaFeature;
 
 public interface ISmfRepo :
     ISaveChange<SmfType>,

@@ -63,10 +63,12 @@ public class KomponenSatTugasDal : IKomponenSatTugasDal
             SELECT 
                 aa.fs_kd_detil_tarif, aa.fs_kd_sat_tugas, 
                 ISNULL(bb.fs_nm_sat_tugas, '') AS fs_nm_sat_tugas,
-                ISNULL(bb.fb_sat_medis, 0) AS fb_sat_medis
+                ISNULL(bb.fs_kd_profesi, '') AS fs_kd_profesi,
+                ISNULL(cc.ProfesiName, '') AS fs_nm_profesi
             FROM 
                 ta_detil_tarif2 aa
                 LEFT JOIN td_sat_tugas bb ON aa.fs_kd_sat_tugas = bb.fs_kd_sat_tugas
+                LEFT JOIN BILRG_Profesi cc ON bb.fs_kd_profesi = cc.ProfesiId
             WHERE
                 aa.fs_kd_detil_tarif = @fs_kd_detil_tarif
             """;
@@ -90,13 +92,15 @@ public class KomponenSatTugasDalTest
                 fs_kd_detil_tarif: "A",
                 fs_kd_sat_tugas: "B",
                 fs_nm_sat_tugas: "C",
-                fb_sat_medis: true
+                fs_kd_profesi: "D",
+                fs_nm_profesi: "E"
             ),
             new KomponenSatTugasDto(
                 fs_kd_detil_tarif: "A",
-                fs_kd_sat_tugas: "D",
-                fs_nm_sat_tugas: "E",
-                fb_sat_medis: false
+                fs_kd_sat_tugas: "F",
+                fs_nm_sat_tugas: "G",
+                fs_kd_profesi: "H",
+                fs_nm_profesi: "I"
             )
         };
 
@@ -125,6 +129,7 @@ public class KomponenSatTugasDalTest
         var actual = _sut.ListData(FakerKey());
         actual.Should().BeEquivalentTo(FakerList(),
             opt => opt.Excluding(x => x.fs_nm_sat_tugas)
-                .Excluding(x => x.fb_sat_medis));
+                .Excluding(x => x.fs_kd_profesi)
+                .Excluding(x => x.fs_nm_profesi));
     }
 }

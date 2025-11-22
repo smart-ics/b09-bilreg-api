@@ -1,6 +1,6 @@
 ﻿using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
-using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.Helpers.CommonValueObjects;
 using Bilreg.Domain.PasienContext.PasienFeature;
@@ -59,7 +59,7 @@ public record BookingDto(
             PasienName, tglLahir, Gender, alamat,
             ContactType.Default, IdentitasType.Default);
         var layanan = new LayananReff(LayananId, LayananName);
-        var dokter = new PetugasMedisReff(DokterId, DokterName);
+        var dokter = new PpaReff(DokterId, DokterName);
         var jamPraktek = TimeOnly.Parse(JamPraktek);
         var reg = RegId.Trim() == string.Empty ?
             RegModel.Default.ToReff() :

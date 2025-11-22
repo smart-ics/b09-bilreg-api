@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+﻿using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Domain.Helpers.CommonValueObjects;
@@ -78,7 +78,7 @@ public record OrderOpDto(
         var reg = new RegReff(RegId, PasienId, PasienName);
         var icd10 = new Icd10Type(Icd10Id, fs_ket_icd);
         var jenisOp = new JenisOperasiType(JenisOperasiId, fs_nm_jenis_operasi);
-        var dokter = new PetugasMedisReff(DokterId, fs_nm_peg);
+        var dokter = new PpaReff(DokterId, fs_nm_peg);
 
         var result = new OrderOpModel(
             OrderOpId,

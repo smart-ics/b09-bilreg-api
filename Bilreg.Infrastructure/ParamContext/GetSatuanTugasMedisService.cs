@@ -1,5 +1,6 @@
 ﻿using Bilreg.Application.ParamContext.ParamSistemAgg;
-using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
+using Bilreg.Infrastructure.AdmisiContext.PpaFeature;
 
 namespace Bilreg.Infrastructure.ParamContext;
 

@@ -1,6 +1,6 @@
 ﻿using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
-using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 
 namespace Bilreg.Infrastructure.AdmisiContext.BookingFeature;
 
@@ -30,7 +30,7 @@ public record JadwalPraktekDto(
     }
     public JadwalPraktekType ToModel()
     {
-        var dokter = new PetugasMedisReff(DokterId, DokterName);
+        var dokter = new PpaReff(DokterId, DokterName);
         var hari = (DayOfWeek)Hari;
         var layanan = new LayananReff(LayananId, LayananName);
         var lynDk = new LayananDkReff(LayananDkId, LayananDkName);

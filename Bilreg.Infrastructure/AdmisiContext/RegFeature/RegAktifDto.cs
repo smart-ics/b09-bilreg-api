@@ -1,6 +1,6 @@
 ﻿using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
-using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 
@@ -35,7 +35,7 @@ public record RegAktifDto(
         var tglLahir = DateOnly.Parse(TglLahir);
         var pasienReff = new PasienReff(PasienId, PasienName,  tglLahir, Gender);
         var layananReff = new LayananReff(LayananId, LayananName);
-        var dokterReff = new PetugasMedisReff(DokterId, DokterName);
+        var dokterReff = new PpaReff(DokterId, DokterName);
         var tipeJaminanReff = new TipeJaminanReff(TipeJaminanId, TipeJaminanName);
         return new RegAktifModel(
             RegId,
