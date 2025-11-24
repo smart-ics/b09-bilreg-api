@@ -16,7 +16,7 @@ public record PraktekDokterPeriodeGroupSpesialisListQuery(string TglYmdAwal, str
 
 public record PraktekDokterPeriodeGroupSpesialisListResponse(
     string Tanggal, PetugasMedisReff Dokter, LayananReff Layanan, 
-    string JamMulaiPraktek, int JumlahPasien, int MaxPasien);
+    string JamMulaiPraktek, string JamSelesaiPraktek, int JumlahPasien, int MaxPasien);
 
 public class PraktekDokterPeriodeGroupSpesialisListHandler :
     IRequestHandler<PraktekDokterPeriodeGroupSpesialisListQuery, IEnumerable<PraktekDokterPeriodeGroupSpesialisListResponse>>
@@ -114,6 +114,7 @@ public class PraktekDokterPeriodeGroupSpesialisListHandler :
                     jadwal?.Layanan
                         ?? new LayananReff("-", "TANPA JADWAL"),
                     (jadwal?.JamMulai ?? a.StartTime).ToString("HH:mm"),
+                    (jadwal?.JamSelesai ?? a.EndTime).ToString("HH:mm"),
                     JumlahPasien:
                         antrianTgl
                             .Where(x =>
@@ -140,6 +141,7 @@ public class PraktekDokterPeriodeGroupSpesialisListHandler :
                     j.Dokter,
                     j.Layanan,
                     j.JamMulai.ToString("HH:mm"),
+                    j.JamSelesai.ToString("HH:mm"),
                     JumlahPasien: 0,
                     MaxPasien: j.MaxPasien
                 )).ToList() ?? [];
