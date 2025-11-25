@@ -1,4 +1,7 @@
-﻿using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
+﻿using Bilreg.Application.AdmisiContext.JaminanFeature;
+using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
+using Bilreg.Application.AdmisiContext.JaminanSub.PolisAgg;
+using JetBrains.Annotations;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
@@ -15,12 +18,28 @@ public class PolisController : Controller
     {
         _mediator = mediator;
     }
-    //[HttpPost]
-    //public async Task<IActionResult> Save(PolisCreateCommand cmd)
-    //{
-    //    await _mediator.Send(cmd);
-    //    return Ok(new JSendOk("Done"));
-    //}
+    [HttpPost]
+    public async Task<IActionResult> Save(PolisCreateCommand cmd)
+    {
+        var response =  await _mediator.Send(cmd);
+        return Ok(new JSendOk(response));
+    }
+
+    [HttpPut]
+    [Route("addCoverage")]
+    public async Task<IActionResult> AddCoverage(PolisAddCoverageCommand cmd)
+    {
+        var response = await _mediator.Send(cmd);
+        return Ok(new JSendOk(response));
+    }
+
+    [HttpPut]
+    [Route("removeCoverage")]
+    public async Task<IActionResult> RemoveCoverage(PolisRemoveCoverageCommand cmd)
+    {
+        var response = await _mediator.Send(cmd);
+        return Ok(new JSendOk(response));
+    }
 
     [HttpGet]
     [Route("{id}")]

@@ -12,17 +12,19 @@ public record JaminanListResponse(
 
 public class JaminanListHandler : IRequestHandler<JaminanListQuery, IEnumerable<JaminanListResponse>>
 {
-    private readonly IJaminanDal _jaminanDal;
+    private readonly IJaminanRepo _jaminanRepo;
 
-    public JaminanListHandler(IJaminanDal jaminanDal)
+    public JaminanListHandler(IJaminanRepo jaminanRepo)
     {
-        _jaminanDal = jaminanDal;
+        _jaminanRepo = jaminanRepo;
     }
 
     public Task<IEnumerable<JaminanListResponse>> Handle(JaminanListQuery request, CancellationToken cancellationToken)
-        => _jaminanDal.ListData()
-        .Match(
-            onSome: x => Task.FromResult(x.Select(y
-                => new JaminanListResponse(y.JaminanId, y.JaminanName, y.CaraBayarDk.CaraBayarDkName, y.GroupJaminan.GroupJaminanName))),
-            onNone: () => throw new KeyNotFoundException("Jaminan not found"));
+    {
+        var listJaminan = _jaminanRepo.ListData()?.ToList() ?? [];
+        var result = listJaminan
+            .Select(x => new JaminanListResponse
+            (x.JaminanId, x.JaminanName, x.CaraBayarDk.CaraBayarDkName, x.GroupJaminan.GroupJaminanName));
+        return Task.FromResult(result); 
+    }
 }

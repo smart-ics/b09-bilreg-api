@@ -1,3 +1,4 @@
+using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
@@ -16,17 +17,24 @@ public record JaminanGetResponse(
 
 public class JaminanGetHandler : IRequestHandler<JaminanGetQuery, JaminanGetResponse>
 {
-    private readonly IJaminanDal _jaminanDal;
+    private readonly IJaminanRepo _repo;
 
-    public JaminanGetHandler(IJaminanDal jaminanDal)
+    public JaminanGetHandler(IJaminanRepo repo)
     {
-        _jaminanDal = jaminanDal;
+        _repo = repo;
     }
 
     public Task<JaminanGetResponse> Handle(JaminanGetQuery request, CancellationToken cancellationToken)
-        => _jaminanDal.GetData(request)
-        .Match(
-            onSome: x => Task.FromResult(new JaminanGetResponse(x.JaminanId, x.JaminanName, x.Alamat,
-                x.IsAktif, x.CaraBayarDk, x.GroupJaminan)),
-            onNone: () => throw new KeyNotFoundException($"Jaminan {request.JaminanId} not found"));
+    { 
+        Guard.Against.NullOrWhiteSpace(request.JaminanId, nameof(request.JaminanId));
+
+        var jaminan = _repo.LoadEntity(request)
+            .Match(
+                onSome: x => x,
+                onNone: () => throw new KeyNotFoundException($"Jaminan {request.JaminanId} not found")
+                );
+        var result = new JaminanGetResponse(
+            jaminan.JaminanId, jaminan.JaminanName, jaminan.Alamat, jaminan.IsAktif, jaminan.CaraBayarDk, jaminan.GroupJaminan);
+        return Task.FromResult( result );
+    }
 }

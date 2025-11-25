@@ -13,11 +13,11 @@ public record JaminanSearchResponse(
 
 public class JeminanSearchHandler : IRequestHandler<JaminanSearchQuery, IEnumerable<JaminanSearchResponse>>
 {
-    private readonly IJaminanDal _dal;
+    private readonly IJaminanRepo _jaminanRepo;
 
-    public JeminanSearchHandler(IJaminanDal dal)
+    public JeminanSearchHandler(IJaminanRepo jaminanRepo)
     {
-        _dal = dal;
+        _jaminanRepo = jaminanRepo;
     }
 
     public Task<IEnumerable<JaminanSearchResponse>> Handle(JaminanSearchQuery request, CancellationToken cancellationToken)
@@ -25,12 +25,10 @@ public class JeminanSearchHandler : IRequestHandler<JaminanSearchQuery, IEnumera
         Guard.Against.NullOrWhiteSpace(request.Keyword, nameof(request.Keyword));
         if (request.Keyword.Length < 2)
             throw new ArgumentException("Keyword terlalu pendek (minimal 2 karakter).");
-        var listJaminan = _dal.ListData()
-            .Match(
-                some => some,    
-                () => throw new KeyNotFoundException("Jaminan not found"));
+       
+        var listJaminan = _jaminanRepo.ListData()?.ToList() ?? [];
 
-        var result = listJaminan.ToList()
+        var result = listJaminan
             .Where(x => x.JaminanName.ToLower().Contains(request.Keyword.ToLower()))
             .Select(x => new JaminanSearchResponse(x.JaminanName, x.JaminanName, 
                 x.CaraBayarDk.CaraBayarDkName, x.GroupJaminan.GroupJaminanName));

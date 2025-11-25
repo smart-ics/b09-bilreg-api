@@ -28,7 +28,7 @@ public class AntrianFactoryTests
         var antrianDate = new DateOnly(2025, 10, 13); // Monday
         var dokter = CreatePetugasMedisType("DOK001", "Dr. John Doe");
         var jadwalPraktek = CreateJadwalPraktekType(dokter, DayOfWeek.Monday, 
-            new TimeOnly(8, 0), new TimeOnly(12, 0));
+            new TimeOnly(8, 0), new TimeOnly(12, 0), 20);
 
         // Act
         var result = _sut.Create(antrianDate, jadwalPraktek);
@@ -51,7 +51,7 @@ public class AntrianFactoryTests
         var antrianDate = new DateOnly(2025, 10, 13); // Monday
         var dokter = CreatePetugasMedisType("DOK 001 A", "Dr. John Doe");
         var jadwalPraktek = CreateJadwalPraktekType(dokter, DayOfWeek.Monday, 
-            new TimeOnly(8, 0), new TimeOnly(12, 0));
+            new TimeOnly(8, 0), new TimeOnly(12, 0), 20);
 
         // Act
         var result = _sut.Create(antrianDate, jadwalPraktek);
@@ -81,7 +81,7 @@ public class AntrianFactoryTests
         var antrianDate = new DateOnly(2025, 10, 14); // Tuesday
         var dokter = CreatePetugasMedisType("DOK001", "Dr. John Doe");
         var jadwalPraktek = CreateJadwalPraktekType(dokter, DayOfWeek.Monday, 
-            new TimeOnly(8, 0), new TimeOnly(12, 0));
+            new TimeOnly(8, 0), new TimeOnly(12, 0), 20);
 
         // Act
         Action act = () => _sut.Create(antrianDate, jadwalPraktek);
@@ -107,7 +107,7 @@ public class AntrianFactoryTests
         var antrianDate = new DateOnly(year, month, day);
         var dokter = CreatePetugasMedisType("DOK001", "Dr. John Doe");
         var jadwalPraktek = CreateJadwalPraktekType(dokter, dayOfWeek, 
-            new TimeOnly(8, 0), new TimeOnly(12, 0));
+            new TimeOnly(8, 0), new TimeOnly(12, 0), 20);
 
         // Act
         var result = _sut.Create(antrianDate, jadwalPraktek);
@@ -212,7 +212,8 @@ public class AntrianFactoryTests
         PetugasMedisType dokter, 
         DayOfWeek hari, 
         TimeOnly jamMulai, 
-        TimeOnly jamSelesai)
+        TimeOnly jamSelesai,
+        int maxPasien)
     {
         var layanan = new LayananReff("LAY001", "Poli Umum");
         var layananDk = new LayananDkReff("1", "UMUM");
@@ -221,9 +222,11 @@ public class AntrianFactoryTests
             dokter.ToReff(),
             layanan,
             layananDk,
+            GroupSpesialisType.Default,
             hari,
             jamMulai,
-            jamSelesai);
+            jamSelesai,
+            maxPasien);
     }
 
     #endregion

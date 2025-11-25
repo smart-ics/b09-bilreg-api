@@ -1,5 +1,4 @@
-﻿using Bilreg.Application.AdmisiContext.BookingFeature;
-using Bilreg.Application.AdmisiContext.BookingFeature.UseCases;
+﻿using Bilreg.Application.AdmisiContext.BookingFeature.UseCases;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
@@ -38,6 +37,15 @@ public class BookingController : ControllerBase
     {
         await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));
+    }
+
+    [HttpGet]
+    [Route("list/{tglYmd}/{dokterId}")]
+    public async Task<IActionResult> ListBooking(string tglYmd, string dokterId)
+    {
+        var query = new BookingDokterListQuery(tglYmd, dokterId);
+        var result = await _mediator.Send(query);
+        return Ok(new JSendOk(result));
     }
 
 }

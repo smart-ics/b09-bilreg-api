@@ -34,6 +34,9 @@ public class AntrianModel : IAntrianKey
         return result;
     }
 
+    public static AntrianModel Default => new AntrianModel("-", DateOnly.MinValue, 
+        TimeOnly.MinValue, TimeOnly.MaxValue, "-", "-", new List<AntrianEntryModel>(), null!);
+
     #endregion
     
     #region PROPERTIES

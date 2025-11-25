@@ -1,5 +1,6 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
@@ -14,7 +15,8 @@ namespace Bilreg.Infrastructure.AdmisiContext.PetugasMedisFeature;
 public interface IPetugasMedisLayananDal : 
     IInsertBulk<PetugasMedisLayananDto>,
     IDelete<IPetugasMedisKey>,
-    IListData<PetugasMedisLayananDto, IPetugasMedisKey>
+    IListData<PetugasMedisLayananDto, IPetugasMedisKey>,
+    IListData<PetugasMedisLayananView, ISatTugasKey, IInstalasiDkKey>
 {
 }
 
@@ -77,6 +79,35 @@ public class PetugasMedisLayananDal : IPetugasMedisLayananDal
         
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Query<PetugasMedisLayananDto>(sql, dp);
+    }
+
+    public IEnumerable<PetugasMedisLayananView> ListData(ISatTugasKey satTgsKey, IInstalasiDkKey instalasiDkKey)
+    {
+        const string sql = """
+            SELECT 
+            	aa.fs_kd_peg, aa.fs_kd_layanan, aa.fb_utama,
+            	ISNULL(bb.fs_nm_layanan, '') AS fs_nm_layanan,
+            	ISNULL(cc.fs_nm_peg,'') AS fs_nm_peg,
+            	ISNULL(bb.GroupSpesialisId,'') AS GroupSpesialisId,
+            	ISNULL(dd.GroupSpesialisName,'') AS GroupSpesialisName
+            FROM 
+            	td_peg_layanan aa
+            	LEFT JOIN ta_layanan bb ON aa.fs_kd_layanan = bb.fs_kd_layanan 
+            	INNER JOIN td_peg cc ON aa.fs_kd_peg = cc.fs_kd_peg AND cc.fb_aktif_dinas = 1 
+            	LEFT JOIN BILRG_GroupSpesialis dd ON bb.GroupSpesialisId = dd.GroupSpesialisId
+            	LEFT JOIN ta_instalasi ee ON bb.fs_kd_instalasi = ee.fs_kd_instalasi 
+            WHERE 
+            	cc.fs_kd_sat_tugas = @SatTugasMedisId
+            	AND ee.fs_kd_instalasi_dk = @InstalasiDkId 
+                AND bb.FB_AKTIF = 1
+            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@SatTugasMedisId", satTgsKey.SatTugasId, SqlDbType.VarChar);
+        dp.AddParam("@InstalasiDkId", instalasiDkKey.InstalasiDkId, SqlDbType.VarChar);
+
+        var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Query<PetugasMedisLayananView>(sql, dp);
     }
 }
 

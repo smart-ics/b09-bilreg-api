@@ -16,3 +16,13 @@ public class PetugasMedisLayananType
     public LayananReff Layanan { get; init; }
     public bool IsUtama { get; init; }
 }
+
+public record PetugasMedisLayananView(
+    string fs_kd_peg,
+    string fs_kd_layanan,
+    decimal fb_utama,
+    string fs_nm_layanan,
+    string fs_nm_peg,
+    string GroupSpesialisId,
+    string GroupSpesialisName
+    );

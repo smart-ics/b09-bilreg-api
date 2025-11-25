@@ -40,4 +40,18 @@ public class BookingRepo : IBookingRepo
 
     public void DeleteEntity(IBookingKey key)
         => _bookingDal.Delete(key);
+
+    public IEnumerable<BookingModel> ListData(Periode periode)
+    {
+        var listDto = _bookingDal.ListData(periode)?.ToList()  ?? [];
+        var models = listDto.Select(x => x.ToModel()) ?? [];
+        return models;
+    }
+
+    public IEnumerable<BookingModel> ListDataTglBerobat(Periode periode)
+    {
+        var listDto = _bookingDal.ListPerTglBerobat(periode)?.ToList() ?? [];
+        var models = listDto?.Select(x => x.ToModel()) ?? [];
+        return models;
+    }
 }
