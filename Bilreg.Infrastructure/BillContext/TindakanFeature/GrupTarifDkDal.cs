@@ -3,11 +3,8 @@ using System.Data.SqlClient;
 using Bilreg.Domain.BillContext.TindakanFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
-using FluentAssertions;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
-using Nuna.Lib.TransactionHelper;
-using Xunit;
 
 namespace Bilreg.Infrastructure.BillContext.TindakanFeature;
 

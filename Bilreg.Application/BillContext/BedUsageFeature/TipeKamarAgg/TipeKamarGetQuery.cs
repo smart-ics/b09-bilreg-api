@@ -1,8 +1,5 @@
 using Bilreg.Domain.BillContext.BedUsageFeature.TipeKamarAgg;
-using FluentAssertions;
 using MediatR;
-using Moq;
-using Xunit;
 
 namespace Bilreg.Application.BillContext.RoomChargeSub.TipeKamarAgg;
 

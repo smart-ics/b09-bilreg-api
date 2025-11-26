@@ -3,11 +3,8 @@ using System.Data.SqlClient;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
-using FluentAssertions;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
-using Nuna.Lib.TransactionHelper;
-using Xunit;
 
 namespace Bilreg.Infrastructure.AdmisiContext.LayananFeature.LayananAgg;
 
