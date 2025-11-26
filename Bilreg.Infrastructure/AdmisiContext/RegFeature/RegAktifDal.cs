@@ -34,17 +34,17 @@ public class RegAktifDal : IRegAktifDal
     {
         const string sql = """
             INSERT INTO BILRG_RegAktif(
-                RegId, RegDate, PasienId, JenisRawat, 
+                RegId, RegDate, PasienId, JenisReg, 
                 LayananId, DokterId, TipeJaminanId)
             VALUES(
-                @RegId, @RegDate, @PasienId, @JenisRawat, 
+                @RegId, @RegDate, @PasienId, @JenisReg, 
                 @LayananId, @DokterId, @TipeJaminanId)
             """;
         var dp = new DynamicParameters();
         dp.AddParam("@RegId", model.RegId, SqlDbType.VarChar); 
-        dp.AddParam("@RegDate", model.RegDate, SqlDbType.VarChar);	 
+        dp.AddParam("@RegDate", model.RegDate, SqlDbType.DateTime);	 
         dp.AddParam("@PasienId", model.PasienId, SqlDbType.VarChar);	 
-        dp.AddParam("@JenisRawat", model.JenisRawat, SqlDbType.VarChar);	 
+        dp.AddParam("@JenisReg", model.JenisReg, SqlDbType.VarChar);	 
         dp.AddParam("@LayananId", model.LayananId, SqlDbType.VarChar);	 
         dp.AddParam("@DokterId", model.DokterId, SqlDbType.VarChar);	 
         dp.AddParam("@TipeJaminanId", model.TipeJaminanId, SqlDbType.VarChar);
@@ -61,7 +61,7 @@ public class RegAktifDal : IRegAktifDal
            SET
               RegDate = @RegDate, 
               PasienId = @PasienId, 
-              JenisRawat = @JenisRawat, 
+              JenisReg = @JenisReg, 
               LayananId = @LayananId, 
               DokterId = @DokterId, 
               TipeJaminanId = @TipeJaminanId
@@ -71,9 +71,9 @@ public class RegAktifDal : IRegAktifDal
 
         var dp = new DynamicParameters();
         dp.AddParam("@RegId", model.RegId, SqlDbType.VarChar); 
-        dp.AddParam("@RegDate", model.RegDate, SqlDbType.VarChar);	 
+        dp.AddParam("@RegDate", model.RegDate, SqlDbType.DateTime);	 
         dp.AddParam("@PasienId", model.PasienId, SqlDbType.VarChar);	 
-        dp.AddParam("@JenisRawat", model.JenisRawat, SqlDbType.VarChar);	 
+        dp.AddParam("@JenisReg", model.JenisReg, SqlDbType.VarChar);	 
         dp.AddParam("@LayananId", model.LayananId, SqlDbType.VarChar);	 
         dp.AddParam("@DokterId", model.DokterId, SqlDbType.VarChar);	 
         dp.AddParam("@TipeJaminanId", model.TipeJaminanId, SqlDbType.VarChar);
@@ -102,7 +102,7 @@ public class RegAktifDal : IRegAktifDal
     {
         const string sql = """
            SELECT
-               aa.RegId, aa.RegDate, aa.PasienId, aa.JenisRawat, 
+               aa.RegId, aa.RegDate, aa.PasienId, aa.JenisReg, 
                aa.LayananId, aa.DokterId, aa.TipeJaminanId,
                ISNULL(bb.fs_nm_pasien, '') AS PasienName,
                ISNULL(bb.fd_tgl_lahir, '3000-01-01') AS TglLahir,
@@ -131,7 +131,7 @@ public class RegAktifDal : IRegAktifDal
     {
         const string sql = """
            SELECT
-               aa.RegId, aa.RegDate, aa.PasienId, aa.JenisRawat, 
+               aa.RegId, aa.RegDate, aa.PasienId, aa.JenisReg, 
                aa.LayananId, aa.DokterId, aa.TipeJaminanId,
                ISNULL(bb.fs_nm_pasien, '') AS PasienName,
                ISNULL(bb.fd_tgl_lahir, '3000-01-01') AS TglLahir,
@@ -166,7 +166,7 @@ public class RegAktifDalTest
             RegId: "A",
             RegDate: new DateTime(2024, 1, 2),
             PasienId: "C",
-            JenisRawat: "D",
+            JenisReg: "0",
             LayananId: "E",
             DokterId: "F",
             TipeJaminanId: "G",

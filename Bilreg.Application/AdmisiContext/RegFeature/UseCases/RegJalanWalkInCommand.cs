@@ -3,6 +3,7 @@ using Bilreg.Application.AdmisiContext.BookingFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature;
 using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Application.AdmisiContext.RegSub;
 using Bilreg.Application.AdmisiContext.RujukanFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
@@ -16,6 +17,7 @@ using Bilreg.Domain.Helpers.CommonValueObjects;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 
@@ -42,23 +44,25 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
     private readonly IRegFactory _regFactory;
     private readonly IRegRepo _regRepo;
     private readonly IPasienTrackerRepo _trackerRepo;
+    private readonly IRegAktifRepo _regAktifRepo;
 
     private const string BAYAR_SENDIRI = "1";
-    
-    public RegJalanCreateHandler(IPasienRepo pasienRepo, 
+
+    public RegJalanCreateHandler(IPasienRepo pasienRepo,
         ITipeJaminanRepo tipeJaminanRepo,
-        IPolisRepo polisRepo, 
-        ICaraMasukDkRepo caraMasukDkRepo, 
-        IRujukanRepo rujukanRepo, 
-        ILayananRepo layananRepo, 
-        IPetugasMedisRepo dokterRepo, 
-        IAntrianFactory antrianFactory, 
-        IAntrianRepo antrianRepo, 
-        IJadwalPraktekRepo jadwalRepo, 
-        IRegFactory regFactory, 
-        IKarcisRepo karcisRepo, 
-        IRegRepo regRepo, 
-        IPasienTrackerRepo trackerRepo)
+        IPolisRepo polisRepo,
+        ICaraMasukDkRepo caraMasukDkRepo,
+        IRujukanRepo rujukanRepo,
+        ILayananRepo layananRepo,
+        IPetugasMedisRepo dokterRepo,
+        IAntrianFactory antrianFactory,
+        IAntrianRepo antrianRepo,
+        IJadwalPraktekRepo jadwalRepo,
+        IRegFactory regFactory,
+        IKarcisRepo karcisRepo,
+        IRegRepo regRepo,
+        IPasienTrackerRepo trackerRepo,
+        IRegAktifRepo regAktifRepo)
     {
         _pasienRepo = pasienRepo;
         _tipeJaminanRepo = tipeJaminanRepo;
@@ -74,11 +78,17 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         _karcisRepo = karcisRepo;
         _regRepo = regRepo;
         _trackerRepo = trackerRepo;
+        _regAktifRepo = regAktifRepo;
     }
 
     public Task<RegJalanCreateResponse> Handle(RegJalanWalkInCommand request, CancellationToken cancellationToken)
     {
+
         var pasien = LoadPasien(request.PasienId);
+        var pasienAktif = GetRegaktif(pasien);
+        if (pasienAktif is not null)
+            throw new KeyNotFoundException($"Pasien aktif di register {pasienAktif.RegId}");
+
         var tipeJaminan = LoadTipeJaminan(request.TipeJaminanId);
         var polis = ResolvePolis(pasien, tipeJaminan);
         
@@ -98,6 +108,12 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         var reg = _regFactory.CreateRegRajal(pasien, regMasukAudit,
             tipeJaminan, polis, caraMasuk, rujukan, dokter, layanan, karcis);
 
+        var regDate = reg.RegDate.ToDateTime(TimeOnly.MinValue);
+
+        var regAktif = new RegAktifModel(reg.RegId, regDate,
+            reg.Pasien, reg.JenisReg, reg.Layanan,
+            reg.Dokter, reg.TipeJaminan);
+
         var tracker = PasienTrackerModel.Create(reg);
 
         using var trans = TransHelper.NewScope();
@@ -105,12 +121,23 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         _regRepo.SaveChanges(reg);
         _antrianRepo.SaveChanges(antrian);
         _trackerRepo.SaveChanges(tracker);
+        _regAktifRepo.SaveChanges(regAktif);
         trans.Complete();
 
         return Task.FromResult(new RegJalanCreateResponse(reg.RegId, antEntry.NoUrut));
     }
 
     #region PRIVATE-HELPERS
+    private RegAktifModel? GetRegaktif(IPasienKey pasienKey)
+    {
+        var periode = new Periode(DateTime.Now);
+        var listPasienAktif = _regAktifRepo.ListData(periode);
+        var pasienAktif = listPasienAktif
+            .FirstOrDefault(x => x.Pasien.PasienId == pasienKey.PasienId);
+
+        return pasienAktif; 
+    }
+
     private PasienModel LoadPasien(string id) =>
         _pasienRepo.LoadEntity(PasienModel.Key(id))
             .GetValueOrThrow("Pasien tidak ditemukan");
