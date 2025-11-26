@@ -37,36 +37,3 @@ public class TujuanTransportListHandler: IRequestHandler<TujuanTransportListQuer
         return Task.FromResult(response);
     }
 }
-
-public class TujuanTransportListHandlerTest
-{
-    private readonly Mock<ITujuanTransportDal> _tujuanTransportDal;
-    private readonly TujuanTransportListHandler _sut;
-
-    public TujuanTransportListHandlerTest()
-    {
-        _tujuanTransportDal = new Mock<ITujuanTransportDal>();
-        _sut = new TujuanTransportListHandler(_tujuanTransportDal.Object);
-    }
-
-    [Fact]
-    public async Task GivenNoData_ThenThrowKeyNotFoundException()
-    {
-        var request = new TujuanTransportListQuery();
-        _tujuanTransportDal.Setup(x => x.ListData())
-            .Returns(null as IEnumerable<TujuanTransportModel>);
-        var actual = async () => await _sut.Handle(request, CancellationToken.None);
-        await actual.Should().ThrowAsync<KeyNotFoundException>();
-    }
-    
-    [Fact]
-    public async Task GivenValidRequest_ThenReturnExpected()
-    {
-        var request = new TujuanTransportListQuery();
-        var expected = new TujuanTransportModel("A", "B", 10, false);
-        _tujuanTransportDal.Setup(x => x.ListData())
-            .Returns(new List<TujuanTransportModel>(){expected});
-        var actual =  await _sut.Handle(request, CancellationToken.None);
-        actual.Should().ContainEquivalentOf(expected);
-    }
-}

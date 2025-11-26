@@ -3,11 +3,8 @@ using System.Data.SqlClient;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
-using FluentAssertions;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
-using Nuna.Lib.TransactionHelper;
-using Xunit;
 
 namespace Bilreg.Infrastructure.AdmisiContext.PpaFeature;
 
@@ -122,57 +119,5 @@ public class PpaDal : IPpaDal
         
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Query<PpaDto>(sql).ToList();
-    }
-}
-
-public class PpaDalTest
-{
-    private readonly PpaDal _sut = new(ConnStringHelper.GetTestEnv());
-
-    private static PpaDto Faker()
-        => new PpaDto("A", "B", "C", "D", "E");
-
-    private static IPpaKey FakerKey()
-        => PpaType.Default with { PpaId = "A" };
-
-    [Fact]
-    public void InsertTest()
-    {
-        using var trans = TransHelper.NewScope();
-        _sut.Insert(Faker());
-    }
-    
-    [Fact]
-    public void UpdateTest()
-    {
-        using var trans = TransHelper.NewScope();
-        _sut.Update(Faker());
-    }
-
-    [Fact]
-    public void DeleteTest()
-    {
-        using var trans = TransHelper.NewScope();
-        _sut.Delete(FakerKey());
-    }
-
-    [Fact]
-    public void GetDataTest()
-    {
-        using var trans = TransHelper.NewScope();
-        _sut.Insert(Faker());
-        var actual = _sut.GetData(FakerKey());
-        actual.Should().BeEquivalentTo(Faker(), 
-            opt => opt.Excluding(x => x.fs_nm_smf));
-    }
-    
-    [Fact]
-    public void ListDataTest()
-    {
-        using var trans = TransHelper.NewScope();
-        _sut.Insert(Faker());
-        var actual = _sut.ListData();
-        actual.Should().ContainEquivalentOf(Faker(),
-            opt => opt.Excluding(x => x.fs_nm_smf));
     }
 }

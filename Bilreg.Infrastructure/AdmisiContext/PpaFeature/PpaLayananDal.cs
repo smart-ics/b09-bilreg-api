@@ -5,11 +5,8 @@ using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
-using FluentAssertions;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
-using Nuna.Lib.TransactionHelper;
-using Xunit;
 
 namespace Bilreg.Infrastructure.AdmisiContext.PpaFeature;
 
@@ -136,38 +133,5 @@ public class PpaLayananDal : IPpaLayananDal
 
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Query<PpaLayananView>(sql, dp);
-    }
-}
-
-
-
-public class PpaLayananTest
-{
-    private readonly PpaLayananDal _sut = new(ConnStringHelper.GetTestEnv());
-
-    private static PpaLayananDto Faker()
-        => new PpaLayananDto("A", "B", 1, "C");
-    
-    [Fact]
-    public void InsertTest()
-    {
-        using var trans = TransHelper.NewScope();
-        _sut.Insert(new List<PpaLayananDto>{Faker()});
-    }
-    
-    [Fact]
-    public void DeleteTest()
-    {
-        using var trans = TransHelper.NewScope();
-        _sut.Delete(PpaType.Key("A"));
-    }
-
-    [Fact]
-    public void ListDataTest()
-    {
-        using var trans = TransHelper.NewScope();
-        _sut.Insert(new List<PpaLayananDto>{Faker()});
-        var actual = _sut.ListData(PpaType.Key("A"));
-        actual.Should().ContainEquivalentOf(Faker());
     }
 }

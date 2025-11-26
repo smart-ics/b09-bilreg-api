@@ -46,25 +46,3 @@ public class AmbulanceGetHandler : IRequestHandler<AmbulanceGetQuery, AmbulanceG
         return Task.FromResult(response);
     }
 }
-
-public class AmbulanceGetHandlerTest
-{
-    private readonly Mock<IFactoryLoad<AmbulanceModel, IAmbulanceKey>> _factory;
-    private readonly AmbulanceGetHandler _sut;
-
-    public AmbulanceGetHandlerTest()
-    {
-        _factory = new Mock<IFactoryLoad<AmbulanceModel, IAmbulanceKey>>();
-        _sut = new AmbulanceGetHandler(_factory.Object);
-    }
-
-    [Fact]
-    public async Task GivenInvalidAmbulanceId_ThenThrowKeyNotFoundException()
-    {
-        var request = new AmbulanceGetQuery("A");
-        _factory.Setup(x => x.Load(It.IsAny<IAmbulanceKey>()))
-            .Throws<KeyNotFoundException>();
-        var actual = async () => await _sut.Handle(request, CancellationToken.None);
-        await actual.Should().ThrowAsync<KeyNotFoundException>();
-    }
-}

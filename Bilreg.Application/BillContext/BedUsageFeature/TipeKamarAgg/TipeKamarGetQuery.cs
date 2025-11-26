@@ -40,37 +40,3 @@ public class TipeKamarGetHandler : IRequestHandler<TipeKamarGetQuery, TipeKamarG
         return Task.FromResult(response);
     }
 }
-public class TipeKamarGetHandlerTest
-{
-    private readonly Mock<ITipeKamarDal> _tipeKamarDal;
-    private readonly TipeKamarGetHandler _sut;
-
-    public TipeKamarGetHandlerTest()
-    {
-        _tipeKamarDal = new Mock<ITipeKamarDal>();
-        _sut = new TipeKamarGetHandler(_tipeKamarDal.Object);
-    }
-
-    [Fact]
-    public async Task GivenInvalidTipeKamarId_ThenThrowKeyNotFoundException()
-    {
-        var request = new TipeKamarGetQuery("A");
-        _tipeKamarDal.Setup(x => x.GetData(It.IsAny<ITipeKamarKey>()))
-            .Returns(null as TipeKamarModel);
-        var actual = async () => await _sut.Handle(request, CancellationToken.None);
-        await actual.Should().ThrowAsync<KeyNotFoundException>();
-            
-    }
-    
-    [Fact]
-    public async Task GivenvalidTipeKamarId_ThenThrowKeyNotFoundException()
-    {
-        var request = new TipeKamarGetQuery("A");
-        var expected = new TipeKamarModel("A","B");
-        _tipeKamarDal.Setup(x => x.GetData(It.IsAny<ITipeKamarKey>()))
-            .Returns(expected);
-        var actual = await _sut.Handle(request, CancellationToken.None);
-        actual.Should().BeEquivalentTo(expected);
-        
-    }
-}

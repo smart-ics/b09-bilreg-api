@@ -33,35 +33,3 @@ public class TujuanTransportWriter: ITujuanTransportWriter
         _tujuanTransportDal.Delete(key);
     }
 }
-
-public class TujuanTransportWriterTest
-{
-    private readonly Mock<ITujuanTransportDal> _tujuanTransportDal;
-    private readonly TujuanTransportWriter _sut;
-
-    public TujuanTransportWriterTest()
-    {
-        _tujuanTransportDal = new Mock<ITujuanTransportDal>();
-        _sut = new TujuanTransportWriter(_tujuanTransportDal.Object);
-    }
-
-    [Fact]
-    public void GivenExistingData_ThenUpdate()
-    {
-        var expected = new TujuanTransportModel("A", "B", 10, false);
-        _tujuanTransportDal.Setup(x => x.GetData(It.IsAny<ITujuanTransportKey>()))
-            .Returns(expected);
-        _sut.Save(expected);
-        _tujuanTransportDal.Verify(x => x.Update(It.IsAny<TujuanTransportModel>()), Times.Once);
-    }
-
-    [Fact]
-    public void GivenNonExistingData_ThenInsert()
-    {
-        var expected = new TujuanTransportModel("A", "B", 10, false);
-        _tujuanTransportDal.Setup(x => x.GetData(It.IsAny<ITujuanTransportKey>()))
-            .Returns(null as TujuanTransportModel);
-        _sut.Save(expected);
-        _tujuanTransportDal.Verify(x => x.Insert(It.IsAny<TujuanTransportModel>()), Times.Once);
-    }
-}

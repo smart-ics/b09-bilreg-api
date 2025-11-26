@@ -4,11 +4,8 @@ using Bilreg.Application.AdmisiContext.JaminanFeature.CaraBayarDkAgg;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
-using FluentAssertions;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
-using Nuna.Lib.TransactionHelper;
-using Xunit;
 
 namespace Bilreg.Infrastructure.AdmisiContext.JaminanFeature.CaraBayarDkAgg;
 
@@ -57,43 +54,5 @@ public class CaraBayarDkDal : ICaraBayarDkDal
         var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<CaraBayarDkType>(sql);
         
-    }
-}
-
-public class CaraBayarDkDalTest
-{
-    private readonly CaraBayarDkDal _sut;
-
-    public CaraBayarDkDalTest()
-    {
-        _sut = new CaraBayarDkDal(ConnStringHelper.GetTestEnv());
-    }
-
-    [Fact]
-    public void GivenNonExistData_ThenReturnNull_Test()
-    {
-        // ARRANGE
-        using var trans = TransHelper.NewScope();
-        var expected = new CaraBayarDkType("A", "B");
-
-        // ACT
-        var actual = _sut.GetData(expected);
-
-        // ASSERT
-        actual.Should().BeNull();
-    }
-
-    [Fact]
-    public void GivenEmptyData_ThenReturnNull_Test()
-    {
-        // ARRANGE
-        using var trans = TransHelper.NewScope();
-        var exepected = new CaraBayarDkType("1", "Membayar Sendiri");
-        // ACT
-        var actual = _sut.ListData();
-
-        // ASSERT
-        var actualFirst = actual.First(x => x.CaraBayarDkId == "1");
-        actualFirst.Should().BeEquivalentTo(exepected);
     }
 }

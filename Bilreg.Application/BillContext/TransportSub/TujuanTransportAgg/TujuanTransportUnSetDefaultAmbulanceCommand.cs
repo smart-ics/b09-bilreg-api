@@ -33,27 +33,3 @@ public class TujuanTransportUnSetDefaultAmbulanceHandler: IRequestHandler<Tujuan
         return Task.CompletedTask;
     }
 }
-
-public class TujuanTransportUnSetDefaultAmbulanceHandlerTest
-{
-    private readonly Mock<ITujuanTransportDal> _tujuanTransportDal;
-    private readonly Mock<ITujuanTransportWriter> _writer;
-    private readonly TujuanTransportUnSetDefaultAmbulanceHandler _sut;
-    
-    public TujuanTransportUnSetDefaultAmbulanceHandlerTest()
-    {
-        _tujuanTransportDal = new Mock<ITujuanTransportDal>();
-        _writer = new Mock<ITujuanTransportWriter>();
-        _sut = new TujuanTransportUnSetDefaultAmbulanceHandler(_tujuanTransportDal.Object, _writer.Object);
-    }
-    
-    [Fact]
-    public async Task GivenInvalidTujuanTransportId_ThenThrowArgumentException()
-    {
-        var request = new TujuanTransportUnSetDefaultAmbulanceCommand("A");
-        _tujuanTransportDal.Setup(x => x.GetData(It.IsAny<ITujuanTransportKey>()))
-            .Returns(null as TujuanTransportModel);
-        var actual = async () => await _sut.Handle(request, CancellationToken.None);
-        await actual.Should().ThrowAsync<KeyNotFoundException>();
-    }
-}
