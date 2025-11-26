@@ -36,7 +36,7 @@ public class CaraBayarDkDal : ICaraBayarDkDal
         dp.AddParam("@fs_kd_cara_bayar_dk", key.CaraBayarDkId, SqlDbType.VarChar);
 
         // EXECUTE
-        var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.ReadSingle<CaraBayarDkType>(sql, dp);
 
     }
@@ -51,7 +51,7 @@ public class CaraBayarDkDal : ICaraBayarDkDal
              FROM 
                  ta_cara_bayar_dk";
 
-        var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<CaraBayarDkType>(sql);
         
     }

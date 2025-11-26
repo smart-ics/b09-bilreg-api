@@ -23,10 +23,10 @@ public record RegAktifDto(
             model.Pasien.Gender,
             model.JenisRawat,
             model.Layanan.LayananId,
-            model.Dokter.PetugasMedisId,
+            model.Dokter.PpaId,
             model.TipeJaminan.TipeJaminanId,
             model.Layanan.LayananName,
-            model.Dokter.PetugasMedisName,
+            model.Dokter.PpaName,
             model.TipeJaminan.TipeJaminanName);
     }
     

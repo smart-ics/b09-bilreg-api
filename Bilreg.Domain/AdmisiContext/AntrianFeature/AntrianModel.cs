@@ -70,7 +70,7 @@ public class AntrianModel : IAntrianKey
         Guard.Against.Null(jadwal, nameof(jadwal));
         Guard.Against.Null(tglAntrian, nameof(tglAntrian));
         
-        var sequenceTag = $"AN{tglAntrian:yyMMdd}_{jadwal.Dokter.PetugasMedisId.Replace(' ', '$')}";
+        var sequenceTag = $"AN{tglAntrian:yyMMdd}_{jadwal.Dokter.PpaId.Replace(' ', '$')}";
         return sequenceTag;
     }
     public static string GenSequenceTag(DateOnly tglAntrian, PpaType dokter)

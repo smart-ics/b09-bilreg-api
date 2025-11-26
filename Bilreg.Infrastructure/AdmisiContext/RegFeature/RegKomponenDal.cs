@@ -31,8 +31,8 @@ public record RegKomponenDto(
     public static RegKomponenDto FromModel(string regId,RegKomponenType model)
     {
         var dto = new RegKomponenDto(regId, model.Komponen.KomponenId,
-            model.Nilai, model.Diskon, model.PetugasMedis.PetugasMedisId,
-            model.Komponen.KomponenName, model.PetugasMedis.PetugasMedisName);
+            model.Nilai, model.Diskon, model.Ppa.PpaId,
+            model.Komponen.KomponenName, model.Ppa.PpaName);
         return dto;
     }
 

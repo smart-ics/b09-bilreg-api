@@ -44,7 +44,7 @@ public record OrderOpDto(
             model.Icd10.Icd10Id,
             model.JenisOperasi.JenisOperasiId,
             model.NamaOperasi,
-            model.Dokter.PetugasMedisId,
+            model.Dokter.PpaId,
             model.EstimasiDurasiInMinutes,
             model.PreferedDate,
             model.SpecialEquipment,
@@ -62,7 +62,7 @@ public record OrderOpDto(
             model.Pasien.Gender,
             model.Icd10.Icd10Name,
             model.JenisOperasi.JenisOperasiName,
-            model.Dokter.PetugasMedisName);
+            model.Dokter.PpaName);
         return result;
     }
 

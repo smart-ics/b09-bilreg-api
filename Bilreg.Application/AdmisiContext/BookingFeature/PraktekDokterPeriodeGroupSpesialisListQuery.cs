@@ -104,7 +104,7 @@ public class PraktekDokterPeriodeGroupSpesialisListHandler :
                 let dokterIdFromTag = a.SequenceTag.Split('_')[1].Trim()
                 let jadwal = jadwalTgl
                     .FirstOrDefault(j =>
-                        j.Dokter.PetugasMedisId == dokterIdFromTag &&
+                        j.Dokter.PpaId == dokterIdFromTag &&
                         j.JamMulai == a.StartTime)
                 select new PraktekDokterPeriodeGroupSpesialisListResponse(
                     tgl.ToString("yyyy-MM-dd"),
@@ -132,7 +132,7 @@ public class PraktekDokterPeriodeGroupSpesialisListHandler :
                 from j in jadwalTgl
                 where !fromAntrian.Any(a =>
                     a.Layanan.LayananId == j.Layanan.LayananId &&
-                    a.Dokter.PetugasMedisId == j.Dokter.PetugasMedisId &&
+                    a.Dokter.PpaId == j.Dokter.PpaId &&
                     a.JamMulaiPraktek == j.JamMulai.ToString("HH:mm") &&
                     a.Tanggal == tgl.ToString("yyyy-MM-dd"))
                 select new PraktekDokterPeriodeGroupSpesialisListResponse(

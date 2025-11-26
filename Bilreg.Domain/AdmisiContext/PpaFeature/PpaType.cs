@@ -36,4 +36,4 @@ public interface IPpaKey
     string PpaId {get;}
 }
 
-public record PpaReff(string PetugasMedisId, string PetugasMedisName);
+public record PpaReff(string PpaId, string PpaName);

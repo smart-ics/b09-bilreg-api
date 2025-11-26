@@ -1,5 +1,6 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
+using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
@@ -13,7 +14,9 @@ public interface IPpaDal :
     IUpdate<PpaDto>,
     IDelete<IPpaKey>,
     IGetData<PpaDto, IPpaKey>,
-    IListData<PpaDto>
+    IListData<PpaDto>,
+    IListData<PpaDto, IProfesiKey>
+
 {
 }
 
@@ -39,7 +42,7 @@ public class PpaDal : IPpaDal
         dp.AddParam("@fs_nm_alias", dto.fs_nm_alias, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_smf", dto.fs_kd_smf, SqlDbType.VarChar);
 
-        var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
 
@@ -62,7 +65,7 @@ public class PpaDal : IPpaDal
         dp.AddParam("@fs_nm_alias", dto.fs_nm_alias, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_smf", dto.fs_kd_smf, SqlDbType.VarChar);
         
-        var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
 
@@ -78,7 +81,7 @@ public class PpaDal : IPpaDal
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_peg", key.PpaId, SqlDbType.VarChar);
         
-        var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
 
@@ -98,7 +101,7 @@ public class PpaDal : IPpaDal
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_peg", key.PpaId, SqlDbType.VarChar);
         
-        var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.ReadSingle<PpaDto>(sql, dp);
     }
 
@@ -117,7 +120,32 @@ public class PpaDal : IPpaDal
                 aa.fs_kd_peg
             """;
         
-        var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Query<PpaDto>(sql).ToList();
+    }
+
+    public IEnumerable<PpaDto> ListData(IProfesiKey filter)
+    {
+        const string sql = """
+           SELECT 
+               aa.fs_kd_peg, aa.fs_nm_peg, aa.fs_nm_alias, aa.fs_kd_smf,
+               ISNULL(bb.fs_nm_smf, '') fs_nm_smf
+           FROM 
+               td_peg aa
+               LEFT JOIN ta_smf bb ON aa.fs_kd_smf = bb.fs_kd_smf
+               LEFT JOIN td_peg_sat_tugas cc ON aa.fs_kd_peg = cc.fs_kd_peg
+               LEFT JOIN td_sat_tugas dd ON cc.fs_kd_sat_tugas = dd.fs_kd_sat_tugas
+           WHERE 
+               aa.fb_aktif_Dinas = 1
+               AND dd.fs_kd_profesi = @fs_kd_profesi
+           ORDER BY 
+               aa.fs_kd_peg
+           """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@fs_kd_profesi", filter.ProfesiId, SqlDbType.VarChar);
+        
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Query<PpaDto>(sql, dp).ToList();
     }
 }

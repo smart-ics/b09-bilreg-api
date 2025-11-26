@@ -35,7 +35,7 @@ public class BookingDokterListHandler : IRequestHandler<BookingDokterListQuery, 
         var periode = new Periode(tgl);
         var listBooking = _bookingRepo.ListDataTglBerobat(periode)?.ToList() ?? [];
         var listBookingDokter = listBooking
-            .Where(x => x.Dokter.PetugasMedisId == request.DokterId)?
+            .Where(x => x.Dokter.PpaId == request.DokterId)?
             .ToList() ?? [];
         var result = listBookingDokter
             .Select(x => new BookingDokterListResponse(

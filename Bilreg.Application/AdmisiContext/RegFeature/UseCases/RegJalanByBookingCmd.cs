@@ -52,7 +52,7 @@ public class RegJalanByBookingHandler
         //  LOAD and GUARD
         var booking = LoadBooking(request.BookingId);
         var pasien = LoadPasien(booking.PasienId);
-        var dokter = LoadDokter(booking.Dokter.PetugasMedisId);
+        var dokter = LoadDokter(booking.Dokter.PpaId);
         var layanan = LoadLayanan(booking.Layanan.LayananId); 
         var karcis = LoadKarcis(request.KarcisId);
 

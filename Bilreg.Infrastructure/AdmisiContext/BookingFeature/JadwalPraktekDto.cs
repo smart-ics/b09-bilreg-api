@@ -21,10 +21,10 @@ public record JadwalPraktekDto(
 {
     public static JadwalPraktekDto FromModel(JadwalPraktekType model)
     {
-        return new JadwalPraktekDto(model.JadwalPraktekId, model.Dokter.PetugasMedisId,
+        return new JadwalPraktekDto(model.JadwalPraktekId, model.Dokter.PpaId,
             model.Layanan.LayananId, (int)model.Hari, 
             model.JamMulai.ToString("HH:mm"), model.JamSelesai.ToString("HH:mm"), model.MaxPasien,
-            model.Dokter.PetugasMedisName, model.Layanan.LayananName,
+            model.Dokter.PpaName, model.Layanan.LayananName,
             model.LayananDk.LayananDkId, model.LayananDk.LayananDkName,
             model.GroupSpesialis.GroupSpesialisId, model.GroupSpesialis.GroupSpesialisName);
     }

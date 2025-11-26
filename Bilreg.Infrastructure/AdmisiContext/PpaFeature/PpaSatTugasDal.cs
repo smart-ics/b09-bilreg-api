@@ -1,5 +1,6 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
+using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
@@ -11,8 +12,7 @@ namespace Bilreg.Infrastructure.AdmisiContext.PpaFeature;
 public interface IPpaSatTugasDal :
     IInsertBulk<PpaSatTugasDto>,
     IDelete<IPpaKey>,
-    IListData<PpaSatTugasDto, IPpaKey>,
-    IListData<PpaSatTugasDto, IProfesiKey>
+    IListData<PpaSatTugasDto, IPpaKey>
 {
 }
 
@@ -54,7 +54,7 @@ public class PpaSatTugasDal : IPpaSatTugasDal
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_peg", key.PpaId, SqlDbType.VarChar);
         
-        var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
 
@@ -77,30 +77,7 @@ public class PpaSatTugasDal : IPpaSatTugasDal
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_peg", filter.PpaId, SqlDbType.VarChar);
         
-        var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Query<PpaSatTugasDto>(sql, dp);
-    }
-
-    public IEnumerable<PpaSatTugasDto> ListData(IProfesiKey filter)
-    {
-        const string sql = """
-            SELECT 
-                aa.fs_kd_peg, aa.fs_kd_sat_tugas, aa.fn_utama, 
-                ISNULL(bb.fs_nm_sat_tugas, '') AS fs_nm_sat_tugas,
-                ISNULL(bb.fs_kd_profesi, '') AS fs_kd_profesi,
-                ISNULL(cc.ProfesiName, '') AS fs_nm_profesi
-            FROM 
-                td_peg_sat_tugas aa
-                LEFT JOIN td_sat_tugas bb ON aa.fs_kd_sat_tugas = bb.fs_kd_sat_tugas
-                LEFT JOIN BILRG_Profesi cc ON bb.fs_kd_profesi = cc.ProfesiId    
-            WHERE 
-                bb.fs_kd_profesi = @fs_kd_profesi
-            """;
-
-        var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_profesi", filter.ProfesiId, SqlDbType.VarChar);
-
-        var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Query<PpaSatTugasDto>(sql, dp);
     }
 }

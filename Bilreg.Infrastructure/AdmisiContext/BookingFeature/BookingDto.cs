@@ -35,13 +35,13 @@ public record BookingDto(
             model.PasienId, model.Reg.RegId, 
             //      tujuan berobat
             tglBerobat, jamPraktek, 
-            model.Layanan.LayananId, model.Dokter.PetugasMedisId, model.NoAntrian,
+            model.Layanan.LayananId, model.Dokter.PpaId, model.NoAntrian,
             //      audit-trail
             model.AuditTrail.Created.UserId, model.AuditTrail.Created.Timestamp,
             model.AuditTrail.Modified.UserId, model.AuditTrail.Modified.Timestamp,
             model.AuditTrail.Voided.UserId, model.AuditTrail.Voided.Timestamp,
             //      from support table
-            model.Layanan.LayananName, model.Dokter.PetugasMedisName);
+            model.Layanan.LayananName, model.Dokter.PpaName);
         return result;
     }
 

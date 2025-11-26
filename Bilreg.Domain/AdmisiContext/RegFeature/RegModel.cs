@@ -141,7 +141,7 @@ public class RegModel : IRegKey
 
 public record RegKomponenType(
     KomponenReff Komponen,
-    PpaReff PetugasMedis,
+    PpaReff Ppa,
     decimal Nilai,
     decimal Diskon);
 

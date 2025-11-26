@@ -56,7 +56,7 @@ public class PpaLayananDal : IPpaLayananDal
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_peg", key.PpaId, SqlDbType.VarChar);
         
-        var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
 
@@ -76,7 +76,7 @@ public class PpaLayananDal : IPpaLayananDal
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_peg", filter.PpaId, SqlDbType.VarChar);
         
-        var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Query<PpaLayananDto>(sql, dp);
     }
 
@@ -105,7 +105,7 @@ public class PpaLayananDal : IPpaLayananDal
         dp.AddParam("@SatTugasMedisId", satTgsKey.SatTugasId, SqlDbType.VarChar);
         dp.AddParam("@InstalasiDkId", instalasiDkKey.InstalasiDkId, SqlDbType.VarChar);
 
-        var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Query<PpaLayananView>(sql, dp);
     }
 

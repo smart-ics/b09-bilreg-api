@@ -13,9 +13,8 @@ public interface IPpaRepo :
 {
 }
 
-public record PpaView(string PetugasMedisId, 
-    string PetugasMedisName, string NamaSingkat, SmfType Smf,
-    IEnumerable<PpaSatTugasType> ListSatTugas);
+public record PpaView(string PpaId, 
+    string PpaName, string NamaSingkat, SmfType Smf);
     
     
 public record PpaLayananView(

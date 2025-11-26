@@ -35,11 +35,13 @@ public class PpaRepo : IPpaRepo
 
     public MayBe<PpaType> LoadEntity(IPpaKey key)
     {
-        var hdr = _ppaDal.GetData(key);
         var listSatTgs = _ppaSatTugasDal.ListData(key)?.ToList() ?? [];
         var listSatTgsType = listSatTgs.Select(x => x.ToModel());
+        
         var listLyn = _ppaLayananDal.ListData(key)?.ToList() ?? [];
         var listLynType = listLyn.Select(x => x.ToModel());
+        
+        var hdr = _ppaDal.GetData(key);
         var model = hdr?.ToModel(listLynType, listSatTgsType);
         return MayBe.From(model!);
     }
@@ -53,27 +55,15 @@ public class PpaRepo : IPpaRepo
 
     public IEnumerable<PpaView> ListData(IProfesiKey filter)
     {
-        var pegSatTugasMeds = _ppaSatTugasDal.ListData(filter) ?? [];
-        var listPeg = _ppaDal.ListData() ?? [];
-
-        var result =
-        from peg in listPeg
-        join sat in pegSatTugasMeds
-            on peg.fs_kd_peg equals sat.fs_kd_peg
-        group sat by peg into g
-        select new PpaView(
-            PetugasMedisId: g.Key.fs_kd_peg,
-            PetugasMedisName: g.Key.fs_nm_peg,
-            NamaSingkat: g.Key.fs_nm_alias,
-            Smf: new SmfType(g.Key.fs_kd_smf, g.Key.fs_nm_smf),
-            ListSatTugas: g.Select(x => x.ToModel())
-        );
-
+        var listPpa = _ppaDal.ListData(filter) ?? [];
+        var result = listPpa.Select(x => x.ToView());
         return result;
     }
 
     public IEnumerable<PpaView> ListData()
     {
-        throw new NotImplementedException();
+        var listPpa = _ppaDal.ListData() ?? [];
+        var result = listPpa.Select(x => x.ToView());
+        return result;    
     }
 }

@@ -45,7 +45,7 @@ public class TipeKamarDal : ITipeKamarDal
         dp.AddParam("@fb_default_tipe",model.IsDefault.ToString() ,SqlDbType.VarChar);
         dp.AddParam("@fb_no_urut",model.NoUrut.ToString() ,SqlDbType.VarChar);
         
-        var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
 
@@ -72,7 +72,7 @@ public class TipeKamarDal : ITipeKamarDal
         dp.AddParam("@fb_default_tipe",model.IsDefault.ToString() ,SqlDbType.VarChar);
         dp.AddParam("@fb_no_urut",model.NoUrut.ToString() ,SqlDbType.VarChar);
         
-        var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
 
@@ -85,7 +85,7 @@ public class TipeKamarDal : ITipeKamarDal
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_kamar_tipe", key.TipeKamarId, SqlDbType.VarChar);
 
-        var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
 
@@ -97,7 +97,7 @@ public class TipeKamarDal : ITipeKamarDal
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_kamar_tipe", key.TipeKamarId, SqlDbType.VarChar);
 
-        var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.ReadSingle<TipeKamarDto>(sql, dp);
     }
 
