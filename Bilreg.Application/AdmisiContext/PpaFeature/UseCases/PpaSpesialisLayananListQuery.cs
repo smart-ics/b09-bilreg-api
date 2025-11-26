@@ -27,7 +27,7 @@ public class PpaLayananHandler : IRequestHandler<PpaListDokterByGroupSpesialisQu
 
     public Task<IEnumerable<PpaListDokterByGroupSpesialisResponseDokter>> Handle(PpaListDokterByGroupSpesialisQuery request, CancellationToken cancellationToken)
     {
-        var listDokter = _ppaRepo.ListData()
+        //var listDokter = _ppaRepo.ListData();
         // var satTgsMed = _getSatTugasMedisSvc.Execute();
         // var instalasiDK = InstalasiDkType.Key("2");
         //

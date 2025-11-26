@@ -25,14 +25,14 @@ public class PpaListHandler : IRequestHandler<PpaListQuery, IEnumerable<PpaListR
     public Task<IEnumerable<PpaListResponse>> Handle(PpaListQuery request,
         CancellationToken cancellationToken)
     {
-
-        var listPtgMed = _ppaRepo
-            .ListData(SatTugasType.Key(request.SatuanTugasId))?
-            .ToList() ?? [];
-
-
-        var response = listPtgMed.Select(x => new PpaListResponse(
-            x.PetugasMedisId, x.PetugasMedisName, x.NamaSingkat, x.Smf.SmfId, x.Smf.SmfName));
-        return Task.FromResult(response);
+        // var listPtgMed = _ppaRepo
+        //     .ListData(SatTugasType.Key(request.SatuanTugasId))?
+        //     .ToList() ?? [];
+        //
+        //
+        // var response = listPtgMed.Select(x => new PpaListResponse(
+        //     x.PetugasMedisId, x.PetugasMedisName, x.NamaSingkat, x.Smf.SmfId, x.Smf.SmfName));
+        // return Task.FromResult(response);
+        throw new NotImplementedException();
     }
 }

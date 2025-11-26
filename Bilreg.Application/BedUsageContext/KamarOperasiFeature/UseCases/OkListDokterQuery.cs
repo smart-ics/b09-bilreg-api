@@ -25,16 +25,17 @@ public class OkListDokterQueryHandler : IRequestHandler<OkListDokterQuery, IEnum
 
     public Task<IEnumerable<OkListDokterResponse>> Handle(OkListDokterQuery request, CancellationToken cancellationToken)
     {
-        var satTgsMed = _getSatTugasMedisSvc.Execute();
-
-        var listFilter = new List<IGroupSpesialisKey>();
-        foreach (var groupSpesialisId in GROUP_SPESIALIS_IDS)
-        {
-            var groupSpesialisKey = GroupSpesialisType.Key(groupSpesialisId);
-            listFilter.Add(groupSpesialisKey);
-        }
-        var listPtgMedis = _ppaRepo.ListData(satTgsMed, listFilter);
-        var result = listPtgMedis.Select(x => new OkListDokterResponse(x.PpaId, x.PpaName));
-        return Task.FromResult(result);
+        // var satTgsMed = _getSatTugasMedisSvc.Execute();
+        //
+        // var listFilter = new List<IGroupSpesialisKey>();
+        // foreach (var groupSpesialisId in GROUP_SPESIALIS_IDS)
+        // {
+        //     var groupSpesialisKey = GroupSpesialisType.Key(groupSpesialisId);
+        //     listFilter.Add(groupSpesialisKey);
+        // }
+        // var listPtgMedis = _ppaRepo.ListData(satTgsMed, listFilter);
+        // var result = listPtgMedis.Select(x => new OkListDokterResponse(x.PpaId, x.PpaName));
+        // return Task.FromResult(result);
+        throw new NotImplementedException();
     }
 }

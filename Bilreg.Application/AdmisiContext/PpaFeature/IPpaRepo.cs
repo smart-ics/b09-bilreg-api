@@ -8,9 +8,8 @@ public interface IPpaRepo :
     ISaveChange<PpaType>,
     ILoadEntity<PpaType, IPpaKey>,
     IDeleteEntity<IPpaKey>,
-    IListData<PpaView, IProfesiKey>,
-    IListData<PpaLayananView, ISatTugasKey, IInstalasiDkKey>,
-    IListData<PpaType, ISatTugasKey, IEnumerable<IGroupSpesialisKey>>
+    IListData<PpaView>,
+    IListData<PpaView, IProfesiKey>
 {
 }
 

@@ -11,7 +11,7 @@ using Xunit;
 
 namespace Bilreg.Infrastructure.AdmisiContext.PpaFeature;
 
-public interface IPetugasMedisSatTugasDal :
+public interface IPpaSatTugasDal :
     IInsertBulk<PpaSatTugasDto>,
     IDelete<IPpaKey>,
     IListData<PpaSatTugasDto, IPpaKey>,
@@ -19,7 +19,7 @@ public interface IPetugasMedisSatTugasDal :
 {
 }
 
-public class PpaSatTugasDal : IPetugasMedisSatTugasDal
+public class PpaSatTugasDal : IPpaSatTugasDal
 {
     private readonly DatabaseOptions _opt;
 
@@ -151,19 +151,6 @@ public class PpaSatTugasDalTest
         using var trans = TransHelper.NewScope();
         _sut.Insert(FakerList());
         var actual = _sut.ListData(FakerKey());
-        actual.Should().BeEquivalentTo(FakerList(),
-            opt => opt
-                .Excluding(x => x.fs_nm_sat_tugas)
-                .Excluding(x => x.fs_kd_profesi)
-                .Excluding(x => x.fs_nm_profesi));
-    }
-
-    [Fact]
-    public void ListDataBySatTugasTest()
-    {
-        using var trans = TransHelper.NewScope();
-        _sut.Insert(FakerList());
-        var actual = _sut.ListData(FakerSatTugasKey());
         actual.Should().BeEquivalentTo(FakerList(),
             opt => opt
                 .Excluding(x => x.fs_nm_sat_tugas)

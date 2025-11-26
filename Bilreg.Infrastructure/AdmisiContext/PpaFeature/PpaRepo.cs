@@ -7,38 +7,38 @@ namespace Bilreg.Infrastructure.AdmisiContext.PpaFeature;
 
 public class PpaRepo : IPpaRepo
 {
-    private readonly IPpaDal _petugasMedisDal;
-    private readonly IPetugasMedisSatTugasDal _ptgMedisSatTugasDal;
-    private readonly IPpaLayananDal _ptgMedisLayananDal;
+    private readonly IPpaDal _ppaDal;
+    private readonly IPpaSatTugasDal _ppaSatTugasDal;
+    private readonly IPpaLayananDal _ppaLayananDal;
 
-    public PpaRepo(IPpaDal petugasMedisDal, 
-        IPetugasMedisSatTugasDal ptgMedisSatTugasDal, 
-        IPpaLayananDal ptgMedisLayananDal)
+    public PpaRepo(IPpaDal ppaDal, 
+        IPpaSatTugasDal ppaSatTugasDal, 
+        IPpaLayananDal ppaLayananDal)
     {
-        _petugasMedisDal = petugasMedisDal;
-        _ptgMedisSatTugasDal = ptgMedisSatTugasDal;
-        _ptgMedisLayananDal = ptgMedisLayananDal;
+        _ppaDal = ppaDal;
+        _ppaSatTugasDal = ppaSatTugasDal;
+        _ppaLayananDal = ppaLayananDal;
     }
 
     public void SaveChanges(PpaType model)
     {
         LoadEntity(model)
             .Match(
-                onSome: _ => _petugasMedisDal.Update(PpaDto.FromModel(model)),
-                onNone: () => _petugasMedisDal.Insert(PpaDto.FromModel(model))
+                onSome: _ => _ppaDal.Update(PpaDto.FromModel(model)),
+                onNone: () => _ppaDal.Insert(PpaDto.FromModel(model))
             );
-        _ptgMedisSatTugasDal.Delete(model);
-        _ptgMedisLayananDal.Delete(model);
-        _ptgMedisSatTugasDal.Insert(model.ListSatTugas.Select(x => PpaSatTugasDto.Create(model, x)));
-        _ptgMedisLayananDal.Insert(model.ListLayanan.Select(x => PpaLayananDto.Create(model, x)));
+        _ppaSatTugasDal.Delete(model);
+        _ppaLayananDal.Delete(model);
+        _ppaSatTugasDal.Insert(model.ListSatTugas.Select(x => PpaSatTugasDto.Create(model, x)));
+        _ppaLayananDal.Insert(model.ListLayanan.Select(x => PpaLayananDto.Create(model, x)));
     }
 
     public MayBe<PpaType> LoadEntity(IPpaKey key)
     {
-        var hdr = _petugasMedisDal.GetData(key);
-        var listSatTgs = _ptgMedisSatTugasDal.ListData(key)?.ToList() ?? [];
+        var hdr = _ppaDal.GetData(key);
+        var listSatTgs = _ppaSatTugasDal.ListData(key)?.ToList() ?? [];
         var listSatTgsType = listSatTgs.Select(x => x.ToModel());
-        var listLyn = _ptgMedisLayananDal.ListData(key)?.ToList() ?? [];
+        var listLyn = _ppaLayananDal.ListData(key)?.ToList() ?? [];
         var listLynType = listLyn.Select(x => x.ToModel());
         var model = hdr?.ToModel(listLynType, listSatTgsType);
         return MayBe.From(model!);
@@ -46,15 +46,15 @@ public class PpaRepo : IPpaRepo
 
     public void DeleteEntity(IPpaKey key)
     {
-        _petugasMedisDal.Delete(key);
-        _ptgMedisSatTugasDal.Delete(key);
-        _ptgMedisLayananDal.Delete(key);
+        _ppaDal.Delete(key);
+        _ppaSatTugasDal.Delete(key);
+        _ppaLayananDal.Delete(key);
     }
 
     public IEnumerable<PpaView> ListData(IProfesiKey filter)
     {
-        var pegSatTugasMeds = _ptgMedisSatTugasDal.ListData(filter) ?? [];
-        var listPeg = _petugasMedisDal.ListData() ?? [];
+        var pegSatTugasMeds = _ppaSatTugasDal.ListData(filter) ?? [];
+        var listPeg = _ppaDal.ListData() ?? [];
 
         var result =
         from peg in listPeg
@@ -70,5 +70,10 @@ public class PpaRepo : IPpaRepo
         );
 
         return result;
+    }
+
+    public IEnumerable<PpaView> ListData()
+    {
+        throw new NotImplementedException();
     }
 }
