@@ -53,17 +53,10 @@ public class PpaRepo : IPpaRepo
         _ppaLayananDal.Delete(key);
     }
 
-    public IEnumerable<PpaView> ListData(IProfesiKey filter)
+    public IEnumerable<PpaLayananView> ListData(IProfesiKey filter1, IEnumerable<ILayananKey> filter2)
     {
-        var listPpa = _ppaDal.ListData(filter) ?? [];
+        var listPpa = _ppaDal.ListData(filter1, filter2) ?? [];
         var result = listPpa.Select(x => x.ToView());
-        return result;
-    }
-
-    public IEnumerable<PpaView> ListData()
-    {
-        var listPpa = _ppaDal.ListData() ?? [];
-        var result = listPpa.Select(x => x.ToView());
-        return result;    
+        return result;   
     }
 }

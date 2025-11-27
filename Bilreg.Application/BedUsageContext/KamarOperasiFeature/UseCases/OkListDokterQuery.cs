@@ -11,15 +11,12 @@ public record OkListDokterResponse(string DokterId, string DokterName);
 
 public class OkListDokterQueryHandler : IRequestHandler<OkListDokterQuery, IEnumerable<OkListDokterResponse>>
 {
-    private readonly IGetSatuanTugasMedisService _getSatTugasMedisSvc;
     private readonly IPpaRepo _ppaRepo;
 
     public static readonly IEnumerable<string> GROUP_SPESIALIS_IDS = new string[] { "BDH", "OBG" };
 
-    public OkListDokterQueryHandler(IGetSatuanTugasMedisService getSatTugasMedisSvc,
-        IPpaRepo ppaRepo)
+    public OkListDokterQueryHandler(IPpaRepo ppaRepo)
     {
-        _getSatTugasMedisSvc = getSatTugasMedisSvc;
         _ppaRepo = ppaRepo;
     }
 

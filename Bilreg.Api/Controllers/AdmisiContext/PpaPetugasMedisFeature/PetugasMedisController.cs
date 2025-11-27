@@ -37,7 +37,7 @@ public class PetugasMedisController : Controller
     [HttpGet("{layananId}/list")]
     public async Task<IActionResult> ListDataLayanan(string layananId)
     {
-        var query = new PpaLayananListQuery(layananId);
+        var query = new PpaListDokterByLayananQuery(layananId);
         var result = await _mediator.Send(query);
         return Ok(new JSendOk(result));
     }
@@ -46,7 +46,7 @@ public class PetugasMedisController : Controller
     [Route("groupSpesialis/list")]
     public async Task<IActionResult> ListGroupSpesialis()
     {
-        var query = new PpaListDokterByGroupSpesialisQuery();
+        var query = new PpaListDokterRajalQuery();
         var response = await _mediator.Send(query);
         return Ok(new JSendOk(response));
     }

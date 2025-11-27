@@ -8,17 +8,12 @@ public interface IPpaRepo :
     ISaveChange<PpaType>,
     ILoadEntity<PpaType, IPpaKey>,
     IDeleteEntity<IPpaKey>,
-    IListData<PpaView>,
-    IListData<PpaView, IProfesiKey>
+    IListData<PpaLayananView, IProfesiKey, IEnumerable<ILayananKey>>
 {
 }
 
 public record PpaView(string PpaId, 
     string PpaName, string NamaSingkat, SmfType Smf);
     
-    
-public record PpaLayananView(
-    string PpaId,
-    string PpaName,
-    LayananReff Layanan,
-    GroupSpesialisType GroupSpesialis);
+public record PpaLayananView(string PpaId,
+    string PpaName, LayananReff Layanan);

@@ -1,6 +1,7 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
 using Bilreg.Application.AdmisiContext.PpaFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
@@ -14,9 +15,7 @@ public interface IPpaDal :
     IUpdate<PpaDto>,
     IDelete<IPpaKey>,
     IGetData<PpaDto, IPpaKey>,
-    IListData<PpaDto>,
-    IListData<PpaDto, IProfesiKey>
-
+    IListData<PpaLayananDto, IProfesiKey, IEnumerable<ILayananKey>>
 {
 }
 
@@ -116,36 +115,38 @@ public class PpaDal : IPpaDal
                 LEFT JOIN ta_smf bb ON aa.fs_kd_smf = bb.fs_kd_smf
             WHERE 
                 aa.fb_aktif_Dinas = 1
-            ORDER BY 
-                aa.fs_kd_peg
             """;
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Query<PpaDto>(sql).ToList();
     }
 
-    public IEnumerable<PpaDto> ListData(IProfesiKey filter)
+    public IEnumerable<PpaLayananDto> ListData(IProfesiKey filter, IEnumerable<ILayananKey> filter2)
     {
         const string sql = """
            SELECT 
-               aa.fs_kd_peg, aa.fs_nm_peg, aa.fs_nm_alias, aa.fs_kd_smf,
-               ISNULL(bb.fs_nm_smf, '') fs_nm_smf
+               aa.fs_kd_peg, aa.fs_nm_peg,
+               ISNULL(bb.fs_kd_layanan, '') fs_kd_layanan,
+               ISNULL(bb.fb_utama, 0) fb_utama,
+               ISNULL(cc.fs_nm_layanan, '') fs_nm_layanan
            FROM 
                td_peg aa
-               LEFT JOIN ta_smf bb ON aa.fs_kd_smf = bb.fs_kd_smf
-               LEFT JOIN td_peg_sat_tugas cc ON aa.fs_kd_peg = cc.fs_kd_peg
-               LEFT JOIN td_sat_tugas dd ON cc.fs_kd_sat_tugas = dd.fs_kd_sat_tugas
+               LEFT JOIN td_peg_layanan bb ON aa.fs_kd_peg = bb.fs_kd_peg
+               LEFT JOIN ta_layanan cc ON bb.fs_kd_layanan = cc.fs_kd_layanan
+               LEFT JOIN td_peg_sat_tugas dd ON aa.fs_kd_peg = dd.fs_kd_peg
+               LEFT JOIN td_sat_tugas ee ON dd.fs_kd_sat_tugas = ee.fs_kd_sat_tugas
            WHERE 
                aa.fb_aktif_Dinas = 1
-               AND dd.fs_kd_profesi = @fs_kd_profesi
-           ORDER BY 
-               aa.fs_kd_peg
+               AND ee.fs_kd_profesi = @fs_kd_profesi
+               AND bb.fs_kd_layanan IN @ListLayananId
            """;
 
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_profesi", filter.ProfesiId, SqlDbType.VarChar);
+        dp.AddParam("@ListLayananId", filter2.Select(x => x.LayananId).ToList(), SqlDbType.VarChar);
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Query<PpaDto>(sql, dp).ToList();
+        return conn.Read<PpaLayananDto>(sql, dp);
     }
+
 }
