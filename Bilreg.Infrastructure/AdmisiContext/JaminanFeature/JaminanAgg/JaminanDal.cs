@@ -1,17 +1,10 @@
 using System.Data;
 using System.Data.SqlClient;
-using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
-using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Infrastructure.Helpers;
-using Bilreg.Infrastructure.PasienContext.PasienFeature;
 using Dapper;
-using FluentAssertions;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
-using Nuna.Lib.PatternHelper;
-using Nuna.Lib.TransactionHelper;
-using Xunit;
 
 namespace Bilreg.Infrastructure.AdmisiContext.JaminanFeature.JaminanAgg;
 

@@ -1,7 +1,7 @@
 ﻿using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
-using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiContext.RujukanFeature;
 using Bilreg.Domain.BillContext.BedUsageFeature;
@@ -65,7 +65,7 @@ public class RegRepo : IRegRepo
         var kelas = new KelasReff(regDto.fs_kd_kelas, regDto.fs_nm_kelas);
         var caraMasukDk = new CaraMasukDkType(regDto.fs_kd_cara_masuk_dk, regDto.fs_nm_cara_masuk_dk);
         var rujukan = new RujukanReff(regDto.fs_kd_rujukan, regDto.fs_nm_rujukan);
-        var dokter = new PetugasMedisReff(regDto.fs_kd_medis, regDto.fs_nm_medis);
+        var dokter = new PpaReff(regDto.fs_kd_medis, regDto.fs_nm_medis);
         var layanan = new LayananReff(regDto.fs_kd_layanan, regDto.fs_nm_layanan);
         var karcis = new KarcisReff(regDto.fs_kd_karcis, regDto.fs_nm_karcis);
         // polis
@@ -92,7 +92,7 @@ public class RegRepo : IRegRepo
             x.fd_tgl_masuk,
             new PasienReff(x.fs_mr, x.fs_nm_pasien, DateOnly.Parse(x.fd_tgl_lahir), x.fs_jns_kelamin),
             new LayananReff(x.fs_kd_layanan, x.fs_nm_layanan),
-            new PetugasMedisReff(x.fs_kd_medis, x.fs_nm_medis)));
+            new PpaReff(x.fs_kd_medis, x.fs_nm_medis)));
         return listView;
     }
 }

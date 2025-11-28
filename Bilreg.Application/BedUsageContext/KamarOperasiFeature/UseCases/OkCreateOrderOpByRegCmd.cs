@@ -1,6 +1,6 @@
-﻿using Bilreg.Application.AdmisiContext.PetugasMedisFeature;
+﻿using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
-using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using MediatR;
@@ -34,14 +34,14 @@ public class OkCreateOrderOpByRegHandler
     private readonly IRegRepo _regRepo;
     private readonly IIcd10Repo _icdRepo;
     private readonly IJenisOperasiRepo _jenisOperasiRepo;
-    private readonly IPetugasMedisRepo _dokterRepo;
+    private readonly IPpaRepo _dokterRepo;
 
     public OkCreateOrderOpByRegHandler(
         IOrderOpRepo orderOpRepo,
         IRegRepo regRepo,
         IIcd10Repo icdRepo,
         IJenisOperasiRepo jenisOperasiRepo,
-        IPetugasMedisRepo dokterRepo)
+        IPpaRepo dokterRepo)
     {
         _orderOpRepo = orderOpRepo;
         _regRepo = regRepo;
@@ -88,8 +88,8 @@ public class OkCreateOrderOpByRegHandler
         _jenisOperasiRepo.LoadEntity(JenisOperasiType.Key(id))
             .GetValueOrThrow("Jenis Operasi ID invalid");
 
-    private PetugasMedisType LoadDokter(string id) =>
-        _dokterRepo.LoadEntity(PetugasMedisType.Key(id))
+    private PpaType LoadDokter(string id) =>
+        _dokterRepo.LoadEntity(PpaType.Key(id))
             .GetValueOrThrow("Dokter DPJP ID invalid");
 
     private OrderOpView? FindExistingOrder(string regId)
@@ -103,7 +103,7 @@ public class OkCreateOrderOpByRegHandler
         RegModel reg,
         Icd10Type icd,
         JenisOperasiType jenisOp,
-        PetugasMedisType dokter,
+        PpaType dokter,
         OkCreateOrderOpByRegCmd req)
     {
         var orderOp = OrderOpModel.CreateByReg(reg, req.UserId);

@@ -1,6 +1,5 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
-using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
 using Bilreg.Domain.Helpers;
 
 
@@ -30,7 +29,7 @@ public class AntrianFactory : IAntrianFactory
                 nameof(antrianDate));
         var newId = Ulid.NewUlid().ToString();
         var sequenceTag = AntrianModel.GenSequenceTag(antrianDate, jadwalPraktek);
-        var antrianDesc = $"Praktek Dokter {jadwalPraktek.Dokter.PetugasMedisId}";
+        var antrianDesc = $"Praktek Dokter {jadwalPraktek.Dokter.PpaId}";
         
         var result = new AntrianModel(newId, antrianDate, jadwalPraktek.JamMulai, 
             jadwalPraktek.JamSelesai,sequenceTag, antrianDesc, 

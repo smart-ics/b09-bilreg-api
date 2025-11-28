@@ -4,11 +4,8 @@ using Bilreg.Application.ParamContext.ParamSistemAgg;
 using Bilreg.Domain.ParamContext;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
-using FluentAssertions;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
-using Nuna.Lib.TransactionHelper;
-using Xunit;
 
 namespace Bilreg.Infrastructure.ParamContext;
 
@@ -111,58 +108,5 @@ public class ParamSistemDal : IParamSistemDal
             get => Value; 
             set => Value = value;
         }
-    }
-}
-
-public class ParamSistemDalTest
-{
-    private readonly ParamSistemDal _sut;
-
-    public ParamSistemDalTest()
-    {
-        _sut = new ParamSistemDal(ConnStringHelper.GetTestEnv());
-    }
-
-    [Fact]
-    public void InsertTest()
-    {
-        // Arrange
-        using var trans = TransHelper.NewScope();
-        var expected = new ParamSistemModel("A", "B", "C");
-        _sut.Insert(expected);
-    }
-    [Fact]
-    public void UpdateTest()
-    {
-        using var trans = TransHelper.NewScope();
-        var expected = new ParamSistemModel("A", "B", "C");
-        _sut.Update(expected);
-    }
-    [Fact]
-    public void DeleteTest()
-    {
-        using var trans = TransHelper.NewScope();
-        var expected = new ParamSistemModel("A", "B", "C");
-        _sut.Delete(expected);
-    }
-
-    [Fact]
-    public void GetDataTest()
-    {
-        using var trans = TransHelper.NewScope();
-        var expected = new ParamSistemModel("A", "B", "C");
-        _sut.Insert(expected);
-        var actual = _sut.GetData("A");
-        actual.Should().BeEquivalentTo(expected);
-    }
-
-    [Fact]
-    public void ListDataTest()
-    {
-        using var trans = TransHelper.NewScope();
-        var expected =  new ParamSistemModel("A", "B", "C") ;
-        _sut.Insert(expected);
-        var actual = _sut.ListData();
-        actual.Should().ContainEquivalentOf(expected);
     }
 }

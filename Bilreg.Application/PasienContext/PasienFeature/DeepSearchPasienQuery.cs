@@ -1,13 +1,7 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Application.ParamContext.ParamSistemAgg;
-using Bilreg.Domain.AdmisiContext.SearchPasienSub;
 using Bilreg.Domain.PasienContext.PasienFeature;
-using FluentAssertions;
 using MediatR;
-using Moq;
-using Nuna.Lib.AutoNumberHelper;
-using Nuna.Lib.PatternHelper;
-using Xunit;
 
 namespace Bilreg.Application.PasienContext.PasienFeature;
 
