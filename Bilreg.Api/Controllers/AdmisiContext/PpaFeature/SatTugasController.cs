@@ -1,8 +1,4 @@
-﻿using MediatR;
-using Microsoft.AspNetCore.Mvc;
-using Nuna.Lib.ActionResultHelper;
-
-namespace Bilreg.Api.Controllers.AdmisiContext.PpaPetugasMedisFeature
+﻿namespace Bilreg.Api.Controllers.AdmisiContext.PpaFeature
 {
     // [Route("api/[controller]")]
     // [ApiController]

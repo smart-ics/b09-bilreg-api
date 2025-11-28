@@ -40,7 +40,7 @@ public class PpaListDokterRajalHandler : IRequestHandler<PpaListDokterRajalQuery
             .ListData(InstalasiDkType.RawatJalan)?
             .ToList() ?? [];
         var listPpa = _ppaRepo.ListData(ProfesiType.Dokter, listLayanan)?.ToList() ?? [];
-        var listGroupSpesialis = _groupSpesialisRepo?.ListData() ?? [];
+        var listGroupSpesialis = _groupSpesialisRepo.ListData()?.ToList() ?? [];
         var result = (from item in listGroupSpesialis
             let listLayananThisGrupSpesialis = listLayanan
                 .Where(x => x.GroupSpesialis.GroupSpesialisId == item.GroupSpesialisId)

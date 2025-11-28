@@ -59,4 +59,11 @@ public class PpaRepo : IPpaRepo
         var result = listPpa.Select(x => x.ToView());
         return result;   
     }
+
+    public IEnumerable<PpaView> ListData(IProfesiKey filter)
+    {
+        var listPpa = _ppaDal.ListData(filter) ?? [];
+        var result = listPpa.Select(x => x.ToView());
+        return result;   
+    }
 }

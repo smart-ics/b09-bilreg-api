@@ -15,7 +15,9 @@ public interface IPpaDal :
     IUpdate<PpaDto>,
     IDelete<IPpaKey>,
     IGetData<PpaDto, IPpaKey>,
-    IListData<PpaLayananDto, IProfesiKey, IEnumerable<ILayananKey>>
+    IListData<PpaLayananDto, IProfesiKey, IEnumerable<ILayananKey>>,
+    IListData<PpaDto, IProfesiKey>
+    
 {
 }
 
@@ -143,10 +145,33 @@ public class PpaDal : IPpaDal
 
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_profesi", filter.ProfesiId, SqlDbType.VarChar);
-        dp.AddParam("@ListLayananId", filter2.Select(x => x.LayananId).ToList(), SqlDbType.VarChar);
+        dp.Add("@ListLayananId", filter2.Select(x => x.LayananId).ToArray());
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<PpaLayananDto>(sql, dp);
     }
 
+    public IEnumerable<PpaDto> ListData(IProfesiKey filter)
+    {
+        const string sql = """
+           SELECT 
+               aa.fs_kd_peg, aa.fs_nm_peg, aa.fs_nm_alias, aa.fs_kd_smf,
+               ISNULL(dd.fs_nm_smf, '') fs_nm_smf
+           FROM 
+               td_peg aa
+               LEFT JOIN td_peg_sat_tugas bb ON aa.fs_kd_peg = bb.fs_kd_peg
+               LEFT JOIN td_sat_tugas cc ON bb.fs_kd_sat_tugas = cc.fs_kd_sat_tugas
+               LEFT JOIN ta_smf dd ON aa.fs_kd_smf = dd.fs_kd_smf
+           WHERE 
+               aa.fb_aktif_Dinas = 1
+               AND bb.fn_utama = 1
+               AND cc.fs_kd_profesi = @fs_kd_profesi
+           """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@fs_kd_profesi", filter.ProfesiId, SqlDbType.VarChar);
+        
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<PpaDto>(sql, dp);
+    }
 }
