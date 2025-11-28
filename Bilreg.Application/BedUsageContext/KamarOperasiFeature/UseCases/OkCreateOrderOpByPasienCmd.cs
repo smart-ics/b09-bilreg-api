@@ -1,4 +1,4 @@
-﻿using Bilreg.Application.AdmisiContext.PetugasMedisFeature;
+﻿using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
@@ -107,9 +107,7 @@ public class OkCreateOrderOpByPasienHandler :
     {
         var orderOp = OrderOpModel.CreateByPasien(pasien, req.UserId);
 
-        orderOp.SetKlinis(icd, jenisOp, req.NamaOperasi,
-            req.UrgencyLevel.ToEnumOrDefault<UrgencyLevelEnum>(UrgencyLevelEnum.Elective));
-
+        orderOp.SetKlinis(icd, jenisOp, req.NamaOperasi);
         orderOp.OperationalRequest(
             dokter,
             req.EstimasiDurasiInMinutes,

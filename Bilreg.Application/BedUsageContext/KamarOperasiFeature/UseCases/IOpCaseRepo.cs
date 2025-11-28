@@ -8,12 +8,12 @@ namespace Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
 public interface IOpCaseRepo :
     ISaveChange<OpCaseModel>,
     ILoadEntity<OpCaseModel, IOrderOpKey>,
-    IDeleteEntity<IOrderOpKey>,
-    IListData<OpCaseModel, Periode>
+    IDeleteEntity<IOrderOpKey>
 {
-    IEnumerable<OpCaseReff> ListActiveOpCase();
+    IEnumerable<OpCaseOrderView> ListActiveOpCase();
+    
 }
 
 public record OpCaseOrderView(string OrderOpId,
     PasienReff Pasien, string NamaOperasi, 
-    UrgenceLevelType UrgencyLevel, DateTime PreferedDate)
+    UrgencyLevelEnum UrgencyLevel, DateTime PreferedDate);

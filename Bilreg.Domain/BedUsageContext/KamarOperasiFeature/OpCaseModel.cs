@@ -5,29 +5,43 @@ namespace Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 
 public class OpCaseModel : IOrderOpKey
 {
+    private readonly List<OpCaseStateHistType> _listStateHistory;
+    
     #region CREATION
     public OpCaseModel(string orderOpId, OrderOpReff orderOp, 
-        PasienReff pasien, RegReff reg, UrgencyLevelEnum urgencyLevel,
-        ScheduleOpReff scheduleOp, DischergeOpReff dischargeOp, OrderOpStateEnum opState)
+        PasienReff pasien, string operasiName, 
+        RegReff reg, UrgencyLevelEnum urgencyLevel,
+        ScheduleOpReff scheduleOp, DischergeOpReff dischargeOp, OpCaseStateEnum opState,
+        IEnumerable<OpCaseStateHistType> listStateHistory)
     {
         OrderOpId = orderOpId;
         OrderOp = orderOp;
         Pasien = pasien;
+        OperasiName = operasiName;
+        
         Reg = reg;
         UrgencyLevel = urgencyLevel;
         ScheduleOp = scheduleOp;
         DischargeOp = dischargeOp;
         OrderOpState = opState;
+        
+        _listStateHistory = listStateHistory?.ToList() ?? [];
     }
     public static OpCaseModel Default => new OpCaseModel(
-        "-", OrderOpModel.Default.ToReff(), PasienModel.Default.ToReff(), RegModel.Default.ToReff(),
-        UrgencyLevelEnum.Elective, ScheduleOpReff.Default, DischergeOpReff.Default, OrderOpStateEnum.Requested);
+        "-", OrderOpModel.Default.ToReff(), PasienModel.Default.ToReff(), "-", 
+        RegModel.Default.ToReff(), UrgencyLevelEnum.Elective, ScheduleOpReff.Default, 
+        DischergeOpReff.Default, OpCaseStateEnum.Requested, []);
 
     public static OpCaseModel Create(OrderOpModel orderOp)
     {
+        var listStateHist = new List<OpCaseStateHistType>
+        {
+            new(0, OpCaseStateEnum.Requested, DateTime.Now)
+        };
         var result = new OpCaseModel(orderOp.OrderOpId, orderOp.ToReff(),
-            orderOp.Pasien, orderOp.Reg, orderOp.UrgencyLevel,
-            ScheduleOpReff.Default, DischergeOpReff.Default, OrderOpStateEnum.Requested);
+            orderOp.Pasien, orderOp.NamaOperasi, orderOp.Reg, orderOp.UrgencyLevel,
+            ScheduleOpReff.Default, DischergeOpReff.Default, 
+            OpCaseStateEnum.Requested, listStateHist);
         return result;
     }
     #endregion
@@ -35,13 +49,16 @@ public class OpCaseModel : IOrderOpKey
     #region PROPERTIES
     public string OrderOpId { get; init; }
     public OrderOpReff OrderOp { get; init; }
+    
     public PasienReff Pasien { get; init; }
+    public string OperasiName { get; init; }
+
     public RegReff Reg { get; private set; }
     public UrgencyLevelEnum UrgencyLevel { get; private set; }
 
     public ScheduleOpReff ScheduleOp { get; private set; }
     public DischergeOpReff DischargeOp { get; private set; }
-    public OrderOpStateEnum OrderOpState { get; private set; }
+    public OpCaseStateEnum OrderOpState { get; private set; }
 
     public OpCaseReff? ActiveOpCase
     {
@@ -49,17 +66,18 @@ public class OpCaseModel : IOrderOpKey
         {
             return OrderOpState switch
             {
-                OrderOpStateEnum.Requested => ToReff(),
-                OrderOpStateEnum.Scheduled => ToReff(),
-                OrderOpStateEnum.PreOpCleared => ToReff(),
-                OrderOpStateEnum.OpStarted => ToReff(),
-                OrderOpStateEnum.RecoveryStarted => ToReff(),
-                OrderOpStateEnum.Discharged => null,
-                OrderOpStateEnum.Cancelled => null,
+                OpCaseStateEnum.Requested => ToReff(),
+                OpCaseStateEnum.Scheduled => ToReff(),
+                OpCaseStateEnum.PreOpCleared => ToReff(),
+                OpCaseStateEnum.OpStarted => ToReff(),
+                OpCaseStateEnum.RecoveryStarted => ToReff(),
+                OpCaseStateEnum.Discharged => null,
+                OpCaseStateEnum.Cancelled => null,
                 _ => null
             };
         }
     }
+    public IEnumerable<OpCaseStateHistType> ListStateHistory => _listStateHistory;
     #endregion
     
     #region BEHAVIOUR
@@ -88,4 +106,10 @@ public record DischergeOpReff(string DischargeOpId, DateTime DischargedDate)
 };
 
 public record OpCaseReff(string OrderOpId, DateTime OrderOpDate,
-    PasienReff Pasien, OrderOpStateEnum OrderOpState);
+    PasienReff Pasien, OpCaseStateEnum OrderOpState);
+    
+public record OpCaseStateHistType(int NoUrut, OpCaseStateEnum OpCaseState, DateTime StateTimestamp)
+{
+    public static OpCaseStateHistType Default 
+        => new OpCaseStateHistType(0, OpCaseStateEnum.Requested, new DateTime(3000,1,1));
+};

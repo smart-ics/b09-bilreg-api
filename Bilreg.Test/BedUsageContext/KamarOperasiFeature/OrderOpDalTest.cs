@@ -4,9 +4,8 @@ using Bilreg.Infrastructure.Helpers;
 using FluentAssertions;
 using Nuna.Lib.TransactionHelper;
 using Nuna.Lib.ValidationHelper;
-using Xunit;
 
-namespace Bilreg.Test.BillContext.KamarOperasiFeature;
+namespace Bilreg.Test.BedUsageContext.KamarOperasiFeature;
 
 public class OrderOpDalTest
 {
@@ -37,7 +36,8 @@ public class OrderOpDalTest
             Gender: "M",
             fs_ket_icd: "N",
             fs_nm_jenis_operasi: "O",
-            fs_nm_peg: "P"
+            fs_nm_peg: "P",
+            UrgencyLevel: (int)UrgencyLevelEnum.Urgent
         );
 
     private static IOrderOpKey FakerKey()

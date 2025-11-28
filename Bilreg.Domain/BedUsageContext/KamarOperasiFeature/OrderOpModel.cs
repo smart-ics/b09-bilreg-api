@@ -8,16 +8,14 @@ namespace Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 
 public class OrderOpModel : IOrderOpKey
 {
-    private readonly List<OrderOpStateHistType> _listHistory;
-    
     #region CREATION
 
     public OrderOpModel(
         string orderOpId, DateTime orderDate, AuditTrailType auditTrail,
         PasienReff pasien, RegReff reg,
-        Icd10Type icd10, JenisOperasiType jenisOperasi, string namaOperasi,
+        Icd10Type icd10, JenisOperasiType jenisOperasi, string namaOperasi, UrgencyLevelEnum urgencyLevel,
         PpaReff dokter, int estimasiDurasiInMinutes, DateTime preferedDate, string specialEquipment,
-        OrderOpStateEnum orderOpState, IEnumerable<OrderOpStateHistType> listHistory)
+        OpCaseStateEnum orderOpState)
     {
         OrderOpId = orderOpId;
         OrderDate = orderDate;
@@ -37,38 +35,36 @@ public class OrderOpModel : IOrderOpKey
         SpecialEquipment = specialEquipment;
 
         OrderOpState = orderOpState;
-        _listHistory = listHistory?.ToList() ?? [];
     }
 
     public static OrderOpModel Default => new OrderOpModel(
         "-", new DateTime(3000, 1, 1), AuditTrailType.Default,
         PasienModel.Default.ToReff(), RegModel.Default.ToReff(),
-        Icd10Type.Default, JenisOperasiType.Default, "-",
+        Icd10Type.Default, JenisOperasiType.Default, "-", UrgencyLevelEnum.Elective,
         PpaType.Default.ToReff(), 0, 
         new DateTime(3000, 1, 1), "-",
-        OrderOpStateEnum.Requested, []);
+        OpCaseStateEnum.Requested);
     
     public static IOrderOpKey Key(string id) => new OrderOpModel( 
         id, new DateTime(3000, 1, 1), AuditTrailType.Default,
         PasienModel.Default.ToReff(), RegModel.Default.ToReff(),
-        Icd10Type.Default, JenisOperasiType.Default, "-",
+        Icd10Type.Default, JenisOperasiType.Default, "-", UrgencyLevelEnum.Elective,
         PpaType.Default.ToReff(), 0, 
         new DateTime(3000, 1, 1), "-",
-        OrderOpStateEnum.Requested, []);
+        OpCaseStateEnum.Requested);
     
     public static OrderOpModel CreateByPasien(PasienModel pasien, string userId)
     {
         Guard.Against.Null(pasien, nameof(pasien));
         
         var auditTrail = AuditTrailType.Create(userId, DateTime.Now);
-        var stateHist = new OrderOpStateHistType(0, OrderOpStateEnum.Requested, DateTime.Now);
         var result = new OrderOpModel(
             Ulid.NewUlid().ToString(), DateTime.Now, auditTrail, 
             pasien.ToReff(), RegModel.Default.ToReff(),
-            Icd10Type.Default, JenisOperasiType.Default, "-",
+            Icd10Type.Default, JenisOperasiType.Default, "-", UrgencyLevelEnum.Elective,
             PpaType.Default.ToReff(), 
             0, new DateTime(3000,1,1),
-            "-", OrderOpStateEnum.Requested, [stateHist]);
+            "-", OpCaseStateEnum.Requested);
         return result;
     }
     public static OrderOpModel CreateByReg(RegModel reg, string userId)
@@ -77,14 +73,13 @@ public class OrderOpModel : IOrderOpKey
         
         var auditTrail = AuditTrailType.Create(userId, DateTime.Now);
         var pasien = reg.Pasien;
-        var stateHist = new OrderOpStateHistType(0, OrderOpStateEnum.Requested, DateTime.Now);
         var result = new OrderOpModel(
             Ulid.NewUlid().ToString(), DateTime.Now, auditTrail, 
             pasien, reg.ToReff(),
-            Icd10Type.Default, JenisOperasiType.Default, "-",
+            Icd10Type.Default, JenisOperasiType.Default, "-", UrgencyLevelEnum.Elective,
             PpaType.Default.ToReff(), 
             0, new DateTime(3000,1,1),
-            "-", OrderOpStateEnum.Requested, [stateHist]);
+            "-", OpCaseStateEnum.Requested);
         return result;
     }
     #endregion
@@ -100,16 +95,15 @@ public class OrderOpModel : IOrderOpKey
     public Icd10Type Icd10 { get; private set;}
     public JenisOperasiType JenisOperasi { get; private set; }
     public string NamaOperasi { get; private set; }
-    public UrgenceLevelType UrgencyLevel { get; private set; }
+    public UrgencyLevelEnum UrgencyLevel { get; private set; }
     
     public PpaReff Dokter { get; private set;}
     public int EstimasiDurasiInMinutes { get; private set; }
     public DateTime PreferedDate { get; private set; }
     public string SpecialEquipment { get; private set; }
     
-    public OrderOpStateEnum OrderOpState { get; private set; }
+    public OpCaseStateEnum OrderOpState { get; private set; }
 
-    public IEnumerable<OrderOpStateHistType> ListHistory => _listHistory;
     #endregion
 
     #region BEHAVIORS
@@ -142,23 +136,6 @@ public class OrderOpModel : IOrderOpKey
     public OrderOpReff ToReff() => new OrderOpReff(OrderOpId, OrderDate, NamaOperasi);
     #endregion    
     
-}
-
-public record OrderOpStateHistType(int NoUrut, OrderOpStateEnum OrderOpState, DateTime StateTimestamp)
-{
-    public static OrderOpStateHistType Default 
-        => new OrderOpStateHistType(0, OrderOpStateEnum.Requested, new DateTime(3000,1,1));
-};
-
-public enum OrderOpStateEnum
-{
-    Requested,
-    Scheduled,
-    PreOpCleared,
-    OpStarted,
-    RecoveryStarted,
-    Discharged,
-    Cancelled
 }
 
 public interface IOrderOpKey

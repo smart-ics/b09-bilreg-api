@@ -1,5 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
-using Bilreg.Domain.AdmisiContext.PpaFeature;
+﻿using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Domain.Helpers.CommonValueObjects;
@@ -46,7 +45,7 @@ public record OrderOpDto(
             model.Icd10.Icd10Id,
             model.JenisOperasi.JenisOperasiId,
             model.NamaOperasi,
-            model.Dokter.PetugasMedisId,
+            model.Dokter.PpaId,
             (int)model.UrgencyLevel,
             model.EstimasiDurasiInMinutes,
             model.PreferedDate,
@@ -65,11 +64,11 @@ public record OrderOpDto(
             model.Pasien.Gender,
             model.Icd10.Icd10Name,
             model.JenisOperasi.JenisOperasiName,
-            model.Dokter.PetugasMedisName);
+            model.Dokter.PpaName);
         return result;
     }
 
-    public OrderOpModel ToModel(IEnumerable<OrderOpStateHistType> listHistory)
+    public OrderOpModel ToModel()
     {
         var auditTrail = new AuditTrailType(
             new AuditInfoType(CreateUserId, CreateTimestamp),
@@ -97,8 +96,7 @@ public record OrderOpDto(
             EstimasiDurasi,
             PreferedDate,
             SpecialEquipment,
-            (OrderOpStateEnum)OrderOpState,
-            listHistory);
+            (OpCaseStateEnum)OrderOpState);
         return result;
     }
 };

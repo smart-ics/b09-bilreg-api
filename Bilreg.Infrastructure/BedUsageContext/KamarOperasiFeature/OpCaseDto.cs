@@ -1,4 +1,5 @@
-﻿using Bilreg.Domain.AdmisiContext.RegFeature;
+﻿using Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 
@@ -7,14 +8,16 @@ namespace Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature;
 public record OpCaseDto(
     string OrderOpId,
     DateTime OrderDate,
-    string NamaOperasi,
     string PasienId,
+    string NamaOperasi,
+    
     string RegId,
+    int UrgencyLevel,
     string ScheduleOpId,
     DateTime ScheduledDate,
     string DischargeOpId,
     DateTime DischargedDate,
-    int OrderOpState,
+    int OpCaseState,
     //
     string PasienName,
     string TglLahir,
@@ -24,9 +27,10 @@ public record OpCaseDto(
     {
         var tglLahir = model.Pasien.TglLahir.ToString("yyyy-MM-dd");
         var result = new OpCaseDto(model.OrderOpId,
-            model.OrderOp.OrderDate, model.OrderOp.NamaOperasi, 
-            model.Pasien.PasienId,
-            model.Reg.RegId, model.ScheduleOp.ScheduleOpId,
+            model.OrderOp.OrderDate, model.Pasien.PasienId, 
+            model.OrderOp.NamaOperasi, 
+            model.Reg.RegId, (int)model.UrgencyLevel, 
+            model.ScheduleOp.ScheduleOpId,
             model.ScheduleOp.ScheduledDate,
             model.DischargeOp.DischargeOpId,
             model.DischargeOp.DischargedDate,
@@ -35,7 +39,7 @@ public record OpCaseDto(
         return result;
     }
 
-    public OpCaseModel ToModel()
+    public OpCaseModel ToModel(IEnumerable<OpCaseStateHistType> listHist)
     {
         var orderOp = new OrderOpReff(OrderOpId, OrderDate, NamaOperasi);
         var pasien = new PasienReff(PasienId, PasienName, DateOnly.Parse(TglLahir), Gender);
@@ -44,8 +48,17 @@ public record OpCaseDto(
             new RegReff(RegId, PasienId, PasienName);
         var schedule = new ScheduleOpReff(ScheduleOpId, ScheduledDate);
         var discharge = new DischergeOpReff(DischargeOpId, DischargedDate);
-        var result = new OpCaseModel(OrderOpId, orderOp, pasien, reg, UrgencyLevelEnum.Elective,
-            schedule, discharge, (OrderOpStateEnum)OrderOpState);
+        var result = new OpCaseModel(OrderOpId, orderOp, pasien, NamaOperasi, 
+            reg, (UrgencyLevelEnum)UrgencyLevel, schedule, discharge, 
+            (OpCaseStateEnum)OpCaseState, listHist);
+        return result;
+    }
+    
+    public OpCaseOrderView ToView()
+    {
+        var result = new OpCaseOrderView(OrderOpId, 
+            new PasienReff(PasienId, PasienName, DateOnly.Parse(TglLahir), Gender), 
+            NamaOperasi, (UrgencyLevelEnum)UrgencyLevel, ScheduledDate);
         return result;
     }
 }

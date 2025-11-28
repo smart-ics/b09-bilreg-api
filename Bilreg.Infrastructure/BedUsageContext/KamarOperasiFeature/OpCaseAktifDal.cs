@@ -14,6 +14,7 @@ public interface IOpCaseAktifDal :
     IDelete<IOrderOpKey>,
     IGetData<OpCaseAktifDto, IOrderOpKey>,
     IListData<OpCaseAktifDto>
+    
 {
 }
 
@@ -111,10 +112,15 @@ public class OpCaseAktifDal : IOpCaseAktifDal
                 aa.OrderOpId, aa.OrderOpDate, aa.PasienId, aa.OrderOpState,
                 ISNULL(bb.fs_nm_pasien, '') AS PasienName,
                 ISNULL(bb.fd_tgl_lahir, '3000-01-01') AS TglLahir,
-                ISNULL(bb.fs_jns_kelamin, '') AS Gender
+                ISNULL(bb.fs_jns_kelamin, '') AS Gender,
+                ISNULL(cc.NamaOperasi, '') AS NamaOperasi,
+                ISNULL(cc.UrgencyLevel, 0) AS UrgencyLevel,
+                ISNULL(dd.PreferedDate, '3000-01-01') AS PreferedDate
             FROM 
                 BILRG_OpCaseAktif aa
                 LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
+                LEFT JOIN BILRG_OpCase cc ON aa.OrderOpId = cc.OrderOpId
+                LEFT JOIN BILRG_OrderOp dd ON aa.OrderOpId = dd.OrderOpId
             """;
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
