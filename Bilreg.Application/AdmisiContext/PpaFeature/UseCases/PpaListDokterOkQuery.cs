@@ -29,8 +29,11 @@ public class PpaListDokterOkQueryHandler : IRequestHandler<PpaListDokterOkQuery,
                         x.GroupSpesialis == GroupSpesialisType.Obgyn)
             .ToList() ?? [];
 
-        var listDokter = _ppaRepo.ListData(ProfesiType.Dokter, listLayanan);
-        var result = listDokter.Select(x => new PpaListDokterOkResponse(x.PpaId, x.PpaName));
-        return Task.FromResult(result);
+        var listDokter = _ppaRepo.ListData(ProfesiType.Dokter, listLayanan)?.ToList() ?? [];
+        var result = listDokter
+            .Select(x => new PpaListDokterOkResponse(x.PpaId, x.PpaName))
+            .Distinct()
+            .ToList();
+        return Task.FromResult(result.AsEnumerable());
     }
 }
