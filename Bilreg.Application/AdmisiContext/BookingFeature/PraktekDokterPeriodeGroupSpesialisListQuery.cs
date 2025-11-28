@@ -1,10 +1,10 @@
 ﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
-using Bilreg.Application.AdmisiContext.PpaFeature;
+using Bilreg.Application.AdmisiContext.PetugasMedisFeature;
 using Bilreg.Application.Helpers;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
-using Bilreg.Domain.AdmisiContext.PpaFeature;
+using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
 using CommunityToolkit.Diagnostics;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
@@ -15,18 +15,18 @@ public record PraktekDokterPeriodeGroupSpesialisListQuery(string TglYmdAwal, str
     IRequest<IEnumerable<PraktekDokterPeriodeGroupSpesialisListResponse>>, IGroupSpesialisKey;
 
 public record PraktekDokterPeriodeGroupSpesialisListResponse(
-    string Tanggal, PpaReff Dokter, LayananReff Layanan, 
-    string JamMulaiPraktek, int JumlahPasien, int MaxPasien);
+    string Tanggal, PetugasMedisReff Dokter, LayananReff Layanan, 
+    string JamMulaiPraktek, string JamSelesaiPraktek, int JumlahPasien, int MaxPasien);
 
 public class PraktekDokterPeriodeGroupSpesialisListHandler :
     IRequestHandler<PraktekDokterPeriodeGroupSpesialisListQuery, IEnumerable<PraktekDokterPeriodeGroupSpesialisListResponse>>
 {
     private readonly IAntrianRepo _antrianRepo;
     private readonly IJadwalPraktekRepo _jadwalPraktekRepo;
-    private readonly IPpaRepo _ptgMedRepo;
+    private readonly IPetugasMedisRepo _ptgMedRepo;
     public PraktekDokterPeriodeGroupSpesialisListHandler(IAntrianRepo antrianRepo,
         IJadwalPraktekRepo jadwalPraktekRepo,
-        IPpaRepo ptgMedRepo)
+        IPetugasMedisRepo ptgMedRepo)
     {
         _antrianRepo = antrianRepo;
         _jadwalPraktekRepo = jadwalPraktekRepo;
@@ -82,12 +82,12 @@ public class PraktekDokterPeriodeGroupSpesialisListHandler :
         return listTanggal;
 
     }
-    private PpaType GetPetugasMedis(IPpaKey key)
+    private PetugasMedisType GetPetugasMedis(IPetugasMedisKey key)
     {
         return _ptgMedRepo.LoadEntity(key)
             .Match(
                 onSome: x => x,
-                onNone: () => PpaType.Default
+                onNone: () => PetugasMedisType.Default
             );
     }
 
@@ -104,16 +104,17 @@ public class PraktekDokterPeriodeGroupSpesialisListHandler :
                 let dokterIdFromTag = a.SequenceTag.Split('_')[1].Trim()
                 let jadwal = jadwalTgl
                     .FirstOrDefault(j =>
-                        j.Dokter.PpaId == dokterIdFromTag &&
+                        j.Dokter.PetugasMedisId == dokterIdFromTag &&
                         j.JamMulai == a.StartTime)
                 select new PraktekDokterPeriodeGroupSpesialisListResponse(
                     tgl.ToString("yyyy-MM-dd"),
                     jadwal?.Dokter
-                        ?? new PpaReff(dokterIdFromTag, 
-                        GetPetugasMedis(PpaType.Key(dokterIdFromTag)).PpaName),
+                        ?? new PetugasMedisReff(dokterIdFromTag, 
+                        GetPetugasMedis(PetugasMedisType.Key(dokterIdFromTag)).PetugasMedisName),
                     jadwal?.Layanan
                         ?? new LayananReff("-", "TANPA JADWAL"),
                     (jadwal?.JamMulai ?? a.StartTime).ToString("HH:mm"),
+                    (jadwal?.JamSelesai ?? a.EndTime).ToString("HH:mm"),
                     JumlahPasien:
                         antrianTgl
                             .Where(x =>
@@ -132,7 +133,7 @@ public class PraktekDokterPeriodeGroupSpesialisListHandler :
                 from j in jadwalTgl
                 where !fromAntrian.Any(a =>
                     a.Layanan.LayananId == j.Layanan.LayananId &&
-                    a.Dokter.PpaId == j.Dokter.PpaId &&
+                    a.Dokter.PetugasMedisId == j.Dokter.PetugasMedisId &&
                     a.JamMulaiPraktek == j.JamMulai.ToString("HH:mm") &&
                     a.Tanggal == tgl.ToString("yyyy-MM-dd"))
                 select new PraktekDokterPeriodeGroupSpesialisListResponse(
@@ -140,6 +141,7 @@ public class PraktekDokterPeriodeGroupSpesialisListHandler :
                     j.Dokter,
                     j.Layanan,
                     j.JamMulai.ToString("HH:mm"),
+                    j.JamSelesai.ToString("HH:mm"),
                     JumlahPasien: 0,
                     MaxPasien: j.MaxPasien
                 )).ToList() ?? [];
