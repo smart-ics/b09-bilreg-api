@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+﻿using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Nuna.Lib.CleanArchHelper;
 
 namespace Bilreg.Application.ParamContext.ParamSistemAgg;

@@ -23,11 +23,10 @@ public static class InfrastructureService
             .AddScoped<ITglJamProvider, TglJamProvider>()
             .AddScoped<ISequencer, Sequencer>()
             .AddMemoryCache();
-        
+
         services
             .Configure<DatabaseOptions>(configuration.GetSection(DatabaseOptions.SECTION_NAME))
-            .Configure<PasienContextOptions>(configuration.GetSection(PasienContextOptions.SECTION_NAME))
-            .Configure<PetugasMedisOptions>(configuration.GetSection(PetugasMedisOptions.SECTION_NAME));
+            .Configure<PasienContextOptions>(configuration.GetSection(PasienContextOptions.SECTION_NAME));
             
         services
             .Scan(selector => selector

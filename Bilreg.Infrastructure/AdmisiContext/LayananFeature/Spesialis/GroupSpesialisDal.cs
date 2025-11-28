@@ -47,9 +47,7 @@ public class GroupSpesialisDal : IGroupSpesialisDal
            SELECT 
                aa.GroupSpesialisId, aa.GroupSpesialisName
            FROM 
-               BILRG_GroupSpesialis aa
-           WHERE 
-               aa.GroupSpesialisId = @GroupSpesialisId     
+               BILRG_GroupSpesialis aa     
            """;
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));

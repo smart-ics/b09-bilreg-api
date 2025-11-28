@@ -1,5 +1,5 @@
 ﻿using Ardalis.GuardClauses;
-using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.Helpers.CommonValueObjects;
 using Bilreg.Domain.PasienContext.PasienFeature;
@@ -16,7 +16,7 @@ public class OrderOpModel : IOrderOpKey
         string orderOpId, DateTime orderDate, AuditTrailType auditTrail,
         PasienReff pasien, RegReff reg,
         Icd10Type icd10, JenisOperasiType jenisOperasi, string namaOperasi,
-        PetugasMedisReff dokter, int estimasiDurasiInMinutes, DateTime preferedDate, string specialEquipment,
+        PpaReff dokter, int estimasiDurasiInMinutes, DateTime preferedDate, string specialEquipment,
         OrderOpStateEnum orderOpState, IEnumerable<OrderOpStateHistType> listHistory)
     {
         OrderOpId = orderOpId;
@@ -43,7 +43,7 @@ public class OrderOpModel : IOrderOpKey
         "-", new DateTime(3000, 1, 1), AuditTrailType.Default,
         PasienModel.Default.ToReff(), RegModel.Default.ToReff(),
         Icd10Type.Default, JenisOperasiType.Default, "-",
-        PetugasMedisType.Default.ToReff(), 0, 
+        PpaType.Default.ToReff(), 0, 
         new DateTime(3000, 1, 1), "-",
         OrderOpStateEnum.Requested, []);
     
@@ -51,7 +51,7 @@ public class OrderOpModel : IOrderOpKey
         id, new DateTime(3000, 1, 1), AuditTrailType.Default,
         PasienModel.Default.ToReff(), RegModel.Default.ToReff(),
         Icd10Type.Default, JenisOperasiType.Default, "-",
-        PetugasMedisType.Default.ToReff(), 0, 
+        PpaType.Default.ToReff(), 0, 
         new DateTime(3000, 1, 1), "-",
         OrderOpStateEnum.Requested, []);
     
@@ -65,7 +65,7 @@ public class OrderOpModel : IOrderOpKey
             Ulid.NewUlid().ToString(), DateTime.Now, auditTrail, 
             pasien.ToReff(), RegModel.Default.ToReff(),
             Icd10Type.Default, JenisOperasiType.Default, "-",
-            PetugasMedisType.Default.ToReff(), 
+            PpaType.Default.ToReff(), 
             0, new DateTime(3000,1,1),
             "-", OrderOpStateEnum.Requested, [stateHist]);
         return result;
@@ -81,7 +81,7 @@ public class OrderOpModel : IOrderOpKey
             Ulid.NewUlid().ToString(), DateTime.Now, auditTrail, 
             pasien, reg.ToReff(),
             Icd10Type.Default, JenisOperasiType.Default, "-",
-            PetugasMedisType.Default.ToReff(), 
+            PpaType.Default.ToReff(), 
             0, new DateTime(3000,1,1),
             "-", OrderOpStateEnum.Requested, [stateHist]);
         return result;
@@ -100,7 +100,7 @@ public class OrderOpModel : IOrderOpKey
     public JenisOperasiType JenisOperasi { get; private set; }
     public string NamaOperasi { get; private set; }
     
-    public PetugasMedisReff Dokter { get; private set;}
+    public PpaReff Dokter { get; private set;}
     public int EstimasiDurasiInMinutes { get; private set; }
     public DateTime PreferedDate { get; private set; }
     public string SpecialEquipment { get; private set; }
@@ -122,7 +122,7 @@ public class OrderOpModel : IOrderOpKey
         NamaOperasi = namaOperasi;
     }
 
-    public void OperationalRequest(PetugasMedisType dokterDpjp,
+    public void OperationalRequest(PpaType dokterDpjp,
         int estimasiDurasi, DateTime preferedDate, string specialEquipment)
     {
         Guard.Against.Null(dokterDpjp, nameof(dokterDpjp));

@@ -40,7 +40,7 @@ public record RegDto(
             model.Kelas.KelasId,
             model.CaraMasukDk.CaraMasukDkId,
             model.Rujukan.RujukanId,
-            model.Dokter.PetugasMedisId,
+            model.Dokter.PpaId,
             model.Layanan.LayananId,
             model.Karcis.KarcisId,
             //
@@ -51,7 +51,7 @@ public record RegDto(
             model.Kelas.KelasName,
             model.CaraMasukDk.CaraMasukDkName,
             model.Rujukan.RujukanName,
-            model.Dokter.PetugasMedisName,
+            model.Dokter.PpaName,
             model.Layanan.LayananName,
             model.Karcis.KarcisName);
         return result;

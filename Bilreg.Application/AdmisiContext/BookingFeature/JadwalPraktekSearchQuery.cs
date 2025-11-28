@@ -37,12 +37,14 @@ public class JadwalPrektekSearchHandler : IRequestHandler<JadwalPraktekSearchQue
         var filtered = tgl switch
         {
             not null => list.Where(x => x.Hari == tgl.Value.DayOfWeek),
-            _ => list.Where(x => x.Dokter.PetugasMedisName.Contains(
+            _ => list.Where(x => x.Dokter.PpaName.Contains(
                         request.Keyword, StringComparison.OrdinalIgnoreCase))
         };
 
         var result = filtered
-            .GroupBy(x => new { x.Dokter.PetugasMedisId, x.Dokter.PetugasMedisName, 
+            .GroupBy(x => new {
+                PetugasMedisId = x.Dokter.PpaId,
+                PetugasMedisName = x.Dokter.PpaName, 
                 x.Layanan.LayananId, x.Layanan.LayananName })
             .Select(g => new JadwalPraktekSearchResponse(
                 g.Key.PetugasMedisId,

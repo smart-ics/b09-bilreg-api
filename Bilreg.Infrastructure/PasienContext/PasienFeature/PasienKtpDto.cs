@@ -1,9 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.BookingFeature;
-using Bilreg.Domain.PasienContext.PasienFeature;
-using Bilreg.Domain.PasienContext.DemografiFeature;
-using Bilreg.Domain.PasienContext.StatusSosialFeature;
-using FluentAssertions;
-using Xunit;
+﻿using Bilreg.Domain.PasienContext.PasienFeature;
 
 namespace Bilreg.Infrastructure.PasienContext.PasienFeature;
 

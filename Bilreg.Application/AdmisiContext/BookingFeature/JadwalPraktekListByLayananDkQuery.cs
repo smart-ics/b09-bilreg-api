@@ -34,8 +34,8 @@ public class JadwalPraktekListByLayananDkHandler : IRequestHandler<JadwalPraktek
 
         var result = listJadwal
             .GroupBy(x => new {
-                x.Dokter.PetugasMedisId,
-                x.Dokter.PetugasMedisName,
+                PetugasMedisId = x.Dokter.PpaId,
+                PetugasMedisName = x.Dokter.PpaName,
                 x.Layanan.LayananId,
                 x.Layanan.LayananName
             })

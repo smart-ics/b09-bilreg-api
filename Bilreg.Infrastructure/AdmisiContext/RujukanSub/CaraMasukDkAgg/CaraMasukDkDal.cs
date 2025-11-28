@@ -1,15 +1,12 @@
 ﻿using Bilreg.Domain.PasienContext.DemografiFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
-using FluentAssertions;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
 using Nuna.Lib.PatternHelper;
 using System.Data;
 using System.Data.SqlClient;
 using Bilreg.Domain.AdmisiContext.RujukanFeature;
-using Nuna.Lib.TransactionHelper;
-using Xunit;
 
 namespace Bilreg.Infrastructure.AdmisiContext.RujukanSub.CaraMasukDkAgg;
 
@@ -56,29 +53,5 @@ public class CaraMasukDkDal : ICaraMasukDkDal
                      ta_cara_masuk_dk";
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<CaraMasukDkType>(sql);
-    }
-}
-
-public class CaraMasukDkDalTest
-{
-    private readonly CaraMasukDkDal _sut = new(ConnStringHelper.GetTestEnv());
-
-    private static ICaraMasukDkKey FakerKey()
-        => CaraMasukDkType.Key("A");
-
-    [Fact]
-    public void GetDataTest()
-    {
-        using var trans = TransHelper.NewScope();
-        var actual = () => _sut.GetData(FakerKey());
-        actual.Should().NotThrow<Exception>();
-    }
-    
-    [Fact]
-    public void ListDataTest()
-    {
-        using var trans = TransHelper.NewScope();
-        var actual = () => _sut.ListData();
-        actual.Should().NotThrow<Exception>();
     }
 }
