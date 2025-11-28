@@ -51,7 +51,7 @@ public class AntrianListHandler : IRequestHandler<AntrianListQuery, IEnumerable<
 
         var antrianHeaders = listAntrianDb.Where(x => x.SequenceTag == sequenceTag)?.ToList() ?? [];
         
-        var listAntrian = listAntrianDb.Select(x => _antrianRepo.LoadEntity(x));
+        var listAntrian = antrianHeaders.Select(x => _antrianRepo.LoadEntity(x));
 
         var result = listAntrian
             .Select(a => new AntrianListResponse(

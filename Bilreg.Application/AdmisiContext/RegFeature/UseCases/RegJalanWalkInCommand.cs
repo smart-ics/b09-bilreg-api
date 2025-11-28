@@ -131,7 +131,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
     private RegAktifModel? GetRegaktif(IPasienKey pasienKey)
     {
         var periode = new Periode(DateTime.Now);
-        var listPasienAktif = _regAktifRepo.ListData(periode);
+        var listPasienAktif = _regAktifRepo.ListData(periode)?.ToList() ?? [];
         var pasienAktif = listPasienAktif
             .FirstOrDefault(x => x.Pasien.PasienId == pasienKey.PasienId);
 

@@ -33,7 +33,8 @@ UPDATE td_sat_tugas SET fs_kd_profesi = 'DOK' WHERE fs_nm_sat_tugas = 'MEDIS KON
 UPDATE td_sat_tugas SET fs_kd_profesi = 'DOK' WHERE fs_nm_sat_tugas = 'MEDIS PENGIRIM';
 UPDATE td_sat_tugas SET fs_kd_profesi = 'DOK' WHERE fs_nm_sat_tugas = 'MEDIK OPERASI';
 UPDATE td_sat_tugas SET fs_kd_profesi = 'DOK' WHERE fs_nm_sat_tugas = 'MEDIK SPESIALIS';
-UPDATE td_sat_tugas SET fs_kd_profesi = 'DOK' WHERE fs_nm_sat_tugas = 'REHAB MEDIK'; 
+UPDATE td_sat_tugas SET fs_kd_profesi = 'DOK' WHERE fs_nm_sat_tugas = 'REHAB MEDIK';
+UPDATE td_sat_tugas SET fs_kd_profesi = 'DOK' WHERE fs_nm_sat_tugas = 'MEDIS PENUNJANG';
 
 --fisioterapi
 UPDATE td_sat_tugas SET fs_kd_profesi = 'FIS' WHERE fs_nm_sat_tugas = 'FISIOTERAPIS';

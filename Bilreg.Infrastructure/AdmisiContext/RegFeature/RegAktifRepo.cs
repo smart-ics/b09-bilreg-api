@@ -36,7 +36,7 @@ public class RegAktifRepo : IRegAktifRepo
 
     public IEnumerable<RegAktifModel> ListData(Periode periode)
     {
-        var listDto = _regAktifDal.ListData(periode);
+        var listDto = _regAktifDal.ListData(periode)?.ToList() ?? [];
         var result = listDto.Select(x => x.ToModel());  
         return result;
     }
