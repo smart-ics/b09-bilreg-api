@@ -62,8 +62,9 @@ public class PpaLayananDal : IPpaLayananDal
     {
         const string sql = """
             SELECT 
-                aa.fs_kd_peg, aa.fs_kd_layanan, aa.fb_utama,
+                aa.fs_kd_peg, 
                 ISNULL(bb.fs_nm_peg, '') AS fs_nm_peg,
+                aa.fs_kd_layanan, aa.fb_utama,
                 ISNULL(cc.fs_nm_layanan, '') AS fs_nm_layanan
             FROM 
                 td_peg_layanan aa
