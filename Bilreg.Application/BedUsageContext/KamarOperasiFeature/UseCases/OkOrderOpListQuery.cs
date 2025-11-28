@@ -31,7 +31,10 @@ public class OkOrderOpListHandler :
         //  BUILD
         var listActiveOrderOp = _opCaseRepo.ListActiveOpCase();
 
-        var listOrderOp = listActiveOrderOp
+        var listOrderVw = _orderOpRepo.ListData(periode)?.ToList()
+            ?? throw new ArgumentException($"Order Op at {request.TglOrderYMD} not found");
+
+        var listOrderOp = listOrderVw
             .Select(x => _orderOpRepo.LoadEntity(OrderOpModel.Key(x.OrderOpId))
                 .GetValueOrDefault())
             .ToList();
@@ -41,6 +44,14 @@ public class OkOrderOpListHandler :
                 OrderOpId: i.OrderOpId,
                 PasienId: i.Pasien.PasienId,
                 PasienName: i.Pasien.PasienName,
+                DokterId: i.Dokter.PpaId,
+                DokterName: i.Dokter.PpaName,
+                Icd10Id: i.Icd10.Icd10Id,
+                Diagnosa: i.Icd10.Icd10Name,
+                NamaOperasi: i.NamaOperasi,
+                JenisOperasiId: i.JenisOperasi.JenisOperasiId,
+                JenisOperasiName: i.JenisOperasi.JenisOperasiName,
+                PreferedDate: i.PreferedDate.ToString("yyyy-MM-dd")
                 DokterId: i.Dokter.PetugasMedisId,
                 DokterName: i.Dokter.PetugasMedisName,
                 PreferedDate: i.PreferedDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),

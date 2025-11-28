@@ -3,12 +3,12 @@
 public record KelasType : IKelasKey
 {
     #region CREATION
-    public KelasType(string kelasId, string kelasName, bool isAktif, KelasDkType KelasDk)
+    public KelasType(string kelasId, string kelasName, bool isAktif, KelasDkType kelasDk)
     {
         KelasId = kelasId;
         KelasName = kelasName;
         IsAktif = isAktif;
-        KelasDk = KelasDk;
+        KelasDk = kelasDk;
     }
     public static KelasType Default => new KelasType("-", "-", false, KelasDkType.Default);
     public static IKelasKey Key(string id) => Default with { KelasId = id };

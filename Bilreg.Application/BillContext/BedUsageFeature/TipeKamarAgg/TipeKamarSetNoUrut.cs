@@ -1,8 +1,9 @@
+using Bilreg.Application.BillContext.RoomChargeSub.TipeKamarAgg;
 using Bilreg.Domain.BillContext.BedUsageFeature.TipeKamarAgg;
 using CommunityToolkit.Diagnostics;
 using MediatR;
 
-namespace Bilreg.Application.BillContext.RoomChargeSub.TipeKamarAgg;
+namespace Bilreg.Application.BillContext.BedUsageFeature.TipeKamarAgg;
 
 public record TipeKamarSetNoUrut(string TipeKamarId, int noUrut):IRequest, ITipeKamarKey ;
 

@@ -1,3 +1,4 @@
+using Bilreg.Application.BillContext.BedUsageFeature.TipeKamarAgg;
 using Bilreg.Application.BillContext.RoomChargeSub.TipeKamarAgg;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;

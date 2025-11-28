@@ -1,8 +1,7 @@
 ﻿using Bilreg.Application.AdmisiContext.PetugasMedisFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
-using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
-using Bilreg.Domain.Helpers;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
@@ -12,7 +11,7 @@ namespace Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
 
 public record OkCreateOrderOpByPasienCmd(
     string PasienId, string DiagCode, string JenisOperasiId, string NamaOperasi,
-    string UrgencyLevel, string DokterDpjpId, int EstimasiDurasiInMinutes, string PreferedDate,
+    string DokterDpjpId, int EstimasiDurasiInMinutes, string PreferedDate, 
     string SpecialEquipment, string UserId, bool IsForceCreate) :
         IRequest<OkCreateOrderOpByPasienResponse>;
 
@@ -35,24 +34,19 @@ public class OkCreateOrderOpByPasienHandler :
     private readonly IPasienRepo _pasienRepo;
     private readonly IIcd10Repo _icdRepo;
     private readonly IJenisOperasiRepo _jenisOperasiRepo;
-    private readonly IPetugasMedisRepo _dokterRepo;
-
-    private readonly IOpCaseRepo _opCaseRepo;
+    private readonly IPpaRepo _dokterRepo;
 
     public OkCreateOrderOpByPasienHandler(IOrderOpRepo orderOpRepo,
         IPasienRepo pasienRepo,
         IIcd10Repo icdRepo,
         IJenisOperasiRepo jenisOperasiRepo,
-        IPetugasMedisRepo dokterRepo,
-        IOpCaseRepo opCaseRepo)
+        IPpaRepo dokterRepo)
     {
         _orderOpRepo = orderOpRepo;
         _pasienRepo = pasienRepo;
         _icdRepo = icdRepo;
         _jenisOperasiRepo = jenisOperasiRepo;
         _dokterRepo = dokterRepo;
-
-        _opCaseRepo = opCaseRepo;
     }
 
     public Task<OkCreateOrderOpByPasienResponse> Handle(
@@ -73,12 +67,9 @@ public class OkCreateOrderOpByPasienHandler :
         var dokter = LoadDokter(request.DokterDpjpId);
         var orderOp = CreateOrder(pasien, icd, jenisOperasi, dokter, request);
 
-        var opCase = OpCaseModel.Create(orderOp);
-
         //  WRITE
         using var trans = TransHelper.NewScope();
         _orderOpRepo.SaveChanges(orderOp);
-        _opCaseRepo.SaveChanges(opCase);
         trans.Complete();
 
         return Task.FromResult(RespondSuccess(orderOp));
@@ -96,8 +87,8 @@ public class OkCreateOrderOpByPasienHandler :
         _jenisOperasiRepo.LoadEntity(JenisOperasiType.Key(id))
             .GetValueOrThrow("Jenis Operasi ID invalid");
 
-    private PetugasMedisType LoadDokter(string id) =>
-        _dokterRepo.LoadEntity(PetugasMedisType.Key(id))
+    private PpaType LoadDokter(string id) =>
+        _dokterRepo.LoadEntity(PpaType.Key(id))
             .GetValueOrThrow("Dokter DPJP ID invalid");
 
     private OrderOpView? FindExistingOrder(string pasienId)
@@ -111,7 +102,7 @@ public class OkCreateOrderOpByPasienHandler :
         PasienModel pasien,
         Icd10Type icd,
         JenisOperasiType jenisOp,
-        PetugasMedisType dokter,
+        PpaType dokter,
         OkCreateOrderOpByPasienCmd req)
     {
         var orderOp = OrderOpModel.CreateByPasien(pasien, req.UserId);

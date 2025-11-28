@@ -1,12 +1,12 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
-using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 
 namespace Bilreg.Domain.AdmisiContext.BookingFeature;
 
 public class BookingKunjunganModel
 {
-    public BookingKunjunganModel(LayananReff layanan, PetugasMedisReff dokter, 
+    public BookingKunjunganModel(LayananReff layanan, PpaReff dokter, 
         TimeOnly jamPraktek, int noAntrian)
     {
         Layanan = layanan;
@@ -16,7 +16,7 @@ public class BookingKunjunganModel
     }
 
     public static BookingKunjunganModel Create(LayananReff layanan,
-        PetugasMedisReff dokter, TimeOnly jamPraktek)
+        PpaReff dokter, TimeOnly jamPraktek)
     {
         Guard.Against.Null(layanan, nameof(layanan));
         Guard.Against.Null(dokter, nameof(dokter));
@@ -27,7 +27,7 @@ public class BookingKunjunganModel
     }
     
     public LayananReff Layanan { get; init; } 
-    public PetugasMedisReff Dokter { get; init; }
+    public PpaReff Dokter { get; init; }
     public TimeOnly JamPraktek { get; init; }
     public int NoAntrian { get; private set; }
 

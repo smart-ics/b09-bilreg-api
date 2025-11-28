@@ -12,7 +12,7 @@ public record JadwalPraktekListByLayananResponse(
     IEnumerable<JadwalPraktekDokterByLynHariResponse> ListHari);
 
 public record JadwalPraktekDokterByLynHariResponse(
-    string JadwalPraktekId, string Hari, string JamMulai, string JamSelesai);
+    string JadwalPraktekId, string Hari, string JamMulai, string JamSelesai, int MaxPasien);
 
 public class JadwalPrektekListByLayananHandler : IRequestHandler<JadwalPraktekListByLayananQuery, IEnumerable<JadwalPraktekListByLayananResponse>>
 {
@@ -31,7 +31,9 @@ public class JadwalPrektekListByLayananHandler : IRequestHandler<JadwalPraktekLi
         var listJadwal = _jadwalRepo.ListData(lyn)?.ToList() ?? [];
 
         var result = listJadwal
-            .GroupBy(x => new { x.Dokter.PetugasMedisId, x.Dokter.PetugasMedisName,
+            .GroupBy(x => new {
+                PetugasMedisId = x.Dokter.PpaId,
+                PetugasMedisName = x.Dokter.PpaName,
                 x.Layanan.LayananId, x.Layanan.LayananName
             })
             .Select(g => new JadwalPraktekListByLayananResponse(
@@ -44,7 +46,8 @@ public class JadwalPrektekListByLayananHandler : IRequestHandler<JadwalPraktekLi
                      j.JadwalPraktekId,
                      j.Hari.ToString(),
                      j.JamMulai.ToString("HH:mm"),
-                     j.JamSelesai.ToString("HH:mm")
+                     j.JamSelesai.ToString("HH:mm"),
+                     j.MaxPasien
                  ))
             ));
 

@@ -3,11 +3,8 @@ using System.Data.SqlClient;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
-using FluentAssertions;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
-using Nuna.Lib.TransactionHelper;
-using Xunit;
 
 namespace Bilreg.Infrastructure.AdmisiContext.LayananFeature.LayananAgg;
 
@@ -99,18 +96,20 @@ public class LayananDal : ILayananDal
            SELECT 
                aa.fs_kd_layanan, aa.fs_nm_layanan, aa.fb_aktif,
                aa.fs_kd_instalasi, aa.fs_kd_layanan_dk,
-               aa.fs_kd_layanan_tipe_dk, 
+               aa.fs_kd_layanan_tipe_dk, aa.GroupSpesialisId,
                ISNULL(bb.fs_nm_instalasi,'') AS fs_nm_instalasi,
                ISNULL(bb.fs_kd_instalasi_dk, '') AS fs_kd_instalasi_dk,
                ISNULL(cc.fs_nm_layanan_dk,'') AS fs_nm_layanan_dk,
                ISNULL(dd.fs_nm_layanan_tipe_dk,'') AS fs_nm_layanan_tipe_dk,
-               ISNULL(ee.fs_nm_instalasi_dk, '') AS fs_nm_instalasi_dk
+               ISNULL(ee.fs_nm_instalasi_dk, '') AS fs_nm_instalasi_dk,
+               ISNULL(ff.GroupSpesialisName, '') AS GroupSpesialisName
            FROM 
                ta_layanan aa
                LEFT JOIN ta_instalasi bb ON aa.fs_kd_instalasi = bb.fs_kd_instalasi
                LEFT JOIN ta_layanan_dk cc ON aa.fs_kd_layanan_dk = cc.fs_kd_layanan_dk
                LEFT JOIN ta_layanan_tipe_dk dd ON aa.fs_kd_layanan_tipe_dk = dd.fs_kd_layanan_tipe_dk
                LEFT JOIN ta_instalasi_dk ee ON bb.fs_kd_instalasi_dk = ee.fs_kd_instalasi_dk
+               LEFT JOIN BILRG_GroupSpesialis ff ON aa.GroupSpesialisId = ff.GroupSpesialisId
            WHERE 
                aa.fs_kd_layanan = @fs_kd_layanan     
            """;
@@ -129,18 +128,20 @@ public class LayananDal : ILayananDal
            SELECT 
                aa.fs_kd_layanan, aa.fs_nm_layanan, aa.fb_aktif,
                aa.fs_kd_instalasi, aa.fs_kd_layanan_dk,
-               aa.fs_kd_layanan_tipe_dk, 
+               aa.fs_kd_layanan_tipe_dk, aa.GroupSpesialisId,
                ISNULL(bb.fs_nm_instalasi,'') AS fs_nm_instalasi,
                ISNULL(bb.fs_kd_instalasi_dk, '') AS fs_kd_instalasi_dk,
                ISNULL(cc.fs_nm_layanan_dk,'') AS fs_nm_layanan_dk,
                ISNULL(dd.fs_nm_layanan_tipe_dk,'') AS fs_nm_layanan_tipe_dk,
-               ISNULL(ee.fs_nm_instalasi_dk, '') AS fs_nm_instalasi_dk
+               ISNULL(ee.fs_nm_instalasi_dk, '') AS fs_nm_instalasi_dk,
+               ISNULL(ff.GroupSpesialisName, '') AS GroupSpesialisName
            FROM 
                ta_layanan aa
                LEFT JOIN ta_instalasi bb ON aa.fs_kd_instalasi = bb.fs_kd_instalasi
                LEFT JOIN ta_layanan_dk cc ON aa.fs_kd_layanan_dk = cc.fs_kd_layanan_dk
                LEFT JOIN ta_layanan_tipe_dk dd ON aa.fs_kd_layanan_tipe_dk = dd.fs_kd_layanan_tipe_dk
                LEFT JOIN ta_instalasi_dk ee ON bb.fs_kd_instalasi_dk = ee.fs_kd_instalasi_dk
+               LEFT JOIN BILRG_GroupSpesialis ff ON aa.GroupSpesialisId = ff.GroupSpesialisId
            """;
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
@@ -154,18 +155,20 @@ public class LayananDal : ILayananDal
            SELECT 
                aa.fs_kd_layanan, aa.fs_nm_layanan, aa.fb_aktif,
                aa.fs_kd_instalasi, aa.fs_kd_layanan_dk,
-               aa.fs_kd_layanan_tipe_dk, 
+               aa.fs_kd_layanan_tipe_dk, aa.GroupSpesialisId,
                ISNULL(bb.fs_nm_instalasi,'') AS fs_nm_instalasi,
                ISNULL(bb.fs_kd_instalasi_dk, '') AS fs_kd_instalasi_dk,
                ISNULL(cc.fs_nm_layanan_dk,'') AS fs_nm_layanan_dk,
                ISNULL(dd.fs_nm_layanan_tipe_dk,'') AS fs_nm_layanan_tipe_dk,
-               ISNULL(ee.fs_nm_instalasi_dk, '') AS fs_nm_instalasi_dk
+               ISNULL(ee.fs_nm_instalasi_dk, '') AS fs_nm_instalasi_dk,
+               ISNULL(ff.GroupSpesialisName, '') AS GroupSpesialisName
            FROM 
                ta_layanan aa
                LEFT JOIN ta_instalasi bb ON aa.fs_kd_instalasi = bb.fs_kd_instalasi
                LEFT JOIN ta_layanan_dk cc ON aa.fs_kd_layanan_dk = cc.fs_kd_layanan_dk
                LEFT JOIN ta_layanan_tipe_dk dd ON aa.fs_kd_layanan_tipe_dk = dd.fs_kd_layanan_tipe_dk
                LEFT JOIN ta_instalasi_dk ee ON bb.fs_kd_instalasi_dk = ee.fs_kd_instalasi_dk
+               LEFT JOIN BILRG_GroupSpesialis ff ON aa.GroupSpesialisId = ff.GroupSpesialisId
            WHERE
                bb.fs_kd_instalasi_dk = @fs_kd_instalasi_dk    
            """;

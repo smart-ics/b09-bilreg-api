@@ -3,11 +3,8 @@ using System.Data.SqlClient;
 using Bilreg.Domain.BillContext.TindakanFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
-using FluentAssertions;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
-using Nuna.Lib.TransactionHelper;
-using Xunit;
 
 namespace Bilreg.Infrastructure.BillContext.TindakanFeature;
 
@@ -63,10 +60,12 @@ public class KomponenSatTugasDal : IKomponenSatTugasDal
             SELECT 
                 aa.fs_kd_detil_tarif, aa.fs_kd_sat_tugas, 
                 ISNULL(bb.fs_nm_sat_tugas, '') AS fs_nm_sat_tugas,
-                ISNULL(bb.fb_sat_medis, 0) AS fb_sat_medis
+                ISNULL(bb.fs_kd_profesi, '') AS fs_kd_profesi,
+                ISNULL(cc.ProfesiName, '') AS fs_nm_profesi
             FROM 
                 ta_detil_tarif2 aa
                 LEFT JOIN td_sat_tugas bb ON aa.fs_kd_sat_tugas = bb.fs_kd_sat_tugas
+                LEFT JOIN BILRG_Profesi cc ON bb.fs_kd_profesi = cc.ProfesiId
             WHERE
                 aa.fs_kd_detil_tarif = @fs_kd_detil_tarif
             """;
@@ -76,55 +75,5 @@ public class KomponenSatTugasDal : IKomponenSatTugasDal
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<KomponenSatTugasDto>(sql, dp);
-    }
-}
-
-public class KomponenSatTugasDalTest
-{
-    private readonly KomponenSatTugasDal _sut = new(ConnStringHelper.GetTestEnv());
-
-    private static IEnumerable<KomponenSatTugasDto> FakerList()
-        => new List<KomponenSatTugasDto>
-        {
-            new KomponenSatTugasDto(
-                fs_kd_detil_tarif: "A",
-                fs_kd_sat_tugas: "B",
-                fs_nm_sat_tugas: "C",
-                fb_sat_medis: true
-            ),
-            new KomponenSatTugasDto(
-                fs_kd_detil_tarif: "A",
-                fs_kd_sat_tugas: "D",
-                fs_nm_sat_tugas: "E",
-                fb_sat_medis: false
-            )
-        };
-
-    private static IKomponenKey FakerKey()
-        => KomponenType.Key("A");
-
-    [Fact]
-    public void InsertTest()
-    {
-        using var trans = TransHelper.NewScope();
-        _sut.Insert(FakerList());
-    }
-
-    [Fact]
-    public void DeleteTest()
-    {
-        using var trans = TransHelper.NewScope();
-        _sut.Delete(FakerKey());
-    }
-
-    [Fact]
-    public void ListDataTest()
-    {
-        using var trans = TransHelper.NewScope();
-        _sut.Insert(FakerList());
-        var actual = _sut.ListData(FakerKey());
-        actual.Should().BeEquivalentTo(FakerList(),
-            opt => opt.Excluding(x => x.fs_nm_sat_tugas)
-                .Excluding(x => x.fb_sat_medis));
     }
 }

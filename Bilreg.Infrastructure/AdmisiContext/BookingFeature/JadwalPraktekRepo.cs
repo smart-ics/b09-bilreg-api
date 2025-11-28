@@ -2,7 +2,7 @@
 using Bilreg.Application.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
-using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Infrastructure.Helpers;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.PatternHelper;
@@ -36,7 +36,7 @@ public class JadwalPraktekRepo : IJadwalPraktekRepo
     public void DeleteEntity(IJadwalPraktekKey key)
         => _dal.Delete(key);
 
-    public IEnumerable<JadwalPraktekType> ListData(IPetugasMedisKey filter)
+    public IEnumerable<JadwalPraktekType> ListData(IPpaKey filter)
     {
         var result = _dal.ListData(filter);
         var model = result?.Select(x => x.ToModel())?
@@ -63,6 +63,14 @@ public class JadwalPraktekRepo : IJadwalPraktekRepo
     public IEnumerable<JadwalPraktekType> ListData(ILayananDkKey lynDk)
     {
         var result = _dal.ListData(lynDk);
+        var model = result?.Select(x => x.ToModel())?
+            .ToList() ?? [];
+        return model;
+    }
+
+    public IEnumerable<JadwalPraktekType> ListData(IGroupSpesialisKey grpSpesialis)
+    {
+        var result = _dal.ListData(grpSpesialis);
         var model = result?.Select(x => x.ToModel())?
             .ToList() ?? [];
         return model;

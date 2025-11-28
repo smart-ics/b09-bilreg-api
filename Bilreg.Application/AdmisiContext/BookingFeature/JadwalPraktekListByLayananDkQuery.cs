@@ -13,7 +13,7 @@ public record JadwalPraktekListByLayananDkResponse(
     IEnumerable<JadwalPraktekDokterByLynDkHariResponse> ListHari);
 
 public record JadwalPraktekDokterByLynDkHariResponse(
-    string JadwalPraktekId, string Hari, string JamMulai, string JamSelesai);
+    string JadwalPraktekId, string Hari, string JamMulai, string JamSelesai, int MaxPasien);
 
 public class JadwalPraktekListByLayananDkHandler : IRequestHandler<JadwalPraktekListByLayananDkQuery,
     IEnumerable<JadwalPraktekListByLayananDkResponse>>
@@ -34,8 +34,8 @@ public class JadwalPraktekListByLayananDkHandler : IRequestHandler<JadwalPraktek
 
         var result = listJadwal
             .GroupBy(x => new {
-                x.Dokter.PetugasMedisId,
-                x.Dokter.PetugasMedisName,
+                PetugasMedisId = x.Dokter.PpaId,
+                PetugasMedisName = x.Dokter.PpaName,
                 x.Layanan.LayananId,
                 x.Layanan.LayananName
             })
@@ -49,7 +49,8 @@ public class JadwalPraktekListByLayananDkHandler : IRequestHandler<JadwalPraktek
                      j.JadwalPraktekId,
                      j.Hari.ToString(),
                      j.JamMulai.ToString("HH:mm"),
-                     j.JamSelesai.ToString("HH:mm")
+                     j.JamSelesai.ToString("HH:mm"),
+                     j.MaxPasien
                  ))
             ));
 

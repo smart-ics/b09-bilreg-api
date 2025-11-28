@@ -11,12 +11,14 @@ public record JaminanDto(
     string fs_alm2_jaminan ,
     string fs_kota_jaminan ,
     bool fb_aktif ,
+    string fs_benefit_mou,
     string fs_kd_cara_bayar_dk ,
+    string fs_kd_grup_jaminan,
+    string fs_kd_pos ,
     string fs_nm_cara_bayar_dk ,
-    string fs_kd_grup_jaminan ,
-    string fs_nm_grup_jaminan ,
-    string fs_benefit_mou ,
-    string fs_kd_pos)
+    string fs_nm_grup_jaminan )
+    
+    
 {
     public JaminanType ToModel()
     {

@@ -1,6 +1,6 @@
 ﻿using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
-using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RujukanFeature;
 using Bilreg.Domain.BillContext.BedUsageFeature;
 using Bilreg.Domain.Helpers;
@@ -19,7 +19,7 @@ public interface IRegFactory
     RegModel CreateRegRajal(PasienModel pasien, 
         AuditInfoType regMasukAudit, TipeJaminanType tipeJaminan, PolisModel polis,
         CaraMasukDkType caraMasukDk, RujukanType rujukan, 
-        PetugasMedisType dokter, LayananType layanan, KarcisType karcis);
+        PpaType dokter, LayananType layanan, KarcisType karcis);
 }
 
 public class RegFactory : IRegFactory
@@ -39,7 +39,7 @@ public class RegFactory : IRegFactory
     public RegModel CreateRegRajal(PasienModel pasien, 
         AuditInfoType regMasukAudit, TipeJaminanType tipeJaminan, 
         PolisModel polis, CaraMasukDkType caraMasukDk, RujukanType rujukan, 
-        PetugasMedisType dokter, LayananType layanan, KarcisType karcis)
+        PpaType dokter, LayananType layanan, KarcisType karcis)
     {
         var newNo = _sequencer.GetNextNoUrut(SEQUENCE_TAG, "No Urut Reg Masuk");
         var regId = $"RG{newNo:D8}";
@@ -49,7 +49,7 @@ public class RegFactory : IRegFactory
             AuditInfoType.Default, AuditInfoType.Default, JenisRegEnum.RegJalan,
             pasien.ToReff(), TipeJaminanType.Default.ToReff(),
             PolisModel.Default.ToReff(), kelasRajal.ToReff(), CaraMasukDkType.Default,
-            RujukanType.Default.ToReff(), PetugasMedisType.Default.ToReff(), 
+            RujukanType.Default.ToReff(), PpaType.Default.ToReff(), 
             LayananType.Default.ToReff(), KarcisType.Default.ToReff(), []);
 
         reg.ApplyJaminan(tipeJaminan, polis);

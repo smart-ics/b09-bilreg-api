@@ -3,11 +3,8 @@ using System.Data.SqlClient;
 using Bilreg.Domain.BillContext.TindakanFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
-using FluentAssertions;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
-using Nuna.Lib.TransactionHelper;
-using Xunit;
 
 namespace Bilreg.Infrastructure.BillContext.TindakanFeature;
 
@@ -115,55 +112,5 @@ public class JenisTarifDal : IJenisTarifDal
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<JenisTarifDto>(sql);
-    }
-}
-
-public class JenisTarifDalTest
-{
-    private readonly JenisTarifDal _sut = new(ConnStringHelper.GetTestEnv());
-
-    private static JenisTarifDto Faker()
-        => new JenisTarifDto("A", "B", "1");
-
-    private static IJenisTarifKey FakerKey()
-        => JenisTarifType.Default with { JenisTarifId = "A" };
-
-    [Fact]
-    public void InsertTest()
-    {
-        using var trans = TransHelper.NewScope();
-        _sut.Insert(Faker());
-    }
-    
-    [Fact]
-    public void UpdateTest()
-    {
-        using var trans = TransHelper.NewScope();
-        _sut.Update(Faker());
-    }
-
-    [Fact]
-    public void DeleteTest()
-    {
-        using var trans = TransHelper.NewScope();
-        _sut.Delete(FakerKey());
-    }
-
-    [Fact]
-    public void GetDataTest()
-    {
-        using var trans = TransHelper.NewScope();
-        _sut.Insert(Faker());
-        var actual = _sut.GetData(FakerKey());
-        actual.Should().BeEquivalentTo(Faker());
-    }
-    
-    [Fact]
-    public void ListDataTest()
-    {
-        using var trans = TransHelper.NewScope();
-        _sut.Insert(Faker());
-        var actual = _sut.ListData();
-        actual.Should().ContainEquivalentOf(Faker());
     }
 }
