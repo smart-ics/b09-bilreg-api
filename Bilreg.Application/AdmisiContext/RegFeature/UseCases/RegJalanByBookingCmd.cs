@@ -1,12 +1,11 @@
 ﻿using Bilreg.Application.AdmisiContext.BookingFeature;
 using Bilreg.Application.AdmisiContext.LayananFeature;
-using Bilreg.Application.AdmisiContext.PetugasMedisFeature;
-using Bilreg.Application.AdmisiContext.RegSub;
+using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
-using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiContext.RujukanFeature;
 using Bilreg.Domain.Helpers.CommonValueObjects;
@@ -27,7 +26,7 @@ public class RegJalanByBookingHandler
     private readonly IBookingRepo _bookingRepo;
     private readonly IPasienRepo _pasienRepo;
     private readonly IRegFactory _regFactory;
-    private readonly IPetugasMedisRepo _dokterRepo;
+    private readonly IPpaRepo _dokterRepo;
     private readonly ILayananRepo _layananRepo;
     private readonly IKarcisRepo _karcisRepo;
     private readonly IRegRepo _regRepo;
@@ -37,7 +36,7 @@ public class RegJalanByBookingHandler
         IBookingRepo bookingRepo,
         IPasienRepo pasienRepo,
         IRegFactory regFactory,
-        IPetugasMedisRepo dokterRepo,
+        IPpaRepo dokterRepo,
         ILayananRepo layananRepo,
         IKarcisRepo karcisRepo,
         IRegRepo regRepo,
@@ -58,7 +57,7 @@ public class RegJalanByBookingHandler
         //  LOAD and GUARD
         var booking = LoadBooking(request.BookingId);
         var pasien = LoadPasien(booking.PasienId);
-        var dokter = LoadDokter(booking.Dokter.PetugasMedisId);
+        var dokter = LoadDokter(booking.Dokter.PpaId);
         var layanan = LoadLayanan(booking.Layanan.LayananId); 
         var karcis = LoadKarcis(request.KarcisId);
         
@@ -105,8 +104,8 @@ public class RegJalanByBookingHandler
         _pasienRepo.LoadEntity(PasienModel.Key(id))
             .GetValueOrThrow("Pasien tidak ditemukan");
 
-    private PetugasMedisType LoadDokter(string id) =>
-        _dokterRepo.LoadEntity(PetugasMedisType.Key(id))
+    private PpaType LoadDokter(string id) =>
+        _dokterRepo.LoadEntity(PpaType.Key(id))
             .GetValueOrThrow("Dokter tidak valid");
 
     private LayananType LoadLayanan(string id) =>

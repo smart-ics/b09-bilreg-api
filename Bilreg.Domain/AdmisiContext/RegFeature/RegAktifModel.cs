@@ -1,6 +1,6 @@
 ﻿using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
-using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 
 namespace Bilreg.Domain.AdmisiContext.RegFeature;
@@ -9,8 +9,8 @@ public class RegAktifModel : IRegKey
 {
     #region CREATION
     public RegAktifModel(string regId, DateTime regDate,  
-        PasienReff pasien, JenisRegEnum jenisReg, LayananReff layanan,
-        PetugasMedisReff dokter, TipeJaminanReff tipeJaminan)
+        PasienReff pasien, string jenisRawat, LayananReff layanan,
+        PpaReff dokter, TipeJaminanReff tipeJaminan)
     {
         RegId = regId;
         RegDate = regDate;
@@ -28,7 +28,7 @@ public class RegAktifModel : IRegKey
     public PasienReff Pasien { get; init; }
     public JenisRegEnum JenisReg { get; init; }
     public LayananReff Layanan { get; private set; }
-    public PetugasMedisReff Dokter { get; private set; }
+    public PpaReff Dokter { get; private set; }
     public TipeJaminanReff TipeJaminan { get; private set; }
     #endregion
     
@@ -43,7 +43,7 @@ public class RegAktifModel : IRegKey
         Layanan = layanan;
     }
 
-    public void AssignDokter(PetugasMedisReff dokter)
+    public void AssignDokter(PpaReff dokter)
     {
         Dokter = dokter;
     }

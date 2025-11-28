@@ -1,9 +1,9 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.LayananFeature;
-using Bilreg.Application.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
-using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using MediatR;
 using Newtonsoft.Json.Linq;
 
@@ -19,12 +19,12 @@ public class JadwalPraktekCreateHandler : IRequestHandler<JadwalPraktekCreateCmd
 {
     private readonly IJadwalPraktekRepo _jadwalRepo;
     private readonly IJadwalPraktekFactory _jadwalNunaFactory;
-    private readonly IPetugasMedisRepo _petugasRepo;
+    private readonly IPpaRepo _petugasRepo;
     private readonly ILayananRepo _layananRepo;
 
     public JadwalPraktekCreateHandler(IJadwalPraktekRepo jadwalRepo, 
         IJadwalPraktekFactory jadwalNunaFactory, 
-        IPetugasMedisRepo petugasRepo, 
+        IPpaRepo petugasRepo, 
         ILayananRepo layananRepo)
     {
         _jadwalRepo = jadwalRepo;
@@ -37,7 +37,7 @@ public class JadwalPraktekCreateHandler : IRequestHandler<JadwalPraktekCreateCmd
     {
         //  GUARD
         Guard.Against.NegativeOrZero(request.MaxPasien, nameof(request.MaxPasien));
-        var dokterKey = PetugasMedisType.Key(request.DokterId);
+        var dokterKey = PpaType.Key(request.DokterId);
         var dokter = _petugasRepo.LoadEntity(dokterKey)
             .GetValueOrThrow("Dokter tidak ditemukan");
         var layananKey = LayananType.Key(request.LayananId);
@@ -63,7 +63,7 @@ public class JadwalPraktekCreateHandler : IRequestHandler<JadwalPraktekCreateCmd
     }
 
     private JadwalPraktekType CreateJadwal(JadwalPraktekCreateCmd request, 
-        PetugasMedisType dokter, LayananType layanan)
+        PpaType dokter, LayananType layanan)
     {
         var jadwal = _jadwalNunaFactory.Create(
             dokter, layanan, 

@@ -2,15 +2,14 @@
 using Bilreg.Application.AdmisiContext.BookingFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature;
 using Bilreg.Application.AdmisiContext.LayananFeature;
-using Bilreg.Application.AdmisiContext.PetugasMedisFeature;
-using Bilreg.Application.AdmisiContext.RegSub;
+using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.AdmisiContext.RujukanFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
-using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiContext.RujukanFeature;
 using Bilreg.Domain.Helpers.CommonValueObjects;
@@ -36,7 +35,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
     private readonly ICaraMasukDkRepo _caraMasukDkRepo;
     private readonly IRujukanRepo _rujukanRepo;
     private readonly ILayananRepo _layananRepo;
-    private readonly IPetugasMedisRepo _dokterRepo;
+    private readonly IPpaRepo _dokterRepo;
     private readonly IAntrianFactory _antrianFactory;
     private readonly IAntrianRepo _antrianRepo;
     private readonly IJadwalPraktekRepo _jadwalPraktekRepo;
@@ -50,19 +49,18 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
 
     public RegJalanCreateHandler(IPasienRepo pasienRepo,
         ITipeJaminanRepo tipeJaminanRepo,
-        IPolisRepo polisRepo,
-        ICaraMasukDkRepo caraMasukDkRepo,
-        IRujukanRepo rujukanRepo,
-        ILayananRepo layananRepo,
-        IPetugasMedisRepo dokterRepo,
-        IAntrianFactory antrianFactory,
-        IAntrianRepo antrianRepo,
-        IJadwalPraktekRepo jadwalRepo,
-        IRegFactory regFactory,
-        IKarcisRepo karcisRepo,
-        IRegRepo regRepo,
-        IPasienTrackerRepo trackerRepo,
-        IRegAktifRepo regAktifRepo)
+        IPolisRepo polisRepo, 
+        ICaraMasukDkRepo caraMasukDkRepo, 
+        IRujukanRepo rujukanRepo, 
+        ILayananRepo layananRepo, 
+        IPpaRepo dokterRepo, 
+        IAntrianFactory antrianFactory, 
+        IAntrianRepo antrianRepo, 
+        IJadwalPraktekRepo jadwalRepo, 
+        IRegFactory regFactory, 
+        IKarcisRepo karcisRepo, 
+        IRegRepo regRepo, 
+        IPasienTrackerRepo trackerRepo)
     {
         _pasienRepo = pasienRepo;
         _tipeJaminanRepo = tipeJaminanRepo;
@@ -171,15 +169,15 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             throw new ArgumentException("Layanan Rawat Inap tidak bisa digunakan di Registrasi Rawat Jalan");
     }
 
-    private PetugasMedisType LoadDokter(string id) =>
-        _dokterRepo.LoadEntity(PetugasMedisType.Key(id))
+    private PpaType LoadDokter(string id) =>
+        _dokterRepo.LoadEntity(PpaType.Key(id))
             .GetValueOrThrow("Dokter not found");
 
     private KarcisType LoadKarcis(string id) =>
         _karcisRepo.LoadEntity(KarcisType.Key(id))
             .GetValueOrThrow("Karcis not found");
 
-    private JadwalPraktekType ResolveJadwalPraktek(PetugasMedisType dokter, string jamPraktek, DateOnly tgl)
+    private JadwalPraktekType ResolveJadwalPraktek(PpaType dokter, string jamPraktek, DateOnly tgl)
     {
         var listJadwal = _jadwalPraktekRepo.ListData(dokter)?.ToList() ?? [];
         var listJadwalHari = listJadwal.Where(x => x.Hari == tgl.DayOfWeek)?.ToList() ?? [];
@@ -199,7 +197,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         };
     }
 
-    private AntrianModel ResolveAntrian(DateOnly tgl, PetugasMedisType dokter, JadwalPraktekType jadwal)
+    private AntrianModel ResolveAntrian(DateOnly tgl, PpaType dokter, JadwalPraktekType jadwal)
     {
         var listAntrian = _antrianRepo.ListData(tgl);
         var tag = AntrianModel.GenSequenceTag(tgl, dokter);

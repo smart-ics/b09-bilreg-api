@@ -31,7 +31,9 @@ public class JadwalPrektekListByLayananHandler : IRequestHandler<JadwalPraktekLi
         var listJadwal = _jadwalRepo.ListData(lyn)?.ToList() ?? [];
 
         var result = listJadwal
-            .GroupBy(x => new { x.Dokter.PetugasMedisId, x.Dokter.PetugasMedisName,
+            .GroupBy(x => new {
+                PetugasMedisId = x.Dokter.PpaId,
+                PetugasMedisName = x.Dokter.PpaName,
                 x.Layanan.LayananId, x.Layanan.LayananName
             })
             .Select(g => new JadwalPraktekListByLayananResponse(

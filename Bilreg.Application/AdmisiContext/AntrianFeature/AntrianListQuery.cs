@@ -1,10 +1,10 @@
-﻿using Bilreg.Application.AdmisiContext.PetugasMedisFeature;
-using Bilreg.Domain.AdmisiContext.AntrianFeature;
-using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+﻿using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using CommunityToolkit.Diagnostics;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
 using System.Data.SqlTypes;
+using Bilreg.Application.AdmisiContext.PpaFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 
 namespace Bilreg.Application.AdmisiContext.AntrianFeature;
 
@@ -20,10 +20,10 @@ public record AntrianListDtlResponse(
 public class AntrianListHandler : IRequestHandler<AntrianListQuery, IEnumerable<AntrianListResponse>>
 {
     private readonly IAntrianRepo _antrianRepo;
-    private readonly IPetugasMedisRepo _ptgMedisRepo;
+    private readonly IPpaRepo _ptgMedisRepo;
     private const string FORMAT_TGL_YMD = "yyyy-MM-dd";
     public AntrianListHandler(IAntrianRepo antrianRepo, 
-        IPetugasMedisRepo ptgMedisRepo)
+        IPpaRepo ptgMedisRepo)
     {
         _antrianRepo = antrianRepo;
         _ptgMedisRepo = ptgMedisRepo;
@@ -39,7 +39,7 @@ public class AntrianListHandler : IRequestHandler<AntrianListQuery, IEnumerable<
         // BUILD
         DateOnly tglAntrian = DateOnly.ParseExact(request.TglAntrian, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
 
-        var dokter = _ptgMedisRepo.LoadEntity(PetugasMedisType.Key(request.DokterId))
+        var dokter = _ptgMedisRepo.LoadEntity(PpaType.Key(request.DokterId))
             .Match(
                 onSome: x => x,
                 onNone: () => throw new KeyNotFoundException($"Dokter {request.DokterId} not found") 
@@ -55,8 +55,8 @@ public class AntrianListHandler : IRequestHandler<AntrianListQuery, IEnumerable<
 
         var result = listAntrian
             .Select(a => new AntrianListResponse(
-                DokterId: dokter.PetugasMedisId, 
-                DokterName: dokter.PetugasMedisName, 
+                DokterId: dokter.PpaId, 
+                DokterName: dokter.PpaName, 
                 JamMulai: a.Value.StartTime.ToString("HH:mm"),
                 JamSelesai: a.Value.EndTime.ToString("HH:mm"),
                 Diskripsi: a.Value.AntrianDescription,

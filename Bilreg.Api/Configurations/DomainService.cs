@@ -28,7 +28,6 @@ public static class DomainService
             .AddScoped<IGetKodeRsService, GetKodeRsService>()
             .AddScoped<IRegFactory, RegFactory>()
             .AddScoped<IGetKelasRajalService, GetKelasRajalService>()
-            .AddScoped<IGetSatuanTugasMedisService, GetSatuanTugasMedisService>()
             .AddScoped<IPolisFactory, PolisFactory>()
             ;
         

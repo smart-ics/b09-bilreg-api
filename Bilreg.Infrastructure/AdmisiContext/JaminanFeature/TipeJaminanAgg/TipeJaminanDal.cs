@@ -8,7 +8,14 @@ using Nuna.Lib.DataAccessHelper;
 
 // ReSharper disable InconsistentNaming
 namespace Bilreg.Infrastructure.AdmisiContext.JaminanFeature.TipeJaminanAgg;
-
+public interface ITipeJaminanDal :
+    IInsert<TipeJaminanDto>,
+    IUpdate<TipeJaminanDto>,
+    IDelete<ITipeJaminanKey>,
+    IGetData<TipeJaminanDto, ITipeJaminanKey>,
+    IListData<TipeJaminanDto>
+{
+}
 public class TipeJaminanDal : ITipeJaminanDal
 {
     private readonly DatabaseOptions _opt;

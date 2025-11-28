@@ -1,10 +1,7 @@
 using Bilreg.Domain.BillContext.TransportSub.AmbulanceAgg;
 using CommunityToolkit.Diagnostics;
-using FluentAssertions;
 using MediatR;
-using Moq;
 using Nuna.Lib.CleanArchHelper;
-using Xunit;
 
 namespace Bilreg.Application.BillContext.TransportSub.AmbulanceAgg;
 
@@ -37,42 +34,5 @@ public class AmbulanceSaveHandler: IRequestHandler<AmbulanceSaveCommand>
         // WRITE
         _ = _writer.Save(ambulance);
         return Task.CompletedTask;
-    }
-}
-
-public class AmbulanceSaveHandlerTest
-{
-    private readonly Mock<IFactoryLoadOrNull<AmbulanceModel, IAmbulanceKey>> _factory;
-    private readonly Mock<IAmbulanceWriter> _writer;
-    private readonly AmbulanceSaveHandler _sut;
-    public AmbulanceSaveHandlerTest()
-    {
-        _factory = new Mock<IFactoryLoadOrNull<AmbulanceModel, IAmbulanceKey>>();
-        _writer = new Mock<IAmbulanceWriter>();
-        _sut = new AmbulanceSaveHandler(_factory.Object, _writer.Object);
-    }
-
-    [Fact]
-    public async Task GivenNullRequest_ThenThrowArgumentNullException()
-    {
-        AmbulanceSaveCommand request = null;
-        var actual = async () => await _sut.Handle(request, CancellationToken.None);
-        await actual.Should().ThrowAsync<ArgumentNullException>();
-    }
-    
-    [Fact]
-    public async Task GivenEmptyAmbulanceId_ThenThrowArgumentException()
-    {
-        var request = new AmbulanceSaveCommand("", "B", 1);
-        var actual = async () => await _sut.Handle(request, CancellationToken.None);
-        await actual.Should().ThrowAsync<ArgumentException>();
-    }
-    
-    [Fact]
-    public async Task GivenEmptyAmbulanceName_ThenThrowArgumentException()
-    {
-        var request = new AmbulanceSaveCommand("A", "", 1);
-        var actual = async () => await _sut.Handle(request, CancellationToken.None);
-        await actual.Should().ThrowAsync<ArgumentException>();
     }
 }

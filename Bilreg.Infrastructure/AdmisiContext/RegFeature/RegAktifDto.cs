@@ -1,6 +1,6 @@
 ﻿using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
-using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 
@@ -20,13 +20,13 @@ public record RegAktifDto(
             model.Pasien.PasienId,
             ((int)model.JenisReg).ToString(),
             model.Layanan.LayananId,
-            model.Dokter.PetugasMedisId,
+            model.Dokter.PpaId,
             model.TipeJaminan.TipeJaminanId,
             model.Pasien.PasienName,
             model.Pasien.TglLahir.ToString("yyyy-MM-dd"),
             model.Pasien.Gender,
             model.Layanan.LayananName,
-            model.Dokter.PetugasMedisName,
+            model.Dokter.PpaName,
             model.TipeJaminan.TipeJaminanName);
     }
 
@@ -35,7 +35,7 @@ public record RegAktifDto(
         var tglLahir = DateOnly.Parse(TglLahir);
         var pasienReff = new PasienReff(PasienId, PasienName, tglLahir, Gender);
         var layananReff = new LayananReff(LayananId, LayananName);
-        var dokterReff = new PetugasMedisReff(DokterId, DokterName);
+        var dokterReff = new PpaReff(DokterId, DokterName);
         var tipeJaminanReff = new TipeJaminanReff(TipeJaminanId, TipeJaminanName);
 
         var jnsReg = JenisReg switch
