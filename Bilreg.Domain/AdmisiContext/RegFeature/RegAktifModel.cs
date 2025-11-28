@@ -9,7 +9,7 @@ public class RegAktifModel : IRegKey
 {
     #region CREATION
     public RegAktifModel(string regId, DateTime regDate,  
-        PasienReff pasien, string jenisRawat, LayananReff layanan,
+        PasienReff pasien, JenisRegEnum jenisReg, LayananReff layanan,
         PpaReff dokter, TipeJaminanReff tipeJaminan)
     {
         RegId = regId;

@@ -17,7 +17,7 @@ public class RegAktifDalTest
             RegId: "A",
             RegDate: new DateTime(2024, 1, 2),
             PasienId: "C",
-            JenisRawat: "D",
+            JenisReg: "D",
             LayananId: "E",
             DokterId: "F",
             TipeJaminanId: "G",

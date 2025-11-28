@@ -33,8 +33,8 @@ public class RegAktifListHandler : IRequestHandler<RegAktifListQuery, IEnumerabl
                 x.JenisReg.ToString(),
                 x.Layanan.LayananId,
                 x.Layanan.LayananName,
-                x.Dokter.PetugasMedisId,
-                x.Dokter.PetugasMedisName
+                x.Dokter.PpaId,
+                x.Dokter.PpaName
             ));
 
         return Task.FromResult(result);

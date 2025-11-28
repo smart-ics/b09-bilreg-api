@@ -3,6 +3,7 @@ using Bilreg.Application.AdmisiContext.BookingFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature;
 using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.AdmisiContext.PpaFeature;
+using Bilreg.Application.AdmisiContext.RegSub;
 using Bilreg.Application.AdmisiContext.RujukanFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
@@ -49,18 +50,19 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
 
     public RegJalanCreateHandler(IPasienRepo pasienRepo,
         ITipeJaminanRepo tipeJaminanRepo,
-        IPolisRepo polisRepo, 
-        ICaraMasukDkRepo caraMasukDkRepo, 
-        IRujukanRepo rujukanRepo, 
-        ILayananRepo layananRepo, 
-        IPpaRepo dokterRepo, 
-        IAntrianFactory antrianFactory, 
-        IAntrianRepo antrianRepo, 
-        IJadwalPraktekRepo jadwalRepo, 
-        IRegFactory regFactory, 
-        IKarcisRepo karcisRepo, 
-        IRegRepo regRepo, 
-        IPasienTrackerRepo trackerRepo)
+        IPolisRepo polisRepo,
+        ICaraMasukDkRepo caraMasukDkRepo,
+        IRujukanRepo rujukanRepo,
+        ILayananRepo layananRepo,
+        IPpaRepo dokterRepo,
+        IAntrianFactory antrianFactory,
+        IAntrianRepo antrianRepo,
+        IJadwalPraktekRepo jadwalRepo,
+        IRegFactory regFactory,
+        IKarcisRepo karcisRepo,
+        IRegRepo regRepo,
+        IPasienTrackerRepo trackerRepo,
+        IRegAktifRepo regAktifRepo)
     {
         _pasienRepo = pasienRepo;
         _tipeJaminanRepo = tipeJaminanRepo;

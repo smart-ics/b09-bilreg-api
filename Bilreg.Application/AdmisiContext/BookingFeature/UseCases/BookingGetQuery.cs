@@ -1,6 +1,6 @@
 ﻿using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
-using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using CommunityToolkit.Diagnostics;
 using MediatR;
@@ -11,7 +11,7 @@ public record BookingGetQuery(string BookingId) : IRequest<BookingGetResponse>, 
 
 public record BookingGetResponse(string BookingId, string BookingDate,
     PersonInfoType Person, string PasienId, RegReff Reg,LayananReff Layanan,
-    PetugasMedisReff Dokter, string TglBerobat, string JamPraktek, int NoAntrian);
+    PpaReff Dokter, string TglBerobat, string JamPraktek, int NoAntrian);
 
 public class BookingGetHanlder : IRequestHandler<BookingGetQuery, BookingGetResponse>
 {

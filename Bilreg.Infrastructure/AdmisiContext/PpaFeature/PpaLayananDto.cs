@@ -7,14 +7,14 @@ namespace Bilreg.Infrastructure.AdmisiContext.PpaFeature;
 
 public record PpaLayananDto(
     string fs_kd_peg,
-    string fs_nm_peg,
     string fs_kd_layanan,
     decimal fb_utama,
+    string fs_nm_peg,
     string fs_nm_layanan)
 {
     public static PpaLayananDto Create(PpaType ppa, PpaLayananType ppaLyn)
-        => new(ppa.PpaId, ppa.PpaName, ppaLyn.Layanan.LayananId,
-            ppaLyn.IsUtama ? 1 : 0, ppaLyn.Layanan.LayananName);
+        => new(ppa.PpaId, ppaLyn.Layanan.LayananId, ppaLyn.IsUtama ? 1 : 0,
+           ppa.PpaName, ppaLyn.Layanan.LayananName);
     
     public PpaLayananType ToModel()
     {

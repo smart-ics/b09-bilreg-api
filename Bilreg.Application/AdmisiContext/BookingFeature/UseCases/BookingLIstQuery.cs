@@ -1,5 +1,5 @@
 ﻿using Bilreg.Domain.AdmisiContext.LayananFeature;
-using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using CommunityToolkit.Diagnostics;
 using MediatR;
@@ -17,7 +17,7 @@ public record BookingPeriodeListResponse(
     string TglBerobat,
     string JamPraktek,
     LayananReff Layanan,
-    PetugasMedisReff Dokter,
+    PpaReff Dokter,
     int NoAntrian);
 
 public class BookingListHandler : IRequestHandler<BookingPeriodeListQuery, IEnumerable<BookingPeriodeListResponse>>

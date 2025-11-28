@@ -63,10 +63,12 @@ public class PpaLayananDal : IPpaLayananDal
         const string sql = """
             SELECT 
                 aa.fs_kd_peg, aa.fs_kd_layanan, aa.fb_utama,
-                ISNULL(bb.fs_nm_layanan, '') AS fs_nm_layanan
+                ISNULL(bb.fs_nm_peg, '') AS fs_nm_peg,
+                ISNULL(cc.fs_nm_layanan, '') AS fs_nm_layanan
             FROM 
                 td_peg_layanan aa
-                LEFT JOIN ta_layanan bb ON aa.fs_kd_layanan = bb.fs_kd_layanan
+                LEFT JOIN td_peg bb ON aa.fs_kd_peg = bb.fs_kd_peg
+                LEFT JOIN ta_layanan cc ON aa.fs_kd_layanan = cc.fs_kd_layanan
             WHERE 
                 aa.fs_kd_peg = @fs_kd_peg
             """;

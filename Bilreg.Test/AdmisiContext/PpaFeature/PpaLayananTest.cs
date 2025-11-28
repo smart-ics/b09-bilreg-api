@@ -12,7 +12,7 @@ public class PpaLayananTest
     private readonly PpaLayananDal _sut = new(ConnStringHelper.GetTestEnv());
 
     private static PpaLayananDto Faker()
-        => new PpaLayananDto("A", "B", "C", 1, "D");
+        => new PpaLayananDto("A", "B", 1, "C", "D");
     
     [Fact]
     public void InsertTest()
