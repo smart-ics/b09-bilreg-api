@@ -1,4 +1,5 @@
 ﻿using Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 
@@ -7,7 +8,8 @@ namespace Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature;
 public record OpCaseAktifDto(
     string OrderOpId, DateTime OrderOpDate, string PasienId, int OpCaseState,
     string PasienName, string TglLahir, string Gender, string NamaOperasi, 
-    int UrgencyLevel, DateTime PreferedDate)
+    int EstimasiDurasi, int UrgencyLevel, DateTime PreferedDate, 
+    string DokterId, string DokterName)
 {
     public static OpCaseAktifDto FromModel(OpCaseReff model)
     {
@@ -16,7 +18,7 @@ public record OpCaseAktifDto(
             model.OrderOpDate, model.Pasien.PasienId,
             (int)model.OpCaseState,
             model.Pasien.PasienName, tglLahir, model.Pasien.Gender,
-            "-", 0, new DateTime(3000,1,1));
+            "-", 0, 0, new DateTime(3000,1,1), "-", "-");
         return result;
     }
 
@@ -31,8 +33,9 @@ public record OpCaseAktifDto(
     public OpCaseOrderView ToView()
     {
         var result = new OpCaseOrderView(OrderOpId, 
-            new PasienReff(PasienId, PasienName, DateOnly.Parse(TglLahir), Gender), 
-            NamaOperasi, (UrgencyLevelEnum)UrgencyLevel, PreferedDate, (OpCaseStateEnum)OpCaseState);
+            new PasienReff(PasienId, PasienName, DateOnly.Parse(TglLahir), Gender),
+            NamaOperasi, new PpaReff(DokterId, DokterName), 
+            EstimasiDurasi,(UrgencyLevelEnum)UrgencyLevel, PreferedDate, (OpCaseStateEnum)OpCaseState);
         return result;
     }
 }

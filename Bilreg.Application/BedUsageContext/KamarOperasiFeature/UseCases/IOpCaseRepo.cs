@@ -17,5 +17,5 @@ public interface IOpCaseRepo :
 
 public record OpCaseOrderView(string OrderOpId,
     PasienReff Pasien, string NamaOperasi,
-    UrgencyLevelEnum UrgencyLevel, 
+    PpaReff Dokter, int EstimasiDurasi, UrgencyLevelEnum UrgencyLevel, 
     DateTime PreferedDate, OpCaseStateEnum OpCaseState);

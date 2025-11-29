@@ -11,7 +11,8 @@ public class OpCaseAktifDalTest
     private readonly OpCaseAktifDal _sut = new(ConnStringHelper.GetTestEnv());
 
     private static OpCaseAktifDto Faker()
-        => new OpCaseAktifDto("A", new DateTime(2023, 1, 1), "B", 1, "C", "2000-01-01", "M", "D", 2, new DateTime(2023, 1, 2));
+        => new OpCaseAktifDto("A", new DateTime(2023, 1, 1), "B", 1, "C", "2000-01-01", 
+            "M", "D", 2, 3, new DateTime(2023, 1, 2), "E", "F");
 
     private static IOrderOpKey FakerKey()
         => OrderOpModel.Key("A");
@@ -49,8 +50,11 @@ public class OpCaseAktifDalTest
                 .Excluding(x => x.TglLahir)
                 .Excluding(x => x.Gender)
                 .Excluding(x => x.NamaOperasi)
+                .Excluding(x => x.EstimasiDurasi)
                 .Excluding(x => x.UrgencyLevel)
-                .Excluding(x => x.PreferedDate));
+                .Excluding(x => x.PreferedDate)
+                .Excluding(x => x.DokterId)
+                .Excluding(x => x.DokterName));
     }
     
     [Fact]
@@ -65,7 +69,10 @@ public class OpCaseAktifDalTest
                 .Excluding(x => x.TglLahir)
                 .Excluding(x => x.Gender)
                 .Excluding(x => x.NamaOperasi)
+                .Excluding(x => x.EstimasiDurasi)
                 .Excluding(x => x.UrgencyLevel)
-                .Excluding(x => x.PreferedDate));
+                .Excluding(x => x.PreferedDate)
+                .Excluding(x => x.DokterId)
+                .Excluding(x => x.DokterName));
     }
 }

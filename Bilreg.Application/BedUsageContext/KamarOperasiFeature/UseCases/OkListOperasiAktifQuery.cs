@@ -8,7 +8,8 @@ public record OkListOperasiAktifQuery : IRequest<IEnumerable<OkListOperasiAktifR
 
 public record OkListOperasiAktifResponse(string OrderOpId,
     string PasienId, string PasienName,
-    string NamaOperasi, string PreferedDate, 
+    string DokterId, string DokterName,
+    string NamaOperasi, string PreferedDate, int EstimasiDurasi, 
     string UrgencyLevel, string StatusOrderOp);
 
 public class OkListOperasiAktifHandler :
@@ -33,8 +34,11 @@ public class OkListOperasiAktifHandler :
             .Select(x => new OkListOperasiAktifResponse(x.OrderOpId,
                 x.Pasien.PasienId,
                 x.Pasien.PasienName,
+                x.Dokter.PpaId,
+                x.Dokter.PpaName,
                 x.NamaOperasi,
                 x.PreferedDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                x.EstimasiDurasi,
                 x.UrgencyLevel.ToString(),
                 x.OpCaseState.ToString()))
             .ToList();

@@ -85,22 +85,28 @@ public class OpCaseAktifDal : IOpCaseAktifDal
 
     public OpCaseAktifDto GetData(IOrderOpKey key)
     {
-        const string sql = @"
+        const string sql = """
             SELECT
-                aa.OrderOpId, aa.OrderOpDate, aa.PasienId, aa.OpCaseState,
-                ISNULL(bb.fs_nm_pasien, '') AS PasienName,
-                ISNULL(bb.fd_tgl_lahir, '3000-01-01') AS TglLahir,
-                ISNULL(bb.fs_jns_kelamin, '') AS Gender,
-                ISNULL(cc.NamaOperasi, '') AS NamaOperasi,
-                ISNULL(dd.UrgencyLevel, 0) AS UrgencyLevel,
-                ISNULL(dd.PreferedDate, '3000-01-01') AS PreferedDate
+               aa.OrderOpId, aa.OrderOpDate, aa.PasienId, aa.OpCaseState,
+               ISNULL(bb.fs_nm_pasien, '') AS PasienName,
+               ISNULL(bb.fd_tgl_lahir, '3000-01-01') AS TglLahir,
+               ISNULL(bb.fs_jns_kelamin, '') AS Gender,
+               ISNULL(cc.NamaOperasi, '') AS NamaOperasi,
+               ISNULL(dd.EstimasiDurasi, 0) AS EstimasiDurasi,
+               ISNULL(dd.UrgencyLevel, 0) AS UrgencyLevel,
+               ISNULL(dd.PreferedDate, '3000-01-01') AS PreferedDate,
+               ISNULL(ee.PpaId, '') AS DokterId,
+               ISNULL(ff.fs_nm_peg, '') AS DokterName
             FROM 
-                BILRG_OpCaseAktif aa
-                LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
-                LEFT JOIN BILRG_OpCase cc ON aa.OrderOpId = cc.OrderOpId
-                LEFT JOIN BILRG_OrderOp dd ON aa.OrderOpId = dd.OrderOpId
-           WHERE
-                aa.OrderOpId = @OrderOpId";
+               BILRG_OpCaseAktif aa
+               LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
+               LEFT JOIN BILRG_OpCase cc ON aa.OrderOpId = cc.OrderOpId
+               LEFT JOIN BILRG_OrderOp dd ON aa.OrderOpId = dd.OrderOpId
+               LEFT JOIN BILRG_OpCasePpa ee ON aa.OrderOpId = ee.OrderOpId AND ee.Role = 'REQUESTER'
+               LEFT JOIN td_peg ff ON ee.PpaId = ff.fs_kd_peg
+            WHERE
+               aa.OrderOpId = @OrderOpId
+            """;
         
         var dp = new DynamicParameters();
         dp.AddParam("@OrderOpId", key.OrderOpId, SqlDbType.VarChar);
@@ -119,13 +125,18 @@ public class OpCaseAktifDal : IOpCaseAktifDal
                 ISNULL(bb.fd_tgl_lahir, '3000-01-01') AS TglLahir,
                 ISNULL(bb.fs_jns_kelamin, '') AS Gender,
                 ISNULL(cc.NamaOperasi, '') AS NamaOperasi,
+                ISNULL(dd.EstimasiDurasi, 0) AS EstimasiDurasi,
                 ISNULL(dd.UrgencyLevel, 0) AS UrgencyLevel,
-                ISNULL(dd.PreferedDate, '3000-01-01') AS PreferedDate
+                ISNULL(dd.PreferedDate, '3000-01-01') AS PreferedDate,
+                ISNULL(ee.PpaId, '') AS DokterId,
+                ISNULL(ff.fs_nm_peg, '') AS DokterName
             FROM 
                 BILRG_OpCaseAktif aa
                 LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
                 LEFT JOIN BILRG_OpCase cc ON aa.OrderOpId = cc.OrderOpId
                 LEFT JOIN BILRG_OrderOp dd ON aa.OrderOpId = dd.OrderOpId
+                LEFT JOIN BILRG_OpCasePpa ee ON aa.OrderOpId = ee.OrderOpId AND ee.Role = 'REQUESTER'
+                LEFT JOIN td_peg ff ON ee.PpaId = ff.fs_kd_peg
             """;
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));

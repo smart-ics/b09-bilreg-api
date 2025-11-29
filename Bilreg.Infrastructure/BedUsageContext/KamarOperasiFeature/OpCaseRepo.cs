@@ -75,12 +75,6 @@ public class OpCaseRepo : IOpCaseRepo
         _opCaseStateHistDal.Delete(key);
     }
 
-    public IEnumerable<OpCaseOrderView> ListData(Periode filter)
-    {
-        var listDto = _opCaseDal.ListData(filter)?.ToList() ?? [];;
-        return listDto.Select(x => x.ToView());
-    }
-
     public IEnumerable<OpCaseOrderView> ListActiveOpCase()
     {
         var listDto = _opCaseAktifDal.ListData()?.ToList() ?? [];

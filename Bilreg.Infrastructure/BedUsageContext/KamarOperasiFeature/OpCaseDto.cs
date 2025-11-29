@@ -55,12 +55,4 @@ public record OpCaseDto(
             (OpCaseStateEnum)OpCaseState, listHist, listPpa);
         return result;
     }
-    
-    public OpCaseOrderView ToView()
-    {
-        var result = new OpCaseOrderView(OrderOpId, 
-            new PasienReff(PasienId, PasienName, DateOnly.Parse(TglLahir), Gender), 
-            NamaOperasi, (UrgencyLevelEnum)UrgencyLevel, ScheduledDate, (OpCaseStateEnum)OpCaseState);
-        return result;
-    }
 }
