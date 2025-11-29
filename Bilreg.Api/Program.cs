@@ -14,7 +14,6 @@ builder.Services
     .AddInfrastructure(builder.Configuration)
     .AddPresentation(builder.Configuration);
 
-
 builder.Host
     .UseSerilog(SerilogConfiguration.ContextConfiguration);
 
@@ -35,7 +34,8 @@ app
     .MapScalarApiReference(opt =>
     {
         opt.Title = "BilReg API - Documentation By Scalar";
-        opt.Theme = ScalarTheme.BluePlanet;
+        opt.Theme = ScalarTheme.Kepler;
+        opt.DarkMode = true;
         opt.DefaultHttpClient = new(ScalarTarget.Http, ScalarClient.Http11);
     });
 
