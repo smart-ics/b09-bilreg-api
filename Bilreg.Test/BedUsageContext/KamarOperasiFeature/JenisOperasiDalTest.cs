@@ -3,9 +3,8 @@ using Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Infrastructure.Helpers;
 using FluentAssertions;
 using Nuna.Lib.TransactionHelper;
-using Xunit;
 
-namespace Bilreg.Test.BillContext.KamarOperasiFeature;
+namespace Bilreg.Test.BedUsageContext.KamarOperasiFeature;
 
 public class JenisOperasiDalTest
 {

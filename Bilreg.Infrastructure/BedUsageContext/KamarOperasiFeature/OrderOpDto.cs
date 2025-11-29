@@ -15,10 +15,10 @@ public record OrderOpDto(
     string JenisOperasiId,
     string NamaOperasi,
     string DokterId,
+    int UrgencyLevel,
     int EstimasiDurasi,
     DateTime PreferedDate,
     string SpecialEquipment,
-    int OrderOpState,
     //
     string CreateUserId,
     DateTime CreateTimestamp,
@@ -45,10 +45,10 @@ public record OrderOpDto(
             model.JenisOperasi.JenisOperasiId,
             model.NamaOperasi,
             model.Dokter.PpaId,
+            (int)model.UrgencyLevel,
             model.EstimasiDurasiInMinutes,
             model.PreferedDate,
             model.SpecialEquipment,
-            (int)model.OrderOpState,
             //
             model.AuditTrail.Created.UserId,
             model.AuditTrail.Created.Timestamp,
@@ -66,7 +66,7 @@ public record OrderOpDto(
         return result;
     }
 
-    public OrderOpModel ToModel(IEnumerable<OrderOpStateHistType> listHistory)
+    public OrderOpModel ToModel()
     {
         var auditTrail = new AuditTrailType(
             new AuditInfoType(CreateUserId, CreateTimestamp),
@@ -89,12 +89,11 @@ public record OrderOpDto(
             icd10,
             jenisOp,
             NamaOperasi,
+            (UrgencyLevelEnum)UrgencyLevel,
             dokter,
             EstimasiDurasi,
             PreferedDate,
-            SpecialEquipment,
-            (OrderOpStateEnum)OrderOpState,
-            listHistory);
+            SpecialEquipment);
         return result;
     }
 };

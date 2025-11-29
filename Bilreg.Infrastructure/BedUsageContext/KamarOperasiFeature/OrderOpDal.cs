@@ -1,8 +1,10 @@
 ﻿using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
+using FluentAssertions;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
+using Nuna.Lib.TransactionHelper;
 using Nuna.Lib.ValidationHelper;
 using System.Data;
 using System.Data.SqlClient;
@@ -33,16 +35,16 @@ public class OrderOpDal : IOrderOpDal
            INSERT INTO BILRG_OrderOp(
                OrderOpId, OrderDate, RegId, PasienId,
                Icd10Id, JenisOperasiId, NamaOperasi,
-               DokterId, EstimasiDurasi, PreferedDate,
-               SpecialEquipment, OrderOpState,
+               DokterId, UrgencyLevel, EstimasiDurasi,
+               PreferedDate, SpecialEquipment, 
                CreateUserId, CreateTimestamp,
                UpdateUserId, UpdateTimestamp,
                VoidUserId, VoidTimestamp)
            VALUES(
                @OrderOpId, @OrderDate, @RegId, @PasienId,
                @Icd10Id, @JenisOperasiId, @NamaOperasi,
-               @DokterId, @EstimasiDurasi, @PreferedDate,
-               @SpecialEquipment, @OrderOpState,
+               @DokterId, @UrgencyLevel, @EstimasiDurasi,
+               @PreferedDate, @SpecialEquipment, 
                @CreateUserId, @CreateTimestamp,
                @UpdateUserId, @UpdateTimestamp,
                @VoidUserId, @VoidTimestamp)
@@ -56,11 +58,13 @@ public class OrderOpDal : IOrderOpDal
         dp.AddParam("@Icd10Id", model.Icd10Id, SqlDbType.VarChar);
         dp.AddParam("@JenisOperasiId", model.JenisOperasiId, SqlDbType.VarChar);
         dp.AddParam("@NamaOperasi", model.NamaOperasi, SqlDbType.VarChar);
+        
         dp.AddParam("@DokterId", model.DokterId, SqlDbType.VarChar);
+        dp.AddParam("@UrgencyLevel", model.UrgencyLevel, SqlDbType.Int);
         dp.AddParam("@EstimasiDurasi", model.EstimasiDurasi, SqlDbType.Int);
         dp.AddParam("@PreferedDate", model.PreferedDate, SqlDbType.DateTime);
         dp.AddParam("@SpecialEquipment", model.SpecialEquipment, SqlDbType.VarChar);
-        dp.AddParam("@OrderOpState", model.OrderOpState, SqlDbType.Int);
+        
         dp.AddParam("@CreateUserId", model.CreateUserId, SqlDbType.VarChar);
         dp.AddParam("@CreateTimestamp", model.CreateTimestamp, SqlDbType.DateTime);
         dp.AddParam("@UpdateUserId", model.UpdateUserId, SqlDbType.VarChar);
@@ -84,17 +88,19 @@ public class OrderOpDal : IOrderOpDal
                Icd10Id = @Icd10Id,
                JenisOperasiId = @JenisOperasiId,
                NamaOperasi = @NamaOperasi,
+        
                DokterId = @DokterId,
+               UrgencyLevel = @UrgencyLevel,
                EstimasiDurasi = @EstimasiDurasi,
                PreferedDate = @PreferedDate,
                SpecialEquipment = @SpecialEquipment,
-               OrderOpState = @OrderOpState,
+        
                CreateUserId = @CreateUserId,
                CreateTimestamp = @CreateTimestamp,
                UpdateUserId = @UpdateUserId,
                UpdateTimestamp = @UpdateTimestamp,
                VoidUserId = @VoidUserId,
-               VoidTimestamp = @VoidTimestamp    
+               VoidTimestamp = @VoidTimestamp
            WHERE
                OrderOpId = @OrderOpId
            """;
@@ -107,11 +113,13 @@ public class OrderOpDal : IOrderOpDal
         dp.AddParam("@Icd10Id", model.Icd10Id, SqlDbType.VarChar);
         dp.AddParam("@JenisOperasiId", model.JenisOperasiId, SqlDbType.VarChar);
         dp.AddParam("@NamaOperasi", model.NamaOperasi, SqlDbType.VarChar);
+        
         dp.AddParam("@DokterId", model.DokterId, SqlDbType.VarChar);
+        dp.AddParam("@UrgencyLevel", model.UrgencyLevel, SqlDbType.Int);
         dp.AddParam("@EstimasiDurasi", model.EstimasiDurasi, SqlDbType.Int);
         dp.AddParam("@PreferedDate", model.PreferedDate, SqlDbType.DateTime);
         dp.AddParam("@SpecialEquipment", model.SpecialEquipment, SqlDbType.VarChar);
-        dp.AddParam("@OrderOpState", model.OrderOpState, SqlDbType.Int);
+        
         dp.AddParam("@CreateUserId", model.CreateUserId, SqlDbType.VarChar);
         dp.AddParam("@CreateTimestamp", model.CreateTimestamp, SqlDbType.DateTime);
         dp.AddParam("@UpdateUserId", model.UpdateUserId, SqlDbType.VarChar);
@@ -145,10 +153,10 @@ public class OrderOpDal : IOrderOpDal
            SELECT
                aa.OrderOpId, aa.OrderDate, aa.RegId, PasienId,
                aa.Icd10Id, aa.JenisOperasiId, aa.NamaOperasi,
-               aa.DokterId, aa.EstimasiDurasi, aa.PreferedDate,
-               aa.SpecialEquipment, aa.OrderOpState, 
-               aa.CreateUserId, aa.CreateTimestamp, 
-               aa.UpdateUserId, aa.UpdateTimestamp, 
+               aa.DokterId, aa.UrgencyLevel, aa.EstimasiDurasi,
+               aa.PreferedDate, aa.SpecialEquipment, 
+               aa.CreateUserId, aa.CreateTimestamp,
+               aa.UpdateUserId, aa.UpdateTimestamp,
                aa.VoidUserId, aa.VoidTimestamp,
                ISNULL(bb.fs_nm_pasien, '') AS PasienName,
                ISNULL(bb.fd_tgl_lahir, '3000-01-01') AS TglLahir,
@@ -157,7 +165,7 @@ public class OrderOpDal : IOrderOpDal
                ISNULL(dd.fs_nm_jenis_operasi, '') AS fs_nm_jenis_operasi,
                ISNULL(ee.fs_nm_peg, '') AS fs_nm_peg
                
-           FROM 
+           FROM
                BILRG_OrderOp aa
                LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
                LEFT JOIN tc_icd cc ON aa.Icd10id = cc.fs_kd_icd
@@ -180,10 +188,10 @@ public class OrderOpDal : IOrderOpDal
            SELECT
                aa.OrderOpId, aa.OrderDate, aa.RegId, PasienId,
                aa.Icd10Id, aa.JenisOperasiId, aa.NamaOperasi,
-               aa.DokterId, aa.EstimasiDurasi, aa.PreferedDate,
-               aa.SpecialEquipment, aa.OrderOpState, 
-               aa.CreateUserId, aa.CreateTimestamp, 
-               aa.UpdateUserId, aa.UpdateTimestamp, 
+               aa.DokterId, aa.UrgencyLevel, aa.EstimasiDurasi,
+               aa.PreferedDate, aa.SpecialEquipment, 
+               aa.CreateUserId, aa.CreateTimestamp,
+               aa.UpdateUserId, aa.UpdateTimestamp,
                aa.VoidUserId, aa.VoidTimestamp,
                ISNULL(bb.fs_nm_pasien, '') AS PasienName,
                ISNULL(bb.fd_tgl_lahir, '3000-01-01') AS TglLahir,

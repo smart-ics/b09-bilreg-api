@@ -32,9 +32,9 @@ public class PpaLayananDal : IPpaLayananDal
         using var bcp = new SqlBulkCopy(conn);
 
         conn.Open();
-        bcp.AddMap("PetugasMedisId", "fs_kd_peg");
-        bcp.AddMap("LayananId", "fs_kd_layanan");
-        bcp.AddMap("IsUtama", "fb_utama");
+        bcp.AddMap("fs_kd_peg", "fs_kd_peg");
+        bcp.AddMap("fs_kd_layanan", "fs_kd_layanan");
+        bcp.AddMap("fb_utama", "fb_utama");
 
         var fetched = listModel.ToList();
         bcp.BatchSize = fetched.Count;
@@ -62,9 +62,8 @@ public class PpaLayananDal : IPpaLayananDal
     {
         const string sql = """
             SELECT 
-                aa.fs_kd_peg, 
+                aa.fs_kd_peg, aa.fs_kd_layanan, aa.fb_utama,
                 ISNULL(bb.fs_nm_peg, '') AS fs_nm_peg,
-                aa.fs_kd_layanan, aa.fb_utama,
                 ISNULL(cc.fs_nm_layanan, '') AS fs_nm_layanan
             FROM 
                 td_peg_layanan aa
