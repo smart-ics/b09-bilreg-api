@@ -35,18 +35,20 @@ public class OkCreateOrderOpByPasienHandler :
     private readonly IIcd10Repo _icdRepo;
     private readonly IJenisOperasiRepo _jenisOperasiRepo;
     private readonly IPpaRepo _dokterRepo;
+    private readonly IOpCaseRepo _opCaseRepo;
 
     public OkCreateOrderOpByPasienHandler(IOrderOpRepo orderOpRepo,
         IPasienRepo pasienRepo,
         IIcd10Repo icdRepo,
         IJenisOperasiRepo jenisOperasiRepo,
-        IPpaRepo dokterRepo)
+        IPpaRepo dokterRepo, IOpCaseRepo opCaseRepo)
     {
         _orderOpRepo = orderOpRepo;
         _pasienRepo = pasienRepo;
         _icdRepo = icdRepo;
         _jenisOperasiRepo = jenisOperasiRepo;
         _dokterRepo = dokterRepo;
+        _opCaseRepo = opCaseRepo;
     }
 
     public Task<OkCreateOrderOpByPasienResponse> Handle(
@@ -66,10 +68,12 @@ public class OkCreateOrderOpByPasienHandler :
         var jenisOperasi = LoadJenisOperasi(request.JenisOperasiId);
         var dokter = LoadDokter(request.DokterDpjpId);
         var orderOp = CreateOrder(pasien, icd, jenisOperasi, dokter, request);
+        var opCase = OpCaseModel.Create(orderOp);
 
         //  WRITE
         using var trans = TransHelper.NewScope();
         _orderOpRepo.SaveChanges(orderOp);
+        _opCaseRepo.SaveChanges(opCase);
         trans.Complete();
 
         return Task.FromResult(RespondSuccess(orderOp));
@@ -108,7 +112,6 @@ public class OkCreateOrderOpByPasienHandler :
         var orderOp = OrderOpModel.CreateByPasien(pasien, req.UserId);
 
         orderOp.SetKlinis(icd, jenisOp, req.NamaOperasi);
-
         orderOp.OperationalRequest(
             dokter,
             req.EstimasiDurasiInMinutes,

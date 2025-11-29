@@ -8,12 +8,15 @@ namespace Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature;
 public class OpCaseRepo : IOpCaseRepo
 {
     private readonly IOpCaseDal _opCaseDal;
+    private readonly IOpCaseStateHistDal _opCaseStateHistDal;
     private readonly IOpCaseAktifDal _opCaseAktifDal;
 
     public OpCaseRepo(IOpCaseDal opCaseDal, 
+        IOpCaseStateHistDal opCaseStateHistDal, 
         IOpCaseAktifDal opCaseAktifDal)
     {
         _opCaseDal = opCaseDal;
+        _opCaseStateHistDal = opCaseStateHistDal;
         _opCaseAktifDal = opCaseAktifDal;
     }
 
@@ -25,6 +28,10 @@ public class OpCaseRepo : IOpCaseRepo
                 onSome: _ => _opCaseDal.Update(opCaseDto),
                 onNone: () => _opCaseDal.Insert(opCaseDto)
             );
+        
+        var listStateHist = model.ListStateHistory.Select(x => OpCaseStateHistDto.FromModel(model.OrderOpId, x)).ToList();
+        _opCaseStateHistDal.Delete(model);
+        _opCaseStateHistDal.Insert(listStateHist);
         
         if (model.ActiveOpCase is null)
             _opCaseAktifDal.Delete(model);
@@ -45,7 +52,10 @@ public class OpCaseRepo : IOpCaseRepo
         if (opCaseDto is null)
             return MayBe<OpCaseModel>.None;
         
-        var result = opCaseDto.ToModel();
+        var listStateHistDto = _opCaseStateHistDal.ListData(key)?.ToList() ?? [];
+        var listStateHistType = listStateHistDto.Select(x => x.ToModel()).ToList();
+        
+        var result = opCaseDto.ToModel(listStateHistType);
         return MayBe.From(result);
     }
 
@@ -53,17 +63,18 @@ public class OpCaseRepo : IOpCaseRepo
     {
         _opCaseDal.Delete(key);
         _opCaseAktifDal.Delete(key);
+        _opCaseStateHistDal.Delete(key);
     }
 
-    public IEnumerable<OpCaseModel> ListData(Periode filter)
+    public IEnumerable<OpCaseOrderView> ListData(Periode filter)
     {
-        var listDto = _opCaseDal.ListData(filter);
-        return listDto.Select(x => x.ToModel());
+        var listDto = _opCaseDal.ListData(filter)?.ToList() ?? [];;
+        return listDto.Select(x => x.ToView());
     }
 
-    public IEnumerable<OpCaseReff> ListActiveOpCase()
+    public IEnumerable<OpCaseOrderView> ListActiveOpCase()
     {
-        var listDto = _opCaseAktifDal.ListData();
-        return listDto.Select(x => x.ToModel()).ToList();
+        var listDto = _opCaseAktifDal.ListData()?.ToList() ?? [];
+        return listDto.Select(x => x.ToView()).ToList();
     }
 }

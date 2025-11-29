@@ -14,6 +14,7 @@ public interface IOpCaseAktifDal :
     IDelete<IOrderOpKey>,
     IGetData<OpCaseAktifDto, IOrderOpKey>,
     IListData<OpCaseAktifDto>
+    
 {
 }
 
@@ -30,16 +31,16 @@ public class OpCaseAktifDal : IOpCaseAktifDal
     {
         const string sql = """
             INSERT INTO BILRG_OpCaseAktif(
-                OrderOpId, OrderOpDate, PasienId, OrderOpState)
+                OrderOpId, OrderOpDate, PasienId, OpCaseState)
             VALUES( 
-                @OrderOpId, @OrderOpDate, @PasienId, @OrderOpState)
+                @OrderOpId, @OrderOpDate, @PasienId, @OpCaseState)
             """;
 
         var dp = new DynamicParameters();
         dp.AddParam("@OrderOpId", dto.OrderOpId, SqlDbType.VarChar);
         dp.AddParam("@OrderOpDate", dto.OrderOpDate, SqlDbType.DateTime);
         dp.AddParam("@PasienId", dto.PasienId, SqlDbType.VarChar);
-        dp.AddParam("@OrderOpState", dto.OrderOpState, SqlDbType.Int);
+        dp.AddParam("@OpCaseState", dto.OpCaseState, SqlDbType.Int);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -53,7 +54,7 @@ public class OpCaseAktifDal : IOpCaseAktifDal
            SET
                OrderOpDate = @OrderOpDate,
                PasienId = @PasienId,
-               OrderOpState = @OrderOpState
+               OpCaseState = @OpCaseState
            WHERE
                OrderOpId = @OrderOpId";
 
@@ -61,7 +62,7 @@ public class OpCaseAktifDal : IOpCaseAktifDal
         dp.AddParam("@OrderOpId", dto.OrderOpId, SqlDbType.VarChar);
         dp.AddParam("@OrderOpDate", dto.OrderOpDate, SqlDbType.DateTime);
         dp.AddParam("@PasienId", dto.PasienId, SqlDbType.VarChar);
-        dp.AddParam("@OrderOpState", dto.OrderOpState, SqlDbType.Int);
+        dp.AddParam("@OpCaseState", dto.OpCaseState, SqlDbType.Int);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -85,16 +86,21 @@ public class OpCaseAktifDal : IOpCaseAktifDal
     public OpCaseAktifDto GetData(IOrderOpKey key)
     {
         const string sql = @"
-           SELECT
-               aa.OrderOpId, aa.OrderOpDate, aa.PasienId, aa.OrderOpState,
-               ISNULL(bb.fs_nm_pasien, '') AS PasienName,
-               ISNULL(bb.fd_tgl_lahir, '3000-01-01') AS TglLahir,
-               ISNULL(bb.fs_jns_kelamin, '') AS Gender
-           FROM 
-               BILRG_OpCaseAktif aa
-               LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
+            SELECT
+                aa.OrderOpId, aa.OrderOpDate, aa.PasienId, aa.OpCaseState,
+                ISNULL(bb.fs_nm_pasien, '') AS PasienName,
+                ISNULL(bb.fd_tgl_lahir, '3000-01-01') AS TglLahir,
+                ISNULL(bb.fs_jns_kelamin, '') AS Gender,
+                ISNULL(cc.NamaOperasi, '') AS NamaOperasi,
+                ISNULL(dd.UrgencyLevel, 0) AS UrgencyLevel,
+                ISNULL(dd.PreferedDate, '3000-01-01') AS PreferedDate
+            FROM 
+                BILRG_OpCaseAktif aa
+                LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
+                LEFT JOIN BILRG_OpCase cc ON aa.OrderOpId = cc.OrderOpId
+                LEFT JOIN BILRG_OrderOp dd ON aa.OrderOpId = dd.OrderOpId
            WHERE
-               OrderOpId = @OrderOpId";
+                aa.OrderOpId = @OrderOpId";
         
         var dp = new DynamicParameters();
         dp.AddParam("@OrderOpId", key.OrderOpId, SqlDbType.VarChar);
@@ -108,13 +114,18 @@ public class OpCaseAktifDal : IOpCaseAktifDal
     {
         const string sql = """
             SELECT
-                aa.OrderOpId, aa.OrderOpDate, aa.PasienId, aa.OrderOpState,
+                aa.OrderOpId, aa.OrderOpDate, aa.PasienId, aa.OpCaseState,
                 ISNULL(bb.fs_nm_pasien, '') AS PasienName,
                 ISNULL(bb.fd_tgl_lahir, '3000-01-01') AS TglLahir,
-                ISNULL(bb.fs_jns_kelamin, '') AS Gender
+                ISNULL(bb.fs_jns_kelamin, '') AS Gender,
+                ISNULL(cc.NamaOperasi, '') AS NamaOperasi,
+                ISNULL(dd.UrgencyLevel, 0) AS UrgencyLevel,
+                ISNULL(dd.PreferedDate, '3000-01-01') AS PreferedDate
             FROM 
                 BILRG_OpCaseAktif aa
                 LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
+                LEFT JOIN BILRG_OpCase cc ON aa.OrderOpId = cc.OrderOpId
+                LEFT JOIN BILRG_OrderOp dd ON aa.OrderOpId = dd.OrderOpId
             """;
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));

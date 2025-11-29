@@ -4,9 +4,8 @@ using Bilreg.Infrastructure.Helpers;
 using FluentAssertions;
 using Nuna.Lib.TransactionHelper;
 using Nuna.Lib.ValidationHelper;
-using Xunit;
 
-namespace Bilreg.Test.BillContext.KamarOperasiFeature;
+namespace Bilreg.Test.BedUsageContext.KamarOperasiFeature;
 
 public class OpCaseDalTest
 {
@@ -19,11 +18,12 @@ public class OpCaseDalTest
             NamaOperasi: "B",
             PasienId: "C",
             RegId: "D",
+            UrgencyLevel: 1,
             ScheduleOpId: "E",
             ScheduledDate: new DateTime(2024, 1, 2, 8, 0, 0),
             DischargeOpId: "F",
             DischargedDate: new DateTime(2024, 1, 3, 12, 0, 0),
-            OpState: 1,
+            OpCaseState: 1,
             PasienName: "G",
             TglLahir: "2000-01-01",
             Gender: "H"

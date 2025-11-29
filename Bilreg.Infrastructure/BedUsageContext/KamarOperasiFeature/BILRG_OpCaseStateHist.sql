@@ -1,0 +1,9 @@
+CREATE TABLE BILRG_OpCaseStateHist
+(
+    OrderOpId      VARCHAR(26) NOT NULL CONSTRAINT DF_BILRG_OpCaseStateHist_OrderOpId DEFAULT(''),
+    NoUrut         INT NOT NULL CONSTRAINT DF_BILRG_OpCaseStateHist_NoUrut DEFAULT(0),
+    OpCaseState    INT NOT NULL CONSTRAINT DF_BILRG_OpCaseStateHist_OpCaseState DEFAULT(0),
+    StateTimestamp DATETIME NOT NULL CONSTRAINT DF_BILRG_OpCaseStateHist_StateTimestamp DEFAULT('3000-01-01'),
+
+    CONSTRAINT PK_BILRG_OpCaseStateHist PRIMARY KEY CLUSTERED(OrderOpId, NoUrut)
+)
