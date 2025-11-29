@@ -1,6 +1,7 @@
 ﻿using Bilreg.Application.AdmisiContext.BookingFeature;
 using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.AdmisiContext.PpaFeature;
+using Bilreg.Application.AdmisiContext.RegSub;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
@@ -28,6 +29,7 @@ public class RegJalanByBookingHandler
     private readonly ILayananRepo _layananRepo;
     private readonly IKarcisRepo _karcisRepo;
     private readonly IRegRepo _regRepo;
+    private readonly IRegAktifRepo _regAktifRepo;
 
     public RegJalanByBookingHandler(
         IBookingRepo bookingRepo,
@@ -36,7 +38,8 @@ public class RegJalanByBookingHandler
         IPpaRepo dokterRepo,
         ILayananRepo layananRepo,
         IKarcisRepo karcisRepo,
-        IRegRepo regRepo)
+        IRegRepo regRepo,
+        IRegAktifRepo regAktifRepo)
     {
         _bookingRepo = bookingRepo;
         _pasienRepo = pasienRepo;
@@ -45,6 +48,7 @@ public class RegJalanByBookingHandler
         _layananRepo = layananRepo;
         _karcisRepo = karcisRepo;
         _regRepo = regRepo;
+        _regAktifRepo = regAktifRepo;
     }
 
     public Task<RegJalanByBookingResponse> Handle(RegJalanByBookingCmd request, CancellationToken cancellationToken)
@@ -55,7 +59,7 @@ public class RegJalanByBookingHandler
         var dokter = LoadDokter(booking.Dokter.PpaId);
         var layanan = LoadLayanan(booking.Layanan.LayananId); 
         var karcis = LoadKarcis(request.KarcisId);
-
+        
         //  BUILD
         var regAudit = new AuditInfoType(request.UserId, DateTime.Now);
         var reg = _regFactory.CreateRegRajal(
@@ -70,10 +74,15 @@ public class RegJalanByBookingHandler
             karcis);
         booking.AssignReg(reg);
 
+        var regAktif = new RegAktifModel(reg.RegId,  reg.RegDate.ToDateTime(TimeOnly.MinValue), 
+            reg.Pasien, reg.JenisReg, reg.Layanan,
+            reg.Dokter, reg.TipeJaminan);
+        
         //  WRITE
         using var trans = TransHelper.NewScope();
         _regRepo.SaveChanges(reg);
         _bookingRepo.SaveChanges(booking);
+        _regAktifRepo.SaveChanges(regAktif);
         trans.Complete();
         return Task.FromResult(new RegJalanByBookingResponse(reg.RegId, booking.NoAntrian));
     }

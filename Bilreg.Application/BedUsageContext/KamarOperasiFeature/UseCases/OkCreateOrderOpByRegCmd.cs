@@ -109,7 +109,6 @@ public class OkCreateOrderOpByRegHandler
         var orderOp = OrderOpModel.CreateByReg(reg, req.UserId);
 
         orderOp.SetKlinis(icd, jenisOp, req.NamaOperasi);
-
         orderOp.OperationalRequest(
             dokter,
             req.EstimasiDurasiInMinutes,

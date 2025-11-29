@@ -1,5 +1,4 @@
-﻿using Bilreg.Application.AdmisiContext.PpaFeature.UseCases;
-using Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
+﻿using Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
@@ -30,6 +29,14 @@ public class OrderOpController : ControllerBase
     public async Task<IActionResult> CreateOrderByPasien(OkCreateOrderOpByPasienCmd cmd)
     {
         var response = await _mediator.Send(cmd);
+        return Ok(new JSendOk(response));
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> ListOrder()
+    {
+        var query = new OkListOperasiAktifQuery();
+        var response = await _mediator.Send(query);
         return Ok(new JSendOk(response));
     }
 }

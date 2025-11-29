@@ -8,13 +8,19 @@ namespace Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature;
 public class OpCaseRepo : IOpCaseRepo
 {
     private readonly IOpCaseDal _opCaseDal;
+    private readonly IOpCaseStateHistDal _opCaseStateHistDal;
     private readonly IOpCaseAktifDal _opCaseAktifDal;
+    private readonly IOpCasePpaDal _opCasePpaDal;
 
     public OpCaseRepo(IOpCaseDal opCaseDal, 
-        IOpCaseAktifDal opCaseAktifDal)
+        IOpCaseStateHistDal opCaseStateHistDal, 
+        IOpCaseAktifDal opCaseAktifDal, 
+        IOpCasePpaDal opCasePpaDal)
     {
         _opCaseDal = opCaseDal;
+        _opCaseStateHistDal = opCaseStateHistDal;
         _opCaseAktifDal = opCaseAktifDal;
+        _opCasePpaDal = opCasePpaDal;
     }
 
     public void SaveChanges(OpCaseModel model)
@@ -25,6 +31,14 @@ public class OpCaseRepo : IOpCaseRepo
                 onSome: _ => _opCaseDal.Update(opCaseDto),
                 onNone: () => _opCaseDal.Insert(opCaseDto)
             );
+        
+        var listStateHist = model.ListStateHistory.Select(x => OpCaseStateHistDto.FromModel(model.OrderOpId, x)).ToList();
+        _opCaseStateHistDal.Delete(model);
+        _opCaseStateHistDal.Insert(listStateHist);
+        
+        var listPpa = model.ListPpa.Select(x => OpCasePpaDto.FromModel(model.OrderOpId, x)).ToList();
+        _opCasePpaDal.Delete(model);
+        _opCasePpaDal.Insert(listPpa);
         
         if (model.ActiveOpCase is null)
             _opCaseAktifDal.Delete(model);
@@ -45,7 +59,12 @@ public class OpCaseRepo : IOpCaseRepo
         if (opCaseDto is null)
             return MayBe<OpCaseModel>.None;
         
-        var result = opCaseDto.ToModel();
+        var listStateHistDto = _opCaseStateHistDal.ListData(key)?.ToList() ?? [];
+        var listStateHistType = listStateHistDto.Select(x => x.ToModel()).ToList();
+        var listPpaDto = _opCasePpaDal.ListData(key)?.ToList() ?? [];
+        var listPpaType = listPpaDto.Select(x => x.ToModel()).ToList();
+        
+        var result = opCaseDto.ToModel(listStateHistType, listPpaType);
         return MayBe.From(result);
     }
 
@@ -53,17 +72,12 @@ public class OpCaseRepo : IOpCaseRepo
     {
         _opCaseDal.Delete(key);
         _opCaseAktifDal.Delete(key);
+        _opCaseStateHistDal.Delete(key);
     }
 
-    public IEnumerable<OpCaseModel> ListData(Periode filter)
+    public IEnumerable<OpCaseOrderView> ListActiveOpCase()
     {
-        var listDto = _opCaseDal.ListData(filter);
-        return listDto.Select(x => x.ToModel());
-    }
-
-    public IEnumerable<OpCaseReff> ListActiveOpCase()
-    {
-        var listDto = _opCaseAktifDal.ListData();
-        return listDto.Select(x => x.ToModel()).ToList();
+        var listDto = _opCaseAktifDal.ListData()?.ToList() ?? [];
+        return listDto.Select(x => x.ToView()).ToList();
     }
 }

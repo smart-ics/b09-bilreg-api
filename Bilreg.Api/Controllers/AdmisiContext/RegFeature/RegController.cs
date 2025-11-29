@@ -50,4 +50,13 @@ public class RegController : Controller
         var response = await _mediator.Send(query);
         return Ok(new JSendOk(response));
     }
+
+    [HttpGet]
+    [Route("listAktif")]
+    public async Task<IActionResult> ListAktif()
+    {
+        var query = new RegAktifListQuery();
+        var result = await _mediator.Send(query);
+        return Ok(new JSendOk(result));
+    }
 }

@@ -34,8 +34,10 @@ public class RegAktifRepo : IRegAktifRepo
         _regAktifDal.Delete(key);
     }
 
-    public IEnumerable<RegAktifModel> ListData(Periode filter)
+    public IEnumerable<RegAktifModel> ListData(Periode periode)
     {
-        throw new NotImplementedException();
+        var listDto = _regAktifDal.ListData(periode)?.ToList() ?? [];
+        var result = listDto.Select(x => x.ToModel());  
+        return result;
     }
 }

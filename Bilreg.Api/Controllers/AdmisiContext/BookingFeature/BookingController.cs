@@ -40,10 +40,27 @@ public class BookingController : ControllerBase
     }
 
     [HttpGet]
+    [Route("{id}")]
+    public async Task<IActionResult> GetData(string id)
+    {
+        var query = new BookingGetQuery(id);
+        var result = await _mediator.Send(query);
+        return Ok(new JSendOk(result));
+    }
+
+    [HttpGet]
     [Route("list/{tglYmd}/{dokterId}")]
     public async Task<IActionResult> ListBooking(string tglYmd, string dokterId)
     {
         var query = new BookingDokterListQuery(tglYmd, dokterId);
+        var result = await _mediator.Send(query);
+        return Ok(new JSendOk(result));
+    }
+    [HttpGet]
+    [Route("list/{tglYmd}")]
+    public async Task<IActionResult> ListAllBooking(string tglYmd)
+    {
+        var query = new BookingPeriodeListQuery(tglYmd);
         var result = await _mediator.Send(query);
         return Ok(new JSendOk(result));
     }

@@ -8,12 +8,10 @@ namespace Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature;
 public class OrderOpRepo : IOrderOpRepo
 {
     private readonly IOrderOpDal _orderOpDal;
-    private readonly IOrderOpStateHistDal _orderOpStateHistDal;
 
-    public OrderOpRepo(IOrderOpDal orderOpDal, IOrderOpStateHistDal orderOpStateHistDal)
+    public OrderOpRepo(IOrderOpDal orderOpDal)
     {
         _orderOpDal = orderOpDal;
-        _orderOpStateHistDal = orderOpStateHistDal;
     }
 
     public void SaveChanges(OrderOpModel model)
@@ -23,9 +21,6 @@ public class OrderOpRepo : IOrderOpRepo
                 onSome: _ => _orderOpDal.Update(OrderOpDto.FromModel(model)),
                 onNone: () => _orderOpDal.Insert(OrderOpDto.FromModel(model))
             );
-        _orderOpStateHistDal.Delete(model);
-        _orderOpStateHistDal.Insert(model.ListHistory
-            .Select(x => OrderOpStateHistDto.FromModel(model.OrderOpId, x)));
     }
 
     public MayBe<OrderOpModel> LoadEntity(IOrderOpKey key)
@@ -34,18 +29,13 @@ public class OrderOpRepo : IOrderOpRepo
         if (dto is null)
             return MayBe<OrderOpModel>.None;
 
-        var listStateDto = _orderOpStateHistDal.ListData(key)?.ToList() ?? [];
-        var listState = listStateDto
-            .Select(x => x.ToModel())
-            .ToList();
-        var model = dto.ToModel(listState);
+        var model = dto.ToModel();
         return MayBe.From(model);
     }
 
     public void DeleteEntity(IOrderOpKey key)
     {
         _orderOpDal.Delete(key);
-        _orderOpStateHistDal.Delete(key);
     }
 
     public IEnumerable<OrderOpView> ListData(Periode filter)

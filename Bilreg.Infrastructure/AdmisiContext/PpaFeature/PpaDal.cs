@@ -127,20 +127,19 @@ public class PpaDal : IPpaDal
     {
         const string sql = """
            SELECT 
-               aa.fs_kd_peg, aa.fs_nm_peg,
-               ISNULL(bb.fs_kd_layanan, '') fs_kd_layanan,
-               ISNULL(bb.fb_utama, 0) fb_utama,
-               ISNULL(cc.fs_nm_layanan, '') fs_nm_layanan
+               aa.fs_kd_peg, aa.fs_kd_layanan, aa.fb_utama,
+               ISNULL(bb.fs_nm_peg, '') AS fs_nm_peg,
+               ISNULL(cc.fs_nm_layanan, '') AS fs_nm_layanan
            FROM 
-               td_peg aa
-               LEFT JOIN td_peg_layanan bb ON aa.fs_kd_peg = bb.fs_kd_peg
-               LEFT JOIN ta_layanan cc ON bb.fs_kd_layanan = cc.fs_kd_layanan
+               td_peg_layanan aa
+               LEFT JOIN td_peg bb ON aa.fs_kd_peg = bb.fs_kd_peg
+               LEFT JOIN ta_layanan cc ON aa.fs_kd_layanan = cc.fs_kd_layanan
                LEFT JOIN td_peg_sat_tugas dd ON aa.fs_kd_peg = dd.fs_kd_peg
                LEFT JOIN td_sat_tugas ee ON dd.fs_kd_sat_tugas = ee.fs_kd_sat_tugas
            WHERE 
-               aa.fb_aktif_Dinas = 1
+               bb.fb_aktif_Dinas = 1
                AND ee.fs_kd_profesi = @fs_kd_profesi
-               AND bb.fs_kd_layanan IN @ListLayananId
+               AND aa.fs_kd_layanan IN @ListLayananId
            """;
 
         var dp = new DynamicParameters();

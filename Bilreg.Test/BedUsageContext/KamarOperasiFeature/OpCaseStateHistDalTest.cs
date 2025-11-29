@@ -1,30 +1,29 @@
-﻿using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
+using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Infrastructure.Helpers;
 using FluentAssertions;
 using Nuna.Lib.TransactionHelper;
-using Xunit;
 
-namespace Bilreg.Test.BillContext.KamarOperasiFeature;
+namespace Bilreg.Test.BedUsageContext.KamarOperasiFeature;
 
-public class OrderOpStateHistDalTest
+public class OpCaseStateHistDalTest
 {
-    private readonly OrderOpStateHistDal _sut = new(ConnStringHelper.GetTestEnv());
+    private readonly OpCaseStateHistDal _sut = new(ConnStringHelper.GetTestEnv());
 
-    private static IEnumerable<OrderOpStateHistDto> FakerList()
-        => new List<OrderOpStateHistDto>
+    private static IEnumerable<OpCaseStateHistDto> FakerList()
+        => new List<OpCaseStateHistDto>
         {
-            new OrderOpStateHistDto(
+            new OpCaseStateHistDto(
                 OrderOpId: "A",
                 NoUrut: 1,
-                OrderOpState: 1,
-                StateTimestamp: new DateTime(2024, 1, 1, 10, 0, 0)
+                OpCaseState: 1,
+                StateTimestamp: new DateTime(2023, 1, 1)
             ),
-            new OrderOpStateHistDto(
+            new OpCaseStateHistDto(
                 OrderOpId: "A",
                 NoUrut: 2,
-                OrderOpState: 2,
-                StateTimestamp: new DateTime(2024, 1, 1, 11, 0, 0)
+                OpCaseState: 2,
+                StateTimestamp: new DateTime(2023, 1, 2)
             )
         };
 

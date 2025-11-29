@@ -50,7 +50,7 @@ public class OpCaseDal : IOpCaseDal
         dp.AddParam("@ScheduledDate", dto.ScheduledDate, SqlDbType.DateTime);
         dp.AddParam("@DischargeOpId", dto.DischargeOpId, SqlDbType.VarChar);
         dp.AddParam("@DischargedDate", dto.DischargedDate, SqlDbType.DateTime);
-        dp.AddParam("@OrderOpState", dto.OpState, SqlDbType.Int);
+        dp.AddParam("@OrderOpState", dto.OpCaseState, SqlDbType.Int);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -84,7 +84,7 @@ public class OpCaseDal : IOpCaseDal
         dp.AddParam("@ScheduledDate", dto.ScheduledDate, SqlDbType.DateTime);
         dp.AddParam("@DischargeOpId", dto.DischargeOpId, SqlDbType.VarChar);
         dp.AddParam("@DischargedDate", dto.DischargedDate, SqlDbType.DateTime);
-        dp.AddParam("@OrderOpState", dto.OpState, SqlDbType.Int);
+        dp.AddParam("@OrderOpState", dto.OpCaseState, SqlDbType.Int);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
