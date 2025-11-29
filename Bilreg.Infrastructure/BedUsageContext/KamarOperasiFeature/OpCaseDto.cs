@@ -39,7 +39,9 @@ public record OpCaseDto(
         return result;
     }
 
-    public OpCaseModel ToModel(IEnumerable<OpCaseStateHistType> listHist)
+    public OpCaseModel ToModel(
+        IEnumerable<OpCaseStateHistType> listHist,
+        IEnumerable<OpCasePpaType> listPpa)
     {
         var orderOp = new OrderOpReff(OrderOpId, OrderDate, NamaOperasi);
         var pasien = new PasienReff(PasienId, PasienName, DateOnly.Parse(TglLahir), Gender);
@@ -50,7 +52,7 @@ public record OpCaseDto(
         var discharge = new DischergeOpReff(DischargeOpId, DischargedDate);
         var result = new OpCaseModel(OrderOpId, orderOp, pasien, NamaOperasi, 
             reg, (UrgencyLevelEnum)UrgencyLevel, schedule, discharge, 
-            (OpCaseStateEnum)OpCaseState, listHist);
+            (OpCaseStateEnum)OpCaseState, listHist, listPpa);
         return result;
     }
     

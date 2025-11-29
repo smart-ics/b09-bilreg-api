@@ -10,14 +10,17 @@ public class OpCaseRepo : IOpCaseRepo
     private readonly IOpCaseDal _opCaseDal;
     private readonly IOpCaseStateHistDal _opCaseStateHistDal;
     private readonly IOpCaseAktifDal _opCaseAktifDal;
+    private readonly IOpCasePpaDal _opCasePpaDal;
 
     public OpCaseRepo(IOpCaseDal opCaseDal, 
         IOpCaseStateHistDal opCaseStateHistDal, 
-        IOpCaseAktifDal opCaseAktifDal)
+        IOpCaseAktifDal opCaseAktifDal, 
+        IOpCasePpaDal opCasePpaDal)
     {
         _opCaseDal = opCaseDal;
         _opCaseStateHistDal = opCaseStateHistDal;
         _opCaseAktifDal = opCaseAktifDal;
+        _opCasePpaDal = opCasePpaDal;
     }
 
     public void SaveChanges(OpCaseModel model)
@@ -32,6 +35,10 @@ public class OpCaseRepo : IOpCaseRepo
         var listStateHist = model.ListStateHistory.Select(x => OpCaseStateHistDto.FromModel(model.OrderOpId, x)).ToList();
         _opCaseStateHistDal.Delete(model);
         _opCaseStateHistDal.Insert(listStateHist);
+        
+        var listPpa = model.ListPpa.Select(x => OpCasePpaDto.FromModel(model.OrderOpId, x)).ToList();
+        _opCasePpaDal.Delete(model);
+        _opCasePpaDal.Insert(listPpa);
         
         if (model.ActiveOpCase is null)
             _opCaseAktifDal.Delete(model);
@@ -54,8 +61,10 @@ public class OpCaseRepo : IOpCaseRepo
         
         var listStateHistDto = _opCaseStateHistDal.ListData(key)?.ToList() ?? [];
         var listStateHistType = listStateHistDto.Select(x => x.ToModel()).ToList();
+        var listPpaDto = _opCasePpaDal.ListData(key)?.ToList() ?? [];
+        var listPpaType = listPpaDto.Select(x => x.ToModel()).ToList();
         
-        var result = opCaseDto.ToModel(listStateHistType);
+        var result = opCaseDto.ToModel(listStateHistType, listPpaType);
         return MayBe.From(result);
     }
 
