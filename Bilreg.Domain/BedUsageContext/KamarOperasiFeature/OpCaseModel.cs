@@ -1,4 +1,5 @@
-﻿using Bilreg.Domain.AdmisiContext.RegFeature;
+﻿using Bilreg.Domain.AdmisiContext.PpaFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 
 namespace Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
@@ -49,7 +50,6 @@ public class OpCaseModel : IOrderOpKey
     #region PROPERTIES
     public string OrderOpId { get; init; }
     public OrderOpReff OrderOp { get; init; }
-    
     public PasienReff Pasien { get; init; }
     public string OperasiName { get; init; }
 
@@ -106,7 +106,7 @@ public record DischergeOpReff(string DischargeOpId, DateTime DischargedDate)
 };
 
 public record OpCaseReff(string OrderOpId, DateTime OrderOpDate,
-    PasienReff Pasien, OpCaseStateEnum OrderOpState);
+    PasienReff Pasien, OpCaseStateEnum OpCaseState);
     
 public record OpCaseStateHistType(int NoUrut, OpCaseStateEnum OpCaseState, DateTime StateTimestamp)
 {

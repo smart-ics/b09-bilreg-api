@@ -36,7 +36,7 @@ public class OrderOpDal : IOrderOpDal
                OrderOpId, OrderDate, RegId, PasienId,
                Icd10Id, JenisOperasiId, NamaOperasi,
                DokterId, UrgencyLevel, EstimasiDurasi,
-               PreferedDate, SpecialEquipment, OrderOpState,
+               PreferedDate, SpecialEquipment, 
                CreateUserId, CreateTimestamp,
                UpdateUserId, UpdateTimestamp,
                VoidUserId, VoidTimestamp)
@@ -44,7 +44,7 @@ public class OrderOpDal : IOrderOpDal
                @OrderOpId, @OrderDate, @RegId, @PasienId,
                @Icd10Id, @JenisOperasiId, @NamaOperasi,
                @DokterId, @UrgencyLevel, @EstimasiDurasi,
-               @PreferedDate, @SpecialEquipment, @OrderOpState,
+               @PreferedDate, @SpecialEquipment, 
                @CreateUserId, @CreateTimestamp,
                @UpdateUserId, @UpdateTimestamp,
                @VoidUserId, @VoidTimestamp)
@@ -58,12 +58,13 @@ public class OrderOpDal : IOrderOpDal
         dp.AddParam("@Icd10Id", model.Icd10Id, SqlDbType.VarChar);
         dp.AddParam("@JenisOperasiId", model.JenisOperasiId, SqlDbType.VarChar);
         dp.AddParam("@NamaOperasi", model.NamaOperasi, SqlDbType.VarChar);
+        
         dp.AddParam("@DokterId", model.DokterId, SqlDbType.VarChar);
         dp.AddParam("@UrgencyLevel", model.UrgencyLevel, SqlDbType.Int);
         dp.AddParam("@EstimasiDurasi", model.EstimasiDurasi, SqlDbType.Int);
         dp.AddParam("@PreferedDate", model.PreferedDate, SqlDbType.DateTime);
         dp.AddParam("@SpecialEquipment", model.SpecialEquipment, SqlDbType.VarChar);
-        dp.AddParam("@OrderOpState", model.OrderOpState, SqlDbType.Int);
+        
         dp.AddParam("@CreateUserId", model.CreateUserId, SqlDbType.VarChar);
         dp.AddParam("@CreateTimestamp", model.CreateTimestamp, SqlDbType.DateTime);
         dp.AddParam("@UpdateUserId", model.UpdateUserId, SqlDbType.VarChar);
@@ -87,12 +88,13 @@ public class OrderOpDal : IOrderOpDal
                Icd10Id = @Icd10Id,
                JenisOperasiId = @JenisOperasiId,
                NamaOperasi = @NamaOperasi,
+        
                DokterId = @DokterId,
                UrgencyLevel = @UrgencyLevel,
                EstimasiDurasi = @EstimasiDurasi,
                PreferedDate = @PreferedDate,
                SpecialEquipment = @SpecialEquipment,
-               OrderOpState = @OrderOpState,
+        
                CreateUserId = @CreateUserId,
                CreateTimestamp = @CreateTimestamp,
                UpdateUserId = @UpdateUserId,
@@ -111,12 +113,13 @@ public class OrderOpDal : IOrderOpDal
         dp.AddParam("@Icd10Id", model.Icd10Id, SqlDbType.VarChar);
         dp.AddParam("@JenisOperasiId", model.JenisOperasiId, SqlDbType.VarChar);
         dp.AddParam("@NamaOperasi", model.NamaOperasi, SqlDbType.VarChar);
+        
         dp.AddParam("@DokterId", model.DokterId, SqlDbType.VarChar);
         dp.AddParam("@UrgencyLevel", model.UrgencyLevel, SqlDbType.Int);
         dp.AddParam("@EstimasiDurasi", model.EstimasiDurasi, SqlDbType.Int);
         dp.AddParam("@PreferedDate", model.PreferedDate, SqlDbType.DateTime);
         dp.AddParam("@SpecialEquipment", model.SpecialEquipment, SqlDbType.VarChar);
-        dp.AddParam("@OrderOpState", model.OrderOpState, SqlDbType.Int);
+        
         dp.AddParam("@CreateUserId", model.CreateUserId, SqlDbType.VarChar);
         dp.AddParam("@CreateTimestamp", model.CreateTimestamp, SqlDbType.DateTime);
         dp.AddParam("@UpdateUserId", model.UpdateUserId, SqlDbType.VarChar);
@@ -151,7 +154,7 @@ public class OrderOpDal : IOrderOpDal
                aa.OrderOpId, aa.OrderDate, aa.RegId, PasienId,
                aa.Icd10Id, aa.JenisOperasiId, aa.NamaOperasi,
                aa.DokterId, aa.UrgencyLevel, aa.EstimasiDurasi,
-               aa.PreferedDate, aa.SpecialEquipment, aa.OrderOpState,
+               aa.PreferedDate, aa.SpecialEquipment, 
                aa.CreateUserId, aa.CreateTimestamp,
                aa.UpdateUserId, aa.UpdateTimestamp,
                aa.VoidUserId, aa.VoidTimestamp,
@@ -186,7 +189,7 @@ public class OrderOpDal : IOrderOpDal
                aa.OrderOpId, aa.OrderDate, aa.RegId, PasienId,
                aa.Icd10Id, aa.JenisOperasiId, aa.NamaOperasi,
                aa.DokterId, aa.UrgencyLevel, aa.EstimasiDurasi,
-               aa.PreferedDate, aa.SpecialEquipment, aa.OrderOpState,
+               aa.PreferedDate, aa.SpecialEquipment, 
                aa.CreateUserId, aa.CreateTimestamp,
                aa.UpdateUserId, aa.UpdateTimestamp,
                aa.VoidUserId, aa.VoidTimestamp,

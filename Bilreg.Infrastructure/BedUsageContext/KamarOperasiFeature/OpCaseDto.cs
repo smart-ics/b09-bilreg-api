@@ -58,7 +58,7 @@ public record OpCaseDto(
     {
         var result = new OpCaseOrderView(OrderOpId, 
             new PasienReff(PasienId, PasienName, DateOnly.Parse(TglLahir), Gender), 
-            NamaOperasi, (UrgencyLevelEnum)UrgencyLevel, ScheduledDate);
+            NamaOperasi, (UrgencyLevelEnum)UrgencyLevel, ScheduledDate, (OpCaseStateEnum)OpCaseState);
         return result;
     }
 }

@@ -24,7 +24,6 @@ public class OrderOpDalTest
             EstimasiDurasi: 120,
             PreferedDate: new DateTime(2024, 1, 2, 8, 0, 0),
             SpecialEquipment: "H",
-            OrderOpState: 1,
             CreateUserId: "I",
             CreateTimestamp: new DateTime(2024, 1, 1, 10, 0, 0),
             UpdateUserId: "J",

@@ -19,7 +19,6 @@ public record OrderOpDto(
     int EstimasiDurasi,
     DateTime PreferedDate,
     string SpecialEquipment,
-    int OrderOpState,
     //
     string CreateUserId,
     DateTime CreateTimestamp,
@@ -50,7 +49,6 @@ public record OrderOpDto(
             model.EstimasiDurasiInMinutes,
             model.PreferedDate,
             model.SpecialEquipment,
-            (int)model.OrderOpState,
             //
             model.AuditTrail.Created.UserId,
             model.AuditTrail.Created.Timestamp,
@@ -95,8 +93,7 @@ public record OrderOpDto(
             dokter,
             EstimasiDurasi,
             PreferedDate,
-            SpecialEquipment,
-            (OpCaseStateEnum)OrderOpState);
+            SpecialEquipment);
         return result;
     }
 };

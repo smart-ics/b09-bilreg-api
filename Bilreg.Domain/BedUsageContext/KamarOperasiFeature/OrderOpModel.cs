@@ -14,8 +14,7 @@ public class OrderOpModel : IOrderOpKey
         string orderOpId, DateTime orderDate, AuditTrailType auditTrail,
         PasienReff pasien, RegReff reg,
         Icd10Type icd10, JenisOperasiType jenisOperasi, string namaOperasi, UrgencyLevelEnum urgencyLevel,
-        PpaReff dokter, int estimasiDurasiInMinutes, DateTime preferedDate, string specialEquipment,
-        OpCaseStateEnum orderOpState)
+        PpaReff dokter, int estimasiDurasiInMinutes, DateTime preferedDate, string specialEquipment)
     {
         OrderOpId = orderOpId;
         OrderDate = orderDate;
@@ -34,7 +33,6 @@ public class OrderOpModel : IOrderOpKey
         PreferedDate = preferedDate;
         SpecialEquipment = specialEquipment;
 
-        OrderOpState = orderOpState;
     }
 
     public static OrderOpModel Default => new OrderOpModel(
@@ -42,16 +40,14 @@ public class OrderOpModel : IOrderOpKey
         PasienModel.Default.ToReff(), RegModel.Default.ToReff(),
         Icd10Type.Default, JenisOperasiType.Default, "-", UrgencyLevelEnum.Elective,
         PpaType.Default.ToReff(), 0, 
-        new DateTime(3000, 1, 1), "-",
-        OpCaseStateEnum.Requested);
+        new DateTime(3000, 1, 1), "-");
     
     public static IOrderOpKey Key(string id) => new OrderOpModel( 
         id, new DateTime(3000, 1, 1), AuditTrailType.Default,
         PasienModel.Default.ToReff(), RegModel.Default.ToReff(),
         Icd10Type.Default, JenisOperasiType.Default, "-", UrgencyLevelEnum.Elective,
         PpaType.Default.ToReff(), 0, 
-        new DateTime(3000, 1, 1), "-",
-        OpCaseStateEnum.Requested);
+        new DateTime(3000, 1, 1), "-");
     
     public static OrderOpModel CreateByPasien(PasienModel pasien, string userId)
     {
@@ -63,8 +59,7 @@ public class OrderOpModel : IOrderOpKey
             pasien.ToReff(), RegModel.Default.ToReff(),
             Icd10Type.Default, JenisOperasiType.Default, "-", UrgencyLevelEnum.Elective,
             PpaType.Default.ToReff(), 
-            0, new DateTime(3000,1,1),
-            "-", OpCaseStateEnum.Requested);
+            0, new DateTime(3000,1,1),"-");
         return result;
     }
     public static OrderOpModel CreateByReg(RegModel reg, string userId)
@@ -78,8 +73,7 @@ public class OrderOpModel : IOrderOpKey
             pasien, reg.ToReff(),
             Icd10Type.Default, JenisOperasiType.Default, "-", UrgencyLevelEnum.Elective,
             PpaType.Default.ToReff(), 
-            0, new DateTime(3000,1,1),
-            "-", OpCaseStateEnum.Requested);
+            0, new DateTime(3000,1,1), "-");
         return result;
     }
     #endregion
