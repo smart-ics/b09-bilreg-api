@@ -1,38 +1,44 @@
-﻿// using Bilreg.Domain.BillContext.RoomChargeSub.BangsalAgg;
-// using Bilreg.Domain.BillContext.RoomChargeSub.KamarAgg;
-// using CommunityToolkit.Diagnostics;
-//
-// namespace Bilreg.Domain.BillContext.RoomChargeSub.BedAgg;
-//
-// public class BedModel(string id, string name) : IBedKey
-// {
-//     public string BedId { get; protected set; } = id;
-//     public string BedName { get; protected set; } = name;
-//     public string Keterangan { get; protected set; }
-//     public bool IsAktif { get; protected set; } = true;
-//
-//     public string KamarId { get; protected set; } = string.Empty;
-//     public string KamarName { get; protected set; } = string.Empty;
-//     
-//     public string BangsalId { get; protected set; } = string.Empty;
-//     public string BangsalName { get; protected set; } = string.Empty;
-//     
-//     // METHOD
-//     public void SetKeterangan(string keterangan) => Keterangan = keterangan;
-//     public void Activate() => IsAktif = true;
-//     public void Deactivate() => IsAktif = false;
-//
-//     public void SetKamar(KamarModel kamar)
-//     {
-//         Guard.IsNotNull(kamar);
-//         KamarId = kamar.KamarId;
-//         KamarName = kamar.KamarName;
-//     }
-//
-//     public void SetBangsal(BangsalModel bangsal)
-//     {
-//         Guard.IsNotNull(bangsal);
-//         BangsalId = bangsal.BangsalId;
-//         BangsalName = bangsal.BangsalName;
-//     }
-// }
+﻿using Ardalis.GuardClauses;
+
+namespace Bilreg.Domain.BedUsageContext.WardFeature;
+
+public record BedType : IBedKey
+{
+    #region CREATION
+    public BedType(string bedId, string bedName, 
+        KamarReff kamar, BangsalReff bangsal, bool isAktif)
+    {
+        Guard.Against.NullOrWhiteSpace(bedId);
+        Guard.Against.NullOrWhiteSpace(bedName);
+        Guard.Against.Null(kamar);
+        Guard.Against.Null(bangsal);
+
+        BedId = bedId;
+        BedName = bedName;
+        Kamar = kamar;
+        Bangsal = bangsal;
+        IsAktif = isAktif;
+    }
+    public static BedType Default => new("-", "-", new KamarReff("-", "-"), new BangsalReff("-", "-"), false);
+    public static IBedKey Key(string id) => Default with { BedId = id };
+    #endregion
+    
+    #region PROPERTIES
+    public string BedId { get; init; }
+    public string BedName { get; init; }
+    public KamarReff Kamar { get; init; }
+    public BangsalReff Bangsal { get; init; }
+    public bool IsAktif { get; init; }
+    #endregion
+    
+    #region BEHAVIOR
+    public BedReff ToReff() => new(BedId, BedName, IsAktif);
+    #endregion
+}
+
+public interface IBedKey
+{
+    string BedId {get;}
+}
+
+public record BedReff(string BedId, string BedName, bool IsAktif);

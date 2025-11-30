@@ -26,8 +26,11 @@ public static class ConnStringHelper
     {
         var result = Options.Create<DatabaseOptions>(new DatabaseOptions
         {
-            ServerName = "dev.smart-ics.com",
+            // ServerName = "dev.smart-ics.com",
+            // DbName = "devTest"
+            ServerName = "(local)",
             DbName = "devTest"
+
         });
         return result;
     }

@@ -1,5 +1,5 @@
 using Bilreg.Application.BedUsageContext.BangsalFeature;
-using Bilreg.Domain.BedUsageContext.BangsalFeature;
+using Bilreg.Domain.BedUsageContext.WardFeature;
 using Nuna.Lib.PatternHelper;
 
 namespace Bilreg.Infrastructure.BedUsageContext.BangsalFeature;

@@ -1,20 +1,19 @@
-using Bilreg.Domain.BedUsageContext.WardFeature;
-using Bilreg.Infrastructure.BedUsageContext.BangsalFeature;
+using Bilreg.Infrastructure.BedUsageContext.WardFeature;
 using Bilreg.Infrastructure.Helpers;
 using FluentAssertions;
 using Nuna.Lib.TransactionHelper;
 
 namespace Bilreg.Test.BedUsageContext.BangsalFeature;
 
-public class RoomCatDalTest
+public class BangsalDalTest
 {
-    private readonly RoomCatDal _sut = new(ConnStringHelper.GetTestEnv());
+    private readonly BangsalDal _sut = new(ConnStringHelper.GetTestEnv());
 
-    private static RoomCatType Faker()
-        => RoomCatType.Create("A", "B");
+    private static BangsalDto Faker()
+        => new BangsalDto("A", "B", "C", "D", "E", "F");
 
-    private static IRoomCatKey FakerKey()
-        => RoomCatType.Default with { RoomCatId = "A" };
+    private static IBangsalKey FakerKey()
+        => BangsalType.Default with { BangsalId = "A" };
 
     [Fact]
     public void InsertTest()
@@ -43,7 +42,10 @@ public class RoomCatDalTest
         using var trans = TransHelper.NewScope();
         _sut.Insert(Faker());
         var actual = _sut.GetData(FakerKey());
-        actual.Should().BeEquivalentTo(Faker());
+        actual.Should().BeEquivalentTo(Faker(),
+            opt => opt
+                .Excluding(x => x.fs_nm_layanan)
+                .Excluding(x => x.fs_nm_roomcat));
     }
     
     [Fact]
@@ -52,6 +54,9 @@ public class RoomCatDalTest
         using var trans = TransHelper.NewScope();
         _sut.Insert(Faker());
         var actual = _sut.ListData();
-        actual.Should().ContainEquivalentOf(Faker());
+        actual.Should().ContainEquivalentOf(Faker(),
+            opt => opt
+                .Excluding(x => x.fs_nm_layanan)
+                .Excluding(x => x.fs_nm_roomcat));
     }
 }

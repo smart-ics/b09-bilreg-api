@@ -1,19 +1,18 @@
-using Bilreg.Domain.BedUsageContext.WardFeature;
-using Bilreg.Infrastructure.BedUsageContext.BangsalFeature;
+using Bilreg.Infrastructure.BedUsageContext.WardFeature;
 using FluentAssertions;
 using Moq;
 
 namespace Bilreg.Test.BedUsageContext.BangsalFeature;
 
-public class RoomCatRepoTests
+public class BangsalRepoTests
 {
-    private readonly Mock<IRoomCatDal> _roomCatDalMock;
-    private readonly RoomCatRepo _repository;
+    private readonly Mock<IBangsalDal> _bangsalDalMock;
+    private readonly BangsalRepo _repository;
 
-    public RoomCatRepoTests()
+    public BangsalRepoTests()
     {
-        _roomCatDalMock = new Mock<IRoomCatDal>();
-        _repository = new RoomCatRepo(_roomCatDalMock.Object);
+        _bangsalDalMock = new Mock<IBangsalDal>();
+        _repository = new BangsalRepo(_bangsalDalMock.Object);
     }
 
     [Fact]
@@ -21,16 +20,16 @@ public class RoomCatRepoTests
     {
         // Arrange
         var existingModel = CreateTestModel();
-        _roomCatDalMock
-            .Setup(x => x.GetData(It.IsAny<IRoomCatKey>()))
-            .Returns(CreateTestModel());
+        _bangsalDalMock
+            .Setup(x => x.GetData(It.IsAny<IBangsalKey>()))
+            .Returns(CreateTestDto());
 
         // Act
         _repository.SaveChanges(existingModel);
 
         // Assert
-        _roomCatDalMock.Verify(x => x.Update(It.IsAny<RoomCatType>()), Times.Once);
-        _roomCatDalMock.Verify(x => x.Insert(It.IsAny<RoomCatType>()), Times.Never);
+        _bangsalDalMock.Verify(x => x.Update(It.IsAny<BangsalDto>()), Times.Once);
+        _bangsalDalMock.Verify(x => x.Insert(It.IsAny<BangsalDto>()), Times.Never);
     }
 
     [Fact]
@@ -39,27 +38,27 @@ public class RoomCatRepoTests
         // Arrange
         var newModel = CreateTestModel();
         var key = CreateTestKey();
-        _roomCatDalMock
+        _bangsalDalMock
             .Setup(x => x.GetData(key))
-            .Returns((RoomCatType)null!);
+            .Returns((BangsalDto)null!);
 
         // Act
         _repository.SaveChanges(newModel);
 
         // Assert
-        _roomCatDalMock.Verify(x => x.Insert(It.IsAny<RoomCatType>()), Times.Once);
-        _roomCatDalMock.Verify(x => x.Update(It.IsAny<RoomCatType>()), Times.Never);
+        _bangsalDalMock.Verify(x => x.Insert(It.IsAny<BangsalDto>()), Times.Once);
+        _bangsalDalMock.Verify(x => x.Update(It.IsAny<BangsalDto>()), Times.Never);
     }
 
     [Fact]
     public void UT3_GivenExistingEntity_WhenLoadEntity_ThenEntityIsReturned()
     {
         // Arrange
-        var expectedModel = CreateTestModel();
+        var expectedDto = CreateTestDto();
         var key = CreateTestKey();
-        _roomCatDalMock
+        _bangsalDalMock
             .Setup(x => x.GetData(key))
-            .Returns(expectedModel);
+            .Returns(expectedDto);
 
         // Act
         var result = _repository.LoadEntity(key);
@@ -76,9 +75,9 @@ public class RoomCatRepoTests
     {
         // Arrange
         var key = CreateTestKey();
-        _roomCatDalMock
+        _bangsalDalMock
             .Setup(x => x.GetData(key))
-            .Returns((RoomCatType)null!);
+            .Returns((BangsalDto)null!);
 
         // Act
         var result = _repository.LoadEntity(key);
@@ -100,46 +99,48 @@ public class RoomCatRepoTests
         _repository.DeleteEntity(key);
 
         // Assert
-        _roomCatDalMock.Verify(x => x.Delete(key), Times.Once);
+        _bangsalDalMock.Verify(x => x.Delete(key), Times.Once);
     }
 
     [Fact]
     public void UT6_GivenEmptyList_WhenListData_ThenEmptyListIsReturned()
     {
         // Arrange
-        _roomCatDalMock
+        _bangsalDalMock
             .Setup(x => x.ListData())
-            .Returns((IEnumerable<RoomCatType>)null!);
+            .Returns((IEnumerable<BangsalDto>)null!);
 
         // Act
         var result = _repository.ListData();
 
         // Assert
-        var roomCatTypes = result.ToList();
-        roomCatTypes.Should().NotBeNull();
-        roomCatTypes.Should().BeEmpty();
+        var bangsalTypes = result.ToList();
+        bangsalTypes.Should().NotBeNull();
+        bangsalTypes.Should().BeEmpty();
     }
 
     [Fact]
     public void UT7_GivenListWithItems_WhenListData_ThenListWithModelsIsReturned()
     {
         // Arrange
-        var models = new List<RoomCatType> { CreateTestModel(), CreateTestModel() };
-        _roomCatDalMock
+        var dtos = new List<BangsalDto> { CreateTestDto(), CreateTestDto() };
+        _bangsalDalMock
             .Setup(x => x.ListData())
-            .Returns(models);
+            .Returns(dtos);
 
         // Act
         var result = _repository.ListData();
 
         // Assert
-        var roomCatTypes = result.ToList();
-        roomCatTypes.Should().NotBeNull();
-        roomCatTypes.Count.Should().Be(2);
+        var bangsalTypes = result.ToList();
+        bangsalTypes.Should().NotBeNull();
+        bangsalTypes.Count.Should().Be(2);
     }
 
-    private static RoomCatType CreateTestModel()
-        => RoomCatType.Default;
-    private static IRoomCatKey CreateTestKey()
-        => RoomCatType.Key("A"); 
+    private static BangsalType CreateTestModel()
+        => BangsalType.Default;
+    private static BangsalDto CreateTestDto()
+        => BangsalDto.FromModel(BangsalType.Default); 
+    private static IBangsalKey CreateTestKey()
+        => BangsalType.Key("A"); 
 }

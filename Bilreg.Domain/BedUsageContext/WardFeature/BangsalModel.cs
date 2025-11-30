@@ -1,24 +1,42 @@
-﻿// using Bilreg.Domain.AdmisiContext.LayananSub.LayananAgg;
-// using CommunityToolkit.Diagnostics;
-//
-// namespace Bilreg.Domain.BillContext.RoomChargeSub.BangsalAgg;
-//
-// public class BangsalModel (string id, string name) : IBangsalKey
-// {
-//     public string BangsalId { get; protected set; } = id;
-//     public string BangsalName { get; protected set; } = name;
-//     public string LayananId { get; protected set; }
-//     public string LayananName { get; protected set; }
-//     public void SetLayanan(LayananModel layanan)
-//     {
-//         Guard.IsNotNull(layanan);
-//         
-//         LayananId = layanan.LayananId;
-//         LayananName = layanan.LayananName;
-//     }
-// }
-//
-// public interface IBangsalKey
-// {
-//     string BangsalId { get; }
-// }   
+﻿using Ardalis.GuardClauses;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.BedUsageContext.WardFeature;
+
+public record BangsalType : IBangsalKey
+{
+    #region CREATION
+    public BangsalType(string bangsalId, string bangsalName, 
+        RoomCatType roomCat, LayananReff layanan)
+    {
+        Guard.Against.NullOrWhiteSpace(bangsalId);
+        Guard.Against.NullOrWhiteSpace(bangsalName);
+        Guard.Against.Null(roomCat);
+        Guard.Against.Null(layanan);
+
+        BangsalId = bangsalId;
+        BangsalName = bangsalName;
+        RoomCat = roomCat;
+        Layanan = layanan;
+    }
+    public static BangsalType Default => new("-", "-", RoomCatType.Default, new LayananReff("-", "-"));
+    public static IBangsalKey Key(string id) => Default with { BangsalId = id };
+    #endregion
+    
+    #region PROPERTIES
+    public string BangsalId { get; init; }
+    public string BangsalName { get; init; }
+    public RoomCatType RoomCat { get; init; }
+    public LayananReff Layanan { get; init; }
+    #endregion
+    
+    #region BEHAVIOR
+    public BangsalReff ToReff() => new(BangsalId, BangsalName);
+    #endregion
+}
+
+public interface IBangsalKey
+{
+    string BangsalId {get;}
+}
+
+public record BangsalReff(string BangsalId, string BangsalName);
