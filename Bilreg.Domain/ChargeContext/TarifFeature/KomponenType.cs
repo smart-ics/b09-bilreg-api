@@ -28,7 +28,7 @@ public record KomponenType : IKomponenKey
     public string KomponenId { get; init; }
     public string KomponenName { get; init; }
     public GroupKomponenType GroupKomponen { get; init; }
-    public IEnumerable<SatTugasType> ListSatTugas { get; init; }
+    public IEnumerable<SatTugasType> ListSatTugas => _listSatTugas;
     #endregion
     
     #region BEHAVIOR

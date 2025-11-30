@@ -3,9 +3,8 @@
 public class DatabaseOptions
 {
     public const string SECTION_NAME = "Database";
-
-    public string ServerName { get; set; }
-    public string DbName { get; set; }
-    public string DbTest { get; set; }
+    
+    public string ServerName { get; set; } = string.Empty;
+    public string DbName { get; set; } = string.Empty;
+    public string DbTest { get; set; } = string.Empty;
 }
-

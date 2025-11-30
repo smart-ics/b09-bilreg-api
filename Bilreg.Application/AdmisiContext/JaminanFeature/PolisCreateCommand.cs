@@ -94,7 +94,7 @@ public class PolisCreateHandler : IRequestHandler<PolisCreateCommand, PolisCreat
             return null;
 
         return _polisRepo.LoadEntity(PolisModel.Key(peserta.PolisId))
-            .Match(x => x, () => null);
+            .Match(x => x, () => null!);
     }
 
 
