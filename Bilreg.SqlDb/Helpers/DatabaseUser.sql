@@ -1,7 +1,7 @@
 CREATE LOGIN bilregLogin WITH PASSWORD = 'bilreg123!'
 GO
        
-CREATE USER bilregUser FRO LOGIN bilregLogin
+CREATE USER bilregUser FROM LOGIN bilregLogin
 GO
        
 sp_addrolemember 'db_datareader', 'bilregUser'

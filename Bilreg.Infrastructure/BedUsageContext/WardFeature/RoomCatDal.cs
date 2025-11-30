@@ -1,6 +1,6 @@
 using System.Data;
 using System.Data.SqlClient;
-using Bilreg.Domain.BedUsageContext.BangsalFeature;
+using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;

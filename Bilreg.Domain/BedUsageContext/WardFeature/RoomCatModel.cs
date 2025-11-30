@@ -1,6 +1,6 @@
 using Ardalis.GuardClauses;
 
-namespace Bilreg.Domain.BedUsageContext.BangsalFeature;
+namespace Bilreg.Domain.BedUsageContext.WardFeature;
 
 public record RoomCatType : IRoomCatKey
 {
