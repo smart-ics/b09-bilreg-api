@@ -1,4 +1,6 @@
+using Bilreg.Application.BedUsageContext.BangsalFeature;
 using Bilreg.Application.BedUsageContext.KamarOperasiFeature;
+using Bilreg.Domain.BedUsageContext.BangsalFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Nuna.Lib.PatternHelper;
 

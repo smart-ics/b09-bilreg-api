@@ -1,3 +1,4 @@
+using Bilreg.Domain.BedUsageContext.BangsalFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Nuna.Lib.DataAccessHelper;
 
