@@ -1,6 +1,6 @@
 using System.Data;
 using System.Data.SqlClient;
-using Bilreg.Application.BillContext.TransportSub.AmbulanceAgg;
+using Bilreg.Application.ChargeContext.AmbulanceFeature;
 using Bilreg.Domain.ChargeContext.AmbulanceFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;

@@ -3,7 +3,7 @@ using CommunityToolkit.Diagnostics;
 using MediatR;
 using Nuna.Lib.CleanArchHelper;
 
-namespace Bilreg.Application.BillContext.TransportSub.AmbulanceAgg;
+namespace Bilreg.Application.ChargeContext.AmbulanceFeature;
 
 public record AmbulanceSaveCommand(string AmbulanceId, string AmbulanceName, decimal Abonement): IRequest, IAmbulanceKey;
 

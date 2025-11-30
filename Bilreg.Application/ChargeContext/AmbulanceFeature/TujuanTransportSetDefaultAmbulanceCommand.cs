@@ -1,9 +1,8 @@
-using Bilreg.Application.BillContext.TransportSub.AmbulanceAgg;
 using Bilreg.Domain.ChargeContext.AmbulanceFeature;
 using CommunityToolkit.Diagnostics;
 using MediatR;
 
-namespace Bilreg.Application.BillContext.TransportSub.TujuanTransportAgg;
+namespace Bilreg.Application.ChargeContext.AmbulanceFeature;
 
 public record TujuanTransportSetDefaultAmbulanceCommand(string TujuanTransportId, string AmbulanceId): IRequest, ITujuanTransportKey, IAmbulanceKey;
 

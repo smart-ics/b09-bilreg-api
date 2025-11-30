@@ -1,6 +1,6 @@
 using MediatR;
 
-namespace Bilreg.Application.BillContext.TransportSub.TujuanTransportAgg;
+namespace Bilreg.Application.ChargeContext.AmbulanceFeature;
 
 public record TujuanTransportListQuery(): IRequest<IEnumerable<TujuanTransportListResponse>>;
 

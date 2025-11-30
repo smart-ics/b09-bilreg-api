@@ -3,22 +3,22 @@ using CommunityToolkit.Diagnostics;
 using MediatR;
 using Nuna.Lib.CleanArchHelper;
 
-namespace Bilreg.Application.BillContext.TransportSub.AmbulanceAgg;
+namespace Bilreg.Application.ChargeContext.AmbulanceFeature;
 
-public record AmbulanceActivateCommand(string AmbulanceId): IRequest, IAmbulanceKey;
+public record AmbulanceDeactivateCommand(string AmbulanceId): IRequest, IAmbulanceKey;
 
-public class AmbulanceActivateHandler: IRequestHandler<AmbulanceActivateCommand>
+public class AmbulanceDeactivateHandler: IRequestHandler<AmbulanceDeactivateCommand>
 {
     private readonly IFactoryLoad<AmbulanceModel, IAmbulanceKey> _factory;
     private readonly IAmbulanceWriter _writer;
 
-    public AmbulanceActivateHandler(IFactoryLoad<AmbulanceModel, IAmbulanceKey> factory, IAmbulanceWriter writer)
+    public AmbulanceDeactivateHandler(IFactoryLoad<AmbulanceModel, IAmbulanceKey> factory, IAmbulanceWriter writer)
     {
         _factory = factory;
         _writer = writer;
     }
 
-    public Task Handle(AmbulanceActivateCommand request, CancellationToken cancellationToken)
+    public Task Handle(AmbulanceDeactivateCommand request, CancellationToken cancellationToken)
     {
         // GUARD
         Guard.IsNotNull(request);
@@ -26,7 +26,7 @@ public class AmbulanceActivateHandler: IRequestHandler<AmbulanceActivateCommand>
         
         // BUILD
         var ambulance = _factory.Load(request);
-        ambulance.SetAktif();
+        ambulance.UnSetAktif();
         
         // WRITE
         _ = _writer.Save(ambulance);

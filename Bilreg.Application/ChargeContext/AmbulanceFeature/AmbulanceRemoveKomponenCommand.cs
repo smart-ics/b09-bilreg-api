@@ -4,7 +4,7 @@ using CommunityToolkit.Diagnostics;
 using MediatR;
 using Nuna.Lib.CleanArchHelper;
 
-namespace Bilreg.Application.BillContext.TransportSub.AmbulanceAgg;
+namespace Bilreg.Application.ChargeContext.AmbulanceFeature;
 
 public record AmbulanceRemoveKomponenCommand(string AmbulanceId, string KomponenId) : IRequest, IAmbulanceKey, IKomponenKey;
 public class AmbulanceRemoveKomponenHandler: IRequestHandler<AmbulanceRemoveKomponenCommand>

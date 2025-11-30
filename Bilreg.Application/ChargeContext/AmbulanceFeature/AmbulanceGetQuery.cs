@@ -2,7 +2,7 @@ using Bilreg.Domain.ChargeContext.AmbulanceFeature;
 using MediatR;
 using Nuna.Lib.CleanArchHelper;
 
-namespace Bilreg.Application.BillContext.TransportSub.AmbulanceAgg;
+namespace Bilreg.Application.ChargeContext.AmbulanceFeature;
 
 public record AmbulanceGetQuery(string AmbulanceId) : IRequest<AmbulanceGetResponse>, IAmbulanceKey;
 

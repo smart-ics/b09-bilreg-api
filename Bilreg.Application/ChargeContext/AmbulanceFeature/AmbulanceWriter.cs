@@ -1,7 +1,7 @@
 using Bilreg.Domain.ChargeContext.AmbulanceFeature;
 using Nuna.Lib.CleanArchHelper;
 
-namespace Bilreg.Application.BillContext.TransportSub.AmbulanceAgg;
+namespace Bilreg.Application.ChargeContext.AmbulanceFeature;
 
 public interface IAmbulanceWriter : INunaWriterWithReturn<AmbulanceModel> {}
 

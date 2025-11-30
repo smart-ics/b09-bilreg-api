@@ -1,7 +1,7 @@
 using Bilreg.Domain.ChargeContext.AmbulanceFeature;
 using Nuna.Lib.DataAccessHelper;
 
-namespace Bilreg.Application.BillContext.TransportSub.TujuanTransportAgg;
+namespace Bilreg.Application.ChargeContext.AmbulanceFeature;
 
 public interface ITujuanTransportDal:
     IInsert<TujuanTransportModel>,
