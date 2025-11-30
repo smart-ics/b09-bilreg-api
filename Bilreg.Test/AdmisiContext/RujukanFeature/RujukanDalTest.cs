@@ -1,5 +1,5 @@
 ﻿using Bilreg.Domain.AdmisiContext.RujukanFeature;
-using Bilreg.Infrastructure.AdmisiContext.RujukanSub.RujukanAgg;
+using Bilreg.Infrastructure.AdmisiContext.RujukanSub;
 using Bilreg.Infrastructure.Helpers;
 using FluentAssertions;
 using Nuna.Lib.TransactionHelper;

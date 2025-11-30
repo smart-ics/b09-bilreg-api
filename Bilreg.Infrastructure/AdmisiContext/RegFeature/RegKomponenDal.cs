@@ -1,9 +1,8 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
-using System.Runtime.InteropServices.ComTypes;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
-using Bilreg.Domain.BillContext.TindakanFeature;
+using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;

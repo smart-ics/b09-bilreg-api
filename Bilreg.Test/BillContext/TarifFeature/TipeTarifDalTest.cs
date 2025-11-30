@@ -1,5 +1,5 @@
-﻿using Bilreg.Domain.BillContext.TindakanFeature;
-using Bilreg.Infrastructure.BillContext.TindakanFeature;
+﻿using Bilreg.Domain.ChargeContext.TarifFeature;
+using Bilreg.Infrastructure.ChargeContext.TarifFeature;
 using Bilreg.Infrastructure.Helpers;
 using FluentAssertions;
 using Nuna.Lib.TransactionHelper;

@@ -1,5 +1,5 @@
-using Bilreg.Domain.BillContext.TransportSub.AmbulanceAgg;
-using Bilreg.Infrastructure.BillContext.TransportSub.AmbulanceAgg;
+using Bilreg.Domain.ChargeContext.AmbulanceFeature;
+using Bilreg.Infrastructure.ChargeContext.AmbulanceFeature;
 using Bilreg.Infrastructure.Helpers;
 using FluentAssertions;
 using Nuna.Lib.TransactionHelper;

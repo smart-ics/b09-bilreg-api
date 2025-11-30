@@ -1,5 +1,5 @@
-﻿using Bilreg.Domain.BillContext.BedUsageFeature;
-using Bilreg.Infrastructure.BillContext.BedUsageFeature;
+﻿using Bilreg.Domain.BedUsageContext.WardFeature;
+using Bilreg.Infrastructure.BedUsageContext.WardFeature;
 using Bilreg.Infrastructure.Helpers;
 using FluentAssertions;
 using Nuna.Lib.TransactionHelper;

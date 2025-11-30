@@ -1,5 +1,4 @@
-﻿using Bilreg.Application.BillContext.BedUsageFeature.KamarAgg;
-using MediatR;
+﻿using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
@@ -24,13 +23,13 @@ namespace Bilreg.Api.Controllers.BillContext.RoomChargeSub
         //    return Ok(new JSendOk("Done"));
         //}
 
-        [HttpGet]
-        public async Task<IActionResult> ListData()
-        {
-            var query = new KelasListQuery();
-            var response = await _mediator.Send(query);
-            return Ok(new JSendOk(response));
-        }
+        //[HttpGet]
+        //public async Task<IActionResult> ListData()
+        //{
+        //    var query = new KelasListQuery();
+        //    var response = await _mediator.Send(query);
+        //    return Ok(new JSendOk(response));
+        //}
 
         //[HttpPut]
         //public async Task<IActionResult> SetKelasDk(string kelasId, string kelasDkId)

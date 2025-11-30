@@ -1,6 +1,6 @@
 ﻿using Bilreg.Application.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
-using Bilreg.Domain.BillContext.BedUsageFeature;
+using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 
 // resharper disable inconsistentnaming
