@@ -7,10 +7,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="BillContext\BedUsageFeature\KelasAgg\" />
-    <Folder Include="BillContext\BedUsageFeature\KelasDkAgg\" />
-    <Folder Include="BillContext\TindakanFeature\TipeTarifAgg\" />
-    <Folder Include="PaymentContext\" />
+    <Compile Remove="ChargeContext\TindakanFeature\TipeTarifAgg\**" />
+    <EmbeddedResource Remove="ChargeContext\TindakanFeature\TipeTarifAgg\**" />
+    <None Remove="ChargeContext\TindakanFeature\TipeTarifAgg\**" />
   </ItemGroup>
 
   <ItemGroup>

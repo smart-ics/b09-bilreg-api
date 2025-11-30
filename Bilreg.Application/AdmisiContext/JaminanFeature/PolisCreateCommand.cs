@@ -1,9 +1,9 @@
 ﻿using Bilreg.Application.AdmisiContext.JaminanFeature;
-using Bilreg.Application.BillContext.BedUsageFeature;
+using Bilreg.Application.BedUsageContext.WardFeature;
 using Bilreg.Application.Helpers;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
-using Bilreg.Domain.BillContext.BedUsageFeature;
+using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using CommunityToolkit.Diagnostics;
 using MediatR;
@@ -94,7 +94,7 @@ public class PolisCreateHandler : IRequestHandler<PolisCreateCommand, PolisCreat
             return null;
 
         return _polisRepo.LoadEntity(PolisModel.Key(peserta.PolisId))
-            .Match(x => x, () => null);
+            .Match(x => x, () => null!);
     }
 
 

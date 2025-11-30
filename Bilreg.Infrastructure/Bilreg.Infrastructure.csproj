@@ -7,6 +7,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="AdmisiContext\JaminanFeature\PolisAgg\**" />
+    <EmbeddedResource Remove="AdmisiContext\JaminanFeature\PolisAgg\**" />
+    <None Remove="AdmisiContext\JaminanFeature\PolisAgg\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="FluentAssertions" Version="6.12.0" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.2" />
     <PackageReference Include="Moq" Version="4.20.70" />
@@ -18,10 +24,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Bilreg.Application\Bilreg.Application.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="AdmisiContext\JaminanFeature\PolisAgg\" />
   </ItemGroup>
 
 </Project>

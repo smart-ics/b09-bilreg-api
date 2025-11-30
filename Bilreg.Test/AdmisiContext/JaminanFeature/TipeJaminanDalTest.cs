@@ -1,5 +1,5 @@
 ﻿using Bilreg.Domain.AdmisiContext.JaminanFeature;
-using Bilreg.Infrastructure.AdmisiContext.JaminanFeature.TipeJaminanAgg;
+using Bilreg.Infrastructure.AdmisiContext.JaminanFeature;
 using Bilreg.Infrastructure.Helpers;
 using FluentAssertions;
 using Nuna.Lib.TransactionHelper;

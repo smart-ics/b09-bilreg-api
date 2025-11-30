@@ -1,5 +1,5 @@
 ﻿using Bilreg.Domain.AdmisiContext.LayananFeature;
-using Bilreg.Infrastructure.AdmisiContext.LayananFeature.LayananAgg;
+using Bilreg.Infrastructure.AdmisiContext.LayananFeature;
 using Bilreg.Infrastructure.Helpers;
 using FluentAssertions;
 using Nuna.Lib.TransactionHelper;

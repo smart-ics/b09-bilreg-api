@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.BillContext.TindakanFeature;
+﻿using Bilreg.Domain.ChargeContext.TarifFeature;
 
 namespace Bilreg.Domain.AdmisiContext.RegFeature;
 

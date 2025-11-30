@@ -1,7 +1,7 @@
 ﻿
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
-using Bilreg.Domain.BillContext.TindakanFeature;
+using Bilreg.Domain.ChargeContext.TarifFeature;
 using Nuna.Lib.DataAccessHelper;
 
 public interface IKarcisRepo :

@@ -30,11 +30,7 @@ public class ParamNoDal : INunaCounterDal, INunaCounterDecDal
     }
 
     [PublicAPI]
-    private class ParamNoDto
-    {
-        public string Prefix { get; set; }
-        public string HexVal { get; set; }
-    }
+    private record ParamNoDto(string Prefix, string HexVal);
 
     public long GetNewDecNumber(string anchor)
     {

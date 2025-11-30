@@ -1,7 +1,7 @@
-﻿using Bilreg.Application.BillContext.BedUsageFeature;
+﻿using Bilreg.Application.BedUsageContext.WardFeature;
 using Bilreg.Application.ParamContext.ParamSistemAgg;
 using Bilreg.Domain.AdmisiContext.RegFeature;
-using Bilreg.Domain.BillContext.BedUsageFeature;
+using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Infrastructure.Helpers;
 
 namespace Bilreg.Infrastructure.ParamContext;

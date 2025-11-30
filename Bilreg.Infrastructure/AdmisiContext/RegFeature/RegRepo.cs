@@ -4,7 +4,7 @@ using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiContext.RujukanFeature;
-using Bilreg.Domain.BillContext.BedUsageFeature;
+using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.Helpers.CommonValueObjects;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Nuna.Lib.PatternHelper;
