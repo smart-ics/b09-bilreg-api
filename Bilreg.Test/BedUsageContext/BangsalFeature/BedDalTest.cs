@@ -6,15 +6,15 @@ using Nuna.Lib.TransactionHelper;
 
 namespace Bilreg.Test.BedUsageContext.BangsalFeature;
 
-public class KamarDalTest
+public class BedDalTest
 {
-    private readonly KamarDal _sut = new(ConnStringHelper.GetTestEnv());
+    private readonly BedDal _sut = new(ConnStringHelper.GetTestEnv());
 
-    private static KamarDto Faker()
-        => new KamarDto("A", "B", "C", "D", "E", "F");
+    private static BedDto Faker()
+        => new BedDto("A", "B", "C", true, "D", "E", "F");
 
-    private static IKamarKey FakerKey()
-        => KamarType.Default with { KamarId = "A" };
+    private static IBedKey FakerKey()
+        => BedType.Default with { BedId = "A" };
 
     [Fact]
     public void InsertTest()
@@ -45,8 +45,9 @@ public class KamarDalTest
         var actual = _sut.GetData(FakerKey());
         actual.Should().BeEquivalentTo(Faker(),
             opt => opt
-                .Excluding(x => x.fs_nm_bangsal)
-                .Excluding(x => x.fs_nm_kelas));
+                .Excluding(x => x.fs_nm_kamar)
+                .Excluding(x => x.fs_kd_bangsal)
+                .Excluding(x => x.fs_nm_bangsal));
     }
     
     [Fact]
@@ -57,7 +58,8 @@ public class KamarDalTest
         var actual = _sut.ListData();
         actual.Should().ContainEquivalentOf(Faker(),
             opt => opt
-                .Excluding(x => x.fs_nm_bangsal)
-                .Excluding(x => x.fs_nm_kelas));
+                .Excluding(x => x.fs_nm_kamar)
+                .Excluding(x => x.fs_kd_bangsal)
+                .Excluding(x => x.fs_nm_bangsal));
     }
 }

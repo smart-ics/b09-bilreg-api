@@ -1,5 +1,6 @@
 using System.Data;
 using System.Data.SqlClient;
+using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Infrastructure.BedUsageContext.WardFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;

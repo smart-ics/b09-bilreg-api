@@ -5,15 +5,15 @@ using Moq;
 
 namespace Bilreg.Test.BedUsageContext.BangsalFeature;
 
-public class KamarRepoTests
+public class BedRepoTests
 {
-    private readonly Mock<IKamarDal> _kamarDalMock;
-    private readonly KamarRepo _repository;
+    private readonly Mock<IBedDal> _bedDalMock;
+    private readonly BedRepo _repository;
 
-    public KamarRepoTests()
+    public BedRepoTests()
     {
-        _kamarDalMock = new Mock<IKamarDal>();
-        _repository = new KamarRepo(_kamarDalMock.Object);
+        _bedDalMock = new Mock<IBedDal>();
+        _repository = new BedRepo(_bedDalMock.Object);
     }
 
     [Fact]
@@ -21,16 +21,16 @@ public class KamarRepoTests
     {
         // Arrange
         var existingModel = CreateTestModel();
-        _kamarDalMock
-            .Setup(x => x.GetData(It.IsAny<IKamarKey>()))
+        _bedDalMock
+            .Setup(x => x.GetData(It.IsAny<IBedKey>()))
             .Returns(CreateTestDto());
 
         // Act
         _repository.SaveChanges(existingModel);
 
         // Assert
-        _kamarDalMock.Verify(x => x.Update(It.IsAny<KamarDto>()), Times.Once);
-        _kamarDalMock.Verify(x => x.Insert(It.IsAny<KamarDto>()), Times.Never);
+        _bedDalMock.Verify(x => x.Update(It.IsAny<BedDto>()), Times.Once);
+        _bedDalMock.Verify(x => x.Insert(It.IsAny<BedDto>()), Times.Never);
     }
 
     [Fact]
@@ -39,16 +39,16 @@ public class KamarRepoTests
         // Arrange
         var newModel = CreateTestModel();
         var key = CreateTestKey();
-        _kamarDalMock
+        _bedDalMock
             .Setup(x => x.GetData(key))
-            .Returns((KamarDto)null!);
+            .Returns((BedDto)null!);
 
         // Act
         _repository.SaveChanges(newModel);
 
         // Assert
-        _kamarDalMock.Verify(x => x.Insert(It.IsAny<KamarDto>()), Times.Once);
-        _kamarDalMock.Verify(x => x.Update(It.IsAny<KamarDto>()), Times.Never);
+        _bedDalMock.Verify(x => x.Insert(It.IsAny<BedDto>()), Times.Once);
+        _bedDalMock.Verify(x => x.Update(It.IsAny<BedDto>()), Times.Never);
     }
 
     [Fact]
@@ -57,7 +57,7 @@ public class KamarRepoTests
         // Arrange
         var expectedDto = CreateTestDto();
         var key = CreateTestKey();
-        _kamarDalMock
+        _bedDalMock
             .Setup(x => x.GetData(key))
             .Returns(expectedDto);
 
@@ -76,9 +76,9 @@ public class KamarRepoTests
     {
         // Arrange
         var key = CreateTestKey();
-        _kamarDalMock
+        _bedDalMock
             .Setup(x => x.GetData(key))
-            .Returns((KamarDto)null!);
+            .Returns((BedDto)null!);
 
         // Act
         var result = _repository.LoadEntity(key);
@@ -86,7 +86,7 @@ public class KamarRepoTests
         // Assert
         result.HasValue.Should().BeFalse();
         result.Match(
-            onSome: model => Assert.Fail("Expected None but got Some"),
+            onSome: _ => Assert.Fail("Expected None but got Some"),
             onNone: () => { });
     }
 
@@ -100,32 +100,32 @@ public class KamarRepoTests
         _repository.DeleteEntity(key);
 
         // Assert
-        _kamarDalMock.Verify(x => x.Delete(key), Times.Once);
+        _bedDalMock.Verify(x => x.Delete(key), Times.Once);
     }
 
     [Fact]
     public void UT6_GivenEmptyList_WhenListData_ThenEmptyListIsReturned()
     {
         // Arrange
-        _kamarDalMock
+        _bedDalMock
             .Setup(x => x.ListData())
-            .Returns((IEnumerable<KamarDto>)null!);
+            .Returns((IEnumerable<BedDto>)null!);
 
         // Act
         var result = _repository.ListData();
 
         // Assert
-        var kamarTypes = result.ToList();
-        kamarTypes.Should().NotBeNull();
-        kamarTypes.Should().BeEmpty();
+        var bedTypes = result.ToList();
+        bedTypes.Should().NotBeNull();
+        bedTypes.Should().BeEmpty();
     }
 
     [Fact]
     public void UT7_GivenListWithItems_WhenListData_ThenListWithModelsIsReturned()
     {
         // Arrange
-        var dtos = new List<KamarDto> { CreateTestDto(), CreateTestDto() };
-        _kamarDalMock
+        var dtos = new List<BedDto> { CreateTestDto(), CreateTestDto() };
+        _bedDalMock
             .Setup(x => x.ListData())
             .Returns(dtos);
 
@@ -133,22 +133,22 @@ public class KamarRepoTests
         var result = _repository.ListData();
 
         // Assert
-        var kamarTypes = result.ToList();
-        kamarTypes.Should().NotBeNull();
-        kamarTypes.Count.Should().Be(2);
+        var bedTypes = result.ToList();
+        bedTypes.Should().NotBeNull();
+        bedTypes.Count.Should().Be(2);
     }
 
     [Fact]
     public void UT8_GivenListWithItems_WhenListDataWithFilter_ThenListWithFilteredModelsIsReturned()
     {
         // Arrange
-        var dtos = new List<KamarDto> 
+        var dtos = new List<BedDto> 
         { 
-            new KamarDto("A", "B", "X", "Y", "C", "D"),
-            new KamarDto("E", "F", "Z", "W", "G", "H")
+            new BedDto("A", "B", "C", true, "D", "X", "Y"),
+            new BedDto("E", "F", "G", false, "H", "Z", "W")
         };
         var filter = CreateTestBangsalKey();
-        _kamarDalMock
+        _bedDalMock
             .Setup(x => x.ListData())
             .Returns(dtos);
 
@@ -156,18 +156,18 @@ public class KamarRepoTests
         var result = _repository.ListData(filter);
 
         // Assert
-        var kamarTypes = result.ToList();
-        kamarTypes.Should().NotBeNull();
-        kamarTypes.Count.Should().Be(2);
-        kamarTypes.Should().Contain(x => x.Bangsal.BangsalId == filter.BangsalId);
+        var bedTypes = result.ToList();
+        bedTypes.Should().NotBeNull();
+        bedTypes.Count.Should().Be(1);
+        bedTypes.Should().Contain(x => x.Bangsal.BangsalId == filter.BangsalId);
     }
 
-    private static KamarType CreateTestModel()
-        => KamarType.Default;
-    private static KamarDto CreateTestDto()
-        => KamarDto.FromModel(KamarType.Default); 
-    private static IKamarKey CreateTestKey()
-        => KamarType.Key("A"); 
+    private static BedType CreateTestModel()
+        => BedType.Default;
+    private static BedDto CreateTestDto()
+        => BedDto.FromModel(BedType.Default); 
+    private static IBedKey CreateTestKey()
+        => BedType.Key("A"); 
     private static IBangsalKey CreateTestBangsalKey()
         => BangsalType.Key("X");
 }
