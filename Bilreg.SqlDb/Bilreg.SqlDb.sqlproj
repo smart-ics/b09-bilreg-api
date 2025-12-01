@@ -182,6 +182,7 @@
     <None Include="Helpers\DatabaseUser.sql" />
   </ItemGroup>
   <ItemGroup>
+    <Build Include="BedUsageContext\RoomRateFeature\ta_kamar2.sql" />
     <Build Include="BedUsageContext\RoomRateFeature\ta_kamar_tipe.sql" />
   </ItemGroup>
 </Project>

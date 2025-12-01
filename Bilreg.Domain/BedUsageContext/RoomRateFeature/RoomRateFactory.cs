@@ -4,20 +4,33 @@ namespace Bilreg.Domain.BedUsageContext.RoomRateFeature;
 
 public class RoomRateFactory
 {
-    public IRoomRate<RoomRateRegulerTipeType> Create(KamarType kamar,
-        IEnumerable<RoomRateRegulerTipeType> listTipe)
+    public IRoomRate<IRoomRateDetail> Create(KamarType kamar, IEnumerable<IRoomRateDetail> listDetil)
     {
-        return new RoomRateRegulerType(kamar.KamarId, 
-            kamar.ToReff(), listTipe);
-    }
-    public IRoomRate<RoomRateKelasType> Create(KamarType kamar, 
-        IEnumerable<RoomRateKelasType> listTipe)
+        return listDetil switch
+        {
+            IEnumerable<RoomRateKelasType> kelas => CreateKelas(kamar, kelas),
+            IEnumerable<RoomRateDayType> day     => CreateDaily(kamar, day),
+            IEnumerable<RoomRateRegulerTipeType> reg => CreateReguler(kamar, reg),
+            _ => throw new Exception("Unsupported detail type")
+        };
+    }    
+    
+    private IRoomRate<RoomRateRegulerTipeType> CreateReguler(KamarType kamar, IEnumerable<RoomRateRegulerTipeType> listTipe)
     {
-        return new RoomRateFloatingType(kamar.KamarId, kamar.ToReff(), listTipe);
+        return new RoomRateRegulerType(kamar.KamarId, kamar.ToReff(), listTipe); 
+        
     }
-    public IRoomRate<RoomRateDayType> Create(KamarType kamar,  
-        IEnumerable<RoomRateDayType> listTipe)
+
+    private IRoomRate<RoomRateKelasType> CreateKelas(KamarType kamar, IEnumerable<RoomRateKelasType> listTipe)
     {
-        return new RoomRateDailyType(kamar.KamarId, kamar.ToReff(), listTipe);
+        return new RoomRateFloatingType(kamar.KamarId, kamar.ToReff(), listTipe); 
+        
     }
+
+    private IRoomRate<RoomRateDayType> CreateDaily(KamarType kamar, IEnumerable<RoomRateDayType> listTipe)
+    {
+        return new RoomRateDailyType(kamar.KamarId, kamar.ToReff(), listTipe); 
+    } 
+
+    
 }

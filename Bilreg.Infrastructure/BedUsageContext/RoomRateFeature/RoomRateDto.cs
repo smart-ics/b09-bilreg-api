@@ -89,22 +89,15 @@ public record RoomRateDto(
         var kamarId = listDto.First().fs_kd_kamar;
         var kamarName = listDto.First().fs_nm_kamar;
         var kamar = new KamarType(kamarId, kamarName, BangsalType.Default.ToReff(), KelasType.Default.ToReff());
-        
-        IEnumerable<IRoomRateDetail> listDetail = roomRateKind switch
+
+        var factory = new RoomRateFactory();
+        return roomRateKind switch
         {
-            "FLOATING" => CreateFloating(listDto),
-            "DAILY" => CreateDaily(listDto),
-            //"REGULER" => CreateReguler(listDto),
-            _ => throw new Exception("Invalid room rate kind")
-        };
-        var roomRateFactory = new RoomRateFactory();
-        //IRoomRate result;
-        if (listDetail is IEnumerable<RoomRateKelasType> listKelas)
-        {
-            
-        }
-        var result = roomRateFactory.Create(kamar, listDetail); //<--- this does not work.
-        return result;
+            "FLOATING" => factory.Create(kamar, CreateFloating(listDto)),
+            "DAILY"    => factory.Create(kamar, CreateDaily(listDto)),
+            "REGULER"  => factory.Create(kamar, CreateReguler(listDto)),
+            _ => throw new Exception("Invalid room rate kind"),
+        };        
     }
     
     private static IEnumerable<RoomRateKelasType> CreateFloating(IEnumerable<RoomRateDto> listDto)
@@ -126,11 +119,35 @@ public record RoomRateDto(
     }
     private static IEnumerable<RoomRateDayType> CreateDaily(IEnumerable<RoomRateDto> listDto)
     {
-        throw new NotImplementedException();
+        var result = listDto
+            .GroupBy(x => new
+            {
+                x.fs_kd_kamar, x.fs_nm_kamar, 
+                x.fs_kd_tipe_kamar,  x.fs_nm_tipe_kamar,
+                x.fn_harike
+            })
+            .Select(x => new RoomRateDayType(
+                new TipeKamarReff(x.Key.fs_kd_tipe_kamar, x.Key.fs_nm_tipe_kamar, true),
+                x.Key.fn_harike,
+                x.Select(y => new RoomRateKomponenType(
+                    new KomponenReff(y.fs_kd_detil_tarif, y.fs_nm_detil_tarif), y.fn_tarif))
+            ));
+        return result;
     }
-    private static IEnumerable<RoomRateRegulerType> CreateReguler(IEnumerable<RoomRateDto> listDto)
+    private static IEnumerable<RoomRateRegulerTipeType> CreateReguler(IEnumerable<RoomRateDto> listDto)
     {
-        throw new NotImplementedException();
+        var result = listDto
+            .GroupBy(x => new
+            {
+                x.fs_kd_kamar, x.fs_nm_kamar, 
+                x.fs_kd_tipe_kamar,  x.fs_nm_tipe_kamar
+            })
+            .Select(x => new RoomRateRegulerTipeType(
+                new TipeKamarReff(x.Key.fs_kd_tipe_kamar, x.Key.fs_nm_tipe_kamar, true),
+                x.Select(y => new RoomRateKomponenType(
+                    new KomponenReff(y.fs_kd_detil_tarif, y.fs_nm_detil_tarif), y.fn_tarif))
+            ));
+        return result;
     }
     
 }
