@@ -12,9 +12,9 @@ public record RoomRateDto(
     string fs_kd_detil_tarif,
     string fs_kd_tipe_kamar,
     decimal fn_tarif,
-    int fn_no_urut,
+    decimal fn_no_urut,
     string fs_kd_kelas,
-    int fn_harike,
+    decimal fn_harike,
     string fs_nm_kamar,
     string fs_nm_detil_tarif,
     string fs_nm_tipe_kamar,
@@ -128,7 +128,7 @@ public record RoomRateDto(
             })
             .Select(x => new RoomRateDayType(
                 new TipeKamarReff(x.Key.fs_kd_tipe_kamar, x.Key.fs_nm_tipe_kamar, true),
-                x.Key.fn_harike,
+                Convert.ToInt32(x.Key.fn_harike),
                 x.Select(y => new RoomRateKomponenType(
                     new KomponenReff(y.fs_kd_detil_tarif, y.fs_nm_detil_tarif), y.fn_tarif))
             ));
