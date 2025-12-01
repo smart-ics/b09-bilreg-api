@@ -8,14 +8,14 @@ using Nuna.Lib.DataAccessHelper;
 
 namespace Bilreg.Infrastructure.BedUsageContext.RoomRateFeature;
 
-public interface IRoomRateKomponenDal:
+public interface IRoomRateDal:
     IInsertBulk<RoomRateDto>,
     IDelete<IKamarKey>,
     IListData<RoomRateDto, IKamarKey>
 {
 }
 
-public class RoomRateKomponenDal : IRoomRateKomponenDal
+public class RoomRateKomponenDal : IRoomRateDal
 {
     private readonly DatabaseOptions _opt;
 
