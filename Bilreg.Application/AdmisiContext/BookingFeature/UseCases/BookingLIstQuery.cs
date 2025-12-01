@@ -1,7 +1,7 @@
-﻿using Bilreg.Domain.AdmisiContext.LayananFeature;
+﻿using Ardalis.GuardClauses;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
-using CommunityToolkit.Diagnostics;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
 
@@ -31,8 +31,7 @@ public class BookingListHandler : IRequestHandler<BookingPeriodeListQuery, IEnum
 
     public Task<IEnumerable<BookingPeriodeListResponse>> Handle(BookingPeriodeListQuery request, CancellationToken cancellationToken)
     {
-        Guard.IsNotEmpty(request.TglYmd);
-        Guard.IsTrue(request.TglYmd.IsValidTgl(FORMAT_TGL_YMD));
+        Guard.Against.NullOrEmpty(request.TglYmd);
 
         var tgl = request.TglYmd.ToDate("yyyy-MM-dd");
         var periode = new Periode(tgl);

@@ -1,6 +1,6 @@
-﻿using Bilreg.Domain.AdmisiContext.LayananFeature;
+﻿using Ardalis.GuardClauses;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
-using CommunityToolkit.Diagnostics;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
 
@@ -19,9 +19,9 @@ public class RegListHandler : IRequestHandler<RegListQuery, IEnumerable<RegView>
 
     public Task<IEnumerable<RegView>> Handle(RegListQuery request, CancellationToken cancellationToken)
     {
-        Guard.IsNotNull(request);
-        Guard.IsNotWhiteSpace(request.TglYmd);
-        Guard.IsNotWhiteSpace(request.LayananId);
+        Guard.Against.Null(request);
+        Guard.Against.NullOrWhiteSpace(request.TglYmd);
+        Guard.Against.NullOrWhiteSpace(request.LayananId);
 
         var tgl = request.TglYmd.ToDate("yyyy-MM-dd");
         var periode = new Periode(tgl);

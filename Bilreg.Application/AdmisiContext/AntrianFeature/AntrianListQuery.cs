@@ -1,8 +1,8 @@
 ﻿using Bilreg.Domain.AdmisiContext.AntrianFeature;
-using CommunityToolkit.Diagnostics;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
 using System.Data.SqlTypes;
+using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 
@@ -32,9 +32,9 @@ public class AntrianListHandler : IRequestHandler<AntrianListQuery, IEnumerable<
     public Task<IEnumerable<AntrianListResponse>> Handle(AntrianListQuery request, CancellationToken cancellationToken)
     {
         // GUARD
-        Guard.IsNotEmpty(request.TglAntrian);
-        Guard.IsTrue(request.TglAntrian.IsValidTgl(FORMAT_TGL_YMD));
-
+        Guard.Against.NullOrEmpty(request.TglAntrian);
+        Guard.Against.NullOrEmpty(request.DokterId);
+        Guard.Against.NullOrEmpty(request.TglAntrian);
 
         // BUILD
         DateOnly tglAntrian = DateOnly.ParseExact(request.TglAntrian, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);

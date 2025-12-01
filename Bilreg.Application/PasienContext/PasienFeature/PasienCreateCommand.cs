@@ -1,6 +1,6 @@
-﻿using Bilreg.Domain.AdmisiContext.BookingFeature;
+﻿using Ardalis.GuardClauses;
+using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
-using CommunityToolkit.Diagnostics;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
 
@@ -32,8 +32,7 @@ public class PasienCreateHandler : IRequestHandler<PasienCreateCommand, PasienCr
     public Task<PasienCreateResponse> Handle(PasienCreateCommand request, CancellationToken cancellationToken)
     {
         //  GUARD
-        Guard.IsNotEmpty(request.TglLahir);
-        Guard.IsTrue(request.TglLahir.IsValidTgl(FORMAT_TGL_YMD));
+        Guard.Against.NullOrEmpty(request.TglLahir);
         
         //  BUILD
         var tglLahir = DateOnly.Parse(request.TglLahir);

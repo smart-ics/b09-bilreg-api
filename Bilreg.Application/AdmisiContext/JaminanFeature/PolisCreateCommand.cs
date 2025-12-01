@@ -5,11 +5,9 @@ using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
-using CommunityToolkit.Diagnostics;
 using MediatR;
-using System.Data.SqlTypes;
-using System.Diagnostics.Eventing.Reader;
 using System.Globalization;
+using Ardalis.GuardClauses;
 
 namespace Bilreg.Application.AdmisiContext.JaminanSub.PolisAgg;
 
@@ -49,14 +47,12 @@ public class PolisCreateHandler : IRequestHandler<PolisCreateCommand, PolisCreat
     public Task<PolisCreateResponse> Handle(PolisCreateCommand request, CancellationToken cancellationToken)
     {
         //  GUARD
-        Guard.IsNotNull(request);
-        Guard.IsNotEmpty(request.PasienId);
-        Guard.IsNotEmpty(request.TipeJaminanId);
-        Guard.IsNotEmpty(request.NoPolis);
-        Guard.IsNotEmpty(request.AtasName);
-        Guard.IsNotEmpty(request.ExpiredDate);
-        request.ExpiredDate.IsValidDateYmd();
-        Guard.IsNotEmpty(request.KelasRanapId);
+        Guard.Against.NullOrWhiteSpace(request.PasienId);
+        Guard.Against.NullOrWhiteSpace(request.TipeJaminanId);
+        Guard.Against.NullOrWhiteSpace(request.NoPolis);
+        Guard.Against.NullOrWhiteSpace(request.AtasName);
+        Guard.Against.NullOrWhiteSpace(request.ExpiredDate);
+        Guard.Against.NullOrEmpty(request.KelasRanapId);
 
         //  BUILD
         var pasien = _pasienRepo.LoadEntity(request)

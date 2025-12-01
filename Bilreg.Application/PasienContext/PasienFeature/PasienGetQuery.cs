@@ -1,10 +1,10 @@
+using Ardalis.GuardClauses;
 using Bilreg.Application.Helpers;
 using Bilreg.Application.ParamContext.ParamSistemAgg;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.PasienContext.DemografiFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.PasienContext.StatusSosialFeature;
-using CommunityToolkit.Diagnostics;
 using MediatR;
 
 namespace Bilreg.Application.PasienContext.DataSosialPasienSub.PasienAgg;
@@ -55,9 +55,7 @@ public class PasienGetHandler : IRequestHandler<PasienGetQuery, PasienGetRespons
 
     public Task<PasienGetResponse> Handle(PasienGetQuery request, CancellationToken cancellationToken)
     {
-        // GUARD
-        Guard.IsTrue(request.PasienId.IsValidA(x => x.Length is 6 or 8 or 15));
-
+        // BUILD
         var pasienId = GetPasienId(request.PasienId);
 
         var pasien = _pasienRepo.LoadEntity(PasienModel.Key(pasienId))
