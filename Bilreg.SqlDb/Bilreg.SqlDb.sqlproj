@@ -56,7 +56,6 @@
   <Import Condition="'$(SQLDBExtensionsRefPath)' == ''" Project="$(MSBuildExtensionsPath)\Microsoft\VisualStudio\v$(VisualStudioVersion)\SSDT\Microsoft.Data.Tools.Schema.SqlTasks.targets" />
   <ItemGroup>
     <Folder Include="Properties" />
-    <Folder Include="BedUsageContext" />
     <Folder Include="BedUsageContext\KamarOperasiFeature" />
     <Folder Include="BedUsageContext\WardFeature" />
     <Folder Include="AdmisiContext" />
@@ -181,5 +180,8 @@
     <None Include="ChargeContext\AmbulanceFeature\ta_transport.sql" />
     <None Include="ChargeContext\AmbulanceFeature\ta_tujuan_transport.sql" />
     <None Include="Helpers\DatabaseUser.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <Build Include="BedUsageContext\RoomRateFeature\ta_kamar_tipe.sql" />
   </ItemGroup>
 </Project>
