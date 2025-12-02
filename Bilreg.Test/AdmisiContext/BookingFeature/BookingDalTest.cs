@@ -27,14 +27,17 @@ public class BookingDalTest
             LayananId: "F",
             DokterId: "G",
             NoAntrian: 1,
-            CrtUser: "H",
+            NoPeserta: "H",
+            NoReffKontrol: "I",
+            ReffId:"J",
+            CrtUser: "K",
             CrtDate: new DateTime(2024, 1, 1, 10, 0, 0),
-            UpdUser: "I",
+            UpdUser: "L",
             UpdDate: new DateTime(2024, 1, 1, 10, 0, 0),
-            VodUser: "J",
+            VodUser: "M",
             VodDate: new DateTime(3000, 1, 1),
-            LayananName: "K",
-            DokterName: "L"
+            LayananName: "N",
+            DokterName: "O"
         );
 
     private static IBookingKey FakerKey()

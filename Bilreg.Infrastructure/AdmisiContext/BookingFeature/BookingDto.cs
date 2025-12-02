@@ -14,6 +14,7 @@ public record BookingDto(
     string PasienName, DateTime TglLahir, string Gender, string Alamat,
     string PasienId, string RegId, DateTime TglBerobat, string JamPraktek, 
     string LayananId, string DokterId, int NoAntrian,
+    string NoPeserta, string NoReffKontrol, string ReffId,
     string CrtUser, DateTime CrtDate, string UpdUser, 
     DateTime UpdDate, string VodUser,DateTime VodDate,
      
@@ -36,6 +37,8 @@ public record BookingDto(
             //      tujuan berobat
             tglBerobat, jamPraktek, 
             model.Layanan.LayananId, model.Dokter.PpaId, model.NoAntrian,
+            //      kepesertaan bpjs
+            model.NoPeserta, model.NoReffKontrol, model.ReffId,
             //      audit-trail
             model.AuditTrail.Created.UserId, model.AuditTrail.Created.Timestamp,
             model.AuditTrail.Modified.UserId, model.AuditTrail.Modified.Timestamp,
@@ -65,7 +68,8 @@ public record BookingDto(
             RegModel.Default.ToReff() :
             new RegReff(RegId, PasienId, PasienName);
         var result = new BookingModel(BookingId, BookingDate, person, PasienId, 
-            reg, tglBerobat, jamPraktek, layanan, dokter, NoAntrian, auditTrail);
+            reg, tglBerobat, jamPraktek, layanan, dokter, NoAntrian, auditTrail,
+            NoPeserta, NoReffKontrol, ReffId);
         return result;
     }
 }

@@ -11,15 +11,15 @@ using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiContext.BookingFeature.UseCases;
 
-public record BookingCreateCmd(string PasienId,string PasienName, string TglLahir, 
-    string Gender, string Alamat, string NoTelp, 
+public record BookingCreateFromHidokCommand(string PasienId, string PasienName, string TglLahir,
+    string Gender, string Alamat, string NoTelp,
     string DokterId, string TglBerobat, string JamMulai,
-    string NoPeserta, string NoReffKontrol,
-    bool IsForceDuplicatedTracker) : IRequest<BookingCreateResponse>;
+    string NoPeserta, string NoReffKontrol, int NoAntrian,
+    bool IsForceDuplicatedTracker) : IRequest<BookingCreateFromHidokResponse>;
 
-public record BookingCreateResponse (string BookingId, int NoAntrian);
+public record BookingCreateFromHidokResponse(string BookingId, int NoAntrian);
 
-public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCreateResponse>
+public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHidokCommand, BookingCreateFromHidokResponse>
 {
     private readonly IJadwalPraktekRepo _jadwalPraktekRepo;
     private readonly IAntrianRepo _antrianRepo;
@@ -27,9 +27,9 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
     private readonly IBookingRepo _bookingRepo;
     private readonly IPasienTrackerRepo _trackerRepo;
     private readonly IPasienRepo _pasienRepo;
-    public BookingCreateHandler(IJadwalPraktekRepo jadwalPraktekRepo,
-        IAntrianRepo antrianRepo, IAntrianFactory antrianFactory, 
-        IBookingRepo bookingRepo, IPasienTrackerRepo trackerRepo, 
+    public BookingCreateFromHidokHandler(IJadwalPraktekRepo jadwalPraktekRepo,
+        IAntrianRepo antrianRepo, IAntrianFactory antrianFactory,
+        IBookingRepo bookingRepo, IPasienTrackerRepo trackerRepo,
         IPasienRepo pasienRepo)
     {
         _jadwalPraktekRepo = jadwalPraktekRepo;
@@ -39,8 +39,7 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         _trackerRepo = trackerRepo;
         _pasienRepo = pasienRepo;
     }
-
-    public Task<BookingCreateResponse> Handle(BookingCreateCmd request, CancellationToken cancellationToken)
+    public Task<BookingCreateFromHidokResponse> Handle(BookingCreateFromHidokCommand request, CancellationToken cancellationToken)
     {
         //  GUARD
         if (request.PasienId.Trim() != string.Empty && request.PasienName.Trim() != string.Empty)
@@ -52,23 +51,24 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         var jamMulai = TimeOnly.Parse(request.JamMulai);
         var jadwal = listJadwal
              .Where(x => x.Hari == hari)
-             .FirstOrDefault(x => x.JamMulai == jamMulai) 
+             .FirstOrDefault(x => x.JamMulai == jamMulai)
             ?? throw new ArgumentException("Jadwal tidak ditemukan");
 
         //  create person
-        var person = request.PasienId == string.Empty ? 
-            CreatePerson(request) : 
+        var person = request.PasienId == string.Empty ?
+            CreatePerson(request) :
             FindPasien(request);
 
         //  create booking
         var tglBerobat = DateOnly.Parse(request.TglBerobat);
-        var booking = BookingModel.Create(person, tglBerobat, jadwal, "-", request.NoPeserta, request.NoReffKontrol);
-        
+        var booking = BookingModel.Create(person, tglBerobat, jadwal, 
+            "-", request.NoPeserta, request.NoReffKontrol);
+
         //  ambil nomor antrian
         var listAntrian = _antrianRepo.ListData(tglBerobat);
         var sequenceTag = AntrianModel.GenSequenceTag(tglBerobat, jadwal);
         var antrianView = listAntrian.FirstOrDefault(x => x.SequenceTag == sequenceTag);
-        var antrian = antrianView is null ? 
+        var antrian = antrianView is null ?
             _antrianFactory.Create(tglBerobat, jadwal) :
             _antrianRepo.LoadEntity(antrianView).Value;
 
@@ -79,7 +79,7 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         //  persisting
         using var trans = TransHelper.NewScope();
         //      no antrian masuk ke transaction agar bisa rollback jika gagal
-        var antEntry = antrian.AddEntry(tracker);
+        var antEntry = antrian.AddEntry(request.NoAntrian, tracker);
         booking.AssignNoAntrian(antEntry.NoUrut);
         //      writing database
         _bookingRepo.SaveChanges(booking);
@@ -88,11 +88,11 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
 
         trans.Complete();
 
-        return Task.FromResult(new BookingCreateResponse(
+        return Task.FromResult(new BookingCreateFromHidokResponse(
             booking.BookingId, antEntry.NoUrut));
     }
 
-    private PersonInfoType FindPasien(BookingCreateCmd request)
+    private PersonInfoType FindPasien(BookingCreateFromHidokCommand request)
     {
         var pasienKey = PasienModel.Key(request.PasienId);
         var pasien = _pasienRepo.LoadEntity(pasienKey)
@@ -103,13 +103,13 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         return pasien;
     }
 
-    private static PersonInfoType CreatePerson(BookingCreateCmd request)
+    private static PersonInfoType CreatePerson(BookingCreateFromHidokCommand request)
     {
         var tglLahir = DateOnly.ParseExact(request.TglLahir, "yyyy-MM-dd");
         var alamat = new AlamatType([request.Alamat], "-", "-");
-        var contact = new ContactType(JenisContactEnum.Phone, request.NoTelp); 
+        var contact = new ContactType(JenisContactEnum.Phone, request.NoTelp);
         var person = new PersonInfoType(
-            request.PasienName, tglLahir, request.Gender, 
+            request.PasienName, tglLahir, request.Gender,
             alamat, contact, IdentitasType.Default);
         return person;
     }
@@ -117,7 +117,7 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
     private void ThrowExceptionIfTrackerExists(BookingModel booking)
     {
         var periodeVisit = new Periode(booking.TglBerobat.ToDateTime(TimeOnly.MinValue));
-        var listTracker = _trackerRepo.ListData(periodeVisit, booking.Person.TglLahir)?.ToList() 
+        var listTracker = _trackerRepo.ListData(periodeVisit, booking.Person.TglLahir)?.ToList()
                           ?? [];
         var personNameEyd = booking.Person.PersonName.ToEyd();
         var duplicated = listTracker
