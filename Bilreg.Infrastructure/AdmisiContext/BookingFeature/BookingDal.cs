@@ -35,13 +35,13 @@ public class BookingDal : IBookingDal
                 BookingId, BookingDate,
                 PasienName, TglLahir, Gender, Alamat, PasienId, RegId,
                 TglBerobat, JamPraktek, LayananId, DokterId, NoAntrian,
-                NoPeserta, NoReffKontrol, ReffId, 
+                TelpPasien, NoPeserta, NoReffKontrol, ReffId, 
                 CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
             VALUES (
                 @BookingId, @BookingDate,
                 @PasienName, @TglLahir, @Gender, @Alamat, @PasienId, @RegId,
                 @TglBerobat, @JamPraktek, @LayananId, @DokterId, @NoAntrian,
-                @NoPeserta, @NoReffKontrol, @ReffId,
+                @TelpPasien, @NoPeserta, @NoReffKontrol, @ReffId,
                 @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
             """;
 
@@ -53,6 +53,7 @@ public class BookingDal : IBookingDal
         dp.AddParam("@TglLahir", dto.TglLahir, SqlDbType.DateTime);
         dp.AddParam("@Gender", dto.Gender, SqlDbType.VarChar);
         dp.AddParam("@Alamat", dto.Alamat, SqlDbType.VarChar);
+        dp.AddParam("@TelpPasien", dto.TelpPasien, SqlDbType.VarChar);
         dp.AddParam("@PasienId", dto.PasienId, SqlDbType.VarChar);
         dp.AddParam("@RegId", dto.RegId, SqlDbType.VarChar);
         
@@ -89,12 +90,13 @@ public class BookingDal : IBookingDal
                Alamat = @Alamat,
                PasienId = @PasienId,
                RegId = @RegId,
+               TelpPasien = @TelpPasien,
                TglBerobat = @TglBerobat,
                JamPraktek = @JamPraktek,
                LayananId = @LayananId,
                DokterId = @DokterId,
                NoAntrian = @NoAntrian,
-               NoPesertaa = @NoPeserta,
+               NoPeserta = @NoPeserta,
                NoReffKontrol = @NoReffKontrol,
                ReffId = @ReffId,
                CrtUser = @CrtUser,
@@ -114,6 +116,7 @@ public class BookingDal : IBookingDal
         dp.AddParam("@TglLahir", dto.TglLahir, SqlDbType.DateTime);
         dp.AddParam("@Gender", dto.Gender, SqlDbType.VarChar);
         dp.AddParam("@Alamat", dto.Alamat, SqlDbType.VarChar);
+        dp.AddParam("@TelpPasien", dto.TelpPasien, SqlDbType.VarChar);
         dp.AddParam("@PasienId", dto.PasienId, SqlDbType.VarChar);
         dp.AddParam("@RegId", dto.RegId, SqlDbType.VarChar);
         
@@ -157,7 +160,7 @@ public class BookingDal : IBookingDal
         const string sql = """
             SELECT
                 aa.BookingId, aa.BookingDate,
-                aa.PasienName, aa.TglLahir, aa.Gender, aa.Alamat, aa.PasienId, aa.RegId,
+                aa.PasienName, aa.TglLahir, aa.Gender, aa.Alamat, aa.TelpPasien, aa.PasienId, aa.RegId,
                 aa.TglBerobat, aa.JamPraktek, aa.LayananId, aa.DokterId, aa.NoAntrian,
                 aa.NoPeserta, aa.NoReffKontrol, aa.ReffId, 
                 aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
@@ -183,7 +186,7 @@ public class BookingDal : IBookingDal
         const string sql = """
            SELECT
                aa.BookingId, aa.BookingDate,
-               aa.PasienName, aa.TglLahir, aa.Gender, aa.Alamat, aa.PasienId, aa.RegId,
+               aa.PasienName, aa.TglLahir, aa.Gender, aa.Alamat, aa.TelpPasien, aa.PasienId, aa.RegId,
                aa.TglBerobat, aa.JamPraktek, aa.LayananId, aa.DokterId, aa.NoAntrian,
                aa.NoPeserta, aa.NoReffKontrol, aa.ReffId,
                aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
@@ -212,7 +215,7 @@ public class BookingDal : IBookingDal
         const string sql = """
             SELECT
                aa.BookingId, aa.BookingDate,
-               aa.PasienName, aa.TglLahir, aa.Gender, aa.Alamat, aa.PasienId, aa.RegId,
+               aa.PasienName, aa.TglLahir, aa.Gender, aa.Alamat, aa.TelpPasien, aa.PasienId, aa.RegId,
                aa.TglBerobat, aa.JamPraktek, aa.LayananId, aa.DokterId, aa.NoAntrian,
                aa.NoPeserta, aa.NoReffKontrol, aa.ReffId,
                aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,

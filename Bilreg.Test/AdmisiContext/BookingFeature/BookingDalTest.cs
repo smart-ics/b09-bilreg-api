@@ -20,6 +20,7 @@ public class BookingDalTest
             TglLahir: new DateTime(2000, 1, 1),
             Gender: "C",
             Alamat: "D",
+            TelpPasien: "T1",
             PasienId: "D1",
             RegId: "D2",
             TglBerobat: new DateTime(2024, 1, 2),

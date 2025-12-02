@@ -152,16 +152,16 @@ public class RegDal : IRegDal
                 aa.fs_kd_jenis_reg, aa.fs_mr, aa.fs_kd_tipe_jaminan, aa.fs_kd_kelas, 
                 aa.fs_kd_cara_masuk_dk, aa.fs_kd_rujukan, aa.fs_kd_medis, 
                 aa.fs_kd_layanan, aa.fs_kd_karcis,
-                ISNULL(bb.fs_nm_pasien, '') AS fs_nm_pasien, 
-                ISNULL(bb.fd_tgl_lahir, '') AS fd_tgl_lahir, 
-                ISNULL(bb.fs_jns_kelamin, '') AS fs_jns_kelamin,
-                ISNULL(cc.fs_nm_tipe_jaminan, '') AS fs_nm_tipe_jaminan,
-                ISNULL(ee.fs_nm_kelas, '') AS fs_nm_kelas,
-                ISNULL(ff.fs_nm_cara_masuk_dk, '') AS fs_nm_cara_masuk_dk,
-                ISNULL(gg.fs_nm_rujukan, '') AS fs_nm_rujukan,
-                ISNULL(hh.fs_nm_peg, '') AS fs_nm_medis,
-                ISNULL(ii.fs_nm_layanan, '') AS fs_nm_layanan,
-                ISNULL(jj.fs_nm_karcis, '') AS fs_nm_karcis
+                ISNULL(bb.fs_nm_pasien, '-') AS fs_nm_pasien, 
+                ISNULL(bb.fd_tgl_lahir, '-') AS fd_tgl_lahir, 
+                ISNULL(bb.fs_jns_kelamin, '-') AS fs_jns_kelamin,
+                ISNULL(cc.fs_nm_tipe_jaminan, '-') AS fs_nm_tipe_jaminan,
+                ISNULL(ee.fs_nm_kelas, '-') AS fs_nm_kelas,
+                ISNULL(ff.fs_nm_cara_masuk_dk, '-') AS fs_nm_cara_masuk_dk,
+                ISNULL(gg.fs_nm_rujukan, '-') AS fs_nm_rujukan,
+                ISNULL(hh.fs_nm_peg, '-') AS fs_nm_medis,
+                ISNULL(ii.fs_nm_layanan, '-') AS fs_nm_layanan,
+                ISNULL(jj.fs_nm_karcis, '-') AS fs_nm_karcis
             FROM 
                 ta_registrasi aa
                 LEFT JOIN tc_mr bb ON aa.fs_mr = bb.fs_mr

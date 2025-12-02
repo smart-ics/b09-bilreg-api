@@ -8,7 +8,7 @@ using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiContext.AntrianFeature;
 
-public record AntrianGetNumberAvailableForHidokCommand(string DokterId, string TglAntrianYmd, string JamMulai): IRequest<AntrianGetNumberAvailableForHidokResponse>;
+public record AntrianGetNumberAvailableForHidokCommand(string DokterHidokId, string TglAntrianYmd, string JamMulai): IRequest<AntrianGetNumberAvailableForHidokResponse>;
 
 public record AntrianGetNumberAvailableForHidokResponse(int NextAvailableQueueNumber);
 
@@ -16,13 +16,16 @@ public class AntrianGetNumberAvailableForHidokhandler : IRequestHandler<AntrianG
 {
     private readonly IPpaRepo _ppaRepo;
     private readonly ISequencer _sequencer;
+    private readonly IPpaMapHidokRepo _ppaMapHidokRepo;
     private const string FORMAT_TGL_YMD = "yyyy-MM-dd";
     public AntrianGetNumberAvailableForHidokhandler(
         IPpaRepo ppaRepo,
-        ISequencer sequencer)
+        ISequencer sequencer,
+        IPpaMapHidokRepo ppaMapHidokRepo)
     {
         _ppaRepo = ppaRepo;
         _sequencer = sequencer;
+        _ppaMapHidokRepo = ppaMapHidokRepo;
     }
 
     public Task<AntrianGetNumberAvailableForHidokResponse> Handle(AntrianGetNumberAvailableForHidokCommand request, CancellationToken cancellationToken)
@@ -30,10 +33,15 @@ public class AntrianGetNumberAvailableForHidokhandler : IRequestHandler<AntrianG
         // GUARD
         Guard.IsNotEmpty(request.TglAntrianYmd);
         Guard.IsTrue(request.TglAntrianYmd.IsValidTgl(FORMAT_TGL_YMD));
-        var dokter = _ppaRepo.LoadEntity(PpaType.Key(request.DokterId))
+        var dokterHidok = _ppaMapHidokRepo.LoadEntity(PpaMapHidokType.Key(request.DokterHidokId))
             .Match(
                 onSome: x => x,
-                onNone: () => throw new KeyNotFoundException($"Dokter {request.DokterId} not found")
+                onNone: () => throw new KeyNotFoundException($"Mapping Dokter {request.DokterHidokId} not found")
+            );
+        var dokter = _ppaRepo.LoadEntity(PpaType.Key(dokterHidok.PpaId))
+            .Match(
+                onSome: x => x,
+                onNone: () => throw new KeyNotFoundException($"Dokter {dokterHidok.PpaId} not found")
             );
 
         // BUILD

@@ -40,6 +40,7 @@ public class BookingController : ControllerBase
     }
 
     [HttpPost]
+    [Route("creatFromHidok")]
     public async Task<IActionResult> CreateFromHidok(BookingCreateFromHidokCommand cmd)
     {
         var response = await _mediator.Send(cmd);

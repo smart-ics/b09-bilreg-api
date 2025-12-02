@@ -88,8 +88,8 @@ public class RegJaminanDal : IRegJaminanDal
         const string sql = """
            SELECT
                 aa.fs_kd_reg, aa.fs_kd_polis,
-                ISNULL(bb.fs_no_polis,'') fs_no_polis,
-                ISNULL(bb.fs_atas_nama, '') fs_atas_nama
+                ISNULL(bb.fs_no_polis,'-') fs_no_polis,
+                ISNULL(bb.fs_atas_nama, '-') fs_atas_nama
            FROM
                 ta_reg_jaminan aa
                 LEFT JOIN ta_polis bb ON aa.fs_kd_polis = bb.fs_kd_polis

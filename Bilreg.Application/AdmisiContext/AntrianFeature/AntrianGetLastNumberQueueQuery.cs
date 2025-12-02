@@ -9,7 +9,7 @@ using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiContext.AntrianFeature;
 
-public record AntrianGetLastNumberQuery(string DokterId, string TglAntrianYmd, string JamMulai) 
+public record AntrianGetLastNumberQuery(string DokterHidokId, string TglAntrianYmd, string JamMulai) 
     : IRequest<AntrianGetLastNumberResponse>;
 
 
@@ -21,14 +21,17 @@ public class AntrianGetlastNumberHandler : IRequestHandler<AntrianGetLastNumberQ
     private readonly IAntrianRepo _antrianRepo;
     private readonly IJadwalPraktekRepo _jadwalPraktekRepo;
     private readonly IPpaRepo _ppaRepo;
+    private readonly IPpaMapHidokRepo _ppaMapHidokRepo;
     private const string FORMAT_TGL_YMD = "yyyy-MM-dd";
     public AntrianGetlastNumberHandler(IAntrianRepo antrianRepo,
         IJadwalPraktekRepo jadwalPraktekRepo,
-        IPpaRepo ppaRepo)
+        IPpaRepo ppaRepo,
+        IPpaMapHidokRepo ppaMapHidokRepo)
     {
         _antrianRepo = antrianRepo;
         _jadwalPraktekRepo = jadwalPraktekRepo;
         _ppaRepo = ppaRepo;
+        _ppaMapHidokRepo = ppaMapHidokRepo;
     }
 
 
@@ -37,10 +40,15 @@ public class AntrianGetlastNumberHandler : IRequestHandler<AntrianGetLastNumberQ
         // GUARD
         Guard.IsNotEmpty(request.TglAntrianYmd);
         Guard.IsTrue(request.TglAntrianYmd.IsValidTgl(FORMAT_TGL_YMD));
-        var dokter = _ppaRepo.LoadEntity(PpaType.Key(request.DokterId))
+        var dokterHidok = _ppaMapHidokRepo.LoadEntity(PpaMapHidokType.Key(request.DokterHidokId))
             .Match(
                 onSome: x => x,
-                onNone: () => throw new KeyNotFoundException($"Dokter {request.DokterId} not found")
+                onNone: () => throw new KeyNotFoundException($"Mapping Dokter {request.DokterHidokId} not found")
+            );
+        var dokter = _ppaRepo.LoadEntity(PpaType.Key(dokterHidok.PpaId))
+            .Match(
+                onSome: x => x,
+                onNone: () => throw new KeyNotFoundException($"Dokter {dokterHidok.PpaId} not found")
             );
 
         // BUILD

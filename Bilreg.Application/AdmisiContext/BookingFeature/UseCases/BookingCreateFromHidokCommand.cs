@@ -14,7 +14,7 @@ namespace Bilreg.Application.AdmisiContext.BookingFeature.UseCases;
 public record BookingCreateFromHidokCommand(string PasienId, string PasienName, string TglLahir,
     string Gender, string Alamat, string NoTelp,
     string DokterId, string TglBerobat, string JamMulai,
-    string NoPeserta, string NoReffKontrol, int NoAntrian,
+    string NoPeserta, string NoReffKontrol, int NoAntrian, string ReffId,
     bool IsForceDuplicatedTracker) : IRequest<BookingCreateFromHidokResponse>;
 
 public record BookingCreateFromHidokResponse(string BookingId, int NoAntrian);
@@ -62,7 +62,7 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
         //  create booking
         var tglBerobat = DateOnly.Parse(request.TglBerobat);
         var booking = BookingModel.Create(person, tglBerobat, jadwal, 
-            "-", request.NoPeserta, request.NoReffKontrol);
+            request.ReffId, request.NoPeserta, request.NoReffKontrol);
 
         //  ambil nomor antrian
         var listAntrian = _antrianRepo.ListData(tglBerobat);
