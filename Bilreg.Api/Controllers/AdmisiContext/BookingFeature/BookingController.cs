@@ -39,6 +39,14 @@ public class BookingController : ControllerBase
         return Ok(new JSendOk("Done"));
     }
 
+    [HttpPost]
+    public async Task<IActionResult> CreateFromHidok(BookingCreateFromHidokCommand cmd)
+    {
+        var response = await _mediator.Send(cmd);
+        return Ok(new JSendOk(response));
+    }
+
+
     [HttpGet]
     [Route("{id}")]
     public async Task<IActionResult> GetData(string id)
