@@ -3,7 +3,6 @@ using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
-using CommunityToolkit.Diagnostics;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
 
@@ -38,8 +37,9 @@ public class AntrianGetlastNumberHandler : IRequestHandler<AntrianGetLastNumberQ
     public Task<AntrianGetLastNumberResponse> Handle(AntrianGetLastNumberQuery request, CancellationToken cancellationToken)
     {
         // GUARD
-        Guard.IsNotEmpty(request.TglAntrianYmd);
-        Guard.IsTrue(request.TglAntrianYmd.IsValidTgl(FORMAT_TGL_YMD));
+        //Guard.IsNotEmpty(request.TglAntrianYmd);
+        //Guard.IsTrue(request.TglAntrianYmd.IsValidTgl(FORMAT_TGL_YMD));
+
         var dokterHidok = _ppaMapHidokRepo.LoadEntity(PpaMapHidokType.Key(request.DokterHidokId))
             .Match(
                 onSome: x => x,

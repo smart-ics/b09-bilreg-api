@@ -1,7 +1,6 @@
 ﻿using Bilreg.Application.AdmisiContext.BookingFeature;
 using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.AdmisiContext.PpaFeature;
-using Bilreg.Application.AdmisiContext.RegSub;
 using Bilreg.Application.AdmisiContext.RujukanFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
@@ -32,7 +31,7 @@ public class RegJalanByBookingHandler
     private readonly IRegRepo _regRepo;
     private readonly IRegAktifRepo _regAktifRepo;
     private readonly ICaraMasukDkRepo _caraMasukDkRepo;
-
+    
     public RegJalanByBookingHandler(
         IBookingRepo bookingRepo,
         IPasienRepo pasienRepo,

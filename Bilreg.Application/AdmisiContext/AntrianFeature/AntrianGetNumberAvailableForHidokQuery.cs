@@ -1,10 +1,8 @@
 ﻿using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
-using Bilreg.Domain.Helpers;
-using CommunityToolkit.Diagnostics;
+using Bilreg.Domain.Shared.Helpers;
 using MediatR;
-using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiContext.AntrianFeature;
 
@@ -31,8 +29,9 @@ public class AntrianGetNumberAvailableForHidokhandler : IRequestHandler<AntrianG
     public Task<AntrianGetNumberAvailableForHidokResponse> Handle(AntrianGetNumberAvailableForHidokCommand request, CancellationToken cancellationToken)
     {
         // GUARD
-        Guard.IsNotEmpty(request.TglAntrianYmd);
-        Guard.IsTrue(request.TglAntrianYmd.IsValidTgl(FORMAT_TGL_YMD));
+        //Guard.IsNotEmpty(request.TglAntrianYmd);
+        //Guard.IsTrue(request.TglAntrianYmd.IsValidTgl(FORMAT_TGL_YMD));
+
         var dokterHidok = _ppaMapHidokRepo.LoadEntity(PpaMapHidokType.Key(request.DokterHidokId))
             .Match(
                 onSome: x => x,
