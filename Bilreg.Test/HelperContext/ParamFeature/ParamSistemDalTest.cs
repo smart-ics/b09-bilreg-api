@@ -1,6 +1,6 @@
-﻿using Bilreg.Domain.ParamContext;
-using Bilreg.Infrastructure.Helpers;
-using Bilreg.Infrastructure.ParamContext;
+﻿using Bilreg.Domain.Shared.Param;
+using Bilreg.Infrastructure.Shared.Helpers;
+using Bilreg.Infrastructure.Shared.Param;
 using FluentAssertions;
 using Nuna.Lib.TransactionHelper;
 using Xunit;

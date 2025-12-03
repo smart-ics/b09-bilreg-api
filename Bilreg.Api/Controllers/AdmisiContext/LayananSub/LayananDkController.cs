@@ -1,4 +1,4 @@
-﻿using Bilreg.Application.AdmisiContext.LayananSub.LayananDkAgg;
+﻿using Bilreg.Application.AdmisiContext.LayananFeature.LayananDkAgg;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;

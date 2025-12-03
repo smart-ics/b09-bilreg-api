@@ -1,6 +1,6 @@
 ﻿using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature;
-using Bilreg.Infrastructure.Helpers;
+using Bilreg.Infrastructure.Shared.Helpers;
 using FluentAssertions;
 using Nuna.Lib.TransactionHelper;
 using Nuna.Lib.ValidationHelper;

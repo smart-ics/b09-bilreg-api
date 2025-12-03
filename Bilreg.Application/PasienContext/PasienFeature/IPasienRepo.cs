@@ -1,5 +1,4 @@
-﻿using Bilreg.Application.Helpers;
-using Bilreg.Domain.AdmisiContext.BookingFeature;
+﻿using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Nuna.Lib.DataAccessHelper;
 

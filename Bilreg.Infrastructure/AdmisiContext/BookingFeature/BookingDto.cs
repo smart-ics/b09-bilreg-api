@@ -2,8 +2,8 @@
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
-using Bilreg.Domain.Helpers.CommonValueObjects;
 using Bilreg.Domain.PasienContext.PasienFeature;
+using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Infrastructure.AdmisiContext.BookingFeature;

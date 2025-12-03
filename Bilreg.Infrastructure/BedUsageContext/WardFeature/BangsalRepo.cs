@@ -1,4 +1,5 @@
 using Bilreg.Application.BedUsageContext.WardFeature;
+using Bilreg.Domain.BedUsageContext.WardFeature;
 using Nuna.Lib.PatternHelper;
 
 namespace Bilreg.Infrastructure.BedUsageContext.WardFeature;

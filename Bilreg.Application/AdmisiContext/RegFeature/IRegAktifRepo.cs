@@ -2,7 +2,7 @@
 using Nuna.Lib.DataAccessHelper;
 using Nuna.Lib.ValidationHelper;
 
-namespace Bilreg.Application.AdmisiContext.RegSub;
+namespace Bilreg.Application.AdmisiContext.RegFeature;
 
 public interface IRegAktifRepo :
     ISaveChange<RegAktifModel>,

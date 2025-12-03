@@ -1,4 +1,4 @@
-﻿using Bilreg.Application.AdmisiContext.RegSub;
+﻿using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Nuna.Lib.PatternHelper;
 using Nuna.Lib.ValidationHelper;

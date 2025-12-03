@@ -1,7 +1,7 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Domain.BedUsageContext.WardFeature;
-using Bilreg.Domain.Helpers;
 using Bilreg.Domain.PasienContext.PasienFeature;
+using Bilreg.Domain.Shared.Helpers;
 
 namespace Bilreg.Domain.AdmisiContext.JaminanFeature;
 

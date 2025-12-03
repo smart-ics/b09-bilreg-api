@@ -1,6 +1,5 @@
 ﻿using Bilreg.Application.AdmisiContext.JaminanFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
-using Bilreg.Application.AdmisiContext.JaminanSub.PolisAgg;
 using JetBrains.Annotations;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;

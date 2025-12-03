@@ -1,6 +1,7 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
-using Bilreg.Infrastructure.Helpers;
+using Bilreg.Domain.BedUsageContext.WardFeature;
+using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
