@@ -1,5 +1,5 @@
 ﻿using Bilreg.Domain.AdmisiContext.AntrianFeature;
-using Bilreg.Domain.Helpers;
+using Bilreg.Domain.Shared.Helpers;
 
 namespace Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
 

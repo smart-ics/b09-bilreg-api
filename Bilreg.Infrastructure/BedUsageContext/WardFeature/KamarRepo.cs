@@ -1,9 +1,8 @@
 using Bilreg.Application.BedUsageContext.WardFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
-using Bilreg.Infrastructure.BedUsageContext.WardFeature;
 using Nuna.Lib.PatternHelper;
 
-namespace Bilreg.Test.BedUsageContext.BangsalFeature;
+namespace Bilreg.Infrastructure.BedUsageContext.WardFeature;
 
 public class KamarRepo : IKamarRepo
 {

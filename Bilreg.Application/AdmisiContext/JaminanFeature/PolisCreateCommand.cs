@@ -1,15 +1,13 @@
-﻿using Bilreg.Application.AdmisiContext.JaminanFeature;
+﻿using System.Globalization;
+using Ardalis.GuardClauses;
 using Bilreg.Application.BedUsageContext.WardFeature;
-using Bilreg.Application.Helpers;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
-using System.Globalization;
-using Ardalis.GuardClauses;
 
-namespace Bilreg.Application.AdmisiContext.JaminanSub.PolisAgg;
+namespace Bilreg.Application.AdmisiContext.JaminanFeature;
 
 public record PolisCreateCommand(
     string PasienId,

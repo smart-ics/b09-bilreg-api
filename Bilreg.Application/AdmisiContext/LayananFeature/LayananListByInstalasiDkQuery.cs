@@ -1,7 +1,7 @@
 ﻿using Bilreg.Domain.AdmisiContext.LayananFeature;
 using MediatR;
 
-namespace Bilreg.Application.AdmisiContext.LayananFeature.LayananAgg;
+namespace Bilreg.Application.AdmisiContext.LayananFeature;
 
 public record LayananListByInstalasiDkQuery(string InstalasiDkId) : IRequest<IEnumerable<LayananListByInstalasiDkResponse>>, IInstalasiDkKey;
 

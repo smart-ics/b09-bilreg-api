@@ -1,7 +1,7 @@
 ﻿using Nuna.Lib.ActionResultHelper;
 using System.Net;
 using System.Text.Json;
-using Bilreg.Application.Helpers;
+using Bilreg.Application.Shared.Helpers;
 
 namespace Bilreg.Api.Configurations;
 

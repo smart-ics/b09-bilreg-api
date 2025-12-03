@@ -1,13 +1,11 @@
-using Ardalis.GuardClauses;
-using Bilreg.Application.Helpers;
-using Bilreg.Application.ParamContext.ParamSistemAgg;
-using Bilreg.Application.PasienContext.PasienFeature;
+using Bilreg.Application.Shared.Param.ParamSistemAgg;
 using Bilreg.Domain.PasienContext.DemografiFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.PasienContext.StatusSosialFeature;
+using Bilreg.Domain.Shared.Param;
 using MediatR;
 
-namespace Bilreg.Application.PasienContext.DataSosialPasienSub.PasienAgg;
+namespace Bilreg.Application.PasienContext.PasienFeature;
 
 public record PasienGetQuery(string PasienId) : IRequest<PasienGetResponse>, IPasienKey;
 

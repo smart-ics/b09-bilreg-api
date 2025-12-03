@@ -2,7 +2,7 @@
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
-using Bilreg.Domain.Helpers;
+using Bilreg.Domain.Shared.Helpers;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
 

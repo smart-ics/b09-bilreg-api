@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <Folder Include="AdmisiContext\LayananFeature\LayananAgg\" />
+    <Folder Include="Shared\" />
   </ItemGroup>
 
 </Project>

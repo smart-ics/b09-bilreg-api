@@ -1,6 +1,6 @@
 ﻿using Bilreg.Domain.PasienContext.StatusSosialFeature;
-using Bilreg.Infrastructure.Helpers;
 using Bilreg.Infrastructure.PasienContext.StatusSosialFeature;
+using Bilreg.Infrastructure.Shared.Helpers;
 using FluentAssertions;
 using Nuna.Lib.TransactionHelper;
 using Xunit;

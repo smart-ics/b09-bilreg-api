@@ -1,7 +1,7 @@
 ﻿using Bilreg.Domain.ChargeContext.TarifFeature;
 using Nuna.Lib.DataAccessHelper;
 
-namespace Bilreg.Application.BillContext.TindakanFeature;
+namespace Bilreg.Application.ChargeContext.TindakanFeature;
 
 public interface IKomponenRepo :
     ISaveChange<KomponenType>,

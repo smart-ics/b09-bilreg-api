@@ -3,6 +3,7 @@ using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.PasienContext.DemografiFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.PasienContext.StatusSosialFeature;
+using Bilreg.Domain.Shared.Param;
 using Nuna.Lib.PatternHelper;
 using Nuna.Lib.TransactionHelper;
 using Nuna.Lib.ValidationHelper;
