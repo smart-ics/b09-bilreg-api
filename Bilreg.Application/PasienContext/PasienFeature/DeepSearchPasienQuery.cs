@@ -1,5 +1,5 @@
 ﻿using Ardalis.GuardClauses;
-using Bilreg.Application.ParamContext.ParamSistemAgg;
+using Bilreg.Application.Shared.Param.ParamSistemAgg;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
 

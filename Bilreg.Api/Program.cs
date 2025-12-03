@@ -40,7 +40,6 @@ app
         opt.Title = "BilReg API - Documentation By Scalar";
         opt.Theme = ScalarTheme.Kepler;
         opt.DarkMode = true;
-        //opt.DefaultHttpClient = new(ScalarTarget.Http, ScalarClient.Http11);
     });
 
 

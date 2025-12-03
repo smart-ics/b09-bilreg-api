@@ -1,4 +1,4 @@
-﻿using Bilreg.Application.BillContext.TindakanFeature;
+﻿using Bilreg.Application.ChargeContext.TindakanFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Nuna.Lib.PatternHelper;
 

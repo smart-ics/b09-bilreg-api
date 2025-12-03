@@ -1,6 +1,4 @@
-﻿using System.Reflection;
-using Bilreg.Application;
-using FluentValidation;
+﻿using Bilreg.Application;
 using Nuna.Lib.AutoNumberHelper;
 using Nuna.Lib.CleanArchHelper;
 using Scrutor;
@@ -15,8 +13,8 @@ public static class ApplicationService
         IConfiguration configuration)
     {
         services
-            .AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(typeof(ApplicationAssemblyAnchor).Assembly))
-            .AddValidatorsFromAssembly(Assembly.Load(APPLICATION_ASSEMBLY));
+            .AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(typeof(ApplicationAssemblyAnchor).Assembly));
+            //.AddValidatorsFromAssembly(Assembly.Load(APPLICATION_ASSEMBLY));
 
         services
             .AddScoped<INunaCounterBL, NunaCounterBL>();

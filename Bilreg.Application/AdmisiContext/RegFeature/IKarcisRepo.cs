@@ -1,8 +1,9 @@
-﻿
-using Bilreg.Domain.AdmisiContext.LayananFeature;
+﻿using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Nuna.Lib.DataAccessHelper;
+
+namespace Bilreg.Application.AdmisiContext.RegFeature;
 
 public interface IKarcisRepo :
     ISaveChange<KarcisType>,

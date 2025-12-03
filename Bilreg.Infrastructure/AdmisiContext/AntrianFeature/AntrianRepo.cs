@@ -1,6 +1,6 @@
 ﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
-using Bilreg.Domain.Helpers;
+using Bilreg.Domain.Shared.Helpers;
 using Nuna.Lib.PatternHelper;
 using Nuna.Lib.ValidationHelper;
 

@@ -2,13 +2,13 @@
 using System.Data.SqlClient;
 using Bilreg.Application.PasienContext.DemografiFeature;
 using Bilreg.Domain.PasienContext.DemografiFeature;
-using Bilreg.Infrastructure.Helpers;
+using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
 using Nuna.Lib.PatternHelper;
 
-namespace Bilreg.Infrastructure.PasienContext.DemografiSub;
+namespace Bilreg.Infrastructure.PasienContext.DemografiFeature;
 
 public class PropinsiDal : IPropinsiDal
 {

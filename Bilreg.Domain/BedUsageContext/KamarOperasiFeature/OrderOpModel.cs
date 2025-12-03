@@ -1,8 +1,8 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
-using Bilreg.Domain.Helpers.CommonValueObjects;
 using Bilreg.Domain.PasienContext.PasienFeature;
+using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 
 namespace Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 

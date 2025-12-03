@@ -1,12 +1,12 @@
 using System.Data;
 using System.Data.SqlClient;
 using Bilreg.Domain.BedUsageContext.WardFeature;
-using Bilreg.Infrastructure.Helpers;
+using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
 
-namespace Bilreg.Infrastructure.BedUsageContext.BangsalFeature;
+namespace Bilreg.Infrastructure.BedUsageContext.WardFeature;
 
 public interface IRoomCatDal :
     IInsert<RoomCatType>,

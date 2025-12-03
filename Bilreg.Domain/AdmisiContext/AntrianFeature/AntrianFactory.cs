@@ -1,6 +1,6 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
-using Bilreg.Domain.Helpers;
+using Bilreg.Domain.Shared.Helpers;
 
 
 namespace Bilreg.Domain.AdmisiContext.AntrianFeature;

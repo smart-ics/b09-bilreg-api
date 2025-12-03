@@ -3,7 +3,7 @@ using System.Data.SqlClient;
 using Bilreg.Application.PasienContext.StatusSosialFeature;
 using Bilreg.Domain.PasienContext;
 using Bilreg.Domain.PasienContext.StatusSosialFeature;
-using Bilreg.Infrastructure.Helpers;
+using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;

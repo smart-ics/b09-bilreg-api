@@ -1,7 +1,7 @@
 ﻿using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
-using Bilreg.Domain.PaymentContext.RekapCetakSub;
+using Bilreg.Domain.PaymentContext.RekapCetakFeature;
 
 //  resharper disable inconsistentnaming
 namespace Bilreg.Infrastructure.AdmisiContext.RegFeature;

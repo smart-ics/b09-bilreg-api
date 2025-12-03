@@ -1,6 +1,6 @@
 ﻿using Ardalis.GuardClauses;
 
-namespace Bilreg.Domain.PaymentContext.RekapCetakSub;
+namespace Bilreg.Domain.PaymentContext.RekapCetakFeature;
 
 public record GroupRekapCetakType : IGroupRekapCetakKey
 {

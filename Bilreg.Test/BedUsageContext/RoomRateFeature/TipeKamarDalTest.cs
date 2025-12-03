@@ -1,6 +1,6 @@
 using Bilreg.Domain.BedUsageContext.RoomRateFeature;
 using Bilreg.Infrastructure.BedUsageContext.RoomRateFeature;
-using Bilreg.Infrastructure.Helpers;
+using Bilreg.Infrastructure.Shared.Helpers;
 using FluentAssertions;
 using Nuna.Lib.TransactionHelper;
 

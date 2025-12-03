@@ -1,8 +1,8 @@
-using Bilreg.Application.BedUsageContext.BangsalFeature;
+using Bilreg.Application.BedUsageContext.WardFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Nuna.Lib.PatternHelper;
 
-namespace Bilreg.Infrastructure.BedUsageContext.BangsalFeature;
+namespace Bilreg.Infrastructure.BedUsageContext.WardFeature;
 
 public class RoomCatRepo : IRoomCatRepo
 {

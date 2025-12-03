@@ -1,13 +1,11 @@
-using Bilreg.Application.Helpers;
-using Bilreg.Application.ParamContext.ParamSistemAgg;
-using Bilreg.Application.PasienContext.PasienFeature;
+using Bilreg.Application.Shared.Param.ParamSistemAgg;
 using Bilreg.Domain.PasienContext.DemografiFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.PasienContext.StatusSosialFeature;
-using CommunityToolkit.Diagnostics;
+using Bilreg.Domain.Shared.Param;
 using MediatR;
 
-namespace Bilreg.Application.PasienContext.DataSosialPasienSub.PasienAgg;
+namespace Bilreg.Application.PasienContext.PasienFeature;
 
 public record PasienGetQuery(string PasienId) : IRequest<PasienGetResponse>, IPasienKey;
 
@@ -55,9 +53,7 @@ public class PasienGetHandler : IRequestHandler<PasienGetQuery, PasienGetRespons
 
     public Task<PasienGetResponse> Handle(PasienGetQuery request, CancellationToken cancellationToken)
     {
-        // GUARD
-        Guard.IsTrue(request.PasienId.IsValidA(x => x.Length is 6 or 8 or 15));
-
+        // BUILD
         var pasienId = GetPasienId(request.PasienId);
 
         var pasien = _pasienRepo.LoadEntity(PasienModel.Key(pasienId))
