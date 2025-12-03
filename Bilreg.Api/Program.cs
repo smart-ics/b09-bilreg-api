@@ -12,7 +12,11 @@ builder.Services
     .AddDomain(builder.Configuration)
     .AddApplication(builder.Configuration)
     .AddInfrastructure(builder.Configuration)
-    .AddPresentation(builder.Configuration);
+    .AddPresentation(builder.Configuration)
+    .AddSwaggerGen(c =>
+    {
+        c.SchemaFilter<DefaultExampleSchemaFilter>();
+    });
 
 builder.Host
     .UseSerilog(SerilogConfiguration.ContextConfiguration);
@@ -36,7 +40,6 @@ app
         opt.Title = "BilReg API - Documentation By Scalar";
         opt.Theme = ScalarTheme.Kepler;
         opt.DarkMode = true;
-        //opt.DefaultHttpClient = new(ScalarTarget.Http, ScalarClient.Http11);
     });
 
 

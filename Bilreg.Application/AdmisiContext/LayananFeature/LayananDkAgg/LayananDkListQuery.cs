@@ -1,8 +1,7 @@
 ﻿using Bilreg.Application.AdmisiContext.LayananFeature.TipeLayananDkAgg;
-using Bilreg.Domain.AdmisiContext.LayananFeature;
 using MediatR;
 
-namespace Bilreg.Application.AdmisiContext.LayananSub.LayananDkAgg;
+namespace Bilreg.Application.AdmisiContext.LayananFeature.LayananDkAgg;
 
 public record LayananDkListQuery() : IRequest<IEnumerable<LayananDkListResponse>>;
 public record LayananDkListResponse(

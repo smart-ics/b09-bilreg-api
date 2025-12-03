@@ -14,7 +14,7 @@ public interface IPpaRepo :
 }
 
 public record PpaView(string PpaId, 
-    string PpaName, string NamaSingkat, SmfType Smf);
+    string PpaName, string NamaSingkat, SmfType Smf, GroupSpesialisType GroupSpesialis);
     
 public record PpaLayananView(string PpaId,
     string PpaName, LayananReff Layanan);

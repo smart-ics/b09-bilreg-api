@@ -1,8 +1,8 @@
-﻿using Bilreg.Domain.AdmisiContext.BookingFeature;
+﻿using Ardalis.GuardClauses;
+using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
-using CommunityToolkit.Diagnostics;
 using MediatR;
 
 namespace Bilreg.Application.AdmisiContext.BookingFeature.UseCases;
@@ -24,7 +24,7 @@ public class BookingGetHanlder : IRequestHandler<BookingGetQuery, BookingGetResp
 
     public Task<BookingGetResponse> Handle(BookingGetQuery request, CancellationToken cancellationToken)
     {
-        Guard.IsNotEmpty(request.BookingId);
+        Guard.Against.NullOrEmpty(request.BookingId);
         
         var booking = _bookingRepo.LoadEntity(request)
             .Match(

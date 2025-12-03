@@ -1,5 +1,4 @@
-﻿using Bilreg.Application.PasienContext.DataSosialPasienSub.PasienAgg;
-using Bilreg.Application.PasienContext.PasienFeature;
+﻿using Bilreg.Application.PasienContext.PasienFeature;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;

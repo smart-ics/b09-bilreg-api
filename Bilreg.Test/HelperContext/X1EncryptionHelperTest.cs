@@ -1,4 +1,4 @@
-﻿using Bilreg.Infrastructure.Helpers;
+﻿using Bilreg.Infrastructure.Shared.Helpers;
 using FluentAssertions;
 using Xunit;
 

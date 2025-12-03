@@ -1,5 +1,5 @@
 ﻿using Ardalis.GuardClauses;
-using Bilreg.Domain.Helpers;
+using Bilreg.Domain.Shared.Helpers;
 
 namespace Bilreg.Domain.PasienContext.PasienFeature;
 

@@ -3,7 +3,7 @@ using System.Data.SqlClient;
 using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
-using Bilreg.Infrastructure.Helpers;
+using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
@@ -91,12 +91,16 @@ public class PpaDal : IPpaDal
         const string sql = """
             SELECT 
                 aa.fs_kd_peg, aa.fs_nm_peg, aa.fs_nm_alias, aa.fs_kd_smf,
-                ISNULL(bb.fs_nm_smf, '') fs_nm_smf
+                ISNULL(bb.fs_nm_smf, '') fs_nm_smf,
+                ISNULL(cc.GroupSpesialisId, '-') AS GroupSpesialisId,
+                ISNULL(dd.GroupSpesialisName, '-') AS GroupSpesialisName
             FROM 
                 td_peg aa
                 LEFT JOIN ta_smf bb ON aa.fs_kd_smf = bb.fs_kd_smf
+                LEFT JOIN td_peg2 cc ON aa.fs_kd_peg = cc.fs_kd_peg
+                LEFT JOIN Bilrg_GroupSpesialis dd ON cc.GroupSpesialisId = dd.GroupSpesialisId
             WHERE 
-                fs_kd_peg = @fs_kd_peg
+                aa.fs_kd_peg = @fs_kd_peg
             """;
 
         var dp = new DynamicParameters();
@@ -111,10 +115,14 @@ public class PpaDal : IPpaDal
         const string sql = """
             SELECT 
                 aa.fs_kd_peg, aa.fs_nm_peg, aa.fs_nm_alias, aa.fs_kd_smf,
-                ISNULL(bb.fs_nm_smf, '') fs_nm_smf
+                ISNULL(bb.fs_nm_smf, '') fs_nm_smf,
+                ISNULL(cc.GroupSpesialisId, '-') AS GroupSpesialisId,
+                ISNULL(dd.GroupSpesialisName, '-') AS GroupSpesialisName
             FROM 
                 td_peg aa
                 LEFT JOIN ta_smf bb ON aa.fs_kd_smf = bb.fs_kd_smf
+                LEFT JOIN td_peg2 cc ON aa.fs_kd_peg = cc.fs_kd_peg
+                LEFT JOIN Bilrg_GroupSpesialis dd ON cc.GroupSpesialisId = dd.GroupSpesialisId
             WHERE 
                 aa.fb_aktif_Dinas = 1
             """;
@@ -155,12 +163,16 @@ public class PpaDal : IPpaDal
         const string sql = """
            SELECT 
                aa.fs_kd_peg, aa.fs_nm_peg, aa.fs_nm_alias, aa.fs_kd_smf,
-               ISNULL(dd.fs_nm_smf, '') fs_nm_smf
+               ISNULL(dd.fs_nm_smf, '') fs_nm_smf,
+               ISNULL(ee.GroupSpesialisId, '-') AS GroupSpesialisId,
+               ISNULL(ff.GroupSpesialisName, '-') AS GroupSpesialisName
            FROM 
                td_peg aa
                LEFT JOIN td_peg_sat_tugas bb ON aa.fs_kd_peg = bb.fs_kd_peg
                LEFT JOIN td_sat_tugas cc ON bb.fs_kd_sat_tugas = cc.fs_kd_sat_tugas
                LEFT JOIN ta_smf dd ON aa.fs_kd_smf = dd.fs_kd_smf
+               LEFT JOIN td_peg2 ee ON aa.fs_kd_peg = ee.fs_kd_peg
+               LEFT JOIN Bilrg_GroupSpesialis ff ON ee.GroupSpesialisId = ff.GroupSpesialisId
            WHERE 
                aa.fb_aktif_Dinas = 1
                AND bb.fn_utama = 1

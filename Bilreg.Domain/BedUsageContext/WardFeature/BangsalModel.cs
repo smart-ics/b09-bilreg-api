@@ -1,6 +1,7 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
-using Bilreg.Domain.BedUsageContext.WardFeature;
+
+namespace Bilreg.Domain.BedUsageContext.WardFeature;
 
 public record BangsalType : IBangsalKey
 {

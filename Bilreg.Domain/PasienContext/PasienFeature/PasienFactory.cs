@@ -1,8 +1,8 @@
 ﻿using Bilreg.Domain.AdmisiContext.BookingFeature;
-using Bilreg.Domain.Helpers;
 using Bilreg.Domain.PasienContext.DemografiFeature;
 using Bilreg.Domain.PasienContext.StatusSosialFeature;
-using Nuna.Lib.CleanArchHelper;
+using Bilreg.Domain.Shared.Helpers;
+using Bilreg.Domain.Shared.Param;
 
 namespace Bilreg.Domain.PasienContext.PasienFeature;
 
@@ -10,9 +10,6 @@ public interface IPasienFactory : INunaFactory<PasienModel>
 {
     PasienModel CreateFromPerson(PersonInfoType person, string nickName,
         string tempatLahir, GolDarahType golDarah, string namaIbuKandung);
-}
-public interface IGetKodeRsService : INunaService<string>
-{
 }
 
 public class PasienFactory : IPasienFactory

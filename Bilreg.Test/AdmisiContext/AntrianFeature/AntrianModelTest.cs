@@ -2,7 +2,7 @@
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
-using Bilreg.Domain.Helpers;
+using Bilreg.Domain.Shared.Helpers;
 using FluentAssertions;
 using Moq;
 using Xunit;
@@ -203,6 +203,7 @@ public class AntrianFactoryTests
             name,
             "Dr. J",
             SmfType.Default,
+            GroupSpesialisType.Default,
             new List<PpaLayananType>(),
             new List<PpaSatTugasType>());
 

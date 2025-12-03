@@ -1,3 +1,4 @@
+using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Infrastructure.BedUsageContext.WardFeature;
 using FluentAssertions;
 using Moq;

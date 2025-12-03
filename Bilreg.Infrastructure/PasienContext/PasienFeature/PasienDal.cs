@@ -2,7 +2,7 @@
 using System.Data.SqlClient;
 using System.Text;
 using Bilreg.Domain.PasienContext.PasienFeature;
-using Bilreg.Infrastructure.Helpers;
+using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;

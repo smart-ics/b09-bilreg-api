@@ -1,9 +1,8 @@
 using Bilreg.Application.BedUsageContext.WardFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
-using Bilreg.Infrastructure.BedUsageContext.WardFeature;
 using Nuna.Lib.PatternHelper;
 
-namespace Bilreg.Test.BedUsageContext.BangsalFeature;
+namespace Bilreg.Infrastructure.BedUsageContext.WardFeature;
 
 public class KamarRepo : IKamarRepo
 {
@@ -46,7 +45,7 @@ public class KamarRepo : IKamarRepo
         var listDto = _kamarDal.ListData()?.ToList() ?? [];
         var listFiltered = listDto
             .Where(x => x.fs_kd_bangsal == filter.BangsalId);
-        var result = listDto.Select(x => x.ToModel()).ToList();
+        var result = listFiltered.Select(x => x.ToModel()).ToList();
         return result;
     }
 }

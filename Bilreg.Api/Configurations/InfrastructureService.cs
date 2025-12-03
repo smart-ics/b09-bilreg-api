@@ -1,9 +1,9 @@
 ﻿using Bilreg.Application.PasienContext.PasienFeature;
-using Bilreg.Domain.Helpers;
+using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Infrastructure;
-using Bilreg.Infrastructure.Helpers;
-using Bilreg.Infrastructure.ParamContext;
 using Bilreg.Infrastructure.PasienContext.PasienFeature;
+using Bilreg.Infrastructure.Shared.Helpers;
+using Bilreg.Infrastructure.Shared.Param;
 using Nuna.Lib.AutoNumberHelper;
 using Nuna.Lib.CleanArchHelper;
 using Nuna.Lib.DataAccessHelper;

@@ -1,6 +1,6 @@
 ﻿using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Infrastructure.AdmisiContext.PpaFeature;
-using Bilreg.Infrastructure.Helpers;
+using Bilreg.Infrastructure.Shared.Helpers;
 using FluentAssertions;
 using Nuna.Lib.TransactionHelper;
 using Xunit;
@@ -12,7 +12,7 @@ public class PpaDalTest
     private readonly PpaDal _sut = new(ConnStringHelper.GetTestEnv());
 
     private static PpaDto Faker()
-        => new PpaDto("A", "B", "C", "D", "E");
+        => new PpaDto("A", "B", "C", "D", "E", "F", "G");
 
     private static IPpaKey FakerKey()
         => PpaType.Default with { PpaId = "A" };

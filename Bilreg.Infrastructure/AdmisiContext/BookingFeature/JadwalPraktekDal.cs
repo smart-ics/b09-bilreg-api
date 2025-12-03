@@ -3,7 +3,7 @@ using System.Data.SqlClient;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
-using Bilreg.Infrastructure.Helpers;
+using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
@@ -238,16 +238,17 @@ public class JadwalPraktekDal
                ISNULL(cc.fs_nm_layanan, '-') AS LayananName,
                ISNULL(cc.fs_kd_layanan_dk,'') AS LayananDkId,
                ISNULL(dd.fs_nm_layanan_dk,'') AS LayananDkName,
-               ISNULL(cc.GroupSpesialisId,'') AS GroupSpesialisId,
-               ISNULL(ee.GroupSpesialisName,'') AS GroupSpesialisName
+               ISNULL(ee.GroupSpesialisId,'') AS GroupSpesialisId,
+               ISNULL(ff.GroupSpesialisName,'') AS GroupSpesialisName
             FROM 
                BILRG_JadwalPraktek aa
                LEFT JOIN td_peg bb ON aa.DokterId = bb.fs_kd_peg
                LEFT JOIN ta_layanan cc ON aa.LayananId = cc.fs_kd_layanan
                LEFT JOIN ta_layanan_dk dd ON cc.fs_kd_layanan_dk = dd.fs_kd_layanan_dk
-               LEFT JOIN BILRG_GroupSpesialis ee ON cc.GroupSpesialisId = ee.GroupSpesialisId
+               LEFT JOIN td_peg2 ee ON aa.DokterId = ee.fs_kd_peg 
+               LEFT JOIN BILRG_GroupSpesialis ff ON ee.GroupSpesialisId = ff.GroupSpesialisId
             WHERE
-               cc.GroupSpesialisId = @GroupSpesialisId
+               ee.GroupSpesialisId = @GroupSpesialisId
             """;
 
         var dp = new DynamicParameters();

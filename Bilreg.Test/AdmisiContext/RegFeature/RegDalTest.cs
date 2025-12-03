@@ -1,7 +1,7 @@
 ﻿using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Infrastructure.AdmisiContext.RegFeature;
-using Bilreg.Infrastructure.Helpers;
+using Bilreg.Infrastructure.Shared.Helpers;
 using FluentAssertions;
 using Nuna.Lib.TransactionHelper;
 using Nuna.Lib.ValidationHelper;

@@ -1,10 +1,7 @@
-﻿using FluentValidation;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
-using Nuna.Lib.ActionResultHelper;
+﻿using Nuna.Lib.ActionResultHelper;
 using System.Net;
 using System.Text.Json;
-using Bilreg.Application.Helpers;
+using Bilreg.Application.Shared.Helpers;
 
 namespace Bilreg.Api.Configurations;
 
@@ -32,7 +29,6 @@ public class ErrorHandlerMiddleware
             switch (error)
             {
                 case ArgumentException:
-                case ValidationException:
                 case InvalidOperationException:
                     response.StatusCode = (int)HttpStatusCode.BadRequest;
                     status = "Bad Request";

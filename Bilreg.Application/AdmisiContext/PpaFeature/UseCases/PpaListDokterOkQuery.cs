@@ -1,5 +1,4 @@
 ﻿using Bilreg.Application.AdmisiContext.LayananFeature;
-using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using MediatR;
 
@@ -12,25 +11,21 @@ public record PpaListDokterOkResponse(string DokterId, string DokterName);
 public class PpaListDokterOkQueryHandler : IRequestHandler<PpaListDokterOkQuery, IEnumerable<PpaListDokterOkResponse>>
 {
     private readonly IPpaRepo _ppaRepo;
-    private readonly ILayananRepo _layananRepo;
-
-    public PpaListDokterOkQueryHandler(IPpaRepo ppaRepo, 
-        ILayananRepo layananRepo)
+    
+    public PpaListDokterOkQueryHandler(IPpaRepo ppaRepo)
     {
         _ppaRepo = ppaRepo;
-        _layananRepo = layananRepo;
     }
 
     public Task<IEnumerable<PpaListDokterOkResponse>> Handle(PpaListDokterOkQuery request, CancellationToken cancellationToken)
     {
-        var listLayanan = _layananRepo
-            .ListData()
-            .Where(x => x.GroupSpesialis == GroupSpesialisType.Bedah || 
+        
+        var listDokter = _ppaRepo.ListData(ProfesiType.Dokter)?.ToList() ?? [];
+        var listDokterOk = listDokter
+            .Where(x => x.GroupSpesialis == GroupSpesialisType.Bedah ||
                         x.GroupSpesialis == GroupSpesialisType.Obgyn)
             .ToList() ?? [];
-
-        var listDokter = _ppaRepo.ListData(ProfesiType.Dokter, listLayanan)?.ToList() ?? [];
-        var result = listDokter
+        var result = listDokterOk
             .Select(x => new PpaListDokterOkResponse(x.PpaId, x.PpaName))
             .Distinct()
             .ToList();
