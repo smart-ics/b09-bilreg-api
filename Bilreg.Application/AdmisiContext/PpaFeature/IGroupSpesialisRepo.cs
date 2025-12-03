@@ -1,7 +1,7 @@
-﻿using Bilreg.Domain.AdmisiContext.LayananFeature;
+﻿using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Nuna.Lib.DataAccessHelper;
 
-namespace Bilreg.Application.AdmisiContext.LayananFeature;
+namespace Bilreg.Application.AdmisiContext.PpaFeature;
 
 public interface IGroupSpesialisRepo :
     ILoadEntity<GroupSpesialisType, IGroupSpesialisKey>,

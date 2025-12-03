@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.LayananFeature;
+﻿using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Infrastructure.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;
@@ -6,7 +6,7 @@ using Nuna.Lib.DataAccessHelper;
 using System.Data;
 using System.Data.SqlClient;
 
-namespace Bilreg.Infrastructure.AdmisiContext.LayananFeature;
+namespace Bilreg.Infrastructure.AdmisiContext.PpaFeature;
 
 
 public interface IGroupSpesialisDal :

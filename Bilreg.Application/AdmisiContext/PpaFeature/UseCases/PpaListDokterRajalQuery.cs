@@ -10,12 +10,10 @@ public record PpaListDokterRajalQuery() : IRequest<IEnumerable<PpaListDokterRaja
 
 public record PpaListDokterRajalResponse(
     string GroupSpesialisId,
-    string GroupSpesialisName, 
+    string GroupSpesialisName,
     IEnumerable<PpaListDokterRajalResponseDokter> ListDokter);
 
 public record PpaListDokterRajalResponseDokter(
-    string LayananId, 
-    string LayananName,
     string DokterId,
     string DokterName);
 
@@ -24,8 +22,8 @@ public class PpaListDokterRajalHandler : IRequestHandler<PpaListDokterRajalQuery
     private readonly IPpaRepo _ppaRepo;
     private readonly IGroupSpesialisRepo _groupSpesialisRepo;
     private readonly ILayananRepo _layananRepo;
-    public PpaListDokterRajalHandler(IPpaRepo ppaRepo, 
-        IGroupSpesialisRepo groupSpesialisRepo, 
+    public PpaListDokterRajalHandler(IPpaRepo ppaRepo,
+        IGroupSpesialisRepo groupSpesialisRepo,
         ILayananRepo layananRepo)
     {
         _ppaRepo = ppaRepo;
@@ -36,21 +34,29 @@ public class PpaListDokterRajalHandler : IRequestHandler<PpaListDokterRajalQuery
     public Task<IEnumerable<PpaListDokterRajalResponse>> Handle(
         PpaListDokterRajalQuery request, CancellationToken cancellationToken)
     {
-        var listLayanan = _layananRepo
-            .ListData(InstalasiDkType.RawatJalan)?
-            .ToList() ?? [];
-        var listPpa = _ppaRepo.ListData(ProfesiType.Dokter, listLayanan)?.ToList() ?? [];
+        var listPpa = _ppaRepo.ListData(ProfesiType.Dokter)?.ToList() ?? [];
         var listGroupSpesialis = _groupSpesialisRepo.ListData()?.ToList() ?? [];
-        var result = (from item in listGroupSpesialis
-            let listLayananThisGrupSpesialis = listLayanan
-                .Where(x => x.GroupSpesialis.GroupSpesialisId == item.GroupSpesialisId)
-                .Select(x => x.LayananId)
-                .ToList()
-            let listDokter = listPpa
-                .Where(x => listLayananThisGrupSpesialis.Any(y => y == x.Layanan.LayananId))
-                .Select(x => new PpaListDokterRajalResponseDokter(x.Layanan.LayananId, x.Layanan.LayananName, x.PpaId, x.PpaName))
-                .ToList()
-            select new PpaListDokterRajalResponse(item.GroupSpesialisId, item.GroupSpesialisName, listDokter)).ToList();
+
+        var result =
+            listGroupSpesialis
+                .GroupJoin(
+                    listPpa,
+                    g => g.GroupSpesialisId,
+                    d => d.GroupSpesialis.GroupSpesialisId,
+                    (g, dokterGroup) => new PpaListDokterRajalResponse(
+                        g.GroupSpesialisId,
+                        g.GroupSpesialisName,
+                        dokterGroup.Select(d => new PpaListDokterRajalResponseDokter(
+                            d.PpaId,
+                            d.PpaName
+                        ))
+                    )
+                );
+
+
+
+
+
         return Task.FromResult(result.AsEnumerable());
     }
 }

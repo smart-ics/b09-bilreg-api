@@ -1,7 +1,7 @@
-﻿using Bilreg.Domain.AdmisiContext.LayananFeature;
+﻿using Bilreg.Domain.AdmisiContext.PpaFeature;
 using MediatR;
 
-namespace Bilreg.Application.AdmisiContext.LayananFeature;
+namespace Bilreg.Application.AdmisiContext.PpaFeature;
 
 public record GroupSpesialisListQuery() : IRequest<IEnumerable<GroupSpesialisType>>;
 

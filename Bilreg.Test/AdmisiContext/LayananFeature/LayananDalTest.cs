@@ -12,7 +12,7 @@ public class LayananDalTest
     private readonly LayananDal _sut = new(ConnStringHelper.GetTestEnv());
 
     private static LayananDto Faker()
-        => new LayananDto("A", "B", true, "C", "D", "E", "F", "G", "H", "I", "J", "K", "L");
+        => new LayananDto("A", "B", true, "C", "D", "E", "F", "G", "H", "I", "J");
 
     private static ILayananKey FakerKey()
         => LayananType.Key("A");

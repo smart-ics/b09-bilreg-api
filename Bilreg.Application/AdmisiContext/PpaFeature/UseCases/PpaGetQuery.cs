@@ -14,7 +14,8 @@ public record PpaLayananGetResponse(
 
 public record PpaGetResponse(
     string PpaId, string PpaName, string NamaSingkat,
-    string SmfId, string SmfName,
+    string SmfId, string SmfName, 
+    string GroupSpesialisId, string GroupSpesialisName,
     IEnumerable<PpaSatTugasGetResponse> ListSatTugas,
     IEnumerable<PpaLayananGetResponse> ListLayanan);
 
@@ -40,6 +41,8 @@ public class PpaGetHandler : IRequestHandler<PpaGetQuery, PpaGetResponse>
             ptgMedis.NamaSingkat,
             ptgMedis.Smf.SmfId,
             ptgMedis.Smf.SmfName,
+            ptgMedis.GroupSpesialis.GroupSpesialisId,
+            ptgMedis.GroupSpesialis.GroupSpesialisName,
             ptgMedis.ListSatTugas.Select(x => new PpaSatTugasGetResponse(
                 x.SatTugas.SatTugasId,
                 x.SatTugas.SatTugasName,
