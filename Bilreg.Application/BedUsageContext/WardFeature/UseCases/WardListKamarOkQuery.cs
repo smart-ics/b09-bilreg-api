@@ -1,4 +1,5 @@
-﻿using MediatR;
+﻿using Bilreg.Domain.BedUsageContext.WardFeature;
+using MediatR;
 
 namespace Bilreg.Application.BedUsageContext.WardFeature.UseCases;
 

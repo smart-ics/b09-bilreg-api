@@ -1,4 +1,4 @@
-﻿namespace Bilreg.Domain.AdmisiContext.LayananFeature;
+﻿namespace Bilreg.Domain.AdmisiContext.PpaFeature;
 
 public record GroupSpesialisType : IGroupSpesialisKey
 {

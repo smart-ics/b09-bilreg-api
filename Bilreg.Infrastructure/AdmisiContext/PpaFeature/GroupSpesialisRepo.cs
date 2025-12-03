@@ -1,8 +1,8 @@
-﻿using Bilreg.Application.AdmisiContext.LayananFeature;
-using Bilreg.Domain.AdmisiContext.LayananFeature;
+﻿using Bilreg.Application.AdmisiContext.PpaFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Nuna.Lib.PatternHelper;
 
-namespace Bilreg.Infrastructure.AdmisiContext.LayananFeature;
+namespace Bilreg.Infrastructure.AdmisiContext.PpaFeature;
 
 public class GroupSpesialisRepo : IGroupSpesialisRepo
 {
