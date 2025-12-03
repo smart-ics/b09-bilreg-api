@@ -70,7 +70,7 @@ public record BookingDto(
             new RegReff(RegId, PasienId, PasienName);
         var result = new BookingModel(BookingId, BookingDate, person, PasienId, 
             reg, tglBerobat, jamPraktek, layanan, dokter, NoAntrian, auditTrail,
-            NoPeserta, NoReffKontrol, ReffId);
+            ReffId, NoPeserta, NoReffKontrol );
         return result;
     }
 }
