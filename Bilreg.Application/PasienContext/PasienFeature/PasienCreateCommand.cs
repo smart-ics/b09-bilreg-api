@@ -1,6 +1,7 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
+using Bilreg.Domain.Shared.Helpers;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
 
@@ -32,8 +33,12 @@ public class PasienCreateHandler : IRequestHandler<PasienCreateCommand, PasienCr
     public Task<PasienCreateResponse> Handle(PasienCreateCommand request, CancellationToken cancellationToken)
     {
         //  GUARD
+        Guard.Against.NullOrEmpty(request.PasienName);
+        Guard.Against.NullOrEmpty(request.Alamat1);
         Guard.Against.NullOrEmpty(request.TglLahir);
-        
+        Guard.Against.InvalidDateFormat(request.TglLahir, nameof(request.TglLahir));
+        Guard.Against.NullOrEmpty(request.NoTelp);
+
         //  BUILD
         var tglLahir = DateOnly.Parse(request.TglLahir);
         var alamat = new AlamatType(

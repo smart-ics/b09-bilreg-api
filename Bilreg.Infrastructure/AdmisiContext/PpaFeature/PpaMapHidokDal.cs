@@ -112,7 +112,7 @@ public class PpaMapHidokDal : IPpaMapHidokDal
                 LEFT JOIN td_peg bb ON aa.DokterRS = bb.FS_KD_PEG  
             """;
 
-        using var conn = new SqlConnection(ConnStringHelper.Get(_opt)); // Gunakan helper Anda
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt)); 
         return conn.Query<PpaMapHidokDto>(sql);
     }
 }

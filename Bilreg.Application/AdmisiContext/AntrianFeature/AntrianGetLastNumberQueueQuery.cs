@@ -1,10 +1,11 @@
-﻿using Bilreg.Application.AdmisiContext.BookingFeature;
+﻿using Ardalis.GuardClauses;
+using Bilreg.Application.AdmisiContext.BookingFeature;
 using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
+using Bilreg.Domain.Shared.Helpers;
 using MediatR;
-using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiContext.AntrianFeature;
 
@@ -21,7 +22,6 @@ public class AntrianGetlastNumberHandler : IRequestHandler<AntrianGetLastNumberQ
     private readonly IJadwalPraktekRepo _jadwalPraktekRepo;
     private readonly IPpaRepo _ppaRepo;
     private readonly IPpaMapHidokRepo _ppaMapHidokRepo;
-    private const string FORMAT_TGL_YMD = "yyyy-MM-dd";
     public AntrianGetlastNumberHandler(IAntrianRepo antrianRepo,
         IJadwalPraktekRepo jadwalPraktekRepo,
         IPpaRepo ppaRepo,
@@ -37,8 +37,10 @@ public class AntrianGetlastNumberHandler : IRequestHandler<AntrianGetLastNumberQ
     public Task<AntrianGetLastNumberResponse> Handle(AntrianGetLastNumberQuery request, CancellationToken cancellationToken)
     {
         // GUARD
-        //Guard.IsNotEmpty(request.TglAntrianYmd);
-        //Guard.IsTrue(request.TglAntrianYmd.IsValidTgl(FORMAT_TGL_YMD));
+        Guard.Against.NullOrEmpty(request.DokterHidokId);
+        Guard.Against.InvalidDateFormat(request.TglAntrianYmd, nameof(request.TglAntrianYmd));
+        Guard.Against.InvalidTimeFormat(request.JamMulai, nameof(request.JamMulai));
+
 
         var dokterHidok = _ppaMapHidokRepo.LoadEntity(PpaMapHidokType.Key(request.DokterHidokId))
             .Match(
@@ -66,7 +68,7 @@ public class AntrianGetlastNumberHandler : IRequestHandler<AntrianGetLastNumberQ
         var result = new AntrianGetLastNumberResponse(lastQueueNumber, remainingPatientQuota);
         return Task.FromResult(result); 
     }
-
+    #region PRIVATE_HELPER
     private AntrianEntryModel GetLastAntrian(DateOnly tglAntrian, PpaType dokter, string sequenceTag)
     {
         var listAntrianDb = _antrianRepo.ListData(tglAntrian)?.ToList()
@@ -93,4 +95,5 @@ public class AntrianGetlastNumberHandler : IRequestHandler<AntrianGetLastNumberQ
             $"{tglAntrian.ToString("yyyy-MM-dd")}");
         return result;
     }
+    #endregion
 }

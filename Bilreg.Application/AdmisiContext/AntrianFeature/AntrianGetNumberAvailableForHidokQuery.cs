@@ -1,4 +1,5 @@
-﻿using Bilreg.Application.AdmisiContext.PpaFeature;
+﻿using Ardalis.GuardClauses;
+using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.Shared.Helpers;
@@ -15,7 +16,6 @@ public class AntrianGetNumberAvailableForHidokhandler : IRequestHandler<AntrianG
     private readonly IPpaRepo _ppaRepo;
     private readonly ISequencer _sequencer;
     private readonly IPpaMapHidokRepo _ppaMapHidokRepo;
-    private const string FORMAT_TGL_YMD = "yyyy-MM-dd";
     public AntrianGetNumberAvailableForHidokhandler(
         IPpaRepo ppaRepo,
         ISequencer sequencer,
@@ -29,8 +29,10 @@ public class AntrianGetNumberAvailableForHidokhandler : IRequestHandler<AntrianG
     public Task<AntrianGetNumberAvailableForHidokResponse> Handle(AntrianGetNumberAvailableForHidokCommand request, CancellationToken cancellationToken)
     {
         // GUARD
-        //Guard.IsNotEmpty(request.TglAntrianYmd);
-        //Guard.IsTrue(request.TglAntrianYmd.IsValidTgl(FORMAT_TGL_YMD));
+        Guard.Against.NullOrEmpty(request.DokterHidokId);
+        Guard.Against.InvalidDateFormat(request.TglAntrianYmd, nameof(request.TglAntrianYmd));
+        Guard.Against.InvalidTimeFormat(request.JamMulai, nameof(request.JamMulai));
+
 
         var dokterHidok = _ppaMapHidokRepo.LoadEntity(PpaMapHidokType.Key(request.DokterHidokId))
             .Match(
