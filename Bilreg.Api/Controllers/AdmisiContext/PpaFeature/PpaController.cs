@@ -40,6 +40,14 @@ public class PpaController : Controller
         return Ok(new JSendOk(result));
     }
 
+    [HttpGet("dokterAnestesi")]
+    public async Task<IActionResult> ListDokterAnestesi()
+    {
+        var query = new PpaListDokterAnestesiQuery();
+        var result = await _mediator.Send(query);
+        return Ok(new JSendOk(result));
+    }
+
     [HttpGet("dokter/{layananId}")]
     public async Task<IActionResult> ListDokterByLayanan(string layananId)
     {

@@ -18,4 +18,5 @@ SELECT 'OTP', 'Orthopedi' UNION
 SELECT 'URO', 'Urologi' UNION
 SELECT 'RMD', 'Rehab Medik' UNION
 SELECT 'PSI', 'Psikiatri' UNION
+SELECT 'ANE', 'Anestesi' UNION
 SELECT 'X', 'Lain-Lain'
