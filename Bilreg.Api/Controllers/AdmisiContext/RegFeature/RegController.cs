@@ -52,10 +52,10 @@ public class RegController : Controller
     }
 
     [HttpGet]
-    [Route("listAktif")]
-    public async Task<IActionResult> ListAktif()
+    [Route("listAktif/{layananId}")]
+    public async Task<IActionResult> ListAktif(string layananId)
     {
-        var query = new RegAktifListQuery();
+        var query = new RegAktifLayananListQuery(layananId);
         var result = await _mediator.Send(query);
         return Ok(new JSendOk(result));
     }

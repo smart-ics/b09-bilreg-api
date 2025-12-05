@@ -1,15 +1,16 @@
-﻿using MediatR;
+﻿using Bilreg.Domain.AdmisiContext.LayananFeature;
+using MediatR;
 using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 
-public record RegAktifListQuery() : IRequest<IEnumerable<RegAktifListResponse>>;
+public record RegAktifLayananListQuery(string LayananId) : IRequest<IEnumerable<RegAktifLayananListResponse>>;
 
-public record RegAktifListResponse(string RegId, string RegDate, string PasienId,
+public record RegAktifLayananListResponse(string RegId, string RegDate, string PasienId,
     string PasienName, string JenisReg, string JenisRegString, string LayananId, 
     string LayananName, string DokterId, string DokterName);
 
-public class RegAktifListHandler : IRequestHandler<RegAktifListQuery, IEnumerable<RegAktifListResponse>>
+public class RegAktifListHandler : IRequestHandler<RegAktifLayananListQuery, IEnumerable<RegAktifLayananListResponse>>
 {
     private readonly IRegAktifRepo _regAktifRepo;
 
@@ -18,12 +19,12 @@ public class RegAktifListHandler : IRequestHandler<RegAktifListQuery, IEnumerabl
         _regAktifRepo = regAktifRepo;
     }
 
-    public Task<IEnumerable<RegAktifListResponse>> Handle(RegAktifListQuery request, CancellationToken cancellationToken)
+    public Task<IEnumerable<RegAktifLayananListResponse>> Handle(RegAktifLayananListQuery request, CancellationToken cancellationToken)
     {
         var periode = new Periode(DateTime.Now);
-        var listRegAktif = _regAktifRepo.ListData(periode)?.ToList() ?? [];
-        var result = listRegAktif
-            .Select(x => new RegAktifListResponse(
+        var listRegLayanan = _regAktifRepo.ListData(LayananType.Key(request.LayananId))?.ToList() ?? [];
+        var result = listRegLayanan
+            .Select(x => new RegAktifLayananListResponse(
                 x.RegId,
                 x.RegDate.ToString("yyyy-MM-dd"),
                 x.Pasien.PasienId,

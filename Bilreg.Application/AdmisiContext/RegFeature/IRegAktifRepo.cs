@@ -1,4 +1,5 @@
-﻿using Bilreg.Domain.AdmisiContext.RegFeature;
+﻿using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Nuna.Lib.DataAccessHelper;
 using Nuna.Lib.ValidationHelper;
 
@@ -8,7 +9,7 @@ public interface IRegAktifRepo :
     ISaveChange<RegAktifModel>,
     ILoadEntity<RegAktifModel, IRegKey>,
     IDelete<IRegKey>,
-    IListData<RegAktifModel, Periode>
+    IListData<RegAktifModel, ILayananKey>
 {
     
 }
