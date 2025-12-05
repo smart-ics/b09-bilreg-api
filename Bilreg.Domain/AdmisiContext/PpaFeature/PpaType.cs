@@ -1,14 +1,18 @@
-﻿namespace Bilreg.Domain.AdmisiContext.PpaFeature;
+﻿using Bilreg.Domain.PasienContext.PasienFeature;
+
+namespace Bilreg.Domain.AdmisiContext.PpaFeature;
 
 public record PpaType : IPpaKey
 {
     private readonly List<PpaLayananType> _listLayanan;
     private readonly List<PpaSatTugasType> _listSatTugas;
+    private readonly List<ContactType> _listContact;
     public PpaType(string ppaId, string ppaName, 
         string namaSingkat, SmfType smf,
         GroupSpesialisType groupSpesialis,
         IEnumerable<PpaLayananType> listLayanan, 
-        IEnumerable<PpaSatTugasType> listSatTugas)
+        IEnumerable<PpaSatTugasType> listSatTugas, 
+        IEnumerable<ContactType> listContact)
     {
         PpaId = ppaId;
         PpaName = ppaName;
@@ -17,6 +21,7 @@ public record PpaType : IPpaKey
         GroupSpesialis = groupSpesialis;
         _listLayanan = listLayanan?.ToList() ?? [];
         _listSatTugas = listSatTugas?.ToList() ?? [];
+        _listContact = listContact?.ToList() ?? [];
     }
     
     public string PpaId { get; init; }
@@ -26,11 +31,12 @@ public record PpaType : IPpaKey
     public GroupSpesialisType GroupSpesialis { get; init;  }
     public IEnumerable<PpaLayananType> ListLayanan => _listLayanan;
     public IEnumerable<PpaSatTugasType> ListSatTugas => _listSatTugas;
+    public IEnumerable<ContactType> ListContact => _listContact;
     
     public PpaReff ToReff() => new (PpaId, PpaName);
     
     public static PpaType Default => new("-", "-", "-", 
-        SmfType.Default, GroupSpesialisType.Default, [], []);
+        SmfType.Default, GroupSpesialisType.Default, [], [], []);
     public static IPpaKey Key(string id) => Default with { PpaId = id };
 }
 
