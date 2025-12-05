@@ -77,6 +77,8 @@
     <Folder Include="PaymentContext\RekapCatakFeature" />
     <Folder Include="ChargeContext\AmbulanceFeature" />
     <Folder Include="Helpers" />
+    <Folder Include="BedUsageContext\" />
+    <Folder Include="BedUsageContext\RoomRateFeature\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OpCase.sql" />
