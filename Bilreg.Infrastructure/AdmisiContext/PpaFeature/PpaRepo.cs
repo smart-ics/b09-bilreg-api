@@ -57,7 +57,7 @@ public class PpaRepo : IPpaRepo
     {
         var listPpa = _ppaDal.ListData(filter1, filter2) ?? [];
         var result = listPpa.Select(x => x.ToView());
-        return result;   
+        return result;
     }
 
     public IEnumerable<PpaView> ListData(IProfesiKey filter)

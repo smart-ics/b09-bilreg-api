@@ -13,6 +13,7 @@ public record GroupSpesialisType : IGroupSpesialisKey
     public static IGroupSpesialisKey Key(string id) => Default with { GroupSpesialisId = id };
     public static GroupSpesialisType Bedah => new("BDH", "Bedah");
     public static GroupSpesialisType Obgyn => new("OBG", "Obgyn");
+    public static GroupSpesialisType Anestesi => new("ANS", "Anestesi");
     #endregion
 
     #region PROPERTIES
