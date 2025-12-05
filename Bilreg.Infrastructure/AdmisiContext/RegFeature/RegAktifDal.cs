@@ -1,5 +1,6 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
@@ -15,7 +16,7 @@ public interface IRegAktifDal :
     IUpdate<RegAktifDto>,
     IDelete<IRegKey>,
     IGetData<RegAktifDto, IRegKey>,
-    IListData<RegAktifDto, Periode>
+    IListData<RegAktifDto, ILayananKey>
 {
 }
 
@@ -125,7 +126,7 @@ public class RegAktifDal : IRegAktifDal
         return conn.ReadSingle<RegAktifDto>(sql, dp);
     }
 
-    public IEnumerable<RegAktifDto> ListData(Periode filter)
+    public IEnumerable<RegAktifDto> ListData(ILayananKey lynKey)
     {
         const string sql = """
            SELECT
@@ -144,11 +145,10 @@ public class RegAktifDal : IRegAktifDal
                LEFT JOIN td_peg dd ON aa.DokterId = dd.fs_kd_peg
                LEFT JOIN ta_tipe_jaminan ee ON aa.TipeJaminanId = ee.fs_kd_tipe_jaminan
            WHERE
-               aa.RegDate BETWEEN @Tgl1 AND @Tgl2
+               aa.LayananId = @LayananId
            """;
         var dp = new DynamicParameters();
-        dp.AddParam("@Tgl1", filter.Tgl1, SqlDbType.DateTime); 
-        dp.AddParam("@Tgl2", filter.Tgl2, SqlDbType.DateTime); 
+        dp.AddParam("@LayananId", lynKey.LayananId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<RegAktifDto>(sql, dp);

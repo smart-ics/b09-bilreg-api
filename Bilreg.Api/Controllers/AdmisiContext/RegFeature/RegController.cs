@@ -43,19 +43,10 @@ public class RegController : Controller
     }
 
     [HttpGet]
-    [Route("list/{tglMasukYmd}/{layananId}")]
-    public async Task<IActionResult> ListData(string tglMasukYmd, string layananId)
+    [Route("{layananId}/layanan")]
+    public async Task<IActionResult> ListAktif(string layananId)
     {
-        var query = new RegListQuery(tglMasukYmd, layananId);
-        var response = await _mediator.Send(query);
-        return Ok(new JSendOk(response));
-    }
-
-    [HttpGet]
-    [Route("listAktif")]
-    public async Task<IActionResult> ListAktif()
-    {
-        var query = new RegAktifListQuery();
+        var query = new RegAktifLayananListQuery(layananId);
         var result = await _mediator.Send(query);
         return Ok(new JSendOk(result));
     }

@@ -84,7 +84,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
     {
 
         var pasien = LoadPasien(request.PasienId);
-        var pasienAktif = GetRegaktif(pasien);
+        var pasienAktif = GetRegaktif(pasien, LayananType.Key(request.LayananId));
         if (pasienAktif is not null)
             throw new KeyNotFoundException($"Pasien aktif di register {pasienAktif.RegId}");
 
@@ -127,10 +127,9 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
     }
 
     #region PRIVATE-HELPERS
-    private RegAktifModel? GetRegaktif(IPasienKey pasienKey)
+    private RegAktifModel? GetRegaktif(IPasienKey pasienKey, ILayananKey lynKey)
     {
-        var periode = new Periode(DateTime.Now);
-        var listPasienAktif = _regAktifRepo.ListData(periode)?.ToList() ?? [];
+        var listPasienAktif = _regAktifRepo.ListData(lynKey)?.ToList() ?? [];
         var pasienAktif = listPasienAktif
             .FirstOrDefault(x => x.Pasien.PasienId == pasienKey.PasienId);
 
