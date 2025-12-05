@@ -56,8 +56,7 @@ public class PpaRepo : IPpaRepo
     public IEnumerable<PpaLayananView> ListData(IProfesiKey filter1, IEnumerable<ILayananKey> filter2)
     {
         var listPpa = _ppaDal.ListData(filter1, filter2) ?? [];
-        var result = listPpa.Select(x => x.ToView())
-            .DistinctBy(x => x.PpaId);
+        var result = listPpa.Select(x => x.ToView());
         return result;
     }
 
