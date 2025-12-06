@@ -42,11 +42,4 @@ public class OrderOpController : ControllerBase
         return Ok(new JSendOk(response));
     }
 
-    [HttpGet("{tgl}/tglOp")]
-    public async Task<IActionResult> ListSchedule(string tgl)
-    {
-        var query = new OkListScheduleQuery(tgl);
-        var response = await _mediator.Send(query);
-        return Ok(new JSendOk(response));
-    }
 }
