@@ -8,15 +8,15 @@ using MediatR;
 
 namespace Bilreg.Application.AdmisiContext.AntrianFeature;
 
-public record AntrianGetNumberAvailableForHidokCommand(string DokterHidokId, string TglAntrianYmd, string JamMulai): IRequest<AntrianGetNumberAvailableForHidokResponse>;
+public record AntrianGenNewNumberCommand(string DokterHidokId, string TglAntrianYmd, string JamMulai): IRequest<AntrianGenNewNumberResponse>;
 
-public record AntrianGetNumberAvailableForHidokResponse(int NextAvailableQueueNumber);
+public record AntrianGenNewNumberResponse(int NewNumber);
 
-public class AntrianGetNumberAvailableForHidokhandler : IRequestHandler<AntrianGetNumberAvailableForHidokCommand, AntrianGetNumberAvailableForHidokResponse>
+public class AntrianGenNewNumberHandler : IRequestHandler<AntrianGenNewNumberCommand, AntrianGenNewNumberResponse>
 {
     private readonly IPpaRepo _ppaRepo;
     private readonly ISequencer _sequencer;
-    public AntrianGetNumberAvailableForHidokhandler(
+    public AntrianGenNewNumberHandler(
         IPpaRepo ppaRepo,
         ISequencer sequencer)
     {
@@ -24,7 +24,7 @@ public class AntrianGetNumberAvailableForHidokhandler : IRequestHandler<AntrianG
         _sequencer = sequencer;
     }
 
-    public Task<AntrianGetNumberAvailableForHidokResponse> Handle(AntrianGetNumberAvailableForHidokCommand request, CancellationToken cancellationToken)
+    public Task<AntrianGenNewNumberResponse> Handle(AntrianGenNewNumberCommand request, CancellationToken cancellationToken)
     {
         // GUARD
         Guard.Against.NullOrEmpty(request.DokterHidokId);
@@ -47,7 +47,7 @@ public class AntrianGetNumberAvailableForHidokhandler : IRequestHandler<AntrianG
         var availableQueueNumber = _sequencer.GetNextNoUrut(sequenceTag);
         
         // RETURN
-        var result = new AntrianGetNumberAvailableForHidokResponse(availableQueueNumber); 
+        var result = new AntrianGenNewNumberResponse(availableQueueNumber); 
         return Task.FromResult(result);
     }   
 }
