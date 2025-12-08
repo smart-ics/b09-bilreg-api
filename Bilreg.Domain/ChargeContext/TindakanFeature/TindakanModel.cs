@@ -59,7 +59,7 @@ public record TindakanModel : ITindakanKey
         "-", 
         DateTime.Today, 
         AuditTrailType.Default, 
-        OrderTindakanModel.Default.ToReff(),
+        OrderTdkModel.Default.ToReff(),
         PasienModel.Default.ToReff(), 
         RegModel.Default.ToReff(),
         LayananType.Default.ToReff(), 

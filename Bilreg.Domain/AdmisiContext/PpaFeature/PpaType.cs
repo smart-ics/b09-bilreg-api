@@ -34,6 +34,11 @@ public record PpaType : IPpaKey
     public IEnumerable<ContactType> ListContact => _listContact;
     
     public PpaReff ToReff() => new (PpaId, PpaName);
+
+    public bool IsDokter()
+    {
+        return ListSatTugas.Any(x => x.SatTugas.Profesi == ProfesiType.Dokter);
+    }
     
     public static PpaType Default => new("-", "-", "-", 
         SmfType.Default, GroupSpesialisType.Default, [], [], []);

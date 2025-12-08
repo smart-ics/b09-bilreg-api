@@ -16,13 +16,13 @@ public class TindakanController : Controller
         _mediator = mediator;
     }
 
-    [HttpPost]
-    [Route("order")]
-    public async Task<IActionResult> CreateOrder(OrderTindakanCreateCmd cmd)
-    {
-        var result = await _mediator.Send(cmd);
-        return Ok(new JSendOk(result));
-    }
+    // [HttpPost]
+    // [Route("order")]
+    // public async Task<IActionResult> CreateOrder(OrderTindakanCreateCmd cmd)
+    // {
+    //     var result = await _mediator.Send(cmd);
+    //     return Ok(new JSendOk(result));
+    // }
     [HttpGet]
     [Route("order/{id}")]
     public async Task<IActionResult> GetOrder(string id)
