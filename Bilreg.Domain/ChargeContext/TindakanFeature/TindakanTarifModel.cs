@@ -25,6 +25,7 @@ public record TindakanTarifModel
 public record TindakanKomponenTarifModel(
     KomponenReff  Komponen,
     PpaReff Ppa,
+    int NoUrut,
     decimal Qty,
     decimal Nilai
 );

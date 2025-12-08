@@ -5,7 +5,7 @@ using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
-using Microsoft.VisualStudio.TestPlatform.ObjectModel;
+using System.Security.Cryptography.X509Certificates;
 
 namespace Bilreg.Domain.BillContext.TindakanSub.TindakanAgg;
 
@@ -93,4 +93,4 @@ public interface ITindakanKey
 
 public record TindakanReff(string TindakanId, DateTime TindakanDate, TarifReff Tarif);
 
-
+public record TindakanView(string TindakanId, DateTime TindakanDate, RegReff reg, TarifReff Tarif) : ITindakanKey;
