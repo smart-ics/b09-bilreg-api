@@ -1,0 +1,81 @@
+﻿using MediatR;
+using Microsoft.AspNetCore.Mvc;
+using Nuna.Lib.ActionResultHelper;
+
+namespace Bilreg.Api.Controllers.BillContext.TindakanSub;
+
+[Route("api/[controller]")]
+[ApiController]
+public class TindakanController : Controller
+{
+    private readonly IMediator _mediator;
+
+    public TindakanController(IMediator mediator)
+    {
+        _mediator = mediator;
+    }
+
+    [HttpGet]
+    [Route("list/{regId}/{layananId}")]
+    public async Task<IActionResult> ListTindakan(string regId, string layananId)
+    {
+        var fakerData = new List<ResponseOrderTdk>
+        {
+            new ResponseOrderTdk(
+                OrderId: "ORD-202501-001",
+                OrderDate: "2025-01-12 08:15:00",
+                DokterOrderId: "D00123",
+                DokterOrderName: "Dr. Budi Santoso, Sp.THT",
+                TindakanId: "TDK-1001",
+                TindakanDate: "2025-01-12 09:00:00",
+                ReffDate: "2025-01-12 09:00:00",
+                TarifId: "TRF-5501",
+                TarifName: "Pembersihan Telinga",
+                Ppa: "Dokter1, Dokter2"
+            ),
+            new ResponseOrderTdk(
+                OrderId: "ORD-202501-002",
+                OrderDate: "2025-01-12 10:20:00",
+                DokterOrderId: "D00456",
+                DokterOrderName: "Dr. Sinta Maharani, Sp.KJ",
+                TindakanId: "TDK-2002",
+                TindakanDate: "2025-01-12 10:45:00",
+                ReffDate: "2025-01-12 10:45:00",
+                TarifId: "TRF-6602",
+                TarifName: "Konseling Psikiatri",
+                Ppa: "Dokter1"
+            ),
+            new ResponseOrderTdk(
+                OrderId: "ORD-202501-003",
+                OrderDate: "2025-01-12 13:30:00",
+                DokterOrderId: "P00999",
+                DokterOrderName: "Ners Rani Putri, S.Kep",
+                TindakanId: "",
+                TindakanDate: "",
+                ReffDate: "2025-01-12 13:30:00",
+                TarifId: "TRF-7708",
+                TarifName: "Perawatan Luka Ringan",
+                Ppa: "Perawat1"
+            )
+        };
+        var result = fakerData
+            .OrderBy(x => x.ReffDate).ToList() ?? [];
+        return Ok(new JSendOk(fakerData));
+
+    }
+
+    public record ResponseOrderTdk(
+        string OrderId ,
+        string OrderDate,
+        string DokterOrderId,
+        string DokterOrderName,
+        string TindakanId,
+        string TindakanDate,
+        string ReffDate, 
+        string TarifId,
+        string TarifName,
+        string Ppa
+    );
+
+    
+}

@@ -137,7 +137,7 @@ public class LayananDal : ILayananDal
                LEFT JOIN ta_instalasi bb ON aa.fs_kd_instalasi = bb.fs_kd_instalasi
                LEFT JOIN ta_layanan_dk cc ON aa.fs_kd_layanan_dk = cc.fs_kd_layanan_dk
                LEFT JOIN ta_layanan_tipe_dk dd ON aa.fs_kd_layanan_tipe_dk = dd.fs_kd_layanan_tipe_dk
-               LEFT JOIN ta_instalasi_dk ee ON bb.fs_kd_instalasi_dk = ee.fs_kd_instalasi_dkd
+               LEFT JOIN ta_instalasi_dk ee ON bb.fs_kd_instalasi_dk = ee.fs_kd_instalasi_dk
            """;
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
