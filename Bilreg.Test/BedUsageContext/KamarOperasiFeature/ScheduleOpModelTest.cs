@@ -43,6 +43,7 @@ public class ScheduleOpModelTests
     {
         return new ScheduleOpModel(
             "S1",
+            new DateTime(3000,1,1),
             AuditTrailType.Default,
             OrderOpModel.Default.ToReff(),
             PasienModel.Default.ToReff(),

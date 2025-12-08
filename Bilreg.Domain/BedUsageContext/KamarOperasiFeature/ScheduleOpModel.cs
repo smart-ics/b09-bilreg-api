@@ -17,12 +17,13 @@ public class ScheduleOpModel : IScheduleOpKey
     private readonly List<ScheduleOpPpaType> _listPpa;
     
     #region CREATION
-    public ScheduleOpModel(string scheduleOpId, AuditTrailType auditTrail, 
+    public ScheduleOpModel(string scheduleOpId, DateTime scheduleDate, AuditTrailType auditTrail, 
         OrderOpReff orderOp, PasienReff pasien, UrgencyLevelEnum urgencyLevel, int durasi, 
         DateTime tglOp, KamarReff kamarOp, RegReff reg, PpaReff teamLead, 
         IEnumerable<ScheduleOpPpaType> listPpa)
     {
         ScheduleOpId = scheduleOpId;
+        ScheduleOpDate = scheduleDate;
         AuditTrail = auditTrail;
         OrderOp = orderOp;
         Pasien = pasien;
@@ -35,13 +36,13 @@ public class ScheduleOpModel : IScheduleOpKey
         _listPpa = listPpa.ToList() ?? [];
     }
     public static ScheduleOpModel Default 
-        => new ScheduleOpModel("-", AuditTrailType.Default, 
+        => new ScheduleOpModel("-", new DateTime(3000,1,1), AuditTrailType.Default, 
             OrderOpModel.Default.ToReff(), PasienModel.Default.ToReff(), 
             UrgencyLevelEnum.Elective, 0, 
             new DateTime(3000,1,1), KamarType.Default.ToReff(), 
             RegModel.Default.ToReff(), PpaType.Default.ToReff(), []);
     public static IScheduleOpKey Key(string id) 
-        => new ScheduleOpModel(id, AuditTrailType.Default, 
+        => new ScheduleOpModel(id, new DateTime(3000,1,1), AuditTrailType.Default, 
             OrderOpModel.Default.ToReff(), PasienModel.Default.ToReff(), 
             UrgencyLevelEnum.Elective, 0, 
             new DateTime(3000,1,1), KamarType.Default.ToReff(), 
@@ -53,7 +54,7 @@ public class ScheduleOpModel : IScheduleOpKey
         var newId = Ulid.NewUlid().ToString();
         var audit = new AuditTrailType(new AuditInfoType(userId, DateTime.Now),
             AuditInfoType.Default, AuditInfoType.Default);
-        var result = new ScheduleOpModel(newId, audit, orderOp.ToReff(),
+        var result = new ScheduleOpModel(newId, DateTime.Now, audit, orderOp.ToReff(),
             orderOp.Pasien, orderOp.UrgencyLevel, orderOp.EstimasiDurasiInMinutes,
             tglOp, kamar.ToReff(), orderOp.Reg, PpaType.Default.ToReff(), []);
         result.AddPpa(teamLeader, userId);
@@ -65,6 +66,7 @@ public class ScheduleOpModel : IScheduleOpKey
     
     #region PROPERTIES
     public string ScheduleOpId { get; init; }
+    public DateTime ScheduleOpDate { get; init; }
     public AuditTrailType AuditTrail { get; init; }
     //  order
     public OrderOpReff OrderOp { get; init;}
