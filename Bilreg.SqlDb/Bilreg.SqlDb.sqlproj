@@ -78,6 +78,7 @@
     <Folder Include="Helpers" />
     <Folder Include="BedUsageContext\" />
     <Folder Include="BedUsageContext\RoomRateFeature\" />
+    <Folder Include="BedUsageContext\KamarOperasiFeature\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OpCase.sql" />
