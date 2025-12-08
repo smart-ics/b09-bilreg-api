@@ -1,103 +1,95 @@
-﻿//using Bilreg.Domain.AdmisiContext.LayananFeature;
-//using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
-//using Bilreg.Domain.AdmisiContext.RegFeature;
-//using Bilreg.Domain.BillContext.TindakanSub.TarifFeature;
-//using Bilreg.Domain.BillContext.TindakanSub.TipeTarifAgg;
-//using Bilreg.Domain.Helpers.CommonValueObjects;
+﻿using Ardalis.GuardClauses;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.ChargeContext.TindakanFeature;
+using Bilreg.Domain.PasienContext.PasienFeature;
+using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
+using Microsoft.VisualStudio.TestPlatform.ObjectModel;
 
-//namespace Bilreg.Domain.BillContext.TindakanSub.TindakanAgg;
+namespace Bilreg.Domain.BillContext.TindakanSub.TindakanAgg;
 
-//public class TindakanModel : ITindakanKey
-//{
-//    private readonly List<TindakanTarifModel> _listTarif;
-  
-//    #region  CREATION
-//    public TindakanModel(string tindakanId, DateTime timeTindakan, AuditInfoType auditTindakan, 
-//        RegReff reg, LayananReff layanan, string orderId, PetugasMedisReff dokterPengirim,
-//        TipeTarifModel tipeTarif, IEnumerable<TindakanTarifModel> listTarif)
-//    {
-//        TindakanId = tindakanId;
-//        TimeTindakan = timeTindakan;
-//        AuditTindakan = auditTindakan;
-//        Register = reg;
-//        Layanan = layanan;
-//        OrderId = orderId;
-//        DokterPengirim = dokterPengirim;
-//        TipeTarif = tipeTarif;
-//        _listTarif = listTarif.ToList();
-//    }
+public record TindakanModel : ITindakanKey
+{
+    #region CREATION
+    
+    public TindakanModel(
+        string tindakanId,
+        DateTime tindakanDate,
+        AuditTrailType auditTrail,
+        OrderTindakanReff orderTindakan,
+        PasienReff pasien,
+        RegReff reg,
+        LayananReff layanan,
+        TindakanTarifModel tarif)
+    {
+        TindakanId = tindakanId;
+        TindakanDate = tindakanDate;
+        AuditTrail = auditTrail;
+        OrderTindakan = orderTindakan;
+        Pasien = pasien;
+        Reg = reg;
+        Layanan = layanan;
+        Tarif = tarif;
+        
+    }
 
-//    public static TindakanModel Default => new TindakanModel("-", new DateTime(3000, 1, 1),
-//        AuditInfoType.Default, RegModel.Default.ToReff(), LayananType.Default.ToReff(), "-",
-//        PetugasMedisType.Default.ToReff(), new TipeTarifModel("-", "-"), []);
+    public static TindakanModel Create(
+        string tindakanId,
+        DateTime tindakanDate,
+        AuditTrailType auditTrail,
+        OrderTindakanReff orderTindakan,
+        PasienReff pasien,
+        RegReff reg,
+        LayananReff layanan,
+        TindakanTarifModel tarif)
+    {
+        Guard.Against.NullOrWhiteSpace(tindakanId, nameof(tindakanId));
+        Guard.Against.Null(auditTrail, nameof(auditTrail));
+        Guard.Against.Null(orderTindakan, nameof(orderTindakan));
+        Guard.Against.Null(pasien, nameof(pasien));
+        Guard.Against.Null(reg, nameof(reg));
+        Guard.Against.Null(layanan, nameof(layanan));
+        
+        return new TindakanModel(tindakanId, tindakanDate, auditTrail, orderTindakan, 
+            pasien, reg, layanan, tarif);
+    }
+
+    public static TindakanModel Default => new(
+        "-", 
+        DateTime.Today, 
+        AuditTrailType.Default, 
+        OrderTindakanModel.Default.ToReff(),
+        PasienModel.Default.ToReff(), 
+        RegModel.Default.ToReff(),
+        LayananType.Default.ToReff(), 
+        TindakanTarifModel.Default
+    );
+
+    public static ITindakanKey Key(string id) => Default with { TindakanId = id };
+    #endregion
+
+    #region PROPERTIES
+    public string TindakanId { get; init; }
+    public DateTime TindakanDate { get; init; }
+    public AuditTrailType AuditTrail { get; init; }
+    public OrderTindakanReff OrderTindakan { get; init; }
+    public PasienReff Pasien { get; init; }
+    public RegReff Reg { get; init; }
+    public LayananReff Layanan { get; init; }
+    public TindakanTarifModel Tarif { get; init; }
+    
+    #endregion
+
+    #region BEHAVIOR
+    public TindakanReff ToReff() => new(TindakanId, TindakanDate, Tarif.TarifId, Tarif.TarifName);
+    #endregion
+}
+
+public interface ITindakanKey
+{
+    string TindakanId { get; }
+}
+
+public record TindakanReff(string TindakanId, DateTime TindakanDate, string TarifId, string TarifName);
 
 
-//    public static ITindakanKey Key(string id) => new TindakanModel("id", new DateTime(3000, 1, 1),
-//        AuditInfoType.Default, RegModel.Default.ToReff(), LayananType.Default.ToReff(), "-",
-//        PetugasMedisType.Default.ToReff(), new TipeTarifModel("-", "-"), []);
-
-//    #endregion
-
-//    #region PROPERTIES
-//    public string TindakanId { get; init; }
-//    public DateTime TimeTindakan { get; init; }
-//    public AuditInfoType AuditTindakan { get; init; }
-//    public RegReff Register {  get; init; }
-//    public LayananReff Layanan { get; init; }
-//    public string OrderId { get; init; }
-//    public PetugasMedisReff DokterPengirim { get; init; }
-//    public TipeTarifModel TipeTarif { get; init; }
-//    public long Total { get; private set; }
-//    public IEnumerable<TindakanTarifModel> ListTarif => _listTarif;
-//    #endregion
-
-//    #region BEHAVIOUR
-
-//    #endregion
-//}
-
-//public interface ITindakanKey
-//{
-//    string TindakanId { get; }
-//}
-
-//public class TindakanTarifModel
-//{
-//    private readonly List<TindakanTarifDetilModel> _listDtlTarif;
-
-//    public TindakanTarifModel(string tindakanId, 
-//        TarifReff tarif, long subTotal, 
-//        IEnumerable<TindakanTarifDetilModel> listDtlTarif)
-//    {
-//        TindakanId = tindakanId;
-//        Tarif = tarif;
-//        SubTotal = subTotal;
-//        _listDtlTarif = listDtlTarif.ToList();
-//    }
-
-//    public string TindakanId { get; init; }
-//    public TarifReff Tarif {  get; init; }
-//    public long SubTotal{ get; init; }
-//    public IEnumerable<TindakanTarifDetilModel> ListDetilTarif => _listDtlTarif;
-//}
-
-//public class TindakanTarifDetilModel
-//{
-//    public TindakanTarifDetilModel(string tindakanId, TarifReff tarif, string detilTarifId, 
-//        string detilTarifName, PetugasMedisReff petugasMedis, long nilai)
-//    {
-//        TindakanId = tindakanId;
-//        Tarif = tarif;
-//        DetilTarifId = detilTarifId;
-//        DetilTarifName = detilTarifName;
-//        PetugasMedis = petugasMedis;
-//        Nilai = nilai;
-//    }
-
-//    public string TindakanId { get; init; }
-//    public TarifReff Tarif { get; init; }
-//    public string DetilTarifId { get; init; }
-//    public string DetilTarifName { get; init; }
-//    public PetugasMedisReff PetugasMedis { get; init; }
-//    public long Nilai { get; init; }
-//}
