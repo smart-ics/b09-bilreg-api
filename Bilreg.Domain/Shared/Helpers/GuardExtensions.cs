@@ -28,5 +28,4 @@ public static class GuardExtensions
         const string ERROR_MESSAGE = "Invalid date format";
         throw new ArgumentException(ERROR_MESSAGE, parameterName);
     }
-
 }
