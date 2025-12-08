@@ -61,9 +61,9 @@ public class ScheduleOpModel : IScheduleOpKey
         result.AssignLeader(teamLeader, userId);
         return result;
     }
-    
+
     #endregion
-    
+
     #region PROPERTIES
     public string ScheduleOpId { get; init; }
     public DateTime ScheduleOpDate { get; init; }
@@ -81,7 +81,6 @@ public class ScheduleOpModel : IScheduleOpKey
     public IEnumerable<ScheduleOpPpaType> ListPpa => _listPpa;
     #endregion
 
-    
     #region BEHAVIOUR
     public void SetSchedule(DateTime tglOp, KamarReff kamarOp, string userId)
     {

@@ -24,4 +24,14 @@ public class ScheduleOpController : ControllerBase
         var response = await _mediator.Send(query);
         return Ok(new JSendOk(response));
     }
+
+    [HttpPost]
+    [Route("SetSchedule/{orderOpId}/{kamarId}/{tgl}/{jam}/{userId}")]
+    public async Task<IActionResult> SetSchedule(string orderOpId, string kamarId,
+        string tgl, string jam, string userId)
+    {
+        var cmd = new OkScheduleOpSetCommand(orderOpId, kamarId, tgl, jam, userId);
+        var response = await _mediator.Send(cmd);
+        return Ok(new JSendOk(response));
+    }
 }

@@ -128,7 +128,7 @@ public class OrderOpModel : IOrderOpKey
         SpecialEquipment = specialEquipment;
     }
     public OrderOpReff ToReff() => new OrderOpReff(OrderOpId, OrderDate, NamaOperasi);
-    #endregion    
+    #endregion
     
 }
 
