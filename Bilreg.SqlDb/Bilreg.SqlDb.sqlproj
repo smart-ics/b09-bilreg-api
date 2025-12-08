@@ -79,6 +79,7 @@
     <Folder Include="Helpers" />
     <Folder Include="BedUsageContext\" />
     <Folder Include="BedUsageContext\RoomRateFeature\" />
+    <Folder Include="ChargeContext\TindakanFeature" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OpCase.sql" />
@@ -182,6 +183,7 @@
     <None Include="ChargeContext\AmbulanceFeature\ta_transport.sql" />
     <None Include="ChargeContext\AmbulanceFeature\ta_tujuan_transport.sql" />
     <None Include="Helpers\DatabaseUser.sql" />
+    <None Include="ChargeContext\TindakanFeature\BILRG_OrderTindakan.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="BedUsageContext\RoomRateFeature\ta_kamar2.sql" />

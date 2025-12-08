@@ -14,7 +14,7 @@ public interface IOrderTindakanDal :
     IUpdate<OrderTindakanDto>,
     IDelete<IOrderTindakanKey>,
     IGetData<OrderTindakanDto, IOrderTindakanKey>,
-    IListData<OrderTindakanDto, ILayananKey> // Gunakan filter ILayananKey seperti di repo
+    IListData<OrderTindakanDto, ILayananKey> 
 {
 }
 
@@ -33,15 +33,17 @@ public class OrderTindakanDal : IOrderTindakanDal
             INSERT INTO BILRG_OrderTindakan(
                 OrderId, OrderDate, PpaId, PpaName, 
                 RegId, PasienId, PasienName, LayananId, LayananName, 
-                TarifId, TindakanName)
+                StatusOrder, TarifId, TindakanName, CrtUser, CrtDate, 
+                UpdUser, UpdDate, VodUser, VodDate)
             VALUES(
                 @OrderId, @OrderDate, @PpaId, @PpaName, 
                 @RegId, @PasienId, @PasienName, @LayananId, @LayananName, 
-                @TarifId, @TindakanName)
+                @StatusOrder, @TarifId, @TindakanName, @CrtUser, @CrtDate, 
+                @UpdUser, @UpdDate, @VodUser, @VodDate)
             """;
         var dp = new DynamicParameters();
         dp.AddParam("@OrderId", dto.OrderId, SqlDbType.VarChar);
-        dp.AddParam("@OrderDate", dto.OrderDate.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
+        dp.AddParam("@OrderDate", dto.OrderDate, SqlDbType.DateTime);
         dp.AddParam("@PpaId", dto.PpaId, SqlDbType.VarChar);
         dp.AddParam("@PpaName", dto.PpaName, SqlDbType.VarChar);
         dp.AddParam("@RegId", dto.RegId, SqlDbType.VarChar);
@@ -49,9 +51,16 @@ public class OrderTindakanDal : IOrderTindakanDal
         dp.AddParam("@PasienName", dto.PasienName, SqlDbType.VarChar);
         dp.AddParam("@LayananId", dto.LayananId, SqlDbType.VarChar);
         dp.AddParam("@LayananName", dto.LayananName, SqlDbType.VarChar);
+        dp.AddParam("@StatusOrder", dto.StatusOrder, SqlDbType.Int);
         dp.AddParam("@TarifId", dto.TarifId, SqlDbType.VarChar);
         dp.AddParam("@TindakanName", dto.TindakanName, SqlDbType.VarChar);
 
+        dp.AddParam("@CrtUser", dto.CrtUser, SqlDbType.VarChar);
+        dp.AddParam("@CrtDate", dto.CrtDate, SqlDbType.DateTime);
+        dp.AddParam("@UpdUser", dto.UpdUser, SqlDbType.VarChar);
+        dp.AddParam("@UpdDate", dto.UpdDate, SqlDbType.DateTime);
+        dp.AddParam("@VodUser", dto.VodUser, SqlDbType.VarChar);
+        dp.AddParam("@VodDate", dto.VodDate, SqlDbType.DateTime);
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
@@ -70,15 +79,22 @@ public class OrderTindakanDal : IOrderTindakanDal
               PasienName = @PasienName, 
               LayananId = @LayananId, 
               LayananName = @LayananName, 
+              StatusOrder = @StatusOrder,
               TarifId = @TarifId, 
-              TindakanName = @TindakanName
+              TindakanName = @TindakanName,
+              CrtUser = @CrtUser,
+              CrtDate = @CrtDate,
+              UpdUser = @UpdUser,
+              UpdDate = @UpdDate,
+              VodUser = @VodUser,
+              VodDate = @VodDate
            WHERE
               OrderId = @OrderId
            """;
 
         var dp = new DynamicParameters();
         dp.AddParam("@OrderId", dto.OrderId, SqlDbType.VarChar);
-        dp.AddParam("@OrderDate", dto.OrderDate.ToString("yyyy-MM-dd"), SqlDbType.VarChar); 
+        dp.AddParam("@OrderDate", dto.OrderDate, SqlDbType.DateTime); 
         dp.AddParam("@PpaId", dto.PpaId, SqlDbType.VarChar);
         dp.AddParam("@PpaName", dto.PpaName, SqlDbType.VarChar);
         dp.AddParam("@RegId", dto.RegId, SqlDbType.VarChar);
@@ -86,9 +102,16 @@ public class OrderTindakanDal : IOrderTindakanDal
         dp.AddParam("@PasienName", dto.PasienName, SqlDbType.VarChar);
         dp.AddParam("@LayananId", dto.LayananId, SqlDbType.VarChar);
         dp.AddParam("@LayananName", dto.LayananName, SqlDbType.VarChar);
+        dp.AddParam("@StatusOrder", dto.StatusOrder, SqlDbType.Int);
         dp.AddParam("@TarifId", dto.TarifId, SqlDbType.VarChar);
         dp.AddParam("@TindakanName", dto.TindakanName, SqlDbType.VarChar);
 
+        dp.AddParam("@CrtUser", dto.CrtUser, SqlDbType.VarChar);
+        dp.AddParam("@CrtDate", dto.CrtDate, SqlDbType.DateTime);
+        dp.AddParam("@UpdUser", dto.UpdUser, SqlDbType.VarChar);
+        dp.AddParam("@UpdDate", dto.UpdDate, SqlDbType.DateTime);
+        dp.AddParam("@VodUser", dto.VodUser, SqlDbType.VarChar);
+        dp.AddParam("@VodDate", dto.VodDate, SqlDbType.DateTime);
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
@@ -113,13 +136,14 @@ public class OrderTindakanDal : IOrderTindakanDal
     {
         const string sql = """
            SELECT
-               OrderId, OrderDate, PpaId, PpaName, 
-               RegId, PasienId, PasienName, LayananId, LayananName, 
-               TarifId, TindakanName
+               aa.OrderId, aa.OrderDate, aa.PpaId, aa.PpaName, 
+               aa.RegId, aa.PasienId, aa.PasienName, aa.LayananId, aa.LayananName, 
+               aa.StatusOrder, aa.TarifId, aa.TindakanName, aa.CrtUser, aa.CrtDate, 
+               aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate
            FROM
-               BILRG_OrderTindakan
+               BILRG_OrderTindakan aa
            WHERE
-               OrderId = @OrderId
+               aa.OrderId = @OrderId
            """;
         var dp = new DynamicParameters();
         dp.AddParam("@OrderId", key.OrderId, SqlDbType.VarChar);
@@ -132,13 +156,14 @@ public class OrderTindakanDal : IOrderTindakanDal
     {
         const string sql = """
            SELECT
-               OrderId, OrderDate, PpaId, PpaName, 
-               RegId, PasienId, PasienName, LayananId, LayananName, 
-               TarifId, TindakanName
+               aa.OrderId, aa.OrderDate, aa.PpaId, aa.PpaName, 
+               aa.RegId, aa.PasienId, aa.PasienName, aa.LayananId, aa.LayananName, 
+               aa.StatusOrder, aa.TarifId, aa.TindakanName, aa.CrtUser, aa.CrtDate, 
+               aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate
            FROM
-               BILRG_OrderTindakan
+               BILRG_OrderTindakan aa
            WHERE
-               LayananId = @LayananId 
+               aa.LayananId = @LayananId 
            """;
         var dp = new DynamicParameters();
         dp.AddParam("@LayananId", filter.LayananId, SqlDbType.VarChar);
