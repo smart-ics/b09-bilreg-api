@@ -1,4 +1,5 @@
 using MediatR;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
 
@@ -13,9 +14,28 @@ public record OkListScheduleResponse(
 
 public class OkListScheduleHandler : IRequestHandler<OkListScheduleQuery, IEnumerable<OkListScheduleResponse>>
 {
+    private readonly IScheduleOpRepo _scheduleRepo;
+    public OkListScheduleHandler(IScheduleOpRepo repo)
+    {
+        _scheduleRepo = repo;
+    }
     public Task<IEnumerable<OkListScheduleResponse>> Handle(OkListScheduleQuery request, CancellationToken cancellationToken)
     {
-        return Task.FromResult(ScheduleFaker.Generate(request.TglYmd));
+        var listSchedule = _scheduleRepo.ListData(request.TglYmd.ToDate(DateFormatEnum.YMD));
+        var result = listSchedule.Select(x => new OkListScheduleResponse(
+            x.Pasien.PasienId,
+            x.Pasien.PasienName,
+            x.Pasien.TglLahir.ToString("yyyy-MM-dd"),
+            x.NamaOperasi,
+            x.Urgency.ToString(),
+            x.Durasi,
+            x.TglOp.ToString("HH:mm"),
+            x.TeamLead.PpaId,
+            x.TeamLead.PpaName,
+            x.Kamar.KamarId,
+            x.Kamar.KamarName
+        ));
+        return Task.FromResult(result);
     }
     
 }

@@ -186,6 +186,8 @@
     <None Include="ChargeContext\TindakanFeature\BILRG_OrderTindakan.sql" />
   </ItemGroup>
   <ItemGroup>
+    <Build Include="BedUsageContext\KamarOperasiFeature\BILRG_ScheduleOp.sql" />
+    <Build Include="BedUsageContext\KamarOperasiFeature\BILRG_SchedulOpPpa.sql" />
     <Build Include="BedUsageContext\RoomRateFeature\ta_kamar2.sql" />
     <Build Include="BedUsageContext\RoomRateFeature\ta_kamar_tipe.sql" />
   </ItemGroup>

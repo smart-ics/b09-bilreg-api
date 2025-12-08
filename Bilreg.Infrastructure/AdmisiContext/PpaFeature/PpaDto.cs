@@ -1,6 +1,7 @@
 ﻿using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
+using Bilreg.Domain.PasienContext.PasienFeature;
 
 // ReSharper disable InconsistentNaming
 namespace Bilreg.Infrastructure.AdmisiContext.PpaFeature;
@@ -18,12 +19,12 @@ public record PpaDto(string fs_kd_peg, string fs_nm_peg,
     }
     
     public PpaType ToModel(IEnumerable<PpaLayananType> listLayanan,
-        IEnumerable<PpaSatTugasType> listSatTugas)
+        IEnumerable<PpaSatTugasType> listSatTugas, IEnumerable<ContactType> listContact)
     {
         var smf = new SmfType(fs_kd_smf, fs_nm_smf);
         var groupSpesialis = new GroupSpesialisType(groupSpesialisId, groupSpesialisName);
         var result = new PpaType(fs_kd_peg, fs_nm_peg, fs_nm_alias, smf, groupSpesialis,
-            listLayanan, listSatTugas, []);
+            listLayanan, listSatTugas, listContact);
         return result;
     }
 
