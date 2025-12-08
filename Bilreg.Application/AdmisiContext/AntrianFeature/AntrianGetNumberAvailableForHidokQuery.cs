@@ -2,6 +2,7 @@
 using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
+using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers;
 using MediatR;
 
@@ -15,15 +16,12 @@ public class AntrianGetNumberAvailableForHidokhandler : IRequestHandler<AntrianG
 {
     private readonly IPpaRepo _ppaRepo;
     private readonly ISequencer _sequencer;
-    private readonly IPpaMapHidokRepo _ppaMapHidokRepo;
     public AntrianGetNumberAvailableForHidokhandler(
         IPpaRepo ppaRepo,
-        ISequencer sequencer,
-        IPpaMapHidokRepo ppaMapHidokRepo)
+        ISequencer sequencer)
     {
         _ppaRepo = ppaRepo;
         _sequencer = sequencer;
-        _ppaMapHidokRepo = ppaMapHidokRepo;
     }
 
     public Task<AntrianGetNumberAvailableForHidokResponse> Handle(AntrianGetNumberAvailableForHidokCommand request, CancellationToken cancellationToken)
@@ -34,15 +32,11 @@ public class AntrianGetNumberAvailableForHidokhandler : IRequestHandler<AntrianG
         Guard.Against.InvalidTimeFormat(request.JamMulai, nameof(request.JamMulai));
 
 
-        var dokterHidok = _ppaMapHidokRepo.LoadEntity(PpaMapHidokType.Key(request.DokterHidokId))
+        var finder = new ContactFinder(JenisContactEnum.Email, request.DokterHidokId);
+        var dokter = _ppaRepo.LoadEntity(finder)
             .Match(
                 onSome: x => x,
-                onNone: () => throw new KeyNotFoundException($"Mapping Dokter {request.DokterHidokId} not found")
-            );
-        var dokter = _ppaRepo.LoadEntity(PpaType.Key(dokterHidok.PpaId))
-            .Match(
-                onSome: x => x,
-                onNone: () => throw new KeyNotFoundException($"Dokter {dokterHidok.PpaId} not found")
+                onNone: () => throw new KeyNotFoundException($"Dokter {request.DokterHidokId} not found")
             );
 
         // BUILD

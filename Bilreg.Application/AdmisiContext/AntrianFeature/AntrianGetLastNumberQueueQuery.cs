@@ -4,6 +4,7 @@ using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
+using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers;
 using MediatR;
 
@@ -21,16 +22,13 @@ public class AntrianGetlastNumberHandler : IRequestHandler<AntrianGetLastNumberQ
     private readonly IAntrianRepo _antrianRepo;
     private readonly IJadwalPraktekRepo _jadwalPraktekRepo;
     private readonly IPpaRepo _ppaRepo;
-    private readonly IPpaMapHidokRepo _ppaMapHidokRepo;
     public AntrianGetlastNumberHandler(IAntrianRepo antrianRepo,
         IJadwalPraktekRepo jadwalPraktekRepo,
-        IPpaRepo ppaRepo,
-        IPpaMapHidokRepo ppaMapHidokRepo)
+        IPpaRepo ppaRepo)
     {
         _antrianRepo = antrianRepo;
         _jadwalPraktekRepo = jadwalPraktekRepo;
         _ppaRepo = ppaRepo;
-        _ppaMapHidokRepo = ppaMapHidokRepo;
     }
 
 
@@ -41,16 +39,11 @@ public class AntrianGetlastNumberHandler : IRequestHandler<AntrianGetLastNumberQ
         Guard.Against.InvalidDateFormat(request.TglAntrianYmd, nameof(request.TglAntrianYmd));
         Guard.Against.InvalidTimeFormat(request.JamMulai, nameof(request.JamMulai));
 
-
-        var dokterHidok = _ppaMapHidokRepo.LoadEntity(PpaMapHidokType.Key(request.DokterHidokId))
+        var finder = new ContactFinder(JenisContactEnum.Email, request.DokterHidokId);
+        var dokter = _ppaRepo.LoadEntity(finder)
             .Match(
                 onSome: x => x,
-                onNone: () => throw new KeyNotFoundException($"Mapping Dokter {request.DokterHidokId} not found")
-            );
-        var dokter = _ppaRepo.LoadEntity(PpaType.Key(dokterHidok.PpaId))
-            .Match(
-                onSome: x => x,
-                onNone: () => throw new KeyNotFoundException($"Dokter {dokterHidok.PpaId} not found")
+                onNone: () => throw new KeyNotFoundException($"Dokter {request.DokterHidokId} not found")
             );
 
         // BUILD
