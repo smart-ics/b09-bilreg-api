@@ -13,8 +13,8 @@ public class BookingModel : IBookingKey
     #region CREATION
     public BookingModel(string bookindId, DateTime bookingDate, 
         PersonInfoType person, string pasienId, RegReff reg, DateOnly tglBerobat, TimeOnly jamPraktek,
-        LayananReff layanan, PpaReff dokter,  int noAntrian,
-        AuditTrailType auditTrail)
+        LayananReff layanan, PpaReff dokter, int noAntrian,
+        AuditTrailType auditTrail, string reffId, string noPeserta, string noReffKontrol)
     {
         BookingId = bookindId;
         BookingDate = bookingDate;
@@ -27,19 +27,23 @@ public class BookingModel : IBookingKey
         Dokter = dokter;
         NoAntrian = noAntrian;
         AuditTrail = auditTrail;
+        ReffId = reffId;
+        NoPeserta = noPeserta;
+        NoReffKontrol = noReffKontrol;
     }
 
     public static BookingModel Default => new("-", new DateTime(3000,1,1),
         PersonInfoType.Default, "-", RegModel.Default.ToReff(), DateOnly.MinValue, TimeOnly.MinValue, 
         LayananType.Default.ToReff(), PpaType.Default.ToReff(), 0, 
-        AuditTrailType.Default);
+        AuditTrailType.Default, "-", "-", "-");
     
     public static IBookingKey Key(string id) => new BookingModel(id, new DateTime(3000,1,1), 
         PersonInfoType.Default, "-", RegModel.Default.ToReff(), DateOnly.MinValue, TimeOnly.MinValue, 
         LayananType.Default.ToReff(), PpaType.Default.ToReff(), 0, 
-        AuditTrailType.Default);
+        AuditTrailType.Default, "-", "-", "-");
     
-    public static BookingModel Create(PersonInfoType person, DateOnly tglBerobat, JadwalPraktekType jadwal)
+    public static BookingModel Create(PersonInfoType person, DateOnly tglBerobat, 
+        JadwalPraktekType jadwal, string reffId, string noPeserta, string noReffBooking)
     {
         Guard.Against.Null(person, nameof(person));
         Guard.Against.Null(tglBerobat);
@@ -51,11 +55,12 @@ public class BookingModel : IBookingKey
         var newId = Ulid.NewUlid().ToString();
         var result = new BookingModel(newId, DateTime.Now, person, "-", RegModel.Default.ToReff(), 
             tglBerobat, jadwal.JamMulai, jadwal.Layanan, jadwal.Dokter,  -1, 
-            AuditTrailType.Create("", DateTime.Now));
+            AuditTrailType.Create("", DateTime.Now), reffId, noPeserta, noReffBooking);
         return result;
     }
+
     #endregion
-    
+
     #region PROPERTIES
     public string BookingId { get; init; }
     public DateTime BookingDate { get; init; }
@@ -68,6 +73,9 @@ public class BookingModel : IBookingKey
     public LayananReff Layanan { get; init; }
     public PpaReff Dokter { get; init; }
     public int NoAntrian { get; private set; }
+    public string ReffId { get; init; }
+    public string NoPeserta { get; init; }
+    public string NoReffKontrol { get; init; }
     #endregion
 
     #region BEHAVIOUR

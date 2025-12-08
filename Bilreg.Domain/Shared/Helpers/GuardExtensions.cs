@@ -1,5 +1,6 @@
 ﻿using Ardalis.GuardClauses;
 using Nuna.Lib.ValidationHelper;
+using System.Net.NetworkInformation;
 
 namespace Bilreg.Domain.Shared.Helpers;
 
@@ -26,6 +27,13 @@ public static class GuardExtensions
     {
         if (input.IsValidTgl("yyyy-MM-dd")) return input;
         const string ERROR_MESSAGE = "Invalid date format";
+        throw new ArgumentException(ERROR_MESSAGE, parameterName);
+    }
+
+    public static string InvalidTimeFormat(this IGuardClause guardClause, string input, string parameterName)
+    {
+        if(input.IsValidJam("HH:mm")) return input;
+        const string ERROR_MESSAGE = "Invalid time format";
         throw new ArgumentException(ERROR_MESSAGE, parameterName);
     }
 }

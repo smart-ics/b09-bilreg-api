@@ -35,11 +35,13 @@ public class BookingDal : IBookingDal
                 BookingId, BookingDate,
                 PasienName, TglLahir, Gender, Alamat, PasienId, RegId,
                 TglBerobat, JamPraktek, LayananId, DokterId, NoAntrian,
+                TelpPasien, NoPeserta, NoReffKontrol, ReffId, 
                 CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
             VALUES (
                 @BookingId, @BookingDate,
                 @PasienName, @TglLahir, @Gender, @Alamat, @PasienId, @RegId,
                 @TglBerobat, @JamPraktek, @LayananId, @DokterId, @NoAntrian,
+                @TelpPasien, @NoPeserta, @NoReffKontrol, @ReffId,
                 @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
             """;
 
@@ -51,6 +53,7 @@ public class BookingDal : IBookingDal
         dp.AddParam("@TglLahir", dto.TglLahir, SqlDbType.DateTime);
         dp.AddParam("@Gender", dto.Gender, SqlDbType.VarChar);
         dp.AddParam("@Alamat", dto.Alamat, SqlDbType.VarChar);
+        dp.AddParam("@TelpPasien", dto.TelpPasien, SqlDbType.VarChar);
         dp.AddParam("@PasienId", dto.PasienId, SqlDbType.VarChar);
         dp.AddParam("@RegId", dto.RegId, SqlDbType.VarChar);
         
@@ -59,6 +62,10 @@ public class BookingDal : IBookingDal
         dp.AddParam("@LayananId", dto.LayananId, SqlDbType.VarChar);
         dp.AddParam("@DokterId", dto.DokterId, SqlDbType.VarChar);
         dp.AddParam("@NoAntrian", dto.NoAntrian, SqlDbType.Int);
+
+        dp.AddParam("@NoPeserta", dto.NoPeserta, SqlDbType.VarChar);
+        dp.AddParam("@NoReffKontrol", dto.NoReffKontrol, SqlDbType.VarChar);
+        dp.AddParam("@ReffId", dto.ReffId, SqlDbType.VarChar);
         
         dp.AddParam("@CrtUser", dto.CrtUser, SqlDbType.VarChar);
         dp.AddParam("@CrtDate", dto.CrtDate, SqlDbType.DateTime);
@@ -83,11 +90,15 @@ public class BookingDal : IBookingDal
                Alamat = @Alamat,
                PasienId = @PasienId,
                RegId = @RegId,
+               TelpPasien = @TelpPasien,
                TglBerobat = @TglBerobat,
                JamPraktek = @JamPraktek,
                LayananId = @LayananId,
                DokterId = @DokterId,
                NoAntrian = @NoAntrian,
+               NoPeserta = @NoPeserta,
+               NoReffKontrol = @NoReffKontrol,
+               ReffId = @ReffId,
                CrtUser = @CrtUser,
                CrtDate = @CrtDate,
                UpdUser = @UpdUser,
@@ -105,6 +116,7 @@ public class BookingDal : IBookingDal
         dp.AddParam("@TglLahir", dto.TglLahir, SqlDbType.DateTime);
         dp.AddParam("@Gender", dto.Gender, SqlDbType.VarChar);
         dp.AddParam("@Alamat", dto.Alamat, SqlDbType.VarChar);
+        dp.AddParam("@TelpPasien", dto.TelpPasien, SqlDbType.VarChar);
         dp.AddParam("@PasienId", dto.PasienId, SqlDbType.VarChar);
         dp.AddParam("@RegId", dto.RegId, SqlDbType.VarChar);
         
@@ -113,7 +125,11 @@ public class BookingDal : IBookingDal
         dp.AddParam("@LayananId", dto.LayananId, SqlDbType.VarChar);
         dp.AddParam("@DokterId", dto.DokterId, SqlDbType.VarChar);
         dp.AddParam("@NoAntrian", dto.NoAntrian, SqlDbType.Int);
-        
+
+        dp.AddParam("@NoPeserta", dto.NoPeserta, SqlDbType.VarChar);
+        dp.AddParam("@NoReffKontrol", dto.NoReffKontrol, SqlDbType.VarChar);
+        dp.AddParam("@ReffId", dto.ReffId, SqlDbType.VarChar);
+
         dp.AddParam("@CrtUser", dto.CrtUser, SqlDbType.VarChar);
         dp.AddParam("@CrtDate", dto.CrtDate, SqlDbType.DateTime);
         dp.AddParam("@UpdUser", dto.UpdUser, SqlDbType.VarChar);
@@ -144,8 +160,9 @@ public class BookingDal : IBookingDal
         const string sql = """
             SELECT
                 aa.BookingId, aa.BookingDate,
-                aa.PasienName, aa.TglLahir, aa.Gender, aa.Alamat, aa.PasienId, aa.RegId,
+                aa.PasienName, aa.TglLahir, aa.Gender, aa.Alamat, aa.TelpPasien, aa.PasienId, aa.RegId,
                 aa.TglBerobat, aa.JamPraktek, aa.LayananId, aa.DokterId, aa.NoAntrian,
+                aa.NoPeserta, aa.NoReffKontrol, aa.ReffId, 
                 aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
                 ISNULL(bb.fs_nm_layanan, '') AS LayananName,
                 ISNULL(cc.fs_nm_peg, '') AS DokterName
@@ -169,8 +186,9 @@ public class BookingDal : IBookingDal
         const string sql = """
            SELECT
                aa.BookingId, aa.BookingDate,
-               aa.PasienName, aa.TglLahir, aa.Gender, aa.Alamat, aa.PasienId, aa.RegId,
+               aa.PasienName, aa.TglLahir, aa.Gender, aa.Alamat, aa.TelpPasien, aa.PasienId, aa.RegId,
                aa.TglBerobat, aa.JamPraktek, aa.LayananId, aa.DokterId, aa.NoAntrian,
+               aa.NoPeserta, aa.NoReffKontrol, aa.ReffId,
                aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
                ISNULL(bb.fs_nm_layanan, '') AS LayananName,
                ISNULL(cc.fs_nm_peg, '') AS DokterName
@@ -197,8 +215,9 @@ public class BookingDal : IBookingDal
         const string sql = """
             SELECT
                aa.BookingId, aa.BookingDate,
-               aa.PasienName, aa.TglLahir, aa.Gender, aa.Alamat, aa.PasienId, aa.RegId,
+               aa.PasienName, aa.TglLahir, aa.Gender, aa.Alamat, aa.TelpPasien, aa.PasienId, aa.RegId,
                aa.TglBerobat, aa.JamPraktek, aa.LayananId, aa.DokterId, aa.NoAntrian,
+               aa.NoPeserta, aa.NoReffKontrol, aa.ReffId,
                aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
                ISNULL(bb.fs_nm_layanan, '') AS LayananName,
                ISNULL(cc.fs_nm_peg, '') AS DokterName

@@ -65,6 +65,14 @@ public class AntrianModel : IAntrianKey
         var entry = AntrianEntryModel.Create(noUrut, PersonType.Default, PasienTrackerModel.Key("-"));
         _listEntry.Add(entry); 
     }
+
+    public AntrianEntryModel AddEntry(int noUrut, PasienTrackerModel pasienTracker)
+    {
+        var visitor = pasienTracker.Person;
+        var entry = AntrianEntryModel.Create(noUrut, visitor, pasienTracker);
+        _listEntry.Add(entry);
+        return entry;
+    }
     public static string GenSequenceTag(DateOnly tglAntrian, JadwalPraktekType jadwal)
     {
         Guard.Against.Null(jadwal, nameof(jadwal));

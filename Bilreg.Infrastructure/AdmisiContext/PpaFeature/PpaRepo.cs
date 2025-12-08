@@ -10,14 +10,17 @@ public class PpaRepo : IPpaRepo
     private readonly IPpaDal _ppaDal;
     private readonly IPpaSatTugasDal _ppaSatTugasDal;
     private readonly IPpaLayananDal _ppaLayananDal;
+    private readonly IPpaContactDal _ppaContactDal;
 
     public PpaRepo(IPpaDal ppaDal, 
         IPpaSatTugasDal ppaSatTugasDal, 
-        IPpaLayananDal ppaLayananDal)
+        IPpaLayananDal ppaLayananDal, 
+        IPpaContactDal ppaContactDal)
     {
         _ppaDal = ppaDal;
         _ppaSatTugasDal = ppaSatTugasDal;
         _ppaLayananDal = ppaLayananDal;
+        _ppaContactDal = ppaContactDal;
     }
 
     public void SaveChanges(PpaType model)
@@ -41,8 +44,10 @@ public class PpaRepo : IPpaRepo
         var listLyn = _ppaLayananDal.ListData(key)?.ToList() ?? [];
         var listLynType = listLyn.Select(x => x.ToModel());
         
+        var listContact = _ppaContactDal.ListData(key)?.ToList() ?? [];
+        
         var hdr = _ppaDal.GetData(key);
-        var model = hdr?.ToModel(listLynType, listSatTgsType);
+        var model = hdr?.ToModel(listLynType, listSatTgsType, listContact);
         return MayBe.From(model!);
     }
 
@@ -65,5 +70,13 @@ public class PpaRepo : IPpaRepo
         var listPpa = _ppaDal.ListData(filter) ?? [];
         var result = listPpa.Select(x => x.ToView());
         return result;   
+    }
+
+    public MayBe<PpaType> LoadEntity(IContactFinder finder)
+    {
+        var ppa = _ppaDal.GetData(finder);
+        return ppa is null ? 
+            MayBe<PpaType>.None : 
+            LoadEntity(PpaType.Key(ppa.fs_kd_peg));
     }
 }
