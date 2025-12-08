@@ -61,7 +61,7 @@ public class ScheduleOpDalTest
     {
         using var trans = TransHelper.NewScope();
         _sut.Insert(Faker());
-        var actual = _sut.ListData();
+        var actual = _sut.ListData(new DateTime(2023,1,2));
         actual.Should().ContainEquivalentOf(Faker(),
             opt => opt
                 .Excluding(x => x.OrderDate)

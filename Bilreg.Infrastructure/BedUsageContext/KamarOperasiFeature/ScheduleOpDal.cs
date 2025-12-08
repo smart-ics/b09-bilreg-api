@@ -1,5 +1,6 @@
 using System.Data;
 using System.Data.SqlClient;
+using Bilreg.Application.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
@@ -13,7 +14,8 @@ public interface IScheduleOpDal :
     IUpdate<ScheduleOpDto>,
     IDelete<IScheduleOpKey>,
     IGetData<ScheduleOpDto, IScheduleOpKey>,
-    IListData<ScheduleOpDto>
+    IListData<ScheduleOpDto, DateTime>
+    
 {
 }
 
@@ -145,7 +147,7 @@ public class ScheduleOpDal : IScheduleOpDal
         return result;
     }
 
-    public IEnumerable<ScheduleOpDto> ListData()
+    public IEnumerable<ScheduleOpDto> ListData(DateTime filter)
     {
         const string sql = """
             SELECT
@@ -169,4 +171,5 @@ public class ScheduleOpDal : IScheduleOpDal
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<ScheduleOpDto>(sql);
     }
+
 }

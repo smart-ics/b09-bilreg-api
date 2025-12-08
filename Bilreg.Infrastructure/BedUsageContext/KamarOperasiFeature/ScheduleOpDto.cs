@@ -1,3 +1,4 @@
+using Bilreg.Application.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
@@ -89,6 +90,24 @@ public record ScheduleOpDto(
             reg,
             teamLead,
             listPpa
+        );
+        return result;
+    }
+    
+    public ScheduleOpView ToView()
+    {
+        var pasien = new PasienReff(PasienId, PasienName, DateOnly.ParseExact(TglLahir, "yyyy-MM-dd"), Gender);
+        var kamarOp = new KamarReff(KamarId, KamarName);
+        var teamLead = new PpaReff(PpaId, PpaName);
+        var result = new ScheduleOpView(
+            ScheduleOpId,
+            pasien,
+            NamaOperasi,
+            (UrgencyLevelEnum)UrgencyLevel,
+            TglOp,
+            Durasi,
+            teamLead,
+            kamarOp
         );
         return result;
     }

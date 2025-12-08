@@ -41,8 +41,9 @@ public class ScheduleOpRepo : IScheduleOpRepo
         _scheduleOpDal.Delete(key);
     }
 
-    public IEnumerable<ScheduleOpView> ListData(Periode filter)
+    public IEnumerable<ScheduleOpView> ListData(DateTime filter)
     {
-        throw new NotImplementedException();
+        var dto = _scheduleOpDal.ListData(filter)?.ToList() ?? [];
+        return dto.Select(x => x.ToView());
     }
 }

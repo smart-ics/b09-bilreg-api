@@ -11,14 +11,13 @@ public interface IScheduleOpRepo :
     ISaveChange<ScheduleOpModel>,
     ILoadEntity<ScheduleOpModel, IScheduleOpKey>,
     IDeleteEntity<IScheduleOpKey>,
-    IListData<ScheduleOpView, Periode>
+    IListData<ScheduleOpView, DateTime>
 {
 }
 
 public record ScheduleOpView(string ScheduleOpId, 
-    PasienReff pasien,
+    PasienReff Pasien,
     string NamaOperasi, UrgencyLevelEnum Urgency,
-    string KamarOpId, 
     DateTime TglOp, int Durasi, 
     PpaReff TeamLead, 
     KamarReff Kamar);
