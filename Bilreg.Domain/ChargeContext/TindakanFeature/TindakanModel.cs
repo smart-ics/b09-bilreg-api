@@ -1,6 +1,7 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
@@ -81,7 +82,7 @@ public record TindakanModel : ITindakanKey
     #endregion
 
     #region BEHAVIOR
-    public TindakanReff ToReff() => new(TindakanId, TindakanDate, Tarif.TarifId, Tarif.TarifName);
+    public TindakanReff ToReff() => new(TindakanId, TindakanDate, Tarif.Tarif);
     #endregion
 }
 
@@ -90,6 +91,6 @@ public interface ITindakanKey
     string TindakanId { get; }
 }
 
-public record TindakanReff(string TindakanId, DateTime TindakanDate, string TarifId, string TarifName);
+public record TindakanReff(string TindakanId, DateTime TindakanDate, TarifReff Tarif);
 
 
