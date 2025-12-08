@@ -17,7 +17,6 @@ public record TindakanTarifModel
         TarifType.Default, []);
     #endregion
 
-    public int NoUrut { get; init; }
     public TarifReff Tarif { get; init; }
     public decimal Total => _listKomponen.Sum(t => t.Nilai);
     public IEnumerable<TindakanKomponenTarifModel> ListKomponen => _listKomponen;
