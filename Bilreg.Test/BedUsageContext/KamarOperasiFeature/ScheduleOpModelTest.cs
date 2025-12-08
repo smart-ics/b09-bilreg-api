@@ -35,6 +35,10 @@ public class ScheduleOpModelTests
                 new PpaSatTugasType(
                     new SatTugasType("A","B", profesi),
                     true)
+            },
+            new List<ContactType>
+            {
+                new ContactType(JenisContactEnum.Email, "C")
             }
         );
     }
@@ -98,7 +102,7 @@ public class ScheduleOpModelTests
     {
         // Arrange
         var schedule = CreateEmptySchedule();
-        var ppa = CreatePpa("X", profesi: null); // profesi null
+        var ppa = CreatePpa("X", profesi: null!); // profesi null
 
         // Act
         Action act = () => schedule.AddPpa(ppa, "user1");

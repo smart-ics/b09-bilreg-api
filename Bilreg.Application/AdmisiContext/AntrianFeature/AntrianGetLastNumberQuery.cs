@@ -17,12 +17,12 @@ public record AntrianGetLastNumberQuery(string DokterHidokId, string TglAntrianY
 public record AntrianGetLastNumberResponse(int LastQueueNumber, int RemainingPatientQuota);
 
 
-public class AntrianGetlastNumberHandler : IRequestHandler<AntrianGetLastNumberQuery, AntrianGetLastNumberResponse>
+public class AntrianGetLastNumberHandler : IRequestHandler<AntrianGetLastNumberQuery, AntrianGetLastNumberResponse>
 {
     private readonly IAntrianRepo _antrianRepo;
     private readonly IJadwalPraktekRepo _jadwalPraktekRepo;
     private readonly IPpaRepo _ppaRepo;
-    public AntrianGetlastNumberHandler(IAntrianRepo antrianRepo,
+    public AntrianGetLastNumberHandler(IAntrianRepo antrianRepo,
         IJadwalPraktekRepo jadwalPraktekRepo,
         IPpaRepo ppaRepo)
     {
