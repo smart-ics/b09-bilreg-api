@@ -7,6 +7,7 @@ using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers;
 using MediatR;
+using Nuna.Lib.TransactionHelper;
 using System.Globalization;
 
 namespace Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
@@ -25,18 +26,23 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
     private readonly IScheduleOpRepo _scheduleOpRepo;
     private readonly IOrderOpRepo _orderOpRepo;
     private readonly IKamarRepo _kamarRepo;
-    private readonly IPpaRepo _ppaRepo;
+    private readonly IOpCaseRepo _opCaseRepo;
+    //private readonly IPpaRepo _ppaRepo;
 
     public OkScheduleOpSetCommandHandler(
         IScheduleOpRepo scheduleOpRepo,
         IOrderOpRepo orderOpRepo,
         IKamarRepo kamarRepo,
-        IPpaRepo ppaRepo)
+        IOpCaseRepo opCaseRepo
+        //,
+        //IPpaRepo ppaRepo
+        )
     {
         _scheduleOpRepo = scheduleOpRepo;
         _orderOpRepo = orderOpRepo;
         _kamarRepo = kamarRepo;
-        _ppaRepo = ppaRepo;
+        _opCaseRepo = opCaseRepo;
+        //_ppaRepo = ppaRepo;
     }
 
     public async Task<OkScheduleOpSetResponse> Handle(OkScheduleOpSetCommand request, CancellationToken cancellationToken)
@@ -78,7 +84,15 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
             scheduleOp.SetSchedule(tglOp, kamar.ToReff(), request.UserId);
         }
 
+        var opCase = _opCaseRepo.LoadEntity(orderOp)
+            .GetValueOrDefault()
+            ?? OpCaseModel.Create(orderOp);
+        opCase.Schedule(scheduleOp.ToReff());
+
+        using var trans = TransHelper.NewScope();
         _scheduleOpRepo.SaveChanges(scheduleOp);
+        _opCaseRepo.SaveChanges(opCase);
+        trans.Complete();
 
         return new OkScheduleOpSetResponse(scheduleOp.ScheduleOpId);
     }

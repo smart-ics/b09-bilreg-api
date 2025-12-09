@@ -8,34 +8,36 @@ namespace Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature;
 public record OpCaseDto(
     string OrderOpId,
     DateTime OrderDate,
-    string PasienId,
     string NamaOperasi,
-    
+    string PasienId,
     string RegId,
-    int UrgencyLevel,
+
     string ScheduleOpId,
     DateTime ScheduledDate,
     string DischargeOpId,
     DateTime DischargedDate,
-    int OpCaseState,
+    int OrderOpState,
     //
     string PasienName,
     string TglLahir,
-    string Gender)
+    string Gender,
+    int UrgencyLevel)
 {
     public static OpCaseDto FromModel(OpCaseModel model)
     {
         var tglLahir = model.Pasien.TglLahir.ToString("yyyy-MM-dd");
         var result = new OpCaseDto(model.OrderOpId,
-            model.OrderOp.OrderDate, model.Pasien.PasienId, 
-            model.OrderOp.NamaOperasi, 
-            model.Reg.RegId, (int)model.UrgencyLevel, 
+            model.OrderOp.OrderDate,
+            model.OrderOp.NamaOperasi,
+            model.Pasien.PasienId,
+            model.Reg.RegId,
             model.ScheduleOp.ScheduleOpId,
             model.ScheduleOp.ScheduledDate,
             model.DischargeOp.DischargeOpId,
             model.DischargeOp.DischargedDate,
             (int)model.OrderOpState,
-            model.Pasien.PasienName, tglLahir, model.Pasien.Gender);
+            model.Pasien.PasienName, tglLahir, model.Pasien.Gender,
+            (int)model.UrgencyLevel);
         return result;
     }
 
@@ -52,7 +54,7 @@ public record OpCaseDto(
         var discharge = new DischergeOpReff(DischargeOpId, DischargedDate);
         var result = new OpCaseModel(OrderOpId, orderOp, pasien, NamaOperasi, 
             reg, (UrgencyLevelEnum)UrgencyLevel, schedule, discharge, 
-            (OpCaseStateEnum)OpCaseState, listHist, listPpa);
+            (OpCaseStateEnum)OrderOpState, listHist, listPpa);
         return result;
     }
 }

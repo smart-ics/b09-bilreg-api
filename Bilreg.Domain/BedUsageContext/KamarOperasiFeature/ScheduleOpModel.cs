@@ -133,6 +133,9 @@ public class ScheduleOpModel : IScheduleOpKey
         TeamLead = ppa.ToReff();
         AuditTrail.Modif(userId, DateTime.Now);
     }
+
+    public ScheduleOpReff ToReff() =>
+        new ScheduleOpReff(ScheduleOpId, TglOp);
     #endregion
 }
 
