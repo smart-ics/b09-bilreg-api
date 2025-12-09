@@ -1,5 +1,6 @@
 using Bilreg.Application.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
+using Bilreg.Domain.PasienContext.PasienFeature;
 using Nuna.Lib.PatternHelper;
 using Nuna.Lib.ValidationHelper;
 
@@ -42,6 +43,12 @@ public class ScheduleOpRepo : IScheduleOpRepo
     }
 
     public IEnumerable<ScheduleOpView> ListData(DateTime filter)
+    {
+        var dto = _scheduleOpDal.ListData(filter)?.ToList() ?? [];
+        return dto.Select(x => x.ToView());
+    }
+
+    public IEnumerable<ScheduleOpView> ListData(IPasienKey filter)
     {
         var dto = _scheduleOpDal.ListData(filter)?.ToList() ?? [];
         return dto.Select(x => x.ToView());

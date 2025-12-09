@@ -1,12 +1,6 @@
 ﻿using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 
@@ -15,7 +9,7 @@ namespace Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 public class ScheduleOpModel : IScheduleOpKey
 {
     private readonly List<ScheduleOpPpaType> _listPpa;
-    
+
     #region CREATION
     public ScheduleOpModel(string scheduleOpId, DateTime scheduleDate, AuditTrailType auditTrail, 
         OrderOpReff orderOp, PasienReff pasien, UrgencyLevelEnum urgencyLevel, int durasi, 
@@ -47,7 +41,7 @@ public class ScheduleOpModel : IScheduleOpKey
             UrgencyLevelEnum.Elective, 0, 
             new DateTime(3000,1,1), KamarType.Default.ToReff(), 
             RegModel.Default.ToReff(), PpaType.Default.ToReff(), []);
-    
+
     public static ScheduleOpModel CreateFromOrder(OrderOpModel orderOp, string userId,
         KamarType kamar, PpaType teamLeader, DateTime tglOp)
     {
@@ -57,6 +51,11 @@ public class ScheduleOpModel : IScheduleOpKey
         var result = new ScheduleOpModel(newId, DateTime.Now, audit, orderOp.ToReff(),
             orderOp.Pasien, orderOp.UrgencyLevel, orderOp.EstimasiDurasiInMinutes,
             tglOp, kamar.ToReff(), orderOp.Reg, PpaType.Default.ToReff(), []);
+
+        if (string.IsNullOrWhiteSpace(teamLeader.PpaId) ||
+            teamLeader.PpaId == "-")
+            return result;
+
         result.AddPpa(teamLeader, userId);
         result.AssignLeader(teamLeader, userId);
         return result;
@@ -69,15 +68,15 @@ public class ScheduleOpModel : IScheduleOpKey
     public DateTime ScheduleOpDate { get; init; }
     public AuditTrailType AuditTrail { get; init; }
     //  order
-    public OrderOpReff OrderOp { get; init;}
-    public PasienReff Pasien { get; init;}
-    public UrgencyLevelEnum UrgencyLevel { get; init;}
-    public int Durasi { get; private set;}
+    public OrderOpReff OrderOp { get; init; }
+    public PasienReff Pasien { get; init; }
+    public UrgencyLevelEnum UrgencyLevel { get; init; }
+    public int Durasi { get; private set; }
     //  schedule
-    public DateTime TglOp { get; private set;}
-    public KamarReff KamarOp { get; private set;}
-    public RegReff Reg { get; private set; }    
-    public PpaReff TeamLead { get; private set;}
+    public DateTime TglOp { get; private set; }
+    public KamarReff KamarOp { get; private set; }
+    public RegReff Reg { get; private set; }
+    public PpaReff TeamLead { get; private set; }
     public IEnumerable<ScheduleOpPpaType> ListPpa => _listPpa;
     #endregion
 

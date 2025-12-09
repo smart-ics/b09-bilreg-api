@@ -4,6 +4,7 @@ using Bilreg.Application.BedUsageContext.WardFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
+using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers;
 using MediatR;
 using System.Globalization;
@@ -21,7 +22,6 @@ public record OkScheduleOpSetResponse(string ScheduleOpId);
 
 public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetCommand, OkScheduleOpSetResponse>
 {
-    // Dependencies (sesuai dengan prinsip DIP SOLID)
     private readonly IScheduleOpRepo _scheduleOpRepo;
     private readonly IOrderOpRepo _orderOpRepo;
     private readonly IKamarRepo _kamarRepo;
@@ -41,23 +41,26 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
 
     public async Task<OkScheduleOpSetResponse> Handle(OkScheduleOpSetCommand request, CancellationToken cancellationToken)
     {
-        // --- ARRANGE (Persiapan Data & Validasi) ---
         Guard.Against.InvalidDateFormat(request.Tgl, nameof(request.Tgl));
 
-        // 2. Fetch Dependencies dari Repository (Order, Kamar, Team Lead Default)
         var orderOp = _orderOpRepo.LoadEntity(OrderOpModel.Key(request.OrderOpId))
             .GetValueOrThrow($"Order Operasi ID {request.OrderOpId} tidak ditemukan.");
 
         var kamar = _kamarRepo.LoadEntity(KamarType.Key(request.KamarId))
             .GetValueOrThrow($"Kamar Operasi ID {request.KamarId} tidak ditemukan.");
 
-        // Dapatkan PPA Team Lead Default (Hanya diperlukan saat membuat ScheduleOp baru)
-        string defaultTeamLeadId = orderOp.Dokter.PpaId;
-        var teamLead = _ppaRepo.LoadEntity(PpaType.Key(defaultTeamLeadId))
-            .GetValueOrThrow($"PPA Team Lead default ID {defaultTeamLeadId} tidak ditemukan.");
+        var teamLead = PpaType.Default;
 
-        // 3. Cari atau Buat ScheduleOp Model
-        var scheduleOp = _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(request.OrderOpId))
+        var listSchedule = _scheduleOpRepo.ListData(PasienModel.Key(orderOp.Pasien.PasienId))?.ToList()
+            ?? [];
+        var scheduleWithOrderOpId = listSchedule?
+            .FirstOrDefault(x => x.OrderOp.OrderOpId == request.OrderOpId)
+            ?? new ScheduleOpView("-", new PasienReff("-", "-", DateOnly.ParseExact("3000-01-01", "yyyy-MM-dd"), "-"),
+            new OrderOpReff("-", DateTime.ParseExact("3000-01-01 00:00:00", "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture), "-"),
+            UrgencyLevelEnum.Elective, DateTime.ParseExact("3000-01-01 00:00:00", "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
+            0, new PpaReff("-", "-"), new KamarReff("-", "-"));
+
+        var scheduleOp = _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(scheduleWithOrderOpId.ScheduleOpId))
             .GetValueOrDefault();
 
         DateTime tglOp = DateTime.ParseExact($"{request.Tgl} {request.Jam}",
@@ -75,10 +78,8 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
             scheduleOp.SetSchedule(tglOp, kamar.ToReff(), request.UserId);
         }
 
-        // 4. Simpan perubahan melalui Repository
         _scheduleOpRepo.SaveChanges(scheduleOp);
 
-        // Kembalikan ScheduleOpId sesuai permintaan
         return new OkScheduleOpSetResponse(scheduleOp.ScheduleOpId);
     }
 }
