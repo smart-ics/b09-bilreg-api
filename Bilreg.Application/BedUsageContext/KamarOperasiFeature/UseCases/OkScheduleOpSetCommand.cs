@@ -16,7 +16,7 @@ public record OkScheduleOpSetCommand(
         string KamarId,
         string Tgl,
         string Jam,
-        string UserId) : IRequest<OkScheduleOpSetResponse>;
+        string UserId) : IRequest<OkScheduleOpSetResponse>, IOrderOpKey;
 
 public record OkScheduleOpSetResponse(string ScheduleOpId);
 

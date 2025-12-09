@@ -2,7 +2,6 @@ using Bilreg.Application.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Nuna.Lib.PatternHelper;
-using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature;
 
@@ -10,18 +9,24 @@ public class ScheduleOpRepo : IScheduleOpRepo
 {
     private readonly IScheduleOpDal _scheduleOpDal;
     private readonly IScheduleOpPpaDal _scheduleOpPpaDal;
+
     public ScheduleOpRepo(IScheduleOpDal scheduleOpDal, 
         IScheduleOpPpaDal scheduleOpPpaDal)
     {
         _scheduleOpDal = scheduleOpDal;
         _scheduleOpPpaDal = scheduleOpPpaDal;
     }
+
     public void SaveChanges(ScheduleOpModel model)
     {
         LoadEntity(model)
             .Match(
                 onSome: _ => _scheduleOpDal.Update(ScheduleOpDto.FromModel(model)),
                 onNone: () => _scheduleOpDal.Insert(ScheduleOpDto.FromModel(model)));
+
+        var listPpa = model.ListPpa.Select(x => ScheduleOpPpaDto.FromModel(model.ScheduleOpId, x)).ToList();
+        _scheduleOpPpaDal.Delete(model);
+        _scheduleOpPpaDal.Insert(listPpa);
     }
 
     public MayBe<ScheduleOpModel> LoadEntity(IScheduleOpKey key)

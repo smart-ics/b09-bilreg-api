@@ -34,4 +34,13 @@ public class ScheduleOpController : ControllerBase
         var response = await _mediator.Send(cmd);
         return Ok(new JSendOk(response));
     }
+
+    [HttpPatch]
+    [Route("AddPpa/{orderOpId}/{ppaId}/{userId}")]
+    public async Task<IActionResult> AddPpa(string orderOpId, string ppaId, string userId)
+    {
+        var cmd = new OkScheduleOpAddPpaCommand(orderOpId, ppaId, userId);
+        await _mediator.Send(cmd);
+        return Ok();
+    }
 }
