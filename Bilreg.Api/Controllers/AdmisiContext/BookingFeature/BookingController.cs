@@ -55,6 +55,14 @@ public class BookingController : ControllerBase
         return Ok(new JSendOk("Done"));
     }
 
+    [HttpDelete]
+    [Route("deleteFromHidok")]
+    public async Task<IActionResult> DeleteFromHidok(BookingDeleteFromHidokCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
     [HttpGet]
     [Route("{id}")]
     public async Task<IActionResult> GetData(string id)

@@ -14,6 +14,7 @@ public interface IBookingDal :
     IUpdate<BookingDto>, 
     IDelete<IBookingKey>, 
     IGetData<BookingDto, IBookingKey>,
+    IGetData<BookingDto, string>,
     IListData<BookingDto, Periode>
 {
     IEnumerable<BookingDto> ListPerTglBerobat(Periode periode);
@@ -237,5 +238,31 @@ public class BookingDal : IBookingDal
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<BookingDto>(sql, dp);
+    }
+
+    public BookingDto GetData(string filter)
+    {
+        const string sql = """
+            SELECT
+                aa.BookingId, aa.BookingDate,
+                aa.PasienName, aa.TglLahir, aa.Gender, aa.Alamat, aa.TelpPasien, aa.PasienId, aa.RegId,
+                aa.TglBerobat, aa.JamPraktek, aa.LayananId, aa.DokterId, aa.NoAntrian,
+                aa.NoPeserta, aa.NoReffKontrol, aa.ReffId, 
+                aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
+                ISNULL(bb.fs_nm_layanan, '') AS LayananName,
+                ISNULL(cc.fs_nm_peg, '') AS DokterName
+            FROM
+                BILRG_Booking aa
+                LEFT JOIN ta_layanan bb ON aa.LayananId = bb.fs_kd_layanan
+                LEFT JOIN td_peg cc ON aa.DokterId = cc.fs_kd_peg
+            WHERE
+                aa.ReffId = @ReffId
+            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@ReffId", filter, SqlDbType.VarChar);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.ReadSingle<BookingDto>(sql, dp);
     }
 }

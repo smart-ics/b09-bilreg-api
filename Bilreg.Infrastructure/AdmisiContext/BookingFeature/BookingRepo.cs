@@ -53,4 +53,12 @@ public class BookingRepo : IBookingRepo
         var models = listDto?.Select(x => x.ToModel()) ?? [];
         return models;
     }
+
+    public MayBe<BookingModel> LoadEntity(string key)
+    {
+        var booking = _bookingDal.GetData(key);
+        return booking is null ?
+            MayBe<BookingModel>.None :
+            LoadEntity(BookingModel.Key(booking.BookingId));
+    }
 }
