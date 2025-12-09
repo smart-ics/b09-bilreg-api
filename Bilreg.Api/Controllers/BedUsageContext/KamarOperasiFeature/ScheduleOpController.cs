@@ -41,7 +41,7 @@ public class ScheduleOpController : ControllerBase
     {
         var cmd = new OkScheduleOpAddPpaCommand(orderOpId, ppaId, userId);
         await _mediator.Send(cmd);
-        return Ok();
+        return Ok(new JSendOk("Done"));
     }
 
     [HttpDelete]
@@ -50,6 +50,15 @@ public class ScheduleOpController : ControllerBase
     {
         var cmd = new OkScheduleOpRemovePpaCommand(orderOpId, ppaId, userId);
         await _mediator.Send(cmd);
-        return Ok();
+        return Ok(new JSendOk("Done"));
+    }
+
+    [HttpPatch]
+    [Route("AssignLeader/{orderOpId}/{ppaId}/{userId}")]
+    public async Task<IActionResult> AssignLeader(string orderOpId, string ppaId, string userId)
+    {
+        var cmd = new OkScheduleOpAssignLeaderCommand(orderOpId, ppaId, userId);
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
     }
 }
