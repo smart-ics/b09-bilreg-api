@@ -1,4 +1,5 @@
-﻿using Bilreg.Application.AdmisiContext.LayananFeature;
+﻿using Ardalis.GuardClauses;
+using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
@@ -13,7 +14,7 @@ namespace Bilreg.Application.ChargeContext.TindakanFeature.TindakanAgg;
 
 public record OrderTdkCreateWithoutRegCmd(
     string PasienId, string LayananId, string DokterId, 
-    string TarifId, string TarifnName, string UserId) : IRequest<OrderTdkCreateWithoutRegResponse>,
+    string TarifId, string TarifName, string UserId) : IRequest<OrderTdkCreateWithoutRegResponse>,
     IPasienKey, ILayananKey, ITarifKey;
 
 public record OrderTdkCreateWithoutRegResponse(string OrderTdkId);
@@ -41,6 +42,15 @@ public class OrderTdkCreateWithoutRegHandler : IRequestHandler<OrderTdkCreateWit
     public Task<OrderTdkCreateWithoutRegResponse> Handle(OrderTdkCreateWithoutRegCmd request, CancellationToken cancellationToken)
     {
         // GUARD
+        Guard.Against.Null(request.PasienId, nameof(request.PasienId));
+        Guard.Against.NullOrWhiteSpace(request.LayananId, nameof(request.LayananId));
+        Guard.Against.NullOrWhiteSpace(request.DokterId, nameof(request.DokterId));
+        if (string.IsNullOrWhiteSpace(request.TarifId) &&
+            string.IsNullOrWhiteSpace(request.TarifName))
+        {
+            throw new ArgumentException("tindakan wajib diisi");
+        }
+
         var pasien = _pasienRepo.LoadEntity(request)
             .Match
             (
@@ -62,7 +72,7 @@ public class OrderTdkCreateWithoutRegHandler : IRequestHandler<OrderTdkCreateWit
 
         // BUILD
         var tarif = _tarifRepo.LoadEntity(request).GetValueOrDefault();
-        var freeTextOrder = request.TarifnName;
+        var freeTextOrder = request.TarifName;
         OrderTdkModel order;
         if (tarif is not null)
             order = OrderTdkModel.Create(pasien, ppa, layanan, tarif, request.UserId);

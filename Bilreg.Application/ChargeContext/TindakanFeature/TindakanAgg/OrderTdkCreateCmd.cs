@@ -13,7 +13,7 @@ using MediatR;
 namespace Bilreg.Application.ChargeContext.TindakanFeature.TindakanAgg;
 
 public record OrderTdkCreateCmd(string RegId, string LayananId,
-    string DokterId, string TarifId, string TarifnName, string UserId) : IRequest<OrderTdkCreateResponse>,
+    string DokterId, string TarifId, string TarifName, string UserId) : IRequest<OrderTdkCreateResponse>,
     IRegKey, ILayananKey, ITarifKey;
 
 public record OrderTdkCreateResponse(string OrderTdkId);
@@ -44,9 +44,8 @@ public class OrderTdkCreatehandler : IRequestHandler<OrderTdkCreateCmd, OrderTdk
         Guard.Against.Null(request.RegId, nameof(request.RegId));
         Guard.Against.NullOrWhiteSpace(request.LayananId, nameof(request.LayananId));
         Guard.Against.NullOrWhiteSpace(request.DokterId, nameof(request.DokterId));
-
         if (string.IsNullOrWhiteSpace(request.TarifId) &&
-            string.IsNullOrWhiteSpace(request.TarifnName))
+            string.IsNullOrWhiteSpace(request.TarifName))
         {
             throw new ArgumentException("tindakan wajib diisi");
         }
@@ -72,7 +71,7 @@ public class OrderTdkCreatehandler : IRequestHandler<OrderTdkCreateCmd, OrderTdk
 
         // BUILD
         var tarif = _tarifRepo.LoadEntity(request).GetValueOrDefault();
-        var freeTextOrder = request.TarifnName;
+        var freeTextOrder = request.TarifName;
         OrderTdkModel order;
         if (tarif is not null)
             order = OrderTdkModel.Create(reg, ppa, layanan, tarif, request.UserId);
