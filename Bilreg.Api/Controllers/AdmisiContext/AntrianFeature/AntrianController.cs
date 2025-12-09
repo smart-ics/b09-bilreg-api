@@ -26,17 +26,17 @@ public class AntrianController : Controller
     }
 
     [HttpGet]
-    [Route("lastNumberQueue/{dokterId}/{tglAntrianYmd}/{jamMulai}")]
-    public async Task<IActionResult> GetLastNumber(string dokterId, string tglAntrianYmd, string jamMulai)
+    [Route("getLastNumber/{dokterId}/{tglPraktek}/{jamMulai}")]
+    public async Task<IActionResult> GetLastNumber(string dokterId, string tglPraktek, string jamMulai)
     {
-        var query = new AntrianGetLastNumberQuery(dokterId, tglAntrianYmd, jamMulai);
+        var query = new AntrianGetLastNumberQuery(dokterId, tglPraktek, jamMulai);
         var response = await _mediator.Send(query);
         return Ok(new JSendOk(response));
     }
 
     [HttpPost]
-    [Route("availabelNumberQueue")]
-    public async Task<IActionResult> GetAvailabelNumberQueue(AntrianGetNumberAvailableForHidokCommand cmd)
+    [Route("genNewNumber")]
+    public async Task<IActionResult> GetAvailabelNumberQueue(AntrianGenNewNumberCommand cmd)
     {
         var responst = await _mediator.Send(cmd);
         return Ok(new JSendOk(responst));

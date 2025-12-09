@@ -1,4 +1,5 @@
 ﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
+using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
@@ -13,9 +14,8 @@ namespace Bilreg.Application.AdmisiContext.BookingFeature.UseCases;
 
 public record BookingCreateFromHidokCommand(string PasienId, string PasienName, string TglLahir,
     string Gender, string Alamat, string NoTelp,
-    string DokterId, string TglBerobat, string JamMulai,
-    string NoPeserta, string NoReffKontrol, int NoAntrian, string ReffId,
-    bool IsForceDuplicatedTracker) : IRequest<BookingCreateFromHidokResponse>;
+    string DokterEmail, string TglBerobat, string JamMulai,
+    string NoPeserta, string NoReffKontrol, int NoAntrian, string ReffId) : IRequest<BookingCreateFromHidokResponse>;
 
 public record BookingCreateFromHidokResponse(string BookingId, int NoAntrian);
 
@@ -27,10 +27,11 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
     private readonly IBookingRepo _bookingRepo;
     private readonly IPasienTrackerRepo _trackerRepo;
     private readonly IPasienRepo _pasienRepo;
+    private readonly IPpaRepo _ppaRepo;
     public BookingCreateFromHidokHandler(IJadwalPraktekRepo jadwalPraktekRepo,
         IAntrianRepo antrianRepo, IAntrianFactory antrianFactory,
         IBookingRepo bookingRepo, IPasienTrackerRepo trackerRepo,
-        IPasienRepo pasienRepo)
+        IPasienRepo pasienRepo, IPpaRepo ppaRepo)
     {
         _jadwalPraktekRepo = jadwalPraktekRepo;
         _antrianRepo = antrianRepo;
@@ -38,6 +39,7 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
         _bookingRepo = bookingRepo;
         _trackerRepo = trackerRepo;
         _pasienRepo = pasienRepo;
+        _ppaRepo = ppaRepo;
     }
     public Task<BookingCreateFromHidokResponse> Handle(BookingCreateFromHidokCommand request, CancellationToken cancellationToken)
     {
@@ -45,7 +47,12 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
         if (request.PasienId.Trim() != string.Empty && request.PasienName.Trim() != string.Empty)
             throw new ArgumentException("Kosongkan PasienName jika booking menggunakan PasienId");
         //      cek jadwal
-        var dokter = PpaType.Key(request.DokterId);
+        var finder = new ContactFinder(JenisContactEnum.Email, request.DokterEmail);
+        var dokter = _ppaRepo.LoadEntity(finder)
+            .Match(
+                onSome: x => x,
+                onNone: () => throw new KeyNotFoundException($"Dokter {request.DokterEmail} not found")
+                );
         var listJadwal = _jadwalPraktekRepo.ListData(dokter)?.ToList() ?? [];
         var hari = DateOnly.Parse(request.TglBerobat).DayOfWeek;
         var jamMulai = TimeOnly.Parse(request.JamMulai);
@@ -72,8 +79,6 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
             _antrianFactory.Create(tglBerobat, jadwal) :
             _antrianRepo.LoadEntity(antrianView).Value;
 
-        if (!request.IsForceDuplicatedTracker)
-            ThrowExceptionIfTrackerExists(booking);
         var tracker = PasienTrackerModel.Create(booking);
 
         //  persisting
@@ -112,18 +117,5 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
             request.PasienName, tglLahir, request.Gender,
             alamat, contact, IdentitasType.Default);
         return person;
-    }
-
-    private void ThrowExceptionIfTrackerExists(BookingModel booking)
-    {
-        var periodeVisit = new Periode(booking.TglBerobat.ToDateTime(TimeOnly.MinValue));
-        var listTracker = _trackerRepo.ListData(periodeVisit, booking.Person.TglLahir)?.ToList()
-                          ?? [];
-        var personNameEyd = booking.Person.PersonName.ToEyd();
-        var duplicated = listTracker
-            .FirstOrDefault(x => x.Person.PersonName.ToEyd() == personNameEyd);
-
-        if (duplicated is not null)
-            throw new ArgumentException("Pasien terdeteksi di tracker. Booking terduplikasi");
     }
 }

@@ -1,4 +1,5 @@
-﻿using Bilreg.Domain.AdmisiContext.RegFeature;
+﻿using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Infrastructure.AdmisiContext.RegFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using FluentAssertions;
@@ -32,8 +33,8 @@ public class RegAktifDalTest
     private static IRegKey FakerKey()
         => RegModel.Key("A");
 
-    private static Periode FakerPeriode()
-        => new Periode(new DateTime(2024, 1, 1), new DateTime(2024, 1, 31));
+    private static ILayananKey FakerLayananKey()
+        => LayananType.Default with { LayananId = "LYN-001" };
 
     [Fact]
     public void InsertTest()
@@ -70,21 +71,23 @@ public class RegAktifDalTest
                       .Excluding(x => x.TipeJaminanName)
                       .Excluding(x => x.DokterName));
     }
-    
+
     [Fact]
     public void ListDataTest()
     {
         using var trans = TransHelper.NewScope();
-        var regAktif = Faker();
-        _sut.Insert(regAktif);
-        
-        var actual = _sut.ListData(FakerPeriode());
-        actual.Should().ContainEquivalentOf(regAktif,
-            opt => opt.Excluding(x => x.PasienName)
-                      .Excluding(x => x.TglLahir)
-                      .Excluding(x => x.Gender)
-                      .Excluding(x => x.LayananName)
-                      .Excluding(x => x.TipeJaminanName)
-                      .Excluding(x => x.DokterName));
+        var testData = Faker();
+        _sut.Insert(testData);
+
+        var actual = _sut.ListData(FakerLayananKey());
+
+        actual.Should().ContainEquivalentOf(testData, opt => opt
+            .Excluding(x => x.PasienName) // Data dari JOIN
+            .Excluding(x => x.TglLahir)   // Data dari JOIN
+            .Excluding(x => x.Gender)     // Data dari JOIN
+            .Excluding(x => x.LayananName) // Data dari JOIN
+            .Excluding(x => x.DokterName) // Data dari JOIN
+            .Excluding(x => x.TipeJaminanName) // Data dari JOIN
+        );
     }
 }
