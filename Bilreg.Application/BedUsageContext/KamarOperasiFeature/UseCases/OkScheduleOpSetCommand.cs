@@ -1,5 +1,4 @@
 ﻿using Ardalis.GuardClauses;
-using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.BedUsageContext.WardFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
@@ -27,22 +26,17 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
     private readonly IOrderOpRepo _orderOpRepo;
     private readonly IKamarRepo _kamarRepo;
     private readonly IOpCaseRepo _opCaseRepo;
-    //private readonly IPpaRepo _ppaRepo;
 
     public OkScheduleOpSetCommandHandler(
         IScheduleOpRepo scheduleOpRepo,
         IOrderOpRepo orderOpRepo,
         IKamarRepo kamarRepo,
-        IOpCaseRepo opCaseRepo
-        //,
-        //IPpaRepo ppaRepo
-        )
+        IOpCaseRepo opCaseRepo)
     {
         _scheduleOpRepo = scheduleOpRepo;
         _orderOpRepo = orderOpRepo;
         _kamarRepo = kamarRepo;
         _opCaseRepo = opCaseRepo;
-        //_ppaRepo = ppaRepo;
     }
 
     public async Task<OkScheduleOpSetResponse> Handle(OkScheduleOpSetCommand request, CancellationToken cancellationToken)

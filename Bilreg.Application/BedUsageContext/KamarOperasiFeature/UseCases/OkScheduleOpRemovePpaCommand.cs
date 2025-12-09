@@ -4,12 +4,7 @@ using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
-using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
 
