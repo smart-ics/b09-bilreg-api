@@ -43,4 +43,13 @@ public class ScheduleOpController : ControllerBase
         await _mediator.Send(cmd);
         return Ok();
     }
+
+    [HttpDelete]
+    [Route("RemovePpa/{orderOpId}/{ppaId}/{userId}")]
+    public async Task<IActionResult> RemovePpa(string orderOpId, string ppaId, string userId)
+    {
+        var cmd = new OkScheduleOpRemovePpaCommand(orderOpId, ppaId, userId);
+        await _mediator.Send(cmd);
+        return Ok();
+    }
 }
