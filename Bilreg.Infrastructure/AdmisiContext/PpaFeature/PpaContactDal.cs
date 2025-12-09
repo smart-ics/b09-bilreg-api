@@ -36,10 +36,12 @@ public class PpaContactDal : IPpaContactDal
         dp.AddParam("@fs_kd_peg", filter.PpaId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        var listAll = conn.Query<ContactType>(sql, dp);
-        var result = listAll
-            .Select(x => x with { JenisContact = (JenisContactEnum)x.JenisContact })
-            .Where(x => x.ContactDetail.Trim().Length > 0);
+        var listAll = conn.Read<PpaContactDto>(sql, dp);
+        var listFix = listAll.Where(x => x.ContactDetail.Trim().Length > 0);
+        var result = listFix.Select(x => new ContactType((JenisContactEnum)x.JenisContact, x.ContactDetail));
+
         return result;
     }
 }
+
+public record PpaContactDto(int JenisContact, string ContactDetail);
