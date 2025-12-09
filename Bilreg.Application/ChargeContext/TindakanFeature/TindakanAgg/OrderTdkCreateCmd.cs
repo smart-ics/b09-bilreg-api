@@ -23,18 +23,18 @@ public class OrderTdkCreatehandler : IRequestHandler<OrderTdkCreateCmd, OrderTdk
     private readonly IRegRepo _regRepo;
     private readonly IPpaRepo _ppaRepo;
     private readonly ILayananRepo _lynRepo;
-    //private readonly ITarifRepo _tarifRepo;
+    private readonly ITarifRepo _tarifRepo;
     private readonly IOrderTdkRepo _orderTdkRepo;
     public OrderTdkCreatehandler(IRegRepo regRepo,
         IPpaRepo ppaRepo,
         ILayananRepo lynRepo,
-        //ITarifRepo tarifRepo,
+        ITarifRepo tarifRepo,
         IOrderTdkRepo orderTdkRepo)
     {
         _regRepo = regRepo;
         _ppaRepo = ppaRepo;
         _lynRepo = lynRepo;
-        //_tarifRepo = tarifRepo;
+        _tarifRepo = tarifRepo;
         _orderTdkRepo = orderTdkRepo;
     }
 
@@ -71,12 +71,12 @@ public class OrderTdkCreatehandler : IRequestHandler<OrderTdkCreateCmd, OrderTdk
             );
 
         // BUILD
-        //var tarif = _tarifRepo.LoadEntity(request).GetValueOrDefault();
+        var tarif = _tarifRepo.LoadEntity(request).GetValueOrDefault();
         var freeTextOrder = request.TarifnName;
         OrderTdkModel order;
-        //if (tarif is not null)
-        //    order = OrderTdkModel.Create(reg, ppa, layanan, tarif, request.UserId);
-        //else
+        if (tarif is not null)
+            order = OrderTdkModel.Create(reg, ppa, layanan, tarif, request.UserId);
+        else
             order = OrderTdkModel.Create(reg, ppa, layanan, freeTextOrder, request.UserId);
         
         // WRITE

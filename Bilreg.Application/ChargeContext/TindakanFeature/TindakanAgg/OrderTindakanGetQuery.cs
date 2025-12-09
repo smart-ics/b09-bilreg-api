@@ -17,9 +17,10 @@ public record OrderTindakanGetResponse(
     RegReff Reg,
     PpaReff DokterOrder,
     LayananReff Layanan,
+    TarifReff Tarif,
+    string FreeTextOrder,
     int StatusOrder,
-    string StatusOrderString,
-    TarifReff Tindakan);
+    string StatusOrderString);
 
 public class OrderTindakanGetHandler : IRequestHandler<OrderTindakanGetQuery,  OrderTindakanGetResponse>
 {
@@ -38,8 +39,8 @@ public class OrderTindakanGetHandler : IRequestHandler<OrderTindakanGetQuery,  O
                 onNone: () => throw new KeyNotFoundException($"Order {request.OrderTdkId} not found")
             );
         var result = new OrderTindakanGetResponse(order.OrderTdkId, order.OrderTdkDate.ToString("yyyy-MM-dd HH:mm:ss"),
-            order.Pasien, order.Reg, order.DokterOrder, order.Layanan, (int)order.StatusOrder, order.StatusOrder.ToString(),
-            order.Tarif);
+            order.Pasien, order.Reg, order.DokterOrder, order.Layanan, order.Tarif, order.FreeTextOrder,
+            (int)order.StatusOrder, order.StatusOrder.ToString());
         return Task.FromResult(result);
     }
 }

@@ -31,6 +31,15 @@ public class TindakanController : Controller
         return Ok(new JSendOk(result));
     }
 
+    [HttpPut]
+    [Route("cancelOrderTdk")]
+    public async Task<IActionResult> CancelOrder(OrderTdkCancelCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
+
     [HttpGet]
     [Route("order/{id}")]
     public async Task<IActionResult> GetOrder(string id)
