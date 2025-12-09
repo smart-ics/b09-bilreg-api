@@ -47,6 +47,13 @@ public class BookingController : ControllerBase
         return Ok(new JSendOk(response));
     }
 
+    [HttpDelete]
+    [Route("delete")]
+    public async Task<IActionResult> Delete(BookingDeleteCmd cmd)
+    { 
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
 
     [HttpGet]
     [Route("{id}")]
