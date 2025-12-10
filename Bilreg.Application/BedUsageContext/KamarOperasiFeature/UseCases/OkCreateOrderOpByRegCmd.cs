@@ -35,19 +35,22 @@ public class OkCreateOrderOpByRegHandler
     private readonly IIcd10Repo _icdRepo;
     private readonly IJenisOperasiRepo _jenisOperasiRepo;
     private readonly IPpaRepo _dokterRepo;
+    private readonly IOpCaseRepo _opCaseRepo;
 
     public OkCreateOrderOpByRegHandler(
         IOrderOpRepo orderOpRepo,
         IRegRepo regRepo,
         IIcd10Repo icdRepo,
         IJenisOperasiRepo jenisOperasiRepo,
-        IPpaRepo dokterRepo)
+        IPpaRepo dokterRepo,
+        IOpCaseRepo opCaseRepo)
     {
         _orderOpRepo = orderOpRepo;
         _regRepo = regRepo;
         _icdRepo = icdRepo;
         _jenisOperasiRepo = jenisOperasiRepo;
         _dokterRepo = dokterRepo;
+        _opCaseRepo = opCaseRepo;
     }
 
     public Task<OkCreateOrderOpByRegResponse> Handle(
@@ -68,10 +71,12 @@ public class OkCreateOrderOpByRegHandler
         var jenisOp = LoadJenisOperasi(request.JenisOperasiId);
         var dokter = LoadDokter(request.DokterDpjpId);
         var orderOp = CreateOrder(reg, icd, jenisOp, dokter, request);
+        var opCase = OpCaseModel.Create(orderOp);
 
         //  WRITE
         using var trans = TransHelper.NewScope();
         _orderOpRepo.SaveChanges(orderOp);
+        _opCaseRepo.SaveChanges(opCase);
         trans.Complete();
         return Task.FromResult(RespondSuccess(orderOp));
     }

@@ -1,4 +1,5 @@
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
+using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature;
 using FluentAssertions;
 using Moq;
@@ -130,6 +131,46 @@ public class ScheduleOpRepoTests
         _scheduleOpPpaDalMock.Verify(x => x.ListData(key), Times.Once);
     }
 
+    [Fact]
+    public void UT7_GivenDateFilter_WhenListDataIsCalled_ThenCorrectListIsReturned()
+    {
+        // Arrange
+        var filterDate = new DateTime(2025, 12, 1);
+        var expectedDtos = new List<ScheduleOpDto> { CreateTestDto(), CreateTestDto() };
+
+        _scheduleOpDalMock
+            .Setup(x => x.ListData(filterDate))
+            .Returns(expectedDtos);
+
+        // Act
+        var result = _repository.ListData(filterDate).ToList();
+
+        // Assert
+        _scheduleOpDalMock.Verify(x => x.ListData(filterDate), Times.Once);
+        result.Should().NotBeNullOrEmpty();
+        result.Should().HaveCount(expectedDtos.Count);
+    }
+
+    [Fact]
+    public void UT8_GivenPasienKeyFilter_WhenListDataIsCalled_ThenCorrectListIsReturned()
+    {
+        // Arrange
+        var filterKey = CreatePasienKey();
+        var expectedDtos = new List<ScheduleOpDto> { CreateTestDto() };
+
+        _scheduleOpDalMock
+            .Setup(x => x.ListData(filterKey))
+            .Returns(expectedDtos);
+
+        // Act
+        var result = _repository.ListData(filterKey).ToList();
+
+        // Assert
+        _scheduleOpDalMock.Verify(x => x.ListData(filterKey), Times.Once);
+        result.Should().NotBeNullOrEmpty();
+        result.Should().HaveCount(expectedDtos.Count);
+    }
+
     private static ScheduleOpModel CreateTestModel()
         => ScheduleOpModel.Default;
     private static ScheduleOpDto CreateTestDto()
@@ -137,5 +178,7 @@ public class ScheduleOpRepoTests
     private static ScheduleOpPpaDto CreateTestPpaDto()
         => new ScheduleOpPpaDto("A", 1, "B", "C", "D", "E", "F", "G");
     private static IScheduleOpKey CreateTestKey()
-        => ScheduleOpModel.Key("A"); 
+        => ScheduleOpModel.Key("A");
+    private static IPasienKey CreatePasienKey()
+            => PasienModel.Key("P001");
 }
