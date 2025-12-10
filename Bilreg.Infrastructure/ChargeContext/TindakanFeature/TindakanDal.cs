@@ -32,11 +32,11 @@ public class TindakanDal : ITindakanDal
     {
         const string sql = """
             INSERT INTO BILRG_Tindakan(
-                TindakanId, TindakanDate, OrderId, RegId, PasienId, PasienName, 
+                TindakanId, TindakanDate, JenisTindakan, OrderId, RegId, PasienId, PasienName, 
                 LayananId, LayananName, TarifId, TarifName, Total, 
                 CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
             VALUES(
-                @TindakanId, @TindakanDate, @OrderId, @RegId, @PasienId, @PasienName, 
+                @TindakanId, @TindakanDate, @JenisTindakan, @OrderId, @RegId, @PasienId, @PasienName, 
                 @LayananId, @LayananName, @TarifId, @TarifName, @Total, 
                 @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
             """;
@@ -44,6 +44,7 @@ public class TindakanDal : ITindakanDal
         var dp = new DynamicParameters();
         dp.AddParam("@TindakanId", dto.TindakanId, SqlDbType.VarChar);
         dp.AddParam("@TindakanDate", dto.TindakanDate, SqlDbType.DateTime);
+        dp.AddParam("@JenisTindakan", dto.JenisTindakan, SqlDbType.Int);
         dp.AddParam("@OrderId", dto.OrderId, SqlDbType.VarChar);
         dp.AddParam("@RegId", dto.RegId, SqlDbType.VarChar);
         dp.AddParam("@PasienId", dto.PasienId, SqlDbType.VarChar);
@@ -73,6 +74,7 @@ public class TindakanDal : ITindakanDal
                 BILRG_Tindakan
            SET
               TindakanDate = @TindakanDate, 
+              JenisTindakan = @JenisTindakan,
               OrderId = @OrderId, 
               RegId = @RegId, 
               PasienId = @PasienId, 
@@ -91,6 +93,7 @@ public class TindakanDal : ITindakanDal
         var dp = new DynamicParameters();
         dp.AddParam("@TindakanId", dto.TindakanId, SqlDbType.VarChar);
         dp.AddParam("@TindakanDate", dto.TindakanDate, SqlDbType.DateTime);
+        dp.AddParam("@JenisTindakan", dto.JenisTindakan, SqlDbType.Int);
         dp.AddParam("@OrderId", dto.OrderId, SqlDbType.VarChar);
         dp.AddParam("@RegId", dto.RegId, SqlDbType.VarChar);
         dp.AddParam("@PasienId", dto.PasienId, SqlDbType.VarChar);
@@ -132,13 +135,13 @@ public class TindakanDal : ITindakanDal
     {
         const string sql = """
            SELECT
-               aa.TindakanId, aa.TindakanDate, aa.OrderId, 
-               ISNULL(bb.OrderDate, '') AS OrderDate, 
-               ISNULL(bb.TarifId,''), TarifOrderId 
-               ISNULL(bb.TarifName,'') AS TarifOrderName, 
+               aa.TindakanId, aa.TindakanDate, aa.JenisTindakan, aa.OrderId,  
                aa.RegId, aa.PasienId, aa.PasienName, 
                aa.LayananId, aa.LayananName, aa.TarifId, aa.TarifName, aa.Total, 
-               aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate
+               aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
+               ISNULL(bb.OrderDate, '') AS OrderDate, 
+               ISNULL(bb.TarifId,''), TarifOrderId 
+               ISNULL(bb.TarifName,'') AS TarifOrderName
            FROM
                BILRG_Tindakan aa
                LEFT JOIN BILRG_OrderTindakan bb ON aa.OrderId = bb.OrderId
@@ -157,13 +160,13 @@ public class TindakanDal : ITindakanDal
     {
         const string sql = """
            SELECT
-               aa.TindakanId, aa.TindakanDate, aa.OrderId, 
-               ISNULL(bb.OrderDate, '') AS OrderDate, 
-               ISNULL(bb.TarifId,''), TarifOrderId 
-               ISNULL(bb.TarifName,'') AS TarifOrderName, 
+               aa.TindakanId, aa.TindakanDate, aa.JenisTindakan, aa.OrderId,  
                aa.RegId, aa.PasienId, aa.PasienName, 
                aa.LayananId, aa.LayananName, aa.TarifId, aa.TarifName, aa.Total, 
-               aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate
+               aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
+               ISNULL(bb.OrderDate, '') AS OrderDate, 
+               ISNULL(bb.TarifId,''), TarifOrderId 
+               ISNULL(bb.TarifName,'') AS TarifOrderName
            FROM
                BILRG_Tindakan aa
                LEFT JOIN BILRG_OrderTindakan bb ON aa.OrderId = bb.OrderId

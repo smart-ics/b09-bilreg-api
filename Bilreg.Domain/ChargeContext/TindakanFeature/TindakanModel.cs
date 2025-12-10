@@ -18,20 +18,24 @@ public record TindakanModel : ITindakanKey
     public TindakanModel(
         string tindakanId,
         DateTime tindakanDate,
+        JenisTindakanEnum jenisTindakan,
         AuditTrailType auditTrail,
         OrderTindakanReff orderTindakan,
         PasienReff pasien,
         RegReff reg,
         LayananReff layanan,
+        TipeTarifReff tipeTarif,
         TindakanTarifModel tarif)
     {
         TindakanId = tindakanId;
         TindakanDate = tindakanDate;
+        JenisTindakan = jenisTindakan;
         AuditTrail = auditTrail;
         OrderTindakan = orderTindakan;
         Pasien = pasien;
         Reg = reg;
         Layanan = layanan;
+        TipeTarif = tipeTarif;
         Tarif = tarif;
         
     }
@@ -39,11 +43,13 @@ public record TindakanModel : ITindakanKey
     public static TindakanModel Create(
         string tindakanId,
         DateTime tindakanDate,
+        JenisTindakanEnum jenisTindakan,
         AuditTrailType auditTrail,
-        OrderTindakanReff orderTindakan,
-        PasienReff pasien,
-        RegReff reg,
-        LayananReff layanan,
+        OrderTdkModel orderTindakan,
+        PasienModel pasien,
+        RegModel reg,
+        LayananType layanan,
+        TipeTarifType tipeTarif,
         TindakanTarifModel tarif)
     {
         Guard.Against.NullOrWhiteSpace(tindakanId, nameof(tindakanId));
@@ -53,18 +59,20 @@ public record TindakanModel : ITindakanKey
         Guard.Against.Null(reg, nameof(reg));
         Guard.Against.Null(layanan, nameof(layanan));
         
-        return new TindakanModel(tindakanId, tindakanDate, auditTrail, orderTindakan, 
-            pasien, reg, layanan, tarif);
+        return new TindakanModel(tindakanId, tindakanDate, jenisTindakan, auditTrail, orderTindakan.ToReff(), 
+            pasien.ToReff(), reg.ToReff(), layanan.ToReff(), tipeTarif.ToReff(), tarif);
     }
 
     public static TindakanModel Default => new(
         "-", 
         DateTime.Today, 
+        JenisTindakanEnum.Tindakan,
         AuditTrailType.Default, 
         OrderTdkModel.Default.ToReff(),
         PasienModel.Default.ToReff(), 
         RegModel.Default.ToReff(),
         LayananType.Default.ToReff(), 
+        TipeTarifType.Default.ToReff(),
         TindakanTarifModel.Default
     );
 
@@ -74,18 +82,19 @@ public record TindakanModel : ITindakanKey
     #region PROPERTIES
     public string TindakanId { get; init; }
     public DateTime TindakanDate { get; init; }
+    public JenisTindakanEnum JenisTindakan { get; init; }
     public AuditTrailType AuditTrail { get; init; }
     public OrderTindakanReff OrderTindakan { get; init; }
     public PasienReff Pasien { get; init; }
     public RegReff Reg { get; init; }
     public LayananReff Layanan { get; init; }
+    public TipeTarifReff TipeTarif { get; init; }
     public TindakanTarifModel Tarif { get; init; }
     
     #endregion
 
     #region BEHAVIOR
-    public TindakanReff ToReff() => new(TindakanId, TindakanDate, Tarif.Tarif);
-    
+    public TindakanReff ToReff() => new(TindakanId, TindakanDate, JenisTindakan, Tarif.Tarif);
     #endregion
 }
 
@@ -94,6 +103,16 @@ public interface ITindakanKey
     string TindakanId { get; }
 }
 
-public record TindakanReff(string TindakanId, DateTime TindakanDate, TarifReff Tarif);
+public record TindakanReff(string TindakanId, DateTime TindakanDate, 
+    JenisTindakanEnum JenisTindakan, TarifReff Tarif);
 
-public record TindakanView(string TindakanId, DateTime TindakanDate, RegReff reg, TarifReff Tarif) : ITindakanKey;
+public record TindakanView(string TindakanId, DateTime TindakanDate, 
+    JenisTindakanEnum JenisTindakan, RegReff reg, TipeTarifReff TipeTarif, TarifReff Tarif) : ITindakanKey;
+
+public enum JenisTindakanEnum
+{
+    Tindakan,
+    Lab,
+    Pakai_Bhp,
+    Radiology
+}
