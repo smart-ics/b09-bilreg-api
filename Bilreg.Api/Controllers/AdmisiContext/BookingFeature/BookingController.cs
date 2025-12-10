@@ -48,17 +48,19 @@ public class BookingController : ControllerBase
     }
 
     [HttpDelete]
-    [Route("delete")]
-    public async Task<IActionResult> Delete(BookingDeleteCmd cmd)
+    [Route("delete/{id}")]
+    public async Task<IActionResult> Delete(string id)
     { 
+        var cmd = new BookingDeleteCmd(id);
         await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));
     }
 
     [HttpDelete]
-    [Route("deleteFromHidok")]
-    public async Task<IActionResult> DeleteFromHidok(BookingDeleteFromHidokCmd cmd)
+    [Route("deleteFromHidok/{bookingIdHidok}")]
+    public async Task<IActionResult> DeleteFromHidok(string bookingIdHidok)
     {
+        var cmd = new BookingDeleteFromHidokCmd(bookingIdHidok);
         await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));
     }
