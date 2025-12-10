@@ -1,10 +1,12 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
+using Nuna.Lib.ValidationHelper;
 using System.Security.Cryptography.X509Certificates;
 
 namespace Bilreg.Domain.BillContext.TindakanSub.TindakanAgg;
@@ -83,6 +85,7 @@ public record TindakanModel : ITindakanKey
 
     #region BEHAVIOR
     public TindakanReff ToReff() => new(TindakanId, TindakanDate, Tarif.Tarif);
+    
     #endregion
 }
 
