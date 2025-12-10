@@ -2,9 +2,8 @@
 using Bilreg.Infrastructure.ChargeContext.TarifFeature;
 using FluentAssertions;
 using Moq;
-using Xunit;
 
-namespace Bilreg.Test.BillContext.TarifFeature;
+namespace Bilreg.Test.ChargeContext.TarifFeature;
 
 public class TipeTarifRepoTests
 {
