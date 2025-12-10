@@ -26,38 +26,33 @@ public class ScheduleOpController : ControllerBase
     }
 
     [HttpPost]
-    [Route("SetSchedule/{orderOpId}/{kamarId}/{tgl}/{jam}/{userId}")]
-    public async Task<IActionResult> SetSchedule(string orderOpId, string kamarId,
-        string tgl, string jam, string userId)
+    [Route("SetSchedule")]
+    public async Task<IActionResult> SetSchedule(OkScheduleOpSetCommand cmd)
     {
-        var cmd = new OkScheduleOpSetCommand(orderOpId, kamarId, tgl, jam, userId);
         var response = await _mediator.Send(cmd);
         return Ok(new JSendOk(response));
     }
 
     [HttpPatch]
-    [Route("AddPpa/{orderOpId}/{ppaId}/{userId}")]
-    public async Task<IActionResult> AddPpa(string orderOpId, string ppaId, string userId)
+    [Route("AddPpa")]
+    public async Task<IActionResult> AddPpa(OkScheduleOpAddPpaCommand cmd)
     {
-        var cmd = new OkScheduleOpAddPpaCommand(orderOpId, ppaId, userId);
-        await _mediator.Send(cmd);
-        return Ok(new JSendOk("Done"));
-    }
-
-    [HttpDelete]
-    [Route("RemovePpa/{orderOpId}/{ppaId}/{userId}")]
-    public async Task<IActionResult> RemovePpa(string orderOpId, string ppaId, string userId)
-    {
-        var cmd = new OkScheduleOpRemovePpaCommand(orderOpId, ppaId, userId);
         await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));
     }
 
     [HttpPatch]
-    [Route("AssignLeader/{orderOpId}/{ppaId}/{userId}")]
-    public async Task<IActionResult> AssignLeader(string orderOpId, string ppaId, string userId)
+    [Route("RemovePpa")]
+    public async Task<IActionResult> RemovePpa(OkScheduleOpRemovePpaCommand cmd)
     {
-        var cmd = new OkScheduleOpAssignLeaderCommand(orderOpId, ppaId, userId);
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
+    [HttpPatch]
+    [Route("AssignLeader")]
+    public async Task<IActionResult> AssignLeader(OkScheduleOpAssignLeaderCommand cmd)
+    {
         await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));
     }

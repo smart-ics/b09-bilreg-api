@@ -134,6 +134,11 @@ public class ScheduleOpModel : IScheduleOpKey
         AuditTrail.Modif(userId, DateTime.Now);
     }
 
+    public void CancelSchedule(string userId)
+    {
+        AuditTrail.Batal(userId, DateTime.Now);
+    }
+
     public ScheduleOpReff ToReff() =>
         new ScheduleOpReff(ScheduleOpId, TglOp);
     #endregion
