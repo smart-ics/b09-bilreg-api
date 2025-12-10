@@ -11,12 +11,6 @@ namespace Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature;
 public record ScheduleOpDto(
     string ScheduleOpId,
     DateTime ScheduleOpDate,
-    string CrtUser, 
-    DateTime CrtDate, 
-    string UpdUser, 
-    DateTime UpdDate, 
-    string VoidUser,
-    DateTime VoidDate,
     string OrderOpId,
     string PasienId,
     int UrgencyLevel,
@@ -25,6 +19,14 @@ public record ScheduleOpDto(
     string KamarId,
     string RegId,
     string PpaId,
+
+    string CreateUserId,
+    DateTime CreateTimestamp,
+    string UpdateUserId,
+    DateTime UpdateTimestamp,
+    string VoidUserId,
+    DateTime VoidTimestamp,
+
     DateTime OrderDate,
     string NamaOperasi,
     string PasienName,
@@ -38,12 +40,6 @@ public record ScheduleOpDto(
         var result = new ScheduleOpDto(
             model.ScheduleOpId,
             model.ScheduleOpDate,
-            model.AuditTrail.Created.UserId,
-            model.AuditTrail.Created.Timestamp,
-            model.AuditTrail.Modified.UserId,
-            model.AuditTrail.Modified.Timestamp,
-            model.AuditTrail.Voided.UserId,
-            model.AuditTrail.Voided.Timestamp,
             model.OrderOp.OrderOpId,
             model.Pasien.PasienId,
             (int)model.UrgencyLevel,
@@ -52,6 +48,14 @@ public record ScheduleOpDto(
             model.KamarOp.KamarId,
             model.Reg.RegId,
             model.TeamLead.PpaId,
+
+            model.AuditTrail.Created.UserId,
+            model.AuditTrail.Created.Timestamp,
+            model.AuditTrail.Modified.UserId,
+            model.AuditTrail.Modified.Timestamp,
+            model.AuditTrail.Voided.UserId,
+            model.AuditTrail.Voided.Timestamp,
+
             model.OrderOp.OrderDate,
             model.OrderOp.NamaOperasi,
             model.Pasien.PasienName,
@@ -66,11 +70,11 @@ public record ScheduleOpDto(
     public ScheduleOpModel ToModel(IEnumerable<ScheduleOpPpaType> listPpa)
     {
         var auditTrail = new AuditTrailType(
-            new AuditInfoType(CrtUser, CrtDate),
-            new AuditInfoType(UpdUser, UpdDate),
-            new AuditInfoType(VoidUser, VoidDate)
+            new AuditInfoType(CreateUserId, CreateTimestamp),
+            new AuditInfoType(UpdateUserId, UpdateTimestamp),
+            new AuditInfoType(VoidUserId, VoidTimestamp)
         );
-        
+
         var orderOp = new OrderOpReff(OrderOpId, OrderDate, NamaOperasi);
         var pasien = new PasienReff(PasienId, PasienName, DateOnly.ParseExact(TglLahir, "yyyy-MM-dd"), Gender);
         var kamarOp = new KamarReff(KamarId, KamarName);

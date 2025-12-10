@@ -33,22 +33,22 @@ public class ScheduleOpDal : IScheduleOpDal
     {
         const string sql = """
            INSERT INTO BILRG_ScheduleOp(
-               ScheduleOpId, ScheduleOpDate, CrtUser, CrtDate, UpdUser, UpdDate, VoidUser, VoidDate,
+               ScheduleOpId, ScheduleOpDate, CreateUserId, CreateTimestamp, UpdateUserId, UpdateTimestamp, VoidUserId, VoidTimestamp,
                OrderOpId, PasienId, UrgencyLevel, Durasi, TglOp, KamarId, RegId, PpaId)
            VALUES( 
-               @ScheduleOpId, @ScheduleOpDate, @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VoidUser, @VoidDate,
+               @ScheduleOpId, @ScheduleOpDate, @CreateUserId, @CreateTimeStamp, @UpdateUserId, @UpdateTimestamp, @VoidUserId, @VoidTimestamp,
                @OrderOpId, @PasienId, @UrgencyLevel, @Durasi, @TglOp, @KamarId, @RegId, @PpaId)
            """;
 
         var dp = new DynamicParameters();
         dp.AddParam("@ScheduleOpId", dto.ScheduleOpId, SqlDbType.VarChar);
         dp.AddParam("@ScheduleOpDate", dto.ScheduleOpDate, SqlDbType.DateTime);
-        dp.AddParam("@CrtUser", dto.CrtUser, SqlDbType.VarChar);
-        dp.AddParam("@CrtDate", dto.CrtDate, SqlDbType.DateTime);
-        dp.AddParam("@UpdUser", dto.UpdUser, SqlDbType.VarChar);
-        dp.AddParam("@UpdDate", dto.UpdDate, SqlDbType.DateTime);
-        dp.AddParam("@VoidUser", dto.VoidUser, SqlDbType.VarChar);
-        dp.AddParam("@VoidDate", dto.VoidDate, SqlDbType.DateTime);
+        dp.AddParam("@CreateUserId", dto.CreateUserId, SqlDbType.VarChar);
+        dp.AddParam("@CreateTimestamp", dto.CreateTimestamp, SqlDbType.DateTime);
+        dp.AddParam("@UpdateUserId", dto.UpdateUserId, SqlDbType.VarChar);
+        dp.AddParam("@UpdateTimestamp", dto.UpdateTimestamp, SqlDbType.DateTime);
+        dp.AddParam("@VoidUserId", dto.VoidUserId, SqlDbType.VarChar);
+        dp.AddParam("@VoidTimestamp", dto.VoidTimestamp, SqlDbType.DateTime);
         dp.AddParam("@OrderOpId", dto.OrderOpId, SqlDbType.VarChar);
         dp.AddParam("@PasienId", dto.PasienId, SqlDbType.VarChar);
         dp.AddParam("@UrgencyLevel", dto.UrgencyLevel, SqlDbType.Int);
@@ -69,8 +69,8 @@ public class ScheduleOpDal : IScheduleOpDal
                BILRG_ScheduleOp
            SET
                ScheduleOpDate = @ScheduleOpDate,
-               UpdUser = @UpdUser,
-               UpdDate = @UpdDate,
+               UpdateUserId = @UpdateUserId,
+               UpdateTimestamp = @UpdateTimestamp,
                OrderOpId = @OrderOpId,
                PasienId = @PasienId,
                UrgencyLevel = @UrgencyLevel,
@@ -86,8 +86,8 @@ public class ScheduleOpDal : IScheduleOpDal
         var dp = new DynamicParameters();
         dp.AddParam("@ScheduleOpId", dto.ScheduleOpId, SqlDbType.VarChar);
         dp.AddParam("@ScheduleOpDate", dto.ScheduleOpDate, SqlDbType.DateTime);
-        dp.AddParam("@UpdUser", dto.UpdUser, SqlDbType.VarChar);
-        dp.AddParam("@UpdDate", dto.UpdDate, SqlDbType.DateTime);
+        dp.AddParam("@UpdateUserId", dto.UpdateUserId, SqlDbType.VarChar);
+        dp.AddParam("@UpdateTimestamp", dto.UpdateTimestamp, SqlDbType.DateTime);
         dp.AddParam("@OrderOpId", dto.OrderOpId, SqlDbType.VarChar);
         dp.AddParam("@PasienId", dto.PasienId, SqlDbType.VarChar);
         dp.AddParam("@UrgencyLevel", dto.UrgencyLevel, SqlDbType.Int);
@@ -121,8 +121,9 @@ public class ScheduleOpDal : IScheduleOpDal
     {
         const string sql = """
            SELECT
-               aa.ScheduleOpId, aa.ScheduleOpDate, aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VoidUser, aa.VoidDate,
-               aa.OrderOpId, aa.PasienId, aa.UrgencyLevel, aa.Durasi, aa.TglOp, aa.KamarId, aa.RegId, aa.PpaId,
+               aa.ScheduleOpId, aa.ScheduleOpDate, aa.OrderOpId, aa.PasienId, aa.UrgencyLevel,
+               aa.Durasi, aa.TglOp, aa.KamarId, aa.RegId, aa.PpaId,
+               aa.CreateUserId, aa.CreateTimestamp, aa.UpdateUserId, aa.UpdateTimestamp, aa.VoidUserId, aa.VoidTimestamp,
                ISNULL(bb.OrderDate, '3000-01-01') AS OrderDate,
                ISNULL(bb.NamaOperasi, '') AS NamaOperasi,
                ISNULL(cc.fs_nm_pasien, '') AS PasienName,
@@ -152,8 +153,9 @@ public class ScheduleOpDal : IScheduleOpDal
     {
         const string sql = """
             SELECT
-                aa.ScheduleOpId, aa.ScheduleOpDate, aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VoidUser, aa.VoidDate,
-                aa.OrderOpId, aa.PasienId, aa.UrgencyLevel, aa.Durasi, aa.TglOp, aa.KamarId, aa.RegId, aa.PpaId,
+                aa.ScheduleOpId, aa.ScheduleOpDate, aa.OrderOpId, aa.PasienId, aa.UrgencyLevel,
+                aa.Durasi, aa.TglOp, aa.KamarId, aa.RegId, aa.PpaId,
+                aa.CreateUserId, aa.CreateTimestamp, aa.UpdateUserId, aa.UpdateTimestamp, aa.VoidUserId, aa.VoidTimestamp,
                 ISNULL(bb.OrderDate, '3000-01-01') AS OrderDate,
                 ISNULL(bb.NamaOperasi, '') AS NamaOperasi,
                 ISNULL(cc.fs_nm_pasien, '') AS PasienName,
@@ -161,24 +163,32 @@ public class ScheduleOpDal : IScheduleOpDal
                 ISNULL(cc.fs_jns_kelamin, '') AS Gender,
                 ISNULL(dd.fs_nm_kamar, '') AS KamarName,
                 ISNULL(ee.fs_nm_peg, '') AS PpaName
-            FROM 
+            FROM
                 BILRG_ScheduleOp aa
                 LEFT JOIN BILRG_OrderOp bb ON aa.OrderOpId = bb.OrderOpId
                 LEFT JOIN tc_mr cc ON aa.PasienId = cc.fs_mr
                 LEFT JOIN ta_kamar dd ON aa.KamarId = dd.fs_kd_kamar
                 LEFT JOIN td_peg ee ON aa.PpaId = ee.fs_kd_peg
+            WHERE
+                aa.TglOp BETWEEN @Tgl1 AND @Tgl2
             """;
 
+        var tgl1 = filter.Date;
+        var tgl2 = filter.Date.AddHours(23.0).AddMinutes(59.0).AddSeconds(59.0);
+        var dp = new DynamicParameters();
+        dp.AddParam("@Tgl1", tgl1, SqlDbType.DateTime);
+        dp.AddParam("@Tgl2", tgl2, SqlDbType.DateTime);
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<ScheduleOpDto>(sql);
+        return conn.Read<ScheduleOpDto>(sql, dp);
     }
 
     public IEnumerable<ScheduleOpDto> ListData(IPasienKey filter)
     {
         const string sql = """
             SELECT
-                aa.ScheduleOpId, aa.ScheduleOpDate, aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VoidUser, aa.VoidDate,
-                aa.OrderOpId, aa.PasienId, aa.UrgencyLevel, aa.Durasi, aa.TglOp, aa.KamarId, aa.RegId, aa.PpaId,
+                aa.ScheduleOpId, aa.ScheduleOpDate, aa.OrderOpId, aa.PasienId, aa.UrgencyLevel,
+                aa.Durasi, aa.TglOp, aa.KamarId, aa.RegId, aa.PpaId,
+                aa.CreateUserId, aa.CreateTimestamp, aa.UpdateUserId, aa.UpdateTimestamp, aa.VoidUserId, aa.VoidTimestamp,
                 ISNULL(bb.OrderDate, '3000-01-01') AS OrderDate,
                 ISNULL(bb.NamaOperasi, '') AS NamaOperasi,
                 ISNULL(cc.fs_nm_pasien, '') AS PasienName,

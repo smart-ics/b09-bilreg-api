@@ -6,8 +6,8 @@ namespace Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
 public record OkListScheduleQuery(string TglYmd) : IRequest<IEnumerable<OkListScheduleResponse>>;
 
 public record OkListScheduleResponse(
-    string PasienId, string PasienName, string TglLahir, 
-    string NamaOperasi, string Urgency, 
+    string PasienId, string PasienName, string TglLahir,
+    string OrderOpId, string NamaOperasi, string Urgency,
     int Durasi, string StartTime,
     string DokterId, string DokterName,
     string KamarId, string KamarName);
@@ -26,6 +26,7 @@ public class OkListScheduleHandler : IRequestHandler<OkListScheduleQuery, IEnume
             x.Pasien.PasienId,
             x.Pasien.PasienName,
             x.Pasien.TglLahir.ToString("yyyy-MM-dd"),
+            x.OrderOp.OrderOpId,
             x.OrderOp.NamaOperasi,
             x.Urgency.ToString(),
             x.Durasi,
