@@ -19,8 +19,8 @@ public class PasienTrackerModelTest
         var person = new PersonInfoType("A", new DateOnly(2000, 1, 2), "P", 
             AlamatType.Default, ContactType.Default, IdentitasType.Default);
         var jadwal = JadwalPraktekType.Default with { Hari = DayOfWeek.Friday };
-        var booking = BookingModel.Create(person, new DateOnly(2025, 10, 24), 
-            jadwal, "-", "-", "-");
+        var booking = BookingModel.CreateLocal(person, new DateOnly(2025, 10, 24), 
+            jadwal, "-");
 
         // Act
         var tracker = PasienTrackerModel.Create(booking);

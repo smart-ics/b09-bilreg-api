@@ -9,7 +9,7 @@ public interface IBookingRepo :
     ILoadEntity<BookingModel, IBookingKey>,
     ILoadEntity<BookingModel, string>,
     IDeleteEntity<IBookingKey>,
-    IListData<BookingModel, Periode>
+    IListData<BookingView, Periode>
 {
-    IEnumerable<BookingModel> ListDataTglBerobat(Periode periode);
+    IEnumerable<BookingView> ListDataTglBerobat(Periode periode);
 }

@@ -3,12 +3,9 @@ using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
-using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
-using Bilreg.Domain.Shared.Helpers;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
-using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiContext.BookingFeature.UseCases;
 
@@ -16,7 +13,8 @@ public record BookingCreateFromHidokCommand(
     string PasienId, string PasienName, string TglLahir,
     string Gender, string Alamat, string NoTelp,
     string DokterEmail, string TglBerobat, string JamMulai, int NoAntrian, 
-    string ReffId, string CheckInQr, string UserId) : IRequest<BookingCreateFromHidokResponse>;
+    string AsuransiName, string NoPeserta, string NoRujukan,
+    string ReffId, string UserId) : IRequest<BookingCreateFromHidokResponse>;
 
 public record BookingCreateFromHidokResponse(string BookingId, int NoAntrian);
 
@@ -70,8 +68,9 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
 
         //      create booking
         var tglBerobat = DateOnly.Parse(request.TglBerobat);
-        var extApp = new ExtAppReffType("HiDok", request.ReffId, request.CheckInQr);
-        var booking = BookingModel.CreateFromExternal(person, tglBerobat, jadwal, extApp, request.UserId);
+        var extApp = new ExtAppReffType("HiDok", request.ReffId, "");
+        var coverage = new CoverageInfoType(request.AsuransiName, request.NoPeserta, request.NoRujukan);
+        var booking = BookingModel.CreateFromExternal(person, tglBerobat, jadwal, extApp, coverage, request.UserId);
 
         //      ambil nomor antrian
         var listAntrian = _antrianRepo.ListData(tglBerobat);

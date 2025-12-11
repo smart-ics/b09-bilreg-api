@@ -1,5 +1,4 @@
 ﻿using Ardalis.GuardClauses;
-using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
@@ -64,7 +63,7 @@ public class BookingModel : IBookingKey
         return result;
     }
     public static BookingModel CreateFromExternal(PersonInfoType person, DateOnly tglBerobat, 
-        JadwalPraktekType jadwal, ExtAppReffType extAppReff, string userId)
+        JadwalPraktekType jadwal, ExtAppReffType extAppReff, CoverageInfoType coverage, string userId)
     {
         Guard.Against.Null(person);
         Guard.Against.Null(tglBerobat);
@@ -81,7 +80,7 @@ public class BookingModel : IBookingKey
         var result = new BookingModel(newId, DateTime.Now, person, "-", RegModel.Default.ToReff(), 
             tglBerobat, jadwal.JamMulai, jadwal.Layanan, jadwal.Dokter,  -1, 
             AuditTrailType.Create(userId, DateTime.Now), 
-            extAppReff, CoverageInfoType.Default);
+            extAppReff, coverage);
         return result;
     }
     
@@ -102,7 +101,7 @@ public class BookingModel : IBookingKey
     public PpaReff Dokter { get; init; }
     public int NoAntrian { get; private set; }
     
-    public ExtAppReffType ExtAppReff { get; init; }
+    public ExtAppReffType ExtAppReff { get; private set; }
     public CoverageInfoType CoverageInfo { get; private set; }
 
     public AuditTrailType AuditTrail { get; init; }
@@ -132,6 +131,11 @@ public class BookingModel : IBookingKey
     {
         CoverageInfo = coverage;
     }
+
+    public void SetExtApp(ExtAppReffType extApp)
+    {
+        ExtAppReff = extApp; 
+    }
     public bool HasBeenRegistered() 
         => Reg.RegId is not ("" or "-");
     #endregion
@@ -146,9 +150,14 @@ public record ExtAppReffType(
 }
 public record CoverageInfoType(
     string AsuransiName, 
-    string NoPerserta,
+    string NoPeserta,
     string NoRujukan)
 {
     public static CoverageInfoType Default => new("", "", "");
 };
 
+
+public record BookingView(
+    string BookingId, DateTime BookingDate, PersonInfoType Person,
+    RegReff Reg, DateOnly TglBerobat, TimeOnly JamPraktek,
+    LayananReff Layanan, PpaReff Dokter, int NoAntrian);

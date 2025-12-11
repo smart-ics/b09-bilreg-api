@@ -65,6 +65,13 @@ public class AntrianModel : IAntrianKey
         var entry = AntrianEntryModel.Create(noUrut, PersonType.Default, PasienTrackerModel.Key("-"));
         _listEntry.Add(entry); 
     }
+    public void RemoveEntry(int noUrut)
+    {
+        var itemRemove = ListEntry
+            .FirstOrDefault(x => x.NoUrut == noUrut) ?? 
+                AntrianEntryModel.Default;
+        _listEntry.Remove(itemRemove);
+    }
 
     public AntrianEntryModel AddEntry(int noUrut, PasienTrackerModel pasienTracker)
     {

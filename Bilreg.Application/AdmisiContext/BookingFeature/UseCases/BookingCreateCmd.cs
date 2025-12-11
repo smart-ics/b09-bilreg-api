@@ -13,8 +13,7 @@ namespace Bilreg.Application.AdmisiContext.BookingFeature.UseCases;
 
 public record BookingCreateCmd(string PasienId,string PasienName, string TglLahir, 
     string Gender, string Alamat, string NoTelp, 
-    string DokterId, string TglBerobat, string JamMulai,
-    string NoPeserta, string NoReffKontrol, string UserId,
+    string DokterId, string TglBerobat, string JamMulai, string UserId,
     bool IsForceDuplicatedTracker) : IRequest<BookingCreateResponse>;
 
 public record BookingCreateResponse (string BookingId, int NoAntrian);

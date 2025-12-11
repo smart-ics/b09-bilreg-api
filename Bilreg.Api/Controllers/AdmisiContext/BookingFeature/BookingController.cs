@@ -47,6 +47,14 @@ public class BookingController : ControllerBase
         return Ok(new JSendOk(response));
     }
 
+    [HttpPatch]
+    [Route("setQrExt")]
+    public async Task<IActionResult> SetQrExt(BookingSetExternalAppCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
     [HttpDelete]
     [Route("delete/{id}")]
     public async Task<IActionResult> Delete(string id)

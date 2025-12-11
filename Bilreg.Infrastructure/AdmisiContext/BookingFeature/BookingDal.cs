@@ -17,7 +17,7 @@ public interface IBookingDal :
     IListData<BookingDto, Periode>
 {
     IEnumerable<BookingDto> ListPerTglBerobat(Periode periode);
-    BookingDto GetData(string reffId);
+    
 }
 
 public class BookingDal : IBookingDal
@@ -36,13 +36,13 @@ public class BookingDal : IBookingDal
                 BookingId, BookingDate,
                 PasienName, TglLahir, Gender, Alamat, PasienId, RegId,
                 TglBerobat, JamPraktek, LayananId, DokterId, NoAntrian,
-                TelpPasien, NoPeserta, NoReffKontrol, ReffId, 
+                TelpPasien, AsuransiName, NoPeserta, NoRujukan,  
                 CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
             VALUES (
                 @BookingId, @BookingDate,
                 @PasienName, @TglLahir, @Gender, @Alamat, @PasienId, @RegId,
                 @TglBerobat, @JamPraktek, @LayananId, @DokterId, @NoAntrian,
-                @TelpPasien, @NoPeserta, @NoReffKontrol, @ReffId,
+                @TelpPasien, @AsuransiName, @NoPeserta, @NoRujukan, 
                 @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
             """;
 
@@ -64,10 +64,10 @@ public class BookingDal : IBookingDal
         dp.AddParam("@DokterId", dto.DokterId, SqlDbType.VarChar);
         dp.AddParam("@NoAntrian", dto.NoAntrian, SqlDbType.Int);
 
+        dp.AddParam("@AsuransiName", dto.AsuransiName, SqlDbType.VarChar);
         dp.AddParam("@NoPeserta", dto.NoPeserta, SqlDbType.VarChar);
-        dp.AddParam("@NoReffKontrol", dto.NoReffKontrol, SqlDbType.VarChar);
-        dp.AddParam("@ReffId", dto.ReffId, SqlDbType.VarChar);
-        
+        dp.AddParam("@NoRujukan", dto.NoRujukan, SqlDbType.VarChar);
+
         dp.AddParam("@CrtUser", dto.CrtUser, SqlDbType.VarChar);
         dp.AddParam("@CrtDate", dto.CrtDate, SqlDbType.DateTime);
         dp.AddParam("@UpdUser", dto.UpdUser, SqlDbType.VarChar);
@@ -97,9 +97,9 @@ public class BookingDal : IBookingDal
                LayananId = @LayananId,
                DokterId = @DokterId,
                NoAntrian = @NoAntrian,
+               AsuransiName = @AsuransiName,
                NoPeserta = @NoPeserta,
-               NoReffKontrol = @NoReffKontrol,
-               ReffId = @ReffId,
+               NoRujukan = @NoRujukan,
                CrtUser = @CrtUser,
                CrtDate = @CrtDate,
                UpdUser = @UpdUser,
@@ -127,10 +127,10 @@ public class BookingDal : IBookingDal
         dp.AddParam("@DokterId", dto.DokterId, SqlDbType.VarChar);
         dp.AddParam("@NoAntrian", dto.NoAntrian, SqlDbType.Int);
 
+        dp.AddParam("@AsuransiName", dto.AsuransiName, SqlDbType.VarChar);
         dp.AddParam("@NoPeserta", dto.NoPeserta, SqlDbType.VarChar);
-        dp.AddParam("@NoReffKontrol", dto.NoReffKontrol, SqlDbType.VarChar);
-        dp.AddParam("@ReffId", dto.ReffId, SqlDbType.VarChar);
-
+        dp.AddParam("@NoRujukan", dto.NoRujukan, SqlDbType.VarChar);
+        
         dp.AddParam("@CrtUser", dto.CrtUser, SqlDbType.VarChar);
         dp.AddParam("@CrtDate", dto.CrtDate, SqlDbType.DateTime);
         dp.AddParam("@UpdUser", dto.UpdUser, SqlDbType.VarChar);
@@ -161,9 +161,10 @@ public class BookingDal : IBookingDal
         const string sql = """
             SELECT
                 aa.BookingId, aa.BookingDate,
-                aa.PasienName, aa.TglLahir, aa.Gender, aa.Alamat, aa.TelpPasien, aa.PasienId, aa.RegId,
-                aa.TglBerobat, aa.JamPraktek, aa.LayananId, aa.DokterId, aa.NoAntrian,
-                aa.NoPeserta, aa.NoReffKontrol, aa.ReffId, 
+                aa.PasienName, aa.TglLahir, aa.Gender, aa.Alamat, aa.TelpPasien, 
+                aa.PasienId, aa.RegId, aa.TglBerobat, aa.JamPraktek,
+                aa.LayananId, aa.DokterId, aa.NoAntrian,
+                aa.AsuransiName, aa.NoPeserta, aa.NoRujukan,  
                 aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
                 ISNULL(bb.fs_nm_layanan, '') AS LayananName,
                 ISNULL(cc.fs_nm_peg, '') AS DokterName
@@ -187,9 +188,10 @@ public class BookingDal : IBookingDal
         const string sql = """
            SELECT
                aa.BookingId, aa.BookingDate,
-               aa.PasienName, aa.TglLahir, aa.Gender, aa.Alamat, aa.TelpPasien, aa.PasienId, aa.RegId,
-               aa.TglBerobat, aa.JamPraktek, aa.LayananId, aa.DokterId, aa.NoAntrian,
-               aa.NoPeserta, aa.NoReffKontrol, aa.ReffId,
+               aa.PasienName, aa.TglLahir, aa.Gender, aa.Alamat, aa.TelpPasien, 
+               aa.PasienId, aa.RegId, aa.TglBerobat, aa.JamPraktek,
+               aa.LayananId, aa.DokterId, aa.NoAntrian,
+               aa.AsuransiName, aa.NoPeserta, aa.NoRujukan,  
                aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
                ISNULL(bb.fs_nm_layanan, '') AS LayananName,
                ISNULL(cc.fs_nm_peg, '') AS DokterName
@@ -215,17 +217,18 @@ public class BookingDal : IBookingDal
     {
         const string sql = """
             SELECT
-               aa.BookingId, aa.BookingDate,
-               aa.PasienName, aa.TglLahir, aa.Gender, aa.Alamat, aa.TelpPasien, aa.PasienId, aa.RegId,
-               aa.TglBerobat, aa.JamPraktek, aa.LayananId, aa.DokterId, aa.NoAntrian,
-               aa.NoPeserta, aa.NoReffKontrol, aa.ReffId,
-               aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
-               ISNULL(bb.fs_nm_layanan, '') AS LayananName,
-               ISNULL(cc.fs_nm_peg, '') AS DokterName
+                aa.BookingId, aa.BookingDate,
+                aa.PasienName, aa.TglLahir, aa.Gender, aa.Alamat, aa.TelpPasien, 
+                aa.PasienId, aa.RegId, aa.TglBerobat, aa.JamPraktek,
+                aa.LayananId, aa.DokterId, aa.NoAntrian,
+                aa.AsuransiName, aa.NoPeserta, aa.NoRujukan,  
+                aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
+                ISNULL(bb.fs_nm_layanan, '') AS LayananName,
+                ISNULL(cc.fs_nm_peg, '') AS DokterName
             FROM
-               BILRG_Booking aa
-               LEFT JOIN ta_layanan bb ON aa.LayananId = bb.fs_kd_layanan
-               LEFT JOIN td_peg cc ON aa.DokterId = cc.fs_kd_peg
+                BILRG_Booking aa
+                LEFT JOIN ta_layanan bb ON aa.LayananId = bb.fs_kd_layanan
+                LEFT JOIN td_peg cc ON aa.DokterId = cc.fs_kd_peg
             WHERE
                aa.TglBerobat BETWEEN @Tgl1 AND @Tgl2
                AND aa.VodDate = @VodDate
@@ -240,29 +243,4 @@ public class BookingDal : IBookingDal
         return conn.Read<BookingDto>(sql, dp);
     }
 
-    public BookingDto GetData(string reffId)
-    {
-        const string sql = """
-            SELECT
-                aa.BookingId, aa.BookingDate,
-                aa.PasienName, aa.TglLahir, aa.Gender, aa.Alamat, aa.TelpPasien, aa.PasienId, aa.RegId,
-                aa.TglBerobat, aa.JamPraktek, aa.LayananId, aa.DokterId, aa.NoAntrian,
-                aa.NoPeserta, aa.NoReffKontrol, aa.ReffId, 
-                aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
-                ISNULL(bb.fs_nm_layanan, '') AS LayananName,
-                ISNULL(cc.fs_nm_peg, '') AS DokterName
-            FROM
-                BILRG_Booking aa
-                LEFT JOIN ta_layanan bb ON aa.LayananId = bb.fs_kd_layanan
-                LEFT JOIN td_peg cc ON aa.DokterId = cc.fs_kd_peg
-            WHERE
-                aa.ReffId = @ReffId
-            """;
-
-        var dp = new DynamicParameters();
-        dp.AddParam("@ReffId", reffId, SqlDbType.VarChar);
-
-        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.ReadSingle<BookingDto>(sql, dp);
-    }
 }

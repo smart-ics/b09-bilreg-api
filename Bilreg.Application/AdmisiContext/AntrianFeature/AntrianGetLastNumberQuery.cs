@@ -51,34 +51,29 @@ public class AntrianGetLastNumberHandler : IRequestHandler<AntrianGetLastNumberQ
             "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
 
         var sequenceTag = AntrianModel.GenSequenceTag(tglAntrian, dokter);
-        var lastAntrian = GetLastAntrian(tglAntrian, dokter, sequenceTag);
-        var jadwalThatDay = GetJadwalThatDay(dokter, tglAntrian);
-
-        var lastQueueNumber = lastAntrian.NoUrut == -1 ? 0 : lastAntrian.NoUrut;
-        var remainingPatientQuota = jadwalThatDay.MaxPasien - lastQueueNumber;
-
-        // RETURN
-        var result = new AntrianGetLastNumberResponse(lastQueueNumber, remainingPatientQuota);
-        return Task.FromResult(result); 
-    }
-    #region PRIVATE_HELPER
-    private AntrianEntryModel GetLastAntrian(DateOnly tglAntrian, PpaType dokter, string sequenceTag)
-    {
+        // listAntrian
         var listAntrianDb = _antrianRepo.ListData(tglAntrian)?.ToList()
             ?? throw new ArgumentException($"Antrian at {tglAntrian.ToString("yyyy-MM-dd")} not foud");
-
         var antrianHeader = listAntrianDb.Where(x => x.SequenceTag == sequenceTag).FirstOrDefault();
         var antrian = _antrianRepo.LoadEntity(antrianHeader!)
             .Match(
                 onSome: x => x,
                 onNone: () => throw new KeyNotFoundException($"Antrian at {tglAntrian.ToString("yyyy-MM-dd")} not foud")
             );
+        // --
 
-        var result = antrian.ListEntry.OrderByDescending(x => x.NoUrut).FirstOrDefault() ?? AntrianEntryModel.Default;
+        var lastAntrian = antrian.ListEntry.OrderByDescending(x => x.NoUrut).FirstOrDefault() ?? AntrianEntryModel.Default;
+        var jadwalThatDay = GetJadwalThatDay(dokter, tglAntrian);
 
-        return result;
+        var lastQueueNumber = lastAntrian.NoUrut == -1 ? 0 : lastAntrian.NoUrut;
+        var remainingPatientQuota = jadwalThatDay.MaxPasien - antrian.ListEntry.Count();
 
+        // RETURN
+        var result = new AntrianGetLastNumberResponse(lastQueueNumber, remainingPatientQuota);
+        return Task.FromResult(result); 
     }
+    #region PRIVATE_HELPER
+    
     private JadwalPraktekType GetJadwalThatDay(PpaType dokter, DateOnly tglAntrian)
     {
         var jadwals = _jadwalPraktekRepo.ListData(dokter)?.ToList() ?? [];
