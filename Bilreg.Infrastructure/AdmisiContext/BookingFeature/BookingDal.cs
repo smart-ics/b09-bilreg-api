@@ -14,10 +14,10 @@ public interface IBookingDal :
     IUpdate<BookingDto>, 
     IDelete<IBookingKey>, 
     IGetData<BookingDto, IBookingKey>,
-    IGetData<BookingDto, string>,
     IListData<BookingDto, Periode>
 {
     IEnumerable<BookingDto> ListPerTglBerobat(Periode periode);
+    BookingDto GetData(string reffId);
 }
 
 public class BookingDal : IBookingDal
@@ -240,7 +240,7 @@ public class BookingDal : IBookingDal
         return conn.Read<BookingDto>(sql, dp);
     }
 
-    public BookingDto GetData(string filter)
+    public BookingDto GetData(string reffId)
     {
         const string sql = """
             SELECT
@@ -260,7 +260,7 @@ public class BookingDal : IBookingDal
             """;
 
         var dp = new DynamicParameters();
-        dp.AddParam("@ReffId", filter, SqlDbType.VarChar);
+        dp.AddParam("@ReffId", reffId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.ReadSingle<BookingDto>(sql, dp);

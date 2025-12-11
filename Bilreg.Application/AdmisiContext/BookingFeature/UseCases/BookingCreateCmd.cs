@@ -14,7 +14,7 @@ namespace Bilreg.Application.AdmisiContext.BookingFeature.UseCases;
 public record BookingCreateCmd(string PasienId,string PasienName, string TglLahir, 
     string Gender, string Alamat, string NoTelp, 
     string DokterId, string TglBerobat, string JamMulai,
-    string NoPeserta, string NoReffKontrol,
+    string NoPeserta, string NoReffKontrol, string UserId,
     bool IsForceDuplicatedTracker) : IRequest<BookingCreateResponse>;
 
 public record BookingCreateResponse (string BookingId, int NoAntrian);
@@ -62,7 +62,7 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
 
         //  create booking
         var tglBerobat = DateOnly.Parse(request.TglBerobat);
-        var booking = BookingModel.Create(person, tglBerobat, jadwal, "-", request.NoPeserta, request.NoReffKontrol);
+        var booking = BookingModel.CreateLocal(person, tglBerobat, jadwal, request.UserId);
         
         //  ambil nomor antrian
         var listAntrian = _antrianRepo.ListData(tglBerobat);
