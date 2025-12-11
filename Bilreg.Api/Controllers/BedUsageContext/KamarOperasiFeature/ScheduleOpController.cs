@@ -24,4 +24,36 @@ public class ScheduleOpController : ControllerBase
         var response = await _mediator.Send(query);
         return Ok(new JSendOk(response));
     }
+
+    [HttpPost]
+    [Route("SetSchedule")]
+    public async Task<IActionResult> SetSchedule(OkScheduleOpSetCommand cmd)
+    {
+        var response = await _mediator.Send(cmd);
+        return Ok(new JSendOk(response));
+    }
+
+    [HttpPatch]
+    [Route("AddPpa")]
+    public async Task<IActionResult> AddPpa(OkScheduleOpAddPpaCommand cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
+    [HttpPatch]
+    [Route("RemovePpa")]
+    public async Task<IActionResult> RemovePpa(OkScheduleOpRemovePpaCommand cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
+    [HttpPatch]
+    [Route("AssignLeader")]
+    public async Task<IActionResult> AssignLeader(OkScheduleOpAssignLeaderCommand cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
 }

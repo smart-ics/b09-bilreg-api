@@ -23,7 +23,7 @@ public class OpCaseDalTest
             ScheduledDate: new DateTime(2024, 1, 2, 8, 0, 0),
             DischargeOpId: "F",
             DischargedDate: new DateTime(2024, 1, 3, 12, 0, 0),
-            OpCaseState: 1,
+            OrderOpState: 1,
             PasienName: "G",
             TglLahir: "2000-01-01",
             Gender: "H"
@@ -66,7 +66,8 @@ public class OpCaseDalTest
         actual.Should().BeEquivalentTo(Faker(), 
             opt => opt.Excluding(x => x.PasienName)
                       .Excluding(x => x.TglLahir)
-                      .Excluding(x => x.Gender));
+                      .Excluding(x => x.Gender)
+                      .Excluding(x => x.UrgencyLevel));
     }
     
     [Fact]
@@ -80,6 +81,7 @@ public class OpCaseDalTest
         actual.Should().ContainEquivalentOf(opCase,
             opt => opt.Excluding(x => x.PasienName)
                       .Excluding(x => x.TglLahir)
-                      .Excluding(x => x.Gender));
+                      .Excluding(x => x.Gender)
+                      .Excluding(x => x.UrgencyLevel));
     }
 }

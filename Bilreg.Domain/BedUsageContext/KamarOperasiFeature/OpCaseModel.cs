@@ -82,11 +82,19 @@ public class OpCaseModel : IOrderOpKey
     public IEnumerable<OpCaseStateHistType> ListStateHistory => _listStateHistory;
     public IEnumerable<OpCasePpaType> ListPpa => _listPpa;
     #endregion
-    
+
     #region BEHAVIOUR
     public void Schedule(ScheduleOpReff schedule)
     {
         ScheduleOp = schedule;
+        var stateHistory = _listStateHistory
+            .FirstOrDefault(x => x.OpCaseState == OpCaseStateEnum.Scheduled);
+        OrderOpState = OpCaseStateEnum.Scheduled;
+        if (stateHistory is null)
+        {
+            var noUrut = _listStateHistory.Max(x => x.NoUrut) + 1;
+            _listStateHistory.Add(new OpCaseStateHistType(noUrut, OrderOpState, DateTime.Now));
+        }
     }
 
     public void Discharge(DischergeOpReff discharge)
