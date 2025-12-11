@@ -42,11 +42,18 @@ public class OkScheduleOpGetHandler : IRequestHandler<OkScheduleOpGetQuery, Sche
         var scheduleOp = _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(scheduleWithOrderOpId.ScheduleOpId))
             .GetValueOrThrow($"Schedule Operasi untuk Order Operasi ID {request.OrderOpId} tidak ditemukan.");
 
-        var response = new ScheduleOpGetResponse(scheduleOp.OrderOp.OrderOpId, orderOp.NamaOperasi, orderOp.UrgencyLevel.ToString(),
-            scheduleOp.Pasien.PasienId, scheduleOp.Pasien.PasienName, scheduleOp.Reg.RegId,
-            scheduleOp.TglOp.ToString(DateFormatEnum.YMD), scheduleOp.TglOp.ToString(DateFormatEnum.HM),
-            scheduleOp.KamarOp.KamarId, scheduleOp.KamarOp.KamarName,
-            scheduleOp.TeamLead.PpaId, scheduleOp.TeamLead.PpaName,
+        var response = new ScheduleOpGetResponse(scheduleOp.OrderOp.OrderOpId,
+            orderOp.NamaOperasi,
+            orderOp.UrgencyLevel.ToString(),
+            scheduleOp.Pasien.PasienId,
+            scheduleOp.Pasien.PasienName,
+            scheduleOp.Reg.RegId,
+            scheduleOp.TglOp.ToString(DateFormatEnum.YMD),
+            scheduleOp.TglOp.ToString(DateFormatEnum.HM),
+            scheduleOp.KamarOp.KamarId,
+            scheduleOp.KamarOp.KamarName,
+            scheduleOp.TeamLead.PpaId,
+            scheduleOp.TeamLead.PpaName,
             scheduleOp.ListPpa.Select(x => new PpaReff(x.Ppa.PpaId, x.Ppa.PpaName)));
         return Task.FromResult(response);
     }
