@@ -21,7 +21,8 @@ public class OkListScheduleHandler : IRequestHandler<OkListScheduleQuery, IEnume
     }
     public Task<IEnumerable<OkListScheduleResponse>> Handle(OkListScheduleQuery request, CancellationToken cancellationToken)
     {
-        var listSchedule = _scheduleRepo.ListData(request.TglYmd.ToDate(DateFormatEnum.YMD));
+        var listSchedule = _scheduleRepo.ListData(request.TglYmd.ToDate(DateFormatEnum.YMD))?
+            .Where(x => !x.IsVoid);
         var result = listSchedule.Select(x => new OkListScheduleResponse(
             x.Pasien.PasienId,
             x.Pasien.PasienName,

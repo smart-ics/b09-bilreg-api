@@ -78,7 +78,9 @@ public class ScheduleOpDal : IScheduleOpDal
                TglOp = @TglOp,
                KamarId = @KamarId,
                RegId = @RegId,
-               PpaId = @PpaId
+               PpaId = @PpaId,
+               VoidUserId = @VoidUserId,
+               VoidTimestamp = @VoidTimestamp
            WHERE
                ScheduleOpId = @ScheduleOpId
            """;
@@ -96,6 +98,8 @@ public class ScheduleOpDal : IScheduleOpDal
         dp.AddParam("@KamarId", dto.KamarId, SqlDbType.VarChar);
         dp.AddParam("@RegId", dto.RegId, SqlDbType.VarChar);
         dp.AddParam("@PpaId", dto.PpaId, SqlDbType.VarChar);
+        dp.AddParam("@VoidUserId", dto.VoidUserId, SqlDbType.VarChar);
+        dp.AddParam("@VoidTimestamp", dto.VoidTimestamp, SqlDbType.DateTime);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);

@@ -1,4 +1,3 @@
-using System.ComponentModel.DataAnnotations.Schema;
 using System.Data;
 using System.Data.SqlClient;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
@@ -37,8 +36,9 @@ public class PpaContactDal : IPpaContactDal
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         var listAll = conn.Read<PpaContactDto>(sql, dp);
-        var listFix = listAll.Where(x => x.ContactDetail.Trim().Length > 0);
-        var result = listFix.Select(x => new ContactType((JenisContactEnum)x.JenisContact, x.ContactDetail));
+        var listFix = listAll?.Where(x => x.ContactDetail.Trim().Length > 0);
+        var result = listFix?.Select(x => new ContactType((JenisContactEnum)x.JenisContact, x.ContactDetail))
+            ?? [];
 
         return result;
     }

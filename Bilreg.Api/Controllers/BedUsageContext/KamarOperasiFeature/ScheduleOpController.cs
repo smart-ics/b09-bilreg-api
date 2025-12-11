@@ -56,4 +56,12 @@ public class ScheduleOpController : ControllerBase
         await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));
     }
+
+    [HttpPatch]
+    [Route("Cancel")]
+    public async Task<IActionResult> CancelSchedule(OkScheduleOpCancelCommand cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
 }

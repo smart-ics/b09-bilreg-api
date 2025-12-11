@@ -5,6 +5,7 @@ using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature;
 
@@ -112,7 +113,8 @@ public record ScheduleOpDto(
             TglOp,
             Durasi,
             teamLead,
-            kamarOp
+            kamarOp,
+            VoidTimestamp.ToString(DateFormatEnum.YMD) != "3000-01-01"
         );
         return result;
     }
