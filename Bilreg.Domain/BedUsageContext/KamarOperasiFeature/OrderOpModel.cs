@@ -32,7 +32,6 @@ public class OrderOpModel : IOrderOpKey
         EstimasiDurasiInMinutes = estimasiDurasiInMinutes;
         PreferedDate = preferedDate;
         SpecialEquipment = specialEquipment;
-
     }
 
     public static OrderOpModel Default => new OrderOpModel(
@@ -77,7 +76,7 @@ public class OrderOpModel : IOrderOpKey
         return result;
     }
     #endregion
-    
+
     #region PROPERTIES
     public string OrderOpId { get; init; }
     public DateTime OrderDate { get; init; }
@@ -128,8 +127,8 @@ public class OrderOpModel : IOrderOpKey
         SpecialEquipment = specialEquipment;
     }
     public OrderOpReff ToReff() => new OrderOpReff(OrderOpId, OrderDate, NamaOperasi);
-    #endregion    
-    
+    #endregion
+
 }
 
 public interface IOrderOpKey

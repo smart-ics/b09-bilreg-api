@@ -1,4 +1,5 @@
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
+using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using FluentAssertions;
@@ -55,13 +56,30 @@ public class ScheduleOpDalTest
                 .Excluding(x => x.KamarName)
                 .Excluding(x => x.PpaName));
     }
-    
+
     [Fact]
     public void ListDataTest()
     {
         using var trans = TransHelper.NewScope();
         _sut.Insert(Faker());
         var actual = _sut.ListData(new DateTime(2023,1,2));
+        actual.Should().ContainEquivalentOf(Faker(),
+            opt => opt
+                .Excluding(x => x.OrderDate)
+                .Excluding(x => x.NamaOperasi)
+                .Excluding(x => x.PasienName)
+                .Excluding(x => x.TglLahir)
+                .Excluding(x => x.Gender)
+                .Excluding(x => x.KamarName)
+                .Excluding(x => x.PpaName));
+    }
+
+    [Fact]
+    public void ListData_ByPasienKey_Test()
+    {
+        using var trans = TransHelper.NewScope();
+        _sut.Insert(Faker());
+        var actual = _sut.ListData(PasienModel.Key("F"));
         actual.Should().ContainEquivalentOf(Faker(),
             opt => opt
                 .Excluding(x => x.OrderDate)

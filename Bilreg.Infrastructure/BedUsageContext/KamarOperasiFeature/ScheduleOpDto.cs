@@ -15,8 +15,8 @@ public record ScheduleOpDto(
     DateTime CrtDate, 
     string UpdUser, 
     DateTime UpdDate, 
-    string VodUser,
-    DateTime VodDate,
+    string VoidUser,
+    DateTime VoidDate,
     string OrderOpId,
     string PasienId,
     int UrgencyLevel,
@@ -68,7 +68,7 @@ public record ScheduleOpDto(
         var auditTrail = new AuditTrailType(
             new AuditInfoType(CrtUser, CrtDate),
             new AuditInfoType(UpdUser, UpdDate),
-            new AuditInfoType(VodUser, VodDate)
+            new AuditInfoType(VoidUser, VoidDate)
         );
         
         var orderOp = new OrderOpReff(OrderOpId, OrderDate, NamaOperasi);
@@ -99,10 +99,11 @@ public record ScheduleOpDto(
         var pasien = new PasienReff(PasienId, PasienName, DateOnly.ParseExact(TglLahir, "yyyy-MM-dd"), Gender);
         var kamarOp = new KamarReff(KamarId, KamarName);
         var teamLead = new PpaReff(PpaId, PpaName);
+        var orderOp = new OrderOpReff(OrderOpId, OrderDate, NamaOperasi);
         var result = new ScheduleOpView(
             ScheduleOpId,
             pasien,
-            NamaOperasi,
+            orderOp,
             (UrgencyLevelEnum)UrgencyLevel,
             TglOp,
             Durasi,
