@@ -1,6 +1,5 @@
 using System.Data;
 using System.Data.SqlClient;
-using Bilreg.Application.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
