@@ -26,7 +26,7 @@ public class OkListScheduleHandler : IRequestHandler<OkListScheduleQuery, IEnume
             x.Pasien.PasienId,
             x.Pasien.PasienName,
             x.Pasien.TglLahir.ToString("yyyy-MM-dd"),
-            x.NamaOperasi,
+            x.OrderOp.NamaOperasi,
             x.Urgency.ToString(),
             x.Durasi,
             x.TglOp.ToString("HH:mm"),

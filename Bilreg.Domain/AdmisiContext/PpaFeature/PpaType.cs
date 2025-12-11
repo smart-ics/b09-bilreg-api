@@ -47,7 +47,7 @@ public record PpaType : IPpaKey
 
 public interface IPpaKey
 {
-    string PpaId {get;}
+    string PpaId { get; }
 }
 
 public record PpaReff(string PpaId, string PpaName);
