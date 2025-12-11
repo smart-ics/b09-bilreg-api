@@ -1,10 +1,11 @@
-﻿
-using Bilreg.Application.AdmisiContext.LayananFeature;
+﻿using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.BedUsageContext.WardFeature;
+using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
 using MediatR;
 
@@ -12,9 +13,10 @@ namespace Bilreg.Application.ChargeContext.TindakanFeature.TindakanAgg;
 
 public record TindakanCreateCmd(
     string RegId, string LayananId, string TipeTarifId,
-    string OrderTdkId, TindakanTarifCreate Tarif) : IRequest<TindakanCreateRespose>, IRegKey, ILayananKey, IOrderTdkKey;
+    string OrderTdkId, string KelasId, TindakanTarifCreate Tarif) 
+    : IRequest<TindakanCreateRespose>, IRegKey, ILayananKey, ITipeTarifKey, IOrderTdkKey, IKelasKey;
 
-public record TindakanTarifCreate(string TarifId, IEnumerable<TindakanKomponenCreate> Komponen);
+public record TindakanTarifCreate(string TarifId, IEnumerable<TindakanKomponenCreate> Komponen) : ITarifKey;
 public record TindakanKomponenCreate (string KomponenId, string PpaId, int qty);
 
 public record TindakanCreateRespose(string TindakanId);
@@ -58,8 +60,18 @@ public class TindakanCreateHandler : IRequestHandler<TindakanCreateCmd, Tindakan
                 onSome: x => x,
                 onNone: () => throw new KeyNotFoundException($"Layanan {request.LayananId} not found")
             );
+        var tipeTarif = _tipeTarifRepo.LoadEntity(TipeTarifType.Key(request.TipeTarifId))
+            .Match(
+                onSome: x => x,
+                onNone: () => throw new KeyNotFoundException($"Tipe Tarif {request.TipeTarifId} not found")
+            );
+        var orderTdk = _orderTdkRepo.LoadEntity(request)
+            .Match(
+                onSome: x => x,
+                onNone: () => throw new KeyNotFoundException($"Order tindakan {request.OrderTdkId} not found")
+            );
+        //var nilaiTarif = _nilaiTarifRepo.LoadEntity()
 
-        //var tipeTarif = _tipeTarifRepo.LoadEntity(request)
         throw new NotImplementedException();
     }
 }
