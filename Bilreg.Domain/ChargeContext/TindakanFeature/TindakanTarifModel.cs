@@ -1,4 +1,5 @@
-﻿using Bilreg.Domain.AdmisiContext.PpaFeature;
+﻿using Ardalis.GuardClauses;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 
 namespace Bilreg.Domain.ChargeContext.TindakanFeature;
@@ -10,6 +11,8 @@ public record TindakanTarifModel
     public TindakanTarifModel(TarifType tarif,
         IEnumerable<TindakanKomponenTarifModel> listKomponen)
     {
+        Guard.Against.Null(tarif);
+
         Tarif = tarif.ToReff(); // <-- Validate dulu tarifnya
         _listKomponen = listKomponen.ToList() ?? [];
     }
