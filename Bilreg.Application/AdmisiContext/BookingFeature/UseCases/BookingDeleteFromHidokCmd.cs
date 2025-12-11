@@ -1,5 +1,6 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
+using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
@@ -12,16 +13,15 @@ public record BookingDeleteFromHidokCmd(string BookingHidokId) : IRequest;
 public class BookingDeleteFromHidokHandler : IRequestHandler<BookingDeleteFromHidokCmd>
 {
     private readonly IBookingRepo _bookingRepo;
-    private readonly IJadwalPraktekRepo _jadwalPraktekRepo;
     private readonly IAntrianRepo _antrianRepo;
-
+    private readonly IPpaRepo _ppaRepo;
     public BookingDeleteFromHidokHandler(IBookingRepo bookingRepo,
-        IJadwalPraktekRepo jadwalPraktekRepo,
-        IAntrianRepo antrianRepo)
+        IAntrianRepo antrianRepo,
+        IPpaRepo ppaRepo)
     {
         _bookingRepo = bookingRepo;
-        _jadwalPraktekRepo = jadwalPraktekRepo;
         _antrianRepo = antrianRepo;
+        _ppaRepo = ppaRepo;
     }
 
     public Task Handle(BookingDeleteFromHidokCmd request, CancellationToken cancellationToken)
@@ -32,19 +32,17 @@ public class BookingDeleteFromHidokHandler : IRequestHandler<BookingDeleteFromHi
                 onSome: x => x,
                 onNone: () => throw new KeyNotFoundException($"Booking {request.BookingHidokId} not found")
             );
-        // cek jadwal
-        var dokter = PpaType.Key(booking.Dokter.PpaId);
-        var listJadwal = _jadwalPraktekRepo.ListData(dokter)?.ToList() ?? [];
-        var hari = booking.TglBerobat.DayOfWeek;
-        var jamMulai = booking.JamPraktek;
-        var jadwal = listJadwal
-             .Where(x => x.Hari == hari)
-             .FirstOrDefault(x => x.JamMulai == jamMulai)
-            ?? JadwalPraktekType.Default;
-
+        // cek dokter
+        var dokterKey = PpaType.Key(booking.Dokter.PpaId);
+        var dokter = _ppaRepo.LoadEntity(dokterKey)
+            .Match(
+                onSome: x => x,
+                onNone: () => throw new KeyNotFoundException($"Dokter {dokterKey.PpaId} not found")
+            );
+       
         //  ambil data antrian
         var listAntrian = _antrianRepo.ListData(booking.TglBerobat);
-        var sequenceTag = AntrianModel.GenSequenceTag(booking.TglBerobat, jadwal);
+        var sequenceTag = AntrianModel.GenSequenceTag(booking.TglBerobat, dokter);
         var antrianView = listAntrian.FirstOrDefault(x => x.SequenceTag == sequenceTag) ??
             new AntrianHeaderView("-", "", new DateOnly(3000, 1, 1), new TimeOnly(0, 0), "");
         var antrian = _antrianRepo.LoadEntity(antrianView).Value;
