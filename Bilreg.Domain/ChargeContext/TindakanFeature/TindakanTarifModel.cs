@@ -27,13 +27,18 @@ public record TindakanTarifModel
     #region BEHAVIOR
     public void SetKomponen(KomponenType komponen, PpaType ppa, decimal qty, decimal nilai)
     {
-        var oldKomponen = ListKomponen.FirstOrDefault(x => x.Komponen.KomponenId == komponen.KomponenId)
-            ?? new TindakanKomponenTarifModel(KomponenType.Default.ToReff(), 
-                PpaType.Default.ToReff(), 1, 0, 0);
-        var newKomponen = new TindakanKomponenTarifModel(komponen.ToReff(), ppa.ToReff(), oldKomponen.NoUrut, qty, nilai);
-        ListKomponen.ToList().Remove(oldKomponen);
-        ListKomponen.ToList().Add(newKomponen);
+        var existing = _listKomponen.FirstOrDefault(x => x.Komponen.KomponenId == komponen.KomponenId);
+        if (existing is not null)
+            _listKomponen.Remove(existing);
+
+        var newKomponen = new TindakanKomponenTarifModel(
+            komponen.ToReff(), ppa.ToReff(),
+            existing?.NoUrut ?? 1,
+            qty, nilai);
+
+        _listKomponen.Add(newKomponen);
     }
+
     #endregion
 }
 

@@ -1,9 +1,11 @@
-﻿using Bilreg.Application.AdmisiContext.LayananFeature;
+﻿using Ardalis.GuardClauses;
+using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BillContext.TindakanSub.TindakanAgg;
 using Bilreg.Domain.ChargeContext.TarifFeature;
@@ -55,6 +57,12 @@ public class TindakanCreateHandler : IRequestHandler<TindakanCreateCmd, Tindakan
 
     public Task<TindakanCreateRespose> Handle(TindakanCreateCmd request, CancellationToken cancellationToken)
     {
+        // GUARD
+        Guard.Against.NullOrWhiteSpace(request.RegId);
+        Guard.Against.NullOrWhiteSpace(request.LayananId);
+        Guard.Against.NullOrWhiteSpace(request.TarifId);
+        Guard.Against.NullOrWhiteSpace(request.TipeTarifId);
+        Guard.Against.NullOrWhiteSpace(request.KelasId);
 
         var reg = _regRepo.LoadEntity(request)
             .Match(
@@ -87,9 +95,59 @@ public class TindakanCreateHandler : IRequestHandler<TindakanCreateCmd, Tindakan
                 onNone: () => throw new KeyNotFoundException($"Nilai Tarif {request.TarifId} not found")
             );
 
+
+
         var tindakan = TindakanModel.Create((JenisTindakanEnum)request.JenisTindakan, orderTdk,
             pasien, reg, layanan, tipeTarif, TindakanTarifModel.Default, request.UserId);
 
         throw new NotImplementedException();
     }
+
+    public TindakanTarifModel BuildTindakanTarif(
+    TindakanCreateCmd request,
+    NilaiTarifType nilaiTarif)
+    {
+        var tarif = new TarifType(
+            nilaiTarif.TarifId, nilaiTarif.TarifName,
+            GroupTarifType.Default, GroupTarifDkType.Default, JenisTarifType.Default);
+
+        var tindakan = new TindakanTarifModel(tarif, []);
+
+        request.Komponen
+            .Select(d =>
+            {
+                var kompo = nilaiTarif.ListKomponen
+                    .FirstOrDefault(x => x.Komponen.KomponenId == d.KomponenId)
+                    ?? NilaiTarifKomponenType.Default;
+                var komponen = new KomponenType(kompo.Komponen.KomponenId, kompo.Komponen.KomponenName,
+                    GroupKomponenType.Default, []);
+                var ppa = GetPpa(PpaType.Key(d.PpaId));
+
+                return new
+                {
+                    Komponen = komponen,   
+                    Ppa = ppa,
+                    Qty = d.qty,
+                    Nilai = kompo.Nilai * d.qty,
+                    NoUrut = kompo.NoUrut
+                };
+            })
+            .ToList()
+            .ForEach(x =>
+            {
+                tindakan.SetKomponen(x.Komponen, x.Ppa, x.Qty, x.Nilai);
+            });
+
+        return tindakan;
+    }
+
+
+    private PpaType GetPpa(IPpaKey ppakey)
+    {
+        return _ppaRepo.LoadEntity(ppakey)
+            .Match(
+                onSome: x => x,
+                onNone: () => throw new KeyNotFoundException($"Ppa {ppakey.PpaId} not found"));
+    }
+
 }
