@@ -26,10 +26,10 @@ public class AntrianController : Controller
     }
 
     [HttpGet]
-    [Route("getLastNumber/{dokterId}/{tglPraktek}/{jamMulai}")]
+    [Route("quota/{dokterId}/{tglPraktek}/{jamMulai}")]
     public async Task<IActionResult> GetLastNumber(string dokterId, string tglPraktek, string jamMulai)
     {
-        var query = new AntrianGetLastNumberQuery(dokterId, tglPraktek, jamMulai);
+        var query = new AntrianGetQuotaQuery(dokterId, tglPraktek, jamMulai);
         var response = await _mediator.Send(query);
         return Ok(new JSendOk(response));
     }
