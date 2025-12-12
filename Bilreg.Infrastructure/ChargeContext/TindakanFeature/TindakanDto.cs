@@ -120,7 +120,8 @@ public record TindakanKomponenDto(
     string PpaId,
     string PpaName,
     decimal Qty,
-    decimal Nilai)
+    decimal Nilai,
+    decimal SubTotal)
 {
     public static TindakanKomponenDto FromModel(string tindakanId, string TarifId, TindakanKomponenTarifModel model)
     {
@@ -133,7 +134,8 @@ public record TindakanKomponenDto(
             PpaId: model.Ppa.PpaId,
             PpaName: model.Ppa.PpaName,
             Qty: model.Qty,
-            Nilai: model.Nilai
+            Nilai: model.Nilai,
+            SubTotal: model.SubTotal
         );
         return result;
     }
@@ -148,7 +150,8 @@ public record TindakanKomponenDto(
             Ppa: ppaReff,
             NoUrut: NoUrut,
             Qty: Qty,
-            Nilai: Nilai
+            Nilai: Nilai, 
+            SubTotal: SubTotal
         );
         return result;
     }

@@ -11,6 +11,7 @@ using Bilreg.Domain.BillContext.TindakanSub.TindakanAgg;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
+using JetBrains.Annotations;
 using MediatR;
 
 namespace Bilreg.Application.ChargeContext.TindakanFeature.TindakanAgg;
@@ -36,6 +37,7 @@ public class TindakanCreateHandler : IRequestHandler<TindakanCreateCmd, Tindakan
     private readonly IOrderTdkRepo _orderTdkRepo;
     private readonly ITindakanRepo _tindakanRepo;
     private readonly IPasienRepo _pasienRepo;
+    private readonly ITarifRepo _tarifRepo;
     public TindakanCreateHandler(IRegRepo regRepo,
         ILayananRepo layananRepo,
         ITipeTarifRepo tipeTarifRepo,
@@ -43,7 +45,8 @@ public class TindakanCreateHandler : IRequestHandler<TindakanCreateCmd, Tindakan
         IPpaRepo ppaRepo,
         IOrderTdkRepo orderTdkRepo,
         ITindakanRepo tindakanRepo,
-        IPasienRepo pasienRepo)
+        IPasienRepo pasienRepo,
+        ITarifRepo tarifRepo)
     {
         _regRepo = regRepo;
         _layananRepo = layananRepo;
@@ -53,6 +56,7 @@ public class TindakanCreateHandler : IRequestHandler<TindakanCreateCmd, Tindakan
         _orderTdkRepo = orderTdkRepo;
         _tindakanRepo = tindakanRepo;
         _pasienRepo = pasienRepo;
+        _tarifRepo = tarifRepo;
     }
 
     public Task<TindakanCreateRespose> Handle(TindakanCreateCmd request, CancellationToken cancellationToken)
@@ -87,32 +91,34 @@ public class TindakanCreateHandler : IRequestHandler<TindakanCreateCmd, Tindakan
         var orderTdk = _orderTdkRepo.LoadEntity(request)
             .Match(
                 onSome: x => x,
-                onNone: () => throw new KeyNotFoundException($"Order tindakan {request.OrderTdkId} not found")
+                onNone: () => OrderTdkModel.Default
+            );
+        var tarif = _tarifRepo.LoadEntity(request)
+            .Match(
+                onSome: x => x,
+                onNone: () => throw new KeyNotFoundException($"Tarif {request.TarifId} not found")
             );
         var nilaiTarif = _nilaiTarifRepo.LoadEntity(request)
             .Match(
                 onSome: x => x,
                 onNone: () => throw new KeyNotFoundException($"Nilai Tarif {request.TarifId} not found")
             );
-
-
+        
+        var tdkTarif = BuildTindakanTarif(request, tarif, nilaiTarif);
 
         var tindakan = TindakanModel.Create((JenisTindakanEnum)request.JenisTindakan, orderTdk,
-            pasien, reg, layanan, tipeTarif, TindakanTarifModel.Default, request.UserId);
+            pasien, reg, layanan, tipeTarif, tdkTarif, request.UserId);
+        _tindakanRepo.SaveChanges(tindakan);
 
-        throw new NotImplementedException();
+        return Task.FromResult(new TindakanCreateRespose(tindakan.TindakanId));
     }
 
     public TindakanTarifModel BuildTindakanTarif(
     TindakanCreateCmd request,
+    TarifType tarif,
     NilaiTarifType nilaiTarif)
     {
-        var tarif = new TarifType(
-            nilaiTarif.TarifId, nilaiTarif.TarifName,
-            GroupTarifType.Default, GroupTarifDkType.Default, JenisTarifType.Default);
-
-        var tindakan = new TindakanTarifModel(tarif, []);
-
+        var tindakanTarif = new TindakanTarifModel(tarif, []);
         request.Komponen
             .Select(d =>
             {
@@ -128,17 +134,16 @@ public class TindakanCreateHandler : IRequestHandler<TindakanCreateCmd, Tindakan
                     Komponen = komponen,   
                     Ppa = ppa,
                     Qty = d.qty,
-                    Nilai = kompo.Nilai * d.qty,
-                    NoUrut = kompo.NoUrut
+                    Nilai = kompo.Nilai
                 };
             })
             .ToList()
             .ForEach(x =>
             {
-                tindakan.SetKomponen(x.Komponen, x.Ppa, x.Qty, x.Nilai);
+                tindakanTarif.SetKomponen(x.Komponen, x.Ppa, x.Qty, x.Nilai);
             });
 
-        return tindakan;
+        return tindakanTarif;
     }
 
 

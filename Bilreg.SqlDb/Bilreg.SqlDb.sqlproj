@@ -182,6 +182,8 @@
     <None Include="ChargeContext\AmbulanceFeature\ta_transport.sql" />
     <None Include="ChargeContext\AmbulanceFeature\ta_tujuan_transport.sql" />
     <None Include="Helpers\DatabaseUser.sql" />
+    <None Include="ChargeContext\BILRG_Tindakan.sql" />
+    <None Include="ChargeContext\BILRG_TindakanKomponen.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="BedUsageContext\KamarOperasiFeature\BILRG_ScheduleOp.sql" />
@@ -190,5 +192,6 @@
     <Build Include="BedUsageContext\RoomRateFeature\ta_kamar_tipe.sql" />
     <Build Include="ChargeContext\TarifFeature\BILRG_NilaiTarif.sql" />
     <Build Include="ChargeContext\TarifFeature\BILRG_NilaiTarifKomp.sql" />
+    <Build Include="ChargeContext\BILRG_OrderTdk.sql" />
   </ItemGroup>
 </Project>

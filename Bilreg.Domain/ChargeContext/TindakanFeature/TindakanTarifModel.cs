@@ -21,7 +21,7 @@ public record TindakanTarifModel
     #endregion
 
     public TarifReff Tarif { get; init; }
-    public decimal Total => _listKomponen.Sum(t => t.Nilai);
+    public decimal Total => _listKomponen.Sum(t => t.SubTotal);
     public IEnumerable<TindakanKomponenTarifModel> ListKomponen => _listKomponen;
 
     #region BEHAVIOR
@@ -30,11 +30,12 @@ public record TindakanTarifModel
         var existing = _listKomponen.FirstOrDefault(x => x.Komponen.KomponenId == komponen.KomponenId);
         if (existing is not null)
             _listKomponen.Remove(existing);
-
+        
+        var subTotal = qty * nilai;
         var newKomponen = new TindakanKomponenTarifModel(
             komponen.ToReff(), ppa.ToReff(),
             existing?.NoUrut ?? 1,
-            qty, nilai);
+             nilai, qty, subTotal);
 
         _listKomponen.Add(newKomponen);
     }
@@ -46,8 +47,10 @@ public record TindakanKomponenTarifModel(
     KomponenReff Komponen,
     PpaReff Ppa,
     int NoUrut,
+    decimal Nilai,
     decimal Qty,
-    decimal Nilai
+    decimal SubTotal
+    
 );
 
 

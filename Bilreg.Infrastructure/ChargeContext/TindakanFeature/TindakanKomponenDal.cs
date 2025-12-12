@@ -40,6 +40,7 @@ public class TindakanKomponenDal : ITindakanKomponenDal
         bcp.AddMap("PpaName", "PpaName");
         bcp.AddMap("Qty", "Qty");
         bcp.AddMap("Nilai", "Nilai");
+        bcp.AddMap("SubTotal", "SubTotal");
 
         var fetched = dtos.ToList();
         bcp.BatchSize = fetched.Count;
@@ -69,7 +70,7 @@ public class TindakanKomponenDal : ITindakanKomponenDal
         const string sql = """
            SELECT
                aa.TindakanId, aa.TarifId, aa.NoUrut, aa.KomponenTarifId, aa.KomponenTarifName, 
-               aa.PpaId, aa.PpaName, aa.Qty, aa.Nilai
+               aa.PpaId, aa.PpaName, aa.Qty, aa.Nilai, aa.SubTotal
            FROM
                BILRG_TindakanKomponen aa
            WHERE
