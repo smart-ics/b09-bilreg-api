@@ -2,7 +2,8 @@
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
-using Castle.DynamicProxy;
+using Bilreg.Domain.PasienContext.PasienFeature;
+
 
 namespace Bilreg.Infrastructure.AdmisiContext.BookingFeature;
 
@@ -18,13 +19,11 @@ public record BookingExternalDto(
     }
 }
 
-
-
 public record BookingExtDto(string BookingId, DateTime BookingDate, DateTime TglBerobat, 
-    string DokterId, string RegId, string PasienId, string PasienName,
-    string LayananId, string JamPraktek, int NoAntrian,
-    string ExtAppName, string ReffId, string CheckInQr,
+    string DokterId, string RegId, string PasienId, string PasienName, DateTime TglLahir, 
+    string Alamat, string Gender, string LayananId, string JamPraktek, int NoAntrian,
     string TelpPasien, string AsuransiName, string NoPeserta, string NoRujukan,
+    string ExtAppName, string ReffId, string CheckInQr,
      string DokterName, string LayananName)
 {
     public BookingExtView ToView()
@@ -34,8 +33,17 @@ public record BookingExtDto(string BookingId, DateTime BookingDate, DateTime Tgl
         var dokter = new PpaReff(DokterId, DokterName);
         var extApp = new ExtAppReffType(ExtAppName, ReffId, CheckInQr);
         var coverage = new CoverageInfoType(AsuransiName, NoPeserta, NoRujukan);
-        var result = new BookingExtView(BookingId, BookingDate, TglBerobat,reg, lyn, dokter,
-            TimeOnly.Parse(JamPraktek), NoAntrian,  extApp);
+
+        var tglLahir = DateOnly.FromDateTime(TglLahir);
+        var alamat = new AlamatType([Alamat], "-", "-");
+        var contact = new ContactType(JenisContactEnum.Phone, TelpPasien);
+        var person = new PersonInfoType(
+            PasienName, tglLahir, Gender, alamat,
+            contact, IdentitasType.Default);
+
+        var result = new BookingExtView(BookingId, BookingDate, TglBerobat, 
+            person,reg, lyn, dokter, TimeOnly.Parse(JamPraktek), NoAntrian,  
+            extApp, coverage);
         return result;
     }
 }

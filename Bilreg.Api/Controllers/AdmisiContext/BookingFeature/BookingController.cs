@@ -100,7 +100,7 @@ public class BookingController : ControllerBase
     }
 
     [HttpGet]
-    [Route("searchQr/{tglBerobat}/{keyword}")]
+    [Route("search/{tglBerobat}/{keyword}")]
     public async Task<IActionResult> SearchByQr(string tglBerobat, string keyword)
     {
         var query = new BookingSearchQuery(tglBerobat, keyword);

@@ -122,9 +122,11 @@ public class BookingExternalDal : IBookingExternalDal
     {
         const string sql = """
             SELECT
-                aa.BookingId, aa.BookingDate, aa.TglBerobat, aa.DokterId,
-                aa.RegId, aa.PasienId, aa.PasienName, 
+                aa.BookingId, aa.BookingDate, aa.TglBerobat, 
+                aa.DokterId, aa.RegId, aa.PasienId, aa.PasienName,
+                aa.TglLahir, aa.Alamat, aa.Gender, 
                 aa.LayananId, aa.JamPraktek, aa.NoAntrian,
+                aa.TelpPasien, aa.AsuransiName, aa.NoPeserta, aa.NoRujukan,
             	ISNULL(bb.ExtAppName,'') AS ExtAppName,  
             	ISNULL(bb.ReffId,'') AS ReffId,
             	ISNULL(bb.CheckInQr,'') AS CheckInQr, 

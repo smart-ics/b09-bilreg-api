@@ -163,5 +163,6 @@ public record BookingView(
     LayananReff Layanan, PpaReff Dokter, int NoAntrian);
 
 public record BookingExtView(string BookingId, DateTime BookingDate,
-    DateTime TglBerobat, RegReff Reg, LayananReff Layanan,
-    PpaReff Dokter, TimeOnly JamPraktek, int NoAntrian, ExtAppReffType ExtAppReff) : IBookingKey;
+    DateTime TglBerobat, PersonInfoType Person, RegReff Reg, 
+    LayananReff Layanan, PpaReff Dokter, TimeOnly JamPraktek, int NoAntrian,
+    ExtAppReffType ExtAppReff, CoverageInfoType CoverageInfo) : IBookingKey;

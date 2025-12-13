@@ -34,13 +34,17 @@ public class BookingSearchHandler : IRequestHandler<BookingSearchQuery, IEnumera
         var periode = new Periode(tgl);
         var listBooking = _bookingRepo.ListDataExtApp(periode)?.ToList() ?? [];
 
-        var byPasien = listBooking.Where(x => x.Reg.PasienId == request.Keyword) ?? [];
-        var byQr = listBooking.Where(x => x.ExtAppReff.CheckInQr.ToLower() == request.Keyword.ToLower()) ?? [];
-        var byReffId = listBooking.Where(x => x.ExtAppReff.ReffId == request.Keyword) ?? [];
-        //var byTelp = listBooking.Where(x => x.)
-        
+        var listSearch = listBooking
+            .Where(x =>
+                x.Reg.PasienId == request.Keyword ||
+                x.ExtAppReff.ReffId == request.Keyword ||
+                x.Person.Contact.ContactDetail == request.Keyword ||
+                x.CoverageInfo.NoRujukan == request.Keyword ||
+                x.CoverageInfo.NoPeserta == request.Keyword ||
+                x.ExtAppReff.CheckInQr.Equals(request.Keyword, StringComparison.OrdinalIgnoreCase)
+            )
+            .ToList();
 
-        var listSearch = byQr.Concat(byReffId);
         var result = listSearch.Select(x => new BookingSearchResponse(
             x.BookingId, "3000-01-01", x.Reg, x.Layanan, x.Dokter,
             x.TglBerobat.ToString("yyyy-MM-dd"), x.JamPraktek.ToString("HH:mm"),
@@ -53,8 +57,8 @@ public class BookingSearchHandler : IRequestHandler<BookingSearchQuery, IEnumera
 
 // SearchBooking
 //1. By PasienId
-//2. By CheckInQr
-//3. By ReffId 
-//4. By NoTelp 
-//5. By Rujukan 
-//6. By NoPeserta 
+//2. By ReffId 
+//3. By NoTelp 
+//4. By Rujukan 
+//5. By NoPeserta
+//6. By CheckInQr
