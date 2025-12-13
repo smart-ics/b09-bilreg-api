@@ -66,7 +66,6 @@
     <Folder Include="AdmisiContext\RegFeature" />
     <Folder Include="AdmisiContext\RujukanFeature" />
     <Folder Include="ChargeContext" />
-    <Folder Include="ChargeContext\TarifFeature" />
     <Folder Include="ParamContext" />
     <Folder Include="PasienContext" />
     <Folder Include="PasienContext\DemografiFeature" />
@@ -189,6 +188,8 @@
     <Build Include="BedUsageContext\KamarOperasiFeature\BILRG_SchedulOpPpa.sql" />
     <Build Include="BedUsageContext\RoomRateFeature\ta_kamar2.sql" />
     <Build Include="BedUsageContext\RoomRateFeature\ta_kamar_tipe.sql" />
+    <Build Include="ChargeContext\TarifFeature\BILRG_NilaiTarif.sql" />
+    <Build Include="ChargeContext\TarifFeature\BILRG_NilaiTarifKomponen.sql" />
     <None Include="AdmisiContext\BookingFeature\BILRG_BookingExternal.sql" />
   </ItemGroup>
 </Project>
