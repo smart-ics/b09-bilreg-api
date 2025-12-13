@@ -15,7 +15,7 @@ public class TindakanController : Controller
     {
         _mediator = mediator;
     }
-
+    #region Order
     [HttpPost]
     [Route("order")]
     public async Task<IActionResult> CreateOrder(OrderTdkCreateCmd cmd)
@@ -48,7 +48,16 @@ public class TindakanController : Controller
         var result = await _mediator.Send(query);
         return Ok(new JSendOk(result));
     }
+    #endregion
 
+    #region Tindakan
+
+    [HttpPost]
+    public async Task<IActionResult> CreateTindaka(TindakanCreateCmd cmd)
+    {
+        var result = await _mediator.Send(cmd);
+        return Ok(new JSendOk(result));
+    }
     [HttpGet]
     [Route("list/{regId}/{layananId}")]
     public async Task<IActionResult> ListTindakan(string regId, string layananId)
@@ -97,7 +106,7 @@ public class TindakanController : Controller
         return Ok(new JSendOk(fakerData));
 
     }
-
+    #endregion
     public record ResponseOrderTdk(
         string OrderId ,
         string OrderDate,
