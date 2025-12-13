@@ -12,4 +12,5 @@ public interface IBookingRepo :
     IListData<BookingView, Periode>
 {
     IEnumerable<BookingView> ListDataTglBerobat(Periode periode);
+    IEnumerable<BookingExtView> ListDataExtApp(Periode periode);
 }

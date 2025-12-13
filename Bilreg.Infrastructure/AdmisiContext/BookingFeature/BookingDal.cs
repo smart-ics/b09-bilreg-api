@@ -224,11 +224,14 @@ public class BookingDal : IBookingDal
                 aa.AsuransiName, aa.NoPeserta, aa.NoRujukan,  
                 aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
                 ISNULL(bb.fs_nm_layanan, '') AS LayananName,
-                ISNULL(cc.fs_nm_peg, '') AS DokterName
+                ISNULL(cc.fs_nm_peg, '') AS DokterName,
+                ISNULL(dd.ReffId,'') AS ReffId, 
+            	ISNULL(dd.CheckInQr,'') AS CheckInQr
             FROM
                 BILRG_Booking aa
                 LEFT JOIN ta_layanan bb ON aa.LayananId = bb.fs_kd_layanan
                 LEFT JOIN td_peg cc ON aa.DokterId = cc.fs_kd_peg
+                LEFT JOIN BILRG_BookingExternal dd ON aa.BookingId = dd.BookingId
             WHERE
                aa.TglBerobat BETWEEN @Tgl1 AND @Tgl2
                AND aa.VodDate = @VodDate

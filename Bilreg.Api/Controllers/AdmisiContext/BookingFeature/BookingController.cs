@@ -99,4 +99,13 @@ public class BookingController : ControllerBase
         return Ok(new JSendOk(result));
     }
 
+    [HttpGet]
+    [Route("searchQr/{tglBerobat}/{keyword}")]
+    public async Task<IActionResult> SearchByQr(string tglBerobat, string keyword)
+    {
+        var query = new BookingSearchQuery(tglBerobat, keyword);
+        var result = await _mediator.Send(query);
+        return Ok(new JSendOk(result));
+    }
+
 }
