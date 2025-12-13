@@ -46,7 +46,7 @@ public class BookingSearchHandler : IRequestHandler<BookingSearchQuery, IEnumera
             .ToList();
 
         var result = listSearch.Select(x => new BookingSearchResponse(
-            x.BookingId, "3000-01-01", x.Reg, x.Layanan, x.Dokter,
+            x.BookingId, x.BookingDate.ToString("yyyy-MM-dd"), x.Reg, x.Layanan, x.Dokter,
             x.TglBerobat.ToString("yyyy-MM-dd"), x.JamPraktek.ToString("HH:mm"),
             x.NoAntrian, x.ExtAppReff));
 
