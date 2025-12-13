@@ -214,7 +214,7 @@ public class PpaDal : IPpaDal
            """;
 
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_profesi", key.ContactDetail.Trim(), SqlDbType.VarChar);
+        dp.AddParam("@ContactDetail", key.ContactDetail.Trim(), SqlDbType.VarChar);
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.ReadSingle<PpaDto>(sql, dp);

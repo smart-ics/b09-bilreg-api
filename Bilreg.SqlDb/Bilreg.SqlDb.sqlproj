@@ -188,5 +188,6 @@
     <Build Include="BedUsageContext\KamarOperasiFeature\BILRG_SchedulOpPpa.sql" />
     <Build Include="BedUsageContext\RoomRateFeature\ta_kamar2.sql" />
     <Build Include="BedUsageContext\RoomRateFeature\ta_kamar_tipe.sql" />
+    <None Include="AdmisiContext\BookingFeature\BILRG_BookingExternal.sql" />
   </ItemGroup>
 </Project>
