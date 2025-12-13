@@ -34,6 +34,8 @@ public record NilaiTarifVariantType
     }
 
     public NilaiTarifVariantType Default = new (TipeTarifType.Default.ToReff(), KelasType.Default.ToReff(), []);
+    //public string VariantId => $"{TarifId}-{TipeTarif.TipeTarifId}-{Kelas.KelasId}",
+
     public TipeTarifReff TipeTarif { get; init; }
     public KelasReff Kelas { get; init; }
     public decimal Nilai => _listKomponen.Sum(x => x.Nilai);
