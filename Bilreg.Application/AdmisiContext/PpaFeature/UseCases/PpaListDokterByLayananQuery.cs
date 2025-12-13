@@ -1,5 +1,4 @@
-﻿using Ardalis.GuardClauses;
-using Bilreg.Domain.AdmisiContext.LayananFeature;
+﻿using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using MediatR;
 
@@ -26,7 +25,8 @@ public class PpaListDokterByLayananHandler
             .ToList() ?? [];
 
         var result = listPpaDokter
-            .Select(x => new PpaListDokterByLayananResponse(x.PpaId, x.PpaName));
+            .Select(x => new PpaListDokterByLayananResponse(x.PpaId, x.PpaName))
+            .Distinct();
         return Task.FromResult(result);
     }
 }

@@ -8,11 +8,11 @@ public record TrfListTarifByLayananReesponse(string TarifId, string TarifName, d
 
 public class TrfListTarifByLayananQueryHandler : IRequestHandler<TrfListTarifByLayananQuery, IEnumerable<TrfListTarifByLayananReesponse>>
 {
-    private readonly ITarifRepo _tarifRepo;
-    public TrfListTarifByLayananQueryHandler(ITarifRepo tarifRepo)
-    {
-        _tarifRepo = tarifRepo;
-    }
+    //private readonly ITarifRepo _tarifRepo;
+    //public TrfListTarifByLayananQueryHandler(ITarifRepo tarifRepo)
+    //{
+    //    _tarifRepo = tarifRepo;
+    //}
     public Task<IEnumerable<TrfListTarifByLayananReesponse>> Handle(TrfListTarifByLayananQuery request, CancellationToken cancellationToken)
     {
         throw new NotImplementedException();

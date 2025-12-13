@@ -1,4 +1,5 @@
 ﻿using Bilreg.Application.AdmisiContext.RegFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Nuna.Lib.PatternHelper;
 using Nuna.Lib.ValidationHelper;
@@ -34,9 +35,9 @@ public class RegAktifRepo : IRegAktifRepo
         _regAktifDal.Delete(key);
     }
 
-    public IEnumerable<RegAktifModel> ListData(Periode periode)
+    public IEnumerable<RegAktifModel> ListData(ILayananKey layananKey)
     {
-        var listDto = _regAktifDal.ListData(periode)?.ToList() ?? [];
+        var listDto = _regAktifDal.ListData(layananKey)?.ToList() ?? [];
         var result = listDto.Select(x => x.ToModel());  
         return result;
     }

@@ -50,7 +50,7 @@ public class OpCaseDal : IOpCaseDal
         dp.AddParam("@ScheduledDate", dto.ScheduledDate, SqlDbType.DateTime);
         dp.AddParam("@DischargeOpId", dto.DischargeOpId, SqlDbType.VarChar);
         dp.AddParam("@DischargedDate", dto.DischargedDate, SqlDbType.DateTime);
-        dp.AddParam("@OrderOpState", dto.OpCaseState, SqlDbType.Int);
+        dp.AddParam("@OrderOpState", dto.OrderOpState, SqlDbType.Int);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -84,7 +84,7 @@ public class OpCaseDal : IOpCaseDal
         dp.AddParam("@ScheduledDate", dto.ScheduledDate, SqlDbType.DateTime);
         dp.AddParam("@DischargeOpId", dto.DischargeOpId, SqlDbType.VarChar);
         dp.AddParam("@DischargedDate", dto.DischargedDate, SqlDbType.DateTime);
-        dp.AddParam("@OrderOpState", dto.OpCaseState, SqlDbType.Int);
+        dp.AddParam("@OrderOpState", dto.OrderOpState, SqlDbType.Int);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -114,12 +114,14 @@ public class OpCaseDal : IOpCaseDal
                aa.OrderOpState,
                ISNULL(bb.fs_nm_pasien, '') AS PasienName,
                ISNULL(bb.fd_tgl_lahir, '') AS TglLahir,
-               ISNULL(bb.fs_jns_kelamin, '') AS Gender
+               ISNULL(bb.fs_jns_kelamin, '') AS Gender,
+               ISNULL(cc.UrgencyLevel, 0) AS UrgencyLevel
            FROM 
                BILRG_OpCase aa
                LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
+               LEFT JOIN BILRG_OrderOp cc ON aa.OrderOpId = cc.OrderOpId
            WHERE
-               OrderOpId = @OrderOpId
+               aa.OrderOpId = @OrderOpId
            """;
         
         var dp = new DynamicParameters();
@@ -139,12 +141,14 @@ public class OpCaseDal : IOpCaseDal
                 aa.OrderOpState,
                 ISNULL(bb.fs_nm_pasien, '') AS PasienName,
                 ISNULL(bb.fd_tgl_lahir, '') AS TglLahir,
-                ISNULL(bb.fs_jns_kelamin, '') AS Gender
-            FROM 
+                ISNULL(bb.fs_jns_kelamin, '') AS Gender,
+                ISNULL(cc.UrgencyLevel, 0) AS UrgencyLevel
+            FROM
                 BILRG_OpCase aa
                 LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
+                LEFT JOIN BILRG_OrderOp cc ON aa.OrderOpId = cc.OrderOpId
             WHERE
-                OrderDate BETWEEN @Tgl1 AND @Tgl2
+                aa.OrderDate BETWEEN @Tgl1 AND @Tgl2
             """;
 
         var dp = new DynamicParameters();

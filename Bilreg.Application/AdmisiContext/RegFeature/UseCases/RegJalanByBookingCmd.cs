@@ -1,6 +1,7 @@
 ﻿using Bilreg.Application.AdmisiContext.BookingFeature;
 using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.AdmisiContext.PpaFeature;
+using Bilreg.Application.AdmisiContext.RujukanFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
@@ -15,7 +16,7 @@ using Nuna.Lib.TransactionHelper;
 
 namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 
-public record RegJalanByBookingCmd(string BookingId, string UserId, string KarcisId) : IRequest<RegJalanByBookingResponse>;
+public record RegJalanByBookingCmd(string BookingId, string UserId, string KarcisId, string CaraMasukDkId) : IRequest<RegJalanByBookingResponse>;
 
 public record RegJalanByBookingResponse(string RegId, int NoAntrian);
 public class RegJalanByBookingHandler 
@@ -29,7 +30,8 @@ public class RegJalanByBookingHandler
     private readonly IKarcisRepo _karcisRepo;
     private readonly IRegRepo _regRepo;
     private readonly IRegAktifRepo _regAktifRepo;
-
+    private readonly ICaraMasukDkRepo _caraMasukDkRepo;
+    
     public RegJalanByBookingHandler(
         IBookingRepo bookingRepo,
         IPasienRepo pasienRepo,
@@ -38,7 +40,8 @@ public class RegJalanByBookingHandler
         ILayananRepo layananRepo,
         IKarcisRepo karcisRepo,
         IRegRepo regRepo,
-        IRegAktifRepo regAktifRepo)
+        IRegAktifRepo regAktifRepo,
+        ICaraMasukDkRepo caraMasukDkRepo)
     {
         _bookingRepo = bookingRepo;
         _pasienRepo = pasienRepo;
@@ -48,6 +51,7 @@ public class RegJalanByBookingHandler
         _karcisRepo = karcisRepo;
         _regRepo = regRepo;
         _regAktifRepo = regAktifRepo;
+        _caraMasukDkRepo = caraMasukDkRepo;
     }
 
     public Task<RegJalanByBookingResponse> Handle(RegJalanByBookingCmd request, CancellationToken cancellationToken)
@@ -58,7 +62,8 @@ public class RegJalanByBookingHandler
         var dokter = LoadDokter(booking.Dokter.PpaId);
         var layanan = LoadLayanan(booking.Layanan.LayananId); 
         var karcis = LoadKarcis(request.KarcisId);
-        
+        var caraMasuk = LoadCaraMasuk(request.CaraMasukDkId);
+
         //  BUILD
         var regAudit = new AuditInfoType(request.UserId, DateTime.Now);
         var reg = _regFactory.CreateRegRajal(
@@ -66,7 +71,7 @@ public class RegJalanByBookingHandler
             regAudit,
             TipeJaminanType.BayarSendiri,
             PolisModel.Default,
-            CaraMasukDkType.Default,
+            caraMasuk,
             RujukanType.Default,
             dokter,
             layanan,
@@ -113,4 +118,9 @@ public class RegJalanByBookingHandler
     private KarcisType LoadKarcis(string id) =>
         _karcisRepo.LoadEntity(KarcisType.Key(id))
             .GetValueOrThrow("Karcis tidak valid");
+
+    private CaraMasukDkType LoadCaraMasuk(string id) =>
+        _caraMasukDkRepo.LoadEntity(CaraMasukDkType.Key(id))
+            .GetValueOrThrow("'Cara Masuk' not found");
+
 }

@@ -45,7 +45,7 @@ public class KamarRepo : IKamarRepo
         var listDto = _kamarDal.ListData()?.ToList() ?? [];
         var listFiltered = listDto
             .Where(x => x.fs_kd_bangsal == filter.BangsalId);
-        var result = listDto.Select(x => x.ToModel()).ToList();
+        var result = listFiltered.Select(x => x.ToModel()).ToList();
         return result;
     }
 }

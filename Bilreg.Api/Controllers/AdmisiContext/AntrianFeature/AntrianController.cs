@@ -24,4 +24,21 @@ public class AntrianController : Controller
         var response = await _mediator.Send(query);
         return Ok(new JSendOk(response));
     }
+
+    [HttpGet]
+    [Route("quota/{dokterId}/{tglPraktek}/{jamMulai}")]
+    public async Task<IActionResult> GetLastNumber(string dokterId, string tglPraktek, string jamMulai)
+    {
+        var query = new AntrianGetQuotaQuery(dokterId, tglPraktek, jamMulai);
+        var response = await _mediator.Send(query);
+        return Ok(new JSendOk(response));
+    }
+
+    [HttpPost]
+    [Route("genNewNumber")]
+    public async Task<IActionResult> GetAvailabelNumberQueue(AntrianGenNewNumberCommand cmd)
+    {
+        var responst = await _mediator.Send(cmd);
+        return Ok(new JSendOk(responst));
+    }
 }

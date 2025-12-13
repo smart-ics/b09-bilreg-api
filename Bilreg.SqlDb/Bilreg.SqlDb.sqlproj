@@ -56,7 +56,6 @@
   <Import Condition="'$(SQLDBExtensionsRefPath)' == ''" Project="$(MSBuildExtensionsPath)\Microsoft\VisualStudio\v$(VisualStudioVersion)\SSDT\Microsoft.Data.Tools.Schema.SqlTasks.targets" />
   <ItemGroup>
     <Folder Include="Properties" />
-    <Folder Include="BedUsageContext\KamarOperasiFeature" />
     <Folder Include="BedUsageContext\WardFeature" />
     <Folder Include="AdmisiContext" />
     <Folder Include="AdmisiContext\AntrianFeature" />
@@ -76,6 +75,9 @@
     <Folder Include="PaymentContext\RekapCatakFeature" />
     <Folder Include="ChargeContext\AmbulanceFeature" />
     <Folder Include="Helpers" />
+    <Folder Include="BedUsageContext\" />
+    <Folder Include="BedUsageContext\RoomRateFeature\" />
+    <Folder Include="BedUsageContext\KamarOperasiFeature\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OpCase.sql" />
@@ -181,9 +183,12 @@
     <None Include="Helpers\DatabaseUser.sql" />
   </ItemGroup>
   <ItemGroup>
+    <Build Include="BedUsageContext\KamarOperasiFeature\BILRG_ScheduleOp.sql" />
+    <Build Include="BedUsageContext\KamarOperasiFeature\BILRG_SchedulOpPpa.sql" />
     <Build Include="BedUsageContext\RoomRateFeature\ta_kamar2.sql" />
     <Build Include="BedUsageContext\RoomRateFeature\ta_kamar_tipe.sql" />
     <Build Include="ChargeContext\TarifFeature\BILRG_NilaiTarif.sql" />
     <Build Include="ChargeContext\TarifFeature\BILRG_NilaiTarifKomponen.sql" />
+    <None Include="AdmisiContext\BookingFeature\BILRG_BookingExternal.sql" />
   </ItemGroup>
 </Project>

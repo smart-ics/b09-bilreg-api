@@ -39,6 +39,40 @@ public class BookingController : ControllerBase
         return Ok(new JSendOk("Done"));
     }
 
+    [HttpPost]
+    [Route("createFromHidok")]
+    public async Task<IActionResult> CreateFromHidok(BookingCreateFromHidokCommand cmd)
+    {
+        var response = await _mediator.Send(cmd);
+        return Ok(new JSendOk(response));
+    }
+
+    [HttpPatch]
+    [Route("setQrExt")]
+    public async Task<IActionResult> SetQrExt(BookingSetExternalAppCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
+    [HttpDelete]
+    [Route("delete/{id}")]
+    public async Task<IActionResult> Delete(string id)
+    { 
+        var cmd = new BookingDeleteCmd(id);
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
+    [HttpDelete]
+    [Route("deleteFromHidok/{bookingIdHidok}")]
+    public async Task<IActionResult> DeleteFromHidok(string bookingIdHidok)
+    {
+        var cmd = new BookingDeleteFromHidokCmd(bookingIdHidok);
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
     [HttpGet]
     [Route("{id}")]
     public async Task<IActionResult> GetData(string id)

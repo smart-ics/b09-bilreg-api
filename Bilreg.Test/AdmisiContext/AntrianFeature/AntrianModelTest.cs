@@ -203,8 +203,10 @@ public class AntrianFactoryTests
             name,
             "Dr. J",
             SmfType.Default,
+            GroupSpesialisType.Default,
             new List<PpaLayananType>(),
-            new List<PpaSatTugasType>());
+            new List<PpaSatTugasType>(),
+            []);
 
         return petugasMedis;
     }

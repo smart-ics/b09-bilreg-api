@@ -11,7 +11,8 @@ public record BookingGetQuery(string BookingId) : IRequest<BookingGetResponse>, 
 
 public record BookingGetResponse(string BookingId, string BookingDate,
     PersonInfoType Person, string PasienId, RegReff Reg,LayananReff Layanan,
-    PpaReff Dokter, string TglBerobat, string JamPraktek, int NoAntrian);
+    PpaReff Dokter, string TglBerobat, string JamPraktek, int NoAntrian, 
+    ExtAppReffType ExtAppReff, CoverageInfoType CoverageInfo);
 
 public class BookingGetHanlder : IRequestHandler<BookingGetQuery, BookingGetResponse>
 {
@@ -33,7 +34,8 @@ public class BookingGetHanlder : IRequestHandler<BookingGetQuery, BookingGetResp
             );
         var result = new BookingGetResponse(booking.BookingId, booking.BookingDate.ToString("yyyy-MM-dd"),
             booking.Person, booking.PasienId, booking.Reg, booking.Layanan, booking.Dokter, 
-            booking.TglBerobat.ToString("yyyy-MM-dd"), booking.JamPraktek.ToString("HH:mm"), booking.NoAntrian);
+            booking.TglBerobat.ToString("yyyy-MM-dd"), booking.JamPraktek.ToString("HH:mm"), booking.NoAntrian,
+            booking.ExtAppReff, booking.CoverageInfo);
         
         return Task.FromResult(result);
     }

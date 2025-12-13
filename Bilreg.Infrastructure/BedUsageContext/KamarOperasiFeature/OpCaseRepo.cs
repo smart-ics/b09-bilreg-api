@@ -1,7 +1,6 @@
 ﻿using Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Nuna.Lib.PatternHelper;
-using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature;
 

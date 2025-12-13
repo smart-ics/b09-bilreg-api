@@ -1,7 +1,9 @@
 ﻿using Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
+using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
+using System.Text.Json.Serialization;
 
 namespace Bilreg.Api.Controllers.BedUsageContext.KamarOperasiFeature;
 
@@ -39,4 +41,5 @@ public class OrderOpController : ControllerBase
         var response = await _mediator.Send(query);
         return Ok(new JSendOk(response));
     }
+
 }
