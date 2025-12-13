@@ -146,7 +146,6 @@ public class TindakanCreateHandler : IRequestHandler<TindakanCreateCmd, Tindakan
         return tindakanTarif;
     }
 
-
     private PpaType GetPpa(IPpaKey ppakey)
     {
         return _ppaRepo.LoadEntity(ppakey)
