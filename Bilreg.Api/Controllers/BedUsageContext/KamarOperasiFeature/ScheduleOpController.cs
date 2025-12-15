@@ -56,4 +56,21 @@ public class ScheduleOpController : ControllerBase
         await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));
     }
+
+    [HttpPatch]
+    [Route("Cancel")]
+    public async Task<IActionResult> CancelSchedule(OkScheduleOpCancelCommand cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
+    [HttpGet]
+    [Route("{orderOpId}")]
+    public async Task<IActionResult> GetSchedule(string orderOpId)
+    {
+        var query = new OkScheduleOpGetQuery(orderOpId);
+        var response = await _mediator.Send(query);
+        return Ok(new JSendOk(response));
+    }
 }

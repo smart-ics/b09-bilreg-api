@@ -1,10 +1,8 @@
 ﻿using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
-using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
-using System.Globalization;
 
 namespace Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
 
@@ -37,15 +35,13 @@ public class OkScheduleOpAssignLeaderHandler : IRequestHandler<OkScheduleOpAssig
         var listSchedule = _scheduleOpRepo.ListData(PasienModel.Key(orderOp.Pasien.PasienId))?.ToList()
             ?? [];
         var scheduleWithOrderOpId = listSchedule?
-            .FirstOrDefault(x => x.OrderOp.OrderOpId == request.OrderOpId)
-            ?? new ScheduleOpView("-", new PasienReff("-", "-", DateOnly.ParseExact("3000-01-01", "yyyy-MM-dd"), "-"),
-            new OrderOpReff("-", DateTime.ParseExact("3000-01-01 00:00:00", "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture), "-"),
-            UrgencyLevelEnum.Elective, DateTime.ParseExact("3000-01-01 00:00:00", "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
-            0, new PpaReff("-", "-"), new KamarReff("-", "-"));
+            .Where(x => !x.IsVoid)
+            .FirstOrDefault(x => x.OrderOp.OrderOpId == request.OrderOpId);
+        if (scheduleWithOrderOpId == null)
+            return Task.CompletedTask;
 
         var scheduleOp = _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(scheduleWithOrderOpId.ScheduleOpId))
             .GetValueOrDefault();
-
         if (scheduleOp is null)
             return Task.CompletedTask;
 

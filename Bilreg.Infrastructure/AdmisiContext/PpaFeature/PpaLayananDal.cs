@@ -1,7 +1,5 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
-using Bilreg.Application.AdmisiContext.PpaFeature;
-using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;

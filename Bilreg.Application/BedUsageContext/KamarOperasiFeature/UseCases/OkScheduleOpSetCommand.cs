@@ -1,4 +1,5 @@
 ﻿using Ardalis.GuardClauses;
+using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.BedUsageContext.WardFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
@@ -16,6 +17,7 @@ public record OkScheduleOpSetCommand(
         string KamarId,
         string Tgl,
         string Jam,
+        int Durasi,
         string UserId) : IRequest<OkScheduleOpSetResponse>, IOrderOpKey;
 
 public record OkScheduleOpSetResponse(string ScheduleOpId);
@@ -25,17 +27,20 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
     private readonly IScheduleOpRepo _scheduleOpRepo;
     private readonly IOrderOpRepo _orderOpRepo;
     private readonly IKamarRepo _kamarRepo;
+    private readonly IPpaRepo _ppaRepo;
     private readonly IOpCaseRepo _opCaseRepo;
 
     public OkScheduleOpSetCommandHandler(
         IScheduleOpRepo scheduleOpRepo,
         IOrderOpRepo orderOpRepo,
         IKamarRepo kamarRepo,
+        IPpaRepo ppaRepo,
         IOpCaseRepo opCaseRepo)
     {
         _scheduleOpRepo = scheduleOpRepo;
         _orderOpRepo = orderOpRepo;
         _kamarRepo = kamarRepo;
+        _ppaRepo = ppaRepo;
         _opCaseRepo = opCaseRepo;
     }
 
@@ -49,45 +54,48 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
         var kamar = _kamarRepo.LoadEntity(KamarType.Key(request.KamarId))
             .GetValueOrThrow($"Kamar Operasi ID {request.KamarId} tidak ditemukan.");
 
-        var teamLead = PpaType.Default;
-
         var listSchedule = _scheduleOpRepo.ListData(PasienModel.Key(orderOp.Pasien.PasienId))?.ToList()
             ?? [];
         var scheduleWithOrderOpId = listSchedule?
-            .FirstOrDefault(x => x.OrderOp.OrderOpId == request.OrderOpId)
-            ?? new ScheduleOpView("-", new PasienReff("-", "-", DateOnly.ParseExact("3000-01-01", "yyyy-MM-dd"), "-"),
-            new OrderOpReff("-", DateTime.ParseExact("3000-01-01 00:00:00", "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture), "-"),
-            UrgencyLevelEnum.Elective, DateTime.ParseExact("3000-01-01 00:00:00", "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
-            0, new PpaReff("-", "-"), new KamarReff("-", "-"));
+            .Where(x => !x.IsVoid)
+            .FirstOrDefault(x => x.OrderOp.OrderOpId == request.OrderOpId);
 
-        var scheduleOp = _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(scheduleWithOrderOpId.ScheduleOpId))
-            .GetValueOrDefault();
+        var scheduleOp = scheduleWithOrderOpId != null
+            ? _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(scheduleWithOrderOpId.ScheduleOpId))
+                .GetValueOrDefault()
+            : null;
+
+        var teamLeadExisting = scheduleOp?.TeamLead;
+        var teamLead = teamLeadExisting != null ? _ppaRepo.LoadEntity(PpaType.Key(teamLeadExisting.PpaId))
+            .GetValueOrDefault()
+            ?? PpaType.Default : PpaType.Default;
 
         DateTime tglOp = DateTime.ParseExact($"{request.Tgl} {request.Jam}",
             "yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
-        if (scheduleOp is null)
+
+        ScheduleOpModel newScheduleOp;
+        if (scheduleOp != null)
         {
-            // Kasus 1: ScheduleOp belum ada -> Buat baru dari OrderOp
-            scheduleOp = ScheduleOpModel.CreateFromOrder(orderOp, request.UserId,
-                kamar, teamLead, tglOp);
+            scheduleOp.CancelSchedule(request.UserId);
+            newScheduleOp = ScheduleOpModel.CloneFrom(scheduleOp);
         }
         else
-        {
-            // Kasus 2: ScheduleOp sudah ada -> Panggil behavior untuk Set Schedule
-            // Memastikan logic validasi dan mutasi berada dalam Domain Model (ScheduleOpModel)
-            scheduleOp.SetSchedule(tglOp, kamar.ToReff(), request.UserId);
-        }
+            newScheduleOp = ScheduleOpModel.CreateFromOrder(orderOp, request.UserId,
+                 kamar, teamLead, tglOp);
+        newScheduleOp.SetSchedule(tglOp, kamar.ToReff(), request.Durasi, request.UserId);
 
         var opCase = _opCaseRepo.LoadEntity(orderOp)
             .GetValueOrDefault()
             ?? OpCaseModel.Create(orderOp);
-        opCase.Schedule(scheduleOp.ToReff());
+        opCase.Schedule(newScheduleOp.ToReff());
 
         using var trans = TransHelper.NewScope();
-        _scheduleOpRepo.SaveChanges(scheduleOp);
+        if (scheduleOp != null)
+            _scheduleOpRepo.SaveChanges(scheduleOp);
+        _scheduleOpRepo.SaveChanges(newScheduleOp);
         _opCaseRepo.SaveChanges(opCase);
         trans.Complete();
 
-        return new OkScheduleOpSetResponse(scheduleOp.ScheduleOpId);
+        return new OkScheduleOpSetResponse(newScheduleOp.ScheduleOpId);
     }
 }
