@@ -203,9 +203,10 @@ public class ScheduleOpModelTests
         var schedule = CreateEmptySchedule();
         var newDate = DateTime.Today.AddDays(3);
         var newKamar = new KamarReff("K1", "Kamar 1");
+        var durasi = 90;
 
         // Act
-        schedule.SetSchedule(newDate, newKamar, "user1");
+        schedule.SetSchedule(newDate, newKamar, durasi, "user1");
 
         // Assert
         schedule.TglOp.Should().Be(newDate);

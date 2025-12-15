@@ -21,4 +21,5 @@ public record ScheduleOpView(string ScheduleOpId,
     UrgencyLevelEnum Urgency,
     DateTime TglOp, int Durasi,
     PpaReff TeamLead,
-    KamarReff Kamar);
+    KamarReff Kamar,
+    bool IsVoid);

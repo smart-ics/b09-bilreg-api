@@ -11,9 +11,9 @@ public class ScheduleOpModel : IScheduleOpKey
     private readonly List<ScheduleOpPpaType> _listPpa;
 
     #region CREATION
-    public ScheduleOpModel(string scheduleOpId, DateTime scheduleDate, AuditTrailType auditTrail, 
-        OrderOpReff orderOp, PasienReff pasien, UrgencyLevelEnum urgencyLevel, int durasi, 
-        DateTime tglOp, KamarReff kamarOp, RegReff reg, PpaReff teamLead, 
+    public ScheduleOpModel(string scheduleOpId, DateTime scheduleDate, AuditTrailType auditTrail,
+        OrderOpReff orderOp, PasienReff pasien, UrgencyLevelEnum urgencyLevel, int durasi,
+        DateTime tglOp, KamarReff kamarOp, RegReff reg, PpaReff teamLead,
         IEnumerable<ScheduleOpPpaType> listPpa)
     {
         ScheduleOpId = scheduleOpId;
@@ -61,6 +61,16 @@ public class ScheduleOpModel : IScheduleOpKey
         return result;
     }
 
+    public static ScheduleOpModel CloneFrom(ScheduleOpModel model)
+    {
+        var newId = Ulid.NewUlid().ToString();
+        var audit = new AuditTrailType(new AuditInfoType(model.AuditTrail.Voided.UserId, DateTime.Now),
+            AuditInfoType.Default, AuditInfoType.Default);
+        var result = new ScheduleOpModel(newId, DateTime.Now, audit, model.OrderOp, model.Pasien,
+            model.UrgencyLevel, model.Durasi, model.TglOp, model.KamarOp, model.Reg, model.TeamLead, model.ListPpa);
+        return result;
+    }
+
     #endregion
 
     #region PROPERTIES
@@ -81,10 +91,11 @@ public class ScheduleOpModel : IScheduleOpKey
     #endregion
 
     #region BEHAVIOUR
-    public void SetSchedule(DateTime tglOp, KamarReff kamarOp, string userId)
+    public void SetSchedule(DateTime tglOp, KamarReff kamarOp, int durasi, string userId)
     {
         TglOp = tglOp;
         KamarOp = kamarOp;
+        Durasi = durasi;
         AuditTrail.Modif(userId, DateTime.Now);
     }
 
@@ -141,6 +152,7 @@ public class ScheduleOpModel : IScheduleOpKey
 
     public ScheduleOpReff ToReff() =>
         new ScheduleOpReff(ScheduleOpId, TglOp);
+
     #endregion
 }
 

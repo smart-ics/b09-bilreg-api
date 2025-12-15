@@ -1,5 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.PpaFeature;
-using Bilreg.Domain.AdmisiContext.RegFeature;
+﻿using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 
 namespace Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
@@ -101,6 +100,17 @@ public class OpCaseModel : IOrderOpKey
     {
         DischargeOp = discharge;
     }
+
+    public void CancelSchedule()
+    {
+        ScheduleOp = ScheduleOpReff.Default;
+        OrderOpState = OpCaseStateEnum.Requested;
+        var stateHistory = _listStateHistory
+            .FirstOrDefault(x => x.OpCaseState == OpCaseStateEnum.Scheduled);
+        if (stateHistory != null)
+            _listStateHistory.Remove(stateHistory);
+    }
+
     public OpCaseReff ToReff() => new OpCaseReff(OrderOp.OrderOpId, OrderOp.OrderDate,
         Pasien, OrderOpState);
     #endregion

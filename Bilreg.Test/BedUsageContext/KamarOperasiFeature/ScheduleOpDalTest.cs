@@ -12,9 +12,9 @@ public class ScheduleOpDalTest
     private readonly ScheduleOpDal _sut = new(ConnStringHelper.GetTestEnv());
 
     private static ScheduleOpDto Faker()
-        => new ScheduleOpDto("A", new DateTime(2023,1,2), "B", new DateTime(2023, 1, 1), "C", new DateTime(2023, 1, 2), "D", 
-            new DateTime(2023, 1, 3), "E", "F", 1, 120, new DateTime(2023, 1, 4), "G", "H", "I", 
-            new DateTime(2023, 1, 5), "J", "K", "2023-01-06", "M", "N", "O");
+        => new ScheduleOpDto("A", new DateTime(2023,1,2), "E", "F", 1, 120, new DateTime(2023, 1, 4), "G", "H", "I", 
+            "B", new DateTime(2023, 1, 1), "C", new DateTime(2023, 1, 2), "D",
+            new DateTime(2023, 1, 3), new DateTime(2023, 1, 5), "J", "K", "2023-01-06", "M", "N", "O");
 
     private static IScheduleOpKey FakerKey()
         => ScheduleOpModel.Key("A");
@@ -62,7 +62,7 @@ public class ScheduleOpDalTest
     {
         using var trans = TransHelper.NewScope();
         _sut.Insert(Faker());
-        var actual = _sut.ListData(new DateTime(2023,1,2));
+        var actual = _sut.ListData(new DateTime(2023, 1, 4));
         actual.Should().ContainEquivalentOf(Faker(),
             opt => opt
                 .Excluding(x => x.OrderDate)
