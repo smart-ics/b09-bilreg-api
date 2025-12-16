@@ -160,7 +160,7 @@ public interface IOrderTdkKey
     string OrderTdkId { get; }
 }
 
-public record OrderTindakanReff(string OrderId, DateTime OrderDate, TarifReff Tindakan);
+public record OrderTindakanReff(string OrderTdkId, DateTime OrderDate, TarifReff Tindakan);
 
 
 public enum StatusOrderEnum

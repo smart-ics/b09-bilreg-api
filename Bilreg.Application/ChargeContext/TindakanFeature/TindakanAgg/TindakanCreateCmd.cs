@@ -125,13 +125,18 @@ public class TindakanCreateHandler : IRequestHandler<TindakanCreateCmd, Tindakan
                 var kompo = nilaiTarif.ListKomponen
                     .FirstOrDefault(x => x.Komponen.KomponenId == d.KomponenId)
                     ?? NilaiTarifKomponenType.Default;
-                var komponen = new KomponenType(kompo.Komponen.KomponenId, kompo.Komponen.KomponenName,
+
+                var komponen = new KomponenType(
+                    kompo.Komponen.KomponenId, kompo.Komponen.KomponenName,
                     GroupKomponenType.Default, []);
-                var ppa = GetPpa(PpaType.Key(d.PpaId));
+
+                var ppa = string.IsNullOrWhiteSpace(d.PpaId)
+                    ? PpaType.Default
+                    : GetPpa(PpaType.Key(d.PpaId));
 
                 return new
                 {
-                    Komponen = komponen,   
+                    Komponen = komponen,
                     Ppa = ppa,
                     Qty = d.qty,
                     Nilai = kompo.Nilai
@@ -151,7 +156,7 @@ public class TindakanCreateHandler : IRequestHandler<TindakanCreateCmd, Tindakan
         return _ppaRepo.LoadEntity(ppakey)
             .Match(
                 onSome: x => x,
-                onNone: () => throw new KeyNotFoundException($"Ppa {ppakey.PpaId} not found"));
+                onNone: () => PpaType.Default);
     }
 
 }

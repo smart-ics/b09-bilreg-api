@@ -160,7 +160,7 @@ public class OrderTdkModelTests
 
         // Assert
         result.Should().NotBeNull();
-        result.OrderId.Should().Be(orderTdk.OrderTdkId);
+        result.OrderTdkId.Should().Be(orderTdk.OrderTdkId);
         result.OrderDate.Should().Be(orderTdk.OrderTdkDate);
         result.Tindakan.Should().BeEquivalentTo(orderTdk.Tarif);
     }

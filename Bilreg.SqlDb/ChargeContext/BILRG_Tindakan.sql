@@ -3,17 +3,13 @@
     TindakanId       VARCHAR(26)   NOT NULL CONSTRAINT DF_BILRG_Tindakan_TindakanId DEFAULT(''),
     TindakanDate     DATETIME      NOT NULL CONSTRAINT DF_BILRG_Tindakan_TindakanDate DEFAULT('3000-01-01'),
     JenisTindakan 	 INT 		   NOT NULL CONSTRAINT DF_BILRG_Tindakan_JenisTindakan DEFAULT(0),
-	
-	OrderId          VARCHAR(26)   NOT NULL CONSTRAINT DF_BILRG_Tindakan_OrderId DEFAULT(''),
-    OrderDate        DATETIME      NOT NULL CONSTRAINT DF_BILRG_Tindakan_OrderDate DEFAULT('3000-01-01'),
-    TarifOrderId     VARCHAR(10)   NOT NULL CONSTRAINT DF_BILRG_Tindakan_TarifOrderId DEFAULT(''),
-    TarifOrderName   VARCHAR(255)  NOT NULL CONSTRAINT DF_BILRG_Tindakan_TarifOrderName DEFAULT(''),
+	OrderTdkId       VARCHAR(26)   NOT NULL CONSTRAINT DF_BILRG_Tindakan_OrderTdkId DEFAULT(''),
     
 	RegId            VARCHAR(10)   NOT NULL CONSTRAINT DF_BILRG_Tindakan_RegId DEFAULT(''),
     PasienId         VARCHAR(15)   NOT NULL CONSTRAINT DF_BILRG_Tindakan_PasienId DEFAULT(''),
     PasienName       VARCHAR(60)   NOT NULL CONSTRAINT DF_BILRG_Tindakan_PasienName DEFAULT(''),
     
-	LayananId        VARCHAR(4)    NOT NULL CONSTRAINT DF_BILRG_Tindakan_LayananId DEFAULT(''),
+	LayananId        VARCHAR(5)    NOT NULL CONSTRAINT DF_BILRG_Tindakan_LayananId DEFAULT(''),
     LayananName      VARCHAR(40)   NOT NULL CONSTRAINT DF_BILRG_Tindakan_LayananName DEFAULT(''),
     
 	TipeTarifId      VARCHAR(2)    NOT NULL CONSTRAINT DF_BILRG_Tindakan_TipeTarifId DEFAULT(''),

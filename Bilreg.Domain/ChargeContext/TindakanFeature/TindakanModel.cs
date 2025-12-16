@@ -104,8 +104,8 @@ public interface ITindakanKey
 public record TindakanReff(string TindakanId, DateTime TindakanDate, 
     JenisTindakanEnum JenisTindakan, TarifReff Tarif);
 
-public record TindakanView(string TindakanId, DateTime TindakanDate, 
-    JenisTindakanEnum JenisTindakan, RegReff reg, TipeTarifReff TipeTarif, TarifReff Tarif) : ITindakanKey;
+public record TindakanView(string TindakanId, DateTime TindakanDate, OrderTindakanReff OrderTdk,
+    JenisTindakanEnum JenisTindakan, RegReff reg, LayananReff Layanan, TipeTarifReff TipeTarif, TarifReff Tarif) : ITindakanKey;
 
 public enum JenisTindakanEnum
 {

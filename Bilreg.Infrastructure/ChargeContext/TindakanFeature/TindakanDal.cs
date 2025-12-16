@@ -32,12 +32,12 @@ public class TindakanDal : ITindakanDal
     {
         const string sql = """
             INSERT INTO BILRG_Tindakan(
-                TindakanId, TindakanDate, JenisTindakan, OrderId, RegId, PasienId, PasienName, 
-                LayananId, LayananName, TarifId, TarifName, Total, 
+                TindakanId, TindakanDate, JenisTindakan, OrderTdkId, RegId, PasienId, PasienName, 
+                LayananId, LayananName, TipeTarifId, TipeTarifname, TarifId, TarifName, Total, 
                 CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
             VALUES(
-                @TindakanId, @TindakanDate, @JenisTindakan, @OrderId, @RegId, @PasienId, @PasienName, 
-                @LayananId, @LayananName, @TarifId, @TarifName, @Total, 
+                @TindakanId, @TindakanDate, @JenisTindakan, @OrderTdkId, @RegId, @PasienId, @PasienName, 
+                @LayananId, @LayananName, @TipeTarifId, @TipeTarifname, @TarifId, @TarifName, @Total, 
                 @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
             """;
 
@@ -45,12 +45,15 @@ public class TindakanDal : ITindakanDal
         dp.AddParam("@TindakanId", dto.TindakanId, SqlDbType.VarChar);
         dp.AddParam("@TindakanDate", dto.TindakanDate, SqlDbType.DateTime);
         dp.AddParam("@JenisTindakan", dto.JenisTindakan, SqlDbType.Int);
-        dp.AddParam("@OrderId", dto.OrderId, SqlDbType.VarChar);
+        dp.AddParam("@OrderTdkId", dto.OrderTdkId, SqlDbType.VarChar);
         dp.AddParam("@RegId", dto.RegId, SqlDbType.VarChar);
         dp.AddParam("@PasienId", dto.PasienId, SqlDbType.VarChar);
         dp.AddParam("@PasienName", dto.PasienName, SqlDbType.VarChar);
         dp.AddParam("@LayananId", dto.LayananId, SqlDbType.VarChar);
         dp.AddParam("@LayananName", dto.LayananName, SqlDbType.VarChar);
+        dp.AddParam("@TipeTarifId", dto.TipeTarifId, SqlDbType.VarChar);
+        dp.AddParam("@TipeTarifName", dto.TipeTarifName, SqlDbType.VarChar);
+
         dp.AddParam("@TarifId", dto.TarifId, SqlDbType.VarChar);
         dp.AddParam("@TarifName", dto.TarifName, SqlDbType.VarChar);
         dp.AddParam("@Total", dto.Total, SqlDbType.Decimal);
@@ -75,12 +78,14 @@ public class TindakanDal : ITindakanDal
            SET
               TindakanDate = @TindakanDate, 
               JenisTindakan = @JenisTindakan,
-              OrderId = @OrderId, 
+              OrderTdkId = @OrderTdkId, 
               RegId = @RegId, 
               PasienId = @PasienId, 
               PasienName = @PasienName, 
               LayananId = @LayananId, 
               LayananName = @LayananName, 
+              TipeTarifId = @TipeTarifId,
+              TipeTarifName = @TipeTarifName,
               TarifId = @TarifId, 
               TarifName = @TarifName, 
               Total = @Total, 
@@ -94,12 +99,14 @@ public class TindakanDal : ITindakanDal
         dp.AddParam("@TindakanId", dto.TindakanId, SqlDbType.VarChar);
         dp.AddParam("@TindakanDate", dto.TindakanDate, SqlDbType.DateTime);
         dp.AddParam("@JenisTindakan", dto.JenisTindakan, SqlDbType.Int);
-        dp.AddParam("@OrderId", dto.OrderId, SqlDbType.VarChar);
+        dp.AddParam("@OrderTdkId", dto.OrderTdkId, SqlDbType.VarChar);
         dp.AddParam("@RegId", dto.RegId, SqlDbType.VarChar);
         dp.AddParam("@PasienId", dto.PasienId, SqlDbType.VarChar);
         dp.AddParam("@PasienName", dto.PasienName, SqlDbType.VarChar);
         dp.AddParam("@LayananId", dto.LayananId, SqlDbType.VarChar);
         dp.AddParam("@LayananName", dto.LayananName, SqlDbType.VarChar);
+        dp.AddParam("@TipeTarifId", dto.TipeTarifId, SqlDbType.VarChar);
+        dp.AddParam("@TipeTarifName", dto.TipeTarifName, SqlDbType.VarChar);
         dp.AddParam("@TarifId", dto.TarifId, SqlDbType.VarChar);
         dp.AddParam("@TarifName", dto.TarifName, SqlDbType.VarChar);
         dp.AddParam("@Total", dto.Total, SqlDbType.Decimal);
@@ -135,16 +142,18 @@ public class TindakanDal : ITindakanDal
     {
         const string sql = """
            SELECT
-               aa.TindakanId, aa.TindakanDate, aa.JenisTindakan, aa.OrderId,  
+               aa.TindakanId, aa.TindakanDate, aa.JenisTindakan, aa.OrderTdkId,  
                aa.RegId, aa.PasienId, aa.PasienName, 
-               aa.LayananId, aa.LayananName, aa.TarifId, aa.TarifName, aa.Total, 
+               aa.LayananId, aa.LayananName, aa.TipeTarifId, aa.TipeTarifName, 
+               aa.TarifId, aa.TarifName, aa.Total, 
                aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
-               ISNULL(bb.OrderDate, '') AS OrderDate, 
-               ISNULL(bb.TarifId,''), TarifOrderId 
-               ISNULL(bb.TarifName,'') AS TarifOrderName
+               ISNULL(bb.OrderTdkDate,'')AS OrderTdkDate, 
+               ISNULL(bb.TarifId,'') AS TarifOrderId, 
+           	   ISNULL(bb.TarifName,'') AS TarifOrderName,
+           	   ISNULL(bb.FreeTextOrder,'') AS FreeTextOrder
            FROM
                BILRG_Tindakan aa
-               LEFT JOIN BILRG_OrderTindakan bb ON aa.OrderId = bb.OrderId
+           	   LEFT JOIN BILRG_OrderTdk bb ON aa.OrderTdkId = bb.OrderTdkId
            WHERE
                aa.TindakanId = @TindakanId
            """;
@@ -160,22 +169,28 @@ public class TindakanDal : ITindakanDal
     {
         const string sql = """
            SELECT
-               aa.TindakanId, aa.TindakanDate, aa.JenisTindakan, aa.OrderId,  
+               aa.TindakanId, aa.TindakanDate, aa.JenisTindakan, aa.OrderTdkId,  
                aa.RegId, aa.PasienId, aa.PasienName, 
-               aa.LayananId, aa.LayananName, aa.TarifId, aa.TarifName, aa.Total, 
+               aa.LayananId, aa.LayananName, aa.TipeTarifId, aa.TipeTarifName, 
+               aa.TarifId, aa.TarifName, aa.Total, 
                aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
-               ISNULL(bb.OrderDate, '') AS OrderDate, 
-               ISNULL(bb.TarifId,''), TarifOrderId 
-               ISNULL(bb.TarifName,'') AS TarifOrderName
+               ISNULL(bb.OrderTdkDate,'')AS OrderTdkDate, 
+               ISNULL(bb.TarifId,'') AS TarifOrderId, 
+           	   ISNULL(bb.TarifName,'') AS TarifOrderName,
+           	   ISNULL(bb.FreeTextOrder,'') AS FreeTextOrder
            FROM
                BILRG_Tindakan aa
-               LEFT JOIN BILRG_OrderTindakan bb ON aa.OrderId = bb.OrderId
+           	   LEFT JOIN BILRG_OrderTdk bb ON aa.OrderTdkId = bb.OrderTdkId
+           WHERE
+               aa.TindakanId = @TindakanId
            WHERE
                aa.RegId = @RegId
+               AND aa.VodDate = @VodDate
            """;
 
         var dp = new DynamicParameters();
         dp.AddParam("@RegId", filter.RegId, SqlDbType.VarChar);
+        dp.AddParam("@VodDate", new DateTime(3000, 1, 1), SqlDbType.DateTime);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<TindakanDto>(sql, dp);

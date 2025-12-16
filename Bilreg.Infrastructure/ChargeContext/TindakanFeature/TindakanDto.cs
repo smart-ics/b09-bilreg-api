@@ -13,7 +13,7 @@ public record TindakanDto(
     string TindakanId,
     DateTime TindakanDate,
     int JenisTindakan,
-    string OrderId,
+    string OrderTdkId,
     string RegId,
     string PasienId,
     string PasienName,
@@ -30,10 +30,12 @@ public record TindakanDto(
     DateTime UpdDate,
     string VodUser,
     DateTime VodDate,
-    DateTime OrderDate,
+    DateTime OrderTdkDate,
     string TarifOrderId,
     string TarifOrderName,
-    IEnumerable<TindakanKomponenDto> Komponen)
+    string FreeTextOrder
+    //,IEnumerable<TindakanKomponenDto> Komponen
+    )
 {
     public static TindakanDto FromModel(TindakanModel model)
     {
@@ -42,7 +44,7 @@ public record TindakanDto(
 
         var result = new TindakanDto(
             model.TindakanId, model.TindakanDate, (int)model.JenisTindakan,
-            model.OrderTindakan.OrderId, 
+            model.OrderTindakan.OrderTdkId, 
             model.Reg.RegId, model.Pasien.PasienId, model.Pasien.PasienName,
             model.Layanan.LayananId, model.Layanan.LayananName,
             model.TipeTarif.TipeTarifId, model.TipeTarif.TipeTarifName,
@@ -53,8 +55,8 @@ public record TindakanDto(
             model.AuditTrail.Voided.UserId, model.AuditTrail.Voided.Timestamp,
             model.OrderTindakan.OrderDate,
             model.OrderTindakan.Tindakan.TarifId,
-            model.OrderTindakan.Tindakan.TarifName,
-            Komponen: komponenDtoList
+            model.OrderTindakan.Tindakan.TarifName, ""
+            //, Komponen: komponenDtoList
         );
         return result;
     }
@@ -82,8 +84,11 @@ public record TindakanDto(
         var vod = new AuditInfoType(VodUser, VodDate);
         var auditTrail = new AuditTrailType(crt, upd, vod);
         
-        var tarifOrder = new TarifReff(TarifOrderId, TarifOrderName);
-        var orderTindakan = new OrderTindakanReff(OrderId, OrderDate, tarifOrder); 
+        var tarifName = string.IsNullOrWhiteSpace(TarifOrderName)
+            ? FreeTextOrder : TarifOrderName;
+
+        var tarifOrder = new TarifReff(TarifOrderId, tarifName);
+        var orderTindakan = new OrderTindakanReff(OrderTdkId, OrderTdkDate, tarifOrder); 
 
         var result = new TindakanModel(
             TindakanId,
@@ -102,11 +107,14 @@ public record TindakanDto(
 
     public TindakanView ToView()
     {
+        var orderTdk = new OrderTindakanReff(OrderTdkId, OrderTdkDate, 
+            new TarifReff(TarifOrderId, TarifOrderName));
         var regReff = new RegReff(RegId, PasienId, PasienName);
         var tipeTarif = new TipeTarifReff(TipeTarifId, TipeTarifName);
         var tarifReff = new TarifReff(TarifId, TarifName);
-        var result = new TindakanView(TindakanId, TindakanDate, 
-            (JenisTindakanEnum)JenisTindakan, regReff, tipeTarif, tarifReff);
+        var lyn = new LayananReff(LayananId, LayananName);
+        var result = new TindakanView(TindakanId, TindakanDate, orderTdk,
+            (JenisTindakanEnum)JenisTindakan, regReff, lyn, tipeTarif, tarifReff);
         return result;
     }
 }

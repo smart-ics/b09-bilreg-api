@@ -36,8 +36,12 @@ public class TindakanRepo : ITindakanRepo
     public MayBe<TindakanModel> LoadEntity(ITindakanKey key)
     {
         var data = _tdkDal.GetData(key);
+        if (data is null)
+            return MayBe<TindakanModel>.None;
+
         var listKomp = _kompDal.ListData(key);
         var result = data.ToModel(listKomp);
+
         return MayBe.From(result);
     }
 

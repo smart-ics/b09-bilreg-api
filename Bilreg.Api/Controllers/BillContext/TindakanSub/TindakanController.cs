@@ -59,6 +59,14 @@ public class TindakanController : Controller
         return Ok(new JSendOk(result));
     }
     [HttpGet]
+    [Route("{id}")]
+    public async Task<IActionResult> GetTindakan(string id)
+    {
+        var query = new TindakanGetQuery(id);
+        var result = await _mediator.Send(query);
+        return Ok(new JSendOk(result));
+    }
+    [HttpGet]
     [Route("list/{regId}/{layananId}")]
     public async Task<IActionResult> ListTindakan(string regId, string layananId)
     {
