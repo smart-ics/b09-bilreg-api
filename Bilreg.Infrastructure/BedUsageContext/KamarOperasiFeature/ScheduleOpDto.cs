@@ -21,12 +21,12 @@ public record ScheduleOpDto(
     string RegId,
     string PpaId,
 
-    string CreateUserId,
-    DateTime CreateTimestamp,
-    string UpdateUserId,
-    DateTime UpdateTimestamp,
-    string VoidUserId,
-    DateTime VoidTimestamp,
+    string CrtUser,
+    DateTime CrtDate,
+    string UpdUser,
+    DateTime UpdDate,
+    string VodUser,
+    DateTime VodDate,
 
     DateTime OrderDate,
     string NamaOperasi,
@@ -71,9 +71,9 @@ public record ScheduleOpDto(
     public ScheduleOpModel ToModel(IEnumerable<ScheduleOpPpaType> listPpa)
     {
         var auditTrail = new AuditTrailType(
-            new AuditInfoType(CreateUserId, CreateTimestamp),
-            new AuditInfoType(UpdateUserId, UpdateTimestamp),
-            new AuditInfoType(VoidUserId, VoidTimestamp)
+            new AuditInfoType(CrtUser, CrtDate),
+            new AuditInfoType(UpdUser, UpdDate),
+            new AuditInfoType(VodUser, VodDate)
         );
 
         var orderOp = new OrderOpReff(OrderOpId, OrderDate, NamaOperasi);
@@ -114,7 +114,7 @@ public record ScheduleOpDto(
             Durasi,
             teamLead,
             kamarOp,
-            VoidTimestamp.ToString(DateFormatEnum.YMD) != "3000-01-01"
+            VodDate.ToString(DateFormatEnum.YMD) != "3000-01-01"
         );
         return result;
     }
