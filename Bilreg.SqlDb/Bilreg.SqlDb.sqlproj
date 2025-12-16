@@ -78,6 +78,7 @@
     <Folder Include="BedUsageContext\" />
     <Folder Include="BedUsageContext\RoomRateFeature\" />
     <Folder Include="BedUsageContext\KamarOperasiFeature\" />
+    <Folder Include="ChargeContext\TarifFeature\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OpCase.sql" />
@@ -190,5 +191,6 @@
     <Build Include="ChargeContext\TarifFeature\BILRG_NilaiTarif.sql" />
     <Build Include="ChargeContext\TarifFeature\BILRG_NilaiTarifKomponen.sql" />
     <None Include="AdmisiContext\BookingFeature\BILRG_BookingExternal.sql" />
+    <Build Include="BedUsageContext\KamarOperasiFeature\BILRG_StartOp.sql" />
   </ItemGroup>
 </Project>
