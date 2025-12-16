@@ -128,7 +128,7 @@ public class StartOpDal : IStartOpDal
                 BILRG_StartOp aa
                 LEFT JOIN BILRG_OrderOp bb ON aa.OrderOpId = bb.OrderOpId
                 LEFT JOIN tc_mr cc ON aa.PasienId = cc.fs_mr
-                LEFT JOIN ta_kamar dd ON aa.KamarId = dd.fs_kd_kamar
+                LEFT JOIN ta_kamar dd ON aa.KamarOpId = dd.fs_kd_kamar
                 LEFT JOIN td_peg ee ON aa.PpaId = ee.fs_kd_peg
             WHERE
                 aa.StartOpId = @StartOpId";
@@ -158,7 +158,7 @@ public class StartOpDal : IStartOpDal
                 BILRG_StartOp aa
                 LEFT JOIN BILRG_OrderOp bb ON aa.OrderOpId = bb.OrderOpId
                 LEFT JOIN tc_mr cc ON aa.PasienId = cc.fs_mr
-                LEFT JOIN ta_kamar dd ON aa.KamarId = dd.fs_kd_kamar
+                LEFT JOIN ta_kamar dd ON aa.KamarOpId = dd.fs_kd_kamar
                 LEFT JOIN td_peg ee ON aa.PpaId = ee.fs_kd_peg
             WHERE
                 StartOpTime BETWEEN @Tgl1 AND @Tgl2";

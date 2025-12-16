@@ -32,6 +32,12 @@ public class StartOpModel : IStartOpKey
             OrderOpModel.Default.ToReff(), ScheduleOpModel.Default.ToReff(),
             KamarType.Default.ToReff(), PasienModel.Default.ToReff(),
             RegModel.Default.ToReff(), PpaType.Default.ToReff(), []);
+    public static StartOpModel Key(string id) =>
+        new StartOpModel(id, new DateTime(3000, 1, 1, 0, 0, 0), AuditTrailType.Default,
+            OrderOpModel.Default.ToReff(), ScheduleOpModel.Default.ToReff(),
+            KamarType.Default.ToReff(), PasienModel.Default.ToReff(),
+            RegModel.Default.ToReff(), PpaType.Default.ToReff(), []);
+
     #endregion
 
     #region PROPERTIES
