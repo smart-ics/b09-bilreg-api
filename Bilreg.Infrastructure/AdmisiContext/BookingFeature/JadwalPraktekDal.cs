@@ -83,6 +83,15 @@ public class JadwalPraktekDal
         conn.Execute(sql, dp);
     }
 
+    public void DeleteAll()
+    {
+        const string sql = """
+            DELETE FROM BILRG_JadwalPraktek
+            """;
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        conn.Execute(sql);
+    }
     public JadwalPraktekDto GetData(IJadwalPraktekKey key)
     {
         const string sql = """

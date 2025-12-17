@@ -12,9 +12,12 @@ namespace Bilreg.Infrastructure.AdmisiContext.BookingFeature;
 public class JadwalPraktekRepo : IJadwalPraktekRepo
 {
     private readonly JadwalPraktekDal _dal;
-    public JadwalPraktekRepo(IOptions<DatabaseOptions> opt)
+    private readonly IJadwalFoDal _jadwalFoDal;
+    public JadwalPraktekRepo(IOptions<DatabaseOptions> opt, 
+        IJadwalFoDal jadwalFoDal)
     {
         _dal = new JadwalPraktekDal(opt);
+        _jadwalFoDal = jadwalFoDal;
     }
 
     public void SaveChanges(JadwalPraktekType model)
@@ -74,5 +77,13 @@ public class JadwalPraktekRepo : IJadwalPraktekRepo
         var model = result?.Select(x => x.ToModel())?
             .ToList() ?? [];
         return model;
+    }
+
+    public void Migrasi()
+    {
+        var listJadwalFo = _jadwalFoDal.ListData()?.ToList() ?? [];
+        
+        _dal.DeleteAll();
+        listJadwalFo.ForEach(x => _dal.Insert(x));
     }
 }
