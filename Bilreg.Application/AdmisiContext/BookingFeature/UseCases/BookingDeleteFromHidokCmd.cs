@@ -5,6 +5,7 @@ using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using MediatR;
+using Nuna.Lib.TransactionHelper;
 
 namespace Bilreg.Application.AdmisiContext.BookingFeature.UseCases;
 
@@ -61,11 +62,12 @@ public class BookingDeleteFromHidokHandler : IRequestHandler<BookingDeleteFromHi
         var pasienTracker = PasienTrackerModel.Key(antrianPasien.Tracker.PasienTrackerId);
 
         antrian.RemoveEntry(booking.NoAntrian);
-
+        
+        using var trans = TransHelper.NewScope();
         _bookingRepo.DeleteEntity(booking);
         _antrianRepo.SaveChanges(antrian);
         _paasienTrackerRepo.DeleteEntity(pasienTracker);
-
+        trans.Complete();   
         return Task.CompletedTask;
     }
 }

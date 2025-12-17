@@ -56,7 +56,7 @@ public class BookingController : ControllerBase
     }
 
     [HttpDelete]
-    [Route("delete/{id}")]
+    [Route("{id}")]
     public async Task<IActionResult> Delete(string id)
     { 
         var cmd = new BookingDeleteCmd(id);
@@ -65,7 +65,7 @@ public class BookingController : ControllerBase
     }
 
     [HttpDelete]
-    [Route("deleteFromHidok/{bookingIdHidok}")]
+    [Route("{bookingIdHidok}/hidok")]
     public async Task<IActionResult> DeleteFromHidok(string bookingIdHidok)
     {
         var cmd = new BookingDeleteFromHidokCmd(bookingIdHidok);
