@@ -31,7 +31,7 @@ public class TindakanController : Controller
         return Ok(new JSendOk(result));
     }
 
-    [HttpPut]
+    [HttpPatch]
     [Route("cancelOrderTdk")]
     public async Task<IActionResult> CancelOrder(OrderTdkCancelCmd cmd)
     {
@@ -44,57 +44,61 @@ public class TindakanController : Controller
     [Route("order/{id}")]
     public async Task<IActionResult> GetOrder(string id)
     {
-        var query = new OrderTindakanGetQuery(id);
+        var query = new OrderTdkGetQuery(id);
         var result = await _mediator.Send(query);
         return Ok(new JSendOk(result));
     }
 
     [HttpGet]
     [Route("orderlist/{regId}/{layananId}")]
-    public async Task<IActionResult> ListTindakan(string regId, string layananId)
+    public async Task<IActionResult> ListOrder(string regId, string layananId)
     {
-        var fakerData = new List<ResponseOrderTdk>
-        {
-            new ResponseOrderTdk(
-                OrderId: "ORD-202501-001",
-                OrderDate: "2025-01-12 08:15:00",
-                DokterOrderId: "D00123",
-                DokterOrderName: "Dr. Budi Santoso, Sp.THT",
-                TindakanId: "TDK-1001",
-                TindakanDate: "2025-01-12 09:00:00",
-                ReffDate: "2025-01-12 09:00:00",
-                TarifId: "TRF-5501",
-                TarifName: "Pembersihan Telinga",
-                Ppa: "Dokter1, Dokter2"
-            ),
-            new ResponseOrderTdk(
-                OrderId: "ORD-202501-002",
-                OrderDate: "2025-01-12 10:20:00",
-                DokterOrderId: "D00456",
-                DokterOrderName: "Dr. Sinta Maharani, Sp.KJ",
-                TindakanId: "TDK-2002",
-                TindakanDate: "2025-01-12 10:45:00",
-                ReffDate: "2025-01-12 10:45:00",
-                TarifId: "TRF-6602",
-                TarifName: "Konseling Psikiatri",
-                Ppa: "Dokter1"
-            ),
-            new ResponseOrderTdk(
-                OrderId: "ORD-202501-003",
-                OrderDate: "2025-01-12 13:30:00",
-                DokterOrderId: "P00999",
-                DokterOrderName: "Ners Rani Putri, S.Kep",
-                TindakanId: "",
-                TindakanDate: "",
-                ReffDate: "2025-01-12 13:30:00",
-                TarifId: "TRF-7708",
-                TarifName: "Perawatan Luka Ringan",
-                Ppa: "Perawat1"
-            )
-        };
-        var result = fakerData
-            .OrderBy(x => x.ReffDate).ToList() ?? [];
-        return Ok(new JSendOk(fakerData));
+        var query = new OrderTdkListQuery(regId, layananId);
+        var result = await _mediator.Send(query);
+        return Ok(new JSendOk(result));
+
+        //var fakerData = new List<ResponseOrderTdk>
+        //{
+        //    new ResponseOrderTdk(
+        //        OrderId: "ORD-202501-001",
+        //        OrderDate: "2025-01-12 08:15:00",
+        //        DokterOrderId: "D00123",
+        //        DokterOrderName: "Dr. Budi Santoso, Sp.THT",
+        //        TindakanId: "TDK-1001",
+        //        TindakanDate: "2025-01-12 09:00:00",
+        //        ReffDate: "2025-01-12 09:00:00",
+        //        TarifId: "TRF-5501",
+        //        TarifName: "Pembersihan Telinga",
+        //        Ppa: "Dokter1, Dokter2"
+        //    ),
+        //    new ResponseOrderTdk(
+        //        OrderId: "ORD-202501-002",
+        //        OrderDate: "2025-01-12 10:20:00",
+        //        DokterOrderId: "D00456",
+        //        DokterOrderName: "Dr. Sinta Maharani, Sp.KJ",
+        //        TindakanId: "TDK-2002",
+        //        TindakanDate: "2025-01-12 10:45:00",
+        //        ReffDate: "2025-01-12 10:45:00",
+        //        TarifId: "TRF-6602",
+        //        TarifName: "Konseling Psikiatri",
+        //        Ppa: "Dokter1"
+        //    ),
+        //    new ResponseOrderTdk(
+        //        OrderId: "ORD-202501-003",
+        //        OrderDate: "2025-01-12 13:30:00",
+        //        DokterOrderId: "P00999",
+        //        DokterOrderName: "Ners Rani Putri, S.Kep",
+        //        TindakanId: "",
+        //        TindakanDate: "",
+        //        ReffDate: "2025-01-12 13:30:00",
+        //        TarifId: "TRF-7708",
+        //        TarifName: "Perawatan Luka Ringan",
+        //        Ppa: "Perawat1"
+        //    )
+        //};
+        //var result = fakerData
+        //    .OrderBy(x => x.ReffDate).ToList() ?? [];
+        //return Ok(new JSendOk(fakerData));
 
     }
     #endregion
@@ -108,13 +112,13 @@ public class TindakanController : Controller
         return Ok(new JSendOk(result));
     }
 
-    //[HttpPatch]
-    //[Route("void")]
-    //public async Task<IActionResult> VoidTdk(TindakanVoidCmd cmd)
-    //{
-    //    var result = await _mediator.Send(cmd);
-    //    return Ok(new JSendOk(result));
-    //}
+    [HttpPatch]
+    [Route("void")]
+    public async Task<IActionResult> VoidTdk(TindakanVoidCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
     [HttpGet]
     [Route("{id}")]
     public async Task<IActionResult> GetTindakan(string id)

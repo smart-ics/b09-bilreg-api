@@ -8,9 +8,9 @@ using MediatR;
 
 namespace Bilreg.Application.ChargeContext.TindakanFeature.TindakanAgg;
 
-public record OrderTindakanGetQuery(string OrderTdkId) : IRequest<OrderTindakanGetResponse>, IOrderTdkKey;
+public record OrderTdkGetQuery(string OrderTdkId) : IRequest<OrderTdkGetResponse>, IOrderTdkKey;
 
-public record OrderTindakanGetResponse(
+public record OrderTdkGetResponse(
     string OrderId,
     string OrderDate,
     PasienReff Pasien,
@@ -22,23 +22,23 @@ public record OrderTindakanGetResponse(
     int StatusOrder,
     string StatusOrderString);
 
-public class OrderTindakanGetHandler : IRequestHandler<OrderTindakanGetQuery,  OrderTindakanGetResponse>
+public class OrderTdkGetHandler : IRequestHandler<OrderTdkGetQuery,  OrderTdkGetResponse>
 {
     private readonly IOrderTdkRepo _repo;
 
-    public OrderTindakanGetHandler(IOrderTdkRepo repo)
+    public OrderTdkGetHandler(IOrderTdkRepo repo)
     {
         _repo = repo;
     }
 
-    public Task<OrderTindakanGetResponse> Handle(OrderTindakanGetQuery request, CancellationToken cancellationToken)
+    public Task<OrderTdkGetResponse> Handle(OrderTdkGetQuery request, CancellationToken cancellationToken)
     {
         var order = _repo.LoadEntity(request)
             .Match(
                 onSome: x => x,
                 onNone: () => throw new KeyNotFoundException($"Order {request.OrderTdkId} not found")
             );
-        var result = new OrderTindakanGetResponse(order.OrderTdkId, order.OrderTdkDate.ToString("yyyy-MM-dd HH:mm:ss"),
+        var result = new OrderTdkGetResponse(order.OrderTdkId, order.OrderTdkDate.ToString("yyyy-MM-dd HH:mm:ss"),
             order.Pasien, order.Reg, order.DokterOrder, order.Layanan, order.Tarif, order.FreeTextOrder,
             (int)order.StatusOrder, order.StatusOrder.ToString());
         return Task.FromResult(result);

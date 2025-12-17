@@ -182,8 +182,6 @@ public class TindakanDal : ITindakanDal
                BILRG_Tindakan aa
            	   LEFT JOIN BILRG_OrderTdk bb ON aa.OrderTdkId = bb.OrderTdkId
            WHERE
-               aa.TindakanId = @TindakanId
-           WHERE
                aa.RegId = @RegId
                AND aa.VodDate = @VodDate
            """;

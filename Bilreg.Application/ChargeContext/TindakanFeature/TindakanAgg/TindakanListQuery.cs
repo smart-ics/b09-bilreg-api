@@ -25,7 +25,7 @@ public class TindakanListHandler : IRequestHandler<TindakanListQuery, IEnumerabl
 
     public Task<IEnumerable<TindakanListResponse>> Handle(TindakanListQuery request, CancellationToken cancellationToken)
     {
-        Guard.Against.NullOrWhiteSpace(request.RegId));
+        Guard.Against.NullOrWhiteSpace(request.RegId);
 
         var listTdk = _tdkRepo.ListData(request)?.ToList() ?? [];
         var result = listTdk.Select(x => new TindakanListResponse
