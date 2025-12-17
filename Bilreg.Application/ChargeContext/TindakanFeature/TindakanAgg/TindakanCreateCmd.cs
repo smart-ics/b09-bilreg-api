@@ -108,7 +108,15 @@ public class TindakanCreateHandler : IRequestHandler<TindakanCreateCmd, Tindakan
 
         var tindakan = TindakanModel.Create((JenisTindakanEnum)request.JenisTindakan, orderTdk,
             pasien, reg, layanan, tipeTarif, tdkTarif, request.UserId);
+        
+        if(orderTdk.OrderTdkId != "-")
+        {
+            orderTdk.Execute(request.UserId);
+            _orderTdkRepo.SaveChanges(orderTdk);
+        }
+        
         _tindakanRepo.SaveChanges(tindakan);
+
 
         return Task.FromResult(new TindakanCreateRespose(tindakan.TindakanId));
     }

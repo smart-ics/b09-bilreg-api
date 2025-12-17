@@ -86,7 +86,7 @@ public class OrderTdkListHandler : IRequestHandler<OrderTdkListQuery, IEnumerabl
                         ? order.Tarif.TarifName
                         : order.FreeTextOrder)
                     : tdk.Tarif.TarifName,
-                Ppa: ""
+                Ppa: order.DokterOrder.PpaName
             );
         return result;
     }

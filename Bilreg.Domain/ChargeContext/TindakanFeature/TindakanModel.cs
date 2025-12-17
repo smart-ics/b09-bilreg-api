@@ -93,6 +93,12 @@ public record TindakanModel : ITindakanKey
 
     #region BEHAVIOR
     public TindakanReff ToReff() => new(TindakanId, TindakanDate, JenisTindakan, Tarif.Tarif);
+
+    public void Void(string userId)
+    {
+        AuditTrail.Batal(userId, DateTime.Now);
+    }
+
     #endregion
 }
 

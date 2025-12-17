@@ -48,26 +48,9 @@ public class TindakanController : Controller
         var result = await _mediator.Send(query);
         return Ok(new JSendOk(result));
     }
-    #endregion
 
-    #region Tindakan
-
-    [HttpPost]
-    public async Task<IActionResult> CreateTindaka(TindakanCreateCmd cmd)
-    {
-        var result = await _mediator.Send(cmd);
-        return Ok(new JSendOk(result));
-    }
     [HttpGet]
-    [Route("{id}")]
-    public async Task<IActionResult> GetTindakan(string id)
-    {
-        var query = new TindakanGetQuery(id);
-        var result = await _mediator.Send(query);
-        return Ok(new JSendOk(result));
-    }
-    [HttpGet]
-    [Route("list/{regId}/{layananId}")]
+    [Route("orderlist/{regId}/{layananId}")]
     public async Task<IActionResult> ListTindakan(string regId, string layananId)
     {
         var fakerData = new List<ResponseOrderTdk>
@@ -114,6 +97,43 @@ public class TindakanController : Controller
         return Ok(new JSendOk(fakerData));
 
     }
+    #endregion
+
+    #region Tindakan
+
+    [HttpPost]
+    public async Task<IActionResult> CreateTindaka(TindakanCreateCmd cmd)
+    {
+        var result = await _mediator.Send(cmd);
+        return Ok(new JSendOk(result));
+    }
+
+    //[HttpPatch]
+    //[Route("void")]
+    //public async Task<IActionResult> VoidTdk(TindakanVoidCmd cmd)
+    //{
+    //    var result = await _mediator.Send(cmd);
+    //    return Ok(new JSendOk(result));
+    //}
+    [HttpGet]
+    [Route("{id}")]
+    public async Task<IActionResult> GetTindakan(string id)
+    {
+        var query = new TindakanGetQuery(id);
+        var result = await _mediator.Send(query);
+        return Ok(new JSendOk(result));
+    }
+
+    [HttpGet]
+    [Route("list/{regId}")]
+    public async Task<IActionResult> ListTindakan(string regId)
+    {
+        var query = new TindakanListQuery(regId);
+        var result = await _mediator.Send(query);
+        return Ok(new JSendOk(result));
+    }
+
+    
     #endregion
     public record ResponseOrderTdk(
         string OrderId ,
