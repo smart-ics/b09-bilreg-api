@@ -3,6 +3,7 @@ using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
+using Nuna.Lib.TransactionHelper;
 
 namespace Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
 
@@ -14,14 +15,17 @@ public class OkScheduleOpAssignLeaderHandler : IRequestHandler<OkScheduleOpAssig
     private readonly IScheduleOpRepo _scheduleOpRepo;
     private readonly IOrderOpRepo _orderOpRepo;
     private readonly IPpaRepo _ppaRepo;
+    private readonly IOpCaseRepo _opCaseRepo;
 
     public OkScheduleOpAssignLeaderHandler(IScheduleOpRepo scheduleOpRepo,
         IOrderOpRepo orderOpRepo,
-        IPpaRepo ppaRepo)
+        IPpaRepo ppaRepo,
+        IOpCaseRepo opCaseRepo)
     {
         _scheduleOpRepo = scheduleOpRepo;
         _orderOpRepo = orderOpRepo;
         _ppaRepo = ppaRepo;
+        _opCaseRepo = opCaseRepo;
     }
 
     public Task Handle(OkScheduleOpAssignLeaderCommand request, CancellationToken cancellationToken)
@@ -34,7 +38,7 @@ public class OkScheduleOpAssignLeaderHandler : IRequestHandler<OkScheduleOpAssig
 
         var listSchedule = _scheduleOpRepo.ListData(PasienModel.Key(orderOp.Pasien.PasienId))?.ToList()
             ?? [];
-        var scheduleWithOrderOpId = listSchedule?
+        var scheduleWithOrderOpId = listSchedule
             .Where(x => !x.IsVoid)
             .FirstOrDefault(x => x.OrderOp.OrderOpId == request.OrderOpId);
         if (scheduleWithOrderOpId == null)
@@ -42,16 +46,47 @@ public class OkScheduleOpAssignLeaderHandler : IRequestHandler<OkScheduleOpAssig
 
         var scheduleOp = _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(scheduleWithOrderOpId.ScheduleOpId))
             .GetValueOrDefault();
-        if (scheduleOp is null)
+
+        ScheduleOpModel newScheduleOp;
+        if (scheduleOp != null)
+        {
+            scheduleOp.CancelSchedule(request.UserId);
+            newScheduleOp = ScheduleOpModel.CloneFrom(scheduleOp);
+        }
+        else
             return Task.CompletedTask;
 
-        var existingPpa = scheduleOp.ListPpa
+        // cari OldAssignedLeader di newScheduleOp.ListPpa, jika ada hapus dari newScheduleOp.ListPpa
+        var oldAssignedLeader = scheduleOp.TeamLead;
+        if (oldAssignedLeader != null)
+        {
+            var assignedPpaLead = _ppaRepo.LoadEntity(PpaType.Key(oldAssignedLeader.PpaId))
+                .GetValueOrDefault();
+            newScheduleOp.RemovePpa(assignedPpaLead, request.UserId);
+        }
+
+        var existingPpa = newScheduleOp.ListPpa
             .FirstOrDefault(x => x.Ppa.PpaId == request.PpaId);
         if (existingPpa is null)
-            scheduleOp.AddPpa(ppa, request.UserId);
-        scheduleOp.AssignLeader(ppa, request.UserId);
+            newScheduleOp.AddPpa(ppa, request.UserId);
+        newScheduleOp.AssignLeader(ppa, request.UserId);
 
+        var opCase = _opCaseRepo.LoadEntity(orderOp)
+            .GetValueOrDefault()
+            ?? OpCaseModel.Create(orderOp);
+        opCase.SetListPpa(
+            newScheduleOp.ListPpa
+                .Select(x =>
+                {
+                    string profesi = x.Profesi.ProfesiName;
+                    return new OpCasePpaType(x.NoUrut, x.Ppa, profesi, new DateTime(3000, 1, 1));
+                }));
+
+        using var trans = TransHelper.NewScope();
         _scheduleOpRepo.SaveChanges(scheduleOp);
+        _scheduleOpRepo.SaveChanges(newScheduleOp);
+        _opCaseRepo.SaveChanges(opCase);
+        trans.Complete();
 
         return Task.CompletedTask;
     }
