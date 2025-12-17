@@ -56,11 +56,12 @@ public class OkScheduleOpAssignLeaderHandler : IRequestHandler<OkScheduleOpAssig
         else
             return Task.CompletedTask;
 
-        // cari OldAssignedLeader di newScheduleOp.ListPpa, jika ada hapus dari newScheduleOp.ListPpa
-        var oldAssignedLeader = scheduleOp.TeamLead;
-        if (oldAssignedLeader != null)
+        // Checks if TeamLead is not null AND if PpaId is a valid string
+        if (scheduleOp.TeamLead is { PpaId: string ppaId } oldAssignedLead &&
+            !string.IsNullOrWhiteSpace(ppaId) &&
+            ppaId != "-")
         {
-            var assignedPpaLead = _ppaRepo.LoadEntity(PpaType.Key(oldAssignedLeader.PpaId))
+            var assignedPpaLead = _ppaRepo.LoadEntity(PpaType.Key(ppaId))
                 .GetValueOrDefault();
             newScheduleOp.RemovePpa(assignedPpaLead, request.UserId);
         }
