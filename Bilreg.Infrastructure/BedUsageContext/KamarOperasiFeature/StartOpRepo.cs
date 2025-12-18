@@ -24,8 +24,12 @@ public class StartOpRepo : IStartOpRepo
 
     public MayBe<StartOpModel> LoadEntity(IStartOpKey key)
     {
-        var result = _startOpDal.GetData(key);
-        return MayBe.From(result.ToModel());
+        var dto = _startOpDal.GetData(key);
+        if (dto is null)
+            return MayBe<StartOpModel>.None;
+
+        var result = dto.ToModel();
+        return MayBe.From(result);
     }
 
     public void DeleteEntity(IStartOpKey key)
