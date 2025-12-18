@@ -1,17 +1,15 @@
-﻿using Ardalis.GuardClauses;
-using Bilreg.Application.BedUsageContext.WardFeature;
+﻿using Bilreg.Application.BedUsageContext.WardFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
-using Bilreg.Domain.Shared.Helpers;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
+using Nuna.Lib.ValidationHelper;
 using System.Globalization;
 
 namespace Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
 
 public record OkStartOpCommand(string ScheduleOpId,
-    string Tgl, string Jam,
-    string KamarId, string UserId) : IRequest<OkStartOpResponse>, IScheduleOpKey;
+    string Jam, string UserId) : IRequest<OkStartOpResponse>, IScheduleOpKey;
 
 public record OkStartOpResponse(
     string StartOpId,
@@ -46,8 +44,6 @@ public class OkStartOpHandler : IRequestHandler<OkStartOpCommand, OkStartOpRespo
     public Task<OkStartOpResponse> Handle(OkStartOpCommand request, CancellationToken cancellationToken)
     {
         //  GUARD
-        Guard.Against.InvalidDateFormat(request.Tgl, nameof(request.Tgl));
-
         var scheduleOp = _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(request.ScheduleOpId))
             .GetValueOrThrow($"Schedule Operasi ID { request.ScheduleOpId } tidak ditemukan.");
 
@@ -57,10 +53,11 @@ public class OkStartOpHandler : IRequestHandler<OkStartOpCommand, OkStartOpRespo
         var orderOp = _orderOpRepo.LoadEntity(OrderOpModel.Key(scheduleOp.OrderOp.OrderOpId))
             .GetValueOrThrow($"Schedule Operasi ID { request.ScheduleOpId } tidak punya order.");
 
-        var kamar = _kamarRepo.LoadEntity(KamarType.Key(request.KamarId))
-            .GetValueOrThrow($"Kamar Operasi ID { request.KamarId } tidak ditemukan.");
+        var kamar = _kamarRepo.LoadEntity(KamarType.Key(scheduleOp.KamarOp.KamarId))
+            .GetValueOrDefault() ?? KamarType.Default;
 
-        var tglOp = DateTime.ParseExact($"{ request.Tgl } { request.Jam }", "yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
+        var tglOp = DateTime.ParseExact(
+            $"{ scheduleOp.TglOp.ToString(DateFormatEnum.YMD) } { request.Jam }", "yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
 
         var startOp = StartOpModel.CreateFromSchedule(scheduleOp, tglOp, kamar, request.UserId);
 
