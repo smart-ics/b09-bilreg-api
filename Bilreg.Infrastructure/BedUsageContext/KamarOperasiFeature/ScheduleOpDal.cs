@@ -32,22 +32,22 @@ public class ScheduleOpDal : IScheduleOpDal
     {
         const string sql = """
            INSERT INTO BILRG_ScheduleOp(
-               ScheduleOpId, ScheduleOpDate, CreateUserId, CreateTimestamp, UpdateUserId, UpdateTimestamp, VoidUserId, VoidTimestamp,
+               ScheduleOpId, ScheduleOpDate, CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate,
                OrderOpId, PasienId, UrgencyLevel, Durasi, TglOp, KamarId, RegId, PpaId)
            VALUES( 
-               @ScheduleOpId, @ScheduleOpDate, @CreateUserId, @CreateTimeStamp, @UpdateUserId, @UpdateTimestamp, @VoidUserId, @VoidTimestamp,
+               @ScheduleOpId, @ScheduleOpDate, @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate,
                @OrderOpId, @PasienId, @UrgencyLevel, @Durasi, @TglOp, @KamarId, @RegId, @PpaId)
            """;
 
         var dp = new DynamicParameters();
         dp.AddParam("@ScheduleOpId", dto.ScheduleOpId, SqlDbType.VarChar);
         dp.AddParam("@ScheduleOpDate", dto.ScheduleOpDate, SqlDbType.DateTime);
-        dp.AddParam("@CreateUserId", dto.CreateUserId, SqlDbType.VarChar);
-        dp.AddParam("@CreateTimestamp", dto.CreateTimestamp, SqlDbType.DateTime);
-        dp.AddParam("@UpdateUserId", dto.UpdateUserId, SqlDbType.VarChar);
-        dp.AddParam("@UpdateTimestamp", dto.UpdateTimestamp, SqlDbType.DateTime);
-        dp.AddParam("@VoidUserId", dto.VoidUserId, SqlDbType.VarChar);
-        dp.AddParam("@VoidTimestamp", dto.VoidTimestamp, SqlDbType.DateTime);
+        dp.AddParam("@CrtUser", dto.CrtUser, SqlDbType.VarChar);
+        dp.AddParam("@CrtDate", dto.CrtDate, SqlDbType.DateTime);
+        dp.AddParam("@UpdUser", dto.UpdUser, SqlDbType.VarChar);
+        dp.AddParam("@UpdDate", dto.UpdDate, SqlDbType.DateTime);
+        dp.AddParam("@VodUser", dto.VodUser, SqlDbType.VarChar);
+        dp.AddParam("@VodDate", dto.VodDate, SqlDbType.DateTime);
         dp.AddParam("@OrderOpId", dto.OrderOpId, SqlDbType.VarChar);
         dp.AddParam("@PasienId", dto.PasienId, SqlDbType.VarChar);
         dp.AddParam("@UrgencyLevel", dto.UrgencyLevel, SqlDbType.Int);
@@ -68,8 +68,8 @@ public class ScheduleOpDal : IScheduleOpDal
                BILRG_ScheduleOp
            SET
                ScheduleOpDate = @ScheduleOpDate,
-               UpdateUserId = @UpdateUserId,
-               UpdateTimestamp = @UpdateTimestamp,
+               UpdUser = @UpdUser,
+               UpdDate = @UpdDate,
                OrderOpId = @OrderOpId,
                PasienId = @PasienId,
                UrgencyLevel = @UrgencyLevel,
@@ -78,8 +78,8 @@ public class ScheduleOpDal : IScheduleOpDal
                KamarId = @KamarId,
                RegId = @RegId,
                PpaId = @PpaId,
-               VoidUserId = @VoidUserId,
-               VoidTimestamp = @VoidTimestamp
+               VodUser = @VodUser,
+               VodDate = @VodDate
            WHERE
                ScheduleOpId = @ScheduleOpId
            """;
@@ -87,8 +87,8 @@ public class ScheduleOpDal : IScheduleOpDal
         var dp = new DynamicParameters();
         dp.AddParam("@ScheduleOpId", dto.ScheduleOpId, SqlDbType.VarChar);
         dp.AddParam("@ScheduleOpDate", dto.ScheduleOpDate, SqlDbType.DateTime);
-        dp.AddParam("@UpdateUserId", dto.UpdateUserId, SqlDbType.VarChar);
-        dp.AddParam("@UpdateTimestamp", dto.UpdateTimestamp, SqlDbType.DateTime);
+        dp.AddParam("@UpdUser", dto.UpdUser, SqlDbType.VarChar);
+        dp.AddParam("@UpdDate", dto.UpdDate, SqlDbType.DateTime);
         dp.AddParam("@OrderOpId", dto.OrderOpId, SqlDbType.VarChar);
         dp.AddParam("@PasienId", dto.PasienId, SqlDbType.VarChar);
         dp.AddParam("@UrgencyLevel", dto.UrgencyLevel, SqlDbType.Int);
@@ -97,8 +97,8 @@ public class ScheduleOpDal : IScheduleOpDal
         dp.AddParam("@KamarId", dto.KamarId, SqlDbType.VarChar);
         dp.AddParam("@RegId", dto.RegId, SqlDbType.VarChar);
         dp.AddParam("@PpaId", dto.PpaId, SqlDbType.VarChar);
-        dp.AddParam("@VoidUserId", dto.VoidUserId, SqlDbType.VarChar);
-        dp.AddParam("@VoidTimestamp", dto.VoidTimestamp, SqlDbType.DateTime);
+        dp.AddParam("@VodUser", dto.VodUser, SqlDbType.VarChar);
+        dp.AddParam("@VodDate", dto.VodDate, SqlDbType.DateTime);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -126,7 +126,7 @@ public class ScheduleOpDal : IScheduleOpDal
            SELECT
                aa.ScheduleOpId, aa.ScheduleOpDate, aa.OrderOpId, aa.PasienId, aa.UrgencyLevel,
                aa.Durasi, aa.TglOp, aa.KamarId, aa.RegId, aa.PpaId,
-               aa.CreateUserId, aa.CreateTimestamp, aa.UpdateUserId, aa.UpdateTimestamp, aa.VoidUserId, aa.VoidTimestamp,
+               aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
                ISNULL(bb.OrderDate, '3000-01-01') AS OrderDate,
                ISNULL(bb.NamaOperasi, '') AS NamaOperasi,
                ISNULL(cc.fs_nm_pasien, '') AS PasienName,
@@ -158,7 +158,7 @@ public class ScheduleOpDal : IScheduleOpDal
             SELECT
                 aa.ScheduleOpId, aa.ScheduleOpDate, aa.OrderOpId, aa.PasienId, aa.UrgencyLevel,
                 aa.Durasi, aa.TglOp, aa.KamarId, aa.RegId, aa.PpaId,
-                aa.CreateUserId, aa.CreateTimestamp, aa.UpdateUserId, aa.UpdateTimestamp, aa.VoidUserId, aa.VoidTimestamp,
+                aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
                 ISNULL(bb.OrderDate, '3000-01-01') AS OrderDate,
                 ISNULL(bb.NamaOperasi, '') AS NamaOperasi,
                 ISNULL(cc.fs_nm_pasien, '') AS PasienName,
@@ -191,7 +191,7 @@ public class ScheduleOpDal : IScheduleOpDal
             SELECT
                 aa.ScheduleOpId, aa.ScheduleOpDate, aa.OrderOpId, aa.PasienId, aa.UrgencyLevel,
                 aa.Durasi, aa.TglOp, aa.KamarId, aa.RegId, aa.PpaId,
-                aa.CreateUserId, aa.CreateTimestamp, aa.UpdateUserId, aa.UpdateTimestamp, aa.VoidUserId, aa.VoidTimestamp,
+                aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
                 ISNULL(bb.OrderDate, '3000-01-01') AS OrderDate,
                 ISNULL(bb.NamaOperasi, '') AS NamaOperasi,
                 ISNULL(cc.fs_nm_pasien, '') AS PasienName,
