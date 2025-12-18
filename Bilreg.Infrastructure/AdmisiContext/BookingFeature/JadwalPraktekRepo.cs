@@ -82,7 +82,6 @@ public class JadwalPraktekRepo : IJadwalPraktekRepo
     public void Migrasi()
     {
         var listJadwalFo = _jadwalFoDal.ListData()?.ToList() ?? [];
-        
         _dal.DeleteAll();
         listJadwalFo.ForEach(x => _dal.Insert(x));
     }

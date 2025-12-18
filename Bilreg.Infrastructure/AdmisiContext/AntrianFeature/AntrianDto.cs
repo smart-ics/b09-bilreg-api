@@ -1,5 +1,6 @@
 ﻿using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.Shared.Helpers;
+using System.Globalization;
 
 namespace Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
 
@@ -11,8 +12,8 @@ public record AntrianDto(string AntrianId, DateTime AntrianDate,
         var result = new AntrianDto(
             model.AntrianId,
             model.AntrianDate.ToDateTime(TimeOnly.MinValue),
-            model.StartTime.ToString("HH:mm"),
-            model.EndTime.ToString("HH:mm"),
+            model.StartTime.ToString("HH:mm", CultureInfo.InvariantCulture),
+            model.EndTime.ToString("HH:mm", CultureInfo.InvariantCulture),
             model.SequenceTag,
             model.AntrianDescription);
         return result;

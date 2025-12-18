@@ -3,21 +3,17 @@ using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
+using System.Globalization;
 
 namespace Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
 
 public record AntrianMapDto(
-    string fs_kd_dokter,
-    string fs_kd_layanan,
-    string fd_tgl_jadwal,
-    string fs_jam_jadwal,
-    int fn_no_antrian,
-    string fs_flag,
-    string fs_mr,
-    string fs_nm_pasien,
+    string fs_kd_dokter, string fs_kd_layanan,
+    string fd_tgl_jadwal, string fs_jam_jadwal,
+    int fn_no_antrian, string fs_flag,
+    string fs_mr, string fs_nm_pasien,
     string fs_kd_trs_gen,
-    string fs_nm_dokter,
-    string fs_nm_layanan
+    string fs_nm_dokter, string fs_nm_layanan
 )
 {
 
@@ -27,7 +23,7 @@ public record AntrianMapDto(
             fs_kd_dokter: model.Dokter.PpaId,
             fs_kd_layanan: model.Layanan.LayananId,
             fd_tgl_jadwal: model.TglPraktek.ToString("yyyy-MM-dd"),
-            fs_jam_jadwal: model.JamPraktek.ToString("HH:mm"),
+            fs_jam_jadwal: model.JamPraktek.ToString("HH:mm", CultureInfo.InvariantCulture),
             fn_no_antrian: slot.NoUrut,
             fs_flag: slot.Flag,
             fs_mr: slot.Pasien.PasienId,
@@ -38,7 +34,7 @@ public record AntrianMapDto(
         ));
     }
 
-    public  AntrianMapModel ToModel(IEnumerable<AntrianMapDto> dtos)
+    public AntrianMapModel ToModel(IEnumerable<AntrianMapDto> dtos)
     {
         var list = dtos.ToList();
         var first = list[0];

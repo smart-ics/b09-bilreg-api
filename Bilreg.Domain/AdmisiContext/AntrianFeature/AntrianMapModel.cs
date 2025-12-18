@@ -52,7 +52,7 @@ public record AntrianMapModel : IAntrianMapKey
     public TimeOnly JamPraktek { get; init; }
     public IEnumerable<AntrianMapSlotModel> ListSlot => _listSlot;
 
-    // Implementasi IAntrianMapKey
+    
     public string PpaId => Dokter.PpaId;
     public string LayananId => Layanan.LayananId;
     #endregion
@@ -69,7 +69,7 @@ public record AntrianMapModel : IAntrianMapKey
                 Pasien: new PasienReff("-", "-", new DateOnly(3000,1,1), "-"),
                 Reg: new RegReff("-", "-", "_"),
                 ReffId: "-",
-                Flag: "-"
+                Flag: "AUTO"
             ));
         _listSlot.AddRange(slots);
     }
