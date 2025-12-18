@@ -1,0 +1,69 @@
+﻿using Ardalis.GuardClauses;
+using Bilreg.Application.BedUsageContext.WardFeature;
+using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
+using Bilreg.Domain.BedUsageContext.WardFeature;
+using Bilreg.Domain.Shared.Helpers;
+using MediatR;
+using Nuna.Lib.TransactionHelper;
+using System.Globalization;
+
+namespace Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
+
+public record OkStartOpCommand(string ScheduleOpId,
+    string Tgl, string Jam,
+    string KamarId, string UserId) : IRequest, IScheduleOpKey;
+
+public class OkStartOpHandler : IRequestHandler<OkStartOpCommand>
+{
+    private readonly IStartOpRepo _startOpRepo;
+    private readonly IScheduleOpRepo _scheduleOpRepo;
+    private readonly IOrderOpRepo _orderOpRepo;
+    private readonly IKamarRepo _kamarRepo;
+    private readonly IOpCaseRepo _opCaseRepo;
+
+    public OkStartOpHandler(IStartOpRepo startOpRepo,
+        IScheduleOpRepo scheduleOpRepo,
+        IOrderOpRepo orderOpRepo,
+        IKamarRepo kamarRepo,
+        IOpCaseRepo opCaseRepo)
+    {
+        _startOpRepo = startOpRepo;
+        _scheduleOpRepo = scheduleOpRepo;
+        _orderOpRepo = orderOpRepo;
+        _kamarRepo = kamarRepo;
+        _opCaseRepo = opCaseRepo;
+    }
+
+    public Task Handle(OkStartOpCommand request, CancellationToken cancellationToken)
+    {
+        Guard.Against.InvalidDateFormat(request.Tgl, nameof(request.Tgl));
+
+        var scheduleOp = _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(request.ScheduleOpId))
+            .GetValueOrThrow($"Schedule Operasi ID { request.ScheduleOpId } tidak ditemukan.");
+
+        if (scheduleOp.OrderOp.OrderOpId == "-")
+            throw new KeyNotFoundException($"Schedule Operasi ID { request.ScheduleOpId } tidak punya order.");
+
+        var orderOp = _orderOpRepo.LoadEntity(OrderOpModel.Key(scheduleOp.OrderOp.OrderOpId))
+            .GetValueOrThrow($"Schedule Operasi ID { request.ScheduleOpId } tidak punya order.");
+
+        var kamar = _kamarRepo.LoadEntity(KamarType.Key(request.KamarId))
+            .GetValueOrThrow($"Kamar Operasi ID { request.KamarId } tidak ditemukan.");
+
+        var tglOp = DateTime.ParseExact($"{ request.Tgl } { request.Jam }", "yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
+
+        var startOp = StartOpModel.CreateFromSchedule(scheduleOp, tglOp, kamar, request.UserId);
+
+        //var opCase = _opCaseRepo.LoadEntity(orderOp)
+        //    .GetValueOrDefault()
+        //    ?? OpCaseModel.Create(orderOp);
+        // TODO: OpCase diset start
+        //opCase
+        using var trans = TransHelper.NewScope();
+        _startOpRepo.SaveChanges(startOp);
+        //_opCaseRepo.SaveChanges(opCase);
+        trans.Complete();
+
+        return Task.CompletedTask;
+    }
+}

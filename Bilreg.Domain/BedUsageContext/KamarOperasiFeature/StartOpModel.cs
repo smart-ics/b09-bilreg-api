@@ -1,5 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.PpaFeature;
-using Bilreg.Domain.AdmisiContext.RegFeature;
+﻿using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
@@ -8,12 +7,10 @@ namespace Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 
 public class StartOpModel : IStartOpKey
 {
-    private readonly List<ScheduleOpPpaType> _listPpa;
-
     #region CREATION
     public StartOpModel(string startOpId, DateTime startOpTime, AuditTrailType auditTrail,
         OrderOpReff orderOp, ScheduleOpReff scheduleOp, KamarReff kamarOp,
-        PasienReff pasien, RegReff reg, PpaReff teamLead, IEnumerable<ScheduleOpPpaType> listPpa)
+        PasienReff pasien, RegReff reg)
     {
         StartOpId = startOpId;
         StartOpTime = startOpTime;
@@ -23,21 +20,31 @@ public class StartOpModel : IStartOpKey
         KamarOp = kamarOp;
         Pasien = pasien;
         Reg = reg;
-        TeamLead = teamLead;
-        _listPpa = listPpa.ToList() ?? [];
     }
 
     public static StartOpModel Default =>
         new StartOpModel("-", new DateTime(3000, 1, 1, 0, 0, 0), AuditTrailType.Default,
             OrderOpModel.Default.ToReff(), ScheduleOpModel.Default.ToReff(),
             KamarType.Default.ToReff(), PasienModel.Default.ToReff(),
-            RegModel.Default.ToReff(), PpaType.Default.ToReff(), []);
+            RegModel.Default.ToReff());
     public static StartOpModel Key(string id) =>
         new StartOpModel(id, new DateTime(3000, 1, 1, 0, 0, 0), AuditTrailType.Default,
             OrderOpModel.Default.ToReff(), ScheduleOpModel.Default.ToReff(),
             KamarType.Default.ToReff(), PasienModel.Default.ToReff(),
-            RegModel.Default.ToReff(), PpaType.Default.ToReff(), []);
+            RegModel.Default.ToReff());
 
+    public static StartOpModel CreateFromSchedule(ScheduleOpModel scheduleOp, DateTime tglOp,
+        KamarType kamar, string userId)
+    {
+        var newId = Ulid.NewUlid().ToString();
+        var audit = new AuditTrailType(new AuditInfoType(userId, DateTime.Now),
+            AuditInfoType.Default, AuditInfoType.Default);
+        var order = scheduleOp.OrderOp;
+        var pasien = scheduleOp.Pasien;
+        var reg = scheduleOp.Reg;
+        return new StartOpModel(newId, tglOp, audit, order, scheduleOp.ToReff(), kamar.ToReff(),
+            pasien, reg);
+    }
     #endregion
 
     #region PROPERTIES
@@ -50,8 +57,6 @@ public class StartOpModel : IStartOpKey
     public KamarReff KamarOp { get; init; }
     public PasienReff Pasien { get; init; }
     public RegReff Reg { get; init; }
-    public PpaReff TeamLead { get; init; }
-    public IEnumerable<ScheduleOpPpaType> ListPpa => _listPpa;
     #endregion
 }
 

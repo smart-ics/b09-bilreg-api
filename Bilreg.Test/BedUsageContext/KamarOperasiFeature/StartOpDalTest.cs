@@ -19,7 +19,6 @@ public class StartOpDalTest
             RegId: "REG-1",
             PasienId: "PSN-1",
             KamarOpId: "KOP-1",
-            PpaId: "PPA-1",
 
             CrtUser: "CRT",
             CrtDate: new DateTime(2024, 1, 1, 9, 0, 0),
@@ -32,8 +31,7 @@ public class StartOpDalTest
             PasienName: "Test Pasien",
             TglLahir: "1990-01-01",
             Gender: "L",
-            KamarName: "OK 1",
-            PpaName: "Dr Test"
+            KamarName: "OK 1"
         );
 
     private static IStartOpKey FakerKey()
@@ -78,7 +76,6 @@ public class StartOpDalTest
                       .Excluding(x => x.TglLahir)
                       .Excluding(x => x.Gender)
                       .Excluding(x => x.KamarName)
-                      .Excluding(x => x.PpaName)
         );
     }
 
@@ -98,7 +95,6 @@ public class StartOpDalTest
                       .Excluding(x => x.TglLahir)
                       .Excluding(x => x.Gender)
                       .Excluding(x => x.KamarName)
-                      .Excluding(x => x.PpaName)
         );
     }
 }

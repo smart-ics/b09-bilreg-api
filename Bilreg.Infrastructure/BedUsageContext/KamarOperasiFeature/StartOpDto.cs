@@ -1,5 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.PpaFeature;
-using Bilreg.Domain.AdmisiContext.RegFeature;
+﻿using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
@@ -16,7 +15,6 @@ public record StartOpDto(
     string RegId,
     string PasienId,
     string KamarOpId,
-    string PpaId,
 
     string CrtUser, DateTime CrtDate,
     string UpdUser, DateTime UpdDate,
@@ -26,8 +24,7 @@ public record StartOpDto(
     string PasienName,
     string TglLahir,
     string Gender,
-    string KamarName,
-    string PpaName
+    string KamarName
     )
 {
     public static StartOpDto FromModel(StartOpModel model)
@@ -40,7 +37,6 @@ public record StartOpDto(
             RegId: model.Reg?.RegId ?? string.Empty,
             PasienId: model.Pasien?.PasienId ?? string.Empty,
             KamarOpId: model.KamarOp?.KamarId ?? string.Empty,
-            PpaId: model.ListPpa.FirstOrDefault()?.Ppa?.PpaId ?? string.Empty,
             CrtUser: model.AuditTrail.Created.UserId,
             CrtDate: model.AuditTrail.Created.Timestamp,
             UpdUser: model.AuditTrail.Modified.UserId,
@@ -52,12 +48,11 @@ public record StartOpDto(
             TglLahir: model.Pasien?.TglLahir.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
                 ?? DateOnly.Parse("3000-01-01").ToString(),
             Gender: model.Pasien?.Gender ?? string.Empty,
-            KamarName: model.KamarOp?.KamarName ?? string.Empty,
-            PpaName: model.TeamLead?.PpaName ?? string.Empty
+            KamarName: model.KamarOp?.KamarName ?? string.Empty
         );
     }
 
-    public StartOpModel ToModel(IEnumerable<ScheduleOpPpaType> listPpa)
+    public StartOpModel ToModel()
     {
         var auditTrail = new AuditTrailType(
             new AuditInfoType(CrtUser, CrtDate),
@@ -69,7 +64,6 @@ public record StartOpDto(
         var kamar = new KamarReff(KamarOpId, KamarName);
         var pasien = new PasienReff(PasienId, PasienName, DateOnly.ParseExact(TglLahir, "yyyy-MM-dd"), Gender);
         var reg = new RegReff(RegId, PasienId, PasienName);
-        var teamLead = new PpaReff(PpaId, PpaName);
 
         return new StartOpModel(
             StartOpId,
@@ -79,9 +73,7 @@ public record StartOpDto(
             scheduleOpReff,
             kamar,
             pasien,
-            reg,
-            teamLead,
-            listPpa
+            reg
         );
     }
 }
