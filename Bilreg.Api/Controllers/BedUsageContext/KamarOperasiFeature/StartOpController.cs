@@ -20,7 +20,7 @@ public class StartOpController : ControllerBase
     [Route("Start")]
     public async Task<IActionResult> StartOp(OkStartOpCommand cmd)
     {
-        await _mediator.Send(cmd);
-        return Ok(new JSendOk("Op Started"));
+        var response = await _mediator.Send(cmd);
+        return Ok(new JSendOk(response));
     }
 }

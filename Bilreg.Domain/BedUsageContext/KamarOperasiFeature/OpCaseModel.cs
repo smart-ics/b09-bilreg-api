@@ -87,9 +87,21 @@ public class OpCaseModel : IOrderOpKey
     public void Schedule(ScheduleOpReff schedule)
     {
         ScheduleOp = schedule;
-        var stateHistory = _listStateHistory
-            .FirstOrDefault(x => x.OpCaseState == OpCaseStateEnum.Scheduled);
         OrderOpState = OpCaseStateEnum.Scheduled;
+        var stateHistory = _listStateHistory
+            .FirstOrDefault(x => x.OpCaseState == OrderOpState);
+        if (stateHistory is null)
+        {
+            var noUrut = _listStateHistory.Max(x => x.NoUrut) + 1;
+            _listStateHistory.Add(new OpCaseStateHistType(noUrut, OrderOpState, DateTime.Now));
+        }
+    }
+
+    public void Start()
+    {
+        OrderOpState = OpCaseStateEnum.OpStarted;
+        var stateHistory = _listStateHistory
+            .FirstOrDefault(x => x.OpCaseState == OrderOpState);
         if (stateHistory is null)
         {
             var noUrut = _listStateHistory.Max(x => x.NoUrut) + 1;

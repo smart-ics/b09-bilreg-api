@@ -11,9 +11,18 @@ namespace Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
 
 public record OkStartOpCommand(string ScheduleOpId,
     string Tgl, string Jam,
-    string KamarId, string UserId) : IRequest, IScheduleOpKey;
+    string KamarId, string UserId) : IRequest<OkStartOpResponse>, IScheduleOpKey;
 
-public class OkStartOpHandler : IRequestHandler<OkStartOpCommand>
+public record OkStartOpResponse(
+    string StartOpId,
+    string OrderOpId,
+    string ScheduleOpId,
+    string NamaOperasi,
+    string RegId,
+    string PasienId,
+    string PasienName);
+
+public class OkStartOpHandler : IRequestHandler<OkStartOpCommand, OkStartOpResponse>
 {
     private readonly IStartOpRepo _startOpRepo;
     private readonly IScheduleOpRepo _scheduleOpRepo;
@@ -34,8 +43,9 @@ public class OkStartOpHandler : IRequestHandler<OkStartOpCommand>
         _opCaseRepo = opCaseRepo;
     }
 
-    public Task Handle(OkStartOpCommand request, CancellationToken cancellationToken)
+    public Task<OkStartOpResponse> Handle(OkStartOpCommand request, CancellationToken cancellationToken)
     {
+        //  GUARD
         Guard.Against.InvalidDateFormat(request.Tgl, nameof(request.Tgl));
 
         var scheduleOp = _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(request.ScheduleOpId))
@@ -54,16 +64,30 @@ public class OkStartOpHandler : IRequestHandler<OkStartOpCommand>
 
         var startOp = StartOpModel.CreateFromSchedule(scheduleOp, tglOp, kamar, request.UserId);
 
-        //var opCase = _opCaseRepo.LoadEntity(orderOp)
-        //    .GetValueOrDefault()
-        //    ?? OpCaseModel.Create(orderOp);
-        // TODO: OpCase diset start
-        //opCase
+        var opCase = _opCaseRepo.LoadEntity(orderOp)
+            .GetValueOrDefault()
+            ?? OpCaseModel.Create(orderOp);
+        opCase.Start();
+
+        //  WRITE
         using var trans = TransHelper.NewScope();
         _startOpRepo.SaveChanges(startOp);
-        //_opCaseRepo.SaveChanges(opCase);
+        _opCaseRepo.SaveChanges(opCase);
         trans.Complete();
 
-        return Task.CompletedTask;
+        return Task.FromResult(Response(startOp));
+    }
+
+    private OkStartOpResponse Response(StartOpModel startOp)
+    {
+        return new OkStartOpResponse(
+            StartOpId: startOp.StartOpId,
+            OrderOpId: startOp.OrderOp.OrderOpId,
+            ScheduleOpId: startOp.ScheduleOp.ScheduleOpId,
+            NamaOperasi: startOp.OrderOp.NamaOperasi,
+            RegId: startOp.Reg.RegId,
+            PasienId: startOp.Pasien.PasienId,
+            PasienName: startOp.Pasien.PasienName
+        );
     }
 }
