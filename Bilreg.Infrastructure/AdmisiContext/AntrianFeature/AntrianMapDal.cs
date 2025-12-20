@@ -10,8 +10,8 @@ namespace Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
 
 public interface IAntrianMapDal : 
     IInsertBulk<AntrianMapDto>,
-    IDelete<IAntrianMapKey>,
-    IListData<AntrianMapDto, IAntrianMapKey>
+    IDelete<IAntrianMapHdrKey>,
+    IListData<AntrianMapDto, IAntrianMapHdrKey>
 {
 }
     
@@ -46,28 +46,28 @@ public class AntrianMapDal : IAntrianMapDal
         bcp.DestinationTableName = "ta_no_antrian_map";
         bcp.WriteToServer(fetched.AsDataTable());
     }
-    public void Delete(IAntrianMapKey key)
+    public void Delete(IAntrianMapHdrKey key)
     {
         const string sql = """
             DELETE FROM
                 ta_no_antrian_map
             WHERE 
-            	aa.fd_tgl_jadwal = @tglJadwal
-            	AND aa.fs_kd_dokter = @dokterId
-            	AND aa.fs_kd_layanan = @layananId
-            	AND aa.fs_jam_jadwal = @jamJadwal
+            	fd_tgl_jadwal = @tglJadwal
+            	AND fs_kd_dokter = @dokterId
+            	AND fs_kd_layanan = @layananId
+            	AND fs_jam_jadwal = @jamJadwal
             """;
         
         var dp = new DynamicParameters();
-        dp.AddParam("@tglJadwal", key.TglPraktek.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
-        dp.AddParam("@dokterId", key.PpaId, SqlDbType.VarChar);
+        dp.AddParam("@tglJadwal", key.TglJadwal.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
+        dp.AddParam("@dokterId", key.DokterId, SqlDbType.VarChar);
         dp.AddParam("@layananId", key.LayananId, SqlDbType.VarChar);
-        dp.AddParam("@jamJadwal", key.JamPraktek.ToString("HH:mm"), SqlDbType.VarChar);
+        dp.AddParam("@jamJadwal", key.JamJadwal.ToString("HH:mm"), SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
-    public IEnumerable<AntrianMapDto> ListData(IAntrianMapKey antrianMapKey)
+    public IEnumerable<AntrianMapDto> ListData(IAntrianMapHdrKey antrianMapKey)
     {
         const string sql = """
             SELECT 
@@ -87,10 +87,10 @@ public class AntrianMapDal : IAntrianMapDal
             """;
 
         var dp = new DynamicParameters();
-        dp.AddParam("@tglJadwal", antrianMapKey.TglPraktek.ToString("yyyy-MM-dd") , SqlDbType.VarChar);
-        dp.AddParam("@dokterId", antrianMapKey.PpaId , SqlDbType.VarChar);
+        dp.AddParam("@tglJadwal", antrianMapKey.TglJadwal.ToString("yyyy-MM-dd") , SqlDbType.VarChar);
+        dp.AddParam("@dokterId", antrianMapKey.DokterId , SqlDbType.VarChar);
         dp.AddParam("@layananId", antrianMapKey.LayananId, SqlDbType.VarChar);
-        dp.AddParam("@jamJadwal", antrianMapKey.JamPraktek.ToString("HH:mm") , SqlDbType.VarChar);
+        dp.AddParam("@jamJadwal", antrianMapKey.JamJadwal.ToString("HH:mm") , SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<AntrianMapDto>(sql, dp);

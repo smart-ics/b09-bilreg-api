@@ -1,87 +1,78 @@
 ﻿using Ardalis.GuardClauses;
-using Bilreg.Domain.AdmisiContext.LayananFeature;
-using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 
 namespace Bilreg.Domain.AdmisiContext.AntrianFeature;
 
-public record AntrianMapModel : IAntrianMapKey
+public record AntrianMapModel(
+    DateOnly TglPraktek,
+    string DokterId,
+    string LayananId,
+    TimeOnly JamJadwal,
+    int NoUrut,
+    PasienReff Pasien,
+    RegReff Reg,
+    string ReffId,
+    string Flag
+)
 {
-    private readonly List<AntrianMapSlotModel> _listSlot;
-
     #region CREATION
-    public AntrianMapModel(PpaReff dokter, LayananReff layanan, 
-        DateOnly tglPraktek, TimeOnly jamPraktek, IEnumerable<AntrianMapSlotModel> listSlot)
+    public static AntrianMapModel Create(
+        DateOnly tglPraktek,
+        string dokterId,
+        string layananId,
+        TimeOnly jamPraktek,
+        int noUrut,
+        PasienReff pasien,
+        RegReff reg,
+        string reffId,
+        string flag)
     {
-        Dokter = dokter;
-        Layanan = layanan;
-        TglPraktek = tglPraktek;
-        JamPraktek = jamPraktek;
-        _listSlot = listSlot?.ToList() ?? [];
-    }
+        Guard.Against.NullOrWhiteSpace(dokterId, nameof(dokterId));
+        Guard.Against.NullOrWhiteSpace(layananId, nameof(layananId));
+        Guard.Against.Null(pasien, nameof(pasien));
+        Guard.Against.Null(reg, nameof(reg));
+        Guard.Against.NegativeOrZero(noUrut, nameof(noUrut));
 
-    public static AntrianMapModel Create(PpaReff dokter, LayananReff layanan, 
-        DateOnly tglPraktek, TimeOnly jamPraktek, IEnumerable<AntrianMapSlotModel> listSlot)
-    {
-        Guard.Against.Null(dokter, nameof(dokter));
-        Guard.Against.Null(layanan, nameof(layanan));
-
-        return new AntrianMapModel(dokter, layanan, tglPraktek, jamPraktek, listSlot);
+        return new AntrianMapModel(tglPraktek, dokterId, layananId, jamPraktek, noUrut, pasien, reg, reffId, flag);
     }
 
     public static AntrianMapModel Default => new(
-        new PpaReff("-", "-"),
-        new LayananReff("-", "-"),
-        DateOnly.MinValue,
-        TimeOnly.MinValue,
-        []
+        TglPraktek: DateOnly.MinValue,
+        DokterId: "-",
+        LayananId: "-",
+        JamJadwal: TimeOnly.MinValue,
+        NoUrut: 0,
+        Pasien: new PasienReff("-", "-", new DateOnly(3000, 1, 1), "-"),
+        Reg: new RegReff("-", "-", "_"),
+        ReffId: "-",
+        Flag: "-"
     );
 
-    public static IAntrianMapKey Key(string ppaId, string layananId, DateOnly tglPraktek, TimeOnly jamPraktek) =>
-        Default with { Dokter = new PpaReff(ppaId, "-"), 
-            Layanan = new LayananReff(layananId, "-"), 
-            TglPraktek = tglPraktek, 
-            JamPraktek = jamPraktek };
+    public static AntrianMapModel AutoSlot(DateOnly tglPraktek, string dokterId, string layananId, TimeOnly jamPraktek, int noUrut) =>
+        new(
+            TglPraktek: tglPraktek,
+            DokterId: dokterId,
+            LayananId: layananId,
+            JamJadwal: jamPraktek,
+            NoUrut: noUrut,
+            Pasien: new PasienReff("-", "-", new DateOnly(3000, 1, 1), "-"),
+            Reg: new RegReff("-", "-", "_"),
+            ReffId: "-",
+            Flag: "AUTO"
+        );
     #endregion
 
-    #region PROPERTIES
-    public PpaReff Dokter { get; init; }
-    public LayananReff Layanan { get; init; }
-    public DateOnly TglPraktek { get; init; }
-    public TimeOnly JamPraktek { get; init; }
-    public IEnumerable<AntrianMapSlotModel> ListSlot => _listSlot;
+    #region BEHAVIOR
+    public AntrianMapModel SetPasien(PasienReff pasien, RegReff reg, string reffId, string flag) =>
+        this with { Pasien = pasien, Reg = reg, ReffId = reffId, Flag = flag };
 
-    
-    public string PpaId => Dokter.PpaId;
-    public string LayananId => Layanan.LayananId;
-    #endregion
-
-    #region BEHAVIOUR
-    
-    public void GenerateSlot(int jumlah)
+    public AntrianMapModel Void() => this with
     {
-        Guard.Against.NegativeOrZero(jumlah);
-
-        var slots =  Enumerable.Range(1, jumlah)
-            .Select(i => new AntrianMapSlotModel(
-                NoUrut: i,
-                Pasien: new PasienReff("-", "-", new DateOnly(3000,1,1), "-"),
-                Reg: new RegReff("-", "-", "_"),
-                ReffId: "-",
-                Flag: "AUTO"
-            ));
-        _listSlot.AddRange(slots);
-    }
+        Pasien = new PasienReff("-", "-", new DateOnly(3000, 1, 1), "-"),
+        Reg = new RegReff("-", "-", "_"),
+        ReffId = "-",
+        Flag = "AUTO"
+    };
     #endregion
-}
-
-public record AntrianMapSlotModel(int NoUrut, PasienReff Pasien, RegReff Reg, string ReffId, string Flag);
-
-public interface IAntrianMapKey
-{
-    string PpaId { get; }
-    string LayananId { get; }
-    DateOnly TglPraktek { get; }
-    TimeOnly JamPraktek { get; }
 }

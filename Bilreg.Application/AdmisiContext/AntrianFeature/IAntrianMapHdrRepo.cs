@@ -3,8 +3,8 @@ using Nuna.Lib.DataAccessHelper;
 
 namespace Bilreg.Application.AdmisiContext.AntrianFeature;
 
-public interface IAntrianMapRepo :
-    ISaveChange<AntrianMapModel>,
-    ILoadEntity<AntrianMapModel, IAntrianMapKey>
+public interface IAntrianMapHdrRepo :
+    ISaveChange<AntrianMapHdrModel>,
+    ILoadEntity<AntrianMapHdrModel, IAntrianMapHdrKey>
 {
 }
