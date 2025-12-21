@@ -39,7 +39,7 @@ public class BookingRepo : IBookingRepo
         var booking = _bookingDal.GetData(key);
         
         var bookExt = _bookingExtDal.GetData(key)  
-            ?? new BookingExternalDto(key.BookingId, "", "", "");
+            ?? new BookingExternalDto(key.BookingId, "" , "", "");
 
         var model = booking?.ToModel(bookExt);
         
@@ -72,5 +72,12 @@ public class BookingRepo : IBookingRepo
         return booking is null ?
             MayBe<BookingModel>.None :
             LoadEntity(BookingModel.Key(booking.BookingId));
+    }
+
+    public IEnumerable<BookingExtView> ListDataExtApp(Periode periode)
+    {
+        var listDto = _bookingExtDal.ListData(periode)?.ToList() ?? [];
+        var view = listDto.Select(x => x.ToView()) ?? [];
+        return view;
     }
 }

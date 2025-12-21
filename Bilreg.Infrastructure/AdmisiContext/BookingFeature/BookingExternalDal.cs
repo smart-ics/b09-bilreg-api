@@ -3,6 +3,7 @@ using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
+using Nuna.Lib.ValidationHelper;
 using System.Data;
 using System.Data.SqlClient;
 
@@ -12,7 +13,8 @@ public interface IBookingExternalDal :
     IInsert<BookingExternalDto>,
     IUpdate<BookingExternalDto>,
     IDelete<IBookingKey>,
-    IGetData<BookingExternalDto, IBookingKey>
+    IGetData<BookingExternalDto, IBookingKey>,
+    IListData<BookingExtDto, Periode>
 {
     BookingExternalDto GetData(string ReffId);
 }
@@ -82,8 +84,8 @@ public class BookingExternalDal : IBookingExternalDal
     {
         const string sql = """
             SELECT
-                aa.BookingId, aa.ExtAppName, 
-                aa.ReffId, aa.CheckInQr
+                aa.BookingId, aa.ExtAppName,  
+            	aa.ReffId, aa.CheckInQr 
             FROM
                 BILRG_BookingExternal aa
             WHERE
@@ -101,8 +103,8 @@ public class BookingExternalDal : IBookingExternalDal
     {
         const string sql = """
             SELECT
-                aa.BookingId, aa.ExtAppName, 
-                aa.ReffId, aa.CheckInQr
+                aa.BookingId, aa.ExtAppName,  
+            	aa.ReffId, aa.CheckInQr 
             FROM
                 BILRG_BookingExternal aa
             WHERE
@@ -114,6 +116,37 @@ public class BookingExternalDal : IBookingExternalDal
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.ReadSingle<BookingExternalDto>(sql, dp);
+    }
+
+    public IEnumerable<BookingExtDto> ListData(Periode periode)
+    {
+        const string sql = """
+            SELECT
+                aa.BookingId, aa.BookingDate, aa.TglBerobat, 
+                aa.DokterId, aa.RegId, aa.PasienId, aa.PasienName,
+                aa.TglLahir, aa.Alamat, aa.Gender, 
+                aa.LayananId, aa.JamPraktek, aa.NoAntrian,
+                aa.TelpPasien, aa.AsuransiName, aa.NoPeserta, aa.NoRujukan,
+            	ISNULL(bb.ExtAppName,'') AS ExtAppName,  
+            	ISNULL(bb.ReffId,'') AS ReffId,
+            	ISNULL(bb.CheckInQr,'') AS CheckInQr, 
+            	ISNULL(cc.fs_nm_peg,'') AS DokterName,
+                ISNULL(dd.fs_nm_layanan,'') AS LayananName
+            FROM
+                BILRG_Booking aa
+            	LEFT JOIN BILRG_BookingExternal bb ON aa.BookingId = bb.BookingId
+            	LEFT JOIN td_peg cc ON aa.DokterId = cc.fs_kd_peg
+                LEFT JOIN ta_layanan dd ON aa.LayananId = dd.fs_kd_layanan
+            WHERE
+            	aa.TglBerobat BETWEEN @Tgl1 AND @Tgl2
+            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@Tgl1", periode.Tgl1, SqlDbType.DateTime);
+        dp.AddParam("@Tgl2", periode.Tgl2, SqlDbType.DateTime);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<BookingExtDto>(sql, dp);
     }
 }
 

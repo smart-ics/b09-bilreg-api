@@ -15,4 +15,6 @@ public interface IJadwalPraktekRepo :
     IListData<JadwalPraktekType, ILayananDkKey>,
     IListData<JadwalPraktekType, IGroupSpesialisKey>
 {
+    void Migrasi();
+
 }
