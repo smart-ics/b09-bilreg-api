@@ -58,6 +58,13 @@ public class StartOpModel : IStartOpKey
     public PasienReff Pasien { get; init; }
     public RegReff Reg { get; init; }
     #endregion
+
+    #region BEHAVIOURS
+    public void CancelStart(string userId)
+    {
+        AuditTrail.Batal(userId, DateTime.Now);
+    }
+    #endregion
 }
 
 public interface IStartOpKey

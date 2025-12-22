@@ -37,12 +37,14 @@ public record StartOpDto(
             RegId: model.Reg?.RegId ?? string.Empty,
             PasienId: model.Pasien?.PasienId ?? string.Empty,
             KamarOpId: model.KamarOp?.KamarId ?? string.Empty,
+
             CrtUser: model.AuditTrail.Created.UserId,
             CrtDate: model.AuditTrail.Created.Timestamp,
             UpdUser: model.AuditTrail.Modified.UserId,
             UpdDate: model.AuditTrail.Modified.Timestamp,
             VodUser: model.AuditTrail.Voided.UserId,
             VodDate: model.AuditTrail.Voided.Timestamp,
+
             NamaOperasi: model.OrderOp?.NamaOperasi ?? string.Empty,
             PasienName: model.Pasien?.PasienName ?? string.Empty,
             TglLahir: model.Pasien?.TglLahir.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)

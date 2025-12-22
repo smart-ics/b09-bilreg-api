@@ -107,6 +107,12 @@ public class OpCaseModel : IOrderOpKey
             var noUrut = _listStateHistory.Max(x => x.NoUrut) + 1;
             _listStateHistory.Add(new OpCaseStateHistType(noUrut, OrderOpState, DateTime.Now));
         }
+        else
+        {
+            var newStateHistory = stateHistory with { StateTimestamp = DateTime.Now };
+            _listStateHistory.Remove(stateHistory);
+            _listStateHistory.Add(newStateHistory);
+        };
     }
 
     public void Discharge(DischergeOpReff discharge)

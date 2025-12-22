@@ -15,10 +15,8 @@ public record OkStartOpResponse(
     string StartOpId,
     string OrderOpId,
     string ScheduleOpId,
-    string NamaOperasi,
     string RegId,
-    string PasienId,
-    string PasienName);
+    string PasienId);
 
 public class OkStartOpHandler : IRequestHandler<OkStartOpCommand, OkStartOpResponse>
 {
@@ -59,7 +57,17 @@ public class OkStartOpHandler : IRequestHandler<OkStartOpCommand, OkStartOpRespo
         var tglOp = DateTime.ParseExact(
             $"{ scheduleOp.TglOp.ToString(DateFormatEnum.YMD) } { request.Jam }", "yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
 
-        var startOp = StartOpModel.CreateFromSchedule(scheduleOp, tglOp, kamar, request.UserId);
+        var existing = FindExistingStartOp(scheduleOp.TglOp, scheduleOp.ScheduleOpId);
+
+        var startOp = existing != null ?
+            _startOpRepo.LoadEntity(StartOpModel.Key(existing.StartOpId)).GetValueOrDefault()
+            : null;
+
+        if (startOp != null)
+        {
+            startOp.CancelStart(request.UserId);
+        }
+        var newStartOp = StartOpModel.CreateFromSchedule(scheduleOp, tglOp, kamar, request.UserId);
 
         var opCase = _opCaseRepo.LoadEntity(orderOp)
             .GetValueOrDefault()
@@ -68,11 +76,20 @@ public class OkStartOpHandler : IRequestHandler<OkStartOpCommand, OkStartOpRespo
 
         //  WRITE
         using var trans = TransHelper.NewScope();
-        _startOpRepo.SaveChanges(startOp);
+        if (startOp != null)
+            _startOpRepo.SaveChanges(startOp);
+        _startOpRepo.SaveChanges(newStartOp);
         _opCaseRepo.SaveChanges(opCase);
         trans.Complete();
 
-        return Task.FromResult(Response(startOp));
+        return Task.FromResult(Response(newStartOp));
+    }
+
+    private StartOpView? FindExistingStartOp(DateTime scheduledTime, string scheduleOpId)
+    {
+        var listStart = _startOpRepo.ListData(scheduledTime) ?? [];
+        var result = listStart.FirstOrDefault(x => x.ScheduleOpId == scheduleOpId);
+        return result;
     }
 
     private OkStartOpResponse Response(StartOpModel startOp)
@@ -81,10 +98,8 @@ public class OkStartOpHandler : IRequestHandler<OkStartOpCommand, OkStartOpRespo
             StartOpId: startOp.StartOpId,
             OrderOpId: startOp.OrderOp.OrderOpId,
             ScheduleOpId: startOp.ScheduleOp.ScheduleOpId,
-            NamaOperasi: startOp.OrderOp.NamaOperasi,
             RegId: startOp.Reg.RegId,
-            PasienId: startOp.Pasien.PasienId,
-            PasienName: startOp.Pasien.PasienName
+            PasienId: startOp.Pasien.PasienId
         );
     }
 }
