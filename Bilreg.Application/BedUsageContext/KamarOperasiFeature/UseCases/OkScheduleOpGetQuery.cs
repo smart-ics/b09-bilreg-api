@@ -8,7 +8,7 @@ namespace Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
 
 public record OkScheduleOpGetQuery(string OrderOpId) : IRequest<ScheduleOpGetResponse>, IOrderOpKey;
 
-public record ScheduleOpGetResponse(string OrderOpId, string NamaOperasi, string Urgency,
+public record ScheduleOpGetResponse(string OrderOpId, string ScheduleOpId, string NamaOperasi, string Urgency,
     string PasienId, string PasienName, string RegId, string TglOp, string JamOp,
     string KamarId, string KamarName,
     string DokterId, string DokterName,
@@ -42,7 +42,7 @@ public class OkScheduleOpGetHandler : IRequestHandler<OkScheduleOpGetQuery, Sche
         var scheduleOp = _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(scheduleWithOrderOpId.ScheduleOpId))
             .GetValueOrThrow($"Schedule Operasi untuk Order Operasi ID {request.OrderOpId} tidak ditemukan.");
 
-        var response = new ScheduleOpGetResponse(scheduleOp.OrderOp.OrderOpId,
+        var response = new ScheduleOpGetResponse(scheduleOp.OrderOp.OrderOpId, scheduleOp.ScheduleOpId,
             orderOp.NamaOperasi,
             orderOp.UrgencyLevel.ToString(),
             scheduleOp.Pasien.PasienId,

@@ -20,12 +20,12 @@ public record OrderOpDto(
     DateTime PreferedDate,
     string SpecialEquipment,
     //
-    string CreateUserId,
-    DateTime CreateTimestamp,
-    string UpdateUserId,
-    DateTime UpdateTimestamp,
-    string VoidUserId,
-    DateTime VoidTimestamp,
+    string CrtUser,
+    DateTime CrtDate,
+    string UpdUser,
+    DateTime UpdDate,
+    string VodUser,
+    DateTime VodDate,
     //
     string PasienName,
     string TglLahir,
@@ -69,9 +69,9 @@ public record OrderOpDto(
     public OrderOpModel ToModel()
     {
         var auditTrail = new AuditTrailType(
-            new AuditInfoType(CreateUserId, CreateTimestamp),
-            new AuditInfoType(UpdateUserId, UpdateTimestamp),
-            new AuditInfoType(VoidUserId, VoidTimestamp)
+            new AuditInfoType(CrtUser, CrtDate),
+            new AuditInfoType(UpdUser, UpdDate),
+            new AuditInfoType(VodUser, VodDate)
         );
         var pasien = new PasienReff(PasienId, PasienName,
             DateOnly.FromDateTime(DateTime.Parse(TglLahir)), Gender);
