@@ -4,6 +4,7 @@ using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
+using System.Globalization;
 
 namespace Bilreg.Infrastructure.AdmisiContext.BookingFeature;
 
@@ -26,7 +27,7 @@ public record BookingDto(
     public static BookingDto FromModel(BookingModel model)
     {
         var tglBerobat = model.TglBerobat.ToDateTime(TimeOnly.MinValue);
-        var jamPraktek = model.JamPraktek.ToString("HH:mm");
+        var jamPraktek = model.JamPraktek.ToString("HH:mm", CultureInfo.InvariantCulture);
         var birthDate = model.Person.TglLahir.ToDateTime(TimeOnly.MinValue);
         var telpPasien = model.Person.Contact.ContactDetail;
         var result = new BookingDto(
