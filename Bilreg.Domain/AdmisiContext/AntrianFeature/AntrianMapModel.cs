@@ -46,7 +46,7 @@ public record AntrianMapModel(
         Pasien: new PasienReff("-", "-", new DateOnly(3000, 1, 1), "-"),
         Reg: new RegReff("-", "-", "_"),
         ReffId: "-",
-        Flag: "-"
+        Flag: ""
     );
 
     public static AntrianMapModel AutoSlot(DateOnly tglPraktek, string dokterId, string layananId, TimeOnly jamPraktek, int noUrut) =>

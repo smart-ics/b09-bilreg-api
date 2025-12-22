@@ -182,6 +182,7 @@
     <None Include="ChargeContext\AmbulanceFeature\ta_transport.sql" />
     <None Include="ChargeContext\AmbulanceFeature\ta_tujuan_transport.sql" />
     <None Include="Helpers\DatabaseUser.sql" />
+    <None Include="AdmisiContext\AntrianFeature\ta_antrian_map_hdr.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="BedUsageContext\KamarOperasiFeature\BILRG_ScheduleOp.sql" />

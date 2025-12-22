@@ -55,15 +55,11 @@ public record AntrianMapHdrModel : IAntrianMapHdrKey
         listMap: []
     );
 
-    public static IAntrianMapHdrKey Key(string jadwalId, DateOnly tglJadwal, string dokterId, string layananId, TimeOnly jamJadwal) =>
-        Default with
-        {
-            JadwalId = jadwalId,
-            TglJadwal = tglJadwal,
-            Dokter = new PpaReff(dokterId, "-"),
-            Layanan = new LayananReff(layananId, "-"),
-            JamJadwal = jamJadwal
-        };
+    public static IAntrianMapHdrKey Key(string jadwalId, DateOnly tglJadwal,
+        string dokterId, string layananId, TimeOnly jamJadwal) =>
+        new AntrianMapHdrModel(jadwalId, new PpaReff(dokterId, "-"),
+            new LayananReff(layananId, "-"), tglJadwal, jamJadwal,
+            TimeOnly.MinValue, []);
 
     #endregion
 

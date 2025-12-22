@@ -6,7 +6,7 @@ namespace Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
 public record AntrianMapDto(
     string fs_kd_dokter, string fs_kd_layanan,
     string fd_tgl_jadwal, string fs_jam_jadwal,
-    int fn_no_antrian, string fs_flag,
+    decimal fn_no_antrian, string fs_flag,
     string fs_mr, string fs_nm_pasien,
     string fs_kd_trs_gen,
     string fs_nm_dokter, string fs_nm_layanan
