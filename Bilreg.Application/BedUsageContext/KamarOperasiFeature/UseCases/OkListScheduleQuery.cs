@@ -8,7 +8,7 @@ public record OkListScheduleQuery(string TglYmd) : IRequest<IEnumerable<OkListSc
 public record OkListScheduleResponse(
     string PasienId, string PasienName, string TglLahir,
     string OrderOpId, string ScheduleOpId, string NamaOperasi, string Urgency,
-    int Durasi, string StartTime,
+    int Durasi, string ScheduledTime,
     string DokterId, string DokterName,
     string KamarId, string KamarName);
 
