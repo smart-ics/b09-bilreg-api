@@ -7,11 +7,11 @@ namespace Bilreg.Api.Controllers.BedUsageContext.KamarOperasiFeature;
 
 [Route("api/[controller]")]
 [ApiController]
-public class StartOpController : ControllerBase
+public class OperationController : ControllerBase
 {
     private readonly IMediator _mediator;
 
-    public StartOpController(IMediator mediator)
+    public OperationController(IMediator mediator)
     {
         _mediator = mediator;
     }
