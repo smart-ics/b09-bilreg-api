@@ -44,6 +44,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
     private readonly IRegRepo _regRepo;
     private readonly IPasienTrackerRepo _trackerRepo;
     private readonly IRegAktifRepo _regAktifRepo;
+    private readonly IAntrianMapHdrRepo _antrianMapRepo;
 
     private const string BAYAR_SENDIRI = "1";
 
@@ -61,7 +62,8 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         IKarcisRepo karcisRepo,
         IRegRepo regRepo,
         IPasienTrackerRepo trackerRepo,
-        IRegAktifRepo regAktifRepo)
+        IRegAktifRepo regAktifRepo,
+        IAntrianMapHdrRepo antrianMapRepo)
     {
         _pasienRepo = pasienRepo;
         _tipeJaminanRepo = tipeJaminanRepo;
@@ -78,6 +80,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         _regRepo = regRepo;
         _trackerRepo = trackerRepo;
         _regAktifRepo = regAktifRepo;
+        _antrianMapRepo = antrianMapRepo;
     }
 
     public Task<RegJalanCreateResponse> Handle(RegJalanWalkInCommand request, CancellationToken cancellationToken)
@@ -102,6 +105,9 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         var tglBerobat = DateOnly.FromDateTime(DateTime.Now);
         var jadwal = ResolveJadwalPraktek(dokter, request.JamPraktek, tglBerobat);
         var antrian = ResolveAntrian(tglBerobat, dokter, jadwal);
+        // antrianMap
+        var antrianMap = CekAntrianMap(jadwal, tglBerobat);
+        var noAntrian = antrianMap.GetNextNoAntrian();
 
         var regMasukAudit = new AuditInfoType(request.UserId, DateTime.Now);
         var reg = _regFactory.CreateRegRajal(pasien, regMasukAudit,
@@ -116,11 +122,16 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         var tracker = PasienTrackerModel.Create(reg);
 
         using var trans = TransHelper.NewScope();
-        var antEntry = antrian.AddEntry(tracker);
+        var antEntry = antrian.AddEntry(noAntrian, tracker);
         _regRepo.SaveChanges(reg);
         _antrianRepo.SaveChanges(antrian);
         _trackerRepo.SaveChanges(tracker);
         _regAktifRepo.SaveChanges(regAktif);
+
+        // rubah antrianMapHdr
+        antrianMap.SetDataPasien(noAntrian, reg.Pasien, reg.ToReff(), reg.RegId, "AUTO");
+        _antrianMapRepo.SaveChanges(antrianMap);
+
         trans.Complete();
 
         return Task.FromResult(new RegJalanCreateResponse(reg.RegId, antEntry.NoUrut));
@@ -214,6 +225,43 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         if (polisView == null)
             throw new ArgumentException("Polis not found");
         return _polisRepo.LoadEntity(polisView).Value;
+    }
+
+    private AntrianMapHdrModel CekAntrianMap(JadwalPraktekType jadwal, DateOnly tglJadwal)
+    {
+        var ppaKey = PpaType.Key(jadwal.Dokter.PpaId);
+
+        var listAntrianMap = _antrianMapRepo
+            .ListData(jadwal.Layanan, ppaKey, tglJadwal)?
+            .ToList() ?? [];
+
+        var antrianThis = listAntrianMap
+            .SingleOrDefault(x => x.JamJadwal == jadwal.JamMulai);
+
+        if (antrianThis is not null)
+        {
+            var antKey = AntrianMapHdrModel.Key(
+                antrianThis.JadwalId,
+                antrianThis.TglJadwal,
+                antrianThis.dokter.PpaId,
+                antrianThis.Layanan.LayananId,
+                antrianThis.JamJadwal);
+
+            return _antrianMapRepo.LoadEntity(antKey).Value;
+        }
+
+        var queueHdr = AntrianMapHdrModel.Create(
+            jadwal.JadwalPraktekId,
+            jadwal.Dokter,
+            jadwal.Layanan,
+            tglJadwal,
+            jadwal.JamMulai,
+            jadwal.JamMulai,
+            []);
+
+        queueHdr.GenerateSlot(jadwal.MaxPasien);
+
+        return queueHdr;
     }
     #endregion
 }

@@ -67,8 +67,8 @@ public class AntrianMapHdrDal : IAntrianMapHdrDal
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_jadwal", dto.fs_kd_jadwal, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_dokter", dto.fs_kd_dokter, SqlDbType.VarChar);
-        dp.AddParam("@fs_kd_layanan", dto.fs_kd_layanan, SqlDbType.Bit);
-        dp.AddParam("@fd_tgl_jadwal", dto.fd_tgl_jadwal, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_layanan", dto.fs_kd_layanan, SqlDbType.VarChar);
+        dp.AddParam("@fd_tgl_jadwal", dto.fd_tgl_jadwal, SqlDbType.DateTime);
         dp.AddParam("@fs_jam_jadwal", dto.fs_jam_jadwal, SqlDbType.VarChar);
         dp.AddParam("@fs_jam_praktek", dto.fs_jam_praktek, SqlDbType.VarChar);
 

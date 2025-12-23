@@ -129,6 +129,15 @@ public record AntrianMapHdrModel : IAntrianMapHdrKey
         _listMap.AddRange(newList);
     }
 
+    public int GetNextNoAntrian()
+    {
+        return _listMap
+            .Where(x => string.IsNullOrEmpty(x.ReffId))
+            .Select(x => x.NoUrut)
+            .DefaultIfEmpty(1)
+            .Min();
+    }
+
     public int TotalSlotCount => _listMap.Count;
 
     public IEnumerable<AntrianMapModel> GetAllSlots() => _listMap;

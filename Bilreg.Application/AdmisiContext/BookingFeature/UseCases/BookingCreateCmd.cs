@@ -82,8 +82,7 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
 
         // antrianMap
         var antrianMap = CekAntrianMap(jadwal, tglBerobat);
-        var availableSlot = antrianMap.ListMap.Where(x => x.ReffId == "-")
-            .OrderBy(x => x.NoUrut).FirstOrDefault();
+        var noAntrian = antrianMap.GetNextNoAntrian();
         var pasien = new PasienReff(request.PasienId, request.PasienName, person.TglLahir, person.Gender);
 
 
@@ -91,7 +90,7 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         using var trans = TransHelper.NewScope();
         
         //      no antrian masuk ke transaction agar bisa rollback jika gagal
-        var antEntry = antrian.AddEntry(availableSlot!.NoUrut, tracker);
+        var antEntry = antrian.AddEntry(noAntrian, tracker);
         booking.AssignNoAntrian(antEntry.NoUrut);
         
         //      writing database
@@ -100,7 +99,7 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         _trackerRepo.SaveChanges(tracker);
 
         // rubah antrianMapHdr
-        antrianMap.SetDataPasien(availableSlot.NoUrut, pasien, booking.Reg, booking.BookingId, "AUTO");
+        antrianMap.SetDataPasien(noAntrian, pasien, booking.Reg, booking.BookingId, "AUTO");
         _antrianMapRepo.SaveChanges(antrianMap);
 
         trans.Complete();
@@ -144,28 +143,45 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
             throw new ArgumentException("Pasien terdeteksi di tracker. Booking terduplikasi");
     }
 
-
     private AntrianMapHdrModel CekAntrianMap(JadwalPraktekType jadwal, DateOnly tglJadwal)
     {
         var ppaKey = PpaType.Key(jadwal.Dokter.PpaId);
-        var listAntrianMap = _antrianMapRepo.ListData(jadwal.Layanan, ppaKey, tglJadwal)?.ToList() ?? [];
-        AntrianMapHdrModel queueHdr;
-        if (listAntrianMap.Count > 0)
+
+        var listAntrianMap = _antrianMapRepo
+            .ListData(jadwal.Layanan, ppaKey, tglJadwal)?
+            .ToList() ?? [];
+
+        var antrianThis = listAntrianMap
+            .SingleOrDefault(x => x.JamJadwal == jadwal.JamMulai);
+
+        if (antrianThis is not null)
         {
-            var antrianThis = listAntrianMap.FirstOrDefault(x => x.JamJadwal == jadwal.JamMulai);
-            var antKey = AntrianMapHdrModel.Key(antrianThis.JadwalId, antrianThis.TglJadwal, antrianThis.dokter.PpaId, 
-                antrianThis.Layanan.LayananId, antrianThis.JamJadwal);
-            queueHdr = _antrianMapRepo.LoadEntity(antKey).Value;
+            var antKey = AntrianMapHdrModel.Key(
+                antrianThis.JadwalId,
+                antrianThis.TglJadwal,
+                antrianThis.dokter.PpaId,
+                antrianThis.Layanan.LayananId,
+                antrianThis.JamJadwal);
+
+            return _antrianMapRepo.LoadEntity(antKey).Value;
         }
-        else
-        {
-            queueHdr = AntrianMapHdrModel.Create(jadwal.JadwalPraktekId, jadwal.Dokter,
-                jadwal.Layanan, tglJadwal, jadwal.JamMulai, jadwal.JamMulai, []);
-            queueHdr.GenerateSlot(jadwal.MaxPasien);
-        }
+
+        var queueHdr = AntrianMapHdrModel.Create(
+            jadwal.JadwalPraktekId,
+            jadwal.Dokter,
+            jadwal.Layanan,
+            tglJadwal,
+            jadwal.JamMulai,
+            jadwal.JamMulai,
+            []);
+
+        queueHdr.GenerateSlot(jadwal.MaxPasien);
 
         return queueHdr;
-
     }
-    
+
+
+
+
+
 }
