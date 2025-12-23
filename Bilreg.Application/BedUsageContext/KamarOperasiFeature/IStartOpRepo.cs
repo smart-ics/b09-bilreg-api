@@ -14,4 +14,4 @@ public interface IStartOpRepo :
 
 public record StartOpView(
     string StartOpId, string ScheduleOpId, string OrderOpId, DateTime StartOpTime,
-    string RegId, string PasienId, string PasienName);
+    string RegId, string PasienId, string PasienName, bool IsVoid);

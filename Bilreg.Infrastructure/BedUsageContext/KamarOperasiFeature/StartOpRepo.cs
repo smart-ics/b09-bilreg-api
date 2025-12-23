@@ -1,7 +1,6 @@
 ﻿using Bilreg.Application.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Nuna.Lib.PatternHelper;
-using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature;
 
@@ -40,10 +39,7 @@ public class StartOpRepo : IStartOpRepo
 
     public IEnumerable<StartOpView> ListData(DateTime filter)
     {
-        var listDto = _startOpDal.ListData(filter)?.ToList() ?? [];
-        var result = listDto.Select(x =>
-            new StartOpView(x.StartOpId, x.ScheduleOpId, x.OrderOpId, x.StartOpTime, x.RegId, x.PasienId, x.PasienName));
-
-        return result;
+        var dto = _startOpDal.ListData(filter)?.ToList() ?? [];
+        return dto.Select(x => x.ToView());
     }
 }

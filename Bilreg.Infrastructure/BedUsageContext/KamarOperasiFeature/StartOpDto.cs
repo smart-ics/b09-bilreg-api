@@ -1,8 +1,10 @@
-﻿using Bilreg.Domain.AdmisiContext.RegFeature;
+﻿using Bilreg.Application.BedUsageContext.KamarOperasiFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
+using Nuna.Lib.ValidationHelper;
 using System.Globalization;
 
 namespace Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature;
@@ -76,6 +78,14 @@ public record StartOpDto(
             kamar,
             pasien,
             reg
+        );
+    }
+
+    public StartOpView ToView()
+    {
+        return new StartOpView(
+            StartOpId, ScheduleOpId, OrderOpId, StartOpTime, RegId, PasienId, PasienName,
+            VodDate.ToString(DateFormatEnum.YMD) != "3000-01-01"
         );
     }
 }
