@@ -1,4 +1,5 @@
 ﻿using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
+using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;
@@ -13,7 +14,8 @@ public interface IStartOpDal :
     IUpdate<StartOpDto>,
     IDelete<IStartOpKey>,
     IGetData<StartOpDto, IStartOpKey>,
-    IListData<StartOpDto, DateTime>
+    IListData<StartOpDto, DateTime>,
+    IListData<StartOpDto, IPasienKey>
 {
 }
 
@@ -160,6 +162,33 @@ public class StartOpDal : IStartOpDal
         var dp = new DynamicParameters();
         dp.AddParam("@Tgl1", tgl1, SqlDbType.DateTime);
         dp.AddParam("@Tgl2", tgl2, SqlDbType.DateTime);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<StartOpDto>(sql, dp);
+    }
+
+    public IEnumerable<StartOpDto> ListData(IPasienKey filter)
+    {
+        const string sql = @"
+            SELECT
+                aa.StartOpId, aa.StartOpTime, aa.OrderOpId, aa.ScheduleOpId,
+                aa.RegId, aa.PasienId, aa.KamarOpId,
+                aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
+                ISNULL(bb.NamaOperasi, '') AS NamaOperasi,
+                ISNULL(cc.fs_nm_pasien, '') AS PasienName,
+                ISNULL(cc.fd_tgl_lahir, '3000-01-01') AS TglLahir,
+                ISNULL(cc.fs_jns_kelamin, '') AS Gender,
+                ISNULL(dd.fs_nm_kamar, '') AS KamarName
+            FROM
+                BILRG_StartOp aa
+                LEFT JOIN BILRG_OrderOp bb ON aa.OrderOpId = bb.OrderOpId
+                LEFT JOIN tc_mr cc ON aa.PasienId = cc.fs_mr
+                LEFT JOIN ta_kamar dd ON aa.KamarOpId = dd.fs_kd_kamar
+            WHERE
+                aa.PasienId = @PasienId";
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@PasienId", filter.PasienId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<StartOpDto>(sql, dp);

@@ -1,5 +1,6 @@
 ﻿using Bilreg.Application.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
+using Bilreg.Domain.PasienContext.PasienFeature;
 using Nuna.Lib.PatternHelper;
 
 namespace Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature;
@@ -38,6 +39,12 @@ public class StartOpRepo : IStartOpRepo
     }
 
     public IEnumerable<StartOpView> ListData(DateTime filter)
+    {
+        var dto = _startOpDal.ListData(filter)?.ToList() ?? [];
+        return dto.Select(x => x.ToView());
+    }
+
+    public IEnumerable<StartOpView> ListData(IPasienKey filter)
     {
         var dto = _startOpDal.ListData(filter)?.ToList() ?? [];
         return dto.Select(x => x.ToView());

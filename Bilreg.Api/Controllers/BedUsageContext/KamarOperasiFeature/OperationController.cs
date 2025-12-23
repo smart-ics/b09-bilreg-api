@@ -23,4 +23,13 @@ public class OperationController : ControllerBase
         var response = await _mediator.Send(cmd);
         return Ok(new JSendOk(response));
     }
+
+    [HttpGet]
+    [Route("{scheduleOpId}")]
+    public async Task<IActionResult> GetOperation(string scheduleOpId)
+    {
+        var cmd = new OkOnOperationGetQuery(scheduleOpId);
+        var response = await _mediator.Send(cmd);
+        return Ok(new JSendOk(response));
+    }
 }

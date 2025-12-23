@@ -1,6 +1,6 @@
 ﻿using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
+using Bilreg.Domain.PasienContext.PasienFeature;
 using Nuna.Lib.DataAccessHelper;
-using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.BedUsageContext.KamarOperasiFeature;
 
@@ -8,7 +8,8 @@ public interface IStartOpRepo :
     ISaveChange<StartOpModel>,
     ILoadEntity<StartOpModel, IStartOpKey>,
     IDeleteEntity<IStartOpKey>,
-    IListData<StartOpView, DateTime>
+    IListData<StartOpView, DateTime>,
+    IListData<StartOpView, IPasienKey>
 {
 }
 
