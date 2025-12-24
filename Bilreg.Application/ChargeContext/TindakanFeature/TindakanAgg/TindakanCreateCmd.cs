@@ -68,41 +68,13 @@ public class TindakanCreateHandler : IRequestHandler<TindakanCreateCmd, Tindakan
         Guard.Against.NullOrWhiteSpace(request.TipeTarifId);
         Guard.Against.NullOrWhiteSpace(request.KelasId);
 
-        var reg = _regRepo.LoadEntity(request)
-            .Match(
-                onSome: x => x,
-                onNone: () => throw new KeyNotFoundException($"Register {request.RegId} not found")
-            );
-        var pasien = _pasienRepo.LoadEntity(PasienModel.Key(reg.Pasien.PasienId))
-            .Match(
-                onSome: x => x,
-                onNone : () => throw new KeyNotFoundException($"pasien {reg.Pasien.PasienId} not found")
-            );
-        var layanan = _layananRepo.LoadEntity(request)
-            .Match(
-                onSome: x => x,
-                onNone: () => throw new KeyNotFoundException($"Layanan {request.LayananId} not found")
-            );
-        var tipeTarif = _tipeTarifRepo.LoadEntity(TipeTarifType.Key(request.TipeTarifId))
-            .Match(
-                onSome: x => x,
-                onNone: () => throw new KeyNotFoundException($"Tipe Tarif {request.TipeTarifId} not found")
-            );
-        var orderTdk = _orderTdkRepo.LoadEntity(request)
-            .Match(
-                onSome: x => x,
-                onNone: () => OrderTdkModel.Default
-            );
-        var tarif = _tarifRepo.LoadEntity(request)
-            .Match(
-                onSome: x => x,
-                onNone: () => throw new KeyNotFoundException($"Tarif {request.TarifId} not found")
-            );
-        var nilaiTarif = _nilaiTarifRepo.LoadEntity(request)
-            .Match(
-                onSome: x => x,
-                onNone: () => throw new KeyNotFoundException($"Nilai Tarif {request.TarifId} not found")
-            );
+        var reg = LoadReg(request);
+        var pasien = LoadPasien(PasienModel.Key(reg.Pasien.PasienId));
+        var layanan = LoadLayanan(request);
+        var tipeTarif = LoadTipeTarif(TipeTarifType.Key(request.TipeTarifId));
+        var orderTdk = LoadOrderTdk(request);
+        var tarif = LoadTarif(request);
+        var nilaiTarif = LoadNilaiTaif(request);
         
         var tdkTarif = BuildTindakanTarif(request, tarif, nilaiTarif);
 
@@ -118,10 +90,78 @@ public class TindakanCreateHandler : IRequestHandler<TindakanCreateCmd, Tindakan
         
         _tindakanRepo.SaveChanges(tindakan);
 
-
         return Task.FromResult(new TindakanCreateRespose(tindakan.TindakanId));
     }
 
+    #region PRIVATE-HELPER
+
+    private RegModel LoadReg(IRegKey key)
+    {
+        var result = _regRepo.LoadEntity(key)
+            .Match(
+                onSome: x => x,
+                onNone: () => throw new KeyNotFoundException($"Register {key.RegId} not found")
+            );
+        return result;
+    }
+
+    private PasienModel LoadPasien(IPasienKey pasienKey)
+    {
+        var pasien = _pasienRepo.LoadEntity(pasienKey)
+            .Match(
+                onSome: x => x,
+                onNone: () => throw new KeyNotFoundException($"pasien {pasienKey.PasienId} not found")
+            );
+        return pasien;
+    }
+
+    private LayananType LoadLayanan(ILayananKey lynKey)
+    {
+        var layanan = _layananRepo.LoadEntity(lynKey)
+            .Match(
+                onSome: x => x,
+                onNone: () => throw new KeyNotFoundException($"Layanan {lynKey.LayananId} not found")
+            );
+        return layanan;  
+    }
+    
+    private TipeTarifType LoadTipeTarif(ITipeTarifKey tpTarifKey)
+    {
+        var tipeTarif = _tipeTarifRepo.LoadEntity(tpTarifKey)
+            .Match(
+                onSome: x => x,
+                onNone: () => throw new KeyNotFoundException($"Tipe Tarif {tpTarifKey.TipeTarifId} not found")
+            );
+        return tipeTarif;
+    }
+    private OrderTdkModel LoadOrderTdk(IOrderTdkKey orderKey)
+    {
+        var orderTdk = _orderTdkRepo.LoadEntity(orderKey)
+            .Match(
+                onSome: x => x,
+                onNone: () => OrderTdkModel.Default
+            );
+        return orderTdk;
+    }
+    
+    private TarifType LoadTarif(ITarifKey tarifKey)
+    {
+        var tarif = _tarifRepo.LoadEntity(tarifKey)
+            .Match(
+                onSome: x => x,
+                onNone: () => throw new KeyNotFoundException($"Tarif {tarifKey.TarifId} not found")
+            );
+        return tarif;
+    }
+    private NilaiTarifType LoadNilaiTaif(INilaiTarifCompositKey nilaiKey)
+    {
+        var nilaiTarif = _nilaiTarifRepo.LoadEntity(nilaiKey)
+            .Match(
+                onSome: x => x,
+                onNone: () => throw new KeyNotFoundException($"Nilai Tarif {nilaiKey.TarifId} not found")
+            );
+        return nilaiTarif;
+    }
     public TindakanTarifModel BuildTindakanTarif(
     TindakanCreateCmd request,
     TarifType tarif,
@@ -168,4 +208,6 @@ public class TindakanCreateHandler : IRequestHandler<TindakanCreateCmd, Tindakan
                 onNone: () => PpaType.Default);
     }
 
+
+    #endregion
 }
