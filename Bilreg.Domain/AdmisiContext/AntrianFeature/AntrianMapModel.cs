@@ -45,7 +45,7 @@ public record AntrianMapModel(
         NoUrut: 0,
         Pasien: new PasienReff("-", "-", new DateOnly(3000, 1, 1), "-"),
         Reg: new RegReff("-", "-", "_"),
-        ReffId: "-",
+        ReffId: "",
         Flag: ""
     );
 
@@ -58,7 +58,7 @@ public record AntrianMapModel(
             NoUrut: noUrut,
             Pasien: new PasienReff("-", "-", new DateOnly(3000, 1, 1), "-"),
             Reg: new RegReff("-", "-", "_"),
-            ReffId: "-",
+            ReffId: "",
             Flag: "AUTO"
         );
     #endregion
@@ -69,8 +69,6 @@ public record AntrianMapModel(
 
     public AntrianMapModel Void() => this with
     {
-        Pasien = new PasienReff("-", "-", new DateOnly(3000, 1, 1), "-"),
-        Reg = new RegReff("-", "-", "_"),
         ReffId = "-",
         Flag = "AUTO"
     };

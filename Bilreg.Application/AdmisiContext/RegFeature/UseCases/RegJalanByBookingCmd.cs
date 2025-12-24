@@ -1,4 +1,5 @@
 ﻿using Bilreg.Application.AdmisiContext.BookingFeature;
+using Bilreg.Application.AdmisiContext.JaminanFeature;
 using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.AdmisiContext.RujukanFeature;
@@ -12,11 +13,13 @@ using Bilreg.Domain.AdmisiContext.RujukanFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
+using Nuna.Lib.DataTypeExtension;
 using Nuna.Lib.TransactionHelper;
 
 namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 
-public record RegJalanByBookingCmd(string BookingId, string UserId, string KarcisId, string CaraMasukDkId) : IRequest<RegJalanByBookingResponse>;
+public record RegJalanByBookingCmd(string BookingId, string UserId, string KarcisId, 
+    string CaraMasukDkId, string TipeJaminanId) : IRequest<RegJalanByBookingResponse>;
 
 public record RegJalanByBookingResponse(string RegId, int NoAntrian);
 public class RegJalanByBookingHandler 
@@ -31,7 +34,11 @@ public class RegJalanByBookingHandler
     private readonly IRegRepo _regRepo;
     private readonly IRegAktifRepo _regAktifRepo;
     private readonly ICaraMasukDkRepo _caraMasukDkRepo;
-    
+    private readonly ITipeJaminanRepo _tipeJaminanRepo;
+    private readonly IPolisRepo _polisRepo;
+    private readonly IRujukanRepo _rujukanRepo;
+
+    private const string BAYAR_SENDIRI = "1";
     public RegJalanByBookingHandler(
         IBookingRepo bookingRepo,
         IPasienRepo pasienRepo,
@@ -41,7 +48,10 @@ public class RegJalanByBookingHandler
         IKarcisRepo karcisRepo,
         IRegRepo regRepo,
         IRegAktifRepo regAktifRepo,
-        ICaraMasukDkRepo caraMasukDkRepo)
+        ICaraMasukDkRepo caraMasukDkRepo,
+        ITipeJaminanRepo tipeJaminanRepo,
+        IPolisRepo polisRepo,
+        IRujukanRepo rujukanRepo)
     {
         _bookingRepo = bookingRepo;
         _pasienRepo = pasienRepo;
@@ -52,6 +62,9 @@ public class RegJalanByBookingHandler
         _regRepo = regRepo;
         _regAktifRepo = regAktifRepo;
         _caraMasukDkRepo = caraMasukDkRepo;
+        _tipeJaminanRepo = tipeJaminanRepo;
+        _polisRepo = polisRepo;
+        _rujukanRepo = rujukanRepo;
     }
 
     public Task<RegJalanByBookingResponse> Handle(RegJalanByBookingCmd request, CancellationToken cancellationToken)
@@ -63,16 +76,23 @@ public class RegJalanByBookingHandler
         var layanan = LoadLayanan(booking.Layanan.LayananId); 
         var karcis = LoadKarcis(request.KarcisId);
         var caraMasuk = LoadCaraMasuk(request.CaraMasukDkId);
+        var tipeJaminan = LoadTipeJaminan(request.TipeJaminanId);
+        var polis = ResolvePolis(pasien, tipeJaminan);
+        var rujukan = RujukanType.Default;
+        if (!booking.CoverageInfo.NoRujukan.IsNullOrEmpty())
+        {
+            rujukan = ResolveRujukan(caraMasuk, booking.CoverageInfo.NoRujukan);
+        }
 
         //  BUILD
         var regAudit = new AuditInfoType(request.UserId, DateTime.Now);
         var reg = _regFactory.CreateRegRajal(
             pasien,
             regAudit,
-            TipeJaminanType.BayarSendiri,
-            PolisModel.Default,
+            tipeJaminan,
+            polis,
             caraMasuk,
-            RujukanType.Default,
+            rujukan,
             dokter,
             layanan,
             karcis);
@@ -91,7 +111,7 @@ public class RegJalanByBookingHandler
         return Task.FromResult(new RegJalanByBookingResponse(reg.RegId, booking.NoAntrian));
     }
 
-    //  PRIVATE HELPER
+    #region PRIVATE HELPER
     private BookingModel LoadBooking(string id)
     {
         var booking = _bookingRepo.LoadEntity(BookingModel.Key(id))
@@ -123,4 +143,26 @@ public class RegJalanByBookingHandler
         _caraMasukDkRepo.LoadEntity(CaraMasukDkType.Key(id))
             .GetValueOrThrow("'Cara Masuk' not found");
 
+    private TipeJaminanType LoadTipeJaminan(string id) =>
+        _tipeJaminanRepo.LoadEntity(TipeJaminanType.Key(id))
+            .GetValueOrThrow("Tipe Jaminan invalid");
+
+    private PolisModel ResolvePolis(PasienModel pasien, TipeJaminanType tipeJaminan) =>
+        tipeJaminan.CaraBayarDk.CaraBayarDkId == BAYAR_SENDIRI
+            ? PolisModel.Default
+            : FindPolis(pasien, tipeJaminan);
+    private PolisModel FindPolis(PasienModel pasien, TipeJaminanType tipeJaminan)
+    {
+        var listPolis = _polisRepo.ListData(pasien);
+        var polisView = listPolis.FirstOrDefault(x => x.TipeJaminan == tipeJaminan.ToReff());
+        if (polisView == null)
+            throw new ArgumentException("Polis not found");
+        return _polisRepo.LoadEntity(polisView).Value;
+    }
+    private RujukanType ResolveRujukan(CaraMasukDkType caraMasuk, string rujukanId) =>
+        caraMasuk == CaraMasukDkType.DatangSendiri
+            ? RujukanType.Default
+            : _rujukanRepo.LoadEntity(RujukanType.Key(rujukanId))
+                .GetValueOrThrow("'Rujukan' not found");
+    #endregion
 }
