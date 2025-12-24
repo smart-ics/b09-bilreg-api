@@ -1,6 +1,5 @@
 using System.Data;
 using System.Data.SqlClient;
-using Bilreg.Application.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
@@ -33,10 +32,10 @@ public class ScheduleOpDal : IScheduleOpDal
     {
         const string sql = """
            INSERT INTO BILRG_ScheduleOp(
-               ScheduleOpId, ScheduleOpDate, CrtUser, CrtDate, UpdUser, UpdDate, VoidUser, VoidDate,
+               ScheduleOpId, ScheduleOpDate, CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate,
                OrderOpId, PasienId, UrgencyLevel, Durasi, TglOp, KamarId, RegId, PpaId)
            VALUES( 
-               @ScheduleOpId, @ScheduleOpDate, @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VoidUser, @VoidDate,
+               @ScheduleOpId, @ScheduleOpDate, @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate,
                @OrderOpId, @PasienId, @UrgencyLevel, @Durasi, @TglOp, @KamarId, @RegId, @PpaId)
            """;
 
@@ -47,8 +46,8 @@ public class ScheduleOpDal : IScheduleOpDal
         dp.AddParam("@CrtDate", dto.CrtDate, SqlDbType.DateTime);
         dp.AddParam("@UpdUser", dto.UpdUser, SqlDbType.VarChar);
         dp.AddParam("@UpdDate", dto.UpdDate, SqlDbType.DateTime);
-        dp.AddParam("@VoidUser", dto.VoidUser, SqlDbType.VarChar);
-        dp.AddParam("@VoidDate", dto.VoidDate, SqlDbType.DateTime);
+        dp.AddParam("@VodUser", dto.VodUser, SqlDbType.VarChar);
+        dp.AddParam("@VodDate", dto.VodDate, SqlDbType.DateTime);
         dp.AddParam("@OrderOpId", dto.OrderOpId, SqlDbType.VarChar);
         dp.AddParam("@PasienId", dto.PasienId, SqlDbType.VarChar);
         dp.AddParam("@UrgencyLevel", dto.UrgencyLevel, SqlDbType.Int);
@@ -78,7 +77,9 @@ public class ScheduleOpDal : IScheduleOpDal
                TglOp = @TglOp,
                KamarId = @KamarId,
                RegId = @RegId,
-               PpaId = @PpaId
+               PpaId = @PpaId,
+               VodUser = @VodUser,
+               VodDate = @VodDate
            WHERE
                ScheduleOpId = @ScheduleOpId
            """;
@@ -96,6 +97,8 @@ public class ScheduleOpDal : IScheduleOpDal
         dp.AddParam("@KamarId", dto.KamarId, SqlDbType.VarChar);
         dp.AddParam("@RegId", dto.RegId, SqlDbType.VarChar);
         dp.AddParam("@PpaId", dto.PpaId, SqlDbType.VarChar);
+        dp.AddParam("@VodUser", dto.VodUser, SqlDbType.VarChar);
+        dp.AddParam("@VodDate", dto.VodDate, SqlDbType.DateTime);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -121,8 +124,9 @@ public class ScheduleOpDal : IScheduleOpDal
     {
         const string sql = """
            SELECT
-               aa.ScheduleOpId, aa.ScheduleOpDate, aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VoidUser, aa.VoidDate,
-               aa.OrderOpId, aa.PasienId, aa.UrgencyLevel, aa.Durasi, aa.TglOp, aa.KamarId, aa.RegId, aa.PpaId,
+               aa.ScheduleOpId, aa.ScheduleOpDate, aa.OrderOpId, aa.PasienId, aa.UrgencyLevel,
+               aa.Durasi, aa.TglOp, aa.KamarId, aa.RegId, aa.PpaId,
+               aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
                ISNULL(bb.OrderDate, '3000-01-01') AS OrderDate,
                ISNULL(bb.NamaOperasi, '') AS NamaOperasi,
                ISNULL(cc.fs_nm_pasien, '') AS PasienName,
@@ -152,8 +156,9 @@ public class ScheduleOpDal : IScheduleOpDal
     {
         const string sql = """
             SELECT
-                aa.ScheduleOpId, aa.ScheduleOpDate, aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VoidUser, aa.VoidDate,
-                aa.OrderOpId, aa.PasienId, aa.UrgencyLevel, aa.Durasi, aa.TglOp, aa.KamarId, aa.RegId, aa.PpaId,
+                aa.ScheduleOpId, aa.ScheduleOpDate, aa.OrderOpId, aa.PasienId, aa.UrgencyLevel,
+                aa.Durasi, aa.TglOp, aa.KamarId, aa.RegId, aa.PpaId,
+                aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
                 ISNULL(bb.OrderDate, '3000-01-01') AS OrderDate,
                 ISNULL(bb.NamaOperasi, '') AS NamaOperasi,
                 ISNULL(cc.fs_nm_pasien, '') AS PasienName,
@@ -161,24 +166,32 @@ public class ScheduleOpDal : IScheduleOpDal
                 ISNULL(cc.fs_jns_kelamin, '') AS Gender,
                 ISNULL(dd.fs_nm_kamar, '') AS KamarName,
                 ISNULL(ee.fs_nm_peg, '') AS PpaName
-            FROM 
+            FROM
                 BILRG_ScheduleOp aa
                 LEFT JOIN BILRG_OrderOp bb ON aa.OrderOpId = bb.OrderOpId
                 LEFT JOIN tc_mr cc ON aa.PasienId = cc.fs_mr
                 LEFT JOIN ta_kamar dd ON aa.KamarId = dd.fs_kd_kamar
                 LEFT JOIN td_peg ee ON aa.PpaId = ee.fs_kd_peg
+            WHERE
+                aa.TglOp BETWEEN @Tgl1 AND @Tgl2
             """;
 
+        var tgl1 = filter.Date;
+        var tgl2 = filter.Date.AddHours(23.0).AddMinutes(59.0).AddSeconds(59.0);
+        var dp = new DynamicParameters();
+        dp.AddParam("@Tgl1", tgl1, SqlDbType.DateTime);
+        dp.AddParam("@Tgl2", tgl2, SqlDbType.DateTime);
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<ScheduleOpDto>(sql);
+        return conn.Read<ScheduleOpDto>(sql, dp);
     }
 
     public IEnumerable<ScheduleOpDto> ListData(IPasienKey filter)
     {
         const string sql = """
             SELECT
-                aa.ScheduleOpId, aa.ScheduleOpDate, aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VoidUser, aa.VoidDate,
-                aa.OrderOpId, aa.PasienId, aa.UrgencyLevel, aa.Durasi, aa.TglOp, aa.KamarId, aa.RegId, aa.PpaId,
+                aa.ScheduleOpId, aa.ScheduleOpDate, aa.OrderOpId, aa.PasienId, aa.UrgencyLevel,
+                aa.Durasi, aa.TglOp, aa.KamarId, aa.RegId, aa.PpaId,
+                aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
                 ISNULL(bb.OrderDate, '3000-01-01') AS OrderDate,
                 ISNULL(bb.NamaOperasi, '') AS NamaOperasi,
                 ISNULL(cc.fs_nm_pasien, '') AS PasienName,

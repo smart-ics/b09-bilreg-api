@@ -3,19 +3,18 @@ using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
-using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
-using Bilreg.Domain.Shared.Helpers;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
-using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiContext.BookingFeature.UseCases;
 
-public record BookingCreateFromHidokCommand(string PasienId, string PasienName, string TglLahir,
+public record BookingCreateFromHidokCommand(
+    string PasienId, string PasienName, string TglLahir,
     string Gender, string Alamat, string NoTelp,
-    string DokterEmail, string TglBerobat, string JamMulai,
-    string NoPeserta, string NoReffKontrol, int NoAntrian, string ReffId) : IRequest<BookingCreateFromHidokResponse>;
+    string DokterEmail, string TglBerobat, string JamMulai, int NoAntrian, 
+    string AsuransiName, string NoPeserta, string NoRujukan,
+    string ReffId, string UserId) : IRequest<BookingCreateFromHidokResponse>;
 
 public record BookingCreateFromHidokResponse(string BookingId, int NoAntrian);
 
@@ -28,6 +27,7 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
     private readonly IPasienTrackerRepo _trackerRepo;
     private readonly IPasienRepo _pasienRepo;
     private readonly IPpaRepo _ppaRepo;
+
     public BookingCreateFromHidokHandler(IJadwalPraktekRepo jadwalPraktekRepo,
         IAntrianRepo antrianRepo, IAntrianFactory antrianFactory,
         IBookingRepo bookingRepo, IPasienTrackerRepo trackerRepo,
@@ -61,17 +61,18 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
              .FirstOrDefault(x => x.JamMulai == jamMulai)
             ?? throw new ArgumentException("Jadwal tidak ditemukan");
 
-        //  create person
+        //      create person
         var person = request.PasienId == string.Empty ?
             CreatePerson(request) :
             FindPasien(request);
 
-        //  create booking
+        //      create booking
         var tglBerobat = DateOnly.Parse(request.TglBerobat);
-        var booking = BookingModel.Create(person, tglBerobat, jadwal, 
-            request.ReffId, request.NoPeserta, request.NoReffKontrol);
+        var extApp = new ExtAppReffType("HiDok", request.ReffId, "");
+        var coverage = new CoverageInfoType(request.AsuransiName, request.NoPeserta, request.NoRujukan);
+        var booking = BookingModel.CreateFromExternal(person, tglBerobat, jadwal, extApp, coverage, request.UserId);
 
-        //  ambil nomor antrian
+        //      ambil nomor antrian
         var listAntrian = _antrianRepo.ListData(tglBerobat);
         var sequenceTag = AntrianModel.GenSequenceTag(tglBerobat, jadwal);
         var antrianView = listAntrian.FirstOrDefault(x => x.SequenceTag == sequenceTag);
@@ -81,12 +82,12 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
 
         var tracker = PasienTrackerModel.Create(booking);
 
-        //  persisting
+        //  WRITE
         using var trans = TransHelper.NewScope();
-        //      no antrian masuk ke transaction agar bisa rollback jika gagal
+
         var antEntry = antrian.AddEntry(request.NoAntrian, tracker);
         booking.AssignNoAntrian(antEntry.NoUrut);
-        //      writing database
+
         _bookingRepo.SaveChanges(booking);
         _antrianRepo.SaveChanges(antrian);
         _trackerRepo.SaveChanges(tracker);

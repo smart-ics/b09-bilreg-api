@@ -27,7 +27,7 @@ public record NilaiTarifDto(string NilaiTarifId, string TarifId, string TipeTari
         var kelas = new KelasReff(KelasId, KelasName);
         var result = new NilaiTarifType(NilaiTarifId, TarifId, TarifName, tipeTarif, kelas, Nilai, listKomponen);
         return result;
-    }
+ }
 
     public NilaiTarifView ToView()
     {

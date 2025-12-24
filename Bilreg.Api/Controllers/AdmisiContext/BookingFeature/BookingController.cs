@@ -47,6 +47,31 @@ public class BookingController : ControllerBase
         return Ok(new JSendOk(response));
     }
 
+    [HttpPatch]
+    [Route("setQrExt")]
+    public async Task<IActionResult> SetQrExt(BookingSetExternalAppCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
+    [HttpDelete]
+    [Route("{id}")]
+    public async Task<IActionResult> Delete(string id)
+    { 
+        var cmd = new BookingDeleteCmd(id);
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
+    [HttpDelete]
+    [Route("{bookingIdHidok}/hidok")]
+    public async Task<IActionResult> DeleteFromHidok(string bookingIdHidok)
+    {
+        var cmd = new BookingDeleteFromHidokCmd(bookingIdHidok);
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
 
     [HttpGet]
     [Route("{id}")]
@@ -70,6 +95,15 @@ public class BookingController : ControllerBase
     public async Task<IActionResult> ListAllBooking(string tglYmd)
     {
         var query = new BookingPeriodeListQuery(tglYmd);
+        var result = await _mediator.Send(query);
+        return Ok(new JSendOk(result));
+    }
+
+    [HttpGet]
+    [Route("search/{tglBerobat}/{keyword}")]
+    public async Task<IActionResult> SearchByQr(string tglBerobat, string keyword)
+    {
+        var query = new BookingSearchQuery(tglBerobat, keyword);
         var result = await _mediator.Send(query);
         return Ok(new JSendOk(result));
     }

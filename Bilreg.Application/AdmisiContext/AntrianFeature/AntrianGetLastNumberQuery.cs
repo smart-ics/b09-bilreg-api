@@ -10,19 +10,19 @@ using MediatR;
 
 namespace Bilreg.Application.AdmisiContext.AntrianFeature;
 
-public record AntrianGetLastNumberQuery(string DokterHidokId, string TglAntrianYmd, string JamMulai) 
-    : IRequest<AntrianGetLastNumberResponse>;
+public record AntrianGetQuotaQuery(string DokterHidokId, string TglAntrianYmd, string JamMulai) 
+    : IRequest<AntrianGetQuotaResponse>;
 
 
-public record AntrianGetLastNumberResponse(int LastQueueNumber, int RemainingPatientQuota);
+public record AntrianGetQuotaResponse(int Quota, int Used, int AvailableQuota);
 
 
-public class AntrianGetLastNumberHandler : IRequestHandler<AntrianGetLastNumberQuery, AntrianGetLastNumberResponse>
+public class AntrianGetQuotaHandler : IRequestHandler<AntrianGetQuotaQuery, AntrianGetQuotaResponse>
 {
     private readonly IAntrianRepo _antrianRepo;
     private readonly IJadwalPraktekRepo _jadwalPraktekRepo;
     private readonly IPpaRepo _ppaRepo;
-    public AntrianGetLastNumberHandler(IAntrianRepo antrianRepo,
+    public AntrianGetQuotaHandler(IAntrianRepo antrianRepo,
         IJadwalPraktekRepo jadwalPraktekRepo,
         IPpaRepo ppaRepo)
     {
@@ -32,7 +32,7 @@ public class AntrianGetLastNumberHandler : IRequestHandler<AntrianGetLastNumberQ
     }
 
 
-    public Task<AntrianGetLastNumberResponse> Handle(AntrianGetLastNumberQuery request, CancellationToken cancellationToken)
+    public Task<AntrianGetQuotaResponse> Handle(AntrianGetQuotaQuery request, CancellationToken cancellationToken)
     {
         // GUARD
         Guard.Against.NullOrEmpty(request.DokterHidokId);
@@ -51,34 +51,28 @@ public class AntrianGetLastNumberHandler : IRequestHandler<AntrianGetLastNumberQ
             "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
 
         var sequenceTag = AntrianModel.GenSequenceTag(tglAntrian, dokter);
-        var lastAntrian = GetLastAntrian(tglAntrian, dokter, sequenceTag);
-        var jadwalThatDay = GetJadwalThatDay(dokter, tglAntrian);
-
-        var lastQueueNumber = lastAntrian.NoUrut == -1 ? 0 : lastAntrian.NoUrut;
-        var remainingPatientQuota = jadwalThatDay.MaxPasien - lastQueueNumber;
-
-        // RETURN
-        var result = new AntrianGetLastNumberResponse(lastQueueNumber, remainingPatientQuota);
-        return Task.FromResult(result); 
-    }
-    #region PRIVATE_HELPER
-    private AntrianEntryModel GetLastAntrian(DateOnly tglAntrian, PpaType dokter, string sequenceTag)
-    {
+        // listAntrian
         var listAntrianDb = _antrianRepo.ListData(tglAntrian)?.ToList()
             ?? throw new ArgumentException($"Antrian at {tglAntrian.ToString("yyyy-MM-dd")} not foud");
-
         var antrianHeader = listAntrianDb.Where(x => x.SequenceTag == sequenceTag).FirstOrDefault();
         var antrian = _antrianRepo.LoadEntity(antrianHeader!)
             .Match(
                 onSome: x => x,
                 onNone: () => throw new KeyNotFoundException($"Antrian at {tglAntrian.ToString("yyyy-MM-dd")} not foud")
             );
+        // --
 
-        var result = antrian.ListEntry.OrderByDescending(x => x.NoUrut).FirstOrDefault() ?? AntrianEntryModel.Default;
+        var jadwalThatDay = GetJadwalThatDay(dokter, tglAntrian);
 
-        return result;
+        var used = antrian.ListEntry.Count();
+        var available = jadwalThatDay.MaxPasien - antrian.ListEntry.Count();
 
+        // RETURN
+        var result = new AntrianGetQuotaResponse(jadwalThatDay.MaxPasien, used, available);
+        return Task.FromResult(result); 
     }
+    #region PRIVATE_HELPER
+    
     private JadwalPraktekType GetJadwalThatDay(PpaType dokter, DateOnly tglAntrian)
     {
         var jadwals = _jadwalPraktekRepo.ListData(dokter)?.ToList() ?? [];

@@ -1,4 +1,5 @@
-﻿using Bilreg.Domain.AdmisiContext.AntrianFeature;
+﻿using Bilreg.Application.AdmisiContext.BookingFeature;
+using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
@@ -24,6 +25,7 @@ public static class DomainService
             .AddScoped<IRegFactory, RegFactory>()
             .AddScoped<IGetKelasRajalService, GetKelasRajalService>()
             .AddScoped<IPolisFactory, PolisFactory>()
+            .AddScoped<IDeleteBookingWorkflow, DeleteBookingWorkflow>()
             ;
         
         return services;

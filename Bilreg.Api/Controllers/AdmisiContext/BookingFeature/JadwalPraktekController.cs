@@ -57,5 +57,14 @@ public class JadwalPraktekController : ControllerBase
         var response = await _mediator.Send(cmd);
         return Ok(new JSendOk(response));
     }
-    
+
+    [HttpPost]
+    [Route("migrasi")]
+    public async Task<IActionResult> Miigrasi(JadwalPraktekMigrasiCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
+
 }

@@ -1,0 +1,8 @@
+﻿CREATE TABLE BILRG_BookingExternal(
+    BookingId VARCHAR(26) NOT NULL CONSTRAINT DF_BILRG_BookingExternal_BookingId DEFAULT(''),
+    ExtAppName VARCHAR(15) NOT NULL CONSTRAINT DF_BILRG_BookingExternal_ExtAppName DEFAULT(''),
+    ReffId VARCHAR(10) NOT NULL CONSTRAINT DF_BILRG_BookingExternal_ReffId DEFAULT(''),
+    CheckInQr VARCHAR(6) NOT NULL CONSTRAINT DF_BILRG_BookingExternal_CheckInQr DEFAULT(''),
+
+    CONSTRAINT PK_BILRG_BookingExternal PRIMARY KEY CLUSTERED (BookingId)
+)

@@ -1,10 +1,9 @@
 ﻿using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
-using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
-using System.Globalization;
+using Nuna.Lib.TransactionHelper;
 
 namespace Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
 
@@ -16,14 +15,17 @@ public class OkScheduleOpAssignLeaderHandler : IRequestHandler<OkScheduleOpAssig
     private readonly IScheduleOpRepo _scheduleOpRepo;
     private readonly IOrderOpRepo _orderOpRepo;
     private readonly IPpaRepo _ppaRepo;
+    private readonly IOpCaseRepo _opCaseRepo;
 
     public OkScheduleOpAssignLeaderHandler(IScheduleOpRepo scheduleOpRepo,
         IOrderOpRepo orderOpRepo,
-        IPpaRepo ppaRepo)
+        IPpaRepo ppaRepo,
+        IOpCaseRepo opCaseRepo)
     {
         _scheduleOpRepo = scheduleOpRepo;
         _orderOpRepo = orderOpRepo;
         _ppaRepo = ppaRepo;
+        _opCaseRepo = opCaseRepo;
     }
 
     public Task Handle(OkScheduleOpAssignLeaderCommand request, CancellationToken cancellationToken)
@@ -36,26 +38,56 @@ public class OkScheduleOpAssignLeaderHandler : IRequestHandler<OkScheduleOpAssig
 
         var listSchedule = _scheduleOpRepo.ListData(PasienModel.Key(orderOp.Pasien.PasienId))?.ToList()
             ?? [];
-        var scheduleWithOrderOpId = listSchedule?
-            .FirstOrDefault(x => x.OrderOp.OrderOpId == request.OrderOpId)
-            ?? new ScheduleOpView("-", new PasienReff("-", "-", DateOnly.ParseExact("3000-01-01", "yyyy-MM-dd"), "-"),
-            new OrderOpReff("-", DateTime.ParseExact("3000-01-01 00:00:00", "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture), "-"),
-            UrgencyLevelEnum.Elective, DateTime.ParseExact("3000-01-01 00:00:00", "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
-            0, new PpaReff("-", "-"), new KamarReff("-", "-"));
+        var scheduleWithOrderOpId = listSchedule
+            .Where(x => !x.IsVoid)
+            .FirstOrDefault(x => x.OrderOp.OrderOpId == request.OrderOpId);
+        if (scheduleWithOrderOpId == null)
+            return Task.CompletedTask;
 
         var scheduleOp = _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(scheduleWithOrderOpId.ScheduleOpId))
             .GetValueOrDefault();
 
-        if (scheduleOp is null)
+        ScheduleOpModel newScheduleOp;
+        if (scheduleOp != null)
+        {
+            scheduleOp.CancelSchedule(request.UserId);
+            newScheduleOp = ScheduleOpModel.CloneFrom(scheduleOp);
+        }
+        else
             return Task.CompletedTask;
 
-        var existingPpa = scheduleOp.ListPpa
+        // Checks if TeamLead is not null AND if PpaId is a valid string
+        if (scheduleOp.TeamLead is { PpaId: string ppaId } oldAssignedLead &&
+            !string.IsNullOrWhiteSpace(ppaId) &&
+            ppaId != "-")
+        {
+            var assignedPpaLead = _ppaRepo.LoadEntity(PpaType.Key(ppaId))
+                .GetValueOrDefault();
+            newScheduleOp.RemovePpa(assignedPpaLead, request.UserId);
+        }
+
+        var existingPpa = newScheduleOp.ListPpa
             .FirstOrDefault(x => x.Ppa.PpaId == request.PpaId);
         if (existingPpa is null)
-            scheduleOp.AddPpa(ppa, request.UserId);
-        scheduleOp.AssignLeader(ppa, request.UserId);
+            newScheduleOp.AddPpa(ppa, request.UserId);
+        newScheduleOp.AssignLeader(ppa, request.UserId);
 
+        var opCase = _opCaseRepo.LoadEntity(orderOp)
+            .GetValueOrDefault()
+            ?? OpCaseModel.Create(orderOp);
+        opCase.SetListPpa(
+            newScheduleOp.ListPpa
+                .Select(x =>
+                {
+                    string profesi = x.Profesi.ProfesiName;
+                    return new OpCasePpaType(x.NoUrut, x.Ppa, profesi, new DateTime(3000, 1, 1));
+                }));
+
+        using var trans = TransHelper.NewScope();
         _scheduleOpRepo.SaveChanges(scheduleOp);
+        _scheduleOpRepo.SaveChanges(newScheduleOp);
+        _opCaseRepo.SaveChanges(opCase);
+        trans.Complete();
 
         return Task.CompletedTask;
     }
