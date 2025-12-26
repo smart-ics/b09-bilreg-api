@@ -100,27 +100,29 @@ public class JaminanDal : IJaminanDal
 
     public JaminanDto GetData(IJaminanKey key)
     {
-        const string sql = @"
-                     SELECT
-                         aa.fs_kd_jaminan, 
-                         aa.fs_nm_jaminan, 
-                         aa.fs_alm1_jaminan, 
-                         aa.fs_alm2_jaminan,
-                         aa.fs_kota_jaminan, 
-                         aa.fb_aktif, 
-                         aa.fs_benefit_mou, 
-                         aa.fs_kd_cara_bayar_dk, 
-                         aa.fs_kd_grup_jaminan, 
-                         '-' as fs_kd_pos,
-                         ISNULL(bb.fs_nm_cara_bayar_dk, '-') fs_nm_cara_bayar_dk,
-                         ISNULL(cc.fs_nm_grup_jaminan, '-') fs_nm_grup_jaminan
-                     FROM 
-                         ta_jaminan aa
-                         LEFT JOIN ta_cara_bayar_dk bb ON aa.fs_kd_cara_bayar_dk = bb.fs_kd_cara_bayar_dk
-                         LEFT JOIN ta_grup_jaminan cc ON aa.fs_kd_grup_jaminan = cc.fs_kd_grup_jaminan
-                     WHERE 
-                         aa.fs_kd_jaminan = @fs_kd_jaminan ";
+        const string sql = """
+           SELECT
+               aa.fs_kd_jaminan, aa.fs_nm_jaminan, 
+               aa.fs_alm1_jaminan, aa.fs_alm2_jaminan, aa.fs_kota_jaminan, 
+               aa.fb_aktif, aa.fs_benefit_mou, aa.fs_kd_cara_bayar_dk, 
+               aa.fs_kd_grup_jaminan, 
+               aa.fs_kd_tipe_tarif_rawat_jalan, aa.fs_kd_tipe_tarif_rawat_inap,
+           	   '-' as fs_kd_pos,
+               ISNULL(bb.fs_nm_cara_bayar_dk, '-') fs_nm_cara_bayar_dk,
+               ISNULL(cc.fs_nm_grup_jaminan, '-') fs_nm_grup_jaminan,
+               ISNULL(dd.fs_nm_tarif_tipe,'') AS fs_nm_tarif_tipe_rawat_jalan,
+               ISNULL(ee.fs_nm_tarif_tipe,'') AS fs_nm_tarif_tipe_rawat_inap
 
+           FROM 
+               ta_jaminan aa
+               LEFT JOIN ta_cara_bayar_dk bb ON aa.fs_kd_cara_bayar_dk = bb.fs_kd_cara_bayar_dk
+               LEFT JOIN ta_grup_jaminan cc ON aa.fs_kd_grup_jaminan = cc.fs_kd_grup_jaminan
+           	   LEFT JOIN TA_TARIF_TIPE dd ON aa.FS_KD_TIPE_TARIF_RAWAT_JALAN = dd.FS_KD_TARIF_TIPE
+           	   LEFT JOIN TA_TARIF_TIPE ee ON aa.FS_KD_TIPE_TARIF_RAWAT_INAP = ee.FS_KD_TARIF_TIPE
+           WHERE 
+               aa.fs_kd_jaminan = @fs_kd_jaminan
+           """;
+        
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_jaminan", key.JaminanId, SqlDbType.VarChar);
 
@@ -130,26 +132,28 @@ public class JaminanDal : IJaminanDal
 
     public IEnumerable<JaminanDto> ListData()
     {
-        const string sql = @"
-                 SELECT
-                         aa.fs_kd_jaminan, 
-                         aa.fs_nm_jaminan, 
-                         aa.fs_alm1_jaminan, 
-                         aa.fs_alm2_jaminan,
-                         aa.fs_kota_jaminan, 
-                         aa.fb_aktif, 
-                         aa.fs_benefit_mou, 
-                         aa.fs_kd_cara_bayar_dk, 
-                         aa.fs_kd_grup_jaminan, 
-                         '-' as fs_kd_pos,
-                         ISNULL(bb.fs_nm_cara_bayar_dk, '-') fs_nm_cara_bayar_dk,
-                         ISNULL(cc.fs_nm_grup_jaminan, '-') fs_nm_grup_jaminan
-                     FROM 
-                         ta_jaminan aa
-                         LEFT JOIN ta_cara_bayar_dk bb ON aa.fs_kd_cara_bayar_dk = bb.fs_kd_cara_bayar_dk
-                         LEFT JOIN ta_grup_jaminan cc ON aa.fs_kd_grup_jaminan = cc.fs_kd_grup_jaminan
-                 WHERE
-                     aa.fb_aktif = 1 ";
+        const string sql = """
+           SELECT
+               aa.fs_kd_jaminan, aa.fs_nm_jaminan, 
+               aa.fs_alm1_jaminan, aa.fs_alm2_jaminan, aa.fs_kota_jaminan, 
+               aa.fb_aktif, aa.fs_benefit_mou, aa.fs_kd_cara_bayar_dk, 
+               aa.fs_kd_grup_jaminan, 
+               aa.fs_kd_tipe_tarif_rawat_jalan, aa.fs_kd_tipe_tarif_rawat_inap,
+           	   '-' as fs_kd_pos,
+               ISNULL(bb.fs_nm_cara_bayar_dk, '-') fs_nm_cara_bayar_dk,
+               ISNULL(cc.fs_nm_grup_jaminan, '-') fs_nm_grup_jaminan,
+               ISNULL(dd.fs_nm_tarif_tipe,'') AS fs_nm_tarif_tipe_rawat_jalan,
+               ISNULL(ee.fs_nm_tarif_tipe,'') AS fs_nm_tarif_tipe_rawat_inap
+
+           FROM 
+               ta_jaminan aa
+               LEFT JOIN ta_cara_bayar_dk bb ON aa.fs_kd_cara_bayar_dk = bb.fs_kd_cara_bayar_dk
+               LEFT JOIN ta_grup_jaminan cc ON aa.fs_kd_grup_jaminan = cc.fs_kd_grup_jaminan
+           	   LEFT JOIN TA_TARIF_TIPE dd ON aa.FS_KD_TIPE_TARIF_RAWAT_JALAN = dd.FS_KD_TARIF_TIPE
+           	   LEFT JOIN TA_TARIF_TIPE ee ON aa.FS_KD_TIPE_TARIF_RAWAT_INAP = ee.FS_KD_TARIF_TIPE
+           WHERE 
+               aa.fs_kd_jaminan = @fs_kd_jaminan
+           """;
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         var datas =  conn.Read<JaminanDto>(sql);

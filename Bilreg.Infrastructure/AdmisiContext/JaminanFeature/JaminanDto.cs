@@ -1,4 +1,6 @@
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 
 //  resharper disable inconsistentnaming
@@ -14,9 +16,13 @@ public record JaminanDto(
     string fs_benefit_mou,
     string fs_kd_cara_bayar_dk ,
     string fs_kd_grup_jaminan,
+    string fs_kd_tipe_tarif_rawat_jalan,
+    string fs_kd_tipe_tarif_rawat_inap,
     string fs_kd_pos ,
     string fs_nm_cara_bayar_dk ,
-    string fs_nm_grup_jaminan )
+    string fs_nm_grup_jaminan,
+    string fs_nm_tarif_tipe_rawat_jalan,
+    string fs_nm_tarif_tipe_rawat_inap)
     
     
 {
@@ -25,8 +31,23 @@ public record JaminanDto(
         var caraBayarDk = new CaraBayarDkType(fs_kd_cara_bayar_dk, fs_nm_cara_bayar_dk);
         var grupJaminan = new GroupJaminanReff(fs_kd_grup_jaminan, fs_nm_grup_jaminan);
         var alamat = new AlamatType([fs_alm1_jaminan, fs_alm2_jaminan], fs_kota_jaminan, fs_kd_pos);
+
+        var listTipeTarif = new List<JaminanTipeTarifType>
+        {
+            new JaminanTipeTarifType(
+                JenisRegEnum.RegJalan,
+                JenisRegEnum.RegJalan.ToString(),
+                new TipeTarifReff(fs_kd_tipe_tarif_rawat_jalan, fs_nm_tarif_tipe_rawat_jalan)
+            ),
+            new JaminanTipeTarifType(
+                JenisRegEnum.RegInap,
+                JenisRegEnum.RegInap.ToString(),
+                new TipeTarifReff(fs_kd_tipe_tarif_rawat_inap, fs_nm_tarif_tipe_rawat_inap)
+            )
+        };
+
         var jaminan = new JaminanType(fs_kd_jaminan, fs_nm_jaminan, fb_aktif,
-            alamat, caraBayarDk, grupJaminan);
+            alamat, caraBayarDk, grupJaminan, listTipeTarif);
 
         return jaminan;
     }
