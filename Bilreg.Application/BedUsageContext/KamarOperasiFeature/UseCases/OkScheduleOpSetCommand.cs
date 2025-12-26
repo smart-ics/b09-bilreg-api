@@ -44,7 +44,7 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
         _opCaseRepo = opCaseRepo;
     }
 
-    public async Task<OkScheduleOpSetResponse> Handle(OkScheduleOpSetCommand request, CancellationToken cancellationToken)
+    public Task<OkScheduleOpSetResponse> Handle(OkScheduleOpSetCommand request, CancellationToken cancellationToken)
     {
         Guard.Against.InvalidDateFormat(request.Tgl, nameof(request.Tgl));
 
@@ -56,7 +56,7 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
 
         var listSchedule = _scheduleOpRepo.ListData(PasienModel.Key(orderOp.Pasien.PasienId))?.ToList()
             ?? [];
-        var scheduleWithOrderOpId = listSchedule?
+        var scheduleWithOrderOpId = listSchedule
             .Where(x => !x.IsVoid)
             .FirstOrDefault(x => x.OrderOp.OrderOpId == request.OrderOpId);
 
@@ -96,6 +96,6 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
         _opCaseRepo.SaveChanges(opCase);
         trans.Complete();
 
-        return new OkScheduleOpSetResponse(newScheduleOp.ScheduleOpId);
+        return Task.FromResult(new OkScheduleOpSetResponse(newScheduleOp.ScheduleOpId));
     }
 }

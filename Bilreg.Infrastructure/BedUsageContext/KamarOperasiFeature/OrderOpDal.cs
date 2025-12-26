@@ -37,17 +37,17 @@ public class OrderOpDal : IOrderOpDal
                Icd10Id, JenisOperasiId, NamaOperasi,
                DokterId, UrgencyLevel, EstimasiDurasi,
                PreferedDate, SpecialEquipment, 
-               CreateUserId, CreateTimestamp,
-               UpdateUserId, UpdateTimestamp,
-               VoidUserId, VoidTimestamp)
+               CrtUser, CrtDate,
+               UpdUser, UpdDate,
+               VodUser, VodDate)
            VALUES(
                @OrderOpId, @OrderDate, @RegId, @PasienId,
                @Icd10Id, @JenisOperasiId, @NamaOperasi,
                @DokterId, @UrgencyLevel, @EstimasiDurasi,
                @PreferedDate, @SpecialEquipment, 
-               @CreateUserId, @CreateTimestamp,
-               @UpdateUserId, @UpdateTimestamp,
-               @VoidUserId, @VoidTimestamp)
+               @CrtUser, @CrtDate,
+               @UpdUser, @UpdDate,
+               @VodUser, @VodDate)
            """;
         
         var dp = new DynamicParameters();
@@ -65,12 +65,12 @@ public class OrderOpDal : IOrderOpDal
         dp.AddParam("@PreferedDate", model.PreferedDate, SqlDbType.DateTime);
         dp.AddParam("@SpecialEquipment", model.SpecialEquipment, SqlDbType.VarChar);
         
-        dp.AddParam("@CreateUserId", model.CreateUserId, SqlDbType.VarChar);
-        dp.AddParam("@CreateTimestamp", model.CreateTimestamp, SqlDbType.DateTime);
-        dp.AddParam("@UpdateUserId", model.UpdateUserId, SqlDbType.VarChar);
-        dp.AddParam("@UpdateTimestamp", model.UpdateTimestamp, SqlDbType.DateTime);
-        dp.AddParam("@VoidUserId", model.VoidUserId, SqlDbType.VarChar);
-        dp.AddParam("@VoidTimestamp", model.VoidTimestamp, SqlDbType.DateTime);
+        dp.AddParam("@CrtUser", model.CrtUser, SqlDbType.VarChar);
+        dp.AddParam("@CrtDate", model.CrtDate, SqlDbType.DateTime);
+        dp.AddParam("@UpdUser", model.UpdUser, SqlDbType.VarChar);
+        dp.AddParam("@UpdDate", model.UpdDate, SqlDbType.DateTime);
+        dp.AddParam("@VodUser", model.VodUser, SqlDbType.VarChar);
+        dp.AddParam("@VodDate", model.VodDate, SqlDbType.DateTime);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -95,12 +95,12 @@ public class OrderOpDal : IOrderOpDal
                PreferedDate = @PreferedDate,
                SpecialEquipment = @SpecialEquipment,
         
-               CreateUserId = @CreateUserId,
-               CreateTimestamp = @CreateTimestamp,
-               UpdateUserId = @UpdateUserId,
-               UpdateTimestamp = @UpdateTimestamp,
-               VoidUserId = @VoidUserId,
-               VoidTimestamp = @VoidTimestamp
+               CrtUser = @CrtUser,
+               CrtDate = @CrtDate,
+               UpdUser = @UpdUser,
+               UpdDate = @UpdDate,
+               VodUser = @VodUser,
+               VodDate = @VodDate
            WHERE
                OrderOpId = @OrderOpId
            """;
@@ -120,12 +120,12 @@ public class OrderOpDal : IOrderOpDal
         dp.AddParam("@PreferedDate", model.PreferedDate, SqlDbType.DateTime);
         dp.AddParam("@SpecialEquipment", model.SpecialEquipment, SqlDbType.VarChar);
         
-        dp.AddParam("@CreateUserId", model.CreateUserId, SqlDbType.VarChar);
-        dp.AddParam("@CreateTimestamp", model.CreateTimestamp, SqlDbType.DateTime);
-        dp.AddParam("@UpdateUserId", model.UpdateUserId, SqlDbType.VarChar);
-        dp.AddParam("@UpdateTimestamp", model.UpdateTimestamp, SqlDbType.DateTime);
-        dp.AddParam("@VoidUserId", model.VoidUserId, SqlDbType.VarChar);
-        dp.AddParam("@VoidTimestamp", model.VoidTimestamp, SqlDbType.DateTime);
+        dp.AddParam("@CrtUser", model.CrtUser, SqlDbType.VarChar);
+        dp.AddParam("@CrtDate", model.CrtDate, SqlDbType.DateTime);
+        dp.AddParam("@UpdUser", model.UpdUser, SqlDbType.VarChar);
+        dp.AddParam("@UpdDate", model.UpdDate, SqlDbType.DateTime);
+        dp.AddParam("@VodUser", model.VodUser, SqlDbType.VarChar);
+        dp.AddParam("@VodDate", model.VodDate, SqlDbType.DateTime);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -155,9 +155,9 @@ public class OrderOpDal : IOrderOpDal
                aa.Icd10Id, aa.JenisOperasiId, aa.NamaOperasi,
                aa.DokterId, aa.UrgencyLevel, aa.EstimasiDurasi,
                aa.PreferedDate, aa.SpecialEquipment, 
-               aa.CreateUserId, aa.CreateTimestamp,
-               aa.UpdateUserId, aa.UpdateTimestamp,
-               aa.VoidUserId, aa.VoidTimestamp,
+               aa.CrtUser, aa.CrtDate,
+               aa.UpdUser, aa.UpdDate,
+               aa.VodUser, aa.VodDate,
                ISNULL(bb.fs_nm_pasien, '') AS PasienName,
                ISNULL(bb.fd_tgl_lahir, '3000-01-01') AS TglLahir,
                ISNULL(bb.fs_jns_kelamin, '') AS Gender,
@@ -190,9 +190,9 @@ public class OrderOpDal : IOrderOpDal
                aa.Icd10Id, aa.JenisOperasiId, aa.NamaOperasi,
                aa.DokterId, aa.UrgencyLevel, aa.EstimasiDurasi,
                aa.PreferedDate, aa.SpecialEquipment, 
-               aa.CreateUserId, aa.CreateTimestamp,
-               aa.UpdateUserId, aa.UpdateTimestamp,
-               aa.VoidUserId, aa.VoidTimestamp,
+               aa.CrtUser, aa.CrtDate,
+               aa.UpdUser, aa.UpdDate,
+               aa.VodUser, aa.VodDate,
                ISNULL(bb.fs_nm_pasien, '') AS PasienName,
                ISNULL(bb.fd_tgl_lahir, '3000-01-01') AS TglLahir,
                ISNULL(bb.fs_jns_kelamin, '') AS Gender,
