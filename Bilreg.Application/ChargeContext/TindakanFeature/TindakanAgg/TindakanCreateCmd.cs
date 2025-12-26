@@ -1,11 +1,9 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.LayananFeature;
-using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
-using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BillContext.TindakanSub.TindakanAgg;
 using Bilreg.Domain.ChargeContext.TarifFeature;
@@ -13,7 +11,6 @@ using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using JetBrains.Annotations;
 using MediatR;
-using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.ChargeContext.TindakanFeature.TindakanAgg;
 
@@ -34,7 +31,6 @@ public class TindakanCreateHandler : IRequestHandler<TindakanCreateCmd, Tindakan
     private readonly ILayananRepo _layananRepo;
     private readonly ITipeTarifRepo _tipeTarifRepo;
     private readonly INilaiTarifRepo _nilaiTarifRepo;
-    private readonly IPpaRepo _ppaRepo;
     private readonly IOrderTdkRepo _orderTdkRepo;
     private readonly ITindakanRepo _tindakanRepo;
     private readonly IPasienRepo _pasienRepo;
@@ -44,7 +40,6 @@ public class TindakanCreateHandler : IRequestHandler<TindakanCreateCmd, Tindakan
         ILayananRepo layananRepo,
         ITipeTarifRepo tipeTarifRepo,
         INilaiTarifRepo nilaiTarifRepo,
-        IPpaRepo ppaRepo,
         IOrderTdkRepo orderTdkRepo,
         ITindakanRepo tindakanRepo,
         IPasienRepo pasienRepo,
@@ -55,7 +50,6 @@ public class TindakanCreateHandler : IRequestHandler<TindakanCreateCmd, Tindakan
         _layananRepo = layananRepo;
         _tipeTarifRepo = tipeTarifRepo;
         _nilaiTarifRepo = nilaiTarifRepo;
-        _ppaRepo = ppaRepo;
         _orderTdkRepo = orderTdkRepo;
         _tindakanRepo = tindakanRepo;
         _pasienRepo = pasienRepo;
