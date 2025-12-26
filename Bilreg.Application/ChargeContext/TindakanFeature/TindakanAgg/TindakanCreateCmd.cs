@@ -13,15 +13,16 @@ using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using JetBrains.Annotations;
 using MediatR;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.ChargeContext.TindakanFeature.TindakanAgg;
 
 public record TindakanCreateCmd(
     string RegId, string LayananId, string TipeTarifId,
-    string OrderTdkId, string KelasId, int JenisTindakan, 
-    string TarifId, IEnumerable<TindakanKomponenCreate> Komponen, string UserId) 
+    string OrderTdkId, string KelasId, int JenisTindakan,
+    TindakanTarifDto Tarif, string UserId) 
     : IRequest<TindakanCreateRespose>, 
-    IRegKey, ILayananKey, IOrderTdkKey, INilaiTarifCompositKey;
+    IRegKey, ILayananKey, IOrderTdkKey;
 
 public record TindakanKomponenCreate (string KomponenId, string PpaId, int qty);
 
@@ -38,6 +39,7 @@ public class TindakanCreateHandler : IRequestHandler<TindakanCreateCmd, Tindakan
     private readonly ITindakanRepo _tindakanRepo;
     private readonly IPasienRepo _pasienRepo;
     private readonly ITarifRepo _tarifRepo;
+    private readonly ITindakanFactory _tdkFactory;
     public TindakanCreateHandler(IRegRepo regRepo,
         ILayananRepo layananRepo,
         ITipeTarifRepo tipeTarifRepo,
@@ -46,7 +48,8 @@ public class TindakanCreateHandler : IRequestHandler<TindakanCreateCmd, Tindakan
         IOrderTdkRepo orderTdkRepo,
         ITindakanRepo tindakanRepo,
         IPasienRepo pasienRepo,
-        ITarifRepo tarifRepo)
+        ITarifRepo tarifRepo,
+        ITindakanFactory tdkFactory)
     {
         _regRepo = regRepo;
         _layananRepo = layananRepo;
@@ -57,6 +60,7 @@ public class TindakanCreateHandler : IRequestHandler<TindakanCreateCmd, Tindakan
         _tindakanRepo = tindakanRepo;
         _pasienRepo = pasienRepo;
         _tarifRepo = tarifRepo;
+        _tdkFactory = tdkFactory;
     }
 
     public Task<TindakanCreateRespose> Handle(TindakanCreateCmd request, CancellationToken cancellationToken)
@@ -64,7 +68,6 @@ public class TindakanCreateHandler : IRequestHandler<TindakanCreateCmd, Tindakan
         // GUARD
         Guard.Against.NullOrWhiteSpace(request.RegId);
         Guard.Against.NullOrWhiteSpace(request.LayananId);
-        Guard.Against.NullOrWhiteSpace(request.TarifId);
         Guard.Against.NullOrWhiteSpace(request.TipeTarifId);
         Guard.Against.NullOrWhiteSpace(request.KelasId);
 
@@ -73,16 +76,15 @@ public class TindakanCreateHandler : IRequestHandler<TindakanCreateCmd, Tindakan
         var layanan = LoadLayanan(request);
         var tipeTarif = LoadTipeTarif(TipeTarifType.Key(request.TipeTarifId));
         var orderTdk = LoadOrderTdk(request);
-        var tarif = LoadTarif(request);
-        var nilaiTarif = LoadNilaiTaif(request);
-        
-        var tdkTarif = BuildTindakanTarif(request, tarif, nilaiTarif);
+        var tarif = LoadTarif(TarifType.Key(request.Tarif.Tarif.TarifId));
+        var nilaiTarifCompKey = NilaiTarifType.KeyComposite(tarif.TarifId, request.TipeTarifId, request.KelasId);
+        var nilaiTarif = LoadNilaiTaif(nilaiTarifCompKey);
 
-        var tindakan = TindakanModel.Create((JenisTindakanEnum)request.JenisTindakan, orderTdk,
+        var tdkTarif = _tdkFactory.BuildTindakanTarif(tarif, nilaiTarif, request.Tarif);
+        var tindakan = _tdkFactory.Create((JenisTindakanEnum)request.JenisTindakan, orderTdk,
             pasien, reg, layanan, tipeTarif, tdkTarif, request.UserId);
-        
 
-        if(orderTdk.OrderTdkId != "-")
+        if (orderTdk.OrderTdkId != "-")
         {
             orderTdk.Execute(request.UserId);
             _orderTdkRepo.SaveChanges(orderTdk);
@@ -162,52 +164,7 @@ public class TindakanCreateHandler : IRequestHandler<TindakanCreateCmd, Tindakan
             );
         return nilaiTarif;
     }
-    public TindakanTarifModel BuildTindakanTarif(
-    TindakanCreateCmd request,
-    TarifType tarif,
-    NilaiTarifType nilaiTarif)
-    {
-        var tindakanTarif = new TindakanTarifModel(tarif, []);
-        request.Komponen
-            .Select(d =>
-            {
-                var kompo = nilaiTarif.ListKomponen
-                    .FirstOrDefault(x => x.Komponen.KomponenId == d.KomponenId)
-                    ?? NilaiTarifKomponenType.Default;
-
-                var komponen = new KomponenType(
-                    kompo.Komponen.KomponenId, kompo.Komponen.KomponenName,
-                    GroupKomponenType.Default, []);
-
-                var ppa = string.IsNullOrWhiteSpace(d.PpaId)
-                    ? PpaType.Default
-                    : GetPpa(PpaType.Key(d.PpaId));
-
-                return new
-                {
-                    Komponen = komponen,
-                    Ppa = ppa,
-                    Qty = d.qty,
-                    Nilai = kompo.Nilai
-                };
-            })
-            .ToList()
-            .ForEach(x =>
-            {
-                tindakanTarif.SetKomponen(x.Komponen, x.Ppa, x.Qty, x.Nilai);
-            });
-
-        return tindakanTarif;
-    }
-
-    private PpaType GetPpa(IPpaKey ppakey)
-    {
-        return _ppaRepo.LoadEntity(ppakey)
-            .Match(
-                onSome: x => x,
-                onNone: () => PpaType.Default);
-    }
-
+   
 
     #endregion
 }

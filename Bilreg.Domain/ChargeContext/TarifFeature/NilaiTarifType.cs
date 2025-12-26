@@ -1,4 +1,5 @@
 ﻿using System.Runtime.InteropServices.ComTypes;
+using System.Security.Cryptography.X509Certificates;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 
 namespace Bilreg.Domain.ChargeContext.TarifFeature;
@@ -26,6 +27,15 @@ public record NilaiTarifType : INilaiTarifKey, INilaiTarifCompositKey, INilaiTar
         TipeTarifType.Default.ToReff(), KelasType.Default.ToReff(), 
         0, []);
 
+    public static INilaiTarifCompositKey KeyComposite(string tarifId, string tipeTarifId, string kelasId)
+    {
+        var tipeTarif = new TipeTarifReff(tipeTarifId, "-");
+        var kelas = new KelasReff(kelasId, "-");
+        
+        return new NilaiTarifType("-", tarifId, "",
+            tipeTarif, kelas, 0, []);
+         
+    }
     public string NilaiTarifId { get; init; }
     public string TarifId { get; init; }
     public string TarifName  { get; init; }

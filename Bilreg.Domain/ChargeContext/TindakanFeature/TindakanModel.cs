@@ -40,27 +40,6 @@ public record TindakanModel : ITindakanKey
         
     }
 
-    public static TindakanModel Create(
-        JenisTindakanEnum jenisTindakan,
-        OrderTdkModel orderTindakan,
-        PasienModel pasien,
-        RegModel reg,
-        LayananType layanan,
-        TipeTarifType tipeTarif,
-        TindakanTarifModel tarif,
-        string userId)
-    {
-        Guard.Against.Null(orderTindakan, nameof(orderTindakan));
-        Guard.Against.Null(pasien, nameof(pasien));
-        Guard.Against.Null(reg, nameof(reg));
-        Guard.Against.Null(layanan, nameof(layanan));
-
-        var auditTrail = AuditTrailType.Create(userId, DateTime.Now);
-        var newId = Ulid.NewUlid().ToString();
-        return new TindakanModel(newId, DateTime.Now, jenisTindakan, auditTrail, orderTindakan.ToReff(), 
-            pasien.ToReff(), reg.ToReff(), layanan.ToReff(), tipeTarif.ToReff(), tarif);
-    }
-
     public static TindakanModel Default => new(
         "-", 
         DateTime.Today, 
@@ -87,7 +66,7 @@ public record TindakanModel : ITindakanKey
     public RegReff Reg { get; init; }
     public LayananReff Layanan { get; init; }
     public TipeTarifReff TipeTarif { get; init; }
-    public TindakanTarifModel Tarif { get; init; }
+    public TindakanTarifModel Tarif { get; private set; }
     
     #endregion
 
