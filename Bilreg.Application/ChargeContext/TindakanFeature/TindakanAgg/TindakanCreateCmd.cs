@@ -21,8 +21,6 @@ public record TindakanCreateCmd(
     : IRequest<TindakanCreateRespose>, 
     IRegKey, ILayananKey, IOrderTdkKey;
 
-public record TindakanKomponenCreate (string KomponenId, string PpaId, int qty);
-
 public record TindakanCreateRespose(string TindakanId);
 
 public class TindakanCreateHandler : IRequestHandler<TindakanCreateCmd, TindakanCreateRespose>

@@ -21,7 +21,8 @@ public interface ITindakanFactory : INunaFactory<TindakanModel>
         TipeTarifType tipeTarif,
         TindakanTarifModel tarif,
         string userId);
-    TindakanTarifModel BuildTindakanTarif(TarifType tarif, NilaiTarifType nilaiTarif, TindakanTarifDto tarifKomp);
+    TindakanTarifModel BuildTindakanTarif(TarifType tarif,
+        NilaiTarifType nilaiTarif, TindakanTarifDto tarifKomp);
 
 }
     
