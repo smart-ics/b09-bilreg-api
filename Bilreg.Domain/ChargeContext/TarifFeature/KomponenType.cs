@@ -1,5 +1,6 @@
 using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
+using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 
 namespace Bilreg.Domain.ChargeContext.TarifFeature;
 
@@ -28,6 +29,9 @@ public record KomponenType : IKomponenKey
     public string KomponenId { get; init; }
     public string KomponenName { get; init; }
     public GroupKomponenType GroupKomponen { get; init; }
+    
+    public CoaType RekPdpt { get; init; }
+    public CoaType RekDiskon { get; init; }
     public IEnumerable<SatTugasType> ListSatTugas => _listSatTugas;
     #endregion
     

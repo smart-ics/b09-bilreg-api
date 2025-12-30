@@ -1,5 +1,6 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Domain.PasienContext.PasienFeature;
+using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 
 namespace Bilreg.Domain.AdmisiContext.JaminanFeature;
 
@@ -31,6 +32,7 @@ public record JaminanType : IJaminanKey
     public GroupJaminanReff GroupJaminan { get; init; }
 
     public JaminanReff ToReff() => new(JaminanId, JaminanName);
+    public CoaType RekPiutangJasa
     
     public static JaminanType Default => new("-", "-", true, 
         AlamatType.Default, CaraBayarDkType.Default, 
@@ -47,3 +49,4 @@ public interface IJaminanKey
 }
 
 public record JaminanReff(string JaminanId, string JaminanName);
+
