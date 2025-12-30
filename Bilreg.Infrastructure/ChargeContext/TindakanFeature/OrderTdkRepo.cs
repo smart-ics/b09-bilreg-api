@@ -1,4 +1,4 @@
-﻿using Bilreg.Application.ChargeContext.TindakanFeature.TindakanAgg;
+﻿using Bilreg.Application.ChargeContext.TindakanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
