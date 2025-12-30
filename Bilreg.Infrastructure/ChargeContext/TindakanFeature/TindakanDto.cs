@@ -1,5 +1,4 @@
 ﻿using Bilreg.Domain.AdmisiContext.LayananFeature;
-using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
@@ -63,31 +62,6 @@ public record TindakanDto(
         var lyn = new LayananReff(LayananId, LayananName);
         var result = new TindakanView(TindakanId, TindakanDate, OrderTdkId,
             regReff, lyn, tarifReff);
-        return result;
-    }
-}
-
-public record TindakanKomponenDto(
-    string TindakanId, string TarifId, int NoUrut, 
-    string KomponenTarifId, string KomponenTarifName,
-    string PpaId, string PpaName,
-    decimal Qty, decimal Nilai, decimal SubTotal)
-{
-    public static TindakanKomponenDto FromModel(TindakanKomponenType model, TindakanModel hdr)
-    {
-        var result = new TindakanKomponenDto(hdr.TindakanId, hdr.Tarif.TarifId, 
-            model.NoUrut, model.Komponen.KomponenId, model.Komponen.KomponenName,
-            model.Ppa.PpaId, model.Ppa.PpaName, model.Qty, model.Nilai, model.SubTotal);
-        return result;
-    }
-
-    public TindakanKomponenType ToModel()
-    {
-        var komponenReff = new KomponenReff(KomponenTarifId, KomponenTarifName);
-        var ppaReff = new PpaReff(PpaId, PpaName);
-
-        var result = new TindakanKomponenType(komponenReff, ppaReff,
-            NoUrut, Nilai, Qty, SubTotal); 
         return result;
     }
 }
