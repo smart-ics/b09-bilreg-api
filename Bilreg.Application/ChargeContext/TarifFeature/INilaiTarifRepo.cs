@@ -11,6 +11,7 @@ public interface INilaiTarifRepo :
     IDeleteEntity<INilaiTarifKey>,
     IListData<NilaiTarifView, ILayananKey, INilaiTarifVariant>
 {
+    void Import();
 }
 
 public record NilaiTarifView(string TarifId, string TarifName, 

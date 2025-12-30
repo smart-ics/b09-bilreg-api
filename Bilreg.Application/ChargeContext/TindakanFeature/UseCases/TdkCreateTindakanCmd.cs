@@ -12,16 +12,13 @@
 //
 // namespace Bilreg.Application.ChargeContext.TindakanFeature.UseCases;
 //
-// public record TindakanCreateCmd(
-//     string RegId, string LayananId, string TipeTarifId,
-//     string OrderTdkId, string KelasId, int JenisTindakan,
-//     TindakanTarifDto Tarif, string UserId) 
-//     : IRequest<TindakanCreateRespose>, 
-//     IRegKey, ILayananKey, IOrderTdkKey;
+// public record TdkCreateTindakanCmd(string RegId, 
+//     string LayananId, string TarifId, string UserId) 
+//     : IRequest<TindakanCreateRespose>, IRegKey, ILayananKey;
 //
 // public record TindakanCreateRespose(string TindakanId);
 //
-// public class TindakanCreateHandler : IRequestHandler<TindakanCreateCmd, TindakanCreateRespose>
+// public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, TindakanCreateRespose>
 // {
 //     private readonly IRegRepo _regRepo;
 //     private readonly ILayananRepo _layananRepo;
@@ -52,8 +49,7 @@
 //         _tarifRepo = tarifRepo;
 //         _tdkFactory = tdkFactory;
 //     }
-//
-//     public Task<TindakanCreateRespose> Handle(TindakanCreateCmd request, CancellationToken cancellationToken)
+//     public Task<TindakanCreateRespose> Handle(TdkCreateTindakanCmd request, CancellationToken cancellationToken)
 //     {
 //         // GUARD
 //         Guard.Against.NullOrWhiteSpace(request.RegId);

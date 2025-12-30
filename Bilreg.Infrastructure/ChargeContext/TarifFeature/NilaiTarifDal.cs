@@ -12,12 +12,16 @@ namespace Bilreg.Infrastructure.ChargeContext.TarifFeature;
 
 public interface INilaiTarifDal :
     IInsert<NilaiTarifDto>,
+    IInsertBulk<NilaiTarifDto>,
     IUpdate<NilaiTarifDto>,
     IDelete<INilaiTarifKey>,
     IGetData<NilaiTarifDto, INilaiTarifKey>,
     IListData<NilaiTarifDto, ITarifKey>,
     IListData<NilaiTarifDto, ILayananKey, INilaiTarifVariant>
 {
+    IEnumerable<ta_trs_tarif2_dto> ListData2();
+    IEnumerable<ta_trs_tarif3_dto> ListData3();
+    void Clear();
 }
 
 public class NilaiTarifDal : INilaiTarifDal
@@ -47,6 +51,23 @@ public class NilaiTarifDal : INilaiTarifDal
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
+    }
+    public void Insert(IEnumerable<NilaiTarifDto> listModel)
+    {
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        using var bcp = new SqlBulkCopy(conn);
+        
+        conn.Open();
+        bcp.AddMap("NilaiTarifId", "NilaiTarifId");
+        bcp.AddMap("TarifId", "TarifId");
+        bcp.AddMap("TipeTarifId", "TipeTarifId");
+        bcp.AddMap("KelasId", "KelasId");
+        bcp.AddMap("Nilai", "Nilai");
+
+        var fetched = listModel.ToList();
+        bcp.BatchSize = fetched.Count;
+        bcp.DestinationTableName = "BILRG_NilaiTarif";
+        bcp.WriteToServer(fetched.AsDataTable());
     }
 
     public void Update(NilaiTarifDto dto)
@@ -88,6 +109,14 @@ public class NilaiTarifDal : INilaiTarifDal
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
+    }
+
+    public void Clear()
+    {
+        const string sql = "DELETE FROM BILRG_NilaiTarif";
+        
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        conn.Execute(sql);
     }
 
     public NilaiTarifDto GetData(INilaiTarifKey key)
@@ -164,5 +193,36 @@ public class NilaiTarifDal : INilaiTarifDal
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<NilaiTarifDto>(sql, dp);
+    }
+
+    public IEnumerable<ta_trs_tarif2_dto> ListData2()
+    {
+        const string sql = """
+           SELECT fs_kd_trs, fs_kd_tarif
+           FROM ta_trs_tarif2
+           WHERE fd_tgl_expired = '3000-01-01'
+           """;
+        
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<ta_trs_tarif2_dto>(sql);
+    }
+
+    public IEnumerable<ta_trs_tarif3_dto> ListData3()
+    {
+        const string sql = """
+            SELECT 
+                aa.fs_kd_trs, aa.fs_kd_tarif, aa.fs_kd_kelas, 
+                aa.fs_kd_tipe, aa.fs_kd_detil, aa.fn_nilai
+            FROM 
+                ta_trs_tarif3 aa
+                INNER JOIN ta_trs_tarif2 bb ON aa.fs_kd_trs = bb.fs_kd_trs 
+                    AND aa.fs_kd_tarif = bb.fs_kd_tarif
+            WHERE 
+                bb.fd_tgl_expired = '3000-01-01'
+                AND aa.fn_nilai > 0
+            """;
+        
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<ta_trs_tarif3_dto>(sql);
     }
 }
