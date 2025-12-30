@@ -9,12 +9,13 @@ namespace Bilreg.Domain.PaymentContext.TrsBillingFeature;
 
 public record TrsBillingType : ITrsBillingKey
 {
+    private readonly List<ITrsBilling2> _listTrsBilling2 = [];
     #region CREATION
     public TrsBillingType(string billingId, int modul, DateTime tglTrs, 
         RegReff reg, LayananReff layanan, KelasReff kelas, 
         AuditInfoType auditInfo, decimal subTotal, decimal diskon, 
         decimal tax, decimal biaya, RekapCetakReff rekapCetak, 
-        TrsBillKetType keterangan)
+        TrsBillKetType keterangan, IEnumerable<ITrsBilling2> listTrsBilling2)
     {
         TrsBillingId = billingId;
         Modul = modul;
@@ -29,6 +30,7 @@ public record TrsBillingType : ITrsBillingKey
         Biaya = biaya;
         RekapCetak = rekapCetak;
         Keterangan = keterangan;
+        _listTrsBilling2 = listTrsBilling2.ToList();
     }
 
     public static TrsBillingType Create(string trsId, int modul, DateTime tglTrs, 
@@ -38,14 +40,14 @@ public record TrsBillingType : ITrsBillingKey
         TrsBillKetType keterangan)
     {
         return new TrsBillingType(trsId, modul, tglTrs, reg, layanan, kelas, 
-            auditInfo, subTotal, diskon, tax, biaya, rekapCetak, keterangan);
+            auditInfo, subTotal, diskon, tax, biaya, rekapCetak, keterangan, []);
     }
 
     public static TrsBillingType Default => new("-", 0, DateTime.MinValue, 
         RegModel.Default.ToReff(), LayananType.Default.ToReff(), 
         KelasType.Default.ToReff(), 
         AuditInfoType.Default, 0, 0, 0, 0, RekapCetakType.Default.ToReff(), 
-        TrsBillKetType.Default);
+        TrsBillKetType.Default, []);
 
     public static ITrsBillingKey Key(string id) => Default with { TrsBillingId = id };
     #endregion
@@ -65,6 +67,7 @@ public record TrsBillingType : ITrsBillingKey
     public decimal Biaya { get; init; }
     public decimal Total => SubTotal - Diskon + Tax + Biaya;
     public TrsBillKetType Keterangan { get; init; }
+    public IEnumerable<ITrsBilling2> ListTrsBilling2 => _listTrsBilling2;
     #endregion
 }
 

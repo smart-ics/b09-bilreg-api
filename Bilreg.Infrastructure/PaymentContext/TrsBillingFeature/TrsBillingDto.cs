@@ -75,7 +75,7 @@ public record TrsBillingDto(
         );
     }
 
-    public TrsBillingType ToModel()
+    public TrsBillingType ToModel(IEnumerable<ITrsBilling2> listTrsBilling2)
     {
         var reg = new RegReff(fs_kd_reg, fs_mr, fs_nm_pasien);
         var layanan = new LayananReff(fs_kd_layanan, fs_nm_layanan);
@@ -103,7 +103,8 @@ public record TrsBillingDto(
             fn_tax,
             fn_biaya,
             rekapCetak,
-            keterangan
+            keterangan,
+            listTrsBilling2
         );
     }
 }

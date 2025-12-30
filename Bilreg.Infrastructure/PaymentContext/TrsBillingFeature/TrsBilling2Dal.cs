@@ -47,6 +47,7 @@ public class TrsBilling2Dal : ITrsBilling2Dal
         bcp.AddMap("fs_kd_rek_persediaan", "fs_kd_rek_persediaan");
         bcp.AddMap("fs_kd_rek_tax", "fs_kd_rek_tax");
         bcp.AddMap("fs_kd_rek_retur", "fs_kd_rek_retur");
+        
         var fetched = listModel.ToList();
         bcp.BatchSize = fetched.Count;
         bcp.DestinationTableName = "ta_trs_billing2";
@@ -62,7 +63,7 @@ public class TrsBilling2Dal : ITrsBilling2Dal
                 fs_kd_trs = @fs_kd_trs
             """;
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_trs", key.BillingId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_trs", key.TrsBillingId, SqlDbType.VarChar);
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
@@ -92,8 +93,8 @@ public class TrsBilling2Dal : ITrsBilling2Dal
                 aa.fs_kd_rek_retur,
                 ISNULL(bb.fs_nm_detil_tarif, '') AS fs_nm_detil_tarif, 
                 ISNULL(cc.fs_nm_grup_rek, '') AS fs_nm_grup_rek, 
-                ISNULL(dd.fs_nm_peg_medis, '') AS fs_nm_peg_medis, 
-                ISNULL(ee.fs_nm_peg_kasir, '') AS fs_nm_peg_kasir 
+                ISNULL(dd.fs_nm_peg, '') AS fs_nm_peg_medis, 
+                ISNULL(ee.fs_nm_peg, '') AS fs_nm_peg_kasir 
             FROM
                 ta_trs_billing2 aa
                 left join ta_detil_tarif bb on aa.fs_kd_detil_tarif = bb.fs_kd_detil_tarif

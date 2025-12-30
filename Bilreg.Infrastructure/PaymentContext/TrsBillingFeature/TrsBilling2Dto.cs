@@ -33,7 +33,14 @@ public record TaTrsBilling2Dto(
     string fs_nm_peg_medis,
     string fs_nm_peg_kasir)
 {
-    public static TaTrsBilling2Dto FromModel(TrsBilling2JasaType model, string billingId)
+    public static TaTrsBilling2Dto FromModel(ITrsBilling2 trsBilling2, string billingId)
+    {
+        var result = trsBilling2 is TrsBilling2JasaType ? 
+            FromModelJasa((TrsBilling2JasaType)trsBilling2, billingId) : 
+            FromModel((TrsBilling2ObatType)trsBilling2, billingId);
+        return result;
+    }
+    private static TaTrsBilling2Dto FromModelJasa(TrsBilling2JasaType model, string billingId)
     {
         return new TaTrsBilling2Dto(
             billingId,
@@ -52,7 +59,7 @@ public record TaTrsBilling2Dto(
             "", "", "", "");
     }
 
-    public static TaTrsBilling2Dto FromModel(TrsBilling2ObatType model, string billingId)
+    private static TaTrsBilling2Dto FromModelObat(TrsBilling2ObatType model, string billingId)
     {
         return new TaTrsBilling2Dto(
             billingId,

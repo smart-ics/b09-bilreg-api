@@ -32,7 +32,6 @@ public record JaminanType : IJaminanKey
     public GroupJaminanReff GroupJaminan { get; init; }
 
     public JaminanReff ToReff() => new(JaminanId, JaminanName);
-    public CoaType RekPiutangJasa
     
     public static JaminanType Default => new("-", "-", true, 
         AlamatType.Default, CaraBayarDkType.Default, 
