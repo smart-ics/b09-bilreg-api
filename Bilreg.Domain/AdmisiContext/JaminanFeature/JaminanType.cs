@@ -1,6 +1,7 @@
 ﻿using Ardalis.GuardClauses;
+using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
-using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 
 namespace Bilreg.Domain.AdmisiContext.JaminanFeature;
 
@@ -8,7 +9,7 @@ public record JaminanType : IJaminanKey
 {
     public JaminanType(string jaminanId, string jaminanName,
         bool isAKtif, AlamatType alamat, CaraBayarDkType caraBayarDk, 
-        GroupJaminanReff grupJaminan)
+        GroupJaminanReff grupJaminan, IEnumerable<JaminanTipeTarifType> listTipeTarif)
     {
         Guard.Against.NullOrWhiteSpace(jaminanId, nameof(jaminanId));
         Guard.Against.NullOrWhiteSpace(jaminanName, nameof(jaminanName));
@@ -22,6 +23,7 @@ public record JaminanType : IJaminanKey
         Alamat = alamat;
         CaraBayarDk = caraBayarDk;
         GroupJaminan = grupJaminan;
+        ListTipeTarif = listTipeTarif;
     }
     
     public string JaminanId { get; init; }
@@ -30,16 +32,17 @@ public record JaminanType : IJaminanKey
     public AlamatType Alamat { get; init; }
     public CaraBayarDkType CaraBayarDk { get; init; }
     public GroupJaminanReff GroupJaminan { get; init; }
+    public IEnumerable<JaminanTipeTarifType> ListTipeTarif {  get; init; }
 
     public JaminanReff ToReff() => new(JaminanId, JaminanName);
     
     public static JaminanType Default => new("-", "-", true, 
         AlamatType.Default, CaraBayarDkType.Default, 
-        GroupJaminanType.Default.ToReff());
+        GroupJaminanType.Default.ToReff(), []);
     public static IJaminanKey Key(string id) => Default with { JaminanId = id };
     public static JaminanType Umum => new("000", "Umum", true, 
         AlamatType.Default, CaraBayarDkType.BayarSendiri, 
-        GroupJaminanType.Default.ToReff());
+        GroupJaminanType.Default.ToReff(), []);
 }
 
 public interface IJaminanKey
@@ -48,4 +51,8 @@ public interface IJaminanKey
 }
 
 public record JaminanReff(string JaminanId, string JaminanName);
+
+public record JaminanTipeTarifType(JenisRegEnum JenisRegid, string JenisRegName, TipeTarifReff TipeTarif);
+
+
 

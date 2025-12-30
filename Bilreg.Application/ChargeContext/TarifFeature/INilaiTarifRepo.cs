@@ -7,11 +7,12 @@ namespace Bilreg.Application.ChargeContext.TarifFeature;
 
 public interface INilaiTarifRepo :
     ISaveChange<NilaiTarifType>,
-    ILoadEntity<NilaiTarifType, ITarifKey>,
-    IDeleteEntity<ITarifKey>
+    ILoadEntity<NilaiTarifType, INilaiTarifCompositKey>,
+    IDeleteEntity<INilaiTarifKey>,
+    IListData<NilaiTarifView, ILayananKey, INilaiTarifVariant>
 {
-    IEnumerable<NilaiTarifView> ListData(ILayananKey layanan, 
-        ITipeTarifKey tipeTarif, IKelasKey kelas);
 }
 
-public record NilaiTarifView(string TarifId, string TarifName, decimal Nilai);
+public record NilaiTarifView(string TarifId, string TarifName, 
+    TipeTarifReff TipeTarif, KelasReff Kelas,
+    decimal Nilai);

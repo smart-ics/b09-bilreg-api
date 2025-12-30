@@ -13,7 +13,8 @@ public record JaminanGetResponse(
     AlamatType Address,
     bool IsAktif,
     CaraBayarDkType CaraBayarDk,
-    GroupJaminanReff GrupJaminan);
+    GroupJaminanReff GrupJaminan,
+    IEnumerable<JaminanTipeTarifType> ListTipeTarif);
 
 public class JaminanGetHandler : IRequestHandler<JaminanGetQuery, JaminanGetResponse>
 {
@@ -34,7 +35,8 @@ public class JaminanGetHandler : IRequestHandler<JaminanGetQuery, JaminanGetResp
                 onNone: () => throw new KeyNotFoundException($"Jaminan {request.JaminanId} not found")
                 );
         var result = new JaminanGetResponse(
-            jaminan.JaminanId, jaminan.JaminanName, jaminan.Alamat, jaminan.IsAktif, jaminan.CaraBayarDk, jaminan.GroupJaminan);
+            jaminan.JaminanId, jaminan.JaminanName, jaminan.Alamat, jaminan.IsAktif, 
+            jaminan.CaraBayarDk, jaminan.GroupJaminan, jaminan.ListTipeTarif);
         return Task.FromResult( result );
     }
 }
