@@ -1,25 +1,38 @@
+using Bilreg.Application.ChargeContext.TarifFeature;
+using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 
 namespace Bilreg.Infrastructure.ChargeContext.TarifFeature;
 
-public record NilaiTarifDto(string NilaiTarifId, string TarifId, string KelasId, string TipeTarifId, decimal Nilai)
+public record NilaiTarifDto(string NilaiTarifId, string TarifId, string TipeTarifId, 
+    string KelasId, decimal Nilai, string TarifName, string TipeTarifName, string KelasName)
 {
-//     public static (IEnumerable<NilaiTarifDto>, IEnumerable<NilaiTarifKomponenType>) FromModel(NilaiTarifType model)
-//     {
-//         var result = model.ListVariant
-//             .Select(x => new NilaiTarifDto(
-//                 $"{model.TarifId}-{x.TipeTarif.TipeTarifId}-{x.Kelas.KelasId}",
-//                 model.TarifId,
-//                 x.Kelas.KelasId,
-//                 x.TipeTarif.TipeTarifId,
-//                 x.Nilai));
-//         return result;
-//     }
-//     
-//     public NilaiTarifType ToModel(IEnumerable<NilaiTarifDto> listDto, IEnumerable<NilaiTarifKomponenDto> listKomponen)
-//     {
-//                 
-//     }
+    public static NilaiTarifDto FromModel(NilaiTarifType model)
+    {
+        var result = new NilaiTarifDto(
+            model.NilaiTarifId, 
+            model.TarifId, 
+            model.TipeTarif.TipeTarifId, 
+            model.Kelas.KelasId, 
+            model.Nilai, 
+            model.TarifName, 
+            model.TipeTarif.TipeTarifName, 
+            model.Kelas.KelasName);
+        return result;
+    }
+
+    public NilaiTarifType ToModel(IEnumerable<NilaiTarifKomponenType> listKomponen)
+    {
+        var tipeTarif = new TipeTarifReff(TipeTarifId, TipeTarifName);
+        var kelas = new KelasReff(KelasId, KelasName);
+        var result = new NilaiTarifType(NilaiTarifId, TarifId, TarifName, tipeTarif, kelas, Nilai, listKomponen);
+        return result;
  }
 
-public record NilaiTarifKomponenDto(string NilaiTarifId, string KomponenId, string KomponenName, decimal Nilai);
+    public NilaiTarifView ToView()
+    {
+        var tipeTarifReff = new TipeTarifReff(TipeTarifId, TipeTarifName);
+        var kelasReff = new KelasReff(KelasId, KelasName);
+        return new NilaiTarifView(TarifId, TarifName, tipeTarifReff, kelasReff, Nilai);
+    }
+}
