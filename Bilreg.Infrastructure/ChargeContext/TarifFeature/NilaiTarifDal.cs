@@ -16,12 +16,12 @@ public interface INilaiTarifDal :
     IUpdate<NilaiTarifDto>,
     IDelete<INilaiTarifKey>,
     IGetData<NilaiTarifDto, INilaiTarifKey>,
-    IListData<NilaiTarifDto, ITarifKey>,
-    IListData<NilaiTarifDto, ILayananKey, INilaiTarifVariant>
+    IListData<NilaiTarifDto, ITarifKey>
 {
     IEnumerable<ta_trs_tarif2_dto> ListData2();
     IEnumerable<ta_trs_tarif3_dto> ListData3();
     void Clear();
+    IEnumerable<NilaiTarifDto> ListData(ILayananKey lyn, INilaiTarifVariant variant, string keywprd);
 }
 
 public class NilaiTarifDal : INilaiTarifDal
@@ -167,7 +167,8 @@ public class NilaiTarifDal : INilaiTarifDal
         return conn.Read<NilaiTarifDto>(sql, dp);
     }
 
-    public IEnumerable<NilaiTarifDto> ListData(ILayananKey layanan, INilaiTarifVariant variant)
+    public IEnumerable<NilaiTarifDto> ListData(ILayananKey layanan, 
+        INilaiTarifVariant variant, string keyword)
     {
         const string sql = """
            SELECT
@@ -185,11 +186,13 @@ public class NilaiTarifDal : INilaiTarifDal
                ee.fs_kd_layanan = @LayananId
                AND aa.TipeTarifId = @TipeTarifId
                AND aa.KelasId = @KelasId
+               AND bb.fs_nm_tarif LIKE @Keyword
            """;
         var dp = new DynamicParameters();
         dp.AddParam("@LayananId", layanan.LayananId, SqlDbType.VarChar);
         dp.AddParam("@TipeTarifId", variant.TipeTarifId, SqlDbType.VarChar);
         dp.AddParam("@KelasId", variant.KelasId, SqlDbType.VarChar);
+        dp.AddParam("@Keyword", $"%{keyword}%", SqlDbType.VarChar);
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<NilaiTarifDto>(sql, dp);

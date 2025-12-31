@@ -5,17 +5,18 @@ namespace Bilreg.Infrastructure.ChargeContext.TindakanFeature;
 
 public class StokRepo : IStokRepo
 {
-    private readonly IStokRepo _stokRepo;
+    private readonly IStokDal _stokDal;
 
-    public StokRepo(IStokRepo stokRepo)
+    public StokRepo(IStokDal stokDal)
     {
-        _stokRepo = stokRepo;
+        _stokDal = stokDal;
     }
 
     public IEnumerable<StokView> ListData(ILayananKey filter1, string filter2)
     {
         return filter2.Length >= 3 
-            ? _stokRepo.ListData(filter1, filter2)
+            ? _stokDal.ListData(filter1, filter2)
             : [];
     }
 }
+

@@ -44,11 +44,13 @@ public class StokDal : IStokDal
            """;
         
         var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_layanan", layanan.LayananId, SqlDbType.VarChar);
-        dp.Add("@fs_nm_barang", $"%{searchKeyword}%");
-
+        // dp.AddParam("@fs_kd_layanan", layanan.LayananId, SqlDbType.VarChar);
+        // dp.Add("@fs_nm_barang", $"%{searchKeyword}%");
+        dp.Add("@fs_kd_layanan", layanan.LayananId, DbType.String); // Use DbType instead of SqlDbType
+        dp.Add("@fs_nm_barang", $"%{searchKeyword}%", DbType.String);
+        
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        var result = conn.Read<StokView>(sql, dp);
+        var result = conn.Query<StokView>(sql, dp);
         return result;
     }
 }

@@ -1,6 +1,5 @@
 using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
-using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Nuna.Lib.PatternHelper;
 
@@ -51,16 +50,8 @@ public class NilaiTarifRepo : INilaiTarifRepo
         _nilaiTarifKompDal.Delete(key);
     }
 
-    public IEnumerable<NilaiTarifView> ListData(ILayananKey layanan, INilaiTarifVariant variant)
-    {
-        var listDto = _nilaiTarifDal.ListData(layanan, variant)?.ToList() ?? [];
-        var result = listDto.Select(x => x.ToView());
-        return result;
-    }
-
     public void Import()
     {
-        //var listTrs2 = _nilaiTarifDal.ListData2()?.ToList() ?? [];
         var listTrs3 = _nilaiTarifDal.ListData3()?.ToList() ?? [];
 
         var listNilaiTarif = listTrs3
@@ -70,27 +61,12 @@ public class NilaiTarifRepo : INilaiTarifRepo
                 x.Key.fs_kd_kelas, x.Sum(y => y.fn_nilai), "", "", ""))
             .ToList();
         
-        // var listNilaiTarifKomp = new List<NilaiTarifKompDto>();
-        // foreach(var item in listNilaiTarif)
-        // {
-        //     var listKomp = listTrs3
-        //         .Where(x => x.fs_kd_tarif == item.TarifId)
-        //         .Where(x => x.fs_kd_kelas == item.KelasId)
-        //         .Where(x => x.fs_kd_tipe == item.TipeTarifId)
-        //         .ToList();
-        //     
-        //     listNilaiTarifKomp.AddRange(listKomp
-        //         .Select((x, no) => new NilaiTarifKompDto(item.NilaiTarifId, no, 
-        //             x.fs_kd_detil, x.fn_nilai, "")));
-        // }
-
         var trs3Lookup = listTrs3
             .GroupBy(x => new { x.fs_kd_tarif, x.fs_kd_kelas, x.fs_kd_tipe })
             .ToDictionary(
                 g => g.Key,
                 g => g.ToList()
             );
-
         var listNilaiTarifKomp = listNilaiTarif
             .SelectMany(item =>
             {
@@ -99,7 +75,6 @@ public class NilaiTarifRepo : INilaiTarifRepo
                     fs_kd_kelas = item.KelasId, 
                     fs_kd_tipe = item.TipeTarifId 
                 };
-        
                 if (trs3Lookup.TryGetValue(key, out var matchingItems))
                 {
                     return matchingItems.Select((x, no) => new NilaiTarifKompDto(
@@ -109,7 +84,6 @@ public class NilaiTarifRepo : INilaiTarifRepo
                         x.fn_nilai, 
                         ""));
                 }
-        
                 return [];
             })
             .ToList();        
@@ -119,6 +93,13 @@ public class NilaiTarifRepo : INilaiTarifRepo
         
         _nilaiTarifDal.Insert(listNilaiTarif);
         _nilaiTarifKompDal.Insert(listNilaiTarifKomp);
+    }
+
+    public IEnumerable<NilaiTarifView> Search(ILayananKey layanan, INilaiTarifVariant variant, string keyword)
+    {
+        var listDto = _nilaiTarifDal.ListData(layanan, variant, keyword)?.ToList() ?? [];
+        var result = listDto.Select(x => x.ToView());
+        return result;
     }
 }
 

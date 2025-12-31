@@ -22,4 +22,12 @@ public class NilaiTarifController : Controller
     {
         await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));
-    }}
+    }
+    [HttpPost]
+    [Route("listTarifBrg")]
+    public async Task<IActionResult> ListTarifBrg(TrfListTarifBrgQuery query)
+    {
+        var result = await _mediator.Send(query);
+        return Ok(new JSendOk(result));
+    }
+}
