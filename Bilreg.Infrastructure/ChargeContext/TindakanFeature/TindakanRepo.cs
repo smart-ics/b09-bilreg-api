@@ -25,8 +25,7 @@ public class TindakanRepo : ITindakanRepo
 
 
         var listKomponenDto = model.ListKomponen
-            .Select(x => TindakanKomponenDto
-                .FromModel(x, model.TindakanId));
+            .Select(x => TindakanKomponenDto.FromModel(x, model.TindakanId));
         _tindakanKompDal.Delete(model);
         _tindakanKompDal.Insert(listKomponenDto);
     }

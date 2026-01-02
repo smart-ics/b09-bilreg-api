@@ -1,22 +1,20 @@
-﻿using Bilreg.Domain.AdmisiContext.LayananFeature;
-using Bilreg.Domain.AdmisiContext.PpaFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
-using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 
 namespace Bilreg.Domain.ChargeContext.TindakanFeature;
 
 public record TindakanModel : ITindakanKey
 {
-    private readonly List<TindakanKomponenType> _listKomponen;
+    private readonly List<TindakanKomponenBase> _listKomponen;
 
     #region CREATION
     public TindakanModel(
         string tindakanId, DateTime tindakanDate, string orderTindakanId,
         RegReff reg, LayananReff layanan,
         TipeTarifReff tipeTarif, TarifReff tarif,
-        IEnumerable<TindakanKomponenType> listKomponen, 
+        IEnumerable<TindakanKomponenBase> listKomponen, 
         AuditTrailType auditTrail)
     {
         TindakanId = tindakanId;
@@ -33,13 +31,14 @@ public record TindakanModel : ITindakanKey
         AuditTrail = auditTrail;
     }
 
-    public static TindakanModel Create(RegModel reg, LayananType layanan,
-        NilaiTarifType nilaiTarif, Dictionary<KomponenType, PpaType> listPpa, 
+    public static TindakanModel Create(RegModel reg, 
+        LayananType layanan, NilaiTarifType nilaiTarif,
+        IEnumerable<KomponenPpaView> listKomponenPpaView, 
         string userId)
     {
         var newId = Ulid.NewUlid().ToString();
 
-        var listKomp = GenListKomponen(nilaiTarif, listPpa);
+        var listKomp = GenListKomponen(nilaiTarif, listKomponenPpaView);
         var audit = AuditTrailType.Create(userId, DateTime.Now);
         var tarif = new TarifReff(nilaiTarif.TarifId, nilaiTarif.TarifName);
         
@@ -48,31 +47,28 @@ public record TindakanModel : ITindakanKey
             tarif, listKomp, audit);
         return result;
     }
-    public static TindakanModel CreateByOrder(OrderTdkModel orderTdk, 
-        NilaiTarifType nilaiTarif, Dictionary<KomponenType, PpaType> listPpa, string userId)
-    {
-        var newId = Ulid.NewUlid().ToString();
-        if (nilaiTarif.TarifId != orderTdk.Tarif.TarifId)
-            throw new Exception("Nilai Tarif tidak sesuai Order Tindakan");
 
-        var listKomp = GenListKomponen(nilaiTarif, listPpa);
-        var audit = AuditTrailType.Create(userId, DateTime.Now);
+    private static IEnumerable<TindakanKomponenBase> GenListKomponen(
+        NilaiTarifType nilaiTarif, IEnumerable<KomponenPpaView> listKomponenPpaView)
+    {
+        var result = new List<TindakanKomponenBase>();
+        var listKompPpaFetched = listKomponenPpaView.ToList();
+        var index = 0;
         
-        var result = new TindakanModel(newId, DateTime.Now, orderTdk.OrderTdkId,
-            orderTdk.Reg, orderTdk.Layanan, nilaiTarif.TipeTarif,
-            orderTdk.Tarif, listKomp, audit);
-        return result;
-    }
-
-    private static IEnumerable<TindakanKomponenType> GenListKomponen(
-        NilaiTarifType nilaiTarif, Dictionary<KomponenType, PpaType> listPpa)
-    {
-        var listKomp = nilaiTarif.ListKomponen
-            .Select((x, y) => TindakanKomponenType.Create(y, 
-                listPpa.FirstOrDefault(z => z.Key.KomponenId == x.Komponen.KomponenId).Key, 
-                listPpa.FirstOrDefault(z => z.Key.KomponenId == x.Komponen.KomponenId).Value ?? PpaType.Default, 
-                x.Nilai));
-        return listKomp;
+        foreach (var item in nilaiTarif.ListKomponen)
+        {
+            var kompPPa = listKompPpaFetched
+                .FirstOrDefault(x => x.Komponen.ToReff() == item.Komponen);
+            
+            TindakanKomponenBase newItem = kompPPa is null 
+                ? new TindakanKomponenWithoutPpaType(item.Komponen,index++, item.Nilai, 1, item.Nilai) 
+                : TindakanKomponenWithPpaType.Create(kompPPa.Komponen, kompPPa.Ppa, 
+                    index++, item.Nilai, 1);
+            
+            result.Add(newItem);
+        }
+        
+        return result.AsEnumerable();
     }
     
     public static TindakanModel Default => new(
@@ -99,7 +95,7 @@ public record TindakanModel : ITindakanKey
     public TipeTarifReff TipeTarif { get; init; }
     public TarifReff Tarif { get; private set; }
     public decimal Total => _listKomponen.Sum(t => t.SubTotal);
-    public IEnumerable<TindakanKomponenType> ListKomponen => _listKomponen;
+    public IEnumerable<TindakanKomponenBase> ListKomponen => _listKomponen;
     public AuditTrailType AuditTrail { get; init; }
     #endregion
 

@@ -3,48 +3,29 @@ using Bilreg.Domain.ChargeContext.TarifFeature;
 
 namespace Bilreg.Domain.ChargeContext.TindakanFeature;
 
-public record TindakanKomponenType(
+public abstract record TindakanKomponenBase(KomponenReff Komponen, int NoUrut, 
+    decimal Nilai, int Qty, decimal SubTotal);
+
+public record TindakanKomponenWithoutPpaType(
     KomponenReff Komponen,
-    PpaReff Ppa,
     int NoUrut,
     decimal Nilai,
-    decimal Qty,
+    int Qty,
     decimal SubTotal
-)
+) : TindakanKomponenBase(Komponen, NoUrut, Nilai, Qty, SubTotal);
+
+public record TindakanKomponenWithPpaType(KomponenReff Komponen, PpaReff Ppa,
+    int NoUrut, decimal Nilai, int Qty, decimal SubTotal) 
+    : TindakanKomponenBase(Komponen, NoUrut, Nilai, Qty, SubTotal)
 {
-    public static TindakanKomponenType Default => new(
-        KomponenType.Default.ToReff(), 
-        PpaType.Default.ToReff(), 
-        0, 0, 0, 0);
-    public static TindakanKomponenType Create(int noUrut, KomponenType komponen, PpaType ppa, decimal nilai)
+    public static TindakanKomponenWithPpaType Create(
+        KomponenType komp, PpaType ppa, int noUrut, 
+        decimal nilai, int qty)
     {
-        if (!komponen.ListSatTugas.Any())
-            return new TindakanKomponenType(
-                komponen.ToReff(),
-                ppa.ToReff(),
-                noUrut,
-                nilai,
-                1,
-                nilai);
-        
-        var ppaHasValidSatTugas = ppa.ListSatTugas
-            .Select(x => x.SatTugas)
-            .Any(ppaSatTugas => komponen.ListSatTugas
-                .Any(kompSatTugas => ppaSatTugas.SatTugasId == kompSatTugas.SatTugasId));
-        
-        if (!ppaHasValidSatTugas)
-            throw new InvalidOperationException(
-                $"PPA '{ppa.PpaName}' ({ppa.PpaId}) tidak memiliki Satuan Tugas yang sesuai " +
-                $"dengan komponen tarif '{komponen.KomponenName}' ({komponen.KomponenId})");
-
-        return new TindakanKomponenType(
-            komponen.ToReff(), 
-            ppa.ToReff(), 
-            noUrut, 
-            nilai, 
-            1, 
-            nilai);
-    }
+        return !komp.IsValidPpa(ppa)  
+            ? throw new ArgumentException($"Komponen '{komp.KomponenId}' tidak valid") 
+            : new TindakanKomponenWithPpaType(komp.ToReff(), ppa.ToReff(), 
+                noUrut, nilai, qty, nilai * qty);
+    }    
 }
-
 

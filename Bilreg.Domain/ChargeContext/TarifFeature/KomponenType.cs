@@ -37,6 +37,20 @@ public record KomponenType : IKomponenKey
     
     #region BEHAVIOR
     public KomponenReff ToReff() => new(KomponenId, KomponenName);
+
+    public bool IsValidPpa(PpaType ppa)
+    {
+        //  jika sat-tugas PPA dan Komponen ber-irisan, berarti valid
+        if (!ListSatTugas.Any())
+            return false;
+        
+        var ppaHasValidSatTugas = ppa.ListSatTugas
+            .Select(x => x.SatTugas)
+            .Any(ppaSatTugas => ListSatTugas
+                .Any(kompSatTugas => ppaSatTugas.SatTugasId == kompSatTugas.SatTugasId));
+
+        return ppaHasValidSatTugas;
+    }
     #endregion
 }
 
@@ -45,4 +59,6 @@ public interface IKomponenKey
     string KomponenId {get;}
 }
 
-public record KomponenReff(string KomponenId, string KomponenName);
+public record KomponenReff(string KomponenId, string KomponenName) : IKomponenKey;
+
+public record KomponenPpaView(KomponenType Komponen, PpaType Ppa);

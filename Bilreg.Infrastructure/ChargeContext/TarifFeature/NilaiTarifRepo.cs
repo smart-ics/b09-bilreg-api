@@ -18,13 +18,25 @@ public class NilaiTarifRepo : INilaiTarifRepo
 
     public void SaveChanges(NilaiTarifType model)
     {
-        LoadEntity(model)
+        LoadEntity(model as INilaiTarifKey)
             .Match(
                 onSome: _ => _nilaiTarifDal.Update(NilaiTarifDto.FromModel(model)),
                 onNone: () => _nilaiTarifDal.Insert(NilaiTarifDto.FromModel(model)));
         
         _nilaiTarifKompDal.Delete(model);
         _nilaiTarifKompDal.Insert(model.ListKomponen.Select(x => NilaiTarifKompDto.FromModel(model.NilaiTarifId,x)));
+    }
+
+    public MayBe<NilaiTarifType> LoadEntity(INilaiTarifKey key)
+    {
+        var dto = _nilaiTarifDal.GetData(key);
+        if (dto is null)
+            return MayBe<NilaiTarifType>.None;
+
+        var listKompDto = _nilaiTarifKompDal.ListData(key)?.ToList() ?? [];
+        var listKomp = listKompDto.Select(x => x.ToModel());
+        var model  = dto.ToModel(listKomp);
+        return MayBe.From(model);
     }
 
     public MayBe<NilaiTarifType> LoadEntity(INilaiTarifCompositKey compositKey)
@@ -103,5 +115,7 @@ public class NilaiTarifRepo : INilaiTarifRepo
     }
 }
 
+//  Resharper disable inconsistentnaming
+// ReSharper disable ClassNeverInstantiated.Global
 public record ta_trs_tarif2_dto(string fs_kd_trs, string fs_kd_tarif);
 public record ta_trs_tarif3_dto(string fs_kd_trs, string fs_kd_tarif, string fs_kd_kelas, string fs_kd_tipe, string fs_kd_detil, decimal fn_nilai);

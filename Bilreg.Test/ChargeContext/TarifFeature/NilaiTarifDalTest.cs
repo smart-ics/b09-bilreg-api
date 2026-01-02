@@ -73,17 +73,4 @@ public class NilaiTarifDalTest
                 .Excluding(x => x.TipeTarifName)
                 .Excluding(x => x.KelasName));
     }
-
-    //[Fact]
-    // public void ListDataByLayananAndVariantTest()
-    // {
-    //     using var trans = TransHelper.NewScope();
-    //     _sut.Insert(Faker());
-    //     var actual = _sut.ListData(FakerLayananKey(), FakerVariant());
-    //     actual.Should().ContainEquivalentOf(Faker(),
-    //         opt => opt
-    //             .Excluding(x => x.TarifName)
-    //             .Excluding(x => x.TipeTarifName)
-    //             .Excluding(x => x.KelasName));
-    // }
 }

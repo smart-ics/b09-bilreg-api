@@ -10,7 +10,19 @@ public record TindakanKomponenDto(
     string PpaId, string PpaName,
     decimal Qty, decimal Nilai, decimal SubTotal)
 {
-    public static TindakanKomponenDto FromModel(TindakanKomponenType model, string tindakanId)
+    public static TindakanKomponenDto FromModel(TindakanKomponenBase model, string tindakanId)
+    {
+        var (ppaId, ppaName) = model is TindakanKomponenWithPpaType kompPpa
+            ? (kompPpa.Ppa.PpaId, kompPpa.Ppa.PpaName)
+            : (string.Empty, string.Empty);
+
+        return new TindakanKomponenDto(
+            tindakanId, model.NoUrut,
+            model.Komponen.KomponenId, model.Komponen.KomponenName,
+            ppaId, ppaName,
+            model.Qty, model.Nilai, model.SubTotal);
+    }
+    public static TindakanKomponenDto FromModel(TindakanKomponenWithPpaType model, string tindakanId)
     {
         var result = new TindakanKomponenDto(tindakanId,  
             model.NoUrut, model.Komponen.KomponenId, model.Komponen.KomponenName,
@@ -18,13 +30,14 @@ public record TindakanKomponenDto(
         return result;
     }
 
-    public TindakanKomponenType ToModel()
+    public TindakanKomponenBase ToModel()
     {
         var komponenReff = new KomponenReff(KomponenTarifId, KomponenTarifName);
         var ppaReff = new PpaReff(PpaId, PpaName);
 
-        var result = new TindakanKomponenType(komponenReff, ppaReff,
-            NoUrut, Nilai, Qty, SubTotal); 
+        TindakanKomponenBase result = PpaId == string.Empty ? 
+            new TindakanKomponenWithoutPpaType(komponenReff, NoUrut, Nilai, (int)Qty, SubTotal) :
+            new TindakanKomponenWithPpaType(komponenReff, ppaReff, NoUrut, Nilai, (int)Qty, SubTotal); 
         return result;
     }
 }

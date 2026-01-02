@@ -33,11 +33,10 @@ public record KomponenSatTugasDto(string fs_kd_detil_tarif,
         return result;
     }
 
-    public KomponenSatTugasDto ToModel()
+    public SatTugasType ToModel()
     {
         var profesi = new ProfesiType(fs_kd_profesi, fs_nm_profesi);
-        var result = new KomponenSatTugasDto(fs_kd_detil_tarif, fs_kd_sat_tugas, fs_nm_sat_tugas,
-            fs_kd_profesi, fs_nm_profesi);
+        var result = new SatTugasType(fs_kd_sat_tugas, fs_nm_sat_tugas, profesi);
         return result;
     }
 }

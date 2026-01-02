@@ -8,6 +8,7 @@ namespace Bilreg.Application.ChargeContext.TarifFeature;
 public interface INilaiTarifRepo :
     ISaveChange<NilaiTarifType>,
     ILoadEntity<NilaiTarifType, INilaiTarifCompositKey>,
+    ILoadEntity<NilaiTarifType, INilaiTarifKey>,
     IDeleteEntity<INilaiTarifKey>
 {
     void Import();

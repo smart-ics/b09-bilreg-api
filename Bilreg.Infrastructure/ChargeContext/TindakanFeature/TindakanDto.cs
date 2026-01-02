@@ -30,7 +30,7 @@ public record TindakanDto(
         return result;
     }
 
-    public TindakanModel ToModel(IEnumerable<TindakanKomponenType> listKomponen)
+    public TindakanModel ToModel(IEnumerable<TindakanKomponenBase> listKomponen)
     {
         var regReff = new RegReff(RegId, PasienId, PasienName); 
         var layananReff = new LayananReff(LayananId, LayananName);
