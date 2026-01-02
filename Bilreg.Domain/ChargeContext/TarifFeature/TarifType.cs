@@ -1,4 +1,6 @@
-﻿namespace Bilreg.Domain.ChargeContext.TarifFeature;
+﻿using Bilreg.Domain.PaymentContext.RekapCetakFeature;
+
+namespace Bilreg.Domain.ChargeContext.TarifFeature;
 
 public record TarifType : ITarifKey
 {
@@ -24,6 +26,7 @@ public record TarifType : ITarifKey
     public GroupTarifType GroupTarif { get; init; }
     public GroupTarifDkType GroupTarifDk { get; init; }
     public JenisTarifType JenisTarif { get; init; }
+    public RekapCetakReff RekapCetak { get; init; }
     public TarifReff ToReff() => new(TarifId, TarifName);
 }
 

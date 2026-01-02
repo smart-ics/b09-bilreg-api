@@ -1,5 +1,6 @@
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 
@@ -93,6 +94,7 @@ public record TindakanModel : ITindakanKey
     public RegReff Reg { get; init; }
     public LayananReff Layanan { get; init; }
     public TipeTarifReff TipeTarif { get; init; }
+    public KelasReff Kelas { get; init; }
     public TarifReff Tarif { get; private set; }
     public decimal Total => _listKomponen.Sum(t => t.SubTotal);
     public IEnumerable<TindakanKomponenBase> ListKomponen => _listKomponen;
