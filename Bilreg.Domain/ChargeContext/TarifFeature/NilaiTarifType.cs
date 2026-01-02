@@ -1,6 +1,4 @@
-﻿using System.Runtime.InteropServices.ComTypes;
-using System.Security.Cryptography.X509Certificates;
-using Bilreg.Domain.BedUsageContext.WardFeature;
+﻿using Bilreg.Domain.BedUsageContext.WardFeature;
 
 namespace Bilreg.Domain.ChargeContext.TarifFeature;
 

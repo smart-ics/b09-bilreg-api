@@ -71,7 +71,6 @@
     <Folder Include="PasienContext\DemografiFeature" />
     <Folder Include="PasienContext\PasienFeature" />
     <Folder Include="PasienContext\StatusSosialFeature" />
-    <Folder Include="PaymentContext\RekapCatakFeature" />
     <Folder Include="ChargeContext\AmbulanceFeature" />
     <Folder Include="Helpers" />
     <Folder Include="BedUsageContext\" />
@@ -192,6 +191,7 @@
     <Build Include="ChargeContext\TarifFeature\BILRG_NilaiTarif.sql" />
     <Build Include="ChargeContext\BILRG_OrderTdk.sql" />
     <Build Include="ChargeContext\TarifFeature\BILRG_NilaiTarifKomponen.sql" />
+    <Build Include="PaymentContext\RekapCatakFeature\ta_trs_billing2.sql" />
     <Build Include="PaymentContext\TrsBillingFeature\ta_trs_billing.sql" />
     <None Include="AdmisiContext\BookingFeature\BILRG_BookingExternal.sql" />
   </ItemGroup>

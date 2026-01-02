@@ -1,9 +1,8 @@
-﻿using Bilreg.Domain.AdmisiContext.LayananFeature;
-using Bilreg.Domain.ChargeContext.TindakanFeature;
+﻿using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Nuna.Lib.DataAccessHelper;
 
-namespace Bilreg.Application.ChargeContext.TindakanFeature.TindakanAgg;
+namespace Bilreg.Application.ChargeContext.TindakanFeature;
 
 public interface IOrderTdkRepo :
     ISaveChange<OrderTdkModel>,

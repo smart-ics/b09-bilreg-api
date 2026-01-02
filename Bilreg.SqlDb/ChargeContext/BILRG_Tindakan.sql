@@ -2,7 +2,6 @@
 (
     TindakanId       VARCHAR(26)   NOT NULL CONSTRAINT DF_BILRG_Tindakan_TindakanId DEFAULT(''),
     TindakanDate     DATETIME      NOT NULL CONSTRAINT DF_BILRG_Tindakan_TindakanDate DEFAULT('3000-01-01'),
-    JenisTindakan 	 INT 		   NOT NULL CONSTRAINT DF_BILRG_Tindakan_JenisTindakan DEFAULT(0),
 	OrderTdkId       VARCHAR(26)   NOT NULL CONSTRAINT DF_BILRG_Tindakan_OrderTdkId DEFAULT(''),
     
 	RegId            VARCHAR(10)   NOT NULL CONSTRAINT DF_BILRG_Tindakan_RegId DEFAULT(''),

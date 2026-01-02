@@ -1,7 +1,7 @@
-﻿using Bilreg.Domain.BillContext.TindakanSub.TindakanAgg;
+﻿using Bilreg.Domain.ChargeContext.TindakanFeature;
 using MediatR;
 
-namespace Bilreg.Application.ChargeContext.TindakanFeature.TindakanAgg;
+namespace Bilreg.Application.ChargeContext.TindakanFeature.UseCases;
 
 public record TindakanVoidCmd(string TindakanId, string UserId) : IRequest, ITindakanKey;
 

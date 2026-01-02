@@ -6,7 +6,7 @@ using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
 
-namespace Bilreg.Application.ChargeContext.TindakanFeature.TindakanAgg;
+namespace Bilreg.Application.ChargeContext.TindakanFeature.UseCases;
 
 public record OrderTdkGetQuery(string OrderTdkId) : IRequest<OrderTdkGetResponse>, IOrderTdkKey;
 

@@ -1,7 +1,7 @@
 ﻿using Bilreg.Domain.ChargeContext.TindakanFeature;
 using MediatR;
 
-namespace Bilreg.Application.ChargeContext.TindakanFeature.TindakanAgg;
+namespace Bilreg.Application.ChargeContext.TindakanFeature.UseCases;
 
 public record OrderTdkCancelCmd(string OrderTdkId, string UserId) : IRequest, IOrderTdkKey;
 

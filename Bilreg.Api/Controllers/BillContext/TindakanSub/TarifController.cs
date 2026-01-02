@@ -29,7 +29,7 @@ namespace Bilreg.Api.Controllers.BillContext.TindakanSub
         [Route("nilai/{id}/{tipeTarifId}/{kelasId}")]
         public async Task<IActionResult> GetNilai(string id, string tipeTarifId, string kelasId)
         {
-            var query = new NilaiTarifGetQuery(id, tipeTarifId, kelasId);
+            var query = new TrfGetNilaiTarifQuery(id, tipeTarifId, kelasId);
             var result = await _mediator.Send(query);
             return Ok(new JSendOk(result));
         }
