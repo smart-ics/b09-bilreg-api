@@ -79,6 +79,7 @@
     <Folder Include="ChargeContext\TarifFeature\" />
     <Folder Include="PaymentContext\" />
     <Folder Include="PaymentContext\TrsBillingFeature\" />
+    <Folder Include="PaymentContext\RekapCatakFeature\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OpCase.sql" />
