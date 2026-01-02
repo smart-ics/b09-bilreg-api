@@ -1,0 +1,203 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <Name>Bilreg.SqlDb</Name>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectVersion>4.1</ProjectVersion>
+    <ProjectGuid>{962163b4-e790-44c1-91b2-d0293adf6c8b}</ProjectGuid>
+    <DSP>Microsoft.Data.Tools.Schema.Sql.Sql170DatabaseSchemaProvider</DSP>
+    <OutputType>Database</OutputType>
+    <RootPath>
+    </RootPath>
+    <RootNamespace>Bilreg.SqlDb</RootNamespace>
+    <AssemblyName>Bilreg.SqlDb</AssemblyName>
+    <ModelCollation>1033, CI</ModelCollation>
+    <DefaultFileStructure>BySchemaAndSchemaType</DefaultFileStructure>
+    <DeployToDatabase>True</DeployToDatabase>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
+    <TargetLanguage>CS</TargetLanguage>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <SqlServerVerification>False</SqlServerVerification>
+    <IncludeCompositeObjects>True</IncludeCompositeObjects>
+    <TargetDatabaseSet>True</TargetDatabaseSet>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <OutputPath>bin\Release\</OutputPath>
+    <BuildScriptName>$(MSBuildProjectName).sql</BuildScriptName>
+    <TreatWarningsAsErrors>False</TreatWarningsAsErrors>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <DefineDebug>false</DefineDebug>
+    <DefineTrace>true</DefineTrace>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <OutputPath>bin\Debug\</OutputPath>
+    <BuildScriptName>$(MSBuildProjectName).sql</BuildScriptName>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <DefineDebug>true</DefineDebug>
+    <DefineTrace>true</DefineTrace>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup>
+    <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">11.0</VisualStudioVersion>
+    <!-- Default to the v11.0 targets path if the targets file for the current VS version is not found -->
+    <SSDTExists Condition="Exists('$(MSBuildExtensionsPath)\Microsoft\VisualStudio\v$(VisualStudioVersion)\SSDT\Microsoft.Data.Tools.Schema.SqlTasks.targets')">True</SSDTExists>
+    <VisualStudioVersion Condition="'$(SSDTExists)' == ''">11.0</VisualStudioVersion>
+  </PropertyGroup>
+  <Import Condition="'$(SQLDBExtensionsRefPath)' != ''" Project="$(SQLDBExtensionsRefPath)\Microsoft.Data.Tools.Schema.SqlTasks.targets" />
+  <Import Condition="'$(SQLDBExtensionsRefPath)' == ''" Project="$(MSBuildExtensionsPath)\Microsoft\VisualStudio\v$(VisualStudioVersion)\SSDT\Microsoft.Data.Tools.Schema.SqlTasks.targets" />
+  <ItemGroup>
+    <Folder Include="Properties" />
+    <Folder Include="BedUsageContext\WardFeature" />
+    <Folder Include="AdmisiContext" />
+    <Folder Include="AdmisiContext\AntrianFeature" />
+    <Folder Include="AdmisiContext\BookingFeature" />
+    <Folder Include="AdmisiContext\JaminanFeature" />
+    <Folder Include="AdmisiContext\LayananFeature" />
+    <Folder Include="AdmisiContext\PpaFeature" />
+    <Folder Include="AdmisiContext\RegFeature" />
+    <Folder Include="AdmisiContext\RujukanFeature" />
+    <Folder Include="ChargeContext" />
+    <Folder Include="ParamContext" />
+    <Folder Include="PasienContext" />
+    <Folder Include="PasienContext\DemografiFeature" />
+    <Folder Include="PasienContext\PasienFeature" />
+    <Folder Include="PasienContext\StatusSosialFeature" />
+    <Folder Include="ChargeContext\AmbulanceFeature" />
+    <Folder Include="Helpers" />
+    <Folder Include="BedUsageContext\" />
+    <Folder Include="BedUsageContext\RoomRateFeature\" />
+    <Folder Include="BedUsageContext\KamarOperasiFeature\" />
+    <Folder Include="ChargeContext\TarifFeature\" />
+    <Folder Include="PaymentContext\" />
+    <Folder Include="PaymentContext\TrsBillingFeature\" />
+    <Folder Include="PaymentContext\RekapCatakFeature\" />
+    <Folder Include="PaymentContext\RekeningFeature\" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OpCase.sql" />
+    <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OpCaseAktif.sql" />
+    <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OpCasePpa.sql" />
+    <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OpCaseStateHist.sql" />
+    <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OrderOp.sql" />
+    <None Include="BedUsageContext\KamarOperasiFeature\ta_jenis_operasi.sql" />
+    <None Include="BedUsageContext\WardFeature\BILRG_RoomCat.sql" />
+    <None Include="BedUsageContext\WardFeature\BILRG_RoomCatDataSeed.sql" />
+    <None Include="AdmisiContext\AntrianFeature\BILRG_Antrian.sql" />
+    <None Include="AdmisiContext\AntrianFeature\BILRG_AntrianEntry.sql" />
+    <None Include="AdmisiContext\AntrianFeature\BILRG_PasienTracker.sql" />
+    <None Include="AdmisiContext\AntrianFeature\BILRG_PasienTrackerEvent.sql" />
+    <None Include="AdmisiContext\BookingFeature\BILRG_Booking.sql" />
+    <None Include="AdmisiContext\BookingFeature\BILRG_JadwalPraktek.sql" />
+    <None Include="AdmisiContext\JaminanFeature\ta_cara_bayar_dk.dataseed.sql" />
+    <None Include="AdmisiContext\JaminanFeature\ta_cara_bayar_dk.sql" />
+    <None Include="AdmisiContext\JaminanFeature\ta_polis.sql" />
+    <None Include="AdmisiContext\JaminanFeature\ta_polis_cover.sql" />
+    <None Include="AdmisiContext\JaminanFeature\ta_grup_jaminan.sql" />
+    <None Include="AdmisiContext\JaminanFeature\ta_jaminan.sql" />
+    <None Include="AdmisiContext\JaminanFeature\ta_tipe_jaminan.sql" />
+    <None Include="AdmisiContext\LayananFeature\ta_instalasi.sql" />
+    <None Include="AdmisiContext\LayananFeature\ta_instalasi_dk.dataseed.sql" />
+    <None Include="AdmisiContext\LayananFeature\ta_instalasi_dk.sql" />
+    <None Include="AdmisiContext\LayananFeature\ta_layanan.sql" />
+    <None Include="AdmisiContext\LayananFeature\ta_layanan_dk.dataseed..sql" />
+    <None Include="AdmisiContext\LayananFeature\ta_layanan_dk.sql" />
+    <None Include="AdmisiContext\LayananFeature\BILRG_GroupSpesialis.dataseed.sql" />
+    <None Include="AdmisiContext\LayananFeature\BILRG_GroupSpesialis.sql" />
+    <None Include="AdmisiContext\LayananFeature\ta_layanan_tipe_dk.sql" />
+    <None Include="AdmisiContext\LayananFeature\ta_layanan_tipe_dk.dataseed.sql" />
+    <None Include="AdmisiContext\PpaFeature\BILRG_Profesi.dataseed.sql" />
+    <None Include="AdmisiContext\PpaFeature\BILRG_Profesi.sql" />
+    <None Include="AdmisiContext\PpaFeature\satuantugas_to_prefesi.script.sql" />
+    <None Include="AdmisiContext\PpaFeature\td_peg.sql" />
+    <None Include="AdmisiContext\PpaFeature\td_peg_layanan.sql" />
+    <None Include="AdmisiContext\PpaFeature\td_peg_sat_tugas.sql" />
+    <None Include="AdmisiContext\PpaFeature\td_sat_tugas.sql" />
+    <None Include="AdmisiContext\RegFeature\BILRG_RegAktif.sql" />
+    <None Include="AdmisiContext\RegFeature\ta_karcis.sql" />
+    <None Include="AdmisiContext\RegFeature\ta_karcis2.sql" />
+    <None Include="AdmisiContext\RegFeature\ta_karcis3.sql" />
+    <None Include="AdmisiContext\RegFeature\ta_reg_jaminan.sql" />
+    <None Include="AdmisiContext\RegFeature\ta_registrasi.sql" />
+    <None Include="AdmisiContext\RegFeature\ta_registrasi2.sql" />
+    <None Include="AdmisiContext\RujukanFeature\ta_cara_masuk_dk.dataseed.sql" />
+    <None Include="AdmisiContext\RujukanFeature\ta_cara_masuk_dk.sql" />
+    <None Include="AdmisiContext\RujukanFeature\tc_kelas_rs.sql" />
+    <None Include="AdmisiContext\RujukanFeature\tc_kelas_rs.dataseed.sql" />
+    <None Include="AdmisiContext\RujukanFeature\ta_rujukan.sql" />
+    <None Include="AdmisiContext\RujukanFeature\ta_rujukan_tipe.dataseed.sql" />
+    <None Include="AdmisiContext\RujukanFeature\ta_rujukan_tipe.sql" />
+    <None Include="BedUsageContext\WardFeature\ta_bangsal.sql" />
+    <None Include="BedUsageContext\WardFeature\ta_bed.sql" />
+    <None Include="BedUsageContext\WardFeature\ta_kamar.sql" />
+    <None Include="BedUsageContext\WardFeature\ta_kamar_tipe.sql" />
+    <None Include="ChargeContext\TarifFeature\ta_kelas.sql" />
+    <None Include="ChargeContext\TarifFeature\ta_kelas_dk.dataseed.sql" />
+    <None Include="ChargeContext\TarifFeature\ta_kelas_dk.sql" />
+    <None Include="ChargeContext\TarifFeature\ta_detil_tarif.sql" />
+    <None Include="ChargeContext\TarifFeature\ta_detil_tarif2.sql" />
+    <None Include="ChargeContext\TarifFeature\ta_grup_detil_tarif.sql" />
+    <None Include="ChargeContext\TarifFeature\ta_grup_komponen.sql" />
+    <None Include="ChargeContext\TarifFeature\ta_grup_tarif.sql" />
+    <None Include="ChargeContext\TarifFeature\ta_grup_tarif_dk.dataseed.sql" />
+    <None Include="ChargeContext\TarifFeature\ta_grup_tarif_dk.sql" />
+    <None Include="ChargeContext\TarifFeature\ta_jenis_tarif.sql" />
+    <None Include="ChargeContext\TarifFeature\ta_rek_tipe.dataseed.sql" />
+    <None Include="ChargeContext\TarifFeature\ta_rek_tipe.sql" />
+    <None Include="ChargeContext\TarifFeature\ta_tarif_tipe.sql" />
+    <None Include="ChargeContext\TarifFeature\ta_tarif.sql" />
+    <None Include="ParamContext\tz_parameter_sistem.sql" />
+    <None Include="ParamContext\tz_parameter_no2.sql" />
+    <None Include="ParamContext\tz_parameter_no.dataseed.sql" />
+    <None Include="ParamContext\tz_parameter_no.sql" />
+    <None Include="ParamContext\tz_parameter_sistem.dataseed.sql" />
+    <None Include="ParamContext\tz_parameter_no_getnextvalue.sql" />
+    <None Include="ParamContext\tz_parameter_no2_getnextvalue.sql" />
+    <None Include="PasienContext\DemografiFeature\ta_kabupaten.sql" />
+    <None Include="PasienContext\DemografiFeature\ta_kecamatan.sql" />
+    <None Include="PasienContext\DemografiFeature\ta_kelurahan.sql" />
+    <None Include="PasienContext\DemografiFeature\ta_kota.sql" />
+    <None Include="PasienContext\DemografiFeature\ta_propinsi.sql" />
+    <None Include="PasienContext\PasienFeature\tc_mr.sql" />
+    <None Include="PasienContext\StatusSosialFeature\ta_agama.dataseed.sql" />
+    <None Include="PasienContext\StatusSosialFeature\ta_agama.sql" />
+    <None Include="PasienContext\StatusSosialFeature\ta_pekerjaan_dk.dataseed.sql" />
+    <None Include="PasienContext\StatusSosialFeature\ta_pekerjaan_dk.sql" />
+    <None Include="PasienContext\StatusSosialFeature\ta_pendidikan_dk.dataseed.sql" />
+    <None Include="PasienContext\StatusSosialFeature\ta_pendidikan_dk.sql" />
+    <None Include="PasienContext\StatusSosialFeature\ta_status_kawin_dk.DataSeed.sql" />
+    <None Include="PasienContext\StatusSosialFeature\ta_status_kawin_dk.sql" />
+    <None Include="PasienContext\StatusSosialFeature\ta_suku.sql" />
+    <None Include="PaymentContext\RekapCatakFeature\ta_grup_rekap_cetak.sql" />
+    <None Include="PaymentContext\RekapCatakFeature\ta_rekap_cetak_dk.dataseed.sql" />
+    <None Include="PaymentContext\RekapCatakFeature\ta_rekap_cetak_dk.sql" />
+    <None Include="PaymentContext\RekapCatakFeature\ta_rekap_cetak_tarif.sql" />
+    <None Include="ChargeContext\AmbulanceFeature\ta_transport2.sql" />
+    <None Include="ChargeContext\AmbulanceFeature\ta_transport.sql" />
+    <None Include="ChargeContext\AmbulanceFeature\ta_tujuan_transport.sql" />
+    <None Include="Helpers\DatabaseUser.sql" />
+    <None Include="ChargeContext\BILRG_Tindakan.sql" />
+    <None Include="ChargeContext\BILRG_TindakanKomponen.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <Build Include="BedUsageContext\KamarOperasiFeature\BILRG_ScheduleOp.sql" />
+    <Build Include="BedUsageContext\KamarOperasiFeature\BILRG_SchedulOpPpa.sql" />
+    <Build Include="BedUsageContext\RoomRateFeature\ta_kamar2.sql" />
+    <Build Include="BedUsageContext\RoomRateFeature\ta_kamar_tipe.sql" />
+    <Build Include="ChargeContext\TarifFeature\BILRG_NilaiTarif.sql" />
+    <Build Include="ChargeContext\BILRG_OrderTdk.sql" />
+    <Build Include="ChargeContext\TarifFeature\BILRG_NilaiTarifKomponen.sql" />
+    <Build Include="PaymentContext\RekapCatakFeature\ta_trs_billing2.sql" />
+    <Build Include="PaymentContext\RekeningFeature\t_rek.sql" />
+    <Build Include="PaymentContext\TrsBillingFeature\ta_trs_billing.sql" />
+    <None Include="AdmisiContext\BookingFeature\BILRG_BookingExternal.sql" />
+  </ItemGroup>
+</Project>
