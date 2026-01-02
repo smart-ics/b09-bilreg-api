@@ -7,7 +7,6 @@ using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.AdmisiContext.RujukanFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.ChargeContext.TindakanFeature;
-using Bilreg.Application.ChargeContext.TindakanFeature.TindakanAgg;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
@@ -16,16 +15,12 @@ using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiContext.RujukanFeature;
-using Bilreg.Domain.BedUsageContext.WardFeature;
-using Bilreg.Domain.BillContext.TindakanSub.TindakanAgg;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
-using Microsoft.VisualStudio.TestPlatform.ObjectModel;
 using Nuna.Lib.TransactionHelper;
-using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 
@@ -58,9 +53,9 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
     private readonly IJaminanRepo _jaminanRepo;
     private readonly ITarifRepo _tarifRepo;
     private readonly INilaiTarifRepo _nilaiTarifRepo;
-    private readonly ITindakanFactory _tdkFactory;
     private readonly ITipeTarifRepo _tipeTarifRepo;
     private readonly ITindakanRepo _tindakanRepo;
+    private readonly IKomponenRepo _komponenRepo;
     private const string BAYAR_SENDIRI = "1";
 
     public RegJalanCreateHandler(IPasienRepo pasienRepo,
@@ -82,9 +77,9 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         IJaminanRepo jaminanRepo,
         ITarifRepo tarifRepo,
         INilaiTarifRepo nilaiTarifRepo,
-        ITindakanFactory tdkFactory,
         ITipeTarifRepo tipeTarifRepo,
-        ITindakanRepo tindakanRepo)
+        ITindakanRepo tindakanRepo,
+        IKomponenRepo komponenRepo)
     {
         _pasienRepo = pasienRepo;
         _tipeJaminanRepo = tipeJaminanRepo;
@@ -105,9 +100,9 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         _jaminanRepo = jaminanRepo;
         _tarifRepo = tarifRepo;
         _nilaiTarifRepo = nilaiTarifRepo;
-        _tdkFactory = tdkFactory;
         _tipeTarifRepo = tipeTarifRepo;
         _tindakanRepo = tindakanRepo;
+        _komponenRepo = komponenRepo;
     }
 
     public Task<RegJalanCreateResponse> Handle(RegJalanWalkInCommand request, CancellationToken cancellationToken)
@@ -150,7 +145,8 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
 
         var tindakan = TindakanModel.Default; 
         if(karcis.DefaultTarif.TarifId != "-")
-            tindakan = GenTindakan(reg, tipeJaminan, karcis.DefaultTarif, pasien, layanan, request.UserId);
+            tindakan = GenTindakan(reg, tipeJaminan, karcis.DefaultTarif, 
+                pasien, layanan, request.UserId, dokter);
         
 
 
@@ -301,8 +297,9 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         return queueHdr;
     }
 
-    private TindakanModel GenTindakan(RegModel reg, TipeJaminanType tipeJaminan, TarifReff tarifReff, 
-        PasienModel pasien, LayananType layanan, string userId)
+    private TindakanModel GenTindakan(RegModel reg, TipeJaminanType tipeJaminan, 
+        TarifReff tarifReff, PasienModel pasien, 
+        LayananType layanan, string userId, PpaType dokter)
     {
         var jaminan = _jaminanRepo.LoadEntity(JaminanType.Key(tipeJaminan.Jaminan.JaminanId))
             .Match(
@@ -343,19 +340,30 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
                 $"NilaiTarif Tarif:{tarif.TarifId}, Tipe:{tipeTarif.TipeTarifId}, Kelas:{reg.Kelas.KelasId} not found")
         );
 
-        var tarifTdk = new TindakanTarifDto(
-            tarif.ToReff(),
-            nilaiTarif.ListKomponen.Select(x => new TindakanTarifKompomnenDto(
-                x.Komponen.KomponenId, reg.Dokter.PpaId, 1)));
+        var listKompMaster = _komponenRepo
+            .ListData(nilaiTarif.ListKomponen.Select(x => x.Komponen))?.ToList() ?? [];
+        
+        var listKompPpa = listKompMaster.Where(x => x.ListSatTugas.Any())?.ToList() ?? [];
 
-        var tdkTarif = _tdkFactory.BuildTindakanTarif(tarif, nilaiTarif, tarifTdk);
-
-        var tindakan = _tdkFactory.Create(JenisTindakanEnum.Tindakan, OrderTdkModel.Default,
-            pasien, reg, layanan, tipeTarif, tdkTarif, userId);
-
+        var listPpa = new List<KomponenPpaView>();
+        foreach(var item in listKompPpa)
+        {
+            var komp = LoadKomponen(KomponenType.Key(item.KomponenId));
+            var ppa = dokter;
+            listPpa.Add(new KomponenPpaView(komp, ppa));
+        }
+        var tindakan = TindakanModel.Create(reg, layanan, nilaiTarif, listPpa, userId);
 
         return tindakan;
     }
-
+    private KomponenType LoadKomponen(IKomponenKey key)
+    {
+        var komponen = _komponenRepo.LoadEntity(key)
+            .Match(
+                onSome: x => x,
+                onNone: () => throw new KeyNotFoundException($"Komponen Nilai Tarif '{key.KomponenId}' invalid")
+            );
+        return komponen;
+    }
     #endregion
 }
