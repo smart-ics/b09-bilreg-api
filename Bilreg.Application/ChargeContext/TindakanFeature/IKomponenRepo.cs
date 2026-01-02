@@ -7,6 +7,6 @@ public interface IKomponenRepo :
     ISaveChange<KomponenType>,
     ILoadEntity<KomponenType, IKomponenKey>,
     IDeleteEntity<IKomponenKey>,
-    IListData<KomponenType>
+    IListData<KomponenType, IEnumerable<IKomponenKey>>
 {
 }

@@ -1,6 +1,6 @@
-﻿using Bilreg.Application.ChargeContext.TindakanFeature.TindakanAgg;
+﻿using Bilreg.Application.ChargeContext.TindakanFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
-using Bilreg.Domain.BillContext.TindakanSub.TindakanAgg;
+using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Nuna.Lib.PatternHelper;
 
@@ -8,52 +8,49 @@ namespace Bilreg.Infrastructure.ChargeContext.TindakanFeature;
 
 public class TindakanRepo : ITindakanRepo
 {
-    private readonly ITindakanDal _tdkDal;
-    private readonly ITindakanKomponenDal _kompDal;
-    public TindakanRepo(ITindakanDal tdkDal, 
-        ITindakanKomponenDal kompDal)
+    private readonly ITindakanDal _tindakanDal;
+    private readonly ITindakanKomponenDal _tindakanKompDal;
+    public TindakanRepo(ITindakanDal tindakanDal, ITindakanKomponenDal tindakanKompDal)
     {
-        _tdkDal = tdkDal;
-        _kompDal = kompDal;
+        _tindakanDal = tindakanDal;
+        _tindakanKompDal = tindakanKompDal;
     }
 
     public void SaveChanges(TindakanModel model)
     {
         LoadEntity(model)
             .Match(
-                onSome: x => _tdkDal.Update(TindakanDto.FromModel(model)),
-                onNone: () => _tdkDal.Insert(TindakanDto.FromModel(model)));
+                onSome: x => _tindakanDal.Update(TindakanDto.FromModel(model)),
+                onNone: () => _tindakanDal.Insert(TindakanDto.FromModel(model)));
 
 
-        var listKomponenDto = model.Tarif.ListKomponen
-            .Select(x => TindakanKomponenDto
-                .FromModel(model.TindakanId, model.Tarif.Tarif.TarifId,
-                x));
-        _kompDal.Delete(model);
-        _kompDal.Insert(listKomponenDto);
+        var listKomponenDto = model.ListKomponen
+            .Select(x => TindakanKomponenDto.FromModel(x, model.TindakanId));
+        _tindakanKompDal.Delete(model);
+        _tindakanKompDal.Insert(listKomponenDto);
     }
 
     public MayBe<TindakanModel> LoadEntity(ITindakanKey key)
     {
-        var data = _tdkDal.GetData(key);
+        var data = _tindakanDal.GetData(key);
         if (data is null)
             return MayBe<TindakanModel>.None;
 
-        var listKomp = _kompDal.ListData(key);
-        var result = data.ToModel(listKomp);
+        var listKompDto = _tindakanKompDal.ListData(key)?.ToList() ?? [];
+        var result = data.ToModel(listKompDto.Select(x => x.ToModel()));
 
         return MayBe.From(result);
     }
 
     public void Delete(ITindakanKey key)
     {
-        _tdkDal.Delete(key);
-        _kompDal.Delete(key);
+        _tindakanDal.Delete(key);
+        _tindakanKompDal.Delete(key);
     }
 
     public IEnumerable<TindakanView> ListData(IRegKey regKey)
     {
-        var listDto = _tdkDal.ListData(regKey);
+        var listDto = _tindakanDal.ListData(regKey);
         var result = listDto.Select(x =>  x.ToView());
         return result;
     }

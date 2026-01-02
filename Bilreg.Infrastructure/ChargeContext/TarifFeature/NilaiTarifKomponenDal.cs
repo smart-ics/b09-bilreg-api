@@ -13,6 +13,7 @@ public interface INilaiTarifKompDal:
     IDelete<INilaiTarifKey>,
     IListData<NilaiTarifKompDto, INilaiTarifKey>
 {
+    void Clear();
 }
 
 public class NilaiTarifKompDal : INilaiTarifKompDal
@@ -57,6 +58,13 @@ public class NilaiTarifKompDal : INilaiTarifKompDal
         conn.Execute(sql, dp);    
     }
 
+    public void Clear()
+    {
+        const string sql = "DELETE FROM BILRG_NilaiTarifKomponen";
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        conn.Execute(sql);    
+    }
     public IEnumerable<NilaiTarifKompDto> ListData(INilaiTarifKey filter)
     {
         const string sql = """

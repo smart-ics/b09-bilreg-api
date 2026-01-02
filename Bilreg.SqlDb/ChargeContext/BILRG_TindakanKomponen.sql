@@ -1,7 +1,6 @@
 ﻿CREATE TABLE BILRG_TindakanKomponen
 (
     TindakanId         VARCHAR(26)   NOT NULL CONSTRAINT DF_BILRG_TindakanKomponen_TindakanId DEFAULT(''),
-    TarifId            VARCHAR(10)   NOT NULL CONSTRAINT DF_BILRG_TindakanKomponen_TarifId DEFAULT(''),
     NoUrut             INT           NOT NULL CONSTRAINT DF_BILRG_TindakanKomponen_NoUrut DEFAULT(0),
     KomponenTarifId    VARCHAR(3)    NOT NULL CONSTRAINT DF_BILRG_TindakanKomponen_KomponenTarifId DEFAULT(''),
     KomponenTarifName  VARCHAR(30)   NOT NULL CONSTRAINT DF_BILRG_TindakanKomponen_KomponenTarifName DEFAULT(''),
