@@ -82,29 +82,16 @@ public record TrsBillingDto(
         var kelas = new KelasReff(fs_kd_kelas, fs_nm_kelas);
         var rekapCetak = new RekapCetakReff(fs_kd_rekap_cetak, fs_nm_rekap_cetak);
         var keterangan = new TrsBillKetType(
-            fs_keterangan, 
-            fs_keterangan2, 
-            fs_kd_ref_biaya, 
-            fn_qty, 
-            fs_kd_trs_main);
+            fs_keterangan, fs_keterangan2, fs_kd_ref_biaya, 
+            fn_qty, fs_kd_trs_main);
         var tglTrs = DateTime.ParseExact($"{fd_tgl_trs} {fs_jam_trs}","yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
         var auditinfo = new AuditInfoType(fs_kd_petugas, tglTrs);
         
         return new TrsBillingType(
-            fs_kd_trs,
-            fn_modul,
-            tglTrs,
-            reg,
-            layanan,
-            kelas,
-            auditinfo,
-            fn_sub_total,
-            fn_diskon,
-            fn_tax,
-            fn_biaya,
-            rekapCetak,
-            keterangan,
-            listTrsBilling2
+            fs_kd_trs, fn_modul, tglTrs,
+            reg, layanan, kelas, auditinfo,
+            fn_sub_total, fn_diskon, fn_tax, fn_biaya,
+            rekapCetak, keterangan, listTrsBilling2
         );
     }
 }

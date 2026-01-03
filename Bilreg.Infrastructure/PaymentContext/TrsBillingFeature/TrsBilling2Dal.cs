@@ -30,20 +30,26 @@ public class TrsBilling2Dal : ITrsBilling2Dal
         conn.Open();
         bcp.AddMap("fs_kd_trs", "fs_kd_trs");
         bcp.AddMap("fn_no_urut", "fn_no_urut");
-        bcp.AddMap("fs_kd_detil_tarif", "fs_kd_detil_tarif");
-        bcp.AddMap("fs_kd_grup_rek", "fs_kd_grup_rek");
-        bcp.AddMap("fs_kd_trs_bayar", "fs_kd_trs_bayar");
+
         bcp.AddMap("fs_kd_jenis_bayar", "fs_kd_jenis_bayar");
         bcp.AddMap("fn_trs_p", "fn_trs_p");
         bcp.AddMap("fn_trs_n", "fn_trs_n");
-        bcp.AddMap("fs_kd_petugas_medis", "fs_kd_petugas_medis");
-        bcp.AddMap("fs_kd_petugas_kasir", "fs_kd_petugas_kasir");
+        
+        bcp.AddMap("fs_kd_trs_bayar", "fs_kd_trs_bayar");
         bcp.AddMap("fd_tgl_bayar", "fd_tgl_bayar");
         bcp.AddMap("fs_jam_bayar", "fs_jam_bayar");
+
+        bcp.AddMap("fs_kd_petugas_kasir", "fs_kd_petugas_kasir");
+        bcp.AddMap("fs_kd_petugas_medis", "fs_kd_petugas_medis");
+        
+        bcp.AddMap("fs_kd_detil_tarif", "fs_kd_detil_tarif");
+        bcp.AddMap("fs_kd_grup_rek", "fs_kd_grup_rek");
+
         bcp.AddMap("fs_kd_rek_ppdp", "fs_kd_rek_ppdp");
         bcp.AddMap("fs_kd_rek_pdpt", "fs_kd_rek_pdpt");
-        bcp.AddMap("fs_kd_rek_pdpt_lain", "fs_kd_rek_pdpt_lain");
         bcp.AddMap("fs_kd_rek_disc", "fs_kd_rek_disc");
+        bcp.AddMap("fs_kd_rek_pdpt_lain", "fs_kd_rek_pdpt_lain");
+        
         bcp.AddMap("fs_kd_rek_persediaan", "fs_kd_rek_persediaan");
         bcp.AddMap("fs_kd_rek_tax", "fs_kd_rek_tax");
         bcp.AddMap("fs_kd_rek_retur", "fs_kd_rek_retur");
@@ -72,29 +78,20 @@ public class TrsBilling2Dal : ITrsBilling2Dal
     {
         const string sql = """
             SELECT
-                aa.fs_kd_trs,
-                aa.fn_no_urut,
-                aa.fs_kd_detil_tarif,
-                aa.fs_kd_grup_rek,
-                aa.fs_kd_trs_bayar,
-                aa.fs_kd_jenis_bayar,
-                aa.fn_trs_p,
-                aa.fn_trs_n,
-                aa.fs_kd_petugas_medis,
-                aa.fs_kd_petugas_kasir,
-                aa.fd_tgl_bayar,
-                aa.fs_jam_bayar,
-                aa.fs_kd_rek_ppdp,
-                aa.fs_kd_rek_pdpt,
-                aa.fs_kd_rek_pdpt_lain,
-                aa.fs_kd_rek_disc,
-                aa.fs_kd_rek_persediaan,
-                aa.fs_kd_rek_tax,
-                aa.fs_kd_rek_retur,
+                aa.fs_kd_trs, aa.fn_no_urut,
+                
+                aa.fs_kd_jenis_bayar, aa.fn_trs_p, aa.fn_trs_n,
+                aa.fs_kd_trs_bayar, aa.fd_tgl_bayar, aa.fs_jam_bayar,
+                aa.fs_kd_petugas_kasir, aa.fs_kd_petugas_medis,
+                
+                aa.fs_kd_detil_tarif, aa.fs_kd_grup_rek,
+                
+                aa.fs_kd_rek_ppdp, aa.fs_kd_rek_pdpt, aa.fs_kd_rek_disc, 
+                aa.fs_kd_rek_pdpt_lain, aa.fs_kd_rek_persediaan, aa.fs_kd_rek_tax, aa.fs_kd_rek_retur,
                 ISNULL(bb.fs_nm_detil_tarif, '') AS fs_nm_detil_tarif, 
                 ISNULL(cc.fs_nm_grup_rek, '') AS fs_nm_grup_rek, 
-                ISNULL(dd.fs_nm_peg, '') AS fs_nm_peg_medis, 
-                ISNULL(ee.fs_nm_peg, '') AS fs_nm_peg_kasir 
+                ISNULL(ee.fs_nm_peg, '') AS fs_nm_peg_kasir, 
+                ISNULL(dd.fs_nm_peg, '') AS fs_nm_peg_medis 
             FROM
                 ta_trs_billing2 aa
                 left join ta_detil_tarif bb on aa.fs_kd_detil_tarif = bb.fs_kd_detil_tarif

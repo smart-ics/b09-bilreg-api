@@ -35,17 +35,6 @@ public record TrsBillingType : ITrsBillingKey
         Keterangan = keterangan;
         _listTrsBilling2 = listTrsBilling2.ToList();
     }
-
-    public static TrsBillingType Create(string trsId, int modul, DateTime tglTrs, 
-        RegReff reg, LayananReff layanan, KelasReff kelas, 
-        AuditInfoType auditInfo, decimal subTotal, decimal diskon, 
-        decimal tax, decimal biaya, RekapCetakReff rekapCetak, 
-        TrsBillKetType keterangan)
-    {
-        return new TrsBillingType(trsId, modul, tglTrs, reg, layanan, kelas, 
-            auditInfo, subTotal, diskon, tax, biaya, rekapCetak, keterangan, []);
-    }
-
     public static TrsBillingType CreateFromTindakan(TindakanModel tindakan, 
         RegModel reg, TarifType tarif, JaminanType jaminan, 
         IEnumerable<KomponenType> listReffKomp)
