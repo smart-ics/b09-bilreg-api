@@ -301,44 +301,16 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         TarifReff tarifReff, PasienModel pasien, 
         LayananType layanan, string userId, PpaType dokter)
     {
-        var jaminan = _jaminanRepo.LoadEntity(JaminanType.Key(tipeJaminan.Jaminan.JaminanId))
-            .Match(
-                onSome: x => x,
-                onNone: () => throw new KeyNotFoundException(
-                    $"Jaminan {tipeJaminan.Jaminan.JaminanId} not found")
-            );
-
+        var jaminan = LoadJaminan(JaminanType.Key(tipeJaminan.Jaminan.JaminanId));
         var tipeTarifJmn = jaminan.ListTipeTarif
             ?.FirstOrDefault(x => x.JenisRegid == JenisRegEnum.RegJalan)
             ?? throw new InvalidOperationException(
                 $"Tipe tarif untuk RegJalan tidak ditemukan pada jaminan {jaminan.JaminanId}");
 
-        var tarif = _tarifRepo.LoadEntity(TarifType.Key(tarifReff.TarifId))
-            .Match(
-                onSome: x => x,
-                onNone: () => throw new KeyNotFoundException(
-                    $"Tarif {tarifReff.TarifId} not found")
-            );
-
-        var tipeTarif = _tipeTarifRepo.LoadEntity(
-                TipeTarifType.Key(tipeTarifJmn.TipeTarif.TipeTarifId))
-            .Match(
-                onSome: x => x,
-                onNone: () => throw new KeyNotFoundException(
-                    $"TipeTarif {tipeTarifJmn.TipeTarif.TipeTarifId} not found")
-            );
-
-        var nilaiTarifKey = NilaiTarifType.KeyComposite(
-            tarif.TarifId,
-            tipeTarif.TipeTarifId,
-            reg.Kelas.KelasId);
-
-        var nilaiTarif = _nilaiTarifRepo.LoadEntity(nilaiTarifKey)
-        .Match(
-            onSome: x => x,
-            onNone: () => throw new KeyNotFoundException(
-                $"NilaiTarif Tarif:{tarif.TarifId}, Tipe:{tipeTarif.TipeTarifId}, Kelas:{reg.Kelas.KelasId} not found")
-        );
+        var tarif = LoadTarif(TarifType.Key(tarifReff.TarifId));
+        var tipeTarif = LoadTipeTarif(TipeTarifType.Key(tipeTarifJmn.TipeTarif.TipeTarifId));
+        var nilaiTarifKey = NilaiTarifType.KeyComposite(tarif.TarifId, tipeTarif.TipeTarifId, reg.Kelas.KelasId);
+        var nilaiTarif = LoadNilaiTarif(nilaiTarifKey);
 
         var listKompMaster = _komponenRepo
             .ListData(nilaiTarif.ListKomponen.Select(x => x.Komponen))?.ToList() ?? [];
@@ -364,6 +336,46 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
                 onNone: () => throw new KeyNotFoundException($"Komponen Nilai Tarif '{key.KomponenId}' invalid")
             );
         return komponen;
+    }
+    private JaminanType LoadJaminan(IJaminanKey key)
+    {
+        var jaminan = _jaminanRepo.LoadEntity(key)
+            .Match(
+                onSome: x => x,
+                onNone: () => throw new KeyNotFoundException(
+                    $"Jaminan {key.JaminanId} not found")
+            );
+        return jaminan;
+    }
+    private TarifType LoadTarif(ITarifKey key)
+    {
+        var tarif = _tarifRepo.LoadEntity(key)
+            .Match(
+                onSome: x => x,
+                onNone: () => throw new KeyNotFoundException(
+                    $"Tarif {key.TarifId} not found")
+            );
+        return tarif;
+    }
+    private TipeTarifType LoadTipeTarif(ITipeTarifKey key)
+    {
+        var tipeTarif = _tipeTarifRepo.LoadEntity(key)
+            .Match(
+                onSome: x => x,
+                onNone: () => throw new KeyNotFoundException(
+                    $"TipeTarif {key.TipeTarifId} not found")
+            );
+        return tipeTarif;
+    }
+    private NilaiTarifType LoadNilaiTarif(INilaiTarifCompositKey key)
+    {
+        var nilaiTarif = _nilaiTarifRepo.LoadEntity(key)
+            .Match(
+                onSome: x => x,
+                onNone: () => throw new KeyNotFoundException(
+                    $"NilaiTarif Tarif:{key.TarifId}, Tipe:{key.TipeTarifId}, Kelas:{key.KelasId} not found")
+            );
+        return nilaiTarif;
     }
     #endregion
 }
