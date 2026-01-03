@@ -13,7 +13,7 @@ public record TindakanModel : ITindakanKey
     #region CREATION
     public TindakanModel(
         string tindakanId, DateTime tindakanDate, string orderTindakanId,
-        RegReff reg, LayananReff layanan,
+        RegReff reg, LayananReff layanan, KelasReff kelas,
         TipeTarifReff tipeTarif, TarifReff tarif,
         IEnumerable<TindakanKomponenBase> listKomponen, 
         AuditTrailType auditTrail)
@@ -24,7 +24,8 @@ public record TindakanModel : ITindakanKey
         
         Reg = reg;
         Layanan = layanan;
-        
+
+        Kelas = kelas;
         TipeTarif = tipeTarif;
         Tarif = tarif;
         _listKomponen = listKomponen.ToList() ?? [];
@@ -44,7 +45,7 @@ public record TindakanModel : ITindakanKey
         var tarif = new TarifReff(nilaiTarif.TarifId, nilaiTarif.TarifName);
         
         var result = new TindakanModel(newId, DateTime.Now, "",
-            reg.ToReff(), layanan.ToReff(), nilaiTarif.TipeTarif,
+            reg.ToReff(), layanan.ToReff(), nilaiTarif.Kelas, nilaiTarif.TipeTarif,
             tarif, listKomp, audit);
         return result;
     }
@@ -78,6 +79,7 @@ public record TindakanModel : ITindakanKey
         "", 
         RegModel.Default.ToReff(),
         LayananType.Default.ToReff(),
+        KelasType.Default.ToReff(),
         TipeTarifType.Default.ToReff(), 
         TarifType.Default.ToReff(),
         [], 
@@ -93,8 +95,8 @@ public record TindakanModel : ITindakanKey
     public string OrderTindakanId { get; init; }
     public RegReff Reg { get; init; }
     public LayananReff Layanan { get; init; }
-    public TipeTarifReff TipeTarif { get; init; }
     public KelasReff Kelas { get; init; }
+    public TipeTarifReff TipeTarif { get; init; }
     public TarifReff Tarif { get; private set; }
     public decimal Total => _listKomponen.Sum(t => t.SubTotal);
     public IEnumerable<TindakanKomponenBase> ListKomponen => _listKomponen;

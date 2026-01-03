@@ -160,6 +160,7 @@ public class TrsBillingTypeTests
             "", 
             RegModel.Default.ToReff(),
             LayananType.Default.ToReff(),
+            KelasType.Default.ToReff(),
             TipeTarifType.Default.ToReff(), 
             TarifType.Default.ToReff(),
             tdkKomponen, 

@@ -13,6 +13,7 @@ namespace Bilreg.Domain.PaymentContext.TrsBillingFeature;
 public record TrsBillingType : ITrsBillingKey
 {
     private readonly List<TrsBilling2Base> _listTrsBilling2 = [];
+    
     #region CREATION
     public TrsBillingType(string billingId, int modul, DateTime tglTrs, 
         RegReff reg, LayananReff layanan, KelasReff kelas, 
@@ -69,14 +70,13 @@ public record TrsBillingType : ITrsBillingKey
                 : PpaType.Default.ToReff();
 
             var trsBill2 = new TrsBilling2JasaType(i++, tindakan.TindakanId, tindakan.TindakanDate,
-                new NilaiBillingType("", item.Nilai, 0), ppa, PegType.Default, 
+                new NilaiBillingType("PDP", item.Nilai, 0), ppa, PegType.Default, 
                 item.Komponen, rekJasa);
 
             result.AddTrsBilling2(trsBill2);
         }
         return result;
     }
-    
     public static TrsBillingType Default => new("-", 0, DateTime.MinValue, 
         RegModel.Default.ToReff(), LayananType.Default.ToReff(), 
         KelasType.Default.ToReff(), 

@@ -23,43 +23,53 @@ public class TrsBilling2Dal : ITrsBilling2Dal
         _opt = opt.Value;
     }
     
-    public void Insert(IEnumerable<TaTrsBilling2Dto> listModel)
+    public void Insert(IEnumerable<TaTrsBilling2Dto> models)
     {
+        const string sql = """
+            INSERT INTO ta_trs_billing2 (
+                fs_kd_trs, fn_no_urut, fs_kd_jenis_bayar, fn_trs_p, fn_trs_n,
+                fs_kd_trs_bayar, fd_tgl_bayar, fs_jam_bayar, fs_kd_petugas_kasir,
+                fs_kd_petugas_medis, fs_kd_detil_tarif, fs_kd_grup_rek,
+                fs_kd_rek_ppdp, fs_kd_rek_pdpt, fs_kd_rek_disc,
+                fs_kd_rek_pdpt_lain, fs_kd_rek_persediaan,
+                fs_kd_rek_tax, fs_kd_rek_retur)
+            VALUES (
+                @fs_kd_trs, @fn_no_urut, @fs_kd_jenis_bayar, @fn_trs_p, @fn_trs_n,
+                @fs_kd_trs_bayar, @fd_tgl_bayar, @fs_jam_bayar, @fs_kd_petugas_kasir,
+                @fs_kd_petugas_medis, @fs_kd_detil_tarif, @fs_kd_grup_rek,
+                @fs_kd_rek_ppdp, @fs_kd_rek_pdpt, @fs_kd_rek_disc,
+                @fs_kd_rek_pdpt_lain, @fs_kd_rek_persediaan,
+                @fs_kd_rek_tax, @fs_kd_rek_retur)
+            """;
+        
+        var listBill2 = models.ToList();
+        
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        using var bcp = new SqlBulkCopy(conn);
         conn.Open();
-        bcp.AddMap("fs_kd_trs", "fs_kd_trs");
-        bcp.AddMap("fn_no_urut", "fn_no_urut");
-
-        bcp.AddMap("fs_kd_jenis_bayar", "fs_kd_jenis_bayar");
-        bcp.AddMap("fn_trs_p", "fn_trs_p");
-        bcp.AddMap("fn_trs_n", "fn_trs_n");
         
-        bcp.AddMap("fs_kd_trs_bayar", "fs_kd_trs_bayar");
-        bcp.AddMap("fd_tgl_bayar", "fd_tgl_bayar");
-        bcp.AddMap("fs_jam_bayar", "fs_jam_bayar");
-
-        bcp.AddMap("fs_kd_petugas_kasir", "fs_kd_petugas_kasir");
-        bcp.AddMap("fs_kd_petugas_medis", "fs_kd_petugas_medis");
-        
-        bcp.AddMap("fs_kd_detil_tarif", "fs_kd_detil_tarif");
-        bcp.AddMap("fs_kd_grup_rek", "fs_kd_grup_rek");
-
-        bcp.AddMap("fs_kd_rek_ppdp", "fs_kd_rek_ppdp");
-        bcp.AddMap("fs_kd_rek_pdpt", "fs_kd_rek_pdpt");
-        bcp.AddMap("fs_kd_rek_disc", "fs_kd_rek_disc");
-        bcp.AddMap("fs_kd_rek_pdpt_lain", "fs_kd_rek_pdpt_lain");
-        
-        bcp.AddMap("fs_kd_rek_persediaan", "fs_kd_rek_persediaan");
-        bcp.AddMap("fs_kd_rek_tax", "fs_kd_rek_tax");
-        bcp.AddMap("fs_kd_rek_retur", "fs_kd_rek_retur");
-        
-        var fetched = listModel.ToList();
-        bcp.BatchSize = fetched.Count;
-        bcp.DestinationTableName = "ta_trs_billing2";
-        bcp.WriteToServer(fetched.AsDataTable());
+        var result = conn.Execute(sql, listBill2.Select(item => new
+        {
+            fs_kd_trs = item.fs_kd_trs,
+            fn_no_urut = item.fn_no_urut, 
+            fs_kd_jenis_bayar = item.fs_kd_jenis_bayar,
+            fn_trs_p = item.fn_trs_p,
+            fn_trs_n = item.fn_trs_n,
+            fs_kd_trs_bayar = item.fs_kd_trs_bayar,
+            fd_tgl_bayar = item.fd_tgl_bayar,
+            fs_jam_bayar = item.fs_jam_bayar,
+            fs_kd_petugas_kasir = item.fs_kd_petugas_kasir,
+            fs_kd_petugas_medis = item.fs_kd_petugas_medis,
+            fs_kd_detil_tarif = item.fs_kd_detil_tarif,
+            fs_kd_grup_rek = item.fs_kd_grup_rek,
+            fs_kd_rek_ppdp = item.fs_kd_rek_ppdp,
+            fs_kd_rek_pdpt = item.fs_kd_rek_pdpt,
+            fs_kd_rek_disc = item.fs_kd_rek_disc,
+            fs_kd_rek_pdpt_lain = item.fs_kd_rek_pdpt_lain,
+            fs_kd_rek_persediaan = item.fs_kd_rek_persediaan,
+            fs_kd_rek_tax = item.fs_kd_rek_tax,
+            fs_kd_rek_retur = item.fs_kd_rek_retur
+        }));
     }
-    
     public void Delete(ITrsBillingKey key)
     {
         const string sql = """
@@ -106,4 +116,5 @@ public class TrsBilling2Dal : ITrsBilling2Dal
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<TaTrsBilling2Dto>(sql, dp);
     }
+
 }

@@ -22,7 +22,8 @@ public class TrsBillingRepo : ITrsBillingRepo
                  onNone: () => _billingDal.Insert(TrsBillingDto.FromModel(model)));
 
         var listBilling2Dto = model.ListTrsBilling2
-                .Select(x => TaTrsBilling2Dto.FromModel(x,model.TrsBillingId));
+            .Select(x => TaTrsBilling2Dto.FromModel(x,model.TrsBillingId));
+
         _billing2Dal.Delete(model);
         _billing2Dal.Insert(listBilling2Dto);
      }

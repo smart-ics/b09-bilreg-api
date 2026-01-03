@@ -9,7 +9,7 @@ using Nuna.Lib.ValidationHelper;
 namespace Bilreg.Infrastructure.PaymentContext.TrsBillingFeature;
 
 public record TaTrsBilling2Dto(
-    string fs_kd_trs, int fn_no_urut, 
+    string fs_kd_trs, decimal fn_no_urut, 
     string fs_kd_jenis_bayar, decimal fn_trs_p, decimal fn_trs_n,
     
     string fs_kd_trs_bayar, string fd_tgl_bayar, string fs_jam_bayar,
@@ -88,7 +88,7 @@ public record TaTrsBilling2Dto(
         var nilaiBilling = new NilaiBillingType(fs_kd_jenis_bayar, fn_trs_p, fn_trs_n);
         var rekening = new RekJasaType(fs_kd_rek_ppdp, fs_kd_rek_pdpt, fs_kd_rek_disc);
         return new TrsBilling2JasaType(
-            fn_no_urut, fs_kd_trs_bayar, paymentDate,
+            (int)fn_no_urut, fs_kd_trs_bayar, paymentDate,
             nilaiBilling, ppa, kasir, komponen, rekening);
     }
     
@@ -102,7 +102,7 @@ public record TaTrsBilling2Dto(
         var rekening = new RekObatType(fs_kd_rek_ppdp, fs_kd_rek_pdpt, fs_kd_rek_disc,
             fs_kd_rek_pdpt_lain, fs_kd_rek_persediaan, fs_kd_rek_tax, fs_kd_rek_retur);
         return new TrsBilling2ObatType(
-            fn_no_urut, fs_kd_trs_bayar, paymentDate,
+            (int)fn_no_urut, fs_kd_trs_bayar, paymentDate,
             nilaiBilling, kasir, groupRek, rekening);
     }
 }

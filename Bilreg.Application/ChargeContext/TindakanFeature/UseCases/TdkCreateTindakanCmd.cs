@@ -1,13 +1,18 @@
-﻿using Bilreg.Application.AdmisiContext.LayananFeature;
+﻿using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
+using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
+using Bilreg.Application.PaymentContext.TrsBillingFeature;
+using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
+using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using MediatR;
+using Nuna.Lib.TransactionHelper;
 
 namespace Bilreg.Application.ChargeContext.TindakanFeature.UseCases;
 
@@ -28,10 +33,14 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
     private readonly INilaiTarifRepo _nilaiTarifRepo;
     private readonly IKomponenRepo _komponenRepo;
     private readonly IPpaRepo _ppaRepo;
+    private readonly ITrsBillingRepo _trsBillingRepo;
+    private readonly ITarifRepo _tarifRepo;
+    private readonly IJaminanRepo _jaminanRepo;
 
     public TindakanCreateHandler(ITindakanRepo tindakanRepo, 
         IRegRepo regRepo, ILayananRepo layananRepo, INilaiTarifRepo nilaiTarifRepo, 
-        IKomponenRepo komponenRepo, IPpaRepo ppaRepo)
+        IKomponenRepo komponenRepo, IPpaRepo ppaRepo, ITrsBillingRepo trsBillingRepo, 
+        ITarifRepo tarifRepo, IJaminanRepo jaminanRepo)
     {
         _tindakanRepo = tindakanRepo;
         _regRepo = regRepo;
@@ -39,26 +48,40 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
         _nilaiTarifRepo = nilaiTarifRepo;
         _komponenRepo = komponenRepo;
         _ppaRepo = ppaRepo;
+        _trsBillingRepo = trsBillingRepo;
+        _tarifRepo = tarifRepo;
+        _jaminanRepo = jaminanRepo;
     }
 
     public Task<TindakanCreateRespose> Handle(TdkCreateTindakanCmd request, CancellationToken cancellationToken)
     {
+        //  BUILD
         var reg = LoadReg(request);
         var layanan = LoadLayanan(request);
         var nilaiTarif = LoadNilaiTaif(request);
-
+        var tarif = LoadTarif(nilaiTarif);
+        var jaminanKey = reg.TipeJaminan.TipeJaminanId[..3];
+        var jaminan = LoadJaminan(JaminanType.Key(jaminanKey));
+        var listKomp = new List<KomponenType>();
         var listPpa = new List<KomponenPpaView>();
         foreach (var item in request.ListPpa)
         {
             var komp = LoadKomponen(KomponenType.Key(item.KomponenId));
             var ppa =  LoadPpa(PpaType.Key(item.PpaId));
             listPpa.Add( new KomponenPpaView(komp, ppa));
+            listKomp.Add(komp);
         }
 
         var tindakan = TindakanModel.Create(reg, layanan, nilaiTarif, listPpa, request.UserId);
-        
+        var trsBilling = TrsBillingType.CreateFromTindakan(tindakan, reg, tarif, jaminan, listKomp);
+
+        //  WRITE
+        using var trans = TransHelper.NewScope();
         _tindakanRepo.SaveChanges(tindakan);
-        
+        _trsBillingRepo.SaveChanges(trsBilling);
+        trans.Complete();
+
+        //  RESPONSE
         return Task.FromResult(new TindakanCreateRespose(tindakan.TindakanId));
     }
 
@@ -94,6 +117,26 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
                 onNone: () => throw new KeyNotFoundException($"Nilai Tarif invalid")
             );
         return nilaiTarif;
+    }
+
+    private TarifType LoadTarif(ITarifKey tarifKey)
+    {
+        var tarif = _tarifRepo.LoadEntity(tarifKey)
+            .Match(
+                onSome: x => x,
+                onNone: () => throw new KeyNotFoundException($"Tarif invalid")
+            );
+        return tarif;
+    }
+
+    private JaminanType LoadJaminan(IJaminanKey jaminan)
+    {
+        var jmn = _jaminanRepo.LoadEntity(jaminan)
+            .Match(
+                onSome: x => x,
+                onNone: () => throw new KeyNotFoundException($"Jaminan invalid")
+            );
+        return jmn;
     }
 
     private KomponenType LoadKomponen(IKomponenKey key)

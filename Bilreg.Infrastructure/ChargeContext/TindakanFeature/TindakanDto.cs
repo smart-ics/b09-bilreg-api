@@ -1,5 +1,6 @@
 ﻿using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
@@ -10,6 +11,7 @@ public record TindakanDto(
     string TindakanId, DateTime TindakanDate, string OrderTdkId,
     string RegId, string PasienId, string PasienName,
     string LayananId, string LayananName,
+    string KelasId, string KelasName,
     string TipeTarifId, string TipeTarifName,
     string TarifId, string TarifName, decimal Total,
     string CrtUser, DateTime CrtDate,
@@ -22,6 +24,7 @@ public record TindakanDto(
             model.TindakanId, model.TindakanDate, model.OrderTindakanId, 
             model.Reg.RegId, model.Reg.PasienId, model.Reg.PasienName,
             model.Layanan.LayananId, model.Layanan.LayananName,
+            model.Kelas.KelasId, model.Kelas.KelasName,
             model.TipeTarif.TipeTarifId, model.TipeTarif.TipeTarifName,
             model.Tarif.TarifId, model.Tarif.TarifName, model.Total,
             model.AuditTrail.Created.UserId, model.AuditTrail.Created.Timestamp,
@@ -35,6 +38,7 @@ public record TindakanDto(
         var regReff = new RegReff(RegId, PasienId, PasienName); 
         var layananReff = new LayananReff(LayananId, LayananName);
 
+        var kelas = new KelasReff(KelasId, KelasName);
         var tipeTarif = new TipeTarifReff(TipeTarifId, TipeTarifName);
         var tarif = new TarifReff(TarifId, TarifName);
 
@@ -47,6 +51,7 @@ public record TindakanDto(
             TindakanId, TindakanDate, OrderTdkId, 
             regReff,
             layananReff,
+            kelas,
             tipeTarif,
             tarif,
             listKomponen,
