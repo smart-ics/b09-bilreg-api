@@ -10,7 +10,8 @@ public record KomponenType : IKomponenKey
     
     #region CREATION
     public KomponenType(string komponenId, string komponenName, 
-        GroupKomponenType groupKomponen, IEnumerable<SatTugasType> listSatTugas)
+        GroupKomponenType groupKomponen, CoaType rekPdpt, CoaType rekDiskon, 
+        IEnumerable<SatTugasType> listSatTugas)
     {
         Guard.Against.NullOrWhiteSpace(komponenId);
         Guard.Against.NullOrWhiteSpace(komponenName);
@@ -19,9 +20,11 @@ public record KomponenType : IKomponenKey
         KomponenId = komponenId;
         KomponenName = komponenName;
         GroupKomponen = groupKomponen;
+        RekPdpt = rekPdpt;
+        RekDiskon = rekDiskon;
         _listSatTugas = listSatTugas?.ToList() ?? [];
     }
-    public static KomponenType Default => new("-", "-", GroupKomponenType.Default, []);
+    public static KomponenType Default => new("-", "-", GroupKomponenType.Default, CoaType.Default, CoaType.Default, []);
     public static IKomponenKey Key(string id) => Default with { KomponenId = id };
     #endregion
     
