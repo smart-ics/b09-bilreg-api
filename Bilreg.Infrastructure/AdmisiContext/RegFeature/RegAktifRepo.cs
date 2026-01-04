@@ -1,8 +1,8 @@
 ﻿using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.PasienContext.PasienFeature;
 using Nuna.Lib.PatternHelper;
-using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Infrastructure.AdmisiContext.RegFeature;
 
@@ -29,7 +29,6 @@ public class RegAktifRepo : IRegAktifRepo
         var model = dto?.ToModel();
         return MayBe.From(model!);
     }
-
     public void Delete(IRegKey key)
     {
         _regAktifDal.Delete(key);
@@ -40,5 +39,17 @@ public class RegAktifRepo : IRegAktifRepo
         var listDto = _regAktifDal.ListData(layananKey)?.ToList() ?? [];
         var result = listDto.Select(x => x.ToModel());  
         return result;
+    }
+    public IEnumerable<RegAktifModel> ListData(IPasienKey pasien)
+    {
+        var listDto = _regAktifDal.ListData(pasien)?.ToList() ?? [];
+        var result = listDto.Select(x => x.ToModel());  
+        return result;
+    }
+
+    public bool IsPasienAktif(IPasienKey pasien)
+    {
+        var listDto = _regAktifDal.ListData(pasien)?.ToList() ?? [];
+        return listDto.Count != 0;
     }
 }

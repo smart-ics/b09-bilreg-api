@@ -122,7 +122,7 @@ public class RegJalanByBookingHandler
             karcis);
         booking.AssignReg(reg);
 
-        var regAktif = new RegAktifModel(reg.RegId,  reg.RegDate.ToDateTime(TimeOnly.MinValue), 
+        var regAktif = new RegAktifModel(reg.RegId,  reg.RegDate, 
             reg.Pasien, reg.JenisReg, reg.Layanan,
             reg.Dokter, reg.TipeJaminan);
 
@@ -201,14 +201,10 @@ public class RegJalanByBookingHandler
         PasienModel pasien, LayananType layanan, string userId, PpaType dokter)
     {
         var jaminan = LoadJaminan(JaminanType.Key(tipeJaminan.Jaminan.JaminanId));
-        var tipeTarifJmn = jaminan.ListTipeTarif
-            ?.FirstOrDefault(x => x.JenisRegid == JenisRegEnum.RegJalan)
-            ?? throw new InvalidOperationException(
-                $"Tipe tarif untuk RegJalan tidak ditemukan pada jaminan {jaminan.JaminanId}");
+        var tipeTarifJmn = jaminan.TipeTarif.Rajal;
 
         var tarif = LoadTarif(TarifType.Key(tarifReff.TarifId));
-        var tipeTarif = LoadTipeTarif(TipeTarifType.Key(tipeTarifJmn.TipeTarif.TipeTarifId));
-        var nilaiTarifKey = NilaiTarifType.KeyComposite(tarif.TarifId, tipeTarif.TipeTarifId, reg.Kelas.KelasId);
+        var nilaiTarifKey = NilaiTarifType.KeyComposite(tarif, tipeTarifJmn, reg.Kelas);
         var nilaiTarif = LoadNilaiTarif(nilaiTarifKey);
         var listKompMaster = _komponenRepo
             .ListData(nilaiTarif.ListKomponen.Select(x => x.Komponen))?.ToList() ?? [];

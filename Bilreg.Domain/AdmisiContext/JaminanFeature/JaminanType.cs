@@ -56,7 +56,7 @@ public interface IJaminanKey
     string JaminanId {get;}
 }
 
-public record JaminanReff(string JaminanId, string JaminanName);
+public record JaminanReff(string JaminanId, string JaminanName) : IJaminanKey;
 
 public record JaminanRekeningType(
     CoaType PpdpJasaRajal, CoaType PpdpObatRajal,

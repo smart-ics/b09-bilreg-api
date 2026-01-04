@@ -27,58 +27,64 @@ namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 public record RegJalanWalkInCommand(string PasienId, string UserId,
     string TipeJaminanId, string CaraMasukDkId, string RujukanId, string DokterId,
     string LayananId, string JamPraktek, string KarcisId) 
-    : IRequest<RegJalanCreateResponse>; 
+    : IRequest<RegJalanCreateResponse>, ILayananKey, ICaraMasukDkKey, IPasienKey,
+        ITipeJaminanKey, IKarcisKey; 
  
 public record RegJalanCreateResponse(string RegId, int NoAntrian);
 
 public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJalanCreateResponse>
 {
+    //  reg support
     private readonly IPasienRepo _pasienRepo;
     private readonly ITipeJaminanRepo _tipeJaminanRepo;
     private readonly IPolisRepo _polisRepo;
     private readonly ICaraMasukDkRepo _caraMasukDkRepo;
     private readonly IRujukanRepo _rujukanRepo;
     private readonly ILayananRepo _layananRepo;
-    private readonly IPpaRepo _dokterRepo;
+    private readonly IPpaRepo _ppaRepo;
+    private readonly IKarcisRepo _karcisRepo;
+    //  reg
+    private readonly IRegFactory _regFactory;
+    private readonly IRegRepo _regRepo;
+    private readonly IRegAktifRepo _regAktifRepo;
+    //  antrian
+    private readonly IPasienTrackerRepo _trackerRepo;
     private readonly IAntrianFactory _antrianFactory;
     private readonly IAntrianRepo _antrianRepo;
     private readonly IJadwalPraktekRepo _jadwalPraktekRepo;
-    private readonly IKarcisRepo _karcisRepo;
-    private readonly IRegFactory _regFactory;
-    private readonly IRegRepo _regRepo;
-    private readonly IPasienTrackerRepo _trackerRepo;
-    private readonly IRegAktifRepo _regAktifRepo;
     private readonly IAntrianMapHdrRepo _antrianMapRepo;
-    
+    //  tindakan
     private readonly IJaminanRepo _jaminanRepo;
-    private readonly ITarifRepo _tarifRepo;
     private readonly INilaiTarifRepo _nilaiTarifRepo;
-    private readonly ITipeTarifRepo _tipeTarifRepo;
     private readonly ITindakanRepo _tindakanRepo;
     private readonly IKomponenRepo _komponenRepo;
+    
     private const string BAYAR_SENDIRI = "1";
 
-    public RegJalanCreateHandler(IPasienRepo pasienRepo,
-        ITipeJaminanRepo tipeJaminanRepo,
-        IPolisRepo polisRepo,
-        ICaraMasukDkRepo caraMasukDkRepo,
-        IRujukanRepo rujukanRepo,
-        ILayananRepo layananRepo,
-        IPpaRepo dokterRepo,
-        IAntrianFactory antrianFactory,
-        IAntrianRepo antrianRepo,
-        IJadwalPraktekRepo jadwalRepo,
-        IRegFactory regFactory,
-        IKarcisRepo karcisRepo,
-        IRegRepo regRepo,
-        IPasienTrackerRepo trackerRepo,
-        IRegAktifRepo regAktifRepo,
-        IAntrianMapHdrRepo antrianMapRepo,
-        IJaminanRepo jaminanRepo,
-        ITarifRepo tarifRepo,
-        INilaiTarifRepo nilaiTarifRepo,
-        ITipeTarifRepo tipeTarifRepo,
-        ITindakanRepo tindakanRepo,
+    public RegJalanCreateHandler(
+        //  reg support
+        IPasienRepo pasienRepo, 
+        ITipeJaminanRepo tipeJaminanRepo, 
+        IPolisRepo polisRepo, 
+        ICaraMasukDkRepo caraMasukDkRepo, 
+        IRujukanRepo rujukanRepo, 
+        ILayananRepo layananRepo, 
+        IPpaRepo ppaRepo, 
+        IKarcisRepo karcisRepo, 
+        //  registrasi
+        IRegFactory regFactory, 
+        IRegRepo regRepo, 
+        IRegAktifRepo regAktifRepo, 
+        //  antrian
+        IPasienTrackerRepo trackerRepo, 
+        IAntrianFactory antrianFactory, 
+        IAntrianRepo antrianRepo, 
+        IJadwalPraktekRepo jadwalPraktekRepo, 
+        IAntrianMapHdrRepo antrianMapRepo, 
+        //  tindakan
+        IJaminanRepo jaminanRepo, 
+        INilaiTarifRepo nilaiTarifRepo, 
+        ITindakanRepo tindakanRepo, 
         IKomponenRepo komponenRepo)
     {
         _pasienRepo = pasienRepo;
@@ -87,139 +93,85 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         _caraMasukDkRepo = caraMasukDkRepo;
         _rujukanRepo = rujukanRepo;
         _layananRepo = layananRepo;
-        _dokterRepo = dokterRepo;
-        _antrianFactory = antrianFactory;
-        _antrianRepo = antrianRepo;
-        _jadwalPraktekRepo = jadwalRepo;
-        _regFactory = regFactory;
+        _ppaRepo = ppaRepo;
         _karcisRepo = karcisRepo;
+        _regFactory = regFactory;
         _regRepo = regRepo;
         _trackerRepo = trackerRepo;
         _regAktifRepo = regAktifRepo;
+        _antrianFactory = antrianFactory;
+        _antrianRepo = antrianRepo;
+        _jadwalPraktekRepo = jadwalPraktekRepo;
         _antrianMapRepo = antrianMapRepo;
         _jaminanRepo = jaminanRepo;
-        _tarifRepo = tarifRepo;
         _nilaiTarifRepo = nilaiTarifRepo;
-        _tipeTarifRepo = tipeTarifRepo;
         _tindakanRepo = tindakanRepo;
         _komponenRepo = komponenRepo;
     }
 
     public Task<RegJalanCreateResponse> Handle(RegJalanWalkInCommand request, CancellationToken cancellationToken)
     {
+        //      BUILD REGISTER
+        var pasien = _pasienRepo.LoadEntity(request).GetValueOrThrow("Pasien not found");
+        if (_regAktifRepo.IsPasienAktif(pasien))
+            throw new KeyNotFoundException($"Pasien aktif sudah aktif registrasi");
 
-        var pasien = LoadPasien(request.PasienId);
-        var pasienAktif = GetRegaktif(pasien, LayananType.Key(request.LayananId));
-        if (pasienAktif is not null)
-            throw new KeyNotFoundException($"Pasien aktif di register {pasienAktif.RegId}");
-
-        var tipeJaminan = LoadTipeJaminan(request.TipeJaminanId);
+        var tipeJaminan = _tipeJaminanRepo.LoadEntity(request).GetValueOrThrow("TipeJaminan not found");
         var polis = ResolvePolis(pasien, tipeJaminan);
-        
-        var caraMasuk = LoadCaraMasuk(request.CaraMasukDkId);
+        var caraMasuk = _caraMasukDkRepo.LoadEntity(request).GetValueOrThrow("CaraMasuk not found");
         var rujukan = ResolveRujukan(caraMasuk, request.RujukanId);
-        
-        var layanan = LoadLayanan(request.LayananId);
-        ValidateLayanan(layanan);
-        var dokter = LoadDokter(request.DokterId);
-        var karcis = LoadKarcis(request.KarcisId);
-
-        var tglBerobat = DateOnly.FromDateTime(DateTime.Now);
-        var jadwal = ResolveJadwalPraktek(dokter, request.JamPraktek, tglBerobat);
-        var antrian = ResolveAntrian(tglBerobat, dokter, jadwal);
-        // antrianMap
-        var antrianMap = CekAntrianMap(jadwal, tglBerobat);
-        var noAntrian = antrianMap.GetNextNoAntrian();
+        var layanan = _layananRepo.LoadEntity(request).GetValueOrThrow("Layanan not found");
+        var dokter = _ppaRepo.LoadEntity(PpaType.Key(request.DokterId)).GetValueOrThrow("Dokter not found");
+        var karcis = _karcisRepo.LoadEntity(request).GetValueOrThrow("Karcis not found");
 
         var regMasukAudit = new AuditInfoType(request.UserId, DateTime.Now);
         var reg = _regFactory.CreateRegRajal(pasien, regMasukAudit,
             tipeJaminan, polis, caraMasuk, rujukan, dokter, layanan, karcis);
+        var regAktif = RegAktifModel.CreateFromReg(reg);
 
-        var regDate = reg.RegDate.ToDateTime(TimeOnly.MinValue);
-
-        var regAktif = new RegAktifModel(reg.RegId, regDate,
-            reg.Pasien, reg.JenisReg, reg.Layanan,
-            reg.Dokter, reg.TipeJaminan);
-
+        //      BUILD ANTRIAN
+        var tglBerobat = DateOnly.FromDateTime(DateTime.Now);
+        var jadwal = ResolveJadwalPraktek(dokter, request.JamPraktek, tglBerobat);
+        var antrian = ResolveAntrian(tglBerobat, dokter, jadwal);
+        var antrianMap = CekAntrianMap(jadwal, tglBerobat);
+        var noAntrian = antrianMap.GetNextNoAntrian();
         var tracker = PasienTrackerModel.Create(reg);
 
-        var tindakan = TindakanModel.Default; 
-        if(karcis.DefaultTarif.TarifId != "-")
-            tindakan = GenTindakan(reg, tipeJaminan, karcis.DefaultTarif, 
-                pasien, layanan, request.UserId, dokter);
-        
-
+        //      BUILD TINDAKAN
+        var tindakan =  karcis.DefaultTarif == TarifType.Default.ToReff()
+            ? TindakanModel.Default
+            : GenTindakan(reg, tipeJaminan, karcis, request.UserId, dokter);
 
         using var trans = TransHelper.NewScope();
+        
         var antEntry = antrian.AddEntry(noAntrian, tracker);
         _regRepo.SaveChanges(reg);
+        _regAktifRepo.SaveChanges(regAktif);
         _antrianRepo.SaveChanges(antrian);
         _trackerRepo.SaveChanges(tracker);
-        _regAktifRepo.SaveChanges(regAktif);
 
         // rubah antrianMapHdr
         antrianMap.SetDataPasien(noAntrian, reg.Pasien, reg.ToReff(), reg.RegId, "AUTO");
         _antrianMapRepo.SaveChanges(antrianMap);
 
-        if (karcis.DefaultTarif.TarifId != "-")
+        if (tindakan != TindakanModel.Default)
             _tindakanRepo.SaveChanges(tindakan);
 
-
         trans.Complete();
-
         return Task.FromResult(new RegJalanCreateResponse(reg.RegId, antEntry.NoUrut));
     }
 
     #region PRIVATE-HELPERS
-    private RegAktifModel? GetRegaktif(IPasienKey pasienKey, ILayananKey lynKey)
-    {
-        var listPasienAktif = _regAktifRepo.ListData(lynKey)?.ToList() ?? [];
-        var pasienAktif = listPasienAktif
-            .FirstOrDefault(x => x.Pasien.PasienId == pasienKey.PasienId);
-
-        return pasienAktif; 
-    }
-
-    private PasienModel LoadPasien(string id) =>
-        _pasienRepo.LoadEntity(PasienModel.Key(id))
-            .GetValueOrThrow("Pasien tidak ditemukan");
-
-    private TipeJaminanType LoadTipeJaminan(string id) =>
-        _tipeJaminanRepo.LoadEntity(TipeJaminanType.Key(id))
-            .GetValueOrThrow("Tipe Jaminan invalid");
-
     private PolisModel ResolvePolis(PasienModel pasien, TipeJaminanType tipeJaminan) =>
         tipeJaminan.CaraBayarDk.CaraBayarDkId == BAYAR_SENDIRI
             ? PolisModel.Default
             : FindPolis(pasien, tipeJaminan);
-
-    private CaraMasukDkType LoadCaraMasuk(string id) =>
-        _caraMasukDkRepo.LoadEntity(CaraMasukDkType.Key(id))
-            .GetValueOrThrow("'Cara Masuk' not found");
 
     private RujukanType ResolveRujukan(CaraMasukDkType caraMasuk, string rujukanId) =>
         caraMasuk == CaraMasukDkType.DatangSendiri
             ? RujukanType.Default
             : _rujukanRepo.LoadEntity(RujukanType.Key(rujukanId))
                 .GetValueOrThrow("'Rujukan' not found");
-
-    private LayananType LoadLayanan(string id) =>
-        _layananRepo.LoadEntity(LayananType.Key(id))
-            .GetValueOrThrow("'Layanan' not found");
-
-    private static void ValidateLayanan(LayananType layanan)
-    {
-        if (layanan.InstalasiDk == InstalasiDkType.RawatInap)
-            throw new ArgumentException("Layanan Rawat Inap tidak bisa digunakan di Registrasi Rawat Jalan");
-    }
-
-    private PpaType LoadDokter(string id) =>
-        _dokterRepo.LoadEntity(PpaType.Key(id))
-            .GetValueOrThrow("Dokter not found");
-
-    private KarcisType LoadKarcis(string id) =>
-        _karcisRepo.LoadEntity(KarcisType.Key(id))
-            .GetValueOrThrow("Karcis not found");
 
     private JadwalPraktekType ResolveJadwalPraktek(PpaType dokter, string jamPraktek, DateOnly tgl)
     {
@@ -298,84 +250,22 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
     }
 
     private TindakanModel GenTindakan(RegModel reg, TipeJaminanType tipeJaminan, 
-        TarifReff tarifReff, PasienModel pasien, 
-        LayananType layanan, string userId, PpaType dokter)
+        KarcisType karcis, string userId, PpaType dokter)
     {
-        var jaminan = LoadJaminan(JaminanType.Key(tipeJaminan.Jaminan.JaminanId));
-        var tipeTarifJmn = jaminan.ListTipeTarif
-            ?.FirstOrDefault(x => x.JenisRegid == JenisRegEnum.RegJalan)
-            ?? throw new InvalidOperationException(
-                $"Tipe tarif untuk RegJalan tidak ditemukan pada jaminan {jaminan.JaminanId}");
+        var jaminan = _jaminanRepo.LoadEntity(tipeJaminan.Jaminan).GetValueOrThrow("Jaminan not found");
+        var tipeTarifReff = jaminan.TipeTarif.Rajal;
+        var tarifKey = karcis.DefaultTarif;
+        var nilaiTarifKey = NilaiTarifType.KeyComposite(tarifKey, tipeTarifReff, reg.Kelas);
+        var nilaiTarif = _nilaiTarifRepo.LoadEntity(nilaiTarifKey).GetValueOrThrow("NilaiTarif not found");
 
-        var tarif = LoadTarif(TarifType.Key(tarifReff.TarifId));
-        var tipeTarif = LoadTipeTarif(TipeTarifType.Key(tipeTarifJmn.TipeTarif.TipeTarifId));
-        var nilaiTarifKey = NilaiTarifType.KeyComposite(tarif.TarifId, tipeTarif.TipeTarifId, reg.Kelas.KelasId);
-        var nilaiTarif = LoadNilaiTarif(nilaiTarifKey);
-
-        var listKompMaster = _komponenRepo
+        var listKomp = _komponenRepo
             .ListData(nilaiTarif.ListKomponen.Select(x => x.Komponen))?.ToList() ?? [];
-        
-        var listKompPpa = listKompMaster.Where(x => x.ListSatTugas.Any())?.ToList() ?? [];
+        var listPpa = listKomp
+            .Where(x => x.ListSatTugas.Any())
+            .Select(x => new KomponenPpaView(x, dokter));
 
-        var listPpa = new List<KomponenPpaView>();
-        foreach(var item in listKompPpa)
-        {
-            var komp = LoadKomponen(KomponenType.Key(item.KomponenId));
-            var ppa = dokter;
-            listPpa.Add(new KomponenPpaView(komp, ppa));
-        }
-        var tindakan = TindakanModel.Create(reg, layanan, nilaiTarif, listPpa, userId);
-
+        var tindakan = TindakanModel.FromReg(reg, nilaiTarif, listPpa, userId);
         return tindakan;
-    }
-    private KomponenType LoadKomponen(IKomponenKey key)
-    {
-        var komponen = _komponenRepo.LoadEntity(key)
-            .Match(
-                onSome: x => x,
-                onNone: () => throw new KeyNotFoundException($"Komponen Nilai Tarif '{key.KomponenId}' invalid")
-            );
-        return komponen;
-    }
-    private JaminanType LoadJaminan(IJaminanKey key)
-    {
-        var jaminan = _jaminanRepo.LoadEntity(key)
-            .Match(
-                onSome: x => x,
-                onNone: () => throw new KeyNotFoundException(
-                    $"Jaminan {key.JaminanId} not found")
-            );
-        return jaminan;
-    }
-    private TarifType LoadTarif(ITarifKey key)
-    {
-        var tarif = _tarifRepo.LoadEntity(key)
-            .Match(
-                onSome: x => x,
-                onNone: () => throw new KeyNotFoundException(
-                    $"Tarif {key.TarifId} not found")
-            );
-        return tarif;
-    }
-    private TipeTarifType LoadTipeTarif(ITipeTarifKey key)
-    {
-        var tipeTarif = _tipeTarifRepo.LoadEntity(key)
-            .Match(
-                onSome: x => x,
-                onNone: () => throw new KeyNotFoundException(
-                    $"TipeTarif {key.TipeTarifId} not found")
-            );
-        return tipeTarif;
-    }
-    private NilaiTarifType LoadNilaiTarif(INilaiTarifCompositKey key)
-    {
-        var nilaiTarif = _nilaiTarifRepo.LoadEntity(key)
-            .Match(
-                onSome: x => x,
-                onNone: () => throw new KeyNotFoundException(
-                    $"NilaiTarif Tarif:{key.TarifId}, Tipe:{key.TipeTarifId}, Kelas:{key.KelasId} not found")
-            );
-        return nilaiTarif;
     }
     #endregion
 }

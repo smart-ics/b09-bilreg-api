@@ -35,4 +35,4 @@ public interface ITarifKey
     string TarifId {get;}
 }
 
-public record TarifReff(string TarifId, string TarifName);
+public record TarifReff(string TarifId, string TarifName) : ITarifKey;
