@@ -87,6 +87,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         ITindakanRepo tindakanRepo, 
         IKomponenRepo komponenRepo)
     {
+        //      reg-support
         _pasienRepo = pasienRepo;
         _tipeJaminanRepo = tipeJaminanRepo;
         _polisRepo = polisRepo;
@@ -95,14 +96,17 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         _layananRepo = layananRepo;
         _ppaRepo = ppaRepo;
         _karcisRepo = karcisRepo;
+        //      reg
         _regFactory = regFactory;
         _regRepo = regRepo;
-        _trackerRepo = trackerRepo;
         _regAktifRepo = regAktifRepo;
+        //      antrian
+        _trackerRepo = trackerRepo;
         _antrianFactory = antrianFactory;
         _antrianRepo = antrianRepo;
         _jadwalPraktekRepo = jadwalPraktekRepo;
         _antrianMapRepo = antrianMapRepo;
+        //      tindakan
         _jaminanRepo = jaminanRepo;
         _nilaiTarifRepo = nilaiTarifRepo;
         _tindakanRepo = tindakanRepo;
