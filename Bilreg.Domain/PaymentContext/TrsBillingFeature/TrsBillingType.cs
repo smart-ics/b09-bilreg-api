@@ -1,7 +1,10 @@
-using Ardalis.GuardClauses;
+using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
+using Bilreg.Domain.ChargeContext.TarifFeature;
+using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.PaymentContext.RekapCetakFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 
@@ -9,13 +12,14 @@ namespace Bilreg.Domain.PaymentContext.TrsBillingFeature;
 
 public record TrsBillingType : ITrsBillingKey
 {
-    private readonly List<ITrsBilling2> _listTrsBilling2 = [];
+    private readonly List<TrsBilling2Base> _listTrsBilling2 = [];
+    
     #region CREATION
     public TrsBillingType(string billingId, int modul, DateTime tglTrs, 
         RegReff reg, LayananReff layanan, KelasReff kelas, 
         AuditInfoType auditInfo, decimal subTotal, decimal diskon, 
         decimal tax, decimal biaya, RekapCetakReff rekapCetak, 
-        TrsBillKetType keterangan, IEnumerable<ITrsBilling2> listTrsBilling2)
+        TrsBillKetType keterangan, IEnumerable<TrsBilling2Base> listTrsBilling2)
     {
         TrsBillingId = billingId;
         Modul = modul;
@@ -32,17 +36,47 @@ public record TrsBillingType : ITrsBillingKey
         Keterangan = keterangan;
         _listTrsBilling2 = listTrsBilling2.ToList();
     }
-
-    public static TrsBillingType Create(string trsId, int modul, DateTime tglTrs, 
-        RegReff reg, LayananReff layanan, KelasReff kelas, 
-        AuditInfoType auditInfo, decimal subTotal, decimal diskon, 
-        decimal tax, decimal biaya, RekapCetakReff rekapCetak, 
-        TrsBillKetType keterangan)
+    public static TrsBillingType CreateFromTindakan(TindakanModel tindakan, 
+        RegModel reg, TarifType tarif, JaminanType jaminan, 
+        IEnumerable<KomponenType> listReffKomp)
     {
-        return new TrsBillingType(trsId, modul, tglTrs, reg, layanan, kelas, 
-            auditInfo, subTotal, diskon, tax, biaya, rekapCetak, keterangan, []);
-    }
+        if (tarif.ToReff() != tindakan.Tarif)
+            throw new ArgumentException("Tarif tidak sesuai");
+        if (jaminan.JaminanId != reg.TipeJaminan.TipeJaminanId[..3])
+            throw new ArgumentException("Jaminan tidak sesuai registrasi");
 
+        var audit = AuditTrailType.Create(tindakan.AuditTrail.Created.UserId, DateTime.Now);
+        var ketBilling = new TrsBillKetType(tarif.TarifName, "", tarif.TarifId, 1, "");
+        var result = new TrsBillingType(tindakan.TindakanId, 0, tindakan.TindakanDate,
+            tindakan.Reg, tindakan.Layanan, tindakan.Kelas, audit.Created, tindakan.Total, 0, 0, 0,
+            tarif.RekapCetak, ketBilling, []);
+        
+        var rekPpdp = reg.JenisReg == JenisRegEnum.RegInap
+            ? jaminan.Rekening.PpdpJasaRanap.CoaId
+            : jaminan.Rekening.PpdpJasaRajal.CoaId;
+        
+        var i = 0;
+        var listReffKompFetched = listReffKomp.ToList();
+        foreach(var item in tindakan.ListKomponen)
+        {
+            var reffKomp = listReffKompFetched.FirstOrDefault(x => x.KomponenId == item.Komponen.KomponenId);
+
+            var rekPdpt = reffKomp?.RekPdpt?.CoaId ?? string.Empty;
+            var rekDiskon = reffKomp?.RekDiskon?.CoaId ?? string.Empty;
+            var rekJasa = new RekJasaType(rekPpdp, rekPdpt, rekDiskon);
+
+            var ppa = item is TindakanKomponenWithPpaType kompWithPpa 
+                ? kompWithPpa.Ppa 
+                : PpaType.Default.ToReff();
+
+            var trsBill2 = new TrsBilling2JasaType(i++, tindakan.TindakanId, tindakan.TindakanDate,
+                new NilaiBillingType("PDP", item.Nilai, 0), ppa, PegType.Default, 
+                item.Komponen, rekJasa);
+
+            result.AddTrsBilling2(trsBill2);
+        }
+        return result;
+    }
     public static TrsBillingType Default => new("-", 0, DateTime.MinValue, 
         RegModel.Default.ToReff(), LayananType.Default.ToReff(), 
         KelasType.Default.ToReff(), 
@@ -67,8 +101,13 @@ public record TrsBillingType : ITrsBillingKey
     public decimal Biaya { get; init; }
     public decimal Total => SubTotal - Diskon + Tax + Biaya;
     public TrsBillKetType Keterangan { get; init; }
-    public IEnumerable<ITrsBilling2> ListTrsBilling2 => _listTrsBilling2;
+    public IEnumerable<TrsBilling2Base> ListTrsBilling2 => _listTrsBilling2;
     #endregion
+    
+    public void AddTrsBilling2(TrsBilling2Base trsBilling2)
+    {
+        _listTrsBilling2.Add(trsBilling2);
+    }
 }
 
 public interface ITrsBillingKey

@@ -55,7 +55,6 @@ public class RegModel : IRegKey
         KarcisType.Default.ToReff(), []);
     #endregion
 
-
     #region PROPERTIES
     //      entitas identity
     public string RegId { get; init; } 

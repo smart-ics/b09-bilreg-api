@@ -203,11 +203,14 @@ public class NilaiTarifDal : INilaiTarifDal
         const string sql = """
            SELECT fs_kd_trs, fs_kd_tarif
            FROM ta_trs_tarif2
-           WHERE fd_tgl_expired = '3000-01-01'
+           WHERE fd_tgl_expired <= @fd_tgl_now
            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@fd_tgl_now", $"{DateTime.Now:yyyy-MM-dd}", SqlDbType.VarChar);
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<ta_trs_tarif2_dto>(sql);
+        return conn.Read<ta_trs_tarif2_dto>(sql,dp);
     }
 
     public IEnumerable<ta_trs_tarif3_dto> ListData3()

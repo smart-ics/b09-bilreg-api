@@ -11,6 +11,8 @@
 	LayananId        VARCHAR(5)    NOT NULL CONSTRAINT DF_BILRG_Tindakan_LayananId DEFAULT(''),
     LayananName      VARCHAR(40)   NOT NULL CONSTRAINT DF_BILRG_Tindakan_LayananName DEFAULT(''),
     
+    KelasId          VARCHAR(3)    NOT NULL CONSTRAINT DF_BILEF_Tindakan_KelasId DEFAULT(''),
+    KelasName        VARCHAR(30)    NOT NULL CONSTRAINT DF_BILEF_Tindakan_KelasName DEFAULT(''),
 	TipeTarifId      VARCHAR(2)    NOT NULL CONSTRAINT DF_BILRG_Tindakan_TipeTarifId DEFAULT(''),
 	TipeTarifName    VARCHAR(30)   NOT NULL CONSTRAINT DF_BILRG_Tindakan_TipeTarifName DEFAULT(''),
 	TarifId          VARCHAR(10)   NOT NULL CONSTRAINT DF_BILRG_Tindakan_TarifId DEFAULT(''),
