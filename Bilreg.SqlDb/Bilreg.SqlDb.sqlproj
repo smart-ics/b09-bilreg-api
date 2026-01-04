@@ -196,6 +196,7 @@
     <Build Include="ChargeContext\BILRG_OrderTdk.sql" />
     <Build Include="ChargeContext\TarifFeature\BILRG_NilaiTarifKomponen.sql" />
     <Build Include="PaymentContext\RekapCatakFeature\ta_trs_billing2.sql" />
+    <Build Include="PaymentContext\RekeningFeature\t_rek.sql" />
     <Build Include="PaymentContext\TrsBillingFeature\ta_trs_billing.sql" />
     <None Include="AdmisiContext\BookingFeature\BILRG_BookingExternal.sql" />
   </ItemGroup>

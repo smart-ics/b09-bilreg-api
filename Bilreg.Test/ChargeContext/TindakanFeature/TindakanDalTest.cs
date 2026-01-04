@@ -20,6 +20,8 @@ public class TindakanDalTest
             PasienName: "Pasien A",
             LayananId: "LAY01",
             LayananName: "Layanan A",
+            KelasId: "K1",
+            KelasName: "Kelas A",
             TipeTarifId: "TT",
             TipeTarifName: "Tipe Tarif A",
             TarifId: "TRF001",

@@ -6,7 +6,7 @@ using Dapper;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
 
-namespace Bilreg.Infrastructure.BillContext.TindakanSub.TarifAgg;
+namespace Bilreg.Infrastructure.ChargeContext.TarifFeature;
 
 public interface ITarifDal :
     IGetData<TarifDto, ITarifKey>,
@@ -27,19 +27,19 @@ public class TarifDal : ITarifDal
     {
         const string sql = @"
              SELECT 
-                 a.fs_kd_tarif, 
-                 a.fs_nm_tarif,
-                 a.fs_kd_grup_tarif,
-                 a.fs_kd_grup_tarif_dk,
-                 a.fs_kd_jenis_tarif,
+                 a.fs_kd_tarif, a.fs_nm_tarif,
+                 a.fs_kd_grup_tarif, a.fs_kd_grup_tarif_dk,
+                 a.fs_kd_jenis_tarif, a.fs_kd_rekap_cetak_tarif,
                  ISNULL(b.fs_nm_grup_tarif,'') fs_nm_grup_tarif,
                  ISNULL(c.fs_nm_grup_tarif_dk,'') fs_nm_grup_tarif_dk,
-                 ISNULL(d.fs_nm_jenis_tarif,'') fs_nm_jenis_tarif
+                 ISNULL(d.fs_nm_jenis_tarif,'') fs_nm_jenis_tarif,
+                 ISNULL(e.fs_nm_rekap_cetak_tarif, '') AS fs_nm_rekap_cetak_tarif
              FROM 
                  TA_TARIF a
                  LEFT JOIN ta_grup_tarif b ON a.fs_kd_grup_tarif = b.fs_kd_grup_tarif 
                  LEFT JOIN ta_grup_tarif_dk c ON a.fs_kd_grup_tarif_dk = c.fs_kd_grup_tarif_dk 
                  LEFT JOIN ta_jenis_tarif d ON a.fs_kd_jenis_tarif = d.fs_kd_jenis_tarif
+                 LEFT JOIN ta_rekap_cetak_tarif e ON a.fs_kd_rekap_cetak_tarif = e.fs_kd_rekap_cetak_tarif
              WHERE
                  a.fs_kd_tarif = @fs_kd_tarif
                   ";
@@ -54,14 +54,12 @@ public class TarifDal : ITarifDal
     {
         const string sql = @"
              SELECT 
-                 a.fs_kd_tarif, 
-                 a.fs_nm_tarif,
-                 a.fs_kd_grup_tarif,
-                 a.fs_kd_grup_tarif_dk,
-                 a.fs_kd_jenis_tarif,
+                 a.fs_kd_tarif, a.fs_nm_tarif, a.fs_kd_grup_tarif,
+                 a.fs_kd_grup_tarif_dk, a.fs_kd_jenis_tarif, a.fs_kd_rekap_cetak_tarif,
                  ISNULL(b.fs_nm_grup_tarif,'') fs_nm_grup_tarif,
                  ISNULL(c.fs_nm_grup_tarif_dk,'') fs_nm_grup_tarif_dk,
-                 ISNULL(d.fs_nm_jenis_tarif,'') fs_nm_jenis_tarif
+                 ISNULL(d.fs_nm_jenis_tarif,'') fs_nm_jenis_tarif,
+                 ISNULL(e.fs_nm_rekap_cetak_tarif, '') fs_nm_rekap_cetak_tarif
              FROM 
                  TA_TARIF a
                  LEFT JOIN ta_grup_tarif b ON a.fs_kd_grup_tarif = b.fs_kd_grup_tarif 
