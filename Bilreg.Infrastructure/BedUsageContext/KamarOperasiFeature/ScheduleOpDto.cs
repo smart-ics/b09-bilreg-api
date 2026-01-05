@@ -34,7 +34,8 @@ public record ScheduleOpDto(
     string TglLahir,
     string Gender,
     string KamarName,
-    string PpaName)
+    string PpaName,
+    int OrderOpState)
 {
     public static ScheduleOpDto FromModel(ScheduleOpModel model)
     {
@@ -63,7 +64,8 @@ public record ScheduleOpDto(
             model.Pasien.TglLahir.ToString("yyyy-MM-dd"),
             model.Pasien.Gender,
             model.KamarOp.KamarName,
-            model.TeamLead.PpaName
+            model.TeamLead.PpaName,
+            0 // OrderOpState
         );
         return result;
     }
@@ -114,6 +116,7 @@ public record ScheduleOpDto(
             Durasi,
             teamLead,
             kamarOp,
+            (OpCaseStateEnum)OrderOpState,
             VodDate.ToString(DateFormatEnum.YMD) != "3000-01-01"
         );
         return result;

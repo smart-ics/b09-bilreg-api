@@ -14,7 +14,7 @@ public class ScheduleOpDalTest
     private static ScheduleOpDto Faker()
         => new ScheduleOpDto("A", new DateTime(2023,1,2), "E", "F", 1, 120, new DateTime(2023, 1, 4), "G", "H", "I", 
             "B", new DateTime(2023, 1, 1), "C", new DateTime(2023, 1, 2), "D",
-            new DateTime(2023, 1, 3), new DateTime(2023, 1, 5), "J", "K", "2023-01-06", "M", "N", "O");
+            new DateTime(2023, 1, 3), new DateTime(2023, 1, 5), "J", "K", "2023-01-06", "M", "N", "O", 0);
 
     private static IScheduleOpKey FakerKey()
         => ScheduleOpModel.Key("A");
@@ -54,7 +54,8 @@ public class ScheduleOpDalTest
                 .Excluding(x => x.TglLahir)
                 .Excluding(x => x.Gender)
                 .Excluding(x => x.KamarName)
-                .Excluding(x => x.PpaName));
+                .Excluding(x => x.PpaName)
+                .Excluding(x => x.OrderOpState));
     }
 
     [Fact]
@@ -71,7 +72,8 @@ public class ScheduleOpDalTest
                 .Excluding(x => x.TglLahir)
                 .Excluding(x => x.Gender)
                 .Excluding(x => x.KamarName)
-                .Excluding(x => x.PpaName));
+                .Excluding(x => x.PpaName)
+                .Excluding(x => x.OrderOpState));
     }
 
     [Fact]
@@ -88,6 +90,7 @@ public class ScheduleOpDalTest
                 .Excluding(x => x.TglLahir)
                 .Excluding(x => x.Gender)
                 .Excluding(x => x.KamarName)
-                .Excluding(x => x.PpaName));
+                .Excluding(x => x.PpaName)
+                .Excluding(x => x.OrderOpState));
     }
 }
