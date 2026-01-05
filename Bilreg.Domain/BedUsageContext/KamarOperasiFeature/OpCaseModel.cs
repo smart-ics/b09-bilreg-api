@@ -1,5 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.PpaFeature;
-using Bilreg.Domain.AdmisiContext.RegFeature;
+﻿using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 
 namespace Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
@@ -13,7 +12,9 @@ public class OpCaseModel : IOrderOpKey
     public OpCaseModel(string orderOpId, OrderOpReff orderOp, 
         PasienReff pasien, string operasiName, 
         RegReff reg, UrgencyLevelEnum urgencyLevel,
-        ScheduleOpReff scheduleOp, DischergeOpReff dischargeOp, OpCaseStateEnum opState,
+        ScheduleOpReff scheduleOp, DischergeOpReff dischargeOp,
+        OnProgressOpReff onProgressOp,
+        OpCaseStateEnum opState,
         IEnumerable<OpCaseStateHistType> listStateHistory, 
         IEnumerable<OpCasePpaType> listPpa)
     {
@@ -26,6 +27,7 @@ public class OpCaseModel : IOrderOpKey
         UrgencyLevel = urgencyLevel;
         ScheduleOp = scheduleOp;
         DischargeOp = dischargeOp;
+        OnProgressOp = onProgressOp;
         OrderOpState = opState;
         _listPpa = listPpa?.ToList() ?? [];
         _listStateHistory = listStateHistory?.ToList() ?? [];
@@ -33,7 +35,7 @@ public class OpCaseModel : IOrderOpKey
     public static OpCaseModel Default => new OpCaseModel(
         "-", OrderOpModel.Default.ToReff(), PasienModel.Default.ToReff(), "-", 
         RegModel.Default.ToReff(), UrgencyLevelEnum.Elective, ScheduleOpReff.Default, 
-        DischergeOpReff.Default, OpCaseStateEnum.Requested, [], []);
+        DischergeOpReff.Default, OnProgressOpReff.Default, OpCaseStateEnum.Requested, [], []);
 
     public static OpCaseModel Create(OrderOpModel orderOp)
     {
@@ -44,7 +46,7 @@ public class OpCaseModel : IOrderOpKey
         var dokterRequester = new OpCasePpaType(0, orderOp.Dokter, "REQUESTER", DateTime.Now);
         var result = new OpCaseModel(orderOp.OrderOpId, orderOp.ToReff(),
             orderOp.Pasien, orderOp.NamaOperasi, orderOp.Reg, orderOp.UrgencyLevel,
-            ScheduleOpReff.Default, DischergeOpReff.Default, 
+            ScheduleOpReff.Default, DischergeOpReff.Default, OnProgressOpReff.Default,
             OpCaseStateEnum.Requested, listStateHist, [dokterRequester]);
         return result;
     }
@@ -60,6 +62,7 @@ public class OpCaseModel : IOrderOpKey
 
     public ScheduleOpReff ScheduleOp { get; private set; }
     public DischergeOpReff DischargeOp { get; private set; }
+    public OnProgressOpReff OnProgressOp { get; private set; }
     public OpCaseStateEnum OrderOpState { get; private set; }
 
     public OpCaseReff? ActiveOpCase
@@ -97,9 +100,29 @@ public class OpCaseModel : IOrderOpKey
         }
     }
 
-    public void Start()
+    public void Start(DateTime startTime)
     {
+        OnProgressOp = new OnProgressOpReff(startTime, new DateTime(3000, 1, 1));
         OrderOpState = OpCaseStateEnum.OpStarted;
+        var stateHistory = _listStateHistory
+            .FirstOrDefault(x => x.OpCaseState == OrderOpState);
+        if (stateHistory is null)
+        {
+            var noUrut = _listStateHistory.Max(x => x.NoUrut) + 1;
+            _listStateHistory.Add(new OpCaseStateHistType(noUrut, OrderOpState, DateTime.Now));
+        }
+        else
+        {
+            var newStateHistory = stateHistory with { StateTimestamp = DateTime.Now };
+            _listStateHistory.Remove(stateHistory);
+            _listStateHistory.Add(newStateHistory);
+        };
+    }
+
+    public void Finish(DateTime finishTime)
+    {
+        OnProgressOp = new OnProgressOpReff(OnProgressOp.StartTime, finishTime);
+        OrderOpState = OpCaseStateEnum.RecoveryStarted;
         var stateHistory = _listStateHistory
             .FirstOrDefault(x => x.OpCaseState == OrderOpState);
         if (stateHistory is null)
@@ -199,6 +222,11 @@ public record DischergeOpReff(string DischargeOpId, DateTime DischargedDate)
 {
     public static DischergeOpReff Default => new DischergeOpReff("-", new DateTime(3000, 1, 1));
 };
+
+public record OnProgressOpReff(DateTime StartTime, DateTime FinishTime)
+{
+    public static OnProgressOpReff Default => new OnProgressOpReff(new DateTime(3000, 1, 1), new DateTime(3000, 1, 1));
+}
 
 public record OpCaseReff(string OrderOpId, DateTime OrderOpDate,
     PasienReff Pasien, OpCaseStateEnum OpCaseState);

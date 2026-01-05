@@ -24,12 +24,12 @@ public class OperationController : ControllerBase
         return Ok(new JSendOk(response));
     }
 
-    [HttpGet]
-    [Route("{scheduleOpId}")]
-    public async Task<IActionResult> GetOperation(string scheduleOpId)
+    [HttpPost]
+    [Route("Finish")]
+    public async Task<IActionResult> FinishOp(OkFinishOpCommand cmd)
     {
-        var cmd = new OkOnOperationGetQuery(scheduleOpId);
-        var response = await _mediator.Send(cmd);
-        return Ok(new JSendOk(response));
+        await _mediator.Send(cmd);
+        return Ok("Done");
     }
+
 }

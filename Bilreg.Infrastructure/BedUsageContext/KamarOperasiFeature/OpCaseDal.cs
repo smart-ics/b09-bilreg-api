@@ -26,17 +26,21 @@ public class OpCaseDal : IOpCaseDal
     {
         _opt = opt.Value;
     }
-    
+
     public void Insert(OpCaseDto dto)
     {
         const string sql = """
             INSERT INTO BILRG_OpCase(
                 OrderOpId, OrderDate, NamaOperasi, PasienId, RegId, 
-                ScheduleOpId, ScheduledDate, DischargeOpId, DischargedDate, 
+                ScheduleOpId, ScheduledDate,
+                DischargeOpId, DischargedDate,
+                StartedDate, FinishedDate,
                 OrderOpState)
             VALUES( 
                 @OrderOpId, @OrderDate, @NamaOperasi, @PasienId, @RegId, 
-                @ScheduleOpId, @ScheduledDate, @DischargeOpId, @DischargedDate, 
+                @ScheduleOpId, @ScheduledDate,
+                @DischargeOpId, @DischargedDate,
+                @StartedDate, @FinishedDate,
                 @OrderOpState)
             """;
 
@@ -50,6 +54,8 @@ public class OpCaseDal : IOpCaseDal
         dp.AddParam("@ScheduledDate", dto.ScheduledDate, SqlDbType.DateTime);
         dp.AddParam("@DischargeOpId", dto.DischargeOpId, SqlDbType.VarChar);
         dp.AddParam("@DischargedDate", dto.DischargedDate, SqlDbType.DateTime);
+        dp.AddParam("@StartedDate", dto.StartedDate, SqlDbType.DateTime);
+        dp.AddParam("@FinishedDate", dto.FinishedDate, SqlDbType.DateTime);
         dp.AddParam("@OrderOpState", dto.OrderOpState, SqlDbType.Int);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
@@ -70,6 +76,8 @@ public class OpCaseDal : IOpCaseDal
                ScheduledDate = @ScheduledDate,
                DischargeOpId = @DischargeOpId,
                DischargedDate = @DischargedDate,
+               StartedDate = @StartedDate,
+               FinishedDate = @FinishedDate,
                OrderOpState = @OrderOpState
            WHERE
                OrderOpId = @OrderOpId";
@@ -84,6 +92,8 @@ public class OpCaseDal : IOpCaseDal
         dp.AddParam("@ScheduledDate", dto.ScheduledDate, SqlDbType.DateTime);
         dp.AddParam("@DischargeOpId", dto.DischargeOpId, SqlDbType.VarChar);
         dp.AddParam("@DischargedDate", dto.DischargedDate, SqlDbType.DateTime);
+        dp.AddParam("@StartedDate", dto.StartedDate, SqlDbType.DateTime);
+        dp.AddParam("@FinishedDate", dto.FinishedDate, SqlDbType.DateTime);
         dp.AddParam("@OrderOpState", dto.OrderOpState, SqlDbType.Int);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
@@ -111,6 +121,7 @@ public class OpCaseDal : IOpCaseDal
            SELECT
                aa.OrderOpId, aa.OrderDate, aa.NamaOperasi, aa.PasienId, aa.RegId,
                aa.ScheduleOpId, aa.ScheduledDate, aa.DischargeOpId, aa.DischargedDate,
+               aa.StartedDate, aa.FinishedDate,
                aa.OrderOpState,
                ISNULL(bb.fs_nm_pasien, '') AS PasienName,
                ISNULL(bb.fd_tgl_lahir, '') AS TglLahir,
@@ -138,6 +149,7 @@ public class OpCaseDal : IOpCaseDal
             SELECT
                 aa.OrderOpId, aa.OrderDate, aa.NamaOperasi, aa.PasienId, aa.RegId,
                 aa.ScheduleOpId, aa.ScheduledDate, aa.DischargeOpId, aa.DischargedDate,
+                aa.StartedDate, aa.FinishedDate,
                 aa.OrderOpState,
                 ISNULL(bb.fs_nm_pasien, '') AS PasienName,
                 ISNULL(bb.fd_tgl_lahir, '') AS TglLahir,
