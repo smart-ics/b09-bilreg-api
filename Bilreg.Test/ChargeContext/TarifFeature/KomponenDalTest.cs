@@ -3,16 +3,15 @@ using Bilreg.Infrastructure.ChargeContext.TarifFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using FluentAssertions;
 using Nuna.Lib.TransactionHelper;
-using Xunit;
 
-namespace Bilreg.Test.BillContext.TarifFeature;
+namespace Bilreg.Test.ChargeContext.TarifFeature;
 
 public class KomponenDalTest
 {
     private readonly KomponenDal _sut = new(ConnStringHelper.GetTestEnv());
 
     private static KomponenDto Faker()
-        => new KomponenDto("A", "B", "C", "D");
+        => new KomponenDto("A", "B", "C", "D", "E", "F", "G", "H");
 
     private static IKomponenKey FakerKey()
         => KomponenType.Default with { KomponenId = "A" };
@@ -46,7 +45,9 @@ public class KomponenDalTest
         var actual = _sut.GetData(FakerKey());
         actual.Should().BeEquivalentTo(Faker(),
             opt => opt
-                .Excluding(x => x.fs_nm_grup_detil_tarif));
+                .Excluding(x => x.fs_nm_grup_detil_tarif)
+                .Excluding(x => x.fs_nm_rek_pdpt)
+                .Excluding(x => x.fs_nm_rek_diskon));
     }
     
     [Fact]
@@ -57,6 +58,8 @@ public class KomponenDalTest
         var actual = _sut.ListData();
         actual.Should().ContainEquivalentOf(Faker(),
             opt => opt
-                .Excluding(x => x.fs_nm_grup_detil_tarif));
+                .Excluding(x => x.fs_nm_grup_detil_tarif)
+                .Excluding(x => x.fs_nm_rek_pdpt)
+                .Excluding(x => x.fs_nm_rek_diskon));
     }
 }

@@ -1,0 +1,20 @@
+using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.BedUsageContext.WardFeature;
+using Bilreg.Domain.ChargeContext.TarifFeature;
+using Nuna.Lib.DataAccessHelper;
+
+namespace Bilreg.Application.ChargeContext.TarifFeature;
+
+public interface INilaiTarifRepo :
+    ISaveChange<NilaiTarifType>,
+    ILoadEntity<NilaiTarifType, INilaiTarifCompositKey>,
+    ILoadEntity<NilaiTarifType, INilaiTarifKey>,
+    IDeleteEntity<INilaiTarifKey>
+{
+    void Import();
+    IEnumerable<NilaiTarifView> Search(ILayananKey layanan, INilaiTarifVariant variant, string keyword);
+}
+
+public record NilaiTarifView(string TarifId, string TarifName, 
+    TipeTarifReff TipeTarif, KelasReff Kelas,
+    decimal Nilai);

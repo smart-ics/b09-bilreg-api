@@ -1,103 +1,120 @@
-﻿//using Bilreg.Domain.AdmisiContext.LayananFeature;
-//using Bilreg.Domain.AdmisiContext.PetugasMedisFeature;
-//using Bilreg.Domain.AdmisiContext.RegFeature;
-//using Bilreg.Domain.BillContext.TindakanSub.TarifFeature;
-//using Bilreg.Domain.BillContext.TindakanSub.TipeTarifAgg;
-//using Bilreg.Domain.Helpers.CommonValueObjects;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.BedUsageContext.WardFeature;
+using Bilreg.Domain.ChargeContext.TarifFeature;
+using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 
-//namespace Bilreg.Domain.BillContext.TindakanSub.TindakanAgg;
+namespace Bilreg.Domain.ChargeContext.TindakanFeature;
 
-//public class TindakanModel : ITindakanKey
-//{
-//    private readonly List<TindakanTarifModel> _listTarif;
-  
-//    #region  CREATION
-//    public TindakanModel(string tindakanId, DateTime timeTindakan, AuditInfoType auditTindakan, 
-//        RegReff reg, LayananReff layanan, string orderId, PetugasMedisReff dokterPengirim,
-//        TipeTarifModel tipeTarif, IEnumerable<TindakanTarifModel> listTarif)
-//    {
-//        TindakanId = tindakanId;
-//        TimeTindakan = timeTindakan;
-//        AuditTindakan = auditTindakan;
-//        Register = reg;
-//        Layanan = layanan;
-//        OrderId = orderId;
-//        DokterPengirim = dokterPengirim;
-//        TipeTarif = tipeTarif;
-//        _listTarif = listTarif.ToList();
-//    }
+public record TindakanModel : ITindakanKey
+{
+    private readonly List<TindakanKomponenBase> _listKomponen;
 
-//    public static TindakanModel Default => new TindakanModel("-", new DateTime(3000, 1, 1),
-//        AuditInfoType.Default, RegModel.Default.ToReff(), LayananType.Default.ToReff(), "-",
-//        PetugasMedisType.Default.ToReff(), new TipeTarifModel("-", "-"), []);
+    #region CREATION
+    public TindakanModel(
+        string tindakanId, DateTime tindakanDate, string orderTindakanId,
+        RegReff reg, LayananReff layanan, KelasReff kelas,
+        TipeTarifReff tipeTarif, TarifReff tarif,
+        IEnumerable<TindakanKomponenBase> listKomponen, 
+        AuditTrailType auditTrail)
+    {
+        TindakanId = tindakanId;
+        TindakanDate = tindakanDate;
+        OrderTindakanId = orderTindakanId;
+        
+        Reg = reg;
+        Layanan = layanan;
 
+        Kelas = kelas;
+        TipeTarif = tipeTarif;
+        Tarif = tarif;
+        _listKomponen = listKomponen.ToList() ?? [];
 
-//    public static ITindakanKey Key(string id) => new TindakanModel("id", new DateTime(3000, 1, 1),
-//        AuditInfoType.Default, RegModel.Default.ToReff(), LayananType.Default.ToReff(), "-",
-//        PetugasMedisType.Default.ToReff(), new TipeTarifModel("-", "-"), []);
+        AuditTrail = auditTrail;
+    }
 
-//    #endregion
+    public static TindakanModel Create(RegModel reg, 
+        LayananType layanan, NilaiTarifType nilaiTarif,
+        IEnumerable<KomponenPpaView> listKomponenPpaView, 
+        string userId)
+    {
+        var newId = Ulid.NewUlid().ToString();
 
-//    #region PROPERTIES
-//    public string TindakanId { get; init; }
-//    public DateTime TimeTindakan { get; init; }
-//    public AuditInfoType AuditTindakan { get; init; }
-//    public RegReff Register {  get; init; }
-//    public LayananReff Layanan { get; init; }
-//    public string OrderId { get; init; }
-//    public PetugasMedisReff DokterPengirim { get; init; }
-//    public TipeTarifModel TipeTarif { get; init; }
-//    public long Total { get; private set; }
-//    public IEnumerable<TindakanTarifModel> ListTarif => _listTarif;
-//    #endregion
+        var listKomp = GenListKomponen(nilaiTarif, listKomponenPpaView);
+        var audit = AuditTrailType.Create(userId, DateTime.Now);
+        var tarif = new TarifReff(nilaiTarif.TarifId, nilaiTarif.TarifName);
+        
+        var result = new TindakanModel(newId, DateTime.Now, "",
+            reg.ToReff(), layanan.ToReff(), nilaiTarif.Kelas, nilaiTarif.TipeTarif,
+            tarif, listKomp, audit);
+        return result;
+    }
 
-//    #region BEHAVIOUR
+    private static IEnumerable<TindakanKomponenBase> GenListKomponen(
+        NilaiTarifType nilaiTarif, IEnumerable<KomponenPpaView> listKomponenPpaView)
+    {
+        var result = new List<TindakanKomponenBase>();
+        var listKompPpaFetched = listKomponenPpaView.ToList();
+        var index = 0;
+        
+        foreach (var item in nilaiTarif.ListKomponen)
+        {
+            var kompPPa = listKompPpaFetched
+                .FirstOrDefault(x => x.Komponen.ToReff() == item.Komponen);
+            
+            TindakanKomponenBase newItem = kompPPa is null 
+                ? new TindakanKomponenWithoutPpaType(item.Komponen,index++, item.Nilai, 1, item.Nilai) 
+                : TindakanKomponenWithPpaType.Create(kompPPa.Komponen, kompPPa.Ppa, 
+                    index++, item.Nilai, 1);
+            
+            result.Add(newItem);
+        }
+        
+        return result.AsEnumerable();
+    }
+    
+    public static TindakanModel Default => new(
+        "-", 
+        DateTime.Today, 
+        "", 
+        RegModel.Default.ToReff(),
+        LayananType.Default.ToReff(),
+        KelasType.Default.ToReff(),
+        TipeTarifType.Default.ToReff(), 
+        TarifType.Default.ToReff(),
+        [], 
+        AuditTrailType.Default
+    );
 
-//    #endregion
-//}
+    public static ITindakanKey Key(string id) => Default with { TindakanId = id };
+    #endregion
 
-//public interface ITindakanKey
-//{
-//    string TindakanId { get; }
-//}
+    #region PROPERTIES
+    public string TindakanId { get; init; }
+    public DateTime TindakanDate { get; init; }
+    public string OrderTindakanId { get; init; }
+    public RegReff Reg { get; init; }
+    public LayananReff Layanan { get; init; }
+    public KelasReff Kelas { get; init; }
+    public TipeTarifReff TipeTarif { get; init; }
+    public TarifReff Tarif { get; private set; }
+    public decimal Total => _listKomponen.Sum(t => t.SubTotal);
+    public IEnumerable<TindakanKomponenBase> ListKomponen => _listKomponen;
+    public AuditTrailType AuditTrail { get; init; }
+    #endregion
 
-//public class TindakanTarifModel
-//{
-//    private readonly List<TindakanTarifDetilModel> _listDtlTarif;
+    #region BEHAVIOR
+    public void Void(string userId)
+    {
+        AuditTrail.Batal(userId, DateTime.Now);
+    }
+    #endregion
+}
 
-//    public TindakanTarifModel(string tindakanId, 
-//        TarifReff tarif, long subTotal, 
-//        IEnumerable<TindakanTarifDetilModel> listDtlTarif)
-//    {
-//        TindakanId = tindakanId;
-//        Tarif = tarif;
-//        SubTotal = subTotal;
-//        _listDtlTarif = listDtlTarif.ToList();
-//    }
+public interface ITindakanKey
+{
+    string TindakanId { get; }
+}
 
-//    public string TindakanId { get; init; }
-//    public TarifReff Tarif {  get; init; }
-//    public long SubTotal{ get; init; }
-//    public IEnumerable<TindakanTarifDetilModel> ListDetilTarif => _listDtlTarif;
-//}
-
-//public class TindakanTarifDetilModel
-//{
-//    public TindakanTarifDetilModel(string tindakanId, TarifReff tarif, string detilTarifId, 
-//        string detilTarifName, PetugasMedisReff petugasMedis, long nilai)
-//    {
-//        TindakanId = tindakanId;
-//        Tarif = tarif;
-//        DetilTarifId = detilTarifId;
-//        DetilTarifName = detilTarifName;
-//        PetugasMedis = petugasMedis;
-//        Nilai = nilai;
-//    }
-
-//    public string TindakanId { get; init; }
-//    public TarifReff Tarif { get; init; }
-//    public string DetilTarifId { get; init; }
-//    public string DetilTarifName { get; init; }
-//    public PetugasMedisReff PetugasMedis { get; init; }
-//    public long Nilai { get; init; }
-//}
+public record TindakanView(string TindakanId, DateTime TindakanDate, string OrderTdkId,
+    RegReff Reg, LayananReff Layanan, TarifReff Tarif) : ITindakanKey;
