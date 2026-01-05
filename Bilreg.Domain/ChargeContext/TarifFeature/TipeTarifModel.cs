@@ -1,4 +1,5 @@
 ﻿using Ardalis.GuardClauses;
+using Bilreg.Domain.AdmisiContext.JaminanFeature;
 
 namespace Bilreg.Domain.ChargeContext.TarifFeature;
 
@@ -31,4 +32,4 @@ public interface ITipeTarifKey
     string TipeTarifId { get; }
 }
 
-public record TipeTarifReff(string TipeTarifId, string TipeTarifName);
+public record TipeTarifReff(string TipeTarifId, string TipeTarifName) : ITipeTarifKey;

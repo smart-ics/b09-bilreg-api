@@ -14,19 +14,13 @@ public record BookingDeleteFromHidokCmd(string BookingHidokId) : IRequest;
 public class BookingDeleteFromHidokHandler : IRequestHandler<BookingDeleteFromHidokCmd>
 {
     private readonly IBookingRepo _bookingRepo;
-    private readonly IAntrianRepo _antrianRepo;
-    private readonly IPpaRepo _ppaRepo;
-    private readonly IPasienTrackerRepo _paasienTrackerRepo;
-
+    private readonly IDeleteBookingWorkflow _deleteBookingWorkflow;
+    
     public BookingDeleteFromHidokHandler(IBookingRepo bookingRepo,
-        IAntrianRepo antrianRepo,
-        IPpaRepo ppaRepo,
-        IPasienTrackerRepo paasienTrackerRepo)
+        IDeleteBookingWorkflow deleteBookingWorkflow)
     {
         _bookingRepo = bookingRepo;
-        _antrianRepo = antrianRepo;
-        _ppaRepo = ppaRepo;
-        _paasienTrackerRepo = paasienTrackerRepo;
+        _deleteBookingWorkflow = deleteBookingWorkflow;
     }
 
     public Task Handle(BookingDeleteFromHidokCmd request, CancellationToken cancellationToken)
@@ -37,37 +31,9 @@ public class BookingDeleteFromHidokHandler : IRequestHandler<BookingDeleteFromHi
                 onSome: x => x,
                 onNone: () => throw new KeyNotFoundException($"Booking {request.BookingHidokId} not found")
             );
+        _deleteBookingWorkflow.Execute(booking);
 
-        // cek booking sudah reg
-        if (booking.Reg.RegId.Trim() != "-")
-            throw new KeyNotFoundException($"Booking sudah registrasi {booking.Reg.RegId}, tidak boleh delete");
-
-
-        // cek dokter
-        var dokterKey = PpaType.Key(booking.Dokter.PpaId);
-        var dokter = _ppaRepo.LoadEntity(dokterKey)
-            .Match(
-                onSome: x => x,
-                onNone: () => throw new KeyNotFoundException($"Dokter {dokterKey.PpaId} not found")
-            );
-       
-        //  ambil data antrian
-        var listAntrian = _antrianRepo.ListData(booking.TglBerobat);
-        var sequenceTag = AntrianModel.GenSequenceTag(booking.TglBerobat, dokter);
-        var antrianView = listAntrian.FirstOrDefault(x => x.SequenceTag == sequenceTag) ??
-            new AntrianHeaderView("-", "", new DateOnly(3000, 1, 1), new TimeOnly(0, 0), "");
-        var antrian = _antrianRepo.LoadEntity(antrianView).Value;
         
-        var antrianPasien = antrian.ListEntry.FirstOrDefault(x => x.NoUrut == booking.NoAntrian) ?? AntrianEntryModel.Default;
-        var pasienTracker = PasienTrackerModel.Key(antrianPasien.Tracker.PasienTrackerId);
-
-        antrian.RemoveEntry(booking.NoAntrian);
-        
-        using var trans = TransHelper.NewScope();
-        _bookingRepo.DeleteEntity(booking);
-        _antrianRepo.SaveChanges(antrian);
-        _paasienTrackerRepo.DeleteEntity(pasienTracker);
-        trans.Complete();   
         return Task.CompletedTask;
     }
 }

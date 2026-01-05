@@ -1,5 +1,8 @@
 ﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
+using Nuna.Lib.DataTypeExtension;
 using Nuna.Lib.PatternHelper;
 
 namespace Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
@@ -24,7 +27,7 @@ public class AntrianMapHdrRepo : IAntrianMapHdrRepo
         var listDtlDto = model.ListMap.Select(x => AntrianMapDto.FromModel(x));
 
         _mapDal.Delete(model);
-        _mapDal.Insert(listDtlDto);
+        listDtlDto.ForEach(x => _mapDal.Insert(x));
     }
 
     public MayBe<AntrianMapHdrModel> LoadEntity(IAntrianMapHdrKey key)
@@ -33,5 +36,13 @@ public class AntrianMapHdrRepo : IAntrianMapHdrRepo
         var listDtl = _mapDal.ListData(key)?.ToList() ?? [];
         var model = hdr?.ToModel(listDtl);
         return MayBe.From(model!);
+    }
+
+    public IEnumerable<AntrianMapHdrView> ListData(ILayananKey lynKey, IPpaKey ppaKey, DateOnly tglBerobat)
+    {
+        var listAnt = _hdrDal.ListData(lynKey, ppaKey, tglBerobat)?.ToList() ?? [];
+        var result = listAnt.Select(x => x.ToView())?.ToList() ?? [];
+        
+        return result;
     }
 }

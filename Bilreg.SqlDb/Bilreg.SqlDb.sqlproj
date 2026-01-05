@@ -77,6 +77,10 @@
     <Folder Include="BedUsageContext\RoomRateFeature\" />
     <Folder Include="BedUsageContext\KamarOperasiFeature\" />
     <Folder Include="ChargeContext\TarifFeature\" />
+    <Folder Include="PaymentContext\" />
+    <Folder Include="PaymentContext\TrsBillingFeature\" />
+    <Folder Include="PaymentContext\RekapCatakFeature\" />
+    <Folder Include="PaymentContext\RekeningFeature\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OpCase.sql" />

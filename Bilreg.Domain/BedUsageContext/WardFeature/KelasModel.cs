@@ -33,4 +33,4 @@ public interface IKelasKey
     string KelasId { get; }
 }
 
-public record KelasReff(string KelasId, string KelasName);
+public record KelasReff(string KelasId, string KelasName) : IKelasKey;

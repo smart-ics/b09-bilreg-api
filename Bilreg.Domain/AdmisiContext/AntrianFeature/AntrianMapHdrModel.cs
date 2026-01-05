@@ -55,15 +55,11 @@ public record AntrianMapHdrModel : IAntrianMapHdrKey
         listMap: []
     );
 
-    public static IAntrianMapHdrKey Key(string jadwalId, DateOnly tglJadwal, string dokterId, string layananId, TimeOnly jamJadwal) =>
-        Default with
-        {
-            JadwalId = jadwalId,
-            TglJadwal = tglJadwal,
-            Dokter = new PpaReff(dokterId, "-"),
-            Layanan = new LayananReff(layananId, "-"),
-            JamJadwal = jamJadwal
-        };
+    public static IAntrianMapHdrKey Key(string jadwalId, DateOnly tglJadwal,
+        string dokterId, string layananId, TimeOnly jamJadwal) =>
+        new AntrianMapHdrModel(jadwalId, new PpaReff(dokterId, "-"),
+            new LayananReff(layananId, "-"), tglJadwal, jamJadwal,
+            TimeOnly.MinValue, []);
 
     #endregion
 
@@ -131,6 +127,15 @@ public record AntrianMapHdrModel : IAntrianMapHdrKey
 
         _listMap.Clear();
         _listMap.AddRange(newList);
+    }
+
+    public int GetNextNoAntrian()
+    {
+        return _listMap
+            .Where(x => string.IsNullOrEmpty(x.ReffId))
+            .Select(x => x.NoUrut)
+            .DefaultIfEmpty(1)
+            .Min();
     }
 
     public int TotalSlotCount => _listMap.Count;

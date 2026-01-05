@@ -8,7 +8,7 @@ namespace Bilreg.Domain.AdmisiContext.RegFeature;
 public class RegAktifModel : IRegKey
 {
     #region CREATION
-    public RegAktifModel(string regId, DateTime regDate,  
+    public RegAktifModel(string regId, DateOnly regDate,  
         PasienReff pasien, JenisRegEnum jenisReg, LayananReff layanan,
         PpaReff dokter, TipeJaminanReff tipeJaminan)
     {
@@ -20,11 +20,19 @@ public class RegAktifModel : IRegKey
         Layanan = layanan;
         Dokter = dokter;
     }
+
+    public static RegAktifModel CreateFromReg(RegModel reg)
+    {
+        var result = new RegAktifModel(reg.RegId, reg.RegDate,
+            reg.Pasien, reg.JenisReg, reg.Layanan,
+            reg.Dokter, reg.TipeJaminan);
+        return result;
+    }
     #endregion
     
     #region PROPERTIES
     public string RegId { get; init; }
-    public DateTime RegDate { get; init; }
+    public DateOnly RegDate { get; init; }
     public PasienReff Pasien { get; init; }
     public JenisRegEnum JenisReg { get; init; }
     public LayananReff Layanan { get; private set; }

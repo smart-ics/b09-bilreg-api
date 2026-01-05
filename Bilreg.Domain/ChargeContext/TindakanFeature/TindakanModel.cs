@@ -49,6 +49,22 @@ public record TindakanModel : ITindakanKey
             tarif, listKomp, audit);
         return result;
     }
+    
+    public static TindakanModel FromReg(RegModel reg, NilaiTarifType nilaiTarif,
+        IEnumerable<KomponenPpaView> listKomponenPpaView, 
+        string userId)
+    {
+        var newId = Ulid.NewUlid().ToString();
+
+        var listKomp = GenListKomponen(nilaiTarif, listKomponenPpaView);
+        var audit = AuditTrailType.Create(userId, DateTime.Now);
+        var tarif = new TarifReff(nilaiTarif.TarifId, nilaiTarif.TarifName);
+        
+        var result = new TindakanModel(newId, DateTime.Now, "",
+            reg.ToReff(), reg.Layanan, nilaiTarif.Kelas, nilaiTarif.TipeTarif,
+            tarif, listKomp, audit);
+        return result;
+    }
 
     private static IEnumerable<TindakanKomponenBase> GenListKomponen(
         NilaiTarifType nilaiTarif, IEnumerable<KomponenPpaView> listKomponenPpaView)
