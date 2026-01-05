@@ -8,6 +8,7 @@ using Bilreg.Application.AdmisiContext.RujukanFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.ChargeContext.TindakanFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
+using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
@@ -18,9 +19,11 @@ using Bilreg.Domain.AdmisiContext.RujukanFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
+using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
+using System.Net.WebSockets;
 
 namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 
@@ -58,34 +61,38 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
     private readonly INilaiTarifRepo _nilaiTarifRepo;
     private readonly ITindakanRepo _tindakanRepo;
     private readonly IKomponenRepo _komponenRepo;
-    
+    // trsBill
+    private readonly ITarifRepo _tarifRepo;
+    private readonly ITrsBillingRepo _trsBillingRepo;
     private const string BAYAR_SENDIRI = "1";
 
     public RegJalanCreateHandler(
         //  reg support
-        IPasienRepo pasienRepo, 
-        ITipeJaminanRepo tipeJaminanRepo, 
-        IPolisRepo polisRepo, 
-        ICaraMasukDkRepo caraMasukDkRepo, 
-        IRujukanRepo rujukanRepo, 
-        ILayananRepo layananRepo, 
-        IPpaRepo ppaRepo, 
-        IKarcisRepo karcisRepo, 
+        IPasienRepo pasienRepo,
+        ITipeJaminanRepo tipeJaminanRepo,
+        IPolisRepo polisRepo,
+        ICaraMasukDkRepo caraMasukDkRepo,
+        IRujukanRepo rujukanRepo,
+        ILayananRepo layananRepo,
+        IPpaRepo ppaRepo,
+        IKarcisRepo karcisRepo,
         //  registrasi
-        IRegFactory regFactory, 
-        IRegRepo regRepo, 
-        IRegAktifRepo regAktifRepo, 
+        IRegFactory regFactory,
+        IRegRepo regRepo,
+        IRegAktifRepo regAktifRepo,
         //  antrian
-        IPasienTrackerRepo trackerRepo, 
-        IAntrianFactory antrianFactory, 
-        IAntrianRepo antrianRepo, 
-        IJadwalPraktekRepo jadwalPraktekRepo, 
-        IAntrianMapHdrRepo antrianMapRepo, 
+        IPasienTrackerRepo trackerRepo,
+        IAntrianFactory antrianFactory,
+        IAntrianRepo antrianRepo,
+        IJadwalPraktekRepo jadwalPraktekRepo,
+        IAntrianMapHdrRepo antrianMapRepo,
         //  tindakan
-        IJaminanRepo jaminanRepo, 
-        INilaiTarifRepo nilaiTarifRepo, 
-        ITindakanRepo tindakanRepo, 
-        IKomponenRepo komponenRepo)
+        IJaminanRepo jaminanRepo,
+        INilaiTarifRepo nilaiTarifRepo,
+        ITindakanRepo tindakanRepo,
+        IKomponenRepo komponenRepo,
+        ITarifRepo tarifRepo,
+        ITrsBillingRepo trsBillingRepo)
     {
         //      reg-support
         _pasienRepo = pasienRepo;
@@ -111,6 +118,8 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         _nilaiTarifRepo = nilaiTarifRepo;
         _tindakanRepo = tindakanRepo;
         _komponenRepo = komponenRepo;
+        _tarifRepo = tarifRepo;
+        _trsBillingRepo = trsBillingRepo;
     }
 
     public Task<RegJalanCreateResponse> Handle(RegJalanWalkInCommand request, CancellationToken cancellationToken)
@@ -142,9 +151,18 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         var tracker = PasienTrackerModel.Create(reg);
 
         //      BUILD TINDAKAN
+        var jaminan = LoadJaminan(tipeJaminan.Jaminan);
         var tindakan =  karcis.DefaultTarif == TarifType.Default.ToReff()
             ? TindakanModel.Default
-            : GenTindakan(reg, tipeJaminan, karcis, request.UserId, dokter);
+            : GenTindakan(reg, jaminan, karcis, request.UserId, dokter);
+
+        //      BUILD TrsBill
+        var tarif = karcis.DefaultTarif == TarifType.Default.ToReff()
+            ? TarifType.Default
+            : LoadTarif(TarifType.Key(karcis.DefaultTarif.TarifId));
+        var trsBilling = tindakan == TindakanModel.Default 
+            ? TrsBillingType.Default
+            : GenBill(tindakan, reg, tarif, jaminan);
 
         using var trans = TransHelper.NewScope();
         
@@ -160,6 +178,8 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
 
         if (tindakan != TindakanModel.Default)
             _tindakanRepo.SaveChanges(tindakan);
+        if(trsBilling != TrsBillingType.Default)
+            _trsBillingRepo.SaveChanges(trsBilling);
 
         trans.Complete();
         return Task.FromResult(new RegJalanCreateResponse(reg.RegId, antEntry.NoUrut));
@@ -253,10 +273,9 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         return queueHdr;
     }
 
-    private TindakanModel GenTindakan(RegModel reg, TipeJaminanType tipeJaminan, 
+    private TindakanModel GenTindakan(RegModel reg, JaminanType jaminan, 
         KarcisType karcis, string userId, PpaType dokter)
     {
-        var jaminan = _jaminanRepo.LoadEntity(tipeJaminan.Jaminan).GetValueOrThrow("Jaminan not found");
         var tipeTarifReff = jaminan.TipeTarif.Rajal;
         var tarifKey = karcis.DefaultTarif;
         var nilaiTarifKey = NilaiTarifType.KeyComposite(tarifKey, tipeTarifReff, reg.Kelas);
@@ -270,6 +289,47 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
 
         var tindakan = TindakanModel.FromReg(reg, nilaiTarif, listPpa, userId);
         return tindakan;
+    }
+
+    private TrsBillingType GenBill(TindakanModel tdk, RegModel reg, TarifType tarif,
+        JaminanType jaminan)
+    {
+        var listKomp = new List<KomponenType>();
+        foreach(var item in tdk.ListKomponen)
+        {
+            var komp = LoadKomponen(KomponenType.Key(item.Komponen.KomponenId));
+            listKomp.Add(komp);
+        }
+        var trsBilling = TrsBillingType.CreateFromTindakan(tdk, reg, tarif, jaminan, listKomp);
+        return trsBilling;
+    }
+    private KomponenType LoadKomponen(IKomponenKey key)
+    {
+        var komponen = _komponenRepo.LoadEntity(key)
+            .Match(
+                onSome: x => x,
+                onNone: () => throw new KeyNotFoundException($"Komponen Nilai Tarif '{key.KomponenId}' invalid")
+            );
+        return komponen;
+    }
+    private JaminanType LoadJaminan(IJaminanKey key)
+    {
+        var jaminan = _jaminanRepo.LoadEntity(key)
+            .Match(
+                onSome: x => x,
+                onNone: () => throw new KeyNotFoundException(
+                    $"Jaminan {key.JaminanId} not found")
+            );
+        return jaminan;
+    }
+    private TarifType LoadTarif(ITarifKey key)
+    {
+        var tarif = _tarifRepo.LoadEntity(key)
+            .Match(
+                onSome: x => x,
+                onNone: () => TarifType.Default
+            );
+        return tarif;
     }
     #endregion
 }

@@ -7,6 +7,7 @@ using Bilreg.Application.AdmisiContext.RujukanFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.ChargeContext.TindakanFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
+using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
@@ -16,6 +17,7 @@ using Bilreg.Domain.AdmisiContext.RujukanFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
+using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
 using Nuna.Lib.DataTypeExtension;
@@ -49,6 +51,7 @@ public class RegJalanByBookingHandler
     private readonly ITipeTarifRepo _tipeTarifRepo;
     private readonly ITindakanRepo _tindakanRepo;
     private readonly IKomponenRepo _komponenRepo;
+    private readonly ITrsBillingRepo _trsBillingRepo;
 
     private const string BAYAR_SENDIRI = "1";
     public RegJalanByBookingHandler(
@@ -69,7 +72,8 @@ public class RegJalanByBookingHandler
         INilaiTarifRepo nilaiTarifRepo,
         ITipeTarifRepo tipeTarifRepo,
         ITindakanRepo tindakanRepo,
-        IKomponenRepo komponenRepo)
+        IKomponenRepo komponenRepo,
+        ITrsBillingRepo trsBillingRepo)
     {
         _bookingRepo = bookingRepo;
         _pasienRepo = pasienRepo;
@@ -89,6 +93,7 @@ public class RegJalanByBookingHandler
         _tipeTarifRepo = tipeTarifRepo;
         _tindakanRepo = tindakanRepo;
         _komponenRepo = komponenRepo;
+        _trsBillingRepo = trsBillingRepo;
     }
 
     public Task<RegJalanByBookingResponse> Handle(RegJalanByBookingCmd request, CancellationToken cancellationToken)
@@ -107,37 +112,42 @@ public class RegJalanByBookingHandler
         {
             rujukan = ResolveRujukan(caraMasuk, booking.CoverageInfo.NoRujukan);
         }
-
+  
         //  BUILD
         var regAudit = new AuditInfoType(request.UserId, DateTime.Now);
         var reg = _regFactory.CreateRegRajal(
-            pasien,
-            regAudit,
-            tipeJaminan,
-            polis,
-            caraMasuk,
-            rujukan,
-            dokter,
-            layanan,
-            karcis);
+            pasien, regAudit, tipeJaminan,
+            polis, caraMasuk, rujukan,
+            dokter, layanan, karcis);
         booking.AssignReg(reg);
 
         var regAktif = new RegAktifModel(reg.RegId,  reg.RegDate, 
             reg.Pasien, reg.JenisReg, reg.Layanan,
             reg.Dokter, reg.TipeJaminan);
 
-        var tindakan = TindakanModel.Default;
-        if (karcis.DefaultTarif.TarifId != "-")
-            tindakan = GenTindakan(reg, tipeJaminan, karcis.DefaultTarif, pasien, layanan, request.UserId, dokter);
+        //      BUILD TINDAKAN
+        var jaminan = LoadJaminan(tipeJaminan.Jaminan);
+        var tindakan = karcis.DefaultTarif == TarifType.Default.ToReff()
+            ? TindakanModel.Default
+            : GenTindakan(reg, jaminan, karcis, request.UserId, dokter);
+
+        //      BUILD TrsBill
+        var tarif = karcis.DefaultTarif == TarifType.Default.ToReff()
+            ? TarifType.Default
+            : LoadTarif(TarifType.Key(karcis.DefaultTarif.TarifId));
+        var trsBilling = tindakan == TindakanModel.Default
+            ? TrsBillingType.Default
+            : GenBill(tindakan, reg, tarif, jaminan);
 
         //  WRITE
         using var trans = TransHelper.NewScope();
         _regRepo.SaveChanges(reg);
         _bookingRepo.SaveChanges(booking);
         _regAktifRepo.SaveChanges(regAktif);
-
-        if (karcis.DefaultTarif.TarifId != "-")
+        if (tindakan != TindakanModel.Default)
             _tindakanRepo.SaveChanges(tindakan);
+        if (trsBilling != TrsBillingType.Default)
+            _trsBillingRepo.SaveChanges(trsBilling);
 
         trans.Complete();
         return Task.FromResult(new RegJalanByBookingResponse(reg.RegId, booking.NoAntrian));
@@ -197,31 +207,35 @@ public class RegJalanByBookingHandler
             : _rujukanRepo.LoadEntity(RujukanType.Key(rujukanId))
                 .GetValueOrThrow("'Rujukan' not found");
 
-    private TindakanModel GenTindakan(RegModel reg, TipeJaminanType tipeJaminan, TarifReff tarifReff,
-        PasienModel pasien, LayananType layanan, string userId, PpaType dokter)
+    private TindakanModel GenTindakan(RegModel reg, JaminanType jaminan,
+        KarcisType karcis, string userId, PpaType dokter)
     {
-        var jaminan = LoadJaminan(JaminanType.Key(tipeJaminan.Jaminan.JaminanId));
-        var tipeTarifJmn = jaminan.TipeTarif.Rajal;
+        var tipeTarifReff = jaminan.TipeTarif.Rajal;
+        var tarifKey = karcis.DefaultTarif;
+        var nilaiTarifKey = NilaiTarifType.KeyComposite(tarifKey, tipeTarifReff, reg.Kelas);
+        var nilaiTarif = _nilaiTarifRepo.LoadEntity(nilaiTarifKey).GetValueOrThrow("NilaiTarif not found");
 
-        var tarif = LoadTarif(TarifType.Key(tarifReff.TarifId));
-        var nilaiTarifKey = NilaiTarifType.KeyComposite(tarif, tipeTarifJmn, reg.Kelas);
-        var nilaiTarif = LoadNilaiTarif(nilaiTarifKey);
-        var listKompMaster = _komponenRepo
+        var listKomp = _komponenRepo
             .ListData(nilaiTarif.ListKomponen.Select(x => x.Komponen))?.ToList() ?? [];
+        var listPpa = listKomp
+            .Where(x => x.ListSatTugas.Any())
+            .Select(x => new KomponenPpaView(x, dokter));
 
-        var listKompPpa = listKompMaster.Where(x => x.ListSatTugas.Any())?.ToList() ?? [];
-
-        var listPpa = new List<KomponenPpaView>();
-        foreach (var item in listKompPpa)
-        {
-            var komp = LoadKomponen(KomponenType.Key(item.KomponenId));
-            var ppa = dokter;
-            listPpa.Add(new KomponenPpaView(komp, ppa));
-        }
-        var tindakan = TindakanModel.Create(reg, layanan, nilaiTarif, listPpa, userId);
-
-
+        var tindakan = TindakanModel.FromReg(reg, nilaiTarif, listPpa, userId);
         return tindakan;
+    }
+
+    private TrsBillingType GenBill(TindakanModel tdk, RegModel reg, TarifType tarif,
+        JaminanType jaminan)
+    {
+        var listKomp = new List<KomponenType>();
+        foreach (var item in tdk.ListKomponen)
+        {
+            var komp = LoadKomponen(KomponenType.Key(item.Komponen.KomponenId));
+            listKomp.Add(komp);
+        }
+        var trsBilling = TrsBillingType.CreateFromTindakan(tdk, reg, tarif, jaminan, listKomp);
+        return trsBilling;
     }
     private KomponenType LoadKomponen(IKomponenKey key)
     {
@@ -232,7 +246,6 @@ public class RegJalanByBookingHandler
             );
         return komponen;
     }
-    
     private JaminanType LoadJaminan(IJaminanKey key)
     {
         var jaminan = _jaminanRepo.LoadEntity(key)
@@ -248,30 +261,9 @@ public class RegJalanByBookingHandler
         var tarif = _tarifRepo.LoadEntity(key)
             .Match(
                 onSome: x => x,
-                onNone: () => throw new KeyNotFoundException(
-                    $"Tarif {key.TarifId} not found")
+                onNone: () => TarifType.Default
             );
         return tarif;
-    }
-    private TipeTarifType LoadTipeTarif(ITipeTarifKey key)
-    {
-        var tipeTarif = _tipeTarifRepo.LoadEntity(key)
-            .Match(
-                onSome: x => x,
-                onNone: () => throw new KeyNotFoundException(
-                    $"TipeTarif {key.TipeTarifId} not found")
-            );
-        return tipeTarif;
-    }
-    private NilaiTarifType LoadNilaiTarif(INilaiTarifCompositKey key)
-    {
-        var nilaiTarif = _nilaiTarifRepo.LoadEntity(key)
-            .Match(
-                onSome: x => x,
-                onNone: () => throw new KeyNotFoundException(
-                    $"NilaiTarif Tarif:{key.TarifId}, Tipe:{key.TipeTarifId}, Kelas:{key.KelasId} not found")
-            );
-        return nilaiTarif;
     }
     #endregion
 }
