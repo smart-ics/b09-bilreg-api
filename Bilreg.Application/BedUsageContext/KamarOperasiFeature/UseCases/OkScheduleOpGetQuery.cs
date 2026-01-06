@@ -15,6 +15,7 @@ public record ScheduleOpGetResponse(string OrderOpId, string ScheduleOpId, strin
     string TglFinishOp, string JamFinishOp,
     string KamarId, string KamarName,
     string DokterId, string DokterName,
+    string StatusOp,
     IEnumerable<PpaReff> ListPpa);
 
 public class OkScheduleOpGetHandler : IRequestHandler<OkScheduleOpGetQuery, ScheduleOpGetResponse>
@@ -61,7 +62,20 @@ public class OkScheduleOpGetHandler : IRequestHandler<OkScheduleOpGetQuery, Sche
             scheduleOp.KamarOp.KamarName,
             scheduleOp.TeamLead.PpaId,
             scheduleOp.TeamLead.PpaName,
+            TranslateState(scheduleOp.OrderOpState),
             scheduleOp.ListPpa.Select(x => new PpaReff(x.Ppa.PpaId, x.Ppa.PpaName)));
         return Task.FromResult(response);
+    }
+
+    private string TranslateState(OpCaseStateEnum opCaseState)
+    {
+        string result = opCaseState switch
+        {
+            OpCaseStateEnum.Scheduled => opCaseState.ToString(),
+            OpCaseStateEnum.OpStarted => "In-Progress",
+            OpCaseStateEnum.RecoveryStarted => "In-Recovery",
+            _ => "Others"
+        };
+        return result;
     }
 }

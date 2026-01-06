@@ -101,6 +101,7 @@ public record ScheduleOpDto(
             reg,
             teamLead,
             StartedDate, FinishedDate,
+            (OpCaseStateEnum)OrderOpState,
             listPpa
         );
         return result;

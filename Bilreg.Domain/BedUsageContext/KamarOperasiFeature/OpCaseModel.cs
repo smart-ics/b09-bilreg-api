@@ -89,6 +89,9 @@ public class OpCaseModel : IOrderOpKey
     #region BEHAVIOUR
     public void Schedule(ScheduleOpReff schedule)
     {
+        if ((int)OrderOpState >= (int)OpCaseStateEnum.OpStarted)
+            throw new ArgumentException("Operasi sedang dilakukan!");
+
         ScheduleOp = schedule;
         OrderOpState = OpCaseStateEnum.Scheduled;
         var stateHistory = _listStateHistory
@@ -102,6 +105,9 @@ public class OpCaseModel : IOrderOpKey
 
     public void Start(DateTime startTime)
     {
+        if ((int)OrderOpState >= (int)OpCaseStateEnum.RecoveryStarted)
+            throw new ArgumentException("Dalam tahap recovery!");
+
         OnProgressOp = new OnProgressOpReff(startTime, new DateTime(3000, 1, 1));
         OrderOpState = OpCaseStateEnum.OpStarted;
         var stateHistory = _listStateHistory
