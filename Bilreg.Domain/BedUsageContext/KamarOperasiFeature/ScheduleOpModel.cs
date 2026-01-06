@@ -14,6 +14,7 @@ public class ScheduleOpModel : IScheduleOpKey
     public ScheduleOpModel(string scheduleOpId, DateTime scheduleDate, AuditTrailType auditTrail,
         OrderOpReff orderOp, PasienReff pasien, UrgencyLevelEnum urgencyLevel, int durasi,
         DateTime tglOp, KamarReff kamarOp, RegReff reg, PpaReff teamLead,
+        DateTime startOpDate, DateTime endOpDate,
         IEnumerable<ScheduleOpPpaType> listPpa)
     {
         ScheduleOpId = scheduleOpId;
@@ -27,20 +28,25 @@ public class ScheduleOpModel : IScheduleOpKey
         KamarOp = kamarOp;
         Reg = reg;
         TeamLead = teamLead;
+        StartOpDate = startOpDate;
+        EndOpDate = endOpDate;
         _listPpa = listPpa.ToList() ?? [];
     }
+
     public static ScheduleOpModel Default 
-        => new ScheduleOpModel("-", new DateTime(3000,1,1), AuditTrailType.Default, 
-            OrderOpModel.Default.ToReff(), PasienModel.Default.ToReff(), 
-            UrgencyLevelEnum.Elective, 0, 
-            new DateTime(3000,1,1), KamarType.Default.ToReff(), 
-            RegModel.Default.ToReff(), PpaType.Default.ToReff(), []);
-    public static IScheduleOpKey Key(string id) 
-        => new ScheduleOpModel(id, new DateTime(3000,1,1), AuditTrailType.Default, 
-            OrderOpModel.Default.ToReff(), PasienModel.Default.ToReff(), 
-            UrgencyLevelEnum.Elective, 0, 
-            new DateTime(3000,1,1), KamarType.Default.ToReff(), 
-            RegModel.Default.ToReff(), PpaType.Default.ToReff(), []);
+        => new ScheduleOpModel("-", new DateTime(3000,1,1), AuditTrailType.Default,
+            OrderOpModel.Default.ToReff(), PasienModel.Default.ToReff(),
+            UrgencyLevelEnum.Elective, 0,
+            new DateTime(3000,1,1), KamarType.Default.ToReff(),
+            RegModel.Default.ToReff(), PpaType.Default.ToReff(),
+            new DateTime(3000, 1, 1), new DateTime(3000, 1, 1), []);
+    public static IScheduleOpKey Key(string id)
+        => new ScheduleOpModel(id, new DateTime(3000,1,1), AuditTrailType.Default,
+            OrderOpModel.Default.ToReff(), PasienModel.Default.ToReff(),
+            UrgencyLevelEnum.Elective, 0,
+            new DateTime(3000,1,1), KamarType.Default.ToReff(),
+            RegModel.Default.ToReff(), PpaType.Default.ToReff(),
+            new DateTime(3000, 1, 1), new DateTime(3000, 1, 1), []);
 
     public static ScheduleOpModel CreateFromOrder(OrderOpModel orderOp, string userId,
         KamarType kamar, PpaType teamLeader, DateTime tglOp)
@@ -50,7 +56,8 @@ public class ScheduleOpModel : IScheduleOpKey
             AuditInfoType.Default, AuditInfoType.Default);
         var result = new ScheduleOpModel(newId, DateTime.Now, audit, orderOp.ToReff(),
             orderOp.Pasien, orderOp.UrgencyLevel, orderOp.EstimasiDurasiInMinutes,
-            tglOp, kamar.ToReff(), orderOp.Reg, PpaType.Default.ToReff(), []);
+            tglOp, kamar.ToReff(), orderOp.Reg, PpaType.Default.ToReff(),
+            new DateTime(3000, 1, 1), new DateTime(3000, 1, 1), []);
 
         if (string.IsNullOrWhiteSpace(teamLeader.PpaId) ||
             teamLeader.PpaId == "-")
@@ -67,7 +74,8 @@ public class ScheduleOpModel : IScheduleOpKey
         var audit = new AuditTrailType(new AuditInfoType(model.AuditTrail.Voided.UserId, DateTime.Now),
             AuditInfoType.Default, AuditInfoType.Default);
         var result = new ScheduleOpModel(newId, DateTime.Now, audit, model.OrderOp, model.Pasien,
-            model.UrgencyLevel, model.Durasi, model.TglOp, model.KamarOp, model.Reg, model.TeamLead, model.ListPpa);
+            model.UrgencyLevel, model.Durasi, model.TglOp, model.KamarOp, model.Reg, model.TeamLead,
+            model.StartOpDate, model.EndOpDate, model.ListPpa);
         return result;
     }
 
@@ -87,6 +95,10 @@ public class ScheduleOpModel : IScheduleOpKey
     public KamarReff KamarOp { get; private set; }
     public RegReff Reg { get; private set; }
     public PpaReff TeamLead { get; private set; }
+
+    public DateTime StartOpDate { get; private set; }
+    public DateTime EndOpDate { get; private set; }
+
     public IEnumerable<ScheduleOpPpaType> ListPpa => _listPpa;
     #endregion
 

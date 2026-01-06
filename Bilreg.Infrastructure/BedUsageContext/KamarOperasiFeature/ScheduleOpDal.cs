@@ -134,6 +134,8 @@ public class ScheduleOpDal : IScheduleOpDal
                ISNULL(cc.fs_jns_kelamin, '') AS Gender,
                ISNULL(dd.fs_nm_kamar, '') AS KamarName,
                ISNULL(ee.fs_nm_peg, '') AS PpaName,
+               ISNULL(ff.StartedDate, '3000-01-01') AS StartedDate,
+               ISNULL(ff.FinishedDate, '3000-01-01') AS FinishedDate,
                ISNULL(ff.OrderOpState, 0) AS OrderOpState
            FROM
                BILRG_ScheduleOp aa
@@ -168,6 +170,8 @@ public class ScheduleOpDal : IScheduleOpDal
                 ISNULL(cc.fs_jns_kelamin, '') AS Gender,
                 ISNULL(dd.fs_nm_kamar, '') AS KamarName,
                 ISNULL(ee.fs_nm_peg, '') AS PpaName,
+                ISNULL(ff.StartedDate, '3000-01-01') AS StartedDate,
+                ISNULL(ff.FinishedDate, '3000-01-01') AS FinishedDate,
                 ISNULL(ff.OrderOpState, 0) AS OrderOpState
             FROM
                 BILRG_ScheduleOp aa
@@ -203,6 +207,8 @@ public class ScheduleOpDal : IScheduleOpDal
                 ISNULL(cc.fs_jns_kelamin, '') AS Gender,
                 ISNULL(dd.fs_nm_kamar, '') AS KamarName,
                 ISNULL(ee.fs_nm_peg, '') AS PpaName,
+                ISNULL(ff.StartedDate, '3000-01-01') AS StartedDate,
+                ISNULL(ff.FinishedDate, '3000-01-01') AS FinishedDate,
                 ISNULL(ff.OrderOpState, 0) AS OrderOpState
             FROM
                 BILRG_ScheduleOp aa

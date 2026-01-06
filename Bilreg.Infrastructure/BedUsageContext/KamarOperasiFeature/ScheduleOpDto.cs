@@ -35,6 +35,8 @@ public record ScheduleOpDto(
     string Gender,
     string KamarName,
     string PpaName,
+    DateTime StartedDate,
+    DateTime FinishedDate,
     int OrderOpState)
 {
     public static ScheduleOpDto FromModel(ScheduleOpModel model)
@@ -65,6 +67,8 @@ public record ScheduleOpDto(
             model.Pasien.Gender,
             model.KamarOp.KamarName,
             model.TeamLead.PpaName,
+            model.StartOpDate,
+            model.EndOpDate,
             0 // OrderOpState
         );
         return result;
@@ -96,6 +100,7 @@ public record ScheduleOpDto(
             kamarOp,
             reg,
             teamLead,
+            StartedDate, FinishedDate,
             listPpa
         );
         return result;
