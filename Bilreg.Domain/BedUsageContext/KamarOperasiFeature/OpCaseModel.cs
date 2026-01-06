@@ -7,7 +7,7 @@ public class OpCaseModel : IOrderOpKey
 {
     private readonly List<OpCaseStateHistType> _listStateHistory;
     private readonly List<OpCasePpaType> _listPpa;
-    
+
     #region CREATION
     public OpCaseModel(string orderOpId, OrderOpReff orderOp, 
         PasienReff pasien, string operasiName, 
@@ -93,6 +93,7 @@ public class OpCaseModel : IOrderOpKey
             throw new ArgumentException("Operasi sedang dilakukan!");
 
         ScheduleOp = schedule;
+        OnProgressOp = new OnProgressOpReff(new DateTime(3000, 1, 1), new DateTime(3000, 1, 1));
         OrderOpState = OpCaseStateEnum.Scheduled;
         var stateHistory = _listStateHistory
             .FirstOrDefault(x => x.OpCaseState == OrderOpState);
@@ -151,7 +152,11 @@ public class OpCaseModel : IOrderOpKey
 
     public void CancelSchedule()
     {
+        if ((int)OrderOpState >= (int)OpCaseStateEnum.OpStarted)
+            throw new ArgumentException("Operasi sedang dilakukan!");
+
         ScheduleOp = ScheduleOpReff.Default;
+        OnProgressOp = new OnProgressOpReff(new DateTime(3000, 1, 1), new DateTime(3000, 1, 1));
         OrderOpState = OpCaseStateEnum.Requested;
         var stateHistory = _listStateHistory
             .FirstOrDefault(x => x.OpCaseState == OpCaseStateEnum.Scheduled);
