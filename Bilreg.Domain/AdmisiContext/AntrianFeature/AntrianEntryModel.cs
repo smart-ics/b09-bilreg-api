@@ -8,7 +8,8 @@ public class AntrianEntryModel
     public AntrianEntryModel(int noUrut, 
         PersonType visitor, IPasienTrackerKey tracker,
         AntrianStatusEnum status, 
-        DateTime createdAt, DateTime servedAt, DateTime doneAt)
+        DateTime createdAt, DateTime servedAt, DateTime doneAt,
+        string reffId, string reffDesc)
     {
         NoUrut = noUrut;
         Visitor = visitor;
@@ -17,18 +18,20 @@ public class AntrianEntryModel
         CreatedAt = createdAt;
         ServedAt = servedAt;
         DoneAt = doneAt;
+        ReffId = reffId;
+        ReffDesc = reffDesc;
     }
 
-    public static AntrianEntryModel Create(int noUrut, PersonType visitor, IPasienTrackerKey tracker)
+    public static AntrianEntryModel Create(int noUrut, PersonType visitor, IPasienTrackerKey tracker, string reffId, string reffDesc)
     {
         var newEntry = new AntrianEntryModel(noUrut, visitor, tracker, AntrianStatusEnum.Waiting, DateTime.Now,
-            new DateTime(3000, 1, 1), new DateTime(3000, 1, 1));
+            new DateTime(3000, 1, 1), new DateTime(3000, 1, 1), reffId, reffDesc);
         return newEntry;
     }
     
     public static AntrianEntryModel Default => 
         new AntrianEntryModel(-1, PersonType.Default, PasienTrackerModel.Default, AntrianStatusEnum.Waiting,
-            DateTime.Now, new DateTime(3000, 1, 1), new DateTime(3000, 1, 1));
+            DateTime.Now, new DateTime(3000, 1, 1), new DateTime(3000, 1, 1), "-", "-");
     #endregion
     
     #region PROPERTIES
@@ -39,6 +42,8 @@ public class AntrianEntryModel
     public DateTime CreatedAt { get; init; }
     public DateTime ServedAt { get; private set; }
     public DateTime DoneAt { get; private set; }
+    public string ReffId { get; private set; }
+    public string ReffDesc { get; private set; }
     
     #endregion
     
@@ -67,6 +72,12 @@ public class AntrianEntryModel
         
         DoneAt = now;
         AntrianStatus = AntrianStatusEnum.Done;
+    }
+
+    public void SetReff(string reffId, string reffDesc)
+    {
+        ReffId = reffId;
+        ReffDesc = reffDesc;
     }
     #endregion
 

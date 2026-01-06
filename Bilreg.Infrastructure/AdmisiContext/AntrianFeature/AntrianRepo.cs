@@ -98,7 +98,9 @@ public class AntrianRepo : IAntrianRepo
                persisted.AntrianStatus == current.AntrianStatus && 
                persisted.CreatedAt == current.CreatedAt && 
                persisted.ServedAt == current.ServedAt && 
-               persisted.DoneAt == current.DoneAt;
+               persisted.DoneAt == current.DoneAt &&
+               persisted.ReffId == current.ReffId &&
+               persisted.ReffDesc == current.ReffDesc;
     }
     #endregion
 

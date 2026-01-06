@@ -90,7 +90,7 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         using var trans = TransHelper.NewScope();
         
         //      no antrian masuk ke transaction agar bisa rollback jika gagal
-        var antEntry = antrian.AddEntry(noAntrian, tracker);
+        var antEntry = antrian.AddEntry(noAntrian, tracker, booking.BookingId, "BOK");
         booking.AssignNoAntrian(antEntry.NoUrut);
         
         //      writing database

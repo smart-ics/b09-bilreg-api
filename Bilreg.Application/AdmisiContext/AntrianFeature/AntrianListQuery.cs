@@ -15,7 +15,7 @@ public record AntrianListResponse(string DokterId, string DokterName,
     IEnumerable<AntrianListDtlResponse>ListPasien);
 
 public record AntrianListDtlResponse(
-    string AntrianId, string PasienName, int NoUrut, int Status, string StatusString);
+    string AntrianId, string PasienName, int NoUrut, int Status, string StatusString, string ReffId, string ReffDesc);
 
 public class AntrianListHandler : IRequestHandler<AntrianListQuery, IEnumerable<AntrianListResponse>>
 {
@@ -66,7 +66,9 @@ public class AntrianListHandler : IRequestHandler<AntrianListQuery, IEnumerable<
                         PasienName: e.Visitor.PersonName, 
                         NoUrut: e.NoUrut,
                         Status: (int)e.AntrianStatus,
-                        StatusString: e.AntrianStatus.ToString()
+                        StatusString: e.AntrianStatus.ToString(),
+                        ReffId : e.ReffId,
+                        ReffDesc : e.ReffDesc
                 ))
             ))
             .ToList();
