@@ -17,15 +17,6 @@ public class AntrianController : Controller
     }
 
     [HttpGet]
-    [Route("list/{tglAntrian}/{dokterId}")]
-    public async Task<IActionResult> ListData(string tglAntrian, string dokterId)
-    {
-        var query = new AntrianListQuery(tglAntrian, dokterId);
-        var response = await _mediator.Send(query);
-        return Ok(new JSendOk(response));
-    }
-
-    [HttpGet]
     [Route("quota/{dokterId}/{tglPraktek}/{jamMulai}")]
     public async Task<IActionResult> GetLastNumber(string dokterId, string tglPraktek, string jamMulai)
     {
