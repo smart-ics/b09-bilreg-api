@@ -77,6 +77,40 @@ public record TrsBillingType : ITrsBillingKey
         }
         return result;
     }
+    public static TrsBillingType CreateFromRegistrasi(RegModel reg, 
+        KarcisType karcis, JaminanType jaminan, PpaType dokter,
+        IEnumerable<KomponenType> listReffKomp)
+    {
+        var audit = AuditTrailType.Create(reg.RegMasukAudit.UserId, DateTime.Now);
+        var ketBilling = new TrsBillKetType($"REG : {karcis.KarcisName}", "", karcis.KarcisId, 1, "");
+        var result = new TrsBillingType(reg.RegId, 0, reg.RegDate.ToDateTime(TimeOnly.FromDateTime(reg.RegMasukAudit.Timestamp)) ,
+            reg.ToReff(), reg.Layanan, reg.Kelas, audit.Created, karcis.NilaiKarcis, reg.ListKomponen.Sum(x => x.Diskon), 0, 0,
+            karcis.RekapCetak, ketBilling, []);
+        
+        var rekPpdp = reg.JenisReg == JenisRegEnum.RegInap
+            ? jaminan.Rekening.PpdpJasaRanap.CoaId
+            : jaminan.Rekening.PpdpJasaRajal.CoaId;
+        
+        var i = 0;
+        var listReffKompFetched = listReffKomp.ToList();
+        foreach(var item in reg.ListKomponen)
+        {
+            var reffKomp = listReffKompFetched.FirstOrDefault(x => x.KomponenId == item.Komponen.KomponenId);
+            var rekPdpt = reffKomp?.RekPdpt?.CoaId ?? string.Empty;
+            var rekDiskon = reffKomp?.RekDiskon?.CoaId ?? string.Empty;
+            var rekJasa = new RekJasaType(rekPpdp, rekPdpt, rekDiskon);
+            var ppa = reffKomp?.ListSatTugas?.Any() ?? false
+                ? dokter.ToReff()
+                : PpaType.Default.ToReff();
+
+            var trsBill2 = new TrsBilling2JasaType(i++, reg.RegId, reg.RegDate.ToDateTime(TimeOnly.FromDateTime(reg.RegMasukAudit.Timestamp)),
+                new NilaiBillingType("PDP", item.Nilai, 0), ppa, PegType.Default, 
+                item.Komponen, rekJasa);
+            result.AddTrsBilling2(trsBill2);
+        }
+        return result;
+    }
+
     public static TrsBillingType Default => new("-", 0, DateTime.MinValue, 
         RegModel.Default.ToReff(), LayananType.Default.ToReff(), 
         KelasType.Default.ToReff(), 

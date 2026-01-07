@@ -150,8 +150,18 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         var noAntrian = antrianMap.GetNextNoAntrian();
         var tracker = PasienTrackerModel.Create(reg);
 
-        //      BUILD TINDAKAN
+        //      BUILD TrsBill Reg
         var jaminan = LoadJaminan(tipeJaminan.Jaminan);
+        var listKompKarcis = new List<KomponenType>();
+        foreach(var item in karcis.ListKomponen)
+        {
+            var komp = LoadKomponen(KomponenType.Key(item.KomponenTarif.KomponenId));
+            listKompKarcis.Add(komp);
+        }
+        var trsBillingReg = TrsBillingType.CreateFromRegistrasi(reg, karcis,
+            jaminan, dokter, listKompKarcis);
+
+        //      BUILD TINDAKAN
         var tindakan =  karcis.DefaultTarif == TarifType.Default.ToReff()
             ? TindakanModel.Default
             : GenTindakan(reg, jaminan, karcis, request.UserId, dokter);
@@ -175,6 +185,8 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         // rubah antrianMapHdr
         antrianMap.SetDataPasien(noAntrian, reg.Pasien, reg.ToReff(), reg.RegId, "AUTO");
         _antrianMapRepo.SaveChanges(antrianMap);
+
+        _trsBillingRepo.SaveChanges(trsBillingReg);
 
         if (tindakan != TindakanModel.Default)
             _tindakanRepo.SaveChanges(tindakan);

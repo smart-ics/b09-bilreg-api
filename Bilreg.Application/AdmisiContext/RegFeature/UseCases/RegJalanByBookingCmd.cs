@@ -125,8 +125,18 @@ public class RegJalanByBookingHandler
             reg.Pasien, reg.JenisReg, reg.Layanan,
             reg.Dokter, reg.TipeJaminan);
 
-        //      BUILD TINDAKAN
+        //      BUILD TrsBill Reg
         var jaminan = LoadJaminan(tipeJaminan.Jaminan);
+        var listKompKarcis = new List<KomponenType>();
+        foreach (var item in karcis.ListKomponen)
+        {
+            var komp = LoadKomponen(KomponenType.Key(item.KomponenTarif.KomponenId));
+            listKompKarcis.Add(komp);
+        }
+        var trsBillingReg = TrsBillingType.CreateFromRegistrasi(reg, karcis,
+            jaminan, dokter, listKompKarcis);
+
+        //      BUILD TINDAKAN
         var tindakan = karcis.DefaultTarif == TarifType.Default.ToReff()
             ? TindakanModel.Default
             : GenTindakan(reg, jaminan, karcis, request.UserId, dokter);
@@ -144,6 +154,7 @@ public class RegJalanByBookingHandler
         _regRepo.SaveChanges(reg);
         _bookingRepo.SaveChanges(booking);
         _regAktifRepo.SaveChanges(regAktif);
+        _trsBillingRepo.SaveChanges(trsBillingReg);
         if (tindakan != TindakanModel.Default)
             _tindakanRepo.SaveChanges(tindakan);
         if (trsBilling != TrsBillingType.Default)
