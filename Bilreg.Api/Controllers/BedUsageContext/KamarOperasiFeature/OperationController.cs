@@ -28,8 +28,8 @@ public class OperationController : ControllerBase
     [Route("Finish")]
     public async Task<IActionResult> FinishOp(OkFinishOpCommand cmd)
     {
-        await _mediator.Send(cmd);
-        return Ok("Done");
+        var response = await _mediator.Send(cmd);
+        return Ok(new JSendOk(response));
     }
 
 }

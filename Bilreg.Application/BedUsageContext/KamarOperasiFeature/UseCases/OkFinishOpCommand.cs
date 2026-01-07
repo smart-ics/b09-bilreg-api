@@ -7,9 +7,15 @@ using System.Globalization;
 namespace Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
 
 public record OkFinishOpCommand(string ScheduleOpId, string Tgl,
-    string Jam, string UserId) : IRequest, IScheduleOpKey;
+    string Jam, string UserId) : IRequest<OkFinishOpResponse>, IScheduleOpKey;
 
-public class OkFinishOpHandler : IRequestHandler<OkFinishOpCommand>
+public record OkFinishOpResponse(
+    string OrderOpId,
+    string ScheduleOpId,
+    string RegId,
+    string PasienId);
+
+public class OkFinishOpHandler : IRequestHandler<OkFinishOpCommand, OkFinishOpResponse>
 {
     private readonly IScheduleOpRepo _scheduleOpRepo;
     private readonly IOrderOpRepo _orderOpRepo;
@@ -24,7 +30,7 @@ public class OkFinishOpHandler : IRequestHandler<OkFinishOpCommand>
         _opCaseRepo = opCaseRepo;
     }
 
-    public Task Handle(OkFinishOpCommand request, CancellationToken cancellationToken)
+    public Task<OkFinishOpResponse> Handle(OkFinishOpCommand request, CancellationToken cancellationToken)
     {
         //  GUARD
         var scheduleOp = _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(request.ScheduleOpId))
@@ -50,6 +56,16 @@ public class OkFinishOpHandler : IRequestHandler<OkFinishOpCommand>
         _opCaseRepo.SaveChanges(opCase);
         trans.Complete();
 
-        return Task.CompletedTask;
+        return Task.FromResult(Response(opCase));
+    }
+
+    private OkFinishOpResponse Response(OpCaseModel opCase)
+    {
+        return new OkFinishOpResponse(
+            opCase.OrderOp.OrderOpId,
+            opCase.ScheduleOp.ScheduleOpId,
+            opCase.Reg.RegId,
+            opCase.Pasien.PasienId
+        );
     }
 }
