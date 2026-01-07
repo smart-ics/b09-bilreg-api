@@ -118,3 +118,8 @@ public record AntrianHeaderView(
     DateOnly AntrianDate,
     TimeOnly StartTime,
     string SequenceTag) : IAntrianKey;
+
+
+public record AntrianView(string AntrianId, int AntrianStatus, int NoUrut, string PersonName,
+    string ReffId, string ReffDesc, DateTime AntrianDate, string SquenceTag, string DokterId,
+    string AntrianDescription, TimeOnly StartTime, TimeOnly EndTime);

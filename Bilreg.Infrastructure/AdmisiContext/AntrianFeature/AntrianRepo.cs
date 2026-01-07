@@ -62,7 +62,13 @@ public class AntrianRepo : IAntrianRepo
             DateOnly.FromDateTime(x.AntrianDate),TimeOnly.Parse(x.StartTime), x.SequenceTag));
         return result;
     }
- 
+
+    public IEnumerable<AntrianView> ListData(DateTime dateTime)
+    {
+        var listDto = _antrianDal.ListData(dateTime)?.ToList() ?? [];
+        var result = listDto.Select(x => x.ToView());
+        return result;
+    }
     #region HELPER
     private (List<AntrianEntryDto> addedItems, 
         List<AntrianEntryDto> deletedItems, 
@@ -102,6 +108,8 @@ public class AntrianRepo : IAntrianRepo
                persisted.ReffId == current.ReffId &&
                persisted.ReffDesc == current.ReffDesc;
     }
+
+    
     #endregion
 
 }
