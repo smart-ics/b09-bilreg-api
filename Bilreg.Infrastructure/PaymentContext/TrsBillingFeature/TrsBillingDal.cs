@@ -34,13 +34,13 @@ public class TrsBillingDal : ITrsBillingDal
                 fs_kd_reg, fs_kd_layanan, fs_kd_kelas, fs_kd_petugas,
                 fn_sub_total, fn_diskon, fn_biaya, fn_tax, fn_total,
                 fs_keterangan, fs_keterangan2, fs_kd_rekap_cetak,
-                fs_kd_ref_biaya, fn_qty, fs_kd_trs_main)
+                fs_kd_ref_biaya, fn_qty, fs_kd_trs_main, fd_tgl_jam_trs)
             VALUES( 
                 @fs_kd_trs, @fn_modul, @fd_tgl_trs, @fs_jam_trs,
                 @fs_kd_reg, @fs_kd_layanan, @fs_kd_kelas, @fs_kd_petugas,
                 @fn_sub_total, @fn_diskon, @fn_biaya, @fn_tax, @fn_total,
                 @fs_keterangan, @fs_keterangan2, @fs_kd_rekap_cetak,
-                @fs_kd_ref_biaya, @fn_qty, @fs_kd_trs_main)
+                @fs_kd_ref_biaya, @fn_qty, @fs_kd_trs_main, @fd_tgl_jam_trs)
             """;
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_trs", dto.fs_kd_trs, SqlDbType.VarChar);
@@ -62,6 +62,7 @@ public class TrsBillingDal : ITrsBillingDal
         dp.AddParam("@fs_kd_ref_biaya", dto.fs_kd_ref_biaya, SqlDbType.VarChar);
         dp.AddParam("@fn_qty", dto.fn_qty, SqlDbType.Int);
         dp.AddParam("@fs_kd_trs_main", dto.fs_kd_trs_main, SqlDbType.VarChar);
+        dp.AddParam("@fd_tgl_jam_trs", dto.fd_tgl_jam_trs, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -90,7 +91,8 @@ public class TrsBillingDal : ITrsBillingDal
                 fs_kd_rekap_cetak = @fs_kd_rekap_cetak,
                 fs_kd_ref_biaya = @fs_kd_ref_biaya,
                 fn_qty = @fn_qty,
-                fs_kd_trs_main = @fs_kd_trs_main
+                fs_kd_trs_main = @fs_kd_trs_main,
+                fd_tgl_jam_trs = @fd_tgl_jam_trs
             WHERE
                 fs_kd_trs = @fs_kd_trs
             """;
@@ -114,6 +116,7 @@ public class TrsBillingDal : ITrsBillingDal
         dp.AddParam("@fs_kd_ref_biaya", dto.fs_kd_ref_biaya, SqlDbType.VarChar);
         dp.AddParam("@fn_qty", dto.fn_qty, SqlDbType.Int);
         dp.AddParam("@fs_kd_trs_main", dto.fs_kd_trs_main, SqlDbType.VarChar);
+        dp.AddParam("@fd_tgl_jam_trs", dto.fd_tgl_jam_trs, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);

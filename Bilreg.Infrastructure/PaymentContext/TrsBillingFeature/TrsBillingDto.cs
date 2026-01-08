@@ -16,7 +16,8 @@ public record TrsBillingDto(
     int fn_modul,
     string fd_tgl_trs,
     string fs_jam_trs,
-    
+    string fd_tgl_jam_trs,
+
     string fs_kd_reg,
     string fs_kd_layanan,
     string fs_kd_kelas,
@@ -48,7 +49,8 @@ public record TrsBillingDto(
             model.Modul,
             model.TglTrs.ToString(DateFormatEnum.YMD),
             model.TglTrs.ToString(DateFormatEnum.HMS),
-            
+            model.TglTrs.ToString(DateFormatEnum.YMD_HMS),
+
             model.Reg.RegId,
             model.Layanan.LayananId,
             model.Kelas.KelasId,
