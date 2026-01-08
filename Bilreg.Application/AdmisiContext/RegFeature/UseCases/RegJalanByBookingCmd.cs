@@ -132,6 +132,7 @@ public class RegJalanByBookingHandler
             reg.Pasien, reg.JenisReg, reg.Layanan,
             reg.Dokter, reg.TipeJaminan);
 
+        //      BUILD TrsBill Reg
         //  ANTRIAN
         var itemQueue = antrian.ListEntry.FirstOrDefault(x => x.NoUrut == booking.NoAntrian) 
             ?? AntrianEntryModel.Default;
@@ -140,6 +141,16 @@ public class RegJalanByBookingHandler
 
         //      BUILD TINDAKAN
         var jaminan = LoadJaminan(tipeJaminan.Jaminan);
+        var listKompKarcis = new List<KomponenType>();
+        foreach (var item in karcis.ListKomponen)
+        {
+            var komp = LoadKomponen(KomponenType.Key(item.KomponenTarif.KomponenId));
+            listKompKarcis.Add(komp);
+        }
+        var trsBillingReg = TrsBillingType.CreateFromRegistrasi(reg, karcis,
+            jaminan, dokter, listKompKarcis);
+
+        //      BUILD TINDAKAN
         var tindakan = karcis.DefaultTarif == TarifType.Default.ToReff()
             ? TindakanModel.Default
             : GenTindakan(reg, jaminan, karcis, request.UserId, dokter);
@@ -157,6 +168,7 @@ public class RegJalanByBookingHandler
         _regRepo.SaveChanges(reg);
         _bookingRepo.SaveChanges(booking);
         _regAktifRepo.SaveChanges(regAktif);
+        _trsBillingRepo.SaveChanges(trsBillingReg);
         _antrianRepo.SaveChanges(antrian);
         if (tindakan != TindakanModel.Default)
             _tindakanRepo.SaveChanges(tindakan);
@@ -285,7 +297,7 @@ public class RegJalanByBookingHandler
         var ppa = LoadDokter(booking.Dokter.PpaId);
         var date = DateOnly.FromDateTime(DateTime.Now);
         var listQueue = _antrianRepo.ListData(date)?.ToList() ?? [];
-        var squesceTag = AntrianModel.GenSequenceTag(date, ppa);
+        var squesceTag = AntrianModel.GenSequenceTag(date, booking.JamPraktek, ppa);
         var antrian = listQueue.FirstOrDefault(x => x.SequenceTag == squesceTag) 
             ?? new AntrianHeaderView("-", "-", DateOnly.MinValue, TimeOnly.MinValue, "");
 
