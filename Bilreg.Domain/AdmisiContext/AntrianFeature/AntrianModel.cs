@@ -92,7 +92,8 @@ public class AntrianModel : IAntrianKey
     {
         Guard.Against.Null(dokter, nameof(dokter));
         Guard.Against.Null(tglAntrian, nameof(tglAntrian));
-        
+        Guard.Against.Null(jamMulai, nameof(jamMulai));
+
         var sequenceTag = $"AN{tglAntrian:yyMMdd}{jamMulai:HHmm}_{dokter.PpaId.Replace(' ', '$')}";
         return sequenceTag;
     }
@@ -100,7 +101,8 @@ public class AntrianModel : IAntrianKey
     {
         Guard.Against.Null(servicePoint, nameof(servicePoint));
         Guard.Against.Null(tglAntrian, nameof(tglAntrian));
-        
+        Guard.Against.Null(jamMulai, nameof(jamMulai));
+
         var sequenceTag = $"AN{tglAntrian:yyMMdd}{jamMulai:HHmm}_{servicePoint.ServicePointCode}";
         return sequenceTag;
     }

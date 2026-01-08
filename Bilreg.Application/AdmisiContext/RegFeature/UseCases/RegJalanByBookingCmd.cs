@@ -285,7 +285,7 @@ public class RegJalanByBookingHandler
         var ppa = LoadDokter(booking.Dokter.PpaId);
         var date = DateOnly.FromDateTime(DateTime.Now);
         var listQueue = _antrianRepo.ListData(date)?.ToList() ?? [];
-        var squesceTag = AntrianModel.GenSequenceTag(date, ppa);
+        var squesceTag = AntrianModel.GenSequenceTag(date, booking.JamPraktek, ppa);
         var antrian = listQueue.FirstOrDefault(x => x.SequenceTag == squesceTag) 
             ?? new AntrianHeaderView("-", "-", DateOnly.MinValue, TimeOnly.MinValue, "");
 
