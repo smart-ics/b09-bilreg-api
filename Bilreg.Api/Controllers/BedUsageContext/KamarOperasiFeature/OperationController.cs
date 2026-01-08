@@ -32,4 +32,11 @@ public class OperationController : ControllerBase
         return Ok(new JSendOk(response));
     }
 
+    [HttpPost]
+    [Route("CancelStart")]
+    public async Task<IActionResult> CancelStart(OkCancelStartOpCommand cmd)
+    {
+        var response = await _mediator.Send(cmd);
+        return Ok(new JSendOk(response));
+    }
 }

@@ -126,6 +126,24 @@ public class OpCaseModel : IOrderOpKey
         };
     }
 
+    public void CancelStart()
+    {
+        if ((int)OrderOpState >= (int)OpCaseStateEnum.RecoveryStarted)
+            throw new ArgumentException("Dalam tahap recovery!");
+
+        OnProgressOp = new OnProgressOpReff(new DateTime(3000, 1, 1), new DateTime(3000, 1, 1));
+        var lastState = _listStateHistory
+            .OrderBy(x => x.OpCaseState)
+            .ElementAtOrDefault(1);
+        OrderOpState = lastState?.OpCaseState <= OpCaseStateEnum.Scheduled ?
+            OpCaseStateEnum.Scheduled : lastState?.OpCaseState ?? OpCaseStateEnum.Scheduled;
+
+        var stateHistory = _listStateHistory
+            .FirstOrDefault(x => x.OpCaseState == OpCaseStateEnum.OpStarted);
+        if (stateHistory != null)
+            _listStateHistory.Remove(stateHistory);
+    }
+
     public void Finish(DateTime finishTime)
     {
         OnProgressOp = new OnProgressOpReff(OnProgressOp.StartTime, finishTime);
