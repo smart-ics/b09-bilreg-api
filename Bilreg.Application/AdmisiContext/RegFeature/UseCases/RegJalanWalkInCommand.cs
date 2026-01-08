@@ -220,7 +220,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
     private AntrianModel ResolveAntrian(DateOnly tgl, PpaType dokter, JadwalPraktekType jadwal)
     {
         var listAntrian = _antrianRepo.ListData(tgl);
-        var tag = AntrianModel.GenSequenceTag(tgl, dokter);
+        var tag = AntrianModel.GenSequenceTag(tgl, jadwal.JamMulai, dokter);
         var existingView = listAntrian.FirstOrDefault(x => x.SequenceTag == tag);
         return existingView is null
             ? _antrianFactory.Create(tgl, jadwal)

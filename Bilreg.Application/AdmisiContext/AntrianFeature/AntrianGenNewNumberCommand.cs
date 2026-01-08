@@ -42,8 +42,8 @@ public class AntrianGenNewNumberHandler : IRequestHandler<AntrianGenNewNumberCom
         // BUILD
         DateOnly tglAntrian = DateOnly.ParseExact(request.TglAntrianYmd, 
             "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
-        
-        var sequenceTag = AntrianModel.GenSequenceTag(tglAntrian, dokter);   
+        var jamPraktek = TimeOnly.Parse(request.JamMulai);   
+        var sequenceTag = AntrianModel.GenSequenceTag(tglAntrian, jamPraktek, dokter);   
         var availableQueueNumber = _sequencer.GetNextNoUrut(sequenceTag);
         
         // RETURN

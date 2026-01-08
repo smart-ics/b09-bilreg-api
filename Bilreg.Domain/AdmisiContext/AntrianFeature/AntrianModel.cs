@@ -85,23 +85,23 @@ public class AntrianModel : IAntrianKey
         Guard.Against.Null(jadwal, nameof(jadwal));
         Guard.Against.Null(tglAntrian, nameof(tglAntrian));
         
-        var sequenceTag = $"AN{tglAntrian:yyMMdd}_{jadwal.Dokter.PpaId.Replace(' ', '$')}";
+        var sequenceTag = $"AN{tglAntrian:yyMMdd}{jadwal.JamMulai:HHmm}_{jadwal.Dokter.PpaId.Replace(' ', '$')}";
         return sequenceTag;
     }
-    public static string GenSequenceTag(DateOnly tglAntrian, PpaType dokter)
+    public static string GenSequenceTag(DateOnly tglAntrian, TimeOnly jamMulai, PpaType dokter)
     {
         Guard.Against.Null(dokter, nameof(dokter));
         Guard.Against.Null(tglAntrian, nameof(tglAntrian));
         
-        var sequenceTag = $"AN{tglAntrian:yyMMdd}_{dokter.PpaId.Replace(' ', '$')}";
+        var sequenceTag = $"AN{tglAntrian:yyMMdd}{jamMulai:HHmm}_{dokter.PpaId.Replace(' ', '$')}";
         return sequenceTag;
     }
-    public static string GenSequenceTag(DateOnly tglAntrian, ServicePointType servicePoint)
+    public static string GenSequenceTag(DateOnly tglAntrian, TimeOnly jamMulai, ServicePointType servicePoint)
     {
         Guard.Against.Null(servicePoint, nameof(servicePoint));
         Guard.Against.Null(tglAntrian, nameof(tglAntrian));
         
-        var sequenceTag = $"AN{tglAntrian:yyMMdd}_{servicePoint.ServicePointCode}";
+        var sequenceTag = $"AN{tglAntrian:yyMMdd}{jamMulai:HHmm}_{servicePoint.ServicePointCode}";
         return sequenceTag;
     }
     #endregion

@@ -49,8 +49,9 @@ public class AntrianGetQuotaHandler : IRequestHandler<AntrianGetQuotaQuery, Antr
         // BUILD
         DateOnly tglAntrian = DateOnly.ParseExact(request.TglAntrianYmd,
             "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+        var jamPraktek = TimeOnly.Parse(request.JamMulai);
 
-        var sequenceTag = AntrianModel.GenSequenceTag(tglAntrian, dokter);
+        var sequenceTag = AntrianModel.GenSequenceTag(tglAntrian, jamPraktek, dokter);
         // listAntrian
         var listAntrianDb = _antrianRepo.ListData(tglAntrian)?.ToList()
             ?? throw new ArgumentException($"Antrian at {tglAntrian.ToString("yyyy-MM-dd")} not foud");
