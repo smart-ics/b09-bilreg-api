@@ -1,4 +1,5 @@
-﻿using Bilreg.Application.AdmisiContext.BookingFeature;
+﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
+using Bilreg.Application.AdmisiContext.BookingFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
 using Bilreg.Application.AdmisiContext.LayananFeature;
@@ -8,6 +9,7 @@ using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.ChargeContext.TindakanFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
+using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
@@ -33,6 +35,7 @@ public class RegJalanByBookingHandler
     : IRequestHandler<RegJalanByBookingCmd, RegJalanByBookingResponse>
 {
     private readonly IBookingRepo _bookingRepo;
+    private readonly IAntrianRepo _antrianRepo;
     private readonly IPasienRepo _pasienRepo;
     private readonly IRegFactory _regFactory;
     private readonly IPpaRepo _dokterRepo;
@@ -52,6 +55,7 @@ public class RegJalanByBookingHandler
     private readonly ITindakanRepo _tindakanRepo;
     private readonly IKomponenRepo _komponenRepo;
     private readonly ITrsBillingRepo _trsBillingRepo;
+
 
     private const string BAYAR_SENDIRI = "1";
     public RegJalanByBookingHandler(
@@ -73,7 +77,8 @@ public class RegJalanByBookingHandler
         ITipeTarifRepo tipeTarifRepo,
         ITindakanRepo tindakanRepo,
         IKomponenRepo komponenRepo,
-        ITrsBillingRepo trsBillingRepo)
+        ITrsBillingRepo trsBillingRepo,
+        IAntrianRepo antrianRepo)
     {
         _bookingRepo = bookingRepo;
         _pasienRepo = pasienRepo;
@@ -94,12 +99,14 @@ public class RegJalanByBookingHandler
         _tindakanRepo = tindakanRepo;
         _komponenRepo = komponenRepo;
         _trsBillingRepo = trsBillingRepo;
+        _antrianRepo = antrianRepo;
     }
 
     public Task<RegJalanByBookingResponse> Handle(RegJalanByBookingCmd request, CancellationToken cancellationToken)
     {
         //  LOAD and GUARD
         var booking = LoadBooking(request.BookingId);
+        var antrian = LoadAntrian(booking);
         var pasien = LoadPasien(booking.PasienId);
         var dokter = LoadDokter(booking.Dokter.PpaId);
         var layanan = LoadLayanan(booking.Layanan.LayananId); 
@@ -125,6 +132,12 @@ public class RegJalanByBookingHandler
             reg.Pasien, reg.JenisReg, reg.Layanan,
             reg.Dokter, reg.TipeJaminan);
 
+        //  ANTRIAN
+        var itemQueue = antrian.ListEntry.FirstOrDefault(x => x.NoUrut == booking.NoAntrian) 
+            ?? AntrianEntryModel.Default;
+        itemQueue.SetReff(reg.RegId, "REG");
+        itemQueue.Serve();
+
         //      BUILD TINDAKAN
         var jaminan = LoadJaminan(tipeJaminan.Jaminan);
         var tindakan = karcis.DefaultTarif == TarifType.Default.ToReff()
@@ -144,6 +157,7 @@ public class RegJalanByBookingHandler
         _regRepo.SaveChanges(reg);
         _bookingRepo.SaveChanges(booking);
         _regAktifRepo.SaveChanges(regAktif);
+        _antrianRepo.SaveChanges(antrian);
         if (tindakan != TindakanModel.Default)
             _tindakanRepo.SaveChanges(tindakan);
         if (trsBilling != TrsBillingType.Default)
@@ -265,5 +279,19 @@ public class RegJalanByBookingHandler
             );
         return tarif;
     }
+    
+    private AntrianModel LoadAntrian(BookingModel booking)
+    {
+        var ppa = LoadDokter(booking.Dokter.PpaId);
+        var date = DateOnly.FromDateTime(DateTime.Now);
+        var listQueue = _antrianRepo.ListData(date)?.ToList() ?? [];
+        var squesceTag = AntrianModel.GenSequenceTag(date, ppa);
+        var antrian = listQueue.FirstOrDefault(x => x.SequenceTag == squesceTag) 
+            ?? new AntrianHeaderView("-", "-", DateOnly.MinValue, TimeOnly.MinValue, "");
+
+        var result = _antrianRepo.LoadEntity(antrian).GetValueOrThrow("Antrian not found");
+        return result;
+    }
+    
     #endregion
 }
