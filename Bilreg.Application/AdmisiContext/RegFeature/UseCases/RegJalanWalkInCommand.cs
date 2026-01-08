@@ -176,7 +176,11 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
 
         using var trans = TransHelper.NewScope();
         
-        var antEntry = antrian.AddEntry(noAntrian, tracker);
+        var antEntry = antrian.AddEntry(noAntrian, tracker, reg.RegId, "REG");
+        var itemQueue = antrian.ListEntry.FirstOrDefault(x => x.NoUrut == noAntrian)
+            ?? AntrianEntryModel.Default;
+        itemQueue.Serve();
+
         _regRepo.SaveChanges(reg);
         _regAktifRepo.SaveChanges(regAktif);
         _antrianRepo.SaveChanges(antrian);

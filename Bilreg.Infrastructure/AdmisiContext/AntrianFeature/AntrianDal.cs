@@ -14,7 +14,8 @@ public interface IAntrianDal :
     IUpdate<AntrianDto>,
     IDelete<IAntrianKey>,
     IGetData<AntrianDto, IAntrianKey>,
-    IListData<AntrianDto, Periode>
+    IListData<AntrianDto, Periode>,
+    IListData<AntrianViewDto, DateTime>
 {
     
 }
@@ -131,5 +132,30 @@ public class AntrianDal : IAntrianDal
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<AntrianDto>(sql, dp);
+    }
+
+    public IEnumerable<AntrianViewDto> ListData(DateTime date)
+    {
+        const string sql = """
+           SELECT
+                aa.AntrianId, aa.AntrianStatus, aa.NoUrut, 
+                aa.PersonName, aa.ReffId, aa.ReffDesc,
+                ISNULL(bb.AntrianDate,'') AS AntrianDate, 
+                ISNULL(bb.SequenceTag,'') AS SequenceTag, 
+                ISNULL(bb.AntrianDescription,'') AS AntrianDescription, 
+                ISNULL(bb.StartTime,'') AS StartTime, 
+                ISNULL(bb.EndTime,'') AS EndTime
+           FROM
+           	    BILRG_AntrianEntry aa
+           	    LEFT JOIN BILRG_Antrian bb ON aa.AntrianId = bb.AntrianId
+           WHERE 
+           	    bb.AntrianDate = @Tgl
+           """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@Tgl", date, SqlDbType.DateTime);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<AntrianViewDto>(sql, dp);
     }
 }
