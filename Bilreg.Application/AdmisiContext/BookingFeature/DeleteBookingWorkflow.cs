@@ -115,7 +115,7 @@ public sealed class DeleteBookingWorkflow : IDeleteBookingWorkflow
         PpaType dokter)
     {
         var tag = AntrianModel.GenSequenceTag(
-            booking.TglBerobat, dokter);
+            booking.TglBerobat, booking.JamPraktek, dokter);
 
         return _antrianRepo
             .ListData(booking.TglBerobat)

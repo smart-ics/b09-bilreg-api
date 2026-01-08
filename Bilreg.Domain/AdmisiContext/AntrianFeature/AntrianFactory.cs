@@ -45,7 +45,7 @@ public class AntrianFactory : IAntrianFactory
         var antrianDate = DateOnly.FromDateTime(DateTime.Now);
         var mulai = TimeOnly.MinValue;
         var selesai = TimeOnly.MaxValue;
-        var sequenceTag = AntrianModel.GenSequenceTag(antrianDate, servicePoint);
+        var sequenceTag = AntrianModel.GenSequenceTag(antrianDate, mulai, servicePoint);
         
         return new AntrianModel(newId, antrianDate, mulai, selesai, 
             sequenceTag, servicePoint.ServicePointName, new List<AntrianEntryModel>(), 
