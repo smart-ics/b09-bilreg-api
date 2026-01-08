@@ -15,7 +15,8 @@ public class AntrianEntryDalTest
         => new AntrianEntryDto("A", 1, "B", "C", 2,
             new DateTime(2025, 10, 1),
             new DateTime(2025, 10, 2),
-            new DateTime(2025, 10, 3));
+            new DateTime(2025, 10, 3),
+            "D", "E") ;
     private static IAntrianKey Key() => AntrianModel.Key("A");
 
     [Fact]

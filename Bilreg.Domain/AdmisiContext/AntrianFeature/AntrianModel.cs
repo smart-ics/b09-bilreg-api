@@ -55,14 +55,14 @@ public class AntrianModel : IAntrianKey
         var visitor = pasienTracker.Person;
         var noUrut = _sequencer.GetNextNoUrut(SequenceTag); 
         
-        var entry = AntrianEntryModel.Create(noUrut, visitor, pasienTracker);
+        var entry = AntrianEntryModel.Create(noUrut, visitor, pasienTracker, "-", "-");
         _listEntry.Add(entry);
         return entry;
     }
     public void AddEntry()
     {
         var noUrut = _sequencer.GetNextNoUrut(SequenceTag); 
-        var entry = AntrianEntryModel.Create(noUrut, PersonType.Default, PasienTrackerModel.Key("-"));
+        var entry = AntrianEntryModel.Create(noUrut, PersonType.Default, PasienTrackerModel.Key("-"), "-", "-");
         _listEntry.Add(entry); 
     }
     public void RemoveEntry(int noUrut)
@@ -73,10 +73,10 @@ public class AntrianModel : IAntrianKey
         _listEntry.Remove(itemRemove);
     }
 
-    public AntrianEntryModel AddEntry(int noUrut, PasienTrackerModel pasienTracker)
+    public AntrianEntryModel AddEntry(int noUrut, PasienTrackerModel pasienTracker, string reffId, string reffDesc)
     {
         var visitor = pasienTracker.Person;
-        var entry = AntrianEntryModel.Create(noUrut, visitor, pasienTracker);
+        var entry = AntrianEntryModel.Create(noUrut, visitor, pasienTracker, reffId, reffDesc);
         _listEntry.Add(entry);
         return entry;
     }
@@ -118,3 +118,8 @@ public record AntrianHeaderView(
     DateOnly AntrianDate,
     TimeOnly StartTime,
     string SequenceTag) : IAntrianKey;
+
+
+public record AntrianView(string AntrianId, int AntrianStatus, int NoUrut, string PersonName,
+    string ReffId, string ReffDesc, DateTime AntrianDate, string SquenceTag, string DokterId,
+    string AntrianDescription, TimeOnly StartTime, TimeOnly EndTime);

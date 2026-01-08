@@ -32,10 +32,12 @@ public class AntrianEntryDal : IAntrianEntryDal
         const string sql = """
             INSERT INTO BILRG_AntrianEntry(
                 AntrianId, NoUrut, PersonName, AntrianStatus,
-                PasienTrackerId, CreatedAt, ServedAt, DoneAt) 
+                PasienTrackerId, CreatedAt, ServedAt, DoneAt,
+                ReffId, ReffDesc) 
             VALUES(
                 @AntrianId, @NoUrut, @PersonName, @AntrianStatus,
-                @PasienTrackerId, @CreatedAt, @ServedAt, @DoneAt)
+                @PasienTrackerId, @CreatedAt, @ServedAt, @DoneAt,
+                @ReffId, @ReffDesc)
             """;
 
         var dp = new DynamicParameters();
@@ -47,6 +49,9 @@ public class AntrianEntryDal : IAntrianEntryDal
         dp.AddParam("@CreatedAt", dto.CreatedAt, SqlDbType.DateTime);	 
         dp.AddParam("@ServedAt", dto.ServedAt, SqlDbType.DateTime);	 
         dp.AddParam("@DoneAt", dto.DoneAt, SqlDbType.DateTime);
+        dp.AddParam("@ReffId", dto.ReffId, SqlDbType.VarChar);
+        dp.AddParam("@ReffDesc", dto.ReffDesc, SqlDbType.VarChar);
+
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -63,7 +68,9 @@ public class AntrianEntryDal : IAntrianEntryDal
                AntrianStatus = @AntrianStatus,
                CreatedAt = @CreatedAt, 
                ServedAt = @ServedAt, 
-               DoneAt = @DoneAt 
+               DoneAt = @DoneAt,
+               ReffId = @ReffId,
+               ReffDesc = @ReffDesc
            WHERE
                AntrianId = @AntrianId 
                AND NoUrut = @NoUrut
@@ -78,6 +85,8 @@ public class AntrianEntryDal : IAntrianEntryDal
         dp.AddParam("@CreatedAt", model.CreatedAt, SqlDbType.DateTime);	 
         dp.AddParam("@ServedAt", model.ServedAt, SqlDbType.DateTime);	 
         dp.AddParam("@DoneAt", model.DoneAt, SqlDbType.DateTime);
+        dp.AddParam("@ReffId", model.ReffId, SqlDbType.VarChar);
+        dp.AddParam("@ReffDesc", model.ReffDesc, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -123,7 +132,8 @@ public class AntrianEntryDal : IAntrianEntryDal
         const string sql = """
            SELECT
                AntrianId, NoUrut, PersonName, PasienTrackerId, 
-               AntrianStatus, CreatedAt, ServedAt, DoneAt
+               AntrianStatus, CreatedAt, ServedAt, DoneAt,
+               ReffId, ReffDesc
            FROM
                 BILRG_AntrianEntry
            WHERE
@@ -144,7 +154,8 @@ public class AntrianEntryDal : IAntrianEntryDal
         const string sql = """
             SELECT
             AntrianId, NoUrut, PersonName, PasienTrackerId, 
-            AntrianStatus, CreatedAt, ServedAt, DoneAt
+            AntrianStatus, CreatedAt, ServedAt, DoneAt,
+            ReffId, ReffDesc
             FROM
                 BILRG_AntrianEntry
             WHERE

@@ -85,7 +85,7 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
         //  WRITE
         using var trans = TransHelper.NewScope();
 
-        var antEntry = antrian.AddEntry(request.NoAntrian, tracker);
+        var antEntry = antrian.AddEntry(request.NoAntrian, tracker, booking.BookingId, "BOK");
         booking.AssignNoAntrian(antEntry.NoUrut);
 
         _bookingRepo.SaveChanges(booking);
