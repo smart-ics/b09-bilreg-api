@@ -25,12 +25,13 @@ public record NilaiTarifType : INilaiTarifKey, INilaiTarifCompositKey, INilaiTar
         TipeTarifType.Default.ToReff(), KelasType.Default.ToReff(), 
         0, []);
 
-    public static INilaiTarifCompositKey KeyComposite(string tarifId, string tipeTarifId, string kelasId)
+    public static INilaiTarifCompositKey KeyComposite(ITarifKey tarifKey, 
+        ITipeTarifKey tipeTarifKey, IKelasKey kelasKey)
     {
-        var tipeTarif = new TipeTarifReff(tipeTarifId, "-");
-        var kelas = new KelasReff(kelasId, "-");
+        var tipeTarif = new TipeTarifReff(tipeTarifKey.TipeTarifId, "-");
+        var kelas = new KelasReff(kelasKey.KelasId, "-");
         
-        return new NilaiTarifType("-", tarifId, "",
+        return new NilaiTarifType("-", tarifKey.TarifId, "",
             tipeTarif, kelas, 0, []);
          
     }

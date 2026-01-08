@@ -9,7 +9,7 @@ using System.Data.SqlClient;
 namespace Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
 
 public interface IAntrianMapDal : 
-    IInsertBulk<AntrianMapDto>,
+    IInsert<AntrianMapDto>,
     IDelete<IAntrianMapHdrKey>,
     IListData<AntrianMapDto, IAntrianMapHdrKey>
 {
@@ -24,27 +24,34 @@ public class AntrianMapDal : IAntrianMapDal
         _opt = opt.Value;
     }
 
-    public void Insert(IEnumerable<AntrianMapDto> listModel)
+    public void Insert(AntrianMapDto dto)
     {
+        const string sql = """
+             INSERT INTO ta_no_antrian_map(
+                 fs_kd_dokter, fs_kd_layanan, 
+                 fd_tgl_jadwal, fs_jam_jadwal, fn_no_antrian,
+                 fs_flag, fs_mr, fs_nm_pasien, fs_kd_trs_gen)
+             VALUES(
+                 @fs_kd_dokter, @fs_kd_layanan, 
+                 @fd_tgl_jadwal, @fs_jam_jadwal, @fn_no_antrian,
+                 @fs_flag, @fs_mr, @fs_nm_pasien, @fs_kd_trs_gen)
+            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@fs_kd_dokter", dto.fs_kd_dokter, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_layanan", dto.fs_kd_layanan, SqlDbType.VarChar);
+        dp.AddParam("@fd_tgl_jadwal", dto.fd_tgl_jadwal, SqlDbType.VarChar);
+        dp.AddParam("@fs_jam_jadwal", dto.fs_jam_jadwal, SqlDbType.VarChar);
+        dp.AddParam("@fn_no_antrian", dto.fn_no_antrian, SqlDbType.Decimal);
+        dp.AddParam("@fs_flag", dto.fs_flag, SqlDbType.VarChar);
+        dp.AddParam("@fs_mr", dto.fs_mr, SqlDbType.VarChar);
+        dp.AddParam("@fs_nm_pasien", dto.fs_nm_pasien, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_trs_gen", dto.fs_kd_trs_gen, SqlDbType.VarChar);
+
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        using var bcp = new SqlBulkCopy(conn);
-
-        conn.Open();
-        bcp.AddMap("fs_kd_dokter", "fs_kd_dokter");
-        bcp.AddMap("fs_kd_layanan", "fs_kd_layanan");
-        bcp.AddMap("fd_tgl_jadwal", "fd_tgl_jadwal");
-        bcp.AddMap("fs_jam_jadwal", "fs_jam_jadwal");
-        bcp.AddMap("fn_no_antrian", "fn_no_antrian");
-        bcp.AddMap("fs_flag", "fs_flag");
-        bcp.AddMap("fs_mr", "fs_mr");
-        bcp.AddMap("fs_nm_pasien", "fs_nm_pasien");
-        bcp.AddMap("fs_kd_trs_gen", "fs_kd_trs_gen");
+        conn.Execute(sql, dp);
 
 
-        var fetched = listModel.ToList();
-        bcp.BatchSize = fetched.Count;
-        bcp.DestinationTableName = "ta_no_antrian_map";
-        bcp.WriteToServer(fetched.AsDataTable());
     }
     public void Delete(IAntrianMapHdrKey key)
     {

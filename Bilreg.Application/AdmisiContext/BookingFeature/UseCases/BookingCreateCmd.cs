@@ -2,12 +2,15 @@
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
 using Nuna.Lib.ValidationHelper;
+using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 
 namespace Bilreg.Application.AdmisiContext.BookingFeature.UseCases;
 
@@ -26,10 +29,11 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
     private readonly IBookingRepo _bookingRepo;
     private readonly IPasienTrackerRepo _trackerRepo;
     private readonly IPasienRepo _pasienRepo;
+    private readonly IAntrianMapHdrRepo _antrianMapRepo;
     public BookingCreateHandler(IJadwalPraktekRepo jadwalPraktekRepo,
-        IAntrianRepo antrianRepo, IAntrianFactory antrianFactory, 
-        IBookingRepo bookingRepo, IPasienTrackerRepo trackerRepo, 
-        IPasienRepo pasienRepo)
+        IAntrianRepo antrianRepo, IAntrianFactory antrianFactory,
+        IBookingRepo bookingRepo, IPasienTrackerRepo trackerRepo,
+        IPasienRepo pasienRepo, IAntrianMapHdrRepo antrianMapRepo)
     {
         _jadwalPraktekRepo = jadwalPraktekRepo;
         _antrianRepo = antrianRepo;
@@ -37,6 +41,7 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         _bookingRepo = bookingRepo;
         _trackerRepo = trackerRepo;
         _pasienRepo = pasienRepo;
+        _antrianMapRepo = antrianMapRepo;
     }
 
     public Task<BookingCreateResponse> Handle(BookingCreateCmd request, CancellationToken cancellationToken)
@@ -75,15 +80,27 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
             ThrowExceptionIfTrackerExists(booking);
         var tracker = PasienTrackerModel.Create(booking);
 
+        // antrianMap
+        var antrianMap = CekAntrianMap(jadwal, tglBerobat);
+        var noAntrian = antrianMap.GetNextNoAntrian();
+        var pasien = new PasienReff(request.PasienId, request.PasienName, person.TglLahir, person.Gender);
+
+
         //  persisting
         using var trans = TransHelper.NewScope();
+        
         //      no antrian masuk ke transaction agar bisa rollback jika gagal
-        var antEntry = antrian.AddEntry(tracker);
+        var antEntry = antrian.AddEntry(noAntrian, tracker, booking.BookingId, "BOK");
         booking.AssignNoAntrian(antEntry.NoUrut);
+        
         //      writing database
         _bookingRepo.SaveChanges(booking);
         _antrianRepo.SaveChanges(antrian);
         _trackerRepo.SaveChanges(tracker);
+
+        // rubah antrianMapHdr
+        antrianMap.SetDataPasien(noAntrian, pasien, booking.Reg, booking.BookingId, "AUTO");
+        _antrianMapRepo.SaveChanges(antrianMap);
 
         trans.Complete();
 
@@ -125,4 +142,46 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         if (duplicated is not null)
             throw new ArgumentException("Pasien terdeteksi di tracker. Booking terduplikasi");
     }
+
+    private AntrianMapHdrModel CekAntrianMap(JadwalPraktekType jadwal, DateOnly tglJadwal)
+    {
+        var ppaKey = PpaType.Key(jadwal.Dokter.PpaId);
+
+        var listAntrianMap = _antrianMapRepo
+            .ListData(jadwal.Layanan, ppaKey, tglJadwal)?
+            .ToList() ?? [];
+
+        var antrianThis = listAntrianMap
+            .SingleOrDefault(x => x.JamJadwal == jadwal.JamMulai);
+
+        if (antrianThis is not null)
+        {
+            var antKey = AntrianMapHdrModel.Key(
+                antrianThis.JadwalId,
+                antrianThis.TglJadwal,
+                antrianThis.dokter.PpaId,
+                antrianThis.Layanan.LayananId,
+                antrianThis.JamJadwal);
+
+            return _antrianMapRepo.LoadEntity(antKey).Value;
+        }
+
+        var queueHdr = AntrianMapHdrModel.Create(
+            jadwal.JadwalPraktekId,
+            jadwal.Dokter,
+            jadwal.Layanan,
+            tglJadwal,
+            jadwal.JamMulai,
+            jadwal.JamMulai,
+            []);
+
+        queueHdr.GenerateSlot(jadwal.MaxPasien);
+
+        return queueHdr;
+    }
+
+
+
+
+
 }

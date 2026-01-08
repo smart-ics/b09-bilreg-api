@@ -16,7 +16,7 @@ public record RegAktifDto(
     {
         return new RegAktifDto(
             model.RegId,
-            model.RegDate,
+            model.RegDate.ToDateTime(TimeOnly.MinValue),
             model.Pasien.PasienId,
             ((int)model.JenisReg).ToString(),
             model.Layanan.LayananId,
@@ -50,7 +50,7 @@ public record RegAktifDto(
         };
         return new RegAktifModel(
             RegId,
-            RegDate,
+            DateOnly.FromDateTime(RegDate),
             pasienReff,
             jnsReg,
             layananReff,

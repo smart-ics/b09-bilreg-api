@@ -17,17 +17,22 @@ public sealed class DeleteBookingWorkflow : IDeleteBookingWorkflow
     private readonly IPpaRepo _ppaRepo;
     private readonly IAntrianRepo _antrianRepo;
     private readonly IPasienTrackerRepo _pasienTrackerRepo;
-
+    private readonly IAntrianMapHdrRepo _antrianMapHdrRepo;
+    private readonly IJadwalPraktekRepo _jadwalPraktekRepo;
     public DeleteBookingWorkflow(
         IBookingRepo bookingRepo,
         IPpaRepo ppaRepo,
         IAntrianRepo antrianRepo,
-        IPasienTrackerRepo pasienTrackerRepo)
+        IPasienTrackerRepo pasienTrackerRepo,
+        IAntrianMapHdrRepo antrianMapHdrRepo,
+        IJadwalPraktekRepo jadwalPraktekRepo)
     {
         _bookingRepo = bookingRepo;
         _ppaRepo = ppaRepo;
         _antrianRepo = antrianRepo;
         _pasienTrackerRepo = pasienTrackerRepo;
+        _antrianMapHdrRepo = antrianMapHdrRepo;
+        _jadwalPraktekRepo = jadwalPraktekRepo;
     }
 
     public Task Execute(IBookingKey key)
@@ -47,10 +52,25 @@ public sealed class DeleteBookingWorkflow : IDeleteBookingWorkflow
         var entry = antrian.ListEntry
             .FirstOrDefault(x => x.NoUrut == booking.NoAntrian);
 
+        // AntrianMap
+        var listJadwal = _jadwalPraktekRepo.ListData(dokter)?.ToList() ?? [];
+        var hari = booking.TglBerobat.DayOfWeek;
+        var jamMulai = booking.JamPraktek;
+        var jadwal = listJadwal
+             .Where(x => x.Hari == hari)
+             .FirstOrDefault(x => x.JamMulai == jamMulai)
+            ?? throw new ArgumentException("Jadwal tidak ditemukan");
+        var antrianMap = CekAntrianMap(jadwal, booking.TglBerobat);
+        
+        // EXECUTE
         using var trans = TransHelper.NewScope();
-
         _bookingRepo.DeleteEntity(booking);
-
+        
+        if (antrianMap.JadwalId != "-")
+        {
+            antrianMap.VoidSlot(booking.NoAntrian);
+            _antrianMapHdrRepo.SaveChanges(antrianMap);
+        }
         if (entry is not null)
         {
             antrian.RemoveEntry(entry.NoUrut);
@@ -59,6 +79,7 @@ public sealed class DeleteBookingWorkflow : IDeleteBookingWorkflow
             _pasienTrackerRepo.DeleteEntity(
                 PasienTrackerModel.Key(entry.Tracker.PasienTrackerId));
         }
+        
 
         trans.Complete();
         return Task.CompletedTask;
@@ -99,6 +120,32 @@ public sealed class DeleteBookingWorkflow : IDeleteBookingWorkflow
         return _antrianRepo
             .ListData(booking.TglBerobat)
             .FirstOrDefault(x => x.SequenceTag == tag);
+    }
+
+    private AntrianMapHdrModel CekAntrianMap(JadwalPraktekType jadwal, DateOnly tglJadwal)
+    {
+        var ppaKey = PpaType.Key(jadwal.Dokter.PpaId);
+
+        var listAntrianMap = _antrianMapHdrRepo
+            .ListData(jadwal.Layanan, ppaKey, tglJadwal)?
+            .ToList() ?? [];
+
+        var antrianThis = listAntrianMap
+            .SingleOrDefault(x => x.JamJadwal == jadwal.JamMulai);
+
+        if (antrianThis is not null)
+        {
+            var antKey = AntrianMapHdrModel.Key(
+                antrianThis.JadwalId,
+                antrianThis.TglJadwal,
+                antrianThis.dokter.PpaId,
+                antrianThis.Layanan.LayananId,
+                antrianThis.JamJadwal);
+
+            return _antrianMapHdrRepo.LoadEntity(antKey).Value;
+        }
+        else
+            return AntrianMapHdrModel.Default;
     }
     #endregion
 
