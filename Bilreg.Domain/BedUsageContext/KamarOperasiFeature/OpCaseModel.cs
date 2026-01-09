@@ -115,11 +115,18 @@ public class OpCaseModel : IOrderOpKey
         if ((int)OrderOpState >= (int)OpCaseStateEnum.RecoveryStarted)
             throw new ArgumentException("Dalam tahap recovery!");
 
-        _listStateHistory.RemoveAll(x => x.OpCaseState == OpCaseStateEnum.OpStarted);
+        // Remove OpStarted state
+        _listStateHistory.RemoveAll(x =>
+            x.OpCaseState == OpCaseStateEnum.OpStarted);
 
         NormalizeStateHistoryNoUrut();
 
-        OrderOpState = OpCaseStateEnum.Scheduled;
+        // Prefer PreOpCleared if it exists, otherwise Scheduled
+        OrderOpState = _listStateHistory.Any(x =>
+            x.OpCaseState == OpCaseStateEnum.PreOpCleared)
+                ? OpCaseStateEnum.PreOpCleared
+                : OpCaseStateEnum.Scheduled;
+
         OnProgressOp = OnProgressOpReff.Default;
     }
 
