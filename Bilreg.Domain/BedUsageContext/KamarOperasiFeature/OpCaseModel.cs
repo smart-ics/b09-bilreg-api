@@ -51,7 +51,7 @@ public class OpCaseModel : IOrderOpKey
         return result;
     }
     #endregion
-    
+
     #region PROPERTIES
     public string OrderOpId { get; init; }
     public OrderOpReff OrderOp { get; init; }
@@ -93,15 +93,10 @@ public class OpCaseModel : IOrderOpKey
             throw new ArgumentException("Operasi sedang dilakukan!");
 
         ScheduleOp = schedule;
-        OnProgressOp = new OnProgressOpReff(new DateTime(3000, 1, 1), new DateTime(3000, 1, 1));
+        OnProgressOp = OnProgressOpReff.Default;
         OrderOpState = OpCaseStateEnum.Scheduled;
-        var stateHistory = _listStateHistory
-            .FirstOrDefault(x => x.OpCaseState == OrderOpState);
-        if (stateHistory is null)
-        {
-            var noUrut = _listStateHistory.Max(x => x.NoUrut) + 1;
-            _listStateHistory.Add(new OpCaseStateHistType(noUrut, OrderOpState, DateTime.Now));
-        }
+
+        UpsertStateHistory(OrderOpState);
     }
 
     public void Start(DateTime startTime)
@@ -109,21 +104,10 @@ public class OpCaseModel : IOrderOpKey
         if ((int)OrderOpState >= (int)OpCaseStateEnum.RecoveryStarted)
             throw new ArgumentException("Dalam tahap recovery!");
 
-        OnProgressOp = new OnProgressOpReff(startTime, new DateTime(3000, 1, 1));
+        OnProgressOp = new OnProgressOpReff(startTime, DateTime.MaxValue);
         OrderOpState = OpCaseStateEnum.OpStarted;
-        var stateHistory = _listStateHistory
-            .FirstOrDefault(x => x.OpCaseState == OrderOpState);
-        if (stateHistory is null)
-        {
-            var noUrut = _listStateHistory.Max(x => x.NoUrut) + 1;
-            _listStateHistory.Add(new OpCaseStateHistType(noUrut, OrderOpState, DateTime.Now));
-        }
-        else
-        {
-            var newStateHistory = stateHistory with { StateTimestamp = DateTime.Now };
-            _listStateHistory.Remove(stateHistory);
-            _listStateHistory.Add(newStateHistory);
-        };
+
+        UpsertStateHistory(OrderOpState);
     }
 
     public void CancelStart()
@@ -131,36 +115,20 @@ public class OpCaseModel : IOrderOpKey
         if ((int)OrderOpState >= (int)OpCaseStateEnum.RecoveryStarted)
             throw new ArgumentException("Dalam tahap recovery!");
 
-        OnProgressOp = new OnProgressOpReff(new DateTime(3000, 1, 1), new DateTime(3000, 1, 1));
-        var lastState = _listStateHistory
-            .OrderBy(x => x.OpCaseState)
-            .ElementAtOrDefault(1);
-        OrderOpState = lastState?.OpCaseState <= OpCaseStateEnum.Scheduled ?
-            OpCaseStateEnum.Scheduled : lastState?.OpCaseState ?? OpCaseStateEnum.Scheduled;
+        _listStateHistory.RemoveAll(x => x.OpCaseState == OpCaseStateEnum.OpStarted);
 
-        var stateHistory = _listStateHistory
-            .FirstOrDefault(x => x.OpCaseState == OpCaseStateEnum.OpStarted);
-        if (stateHistory != null)
-            _listStateHistory.Remove(stateHistory);
+        NormalizeStateHistoryNoUrut();
+
+        OrderOpState = OpCaseStateEnum.Scheduled;
+        OnProgressOp = OnProgressOpReff.Default;
     }
 
     public void Finish(DateTime finishTime)
     {
         OnProgressOp = new OnProgressOpReff(OnProgressOp.StartTime, finishTime);
         OrderOpState = OpCaseStateEnum.RecoveryStarted;
-        var stateHistory = _listStateHistory
-            .FirstOrDefault(x => x.OpCaseState == OrderOpState);
-        if (stateHistory is null)
-        {
-            var noUrut = _listStateHistory.Max(x => x.NoUrut) + 1;
-            _listStateHistory.Add(new OpCaseStateHistType(noUrut, OrderOpState, DateTime.Now));
-        }
-        else
-        {
-            var newStateHistory = stateHistory with { StateTimestamp = DateTime.Now };
-            _listStateHistory.Remove(stateHistory);
-            _listStateHistory.Add(newStateHistory);
-        };
+
+        UpsertStateHistory(OrderOpState);
     }
 
     public void Discharge(DischergeOpReff discharge)
@@ -173,13 +141,13 @@ public class OpCaseModel : IOrderOpKey
         if ((int)OrderOpState >= (int)OpCaseStateEnum.OpStarted)
             throw new ArgumentException("Operasi sedang dilakukan!");
 
-        ScheduleOp = ScheduleOpReff.Default;
-        OnProgressOp = new OnProgressOpReff(new DateTime(3000, 1, 1), new DateTime(3000, 1, 1));
+        _listStateHistory.RemoveAll(x => x.OpCaseState == OpCaseStateEnum.Scheduled);
+
+        NormalizeStateHistoryNoUrut();
+
         OrderOpState = OpCaseStateEnum.Requested;
-        var stateHistory = _listStateHistory
-            .FirstOrDefault(x => x.OpCaseState == OpCaseStateEnum.Scheduled);
-        if (stateHistory != null)
-            _listStateHistory.Remove(stateHistory);
+        ScheduleOp = ScheduleOpReff.Default;
+        OnProgressOp = OnProgressOpReff.Default;
     }
 
     public void SetListPpa(IEnumerable<OpCasePpaType> listPpa)
@@ -239,6 +207,57 @@ public class OpCaseModel : IOrderOpKey
 
     public OpCaseReff ToReff() => new OpCaseReff(OrderOp.OrderOpId, OrderOp.OrderDate,
         Pasien, OrderOpState);
+    #endregion
+
+    #region PRIVATE METHODS
+    private void UpsertStateHistory(OpCaseStateEnum newState)
+    {
+        var now = DateTime.Now;
+
+        // Find existing state
+        var existingIndex = _listStateHistory
+            .FindIndex(x => x.OpCaseState == newState);
+
+        if (existingIndex >= 0)
+        {
+            // Update timestamp only
+            _listStateHistory[existingIndex] =
+                _listStateHistory[existingIndex] with
+                {
+                    StateTimestamp = now
+                };
+        }
+        else
+        {
+            // Append new state
+            _listStateHistory.Add(
+                new OpCaseStateHistType(
+                    NoUrut: 0, // normalized later
+                    OpCaseState: newState,
+                    StateTimestamp: now
+                )
+            );
+        }
+
+        NormalizeStateHistoryNoUrut();
+    }
+
+    private void NormalizeStateHistoryNoUrut()
+    {
+        // Order by logical state progression, not insertion order
+        var ordered = _listStateHistory
+            .OrderBy(x => x.OpCaseState)
+            .ToList();
+
+        _listStateHistory.Clear();
+
+        for (int i = 0; i < ordered.Count; i++)
+        {
+            _listStateHistory.Add(
+                ordered[i] with { NoUrut = i }
+            );
+        }
+    }
     #endregion
 }
 
