@@ -41,4 +41,13 @@ public class AntrianController : Controller
         var response = await _mediator.Send(query);
         return Ok(new JSendOk(response)); 
     }
+
+    [HttpGet]
+    [Route("header/{tglYmd}/list")]
+    public async Task<IActionResult> ListHeader(string tglYmd)
+    {
+        var query = new  QueListAntrianHeaderQuery(tglYmd);
+        var response = await _mediator.Send(query);
+        return Ok(new JSendOk(response));
+    }
 }
