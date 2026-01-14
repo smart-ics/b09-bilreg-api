@@ -83,8 +83,9 @@ public record TrsBillingType : ITrsBillingKey
     {
         var audit = AuditTrailType.Create(reg.RegMasukAudit.UserId, DateTime.Now);
         var ketBilling = new TrsBillKetType($"REG : {karcis.KarcisName}", "", karcis.KarcisId, 1, "");
-        var result = new TrsBillingType(reg.RegId, 0, reg.RegDate.ToDateTime(TimeOnly.FromDateTime(reg.RegMasukAudit.Timestamp)) ,
-            reg.ToReff(), reg.Layanan, reg.Kelas, audit.Created, karcis.NilaiKarcis, reg.ListKomponen.Sum(x => x.Diskon), 0, 0,
+        var tglTrs = reg.RegDate.ToDateTime(TimeOnly.FromDateTime(reg.RegMasukAudit.Timestamp));
+        var result = new TrsBillingType(reg.RegId, 0, tglTrs, reg.ToReff(), reg.Layanan, reg.Kelas, 
+            audit.Created, karcis.NilaiKarcis, reg.ListKomponen.Sum(x => x.Diskon), 0, 0,
             karcis.RekapCetak, ketBilling, []);
         
         var rekPpdp = reg.JenisReg == JenisRegEnum.RegInap
@@ -102,8 +103,7 @@ public record TrsBillingType : ITrsBillingKey
             var ppa = reffKomp?.ListSatTugas?.Any() ?? false
                 ? dokter.ToReff()
                 : PpaType.Default.ToReff();
-
-            var trsBill2 = new TrsBilling2JasaType(i++, reg.RegId, reg.RegDate.ToDateTime(TimeOnly.FromDateTime(reg.RegMasukAudit.Timestamp)),
+            var trsBill2 = new TrsBilling2JasaType(i++, reg.RegId, tglTrs,
                 new NilaiBillingType("PDP", item.Nilai, 0), ppa, PegType.Default, 
                 item.Komponen, rekJasa);
             result.AddTrsBilling2(trsBill2);
