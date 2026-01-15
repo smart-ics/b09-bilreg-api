@@ -79,4 +79,12 @@ public class PpaRepo : IPpaRepo
             MayBe<PpaType>.None : 
             LoadEntity(PpaType.Key(ppa.fs_kd_peg));
     }
+
+    public IEnumerable<PpaView> ListData(IEnumerable<ISatTugasKey> filter)
+    {
+        var listDto = _ppaDal.ListData(filter) ?? [];
+        var result = listDto.Select(x => x.ToView())?.ToList() ?? [];
+
+        return result;
+    }
 }

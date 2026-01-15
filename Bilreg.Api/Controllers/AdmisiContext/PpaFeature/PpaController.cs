@@ -62,5 +62,14 @@ public class PpaController : Controller
         var result = await _mediator.Send(query);
         return Ok(new JSendOk(result));
     }
+
+    [HttpGet]
+    [Route("list")]
+    public async Task<IActionResult> ListPpa([FromQuery] IEnumerable<string> listSatTugas)
+    {
+        var query = new PpaListBySatTugasQuery(listSatTugas);
+        var response = await _mediator.Send(query);
+        return Ok(new JSendOk(response));
+    }
     
 }
