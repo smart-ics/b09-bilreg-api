@@ -140,7 +140,7 @@ public class TrsBillingDal : ITrsBillingDal
     {
         const string sql = """
             SELECT
-                aa.fs_kd_trs, aa.fn_modul, aa.fd_tgl_trs, aa.fs_jam_trs,
+                aa.fs_kd_trs, aa.fn_modul, aa.fd_tgl_trs, aa.fs_jam_trs, aa.fd_tgl_jam_trs,
                 aa.fs_kd_reg, aa.fs_kd_layanan, aa.fs_kd_kelas, 
                 aa.fs_kd_rekap_cetak, aa.fs_kd_petugas, 
                 aa.fn_sub_total, aa.fn_diskon, aa.fn_biaya, aa.fn_tax, aa.fn_total,
@@ -172,7 +172,7 @@ public class TrsBillingDal : ITrsBillingDal
     {
         const string sql = """
             SELECT
-                aa.fs_kd_trs, aa.fn_modul, aa.fd_tgl_trs, aa.fs_jam_trs,
+                aa.fs_kd_trs, aa.fn_modul, aa.fd_tgl_trs, aa.fs_jam_trs, aa.fd_tgl_jam_trs,
                 aa.fs_kd_reg, aa.fs_kd_layanan, aa.fs_kd_kelas, 
                 aa.fs_kd_rekap_cetak, aa.fs_kd_petugas, 
                 aa.fn_sub_total, aa.fn_diskon, aa.fn_biaya, aa.fn_tax, aa.fn_total,
