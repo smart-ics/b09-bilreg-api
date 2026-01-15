@@ -50,4 +50,13 @@ public class AntrianController : Controller
         var response = await _mediator.Send(query);
         return Ok(new JSendOk(response));
     }
+
+    [HttpGet]
+    [Route("{id}")]
+    public async Task<IActionResult> GetAntrian(string id)
+    {
+        var query = new QueGetAntrianQuery(id);
+        var response = await _mediator.Send(query);
+        return Ok(new JSendOk(response));
+    }
 }

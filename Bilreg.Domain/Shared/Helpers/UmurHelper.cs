@@ -1,4 +1,4 @@
-﻿namespace Bilreg.Application.Helpers;
+﻿namespace Bilreg.Domain.Shared.Helpers;
 
 public static class UmurHelper
 {
