@@ -59,4 +59,13 @@ public class AntrianController : Controller
         var response = await _mediator.Send(query);
         return Ok(new JSendOk(response));
     }
+
+    [HttpPatch]
+    [Route("selesaiPeriksa/{antrianId}/{noUrut}")]
+    public async Task<IActionResult> SelesaiPeriksa(string antrianId, int noUrut)
+    {
+        var query = new QueSelesaiPeriksaCmd(antrianId, noUrut);
+        var response = _mediator.Send(query);
+        return Ok(new JSendOk("Done"));
+    }
 }
