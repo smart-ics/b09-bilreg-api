@@ -18,10 +18,16 @@ public class TindakanController : Controller
 
     [HttpPost]
     [Route("create")]
-    public async Task<IActionResult> CreateByKtp(TdkCreateTindakanCmd cmd)
+    public async Task<IActionResult> Create(TdkCreateTindakanCmd cmd)
     {
         var result = await _mediator.Send(cmd);
         return Ok(new JSendOk(result));
     }
-    
+    [HttpPost]
+    [Route("save")]
+    public async Task<IActionResult> SaveTindakan(TdkSaveTindakanCmd cmd)
+    {
+        var result = await _mediator.Send(cmd);
+        return Ok(new JSendOk(result));
+    }
 }
