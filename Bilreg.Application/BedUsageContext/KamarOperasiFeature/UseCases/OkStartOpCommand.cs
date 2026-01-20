@@ -3,11 +3,12 @@ using MediatR;
 using Nuna.Lib.TransactionHelper;
 using Nuna.Lib.ValidationHelper;
 using System.Globalization;
+using Bilreg.Domain.PasienContext.PasienFeature;
 
 namespace Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
 
-public record OkStartOpCommand(string ScheduleOpId,
-    string Jam, string UserId) : IRequest<OkStartOpResponse>, IScheduleOpKey;
+public record OkStartOpCommand(string OrderOpId,
+    string Jam, string UserId) : IRequest<OkStartOpResponse>, IOrderOpKey;
 
 public record OkStartOpResponse(
     string OrderOpId,
@@ -33,14 +34,19 @@ public class OkStartOpHandler : IRequestHandler<OkStartOpCommand, OkStartOpRespo
     public Task<OkStartOpResponse> Handle(OkStartOpCommand request, CancellationToken cancellationToken)
     {
         //  GUARD
-        var scheduleOp = _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(request.ScheduleOpId))
-            .GetValueOrThrow($"Schedule Operasi ID { request.ScheduleOpId } tidak ditemukan.");
+        var orderOp = _orderOpRepo.LoadEntity(OrderOpModel.Key(request.OrderOpId))
+            .GetValueOrThrow($"Schedule Operasi dengan OrderOp ID: { request.OrderOpId } tidak ditemukan.");
+        
+        var listSchedule = _scheduleOpRepo.ListData(PasienModel.Key(orderOp.Pasien.PasienId))?.ToList()
+                           ?? [];
+        var scheduleWithOrderOpId = listSchedule
+            .Where(x => !x.IsVoid)
+            .FirstOrDefault(x => x.OrderOp.OrderOpId == request.OrderOpId);
 
-        if (scheduleOp.OrderOp.OrderOpId == "-")
-            throw new KeyNotFoundException($"Schedule Operasi ID { request.ScheduleOpId } tidak punya order.");
-
-        var orderOp = _orderOpRepo.LoadEntity(OrderOpModel.Key(scheduleOp.OrderOp.OrderOpId))
-            .GetValueOrThrow($"Schedule Operasi ID { request.ScheduleOpId } tidak punya order.");
+        var scheduleOp = scheduleWithOrderOpId != null
+            ? _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(scheduleWithOrderOpId.ScheduleOpId))
+                .GetValueOrThrow($"Schedule Operasi dengan OrderOp ID: { request.OrderOpId } tidak ditemukan.")
+            : throw new KeyNotFoundException($"Schedule Operasi dengan OrderOp ID: { request.OrderOpId } tidak ditemukan.");
 
         var tglOp = DateTime.ParseExact(
             $"{ scheduleOp.TglOp.ToString(DateFormatEnum.YMD) } { request.Jam }", "yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);

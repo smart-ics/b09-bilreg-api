@@ -4,8 +4,8 @@ using Nuna.Lib.TransactionHelper;
 
 namespace Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
 
-public record OkCancelStartOpCommand(string ScheduleOpId,
-    string UserId) : IRequest<OkCancelStartOpResponse>, IScheduleOpKey;
+public record OkCancelStartOpCommand(string OrderOpId,
+    string UserId) : IRequest<OkCancelStartOpResponse>, IOrderOpKey;
 
 public record OkCancelStartOpResponse(
     string OrderOpId,
@@ -15,15 +15,12 @@ public record OkCancelStartOpResponse(
 
 public class OkCancelStartOpHandler : IRequestHandler<OkCancelStartOpCommand, OkCancelStartOpResponse>
 {
-    private readonly IScheduleOpRepo _scheduleOpRepo;
     private readonly IOrderOpRepo _orderOpRepo;
     private readonly IOpCaseRepo _opCaseRepo;
 
-    public OkCancelStartOpHandler(IScheduleOpRepo scheduleOpRepo,
-        IOrderOpRepo orderOpRepo,
+    public OkCancelStartOpHandler(IOrderOpRepo orderOpRepo,
         IOpCaseRepo opCaseRepo)
     {
-        _scheduleOpRepo = scheduleOpRepo;
         _orderOpRepo = orderOpRepo;
         _opCaseRepo = opCaseRepo;
     }
@@ -31,14 +28,8 @@ public class OkCancelStartOpHandler : IRequestHandler<OkCancelStartOpCommand, Ok
     public Task<OkCancelStartOpResponse> Handle(OkCancelStartOpCommand request, CancellationToken cancellationToken)
     {
         //  GUARD
-        var scheduleOp = _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(request.ScheduleOpId))
-            .GetValueOrThrow($"Schedule Operasi ID {request.ScheduleOpId} tidak ditemukan.");
-
-        if (scheduleOp.OrderOp.OrderOpId == "-")
-            throw new KeyNotFoundException($"Schedule Operasi ID {request.ScheduleOpId} tidak punya order.");
-
-        var orderOp = _orderOpRepo.LoadEntity(OrderOpModel.Key(scheduleOp.OrderOp.OrderOpId))
-            .GetValueOrThrow($"Schedule Operasi ID {request.ScheduleOpId} tidak punya order.");
+        var orderOp = _orderOpRepo.LoadEntity(OrderOpModel.Key(request.OrderOpId))
+            .GetValueOrThrow($"Schedule Operasi dengan OrderOp ID: { request.OrderOpId } tidak ditemukan.");
 
         var opCase = _opCaseRepo.LoadEntity(orderOp)
             .GetValueOrDefault()
