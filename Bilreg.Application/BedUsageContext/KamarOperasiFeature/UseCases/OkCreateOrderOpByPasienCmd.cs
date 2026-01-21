@@ -1,4 +1,5 @@
-﻿using Bilreg.Application.AdmisiContext.PpaFeature;
+﻿using Ardalis.GuardClauses;
+using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
@@ -55,6 +56,11 @@ public class OkCreateOrderOpByPasienHandler :
         OkCreateOrderOpByPasienCmd request, CancellationToken cancellationToken)
     {
         //  GUARD
+        Guard.Against.NullOrEmpty(request.PasienId);
+        Guard.Against.NullOrEmpty(request.DiagCode);
+        Guard.Against.NullOrEmpty(request.JenisOperasiId);
+        Guard.Against.NullOrEmpty(request.DokterDpjpId);
+
         if (!request.IsForceCreate)
         {
             var existing = FindExistingOrder(request.PasienId);

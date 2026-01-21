@@ -1,4 +1,5 @@
-﻿using Bilreg.Application.AdmisiContext.PpaFeature;
+﻿using Ardalis.GuardClauses;
+using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
@@ -58,6 +59,11 @@ public class OkCreateOrderOpByRegHandler
         CancellationToken cancellationToken)
     {
         //  GUARD
+        Guard.Against.NullOrEmpty(request.RegId);
+        Guard.Against.NullOrEmpty(request.DiagCode);
+        Guard.Against.NullOrEmpty(request.JenisOperasiId);
+        Guard.Against.NullOrEmpty(request.DokterDpjpId);
+
         if (!request.IsForceCreate)
         {
             var existing = FindExistingOrder(request.RegId);

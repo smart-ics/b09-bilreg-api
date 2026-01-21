@@ -1,3 +1,4 @@
+using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
 
@@ -8,7 +9,7 @@ public record OkListScheduleQuery(string TglYmd) : IRequest<IEnumerable<OkListSc
 public record OkListScheduleResponse(
     string PasienId, string PasienName, string TglLahir,
     string OrderOpId, string ScheduleOpId, string NamaOperasi, string Urgency,
-    int Durasi, string ScheduledTime,
+    int Durasi, string ScheduledTime, string StatusOp,
     string DokterId, string DokterName,
     string KamarId, string KamarName);
 
@@ -35,6 +36,7 @@ public class OkListScheduleHandler : IRequestHandler<OkListScheduleQuery, IEnume
             x.Urgency.ToString(),
             x.Durasi,
             x.TglOp.ToString("HH:mm"),
+            TranslateState(x.Status),
             x.TeamLead.PpaId,
             x.TeamLead.PpaName,
             x.Kamar.KamarId,
@@ -42,5 +44,16 @@ public class OkListScheduleHandler : IRequestHandler<OkListScheduleQuery, IEnume
         ));
         return Task.FromResult(result);
     }
-    
+
+    private string TranslateState(OpCaseStateEnum opCaseState)
+    {
+        string result = opCaseState switch
+        {
+            OpCaseStateEnum.Scheduled => opCaseState.ToString(),
+            OpCaseStateEnum.OpStarted => "In-Progress",
+            OpCaseStateEnum.RecoveryStarted => "In-Recovery",
+            _ => "Others"
+        };
+        return result;
+    }
 }

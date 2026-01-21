@@ -13,6 +13,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="BedUsageContext\KamarOperasiFeature\StartOpDal.cs" />
+    <Compile Remove="BedUsageContext\KamarOperasiFeature\StartOpDto.cs" />
+    <Compile Remove="BedUsageContext\KamarOperasiFeature\StartOpPpaDto.cs" />
+    <Compile Remove="BedUsageContext\KamarOperasiFeature\StartOpRepo.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="FluentAssertions" Version="6.12.0" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.2" />
     <PackageReference Include="Moq" Version="4.20.70" />
