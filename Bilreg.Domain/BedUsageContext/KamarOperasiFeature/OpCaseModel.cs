@@ -8,6 +8,8 @@ public class OpCaseModel : IOrderOpKey
     private readonly List<OpCaseStateHistType> _listStateHistory;
     private readonly List<OpCasePpaType> _listPpa;
 
+    private const string ROLE_REQUEST = "REQUESTER";
+    
     #region CREATION
     public OpCaseModel(string orderOpId, OrderOpReff orderOp, 
         PasienReff pasien, string operasiName, 
@@ -104,7 +106,7 @@ public class OpCaseModel : IOrderOpKey
         if ((int)OrderOpState >= (int)OpCaseStateEnum.RecoveryStarted)
             throw new ArgumentException("Dalam tahap recovery!");
 
-        OnProgressOp = new OnProgressOpReff(startTime, DateTime.MaxValue);
+        OnProgressOp = new OnProgressOpReff(startTime, new DateTime(3000, 1, 1));
         OrderOpState = OpCaseStateEnum.OpStarted;
 
         UpsertStateHistory(OrderOpState);
@@ -168,7 +170,7 @@ public class OpCaseModel : IOrderOpKey
         // 1. Remove PPAs that no longer exist in incoming list
         //    EXCEPT those with Role == "REQUESTER"
         _listPpa.RemoveAll(x =>
-            x.Role != "REQUESTER" &&
+            x.Role != ROLE_REQUEST &&
             !incomingMap.ContainsKey(x.Ppa)
         );
 
@@ -192,12 +194,12 @@ public class OpCaseModel : IOrderOpKey
         //    - REQUESTER => NoUrut = 0
         //    - Others => contiguous starting from 1
         var requesterItems = _listPpa
-            .Where(x => x.Role == "REQUESTER")
+            .Where(x => x.Role == ROLE_REQUEST)
             .Select(x => x with { NoUrut = 0 })
             .ToList();
 
         var nonRequesterItems = _listPpa
-            .Where(x => x.Role != "REQUESTER")
+            .Where(x => x.Role != ROLE_REQUEST)
             .OrderBy(x => x.NoUrut)
             .ToList();
 
