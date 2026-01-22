@@ -54,4 +54,11 @@ public class TindakanRepo : ITindakanRepo
         var result = listDto.Select(x =>  x.ToView());
         return result;
     }
+
+    public IEnumerable<TindakanJualView> ListDataTdkJual(IRegKey regKey)
+    {
+        var listDto = _tindakanDal.ListTdkJual(regKey)?.ToList() ?? [];
+        var result = listDto.Select(x => x.ToView())?.ToList() ?? [];
+        return result;
+    }
 }

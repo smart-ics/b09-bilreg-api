@@ -20,7 +20,7 @@ public class TrsBillingControllerController : Controller
     [Route("list/{regId}")]
     public async Task<IActionResult> ListBill(string regId)
     {
-        var query = new TrsBListBillingQuery(regId);
+        var query = new TrBListBillingQuery(regId);
         var response = await _mediator.Send(query);
         return Ok(new JSendOk(response));
     }

@@ -21,7 +21,8 @@ public class QueSelesaiPeriksaHandler : IRequestHandler<QueSelesaiPeriksaCmd>
         Guard.Against.Null(request.NoUrut);
 
         var que = _queRepo.LoadEntity(request).GetValueOrDefault();
-        var item = que.ListEntry.FirstOrDefault(x => x.NoUrut == request.NoUrut) ?? AntrianEntryModel.Default;
+        var item = que.ListEntry.FirstOrDefault(x => x.NoUrut == request.NoUrut) ?? 
+            throw new KeyNotFoundException($"antrian {request.NoUrut} not found");
         item.Done();
 
         _queRepo.SaveChanges(que);

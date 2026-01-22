@@ -5,26 +5,26 @@ using MediatR;
 
 namespace Bilreg.Application.PaymentContext.TrsBillingFeature;
 
-public record TrsBListBillingQuery(string RegId) : IRequest<IEnumerable<TrsBListBillingResponse>>, IRegKey;
+public record TrBListBillingQuery(string RegId) : IRequest<IEnumerable<TrBListBillingResponse>>, IRegKey;
 
-public record TrsBListBillingResponse(
+public record TrBListBillingResponse(
     string TrsBillingId, RegReff Reg, LayananReff Layanan, string Deskripsi, decimal TotalNilai);
 
-public class TrsBListBillingHandler : IRequestHandler<TrsBListBillingQuery, IEnumerable<TrsBListBillingResponse>>
+public class TrBListBillingHandler : IRequestHandler<TrBListBillingQuery, IEnumerable<TrBListBillingResponse>>
 {
     private readonly ITrsBillingRepo _trsBillRepo;
 
-    public TrsBListBillingHandler(ITrsBillingRepo trsBillRepo)
+    public TrBListBillingHandler(ITrsBillingRepo trsBillRepo)
     {
         _trsBillRepo = trsBillRepo;
     }
 
-    public Task<IEnumerable<TrsBListBillingResponse>> Handle(TrsBListBillingQuery request, CancellationToken cancellationToken)
+    public Task<IEnumerable<TrBListBillingResponse>> Handle(TrBListBillingQuery request, CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.RegId);
 
         var listBill = _trsBillRepo.ListData(request)?.ToList() ?? [];
-        var response = listBill.Select(x => new TrsBListBillingResponse(
+        var response = listBill.Select(x => new TrBListBillingResponse(
             x.TrsBillingId, x.Reg, x.Layanan, x.Keterangan.Keterangan, x.Total));
         return Task.FromResult(response);
     }

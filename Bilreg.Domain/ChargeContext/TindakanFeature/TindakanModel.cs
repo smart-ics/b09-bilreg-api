@@ -148,3 +148,7 @@ public interface ITindakanKey
 
 public record TindakanView(string TindakanId, DateTime TindakanDate, string OrderTdkId,
     RegReff Reg, LayananReff Layanan, TarifReff Tarif) : ITindakanKey;
+
+public record TindakanJualView(string TransaksiId, DateTime TransaksiDate, string OrderTrasaksi, 
+    RegReff Reg, LayananReff Layanan, string DiskripsiId, string DiskripsiName, 
+    int Qty, decimal Total, string Tipe);

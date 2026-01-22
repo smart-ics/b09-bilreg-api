@@ -30,4 +30,13 @@ public class TindakanController : Controller
         var result = await _mediator.Send(cmd);
         return Ok(new JSendOk(result));
     }
+
+    [HttpGet]
+    [Route("tdkJual/list/{regId}")]
+    public async Task<IActionResult> ListTdkJual(string regId)
+    {
+        var query = new TdkListTindakanJualQuery(regId);
+        var response = await _mediator.Send(query); 
+        return Ok(new JSendOk(response));
+    }
 }
