@@ -23,6 +23,8 @@ public class OpCaseDalTest
             ScheduledDate: new DateTime(2024, 1, 2, 8, 0, 0),
             DischargeOpId: "F",
             DischargedDate: new DateTime(2024, 1, 3, 12, 0, 0),
+            StartedDate: new DateTime(2025, 1, 4, 9, 0, 0),
+            FinishedDate: new DateTime(2025, 1, 4, 12, 0, 0),
             OrderOpState: 1,
             PasienName: "G",
             TglLahir: "2000-01-01",

@@ -22,4 +22,5 @@ public record ScheduleOpView(string ScheduleOpId,
     DateTime TglOp, int Durasi,
     PpaReff TeamLead,
     KamarReff Kamar,
+    OpCaseStateEnum Status,
     bool IsVoid);

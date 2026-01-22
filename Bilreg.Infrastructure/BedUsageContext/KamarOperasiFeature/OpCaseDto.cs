@@ -1,5 +1,4 @@
-﻿using Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
-using Bilreg.Domain.AdmisiContext.RegFeature;
+﻿using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 
@@ -16,6 +15,8 @@ public record OpCaseDto(
     DateTime ScheduledDate,
     string DischargeOpId,
     DateTime DischargedDate,
+    DateTime StartedDate,
+    DateTime FinishedDate,
     int OrderOpState,
     //
     string PasienName,
@@ -35,6 +36,8 @@ public record OpCaseDto(
             model.ScheduleOp.ScheduledDate,
             model.DischargeOp.DischargeOpId,
             model.DischargeOp.DischargedDate,
+            model.OnProgressOp.StartTime,
+            model.OnProgressOp.FinishTime,
             (int)model.OrderOpState,
             model.Pasien.PasienName, tglLahir, model.Pasien.Gender,
             (int)model.UrgencyLevel);
@@ -52,8 +55,9 @@ public record OpCaseDto(
             new RegReff(RegId, PasienId, PasienName);
         var schedule = new ScheduleOpReff(ScheduleOpId, ScheduledDate);
         var discharge = new DischergeOpReff(DischargeOpId, DischargedDate);
-        var result = new OpCaseModel(OrderOpId, orderOp, pasien, NamaOperasi, 
-            reg, (UrgencyLevelEnum)UrgencyLevel, schedule, discharge, 
+        var onProgress = new OnProgressOpReff(StartedDate, FinishedDate);
+        var result = new OpCaseModel(OrderOpId, orderOp, pasien, NamaOperasi,
+            reg, (UrgencyLevelEnum)UrgencyLevel, schedule, discharge, onProgress,
             (OpCaseStateEnum)OrderOpState, listHist, listPpa);
         return result;
     }

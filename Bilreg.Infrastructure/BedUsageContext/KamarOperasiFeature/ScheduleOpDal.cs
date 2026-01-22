@@ -133,13 +133,17 @@ public class ScheduleOpDal : IScheduleOpDal
                ISNULL(cc.fd_tgl_lahir, '3000-01-01') AS TglLahir,
                ISNULL(cc.fs_jns_kelamin, '') AS Gender,
                ISNULL(dd.fs_nm_kamar, '') AS KamarName,
-               ISNULL(ee.fs_nm_peg, '') AS PpaName
-           FROM 
+               ISNULL(ee.fs_nm_peg, '') AS PpaName,
+               ISNULL(ff.StartedDate, '3000-01-01') AS StartedDate,
+               ISNULL(ff.FinishedDate, '3000-01-01') AS FinishedDate,
+               ISNULL(ff.OrderOpState, 0) AS OrderOpState
+           FROM
                BILRG_ScheduleOp aa
                LEFT JOIN BILRG_OrderOp bb ON aa.OrderOpId = bb.OrderOpId
                LEFT JOIN tc_mr cc ON aa.PasienId = cc.fs_mr
                LEFT JOIN ta_kamar dd ON aa.KamarId = dd.fs_kd_kamar
                LEFT JOIN td_peg ee ON aa.PpaId = ee.fs_kd_peg
+               LEFT JOIN BILRG_OpCase ff ON aa.OrderOpId = ff.OrderOpId
            WHERE
                aa.ScheduleOpId = @ScheduleOpId
            """;
@@ -165,13 +169,17 @@ public class ScheduleOpDal : IScheduleOpDal
                 ISNULL(cc.fd_tgl_lahir, '3000-01-01') AS TglLahir,
                 ISNULL(cc.fs_jns_kelamin, '') AS Gender,
                 ISNULL(dd.fs_nm_kamar, '') AS KamarName,
-                ISNULL(ee.fs_nm_peg, '') AS PpaName
+                ISNULL(ee.fs_nm_peg, '') AS PpaName,
+                ISNULL(ff.StartedDate, '3000-01-01') AS StartedDate,
+                ISNULL(ff.FinishedDate, '3000-01-01') AS FinishedDate,
+                ISNULL(ff.OrderOpState, 0) AS OrderOpState
             FROM
                 BILRG_ScheduleOp aa
                 LEFT JOIN BILRG_OrderOp bb ON aa.OrderOpId = bb.OrderOpId
                 LEFT JOIN tc_mr cc ON aa.PasienId = cc.fs_mr
                 LEFT JOIN ta_kamar dd ON aa.KamarId = dd.fs_kd_kamar
                 LEFT JOIN td_peg ee ON aa.PpaId = ee.fs_kd_peg
+                LEFT JOIN BILRG_OpCase ff ON aa.OrderOpId = ff.OrderOpId
             WHERE
                 aa.TglOp BETWEEN @Tgl1 AND @Tgl2
             """;
@@ -198,13 +206,17 @@ public class ScheduleOpDal : IScheduleOpDal
                 ISNULL(cc.fd_tgl_lahir, '3000-01-01') AS TglLahir,
                 ISNULL(cc.fs_jns_kelamin, '') AS Gender,
                 ISNULL(dd.fs_nm_kamar, '') AS KamarName,
-                ISNULL(ee.fs_nm_peg, '') AS PpaName
+                ISNULL(ee.fs_nm_peg, '') AS PpaName,
+                ISNULL(ff.StartedDate, '3000-01-01') AS StartedDate,
+                ISNULL(ff.FinishedDate, '3000-01-01') AS FinishedDate,
+                ISNULL(ff.OrderOpState, 0) AS OrderOpState
             FROM
                 BILRG_ScheduleOp aa
                 LEFT JOIN BILRG_OrderOp bb ON aa.OrderOpId = bb.OrderOpId
                 LEFT JOIN tc_mr cc ON aa.PasienId = cc.fs_mr
                 LEFT JOIN ta_kamar dd ON aa.KamarId = dd.fs_kd_kamar
                 LEFT JOIN td_peg ee ON aa.PpaId = ee.fs_kd_peg
+                LEFT JOIN BILRG_OpCase ff ON aa.OrderOpId = ff.OrderOpId
             WHERE
                 aa.PasienId = @PasienId
             """;

@@ -119,7 +119,7 @@ public class OrderOpModel : IOrderOpKey
         Guard.Against.Negative(estimasiDurasi, nameof(estimasiDurasi));
         
         if (preferedDate < DateTime.Now)
-            throw new ArgumentException("Perefered Date invalid");
+            throw new ArgumentException("Prefered Date invalid");
 
         Dokter = dokterDpjp.ToReff();
         EstimasiDurasiInMinutes = estimasiDurasi;

@@ -24,6 +24,9 @@ public class JenisOperasiRepo : IJenisOperasiRepo
     public MayBe<JenisOperasiType> LoadEntity(IJenisOperasiKey key)
     {
         var result = _jenisOperasiDal.GetData(key);
+        if (result is null)
+            return MayBe<JenisOperasiType>.None;
+
         return MayBe.From(result.ToModel());
     }
 
