@@ -1,6 +1,7 @@
 using Bilreg.Application.ChargeContext.TindakanFeature.UseCases;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.OpenApi.Services;
 using Nuna.Lib.ActionResultHelper;
 
 namespace Bilreg.Api.Controllers.ChargeContext;
@@ -38,5 +39,12 @@ public class TindakanController : Controller
         var query = new TdkListTindakanJualQuery(regId);
         var response = await _mediator.Send(query); 
         return Ok(new JSendOk(response));
+    }
+    [HttpPatch]
+    [Route("batal")]
+    public async Task<IActionResult> Batal(TindakanVoidCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
     }
 }
