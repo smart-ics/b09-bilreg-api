@@ -26,7 +26,7 @@ public class PpaListSatTugasHandler : IRequestHandler<PpaListBySatTugasQuery, IE
         var listSatTugas = request.listSatTugas.Select(x => new SatTugasType(x, "-", ProfesiType.Default));
         var listPpa = _ppaRepo.ListData(listSatTugas)?.ToList() ?? [];
 
-        var result = listPpa.Select(x => new PpaListBySatTugasResponse(x.PpaId, x.PpaId))?.ToList() ?? [];
+        var result = listPpa.Select(x => new PpaListBySatTugasResponse(x.PpaId, x.PpaName))?.ToList() ?? [];
         
         return Task.FromResult(result.AsEnumerable());
     }
