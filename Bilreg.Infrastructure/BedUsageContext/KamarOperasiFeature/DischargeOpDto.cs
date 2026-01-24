@@ -1,9 +1,9 @@
-﻿using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Bilreg.Domain.AdmisiContext.PpaFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
+using Bilreg.Domain.BedUsageContext.WardFeature;
+using Bilreg.Domain.PasienContext.PasienFeature;
+using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 
 namespace Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature;
 
@@ -16,6 +16,7 @@ public record DischargeOpDto(
     string KamarId,
     string PpaId,
     int PatientCondition,
+    string PostOpNote,
 
     string CrtUser,
     DateTime CrtDate,
@@ -38,9 +39,10 @@ public record DischargeOpDto(
             model.OrderOp.OrderOpId,
             model.Pasien.PasienId,
             model.Reg.RegId,
-            model.KamarTujuan,
-            model.TeamLead.PpaId,
+            model.KamarTujuan.KamarId,
+            model.Dokter.PpaId,
             (int)model.KondisiPasien,
+            model.PostOpNote,
             model.AuditTrail.Created.UserId,
             model.AuditTrail.Created.Timestamp,
             model.AuditTrail.Modified.UserId,
@@ -48,7 +50,35 @@ public record DischargeOpDto(
             model.AuditTrail.Voided.UserId,
             model.AuditTrail.Voided.Timestamp,
             model.Pasien.PasienName,
-            model.Pasien.TglLahir.ToString("yyyy-MM-dd"));
+            model.Pasien.TglLahir.ToString("yyyy-MM-dd"),
+            model.Pasien.Gender,
+            model.KamarTujuan.KamarName,
+            model.Dokter.PpaName);
+        return result;
+    }
+
+    public DischargeOpModel ToModel()
+    {
+        var auditTrail = new AuditTrailType(
+            new AuditInfoType(CrtUser, CrtDate),
+            new AuditInfoType(UpdUser, UpdDate),
+            new AuditInfoType(VodUser, VodDate)
+        );
+        var orderOp = new OrderOpReff(OrderOpId, new DateTime(3000, 1, 1), "-");
+        var dokter = new PpaReff(PpaId, PpaName);
+        var pasien = new PasienReff(PasienId, PasienName, DateOnly.ParseExact(TglLahir, "yyyy-MM-dd"), Gender);
+        var reg = new RegReff(RegId, PasienId, PasienName);
+        var kamar = new KamarReff(KamarId, KamarName);
+
+        var result = new DischargeOpModel(
+            DischargeOpId,
+            DischargeOpDate,
+            auditTrail,
+            orderOp,
+            dokter,
+            pasien,
+            reg, kamar, (PatientConditionEnum)PatientCondition,
+            PostOpNote);
         return result;
     }
 }
