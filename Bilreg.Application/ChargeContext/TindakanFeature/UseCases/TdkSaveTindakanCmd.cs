@@ -60,7 +60,7 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
     {
         //  BUILD
         if (request.ListPpa is null)
-            throw new ArgumentException("List PPA tidak boleh nul");
+            throw new ArgumentException("List PPA tidak boleh null");
 
         var tindakan = _tindakanRepo.LoadEntity(request).GetValueOrDefault(TindakanModel.Default);
         var reg = LoadReg(request);
@@ -80,7 +80,7 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
         }
 
         var tdk = CreateOrEdit(tindakan, reg, layanan, nilaiTarif, listPpa, request.UserId);
-        var trsBilling = TrsBillingType.CreateFromTindakan(tindakan, reg, tarif, jaminan, listKomp);
+        var trsBilling = TrsBillingType.CreateFromTindakan(tdk, reg, tarif, jaminan, listKomp);
 
         //  WRITE
         using var trans = TransHelper.NewScope();
