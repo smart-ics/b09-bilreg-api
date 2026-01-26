@@ -30,10 +30,28 @@ public class DischargeOpModel : IDischargeOpKey
         PostOpNote = postOpNote;
     }
 
+    public static DischargeOpModel Default
+        => new DischargeOpModel("-", new DateTime(3000, 1, 1), AuditTrailType.Default, OrderOpModel.Default.ToReff(),
+            PpaType.Default.ToReff(), PasienModel.Default.ToReff(), RegModel.Default.ToReff(), KamarType.Default.ToReff(),
+            PatientConditionEnum.Stable, "-");
+
     public static IDischargeOpKey Key(string id)
         => new DischargeOpModel(id, new DateTime(3000, 1, 1), AuditTrailType.Default,
             OrderOpModel.Default.ToReff(), PpaType.Default.ToReff(), PasienModel.Default.ToReff(),
             RegModel.Default.ToReff(), KamarType.Default.ToReff(), PatientConditionEnum.Stable, "-");
+
+    public static DischargeOpModel Create(OrderOpModel orderOp, DateTime dischargeDateTime,
+        KamarType kamar, PatientConditionEnum patientCondition, string postOpNote, string userId)
+    {
+        var newId = Ulid.NewUlid().ToString();
+        var audit = new AuditTrailType(new AuditInfoType(userId, DateTime.Now),
+            AuditInfoType.Default, AuditInfoType.Default);
+        var result = new DischargeOpModel(newId, dischargeDateTime, audit, orderOp.ToReff(),
+            orderOp.Dokter, orderOp.Pasien, orderOp.Reg, kamar.ToReff(), patientCondition, postOpNote);
+
+        return result;
+    }
+
     #endregion
 
     #region PROPERTIES
@@ -50,6 +68,8 @@ public class DischargeOpModel : IDischargeOpKey
     #endregion
 
     #region BEHAVIOUR
+    public DischergeOpReff ToReff() =>
+        new DischergeOpReff(DischargeOpId, DischargeDate);
     #endregion
 }
 

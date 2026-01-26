@@ -143,6 +143,9 @@ public class OpCaseModel : IOrderOpKey
     public void Discharge(DischergeOpReff discharge)
     {
         DischargeOp = discharge;
+        OrderOpState = OpCaseStateEnum.Discharged;
+
+        UpsertStateHistory(OrderOpState);
     }
 
     public void CancelSchedule()
