@@ -17,6 +17,7 @@ public class TrsBillingDalTest
             fn_modul: 1,
             fd_tgl_trs: "2025-01-01",
             fs_jam_trs: "10:00:00",
+            fd_tgl_jam_trs: "2025-01-01 10:00:00",
             fs_kd_reg: "REG001",
             fs_kd_layanan: "LAY01",
             fs_kd_kelas: "KLS",

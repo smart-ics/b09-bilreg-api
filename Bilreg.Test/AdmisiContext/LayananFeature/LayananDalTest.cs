@@ -12,7 +12,7 @@ public class LayananDalTest
     private readonly LayananDal _sut = new(ConnStringHelper.GetTestEnv());
 
     private static LayananDto Faker()
-        => new LayananDto("A", "B", true, "C", "D", "E", "F", "G", "H", "I", "J");
+        => new LayananDto("A", "B", true, "C", "D", "E","F", "G", "H", "I", "J", "K", "L");
 
     private static ILayananKey FakerKey()
         => LayananType.Key("A");
@@ -72,9 +72,9 @@ public class LayananDalTest
         using var trans = TransHelper.NewScope();
 
         // arrange
-        var layanan = Faker() with { fs_kd_instalasi_dk = "G" };
+        var layanan = Faker() with { fs_kd_instalasi_dk = "H" };
         _sut.Insert(layanan);
-        var filter = InstalasiDkType.Key("G");
+        var filter = InstalasiDkType.Key("H");
 
         // act
         var actual = _sut.ListData(filter);
