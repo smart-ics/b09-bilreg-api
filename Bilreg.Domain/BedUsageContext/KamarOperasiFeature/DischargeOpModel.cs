@@ -29,6 +29,11 @@ public class DischargeOpModel : IDischargeOpKey
         KondisiPasien = kondisiPasien;
         PostOpNote = postOpNote;
     }
+
+    public static IDischargeOpKey Key(string id)
+        => new DischargeOpModel(id, new DateTime(3000, 1, 1), AuditTrailType.Default,
+            OrderOpModel.Default.ToReff(), PpaType.Default.ToReff(), PasienModel.Default.ToReff(),
+            RegModel.Default.ToReff(), KamarType.Default.ToReff(), PatientConditionEnum.Stable, "-");
     #endregion
 
     #region PROPERTIES
