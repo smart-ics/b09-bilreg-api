@@ -92,7 +92,7 @@ public class OpCaseModel : IOrderOpKey
     public void Schedule(ScheduleOpReff schedule)
     {
         if ((int)OrderOpState >= (int)OpCaseStateEnum.OpStarted)
-            throw new ArgumentException("Operasi sedang dilakukan!");
+            throw new ArgumentException("Status Operasi tidak dapat diubah scheduled!");
 
         ScheduleOp = schedule;
         OnProgressOp = OnProgressOpReff.Default;
@@ -104,7 +104,7 @@ public class OpCaseModel : IOrderOpKey
     public void Start(DateTime startTime)
     {
         if ((int)OrderOpState >= (int)OpCaseStateEnum.RecoveryStarted)
-            throw new ArgumentException("Dalam tahap recovery!");
+            throw new ArgumentException("Status Operasi tidak dapat diubah started!");
 
         OnProgressOp = new OnProgressOpReff(startTime, new DateTime(3000, 1, 1));
         OrderOpState = OpCaseStateEnum.OpStarted;
@@ -115,7 +115,7 @@ public class OpCaseModel : IOrderOpKey
     public void CancelStart()
     {
         if ((int)OrderOpState >= (int)OpCaseStateEnum.RecoveryStarted)
-            throw new ArgumentException("Dalam tahap recovery!");
+            throw new ArgumentException("Status Operasi tidak dapat diubah scheduled/preOpCleared!");
 
         // Remove OpStarted state
         _listStateHistory.RemoveAll(x =>
@@ -134,6 +134,8 @@ public class OpCaseModel : IOrderOpKey
 
     public void Finish(DateTime finishTime)
     {
+        if ((int)OrderOpState != (int)OpCaseStateEnum.OpStarted)
+            throw new ArgumentException("Status Operasi tidak dapat diubah finished!");
         OnProgressOp = new OnProgressOpReff(OnProgressOp.StartTime, finishTime);
         OrderOpState = OpCaseStateEnum.RecoveryStarted;
 
@@ -142,6 +144,8 @@ public class OpCaseModel : IOrderOpKey
 
     public void Discharge(DischergeOpReff discharge)
     {
+        if ((int)OrderOpState != (int)OpCaseStateEnum.RecoveryStarted)
+            throw new ArgumentException("Status Operasi tidak dapat diubah discharged!");
         DischargeOp = discharge;
         OrderOpState = OpCaseStateEnum.Discharged;
 
@@ -151,7 +155,7 @@ public class OpCaseModel : IOrderOpKey
     public void CancelSchedule()
     {
         if ((int)OrderOpState >= (int)OpCaseStateEnum.OpStarted)
-            throw new ArgumentException("Operasi sedang dilakukan!");
+            throw new ArgumentException("Status Operasi tidak dapat diubah started!");
 
         _listStateHistory.RemoveAll(x => x.OpCaseState == OpCaseStateEnum.Scheduled);
 

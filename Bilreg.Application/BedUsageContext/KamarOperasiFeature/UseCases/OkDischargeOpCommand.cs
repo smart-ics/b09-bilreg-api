@@ -52,6 +52,7 @@ public class OkDischargeOpHandler : IRequestHandler<OkDischargeOpCommand, OkDisc
 
         using var trans = TransHelper.NewScope();
         _dischargeOpRepo.SaveChanges(newDischarge);
+        _opCaseRepo.SaveChanges(opCase);
         trans.Complete();
 
         return Task.FromResult(new OkDischargeOpResponse(orderOp.OrderOpId, OpCaseStateEnum.Discharged.ToString(),
