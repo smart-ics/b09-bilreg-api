@@ -1,4 +1,6 @@
-﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
+﻿using Bilreg.Application.AccountingContext.JurnalFeature;
+using Bilreg.Application.AccountingContext.JurnalFeature.JkAgg;
+using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.BookingFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
@@ -9,6 +11,8 @@ using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.ChargeContext.TindakanFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
+using Bilreg.Domain.AccountingContext.JurnalFeature;
+using Bilreg.Domain.AccountingContext.UnitFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
@@ -61,9 +65,14 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
     private readonly INilaiTarifRepo _nilaiTarifRepo;
     private readonly ITindakanRepo _tindakanRepo;
     private readonly IKomponenRepo _komponenRepo;
-    // trsBill
     private readonly ITarifRepo _tarifRepo;
+    // trsBill
+    private readonly ITrsBillingFactory _trsBillingFactory;
     private readonly ITrsBillingRepo _trsBillingRepo;
+    // jurnal
+    private readonly IMapJaminanJkRepo _mapJaminanJkRepo;
+    private readonly IJurnalFactory _jurnalFactory;
+    private readonly IJurnalRepo _jurnalRepo;
     private const string BAYAR_SENDIRI = "1";
 
     public RegJalanCreateHandler(
@@ -92,7 +101,13 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         ITindakanRepo tindakanRepo,
         IKomponenRepo komponenRepo,
         ITarifRepo tarifRepo,
-        ITrsBillingRepo trsBillingRepo)
+        //  trsBill
+        ITrsBillingFactory trsBillingFactory,
+        ITrsBillingRepo trsBillingRepo,
+        // jurnal
+        IMapJaminanJkRepo mapJaminanJkRepo,
+        IJurnalFactory jurnalFactory,
+        IJurnalRepo jurnalRepo)
     {
         //      reg-support
         _pasienRepo = pasienRepo;
@@ -119,7 +134,13 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         _tindakanRepo = tindakanRepo;
         _komponenRepo = komponenRepo;
         _tarifRepo = tarifRepo;
+        //      trsBill
+        _trsBillingFactory = trsBillingFactory;
         _trsBillingRepo = trsBillingRepo;
+        //      jurnal
+        _mapJaminanJkRepo = mapJaminanJkRepo;
+        _jurnalFactory = jurnalFactory;
+        _jurnalRepo = jurnalRepo;
     }
 
     public Task<RegJalanCreateResponse> Handle(RegJalanWalkInCommand request, CancellationToken cancellationToken)
@@ -158,8 +179,13 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             var komp = LoadKomponen(KomponenType.Key(item.KomponenTarif.KomponenId));
             listKompKarcis.Add(komp);
         }
-        var trsBillingReg = TrsBillingType.CreateFromRegistrasi(reg, karcis,
+        var trsBillingReg = _trsBillingFactory.CreateFromRegistrasi(reg, karcis,
             jaminan, dokter, listKompKarcis);
+
+        //     BUILD Jurnal Reg
+        var mapJaminanJk = LoadMapJmnJk(tipeJaminan.Jaminan);
+        var jurnalReg = _jurnalFactory.CreateFromReg(reg, karcis,
+            jaminan, dokter, layanan, mapJaminanJk, listKompKarcis);
 
         //      BUILD TINDAKAN
         var tindakan =  karcis.DefaultTarif == TarifType.Default.ToReff()
@@ -173,6 +199,12 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         var trsBilling = tindakan == TindakanModel.Default 
             ? TrsBillingType.Default
             : GenBill(tindakan, reg, tarif, jaminan);
+
+        //      BUILD Jurnal Tindakan
+        var jurnalTindakan = tindakan == TindakanModel.Default
+            ? JurnalType.Default
+            : GenJurnalTindakan(tindakan, reg, tarif, jaminan,
+                layanan, mapJaminanJk);
 
         using var trans = TransHelper.NewScope();
         
@@ -196,6 +228,10 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             _tindakanRepo.SaveChanges(tindakan);
         if(trsBilling != TrsBillingType.Default)
             _trsBillingRepo.SaveChanges(trsBilling);
+
+        _jurnalRepo.SaveChanges(jurnalReg);
+        if (jurnalTindakan != JurnalType.Default)
+            _jurnalRepo.SaveChanges(jurnalTindakan);
 
         trans.Complete();
         return Task.FromResult(new RegJalanCreateResponse(reg.RegId, antEntry.NoUrut));
@@ -316,8 +352,20 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             var komp = LoadKomponen(KomponenType.Key(item.Komponen.KomponenId));
             listKomp.Add(komp);
         }
-        var trsBilling = TrsBillingType.CreateFromTindakan(tdk, reg, tarif, jaminan, listKomp);
+        var trsBilling = _trsBillingFactory.CreateFromTindakan(tdk, reg, tarif, jaminan, listKomp);
         return trsBilling;
+    }
+    private JurnalType GenJurnalTindakan(TindakanModel tdk, RegModel reg, TarifType tarif,
+        JaminanType jaminan, LayananType layanan, MapJaminanJkType mapJaminanJk)
+    {
+        var listKomp = new List<KomponenType>();
+        foreach (var item in tdk.ListKomponen)
+        {
+            var komp = LoadKomponen(KomponenType.Key(item.Komponen.KomponenId));
+            listKomp.Add(komp);
+        }
+        var jurnal = _jurnalFactory.CreateFromTindakan(tdk, reg, tarif, jaminan, layanan, mapJaminanJk, listKomp);
+        return jurnal;
     }
     private KomponenType LoadKomponen(IKomponenKey key)
     {
@@ -346,6 +394,15 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
                 onNone: () => TarifType.Default
             );
         return tarif;
+    }
+    private MapJaminanJkType LoadMapJmnJk(IJaminanKey key)
+    {
+        var map = _mapJaminanJkRepo.LoadEntity(key)
+            .Match(
+                onSome: x => x,
+                onNone: () => MapJaminanJkType.Default
+            );
+        return map;
     }
     #endregion
 }

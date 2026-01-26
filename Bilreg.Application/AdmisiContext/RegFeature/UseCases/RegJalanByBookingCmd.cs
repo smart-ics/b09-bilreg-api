@@ -1,4 +1,6 @@
-﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
+﻿using Bilreg.Application.AccountingContext.JurnalFeature;
+using Bilreg.Application.AccountingContext.JurnalFeature.JkAgg;
+using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.BookingFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
@@ -9,6 +11,8 @@ using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.ChargeContext.TindakanFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
+using Bilreg.Domain.AccountingContext.JurnalFeature;
+using Bilreg.Domain.AccountingContext.UnitFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
@@ -54,8 +58,12 @@ public class RegJalanByBookingHandler
     private readonly ITipeTarifRepo _tipeTarifRepo;
     private readonly ITindakanRepo _tindakanRepo;
     private readonly IKomponenRepo _komponenRepo;
+    private readonly ITrsBillingFactory _trsBillingFactory;
     private readonly ITrsBillingRepo _trsBillingRepo;
 
+    private readonly IMapJaminanJkRepo _mapJaminanJkRepo;
+    private readonly IJurnalFactory _jurnalFactory;
+    private readonly IJurnalRepo _jurnalRepo;
 
     private const string BAYAR_SENDIRI = "1";
     public RegJalanByBookingHandler(
@@ -77,8 +85,12 @@ public class RegJalanByBookingHandler
         ITipeTarifRepo tipeTarifRepo,
         ITindakanRepo tindakanRepo,
         IKomponenRepo komponenRepo,
+        ITrsBillingFactory trsBillingFactory,
         ITrsBillingRepo trsBillingRepo,
-        IAntrianRepo antrianRepo)
+        IAntrianRepo antrianRepo,
+        IMapJaminanJkRepo mapJaminanJkRepo,
+        IJurnalFactory jurnalFactory,
+        IJurnalRepo jurnalRepo)
     {
         _bookingRepo = bookingRepo;
         _pasienRepo = pasienRepo;
@@ -98,8 +110,12 @@ public class RegJalanByBookingHandler
         _tipeTarifRepo = tipeTarifRepo;
         _tindakanRepo = tindakanRepo;
         _komponenRepo = komponenRepo;
+        _trsBillingFactory = trsBillingFactory;
         _trsBillingRepo = trsBillingRepo;
         _antrianRepo = antrianRepo;
+        _mapJaminanJkRepo = mapJaminanJkRepo;
+        _jurnalFactory = jurnalFactory;
+        _jurnalRepo = jurnalRepo;
     }
 
     public Task<RegJalanByBookingResponse> Handle(RegJalanByBookingCmd request, CancellationToken cancellationToken)
@@ -147,8 +163,13 @@ public class RegJalanByBookingHandler
             var komp = LoadKomponen(KomponenType.Key(item.KomponenTarif.KomponenId));
             listKompKarcis.Add(komp);
         }
-        var trsBillingReg = TrsBillingType.CreateFromRegistrasi(reg, karcis,
+        var trsBillingReg = _trsBillingFactory.CreateFromRegistrasi(reg, karcis,
             jaminan, dokter, listKompKarcis);
+
+        //     BUILD Jurnal Reg
+        var mapJaminanJk = LoadMapJmnJk(tipeJaminan.Jaminan);
+        var jurnalReg = _jurnalFactory.CreateFromReg(reg, karcis,
+            jaminan, dokter, layanan, mapJaminanJk, listKompKarcis);
 
         //      BUILD TINDAKAN
         var tindakan = karcis.DefaultTarif == TarifType.Default.ToReff()
@@ -163,6 +184,12 @@ public class RegJalanByBookingHandler
             ? TrsBillingType.Default
             : GenBill(tindakan, reg, tarif, jaminan);
 
+        //      BUILD Jurnal Tindakan
+        var jurnalTindakan = tindakan == TindakanModel.Default
+            ? JurnalType.Default
+            : GenJurnalTindakan(tindakan, reg, tarif, jaminan,
+                layanan, mapJaminanJk);
+
         //  WRITE
         using var trans = TransHelper.NewScope();
         _regRepo.SaveChanges(reg);
@@ -174,6 +201,10 @@ public class RegJalanByBookingHandler
             _tindakanRepo.SaveChanges(tindakan);
         if (trsBilling != TrsBillingType.Default)
             _trsBillingRepo.SaveChanges(trsBilling);
+
+        _jurnalRepo.SaveChanges(jurnalReg);
+        if (jurnalTindakan != JurnalType.Default)
+            _jurnalRepo.SaveChanges(jurnalTindakan);
 
         trans.Complete();
         return Task.FromResult(new RegJalanByBookingResponse(reg.RegId, booking.NoAntrian));
@@ -260,9 +291,22 @@ public class RegJalanByBookingHandler
             var komp = LoadKomponen(KomponenType.Key(item.Komponen.KomponenId));
             listKomp.Add(komp);
         }
-        var trsBilling = TrsBillingType.CreateFromTindakan(tdk, reg, tarif, jaminan, listKomp);
+        var trsBilling = _trsBillingFactory.CreateFromTindakan(tdk, reg, tarif, jaminan, listKomp);
         return trsBilling;
     }
+    private JurnalType GenJurnalTindakan(TindakanModel tdk, RegModel reg, TarifType tarif,
+        JaminanType jaminan, LayananType layanan, MapJaminanJkType mapJaminanJk)
+    {
+        var listKomp = new List<KomponenType>();
+        foreach (var item in tdk.ListKomponen)
+        {
+            var komp = LoadKomponen(KomponenType.Key(item.Komponen.KomponenId));
+            listKomp.Add(komp);
+        }
+        var jurnal = _jurnalFactory.CreateFromTindakan(tdk, reg, tarif, jaminan, layanan, mapJaminanJk, listKomp);
+        return jurnal;
+    }
+
     private KomponenType LoadKomponen(IKomponenKey key)
     {
         var komponen = _komponenRepo.LoadEntity(key)
@@ -304,6 +348,15 @@ public class RegJalanByBookingHandler
         var result = _antrianRepo.LoadEntity(antrian).GetValueOrThrow("Antrian not found");
         return result;
     }
-    
+
+    private MapJaminanJkType LoadMapJmnJk(IJaminanKey key)
+    {
+        var map = _mapJaminanJkRepo.LoadEntity(key)
+            .Match(
+                onSome: x => x,
+                onNone: () => MapJaminanJkType.Default
+            );
+        return map;
+    }
     #endregion
 }

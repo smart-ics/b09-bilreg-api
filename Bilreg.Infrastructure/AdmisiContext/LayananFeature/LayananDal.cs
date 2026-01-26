@@ -96,18 +96,20 @@ public class LayananDal : ILayananDal
            SELECT 
                aa.fs_kd_layanan, aa.fs_nm_layanan, aa.fb_aktif,
                aa.fs_kd_instalasi, aa.fs_kd_layanan_dk,
-               aa.fs_kd_layanan_tipe_dk, 
+               aa.fs_kd_layanan_tipe_dk, aa.fs_kd_pcc AS fs_kd_unit,
                ISNULL(bb.fs_nm_instalasi,'') AS fs_nm_instalasi,
                ISNULL(bb.fs_kd_instalasi_dk, '') AS fs_kd_instalasi_dk,
                ISNULL(cc.fs_nm_layanan_dk,'') AS fs_nm_layanan_dk,
                ISNULL(dd.fs_nm_layanan_tipe_dk,'') AS fs_nm_layanan_tipe_dk,
-               ISNULL(ee.fs_nm_instalasi_dk, '') AS fs_nm_instalasi_dk
+               ISNULL(ee.fs_nm_instalasi_dk, '') AS fs_nm_instalasi_dk,
+               ISNULL(ff.fs_nm_unit, '') AS fs_nm_unit
            FROM 
                ta_layanan aa
                LEFT JOIN ta_instalasi bb ON aa.fs_kd_instalasi = bb.fs_kd_instalasi
                LEFT JOIN ta_layanan_dk cc ON aa.fs_kd_layanan_dk = cc.fs_kd_layanan_dk
                LEFT JOIN ta_layanan_tipe_dk dd ON aa.fs_kd_layanan_tipe_dk = dd.fs_kd_layanan_tipe_dk
                LEFT JOIN ta_instalasi_dk ee ON bb.fs_kd_instalasi_dk = ee.fs_kd_instalasi_dk
+               LEFT JOIN t_unit ff ON aa.fs_kd_pcc = ff.fs_kd_unit
            WHERE 
                aa.fs_kd_layanan = @fs_kd_layanan     
            """;
@@ -126,18 +128,20 @@ public class LayananDal : ILayananDal
            SELECT 
                aa.fs_kd_layanan, aa.fs_nm_layanan, aa.fb_aktif,
                aa.fs_kd_instalasi, aa.fs_kd_layanan_dk,
-               aa.fs_kd_layanan_tipe_dk, 
+               aa.fs_kd_layanan_tipe_dk, aa.fs_kd_pcc AS fs_kd_unit,
                ISNULL(bb.fs_nm_instalasi,'') AS fs_nm_instalasi,
                ISNULL(bb.fs_kd_instalasi_dk, '') AS fs_kd_instalasi_dk,
                ISNULL(cc.fs_nm_layanan_dk,'') AS fs_nm_layanan_dk,
                ISNULL(dd.fs_nm_layanan_tipe_dk,'') AS fs_nm_layanan_tipe_dk,
-               ISNULL(ee.fs_nm_instalasi_dk, '') AS fs_nm_instalasi_dk
+               ISNULL(ee.fs_nm_instalasi_dk, '') AS fs_nm_instalasi_dk,
+               ISNULL(ff.fs_nm_unit, '') AS fs_nm_unit
            FROM 
                ta_layanan aa
                LEFT JOIN ta_instalasi bb ON aa.fs_kd_instalasi = bb.fs_kd_instalasi
                LEFT JOIN ta_layanan_dk cc ON aa.fs_kd_layanan_dk = cc.fs_kd_layanan_dk
                LEFT JOIN ta_layanan_tipe_dk dd ON aa.fs_kd_layanan_tipe_dk = dd.fs_kd_layanan_tipe_dk
                LEFT JOIN ta_instalasi_dk ee ON bb.fs_kd_instalasi_dk = ee.fs_kd_instalasi_dk
+               LEFT JOIN t_unit ff ON aa.fs_kd_pcc = ff.fs_kd_unit
            """;
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
@@ -151,18 +155,20 @@ public class LayananDal : ILayananDal
            SELECT 
                aa.fs_kd_layanan, aa.fs_nm_layanan, aa.fb_aktif,
                aa.fs_kd_instalasi, aa.fs_kd_layanan_dk,
-               aa.fs_kd_layanan_tipe_dk, 
+               aa.fs_kd_layanan_tipe_dk, aa.fs_kd_pcc AS fs_kd_unit,
                ISNULL(bb.fs_nm_instalasi,'') AS fs_nm_instalasi,
                ISNULL(bb.fs_kd_instalasi_dk, '') AS fs_kd_instalasi_dk,
                ISNULL(cc.fs_nm_layanan_dk,'') AS fs_nm_layanan_dk,
                ISNULL(dd.fs_nm_layanan_tipe_dk,'') AS fs_nm_layanan_tipe_dk,
-               ISNULL(ee.fs_nm_instalasi_dk, '') AS fs_nm_instalasi_dk
+               ISNULL(ee.fs_nm_instalasi_dk, '') AS fs_nm_instalasi_dk,
+               ISNULL(ff.fs_nm_unit, '') AS fs_nm_unit
            FROM 
                ta_layanan aa
                LEFT JOIN ta_instalasi bb ON aa.fs_kd_instalasi = bb.fs_kd_instalasi
                LEFT JOIN ta_layanan_dk cc ON aa.fs_kd_layanan_dk = cc.fs_kd_layanan_dk
                LEFT JOIN ta_layanan_tipe_dk dd ON aa.fs_kd_layanan_tipe_dk = dd.fs_kd_layanan_tipe_dk
                LEFT JOIN ta_instalasi_dk ee ON bb.fs_kd_instalasi_dk = ee.fs_kd_instalasi_dk
+               LEFT JOIN t_unit ff ON aa.fs_kd_pcc = ff.fs_kd_unit
            WHERE
                bb.fs_kd_instalasi_dk = @fs_kd_instalasi_dk    
            """;
