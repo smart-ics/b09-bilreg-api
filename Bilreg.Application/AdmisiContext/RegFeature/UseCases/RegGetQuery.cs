@@ -1,6 +1,8 @@
 ﻿using Ardalis.GuardClauses;
+using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
+using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
@@ -38,19 +40,23 @@ public record RegGetResponse(
     LayananReff Layanan,
     KarcisReff Karcis,
     TipeTarifReff TipeTarif,
-    JmnTipeBrgType TipeBarang);
+    JmnTipeBrgType TipeBarang,
+    int NoAntrian);
 public class RegJalanGethandler : IRequestHandler<RegGetQuery, RegGetResponse>
 {
     private readonly IRegRepo _regRepo;
     private readonly IJaminanRepo _jaminanRepo;
     private readonly ITipeJaminanRepo _tipeJaminanRepo;
+    private readonly IAntrianRepo _queRepo;
     public RegJalanGethandler(IRegRepo regRepo,
         IJaminanRepo jaminanRepo,
-        ITipeJaminanRepo tipeJaminanRepo)
+        ITipeJaminanRepo tipeJaminanRepo,
+        IAntrianRepo queRepo)
     {
         _regRepo = regRepo;
         _jaminanRepo = jaminanRepo;
         _tipeJaminanRepo = tipeJaminanRepo;
+        _queRepo = queRepo;
     }
 
     public Task<RegGetResponse> Handle(RegGetQuery request, CancellationToken cancellationToken)
@@ -64,6 +70,14 @@ public class RegJalanGethandler : IRequestHandler<RegGetQuery, RegGetResponse>
         
         var (tipeTarif, tipeBrg) = ResolveTipe(reg.JenisReg, jaminan);
         var umur = UmurHelper.HitungUmur(reg.Pasien.TglLahir);
+
+        var dateTime = reg.RegDate.ToDateTime(TimeOnly.MinValue);
+        var listQue = _queRepo.ListData(dateTime)?.ToList() ?? [];
+        var que = listQue.FirstOrDefault(x => x.ReffId == reg.RegId) 
+            ?? new AntrianView("-", 0, -1, "-", "-", "-", new DateTime(3000, 1, 1), "-", "-", "-", new TimeOnly(int.MinValue), new TimeOnly(int.MinValue));
+
+
+
         var result = new RegGetResponse(
             reg.RegId, reg.RegDate.ToString("yyyy-MM-dd"),
             reg.RegMasukAudit, reg.RegKeluarAudit, reg.RegCancelOutAudit,
@@ -71,7 +85,7 @@ public class RegJalanGethandler : IRequestHandler<RegGetQuery, RegGetResponse>
             reg.Pasien, umur, reg.TipeJaminan, reg.Polis,
             reg.Kelas, reg.CaraMasukDk, reg.Rujukan,
             reg.Dokter, reg.Layanan, reg.Karcis,
-            tipeTarif, tipeBrg);
+            tipeTarif, tipeBrg, que.NoUrut);
 
         return Task.FromResult(result);
 
