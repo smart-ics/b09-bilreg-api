@@ -47,7 +47,7 @@ public class RegJalanByBookingHandler
     private readonly ITipeJaminanRepo _tipeJaminanRepo;
     private readonly IPolisRepo _polisRepo;
     private readonly IRujukanRepo _rujukanRepo;
-
+    
     private readonly IJaminanRepo _jaminanRepo;
     private readonly ITarifRepo _tarifRepo;
     private readonly INilaiTarifRepo _nilaiTarifRepo;
@@ -108,6 +108,8 @@ public class RegJalanByBookingHandler
         var booking = LoadBooking(request.BookingId);
         var antrian = LoadAntrian(booking);
         var pasien = LoadPasien(booking.PasienId);
+        if (_regAktifRepo.IsPasienAktif(pasien))
+            throw new KeyNotFoundException($"Pasien aktif sudah aktif registrasi");
         var dokter = LoadDokter(booking.Dokter.PpaId);
         var layanan = LoadLayanan(booking.Layanan.LayananId); 
         var karcis = LoadKarcis(request.KarcisId);
