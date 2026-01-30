@@ -4,17 +4,20 @@ using Bilreg.Application.AdmisiContext.JaminanFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
 using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.AdmisiContext.PpaFeature;
+using Bilreg.Application.AdmisiContext.RemoteCetakFeature;
 using Bilreg.Application.AdmisiContext.RujukanFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.ChargeContext.TindakanFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
+using Bilreg.Application.Shared.Helpers;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.AdmisiContext.RemotCetakFeature;
 using Bilreg.Domain.AdmisiContext.RujukanFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
@@ -55,7 +58,9 @@ public class RegJalanByBookingHandler
     private readonly ITindakanRepo _tindakanRepo;
     private readonly IKomponenRepo _komponenRepo;
     private readonly ITrsBillingRepo _trsBillingRepo;
-
+    
+    private readonly IRemoteCetakRepo _remoteCetakRepo;
+    private readonly IAppSettingService _remoteCetakSvc;
 
     private const string BAYAR_SENDIRI = "1";
     public RegJalanByBookingHandler(
@@ -78,7 +83,9 @@ public class RegJalanByBookingHandler
         ITindakanRepo tindakanRepo,
         IKomponenRepo komponenRepo,
         ITrsBillingRepo trsBillingRepo,
-        IAntrianRepo antrianRepo)
+        IAntrianRepo antrianRepo,
+        IRemoteCetakRepo remoteCEtakRepo,
+        IAppSettingService remoteCetakSvc)
     {
         _bookingRepo = bookingRepo;
         _pasienRepo = pasienRepo;
@@ -100,6 +107,8 @@ public class RegJalanByBookingHandler
         _komponenRepo = komponenRepo;
         _trsBillingRepo = trsBillingRepo;
         _antrianRepo = antrianRepo;
+        _remoteCetakRepo = remoteCEtakRepo;
+        _remoteCetakSvc = remoteCetakSvc;
     }
 
     public Task<RegJalanByBookingResponse> Handle(RegJalanByBookingCmd request, CancellationToken cancellationToken)
@@ -165,6 +174,15 @@ public class RegJalanByBookingHandler
             ? TrsBillingType.Default
             : GenBill(tindakan, reg, tarif, jaminan);
 
+        //      REMOTE-CETAK
+        var appSetting = _remoteCetakSvc.Execute();
+        var rmtCetak = new RemoteCetakType(
+            reg.RegId, "RG-ANTRIAN", DateTime.Now, 
+            appSetting.Registrasi.RemoteCetakRegistrasi, 
+            false, new DateTime(3000, 1, 1),
+            "", "");
+
+
         //  WRITE
         using var trans = TransHelper.NewScope();
         _regRepo.SaveChanges(reg);
@@ -177,6 +195,7 @@ public class RegJalanByBookingHandler
         if (trsBilling != TrsBillingType.Default)
             _trsBillingRepo.SaveChanges(trsBilling);
 
+        _remoteCetakRepo.SaveChanges(rmtCetak);
         trans.Complete();
         return Task.FromResult(new RegJalanByBookingResponse(reg.RegId, booking.NoAntrian));
     }

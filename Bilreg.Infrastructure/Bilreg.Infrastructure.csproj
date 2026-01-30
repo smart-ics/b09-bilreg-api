@@ -29,8 +29,4 @@
     <ProjectReference Include="..\Bilreg.Application\Bilreg.Application.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Shared\" />
-  </ItemGroup>
-
 </Project>
