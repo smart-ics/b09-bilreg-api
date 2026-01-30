@@ -1,4 +1,5 @@
-﻿using Bilreg.Domain.AdmisiContext.RemotCetakFeature;
+﻿
+using Bilreg.Domain.AdmisiContext.RemotCetakFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;
@@ -25,13 +26,13 @@ public class RemoteCetakDal : IRemoteCetakDal
     {
         const string sql = """
            INSERT INTO ta_remote_cetak(
-                fs_kd_trs, fs_jenis_dok, fb_aktif, 
+                fs_kd_trs, fs_jenis_dok,  
                 fd_tgl_send, fs_jam_send, fs_remote_addr, 
                 fn_cetak, fd_tgl_cetak, 
                 fs_jam_cetak, fs_json_data, 
                 CallbackDataOfta)
            VALUES( 
-                @fs_kd_trs, @fs_jenis_dok, @fb_aktif, 
+                @fs_kd_trs, @fs_jenis_dok, 
                 @fd_tgl_send, @fs_jam_send, @fs_remote_addr, 
                 @fn_cetak, @fd_tgl_cetak, 
                 @fs_jam_cetak, @fs_json_data, 
@@ -64,14 +65,14 @@ public record RemoteCetakDto (string fs_kd_trs, string fs_jenis_dok, string fd_t
         var fn_cetak = model.IsCetak ? 1 : 0;
 
         var result = new RemoteCetakDto(
-            model.TransaksiId, 
-            model.JenisDokumen, 
+            model.TransaksiId,
+            model.JenisDokumen,
             model.TanggalSend.ToString("yyyy-MM-dd"),
             model.TanggalSend.ToString("HH:mm:ss"),
-            model.RemoteAddress, 
+            model.RemoteAddress,
             fn_cetak,
-            model.TanggalSend.ToString("yyyy-MM-dd"),
-            model.TanggalSend.ToString("HH:mm:ss"),
+            model.TanggalCetak.ToString("yyyy-MM-dd"),
+            model.TanggalCetak.ToString("HH:mm:ss"),
             model.JsonData,
             model.CallbackData
             );
@@ -83,7 +84,7 @@ public record RemoteCetakDto (string fs_kd_trs, string fs_jenis_dok, string fd_t
         var tglSend = $"{dto.fd_tgl_send} {dto.fs_jam_send}".ToDate("yyyy-MM-dd HH:mm:ss");
         var tglCetak = $"{dto.fd_tgl_cetak} {dto.fs_jam_cetak}".ToDate("yyyy-MM-dd HH:mm:ss");
         var isCetak = dto.fn_cetak == 1 ? true : false;
-        var result = new RemoteCetakType(dto.fs_kd_trs, dto.fs_jenis_dok, tglSend, 
+        var result = new RemoteCetakType(dto.fs_kd_trs, dto.fs_jenis_dok, tglSend,
             dto.fs_remote_addr, isCetak, tglCetak, dto.fs_json_data, dto.CallbackDataOfta);
         return result;
     }

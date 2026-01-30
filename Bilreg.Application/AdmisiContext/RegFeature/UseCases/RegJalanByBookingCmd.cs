@@ -62,6 +62,7 @@ public class RegJalanByBookingHandler
     private readonly IRemoteCetakRepo _remoteCetakRepo;
     private readonly IAppSettingService _remoteCetakSvc;
 
+
     private const string BAYAR_SENDIRI = "1";
     public RegJalanByBookingHandler(
         IBookingRepo bookingRepo,

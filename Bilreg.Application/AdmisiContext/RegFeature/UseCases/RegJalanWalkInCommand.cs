@@ -70,7 +70,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
     private const string BAYAR_SENDIRI = "1";
 
     private readonly IRemoteCetakRepo _remoteCetakRepo;
-    private readonly IAppSettingService _remoteCetakSvc;
+    private readonly IAppSettingService _appSettingSvc;
 
     public RegJalanCreateHandler(
         //  reg support
@@ -100,7 +100,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         ITarifRepo tarifRepo,
         ITrsBillingRepo trsBillingRepo,
         IRemoteCetakRepo remoteCetakRepo,
-        IAppSettingService remoteCetakSvc)
+        IAppSettingService appSettingSvc)
     {
         //      reg-support
         _pasienRepo = pasienRepo;
@@ -129,7 +129,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         _tarifRepo = tarifRepo;
         _trsBillingRepo = trsBillingRepo;
         _remoteCetakRepo = remoteCetakRepo;
-        _remoteCetakSvc = remoteCetakSvc;
+        _appSettingSvc = appSettingSvc;
     }
 
     public Task<RegJalanCreateResponse> Handle(RegJalanWalkInCommand request, CancellationToken cancellationToken)
@@ -185,7 +185,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             : GenBill(tindakan, reg, tarif, jaminan);
 
         //      REMOTE-CETAK
-        var appSetting = _remoteCetakSvc.Execute();
+        var appSetting = _appSettingSvc.Execute();
         var rmtCetak = new RemoteCetakType(
             reg.RegId, "RG-ANTRIAN", DateTime.Now,
             appSetting.Registrasi.RemoteCetakRegistrasi,
@@ -217,6 +217,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             _trsBillingRepo.SaveChanges(trsBilling);
 
         _remoteCetakRepo.SaveChanges(rmtCetak);
+
         trans.Complete();
         return Task.FromResult(new RegJalanCreateResponse(reg.RegId, antEntry.NoUrut));
     }
