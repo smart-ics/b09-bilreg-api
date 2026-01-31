@@ -107,6 +107,14 @@ namespace Bilreg.Api.Controllers.AdmisiContext.RujukanSub
             var response = await _mediator.Send(query);
             return Ok(new JSendOk(response));
         }
+        [HttpGet]
+        [Route("ppk/{ppkId}")]
+        public async Task<IActionResult> GetByPpk(string ppkId)
+        {
+            var query = new RjkGetByPpkIdQuery(ppkId);
+            var response = await _mediator.Send(query); 
+            return Ok(new JSendOk(response));
+        }
     }
 
 }

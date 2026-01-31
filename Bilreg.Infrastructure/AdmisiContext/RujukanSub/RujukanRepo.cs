@@ -1,4 +1,5 @@
 ﻿using Bilreg.Application.AdmisiContext.RujukanFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RujukanFeature;
 using Nuna.Lib.PatternHelper;
 
@@ -34,5 +35,14 @@ public class RujukanRepo : IRujukanRepo
         var model = result?.Select(x => x.ToModel())?
             .ToList() ?? [];
         return model;
+    }
+
+    public MayBe<RujukanType> LoadEntity(IPpkKey ppkkey)
+    {
+        var dto = _rujukanDal.GetDataByPpkId(ppkkey);
+        if (dto is null)
+            return MayBe<RujukanType>.None;
+        var model = dto.ToModel();
+        return MayBe.From(model);
     }
 }
