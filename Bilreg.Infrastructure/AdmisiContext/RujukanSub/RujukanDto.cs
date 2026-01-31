@@ -15,6 +15,7 @@ public record RujukanDto(
     string fs_kd_kelas_rs,
     string fs_kd_cara_masuk_dk,
     bool fb_aktif,
+    string fs_kd_ppk,
     //
     string fs_nm_rujukan_tipe,
     string fs_nm_kelas_rs,
@@ -31,7 +32,8 @@ public record RujukanDto(
             model.TipeRujukan.TipeRujukanId,
             model.KelasRujukan.KelasRujukanId,
             model.CaraMasukDk.CaraMasukDkId,
-            model.IsAktif,
+            model.IsAktif, 
+            model.PpkId,
             //
             model.TipeRujukan.TipeRujukanName,
             model.KelasRujukan.KelasRujukanName,
@@ -46,7 +48,7 @@ public record RujukanDto(
         var noTelp = new ContactType(JenisContactEnum.Phone, fs_tlp_rujukan);
         var result = 
             new RujukanType(fs_kd_rujukan,
-                fs_nm_rujukan, fb_aktif, alamat, noTelp,
+                fs_nm_rujukan, fb_aktif, fs_kd_ppk, alamat, noTelp,
                 new TipeRujukanType(fs_kd_rujukan_tipe, fs_nm_rujukan_tipe),
                 new KelasRujukanReff(fs_kd_kelas_rs, fs_nm_kelas_rs),
                 new CaraMasukDkType(fs_kd_cara_masuk_dk, fs_nm_cara_masuk_dk));

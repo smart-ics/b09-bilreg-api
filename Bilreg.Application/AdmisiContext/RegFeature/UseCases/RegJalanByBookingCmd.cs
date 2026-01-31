@@ -108,7 +108,7 @@ public class RegJalanByBookingHandler
         _komponenRepo = komponenRepo;
         _trsBillingRepo = trsBillingRepo;
         _antrianRepo = antrianRepo;
-        _remoteCetakRepo = remoteCEtakRepo;
+        _remoteCetakRepo = remoteCetakRepo;
         _appSettingSvc = remoteCetakSvc;
     }
 

@@ -8,6 +8,7 @@ public record RujukanListResponse(
     string RujukanId,
     string RujukanName,
     bool IsAktif,
+    string PpkId,
     AlamatType Alamat,
     string Telepon,
     string RujukanTipeId,
@@ -33,7 +34,7 @@ public class RujukanListHandler : IRequestHandler<RujukanListQuery, IEnumerable<
             ?? [];
 
         var response = listDto.Select(x => new RujukanListResponse(
-            x.RujukanId, x.RujukanName, x.IsAktif,
+            x.RujukanId, x.RujukanName, x.IsAktif, x.PpkId,
             x.Alamat, x.Alamat.Kota, x.TipeRujukan.TipeRujukanId,
             x.TipeRujukan.TipeRujukanName, x.KelasRujukan.KelasRujukanId, x.KelasRujukan.KelasRujukanName,
             x.CaraMasukDk.CaraMasukDkId, x.CaraMasukDk.CaraMasukDkName));
