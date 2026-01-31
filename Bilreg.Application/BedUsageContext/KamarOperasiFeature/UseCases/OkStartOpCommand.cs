@@ -36,24 +36,24 @@ public class OkStartOpHandler : IRequestHandler<OkStartOpCommand, OkStartOpRespo
         //  GUARD
         var orderOp = _orderOpRepo.LoadEntity(OrderOpModel.Key(request.OrderOpId))
             .GetValueOrThrow($"Schedule Operasi dengan OrderOp ID: { request.OrderOpId } tidak ditemukan.");
-        
+
+        var opCase = _opCaseRepo.LoadEntity(orderOp)
+            .GetValueOrThrow("Invalid Order Operasi. OpCase data tidak ditemukan.");
+
         var listSchedule = _scheduleOpRepo.ListData(PasienModel.Key(orderOp.Pasien.PasienId))?.ToList()
                            ?? [];
         var scheduleWithOrderOpId = listSchedule
             .Where(x => !x.IsVoid)
             .FirstOrDefault(x => x.OrderOp.OrderOpId == request.OrderOpId);
+        if (scheduleWithOrderOpId == null)
+            throw new KeyNotFoundException("Schedule Operasi tidak ditemukan.");
 
-        var scheduleOp = scheduleWithOrderOpId != null
-            ? _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(scheduleWithOrderOpId.ScheduleOpId))
-                .GetValueOrThrow($"Schedule Operasi dengan OrderOp ID: { request.OrderOpId } tidak ditemukan.")
-            : throw new KeyNotFoundException($"Schedule Operasi dengan OrderOp ID: { request.OrderOpId } tidak ditemukan.");
+        var scheduleOp = _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(scheduleWithOrderOpId.ScheduleOpId))
+            .GetValueOrThrow("Schedule Operasi tidak ditemukan.");
 
         var tglOp = DateTime.ParseExact(
             $"{ scheduleOp.TglOp.ToString(DateFormatEnum.YMD) } { request.Jam }", "yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
 
-        var opCase = _opCaseRepo.LoadEntity(orderOp)
-            .GetValueOrDefault()
-            ?? OpCaseModel.Create(orderOp);
         opCase.Start(tglOp);
 
         //  WRITE

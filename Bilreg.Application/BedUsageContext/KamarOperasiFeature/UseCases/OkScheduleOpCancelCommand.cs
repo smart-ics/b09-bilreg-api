@@ -27,24 +27,22 @@ public class OkScheduleOpCancelHandler : IRequestHandler<OkScheduleOpCancelComma
         var orderOp = _orderOpRepo.LoadEntity(OrderOpModel.Key(request.OrderOpId))
             .GetValueOrThrow($"Order Operasi ID {request.OrderOpId} tidak ditemukan.");
 
+        var opCase = _opCaseRepo.LoadEntity(orderOp)
+            .GetValueOrThrow("Invalid Order Operasi. OpCase data tidak ditemukan.");
+
         var listSchedule = _scheduleOpRepo.ListData(PasienModel.Key(orderOp.Pasien.PasienId))?.ToList()
             ?? [];
         var scheduleWithOrderOpId = listSchedule?
             .Where(x => !x.IsVoid)
             .FirstOrDefault(x => x.OrderOp.OrderOpId == request.OrderOpId);
         if (scheduleWithOrderOpId == null)
-            return Task.CompletedTask;
+            throw new KeyNotFoundException("Schedule Operasi tidak ditemukan.");
 
         var scheduleOp = _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(scheduleWithOrderOpId.ScheduleOpId))
-            .GetValueOrDefault();
-        if (scheduleOp == null)
-            return Task.CompletedTask;
+            .GetValueOrThrow("Schedule Operasi tidak ditemukan.");
 
         scheduleOp.CancelSchedule(request.UserId);
 
-        var opCase = _opCaseRepo.LoadEntity(orderOp)
-            .GetValueOrDefault()
-            ?? OpCaseModel.Create(orderOp);
         opCase.CancelSchedule();
 
         using var trans = TransHelper.NewScope();

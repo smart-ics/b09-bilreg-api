@@ -14,7 +14,7 @@ public class OpCaseModel : IOrderOpKey
     public OpCaseModel(string orderOpId, OrderOpReff orderOp, 
         PasienReff pasien, string operasiName, 
         RegReff reg, UrgencyLevelEnum urgencyLevel,
-        ScheduleOpReff scheduleOp, DischergeOpReff dischargeOp,
+        ScheduleOpReff scheduleOp, DischargeOpReff dischargeOp,
         OnProgressOpReff onProgressOp,
         OpCaseStateEnum opState,
         IEnumerable<OpCaseStateHistType> listStateHistory, 
@@ -37,7 +37,7 @@ public class OpCaseModel : IOrderOpKey
     public static OpCaseModel Default => new OpCaseModel(
         "-", OrderOpModel.Default.ToReff(), PasienModel.Default.ToReff(), "-", 
         RegModel.Default.ToReff(), UrgencyLevelEnum.Elective, ScheduleOpReff.Default, 
-        DischergeOpReff.Default, OnProgressOpReff.Default, OpCaseStateEnum.Requested, [], []);
+        DischargeOpReff.Default, OnProgressOpReff.Default, OpCaseStateEnum.Requested, [], []);
 
     public static OpCaseModel Create(OrderOpModel orderOp)
     {
@@ -48,7 +48,7 @@ public class OpCaseModel : IOrderOpKey
         var dokterRequester = new OpCasePpaType(0, orderOp.Dokter, "REQUESTER", DateTime.Now);
         var result = new OpCaseModel(orderOp.OrderOpId, orderOp.ToReff(),
             orderOp.Pasien, orderOp.NamaOperasi, orderOp.Reg, orderOp.UrgencyLevel,
-            ScheduleOpReff.Default, DischergeOpReff.Default, OnProgressOpReff.Default,
+            ScheduleOpReff.Default, DischargeOpReff.Default, OnProgressOpReff.Default,
             OpCaseStateEnum.Requested, listStateHist, [dokterRequester]);
         return result;
     }
@@ -63,7 +63,7 @@ public class OpCaseModel : IOrderOpKey
     public UrgencyLevelEnum UrgencyLevel { get; private set; }
 
     public ScheduleOpReff ScheduleOp { get; private set; }
-    public DischergeOpReff DischargeOp { get; private set; }
+    public DischargeOpReff DischargeOp { get; private set; }
     public OnProgressOpReff OnProgressOp { get; private set; }
     public OpCaseStateEnum OrderOpState { get; private set; }
 
@@ -89,14 +89,20 @@ public class OpCaseModel : IOrderOpKey
     #endregion
 
     #region BEHAVIOUR
-    public void Schedule(ScheduleOpReff schedule)
+    public void Schedule(ScheduleOpModel schedule)
     {
         if ((int)OrderOpState >= (int)OpCaseStateEnum.OpStarted)
             throw new ArgumentException("Status Operasi tidak dapat diubah scheduled!");
 
-        ScheduleOp = schedule;
+        ScheduleOp = schedule.ToReff();
         OnProgressOp = OnProgressOpReff.Default;
         OrderOpState = OpCaseStateEnum.Scheduled;
+        SetListPpa(schedule.ListPpa
+                    .Select(x =>
+                    {
+                        string profesi = x.Profesi.ProfesiName;
+                        return new OpCasePpaType(x.NoUrut, x.Ppa, profesi, new DateTime(3000, 1, 1));
+                    }));
 
         UpsertStateHistory(OrderOpState);
     }
@@ -116,10 +122,6 @@ public class OpCaseModel : IOrderOpKey
     {
         if ((int)OrderOpState >= (int)OpCaseStateEnum.RecoveryStarted)
             throw new ArgumentException("Status Operasi tidak dapat diubah scheduled/preOpCleared!");
-
-        // Remove OpStarted state
-        _listStateHistory.RemoveAll(x =>
-            x.OpCaseState == OpCaseStateEnum.OpStarted);
 
         NormalizeStateHistoryNoUrut();
 
@@ -142,11 +144,11 @@ public class OpCaseModel : IOrderOpKey
         UpsertStateHistory(OrderOpState);
     }
 
-    public void Discharge(DischergeOpReff discharge)
+    public void Discharge(DischargeOpModel discharge)
     {
         if ((int)OrderOpState != (int)OpCaseStateEnum.RecoveryStarted)
             throw new ArgumentException("Status Operasi tidak dapat diubah discharged!");
-        DischargeOp = discharge;
+        DischargeOp = discharge.ToReff();
         OrderOpState = OpCaseStateEnum.Discharged;
 
         UpsertStateHistory(OrderOpState);
@@ -157,8 +159,6 @@ public class OpCaseModel : IOrderOpKey
         if ((int)OrderOpState >= (int)OpCaseStateEnum.OpStarted)
             throw new ArgumentException("Status Operasi tidak dapat diubah started!");
 
-        _listStateHistory.RemoveAll(x => x.OpCaseState == OpCaseStateEnum.Scheduled);
-
         NormalizeStateHistoryNoUrut();
 
         OrderOpState = OpCaseStateEnum.Requested;
@@ -166,7 +166,12 @@ public class OpCaseModel : IOrderOpKey
         OnProgressOp = OnProgressOpReff.Default;
     }
 
-    public void SetListPpa(IEnumerable<OpCasePpaType> listPpa)
+    public OpCaseReff ToReff() => new OpCaseReff(OrderOp.OrderOpId, OrderOp.OrderDate,
+        Pasien, OrderOpState);
+    #endregion
+
+    #region PRIVATE METHODS
+    private void SetListPpa(IEnumerable<OpCasePpaType> listPpa)
     {
         if (listPpa == null)
             return;
@@ -221,11 +226,6 @@ public class OpCaseModel : IOrderOpKey
         }
     }
 
-    public OpCaseReff ToReff() => new OpCaseReff(OrderOp.OrderOpId, OrderOp.OrderDate,
-        Pasien, OrderOpState);
-    #endregion
-
-    #region PRIVATE METHODS
     private void UpsertStateHistory(OpCaseStateEnum newState)
     {
         var now = DateTime.Now;
@@ -282,9 +282,9 @@ public record ScheduleOpReff(string ScheduleOpId, DateTime ScheduledDate)
     public static ScheduleOpReff Default => new ScheduleOpReff("-", new DateTime(3000, 1, 1));
 };
 
-public record DischergeOpReff(string DischargeOpId, DateTime DischargedDate)
+public record DischargeOpReff(string DischargeOpId, DateTime DischargedDate)
 {
-    public static DischergeOpReff Default => new DischergeOpReff("-", new DateTime(3000, 1, 1));
+    public static DischargeOpReff Default => new DischargeOpReff("-", new DateTime(3000, 1, 1));
 };
 
 public record OnProgressOpReff(DateTime StartTime, DateTime FinishTime)

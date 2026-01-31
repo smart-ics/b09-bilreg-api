@@ -37,6 +37,9 @@ public class OkDischargeOpHandler : IRequestHandler<OkDischargeOpCommand, OkDisc
         var orderOp = _orderOpRepo.LoadEntity(OrderOpModel.Key(request.OrderOpId))
             .GetValueOrThrow($"Order Operasi ID {request.OrderOpId} tidak ditemukan.");
 
+        var opCase = _opCaseRepo.LoadEntity(orderOp)
+            .GetValueOrThrow("Invalid Order Operasi. OpCase data tidak ditemukan.");
+
         var kamar = _kamarRepo.LoadEntity(KamarType.Key(request.KamarId))
             .GetValueOrThrow($"Kamar ID {request.KamarId} tidak ditemukan.");
 
@@ -45,10 +48,7 @@ public class OkDischargeOpHandler : IRequestHandler<OkDischargeOpCommand, OkDisc
         var newDischarge = DischargeOpModel.Create(orderOp, dischargeDateTime, kamar, (PatientConditionEnum)request.patientCondition,
             request.postOpNote, request.userId);
 
-        var opCase = _opCaseRepo.LoadEntity(orderOp)
-            .GetValueOrDefault()
-            ?? OpCaseModel.Create(orderOp);
-        opCase.Discharge(newDischarge.ToReff());
+        opCase.Discharge(newDischarge);
 
         using var trans = TransHelper.NewScope();
         _dischargeOpRepo.SaveChanges(newDischarge);

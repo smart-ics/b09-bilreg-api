@@ -33,11 +33,8 @@ public class OkScheduleOpRemovePpaHandler : IRequestHandler<OkScheduleOpRemovePp
         var orderOp = _orderOpRepo.LoadEntity(OrderOpModel.Key(request.OrderOpId))
             .GetValueOrThrow($"Order Operasi ID {request.OrderOpId} tidak ditemukan.");
 
-        var ppa = _ppaRepo.LoadEntity(PpaType.Key(request.PpaId))
-            .GetValueOrDefault();
-
-        if (ppa is null)
-            return Task.CompletedTask;
+        var opCase = _opCaseRepo.LoadEntity(orderOp)
+            .GetValueOrThrow("Invalid Order Operasi. OpCase data tidak ditemukan.");
 
         var listSchedule = _scheduleOpRepo.ListData(PasienModel.Key(orderOp.Pasien.PasienId))?.ToList()
             ?? [];
@@ -45,25 +42,20 @@ public class OkScheduleOpRemovePpaHandler : IRequestHandler<OkScheduleOpRemovePp
             .Where(x => !x.IsVoid)
             .FirstOrDefault(x => x.OrderOp.OrderOpId == request.OrderOpId);
         if (scheduleWithOrderOpId == null)
-            return Task.CompletedTask;
+            throw new KeyNotFoundException("Schedule Operasi tidak ditemukan.");
 
         var scheduleOp = _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(scheduleWithOrderOpId.ScheduleOpId))
+            .GetValueOrThrow("Schedule Operasi tidak ditemukan.");
+
+        var ppa = _ppaRepo.LoadEntity(PpaType.Key(request.PpaId))
             .GetValueOrDefault();
-        if (scheduleOp is null)
+
+        if (ppa is null)
             return Task.CompletedTask;
 
         scheduleOp.RemovePpa(ppa, request.UserId);
 
-        var opCase = _opCaseRepo.LoadEntity(orderOp)
-            .GetValueOrDefault()
-            ?? OpCaseModel.Create(orderOp);
-        opCase.SetListPpa(
-            scheduleOp.ListPpa
-                .Select(x =>
-                {
-                    string profesi = x.Profesi.ProfesiName;
-                    return new OpCasePpaType(x.NoUrut, x.Ppa, profesi, new DateTime(3000, 1, 1));
-                }));
+        opCase.Schedule(scheduleOp);
 
         using var trans = TransHelper.NewScope();
         _scheduleOpRepo.SaveChanges(scheduleOp);

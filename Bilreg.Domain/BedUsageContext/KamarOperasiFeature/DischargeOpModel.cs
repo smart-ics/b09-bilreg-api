@@ -68,8 +68,8 @@ public class DischargeOpModel : IDischargeOpKey
     #endregion
 
     #region BEHAVIOUR
-    public DischergeOpReff ToReff() =>
-        new DischergeOpReff(DischargeOpId, DischargeDate);
+    public DischargeOpReff ToReff() =>
+        new DischargeOpReff(DischargeOpId, DischargeDate);
     #endregion
 }
 
