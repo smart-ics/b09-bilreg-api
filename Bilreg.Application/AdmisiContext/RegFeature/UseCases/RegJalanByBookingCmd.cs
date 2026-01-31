@@ -60,7 +60,7 @@ public class RegJalanByBookingHandler
     private readonly ITrsBillingRepo _trsBillingRepo;
     
     private readonly IRemoteCetakRepo _remoteCetakRepo;
-    private readonly IAppSettingService _remoteCetakSvc;
+    private readonly IAppSettingService _appSettingSvc;
 
 
     private const string BAYAR_SENDIRI = "1";
@@ -109,7 +109,7 @@ public class RegJalanByBookingHandler
         _trsBillingRepo = trsBillingRepo;
         _antrianRepo = antrianRepo;
         _remoteCetakRepo = remoteCEtakRepo;
-        _remoteCetakSvc = remoteCetakSvc;
+        _appSettingSvc = remoteCetakSvc;
     }
 
     public Task<RegJalanByBookingResponse> Handle(RegJalanByBookingCmd request, CancellationToken cancellationToken)
@@ -176,7 +176,7 @@ public class RegJalanByBookingHandler
             : GenBill(tindakan, reg, tarif, jaminan);
 
         //      REMOTE-CETAK
-        var appSetting = _remoteCetakSvc.Execute();
+        var appSetting = _appSettingSvc.Execute();
         var rmtCetak = new RemoteCetakType(
             reg.RegId, "RG-ANTRIAN", DateTime.Now, 
             appSetting.Registrasi.RemoteCetakRegistrasi, 
