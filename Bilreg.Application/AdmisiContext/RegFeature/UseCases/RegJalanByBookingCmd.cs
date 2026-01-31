@@ -85,8 +85,8 @@ public class RegJalanByBookingHandler
         IKomponenRepo komponenRepo,
         ITrsBillingRepo trsBillingRepo,
         IAntrianRepo antrianRepo,
-        IRemoteCetakRepo remoteCEtakRepo,
-        IAppSettingService remoteCetakSvc)
+        IRemoteCetakRepo remoteCetakRepo,
+        IAppSettingService appSettingSvc)
     {
         _bookingRepo = bookingRepo;
         _pasienRepo = pasienRepo;
@@ -109,7 +109,7 @@ public class RegJalanByBookingHandler
         _trsBillingRepo = trsBillingRepo;
         _antrianRepo = antrianRepo;
         _remoteCetakRepo = remoteCetakRepo;
-        _appSettingSvc = remoteCetakSvc;
+        _appSettingSvc = appSettingSvc;
     }
 
     public Task<RegJalanByBookingResponse> Handle(RegJalanByBookingCmd request, CancellationToken cancellationToken)
