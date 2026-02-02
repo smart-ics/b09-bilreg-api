@@ -27,7 +27,6 @@ using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
-using System.Net.WebSockets;
 
 namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 
@@ -67,11 +66,9 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
     private readonly IKomponenRepo _komponenRepo;
     private readonly ITarifRepo _tarifRepo;
     // trsBill
-    private readonly ITrsBillingFactory _trsBillingFactory;
     private readonly ITrsBillingRepo _trsBillingRepo;
     // jurnal
     private readonly IMapJaminanJkRepo _mapJaminanJkRepo;
-    private readonly IJurnalFactory _jurnalFactory;
     private readonly IJurnalRepo _jurnalRepo;
     private const string BAYAR_SENDIRI = "1";
 
@@ -102,11 +99,9 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         IKomponenRepo komponenRepo,
         ITarifRepo tarifRepo,
         //  trsBill
-        ITrsBillingFactory trsBillingFactory,
         ITrsBillingRepo trsBillingRepo,
         // jurnal
         IMapJaminanJkRepo mapJaminanJkRepo,
-        IJurnalFactory jurnalFactory,
         IJurnalRepo jurnalRepo)
     {
         //      reg-support
@@ -135,11 +130,9 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         _komponenRepo = komponenRepo;
         _tarifRepo = tarifRepo;
         //      trsBill
-        _trsBillingFactory = trsBillingFactory;
         _trsBillingRepo = trsBillingRepo;
         //      jurnal
         _mapJaminanJkRepo = mapJaminanJkRepo;
-        _jurnalFactory = jurnalFactory;
         _jurnalRepo = jurnalRepo;
     }
 
@@ -179,13 +172,12 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             var komp = LoadKomponen(KomponenType.Key(item.KomponenTarif.KomponenId));
             listKompKarcis.Add(komp);
         }
-        var trsBillingReg = _trsBillingFactory.CreateFromRegistrasi(reg, karcis,
+        var trsBillingReg = TrsBillingType.CreateFromRegistrasi(reg, karcis,
             jaminan, dokter, listKompKarcis);
 
         //     BUILD Jurnal Reg
         var mapJaminanJk = LoadMapJmnJk(tipeJaminan.Jaminan);
-        var jurnalReg = _jurnalFactory.CreateFromReg(reg, karcis,
-            jaminan, dokter, layanan, mapJaminanJk, listKompKarcis);
+        var jurnalReg = JurnalType.CreateFromTrsBilling(trsBillingReg, layanan, mapJaminanJk);
 
         //      BUILD TINDAKAN
         var tindakan =  karcis.DefaultTarif == TarifType.Default.ToReff()
@@ -203,7 +195,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         //      BUILD Jurnal Tindakan
         var jurnalTindakan = tindakan == TindakanModel.Default
             ? JurnalType.Default
-            : GenJurnalTindakan(tindakan, reg, tarif, jaminan,
+            : JurnalType.CreateFromTrsBilling(trsBilling,
                 layanan, mapJaminanJk);
 
         using var trans = TransHelper.NewScope();
@@ -352,20 +344,8 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             var komp = LoadKomponen(KomponenType.Key(item.Komponen.KomponenId));
             listKomp.Add(komp);
         }
-        var trsBilling = _trsBillingFactory.CreateFromTindakan(tdk, reg, tarif, jaminan, listKomp);
+        var trsBilling = TrsBillingType.CreateFromTindakan(tdk, reg, tarif, jaminan, listKomp);
         return trsBilling;
-    }
-    private JurnalType GenJurnalTindakan(TindakanModel tdk, RegModel reg, TarifType tarif,
-        JaminanType jaminan, LayananType layanan, MapJaminanJkType mapJaminanJk)
-    {
-        var listKomp = new List<KomponenType>();
-        foreach (var item in tdk.ListKomponen)
-        {
-            var komp = LoadKomponen(KomponenType.Key(item.Komponen.KomponenId));
-            listKomp.Add(komp);
-        }
-        var jurnal = _jurnalFactory.CreateFromTindakan(tdk, reg, tarif, jaminan, layanan, mapJaminanJk, listKomp);
-        return jurnal;
     }
     private KomponenType LoadKomponen(IKomponenKey key)
     {

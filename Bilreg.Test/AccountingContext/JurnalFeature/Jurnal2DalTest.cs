@@ -19,7 +19,7 @@ public class Jurnal2DalTest
             fn_jurnald: 100000,
             fn_jurnalk: 0,
             fs_kd_unit: "UNIT001",
-            fs_kd_jk: "JK001",
+            fs_kd_jk: "JK1",
             fs_string00: "STR00",
             fs_string01: "STR01",
             fs_string02: "STR02",

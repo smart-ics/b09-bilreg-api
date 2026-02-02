@@ -16,6 +16,11 @@ public record Jurnal2JasaType(
     string TglDmyS03, string RegIdS09, string PpaIdS10)
     : Jurnal2Base(NoUrut, NilaiJurnal, UnitJk);
 
+public record Jurnal2ObatType(
+    int NoUrut, Jurnal2NilaiType NilaiJurnal, Jurnal2RLType UnitJk,
+    string TglDmyS03, string RegIdS09, string ObatIdS11)
+    : Jurnal2Base(NoUrut, NilaiJurnal, UnitJk);
+
 public record Jurnal2RoType(
     int NoUrut, Jurnal2NilaiType NilaiJurnal, Jurnal2RLType UnitJk,
     string TglDmyS03, string RegIdS09, string PpaIdS10,

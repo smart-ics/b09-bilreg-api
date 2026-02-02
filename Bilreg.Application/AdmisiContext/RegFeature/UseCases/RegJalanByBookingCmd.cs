@@ -58,11 +58,9 @@ public class RegJalanByBookingHandler
     private readonly ITipeTarifRepo _tipeTarifRepo;
     private readonly ITindakanRepo _tindakanRepo;
     private readonly IKomponenRepo _komponenRepo;
-    private readonly ITrsBillingFactory _trsBillingFactory;
     private readonly ITrsBillingRepo _trsBillingRepo;
 
     private readonly IMapJaminanJkRepo _mapJaminanJkRepo;
-    private readonly IJurnalFactory _jurnalFactory;
     private readonly IJurnalRepo _jurnalRepo;
 
     private const string BAYAR_SENDIRI = "1";
@@ -85,11 +83,9 @@ public class RegJalanByBookingHandler
         ITipeTarifRepo tipeTarifRepo,
         ITindakanRepo tindakanRepo,
         IKomponenRepo komponenRepo,
-        ITrsBillingFactory trsBillingFactory,
         ITrsBillingRepo trsBillingRepo,
         IAntrianRepo antrianRepo,
         IMapJaminanJkRepo mapJaminanJkRepo,
-        IJurnalFactory jurnalFactory,
         IJurnalRepo jurnalRepo)
     {
         _bookingRepo = bookingRepo;
@@ -110,11 +106,9 @@ public class RegJalanByBookingHandler
         _tipeTarifRepo = tipeTarifRepo;
         _tindakanRepo = tindakanRepo;
         _komponenRepo = komponenRepo;
-        _trsBillingFactory = trsBillingFactory;
         _trsBillingRepo = trsBillingRepo;
         _antrianRepo = antrianRepo;
         _mapJaminanJkRepo = mapJaminanJkRepo;
-        _jurnalFactory = jurnalFactory;
         _jurnalRepo = jurnalRepo;
     }
 
@@ -163,13 +157,13 @@ public class RegJalanByBookingHandler
             var komp = LoadKomponen(KomponenType.Key(item.KomponenTarif.KomponenId));
             listKompKarcis.Add(komp);
         }
-        var trsBillingReg = _trsBillingFactory.CreateFromRegistrasi(reg, karcis,
+        var trsBillingReg = TrsBillingType.CreateFromRegistrasi(reg, karcis,
             jaminan, dokter, listKompKarcis);
 
         //     BUILD Jurnal Reg
         var mapJaminanJk = LoadMapJmnJk(tipeJaminan.Jaminan);
-        var jurnalReg = _jurnalFactory.CreateFromReg(reg, karcis,
-            jaminan, dokter, layanan, mapJaminanJk, listKompKarcis);
+        var jurnalReg = JurnalType.CreateFromTrsBilling(trsBillingReg, 
+            layanan, mapJaminanJk);
 
         //      BUILD TINDAKAN
         var tindakan = karcis.DefaultTarif == TarifType.Default.ToReff()
@@ -187,7 +181,7 @@ public class RegJalanByBookingHandler
         //      BUILD Jurnal Tindakan
         var jurnalTindakan = tindakan == TindakanModel.Default
             ? JurnalType.Default
-            : GenJurnalTindakan(tindakan, reg, tarif, jaminan,
+            : JurnalType.CreateFromTrsBilling(trsBilling,
                 layanan, mapJaminanJk);
 
         //  WRITE
@@ -291,20 +285,8 @@ public class RegJalanByBookingHandler
             var komp = LoadKomponen(KomponenType.Key(item.Komponen.KomponenId));
             listKomp.Add(komp);
         }
-        var trsBilling = _trsBillingFactory.CreateFromTindakan(tdk, reg, tarif, jaminan, listKomp);
+        var trsBilling = TrsBillingType.CreateFromTindakan(tdk, reg, tarif, jaminan, listKomp);
         return trsBilling;
-    }
-    private JurnalType GenJurnalTindakan(TindakanModel tdk, RegModel reg, TarifType tarif,
-        JaminanType jaminan, LayananType layanan, MapJaminanJkType mapJaminanJk)
-    {
-        var listKomp = new List<KomponenType>();
-        foreach (var item in tdk.ListKomponen)
-        {
-            var komp = LoadKomponen(KomponenType.Key(item.Komponen.KomponenId));
-            listKomp.Add(komp);
-        }
-        var jurnal = _jurnalFactory.CreateFromTindakan(tdk, reg, tarif, jaminan, layanan, mapJaminanJk, listKomp);
-        return jurnal;
     }
 
     private KomponenType LoadKomponen(IKomponenKey key)

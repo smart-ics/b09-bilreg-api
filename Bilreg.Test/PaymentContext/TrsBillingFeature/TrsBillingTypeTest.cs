@@ -15,7 +15,6 @@ namespace Bilreg.Test.PaymentContext.TrsBillingFeature;
 
 public class TrsBillingTypeTests
 {
-    private readonly ITrsBillingFactory _trsBillingFactory = new TrsBillingFactory();
     [Fact]
     public void UT1_GivenValidParameters_WhenCreateFromTindakan_ThenTrsBillingTypeIsCreated()
     {
@@ -27,7 +26,7 @@ public class TrsBillingTypeTests
         var listReffKomp = new List<KomponenType> { CreateTestKomponenType() };
 
         // Act
-        var result = _trsBillingFactory.CreateFromTindakan(tindakan, reg, tarif, jaminan, listReffKomp);
+        var result = TrsBillingType.CreateFromTindakan(tindakan, reg, tarif, jaminan, listReffKomp);
 
         // Assert
         result.Should().NotBeNull();
@@ -60,7 +59,7 @@ public class TrsBillingTypeTests
         var listReffKomp = new List<KomponenType> { CreateTestKomponenType() };
 
         // Act & Assert
-        Assert.Throws<ArgumentException>(() => _trsBillingFactory.CreateFromTindakan(tindakan, reg, mismatchedTarif, jaminan, listReffKomp));
+        Assert.Throws<ArgumentException>(() => TrsBillingType.CreateFromTindakan(tindakan, reg, mismatchedTarif, jaminan, listReffKomp));
     }
 
     [Fact]
@@ -74,7 +73,7 @@ public class TrsBillingTypeTests
         var listReffKomp = new List<KomponenType> { CreateTestKomponenType() };
 
         // Act & Assert
-        Assert.Throws<ArgumentException>(() => _trsBillingFactory.CreateFromTindakan(tindakan, reg, tarif, mismatchedJaminan, listReffKomp));
+        Assert.Throws<ArgumentException>(() => TrsBillingType.CreateFromTindakan(tindakan, reg, tarif, mismatchedJaminan, listReffKomp));
     }
 
     [Fact]
@@ -88,7 +87,7 @@ public class TrsBillingTypeTests
         var listReffKomp = new List<KomponenType> { CreateTestKomponenType() };
 
         // Act
-        var result = _trsBillingFactory.CreateFromTindakan(tindakan, reg, tarif, jaminan, listReffKomp);
+        var result = TrsBillingType.CreateFromTindakan(tindakan, reg, tarif, jaminan, listReffKomp);
 
         // Assert
         result.ListTrsBilling2.Should().NotBeEmpty();
@@ -107,7 +106,7 @@ public class TrsBillingTypeTests
         var listReffKomp = new List<KomponenType> { CreateTestKomponenType() };
 
         // Act
-        var result = _trsBillingFactory.CreateFromTindakan(tindakan, reg, tarif, jaminan, listReffKomp);
+        var result = TrsBillingType.CreateFromTindakan(tindakan, reg, tarif, jaminan, listReffKomp);
 
         // Assert
         result.ListTrsBilling2.Should().NotBeEmpty();

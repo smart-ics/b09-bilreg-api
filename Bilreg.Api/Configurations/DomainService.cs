@@ -29,8 +29,6 @@ public static class DomainService
             .AddScoped<IGetKelasRajalService, GetKelasRajalService>()
             .AddScoped<IPolisFactory, PolisFactory>()
             .AddScoped<IDeleteBookingWorkflow, DeleteBookingWorkflow>()
-            .AddScoped<ITrsBillingFactory, TrsBillingFactory>()
-            .AddScoped<IJurnalFactory, JurnalFactory>()
             ;
         
         return services;

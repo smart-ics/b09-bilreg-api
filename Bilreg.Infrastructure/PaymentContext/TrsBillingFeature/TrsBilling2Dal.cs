@@ -89,15 +89,15 @@ public class TrsBilling2Dal : ITrsBilling2Dal
         const string sql = """
             SELECT
                 aa.fs_kd_trs, aa.fn_no_urut,
-                
                 aa.fs_kd_jenis_bayar, aa.fn_trs_p, aa.fn_trs_n,
+
                 aa.fs_kd_trs_bayar, aa.fd_tgl_bayar, aa.fs_jam_bayar,
                 aa.fs_kd_petugas_kasir, aa.fs_kd_petugas_medis,
-                
                 aa.fs_kd_detil_tarif, aa.fs_kd_grup_rek,
                 
                 aa.fs_kd_rek_ppdp, aa.fs_kd_rek_pdpt, aa.fs_kd_rek_disc, 
                 aa.fs_kd_rek_pdpt_lain, aa.fs_kd_rek_persediaan, aa.fs_kd_rek_tax, aa.fs_kd_rek_retur,
+
                 ISNULL(bb.fs_nm_detil_tarif, '') AS fs_nm_detil_tarif, 
                 ISNULL(cc.fs_nm_grup_rek, '') AS fs_nm_grup_rek, 
                 ISNULL(ee.fs_nm_peg, '') AS fs_nm_peg_kasir, 

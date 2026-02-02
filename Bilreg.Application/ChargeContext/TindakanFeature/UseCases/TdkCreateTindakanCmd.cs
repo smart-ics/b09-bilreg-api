@@ -35,14 +35,13 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
     private readonly IPpaRepo _ppaRepo;
     private readonly ITarifRepo _tarifRepo;
     private readonly IJaminanRepo _jaminanRepo;
-    private readonly ITrsBillingFactory _trsBillingFactory;
     private readonly ITrsBillingRepo _trsBillingRepo;
 
     public TindakanCreateHandler(ITindakanRepo tindakanRepo, 
         IRegRepo regRepo, ILayananRepo layananRepo, INilaiTarifRepo nilaiTarifRepo, 
         IKomponenRepo komponenRepo, IPpaRepo ppaRepo,  
         ITarifRepo tarifRepo, IJaminanRepo jaminanRepo,
-        ITrsBillingFactory trsBillingFactory, ITrsBillingRepo trsBillingRepo)
+        ITrsBillingRepo trsBillingRepo)
     {
         _tindakanRepo = tindakanRepo;
         _regRepo = regRepo;
@@ -52,7 +51,6 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
         _ppaRepo = ppaRepo;
         _tarifRepo = tarifRepo;
         _jaminanRepo = jaminanRepo;
-        _trsBillingFactory = trsBillingFactory;
         _trsBillingRepo = trsBillingRepo;
     }
 
@@ -76,7 +74,7 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
         }
 
         var tindakan = TindakanModel.Create(reg, layanan, nilaiTarif, listPpa, request.UserId);
-        var trsBilling = _trsBillingFactory.CreateFromTindakan(tindakan, reg, tarif, jaminan, listKomp);
+        var trsBilling = TrsBillingType.CreateFromTindakan(tindakan, reg, tarif, jaminan, listKomp);
 
         //  WRITE
         using var trans = TransHelper.NewScope();
