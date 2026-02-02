@@ -15,7 +15,7 @@ public record JaminanGetResponse(
     CaraBayarDkType CaraBayarDk,
     GroupJaminanReff GrupJaminan,
     JaminanTipeTarifType TipeTarif,
-    JaminanTipeBarangTipe TipeBarang);
+    JaminanTipeBarangType TipeBarang);
 
 public class JaminanGetHandler : IRequestHandler<JaminanGetQuery, JaminanGetResponse>
 {

@@ -2,7 +2,7 @@
 
 namespace Bilreg.Application.Shared.Helpers;
 
-public interface IAppSettingService : INunaService<AppSetting>
+public interface IGetAppSettingService : INunaService<AppSetting>
 {
 }
 
