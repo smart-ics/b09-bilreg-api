@@ -62,11 +62,10 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
         var scheduleWithOrderOpId = listSchedule
             .Where(x => !x.IsVoid)
             .FirstOrDefault(x => x.OrderOp.OrderOpId == request.OrderOpId);
-        if (scheduleWithOrderOpId == null)
-            throw new KeyNotFoundException("Schedule Operasi tidak ditemukan.");
-
-        var scheduleOp = _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(scheduleWithOrderOpId.ScheduleOpId))
-            .GetValueOrThrow("Schedule Operasi tidak ditemukan.");
+        var scheduleOp = scheduleWithOrderOpId != null
+            ? _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(scheduleWithOrderOpId.ScheduleOpId))
+                .GetValueOrDefault()
+            : null;
 
         var teamLeadExisting = scheduleOp?.TeamLead;
         var teamLead = teamLeadExisting != null ? _ppaRepo.LoadEntity(PpaType.Key(teamLeadExisting.PpaId))
