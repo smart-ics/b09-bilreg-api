@@ -10,4 +10,6 @@ public interface ITindakanRepo :
     IDelete<ITindakanKey>,
     IListData<TindakanView, IRegKey>
 {
+    IEnumerable<TindakanJualView> ListDataTdkJual(IRegKey regKey);
 }
+

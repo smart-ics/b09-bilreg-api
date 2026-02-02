@@ -5,6 +5,7 @@ using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
+using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.PaymentContext.RekapCetakFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 
@@ -149,8 +150,11 @@ public interface ITrsBillingKey
     string TrsBillingId { get; }
 }
 
-public record TrsBillKetType(string Keterangan, string Keterangan2, string RefBiaya, int Qty, string TrsMainId)
+public record TrsBillKetType(string Keterangan, string Keterangan2, string RefBiaya, decimal Qty, string TrsMainId)
 {
     public static TrsBillKetType Default => new("", "", "", 0, "");
 }
 
+public record TrsBillingView(string TrsBillingId, DateTime TglTrs, 
+    RegReff Reg, LayananReff Layanan, 
+    KelasReff Kelas, TrsBillKetType Keterangan, decimal Total);

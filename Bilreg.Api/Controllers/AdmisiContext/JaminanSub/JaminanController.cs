@@ -17,14 +17,14 @@ namespace Bilreg.Api.Controllers.AdmisiContext.JaminanSub
             _mediator = mediator;
         }
 
-        // [HttpGet]
-        // [Route("{id}")]
-        // public async Task<IActionResult> GetData(string id)
-        // {
-        //     var query = new JaminanGetQuery(id);
-        //     var response = await _mediator.Send(query);
-        //     return Ok(new JSendOk(response));
-        // }
+        [HttpGet]
+        [Route("{id}")]
+        public async Task<IActionResult> GetData(string id)
+        {
+            var query = new JaminanGetQuery(id);
+            var response = await _mediator.Send(query);
+            return Ok(new JSendOk(response));
+        }
 
         [HttpGet]
         public async Task<IActionResult> ListData()

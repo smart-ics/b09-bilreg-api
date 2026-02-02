@@ -11,7 +11,8 @@ public interface IRegAktifRepo :
     ILoadEntity<RegAktifModel, IRegKey>,
     IDelete<IRegKey>,
     IListData<RegAktifModel, ILayananKey>,
-    IListData<RegAktifModel, IPasienKey>
+    IListData<RegAktifModel, IPasienKey>,
+    IListData<RegAktifModel>
 {
     bool IsPasienAktif(IPasienKey pasien);
 }

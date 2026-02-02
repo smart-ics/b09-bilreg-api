@@ -12,7 +12,7 @@ public class JaminanDalTest
 
     private static JaminanDto Faker()
         => new JaminanDto("A", "B", true, "C", "D", "E", "F", "G", "H", "I", "J", 
-            "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V");
+            "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "A1", "B1", "C1", "D1");
 
     private static IJaminanKey FakerKey()
         => JaminanType.Default with { JaminanId = "A" };

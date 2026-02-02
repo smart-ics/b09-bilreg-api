@@ -15,7 +15,7 @@ public record TrfListTarifBrgQuery(string LayananId, string KelasId, string Tipe
 public abstract record TrfListTarifBrgResponseBase(string DisplayName);
 public record TrfListTarif(string TarifId, string TarifName, decimal Harga) 
     : TrfListTarifBrgResponseBase(TarifName);
-public record TrfListBrg(string BrgId, string BrgName, decimal Qty, string Satuan)
+public record TrfListBrg(string BrgId, string BrgName, decimal Stok, string Satuan)
     : TrfListTarifBrgResponseBase(BrgName);
 public class TrfListTarifBrgHandler 
     : IRequestHandler<TrfListTarifBrgQuery, IEnumerable<TrfListTarifBrgResponseBase>>
