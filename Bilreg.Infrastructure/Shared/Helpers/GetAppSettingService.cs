@@ -3,11 +3,11 @@ using Microsoft.Extensions.Options;
 
 namespace Bilreg.Infrastructure.Shared.Helpers;
 
-public class AppSettingService : IAppSettingService
+public class GetAppSettingService : IGetAppSettingService
 {
     private readonly RemoteCetakOptions _remoteCetakOpt;
 
-    public AppSettingService(IOptions<RemoteCetakOptions> remoteCetakOpt)
+    public GetAppSettingService(IOptions<RemoteCetakOptions> remoteCetakOpt)
     {
         _remoteCetakOpt = remoteCetakOpt.Value;
     }

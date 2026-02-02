@@ -14,7 +14,7 @@ public record JaminanType : IJaminanKey
         GroupJaminanReff grupJaminan, 
         JaminanTipeTarifType tipeTarif,
         JaminanRekeningType rekening,
-        JaminanTipeBarangTipe tipeBarang)
+        JaminanTipeBarangType tipeBarang)
     {
         JaminanId = jaminanId;
         JaminanName = jaminanName;
@@ -31,14 +31,14 @@ public record JaminanType : IJaminanKey
         GroupJaminanType.Default.ToReff(), 
         JaminanTipeTarifType.Default, 
         JaminanRekeningType.Default,
-        JaminanTipeBarangTipe.Default);
+        JaminanTipeBarangType.Default);
     public static IJaminanKey Key(string id) => Default with { JaminanId = id };
     public static JaminanType Umum => new("000", "Umum", true, 
         AlamatType.Default, CaraBayarDkType.BayarSendiri, 
         GroupJaminanType.Default.ToReff(), 
         JaminanTipeTarifType.Default, 
         JaminanRekeningType.Default,
-        JaminanTipeBarangTipe.Default);
+        JaminanTipeBarangType.Default);
     #endregion
     
     #region PROPERTIES
@@ -50,7 +50,7 @@ public record JaminanType : IJaminanKey
     public GroupJaminanReff GroupJaminan { get; init; }
     public JaminanRekeningType Rekening { get; init; }
     public JaminanTipeTarifType TipeTarif { get; init; }
-    public JaminanTipeBarangTipe TipeBarang { get; init; }
+    public JaminanTipeBarangType TipeBarang { get; init; }
     #endregion
 
     public JaminanReff ToReff() => new(JaminanId, JaminanName);
@@ -77,12 +77,10 @@ public record JaminanTipeTarifType(TipeTarifReff Rajal, TipeTarifReff Ranap)
         new JaminanTipeTarifType(TipeTarifType.Default.ToReff(), TipeTarifType.Default.ToReff());
 }
 
-public record JaminanTipeBarangTipe(JmnTipeBrgType Rajal, JmnTipeBrgType Ranap)
+public record JaminanTipeBarangType(TipeBrgType Rajal, TipeBrgType Ranap)
 {
-    public static JaminanTipeBarangTipe Default =>
-        new JaminanTipeBarangTipe(new JmnTipeBrgType("-", "-"), new JmnTipeBrgType("-", "-"));
+    public static JaminanTipeBarangType Default =>
+        new JaminanTipeBarangType(new TipeBrgType("-", "-"), new TipeBrgType("-", "-"));
 }
 
-
-
-public record JmnTipeBrgType(string TipeBarangId, string TipeBarangName);
+public record TipeBrgType(string TipeBarangId, string TipeBarangName);

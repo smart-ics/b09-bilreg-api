@@ -40,7 +40,7 @@ public record RegGetResponse(
     LayananReff Layanan,
     KarcisReff Karcis,
     TipeTarifReff TipeTarif,
-    JmnTipeBrgType TipeBarang,
+    TipeBrgType TipeBarang,
     int NoAntrian);
 public class RegJalanGethandler : IRequestHandler<RegGetQuery, RegGetResponse>
 {
@@ -91,21 +91,21 @@ public class RegJalanGethandler : IRequestHandler<RegGetQuery, RegGetResponse>
 
     }
 
-    private static (TipeTarifReff, JmnTipeBrgType) ResolveTipe(JenisRegEnum jenisReg, JaminanType jaminan)
+    private static (TipeTarifReff, TipeBrgType) ResolveTipe(JenisRegEnum jenisReg, JaminanType jaminan)
     {
         return jenisReg switch
         {
             JenisRegEnum.RegJalan => (
                 new TipeTarifReff(jaminan.TipeTarif.Rajal.TipeTarifId, jaminan.TipeTarif.Rajal.TipeTarifName),
-                new JmnTipeBrgType(jaminan.TipeBarang.Rajal.TipeBarangId, jaminan.TipeBarang.Rajal.TipeBarangName)
+                new TipeBrgType(jaminan.TipeBarang.Rajal.TipeBarangId, jaminan.TipeBarang.Rajal.TipeBarangName)
             ),
 
             JenisRegEnum.RegInap => (
                 new TipeTarifReff(jaminan.TipeTarif.Ranap.TipeTarifId, jaminan.TipeTarif.Ranap.TipeTarifName),
-                new JmnTipeBrgType(jaminan.TipeBarang.Ranap.TipeBarangId, jaminan.TipeBarang.Ranap.TipeBarangName)
+                new TipeBrgType(jaminan.TipeBarang.Ranap.TipeBarangId, jaminan.TipeBarang.Ranap.TipeBarangName)
             ),
 
-            _ => (new TipeTarifReff("-", "-"), new JmnTipeBrgType("-", "-"))
+            _ => (new TipeTarifReff("-", "-"), new TipeBrgType("-", "-"))
         };
     }
     

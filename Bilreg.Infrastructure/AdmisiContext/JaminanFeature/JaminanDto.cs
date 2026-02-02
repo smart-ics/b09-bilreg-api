@@ -92,9 +92,9 @@ public record JaminanDto(
             new TipeTarifReff(fs_kd_tipe_tarif_rawat_jalan, fs_nm_tarif_tipe_rawat_jalan),
             new TipeTarifReff(fs_kd_tipe_tarif_rawat_inap, fs_nm_tarif_tipe_rawat_inap));
 
-        var tipeBarang = new JaminanTipeBarangTipe(
-            new JmnTipeBrgType(fs_kd_tipe_brg_rawat_jalan, fs_nm_tipe_brg_rawat_jalan),
-            new JmnTipeBrgType(fs_kd_tipe_brg_rawat_inap, fs_nm_tipe_brg_rawat_inap));
+        var tipeBarang = new JaminanTipeBarangType(
+            new TipeBrgType(fs_kd_tipe_brg_rawat_jalan, fs_nm_tipe_brg_rawat_jalan),
+            new TipeBrgType(fs_kd_tipe_brg_rawat_inap, fs_nm_tipe_brg_rawat_inap));
         
         var rekening = new JaminanRekeningType(
             new CoaType(fs_piut_rawat, fs_nm_piut_rawat),

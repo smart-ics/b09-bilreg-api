@@ -23,11 +23,12 @@ public record TaTrsBilling2Dto(
 {
     public static TaTrsBilling2Dto FromModel(TrsBilling2Base model, string billingId)
     {
-        TaTrsBilling2Dto result = null;
-        if (model is TrsBilling2JasaType jasa)
-            result = FromModelJasa(jasa, billingId); 
-        if (model is TrsBilling2ObatType obat)
-            result = FromModelObat(obat, billingId);
+        var result = model switch
+        {
+            TrsBilling2JasaType jasa => FromModelJasa(jasa, billingId),
+            TrsBilling2ObatType obat => FromModelObat(obat, billingId),
+            _ => throw new ArgumentOutOfRangeException(nameof(model), model, null)
+        };
         return result;
     }
     private static TaTrsBilling2Dto FromModelJasa(TrsBilling2JasaType model, string billingId)
