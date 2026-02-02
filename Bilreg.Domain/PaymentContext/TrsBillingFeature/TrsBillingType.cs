@@ -37,9 +37,10 @@ public record TrsBillingType : ITrsBillingKey
         Keterangan = keterangan;
         _listTrsBilling2 = listTrsBilling2.ToList();
     }
-    public static TrsBillingType CreateFromTindakan(TindakanModel tindakan, 
-        RegModel reg, TarifType tarif, JaminanType jaminan, 
-        IEnumerable<KomponenType> listReffKomp)
+
+    public static TrsBillingType CreateFromTindakan(TindakanModel tindakan,
+    RegModel reg, TarifType tarif, JaminanType jaminan,
+    IEnumerable<KomponenType> listReffKomp)
     {
         if (tarif.ToReff() != tindakan.Tarif)
             throw new ArgumentException("Tarif tidak sesuai");
@@ -51,14 +52,14 @@ public record TrsBillingType : ITrsBillingKey
         var result = new TrsBillingType(tindakan.TindakanId, 0, tindakan.TindakanDate,
             tindakan.Reg, tindakan.Layanan, tindakan.Kelas, audit.Created, tindakan.Total, 0, 0, 0,
             tarif.RekapCetak, ketBilling, []);
-        
+
         var rekPpdp = reg.JenisReg == JenisRegEnum.RegInap
             ? jaminan.Rekening.PpdpJasaRanap.CoaId
             : jaminan.Rekening.PpdpJasaRajal.CoaId;
-        
+
         var i = 0;
         var listReffKompFetched = listReffKomp.ToList();
-        foreach(var item in tindakan.ListKomponen)
+        foreach (var item in tindakan.ListKomponen)
         {
             var reffKomp = listReffKompFetched.FirstOrDefault(x => x.KomponenId == item.Komponen.KomponenId);
 
@@ -66,36 +67,37 @@ public record TrsBillingType : ITrsBillingKey
             var rekDiskon = reffKomp?.RekDiskon?.CoaId ?? string.Empty;
             var rekJasa = new RekJasaType(rekPpdp, rekPdpt, rekDiskon);
 
-            var ppa = item is TindakanKomponenWithPpaType kompWithPpa 
-                ? kompWithPpa.Ppa 
+            var ppa = item is TindakanKomponenWithPpaType kompWithPpa
+                ? kompWithPpa.Ppa
                 : PpaType.Default.ToReff();
 
             var trsBill2 = new TrsBilling2JasaType(i++, tindakan.TindakanId, tindakan.TindakanDate,
-                new NilaiBillingType("PDP", item.Nilai, 0), ppa, PegType.Default, 
+                new NilaiBillingType("PDP", item.Nilai, 0), ppa, PegType.Default,
                 item.Komponen, rekJasa);
 
             result.AddTrsBilling2(trsBill2);
         }
         return result;
     }
-    public static TrsBillingType CreateFromRegistrasi(RegModel reg, 
+    public static TrsBillingType CreateFromRegistrasi(RegModel reg,
         KarcisType karcis, JaminanType jaminan, PpaType dokter,
         IEnumerable<KomponenType> listReffKomp)
     {
         var audit = AuditTrailType.Create(reg.RegMasukAudit.UserId, DateTime.Now);
         var ketBilling = new TrsBillKetType($"REG : {karcis.KarcisName}", "", karcis.KarcisId, 1, "");
-        var tglTrs = reg.RegDate.ToDateTime(TimeOnly.FromDateTime(reg.RegMasukAudit.Timestamp));
-        var result = new TrsBillingType(reg.RegId, 0, tglTrs, reg.ToReff(), reg.Layanan, reg.Kelas, 
-            audit.Created, karcis.NilaiKarcis, reg.ListKomponen.Sum(x => x.Diskon), 0, 0,
+        var result = new TrsBillingType(reg.RegId, 0, reg.RegDate.ToDateTime(TimeOnly.FromDateTime(reg.RegMasukAudit.Timestamp)),
+            reg.ToReff(), reg.Layanan, reg.Kelas, audit.Created, karcis.NilaiKarcis, reg.ListKomponen.Sum(x => x.Diskon), 0, 0,
             karcis.RekapCetak, ketBilling, []);
-        
+
+        var tglTrs = reg.RegDate.ToDateTime(TimeOnly.FromDateTime(reg.RegMasukAudit.Timestamp));
+
         var rekPpdp = reg.JenisReg == JenisRegEnum.RegInap
             ? jaminan.Rekening.PpdpJasaRanap.CoaId
             : jaminan.Rekening.PpdpJasaRajal.CoaId;
-        
+
         var i = 0;
         var listReffKompFetched = listReffKomp.ToList();
-        foreach(var item in reg.ListKomponen)
+        foreach (var item in reg.ListKomponen)
         {
             var reffKomp = listReffKompFetched.FirstOrDefault(x => x.KomponenId == item.Komponen.KomponenId);
             var rekPdpt = reffKomp?.RekPdpt?.CoaId ?? string.Empty;
@@ -104,8 +106,8 @@ public record TrsBillingType : ITrsBillingKey
             var ppa = reffKomp?.ListSatTugas?.Any() ?? false
                 ? dokter.ToReff()
                 : PpaType.Default.ToReff();
-            var trsBill2 = new TrsBilling2JasaType(i++, reg.RegId, tglTrs,
-                new NilaiBillingType("PDP", item.Nilai, 0), ppa, PegType.Default, 
+            var trsBill2 = new TrsBilling2JasaType(i++, reg.RegId, reg.RegDate.ToDateTime(TimeOnly.FromDateTime(reg.RegMasukAudit.Timestamp)),
+                new NilaiBillingType("PDP", item.Nilai, 0), ppa, PegType.Default,
                 item.Komponen, rekJasa);
             result.AddTrsBilling2(trsBill2);
         }

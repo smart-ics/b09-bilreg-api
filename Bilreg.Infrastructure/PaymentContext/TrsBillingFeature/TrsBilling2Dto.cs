@@ -9,7 +9,7 @@ using Nuna.Lib.ValidationHelper;
 namespace Bilreg.Infrastructure.PaymentContext.TrsBillingFeature;
 
 public record TaTrsBilling2Dto(
-    string fs_kd_trs, decimal fn_no_urut, 
+    string fs_kd_trs, int fn_no_urut, 
     string fs_kd_jenis_bayar, decimal fn_trs_p, decimal fn_trs_n,
     
     string fs_kd_trs_bayar, string fd_tgl_bayar, string fs_jam_bayar,

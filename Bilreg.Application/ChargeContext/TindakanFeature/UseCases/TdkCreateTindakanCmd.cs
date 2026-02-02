@@ -33,14 +33,15 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
     private readonly INilaiTarifRepo _nilaiTarifRepo;
     private readonly IKomponenRepo _komponenRepo;
     private readonly IPpaRepo _ppaRepo;
-    private readonly ITrsBillingRepo _trsBillingRepo;
     private readonly ITarifRepo _tarifRepo;
     private readonly IJaminanRepo _jaminanRepo;
+    private readonly ITrsBillingRepo _trsBillingRepo;
 
     public TindakanCreateHandler(ITindakanRepo tindakanRepo, 
         IRegRepo regRepo, ILayananRepo layananRepo, INilaiTarifRepo nilaiTarifRepo, 
-        IKomponenRepo komponenRepo, IPpaRepo ppaRepo, ITrsBillingRepo trsBillingRepo, 
-        ITarifRepo tarifRepo, IJaminanRepo jaminanRepo)
+        IKomponenRepo komponenRepo, IPpaRepo ppaRepo,  
+        ITarifRepo tarifRepo, IJaminanRepo jaminanRepo,
+        ITrsBillingRepo trsBillingRepo)
     {
         _tindakanRepo = tindakanRepo;
         _regRepo = regRepo;
@@ -48,9 +49,9 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
         _nilaiTarifRepo = nilaiTarifRepo;
         _komponenRepo = komponenRepo;
         _ppaRepo = ppaRepo;
-        _trsBillingRepo = trsBillingRepo;
         _tarifRepo = tarifRepo;
         _jaminanRepo = jaminanRepo;
+        _trsBillingRepo = trsBillingRepo;
     }
 
     public Task<TindakanCreateRespose> Handle(TdkCreateTindakanCmd request, CancellationToken cancellationToken)

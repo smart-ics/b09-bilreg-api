@@ -1,4 +1,6 @@
-﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
+﻿using Bilreg.Application.AccountingContext.JurnalFeature;
+using Bilreg.Application.AccountingContext.JurnalFeature.JkAgg;
+using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.BookingFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
@@ -10,6 +12,8 @@ using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.ChargeContext.TindakanFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
+using Bilreg.Domain.AccountingContext.JurnalFeature;
+using Bilreg.Domain.AccountingContext.UnitFeature;
 using Bilreg.Application.Shared.Helpers;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
@@ -62,6 +66,8 @@ public class RegJalanByBookingHandler
     private readonly IRemoteCetakRepo _remoteCetakRepo;
     private readonly IGetAppSettingService _getAppSettingSvc;
 
+    private readonly IMapJaminanJkRepo _mapJaminanJkRepo;
+    private readonly IJurnalRepo _jurnalRepo;
 
     private const string BAYAR_SENDIRI = "1";
     public RegJalanByBookingHandler(
@@ -85,6 +91,8 @@ public class RegJalanByBookingHandler
         IKomponenRepo komponenRepo,
         ITrsBillingRepo trsBillingRepo,
         IAntrianRepo antrianRepo,
+        IMapJaminanJkRepo mapJaminanJkRepo,
+        IJurnalRepo jurnalRepo)
         IRemoteCetakRepo remoteCetakRepo,
         IGetAppSettingService getAppSettingSvc)
     {
@@ -108,6 +116,8 @@ public class RegJalanByBookingHandler
         _komponenRepo = komponenRepo;
         _trsBillingRepo = trsBillingRepo;
         _antrianRepo = antrianRepo;
+        _mapJaminanJkRepo = mapJaminanJkRepo;
+        _jurnalRepo = jurnalRepo;
         _remoteCetakRepo = remoteCetakRepo;
         _getAppSettingSvc = getAppSettingSvc;
     }
@@ -162,6 +172,11 @@ public class RegJalanByBookingHandler
         var trsBillingReg = TrsBillingType.CreateFromRegistrasi(reg, karcis,
             jaminan, dokter, listKompKarcis);
 
+        //     BUILD Jurnal Reg
+        var mapJaminanJk = LoadMapJmnJk(tipeJaminan.Jaminan);
+        var jurnalReg = JurnalType.CreateFromTrsBilling(trsBillingReg, 
+            layanan, mapJaminanJk);
+
         //      BUILD TINDAKAN
         var tindakan = karcis.DefaultTarif == TarifType.Default.ToReff()
             ? TindakanModel.Default
@@ -175,6 +190,11 @@ public class RegJalanByBookingHandler
             ? TrsBillingType.Default
             : GenBill(tindakan, reg, tarif, jaminan);
 
+        //      BUILD Jurnal Tindakan
+        var jurnalTindakan = tindakan == TindakanModel.Default
+            ? JurnalType.Default
+            : JurnalType.CreateFromTrsBilling(trsBilling,
+                layanan, mapJaminanJk);
         //      REMOTE-CETAK
         var appSetting = _getAppSettingSvc.Execute();
         var rmtCetak = new RemoteCetakType(
@@ -195,6 +215,10 @@ public class RegJalanByBookingHandler
             _tindakanRepo.SaveChanges(tindakan);
         if (trsBilling != TrsBillingType.Default)
             _trsBillingRepo.SaveChanges(trsBilling);
+
+        _jurnalRepo.SaveChanges(jurnalReg);
+        if (jurnalTindakan != JurnalType.Default)
+            _jurnalRepo.SaveChanges(jurnalTindakan);
 
         _remoteCetakRepo.SaveChanges(rmtCetak);
         trans.Complete();
@@ -285,6 +309,7 @@ public class RegJalanByBookingHandler
         var trsBilling = TrsBillingType.CreateFromTindakan(tdk, reg, tarif, jaminan, listKomp);
         return trsBilling;
     }
+
     private KomponenType LoadKomponen(IKomponenKey key)
     {
         var komponen = _komponenRepo.LoadEntity(key)
@@ -326,6 +351,15 @@ public class RegJalanByBookingHandler
         var result = _antrianRepo.LoadEntity(antrian).GetValueOrThrow("Antrian not found");
         return result;
     }
-    
+
+    private MapJaminanJkType LoadMapJmnJk(IJaminanKey key)
+    {
+        var map = _mapJaminanJkRepo.LoadEntity(key)
+            .Match(
+                onSome: x => x,
+                onNone: () => MapJaminanJkType.Default
+            );
+        return map;
+    }
     #endregion
 }
