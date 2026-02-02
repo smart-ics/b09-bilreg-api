@@ -34,7 +34,8 @@ public class RjkGetByPpkIdHandler : IRequestHandler<RjkGetByPpkIdQuery, RjkGetBy
         var rjk = _rujukanRepo.LoadEntity(request).GetValueOrThrow($"Rujukan by Ppk {request.PpkId} not found");
         var result = new RjkGetByPpkIdResponse(rjk.RujukanId, rjk.RujukanName, rjk.IsAktif,
                 rjk.PpkId, rjk.Alamat, rjk.Alamat.Kota, rjk.TipeRujukan.TipeRujukanId,
-                rjk.TipeRujukan.TipeRujukanName, rjk.KelasRujukan.KelasRujukanId, rjk.KelasRujukan.KelasRujukanName,
+                rjk.TipeRujukan.TipeRujukanName, rjk.KelasRujukan.KelasRujukanId, 
+                rjk.KelasRujukan.KelasRujukanName,
                 rjk.CaraMasukDk.CaraMasukDkId, rjk.CaraMasukDk.CaraMasukDkName);
         return Task.FromResult(result);
     }
