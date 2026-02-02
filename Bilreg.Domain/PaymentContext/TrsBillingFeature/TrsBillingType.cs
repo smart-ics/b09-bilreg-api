@@ -5,6 +5,7 @@ using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
+using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.PaymentContext.RekapCetakFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 
@@ -88,6 +89,8 @@ public record TrsBillingType : ITrsBillingKey
             reg.ToReff(), reg.Layanan, reg.Kelas, audit.Created, karcis.NilaiKarcis, reg.ListKomponen.Sum(x => x.Diskon), 0, 0,
             karcis.RekapCetak, ketBilling, []);
 
+        var tglTrs = reg.RegDate.ToDateTime(TimeOnly.FromDateTime(reg.RegMasukAudit.Timestamp));
+
         var rekPpdp = reg.JenisReg == JenisRegEnum.RegInap
             ? jaminan.Rekening.PpdpJasaRanap.CoaId
             : jaminan.Rekening.PpdpJasaRajal.CoaId;
@@ -103,7 +106,6 @@ public record TrsBillingType : ITrsBillingKey
             var ppa = reffKomp?.ListSatTugas?.Any() ?? false
                 ? dokter.ToReff()
                 : PpaType.Default.ToReff();
-
             var trsBill2 = new TrsBilling2JasaType(i++, reg.RegId, reg.RegDate.ToDateTime(TimeOnly.FromDateTime(reg.RegMasukAudit.Timestamp)),
                 new NilaiBillingType("PDP", item.Nilai, 0), ppa, PegType.Default,
                 item.Komponen, rekJasa);
@@ -150,8 +152,11 @@ public interface ITrsBillingKey
     string TrsBillingId { get; }
 }
 
-public record TrsBillKetType(string Keterangan, string Keterangan2, string RefBiaya, int Qty, string TrsMainId)
+public record TrsBillKetType(string Keterangan, string Keterangan2, string RefBiaya, decimal Qty, string TrsMainId)
 {
     public static TrsBillKetType Default => new("", "", "", 0, "");
 }
 
+public record TrsBillingView(string TrsBillingId, DateTime TglTrs, 
+    RegReff Reg, LayananReff Layanan, 
+    KelasReff Kelas, TrsBillKetType Keterangan, decimal Total);

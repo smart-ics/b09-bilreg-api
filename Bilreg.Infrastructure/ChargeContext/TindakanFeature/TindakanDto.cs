@@ -70,3 +70,26 @@ public record TindakanDto(
         return result;
     }
 }
+
+public record TindakanJualDto(
+    string TransaksiId, DateTime TransaksiDate, string OrderTransaksiId,
+    string RegId, string PasienId, string PasienName,
+    string LayananId, string LayananName,
+    string DiskripsiId, string DiskripsiName, 
+    int Qty, decimal Total,
+    string Tipe,
+    string CrtUser, DateTime CrtDate,
+    string UpdUser, DateTime UpdDate,
+    string VodUser, DateTime VodDate)
+{
+    public TindakanJualView ToView()
+    {
+        var regReff = new RegReff(RegId, PasienId, PasienName);
+        var lyn = new LayananReff(LayananId, LayananName);
+
+        var result = new TindakanJualView(TransaksiId, TransaksiDate, OrderTransaksiId, regReff, lyn,
+            DiskripsiId, DiskripsiName, Qty, Total, Tipe);
+
+        return result;
+    }
+};

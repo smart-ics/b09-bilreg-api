@@ -6,6 +6,7 @@ using Bilreg.Application.AdmisiContext.JaminanFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
 using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.AdmisiContext.PpaFeature;
+using Bilreg.Application.AdmisiContext.RemoteCetakFeature;
 using Bilreg.Application.AdmisiContext.RujukanFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.ChargeContext.TindakanFeature;
@@ -13,12 +14,14 @@ using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Bilreg.Domain.AccountingContext.JurnalFeature;
 using Bilreg.Domain.AccountingContext.UnitFeature;
+using Bilreg.Application.Shared.Helpers;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.AdmisiContext.RemotCetakFeature;
 using Bilreg.Domain.AdmisiContext.RujukanFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
@@ -51,7 +54,7 @@ public class RegJalanByBookingHandler
     private readonly ITipeJaminanRepo _tipeJaminanRepo;
     private readonly IPolisRepo _polisRepo;
     private readonly IRujukanRepo _rujukanRepo;
-
+    
     private readonly IJaminanRepo _jaminanRepo;
     private readonly ITarifRepo _tarifRepo;
     private readonly INilaiTarifRepo _nilaiTarifRepo;
@@ -59,6 +62,9 @@ public class RegJalanByBookingHandler
     private readonly ITindakanRepo _tindakanRepo;
     private readonly IKomponenRepo _komponenRepo;
     private readonly ITrsBillingRepo _trsBillingRepo;
+    
+    private readonly IRemoteCetakRepo _remoteCetakRepo;
+    private readonly IGetAppSettingService _getAppSettingSvc;
 
     private readonly IMapJaminanJkRepo _mapJaminanJkRepo;
     private readonly IJurnalRepo _jurnalRepo;
@@ -87,6 +93,8 @@ public class RegJalanByBookingHandler
         IAntrianRepo antrianRepo,
         IMapJaminanJkRepo mapJaminanJkRepo,
         IJurnalRepo jurnalRepo)
+        IRemoteCetakRepo remoteCetakRepo,
+        IGetAppSettingService getAppSettingSvc)
     {
         _bookingRepo = bookingRepo;
         _pasienRepo = pasienRepo;
@@ -110,6 +118,8 @@ public class RegJalanByBookingHandler
         _antrianRepo = antrianRepo;
         _mapJaminanJkRepo = mapJaminanJkRepo;
         _jurnalRepo = jurnalRepo;
+        _remoteCetakRepo = remoteCetakRepo;
+        _getAppSettingSvc = getAppSettingSvc;
     }
 
     public Task<RegJalanByBookingResponse> Handle(RegJalanByBookingCmd request, CancellationToken cancellationToken)
@@ -118,6 +128,8 @@ public class RegJalanByBookingHandler
         var booking = LoadBooking(request.BookingId);
         var antrian = LoadAntrian(booking);
         var pasien = LoadPasien(booking.PasienId);
+        if (_regAktifRepo.IsPasienAktif(pasien))
+            throw new KeyNotFoundException($"Pasien aktif sudah aktif registrasi");
         var dokter = LoadDokter(booking.Dokter.PpaId);
         var layanan = LoadLayanan(booking.Layanan.LayananId); 
         var karcis = LoadKarcis(request.KarcisId);
@@ -183,6 +195,14 @@ public class RegJalanByBookingHandler
             ? JurnalType.Default
             : JurnalType.CreateFromTrsBilling(trsBilling,
                 layanan, mapJaminanJk);
+        //      REMOTE-CETAK
+        var appSetting = _getAppSettingSvc.Execute();
+        var rmtCetak = new RemoteCetakType(
+            reg.RegId, "RG-ANTRIAN", DateTime.Now, 
+            appSetting.Registrasi.RemoteCetakRegistrasi, 
+            false, new DateTime(3000, 1, 1),
+            "", "");
+
 
         //  WRITE
         using var trans = TransHelper.NewScope();
@@ -200,6 +220,7 @@ public class RegJalanByBookingHandler
         if (jurnalTindakan != JurnalType.Default)
             _jurnalRepo.SaveChanges(jurnalTindakan);
 
+        _remoteCetakRepo.SaveChanges(rmtCetak);
         trans.Complete();
         return Task.FromResult(new RegJalanByBookingResponse(reg.RegId, booking.NoAntrian));
     }

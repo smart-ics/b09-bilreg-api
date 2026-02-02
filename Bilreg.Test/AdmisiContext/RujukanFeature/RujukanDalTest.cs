@@ -16,6 +16,7 @@ public class RujukanDalTest
             fs_kd_rujukan: "A",
             fs_nm_rujukan: "B",
             fb_aktif: true,
+            fs_kd_ppk: "M",
             fs_alm_rujukan: "C",
             fs_alm2_rujukan: "D",
             fs_kota_rujukan: "E",

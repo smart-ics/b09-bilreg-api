@@ -6,6 +6,7 @@ using Bilreg.Application.AdmisiContext.JaminanFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
 using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.AdmisiContext.PpaFeature;
+using Bilreg.Application.AdmisiContext.RemoteCetakFeature;
 using Bilreg.Application.AdmisiContext.RujukanFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.ChargeContext.TindakanFeature;
@@ -13,12 +14,14 @@ using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Bilreg.Domain.AccountingContext.JurnalFeature;
 using Bilreg.Domain.AccountingContext.UnitFeature;
+using Bilreg.Application.Shared.Helpers;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.AdmisiContext.RemotCetakFeature;
 using Bilreg.Domain.AdmisiContext.RujukanFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
@@ -72,6 +75,9 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
     private readonly IJurnalRepo _jurnalRepo;
     private const string BAYAR_SENDIRI = "1";
 
+    private readonly IRemoteCetakRepo _remoteCetakRepo;
+    private readonly IGetAppSettingService _getAppSettingSvc;
+
     public RegJalanCreateHandler(
         //  reg support
         IPasienRepo pasienRepo,
@@ -102,7 +108,9 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         ITrsBillingRepo trsBillingRepo,
         // jurnal
         IMapJaminanJkRepo mapJaminanJkRepo,
-        IJurnalRepo jurnalRepo)
+        IJurnalRepo jurnalRepo,
+        IRemoteCetakRepo remoteCetakRepo,
+        IGetAppSettingService getAppSettingSvc)
     {
         //      reg-support
         _pasienRepo = pasienRepo;
@@ -134,6 +142,8 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         //      jurnal
         _mapJaminanJkRepo = mapJaminanJkRepo;
         _jurnalRepo = jurnalRepo;
+        _remoteCetakRepo = remoteCetakRepo;
+        _getAppSettingSvc = getAppSettingSvc;
     }
 
     public Task<RegJalanCreateResponse> Handle(RegJalanWalkInCommand request, CancellationToken cancellationToken)
@@ -197,6 +207,14 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             ? JurnalType.Default
             : JurnalType.CreateFromTrsBilling(trsBilling,
                 layanan, mapJaminanJk);
+        //      REMOTE-CETAK
+        var appSetting = _getAppSettingSvc.Execute();
+        var rmtCetak = new RemoteCetakType(
+            reg.RegId, "RG-ANTRIAN", DateTime.Now,
+            appSetting.Registrasi.RemoteCetakRegistrasi,
+            false, new DateTime(3000, 1, 1),
+            "", "");
+
 
         using var trans = TransHelper.NewScope();
         
@@ -224,6 +242,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         _jurnalRepo.SaveChanges(jurnalReg);
         if (jurnalTindakan != JurnalType.Default)
             _jurnalRepo.SaveChanges(jurnalTindakan);
+        _remoteCetakRepo.SaveChanges(rmtCetak);
 
         trans.Complete();
         return Task.FromResult(new RegJalanCreateResponse(reg.RegId, antEntry.NoUrut));

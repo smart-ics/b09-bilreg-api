@@ -57,6 +57,9 @@ public class ScheduleOpModelTests
             KamarType.Default.ToReff(),
             RegModel.Default.ToReff(),
             PpaType.Default.ToReff(),
+            new DateTime(3000, 1, 1),
+            new DateTime(3000, 1, 1),
+            OpCaseStateEnum.Scheduled,
             Enumerable.Empty<ScheduleOpPpaType>()
         );
     }

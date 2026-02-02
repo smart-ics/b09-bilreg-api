@@ -15,8 +15,9 @@ public interface ITindakanDal :
     IUpdate<TindakanDto>,
     IDelete<ITindakanKey>,
     IGetData<TindakanDto, ITindakanKey>,
-    IListData<TindakanDto, IRegKey> 
+    IListData<TindakanDto, IRegKey>
 {
+    IEnumerable<TindakanJualDto> ListTdkJual(IRegKey regKey);
 }
 
 public class TindakanDal : ITindakanDal
@@ -191,4 +192,34 @@ public class TindakanDal : ITindakanDal
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<TindakanDto>(sql, dp);
     }
+
+    public IEnumerable<TindakanJualDto> ListTdkJual(IRegKey regKey)
+    {
+        // kedepan akan Union dengan penjualan.
+        const string sql = """
+           SELECT
+                aa.TindakanId AS TransaksiId, aa.TindakanDate AS TransaksiDate, 
+           	    aa.OrderTdkId AS OrderTransaksiId, aa.RegId, aa.PasienId, aa.PasienName, 
+           	    aa.LayananId, aa.LayananName, 
+                aa.TarifId AS DiskripsiId, aa.TarifName AS DiskripsiName, 
+           	    1 AS Qty, aa.Total, 'TINDAKAN' AS Tipe,
+                aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate,  aa.VodUser, aa.VodDate
+           FROM
+                BILRG_Tindakan aa
+           WHERE
+                aa.RegId = @RegId
+                AND aa.VodDate = @VodDate
+
+           --UNION ALL
+           """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@RegId", regKey.RegId, SqlDbType.VarChar);
+        dp.AddParam("@VodDate", new DateTime(3000, 1, 1), SqlDbType.DateTime);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<TindakanJualDto>(sql, dp); ;
+    }
+
+    
 }

@@ -18,7 +18,8 @@ public interface IRegAktifDal :
     IDelete<IRegKey>,
     IGetData<RegAktifDto, IRegKey>,
     IListData<RegAktifDto, ILayananKey>,
-    IListData<RegAktifDto, IPasienKey>
+    IListData<RegAktifDto, IPasienKey>,
+    IListData<RegAktifDto>
 {
 }
 
@@ -182,6 +183,30 @@ public class RegAktifDal : IRegAktifDal
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<RegAktifDto>(sql, dp);
+    }
+
+    public IEnumerable<RegAktifDto> ListData()
+    {
+        const string sql = """
+           SELECT
+               aa.RegId, aa.RegDate, aa.PasienId, aa.JenisReg, 
+               aa.LayananId, aa.DokterId, aa.TipeJaminanId,
+               ISNULL(bb.fs_nm_pasien, '') AS PasienName,
+               ISNULL(bb.fd_tgl_lahir, '3000-01-01') AS TglLahir,
+               ISNULL(bb.fs_jns_kelamin, '-') AS Gender,
+               ISNULL(cc.fs_nm_layanan, '') AS LayananName,
+               ISNULL(dd.fs_nm_peg, '') AS DokterName,
+               ISNULL(ee.fs_nm_tipe_jaminan, '') AS TipeJaminanName
+           FROM
+               BILRG_RegAktif aa
+               LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
+               LEFT JOIN ta_layanan cc ON aa.LayananId = cc.fs_kd_layanan
+               LEFT JOIN td_peg dd ON aa.DokterId = dd.fs_kd_peg
+               LEFT JOIN ta_tipe_jaminan ee ON aa.TipeJaminanId = ee.fs_kd_tipe_jaminan
+           """;
+        
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<RegAktifDto>(sql);
     }
 }
 

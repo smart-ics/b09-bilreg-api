@@ -13,7 +13,7 @@ namespace Bilreg.Infrastructure.PaymentContext.TrsBillingFeature;
 
 public record TrsBillingDto(
     string fs_kd_trs,
-    int fn_modul,
+    decimal fn_modul,
     string fd_tgl_trs,
     string fs_jam_trs,
     string fd_tgl_jam_trs,
@@ -33,7 +33,7 @@ public record TrsBillingDto(
     string fs_keterangan,
     string fs_keterangan2,
     string fs_kd_ref_biaya,
-    int fn_qty,
+    decimal fn_qty,
     string fs_kd_trs_main,
     
     string fs_mr,
@@ -88,12 +88,24 @@ public record TrsBillingDto(
             fn_qty, fs_kd_trs_main);
         var tglTrs = DateTime.ParseExact($"{fd_tgl_trs} {fs_jam_trs}","yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
         var auditinfo = new AuditInfoType(fs_kd_petugas, tglTrs);
-        
         return new TrsBillingType(
-            fs_kd_trs, fn_modul, tglTrs,
+            fs_kd_trs, (int)fn_modul, tglTrs,
             reg, layanan, kelas, auditinfo,
             fn_sub_total, fn_diskon, fn_tax, fn_biaya,
             rekapCetak, keterangan, listTrsBilling2
         );
+    }
+    public TrsBillingView ToView()
+    {
+        var reg = new RegReff(fs_kd_reg, fs_mr, fs_nm_pasien);
+        var layanan = new LayananReff(fs_kd_layanan, fs_nm_layanan);
+        var kelas = new KelasReff(fs_kd_kelas, fs_nm_kelas);
+        var keterangan = new TrsBillKetType(
+            fs_keterangan, fs_keterangan2, fs_kd_ref_biaya,
+            fn_qty, fs_kd_trs_main);
+        var tglTrs = DateTime.ParseExact($"{fd_tgl_trs} {fs_jam_trs}", "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+
+        return new TrsBillingView(
+            fs_kd_trs, tglTrs, reg, layanan, kelas, keterangan, fn_total);
     }
 }

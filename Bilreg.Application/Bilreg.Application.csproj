@@ -7,6 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="BedUsageContext\KamarOperasiFeature\IStartOpRepo.cs" />
+    <Compile Remove="BedUsageContext\KamarOperasiFeature\UseCases\OkOnOperationGetQuery.cs" />
     <Compile Remove="BedUsageContext\KamarOperasiFeature\UseCases\ScheduleFaker.cs" />
   </ItemGroup>
 
@@ -21,7 +23,6 @@
 
   <ItemGroup>
     <Folder Include="AdmisiContext\LayananFeature\LayananAgg\" />
-    <Folder Include="Shared\" />
   </ItemGroup>
 
 </Project>

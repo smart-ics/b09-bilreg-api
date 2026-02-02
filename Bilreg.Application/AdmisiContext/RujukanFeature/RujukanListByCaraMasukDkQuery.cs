@@ -10,6 +10,7 @@ public record RujukanListByCaraMasukDkResponse(
     string RujukanId,
     string RujukanName,
     bool IsAktif,
+    string PpkId,
     AlamatType Alamat,
     string Telepon,
     string RujukanTipeId,
@@ -35,7 +36,7 @@ public class RujukanListByCaraMasukDkHandler : IRequestHandler<RujukanListByCara
             ?? [];
 
         var response = listDto.Select(x => new RujukanListByCaraMasukDkResponse(
-            x.RujukanId, x.RujukanName, x.IsAktif,
+            x.RujukanId, x.RujukanName, x.IsAktif, x.PpkId,
             x.Alamat, x.Alamat.Kota, x.TipeRujukan.TipeRujukanId,
             x.TipeRujukan.TipeRujukanName, x.KelasRujukan.KelasRujukanId, x.KelasRujukan.KelasRujukanName,
             x.CaraMasukDk.CaraMasukDkId, x.CaraMasukDk.CaraMasukDkName));
