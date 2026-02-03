@@ -1,12 +1,16 @@
 ﻿using Bilreg.Application.AdmisiContext.BookingFeature;
 using Bilreg.Application.ChargeContext.TindakanFeature.UseCases;
+using Bilreg.Domain.AccountingContext.JurnalFeature;
+using Bilreg.Application.Shared.Helpers;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
+using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Domain.Shared.Param;
+using Bilreg.Infrastructure.Shared.Helpers;
 using Bilreg.Infrastructure.Shared.Param;
 
 namespace Bilreg.Api.Configurations;
@@ -27,6 +31,7 @@ public static class DomainService
             .AddScoped<IGetKelasRajalService, GetKelasRajalService>()
             .AddScoped<IPolisFactory, PolisFactory>()
             .AddScoped<IDeleteBookingWorkflow, DeleteBookingWorkflow>()
+            .AddScoped<IGetAppSettingService, GetAppSettingService>()
             ;
         
         return services;

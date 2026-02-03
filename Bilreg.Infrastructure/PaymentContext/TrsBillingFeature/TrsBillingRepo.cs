@@ -1,4 +1,5 @@
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using Nuna.Lib.PatternHelper;
 
@@ -44,4 +45,11 @@ public class TrsBillingRepo : ITrsBillingRepo
          _billingDal.Delete(key);
          _billing2Dal.Delete(key);
      }
- }
+
+    public IEnumerable<TrsBillingView> ListData(IRegKey regKey)
+    {
+        var listDto = _billingDal.ListData(regKey)?.ToList() ?? [];
+        var result = listDto.Select(x => x.ToView());
+        return result;
+    }
+}

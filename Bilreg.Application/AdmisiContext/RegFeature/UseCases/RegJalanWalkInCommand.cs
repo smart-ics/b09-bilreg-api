@@ -1,20 +1,27 @@
-﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
+﻿using Bilreg.Application.AccountingContext.JurnalFeature;
+using Bilreg.Application.AccountingContext.JurnalFeature.JkAgg;
+using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.BookingFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
 using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.AdmisiContext.PpaFeature;
+using Bilreg.Application.AdmisiContext.RemoteCetakFeature;
 using Bilreg.Application.AdmisiContext.RujukanFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.ChargeContext.TindakanFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
+using Bilreg.Domain.AccountingContext.JurnalFeature;
+using Bilreg.Domain.AccountingContext.UnitFeature;
+using Bilreg.Application.Shared.Helpers;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.AdmisiContext.RemotCetakFeature;
 using Bilreg.Domain.AdmisiContext.RujukanFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
@@ -23,7 +30,6 @@ using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
-using System.Net.WebSockets;
 
 namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 
@@ -61,10 +67,16 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
     private readonly INilaiTarifRepo _nilaiTarifRepo;
     private readonly ITindakanRepo _tindakanRepo;
     private readonly IKomponenRepo _komponenRepo;
-    // trsBill
     private readonly ITarifRepo _tarifRepo;
+    // trsBill
     private readonly ITrsBillingRepo _trsBillingRepo;
+    // jurnal
+    private readonly IMapJaminanJkRepo _mapJaminanJkRepo;
+    private readonly IJurnalRepo _jurnalRepo;
     private const string BAYAR_SENDIRI = "1";
+
+    private readonly IRemoteCetakRepo _remoteCetakRepo;
+    private readonly IGetAppSettingService _getAppSettingSvc;
 
     public RegJalanCreateHandler(
         //  reg support
@@ -92,7 +104,13 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         ITindakanRepo tindakanRepo,
         IKomponenRepo komponenRepo,
         ITarifRepo tarifRepo,
-        ITrsBillingRepo trsBillingRepo)
+        //  trsBill
+        ITrsBillingRepo trsBillingRepo,
+        // jurnal
+        IMapJaminanJkRepo mapJaminanJkRepo,
+        IJurnalRepo jurnalRepo,
+        IRemoteCetakRepo remoteCetakRepo,
+        IGetAppSettingService getAppSettingSvc)
     {
         //      reg-support
         _pasienRepo = pasienRepo;
@@ -119,7 +137,13 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         _tindakanRepo = tindakanRepo;
         _komponenRepo = komponenRepo;
         _tarifRepo = tarifRepo;
+        //      trsBill
         _trsBillingRepo = trsBillingRepo;
+        //      jurnal
+        _mapJaminanJkRepo = mapJaminanJkRepo;
+        _jurnalRepo = jurnalRepo;
+        _remoteCetakRepo = remoteCetakRepo;
+        _getAppSettingSvc = getAppSettingSvc;
     }
 
     public Task<RegJalanCreateResponse> Handle(RegJalanWalkInCommand request, CancellationToken cancellationToken)
@@ -161,6 +185,10 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         var trsBillingReg = TrsBillingType.CreateFromRegistrasi(reg, karcis,
             jaminan, dokter, listKompKarcis);
 
+        //     BUILD Jurnal Reg
+        var mapJaminanJk = LoadMapJmnJk(tipeJaminan.Jaminan);
+        var jurnalReg = JurnalType.CreateFromTrsBilling(trsBillingReg, layanan, mapJaminanJk);
+
         //      BUILD TINDAKAN
         var tindakan =  karcis.DefaultTarif == TarifType.Default.ToReff()
             ? TindakanModel.Default
@@ -173,6 +201,20 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         var trsBilling = tindakan == TindakanModel.Default 
             ? TrsBillingType.Default
             : GenBill(tindakan, reg, tarif, jaminan);
+
+        //      BUILD Jurnal Tindakan
+        var jurnalTindakan = tindakan == TindakanModel.Default
+            ? JurnalType.Default
+            : JurnalType.CreateFromTrsBilling(trsBilling,
+                layanan, mapJaminanJk);
+        //      REMOTE-CETAK
+        var appSetting = _getAppSettingSvc.Execute();
+        var rmtCetak = new RemoteCetakType(
+            reg.RegId, "RG-ANTRIAN", DateTime.Now,
+            appSetting.Registrasi.RemoteCetakRegistrasi,
+            false, new DateTime(3000, 1, 1),
+            "", "");
+
 
         using var trans = TransHelper.NewScope();
         
@@ -196,6 +238,11 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             _tindakanRepo.SaveChanges(tindakan);
         if(trsBilling != TrsBillingType.Default)
             _trsBillingRepo.SaveChanges(trsBilling);
+
+        _jurnalRepo.SaveChanges(jurnalReg);
+        if (jurnalTindakan != JurnalType.Default)
+            _jurnalRepo.SaveChanges(jurnalTindakan);
+        _remoteCetakRepo.SaveChanges(rmtCetak);
 
         trans.Complete();
         return Task.FromResult(new RegJalanCreateResponse(reg.RegId, antEntry.NoUrut));
@@ -346,6 +393,15 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
                 onNone: () => TarifType.Default
             );
         return tarif;
+    }
+    private MapJaminanJkType LoadMapJmnJk(IJaminanKey key)
+    {
+        var map = _mapJaminanJkRepo.LoadEntity(key)
+            .Match(
+                onSome: x => x,
+                onNone: () => MapJaminanJkType.Default
+            );
+        return map;
     }
     #endregion
 }

@@ -52,4 +52,11 @@ public class RegAktifRepo : IRegAktifRepo
         var listDto = _regAktifDal.ListData(pasien)?.ToList() ?? [];
         return listDto.Count != 0;
     }
+
+    public IEnumerable<RegAktifModel> ListData()
+    {
+        var listDto = _regAktifDal.ListData()?.ToList() ?? [];
+        var result = listDto.Select(x => x.ToModel());
+        return result;
+    }
 }

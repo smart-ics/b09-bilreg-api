@@ -137,6 +137,7 @@ public class JaminanDal : IJaminanDal
                aa.fs_alm1_jaminan, aa.fs_alm2_jaminan, aa.fs_kota_jaminan, '-' as fs_kd_pos,
                aa.fs_kd_cara_bayar_dk, aa.fs_kd_grup_jaminan, 
                aa.fs_kd_tipe_tarif_rawat_jalan, aa.fs_kd_tipe_tarif_rawat_inap,
+           	   aa.fs_kd_tipe_brg_rawat_jalan, aa.fs_kd_tipe_brg_rawat_inap,
                aa.fs_piut_rawat, aa.fs_piut_obat_rawat, 
                aa.fs_kd_rek_ppdp_jasa_ri, aa.fs_kd_rek_ppdp_obat_ri,
                ISNULL(bb.fs_nm_cara_bayar_dk, '-') fs_nm_cara_bayar_dk,
@@ -146,7 +147,9 @@ public class JaminanDal : IJaminanDal
                ISNULL(ff1.fs_nm_rek, '') AS fs_nm_piut_rawat,
                ISNULL(ff2.fs_nm_rek, '') AS fs_nm_piut_obat_rawat, 
                ISNULL(ff3.fs_nm_rek, '') AS fs_nm_rek_ppdp_jasa_ri, 
-               ISNULL(ff4.fs_nm_rek, '') AS fs_nm_rek_ppdp_obat_ri
+               ISNULL(ff4.fs_nm_rek, '') AS fs_nm_rek_ppdp_obat_ri,
+           	   ISNULL(gg1.fs_nm_tipe_barang,'') AS fs_nm_tipe_brg_rawat_jalan,
+           	   ISNULL(gg2.fs_nm_tipe_barang,'') AS fs_nm_tipe_brg_rawat_inap
            FROM 
                ta_jaminan aa
                LEFT JOIN ta_cara_bayar_dk bb ON aa.fs_kd_cara_bayar_dk = bb.fs_kd_cara_bayar_dk
@@ -157,6 +160,8 @@ public class JaminanDal : IJaminanDal
                LEFT JOIN t_rek ff2 ON aa.fs_piut_obat_rawat = ff2.fs_kd_rek
                LEFT JOIN t_rek ff3 ON aa.fs_kd_rek_ppdp_jasa_ri = ff3.fs_kd_rek
                LEFT JOIN t_rek ff4 ON aa.fs_kd_rek_ppdp_obat_ri = ff4.fs_kd_rek
+           	   LEFT JOIN tb_tipe_barang gg1 ON aa.fs_kd_tipe_brg_rawat_jalan = gg1.fs_kd_tipe_barang 
+           	   LEFT JOIN tb_tipe_barang gg2 ON aa.fs_kd_tipe_brg_rawat_inap = gg2.fs_kd_tipe_barang 
            WHERE 
                aa.fs_kd_jaminan = @fs_kd_jaminan
            """;
@@ -173,10 +178,12 @@ public class JaminanDal : IJaminanDal
     {
         const string sql = """
             SELECT
+                SELECT
                 aa.fs_kd_jaminan, aa.fs_nm_jaminan, aa.fb_aktif,  
                 aa.fs_alm1_jaminan, aa.fs_alm2_jaminan, aa.fs_kota_jaminan, '-' as fs_kd_pos,
                 aa.fs_kd_cara_bayar_dk, aa.fs_kd_grup_jaminan, 
                 aa.fs_kd_tipe_tarif_rawat_jalan, aa.fs_kd_tipe_tarif_rawat_inap,
+            	aa.fs_kd_tipe_brg_rawat_jalan, aa.fs_kd_tipe_brg_rawat_inap,
                 aa.fs_piut_rawat, aa.fs_piut_obat_rawat, 
                 aa.fs_kd_rek_ppdp_jasa_ri, aa.fs_kd_rek_ppdp_obat_ri,
                 ISNULL(bb.fs_nm_cara_bayar_dk, '-') fs_nm_cara_bayar_dk,
@@ -186,7 +193,9 @@ public class JaminanDal : IJaminanDal
                 ISNULL(ff1.fs_nm_rek, '') AS fs_nm_piut_rawat,
                 ISNULL(ff2.fs_nm_rek, '') AS fs_nm_piut_obat_rawat, 
                 ISNULL(ff3.fs_nm_rek, '') AS fs_nm_rek_ppdp_jasa_ri, 
-                ISNULL(ff4.fs_nm_rek, '') AS fs_nm_rek_ppdp_obat_ri
+                ISNULL(ff4.fs_nm_rek, '') AS fs_nm_rek_ppdp_obat_ri,
+            	ISNULL(gg1.fs_nm_tipe_barang,'') AS fs_nm_tipe_brg_rawat_jalan,
+            	ISNULL(gg2.fs_nm_tipe_barang,'') AS fs_nm_tipe_brg_rawat_inap
             FROM 
                 ta_jaminan aa
                 LEFT JOIN ta_cara_bayar_dk bb ON aa.fs_kd_cara_bayar_dk = bb.fs_kd_cara_bayar_dk
@@ -197,6 +206,8 @@ public class JaminanDal : IJaminanDal
                 LEFT JOIN t_rek ff2 ON aa.fs_piut_obat_rawat = ff2.fs_kd_rek
                 LEFT JOIN t_rek ff3 ON aa.fs_kd_rek_ppdp_jasa_ri = ff3.fs_kd_rek
                 LEFT JOIN t_rek ff4 ON aa.fs_kd_rek_ppdp_obat_ri = ff4.fs_kd_rek
+            	LEFT JOIN tb_tipe_barang gg1 ON aa.fs_kd_tipe_brg_rawat_jalan = gg1.fs_kd_tipe_barang 
+            	LEFT JOIN tb_tipe_barang gg2 ON aa.fs_kd_tipe_brg_rawat_inap = gg2.fs_kd_tipe_barang 
             """;
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));

@@ -17,7 +17,8 @@ public interface IPpaDal :
     IGetData<PpaDto, IPpaKey>,
     IGetData<PpaDto, IContactFinder>,
     IListData<PpaLayananDto, IProfesiKey, IEnumerable<ILayananKey>>,
-    IListData<PpaDto, IProfesiKey>
+    IListData<PpaDto, IProfesiKey>,
+    IListData<PpaDto, IEnumerable<ISatTugasKey>>
     
 {
 }
@@ -218,5 +219,33 @@ public class PpaDal : IPpaDal
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.ReadSingle<PpaDto>(sql, dp);
+    }
+
+    public IEnumerable<PpaDto> ListData(IEnumerable<ISatTugasKey> listSatTgs)
+    {
+        const string sql = """
+           SELECT 
+               aa.fs_kd_peg, aa.fs_nm_peg, aa.fs_nm_alias, aa.fs_kd_smf,
+               ISNULL(dd.fs_nm_smf, '') fs_nm_smf,
+               ISNULL(ee.GroupSpesialisId, '-') AS GroupSpesialisId,
+               ISNULL(ff.GroupSpesialisName, '-') AS GroupSpesialisName
+           FROM 
+               td_peg aa
+               LEFT JOIN td_peg_sat_tugas bb ON aa.fs_kd_peg = bb.fs_kd_peg
+               LEFT JOIN td_sat_tugas cc ON bb.fs_kd_sat_tugas = cc.fs_kd_sat_tugas
+               LEFT JOIN ta_smf dd ON aa.fs_kd_smf = dd.fs_kd_smf
+               LEFT JOIN td_peg2 ee ON aa.fs_kd_peg = ee.fs_kd_peg
+               LEFT JOIN Bilrg_GroupSpesialis ff ON ee.GroupSpesialisId = ff.GroupSpesialisId
+           WHERE 
+               aa.fb_aktif_Dinas = 1
+               AND bb.fn_utama = 1
+               AND aa.fs_kd_sat_tugas IN @ListSatTugasId
+           """;
+
+        var dp = new DynamicParameters();
+        dp.Add("@ListSatTugasId", listSatTgs.Select(x => x.SatTugasId).ToArray());
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<PpaDto>(sql, dp);
     }
 }

@@ -18,6 +18,7 @@ public interface IRujukanDal :
     IListData<RujukanDto, ITipeRujukanKey>,
     IListData<RujukanDto, ICaraMasukDkKey>
 {
+    RujukanDto GetDataByPpkId(IPpkKey ppkKey);
 }
 
 public class RujukanDal : IRujukanDal
@@ -34,11 +35,11 @@ public class RujukanDal : IRujukanDal
     {
         const string sql = """
             INSERT INTO ta_rujukan (
-                fs_kd_rujukan, fs_nm_rujukan, fb_aktif, fs_alm_rujukan, 
+                fs_kd_rujukan, fs_nm_rujukan, fb_aktif, fs_kd_ppk, fs_alm_rujukan, 
                 fs_alm2_rujukan, fs_kota_rujukan, fs_tlp_rujukan, 
                 fs_kd_rujukan_tipe, fs_kd_kelas_rs, fs_kd_cara_masuk_dk)
             VALUES (
-                @fs_kd_rujukan, @fs_nm_rujukan, @fb_aktif, @fs_alm_rujukan, 
+                @fs_kd_rujukan, @fs_nm_rujukan, @fb_aktif, @fs_kd_ppk, @fs_alm_rujukan, 
                 @fs_alm2_rujukan, @fs_kota_rujukan, @fs_tlp_rujukan, 
                 @fs_kd_rujukan_tipe, @fs_kd_kelas_rs,@fs_kd_cara_masuk_dk)
             """;
@@ -47,6 +48,7 @@ public class RujukanDal : IRujukanDal
         dp.AddParam("@fs_kd_rujukan", model.fs_kd_rujukan, SqlDbType.VarChar);
         dp.AddParam("@fs_nm_rujukan", model.fs_nm_rujukan, SqlDbType.VarChar);
         dp.AddParam("@fb_aktif", model.fb_aktif, SqlDbType.Bit);
+        dp.AddParam("@fs_kd_ppk", model.fs_kd_ppk, SqlDbType.VarChar);
         dp.AddParam("@fs_alm_rujukan", model.fs_alm_rujukan, SqlDbType.VarChar);
         dp.AddParam("@fs_alm2_rujukan", model.fs_alm2_rujukan, SqlDbType.VarChar);
         dp.AddParam("@fs_kota_rujukan", model.fs_kota_rujukan, SqlDbType.VarChar);
@@ -66,6 +68,7 @@ public class RujukanDal : IRujukanDal
             SET 
                 fs_nm_rujukan = @fs_nm_rujukan,
                 fb_aktif = @fb_aktif,
+                fs_kd_ppk = @fs_kd_ppk,
                 fs_alm_rujukan = @fs_alm_rujukan,
                 fs_alm2_rujukan = @fs_alm2_rujukan,
                 fs_kota_rujukan = @fs_kota_rujukan,
@@ -81,6 +84,7 @@ public class RujukanDal : IRujukanDal
         dp.AddParam("@fs_kd_rujukan", model.fs_kd_rujukan, SqlDbType.VarChar);
         dp.AddParam("@fs_nm_rujukan", model.fs_nm_rujukan, SqlDbType.VarChar);
         dp.AddParam("@fb_aktif", model.fb_aktif, SqlDbType.Bit);
+        dp.AddParam("@fs_kd_ppk", model.fs_kd_ppk, SqlDbType.VarChar);
         dp.AddParam("@fs_alm_rujukan", model.fs_alm_rujukan, SqlDbType.VarChar);
         dp.AddParam("@fs_alm2_rujukan", model.fs_alm2_rujukan, SqlDbType.VarChar);
         dp.AddParam("@fs_kota_rujukan", model.fs_kota_rujukan, SqlDbType.VarChar);
@@ -116,7 +120,7 @@ public class RujukanDal : IRujukanDal
                 aa.fs_kd_rujukan, aa.fs_nm_rujukan, aa.fs_alm_rujukan,
                 aa.fs_alm2_rujukan, aa.fs_kota_rujukan, aa.fs_tlp_rujukan,
                 aa.fs_kd_rujukan_tipe, aa.fs_kd_kelas_rs, aa.fs_kd_cara_masuk_dk,
-                aa.fb_aktif, 
+                aa.fb_aktif, aa.fs_kd_ppk,
                 ISNULL(bb.fs_nm_rujukan_tipe, '') fs_nm_rujukan_tipe,
                 ISNULL(cc.fs_nm_kelas_rs, '') fs_nm_kelas_rs,
                 ISNULL(dd.fs_nm_cara_masuk_dk, '') fs_nm_cara_masuk_dk
@@ -143,7 +147,7 @@ public class RujukanDal : IRujukanDal
                 aa.fs_kd_rujukan, aa.fs_nm_rujukan, aa.fs_alm_rujukan,
                 aa.fs_alm2_rujukan, aa.fs_kota_rujukan, aa.fs_tlp_rujukan,
                 aa.fs_kd_rujukan_tipe, aa.fs_kd_kelas_rs, aa.fs_kd_cara_masuk_dk,
-                aa.fb_aktif, 
+                aa.fb_aktif, aa.fs_kd_ppk,
                 ISNULL(bb.fs_nm_rujukan_tipe, '') fs_nm_rujukan_tipe,
                 ISNULL(cc.fs_nm_kelas_rs, '') fs_nm_kelas_rs,
                 ISNULL(dd.fs_nm_cara_masuk_dk, '') fs_nm_cara_masuk_dk
@@ -171,7 +175,7 @@ public class RujukanDal : IRujukanDal
                 aa.fs_kd_rujukan, aa.fs_nm_rujukan, aa.fs_alm_rujukan,
                 aa.fs_alm2_rujukan, aa.fs_kota_rujukan, aa.fs_tlp_rujukan,
                 aa.fs_kd_rujukan_tipe, aa.fs_kd_kelas_rs, aa.fs_kd_cara_masuk_dk,
-                aa.fb_aktif, 
+                aa.fb_aktif, aa.fs_kd_ppk,
                 ISNULL(bb.fs_nm_rujukan_tipe, '') fs_nm_rujukan_tipe,
                 ISNULL(cc.fs_nm_kelas_rs, '') fs_nm_kelas_rs,
                 ISNULL(dd.fs_nm_cara_masuk_dk, '') fs_nm_cara_masuk_dk
@@ -189,6 +193,33 @@ public class RujukanDal : IRujukanDal
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         var result = conn.Read<RujukanDto>(sql, dp);
+        return result;
+    }
+
+    public RujukanDto GetDataByPpkId(IPpkKey ppkKey)
+    {
+        const string sql = """
+            SELECT
+                aa.fs_kd_rujukan, aa.fs_nm_rujukan, aa.fs_alm_rujukan,
+                aa.fs_alm2_rujukan, aa.fs_kota_rujukan, aa.fs_tlp_rujukan,
+                aa.fs_kd_rujukan_tipe, aa.fs_kd_kelas_rs, aa.fs_kd_cara_masuk_dk,
+                aa.fb_aktif, aa.fs_kd_ppk,
+                ISNULL(bb.fs_nm_rujukan_tipe, '') fs_nm_rujukan_tipe,
+                ISNULL(cc.fs_nm_kelas_rs, '') fs_nm_kelas_rs,
+                ISNULL(dd.fs_nm_cara_masuk_dk, '') fs_nm_cara_masuk_dk
+            FROM ta_rujukan aa
+                LEFT JOIN ta_rujukan_tipe bb ON aa.fs_kd_rujukan_tipe = bb.fs_kd_rujukan_tipe
+                LEFT JOIN tc_kelas_rs cc ON aa.fs_kd_kelas_rs = cc.fs_kd_kelas_rs
+                LEFT JOIN ta_cara_masuk_dk dd ON aa.fs_kd_cara_masuk_dk = dd.fs_kd_cara_masuk_dk
+            WHERE 
+                aa.fs_kd_ppk = @fs_kd_ppk
+            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@fs_kd_ppk", ppkKey.PpkId, SqlDbType.VarChar);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var result = conn.ReadSingle<RujukanDto>(sql, dp);
         return result;
     }
 }

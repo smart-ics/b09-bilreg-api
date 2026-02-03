@@ -20,7 +20,9 @@ public record JaminanDto(
     string fs_kd_grup_jaminan,
     string fs_kd_tipe_tarif_rawat_jalan,
     string fs_kd_tipe_tarif_rawat_inap,
-    
+    string fs_kd_tipe_brg_rawat_jalan, 
+    string fs_kd_tipe_brg_rawat_inap,
+
     string fs_piut_rawat, 
     string fs_piut_obat_rawat, 
     string fs_kd_rek_ppdp_jasa_ri,
@@ -33,7 +35,10 @@ public record JaminanDto(
     string fs_nm_piut_rawat,
     string fs_nm_piut_obat_rawat,
     string fs_nm_rek_ppdp_jasa_ri,
-    string fs_nm_rek_ppdp_obat_ri    
+    string fs_nm_rek_ppdp_obat_ri,    
+
+    string fs_nm_tipe_brg_rawat_jalan,
+    string fs_nm_tipe_brg_rawat_inap
     )
 {
     public static JaminanDto FromModel(JaminanType model)
@@ -53,7 +58,9 @@ public record JaminanDto(
             
             model.TipeTarif.Rajal.TipeTarifId,
             model.TipeTarif.Ranap.TipeTarifId,
-            
+            model.TipeBarang.Rajal.TipeBarangId,
+            model.TipeBarang.Ranap.TipeBarangId,
+
             model.Rekening.PpdpJasaRajal.CoaId,
             model.Rekening.PpdpObatRajal.CoaId,
             model.Rekening.PpdpJasaRanap.CoaId,
@@ -67,7 +74,10 @@ public record JaminanDto(
             model.Rekening.PpdpJasaRajal.CoaName,
             model.Rekening.PpdpObatRajal.CoaName,
             model.Rekening.PpdpJasaRanap.CoaName,
-            model.Rekening.PpdpObatRanap.CoaName
+            model.Rekening.PpdpObatRanap.CoaName,
+
+            model.TipeBarang.Rajal.TipeBarangName,
+            model.TipeBarang.Ranap.TipeBarangName
         );
         return result;
     }
@@ -81,6 +91,10 @@ public record JaminanDto(
         var tipeTarif = new JaminanTipeTarifType(
             new TipeTarifReff(fs_kd_tipe_tarif_rawat_jalan, fs_nm_tarif_tipe_rawat_jalan),
             new TipeTarifReff(fs_kd_tipe_tarif_rawat_inap, fs_nm_tarif_tipe_rawat_inap));
+
+        var tipeBarang = new JaminanTipeBarangType(
+            new TipeBrgType(fs_kd_tipe_brg_rawat_jalan, fs_nm_tipe_brg_rawat_jalan),
+            new TipeBrgType(fs_kd_tipe_brg_rawat_inap, fs_nm_tipe_brg_rawat_inap));
         
         var rekening = new JaminanRekeningType(
             new CoaType(fs_piut_rawat, fs_nm_piut_rawat),
@@ -89,7 +103,7 @@ public record JaminanDto(
             new CoaType(fs_kd_rek_ppdp_obat_ri, fs_nm_rek_ppdp_obat_ri));
         
         var jaminan = new JaminanType(fs_kd_jaminan, fs_nm_jaminan, fb_aktif,
-            alamat, caraBayarDk, grupJaminan, tipeTarif, rekening);
+            alamat, caraBayarDk, grupJaminan, tipeTarif, rekening, tipeBarang);
 
         return jaminan;
     }

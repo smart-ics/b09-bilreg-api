@@ -50,6 +50,20 @@ public record TindakanModel : ITindakanKey
         return result;
     }
     
+    public static TindakanModel Save(string tindakanId, RegModel reg,
+        LayananType layanan, NilaiTarifType nilaiTarif,
+        IEnumerable<KomponenPpaView> listKomponenPpaView,
+        AuditTrailType auditTrail)
+    {
+        var listKomp = GenListKomponen(nilaiTarif, listKomponenPpaView);
+        var tarif = new TarifReff(nilaiTarif.TarifId, nilaiTarif.TarifName);
+
+        var result = new TindakanModel(tindakanId, DateTime.Now, "",
+            reg.ToReff(), layanan.ToReff(), nilaiTarif.Kelas, nilaiTarif.TipeTarif,
+            tarif, listKomp, auditTrail);
+        return result;
+    }
+
     public static TindakanModel FromReg(RegModel reg, NilaiTarifType nilaiTarif,
         IEnumerable<KomponenPpaView> listKomponenPpaView, 
         string userId)
@@ -134,3 +148,7 @@ public interface ITindakanKey
 
 public record TindakanView(string TindakanId, DateTime TindakanDate, string OrderTdkId,
     RegReff Reg, LayananReff Layanan, TarifReff Tarif) : ITindakanKey;
+
+public record TindakanJualView(string TransaksiId, DateTime TransaksiDate, string OrderTrasaksi, 
+    RegReff Reg, LayananReff Layanan, string DiskripsiId, string DiskripsiName, 
+    int Qty, decimal Total, string Tipe);

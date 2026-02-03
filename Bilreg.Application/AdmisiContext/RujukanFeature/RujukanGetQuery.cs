@@ -8,6 +8,7 @@ public record RujukanGetResponse(
     string RujukanId,
     string RujukanName,
     bool IsAktif,
+    string PpkId,
     AlamatType Alamat,
     string Telepon,
     string RujukanTipeId,
@@ -29,7 +30,7 @@ public class RujukanGetHandler : IRequestHandler<RujukanGetQuery, RujukanGetResp
         => _rujukanRepo.LoadEntity(RujukanType.Key(request.RujukanId))
         .Match(
             onSome: x => Task.FromResult(new RujukanGetResponse(x.RujukanId, x.RujukanName, x.IsAktif,
-                x.Alamat, x.Alamat.Kota, x.TipeRujukan.TipeRujukanId,
+                x.PpkId, x.Alamat, x.Alamat.Kota, x.TipeRujukan.TipeRujukanId,
                 x.TipeRujukan.TipeRujukanName, x.KelasRujukan.KelasRujukanId, x.KelasRujukan.KelasRujukanName,
                 x.CaraMasukDk.CaraMasukDkId, x.CaraMasukDk.CaraMasukDkName)),
             onNone: () => throw new KeyNotFoundException($"Rujukan {request.RujukanId} not found"));

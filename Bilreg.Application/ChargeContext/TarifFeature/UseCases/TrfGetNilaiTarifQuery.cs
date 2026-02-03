@@ -5,7 +5,7 @@ using MediatR;
 
 namespace Bilreg.Application.ChargeContext.TarifFeature.UseCases;
 
-public record TrfGetNilaiTarifQuery(string TarifId, string KelasId, string TipeTarifId) :
+public record TrfGetNilaiTarifQuery(string TarifId, string TipeTarifId, string KelasId) :
     IRequest<TrfGetNilaiTarifResponse>, INilaiTarifCompositKey;
 
 public record TrfGetNilaiTarifResponse(

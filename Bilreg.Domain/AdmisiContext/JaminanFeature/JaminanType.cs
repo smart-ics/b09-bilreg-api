@@ -13,7 +13,8 @@ public record JaminanType : IJaminanKey
         bool isAKtif, AlamatType alamat, CaraBayarDkType caraBayarDk, 
         GroupJaminanReff grupJaminan, 
         JaminanTipeTarifType tipeTarif,
-        JaminanRekeningType rekening)
+        JaminanRekeningType rekening,
+        JaminanTipeBarangType tipeBarang)
     {
         JaminanId = jaminanId;
         JaminanName = jaminanName;
@@ -23,18 +24,21 @@ public record JaminanType : IJaminanKey
         GroupJaminan = grupJaminan;
         Rekening = rekening;
         TipeTarif = tipeTarif;
+        TipeBarang = tipeBarang;
     }
     public static JaminanType Default => new("-", "-", true, 
         AlamatType.Default, CaraBayarDkType.Default, 
         GroupJaminanType.Default.ToReff(), 
         JaminanTipeTarifType.Default, 
-        JaminanRekeningType.Default);
+        JaminanRekeningType.Default,
+        JaminanTipeBarangType.Default);
     public static IJaminanKey Key(string id) => Default with { JaminanId = id };
     public static JaminanType Umum => new("000", "Umum", true, 
         AlamatType.Default, CaraBayarDkType.BayarSendiri, 
         GroupJaminanType.Default.ToReff(), 
         JaminanTipeTarifType.Default, 
-        JaminanRekeningType.Default);
+        JaminanRekeningType.Default,
+        JaminanTipeBarangType.Default);
     #endregion
     
     #region PROPERTIES
@@ -46,8 +50,9 @@ public record JaminanType : IJaminanKey
     public GroupJaminanReff GroupJaminan { get; init; }
     public JaminanRekeningType Rekening { get; init; }
     public JaminanTipeTarifType TipeTarif { get; init; }
+    public JaminanTipeBarangType TipeBarang { get; init; }
     #endregion
-    
+
     public JaminanReff ToReff() => new(JaminanId, JaminanName);
 }
 
@@ -71,3 +76,11 @@ public record JaminanTipeTarifType(TipeTarifReff Rajal, TipeTarifReff Ranap)
     public static JaminanTipeTarifType Default =>
         new JaminanTipeTarifType(TipeTarifType.Default.ToReff(), TipeTarifType.Default.ToReff());
 }
+
+public record JaminanTipeBarangType(TipeBrgType Rajal, TipeBrgType Ranap)
+{
+    public static JaminanTipeBarangType Default =>
+        new JaminanTipeBarangType(new TipeBrgType("-", "-"), new TipeBrgType("-", "-"));
+}
+
+public record TipeBrgType(string TipeBarangId, string TipeBarangName);
