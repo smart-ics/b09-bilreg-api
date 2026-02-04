@@ -15,7 +15,7 @@ public class OpCaseModel : IOrderOpKey
         PasienReff pasien, string operasiName, 
         RegReff reg, UrgencyLevelEnum urgencyLevel,
         ScheduleOpReff scheduleOp, DischargeOpReff dischargeOp,
-        OnProgressOpReff onProgressOp,
+        DuranteOpReff duranteOp,
         OpCaseStateEnum opState,
         IEnumerable<OpCaseStateHistType> listStateHistory, 
         IEnumerable<OpCasePpaType> listPpa)
@@ -29,7 +29,7 @@ public class OpCaseModel : IOrderOpKey
         UrgencyLevel = urgencyLevel;
         ScheduleOp = scheduleOp;
         DischargeOp = dischargeOp;
-        OnProgressOp = onProgressOp;
+        DuranteOp = duranteOp;
         OrderOpState = opState;
         _listPpa = listPpa?.ToList() ?? [];
         _listStateHistory = listStateHistory?.ToList() ?? [];
@@ -37,7 +37,7 @@ public class OpCaseModel : IOrderOpKey
     public static OpCaseModel Default => new OpCaseModel(
         "-", OrderOpModel.Default.ToReff(), PasienModel.Default.ToReff(), "-", 
         RegModel.Default.ToReff(), UrgencyLevelEnum.Elective, ScheduleOpReff.Default, 
-        DischargeOpReff.Default, OnProgressOpReff.Default, OpCaseStateEnum.Requested, [], []);
+        DischargeOpReff.Default, DuranteOpReff.Default, OpCaseStateEnum.Requested, [], []);
 
     public static OpCaseModel Create(OrderOpModel orderOp)
     {
@@ -48,7 +48,7 @@ public class OpCaseModel : IOrderOpKey
         var dokterRequester = new OpCasePpaType(0, orderOp.Dokter, "REQUESTER", DateTime.Now);
         var result = new OpCaseModel(orderOp.OrderOpId, orderOp.ToReff(),
             orderOp.Pasien, orderOp.NamaOperasi, orderOp.Reg, orderOp.UrgencyLevel,
-            ScheduleOpReff.Default, DischargeOpReff.Default, OnProgressOpReff.Default,
+            ScheduleOpReff.Default, DischargeOpReff.Default, DuranteOpReff.Default,
             OpCaseStateEnum.Requested, listStateHist, [dokterRequester]);
         return result;
     }
@@ -64,7 +64,7 @@ public class OpCaseModel : IOrderOpKey
 
     public ScheduleOpReff ScheduleOp { get; private set; }
     public DischargeOpReff DischargeOp { get; private set; }
-    public OnProgressOpReff OnProgressOp { get; private set; }
+    public DuranteOpReff DuranteOp { get; private set; }
     public OpCaseStateEnum OrderOpState { get; private set; }
 
     public OpCaseReff? ActiveOpCase
@@ -95,7 +95,7 @@ public class OpCaseModel : IOrderOpKey
             throw new ArgumentException("Status Operasi tidak dapat diubah scheduled!");
 
         ScheduleOp = schedule.ToReff();
-        OnProgressOp = OnProgressOpReff.Default;
+        DuranteOp = DuranteOpReff.Default;
         OrderOpState = OpCaseStateEnum.Scheduled;
         SetListPpa(schedule.ListPpa
                     .Select(x =>
@@ -112,7 +112,7 @@ public class OpCaseModel : IOrderOpKey
         if ((int)OrderOpState >= (int)OpCaseStateEnum.RecoveryStarted)
             throw new ArgumentException("Status Operasi tidak dapat diubah started!");
 
-        OnProgressOp = new OnProgressOpReff(startTime, new DateTime(3000, 1, 1));
+        DuranteOp = new DuranteOpReff(startTime, new DateTime(3000, 1, 1));
         OrderOpState = OpCaseStateEnum.OpStarted;
 
         UpsertStateHistory(OrderOpState);
@@ -131,14 +131,14 @@ public class OpCaseModel : IOrderOpKey
                 ? OpCaseStateEnum.PreOpCleared
                 : OpCaseStateEnum.Scheduled;
 
-        OnProgressOp = OnProgressOpReff.Default;
+        DuranteOp = DuranteOpReff.Default;
     }
 
     public void Finish(DateTime finishTime)
     {
         if ((int)OrderOpState != (int)OpCaseStateEnum.OpStarted)
             throw new ArgumentException("Status Operasi tidak dapat diubah finished!");
-        OnProgressOp = new OnProgressOpReff(OnProgressOp.StartTime, finishTime);
+        DuranteOp = new DuranteOpReff(DuranteOp.StartTime, finishTime);
         OrderOpState = OpCaseStateEnum.RecoveryStarted;
 
         UpsertStateHistory(OrderOpState);
@@ -163,7 +163,7 @@ public class OpCaseModel : IOrderOpKey
 
         OrderOpState = OpCaseStateEnum.Requested;
         ScheduleOp = ScheduleOpReff.Default;
-        OnProgressOp = OnProgressOpReff.Default;
+        DuranteOp = DuranteOpReff.Default;
     }
 
     public OpCaseReff ToReff() => new OpCaseReff(OrderOp.OrderOpId, OrderOp.OrderDate,
@@ -287,9 +287,9 @@ public record DischargeOpReff(string DischargeOpId, DateTime DischargedDate)
     public static DischargeOpReff Default => new DischargeOpReff("-", new DateTime(3000, 1, 1));
 };
 
-public record OnProgressOpReff(DateTime StartTime, DateTime FinishTime)
+public record DuranteOpReff(DateTime StartTime, DateTime FinishTime)
 {
-    public static OnProgressOpReff Default => new OnProgressOpReff(new DateTime(3000, 1, 1), new DateTime(3000, 1, 1));
+    public static DuranteOpReff Default => new DuranteOpReff(new DateTime(3000, 1, 1), new DateTime(3000, 1, 1));
 }
 
 public record OpCaseReff(string OrderOpId, DateTime OrderOpDate,
