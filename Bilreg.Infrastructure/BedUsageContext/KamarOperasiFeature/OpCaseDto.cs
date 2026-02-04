@@ -36,8 +36,8 @@ public record OpCaseDto(
             model.ScheduleOp.ScheduledDate,
             model.DischargeOp.DischargeOpId,
             model.DischargeOp.DischargedDate,
-            model.OnProgressOp.StartTime,
-            model.OnProgressOp.FinishTime,
+            model.DuranteOp.StartTime,
+            model.DuranteOp.FinishTime,
             (int)model.OrderOpState,
             model.Pasien.PasienName, tglLahir, model.Pasien.Gender,
             (int)model.UrgencyLevel);
@@ -55,9 +55,9 @@ public record OpCaseDto(
             new RegReff(RegId, PasienId, PasienName);
         var schedule = new ScheduleOpReff(ScheduleOpId, ScheduledDate);
         var discharge = new DischergeOpReff(DischargeOpId, DischargedDate);
-        var onProgress = new OnProgressOpReff(StartedDate, FinishedDate);
+        var durante = new DuranteOpReff(StartedDate, FinishedDate);
         var result = new OpCaseModel(OrderOpId, orderOp, pasien, NamaOperasi,
-            reg, (UrgencyLevelEnum)UrgencyLevel, schedule, discharge, onProgress,
+            reg, (UrgencyLevelEnum)UrgencyLevel, schedule, discharge, durante,
             (OpCaseStateEnum)OrderOpState, listHist, listPpa);
         return result;
     }
