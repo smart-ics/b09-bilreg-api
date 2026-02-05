@@ -92,7 +92,7 @@ public class RegJalanByBookingHandler
         ITrsBillingRepo trsBillingRepo,
         IAntrianRepo antrianRepo,
         IMapJaminanJkRepo mapJaminanJkRepo,
-        IJurnalRepo jurnalRepo)
+        IJurnalRepo jurnalRepo,
         IRemoteCetakRepo remoteCetakRepo,
         IGetAppSettingService getAppSettingSvc)
     {
