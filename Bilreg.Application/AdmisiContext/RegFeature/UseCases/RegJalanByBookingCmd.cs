@@ -211,13 +211,13 @@ public class RegJalanByBookingHandler
         _regAktifRepo.SaveChanges(regAktif);
         _trsBillingRepo.SaveChanges(trsBillingReg);
         _antrianRepo.SaveChanges(antrian);
-        if (tindakan != TindakanModel.Default)
+        if (tindakan.TindakanId != "-")
             _tindakanRepo.SaveChanges(tindakan);
-        if (trsBilling != TrsBillingType.Default)
+        if (trsBilling.TrsBillingId != "-")
             _trsBillingRepo.SaveChanges(trsBilling);
 
         _jurnalRepo.SaveChanges(jurnalReg);
-        if (jurnalTindakan != JurnalType.Default)
+        if (jurnalTindakan.JurnalId != "-")
             _jurnalRepo.SaveChanges(jurnalTindakan);
 
         _remoteCetakRepo.SaveChanges(rmtCetak);

@@ -234,13 +234,13 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
 
         _trsBillingRepo.SaveChanges(trsBillingReg);
 
-        if (tindakan != TindakanModel.Default)
+        if (tindakan.TindakanId != "-")
             _tindakanRepo.SaveChanges(tindakan);
-        if(trsBilling != TrsBillingType.Default)
+        if(trsBilling.TrsBillingId != "-")
             _trsBillingRepo.SaveChanges(trsBilling);
 
         _jurnalRepo.SaveChanges(jurnalReg);
-        if (jurnalTindakan != JurnalType.Default)
+        if (jurnalTindakan.JurnalId != "-")
             _jurnalRepo.SaveChanges(jurnalTindakan);
         _remoteCetakRepo.SaveChanges(rmtCetak);
 

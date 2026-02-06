@@ -96,7 +96,8 @@ public class TrsBilling2Dal : ITrsBilling2Dal
                 aa.fs_kd_detil_tarif, aa.fs_kd_grup_rek,
                 
                 aa.fs_kd_rek_ppdp, aa.fs_kd_rek_pdpt, aa.fs_kd_rek_disc, 
-                aa.fs_kd_rek_pdpt_lain, aa.fs_kd_rek_persediaan, aa.fs_kd_rek_tax, aa.fs_kd_rek_retur,
+                aa.fs_kd_rek_pdpt_lain, aa.fs_kd_rek_persediaan, aa.fs_kd_rek_tax, 
+                aa.fs_kd_rek_retur,
 
                 ISNULL(bb.fs_nm_detil_tarif, '') AS fs_nm_detil_tarif, 
                 ISNULL(cc.fs_nm_grup_rek, '') AS fs_nm_grup_rek, 
