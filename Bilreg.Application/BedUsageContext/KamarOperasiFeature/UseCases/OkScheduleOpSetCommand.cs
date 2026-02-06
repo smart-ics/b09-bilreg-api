@@ -54,12 +54,14 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
         var kamar = _kamarRepo.LoadEntity(KamarType.Key(request.KamarId))
             .GetValueOrThrow($"Kamar Operasi ID {request.KamarId} tidak ditemukan.");
 
+        var opCase = _opCaseRepo.LoadEntity(orderOp)
+            .GetValueOrThrow("Invalid Order Operasi. OpCase data tidak ditemukan.");
+
         var listSchedule = _scheduleOpRepo.ListData(PasienModel.Key(orderOp.Pasien.PasienId))?.ToList()
             ?? [];
         var scheduleWithOrderOpId = listSchedule
             .Where(x => !x.IsVoid)
             .FirstOrDefault(x => x.OrderOp.OrderOpId == request.OrderOpId);
-
         var scheduleOp = scheduleWithOrderOpId != null
             ? _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(scheduleWithOrderOpId.ScheduleOpId))
                 .GetValueOrDefault()
@@ -84,10 +86,7 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
                  kamar, teamLead, tglOp);
         newScheduleOp.SetSchedule(tglOp, kamar.ToReff(), request.Durasi, request.UserId);
 
-        var opCase = _opCaseRepo.LoadEntity(orderOp)
-            .GetValueOrDefault()
-            ?? OpCaseModel.Create(orderOp);
-        opCase.Schedule(newScheduleOp.ToReff());
+        opCase.Schedule(newScheduleOp);
 
         using var trans = TransHelper.NewScope();
         if (scheduleOp != null)
