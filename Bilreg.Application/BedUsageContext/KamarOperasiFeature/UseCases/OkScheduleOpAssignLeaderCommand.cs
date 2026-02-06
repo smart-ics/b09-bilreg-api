@@ -36,25 +36,24 @@ public class OkScheduleOpAssignLeaderHandler : IRequestHandler<OkScheduleOpAssig
         var ppa = _ppaRepo.LoadEntity(PpaType.Key(request.PpaId))
             .GetValueOrThrow($"Ppa ID {request.PpaId} tidak ditemukan.");
 
+        var opCase = _opCaseRepo.LoadEntity(orderOp)
+            .GetValueOrThrow("Invalid Order Operasi. OpCase data tidak ditemukan.");
+
         var listSchedule = _scheduleOpRepo.ListData(PasienModel.Key(orderOp.Pasien.PasienId))?.ToList()
             ?? [];
         var scheduleWithOrderOpId = listSchedule
             .Where(x => !x.IsVoid)
             .FirstOrDefault(x => x.OrderOp.OrderOpId == request.OrderOpId);
         if (scheduleWithOrderOpId == null)
-            return Task.CompletedTask;
+            throw new KeyNotFoundException("Schedule Operasi tidak ditemukan.");
 
         var scheduleOp = _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(scheduleWithOrderOpId.ScheduleOpId))
-            .GetValueOrDefault();
+            .GetValueOrThrow("Schedule Operasi tidak ditemukan.");
+
+        scheduleOp.CancelSchedule(request.UserId);
 
         ScheduleOpModel newScheduleOp;
-        if (scheduleOp != null)
-        {
-            scheduleOp.CancelSchedule(request.UserId);
-            newScheduleOp = ScheduleOpModel.CloneFrom(scheduleOp);
-        }
-        else
-            return Task.CompletedTask;
+        newScheduleOp = ScheduleOpModel.CloneFrom(scheduleOp);
 
         // Checks if TeamLead is not null AND if PpaId is a valid string
         if (scheduleOp.TeamLead is { PpaId: string ppaId } oldAssignedLead &&
@@ -72,16 +71,7 @@ public class OkScheduleOpAssignLeaderHandler : IRequestHandler<OkScheduleOpAssig
             newScheduleOp.AddPpa(ppa, request.UserId);
         newScheduleOp.AssignLeader(ppa, request.UserId);
 
-        var opCase = _opCaseRepo.LoadEntity(orderOp)
-            .GetValueOrDefault()
-            ?? OpCaseModel.Create(orderOp);
-        opCase.SetListPpa(
-            newScheduleOp.ListPpa
-                .Select(x =>
-                {
-                    string profesi = x.Profesi.ProfesiName;
-                    return new OpCasePpaType(x.NoUrut, x.Ppa, profesi, new DateTime(3000, 1, 1));
-                }));
+        opCase.Schedule(newScheduleOp);
 
         using var trans = TransHelper.NewScope();
         _scheduleOpRepo.SaveChanges(scheduleOp);

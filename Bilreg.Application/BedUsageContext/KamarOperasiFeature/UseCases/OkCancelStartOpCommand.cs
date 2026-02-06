@@ -32,8 +32,8 @@ public class OkCancelStartOpHandler : IRequestHandler<OkCancelStartOpCommand, Ok
             .GetValueOrThrow($"Schedule Operasi dengan OrderOp ID: { request.OrderOpId } tidak ditemukan.");
 
         var opCase = _opCaseRepo.LoadEntity(orderOp)
-            .GetValueOrDefault()
-            ?? OpCaseModel.Create(orderOp);
+            .GetValueOrThrow("Invalid Order Operasi. OpCase data tidak ditemukan.");
+
         opCase.CancelStart();
 
         //  WRITE

@@ -189,6 +189,7 @@
     <None Include="Helpers\DatabaseUser.sql" />
     <None Include="ChargeContext\BILRG_Tindakan.sql" />
     <None Include="ChargeContext\BILRG_TindakanKomponen.sql" />
+    <None Include="BedUsageContext\KamarOperasiFeature\BILRG_DischargeOp.sql" />
     <None Include="AccountingContext\JurnalFeature\t_jurnal_hdr.sql" />
     <None Include="AccountingContext\JurnalFeature\t_jurnal_dtl.sql" />
     <None Include="AccountingContext\UnitFeature\t_jk.sql" />
