@@ -14,7 +14,9 @@ public interface IKarcisDal :
     IUpdate<KarcisDto>,
     IDelete<IKarcisKey>,
     IGetData<KarcisDto, IKarcisKey>,
-    IListData<KarcisDto, IInstalasiDkKey>
+    IListData<KarcisDto, IInstalasiDkKey>,
+    IListData<KarcisLynViewDto, ILayananKey>
+
 {
 }
 
@@ -140,5 +142,32 @@ public class KarcisDal: IKarcisDal
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<KarcisDto>(sql, dp);
+    }
+
+    public IEnumerable<KarcisLynViewDto> ListData(ILayananKey lynKey)
+    {
+        const string sql = """
+            SELECT
+                aa.fs_kd_karcis, aa.fs_nm_karcis, aa.fn_karcis, aa.fs_kd_instalasi_dk,
+                aa.fs_kd_rekap_cetak, aa.fs_kd_tarif, aa.fb_aktif,
+                ISNULL(bb.fs_nm_instalasi_dk, '') AS fs_nm_instalasi_dk,
+                ISNULL(cc.fs_nm_rekap_cetak_tarif, '') AS fs_nm_rekap_cetak,
+                ISNULL(dd.fs_nm_tarif, '') AS fs_nm_tarif,
+            	ISNULL(ee.fs_kd_layanan,'') AS fs_kd_layanan,
+            	ISNULL(ff.fs_nm_layanan,'') AS fs_nm_layanan
+            FROM ta_karcis aa
+                LEFT JOIN ta_instalasi_dk bb ON aa.fs_kd_instalasi_dk = bb.fs_kd_instalasi_dk
+                LEFT JOIN ta_rekap_cetak_tarif cc ON aa.fs_kd_rekap_cetak = cc.fs_kd_rekap_cetak_tarif
+                LEFT JOIN ta_tarif dd ON aa.fs_kd_tarif = dd.fs_kd_tarif      
+            	LEFT JOIN ta_karcis3 ee ON aa.fs_kd_karcis = ee.fs_kd_karcis 
+            	LEFT JOIN ta_layanan ff ON ee.fs_kd_layanan = ff.fs_kd_layanan 
+            WHERE 
+                ee.fs_kd_layanan = @fs_kd_layanan
+            """;
+        var dp = new DynamicParameters();
+        dp.AddParam("@fs_kd_layanan", lynKey.LayananId, SqlDbType.VarChar);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<KarcisLynViewDto>(sql, dp);
     }
 }

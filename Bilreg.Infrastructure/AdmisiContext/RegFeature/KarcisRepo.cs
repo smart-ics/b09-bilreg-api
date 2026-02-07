@@ -68,4 +68,11 @@ public class KarcisRepo : IKarcisRepo
             x.fn_karcis));
         return result;
     }
+
+    public IEnumerable<KarcisLayananView> ListData(ILayananKey lynKey)
+    {
+        var lisDto = _karcisDal.ListData(lynKey)?.ToList() ?? [];
+        var result = lisDto.Select(x => x.ToView());
+        return result;
+    }
 }

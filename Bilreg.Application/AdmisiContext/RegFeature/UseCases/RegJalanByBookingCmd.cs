@@ -138,10 +138,8 @@ public class RegJalanByBookingHandler
         var polis = ResolvePolis(pasien, tipeJaminan);
         var rujukan = RujukanType.Default;
         if (!booking.CoverageInfo.NoRujukan.IsNullOrEmpty())
-        {
             rujukan = ResolveRujukan(caraMasuk, booking.CoverageInfo.NoRujukan);
-        }
-  
+        
         //  BUILD
         var regAudit = new AuditInfoType(request.UserId, DateTime.Now);
         var reg = _regFactory.CreateRegRajal(
@@ -172,16 +170,17 @@ public class RegJalanByBookingHandler
         var trsBillingReg = TrsBillingType.CreateFromRegistrasi(reg, karcis,
             jaminan, dokter, listKompKarcis);
 
+        var tindakan = karcis.DefaultTarif == TarifType.Default.ToReff()
+            ? TindakanModel.Default
+            : GenTindakan(reg, jaminan, karcis, request.UserId, dokter);
+
+
         //     BUILD Jurnal Reg
         var mapJaminanJk = LoadMapJmnJk(tipeJaminan.Jaminan);
         var jurnalReg = JurnalType.CreateFromTrsBilling(trsBillingReg, 
             layanan, mapJaminanJk);
 
-        //      BUILD TINDAKAN
-        var tindakan = karcis.DefaultTarif == TarifType.Default.ToReff()
-            ? TindakanModel.Default
-            : GenTindakan(reg, jaminan, karcis, request.UserId, dokter);
-
+        
         //      BUILD TrsBill
         var tarif = karcis.DefaultTarif == TarifType.Default.ToReff()
             ? TarifType.Default
@@ -211,13 +210,13 @@ public class RegJalanByBookingHandler
         _regAktifRepo.SaveChanges(regAktif);
         _trsBillingRepo.SaveChanges(trsBillingReg);
         _antrianRepo.SaveChanges(antrian);
-        if (tindakan != TindakanModel.Default)
+        if (tindakan.TindakanId != "-")
             _tindakanRepo.SaveChanges(tindakan);
-        if (trsBilling != TrsBillingType.Default)
+        if (trsBilling.TrsBillingId != "-")
             _trsBillingRepo.SaveChanges(trsBilling);
 
         _jurnalRepo.SaveChanges(jurnalReg);
-        if (jurnalTindakan != JurnalType.Default)
+        if (jurnalTindakan.JurnalId != "-")
             _jurnalRepo.SaveChanges(jurnalTindakan);
 
         _remoteCetakRepo.SaveChanges(rmtCetak);

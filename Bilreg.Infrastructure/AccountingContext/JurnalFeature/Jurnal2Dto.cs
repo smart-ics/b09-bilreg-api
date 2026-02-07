@@ -5,7 +5,7 @@ namespace Bilreg.Infrastructure.AccountingContext.JurnalFeature;
 
 public record Jurnal2Dto(
     string fs_kd_jurnal,
-    int fn_urut,
+    decimal fn_urut,
     string fs_kd_rek,
     string fs_uraian,
     decimal fn_jurnald,
