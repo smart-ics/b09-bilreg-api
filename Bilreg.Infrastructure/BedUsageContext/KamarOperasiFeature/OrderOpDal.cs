@@ -1,9 +1,7 @@
 ﻿using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Dapper;
-using FluentAssertions;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
-using Nuna.Lib.TransactionHelper;
 using Nuna.Lib.ValidationHelper;
 using System.Data;
 using System.Data.SqlClient;
@@ -35,16 +33,16 @@ public class OrderOpDal : IOrderOpDal
            INSERT INTO BILRG_OrderOp(
                OrderOpId, OrderDate, RegId, PasienId,
                Icd10Id, JenisOperasiId, NamaOperasi,
-               DokterId, UrgencyLevel, EstimasiDurasi,
-               PreferedDate, SpecialEquipment, 
+               DokterId, UrgencyLevel, TarifId, TarifName,
+               EstimasiDurasi, PreferedDate, SpecialEquipment,
                CrtUser, CrtDate,
                UpdUser, UpdDate,
                VodUser, VodDate)
            VALUES(
                @OrderOpId, @OrderDate, @RegId, @PasienId,
                @Icd10Id, @JenisOperasiId, @NamaOperasi,
-               @DokterId, @UrgencyLevel, @EstimasiDurasi,
-               @PreferedDate, @SpecialEquipment, 
+               @DokterId, @UrgencyLevel, @TarifId, @TarifName,
+               @EstimasiDurasi, @PreferedDate, @SpecialEquipment,
                @CrtUser, @CrtDate,
                @UpdUser, @UpdDate,
                @VodUser, @VodDate)
@@ -61,6 +59,8 @@ public class OrderOpDal : IOrderOpDal
         
         dp.AddParam("@DokterId", model.DokterId, SqlDbType.VarChar);
         dp.AddParam("@UrgencyLevel", model.UrgencyLevel, SqlDbType.Int);
+        dp.AddParam("@TarifId", model.TarifId, SqlDbType.VarChar);
+        dp.AddParam("@TarifName", model.TarifName, SqlDbType.VarChar);
         dp.AddParam("@EstimasiDurasi", model.EstimasiDurasi, SqlDbType.Int);
         dp.AddParam("@PreferedDate", model.PreferedDate, SqlDbType.DateTime);
         dp.AddParam("@SpecialEquipment", model.SpecialEquipment, SqlDbType.VarChar);
@@ -91,6 +91,8 @@ public class OrderOpDal : IOrderOpDal
         
                DokterId = @DokterId,
                UrgencyLevel = @UrgencyLevel,
+               TarifId = @TarifId,
+               TarifName = @TarifName,
                EstimasiDurasi = @EstimasiDurasi,
                PreferedDate = @PreferedDate,
                SpecialEquipment = @SpecialEquipment,
@@ -116,6 +118,8 @@ public class OrderOpDal : IOrderOpDal
         
         dp.AddParam("@DokterId", model.DokterId, SqlDbType.VarChar);
         dp.AddParam("@UrgencyLevel", model.UrgencyLevel, SqlDbType.Int);
+        dp.AddParam("@TarifId", model.TarifId, SqlDbType.VarChar);
+        dp.AddParam("@TarifName", model.TarifName, SqlDbType.VarChar);
         dp.AddParam("@EstimasiDurasi", model.EstimasiDurasi, SqlDbType.Int);
         dp.AddParam("@PreferedDate", model.PreferedDate, SqlDbType.DateTime);
         dp.AddParam("@SpecialEquipment", model.SpecialEquipment, SqlDbType.VarChar);
@@ -153,8 +157,8 @@ public class OrderOpDal : IOrderOpDal
            SELECT
                aa.OrderOpId, aa.OrderDate, aa.RegId, PasienId,
                aa.Icd10Id, aa.JenisOperasiId, aa.NamaOperasi,
-               aa.DokterId, aa.UrgencyLevel, aa.EstimasiDurasi,
-               aa.PreferedDate, aa.SpecialEquipment, 
+               aa.DokterId, aa.UrgencyLevel, aa.TarifId, aa.TarifName,
+               aa.EstimasiDurasi, aa.PreferedDate, aa.SpecialEquipment,
                aa.CrtUser, aa.CrtDate,
                aa.UpdUser, aa.UpdDate,
                aa.VodUser, aa.VodDate,
@@ -188,8 +192,8 @@ public class OrderOpDal : IOrderOpDal
            SELECT
                aa.OrderOpId, aa.OrderDate, aa.RegId, PasienId,
                aa.Icd10Id, aa.JenisOperasiId, aa.NamaOperasi,
-               aa.DokterId, aa.UrgencyLevel, aa.EstimasiDurasi,
-               aa.PreferedDate, aa.SpecialEquipment, 
+               aa.DokterId, aa.UrgencyLevel, aa.TarifId, aa.TarifName,
+               aa.EstimasiDurasi, aa.PreferedDate, aa.SpecialEquipment,
                aa.CrtUser, aa.CrtDate,
                aa.UpdUser, aa.UpdDate,
                aa.VodUser, aa.VodDate,

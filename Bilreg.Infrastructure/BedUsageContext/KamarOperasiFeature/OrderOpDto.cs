@@ -1,6 +1,7 @@
 ﻿using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
+using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 
@@ -16,6 +17,8 @@ public record OrderOpDto(
     string NamaOperasi,
     string DokterId,
     int UrgencyLevel,
+    string TarifId,
+    string TarifName,
     int EstimasiDurasi,
     DateTime PreferedDate,
     string SpecialEquipment,
@@ -46,6 +49,8 @@ public record OrderOpDto(
             model.NamaOperasi,
             model.Dokter.PpaId,
             (int)model.UrgencyLevel,
+            model.TarifOperasi.TarifId,
+            model.TarifOperasi.TarifName,
             model.EstimasiDurasiInMinutes,
             model.PreferedDate,
             model.SpecialEquipment,
@@ -78,6 +83,7 @@ public record OrderOpDto(
         var reg = new RegReff(RegId, PasienId, PasienName);
         var icd10 = new Icd10Type(Icd10Id, fs_ket_icd);
         var jenisOp = new JenisOperasiType(JenisOperasiId, fs_nm_jenis_operasi);
+        var tarif = new TarifReff(TarifId, TarifName);
         var dokter = new PpaReff(DokterId, fs_nm_peg);
 
         var result = new OrderOpModel(
@@ -90,6 +96,7 @@ public record OrderOpDto(
             jenisOp,
             NamaOperasi,
             (UrgencyLevelEnum)UrgencyLevel,
+            tarif,
             dokter,
             EstimasiDurasi,
             PreferedDate,
