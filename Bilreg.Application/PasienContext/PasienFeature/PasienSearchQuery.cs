@@ -17,7 +17,7 @@ public class PasienSearchHandler : IRequestHandler<PasienSearchQuery, IEnumerabl
     {
         var result = _repo.ListData(request.Keyword)?.ToList() ?? [];
         if (result.Count > LIMIT_CONTER)
-            throw new TooManyResultsException(LIMIT_CONTER, "Gunakan keyword seach lebih spesifik");
+            throw new TooManyResultsException(LIMIT_CONTER, "Gunakan keyword search lebih spesifik");
         
         return Task.FromResult(result.AsEnumerable());
     }

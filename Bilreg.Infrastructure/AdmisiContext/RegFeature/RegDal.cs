@@ -37,16 +37,18 @@ public class RegDal : IRegDal
                 fs_kd_reg, fd_tgl_masuk, fs_jam_masuk, fs_kd_petugas,
                 fd_tgl_keluar, fs_jam_keluar, fs_kd_petugas_keluar,
                 fd_tgl_cancel_out, fs_jam_cancel_out, fs_kd_petugas_cancel_out,
+                fd_tgl_void, fs_jam_void, fs_kd_petugas_void,
                 fs_kd_jenis_reg, fs_mr, fs_kd_tipe_jaminan, fs_kd_kelas, 
                 fs_kd_cara_masuk_dk, fs_kd_rujukan, fs_kd_medis, 
-                fs_kd_layanan, fs_kd_karcis)
+                fs_kd_layanan, fs_kd_karcis, fs_no_sjp)
             VALUES (
                 @fs_kd_reg, @fd_tgl_masuk,  @fs_jam_masuk, @fs_kd_petugas,
                 @fd_tgl_keluar, @fs_jam_keluar, @fs_kd_petugas_keluar,
                 @fd_tgl_cancel_out, @fs_jam_cancel_out, @fs_kd_petugas_cancel_out,
+                @fd_tgl_void, @fs_jam_void, @fs_kd_petugas_void,
                 @fs_kd_jenis_reg, @fs_mr, @fs_kd_tipe_jaminan, @fs_kd_kelas, 
                 @fs_kd_cara_masuk_dk, @fs_kd_rujukan, @fs_kd_medis, 
-                @fs_kd_layanan, @fs_kd_karcis)
+                @fs_kd_layanan, @fs_kd_karcis, @fs_no_sjp)
             """;
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_reg", dto.fs_kd_reg, SqlDbType.VarChar); 
@@ -59,6 +61,10 @@ public class RegDal : IRegDal
         dp.AddParam("@fd_tgl_cancel_out", dto.fd_tgl_cancel_out, SqlDbType.VarChar);
         dp.AddParam("@fs_jam_cancel_out", dto.fs_jam_cancel_out, SqlDbType.VarChar); 
         dp.AddParam("@fs_kd_petugas_cancel_out", dto.fs_kd_petugas_cancel_out, SqlDbType.VarChar);
+        dp.AddParam("@fd_tgl_void", dto.fd_tgl_void, SqlDbType.VarChar);
+        dp.AddParam("@fs_jam_void", dto.fs_jam_void, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_petugas_void", dto.fs_kd_petugas_void, SqlDbType.VarChar);
+
         dp.AddParam("@fs_kd_jenis_reg", dto.fs_kd_jenis_reg, SqlDbType.VarChar);
         dp.AddParam("@fs_mr", dto.fs_mr, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_tipe_jaminan", dto.fs_kd_tipe_jaminan, SqlDbType.VarChar); 
@@ -68,6 +74,8 @@ public class RegDal : IRegDal
         dp.AddParam("@fs_kd_medis", dto.fs_kd_medis, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_layanan", dto.fs_kd_layanan, SqlDbType.VarChar); 
         dp.AddParam("@fs_kd_karcis", dto.fs_kd_karcis, SqlDbType.VarChar);
+        dp.AddParam("@fs_no_sjp", dto.fs_no_sjp, SqlDbType.VarChar);
+
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -88,6 +96,9 @@ public class RegDal : IRegDal
                 fd_tgl_cancel_out = @fd_tgl_cancel_out, 
                 fs_jam_cancel_out = @fs_jam_cancel_out, 
                 fs_kd_petugas_cancel_out = @fs_kd_petugas_cancel_out,
+                fd_tgl_void = @fd_tgl_void,
+                fs_jam_void = @fs_jam_void,
+                fs_kd_petugas_void = @fs_kd_petugas_void, 
                 fs_kd_jenis_reg = @fs_kd_jenis_reg, 
                 fs_mr = @fs_mr, 
                 fs_kd_tipe_jaminan = @fs_kd_tipe_jaminan, 
@@ -96,7 +107,8 @@ public class RegDal : IRegDal
                 fs_kd_rujukan = @fs_kd_rujukan, 
                 fs_kd_medis = @fs_kd_medis, 
                 fs_kd_layanan = @fs_kd_layanan, 
-                fs_kd_karcis = @fs_kd_karcis
+                fs_kd_karcis = @fs_kd_karcis,
+                fs_no_sjp = @fs_no_sjp
             WHERE
                 fs_kd_reg = @fs_kd_reg
             """;
@@ -106,12 +118,19 @@ public class RegDal : IRegDal
         dp.AddParam("@fd_tgl_masuk", dto.fd_tgl_masuk, SqlDbType.VarChar);  
         dp.AddParam("@fs_jam_masuk", dto.fs_jam_masuk, SqlDbType.VarChar); 
         dp.AddParam("@fs_kd_petugas", dto.fs_kd_petugas, SqlDbType.VarChar);
+        
         dp.AddParam("@fd_tgl_keluar", dto.fd_tgl_keluar, SqlDbType.VarChar); 
         dp.AddParam("@fs_jam_keluar", dto.fs_jam_keluar, SqlDbType.VarChar); 
         dp.AddParam("@fs_kd_petugas_keluar", dto.fs_kd_petugas_keluar, SqlDbType.VarChar);
+        
         dp.AddParam("@fd_tgl_cancel_out", dto.fd_tgl_cancel_out, SqlDbType.VarChar);
         dp.AddParam("@fs_jam_cancel_out", dto.fs_jam_cancel_out, SqlDbType.VarChar); 
         dp.AddParam("@fs_kd_petugas_cancel_out", dto.fs_kd_petugas_cancel_out, SqlDbType.VarChar);
+        
+        dp.AddParam("@fd_tgl_void", dto.fd_tgl_void, SqlDbType.VarChar);
+        dp.AddParam("@fs_jam_void", dto.fs_jam_void, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_petugas_void", dto.fs_kd_petugas_void, SqlDbType.VarChar);
+
         dp.AddParam("@fs_kd_jenis_reg", dto.fs_kd_jenis_reg, SqlDbType.VarChar);
         dp.AddParam("@fs_mr", dto.fs_mr, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_tipe_jaminan", dto.fs_kd_tipe_jaminan, SqlDbType.VarChar); 
@@ -121,6 +140,8 @@ public class RegDal : IRegDal
         dp.AddParam("@fs_kd_medis", dto.fs_kd_medis, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_layanan", dto.fs_kd_layanan, SqlDbType.VarChar); 
         dp.AddParam("@fs_kd_karcis", dto.fs_kd_karcis, SqlDbType.VarChar);
+        dp.AddParam("@fs_no_sjp", dto.fs_no_sjp, SqlDbType.VarChar);
+
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -149,9 +170,10 @@ public class RegDal : IRegDal
                 aa.fs_kd_reg, aa.fd_tgl_masuk, aa.fs_jam_masuk, aa.fs_kd_petugas,
                 aa.fd_tgl_keluar, aa.fs_jam_keluar, aa.fs_kd_petugas_keluar, 
                 aa.fd_tgl_cancel_out, aa.fs_jam_cancel_out, aa.fs_kd_petugas_cancel_out, 
+                aa.fd_tgl_void, aa.fs_jam_void, aa.fs_kd_Petugas_void,
                 aa.fs_kd_jenis_reg, aa.fs_mr, aa.fs_kd_tipe_jaminan, aa.fs_kd_kelas, 
                 aa.fs_kd_cara_masuk_dk, aa.fs_kd_rujukan, aa.fs_kd_medis, 
-                aa.fs_kd_layanan, aa.fs_kd_karcis,
+                aa.fs_kd_layanan, aa.fs_kd_karcis, aa.fs_no_sjp,
                 ISNULL(bb.fs_nm_pasien, '-') AS fs_nm_pasien, 
                 ISNULL(bb.fd_tgl_lahir, '-') AS fd_tgl_lahir, 
                 ISNULL(bb.fs_jns_kelamin, '-') AS fs_jns_kelamin,
@@ -190,9 +212,10 @@ public class RegDal : IRegDal
                 aa.fs_kd_reg, aa.fd_tgl_masuk, aa.fs_jam_masuk, aa.fs_kd_petugas,
                 aa.fd_tgl_keluar, aa.fs_jam_keluar, aa.fs_kd_petugas_keluar, 
                 aa.fd_tgl_cancel_out, aa.fs_jam_cancel_out, aa.fs_kd_petugas_cancel_out, 
+                aa.fd_tgl_void, aa.fs_jam_void, aa.fs_kd_Petugas_void,
                 aa.fs_kd_jenis_reg, aa.fs_mr, aa.fs_kd_tipe_jaminan, aa.fs_kd_kelas, 
                 aa.fs_kd_cara_masuk_dk, aa.fs_kd_rujukan, aa.fs_kd_medis, 
-                aa.fs_kd_layanan, aa.fs_kd_karcis,
+                aa.fs_kd_layanan, aa.fs_kd_karcis, aa.fs_no_sjp,
                 ISNULL(bb.fs_nm_pasien, '') AS fs_nm_pasien, 
                 ISNULL(bb.fd_tgl_lahir, '') AS fd_tgl_lahir, 
                 ISNULL(bb.fs_jns_kelamin, '') AS fs_jns_kelamin,

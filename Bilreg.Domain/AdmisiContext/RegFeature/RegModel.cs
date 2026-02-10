@@ -16,10 +16,10 @@ public class RegModel : IRegKey
 
     #region  CREATION
     public RegModel(string regId, DateOnly regDate,
-        AuditInfoType regMasukAudit, AuditInfoType regKeluarAudit, AuditInfoType regCancelOutAudit,
+        AuditInfoType regMasukAudit, AuditInfoType regKeluarAudit, AuditInfoType regCancelOutAudit, AuditInfoType regVoidAudit,
         JenisRegEnum jenisReg, PasienReff pasien, TipeJaminanReff tipeJaminan, 
         PolisReff polis, KelasReff kelas, CaraMasukDkType caraMasukDk, RujukanReff rujukan, 
-        PpaReff dokter, LayananReff layanan, KarcisReff karcis, 
+        PpaReff dokter, LayananReff layanan, KarcisReff karcis, string sepNo,
         IEnumerable<RegKomponenType> listKomponen)
     {
         RegId = regId;
@@ -27,6 +27,7 @@ public class RegModel : IRegKey
         RegMasukAudit = regMasukAudit;
         RegKeluarAudit = regKeluarAudit;
         RegCancelOutAudit = regCancelOutAudit;
+        RegVoidAudit = regVoidAudit;
         JenisReg = jenisReg;
         Pasien = pasien;
         TipeJaminan = tipeJaminan;
@@ -37,31 +38,33 @@ public class RegModel : IRegKey
         Dokter = dokter;
         Layanan = layanan;
         Karcis = karcis;
+        SepNo = sepNo; 
         _listKomponen = listKomponen.ToList();
     }
 
     public static RegModel Default => new RegModel("-", new DateOnly(3000, 1, 1),
-        AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default,
+        AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default,
         JenisRegEnum.RegJalan, PasienModel.Default.ToReff(), TipeJaminanType.Default.ToReff(),
         PolisModel.Default.ToReff(), KelasType.Default.ToReff(), CaraMasukDkType.Default,
         RujukanType.Default.ToReff(), PpaType.Default.ToReff(), LayananType.Default.ToReff(),
-        KarcisType.Default.ToReff(), []);
+        KarcisType.Default.ToReff(), "-", []);
     
     public static IRegKey Key(string id) => new RegModel(id, new DateOnly(3000, 1, 1),
-        AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default,
+        AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default,
         JenisRegEnum.RegJalan, PasienModel.Default.ToReff(), TipeJaminanType.Default.ToReff(),
         PolisModel.Default.ToReff(), KelasType.Default.ToReff(), CaraMasukDkType.Default,
         RujukanType.Default.ToReff(), PpaType.Default.ToReff(), LayananType.Default.ToReff(),
-        KarcisType.Default.ToReff(), []);
+        KarcisType.Default.ToReff(), "-", []);
     #endregion
 
     #region PROPERTIES
     //      entitas identity
     public string RegId { get; init; } 
     public DateOnly RegDate { get; init; }
-    public AuditInfoType RegMasukAudit { get; init; }
+    public AuditInfoType RegMasukAudit { get; private set; }
     public AuditInfoType RegKeluarAudit { get; private set;}
     public AuditInfoType RegCancelOutAudit { get; private set; }
+    public AuditInfoType RegVoidAudit { get; private set;  }
     public bool IsAktif => RegKeluarAudit == AuditInfoType.Default;
     public JenisRegEnum JenisReg { get; init; }
     //      siapa yang berobat
@@ -77,6 +80,7 @@ public class RegModel : IRegKey
     public PpaReff Dokter { get; private set; }
     public LayananReff Layanan { get; private set; }
     public KarcisReff Karcis { get; private set; }
+    public string SepNo { get; private set; }
     //
     public IEnumerable<RegKomponenType> ListKomponen => _listKomponen;
     #endregion
@@ -135,10 +139,15 @@ public class RegModel : IRegKey
             .Select(x => new RegKomponenType(x.KomponenTarif, dokter.ToReff(), x.Nilai, 0)));
     }
 
-    //public void BatalBerobat(string userId)
-    //{
-    //    RegMasukAudit.
-    //}
+    public void BatalBerobat(string userId)
+    {
+        RegVoidAudit = new AuditInfoType(userId, DateTime.Now);
+    }
+
+    public void SetNoSep(string noSep)
+    {
+        SepNo = noSep;
+    }
     #endregion
 }
 

@@ -41,7 +41,8 @@ public record RegGetResponse(
     KarcisReff Karcis,
     TipeTarifReff TipeTarif,
     TipeBrgType TipeBarang,
-    int NoAntrian);
+    int NoAntrian,
+    string SepNo);
 public class RegJalanGethandler : IRequestHandler<RegGetQuery, RegGetResponse>
 {
     private readonly IRegRepo _regRepo;
@@ -85,7 +86,7 @@ public class RegJalanGethandler : IRequestHandler<RegGetQuery, RegGetResponse>
             reg.Pasien, umur, reg.TipeJaminan, reg.Polis,
             reg.Kelas, reg.CaraMasukDk, reg.Rujukan,
             reg.Dokter, reg.Layanan, reg.Karcis,
-            tipeTarif, tipeBrg, que.NoUrut);
+            tipeTarif, tipeBrg, que.NoUrut, reg.SepNo);
 
         return Task.FromResult(result);
 

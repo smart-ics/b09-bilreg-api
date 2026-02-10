@@ -16,21 +16,21 @@ public class RegController : Controller
         _mediator = mediator;
     }
 
-     [HttpPost]
-     [Route("rajalWalkIn")]
-     public async Task<IActionResult> Save(RegJalanWalkInCommand cmd)
-     {
-         var result = await _mediator.Send(cmd);
-         return Ok(new JSendOk(result));
-     }
+    [HttpPost]
+    [Route("rajalWalkIn")]
+    public async Task<IActionResult> Save(RegJalanWalkInCommand cmd)
+    {
+        var result = await _mediator.Send(cmd);
+        return Ok(new JSendOk(result));
+    }
 
-     [HttpPost]
-     [Route("rajalByBooking")]
-     public async Task<IActionResult> Save(RegJalanByBookingCmd cmd)
-     {
-         var result = await _mediator.Send(cmd);
-         return Ok(new JSendOk(result));
-     }
+    [HttpPost]
+    [Route("rajalByBooking")]
+    public async Task<IActionResult> Save(RegJalanByBookingCmd cmd)
+    {
+        var result = await _mediator.Send(cmd);
+        return Ok(new JSendOk(result));
+    }
 
 
     [HttpGet]
@@ -49,5 +49,22 @@ public class RegController : Controller
         var query = new RegAktifLayananListQuery(layananId);
         var result = await _mediator.Send(query);
         return Ok(new JSendOk(result));
+    }
+
+    [HttpPatch]
+    [Route("void/{regId}/{userId}")]
+    public async Task<IActionResult> Void(string regId, string userId)
+    {
+        var query = new RegBatalCmd(regId, userId);
+        await _mediator.Send(query);
+        return Ok(new JSendOk("Done"));
+    }
+
+    [HttpPatch]
+    [Route("setSepNumber")]
+    public async Task<IActionResult> SetNoSep(RegSetNoSepCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
     }
 }
