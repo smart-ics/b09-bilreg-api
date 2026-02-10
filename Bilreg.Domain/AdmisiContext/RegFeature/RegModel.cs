@@ -135,6 +135,10 @@ public class RegModel : IRegKey
             .Select(x => new RegKomponenType(x.KomponenTarif, dokter.ToReff(), x.Nilai, 0)));
     }
 
+    //public void BatalBerobat(string userId)
+    //{
+    //    RegMasukAudit.
+    //}
     #endregion
 }
 
