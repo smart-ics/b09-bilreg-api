@@ -43,6 +43,11 @@ public record KarcisType : IKarcisKey
     
     #region BEHAVIOUR
     public KarcisReff ToReff() => new(KarcisId, KarcisName);
+
+    public bool IsValidLayanan(LayananType layananan)
+    {
+        return _listLayanan.Any(x => x.LayananId == layananan.LayananId);
+    }
     #endregion
 }
 

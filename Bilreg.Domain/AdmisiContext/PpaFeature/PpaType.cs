@@ -50,4 +50,4 @@ public interface IPpaKey
     string PpaId { get; }
 }
 
-public record PpaReff(string PpaId, string PpaName);
+public record PpaReff(string PpaId, string PpaName) : IPpaKey;

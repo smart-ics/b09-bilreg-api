@@ -124,6 +124,18 @@ public class RegModel : IRegKey
         CaraMasukDk = caraMasukDk;
         Rujukan = rujukan.ToReff();
     }
+
+    public void ChangeLayanan(LayananType layanan, KarcisType karcis)
+    {
+        //  TODO: Layanan harus sesuai tipe registrasi
+        
+        //  TODO: Karcis harus sesuai layanan dan hanya untuk registrasi r.jalan
+        if (!karcis.IsValidLayanan(layanan))
+            throw new InvalidOperationException("Karcis tidak valid untuk layanan ini");
+        
+        Layanan = layanan.ToReff();
+        Karcis = karcis.ToReff();
+    }
     
     public void AssignVisitTo(PpaType dokter, LayananType layanan, KarcisType karcis)
     {
