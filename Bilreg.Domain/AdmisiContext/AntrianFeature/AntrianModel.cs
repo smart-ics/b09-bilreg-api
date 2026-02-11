@@ -12,7 +12,7 @@ public class AntrianModel : IAntrianKey
     
     #region CREATION
     public AntrianModel(string antrianId, DateOnly antrianDate, TimeOnly startTime, TimeOnly endTime,
-        string sequenceTag, string antrianDesc, string prefix, IEnumerable<AntrianEntryModel> listEntry, 
+        string sequenceTag, string antrianDesc, IEnumerable<AntrianEntryModel> listEntry, 
         ISequencer sequencer)
     {
         AntrianId = antrianId;
@@ -21,7 +21,6 @@ public class AntrianModel : IAntrianKey
         EndTime = endTime;
         SequenceTag = sequenceTag;
         AntrianDescription = antrianDesc;
-        Prefix = prefix;
         _listEntry = listEntry.ToList();
 
         _sequencer = sequencer;
@@ -30,13 +29,13 @@ public class AntrianModel : IAntrianKey
     public static IAntrianKey Key(string id)
     {
         var result = new AntrianModel(id, DateOnly.FromDateTime(DateTime.Now),
-            TimeOnly.MinValue, TimeOnly.MinValue, "-", "-", "-",
+            TimeOnly.MinValue, TimeOnly.MinValue, "-", "-", 
             new List<AntrianEntryModel>(), null!);
         return result;
     }
 
     public static AntrianModel Default => new AntrianModel("-", DateOnly.MinValue, 
-        TimeOnly.MinValue, TimeOnly.MaxValue, "-", "-", "-", new List<AntrianEntryModel>(), null!);
+        TimeOnly.MinValue, TimeOnly.MaxValue, "-", "-", new List<AntrianEntryModel>(), null!);
 
     #endregion
     
@@ -47,7 +46,6 @@ public class AntrianModel : IAntrianKey
     public TimeOnly EndTime { get; init; }
     public string SequenceTag { get; init; }
     public string AntrianDescription { get; init; }
-    public string Prefix { get; init;  }
     public IEnumerable<AntrianEntryModel> ListEntry => _listEntry;
     #endregion
 

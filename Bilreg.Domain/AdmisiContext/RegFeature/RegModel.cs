@@ -125,14 +125,15 @@ public class RegModel : IRegKey
         Rujukan = rujukan.ToReff();
     }
 
-    public void ChangeLayanan(LayananType layanan, KarcisType karcis)
+    public void ChangeDataKunjungan(LayananType layanan, KarcisType karcis, PpaType dokter)
     {
-        //  TODO: Layanan harus sesuai tipe registrasi
+        if (layanan.InstalasiDk.InstalasiDkId != "2")
+            throw new ArgumentException($"Layanan {layanan.LayananId} bukan instalasi rawat jalan");
         
-        //  TODO: Karcis harus sesuai layanan dan hanya untuk registrasi r.jalan
         if (!karcis.IsValidLayanan(layanan))
             throw new InvalidOperationException("Karcis tidak valid untuk layanan ini");
-        
+
+        Dokter = dokter.ToReff();
         Layanan = layanan.ToReff();
         Karcis = karcis.ToReff();
     }
