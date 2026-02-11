@@ -19,7 +19,7 @@ public class RegModel : IRegKey
         AuditInfoType regMasukAudit, AuditInfoType regKeluarAudit, AuditInfoType regCancelOutAudit, AuditInfoType regVoidAudit,
         JenisRegEnum jenisReg, PasienReff pasien, TipeJaminanReff tipeJaminan, 
         PolisReff polis, KelasReff kelas, CaraMasukDkType caraMasukDk, RujukanReff rujukan, 
-        PpaReff dokter, LayananReff layanan, KarcisReff karcis, string sepNo,
+        PpaReff dokter, LayananReff layanan, KarcisReff karcis, string sjpNo,
         IEnumerable<RegKomponenType> listKomponen)
     {
         RegId = regId;
@@ -38,7 +38,7 @@ public class RegModel : IRegKey
         Dokter = dokter;
         Layanan = layanan;
         Karcis = karcis;
-        SepNo = sepNo; 
+        SjpNo = sjpNo; 
         _listKomponen = listKomponen.ToList();
     }
 
@@ -80,7 +80,7 @@ public class RegModel : IRegKey
     public PpaReff Dokter { get; private set; }
     public LayananReff Layanan { get; private set; }
     public KarcisReff Karcis { get; private set; }
-    public string SepNo { get; private set; }
+    public string SjpNo { get; private set; }
     //
     public IEnumerable<RegKomponenType> ListKomponen => _listKomponen;
     #endregion
@@ -146,7 +146,7 @@ public class RegModel : IRegKey
 
     public void SetNoSep(string noSep)
     {
-        SepNo = noSep;
+        SjpNo = noSep;
     }
     #endregion
 }

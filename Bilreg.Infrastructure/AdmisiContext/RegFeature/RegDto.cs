@@ -49,7 +49,7 @@ public record RegDto(
             model.Dokter.PpaId,
             model.Layanan.LayananId,
             model.Karcis.KarcisId,
-            model.SepNo,
+            model.SjpNo,
             //
             model.Pasien.PasienName,
             model.Pasien.TglLahir.ToString("yyyy-MM-dd"),

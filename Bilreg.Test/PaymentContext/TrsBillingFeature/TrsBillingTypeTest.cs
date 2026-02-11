@@ -177,7 +177,7 @@ public class TrsBillingTypeTests
             JenisRegEnum.RegJalan, PasienModel.Default.ToReff(), tipeJaminan,
             PolisModel.Default.ToReff(), KelasType.Default.ToReff(), CaraMasukDkType.Default,
             RujukanType.Default.ToReff(), PpaType.Default.ToReff(), LayananType.Default.ToReff(),
-            KarcisType.Default.ToReff(), []);
+            KarcisType.Default.ToReff(), "-", []);
         return result;
     }
 
@@ -189,7 +189,7 @@ public class TrsBillingTypeTests
             JenisRegEnum.RegInap, PasienModel.Default.ToReff(), tipeJaminan,
             PolisModel.Default.ToReff(), KelasType.Default.ToReff(), CaraMasukDkType.Default,
             RujukanType.Default.ToReff(), PpaType.Default.ToReff(), LayananType.Default.ToReff(),
-            KarcisType.Default.ToReff(), []);
+            KarcisType.Default.ToReff(), "-", []);
         return result;
     }
     private static TarifType CreateTestTarifType()
