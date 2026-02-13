@@ -138,6 +138,21 @@ public class RegModel : IRegKey
         Karcis = karcis.ToReff();
     }
     
+    public void ChangeJaminan(TipeJaminanType tipeJaminan, PolisModel polis, CaraMasukDkType caraMasuk, 
+        RujukanType rujukan, KarcisType karcis, LayananType layanan)
+    {
+        if (!karcis.IsValidLayanan(layanan))
+            throw new InvalidOperationException("Karcis tidak valid untuk layanan ini");
+
+        TipeJaminan = tipeJaminan.ToReff();
+        Polis = polis.ToReff();
+        CaraMasukDk = caraMasuk;
+        Rujukan = rujukan.ToReff();
+        Karcis = karcis.ToReff();
+
+
+
+    }
     public void AssignVisitTo(PpaType dokter, LayananType layanan, KarcisType karcis)
     {
         if (karcis.ListLayanan.All(x => x.LayananId != layanan.LayananId))
@@ -157,9 +172,9 @@ public class RegModel : IRegKey
         RegVoidAudit = new AuditInfoType(userId, DateTime.Now);
     }
 
-    public void SetNoSep(string noSep)
+    public void SetNoSjp(string noSjp)
     {
-        SjpNo = noSep;
+        SjpNo = noSjp;
     }
     #endregion
 }

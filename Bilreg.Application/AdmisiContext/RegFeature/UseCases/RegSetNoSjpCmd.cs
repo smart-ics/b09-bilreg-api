@@ -4,25 +4,25 @@ using MediatR;
 
 namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 
-public record RegSetNoSepCmd(String RegId, string SepNo) : IRequest, IRegKey;
+public record RegSetNoSjpCmd(String RegId, string SjpNo) : IRequest, IRegKey;
 
-public class RegSetNoSepHandler : IRequestHandler<RegSetNoSepCmd>
+public class RegSetNoSjpHandler : IRequestHandler<RegSetNoSjpCmd>
 {
     private readonly IRegRepo _regRepo;
 
-    public RegSetNoSepHandler(IRegRepo regRepo)
+    public RegSetNoSjpHandler(IRegRepo regRepo)
     {
         _regRepo = regRepo;
     }
 
-    public Task Handle(RegSetNoSepCmd request, CancellationToken cancellationToken)
+    public Task Handle(RegSetNoSjpCmd request, CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.RegId);
-        Guard.Against.NullOrWhiteSpace(request.SepNo);
-        Guard.Against.LengthOutOfRange(request.SepNo, 1, 30);
+        Guard.Against.NullOrWhiteSpace(request.SjpNo);
+        Guard.Against.LengthOutOfRange(request.SjpNo, 1, 30);
 
         var reg = _regRepo.LoadEntity(request).GetValueOrThrow($"Register {request.RegId} not found");
-        reg.SetNoSep(request.SepNo);
+        reg.SetNoSjp(request.SjpNo);
 
         _regRepo.SaveChanges(reg);
         return Task.CompletedTask;

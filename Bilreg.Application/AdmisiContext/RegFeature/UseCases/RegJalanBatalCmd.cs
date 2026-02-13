@@ -1,7 +1,9 @@
 ﻿using Ardalis.GuardClauses;
+using Bilreg.Application.AccountingContext.JurnalFeature;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.ChargeContext.TindakanFeature;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
+using Bilreg.Domain.AccountingContext.JurnalFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
@@ -13,9 +15,9 @@ using Nuna.Lib.TransactionHelper;
 
 namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 
-public record RegBatalCmd(string RegId, string UserId) : IRequest, IRegKey;
+public record RegJalanBatalCmd(string RegId, string UserId) : IRequest, IRegKey;
 
-public class RegBatalHandler : IRequestHandler<RegBatalCmd>
+public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
 {
     private readonly IRegRepo _regRepo;
     private readonly IRegAktifRepo _regAktifRepo;
@@ -24,14 +26,15 @@ public class RegBatalHandler : IRequestHandler<RegBatalCmd>
     private readonly ITrsBillingRepo _bilingRepo;
     private readonly IAntrianMapHdrRepo _antrianMapHdrRepo;
     private readonly IPasienTrackerRepo _pasienTrackerRepo;
-
-    public RegBatalHandler(IRegRepo regRepo,
+    private readonly IJurnalRepo _jurnalRepo;
+    public RegJalanBatalHandler(IRegRepo regRepo,
         IRegAktifRepo regAktifRepo,
         IAntrianRepo antrianRepo,
         ITindakanRepo tdkRepo,
         ITrsBillingRepo bilingRepo,
         IAntrianMapHdrRepo antrianMapHdrRepo,
-        IPasienTrackerRepo pasienTrackerRepo)
+        IPasienTrackerRepo pasienTrackerRepo,
+        IJurnalRepo jurnalRepo)
     {
         _regRepo = regRepo;
         _regAktifRepo = regAktifRepo;
@@ -40,9 +43,10 @@ public class RegBatalHandler : IRequestHandler<RegBatalCmd>
         _bilingRepo = bilingRepo;
         _antrianMapHdrRepo = antrianMapHdrRepo;
         _pasienTrackerRepo = pasienTrackerRepo;
+        _jurnalRepo = jurnalRepo;
     }
 
-    public Task Handle(RegBatalCmd request, CancellationToken cancellationToken)
+    public Task Handle(RegJalanBatalCmd request, CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.RegId);
         Guard.Against.NullOrWhiteSpace(request.UserId);
@@ -71,7 +75,7 @@ public class RegBatalHandler : IRequestHandler<RegBatalCmd>
 
     #region PRIVATE-HELPER
     // LOAD-DATA
-    private RegModel? LoadReg(RegBatalCmd request)
+    private RegModel? LoadReg(RegJalanBatalCmd request)
     {
         return _regRepo.LoadEntity(request).GetValueOrDefault(RegModel.Default);
     }
@@ -100,7 +104,7 @@ public class RegBatalHandler : IRequestHandler<RegBatalCmd>
         );
     }
 
-    private List<TindakanModel> LoadAndValidateTindakan(RegBatalCmd request)
+    private List<TindakanModel> LoadAndValidateTindakan(RegJalanBatalCmd request)
     {
         var list = _tdkRepo.ListData(request)?.ToList() ?? [];
         if (list.Count > 1)
@@ -174,8 +178,11 @@ public class RegBatalHandler : IRequestHandler<RegBatalCmd>
     private void VoidBilling(IEnumerable<TrsBillingView> listBill)
     {
         foreach (var bill in listBill)
-            _bilingRepo.DeleteEntity(
-                TrsBillingType.Key(bill.TrsBillingId));
+        {
+            _jurnalRepo.DeleteEntity(JurnalType.Key(bill.TrsBillingId));
+            _bilingRepo.DeleteEntity(TrsBillingType.Key(bill.TrsBillingId));
+        }
+            
     }
 
     #endregion

@@ -52,17 +52,32 @@ public class RegController : Controller
     }
 
     [HttpPatch]
-    [Route("void/{regId}/{userId}")]
-    public async Task<IActionResult> Void(string regId, string userId)
+    [Route("rajalBatal")]
+    public async Task<IActionResult> Void(RegJalanBatalCmd cmd)
     {
-        var query = new RegBatalCmd(regId, userId);
-        await _mediator.Send(query);
+        await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));
     }
 
     [HttpPatch]
-    [Route("setSepNumber")]
-    public async Task<IActionResult> SetNoSep(RegSetNoSepCmd cmd)
+    [Route("setSjpNumber")]
+    public async Task<IActionResult> SetNoSep(RegSetNoSjpCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
+    [HttpPatch]
+    [Route("ubahKunjungan")]
+    public async Task<IActionResult> UbahKunjungan(RegJalanUbahKunjunganCmd cmd)
+    {
+        var response = await _mediator.Send(cmd);   
+        return Ok(new JSendOk(response));
+    }
+
+    [HttpPatch]
+    [Route("ubahJaminan")]
+    public async Task<IActionResult> UbahJaminan(RegJalanUbahJaminanCmd cmd)
     {
         await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));
