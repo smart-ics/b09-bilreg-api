@@ -149,9 +149,6 @@ public class RegModel : IRegKey
         CaraMasukDk = caraMasuk;
         Rujukan = rujukan.ToReff();
         Karcis = karcis.ToReff();
-
-
-
     }
     public void AssignVisitTo(PpaType dokter, LayananType layanan, KarcisType karcis)
     {

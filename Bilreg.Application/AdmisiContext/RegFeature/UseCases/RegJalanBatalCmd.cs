@@ -79,7 +79,6 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
     {
         return _regRepo.LoadEntity(request).GetValueOrDefault(RegModel.Default);
     }
-    
     private (AntrianModel Que, int NoUrut, IPasienTrackerKey TrackerKey) LoadAntrianContext(RegModel reg)
     {
         var queDate = reg.RegDate.ToDateTime(TimeOnly.MinValue);
@@ -103,7 +102,6 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
             PasienTrackerModel.Key(entry.Tracker.PasienTrackerId)
         );
     }
-
     private List<TindakanModel> LoadAndValidateTindakan(RegJalanBatalCmd request)
     {
         var list = _tdkRepo.ListData(request)?.ToList() ?? [];
@@ -114,7 +112,6 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
             .Select(x => _tdkRepo.LoadEntity(x).Value)
             .ToList();
     }
-
     private AntrianMapHdrModel LoadAntrianMap(RegModel reg, AntrianModel que)
     {
         var ppaKey = PpaType.Key(reg.Dokter.PpaId);
@@ -146,7 +143,6 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
         reg.BatalBerobat(userId);
         _regRepo.SaveChanges(reg);
     }
-
     private void VoidAntrian((AntrianModel Que, int NoUrut, IPasienTrackerKey TrackerKey) ctx)
     {
         if (ctx.Que.AntrianId == "-")
@@ -154,10 +150,8 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
 
         ctx.Que.RemoveEntry(ctx.NoUrut);
         _antrianRepo.SaveChanges(ctx.Que);
-
         _pasienTrackerRepo.DeleteEntity(ctx.TrackerKey);
     }
-
     private void VoidAntrianMap(AntrianMapHdrModel queMap, int noUrut)
     {
         if (queMap.JadwalId == "-")
@@ -166,7 +160,6 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
         queMap.VoidSlot(noUrut);
         _antrianMapHdrRepo.SaveChanges(queMap);
     }
-
     private void VoidTindakan(IEnumerable<TindakanModel> listTindakan, string userId)
     {
         foreach (var tindakan in listTindakan)

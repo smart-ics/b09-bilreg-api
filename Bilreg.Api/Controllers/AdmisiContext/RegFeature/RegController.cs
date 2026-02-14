@@ -10,7 +10,6 @@ namespace Bilreg.Api.Controllers.AdmisiContext.RegFeature;
 public class RegController : Controller
 {
     private readonly IMediator _mediator;
-
     public RegController(IMediator mediator)
     {
         _mediator = mediator;
@@ -32,6 +31,37 @@ public class RegController : Controller
         return Ok(new JSendOk(result));
     }
 
+    [HttpPatch]
+    [Route("setSjpNumber")]
+    public async Task<IActionResult> SetNoSep(RegSetNoSjpCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
+    [HttpPatch]
+    [Route("ubahKunjungan")]
+    public async Task<IActionResult> UbahKunjungan(RegJalanUbahKunjunganCmd cmd)
+    {
+        var response = await _mediator.Send(cmd);
+        return Ok(new JSendOk(response));
+    }
+
+    [HttpPatch]
+    [Route("ubahJaminan")]
+    public async Task<IActionResult> UbahJaminan(RegJalanUbahJaminanCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
+    [HttpPatch]
+    [Route("rajalBatal")]
+    public async Task<IActionResult> Void(RegJalanBatalCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
 
     [HttpGet]
     [Route("{id}")]
@@ -51,35 +81,4 @@ public class RegController : Controller
         return Ok(new JSendOk(result));
     }
 
-    [HttpPatch]
-    [Route("rajalBatal")]
-    public async Task<IActionResult> Void(RegJalanBatalCmd cmd)
-    {
-        await _mediator.Send(cmd);
-        return Ok(new JSendOk("Done"));
-    }
-
-    [HttpPatch]
-    [Route("setSjpNumber")]
-    public async Task<IActionResult> SetNoSep(RegSetNoSjpCmd cmd)
-    {
-        await _mediator.Send(cmd);
-        return Ok(new JSendOk("Done"));
-    }
-
-    [HttpPatch]
-    [Route("ubahKunjungan")]
-    public async Task<IActionResult> UbahKunjungan(RegJalanUbahKunjunganCmd cmd)
-    {
-        var response = await _mediator.Send(cmd);   
-        return Ok(new JSendOk(response));
-    }
-
-    [HttpPatch]
-    [Route("ubahJaminan")]
-    public async Task<IActionResult> UbahJaminan(RegJalanUbahJaminanCmd cmd)
-    {
-        await _mediator.Send(cmd);
-        return Ok(new JSendOk("Done"));
-    }
 }

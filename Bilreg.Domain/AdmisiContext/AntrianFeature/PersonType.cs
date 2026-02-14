@@ -13,7 +13,7 @@ public record PersonType(string PersonName, DateOnly TglLahir)
         if (other?.TglLahir != TglLahir)
             return false;
         var otherName = other?.PersonName ?? string.Empty;
-        var similar = JaroWinklerDistance.AreSimilar(PersonName, otherName, threshold: 0.95);
+        var similar = JaroWinklerDistance.AreSimilar(PersonName, otherName, threshold: 0.75);
         return similar;
     }
 }

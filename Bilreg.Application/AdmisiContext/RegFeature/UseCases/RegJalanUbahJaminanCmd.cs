@@ -22,7 +22,6 @@ using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
-using System.Diagnostics;
 
 namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 
@@ -96,7 +95,9 @@ public class RegJalanUbahJaminanHandler : IRequestHandler<RegJalanUbahJaminanCmd
 
     public Task Handle(RegJalanUbahJaminanCmd request, CancellationToken cancellationToken)
     {
-        //  GUARD
+        /*  ▐▀▀▀▀▀▀▀▀▀▀▀▌
+            ▐   GUARD   ▌
+            ▐▄▄▄▄▄▄▄▄▄▄▄▌*/
         var regCurrent = _regAktifRepo.LoadEntity(request).GetValueOrThrow("Register tidak ditemukan atau sudah tidak aktif");
         var regOld = _regRepo.LoadEntity(request).GetValueOrThrow("Register tidak ditemukan");
         var reg = _regRepo.LoadEntity(request).GetValueOrThrow("Register tidak ditemukan");
@@ -104,7 +105,10 @@ public class RegJalanUbahJaminanHandler : IRequestHandler<RegJalanUbahJaminanCmd
         var caraMasukDk = _caraMasukDkRepo.LoadEntity(request).GetValueOrThrow("Cara masuk Dk Invalid");
         var rujukan = _rujukanRepo.LoadEntity(request).GetValueOrDefault(RujukanType.Default); 
         var karcis = _karcisRepo.LoadEntity(request).GetValueOrThrow("Karcis not found");
-        
+
+        /*  ▐▀▀▀▀▀▀▀▀▀▀▀▌
+            ▐   BUILD   ▌
+            ▐▄▄▄▄▄▄▄▄▄▄▄▌*/
         //  load data pendukung
         var lyn = _lynRepo.LoadEntity(LayananType.Key(reg.Layanan.LayananId)).GetValueOrThrow("Layanan Invalid");
         var pasien = _pasienRepo.LoadEntity(PasienModel.Key(reg.Pasien.PasienId)).GetValueOrThrow("Pasien invalid");
@@ -125,7 +129,6 @@ public class RegJalanUbahJaminanHandler : IRequestHandler<RegJalanUbahJaminanCmd
         var billKarcis = reg.Karcis.KarcisId == request.KarcisId
             ? TrsBillingType.Default :
             GenBillKarcis(reg, dokter, karcis, jaminan);
-
         //  billing tindakan
         var tarif = karcis.DefaultTarif == TarifType.Default.ToReff()
             ? TarifType.Default
@@ -142,9 +145,9 @@ public class RegJalanUbahJaminanHandler : IRequestHandler<RegJalanUbahJaminanCmd
             ? JurnalType.Default
             : JurnalType.CreateFromTrsBilling(billTdk,lyn, mapJaminanJk);
 
-
-
-        //  save
+        /*  ▐▀▀▀▀▀▀▀▀▀▀▀▌
+            ▐   WRITE   ▌
+            ▐▄▄▄▄▄▄▄▄▄▄▄▌*/
         using var trans = TransHelper.NewScope();
         
         SaveRegister(reg);
@@ -162,6 +165,7 @@ public class RegJalanUbahJaminanHandler : IRequestHandler<RegJalanUbahJaminanCmd
     }
 
     #region PRIVATE-HELPER
+    //  Load & resolve data
     private PolisModel ResolvePolis(PasienModel pasien, TipeJaminanType tipeJaminan) =>
         tipeJaminan.CaraBayarDk.CaraBayarDkId == BAYAR_SENDIRI
             ? PolisModel.Default
@@ -174,7 +178,6 @@ public class RegJalanUbahJaminanHandler : IRequestHandler<RegJalanUbahJaminanCmd
             throw new ArgumentException("Polis not found")
             : _polisRepo.LoadEntity(polisView).Value;
     }
-
     private JaminanType LoadJaminan(IJaminanKey key)
     {
         var jaminan = _jaminanRepo.LoadEntity(key).GetValueOrDefault(JaminanType.Default);
@@ -183,18 +186,18 @@ public class RegJalanUbahJaminanHandler : IRequestHandler<RegJalanUbahJaminanCmd
     private TarifType LoadTarif(ITarifKey key)
     {
         return _tarifRepo.LoadEntity(key).GetValueOrDefault(TarifType.Default);
-
     }
     private KomponenType LoadKomponen(IKomponenKey key)
     {
         return _komponenRepo.LoadEntity(key).GetValueOrDefault(KomponenType.Default);
-
     }
     private MapJaminanJkType LoadMapJmnJk(IJaminanKey key)
     {
         var map = _mapJaminanJkRepo.LoadEntity(key).GetValueOrDefault(MapJaminanJkType.Default);
         return map;
     }
+    
+    //  Gen Data
     private TindakanModel GenTindakan(RegModel reg, JaminanType jaminan,
         KarcisType karcis, string userId, PpaType dokter, string karcisOld)
     {
@@ -216,7 +219,6 @@ public class RegJalanUbahJaminanHandler : IRequestHandler<RegJalanUbahJaminanCmd
         }
         return TindakanModel.Default;
     }
-
     private TrsBillingType GenBillKarcis(RegModel reg, PpaType dokter, KarcisType karcis, JaminanType jaminan)
     {
         var listKompKarcis = karcis.ListKomponen
@@ -224,9 +226,7 @@ public class RegJalanUbahJaminanHandler : IRequestHandler<RegJalanUbahJaminanCmd
         var trsBillKarcis = TrsBillingType.CreateFromRegistrasi(reg, karcis,
             jaminan, dokter, listKompKarcis);
         return trsBillKarcis;
-
     }
-
     private TrsBillingType GenBillTdk(TindakanModel tdk, RegModel reg, JaminanType jaminan, TarifType tarif)
     {
         if (tdk.TindakanId == "-")
@@ -242,12 +242,11 @@ public class RegJalanUbahJaminanHandler : IRequestHandler<RegJalanUbahJaminanCmd
         return trsBilling;
     }
 
-    // SAVE
+    // Save
     private void SaveRegister(RegModel reg)
     {
         _regRepo.SaveChanges(reg);
     }
-
     private void SaveTindakan(TindakanModel tindakan, RegModel reg, KarcisType karcisOld)
     {
         if (reg.Karcis.KarcisId != karcisOld.KarcisId)
@@ -258,11 +257,9 @@ public class RegJalanUbahJaminanHandler : IRequestHandler<RegJalanUbahJaminanCmd
 
         _tindakanRepo.SaveChanges(tindakan);
     }
-
     private void RemoveOldDefaultTindakan(RegModel reg, KarcisType karcisOld)
     {
         var listTdk = _tindakanRepo.ListData(reg)?.ToList() ?? [];
-
         var tdkDefaultOld = listTdk
             .FirstOrDefault(x => x.Tarif.TarifId == karcisOld.DefaultTarif.TarifId);
 
@@ -272,8 +269,7 @@ public class RegJalanUbahJaminanHandler : IRequestHandler<RegJalanUbahJaminanCmd
         _jurnalRepo.DeleteEntity(JurnalType.Key(tdkDefaultOld.TindakanId));
         _trsBillingRepo.DeleteEntity(TrsBillingType.Key(tdkDefaultOld.TindakanId));
         _tindakanRepo.Delete(TindakanModel.Key(tdkDefaultOld.TindakanId));
-    }
-    
+    }  
     private void SaveBillTdk(TrsBillingType billTdk)
     {
         if (billTdk.TrsBillingId == "-")
@@ -292,15 +288,12 @@ public class RegJalanUbahJaminanHandler : IRequestHandler<RegJalanUbahJaminanCmd
             return;
         _jurnalRepo.SaveChanges(jurnalReg);
     }
-
     private void SaveJurnalTdk(JurnalType jurnalTdk)
     {
         if(jurnalTdk.JurnalId == "-")
             return;
         _jurnalRepo.SaveChanges(jurnalTdk);
     }
-
-    
     #endregion
 
 }
