@@ -6,19 +6,19 @@ using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.PaymentContext.RegOutFeature.UseCase;
 
-public record RegGetReg(string RegId) : IRequest<RegGetRegResponse>, IRegKey;
+public record RegGetRegQuery(string RegId) : IRequest<RegGetRegResponse>, IRegKey;
 public record RegGetRegResponse(string RegId, string RegDate, string RegDateOut,
     string PasienId, string PasienName, string TipeJaminanName,
     string LayananName, string KelasName, string JenisReg, string JenisRegString);
 
-public class RegGetRegHandler : IRequestHandler<RegGetReg, RegGetRegResponse>
+public class RegGetRegHandler : IRequestHandler<RegGetRegQuery, RegGetRegResponse>
 {
     private readonly IRegRepo _regRepo;
     public RegGetRegHandler(IRegRepo regRepo)
     {
         _regRepo = regRepo;
     }
-    public Task<RegGetRegResponse> Handle(RegGetReg request, CancellationToken cancellationToken)
+    public Task<RegGetRegResponse> Handle(RegGetRegQuery request, CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.RegId);
         var reg = _regRepo.LoadEntity(request).GetValueOrThrow($"Register {request.RegId} not found");
