@@ -59,6 +59,7 @@ public class RegRepo : IRegRepo
         var regMasukAudit = new AuditInfoType(regDto.fs_kd_petugas, regDto.fd_tgl_masuk, regDto.fs_jam_masuk);
         var regKeluarAudit = new AuditInfoType(regDto.fs_kd_petugas_keluar, regDto.fd_tgl_keluar, regDto.fs_jam_keluar);
         var regCancelOutAudit = new AuditInfoType(regDto.fs_kd_petugas_cancel_out, regDto.fd_tgl_cancel_out, regDto.fs_jam_cancel_out);
+        var regVoidAudit = new AuditInfoType(regDto.fs_kd_petugas_void, regDto.fd_tgl_void, regDto.fs_jam_void);
         var jenisReg = regDto.fs_kd_jenis_reg.ToJenisRegEnum();
         var pasien = new PasienReff(regDto.fs_mr, regDto.fs_nm_pasien, DateOnly.Parse(regDto.fd_tgl_lahir), regDto.fs_jns_kelamin);
         var tipeJmn = new TipeJaminanReff(regDto.fs_kd_tipe_jaminan, regDto.fs_nm_tipe_jaminan);
@@ -79,9 +80,9 @@ public class RegRepo : IRegRepo
         //  main object
         var result = new RegModel(
             regDto.fs_kd_reg, DateOnly.Parse(regDto.fd_tgl_masuk),
-            regMasukAudit, regKeluarAudit, regCancelOutAudit, jenisReg,
+            regMasukAudit, regKeluarAudit, regCancelOutAudit, regVoidAudit, jenisReg,
             pasien, tipeJmn, polis, kelas, caraMasukDk, rujukan, dokter,
-            layanan, karcis, listKomponenDto.Select(x => x.ToModel()));
+            layanan, karcis, regDto.fs_no_sjp, listKomponenDto.Select(x => x.ToModel()));
         return MayBe.From(result);
     }
     public IEnumerable<RegView> ListData(Periode filter, ILayananKey layanan)

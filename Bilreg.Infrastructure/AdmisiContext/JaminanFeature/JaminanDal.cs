@@ -178,7 +178,6 @@ public class JaminanDal : IJaminanDal
     {
         const string sql = """
             SELECT
-                SELECT
                 aa.fs_kd_jaminan, aa.fs_nm_jaminan, aa.fb_aktif,  
                 aa.fs_alm1_jaminan, aa.fs_alm2_jaminan, aa.fs_kota_jaminan, '-' as fs_kd_pos,
                 aa.fs_kd_cara_bayar_dk, aa.fs_kd_grup_jaminan, 

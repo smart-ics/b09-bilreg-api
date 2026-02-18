@@ -8,9 +8,10 @@ public record RegDto(
     string fd_tgl_masuk, string fs_jam_masuk, string fs_kd_petugas,
     string fd_tgl_keluar,  string fs_jam_keluar, string fs_kd_petugas_keluar,
     string fd_tgl_cancel_out,  string fs_jam_cancel_out, string fs_kd_petugas_cancel_out,
+    string fd_tgl_void, string fs_jam_void, string fs_kd_petugas_void,
     string fs_kd_jenis_reg, string fs_mr, string fs_kd_tipe_jaminan, string fs_kd_kelas, 
     string fs_kd_cara_masuk_dk,  string fs_kd_rujukan, string fs_kd_medis, 
-    string fs_kd_layanan,  string fs_kd_karcis, 
+    string fs_kd_layanan,  string fs_kd_karcis, string fs_no_sjp,
     //
     string fs_nm_pasien,  string fd_tgl_lahir, string fs_jns_kelamin,
     string fs_nm_tipe_jaminan, string fs_nm_kelas, string fs_nm_cara_masuk_dk, 
@@ -33,6 +34,11 @@ public record RegDto(
             model.RegCancelOutAudit.Timestamp.ToString("HH:mm:ss"),
             model.RegCancelOutAudit.UserId,
             //
+            model.RegVoidAudit.Timestamp.ToString("yyyy-MM-dd"),
+            model.RegVoidAudit.Timestamp.ToString("HH:mm:ss"),
+            model.RegVoidAudit.UserId,
+
+            //
             jenisRegStr,
             //
             model.Pasien.PasienId,
@@ -43,6 +49,7 @@ public record RegDto(
             model.Dokter.PpaId,
             model.Layanan.LayananId,
             model.Karcis.KarcisId,
+            model.SjpNo,
             //
             model.Pasien.PasienName,
             model.Pasien.TglLahir.ToString("yyyy-MM-dd"),

@@ -50,7 +50,7 @@ public class TindakanRepo : ITindakanRepo
 
     public IEnumerable<TindakanView> ListData(IRegKey regKey)
     {
-        var listDto = _tindakanDal.ListData(regKey);
+        var listDto = _tindakanDal.ListData(regKey)?.ToList() ?? [];
         var result = listDto.Select(x =>  x.ToView());
         return result;
     }
