@@ -12,7 +12,8 @@ public interface IRegAktifRepo :
     IDelete<IRegKey>,
     IListData<RegAktifModel, ILayananKey>,
     IListData<RegAktifModel, IPasienKey>,
-    IListData<RegAktifModel>
+    IListData<RegAktifModel>,
+    IListData<RegSearchRegView, string>
 {
     bool IsPasienAktif(IPasienKey pasien);
 }

@@ -1,5 +1,4 @@
 ﻿using Bilreg.Application.AdmisiContext.RegFeature;
-using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
@@ -8,7 +7,6 @@ using Bilreg.Domain.AdmisiContext.RujukanFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
-using Bilreg.Domain.Shared.Param;
 using Nuna.Lib.PatternHelper;
 using Nuna.Lib.ValidationHelper;
 
@@ -19,17 +17,14 @@ public class RegRepo : IRegRepo
     private readonly IRegDal _regDal;
     private readonly IRegJaminanDal _regJaminanDal;
     private readonly IRegKomponenDal _regKomponenDal;
-    private readonly IGetKodeRsService _getKodeRsSvc;
 
     public RegRepo(IRegDal regDal, 
         IRegJaminanDal regJaminanDal, 
-        IRegKomponenDal regKomponenDal,
-        IGetKodeRsService getKodeRsService)
+        IRegKomponenDal regKomponenDal)
     {
         _regDal = regDal;
         _regJaminanDal = regJaminanDal;
         _regKomponenDal = regKomponenDal;
-        _getKodeRsSvc = getKodeRsService;
     }
 
     public void SaveChanges(RegModel model)
@@ -100,126 +95,4 @@ public class RegRepo : IRegRepo
             new PpaReff(x.fs_kd_medis, x.fs_nm_medis)));
         return listView;
     }
-
-    public IEnumerable<RegSearchRegView> ListData(string keyword)
-    {
-        var kodeRs = _getKodeRsSvc.Execute();
-        var pasienFinder = PasienFinder.CreateNew(keyword, kodeRs);
-        var listRegByRegId = new List<RegSearchRegView>();
-        var listRegByBookingId = new List<RegSearchRegView>();
-        var listRegByPasienId = new List<RegSearchRegView>();
-        var listRegByTglMasuk = new List<RegSearchRegView>();
-        var listRegByName = new List<RegSearchRegView>();
-
-        if (pasienFinder.RegId != string.Empty)
-            listRegByRegId = ListRegByRegId(pasienFinder.RegId);
-
-        if (pasienFinder.BookingId != string.Empty)
-            listRegByBookingId = ListRegByBookingId(pasienFinder.BookingId);
-
-        if (pasienFinder.PasienId != string.Empty)
-            listRegByPasienId = ListRegByPasienId(pasienFinder.PasienId);
-
-        if (pasienFinder.TglMasuk != string.Empty)
-            listRegByTglMasuk = ListRegByTglMasuk(pasienFinder.TglMasuk);
-
-        if (pasienFinder.StringVariants.Count > 0)
-            listRegByName = ListRegByName(pasienFinder.StringVariants);
-
-        var result = listRegByRegId
-            .Union(listRegByBookingId)
-            .Union(listRegByPasienId)
-            .Union(listRegByTglMasuk)
-            .Union(listRegByName);
-
-        return result;
-    }
-
-    #region PRIVATE-HELPER
-    private List<RegSearchRegView> ListRegByRegId(string regId)
-    {
-        var regDb = LoadEntity(RegModel.Key(regId));
-        if (!regDb.HasValue)
-            return [];
-        
-        var result = new RegSearchRegView(
-            regDb.Value.RegId,
-            regDb.Value.RegDate.ToString("yyyy-MM-dd"),
-            regDb.Value.Pasien.PasienId,
-            regDb.Value.Pasien.PasienName,
-            regDb.Value.TipeJaminan.TipeJaminanName,
-            regDb.Value.Layanan.LayananName,
-            ((int)regDb.Value.JenisReg).ToString(),
-            regDb.Value.JenisReg.ToString());
-        return [result];
-    }
-    private List<RegSearchRegView> ListRegByBookingId(string bookingId)
-    {
-        var regDb = _regDal.GetData(BookingModel.Key(bookingId));
-        if (regDb is null)
-            return [];
-
-        var result = new RegSearchRegView(
-            regDb.fs_kd_reg,
-            regDb.fd_tgl_masuk,
-            regDb.fs_mr,
-            regDb.fs_nm_pasien,
-            regDb.fs_nm_tipe_jaminan,
-            regDb.fs_nm_layanan,
-            ((int)regDb.fs_kd_jenis_reg.ToJenisRegEnum()).ToString(),
-            regDb.fs_kd_jenis_reg.ToJenisRegEnum().ToString());
-        return [result];
-    }
-    private List<RegSearchRegView> ListRegByPasienId(string pasienId)
-    {
-        var listRegDb = _regDal.ListData(PasienModel.Key(pasienId));
-        if (listRegDb is null)
-            return [];
-        
-        var result = listRegDb.Select(x => new RegSearchRegView(
-            x.fs_kd_reg,
-            x.fd_tgl_masuk,
-            x.fs_mr,
-            x.fs_nm_pasien,
-            x.fs_nm_tipe_jaminan,
-            x.fs_nm_layanan,
-            ((int)x.fs_kd_jenis_reg.ToJenisRegEnum()).ToString(),
-            x.fs_kd_jenis_reg.ToJenisRegEnum().ToString()));
-        return result.ToList();
-    }
-    private List<RegSearchRegView> ListRegByTglMasuk(string tglMasuk)
-    {
-        var listRegDb = _regDal.ListData(tglMasuk.ToDate(DateFormatEnum.YMD));
-        if (listRegDb is null)
-            return [];
-        
-        var result = listRegDb.Select(x => new RegSearchRegView(
-            x.fs_kd_reg,
-            x.fd_tgl_masuk,
-            x.fs_mr,
-            x.fs_nm_pasien,
-            x.fs_nm_tipe_jaminan,
-            x.fs_nm_layanan,
-            ((int)x.fs_kd_jenis_reg.ToJenisRegEnum()).ToString(),
-            x.fs_kd_jenis_reg.ToJenisRegEnum().ToString()));
-        return result.ToList();
-    }
-    private List<RegSearchRegView> ListRegByName(Dictionary<string, string[]> stringVariants)
-    {
-        var listRegDb = _regDal.ListDataByName(stringVariants);
-        if (listRegDb is null)
-            return [];
-        
-        var result = listRegDb.Select(x => new RegSearchRegView(
-            x.fs_kd_reg,
-            x.fd_tgl_masuk,
-            x.fs_mr,
-            x.fs_nm_pasien,
-            x.fs_nm_tipe_jaminan,
-            x.fs_nm_layanan,
-            ((int)x.fs_kd_jenis_reg.ToJenisRegEnum()).ToString(),
-            x.fs_kd_jenis_reg.ToJenisRegEnum().ToString()));
-        return result.ToList();
-    }
-    #endregion
 }

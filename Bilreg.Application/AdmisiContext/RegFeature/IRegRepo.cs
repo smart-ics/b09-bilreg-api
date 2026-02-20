@@ -11,8 +11,7 @@ public interface IRegRepo :
     ISaveChange<RegModel>,
     IDelete<IRegKey>,
     ILoadEntity<RegModel, IRegKey>,
-    IListData<RegView, Periode, ILayananKey>,
-    IListData<RegSearchRegView, string>
+    IListData<RegView, Periode, ILayananKey>
 {
 }
 

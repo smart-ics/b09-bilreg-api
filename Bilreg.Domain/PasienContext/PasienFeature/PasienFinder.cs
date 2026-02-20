@@ -9,14 +9,13 @@ public record PasienFinder(
     string TglLahir,
     string RegId,
     string BookingId,
-    string TglMasuk,
     Dictionary<string, string[]> StringVariants)
 {
     public static PasienFinder CreateNew(string keyword, string pasienIdPrefix)
     {
         keyword = keyword.ToUpper();
         if (string.IsNullOrWhiteSpace(keyword))
-            return new PasienFinder("", "", "", "", "", []);
+            return new PasienFinder("", "", "", "", []);
 
         var tokens = keyword.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
@@ -24,7 +23,6 @@ public record PasienFinder(
         var regId = "";
         var bookingId = "";
         var tglLahir = "";
-        var tglMasuk = "";
         Dictionary<string, string[]> stringVariants = [];
 
         foreach (var token in tokens)
@@ -54,12 +52,6 @@ public record PasienFinder(
                 isFormattedData = isFormattedData ? isFormattedData : tglLahir != string.Empty;
             }
 
-            if (string.IsNullOrEmpty(tglMasuk))
-            {
-                tglMasuk = TryParseDate(token);
-                isFormattedData = isFormattedData ? isFormattedData : tglMasuk != string.Empty;
-            }
-
             if (isFormattedData) continue;
             
             var variants = MutateStringVariants(token);
@@ -71,7 +63,6 @@ public record PasienFinder(
             TglLahir: tglLahir,
             RegId: regId,
             BookingId: bookingId,
-            TglMasuk: tglMasuk,
             stringVariants);
     }
 

@@ -8,14 +8,14 @@ public record RegSearchRegQuery(string Keyword) : IRequest<IEnumerable<RegSearch
 
 public class RegSearchRegHandler : IRequestHandler<RegSearchRegQuery, IEnumerable<RegSearchRegView>>
 {
-    private readonly IRegRepo _regRepo;
+    private readonly IRegAktifRepo _regAktifRepo;
     private const int LIMIT_CONTER = 200;
-    public RegSearchRegHandler(IRegRepo regRepo)
-        => _regRepo = regRepo;
+    public RegSearchRegHandler(IRegAktifRepo regAktifRepo)
+        => _regAktifRepo = regAktifRepo;
 
     public Task<IEnumerable<RegSearchRegView>> Handle(RegSearchRegQuery request, CancellationToken cancellationToken)
     {
-        var result = _regRepo.ListData(request.Keyword)?.ToList() ?? [];
+        var result = _regAktifRepo.ListData(request.Keyword)?.ToList() ?? [];
         if (result.Count > LIMIT_CONTER)
             throw new TooManyResultsException(LIMIT_CONTER, "Gunakan keyword search lebih spesifik");
 
