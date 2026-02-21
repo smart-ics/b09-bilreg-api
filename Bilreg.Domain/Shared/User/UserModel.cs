@@ -5,20 +5,23 @@ namespace Bilreg.Domain.Shared.User;
 public class UserModel : IUserKey
 {
     #region CREATION
-    public UserModel(string userId, string userName, bool isActive, IEnumerable<UserRoleModel> roles)
+    public UserModel(string userId, string email, string userName, bool isActive, 
+        IEnumerable<UserRoleModel> roles)
     {
         UserId = userId;
+        Email = email;
         UserName = userName;
         IsActive = isActive;
         _roles = roles.ToList() ?? [];
     }
-    public static UserModel Create(string userId, string userName, IEnumerable<UserRoleModel> roles)
+    public static UserModel Create(string email, string userName, IEnumerable<UserRoleModel> roles)
     {
-        var result = new UserModel(userId, userName, true, roles);
+        var id = Guid.NewGuid();
+        var result = new UserModel(id.ToString(), email, userName, true, roles);
         return result;
     }
-    public static UserModel Default => new UserModel("-", "-", false, []);
-    public static IUserKey Key(string id) => new UserModel(id, "-", false, []);
+    public static UserModel Default => new UserModel("-", "-", "-", false, []);
+    public static IUserKey Key(string id) => new UserModel("-", id, "-", false, []);
 
     #endregion
 
@@ -28,6 +31,7 @@ public class UserModel : IUserKey
     
 
     public string UserId { get; private set; }
+    public string Email { get; private set; }
     public string UserName { get; private set; }
     public bool IsActive { get; private set; }
 
@@ -49,27 +53,27 @@ public class UserModel : IUserKey
 
     public void AssignRole(RoleModel role)
     {
-        if (_roles.Any(r => r.RoleId == role.RoleId))
+        if (_roles.Any(r => r.Role.RoleId == role.RoleId))
             return;
 
-        _roles.Add(new UserRoleModel(UserId, UserName, role.RoleId, role.RoleName));
+        _roles.Add(new UserRoleModel(UserId, Email, UserName, role));
     }
 
     public void RemoveRole(string roleId)
     {
-        var existing = _roles.FirstOrDefault(r => r.RoleId == roleId);
+        var existing = _roles.FirstOrDefault(r => r.Role.RoleId == roleId);
         if (existing != null)
             _roles.Remove(existing);
     }
 
     public bool HasRole(string roleId)
     {
-        return _roles.Any(r => r.RoleId == roleId);
+        return _roles.Any(r => r.Role.RoleId == roleId);
     }
     #endregion
 }
 
 public interface IUserKey
 {
-    string UserId { get;  }
+    string Email { get;  }
 }
