@@ -7,8 +7,6 @@ using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
-using Nuna.Lib.TransactionHelper;
-using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Infrastructure.AdmisiContext.RegFeature;
 
@@ -21,6 +19,7 @@ public interface IRegAktifDal :
     IListData<RegAktifDto, IPasienKey>,
     IListData<RegAktifDto>
 {
+    IEnumerable<RegAktifDto> ListDataByName(Dictionary<string, string[]> listName);
 }
 
 public class RegAktifDal : IRegAktifDal
@@ -207,6 +206,45 @@ public class RegAktifDal : IRegAktifDal
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<RegAktifDto>(sql);
+    }
+
+    private static string EscapeForContains(string term)
+    {
+        return "\"" + term.Replace("\"", "\"\"") + "*\"";
+    }
+    public IEnumerable<RegAktifDto> ListDataByName(Dictionary<string, string[]> listName)
+    {
+        var containers = listName
+            .Select(item =>
+            {
+                var listVariant = item.Value.Select(EscapeForContains);
+                return $"CONTAINS(fs_nm_pasien, '{string.Join(" OR ", listVariant)}')";
+            });
+
+        var whereClause = string.Join(" AND ", containers);
+
+        var sql = $"""
+            SELECT
+                aa.RegId, aa.RegDate, aa.PasienId, aa.JenisReg, 
+                aa.LayananId, aa.DokterId, aa.TipeJaminanId,
+                ISNULL(bb.fs_nm_pasien, '') AS PasienName,
+                ISNULL(bb.fd_tgl_lahir, '3000-01-01') AS TglLahir,
+                ISNULL(bb.fs_jns_kelamin, '-') AS Gender,
+                ISNULL(cc.fs_nm_layanan, '') AS LayananName,
+                ISNULL(dd.fs_nm_peg, '') AS DokterName,
+                ISNULL(ee.fs_nm_tipe_jaminan, '') AS TipeJaminanName
+            FROM
+                BILRG_RegAktif aa
+                LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
+                LEFT JOIN ta_layanan cc ON aa.LayananId = cc.fs_kd_layanan
+                LEFT JOIN td_peg dd ON aa.DokterId = dd.fs_kd_peg
+                LEFT JOIN ta_tipe_jaminan ee ON aa.TipeJaminanId = ee.fs_kd_tipe_jaminan
+            WHERE {whereClause}
+            """;
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var results = conn.Read<RegAktifDto>(sql) ?? [];
+        return results;
     }
 }
 

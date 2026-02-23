@@ -20,3 +20,13 @@ public record RegView(
     PasienReff Pasien,
     LayananReff Layanan,
     PpaReff Dokter);
+
+public record RegSearchRegView(
+    string RegId,
+    string RegDate,
+    string PasienId,
+    string PasienName,
+    string TipeJaminanName,
+    string LayananName,
+    string JenisReg,
+    string JenisRegString);
