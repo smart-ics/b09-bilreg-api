@@ -299,7 +299,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             .ListData(jadwal.Layanan, ppaKey, tglJadwal)?
             .ToList() ?? [];
         var antrianThis = listAntrianMap
-            .SingleOrDefault(x => x.JamJadwal == jadwal.JamMulai);
+            .FirstOrDefault(x => x.JamJadwal == jadwal.JamMulai);
         if (antrianThis is not null)
         {
             var antKey = AntrianMapHdrModel.Key(
