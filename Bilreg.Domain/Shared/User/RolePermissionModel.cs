@@ -37,7 +37,7 @@ public class RolePermissionModel : IRoleKey
         if (_permissions.Any(p => p.PermissionId == permission.PermissionId))
             return;
 
-        _permissions.Add(new PermissionModel(permission.PermissionId, permission.PermissionCode));
+        _permissions.Add(new PermissionModel(permission.PermissionId, permission.PermissionName));
     }
 
     public void RemovePermission(string permissionId)
@@ -47,9 +47,9 @@ public class RolePermissionModel : IRoleKey
             _permissions.Remove(existing);
     }
 
-    public bool HasPermission(string permissionCode)
+    public bool HasPermission(string permissionId)
     {
-        return _permissions.Any(p => p.PermissionId == permissionCode);
+        return _permissions.Any(p => p.PermissionId == permissionId);
     }
     #endregion
 }

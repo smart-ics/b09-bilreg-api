@@ -2,16 +2,15 @@
 
 public class PermissionModel : IPermissionKey
 {
-    public PermissionModel(string id, string code)
+    public PermissionModel(string id, string name)
     {
         PermissionId = id;
-        PermissionCode = code;
+        PermissionName = name;
     }
 
     public string PermissionId { get; private set; }
-    public string PermissionCode { get; private set; }
+    public string PermissionName { get; private set; }
 
-    
 }
 
 public interface IPermissionKey
