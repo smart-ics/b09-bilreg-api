@@ -15,10 +15,11 @@ public class RegDalTest
 
     private static RegDto Faker()
         => new RegDto("A", "2024-01-01", "08:00:00",
-            "D", "E", "F", "G", "H", "I", "J", "K",
+            "D", "E", "F", "G", "H", "I", "J", 
+            "J1", "J2", "J3", "K",
             "L", "M", "N", "O", "P", "Q", "R",
             "S", "T", "U", "V", "W", "X", "Y",
-            "Z", "AA", "AB", "AC");
+            "Z", "AA", "AB", "AC","AD");
 
     private static IRegKey FakerKey()
         => RegModel.Key("A");

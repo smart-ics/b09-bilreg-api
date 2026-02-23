@@ -22,6 +22,8 @@ public class OrderOpDalTest
             NamaOperasi: "F",
             DokterId: "G",
             EstimasiDurasi: 120,
+            TarifId: "X",
+            TarifName: "Y",
             PreferedDate: new DateTime(2024, 1, 2, 8, 0, 0),
             SpecialEquipment: "H",
             CrtUser: "I",

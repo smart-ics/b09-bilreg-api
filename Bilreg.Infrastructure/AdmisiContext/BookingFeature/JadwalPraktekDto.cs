@@ -1,6 +1,7 @@
 ﻿using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
+using System.Globalization;
 
 namespace Bilreg.Infrastructure.AdmisiContext.BookingFeature;
 
@@ -23,7 +24,9 @@ public record JadwalPraktekDto(
     {
         return new JadwalPraktekDto(model.JadwalPraktekId, model.Dokter.PpaId,
             model.Layanan.LayananId, (int)model.Hari, 
-            model.JamMulai.ToString("HH:mm"), model.JamSelesai.ToString("HH:mm"), model.MaxPasien,
+            model.JamMulai.ToString("HH:mm", CultureInfo.InvariantCulture), 
+            model.JamSelesai.ToString("HH:mm", CultureInfo.InvariantCulture), 
+            model.MaxPasien,
             model.Dokter.PpaName, model.Layanan.LayananName,
             model.LayananDk.LayananDkId, model.LayananDk.LayananDkName,
             model.GroupSpesialis.GroupSpesialisId, model.GroupSpesialis.GroupSpesialisName);

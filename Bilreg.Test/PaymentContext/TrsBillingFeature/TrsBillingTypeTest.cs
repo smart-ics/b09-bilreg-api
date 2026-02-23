@@ -173,11 +173,11 @@ public class TrsBillingTypeTests
     {
         var tipeJaminan = new TipeJaminanReff("J0011", "Jaminan Test");
         var result = new RegModel("-", new DateOnly(3000, 1, 1),
-            AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default,
+            AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default,
             JenisRegEnum.RegJalan, PasienModel.Default.ToReff(), tipeJaminan,
             PolisModel.Default.ToReff(), KelasType.Default.ToReff(), CaraMasukDkType.Default,
             RujukanType.Default.ToReff(), PpaType.Default.ToReff(), LayananType.Default.ToReff(),
-            KarcisType.Default.ToReff(), []);
+            KarcisType.Default.ToReff(), "-", []);
         return result;
     }
 
@@ -185,11 +185,11 @@ public class TrsBillingTypeTests
     {
         var tipeJaminan = new TipeJaminanReff("J0011", "Jaminan Test");
         var result =  new RegModel("-", new DateOnly(3000, 1, 1),
-            AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default,
+            AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default,
             JenisRegEnum.RegInap, PasienModel.Default.ToReff(), tipeJaminan,
             PolisModel.Default.ToReff(), KelasType.Default.ToReff(), CaraMasukDkType.Default,
             RujukanType.Default.ToReff(), PpaType.Default.ToReff(), LayananType.Default.ToReff(),
-            KarcisType.Default.ToReff(), []);
+            KarcisType.Default.ToReff(), "-", []);
         return result;
     }
     private static TarifType CreateTestTarifType()

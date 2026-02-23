@@ -1,6 +1,7 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 
@@ -14,7 +15,7 @@ public class OrderOpModel : IOrderOpKey
         string orderOpId, DateTime orderDate, AuditTrailType auditTrail,
         PasienReff pasien, RegReff reg,
         Icd10Type icd10, JenisOperasiType jenisOperasi, string namaOperasi, UrgencyLevelEnum urgencyLevel,
-        PpaReff dokter, int estimasiDurasiInMinutes, DateTime preferedDate, string specialEquipment)
+        TarifReff tarif, PpaReff dokter, int estimasiDurasiInMinutes, DateTime preferedDate, string specialEquipment)
     {
         OrderOpId = orderOpId;
         OrderDate = orderDate;
@@ -27,6 +28,7 @@ public class OrderOpModel : IOrderOpKey
         JenisOperasi = jenisOperasi;
         NamaOperasi = namaOperasi;
         UrgencyLevel = urgencyLevel;
+        TarifOperasi = tarif;
 
         Dokter = dokter;
         EstimasiDurasiInMinutes = estimasiDurasiInMinutes;
@@ -38,14 +40,14 @@ public class OrderOpModel : IOrderOpKey
         "-", new DateTime(3000, 1, 1), AuditTrailType.Default,
         PasienModel.Default.ToReff(), RegModel.Default.ToReff(),
         Icd10Type.Default, JenisOperasiType.Default, "-", UrgencyLevelEnum.Elective,
-        PpaType.Default.ToReff(), 0, 
+        TarifType.Default.ToReff(), PpaType.Default.ToReff(), 0,
         new DateTime(3000, 1, 1), "-");
     
     public static IOrderOpKey Key(string id) => new OrderOpModel( 
         id, new DateTime(3000, 1, 1), AuditTrailType.Default,
         PasienModel.Default.ToReff(), RegModel.Default.ToReff(),
         Icd10Type.Default, JenisOperasiType.Default, "-", UrgencyLevelEnum.Elective,
-        PpaType.Default.ToReff(), 0, 
+        TarifType.Default.ToReff(), PpaType.Default.ToReff(), 0,
         new DateTime(3000, 1, 1), "-");
     
     public static OrderOpModel CreateByPasien(PasienModel pasien, string userId)
@@ -57,7 +59,7 @@ public class OrderOpModel : IOrderOpKey
             Ulid.NewUlid().ToString(), DateTime.Now, auditTrail, 
             pasien.ToReff(), RegModel.Default.ToReff(),
             Icd10Type.Default, JenisOperasiType.Default, "-", UrgencyLevelEnum.Elective,
-            PpaType.Default.ToReff(), 
+            TarifType.Default.ToReff(), PpaType.Default.ToReff(),
             0, new DateTime(3000,1,1),"-");
         return result;
     }
@@ -71,7 +73,7 @@ public class OrderOpModel : IOrderOpKey
             Ulid.NewUlid().ToString(), DateTime.Now, auditTrail, 
             pasien, reg.ToReff(),
             Icd10Type.Default, JenisOperasiType.Default, "-", UrgencyLevelEnum.Elective,
-            PpaType.Default.ToReff(), 
+            TarifType.Default.ToReff(), PpaType.Default.ToReff(), 
             0, new DateTime(3000,1,1), "-");
         return result;
     }
@@ -81,15 +83,16 @@ public class OrderOpModel : IOrderOpKey
     public string OrderOpId { get; init; }
     public DateTime OrderDate { get; init; }
     public AuditTrailType AuditTrail { get; private set; }
-    
+
     public PasienReff Pasien { get; init; }
-    
+
     public RegReff Reg { get; init; }
     public Icd10Type Icd10 { get; private set;}
     public JenisOperasiType JenisOperasi { get; private set; }
     public string NamaOperasi { get; private set; }
     public UrgencyLevelEnum UrgencyLevel { get; private set; }
-    
+    public TarifReff TarifOperasi { get; set; }
+
     public PpaReff Dokter { get; private set;}
     public int EstimasiDurasiInMinutes { get; private set; }
     public DateTime PreferedDate { get; private set; }
@@ -126,6 +129,12 @@ public class OrderOpModel : IOrderOpKey
         PreferedDate = preferedDate;
         SpecialEquipment = specialEquipment;
     }
+
+    public void SetTarif(TarifType tarif)
+    {
+        TarifOperasi = tarif.ToReff();
+    }
+
     public OrderOpReff ToReff() => new OrderOpReff(OrderOpId, OrderDate, NamaOperasi);
     #endregion
 

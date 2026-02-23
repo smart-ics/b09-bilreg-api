@@ -29,7 +29,7 @@ public class AntrianModel : IAntrianKey
     public static IAntrianKey Key(string id)
     {
         var result = new AntrianModel(id, DateOnly.FromDateTime(DateTime.Now),
-            TimeOnly.MinValue, TimeOnly.MinValue, "-", "-",
+            TimeOnly.MinValue, TimeOnly.MinValue, "-", "-", 
             new List<AntrianEntryModel>(), null!);
         return result;
     }

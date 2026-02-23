@@ -35,7 +35,7 @@ using Nuna.Lib.TransactionHelper;
 namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 
 public record RegJalanByBookingCmd(string BookingId, string UserId, string KarcisId, 
-    string CaraMasukDkId, string TipeJaminanId) : IRequest<RegJalanByBookingResponse>;
+    string CaraMasukDkId, string RujukanId, string TipeJaminanId) : IRequest<RegJalanByBookingResponse>;
 
 public record RegJalanByBookingResponse(string RegId, int NoAntrian);
 public class RegJalanByBookingHandler 
@@ -136,10 +136,8 @@ public class RegJalanByBookingHandler
         var caraMasuk = LoadCaraMasuk(request.CaraMasukDkId);
         var tipeJaminan = LoadTipeJaminan(request.TipeJaminanId);
         var polis = ResolvePolis(pasien, tipeJaminan);
-        var rujukan = RujukanType.Default;
-        if (!booking.CoverageInfo.NoRujukan.IsNullOrEmpty())
-            rujukan = ResolveRujukan(caraMasuk, booking.CoverageInfo.NoRujukan);
-        
+        var rujukan = ResolveRujukan(caraMasuk, request.RujukanId);
+
         //  BUILD
         var regAudit = new AuditInfoType(request.UserId, DateTime.Now);
         var reg = _regFactory.CreateRegRajal(

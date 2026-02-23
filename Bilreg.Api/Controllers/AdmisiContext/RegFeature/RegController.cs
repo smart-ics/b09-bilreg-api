@@ -10,28 +10,58 @@ namespace Bilreg.Api.Controllers.AdmisiContext.RegFeature;
 public class RegController : Controller
 {
     private readonly IMediator _mediator;
-
     public RegController(IMediator mediator)
     {
         _mediator = mediator;
     }
 
-     [HttpPost]
-     [Route("rajalWalkIn")]
-     public async Task<IActionResult> Save(RegJalanWalkInCommand cmd)
-     {
-         var result = await _mediator.Send(cmd);
-         return Ok(new JSendOk(result));
-     }
+    [HttpPost]
+    [Route("rajalWalkIn")]
+    public async Task<IActionResult> Save(RegJalanWalkInCommand cmd)
+    {
+        var result = await _mediator.Send(cmd);
+        return Ok(new JSendOk(result));
+    }
 
-     [HttpPost]
-     [Route("rajalByBooking")]
-     public async Task<IActionResult> Save(RegJalanByBookingCmd cmd)
-     {
-         var result = await _mediator.Send(cmd);
-         return Ok(new JSendOk(result));
-     }
+    [HttpPost]
+    [Route("rajalByBooking")]
+    public async Task<IActionResult> Save(RegJalanByBookingCmd cmd)
+    {
+        var result = await _mediator.Send(cmd);
+        return Ok(new JSendOk(result));
+    }
 
+    [HttpPatch]
+    [Route("setSjpNumber")]
+    public async Task<IActionResult> SetNoSep(RegSetNoSjpCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
+    [HttpPatch]
+    [Route("ubahKunjungan")]
+    public async Task<IActionResult> UbahKunjungan(RegJalanUbahKunjunganCmd cmd)
+    {
+        var response = await _mediator.Send(cmd);
+        return Ok(new JSendOk(response));
+    }
+
+    [HttpPatch]
+    [Route("ubahJaminan")]
+    public async Task<IActionResult> UbahJaminan(RegJalanUbahJaminanCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
+    [HttpPatch]
+    [Route("rajalBatal")]
+    public async Task<IActionResult> Void(RegJalanBatalCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
 
     [HttpGet]
     [Route("{id}")]
@@ -50,4 +80,5 @@ public class RegController : Controller
         var result = await _mediator.Send(query);
         return Ok(new JSendOk(result));
     }
+
 }
