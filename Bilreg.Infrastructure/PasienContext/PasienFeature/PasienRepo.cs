@@ -4,6 +4,7 @@ using Bilreg.Domain.PasienContext.DemografiFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.PasienContext.StatusSosialFeature;
 using Bilreg.Domain.Shared.Param;
+using Castle.Components.DictionaryAdapter.Xml;
 using Nuna.Lib.PatternHelper;
 using Nuna.Lib.TransactionHelper;
 using Nuna.Lib.ValidationHelper;
@@ -15,13 +16,19 @@ public class PasienRepo : IPasienRepo
     private readonly IPasienDal _pasienDal;
     private readonly IPasienKtpDal _pasienKtpDal;
     private readonly IGetKodeRsService _getKodeRsSvc;
-    public PasienRepo(IPasienDal pasienDal, 
-        IPasienKtpDal pasienKtpDal, 
-        IGetKodeRsService getKodeRsSvc)
+    private readonly IPasienIdDal _pasienIdDal;
+    private readonly IPasienTelpDal _pasienTelpDal;
+    public PasienRepo(IPasienDal pasienDal,
+        IPasienKtpDal pasienKtpDal,
+        IGetKodeRsService getKodeRsSvc,
+        IPasienIdDal pasienIdDal,
+        IPasienTelpDal pasienTelpDal)
     {
         _pasienDal = pasienDal;
         _pasienKtpDal = pasienKtpDal;
         _getKodeRsSvc = getKodeRsSvc;
+        _pasienIdDal = pasienIdDal;
+        _pasienTelpDal = pasienTelpDal;
     }
 
     public Result<IPasienKey> SaveChanges(PasienModel model)
@@ -33,13 +40,27 @@ public class PasienRepo : IPasienRepo
             _pasienDal.Update(PasienDto.FromModel(model));
         else
             _pasienDal.Insert(PasienDto.FromModel(model));
-        
+
+        var pasienTelpDb = _pasienTelpDal.ListData(model)?.ToList() ?? [];
+        var listTelp = pasienTelpDb.Where(x => x.fs_kd_jenis_telp == "HP")?.ToList() ?? [];
+        if (listTelp.Count() > 0)
+            _pasienTelpDal.Update(PasienTelpDto.FromMr(model), "HP");
+        else
+            _pasienTelpDal.Insert(PasienTelpDto.FromMr(model));
+
         var pasien2Db = _pasienKtpDal.GetData(PasienModel.Key(model.PasienId));
         if (pasien2Db is not null)
             _pasienKtpDal.Update(PasienKtpDto.FromModel(model));
         else
             _pasienKtpDal.Insert(PasienKtpDto.FromModel(model));
         
+        var pasienIdDb = _pasienIdDal.GetData(model);
+        if(pasienIdDb is not null)
+            _pasienIdDal.Update(PasienIdDto.FromModel(model));
+        else
+            _pasienIdDal.Insert(PasienIdDto.FromModel(model));
+
+
         trans.Complete();
         return Result<IPasienKey>.Success(model);
     }
@@ -81,7 +102,7 @@ public class PasienRepo : IPasienRepo
 
         var contactKeluarga = new ContactType(JenisContactEnum.Phone, dto.fs_telp_keluarga ?? "-");
         var almKeluarga = new AlamatType([dto.fs_alm1_keluarga, dto.fs_alm2_keluarga], dto.fs_kota_keluarga, dto.fs_kd_pos_keluarga);
-        var pasienKeluarga = new PasienKeluargaType(dto.fs_nm_keluarga, "", contactKeluarga, almKeluarga);
+        var pasienKeluarga = new PasienKeluargaType(dto.fs_nm_keluarga, dto.fs_hub_keluarga, contactKeluarga, almKeluarga);
 
         var agama = string.IsNullOrWhiteSpace(dto.fs_kd_agama)
             ? AgamaType.Default

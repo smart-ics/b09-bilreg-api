@@ -276,10 +276,11 @@ public class RegDal : IRegDal
         SELECT
             aa.fs_kd_reg, aa.fd_tgl_masuk, aa.fs_jam_masuk, aa.fs_kd_petugas,
             aa.fd_tgl_keluar, aa.fs_jam_keluar, aa.fs_kd_petugas_keluar, 
-            aa.fd_tgl_cancel_out, aa.fs_jam_cancel_out, aa.fs_kd_petugas_cancel_out, 
+            aa.fd_tgl_cancel_out, aa.fs_jam_cancel_out, aa.fs_kd_petugas_cancel_out,
+            aa.fd_tgl_void, aa.fs_jam_void, aa.fs_kd_petugas_void,
             aa.fs_kd_jenis_reg, aa.fs_mr, aa.fs_kd_tipe_jaminan, aa.fs_kd_kelas, 
             aa.fs_kd_cara_masuk_dk, aa.fs_kd_rujukan, aa.fs_kd_medis, 
-            aa.fs_kd_layanan, aa.fs_kd_karcis,
+            aa.fs_kd_layanan, aa.fs_kd_karcis, aa.fs_no_sjp,
             ISNULL(bb.fs_nm_pasien, '-') AS fs_nm_pasien, 
             ISNULL(bb.fd_tgl_lahir, '-') AS fd_tgl_lahir, 
             ISNULL(bb.fs_jns_kelamin, '-') AS fs_jns_kelamin,

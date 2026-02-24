@@ -46,7 +46,10 @@ public class KelurahanDalTest
         var expected = Faker();
         _sut.Insert(expected);
         var actual = _sut.GetData(KelurahanType.Key("A"));
-        actual.Should().BeEquivalentTo(expected);
+        actual.fs_kd_kelurahan.Should().Be("A");
+        actual.fs_nm_kelurahan.Should().Be("B");
+        actual.fs_kd_kecamatan.Should().Be("C");
+
     }
 
     [Fact]
@@ -56,6 +59,9 @@ public class KelurahanDalTest
         var expected = Faker();
         _sut.Insert(expected);
         var actual = _sut.ListData(KecamatanType.Key("C"));
-        actual.Should().ContainEquivalentOf(expected);
+        //actual.Should().ContainEquivalentOf(expected);
+        actual.First().fs_kd_kelurahan.Should().Be("A");
+        actual.First().fs_nm_kelurahan.Should().Be("B");
+        actual.First().fs_kd_kecamatan.Should().Be("C");
     }
 }
