@@ -68,6 +68,7 @@ public class RegJalanByBookingHandler
 
     private readonly IMapJaminanJkRepo _mapJaminanJkRepo;
     private readonly IJurnalRepo _jurnalRepo;
+    private readonly IDashboardAddRegService _addRegSvc;
 
     private const string BAYAR_SENDIRI = "1";
     public RegJalanByBookingHandler(
@@ -94,7 +95,8 @@ public class RegJalanByBookingHandler
         IMapJaminanJkRepo mapJaminanJkRepo,
         IJurnalRepo jurnalRepo,
         IRemoteCetakRepo remoteCetakRepo,
-        IGetAppSettingService getAppSettingSvc)
+        IGetAppSettingService getAppSettingSvc,
+        IDashboardAddRegService addRegSvc)
     {
         _bookingRepo = bookingRepo;
         _pasienRepo = pasienRepo;
@@ -120,6 +122,7 @@ public class RegJalanByBookingHandler
         _jurnalRepo = jurnalRepo;
         _remoteCetakRepo = remoteCetakRepo;
         _getAppSettingSvc = getAppSettingSvc;
+        _addRegSvc = addRegSvc;
     }
 
     public Task<RegJalanByBookingResponse> Handle(RegJalanByBookingCmd request, CancellationToken cancellationToken)
@@ -218,6 +221,7 @@ public class RegJalanByBookingHandler
             _jurnalRepo.SaveChanges(jurnalTindakan);
 
         _remoteCetakRepo.SaveChanges(rmtCetak);
+        AddReg(reg);
         trans.Complete();
         return Task.FromResult(new RegJalanByBookingResponse(reg.RegId, booking.NoAntrian));
     }
@@ -357,6 +361,12 @@ public class RegJalanByBookingHandler
                 onNone: () => MapJaminanJkType.Default
             );
         return map;
+    }
+
+    private void AddReg(RegModel reg)
+    {
+        var payload = new AddRegCmd(reg.RegId);
+        _addRegSvc.Execute(payload);
     }
     #endregion
 }

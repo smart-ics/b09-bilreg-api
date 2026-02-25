@@ -34,7 +34,7 @@ public class RegAktifDalTest
         => RegModel.Key("A");
 
     private static ILayananKey FakerLayananKey()
-        => LayananType.Default with { LayananId = "LYN-001" };
+        => LayananType.Default with { LayananId = "E" };
 
     [Fact]
     public void InsertTest()

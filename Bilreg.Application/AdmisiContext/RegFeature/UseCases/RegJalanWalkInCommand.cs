@@ -77,6 +77,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
 
     private readonly IRemoteCetakRepo _remoteCetakRepo;
     private readonly IGetAppSettingService _getAppSettingSvc;
+    private readonly IDashboardAddRegService _addRegSvc;
 
     public RegJalanCreateHandler(
         //  reg support
@@ -110,7 +111,8 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         IMapJaminanJkRepo mapJaminanJkRepo,
         IJurnalRepo jurnalRepo,
         IRemoteCetakRepo remoteCetakRepo,
-        IGetAppSettingService getAppSettingSvc)
+        IGetAppSettingService getAppSettingSvc,
+        IDashboardAddRegService addRegSvc)
     {
         //      reg-support
         _pasienRepo = pasienRepo;
@@ -144,6 +146,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         _jurnalRepo = jurnalRepo;
         _remoteCetakRepo = remoteCetakRepo;
         _getAppSettingSvc = getAppSettingSvc;
+        _addRegSvc = addRegSvc;
     }
 
     public Task<RegJalanCreateResponse> Handle(RegJalanWalkInCommand request, CancellationToken cancellationToken)
@@ -235,6 +238,8 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         if (jurnalTindakan.JurnalId != "-")
             _jurnalRepo.SaveChanges(jurnalTindakan);
         _remoteCetakRepo.SaveChanges(rmtCetak);
+
+        AddReg(reg);
 
         trans.Complete();
         
@@ -389,6 +394,12 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
                 onNone: () => MapJaminanJkType.Default
             );
         return map;
+    }
+
+    private void AddReg(RegModel reg)
+    {
+        var payload = new AddRegCmd(reg.RegId);
+        _addRegSvc.Execute(payload);
     }
     #endregion
 }

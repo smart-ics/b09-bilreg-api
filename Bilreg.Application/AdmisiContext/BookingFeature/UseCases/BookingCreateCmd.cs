@@ -30,10 +30,12 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
     private readonly IPasienTrackerRepo _trackerRepo;
     private readonly IPasienRepo _pasienRepo;
     private readonly IAntrianMapHdrRepo _antrianMapRepo;
+    private readonly IDashboardAddBookService _addBookingSvc;
     public BookingCreateHandler(IJadwalPraktekRepo jadwalPraktekRepo,
         IAntrianRepo antrianRepo, IAntrianFactory antrianFactory,
         IBookingRepo bookingRepo, IPasienTrackerRepo trackerRepo,
-        IPasienRepo pasienRepo, IAntrianMapHdrRepo antrianMapRepo)
+        IPasienRepo pasienRepo, IAntrianMapHdrRepo antrianMapRepo, 
+        IDashboardAddBookService addBookingSvc)
     {
         _jadwalPraktekRepo = jadwalPraktekRepo;
         _antrianRepo = antrianRepo;
@@ -42,6 +44,7 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         _trackerRepo = trackerRepo;
         _pasienRepo = pasienRepo;
         _antrianMapRepo = antrianMapRepo;
+        _addBookingSvc = addBookingSvc;
     }
 
     public Task<BookingCreateResponse> Handle(BookingCreateCmd request, CancellationToken cancellationToken)
@@ -102,6 +105,7 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         antrianMap.SetDataPasien(noAntrian, pasien, booking.Reg, booking.BookingId, "AUTO");
         _antrianMapRepo.SaveChanges(antrianMap);
 
+        AddBooking(booking);
         trans.Complete();
 
         return Task.FromResult(new BookingCreateResponse(
@@ -180,7 +184,11 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         return queueHdr;
     }
 
-
+    private void  AddBooking(BookingModel book)
+    {
+        var payload = new AddBookCmd(book.BookingId);
+        _addBookingSvc.Execute(payload);
+    }
 
 
 

@@ -27,11 +27,14 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
     private readonly IPasienTrackerRepo _trackerRepo;
     private readonly IPasienRepo _pasienRepo;
     private readonly IPpaRepo _ppaRepo;
+    private readonly IDashboardAddBookService _addBookingSvc;
+
 
     public BookingCreateFromHidokHandler(IJadwalPraktekRepo jadwalPraktekRepo,
         IAntrianRepo antrianRepo, IAntrianFactory antrianFactory,
         IBookingRepo bookingRepo, IPasienTrackerRepo trackerRepo,
-        IPasienRepo pasienRepo, IPpaRepo ppaRepo)
+        IPasienRepo pasienRepo, IPpaRepo ppaRepo, 
+        IDashboardAddBookService addBookingSvc)
     {
         _jadwalPraktekRepo = jadwalPraktekRepo;
         _antrianRepo = antrianRepo;
@@ -40,6 +43,7 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
         _trackerRepo = trackerRepo;
         _pasienRepo = pasienRepo;
         _ppaRepo = ppaRepo;
+        _addBookingSvc = addBookingSvc;
     }
     public Task<BookingCreateFromHidokResponse> Handle(BookingCreateFromHidokCommand request, CancellationToken cancellationToken)
     {
@@ -91,7 +95,7 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
         _bookingRepo.SaveChanges(booking);
         _antrianRepo.SaveChanges(antrian);
         _trackerRepo.SaveChanges(tracker);
-
+        AddBooking(booking);
         trans.Complete();
 
         return Task.FromResult(new BookingCreateFromHidokResponse(
@@ -118,5 +122,10 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
             request.PasienName, tglLahir, request.Gender,
             alamat, contact, IdentitasType.Default);
         return person;
+    }
+    private void AddBooking(BookingModel book)
+    {
+        var payload = new AddBookCmd(book.BookingId);
+        _addBookingSvc.Execute(payload);
     }
 }

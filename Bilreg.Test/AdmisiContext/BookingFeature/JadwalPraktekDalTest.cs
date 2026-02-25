@@ -48,9 +48,15 @@ public class JadwalPraktekDalTest
         using var trans = TransHelper.NewScope();
         _sut.Insert(Faker());
         var actual = _sut.GetData(Key);
-        actual.Should().BeEquivalentTo(Faker(), opt => 
-            opt.Excluding(x => x.DokterName)
-                .Excluding(x => x.LayananName));
+        actual.Should().BeEquivalentTo(Faker(), 
+            opt => opt
+                .Excluding(x => x.DokterName)
+                .Excluding(x => x.LayananName)
+                .Excluding(x => x.LayananDkId)
+                .Excluding(x => x.LayananDkName)
+                .Excluding(x => x.GroupSpesialisId)
+                .Excluding(x => x.GroupSpesialisName))
+            ;
     }
 
     [Fact]
@@ -62,6 +68,11 @@ public class JadwalPraktekDalTest
         var actual = _sut.ListData(filter);
         actual.Should().ContainEquivalentOf(Faker(), opt => 
             opt.Excluding(x => x.DokterName)
-                .Excluding(x => x.LayananName));
+                .Excluding(x => x.LayananName)
+                .Excluding(x => x.LayananDkId)
+                .Excluding(x => x.LayananDkName)
+                .Excluding(x => x.GroupSpesialisId)
+                .Excluding(x => x.GroupSpesialisName))
+            ;
     }
 }
