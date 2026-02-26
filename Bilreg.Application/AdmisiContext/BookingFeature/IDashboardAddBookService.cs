@@ -6,4 +6,4 @@ public interface IDashboardAddBookService : INunaServiceVoid<AddBookCmd>
 {
 }
 
-public record AddBookCmd(string bookId);
+public record AddBookCmd(string bookingId);

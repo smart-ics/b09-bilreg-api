@@ -23,13 +23,15 @@ public class DashboardAddRegService : IDashboardAddRegService
     {
         if (_opt.BaseApiUrl.Trim().Length == 0)
             return;
-        var endpoint = $"{_opt.Equals}/api/Dashboard/addReg";
+        var endpoint = $"{_opt.BaseApiUrl}/api/Dashboard/addReg";
         var client = new RestClient(endpoint);
         var request = new RestRequest()
             .AddJsonBody(req, "application/json");
 
-        await client.ExecutePatchAsync(request);
+        await client.ExecutePostAsync(request);
     }
 
-    
+
 }
+
+

@@ -22,11 +22,11 @@ public class DashboardAddBookService : IDashboardAddBookService
     {
         if (_opt.BaseApiUrl.Trim().Length == 0)
             return;
-        var endpoint = $"{_opt.Equals}/api/Dashboard/addBooking";
+        var endpoint = $"{_opt.BaseApiUrl}/api/Dashboard/addBooking";
         var client = new RestClient(endpoint);
         var request = new RestRequest()
             .AddJsonBody(req, "application/json");
 
-        await client.ExecutePatchAsync(request);
+        var response = await client.ExecutePostAsync(request);
     }
 }

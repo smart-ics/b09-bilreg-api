@@ -8,7 +8,6 @@ public interface ITrsBillingRepo :
     ISaveChange<TrsBillingType>,
     ILoadEntity<TrsBillingType, ITrsBillingKey>,
     IDeleteEntity<ITrsBillingKey>,
-    IListData<TrsBillingView, IRegKey>
-
+    IListData<TrsBillingType, IRegKey>
 {
 }
