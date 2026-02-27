@@ -84,6 +84,7 @@
     <Folder Include="AccountingContext" />
     <Folder Include="AccountingContext\JurnalFeature" />
     <Folder Include="AccountingContext\UnitFeature" />
+    <Folder Include="PaymentContext\RegOutFeature" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OpCase.sql" />
@@ -197,6 +198,8 @@
     <None Include="AccountingContext\UnitFeature\t_unit.sql" />
     <None Include="AccountingContext\UnitFeature\t_unit_grup.sql" />
     <None Include="PaymentContext\TrsBillingFeature\ta_trs_billing2.sql" />
+    <None Include="PaymentContext\RegOutFeature\ta_reg_trs_ref.sql" />
+    <None Include="PaymentContext\RegOutFeature\t_bp_piutang_hdr.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="BedUsageContext\KamarOperasiFeature\BILRG_ScheduleOp.sql" />

@@ -156,7 +156,3 @@ public record TrsBillKetType(string Keterangan, string Keterangan2, string RefBi
 {
     public static TrsBillKetType Default => new("", "", "", 0, "");
 }
-
-public record TrsBillingView(string TrsBillingId, DateTime TglTrs, 
-    RegReff Reg, LayananReff Layanan, 
-    KelasReff Kelas, TrsBillKetType Keterangan, decimal Total);

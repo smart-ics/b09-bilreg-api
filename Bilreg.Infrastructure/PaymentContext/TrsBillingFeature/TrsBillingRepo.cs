@@ -1,6 +1,7 @@
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PaymentContext.TrsBillingFeature;
+using Nuna.Lib.DataAccessHelper;
 using Nuna.Lib.PatternHelper;
 
 namespace Bilreg.Infrastructure.PaymentContext.TrsBillingFeature;
@@ -46,10 +47,21 @@ public class TrsBillingRepo : ITrsBillingRepo
          _billing2Dal.Delete(key);
      }
 
-    public IEnumerable<TrsBillingView> ListData(IRegKey regKey)
+    public IEnumerable<TrsBillingType> ListData(IRegKey regKey)
     {
-        var listDto = _billingDal.ListData(regKey)?.ToList() ?? [];
-        var result = listDto.Select(x => x.ToView());
+        var listDto = _billingDal.ListData(regKey);
+        if (listDto is null)
+            return Enumerable.Empty<TrsBillingType>();
+
+        var result = new List<TrsBillingType>();
+        foreach (var dto in listDto)
+        {
+            var key = TrsBillingType.Key(dto.fs_kd_trs);
+            var listKomp = _billing2Dal.ListData(key);
+            var entity = dto.ToModel(listKomp?.Select(x => x.ToModel()) ?? Enumerable.Empty<TrsBilling2Base>());
+            result.Add(entity);
+        }
+
         return result;
     }
 }

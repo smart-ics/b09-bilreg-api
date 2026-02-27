@@ -168,7 +168,7 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
             _tdkRepo.SaveChanges(tindakan);
         }
     }
-    private void VoidBilling(IEnumerable<TrsBillingView> listBill)
+    private void VoidBilling(IEnumerable<TrsBillingType> listBill)
     {
         foreach (var bill in listBill)
         {

@@ -95,17 +95,4 @@ public record TrsBillingDto(
             rekapCetak, keterangan, listTrsBilling2
         );
     }
-    public TrsBillingView ToView()
-    {
-        var reg = new RegReff(fs_kd_reg, fs_mr, fs_nm_pasien);
-        var layanan = new LayananReff(fs_kd_layanan, fs_nm_layanan);
-        var kelas = new KelasReff(fs_kd_kelas, fs_nm_kelas);
-        var keterangan = new TrsBillKetType(
-            fs_keterangan, fs_keterangan2, fs_kd_ref_biaya,
-            fn_qty, fs_kd_trs_main);
-        var tglTrs = DateTime.ParseExact($"{fd_tgl_trs} {fs_jam_trs}", "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
-
-        return new TrsBillingView(
-            fs_kd_trs, tglTrs, reg, layanan, kelas, keterangan, fn_total);
-    }
 }
