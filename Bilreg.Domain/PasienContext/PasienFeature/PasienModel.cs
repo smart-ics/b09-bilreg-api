@@ -171,7 +171,10 @@ public class PasienModel : IPasienKey
     public void SetDataKtp(KtpType ktp)
     {
         Guard.Against.Null(ktp, nameof(ktp));
+        var identity = IdentitasType.CreateNew("KTP", ktp.Nik);
+
         Ktp = ktp;
+        Person.SetIdentity(identity);
     }
 
     public void SyncFromKtp(string pasienName, DateOnly tglLahir,
