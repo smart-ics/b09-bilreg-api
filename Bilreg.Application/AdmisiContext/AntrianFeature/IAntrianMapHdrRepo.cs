@@ -10,6 +10,8 @@ public interface IAntrianMapHdrRepo :
     ILoadEntity<AntrianMapHdrModel, IAntrianMapHdrKey>
 {
     IEnumerable<AntrianMapHdrView> ListData(ILayananKey lynKey, IPpaKey ppaKey, DateOnly tglPraktek);
+    void Migrasi(DateTime date);
+
 }
 
 

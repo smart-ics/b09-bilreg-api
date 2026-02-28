@@ -9,7 +9,9 @@ public record LayananGetResponse(
     string LayananName,
     bool IsAktif,
     string InstalasiId,
-    string InstalasiName);
+    string InstalasiName,
+    string PoliBpjsId,
+    string PoliBpjsName);
 
 public class LayananGetHandler : IRequestHandler<LayananGetQuery, LayananGetResponse>
 {
@@ -26,11 +28,10 @@ public class LayananGetHandler : IRequestHandler<LayananGetQuery, LayananGetResp
             .Match(
                 onSome: x => x,
                 onNone: () => throw new KeyNotFoundException($"Layanan {request.LayananId} not found"));
-        
-        
-        
+
         var response = new LayananGetResponse(lyn.LayananId, lyn.LayananName,
-            lyn.IsAktif, lyn.Instalasi.InstalasiId, lyn.Instalasi.InstalasiName);
+            lyn.IsAktif, lyn.Instalasi.InstalasiId, lyn.Instalasi.InstalasiName,
+            lyn.PoliBpjs.PoliBpjsId, lyn.PoliBpjs.PoliBpjsName);
         return Task.FromResult(response);
     }
 }
