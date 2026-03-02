@@ -84,7 +84,7 @@ public class SatTugasDal : ISatTugasDal
         const string sql = """
                            SELECT
                                aa.fs_kd_sat_tugas, aa.fs_nm_sat_tugas, aa.fs_kd_profesi,
-                               ISNULL(bb.fs_nm_profesi, '') AS fs_nm_profesi
+                               ISNULL(bb.ProfesiName, '') AS fs_nm_profesi
                            FROM 
                                td_sat_tugas aa
                                LEFT JOIN BILRG_Profesi bb ON aa.fs_kd_profesi = bb.ProfesiId
@@ -105,7 +105,7 @@ public class SatTugasDal : ISatTugasDal
         const string sql = """
                            SELECT
                                aa.fs_kd_sat_tugas, aa.fs_nm_sat_tugas, aa.fs_kd_profesi,
-                               ISNULL(bb.fs_nm_profesi, '') AS fs_nm_profesi
+                               ISNULL(bb.ProfesiName, '') AS fs_nm_profesi
                            FROM 
                                td_sat_tugas aa
                                LEFT JOIN BILRG_Profesi bb ON aa.fs_kd_profesi = bb.ProfesiId

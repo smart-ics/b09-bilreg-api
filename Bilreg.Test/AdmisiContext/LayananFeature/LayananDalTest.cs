@@ -51,7 +51,8 @@ public class LayananDalTest
                 .Excluding(x => x.fs_nm_layanan_tipe_dk)
                 .Excluding(x => x.fs_nm_instalasi_dk)
                 .Excluding(x => x.fs_nm_unit)
-                .Excluding(x => x.fs_nm_layanan_bpjs));
+                .Excluding(x => x.fs_nm_layanan_bpjs)
+                .Excluding(x => x.fs_kd_layanan_bpjs));
     }
 
     [Fact]
@@ -67,7 +68,8 @@ public class LayananDalTest
                 .Excluding(x => x.fs_nm_layanan_tipe_dk)
                 .Excluding(x => x.fs_nm_instalasi_dk)
                 .Excluding(x => x.fs_nm_unit)
-                .Excluding(x => x.fs_nm_layanan_bpjs));
+                .Excluding(x => x.fs_nm_layanan_bpjs)
+                .Excluding(x => x.fs_kd_layanan_bpjs));
     }
 
     [Fact]
@@ -92,7 +94,8 @@ public class LayananDalTest
                 .Excluding(x => x.fs_nm_layanan_tipe_dk)
                 .Excluding(x => x.fs_nm_instalasi_dk)
                 .Excluding(x => x.fs_nm_unit)
-                .Excluding(x => x.fs_nm_layanan_bpjs));
+                .Excluding(x => x.fs_nm_layanan_bpjs)
+                .Excluding(x => x.fs_kd_layanan_bpjs));
     }
 
 }

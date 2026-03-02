@@ -96,7 +96,8 @@ public class LayananDal : ILayananDal
            SELECT 
                aa.fs_kd_layanan, aa.fs_nm_layanan, aa.fb_aktif,
                aa.fs_kd_instalasi, aa.fs_kd_layanan_dk,
-               aa.fs_kd_layanan_tipe_dk, aa.fs_kd_pcc AS fs_kd_unit,aa.fs_kd_layanan_bpjs,
+               aa.fs_kd_layanan_tipe_dk, aa.fs_kd_pcc AS fs_kd_unit,
+               aa.fs_kd_layanan_bpjs,
                ISNULL(bb.fs_nm_instalasi,'') AS fs_nm_instalasi,
                ISNULL(bb.fs_kd_instalasi_dk, '') AS fs_kd_instalasi_dk,
                ISNULL(cc.fs_nm_layanan_dk,'') AS fs_nm_layanan_dk,
