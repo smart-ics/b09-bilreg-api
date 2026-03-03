@@ -29,7 +29,6 @@ using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
-using Nuna.Lib.DataTypeExtension;
 using Nuna.Lib.TransactionHelper;
 
 namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
@@ -205,25 +204,32 @@ public class RegJalanByBookingHandler
 
 
         //  WRITE
-        using var trans = TransHelper.NewScope();
-        _regRepo.SaveChanges(reg);
-        _bookingRepo.SaveChanges(booking);
-        _regAktifRepo.SaveChanges(regAktif);
-        _trsBillingRepo.SaveChanges(trsBillingReg);
-        _antrianRepo.SaveChanges(antrian);
-        if (tindakan.TindakanId != "-")
-            _tindakanRepo.SaveChanges(tindakan);
-        if (trsBilling.TrsBillingId != "-")
-            _trsBillingRepo.SaveChanges(trsBilling);
+        RegJalanByBookingResponse response;
+        using (var trans = TransHelper.NewScope())
+        {
+            _regRepo.SaveChanges(reg);
+            _bookingRepo.SaveChanges(booking);
+            _regAktifRepo.SaveChanges(regAktif);
+            _trsBillingRepo.SaveChanges(trsBillingReg);
+            _antrianRepo.SaveChanges(antrian);
+            if (tindakan.TindakanId != "-")
+                _tindakanRepo.SaveChanges(tindakan);
+            if (trsBilling.TrsBillingId != "-")
+                _trsBillingRepo.SaveChanges(trsBilling);
 
-        _jurnalRepo.SaveChanges(jurnalReg);
-        if (jurnalTindakan.JurnalId != "-")
-            _jurnalRepo.SaveChanges(jurnalTindakan);
+            _jurnalRepo.SaveChanges(jurnalReg);
+            if (jurnalTindakan.JurnalId != "-")
+                _jurnalRepo.SaveChanges(jurnalTindakan);
 
-        _remoteCetakRepo.SaveChanges(rmtCetak);
-        AddReg(reg);
-        trans.Complete();
-        return Task.FromResult(new RegJalanByBookingResponse(reg.RegId, booking.NoAntrian));
+            _remoteCetakRepo.SaveChanges(rmtCetak);
+
+            trans.Complete();
+            response = new RegJalanByBookingResponse(reg.RegId, booking.NoAntrian);
+        }
+
+        
+        AddReg(reg, booking);
+        return Task.FromResult(response);
     }
 
     #region PRIVATE HELPER
@@ -363,9 +369,12 @@ public class RegJalanByBookingHandler
         return map;
     }
 
-    private void AddReg(RegModel reg)
+    private void AddReg(RegModel reg, BookingModel booking)
     {
-        var payload = new AddRegCmd(reg.RegId);
+        var payload = new AddRegCmd(reg.RegId, booking.BookingId,
+            reg.Pasien.PasienId, reg.Pasien.PasienName,
+            reg.Layanan.LayananId, reg.Dokter.PpaId,
+            reg.RegDate.ToString("yyyy-MM-dd"), booking.NoAntrian);
         _addRegSvc.Execute(payload);
     }
     #endregion

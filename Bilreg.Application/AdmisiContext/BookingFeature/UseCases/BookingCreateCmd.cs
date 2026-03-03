@@ -90,26 +90,30 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
 
 
         //  persisting
-        using var trans = TransHelper.NewScope();
-        
-        //      no antrian masuk ke transaction agar bisa rollback jika gagal
-        var antEntry = antrian.AddEntry(noAntrian, tracker, booking.BookingId, "BOK");
-        booking.AssignNoAntrian(antEntry.NoUrut);
-        
-        //      writing database
-        _bookingRepo.SaveChanges(booking);
-        _antrianRepo.SaveChanges(antrian);
-        _trackerRepo.SaveChanges(tracker);
+        BookingCreateResponse response;
+        using (var trans = TransHelper.NewScope())
+        {
 
-        // rubah antrianMapHdr
-        antrianMap.SetDataPasien(noAntrian, pasien, booking.Reg, booking.BookingId, "AUTO");
-        _antrianMapRepo.SaveChanges(antrianMap);
+            //      no antrian masuk ke transaction agar bisa rollback jika gagal
+            var antEntry = antrian.AddEntry(noAntrian, tracker, booking.BookingId, "BOK");
+            booking.AssignNoAntrian(antEntry.NoUrut);
+
+            //      writing database
+            _bookingRepo.SaveChanges(booking);
+            _antrianRepo.SaveChanges(antrian);
+            _trackerRepo.SaveChanges(tracker);
+
+            // rubah antrianMapHdr
+            antrianMap.SetDataPasien(noAntrian, pasien, booking.Reg, booking.BookingId, "AUTO");
+            _antrianMapRepo.SaveChanges(antrianMap);
+
+            trans.Complete();
+            response = new BookingCreateResponse(booking.BookingId, antEntry.NoUrut);
+        }
 
         AddBooking(booking);
-        trans.Complete();
 
-        return Task.FromResult(new BookingCreateResponse(
-            booking.BookingId, antEntry.NoUrut));
+        return Task.FromResult(response);
     }
 
     private PersonInfoType FindPasien(BookingCreateCmd request)
@@ -186,7 +190,9 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
 
     private void  AddBooking(BookingModel book)
     {
-        var payload = new AddBookCmd(book.BookingId);
+        var payload = new AddBookCmd(book.BookingId, book.PasienId, book.Person.PersonName,
+            book.Layanan.LayananId, book.Dokter.PpaId, book.TglBerobat.ToString("yyyy-MM-dd"),
+            book.NoAntrian);
         _addBookingSvc.Execute(payload);
     }
 

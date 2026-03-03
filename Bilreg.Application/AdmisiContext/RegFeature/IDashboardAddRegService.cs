@@ -6,4 +6,5 @@ public interface IDashboardAddRegService : INunaServiceVoid<AddRegCmd>
 {
 }
 
-public record AddRegCmd(string regId);
+public record AddRegCmd(string RegId, string BookingId, string PasienId, string PasienName,
+    string LayananId, string DokterId, string TglBerobat, int NoAntrian);
