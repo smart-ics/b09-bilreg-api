@@ -34,6 +34,7 @@ public static class DomainService
             .AddScoped<IGetAppSettingService, GetAppSettingService>()
             .AddScoped<IDashboardAddBookService, DashboardAddBookService>()
             .AddScoped<IDashboardAddRegService, DashboardAddRegService>()
+            .AddScoped<IDashboardEmrRemoveRegService,  DashboardEmrRemoveRegService>()
             ;
         
         return services;
