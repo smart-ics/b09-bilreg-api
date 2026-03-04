@@ -85,7 +85,7 @@ public class JadwalPraktekRepo : IJadwalPraktekRepo
         var listJadwalFo = _jadwalFoDal.ListData()?.ToList() ?? [];
         _dal.DeleteAll();
         var listDto = listJadwalFo.Select(x => new JadwalPraktekDto(
-            x.JadwalPraktekId, x.DokterId, x.LayananId, (int)x.Hari, x.JamMulai, x.JamMulai, 
+            x.JadwalPraktekId, x.DokterId, x.LayananId, (int)x.Hari, x.JamMulai, x.JamSelesai, 
             (int)x.MaxPasien, x.DokterName, x.LayananName, x.LayananDkId, x.LayananDkName,
             x.GroupSpesialisId, x.GroupSpesialisName))?.ToList()??[];
         listDto.ForEach(x => _dal.Insert(x));
