@@ -27,6 +27,7 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
     private readonly IAntrianMapHdrRepo _antrianMapHdrRepo;
     private readonly IPasienTrackerRepo _pasienTrackerRepo;
     private readonly IJurnalRepo _jurnalRepo;
+    private readonly IDashboardEmrRemoveRegService _removeRegSvc;
     public RegJalanBatalHandler(IRegRepo regRepo,
         IRegAktifRepo regAktifRepo,
         IAntrianRepo antrianRepo,
@@ -34,7 +35,8 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
         ITrsBillingRepo bilingRepo,
         IAntrianMapHdrRepo antrianMapHdrRepo,
         IPasienTrackerRepo pasienTrackerRepo,
-        IJurnalRepo jurnalRepo)
+        IJurnalRepo jurnalRepo,
+        IDashboardEmrRemoveRegService removeRegSvc)
     {
         _regRepo = regRepo;
         _regAktifRepo = regAktifRepo;
@@ -44,6 +46,7 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
         _antrianMapHdrRepo = antrianMapHdrRepo;
         _pasienTrackerRepo = pasienTrackerRepo;
         _jurnalRepo = jurnalRepo;
+        _removeRegSvc = removeRegSvc;
     }
 
     public Task Handle(RegJalanBatalCmd request, CancellationToken cancellationToken)
@@ -62,16 +65,21 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
         var queMap = LoadAntrianMap(reg, antrianContext.Que);
         var billingList = LoadAndValidateBilling(request)?.ToList() ?? [];
 
-        using var trans = TransHelper.NewScope();
+        using (var trans = TransHelper.NewScope())
+        {
 
-        VoidReg(reg, request.UserId);
-        VoidAntrian(antrianContext);
-        VoidAntrianMap(queMap, antrianContext.NoUrut);
-        VoidTindakan(tindakanList, request.UserId);
-        VoidBilling(billingList);
-        _regAktifRepo.Delete(reg);
+            VoidReg(reg, request.UserId);
+            VoidAntrian(antrianContext);
+            VoidAntrianMap(queMap, antrianContext.NoUrut);
+            VoidTindakan(tindakanList, request.UserId);
+            VoidBilling(billingList);
+            _regAktifRepo.Delete(reg);
 
-        trans.Complete();
+            trans.Complete();
+        }
+        var removeReg = new RemoveRegCmd(reg.RegId);
+        _removeRegSvc.Execute(removeReg);
+
         return Task.CompletedTask;
     }
 
@@ -189,5 +197,6 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
             
     }
 
+    
     #endregion
 }
