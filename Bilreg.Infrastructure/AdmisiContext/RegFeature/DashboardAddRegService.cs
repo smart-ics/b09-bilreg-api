@@ -28,7 +28,7 @@ public class DashboardAddRegService : IDashboardAddRegService
         var request = new RestRequest()
             .AddJsonBody(req, "application/json");
 
-        await client.ExecutePostAsync(request);
+        var result = await client.ExecutePostAsync(request);
     }
 
 

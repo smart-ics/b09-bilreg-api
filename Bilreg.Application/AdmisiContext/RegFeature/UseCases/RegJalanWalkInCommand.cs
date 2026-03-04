@@ -78,7 +78,6 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
     private readonly IRemoteCetakRepo _remoteCetakRepo;
     private readonly IGetAppSettingService _getAppSettingSvc;
     private readonly IDashboardAddRegService _addRegSvc;
-    private readonly IMediator _mediator;
 
     public RegJalanCreateHandler(
         //  reg support
@@ -113,8 +112,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         IJurnalRepo jurnalRepo,
         IRemoteCetakRepo remoteCetakRepo,
         IGetAppSettingService getAppSettingSvc,
-        IDashboardAddRegService addRegSvc,
-        IMediator mediator)
+        IDashboardAddRegService addRegSvc)
     {
         //      reg-support
         _pasienRepo = pasienRepo;
@@ -149,7 +147,6 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         _remoteCetakRepo = remoteCetakRepo;
         _getAppSettingSvc = getAppSettingSvc;
         _addRegSvc = addRegSvc;
-        _mediator = mediator;
     }
 
     public Task<RegJalanCreateResponse> Handle(RegJalanWalkInCommand request, CancellationToken cancellationToken)
