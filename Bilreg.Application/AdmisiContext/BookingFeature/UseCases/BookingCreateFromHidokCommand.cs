@@ -27,11 +27,14 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
     private readonly IPasienTrackerRepo _trackerRepo;
     private readonly IPasienRepo _pasienRepo;
     private readonly IPpaRepo _ppaRepo;
+    private readonly IDashboardAddBookService _addBookingSvc;
+
 
     public BookingCreateFromHidokHandler(IJadwalPraktekRepo jadwalPraktekRepo,
         IAntrianRepo antrianRepo, IAntrianFactory antrianFactory,
         IBookingRepo bookingRepo, IPasienTrackerRepo trackerRepo,
-        IPasienRepo pasienRepo, IPpaRepo ppaRepo)
+        IPasienRepo pasienRepo, IPpaRepo ppaRepo, 
+        IDashboardAddBookService addBookingSvc)
     {
         _jadwalPraktekRepo = jadwalPraktekRepo;
         _antrianRepo = antrianRepo;
@@ -40,6 +43,7 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
         _trackerRepo = trackerRepo;
         _pasienRepo = pasienRepo;
         _ppaRepo = ppaRepo;
+        _addBookingSvc = addBookingSvc;
     }
     public Task<BookingCreateFromHidokResponse> Handle(BookingCreateFromHidokCommand request, CancellationToken cancellationToken)
     {
@@ -62,9 +66,13 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
             ?? throw new ArgumentException("Jadwal tidak ditemukan");
 
         //      create person
+        var px = request.PasienId != string.Empty ?
+            FindPasien(request) :
+            PasienModel.Default;
+
         var person = request.PasienId == string.Empty ?
             CreatePerson(request) :
-            FindPasien(request);
+            px.Person;
 
         //      create booking
         var tglBerobat = DateOnly.Parse(request.TglBerobat);
@@ -83,29 +91,28 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
         var tracker = PasienTrackerModel.Create(booking);
 
         //  WRITE
-        using var trans = TransHelper.NewScope();
+        BookingCreateFromHidokResponse response;
+        using (var trans = TransHelper.NewScope())
+        {
+            var antEntry = antrian.AddEntry(request.NoAntrian, tracker, booking.BookingId, "BOK");
+            booking.AssignNoAntrian(antEntry.NoUrut);
 
-        var antEntry = antrian.AddEntry(request.NoAntrian, tracker, booking.BookingId, "BOK");
-        booking.AssignNoAntrian(antEntry.NoUrut);
+            _bookingRepo.SaveChanges(booking);
+            _antrianRepo.SaveChanges(antrian);
+            _trackerRepo.SaveChanges(tracker);
+            trans.Complete();
+            response = new BookingCreateFromHidokResponse(booking.BookingId, antEntry.NoUrut);
+        }
 
-        _bookingRepo.SaveChanges(booking);
-        _antrianRepo.SaveChanges(antrian);
-        _trackerRepo.SaveChanges(tracker);
+        AddBooking(booking, px);
 
-        trans.Complete();
-
-        return Task.FromResult(new BookingCreateFromHidokResponse(
-            booking.BookingId, antEntry.NoUrut));
+        return Task.FromResult(response);
     }
 
-    private PersonInfoType FindPasien(BookingCreateFromHidokCommand request)
+    private PasienModel FindPasien(BookingCreateFromHidokCommand request)
     {
         var pasienKey = PasienModel.Key(request.PasienId);
-        var pasien = _pasienRepo.LoadEntity(pasienKey)
-            .Match(
-                onSome: x => x.Person,
-                onNone: () => throw new KeyNotFoundException($"Pasien id {request.PasienId} not found")
-            );
+        var pasien = _pasienRepo.LoadEntity(pasienKey).GetValueOrDefault(PasienModel.Default);
         return pasien;
     }
 
@@ -118,5 +125,13 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
             request.PasienName, tglLahir, request.Gender,
             alamat, contact, IdentitasType.Default);
         return person;
+    }
+    private void AddBooking(BookingModel book, PasienModel px)
+    {
+        var pasienId = px.PasienId == "-" ? "-" : px.PasienId;
+        var payload = new AddBookCmd(book.BookingId, pasienId, book.Person.PersonName,
+            book.Layanan.LayananId, book.Dokter.PpaId, book.TglBerobat.ToString("yyyy-MM-dd"),
+            book.NoAntrian);
+        _addBookingSvc.Execute(payload);
     }
 }

@@ -27,6 +27,7 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
     private readonly IAntrianMapHdrRepo _antrianMapHdrRepo;
     private readonly IPasienTrackerRepo _pasienTrackerRepo;
     private readonly IJurnalRepo _jurnalRepo;
+    private readonly IDashboardEmrRemoveRegService _removeRegSvc;
     public RegJalanBatalHandler(IRegRepo regRepo,
         IRegAktifRepo regAktifRepo,
         IAntrianRepo antrianRepo,
@@ -34,7 +35,8 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
         ITrsBillingRepo bilingRepo,
         IAntrianMapHdrRepo antrianMapHdrRepo,
         IPasienTrackerRepo pasienTrackerRepo,
-        IJurnalRepo jurnalRepo)
+        IJurnalRepo jurnalRepo,
+        IDashboardEmrRemoveRegService removeRegSvc)
     {
         _regRepo = regRepo;
         _regAktifRepo = regAktifRepo;
@@ -44,6 +46,7 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
         _antrianMapHdrRepo = antrianMapHdrRepo;
         _pasienTrackerRepo = pasienTrackerRepo;
         _jurnalRepo = jurnalRepo;
+        _removeRegSvc = removeRegSvc;
     }
 
     public Task Handle(RegJalanBatalCmd request, CancellationToken cancellationToken)
@@ -54,22 +57,29 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
         var reg = LoadReg(request);
         if (reg is null)
             return Task.CompletedTask;
+        if (reg.IsAktif == false)
+            throw new KeyNotFoundException($"Register {request.RegId} sudah tidak aktif");
 
         var tindakanList = LoadAndValidateTindakan(request);
         var antrianContext = LoadAntrianContext(reg);
         var queMap = LoadAntrianMap(reg, antrianContext.Que);
-        var billingList = _bilingRepo.ListData(request)?.ToList() ?? [];
+        var billingList = LoadAndValidateBilling(request)?.ToList() ?? [];
 
-        using var trans = TransHelper.NewScope();
+        using (var trans = TransHelper.NewScope())
+        {
 
-        VoidReg(reg, request.UserId);
-        VoidAntrian(antrianContext);
-        VoidAntrianMap(queMap, antrianContext.NoUrut);
-        VoidTindakan(tindakanList, request.UserId);
-        VoidBilling(billingList);
-        _regAktifRepo.Delete(reg);
+            VoidReg(reg, request.UserId);
+            VoidAntrian(antrianContext);
+            VoidAntrianMap(queMap, antrianContext.NoUrut);
+            VoidTindakan(tindakanList, request.UserId);
+            VoidBilling(billingList);
+            _regAktifRepo.Delete(reg);
 
-        trans.Complete();
+            trans.Complete();
+        }
+        var removeReg = new RemoveRegCmd(reg.RegId);
+        _removeRegSvc.Execute(removeReg);
+
         return Task.CompletedTask;
     }
 
@@ -111,6 +121,15 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
         return list
             .Select(x => _tdkRepo.LoadEntity(x).Value)
             .ToList();
+    }
+
+    private List<TrsBillingType> LoadAndValidateBilling(RegJalanBatalCmd request)
+    {
+        var billingList = _bilingRepo.ListData(request)?.ToList() ?? [];
+
+        if (billingList.Count() > 1)
+            throw new ArgumentException("Pasien ini masih memiliki Bill, void bill terlebih dahulu");
+        return billingList;
     }
     private AntrianMapHdrModel LoadAntrianMap(RegModel reg, AntrianModel que)
     {
@@ -168,7 +187,7 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
             _tdkRepo.SaveChanges(tindakan);
         }
     }
-    private void VoidBilling(IEnumerable<TrsBillingView> listBill)
+    private void VoidBilling(IEnumerable<TrsBillingType> listBill)
     {
         foreach (var bill in listBill)
         {
@@ -178,5 +197,6 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
             
     }
 
+    
     #endregion
 }

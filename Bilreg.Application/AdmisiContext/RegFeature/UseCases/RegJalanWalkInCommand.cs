@@ -77,6 +77,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
 
     private readonly IRemoteCetakRepo _remoteCetakRepo;
     private readonly IGetAppSettingService _getAppSettingSvc;
+    private readonly IDashboardAddRegService _addRegSvc;
 
     public RegJalanCreateHandler(
         //  reg support
@@ -110,7 +111,8 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         IMapJaminanJkRepo mapJaminanJkRepo,
         IJurnalRepo jurnalRepo,
         IRemoteCetakRepo remoteCetakRepo,
-        IGetAppSettingService getAppSettingSvc)
+        IGetAppSettingService getAppSettingSvc,
+        IDashboardAddRegService addRegSvc)
     {
         //      reg-support
         _pasienRepo = pasienRepo;
@@ -144,6 +146,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         _jurnalRepo = jurnalRepo;
         _remoteCetakRepo = remoteCetakRepo;
         _getAppSettingSvc = getAppSettingSvc;
+        _addRegSvc = addRegSvc;
     }
 
     public Task<RegJalanCreateResponse> Handle(RegJalanWalkInCommand request, CancellationToken cancellationToken)
@@ -213,32 +216,40 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         /*  ▐▀▀▀▀▀▀▀▀▀▀▀▌
             ▐   WRITE   ▌
             ▐▄▄▄▄▄▄▄▄▄▄▄▌*/
-        using var trans = TransHelper.NewScope();
 
-        var antEntry = antrian.AddEntry(noAntrian, tracker, reg.RegId, "REG");
-        var itemQueue = antrian.ListEntry.FirstOrDefault(x => x.NoUrut == noAntrian)
-            ?? AntrianEntryModel.Default;
-        itemQueue.Serve();
-        _regRepo.SaveChanges(reg);
-        _regAktifRepo.SaveChanges(regAktif);
-        _antrianRepo.SaveChanges(antrian);
-        _trackerRepo.SaveChanges(tracker);
-        //      ubah antrianMapHdr
-        antrianMap.SetDataPasien(noAntrian, reg.Pasien, reg.ToReff(), reg.RegId, "AUTO");
-        _antrianMapRepo.SaveChanges(antrianMap);
-        _trsBillingRepo.SaveChanges(trsBillingReg);
-        if (tindakan.TindakanId != "-")
-            _tindakanRepo.SaveChanges(tindakan);
-        if(trsBilling.TrsBillingId != "-")
-            _trsBillingRepo.SaveChanges(trsBilling);
-        _jurnalRepo.SaveChanges(jurnalReg);
-        if (jurnalTindakan.JurnalId != "-")
-            _jurnalRepo.SaveChanges(jurnalTindakan);
-        _remoteCetakRepo.SaveChanges(rmtCetak);
-
-        trans.Complete();
+        RegJalanCreateResponse response;
         
-        return Task.FromResult(new RegJalanCreateResponse(reg.RegId, antEntry.NoUrut));
+        using (var trans = TransHelper.NewScope())
+        {
+
+            var antEntry = antrian.AddEntry(noAntrian, tracker, reg.RegId, "REG");
+            var itemQueue = antrian.ListEntry.FirstOrDefault(x => x.NoUrut == noAntrian)
+                ?? AntrianEntryModel.Default;
+            itemQueue.Serve();
+            _regRepo.SaveChanges(reg);
+            _regAktifRepo.SaveChanges(regAktif);
+            _antrianRepo.SaveChanges(antrian);
+            _trackerRepo.SaveChanges(tracker);
+            //      ubah antrianMapHdr
+            antrianMap.SetDataPasien(noAntrian, reg.Pasien, reg.ToReff(), reg.RegId, "AUTO");
+            _antrianMapRepo.SaveChanges(antrianMap);
+            _trsBillingRepo.SaveChanges(trsBillingReg);
+            if (tindakan.TindakanId != "-")
+                _tindakanRepo.SaveChanges(tindakan);
+            if (trsBilling.TrsBillingId != "-")
+                _trsBillingRepo.SaveChanges(trsBilling);
+            _jurnalRepo.SaveChanges(jurnalReg);
+            if (jurnalTindakan.JurnalId != "-")
+                _jurnalRepo.SaveChanges(jurnalTindakan);
+            _remoteCetakRepo.SaveChanges(rmtCetak);
+
+            trans.Complete();
+            response = new RegJalanCreateResponse(reg.RegId, antEntry.NoUrut);
+        }
+        AddReg(reg, noAntrian);
+        
+        return Task.FromResult(response);
+        
     }
 
     #region PRIVATE-HELPERS
@@ -389,6 +400,15 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
                 onNone: () => MapJaminanJkType.Default
             );
         return map;
+    }
+
+    private void AddReg(RegModel reg, int noAntrian)
+    {
+        var payload = new AddRegCmd(reg.RegId, "", 
+            reg.Pasien.PasienId, reg.Pasien.PasienName,
+            reg.Layanan.LayananId, reg.Dokter.PpaId, 
+            reg.RegDate.ToString("yyyy-MM-dd"), noAntrian);
+        _addRegSvc.Execute(payload);
     }
     #endregion
 }

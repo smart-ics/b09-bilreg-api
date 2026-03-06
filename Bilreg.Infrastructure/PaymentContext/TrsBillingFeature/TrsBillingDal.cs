@@ -44,7 +44,7 @@ public class TrsBillingDal : ITrsBillingDal
             """;
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_trs", dto.fs_kd_trs, SqlDbType.VarChar);
-        dp.AddParam("@fn_modul", dto.fn_modul, SqlDbType.Int);
+        dp.AddParam("@fn_modul", dto.fn_modul, SqlDbType.Decimal);
         dp.AddParam("@fd_tgl_trs", dto.fd_tgl_trs, SqlDbType.VarChar);
         dp.AddParam("@fs_jam_trs", dto.fs_jam_trs, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_reg", dto.fs_kd_reg, SqlDbType.VarChar);

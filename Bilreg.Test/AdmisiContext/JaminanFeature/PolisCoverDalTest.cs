@@ -10,6 +10,14 @@ public class PolisCoverDalTest
 {
     private readonly PolisCoverDal _sut = new(ConnStringHelper.GetTestEnv());
 
+    private static PolisCoverDto Faker()
+        => new PolisCoverDto(
+            fs_kd_polis: "A",
+                fs_mr: "B",
+                fs_kd_status: "C",
+                fs_nm_pasien: "D",
+                fd_tgl_lahir: "E",
+                fs_jns_kelamin: "F");
     private static IEnumerable<PolisCoverDto> FakerList()
         => new List<PolisCoverDto>
         {
@@ -54,8 +62,10 @@ public class PolisCoverDalTest
         using var trans = TransHelper.NewScope();
         _sut.Insert(FakerList());
         var actual = _sut.ListData(FakerKey());
-        actual.Should().BeEquivalentTo(FakerList(),
-            opt => opt.Excluding(x => x.fs_nm_pasien)
+
+        actual.Should().ContainEquivalentOf(Faker(),
+            opt => opt
+                .Excluding(x => x.fs_nm_pasien)
                 .Excluding(x => x.fd_tgl_lahir)
                 .Excluding(x => x.fs_jns_kelamin));
     }

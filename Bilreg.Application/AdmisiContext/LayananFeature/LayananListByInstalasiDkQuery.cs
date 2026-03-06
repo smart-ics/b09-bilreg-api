@@ -10,7 +10,9 @@ public record LayananListByInstalasiDkResponse(
     string LayananName,
     bool IsAktif,
     string InstalasiId,
-    string InstalasiName
+    string InstalasiName,
+    string PoliBpjsId,
+    string PoliBpjsName
     );
 
 public class LayananListByInstalasiDkHandler : IRequestHandler<LayananListByInstalasiDkQuery, IEnumerable<LayananListByInstalasiDkResponse>>
@@ -31,7 +33,9 @@ public class LayananListByInstalasiDkHandler : IRequestHandler<LayananListByInst
                 x.LayananName,
                 x.IsAktif,
                 x.Instalasi.InstalasiId,
-                x.Instalasi.InstalasiName
+                x.Instalasi.InstalasiName,
+                x.PoliBpjs.PoliBpjsId,
+                x.PoliBpjs.PoliBpjsName
             ));
         
         return Task.FromResult(result);     

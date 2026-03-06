@@ -90,6 +90,8 @@ public record AntrianMapHdrModel : IAntrianMapHdrKey
         _listMap.AddRange(slots);
     }
 
+    
+
     public void SetDataPasien(
         int noUrut,
         PasienReff pasien,
@@ -131,11 +133,21 @@ public record AntrianMapHdrModel : IAntrianMapHdrKey
 
     public int GetNextNoAntrian()
     {
-        return _listMap
+        var noUrut = _listMap
             .Where(x => string.IsNullOrEmpty(x.ReffId))
             .Select(x => x.NoUrut)
-            .DefaultIfEmpty(1)
+            .DefaultIfEmpty(-1)
             .Min();
+
+        if (noUrut != -1)
+            return noUrut;
+
+        // jika penuh maka tambah slot
+        var lastNoUrut = _listMap.Any() ? _listMap.Max(x => x.NoUrut) : 0;
+        var newSlot = AntrianMapModel.AutoSlot(TglJadwal, Dokter.PpaId, Layanan.LayananId, JamJadwal, lastNoUrut + 1);
+        _listMap.Add(newSlot);
+        
+        return newSlot.NoUrut;
     }
 
     public int TotalSlotCount => _listMap.Count;

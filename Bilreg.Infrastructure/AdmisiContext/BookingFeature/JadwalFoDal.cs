@@ -1,4 +1,6 @@
-﻿using Bilreg.Infrastructure.AdmisiContext.BookingFeature;
+﻿using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
@@ -7,7 +9,7 @@ using System.Data.SqlClient;
 namespace Bilreg.Application.AdmisiContext.BookingFeature;
 
 public interface IJadwalFoDal :
-    IListData<JadwalPraktekDto>
+    IListData<JadwalFoDto>
 { }
 public class JadwalFoDal : IJadwalFoDal
 {
@@ -18,7 +20,7 @@ public class JadwalFoDal : IJadwalFoDal
         _opt = opt.Value;
     }
 
-    public IEnumerable<JadwalPraktekDto> ListData()
+    public IEnumerable<JadwalFoDto> ListData()
     {
         const string sql = """
             SELECT 
@@ -45,7 +47,22 @@ public class JadwalFoDal : IJadwalFoDal
             """;
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        var result = conn.Read<JadwalPraktekDto>(sql);
+        var result = conn.Read<JadwalFoDto>(sql);
         return result;
     }
 }
+
+public record JadwalFoDto(
+    string JadwalPraktekId,
+    string DokterId,
+    string LayananId,
+    decimal Hari,
+    string JamMulai,
+    string JamSelesai,
+    decimal MaxPasien,
+    string DokterName,
+    string LayananName,
+    string LayananDkId,
+    string LayananDkName,
+    string GroupSpesialisId,
+    string GroupSpesialisName);

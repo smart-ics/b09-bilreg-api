@@ -12,7 +12,7 @@ public class LayananDalTest
     private readonly LayananDal _sut = new(ConnStringHelper.GetTestEnv());
 
     private static LayananDto Faker()
-        => new LayananDto("A", "B", true, "C", "D", "E","F", "G", "H", "I", "J", "K", "L");
+        => new LayananDto("A", "B", true, "C", "D", "E","", "G", "H", "I", "J", "K", "L", "M", "N");
 
     private static ILayananKey FakerKey()
         => LayananType.Key("A");
@@ -49,7 +49,10 @@ public class LayananDalTest
                 .Excluding(x => x.fs_kd_instalasi_dk)
                 .Excluding(x => x.fs_nm_layanan_dk)
                 .Excluding(x => x.fs_nm_layanan_tipe_dk)
-                .Excluding(x => x.fs_nm_instalasi_dk));
+                .Excluding(x => x.fs_nm_instalasi_dk)
+                .Excluding(x => x.fs_nm_unit)
+                .Excluding(x => x.fs_nm_layanan_bpjs)
+                .Excluding(x => x.fs_kd_layanan_bpjs));
     }
 
     [Fact]
@@ -63,7 +66,10 @@ public class LayananDalTest
                 .Excluding(x => x.fs_kd_instalasi_dk)
                 .Excluding(x => x.fs_nm_layanan_dk)
                 .Excluding(x => x.fs_nm_layanan_tipe_dk)
-                .Excluding(x => x.fs_nm_instalasi_dk));
+                .Excluding(x => x.fs_nm_instalasi_dk)
+                .Excluding(x => x.fs_nm_unit)
+                .Excluding(x => x.fs_nm_layanan_bpjs)
+                .Excluding(x => x.fs_kd_layanan_bpjs));
     }
 
     [Fact]
@@ -86,7 +92,10 @@ public class LayananDalTest
                 .Excluding(x => x.fs_kd_instalasi_dk)
                 .Excluding(x => x.fs_nm_layanan_dk)
                 .Excluding(x => x.fs_nm_layanan_tipe_dk)
-                .Excluding(x => x.fs_nm_instalasi_dk));
+                .Excluding(x => x.fs_nm_instalasi_dk)
+                .Excluding(x => x.fs_nm_unit)
+                .Excluding(x => x.fs_nm_layanan_bpjs)
+                .Excluding(x => x.fs_kd_layanan_bpjs));
     }
 
 }

@@ -528,7 +528,8 @@ public class JurnalType_CreateFromTrsBilling_Test
             new LayananDkType("LK2", "Layanan Dk 2",1,2,3,4,5,6,7).ToReff(),
             new TipeLayananDkType(TipeLayananDkType.Default.TipeLayananDkId, TipeLayananDkType.Default.TipeLayananDkName),
             new InstalasiDkType(InstalasiDkType.Default.InstalasiDkId, InstalasiDkType.Default.InstalasiDkName),
-            unitPcc);
+            unitPcc,
+            new PoliBpjsReff("-", "-"));
     }
 
     private static MapJaminanJkType CreateSampleMapJaminanJk()

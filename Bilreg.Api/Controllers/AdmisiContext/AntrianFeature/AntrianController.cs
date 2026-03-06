@@ -68,4 +68,12 @@ public class AntrianController : Controller
         var response = _mediator.Send(query);
         return Ok(new JSendOk("Done"));
     }
+
+    [HttpPost]
+    [Route("mapMigrasi")]
+    public async Task<IActionResult> MigrasiMapHdr(AntrianMapHdrMigrasiCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
 }
