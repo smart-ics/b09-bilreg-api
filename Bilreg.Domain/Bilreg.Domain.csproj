@@ -26,7 +26,6 @@
   <ItemGroup>
     <Folder Include="BedUsageContext\HousekeepingFeature\" />
     <Folder Include="BedUsageContext\PakaiBedFeature\" />
-    <Folder Include="Shared\" />
   </ItemGroup>
 
 </Project>
