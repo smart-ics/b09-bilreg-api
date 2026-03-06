@@ -13,7 +13,7 @@ namespace Bilreg.Infrastructure.PaymentContext.TrsBillingFeature;
 
 public record TrsBillingDto(
     string fs_kd_trs,
-    decimal fn_modul,
+    int fn_modul,
     string fd_tgl_trs,
     string fs_jam_trs,
     string fd_tgl_jam_trs,
@@ -33,7 +33,7 @@ public record TrsBillingDto(
     string fs_keterangan,
     string fs_keterangan2,
     string fs_kd_ref_biaya,
-    decimal fn_qty,
+    int fn_qty,
     string fs_kd_trs_main,
     
     string fs_mr,
@@ -66,7 +66,7 @@ public record TrsBillingDto(
             model.Keterangan.Keterangan,
             model.Keterangan.Keterangan2,
             model.Keterangan.RefBiaya,
-            model.Keterangan.Qty,
+            (int)model.Keterangan.Qty,
             model.Keterangan.TrsMainId,
             
             model.Reg.PasienId,

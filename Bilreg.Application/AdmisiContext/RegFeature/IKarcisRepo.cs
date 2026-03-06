@@ -9,12 +9,20 @@ public interface IKarcisRepo :
     ISaveChange<KarcisType>,
     IDelete<IKarcisKey>,
     ILoadEntity<KarcisType, IKarcisKey>,
-    IListData<KarcisView, IInstalasiDkKey>
+    IListData<KarcisView, IInstalasiDkKey>,
+    IListData<KarcisLayananView, ILayananKey>
+
 {
 }
 
 public record KarcisView(
     string KarcisId, string KarcisName,
     InstalasiDkType InstalasiDk,
+    TarifReff DefaultTarif,
+    decimal Nilai);
+
+public record KarcisLayananView(
+    string KarcisId, string KarcisName,
+    LayananReff Layanan,
     TarifReff DefaultTarif,
     decimal Nilai);

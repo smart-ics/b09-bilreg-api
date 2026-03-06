@@ -32,5 +32,9 @@ public record PersonInfoType : PersonType
     public string Gender { get; init; }
     public AlamatType Alamat { get; init; } 
     public ContactType Contact { get; init; }
-    public IdentitasType Identity { get; init; }
+    public IdentitasType Identity { get; private set; }
+
+
+    public void SetIdentity(IdentitasType identity)
+    => Identity = identity;
 }

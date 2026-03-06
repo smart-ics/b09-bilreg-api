@@ -1,8 +1,10 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.PpaFeature;
+using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
+using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
@@ -12,8 +14,8 @@ namespace Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
 
 public record OkCreateOrderOpByPasienCmd(
     string PasienId, string DiagCode, string JenisOperasiId, string NamaOperasi,
-    string DokterDpjpId, int EstimasiDurasiInMinutes, string PreferedDate, 
-    string SpecialEquipment, string UserId, bool IsForceCreate) :
+    string DokterDpjpId, string TarifId, int EstimasiDurasiInMinutes,
+    string PreferedDate, string SpecialEquipment, string UserId, bool IsForceCreate) :
         IRequest<OkCreateOrderOpByPasienResponse>;
 
 public record OkCreateOrderOpByPasienResponse(
@@ -37,12 +39,13 @@ public class OkCreateOrderOpByPasienHandler :
     private readonly IJenisOperasiRepo _jenisOperasiRepo;
     private readonly IPpaRepo _dokterRepo;
     private readonly IOpCaseRepo _opCaseRepo;
+    private readonly ITarifRepo _tarifRepo;
 
     public OkCreateOrderOpByPasienHandler(IOrderOpRepo orderOpRepo,
         IPasienRepo pasienRepo,
         IIcd10Repo icdRepo,
         IJenisOperasiRepo jenisOperasiRepo,
-        IPpaRepo dokterRepo, IOpCaseRepo opCaseRepo)
+        IPpaRepo dokterRepo, IOpCaseRepo opCaseRepo, ITarifRepo tarifRepo)
     {
         _orderOpRepo = orderOpRepo;
         _pasienRepo = pasienRepo;
@@ -50,6 +53,7 @@ public class OkCreateOrderOpByPasienHandler :
         _jenisOperasiRepo = jenisOperasiRepo;
         _dokterRepo = dokterRepo;
         _opCaseRepo = opCaseRepo;
+        _tarifRepo = tarifRepo;
     }
 
     public Task<OkCreateOrderOpByPasienResponse> Handle(
@@ -60,6 +64,7 @@ public class OkCreateOrderOpByPasienHandler :
         Guard.Against.NullOrEmpty(request.DiagCode);
         Guard.Against.NullOrEmpty(request.JenisOperasiId);
         Guard.Against.NullOrEmpty(request.DokterDpjpId);
+        Guard.Against.NullOrEmpty(request.TarifId);
 
         if (!request.IsForceCreate)
         {
@@ -73,7 +78,8 @@ public class OkCreateOrderOpByPasienHandler :
         var icd = LoadIcd(request.DiagCode);
         var jenisOperasi = LoadJenisOperasi(request.JenisOperasiId);
         var dokter = LoadDokter(request.DokterDpjpId);
-        var orderOp = CreateOrder(pasien, icd, jenisOperasi, dokter, request);
+        var tarif = LoadTarif(request.TarifId);
+        var orderOp = CreateOrder(pasien, icd, jenisOperasi, dokter, tarif, request);
         var opCase = OpCaseModel.Create(orderOp);
 
         //  WRITE
@@ -101,6 +107,10 @@ public class OkCreateOrderOpByPasienHandler :
         _dokterRepo.LoadEntity(PpaType.Key(id))
             .GetValueOrThrow("Dokter DPJP ID invalid");
 
+    private TarifType LoadTarif(string id) => 
+        _tarifRepo.LoadEntity(TarifType.Key(id))
+            .GetValueOrThrow("Tarif ID invalid");
+
     private OrderOpView? FindExistingOrder(string pasienId)
     {
         var list = _orderOpRepo.ListData(new Periode(DateTime.Now));
@@ -113,6 +123,7 @@ public class OkCreateOrderOpByPasienHandler :
         Icd10Type icd,
         JenisOperasiType jenisOp,
         PpaType dokter,
+        TarifType tarif,
         OkCreateOrderOpByPasienCmd req)
     {
         var orderOp = OrderOpModel.CreateByPasien(pasien, req.UserId);
@@ -123,6 +134,7 @@ public class OkCreateOrderOpByPasienHandler :
             req.EstimasiDurasiInMinutes,
             req.PreferedDate.ToDate(DateFormatEnum.YMD),
             req.SpecialEquipment);
+        orderOp.SetTarif(tarif);
 
         return orderOp;
     }

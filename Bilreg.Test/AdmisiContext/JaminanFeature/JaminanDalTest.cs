@@ -12,7 +12,7 @@ public class JaminanDalTest
 
     private static JaminanDto Faker()
         => new JaminanDto("A", "B", true, "C", "D", "E", "F", "G", "H", "I", "J", 
-            "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "A1", "B1", "C1", "D1");
+            "", "", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "A1", "B1", "C1", "D1");
 
     private static IJaminanKey FakerKey()
         => JaminanType.Default with { JaminanId = "A" };
@@ -54,7 +54,10 @@ public class JaminanDalTest
                 .Excluding(x => x.fs_nm_piut_rawat)
                 .Excluding(x => x.fs_nm_piut_obat_rawat)
                 .Excluding(x => x.fs_nm_rek_ppdp_jasa_ri)
-                .Excluding(x => x.fs_nm_rek_ppdp_obat_ri));
+                .Excluding(x => x.fs_nm_rek_ppdp_obat_ri)
+                .Excluding(x => x.fs_nm_tipe_brg_rawat_jalan)
+                .Excluding(x => x.fs_nm_tipe_brg_rawat_inap)
+                );
     }
     
     [Fact]
@@ -73,6 +76,9 @@ public class JaminanDalTest
                 .Excluding(x => x.fs_nm_piut_rawat)
                 .Excluding(x => x.fs_nm_piut_obat_rawat)
                 .Excluding(x => x.fs_nm_rek_ppdp_jasa_ri)
-                .Excluding(x => x.fs_nm_rek_ppdp_obat_ri));
+                .Excluding(x => x.fs_nm_rek_ppdp_obat_ri)
+                .Excluding(x => x.fs_nm_tipe_brg_rawat_jalan)
+                .Excluding(x => x.fs_nm_tipe_brg_rawat_inap)
+                );
     }
 }

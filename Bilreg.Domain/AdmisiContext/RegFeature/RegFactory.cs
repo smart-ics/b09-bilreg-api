@@ -46,11 +46,11 @@ public class RegFactory : IRegFactory
         var tglMasuk = DateOnly.FromDateTime(regMasukAudit.Timestamp);
         var kelasRajal = _getKelasRajalService.Execute();
         var reg = new RegModel(regId, tglMasuk, regMasukAudit,
-            AuditInfoType.Default, AuditInfoType.Default, JenisRegEnum.RegJalan,
+            AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default, JenisRegEnum.RegJalan,
             pasien.ToReff(), TipeJaminanType.Default.ToReff(),
             PolisModel.Default.ToReff(), kelasRajal.ToReff(), CaraMasukDkType.Default,
             RujukanType.Default.ToReff(), PpaType.Default.ToReff(), 
-            LayananType.Default.ToReff(), KarcisType.Default.ToReff(), []);
+            LayananType.Default.ToReff(), KarcisType.Default.ToReff(), "-", []);
 
         reg.ApplyJaminan(tipeJaminan, polis);
         reg.SpecifyCaraMasuk (caraMasukDk, rujukan);

@@ -42,4 +42,11 @@ public class OrderOpController : ControllerBase
         return Ok(new JSendOk(response));
     }
 
+    [HttpPost]
+    [Route("Discharge")]
+    public async Task<IActionResult> DischargeOp(OkDischargeOpCommand cmd)
+    {
+        var response = await _mediator.Send(cmd);
+        return Ok(new JSendOk(response));
+    }
 }

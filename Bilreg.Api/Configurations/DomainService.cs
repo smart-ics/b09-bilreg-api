@@ -1,4 +1,5 @@
 ﻿using Bilreg.Application.AdmisiContext.BookingFeature;
+using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.Shared.Helpers;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
@@ -7,6 +8,8 @@ using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Domain.Shared.Param;
+using Bilreg.Infrastructure.AdmisiContext.BookingFeature;
+using Bilreg.Infrastructure.AdmisiContext.RegFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Bilreg.Infrastructure.Shared.Param;
 
@@ -29,6 +32,9 @@ public static class DomainService
             .AddScoped<IPolisFactory, PolisFactory>()
             .AddScoped<IDeleteBookingWorkflow, DeleteBookingWorkflow>()
             .AddScoped<IGetAppSettingService, GetAppSettingService>()
+            .AddScoped<IDashboardAddBookService, DashboardAddBookService>()
+            .AddScoped<IDashboardAddRegService, DashboardAddRegService>()
+            .AddScoped<IDashboardEmrRemoveRegService,  DashboardEmrRemoveRegService>()
             ;
         
         return services;

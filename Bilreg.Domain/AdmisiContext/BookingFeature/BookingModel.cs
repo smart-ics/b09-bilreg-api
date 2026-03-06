@@ -100,10 +100,8 @@ public class BookingModel : IBookingKey
     public LayananReff Layanan { get; init; }
     public PpaReff Dokter { get; init; }
     public int NoAntrian { get; private set; }
-    
     public ExtAppReffType ExtAppReff { get; private set; }
     public CoverageInfoType CoverageInfo { get; private set; }
-
     public AuditTrailType AuditTrail { get; init; }
     #endregion
 
@@ -116,7 +114,9 @@ public class BookingModel : IBookingKey
     public void ResolvePasienId(PasienModel pasien)
     {
         if (!Person.IsSimilar(pasien.Person))
-            throw new ArgumentException("Pasien tidak sesuai dengan booking");
+            throw new ArgumentException($"Pasien terpilih tidak sesuai dengan booking. " +
+                $"Data  booking : Tgl Lahir {pasien.Person.TglLahir.ToString("yyyy-MM-dd")} - {pasien.Person.PersonName}. " +
+                $"Data Rs : Tgl Lahir {Person.TglLahir.ToString("yyyy-MM-dd")} - {Person.PersonName}");
 
         PasienId = pasien.PasienId;
     }

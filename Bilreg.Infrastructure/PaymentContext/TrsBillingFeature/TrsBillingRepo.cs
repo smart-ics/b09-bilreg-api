@@ -46,10 +46,22 @@ public class TrsBillingRepo : ITrsBillingRepo
          _billing2Dal.Delete(key);
      }
 
-    public IEnumerable<TrsBillingView> ListData(IRegKey regKey)
+    public IEnumerable<TrsBillingType> ListData(IRegKey regKey)
     {
-        var listDto = _billingDal.ListData(regKey)?.ToList() ?? [];
-        var result = listDto.Select(x => x.ToView());
+        var listDto = _billingDal.ListData(regKey);
+        if (listDto is null)
+            return Enumerable.Empty<TrsBillingType>();
+
+        var result = new List<TrsBillingType>();
+        foreach (var dto in listDto)
+        {
+            var key = TrsBillingType.Key(dto.fs_kd_trs);
+            var listKomp = _billing2Dal.ListData(key);
+            var entity = dto.ToModel(listKomp?.Select(x => x.ToModel()) ?? Enumerable.Empty<TrsBilling2Base>());
+            result.Add(entity);
+        }
+
         return result;
     }
+
 }

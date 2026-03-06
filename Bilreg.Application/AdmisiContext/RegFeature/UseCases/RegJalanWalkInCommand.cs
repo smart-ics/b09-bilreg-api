@@ -1,4 +1,6 @@
-﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
+﻿using Bilreg.Application.AccountingContext.JurnalFeature;
+using Bilreg.Application.AccountingContext.JurnalFeature.JkAgg;
+using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.BookingFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
@@ -10,6 +12,8 @@ using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.ChargeContext.TindakanFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
+using Bilreg.Domain.AccountingContext.JurnalFeature;
+using Bilreg.Domain.AccountingContext.UnitFeature;
 using Bilreg.Application.Shared.Helpers;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
@@ -26,7 +30,6 @@ using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
-using System.Net.WebSockets;
 
 namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 
@@ -64,13 +67,17 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
     private readonly INilaiTarifRepo _nilaiTarifRepo;
     private readonly ITindakanRepo _tindakanRepo;
     private readonly IKomponenRepo _komponenRepo;
-    // trsBill
     private readonly ITarifRepo _tarifRepo;
+    // trsBill
     private readonly ITrsBillingRepo _trsBillingRepo;
+    // jurnal
+    private readonly IMapJaminanJkRepo _mapJaminanJkRepo;
+    private readonly IJurnalRepo _jurnalRepo;
     private const string BAYAR_SENDIRI = "1";
 
     private readonly IRemoteCetakRepo _remoteCetakRepo;
     private readonly IGetAppSettingService _getAppSettingSvc;
+    private readonly IDashboardAddRegService _addRegSvc;
 
     public RegJalanCreateHandler(
         //  reg support
@@ -98,9 +105,14 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         ITindakanRepo tindakanRepo,
         IKomponenRepo komponenRepo,
         ITarifRepo tarifRepo,
+        //  trsBill
         ITrsBillingRepo trsBillingRepo,
+        // jurnal
+        IMapJaminanJkRepo mapJaminanJkRepo,
+        IJurnalRepo jurnalRepo,
         IRemoteCetakRepo remoteCetakRepo,
-        IGetAppSettingService getAppSettingSvc)
+        IGetAppSettingService getAppSettingSvc,
+        IDashboardAddRegService addRegSvc)
     {
         //      reg-support
         _pasienRepo = pasienRepo;
@@ -127,14 +139,21 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         _tindakanRepo = tindakanRepo;
         _komponenRepo = komponenRepo;
         _tarifRepo = tarifRepo;
+        //      trsBill
         _trsBillingRepo = trsBillingRepo;
+        //      jurnal
+        _mapJaminanJkRepo = mapJaminanJkRepo;
+        _jurnalRepo = jurnalRepo;
         _remoteCetakRepo = remoteCetakRepo;
         _getAppSettingSvc = getAppSettingSvc;
+        _addRegSvc = addRegSvc;
     }
 
     public Task<RegJalanCreateResponse> Handle(RegJalanWalkInCommand request, CancellationToken cancellationToken)
     {
-        //      BUILD REGISTER
+        /*  ▐▀▀▀▀▀▀▀▀▀▀▀▌
+            ▐   GUARD   ▌
+            ▐▄▄▄▄▄▄▄▄▄▄▄▌*/
         var pasien = _pasienRepo.LoadEntity(request).GetValueOrThrow("Pasien not found");
         if (_regAktifRepo.IsPasienAktif(pasien))
             throw new KeyNotFoundException($"Pasien aktif sudah aktif registrasi");
@@ -146,80 +165,91 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         var layanan = _layananRepo.LoadEntity(request).GetValueOrThrow("Layanan not found");
         var dokter = _ppaRepo.LoadEntity(PpaType.Key(request.DokterId)).GetValueOrThrow("Dokter not found");
         var karcis = _karcisRepo.LoadEntity(request).GetValueOrThrow("Karcis not found");
-
+        /*  ▐▀▀▀▀▀▀▀▀▀▀▀▌
+            ▐   BUILD   ▌
+            ▐▄▄▄▄▄▄▄▄▄▄▄▌*/
+        //      1-register
         var regMasukAudit = new AuditInfoType(request.UserId, DateTime.Now);
         var reg = _regFactory.CreateRegRajal(pasien, regMasukAudit,
             tipeJaminan, polis, caraMasuk, rujukan, dokter, layanan, karcis);
         var regAktif = RegAktifModel.CreateFromReg(reg);
-
-        //      BUILD ANTRIAN
+        //      2-antrian
         var tglBerobat = DateOnly.FromDateTime(DateTime.Now);
         var jadwal = ResolveJadwalPraktek(dokter, request.JamPraktek, tglBerobat);
         var antrian = ResolveAntrian(tglBerobat, dokter, jadwal);
-        var antrianMap = CekAntrianMap(jadwal, tglBerobat);
+        var antrianMap = LoadOrCreateAntrianMap(jadwal, tglBerobat);
         var noAntrian = antrianMap.GetNextNoAntrian();
         var tracker = PasienTrackerModel.Create(reg);
-
-        //      BUILD TrsBill Reg
+        //      3-trs-billing-karcis
         var jaminan = LoadJaminan(tipeJaminan.Jaminan);
-        var listKompKarcis = new List<KomponenType>();
-        foreach(var item in karcis.ListKomponen)
-        {
-            var komp = LoadKomponen(KomponenType.Key(item.KomponenTarif.KomponenId));
-            listKompKarcis.Add(komp);
-        }
+        var listKompKarcis = karcis.ListKomponen
+            .Select(x => LoadKomponen(KomponenType.Key(x.KomponenTarif.KomponenId)))
+            .ToList();
         var trsBillingReg = TrsBillingType.CreateFromRegistrasi(reg, karcis,
             jaminan, dokter, listKompKarcis);
-
-        //      BUILD TINDAKAN
+        //      4-jurnal-karcis
+        var mapJaminanJk = LoadMapJmnJk(tipeJaminan.Jaminan);
+        var jurnalReg = JurnalType.CreateFromTrsBilling(trsBillingReg, layanan, mapJaminanJk);
+        //      5-tindakan
         var tindakan =  karcis.DefaultTarif == TarifType.Default.ToReff()
             ? TindakanModel.Default
             : GenTindakan(reg, jaminan, karcis, request.UserId, dokter);
-
-        //      BUILD TrsBill
+        //      6-trs-billing-tindakan
         var tarif = karcis.DefaultTarif == TarifType.Default.ToReff()
             ? TarifType.Default
             : LoadTarif(TarifType.Key(karcis.DefaultTarif.TarifId));
         var trsBilling = tindakan == TindakanModel.Default 
             ? TrsBillingType.Default
             : GenBill(tindakan, reg, tarif, jaminan);
-
-        //      REMOTE-CETAK
+        //      7-jurnal-tindakan
+        var jurnalTindakan = tindakan == TindakanModel.Default
+            ? JurnalType.Default
+            : JurnalType.CreateFromTrsBilling(trsBilling,
+                layanan, mapJaminanJk);
+        //      8-remote Cetak
         var appSetting = _getAppSettingSvc.Execute();
         var rmtCetak = new RemoteCetakType(
             reg.RegId, "RG-ANTRIAN", DateTime.Now,
             appSetting.Registrasi.RemoteCetakRegistrasi,
             false, new DateTime(3000, 1, 1),
             "", "");
+        /*  ▐▀▀▀▀▀▀▀▀▀▀▀▌
+            ▐   WRITE   ▌
+            ▐▄▄▄▄▄▄▄▄▄▄▄▌*/
 
-
-        using var trans = TransHelper.NewScope();
+        RegJalanCreateResponse response;
         
-        var antEntry = antrian.AddEntry(noAntrian, tracker, reg.RegId, "REG");
-        var itemQueue = antrian.ListEntry.FirstOrDefault(x => x.NoUrut == noAntrian)
-            ?? AntrianEntryModel.Default;
-        itemQueue.Serve();
+        using (var trans = TransHelper.NewScope())
+        {
 
-        _regRepo.SaveChanges(reg);
-        _regAktifRepo.SaveChanges(regAktif);
-        _antrianRepo.SaveChanges(antrian);
-        _trackerRepo.SaveChanges(tracker);
+            var antEntry = antrian.AddEntry(noAntrian, tracker, reg.RegId, "REG");
+            var itemQueue = antrian.ListEntry.FirstOrDefault(x => x.NoUrut == noAntrian)
+                ?? AntrianEntryModel.Default;
+            itemQueue.Serve();
+            _regRepo.SaveChanges(reg);
+            _regAktifRepo.SaveChanges(regAktif);
+            _antrianRepo.SaveChanges(antrian);
+            _trackerRepo.SaveChanges(tracker);
+            //      ubah antrianMapHdr
+            antrianMap.SetDataPasien(noAntrian, reg.Pasien, reg.ToReff(), reg.RegId, "AUTO");
+            _antrianMapRepo.SaveChanges(antrianMap);
+            _trsBillingRepo.SaveChanges(trsBillingReg);
+            if (tindakan.TindakanId != "-")
+                _tindakanRepo.SaveChanges(tindakan);
+            if (trsBilling.TrsBillingId != "-")
+                _trsBillingRepo.SaveChanges(trsBilling);
+            _jurnalRepo.SaveChanges(jurnalReg);
+            if (jurnalTindakan.JurnalId != "-")
+                _jurnalRepo.SaveChanges(jurnalTindakan);
+            _remoteCetakRepo.SaveChanges(rmtCetak);
 
-        // rubah antrianMapHdr
-        antrianMap.SetDataPasien(noAntrian, reg.Pasien, reg.ToReff(), reg.RegId, "AUTO");
-        _antrianMapRepo.SaveChanges(antrianMap);
-
-        _trsBillingRepo.SaveChanges(trsBillingReg);
-
-        if (tindakan != TindakanModel.Default)
-            _tindakanRepo.SaveChanges(tindakan);
-        if(trsBilling != TrsBillingType.Default)
-            _trsBillingRepo.SaveChanges(trsBilling);
-
-        _remoteCetakRepo.SaveChanges(rmtCetak);
-
-        trans.Complete();
-        return Task.FromResult(new RegJalanCreateResponse(reg.RegId, antEntry.NoUrut));
+            trans.Complete();
+            response = new RegJalanCreateResponse(reg.RegId, antEntry.NoUrut);
+        }
+        AddReg(reg, noAntrian);
+        
+        return Task.FromResult(response);
+        
     }
 
     #region PRIVATE-HELPERS
@@ -268,22 +298,19 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
     {
         var listPolis = _polisRepo.ListData(pasien);
         var polisView = listPolis.FirstOrDefault(x => x.TipeJaminan == tipeJaminan.ToReff());
-        if (polisView == null)
-            throw new ArgumentException("Polis not found");
-        return _polisRepo.LoadEntity(polisView).Value;
+        return polisView == null ? 
+            throw new ArgumentException("Polis not found") 
+            : _polisRepo.LoadEntity(polisView).Value;
     }
 
-    private AntrianMapHdrModel CekAntrianMap(JadwalPraktekType jadwal, DateOnly tglJadwal)
+    private AntrianMapHdrModel LoadOrCreateAntrianMap(JadwalPraktekType jadwal, DateOnly tglJadwal)
     {
         var ppaKey = PpaType.Key(jadwal.Dokter.PpaId);
-
         var listAntrianMap = _antrianMapRepo
             .ListData(jadwal.Layanan, ppaKey, tglJadwal)?
             .ToList() ?? [];
-
         var antrianThis = listAntrianMap
-            .SingleOrDefault(x => x.JamJadwal == jadwal.JamMulai);
-
+            .FirstOrDefault(x => x.JamJadwal == jadwal.JamMulai);
         if (antrianThis is not null)
         {
             var antKey = AntrianMapHdrModel.Key(
@@ -295,7 +322,6 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
 
             return _antrianMapRepo.LoadEntity(antKey).Value;
         }
-
         var queueHdr = AntrianMapHdrModel.Create(
             jadwal.JadwalPraktekId,
             jadwal.Dokter,
@@ -304,9 +330,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             jadwal.JamMulai,
             jadwal.JamMulai,
             []);
-
         queueHdr.GenerateSlot(jadwal.MaxPasien);
-
         return queueHdr;
     }
 
@@ -367,6 +391,24 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
                 onNone: () => TarifType.Default
             );
         return tarif;
+    }
+    private MapJaminanJkType LoadMapJmnJk(IJaminanKey key)
+    {
+        var map = _mapJaminanJkRepo.LoadEntity(key)
+            .Match(
+                onSome: x => x,
+                onNone: () => MapJaminanJkType.Default
+            );
+        return map;
+    }
+
+    private void AddReg(RegModel reg, int noAntrian)
+    {
+        var payload = new AddRegCmd(reg.RegId, "", 
+            reg.Pasien.PasienId, reg.Pasien.PasienName,
+            reg.Layanan.LayananId, reg.Dokter.PpaId, 
+            reg.RegDate.ToString("yyyy-MM-dd"), noAntrian);
+        _addRegSvc.Execute(payload);
     }
     #endregion
 }

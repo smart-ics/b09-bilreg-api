@@ -54,7 +54,7 @@ public record OpCaseDto(
             RegModel.Default.ToReff() :
             new RegReff(RegId, PasienId, PasienName);
         var schedule = new ScheduleOpReff(ScheduleOpId, ScheduledDate);
-        var discharge = new DischergeOpReff(DischargeOpId, DischargedDate);
+        var discharge = new DischargeOpReff(DischargeOpId, DischargedDate);
         var durante = new DuranteOpReff(StartedDate, FinishedDate);
         var result = new OpCaseModel(OrderOpId, orderOp, pasien, NamaOperasi,
             reg, (UrgencyLevelEnum)UrgencyLevel, schedule, discharge, durante,

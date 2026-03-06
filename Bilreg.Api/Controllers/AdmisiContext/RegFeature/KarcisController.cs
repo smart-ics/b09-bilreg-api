@@ -98,5 +98,14 @@ namespace Bilreg.Api.Controllers.AdmisiContext.RegSub
             var response = await _mediator.Send(query);
             return Ok(new JSendOk(response));
         }
+
+        [HttpGet]
+        [Route("{layananId}/list")]
+        public async Task<IActionResult> ListByLayanan(string layananId)
+        {
+            var query = new KarcisListByLayananQuery(layananId);
+            var response = await _mediator.Send(query);
+            return Ok(new JSendOk(response));
+        }
     }
 }

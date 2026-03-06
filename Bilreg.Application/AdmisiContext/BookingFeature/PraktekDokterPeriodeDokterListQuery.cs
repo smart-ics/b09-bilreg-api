@@ -18,7 +18,7 @@ public record PraktekDokterPeriodeDokterListResponse(
     string Tanggal, PpaReff Dokter, LayananReff Layanan,
     string JamMulaiPraktek, string JamSelesaiPraktek, int JumlahPasien, int MaxPasien);
 
-public class PraktekDokterPeriodeDokterListHandler : IRequestHandler<PraktekDokterPeriodeDokterListQuery, 
+public class PraktekDokterPeriodeDokterListHandler : IRequestHandler<PraktekDokterPeriodeDokterListQuery,
     IEnumerable<PraktekDokterPeriodeDokterListResponse>>
 {
     private readonly IAntrianRepo _antrianRepo;
@@ -62,7 +62,7 @@ public class PraktekDokterPeriodeDokterListHandler : IRequestHandler<PraktekDokt
                     onNone: () => AntrianModel.Default
                 )
             )?.ToList() ?? [];
-        
+
         // PROJECTION
         var result = GenResult(listTgl, antrians, jadwals);
 
@@ -81,78 +81,34 @@ public class PraktekDokterPeriodeDokterListHandler : IRequestHandler<PraktekDokt
         return listTanggal;
 
     }
-    private PpaType GetPpa(IPpaKey key)
-    {
-        return _ppaRepo.LoadEntity(key)
-            .Match(
-                onSome: x => x,
-                onNone: () => PpaType.Default
-            );
-    }
-
     private List<PraktekDokterPeriodeDokterListResponse> GenResult(List<DateOnly> listTgl, List<AntrianModel> antrians, List<JadwalPraktekType> jadwals)
     {
-        var fromAntrian =
+        var result =
             (
                 from tgl in listTgl
-                let antrianTgl = antrians
-                    .Where(a => a.AntrianDate == tgl).ToList()
-                let jadwalTgl = jadwals
-                    .Where(j => j.Hari == tgl.DayOfWeek).ToList()
-                from a in antrianTgl
-                let dokterIdFromTag = a.SequenceTag.Split('_')[1].Trim()
-                let jadwal = jadwalTgl
-                    .FirstOrDefault(j =>
-                        j.Dokter.PpaId == dokterIdFromTag &&
-                        j.JamMulai == a.StartTime)
-                select new PraktekDokterPeriodeDokterListResponse(
-                    tgl.ToString("yyyy-MM-dd"),
-                    jadwal?.Dokter
-                        ?? new PpaReff(dokterIdFromTag,
-                        GetPpa(PpaType.Key(dokterIdFromTag)).PpaName),
-                    jadwal?.Layanan
-                        ?? new LayananReff("-", "TANPA JADWAL"),
-                    (jadwal?.JamMulai ?? a.StartTime).ToString("HH:mm"),
-                    (jadwal?.JamSelesai ?? a.EndTime).ToString("HH:mm"),
-                    JumlahPasien:
-                        antrianTgl
-                            .Where(x =>
-                                x.SequenceTag.Split('_')[1].Trim() == dokterIdFromTag &&
-                                x.StartTime == (jadwal?.JamMulai ?? a.StartTime)
-                            )
-                            .Sum(x => x.ListEntry
-                                .Where(y => y.AntrianStatus == AntrianStatusEnum.Waiting).Count()),
-                    MaxPasien: jadwal?.MaxPasien ?? 0
-                )
-            ).ToList() ?? [];
-
-        var jadwalNoQueue = (
-                from tgl in listTgl
-                let jadwalTgl = jadwals.Where(j => j.Hari == tgl.DayOfWeek).ToList()
+                let jadwalTgl = jadwals.Where(j => j.Hari == tgl.DayOfWeek)
                 from j in jadwalTgl
-                where !fromAntrian.Any(a =>
-                    a.Layanan.LayananId == j.Layanan.LayananId &&
-                    a.Dokter.PpaId == j.Dokter.PpaId &&
-                    a.JamMulaiPraktek == j.JamMulai.ToString("HH:mm") &&
-                    a.Tanggal == tgl.ToString("yyyy-MM-dd"))
+                let dokterId = j.Dokter.PpaId
+                let jamMulai = j.JamMulai
+                let antrianMatch = antrians.Where(a =>
+                    a.AntrianDate == tgl &&
+                    a.SequenceTag.Split('_')[1].Trim() == dokterId &&
+                    a.StartTime == jamMulai
+                )
                 select new PraktekDokterPeriodeDokterListResponse(
                     tgl.ToString("yyyy-MM-dd"),
                     j.Dokter,
                     j.Layanan,
                     j.JamMulai.ToString("HH:mm"),
                     j.JamSelesai.ToString("HH:mm"),
-                    JumlahPasien: 0,
+                    JumlahPasien: antrianMatch.Sum(x => x.ListEntry.Count()),
                     MaxPasien: j.MaxPasien
-                )).ToList() ?? [];
-
-        var result = fromAntrian
-            .Concat(jadwalNoQueue)
+                )
+            )
             .OrderBy(x => x.Tanggal)
             .ThenBy(x => x.JamMulaiPraktek)
             .ToList();
-
         return result;
-
-
     }
+
 }

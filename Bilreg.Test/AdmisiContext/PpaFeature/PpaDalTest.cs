@@ -45,7 +45,10 @@ public class PpaDalTest
         _sut.Insert(Faker());
         var actual = _sut.GetData(FakerKey());
         actual.Should().BeEquivalentTo(Faker(), 
-            opt => opt.Excluding(x => x.fs_nm_smf));
+            opt => opt
+                .Excluding(x => x.fs_nm_smf)
+                .Excluding(x => x.groupSpesialisId)
+                .Excluding(x => x.groupSpesialisName));
     }
     
     [Fact]
@@ -55,6 +58,9 @@ public class PpaDalTest
         _sut.Insert(Faker());
         var actual = _sut.ListData();
         actual.Should().ContainEquivalentOf(Faker(),
-            opt => opt.Excluding(x => x.fs_nm_smf));
+            opt => opt
+                .Excluding(x => x.fs_nm_smf)
+                .Excluding(x => x.groupSpesialisId)
+                .Excluding(x => x.groupSpesialisName));
     }
 }

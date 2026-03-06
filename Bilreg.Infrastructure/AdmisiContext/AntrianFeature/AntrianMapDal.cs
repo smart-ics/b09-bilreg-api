@@ -11,7 +11,8 @@ namespace Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
 public interface IAntrianMapDal : 
     IInsert<AntrianMapDto>,
     IDelete<IAntrianMapHdrKey>,
-    IListData<AntrianMapDto, IAntrianMapHdrKey>
+    IListData<AntrianMapDto, IAntrianMapHdrKey>,
+    IListData<AntrianMapDto, DateTime>
 {
 }
     
@@ -103,5 +104,29 @@ public class AntrianMapDal : IAntrianMapDal
         return conn.Read<AntrianMapDto>(sql, dp);
     }
 
-    
+    public IEnumerable<AntrianMapDto> ListData(DateTime date)
+    {
+        const string sql = """
+            SELECT 
+            	aa.fs_kd_dokter, aa.fs_kd_layanan, aa.fd_tgl_jadwal, aa.fs_jam_jadwal,
+            	aa.fn_no_antrian, aa.fs_flag, aa.fs_mr, aa.fs_nm_pasien, aa.fs_kd_trs_gen,
+            	ISNULL(bb.fs_nm_peg,'') AS fs_nm_dokter,
+            	ISNULL(cc.fs_nm_layanan,'') AS fs_nm_layanan
+            FROM 
+            	ta_no_antrian_map aa
+            	LEFT JOIN td_peg bb ON aa.fs_kd_dokter = bb.fs_kd_peg
+            	LEFT JOIN ta_layanan cc ON aa.fs_kd_layanan = cc.fs_kd_layanan
+            WHERE 
+            	aa.fd_tgl_jadwal BETWEEN @tgl1 AND @tgl2
+            """;
+
+        var tgl2 = date.AddMonths(3);
+        var dp = new DynamicParameters();
+
+        dp.AddParam("@tgl1", date.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
+        dp.AddParam("@@tgl2", tgl2.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<AntrianMapDto>(sql, dp);
+    }
 }

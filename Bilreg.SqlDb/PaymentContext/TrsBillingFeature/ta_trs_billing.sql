@@ -19,6 +19,7 @@ CREATE TABLE ta_trs_billing
     fs_kd_ref_biaya VARCHAR(50) NOT NULL CONSTRAINT DF_ta_trs_billing_fs_kd_ref_biaya DEFAULT(''),
     fn_qty INT NOT NULL CONSTRAINT DF_ta_trs_billing_fn_qty DEFAULT(0),
     fs_kd_trs_main VARCHAR(26) NOT NULL CONSTRAINT DF_ta_trs_billing_fs_kd_trs_main DEFAULT(''),
+    fd_tgl_jam_trs VARCHAR(19) NOT NULL CONSTRAINT DF_ta_trs_billing_fd_tgl_jam_trs DEFAULT('3000-01-01 00:00:00'),
 
     CONSTRAINT PK_ta_trs_billing PRIMARY KEY CLUSTERED(fs_kd_trs)
 )

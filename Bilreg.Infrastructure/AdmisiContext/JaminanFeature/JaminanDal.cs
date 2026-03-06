@@ -142,14 +142,14 @@ public class JaminanDal : IJaminanDal
                aa.fs_kd_rek_ppdp_jasa_ri, aa.fs_kd_rek_ppdp_obat_ri,
                ISNULL(bb.fs_nm_cara_bayar_dk, '-') fs_nm_cara_bayar_dk,
                ISNULL(cc.fs_nm_grup_jaminan, '-') fs_nm_grup_jaminan,
-               ISNULL(dd.fs_nm_tarif_tipe,'') AS fs_nm_tarif_tipe_rawat_jalan,
-               ISNULL(ee.fs_nm_tarif_tipe,'') AS fs_nm_tarif_tipe_rawat_inap,
-               ISNULL(ff1.fs_nm_rek, '') AS fs_nm_piut_rawat,
-               ISNULL(ff2.fs_nm_rek, '') AS fs_nm_piut_obat_rawat, 
-               ISNULL(ff3.fs_nm_rek, '') AS fs_nm_rek_ppdp_jasa_ri, 
-               ISNULL(ff4.fs_nm_rek, '') AS fs_nm_rek_ppdp_obat_ri,
-           	   ISNULL(gg1.fs_nm_tipe_barang,'') AS fs_nm_tipe_brg_rawat_jalan,
-           	   ISNULL(gg2.fs_nm_tipe_barang,'') AS fs_nm_tipe_brg_rawat_inap
+               ISNULL(dd.fs_nm_tarif_tipe,'-') AS fs_nm_tarif_tipe_rawat_jalan,
+               ISNULL(ee.fs_nm_tarif_tipe,'-') AS fs_nm_tarif_tipe_rawat_inap,
+               ISNULL(ff1.fs_nm_rek, '-') AS fs_nm_piut_rawat,
+               ISNULL(ff2.fs_nm_rek, '-') AS fs_nm_piut_obat_rawat, 
+               ISNULL(ff3.fs_nm_rek, '-') AS fs_nm_rek_ppdp_jasa_ri, 
+               ISNULL(ff4.fs_nm_rek, '-') AS fs_nm_rek_ppdp_obat_ri,
+           	   ISNULL(gg1.fs_nm_tipe_barang,'-') AS fs_nm_tipe_brg_rawat_jalan,
+           	   ISNULL(gg2.fs_nm_tipe_barang,'-') AS fs_nm_tipe_brg_rawat_inap
            FROM 
                ta_jaminan aa
                LEFT JOIN ta_cara_bayar_dk bb ON aa.fs_kd_cara_bayar_dk = bb.fs_kd_cara_bayar_dk
@@ -178,7 +178,6 @@ public class JaminanDal : IJaminanDal
     {
         const string sql = """
             SELECT
-                SELECT
                 aa.fs_kd_jaminan, aa.fs_nm_jaminan, aa.fb_aktif,  
                 aa.fs_alm1_jaminan, aa.fs_alm2_jaminan, aa.fs_kota_jaminan, '-' as fs_kd_pos,
                 aa.fs_kd_cara_bayar_dk, aa.fs_kd_grup_jaminan, 
@@ -188,14 +187,14 @@ public class JaminanDal : IJaminanDal
                 aa.fs_kd_rek_ppdp_jasa_ri, aa.fs_kd_rek_ppdp_obat_ri,
                 ISNULL(bb.fs_nm_cara_bayar_dk, '-') fs_nm_cara_bayar_dk,
                 ISNULL(cc.fs_nm_grup_jaminan, '-') fs_nm_grup_jaminan,
-                ISNULL(dd.fs_nm_tarif_tipe,'') AS fs_nm_tarif_tipe_rawat_jalan,
-                ISNULL(ee.fs_nm_tarif_tipe,'') AS fs_nm_tarif_tipe_rawat_inap,
-                ISNULL(ff1.fs_nm_rek, '') AS fs_nm_piut_rawat,
-                ISNULL(ff2.fs_nm_rek, '') AS fs_nm_piut_obat_rawat, 
-                ISNULL(ff3.fs_nm_rek, '') AS fs_nm_rek_ppdp_jasa_ri, 
-                ISNULL(ff4.fs_nm_rek, '') AS fs_nm_rek_ppdp_obat_ri,
-            	ISNULL(gg1.fs_nm_tipe_barang,'') AS fs_nm_tipe_brg_rawat_jalan,
-            	ISNULL(gg2.fs_nm_tipe_barang,'') AS fs_nm_tipe_brg_rawat_inap
+                ISNULL(dd.fs_nm_tarif_tipe,'-') AS fs_nm_tarif_tipe_rawat_jalan,
+                ISNULL(ee.fs_nm_tarif_tipe,'-') AS fs_nm_tarif_tipe_rawat_inap,
+                ISNULL(ff1.fs_nm_rek, '-') AS fs_nm_piut_rawat,
+                ISNULL(ff2.fs_nm_rek, '-') AS fs_nm_piut_obat_rawat, 
+                ISNULL(ff3.fs_nm_rek, '-') AS fs_nm_rek_ppdp_jasa_ri, 
+                ISNULL(ff4.fs_nm_rek, '-') AS fs_nm_rek_ppdp_obat_ri,
+            	ISNULL(gg1.fs_nm_tipe_barang,'-') AS fs_nm_tipe_brg_rawat_jalan,
+            	ISNULL(gg2.fs_nm_tipe_barang,'-') AS fs_nm_tipe_brg_rawat_inap
             FROM 
                 ta_jaminan aa
                 LEFT JOIN ta_cara_bayar_dk bb ON aa.fs_kd_cara_bayar_dk = bb.fs_kd_cara_bayar_dk

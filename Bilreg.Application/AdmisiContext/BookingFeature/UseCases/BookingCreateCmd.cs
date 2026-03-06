@@ -30,10 +30,12 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
     private readonly IPasienTrackerRepo _trackerRepo;
     private readonly IPasienRepo _pasienRepo;
     private readonly IAntrianMapHdrRepo _antrianMapRepo;
+    private readonly IDashboardAddBookService _addBookingSvc;
     public BookingCreateHandler(IJadwalPraktekRepo jadwalPraktekRepo,
         IAntrianRepo antrianRepo, IAntrianFactory antrianFactory,
         IBookingRepo bookingRepo, IPasienTrackerRepo trackerRepo,
-        IPasienRepo pasienRepo, IAntrianMapHdrRepo antrianMapRepo)
+        IPasienRepo pasienRepo, IAntrianMapHdrRepo antrianMapRepo, 
+        IDashboardAddBookService addBookingSvc)
     {
         _jadwalPraktekRepo = jadwalPraktekRepo;
         _antrianRepo = antrianRepo;
@@ -42,6 +44,7 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         _trackerRepo = trackerRepo;
         _pasienRepo = pasienRepo;
         _antrianMapRepo = antrianMapRepo;
+        _addBookingSvc = addBookingSvc;
     }
 
     public Task<BookingCreateResponse> Handle(BookingCreateCmd request, CancellationToken cancellationToken)
@@ -60,9 +63,13 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
             ?? throw new ArgumentException("Jadwal tidak ditemukan");
 
         //  create person
+        var px = request.PasienId != string.Empty ?
+            FindPasien(request) :
+            PasienModel.Default;
+
         var person = request.PasienId == string.Empty ? 
             CreatePerson(request) : 
-            FindPasien(request);
+            px.Person;
 
         //  create booking
         var tglBerobat = DateOnly.Parse(request.TglBerobat);
@@ -87,35 +94,36 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
 
 
         //  persisting
-        using var trans = TransHelper.NewScope();
-        
-        //      no antrian masuk ke transaction agar bisa rollback jika gagal
-        var antEntry = antrian.AddEntry(noAntrian, tracker, booking.BookingId, "BOK");
-        booking.AssignNoAntrian(antEntry.NoUrut);
-        
-        //      writing database
-        _bookingRepo.SaveChanges(booking);
-        _antrianRepo.SaveChanges(antrian);
-        _trackerRepo.SaveChanges(tracker);
+        BookingCreateResponse response;
+        using (var trans = TransHelper.NewScope())
+        {
 
-        // rubah antrianMapHdr
-        antrianMap.SetDataPasien(noAntrian, pasien, booking.Reg, booking.BookingId, "AUTO");
-        _antrianMapRepo.SaveChanges(antrianMap);
+            //      no antrian masuk ke transaction agar bisa rollback jika gagal
+            var antEntry = antrian.AddEntry(noAntrian, tracker, booking.BookingId, "BOK");
+            booking.AssignNoAntrian(antEntry.NoUrut);
 
-        trans.Complete();
+            //      writing database
+            _bookingRepo.SaveChanges(booking);
+            _antrianRepo.SaveChanges(antrian);
+            _trackerRepo.SaveChanges(tracker);
 
-        return Task.FromResult(new BookingCreateResponse(
-            booking.BookingId, antEntry.NoUrut));
+            // rubah antrianMapHdr
+            antrianMap.SetDataPasien(noAntrian, pasien, booking.Reg, booking.BookingId, "AUTO");
+            _antrianMapRepo.SaveChanges(antrianMap);
+
+            trans.Complete();
+            response = new BookingCreateResponse(booking.BookingId, antEntry.NoUrut);
+        }
+
+        AddBooking(booking, px);
+
+        return Task.FromResult(response);
     }
 
-    private PersonInfoType FindPasien(BookingCreateCmd request)
+    private PasienModel FindPasien(BookingCreateCmd request)
     {
         var pasienKey = PasienModel.Key(request.PasienId);
-        var pasien = _pasienRepo.LoadEntity(pasienKey)
-            .Match(
-                onSome: x => x.Person,
-                onNone: () => throw new KeyNotFoundException($"Pasien id {request.PasienId} not found")
-            );
+        var pasien = _pasienRepo.LoadEntity(pasienKey).GetValueOrDefault(PasienModel.Default);
         return pasien;
     }
 
@@ -180,7 +188,14 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         return queueHdr;
     }
 
-
+    private void  AddBooking(BookingModel book, PasienModel px)
+    {
+        var pasienId = px.PasienId == "-" ? "-" : px.PasienId;
+        var payload = new AddBookCmd(book.BookingId, pasienId, book.Person.PersonName,
+            book.Layanan.LayananId, book.Dokter.PpaId, book.TglBerobat.ToString("yyyy-MM-dd"),
+            book.NoAntrian);
+        _addBookingSvc.Execute(payload);
+    }
 
 
 
