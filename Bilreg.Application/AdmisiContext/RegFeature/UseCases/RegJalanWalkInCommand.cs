@@ -77,7 +77,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
 
     private readonly IRemoteCetakRepo _remoteCetakRepo;
     private readonly IGetAppSettingService _getAppSettingSvc;
-    private readonly IDashboardAddRegService _addRegSvc;
+    private readonly IDashboardEMrAddRegService _addRegSvc;
 
     public RegJalanCreateHandler(
         //  reg support
@@ -112,7 +112,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         IJurnalRepo jurnalRepo,
         IRemoteCetakRepo remoteCetakRepo,
         IGetAppSettingService getAppSettingSvc,
-        IDashboardAddRegService addRegSvc)
+        IDashboardEMrAddRegService addRegSvc)
     {
         //      reg-support
         _pasienRepo = pasienRepo;
@@ -246,7 +246,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             trans.Complete();
             response = new RegJalanCreateResponse(reg.RegId, antEntry.NoUrut);
         }
-        AddReg(reg, noAntrian);
+        AddReg(reg);
         
         return Task.FromResult(response);
         
@@ -402,12 +402,9 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         return map;
     }
 
-    private void AddReg(RegModel reg, int noAntrian)
+    private void AddReg(RegModel reg)
     {
-        var payload = new AddRegCmd(reg.RegId, "", 
-            reg.Pasien.PasienId, reg.Pasien.PasienName,
-            reg.Layanan.LayananId, reg.Dokter.PpaId, 
-            reg.RegDate.ToString("yyyy-MM-dd"), noAntrian);
+        var payload = new AddRegCmd(reg.RegId);
         _addRegSvc.Execute(payload);
     }
     #endregion

@@ -33,7 +33,7 @@ public static class DomainService
             .AddScoped<IDeleteBookingWorkflow, DeleteBookingWorkflow>()
             .AddScoped<IGetAppSettingService, GetAppSettingService>()
             .AddScoped<IDashboardAddBookService, DashboardAddBookService>()
-            .AddScoped<IDashboardAddRegService, DashboardAddRegService>()
+            .AddScoped<IDashboardEMrAddRegService, DashboardEmrAddRegService>()
             .AddScoped<IDashboardEmrRemoveRegService,  DashboardEmrRemoveRegService>()
             ;
         
