@@ -104,7 +104,7 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
             response = new BookingCreateFromHidokResponse(booking.BookingId, antEntry.NoUrut);
         }
 
-        AddBooking(booking, px);
+        //AddBooking(booking, px);
 
         return Task.FromResult(response);
     }
