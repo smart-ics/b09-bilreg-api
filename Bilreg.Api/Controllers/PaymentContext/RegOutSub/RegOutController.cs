@@ -50,4 +50,13 @@ public class RegOutController : Controller
         var result = await _mediator.Send(query);
         return Ok(result);
     }
+
+    [HttpGet]
+    [Route("listAlokasiPembayaran/{id}")]
+    public async Task<IActionResult> ListAlokasiPembayaran(string id)
+    {
+        var query = new RegListAlokasiPembayaranQuery(id);
+        var result = await _mediator.Send(query);
+        return Ok(result);
+    }
 }

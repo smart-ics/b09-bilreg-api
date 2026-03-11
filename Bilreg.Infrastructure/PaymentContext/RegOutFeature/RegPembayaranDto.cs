@@ -1,0 +1,17 @@
+﻿using Bilreg.Domain.PaymentContext.RegOutFeature;
+
+namespace Bilreg.Infrastructure.PaymentContext.RegOutFeature;
+
+public record RegPembayaranDto(
+    string fs_kd_bayar,
+    string fs_nm_bayar,
+    decimal fn_jasa,
+    decimal fn_obat)
+{
+    public RegPembayaranType ToModel()
+    {
+        var subTotal = fn_jasa + fn_obat;
+        var result = new RegPembayaranType(fs_kd_bayar, fs_nm_bayar, fn_jasa, fn_obat, subTotal);
+        return result;
+    }
+}
