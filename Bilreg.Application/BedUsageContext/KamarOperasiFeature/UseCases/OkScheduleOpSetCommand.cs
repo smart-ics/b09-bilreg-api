@@ -29,19 +29,22 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
     private readonly IKamarRepo _kamarRepo;
     private readonly IPpaRepo _ppaRepo;
     private readonly IOpCaseRepo _opCaseRepo;
+    private readonly IMediator _mediator;
 
     public OkScheduleOpSetCommandHandler(
         IScheduleOpRepo scheduleOpRepo,
         IOrderOpRepo orderOpRepo,
         IKamarRepo kamarRepo,
         IPpaRepo ppaRepo,
-        IOpCaseRepo opCaseRepo)
+        IOpCaseRepo opCaseRepo,
+        IMediator mediator)
     {
         _scheduleOpRepo = scheduleOpRepo;
         _orderOpRepo = orderOpRepo;
         _kamarRepo = kamarRepo;
         _ppaRepo = ppaRepo;
         _opCaseRepo = opCaseRepo;
+        _mediator = mediator;
     }
 
     public Task<OkScheduleOpSetResponse> Handle(OkScheduleOpSetCommand request, CancellationToken cancellationToken)
@@ -94,7 +97,10 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
         _scheduleOpRepo.SaveChanges(newScheduleOp);
         _opCaseRepo.SaveChanges(opCase);
         trans.Complete();
+        _mediator.Publish(new OkScheduleOpSetEvent(request, newScheduleOp), cancellationToken);
 
         return Task.FromResult(new OkScheduleOpSetResponse(newScheduleOp.ScheduleOpId));
     }
 }
+
+public record OkScheduleOpSetEvent(OkScheduleOpSetCommand Command, ScheduleOpModel Aggregate) : INotification;
