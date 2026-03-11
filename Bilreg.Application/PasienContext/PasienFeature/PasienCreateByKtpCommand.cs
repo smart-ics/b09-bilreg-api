@@ -34,6 +34,7 @@ public class PasienCreateByKtpHandler : IRequestHandler<PasienCreateByKtpCommand
     {
         //  GUARD
         Guard.Against.NullOrEmpty(request.TglLahir);
+        GuardNoKtp(request.Nik);
 
         // BUILD
         //      PERSON
@@ -62,5 +63,15 @@ public class PasienCreateByKtpHandler : IRequestHandler<PasienCreateByKtpCommand
         //  WRITE
         var result = _pasienRepo.SaveChanges(pasien);
         return Task.FromResult(new PasienCreateByKtpResponse(result.Value.PasienId));
+    }
+
+    private void GuardNoKtp(string noKtp)
+    {
+        if (string.IsNullOrWhiteSpace(noKtp) ||
+            noKtp.Length != 16 ||
+            !noKtp.All(char.IsDigit))
+        {
+            throw new ArgumentException("NoKtp harus 16 digit angka.");
+        }
     }
 }

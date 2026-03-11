@@ -155,6 +155,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             ▐   GUARD   ▌
             ▐▄▄▄▄▄▄▄▄▄▄▄▌*/
         var pasien = _pasienRepo.LoadEntity(request).GetValueOrThrow("Pasien not found");
+        if (pasien.IsAktif == false) throw new KeyNotFoundException($"Pasien {request.PasienId} tidak aktif ");
         if (_regAktifRepo.IsPasienAktif(pasien))
             throw new KeyNotFoundException($"Pasien aktif sudah aktif registrasi");
 
