@@ -73,6 +73,20 @@ public class PasienController : Controller
         return Ok(new JSendOk("Done"));
     }
 
+    [HttpPatch]
+    [Route("nonActive")]
+    public async Task<IActionResult> NonActive(PasienNonActiveCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
 
+    [HttpPatch]
+    [Route("reActive")]
+    public async Task<IActionResult> ReActive(PasienReActiveCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
 
 }
