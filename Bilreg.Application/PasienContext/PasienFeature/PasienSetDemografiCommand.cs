@@ -52,9 +52,9 @@ public class PasienSetDemografiHandler : IRequestHandler<PasienSetDemografiComma
         Guard.Against.NullOrWhiteSpace(request.PasienId, nameof(request.PasienId));
         Guard.Against.NullOrWhiteSpace(request.KelurahanId, nameof(request.KelurahanId));
         Guard.Against.NullOrWhiteSpace(request.StatusKawinId, nameof(request.StatusKawinId));
-        Guard.Against.NullOrWhiteSpace(request.AgamaId, nameof(request.AgamaId));
-        Guard.Against.NullOrWhiteSpace(request.SukuId, nameof(request.SukuId));
-        Guard.Against.NullOrWhiteSpace(request.PekerjaanId, nameof(request.PekerjaanId));
+        Guard.Against.Null(request.AgamaId, nameof(request.AgamaId));
+        Guard.Against.Null(request.SukuId, nameof(request.SukuId));
+        Guard.Against.Null(request.PekerjaanId, nameof(request.PekerjaanId));
         Guard.Against.NullOrWhiteSpace(request.PendidikanId, nameof(request.PendidikanId));
 
         Guard.Against.NullOrWhiteSpace(request.NamaKeluarga, nameof(request.NamaKeluarga));

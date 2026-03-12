@@ -132,6 +132,9 @@ public class RegJalanByBookingHandler
         var pasien = LoadPasien(booking.PasienId);
         if (_regAktifRepo.IsPasienAktif(pasien))
             throw new KeyNotFoundException($"Pasien aktif sudah aktif registrasi");
+        if (string.IsNullOrWhiteSpace(pasien.Ktp.Nik) || pasien.Ktp.Nik == "-")
+            throw new KeyNotFoundException($"Nik Kosong, Lengkapi data Nik pasien {pasien.PasienId}");
+
         var dokter = LoadDokter(booking.Dokter.PpaId);
         var layanan = LoadLayanan(booking.Layanan.LayananId); 
         var karcis = LoadKarcis(request.KarcisId);

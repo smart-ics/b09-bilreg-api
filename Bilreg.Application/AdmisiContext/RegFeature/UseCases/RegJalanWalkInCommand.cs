@@ -158,6 +158,8 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         if (pasien.IsAktif == false) throw new KeyNotFoundException($"Pasien {request.PasienId} tidak aktif ");
         if (_regAktifRepo.IsPasienAktif(pasien))
             throw new KeyNotFoundException($"Pasien aktif sudah aktif registrasi");
+        if (string.IsNullOrWhiteSpace(pasien.Ktp.Nik) || pasien.Ktp.Nik == "-")
+            throw new KeyNotFoundException($"Nik Kosong, Lengkapi data Nik pasien {pasien.PasienId}");
 
         var tipeJaminan = _tipeJaminanRepo.LoadEntity(request).GetValueOrThrow("TipeJaminan not found");
         var polis = ResolvePolis(pasien, tipeJaminan);
