@@ -38,6 +38,7 @@ public class PasienCreateHandler : IRequestHandler<PasienCreateCommand, PasienCr
         Guard.Against.NullOrEmpty(request.TglLahir);
         Guard.Against.InvalidDateFormat(request.TglLahir, nameof(request.TglLahir));
         Guard.Against.NullOrEmpty(request.NoTelp);
+        Guard.Against.NullOrWhiteSpace(request.IbuKandung);
         GuardNoKtp(request.NoKtp);
 
         //  BUILD
