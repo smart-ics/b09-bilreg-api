@@ -6,7 +6,6 @@ using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers;
-using Bilreg.Domain.Shared.Param;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
 using System.Globalization;
@@ -30,7 +29,6 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
     private readonly IKamarRepo _kamarRepo;
     private readonly IPpaRepo _ppaRepo;
     private readonly IOpCaseRepo _opCaseRepo;
-    private readonly IGetKodeRsService _kodeRsSvc;
     private readonly IMediator _mediator;
 
     public OkScheduleOpSetCommandHandler(
@@ -39,7 +37,6 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
         IKamarRepo kamarRepo,
         IPpaRepo ppaRepo,
         IOpCaseRepo opCaseRepo,
-        IGetKodeRsService kodeRsService,
         IMediator mediator)
     {
         _scheduleOpRepo = scheduleOpRepo;
@@ -47,7 +44,6 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
         _kamarRepo = kamarRepo;
         _ppaRepo = ppaRepo;
         _opCaseRepo = opCaseRepo;
-        _kodeRsSvc = kodeRsService;
         _mediator = mediator;
     }
 
@@ -97,7 +93,11 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
 
         OkScheduleOpSetEvent domainEvent = new OkScheduleOpSetEvent(request, newScheduleOp);
 
-        // TODO: Apa boleh diubah spt ini?
+        // TODO: Apa boleh diubah spt ini? (diberi tanda kurung)
+        // Jika tidak diubah, di eventhandler yang dipanggil (SaveBridgeOpOnScheduleOpSetEvHandler)
+        // ada pemanggilan GetProjectIdService yang memanggil ParamSistemDal
+        // di ParamSistemDal ini terjasi error:
+        //  "System.InvalidOperationException: The current TransactionScope is already complete."
         using (var trans = TransHelper.NewScope())
         {
             if (scheduleOp != null)
@@ -107,10 +107,6 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
             trans.Complete(); 
         }
 
-        // Jika tidak boleh diubah spt di atas
-        // di ParamSistemDal.cs yang dipanggil di GetProjectIdService.cs
-        // GetProjectIdService dipanggil di SaveBridgeOpOnScheduleOpSetEvHandler.cs akan muncul error:
-        //  "System.InvalidOperationException: The current TransactionScope is already complete."
         _mediator.Publish(domainEvent, cancellationToken);
         return Task.FromResult(new OkScheduleOpSetResponse(newScheduleOp.ScheduleOpId));
     }

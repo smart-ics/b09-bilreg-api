@@ -15,7 +15,7 @@ public class GetProjectIdService : IGetProjectIdService
 
     public string Execute()
     {
-        var result = _paramSistemDal.GetData(PROJECT_ID_PARAM_KEY)?.Value;
+        var result = _paramSistemDal.GetData(PROJECT_ID_PARAM_KEY)?.Value ?? string.Empty;
         return result;
     }
 }
