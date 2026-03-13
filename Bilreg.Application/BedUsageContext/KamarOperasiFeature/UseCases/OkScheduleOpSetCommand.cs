@@ -6,6 +6,7 @@ using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers;
+using Bilreg.Domain.Shared.Param;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
 using System.Globalization;
@@ -29,6 +30,7 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
     private readonly IKamarRepo _kamarRepo;
     private readonly IPpaRepo _ppaRepo;
     private readonly IOpCaseRepo _opCaseRepo;
+    private readonly IGetKodeRsService _kodeRsSvc;
     private readonly IMediator _mediator;
 
     public OkScheduleOpSetCommandHandler(
@@ -37,6 +39,7 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
         IKamarRepo kamarRepo,
         IPpaRepo ppaRepo,
         IOpCaseRepo opCaseRepo,
+        IGetKodeRsService kodeRsService,
         IMediator mediator)
     {
         _scheduleOpRepo = scheduleOpRepo;
@@ -44,6 +47,7 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
         _kamarRepo = kamarRepo;
         _ppaRepo = ppaRepo;
         _opCaseRepo = opCaseRepo;
+        _kodeRsSvc = kodeRsService;
         _mediator = mediator;
     }
 
@@ -91,14 +95,23 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
 
         opCase.Schedule(newScheduleOp);
 
-        using var trans = TransHelper.NewScope();
-        if (scheduleOp != null)
-            _scheduleOpRepo.SaveChanges(scheduleOp);
-        _scheduleOpRepo.SaveChanges(newScheduleOp);
-        _opCaseRepo.SaveChanges(opCase);
-        trans.Complete();
-        _mediator.Publish(new OkScheduleOpSetEvent(request, newScheduleOp), cancellationToken);
+        OkScheduleOpSetEvent domainEvent = new OkScheduleOpSetEvent(request, newScheduleOp);
 
+        // TODO: Apa boleh diubah spt ini?
+        using (var trans = TransHelper.NewScope())
+        {
+            if (scheduleOp != null)
+                _scheduleOpRepo.SaveChanges(scheduleOp);
+            _scheduleOpRepo.SaveChanges(newScheduleOp);
+            _opCaseRepo.SaveChanges(opCase);
+            trans.Complete(); 
+        }
+
+        // Jika tidak boleh diubah spt di atas
+        // di ParamSistemDal.cs yang dipanggil di GetProjectIdService.cs
+        // GetProjectIdService dipanggil di SaveBridgeOpOnScheduleOpSetEvHandler.cs akan muncul error:
+        //  "System.InvalidOperationException: The current TransactionScope is already complete."
+        _mediator.Publish(domainEvent, cancellationToken);
         return Task.FromResult(new OkScheduleOpSetResponse(newScheduleOp.ScheduleOpId));
     }
 }

@@ -1,5 +1,6 @@
 ﻿using Bilreg.Application.AdmisiContext.BookingFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
+using Bilreg.Application.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Application.Shared.Helpers;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
@@ -10,6 +11,7 @@ using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Domain.Shared.Param;
 using Bilreg.Infrastructure.AdmisiContext.BookingFeature;
 using Bilreg.Infrastructure.AdmisiContext.RegFeature;
+using Bilreg.Infrastructure.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Bilreg.Infrastructure.Shared.Param;
 
@@ -27,6 +29,7 @@ public static class DomainService
             .AddScoped<IPasienFactory, PasienFactory>()
             .AddScoped<ISequencerManual, SequencerManual>()
             .AddScoped<IGetKodeRsService, GetKodeRsService>()
+            .AddScoped<IGetProjectIdService, GetProjectIdService>()
             .AddScoped<IRegFactory, RegFactory>()
             .AddScoped<IGetKelasRajalService, GetKelasRajalService>()
             .AddScoped<IPolisFactory, PolisFactory>()
@@ -35,8 +38,9 @@ public static class DomainService
             .AddScoped<IDashboardAddBookService, DashboardAddBookService>()
             .AddScoped<IDashboardAddRegService, DashboardAddRegService>()
             .AddScoped<IDashboardEmrRemoveRegService,  DashboardEmrRemoveRegService>()
+            .AddScoped<IBridgeOperasiSaveService, BridgeOperasiSaveService>()
             ;
-        
+
         return services;
     }    
 }

@@ -1,7 +1,7 @@
 ﻿namespace Bilreg.Infrastructure.Shared.Helpers;
 
-public class HidokOptions
+public class HiDokOptions
 {
-    public const string SECTION_NAME = "Hidok";
+    public const string SECTION_NAME = "HiDok";
     public string BaseApiUrl { get; set; } = string.Empty;
 }
