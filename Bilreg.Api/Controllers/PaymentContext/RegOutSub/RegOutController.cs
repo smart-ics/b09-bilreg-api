@@ -1,4 +1,5 @@
 ﻿using Bilreg.Application.PaymentContext.RegOutFeature.UseCase;
+using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -37,6 +38,24 @@ public class RegOutController : Controller
     public async Task<IActionResult> GetData(string id)
     {
         var query = new RegGetRegQuery(id);
+        var result = await _mediator.Send(query);
+        return Ok(result);
+    }
+
+    [HttpGet]
+    [Route("listSummaryBill/{id}")]
+    public async Task<IActionResult> ListSummaryBill(string id)
+    {
+        var query = new TrsbListSummaryBillQuery(id);
+        var result = await _mediator.Send(query);
+        return Ok(result);
+    }
+
+    [HttpGet]
+    [Route("listAlokasiPembayaran/{id}")]
+    public async Task<IActionResult> ListAlokasiPembayaran(string id)
+    {
+        var query = new RegListAlokasiPembayaranQuery(id);
         var result = await _mediator.Send(query);
         return Ok(result);
     }
