@@ -5,11 +5,11 @@ using RestSharp;
 
 namespace Bilreg.Infrastructure.AdmisiContext.RegFeature;
 
-public class DashboardAddRegService : IDashboardAddRegService
+public class DashboardEmrAddRegService : IDashboardEMrAddRegService
 {
     public readonly Emr25Options _opt;
 
-    public DashboardAddRegService(IOptions<Emr25Options> opt)
+    public DashboardEmrAddRegService(IOptions<Emr25Options> opt)
     {
         _opt = opt.Value;
     }
@@ -23,10 +23,10 @@ public class DashboardAddRegService : IDashboardAddRegService
     {
         if (_opt.BaseApiUrl.Trim().Length == 0)
             return;
-        var endpoint = $"{_opt.BaseApiUrl}/api/Dashboard/addReg";
+        var endpoint = $"{_opt.BaseApiUrl}/api/Antrian/AddRegister";
         var client = new RestClient(endpoint);
         var request = new RestRequest()
-            .AddJsonBody(req, "application/json");
+            .AddParameter("regID", req.RegId, ParameterType.QueryString);
 
         var result = await client.ExecutePostAsync(request);
     }

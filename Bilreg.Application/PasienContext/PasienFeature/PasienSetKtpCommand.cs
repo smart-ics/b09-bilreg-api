@@ -1,10 +1,9 @@
-﻿using Bilreg.Application.PasienContext.DemografiFeature;
-using Bilreg.Domain.AdmisiContext.AntrianFeature;
-using Bilreg.Domain.AdmisiContext.BookingFeature;
+﻿using Ardalis.GuardClauses;
+using Bilreg.Application.PasienContext.DemografiFeature;
 using Bilreg.Domain.PasienContext.DemografiFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
+using Bilreg.Domain.Shared.Helpers;
 using MediatR;
-using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.PasienContext.PasienFeature;
 
@@ -45,11 +44,19 @@ public class PasienSetKtpHandler : IRequestHandler<PasienSetKtpCommand, PasienSe
                 onSome: x => x,
                 onNone: () => throw new KeyNotFoundException($"Pasien id {request.PasienId} not found")
             );
+        GuardNoKtp(request.Nik);
+        Guard.Against.NullOrWhiteSpace(request.AlamatKtp);
+        Guard.Against.NullOrWhiteSpace(request.TglLahir);
+        Guard.Against.InvalidDateFormat(request.TglLahir, nameof(request.TglLahir));
+        Guard.Against.NullOrWhiteSpace(request.Gender);
+        Guard.Against.NullOrWhiteSpace(request.StatusKawin);
+        
         var kelurahan = _kelurahanRepo.LoadEntity(KelurahanType.Key(request.KelurahanKtpId))
             .Match(
                 onSome: x => x,
-                onNone: () => throw new ArgumentException("Invalid Kelurahan KTP")); 
+                onNone: () => throw new ArgumentException("Invalid Kelurahan KTP"));
         
+
         //  BUILD
         if (request.IsForceUpdate)
             pasien.SyncFromKtp(request.PasienName, DateOnly.Parse(request.TglLahir),
@@ -73,5 +80,15 @@ public class PasienSetKtpHandler : IRequestHandler<PasienSetKtpCommand, PasienSe
             pasien.PasienId, isDifferent, request.IsForceUpdate,
             oriPerson, ktpPerson);
         return Task.FromResult(result);
+    }
+
+    private void GuardNoKtp(string noKtp)
+    {
+        if (string.IsNullOrWhiteSpace(noKtp) ||
+            noKtp.Length != 16 ||
+            !noKtp.All(char.IsDigit))
+        {
+            throw new ArgumentException("NoKtp harus 16 digit angka.");
+        }
     }
 }

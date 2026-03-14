@@ -67,7 +67,7 @@ public class RegJalanByBookingHandler
 
     private readonly IMapJaminanJkRepo _mapJaminanJkRepo;
     private readonly IJurnalRepo _jurnalRepo;
-    private readonly IDashboardAddRegService _addRegSvc;
+    private readonly IDashboardEMrAddRegService _addRegSvc;
 
     private const string BAYAR_SENDIRI = "1";
     public RegJalanByBookingHandler(
@@ -95,7 +95,7 @@ public class RegJalanByBookingHandler
         IJurnalRepo jurnalRepo,
         IRemoteCetakRepo remoteCetakRepo,
         IGetAppSettingService getAppSettingSvc,
-        IDashboardAddRegService addRegSvc)
+        IDashboardEMrAddRegService addRegSvc)
     {
         _bookingRepo = bookingRepo;
         _pasienRepo = pasienRepo;
@@ -132,6 +132,9 @@ public class RegJalanByBookingHandler
         var pasien = LoadPasien(booking.PasienId);
         if (_regAktifRepo.IsPasienAktif(pasien))
             throw new KeyNotFoundException($"Pasien aktif sudah aktif registrasi");
+        if (string.IsNullOrWhiteSpace(pasien.Ktp.Nik) || pasien.Ktp.Nik == "-")
+            throw new KeyNotFoundException($"Nik Kosong, Lengkapi data Nik pasien {pasien.PasienId}");
+
         var dokter = LoadDokter(booking.Dokter.PpaId);
         var layanan = LoadLayanan(booking.Layanan.LayananId); 
         var karcis = LoadKarcis(request.KarcisId);
@@ -228,7 +231,7 @@ public class RegJalanByBookingHandler
         }
 
         
-        AddReg(reg, booking);
+        AddReg(reg);
         return Task.FromResult(response);
     }
 
@@ -369,12 +372,9 @@ public class RegJalanByBookingHandler
         return map;
     }
 
-    private void AddReg(RegModel reg, BookingModel booking)
+    private void AddReg(RegModel reg)
     {
-        var payload = new AddRegCmd(reg.RegId, booking.BookingId,
-            reg.Pasien.PasienId, reg.Pasien.PasienName,
-            reg.Layanan.LayananId, reg.Dokter.PpaId,
-            reg.RegDate.ToString("yyyy-MM-dd"), booking.NoAntrian);
+        var payload = new AddRegCmd(reg.RegId);
         _addRegSvc.Execute(payload);
     }
     #endregion
