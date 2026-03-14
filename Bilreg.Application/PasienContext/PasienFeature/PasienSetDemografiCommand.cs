@@ -52,10 +52,16 @@ public class PasienSetDemografiHandler : IRequestHandler<PasienSetDemografiComma
         Guard.Against.NullOrWhiteSpace(request.PasienId, nameof(request.PasienId));
         Guard.Against.NullOrWhiteSpace(request.KelurahanId, nameof(request.KelurahanId));
         Guard.Against.NullOrWhiteSpace(request.StatusKawinId, nameof(request.StatusKawinId));
-        Guard.Against.NullOrWhiteSpace(request.AgamaId, nameof(request.AgamaId));
-        Guard.Against.NullOrWhiteSpace(request.SukuId, nameof(request.SukuId));
-        Guard.Against.NullOrWhiteSpace(request.PekerjaanId, nameof(request.PekerjaanId));
+        Guard.Against.Null(request.AgamaId, nameof(request.AgamaId));
+        Guard.Against.Null(request.SukuId, nameof(request.SukuId));
+        Guard.Against.Null(request.PekerjaanId, nameof(request.PekerjaanId));
         Guard.Against.NullOrWhiteSpace(request.PendidikanId, nameof(request.PendidikanId));
+
+        Guard.Against.NullOrWhiteSpace(request.NamaKeluarga, nameof(request.NamaKeluarga));
+        Guard.Against.NullOrWhiteSpace(request.Relasi, nameof(request.Relasi));
+        Guard.Against.NullOrWhiteSpace(request.NoTelpKeluarga, nameof(request.NoTelpKeluarga));
+        Guard.Against.NullOrWhiteSpace(request.Alamat1Keluarga, nameof(request.Alamat1Keluarga));
+
 
         _pasien = _pasienRepo.LoadEntity(PasienModel.Key(request.PasienId))
             .Match(

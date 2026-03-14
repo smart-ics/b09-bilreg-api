@@ -115,7 +115,7 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
             response = new BookingCreateResponse(booking.BookingId, antEntry.NoUrut);
         }
 
-        AddBooking(booking, px);
+        //AddBooking(booking, px);
 
         return Task.FromResult(response);
     }

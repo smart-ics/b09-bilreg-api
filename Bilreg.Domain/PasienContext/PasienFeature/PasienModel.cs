@@ -233,6 +233,14 @@ public class PasienModel : IPasienKey
         TglMedRec = tglMedRec;
     }
     
+    public void NonActive()
+    {
+        IsAktif = false;
+    }
+    public void ReActive()
+    {
+        IsAktif = true; 
+    }
     public PasienReff ToReff() => new PasienReff(PasienId, Person.PersonName, 
         Person.TglLahir, Person.Gender);
     
