@@ -29,19 +29,22 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
     private readonly IKamarRepo _kamarRepo;
     private readonly IPpaRepo _ppaRepo;
     private readonly IOpCaseRepo _opCaseRepo;
+    private readonly IMediator _mediator;
 
     public OkScheduleOpSetCommandHandler(
         IScheduleOpRepo scheduleOpRepo,
         IOrderOpRepo orderOpRepo,
         IKamarRepo kamarRepo,
         IPpaRepo ppaRepo,
-        IOpCaseRepo opCaseRepo)
+        IOpCaseRepo opCaseRepo,
+        IMediator mediator)
     {
         _scheduleOpRepo = scheduleOpRepo;
         _orderOpRepo = orderOpRepo;
         _kamarRepo = kamarRepo;
         _ppaRepo = ppaRepo;
         _opCaseRepo = opCaseRepo;
+        _mediator = mediator;
     }
 
     public Task<OkScheduleOpSetResponse> Handle(OkScheduleOpSetCommand request, CancellationToken cancellationToken)
@@ -88,13 +91,25 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
 
         opCase.Schedule(newScheduleOp);
 
-        using var trans = TransHelper.NewScope();
-        if (scheduleOp != null)
-            _scheduleOpRepo.SaveChanges(scheduleOp);
-        _scheduleOpRepo.SaveChanges(newScheduleOp);
-        _opCaseRepo.SaveChanges(opCase);
-        trans.Complete();
+        OkScheduleOpSetEvent domainEvent = new OkScheduleOpSetEvent(request, newScheduleOp);
 
+        // TODO: Apa boleh diubah spt ini? (diberi tanda kurung)
+        // Jika tidak diubah, di eventhandler yang dipanggil (SaveBridgeOpOnScheduleOpSetEvHandler)
+        // ada pemanggilan GetProjectIdService yang memanggil ParamSistemDal
+        // di ParamSistemDal ini terjasi error:
+        //  "System.InvalidOperationException: The current TransactionScope is already complete."
+        using (var trans = TransHelper.NewScope())
+        {
+            if (scheduleOp != null)
+                _scheduleOpRepo.SaveChanges(scheduleOp);
+            _scheduleOpRepo.SaveChanges(newScheduleOp);
+            _opCaseRepo.SaveChanges(opCase);
+            trans.Complete(); 
+        }
+
+        _mediator.Publish(domainEvent, cancellationToken);
         return Task.FromResult(new OkScheduleOpSetResponse(newScheduleOp.ScheduleOpId));
     }
 }
+
+public record OkScheduleOpSetEvent(OkScheduleOpSetCommand Command, ScheduleOpModel Aggregate) : INotification;
