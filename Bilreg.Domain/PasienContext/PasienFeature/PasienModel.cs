@@ -135,17 +135,19 @@ public class PasienModel : IPasienKey
 
     public void UpdateAdminInfo(KelurahanType kelurahan, 
         IdentitasType kartuKeluarga, ContactType email, ContactType noHp,
-        PasienKeluargaType pasienKeluarga)
+        PasienKeluargaType pasienKeluarga, string namaIbuKandung)
     {
         kelurahan ??= KelurahanType.Default;
         kartuKeluarga ??= IdentitasType.Default;
         email ??= ContactType.Default;
         noHp ??= ContactType.Default;
         pasienKeluarga ??= PasienKeluargaType.Default;
-        
+        namaIbuKandung ??= "-";
+
         Kelurahan = kelurahan;
         KartuKeluarga = kartuKeluarga;
         PasienKeluarga = pasienKeluarga;
+        NamaIbuKandung = namaIbuKandung;
 
         if (email is not null)
         {
