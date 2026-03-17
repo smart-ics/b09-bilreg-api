@@ -3,8 +3,9 @@
 public class RegPembayaranType 
 {
     #region CREATION
-    public RegPembayaranType(string caraBayarId, string caraBayarName, decimal nilaiJasa, decimal nilaiObat, decimal nilaiSubTotal)
+    public RegPembayaranType(string regId, string caraBayarId, string caraBayarName, decimal nilaiJasa, decimal nilaiObat, decimal nilaiSubTotal)
     {
+        RegId = regId;
         CaraBayarId = caraBayarId;
         CaraBayarName = caraBayarName;
         NilaiJasa = nilaiJasa;
@@ -13,6 +14,7 @@ public class RegPembayaranType
     }
     #endregion
     #region PROPERTIES
+    public string RegId { get; init; }
     public string CaraBayarId { get; init; }
     public string CaraBayarName { get; init; }
     public decimal NilaiJasa { get; init; }
