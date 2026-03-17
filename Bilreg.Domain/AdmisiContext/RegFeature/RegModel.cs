@@ -19,7 +19,7 @@ public class RegModel : IRegKey
         AuditInfoType regMasukAudit, AuditInfoType regKeluarAudit, AuditInfoType regCancelOutAudit, AuditInfoType regVoidAudit,
         JenisRegEnum jenisReg, PasienReff pasien, TipeJaminanReff tipeJaminan, 
         PolisReff polis, KelasReff kelas, CaraMasukDkType caraMasukDk, RujukanReff rujukan, 
-        PpaReff dokter, LayananReff layanan, KarcisReff karcis, string sjpNo,
+        PpaReff dokter, LayananReff layanan, KarcisReff karcis, string sjpNo, string pesertaJaminanId,
         IEnumerable<RegKomponenType> listKomponen)
     {
         RegId = regId;
@@ -39,6 +39,7 @@ public class RegModel : IRegKey
         Layanan = layanan;
         Karcis = karcis;
         SjpNo = sjpNo; 
+        PesertaJaminanId = pesertaJaminanId;
         _listKomponen = listKomponen.ToList();
     }
 
@@ -47,14 +48,14 @@ public class RegModel : IRegKey
         JenisRegEnum.RegJalan, PasienModel.Default.ToReff(), TipeJaminanType.Default.ToReff(),
         PolisModel.Default.ToReff(), KelasType.Default.ToReff(), CaraMasukDkType.Default,
         RujukanType.Default.ToReff(), PpaType.Default.ToReff(), LayananType.Default.ToReff(),
-        KarcisType.Default.ToReff(), "-", []);
+        KarcisType.Default.ToReff(), "-", "-", []);
     
     public static IRegKey Key(string id) => new RegModel(id, new DateOnly(3000, 1, 1),
         AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default,
         JenisRegEnum.RegJalan, PasienModel.Default.ToReff(), TipeJaminanType.Default.ToReff(),
         PolisModel.Default.ToReff(), KelasType.Default.ToReff(), CaraMasukDkType.Default,
         RujukanType.Default.ToReff(), PpaType.Default.ToReff(), LayananType.Default.ToReff(),
-        KarcisType.Default.ToReff(), "-", []);
+        KarcisType.Default.ToReff(), "-", "-", []);
     #endregion
 
     #region PROPERTIES
@@ -81,6 +82,7 @@ public class RegModel : IRegKey
     public LayananReff Layanan { get; private set; }
     public KarcisReff Karcis { get; private set; }
     public string SjpNo { get; private set; }
+    public string PesertaJaminanId { get; private set; }
     //
     public IEnumerable<RegKomponenType> ListKomponen => _listKomponen;
     #endregion

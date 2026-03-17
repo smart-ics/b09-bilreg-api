@@ -230,11 +230,6 @@ public class PasienModel : IPasienKey
         PendidikanDk = pendidikanDk;
     }
 
-    public void SetTglMedRec(DateTime tglMedRec)
-    {
-        TglMedRec = tglMedRec;
-    }
-    
     public void NonActive()
     {
         IsAktif = false;

@@ -19,7 +19,7 @@ public interface IRegFactory
     RegModel CreateRegRajal(PasienModel pasien, 
         AuditInfoType regMasukAudit, TipeJaminanType tipeJaminan, PolisModel polis,
         CaraMasukDkType caraMasukDk, RujukanType rujukan, 
-        PpaType dokter, LayananType layanan, KarcisType karcis);
+        PpaType dokter, LayananType layanan, KarcisType karcis, string pesertaJaminanId);
 }
 
 public class RegFactory : IRegFactory
@@ -39,7 +39,7 @@ public class RegFactory : IRegFactory
     public RegModel CreateRegRajal(PasienModel pasien, 
         AuditInfoType regMasukAudit, TipeJaminanType tipeJaminan, 
         PolisModel polis, CaraMasukDkType caraMasukDk, RujukanType rujukan, 
-        PpaType dokter, LayananType layanan, KarcisType karcis)
+        PpaType dokter, LayananType layanan, KarcisType karcis, string pesertaJaminanId)
     {
         var newNo = _sequencer.GetNextNoUrut(SEQUENCE_TAG, "No Urut Reg Masuk");
         var regId = $"RG{newNo:D8}";
@@ -50,7 +50,7 @@ public class RegFactory : IRegFactory
             pasien.ToReff(), TipeJaminanType.Default.ToReff(),
             PolisModel.Default.ToReff(), kelasRajal.ToReff(), CaraMasukDkType.Default,
             RujukanType.Default.ToReff(), PpaType.Default.ToReff(), 
-            LayananType.Default.ToReff(), KarcisType.Default.ToReff(), "-", []);
+            LayananType.Default.ToReff(), KarcisType.Default.ToReff(), "-", pesertaJaminanId, []);
 
         reg.ApplyJaminan(tipeJaminan, polis);
         reg.SpecifyCaraMasuk (caraMasukDk, rujukan);

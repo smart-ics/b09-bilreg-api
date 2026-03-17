@@ -135,7 +135,7 @@ public class PasienRepo : IPasienRepo
             listContact, pasienKeluarga, 
             agama, suku, statusKawin, 
             pendidikan, pekerjaan, 
-            DateTime.MinValue, dto.fb_aktif);
+            dto.fd_tgl_mr.ToDate("yyyy-MM-dd"), dto.fb_aktif);
 
         return MayBe.From(pasien);
     }

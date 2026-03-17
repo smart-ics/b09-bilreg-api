@@ -45,7 +45,7 @@ public class RegDal : IRegDal
                 fd_tgl_void, fs_jam_void, fs_kd_petugas_void,
                 fs_kd_jenis_reg, fs_mr, fs_kd_tipe_jaminan, fs_kd_kelas, 
                 fs_kd_cara_masuk_dk, fs_kd_rujukan, fs_kd_medis, 
-                fs_kd_layanan, fs_kd_karcis, fs_no_sjp, fd_tgl_jam_masuk, fd_tgl_jam_keluar)
+                fs_kd_layanan, fs_kd_karcis, fs_no_sjp, fs_no_peserta, fd_tgl_jam_masuk, fd_tgl_jam_keluar)
             VALUES (
                 @fs_kd_reg, @fd_tgl_masuk,  @fs_jam_masuk, @fs_kd_petugas,
                 @fd_tgl_keluar, @fs_jam_keluar, @fs_kd_petugas_keluar,
@@ -53,7 +53,7 @@ public class RegDal : IRegDal
                 @fd_tgl_void, @fs_jam_void, @fs_kd_petugas_void,
                 @fs_kd_jenis_reg, @fs_mr, @fs_kd_tipe_jaminan, @fs_kd_kelas, 
                 @fs_kd_cara_masuk_dk, @fs_kd_rujukan, @fs_kd_medis, 
-                @fs_kd_layanan, @fs_kd_karcis, @fs_no_sjp, @fd_tgl_jam_masuk, @fd_tgl_jam_keluar)
+                @fs_kd_layanan, @fs_kd_karcis, @fs_no_sjp, @fs_no_peserta, @fd_tgl_jam_masuk, @fd_tgl_jam_keluar)
             """;
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_reg", dto.fs_kd_reg, SqlDbType.VarChar); 
@@ -80,6 +80,7 @@ public class RegDal : IRegDal
         dp.AddParam("@fs_kd_layanan", dto.fs_kd_layanan, SqlDbType.VarChar); 
         dp.AddParam("@fs_kd_karcis", dto.fs_kd_karcis, SqlDbType.VarChar);
         dp.AddParam("@fs_no_sjp", dto.fs_no_sjp, SqlDbType.VarChar);
+        dp.AddParam("@fs_no_peserta", dto.fs_no_peserta, SqlDbType.VarChar);
 
         dp.AddParam("@fd_tgl_jam_masuk", dto.fd_tgl_jam_masuk, SqlDbType.VarChar);
         dp.AddParam("@fd_tgl_jam_keluar", dto.fd_tgl_jam_keluar, SqlDbType.VarChar);
@@ -118,6 +119,7 @@ public class RegDal : IRegDal
                 fs_kd_layanan = @fs_kd_layanan, 
                 fs_kd_karcis = @fs_kd_karcis,
                 fs_no_sjp = @fs_no_sjp,
+                fs_no_peserta = @fs_no_peserta,
                 fd_tgl_jam_masuk = @fd_tgl_jam_masuk,
                 fd_tgl_jam_keluar = @fd_tgl_jam_keluar
             WHERE
@@ -288,7 +290,7 @@ public class RegDal : IRegDal
             aa.fd_tgl_void, aa.fs_jam_void, aa.fs_kd_petugas_void,
             aa.fs_kd_jenis_reg, aa.fs_mr, aa.fs_kd_tipe_jaminan, aa.fs_kd_kelas, 
             aa.fs_kd_cara_masuk_dk, aa.fs_kd_rujukan, aa.fs_kd_medis, 
-            aa.fs_kd_layanan, aa.fs_kd_karcis, aa.fs_no_sjp,
+            aa.fs_kd_layanan, aa.fs_kd_karcis, aa.fs_no_sjp, aa.fs_no_peserta,
             aa.fd_tgl_jam_masuk, aa.fd_tgl_jam_keluar,
             ISNULL(bb.fs_nm_pasien, '-') AS fs_nm_pasien, 
             ISNULL(bb.fd_tgl_lahir, '-') AS fd_tgl_lahir, 

@@ -89,23 +89,9 @@ public class PasienSetDemografiHandler : IRequestHandler<PasienSetDemografiComma
                 onNone: () => throw new KeyNotFoundException($"Status Kawin id {statusKawinId} not found")
             );
 
-        var agama = _agamaDal.GetData(AgamaType.Key(agamaId))
-            .Match(
-                onSome: x => x,
-                onNone: () => throw new KeyNotFoundException($"Agama Id {agamaId} not found")
-            );
-
-        var suku = _sukuDal.GetData(SukuType.Key(sukuId))
-            .Match(
-                onSome: x => x,
-                onNone: () => throw new KeyNotFoundException($"Agama Id {sukuId} not found")
-            );
-
-        var pekerjaan = _pekerjaanDal.GetData(PekerjaanDkType.Key(pekerjaanId))
-            .Match(
-                onSome: x => x,
-                onNone: () => throw new KeyNotFoundException($"Pekerjaan Id {pekerjaanId} not found")
-            );
+        var agama = _agamaDal.GetData(AgamaType.Key(agamaId)).GetValueOrDefault(AgamaType.Default);
+        var suku = _sukuDal.GetData(SukuType.Key(sukuId)).GetValueOrDefault(SukuType.Default);
+        var pekerjaan = _pekerjaanDal.GetData(PekerjaanDkType.Key(pekerjaanId)).GetValueOrDefault(PekerjaanDkType.Default);
 
         var pendidikan = _pendidikanDkDal.GetData(PendidikanDkType.Key(pendidikanId))
             .Match(
