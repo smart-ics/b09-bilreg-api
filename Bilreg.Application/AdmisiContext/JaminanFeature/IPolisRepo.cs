@@ -10,6 +10,7 @@ public interface IPolisRepo :
     IDeleteEntity<IPolisKey>,
     IListData<PolisView, IPasienKey>
 {
+    PolisModel GetDataByNoPeserta(string noPeserta);
 }
 
 public record PolisView(

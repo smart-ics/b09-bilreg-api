@@ -58,4 +58,14 @@ public class PolisRepo : IPolisRepo
         return result;
     }
 
+    public PolisModel GetDataByNoPeserta(string noPeserta)
+    {
+        var dto = _polisDal.GetDataByNoPeserta(noPeserta);
+        if (dto is null) return PolisModel.Default;
+        var lisCoverDto = _polisCoverDal.ListData(PolisModel.Key(dto.fs_kd_polis))?.ToList() ?? [];
+        var listCover = lisCoverDto.Select(x => x.ToModel());
+        var result = dto.ToModel(listCover);
+
+        return result;
+    }
 }

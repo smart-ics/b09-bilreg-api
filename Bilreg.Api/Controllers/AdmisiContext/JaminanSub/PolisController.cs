@@ -57,4 +57,15 @@ public class PolisController : Controller
         var response = await _mediator.Send(query);
         return Ok(new JSendOk(response));
     }
+
+    [HttpGet]
+    [Route("byNoPeserta")]
+    public async Task<IActionResult> GetByNoPeserta([FromQuery] string noPeserta)
+    {
+        var query = new PolisGetByNoPesertaQuery(noPeserta);
+        var response = await _mediator.Send(query);
+        return Ok(new JSendOk(response));
+    }
+
+
 }
