@@ -11,6 +11,19 @@ public class RegPembayaranRepo : IRegPembayaranRepo
     {
         _regPembayaranDal = regPembayaranDal;
     }
+
+    public void Insert(RegPembayaranType model)
+    {
+        var dto = RegPembayaranDto.FromModel(model);
+        _regPembayaranDal.Insert(dto);
+    }
+
+    public void Update(RegPembayaranType model)  // Added Update method
+    {
+        var dto = RegPembayaranDto.FromModel(model);
+        _regPembayaranDal.Update(dto);
+    }
+
     public IEnumerable<RegPembayaranType> ListData(IRegKey key)
     {
         var listDto = _regPembayaranDal.ListData(key)?.ToList() ?? [];

@@ -2,6 +2,7 @@
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Nuna.Lib.ActionResultHelper;
 
 namespace Bilreg.Api.Controllers.PaymentContext.RegOutSub;
 
@@ -58,5 +59,21 @@ public class RegOutController : Controller
         var query = new RegListAlokasiPembayaranQuery(id);
         var result = await _mediator.Send(query);
         return Ok(result);
+    }
+
+    [HttpPost]
+    [Route("addPembayaran/")]
+    public async Task<IActionResult> AddPembayaran(RegAddPembayaranCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
+    [HttpPost]
+    [Route("updatePembayaran")]
+    public async Task<IActionResult> UpdatePembayaran(RegUpdateNilaiBayarCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
     }
 }
