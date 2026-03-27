@@ -15,7 +15,7 @@ public record PasienSetDemografiCommand(string PasienId,
     string KelurahanId, string NoKartuKeluarga,
     string Email, string NoHp,
     string NamaKeluarga, string Relasi, string NoTelpKeluarga,
-    string Alamat1Keluarga, string Alamat2Keluarga
+    string Alamat1Keluarga, string Alamat2Keluarga, string IbuKandung
     ) : IRequest, IPasienKey, IKelurahanKey;
 
 public class PasienSetDemografiHandler : IRequestHandler<PasienSetDemografiCommand>
@@ -61,6 +61,8 @@ public class PasienSetDemografiHandler : IRequestHandler<PasienSetDemografiComma
         Guard.Against.NullOrWhiteSpace(request.Relasi, nameof(request.Relasi));
         Guard.Against.NullOrWhiteSpace(request.NoTelpKeluarga, nameof(request.NoTelpKeluarga));
         Guard.Against.NullOrWhiteSpace(request.Alamat1Keluarga, nameof(request.Alamat1Keluarga));
+        Guard.Against.NullOrWhiteSpace(request.IbuKandung, nameof(request.IbuKandung));
+
 
 
         _pasien = _pasienRepo.LoadEntity(PasienModel.Key(request.PasienId))
@@ -70,7 +72,7 @@ public class PasienSetDemografiHandler : IRequestHandler<PasienSetDemografiComma
             );
 
         SetAdminData(request, request.NoKartuKeluarga, request.Email, request.NoHp, request.NoTelpKeluarga, request.NamaKeluarga,
-            request.Relasi, request.Alamat1Keluarga, request.Alamat2Keluarga);
+            request.Relasi, request.Alamat1Keluarga, request.Alamat2Keluarga, request.IbuKandung);
 
         SetDemografi(request.StatusKawinId, request.AgamaId, request.SukuId, request.PekerjaanId, request.PendidikanId);
 
@@ -87,23 +89,9 @@ public class PasienSetDemografiHandler : IRequestHandler<PasienSetDemografiComma
                 onNone: () => throw new KeyNotFoundException($"Status Kawin id {statusKawinId} not found")
             );
 
-        var agama = _agamaDal.GetData(AgamaType.Key(agamaId))
-            .Match(
-                onSome: x => x,
-                onNone: () => throw new KeyNotFoundException($"Agama Id {agamaId} not found")
-            );
-
-        var suku = _sukuDal.GetData(SukuType.Key(sukuId))
-            .Match(
-                onSome: x => x,
-                onNone: () => throw new KeyNotFoundException($"Agama Id {sukuId} not found")
-            );
-
-        var pekerjaan = _pekerjaanDal.GetData(PekerjaanDkType.Key(pekerjaanId))
-            .Match(
-                onSome: x => x,
-                onNone: () => throw new KeyNotFoundException($"Pekerjaan Id {pekerjaanId} not found")
-            );
+        var agama = _agamaDal.GetData(AgamaType.Key(agamaId)).GetValueOrDefault(AgamaType.Default);
+        var suku = _sukuDal.GetData(SukuType.Key(sukuId)).GetValueOrDefault(SukuType.Default);
+        var pekerjaan = _pekerjaanDal.GetData(PekerjaanDkType.Key(pekerjaanId)).GetValueOrDefault(PekerjaanDkType.Default);
 
         var pendidikan = _pendidikanDkDal.GetData(PendidikanDkType.Key(pendidikanId))
             .Match(
@@ -114,8 +102,8 @@ public class PasienSetDemografiHandler : IRequestHandler<PasienSetDemografiComma
         _pasien.SetStatusSosial(statusKawinDk, agama, suku, pekerjaan, pendidikan);
     }
     private void SetAdminData(IKelurahanKey kelurahanKey, string noKartuKeluarga, string email, 
-        string noHp, string noTelpKeluarga, 
-        string namaKeluarga, string relasi, string alamatKeluarga1, string alamatKeluarga2)
+        string noHp, string noTelpKeluarga, string namaKeluarga, string relasi, 
+        string alamatKeluarga1, string alamatKeluarga2,string namaIbuKandung)
     {
         var kelurahan = _kelurahanRepo.LoadEntity(kelurahanKey)
             .Match(
@@ -129,6 +117,6 @@ public class PasienSetDemografiHandler : IRequestHandler<PasienSetDemografiComma
         var keluarga = new PasienKeluargaType(namaKeluarga, relasi, noTelpKeluargaContact,
             new AlamatType([alamatKeluarga1, alamatKeluarga2, "-"], "-", "-"));
 
-        _pasien.UpdateAdminInfo(kelurahan, kartuKeluarga, emailContact, noHpContact, keluarga);
+        _pasien.UpdateAdminInfo(kelurahan, kartuKeluarga, emailContact, noHpContact, keluarga, namaIbuKandung);
     }
 }

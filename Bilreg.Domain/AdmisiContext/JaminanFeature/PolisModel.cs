@@ -53,6 +53,11 @@ public class PolisModel : IPolisKey
         var duplicate = _listCover.FirstOrDefault(x => x.Pasien.PasienId == pasien.PasienId);
         if (duplicate != null)
             throw new ArgumentException("Cover already exists");
+        
+        var statusCoverage = ListCover.Any(x => x.Status == status) ;
+        if (statusCoverage)
+            throw new ArgumentException("Status Kepesertaan already exist");
+
         var newCoverage = new PolisCoverModel(PolisId, pasien.ToReff(), status);
         _listCover.Add(newCoverage);
     }

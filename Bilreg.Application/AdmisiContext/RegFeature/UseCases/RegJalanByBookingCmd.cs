@@ -30,11 +30,12 @@ using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
+using Ardalis.GuardClauses;
 
 namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 
 public record RegJalanByBookingCmd(string BookingId, string UserId, string KarcisId, 
-    string CaraMasukDkId, string RujukanId, string TipeJaminanId) : IRequest<RegJalanByBookingResponse>;
+    string CaraMasukDkId, string RujukanId, string TipeJaminanId, string PesertaJaminanId) : IRequest<RegJalanByBookingResponse>;
 
 public record RegJalanByBookingResponse(string RegId, int NoAntrian);
 public class RegJalanByBookingHandler 
@@ -127,6 +128,7 @@ public class RegJalanByBookingHandler
     public Task<RegJalanByBookingResponse> Handle(RegJalanByBookingCmd request, CancellationToken cancellationToken)
     {
         //  LOAD and GUARD
+        Guard.Against.Null(request.PesertaJaminanId, nameof(request.PesertaJaminanId));
         var booking = LoadBooking(request.BookingId);
         var antrian = LoadAntrian(booking);
         var pasien = LoadPasien(booking.PasienId);
@@ -148,7 +150,7 @@ public class RegJalanByBookingHandler
         var reg = _regFactory.CreateRegRajal(
             pasien, regAudit, tipeJaminan,
             polis, caraMasuk, rujukan,
-            dokter, layanan, karcis);
+            dokter, layanan, karcis, request.PesertaJaminanId);
         booking.AssignReg(reg);
 
         var regAktif = new RegAktifModel(reg.RegId,  reg.RegDate, 

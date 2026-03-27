@@ -82,7 +82,7 @@ public class RegRepo : IRegRepo
             regDto.fs_kd_reg, DateOnly.Parse(regDto.fd_tgl_masuk),
             regMasukAudit, regKeluarAudit, regCancelOutAudit, regVoidAudit, jenisReg,
             pasien, tipeJmn, polis, kelas, caraMasukDk, rujukan, dokter,
-            layanan, karcis, regDto.fs_no_sjp, listKomponenDto.Select(x => x.ToModel()));
+            layanan, karcis, regDto.fs_no_sjp, regDto.fs_no_peserta, listKomponenDto.Select(x => x.ToModel()));
         return MayBe.From(result);
     }
     public IEnumerable<RegView> ListData(Periode filter, ILayananKey layanan)

@@ -16,6 +16,7 @@ public interface IPolisDal :
     IGetData<PolisDto, IPolisKey>,
     IListData<PolisViewDto, IPasienKey>
 {
+    PolisDto GetDataByNoPeserta(string noPeserta);
 }
 public class PolisDal : IPolisDal
 {
@@ -146,5 +147,29 @@ public class PolisDal : IPolisDal
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<PolisViewDto>(sql, dp);
+    }
+
+    public PolisDto GetDataByNoPeserta(string noPeserta)
+    {
+        const string sql = """
+            SELECT
+                aa.fs_kd_polis, aa.fs_kd_tipe_jaminan, aa.fs_kd_kelas_ri, 
+                aa.fs_no_polis, aa.fs_atas_nama, aa.fd_expired, aa.fb_cover_rj, 
+                ISNULL(bb.fs_nm_tipe_jaminan, '') fs_nm_tipe_jaminan,
+                ISNULL(cc.fs_nm_kelas, '') fs_nm_kelas
+            FROM 
+                ta_polis aa
+                LEFT JOIN ta_tipe_jaminan bb ON aa.fs_kd_tipe_jaminan = bb.fs_kd_tipe_jaminan
+                LEFT JOIN ta_kelas cc ON aa.fs_kd_kelas_ri = cc.fs_kd_kelas
+            WHERE 
+                fs_no_polis = @fs_no_polis
+            """;
+
+        var dp = new DynamicParameters();
+
+        dp.AddParam("@fs_no_polis", noPeserta, SqlDbType.VarChar);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.ReadSingle<PolisDto>(sql, dp);
     }
 }

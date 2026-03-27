@@ -30,12 +30,13 @@ using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
+using Ardalis.GuardClauses;
 
 namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 
 public record RegJalanWalkInCommand(string PasienId, string UserId,
     string TipeJaminanId, string CaraMasukDkId, string RujukanId, string DokterId,
-    string LayananId, string JamPraktek, string KarcisId) 
+    string LayananId, string JamPraktek, string KarcisId, string PesertaJaminanId) 
     : IRequest<RegJalanCreateResponse>, ILayananKey, ICaraMasukDkKey, IPasienKey,
         ITipeJaminanKey, IKarcisKey; 
  
@@ -154,6 +155,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         /*  ▐▀▀▀▀▀▀▀▀▀▀▀▌
             ▐   GUARD   ▌
             ▐▄▄▄▄▄▄▄▄▄▄▄▌*/
+        Guard.Against.Null(request.PesertaJaminanId, nameof(request.PesertaJaminanId));
         var pasien = _pasienRepo.LoadEntity(request).GetValueOrThrow("Pasien not found");
         if (pasien.IsAktif == false) throw new KeyNotFoundException($"Pasien {request.PasienId} tidak aktif ");
         if (_regAktifRepo.IsPasienAktif(pasien))
@@ -174,7 +176,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         //      1-register
         var regMasukAudit = new AuditInfoType(request.UserId, DateTime.Now);
         var reg = _regFactory.CreateRegRajal(pasien, regMasukAudit,
-            tipeJaminan, polis, caraMasuk, rujukan, dokter, layanan, karcis);
+            tipeJaminan, polis, caraMasuk, rujukan, dokter, layanan, karcis, request.PesertaJaminanId);
         var regAktif = RegAktifModel.CreateFromReg(reg);
         //      2-antrian
         var tglBerobat = DateOnly.FromDateTime(DateTime.Now);

@@ -58,7 +58,7 @@ public class PasienCreateByKtpHandler : IRequestHandler<PasienCreateByKtpCommand
         var ktp = new KtpType(request.Nik, alamat, request.Rt, request.Rw, kelurahan);
         pasien.SetDataKtp(ktp);
         pasien.UpdateAdminInfo(kelurahan, IdentitasType.Default, ContactType.Default, 
-            ContactType.Default, PasienKeluargaType.Default);
+            ContactType.Default, PasienKeluargaType.Default, "-");
 
         //  WRITE
         var result = _pasienRepo.SaveChanges(pasien);

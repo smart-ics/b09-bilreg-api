@@ -19,7 +19,7 @@ public class RegDalTest
             "J1", "J2", "J3", "K",
             "L", "M", "N", "O", "P", "Q", "R",
             "S", "T", "U", "V", "W", "X", "Y",
-            "Z", "AA", "AB", "AC","AD", "AE", "AF");
+            "Z", "AA", "AB", "AC","AD", "AE", "AF", "AG");
 
     private static IRegKey FakerKey()
         => RegModel.Key("A");
