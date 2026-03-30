@@ -8,6 +8,7 @@ using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.Shared.Helpers;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
+using System.Globalization;
 
 namespace Bilreg.Application.AdmisiContext.BookingFeature;
 
@@ -99,8 +100,8 @@ public class PraktekDokterPeriodeGroupSpesialisListHandler :
                     tgl.ToString("yyyy-MM-dd"),
                     j.Dokter,
                     j.Layanan,
-                    j.JamMulai.ToString("HH:mm"),
-                    j.JamSelesai.ToString("HH:mm"),
+                    j.JamMulai.ToString("HH:mm", CultureInfo.InvariantCulture),
+                    j.JamSelesai.ToString("HH:mm", CultureInfo.InvariantCulture),
                     JumlahPasien: antrianMatch.Sum(x => x.ListEntry.Count()),
                     MaxPasien: j.MaxPasien
                 )

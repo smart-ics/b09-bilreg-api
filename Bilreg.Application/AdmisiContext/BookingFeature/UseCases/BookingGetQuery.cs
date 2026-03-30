@@ -4,6 +4,7 @@ using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using MediatR;
+using System.Globalization;
 
 namespace Bilreg.Application.AdmisiContext.BookingFeature.UseCases;
 
@@ -34,7 +35,7 @@ public class BookingGetHanlder : IRequestHandler<BookingGetQuery, BookingGetResp
             );
         var result = new BookingGetResponse(booking.BookingId, booking.BookingDate.ToString("yyyy-MM-dd"),
             booking.Person, booking.PasienId, booking.Reg, booking.Layanan, booking.Dokter, 
-            booking.TglBerobat.ToString("yyyy-MM-dd"), booking.JamPraktek.ToString("HH:mm"), booking.NoAntrian,
+            booking.TglBerobat.ToString("yyyy-MM-dd"), booking.JamPraktek.ToString("HH:mm", CultureInfo.InvariantCulture), booking.NoAntrian,
             booking.ExtAppReff, booking.CoverageInfo);
         
         return Task.FromResult(result);

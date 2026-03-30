@@ -1,5 +1,6 @@
 ﻿using Bilreg.Domain.AdmisiContext.PpaFeature;
 using MediatR;
+using System.Globalization;
 
 namespace Bilreg.Application.AdmisiContext.BookingFeature;
 
@@ -45,8 +46,8 @@ public class JadwalPraktekListHandler : IRequestHandler<JadwalPraktekListQuery, 
                  .Select(j => new JadwalPraktekListHariResponse(
                      j.JadwalPraktekId,
                      j.Hari.ToString(),
-                     j.JamMulai.ToString("HH:mm"),
-                     j.JamSelesai.ToString("HH:mm"),
+                     j.JamMulai.ToString("HH:mm", CultureInfo.InvariantCulture),
+                     j.JamSelesai.ToString("HH:mm", CultureInfo.InvariantCulture),
                      j.MaxPasien
                  ))
             ));

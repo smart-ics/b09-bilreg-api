@@ -43,6 +43,10 @@ public class PasienRepo : IPasienRepo
 
         var pasienTelpDb = _pasienTelpDal.ListData(model)?.ToList() ?? [];
         var listTelp = pasienTelpDb.Where(x => x.fs_kd_jenis_telp == "HP")?.ToList() ?? [];
+        var phone = model.Person.Contact.JenisContact == JenisContactEnum.Phone
+            ? model.Person.Contact.ContactDetail?.Trim()
+            : string.Empty;
+
         if (listTelp.Count() > 0)
             _pasienTelpDal.Update(PasienTelpDto.FromMr(model), "HP");
         else
@@ -54,12 +58,14 @@ public class PasienRepo : IPasienRepo
         else
             _pasienKtpDal.Insert(PasienKtpDto.FromModel(model));
         
-        var pasienIdDb = _pasienIdDal.GetData(model);
-        if(pasienIdDb is not null)
+        // PasienID (KTP)
+        var pasienIdDb = _pasienIdDal.ListData(model) ?? [];
+        var existsKtp = pasienIdDb.Any(x => x.JenisID == "KTP");
+        var existHp = pasienIdDb.Any(x => x.JenisID == "HP");
+        if (existsKtp)
             _pasienIdDal.Update(PasienIdDto.FromModel(model));
         else
             _pasienIdDal.Insert(PasienIdDto.FromModel(model));
-
 
         trans.Complete();
         return Result<IPasienKey>.Success(model);
@@ -72,24 +78,39 @@ public class PasienRepo : IPasienRepo
             return MayBe<PasienModel>.None;
 
         //  fetch pasien-dto 
+        var pasienTelpDb = _pasienTelpDal.ListData(key)?.ToList() ?? [];
+        var listTelp = pasienTelpDb.Where(x => x.fs_kd_jenis_telp == "HP")?.ToList() ?? [];
+        var hp = listTelp.FirstOrDefault(new PasienTelpDto("-", "-", "-", false));
+        var telp = dto.fs_tlp_pasien == "-" || dto.fs_tlp_pasien.Trim() == "" ? hp.fs_no_telp
+            : dto.fs_tlp_pasien ?? "-";
+
         var alamat = new AlamatType(
             [dto.fs_alm_pasien, dto.fs_alm2_pasien, dto.fs_alm3_pasien],
             dto.fs_kota_pasien, dto.fs_kd_pos_pasien);
-        var contact = new ContactType(JenisContactEnum.Phone, dto.fs_tlp_pasien);
+        var contact = new ContactType(JenisContactEnum.Phone, telp);
         var identitas = IdentitasType.Ktp(dto.fs_kd_identitas);
         var person = new PersonInfoType(dto.fs_nm_pasien,
             DateOnly.Parse(dto.fd_tgl_lahir), dto.fs_jns_kelamin,
             alamat, contact, identitas);
-
+        
         //  fetch ktp-dto
         var ktpDto = _pasienKtpDal.GetData(key) ?? PasienKtpDto.Default;
+        var pasienId = _pasienIdDal.ListData(key)?.ToList() ?? [];
+        //  NIK
+        var nik =
+            !string.IsNullOrWhiteSpace(ktpDto.fs_nik) && ktpDto.fs_nik != "-"
+                ? ktpDto.fs_nik
+            : !string.IsNullOrWhiteSpace(dto.fs_kd_identitas) && dto.fs_kd_identitas != "-"
+                ? dto.fs_kd_identitas
+            : pasienId.Select(x => x.JenisID == "KTP" ? x.NoID : null)
+                .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x) && x != "-") ?? "-";
 
         var alamatKtp = new AlamatType([ktpDto.fs_alm_ktp], "-", "-");
         var kelurahanKtp = new KelurahanType(ktpDto.fs_kd_kelurahan_ktp, ktpDto.fs_kelurahan_ktp,
             new KecamatanReff(ktpDto.fs_kd_kecamatan_ktp, ktpDto.fs_kecamatan_ktp),
             new KabupatenReff(ktpDto.fs_kd_kabupaten_ktp, ktpDto.fs_kabupaten_ktp),
             new PropinsiType(ktpDto.fs_kd_propinsi_ktp, ktpDto.fs_propinsi_ktp));
-        var ktp = new KtpType(ktpDto.fs_nik, alamatKtp, ktpDto.fs_rt_ktp, ktpDto.fs_rw_ktp,
+        var ktp = new KtpType(nik, alamatKtp, ktpDto.fs_rt_ktp, ktpDto.fs_rw_ktp,
             kelurahanKtp);
 
         var propinsi = new PropinsiType(dto.fs_kd_propinsi, dto.fs_nm_propinsi);

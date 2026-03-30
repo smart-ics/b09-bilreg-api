@@ -12,7 +12,7 @@ public interface IPasienIdDal :
     IInsert<PasienIdDto>,
     IUpdate<PasienIdDto>,
     IDelete<IPasienKey>,
-    IGetData<PasienIdDto, IPasienKey>
+    IListData<PasienIdDto, IPasienKey>
 {
 }
 
@@ -48,10 +48,10 @@ public class PasienIdDal : IPasienIdDal
             UPDATE 
                 tc_mr_id
             SET
-               JenisiD = @JenisID, 
                NoID = @NoID
             WHERE
                fs_mr = @fs_mr
+               AND JenisID = @JenisID
             """;
         var dp = new DynamicParameters();
         dp.AddParam("@fs_mr", dto.fs_mr, SqlDbType.VarChar);
@@ -77,7 +77,7 @@ public class PasienIdDal : IPasienIdDal
         conn.Execute(sql, dp);
     }
 
-    public PasienIdDto GetData(IPasienKey key)
+    public IEnumerable<PasienIdDto> ListData(IPasienKey key)
     {
         const string sql = """
             SELECT 
@@ -91,6 +91,6 @@ public class PasienIdDal : IPasienIdDal
         dp.AddParam("@fs_mr", key.PasienId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.ReadSingle<PasienIdDto>(sql, dp);
+        return conn.Read<PasienIdDto>(sql, dp);
     }
 }
