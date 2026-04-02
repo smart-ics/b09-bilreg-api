@@ -43,7 +43,7 @@ public record AntrianMapHdrDto(
             TglPraktek: DateOnly.FromDateTime(fd_tgl_jadwal),
             DokterId: fs_kd_dokter,
             LayananId: fs_kd_layanan,
-            JamJadwal: TimeOnly.Parse(fs_jam_jadwal),
+            JamJadwal: TimeOnly.ParseExact(fs_jam_jadwal, "HH:mm", CultureInfo.InvariantCulture),
             NoUrut: (int)x.fn_no_antrian,
             Pasien: new PasienReff(
                 x.fs_mr,
@@ -53,7 +53,8 @@ public record AntrianMapHdrDto(
             ),
             Reg: new RegReff("-", x.fs_mr, x.fs_nm_pasien),
             ReffId: x.fs_kd_trs_gen,
-            Flag: x.fs_flag
+            Flag: x.fs_flag, 
+            IsTerpakai: x.fb_terpakai
         ));
 
         return AntrianMapHdrModel.Create(
@@ -61,8 +62,8 @@ public record AntrianMapHdrDto(
             dokter: new PpaReff(fs_kd_dokter, fs_nm_dokter),
             layanan: new LayananReff(fs_kd_layanan, fs_nm_layanan),
             tglJadwal: DateOnly.FromDateTime(fd_tgl_jadwal),
-            jamJadwal: TimeOnly.ParseExact(fs_jam_jadwal, @"HH\:mm"),
-            jamPraktek: TimeOnly.ParseExact(fs_jam_praktek, @"HH\:mm"),
+            jamJadwal: TimeOnly.ParseExact(fs_jam_jadwal, @"HH\:mm", CultureInfo.InvariantCulture),
+            jamPraktek: TimeOnly.ParseExact(fs_jam_praktek, @"HH\:mm", CultureInfo.InvariantCulture),
             listMap: slots
         );
     }
@@ -73,8 +74,8 @@ public record AntrianMapHdrDto(
         var lyn = new LayananReff(fs_kd_layanan, fs_nm_layanan);
         var result = new AntrianMapHdrView(fs_kd_jadwal, dokter, lyn,
             DateOnly.FromDateTime(fd_tgl_jadwal),
-            TimeOnly.ParseExact(fs_jam_jadwal, @"HH\:mm"),
-            TimeOnly.ParseExact(fs_jam_praktek, @"HH\:mm"));
+            TimeOnly.ParseExact(fs_jam_jadwal, @"HH\:mm", CultureInfo.InvariantCulture),
+            TimeOnly.ParseExact(fs_jam_praktek, @"HH\:mm", CultureInfo.InvariantCulture));
         return result;
     }
 

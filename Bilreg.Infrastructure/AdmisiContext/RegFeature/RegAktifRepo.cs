@@ -54,8 +54,9 @@ public class RegAktifRepo : IRegAktifRepo
 
     public bool IsPasienAktif(IPasienKey pasien)
     {
+
         var listDto = _regAktifDal.ListData(pasien)?.ToList() ?? [];
-        return listDto.Count != 0;
+        return listDto.Any();
     }
 
     public IEnumerable<RegAktifModel> ListData()

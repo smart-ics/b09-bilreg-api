@@ -13,7 +13,8 @@ public record AntrianMapModel(
     PasienReff Pasien,
     RegReff Reg,
     string ReffId,
-    string Flag
+    string Flag,
+    bool IsTerpakai
 )
 {
     #region CREATION
@@ -26,7 +27,8 @@ public record AntrianMapModel(
         PasienReff pasien,
         RegReff reg,
         string reffId,
-        string flag)
+        string flag, 
+        bool isTerpakai)
     {
         Guard.Against.NullOrWhiteSpace(dokterId, nameof(dokterId));
         Guard.Against.NullOrWhiteSpace(layananId, nameof(layananId));
@@ -34,7 +36,7 @@ public record AntrianMapModel(
         Guard.Against.Null(reg, nameof(reg));
         Guard.Against.NegativeOrZero(noUrut, nameof(noUrut));
 
-        return new AntrianMapModel(tglPraktek, dokterId, layananId, jamPraktek, noUrut, pasien, reg, reffId, flag);
+        return new AntrianMapModel(tglPraktek, dokterId, layananId, jamPraktek, noUrut, pasien, reg, reffId, flag, isTerpakai);
     }
 
     public static AntrianMapModel Default => new(
@@ -46,7 +48,8 @@ public record AntrianMapModel(
         Pasien: new PasienReff("-", "-", new DateOnly(3000, 1, 1), "-"),
         Reg: new RegReff("-", "-", "_"),
         ReffId: "",
-        Flag: ""
+        Flag: "",
+        IsTerpakai: false
     );
 
     public static AntrianMapModel AutoSlot(DateOnly tglPraktek, string dokterId, string layananId, TimeOnly jamPraktek, int noUrut) =>
@@ -59,13 +62,14 @@ public record AntrianMapModel(
             Pasien: new PasienReff("-", "-", new DateOnly(3000, 1, 1), "-"),
             Reg: new RegReff("-", "-", "_"),
             ReffId: "",
-            Flag: "AUTO"
+            Flag: "AUTO",
+            IsTerpakai: false
         );
     #endregion
 
     #region BEHAVIOR
     public AntrianMapModel SetPasien(PasienReff pasien, RegReff reg, string reffId, string flag) =>
-        this with { Pasien = pasien, Reg = reg, ReffId = reffId, Flag = flag };
+        this with { Pasien = pasien, Reg = reg, ReffId = reffId, Flag = flag, IsTerpakai = true };
 
     public AntrianMapModel Void() => this with
     {

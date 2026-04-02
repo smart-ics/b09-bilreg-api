@@ -2,6 +2,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
+using Nuna.Lib.PatternHelper;
 
 namespace Bilreg.Api.Controllers.AdmisiContext.RegFeature;
 
@@ -81,4 +82,12 @@ public class RegController : Controller
         return Ok(new JSendOk(result));
     }
 
+    [HttpGet]
+    [Route("aktif/{pasienId}")]
+    public async Task<IActionResult> ListAktifByMr(string pasienId)
+    {
+        var query = new RegAktifByMrListQuery(pasienId);
+        var result = await _mediator.Send(query);
+        return Ok(new JSendOk(result));
+    }
 }

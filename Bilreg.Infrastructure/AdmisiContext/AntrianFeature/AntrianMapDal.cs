@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
 using System.Data;
 using System.Data.SqlClient;
+using System.Globalization;
 
 namespace Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
 
@@ -31,11 +32,13 @@ public class AntrianMapDal : IAntrianMapDal
              INSERT INTO ta_no_antrian_map(
                  fs_kd_dokter, fs_kd_layanan, 
                  fd_tgl_jadwal, fs_jam_jadwal, fn_no_antrian,
-                 fs_flag, fs_mr, fs_nm_pasien, fs_kd_trs_gen)
+                 fs_flag, fs_mr, fs_nm_pasien, fs_kd_trs_gen,
+                 fb_terpakai)
              VALUES(
                  @fs_kd_dokter, @fs_kd_layanan, 
                  @fd_tgl_jadwal, @fs_jam_jadwal, @fn_no_antrian,
-                 @fs_flag, @fs_mr, @fs_nm_pasien, @fs_kd_trs_gen)
+                 @fs_flag, @fs_mr, @fs_nm_pasien, @fs_kd_trs_gen,
+                 @fb_terpakai)
             """;
 
         var dp = new DynamicParameters();
@@ -48,6 +51,7 @@ public class AntrianMapDal : IAntrianMapDal
         dp.AddParam("@fs_mr", dto.fs_mr, SqlDbType.VarChar);
         dp.AddParam("@fs_nm_pasien", dto.fs_nm_pasien, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_trs_gen", dto.fs_kd_trs_gen, SqlDbType.VarChar);
+        dp.AddParam("@fb_terpakai", dto.fb_terpakai, SqlDbType.Bit);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -70,7 +74,7 @@ public class AntrianMapDal : IAntrianMapDal
         dp.AddParam("@tglJadwal", key.TglJadwal.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
         dp.AddParam("@dokterId", key.DokterId, SqlDbType.VarChar);
         dp.AddParam("@layananId", key.LayananId, SqlDbType.VarChar);
-        dp.AddParam("@jamJadwal", key.JamJadwal.ToString("HH:mm"), SqlDbType.VarChar);
+        dp.AddParam("@jamJadwal", key.JamJadwal.ToString("HH:mm", CultureInfo.InvariantCulture), SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -81,6 +85,7 @@ public class AntrianMapDal : IAntrianMapDal
             SELECT 
             	aa.fs_kd_dokter, aa.fs_kd_layanan, aa.fd_tgl_jadwal, aa.fs_jam_jadwal,
             	aa.fn_no_antrian, aa.fs_flag, aa.fs_mr, aa.fs_nm_pasien, aa.fs_kd_trs_gen,
+                aa.fb_terpakai,
             	ISNULL(bb.fs_nm_peg,'') AS fs_nm_dokter,
             	ISNULL(cc.fs_nm_layanan,'') AS fs_nm_layanan
             FROM 
@@ -95,10 +100,10 @@ public class AntrianMapDal : IAntrianMapDal
             """;
 
         var dp = new DynamicParameters();
-        dp.AddParam("@tglJadwal", antrianMapKey.TglJadwal.ToString("yyyy-MM-dd") , SqlDbType.VarChar);
+        dp.AddParam("@tglJadwal", antrianMapKey.TglJadwal.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) , SqlDbType.VarChar);
         dp.AddParam("@dokterId", antrianMapKey.DokterId , SqlDbType.VarChar);
         dp.AddParam("@layananId", antrianMapKey.LayananId, SqlDbType.VarChar);
-        dp.AddParam("@jamJadwal", antrianMapKey.JamJadwal.ToString("HH:mm") , SqlDbType.VarChar);
+        dp.AddParam("@jamJadwal", antrianMapKey.JamJadwal.ToString("HH:mm", CultureInfo.InvariantCulture) , SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<AntrianMapDto>(sql, dp);
@@ -110,6 +115,7 @@ public class AntrianMapDal : IAntrianMapDal
             SELECT 
             	aa.fs_kd_dokter, aa.fs_kd_layanan, aa.fd_tgl_jadwal, aa.fs_jam_jadwal,
             	aa.fn_no_antrian, aa.fs_flag, aa.fs_mr, aa.fs_nm_pasien, aa.fs_kd_trs_gen,
+                aa.fb_terpakai,
             	ISNULL(bb.fs_nm_peg,'') AS fs_nm_dokter,
             	ISNULL(cc.fs_nm_layanan,'') AS fs_nm_layanan
             FROM 
@@ -123,8 +129,8 @@ public class AntrianMapDal : IAntrianMapDal
         var tgl2 = date.AddMonths(3);
         var dp = new DynamicParameters();
 
-        dp.AddParam("@tgl1", date.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
-        dp.AddParam("@@tgl2", tgl2.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
+        dp.AddParam("@tgl1", date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), SqlDbType.VarChar);
+        dp.AddParam("@@tgl2", tgl2.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<AntrianMapDto>(sql, dp);

@@ -133,7 +133,8 @@ public class RegJalanByBookingHandler
         var antrian = LoadAntrian(booking);
         var pasien = LoadPasien(booking.PasienId);
         if (_regAktifRepo.IsPasienAktif(pasien))
-            throw new KeyNotFoundException($"Pasien aktif sudah aktif registrasi");
+            throw new KeyNotFoundException($"Pasien sudah aktif registrasi");
+        
         if (string.IsNullOrWhiteSpace(pasien.Ktp.Nik) || pasien.Ktp.Nik == "-")
             throw new KeyNotFoundException($"Nik Kosong, Lengkapi data Nik pasien {pasien.PasienId}");
 

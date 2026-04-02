@@ -88,9 +88,7 @@ public record AntrianMapHdrModel : IAntrianMapHdrKey
             .Select(i => AntrianMapModel.AutoSlot(TglJadwal, Dokter.PpaId, Layanan.LayananId, JamJadwal, i));
 
         _listMap.AddRange(slots);
-    }
-
-    
+    }      
 
     public void SetDataPasien(
         int noUrut,
@@ -134,7 +132,7 @@ public record AntrianMapHdrModel : IAntrianMapHdrKey
     public int GetNextNoAntrian()
     {
         var noUrut = _listMap
-            .Where(x => string.IsNullOrEmpty(x.ReffId))
+            .Where(x => string.IsNullOrWhiteSpace(x.ReffId))
             .Select(x => x.NoUrut)
             .DefaultIfEmpty(-1)
             .Min();

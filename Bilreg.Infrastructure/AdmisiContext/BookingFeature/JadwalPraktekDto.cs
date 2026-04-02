@@ -38,8 +38,8 @@ public record JadwalPraktekDto(
         var layanan = new LayananReff(LayananId, LayananName);
         var lynDk = new LayananDkReff(LayananDkId, LayananDkName);
         var groupSpesialis = new GroupSpesialisType(GroupSpesialisId, GroupSpesialisName);
-        var jamMulai = TimeOnly.Parse(JamMulai);
-        var jamSelesai = TimeOnly.Parse(JamSelesai);
+        var jamMulai = TimeOnly.ParseExact(JamMulai, "HH:mm", CultureInfo.InvariantCulture);
+        var jamSelesai = TimeOnly.ParseExact(JamSelesai, "HH:mm", CultureInfo.InvariantCulture);
         return new JadwalPraktekType(JadwalPraktekId, dokter, layanan, 
             lynDk, groupSpesialis, hari, jamMulai, jamSelesai, MaxPasien);
     }
