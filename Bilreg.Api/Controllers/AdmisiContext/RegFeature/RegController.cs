@@ -64,6 +64,15 @@ public class RegController : Controller
         return Ok(new JSendOk("Done"));
     }
 
+    [HttpPost]
+    [Route("darurat")]
+    public async Task<IActionResult> RegRadar(RegDaruratCreateCmd cmd)
+    {
+        var result = await _mediator.Send(cmd);
+        return Ok(new JSendOk(result));
+    }
+    
+    
     [HttpGet]
     [Route("{id}")]
     public async Task<IActionResult> GetData(string id)

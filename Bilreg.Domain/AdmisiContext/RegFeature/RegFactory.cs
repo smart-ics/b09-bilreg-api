@@ -81,7 +81,7 @@ public class RegFactory : IRegFactory
         var kelasRajal = _getKelasRadarService.Execute();
 
         var reg = new RegModel(regId, tglMasuk, regMasukAudit,
-            AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default, JenisRegEnum.RegJalan,
+            AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default, JenisRegEnum.Darurat,
             pasien.ToReff(), TipeJaminanType.Default.ToReff(),
             PolisModel.Default.ToReff(), kelasRajal.ToReff(), CaraMasukDkType.Default,
             RujukanType.Default.ToReff(), PpaType.Default.ToReff(),
