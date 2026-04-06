@@ -154,6 +154,7 @@ public class RegDal : IRegDal
         dp.AddParam("@fs_kd_layanan", dto.fs_kd_layanan, SqlDbType.VarChar); 
         dp.AddParam("@fs_kd_karcis", dto.fs_kd_karcis, SqlDbType.VarChar);
         dp.AddParam("@fs_no_sjp", dto.fs_no_sjp, SqlDbType.VarChar);
+        dp.AddParam("@fs_no_peserta", dto.fs_no_peserta, SqlDbType.VarChar);
 
         dp.AddParam("@fd_tgl_jam_masuk", dto.fd_tgl_jam_masuk, SqlDbType.VarChar);
         dp.AddParam("@fd_tgl_jam_keluar", dto.fd_tgl_jam_keluar, SqlDbType.VarChar);
