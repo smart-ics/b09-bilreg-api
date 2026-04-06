@@ -234,7 +234,7 @@ public class RegJalanByBookingHandler
         }
 
         
-        AddReg(reg);
+        AddReg(reg, booking.NoAntrian);
         return Task.FromResult(response);
     }
 
@@ -375,9 +375,11 @@ public class RegJalanByBookingHandler
         return map;
     }
 
-    private void AddReg(RegModel reg)
+    private void AddReg(RegModel reg, int noAntrian)
     {
-        var payload = new AddRegCmd(reg.RegId);
+        var payload = new AddRegCmd(reg.RegId, "-", reg.Pasien.PasienId,
+            reg.Pasien.PasienName, reg.Layanan.LayananId, reg.Dokter.PpaId,
+            reg.RegDate.ToString("yyyy-MM-dd"), noAntrian);
         _addRegSvc.Execute(payload);
     }
     #endregion
