@@ -127,7 +127,7 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
     {
         var billingList = _bilingRepo.ListData(request)?.ToList() ?? [];
 
-        if (billingList.Count() > 1)
+        if (billingList.Count() > 2)
             throw new ArgumentException("Pasien ini masih memiliki Bill, void bill terlebih dahulu");
         return billingList;
     }
