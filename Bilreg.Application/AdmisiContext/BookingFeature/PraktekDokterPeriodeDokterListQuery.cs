@@ -1,13 +1,14 @@
-﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
+﻿using Ardalis.GuardClauses;
+using Bilreg.Application.AdmisiContext.AntrianFeature;
+using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
+using System.Globalization;
 using System.Linq;
-using Ardalis.GuardClauses;
-using Bilreg.Application.AdmisiContext.PpaFeature;
-using Bilreg.Domain.AdmisiContext.PpaFeature;
 
 namespace Bilreg.Application.AdmisiContext.BookingFeature;
 
@@ -99,8 +100,8 @@ public class PraktekDokterPeriodeDokterListHandler : IRequestHandler<PraktekDokt
                     tgl.ToString("yyyy-MM-dd"),
                     j.Dokter,
                     j.Layanan,
-                    j.JamMulai.ToString("HH:mm"),
-                    j.JamSelesai.ToString("HH:mm"),
+                    j.JamMulai.ToString("HH:mm", CultureInfo.InvariantCulture),
+                    j.JamSelesai.ToString("HH:mm", CultureInfo.InvariantCulture),
                     JumlahPasien: antrianMatch.Sum(x => x.ListEntry.Count()),
                     MaxPasien: j.MaxPasien
                 )

@@ -56,11 +56,7 @@ public class PasienGetHandler : IRequestHandler<PasienGetQuery, PasienGetRespons
         // BUILD
         var pasienId = GetPasienId(request.PasienId);
 
-        var pasien = _pasienRepo.LoadEntity(PasienModel.Key(pasienId))
-            .Match(
-                onSome: x => x,
-                onNone: () => throw new KeyNotFoundException($"Pasien id {request.PasienId} not found")
-            );
+        var pasien = _pasienRepo.LoadEntity(PasienModel.Key(pasienId)).GetValueOrThrow($"Pasien id {request.PasienId} not found");
 
         // RESPONSE
         var response = BuildPasienResponse(pasien);
@@ -81,7 +77,7 @@ public class PasienGetHandler : IRequestHandler<PasienGetQuery, PasienGetRespons
 
     private static PasienGetResponse BuildPasienResponse(PasienModel pasien)
     {
-
+        
         return new PasienGetResponse(
             pasien.PasienId,
             pasien.GetNomorMedrec(),
@@ -94,7 +90,7 @@ public class PasienGetHandler : IRequestHandler<PasienGetQuery, PasienGetRespons
             pasien.NamaIbuKandung,
             pasien.GolDarah.ToString(),
             pasien.ListContact.Where(x => x.JenisContact == JenisContactEnum.Email).First().ContactDetail,
-            pasien.ListContact.Where(x => x.JenisContact == JenisContactEnum.Mobile).First().ContactDetail,
+            pasien.Person.Contact.ContactDetail,
             pasien.IsAktif,
             pasien.Person.Alamat,
             pasien.Kelurahan,

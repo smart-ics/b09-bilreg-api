@@ -54,8 +54,8 @@ public class JadwalPrektekSearchHandler : IRequestHandler<JadwalPraktekSearchQue
                 g.Select(x => new JadwalPraktekSearchHariResponse(
                     JadwalPraktekId: x.JadwalPraktekId,
                     Hari: x.Hari.ToString(),
-                    JamMulai: x.JamMulai.ToString("HH:mm"),
-                    JamSelesai: x.JamSelesai.ToString("HH:mm")
+                    JamMulai: x.JamMulai.ToString("HH:mm", CultureInfo.InvariantCulture),
+                    JamSelesai: x.JamSelesai.ToString("HH:mm", CultureInfo.InvariantCulture)
                 ))
             ));
 

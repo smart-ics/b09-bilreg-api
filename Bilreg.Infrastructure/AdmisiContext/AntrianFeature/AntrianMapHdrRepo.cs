@@ -4,7 +4,6 @@ using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
-using FluentAssertions.Equivalency.Steps;
 using Nuna.Lib.DataTypeExtension;
 using Nuna.Lib.PatternHelper;
 using Nuna.Lib.ValidationHelper;
@@ -27,11 +26,12 @@ public class AntrianMapHdrRepo : IAntrianMapHdrRepo
     }
     public void SaveChanges(AntrianMapHdrModel model)
     {
-        LoadEntity(model)
-            .Match(
-                onSome: _ => _hdrDal.Update(AntrianMapHdrDto.FromModel(model)),
-                onNone: () => _hdrDal.Insert(AntrianMapHdrDto.FromModel(model))
-            );
+        var mapHdr = _hdrDal.GetData(model);
+        if (mapHdr is null)
+            _hdrDal.Insert(AntrianMapHdrDto.FromModel(model));
+        else
+            _hdrDal.Update(AntrianMapHdrDto.FromModel(model));
+        
         var listDtlDto = model.ListMap.Select(x => AntrianMapDto.FromModel(x));
 
         _mapDal.Delete(model);
@@ -40,10 +40,12 @@ public class AntrianMapHdrRepo : IAntrianMapHdrRepo
 
     public MayBe<AntrianMapHdrModel> LoadEntity(IAntrianMapHdrKey key)
     {
-        var hdr = _hdrDal.GetData(key);
-        var listDtl = _mapDal.ListData(key)?.ToList() ?? [];
-        var model = hdr?.ToModel(listDtl);
-        return MayBe.From(model!);
+        var model = LoadByKey(key) ?? LoadByDetil(key);
+
+        if (model is null)
+            return MayBe<AntrianMapHdrModel>.None;
+
+        return MayBe.From(model);
     }
 
     public IEnumerable<AntrianMapHdrView> ListData(ILayananKey lynKey, IPpaKey ppaKey, DateOnly tglBerobat)
@@ -91,6 +93,45 @@ public class AntrianMapHdrRepo : IAntrianMapHdrRepo
         }
 
     }
+
+    #region PRIVATE-HELPER
+    private AntrianMapHdrModel? LoadByKey(IAntrianMapHdrKey key)
+    {
+        var hdr = _hdrDal.GetData(key);
+        if (hdr is null)
+            return null;
+        var listDtl = _mapDal.ListData(key)?.ToList() ?? [];
+        var model = hdr.ToModel(listDtl);
+        return model;
+    }
+
+    private AntrianMapHdrModel? LoadByDetil(IAntrianMapHdrKey key)
+    {
+        var listQueDto = _mapDal.ListData(key) ?? [];
+        if (!listQueDto.Any())
+            return null;
+        
+        var hari = key.TglJadwal.DayOfWeek;
+        var dokter = PpaType.Key(key.DokterId);
+        var listJadwal = _jadwalRepo.ListData(dokter)?.ToList() ?? [];
+        var jadwal = listJadwal
+            .FirstOrDefault(x => x.Hari == hari && x.JamMulai == key.JamJadwal);
+        if (jadwal is null)
+            throw new ArgumentException($"Jadwal dokter {key.DokterId} not found");
+
+        var listDtlModel = listQueDto.Select(x => x.ToModel());
+
+        var queueHdr = AntrianMapHdrModel.Create(
+            jadwal.JadwalPraktekId,
+            jadwal.Dokter,
+            jadwal.Layanan,
+            key.TglJadwal,
+            jadwal.JamMulai,
+            jadwal.JamMulai,
+            listDtlModel);
+        return queueHdr;
+    }
+    #endregion
 }
 
 public record AntrianMapDtlDto(

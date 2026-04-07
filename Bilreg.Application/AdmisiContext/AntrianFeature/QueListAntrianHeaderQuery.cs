@@ -6,6 +6,7 @@ using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.Shared.Helpers;
 using MediatR;
+using System.Globalization;
 
 namespace Bilreg.Application.AdmisiContext.AntrianFeature;
 
@@ -59,7 +60,7 @@ public class QueListAntrianHeaderHandler : IRequestHandler<QueListAntrianHeaderQ
                 q.AntrianId,
                 j.Dokter,
                 j.Layanan,
-                j.JamMulai.ToString("HH:mm")
+                j.JamMulai.ToString("HH:mm", CultureInfo.InvariantCulture)
             ))?.ToList() ?? [];
         return result;
     }

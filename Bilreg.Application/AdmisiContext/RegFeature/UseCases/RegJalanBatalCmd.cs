@@ -1,10 +1,12 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Application.AccountingContext.JurnalFeature;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
+using Bilreg.Application.AdmisiContext.BookingFeature;
 using Bilreg.Application.ChargeContext.TindakanFeature;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Bilreg.Domain.AccountingContext.JurnalFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
+using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
@@ -12,6 +14,7 @@ using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 
@@ -28,6 +31,7 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
     private readonly IPasienTrackerRepo _pasienTrackerRepo;
     private readonly IJurnalRepo _jurnalRepo;
     private readonly IDashboardEmrRemoveRegService _removeRegSvc;
+    private readonly IBookingRepo _bookingRepo;
     public RegJalanBatalHandler(IRegRepo regRepo,
         IRegAktifRepo regAktifRepo,
         IAntrianRepo antrianRepo,
@@ -36,7 +40,8 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
         IAntrianMapHdrRepo antrianMapHdrRepo,
         IPasienTrackerRepo pasienTrackerRepo,
         IJurnalRepo jurnalRepo,
-        IDashboardEmrRemoveRegService removeRegSvc)
+        IDashboardEmrRemoveRegService removeRegSvc,
+        IBookingRepo bookingRepo)
     {
         _regRepo = regRepo;
         _regAktifRepo = regAktifRepo;
@@ -47,6 +52,7 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
         _pasienTrackerRepo = pasienTrackerRepo;
         _jurnalRepo = jurnalRepo;
         _removeRegSvc = removeRegSvc;
+        _bookingRepo = bookingRepo;
     }
 
     public Task Handle(RegJalanBatalCmd request, CancellationToken cancellationToken)
@@ -59,7 +65,17 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
             return Task.CompletedTask;
         if (reg.IsAktif == false)
             throw new KeyNotFoundException($"Register {request.RegId} sudah tidak aktif");
-
+        var book = BookingModel.Default;
+        var periode = new Periode(reg.RegDate.ToDateTime(TimeOnly.MinValue));
+        var listBook = _bookingRepo.ListDataTglBerobat(periode)?.ToList() ?? [];
+        var bookDto = listBook.FirstOrDefault(x => x.Reg.RegId == reg.RegId);
+        if (bookDto is not null)
+        {
+            var bookKey = BookingModel.Key(bookDto.BookingId);
+            book = _bookingRepo.LoadEntity(bookKey).GetValueOrDefault(BookingModel.Default);
+            book.UnRegister();
+        }
+            
         var tindakanList = LoadAndValidateTindakan(request);
         var antrianContext = LoadAntrianContext(reg);
         var queMap = LoadAntrianMap(reg, antrianContext.Que);
@@ -67,7 +83,8 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
 
         using (var trans = TransHelper.NewScope())
         {
-
+            if (book.BookingId != "-")
+                _bookingRepo.SaveChanges(book);
             VoidReg(reg, request.UserId);
             VoidAntrian(antrianContext);
             VoidAntrianMap(queMap, antrianContext.NoUrut);
@@ -127,7 +144,7 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
     {
         var billingList = _bilingRepo.ListData(request)?.ToList() ?? [];
 
-        if (billingList.Count() > 1)
+        if (billingList.Count() > 2)
             throw new ArgumentException("Pasien ini masih memiliki Bill, void bill terlebih dahulu");
         return billingList;
     }

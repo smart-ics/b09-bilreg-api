@@ -6,6 +6,7 @@ using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.Shared.Helpers;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
+using System.Globalization;
 
 namespace Bilreg.Application.AdmisiContext.BookingFeature.UseCases;
 
@@ -47,7 +48,7 @@ public class BookingSearchHandler : IRequestHandler<BookingSearchQuery, IEnumera
 
         var result = listSearch.Select(x => new BookingSearchResponse(
             x.BookingId, x.BookingDate.ToString("yyyy-MM-dd"), x.Reg, x.Layanan, x.Dokter,
-            x.TglBerobat.ToString("yyyy-MM-dd"), x.JamPraktek.ToString("HH:mm"),
+            x.TglBerobat.ToString("yyyy-MM-dd"), x.JamPraktek.ToString("HH:mm", CultureInfo.InvariantCulture),
             x.NoAntrian, x.ExtAppReff));
 
         return Task.FromResult(result);

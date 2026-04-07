@@ -4,6 +4,7 @@ using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
+using System.Globalization;
 
 namespace Bilreg.Application.AdmisiContext.BookingFeature.UseCases;
 
@@ -44,7 +45,7 @@ public class BookingListHandler : IRequestHandler<BookingPeriodeListQuery, IEnum
                 x.Person.PersonName,
                 x.Reg,
                 x.TglBerobat.ToString("yyyy-MM-dd"),
-                x.JamPraktek.ToString("HH:mm"),
+                x.JamPraktek.ToString("HH:mm", CultureInfo.InvariantCulture),
                 x.Layanan,
                 x.Dokter,
                 x.NoAntrian

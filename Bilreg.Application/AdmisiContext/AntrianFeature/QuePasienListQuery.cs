@@ -5,6 +5,7 @@ using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.Shared.Helpers;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
+using System.Globalization;
 
 namespace Bilreg.Application.AdmisiContext.AntrianFeature;
 
@@ -42,8 +43,8 @@ public class QuePasienListHandler : IRequestHandler<QuePasienListQuery, IEnumera
                 j.Dokter,
                 j.Layanan,
                 q.PersonName,
-                q.StartTime.ToString("HH:mm"),
-                q.EndTime.ToString("HH:mm"),
+                q.StartTime.ToString("HH:mm", CultureInfo.InvariantCulture),
+                q.EndTime.ToString("HH:mm", CultureInfo.InvariantCulture),
                 q.ReffId,
                 q.ReffDesc
             ))?.ToList() ?? [];

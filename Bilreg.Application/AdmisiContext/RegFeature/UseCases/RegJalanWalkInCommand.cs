@@ -158,8 +158,9 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         Guard.Against.Null(request.PesertaJaminanId, nameof(request.PesertaJaminanId));
         var pasien = _pasienRepo.LoadEntity(request).GetValueOrThrow("Pasien not found");
         if (pasien.IsAktif == false) throw new KeyNotFoundException($"Pasien {request.PasienId} tidak aktif ");
-        if (_regAktifRepo.IsPasienAktif(pasien))
-            throw new KeyNotFoundException($"Pasien aktif sudah aktif registrasi");
+        if(_regAktifRepo.IsPasienAktif(pasien))
+            throw new KeyNotFoundException($"Pasien sudah aktif registrasi");
+
         if (string.IsNullOrWhiteSpace(pasien.Ktp.Nik) || pasien.Ktp.Nik == "-")
             throw new KeyNotFoundException($"Nik Kosong, Lengkapi data Nik pasien {pasien.PasienId}");
 
@@ -251,7 +252,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             trans.Complete();
             response = new RegJalanCreateResponse(reg.RegId, antEntry.NoUrut);
         }
-        AddReg(reg);
+        AddReg(reg, noAntrian);
         
         return Task.FromResult(response);
         
@@ -310,33 +311,24 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
 
     private AntrianMapHdrModel LoadOrCreateAntrianMap(JadwalPraktekType jadwal, DateOnly tglJadwal)
     {
-        var ppaKey = PpaType.Key(jadwal.Dokter.PpaId);
-        var listAntrianMap = _antrianMapRepo
-            .ListData(jadwal.Layanan, ppaKey, tglJadwal)?
-            .ToList() ?? [];
-        var antrianThis = listAntrianMap
-            .FirstOrDefault(x => x.JamJadwal == jadwal.JamMulai);
-        if (antrianThis is not null)
-        {
-            var antKey = AntrianMapHdrModel.Key(
-                antrianThis.JadwalId,
-                antrianThis.TglJadwal,
-                antrianThis.dokter.PpaId,
-                antrianThis.Layanan.LayananId,
-                antrianThis.JamJadwal);
+        var queKey = AntrianMapHdrModel.Key(jadwal.JadwalPraktekId,
+            tglJadwal, jadwal.Dokter.PpaId,
+            jadwal.Layanan.LayananId, jadwal.JamMulai);
 
-            return _antrianMapRepo.LoadEntity(antKey).Value;
+        var result = _antrianMapRepo.LoadEntity(queKey).GetValueOrDefault(AntrianMapHdrModel.Default);
+        if (result.JadwalId == "-")
+        {
+            result = AntrianMapHdrModel.Create(
+                jadwal.JadwalPraktekId,
+                jadwal.Dokter,
+                jadwal.Layanan,
+                tglJadwal,
+                jadwal.JamMulai,
+                jadwal.JamMulai,
+                []);
+            result.GenerateSlot(jadwal.MaxPasien);
         }
-        var queueHdr = AntrianMapHdrModel.Create(
-            jadwal.JadwalPraktekId,
-            jadwal.Dokter,
-            jadwal.Layanan,
-            tglJadwal,
-            jadwal.JamMulai,
-            jadwal.JamMulai,
-            []);
-        queueHdr.GenerateSlot(jadwal.MaxPasien);
-        return queueHdr;
+        return result;
     }
 
     private TindakanModel GenTindakan(RegModel reg, JaminanType jaminan, 
@@ -407,9 +399,11 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         return map;
     }
 
-    private void AddReg(RegModel reg)
+    private void AddReg(RegModel reg, int noAntrian)
     {
-        var payload = new AddRegCmd(reg.RegId);
+        var payload = new AddRegCmd(reg.RegId, "-", reg.Pasien.PasienId,
+            reg.Pasien.PasienName, reg.Layanan.LayananId, reg.Dokter.PpaId, 
+            reg.RegDate.ToString("yyyy-MM-dd"), noAntrian);
         _addRegSvc.Execute(payload);
     }
     #endregion

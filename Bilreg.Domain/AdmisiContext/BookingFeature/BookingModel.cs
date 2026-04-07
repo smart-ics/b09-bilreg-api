@@ -127,6 +127,11 @@ public class BookingModel : IBookingKey
         Reg = reg.ToReff();
     }
 
+    public void UnRegister()
+    {
+        Reg = new RegReff("-", PasienId, Person.PersonName);
+    }
+
     public void AttachCoverage(CoverageInfoType coverage)
     {
         CoverageInfo = coverage;

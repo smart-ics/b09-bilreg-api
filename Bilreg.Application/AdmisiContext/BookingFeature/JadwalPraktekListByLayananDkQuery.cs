@@ -1,6 +1,7 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using MediatR;
+using System.Globalization;
 
 namespace Bilreg.Application.AdmisiContext.BookingFeature;
 
@@ -48,8 +49,8 @@ public class JadwalPraktekListByLayananDkHandler : IRequestHandler<JadwalPraktek
                  .Select(j => new JadwalPraktekDokterByLynDkHariResponse(
                      j.JadwalPraktekId,
                      j.Hari.ToString(),
-                     j.JamMulai.ToString("HH:mm"),
-                     j.JamSelesai.ToString("HH:mm"),
+                     j.JamMulai.ToString("HH:mm", CultureInfo.InvariantCulture),
+                     j.JamSelesai.ToString("HH:mm", CultureInfo.InvariantCulture),
                      j.MaxPasien
                  ))
             ));

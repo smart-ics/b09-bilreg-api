@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
 using System.Data;
 using System.Data.SqlClient;
+using System.Globalization;
 
 namespace Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
 
@@ -95,7 +96,7 @@ public class AntrianMapHdrDal : IAntrianMapHdrDal
 
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_jadwal", key.JadwalId, SqlDbType.VarChar);
-        dp.AddParam("@fd_tgl_jadwal", key.TglJadwal.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
+        dp.AddParam("@fd_tgl_jadwal", key.TglJadwal.ToDateTime(TimeOnly.MinValue), SqlDbType.DateTime);
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.ReadSingle<AntrianMapHdrDto>(sql, dp);

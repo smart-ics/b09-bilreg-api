@@ -133,7 +133,8 @@ public class RegJalanByBookingHandler
         var antrian = LoadAntrian(booking);
         var pasien = LoadPasien(booking.PasienId);
         if (_regAktifRepo.IsPasienAktif(pasien))
-            throw new KeyNotFoundException($"Pasien aktif sudah aktif registrasi");
+            throw new KeyNotFoundException($"Pasien sudah aktif registrasi");
+        
         if (string.IsNullOrWhiteSpace(pasien.Ktp.Nik) || pasien.Ktp.Nik == "-")
             throw new KeyNotFoundException($"Nik Kosong, Lengkapi data Nik pasien {pasien.PasienId}");
 
@@ -233,7 +234,7 @@ public class RegJalanByBookingHandler
         }
 
         
-        AddReg(reg);
+        AddReg(reg, booking);
         return Task.FromResult(response);
     }
 
@@ -374,9 +375,11 @@ public class RegJalanByBookingHandler
         return map;
     }
 
-    private void AddReg(RegModel reg)
+    private void AddReg(RegModel reg, BookingModel booking)
     {
-        var payload = new AddRegCmd(reg.RegId);
+        var payload = new AddRegCmd(reg.RegId, booking.BookingId, reg.Pasien.PasienId,
+            reg.Pasien.PasienName, reg.Layanan.LayananId, reg.Dokter.PpaId,
+            reg.RegDate.ToString("yyyy-MM-dd"), booking.NoAntrian);
         _addRegSvc.Execute(payload);
     }
     #endregion
