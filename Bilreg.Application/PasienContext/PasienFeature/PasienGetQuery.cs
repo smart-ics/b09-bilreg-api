@@ -56,11 +56,7 @@ public class PasienGetHandler : IRequestHandler<PasienGetQuery, PasienGetRespons
         // BUILD
         var pasienId = GetPasienId(request.PasienId);
 
-        var pasien = _pasienRepo.LoadEntity(PasienModel.Key(pasienId))
-            .Match(
-                onSome: x => x,
-                onNone: () => throw new KeyNotFoundException($"Pasien id {request.PasienId} not found")
-            );
+        var pasien = _pasienRepo.LoadEntity(PasienModel.Key(pasienId)).GetValueOrThrow($"Pasien id {request.PasienId} not found");
 
         // RESPONSE
         var response = BuildPasienResponse(pasien);

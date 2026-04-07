@@ -21,10 +21,11 @@ public class DashboardEmrRemoveRegService : IDashboardEmrRemoveRegService
     {
         if (_opt.BaseApiUrl.Trim().Length == 0)
             return;
-        var endpoint = $"{_opt.BaseApiUrl}/api/Antrian/RemoveRegister";
+        var endpoint = $"{_opt.BaseApiUrl}/api/Dashboard/removeRegister";
         var client = new RestClient(endpoint);
         var request = new RestRequest()
-            .AddParameter("regID", req.RegId, ParameterType.QueryString);
+            .AddJsonBody(req, "application/json");
+            //.AddParameter("regID", req.RegId, ParameterType.QueryString);
 
         var result = await client.ExecutePostAsync(request);
     }

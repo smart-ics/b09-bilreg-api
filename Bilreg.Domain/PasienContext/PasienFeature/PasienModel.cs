@@ -135,7 +135,8 @@ public class PasienModel : IPasienKey
 
     public void UpdateAdminInfo(KelurahanType kelurahan, 
         IdentitasType kartuKeluarga, ContactType email, ContactType noHp,
-        PasienKeluargaType pasienKeluarga, string namaIbuKandung)
+        PasienKeluargaType pasienKeluarga, string namaIbuKandung,
+        PersonInfoType person)
     {
         kelurahan ??= KelurahanType.Default;
         kartuKeluarga ??= IdentitasType.Default;
@@ -143,12 +144,17 @@ public class PasienModel : IPasienKey
         noHp ??= ContactType.Default;
         pasienKeluarga ??= PasienKeluargaType.Default;
         namaIbuKandung ??= "-";
+        var ktp = Ktp;
+        var amalatKtp = ktp.Alamat with { Kota = person.Alamat.Kota };
+        ktp = ktp with { Alamat = amalatKtp };
 
+
+        Person = person;
         Kelurahan = kelurahan;
         KartuKeluarga = kartuKeluarga;
         PasienKeluarga = pasienKeluarga;
         NamaIbuKandung = namaIbuKandung;
-
+        Ktp = ktp;
         if (email is not null)
         {
             _listContact.RemoveAll(x => x.JenisContact == JenisContactEnum.Email);

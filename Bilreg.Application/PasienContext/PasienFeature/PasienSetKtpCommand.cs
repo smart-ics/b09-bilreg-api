@@ -10,7 +10,7 @@ namespace Bilreg.Application.PasienContext.PasienFeature;
 public record PasienSetKtpCommand(string PasienId, string PasienName, string Nik, 
     string AlamatKtp, string GolDarah,
     string Gender, string TempatLahir, string TglLahir, string Agama, string StatusKawin,
-    string KotaKtp, string KodePosKtp, string Rt, string Rw, string KelurahanKtpId,
+    string Rt, string Rw, string KelurahanKtpId,
     bool IsForceUpdate) : IRequest<PasienSetKtpResponse>, IPasienKey;
 
 public record PasienSetKtpResponse(
@@ -50,12 +50,9 @@ public class PasienSetKtpHandler : IRequestHandler<PasienSetKtpCommand, PasienSe
         Guard.Against.InvalidDateFormat(request.TglLahir, nameof(request.TglLahir));
         Guard.Against.NullOrWhiteSpace(request.Gender);
         Guard.Against.NullOrWhiteSpace(request.StatusKawin);
-        
+
         var kelurahan = _kelurahanRepo.LoadEntity(KelurahanType.Key(request.KelurahanKtpId))
-            .Match(
-                onSome: x => x,
-                onNone: () => throw new ArgumentException("Invalid Kelurahan KTP"));
-        
+            .GetValueOrThrow($"Invalid Kelurahan KTP {request.KelurahanKtpId}");
 
         //  BUILD
         if (request.IsForceUpdate)
@@ -69,8 +66,7 @@ public class PasienSetKtpHandler : IRequestHandler<PasienSetKtpCommand, PasienSe
             request.GolDarah, request.TempatLahir);
         var isDifferent = oriPerson != ktpPerson;
 
-        var alamatKtp = new AlamatType([request.AlamatKtp], 
-            request.KotaKtp, request.KodePosKtp);
+        var alamatKtp = new AlamatType([request.AlamatKtp], "-", "-");
         var ktp = new KtpType(request.Nik, alamatKtp, request.Rt, request.Rw, kelurahan);
         pasien.SetDataKtp(ktp);
 

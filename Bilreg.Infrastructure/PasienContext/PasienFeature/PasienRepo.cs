@@ -5,6 +5,7 @@ using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.PasienContext.StatusSosialFeature;
 using Bilreg.Domain.Shared.Param;
 using Castle.Components.DictionaryAdapter.Xml;
+using Microsoft.VisualBasic;
 using Nuna.Lib.PatternHelper;
 using Nuna.Lib.TransactionHelper;
 using Nuna.Lib.ValidationHelper;
@@ -120,7 +121,7 @@ public class PasienRepo : IPasienRepo
             ? KelurahanType.Default
             : new KelurahanType(dto.fs_kd_kelurahan, dto.fs_nm_kelurahan, kecamatanReff, kabupatenReff, propinsi );
 
-
+        var kartuKeluarga = new IdentitasType("KK", dto.fs_no_kk ?? "-");
         var contactKeluarga = new ContactType(JenisContactEnum.Phone, dto.fs_telp_keluarga ?? "-");
         var almKeluarga = new AlamatType([dto.fs_alm1_keluarga, dto.fs_alm2_keluarga], dto.fs_kota_keluarga, dto.fs_kd_pos_keluarga);
         var pasienKeluarga = new PasienKeluargaType(dto.fs_nm_keluarga, dto.fs_hub_keluarga, contactKeluarga, almKeluarga);
@@ -152,7 +153,7 @@ public class PasienRepo : IPasienRepo
         var pasien = new PasienModel(key.PasienId,
             person, dto.fs_nm_alias, dto.fs_temp_lahir, new GolDarahType(dto.fs_gol_darah),
             dto.fs_nm_ibu_kandung, 
-            ktp, kelurahan, IdentitasType.Default, 
+            ktp, kelurahan, kartuKeluarga, 
             listContact, pasienKeluarga, 
             agama, suku, statusKawin, 
             pendidikan, pekerjaan, 
