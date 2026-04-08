@@ -27,7 +27,7 @@ public class DashboardEmrRemoveRegService : IDashboardEmrRemoveRegService
             .AddJsonBody(req, "application/json");
             //.AddParameter("regID", req.RegId, ParameterType.QueryString);
 
-        var result = await client.ExecutePostAsync(request);
+        var result = await client.ExecutePatchAsync(request);
     }
 
     
