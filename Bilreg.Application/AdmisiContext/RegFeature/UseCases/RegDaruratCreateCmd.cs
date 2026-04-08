@@ -49,12 +49,10 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
     private readonly IPpaRepo _ppaRepo;
     private readonly IKarcisRepo _karcisRepo;
     private readonly IPolisRepo _polisRepo;
-
     //  reg
     private readonly IRegFactory _regFactory;
     private readonly IRegRepo _regRepo;
     private readonly IRegAktifRepo _regAktifRepo;
-
     //  tindakan
     private readonly IJaminanRepo _jaminanRepo;
     private readonly INilaiTarifRepo _nilaiTarifRepo;
@@ -87,7 +85,6 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
         ITarifRepo tarifRepo,
 
         ITrsBillingRepo trsBillingRepo,
-
         IMapJaminanJkRepo mapJaminanJkRepo,
         IJurnalRepo jurnalRepo)
     {
@@ -117,7 +114,7 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
 
     public Task<RegDaruratCreateResponse> Handle(RegDaruratCreateCmd request, CancellationToken cancellationToken)
     {
-        #region GUARD
+        #region GUARD-LOAD
         Guard.Against.Null(request.PesertaJaminanId, nameof(request.PesertaJaminanId));
         var pasien = _pasienRepo.LoadEntity(request).GetValueOrThrow("Pasien not found");
         if (pasien.IsAktif == false) throw new KeyNotFoundException($"Pasien {request.PasienId} tidak aktif ");
@@ -171,7 +168,6 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
                 layanan, mapJaminanJk);
         #endregion
 
-
         #region WRITE
         using (var trans = TransHelper.NewScope())
         {
@@ -192,6 +188,7 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
         }
 
         #endregion
+        
         var response = new RegDaruratCreateResponse(reg.RegId);
         return Task.FromResult(response);
     }
@@ -229,8 +226,6 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
         var tarif = _tarifRepo.LoadEntity(key).GetValueOrDefault(TarifType.Default);
         return tarif;
     }
-
-
     private TindakanModel GenTindakan(RegModel reg, JaminanType jaminan,
         KarcisType karcis, string userId, PpaType dokter)
     {
