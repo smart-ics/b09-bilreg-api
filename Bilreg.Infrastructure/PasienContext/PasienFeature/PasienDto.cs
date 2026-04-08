@@ -69,6 +69,7 @@ public record PasienDto(
             ?.ContactDetail ?? "-";
         var noTelp = model.ListContact
             .FirstOrDefault(x => x.JenisContact == JenisContactEnum.Phone)
+            ?.ContactDetail ?? model.ListContact.FirstOrDefault(x => x.JenisContact == JenisContactEnum.Mobile)
             ?.ContactDetail ?? "-";
         var noHp = model.ListContact
             .FirstOrDefault(x => x.JenisContact == JenisContactEnum.Mobile)
