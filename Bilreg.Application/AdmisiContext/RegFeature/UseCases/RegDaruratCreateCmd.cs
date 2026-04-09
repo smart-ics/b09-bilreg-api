@@ -133,13 +133,11 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
         #endregion
 
         #region BUILD
-
         //      1-register
         var regMasukAudit = new AuditInfoType(request.UserId, DateTime.Now);
         var reg = _regFactory.CreateRegDarurat(pasien, regMasukAudit,
             tipeJaminan, polis, caraMasuk, dokter, layanan, karcis, request.PesertaJaminanId);
         var regAktif = RegAktifModel.CreateFromReg(reg);
-
         //      2-trs-billing-karcis
         var jaminan = LoadJaminan(tipeJaminan.Jaminan);
         var listKompKarcis = karcis.ListKomponen
@@ -171,22 +169,12 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
         #region WRITE
         using (var trans = TransHelper.NewScope())
         {
-
-            _regRepo.SaveChanges(reg);
-            _regAktifRepo.SaveChanges(regAktif);
-            _trsBillingRepo.SaveChanges(trsBillingReg);
-            if (tindakan.TindakanId != "-")
-                _tindakanRepo.SaveChanges(tindakan);
-            if (trsBilling.TrsBillingId != "-")
-                _trsBillingRepo.SaveChanges(trsBilling);
-            _jurnalRepo.SaveChanges(jurnalReg);
-            if (jurnalTindakan.JurnalId != "-")
-                _jurnalRepo.SaveChanges(jurnalTindakan);
-            
+            SaveReg(reg, regAktif);
+            SaveTindakan(tindakan);
+            SaveTrsBilling(trsBilling, trsBillingReg);
+            SaveJurnal(jurnalReg, jurnalTindakan);
             trans.Complete();
-            
         }
-
         #endregion
         
         var response = new RegDaruratCreateResponse(reg.RegId);
@@ -194,6 +182,7 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
     }
 
     #region PRIVATE-HELPER
+    #region LOAD-RESOLVE
     private PolisModel ResolvePolis(PasienModel pasien, TipeJaminanType tipeJaminan) =>
         tipeJaminan.CaraBayarDk.CaraBayarDkId == BAYAR_SENDIRI
             ? PolisModel.Default
@@ -255,6 +244,32 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
         var trsBilling = TrsBillingType.CreateFromTindakan(tdk, reg, tarif, jaminan, listKomp);
         return trsBilling;
     }
+    #endregion
 
+    #region SAVE
+    private void SaveReg(RegModel reg, RegAktifModel regAktif)
+    {
+        _regRepo.SaveChanges(reg);
+        _regAktifRepo.SaveChanges(regAktif);
+    }
+    private void SaveTindakan(TindakanModel tindakan)
+    {
+        if (tindakan.TindakanId != "-")
+            _tindakanRepo.SaveChanges(tindakan);
+    }
+    private void SaveTrsBilling(TrsBillingType trsBillingTdk, TrsBillingType trsBillingReg)
+    {
+        _trsBillingRepo.SaveChanges(trsBillingReg);
+        if (trsBillingTdk.TrsBillingId != "-")
+            _trsBillingRepo.SaveChanges(trsBillingTdk);
+
+    }
+    private void SaveJurnal(JurnalType jurnalReg, JurnalType jurnalTindakan)
+    {
+        _jurnalRepo.SaveChanges(jurnalReg);
+        if (jurnalTindakan.JurnalId != "-")
+            _jurnalRepo.SaveChanges(jurnalTindakan);
+    }
+    #endregion
     #endregion
 }
