@@ -9,10 +9,12 @@ public record BookingDeleteCmd(string BookingId) : IRequest, IBookingKey;
 public class BookingDeleteHandler : IRequestHandler<BookingDeleteCmd>
 {
     private readonly IDeleteBookingWorkflow _deleteBookingWorkflow;
-
-    public BookingDeleteHandler(IDeleteBookingWorkflow deleteBookingWorkflow)
+    private readonly IDashboardEmrRemoveBookingService _dashboardEmrRemoveSvc;
+    public BookingDeleteHandler(IDeleteBookingWorkflow deleteBookingWorkflow, 
+        IDashboardEmrRemoveBookingService dashboardEmrRemoveSvc)
     {
         _deleteBookingWorkflow = deleteBookingWorkflow;
+        _dashboardEmrRemoveSvc = dashboardEmrRemoveSvc;
     }
 
     public Task Handle(BookingDeleteCmd request, CancellationToken cancellationToken)
@@ -21,6 +23,9 @@ public class BookingDeleteHandler : IRequestHandler<BookingDeleteCmd>
         Guard.Against.NullOrWhiteSpace(request.BookingId);
         _deleteBookingWorkflow.Execute(request);
         
+        var removeBooking = new RemoveBookingCmd(request.BookingId);
+        _dashboardEmrRemoveSvc.Execute(removeBooking);
+
         return Task.CompletedTask;
     }
 
