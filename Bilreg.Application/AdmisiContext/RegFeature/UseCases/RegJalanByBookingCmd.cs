@@ -31,6 +31,7 @@ using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
 using Ardalis.GuardClauses;
+using System.Globalization;
 
 namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 
@@ -132,7 +133,7 @@ public class RegJalanByBookingHandler
         var booking = LoadBooking(request.BookingId);
         var antrian = LoadAntrian(booking);
         var pasien = LoadPasien(booking.PasienId);
-        if (_regAktifRepo.IsPasienAktif(pasien))
+        if (IsPasienAktifReg(pasien))
             throw new KeyNotFoundException($"Pasien sudah aktif registrasi");
         
         if (string.IsNullOrWhiteSpace(pasien.Ktp.Nik) || pasien.Ktp.Nik == "-")
@@ -253,7 +254,11 @@ public class RegJalanByBookingHandler
     private PasienModel LoadPasien(string id) =>
         _pasienRepo.LoadEntity(PasienModel.Key(id))
             .GetValueOrThrow("Pasien tidak ditemukan");
-
+    private bool IsPasienAktifReg(IPasienKey pasien)
+    {
+        return _regAktifRepo.IsPasienAktif(pasien)
+            || _regRepo.IsPasienAktifReg(pasien);
+    }
     private PpaType LoadDokter(string id) =>
         _dokterRepo.LoadEntity(PpaType.Key(id))
             .GetValueOrThrow("Dokter tidak valid");
@@ -379,7 +384,8 @@ public class RegJalanByBookingHandler
     {
         var payload = new AddRegCmd(reg.RegId, booking.BookingId, reg.Pasien.PasienId,
             reg.Pasien.PasienName, reg.Layanan.LayananId, reg.Dokter.PpaId,
-            reg.RegDate.ToString("yyyy-MM-dd"), booking.NoAntrian);
+            reg.RegDate.ToString("yyyy-MM-dd"), booking.JamPraktek.ToString("HH:mm", CultureInfo.InvariantCulture),
+            booking.NoAntrian);
         _addRegSvc.Execute(payload);
     }
     #endregion

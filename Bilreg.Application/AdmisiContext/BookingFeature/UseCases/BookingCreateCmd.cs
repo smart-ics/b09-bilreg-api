@@ -176,7 +176,7 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         var pasienId = px.PasienId == "-" ? "-" : px.PasienId;
         var payload = new AddBookCmd(book.BookingId, pasienId, book.Person.PersonName,
             book.Layanan.LayananId, book.Dokter.PpaId, book.TglBerobat.ToString("yyyy-MM-dd"),
-            book.NoAntrian);
+            book.JamPraktek.ToString("HH:mm", CultureInfo.InvariantCulture), book.NoAntrian);
         _addBookingSvc.Execute(payload);
     }
 

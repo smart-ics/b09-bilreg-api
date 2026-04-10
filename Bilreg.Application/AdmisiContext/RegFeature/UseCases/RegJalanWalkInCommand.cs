@@ -1,4 +1,5 @@
-﻿using Bilreg.Application.AccountingContext.JurnalFeature;
+﻿using Ardalis.GuardClauses;
+using Bilreg.Application.AccountingContext.JurnalFeature;
 using Bilreg.Application.AccountingContext.JurnalFeature.JkAgg;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.BookingFeature;
@@ -12,9 +13,9 @@ using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.ChargeContext.TindakanFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
+using Bilreg.Application.Shared.Helpers;
 using Bilreg.Domain.AccountingContext.JurnalFeature;
 using Bilreg.Domain.AccountingContext.UnitFeature;
-using Bilreg.Application.Shared.Helpers;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
@@ -30,7 +31,7 @@ using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
-using Ardalis.GuardClauses;
+using System.Globalization;
 
 namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 
@@ -158,7 +159,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         Guard.Against.Null(request.PesertaJaminanId, nameof(request.PesertaJaminanId));
         var pasien = _pasienRepo.LoadEntity(request).GetValueOrThrow("Pasien not found");
         if (pasien.IsAktif == false) throw new KeyNotFoundException($"Pasien {request.PasienId} tidak aktif ");
-        if(_regAktifRepo.IsPasienAktif(pasien))
+        if(IsPasienAktifReg(pasien))
             throw new KeyNotFoundException($"Pasien sudah aktif registrasi");
 
         if (string.IsNullOrWhiteSpace(pasien.Ktp.Nik) || pasien.Ktp.Nik == "-")
@@ -252,13 +253,18 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             trans.Complete();
             response = new RegJalanCreateResponse(reg.RegId, antEntry.NoUrut);
         }
-        AddReg(reg, noAntrian);
+        AddReg(reg, noAntrian, jadwal);
         
         return Task.FromResult(response);
         
     }
 
     #region PRIVATE-HELPERS
+    private bool IsPasienAktifReg(IPasienKey pasien)
+    {
+        return _regAktifRepo.IsPasienAktif(pasien)
+            || _regRepo.IsPasienAktifReg(pasien);
+    }
     private PolisModel ResolvePolis(PasienModel pasien, TipeJaminanType tipeJaminan) =>
         tipeJaminan.CaraBayarDk.CaraBayarDkId == BAYAR_SENDIRI
             ? PolisModel.Default
@@ -278,14 +284,14 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         return listJadwalHari.Count switch
         {
             1 => listJadwalHari.First(),
-            > 1 => listJadwalHari.FirstOrDefault(x => x.JamMulai == TimeOnly.Parse(jamPraktek))
+            > 1 => listJadwalHari.FirstOrDefault(x => x.JamMulai == TimeOnly.ParseExact(jamPraktek, "HH:mm", CultureInfo.InvariantCulture))
                 ?? throw new ArgumentException($"Dokter tidak praktek pada jam {jamPraktek}"),
             _ => JadwalPraktekType.Default with
             {
                 Dokter = dokter.ToReff(),
                 Hari = tgl.DayOfWeek,
-                JamMulai = TimeOnly.Parse("00:00:00"),
-                JamSelesai = TimeOnly.Parse("23:59:59")
+                JamMulai = TimeOnly.ParseExact("00:00:00", "HH:mm:ss", CultureInfo.InvariantCulture),
+                JamSelesai = TimeOnly.ParseExact("23:59:59", "HH:mm:ss", CultureInfo.InvariantCulture)
             }
         };
     }
@@ -399,11 +405,12 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         return map;
     }
 
-    private void AddReg(RegModel reg, int noAntrian)
+    private void AddReg(RegModel reg, int noAntrian, JadwalPraktekType jadwal)
     {
         var payload = new AddRegCmd(reg.RegId, "-", reg.Pasien.PasienId,
             reg.Pasien.PasienName, reg.Layanan.LayananId, reg.Dokter.PpaId, 
-            reg.RegDate.ToString("yyyy-MM-dd"), noAntrian);
+            reg.RegDate.ToString("yyyy-MM-dd"),
+            jadwal.JamMulai.ToString("HH:mm", CultureInfo.InvariantCulture), noAntrian);
         _addRegSvc.Execute(payload);
     }
     #endregion

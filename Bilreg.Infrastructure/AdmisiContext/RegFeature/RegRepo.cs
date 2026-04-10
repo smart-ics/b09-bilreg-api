@@ -96,4 +96,10 @@ public class RegRepo : IRegRepo
             new PpaReff(x.fs_kd_medis, x.fs_nm_medis)));
         return listView;
     }
+
+    public bool IsPasienAktifReg(IPasienKey pasien)
+    {
+        var listDto = _regDal.ListData(pasien)?.ToList() ?? [];
+        return listDto.Any(x => x.fd_tgl_keluar == "3000-01-01");
+    }
 }

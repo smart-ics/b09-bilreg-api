@@ -40,6 +40,7 @@ public static class DomainService
             .AddScoped<IDashboardEmrRemoveRegService,  DashboardEmrRemoveRegService>()
             .AddScoped<IBridgeOperasiSaveService, BridgeOperasiSaveService>()
             .AddScoped<IDashboardEmrRemoveBookingService, DashboardEmrRemoveBookingService>()
+            .AddScoped<IGetKelasRadarService, GetKelasRadarService>()
             ;
 
         return services;

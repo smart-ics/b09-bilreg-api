@@ -60,19 +60,26 @@ public class KarcisRepo : IKarcisRepo
     public IEnumerable<KarcisView> ListData(IInstalasiDkKey filter)
     {
         var listDto = _karcisDal.ListData(filter)?.ToList() ?? [];
-        var result = listDto.Select(x => new KarcisView(
-            x.fs_kd_karcis,
-            x.fs_nm_karcis,
-            new InstalasiDkType(x.fs_kd_instalasi_dk, x.fs_nm_instalasi_dk),
-            new TarifReff(x.fs_kd_tarif, x.fs_nm_tarif),
-            x.fn_karcis));
+        var result = listDto
+            .Where(x => x != null && x.fb_aktif == true)
+            .Select(x => new KarcisView(
+                x.fs_kd_karcis,
+                x.fs_nm_karcis,
+                new InstalasiDkType(x.fs_kd_instalasi_dk, x.fs_nm_instalasi_dk),
+                new TarifReff(x.fs_kd_tarif, x.fs_nm_tarif),
+                x.fn_karcis))
+            .ToList();
+        
         return result;
     }
 
     public IEnumerable<KarcisLayananView> ListData(ILayananKey lynKey)
     {
-        var lisDto = _karcisDal.ListData(lynKey)?.ToList() ?? [];
-        var result = lisDto.Select(x => x.ToView());
+        var listDto = _karcisDal.ListData(lynKey)?.ToList() ?? [];
+        var result = listDto
+            .Where(x => x != null && x.fb_aktif == true)
+            .Select(x => x.ToView())
+            .ToList();
         return result;
     }
 }
