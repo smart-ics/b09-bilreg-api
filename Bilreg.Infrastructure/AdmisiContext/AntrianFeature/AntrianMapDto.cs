@@ -41,13 +41,13 @@ public record AntrianMapDto(
     {
         var pasien = new PasienReff(fs_mr, fs_nm_pasien, new DateOnly(3000,1,1), "-");
         var reg = new RegReff("-", fs_mr, fs_nm_pasien);
-        var tglJamJadwal = $"{fd_tgl_jadwal} {fs_jam_jadwal}:00";
-        var tglJam = tglJamJadwal.ToDate("yyyy-MM-dd HH:mm:ss");
+        var tgljadwal = DateOnly.ParseExact(fd_tgl_jadwal, "yyyy-MM-dd", CultureInfo.InvariantCulture);
+        var jamJadwal = TimeOnly.ParseExact(fs_jam_jadwal, "HH:mm", CultureInfo.InvariantCulture);
         var result = new AntrianMapModel(
-            DateOnly.FromDateTime(tglJam),
+            tgljadwal,
             fs_kd_dokter,
             fs_kd_layanan,
-            TimeOnly.FromDateTime(tglJam),
+            jamJadwal,
             (int)fn_no_antrian,
             pasien,
             reg,

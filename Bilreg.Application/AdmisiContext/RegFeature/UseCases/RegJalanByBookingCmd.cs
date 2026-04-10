@@ -132,7 +132,7 @@ public class RegJalanByBookingHandler
         var booking = LoadBooking(request.BookingId);
         var antrian = LoadAntrian(booking);
         var pasien = LoadPasien(booking.PasienId);
-        if (_regAktifRepo.IsPasienAktif(pasien))
+        if (IsPasienAktifReg(pasien))
             throw new KeyNotFoundException($"Pasien sudah aktif registrasi");
         
         if (string.IsNullOrWhiteSpace(pasien.Ktp.Nik) || pasien.Ktp.Nik == "-")
@@ -253,7 +253,11 @@ public class RegJalanByBookingHandler
     private PasienModel LoadPasien(string id) =>
         _pasienRepo.LoadEntity(PasienModel.Key(id))
             .GetValueOrThrow("Pasien tidak ditemukan");
-
+    private bool IsPasienAktifReg(IPasienKey pasien)
+    {
+        return _regAktifRepo.IsPasienAktif(pasien)
+            || _regRepo.IsPasienAktifReg(pasien);
+    }
     private PpaType LoadDokter(string id) =>
         _dokterRepo.LoadEntity(PpaType.Key(id))
             .GetValueOrThrow("Dokter tidak valid");

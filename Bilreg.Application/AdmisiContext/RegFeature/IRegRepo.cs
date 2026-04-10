@@ -13,6 +13,7 @@ public interface IRegRepo :
     ILoadEntity<RegModel, IRegKey>,
     IListData<RegView, Periode, ILayananKey>
 {
+    bool IsPasienAktifReg(IPasienKey pasien);
 }
 
 public record RegView(
