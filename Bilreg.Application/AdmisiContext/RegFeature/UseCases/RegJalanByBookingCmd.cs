@@ -31,6 +31,7 @@ using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
 using Ardalis.GuardClauses;
+using System.Globalization;
 
 namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 
@@ -383,7 +384,8 @@ public class RegJalanByBookingHandler
     {
         var payload = new AddRegCmd(reg.RegId, booking.BookingId, reg.Pasien.PasienId,
             reg.Pasien.PasienName, reg.Layanan.LayananId, reg.Dokter.PpaId,
-            reg.RegDate.ToString("yyyy-MM-dd"), booking.NoAntrian);
+            reg.RegDate.ToString("yyyy-MM-dd"), booking.JamPraktek.ToString("HH:mm", CultureInfo.InvariantCulture),
+            booking.NoAntrian);
         _addRegSvc.Execute(payload);
     }
     #endregion

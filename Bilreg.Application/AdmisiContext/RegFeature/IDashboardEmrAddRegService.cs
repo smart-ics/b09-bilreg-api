@@ -11,9 +11,6 @@ public interface IDashboardEMrAddRegService : INunaServiceVoid<AddRegCmd>
 
 public record AddRegCmd
 (
-
-
-
     string regId,
     string bookingId,
     string pasienId,
@@ -21,5 +18,6 @@ public record AddRegCmd
     string layananId,
     string dokterId,
     string tglBerobat,
+    string jamJadwal,
     int noAntrian
 );

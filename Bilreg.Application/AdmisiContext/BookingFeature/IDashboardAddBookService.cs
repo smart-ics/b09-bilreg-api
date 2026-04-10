@@ -7,4 +7,4 @@ public interface IDashboardAddBookService : INunaServiceVoid<AddBookCmd>
 }
 
 public record AddBookCmd(string BookingId, string PasienId, string PasienName,
-    string LayananId, string DokterId, string TglBerobat, int NoAntrian);
+    string LayananId, string DokterId, string TglBerobat, string jamJadwal, int NoAntrian);

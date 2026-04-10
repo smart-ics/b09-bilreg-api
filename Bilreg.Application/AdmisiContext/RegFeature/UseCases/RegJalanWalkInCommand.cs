@@ -253,7 +253,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             trans.Complete();
             response = new RegJalanCreateResponse(reg.RegId, antEntry.NoUrut);
         }
-        AddReg(reg, noAntrian);
+        AddReg(reg, noAntrian, jadwal);
         
         return Task.FromResult(response);
         
@@ -405,11 +405,12 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         return map;
     }
 
-    private void AddReg(RegModel reg, int noAntrian)
+    private void AddReg(RegModel reg, int noAntrian, JadwalPraktekType jadwal)
     {
         var payload = new AddRegCmd(reg.RegId, "-", reg.Pasien.PasienId,
             reg.Pasien.PasienName, reg.Layanan.LayananId, reg.Dokter.PpaId, 
-            reg.RegDate.ToString("yyyy-MM-dd"), noAntrian);
+            reg.RegDate.ToString("yyyy-MM-dd"),
+            jadwal.JamMulai.ToString("HH:mm", CultureInfo.InvariantCulture), noAntrian);
         _addRegSvc.Execute(payload);
     }
     #endregion
