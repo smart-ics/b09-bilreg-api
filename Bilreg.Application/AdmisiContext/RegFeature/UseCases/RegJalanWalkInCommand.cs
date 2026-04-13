@@ -407,10 +407,12 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
 
     private void AddReg(RegModel reg, int noAntrian, JadwalPraktekType jadwal)
     {
-        var payload = new AddRegCmd(reg.RegId, "-", reg.Pasien.PasienId,
-            reg.Pasien.PasienName, reg.Layanan.LayananId, reg.Dokter.PpaId, 
-            reg.RegDate.ToString("yyyy-MM-dd"),
-            jadwal.JamMulai.ToString("HH:mm", CultureInfo.InvariantCulture), noAntrian);
+        var payload = new AddRegCmd(
+            reg.RegId, "-", reg.Pasien.PasienId,
+            reg.Pasien.PasienName, reg.Layanan.LayananId, 
+            reg.Dokter.PpaId, reg.RegDate.ToString("yyyy-MM-dd"),
+            jadwal.JamMulai.ToString("HH:mm", CultureInfo.InvariantCulture), 
+            noAntrian);
         _addRegSvc.Execute(payload);
     }
     #endregion

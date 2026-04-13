@@ -382,9 +382,11 @@ public class RegJalanByBookingHandler
 
     private void AddReg(RegModel reg, BookingModel booking)
     {
-        var payload = new AddRegCmd(reg.RegId, booking.BookingId, reg.Pasien.PasienId,
-            reg.Pasien.PasienName, reg.Layanan.LayananId, reg.Dokter.PpaId,
-            reg.RegDate.ToString("yyyy-MM-dd"), booking.JamPraktek.ToString("HH:mm", CultureInfo.InvariantCulture),
+        var payload = new AddRegCmd(
+            reg.RegId, booking.BookingId, reg.Pasien.PasienId,
+            reg.Pasien.PasienName, reg.Layanan.LayananId, 
+            reg.Dokter.PpaId, reg.RegDate.ToString("yyyy-MM-dd"), 
+            booking.JamPraktek.ToString("HH:mm", CultureInfo.InvariantCulture),
             booking.NoAntrian);
         _addRegSvc.Execute(payload);
     }
