@@ -10,9 +10,9 @@ using System.Globalization;
 namespace Bilreg.Application.AdmisiContext.BookingFeature;
 
 public record JadwalPraktekSaveCmd(string JadwalPraktekId, string DokterId,
-    string LayananId, int Hari,
+    string LayananId, string RuangId, int Hari,
     string JamMulai, string JamSelesai, int MaxPasien) :
-    IRequest<JadwalPraktekSaveResponse>, IJadwalPraktekKey, ILayananKey;
+    IRequest<JadwalPraktekSaveResponse>, IJadwalPraktekKey, ILayananKey, IRuangKey;
 
 public record JadwalPraktekSaveResponse(string JadwalPraktekId);
 
@@ -22,27 +22,33 @@ public class JadwalPraktekSaveHandler : IRequestHandler<JadwalPraktekSaveCmd, Ja
     private readonly IJadwalPraktekFactory _jadwalNunaFactory;
     private readonly IPpaRepo _petugasRepo;
     private readonly ILayananRepo _layananRepo;
+    private readonly IRuangRepo _ruangRepo;
     public JadwalPraktekSaveHandler(IJadwalPraktekRepo jadwalRepo,
         IJadwalPraktekFactory jadwalNunaFactory,
         IPpaRepo petugasRepo,
-        ILayananRepo layananRepo)
+        ILayananRepo layananRepo,
+        IRuangRepo ruangRepo)
     {
         _jadwalRepo = jadwalRepo;
         _jadwalNunaFactory = jadwalNunaFactory;
         _petugasRepo = petugasRepo;
         _layananRepo = layananRepo;
+        _ruangRepo = ruangRepo;
     }
 
     public Task<JadwalPraktekSaveResponse> Handle(JadwalPraktekSaveCmd request, CancellationToken cancellationToken)
     {
         //  GUARD
         Guard.Against.NegativeOrZero(request.MaxPasien, nameof(request.MaxPasien));
+        Guard.Against.NullOrWhiteSpace(request.RuangId, nameof(request.RuangId));
         var dokterKey = PpaType.Key(request.DokterId);
         var dokter = _petugasRepo.LoadEntity(dokterKey)
             .GetValueOrThrow("Dokter tidak ditemukan");
         var layananKey = LayananType.Key(request.LayananId);
         var layanan = _layananRepo.LoadEntity(layananKey)
             .GetValueOrThrow("Layanan tidak ditemukan");
+        var ruang = _ruangRepo.LoadEntity(request).
+            GetValueOrThrow($"Ruang {request.RuangId} invalid");
         if (!Enum.IsDefined(typeof(DayOfWeek), request.Hari))
             throw new Exception("Hari tidak valid");
         
@@ -57,9 +63,9 @@ public class JadwalPraktekSaveHandler : IRequestHandler<JadwalPraktekSaveCmd, Ja
         JadwalPraktekType jadwal;
 
         if (jadwalDb.JadwalPraktekId == "-")
-            jadwal = CreateNewJadwal(request, dokter, layanan, jamMulai, jamSelesai);
+            jadwal = CreateNewJadwal(request, dokter, layanan, ruang, jamMulai, jamSelesai);
         else
-            jadwal = UpdateJadwal(request, dokter, layanan, jadwalDb, jamMulai, jamSelesai);
+            jadwal = UpdateJadwal(request, dokter, layanan, ruang, jadwalDb, jamMulai, jamSelesai);
 
         ValidateOverlap(jadwal, listJadwal);
 
@@ -92,12 +98,13 @@ public class JadwalPraktekSaveHandler : IRequestHandler<JadwalPraktekSaveCmd, Ja
 
     private JadwalPraktekType CreateNewJadwal(
         JadwalPraktekSaveCmd request,
-        PpaType dokter, LayananType layanan,
+        PpaType dokter, LayananType layanan, RuangType ruang,
         TimeOnly jamMulai, TimeOnly jamSelesai)
     {
         return _jadwalNunaFactory.Create(
             dokter,
             layanan,
+            ruang,
             (DayOfWeek)request.Hari,
             jamMulai,
             jamSelesai,
@@ -105,7 +112,7 @@ public class JadwalPraktekSaveHandler : IRequestHandler<JadwalPraktekSaveCmd, Ja
     }
     private JadwalPraktekType UpdateJadwal(
         JadwalPraktekSaveCmd request, PpaType dokter,
-        LayananType layanan, JadwalPraktekType jadwalDb,
+        LayananType layanan, RuangType ruang, JadwalPraktekType jadwalDb,
         TimeOnly jamMulai, TimeOnly jamSelesai)
     {
         var lynDkReff = new LayananDkReff(
@@ -118,6 +125,7 @@ public class JadwalPraktekSaveHandler : IRequestHandler<JadwalPraktekSaveCmd, Ja
             layanan.ToReff(),
             lynDkReff,
             dokter.GroupSpesialis,
+            ruang,
             (DayOfWeek)request.Hari,
             jamMulai,
             jamSelesai,

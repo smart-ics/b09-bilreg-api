@@ -6,7 +6,8 @@ namespace Bilreg.Domain.AdmisiContext.BookingFeature;
 public record JadwalPraktekType : IJadwalPraktekKey
 {
     public JadwalPraktekType(string jadwalPraktekId, 
-        PpaReff dokter, LayananReff layanan, LayananDkReff layanandk, GroupSpesialisType groupSpesiallis,
+        PpaReff dokter, LayananReff layanan, LayananDkReff layanandk, 
+        GroupSpesialisType groupSpesiallis, RuangType ruang,
         DayOfWeek hari, TimeOnly jamMulai, TimeOnly jamSelesai, int maxPasien)
     {
         JadwalPraktekId = jadwalPraktekId;
@@ -14,6 +15,7 @@ public record JadwalPraktekType : IJadwalPraktekKey
         Layanan = layanan;
         LayananDk = layanandk;
         GroupSpesialis = groupSpesiallis;
+        Ruang = ruang;
         Hari = hari;
         JamMulai = jamMulai;
         JamSelesai = jamSelesai;
@@ -21,7 +23,7 @@ public record JadwalPraktekType : IJadwalPraktekKey
     }
     public static JadwalPraktekType Default 
         => new("-", PpaType.Default.ToReff(), LayananType.Default.ToReff(), 
-            LayananDkType.Default.ToReff(), GroupSpesialisType.Default,
+            LayananDkType.Default.ToReff(), GroupSpesialisType.Default, RuangType.Default,
             DayOfWeek.Monday, TimeOnly.MinValue, TimeOnly.MinValue, 0);
     public static IJadwalPraktekKey Key(string id) => Default with { JadwalPraktekId = id };
     
@@ -30,6 +32,7 @@ public record JadwalPraktekType : IJadwalPraktekKey
     public LayananReff Layanan { get; init; }
     public LayananDkReff LayananDk { get; init; }
     public GroupSpesialisType GroupSpesialis { get; init; }
+    public RuangType Ruang { get; init; }
     public DayOfWeek Hari { get; init; }
     public TimeOnly JamMulai { get; init; }
     public TimeOnly JamSelesai { get; init; }

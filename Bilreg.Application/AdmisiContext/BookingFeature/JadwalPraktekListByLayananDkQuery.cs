@@ -11,6 +11,7 @@ public record JadwalPraktekListByLayananDkQuery(string LayananDkId) :
 public record JadwalPraktekListByLayananDkResponse(
     string DokterId, string DokterName,
     string LayananId, string LayananName,
+    string RuangId, string RuangName,
     IEnumerable<JadwalPraktekDokterByLynDkHariResponse> ListHari);
 
 public record JadwalPraktekDokterByLynDkHariResponse(
@@ -38,13 +39,17 @@ public class JadwalPraktekListByLayananDkHandler : IRequestHandler<JadwalPraktek
                 PetugasMedisId = x.Dokter.PpaId,
                 PetugasMedisName = x.Dokter.PpaName,
                 x.Layanan.LayananId,
-                x.Layanan.LayananName
+                x.Layanan.LayananName,
+                x.Ruang.RuangId,
+                x.Ruang.RuangName
             })
             .Select(g => new JadwalPraktekListByLayananDkResponse(
                 g.Key.PetugasMedisId,
                 g.Key.PetugasMedisName,
                 g.Key.LayananId,
                 g.Key.LayananName,
+                g.Key.RuangId,
+                g.Key.RuangName,
                 g.OrderBy(j => j.Hari).ThenBy(j => j.JamMulai)
                  .Select(j => new JadwalPraktekDokterByLynDkHariResponse(
                      j.JadwalPraktekId,
