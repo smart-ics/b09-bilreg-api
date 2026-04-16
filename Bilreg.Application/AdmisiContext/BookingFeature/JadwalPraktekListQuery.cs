@@ -10,6 +10,7 @@ public record JadwalPraktekListQuery(string DokterId)
 public record JadwalPraktekListResponse(
     string DokterId, string DokterName,
     string LayananId, string LayananName,
+    string RuangId, string RuangName,
     IEnumerable<JadwalPraktekListHariResponse> ListHari);
 public record JadwalPraktekListHariResponse(
     string JadwalPraktekId,
@@ -36,12 +37,15 @@ public class JadwalPraktekListHandler : IRequestHandler<JadwalPraktekListQuery, 
             .GroupBy(x => new {
                 PetugasMedisId = x.Dokter.PpaId,
                 PetugasMedisName = x.Dokter.PpaName, 
-                x.Layanan.LayananId, x.Layanan.LayananName })
+                x.Layanan.LayananId, x.Layanan.LayananName,
+                x.Ruang.RuangId, x.Ruang.RuangName})
             .Select(g => new JadwalPraktekListResponse(
                 g.Key.PetugasMedisId,
                 g.Key.PetugasMedisName,
                 g.Key.LayananId,
                 g.Key.LayananName,
+                g.Key.RuangId,
+                g.Key.RuangName,
                 g.OrderBy(j => j.Hari).ThenBy(j => j.JamMulai)
                  .Select(j => new JadwalPraktekListHariResponse(
                      j.JadwalPraktekId,

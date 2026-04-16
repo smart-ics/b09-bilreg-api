@@ -8,7 +8,7 @@ namespace Bilreg.Domain.AdmisiContext.BookingFeature;
 public interface IJadwalPraktekFactory : INunaFactory<JadwalPraktekType>
 {
     JadwalPraktekType Create(PpaType dokter,
-        LayananType layanan, DayOfWeek hari, TimeOnly jamMulai, TimeOnly jamSelesai, int maxPasien);
+        LayananType layanan, RuangType ruang, DayOfWeek hari, TimeOnly jamMulai, TimeOnly jamSelesai, int maxPasien);
 }
 public class JadwalPraktekFactory : IJadwalPraktekFactory
 {
@@ -21,13 +21,15 @@ public class JadwalPraktekFactory : IJadwalPraktekFactory
 
     public JadwalPraktekType Default =>
         new JadwalPraktekType("-", PpaType.Default.ToReff(), 
-            LayananType.Default.ToReff(), LayananDkType.Default.ToReff(), GroupSpesialisType.Default,
+            LayananType.Default.ToReff(), LayananDkType.Default.ToReff(), 
+            GroupSpesialisType.Default, RuangType.Default,
             DayOfWeek.Monday, new TimeOnly(0, 0), new TimeOnly(0, 0), 0);
     
     public IJadwalPraktekKey Key(string id)
         => Default with { JadwalPraktekId = id };
 
-    public JadwalPraktekType Create(PpaType dokter, LayananType layanan, DayOfWeek hari, TimeOnly jamMulai,
+    public JadwalPraktekType Create(PpaType dokter, LayananType layanan,
+        RuangType ruang, DayOfWeek hari, TimeOnly jamMulai,
         TimeOnly jamSelesai, int maxPasien)
     {
         Guard.Against.Null(dokter, nameof(dokter));
@@ -36,7 +38,7 @@ public class JadwalPraktekFactory : IJadwalPraktekFactory
         var newNumber = _sequencer.GetNextNoUrut("BILRG_JadwalPraktek");
         var newId = $"JADW{newNumber:D3}";
         return new JadwalPraktekType(newId, dokter.ToReff(), layanan.ToReff(), 
-            LayananDkType.Default.ToReff(), GroupSpesialisType.Default, 
+            LayananDkType.Default.ToReff(), GroupSpesialisType.Default, ruang, 
             hari, jamMulai, jamSelesai, maxPasien);
     }
 }

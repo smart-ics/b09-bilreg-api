@@ -52,10 +52,19 @@ public class JadwalPraktekController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> Save(JadwalPraktekCreateCmd cmd)
+    [Route("save")]
+    public async Task<IActionResult>SaveJadwal(JadwalPraktekSaveCmd cmd)
     {
         var response = await _mediator.Send(cmd);
         return Ok(new JSendOk(response));
+    }
+
+    [HttpDelete]
+    [Route("delete")]
+    public async Task<IActionResult> Delete(JadwalPraktekDeleteCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
     }
 
     [HttpPost]

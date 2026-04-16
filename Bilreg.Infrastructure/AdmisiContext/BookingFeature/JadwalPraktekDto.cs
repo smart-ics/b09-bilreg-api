@@ -9,6 +9,7 @@ public record JadwalPraktekDto(
     string JadwalPraktekId,
     string DokterId,
     string LayananId,
+    string RuangId,
     int Hari,
     string JamMulai,
     string JamSelesai,
@@ -18,18 +19,21 @@ public record JadwalPraktekDto(
     string LayananDkId,
     string LayananDkName,
     string GroupSpesialisId,
-    string GroupSpesialisName)
+    string GroupSpesialisName,
+    string RuangName, 
+    string PrefixAntrian)
 {
     public static JadwalPraktekDto FromModel(JadwalPraktekType model)
     {
         return new JadwalPraktekDto(model.JadwalPraktekId, model.Dokter.PpaId,
-            model.Layanan.LayananId, (int)model.Hari, 
+            model.Layanan.LayananId, model.Ruang.RuangId, (int)model.Hari, 
             model.JamMulai.ToString("HH:mm", CultureInfo.InvariantCulture), 
             model.JamSelesai.ToString("HH:mm", CultureInfo.InvariantCulture), 
             model.MaxPasien,
             model.Dokter.PpaName, model.Layanan.LayananName,
             model.LayananDk.LayananDkId, model.LayananDk.LayananDkName,
-            model.GroupSpesialis.GroupSpesialisId, model.GroupSpesialis.GroupSpesialisName);
+            model.GroupSpesialis.GroupSpesialisId, model.GroupSpesialis.GroupSpesialisName,
+            model.Ruang.RuangName, model.Ruang.PrefixAntrian);
     }
     public JadwalPraktekType ToModel()
     {
@@ -40,7 +44,8 @@ public record JadwalPraktekDto(
         var groupSpesialis = new GroupSpesialisType(GroupSpesialisId, GroupSpesialisName);
         var jamMulai = TimeOnly.ParseExact(JamMulai, "HH:mm", CultureInfo.InvariantCulture);
         var jamSelesai = TimeOnly.ParseExact(JamSelesai, "HH:mm", CultureInfo.InvariantCulture);
+        var ruang = new RuangType(RuangId, RuangName, PrefixAntrian);
         return new JadwalPraktekType(JadwalPraktekId, dokter, layanan, 
-            lynDk, groupSpesialis, hari, jamMulai, jamSelesai, MaxPasien);
+            lynDk, groupSpesialis, ruang, hari, jamMulai, jamSelesai, MaxPasien);
     }
 }

@@ -9,6 +9,7 @@ public record JadwalPraktekSearchQuery(string Keyword) : IRequest<IEnumerable<Ja
 public record JadwalPraktekSearchResponse(
     string DokterId, string DokterName,
     string LayananId, string LayananName,
+    string RuangId, string RuangName,
     IEnumerable<JadwalPraktekSearchHariResponse> ListHari);
 
 public record JadwalPraktekSearchHariResponse(
@@ -45,12 +46,17 @@ public class JadwalPrektekSearchHandler : IRequestHandler<JadwalPraktekSearchQue
             .GroupBy(x => new {
                 PetugasMedisId = x.Dokter.PpaId,
                 PetugasMedisName = x.Dokter.PpaName, 
-                x.Layanan.LayananId, x.Layanan.LayananName })
+                x.Layanan.LayananId, x.Layanan.LayananName,
+                x.Ruang.RuangId,
+                x.Ruang.RuangName
+            })
             .Select(g => new JadwalPraktekSearchResponse(
                 g.Key.PetugasMedisId,
                 g.Key.PetugasMedisName,
                 g.Key.LayananId,
                 g.Key.LayananName,
+                g.Key.RuangId,
+                g.Key.RuangName,
                 g.Select(x => new JadwalPraktekSearchHariResponse(
                     JadwalPraktekId: x.JadwalPraktekId,
                     Hari: x.Hari.ToString(),

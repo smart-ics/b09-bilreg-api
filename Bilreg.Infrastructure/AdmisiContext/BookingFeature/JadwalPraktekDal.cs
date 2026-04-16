@@ -23,15 +23,16 @@ public class JadwalPraktekDal
     {
         const string sql = """
             INSERT INTO BILRG_JadwalPraktek(
-               JadwalPraktekId, DokterId, LayananId, Hari, JamMulai, JamSelesai, MaxPasien)
+               JadwalPraktekId, DokterId, LayananId, RuangId, Hari, JamMulai, JamSelesai, MaxPasien)
             VALUES (
-               @JadwalPraktekId, @DokterId, @LayananId, @Hari, @JamMulai, @JamSelesai, @MaxPasien)
+               @JadwalPraktekId, @DokterId, @LayananId, @RuangId, @Hari, @JamMulai, @JamSelesai, @MaxPasien)
             """;
 
         var dp = new DynamicParameters();
         dp.AddParam("@JadwalPraktekId", dto.JadwalPraktekId, SqlDbType.VarChar);
         dp.AddParam("@DokterId", dto.DokterId, SqlDbType.VarChar);
         dp.AddParam("@LayananId", dto.LayananId, SqlDbType.VarChar);
+        dp.AddParam("@RuangId", dto.RuangId, SqlDbType.VarChar);
         dp.AddParam("@Hari", dto.Hari, SqlDbType.Int);
         dp.AddParam("@JamMulai", dto.JamMulai, SqlDbType.VarChar);
         dp.AddParam("@JamSelesai", dto.JamSelesai, SqlDbType.VarChar);
@@ -48,6 +49,7 @@ public class JadwalPraktekDal
             SET 
                DokterId = @DokterId,
                LayananId = @LayananId,
+               RuangId = @RuangId,
                Hari = @Hari,
                JamMulai = @JamMulai,
                JamSelesai = @JamSelesai,
@@ -60,6 +62,7 @@ public class JadwalPraktekDal
         dp.AddParam("@JadwalPraktekId", dto.JadwalPraktekId, SqlDbType.VarChar);
         dp.AddParam("@DokterId", dto.DokterId, SqlDbType.VarChar);
         dp.AddParam("@LayananId", dto.LayananId, SqlDbType.VarChar);
+        dp.AddParam("@RuangId", dto.RuangId, SqlDbType.VarChar);
         dp.AddParam("@Hari", dto.Hari, SqlDbType.Int);
         dp.AddParam("@JamMulai", dto.JamMulai, SqlDbType.VarChar);
         dp.AddParam("@JamSelesai", dto.JamSelesai, SqlDbType.VarChar);
@@ -96,14 +99,16 @@ public class JadwalPraktekDal
     {
         const string sql = """
             SELECT
-               aa.JadwalPraktekId, aa.DokterId, aa.LayananId, 
+               aa.JadwalPraktekId, aa.DokterId, aa.LayananId, aa.RuangId,
                aa.Hari, aa.JamMulai, aa.JamSelesai, aa.MaxPasien,
                ISNULL(bb.fs_nm_peg, '-') AS DokterName,
                ISNULL(cc.fs_nm_layanan, '-') AS LayananName,
                ISNULL(cc.fs_kd_layanan_dk,'') AS LayananDkId,
                ISNULL(dd.fs_nm_layanan_dk,'') AS LayananDkName,
                ISNULL(ee.GroupSpesialisId,'') AS GroupSpesialisId,
-               ISNULL(ff.GroupSpesialisName,'') AS GroupSpesialisName
+               ISNULL(ff.GroupSpesialisName,'') AS GroupSpesialisName,
+               ISNULL(gg.RuangName,'') AS RuangName, 
+               ISNULL(gg.PrefixAntrian,'') AS PrefixAntrian
             FROM 
                BILRG_JadwalPraktek aa
                LEFT JOIN td_peg bb ON aa.DokterId = bb.fs_kd_peg
@@ -111,6 +116,7 @@ public class JadwalPraktekDal
                LEFT JOIN ta_layanan_dk dd ON cc.fs_kd_layanan_dk = dd.fs_kd_layanan_dk
                LEFT JOIN td_peg2 ee ON aa.DokterId = ee.fs_kd_peg 
                LEFT JOIN BILRG_GroupSpesialis ff ON ee.GroupSpesialisId = ff.GroupSpesialisId
+               LEFT JOIN Hidok_ruang gg ON aa.RuangId = gg.RuangId
             WHERE
                aa.JadwalPraktekId = @JadwalPraktekId
             """;
@@ -126,14 +132,16 @@ public class JadwalPraktekDal
     {
         const string sql = """
             SELECT
-               aa.JadwalPraktekId, aa.DokterId, aa.LayananId, 
+               aa.JadwalPraktekId, aa.DokterId, aa.LayananId, aa.RuangId,
                aa.Hari, aa.JamMulai, aa.JamSelesai, aa.MaxPasien,
                ISNULL(bb.fs_nm_peg, '-') AS DokterName,
                ISNULL(cc.fs_nm_layanan, '-') AS LayananName,
                ISNULL(cc.fs_kd_layanan_dk,'') AS LayananDkId,
                ISNULL(dd.fs_nm_layanan_dk,'') AS LayananDkName,
                ISNULL(ee.GroupSpesialisId,'') AS GroupSpesialisId,
-               ISNULL(ff.GroupSpesialisName,'') AS GroupSpesialisName
+               ISNULL(ff.GroupSpesialisName,'') AS GroupSpesialisName,
+               ISNULL(gg.RuangName,'') AS RuangName, 
+               ISNULL(gg.PrefixAntrian,'') AS PrefixAntrian
             FROM 
                BILRG_JadwalPraktek aa
                LEFT JOIN td_peg bb ON aa.DokterId = bb.fs_kd_peg
@@ -141,6 +149,7 @@ public class JadwalPraktekDal
                LEFT JOIN ta_layanan_dk dd ON cc.fs_kd_layanan_dk = dd.fs_kd_layanan_dk
                LEFT JOIN td_peg2 ee ON aa.DokterId = ee.fs_kd_peg 
                LEFT JOIN BILRG_GroupSpesialis ff ON ee.GroupSpesialisId = ff.GroupSpesialisId
+               LEFT JOIN Hidok_ruang gg ON aa.RuangId = gg.RuangId
             WHERE
                aa.DokterId = @DokterId
             """;
@@ -157,14 +166,16 @@ public class JadwalPraktekDal
     {
         const string sql = """
             SELECT
-               aa.JadwalPraktekId, aa.DokterId, aa.LayananId, 
+               aa.JadwalPraktekId, aa.DokterId, aa.LayananId, aa.RuangId,
                aa.Hari, aa.JamMulai, aa.JamSelesai, aa.MaxPasien,
                ISNULL(bb.fs_nm_peg, '-') AS DokterName,
                ISNULL(cc.fs_nm_layanan, '-') AS LayananName,
                ISNULL(cc.fs_kd_layanan_dk,'') AS LayananDkId,
                ISNULL(dd.fs_nm_layanan_dk,'') AS LayananDkName,
                ISNULL(ee.GroupSpesialisId,'') AS GroupSpesialisId,
-               ISNULL(ff.GroupSpesialisName,'') AS GroupSpesialisName
+               ISNULL(ff.GroupSpesialisName,'') AS GroupSpesialisName,
+               ISNULL(gg.RuangName,'') AS RuangName, 
+               ISNULL(gg.PrefixAntrian,'') AS PrefixAntrian
             FROM 
                BILRG_JadwalPraktek aa
                LEFT JOIN td_peg bb ON aa.DokterId = bb.fs_kd_peg
@@ -172,6 +183,7 @@ public class JadwalPraktekDal
                LEFT JOIN ta_layanan_dk dd ON cc.fs_kd_layanan_dk = dd.fs_kd_layanan_dk
                LEFT JOIN td_peg2 ee ON aa.DokterId = ee.fs_kd_peg 
                LEFT JOIN BILRG_GroupSpesialis ff ON ee.GroupSpesialisId = ff.GroupSpesialisId
+               LEFT JOIN Hidok_ruang gg ON aa.RuangId = gg.RuangId
             WHERE
                aa.LayananId = @LayananId
             """;
@@ -188,14 +200,16 @@ public class JadwalPraktekDal
     {
         const string sql = """
             SELECT
-               aa.JadwalPraktekId, aa.DokterId, aa.LayananId, 
+               aa.JadwalPraktekId, aa.DokterId, aa.LayananId, aa.RuangId,
                aa.Hari, aa.JamMulai, aa.JamSelesai, aa.MaxPasien,
                ISNULL(bb.fs_nm_peg, '-') AS DokterName,
                ISNULL(cc.fs_nm_layanan, '-') AS LayananName,
                ISNULL(cc.fs_kd_layanan_dk,'') AS LayananDkId,
                ISNULL(dd.fs_nm_layanan_dk,'') AS LayananDkName,
                ISNULL(ee.GroupSpesialisId,'') AS GroupSpesialisId,
-               ISNULL(ff.GroupSpesialisName,'') AS GroupSpesialisName
+               ISNULL(ff.GroupSpesialisName,'') AS GroupSpesialisName,
+               ISNULL(gg.RuangName,'') AS RuangName, 
+               ISNULL(gg.PrefixAntrian,'') AS PrefixAntrian
             FROM 
                BILRG_JadwalPraktek aa
                LEFT JOIN td_peg bb ON aa.DokterId = bb.fs_kd_peg
@@ -203,6 +217,7 @@ public class JadwalPraktekDal
                LEFT JOIN ta_layanan_dk dd ON cc.fs_kd_layanan_dk = dd.fs_kd_layanan_dk
                LEFT JOIN td_peg2 ee ON aa.DokterId = ee.fs_kd_peg 
                LEFT JOIN BILRG_GroupSpesialis ff ON ee.GroupSpesialisId = ff.GroupSpesialisId
+               LEFT JOIN Hidok_ruang gg ON aa.RuangId = gg.RuangId
             """;
 
 
@@ -215,14 +230,16 @@ public class JadwalPraktekDal
     {
         const string sql = """
             SELECT
-               aa.JadwalPraktekId, aa.DokterId, aa.LayananId, 
+               aa.JadwalPraktekId, aa.DokterId, aa.LayananId, aa.RuangId,
                aa.Hari, aa.JamMulai, aa.JamSelesai, aa.MaxPasien,
                ISNULL(bb.fs_nm_peg, '-') AS DokterName,
                ISNULL(cc.fs_nm_layanan, '-') AS LayananName,
                ISNULL(cc.fs_kd_layanan_dk,'') AS LayananDkId,
                ISNULL(dd.fs_nm_layanan_dk,'') AS LayananDkName,
                ISNULL(ee.GroupSpesialisId,'') AS GroupSpesialisId,
-               ISNULL(ff.GroupSpesialisName,'') AS GroupSpesialisName
+               ISNULL(ff.GroupSpesialisName,'') AS GroupSpesialisName,
+               ISNULL(gg.RuangName,'') AS RuangName, 
+               ISNULL(gg.PrefixAntrian,'') AS PrefixAntrian
             FROM 
                BILRG_JadwalPraktek aa
                LEFT JOIN td_peg bb ON aa.DokterId = bb.fs_kd_peg
@@ -230,6 +247,7 @@ public class JadwalPraktekDal
                LEFT JOIN ta_layanan_dk dd ON cc.fs_kd_layanan_dk = dd.fs_kd_layanan_dk
                LEFT JOIN td_peg2 ee ON aa.DokterId = ee.fs_kd_peg 
                LEFT JOIN BILRG_GroupSpesialis ff ON ee.GroupSpesialisId = ff.GroupSpesialisId
+               LEFT JOIN Hidok_ruang gg ON aa.RuangId = gg.RuangId
             WHERE
                cc.fs_kd_layanan_dk = @LayananDkId
             """;
@@ -246,14 +264,16 @@ public class JadwalPraktekDal
     {
         const string sql = """
             SELECT
-               aa.JadwalPraktekId, aa.DokterId, aa.LayananId, 
+               aa.JadwalPraktekId, aa.DokterId, aa.LayananId, aa.RuangId,
                aa.Hari, aa.JamMulai, aa.JamSelesai, aa.MaxPasien,
                ISNULL(bb.fs_nm_peg, '-') AS DokterName,
                ISNULL(cc.fs_nm_layanan, '-') AS LayananName,
                ISNULL(cc.fs_kd_layanan_dk,'') AS LayananDkId,
                ISNULL(dd.fs_nm_layanan_dk,'') AS LayananDkName,
                ISNULL(ee.GroupSpesialisId,'') AS GroupSpesialisId,
-               ISNULL(ff.GroupSpesialisName,'') AS GroupSpesialisName
+               ISNULL(ff.GroupSpesialisName,'') AS GroupSpesialisName,
+               ISNULL(gg.RuangName,'') AS RuangName, 
+               ISNULL(gg.PrefixAntrian,'') AS PrefixAntrian
             FROM 
                BILRG_JadwalPraktek aa
                LEFT JOIN td_peg bb ON aa.DokterId = bb.fs_kd_peg
@@ -261,6 +281,7 @@ public class JadwalPraktekDal
                LEFT JOIN ta_layanan_dk dd ON cc.fs_kd_layanan_dk = dd.fs_kd_layanan_dk
                LEFT JOIN td_peg2 ee ON aa.DokterId = ee.fs_kd_peg 
                LEFT JOIN BILRG_GroupSpesialis ff ON ee.GroupSpesialisId = ff.GroupSpesialisId
+               LEFT JOIN Hidok_ruang gg ON aa.RuangId = gg.RuangId
             WHERE
                ee.GroupSpesialisId = @GroupSpesialisId
             """;

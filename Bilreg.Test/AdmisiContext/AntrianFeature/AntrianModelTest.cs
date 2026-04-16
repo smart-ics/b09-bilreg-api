@@ -220,12 +220,14 @@ public class AntrianFactoryTests
     {
         var layanan = new LayananReff("LAY001", "Poli Umum");
         var layananDk = new LayananDkReff("1", "UMUM");
+        var ruang = new RuangType("RU01", "RUANG1", "A");
         return new JadwalPraktekType(
             Ulid.NewUlid().ToString(),
             dokter.ToReff(),
             layanan,
             layananDk,
             GroupSpesialisType.Default,
+            ruang,
             hari,
             jamMulai,
             jamSelesai,

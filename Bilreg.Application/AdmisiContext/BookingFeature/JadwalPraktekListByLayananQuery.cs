@@ -10,6 +10,7 @@ public record JadwalPraktekListByLayananQuery(string LayananId) : IRequest<IEnum
 public record JadwalPraktekListByLayananResponse(
     string DokterId, string DokterName, 
     string LayananId, string LayananName,
+    string RuangId, string RuangName,
     IEnumerable<JadwalPraktekDokterByLynHariResponse> ListHari);
 
 public record JadwalPraktekDokterByLynHariResponse(
@@ -35,13 +36,16 @@ public class JadwalPrektekListByLayananHandler : IRequestHandler<JadwalPraktekLi
             .GroupBy(x => new {
                 PetugasMedisId = x.Dokter.PpaId,
                 PetugasMedisName = x.Dokter.PpaName,
-                x.Layanan.LayananId, x.Layanan.LayananName
+                x.Layanan.LayananId, x.Layanan.LayananName,
+                x.Ruang.RuangId, x.Ruang.RuangName
             })
             .Select(g => new JadwalPraktekListByLayananResponse(
                 g.Key.PetugasMedisId,
                 g.Key.PetugasMedisName,
                 g.Key.LayananId,
                 g.Key.LayananName,
+                g.Key.RuangId,
+                g.Key.RuangName,
                 g.OrderBy(j => j.Hari).ThenBy(j => j.JamMulai)
                  .Select(j => new JadwalPraktekDokterByLynHariResponse(
                      j.JadwalPraktekId,
