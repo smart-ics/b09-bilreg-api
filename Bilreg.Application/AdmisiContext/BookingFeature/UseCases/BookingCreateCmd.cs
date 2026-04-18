@@ -1,7 +1,9 @@
 ﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
+using Bilreg.Application.AdmisiContext.JaminanFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers;
@@ -87,7 +89,7 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
 
         // antrianMap
         var antrianMap = CekAntrianMap(jadwal, tglBerobat);
-        var noAntrian = antrianMap.GetNextNoAntrian();
+        var noAntrian = antrianMap.GetNextNoAntrian("UMUM");
         var pasien = new PasienReff(request.PasienId, person.PersonName, person.TglLahir, person.Gender);
 
 
@@ -95,7 +97,6 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         BookingCreateResponse response;
         using (var trans = TransHelper.NewScope())
         {
-
             //      no antrian masuk ke transaction agar bisa rollback jika gagal
             var antEntry = antrian.AddEntry(noAntrian, tracker, booking.BookingId, "BOK");
             booking.AssignNoAntrian(antEntry.NoUrut);
@@ -106,7 +107,7 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
             _trackerRepo.SaveChanges(tracker);
 
             // rubah antrianMapHdr
-            antrianMap.SetDataPasien(noAntrian, pasien, booking.Reg, booking.BookingId, "AUTO");
+            antrianMap.SetDataPasien(noAntrian, pasien, booking.Reg, booking.BookingId, "UMUM");
             _antrianMapRepo.SaveChanges(antrianMap);
 
             trans.Complete();
@@ -124,7 +125,7 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         var pasien = _pasienRepo.LoadEntity(pasienKey).GetValueOrDefault(PasienModel.Default);
         return pasien;
     }
-
+    
     private static PersonInfoType CreatePerson(BookingCreateCmd request)
     {
         var tglLahir = DateOnly.ParseExact(request.TglLahir, "yyyy-MM-dd");

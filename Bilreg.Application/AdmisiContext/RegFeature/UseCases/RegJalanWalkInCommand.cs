@@ -80,6 +80,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
     private readonly IRemoteCetakRepo _remoteCetakRepo;
     private readonly IGetAppSettingService _getAppSettingSvc;
     private readonly IDashboardEMrAddRegService _addRegSvc;
+    private readonly IGrupjaminanMapGetService _grupJmnMapSvc;
 
     public RegJalanCreateHandler(
         //  reg support
@@ -114,7 +115,8 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         IJurnalRepo jurnalRepo,
         IRemoteCetakRepo remoteCetakRepo,
         IGetAppSettingService getAppSettingSvc,
-        IDashboardEMrAddRegService addRegSvc)
+        IDashboardEMrAddRegService addRegSvc,
+        IGrupjaminanMapGetService grupJmnMapSvc)
     {
         //      reg-support
         _pasienRepo = pasienRepo;
@@ -149,13 +151,12 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         _remoteCetakRepo = remoteCetakRepo;
         _getAppSettingSvc = getAppSettingSvc;
         _addRegSvc = addRegSvc;
+        _grupJmnMapSvc = grupJmnMapSvc;
     }
 
     public Task<RegJalanCreateResponse> Handle(RegJalanWalkInCommand request, CancellationToken cancellationToken)
     {
-        /*  ▐▀▀▀▀▀▀▀▀▀▀▀▌
-            ▐   GUARD   ▌
-            ▐▄▄▄▄▄▄▄▄▄▄▄▌*/
+        #region GUARD
         Guard.Against.Null(request.PesertaJaminanId, nameof(request.PesertaJaminanId));
         var pasien = _pasienRepo.LoadEntity(request).GetValueOrThrow("Pasien not found");
         if (pasien.IsAktif == false) throw new KeyNotFoundException($"Pasien {request.PasienId} tidak aktif ");
@@ -172,9 +173,9 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         var layanan = _layananRepo.LoadEntity(request).GetValueOrThrow("Layanan not found");
         var dokter = _ppaRepo.LoadEntity(PpaType.Key(request.DokterId)).GetValueOrThrow("Dokter not found");
         var karcis = _karcisRepo.LoadEntity(request).GetValueOrThrow("Karcis not found");
-        /*  ▐▀▀▀▀▀▀▀▀▀▀▀▌
-            ▐   BUILD   ▌
-            ▐▄▄▄▄▄▄▄▄▄▄▄▌*/
+        #endregion
+
+        #region BUILD
         //      1-register
         var regMasukAudit = new AuditInfoType(request.UserId, DateTime.Now);
         var reg = _regFactory.CreateRegRajal(pasien, regMasukAudit,
@@ -185,7 +186,8 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         var jadwal = ResolveJadwalPraktek(dokter, request.JamPraktek, tglBerobat);
         var antrian = ResolveAntrian(tglBerobat, dokter, jadwal);
         var antrianMap = LoadOrCreateAntrianMap(jadwal, tglBerobat);
-        var noAntrian = antrianMap.GetNextNoAntrian();
+        var flag = GetFlag(tipeJaminan);
+        var noAntrian = antrianMap.GetNextNoAntrian(flag);
         var tracker = PasienTrackerModel.Create(reg);
         //      3-trs-billing-karcis
         var jaminan = LoadJaminan(tipeJaminan.Jaminan);
@@ -220,9 +222,9 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             appSetting.Registrasi.RemoteCetakRegistrasi,
             false, new DateTime(3000, 1, 1),
             "", "");
-        /*  ▐▀▀▀▀▀▀▀▀▀▀▀▌
-            ▐   WRITE   ▌
-            ▐▄▄▄▄▄▄▄▄▄▄▄▌*/
+        #endregion
+
+        #region WRITE
 
         RegJalanCreateResponse response;
         
@@ -238,7 +240,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             _antrianRepo.SaveChanges(antrian);
             _trackerRepo.SaveChanges(tracker);
             //      ubah antrianMapHdr
-            antrianMap.SetDataPasien(noAntrian, reg.Pasien, reg.ToReff(), reg.RegId, "AUTO");
+            antrianMap.SetDataPasien(noAntrian, reg.Pasien, reg.ToReff(), reg.RegId, flag);
             _antrianMapRepo.SaveChanges(antrianMap);
             _trsBillingRepo.SaveChanges(trsBillingReg);
             if (tindakan.TindakanId != "-")
@@ -254,7 +256,8 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             response = new RegJalanCreateResponse(reg.RegId, antEntry.NoUrut);
         }
         AddReg(reg, noAntrian, jadwal);
-        
+        #endregion
+
         return Task.FromResult(response);
         
     }
@@ -313,6 +316,18 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         return polisView == null ? 
             throw new ArgumentException("Polis not found") 
             : _polisRepo.LoadEntity(polisView).Value;
+    }
+
+    private string GetFlag(ITipeJaminanKey tipeJmnKey)
+    {
+        var flag = string.Empty;
+        var req = new GrupJaminanMapGetParam(tipeJmnKey.TipeJaminanId);
+        var map = _grupJmnMapSvc.Execute(req);
+        if (map.groupJaminanId == "JKN")
+            flag = "BPJS";
+        else
+            flag = "UMUM";
+        return flag;
     }
 
     private AntrianMapHdrModel LoadOrCreateAntrianMap(JadwalPraktekType jadwal, DateOnly tglJadwal)

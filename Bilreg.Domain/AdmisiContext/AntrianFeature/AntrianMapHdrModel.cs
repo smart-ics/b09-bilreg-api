@@ -129,13 +129,22 @@ public record AntrianMapHdrModel : IAntrianMapHdrKey
         _listMap.AddRange(newList);
     }
 
-    public int GetNextNoAntrian()
+    public int GetNextNoAntrian(string flag)
     {
         var noUrut = _listMap
-            .Where(x => string.IsNullOrWhiteSpace(x.ReffId))
+            .Where(x => string.IsNullOrWhiteSpace(x.ReffId)
+                && x.Flag == flag)
             .Select(x => x.NoUrut)
             .DefaultIfEmpty(-1)
             .Min();
+        
+        if (noUrut == -1)
+            noUrut = _listMap
+                .Where(x => string.IsNullOrWhiteSpace(x.ReffId)
+                    && x.Flag == "AUTO")
+                .Select(x => x.NoUrut)
+                .DefaultIfEmpty(-1)
+                .Min();
 
         if (noUrut != -1)
             return noUrut;
