@@ -335,7 +335,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         var queKey = AntrianMapHdrModel.Key(jadwal.JadwalPraktekId,
             tglJadwal, jadwal.Dokter.PpaId,
             jadwal.Layanan.LayananId, jadwal.JamMulai);
-
+        
         var result = _antrianMapRepo.LoadEntity(queKey).GetValueOrDefault(AntrianMapHdrModel.Default);
         if (result.JadwalId == "-")
         {
