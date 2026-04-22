@@ -6,8 +6,8 @@ using Nuna.Lib.DataAccessHelper;
 namespace Bilreg.Application.AdmisiContext.AntrianFeature;
 
 public interface IAntrianMapHdrRepo :
-    ISaveChange<AntrianMapHdrModel>,
-    ILoadEntity<AntrianMapHdrModel, IAntrianMapHdrKey>
+    ISaveChange<AntrianMapModel>,
+    ILoadEntity<AntrianMapModel, IAntrianMapKey>
 {
     IEnumerable<AntrianMapHdrView> ListData(ILayananKey lynKey, IPpaKey ppaKey, DateOnly tglPraktek);
     void Migrasi(DateTime date);

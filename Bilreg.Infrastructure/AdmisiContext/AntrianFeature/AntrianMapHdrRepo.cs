@@ -24,27 +24,28 @@ public class AntrianMapHdrRepo : IAntrianMapHdrRepo
         _mapDal = mapDal;
         _jadwalRepo = jadwalRepo;
     }
-    public void SaveChanges(AntrianMapHdrModel model)
+    public void SaveChanges(AntrianMapModel model)
     {
         var mapHdr = _hdrDal.GetData(model);
         if (mapHdr is null)
-            _hdrDal.Insert(AntrianMapHdrDto.FromModel(model));
+            _hdrDal.Insert(AntrianMapDto.FromModel(model));
         else
-            _hdrDal.Update(AntrianMapHdrDto.FromModel(model));
+            _hdrDal.Update(AntrianMapDto.FromModel(model));
         
-        var listDtlDto = model.ListMap.Select(x => AntrianMapDto.FromModel(x));
+        var listDtlDto = model.ListMap.Select(x => AntrianMapDetilDto.FromModel(x, model));
 
         _mapDal.Delete(model);
         listDtlDto.ForEach(x => _mapDal.Insert(x));
     }
 
-    public MayBe<AntrianMapHdrModel> LoadEntity(IAntrianMapHdrKey key)
+    public MayBe<AntrianMapModel> LoadEntity(IAntrianMapKey key)
     {
-        var model = LoadByKey(key) ?? LoadByDetil(key);
+        var hdr = _hdrDal.GetData(key);
+        if (hdr is null)
+            return MayBe<AntrianMapModel>.None;
 
-        if (model is null)
-            return MayBe<AntrianMapHdrModel>.None;
-
+        var listDtlDto = _mapDal.ListData(key)?.ToList() ?? [];
+        var model = hdr.ToModel(listDtlDto.Select(x => x.ToModel()));
         return MayBe.From(model);
     }
 
@@ -58,80 +59,41 @@ public class AntrianMapHdrRepo : IAntrianMapHdrRepo
 
     public void Migrasi(DateTime date)
     {
-        var listDtl = _mapDal.ListData(date)?.ToList() ?? [];
-        var listTemp = listDtl.Select(x => 
-            new AntrianMapDtlDto(
-                x.fs_kd_dokter, x.fs_kd_layanan, 
-                x.fd_tgl_jadwal, x.fs_jam_jadwal,
-                x.fs_nm_dokter, x.fs_nm_layanan))
-            .Distinct()
-            .ToList();
-
-        foreach (var item in listTemp)
-        {
-            var lynKey = LayananType.Key(item.LayananId);
-            var ppaKey = PpaType.Key(item.DokterId);
-            var tglSch = item.TglJadwal.ToDate("yyyy-MM-dd");
-            var tglJadwal = DateOnly.FromDateTime(tglSch);
-            var dataHdr = _hdrDal.ListData(lynKey, ppaKey, tglJadwal)?.ToList() ?? [];
-            var hdrTemp = dataHdr.Where(x => x.fs_jam_praktek == item.JamJadwal)?.ToList() ?? [];
-            var schs = _jadwalRepo.ListData(ppaKey)?.ToList() ?? [];
-            var schThis = schs.Where(x => x.Layanan.LayananId == item.LayananId)
-                .Where(x => x.Hari == tglSch.DayOfWeek)
-                .FirstOrDefault(x => x.JamMulai.ToString("HH:mm") ==  item.JamJadwal)
-                ?? JadwalPraktekType.Default;
-
-            if (hdrTemp.Count == 0 && schThis.JadwalPraktekId != "-")
-            {
-                var hdr = new AntrianMapHdrDto(
-                    schThis.JadwalPraktekId, item.DokterId, item.LayananId, item.TglJadwal.ToDate(),
-                    item.JamJadwal, item.JamJadwal, item.DokterName, item.LayananName);
-
-                _hdrDal.Insert(hdr);
-            }
-
-        }
+        // var listDtl = _mapDal.ListData(date)?.ToList() ?? [];
+        // var listTemp = listDtl.Select(x => 
+        //     new AntrianMapDtlDto(
+        //         x.fs_kd_dokter, x.fs_kd_layanan, 
+        //         x.fd_tgl_jadwal, x.fs_jam_jadwal,
+        //         x.fs_nm_dokter, x.fs_nm_layanan))
+        //     .Distinct()
+        //     .ToList();
+        //
+        // foreach (var item in listTemp)
+        // {
+        //     var lynKey = LayananType.Key(item.LayananId);
+        //     var ppaKey = PpaType.Key(item.DokterId);
+        //     var tglSch = item.TglJadwal.ToDate("yyyy-MM-dd");
+        //     var tglJadwal = DateOnly.FromDateTime(tglSch);
+        //     var dataHdr = _hdrDal.ListData(lynKey, ppaKey, tglJadwal)?.ToList() ?? [];
+        //     var hdrTemp = dataHdr.Where(x => x.fs_jam_praktek == item.JamJadwal)?.ToList() ?? [];
+        //     var schs = _jadwalRepo.ListData(ppaKey)?.ToList() ?? [];
+        //     var schThis = schs.Where(x => x.Layanan.LayananId == item.LayananId)
+        //         .Where(x => x.Hari == tglSch.DayOfWeek)
+        //         .FirstOrDefault(x => x.JamMulai.ToString("HH:mm") ==  item.JamJadwal)
+        //         ?? JadwalPraktekType.Default;
+        //
+        //     if (hdrTemp.Count == 0 && schThis.JadwalPraktekId != "-")
+        //     {
+        //         var hdr = new AntrianMapDto(
+        //             schThis.JadwalPraktekId, item.DokterId, item.LayananId, item.TglJadwal.ToDate(),
+        //             item.JamJadwal, item.JamJadwal, item.DokterName, item.LayananName);
+        //
+        //         _hdrDal.Insert(hdr);
+        //     }
+        //
+        // }
 
     }
-
-    #region PRIVATE-HELPER
-    private AntrianMapHdrModel? LoadByKey(IAntrianMapHdrKey key)
-    {
-        var hdr = _hdrDal.GetData(key);
-        if (hdr is null)
-            return null;
-        var listDtl = _mapDal.ListData(key)?.ToList() ?? [];
-        var model = hdr.ToModel(listDtl);
-        return model;
-    }
-
-    private AntrianMapHdrModel? LoadByDetil(IAntrianMapHdrKey key)
-    {
-        var listQueDto = _mapDal.ListData(key) ?? [];
-        if (!listQueDto.Any())
-            return null;
-        
-        var hari = key.TglJadwal.DayOfWeek;
-        var dokter = PpaType.Key(key.DokterId);
-        var listJadwal = _jadwalRepo.ListData(dokter)?.ToList() ?? [];
-        var jadwal = listJadwal
-            .FirstOrDefault(x => x.Hari == hari && x.JamMulai == key.JamJadwal);
-        if (jadwal is null)
-            throw new ArgumentException($"Jadwal dokter {key.DokterId} not found");
-
-        var listDtlModel = listQueDto.Select(x => x.ToModel());
-
-        var queueHdr = AntrianMapHdrModel.Create(
-            jadwal.JadwalPraktekId,
-            jadwal.Dokter,
-            jadwal.Layanan,
-            key.TglJadwal,
-            jadwal.JamMulai,
-            jadwal.JamMulai,
-            listDtlModel);
-        return queueHdr;
-    }
-    #endregion
 }
 
 public record AntrianMapDtlDto(

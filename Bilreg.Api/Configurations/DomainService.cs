@@ -33,7 +33,7 @@ public static class DomainService
             .AddScoped<IRegFactory, RegFactory>()
             .AddScoped<IGetKelasRajalService, GetKelasRajalService>()
             .AddScoped<IPolisFactory, PolisFactory>()
-            .AddScoped<IDeleteBookingWorkflow, DeleteBookingWorkflow>()
+            // .AddScoped<IDeleteBookingWorkflow, DeleteBookingWorkflow>()
             .AddScoped<IGetAppSettingService, GetAppSettingService>()
             .AddScoped<IDashboardAddBookService, DashboardAddBookService>()
             .AddScoped<IDashboardEMrAddRegService, DashboardEmrAddRegService>()

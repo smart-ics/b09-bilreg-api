@@ -58,7 +58,6 @@
     <Folder Include="Properties" />
     <Folder Include="BedUsageContext\WardFeature" />
     <Folder Include="AdmisiContext" />
-    <Folder Include="AdmisiContext\AntrianFeature" />
     <Folder Include="AdmisiContext\BookingFeature" />
     <Folder Include="AdmisiContext\JaminanFeature" />
     <Folder Include="AdmisiContext\LayananFeature" />
@@ -203,6 +202,8 @@
     <None Include="PaymentContext\RegOutFeature\ta_registrasi3.sql" />
   </ItemGroup>
   <ItemGroup>
+    <Build Include="AdmisiContext\AntrianFeature\ta_no_antrian_map.sql" />
+    <Build Include="AdmisiContext\AntrianFeature\ta_no_antrian_map_hdr.sql" />
     <Build Include="BedUsageContext\KamarOperasiFeature\BILRG_ScheduleOp.sql" />
     <Build Include="BedUsageContext\KamarOperasiFeature\BILRG_SchedulOpPpa.sql" />
     <Build Include="BedUsageContext\RoomRateFeature\ta_kamar2.sql" />
