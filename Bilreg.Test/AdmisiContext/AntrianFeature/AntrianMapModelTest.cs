@@ -2,7 +2,6 @@ using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
-using Bilreg.Domain.AdmisiContext.RegFeature;
 using FluentAssertions;
 
 namespace Bilreg.Test.AdmisiContext.AntrianFeature;
@@ -60,13 +59,13 @@ public class AntrianMapModelTest
 				jamPraktek: TimeOnly.FromDateTime(DateTime.Now),
 				pattern: "P",
 				maxPasien: 5,
-				listMap: null
+				listMap: null!
 			);
 
 			// Assert
 			model.TotalSlotCount.Should().Be(0);
 			// Accessing LastNoUrut when there are no slots should throw (behavior of Max over empty sequence)
-			Action act = () => { var _ = model.LastNoUrut; };
+			var act = () => { var _ = model.LastNoUrut; };
 			act.Should().Throw<InvalidOperationException>();
 		}
 	}
@@ -83,7 +82,7 @@ public class AntrianMapModelTest
 			def.AntrianMapId.Should().Be("-");
 			def.MaxPasien.Should().Be(0);
 			def.TotalSlotCount.Should().Be(0);
-			Action act = () => { var _ = def.LastNoUrut; };
+			var act = () => { _ = def.LastNoUrut; };
 			act.Should().Throw<InvalidOperationException>();
 		}
 

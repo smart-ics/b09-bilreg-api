@@ -7,4 +7,4 @@ public interface IGrupjaminanMapGetService : INunaService<GrupJaminanMapGetRespo
 }
 
 public record GrupJaminanMapGetParam(string TipeJaminanId);
-public record GrupJaminanMapGetResponse(string tipeJaminanId, string groupJaminanId, string groupJaminanName);
+public record GrupJaminanMapGetResponse(string TipeJaminanId, string GroupJaminanId, string GroupJaminanName);

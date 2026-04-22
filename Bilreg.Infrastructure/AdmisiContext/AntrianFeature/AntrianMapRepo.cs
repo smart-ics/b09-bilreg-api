@@ -1,12 +1,9 @@
 ﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
-using Bilreg.Application.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
-using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Nuna.Lib.DataTypeExtension;
 using Nuna.Lib.PatternHelper;
-using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
 
@@ -44,7 +41,7 @@ public class AntrianMapRepo : IAntrianMapRepo
         var listDtlDto = _antrianMapDetilDal.ListData(key)?.ToList() ?? [];
         var model = hdr.ToModel(listDtlDto.Select(x => x.ToModel()));
         return MayBe.From(model);
-    }
+    }   
 
     public IEnumerable<AntrianMapHdrView> ListData(ILayananKey lynKey, IPpaKey ppaKey, DateOnly tglBerobat)
     {

@@ -7,7 +7,6 @@ using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
 using System.Data;
 using System.Data.SqlClient;
-using System.Globalization;
 
 namespace Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
 

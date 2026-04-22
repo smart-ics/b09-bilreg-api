@@ -1,15 +1,9 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
-using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
 using Moq;
-using Nuna.Lib.PatternHelper;
-using Xunit;
 
 namespace Bilreg.Test.AdmisiContext.AntrianFeature;
 
@@ -31,7 +25,8 @@ public class AntrianMapRepoTest
     {
         // Arrange
         var model = BuildModel("AM1", 3);
-        _hdrMock.Setup(x => x.GetData(It.IsAny<IAntrianMapKey>())).Returns((AntrianMapDto?)null);
+        _hdrMock.Setup(x => x.GetData(It.IsAny<IAntrianMapKey>()))
+            .Returns((null as AntrianMapDto)!);
 
         // Act
         _sut.SaveChanges(model);
@@ -66,7 +61,8 @@ public class AntrianMapRepoTest
     {
         // Arrange
         var model = BuildModel("AM3", 0);
-        _hdrMock.Setup(x => x.GetData(It.IsAny<IAntrianMapKey>())).Returns((AntrianMapDto?)null);
+        _hdrMock.Setup(x => x.GetData(It.IsAny<IAntrianMapKey>()))
+            .Returns((null as AntrianMapDto)!);
 
         // Act
         _sut.SaveChanges(model);
@@ -81,7 +77,8 @@ public class AntrianMapRepoTest
     {
         // Arrange
         var model = BuildModel("AM4", 1);
-        _hdrMock.Setup(x => x.GetData(It.IsAny<IAntrianMapKey>())).Returns((AntrianMapDto?)null);
+        _hdrMock.Setup(x => x.GetData(It.IsAny<IAntrianMapKey>()))
+            .Returns((null as AntrianMapDto)!);
         _hdrMock.Setup(x => x.Insert(It.IsAny<AntrianMapDto>())).Throws(new InvalidOperationException("DB error"));
 
         // Act & Assert
@@ -92,7 +89,8 @@ public class AntrianMapRepoTest
     public void LoadEntity_ShouldReturnNone_WhenHeaderNotFound()
     {
         // Arrange
-        _hdrMock.Setup(x => x.GetData(It.IsAny<IAntrianMapKey>())).Returns((AntrianMapDto?)null);
+        _hdrMock.Setup(x => x.GetData(It.IsAny<IAntrianMapKey>()))
+            .Returns((null as AntrianMapDto)!);
 
         // Act
         var result = _sut.LoadEntity(AntrianMapModel.Key("X"));
@@ -127,7 +125,8 @@ public class AntrianMapRepoTest
         // Arrange
         var dto = BuildDto("AM6");
         _hdrMock.Setup(x => x.GetData(It.IsAny<IAntrianMapKey>())).Returns(dto);
-        _detilMock.Setup(x => x.ListData(It.IsAny<IAntrianMapKey>())).Returns((IEnumerable<AntrianMapDetilDto>?)null);
+        _detilMock.Setup(x => x.ListData(It.IsAny<IAntrianMapKey>()))
+            .Returns((null as IEnumerable<AntrianMapDetilDto>)!);
 
         // Act
         var result = _sut.LoadEntity(AntrianMapModel.Key("AM6"));
@@ -144,7 +143,8 @@ public class AntrianMapRepoTest
     public void LoadEntity_ShouldPropagateException_WhenHeaderGetDataThrows()
     {
         // Arrange
-        _hdrMock.Setup(x => x.GetData(It.IsAny<IAntrianMapKey>())).Throws(new InvalidOperationException("DB error"));
+        _hdrMock.Setup(x => x.GetData(It.IsAny<IAntrianMapKey>()))
+            .Throws(new InvalidOperationException("DB error"));
 
         // Act & Assert
         Assert.Throws<InvalidOperationException>(() => _sut.LoadEntity(AntrianMapModel.Key("AM7")));
@@ -154,7 +154,8 @@ public class AntrianMapRepoTest
     public void ListData_ShouldReturnEmptyList_WhenNoDataFound()
     {
         // Arrange
-        _hdrMock.Setup(x => x.ListData(It.IsAny<ILayananKey>(), It.IsAny<IPpaKey>(), It.IsAny<DateOnly>())).Returns((IEnumerable<AntrianMapDto>?)null);
+        _hdrMock.Setup(x => x.ListData(It.IsAny<ILayananKey>(), It.IsAny<IPpaKey>(), It.IsAny<DateOnly>()))
+            .Returns((null as IEnumerable<AntrianMapDto>)!);
 
         // Act
         var result = _sut.ListData(new LayananReff("L1", "L1"), new PpaReff("D1", "D1"), DateOnly.FromDateTime(DateTime.Today));
@@ -168,7 +169,8 @@ public class AntrianMapRepoTest
     {
         // Arrange
         var dto = BuildDto("AM8");
-        _hdrMock.Setup(x => x.ListData(It.IsAny<ILayananKey>(), It.IsAny<IPpaKey>(), It.IsAny<DateOnly>())).Returns(new[] { dto });
+        _hdrMock.Setup(x => x.ListData(It.IsAny<ILayananKey>(), It.IsAny<IPpaKey>(), It.IsAny<DateOnly>()))
+            .Returns([dto]);
 
         // Act
         var result = _sut.ListData(new LayananReff("L2", "L2"), new PpaReff("D2", "D2"), DateOnly.FromDateTime(DateTime.Today));
@@ -191,20 +193,19 @@ public class AntrianMapRepoTest
     #region Helpers
     private static AntrianMapModel BuildModel(string id, int detilCount)
     {
-        var dokter = new PpaReff("D1", "Dokter");
-        var layanan = new LayananReff("L1", "Layanan");
         var tgl = DateOnly.FromDateTime(DateTime.Today);
         var jam = TimeOnly.Parse("09:00");
         var jamPraktek = TimeOnly.Parse("09:30");
 
         var detils = new List<AntrianMapDetilModel>();
-        for (int i = 1; i <= detilCount; i++)
+        for (var i = 1; i <= detilCount; i++)
         {
             var pasien = new PasienReff($"MR{i}", $"Name{i}", new DateOnly(2000, 1, 1), "M");
             detils.Add(new AntrianMapDetilModel(i, pasien.PasienName, pasien.PasienId, $"REF{i}", "FLAG", false));
         }
 
-        return new AntrianMapModel(id, "J1", new PpaReff("D1", "Dokter"), new LayananReff("L1", "Layanan"), tgl, jam, jamPraktek, "PAT", 10, detils);
+        return new AntrianMapModel(id, "J1", new PpaReff("D1", "Dokter"), new LayananReff("L1", "Layanan"), 
+            tgl, jam, jamPraktek, "PAT", 10, detils);
     }
 
     private static AntrianMapDto BuildDto(string id)
@@ -214,7 +215,8 @@ public class AntrianMapRepoTest
 
     private static AntrianMapDetilDto BuildDetilDto(string id, int no)
     {
-        return new AntrianMapDetilDto(id, "D1", "L1", DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd"), "09:00", no, "FLAG", $"MR{no}", $"Name{no}", $"REF{no}", false, "Dokter", "Layanan");
+        return new AntrianMapDetilDto(id, "D1", "L1", DateOnly.FromDateTime(DateTime.Today).ToString("yyyy-MM-dd"), 
+            "09:00", no, "FLAG", $"MR{no}", $"Name{no}", $"REF{no}", false, "Dokter", "Layanan");
     }
     #endregion
 }

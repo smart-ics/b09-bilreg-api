@@ -61,7 +61,7 @@ public class AntrianController : Controller
     }
 
     [HttpPatch]
-    [Route("selesaiPeriksa/{antrianId}/{noUrut}")]
+    [Route("selesaiPeriksa/{antrianId}/{noUrut:int}")]
     public async Task<IActionResult> SelesaiPeriksa(string antrianId, int noUrut)
     {
         var query = new QueSelesaiPeriksaCmd(antrianId, noUrut);
