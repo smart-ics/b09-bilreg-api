@@ -1,6 +1,8 @@
 ﻿using Ardalis.GuardClauses;
+using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 
 namespace Bilreg.Domain.AdmisiContext.AntrianFeature;
 
@@ -79,7 +81,26 @@ public record AntrianMapModel : IAntrianMapKey
         var detil = _listMap.FirstOrDefault(x => x.NoUrut == noUrut);
         detil?.Void();
     }
+    public void SetDataPasien(int noUrut, RegModel reg)
+    {
+        var detil = _listMap.FirstOrDefault(x => x.NoUrut == noUrut);
+        if (detil is null)
+            return;
+        
+        detil.SetPasien(reg.Pasien.PasienName,
+            reg.Pasien.PasienId, reg.RegId);
+    }
+    public void SetDataPasien(int noUrut, BookingModel booking)
+    {
+        var detil = _listMap.FirstOrDefault(x => x.NoUrut == noUrut);
+        if (detil is null)
+            return;
 
+        detil.SetPasien(booking.Person.PersonName, 
+            booking.PasienId,
+            booking.BookingId);
+    }
+    
     public AntrianMapDetilModel GetNextAntrian(string flag)
     {
         var detil = _listMap

@@ -16,8 +16,7 @@ public class AntrianMapDetilDtoTest
     {
         // Arrange
         var pasien = new PasienReff("P001", "John Doe", new DateOnly(1990, 1, 1), "M");
-        var reg = new RegReff("R001", pasien.PasienId, pasien.PasienName);
-        var detil = new AntrianMapDetilModel(3, pasien, reg, "REF123", "FLAG1", true);
+        var detil = new AntrianMapDetilModel(3, pasien.PasienName, pasien.PasienId, "REF123", "FLAG1", true);
 
         var dokter = new PpaReff("D01", "Dr. Who");
         var layanan = new LayananReff("L01", "Layanan A");
@@ -69,13 +68,11 @@ public class AntrianMapDetilDtoTest
 
         // Assert
         model.NoUrut.Should().Be((int)dto.fn_no_antrian);
-        model.Pasien.PasienId.Should().Be(dto.fs_mr);
-        model.Pasien.PasienName.Should().Be(dto.fs_nm_pasien);
+        model.PasienId.Should().Be(dto.fs_mr);
+        model.PasienName.Should().Be(dto.fs_nm_pasien);
         model.ReffId.Should().Be(dto.fs_kd_trs_gen);
         model.Flag.Should().Be(dto.fs_flag);
         model.IsTerpakai.Should().Be(dto.fb_terpakai);
-        // Reg is created with placeholder id in ToModel
-        model.Reg.PasienId.Should().Be(dto.fs_mr);
     }
 
     [Fact]
@@ -83,8 +80,7 @@ public class AntrianMapDetilDtoTest
     {
         // Arrange
         var pasien = new PasienReff("P010", "Alice", new DateOnly(1985, 6, 1), "F");
-        var reg = new RegReff("R010", pasien.PasienId, pasien.PasienName);
-        var detil = new AntrianMapDetilModel(7, pasien, reg, "REF7", "FLAG7", true);
+        var detil = new AntrianMapDetilModel(7, pasien.PasienName, pasien.PasienId, "REF7", "FLAG7", true);
 
         var dokter = new PpaReff("D10", "Dr Ten");
         var layanan = new LayananReff("L10", "Layanan Ten");
@@ -96,8 +92,8 @@ public class AntrianMapDetilDtoTest
 
         // Assert
         model2.NoUrut.Should().Be(detil.NoUrut);
-        model2.Pasien.PasienId.Should().Be(detil.Pasien.PasienId);
-        model2.Pasien.PasienName.Should().Be(detil.Pasien.PasienName);
+        model2.PasienId.Should().Be(detil.PasienId);
+        model2.PasienName.Should().Be(detil.PasienName);
         model2.ReffId.Should().Be(detil.ReffId);
         model2.Flag.Should().Be(detil.Flag);
         model2.IsTerpakai.Should().Be(detil.IsTerpakai);

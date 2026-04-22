@@ -69,11 +69,11 @@ public class AntrianController : Controller
         return Ok(new JSendOk("Done"));
     }
 
-    [HttpPost]
-    [Route("mapMigrasi")]
-    public async Task<IActionResult> MigrasiMapHdr(AntrianMapHdrMigrasiCmd cmd)
-    {
-        await _mediator.Send(cmd);
-        return Ok(new JSendOk("Done"));
-    }
+    // [HttpPost]
+    // [Route("mapMigrasi")]
+    // public async Task<IActionResult> MigrasiMapHdr(AntrianMapHdrMigrasiCmd cmd)
+    // {
+    //     await _mediator.Send(cmd);
+    //     return Ok(new JSendOk("Done"));
+    // }
 }

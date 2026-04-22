@@ -162,7 +162,7 @@ public class AntrianMapModelTest
 			var updated = model.ListMap.Should().ContainSingle().Which;
 			updated.Flag.Should().Be("AUTO");
 			updated.ReffId.Should().Be("-");
-			updated.Pasien.PasienId.Should().Be(PasienModel.Default.ToReff().PasienId);
+			updated.PasienId.Should().Be(PasienModel.Default.ToReff().PasienId);
 		}
 
 		[Fact]
@@ -187,7 +187,6 @@ public class AntrianMapModelTest
 	private static AntrianMapDetilModel CreateDetil(int noUrut, bool isTerpakai, string flag)
 	{
 		var pasien = new PasienReff($"P{noUrut}", $"Pasien{noUrut}", new DateOnly(1990,1,1), "M");
-		var reg = new RegReff($"R{noUrut}", pasien.PasienId, pasien.PasienName);
-		return new AntrianMapDetilModel(noUrut, pasien, reg, reffId: $"REF{noUrut}", flag: flag, isTerpakai: isTerpakai);
+		return new AntrianMapDetilModel(noUrut, pasien.PasienName, pasien.PasienId, reffId: $"REF{noUrut}", flag: flag, isTerpakai: isTerpakai);
 	}
 }

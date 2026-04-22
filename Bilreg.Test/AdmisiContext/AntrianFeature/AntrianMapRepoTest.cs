@@ -201,8 +201,7 @@ public class AntrianMapRepoTest
         for (int i = 1; i <= detilCount; i++)
         {
             var pasien = new PasienReff($"MR{i}", $"Name{i}", new DateOnly(2000, 1, 1), "M");
-            var reg = new RegReff($"R{i}", pasien.PasienId, pasien.PasienName);
-            detils.Add(new AntrianMapDetilModel(i, pasien, reg, $"REF{i}", "FLAG", false));
+            detils.Add(new AntrianMapDetilModel(i, pasien.PasienName, pasien.PasienId, $"REF{i}", "FLAG", false));
         }
 
         return new AntrianMapModel(id, "J1", new PpaReff("D1", "Dokter"), new LayananReff("L1", "Layanan"), tgl, jam, jamPraktek, "PAT", 10, detils);

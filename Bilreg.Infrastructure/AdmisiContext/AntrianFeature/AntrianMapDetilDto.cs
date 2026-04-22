@@ -25,8 +25,8 @@ public record AntrianMapDetilDto(
             fs_jam_jadwal: hdr.JamJadwal.ToString("HH:mm", CultureInfo.InvariantCulture),
             fn_no_antrian: Convert.ToDecimal(model.NoUrut),
             fs_flag: model.Flag,
-            fs_mr: model.Pasien.PasienId,
-            fs_nm_pasien: model.Pasien.PasienName,
+            fs_mr: model.PasienId,
+            fs_nm_pasien: model.PasienName,
             fs_kd_trs_gen: model.ReffId,
             fb_terpakai: model.IsTerpakai,
             fs_nm_dokter: "-",
@@ -36,12 +36,9 @@ public record AntrianMapDetilDto(
 
     public AntrianMapDetilModel ToModel()
     {
-        var pasien = new PasienReff(fs_mr, fs_nm_pasien, new DateOnly(3000,1,1), "-");
-        var reg = new RegReff("-", fs_mr, fs_nm_pasien);
         var result = new AntrianMapDetilModel(
             (int)fn_no_antrian,
-            pasien,
-            reg,
+            fs_nm_pasien, fs_mr,
             fs_kd_trs_gen,
             fs_flag, fb_terpakai);
             return result;
