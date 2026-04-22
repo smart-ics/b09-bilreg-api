@@ -12,7 +12,7 @@ CREATE TABLE dbo.ta_no_antrian_map
     FS_NM_PASIEN       VARCHAR(100) NOT NULL CONSTRAINT DF_ta_no_antrian_map_FS_NM_PASIEN DEFAULT(''), 
     fs_kd_trs_gen      VARCHAR(26) NOT NULL CONSTRAINT DF_ta_no_antrian_map_fs_kd_trs_gen DEFAULT(''),  
     fs_ket_trs_gen     VARCHAR(15) NOT NULL CONSTRAINT DF_ta_no_antrian_map_fs_ket_trs_gen DEFAULT(''),  
-    fn_status_antrian  DECIMAL(18,0) NOT NULL CONSTRAINT DF_ta_no_antrian_map_fn_status_antrian DEFAULT(''), 
+    fn_status_antrian  DECIMAL(18,0) NOT NULL CONSTRAINT DF_ta_no_antrian_map_fn_status_antrian DEFAULT(0), 
     CRTTGL             VARCHAR(10) NOT NULL CONSTRAINT DF_ta_no_antrian_map_CRTTGL DEFAULT('3000-01-01'),  
     CRTJAM             VARCHAR(8) NOT NULL CONSTRAINT DF_ta_no_antrian_map_CRTJAM DEFAULT('00:00:00'),   
     CRTIPA             VARCHAR(40) NOT NULL CONSTRAINT DF_ta_no_antrian_map_CRTIPA DEFAULT(''),  

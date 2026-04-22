@@ -1,8 +1,6 @@
 ﻿using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
-using Nuna.Lib.ValidationHelper;
-using System.Collections.Immutable;
 using System.Globalization;
 
 namespace Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
@@ -14,7 +12,6 @@ public record AntrianMapDetilDto(
     string fs_mr, string fs_nm_pasien,
     string fs_kd_trs_gen, bool fb_terpakai,
     string fs_nm_dokter, string fs_nm_layanan
-    
 )
 {
 
@@ -26,7 +23,7 @@ public record AntrianMapDetilDto(
             fs_kd_layanan: hdr.Layanan.LayananId,
             fd_tgl_jadwal: hdr.TglJadwal.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
             fs_jam_jadwal: hdr.JamJadwal.ToString("HH:mm", CultureInfo.InvariantCulture),
-            fn_no_antrian: model.NoUrut,
+            fn_no_antrian: Convert.ToDecimal(model.NoUrut),
             fs_flag: model.Flag,
             fs_mr: model.Pasien.PasienId,
             fs_nm_pasien: model.Pasien.PasienName,

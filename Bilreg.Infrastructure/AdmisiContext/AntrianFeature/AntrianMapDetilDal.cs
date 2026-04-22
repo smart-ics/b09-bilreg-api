@@ -9,7 +9,7 @@ using System.Globalization;
 
 namespace Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
 
-public interface IAntrianMapDal : 
+public interface IAntrianMapDetilDal : 
     IInsert<AntrianMapDetilDto>,
     IDelete<IAntrianMapKey>,
     IListData<AntrianMapDetilDto, IAntrianMapKey>,
@@ -17,7 +17,7 @@ public interface IAntrianMapDal :
 {
 }
     
-public class AntrianMapDetilDal : IAntrianMapDal
+public class AntrianMapDetilDal : IAntrianMapDetilDal
 {
     private readonly DatabaseOptions _opt;
 
@@ -30,7 +30,7 @@ public class AntrianMapDetilDal : IAntrianMapDal
     {
         const string sql = """
              INSERT INTO ta_no_antrian_map(
-                 fs_kd_antrian_map, fs_kd_dokter, fs_kd_layanan, 
+                 fs_kd_antrian_map,  fs_kd_dokter, fs_kd_layanan, 
                  fd_tgl_jadwal, fs_jam_jadwal, fn_no_antrian,
                  fs_flag, fs_mr, fs_nm_pasien, fs_kd_trs_gen,
                  fb_terpakai)
@@ -97,7 +97,6 @@ public class AntrianMapDetilDal : IAntrianMapDal
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<AntrianMapDetilDto>(sql, dp);
     }
-
     public IEnumerable<AntrianMapDetilDto> ListData(DateTime date)
     {
         const string sql = """
@@ -119,7 +118,7 @@ public class AntrianMapDetilDal : IAntrianMapDal
         var dp = new DynamicParameters();
 
         dp.AddParam("@tgl1", date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), SqlDbType.VarChar);
-        dp.AddParam("@@tgl2", tgl2.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), SqlDbType.VarChar);
+        dp.AddParam("@tgl2", tgl2.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<AntrianMapDetilDto>(sql, dp);

@@ -11,18 +11,18 @@ using System.Globalization;
 
 namespace Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
 
-public interface IAntrianMapHdrDal :
+public interface IAntrianMapDal :
     IInsert<AntrianMapDto>,
     IUpdate<AntrianMapDto>,
     IGetData<AntrianMapDto, IAntrianMapKey>
 {
     IEnumerable<AntrianMapDto> ListData(ILayananKey lynKey, IPpaKey ppaKey , DateOnly tglJadwal);
 }
-public class AntrianMapHdrDal : IAntrianMapHdrDal
+public class AntrianMapDal : IAntrianMapDal
 {
     private readonly DatabaseOptions _opt;
 
-    public AntrianMapHdrDal(IOptions<DatabaseOptions> opt)
+    public AntrianMapDal(IOptions<DatabaseOptions> opt)
     {
         _opt = opt.Value;
     }
@@ -61,7 +61,6 @@ public class AntrianMapHdrDal : IAntrianMapHdrDal
             UPDATE
                 ta_no_antrian_map_hdr
             SET
-                fs_jam_praktek = @fs_jam_praktek,
                 fs_kd_jadwal = @fs_kd_jadwal, 
                 fs_kd_dokter = @fs_kd_dokter, 
                 fs_kd_layanan = @fs_kd_layanan, 
@@ -93,8 +92,9 @@ public class AntrianMapHdrDal : IAntrianMapHdrDal
     {
         const string sql = """
             SELECT 
-               	aa.fs_kd_antrian_map, aa.fs_kd_jadwal, aa.fs_kd_dokter, aa.fs_kd_layanan, 
-                aa.fd_tgl_jadwal, aa.fs_jam_jadwal, aa.fs_jam_praktek, aa.fs_patterin, aa.fn_max,
+               	aa.fs_kd_antrian_map, aa.fs_kd_jadwal, aa.fs_kd_dokter, 
+               	aa.fs_kd_layanan, aa.fd_tgl_jadwal, aa.fs_jam_jadwal, 
+               	aa.fs_jam_praktek, aa.fs_pattern, aa.fn_max,
             	ISNULL(bb.fs_nm_peg,'') AS fs_nm_dokter,
             	ISNULL(cc.fs_nm_layanan,'') AS fs_nm_layanan
             FROM 
@@ -117,7 +117,7 @@ public class AntrianMapHdrDal : IAntrianMapHdrDal
         const string sql = """
             SELECT 
                	aa.fs_kd_antrian_map, aa.fs_kd_jadwal, aa.fs_kd_dokter, aa.fs_kd_layanan, 
-                aa.fd_tgl_jadwal, aa.fs_jam_jadwal, aa.fs_jam_praktek, aa.fs_patterin, aa.fn_max,
+                aa.fd_tgl_jadwal, aa.fs_jam_jadwal, aa.fs_jam_praktek, aa.fs_pattern, aa.fn_max,
             	ISNULL(bb.fs_nm_peg,'') AS fs_nm_dokter,
             	ISNULL(cc.fs_nm_layanan,'') AS fs_nm_layanan
             FROM 
