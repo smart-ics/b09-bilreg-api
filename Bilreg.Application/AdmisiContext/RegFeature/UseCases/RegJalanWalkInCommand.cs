@@ -185,7 +185,8 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         var jadwal = ResolveJadwalPraktek(dokter, request.JamPraktek, tglBerobat);
         var antrian = ResolveAntrian(tglBerobat, dokter, jadwal);
         var antrianMap = LoadOrCreateAntrianMap(jadwal, tglBerobat);
-        var noAntrian = antrianMap.GetNextAntrian();
+        var flag = GetFlag(tipeJaminan);
+        var noAntrian = antrianMap.GetNextNoAntrian(flag);
         var tracker = PasienTrackerModel.Create(reg);
         //      3-trs-billing-karcis
         var jaminan = LoadJaminan(tipeJaminan.Jaminan);
@@ -238,7 +239,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             _antrianRepo.SaveChanges(antrian);
             _trackerRepo.SaveChanges(tracker);
             //      ubah antrianMapHdr
-            antrianMap.SetDataPasien(noAntrian, reg.Pasien, reg.ToReff(), reg.RegId, "AUTO");
+            antrianMap.SetDataPasien(noAntrian, reg.Pasien, reg.ToReff(), reg.RegId, flag);
             _antrianMapRepo.SaveChanges(antrianMap);
             _trsBillingRepo.SaveChanges(trsBillingReg);
             if (tindakan.TindakanId != "-")
@@ -315,16 +316,28 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             : _polisRepo.LoadEntity(polisView).Value;
     }
 
-    private AntrianMapModel LoadOrCreateAntrianMap(JadwalPraktekType jadwal, DateOnly tglJadwal)
+    private string GetFlag(ITipeJaminanKey tipeJmnKey)
     {
-        var queKey = AntrianMapModel.Key(jadwal.JadwalPraktekId,
+        var flag = string.Empty;
+        var req = new GrupJaminanMapGetParam(tipeJmnKey.TipeJaminanId);
+        var map = _grupJmnMapSvc.Execute(req);
+        if (map.groupJaminanId == "JKN")
+            flag = "BPJS";
+        else
+            flag = "UMUM";
+        return flag;
+    }
+
+    private AntrianMapHdrModel LoadOrCreateAntrianMap(JadwalPraktekType jadwal, DateOnly tglJadwal)
+    {
+        var queKey = AntrianMapHdrModel.Key(jadwal.JadwalPraktekId,
             tglJadwal, jadwal.Dokter.PpaId,
             jadwal.Layanan.LayananId, jadwal.JamMulai);
-
-        var result = _antrianMapRepo.LoadEntity(queKey).GetValueOrDefault(AntrianMapModel.Default);
+        
+        var result = _antrianMapRepo.LoadEntity(queKey).GetValueOrDefault(AntrianMapHdrModel.Default);
         if (result.JadwalId == "-")
         {
-            result = AntrianMapModel.Create(
+            result = AntrianMapHdrModel.Create(
                 jadwal.JadwalPraktekId,
                 jadwal.Dokter,
                 jadwal.Layanan,
