@@ -1,5 +1,4 @@
-﻿using Ardalis.GuardClauses;
-using Bilreg.Domain.AdmisiContext.BookingFeature;
+﻿using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
@@ -11,16 +10,10 @@ public record AntrianMapModel : IAntrianMapKey
     private readonly List<AntrianMapDetilModel> _listMap;
 
     #region CREATION
-    public AntrianMapModel(
-        string antrianMapId,
-        string jadwalId,
-        PpaReff dokter,
-        LayananReff layanan,
-        DateOnly tglJadwal,
-        TimeOnly jamJadwal,
-        TimeOnly jamPraktek,
-        AntrianPatternType pattern,
-        int maxPasien,
+    public AntrianMapModel(string antrianMapId, string jadwalId,
+        PpaReff dokter, LayananReff layanan, 
+        DateOnly tglJadwal, TimeOnly jamJadwal, TimeOnly jamPraktek,
+        AntrianPatternType pattern, int maxPasien,
         IEnumerable<AntrianMapDetilModel> listMap)
     {
         AntrianMapId = antrianMapId;
@@ -141,15 +134,26 @@ public record AntrianMapModel : IAntrianMapKey
     {
         _listMap.Clear();
         var noUrut = 1;
-        foreach(var item in AntrianPattern.Pttrn)
+        while (noUrut <= MaxPasien)
+        {
+            var listFullCycle = FullCyclePatternSeed(AntrianPattern, ref noUrut);
+            if (listFullCycle.Count == 0)
+                break;
+            _listMap.AddRange(listFullCycle);
+        }
+        _listMap.RemoveAll(x => x.NoUrut > MaxPasien);
+    }
+
+    private static List<AntrianMapDetilModel> FullCyclePatternSeed(AntrianPatternType pattern, ref int startNumber)
+    {
+        var result = new List<AntrianMapDetilModel>();
+        foreach(var item in pattern.Pttrn)
             for (var i = 0; i < item.Qty; i++)
             {
-                _listMap.Add(new AntrianMapDetilModel(noUrut, string.Empty, string.Empty, string.Empty, item.Desc, false));
-                noUrut++;
-                if (noUrut > MaxPasien)
-                    break;
+                result.Add(new AntrianMapDetilModel(startNumber, string.Empty, string.Empty, string.Empty, item.Desc, false));
+                startNumber++;                
             }
-        
+        return result;
     }
 }
 

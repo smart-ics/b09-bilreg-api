@@ -183,6 +183,157 @@ public class AntrianMapModelTest
 		}
 	}
 
+	public class SeedingTests
+	{
+		// Builds a minimal JadwalPraktekType with the given pattern and max pasien.
+		private static JadwalPraktekType BuildJadwal(AntrianPatternType pattern, int maxPasien)
+			=> new JadwalPraktekType(
+				jadwalPraktekId : "J-SEED",
+				dokter          : new PpaReff("-", "-"),
+				layanan         : new LayananReff("-", "-"),
+				layanandk       : new LayananDkReff("-", "-"),
+				groupSpesiallis : GroupSpesialisType.Default,
+				ruang           : RuangType.Default,
+				hari            : DayOfWeek.Monday,
+				jamMulai        : TimeOnly.MinValue,
+				jamSelesai      : TimeOnly.MinValue,
+				maxPasien       : maxPasien,
+				antrianPattern  : pattern);
+
+		private static AntrianPatternType PatternUmumBpjs()
+			=> new AntrianPatternType("MIX", 0, 0,
+			[
+				new AntrianPatternItemType("UMUM", 1),
+				new AntrianPatternItemType("BPJS", 3)
+			]);
+
+		[Fact]
+		public void CreateFromJadwal_ShouldSeedCyclically_WhenMaxPasienIs10()
+		{
+			// Arrange – cycle length = 4 (UMUM×1 + BPJS×3), MaxPasien = 10
+			var expected = new[]
+			{
+				"UMUM","BPJS","BPJS","BPJS",   // cycle 1
+				"UMUM","BPJS","BPJS","BPJS",   // cycle 2
+				"UMUM","BPJS"                  // cycle 3, cut at 10
+			};
+
+			// Act
+			var model = AntrianMapModel.CreateFromJadwal(BuildJadwal(PatternUmumBpjs(), 10),
+				DateOnly.FromDayNumber(1));
+
+			// Assert
+			model.TotalSlotCount.Should().Be(10);
+			var slots = model.ListMap.OrderBy(x => x.NoUrut).ToList();
+			for (var i = 0; i < expected.Length; i++)
+				slots[i].Flag.Should().Be(expected[i], $"slot {i + 1} should be {expected[i]}");
+		}
+
+		[Fact]
+		public void CreateFromJadwal_ShouldSeedExactCycle_WhenMaxPasienEqualsOneCycleLength()
+		{
+			// cycle length = 4, MaxPasien = 4 → exactly one full cycle, no overflow
+			var model = AntrianMapModel.CreateFromJadwal(BuildJadwal(PatternUmumBpjs(), 4),
+				DateOnly.FromDayNumber(1));
+
+			model.TotalSlotCount.Should().Be(4);
+			var slots = model.ListMap.OrderBy(x => x.NoUrut).ToList();
+			slots[0].Flag.Should().Be("UMUM");
+			slots[1].Flag.Should().Be("BPJS");
+			slots[2].Flag.Should().Be("BPJS");
+			slots[3].Flag.Should().Be("BPJS");
+		}
+
+		[Fact]
+		public void CreateFromJadwal_ShouldCutMidCycle_WhenMaxPasienIsNotMultipleOfCycle()
+		{
+			// MaxPasien = 6: full cycle (4) + 2 more (UMUM, BPJS)
+			var model = AntrianMapModel.CreateFromJadwal(BuildJadwal(PatternUmumBpjs(), 6),
+				DateOnly.FromDayNumber(1));
+
+			model.TotalSlotCount.Should().Be(6);
+			var slots = model.ListMap.OrderBy(x => x.NoUrut).ToList();
+			slots[4].Flag.Should().Be("UMUM");  // start of second cycle
+			slots[5].Flag.Should().Be("BPJS");  // cut here
+		}
+
+		[Fact]
+		public void CreateFromJadwal_ShouldSeedNothing_WhenPatternIsEmpty()
+		{
+			// Default pattern has empty Pttrn
+			var model = AntrianMapModel.CreateFromJadwal(
+				BuildJadwal(AntrianPatternType.Default, 10),
+				DateOnly.FromDayNumber(1));
+
+			model.TotalSlotCount.Should().Be(0);
+		}
+
+		[Fact]
+		public void CreateFromJadwal_ShouldSeedNothing_WhenMaxPasienIsZero()
+		{
+			var model = AntrianMapModel.CreateFromJadwal(
+				BuildJadwal(PatternUmumBpjs(), 0),
+				DateOnly.FromDayNumber(1));
+
+			model.TotalSlotCount.Should().Be(0);
+		}
+
+		[Fact]
+		public void CreateFromJadwal_ShouldRepeatSingleEntry_WhenPatternHasOneEntry()
+		{
+			// Single entry UMUM×3, MaxPasien = 5 → all 5 slots are UMUM
+			var singlePattern = new AntrianPatternType("SINGLE", 0, 0,
+				[new AntrianPatternItemType("UMUM", 3)]);
+
+			var model = AntrianMapModel.CreateFromJadwal(BuildJadwal(singlePattern, 5),
+				DateOnly.FromDayNumber(1));
+
+			model.TotalSlotCount.Should().Be(5);
+			model.ListMap.Should().OnlyContain(x => x.Flag == "UMUM");
+		}
+
+		[Fact]
+		public void CreateFromJadwal_ShouldSeedAllSlotsNotTerpakai_WhenSeeded()
+		{
+			var model = AntrianMapModel.CreateFromJadwal(BuildJadwal(PatternUmumBpjs(), 10),
+				DateOnly.FromDayNumber(1));
+
+			model.ListMap.Should().OnlyContain(x => !x.IsTerpakai,
+				"all freshly seeded slots must be available");
+		}
+
+		[Fact]
+		public void CreateFromJadwal_ShouldAssignSequentialNoUrut_WhenSeeded()
+		{
+			var model = AntrianMapModel.CreateFromJadwal(BuildJadwal(PatternUmumBpjs(), 10),
+				DateOnly.FromDayNumber(1));
+
+			var noUrutList = model.ListMap.Select(x => x.NoUrut).ToList();
+			noUrutList.Should().BeEquivalentTo(Enumerable.Range(1, 10),
+				options => options.WithStrictOrdering());
+		}
+
+		[Theory]
+		[InlineData(1,  "UMUM")]
+		[InlineData(2,  "BPJS")]
+		[InlineData(3,  "BPJS")]
+		[InlineData(4,  "BPJS")]
+		[InlineData(5,  "UMUM")]
+		[InlineData(6,  "BPJS")]
+		[InlineData(7,  "BPJS")]
+		[InlineData(8,  "BPJS")]
+		[InlineData(9,  "UMUM")]
+		[InlineData(10, "BPJS")]
+		public void CreateFromJadwal_ShouldHaveCorrectFlag_ForEachSlot(int noUrut, string expectedFlag)
+		{
+			var model = AntrianMapModel.CreateFromJadwal(BuildJadwal(PatternUmumBpjs(), 10),
+				DateOnly.FromDayNumber(1));
+
+			var slot = model.ListMap.Single(x => x.NoUrut == noUrut);
+			slot.Flag.Should().Be(expectedFlag);
+		}
+	}
+
 	// Helper factory for detil records to keep tests readable
 	private static AntrianMapDetilModel CreateDetil(int noUrut, bool isTerpakai, string flag)
 	{
