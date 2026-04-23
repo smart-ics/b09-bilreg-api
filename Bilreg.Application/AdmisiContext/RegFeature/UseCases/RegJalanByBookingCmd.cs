@@ -69,7 +69,7 @@ public class RegJalanByBookingHandler
 
     private readonly IMapJaminanJkRepo _mapJaminanJkRepo;
     private readonly IJurnalRepo _jurnalRepo;
-    private readonly IDashboardEMrAddRegService _addRegSvc;
+    private readonly IAddAntrianEmrByRegService _addRegSvc;
 
     private const string BAYAR_SENDIRI = "1";
     public RegJalanByBookingHandler(
@@ -97,7 +97,7 @@ public class RegJalanByBookingHandler
         IJurnalRepo jurnalRepo,
         IRemoteCetakRepo remoteCetakRepo,
         IGetAppSettingService getAppSettingSvc,
-        IDashboardEMrAddRegService addRegSvc)
+        IAddAntrianEmrByRegService addRegSvc)
     {
         _bookingRepo = bookingRepo;
         _pasienRepo = pasienRepo;
@@ -382,7 +382,7 @@ public class RegJalanByBookingHandler
 
     private void AddReg(RegModel reg, BookingModel booking)
     {
-        var payload = new AddRegCmd(
+        var payload = new AddAntrianEmrByRegCommand(
             reg.RegId, booking.BookingId, reg.Pasien.PasienId,
             reg.Pasien.PasienName, reg.Layanan.LayananId, 
             reg.Dokter.PpaId, reg.RegDate.ToString("yyyy-MM-dd"), 

@@ -7,9 +7,9 @@ namespace Bilreg.Infrastructure.AdmisiContext.BookingFeature;
 
 public class DashboardAddBookService : IDashboardAddBookService
 {
-    public readonly Emr25Options _opt;
+    public readonly EmrOptions _opt;
 
-    public DashboardAddBookService(IOptions<Emr25Options> opt)
+    public DashboardAddBookService(IOptions<EmrOptions> opt)
     {
         _opt = opt.Value;
     }

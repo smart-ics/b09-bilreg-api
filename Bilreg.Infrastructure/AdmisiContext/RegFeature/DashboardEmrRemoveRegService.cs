@@ -7,9 +7,9 @@ namespace Bilreg.Infrastructure.AdmisiContext.RegFeature;
 
 public class DashboardEmrRemoveRegService : IDashboardEmrRemoveRegService
 {
-    public readonly Emr25Options _opt;
+    public readonly EmrOptions _opt;
 
-    public DashboardEmrRemoveRegService(IOptions<Emr25Options> opt)
+    public DashboardEmrRemoveRegService(IOptions<EmrOptions> opt)
     {
         _opt = opt.Value;
     }

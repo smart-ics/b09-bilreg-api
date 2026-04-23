@@ -5,21 +5,21 @@ using RestSharp;
 
 namespace Bilreg.Infrastructure.AdmisiContext.RegFeature;
 
-public class DashboardEmrAddRegService : IDashboardEMrAddRegService
+public class AddAntrianEmrByRegService : IAddAntrianEmrByRegService
 {
-    public readonly Emr25Options _opt;
+    private readonly EmrOptions _opt;
 
-    public DashboardEmrAddRegService(IOptions<Emr25Options> opt)
+    public AddAntrianEmrByRegService(IOptions<EmrOptions> opt)
     {
         _opt = opt.Value;
     }
 
-    public void Execute(AddRegCmd cmd)
+    public void Execute(AddAntrianEmrByRegCommand cmd)
     {
         AddReg(cmd).ConfigureAwait(false).GetAwaiter().GetResult();
     }
 
-    private async Task AddReg(AddRegCmd req)
+    private async Task AddReg(AddAntrianEmrByRegCommand req)
     {
         if (_opt.BaseApiUrl.Trim().Length == 0)
             return;
@@ -31,8 +31,6 @@ public class DashboardEmrAddRegService : IDashboardEMrAddRegService
 
         var result = await client.ExecutePostAsync(request);
     }
-
-
 }
 
 

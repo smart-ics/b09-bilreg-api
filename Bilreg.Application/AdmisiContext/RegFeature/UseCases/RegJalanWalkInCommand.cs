@@ -79,7 +79,7 @@
 //
 //     private readonly IRemoteCetakRepo _remoteCetakRepo;
 //     private readonly IGetAppSettingService _getAppSettingSvc;
-//     private readonly IDashboardEMrAddRegService _addRegSvc;
+//     private readonly IAddRegAntrianEmrService _addRegAntrianEmrService;
 //     private readonly IGrupjaminanMapGetService _grupJmnMapSvc;
 //     public RegJalanCreateHandler(
 //         //  reg support
@@ -114,7 +114,7 @@
 //         IJurnalRepo jurnalRepo,
 //         IRemoteCetakRepo remoteCetakRepo,
 //         IGetAppSettingService getAppSettingSvc,
-//         IDashboardEMrAddRegService addRegSvc, 
+//         IAddRegAntrianEmrService addRegSvc, 
 //         IGrupjaminanMapGetService grupJmnMapService)
 //     {
 //         //      reg-support
@@ -149,7 +149,7 @@
 //         _jurnalRepo = jurnalRepo;
 //         _remoteCetakRepo = remoteCetakRepo;
 //         _getAppSettingSvc = getAppSettingSvc;
-//         _addRegSvc = addRegSvc;
+//         _addRegAntrianEmrService = addRegSvc;
 //         _grupJmnMapSvc = grupJmnMapService;
 //     }
 //
@@ -241,7 +241,7 @@
 //             _antrianRepo.SaveChanges(antrian);
 //             _trackerRepo.SaveChanges(tracker);
 //             //      ubah antrianMapHdr
-//             antrianMap.SetDataPasien(nextDetilAntrianMap.NoUrut, reg.Pasien, reg.ToReff(), reg.RegId, flag);
+//             antrianMap.SetDataPasien(nextDetilAntrianMap.NoUrut, reg);
 //             _antrianMapRepo.SaveChanges(antrianMap);
 //             _trsBillingRepo.SaveChanges(trsBillingReg);
 //             if (tindakan.TindakanId != "-")
@@ -428,7 +428,7 @@
 //             reg.Dokter.PpaId, reg.RegDate.ToString("yyyy-MM-dd"),
 //             jadwal.JamMulai.ToString("HH:mm", CultureInfo.InvariantCulture), 
 //             noAntrian);
-//         _addRegSvc.Execute(payload);
+//         _addRegAntrianEmrService.Execute(payload);
 //     }
 //     #endregion
 // }
