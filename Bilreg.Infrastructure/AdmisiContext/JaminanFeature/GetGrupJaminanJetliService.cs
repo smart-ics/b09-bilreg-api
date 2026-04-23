@@ -7,20 +7,20 @@ using System.Text.Json;
 
 namespace Bilreg.Infrastructure.AdmisiContext.JaminanFeature;
 
-public class GrupjaminanMapGetService : IGrupjaminanMapGetService
+public class GetGrupJaminanJetliService : IGetGrupJaminanJetliService
 {
     private readonly JetliOptions _opt;
     private readonly IRestClientFactory _restClient;
-    public GrupjaminanMapGetService(IOptions<JetliOptions> opt, 
+    public GetGrupJaminanJetliService(IOptions<JetliOptions> opt, 
         IRestClientFactory restClient)
     {
         _opt = opt.Value;
         _restClient = restClient;
     }
-    public GrupJaminanMapGetResponse Execute(GrupJaminanMapGetParam req)
+    public GetGrupJaminanJetliResponse Execute(GetGrupJaminanJetliRequest req)
     {
         if (req.TipeJaminanId.Trim().Length == 0)
-            return new GrupJaminanMapGetResponse("-", "-", "-");
+            return new GetGrupJaminanJetliResponse("-", "-", "-");
 
         var client = _restClient.Create(_opt.BaseApiUrl);
         var request = new RestRequest($"/api/GrupJaminan/map", Method.Get);
@@ -28,14 +28,14 @@ public class GrupjaminanMapGetService : IGrupjaminanMapGetService
 
         var response = client.Execute(request);
         if (response.StatusCode != HttpStatusCode.OK)
-            return new GrupJaminanMapGetResponse("-", "-", "-");
+            return new GetGrupJaminanJetliResponse("-", "-", "-");
 
         var jsonOption = new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         };
 
-        var result = response.Content.DeserializeOrThrow<JSend<GrupJaminanMapGetResponse>>($"Parsing failed: {response.Content}", jsonOption);
+        var result = response.Content.DeserializeOrThrow<JSend<GetGrupJaminanJetliResponse>>($"Parsing failed: {response.Content}", jsonOption);
         return result.Data;
     }
 

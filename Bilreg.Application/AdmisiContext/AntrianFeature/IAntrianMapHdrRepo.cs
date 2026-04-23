@@ -13,6 +13,6 @@ public interface IAntrianMapRepo :
 }
 
 
-public record AntrianMapHdrView(string JadwalId, PpaReff Dokter, 
+public record AntrianMapHdrView(string AntrianMapId, string JadwalId, PpaReff Dokter, 
     LayananReff Layanan, DateOnly TglJadwal, TimeOnly JamJadwal, 
-    TimeOnly JamPraktek);
+    TimeOnly JamPraktek) : IAntrianMapKey;

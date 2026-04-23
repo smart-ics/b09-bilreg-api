@@ -1,4 +1,5 @@
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
+using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
@@ -29,7 +30,7 @@ public class AntrianMapModelTest
 				tglJadwal: new DateOnly(2026,1,1),
 				jamJadwal: new TimeOnly(8,0),
 				jamPraktek: new TimeOnly(8,30),
-				pattern: "P",
+				pattern: AntrianPatternType.Default,
 				maxPasien: 10,
 				listMap: detils
 			);
@@ -57,7 +58,7 @@ public class AntrianMapModelTest
 				tglJadwal: DateOnly.FromDateTime(DateTime.Today),
 				jamJadwal: TimeOnly.FromDateTime(DateTime.Now),
 				jamPraktek: TimeOnly.FromDateTime(DateTime.Now),
-				pattern: "P",
+				pattern: AntrianPatternType.Default,
 				maxPasien: 5,
 				listMap: null!
 			);
@@ -111,7 +112,7 @@ public class AntrianMapModelTest
 			};
 
 			var model = new AntrianMapModel("m", "j", new PpaReff("d","n"), new LayananReff("l","n"),
-				DateOnly.MinValue, TimeOnly.MinValue, TimeOnly.MinValue, "p", 1, detils);
+				DateOnly.MinValue, TimeOnly.MinValue, TimeOnly.MinValue, AntrianPatternType.Default,  1, detils);
 
 			// Act
 			var next = model.GetNextAntrian("A");
@@ -134,7 +135,7 @@ public class AntrianMapModelTest
 			};
 
 			var model = new AntrianMapModel("m2", "j2", new PpaReff("d2","n2"), new LayananReff("l2","n2"),
-				DateOnly.MinValue, TimeOnly.MinValue, TimeOnly.MinValue, "p", 2, detils);
+				DateOnly.MinValue, TimeOnly.MinValue, TimeOnly.MinValue, AntrianPatternType.Default, 2, detils);
 
 			// Act
 			var next = model.GetNextAntrian("Z");
@@ -152,7 +153,7 @@ public class AntrianMapModelTest
 			var detil = CreateDetil(5, isTerpakai: true, flag: "X");
 			var list = new List<AntrianMapDetilModel> { detil };
 			var model = new AntrianMapModel("m3", "j3", new PpaReff("d3","n3"), new LayananReff("l3","n3"),
-				DateOnly.MinValue, TimeOnly.MinValue, TimeOnly.MinValue, "p", 1, list);
+				DateOnly.MinValue, TimeOnly.MinValue, TimeOnly.MinValue, AntrianPatternType.Default, 1, list);
 
 			// Act
 			model.VoidSlot(5);
@@ -171,7 +172,7 @@ public class AntrianMapModelTest
 			var detil = CreateDetil(7, isTerpakai: false, flag: "Y");
 			var list = new List<AntrianMapDetilModel> { detil };
 			var model = new AntrianMapModel("m4", "j4", new PpaReff("d4","n4"), new LayananReff("l4","n4"),
-				DateOnly.MinValue, TimeOnly.MinValue, TimeOnly.MinValue, "p", 1, list);
+				DateOnly.MinValue, TimeOnly.MinValue, TimeOnly.MinValue, AntrianPatternType.Default, 1, list);
 
 			// Act
 			Action act = () => model.VoidSlot(999);

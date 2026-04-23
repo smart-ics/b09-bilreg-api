@@ -1,5 +1,6 @@
 ﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
+using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Nuna.Lib.DataTypeExtension;
@@ -50,5 +51,6 @@ public class AntrianMapRepo : IAntrianMapRepo
         
         return result;
     }
+
 }
 

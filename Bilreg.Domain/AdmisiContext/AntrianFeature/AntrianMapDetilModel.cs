@@ -56,8 +56,11 @@ public record AntrianMapDetilModel
 
     internal void Void()
     {
-        PasienId = string.Empty;
-        PasienName = string.Empty;
+        // When a slot is voided we want it to represent an empty/default patient reference
+        // Use PasienModel.Default PasienId convention ("-") so tests and consumers expecting
+        // the default reference are consistent.
+        PasienId = "-";
+        PasienName = "-";
         ReffId = "-";
         Flag = "AUTO";
     }

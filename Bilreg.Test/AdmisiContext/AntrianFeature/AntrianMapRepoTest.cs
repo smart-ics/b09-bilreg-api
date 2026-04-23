@@ -1,5 +1,6 @@
 using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
+using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
@@ -201,7 +202,7 @@ public class AntrianMapRepoTest
             {
                 model.AntrianMapId.Should().Be("AM-099");
                 model.JadwalId.Should().Be("J-099");
-                model.Pattern.Should().Be("PTN");
+                model.AntrianPattern.Tipe.Should().Be("PTN");
                 model.MaxPasien.Should().Be(25);
             },
             onNone: () => Assert.Fail("Expected Some but got None"));
@@ -347,7 +348,7 @@ public class AntrianMapRepoTest
             tglJadwal: new DateOnly(2026, 4, 23),
             jamJadwal: new TimeOnly(8, 0),
             jamPraktek: new TimeOnly(8, 30),
-            pattern: "P1",
+            pattern: AntrianPatternType.Default,
             maxPasien: 10,
             listMap: detils);
     }

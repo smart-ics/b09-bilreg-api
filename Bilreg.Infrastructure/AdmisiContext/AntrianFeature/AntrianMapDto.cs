@@ -5,6 +5,8 @@ using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using System.Globalization;
+using System.Text.Json;
+using Bilreg.Domain.AdmisiContext.BookingFeature;
 
 namespace Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
 
@@ -50,6 +52,7 @@ public record AntrianMapDto
 
     public static AntrianMapDto FromModel(AntrianMapModel model)
     {
+        var antrianPatternStr = JsonSerializer.Serialize(model.AntrianPattern);
         var result = new AntrianMapDto(
             model.AntrianMapId,
             model.JadwalId,
@@ -58,7 +61,7 @@ public record AntrianMapDto
             model.TglJadwal.ToDateTime(TimeOnly.MinValue),
             model.JamJadwal.ToString("HH:mm", CultureInfo.InvariantCulture),
             model.JamPraktek.ToString("HH:mm", CultureInfo.InvariantCulture),
-            model.Pattern,
+            antrianPatternStr,
             model.MaxPasien,
             model.Dokter.PpaName,
             model.Layanan.LayananName
@@ -68,6 +71,27 @@ public record AntrianMapDto
     }
     public AntrianMapModel ToModel(IEnumerable<AntrianMapDetilModel> listDetil)
     {
+        AntrianPatternType antrianPattern;
+        if (string.IsNullOrWhiteSpace(fs_pattern))
+        {
+            antrianPattern = AntrianPatternType.Default;
+        }
+        else
+        {
+            try
+            {
+                var trimmed = fs_pattern.TrimStart();
+                if (trimmed.StartsWith('{') || trimmed.StartsWith('['))
+                    antrianPattern = JsonSerializer.Deserialize<AntrianPatternType>(fs_pattern) ?? AntrianPatternType.Default;
+                else
+                    antrianPattern = new AntrianPatternType(fs_pattern, fn_max, 0, new List<AntrianPatternItemType>());
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                // fallback to legacy simple pattern representation stored as plain string
+                antrianPattern = new AntrianPatternType(fs_pattern, fn_max, 0, new List<AntrianPatternItemType>());
+            }
+        }
         return new AntrianMapModel(
             fs_kd_antrian_map,
             fs_kd_jadwal,
@@ -76,7 +100,7 @@ public record AntrianMapDto
             DateOnly.FromDateTime(fd_tgl_jadwal),
             TimeOnly.ParseExact(fs_jam_jadwal, @"HH\:mm", CultureInfo.InvariantCulture),
             TimeOnly.ParseExact(fs_jam_praktek, @"HH\:mm", CultureInfo.InvariantCulture),
-            fs_pattern,
+            antrianPattern,
             fn_max,
             listMap: listDetil
         );
@@ -86,7 +110,7 @@ public record AntrianMapDto
     {
         var dokter = new PpaReff(fs_kd_dokter, fs_nm_dokter);
         var lyn = new LayananReff(fs_kd_layanan, fs_nm_layanan);
-        var result = new AntrianMapHdrView(fs_kd_jadwal, dokter, lyn,
+        var result = new AntrianMapHdrView(fs_kd_antrian_map, fs_kd_jadwal, dokter, lyn,
             DateOnly.FromDateTime(fd_tgl_jadwal),
             TimeOnly.ParseExact(fs_jam_jadwal, @"HH\:mm", CultureInfo.InvariantCulture),
             TimeOnly.ParseExact(fs_jam_praktek, @"HH\:mm", CultureInfo.InvariantCulture));

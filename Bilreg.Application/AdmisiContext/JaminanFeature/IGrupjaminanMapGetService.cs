@@ -2,9 +2,9 @@
 
 namespace Bilreg.Application.AdmisiContext.JaminanFeature;
 
-public interface IGrupjaminanMapGetService : INunaService<GrupJaminanMapGetResponse, GrupJaminanMapGetParam>
+public interface IGetGrupJaminanJetliService : INunaService<GetGrupJaminanJetliResponse, GetGrupJaminanJetliRequest>
 {
 }
 
-public record GrupJaminanMapGetParam(string TipeJaminanId);
-public record GrupJaminanMapGetResponse(string TipeJaminanId, string GroupJaminanId, string GroupJaminanName);
+public record GetGrupJaminanJetliRequest(string TipeJaminanId);
+public record GetGrupJaminanJetliResponse(string TipeJaminanId, string GroupJaminanId, string GroupJaminanName);

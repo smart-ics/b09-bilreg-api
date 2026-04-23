@@ -19,7 +19,7 @@ public record AntrianMapModel : IAntrianMapKey
         DateOnly tglJadwal,
         TimeOnly jamJadwal,
         TimeOnly jamPraktek,
-        string pattern,
+        AntrianPatternType pattern,
         int maxPasien,
         IEnumerable<AntrianMapDetilModel> listMap)
     {
@@ -30,12 +30,32 @@ public record AntrianMapModel : IAntrianMapKey
         TglJadwal = tglJadwal;
         JamJadwal = jamJadwal;
         JamPraktek = jamPraktek;
-        Pattern = pattern;
+        AntrianPattern = pattern;
         MaxPasien = maxPasien;
         
         _listMap = listMap?.ToList() ?? [];
     }
 
+    public static AntrianMapModel CreateFromJadwal(JadwalPraktekType jadwal,
+        DateOnly tgl)
+    {
+        var newKey = Ulid.NewUlid().ToString();
+        var result = new AntrianMapModel(
+            antrianMapId: newKey,
+            jadwalId    : jadwal.JadwalPraktekId,
+            dokter      : jadwal.Dokter,
+            layanan     : jadwal.Layanan,
+            tglJadwal   : tgl,
+            jamJadwal   : jadwal.JamMulai,
+            jamPraktek  : jadwal.JamMulai,
+            pattern     : jadwal.AntrianPattern,
+            maxPasien   : jadwal.MaxPasien,
+            listMap: []
+        );
+        result.SeedingMap();
+        return result;
+    }
+    
     public static AntrianMapModel Default => new(
         antrianMapId: "-",
         jadwalId: "-",
@@ -44,11 +64,11 @@ public record AntrianMapModel : IAntrianMapKey
         tglJadwal: DateOnly.MinValue,
         jamJadwal: TimeOnly.MinValue,
         jamPraktek: TimeOnly.MinValue,
-        pattern: "",
+        pattern: AntrianPatternType.Default,
         maxPasien: 0,
         listMap: []
     );
-
+    
     public static IAntrianMapKey Key(string id)
     {
         var result = Default with {AntrianMapId = id};
@@ -65,7 +85,7 @@ public record AntrianMapModel : IAntrianMapKey
     public DateOnly TglJadwal { get; init; }
     public TimeOnly JamJadwal { get; init; }
     public TimeOnly JamPraktek { get; init; }
-    public string Pattern { get; init; }
+    public AntrianPatternType AntrianPattern { get; init; }
     public int MaxPasien { get; private set; }
     public int LastNoUrut => _listMap.Max(x => x.NoUrut);
     public IEnumerable<AntrianMapDetilModel> ListMap => _listMap;
@@ -116,6 +136,21 @@ public record AntrianMapModel : IAntrianMapKey
     public int TotalSlotCount => _listMap.Count;
 
     #endregion
+
+    private void SeedingMap()
+    {
+        _listMap.Clear();
+        var noUrut = 1;
+        foreach(var item in AntrianPattern.Pttrn)
+            for (var i = 0; i < item.Qty; i++)
+            {
+                _listMap.Add(new AntrianMapDetilModel(noUrut, string.Empty, string.Empty, string.Empty, item.Desc, false));
+                noUrut++;
+                if (noUrut > MaxPasien)
+                    break;
+            }
+        
+    }
 }
 
 

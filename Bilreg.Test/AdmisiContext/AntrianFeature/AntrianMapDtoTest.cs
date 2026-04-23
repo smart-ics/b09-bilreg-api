@@ -2,6 +2,7 @@ using System.Globalization;
 using FluentAssertions;
 using Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
+using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 
@@ -17,7 +18,8 @@ public class AntrianMapDtoTest
         var tgl = DateOnly.FromDateTime(new DateTime(2026, 4, 22));
         var jamJadwal = TimeOnly.ParseExact("09:30", "HH:mm", CultureInfo.InvariantCulture);
         var jamPraktek = TimeOnly.ParseExact("10:00", "HH:mm", CultureInfo.InvariantCulture);
-        var model = new AntrianMapModel("AM01", "J001", dokter, layanan, tgl, jamJadwal, jamPraktek, "PAT", 5, new List<AntrianMapDetilModel>());
+        var model = new AntrianMapModel("AM01", "J001", dokter, layanan, tgl, jamJadwal, jamPraktek, 
+            AntrianPatternType.Default, 5, new List<AntrianMapDetilModel>());
 
         var dto = AntrianMapDto.FromModel(model);
 
@@ -52,7 +54,7 @@ public class AntrianMapDtoTest
         model.TglJadwal.Should().Be(DateOnly.FromDateTime(dto.fd_tgl_jadwal));
         model.JamJadwal.Should().Be(TimeOnly.ParseExact(dto.fs_jam_jadwal, @"HH\:mm", CultureInfo.InvariantCulture));
         model.JamPraktek.Should().Be(TimeOnly.ParseExact(dto.fs_jam_praktek, @"HH\:mm", CultureInfo.InvariantCulture));
-        model.Pattern.Should().Be(dto.fs_pattern);
+        model.AntrianPattern.Tipe.Should().Be(dto.fs_pattern);
         model.MaxPasien.Should().Be(dto.fn_max);
         model.ListMap.Should().BeEquivalentTo(detils);
     }

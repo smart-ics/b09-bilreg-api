@@ -2,6 +2,7 @@ using System.Globalization;
 using FluentAssertions;
 using Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
+using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
@@ -22,7 +23,9 @@ public class AntrianMapDetilDtoTest
         var layanan = new LayananReff("L01", "Layanan A");
         var tgl = DateOnly.FromDateTime(new DateTime(2026, 4, 22));
         var jam = TimeOnly.ParseExact("09:30", "HH:mm", CultureInfo.InvariantCulture);
-        var hdr = new AntrianMapModel("AM01", "J01", dokter, layanan, tgl, jam, TimeOnly.ParseExact("10:00", "HH:mm", CultureInfo.InvariantCulture), "PAT", 10, new List<AntrianMapDetilModel> { detil });
+        var hdr = new AntrianMapModel("AM01", "J01", dokter, layanan, tgl, jam, 
+            TimeOnly.ParseExact("10:00", "HH:mm", CultureInfo.InvariantCulture), AntrianPatternType.Default, 
+            10, new List<AntrianMapDetilModel> { detil });
 
         // Act
         var dto = AntrianMapDetilDto.FromModel(detil, hdr);
@@ -84,7 +87,10 @@ public class AntrianMapDetilDtoTest
 
         var dokter = new PpaReff("D10", "Dr Ten");
         var layanan = new LayananReff("L10", "Layanan Ten");
-        var hdr = new AntrianMapModel("AM10", "J10", dokter, layanan, DateOnly.FromDateTime(new DateTime(2026, 4, 25)), TimeOnly.ParseExact("11:11", "HH:mm", CultureInfo.InvariantCulture), TimeOnly.ParseExact("11:30", "HH:mm", CultureInfo.InvariantCulture), "PAT", 5, new List<AntrianMapDetilModel> { detil });
+        var hdr = new AntrianMapModel("AM10", "J10", dokter, layanan, DateOnly.FromDateTime(new DateTime(2026, 4, 25)), 
+            TimeOnly.ParseExact("11:11", "HH:mm", CultureInfo.InvariantCulture), 
+            TimeOnly.ParseExact("11:30", "HH:mm", CultureInfo.InvariantCulture), 
+            AntrianPatternType.Default, 5, new List<AntrianMapDetilModel> { detil });
 
         // Act
         var dto = AntrianMapDetilDto.FromModel(detil, hdr);

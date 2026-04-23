@@ -11,7 +11,7 @@ namespace Bilreg.Application.AdmisiContext.BookingFeature;
 
 public record JadwalPraktekSaveCmd(string JadwalPraktekId, string DokterId,
     string LayananId, string RuangId, int Hari,
-    string JamMulai, string JamSelesai, int MaxPasien) :
+    string JamMulai, string JamSelesai, int MaxPasien, AntrianPatternType AntrianPattern) :
     IRequest<JadwalPraktekSaveResponse>, IJadwalPraktekKey, ILayananKey, IRuangKey;
 
 public record JadwalPraktekSaveResponse(string JadwalPraktekId);
@@ -108,7 +108,9 @@ public class JadwalPraktekSaveHandler : IRequestHandler<JadwalPraktekSaveCmd, Ja
             (DayOfWeek)request.Hari,
             jamMulai,
             jamSelesai,
-            request.MaxPasien);
+            request.MaxPasien, 
+            request.AntrianPattern
+            );
     }
     private JadwalPraktekType UpdateJadwal(
         JadwalPraktekSaveCmd request, PpaType dokter,
@@ -129,7 +131,8 @@ public class JadwalPraktekSaveHandler : IRequestHandler<JadwalPraktekSaveCmd, Ja
             (DayOfWeek)request.Hari,
             jamMulai,
             jamSelesai,
-            request.MaxPasien);
+            request.MaxPasien,
+            request.AntrianPattern);
     }
     
     private void ValidateOverlap(
