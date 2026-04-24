@@ -238,7 +238,6 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             _regAktifRepo.SaveChanges(regAktif);
             _antrianRepo.SaveChanges(antrian);
             _trackerRepo.SaveChanges(tracker);
-            //      ubah antrianMapHdr
             _antrianMapRepo.SaveChanges(antrianMap.Value.Item1);
             _trsBillingRepo.SaveChanges(trsBillingReg);
             if (tindakan.TindakanId != "-")

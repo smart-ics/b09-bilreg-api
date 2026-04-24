@@ -34,13 +34,13 @@ public class AntrianMapWithRegResolver :  IAntrianMapWithRegResolver
                 onNone: () => AntrianMapModel.CreateFromJadwal(jadwal, tgl)
             );
 
-        if (antrianMap.ListMap.Any())
+        if (!antrianMap.ListMap.Any())
         {
             var listDetilDb = _antrianMapRepo.ListDetil(jadwal, tgl)?.ToList() ?? [];
             antrianMap.AttachDetil(listDetilDb);
         }
         
-        if (antrianMap.ListMap.Any())
+        if (!antrianMap.ListMap.Any())
             antrianMap.SeedingMap();
 
         var req = new GetGrupJaminanJetliRequest(reg.TipeJaminan);
@@ -57,6 +57,7 @@ public class AntrianMapWithRegResolver :  IAntrianMapWithRegResolver
                        .Where(x => x.ReffId.Trim() == "")
                        .OrderBy(x => x.NoUrut)
                        .FirstOrDefault();
+        
         AntrianMapDetilModel newDetil;
         if (emptyMap is null)
         {

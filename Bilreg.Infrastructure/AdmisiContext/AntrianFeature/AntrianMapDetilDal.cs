@@ -111,15 +111,13 @@ public class AntrianMapDetilDal : IAntrianMapDetilDal
             	LEFT JOIN td_peg bb ON aa.fs_kd_dokter = bb.fs_kd_peg
             	LEFT JOIN ta_layanan cc ON aa.fs_kd_layanan = cc.fs_kd_layanan
             WHERE 
-            	aa.fd_tgl_jadwal BETWEEN @tgl1 AND @tgl2
+            	aa.fd_tgl_jadwal = @tgl
             """;
 
-        var tgl2 = date.AddMonths(3);
         var dp = new DynamicParameters();
 
-        dp.AddParam("@tgl1", date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), SqlDbType.VarChar);
-        dp.AddParam("@tgl2", tgl2.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), SqlDbType.VarChar);
-
+        dp.AddParam("@tgl", date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), SqlDbType.VarChar);
+       
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<AntrianMapDetilDto>(sql, dp);
     }

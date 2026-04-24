@@ -71,7 +71,15 @@ public class AntrianMapRepo : IAntrianMapRepo
 
     public IEnumerable<AntrianMapDetilModel> ListDetil(JadwalPraktekType jadwal, DateOnly tgl)
     {
-        throw new NotImplementedException();
+        var listDto = _antrianMapDetilDal.ListData(tgl.ToDateTime(TimeOnly.MinValue))?.ToList() ?? [];
+        var result = listDto
+            .Where(x =>
+                x.fs_kd_dokter == jadwal.Dokter.PpaId &&
+                x.fs_kd_layanan == jadwal.Layanan.LayananId &&
+                x.fs_jam_jadwal == jadwal.JamMulai.ToString("HH:mm", CultureInfo.InvariantCulture)
+            )
+            .Select(x => x.ToModel());
+        return result;
     }
 }
 
