@@ -201,7 +201,7 @@ public class AntrianMapModelTest
 				antrianPattern  : pattern);
 
 		private static AntrianPatternType PatternUmumBpjs()
-			=> new AntrianPatternType("MIX", 0, 0,
+			=> new AntrianPatternType("FLAG", 0, 0,
 			[
 				new AntrianPatternItemType("UMUM", 1),
 				new AntrianPatternItemType("BPJS", 3)
@@ -258,14 +258,16 @@ public class AntrianMapModelTest
 		}
 
 		[Fact]
-		public void CreateFromJadwal_ShouldSeedNothing_WhenPatternIsEmpty()
+		public void CreateFromJadwal_ShouldSeedAutoSlots_WhenTipeIsNotFlag_AndMaxPasienIs10()
 		{
-			// Default pattern has empty Pttrn
+			// AntrianPatternType.Default has Tipe="" (not "FLAG") → routes to SeedingMapAuto()
+			// produces MaxPasien AUTO slots, NOT zero
 			var model = AntrianMapModel.CreateFromJadwal(
 				BuildJadwal(AntrianPatternType.Default, 10),
 				DateOnly.FromDayNumber(1));
 
-			model.TotalSlotCount.Should().Be(0);
+			model.TotalSlotCount.Should().Be(10);
+			model.ListMap.Should().OnlyContain(x => x.Flag == "AUTO");
 		}
 
 		[Fact]
@@ -281,8 +283,8 @@ public class AntrianMapModelTest
 		[Fact]
 		public void CreateFromJadwal_ShouldRepeatSingleEntry_WhenPatternHasOneEntry()
 		{
-			// Single entry UMUM×3, MaxPasien = 5 → all 5 slots are UMUM
-			var singlePattern = new AntrianPatternType("SINGLE", 0, 0,
+			// Single entry UMUM×3, MaxPasien = 5, Tipe="FLAG" → all 5 slots are UMUM
+			var singlePattern = new AntrianPatternType("FLAG", 0, 0,
 				[new AntrianPatternItemType("UMUM", 3)]);
 
 			var model = AntrianMapModel.CreateFromJadwal(BuildJadwal(singlePattern, 5),
@@ -339,5 +341,97 @@ public class AntrianMapModelTest
 	{
 		var pasien = new PasienReff($"P{noUrut}", $"Pasien{noUrut}", new DateOnly(1990,1,1), "M");
 		return new AntrianMapDetilModel(noUrut, pasien.PasienName, pasien.PasienId, reffId: $"REF{noUrut}", flag: flag, isTerpakai: isTerpakai);
+	}
+
+	public class SeedingAutoTests
+	{
+		// Builds a JadwalPraktekType with Tipe != "FLAG" → routes to SeedingMapAuto()
+		private static JadwalPraktekType BuildJadwalAuto(int maxPasien, AntrianPatternType? pattern = null)
+			=> new JadwalPraktekType(
+				jadwalPraktekId : "J-AUTO",
+				dokter          : new PpaReff("-", "-"),
+				layanan         : new LayananReff("-", "-"),
+				layanandk       : new LayananDkReff("-", "-"),
+				groupSpesiallis : GroupSpesialisType.Default,
+				ruang           : RuangType.Default,
+				hari            : DayOfWeek.Monday,
+				jamMulai        : TimeOnly.MinValue,
+				jamSelesai      : TimeOnly.MinValue,
+				maxPasien       : maxPasien,
+				antrianPattern  : pattern ?? new AntrianPatternType("AUTO", 0, 0, []));
+
+		[Fact]
+		public void CreateFromJadwal_ShouldSeedAutoSlots_WhenTipeIsNotFlag()
+		{
+			// Tipe = "AUTO" ≠ "FLAG" → SeedingMapAuto() → MaxPasien slots, all flag "AUTO"
+			var model = AntrianMapModel.CreateFromJadwal(BuildJadwalAuto(8),
+				DateOnly.FromDayNumber(1));
+
+			model.TotalSlotCount.Should().Be(8);
+			model.ListMap.Should().OnlyContain(x => x.Flag == "AUTO");
+		}
+
+		[Fact]
+		public void CreateFromJadwal_ShouldSeedNothing_WhenMaxPasienIsZeroAndTipeIsNotFlag()
+		{
+			var model = AntrianMapModel.CreateFromJadwal(BuildJadwalAuto(0),
+				DateOnly.FromDayNumber(1));
+
+			model.TotalSlotCount.Should().Be(0);
+		}
+
+		[Fact]
+		public void CreateFromJadwal_ShouldIgnorePatternItems_WhenTipeIsNotFlag()
+		{
+			// Even though Pttrn contains UMUM/BPJS items, Tipe="MIX" → SeedingMapAuto() ignores them
+			var patternWithItems = new AntrianPatternType("MIX", 0, 0,
+			[
+				new AntrianPatternItemType("UMUM", 1),
+				new AntrianPatternItemType("BPJS", 3)
+			]);
+
+			var model = AntrianMapModel.CreateFromJadwal(BuildJadwalAuto(6, patternWithItems),
+				DateOnly.FromDayNumber(1));
+
+			model.TotalSlotCount.Should().Be(6);
+			model.ListMap.Should().OnlyContain(x => x.Flag == "AUTO",
+				"pattern items must be ignored when Tipe is not FLAG");
+		}
+
+		[Fact]
+		public void CreateFromJadwal_ShouldAssignSequentialNoUrut_WhenTipeIsNotFlag()
+		{
+			var model = AntrianMapModel.CreateFromJadwal(BuildJadwalAuto(5),
+				DateOnly.FromDayNumber(1));
+
+			var noUrutList = model.ListMap.OrderBy(x => x.NoUrut).Select(x => x.NoUrut).ToList();
+			noUrutList.Should().BeEquivalentTo(Enumerable.Range(1, 5),
+				options => options.WithStrictOrdering());
+		}
+
+		[Fact]
+		public void CreateFromJadwal_ShouldSeedAllSlotsNotTerpakai_WhenTipeIsNotFlag()
+		{
+			var model = AntrianMapModel.CreateFromJadwal(BuildJadwalAuto(5),
+				DateOnly.FromDayNumber(1));
+
+			model.ListMap.Should().OnlyContain(x => !x.IsTerpakai,
+				"all freshly seeded AUTO slots must be available");
+		}
+
+		[Theory]
+		[InlineData(1)]
+		[InlineData(2)]
+		[InlineData(3)]
+		[InlineData(4)]
+		[InlineData(5)]
+		public void CreateFromJadwal_ShouldHaveAutoFlag_ForEachSlot_WhenTipeIsNotFlag(int noUrut)
+		{
+			var model = AntrianMapModel.CreateFromJadwal(BuildJadwalAuto(5),
+				DateOnly.FromDayNumber(1));
+
+			var slot = model.ListMap.Single(x => x.NoUrut == noUrut);
+			slot.Flag.Should().Be("AUTO", $"slot {noUrut} must always be AUTO when tipe is not FLAG");
+		}
 	}
 }

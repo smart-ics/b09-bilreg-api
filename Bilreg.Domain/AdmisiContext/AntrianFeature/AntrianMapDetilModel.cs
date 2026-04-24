@@ -24,7 +24,7 @@ public record AntrianMapDetilModel
         "", "", false
     );
 
-    public static AntrianMapDetilModel AutoSlot(int noUrut)
+    internal static AntrianMapDetilModel AutoSlot(int noUrut)
     {
         var result = new AntrianMapDetilModel(
             noUrut, string.Empty, string.Empty, 

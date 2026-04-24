@@ -2,6 +2,7 @@
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Nuna.Lib.AutoNumberHelper;
 
 namespace Bilreg.Domain.AdmisiContext.AntrianFeature;
 
@@ -32,7 +33,7 @@ public record AntrianMapModel : IAntrianMapKey
     public static AntrianMapModel CreateFromJadwal(JadwalPraktekType jadwal,
         DateOnly tgl)
     {
-        var newKey = Ulid.NewUlid().ToString();
+        var newKey = NunaId.New("ANM");
         var result = new AntrianMapModel(
             antrianMapId: newKey,
             jadwalId    : jadwal.JadwalPraktekId,
@@ -45,7 +46,6 @@ public record AntrianMapModel : IAntrianMapKey
             maxPasien   : jadwal.MaxPasien,
             listMap: []
         );
-        result.SeedingMap();
         return result;
     }
     
@@ -128,9 +128,48 @@ public record AntrianMapModel : IAntrianMapKey
 
     public int TotalSlotCount => _listMap.Count;
 
-    #endregion
+    public void SeedingMap()
+    {
+        if (AntrianPattern.Tipe == "FLAG")
+            SeedingMapFlag();
+        else
+            SeedingMapAuto(); 
+    }
+    
+    public void AttachDetil(IEnumerable<AntrianMapDetilModel> listDetil)
+    {
+        _listMap.Clear();
+        _listMap.AddRange(listDetil);
+    }
 
-    private void SeedingMap()
+    public AntrianMapDetilModel AddAuto(RegModel reg)
+    {
+        var newDetil = AntrianMapDetilModel.AutoSlot(LastNoUrut + 1)
+            .SetPasien(reg.Pasien.PasienName, reg.Pasien.PasienId, reg.RegId);
+        return newDetil;
+    }
+    public AntrianMapDetilModel AddAuto(BookingModel booking)
+    {
+        var newDetil = AntrianMapDetilModel.AutoSlot(LastNoUrut + 1)
+            .SetPasien(booking.Person.PersonName, booking.PasienId, booking.BookingId);
+        return newDetil;
+    }
+    
+
+    #endregion
+    private void SeedingMapAuto()
+    {
+        _listMap.Clear();
+        var noUrut = 1;
+        while (noUrut <= MaxPasien)
+        {
+            var newItem = new AntrianMapDetilModel(noUrut, string.Empty, string.Empty, string.Empty, "AUTO", false);
+            _listMap.Add(newItem );
+            noUrut ++;
+        }
+    }
+
+    private void SeedingMapFlag()
     {
         _listMap.Clear();
         var noUrut = 1;

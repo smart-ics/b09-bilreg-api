@@ -1,4 +1,5 @@
 using Bilreg.Application.AdmisiContext.JaminanFeature;
+using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Infrastructure.AdmisiContext.JaminanFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using FluentAssertions;
@@ -42,7 +43,7 @@ public class GetGrupJaminanJetliServiceTest : IDisposable
     public void UT01_Given_EmptyTipeJaminanId_When_ExecuteIsCalled_Then_ShouldReturnDefaultResponseWithoutHttpCall()
     {
         // Arrange
-        var request = new GetGrupJaminanJetliRequest("");
+        var request = new GetGrupJaminanJetliRequest(TipeJaminanType.Key(""));
         _mockServer.ResetLogEntries();
 
         // Act
@@ -50,7 +51,7 @@ public class GetGrupJaminanJetliServiceTest : IDisposable
 
         // Assert
         result.Should().NotBeNull();
-        result.TipeJaminanId.Should().Be("-");
+        result.TipeJaminanKey.TipeJaminanId.Should().Be("-");
         result.GroupJaminanId.Should().Be("-");
         result.GroupJaminanName.Should().Be("-");
 
@@ -66,7 +67,7 @@ public class GetGrupJaminanJetliServiceTest : IDisposable
     public void UT01b_Given_WhitespaceOnlyTipeJaminanId_When_ExecuteIsCalled_Then_ShouldReturnDefaultResponseWithoutHttpCall()
     {
         // Arrange
-        var request = new GetGrupJaminanJetliRequest("   ");
+        var request = new GetGrupJaminanJetliRequest(TipeJaminanType.Key("   "));
         _mockServer.ResetLogEntries();
 
         // Act
@@ -74,7 +75,7 @@ public class GetGrupJaminanJetliServiceTest : IDisposable
 
         // Assert
         result.Should().NotBeNull();
-        result.TipeJaminanId.Should().Be("-");
+        result.TipeJaminanKey.TipeJaminanId.Should().Be("-");
         result.GroupJaminanId.Should().Be("-");
         result.GroupJaminanName.Should().Be("-");
 
@@ -90,7 +91,7 @@ public class GetGrupJaminanJetliServiceTest : IDisposable
     public void UT02_Given_ValidTipeJaminanId_When_ExecuteIsCalled_Then_ShouldCallCorrectEndpointWithGetMethod()
     {
         // Arrange
-        const string tipeJaminanId = "JAMINAN123";
+        var tipeJaminanId = TipeJaminanType.Key("JAMINAN123");
         var expectedResponse = new
         {
             status = "success",
@@ -120,7 +121,7 @@ public class GetGrupJaminanJetliServiceTest : IDisposable
 
         // Assert - Verify response is correctly deserialized
         result.Should().NotBeNull();
-        result.TipeJaminanId.Should().Be(tipeJaminanId);
+        result.TipeJaminanKey.Should().Be(tipeJaminanId);
         result.GroupJaminanId.Should().Be("GRP001");
         result.GroupJaminanName.Should().Be("Group Jaminan Pertama");
 
@@ -139,7 +140,7 @@ public class GetGrupJaminanJetliServiceTest : IDisposable
     public void UT03_Given_ValidTipeJaminanId_When_ExecuteIsCalled_Then_ShouldSendCorrectQueryParameter()
     {
         // Arrange
-        const string tipeJaminanId = "JAMINAN456";
+        var tipeJaminanId = TipeJaminanType.Key("JAMINAN456");
         var expectedResponse = new
         {
             status = "success",
@@ -168,7 +169,7 @@ public class GetGrupJaminanJetliServiceTest : IDisposable
         var result = _sut.Execute(request);
 
         // Assert - Verify response is valid (sanity check)
-        result.TipeJaminanId.Should().Be(tipeJaminanId);
+        result.TipeJaminanKey.Should().Be(tipeJaminanId);
 
         // Assert - Verify query parameter was sent correctly
         _mockServer.LogEntries.Should().HaveCount(1);
@@ -178,7 +179,7 @@ public class GetGrupJaminanJetliServiceTest : IDisposable
         query.Should().ContainKey("tipeJaminanId", "query parameter 'tipeJaminanId' should be present");
         var queryValue = query!.FirstOrDefault(x => x.Key == "tipeJaminanId").Value;
         queryValue.Should().NotBeNull().And.NotBeEmpty();
-        queryValue!.First().Should().Be(tipeJaminanId, "query parameter value should match the request");
+        queryValue!.First().Should().Be(tipeJaminanId.TipeJaminanId, "query parameter value should match the request");
     }
 
     /// <summary>
@@ -189,7 +190,7 @@ public class GetGrupJaminanJetliServiceTest : IDisposable
     public void UT04_Given_ExternalApiReturnsError_When_ExecuteIsCalled_Then_ShouldReturnFallbackResponse()
     {
         // Arrange
-        const string tipeJaminanId = "JAMINAN789";
+        var tipeJaminanId = TipeJaminanType.Key("JAMINAN789");
 
         _mockServer
             .Given(WireMock.RequestBuilders.Request.Create()
@@ -207,7 +208,7 @@ public class GetGrupJaminanJetliServiceTest : IDisposable
 
         // Assert
         result.Should().NotBeNull();
-        result.TipeJaminanId.Should().Be("-");
+        result.TipeJaminanKey.TipeJaminanId.Should().Be("-");
         result.GroupJaminanId.Should().Be("-");
         result.GroupJaminanName.Should().Be("-");
 
@@ -223,7 +224,7 @@ public class GetGrupJaminanJetliServiceTest : IDisposable
     public void UT05_Given_ExternalApiReturnsNotFound_When_ExecuteIsCalled_Then_ShouldReturnFallbackResponse()
     {
         // Arrange
-        const string tipeJaminanId = "NONEXISTENT";
+        var tipeJaminanId = TipeJaminanType.Key("NONEXISTENT");
 
         _mockServer
             .Given(WireMock.RequestBuilders.Request.Create()
@@ -241,7 +242,7 @@ public class GetGrupJaminanJetliServiceTest : IDisposable
 
         // Assert
         result.Should().NotBeNull();
-        result.TipeJaminanId.Should().Be("-");
+        result.TipeJaminanKey.TipeJaminanId.Should().Be("-");
         result.GroupJaminanId.Should().Be("-");
         result.GroupJaminanName.Should().Be("-");
 

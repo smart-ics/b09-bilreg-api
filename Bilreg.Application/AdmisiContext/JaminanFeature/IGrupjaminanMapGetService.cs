@@ -1,4 +1,5 @@
-﻿using Nuna.Lib.CleanArchHelper;
+﻿using Bilreg.Domain.AdmisiContext.JaminanFeature;
+using Nuna.Lib.CleanArchHelper;
 
 namespace Bilreg.Application.AdmisiContext.JaminanFeature;
 
@@ -6,5 +7,5 @@ public interface IGetGrupJaminanJetliService : INunaService<GetGrupJaminanJetliR
 {
 }
 
-public record GetGrupJaminanJetliRequest(string TipeJaminanId);
-public record GetGrupJaminanJetliResponse(string TipeJaminanId, string GroupJaminanId, string GroupJaminanName);
+public record GetGrupJaminanJetliRequest(ITipeJaminanKey TipeJaminanKey);
+public record GetGrupJaminanJetliResponse(ITipeJaminanKey TipeJaminanKey, string GroupJaminanId, string GroupJaminanName);

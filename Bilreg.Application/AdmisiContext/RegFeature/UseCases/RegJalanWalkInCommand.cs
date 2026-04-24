@@ -80,7 +80,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
     private readonly IRemoteCetakRepo _remoteCetakRepo;
     private readonly IGetAppSettingService _getAppSettingSvc;
     private readonly IAddAntrianEmrByRegService _addAntrianEmrByRegService;
-    private readonly IGetGrupJaminanJetliService _getGrupJaminanJetliService;
+    private readonly IAntrianMapWithRegResolver _antrianMapWithRegResolver;
     public RegJalanCreateHandler(
         //  reg support
         IPasienRepo pasienRepo,
@@ -115,7 +115,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         IRemoteCetakRepo remoteCetakRepo,
         IGetAppSettingService getAppSettingSvc,
         IAddAntrianEmrByRegService addRegSvc, 
-        IGetGrupJaminanJetliService getGrupJaminanJetliService)
+        IAntrianMapWithRegResolver antrianMapResolver)
     {
         //      reg-support
         _pasienRepo = pasienRepo;
@@ -150,7 +150,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         _remoteCetakRepo = remoteCetakRepo;
         _getAppSettingSvc = getAppSettingSvc;
         _addAntrianEmrByRegService = addRegSvc;
-        _getGrupJaminanJetliService = getGrupJaminanJetliService;
+        _antrianMapWithRegResolver = antrianMapResolver;
     }
 
     public Task<RegJalanCreateResponse> Handle(RegJalanWalkInCommand request, CancellationToken cancellationToken)
@@ -186,10 +186,9 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         var tglBerobat = DateOnly.FromDateTime(DateTime.Now);
         var jadwal = ResolveJadwalPraktek(dokter, request.JamPraktek, tglBerobat);
         var antrian = ResolveAntrian(tglBerobat, dokter, jadwal);
-        var antrianMap = LoadOrCreateAntrianMap(jadwal, tglBerobat);
-        var flag = GetFlag(tipeJaminan);
-        var nextDetilAntrianMap = antrianMap.GetNextAntrian(flag);
+        var antrianMap = _antrianMapWithRegResolver.Resolve(jadwal, tglBerobat, reg);
         var tracker = PasienTrackerModel.Create(reg);
+
         //      3-trs-billing-karcis
         var jaminan = LoadJaminan(tipeJaminan.Jaminan);
         var listKompKarcis = karcis.ListKomponen
@@ -231,9 +230,8 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         
         using (var trans = TransHelper.NewScope())
         {
-
-            var antEntry = antrian.AddEntry(nextDetilAntrianMap.NoUrut, tracker, reg.RegId, "REG");
-            var itemQueue = antrian.ListEntry.FirstOrDefault(x => x.NoUrut == nextDetilAntrianMap.NoUrut)
+            var antEntry = antrian.AddEntry(antrianMap.Value.Item2.NoUrut, tracker, reg.RegId, "REG");
+            var itemQueue = antrian.ListEntry.FirstOrDefault(x => x.NoUrut == antrianMap.Value.Item2.NoUrut)
                 ?? AntrianEntryModel.Default;
             itemQueue.Serve();
             _regRepo.SaveChanges(reg);
@@ -241,8 +239,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             _antrianRepo.SaveChanges(antrian);
             _trackerRepo.SaveChanges(tracker);
             //      ubah antrianMapHdr
-            antrianMap.SetDataPasien(nextDetilAntrianMap.NoUrut, reg);
-            _antrianMapRepo.SaveChanges(antrianMap);
+            _antrianMapRepo.SaveChanges(antrianMap.Value.Item1);
             _trsBillingRepo.SaveChanges(trsBillingReg);
             if (tindakan.TindakanId != "-")
                 _tindakanRepo.SaveChanges(tindakan);
@@ -256,7 +253,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             trans.Complete();
             response = new RegJalanCreateResponse(reg.RegId, antEntry.NoUrut);
         }
-        AddAntrianEmr(reg, nextDetilAntrianMap, jadwal);
+        AddAntrianEmr(reg, antrianMap.Value.Item2, jadwal);
         
         return Task.FromResult(response);
         
@@ -316,56 +313,6 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         return polisView == null ? 
             throw new ArgumentException("Polis not found") 
             : _polisRepo.LoadEntity(polisView).Value;
-    }
-
-    private string GetFlag(ITipeJaminanKey tipeJmnKey)
-    {
-        var flag = string.Empty;
-        var req = new GetGrupJaminanJetliRequest(tipeJmnKey.TipeJaminanId);
-        var map = _getGrupJaminanJetliService.Execute(req);
-        if (map.GroupJaminanId == "JKN")
-            flag = "BPJS";
-        else
-            flag = "UMUM";
-        return flag;
-    }
-
-    private AntrianMapModel LoadOrCreateAntrianMap(JadwalPraktekType jadwal, DateOnly tglJadwal)
-    {
-        //var listAntrianMap = _antrianMapRepo.ListData(jadwal.Layanan, jadwal.Dokter, tglJadwal)
-        //     ?.ToList() ?? [];
-        // var antrianMapHdr = listAntrianMap.Count switch
-        // {
-        //     1 => listAntrianMap.First(),
-        //     _ => listAntrianMap.FirstOrDefault(x => x.JamJadwal == jadwal.JamMulai)
-        //          ?? CreateAntrianMap()
-        // };
-        // var antrianMap = _antrianMapRepo.LoadEntity(antrianMapHdr);
-        // return antrianMap;
-        //
-        // AntrianMapHdrView CreateAntrianMap()
-        // {
-        //     
-        // }
-        // var queKey = AntrianMapModel.Key(jadwal.JadwalPraktekId,
-        //     tglJadwal, jadwal.Dokter.PpaId,
-        //     jadwal.Layanan.LayananId, jadwal.JamMulai);
-        //
-        // var result = _antrianMapRepo.LoadEntity(queKey).GetValueOrDefault(AntrianMapModel.Default);
-        // if (result.JadwalId == "-")
-        // {
-        //     result = AntrianMapModel.Create(
-        //         jadwal.JadwalPraktekId,
-        //         jadwal.Dokter,
-        //         jadwal.Layanan,
-        //         tglJadwal,
-        //         jadwal.JamMulai,
-        //         jadwal.JamMulai,
-        //         []);
-        //     result.GenerateSlot(jadwal.MaxPasien);
-        // }
-        // return result;
-        throw new NotImplementedException();
     }
 
     private TindakanModel GenTindakan(RegModel reg, JaminanType jaminan, 

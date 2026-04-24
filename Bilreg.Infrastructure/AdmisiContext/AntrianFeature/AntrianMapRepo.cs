@@ -1,4 +1,5 @@
-﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
+﻿using System.Globalization;
+using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
@@ -52,5 +53,25 @@ public class AntrianMapRepo : IAntrianMapRepo
         return result;
     }
 
+    public MayBe<AntrianMapModel> Find(JadwalPraktekType jadwal, DateOnly tgl)
+    {
+        var lynKey = jadwal.Layanan;
+        var ppaKey = jadwal.Dokter;
+        var listAnt = _antrianMapDal.ListData(lynKey, ppaKey, tgl)?.ToList() ?? [];
+        var antrianMapKey = listAnt.Count == 1 ?
+            listAnt.First()
+            : listAnt.FirstOrDefault(x => x.fs_jam_jadwal == jadwal.JamMulai.ToString("HH:mm", CultureInfo.InvariantCulture));
+        if (antrianMapKey is null)
+            return MayBe<AntrianMapModel>.None;
+        
+        var result = LoadEntity(AntrianMapModel.Key(antrianMapKey.fs_kd_antrian_map));
+        return result;
+
+    }
+
+    public IEnumerable<AntrianMapDetilModel> ListDetil(JadwalPraktekType jadwal, DateOnly tgl)
+    {
+        throw new NotImplementedException();
+    }
 }
 

@@ -19,16 +19,16 @@ public class GetGrupJaminanJetliService : IGetGrupJaminanJetliService
     }
     public GetGrupJaminanJetliResponse Execute(GetGrupJaminanJetliRequest req)
     {
-        if (req.TipeJaminanId.Trim().Length == 0)
-            return new GetGrupJaminanJetliResponse("-", "-", "-");
+        if (req.TipeJaminanKey.TipeJaminanId.Trim().Length == 0)
+            return new GetGrupJaminanJetliResponse(req.TipeJaminanKey, "-", "-");
 
         var client = _restClient.Create(_opt.BaseApiUrl);
         var request = new RestRequest($"/api/GrupJaminan/map", Method.Get);
-        request.AddParameter("tipeJaminanId", req.TipeJaminanId, ParameterType.QueryString);
+        request.AddParameter("tipeJaminanId", req.TipeJaminanKey.TipeJaminanId, ParameterType.QueryString);
 
         var response = client.Execute(request);
         if (response.StatusCode != HttpStatusCode.OK)
-            return new GetGrupJaminanJetliResponse("-", "-", "-");
+            return new GetGrupJaminanJetliResponse(req.TipeJaminanKey, "-", "-");
 
         var jsonOption = new JsonSerializerOptions
         {
