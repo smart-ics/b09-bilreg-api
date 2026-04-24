@@ -84,6 +84,7 @@
     <Folder Include="AccountingContext\JurnalFeature" />
     <Folder Include="AccountingContext\UnitFeature" />
     <Folder Include="PaymentContext\RegOutFeature" />
+    <Folder Include="AdmisiContext\AntrianFeature\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OpCase.sql" />
