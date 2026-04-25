@@ -122,6 +122,13 @@ public record AntrianMapModel : IAntrianMapKey
             .OrderBy(x => x.NoUrut)
             .FirstOrDefault();
 
+        detil = detil ?? 
+            _listMap
+                .Where(x => !x.IsTerpakai)
+                .Where(x => x.Flag == "AUTO")
+                .OrderBy(x => x.NoUrut)
+                .FirstOrDefault();
+
         var result = detil ?? AntrianMapDetilModel.AutoSlot(LastNoUrut + 1);
         return result;            
     }
