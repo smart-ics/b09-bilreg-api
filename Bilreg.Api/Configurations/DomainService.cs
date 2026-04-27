@@ -1,4 +1,5 @@
-﻿using Bilreg.Application.AdmisiContext.BookingFeature;
+﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
+using Bilreg.Application.AdmisiContext.BookingFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Application.Shared.Helpers;
@@ -33,7 +34,7 @@ public static class DomainService
             .AddScoped<IRegFactory, RegFactory>()
             .AddScoped<IGetKelasRajalService, GetKelasRajalService>()
             .AddScoped<IPolisFactory, PolisFactory>()
-            // .AddScoped<IDeleteBookingWorkflow, DeleteBookingWorkflow>()
+            .AddScoped<IDeleteBookingWorkflow, DeleteBookingWorkflow>()
             .AddScoped<IGetAppSettingService, GetAppSettingService>()
             .AddScoped<IAddAntrianEmrByBookingService, AddAntrianEmrByBookingService>()
             .AddScoped<IAddAntrianEmrByRegService, AddAntrianEmrByRegService>()
@@ -41,6 +42,8 @@ public static class DomainService
             .AddScoped<IBridgeOperasiSaveService, BridgeOperasiSaveService>()
             .AddScoped<IDashboardEmrRemoveBookingService, DashboardEmrRemoveBookingService>()
             .AddScoped<IGetKelasRadarService, GetKelasRadarService>()
+            .AddScoped<IAntrianMapWithBookingResolver, AntrianMapWithBookingResolver>()
+            .AddScoped<IAntrianMapWithRegResolver, AntrianMapWithRegResolver>()
             ;
 
         return services;

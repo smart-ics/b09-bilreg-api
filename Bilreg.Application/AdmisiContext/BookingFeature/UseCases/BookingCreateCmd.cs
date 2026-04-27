@@ -92,8 +92,6 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
 
         // antrianMap
         var antrianMap = _antrianMapWithBookingResolver.Resolve(jadwal, tglBerobat, booking);
-        //var antrianMap = CekAntrianMap(jadwal, tglBerobat);
-        //var noAntrian = antrianMap.GetNextNoAntrian("UMUM");
         var pasien = new PasienReff(request.PasienId, person.PersonName, person.TglLahir, person.Gender);
 
 

@@ -27,9 +27,9 @@ public record JadwalPraktekDto(
 {
     public static JadwalPraktekDto FromModel(JadwalPraktekType model)
     {
-        
-        var antrianPatternStr = JsonSerializer.Serialize(model.AntrianPattern);
-        
+
+        var antrianPatternStr = AntrianPatternFactory.ToStringJson(model.AntrianPattern);
+
         return new JadwalPraktekDto(model.JadwalPraktekId, model.Dokter.PpaId,
             model.Layanan.LayananId, model.Ruang.RuangId, (int)model.Hari, 
             model.JamMulai.ToString("HH:mm", CultureInfo.InvariantCulture), 
@@ -49,8 +49,8 @@ public record JadwalPraktekDto(
         var jamMulai = TimeOnly.ParseExact(JamMulai, "HH:mm", CultureInfo.InvariantCulture);
         var jamSelesai = TimeOnly.ParseExact(JamSelesai, "HH:mm", CultureInfo.InvariantCulture);
         var ruang = new RuangType(RuangId, RuangName, PrefixAntrian);
-        var pattern = JsonSerializer.Deserialize<AntrianPatternType>(AntrianPattern)
-            ?? AntrianPatternType.Default;
+        var pattern = AntrianPatternFactory.FromStringJson(AntrianPattern);
+
         return new JadwalPraktekType(JadwalPraktekId, dokter, layanan, 
             lynDk, groupSpesialis, ruang, hari, jamMulai, jamSelesai, MaxPasien, pattern);
     }
