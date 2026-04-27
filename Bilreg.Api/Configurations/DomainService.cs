@@ -35,7 +35,7 @@ public static class DomainService
             .AddScoped<IPolisFactory, PolisFactory>()
             // .AddScoped<IDeleteBookingWorkflow, DeleteBookingWorkflow>()
             .AddScoped<IGetAppSettingService, GetAppSettingService>()
-            .AddScoped<IDashboardAddBookService, DashboardAddBookService>()
+            .AddScoped<IAddAntrianEmrByBookingService, AddAntrianEmrByBookingService>()
             .AddScoped<IAddAntrianEmrByRegService, AddAntrianEmrByRegService>()
             .AddScoped<IDashboardEmrRemoveRegService,  DashboardEmrRemoveRegService>()
             .AddScoped<IBridgeOperasiSaveService, BridgeOperasiSaveService>()

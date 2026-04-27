@@ -28,14 +28,14 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
     private readonly IPasienTrackerRepo _trackerRepo;
     private readonly IPasienRepo _pasienRepo;
     private readonly IPpaRepo _ppaRepo;
-    private readonly IDashboardAddBookService _addBookingSvc;
+    private readonly IAddAntrianEmrByBookingService _addBookingSvc;
 
 
     public BookingCreateFromHidokHandler(IJadwalPraktekRepo jadwalPraktekRepo,
         IAntrianRepo antrianRepo, IAntrianFactory antrianFactory,
         IBookingRepo bookingRepo, IPasienTrackerRepo trackerRepo,
         IPasienRepo pasienRepo, IPpaRepo ppaRepo, 
-        IDashboardAddBookService addBookingSvc)
+        IAddAntrianEmrByBookingService addBookingSvc)
     {
         _jadwalPraktekRepo = jadwalPraktekRepo;
         _antrianRepo = antrianRepo;
@@ -130,7 +130,7 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
     private void AddBooking(BookingModel book, PasienModel px)
     {
         var pasienId = px.PasienId == "-" ? "-" : px.PasienId;
-        var payload = new AddBookCmd(book.BookingId, pasienId, book.Person.PersonName,
+        var payload = new AddAntrianEmrByBookingCmd(book.BookingId, pasienId, book.Person.PersonName,
             book.Layanan.LayananId, book.Dokter.PpaId, book.TglBerobat.ToString("yyyy-MM-dd"),
             book.JamPraktek.ToString("HH:mm", CultureInfo.InvariantCulture) , book.NoAntrian);
         _addBookingSvc.Execute(payload);
