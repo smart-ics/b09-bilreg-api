@@ -1,6 +1,7 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.AdmisiContext.PpaFeature;
+using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
@@ -11,8 +12,12 @@ namespace Bilreg.Application.AdmisiContext.BookingFeature;
 
 public record JadwalPraktekSaveCmd(string JadwalPraktekId, string DokterId,
     string LayananId, string RuangId, int Hari,
-    string JamMulai, string JamSelesai, int MaxPasien) :
+    string JamMulai, string JamSelesai, int MaxPasien, JadwalPraktekSaveAntrianPatternCmd AntrianPattern) :
     IRequest<JadwalPraktekSaveResponse>, IJadwalPraktekKey, ILayananKey, IRuangKey;
+
+public record JadwalPraktekSaveAntrianPatternCmd(string Tipe, int Max, 
+    int Rsrvd, IEnumerable<JadwalPraktekSaveAntrianPatternItemCmd> Pttrn);
+public record JadwalPraktekSaveAntrianPatternItemCmd(string Desc, int Qty);
 
 public record JadwalPraktekSaveResponse(string JadwalPraktekId);
 
@@ -59,13 +64,19 @@ public class JadwalPraktekSaveHandler : IRequestHandler<JadwalPraktekSaveCmd, Ja
         var listJadwal = _jadwalRepo.ListData(dokterKey)?.ToList() ?? [];
         var jadwalDb = _jadwalRepo.LoadEntity(request)
             .GetValueOrDefault(JadwalPraktekType.Default);
+        
+        var antrianPattrenItem = request.AntrianPattern.
+            Pttrn.Select(x => new AntrianPatternItemType(x.Desc, x.Qty));
+        var antrianPattern = new AntrianPatternType(
+            request.AntrianPattern.Tipe, request.AntrianPattern.Max,
+            request.AntrianPattern.Rsrvd, antrianPattrenItem);
 
         JadwalPraktekType jadwal;
 
         if (jadwalDb.JadwalPraktekId == "-")
-            jadwal = CreateNewJadwal(request, dokter, layanan, ruang, jamMulai, jamSelesai);
+            jadwal = CreateNewJadwal(request, dokter, layanan, ruang, jamMulai, jamSelesai, antrianPattern);
         else
-            jadwal = UpdateJadwal(request, dokter, layanan, ruang, jadwalDb, jamMulai, jamSelesai);
+            jadwal = UpdateJadwal(request, dokter, layanan, ruang, jadwalDb, jamMulai, jamSelesai, antrianPattern);
 
         ValidateOverlap(jadwal, listJadwal);
 
@@ -99,7 +110,7 @@ public class JadwalPraktekSaveHandler : IRequestHandler<JadwalPraktekSaveCmd, Ja
     private JadwalPraktekType CreateNewJadwal(
         JadwalPraktekSaveCmd request,
         PpaType dokter, LayananType layanan, RuangType ruang,
-        TimeOnly jamMulai, TimeOnly jamSelesai)
+        TimeOnly jamMulai, TimeOnly jamSelesai, AntrianPatternType antrianPattern)
     {
         return _jadwalNunaFactory.Create(
             dokter,
@@ -108,12 +119,14 @@ public class JadwalPraktekSaveHandler : IRequestHandler<JadwalPraktekSaveCmd, Ja
             (DayOfWeek)request.Hari,
             jamMulai,
             jamSelesai,
-            request.MaxPasien);
+            request.MaxPasien,
+            antrianPattern
+            );
     }
     private JadwalPraktekType UpdateJadwal(
         JadwalPraktekSaveCmd request, PpaType dokter,
         LayananType layanan, RuangType ruang, JadwalPraktekType jadwalDb,
-        TimeOnly jamMulai, TimeOnly jamSelesai)
+        TimeOnly jamMulai, TimeOnly jamSelesai, AntrianPatternType antrianPattern)
     {
         var lynDkReff = new LayananDkReff(
             layanan.LayananDk.LayananDkId,
@@ -129,7 +142,8 @@ public class JadwalPraktekSaveHandler : IRequestHandler<JadwalPraktekSaveCmd, Ja
             (DayOfWeek)request.Hari,
             jamMulai,
             jamSelesai,
-            request.MaxPasien);
+            request.MaxPasien,
+            antrianPattern);
     }
     
     private void ValidateOverlap(

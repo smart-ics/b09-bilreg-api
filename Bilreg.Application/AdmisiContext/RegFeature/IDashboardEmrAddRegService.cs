@@ -2,22 +2,19 @@
 
 namespace Bilreg.Application.AdmisiContext.RegFeature;
 
-public interface IDashboardEMrAddRegService : INunaServiceVoid<AddRegCmd>
+public interface IAddAntrianEmrByRegService : INunaServiceVoid<AddAntrianEmrByRegCommand>
 {
 }
 
-//public record AddRegCmd(string RegId);
-
-
-public record AddRegCmd
+public record AddAntrianEmrByRegCommand
 (
-    string regId,
-    string bookingId,
-    string pasienId,
-    string pasienName,
-    string layananId,
-    string dokterId,
-    string tglBerobat,
-    string jamJadwal,
-    int noAntrian
+    string RegId,
+    string BookingId,
+    string PasienId,
+    string PasienName,
+    string LayananId,
+    string DokterId,
+    string TglBerobat,
+    string JamJadwal,
+    int NoAntrian
 );

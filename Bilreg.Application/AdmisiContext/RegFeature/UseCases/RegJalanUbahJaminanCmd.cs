@@ -95,9 +95,7 @@ public class RegJalanUbahJaminanHandler : IRequestHandler<RegJalanUbahJaminanCmd
 
     public Task Handle(RegJalanUbahJaminanCmd request, CancellationToken cancellationToken)
     {
-        /*  ▐▀▀▀▀▀▀▀▀▀▀▀▌
-            ▐   GUARD   ▌
-            ▐▄▄▄▄▄▄▄▄▄▄▄▌*/
+        #region GUARD & LOAD
         var regCurrent = _regAktifRepo.LoadEntity(request).GetValueOrThrow("Register tidak ditemukan atau sudah tidak aktif");
         var regOld = _regRepo.LoadEntity(request).GetValueOrThrow("Register tidak ditemukan");
         var reg = _regRepo.LoadEntity(request).GetValueOrThrow("Register tidak ditemukan");
@@ -105,18 +103,15 @@ public class RegJalanUbahJaminanHandler : IRequestHandler<RegJalanUbahJaminanCmd
         var caraMasukDk = _caraMasukDkRepo.LoadEntity(request).GetValueOrThrow("Cara masuk Dk Invalid");
         var rujukan = _rujukanRepo.LoadEntity(request).GetValueOrDefault(RujukanType.Default); 
         var karcis = _karcisRepo.LoadEntity(request).GetValueOrThrow("Karcis not found");
-
-        /*  ▐▀▀▀▀▀▀▀▀▀▀▀▌
-            ▐   BUILD   ▌
-            ▐▄▄▄▄▄▄▄▄▄▄▄▌*/
-        //  load data pendukung
         var lyn = _lynRepo.LoadEntity(LayananType.Key(reg.Layanan.LayananId)).GetValueOrThrow("Layanan Invalid");
         var pasien = _pasienRepo.LoadEntity(PasienModel.Key(reg.Pasien.PasienId)).GetValueOrThrow("Pasien invalid");
         var polis = ResolvePolis(pasien, tipeJmn);
         var dokter = _ppaRepo.LoadEntity(PpaType.Key(reg.Dokter.PpaId)).GetValueOrThrow("Dokter not found");
         var jaminan = LoadJaminan(tipeJmn.Jaminan);
         var karcisOld = _karcisRepo.LoadEntity(KarcisType.Key(reg.Karcis.KarcisId)).GetValueOrDefault(KarcisType.Default);
-        
+        #endregion
+
+        #region BUILD
         //  registrasi
         reg.ChangeJaminan(tipeJmn, polis, caraMasukDk, rujukan, karcis, lyn);
 
@@ -144,10 +139,9 @@ public class RegJalanUbahJaminanHandler : IRequestHandler<RegJalanUbahJaminanCmd
         var jurnalTindakan = tindakan.TindakanId == "-"
             ? JurnalType.Default
             : JurnalType.CreateFromTrsBilling(billTdk,lyn, mapJaminanJk);
-
-        /*  ▐▀▀▀▀▀▀▀▀▀▀▀▌
-            ▐   WRITE   ▌
-            ▐▄▄▄▄▄▄▄▄▄▄▄▌*/
+        #endregion
+        
+        #region WRITE
         using var trans = TransHelper.NewScope();
         
         SaveRegister(reg);
@@ -158,7 +152,8 @@ public class RegJalanUbahJaminanHandler : IRequestHandler<RegJalanUbahJaminanCmd
         SaveJurnalTdk(jurnalTindakan);
 
         trans.Complete();
-
+        #endregion
+        
         //  return
 
         return Task.CompletedTask;

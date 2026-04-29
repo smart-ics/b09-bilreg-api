@@ -231,7 +231,8 @@ public class AntrianFactoryTests
             hari,
             jamMulai,
             jamSelesai,
-            maxPasien);
+            maxPasien,
+            AntrianPatternType.Default);
     }
 
     #endregion

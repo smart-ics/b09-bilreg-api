@@ -42,4 +42,5 @@ public interface ITipeJaminanKey
     string TipeJaminanId {get;}
 }
 
-public record TipeJaminanReff(string TipeJaminanId, string TipeJaminanName);
+public record TipeJaminanReff(string TipeJaminanId, string TipeJaminanName)
+    : ITipeJaminanKey;

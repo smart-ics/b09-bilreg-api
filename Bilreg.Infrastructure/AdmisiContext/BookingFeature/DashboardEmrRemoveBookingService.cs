@@ -7,9 +7,9 @@ namespace Bilreg.Infrastructure.AdmisiContext.BookingFeature;
 
 public class DashboardEmrRemoveBookingService : IDashboardEmrRemoveBookingService
 {
-    public readonly Emr25Options _opt;
+    public readonly EmrOptions _opt;
 
-    public DashboardEmrRemoveBookingService(IOptions<Emr25Options> opt)
+    public DashboardEmrRemoveBookingService(IOptions<EmrOptions> opt)
     {
         _opt = opt.Value;
     }

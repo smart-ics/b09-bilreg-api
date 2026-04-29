@@ -23,9 +23,11 @@ public class JadwalPraktekDal
     {
         const string sql = """
             INSERT INTO BILRG_JadwalPraktek(
-               JadwalPraktekId, DokterId, LayananId, RuangId, Hari, JamMulai, JamSelesai, MaxPasien)
+                JadwalPraktekId, DokterId, LayananId, RuangId, 
+                Hari, JamMulai, JamSelesai, MaxPasien, AntrianPattern)
             VALUES (
-               @JadwalPraktekId, @DokterId, @LayananId, @RuangId, @Hari, @JamMulai, @JamSelesai, @MaxPasien)
+                @JadwalPraktekId, @DokterId, @LayananId, @RuangId, 
+                @Hari, @JamMulai, @JamSelesai, @MaxPasien, @AntrianPattern)
             """;
 
         var dp = new DynamicParameters();
@@ -37,6 +39,7 @@ public class JadwalPraktekDal
         dp.AddParam("@JamMulai", dto.JamMulai, SqlDbType.VarChar);
         dp.AddParam("@JamSelesai", dto.JamSelesai, SqlDbType.VarChar);
         dp.AddParam("@MaxPasien", dto.MaxPasien, SqlDbType.Int);
+        dp.AddParam("@AntrianPattern", dto.AntrianPattern, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -53,7 +56,8 @@ public class JadwalPraktekDal
                Hari = @Hari,
                JamMulai = @JamMulai,
                JamSelesai = @JamSelesai,
-               MaxPasien = @MaxPasien
+               MaxPasien = @MaxPasien,
+               AntrianPattern = @AntrianPattern
             WHERE 
                JadwalPraktekId = @JadwalPraktekId
             """;
@@ -67,6 +71,7 @@ public class JadwalPraktekDal
         dp.AddParam("@JamMulai", dto.JamMulai, SqlDbType.VarChar);
         dp.AddParam("@JamSelesai", dto.JamSelesai, SqlDbType.VarChar);
         dp.AddParam("@MaxPasien", dto.MaxPasien, SqlDbType.Int);
+        dp.AddParam("@AntrianPattern", dto.AntrianPattern, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -100,7 +105,7 @@ public class JadwalPraktekDal
         const string sql = """
             SELECT
                aa.JadwalPraktekId, aa.DokterId, aa.LayananId, aa.RuangId,
-               aa.Hari, aa.JamMulai, aa.JamSelesai, aa.MaxPasien,
+               aa.Hari, aa.JamMulai, aa.JamSelesai, aa.MaxPasien, aa.AntrianPattern,
                ISNULL(bb.fs_nm_peg, '-') AS DokterName,
                ISNULL(cc.fs_nm_layanan, '-') AS LayananName,
                ISNULL(cc.fs_kd_layanan_dk,'') AS LayananDkId,
@@ -133,7 +138,7 @@ public class JadwalPraktekDal
         const string sql = """
             SELECT
                aa.JadwalPraktekId, aa.DokterId, aa.LayananId, aa.RuangId,
-               aa.Hari, aa.JamMulai, aa.JamSelesai, aa.MaxPasien,
+               aa.Hari, aa.JamMulai, aa.JamSelesai, aa.MaxPasien, aa.AntrianPattern,
                ISNULL(bb.fs_nm_peg, '-') AS DokterName,
                ISNULL(cc.fs_nm_layanan, '-') AS LayananName,
                ISNULL(cc.fs_kd_layanan_dk,'') AS LayananDkId,
@@ -167,7 +172,7 @@ public class JadwalPraktekDal
         const string sql = """
             SELECT
                aa.JadwalPraktekId, aa.DokterId, aa.LayananId, aa.RuangId,
-               aa.Hari, aa.JamMulai, aa.JamSelesai, aa.MaxPasien,
+               aa.Hari, aa.JamMulai, aa.JamSelesai, aa.MaxPasien, aa.AntrianPattern,
                ISNULL(bb.fs_nm_peg, '-') AS DokterName,
                ISNULL(cc.fs_nm_layanan, '-') AS LayananName,
                ISNULL(cc.fs_kd_layanan_dk,'') AS LayananDkId,
@@ -201,7 +206,7 @@ public class JadwalPraktekDal
         const string sql = """
             SELECT
                aa.JadwalPraktekId, aa.DokterId, aa.LayananId, aa.RuangId,
-               aa.Hari, aa.JamMulai, aa.JamSelesai, aa.MaxPasien,
+               aa.Hari, aa.JamMulai, aa.JamSelesai, aa.MaxPasien, aa.AntrianPattern,
                ISNULL(bb.fs_nm_peg, '-') AS DokterName,
                ISNULL(cc.fs_nm_layanan, '-') AS LayananName,
                ISNULL(cc.fs_kd_layanan_dk,'') AS LayananDkId,
@@ -231,7 +236,7 @@ public class JadwalPraktekDal
         const string sql = """
             SELECT
                aa.JadwalPraktekId, aa.DokterId, aa.LayananId, aa.RuangId,
-               aa.Hari, aa.JamMulai, aa.JamSelesai, aa.MaxPasien,
+               aa.Hari, aa.JamMulai, aa.JamSelesai, aa.MaxPasien, aa.AntrianPattern,
                ISNULL(bb.fs_nm_peg, '-') AS DokterName,
                ISNULL(cc.fs_nm_layanan, '-') AS LayananName,
                ISNULL(cc.fs_kd_layanan_dk,'') AS LayananDkId,
@@ -265,7 +270,7 @@ public class JadwalPraktekDal
         const string sql = """
             SELECT
                aa.JadwalPraktekId, aa.DokterId, aa.LayananId, aa.RuangId,
-               aa.Hari, aa.JamMulai, aa.JamSelesai, aa.MaxPasien,
+               aa.Hari, aa.JamMulai, aa.JamSelesai, aa.MaxPasien, aa.AntrianPattern,
                ISNULL(bb.fs_nm_peg, '-') AS DokterName,
                ISNULL(cc.fs_nm_layanan, '-') AS LayananName,
                ISNULL(cc.fs_kd_layanan_dk,'') AS LayananDkId,

@@ -1,13 +1,15 @@
-﻿using Ardalis.GuardClauses;
-using Bilreg.Application.AdmisiContext.AntrianFeature;
-using Bilreg.Application.AdmisiContext.PpaFeature;
-using Bilreg.Domain.AdmisiContext.AntrianFeature;
-using Bilreg.Domain.AdmisiContext.BookingFeature;
-using Bilreg.Domain.AdmisiContext.PpaFeature;
-using MediatR;
-using Nuna.Lib.TransactionHelper;
+﻿//TODO: Refactor AntrianMap Model
 
-namespace Bilreg.Application.AdmisiContext.BookingFeature.UseCases;
+ using Ardalis.GuardClauses;
+ using Bilreg.Application.AdmisiContext.AntrianFeature;
+ using Bilreg.Application.AdmisiContext.PpaFeature;
+ using Bilreg.Domain.AdmisiContext.AntrianFeature;
+ using Bilreg.Domain.AdmisiContext.BookingFeature;
+ using Bilreg.Domain.AdmisiContext.PpaFeature;
+ using MediatR;
+ using Nuna.Lib.TransactionHelper;
+
+ namespace Bilreg.Application.AdmisiContext.BookingFeature.UseCases;
 
 public record BookingDeleteFromHidokCmd(string BookingHidokId) : IRequest;
 
@@ -15,7 +17,7 @@ public class BookingDeleteFromHidokHandler : IRequestHandler<BookingDeleteFromHi
 {
     private readonly IBookingRepo _bookingRepo;
     private readonly IDeleteBookingWorkflow _deleteBookingWorkflow;
-    
+
     public BookingDeleteFromHidokHandler(IBookingRepo bookingRepo,
         IDeleteBookingWorkflow deleteBookingWorkflow)
     {
@@ -33,7 +35,7 @@ public class BookingDeleteFromHidokHandler : IRequestHandler<BookingDeleteFromHi
             );
         _deleteBookingWorkflow.Execute(booking);
 
-        
+
         return Task.CompletedTask;
     }
 }

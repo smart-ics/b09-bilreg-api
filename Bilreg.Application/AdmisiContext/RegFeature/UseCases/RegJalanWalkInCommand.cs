@@ -63,7 +63,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
     private readonly IAntrianFactory _antrianFactory;
     private readonly IAntrianRepo _antrianRepo;
     private readonly IJadwalPraktekRepo _jadwalPraktekRepo;
-    private readonly IAntrianMapHdrRepo _antrianMapRepo;
+    private readonly IAntrianMapRepo _antrianMapRepo;
     //  tindakan
     private readonly IJaminanRepo _jaminanRepo;
     private readonly INilaiTarifRepo _nilaiTarifRepo;
@@ -79,8 +79,8 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
 
     private readonly IRemoteCetakRepo _remoteCetakRepo;
     private readonly IGetAppSettingService _getAppSettingSvc;
-    private readonly IDashboardEMrAddRegService _addRegSvc;
-
+    private readonly IAddAntrianEmrByRegService _addAntrianEmrByRegService;
+    private readonly IAntrianMapWithRegResolver _antrianMapWithRegResolver;
     public RegJalanCreateHandler(
         //  reg support
         IPasienRepo pasienRepo,
@@ -100,7 +100,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         IAntrianFactory antrianFactory,
         IAntrianRepo antrianRepo,
         IJadwalPraktekRepo jadwalPraktekRepo,
-        IAntrianMapHdrRepo antrianMapRepo,
+        IAntrianMapRepo antrianMapRepo,
         //  tindakan
         IJaminanRepo jaminanRepo,
         INilaiTarifRepo nilaiTarifRepo,
@@ -114,7 +114,8 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         IJurnalRepo jurnalRepo,
         IRemoteCetakRepo remoteCetakRepo,
         IGetAppSettingService getAppSettingSvc,
-        IDashboardEMrAddRegService addRegSvc)
+        IAddAntrianEmrByRegService addRegSvc, 
+        IAntrianMapWithRegResolver antrianMapResolver)
     {
         //      reg-support
         _pasienRepo = pasienRepo;
@@ -148,7 +149,8 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         _jurnalRepo = jurnalRepo;
         _remoteCetakRepo = remoteCetakRepo;
         _getAppSettingSvc = getAppSettingSvc;
-        _addRegSvc = addRegSvc;
+        _addAntrianEmrByRegService = addRegSvc;
+        _antrianMapWithRegResolver = antrianMapResolver;
     }
 
     public Task<RegJalanCreateResponse> Handle(RegJalanWalkInCommand request, CancellationToken cancellationToken)
@@ -184,9 +186,9 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         var tglBerobat = DateOnly.FromDateTime(DateTime.Now);
         var jadwal = ResolveJadwalPraktek(dokter, request.JamPraktek, tglBerobat);
         var antrian = ResolveAntrian(tglBerobat, dokter, jadwal);
-        var antrianMap = LoadOrCreateAntrianMap(jadwal, tglBerobat);
-        var noAntrian = antrianMap.GetNextNoAntrian();
+        var antrianMap = _antrianMapWithRegResolver.Resolve(jadwal, tglBerobat, reg);
         var tracker = PasienTrackerModel.Create(reg);
+
         //      3-trs-billing-karcis
         var jaminan = LoadJaminan(tipeJaminan.Jaminan);
         var listKompKarcis = karcis.ListKomponen
@@ -228,18 +230,15 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         
         using (var trans = TransHelper.NewScope())
         {
-
-            var antEntry = antrian.AddEntry(noAntrian, tracker, reg.RegId, "REG");
-            var itemQueue = antrian.ListEntry.FirstOrDefault(x => x.NoUrut == noAntrian)
+            var antEntry = antrian.AddEntry(antrianMap.Value.Item2.NoUrut, tracker, reg.RegId, "REG");
+            var itemQueue = antrian.ListEntry.FirstOrDefault(x => x.NoUrut == antrianMap.Value.Item2.NoUrut)
                 ?? AntrianEntryModel.Default;
             itemQueue.Serve();
             _regRepo.SaveChanges(reg);
             _regAktifRepo.SaveChanges(regAktif);
             _antrianRepo.SaveChanges(antrian);
             _trackerRepo.SaveChanges(tracker);
-            //      ubah antrianMapHdr
-            antrianMap.SetDataPasien(noAntrian, reg.Pasien, reg.ToReff(), reg.RegId, "AUTO");
-            _antrianMapRepo.SaveChanges(antrianMap);
+            _antrianMapRepo.SaveChanges(antrianMap.Value.Item1);
             _trsBillingRepo.SaveChanges(trsBillingReg);
             if (tindakan.TindakanId != "-")
                 _tindakanRepo.SaveChanges(tindakan);
@@ -253,7 +252,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             trans.Complete();
             response = new RegJalanCreateResponse(reg.RegId, antEntry.NoUrut);
         }
-        AddReg(reg, noAntrian, jadwal);
+        AddAntrianEmr(reg, antrianMap.Value.Item2, jadwal);
         
         return Task.FromResult(response);
         
@@ -313,28 +312,6 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         return polisView == null ? 
             throw new ArgumentException("Polis not found") 
             : _polisRepo.LoadEntity(polisView).Value;
-    }
-
-    private AntrianMapHdrModel LoadOrCreateAntrianMap(JadwalPraktekType jadwal, DateOnly tglJadwal)
-    {
-        var queKey = AntrianMapHdrModel.Key(jadwal.JadwalPraktekId,
-            tglJadwal, jadwal.Dokter.PpaId,
-            jadwal.Layanan.LayananId, jadwal.JamMulai);
-
-        var result = _antrianMapRepo.LoadEntity(queKey).GetValueOrDefault(AntrianMapHdrModel.Default);
-        if (result.JadwalId == "-")
-        {
-            result = AntrianMapHdrModel.Create(
-                jadwal.JadwalPraktekId,
-                jadwal.Dokter,
-                jadwal.Layanan,
-                tglJadwal,
-                jadwal.JamMulai,
-                jadwal.JamMulai,
-                []);
-            result.GenerateSlot(jadwal.MaxPasien);
-        }
-        return result;
     }
 
     private TindakanModel GenTindakan(RegModel reg, JaminanType jaminan, 
@@ -405,15 +382,15 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         return map;
     }
 
-    private void AddReg(RegModel reg, int noAntrian, JadwalPraktekType jadwal)
+    private void AddAntrianEmr(RegModel reg, AntrianMapDetilModel antrianMapDetil, JadwalPraktekType jadwal)
     {
-        var payload = new AddRegCmd(
+        var payload = new AddAntrianEmrByRegCommand(
             reg.RegId, "-", reg.Pasien.PasienId,
             reg.Pasien.PasienName, reg.Layanan.LayananId, 
             reg.Dokter.PpaId, reg.RegDate.ToString("yyyy-MM-dd"),
             jadwal.JamMulai.ToString("HH:mm", CultureInfo.InvariantCulture), 
-            noAntrian);
-        _addRegSvc.Execute(payload);
+            antrianMapDetil.NoUrut);
+        _addAntrianEmrByRegService.Execute(payload);
     }
     #endregion
 }

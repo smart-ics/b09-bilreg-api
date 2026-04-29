@@ -5,20 +5,20 @@ using RestSharp;
 
 namespace Bilreg.Infrastructure.AdmisiContext.BookingFeature;
 
-public class DashboardAddBookService : IDashboardAddBookService
+public class AddAntrianEmrByBookingService : IAddAntrianEmrByBookingService
 {
-    public readonly Emr25Options _opt;
+    public readonly EmrOptions _opt;
 
-    public DashboardAddBookService(IOptions<Emr25Options> opt)
+    public AddAntrianEmrByBookingService(IOptions<EmrOptions> opt)
     {
         _opt = opt.Value;
     }
-    public void Execute(AddBookCmd cmd)
+    public void Execute(AddAntrianEmrByBookingCmd cmd)
     {
         AddBook(cmd).ConfigureAwait(false).GetAwaiter().GetResult();
     }
 
-    private async Task AddBook(AddBookCmd req)
+    private async Task AddBook(AddAntrianEmrByBookingCmd req)
     {
         if (_opt.BaseApiUrl.Trim().Length == 0)
             return;

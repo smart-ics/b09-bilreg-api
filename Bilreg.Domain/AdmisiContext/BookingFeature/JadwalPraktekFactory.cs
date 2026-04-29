@@ -1,4 +1,5 @@
 ﻿using Ardalis.GuardClauses;
+using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.Shared.Helpers;
@@ -8,7 +9,8 @@ namespace Bilreg.Domain.AdmisiContext.BookingFeature;
 public interface IJadwalPraktekFactory : INunaFactory<JadwalPraktekType>
 {
     JadwalPraktekType Create(PpaType dokter,
-        LayananType layanan, RuangType ruang, DayOfWeek hari, TimeOnly jamMulai, TimeOnly jamSelesai, int maxPasien);
+        LayananType layanan, RuangType ruang, DayOfWeek hari, TimeOnly jamMulai, 
+        TimeOnly jamSelesai, int maxPasien, AntrianPatternType antrianPattern);
 }
 public class JadwalPraktekFactory : IJadwalPraktekFactory
 {
@@ -23,14 +25,14 @@ public class JadwalPraktekFactory : IJadwalPraktekFactory
         new JadwalPraktekType("-", PpaType.Default.ToReff(), 
             LayananType.Default.ToReff(), LayananDkType.Default.ToReff(), 
             GroupSpesialisType.Default, RuangType.Default,
-            DayOfWeek.Monday, new TimeOnly(0, 0), new TimeOnly(0, 0), 0);
+            DayOfWeek.Monday, new TimeOnly(0, 0), new TimeOnly(0, 0), 0, AntrianPatternType.Default);
     
     public IJadwalPraktekKey Key(string id)
         => Default with { JadwalPraktekId = id };
 
     public JadwalPraktekType Create(PpaType dokter, LayananType layanan,
         RuangType ruang, DayOfWeek hari, TimeOnly jamMulai,
-        TimeOnly jamSelesai, int maxPasien)
+        TimeOnly jamSelesai, int maxPasien, AntrianPatternType antrianPattern)
     {
         Guard.Against.Null(dokter, nameof(dokter));
         Guard.Against.Null(dokter.Smf, nameof(dokter.Smf));
@@ -39,6 +41,6 @@ public class JadwalPraktekFactory : IJadwalPraktekFactory
         var newId = $"JADW{newNumber:D3}";
         return new JadwalPraktekType(newId, dokter.ToReff(), layanan.ToReff(), 
             LayananDkType.Default.ToReff(), GroupSpesialisType.Default, ruang, 
-            hari, jamMulai, jamSelesai, maxPasien);
+            hari, jamMulai, jamSelesai, maxPasien, antrianPattern);
     }
 }

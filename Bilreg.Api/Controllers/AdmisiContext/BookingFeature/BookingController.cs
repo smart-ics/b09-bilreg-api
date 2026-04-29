@@ -1,9 +1,11 @@
-﻿using Bilreg.Application.AdmisiContext.BookingFeature.UseCases;
-using MediatR;
-using Microsoft.AspNetCore.Mvc;
-using Nuna.Lib.ActionResultHelper;
+﻿//TODO: Refactor AntrianMap Model
 
-namespace Bilreg.Api.Controllers.AdmisiContext.BookingFeature;
+ using Bilreg.Application.AdmisiContext.BookingFeature.UseCases;
+ using MediatR;
+ using Microsoft.AspNetCore.Mvc;
+ using Nuna.Lib.ActionResultHelper;
+
+ namespace Bilreg.Api.Controllers.AdmisiContext.BookingFeature;
 
 [Route("api/[controller]")]
 [ApiController]
@@ -15,7 +17,7 @@ public class BookingController : ControllerBase
     {
         _mediator = mediator;
     }
-    
+
     [HttpPost]
     public async Task<IActionResult> Save(BookingCreateCmd cmd)
     {
@@ -30,7 +32,7 @@ public class BookingController : ControllerBase
         var result = await _mediator.Send(cmd);
         return Ok(new JSendOk(result));
     }
-    
+
     [HttpPatch]
     [Route("resolvePasienId")]
     public async Task<IActionResult> ResolvePasienId(BookingResolvePasienIdCmd cmd)
@@ -58,7 +60,7 @@ public class BookingController : ControllerBase
     [HttpDelete]
     [Route("{id}")]
     public async Task<IActionResult> Delete(string id)
-    { 
+    {
         var cmd = new BookingDeleteCmd(id);
         await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));

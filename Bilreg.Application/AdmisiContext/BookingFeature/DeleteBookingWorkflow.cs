@@ -1,11 +1,11 @@
-﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
-using Bilreg.Application.AdmisiContext.PpaFeature;
-using Bilreg.Domain.AdmisiContext.AntrianFeature;
-using Bilreg.Domain.AdmisiContext.BookingFeature;
-using Bilreg.Domain.AdmisiContext.PpaFeature;
-using Nuna.Lib.TransactionHelper;
+﻿ using Bilreg.Application.AdmisiContext.AntrianFeature;
+ using Bilreg.Application.AdmisiContext.PpaFeature;
+ using Bilreg.Domain.AdmisiContext.AntrianFeature;
+ using Bilreg.Domain.AdmisiContext.BookingFeature;
+ using Bilreg.Domain.AdmisiContext.PpaFeature;
+ using Nuna.Lib.TransactionHelper;
 
-namespace Bilreg.Application.AdmisiContext.BookingFeature;
+ namespace Bilreg.Application.AdmisiContext.BookingFeature;
 
 public interface IDeleteBookingWorkflow
 {
@@ -17,21 +17,21 @@ public sealed class DeleteBookingWorkflow : IDeleteBookingWorkflow
     private readonly IPpaRepo _ppaRepo;
     private readonly IAntrianRepo _antrianRepo;
     private readonly IPasienTrackerRepo _pasienTrackerRepo;
-    private readonly IAntrianMapHdrRepo _antrianMapHdrRepo;
+    private readonly IAntrianMapRepo _antrianMapRepo;
     private readonly IJadwalPraktekRepo _jadwalPraktekRepo;
     public DeleteBookingWorkflow(
         IBookingRepo bookingRepo,
         IPpaRepo ppaRepo,
         IAntrianRepo antrianRepo,
         IPasienTrackerRepo pasienTrackerRepo,
-        IAntrianMapHdrRepo antrianMapHdrRepo,
+        IAntrianMapRepo antrianMapRepo,
         IJadwalPraktekRepo jadwalPraktekRepo)
     {
         _bookingRepo = bookingRepo;
         _ppaRepo = ppaRepo;
         _antrianRepo = antrianRepo;
         _pasienTrackerRepo = pasienTrackerRepo;
-        _antrianMapHdrRepo = antrianMapHdrRepo;
+        _antrianMapRepo = antrianMapRepo;
         _jadwalPraktekRepo = jadwalPraktekRepo;
     }
 
@@ -61,15 +61,15 @@ public sealed class DeleteBookingWorkflow : IDeleteBookingWorkflow
              .FirstOrDefault(x => x.JamMulai == jamMulai)
             ?? throw new ArgumentException("Jadwal tidak ditemukan");
         var antrianMap = CekAntrianMap(jadwal, booking.TglBerobat);
-        
+
         // EXECUTE
         using var trans = TransHelper.NewScope();
         _bookingRepo.DeleteEntity(booking);
-        
+
         if (antrianMap.JadwalId != "-")
         {
             antrianMap.VoidSlot(booking.NoAntrian);
-            _antrianMapHdrRepo.SaveChanges(antrianMap);
+            _antrianMapRepo.SaveChanges(antrianMap);
         }
         if (entry is not null)
         {
@@ -79,7 +79,7 @@ public sealed class DeleteBookingWorkflow : IDeleteBookingWorkflow
             _pasienTrackerRepo.DeleteEntity(
                 PasienTrackerModel.Key(entry.Tracker.PasienTrackerId));
         }
-        
+
 
         trans.Complete();
         return Task.CompletedTask;
@@ -122,30 +122,21 @@ public sealed class DeleteBookingWorkflow : IDeleteBookingWorkflow
             .FirstOrDefault(x => x.SequenceTag == tag);
     }
 
-    private AntrianMapHdrModel CekAntrianMap(JadwalPraktekType jadwal, DateOnly tglJadwal)
+    private AntrianMapModel CekAntrianMap(JadwalPraktekType jadwal, DateOnly tglJadwal)
     {
         var ppaKey = PpaType.Key(jadwal.Dokter.PpaId);
 
-        var listAntrianMap = _antrianMapHdrRepo
+        var listAntrianMap = _antrianMapRepo
             .ListData(jadwal.Layanan, ppaKey, tglJadwal)?
             .ToList() ?? [];
 
         var antrianThis = listAntrianMap
-            .SingleOrDefault(x => x.JamJadwal == jadwal.JamMulai);
+            .FirstOrDefault(x => x.JamJadwal == jadwal.JamMulai);
 
         if (antrianThis is not null)
-        {
-            var antKey = AntrianMapHdrModel.Key(
-                antrianThis.JadwalId,
-                antrianThis.TglJadwal,
-                antrianThis.dokter.PpaId,
-                antrianThis.Layanan.LayananId,
-                antrianThis.JamJadwal);
-
-            return _antrianMapHdrRepo.LoadEntity(antKey).Value;
-        }
+            return _antrianMapRepo.LoadEntity(antrianThis).Value;
         else
-            return AntrianMapHdrModel.Default;
+            return AntrianMapModel.Default;
     }
     #endregion
 

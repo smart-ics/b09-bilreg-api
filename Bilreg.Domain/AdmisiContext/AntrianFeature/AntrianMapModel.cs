@@ -1,80 +1,210 @@
-﻿using Ardalis.GuardClauses;
+﻿using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
-using Bilreg.Domain.PasienContext.PasienFeature;
+using Nuna.Lib.AutoNumberHelper;
 
 namespace Bilreg.Domain.AdmisiContext.AntrianFeature;
 
-public record AntrianMapModel(
-    DateOnly TglPraktek,
-    string DokterId,
-    string LayananId,
-    TimeOnly JamJadwal,
-    int NoUrut,
-    PasienReff Pasien,
-    RegReff Reg,
-    string ReffId,
-    string Flag,
-    bool IsTerpakai
-)
+public record AntrianMapModel : IAntrianMapKey
 {
-    #region CREATION
-    public static AntrianMapModel Create(
-        DateOnly tglPraktek,
-        string dokterId,
-        string layananId,
-        TimeOnly jamPraktek,
-        int noUrut,
-        PasienReff pasien,
-        RegReff reg,
-        string reffId,
-        string flag, 
-        bool isTerpakai)
-    {
-        Guard.Against.NullOrWhiteSpace(dokterId, nameof(dokterId));
-        Guard.Against.NullOrWhiteSpace(layananId, nameof(layananId));
-        Guard.Against.Null(pasien, nameof(pasien));
-        Guard.Against.Null(reg, nameof(reg));
-        Guard.Against.NegativeOrZero(noUrut, nameof(noUrut));
+    private readonly List<AntrianMapDetilModel> _listMap;
 
-        return new AntrianMapModel(tglPraktek, dokterId, layananId, jamPraktek, noUrut, pasien, reg, reffId, flag, isTerpakai);
+    #region CREATION
+    public AntrianMapModel(string antrianMapId, string jadwalId,
+        PpaReff dokter, LayananReff layanan, 
+        DateOnly tglJadwal, TimeOnly jamJadwal, TimeOnly jamPraktek,
+        AntrianPatternType pattern, int maxPasien,
+        IEnumerable<AntrianMapDetilModel> listMap)
+    {
+        AntrianMapId = antrianMapId;
+        JadwalId = jadwalId;
+        Dokter = dokter;
+        Layanan = layanan;
+        TglJadwal = tglJadwal;
+        JamJadwal = jamJadwal;
+        JamPraktek = jamPraktek;
+        AntrianPattern = pattern;
+        MaxPasien = maxPasien;
+        
+        _listMap = listMap?.ToList() ?? [];
     }
 
-    public static AntrianMapModel Default => new(
-        TglPraktek: DateOnly.MinValue,
-        DokterId: "-",
-        LayananId: "-",
-        JamJadwal: TimeOnly.MinValue,
-        NoUrut: 0,
-        Pasien: new PasienReff("-", "-", new DateOnly(3000, 1, 1), "-"),
-        Reg: new RegReff("-", "-", "_"),
-        ReffId: "",
-        Flag: "",
-        IsTerpakai: false
-    );
-
-    public static AntrianMapModel AutoSlot(DateOnly tglPraktek, string dokterId, string layananId, TimeOnly jamPraktek, int noUrut) =>
-        new(
-            TglPraktek: tglPraktek,
-            DokterId: dokterId,
-            LayananId: layananId,
-            JamJadwal: jamPraktek,
-            NoUrut: noUrut,
-            Pasien: new PasienReff("-", "-", new DateOnly(3000, 1, 1), "-"),
-            Reg: new RegReff("-", "-", "_"),
-            ReffId: "",
-            Flag: "AUTO",
-            IsTerpakai: false
+    public static AntrianMapModel CreateFromJadwal(JadwalPraktekType jadwal,
+        DateOnly tgl)
+    {
+        var newKey = NunaId.New("ANM");
+        var result = new AntrianMapModel(
+            antrianMapId: newKey,
+            jadwalId    : jadwal.JadwalPraktekId,
+            dokter      : jadwal.Dokter,
+            layanan     : jadwal.Layanan,
+            tglJadwal   : tgl,
+            jamJadwal   : jadwal.JamMulai,
+            jamPraktek  : jadwal.JamMulai,
+            pattern     : jadwal.AntrianPattern,
+            maxPasien   : jadwal.MaxPasien,
+            listMap: []
         );
+        return result;
+    }
+    
+    public static AntrianMapModel Default => new(
+        antrianMapId: "-",
+        jadwalId: "-",
+        dokter: new PpaReff("-", "-"),
+        layanan: new LayananReff("-", "-"),
+        tglJadwal: DateOnly.MinValue,
+        jamJadwal: TimeOnly.MinValue,
+        jamPraktek: TimeOnly.MinValue,
+        pattern: AntrianPatternType.Default,
+        maxPasien: 0,
+        listMap: []
+    );
+    
+    public static IAntrianMapKey Key(string id)
+    {
+        var result = Default with {AntrianMapId = id};
+        return result;
+    }
+
+    #endregion
+
+    #region PROPERTIES
+    public string AntrianMapId { get; init; }
+    public string JadwalId { get; init; }
+    public PpaReff Dokter { get; init; }
+    public LayananReff Layanan { get; init; }
+    public DateOnly TglJadwal { get; init; }
+    public TimeOnly JamJadwal { get; init; }
+    public TimeOnly JamPraktek { get; init; }
+    public AntrianPatternType AntrianPattern { get; init; }
+    public int MaxPasien { get; private set; }
+    public int LastNoUrut => _listMap.Max(x => x.NoUrut);
+    public IEnumerable<AntrianMapDetilModel> ListMap => _listMap;
+
+    public string DokterId => Dokter.PpaId;
+    public string LayananId => Layanan.LayananId;
     #endregion
 
     #region BEHAVIOR
-    public AntrianMapModel SetPasien(PasienReff pasien, RegReff reg, string reffId, string flag) =>
-        this with { Pasien = pasien, Reg = reg, ReffId = reffId, Flag = flag, IsTerpakai = true };
 
-    public AntrianMapModel Void() => this with
+    public void VoidSlot(int noUrut)
     {
-        ReffId = "-",
-        Flag = "AUTO"
-    };
+        var detil = _listMap.FirstOrDefault(x => x.NoUrut == noUrut);
+        detil?.Void();
+    }
+    public void SetDataPasien(int noUrut, RegModel reg)
+    {
+        var detil = _listMap.FirstOrDefault(x => x.NoUrut == noUrut);
+        if (detil is null)
+            return;
+        
+        detil.SetPasien(reg.Pasien.PasienName,
+            reg.Pasien.PasienId, reg.RegId);
+    }
+    public void SetDataPasien(int noUrut, BookingModel booking)
+    {
+        var detil = _listMap.FirstOrDefault(x => x.NoUrut == noUrut);
+        if (detil is null)
+            return;
+
+        detil.SetPasien(booking.Person.PersonName, 
+            booking.PasienId,
+            booking.BookingId);
+    }
+    
+    public AntrianMapDetilModel GetNextAntrian(string flag)
+    {
+        var detil = _listMap
+            .Where(x => !x.IsTerpakai)
+            .Where(x => x.Flag == flag)
+            .OrderBy(x => x.NoUrut)
+            .FirstOrDefault();
+
+        detil = detil ?? 
+            _listMap
+                .Where(x => !x.IsTerpakai)
+                .Where(x => x.Flag == "AUTO")
+                .OrderBy(x => x.NoUrut)
+                .FirstOrDefault();
+
+        var result = detil ?? AntrianMapDetilModel.AutoSlot(LastNoUrut + 1);
+        return result;            
+    }
+
+    public int TotalSlotCount => _listMap.Count;
+
+    public void SeedingMap()
+    {
+        if (AntrianPattern.Tipe == "FLAG")
+            SeedingMapFlag();
+        else
+            SeedingMapAuto(); 
+    }
+    
+    public void AttachDetil(IEnumerable<AntrianMapDetilModel> listDetil)
+    {
+        _listMap.Clear();
+        _listMap.AddRange(listDetil);
+    }
+
+    public AntrianMapDetilModel AddAuto(RegModel reg)
+    {
+        var newDetil = AntrianMapDetilModel.AutoSlot(LastNoUrut + 1)
+            .SetPasien(reg.Pasien.PasienName, reg.Pasien.PasienId, reg.RegId);
+        return newDetil;
+    }
+    public AntrianMapDetilModel AddAuto(BookingModel booking)
+    {
+        var newDetil = AntrianMapDetilModel.AutoSlot(LastNoUrut + 1)
+            .SetPasien(booking.Person.PersonName, booking.PasienId, booking.BookingId);
+        return newDetil;
+    }
+    
+
     #endregion
+    private void SeedingMapAuto()
+    {
+        _listMap.Clear();
+        var noUrut = 1;
+        while (noUrut <= MaxPasien)
+        {
+            var newItem = new AntrianMapDetilModel(noUrut, string.Empty, string.Empty, string.Empty, "AUTO", false);
+            _listMap.Add(newItem );
+            noUrut ++;
+        }
+    }
+
+    private void SeedingMapFlag()
+    {
+        _listMap.Clear();
+        var noUrut = 1;
+        while (noUrut <= MaxPasien)
+        {
+            var listFullCycle = FullCyclePatternSeed(AntrianPattern, ref noUrut);
+            if (listFullCycle.Count == 0)
+                break;
+            _listMap.AddRange(listFullCycle);
+        }
+        _listMap.RemoveAll(x => x.NoUrut > MaxPasien);
+    }
+
+    private static List<AntrianMapDetilModel> FullCyclePatternSeed(AntrianPatternType pattern, ref int startNumber)
+    {
+        var result = new List<AntrianMapDetilModel>();
+        foreach(var item in pattern.Pttrn)
+            for (var i = 0; i < item.Qty; i++)
+            {
+                result.Add(new AntrianMapDetilModel(startNumber, string.Empty, string.Empty, string.Empty, item.Desc, false));
+                startNumber++;                
+            }
+        return result;
+    }
+}
+
+
+public interface IAntrianMapKey
+{
+    string AntrianMapId { get; }
 }

@@ -1,10 +1,12 @@
-﻿using Bilreg.Application.AdmisiContext.RegFeature.UseCases;
-using MediatR;
-using Microsoft.AspNetCore.Mvc;
-using Nuna.Lib.ActionResultHelper;
-using Nuna.Lib.PatternHelper;
+﻿//TODO: Refactor AntrianMap Model
+  
+ using Bilreg.Application.AdmisiContext.RegFeature.UseCases;
+ using MediatR;
+ using Microsoft.AspNetCore.Mvc;
+ using Nuna.Lib.ActionResultHelper;
+ using Nuna.Lib.PatternHelper;
 
-namespace Bilreg.Api.Controllers.AdmisiContext.RegFeature;
+ namespace Bilreg.Api.Controllers.AdmisiContext.RegFeature;
 
 [Route("api/[controller]")]
 [ApiController]
@@ -71,8 +73,8 @@ public class RegController : Controller
         var result = await _mediator.Send(cmd);
         return Ok(new JSendOk(result));
     }
-    
-    
+
+
     [HttpGet]
     [Route("{id}")]
     public async Task<IActionResult> GetData(string id)

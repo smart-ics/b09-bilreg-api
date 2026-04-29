@@ -22,14 +22,16 @@ public static class InfrastructureService
             .AddScoped<INunaCounterDecDal, ParamNoDal>()
             .AddScoped<ITglJamProvider, TglJamProvider>()
             .AddScoped<ISequencer, Sequencer>()
+            .AddScoped<IRestClientFactory, RestClientFactory>()
             .AddMemoryCache();
 
         services
             .Configure<DatabaseOptions>(configuration.GetSection(DatabaseOptions.SECTION_NAME))
             .Configure<PasienContextOptions>(configuration.GetSection(PasienContextOptions.SECTION_NAME))
             .Configure<RemoteCetakOptions>(configuration.GetSection(RemoteCetakOptions.SECTION_NAME))
-            .Configure<Emr25Options>(configuration.GetSection(Emr25Options.SECTION_NAME))
-            .Configure<HiDokOptions>(configuration.GetSection(HiDokOptions.SECTION_NAME));
+            .Configure<EmrOptions>(configuration.GetSection(EmrOptions.SECTION_NAME))
+            .Configure<HiDokOptions>(configuration.GetSection(HiDokOptions.SECTION_NAME))
+            .Configure<JetliOptions>(configuration.GetSection(JetliOptions.SECTION_NAME));
 
         services
             .Scan(selector => selector

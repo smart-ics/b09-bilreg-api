@@ -61,7 +61,7 @@ public class AntrianController : Controller
     }
 
     [HttpPatch]
-    [Route("selesaiPeriksa/{antrianId}/{noUrut}")]
+    [Route("selesaiPeriksa/{antrianId}/{noUrut:int}")]
     public async Task<IActionResult> SelesaiPeriksa(string antrianId, int noUrut)
     {
         var query = new QueSelesaiPeriksaCmd(antrianId, noUrut);
@@ -69,11 +69,11 @@ public class AntrianController : Controller
         return Ok(new JSendOk("Done"));
     }
 
-    [HttpPost]
-    [Route("mapMigrasi")]
-    public async Task<IActionResult> MigrasiMapHdr(AntrianMapHdrMigrasiCmd cmd)
-    {
-        await _mediator.Send(cmd);
-        return Ok(new JSendOk("Done"));
-    }
+    // [HttpPost]
+    // [Route("mapMigrasi")]
+    // public async Task<IActionResult> MigrasiMapHdr(AntrianMapHdrMigrasiCmd cmd)
+    // {
+    //     await _mediator.Send(cmd);
+    //     return Ok(new JSendOk("Done"));
+    // }
 }

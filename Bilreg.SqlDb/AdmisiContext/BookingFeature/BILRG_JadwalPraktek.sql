@@ -7,6 +7,7 @@
     JamMulai VARCHAR(5) NOT NULL CONSTRAINT DF_BILRG_JadwalPraktek_JamMulai DEFAULT ('00:00'),
     JamSelesai VARCHAR(5) NOT NULL CONSTRAINT DF_BILRG_JadwalPraktek_JamSelesai DEFAULT ('00:00'),
     MaxPasien INT NOT NULL CONSTRAINT DF_BILRG_JadwalPraktek_MaxPasien DEFAULT (0),
+    AntrianPattern VARCHAR(512) NOT NULL CONSTRAINT DF_BILRG_JadwalPraktek_Pattern DEFAULT (''),
  
     CONSTRAINT PK_BILRG_JadwalPraktek PRIMARY KEY CLUSTERED (JadwalPraktekId)   
 )

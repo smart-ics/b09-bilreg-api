@@ -25,7 +25,7 @@ using Nuna.Lib.TransactionHelper;
 
 namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 
-public record RegJalanUbahKunjunganCmd(string RegId, 
+public record RegJalanUbahKunjunganCmd(string RegId,
     string LayananId, string DokterId, string JamPraktek, string KarcisId,
     string UserId) : IRequest<RegJalanUbahKunjunganResponse>, IRegKey, ILayananKey, IKarcisKey;
 
@@ -39,12 +39,13 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
     private readonly IPpaRepo _ppaRepo;
     private readonly IAntrianRepo _antrianRepo;
     private readonly IAntrianFactory _antrianFactory;
-    private readonly IAntrianMapHdrRepo _antrianMapRepo;
+    private readonly IAntrianMapRepo _antrianMapRepo;
     private readonly IPasienTrackerRepo _trackerRepo;
-    
+    private readonly IAntrianMapWithRegResolver _antrianMapWithRegResolver;
+
     private readonly ILayananRepo _layananRepo;
     private readonly IKarcisRepo _karcisRepo;
-    
+
     private readonly IJaminanRepo _jaminanRepo;
     private readonly ITipeJaminanRepo _tipeJaminanRepo;
     private readonly ITarifRepo _tarifRepo;
@@ -56,13 +57,15 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
     private readonly IMapJaminanJkRepo _mapJaminanJkRepo;
     private readonly IJurnalRepo _jurnalRepo;
 
+
     public RegJalanUbahKunjunganHandler(IRegRepo regRepo,
         IRegAktifRepo regAktifRepo,
         IJadwalPraktekRepo jadwalPraktekRepo,
         IPpaRepo ppaRepo,
         IAntrianRepo antrianRepo,
         IAntrianFactory antrianFactory,
-        IAntrianMapHdrRepo antrianMapRepo,
+        IAntrianMapRepo antrianMapRepo,
+        IAntrianMapWithRegResolver antrianMapWithRegResolver,
         ILayananRepo layananRepo,
         IKarcisRepo karcisRepo,
         INilaiTarifRepo nilaiTarifRepo,
@@ -74,7 +77,8 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
         ITrsBillingRepo trsBillingRepo,
         ITindakanRepo tindakanRepo,
         IJurnalRepo jurnalRepo,
-        IMapJaminanJkRepo mapJaminanJkRepo)
+        IMapJaminanJkRepo mapJaminanJkRepo
+        )
     {
         _regRepo = regRepo;
         _regAktifRepo = regAktifRepo;
@@ -83,6 +87,7 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
         _antrianRepo = antrianRepo;
         _antrianFactory = antrianFactory;
         _antrianMapRepo = antrianMapRepo;
+        _antrianMapWithRegResolver = antrianMapWithRegResolver;
         _layananRepo = layananRepo;
         _karcisRepo = karcisRepo;
         _nilaiTarifRepo = nilaiTarifRepo;
@@ -95,32 +100,28 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
         _tindakanRepo = tindakanRepo;
         _jurnalRepo = jurnalRepo;
         _mapJaminanJkRepo = mapJaminanJkRepo;
+        
     }
     public Task<RegJalanUbahKunjunganResponse> Handle(RegJalanUbahKunjunganCmd request, CancellationToken cancellationToken)
     {
-        /*  ▐▀▀▀▀▀▀▀▀▀▀▀▌
-            ▐   GUARD   ▌
-            ▐▄▄▄▄▄▄▄▄▄▄▄▌*/
+        #region GUARD & LOAD
         var regCurrent = _regAktifRepo.LoadEntity(request).GetValueOrThrow("Register tidak ditemukan atau sudah tidak aktif");
         var regOld = _regRepo.LoadEntity(request).GetValueOrThrow("Register tidak ditemukan");
         var reg = _regRepo.LoadEntity(request).GetValueOrThrow("Register tidak ditemukan");
         var dokter = _ppaRepo.LoadEntity(PpaType.Key(request.DokterId)).GetValueOrThrow("Dokter not found");
         var layanan = _layananRepo.LoadEntity(request).GetValueOrThrow("Layanan not found");
         var karcis = _karcisRepo.LoadEntity(request).GetValueOrThrow("Karcis not found");
-
-        /*  ▐▀▀▀▀▀▀▀▀▀▀▀▌
-            ▐   BUILD   ▌
-            ▐▄▄▄▄▄▄▄▄▄▄▄▌*/
         var tipeJaminan = LoadTipeJaminan(TipeJaminanType.Key(reg.TipeJaminan.TipeJaminanId));
         var jaminan = LoadJaminan(tipeJaminan.Jaminan);
         var karcisOld = _karcisRepo.LoadEntity(KarcisType.Key(reg.Karcis.KarcisId)).GetValueOrDefault(KarcisType.Default);
+        #endregion
 
+        #region BUILD
         //  antrian
         var tglBerobat = reg.RegDate;
         var jadwal = ResolveJadwalPraktek(dokter, request.JamPraktek, tglBerobat);
         var antrian = ResolveAntrian(tglBerobat, dokter, jadwal);
-        var antrianMap = LoadOrCreateAntrianMap(jadwal, tglBerobat);
-        var noAntrian = antrianMap.GetNextNoAntrian();
+        var antrianMap = _antrianMapWithRegResolver.Resolve(jadwal, tglBerobat, reg);
         var tracker = PasienTrackerModel.Create(reg);
 
         //  registrasi
@@ -151,14 +152,13 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
         var jurnalTindakan = tindakan.TindakanId == "-"
             ? JurnalType.Default
             : JurnalType.CreateFromTrsBilling(billTdk, layanan, mapJaminanJk);
+        #endregion
 
-        /*  ▐▀▀▀▀▀▀▀▀▀▀▀▌
-            ▐   WRITE   ▌
-            ▐▄▄▄▄▄▄▄▄▄▄▄▌*/
+        #region WRITER
         using var trans = TransHelper.NewScope();
 
         SaveRegister(reg, regAktif);
-        SaveAntrian(antrian, antrianMap, tracker, noAntrian, reg, regOld);
+        SaveAntrian(antrian, antrianMap.Value.Item1, tracker, antrianMap.Value.Item2.NoUrut, reg, regOld);
         SaveBillKarcis(billKarcis);
         SaveTindakan(tindakan, reg, karcisOld);
         SaveBillTdk(billTdk);
@@ -166,11 +166,12 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
         SaveJurnalTdk(jurnalTindakan);
 
         trans.Complete();
+        #endregion
 
-        var result = new RegJalanUbahKunjunganResponse(reg.RegId, noAntrian);
+        var result = new RegJalanUbahKunjunganResponse(reg.RegId, antrianMap.Value.Item2.NoUrut);
         return Task.FromResult(result);
     }
-    
+
     #region PRIVATE-HELPER
     //  Load & Resolve
     private JadwalPraktekType ResolveJadwalPraktek(PpaType dokter, string jamPraktek, DateOnly tgl)
@@ -201,36 +202,6 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
             ? _antrianFactory.Create(tgl, jadwal)
             : _antrianRepo.LoadEntity(existingView).Value;
     }
-    private AntrianMapHdrModel LoadOrCreateAntrianMap(JadwalPraktekType jadwal, DateOnly tglJadwal)
-    {
-        var ppaKey = PpaType.Key(jadwal.Dokter.PpaId);
-        var listAntrianMap = _antrianMapRepo
-            .ListData(jadwal.Layanan, ppaKey, tglJadwal)?
-            .ToList() ?? [];
-        var antrianThis = listAntrianMap
-            .SingleOrDefault(x => x.JamJadwal == jadwal.JamMulai);
-        if (antrianThis is not null)
-        {
-            var antKey = AntrianMapHdrModel.Key(
-                antrianThis.JadwalId,
-                antrianThis.TglJadwal,
-                antrianThis.dokter.PpaId,
-                antrianThis.Layanan.LayananId,
-                antrianThis.JamJadwal);
-
-            return _antrianMapRepo.LoadEntity(antKey).Value;
-        }
-        var queueHdr = AntrianMapHdrModel.Create(
-            jadwal.JadwalPraktekId,
-            jadwal.Dokter,
-            jadwal.Layanan,
-            tglJadwal,
-            jadwal.JamMulai,
-            jadwal.JamMulai,
-            []);
-        queueHdr.GenerateSlot(jadwal.MaxPasien);
-        return queueHdr;
-    }
     private TipeJaminanType LoadTipeJaminan(ITipeJaminanKey key)
     {
         return _tipeJaminanRepo.LoadEntity(key).GetValueOrDefault(TipeJaminanType.Default);
@@ -242,14 +213,14 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
     }
     private TarifType LoadTarif(ITarifKey key)
     {
-        return _tarifRepo.LoadEntity(key).GetValueOrDefault(TarifType.Default);     
+        return _tarifRepo.LoadEntity(key).GetValueOrDefault(TarifType.Default);
     }
     
     //  Gen Data
     private TindakanModel GenTindakan(RegModel reg, JaminanType jaminan,
         KarcisType karcis, string userId, PpaType dokter, string karcisReq)
     {
-        if(reg.Karcis.KarcisId != karcisReq)
+        if (reg.Karcis.KarcisId != karcisReq)
         {
             var tipeTarifReff = jaminan.TipeTarif.Rajal;
             var tarifKey = karcis.DefaultTarif;
@@ -294,7 +265,7 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
     {
         return _komponenRepo.LoadEntity(key).GetValueOrDefault(KomponenType.Default);
     }
-    private AntrianMapHdrModel LoadAntrianMap(RegModel reg, AntrianModel que)
+    private AntrianMapModel LoadAntrianMap(RegModel reg, AntrianModel que)
     {
         var ppaKey = PpaType.Key(reg.Dokter.PpaId);
         var lynKey = LayananType.Key(reg.Layanan.LayananId);
@@ -303,20 +274,11 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
             .ToList() ?? [];
 
         var antrianThis = listAntrianMap.FirstOrDefault(x => x.JamJadwal == que.StartTime);
+        var result = antrianThis is null ?
+            AntrianMapModel.Default :
+            _antrianMapRepo.LoadEntity(AntrianMapModel.Key(antrianThis.AntrianMapId)).Value;
 
-        if (antrianThis is not null)
-        {
-            var antKey = AntrianMapHdrModel.Key(
-                antrianThis.JadwalId,
-                antrianThis.TglJadwal,
-                antrianThis.dokter.PpaId,
-                antrianThis.Layanan.LayananId,
-                antrianThis.JamJadwal);
-
-            return _antrianMapRepo.LoadEntity(antKey).Value;
-        }
-        else
-            return AntrianMapHdrModel.Default;
+        return result;
     }
     private (AntrianModel Que, int NoUrut) LoadAntrianOldContext(RegModel reg)
     {
@@ -342,26 +304,25 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
     }
 
     //  Save
-    private void SaveAntrian(AntrianModel antrian, AntrianMapHdrModel antrianMap, 
-        PasienTrackerModel tracker, int noAntrian, RegModel reg, RegModel regOld)
+    private void SaveAntrian(AntrianModel antrian, AntrianMapModel antrianMapNew,
+        PasienTrackerModel tracker, int noAntrian, RegModel regNew, RegModel regOld)
     {
         //      delete antrian lama
         var queOldContext = LoadAntrianOldContext(regOld);
-        var queMap = LoadAntrianMap(regOld, queOldContext.Que);
-        VoidAntrianMap(queMap, queOldContext.NoUrut);
+        var antrianMapVoid = LoadAntrianMap(regOld, queOldContext.Que);
+        VoidAntrianMap(antrianMapVoid, queOldContext.NoUrut);
         VoidAntrian(queOldContext.Que, queOldContext.NoUrut, tracker);
 
-        var antEntry = antrian.AddEntry(noAntrian, tracker, reg.RegId, "REG");
+        var antEntry = antrian.AddEntry(noAntrian, tracker, regNew.RegId, "REG");
         var itemQueue = antrian.ListEntry.FirstOrDefault(x => x.NoUrut == noAntrian)
             ?? AntrianEntryModel.Default;
         itemQueue.Serve();
         _antrianRepo.SaveChanges(antrian);
         _trackerRepo.SaveChanges(tracker);
         //      antrianMap
-        antrianMap.SetDataPasien(noAntrian, reg.Pasien, reg.ToReff(), reg.RegId, "AUTO");
-        _antrianMapRepo.SaveChanges(antrianMap);
+        _antrianMapRepo.SaveChanges(antrianMapNew);
 
-        
+
     }
     private void SaveRegister(RegModel reg, RegAktifModel regAktif)
     {
@@ -397,9 +358,9 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
             return;
         _trsBillingRepo.SaveChanges(billTdk);
     }
-    private void VoidAntrianMap(AntrianMapHdrModel queMap, int noUrut)
+    private void VoidAntrianMap(AntrianMapModel queMap, int noUrut)
     {
-        if (queMap.JadwalId == "-")
+        if (queMap.AntrianMapId == "-")
             return;
 
         queMap.VoidSlot(noUrut);

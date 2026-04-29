@@ -17,7 +17,12 @@ public record JadwalPraktekListHariResponse(
     string Hari,
     string JamMulai,
     string JamSelesai,
-    int MaxPasien);
+    int MaxPasien,
+    JadwalPraktekSaveAntrianPatternResponse AntrianPattern);
+
+public record JadwalPraktekSaveAntrianPatternResponse(string Tipe, int Max,
+    int Rsrvd, IEnumerable<JadwalPraktekSaveAntrianPatternItemResponse> Pttrn);
+public record JadwalPraktekSaveAntrianPatternItemResponse(string Desc, int Qty);
 
 public class JadwalPraktekListHandler : IRequestHandler<JadwalPraktekListQuery, IEnumerable<JadwalPraktekListResponse>>
 {
@@ -52,7 +57,14 @@ public class JadwalPraktekListHandler : IRequestHandler<JadwalPraktekListQuery, 
                      j.Hari.ToString(),
                      j.JamMulai.ToString("HH:mm", CultureInfo.InvariantCulture),
                      j.JamSelesai.ToString("HH:mm", CultureInfo.InvariantCulture),
-                     j.MaxPasien
+                     j.MaxPasien,
+                     new JadwalPraktekSaveAntrianPatternResponse(
+                         j.AntrianPattern.Tipe, 
+                         j.AntrianPattern.Max,
+                         j.AntrianPattern.Rsrvd, 
+                         j.AntrianPattern.Pttrn
+                            .Select(k => new JadwalPraktekSaveAntrianPatternItemResponse(
+                                k.Desc, k.Qty)))
                  ))
             ));
 

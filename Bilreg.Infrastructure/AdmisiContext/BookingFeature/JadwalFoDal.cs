@@ -1,12 +1,9 @@
-﻿using Bilreg.Domain.AdmisiContext.BookingFeature;
-using Bilreg.Domain.AdmisiContext.LayananFeature;
-using Bilreg.Domain.AdmisiContext.PpaFeature;
+﻿using System.Data.SqlClient;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
-using System.Data.SqlClient;
 
-namespace Bilreg.Application.AdmisiContext.BookingFeature;
+namespace Bilreg.Infrastructure.AdmisiContext.BookingFeature;
 
 public interface IJadwalFoDal :
     IListData<JadwalFoDto>
@@ -24,14 +21,14 @@ public class JadwalFoDal : IJadwalFoDal
     {
         const string sql = """
             SELECT 
-            	'JADW' + Format(rank() over(order by aa.fs_kd_dokter, aa.fs_kd_layanan, aa.fs_kd_fruang, aa.fn_hari-1, aa.fs_jam_mulai),'000') as JadwalPraktekId,
+            	'JADW' + FORMAT(rank() OVER(order by aa.fs_kd_dokter, aa.fs_kd_layanan, aa.fs_kd_fruang, aa.fn_hari-1, aa.fs_jam_mulai),'000') as JadwalPraktekId,
             	aa.fs_kd_dokter AS DokterId,
                	aa.fs_kd_layanan AS LayananId,
             	aa.fs_kd_fruang AS RuangId,
                	aa.fn_hari - 1 AS Hari,
                	aa.fs_jam_mulai_real AS JamMulai,
                	aa.fs_jam_selesai AS JamSelesai,
-               	aa.fn_max AS MaxPasien,
+               	aa.fn_max AS MaxPasien, aa.fs_pola_antrian AS AntrianPattern,
                	ISNULL(bb.fs_nm_peg,'') AS DokterName,
                	ISNULL(cc.fs_nm_layanan,'') AS LayananName,
                	ISNULL(cc.fs_kd_layanan_dk,'') AS LayananDkId,
@@ -65,6 +62,7 @@ public record JadwalFoDto(
     string JamMulai,
     string JamSelesai,
     decimal MaxPasien,
+    string AntrianPattern,
     string DokterName,
     string LayananName,
     string LayananDkId,

@@ -1,22 +1,22 @@
-﻿using Ardalis.GuardClauses;
-using Bilreg.Application.AccountingContext.JurnalFeature;
-using Bilreg.Application.AdmisiContext.AntrianFeature;
-using Bilreg.Application.AdmisiContext.BookingFeature;
-using Bilreg.Application.ChargeContext.TindakanFeature;
-using Bilreg.Application.PaymentContext.TrsBillingFeature;
-using Bilreg.Domain.AccountingContext.JurnalFeature;
-using Bilreg.Domain.AdmisiContext.AntrianFeature;
-using Bilreg.Domain.AdmisiContext.BookingFeature;
-using Bilreg.Domain.AdmisiContext.LayananFeature;
-using Bilreg.Domain.AdmisiContext.PpaFeature;
-using Bilreg.Domain.AdmisiContext.RegFeature;
-using Bilreg.Domain.ChargeContext.TindakanFeature;
-using Bilreg.Domain.PaymentContext.TrsBillingFeature;
-using MediatR;
-using Nuna.Lib.TransactionHelper;
-using Nuna.Lib.ValidationHelper;
+﻿ using Ardalis.GuardClauses;
+ using Bilreg.Application.AccountingContext.JurnalFeature;
+ using Bilreg.Application.AdmisiContext.AntrianFeature;
+ using Bilreg.Application.AdmisiContext.BookingFeature;
+ using Bilreg.Application.ChargeContext.TindakanFeature;
+ using Bilreg.Application.PaymentContext.TrsBillingFeature;
+ using Bilreg.Domain.AccountingContext.JurnalFeature;
+ using Bilreg.Domain.AdmisiContext.AntrianFeature;
+ using Bilreg.Domain.AdmisiContext.BookingFeature;
+ using Bilreg.Domain.AdmisiContext.LayananFeature;
+ using Bilreg.Domain.AdmisiContext.PpaFeature;
+ using Bilreg.Domain.AdmisiContext.RegFeature;
+ using Bilreg.Domain.ChargeContext.TindakanFeature;
+ using Bilreg.Domain.PaymentContext.TrsBillingFeature;
+ using MediatR;
+ using Nuna.Lib.TransactionHelper;
+ using Nuna.Lib.ValidationHelper;
 
-namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
+ namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 
 public record RegJalanBatalCmd(string RegId, string UserId) : IRequest, IRegKey;
 
@@ -27,20 +27,20 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
     private readonly IAntrianRepo _antrianRepo;
     private readonly ITindakanRepo _tdkRepo;
     private readonly ITrsBillingRepo _bilingRepo;
-    private readonly IAntrianMapHdrRepo _antrianMapHdrRepo;
+    private readonly IAntrianMapRepo _antrianMapRepo;
     private readonly IPasienTrackerRepo _pasienTrackerRepo;
     private readonly IJurnalRepo _jurnalRepo;
-    private readonly IDashboardEmrRemoveRegService _removeRegSvc;
+    private readonly IDashboardEmrRemoveRegService _dashboardEmrRemoveRegService;
     private readonly IBookingRepo _bookingRepo;
     public RegJalanBatalHandler(IRegRepo regRepo,
         IRegAktifRepo regAktifRepo,
         IAntrianRepo antrianRepo,
         ITindakanRepo tdkRepo,
         ITrsBillingRepo bilingRepo,
-        IAntrianMapHdrRepo antrianMapHdrRepo,
+        IAntrianMapRepo antrianMapRepo,
         IPasienTrackerRepo pasienTrackerRepo,
         IJurnalRepo jurnalRepo,
-        IDashboardEmrRemoveRegService removeRegSvc,
+        IDashboardEmrRemoveRegService dashboardEmrRemoveRegService,
         IBookingRepo bookingRepo)
     {
         _regRepo = regRepo;
@@ -48,10 +48,10 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
         _antrianRepo = antrianRepo;
         _tdkRepo = tdkRepo;
         _bilingRepo = bilingRepo;
-        _antrianMapHdrRepo = antrianMapHdrRepo;
+        _antrianMapRepo = antrianMapRepo;
         _pasienTrackerRepo = pasienTrackerRepo;
         _jurnalRepo = jurnalRepo;
-        _removeRegSvc = removeRegSvc;
+        _dashboardEmrRemoveRegService = dashboardEmrRemoveRegService;
         _bookingRepo = bookingRepo;
     }
 
@@ -75,7 +75,7 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
             book = _bookingRepo.LoadEntity(bookKey).GetValueOrDefault(BookingModel.Default);
             book.UnRegister();
         }
-            
+
         var tindakanList = LoadAndValidateTindakan(request);
         var antrianContext = LoadAntrianContext(reg);
         var queMap = LoadAntrianMap(reg, antrianContext.Que);
@@ -95,7 +95,7 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
             trans.Complete();
         }
         var removeReg = new RemoveRegCmd(reg.RegId);
-        _removeRegSvc.Execute(removeReg);
+        _dashboardEmrRemoveRegService.Execute(removeReg);
 
         return Task.CompletedTask;
     }
@@ -148,29 +148,23 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
             throw new ArgumentException("Pasien ini masih memiliki Bill, void bill terlebih dahulu");
         return billingList;
     }
-    private AntrianMapHdrModel LoadAntrianMap(RegModel reg, AntrianModel que)
+    private AntrianMapModel LoadAntrianMap(RegModel reg, AntrianModel que)
     {
         var ppaKey = PpaType.Key(reg.Dokter.PpaId);
         var lynKey = LayananType.Key(reg.Layanan.LayananId);
-        var listAntrianMap = _antrianMapHdrRepo
+        
+        var listAntrianMap = _antrianMapRepo
             .ListData(lynKey, ppaKey, reg.RegDate)?
             .ToList() ?? [];
+        var antrianThis = listAntrianMap.FirstOrDefault(x => x.JamJadwal == que.StartTime);
 
-        var antrianThis = listAntrianMap.SingleOrDefault(x => x.JamJadwal == que.StartTime);
+        var result = antrianThis is null
+            ? AntrianMapModel.Default
+            : _antrianMapRepo
+                .LoadEntity(AntrianMapModel.Key(antrianThis.AntrianMapId))
+                .Value;
 
-        if (antrianThis is not null)
-        {
-            var antKey = AntrianMapHdrModel.Key(
-                antrianThis.JadwalId,
-                antrianThis.TglJadwal,
-                antrianThis.dokter.PpaId,
-                antrianThis.Layanan.LayananId,
-                antrianThis.JamJadwal);
-
-            return _antrianMapHdrRepo.LoadEntity(antKey).Value;
-        }
-        else
-            return AntrianMapHdrModel.Default;
+        return result;
     }
 
     // VOID
@@ -188,13 +182,13 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
         _antrianRepo.SaveChanges(ctx.Que);
         _pasienTrackerRepo.DeleteEntity(ctx.TrackerKey);
     }
-    private void VoidAntrianMap(AntrianMapHdrModel queMap, int noUrut)
+    private void VoidAntrianMap(AntrianMapModel queMap, int noUrut)
     {
         if (queMap.JadwalId == "-")
             return;
 
         queMap.VoidSlot(noUrut);
-        _antrianMapHdrRepo.SaveChanges(queMap);
+        _antrianMapRepo.SaveChanges(queMap);
     }
     private void VoidTindakan(IEnumerable<TindakanModel> listTindakan, string userId)
     {
@@ -211,9 +205,9 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
             _jurnalRepo.DeleteEntity(JurnalType.Key(bill.TrsBillingId));
             _bilingRepo.DeleteEntity(TrsBillingType.Key(bill.TrsBillingId));
         }
-            
+
     }
 
-    
+
     #endregion
 }
