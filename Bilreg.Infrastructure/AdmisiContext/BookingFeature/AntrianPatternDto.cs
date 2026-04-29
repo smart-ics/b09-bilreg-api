@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.BookingFeature;
+﻿using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using System.Text.Json;
 
 namespace Bilreg.Infrastructure.AdmisiContext.BookingFeature;

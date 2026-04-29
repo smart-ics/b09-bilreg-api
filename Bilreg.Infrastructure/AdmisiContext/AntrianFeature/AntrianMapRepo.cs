@@ -40,7 +40,7 @@ public class AntrianMapRepo : IAntrianMapRepo
         if (hdr is null)
             return MayBe<AntrianMapModel>.None;
 
-        var listDtlDto = _antrianMapDetilDal.ListData(key)?.ToList() ?? [];
+        var listDtlDto = _antrianMapDetilDal.ListData(key)?.OrderBy(x => x.fn_no_antrian).ToList() ?? [];
         var model = hdr.ToModel(listDtlDto.Select(x => x.ToModel()));
         return MayBe.From(model);
     }   

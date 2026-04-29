@@ -1,12 +1,13 @@
 ﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
+using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
+using Bilreg.Infrastructure.AdmisiContext.BookingFeature;
 using System.Globalization;
 using System.Text.Json;
-using Bilreg.Domain.AdmisiContext.BookingFeature;
 
 namespace Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
 
@@ -82,7 +83,7 @@ public record AntrianMapDto
             {
                 var trimmed = fs_pattern.TrimStart();
                 if (trimmed.StartsWith('{') || trimmed.StartsWith('['))
-                    antrianPattern = JsonSerializer.Deserialize<AntrianPatternType>(fs_pattern) ?? AntrianPatternType.Default;
+                    antrianPattern = AntrianPatternFactory.FromStringJson(fs_pattern) ?? AntrianPatternType.Default;
                 else
                     antrianPattern = new AntrianPatternType(fs_pattern, fn_max, 0, new List<AntrianPatternItemType>());
             }

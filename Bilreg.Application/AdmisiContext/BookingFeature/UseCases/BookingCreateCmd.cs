@@ -91,8 +91,7 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         var tracker = PasienTrackerModel.Create(booking);
 
         // antrianMap
-        var antrianMap = _antrianMapWithBookingResolver.Resolve(jadwal, tglBerobat, booking);
-        var pasien = new PasienReff(request.PasienId, person.PersonName, person.TglLahir, person.Gender);
+        var antrianMap = _antrianMapWithBookingResolver.Resolve(jadwal, tglBerobat, booking, px);
 
 
         //  persisting

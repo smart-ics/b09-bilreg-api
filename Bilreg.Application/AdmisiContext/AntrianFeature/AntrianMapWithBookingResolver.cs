@@ -1,10 +1,11 @@
 ﻿using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.PasienContext.PasienFeature;
 using Nuna.Lib.PatternHelper;
 
 namespace Bilreg.Application.AdmisiContext.AntrianFeature;
 
-public interface IAntrianMapWithBookingResolver : INunaResolver<(AntrianMapModel, AntrianMapDetilModel), JadwalPraktekType, DateOnly, BookingModel>
+public interface IAntrianMapWithBookingResolver : INunaResolver<(AntrianMapModel, AntrianMapDetilModel), JadwalPraktekType, DateOnly, BookingModel, PasienModel>
 { }
 public class AntrianMapWithBookingResolver : IAntrianMapWithBookingResolver
 {
@@ -15,7 +16,7 @@ public class AntrianMapWithBookingResolver : IAntrianMapWithBookingResolver
         _antrianMapRepo = antrianMapRepo;
     }
 
-    public Result<(AntrianMapModel, AntrianMapDetilModel)> Resolve(JadwalPraktekType jadwal, DateOnly tgl, BookingModel booking)
+    public Result<(AntrianMapModel, AntrianMapDetilModel)> Resolve(JadwalPraktekType jadwal, DateOnly tgl, BookingModel booking, PasienModel pasien)
     {
         var antrianMap = _antrianMapRepo.Find(jadwal, tgl)
             .Match(
@@ -51,7 +52,7 @@ public class AntrianMapWithBookingResolver : IAntrianMapWithBookingResolver
         }
         else
         {
-            emptyMap.SetPasien(booking.Person.PersonName, booking.PasienId, booking.BookingId);
+            emptyMap.SetPasien(booking.Person.PersonName, pasien.PasienId, booking.BookingId);
             newDetil = emptyMap;
         }
         return Result<(AntrianMapModel, AntrianMapDetilModel)>.Success((antrianMap, newDetil));

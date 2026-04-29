@@ -6,7 +6,6 @@ using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
-using System.Globalization;
 
 namespace Bilreg.Application.AdmisiContext.BookingFeature.UseCases;
 
@@ -105,8 +104,7 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
             response = new BookingCreateFromHidokResponse(booking.BookingId, antEntry.NoUrut);
         }
 
-        //AddBooking(booking, px);
-
+        
         return Task.FromResult(response);
     }
 
@@ -127,12 +125,5 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
             alamat, contact, IdentitasType.Default);
         return person;
     }
-    private void AddBooking(BookingModel book, PasienModel px)
-    {
-        var pasienId = px.PasienId == "-" ? "-" : px.PasienId;
-        var payload = new AddAntrianEmrByBookingCmd(book.BookingId, pasienId, book.Person.PersonName,
-            book.Layanan.LayananId, book.Dokter.PpaId, book.TglBerobat.ToString("yyyy-MM-dd"),
-            book.JamPraktek.ToString("HH:mm", CultureInfo.InvariantCulture) , book.NoAntrian);
-        _addBookingSvc.Execute(payload);
-    }
+    
 }

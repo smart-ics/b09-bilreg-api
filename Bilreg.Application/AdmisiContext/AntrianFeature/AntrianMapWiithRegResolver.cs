@@ -84,3 +84,7 @@ public interface INunaResolver<TOut, in TIn1, in TIn2, in TIn3>
     Result<TOut> Resolve(TIn1 in1, TIn2 in2, TIn3 in3);
 }
 
+public interface INunaResolver<TOut, in TIn1, in TIn2, in TIn3, in TIn4>
+{
+    Result<TOut> Resolve(TIn1 in1, TIn2 in2, TIn3 in3, TIn4 in4);
+}
