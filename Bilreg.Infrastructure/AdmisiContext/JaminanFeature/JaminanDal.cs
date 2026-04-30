@@ -36,14 +36,14 @@ public class JaminanDal : IJaminanDal
                 fs_kd_cara_bayar_dk, fs_kd_grup_jaminan, 
                 fs_kd_tipe_tarif_rawat_jalan, fs_kd_tipe_tarif_rawat_inap, 
                 fs_piut_rawat, fs_piut_obat_rawat, fs_kd_rek_ppdp_jasa_ri, 
-                fs_kd_rek_ppdp_obat_ri)
+                fs_kd_rek_ppdp_obat_ri, fs_piut_pulang)
            VALUES( 
                 @fs_kd_jaminan, @fs_nm_jaminan, @fb_aktif, 
                 @fs_alm1_jaminan, @fs_alm2_jaminan, @fs_kota_jaminan, 
                 @fs_kd_cara_bayar_dk, @fs_kd_grup_jaminan, 
                 @fs_kd_tipe_tarif_rawat_jalan, @fs_kd_tipe_tarif_rawat_inap, 
                 @fs_piut_rawat, @fs_piut_obat_rawat, @fs_kd_rek_ppdp_jasa_ri, 
-                @fs_kd_rek_ppdp_obat_ri)
+                @fs_kd_rek_ppdp_obat_ri, @fs_piut_pulang)
            """;
 
         var dp = new DynamicParameters();
@@ -64,6 +64,8 @@ public class JaminanDal : IJaminanDal
         dp.AddParam("@fs_kd_rek_ppdp_jasa_ri", dto.fs_kd_rek_ppdp_jasa_ri, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_rek_ppdp_obat_ri", dto.fs_kd_rek_ppdp_obat_ri, SqlDbType.VarChar);
 
+        dp.AddParam("@fs_piut_pulang", dto.fs_piut_pulang, SqlDbType.VarChar);
+        
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
@@ -86,7 +88,8 @@ public class JaminanDal : IJaminanDal
                fs_piut_rawat = @fs_piut_rawat,
                fs_piut_obat_rawat = @fs_piut_obat_rawat,
                fs_kd_rek_ppdp_jasa_ri = @fs_kd_rek_ppdp_jasa_ri,
-               fs_kd_rek_ppdp_obat_ri = @fs_kd_rek_ppdp_obat_ri
+               fs_kd_rek_ppdp_obat_ri = @fs_kd_rek_ppdp_obat_ri,
+               fs_piut_pulang = @fs_piut_pulang
            WHERE
                fs_kd_jaminan = @fs_kd_jaminan
            """;
@@ -108,6 +111,8 @@ public class JaminanDal : IJaminanDal
         dp.AddParam("@fs_piut_obat_rawat", dto.fs_piut_obat_rawat, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_rek_ppdp_jasa_ri", dto.fs_kd_rek_ppdp_jasa_ri, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_rek_ppdp_obat_ri", dto.fs_kd_rek_ppdp_obat_ri, SqlDbType.VarChar);
+
+        dp.AddParam("@fs_piut_pulang", dto.fs_piut_pulang, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -140,6 +145,7 @@ public class JaminanDal : IJaminanDal
            	   aa.fs_kd_tipe_brg_rawat_jalan, aa.fs_kd_tipe_brg_rawat_inap,
                aa.fs_piut_rawat, aa.fs_piut_obat_rawat, 
                aa.fs_kd_rek_ppdp_jasa_ri, aa.fs_kd_rek_ppdp_obat_ri,
+               aa.fs_piut_pulang, 
                ISNULL(bb.fs_nm_cara_bayar_dk, '-') fs_nm_cara_bayar_dk,
                ISNULL(cc.fs_nm_grup_jaminan, '-') fs_nm_grup_jaminan,
                ISNULL(dd.fs_nm_tarif_tipe,'-') AS fs_nm_tarif_tipe_rawat_jalan,
@@ -148,7 +154,8 @@ public class JaminanDal : IJaminanDal
                ISNULL(ff2.fs_nm_rek, '-') AS fs_nm_piut_obat_rawat, 
                ISNULL(ff3.fs_nm_rek, '-') AS fs_nm_rek_ppdp_jasa_ri, 
                ISNULL(ff4.fs_nm_rek, '-') AS fs_nm_rek_ppdp_obat_ri,
-           	   ISNULL(gg1.fs_nm_tipe_barang,'-') AS fs_nm_tipe_brg_rawat_jalan,
+               ISNULL(ff5.fs_nm_rek,'-') AS fs_nm_rek_piut_pulang,
+               ISNULL(gg1.fs_nm_tipe_barang,'-') AS fs_nm_tipe_brg_rawat_jalan,
            	   ISNULL(gg2.fs_nm_tipe_barang,'-') AS fs_nm_tipe_brg_rawat_inap
            FROM 
                ta_jaminan aa
@@ -160,6 +167,7 @@ public class JaminanDal : IJaminanDal
                LEFT JOIN t_rek ff2 ON aa.fs_piut_obat_rawat = ff2.fs_kd_rek
                LEFT JOIN t_rek ff3 ON aa.fs_kd_rek_ppdp_jasa_ri = ff3.fs_kd_rek
                LEFT JOIN t_rek ff4 ON aa.fs_kd_rek_ppdp_obat_ri = ff4.fs_kd_rek
+               LEFT JOIN t_rek ff5 ON aa.fs_piut_pulang = ff5.fs_kd_rek
            	   LEFT JOIN tb_tipe_barang gg1 ON aa.fs_kd_tipe_brg_rawat_jalan = gg1.fs_kd_tipe_barang 
            	   LEFT JOIN tb_tipe_barang gg2 ON aa.fs_kd_tipe_brg_rawat_inap = gg2.fs_kd_tipe_barang 
            WHERE 
@@ -185,6 +193,7 @@ public class JaminanDal : IJaminanDal
             	aa.fs_kd_tipe_brg_rawat_jalan, aa.fs_kd_tipe_brg_rawat_inap,
                 aa.fs_piut_rawat, aa.fs_piut_obat_rawat, 
                 aa.fs_kd_rek_ppdp_jasa_ri, aa.fs_kd_rek_ppdp_obat_ri,
+                aa.fs_piut_pulang,
                 ISNULL(bb.fs_nm_cara_bayar_dk, '-') fs_nm_cara_bayar_dk,
                 ISNULL(cc.fs_nm_grup_jaminan, '-') fs_nm_grup_jaminan,
                 ISNULL(dd.fs_nm_tarif_tipe,'-') AS fs_nm_tarif_tipe_rawat_jalan,
@@ -193,6 +202,7 @@ public class JaminanDal : IJaminanDal
                 ISNULL(ff2.fs_nm_rek, '-') AS fs_nm_piut_obat_rawat, 
                 ISNULL(ff3.fs_nm_rek, '-') AS fs_nm_rek_ppdp_jasa_ri, 
                 ISNULL(ff4.fs_nm_rek, '-') AS fs_nm_rek_ppdp_obat_ri,
+                ISNULL(ff5.fs_nm_rek, '-') AS fs_nm_rek_piut_pulang,
             	ISNULL(gg1.fs_nm_tipe_barang,'-') AS fs_nm_tipe_brg_rawat_jalan,
             	ISNULL(gg2.fs_nm_tipe_barang,'-') AS fs_nm_tipe_brg_rawat_inap
             FROM 
@@ -205,6 +215,7 @@ public class JaminanDal : IJaminanDal
                 LEFT JOIN t_rek ff2 ON aa.fs_piut_obat_rawat = ff2.fs_kd_rek
                 LEFT JOIN t_rek ff3 ON aa.fs_kd_rek_ppdp_jasa_ri = ff3.fs_kd_rek
                 LEFT JOIN t_rek ff4 ON aa.fs_kd_rek_ppdp_obat_ri = ff4.fs_kd_rek
+                LEFT JOIN t_rek ff5 ON aa.fs_piut_pulang = ff5.fs_kd_rek
             	LEFT JOIN tb_tipe_barang gg1 ON aa.fs_kd_tipe_brg_rawat_jalan = gg1.fs_kd_tipe_barang 
             	LEFT JOIN tb_tipe_barang gg2 ON aa.fs_kd_tipe_brg_rawat_inap = gg2.fs_kd_tipe_barang 
             """;

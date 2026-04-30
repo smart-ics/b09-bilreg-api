@@ -1,6 +1,6 @@
 using Ardalis.GuardClauses;
+using Bilreg.Domain.AccountingContext.CoaFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
-using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 
 namespace Bilreg.Domain.ChargeContext.TarifFeature;
 

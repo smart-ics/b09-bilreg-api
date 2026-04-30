@@ -6,6 +6,8 @@ using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
+using Nuna.Lib.ValidationHelper;
+using System.Globalization;
 
 namespace Bilreg.Domain.AdmisiContext.RegFeature;
 
@@ -174,6 +176,11 @@ public class RegModel : IRegKey
     public void SetNoSjp(string noSjp)
     {
         SjpNo = noSjp;
+    }
+
+    public void Keluar(string tglJamKeluar, string userId)
+    {
+        RegKeluarAudit = new AuditInfoType(userId, DateTime.ParseExact(tglJamKeluar, "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture));
     }
     #endregion
 }

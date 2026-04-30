@@ -1,4 +1,5 @@
-﻿using Bilreg.Domain.AdmisiContext.PpaFeature;
+﻿using Bilreg.Domain.AccountingContext.CoaFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 
@@ -20,8 +21,8 @@ public record KomponenDto(string fs_kd_detil_tarif, string fs_nm_detil_tarif,
     public KomponenType ToModel(IEnumerable<SatTugasType> listSatTugas)
     {
         var groupKomponen = new GroupKomponenType(fs_kd_grup_detil_tarif, fs_nm_grup_detil_tarif);
-        var rekPdpt = new CoaType(fs_kd_rek_pdpt, fs_nm_rek_pdpt);
-        var rekDiskon = new CoaType(fs_kd_rek_diskon, fs_nm_rek_diskon);
+        var rekPdpt = new CoaType(fs_kd_rek_pdpt, fs_nm_rek_pdpt, CoaTipeType.Default);
+        var rekDiskon = new CoaType(fs_kd_rek_diskon, fs_nm_rek_diskon, CoaTipeType.Default);
         var result = new KomponenType(fs_kd_detil_tarif, fs_nm_detil_tarif, groupKomponen,
             rekPdpt, rekDiskon, listSatTugas);
         return result;

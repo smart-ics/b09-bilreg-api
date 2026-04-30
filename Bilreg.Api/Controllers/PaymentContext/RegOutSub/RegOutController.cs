@@ -76,4 +76,12 @@ public class RegOutController : Controller
         await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));
     }
+
+    [HttpPost]
+    [Route("Keluar")]
+    public async Task<IActionResult> Keluar(RegOutCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
 }

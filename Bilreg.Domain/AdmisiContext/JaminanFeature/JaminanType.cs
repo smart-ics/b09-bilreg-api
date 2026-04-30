@@ -1,8 +1,7 @@
 ﻿using Ardalis.GuardClauses;
-using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.AccountingContext.CoaFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
-using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 
 namespace Bilreg.Domain.AdmisiContext.JaminanFeature;
 
@@ -65,10 +64,11 @@ public record JaminanReff(string JaminanId, string JaminanName) : IJaminanKey;
 
 public record JaminanRekeningType(
     CoaType PpdpJasaRajal, CoaType PpdpObatRajal,
-    CoaType PpdpJasaRanap,CoaType PpdpObatRanap)
+    CoaType PpdpJasaRanap,CoaType PpdpObatRanap,
+    CoaType PiutangPulang)
 {
     public static JaminanRekeningType Default =>
-        new JaminanRekeningType(CoaType.Default, CoaType.Default, CoaType.Default, CoaType.Default);
+        new JaminanRekeningType(CoaType.Default, CoaType.Default, CoaType.Default, CoaType.Default, CoaType.Default);
 };
 
 public record JaminanTipeTarifType(TipeTarifReff Rajal, TipeTarifReff Ranap)

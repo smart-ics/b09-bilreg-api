@@ -1,8 +1,7 @@
+using Bilreg.Domain.AccountingContext.CoaFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
-using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
-using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 
 //  resharper disable inconsistentnaming
 namespace Bilreg.Infrastructure.AdmisiContext.JaminanFeature;
@@ -27,7 +26,8 @@ public record JaminanDto(
     string fs_piut_obat_rawat, 
     string fs_kd_rek_ppdp_jasa_ri,
     string fs_kd_rek_ppdp_obat_ri,
-    
+    string fs_piut_pulang,
+
     string fs_nm_cara_bayar_dk ,
     string fs_nm_grup_jaminan,
     string fs_nm_tarif_tipe_rawat_jalan,
@@ -35,10 +35,12 @@ public record JaminanDto(
     string fs_nm_piut_rawat,
     string fs_nm_piut_obat_rawat,
     string fs_nm_rek_ppdp_jasa_ri,
-    string fs_nm_rek_ppdp_obat_ri,    
+    string fs_nm_rek_ppdp_obat_ri,
+    string fs_nm_rek_piut_pulang,
 
     string fs_nm_tipe_brg_rawat_jalan,
     string fs_nm_tipe_brg_rawat_inap
+
     )
 {
     public static JaminanDto FromModel(JaminanType model)
@@ -65,7 +67,8 @@ public record JaminanDto(
             model.Rekening.PpdpObatRajal.CoaId,
             model.Rekening.PpdpJasaRanap.CoaId,
             model.Rekening.PpdpObatRanap.CoaId,
-            
+            model.Rekening.PiutangPulang.CoaId,
+
             model.CaraBayarDk.CaraBayarDkName,
             model.GroupJaminan.GroupJaminanName,
             
@@ -75,6 +78,7 @@ public record JaminanDto(
             model.Rekening.PpdpObatRajal.CoaName,
             model.Rekening.PpdpJasaRanap.CoaName,
             model.Rekening.PpdpObatRanap.CoaName,
+            model.Rekening.PiutangPulang.CoaName,
 
             model.TipeBarang.Rajal.TipeBarangName,
             model.TipeBarang.Ranap.TipeBarangName
@@ -97,10 +101,12 @@ public record JaminanDto(
             new TipeBrgType(fs_kd_tipe_brg_rawat_inap, fs_nm_tipe_brg_rawat_inap));
         
         var rekening = new JaminanRekeningType(
-            new CoaType(fs_piut_rawat, fs_nm_piut_rawat),
-            new CoaType(fs_piut_obat_rawat, fs_nm_piut_obat_rawat),
-            new CoaType(fs_kd_rek_ppdp_jasa_ri, fs_nm_rek_ppdp_jasa_ri),
-            new CoaType(fs_kd_rek_ppdp_obat_ri, fs_nm_rek_ppdp_obat_ri));
+            new CoaType(fs_piut_rawat, fs_nm_piut_rawat, CoaTipeType.Default),
+            new CoaType(fs_piut_obat_rawat, fs_nm_piut_obat_rawat, CoaTipeType.Default),
+            new CoaType(fs_kd_rek_ppdp_jasa_ri, fs_nm_rek_ppdp_jasa_ri, CoaTipeType.Default),
+            new CoaType(fs_kd_rek_ppdp_obat_ri, fs_nm_rek_ppdp_obat_ri, CoaTipeType.Default),
+            new CoaType(fs_piut_pulang, fs_nm_rek_piut_pulang, CoaTipeType.Default)
+        );
         
         var jaminan = new JaminanType(fs_kd_jaminan, fs_nm_jaminan, fb_aktif,
             alamat, caraBayarDk, grupJaminan, tipeTarif, rekening, tipeBarang);
