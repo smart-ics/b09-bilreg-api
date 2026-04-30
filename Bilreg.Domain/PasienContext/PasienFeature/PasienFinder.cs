@@ -9,13 +9,14 @@ public record PasienFinder(
     string TglLahir,
     string RegId,
     string BookingId,
+    string Nik,
     Dictionary<string, string[]> StringVariants)
 {
     public static PasienFinder CreateNew(string keyword, string pasienIdPrefix)
     {
         keyword = keyword.ToUpper();
         if (string.IsNullOrWhiteSpace(keyword))
-            return new PasienFinder("", "", "", "", []);
+            return new PasienFinder("", "", "", "", "", []);
 
         var tokens = keyword.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
@@ -23,6 +24,7 @@ public record PasienFinder(
         var regId = "";
         var bookingId = "";
         var tglLahir = "";
+        var nik = "";
         Dictionary<string, string[]> stringVariants = [];
 
         foreach (var token in tokens)
@@ -51,6 +53,11 @@ public record PasienFinder(
                 tglLahir = TryParseDate(token);
                 isFormattedData = isFormattedData ? isFormattedData : tglLahir != string.Empty;
             }
+            if (string.IsNullOrEmpty(nik))
+            {
+                nik = TryParseNik(token);
+                isFormattedData = isFormattedData ? isFormattedData : nik != string.Empty;
+            }
 
             if (isFormattedData) continue;
             
@@ -63,6 +70,7 @@ public record PasienFinder(
             TglLahir: tglLahir,
             RegId: regId,
             BookingId: bookingId,
+            Nik : nik,
             stringVariants);
     }
 
@@ -154,6 +162,17 @@ public record PasienFinder(
         return string.Empty;
     }
 
+    private static string TryParseNik(string token)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+            return string.Empty;
+
+        // harus 16 digit angka
+        if (Regex.IsMatch(token, @"^\d{16}$"))
+            return token;
+
+        return string.Empty;
+    }
     private static string TryParseDate(string token)
     {
         if (DateTime.TryParseExact(token, "dd-MM-yyyy", CultureInfo.InvariantCulture,

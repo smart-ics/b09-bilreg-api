@@ -10,6 +10,7 @@ public interface IPasienRepo :
     IDeleteEntity<IPasienKey>,
     IListData<PasienPersonView, string>
 {
+    IEnumerable<PasienPersonView> SearchPasien(string keyword);
 }
 
 public record PasienPersonView(
