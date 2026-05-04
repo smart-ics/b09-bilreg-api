@@ -396,130 +396,53 @@ public class PasienDal : IPasienDal
 
     public IEnumerable<PasienDto> ListDataByNik(string nik)
     {
-        const string sql = """
-            SELECT 
-                aa.fs_mr, aa.fs_nm_pasien, aa.fd_tgl_lahir, aa.fs_jns_kelamin,
-                aa.fs_nm_alias, aa.fs_temp_lahir, aa.fs_nm_ibu_kandung, aa.fs_gol_darah,
-                aa.fs_alm_pasien, aa.fs_alm2_pasien, aa.fs_alm3_pasien, aa.fs_kota_pasien, 
-                aa.fs_kd_pos_pasien, aa.fs_kd_kelurahan, 
-                aa.fs_jenis_id, aa.fs_kd_identitas, aa.fs_no_kk, 
-                aa.fs_email, aa.fs_tlp_pasien, aa.fs_no_hp,
-                aa.fs_nm_keluarga, aa.fs_hub_keluarga, aa.fs_telp_keluarga, 
-                aa.fs_alm1_keluarga, aa.fs_alm2_keluarga, 
-                aa.fs_kota_keluarga, aa.fs_kd_pos_keluarga,
-                aa.fs_kd_agama, aa.fs_kd_suku, aa.fs_kd_status_kawin_dk, 
-                aa.fs_kd_pendidikan_dk, aa.fs_kd_pekerjaan_dk,
-                aa.fd_tgl_mr, aa.fb_aktif,
-                ISNULL(bb.fs_nm_kelurahan, '-') AS fs_nm_kelurahan,
-                ISNULL(bb.fs_kd_kecamatan, '-') AS fs_kd_kecamatan,
-                ISNULL(cc.fs_nm_kecamatan, '-') AS fs_nm_kecamatan,
-                ISNULL(cc.fs_kd_kabupaten, '-') AS fs_kd_kabupaten,
-                ISNULL(dd.fs_nm_kabupaten, '-') AS fs_nm_kabupaten,
-                ISNULL(dd.fs_kd_propinsi, '-') AS fs_kd_propinsi,
-                ISNULL(ee.fs_nm_propinsi, '-') AS fs_nm_propinsi,
-                ISNULL(ff.fs_nm_agama, '-') AS fs_nm_agama,
-                ISNULL(gg.fs_nm_suku, '-') AS fs_nm_suku,
-                ISNULL(hh.fs_nm_status_kawin_dk, '-') AS fs_nm_status_kawin_dk,
-                ISNULL(ii.fs_nm_pendidikan_dk, '-') AS fs_nm_pendidikan_dk,
-                ISNULL(jj.fs_nm_pekerjaan_dk, '-') AS fs_nm_pekerjaan_dk
-            FROM 
-                tc_mr aa
-                LEFT JOIN ta_kelurahan bb ON aa.fs_kd_kelurahan = bb.fs_kd_kelurahan
-                LEFT JOIN ta_kecamatan cc ON bb.fs_kd_kecamatan = cc.fs_kd_kecamatan
-                LEFT JOIN ta_kabupaten dd ON cc.fs_kd_kabupaten = dd.fs_kd_kabupaten
-                LEFT JOIN ta_propinsi ee ON dd.fs_kd_propinsi = ee.fs_kd_propinsi
-                LEFT JOIN ta_agama ff ON aa.fs_kd_agama = ff.fs_kd_agama
-                LEFT JOIN ta_suku gg ON aa.fs_kd_suku = gg.fs_kd_suku
-                LEFT JOIN ta_status_kawin_dk hh ON aa.fs_kd_status_kawin_dk = hh.fs_kd_status_kawin_dk
-                LEFT JOIN ta_pendidikan_dk ii ON aa.fs_kd_pendidikan_dk = ii.fs_kd_pendidikan_dk
-                LEFT JOIN ta_pekerjaan_dk jj ON aa.fs_kd_pekerjaan_dk = jj.fs_kd_pekerjaan_dk
-            	LEFT JOIN tc_mr_id kk ON aa.fs_mr = kk.fs_mr AND kk.JenisID = 'KTP'
-            	LEFT JOIN tc_mr_ktp ll ON aa.fs_mr = ll.fs_kd_mr 
-            WHERE 
-                aa.FS_KD_IDENTITAS = @Nik
-            UNION 
-            SELECT 
-                aa.fs_mr, aa.fs_nm_pasien, aa.fd_tgl_lahir, aa.fs_jns_kelamin,
-                aa.fs_nm_alias, aa.fs_temp_lahir, aa.fs_nm_ibu_kandung, aa.fs_gol_darah,
-                aa.fs_alm_pasien, aa.fs_alm2_pasien, aa.fs_alm3_pasien, aa.fs_kota_pasien, 
-                aa.fs_kd_pos_pasien, aa.fs_kd_kelurahan, 
-                aa.fs_jenis_id, aa.fs_kd_identitas, aa.fs_no_kk, 
-                aa.fs_email, aa.fs_tlp_pasien, aa.fs_no_hp,
-                aa.fs_nm_keluarga, aa.fs_hub_keluarga, aa.fs_telp_keluarga, 
-                aa.fs_alm1_keluarga, aa.fs_alm2_keluarga, 
-                aa.fs_kota_keluarga, aa.fs_kd_pos_keluarga,
-                aa.fs_kd_agama, aa.fs_kd_suku, aa.fs_kd_status_kawin_dk, 
-                aa.fs_kd_pendidikan_dk, aa.fs_kd_pekerjaan_dk,
-                aa.fd_tgl_mr, aa.fb_aktif,
-                ISNULL(bb.fs_nm_kelurahan, '-') AS fs_nm_kelurahan,
-                ISNULL(bb.fs_kd_kecamatan, '-') AS fs_kd_kecamatan,
-                ISNULL(cc.fs_nm_kecamatan, '-') AS fs_nm_kecamatan,
-                ISNULL(cc.fs_kd_kabupaten, '-') AS fs_kd_kabupaten,
-                ISNULL(dd.fs_nm_kabupaten, '-') AS fs_nm_kabupaten,
-                ISNULL(dd.fs_kd_propinsi, '-') AS fs_kd_propinsi,
-                ISNULL(ee.fs_nm_propinsi, '-') AS fs_nm_propinsi,
-                ISNULL(ff.fs_nm_agama, '-') AS fs_nm_agama,
-                ISNULL(gg.fs_nm_suku, '-') AS fs_nm_suku,
-                ISNULL(hh.fs_nm_status_kawin_dk, '-') AS fs_nm_status_kawin_dk,
-                ISNULL(ii.fs_nm_pendidikan_dk, '-') AS fs_nm_pendidikan_dk,
-                ISNULL(jj.fs_nm_pekerjaan_dk, '-') AS fs_nm_pekerjaan_dk
-            FROM 
-                tc_mr aa
-                LEFT JOIN ta_kelurahan bb ON aa.fs_kd_kelurahan = bb.fs_kd_kelurahan
-                LEFT JOIN ta_kecamatan cc ON bb.fs_kd_kecamatan = cc.fs_kd_kecamatan
-                LEFT JOIN ta_kabupaten dd ON cc.fs_kd_kabupaten = dd.fs_kd_kabupaten
-                LEFT JOIN ta_propinsi ee ON dd.fs_kd_propinsi = ee.fs_kd_propinsi
-                LEFT JOIN ta_agama ff ON aa.fs_kd_agama = ff.fs_kd_agama
-                LEFT JOIN ta_suku gg ON aa.fs_kd_suku = gg.fs_kd_suku
-                LEFT JOIN ta_status_kawin_dk hh ON aa.fs_kd_status_kawin_dk = hh.fs_kd_status_kawin_dk
-                LEFT JOIN ta_pendidikan_dk ii ON aa.fs_kd_pendidikan_dk = ii.fs_kd_pendidikan_dk
-                LEFT JOIN ta_pekerjaan_dk jj ON aa.fs_kd_pekerjaan_dk = jj.fs_kd_pekerjaan_dk
-            	LEFT JOIN tc_mr_id kk ON aa.fs_mr = kk.fs_mr AND kk.JenisID = 'KTP'
-            	LEFT JOIN tc_mr_ktp ll ON aa.fs_mr = ll.fs_kd_mr 
-            WHERE 
-                kk.NoID = @Nik
-            UNION 
-            SELECT 
-                aa.fs_mr, aa.fs_nm_pasien, aa.fd_tgl_lahir, aa.fs_jns_kelamin,
-                aa.fs_nm_alias, aa.fs_temp_lahir, aa.fs_nm_ibu_kandung, aa.fs_gol_darah,
-                aa.fs_alm_pasien, aa.fs_alm2_pasien, aa.fs_alm3_pasien, aa.fs_kota_pasien, 
-                aa.fs_kd_pos_pasien, aa.fs_kd_kelurahan, 
-                aa.fs_jenis_id, aa.fs_kd_identitas, aa.fs_no_kk, 
-                aa.fs_email, aa.fs_tlp_pasien, aa.fs_no_hp,
-                aa.fs_nm_keluarga, aa.fs_hub_keluarga, aa.fs_telp_keluarga, 
-                aa.fs_alm1_keluarga, aa.fs_alm2_keluarga, 
-                aa.fs_kota_keluarga, aa.fs_kd_pos_keluarga,
-                aa.fs_kd_agama, aa.fs_kd_suku, aa.fs_kd_status_kawin_dk, 
-                aa.fs_kd_pendidikan_dk, aa.fs_kd_pekerjaan_dk,
-                aa.fd_tgl_mr, aa.fb_aktif,
-                ISNULL(bb.fs_nm_kelurahan, '-') AS fs_nm_kelurahan,
-                ISNULL(bb.fs_kd_kecamatan, '-') AS fs_kd_kecamatan,
-                ISNULL(cc.fs_nm_kecamatan, '-') AS fs_nm_kecamatan,
-                ISNULL(cc.fs_kd_kabupaten, '-') AS fs_kd_kabupaten,
-                ISNULL(dd.fs_nm_kabupaten, '-') AS fs_nm_kabupaten,
-                ISNULL(dd.fs_kd_propinsi, '-') AS fs_kd_propinsi,
-                ISNULL(ee.fs_nm_propinsi, '-') AS fs_nm_propinsi,
-                ISNULL(ff.fs_nm_agama, '-') AS fs_nm_agama,
-                ISNULL(gg.fs_nm_suku, '-') AS fs_nm_suku,
-                ISNULL(hh.fs_nm_status_kawin_dk, '-') AS fs_nm_status_kawin_dk,
-                ISNULL(ii.fs_nm_pendidikan_dk, '-') AS fs_nm_pendidikan_dk,
-                ISNULL(jj.fs_nm_pekerjaan_dk, '-') AS fs_nm_pekerjaan_dk
-            FROM 
-                tc_mr aa
-                LEFT JOIN ta_kelurahan bb ON aa.fs_kd_kelurahan = bb.fs_kd_kelurahan
-                LEFT JOIN ta_kecamatan cc ON bb.fs_kd_kecamatan = cc.fs_kd_kecamatan
-                LEFT JOIN ta_kabupaten dd ON cc.fs_kd_kabupaten = dd.fs_kd_kabupaten
-                LEFT JOIN ta_propinsi ee ON dd.fs_kd_propinsi = ee.fs_kd_propinsi
-                LEFT JOIN ta_agama ff ON aa.fs_kd_agama = ff.fs_kd_agama
-                LEFT JOIN ta_suku gg ON aa.fs_kd_suku = gg.fs_kd_suku
-                LEFT JOIN ta_status_kawin_dk hh ON aa.fs_kd_status_kawin_dk = hh.fs_kd_status_kawin_dk
-                LEFT JOIN ta_pendidikan_dk ii ON aa.fs_kd_pendidikan_dk = ii.fs_kd_pendidikan_dk
-                LEFT JOIN ta_pekerjaan_dk jj ON aa.fs_kd_pekerjaan_dk = jj.fs_kd_pekerjaan_dk
-            	LEFT JOIN tc_mr_id kk ON aa.fs_mr = kk.fs_mr AND kk.JenisID = 'KTP'
-            	LEFT JOIN tc_mr_ktp ll ON aa.fs_mr = ll.fs_kd_mr 
-            WHERE 
-                ll.FS_NIK = @Nik
-            """;
+        const string commonSelectFrom = """
+        SELECT 
+            aa.fs_mr, aa.fs_nm_pasien, aa.fd_tgl_lahir, aa.fs_jns_kelamin,
+            aa.fs_nm_alias, aa.fs_temp_lahir, aa.fs_nm_ibu_kandung, aa.fs_gol_darah,
+            aa.fs_alm_pasien, aa.fs_alm2_pasien, aa.fs_alm3_pasien, aa.fs_kota_pasien, 
+            aa.fs_kd_pos_pasien, aa.fs_kd_kelurahan, 
+            aa.fs_jenis_id, aa.fs_kd_identitas, aa.fs_no_kk, 
+            aa.fs_email, aa.fs_tlp_pasien, aa.fs_no_hp,
+            aa.fs_nm_keluarga, aa.fs_hub_keluarga, aa.fs_telp_keluarga, 
+            aa.fs_alm1_keluarga, aa.fs_alm2_keluarga, 
+            aa.fs_kota_keluarga, aa.fs_kd_pos_keluarga,
+            aa.fs_kd_agama, aa.fs_kd_suku, aa.fs_kd_status_kawin_dk, 
+            aa.fs_kd_pendidikan_dk, aa.fs_kd_pekerjaan_dk,
+            aa.fd_tgl_mr, aa.fb_aktif,
+            ISNULL(bb.fs_nm_kelurahan, '-') AS fs_nm_kelurahan,
+            ISNULL(bb.fs_kd_kecamatan, '-') AS fs_kd_kecamatan,
+            ISNULL(cc.fs_nm_kecamatan, '-') AS fs_nm_kecamatan,
+            ISNULL(cc.fs_kd_kabupaten, '-') AS fs_kd_kabupaten,
+            ISNULL(dd.fs_nm_kabupaten, '-') AS fs_nm_kabupaten,
+            ISNULL(dd.fs_kd_propinsi, '-') AS fs_kd_propinsi,
+            ISNULL(ee.fs_nm_propinsi, '-') AS fs_nm_propinsi,
+            ISNULL(ff.fs_nm_agama, '-') AS fs_nm_agama,
+            ISNULL(gg.fs_nm_suku, '-') AS fs_nm_suku,
+            ISNULL(hh.fs_nm_status_kawin_dk, '-') AS fs_nm_status_kawin_dk,
+            ISNULL(ii.fs_nm_pendidikan_dk, '-') AS fs_nm_pendidikan_dk,
+            ISNULL(jj.fs_nm_pekerjaan_dk, '-') AS fs_nm_pekerjaan_dk
+        FROM 
+            tc_mr aa
+            LEFT JOIN ta_kelurahan bb ON aa.fs_kd_kelurahan = bb.fs_kd_kelurahan
+            LEFT JOIN ta_kecamatan cc ON bb.fs_kd_kecamatan = cc.fs_kd_kecamatan
+            LEFT JOIN ta_kabupaten dd ON cc.fs_kd_kabupaten = dd.fs_kd_kabupaten
+            LEFT JOIN ta_propinsi ee ON dd.fs_kd_propinsi = ee.fs_kd_propinsi
+            LEFT JOIN ta_agama ff ON aa.fs_kd_agama = ff.fs_kd_agama
+            LEFT JOIN ta_suku gg ON aa.fs_kd_suku = gg.fs_kd_suku
+            LEFT JOIN ta_status_kawin_dk hh ON aa.fs_kd_status_kawin_dk = hh.fs_kd_status_kawin_dk
+            LEFT JOIN ta_pendidikan_dk ii ON aa.fs_kd_pendidikan_dk = ii.fs_kd_pendidikan_dk
+            LEFT JOIN ta_pekerjaan_dk jj ON aa.fs_kd_pekerjaan_dk = jj.fs_kd_pekerjaan_dk
+            LEFT JOIN tc_mr_id kk ON aa.fs_mr = kk.fs_mr AND kk.JenisID = 'KTP'
+            LEFT JOIN tc_mr_ktp ll ON aa.fs_mr = ll.fs_kd_mr 
+        """;
+
+        string sql =
+            commonSelectFrom + " WHERE aa.FS_KD_IDENTITAS = @Nik" +
+            " UNION " +
+            commonSelectFrom + " WHERE kk.NoID = @Nik" +
+            " UNION " +
+            commonSelectFrom + " WHERE ll.FS_NIK = @Nik";
 
         var dp = new DynamicParameters();
         dp.AddParam("@Nik", nik, SqlDbType.VarChar);

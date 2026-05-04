@@ -217,5 +217,7 @@
     <Build Include="PaymentContext\TrsBillingFeature\ta_trs_billing.sql" />
     <None Include="AdmisiContext\BookingFeature\BILRG_BookingExternal.sql" />
     <Build Include="BedUsageContext\KamarOperasiFeature\BILRG_StartOp.sql" />
+    <Build Include="PasienContext\PasienFeature\tc_mr_id.sql" />
+    <Build Include="PasienContext\PasienFeature\tc_mr_ktp.sql" />
   </ItemGroup>
 </Project>
