@@ -16,7 +16,7 @@ public interface IPasienDal :
     IListData<PasienDto, DateTime>
 {
     IEnumerable<PasienDto> ListDataByName(Dictionary<string, string[]> listName);
-    IEnumerable<PasienDto> ListDataByNik(string nik);
+    PasienDto GetDataByNik(string nik);
 }
 
 public class PasienDal : IPasienDal
@@ -394,7 +394,7 @@ public class PasienDal : IPasienDal
         return results;
     }
 
-    public IEnumerable<PasienDto> ListDataByNik(string nik)
+    public PasienDto GetDataByNik(string nik)
     {
         const string commonSelectFrom = """
         SELECT 
@@ -448,7 +448,7 @@ public class PasienDal : IPasienDal
         dp.AddParam("@Nik", nik, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<PasienDto>(sql, dp);
+        return conn.ReadSingle<PasienDto>(sql, dp);
     }
 }
 

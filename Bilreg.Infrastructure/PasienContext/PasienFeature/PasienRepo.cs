@@ -208,29 +208,46 @@ public class PasienRepo : IPasienRepo
         var byName = pasienFinder.StringVariants.Count > 0
             ? ListPasienByName(pasienFinder.StringVariants)
             : [];
-        var byNik = pasienFinder.Nik != string.Empty
-            ? ListPasienByNik(pasienFinder.Nik) 
-            : [];
-
+        
         var hasId = pasienFinder.PasienId != string.Empty;
         var hasTgl = pasienFinder.TglLahir != string.Empty;
-        var hasNik = pasienFinder.Nik != string.Empty;
         var hasName = pasienFinder.StringVariants.Count > 0;
 
         IEnumerable<PasienPersonView> result;
-        result = (hasId, hasTgl, hasNik, hasName) switch
+        result = (hasId, hasTgl, hasName) switch
         {
-            (true, _, _, _) => byId,
-            (false, true, false, false) => byTgl,
-            (false, false, false, true) => byName,
-            (false, false, true, false) => byNik,
-            (false, true, false, true) =>
+            (true, _, _) => byId,
+            (false, true, false) => byTgl,
+            (false, false, true) => byName,
+            (false, true, true) =>
                 byName.Where(x =>
                     x.Person.TglLahir == DateOnly.ParseExact(pasienFinder.TglLahir, "yyyy-MM-dd")),
             _ => []
         };
 
         return result;
+    }
+
+    public MayBe<PasienPersonView> GetDataByNik(string nik)
+    {
+        var pasien = _pasienDal.GetDataByNik(nik);
+        if (pasien is null)
+            return MayBe<PasienPersonView>.None;
+
+        var telp = pasien.fs_tlp_pasien == "-" || pasien.fs_tlp_pasien.Trim() == "" ? pasien.fs_tlp_pasien : "-";
+        var alamat = new AlamatType(
+            [pasien.fs_alm_pasien, pasien.fs_alm2_pasien, pasien.fs_alm3_pasien],
+            pasien.fs_kota_pasien, pasien.fs_kd_pos_pasien);
+        var contact = new ContactType(JenisContactEnum.Phone, telp);
+        var identitas = IdentitasType.Ktp(pasien.fs_kd_identitas);
+        var person = new PersonInfoType(pasien.fs_nm_pasien,
+            DateOnly.Parse(pasien.fd_tgl_lahir), pasien.fs_jns_kelamin,
+            alamat, contact, identitas);
+
+        var result = new PasienPersonView(
+            pasien.fs_mr,
+            person);
+        return MayBe.From(result);
     }
     #region PRIVATE HELPER
     private List<PasienPersonView> ListPasienByPasienId(string pasienFinderPasienId)
@@ -283,25 +300,7 @@ public class PasienRepo : IPasienRepo
         return result;
     }
 
-    private List<PasienPersonView> ListPasienByNik(string nik)
-    {
-        var pasienDb = _pasienDal.ListDataByNik(nik);
-        if (pasienDb is null)
-            return [];
-        var result = pasienDb.Select(x => new PasienPersonView(
-            x.fs_mr,
-            new PersonInfoType(
-                x.fs_nm_pasien,
-                DateOnly.Parse(x.fd_tgl_lahir),
-                x.fs_jns_kelamin,
-                new AlamatType(
-                    [x.fs_alm_pasien, x.fs_alm2_pasien, x.fs_alm3_pasien],
-                    x.fs_kota_pasien, x.fs_kd_pos_pasien),
-                new ContactType(JenisContactEnum.Phone, x.fs_tlp_pasien),
-                IdentitasType.Ktp(x.fs_kd_identitas)))).ToList();
-        return result;
-    }
-
+    
     #endregion
 
 
