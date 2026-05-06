@@ -19,7 +19,7 @@ public record PasienPersonView(
     string PasienId,
     PersonInfoType Person)
 {
-    public static PasienPersonView Empty()
+    public static PasienPersonView Default()
         => new("-", PersonInfoType.Default);
 
     public bool IsEmpty => PasienId == "-";
