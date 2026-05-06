@@ -1,8 +1,10 @@
 ﻿using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Infrastructure.PasienContext.PasienFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
+using Dapper;
 using FluentAssertions;
 using Nuna.Lib.TransactionHelper;
+using System.Data.SqlClient;
 using Xunit;
 
 namespace Bilreg.Test.PasienContext.PasienFeature;
@@ -91,7 +93,26 @@ public class PasienDalTest
             { "A2", ["A2"] }
         };
         var actual = _sut.ListDataByName(names);
+    }
 
+    [Fact]
+    public void UT6_ListDataByNikTest()
+    {
+        using var trans = TransHelper.NewScope();
+        _sut.Insert(Faker());
+        const string sql1 = "INSERT INTO tc_mr_id (fs_mr, JenisID, NoID) VALUES('A', 'KTP', 'C1')";
+        ExecuteSql(sql1);
+        const string sql2 = "INSERT INTO tc_mr_ktp (fs_kd_mr, fs_nik) VALUES('A', 'C1')";
+        ExecuteSql(sql2);
+        var actual = _sut.ListDataByNik("C1");
+        actual.Count().Should().Be(1);
+    }
+
+    private static void ExecuteSql(string sql)
+    {
+        var optDev = ConnStringHelper.GetTestEnv();
+        using var conn = new SqlConnection(ConnStringHelper.Get(optDev.Value));
+        conn.Execute(sql);
     }
 }
 

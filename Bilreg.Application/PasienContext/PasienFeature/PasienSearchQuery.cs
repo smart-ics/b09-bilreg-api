@@ -15,7 +15,7 @@ public class PasienSearchHandler : IRequestHandler<PasienSearchQuery, IEnumerabl
 
     public Task<IEnumerable<PasienPersonView>> Handle(PasienSearchQuery request, CancellationToken cancellationToken)
     {
-        var result = _repo.ListData(request.Keyword)?.ToList() ?? [];
+        var result = _repo.SearchPasien(request.Keyword)?.ToList() ?? [];
         if (result.Count > LIMIT_CONTER)
             throw new TooManyResultsException(LIMIT_CONTER, "Gunakan keyword search lebih spesifik");
         

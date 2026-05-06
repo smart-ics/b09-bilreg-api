@@ -193,7 +193,45 @@ public class PasienRepo : IPasienRepo
 
         return result;
     }
-    
+
+    public IEnumerable<PasienPersonView> SearchPasien(string keyword)
+    {
+        var kodeRs = _getKodeRsSvc.Execute();
+        var pasienFinder = PasienFinder.CreateNew(keyword, kodeRs);
+
+        var byId = pasienFinder.PasienId != string.Empty
+            ? ListPasienByPasienId(pasienFinder.PasienId)
+            : [];
+        var byTgl = pasienFinder.TglLahir != string.Empty
+            ? ListPasienByTglLahir(pasienFinder.TglLahir)
+            : [];
+        var byName = pasienFinder.StringVariants.Count > 0
+            ? ListPasienByName(pasienFinder.StringVariants)
+            : [];
+        var byNik = pasienFinder.Nik != string.Empty
+            ? ListPasienByNik(pasienFinder.Nik) 
+            : [];
+
+        var hasId = pasienFinder.PasienId != string.Empty;
+        var hasTgl = pasienFinder.TglLahir != string.Empty;
+        var hasNik = pasienFinder.Nik != string.Empty;
+        var hasName = pasienFinder.StringVariants.Count > 0;
+
+        IEnumerable<PasienPersonView> result;
+        result = (hasId, hasTgl, hasNik, hasName) switch
+        {
+            (true, _, _, _) => byId,
+            (false, true, false, false) => byTgl,
+            (false, false, false, true) => byName,
+            (false, false, true, false) => byNik,
+            (false, true, false, true) =>
+                byName.Where(x =>
+                    x.Person.TglLahir == DateOnly.ParseExact(pasienFinder.TglLahir, "yyyy-MM-dd")),
+            _ => []
+        };
+
+        return result;
+    }
     #region PRIVATE HELPER
     private List<PasienPersonView> ListPasienByPasienId(string pasienFinderPasienId)
     {
@@ -244,6 +282,26 @@ public class PasienRepo : IPasienRepo
                 IdentitasType.Ktp(x.fs_kd_identitas)))).ToList();
         return result;
     }
+
+    private List<PasienPersonView> ListPasienByNik(string nik)
+    {
+        var pasienDb = _pasienDal.ListDataByNik(nik);
+        if (pasienDb is null)
+            return [];
+        var result = pasienDb.Select(x => new PasienPersonView(
+            x.fs_mr,
+            new PersonInfoType(
+                x.fs_nm_pasien,
+                DateOnly.Parse(x.fd_tgl_lahir),
+                x.fs_jns_kelamin,
+                new AlamatType(
+                    [x.fs_alm_pasien, x.fs_alm2_pasien, x.fs_alm3_pasien],
+                    x.fs_kota_pasien, x.fs_kd_pos_pasien),
+                new ContactType(JenisContactEnum.Phone, x.fs_tlp_pasien),
+                IdentitasType.Ktp(x.fs_kd_identitas)))).ToList();
+        return result;
+    }
+
     #endregion
 
 
