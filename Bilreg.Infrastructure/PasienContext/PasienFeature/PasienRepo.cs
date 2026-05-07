@@ -249,6 +249,7 @@ public class PasienRepo : IPasienRepo
             person);
         return MayBe.From(result);
     }
+    
     #region PRIVATE HELPER
     private List<PasienPersonView> ListPasienByPasienId(string pasienFinderPasienId)
     {
@@ -263,6 +264,8 @@ public class PasienRepo : IPasienRepo
     }
     private List<PasienPersonView> ListPasienByTglLahir(string tglLahir)
     {
+        if (tglLahir == "3000-01-01")
+            return [];
         var pasienDb = _pasienDal.ListData(tglLahir.ToDate(DateFormatEnum.YMD));
         if (pasienDb is null)
             return [];
