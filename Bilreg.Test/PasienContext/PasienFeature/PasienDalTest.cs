@@ -96,7 +96,7 @@ public class PasienDalTest
     }
 
     [Fact]
-    public void UT6_ListDataByNikTest()
+    public void UT6_GetDataByNikTest()
     {
         using var trans = TransHelper.NewScope();
         _sut.Insert(Faker());
@@ -104,8 +104,10 @@ public class PasienDalTest
         ExecuteSql(sql1);
         const string sql2 = "INSERT INTO tc_mr_ktp (fs_kd_mr, fs_nik) VALUES('A', 'C1')";
         ExecuteSql(sql2);
-        var actual = _sut.ListDataByNik("C1");
-        actual.Count().Should().Be(1);
+        var actual = _sut.GetDataByNik("C1");
+        actual.Should().NotBeNull();
+        actual.fs_kd_identitas.Should().Be("C1");
+        actual.fs_mr.Should().Be("A1");
     }
 
     private static void ExecuteSql(string sql)

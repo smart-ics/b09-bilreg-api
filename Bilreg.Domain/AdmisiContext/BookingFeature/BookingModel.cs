@@ -115,8 +115,8 @@ public class BookingModel : IBookingKey
     {
         if (!Person.IsSimilar(pasien.Person))
             throw new ArgumentException($"Pasien terpilih tidak sesuai dengan booking. " +
-                $"Data  booking : Tgl Lahir {pasien.Person.TglLahir.ToString("yyyy-MM-dd")} - {pasien.Person.PersonName}. " +
-                $"Data Rs : Tgl Lahir {Person.TglLahir.ToString("yyyy-MM-dd")} - {Person.PersonName}");
+                $"Data  RS : Tgl Lahir {pasien.Person.TglLahir.ToString("yyyy-MM-dd")} - {pasien.Person.PersonName}. " +
+                $"Data Booking : Tgl Lahir {Person.TglLahir.ToString("yyyy-MM-dd")} - {Person.PersonName}");
 
         PasienId = pasien.PasienId;
     }
