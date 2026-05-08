@@ -71,7 +71,6 @@ public class AntrianMapWithRegResolver :  IAntrianMapWithRegResolver
         return Result<(AntrianMapModel, AntrianMapDetilModel)>.Success((antrianMap, newDetil));
     }
 
-    
 }
 
 public interface INunaResolver<TOut, in TIn1, in TIn2>

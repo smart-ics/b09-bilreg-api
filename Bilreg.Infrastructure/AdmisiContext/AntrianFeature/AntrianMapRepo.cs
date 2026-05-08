@@ -30,7 +30,11 @@ public class AntrianMapRepo : IAntrianMapRepo
         
         var listDtlDto = model.ListMap.Select(x => AntrianMapDetilDto.FromModel(x, model));
 
+        /* Delete by compositeKey (DokterId, LayananId, TglJadwal, JamJadwal) dulu
+          untuk handle data antrianMapDetil yang digenerate FO karena fs_kd_antrian_map selalu kosong */
+        _antrianMapDetilDal.DeleteByComposite(model);
         _antrianMapDetilDal.Delete(model);
+
         listDtlDto.ForEach(x => _antrianMapDetilDal.Insert(x));
     }
 

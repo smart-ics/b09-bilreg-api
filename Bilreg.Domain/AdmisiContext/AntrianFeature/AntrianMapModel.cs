@@ -6,7 +6,7 @@ using Nuna.Lib.AutoNumberHelper;
 
 namespace Bilreg.Domain.AdmisiContext.AntrianFeature;
 
-public record AntrianMapModel : IAntrianMapKey
+public record AntrianMapModel : IAntrianMapKey, IAntrianMapCompositeKey
 {
     private readonly List<AntrianMapDetilModel> _listMap;
 
@@ -29,7 +29,6 @@ public record AntrianMapModel : IAntrianMapKey
         
         _listMap = listMap?.ToList() ?? [];
     }
-
     public static AntrianMapModel CreateFromJadwal(JadwalPraktekType jadwal,
         DateOnly tgl)
     {
@@ -48,7 +47,6 @@ public record AntrianMapModel : IAntrianMapKey
         );
         return result;
     }
-    
     public static AntrianMapModel Default => new(
         antrianMapId: "-",
         jadwalId: "-",
@@ -61,10 +59,16 @@ public record AntrianMapModel : IAntrianMapKey
         maxPasien: 0,
         listMap: []
     );
-    
     public static IAntrianMapKey Key(string id)
     {
         var result = Default with {AntrianMapId = id};
+        return result;
+    }
+    public static IAntrianMapCompositeKey KeyComposite(string dokterId,  string layananId, DateOnly tglJadwal, TimeOnly jamJadwal)
+    {
+        var dokter = PpaType.Default with { PpaId = dokterId };
+        var layanan = LayananType.Default with { LayananId  = layananId };
+        var result = Default with { Dokter = dokter.ToReff() , Layanan = layanan.ToReff(), TglJadwal = tglJadwal, JamJadwal = jamJadwal};
         return result;
     }
 
@@ -80,15 +84,15 @@ public record AntrianMapModel : IAntrianMapKey
     public TimeOnly JamPraktek { get; init; }
     public AntrianPatternType AntrianPattern { get; init; }
     public int MaxPasien { get; private set; }
-    public int LastNoUrut => _listMap.Max(x => x.NoUrut);
-    public IEnumerable<AntrianMapDetilModel> ListMap => _listMap;
-
+    public int LastNoUrut => _listMap.Select(x => x.NoUrut)
+                .DefaultIfEmpty(0).Max();
+    public int TotalSlotCount => _listMap.Count;
     public string DokterId => Dokter.PpaId;
     public string LayananId => Layanan.LayananId;
+    public IEnumerable<AntrianMapDetilModel> ListMap => _listMap;
     #endregion
 
     #region BEHAVIOR
-
     public void VoidSlot(int noUrut)
     {
         var detil = _listMap.FirstOrDefault(x => x.NoUrut == noUrut);
@@ -113,7 +117,6 @@ public record AntrianMapModel : IAntrianMapKey
             booking.PasienId,
             booking.BookingId);
     }
-    
     public AntrianMapDetilModel GetNextAntrian(string flag)
     {
         var detil = _listMap
@@ -132,9 +135,6 @@ public record AntrianMapModel : IAntrianMapKey
         var result = detil ?? AntrianMapDetilModel.AutoSlot(LastNoUrut + 1);
         return result;            
     }
-
-    public int TotalSlotCount => _listMap.Count;
-
     public void SeedingMap()
     {
         if (AntrianPattern.Tipe == "FLAG")
@@ -142,13 +142,11 @@ public record AntrianMapModel : IAntrianMapKey
         else
             SeedingMapAuto(); 
     }
-    
     public void AttachDetil(IEnumerable<AntrianMapDetilModel> listDetil)
     {
         _listMap.Clear();
         _listMap.AddRange(listDetil);
     }
-
     public AntrianMapDetilModel AddAuto(RegModel reg)
     {
         var newDetil = AntrianMapDetilModel.AutoSlot(LastNoUrut + 1)
@@ -161,9 +159,6 @@ public record AntrianMapModel : IAntrianMapKey
             .SetPasien(booking.Person.PersonName, booking.PasienId, booking.BookingId);
         return newDetil;
     }
-    
-
-    #endregion
     private void SeedingMapAuto()
     {
         _listMap.Clear();
@@ -175,7 +170,6 @@ public record AntrianMapModel : IAntrianMapKey
             noUrut ++;
         }
     }
-
     private void SeedingMapFlag()
     {
         _listMap.Clear();
@@ -189,7 +183,6 @@ public record AntrianMapModel : IAntrianMapKey
         }
         _listMap.RemoveAll(x => x.NoUrut > MaxPasien);
     }
-
     private static List<AntrianMapDetilModel> FullCyclePatternSeed(AntrianPatternType pattern, ref int startNumber)
     {
         var result = new List<AntrianMapDetilModel>();
@@ -201,10 +194,19 @@ public record AntrianMapModel : IAntrianMapKey
             }
         return result;
     }
-}
 
+    #endregion
+}
 
 public interface IAntrianMapKey
 {
     string AntrianMapId { get; }
+}
+
+public interface IAntrianMapCompositeKey
+{
+    string DokterId { get; }
+    string LayananId { get; }
+    DateOnly TglJadwal { get; }
+    TimeOnly JamJadwal { get; }
 }
