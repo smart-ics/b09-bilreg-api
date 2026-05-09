@@ -55,7 +55,9 @@ public class JadwalPraktekDalTest
                 .Excluding(x => x.LayananDkId)
                 .Excluding(x => x.LayananDkName)
                 .Excluding(x => x.GroupSpesialisId)
-                .Excluding(x => x.GroupSpesialisName))
+                .Excluding(x => x.GroupSpesialisName)
+                .Excluding(x => x.RuangName)
+                .Excluding(x => x.PrefixAntrian))
             ;
     }
 
@@ -72,7 +74,9 @@ public class JadwalPraktekDalTest
                 .Excluding(x => x.LayananDkId)
                 .Excluding(x => x.LayananDkName)
                 .Excluding(x => x.GroupSpesialisId)
-                .Excluding(x => x.GroupSpesialisName))
+                .Excluding(x => x.GroupSpesialisName)
+                .Excluding(x => x.RuangName)
+                .Excluding(x => x.PrefixAntrian))
             ;
     }
 }

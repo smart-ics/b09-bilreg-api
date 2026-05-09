@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.Globalization;
 using FluentAssertions;
 using Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
@@ -53,6 +51,17 @@ public class AntrianMapDetilDalTest
         _sut.Insert(detil);
 
         _sut.Delete(AntrianMapModel.Key(detil.fs_kd_antrian_map));
+    }
+
+    [Fact]
+    public void DeleteByCompositeKey()
+    {
+        using var trans = TransHelper.NewScope();
+        var detil = Faker();
+        _sut.Insert(detil);
+        var compositeKey = AntrianMapModel.KeyComposite(detil.fs_kd_dokter, detil.fs_kd_layanan, 
+            DateOnly.ParseExact(detil.fd_tgl_jadwal, "yyyy-MM-dd"), TimeOnly.ParseExact(detil.fs_jam_jadwal, "HH:mm"));
+        _sut.DeleteByComposite(compositeKey);
     }
 
     [Fact]

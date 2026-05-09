@@ -15,6 +15,7 @@ public interface IAntrianMapDetilDal :
     IListData<AntrianMapDetilDto, IAntrianMapKey>,
     IListData<AntrianMapDetilDto, DateTime>
 {
+    void DeleteByComposite(IAntrianMapCompositeKey keyComposite);
 }
     
 public class AntrianMapDetilDal : IAntrianMapDetilDal
@@ -74,6 +75,27 @@ public class AntrianMapDetilDal : IAntrianMapDetilDal
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
+    public void DeleteByComposite(IAntrianMapCompositeKey keyComposite)
+    {
+        const string sql = """
+            DELETE FROM
+                ta_no_antrian_map
+            WHERE
+                fs_kd_dokter = @fs_kd_dokter
+            	AND fs_kd_layanan = @fs_kd_layanan
+                AND fd_tgl_jadwal = @fd_tgl_jadwal
+                AND fs_jam_jadwal = @fs_jam_jadwal 
+            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@fs_kd_dokter", keyComposite.DokterId, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_layanan", keyComposite.LayananId, SqlDbType.VarChar);
+        dp.AddParam("@fd_tgl_jadwal", keyComposite.TglJadwal.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
+        dp.AddParam("@fs_jam_jadwal", keyComposite.JamJadwal.ToString("HH:mm", CultureInfo.InvariantCulture), SqlDbType.VarChar);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        conn.Execute(sql, dp);
+    }
     public IEnumerable<AntrianMapDetilDto> ListData(IAntrianMapKey antrianMapKey)
     {
         const string sql = """
@@ -121,4 +143,5 @@ public class AntrianMapDetilDal : IAntrianMapDetilDal
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<AntrianMapDetilDto>(sql, dp);
     }
+
 }

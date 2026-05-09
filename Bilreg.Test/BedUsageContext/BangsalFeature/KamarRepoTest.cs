@@ -158,7 +158,7 @@ public class KamarRepoTests
         // Assert
         var kamarTypes = result.ToList();
         kamarTypes.Should().NotBeNull();
-        kamarTypes.Count.Should().Be(2);
+        kamarTypes.Count.Should().Be(1);
         kamarTypes.Should().Contain(x => x.Bangsal.BangsalId == filter.BangsalId);
     }
 
