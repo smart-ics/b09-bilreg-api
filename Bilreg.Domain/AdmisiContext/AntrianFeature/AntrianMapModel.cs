@@ -84,8 +84,7 @@ public record AntrianMapModel : IAntrianMapKey, IAntrianMapCompositeKey
     public TimeOnly JamPraktek { get; init; }
     public AntrianPatternType AntrianPattern { get; init; }
     public int MaxPasien { get; private set; }
-    public int LastNoUrut => _listMap.Select(x => x.NoUrut)
-                .DefaultIfEmpty(0).Max();
+    public int LastNoUrut => _listMap.Select(x => x.NoUrut).Max();
     public int TotalSlotCount => _listMap.Count;
     public string DokterId => Dokter.PpaId;
     public string LayananId => Layanan.LayananId;
