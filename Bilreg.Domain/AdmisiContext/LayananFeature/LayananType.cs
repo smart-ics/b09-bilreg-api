@@ -1,5 +1,6 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Domain.AccountingContext.UnitFeature;
+using Nuna.Lib.AutoNumberHelper;
 
 namespace Bilreg.Domain.AdmisiContext.LayananFeature;
 
@@ -11,13 +12,6 @@ public record LayananType : ILayananKey
         TipeLayananDkType tipeLayananDk, InstalasiDkType instalasiDk, 
         UnitReff unitPcc, PoliBpjsReff layananBpjs)
     {
-        Guard.Against.NullOrWhiteSpace(layananId, nameof(layananId));
-        Guard.Against.NullOrWhiteSpace(layananName, nameof(layananName));
-        Guard.Against.Null(instalasi, nameof(instalasi));
-        Guard.Against.Null(layananDk, nameof(layananDk));
-        Guard.Against.Null(tipeLayananDk, nameof(tipeLayananDk));
-        Guard.Against.Null(instalasiDk, nameof(instalasiDk));
-
         LayananId = layananId;
         LayananName = layananName;
         IsAktif = isAKtif;
@@ -33,6 +27,14 @@ public record LayananType : ILayananKey
         TipeLayananDkType.Default, InstalasiDkType.Default,
         UnitType.Default.ToReff(), new PoliBpjsReff("-", "-"));
 
+    public static LayananType Create(string layananName, InstalasiType instalasi, LayananDkReff layananDk,
+        TipeLayananDkType tipeLayananDk, UnitReff unitPcc, PoliBpjsReff layananBpjs)
+    {
+        var id = NunaId.New("LYN");
+        var result = new LayananType(id, layananName, true, instalasi.ToReff(), 
+            layananDk, tipeLayananDk, instalasi.InstalasiDk, unitPcc, layananBpjs);
+        return  result;
+    }
     public static ILayananKey Key(string id) => Default with { LayananId = id };
     #endregion
     

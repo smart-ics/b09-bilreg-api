@@ -8,16 +8,19 @@ public record TipeJaminanType : ITipeJaminanKey
     public TipeJaminanType(string tipeJaminanId, string tipeJaminanName, 
         bool isAktif, JaminanReff jaminan, CaraBayarDkType caraBayarDk)
     {
-        Guard.Against.NullOrWhiteSpace(tipeJaminanId, nameof(tipeJaminanId));
-        Guard.Against.NullOrWhiteSpace(tipeJaminanName, nameof(tipeJaminanName));
-        Guard.Against.Null(caraBayarDk, nameof(caraBayarDk));
-        Guard.Against.Null(jaminan, nameof(jaminan));
-
         TipeJaminanId = tipeJaminanId;
         TipeJaminanName = tipeJaminanName;
         IsAktif = isAktif;
         Jaminan = jaminan;
         CaraBayarDk = caraBayarDk;
+    }
+
+    public static TipeJaminanType Create(string tipeJaminanId, string tipeJaminanName,
+        JaminanType jaminan)
+    {
+        var result = new TipeJaminanType(tipeJaminanId, tipeJaminanName, true, 
+            jaminan.ToReff(), jaminan.CaraBayarDk);
+        return result;
     }
     public static TipeJaminanType Default => new("-", "-", true, 
         JaminanType.Default.ToReff(), CaraBayarDkType.Default);
