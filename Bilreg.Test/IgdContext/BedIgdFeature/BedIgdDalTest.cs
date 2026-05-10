@@ -11,9 +11,9 @@ public class BedIgdDalTest
 {
     private readonly BedIgdDal _sut = new(ConnStringHelper.GetTestEnv());
 
-    private static BedIgdDto Faker(string state = "ACTIVE", string visitId = "")
+    private static BedIgdDto Faker(string state = "ACTIVE", string visitId = "", string brgIgdId = "TBED01")
         => new BedIgdDto(
-            BedIgdId: "TBED01",
+            BedIgdId: brgIgdId,
             BedIgdName: "Bed Tes",
             KamarName: "K1",
             BedState: state,
@@ -92,9 +92,10 @@ public class BedIgdDalTest
     public void ListAvailable_ExcludesOccupied()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Insert(Faker("OCCUPIED", "IGV0001"));
+        _sut.Insert(Faker("OCCUPIED", "IGV0001", "TBED02"));
+        _sut.Insert(Faker());
         var actual = _sut.ListAvailable();
-        actual.Should().NotContain(x => x.BedIgdId == "TBED01");
+        actual.Should().NotContain(x => x.BedIgdId == "TBED02");
     }
 
     [Fact]

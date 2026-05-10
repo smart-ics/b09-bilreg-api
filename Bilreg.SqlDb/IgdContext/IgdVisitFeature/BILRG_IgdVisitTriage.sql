@@ -1,5 +1,5 @@
 CREATE TABLE BILRG_IgdVisitTriage (
-    IgdVisitId VARCHAR(26) NOT NULL CONSTRAINT DF_BILRG_IgdVisitTriage_IgdVisitId DEFAULT(''),
+    IgdVisitId VARCHAR(12) NOT NULL CONSTRAINT DF_BILRG_IgdVisitTriage_IgdVisitId DEFAULT(''),
     NoTriage INT NOT NULL CONSTRAINT DF_BILRG_IgdVisitTriage_NoTriage DEFAULT(0),
 
     TriageLevel VARCHAR(10) NOT NULL CONSTRAINT DF_BILRG_IgdVisitTriage_TriageLevel DEFAULT(''),
