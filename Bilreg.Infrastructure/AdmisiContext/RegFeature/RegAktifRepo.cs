@@ -96,7 +96,7 @@ public class RegAktifRepo : IRegAktifRepo
         var regDb = LoadEntity(RegModel.Key(regId));
         if (!regDb.HasValue)
             return [];
-
+        
         var result = new RegSearchRegView(
             regDb.Value.RegId,
             regDb.Value.RegDate.ToString("yyyy-MM-dd"),
