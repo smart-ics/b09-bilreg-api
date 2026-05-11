@@ -4,7 +4,7 @@ using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
 
-namespace Bilreg.Api.Controllers.IgdContext.IgdVisitFeature;
+namespace Bilreg.Api.Controllers.IgdContext;
 
 [Route("api/[controller]")]
 [ApiController]

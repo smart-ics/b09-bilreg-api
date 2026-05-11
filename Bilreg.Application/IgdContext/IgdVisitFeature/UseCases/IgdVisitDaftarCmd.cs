@@ -1,3 +1,4 @@
+using System.Globalization;
 using Ardalis.GuardClauses;
 using Bilreg.Domain.IgdContext.IgdVisitFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
@@ -10,7 +11,7 @@ public record IgdVisitDaftarCmd(
     string UserId,
     string VisitorName,
     string VisitorGender,
-    DateTime VisitorTglLahir,
+    string TglLahirYmd,
     string VisitorKontak)
     : IRequest<IgdVisitDaftarResponse>;
 
@@ -31,10 +32,10 @@ public class IgdVisitDaftarHandler : IRequestHandler<IgdVisitDaftarCmd, IgdVisit
         Guard.Against.NullOrWhiteSpace(request.VisitorName, nameof(request.VisitorName));
 
         var visitor = new VisitorType(
-            VisitorName: request.VisitorName,
-            Gender: string.IsNullOrWhiteSpace(request.VisitorGender) ? "-" : request.VisitorGender,
-            TglLahir: DateOnly.FromDateTime(request.VisitorTglLahir),
-            Kontak: string.IsNullOrWhiteSpace(request.VisitorKontak) ? "-" : request.VisitorKontak);
+            VisitorName : request.VisitorName,
+            Gender      : string.IsNullOrWhiteSpace(request.VisitorGender) ? "-" : request.VisitorGender,
+            TglLahir    : DateOnly.ParseExact(request.TglLahirYmd, "yyyy-MM-dd", CultureInfo.InvariantCulture),
+            Kontak      : string.IsNullOrWhiteSpace(request.VisitorKontak) ? "-" : request.VisitorKontak);
 
         var audit = new AuditInfoType(request.UserId, DateTime.Now);
         var visit = IgdVisitModel.Create(visitor, audit);
