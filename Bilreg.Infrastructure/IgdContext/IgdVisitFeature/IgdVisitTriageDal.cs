@@ -28,15 +28,35 @@ public class IgdVisitTriageDal : IIgdVisitTriageDal
     {
         const string sql = """
             INSERT INTO BILRG_IgdVisitTriage (
-                IgdVisitId, NoTriage, TriageLevel, AssessmentDateTime, AssessorUserId, Notes)
+                IgdVisitId, NoTriage, TriageMethod, TriageLevel, TriageColor,
+                AirwaysScore, BreathingScore, BloodCirculationScore,
+                GcsEyeScore, GcsMotorScore, GcsVoiceScore,
+                IsManualOverrideBlack, OverrideByUserId, OverrideReason, OverrideDateTime,
+                AssessmentDateTime, AssessorUserId, Notes)
             VALUES (
-                @IgdVisitId, @NoTriage, @TriageLevel, @AssessmentDateTime, @AssessorUserId, @Notes)
+                @IgdVisitId, @NoTriage, @TriageMethod, @TriageLevel, @TriageColor,
+                @AirwaysScore, @BreathingScore, @BloodCirculationScore,
+                @GcsEyeScore, @GcsMotorScore, @GcsVoiceScore,
+                @IsManualOverrideBlack, @OverrideByUserId, @OverrideReason, @OverrideDateTime,
+                @AssessmentDateTime, @AssessorUserId, @Notes)
             """;
 
         var dp = new DynamicParameters();
         dp.AddParam("@IgdVisitId", dto.IgdVisitId, SqlDbType.VarChar);
         dp.AddParam("@NoTriage", dto.NoTriage, SqlDbType.Int);
+        dp.AddParam("@TriageMethod", dto.TriageMethod, SqlDbType.VarChar);
         dp.AddParam("@TriageLevel", dto.TriageLevel, SqlDbType.VarChar);
+        dp.AddParam("@TriageColor", dto.TriageColor, SqlDbType.VarChar);
+        dp.AddParam("@AirwaysScore", dto.AirwaysScore, SqlDbType.Int);
+        dp.AddParam("@BreathingScore", dto.BreathingScore, SqlDbType.Int);
+        dp.AddParam("@BloodCirculationScore", dto.BloodCirculationScore, SqlDbType.Int);
+        dp.AddParam("@GcsEyeScore", dto.GcsEyeScore, SqlDbType.Int);
+        dp.AddParam("@GcsMotorScore", dto.GcsMotorScore, SqlDbType.Int);
+        dp.AddParam("@GcsVoiceScore", dto.GcsVoiceScore, SqlDbType.Int);
+        dp.AddParam("@IsManualOverrideBlack", dto.IsManualOverrideBlack, SqlDbType.Bit);
+        dp.AddParam("@OverrideByUserId", dto.OverrideByUserId, SqlDbType.VarChar);
+        dp.AddParam("@OverrideReason", dto.OverrideReason, SqlDbType.VarChar);
+        dp.AddParam("@OverrideDateTime", dto.OverrideDateTime, SqlDbType.DateTime);
         dp.AddParam("@AssessmentDateTime", dto.AssessmentDateTime, SqlDbType.DateTime);
         dp.AddParam("@AssessorUserId", dto.AssessorUserId, SqlDbType.VarChar);
         dp.AddParam("@Notes", dto.Notes, SqlDbType.VarChar);
@@ -59,7 +79,12 @@ public class IgdVisitTriageDal : IIgdVisitTriageDal
     public IEnumerable<IgdVisitTriageDto> ListData(IIgdVisitKey key)
     {
         const string sql = """
-            SELECT IgdVisitId, NoTriage, TriageLevel, AssessmentDateTime, AssessorUserId, Notes
+            SELECT
+                IgdVisitId, NoTriage, TriageMethod, TriageLevel, TriageColor,
+                AirwaysScore, BreathingScore, BloodCirculationScore,
+                GcsEyeScore, GcsMotorScore, GcsVoiceScore,
+                IsManualOverrideBlack, OverrideByUserId, OverrideReason, OverrideDateTime,
+                AssessmentDateTime, AssessorUserId, Notes
             FROM BILRG_IgdVisitTriage
             WHERE IgdVisitId = @IgdVisitId
             ORDER BY NoTriage

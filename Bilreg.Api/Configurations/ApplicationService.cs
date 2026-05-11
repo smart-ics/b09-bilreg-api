@@ -1,4 +1,5 @@
 ﻿using Bilreg.Application;
+using Bilreg.Application.IgdContext.IgdVisitFeature.TriageEngine;
 using Nuna.Lib.AutoNumberHelper;
 using Nuna.Lib.CleanArchHelper;
 using Scrutor;
@@ -17,7 +18,9 @@ public static class ApplicationService
             //.AddValidatorsFromAssembly(Assembly.Load(APPLICATION_ASSEMBLY));
 
         services
-            .AddScoped<INunaCounterBL, NunaCounterBL>();
+            .AddScoped<INunaCounterBL, NunaCounterBL>()
+            .AddScoped<ITriageMethodEngine, AtsTriageEngine>()
+            .AddScoped<ITriageMethodEngineResolver, TriageMethodEngineResolver>();
         
         services
             .Scan(selector => selector

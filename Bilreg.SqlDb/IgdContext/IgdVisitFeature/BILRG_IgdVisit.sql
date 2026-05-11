@@ -11,7 +11,11 @@ CREATE TABLE BILRG_IgdVisit (
     DokterName VARCHAR(60) NOT NULL CONSTRAINT DF_BILRG_IgdVisit_DokterName DEFAULT(''),
 
     HasTriage BIT NOT NULL CONSTRAINT DF_BILRG_IgdVisit_HasTriage DEFAULT(0),
+    TriageMethod VARCHAR(10) NOT NULL CONSTRAINT DF_BILRG_IgdVisit_TriageMethod DEFAULT(''),
     TriageLevel VARCHAR(10) NOT NULL CONSTRAINT DF_BILRG_IgdVisit_TriageLevel DEFAULT(''),
+    TriageColor VARCHAR(10) NOT NULL CONSTRAINT DF_BILRG_IgdVisit_TriageColor DEFAULT(''),
+    LastTriageAt DATETIME NOT NULL CONSTRAINT DF_BILRG_IgdVisit_LastTriageAt DEFAULT('3000-01-01'),
+    NextReTriageAt DATETIME NOT NULL CONSTRAINT DF_BILRG_IgdVisit_NextReTriageAt DEFAULT('3000-01-01'),
 
     AdministrativeState VARCHAR(15) NOT NULL CONSTRAINT DF_BILRG_IgdVisit_AdministrativeState DEFAULT('DAFTAR'),
     RegId VARCHAR(10) NOT NULL CONSTRAINT DF_BILRG_IgdVisit_RegId DEFAULT(''),
@@ -43,4 +47,6 @@ GO
 CREATE INDEX IX_BILRG_IgdVisit_BedIgd ON BILRG_IgdVisit(BedIgdId) WHERE BedIgdId <> '';
 GO
 CREATE INDEX IX_BILRG_IgdVisit_Reg ON BILRG_IgdVisit(RegId) WHERE RegId <> '';
+GO
+CREATE INDEX IX_BILRG_IgdVisit_NextReTriageAt ON BILRG_IgdVisit(NextReTriageAt);
 GO

@@ -35,7 +35,37 @@ public class IgdVisitController : Controller
     [HttpPost("{id}/triage")]
     public async Task<IActionResult> AssessTriage(string id, [FromBody] IgdVisitAssessTriageBody body)
     {
-        var cmd = new IgdVisitAssessTriageCmd(id, body.TriageLevel, body.Notes, body.UserId);
+        var cmd = new IgdVisitAssessTriageCmd(
+            id,
+            body.AirwaysScore,
+            body.BreathingScore,
+            body.BloodCirculationScore,
+            body.GcsEyeScore,
+            body.GcsMotorScore,
+            body.GcsVoiceScore,
+            body.IsManualOverrideBlack,
+            body.OverrideReason,
+            body.Notes,
+            body.UserId);
+        var result = await _mediator.Send(cmd);
+        return Ok(new JSendOk(result));
+    }
+
+    [HttpPost("{id}/re-triage")]
+    public async Task<IActionResult> ReAssessTriage(string id, [FromBody] IgdVisitAssessTriageBody body)
+    {
+        var cmd = new IgdVisitReAssessTriageCmd(
+            id,
+            body.AirwaysScore,
+            body.BreathingScore,
+            body.BloodCirculationScore,
+            body.GcsEyeScore,
+            body.GcsMotorScore,
+            body.GcsVoiceScore,
+            body.IsManualOverrideBlack,
+            body.OverrideReason,
+            body.Notes,
+            body.UserId);
         var result = await _mediator.Send(cmd);
         return Ok(new JSendOk(result));
     }
@@ -95,6 +125,20 @@ public class IgdVisitController : Controller
         return Ok(new JSendOk(result));
     }
 
+    [HttpGet("{id}/triage-history")]
+    public async Task<IActionResult> GetTriageHistory(string id)
+    {
+        var result = await _mediator.Send(new IgdVisitGetTriageHistoryQuery(id));
+        return Ok(new JSendOk(result));
+    }
+
+    [HttpGet("triage-monitoring")]
+    public async Task<IActionResult> GetTriageMonitoring()
+    {
+        var result = await _mediator.Send(new IgdVisitGetTriageMonitoringQuery());
+        return Ok(new JSendOk(result));
+    }
+
     [HttpGet("aktif")]
     public async Task<IActionResult> ListAktif()
     {
@@ -104,7 +148,17 @@ public class IgdVisitController : Controller
 }
 
 public record IgdVisitAssignDokterBody(string DokterId, string UserId);
-public record IgdVisitAssessTriageBody(string TriageLevel, string Notes, string UserId);
+public record IgdVisitAssessTriageBody(
+    int AirwaysScore,
+    int BreathingScore,
+    int BloodCirculationScore,
+    int GcsEyeScore,
+    int GcsMotorScore,
+    int GcsVoiceScore,
+    bool IsManualOverrideBlack,
+    string OverrideReason,
+    string Notes,
+    string UserId);
 public record IgdAssignBedBody(string BedIgdId, string UserId);
 public record IgdCheckOutBedBody(string UserId);
 public record IgdRedirectRawatJalanBody(string Reason, string UserId);

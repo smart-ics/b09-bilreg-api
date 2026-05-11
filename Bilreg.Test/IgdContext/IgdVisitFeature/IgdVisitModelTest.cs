@@ -67,10 +67,10 @@ public class IgdVisitModelTest
     {
         var visit = IgdVisitModel.Create(TestVisitor(), TestAudit());
 
-        visit.AssessTriage(TriageLevelEnum.P2Emergent, "TD turun", TestAudit());
+        visit.AssessTriage(TriageLevelEnum.Ats2, "TD turun", TestAudit());
 
         visit.HasTriage.Should().BeTrue();
-        visit.Triage.Level.Should().Be(TriageLevelEnum.P2Emergent);
+        visit.Triage.Level.Should().Be(TriageLevelEnum.Ats2);
         visit.ListTriage.Should().HaveCount(1);
         visit.ListTriage.First().NoTriage.Should().Be(1);
         visit.ListEvent.Should().Contain(x => x.EventKind == IgdEventEnum.AssessTriage);
@@ -81,12 +81,12 @@ public class IgdVisitModelTest
     {
         var visit = IgdVisitModel.Create(TestVisitor(), TestAudit());
 
-        visit.AssessTriage(TriageLevelEnum.P3Urgent, "-", TestAudit());
-        visit.AssessTriage(TriageLevelEnum.P2Emergent, "-", TestAudit());
+        visit.AssessTriage(TriageLevelEnum.Ats3, "-", TestAudit());
+        visit.AssessTriage(TriageLevelEnum.Ats2, "-", TestAudit());
 
         visit.ListTriage.Should().HaveCount(2);
         visit.ListTriage.Select(x => x.NoTriage).Should().ContainInOrder(1, 2);
-        visit.Triage.Level.Should().Be(TriageLevelEnum.P2Emergent);
+        visit.Triage.Level.Should().Be(TriageLevelEnum.Ats2);
     }
 
     [Fact]
@@ -101,7 +101,7 @@ public class IgdVisitModelTest
     public void AssignBed_GivenTriageDone_SetsBedAndEmitsEvent()
     {
         var visit = IgdVisitModel.Create(TestVisitor(), TestAudit());
-        visit.AssessTriage(TriageLevelEnum.P3Urgent, "-", TestAudit());
+        visit.AssessTriage(TriageLevelEnum.Ats3, "-", TestAudit());
 
         visit.AssignBed("B01", TestAudit());
 
@@ -114,7 +114,7 @@ public class IgdVisitModelTest
     public void AssignBed_WhenAlreadyOnBed_Throws()
     {
         var visit = IgdVisitModel.Create(TestVisitor(), TestAudit());
-        visit.AssessTriage(TriageLevelEnum.P3Urgent, "-", TestAudit());
+        visit.AssessTriage(TriageLevelEnum.Ats3, "-", TestAudit());
         visit.AssignBed("B01", TestAudit());
 
         var act = () => visit.AssignBed("B02", TestAudit());
@@ -126,7 +126,7 @@ public class IgdVisitModelTest
     public void CheckOutBed_FromOccupied_ClearsBed()
     {
         var visit = IgdVisitModel.Create(TestVisitor(), TestAudit());
-        visit.AssessTriage(TriageLevelEnum.P3Urgent, "-", TestAudit());
+        visit.AssessTriage(TriageLevelEnum.Ats3, "-", TestAudit());
         visit.AssignBed("B01", TestAudit());
 
         visit.CheckOutBed(TestAudit());
@@ -186,7 +186,7 @@ public class IgdVisitModelTest
     public void RedirectToRawatJalan_WhenOnBed_Throws()
     {
         var visit = IgdVisitModel.Create(TestVisitor(), TestAudit());
-        visit.AssessTriage(TriageLevelEnum.P3Urgent, "-", TestAudit());
+        visit.AssessTriage(TriageLevelEnum.Ats3, "-", TestAudit());
         visit.AssignBed("B01", TestAudit());
 
         var act = () => visit.RedirectToRawatJalan("RDR1", "Dipulangkan rawat jalan", TestAudit());
@@ -198,7 +198,7 @@ public class IgdVisitModelTest
     public void RedirectToRawatJalan_WhenFree_TransitionsToRedirected()
     {
         var visit = IgdVisitModel.Create(TestVisitor(), TestAudit());
-        visit.AssessTriage(TriageLevelEnum.P3Urgent, "-", TestAudit());
+        visit.AssessTriage(TriageLevelEnum.Ats3, "-", TestAudit());
 
         visit.RedirectToRawatJalan("RDR1", "Rajal", TestAudit());
 
@@ -210,7 +210,7 @@ public class IgdVisitModelTest
     public void ClearBed_OnCascade_ResetsBedAndEmitsEvent()
     {
         var visit = IgdVisitModel.Create(TestVisitor(), TestAudit());
-        visit.AssessTriage(TriageLevelEnum.P3Urgent, "-", TestAudit());
+        visit.AssessTriage(TriageLevelEnum.Ats3, "-", TestAudit());
         visit.AssignBed("B01", TestAudit());
 
         visit.ClearBed(TestAudit());
