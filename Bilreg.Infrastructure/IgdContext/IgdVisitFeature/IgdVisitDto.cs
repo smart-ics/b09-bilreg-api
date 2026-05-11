@@ -13,7 +13,7 @@ public record IgdVisitDto(
 
     string DokterId, string DokterName,
 
-    bool HasTriage, string TriageLevel,
+    bool HasTriage, string TriageMethod, string TriageLevel, string TriageColor, DateTime LastTriageAt, DateTime NextReTriageAt,
 
     string AdministrativeState,
     string RegId, string PasienId, string PasienName,
@@ -44,7 +44,11 @@ public record IgdVisitDto(
             DokterName: model.Dokter.PpaName,
 
             HasTriage: model.HasTriage,
+            TriageMethod: model.HasTriage ? model.TriageMethod.ToCode() : "",
             TriageLevel: model.HasTriage ? model.Triage.Level.ToCode() : "",
+            TriageColor: model.HasTriage ? model.TriageColor.ToCode() : "",
+            LastTriageAt: model.LastTriageAt,
+            NextReTriageAt: model.NextReTriageAt,
 
             AdministrativeState: model.AdministrativeState.ToCode(),
             RegId: model.Reg.RegId,
@@ -82,7 +86,19 @@ public record IgdVisitDto(
         var triageLatest = HasTriage
             ? new IgdVisitTriageType(
                 NoTriage: 0,
+                Method: TriageMethod.ToTriageMethodEnum(),
                 Level: TriageLevel.ToTriageLevelEnum(),
+                Color: TriageColor.ToTriageColorEnum(),
+                AirwaysScore: 0,
+                BreathingScore: 0,
+                BloodCirculationScore: 0,
+                GcsEyeScore: 0,
+                GcsMotorScore: 0,
+                GcsVoiceScore: 0,
+                IsManualOverrideBlack: false,
+                OverrideByUserId: "-",
+                OverrideReason: "-",
+                OverrideDateTime: new DateTime(3000, 1, 1),
                 AssessmentDateTime: new DateTime(3000, 1, 1),
                 AssessorUserId: "-",
                 Notes: "-")
@@ -118,6 +134,10 @@ public record IgdVisitDto(
             reg: reg,
             redirection: redirection,
             bedId: bedId,
+            triageMethod: TriageMethod.ToTriageMethodEnum(),
+            triageColor: TriageColor.ToTriageColorEnum(),
+            lastTriageAt: LastTriageAt,
+            nextReTriageAt: NextReTriageAt,
             auditTrail: auditTrail,
             dischargeAudit: dischargeAudit,
             listTriage: [],
@@ -138,6 +158,9 @@ public record IgdVisitDto(
             DokterName: DokterName,
             HasTriage: HasTriage,
             TriageLevel: TriageLevel,
+            TriageColor: TriageColor,
+            LastTriageAt: LastTriageAt,
+            NextReTriageAt: NextReTriageAt,
             AdministrativeState: AdministrativeState,
             RegId: RegId,
             BedIgdId: BedIgdId,

@@ -7,7 +7,7 @@ using Nuna.Lib.TransactionHelper;
 
 namespace Bilreg.Application.IgdContext.IgdVisitFeature.UseCases;
 
-public record IgdVisitAssessTriageCmd(
+public record IgdVisitReAssessTriageCmd(
     string IgdVisitId,
     int AirwaysScore,
     int BreathingScore,
@@ -21,27 +21,18 @@ public record IgdVisitAssessTriageCmd(
     string UserId)
     : IRequest<IgdVisitAssessTriageResponse>, IIgdVisitKey;
 
-public record IgdVisitAssessTriageResponse(
-    string IgdVisitId,
-    int NoTriage,
-    string TriageMethod,
-    string TriageLevel,
-    string TriageColor,
-    DateTime LastTriageAt,
-    DateTime NextReTriageAt);
-
-public class IgdVisitAssessTriageHandler : IRequestHandler<IgdVisitAssessTriageCmd, IgdVisitAssessTriageResponse>
+public class IgdVisitReAssessTriageHandler : IRequestHandler<IgdVisitReAssessTriageCmd, IgdVisitAssessTriageResponse>
 {
     private readonly IIgdVisitRepo _igdVisitRepo;
     private readonly ITriageMethodEngineResolver _engineResolver;
 
-    public IgdVisitAssessTriageHandler(IIgdVisitRepo igdVisitRepo, ITriageMethodEngineResolver engineResolver)
+    public IgdVisitReAssessTriageHandler(IIgdVisitRepo igdVisitRepo, ITriageMethodEngineResolver engineResolver)
     {
         _igdVisitRepo = igdVisitRepo;
         _engineResolver = engineResolver;
     }
 
-    public Task<IgdVisitAssessTriageResponse> Handle(IgdVisitAssessTriageCmd request, CancellationToken cancellationToken)
+    public Task<IgdVisitAssessTriageResponse> Handle(IgdVisitReAssessTriageCmd request, CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.IgdVisitId, nameof(request.IgdVisitId));
         Guard.Against.NullOrWhiteSpace(request.UserId, nameof(request.UserId));
@@ -62,9 +53,9 @@ public class IgdVisitAssessTriageHandler : IRequestHandler<IgdVisitAssessTriageC
             request.GcsEyeScore,
             request.GcsMotorScore,
             request.GcsVoiceScore);
-
         var engine = _engineResolver.Resolve(TriageMethodEnum.Ats);
         var triageResult = engine.Calculate(assessment, audit.Timestamp);
+
         visit.AssessTriage(
             assessment: assessment,
             method: triageResult.Method,

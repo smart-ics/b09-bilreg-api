@@ -35,7 +35,7 @@ public class IgdVisitDal : IIgdVisitDal
                 IgdVisitId, DaftarDateTime,
                 VisitorName, VisitorGender, VisitorTglLahir, VisitorKontak,
                 DokterId, DokterName,
-                HasTriage, TriageLevel,
+                HasTriage, TriageMethod, TriageLevel, TriageColor, LastTriageAt, NextReTriageAt,
                 AdministrativeState, RegId, PasienId, PasienName,
                 RedirectRajalId, RedirectDateTime, RedirectReason,
                 BedIgdId,
@@ -45,7 +45,7 @@ public class IgdVisitDal : IIgdVisitDal
                 @IgdVisitId, @DaftarDateTime,
                 @VisitorName, @VisitorGender, @VisitorTglLahir, @VisitorKontak,
                 @DokterId, @DokterName,
-                @HasTriage, @TriageLevel,
+                @HasTriage, @TriageMethod, @TriageLevel, @TriageColor, @LastTriageAt, @NextReTriageAt,
                 @AdministrativeState, @RegId, @PasienId, @PasienName,
                 @RedirectRajalId, @RedirectDateTime, @RedirectReason,
                 @BedIgdId,
@@ -70,7 +70,11 @@ public class IgdVisitDal : IIgdVisitDal
                 DokterId = @DokterId,
                 DokterName = @DokterName,
                 HasTriage = @HasTriage,
+                TriageMethod = @TriageMethod,
                 TriageLevel = @TriageLevel,
+                TriageColor = @TriageColor,
+                LastTriageAt = @LastTriageAt,
+                NextReTriageAt = @NextReTriageAt,
                 AdministrativeState = @AdministrativeState,
                 RegId = @RegId,
                 PasienId = @PasienId,
@@ -147,7 +151,7 @@ public class IgdVisitDal : IIgdVisitDal
             aa.IgdVisitId, aa.DaftarDateTime,
             aa.VisitorName, aa.VisitorGender, aa.VisitorTglLahir, aa.VisitorKontak,
             aa.DokterId, aa.DokterName,
-            aa.HasTriage, aa.TriageLevel,
+            aa.HasTriage, aa.TriageMethod, aa.TriageLevel, aa.TriageColor, aa.LastTriageAt, aa.NextReTriageAt,
             aa.AdministrativeState, aa.RegId, aa.PasienId, aa.PasienName,
             aa.RedirectRajalId, aa.RedirectDateTime, aa.RedirectReason,
             aa.BedIgdId,
@@ -171,7 +175,11 @@ public class IgdVisitDal : IIgdVisitDal
         dp.AddParam("@DokterName", dto.DokterName, SqlDbType.VarChar);
 
         dp.AddParam("@HasTriage", dto.HasTriage, SqlDbType.Bit);
+        dp.AddParam("@TriageMethod", dto.TriageMethod, SqlDbType.VarChar);
         dp.AddParam("@TriageLevel", dto.TriageLevel, SqlDbType.VarChar);
+        dp.AddParam("@TriageColor", dto.TriageColor, SqlDbType.VarChar);
+        dp.AddParam("@LastTriageAt", dto.LastTriageAt, SqlDbType.DateTime);
+        dp.AddParam("@NextReTriageAt", dto.NextReTriageAt, SqlDbType.DateTime);
 
         dp.AddParam("@AdministrativeState", dto.AdministrativeState, SqlDbType.VarChar);
         dp.AddParam("@RegId", dto.RegId, SqlDbType.VarChar);

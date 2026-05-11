@@ -201,15 +201,133 @@ Jika pasien memiliki bed aktif maka pasien dianggap sedang:
 
 # 6. Supporting Entities
 
-# 6.1 IgdVisitTriage
+Berikut adalah tambahan section yang menurut saya cukup untuk melengkapi `DOMAIN.md` Anda tanpa membuatnya terlalu panjang. Tambahkan saja setelah section `# 6.1 IgdVisitTriage` atau rename section tersebut menjadi `# 6.1 TriageRecord`.
 
-Menyimpan detail hasil assessment triage.
+---
+
+# 6.1 TriageRecord
+
+Menyimpan histori assessment triage pasien.
+
+Satu `IgdVisit` dapat memiliki banyak `TriageRecord`.
+
+`TriageRecord` bersifat immutable dan append-only.
+
+Assessment lama tidak boleh diubah.
+
+---
 
 ## Responsibilities
 
-* menyimpan detail indikator triage,
-* menyimpan nilai assessment,
-* mendukung audit klinis.
+* menyimpan detail assessment triage,
+* menyimpan hasil scoring dan klasifikasi triage,
+* menyimpan histori re-assessment,
+* mendukung audit klinis dan medico-legal.
+
+---
+
+## Assessment Components
+
+Assessment ATS terdiri dari:
+
+* Airways
+* Breathing
+* Blood Circulation
+* GCS (Eye, Motor, Voice)
+
+---
+
+## Triage Result
+
+Hasil assessment menghasilkan:
+
+* ATS Level
+
+    * ATS1
+    * ATS2
+    * ATS3
+    * ATS4
+    * ATS5
+
+dan dikonversikan menjadi:
+
+* Red
+* Yellow
+* Green
+
+Khusus warna `Black` bersifat manual override oleh dokter dan tidak berasal dari hasil scoring ATS.
+
+---
+
+## Re-Assessment
+
+Pasien dapat dilakukan triage ulang (`Re-Assessment Triage`) apabila diperlukan.
+
+Setiap re-assessment:
+
+* membuat `TriageRecord` baru,
+* memperbarui current triage state pada `IgdVisit`,
+* tetap menyimpan histori assessment sebelumnya.
+
+---
+
+## Current Triage State
+
+`IgdVisit` hanya menyimpan current/latest triage state untuk kebutuhan operasional realtime.
+
+History lengkap assessment disimpan pada `TriageRecord`.
+
+---
+
+## Triage Monitoring
+
+Setiap hasil triage memiliki rekomendasi waktu reassessment.
+
+Contoh:
+
+| ATS  | Re-Assessment         |
+| ---- | --------------------- |
+| ATS1 | Continuous Monitoring |
+| ATS2 | 15 menit              |
+| ATS3 | 30 menit              |
+| ATS4 | 60 menit              |
+| ATS5 | 120 menit             |
+
+---
+
+## Operational Monitoring State
+
+`IgdVisit` menyimpan:
+
+* LastTriageAt
+* NextReTriageAt
+
+untuk kebutuhan:
+
+* dashboard monitoring,
+* countdown re-triage,
+* overdue monitoring.
+
+Frontend hanya menampilkan countdown realtime.
+
+Perhitungan waktu reassessment dilakukan oleh backend.
+
+---
+
+# 6.1.1 Triage Method
+
+Sistem mendukung konsep multiple triage methods.
+
+Contoh:
+
+* ATS
+* ESI
+* CTAS
+* MTS
+
+Saat ini implementasi aktif menggunakan metode `ATS`.
+
+Perhitungan scoring dan klasifikasi dilakukan oleh `Triage Method Engine`.
 
 ---
 
@@ -284,6 +402,8 @@ Transaksi pemakaian barang habis pakai pasien.
 
 # 7. Business Rules
 
+---
+
 # 7.1 Triage Rule
 
 Assessment triage dilakukan oleh dokter jaga IGD.
@@ -293,6 +413,16 @@ Input data ke sistem dapat dilakukan oleh:
 * dokter,
 * perawat,
 * admin IGD.
+
+Triage terdiri dari:
+
+* assessment,
+* scoring,
+* classification,
+* reassessment monitoring.
+
+Pasien dapat dilakukan `Re-Assessment Triage` sesuai kebutuhan klinis.
+
 
 ---
 

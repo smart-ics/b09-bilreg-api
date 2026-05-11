@@ -27,6 +27,10 @@ public class IgdVisitModel : IIgdVisitKey
         RegReff reg,
         RedirectionType redirection,
         string bedId,
+        TriageMethodEnum triageMethod,
+        TriageColorEnum triageColor,
+        DateTime lastTriageAt,
+        DateTime nextReTriageAt,
         AuditTrailType auditTrail,
         AuditInfoType dischargeAudit,
         IEnumerable<IgdVisitTriageType> listTriage,
@@ -42,6 +46,10 @@ public class IgdVisitModel : IIgdVisitKey
         Reg = reg;
         Redirection = redirection;
         BedId = bedId;
+        TriageMethod = triageMethod;
+        TriageColor = triageColor;
+        LastTriageAt = lastTriageAt;
+        NextReTriageAt = nextReTriageAt;
         AuditTrail = auditTrail;
         DischargeAudit = dischargeAudit;
         _listTriage = listTriage?.ToList() ?? [];
@@ -59,6 +67,10 @@ public class IgdVisitModel : IIgdVisitKey
         reg: RegModel.Default.ToReff(),
         redirection: RedirectionType.Default,
         bedId: EMPTY_BED,
+        triageMethod: TriageMethodEnum.Unknown,
+        triageColor: TriageColorEnum.Unknown,
+        lastTriageAt: new DateTime(3000, 1, 1),
+        nextReTriageAt: new DateTime(3000, 1, 1),
         auditTrail: AuditTrailType.Default,
         dischargeAudit: AuditInfoType.Default,
         listTriage: [],
@@ -75,6 +87,10 @@ public class IgdVisitModel : IIgdVisitKey
         reg: RegModel.Default.ToReff(),
         redirection: RedirectionType.Default,
         bedId: EMPTY_BED,
+        triageMethod: TriageMethodEnum.Unknown,
+        triageColor: TriageColorEnum.Unknown,
+        lastTriageAt: new DateTime(3000, 1, 1),
+        nextReTriageAt: new DateTime(3000, 1, 1),
         auditTrail: AuditTrailType.Default,
         dischargeAudit: AuditInfoType.Default,
         listTriage: [],
@@ -98,6 +114,10 @@ public class IgdVisitModel : IIgdVisitKey
             reg: RegModel.Default.ToReff(),
             redirection: RedirectionType.Default,
             bedId: EMPTY_BED,
+            triageMethod: TriageMethodEnum.Unknown,
+            triageColor: TriageColorEnum.Unknown,
+            lastTriageAt: new DateTime(3000, 1, 1),
+            nextReTriageAt: new DateTime(3000, 1, 1),
             auditTrail: AuditTrailType.Create(audit.UserId, audit.Timestamp),
             dischargeAudit: AuditInfoType.Default,
             listTriage: [],
@@ -119,6 +139,10 @@ public class IgdVisitModel : IIgdVisitKey
     public RegReff Reg { get; private set; }
     public RedirectionType Redirection { get; private set; }
     public string BedId { get; private set; }
+    public TriageMethodEnum TriageMethod { get; private set; }
+    public TriageColorEnum TriageColor { get; private set; }
+    public DateTime LastTriageAt { get; private set; }
+    public DateTime NextReTriageAt { get; private set; }
     public AuditTrailType AuditTrail { get; init; }
     public AuditInfoType DischargeAudit { get; private set; }
     public IEnumerable<IgdVisitTriageType> ListTriage => _listTriage;
@@ -130,6 +154,7 @@ public class IgdVisitModel : IIgdVisitKey
     public bool IsRedirected => AdministrativeState == AdministrativeStateEnum.Redirected;
     public bool IsVoided => AuditTrail.IsVoided;
     public bool IsTerminal => IsDischarged || IsRedirected || IsVoided;
+    public bool HasNextReTriage => NextReTriageAt != new DateTime(3000, 1, 1);
     #endregion
 
     #region BEHAVIOUR
@@ -161,7 +186,25 @@ public class IgdVisitModel : IIgdVisitKey
         var nextNo = _listTriage.Count == 0 ? 1 : _listTriage.Max(x => x.NoTriage) + 1;
         var newTriage = new IgdVisitTriageType(
             NoTriage: nextNo,
+            Method: TriageMethodEnum.Ats,
             Level: level,
+            Color: level switch
+            {
+                TriageLevelEnum.Ats1 or TriageLevelEnum.Ats2 => TriageColorEnum.Red,
+                TriageLevelEnum.Ats3 => TriageColorEnum.Yellow,
+                TriageLevelEnum.Ats4 or TriageLevelEnum.Ats5 => TriageColorEnum.Green,
+                _ => TriageColorEnum.Unknown
+            },
+            AirwaysScore: 0,
+            BreathingScore: 0,
+            BloodCirculationScore: 0,
+            GcsEyeScore: 0,
+            GcsMotorScore: 0,
+            GcsVoiceScore: 0,
+            IsManualOverrideBlack: false,
+            OverrideByUserId: "-",
+            OverrideReason: "-",
+            OverrideDateTime: new DateTime(3000, 1, 1),
             AssessmentDateTime: audit.Timestamp,
             AssessorUserId: audit.UserId,
             Notes: string.IsNullOrWhiteSpace(notes) ? "-" : notes);
@@ -169,8 +212,69 @@ public class IgdVisitModel : IIgdVisitKey
         _listTriage.Add(newTriage);
         Triage = newTriage;
         HasTriage = true;
+        TriageMethod = newTriage.Method;
+        TriageColor = newTriage.Color;
+        LastTriageAt = newTriage.AssessmentDateTime;
+        NextReTriageAt = level.ToReAssessmentInterval() is { } interval
+            ? LastTriageAt.Add(interval)
+            : new DateTime(3000, 1, 1);
         AuditTrail.Modif(audit.UserId, audit.Timestamp);
         Emit(IgdEventEnum.AssessTriage, audit, $"Triage {level.ToCode()}");
+    }
+
+    public void AssessTriage(
+        AtsAssessmentType assessment,
+        TriageMethodEnum method,
+        TriageLevelEnum level,
+        TriageColorEnum color,
+        string notes,
+        bool isManualOverrideBlack,
+        string overrideByUserId,
+        string overrideReason,
+        DateTime? nextReTriageAt,
+        AuditInfoType audit)
+    {
+        Guard.Against.NullOrWhiteSpace(audit.UserId, nameof(audit.UserId));
+        if (level == TriageLevelEnum.Unknown)
+            throw new ArgumentException("Triage level wajib diisi");
+        if (method == TriageMethodEnum.Unknown)
+            throw new ArgumentException("Triage method wajib diisi");
+        if (IsTerminal)
+            throw new InvalidOperationException(
+                $"Visit {IgdVisitId} sudah {AdministrativeState}; tidak dapat assess triage.");
+
+        var nextNo = _listTriage.Count == 0 ? 1 : _listTriage.Max(x => x.NoTriage) + 1;
+        var overrideTime = isManualOverrideBlack ? audit.Timestamp : new DateTime(3000, 1, 1);
+        var newTriage = new IgdVisitTriageType(
+            NoTriage: nextNo,
+            Method: method,
+            Level: level,
+            Color: isManualOverrideBlack ? TriageColorEnum.Black : color,
+            AirwaysScore: assessment.AirwaysScore,
+            BreathingScore: assessment.BreathingScore,
+            BloodCirculationScore: assessment.BloodCirculationScore,
+            GcsEyeScore: assessment.GcsEyeScore,
+            GcsMotorScore: assessment.GcsMotorScore,
+            GcsVoiceScore: assessment.GcsVoiceScore,
+            IsManualOverrideBlack: isManualOverrideBlack,
+            OverrideByUserId: isManualOverrideBlack ? overrideByUserId : "-",
+            OverrideReason: isManualOverrideBlack
+                ? (string.IsNullOrWhiteSpace(overrideReason) ? "-" : overrideReason)
+                : "-",
+            OverrideDateTime: overrideTime,
+            AssessmentDateTime: audit.Timestamp,
+            AssessorUserId: audit.UserId,
+            Notes: string.IsNullOrWhiteSpace(notes) ? "-" : notes);
+
+        _listTriage.Add(newTriage);
+        Triage = newTriage;
+        HasTriage = true;
+        TriageMethod = newTriage.Method;
+        TriageColor = newTriage.Color;
+        LastTriageAt = newTriage.AssessmentDateTime;
+        NextReTriageAt = nextReTriageAt ?? new DateTime(3000, 1, 1);
+        AuditTrail.Modif(audit.UserId, audit.Timestamp);
+        Emit(IgdEventEnum.AssessTriage, audit, $"Triage {newTriage.Level.ToCode()}");
     }
 
     public void AssignBed(string bedId, AuditInfoType audit)
@@ -316,6 +420,12 @@ public class IgdVisitModel : IIgdVisitKey
         {
             Triage = latest;
             HasTriage = true;
+            TriageMethod = latest.Method;
+            TriageColor = latest.Color;
+            LastTriageAt = latest.AssessmentDateTime;
+            NextReTriageAt = latest.Level.ToReAssessmentInterval() is { } interval
+                ? latest.AssessmentDateTime.Add(interval)
+                : new DateTime(3000, 1, 1);
         }
     }
     #endregion
