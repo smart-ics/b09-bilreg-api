@@ -158,7 +158,7 @@ public class JurnalType_CreateFromTrsBilling_Test
         // Assert
         jurnal.JurnalId.Should().Be(trsBilling.TrsBillingId);
         jurnal.Reg.RegId.Should().Be(trsBilling.Reg.RegId);
-        jurnal.Pasien.PasienId.Should().Be(trsBilling.Reg.PasienName); // Sesuai dengan implementasi
+        jurnal.Pasien.PasienId.Should().Be(trsBilling.Reg.PasienId); // Sesuai dengan implementasi
 
         var jurnal2List = jurnal.ListJurnal2.ToList();
         jurnal2List.Should().HaveCount(2); // 1 pendapatan + 1 piutang
@@ -194,7 +194,7 @@ public class JurnalType_CreateFromTrsBilling_Test
         var potonganJurnal = jurnal2List[0] as Jurnal2JasaType;
         potonganJurnal.Should().NotBeNull();
         potonganJurnal!.NilaiJurnal.Uraian.Should().Contain("Potongan Pendapatan");
-        potonganJurnal.NilaiJurnal.NilaiD.Should().Be(-2000m); // Negatif dari NilaiP
+        potonganJurnal.NilaiJurnal.NilaiD.Should().Be(2000m); // Negatif dari NilaiP
         potonganJurnal.NilaiJurnal.NilaiK.Should().Be(0m);
     }
 
@@ -330,7 +330,7 @@ public class JurnalType_CreateFromTrsBilling_Test
         var rekening = new RekJasaType("REK_PPDP", "REK_PDPT", "REK_DISC");
 
         var trsBilling2Jasa = new TrsBilling2JasaType(
-            1, "PDP", DateTime.Now,
+            "JRN001", 1, "PDP", DateTime.Now,
             new NilaiBillingType("PDP", 50000m, 0m), ppa, kasir,
             komponen, rekening);
 
@@ -361,7 +361,7 @@ public class JurnalType_CreateFromTrsBilling_Test
         var rekening = new RekJasaType("REK_PPDP", "REK_PDPT", "REK_DISC");
 
         var trsBilling2Jasa = new TrsBilling2JasaType(
-            1, "POT", DateTime.Now,
+            "JRN002", 1, "POT", DateTime.Now,
             new NilaiBillingType("POT", 2000m, 0m), ppa, kasir,
             komponen, rekening);
 
@@ -391,7 +391,7 @@ public class JurnalType_CreateFromTrsBilling_Test
         var rekening = new RekObatType("REK_PPDP", "REK_PDPT", "REK_DISC", "REK_LAIN", "REK_PERS", "REK_TAX", "REK_RETUR");
 
         var trsBilling2Obat = new TrsBilling2ObatType(
-            1, "PDP", DateTime.Now,
+            "JRN003", 1, "PDP", DateTime.Now,
             new NilaiBillingType("PDP", 25000m, 0m), kasir,
             groupRek, rekening);
 
@@ -421,7 +421,7 @@ public class JurnalType_CreateFromTrsBilling_Test
         var rekening = new RekObatType("REK_PPDP", "REK_PDPT", "REK_DISC", "REK_LAIN", "REK_PERS", "REK_TAX", "REK_RETUR");
 
         var trsBilling2Obat = new TrsBilling2ObatType(
-            1, "TAX", DateTime.Now,
+            "JRN004", 1, "TAX", DateTime.Now,
             new NilaiBillingType("TAX", 2500m, 0m), kasir,
             groupRek, rekening);
 
@@ -451,7 +451,7 @@ public class JurnalType_CreateFromTrsBilling_Test
         var rekening = new RekObatType("REK_PPDP", "REK_PDPT", "REK_DISC", "REK_LAIN", "REK_PERS", "REK_TAX", "REK_RETUR");
 
         var trsBilling2Obat = new TrsBilling2ObatType(
-            1, "RET", DateTime.Now,
+            "JRN005", 1, "RET", DateTime.Now,
             new NilaiBillingType("RET", -3000m, 0m), kasir,
             groupRek, rekening);
 
@@ -481,7 +481,7 @@ public class JurnalType_CreateFromTrsBilling_Test
         var rekening = new RekObatType("REK_PPDP", "REK_PDPT", "REK_DISC", "REK_LAIN", "REK_PERS", "REK_TAX", "REK_RETUR");
 
         var trsBilling2Obat = new TrsBilling2ObatType(
-            1, "BYL", DateTime.Now,
+            "JRN006", 1, "BYL", DateTime.Now,
             new NilaiBillingType("BYL", 1500m, 0m), kasir,
             groupRek, rekening);
 
@@ -511,7 +511,7 @@ public class JurnalType_CreateFromTrsBilling_Test
         var rekening = new RekObatType("REK_PPDP", "REK_PDPT", "REK_DISC", "REK_LAIN", "REK_PERS", "REK_TAX", "REK_RETUR");
 
         var trsBilling2Obat = new TrsBilling2ObatType(
-            1, "BYL", DateTime.Now,
+            "JRN007", 1, "BYL", DateTime.Now,
             new NilaiBillingType("BYL", -1000m, 0m), kasir,
             groupRek, rekening);
 

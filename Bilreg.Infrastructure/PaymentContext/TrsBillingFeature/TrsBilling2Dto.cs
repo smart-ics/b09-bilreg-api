@@ -1,5 +1,3 @@
-// resharper disable InconsistentNaming
-
 using System.Globalization;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
@@ -76,7 +74,7 @@ public record TaTrsBilling2Dto(
     
     public TrsBilling2Base ToModel()
     {
-        if (fs_kd_detil_tarif.Trim() == "")
+        if (fs_kd_detil_tarif.Trim() != "")
             return ToJasaModel();
         return ToObatModel();
     }
@@ -89,21 +87,20 @@ public record TaTrsBilling2Dto(
         var nilaiBilling = new NilaiBillingType(fs_kd_jenis_bayar, fn_trs_p, fn_trs_n);
         var rekening = new RekJasaType(fs_kd_rek_ppdp, fs_kd_rek_pdpt, fs_kd_rek_disc);
         return new TrsBilling2JasaType(
-            (int)fn_no_urut, fs_kd_trs_bayar, paymentDate,
+            fs_kd_trs, (int)fn_no_urut, fs_kd_trs_bayar, paymentDate,
             nilaiBilling, ppa, kasir, komponen, rekening);
     }
     
     private TrsBilling2ObatType ToObatModel()
     {
-        var groupRek = new GroupRekReff(fs_kd_detil_tarif, fs_nm_detil_tarif);
+        var groupRek = new GroupRekReff(fs_kd_grup_rek, fs_nm_grup_rek);
         var kasir = PegType.Create(fs_kd_petugas_kasir, fs_nm_peg_kasir);
-        var paymentDate = DateTime.ParseExact($"{fd_tgl_bayar} {fs_jam_bayar}", "yyyy-MM-dd HH:mm:ss", 
-            CultureInfo.InvariantCulture);
+        var paymentDate = DateTime.ParseExact($"{fd_tgl_bayar} {fs_jam_bayar}", "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
         var nilaiBilling = new NilaiBillingType(fs_kd_jenis_bayar, fn_trs_p, fn_trs_n);
         var rekening = new RekObatType(fs_kd_rek_ppdp, fs_kd_rek_pdpt, fs_kd_rek_disc,
             fs_kd_rek_pdpt_lain, fs_kd_rek_persediaan, fs_kd_rek_tax, fs_kd_rek_retur);
         return new TrsBilling2ObatType(
-            (int)fn_no_urut, fs_kd_trs_bayar, paymentDate,
+            fs_kd_trs, (int)fn_no_urut, fs_kd_trs_bayar, paymentDate,
             nilaiBilling, kasir, groupRek, rekening);
     }
 }

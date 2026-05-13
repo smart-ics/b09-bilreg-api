@@ -1,5 +1,6 @@
 using System.Data;
 using System.Data.SqlClient;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
@@ -11,18 +12,18 @@ namespace Bilreg.Infrastructure.PaymentContext.TrsBillingFeature;
 public interface ITrsBilling2Dal :
     IInsertBulk<TaTrsBilling2Dto>,
     IDelete<ITrsBillingKey>,
-    IListData<TaTrsBilling2Dto, ITrsBillingKey>
-{
+    IListData<TaTrsBilling2Dto, ITrsBillingKey>,
+    IListData<TaTrsBilling2Dto, IRegKey>
+{ 
+    void DeleteByPaymentId(string paymentId);
 }
+
 
 public class TrsBilling2Dal : ITrsBilling2Dal
 {
     private readonly DatabaseOptions _opt;
-    public TrsBilling2Dal(IOptions<DatabaseOptions> opt)
-    {
-        _opt = opt.Value;
-    }
-    
+    public TrsBilling2Dal(IOptions<DatabaseOptions> opt) => _opt = opt.Value;
+
     public void Insert(IEnumerable<TaTrsBilling2Dto> models)
     {
         const string sql = """
@@ -41,16 +42,16 @@ public class TrsBilling2Dal : ITrsBilling2Dal
                 @fs_kd_rek_pdpt_lain, @fs_kd_rek_persediaan,
                 @fs_kd_rek_tax, @fs_kd_rek_retur)
             """;
-        
+
         var listBill2 = models.ToList();
-        
+
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Open();
-        
+
         var result = conn.Execute(sql, listBill2.Select(item => new
         {
             fs_kd_trs = item.fs_kd_trs,
-            fn_no_urut = item.fn_no_urut, 
+            fn_no_urut = item.fn_no_urut,
             fs_kd_jenis_bayar = item.fs_kd_jenis_bayar,
             fn_trs_p = item.fn_trs_p,
             fn_trs_n = item.fn_trs_n,
@@ -70,6 +71,7 @@ public class TrsBilling2Dal : ITrsBilling2Dal
             fs_kd_rek_retur = item.fs_kd_rek_retur
         }));
     }
+
     public void Delete(ITrsBillingKey key)
     {
         const string sql = """
@@ -83,7 +85,7 @@ public class TrsBilling2Dal : ITrsBilling2Dal
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
-    
+
     public IEnumerable<TaTrsBilling2Dto> ListData(ITrsBillingKey key)
     {
         const string sql = """
@@ -105,10 +107,10 @@ public class TrsBilling2Dal : ITrsBilling2Dal
                 ISNULL(dd.fs_nm_peg, '') AS fs_nm_peg_medis 
             FROM
                 ta_trs_billing2 aa
-                left join ta_detil_tarif bb on aa.fs_kd_detil_tarif = bb.fs_kd_detil_tarif
-                left join tb_grup_rek cc on aa.fs_kd_grup_rek = cc.fs_kd_grup_rek
-                left join td_peg dd on aa.fs_kd_petugas_medis = dd.fs_kd_peg
-                left join td_peg ee on aa.fs_kd_petugas_kasir = ee.fs_kd_peg
+                LEFT JOIN ta_detil_tarif bb on aa.fs_kd_detil_tarif = bb.fs_kd_detil_tarif
+                LEFT JOIN tb_grup_rek cc on aa.fs_kd_grup_rek = cc.fs_kd_grup_rek
+                LEFT JOIN td_peg dd on aa.fs_kd_petugas_medis = dd.fs_kd_peg
+                LEFT JOIN td_peg ee on aa.fs_kd_petugas_kasir = ee.fs_kd_peg
             WHERE
                 fs_kd_trs = @fs_kd_trs
             """;
@@ -118,4 +120,53 @@ public class TrsBilling2Dal : ITrsBilling2Dal
         return conn.Read<TaTrsBilling2Dto>(sql, dp);
     }
 
+    public IEnumerable<TaTrsBilling2Dto> ListData(IRegKey filter)
+    {
+        const string sql = """
+            SELECT
+                aa.fs_kd_trs, aa.fn_no_urut,
+                aa.fs_kd_jenis_bayar, aa.fn_trs_p, aa.fn_trs_n,
+
+                aa.fs_kd_trs_bayar, aa.fd_tgl_bayar, aa.fs_jam_bayar,
+                aa.fs_kd_petugas_kasir, aa.fs_kd_petugas_medis,
+                aa.fs_kd_detil_tarif, aa.fs_kd_grup_rek,
+                
+                aa.fs_kd_rek_ppdp, aa.fs_kd_rek_pdpt, aa.fs_kd_rek_disc, 
+                aa.fs_kd_rek_pdpt_lain, aa.fs_kd_rek_persediaan, aa.fs_kd_rek_tax, 
+                aa.fs_kd_rek_retur,
+
+                ISNULL(cc.fs_nm_detil_tarif, '') AS fs_nm_detil_tarif, 
+                ISNULL(dd.fs_nm_grup_rek, '') AS fs_nm_grup_rek, 
+                ISNULL(ee.fs_nm_peg, '') AS fs_nm_peg_kasir, 
+                ISNULL(ff.fs_nm_peg, '') AS fs_nm_peg_medis 
+            FROM
+                ta_trs_billing2 aa
+                INNER JOIN ta_trs_billing bb on aa.fs_kd_trs = bb.fs_kd_trs
+                LEFT JOIN ta_detil_tarif cc on aa.fs_kd_detil_tarif = cc.fs_kd_detil_tarif
+                LEFT JOIN tb_grup_rek dd on aa.fs_kd_grup_rek = dd.fs_kd_grup_rek
+                LEFT JOIN td_peg ee on aa.fs_kd_petugas_kasir = ee.fs_kd_peg
+                LEFT JOIN td_peg ff on aa.fs_kd_petugas_medis = ff.fs_kd_peg
+            WHERE
+                bb.fs_kd_reg = @fs_kd_reg
+            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@fs_kd_reg", filter.RegId, SqlDbType.VarChar);
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<TaTrsBilling2Dto>(sql, dp);
+    }
+
+    public void DeleteByPaymentId(string paymentId)
+    {
+        const string sql = """
+            DELETE FROM
+                ta_trs_billing2
+            WHERE
+                fs_kd_trs_bayar = @fs_kd_trs_bayar
+            """;
+        var dp = new DynamicParameters();
+        dp.AddParam("@fs_kd_trs_bayar", paymentId, SqlDbType.VarChar);
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        conn.Execute(sql, dp);
+    }
 }

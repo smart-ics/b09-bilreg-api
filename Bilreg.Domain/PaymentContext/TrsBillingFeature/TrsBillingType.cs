@@ -71,7 +71,7 @@ public record TrsBillingType : ITrsBillingKey
                 ? kompWithPpa.Ppa
                 : PpaType.Default.ToReff();
 
-            var trsBill2 = new TrsBilling2JasaType(i++, tindakan.TindakanId, tindakan.TindakanDate,
+            var trsBill2 = new TrsBilling2JasaType(tindakan.TindakanId, i++, tindakan.TindakanId, tindakan.TindakanDate,
                 new NilaiBillingType("PDP", item.Nilai, 0), ppa, PegType.Default,
                 item.Komponen, rekJasa);
 
@@ -106,7 +106,7 @@ public record TrsBillingType : ITrsBillingKey
             var ppa = reffKomp?.ListSatTugas?.Any() ?? false
                 ? dokter.ToReff()
                 : PpaType.Default.ToReff();
-            var trsBill2 = new TrsBilling2JasaType(i++, reg.RegId, reg.RegDate.ToDateTime(TimeOnly.FromDateTime(reg.RegMasukAudit.Timestamp)),
+            var trsBill2 = new TrsBilling2JasaType(reg.RegId, i++, reg.RegId, reg.RegDate.ToDateTime(TimeOnly.FromDateTime(reg.RegMasukAudit.Timestamp)),
                 new NilaiBillingType("PDP", item.Nilai, 0), ppa, PegType.Default,
                 item.Komponen, rekJasa);
             result.AddTrsBilling2(trsBill2);

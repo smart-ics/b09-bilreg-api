@@ -6,33 +6,33 @@ namespace Bilreg.Infrastructure.PaymentContext.TrsBillingFeature;
 
 public class TrsBillingBayarRepo : ITrsBillingBayarRepo
 {
-    private readonly ITrsBilling2GenDal _trsBilling2GenDal;
-    public TrsBillingBayarRepo(ITrsBilling2GenDal trsBilling2GenDal)
+    private readonly ITrsBilling2Dal _dal;
+    public TrsBillingBayarRepo(ITrsBilling2Dal dal) => _dal = dal;
+
+    public void SaveChanges(IEnumerable<TrsBilling2Base> models)
     {
-        _trsBilling2GenDal = trsBilling2GenDal;
+        var first = models.FirstOrDefault();
+        if (first is null) return;
+
+        _dal.DeleteByPaymentId(first.PaymentId);
+        var dtos = models
+            .Select(m => TaTrsBilling2Dto.FromModel(m, m.TrsBillingId));
+        _dal.Insert(dtos);
     }
 
-    public void SaveChanges(IEnumerable<TrsBilling2Model> model)
+    public IEnumerable<TrsBilling2Base> ListData(IRegKey regKey)
     {
-        _trsBilling2GenDal.Delete(model.First());
-        var listBillBayar = model
-            .Select(x => TrsBilling2GenDto.FromModel(x));
-
-        _trsBilling2GenDal.Insert(listBillBayar);
-    }
-
-    public void DeleteEntity(ITrsBillingBayarKey key)
-    {
-        _trsBilling2GenDal.Delete(key);
-    }
-
-    public IEnumerable<TrsBilling2Model> ListData(IRegKey regKey)
-    {
-        var listDto = _trsBilling2GenDal.ListData(regKey);
+        var listDto = _dal.ListData(regKey);
         if (listDto is null)
-            return Enumerable.Empty<TrsBilling2Model>();
+            return Enumerable.Empty<TrsBilling2Base>();
 
         var result = listDto.Select(dto => dto.ToModel());
         return result;
+
+    }
+
+    public void DeleteByPaymentId(string paymentId)
+    {
+        _dal.DeleteByPaymentId(paymentId);
     }
 }

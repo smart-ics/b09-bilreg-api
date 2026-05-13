@@ -22,7 +22,9 @@ public class RegOutHandler : IRequestHandler<RegOutCmd>
     private readonly ITipeJaminanRepo _tipeJaminanRepo;
     private readonly IJaminanRepo _jaminanRepo;
     private readonly ICoaRepo _coaRepo;
-    public RegOutHandler(IRegRepo regRepo, 
+
+    public RegOutHandler(
+        IRegRepo regRepo,
         IRegPembayaranRepo regPembayaranRepo,
         ITrsBillingBayarRepo trsBillingBayarRepo,
         ITipeJaminanRepo tipeJaminanRepo,
@@ -36,29 +38,41 @@ public class RegOutHandler : IRequestHandler<RegOutCmd>
         _jaminanRepo = jaminanRepo;
         _coaRepo = coaRepo;
     }
+
     public Task Handle(RegOutCmd request, CancellationToken cancellationToken)
     {
+        // 1. Load Aggregate Reg
         var reg = LoadReg(request);
         if (!reg.IsAktif)
             throw new KeyNotFoundException($"Register {request.RegId} sudah tidak aktif");
 
+        // 2. Load data pembayaran untuk RegOut
         var listPembayaranRegOut = _regPembayaranRepo.ListData(request).ToList();
         if (!listPembayaranRegOut.Any())
-            throw new KeyNotFoundException($"Data pembayaran untuk Register {request.RegId} tidak ditemukan.{Environment.NewLine}Registrasi keluar dibatalkan");
+            throw new KeyNotFoundException(
+                $"Data pembayaran untuk Register {request.RegId} tidak ditemukan.{Environment.NewLine}Registrasi keluar dibatalkan");
 
-        // Merge BYVCH ke BYDPU
+        // 3. Merge BYVCH ke BYDPU (business rule)
         var processedPembayaran = MergeVoucherToDpu(listPembayaranRegOut).ToList();
 
-        // Pre-resolve mapping CaraBayarId => JenisBayarId (KAS/HUT/...)
+        // 4. Pre-resolve mapping CaraBayarId => JenisBayarId (KAS/HUT/...)
         var jenisBayarMap = PreResolveJenisBayarMapping(processedPembayaran);
 
-        // Inject mapping ke Domain Factory
-        var listBilling2 = _trsBillingBayarRepo.ListData(request).ToList();
-        var billing2RegOut = TrsBilling2Model.CreateFromRegKeluar(processedPembayaran, listBilling2, jenisBayarMap, request.TglJamKeluar).ToList();
+        // 5. Load existing billing untuk kalkulasi NilaiSisa
+        var existingBilling = _trsBillingBayarRepo.ListData(request).ToList();
 
+        // 6. ⚡ DOMAIN FACTORY: Generate billing RegOut (polymorphic: Jasa/Obat)
+        var billing2RegOut = TrsBilling2GenRegOut.CreateFromRegKeluar(
+            processedPembayaran,
+            existingBilling,
+            jenisBayarMap,
+            request.TglJamKeluar,
+            request.UserId).ToList();
+
+        // 7. Update state Aggregate Reg
         reg.Keluar(request.TglJamKeluar, request.UserId);
 
-        // Finalize Aggregate
+        // 8. PERSIST: Save changes via Repository (Infrastructure)
         _trsBillingBayarRepo.SaveChanges(billing2RegOut);
         _regRepo.SaveChanges(reg);
 
@@ -66,16 +80,22 @@ public class RegOutHandler : IRequestHandler<RegOutCmd>
     }
 
     #region PRIVATE-HELPER
+
     private RegModel LoadReg(RegOutCmd request)
     {
         var reg = _regRepo.LoadEntity(request);
-        return reg.HasValue ? reg.Value : throw new KeyNotFoundException($"Register {request.RegId} tidak ditemukan");
+        return reg.HasValue
+            ? reg.Value
+            : throw new KeyNotFoundException($"Register {request.RegId} tidak ditemukan");
     }
 
-    private IEnumerable<RegPembayaranType> MergeVoucherToDpu(IEnumerable<RegPembayaranType> source)
-    {
-        return source
-            .GroupBy(p => new { p.RegId, NormalizedId = p.CaraBayarId == "BYVCH" ? "BYDPU" : p.CaraBayarId })
+    private IEnumerable<RegPembayaranType> MergeVoucherToDpu(IEnumerable<RegPembayaranType> source) =>
+        source
+            .GroupBy(p => new
+            {
+                p.RegId,
+                NormalizedId = p.CaraBayarId == "BYVCH" ? "BYDPU" : p.CaraBayarId
+            })
             .Select(g =>
             {
                 var first = g.First();
@@ -84,12 +104,16 @@ public class RegOutHandler : IRequestHandler<RegOutCmd>
                     : first.CaraBayarName;
 
                 return new RegPembayaranType(
-                    first.RegId, g.Key.NormalizedId, finalName,
-                    g.Sum(x => x.NilaiJasa), g.Sum(x => x.NilaiObat), g.Sum(x => x.NilaiSubTotal));
+                    first.RegId,
+                    g.Key.NormalizedId,
+                    finalName,
+                    g.Sum(x => x.NilaiJasa),
+                    g.Sum(x => x.NilaiObat),
+                    g.Sum(x => x.NilaiSubTotal));
             });
-    }
 
-    private IReadOnlyDictionary<string, string> PreResolveJenisBayarMapping(IEnumerable<RegPembayaranType> pembayaranTypes)
+    private IReadOnlyDictionary<string, string> PreResolveJenisBayarMapping(
+        IEnumerable<RegPembayaranType> pembayaranTypes)
     {
         var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var p in pembayaranTypes)
@@ -110,20 +134,18 @@ public class RegOutHandler : IRequestHandler<RegOutCmd>
     private string ResolveFromJaminanRule(string caraBayarId)
     {
         var tipeJaminanKey = TipeJaminanType.Key(caraBayarId);
-        var tipejaminan = _tipeJaminanRepo.LoadEntity(tipeJaminanKey);
-        if(!tipejaminan.HasValue)
-            return caraBayarId;
+        var tipeJaminan = _tipeJaminanRepo.LoadEntity(tipeJaminanKey);
+        if (!tipeJaminan.HasValue) return caraBayarId;
 
-        var jaminan = _jaminanRepo.LoadEntity(tipejaminan.Value.Jaminan);
-        if (!jaminan.HasValue || jaminan.Value.Rekening.PiutangPulang.CoaId == "-") 
+        var jaminan = _jaminanRepo.LoadEntity(tipeJaminan.Value.Jaminan);
+        if (!jaminan.HasValue || jaminan.Value.Rekening.PiutangPulang.CoaId == "-")
             return caraBayarId;
 
         var coa = _coaRepo.LoadEntity(jaminan.Value.Rekening.PiutangPulang);
-        if (!coa.HasValue) 
-            return caraBayarId;
+        if (!coa.HasValue) return caraBayarId;
 
         var kasTipeSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-                { "KAS", "KAS BANK", "GR MASUK", "JUAL DISC" };
+            { "KAS", "KAS BANK", "GR MASUK", "JUAL DISC" };
 
         return kasTipeSet.Contains(coa.Value.CoaTipeType.CoaTipeId) ? "KAS" : caraBayarId;
     }
