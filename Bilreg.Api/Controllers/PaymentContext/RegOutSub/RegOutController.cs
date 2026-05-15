@@ -44,6 +44,15 @@ public class RegOutController : Controller
     }
 
     [HttpGet]
+    [Route("listRincianBill/{id}")]
+    public async Task<IActionResult> ListRincianBill(string id)
+    {
+        var query = new TrsbListRincianBillQuery(id);
+        var result = await _mediator.Send(query);
+        return Ok(result);
+    }
+
+    [HttpGet]
     [Route("listSummaryBill/{id}")]
     public async Task<IActionResult> ListSummaryBill(string id)
     {
