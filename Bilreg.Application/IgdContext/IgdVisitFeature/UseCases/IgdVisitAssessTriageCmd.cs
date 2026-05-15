@@ -45,11 +45,11 @@ public class IgdVisitAssessTriageHandler : IRequestHandler<IgdVisitAssessTriageC
     {
         Guard.Against.NullOrWhiteSpace(request.IgdVisitId, nameof(request.IgdVisitId));
         Guard.Against.NullOrWhiteSpace(request.UserId, nameof(request.UserId));
-        Guard.Against.OutOfRange(request.AirwaysScore, nameof(request.AirwaysScore), 1, 5);
-        Guard.Against.OutOfRange(request.BreathingScore, nameof(request.BreathingScore), 1, 5);
-        Guard.Against.OutOfRange(request.BloodCirculationScore, nameof(request.BloodCirculationScore), 1, 5);
-        Guard.Against.OutOfRange(request.GcsEyeScore, nameof(request.GcsEyeScore), 1, 5);
-        Guard.Against.OutOfRange(request.GcsMotorScore, nameof(request.GcsMotorScore), 1, 5);
+        Guard.Against.OutOfRange(request.AirwaysScore, nameof(request.AirwaysScore), 0, 2);
+        Guard.Against.OutOfRange(request.BreathingScore, nameof(request.BreathingScore), 0, 5);
+        Guard.Against.OutOfRange(request.BloodCirculationScore, nameof(request.BloodCirculationScore), 0, 4);
+        Guard.Against.OutOfRange(request.GcsEyeScore, nameof(request.GcsEyeScore), 1, 4);
+        Guard.Against.OutOfRange(request.GcsMotorScore, nameof(request.GcsMotorScore), 1, 6);
         Guard.Against.OutOfRange(request.GcsVoiceScore, nameof(request.GcsVoiceScore), 1, 5);
 
         var visit = _igdVisitRepo.LoadEntity(request).GetValueOrThrow($"IgdVisit '{request.IgdVisitId}' not found");

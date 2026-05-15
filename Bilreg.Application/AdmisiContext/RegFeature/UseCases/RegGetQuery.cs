@@ -96,7 +96,7 @@ public class RegJalanGethandler : IRequestHandler<RegGetQuery, RegGetResponse>
     {
         return jenisReg switch
         {
-            JenisRegEnum.RegJalan => (
+            JenisRegEnum.RegJalan or JenisRegEnum.Darurat  => (
                 new TipeTarifReff(jaminan.TipeTarif.Rajal.TipeTarifId, jaminan.TipeTarif.Rajal.TipeTarifName),
                 new TipeBrgType(jaminan.TipeBarang.Rajal.TipeBarangId, jaminan.TipeBarang.Rajal.TipeBarangName)
             ),
@@ -108,7 +108,6 @@ public class RegJalanGethandler : IRequestHandler<RegGetQuery, RegGetResponse>
 
             _ => (new TipeTarifReff("-", "-"), new TipeBrgType("-", "-"))
         };
-    }
-    
+    }    
 
 }
