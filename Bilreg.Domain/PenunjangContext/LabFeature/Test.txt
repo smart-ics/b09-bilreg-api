@@ -1,0 +1,11 @@
+﻿Department (Hematologi, Kimia Klinik, Mikrobiologi, Imunologi, Patologi Anatomi)
+   │
+   ├── TestGroup (Fungsi Hati, Fungsi Ginjal, Hematologi Rutin)
+   │       │
+   │       ├── Category [optional] Enzim, Bilirubin
+   │       │       │
+   │       │       └── Test
+   │       │
+   │       └── Test (langsung tanpa category)
+   │
+   └── Test (opsional, jika tidak pakai group)
