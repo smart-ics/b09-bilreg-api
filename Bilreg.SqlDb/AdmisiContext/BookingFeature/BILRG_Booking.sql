@@ -28,3 +28,9 @@
     
     CONSTRAINT PK_BILRG_Booking PRIMARY KEY CLUSTERED (BookingId)
 )
+
+CREATE INDEX IX_BILRG_Booking_TglBerobat
+    ON BILRG_Booking(TglBerobat, BookingId)
+    WITH(FILLFACTOR=90)
+GO
+
