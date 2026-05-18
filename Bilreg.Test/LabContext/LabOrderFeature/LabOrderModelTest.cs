@@ -88,4 +88,56 @@ public class LabOrderModelTest
 
         order.Items.Select(x => x.ItemNo).Should().Equal(1, 2);
     }
+
+    private static LabOrderModel OrderedOrder() =>
+        LabOrderModel.CreateFromEmr(EmrSnapshot(), [TestItem()], "LAB000010", TestAudit());
+
+    [Fact]
+    public void Defer_FromOrdered_SetsDeferredState()
+    {
+        var order = OrderedOrder();
+        var until = new DateTime(2026, 5, 20);
+
+        order.Defer("Puasa 12 jam", until, "U2");
+
+        order.LabOrderStatus.Should().Be(LabOrderStatusEnum.Deferred);
+        order.DeferredInfo.Reason.Should().Be("Puasa 12 jam");
+        order.DeferredInfo.Until.Should().Be(until);
+        order.AuditTrail.Modified.UserId.Should().Be("U2");
+    }
+
+    [Fact]
+    public void Defer_WhenNotOrdered_Throws()
+    {
+        var order = OrderedOrder();
+        order.Defer("Puasa", DateTime.Now.AddDays(1), "U2");
+
+        var act = () => order.Defer("Lain", DateTime.Now.AddDays(2), "U2");
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void ActivateFromDeferred_SetsOrderedAndExecutionRegId()
+    {
+        var order = OrderedOrder();
+        var originalRegId = order.Patient.RegId;
+        order.Defer("Puasa", new DateTime(2026, 5, 20), "U2");
+
+        order.ActivateFromDeferred("REG-EXEC-001", "U3");
+
+        order.LabOrderStatus.Should().Be(LabOrderStatusEnum.Ordered);
+        order.ExecutionRegId.Should().Be("REG-EXEC-001");
+        order.DeferredInfo.IsEmpty.Should().BeTrue();
+        order.Patient.RegId.Should().Be(originalRegId);
+        order.AuditTrail.Modified.UserId.Should().Be("U3");
+    }
+
+    [Fact]
+    public void ActivateFromDeferred_WhenNotDeferred_Throws()
+    {
+        var order = OrderedOrder();
+
+        var act = () => order.ActivateFromDeferred("REG-EXEC-001", "U3");
+        act.Should().Throw<InvalidOperationException>();
+    }
 }

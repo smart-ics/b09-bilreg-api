@@ -1,7 +1,9 @@
 ﻿using Bilreg.Application.LabContext.LabOrderFeature;
+using Bilreg.Application.LabContext.LabOrderFeature.Integration;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Infrastructure;
+using Bilreg.Infrastructure.LabContext.Integration;
 using Bilreg.Infrastructure.LabContext.LabOrderFeature;
 using Bilreg.Infrastructure.PasienContext.PasienFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
@@ -26,6 +28,7 @@ public static class InfrastructureService
             .AddScoped<ISequencer, Sequencer>()
             .AddScoped<IRestClientFactory, RestClientFactory>()
             .AddScoped<ILabOrderWorklistDal, LabOrderWorklistDal>()
+            .AddScoped<ILabRegIntegration, LabRegIntegration>()
             .AddMemoryCache();
 
         services

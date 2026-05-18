@@ -20,6 +20,7 @@ public class LabOrderModel : ILabOrderKey
         OwareStatusEnum owareStatus,
         PatientSnapshotType patient,
         string executionRegId,
+        DeferredInfoType deferredInfo,
         string billingTindakanId,
         string billingLastError,
         AuditTrailType auditTrail,
@@ -33,6 +34,7 @@ public class LabOrderModel : ILabOrderKey
         OwareStatus = owareStatus;
         Patient = patient;
         ExecutionRegId = executionRegId;
+        DeferredInfo = deferredInfo;
         BillingTindakanId = billingTindakanId;
         BillingLastError = billingLastError;
         AuditTrail = auditTrail;
@@ -48,6 +50,7 @@ public class LabOrderModel : ILabOrderKey
         owareStatus: OwareStatusEnum.Pending,
         patient: PatientSnapshotType.Default,
         executionRegId: "",
+        deferredInfo: DeferredInfoType.Default,
         billingTindakanId: "",
         billingLastError: "",
         auditTrail: AuditTrailType.Default,
@@ -62,6 +65,7 @@ public class LabOrderModel : ILabOrderKey
         OwareStatusEnum.Pending,
         PatientSnapshotType.Default,
         "",
+        DeferredInfoType.Default,
         "",
         "",
         AuditTrailType.Default,
@@ -76,6 +80,7 @@ public class LabOrderModel : ILabOrderKey
         OwareStatusEnum owareStatus,
         PatientSnapshotType patient,
         string executionRegId,
+        DeferredInfoType deferredInfo,
         string billingTindakanId,
         string billingLastError,
         AuditTrailType auditTrail,
@@ -89,6 +94,7 @@ public class LabOrderModel : ILabOrderKey
             owareStatus,
             patient,
             executionRegId,
+            deferredInfo,
             billingTindakanId,
             billingLastError,
             auditTrail,
@@ -155,6 +161,7 @@ public class LabOrderModel : ILabOrderKey
             OwareStatusEnum.Pending,
             snapshot,
             executionRegId: "",
+            deferredInfo: DeferredInfoType.Default,
             billingTindakanId: "",
             billingLastError: "",
             auditTrail,
@@ -180,16 +187,50 @@ public class LabOrderModel : ILabOrderKey
 
     #endregion
 
+    #region BEHAVIOUR
+
+    public void Defer(string reason, DateTime untilDate, string userId)
+    {
+        Guard.Against.NullOrWhiteSpace(reason, nameof(reason));
+        Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
+
+        if (LabOrderStatus != LabOrderStatusEnum.Ordered)
+            throw new InvalidOperationException(
+                $"LabOrder {OrderId} berstatus {LabOrderStatus}; defer hanya diperbolehkan dari Ordered.");
+
+        LabOrderStatus = LabOrderStatusEnum.Deferred;
+        DeferredInfo = new DeferredInfoType(reason, untilDate);
+        AuditTrail.Modif(userId, DateTime.Now);
+    }
+
+    public void ActivateFromDeferred(string executionRegId, string userId)
+    {
+        Guard.Against.NullOrWhiteSpace(executionRegId, nameof(executionRegId));
+        Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
+
+        if (LabOrderStatus != LabOrderStatusEnum.Deferred)
+            throw new InvalidOperationException(
+                $"LabOrder {OrderId} berstatus {LabOrderStatus}; activate hanya diperbolehkan dari Deferred.");
+
+        LabOrderStatus = LabOrderStatusEnum.Ordered;
+        ExecutionRegId = executionRegId;
+        DeferredInfo = DeferredInfoType.Default;
+        AuditTrail.Modif(userId, DateTime.Now);
+    }
+
+    #endregion
+
     #region PROPERTIES
 
     public string OrderId { get; init; }
     public string OrderNo { get; init; }
     public LabOrderSourceEnum OrderSource { get; init; }
-    public LabOrderStatusEnum LabOrderStatus { get; init; }
+    public LabOrderStatusEnum LabOrderStatus { get; set; }
     public FinancialClearanceEnum FinancialClearance { get; init; }
     public OwareStatusEnum OwareStatus { get; init; }
     public PatientSnapshotType Patient { get; init; }
-    public string ExecutionRegId { get; init; }
+    public string ExecutionRegId { get; set; }
+    public DeferredInfoType DeferredInfo { get; set; }
     public string BillingTindakanId { get; init; }
     public string BillingLastError { get; init; }
     public AuditTrailType AuditTrail { get; init; }

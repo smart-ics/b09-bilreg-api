@@ -48,4 +48,18 @@ public class LabOrderController : ControllerBase
         var response = await _mediator.Send(new LabOrderGetQuery(orderId));
         return Ok(new JSendOk(response));
     }
+
+    [HttpPatch("defer")]
+    public async Task<IActionResult> Defer(LabOrderDeferCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
+    [HttpPatch("activateDeferred")]
+    public async Task<IActionResult> ActivateDeferred(LabOrderActivateDeferredCmd cmd)
+    {
+        var response = await _mediator.Send(cmd);
+        return Ok(new JSendOk(response));
+    }
 }

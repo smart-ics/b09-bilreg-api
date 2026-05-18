@@ -14,6 +14,8 @@ CREATE TABLE BILRG_LabOrder (
     AgeAtOrder INT NOT NULL CONSTRAINT DF_BILRG_LabOrder_AgeAtOrder DEFAULT(0),
 
     ExecutionRegId VARCHAR(10) NOT NULL CONSTRAINT DF_BILRG_LabOrder_ExecutionRegId DEFAULT(''),
+    DeferredReason VARCHAR(200) NOT NULL CONSTRAINT DF_BILRG_LabOrder_DeferredReason DEFAULT(''),
+    DeferredUntil DATETIME NOT NULL CONSTRAINT DF_BILRG_LabOrder_DeferredUntil DEFAULT('3000-01-01'),
     BillingTindakanId VARCHAR(12) NOT NULL CONSTRAINT DF_BILRG_LabOrder_BillingTindakanId DEFAULT(''),
     BillingLastError VARCHAR(200) NOT NULL CONSTRAINT DF_BILRG_LabOrder_BillingLastError DEFAULT(''),
 

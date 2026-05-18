@@ -17,6 +17,8 @@ public record LabOrderDto(
     string Gender,
     int AgeAtOrder,
     string ExecutionRegId,
+    string DeferredReason,
+    DateTime DeferredUntil,
     string BillingTindakanId,
     string BillingLastError,
     string CrtUser,
@@ -41,6 +43,8 @@ public record LabOrderDto(
             Gender: model.Patient.Gender,
             AgeAtOrder: model.Patient.AgeAtOrder,
             ExecutionRegId: model.ExecutionRegId,
+            DeferredReason: model.DeferredInfo.Reason,
+            DeferredUntil: model.DeferredInfo.Until,
             BillingTindakanId: model.BillingTindakanId,
             BillingLastError: model.BillingLastError,
             CrtUser: model.AuditTrail.Created.UserId,
@@ -60,6 +64,8 @@ public record LabOrderDto(
             Gender,
             AgeAtOrder);
 
+        var deferredInfo = new DeferredInfoType(DeferredReason, DeferredUntil);
+
         var auditTrail = new AuditTrailType(
             new AuditInfoType(CrtUser, CrtDate),
             new AuditInfoType(UpdUser, UpdDate),
@@ -76,6 +82,7 @@ public record LabOrderDto(
             (OwareStatusEnum)OwareStatus,
             patient,
             ExecutionRegId,
+            deferredInfo,
             BillingTindakanId,
             BillingLastError,
             auditTrail,

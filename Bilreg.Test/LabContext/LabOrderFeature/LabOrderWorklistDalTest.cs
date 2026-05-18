@@ -31,6 +31,8 @@ public class LabOrderWorklistDalTest
             Gender: "L",
             AgeAtOrder: 36,
             ExecutionRegId: "",
+            DeferredReason: "",
+            DeferredUntil: new DateTime(3000, 1, 1),
             BillingTindakanId: "",
             BillingLastError: "",
             CrtUser: "U1",

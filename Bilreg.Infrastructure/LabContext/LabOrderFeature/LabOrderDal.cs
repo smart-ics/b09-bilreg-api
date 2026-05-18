@@ -31,12 +31,14 @@ public class LabOrderDal : ILabOrderDal
             INSERT INTO BILRG_LabOrder (
                 OrderId, OrderNo, OrderSource, LabOrderStatus, FinancialClearance, OwareStatus,
                 RegId, PatientId, PatientName, BirthDate, Gender, AgeAtOrder,
-                ExecutionRegId, BillingTindakanId, BillingLastError,
+                ExecutionRegId, DeferredReason, DeferredUntil,
+                BillingTindakanId, BillingLastError,
                 CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
             VALUES (
                 @OrderId, @OrderNo, @OrderSource, @LabOrderStatus, @FinancialClearance, @OwareStatus,
                 @RegId, @PatientId, @PatientName, @BirthDate, @Gender, @AgeAtOrder,
-                @ExecutionRegId, @BillingTindakanId, @BillingLastError,
+                @ExecutionRegId, @DeferredReason, @DeferredUntil,
+                @BillingTindakanId, @BillingLastError,
                 @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
             """;
 
@@ -60,6 +62,8 @@ public class LabOrderDal : ILabOrderDal
                 Gender = @Gender,
                 AgeAtOrder = @AgeAtOrder,
                 ExecutionRegId = @ExecutionRegId,
+                DeferredReason = @DeferredReason,
+                DeferredUntil = @DeferredUntil,
                 BillingTindakanId = @BillingTindakanId,
                 BillingLastError = @BillingLastError,
                 CrtUser = @CrtUser, CrtDate = @CrtDate,
@@ -90,7 +94,8 @@ public class LabOrderDal : ILabOrderDal
                 aa.OrderId, aa.OrderNo, aa.OrderSource, aa.LabOrderStatus,
                 aa.FinancialClearance, aa.OwareStatus,
                 aa.RegId, aa.PatientId, aa.PatientName, aa.BirthDate, aa.Gender, aa.AgeAtOrder,
-                aa.ExecutionRegId, aa.BillingTindakanId, aa.BillingLastError,
+                aa.ExecutionRegId, aa.DeferredReason, aa.DeferredUntil,
+                aa.BillingTindakanId, aa.BillingLastError,
                 aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate
             FROM BILRG_LabOrder aa
             WHERE aa.OrderId = @OrderId
@@ -119,6 +124,8 @@ public class LabOrderDal : ILabOrderDal
         dp.AddParam("@Gender", dto.Gender, SqlDbType.VarChar);
         dp.AddParam("@AgeAtOrder", dto.AgeAtOrder, SqlDbType.Int);
         dp.AddParam("@ExecutionRegId", dto.ExecutionRegId, SqlDbType.VarChar);
+        dp.AddParam("@DeferredReason", dto.DeferredReason, SqlDbType.VarChar);
+        dp.AddParam("@DeferredUntil", dto.DeferredUntil, SqlDbType.DateTime);
         dp.AddParam("@BillingTindakanId", dto.BillingTindakanId, SqlDbType.VarChar);
         dp.AddParam("@BillingLastError", dto.BillingLastError, SqlDbType.VarChar);
         dp.AddParam("@CrtUser", dto.CrtUser, SqlDbType.VarChar);

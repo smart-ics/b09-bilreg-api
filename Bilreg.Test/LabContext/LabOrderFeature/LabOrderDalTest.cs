@@ -26,6 +26,8 @@ public class LabOrderDalTest
             Gender: "L",
             AgeAtOrder: 36,
             ExecutionRegId: "",
+            DeferredReason: "",
+            DeferredUntil: new DateTime(3000, 1, 1),
             BillingTindakanId: "",
             BillingLastError: "",
             CrtUser: "U1",
@@ -60,6 +62,23 @@ public class LabOrderDalTest
         _sut.Insert(dto);
         var actual = _sut.GetData(FakerKey());
         actual.Should().BeEquivalentTo(dto);
+    }
+
+    [Fact]
+    public void InsertAndGetData_RoundTripsDeferredFields()
+    {
+        using var trans = TransHelper.NewScope();
+        var until = new DateTime(2026, 5, 20, 8, 0, 0);
+        var dto = FakerHeader("LBO000000099") with
+        {
+            LabOrderStatus = 2,
+            DeferredReason = "Puasa 12 jam",
+            DeferredUntil = until
+        };
+        _sut.Insert(dto);
+        var actual = _sut.GetData(LabOrderModel.Key("LBO000000099"));
+        actual.DeferredReason.Should().Be("Puasa 12 jam");
+        actual.DeferredUntil.Should().Be(until);
     }
 
     [Fact]
