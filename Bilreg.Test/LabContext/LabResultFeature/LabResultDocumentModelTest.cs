@@ -68,6 +68,71 @@ public class LabResultDocumentModelTest
     }
 
     [Fact]
+    public void Verify_FromRecorded_SetsVerifiedAndMeta()
+    {
+        var doc = LabResultDocumentModel.CreateInitial("LBO000000001", Audit());
+        doc.RecordResult(LabResultSourceEnum.Manual, [Capture()], "U2");
+        doc.MarkRecorded("U3");
+        var verifiedAt = new DateTime(2026, 5, 18, 14, 30, 0);
+
+        doc.Verify("PATH1", verifiedAt);
+
+        doc.ResultStatus.Should().Be(LabResultStatusEnum.Verified);
+        doc.VerifiedUserId.Should().Be("PATH1");
+        doc.VerifiedDate.Should().Be(verifiedAt);
+    }
+
+    [Fact]
+    public void Verify_WhenAlreadyVerified_Throws()
+    {
+        var doc = LabResultDocumentModel.CreateInitial("LBO000000001", Audit());
+        doc.RecordResult(LabResultSourceEnum.Manual, [Capture()], "U2");
+        doc.MarkRecorded("U3");
+        doc.Verify("PATH1", new DateTime(2026, 5, 18, 14, 0, 0));
+
+        var act = () => doc.Verify("PATH2", new DateTime(2026, 5, 18, 15, 0, 0));
+
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void Verify_FromDraft_Throws()
+    {
+        var doc = LabResultDocumentModel.CreateInitial("LBO000000001", Audit());
+        doc.RecordResult(LabResultSourceEnum.Manual, [Capture()], "U2");
+
+        var act = () => doc.Verify("PATH1", new DateTime(2026, 5, 18, 14, 0, 0));
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*Recorded*");
+    }
+
+    [Fact]
+    public void RecordResult_WhenVerified_Throws()
+    {
+        var doc = LabResultDocumentModel.CreateInitial("LBO000000001", Audit());
+        doc.RecordResult(LabResultSourceEnum.Manual, [Capture()], "U2");
+        doc.MarkRecorded("U3");
+        doc.Verify("PATH1", new DateTime(2026, 5, 18, 14, 0, 0));
+
+        var act = () => doc.RecordResult(LabResultSourceEnum.Manual, [Capture()], "U4");
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*diverifikasi*");
+    }
+
+    [Fact]
+    public void MarkRecorded_WhenVerified_Throws()
+    {
+        var doc = LabResultDocumentModel.CreateInitial("LBO000000001", Audit());
+        doc.RecordResult(LabResultSourceEnum.Manual, [Capture()], "U2");
+        doc.MarkRecorded("U3");
+        doc.Verify("PATH1", new DateTime(2026, 5, 18, 14, 0, 0));
+
+        var act = () => doc.MarkRecorded("U4");
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*diverifikasi*");
+    }
+
+    [Fact]
     public void RecordResult_EmptyItems_Throws()
     {
         var doc = LabResultDocumentModel.CreateInitial("LBO000000001", Audit());

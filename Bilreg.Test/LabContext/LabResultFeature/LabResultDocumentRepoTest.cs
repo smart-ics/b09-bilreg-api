@@ -55,6 +55,20 @@ public class LabResultDocumentRepoTest
     }
 
     [Fact]
+    public void SaveChanges_AfterVerify_PassesVerifiedStatusToUpdate()
+    {
+        var model = CreateDoc();
+        model.Verify("PATH1", new DateTime(2026, 5, 18, 15, 0, 0));
+        _docDal.Setup(x => x.GetData(It.IsAny<ILabResultDocumentKey>())).Returns(LabResultDocumentDto.FromModel(CreateDoc()));
+
+        _sut.SaveChanges(model);
+
+        _docDal.Verify(x => x.Update(It.Is<LabResultDocumentDto>(d =>
+            d.ResultStatus == (int)LabResultStatusEnum.Verified
+            && d.VerifiedUserId == "PATH1")), Times.Once);
+    }
+
+    [Fact]
     public void LoadByOrderId_WhenFound_ReturnsAggregateWithItems()
     {
         var model = CreateDoc();

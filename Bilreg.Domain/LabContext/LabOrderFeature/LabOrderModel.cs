@@ -310,6 +310,22 @@ public class LabOrderModel : ILabOrderKey
         AuditTrail.Modif(userId, DateTime.Now);
     }
 
+    public void MarkVerified(string userId)
+    {
+        Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
+
+        if (AuditTrail.IsVoided)
+            throw new InvalidOperationException(
+                $"LabOrder {OrderId} sudah void; verifikasi tidak diperbolehkan.");
+
+        if (LabOrderStatus != LabOrderStatusEnum.Recorded)
+            throw new InvalidOperationException(
+                $"LabOrder {OrderId} berstatus {LabOrderStatus}; verifikasi hanya diperbolehkan dari Recorded.");
+
+        LabOrderStatus = LabOrderStatusEnum.Verified;
+        AuditTrail.Modif(userId, DateTime.Now);
+    }
+
     #endregion
 
     #region PROPERTIES

@@ -377,4 +377,25 @@ public class LabOrderModelTest
 
         act.Should().Throw<InvalidOperationException>();
     }
+
+    [Fact]
+    public void MarkVerified_FromRecorded_SetsVerified()
+    {
+        var order = ChargedOrder();
+        order.MarkRecorded("UR");
+        order.MarkVerified("PATH");
+
+        order.LabOrderStatus.Should().Be(LabOrderStatusEnum.Verified);
+        order.AuditTrail.Modified.UserId.Should().Be("PATH");
+    }
+
+    [Fact]
+    public void MarkVerified_FromCharged_Throws()
+    {
+        var order = ChargedOrder();
+
+        var act = () => order.MarkVerified("PATH");
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*Recorded*");
+    }
 }

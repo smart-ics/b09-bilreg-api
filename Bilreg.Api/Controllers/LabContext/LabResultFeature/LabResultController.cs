@@ -23,6 +23,23 @@ public class LabResultController : ControllerBase
         return Ok(new JSendOk("Done"));
     }
 
+    [HttpPatch("verify")]
+    public async Task<IActionResult> Verify(LabResultVerifyCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
+    [HttpGet("worklist/verification")]
+    public async Task<IActionResult> VerificationWorklist(
+        [FromQuery] string? searchTerm,
+        [FromQuery] DateTime? date1,
+        [FromQuery] DateTime? date2)
+    {
+        var response = await _mediator.Send(new LabResultVerificationWorklistQuery(searchTerm, date1, date2));
+        return Ok(new JSendOk(response));
+    }
+
     [HttpGet("{orderId}")]
     public async Task<IActionResult> Get(string orderId)
     {

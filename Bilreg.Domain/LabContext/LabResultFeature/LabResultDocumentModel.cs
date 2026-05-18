@@ -119,6 +119,10 @@ public class LabResultDocumentModel : ILabResultDocumentKey
             throw new InvalidOperationException(
                 $"LabResultDocument {ResultDocumentId} sudah void; rekaman hasil tidak diperbolehkan.");
 
+        if (ResultStatus == LabResultStatusEnum.Verified)
+            throw new InvalidOperationException(
+                $"LabResultDocument {ResultDocumentId} sudah diverifikasi; rekaman hasil tidak dapat diubah.");
+
         if (ResultStatus != LabResultStatusEnum.Draft && ResultStatus != LabResultStatusEnum.Recorded)
             throw new InvalidOperationException(
                 $"LabResultDocument {ResultDocumentId} berstatus {ResultStatus}; pembaruan hasil tidak diperbolehkan.");
@@ -178,10 +182,36 @@ public class LabResultDocumentModel : ILabResultDocumentKey
             throw new InvalidOperationException(
                 $"LabResultDocument {ResultDocumentId} sudah void; MarkRecorded tidak diperbolehkan.");
 
+        if (ResultStatus == LabResultStatusEnum.Verified)
+            throw new InvalidOperationException(
+                $"LabResultDocument {ResultDocumentId} sudah diverifikasi; MarkRecorded tidak diperbolehkan.");
+
         ResultStatus = LabResultStatusEnum.Recorded;
         RecordedDate = DateTime.Now;
         RecordedUserId = userId;
         AuditTrail.Modif(userId, DateTime.Now);
+    }
+
+    public void Verify(string verifiedUserId, DateTime verifiedDate)
+    {
+        Guard.Against.NullOrWhiteSpace(verifiedUserId, nameof(verifiedUserId));
+
+        if (AuditTrail.IsVoided)
+            throw new InvalidOperationException(
+                $"LabResultDocument {ResultDocumentId} sudah void; verifikasi tidak diperbolehkan.");
+
+        if (ResultStatus == LabResultStatusEnum.Verified)
+            throw new InvalidOperationException(
+                $"LabResultDocument {ResultDocumentId} sudah diverifikasi.");
+
+        if (ResultStatus != LabResultStatusEnum.Recorded)
+            throw new InvalidOperationException(
+                $"LabResultDocument {ResultDocumentId} berstatus {ResultStatus}; verifikasi hanya diperbolehkan setelah hasil direkam (Recorded).");
+
+        ResultStatus = LabResultStatusEnum.Verified;
+        VerifiedUserId = verifiedUserId;
+        VerifiedDate = verifiedDate;
+        AuditTrail.Modif(verifiedUserId, DateTime.Now);
     }
 
     public string ResultDocumentId { get; init; }
