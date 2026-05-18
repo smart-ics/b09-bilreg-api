@@ -743,4 +743,44 @@ public class LabOrderModelTest
 
         act.Should().Throw<InvalidOperationException>().WithMessage("*void*");
     }
+
+    private static LabOrderModel ChargedOrderForOware()
+    {
+        var order = LabOrderModel.CreateFromEmr(EmrSnapshot(), [TestItem()], "LAB000100", TestAudit());
+        order.Charge("U1");
+        order.MarkCharged("TDK1", "U1");
+        return order;
+    }
+
+    [Fact]
+    public void EnsureCanEnqueueOware_WhenCharged_DoesNotThrow()
+    {
+        var order = ChargedOrderForOware();
+        var act = () => order.EnsureCanEnqueueOware();
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void EnsureCanEnqueueOware_WhenOrdered_Throws()
+    {
+        var order = LabOrderModel.CreateFromEmr(EmrSnapshot(), [TestItem()], "LAB000101", TestAudit());
+        var act = () => order.EnsureCanEnqueueOware();
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void MarkOwareSent_UpdatesStatus()
+    {
+        var order = ChargedOrderForOware();
+        order.MarkOwareSent("U1");
+        order.OwareStatus.Should().Be(OwareStatusEnum.Sent);
+    }
+
+    [Fact]
+    public void MarkOwareFailed_UpdatesStatus()
+    {
+        var order = ChargedOrderForOware();
+        order.MarkOwareFailed("U1");
+        order.OwareStatus.Should().Be(OwareStatusEnum.Failed);
+    }
 }

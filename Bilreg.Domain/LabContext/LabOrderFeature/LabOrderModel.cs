@@ -560,6 +560,41 @@ public class LabOrderModel : ILabOrderKey
         AuditTrail.Modif(userId, DateTime.Now);
     }
 
+    public void EnsureCanEnqueueOware()
+    {
+        if (AuditTrail.IsVoided)
+            throw new InvalidOperationException(
+                $"LabOrder {OrderId} sudah void; enqueue OWARE tidak diperbolehkan.");
+
+        if (LabOrderStatus is LabOrderStatusEnum.Ordered
+            or LabOrderStatusEnum.Deferred
+            or LabOrderStatusEnum.Cancelled
+            or LabOrderStatusEnum.Terminated)
+            throw new InvalidOperationException(
+                $"LabOrder {OrderId} berstatus {LabOrderStatus}; enqueue OWARE hanya diperbolehkan setelah Charged.");
+    }
+
+    public void MarkOwarePending(string userId)
+    {
+        Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
+        OwareStatus = OwareStatusEnum.Pending;
+        AuditTrail.Modif(userId, DateTime.Now);
+    }
+
+    public void MarkOwareSent(string userId)
+    {
+        Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
+        OwareStatus = OwareStatusEnum.Sent;
+        AuditTrail.Modif(userId, DateTime.Now);
+    }
+
+    public void MarkOwareFailed(string userId)
+    {
+        Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
+        OwareStatus = OwareStatusEnum.Failed;
+        AuditTrail.Modif(userId, DateTime.Now);
+    }
+
     #endregion
 
     #region PROPERTIES
@@ -569,7 +604,7 @@ public class LabOrderModel : ILabOrderKey
     public LabOrderSourceEnum OrderSource { get; init; }
     public LabOrderStatusEnum LabOrderStatus { get; set; }
     public FinancialClearanceEnum FinancialClearance { get; set; }
-    public OwareStatusEnum OwareStatus { get; init; }
+    public OwareStatusEnum OwareStatus { get; set; }
     public PatientSnapshotType Patient { get; init; }
     public string ExecutionRegId { get; set; }
     public DeferredInfoType DeferredInfo { get; set; }
