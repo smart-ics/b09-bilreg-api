@@ -1,0 +1,132 @@
+using System.Data;
+using System.Data.SqlClient;
+using Bilreg.Domain.LabContext.LabOrderFeature;
+using Bilreg.Infrastructure.Shared.Helpers;
+using Dapper;
+using Microsoft.Extensions.Options;
+using Nuna.Lib.DataAccessHelper;
+
+namespace Bilreg.Infrastructure.LabContext.LabOrderFeature;
+
+public interface ILabOrderDal :
+    IInsert<LabOrderDto>,
+    IUpdate<LabOrderDto>,
+    IDelete<ILabOrderKey>,
+    IGetData<LabOrderDto, ILabOrderKey>
+{
+}
+
+public class LabOrderDal : ILabOrderDal
+{
+    private readonly DatabaseOptions _opt;
+
+    public LabOrderDal(IOptions<DatabaseOptions> opt)
+    {
+        _opt = opt.Value;
+    }
+
+    public void Insert(LabOrderDto dto)
+    {
+        const string sql = """
+            INSERT INTO BILRG_LabOrder (
+                OrderId, OrderNo, OrderSource, LabOrderStatus, FinancialClearance, OwareStatus,
+                RegId, PatientId, PatientName, BirthDate, Gender, AgeAtOrder,
+                ExecutionRegId, BillingTindakanId, BillingLastError,
+                CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
+            VALUES (
+                @OrderId, @OrderNo, @OrderSource, @LabOrderStatus, @FinancialClearance, @OwareStatus,
+                @RegId, @PatientId, @PatientName, @BirthDate, @Gender, @AgeAtOrder,
+                @ExecutionRegId, @BillingTindakanId, @BillingLastError,
+                @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
+            """;
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        conn.Execute(sql, BuildParams(dto));
+    }
+
+    public void Update(LabOrderDto dto)
+    {
+        const string sql = """
+            UPDATE BILRG_LabOrder
+            SET OrderNo = @OrderNo,
+                OrderSource = @OrderSource,
+                LabOrderStatus = @LabOrderStatus,
+                FinancialClearance = @FinancialClearance,
+                OwareStatus = @OwareStatus,
+                RegId = @RegId,
+                PatientId = @PatientId,
+                PatientName = @PatientName,
+                BirthDate = @BirthDate,
+                Gender = @Gender,
+                AgeAtOrder = @AgeAtOrder,
+                ExecutionRegId = @ExecutionRegId,
+                BillingTindakanId = @BillingTindakanId,
+                BillingLastError = @BillingLastError,
+                CrtUser = @CrtUser, CrtDate = @CrtDate,
+                UpdUser = @UpdUser, UpdDate = @UpdDate,
+                VodUser = @VodUser, VodDate = @VodDate
+            WHERE OrderId = @OrderId
+            """;
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        conn.Execute(sql, BuildParams(dto));
+    }
+
+    public void Delete(ILabOrderKey key)
+    {
+        const string sql = "DELETE FROM BILRG_LabOrder WHERE OrderId = @OrderId";
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@OrderId", key.OrderId, SqlDbType.VarChar);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        conn.Execute(sql, dp);
+    }
+
+    public LabOrderDto GetData(ILabOrderKey key)
+    {
+        const string sql = """
+            SELECT
+                aa.OrderId, aa.OrderNo, aa.OrderSource, aa.LabOrderStatus,
+                aa.FinancialClearance, aa.OwareStatus,
+                aa.RegId, aa.PatientId, aa.PatientName, aa.BirthDate, aa.Gender, aa.AgeAtOrder,
+                aa.ExecutionRegId, aa.BillingTindakanId, aa.BillingLastError,
+                aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate
+            FROM BILRG_LabOrder aa
+            WHERE aa.OrderId = @OrderId
+            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@OrderId", key.OrderId, SqlDbType.VarChar);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.ReadSingle<LabOrderDto>(sql, dp);
+    }
+
+    private static DynamicParameters BuildParams(LabOrderDto dto)
+    {
+        var dp = new DynamicParameters();
+        dp.AddParam("@OrderId", dto.OrderId, SqlDbType.VarChar);
+        dp.AddParam("@OrderNo", dto.OrderNo, SqlDbType.VarChar);
+        dp.AddParam("@OrderSource", dto.OrderSource, SqlDbType.Int);
+        dp.AddParam("@LabOrderStatus", dto.LabOrderStatus, SqlDbType.Int);
+        dp.AddParam("@FinancialClearance", dto.FinancialClearance, SqlDbType.Int);
+        dp.AddParam("@OwareStatus", dto.OwareStatus, SqlDbType.Int);
+        dp.AddParam("@RegId", dto.RegId, SqlDbType.VarChar);
+        dp.AddParam("@PatientId", dto.PatientId, SqlDbType.VarChar);
+        dp.AddParam("@PatientName", dto.PatientName, SqlDbType.VarChar);
+        dp.AddParam("@BirthDate", dto.BirthDate, SqlDbType.DateTime);
+        dp.AddParam("@Gender", dto.Gender, SqlDbType.VarChar);
+        dp.AddParam("@AgeAtOrder", dto.AgeAtOrder, SqlDbType.Int);
+        dp.AddParam("@ExecutionRegId", dto.ExecutionRegId, SqlDbType.VarChar);
+        dp.AddParam("@BillingTindakanId", dto.BillingTindakanId, SqlDbType.VarChar);
+        dp.AddParam("@BillingLastError", dto.BillingLastError, SqlDbType.VarChar);
+        dp.AddParam("@CrtUser", dto.CrtUser, SqlDbType.VarChar);
+        dp.AddParam("@CrtDate", dto.CrtDate, SqlDbType.DateTime);
+        dp.AddParam("@UpdUser", dto.UpdUser, SqlDbType.VarChar);
+        dp.AddParam("@UpdDate", dto.UpdDate, SqlDbType.DateTime);
+        dp.AddParam("@VodUser", dto.VodUser, SqlDbType.VarChar);
+        dp.AddParam("@VodDate", dto.VodDate, SqlDbType.DateTime);
+        return dp;
+    }
+}
