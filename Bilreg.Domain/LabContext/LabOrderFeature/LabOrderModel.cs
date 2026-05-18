@@ -23,6 +23,7 @@ public class LabOrderModel : ILabOrderKey
         DeferredInfoType deferredInfo,
         string billingTindakanId,
         string billingLastError,
+        CollectionInfoType collectionInfo,
         AuditTrailType auditTrail,
         IEnumerable<LabOrderItemModel> items)
     {
@@ -37,6 +38,7 @@ public class LabOrderModel : ILabOrderKey
         DeferredInfo = deferredInfo;
         BillingTindakanId = billingTindakanId;
         BillingLastError = billingLastError;
+        CollectionInfo = collectionInfo;
         AuditTrail = auditTrail;
         _items = items.ToList();
     }
@@ -53,6 +55,7 @@ public class LabOrderModel : ILabOrderKey
         deferredInfo: DeferredInfoType.Default,
         billingTindakanId: "",
         billingLastError: "",
+        collectionInfo: CollectionInfoType.Default,
         auditTrail: AuditTrailType.Default,
         items: []);
 
@@ -68,6 +71,7 @@ public class LabOrderModel : ILabOrderKey
         DeferredInfoType.Default,
         "",
         "",
+        CollectionInfoType.Default,
         AuditTrailType.Default,
         []);
 
@@ -83,6 +87,7 @@ public class LabOrderModel : ILabOrderKey
         DeferredInfoType deferredInfo,
         string billingTindakanId,
         string billingLastError,
+        CollectionInfoType collectionInfo,
         AuditTrailType auditTrail,
         IEnumerable<LabOrderItemModel> items)
         => new(
@@ -97,6 +102,7 @@ public class LabOrderModel : ILabOrderKey
             deferredInfo,
             billingTindakanId,
             billingLastError,
+            collectionInfo,
             auditTrail,
             items);
 
@@ -164,6 +170,7 @@ public class LabOrderModel : ILabOrderKey
             deferredInfo: DeferredInfoType.Default,
             billingTindakanId: "",
             billingLastError: "",
+            collectionInfo: CollectionInfoType.Default,
             auditTrail,
             itemList);
     }
@@ -255,6 +262,54 @@ public class LabOrderModel : ILabOrderKey
         AuditTrail.Modif(userId, DateTime.Now);
     }
 
+    public void CollectSpecimen(string userId, CollectionInfoType collectionInfo)
+    {
+        Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
+        Guard.Against.Null(collectionInfo);
+
+        if (AuditTrail.IsVoided)
+            throw new InvalidOperationException(
+                $"LabOrder {OrderId} sudah void; pengambilan spesimen tidak diperbolehkan.");
+
+        if (LabOrderStatus != LabOrderStatusEnum.Charged)
+            throw new InvalidOperationException(
+                $"LabOrder {OrderId} berstatus {LabOrderStatus}; pengambilan spesimen hanya diperbolehkan dari Charged.");
+
+        var emptyCollected = CollectionInfoType.Default.CollectedDate;
+        if (collectionInfo.CollectedDate == emptyCollected)
+            throw new ArgumentException("CollectedDate wajib diisi.", nameof(collectionInfo));
+
+        var note = string.IsNullOrEmpty(collectionInfo.CollectionNote)
+            ? ""
+            : collectionInfo.CollectionNote.Length > 200
+                ? collectionInfo.CollectionNote[..200]
+                : collectionInfo.CollectionNote;
+
+        LabOrderStatus = LabOrderStatusEnum.Collected;
+        CollectionInfo = new CollectionInfoType(collectionInfo.CollectedDate, userId, note);
+        AuditTrail.Modif(userId, DateTime.Now);
+    }
+
+    public void MarkRecorded(string userId)
+    {
+        Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
+
+        if (AuditTrail.IsVoided)
+            throw new InvalidOperationException(
+                $"LabOrder {OrderId} sudah void; rekaman hasil tidak diperbolehkan.");
+
+        if (LabOrderStatus != LabOrderStatusEnum.Charged
+            && LabOrderStatus != LabOrderStatusEnum.Collected
+            && LabOrderStatus != LabOrderStatusEnum.Recorded)
+            throw new InvalidOperationException(
+                $"LabOrder {OrderId} berstatus {LabOrderStatus}; rekaman hasil hanya diperbolehkan dari Charged, Collected, atau Recorded (pembaruan).");
+
+        if (LabOrderStatus == LabOrderStatusEnum.Charged || LabOrderStatus == LabOrderStatusEnum.Collected)
+            LabOrderStatus = LabOrderStatusEnum.Recorded;
+
+        AuditTrail.Modif(userId, DateTime.Now);
+    }
+
     #endregion
 
     #region PROPERTIES
@@ -270,6 +325,7 @@ public class LabOrderModel : ILabOrderKey
     public DeferredInfoType DeferredInfo { get; set; }
     public string BillingTindakanId { get; set; }
     public string BillingLastError { get; set; }
+    public CollectionInfoType CollectionInfo { get; set; }
     public AuditTrailType AuditTrail { get; init; }
     public IReadOnlyList<LabOrderItemModel> Items => _items;
 

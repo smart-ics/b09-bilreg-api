@@ -1,0 +1,7 @@
+namespace Bilreg.Domain.LabContext.LabResultFeature;
+
+public enum LabResultStatusEnum
+{
+    Draft = 1,
+    Recorded = 2
+}

@@ -222,4 +222,159 @@ public class LabOrderModelTest
 
         order.BillingLastError.Should().HaveLength(200);
     }
+
+    private static LabOrderModel ChargedOrder()
+    {
+        var order = OrderedOrder();
+        order.Charge("U2");
+        order.MarkCharged("TDK-FAKE-0001", "U2");
+        return order;
+    }
+
+    [Fact]
+    public void CollectSpecimen_FromCharged_SetsCollectedAndCollectionInfo()
+    {
+        var order = ChargedOrder();
+        var when = new DateTime(2026, 5, 18, 14, 30, 0);
+        var info = new CollectionInfoType(when, "U9", "Lancar");
+
+        order.CollectSpecimen("U9", info);
+
+        order.LabOrderStatus.Should().Be(LabOrderStatusEnum.Collected);
+        order.CollectionInfo.CollectedDate.Should().Be(when);
+        order.CollectionInfo.CollectedUserId.Should().Be("U9");
+        order.CollectionInfo.CollectionNote.Should().Be("Lancar");
+        order.AuditTrail.Modified.UserId.Should().Be("U9");
+    }
+
+    [Fact]
+    public void CollectSpecimen_UsesUserIdForPersistedCollector()
+    {
+        var order = ChargedOrder();
+        var when = new DateTime(2026, 5, 18, 14, 30, 0);
+        var info = new CollectionInfoType(when, "ignored", "");
+
+        order.CollectSpecimen("U9", info);
+
+        order.CollectionInfo.CollectedUserId.Should().Be("U9");
+    }
+
+    [Fact]
+    public void CollectSpecimen_WhenOrdered_Throws()
+    {
+        var order = OrderedOrder();
+        var info = new CollectionInfoType(DateTime.Now, "U1", "");
+
+        var act = () => order.CollectSpecimen("U1", info);
+        act.Should().Throw<InvalidOperationException>().WithMessage("*Charged*");
+    }
+
+    [Fact]
+    public void CollectSpecimen_WhenDeferred_Throws()
+    {
+        var order = OrderedOrder();
+        order.Defer("Puasa", new DateTime(2026, 5, 20), "U2");
+        var info = new CollectionInfoType(DateTime.Now, "U1", "");
+
+        var act = () => order.CollectSpecimen("U1", info);
+        act.Should().Throw<InvalidOperationException>().WithMessage("*Charged*");
+    }
+
+    [Fact]
+    public void CollectSpecimen_WhenVoided_Throws()
+    {
+        var audit = AuditTrailType.Create("U1", new DateTime(2026, 5, 1, 10, 0, 0));
+        audit.Batal("UV", new DateTime(2026, 5, 2, 10, 0, 0));
+        var order = LabOrderModel.Load(
+            "LBO000000777",
+            "LAB0000777",
+            LabOrderSourceEnum.Emr,
+            LabOrderStatusEnum.Charged,
+            FinancialClearanceEnum.Pending,
+            OwareStatusEnum.Pending,
+            EmrSnapshot(),
+            executionRegId: "",
+            DeferredInfoType.Default,
+            billingTindakanId: "TDK1",
+            billingLastError: "",
+            CollectionInfoType.Default,
+            audit,
+            [TestItem()]);
+        var info = new CollectionInfoType(DateTime.Now, "U1", "");
+
+        var act = () => order.CollectSpecimen("U1", info);
+        act.Should().Throw<InvalidOperationException>().WithMessage("*void*");
+    }
+
+    [Fact]
+    public void CollectSpecimen_EmptyCollectedDate_Throws()
+    {
+        var order = ChargedOrder();
+        var info = CollectionInfoType.Default;
+
+        var act = () => order.CollectSpecimen("U1", info);
+        act.Should().Throw<ArgumentException>().WithParameterName("collectionInfo");
+    }
+
+    [Fact]
+    public void CollectSpecimen_TruncatesLongNote()
+    {
+        var order = ChargedOrder();
+        var longNote = new string('N', 250);
+        var info = new CollectionInfoType(DateTime.Now, "U1", longNote);
+
+        order.CollectSpecimen("U1", info);
+
+        order.CollectionInfo.CollectionNote.Should().HaveLength(200);
+    }
+
+    private static LabOrderModel CollectedOrder()
+    {
+        var order = ChargedOrder();
+        var when = new DateTime(2026, 5, 18, 12, 0, 0);
+        order.CollectSpecimen("U9", new CollectionInfoType(when, "U9", ""));
+        return order;
+    }
+
+    [Fact]
+    public void MarkRecorded_FromCharged_SetsRecorded()
+    {
+        var order = ChargedOrder();
+
+        order.MarkRecorded("UR");
+
+        order.LabOrderStatus.Should().Be(LabOrderStatusEnum.Recorded);
+        order.AuditTrail.Modified.UserId.Should().Be("UR");
+    }
+
+    [Fact]
+    public void MarkRecorded_FromCollected_SetsRecorded()
+    {
+        var order = CollectedOrder();
+
+        order.MarkRecorded("UR");
+
+        order.LabOrderStatus.Should().Be(LabOrderStatusEnum.Recorded);
+    }
+
+    [Fact]
+    public void MarkRecorded_FromRecorded_AllowsIdempotentUpdate()
+    {
+        var order = ChargedOrder();
+        order.MarkRecorded("U1");
+        order.MarkRecorded("U2");
+
+        order.LabOrderStatus.Should().Be(LabOrderStatusEnum.Recorded);
+        order.AuditTrail.Modified.UserId.Should().Be("U2");
+    }
+
+    [Fact]
+    public void MarkRecorded_FromOrdered_Throws()
+    {
+        var order = OrderedOrder();
+
+        var act = () => order.MarkRecorded("U1");
+
+        act.Should().Throw<InvalidOperationException>();
+    }
 }

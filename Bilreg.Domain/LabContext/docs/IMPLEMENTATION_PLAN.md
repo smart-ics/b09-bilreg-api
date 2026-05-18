@@ -213,7 +213,7 @@ AttachPatientSnapshot(...)  # after REG
 - While `Deferred`: **no** billing, **no** collection, **no** result entry.
 - On execution: new REG registration → set `ExecutionRegId`; **do not** replace original order context.
 
-Specimen Collection may proceed before Charged.
+Specimen collection requires order status = Charged.
 
 Result recording is operationally allowed before billing charge completion.
 Charging failure blocks administrative progression but does not necessarily block laboratory execution.
@@ -276,6 +276,22 @@ Released order workflow is operationally final.
 - VersionNo -> Incremental integer per ResultDocument
 - QueueId -> VARCHAR(12), generated using INunaCounterBL
 - ItemNo -> Incremental integer inside aggregate
+
+### 6.4 Result Persistence Strategy
+
+M6 intentionally uses simplified two-table result persistence:
+
+- BILRG_LabResultDocument
+- BILRG_LabResultItem
+
+Additional normalization is intentionally deferred until operational complexity justifies it.
+
+The current structure prioritizes:
+
+- operational simplicity,
+- query simplicity,
+- AI-agent readability,
+- pragmatic workflow implementation.
 
 ---
 

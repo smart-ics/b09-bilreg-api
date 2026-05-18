@@ -25,6 +25,9 @@ public record LabOrderGetResponse(
     DateTime DeferredUntil,
     string BillingTindakanId,
     string BillingLastError,
+    DateTime CollectedDate,
+    string CollectedUserId,
+    string CollectionNote,
     bool IsVoided,
     IEnumerable<LabOrderItemResponse> Items);
 
@@ -85,6 +88,9 @@ public class LabOrderGetHandler : IRequestHandler<LabOrderGetQuery, LabOrderGetR
             DeferredUntil: order.DeferredInfo.Until,
             BillingTindakanId: order.BillingTindakanId,
             BillingLastError: order.BillingLastError,
+            CollectedDate: order.CollectionInfo.CollectedDate,
+            CollectedUserId: order.CollectionInfo.CollectedUserId,
+            CollectionNote: order.CollectionInfo.CollectionNote,
             IsVoided: order.AuditTrail.IsVoided,
             Items: items);
 

@@ -28,6 +28,7 @@ public static class InfrastructureService
             .AddScoped<ISequencer, Sequencer>()
             .AddScoped<IRestClientFactory, RestClientFactory>()
             .AddScoped<ILabOrderWorklistDal, LabOrderWorklistDal>()
+            .AddScoped<ILabCollectionPreparationDal, LabCollectionPreparationDal>()
             .AddScoped<ILabRegIntegration, LabRegIntegration>()
             .AddScoped<ILabBillingIntegration, LabBillingIntegration>()
             .AddMemoryCache();

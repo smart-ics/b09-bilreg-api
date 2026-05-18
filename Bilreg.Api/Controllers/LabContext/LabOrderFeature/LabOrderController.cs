@@ -42,6 +42,13 @@ public class LabOrderController : ControllerBase
         return Ok(new JSendOk(response));
     }
 
+    [HttpGet("collectionPreparation")]
+    public async Task<IActionResult> CollectionPreparation([FromQuery] string orderId)
+    {
+        var response = await _mediator.Send(new LabCollectionPreparationQuery(orderId));
+        return Ok(new JSendOk(response));
+    }
+
     [HttpGet("{orderId}")]
     public async Task<IActionResult> Get(string orderId)
     {
@@ -68,5 +75,12 @@ public class LabOrderController : ControllerBase
     {
         var response = await _mediator.Send(cmd);
         return Ok(new JSendOk(response));
+    }
+
+    [HttpPatch("collect")]
+    public async Task<IActionResult> Collect(LabOrderCollectSpecimenCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
     }
 }

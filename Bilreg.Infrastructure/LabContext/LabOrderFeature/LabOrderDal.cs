@@ -33,12 +33,14 @@ public class LabOrderDal : ILabOrderDal
                 RegId, PatientId, PatientName, BirthDate, Gender, AgeAtOrder,
                 ExecutionRegId, DeferredReason, DeferredUntil,
                 BillingTindakanId, BillingLastError,
+                CollectedDate, CollectedUserId, CollectionNote,
                 CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
             VALUES (
                 @OrderId, @OrderNo, @OrderSource, @LabOrderStatus, @FinancialClearance, @OwareStatus,
                 @RegId, @PatientId, @PatientName, @BirthDate, @Gender, @AgeAtOrder,
                 @ExecutionRegId, @DeferredReason, @DeferredUntil,
                 @BillingTindakanId, @BillingLastError,
+                @CollectedDate, @CollectedUserId, @CollectionNote,
                 @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
             """;
 
@@ -66,6 +68,9 @@ public class LabOrderDal : ILabOrderDal
                 DeferredUntil = @DeferredUntil,
                 BillingTindakanId = @BillingTindakanId,
                 BillingLastError = @BillingLastError,
+                CollectedDate = @CollectedDate,
+                CollectedUserId = @CollectedUserId,
+                CollectionNote = @CollectionNote,
                 CrtUser = @CrtUser, CrtDate = @CrtDate,
                 UpdUser = @UpdUser, UpdDate = @UpdDate,
                 VodUser = @VodUser, VodDate = @VodDate
@@ -96,6 +101,7 @@ public class LabOrderDal : ILabOrderDal
                 aa.RegId, aa.PatientId, aa.PatientName, aa.BirthDate, aa.Gender, aa.AgeAtOrder,
                 aa.ExecutionRegId, aa.DeferredReason, aa.DeferredUntil,
                 aa.BillingTindakanId, aa.BillingLastError,
+                aa.CollectedDate, aa.CollectedUserId, aa.CollectionNote,
                 aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate
             FROM BILRG_LabOrder aa
             WHERE aa.OrderId = @OrderId
@@ -128,6 +134,9 @@ public class LabOrderDal : ILabOrderDal
         dp.AddParam("@DeferredUntil", dto.DeferredUntil, SqlDbType.DateTime);
         dp.AddParam("@BillingTindakanId", dto.BillingTindakanId, SqlDbType.VarChar);
         dp.AddParam("@BillingLastError", dto.BillingLastError, SqlDbType.VarChar);
+        dp.AddParam("@CollectedDate", dto.CollectedDate, SqlDbType.DateTime);
+        dp.AddParam("@CollectedUserId", dto.CollectedUserId, SqlDbType.VarChar);
+        dp.AddParam("@CollectionNote", dto.CollectionNote, SqlDbType.VarChar);
         dp.AddParam("@CrtUser", dto.CrtUser, SqlDbType.VarChar);
         dp.AddParam("@CrtDate", dto.CrtDate, SqlDbType.DateTime);
         dp.AddParam("@UpdUser", dto.UpdUser, SqlDbType.VarChar);

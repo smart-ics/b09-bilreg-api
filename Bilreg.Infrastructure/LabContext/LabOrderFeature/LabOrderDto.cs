@@ -21,6 +21,9 @@ public record LabOrderDto(
     DateTime DeferredUntil,
     string BillingTindakanId,
     string BillingLastError,
+    DateTime CollectedDate,
+    string CollectedUserId,
+    string CollectionNote,
     string CrtUser,
     DateTime CrtDate,
     string UpdUser,
@@ -47,6 +50,9 @@ public record LabOrderDto(
             DeferredUntil: model.DeferredInfo.Until,
             BillingTindakanId: model.BillingTindakanId,
             BillingLastError: model.BillingLastError,
+            CollectedDate: model.CollectionInfo.CollectedDate,
+            CollectedUserId: model.CollectionInfo.CollectedUserId,
+            CollectionNote: model.CollectionInfo.CollectionNote,
             CrtUser: model.AuditTrail.Created.UserId,
             CrtDate: model.AuditTrail.Created.Timestamp,
             UpdUser: model.AuditTrail.Modified.UserId,
@@ -65,6 +71,7 @@ public record LabOrderDto(
             AgeAtOrder);
 
         var deferredInfo = new DeferredInfoType(DeferredReason, DeferredUntil);
+        var collectionInfo = new CollectionInfoType(CollectedDate, CollectedUserId, CollectionNote);
 
         var auditTrail = new AuditTrailType(
             new AuditInfoType(CrtUser, CrtDate),
@@ -85,6 +92,7 @@ public record LabOrderDto(
             deferredInfo,
             BillingTindakanId,
             BillingLastError,
+            collectionInfo,
             auditTrail,
             items);
     }
