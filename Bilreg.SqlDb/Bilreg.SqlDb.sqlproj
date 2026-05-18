@@ -218,6 +218,14 @@
     <Build Include="ChargeContext\TarifFeature\BILRG_NilaiTarif.sql" />
     <Build Include="ChargeContext\BILRG_OrderTdk.sql" />
     <Build Include="ChargeContext\TarifFeature\BILRG_NilaiTarifKomponen.sql" />
+    <Content Include="LabContext\LabOrderFeature\BILRG_LabOrder.sql" />
+    <Content Include="LabContext\LabOrderFeature\BILRG_LabOrderItem.sql" />
+    <Content Include="LabContext\LabOrderFeature\BILRG_LabOrder_M8_Alter.sql" />
+    <Content Include="LabContext\LabOrderFeature\BILRG_LabOrder_M9_Alter.sql" />
+    <Content Include="LabContext\LabOwareFeature\BILRG_LabOwareOutboundQueue.sql" />
+    <Content Include="LabContext\LabResultFeature\BILRG_LabResultDocument.sql" />
+    <Content Include="LabContext\LabResultFeature\BILRG_LabResultDocument_M10_Alter.sql" />
+    <Content Include="LabContext\LabResultFeature\BILRG_LabResultItem.sql" />
     <Build Include="PaymentContext\RekapCatakFeature\ta_trs_billing2.sql" />
     <Build Include="PaymentContext\RekeningFeature\t_rek.sql" />
     <Build Include="PaymentContext\TrsBillingFeature\ta_trs_billing.sql" />

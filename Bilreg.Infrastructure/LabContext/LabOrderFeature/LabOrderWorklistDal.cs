@@ -70,7 +70,7 @@ public class LabOrderWorklistDal : ILabOrderWorklistDal
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         var rows = conn.Read<LabOrderWorklistRowDto>(sql, dp);
-        return rows.Select(ToView);
+        return rows?.Select(ToView) ?? [];
     }
 
     private static LabOrderWorklistView ToView(LabOrderWorklistRowDto row)
@@ -105,10 +105,15 @@ public class LabOrderWorklistDal : ILabOrderWorklistDal
         string PatientName,
         string Gender,
         int AgeAtOrder,
-        int ItemCount,
         int FinancialClearance,
         int OwareStatus,
         DateTime CrtDate,
         string BillingTindakanId,
-        string? TestNamesCsv);
+        int ItemCount,
+        string? TestNamesCsv)
+    {
+        public static LabOrderWorklistRowDto Default() => new LabOrderWorklistRowDto(
+            string.Empty, string.Empty, 0, 0, string.Empty, string.Empty, string.Empty, 
+            0, 0, 0, VoidSentinel, string.Empty, 0, string.Empty);
+    };
 }
