@@ -30,6 +30,18 @@ public class LabOrderController : ControllerBase
         return Ok(new JSendOk(response));
     }
 
+    [HttpGet("worklist")]
+    public async Task<IActionResult> Worklist(
+        [FromQuery] int? labOrderStatus,
+        [FromQuery] string? searchTerm,
+        [FromQuery] DateTime? date1,
+        [FromQuery] DateTime? date2)
+    {
+        var response = await _mediator.Send(new LabOrderWorklistQuery(
+            labOrderStatus, searchTerm, date1, date2));
+        return Ok(new JSendOk(response));
+    }
+
     [HttpGet("{orderId}")]
     public async Task<IActionResult> Get(string orderId)
     {
