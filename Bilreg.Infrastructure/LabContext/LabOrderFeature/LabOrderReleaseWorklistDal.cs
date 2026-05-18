@@ -38,6 +38,7 @@ public class LabOrderReleaseWorklistDal : ILabOrderReleaseWorklistDal
             INNER JOIN BILRG_LabResultDocument d ON d.OrderId = o.OrderId
             WHERE o.VodDate = @VodDate
               AND d.VodDate = @VodDate
+              AND d.IsCurrentVersion = 1
               AND o.LabOrderStatus = @OrderStatusVerified
               AND o.FinancialClearance = @ClearanceApproved
             """;

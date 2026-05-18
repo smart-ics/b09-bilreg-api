@@ -125,6 +125,11 @@ Tidak boleh:
 * terminate,
 * rollback.
 
+Verified/Released workflow states are operationally final.
+
+Exception:
+Result amendment creates new ResultDocument version and moves LabOrderStatus back to Recorded for re-verification workflow, while preserving all previous verified/released versions immutably.
+
 ---
 
 # 7. Release vs Verification
@@ -555,7 +560,10 @@ PDF hasil:
 Tujuan:
 
 * amendment otomatis reflected,
-* rendering selalu menggunakan latest verified version.
+* rendering menggunakan current operational version
+(IsCurrentVersion = true)
+* Jika versi hasil belum diverifikasi ulang setelah amendment,
+maka PDF harus menampilkan status hasil secara explicit.
 
 ---
 

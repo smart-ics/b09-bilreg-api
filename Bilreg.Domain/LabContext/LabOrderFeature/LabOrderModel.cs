@@ -411,6 +411,25 @@ public class LabOrderModel : ILabOrderKey
         AuditTrail.Modif(userId, DateTime.Now);
     }
 
+    /// <summary>
+    /// After a verified result is amended, order returns to Recorded until the new result version is re-verified.
+    /// </summary>
+    public void ReturnToRecordedAfterResultAmendment(string userId)
+    {
+        Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
+
+        if (AuditTrail.IsVoided)
+            throw new InvalidOperationException(
+                $"LabOrder {OrderId} sudah void; amend tidak diperbolehkan.");
+
+        if (LabOrderStatus != LabOrderStatusEnum.Verified && LabOrderStatus != LabOrderStatusEnum.Released)
+            throw new InvalidOperationException(
+                $"LabOrder {OrderId} berstatus {LabOrderStatus}; amend hanya diperbolehkan dari Verified atau Released.");
+
+        LabOrderStatus = LabOrderStatusEnum.Recorded;
+        AuditTrail.Modif(userId, DateTime.Now);
+    }
+
     public void ApproveFinancialClearance(string userId)
     {
         Guard.Against.NullOrWhiteSpace(userId, nameof(userId));

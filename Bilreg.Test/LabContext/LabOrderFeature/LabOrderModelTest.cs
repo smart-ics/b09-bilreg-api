@@ -420,6 +420,40 @@ public class LabOrderModelTest
     }
 
     [Fact]
+    public void ReturnToRecordedAfterResultAmendment_FromVerified_SetsRecorded()
+    {
+        var order = VerifiedOrder();
+
+        order.ReturnToRecordedAfterResultAmendment("UAMEND");
+
+        order.LabOrderStatus.Should().Be(LabOrderStatusEnum.Recorded);
+        order.AuditTrail.Modified.UserId.Should().Be("UAMEND");
+    }
+
+    [Fact]
+    public void ReturnToRecordedAfterResultAmendment_FromReleased_SetsRecorded()
+    {
+        var order = VerifiedOrder();
+        order.ApproveFinancialClearance("FC");
+        order.Release("REL1", "ok");
+
+        order.ReturnToRecordedAfterResultAmendment("UAMEND");
+
+        order.LabOrderStatus.Should().Be(LabOrderStatusEnum.Recorded);
+        order.ReleasedUserId.Should().Be("REL1");
+    }
+
+    [Fact]
+    public void ReturnToRecordedAfterResultAmendment_FromCharged_Throws()
+    {
+        var order = ChargedOrder();
+
+        var act = () => order.ReturnToRecordedAfterResultAmendment("U1");
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*Verified*");
+    }
+
+    [Fact]
     public void ApproveFinancialClearance_FromVerifiedPending_SetsApproved()
     {
         var order = VerifiedOrder();

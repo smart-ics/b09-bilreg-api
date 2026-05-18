@@ -35,10 +35,12 @@ public static class InfrastructureService
             .AddScoped<ILabCollectionPreparationDal, LabCollectionPreparationDal>()
             .AddScoped<ILabRegIntegration, LabRegIntegration>()
             .AddScoped<ILabBillingIntegration, LabBillingIntegration>()
+            .AddScoped<ILabResultPdfRenderer, LabResultPdfRenderer>()
             .AddMemoryCache();
 
         services
             .Configure<DatabaseOptions>(configuration.GetSection(DatabaseOptions.SECTION_NAME))
+            .Configure<LabResultPdfOptions>(configuration.GetSection(LabResultPdfOptions.SECTION_NAME))
             .Configure<PasienContextOptions>(configuration.GetSection(PasienContextOptions.SECTION_NAME))
             .Configure<RemoteCetakOptions>(configuration.GetSection(RemoteCetakOptions.SECTION_NAME))
             .Configure<EmrOptions>(configuration.GetSection(EmrOptions.SECTION_NAME))

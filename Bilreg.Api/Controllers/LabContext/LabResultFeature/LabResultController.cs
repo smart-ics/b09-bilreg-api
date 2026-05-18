@@ -46,4 +46,18 @@ public class LabResultController : ControllerBase
         var response = await _mediator.Send(new LabResultGetQuery(orderId));
         return Ok(new JSendOk(response));
     }
+
+    [HttpPatch("amend")]
+    public async Task<IActionResult> Amend(LabResultAmendCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
+    [HttpGet("{orderId}/pdf")]
+    public async Task<IActionResult> Pdf(string orderId)
+    {
+        var file = await _mediator.Send(new LabResultPdfQuery(orderId));
+        return File(file.Content, file.ContentType, file.FileName);
+    }
 }

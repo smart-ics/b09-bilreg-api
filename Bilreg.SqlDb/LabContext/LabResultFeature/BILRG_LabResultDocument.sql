@@ -14,6 +14,11 @@ CREATE TABLE BILRG_LabResultDocument (
 
     IsCurrentVersion BIT NOT NULL CONSTRAINT DF_BILRG_LabResultDocument_IsCurrentVersion DEFAULT(1),
 
+    AmendmentReason VARCHAR(500) NOT NULL CONSTRAINT DF_BILRG_LabResultDocument_AmendmentReason DEFAULT(''),
+    AmendedDate DATETIME NOT NULL CONSTRAINT DF_BILRG_LabResultDocument_AmendedDate DEFAULT('3000-01-01'),
+    AmendedUserId VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_LabResultDocument_AmendedUserId DEFAULT(''),
+    PreviousVersionId VARCHAR(12) NOT NULL CONSTRAINT DF_BILRG_LabResultDocument_PreviousVersionId DEFAULT(''),
+
     CrtUser VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_LabResultDocument_CrtUser DEFAULT(''),
     CrtDate DATETIME NOT NULL CONSTRAINT DF_BILRG_LabResultDocument_CrtDate DEFAULT('3000-01-01'),
     UpdUser VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_LabResultDocument_UpdUser DEFAULT(''),
@@ -25,5 +30,16 @@ CREATE TABLE BILRG_LabResultDocument (
 );
 GO
 
-CREATE UNIQUE INDEX UX_BILRG_LabResultDocument_OrderId ON BILRG_LabResultDocument(OrderId) WHERE OrderId <> '';
+CREATE UNIQUE NONCLUSTERED INDEX UX_BILRG_LabResultDocument_OrderId_VersionNo
+    ON BILRG_LabResultDocument (OrderId, VersionNo)
+    WHERE OrderId <> '';
+GO
+
+CREATE UNIQUE NONCLUSTERED INDEX UX_BILRG_LabResultDocument_OrderId_Current
+    ON BILRG_LabResultDocument (OrderId)
+    WHERE IsCurrentVersion = 1 AND OrderId <> '';
+GO
+
+CREATE NONCLUSTERED INDEX IX_BILRG_LabResultDocument_OrderId_IsCurrent
+    ON BILRG_LabResultDocument (OrderId, IsCurrentVersion);
 GO

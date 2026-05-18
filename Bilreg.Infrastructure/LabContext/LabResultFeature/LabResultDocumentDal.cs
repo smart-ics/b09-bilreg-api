@@ -19,6 +19,8 @@ public interface ILabResultDocumentDal :
 
 public class LabResultDocumentDal : ILabResultDocumentDal
 {
+    private static readonly DateTime VoidSentinel = new(3000, 1, 1);
+
     private readonly DatabaseOptions _opt;
 
     public LabResultDocumentDal(IOptions<DatabaseOptions> opt)
@@ -33,11 +35,13 @@ public class LabResultDocumentDal : ILabResultDocumentDal
                 ResultDocumentId, OrderId, VersionNo, IsCurrentVersion,
                 ResultSource, ResultStatus,
                 RecordedDate, RecordedUserId, VerifiedDate, VerifiedUserId,
+                AmendmentReason, AmendedDate, AmendedUserId, PreviousVersionId,
                 CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
             VALUES (
                 @ResultDocumentId, @OrderId, @VersionNo, @IsCurrentVersion,
                 @ResultSource, @ResultStatus,
                 @RecordedDate, @RecordedUserId, @VerifiedDate, @VerifiedUserId,
+                @AmendmentReason, @AmendedDate, @AmendedUserId, @PreviousVersionId,
                 @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
             """;
 
@@ -58,6 +62,10 @@ public class LabResultDocumentDal : ILabResultDocumentDal
                 RecordedUserId = @RecordedUserId,
                 VerifiedDate = @VerifiedDate,
                 VerifiedUserId = @VerifiedUserId,
+                AmendmentReason = @AmendmentReason,
+                AmendedDate = @AmendedDate,
+                AmendedUserId = @AmendedUserId,
+                PreviousVersionId = @PreviousVersionId,
                 CrtUser = @CrtUser, CrtDate = @CrtDate,
                 UpdUser = @UpdUser, UpdDate = @UpdDate,
                 VodUser = @VodUser, VodDate = @VodDate
@@ -86,6 +94,7 @@ public class LabResultDocumentDal : ILabResultDocumentDal
                 aa.ResultDocumentId, aa.OrderId, aa.VersionNo, aa.IsCurrentVersion,
                 aa.ResultSource, aa.ResultStatus,
                 aa.RecordedDate, aa.RecordedUserId, aa.VerifiedDate, aa.VerifiedUserId,
+                aa.AmendmentReason, aa.AmendedDate, aa.AmendedUserId, aa.PreviousVersionId,
                 aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate
             FROM BILRG_LabResultDocument aa
             WHERE aa.ResultDocumentId = @ResultDocumentId
@@ -105,13 +114,17 @@ public class LabResultDocumentDal : ILabResultDocumentDal
                 aa.ResultDocumentId, aa.OrderId, aa.VersionNo, aa.IsCurrentVersion,
                 aa.ResultSource, aa.ResultStatus,
                 aa.RecordedDate, aa.RecordedUserId, aa.VerifiedDate, aa.VerifiedUserId,
+                aa.AmendmentReason, aa.AmendedDate, aa.AmendedUserId, aa.PreviousVersionId,
                 aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate
             FROM BILRG_LabResultDocument aa
             WHERE aa.OrderId = @OrderId
+              AND aa.IsCurrentVersion = 1
+              AND aa.VodDate = @VodDate
             """;
 
         var dp = new DynamicParameters();
         dp.AddParam("@OrderId", orderId, SqlDbType.VarChar);
+        dp.AddParam("@VodDate", VoidSentinel, SqlDbType.DateTime);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.QueryFirstOrDefault<LabResultDocumentDto>(sql, dp);
@@ -130,6 +143,10 @@ public class LabResultDocumentDal : ILabResultDocumentDal
         dp.AddParam("@RecordedUserId", dto.RecordedUserId, SqlDbType.VarChar);
         dp.AddParam("@VerifiedDate", dto.VerifiedDate, SqlDbType.DateTime);
         dp.AddParam("@VerifiedUserId", dto.VerifiedUserId, SqlDbType.VarChar);
+        dp.AddParam("@AmendmentReason", dto.AmendmentReason, SqlDbType.VarChar);
+        dp.AddParam("@AmendedDate", dto.AmendedDate, SqlDbType.DateTime);
+        dp.AddParam("@AmendedUserId", dto.AmendedUserId, SqlDbType.VarChar);
+        dp.AddParam("@PreviousVersionId", dto.PreviousVersionId, SqlDbType.VarChar);
         dp.AddParam("@CrtUser", dto.CrtUser, SqlDbType.VarChar);
         dp.AddParam("@CrtDate", dto.CrtDate, SqlDbType.DateTime);
         dp.AddParam("@UpdUser", dto.UpdUser, SqlDbType.VarChar);

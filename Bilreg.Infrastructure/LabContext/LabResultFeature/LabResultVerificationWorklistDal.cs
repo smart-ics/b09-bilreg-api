@@ -39,6 +39,7 @@ public class LabResultVerificationWorklistDal : ILabResultVerificationWorklistDa
             INNER JOIN BILRG_LabResultDocument d ON d.OrderId = o.OrderId
             WHERE o.VodDate = @VodDate
               AND d.VodDate = @VodDate
+              AND d.IsCurrentVersion = 1
               AND o.LabOrderStatus = @OrderStatusRecorded
               AND d.ResultStatus = @ResultStatusRecorded
             """;

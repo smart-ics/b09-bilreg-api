@@ -141,4 +141,62 @@ public class LabResultDocumentModelTest
 
         act.Should().Throw<ArgumentException>();
     }
+
+    private static LabResultDocumentModel VerifiedDocument()
+    {
+        var doc = LabResultDocumentModel.CreateInitial("LBO000000001", Audit());
+        doc.RecordResult(LabResultSourceEnum.Manual, [Capture()], "U2");
+        doc.MarkRecorded("U3");
+        doc.Verify("PATH1", new DateTime(2026, 5, 18, 14, 0, 0));
+        return doc;
+    }
+
+    [Fact]
+    public void AmendVerifiedToNewVersion_CreatesNewVersionAndRetiresOld()
+    {
+        var doc = VerifiedDocument();
+        var amendedAt = new DateTime(2026, 5, 18, 16, 0, 0);
+
+        var (retired, newVersion) = doc.AmendVerifiedToNewVersion("Koreksi nilai", "UAMEND", amendedAt);
+
+        retired.ResultDocumentId.Should().Be(doc.ResultDocumentId);
+        retired.IsCurrentVersion.Should().BeFalse();
+        retired.ResultStatus.Should().Be(LabResultStatusEnum.Verified);
+        retired.VerifiedUserId.Should().Be("PATH1");
+        retired.Items.Should().HaveCount(1);
+
+        newVersion.ResultDocumentId.Should().NotBe(doc.ResultDocumentId);
+        newVersion.VersionNo.Should().Be(2);
+        newVersion.IsCurrentVersion.Should().BeTrue();
+        newVersion.ResultStatus.Should().Be(LabResultStatusEnum.Recorded);
+        newVersion.PreviousVersionId.Should().Be(doc.ResultDocumentId);
+        newVersion.AmendmentReason.Should().Be("Koreksi nilai");
+        newVersion.AmendedUserId.Should().Be("UAMEND");
+        newVersion.VerifiedUserId.Should().BeEmpty();
+        newVersion.Items.Should().HaveCount(1);
+        newVersion.Items[0].TestId.Should().Be("T1");
+        newVersion.Items[0].NumericValue.Should().Be(14m);
+    }
+
+    [Fact]
+    public void AmendVerifiedToNewVersion_WhenRecorded_Throws()
+    {
+        var doc = LabResultDocumentModel.CreateInitial("LBO000000001", Audit());
+        doc.RecordResult(LabResultSourceEnum.Manual, [Capture()], "U2");
+        doc.MarkRecorded("U3");
+
+        var act = () => doc.AmendVerifiedToNewVersion("reason", "U1", DateTime.Now);
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*Verified*");
+    }
+
+    [Fact]
+    public void AmendVerifiedToNewVersion_EmptyReason_Throws()
+    {
+        var doc = VerifiedDocument();
+
+        var act = () => doc.AmendVerifiedToNewVersion("   ", "U1", DateTime.Now);
+
+        act.Should().Throw<ArgumentException>();
+    }
 }

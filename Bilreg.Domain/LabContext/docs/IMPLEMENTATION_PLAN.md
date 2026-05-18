@@ -322,9 +322,9 @@ Controllers: `LabOrderController`, `LabResultController` under `Bilreg.Api/Contr
 |--------|-------|-----------|
 | GET | `{orderId}` | `LabResultGetQuery` |
 | GET | `worklist/verification` | `LabResultVerificationWorklistQuery` |
-| PUT | `{orderId}/record` | `LabResultRecordCmd` |
-| PATCH | `{orderId}/verify` | `LabResultVerifyCmd` |
-| POST | `{orderId}/amend` | `LabResultAmendCmd` |
+| POST | `record` | `LabResultRecordCmd` |
+| PATCH | `verify` | `LabResultVerifyCmd` |
+| PATCH | `amend` | `LabResultAmendCmd` |
 | GET | `{orderId}/pdf` | `LabResultPdfQuery` (on-demand, not persisted) |
 
 ### OWARE (async)
@@ -356,7 +356,7 @@ Vertical slices: SQL → Dto/Dal → Repo → Model → Handler → Controller �
 | 9 | Cancel / terminate / EMR cancel |
 | 10 | Amendment |
 | 11 | OWARE queue + worker + retry |
-| 12 | PDF render (latest verified version) |
+| 12 | PDF render (current operational version) |
 
 **Handler template (IgdVisit-style):**
 
@@ -456,7 +456,7 @@ Follow `DATABASE.md` formatting (`aa` alias in queries, `GO` separators).
 - **Writes:** `ILabOrderRepo`, `ILabResultDocumentRepo` only.  
 - **Worklists:** Dedicated DAL → `LabOrderWorklistView`, `LabResultVerificationWorklistView` — no full aggregate load.  
 - **Stable SQL** per worklist type (ENGINEERING.md §8).  
-- **PDF:** Load latest **verified** version; render on demand.
+- **PDF** render (current operational version); render on demand.
 
 **Patient fields in views:** `PatientId` (not `MRNumber`).
 
