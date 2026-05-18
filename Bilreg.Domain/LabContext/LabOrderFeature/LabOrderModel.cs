@@ -218,6 +218,43 @@ public class LabOrderModel : ILabOrderKey
         AuditTrail.Modif(userId, DateTime.Now);
     }
 
+    public void Charge(string userId)
+    {
+        Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
+
+        if (LabOrderStatus == LabOrderStatusEnum.Deferred)
+            throw new InvalidOperationException(
+                $"LabOrder {OrderId} berstatus Deferred; charge tidak diperbolehkan saat order ditunda.");
+
+        if (LabOrderStatus != LabOrderStatusEnum.Ordered)
+            throw new InvalidOperationException(
+                $"LabOrder {OrderId} berstatus {LabOrderStatus}; charge hanya diperbolehkan dari Ordered.");
+
+        if (!string.IsNullOrWhiteSpace(BillingTindakanId))
+            throw new InvalidOperationException(
+                $"LabOrder {OrderId} sudah memiliki BillingTindakanId '{BillingTindakanId}'.");
+    }
+
+    public void MarkCharged(string tindakanId, string userId)
+    {
+        Guard.Against.NullOrWhiteSpace(tindakanId, nameof(tindakanId));
+        Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
+
+        LabOrderStatus = LabOrderStatusEnum.Charged;
+        BillingTindakanId = tindakanId;
+        BillingLastError = "";
+        AuditTrail.Modif(userId, DateTime.Now);
+    }
+
+    public void RecordBillingError(string error, string userId)
+    {
+        Guard.Against.NullOrWhiteSpace(error, nameof(error));
+        Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
+
+        BillingLastError = error.Length > 200 ? error[..200] : error;
+        AuditTrail.Modif(userId, DateTime.Now);
+    }
+
     #endregion
 
     #region PROPERTIES
@@ -231,8 +268,8 @@ public class LabOrderModel : ILabOrderKey
     public PatientSnapshotType Patient { get; init; }
     public string ExecutionRegId { get; set; }
     public DeferredInfoType DeferredInfo { get; set; }
-    public string BillingTindakanId { get; init; }
-    public string BillingLastError { get; init; }
+    public string BillingTindakanId { get; set; }
+    public string BillingLastError { get; set; }
     public AuditTrailType AuditTrail { get; init; }
     public IReadOnlyList<LabOrderItemModel> Items => _items;
 

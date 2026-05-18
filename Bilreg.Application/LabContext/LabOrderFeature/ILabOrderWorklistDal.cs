@@ -24,4 +24,5 @@ public record LabOrderWorklistView(
     int FinancialClearance,
     int OwareStatus,
     DateTime CrtDate,
+    string BillingTindakanId,
     IReadOnlyList<string>? TestNames = null);

@@ -62,4 +62,11 @@ public class LabOrderController : ControllerBase
         var response = await _mediator.Send(cmd);
         return Ok(new JSendOk(response));
     }
+
+    [HttpPatch("charge")]
+    public async Task<IActionResult> Charge(LabOrderChargeCmd cmd)
+    {
+        var response = await _mediator.Send(cmd);
+        return Ok(new JSendOk(response));
+    }
 }

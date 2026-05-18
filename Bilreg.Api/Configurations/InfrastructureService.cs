@@ -29,6 +29,7 @@ public static class InfrastructureService
             .AddScoped<IRestClientFactory, RestClientFactory>()
             .AddScoped<ILabOrderWorklistDal, LabOrderWorklistDal>()
             .AddScoped<ILabRegIntegration, LabRegIntegration>()
+            .AddScoped<ILabBillingIntegration, LabBillingIntegration>()
             .AddMemoryCache();
 
         services

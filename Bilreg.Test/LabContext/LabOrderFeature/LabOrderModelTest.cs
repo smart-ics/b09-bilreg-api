@@ -140,4 +140,86 @@ public class LabOrderModelTest
         var act = () => order.ActivateFromDeferred("REG-EXEC-001", "U3");
         act.Should().Throw<InvalidOperationException>();
     }
+
+    [Fact]
+    public void Charge_FromOrdered_DoesNotChangeState()
+    {
+        var order = OrderedOrder();
+
+        order.Charge("U2");
+
+        order.LabOrderStatus.Should().Be(LabOrderStatusEnum.Ordered);
+        order.BillingTindakanId.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Charge_FromDeferred_Throws()
+    {
+        var order = OrderedOrder();
+        order.Defer("Puasa", new DateTime(2026, 5, 20), "U2");
+
+        var act = () => order.Charge("U3");
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*Deferred*");
+    }
+
+    [Fact]
+    public void Charge_WhenBillingTindakanIdAlreadySet_Throws()
+    {
+        var order = OrderedOrder();
+        order.BillingTindakanId = "TDK001";
+
+        var act = () => order.Charge("U3");
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*BillingTindakanId*");
+    }
+
+    [Fact]
+    public void Charge_WhenNotOrdered_Throws()
+    {
+        var order = OrderedOrder();
+        order.MarkCharged("TDK001", "U2");
+
+        var act = () => order.Charge("U3");
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*Ordered*");
+    }
+
+    [Fact]
+    public void MarkCharged_SetsChargedStateAndClearsError()
+    {
+        var order = OrderedOrder();
+        order.RecordBillingError("Tarif tidak aktif", "U2");
+
+        order.MarkCharged("TDK-FAKE-0001", "U3");
+
+        order.LabOrderStatus.Should().Be(LabOrderStatusEnum.Charged);
+        order.BillingTindakanId.Should().Be("TDK-FAKE-0001");
+        order.BillingLastError.Should().BeEmpty();
+        order.AuditTrail.Modified.UserId.Should().Be("U3");
+    }
+
+    [Fact]
+    public void RecordBillingError_KeepsStatusAndSetsError()
+    {
+        var order = OrderedOrder();
+
+        order.RecordBillingError("Mapping tarif tidak ditemukan", "U2");
+
+        order.LabOrderStatus.Should().Be(LabOrderStatusEnum.Ordered);
+        order.BillingLastError.Should().Be("Mapping tarif tidak ditemukan");
+        order.BillingTindakanId.Should().BeEmpty();
+        order.AuditTrail.Modified.UserId.Should().Be("U2");
+    }
+
+    [Fact]
+    public void RecordBillingError_TruncatesLongMessage()
+    {
+        var order = OrderedOrder();
+        var longError = new string('X', 250);
+
+        order.RecordBillingError(longError, "U2");
+
+        order.BillingLastError.Should().HaveLength(200);
+    }
 }
