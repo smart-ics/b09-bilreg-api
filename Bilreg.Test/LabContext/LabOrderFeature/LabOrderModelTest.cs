@@ -312,6 +312,12 @@ public class LabOrderModelTest
             releasedDate: new DateTime(3000, 1, 1),
             releasedUserId: "",
             releaseNote: "",
+            cancelledReason: "",
+            cancelledDate: new DateTime(3000, 1, 1),
+            cancelledUserId: "",
+            terminationReason: "",
+            terminationDate: new DateTime(3000, 1, 1),
+            terminationUserId: "",
             audit,
             [TestItem()]);
         var info = new CollectionInfoType(DateTime.Now, "U1", "");
@@ -504,5 +510,203 @@ public class LabOrderModelTest
         var act = () => order.Release("REL2", "");
 
         act.Should().Throw<InvalidOperationException>().WithMessage("*Released*");
+    }
+
+    [Fact]
+    public void Cancel_FromOrdered_SetsCancelledFields()
+    {
+        var order = OrderedOrder();
+
+        order.Cancel("U99", "Pasien batal");
+
+        order.LabOrderStatus.Should().Be(LabOrderStatusEnum.Cancelled);
+        order.CancelledReason.Should().Be("Pasien batal");
+        order.CancelledUserId.Should().Be("U99");
+        order.CancelledDate.Should().BeCloseTo(DateTime.Now, TimeSpan.FromSeconds(2));
+    }
+
+    [Fact]
+    public void Cancel_FromDeferred_SetsCancelled()
+    {
+        var order = OrderedOrder();
+        order.Defer("Puasa", new DateTime(2026, 5, 20), "U2");
+
+        order.Cancel("U99", "Dokter batalkan");
+
+        order.LabOrderStatus.Should().Be(LabOrderStatusEnum.Cancelled);
+        order.CancelledReason.Should().Be("Dokter batalkan");
+    }
+
+    [Fact]
+    public void Cancel_FromCharged_SetsCancelled()
+    {
+        var order = ChargedOrder();
+
+        order.Cancel("U99", "Order salah");
+
+        order.LabOrderStatus.Should().Be(LabOrderStatusEnum.Cancelled);
+    }
+
+    [Fact]
+    public void Cancel_FromCollected_Throws()
+    {
+        var order = CollectedOrder();
+
+        var act = () => order.Cancel("U99", "x");
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*Ordered, Deferred, atau Charged*");
+    }
+
+    [Fact]
+    public void Cancel_Twice_Throws()
+    {
+        var order = OrderedOrder();
+        order.Cancel("U1", "A");
+
+        var act = () => order.Cancel("U2", "B");
+
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void Cancel_TruncatesLongReason()
+    {
+        var order = OrderedOrder();
+        var longReason = new string('R', 250);
+
+        order.Cancel("U1", longReason);
+
+        order.CancelledReason.Should().HaveLength(200);
+    }
+
+    [Fact]
+    public void Terminate_FromCollected_SetsTerminated()
+    {
+        var order = CollectedOrder();
+
+        order.Terminate("U88", "Spesimen rusak");
+
+        order.LabOrderStatus.Should().Be(LabOrderStatusEnum.Terminated);
+        order.TerminationReason.Should().Be("Spesimen rusak");
+        order.TerminationUserId.Should().Be("U88");
+        order.TerminationDate.Should().BeCloseTo(DateTime.Now, TimeSpan.FromSeconds(2));
+    }
+
+    [Fact]
+    public void Terminate_FromRecorded_SetsTerminated()
+    {
+        var order = ChargedOrder();
+        order.MarkRecorded("UR");
+
+        order.Terminate("U88", "Pasien tidak hadir");
+
+        order.LabOrderStatus.Should().Be(LabOrderStatusEnum.Terminated);
+    }
+
+    [Fact]
+    public void Terminate_FromCharged_Throws()
+    {
+        var order = ChargedOrder();
+
+        var act = () => order.Terminate("U1", "x");
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*Collected atau Recorded*");
+    }
+
+    [Fact]
+    public void Terminate_FromVerified_Throws()
+    {
+        var order = VerifiedOrder();
+
+        var act = () => order.Terminate("U1", "x");
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*Collected atau Recorded*");
+    }
+
+    [Fact]
+    public void Terminate_Twice_Throws()
+    {
+        var order = CollectedOrder();
+        order.Terminate("U1", "Satu");
+
+        var act = () => order.Terminate("U2", "Dua");
+
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void Cancel_WhenVoided_Throws()
+    {
+        var audit = AuditTrailType.Create("U1", new DateTime(2026, 5, 1, 10, 0, 0));
+        audit.Batal("UV", new DateTime(2026, 5, 2, 10, 0, 0));
+        var order = LabOrderModel.Load(
+            "LBO000000888",
+            "LAB0000888",
+            LabOrderSourceEnum.Emr,
+            LabOrderStatusEnum.Ordered,
+            FinancialClearanceEnum.Pending,
+            OwareStatusEnum.Pending,
+            EmrSnapshot(),
+            executionRegId: "",
+            DeferredInfoType.Default,
+            billingTindakanId: "",
+            billingLastError: "",
+            CollectionInfoType.Default,
+            financialClearanceDate: new DateTime(3000, 1, 1),
+            financialClearanceUserId: "",
+            financialClearanceReason: "",
+            releasedDate: new DateTime(3000, 1, 1),
+            releasedUserId: "",
+            releaseNote: "",
+            cancelledReason: "",
+            cancelledDate: new DateTime(3000, 1, 1),
+            cancelledUserId: "",
+            terminationReason: "",
+            terminationDate: new DateTime(3000, 1, 1),
+            terminationUserId: "",
+            audit,
+            [TestItem()]);
+
+        var act = () => order.Cancel("U1", "x");
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*void*");
+    }
+
+    [Fact]
+    public void Terminate_WhenVoided_Throws()
+    {
+        var audit = AuditTrailType.Create("U1", new DateTime(2026, 5, 1, 10, 0, 0));
+        audit.Batal("UV", new DateTime(2026, 5, 2, 10, 0, 0));
+        var order = LabOrderModel.Load(
+            "LBO000000889",
+            "LAB0000889",
+            LabOrderSourceEnum.Emr,
+            LabOrderStatusEnum.Collected,
+            FinancialClearanceEnum.Pending,
+            OwareStatusEnum.Pending,
+            EmrSnapshot(),
+            executionRegId: "",
+            DeferredInfoType.Default,
+            billingTindakanId: "TDK1",
+            billingLastError: "",
+            new CollectionInfoType(new DateTime(2026, 5, 10), "U1", ""),
+            financialClearanceDate: new DateTime(3000, 1, 1),
+            financialClearanceUserId: "",
+            financialClearanceReason: "",
+            releasedDate: new DateTime(3000, 1, 1),
+            releasedUserId: "",
+            releaseNote: "",
+            cancelledReason: "",
+            cancelledDate: new DateTime(3000, 1, 1),
+            cancelledUserId: "",
+            terminationReason: "",
+            terminationDate: new DateTime(3000, 1, 1),
+            terminationUserId: "",
+            audit,
+            [TestItem()]);
+
+        var act = () => order.Terminate("U1", "x");
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*void*");
     }
 }

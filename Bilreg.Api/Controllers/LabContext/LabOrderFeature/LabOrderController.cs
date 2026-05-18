@@ -114,4 +114,18 @@ public class LabOrderController : ControllerBase
         await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));
     }
+
+    [HttpPatch("cancel")]
+    public async Task<IActionResult> Cancel(LabOrderCancelCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
+    [HttpPatch("terminate")]
+    public async Task<IActionResult> Terminate(LabOrderTerminateCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
 }

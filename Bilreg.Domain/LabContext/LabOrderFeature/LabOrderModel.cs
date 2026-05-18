@@ -31,6 +31,12 @@ public class LabOrderModel : ILabOrderKey
         DateTime releasedDate,
         string releasedUserId,
         string releaseNote,
+        string cancelledReason,
+        DateTime cancelledDate,
+        string cancelledUserId,
+        string terminationReason,
+        DateTime terminationDate,
+        string terminationUserId,
         AuditTrailType auditTrail,
         IEnumerable<LabOrderItemModel> items)
     {
@@ -52,6 +58,12 @@ public class LabOrderModel : ILabOrderKey
         ReleasedDate = releasedDate;
         ReleasedUserId = releasedUserId;
         ReleaseNote = releaseNote;
+        CancelledReason = cancelledReason;
+        CancelledDate = cancelledDate;
+        CancelledUserId = cancelledUserId;
+        TerminationReason = terminationReason;
+        TerminationDate = terminationDate;
+        TerminationUserId = terminationUserId;
         AuditTrail = auditTrail;
         _items = items.ToList();
     }
@@ -75,6 +87,12 @@ public class LabOrderModel : ILabOrderKey
         releasedDate: EmptyDate,
         releasedUserId: "",
         releaseNote: "",
+        cancelledReason: "",
+        cancelledDate: EmptyDate,
+        cancelledUserId: "",
+        terminationReason: "",
+        terminationDate: EmptyDate,
+        terminationUserId: "",
         auditTrail: AuditTrailType.Default,
         items: []);
 
@@ -96,6 +114,12 @@ public class LabOrderModel : ILabOrderKey
         "",
         EmptyDate,
         "",
+        "",
+        "",
+        EmptyDate,
+        "",
+        "",
+        EmptyDate,
         "",
         AuditTrailType.Default,
         []);
@@ -119,6 +143,12 @@ public class LabOrderModel : ILabOrderKey
         DateTime releasedDate,
         string releasedUserId,
         string releaseNote,
+        string cancelledReason,
+        DateTime cancelledDate,
+        string cancelledUserId,
+        string terminationReason,
+        DateTime terminationDate,
+        string terminationUserId,
         AuditTrailType auditTrail,
         IEnumerable<LabOrderItemModel> items)
         => new(
@@ -140,6 +170,12 @@ public class LabOrderModel : ILabOrderKey
             releasedDate,
             releasedUserId,
             releaseNote,
+            cancelledReason,
+            cancelledDate,
+            cancelledUserId,
+            terminationReason,
+            terminationDate,
+            terminationUserId,
             auditTrail,
             items);
 
@@ -214,6 +250,12 @@ public class LabOrderModel : ILabOrderKey
             releasedDate: EmptyDate,
             releasedUserId: "",
             releaseNote: "",
+            cancelledReason: "",
+            cancelledDate: EmptyDate,
+            cancelledUserId: "",
+            terminationReason: "",
+            terminationDate: EmptyDate,
+            terminationUserId: "",
             auditTrail,
             itemList);
     }
@@ -454,6 +496,51 @@ public class LabOrderModel : ILabOrderKey
         AuditTrail.Modif(userId, DateTime.Now);
     }
 
+    public void Cancel(string userId, string reason)
+    {
+        Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
+        Guard.Against.NullOrWhiteSpace(reason, nameof(reason));
+
+        if (AuditTrail.IsVoided)
+            throw new InvalidOperationException(
+                $"LabOrder {OrderId} sudah void; pembatalan tidak diperbolehkan.");
+
+        if (LabOrderStatus != LabOrderStatusEnum.Ordered
+            && LabOrderStatus != LabOrderStatusEnum.Deferred
+            && LabOrderStatus != LabOrderStatusEnum.Charged)
+            throw new InvalidOperationException(
+                $"LabOrder {OrderId} berstatus {LabOrderStatus}; pembatalan hanya diperbolehkan dari Ordered, Deferred, atau Charged.");
+
+        var r = reason.Length > 200 ? reason[..200] : reason;
+        LabOrderStatus = LabOrderStatusEnum.Cancelled;
+        CancelledReason = r;
+        CancelledDate = DateTime.Now;
+        CancelledUserId = userId;
+        AuditTrail.Modif(userId, DateTime.Now);
+    }
+
+    public void Terminate(string userId, string reason)
+    {
+        Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
+        Guard.Against.NullOrWhiteSpace(reason, nameof(reason));
+
+        if (AuditTrail.IsVoided)
+            throw new InvalidOperationException(
+                $"LabOrder {OrderId} sudah void; terminasi tidak diperbolehkan.");
+
+        if (LabOrderStatus != LabOrderStatusEnum.Collected
+            && LabOrderStatus != LabOrderStatusEnum.Recorded)
+            throw new InvalidOperationException(
+                $"LabOrder {OrderId} berstatus {LabOrderStatus}; terminasi hanya diperbolehkan dari Collected atau Recorded.");
+
+        var r = reason.Length > 200 ? reason[..200] : reason;
+        LabOrderStatus = LabOrderStatusEnum.Terminated;
+        TerminationReason = r;
+        TerminationDate = DateTime.Now;
+        TerminationUserId = userId;
+        AuditTrail.Modif(userId, DateTime.Now);
+    }
+
     #endregion
 
     #region PROPERTIES
@@ -476,6 +563,12 @@ public class LabOrderModel : ILabOrderKey
     public DateTime ReleasedDate { get; set; }
     public string ReleasedUserId { get; set; }
     public string ReleaseNote { get; set; }
+    public string CancelledReason { get; set; }
+    public DateTime CancelledDate { get; set; }
+    public string CancelledUserId { get; set; }
+    public string TerminationReason { get; set; }
+    public DateTime TerminationDate { get; set; }
+    public string TerminationUserId { get; set; }
     public AuditTrailType AuditTrail { get; init; }
     public IReadOnlyList<LabOrderItemModel> Items => _items;
 

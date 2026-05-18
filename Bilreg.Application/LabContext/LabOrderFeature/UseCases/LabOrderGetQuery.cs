@@ -34,6 +34,12 @@ public record LabOrderGetResponse(
     DateTime ReleasedDate,
     string ReleasedUserId,
     string ReleaseNote,
+    string CancelledReason,
+    DateTime CancelledDate,
+    string CancelledUserId,
+    string TerminationReason,
+    DateTime TerminationDate,
+    string TerminationUserId,
     bool IsVoided,
     IEnumerable<LabOrderItemResponse> Items);
 
@@ -103,6 +109,12 @@ public class LabOrderGetHandler : IRequestHandler<LabOrderGetQuery, LabOrderGetR
             ReleasedDate: order.ReleasedDate,
             ReleasedUserId: order.ReleasedUserId,
             ReleaseNote: order.ReleaseNote,
+            CancelledReason: order.CancelledReason,
+            CancelledDate: order.CancelledDate,
+            CancelledUserId: order.CancelledUserId,
+            TerminationReason: order.TerminationReason,
+            TerminationDate: order.TerminationDate,
+            TerminationUserId: order.TerminationUserId,
             IsVoided: order.AuditTrail.IsVoided,
             Items: items);
 

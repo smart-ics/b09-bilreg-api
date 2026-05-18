@@ -39,6 +39,12 @@ public class LabOrderDalTest
             ReleasedDate: new DateTime(3000, 1, 1),
             ReleasedUserId: "",
             ReleaseNote: "",
+            CancelledReason: "",
+            CancelledDate: new DateTime(3000, 1, 1),
+            CancelledUserId: "",
+            TerminationReason: "",
+            TerminationDate: new DateTime(3000, 1, 1),
+            TerminationUserId: "",
             CrtUser: "U1",
             CrtDate: new DateTime(2026, 5, 18, 10, 0, 0),
             UpdUser: "",
@@ -88,6 +94,46 @@ public class LabOrderDalTest
         actual.ReleasedDate.Should().Be(releasedAt);
         actual.ReleasedUserId.Should().Be("REL9");
         actual.ReleaseNote.Should().Be("Ok");
+    }
+
+    [Fact]
+    public void InsertAndGetData_RoundTripsCancelTerminateColumns()
+    {
+        using var trans = TransHelper.NewScope();
+        var cancelledAt = new DateTime(2026, 5, 18, 9, 0, 0);
+        var terminatedAt = new DateTime(2026, 5, 18, 16, 0, 0);
+        var dto = FakerHeader("LBO000000089") with
+        {
+            LabOrderStatus = (int)LabOrderStatusEnum.Cancelled,
+            CancelledReason = "Batal admisi",
+            CancelledDate = cancelledAt,
+            CancelledUserId = "ADM9",
+            TerminationReason = "",
+            TerminationDate = new DateTime(3000, 1, 1),
+            TerminationUserId = ""
+        };
+        _sut.Insert(dto);
+        var actual = _sut.GetData(LabOrderModel.Key("LBO000000089"));
+        actual.LabOrderStatus.Should().Be((int)LabOrderStatusEnum.Cancelled);
+        actual.CancelledReason.Should().Be("Batal admisi");
+        actual.CancelledDate.Should().Be(cancelledAt);
+        actual.CancelledUserId.Should().Be("ADM9");
+
+        var dtoTerm = FakerHeader("LBO000000090") with
+        {
+            LabOrderStatus = (int)LabOrderStatusEnum.Terminated,
+            CancelledReason = "",
+            CancelledDate = new DateTime(3000, 1, 1),
+            CancelledUserId = "",
+            TerminationReason = "Analyzer error",
+            TerminationDate = terminatedAt,
+            TerminationUserId = "LAB9"
+        };
+        _sut.Insert(dtoTerm);
+        var actualTerm = _sut.GetData(LabOrderModel.Key("LBO000000090"));
+        actualTerm.TerminationReason.Should().Be("Analyzer error");
+        actualTerm.TerminationDate.Should().Be(terminatedAt);
+        actualTerm.TerminationUserId.Should().Be("LAB9");
     }
 
     [Fact]

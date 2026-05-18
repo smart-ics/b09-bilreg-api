@@ -30,6 +30,13 @@ CREATE TABLE BILRG_LabOrder (
     ReleasedUserId VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_LabOrder_ReleasedUserId DEFAULT(''),
     ReleaseNote VARCHAR(200) NOT NULL CONSTRAINT DF_BILRG_LabOrder_ReleaseNote DEFAULT(''),
 
+    CancelledReason VARCHAR(200) NOT NULL CONSTRAINT DF_BILRG_LabOrder_CancelledReason DEFAULT(''),
+    CancelledDate DATETIME NOT NULL CONSTRAINT DF_BILRG_LabOrder_CancelledDate DEFAULT('3000-01-01'),
+    CancelledUserId VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_LabOrder_CancelledUserId DEFAULT(''),
+    TerminationReason VARCHAR(200) NOT NULL CONSTRAINT DF_BILRG_LabOrder_TerminationReason DEFAULT(''),
+    TerminationDate DATETIME NOT NULL CONSTRAINT DF_BILRG_LabOrder_TerminationDate DEFAULT('3000-01-01'),
+    TerminationUserId VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_LabOrder_TerminationUserId DEFAULT(''),
+
     CrtUser VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_LabOrder_CrtUser DEFAULT(''),
     CrtDate DATETIME NOT NULL CONSTRAINT DF_BILRG_LabOrder_CrtDate DEFAULT('3000-01-01'),
     UpdUser VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_LabOrder_UpdUser DEFAULT(''),

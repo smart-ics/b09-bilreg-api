@@ -36,6 +36,8 @@ public class LabOrderDal : ILabOrderDal
                 CollectedDate, CollectedUserId, CollectionNote,
                 FinancialClearanceDate, FinancialClearanceUserId, FinancialClearanceReason,
                 ReleasedDate, ReleasedUserId, ReleaseNote,
+                CancelledReason, CancelledDate, CancelledUserId,
+                TerminationReason, TerminationDate, TerminationUserId,
                 CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
             VALUES (
                 @OrderId, @OrderNo, @OrderSource, @LabOrderStatus, @FinancialClearance, @OwareStatus,
@@ -45,6 +47,8 @@ public class LabOrderDal : ILabOrderDal
                 @CollectedDate, @CollectedUserId, @CollectionNote,
                 @FinancialClearanceDate, @FinancialClearanceUserId, @FinancialClearanceReason,
                 @ReleasedDate, @ReleasedUserId, @ReleaseNote,
+                @CancelledReason, @CancelledDate, @CancelledUserId,
+                @TerminationReason, @TerminationDate, @TerminationUserId,
                 @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
             """;
 
@@ -81,6 +85,12 @@ public class LabOrderDal : ILabOrderDal
                 ReleasedDate = @ReleasedDate,
                 ReleasedUserId = @ReleasedUserId,
                 ReleaseNote = @ReleaseNote,
+                CancelledReason = @CancelledReason,
+                CancelledDate = @CancelledDate,
+                CancelledUserId = @CancelledUserId,
+                TerminationReason = @TerminationReason,
+                TerminationDate = @TerminationDate,
+                TerminationUserId = @TerminationUserId,
                 CrtUser = @CrtUser, CrtDate = @CrtDate,
                 UpdUser = @UpdUser, UpdDate = @UpdDate,
                 VodUser = @VodUser, VodDate = @VodDate
@@ -114,6 +124,8 @@ public class LabOrderDal : ILabOrderDal
                 aa.CollectedDate, aa.CollectedUserId, aa.CollectionNote,
                 aa.FinancialClearanceDate, aa.FinancialClearanceUserId, aa.FinancialClearanceReason,
                 aa.ReleasedDate, aa.ReleasedUserId, aa.ReleaseNote,
+                aa.CancelledReason, aa.CancelledDate, aa.CancelledUserId,
+                aa.TerminationReason, aa.TerminationDate, aa.TerminationUserId,
                 aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate
             FROM BILRG_LabOrder aa
             WHERE aa.OrderId = @OrderId
@@ -155,6 +167,12 @@ public class LabOrderDal : ILabOrderDal
         dp.AddParam("@ReleasedDate", dto.ReleasedDate, SqlDbType.DateTime);
         dp.AddParam("@ReleasedUserId", dto.ReleasedUserId, SqlDbType.VarChar);
         dp.AddParam("@ReleaseNote", dto.ReleaseNote, SqlDbType.VarChar);
+        dp.AddParam("@CancelledReason", dto.CancelledReason, SqlDbType.VarChar);
+        dp.AddParam("@CancelledDate", dto.CancelledDate, SqlDbType.DateTime);
+        dp.AddParam("@CancelledUserId", dto.CancelledUserId, SqlDbType.VarChar);
+        dp.AddParam("@TerminationReason", dto.TerminationReason, SqlDbType.VarChar);
+        dp.AddParam("@TerminationDate", dto.TerminationDate, SqlDbType.DateTime);
+        dp.AddParam("@TerminationUserId", dto.TerminationUserId, SqlDbType.VarChar);
         dp.AddParam("@CrtUser", dto.CrtUser, SqlDbType.VarChar);
         dp.AddParam("@CrtDate", dto.CrtDate, SqlDbType.DateTime);
         dp.AddParam("@UpdUser", dto.UpdUser, SqlDbType.VarChar);
