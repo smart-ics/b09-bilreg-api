@@ -33,6 +33,12 @@ public class LabOrderDalTest
             CollectedDate: new DateTime(3000, 1, 1),
             CollectedUserId: "",
             CollectionNote: "",
+            FinancialClearanceDate: new DateTime(3000, 1, 1),
+            FinancialClearanceUserId: "",
+            FinancialClearanceReason: "",
+            ReleasedDate: new DateTime(3000, 1, 1),
+            ReleasedUserId: "",
+            ReleaseNote: "",
             CrtUser: "U1",
             CrtDate: new DateTime(2026, 5, 18, 10, 0, 0),
             UpdUser: "",
@@ -56,6 +62,33 @@ public class LabOrderDalTest
 
     private static ILabOrderKey FakerKey(string orderId = "LBO000000001")
         => LabOrderModel.Key(orderId);
+
+    [Fact]
+    public void InsertAndGetData_RoundTripsClearanceReleaseColumns()
+    {
+        using var trans = TransHelper.NewScope();
+        var clearanceAt = new DateTime(2026, 5, 18, 11, 0, 0);
+        var releasedAt = new DateTime(2026, 5, 18, 15, 0, 0);
+        var dto = FakerHeader("LBO000000088") with
+        {
+            LabOrderStatus = (int)LabOrderStatusEnum.Verified,
+            FinancialClearance = (int)FinancialClearanceEnum.Approved,
+            FinancialClearanceDate = clearanceAt,
+            FinancialClearanceUserId = "FIN9",
+            FinancialClearanceReason = "",
+            ReleasedDate = releasedAt,
+            ReleasedUserId = "REL9",
+            ReleaseNote = "Ok"
+        };
+        _sut.Insert(dto);
+        var actual = _sut.GetData(LabOrderModel.Key("LBO000000088"));
+        actual.FinancialClearance.Should().Be((int)FinancialClearanceEnum.Approved);
+        actual.FinancialClearanceDate.Should().Be(clearanceAt);
+        actual.FinancialClearanceUserId.Should().Be("FIN9");
+        actual.ReleasedDate.Should().Be(releasedAt);
+        actual.ReleasedUserId.Should().Be("REL9");
+        actual.ReleaseNote.Should().Be("Ok");
+    }
 
     [Fact]
     public void InsertAndGetData_RoundTripsHeader()

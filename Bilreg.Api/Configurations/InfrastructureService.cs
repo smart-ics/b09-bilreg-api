@@ -30,6 +30,7 @@ public static class InfrastructureService
             .AddScoped<ISequencer, Sequencer>()
             .AddScoped<IRestClientFactory, RestClientFactory>()
             .AddScoped<ILabOrderWorklistDal, LabOrderWorklistDal>()
+            .AddScoped<ILabOrderReleaseWorklistDal, LabOrderReleaseWorklistDal>()
             .AddScoped<ILabResultVerificationWorklistDal, LabResultVerificationWorklistDal>()
             .AddScoped<ILabCollectionPreparationDal, LabCollectionPreparationDal>()
             .AddScoped<ILabRegIntegration, LabRegIntegration>()

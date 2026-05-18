@@ -34,6 +34,8 @@ public class LabOrderDal : ILabOrderDal
                 ExecutionRegId, DeferredReason, DeferredUntil,
                 BillingTindakanId, BillingLastError,
                 CollectedDate, CollectedUserId, CollectionNote,
+                FinancialClearanceDate, FinancialClearanceUserId, FinancialClearanceReason,
+                ReleasedDate, ReleasedUserId, ReleaseNote,
                 CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
             VALUES (
                 @OrderId, @OrderNo, @OrderSource, @LabOrderStatus, @FinancialClearance, @OwareStatus,
@@ -41,6 +43,8 @@ public class LabOrderDal : ILabOrderDal
                 @ExecutionRegId, @DeferredReason, @DeferredUntil,
                 @BillingTindakanId, @BillingLastError,
                 @CollectedDate, @CollectedUserId, @CollectionNote,
+                @FinancialClearanceDate, @FinancialClearanceUserId, @FinancialClearanceReason,
+                @ReleasedDate, @ReleasedUserId, @ReleaseNote,
                 @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
             """;
 
@@ -71,6 +75,12 @@ public class LabOrderDal : ILabOrderDal
                 CollectedDate = @CollectedDate,
                 CollectedUserId = @CollectedUserId,
                 CollectionNote = @CollectionNote,
+                FinancialClearanceDate = @FinancialClearanceDate,
+                FinancialClearanceUserId = @FinancialClearanceUserId,
+                FinancialClearanceReason = @FinancialClearanceReason,
+                ReleasedDate = @ReleasedDate,
+                ReleasedUserId = @ReleasedUserId,
+                ReleaseNote = @ReleaseNote,
                 CrtUser = @CrtUser, CrtDate = @CrtDate,
                 UpdUser = @UpdUser, UpdDate = @UpdDate,
                 VodUser = @VodUser, VodDate = @VodDate
@@ -102,6 +112,8 @@ public class LabOrderDal : ILabOrderDal
                 aa.ExecutionRegId, aa.DeferredReason, aa.DeferredUntil,
                 aa.BillingTindakanId, aa.BillingLastError,
                 aa.CollectedDate, aa.CollectedUserId, aa.CollectionNote,
+                aa.FinancialClearanceDate, aa.FinancialClearanceUserId, aa.FinancialClearanceReason,
+                aa.ReleasedDate, aa.ReleasedUserId, aa.ReleaseNote,
                 aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate
             FROM BILRG_LabOrder aa
             WHERE aa.OrderId = @OrderId
@@ -137,6 +149,12 @@ public class LabOrderDal : ILabOrderDal
         dp.AddParam("@CollectedDate", dto.CollectedDate, SqlDbType.DateTime);
         dp.AddParam("@CollectedUserId", dto.CollectedUserId, SqlDbType.VarChar);
         dp.AddParam("@CollectionNote", dto.CollectionNote, SqlDbType.VarChar);
+        dp.AddParam("@FinancialClearanceDate", dto.FinancialClearanceDate, SqlDbType.DateTime);
+        dp.AddParam("@FinancialClearanceUserId", dto.FinancialClearanceUserId, SqlDbType.VarChar);
+        dp.AddParam("@FinancialClearanceReason", dto.FinancialClearanceReason, SqlDbType.VarChar);
+        dp.AddParam("@ReleasedDate", dto.ReleasedDate, SqlDbType.DateTime);
+        dp.AddParam("@ReleasedUserId", dto.ReleasedUserId, SqlDbType.VarChar);
+        dp.AddParam("@ReleaseNote", dto.ReleaseNote, SqlDbType.VarChar);
         dp.AddParam("@CrtUser", dto.CrtUser, SqlDbType.VarChar);
         dp.AddParam("@CrtDate", dto.CrtDate, SqlDbType.DateTime);
         dp.AddParam("@UpdUser", dto.UpdUser, SqlDbType.VarChar);

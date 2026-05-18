@@ -28,6 +28,12 @@ public record LabOrderGetResponse(
     DateTime CollectedDate,
     string CollectedUserId,
     string CollectionNote,
+    DateTime FinancialClearanceDate,
+    string FinancialClearanceUserId,
+    string FinancialClearanceReason,
+    DateTime ReleasedDate,
+    string ReleasedUserId,
+    string ReleaseNote,
     bool IsVoided,
     IEnumerable<LabOrderItemResponse> Items);
 
@@ -91,6 +97,12 @@ public class LabOrderGetHandler : IRequestHandler<LabOrderGetQuery, LabOrderGetR
             CollectedDate: order.CollectionInfo.CollectedDate,
             CollectedUserId: order.CollectionInfo.CollectedUserId,
             CollectionNote: order.CollectionInfo.CollectionNote,
+            FinancialClearanceDate: order.FinancialClearanceDate,
+            FinancialClearanceUserId: order.FinancialClearanceUserId,
+            FinancialClearanceReason: order.FinancialClearanceReason,
+            ReleasedDate: order.ReleasedDate,
+            ReleasedUserId: order.ReleasedUserId,
+            ReleaseNote: order.ReleaseNote,
             IsVoided: order.AuditTrail.IsVoided,
             Items: items);
 

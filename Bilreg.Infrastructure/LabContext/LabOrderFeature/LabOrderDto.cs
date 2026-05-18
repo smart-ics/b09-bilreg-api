@@ -24,6 +24,12 @@ public record LabOrderDto(
     DateTime CollectedDate,
     string CollectedUserId,
     string CollectionNote,
+    DateTime FinancialClearanceDate,
+    string FinancialClearanceUserId,
+    string FinancialClearanceReason,
+    DateTime ReleasedDate,
+    string ReleasedUserId,
+    string ReleaseNote,
     string CrtUser,
     DateTime CrtDate,
     string UpdUser,
@@ -31,6 +37,8 @@ public record LabOrderDto(
     string VodUser,
     DateTime VodDate)
 {
+    private static readonly DateTime EmptyDate = new(3000, 1, 1);
+
     public static LabOrderDto FromModel(LabOrderModel model)
         => new(
             OrderId: model.OrderId,
@@ -53,6 +61,12 @@ public record LabOrderDto(
             CollectedDate: model.CollectionInfo.CollectedDate,
             CollectedUserId: model.CollectionInfo.CollectedUserId,
             CollectionNote: model.CollectionInfo.CollectionNote,
+            FinancialClearanceDate: model.FinancialClearanceDate,
+            FinancialClearanceUserId: model.FinancialClearanceUserId,
+            FinancialClearanceReason: model.FinancialClearanceReason,
+            ReleasedDate: model.ReleasedDate,
+            ReleasedUserId: model.ReleasedUserId,
+            ReleaseNote: model.ReleaseNote,
             CrtUser: model.AuditTrail.Created.UserId,
             CrtDate: model.AuditTrail.Created.Timestamp,
             UpdUser: model.AuditTrail.Modified.UserId,
@@ -77,7 +91,7 @@ public record LabOrderDto(
             new AuditInfoType(CrtUser, CrtDate),
             new AuditInfoType(UpdUser, UpdDate),
             new AuditInfoType(VodUser, VodDate));
-        if (VodUser.Length > 0 && VodDate != new DateTime(3000, 1, 1))
+        if (VodUser.Length > 0 && VodDate != EmptyDate)
             auditTrail.Batal(VodUser, VodDate);
 
         return LabOrderModel.Load(
@@ -93,6 +107,12 @@ public record LabOrderDto(
             BillingTindakanId,
             BillingLastError,
             collectionInfo,
+            FinancialClearanceDate,
+            FinancialClearanceUserId,
+            FinancialClearanceReason,
+            ReleasedDate,
+            ReleasedUserId,
+            ReleaseNote,
             auditTrail,
             items);
     }

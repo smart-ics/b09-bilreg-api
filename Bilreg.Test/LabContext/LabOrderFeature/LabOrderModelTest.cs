@@ -231,6 +231,14 @@ public class LabOrderModelTest
         return order;
     }
 
+    private static LabOrderModel VerifiedOrder()
+    {
+        var order = ChargedOrder();
+        order.MarkRecorded("UR");
+        order.MarkVerified("PATH");
+        return order;
+    }
+
     [Fact]
     public void CollectSpecimen_FromCharged_SetsCollectedAndCollectionInfo()
     {
@@ -298,6 +306,12 @@ public class LabOrderModelTest
             billingTindakanId: "TDK1",
             billingLastError: "",
             CollectionInfoType.Default,
+            financialClearanceDate: new DateTime(3000, 1, 1),
+            financialClearanceUserId: "",
+            financialClearanceReason: "",
+            releasedDate: new DateTime(3000, 1, 1),
+            releasedUserId: "",
+            releaseNote: "",
             audit,
             [TestItem()]);
         var info = new CollectionInfoType(DateTime.Now, "U1", "");
@@ -397,5 +411,98 @@ public class LabOrderModelTest
         var act = () => order.MarkVerified("PATH");
 
         act.Should().Throw<InvalidOperationException>().WithMessage("*Recorded*");
+    }
+
+    [Fact]
+    public void ApproveFinancialClearance_FromVerifiedPending_SetsApproved()
+    {
+        var order = VerifiedOrder();
+
+        order.ApproveFinancialClearance("FIN1");
+
+        order.FinancialClearance.Should().Be(FinancialClearanceEnum.Approved);
+        order.FinancialClearanceUserId.Should().Be("FIN1");
+        order.FinancialClearanceReason.Should().BeEmpty();
+        order.AuditTrail.Modified.UserId.Should().Be("FIN1");
+    }
+
+    [Fact]
+    public void ApproveFinancialClearance_WhenRecorded_Throws()
+    {
+        var order = ChargedOrder();
+        order.MarkRecorded("UR");
+
+        var act = () => order.ApproveFinancialClearance("FIN1");
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*Verified*");
+    }
+
+    [Fact]
+    public void ApproveFinancialClearance_WhenAlreadyApproved_Throws()
+    {
+        var order = VerifiedOrder();
+        order.ApproveFinancialClearance("FIN1");
+
+        var act = () => order.ApproveFinancialClearance("FIN2");
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*Pending*");
+    }
+
+    [Fact]
+    public void RejectFinancialClearance_FromVerifiedPending_SetsRejected()
+    {
+        var order = VerifiedOrder();
+
+        order.RejectFinancialClearance("Belum lunas", "FIN1");
+
+        order.FinancialClearance.Should().Be(FinancialClearanceEnum.Rejected);
+        order.FinancialClearanceReason.Should().Be("Belum lunas");
+        order.AuditTrail.Modified.UserId.Should().Be("FIN1");
+    }
+
+    [Fact]
+    public void RejectFinancialClearance_WhenAlreadyApproved_Throws()
+    {
+        var order = VerifiedOrder();
+        order.ApproveFinancialClearance("FIN1");
+
+        var act = () => order.RejectFinancialClearance("Alasan", "FIN2");
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*Pending*");
+    }
+
+    [Fact]
+    public void Release_FromVerifiedApproved_SetsReleased()
+    {
+        var order = VerifiedOrder();
+        order.ApproveFinancialClearance("FIN1");
+
+        order.Release("REL1", "Serahkan ke pasien");
+
+        order.LabOrderStatus.Should().Be(LabOrderStatusEnum.Released);
+        order.ReleasedUserId.Should().Be("REL1");
+        order.ReleaseNote.Should().Be("Serahkan ke pasien");
+    }
+
+    [Fact]
+    public void Release_WhenClearancePending_Throws()
+    {
+        var order = VerifiedOrder();
+
+        var act = () => order.Release("REL1", "");
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*Approved*");
+    }
+
+    [Fact]
+    public void Release_Twice_Throws()
+    {
+        var order = VerifiedOrder();
+        order.ApproveFinancialClearance("FIN1");
+        order.Release("REL1", "");
+
+        var act = () => order.Release("REL2", "");
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*Released*");
     }
 }

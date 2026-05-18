@@ -42,6 +42,16 @@ public class LabOrderController : ControllerBase
         return Ok(new JSendOk(response));
     }
 
+    [HttpGet("releaseWorklist")]
+    public async Task<IActionResult> ReleaseWorklist(
+        [FromQuery] string? searchTerm,
+        [FromQuery] DateTime? date1,
+        [FromQuery] DateTime? date2)
+    {
+        var response = await _mediator.Send(new LabOrderReleaseWorklistQuery(searchTerm, date1, date2));
+        return Ok(new JSendOk(response));
+    }
+
     [HttpGet("collectionPreparation")]
     public async Task<IActionResult> CollectionPreparation([FromQuery] string orderId)
     {
@@ -79,6 +89,27 @@ public class LabOrderController : ControllerBase
 
     [HttpPatch("collect")]
     public async Task<IActionResult> Collect(LabOrderCollectSpecimenCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
+    [HttpPatch("approveFinancialClearance")]
+    public async Task<IActionResult> ApproveFinancialClearance(LabOrderApproveFinancialClearanceCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
+    [HttpPatch("rejectFinancialClearance")]
+    public async Task<IActionResult> RejectFinancialClearance(LabOrderRejectFinancialClearanceCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
+    [HttpPatch("release")]
+    public async Task<IActionResult> Release(LabOrderReleaseCmd cmd)
     {
         await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));

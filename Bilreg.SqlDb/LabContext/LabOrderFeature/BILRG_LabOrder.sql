@@ -23,6 +23,13 @@ CREATE TABLE BILRG_LabOrder (
     CollectedUserId VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_LabOrder_CollectedUserId DEFAULT(''),
     CollectionNote VARCHAR(200) NOT NULL CONSTRAINT DF_BILRG_LabOrder_CollectionNote DEFAULT(''),
 
+    FinancialClearanceDate DATETIME NOT NULL CONSTRAINT DF_BILRG_LabOrder_FinancialClearanceDate DEFAULT('3000-01-01'),
+    FinancialClearanceUserId VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_LabOrder_FinancialClearanceUserId DEFAULT(''),
+    FinancialClearanceReason VARCHAR(200) NOT NULL CONSTRAINT DF_BILRG_LabOrder_FinancialClearanceReason DEFAULT(''),
+    ReleasedDate DATETIME NOT NULL CONSTRAINT DF_BILRG_LabOrder_ReleasedDate DEFAULT('3000-01-01'),
+    ReleasedUserId VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_LabOrder_ReleasedUserId DEFAULT(''),
+    ReleaseNote VARCHAR(200) NOT NULL CONSTRAINT DF_BILRG_LabOrder_ReleaseNote DEFAULT(''),
+
     CrtUser VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_LabOrder_CrtUser DEFAULT(''),
     CrtDate DATETIME NOT NULL CONSTRAINT DF_BILRG_LabOrder_CrtDate DEFAULT('3000-01-01'),
     UpdUser VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_LabOrder_UpdUser DEFAULT(''),
