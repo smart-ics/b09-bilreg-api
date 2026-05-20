@@ -35,14 +35,14 @@ Before generating DTO, DAL, or Repository,
 AI SHOULD load relevant documentation of Nuna.Lib.NetStandard documentation in this site:
 https://gitlab.com/myhospitalcore/a033_nuna_helper_netstandard
 
-| Component       | Documentation                |
-| --------------- | ---------------------------- |
-| CRUD Interfaces | `docs/data-access-helper.md` |
-| Dapper Helper   | `docs/dapper-helper.md`      |
-| MayBe Monad     | `docs/maybe-monad.md`        |
-| Result Monad    | `docs/result-monad.md`       |
-| Nuna ID         | `/docs/nunaid.md`            |
-| Repo-DAL interface| `/docs/crud-repository-interface.md`|            |
+| Component       | Documentation |
+| --------------- | ------------- |
+| CRUD Interfaces | Nuna repo: `data-access-helper.md` — see [`docs/external/nuna-lib.md`](../external/nuna-lib.md) |
+| Dapper Helper   | Nuna repo: `dapper-helper.md` |
+| MayBe Monad     | Nuna repo: `maybe-monad.md` |
+| Result Monad    | Nuna repo: `result-monad.md` |
+| Nuna ID         | Nuna repo: `nunaid.md` |
+| Repo-DAL interface | Nuna repo: `crud-repository-interface.md` |
 
 ---
 
@@ -50,7 +50,7 @@ https://gitlab.com/myhospitalcore/a033_nuna_helper_netstandard
 
 #### DTO + DAL generation
 
-Load:
+Load from the [Nuna.Lib.NetStandard](https://gitlab.com/myhospitalcore/a033_nuna_helper_netstandard) repository (see [`docs/external/nuna-lib.md`](../external/nuna-lib.md)):
 
 * `data-access-helper.md`
 * `dapper-helper.md`
@@ -65,7 +65,7 @@ Purpose:
 
 #### Repository generation
 
-Load:
+Load from the Nuna repository (see [`docs/external/nuna-lib.md`](../external/nuna-lib.md)):
 
 * `maybe-monad.md`
 * `result-monad.md`
