@@ -25,7 +25,7 @@ public class LabOrderWorklistDal : ILabOrderWorklistDal
             SELECT
                 aa.OrderId, aa.OrderNo, aa.LabOrderStatus, aa.OrderSource,
                 aa.PatientId, aa.PatientName, aa.Gender, aa.AgeAtOrder,
-                aa.FinancialClearance, aa.OwareStatus, aa.CrtDate, aa.BillingTindakanId,
+                aa.OwareStatus, aa.CrtDate, aa.BillingTindakanId,
                 (SELECT COUNT(*) FROM BILRG_LabOrderItem bb WHERE bb.OrderId = aa.OrderId) AS ItemCount,
                 (
                     SELECT STRING_AGG(bb.TestName, ', ') WITHIN GROUP (ORDER BY bb.ItemNo)
@@ -89,7 +89,6 @@ public class LabOrderWorklistDal : ILabOrderWorklistDal
             row.Gender,
             row.AgeAtOrder,
             row.ItemCount,
-            row.FinancialClearance,
             row.OwareStatus,
             row.CrtDate,
             row.BillingTindakanId,
@@ -105,7 +104,6 @@ public class LabOrderWorklistDal : ILabOrderWorklistDal
         string PatientName,
         string Gender,
         int AgeAtOrder,
-        int FinancialClearance,
         int OwareStatus,
         DateTime CrtDate,
         string BillingTindakanId,
@@ -114,6 +112,6 @@ public class LabOrderWorklistDal : ILabOrderWorklistDal
     {
         public static LabOrderWorklistRowDto Default() => new LabOrderWorklistRowDto(
             string.Empty, string.Empty, 0, 0, string.Empty, string.Empty, string.Empty, 
-            0, 0, 0, VoidSentinel, string.Empty, 0, string.Empty);
+            0, 0, VoidSentinel, string.Empty, 0, string.Empty);
     };
 }

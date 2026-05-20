@@ -1,5 +1,7 @@
 # AGENT.md — Laboratory Workflow Feature (Backend)
 
+> **Supplements:** `BACKEND_AGENT.md` (backend locks), `FRONTEND_AGENT_RULES.md` (frontend locks). **Domain locks:** `DOMAIN.md` §1A.
+
 # 1. Mission
 
 Laboratory Workflow Feature (LWF) is:
@@ -66,7 +68,7 @@ Responsibilities:
 - workflow lifecycle,
 - collection workflow,
 - billing orchestration,
-- release eligibility,
+- release orchestration (not financial authority),
 - integration coordination.
 
 Secondary Aggregate:
@@ -183,6 +185,8 @@ new immutable version
 
 Never mutate verified result.
 
+After amend + re-verification, next release must call BIL again (no stale approval).
+
 ---
 
 # 10. Verification Rules
@@ -201,7 +205,7 @@ medical validation completed
 Verification does NOT mean:
 - released,
 - paid,
-- financially cleared.
+- billing release validated (CLEAR).
 
 ---
 
@@ -215,25 +219,46 @@ Release:
 Release requires:
 
 ```text
-Financial Clearance = Approved
+Order status = Verified
++ BIL release validation = CLEAR (realtime at release attempt)
 ```
 
 Internal users may still view verified result before release.
+
+LWF owns:
+- release execution,
+- operational workflow state,
+- release validation audit history (trace only).
+
+BIL owns:
+- financial authority,
+- release eligibility decision (`CLEAR` / `BLOCKED`).
+
+**Realtime only:** validation at `PATCH release` — never pre-approve or cache clearance on LabOrder.
+
+**BLOCKED (LOCK):** HTTP 200 + `{ released: false, billingStatus: BLOCKED, message }` — operational outcome, not exception.
+
+**Amendment:** after re-verify, release must call BIL again — no stale approval.
 
 ---
 
 # 12. Financial Boundary
 
-LWF does NOT own billing.
+LWF does NOT own billing or financial state.
 
 LWF only:
 - requests billing charge,
-- receives billing response,
-- checks financial clearance.
+- receives billing charge response,
+- calls BIL for **billing release validation** at release attempt,
+- persists validation trace / request-response snapshot (not authoritative financial truth).
 
 Billing authority belongs to BIL.
 
 Never:
+- store financial clearance lifecycle on LabOrder,
+- approve/reject financial clearance in LWF,
+- return HTTP 400 for BIL `BLOCKED` (use HTTP 200 operational payload),
+- cache authoritative financial truth for release gating,
 - calculate payment,
 - manage refund,
 - manage receivable,

@@ -34,6 +34,7 @@ public static class InfrastructureService
             .AddScoped<IRestClientFactory, RestClientFactory>()
             .AddScoped<ILabOrderWorklistDal, LabOrderWorklistDal>()
             .AddScoped<ILabOrderReleaseWorklistDal, LabOrderReleaseWorklistDal>()
+            .AddScoped<ILabBillingReleaseCheckDal, LabBillingReleaseCheckDal>()
             .AddScoped<ILabResultVerificationWorklistDal, LabResultVerificationWorklistDal>()
             .AddScoped<ILabCollectionPreparationDal, LabCollectionPreparationDal>()
             .AddScoped<ILabRegIntegration, LabRegIntegration>()

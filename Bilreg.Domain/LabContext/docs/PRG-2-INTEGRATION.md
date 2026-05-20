@@ -136,7 +136,7 @@ Jika REG gagal:
 BIL digunakan untuk:
 
 * membuat billing charge,
-* dan financial clearance validation.
+* dan billing release validation (release eligibility).
 
 ---
 
@@ -158,11 +158,13 @@ POST /api/bil/charges
 
 ---
 
-### Check Financial Clearance
+### Validate Release Eligibility
 
 ```text id="p4v6m9"
-GET /api/bil/financial-clearance/{orderNo}
+POST /api/bil/release-validation
 ```
+
+Called synchronously by LWF during `PATCH release` (release attempt only — realtime). Response: `CLEAR` or `BLOCKED` + message. LWF maps `BLOCKED` to HTTP **200** operational payload (not 400).
 
 ---
 
@@ -348,14 +350,12 @@ OWR hanya:
 
 ## Rule 4
 
-Financial clearance hanya menentukan:
+Billing release validation menentukan apakah hasil boleh dirilis.
 
-* apakah hasil boleh dirilis.
-
-Financial clearance:
-
+* BIL adalah authority (`CLEAR` / `BLOCKED`),
+* LWF hanya memanggil BIL saat release attempt,
 * bukan payment state,
-* bukan workflow state.
+* bukan workflow state di LWF.
 
 ---
 
@@ -366,5 +366,5 @@ Financial clearance:
 | REG failed                  | Workflow blocked     |
 | Billing failed              | Workflow blocked     |
 | OWR failed                  | Retry asynchronous   |
-| Financial clearance pending | Release blocked      |
+| BIL returns BLOCKED on release | Release blocked; order stays Verified |
 | Result import mismatch      | Manual investigation |

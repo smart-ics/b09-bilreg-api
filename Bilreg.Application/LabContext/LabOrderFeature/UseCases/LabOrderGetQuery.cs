@@ -7,12 +7,17 @@ namespace Bilreg.Application.LabContext.LabOrderFeature.UseCases;
 
 public record LabOrderGetQuery(string OrderId) : IRequest<LabOrderGetResponse>, ILabOrderKey;
 
+public record LabBillingReleaseCheckSnapshot(
+    DateTime CheckedAt,
+    string BillingStatus,
+    string Message,
+    string RequestedByUserId);
+
 public record LabOrderGetResponse(
     string OrderId,
     string OrderNo,
     int OrderSource,
     int LabOrderStatus,
-    int FinancialClearance,
     int OwareStatus,
     string RegId,
     string PatientId,
@@ -28,9 +33,6 @@ public record LabOrderGetResponse(
     DateTime CollectedDate,
     string CollectedUserId,
     string CollectionNote,
-    DateTime FinancialClearanceDate,
-    string FinancialClearanceUserId,
-    string FinancialClearanceReason,
     DateTime ReleasedDate,
     string ReleasedUserId,
     string ReleaseNote,
@@ -41,6 +43,7 @@ public record LabOrderGetResponse(
     DateTime TerminationDate,
     string TerminationUserId,
     bool IsVoided,
+    LabBillingReleaseCheckSnapshot? LastBillingReleaseCheck,
     IEnumerable<LabOrderItemResponse> Items);
 
 public record LabOrderItemResponse(
@@ -57,11 +60,15 @@ public record LabOrderItemResponse(
 
 public class LabOrderGetHandler : IRequestHandler<LabOrderGetQuery, LabOrderGetResponse>
 {
-    private readonly ILabOrderRepo _repo;
+    private static readonly DateTime EmptyDate = new(3000, 1, 1);
 
-    public LabOrderGetHandler(ILabOrderRepo repo)
+    private readonly ILabOrderRepo _repo;
+    private readonly ILabBillingReleaseCheckDal _billingReleaseCheckDal;
+
+    public LabOrderGetHandler(ILabOrderRepo repo, ILabBillingReleaseCheckDal billingReleaseCheckDal)
     {
         _repo = repo;
+        _billingReleaseCheckDal = billingReleaseCheckDal;
     }
 
     public Task<LabOrderGetResponse> Handle(LabOrderGetQuery request, CancellationToken cancellationToken)
@@ -82,12 +89,20 @@ public class LabOrderGetHandler : IRequestHandler<LabOrderGetQuery, LabOrderGetR
             x.SpecimenType,
             x.RequiredTubeCount)).ToList();
 
+        var lastCheck = _billingReleaseCheckDal.GetLastByOrderId(order.OrderId)
+            .Match(
+                onSome: check => new LabBillingReleaseCheckSnapshot(
+                    check.CheckedAt,
+                    BillingReleaseStatusApi.ToApi(check.BillingStatus),
+                    check.Message,
+                    check.RequestedByUserId),
+                onNone: () => (LabBillingReleaseCheckSnapshot?)null);
+
         var response = new LabOrderGetResponse(
             OrderId: order.OrderId,
             OrderNo: order.OrderNo,
             OrderSource: (int)order.OrderSource,
             LabOrderStatus: (int)order.LabOrderStatus,
-            FinancialClearance: (int)order.FinancialClearance,
             OwareStatus: (int)order.OwareStatus,
             RegId: order.Patient.RegId,
             PatientId: order.Patient.PatientId,
@@ -103,9 +118,6 @@ public class LabOrderGetHandler : IRequestHandler<LabOrderGetQuery, LabOrderGetR
             CollectedDate: order.CollectionInfo.CollectedDate,
             CollectedUserId: order.CollectionInfo.CollectedUserId,
             CollectionNote: order.CollectionInfo.CollectionNote,
-            FinancialClearanceDate: order.FinancialClearanceDate,
-            FinancialClearanceUserId: order.FinancialClearanceUserId,
-            FinancialClearanceReason: order.FinancialClearanceReason,
             ReleasedDate: order.ReleasedDate,
             ReleasedUserId: order.ReleasedUserId,
             ReleaseNote: order.ReleaseNote,
@@ -116,6 +128,7 @@ public class LabOrderGetHandler : IRequestHandler<LabOrderGetQuery, LabOrderGetR
             TerminationDate: order.TerminationDate,
             TerminationUserId: order.TerminationUserId,
             IsVoided: order.AuditTrail.IsVoided,
+            LastBillingReleaseCheck: lastCheck,
             Items: items);
 
         return Task.FromResult(response);

@@ -23,6 +23,22 @@ LWF tidak menangani:
 
 ---
 
+## 1A. Architectural Locks (canonical)
+
+| Lock | Rule |
+|------|------|
+| **BIL authority** | Billing Context owns financial authority and release eligibility. LWF does **not** own financial lifecycle, approval state, or authoritative financial truth. |
+| **Realtime validation** | Release eligibility is validated **only** at release attempt — not pre-approved in LWF. |
+| **LWF role** | LWF requests validation, executes release workflow, stores validation trace/history only. |
+| **BLOCKED transport** | `BLOCKED` is an **operational business outcome**, not a transport failure — API returns **HTTP 200** with `released: false`, `billingStatus: BLOCKED`, `message`. |
+| **Amendment** | After amendment and re-verification, release must call BIL again — no stale approval. |
+
+```text
+Release Attempt → Ask BIL → CLEAR / BLOCKED → Release Decision
+```
+
+---
+
 # 2. External Subsystems
 
 LWF terintegrasi dengan:
@@ -148,21 +164,33 @@ Result:
 
 ---
 
-# 8. Financial Clearance
+# 8. Billing Release Validation
 
-Financial clearance digunakan untuk menentukan apakah hasil boleh dirilis ke pasien.
+LWF tidak memiliki financial authority.
 
-Financial clearance:
+Financial authority sepenuhnya milik Billing Context (BIL).
 
-* bukan payment status,
-* bukan billing ownership,
-* dan bukan workflow status.
+Saat user melakukan release hasil:
 
-Financial clearance hanya menentukan:
+* LWF melakukan release-validation ke BIL,
+* BIL menentukan apakah hasil boleh dirilis,
+* LWF hanya menjalankan keputusan release tersebut.
 
-```text id="j4m8p1"
+Tujuan validation:
+
+```text
 Result Release Eligibility
 ```
+
+LWF boleh menyimpan:
+
+* release validation history,
+* integration trace,
+* dan audit snapshot.
+
+Tetapi LWF tidak boleh menjadi source-of-truth financial state.
+
+**LOCK:** Tidak ada approval lifecycle, pending/approved/rejected state machine, atau cached financial truth di LWF.
 
 ---
 
@@ -177,9 +205,9 @@ LabOrder
 Responsibilities:
 
 * operational workflow lifecycle
-* billing orchestration
+* billing charge orchestration (request only)
 * collection workflow
-* release eligibility
+* release orchestration (execution + audit trace — **not** financial authority)
 * external integration coordination
 
 ---
@@ -209,7 +237,7 @@ LabOrder
  ├── OrderNo
  ├── OrderSource
  ├── WorkflowStatus
- ├── FinancialClearance
+ ├── BillingReleaseCheckHistory
  ├── OwareStatus
  ├── PatientSnapshot
  ├── CollectionInfo
@@ -312,6 +340,10 @@ LWF hanya:
 * dan menerima hasil billing processing.
 
 Billing authority tetap milik BIL.
+
+BIL menentukan release eligibility (`CLEAR` / `BLOCKED`) — **realtime** saat release attempt.
+
+LWF wajib memanggil BIL pada setiap release attempt. Tidak ada pre-approval yang disimpan di LWF.
 
 ---
 
@@ -533,6 +565,8 @@ Version 1 → Initial Result
 Version 2 → Corrected Result
 ```
 
+Setelah amendment dan re-verification, release wajib memanggil BIL lagi — **tidak ada stale approval**.
+
 ---
 
 # 32. Amendment Strategy
@@ -569,10 +603,35 @@ maka PDF harus menampilkan status hasil secara explicit.
 
 # 34. Internal Visibility
 
-Jika financial clearance belum approved:
+Jika Billing release validation gagal:
 
 * hasil tetap boleh dilihat internal RS,
 * tetapi tidak boleh dirilis ke pasien.
+
+---
+
+# 34A. Billing Release Validation
+
+Release hasil laboratorium selalu melakukan real-time validation ke BIL.
+
+Workflow:
+
+```text
+Release Attempt
+→ Ask BIL
+→ CLEAR / BLOCKED
+→ Release Decision
+```
+
+LWF tidak menyimpan financial lifecycle.
+
+LWF hanya menyimpan:
+
+* validation trace,
+* request/response snapshot,
+* dan audit history.
+
+**API LOCK:** `BLOCKED` → HTTP 200, `released: false`, `billingStatus: BLOCKED`, `message` — bukan HTTP 400 / exception workflow.
 
 ---
 

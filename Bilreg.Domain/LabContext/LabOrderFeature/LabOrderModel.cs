@@ -17,7 +17,6 @@ public class LabOrderModel : ILabOrderKey
         string orderNo,
         LabOrderSourceEnum orderSource,
         LabOrderStatusEnum labOrderStatus,
-        FinancialClearanceEnum financialClearance,
         OwareStatusEnum owareStatus,
         PatientSnapshotType patient,
         string executionRegId,
@@ -25,9 +24,6 @@ public class LabOrderModel : ILabOrderKey
         string billingTindakanId,
         string billingLastError,
         CollectionInfoType collectionInfo,
-        DateTime financialClearanceDate,
-        string financialClearanceUserId,
-        string financialClearanceReason,
         DateTime releasedDate,
         string releasedUserId,
         string releaseNote,
@@ -44,7 +40,6 @@ public class LabOrderModel : ILabOrderKey
         OrderNo = orderNo;
         OrderSource = orderSource;
         LabOrderStatus = labOrderStatus;
-        FinancialClearance = financialClearance;
         OwareStatus = owareStatus;
         Patient = patient;
         ExecutionRegId = executionRegId;
@@ -52,9 +47,6 @@ public class LabOrderModel : ILabOrderKey
         BillingTindakanId = billingTindakanId;
         BillingLastError = billingLastError;
         CollectionInfo = collectionInfo;
-        FinancialClearanceDate = financialClearanceDate;
-        FinancialClearanceUserId = financialClearanceUserId;
-        FinancialClearanceReason = financialClearanceReason;
         ReleasedDate = releasedDate;
         ReleasedUserId = releasedUserId;
         ReleaseNote = releaseNote;
@@ -73,7 +65,6 @@ public class LabOrderModel : ILabOrderKey
         orderNo: "",
         orderSource: LabOrderSourceEnum.Emr,
         labOrderStatus: LabOrderStatusEnum.Ordered,
-        financialClearance: FinancialClearanceEnum.Pending,
         owareStatus: OwareStatusEnum.Pending,
         patient: PatientSnapshotType.Default,
         executionRegId: "",
@@ -81,9 +72,6 @@ public class LabOrderModel : ILabOrderKey
         billingTindakanId: "",
         billingLastError: "",
         collectionInfo: CollectionInfoType.Default,
-        financialClearanceDate: EmptyDate,
-        financialClearanceUserId: "",
-        financialClearanceReason: "",
         releasedDate: EmptyDate,
         releasedUserId: "",
         releaseNote: "",
@@ -101,7 +89,6 @@ public class LabOrderModel : ILabOrderKey
         "",
         LabOrderSourceEnum.Emr,
         LabOrderStatusEnum.Ordered,
-        FinancialClearanceEnum.Pending,
         OwareStatusEnum.Pending,
         PatientSnapshotType.Default,
         "",
@@ -109,9 +96,6 @@ public class LabOrderModel : ILabOrderKey
         "",
         "",
         CollectionInfoType.Default,
-        EmptyDate,
-        "",
-        "",
         EmptyDate,
         "",
         "",
@@ -129,7 +113,6 @@ public class LabOrderModel : ILabOrderKey
         string orderNo,
         LabOrderSourceEnum orderSource,
         LabOrderStatusEnum labOrderStatus,
-        FinancialClearanceEnum financialClearance,
         OwareStatusEnum owareStatus,
         PatientSnapshotType patient,
         string executionRegId,
@@ -137,9 +120,6 @@ public class LabOrderModel : ILabOrderKey
         string billingTindakanId,
         string billingLastError,
         CollectionInfoType collectionInfo,
-        DateTime financialClearanceDate,
-        string financialClearanceUserId,
-        string financialClearanceReason,
         DateTime releasedDate,
         string releasedUserId,
         string releaseNote,
@@ -156,7 +136,6 @@ public class LabOrderModel : ILabOrderKey
             orderNo,
             orderSource,
             labOrderStatus,
-            financialClearance,
             owareStatus,
             patient,
             executionRegId,
@@ -164,9 +143,6 @@ public class LabOrderModel : ILabOrderKey
             billingTindakanId,
             billingLastError,
             collectionInfo,
-            financialClearanceDate,
-            financialClearanceUserId,
-            financialClearanceReason,
             releasedDate,
             releasedUserId,
             releaseNote,
@@ -236,7 +212,6 @@ public class LabOrderModel : ILabOrderKey
             orderNo,
             orderSource,
             LabOrderStatusEnum.Ordered,
-            FinancialClearanceEnum.Pending,
             OwareStatusEnum.Pending,
             snapshot,
             executionRegId: "",
@@ -244,9 +219,6 @@ public class LabOrderModel : ILabOrderKey
             billingTindakanId: "",
             billingLastError: "",
             collectionInfo: CollectionInfoType.Default,
-            financialClearanceDate: EmptyDate,
-            financialClearanceUserId: "",
-            financialClearanceReason: "",
             releasedDate: EmptyDate,
             releasedUserId: "",
             releaseNote: "",
@@ -430,62 +402,6 @@ public class LabOrderModel : ILabOrderKey
         AuditTrail.Modif(userId, DateTime.Now);
     }
 
-    public void ApproveFinancialClearance(string userId)
-    {
-        Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
-
-        if (AuditTrail.IsVoided)
-            throw new InvalidOperationException(
-                $"LabOrder {OrderId} sudah void; persetujuan financial clearance tidak diperbolehkan.");
-
-        if (LabOrderStatus == LabOrderStatusEnum.Released)
-            throw new InvalidOperationException(
-                $"LabOrder {OrderId} sudah Released; financial clearance tidak dapat diubah.");
-
-        if (LabOrderStatus != LabOrderStatusEnum.Verified)
-            throw new InvalidOperationException(
-                $"LabOrder {OrderId} berstatus {LabOrderStatus}; financial clearance hanya diperbolehkan saat Verified.");
-
-        if (FinancialClearance != FinancialClearanceEnum.Pending)
-            throw new InvalidOperationException(
-                $"LabOrder {OrderId} memiliki FinancialClearance {FinancialClearance}; approve hanya dari Pending.");
-
-        FinancialClearance = FinancialClearanceEnum.Approved;
-        FinancialClearanceDate = DateTime.Now;
-        FinancialClearanceUserId = userId;
-        FinancialClearanceReason = "";
-        AuditTrail.Modif(userId, DateTime.Now);
-    }
-
-    public void RejectFinancialClearance(string reason, string userId)
-    {
-        Guard.Against.NullOrWhiteSpace(reason, nameof(reason));
-        Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
-
-        if (AuditTrail.IsVoided)
-            throw new InvalidOperationException(
-                $"LabOrder {OrderId} sudah void; penolakan financial clearance tidak diperbolehkan.");
-
-        if (LabOrderStatus == LabOrderStatusEnum.Released)
-            throw new InvalidOperationException(
-                $"LabOrder {OrderId} sudah Released; financial clearance tidak dapat diubah.");
-
-        if (LabOrderStatus != LabOrderStatusEnum.Verified)
-            throw new InvalidOperationException(
-                $"LabOrder {OrderId} berstatus {LabOrderStatus}; financial clearance hanya diperbolehkan saat Verified.");
-
-        if (FinancialClearance != FinancialClearanceEnum.Pending)
-            throw new InvalidOperationException(
-                $"LabOrder {OrderId} memiliki FinancialClearance {FinancialClearance}; reject hanya dari Pending.");
-
-        var r = reason.Length > 200 ? reason[..200] : reason;
-        FinancialClearance = FinancialClearanceEnum.Rejected;
-        FinancialClearanceDate = DateTime.Now;
-        FinancialClearanceUserId = userId;
-        FinancialClearanceReason = r;
-        AuditTrail.Modif(userId, DateTime.Now);
-    }
-
     public void Release(string userId, string releaseNote)
     {
         Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
@@ -502,10 +418,6 @@ public class LabOrderModel : ILabOrderKey
         if (LabOrderStatus != LabOrderStatusEnum.Verified)
             throw new InvalidOperationException(
                 $"LabOrder {OrderId} berstatus {LabOrderStatus}; release hanya diperbolehkan saat Verified.");
-
-        if (FinancialClearance != FinancialClearanceEnum.Approved)
-            throw new InvalidOperationException(
-                $"LabOrder {OrderId} memerlukan FinancialClearance Approved untuk release.");
 
         var note = releaseNote.Length > 200 ? releaseNote[..200] : releaseNote;
         LabOrderStatus = LabOrderStatusEnum.Released;
@@ -603,7 +515,6 @@ public class LabOrderModel : ILabOrderKey
     public string OrderNo { get; init; }
     public LabOrderSourceEnum OrderSource { get; init; }
     public LabOrderStatusEnum LabOrderStatus { get; set; }
-    public FinancialClearanceEnum FinancialClearance { get; set; }
     public OwareStatusEnum OwareStatus { get; set; }
     public PatientSnapshotType Patient { get; init; }
     public string ExecutionRegId { get; set; }
@@ -611,9 +522,6 @@ public class LabOrderModel : ILabOrderKey
     public string BillingTindakanId { get; set; }
     public string BillingLastError { get; set; }
     public CollectionInfoType CollectionInfo { get; set; }
-    public DateTime FinancialClearanceDate { get; set; }
-    public string FinancialClearanceUserId { get; set; }
-    public string FinancialClearanceReason { get; set; }
     public DateTime ReleasedDate { get; set; }
     public string ReleasedUserId { get; set; }
     public string ReleaseNote { get; set; }

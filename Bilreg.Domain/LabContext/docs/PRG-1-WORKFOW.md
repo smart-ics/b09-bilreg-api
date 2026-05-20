@@ -130,22 +130,45 @@ Result:
 * boleh sudah verified,
 * tetapi belum boleh dirilis.
 
+Release flow (canonical):
+
+```text
+Verify
+→ Release Attempt
+→ Ask BIL
+→ CLEAR / BLOCKED
+→ Release Decision
+```
+
+Tidak ada langkah approve financial clearance di LWF.
+
 ---
 
-# 8. Financial Clearance
+# 8. Billing Release Validation
 
-Financial clearance menentukan apakah hasil boleh dirilis ke pasien.
+LWF tidak memiliki financial authority.
 
-Financial clearance:
+Financial authority sepenuhnya milik Billing Context (BIL).
 
-* bukan payment status,
-* bukan workflow state,
-* dan bukan billing ownership.
+Saat release hasil:
 
-Jika clearance belum approved:
+```text
+Release Attempt
+→ Ask BIL
+→ CLEAR / BLOCKED
+→ Release Decision
+```
+
+Jika Billing release validation gagal (`BLOCKED`):
 
 * hasil tetap visible internal,
-* tetapi tidak boleh dirilis.
+* tetapi tidak boleh dirilis ke pasien.
+
+LWF hanya menyimpan validation trace / audit history — bukan financial lifecycle.
+
+**API LOCK:** `BLOCKED` → HTTP 200, `released: false`, `billingStatus: BLOCKED`, `message` — bukan HTTP 400.
+
+Setelah amendment + re-verification, release wajib validasi BIL lagi.
 
 ---
 
@@ -238,6 +261,8 @@ Versioning menggunakan:
 
 * immutable snapshot,
 * full result copy per version.
+
+Setelah amend → re-verify → release: validasi BIL realtime lagi (no stale approval).
 
 ---
 

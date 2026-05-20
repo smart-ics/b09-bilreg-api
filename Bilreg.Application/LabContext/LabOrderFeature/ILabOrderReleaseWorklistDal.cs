@@ -10,7 +10,6 @@ public record LabReleaseView(
     string OrderNo,
     string PatientName,
     DateTime VerifiedDate,
-    int FinancialClearance,
     DateTime ReleasedDate,
     int LabOrderStatus);
 

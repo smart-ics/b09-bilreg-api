@@ -17,7 +17,6 @@ public class LabOrderDalTest
             OrderNo: "LAB00000001",
             OrderSource: 1,
             LabOrderStatus: 1,
-            FinancialClearance: 0,
             OwareStatus: 0,
             RegId: "REG001",
             PatientId: "MR0001",
@@ -33,9 +32,6 @@ public class LabOrderDalTest
             CollectedDate: new DateTime(3000, 1, 1),
             CollectedUserId: "",
             CollectionNote: "",
-            FinancialClearanceDate: new DateTime(3000, 1, 1),
-            FinancialClearanceUserId: "",
-            FinancialClearanceReason: "",
             ReleasedDate: new DateTime(3000, 1, 1),
             ReleasedUserId: "",
             ReleaseNote: "",
@@ -70,27 +66,19 @@ public class LabOrderDalTest
         => LabOrderModel.Key(orderId);
 
     [Fact]
-    public void InsertAndGetData_RoundTripsClearanceReleaseColumns()
+    public void InsertAndGetData_RoundTripsReleaseColumns()
     {
         using var trans = TransHelper.NewScope();
-        var clearanceAt = new DateTime(2026, 5, 18, 11, 0, 0);
         var releasedAt = new DateTime(2026, 5, 18, 15, 0, 0);
         var dto = FakerHeader("LBO000000088") with
         {
-            LabOrderStatus = (int)LabOrderStatusEnum.Verified,
-            FinancialClearance = (int)FinancialClearanceEnum.Approved,
-            FinancialClearanceDate = clearanceAt,
-            FinancialClearanceUserId = "FIN9",
-            FinancialClearanceReason = "",
+            LabOrderStatus = (int)LabOrderStatusEnum.Released,
             ReleasedDate = releasedAt,
             ReleasedUserId = "REL9",
             ReleaseNote = "Ok"
         };
         _sut.Insert(dto);
         var actual = _sut.GetData(LabOrderModel.Key("LBO000000088"));
-        actual.FinancialClearance.Should().Be((int)FinancialClearanceEnum.Approved);
-        actual.FinancialClearanceDate.Should().Be(clearanceAt);
-        actual.FinancialClearanceUserId.Should().Be("FIN9");
         actual.ReleasedDate.Should().Be(releasedAt);
         actual.ReleasedUserId.Should().Be("REL9");
         actual.ReleaseNote.Should().Be("Ok");

@@ -94,25 +94,11 @@ public class LabOrderController : ControllerBase
         return Ok(new JSendOk("Done"));
     }
 
-    [HttpPatch("approveFinancialClearance")]
-    public async Task<IActionResult> ApproveFinancialClearance(LabOrderApproveFinancialClearanceCmd cmd)
-    {
-        await _mediator.Send(cmd);
-        return Ok(new JSendOk("Done"));
-    }
-
-    [HttpPatch("rejectFinancialClearance")]
-    public async Task<IActionResult> RejectFinancialClearance(LabOrderRejectFinancialClearanceCmd cmd)
-    {
-        await _mediator.Send(cmd);
-        return Ok(new JSendOk("Done"));
-    }
-
     [HttpPatch("release")]
     public async Task<IActionResult> Release(LabOrderReleaseCmd cmd)
     {
-        await _mediator.Send(cmd);
-        return Ok(new JSendOk("Done"));
+        var response = await _mediator.Send(cmd);
+        return Ok(new JSendOk(response));
     }
 
     [HttpPatch("cancel")]

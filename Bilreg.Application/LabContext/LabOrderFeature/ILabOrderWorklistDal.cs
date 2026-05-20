@@ -21,7 +21,6 @@ public record LabOrderWorklistView(
     string Gender,
     int AgeAtOrder,
     int ItemCount,
-    int FinancialClearance,
     int OwareStatus,
     DateTime CrtDate,
     string BillingTindakanId,

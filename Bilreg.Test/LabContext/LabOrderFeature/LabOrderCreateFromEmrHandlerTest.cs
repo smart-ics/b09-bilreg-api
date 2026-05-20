@@ -49,7 +49,6 @@ public class LabOrderCreateFromEmrHandlerTest
         persisted.Should().NotBeNull();
         result.OrderId.Should().Be(persisted!.OrderId);
         persisted.LabOrderStatus.Should().Be(LabOrderStatusEnum.Ordered);
-        persisted.FinancialClearance.Should().Be(FinancialClearanceEnum.Pending);
         persisted.OwareStatus.Should().Be(OwareStatusEnum.Pending);
         _repo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Once);
     }

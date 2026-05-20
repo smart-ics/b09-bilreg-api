@@ -2,6 +2,7 @@
 
 > **Status:** Planning only — no implementation in this document.  
 > **Canonical location:** `Bilreg.Domain/LabContext/docs/IMPLEMENTATION_PLAN.md`  
+> **Architectural locks:** See `DOMAIN.md` §1A — BIL authority, realtime validation, HTTP 200 for `BLOCKED`, amendment re-validation.  
 > **API project:** `Bilreg.Api` (briefs may say WebApi).  
 > **Scope root:** `{Layer}/LabContext/` in each project.
 
@@ -15,7 +16,7 @@
 |------|----------------|
 | Workflow lifecycle (`Ordered` → … → `Released`) | Patient registration authority (REG) |
 | `LabOrderModel` + `LabResultDocumentModel` | Billing authority (BIL) — only requests `Tindakan` |
-| Billing charge **request**; financial clearance **gate** for external release | Payment, refund, receivable |
+| Billing charge **request**; release-time **BIL validation** (trace/history only) | Payment, refund, receivable; financial authority |
 | Result verification + administrative release | OWR/LIS as source-of-truth |
 | OWR outbound queue (async) | Accessioning, QC, reagent, analyzer routing |
 
@@ -25,6 +26,8 @@
 |----------|----------|
 | `Bilreg.Domain/LabContext/docs/DOMAIN.md` | Aggregates, states, boundaries |
 | `Bilreg.Domain/LabContext/docs/AGENT.md` | Invariants, forbidden design |
+| `Bilreg.Domain/LabContext/docs/BACKEND_AGENT.md` | Backend architectural locks (BLOCKED = HTTP 200) |
+| `Bilreg.Domain/LabContext/docs/FRONTEND_AGENT_RULES.md` | Frontend architectural locks |
 | `docs/ENGINEERING.md` | Layers, repo/query philosophy |
 | `docs/DATABASE.md` | Table/column/audit rules |
 | `docs/NAMING.md` | Naming |
@@ -108,7 +111,7 @@ Bilreg.Domain/LabContext/
     LabOrderItemModel.cs
     LabOrderStatusEnum.cs
     LabOrderSourceEnum.cs
-    FinancialClearanceEnum.cs
+    BillingReleaseCheckType.cs          # audit snapshot per validation attempt
     OwareStatusEnum.cs
     PatientSnapshotType.cs          # 6 fields — no MRNumber
     CollectionInfoType.cs
@@ -149,6 +152,7 @@ Bilreg.Api/Controllers/LabContext/
 Bilreg.SqlDb/LabContext/
   LabOrderFeature/BILRG_LabOrder.sql
   LabOrderFeature/BILRG_LabOrderItem.sql
+  LabOrderFeature/BILRG_LabBillingReleaseCheck.sql   # validation trace / audit only
   LabOrderFeature/BILRG_LabOwareOutboundQueue.sql
   LabResultFeature/BILRG_LabResultDocument.sql
   LabResultFeature/BILRG_LabResultVersion.sql
@@ -184,7 +188,9 @@ Persist on `BILRG_LabOrder`. External patient may start with `RegId` / `PatientI
 
 **Identity:** `OrderId` `VARCHAR(12)` (app-generated).
 
-**Header fields (conceptual):** `OrderNo`, `OrderSource`, `LabOrderStatus`, `FinancialClearance`, `OwareStatus`, patient snapshot, `DeferredInfo`, `CollectionInfo`, `BillingTindakanId`, `BillingLastError`, `ExecutionRegId`, audit columns.
+**Header fields (conceptual):** `OrderNo`, `OrderSource`, `LabOrderStatus`, `OwareStatus`, patient snapshot, `DeferredInfo`, `CollectionInfo`, `BillingTindakanId`, `BillingLastError`, `ExecutionRegId`, release audit columns (`ReleasedDate`, `ReleasedUserId`, `ReleaseNote`), audit columns.
+
+**Billing release validation (not authoritative financial state):** append-only `BillingReleaseCheckHistory` rows (request/response snapshot, `CLEAR`/`BLOCKED`, message, timestamp). LWF does **not** store a financial clearance enum on the order root.
 
 **Children:** `LabOrderItemModel` — PK `(OrderId, ItemNo)`; snapshot test name, tarif refs, `SpecimenRequirementType` (tube/specimen/count).
 
@@ -202,8 +208,7 @@ CollectSpecimen(...)
 MarkRecorded(userId)
 Cancel(userId, reason)      # Ordered | Deferred | Charged only
 Terminate(userId, reason)   # Collected | Recorded only
-UpdateFinancialClearance(status)
-Release(userId)             # requires clearance Approved
+Release(userId)             # Verified only; handler calls BIL validate-release then transitions on CLEAR
 AttachPatientSnapshot(...)  # after REG
 ```
 
@@ -249,6 +254,7 @@ Released order workflow is operationally final.
 |-------|---------|
 | `BILRG_LabOrder` | Root workflow + patient snapshot (6 fields) + deferred/collection/billing refs |
 | `BILRG_LabOrderItem` | PK `(OrderId, ItemNo)` |
+| `BILRG_LabBillingReleaseCheck` | Validation trace per release attempt (audit only) |
 | `BILRG_LabResultDocument` | PK `OrderId` |
 | `BILRG_LabResultVersion` | PK `(OrderId, VersionNo)` |
 | `BILRG_LabResultComponent` | PK `(OrderId, VersionNo, ComponentNo)` |
@@ -352,7 +358,7 @@ Vertical slices: SQL → Dto/Dal → Repo → Model → Handler → Controller �
 | 5 | Collect specimen + vacutainer grouping (simple) |
 | 6 | Record result + `MarkRecorded` |
 | 7 | Verify |
-| 8 | Financial clearance + release |
+| 8 | Billing release validation + release (realtime BIL; HTTP 200 on BLOCKED) |
 | 9 | Cancel / terminate / EMR cancel |
 | 10 | Amendment |
 | 11 | OWARE queue + worker + retry |
@@ -405,6 +411,9 @@ public interface ILabBillingIntegration
 {
     // Billing charge = create Tindakan; success returns TindakanId
     string CreateTindakan(LabBillingChargeRequest request);
+
+    // Release-time eligibility — BIL is source-of-truth (CLEAR / BLOCKED)
+    LabBillingReleaseValidationResult ValidateReleaseEligibility(LabBillingReleaseValidationRequest request);
 }
 ```
 
@@ -442,10 +451,11 @@ Register implementations in `InfrastructureService.cs` (scoped).
 
 1. `BILRG_LabOrder.sql`  
 2. `BILRG_LabOrderItem.sql`  
-3. `BILRG_LabResultDocument.sql`  
-4. `BILRG_LabResultVersion.sql`  
-5. `BILRG_LabResultComponent.sql`  
-6. `BILRG_LabOwareOutboundQueue.sql`  
+3. `BILRG_LabBillingReleaseCheck.sql`  
+4. `BILRG_LabResultDocument.sql`  
+5. `BILRG_LabResultVersion.sql`  
+6. `BILRG_LabResultComponent.sql`  
+7. `BILRG_LabOwareOutboundQueue.sql`  
 
 Follow `DATABASE.md` formatting (`aa` alias in queries, `GO` separators).
 
@@ -493,9 +503,10 @@ trans.Complete();
 |---------|-----|
 | Left queue | `GET worklist?status=` |
 | Workspace | `GET {orderId}` |
-| Actions | Status + `FinancialClearance` + allowed transitions |
+| Actions | Status + allowed transitions (`owareStatus`, `isVoided`) |
 | Collection prep | Grouped vacutainer counts (dedicated query or included in get) |
-| Release gate | Clearance must be `Approved` for external release |
+| Release | `PATCH release` on **Verified** — realtime BIL validation; show `BLOCKED` + message on failure |
+| Release audit | Optional `lastBillingReleaseCheck` / history list on order GET (trace only) |
 
 Enum numeric values fixed once published. Snapshot avoids live REG joins for display.
 
@@ -510,7 +521,7 @@ Enum numeric values fixed once published. Snapshot avoids live REG joins for dis
 | Confusing MR vs PatientId | Single field `PatientId` only |
 | OWR payload churn | Opaque JSON in queue |
 | Verified result mutation | Version-only amendments |
-| Clearance vs payment | Separate enum; document in API |
+| Release blocked by BIL | **LOCK:** HTTP 200 + `{ released: false, billingStatus: BLOCKED, message }` — not 400; persist validation trace row |
 
 ---
 
@@ -525,7 +536,7 @@ Enum numeric values fixed once published. Snapshot avoids live REG joins for dis
 | M5 | Collect + vacutainer grouping |
 | M6 | Record result |
 | M7 | Verify (internal visibility) |
-| M8 | Clearance + release |
+| M8 | Billing release validation + release (`LabOrderReleaseCmd` → BIL → CLEAR/BLOCKED; structured 200 response) |
 | M9 | Cancel / terminate |
 | M10 | Amendment + PDF |
 | M11 | OWARE queue + retry |
@@ -598,7 +609,7 @@ Each milestone: domain tests for transitions + Dal/Repo tests.
 | 1 | EMR create-order payload schema | Minimal DTO + manual mapping |
 | 2 | Real `LabBillingIntegration` contract when BIL ready | Placeholder `TindakanId` |
 | 3 | Real deferred REG flow | Placeholder `RegId` via `ILabRegIntegration` |
-| 4 | Financial clearance source (BIL push vs manual) | Financial clearance is manually updated in V1 through administrative command/use-case. Future integration with BIL may automate clearance synchronization. |
+| 4 | BIL release-validation contract | `ILabBillingIntegration.ValidateReleaseEligibility(order)` — synchronous at release only; returns `CLEAR` or `BLOCKED` + message. **BLOCKED → HTTP 200 operational payload** (see `BACKEND_AGENT.md`). LWF appends audit row only. After amend + re-verify, release calls BIL again. |
 | 5 | OWR endpoint + retry policy | Queue + opaque JSON + manual retry |
 | 6 | Test catalog at order create | Snapshot from EMR payload |
 | 7 | `OrderNo` counter key | `INunaCounterBL` prefix `LAB` |
@@ -611,8 +622,15 @@ Each milestone: domain tests for transitions + Dal/Repo tests.
 
 **`LabOrderStatusEnum`:** `Ordered=1`, `Deferred=2`, `Charged=3`, `Collected=4`, `Recorded=5`, `Verified=6`, `Released=7`, `Cancelled=8`, `Terminated=9`
 
-**`FinancialClearanceEnum`:** `Pending=0`, `Approved=1`, `Blocked=2`  
-— Release to patient/external requires `Approved`. Internal view of verified result allowed before approval.
+**Billing release validation (integration result, not LWF enum):** `CLEAR`, `BLOCKED` — returned by BIL at `PATCH release` attempt only (realtime; no pre-approval). LWF persists each attempt in `BILRG_LabBillingReleaseCheck` (audit/trace).
+
+**API response (LOCK):**
+
+```json
+{ "released": false, "billingStatus": "BLOCKED", "message": "..." }
+```
+
+HTTP **200** — `BLOCKED` is operational outcome, not exception. HTTP **400** reserved for invalid workflow state (e.g. release from non-Verified), not for BIL denial.
 
 **`OwareStatusEnum`:** `Pending=0`, `Sent=1`, `Failed=2`
 

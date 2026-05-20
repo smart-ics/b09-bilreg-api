@@ -301,19 +301,20 @@ Result ready for release.
 
 ## Steps
 
-1. Request release
-2. Check financial clearance
-3. Release result
+1. Request release (`PATCH release`)
+2. LWF calls BIL release validation
+3. BIL returns CLEAR → release completes
 
 ---
 
 ## Expected Result
 
-| Expected                     |
-| ---------------------------- |
-| Financial clearance required |
-| Status = Released            |
-| Result available to patient  |
+| Expected                              |
+| ------------------------------------- |
+| HTTP 200, `released: true`, `billingStatus: CLEAR` |
+| Status = Released                     |
+| Validation trace persisted on LWF     |
+| Result available to patient           |
 
 ---
 
@@ -321,7 +322,7 @@ Result ready for release.
 
 ## Scenario
 
-Financial clearance still pending.
+BIL blocks release eligibility.
 
 ---
 
@@ -329,7 +330,7 @@ Financial clearance still pending.
 
 1. Verify result
 2. Request release
-3. BIL returns Pending
+3. BIL returns BLOCKED + validation message
 
 ---
 
@@ -337,9 +338,11 @@ Financial clearance still pending.
 
 | Expected                      |
 | ----------------------------- |
-| Release blocked               |
+| HTTP 200, `released: false`, `billingStatus: BLOCKED` |
+| BLOCKED validation trace saved |
 | Internal result still visible |
 | Status remains Verified       |
+| Operational toast/message (not exception UX) |
 
 ---
 

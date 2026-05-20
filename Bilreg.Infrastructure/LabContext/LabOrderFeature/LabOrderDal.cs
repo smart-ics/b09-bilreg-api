@@ -29,23 +29,21 @@ public class LabOrderDal : ILabOrderDal
     {
         const string sql = """
             INSERT INTO BILRG_LabOrder (
-                OrderId, OrderNo, OrderSource, LabOrderStatus, FinancialClearance, OwareStatus,
+                OrderId, OrderNo, OrderSource, LabOrderStatus, OwareStatus,
                 RegId, PatientId, PatientName, BirthDate, Gender, AgeAtOrder,
                 ExecutionRegId, DeferredReason, DeferredUntil,
                 BillingTindakanId, BillingLastError,
                 CollectedDate, CollectedUserId, CollectionNote,
-                FinancialClearanceDate, FinancialClearanceUserId, FinancialClearanceReason,
                 ReleasedDate, ReleasedUserId, ReleaseNote,
                 CancelledReason, CancelledDate, CancelledUserId,
                 TerminationReason, TerminationDate, TerminationUserId,
                 CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
             VALUES (
-                @OrderId, @OrderNo, @OrderSource, @LabOrderStatus, @FinancialClearance, @OwareStatus,
+                @OrderId, @OrderNo, @OrderSource, @LabOrderStatus, @OwareStatus,
                 @RegId, @PatientId, @PatientName, @BirthDate, @Gender, @AgeAtOrder,
                 @ExecutionRegId, @DeferredReason, @DeferredUntil,
                 @BillingTindakanId, @BillingLastError,
                 @CollectedDate, @CollectedUserId, @CollectionNote,
-                @FinancialClearanceDate, @FinancialClearanceUserId, @FinancialClearanceReason,
                 @ReleasedDate, @ReleasedUserId, @ReleaseNote,
                 @CancelledReason, @CancelledDate, @CancelledUserId,
                 @TerminationReason, @TerminationDate, @TerminationUserId,
@@ -63,7 +61,6 @@ public class LabOrderDal : ILabOrderDal
             SET OrderNo = @OrderNo,
                 OrderSource = @OrderSource,
                 LabOrderStatus = @LabOrderStatus,
-                FinancialClearance = @FinancialClearance,
                 OwareStatus = @OwareStatus,
                 RegId = @RegId,
                 PatientId = @PatientId,
@@ -79,9 +76,6 @@ public class LabOrderDal : ILabOrderDal
                 CollectedDate = @CollectedDate,
                 CollectedUserId = @CollectedUserId,
                 CollectionNote = @CollectionNote,
-                FinancialClearanceDate = @FinancialClearanceDate,
-                FinancialClearanceUserId = @FinancialClearanceUserId,
-                FinancialClearanceReason = @FinancialClearanceReason,
                 ReleasedDate = @ReleasedDate,
                 ReleasedUserId = @ReleasedUserId,
                 ReleaseNote = @ReleaseNote,
@@ -117,12 +111,11 @@ public class LabOrderDal : ILabOrderDal
         const string sql = """
             SELECT
                 aa.OrderId, aa.OrderNo, aa.OrderSource, aa.LabOrderStatus,
-                aa.FinancialClearance, aa.OwareStatus,
+                aa.OwareStatus,
                 aa.RegId, aa.PatientId, aa.PatientName, aa.BirthDate, aa.Gender, aa.AgeAtOrder,
                 aa.ExecutionRegId, aa.DeferredReason, aa.DeferredUntil,
                 aa.BillingTindakanId, aa.BillingLastError,
                 aa.CollectedDate, aa.CollectedUserId, aa.CollectionNote,
-                aa.FinancialClearanceDate, aa.FinancialClearanceUserId, aa.FinancialClearanceReason,
                 aa.ReleasedDate, aa.ReleasedUserId, aa.ReleaseNote,
                 aa.CancelledReason, aa.CancelledDate, aa.CancelledUserId,
                 aa.TerminationReason, aa.TerminationDate, aa.TerminationUserId,
@@ -145,7 +138,6 @@ public class LabOrderDal : ILabOrderDal
         dp.AddParam("@OrderNo", dto.OrderNo, SqlDbType.VarChar);
         dp.AddParam("@OrderSource", dto.OrderSource, SqlDbType.Int);
         dp.AddParam("@LabOrderStatus", dto.LabOrderStatus, SqlDbType.Int);
-        dp.AddParam("@FinancialClearance", dto.FinancialClearance, SqlDbType.Int);
         dp.AddParam("@OwareStatus", dto.OwareStatus, SqlDbType.Int);
         dp.AddParam("@RegId", dto.RegId, SqlDbType.VarChar);
         dp.AddParam("@PatientId", dto.PatientId, SqlDbType.VarChar);
@@ -161,9 +153,6 @@ public class LabOrderDal : ILabOrderDal
         dp.AddParam("@CollectedDate", dto.CollectedDate, SqlDbType.DateTime);
         dp.AddParam("@CollectedUserId", dto.CollectedUserId, SqlDbType.VarChar);
         dp.AddParam("@CollectionNote", dto.CollectionNote, SqlDbType.VarChar);
-        dp.AddParam("@FinancialClearanceDate", dto.FinancialClearanceDate, SqlDbType.DateTime);
-        dp.AddParam("@FinancialClearanceUserId", dto.FinancialClearanceUserId, SqlDbType.VarChar);
-        dp.AddParam("@FinancialClearanceReason", dto.FinancialClearanceReason, SqlDbType.VarChar);
         dp.AddParam("@ReleasedDate", dto.ReleasedDate, SqlDbType.DateTime);
         dp.AddParam("@ReleasedUserId", dto.ReleasedUserId, SqlDbType.VarChar);
         dp.AddParam("@ReleaseNote", dto.ReleaseNote, SqlDbType.VarChar);
