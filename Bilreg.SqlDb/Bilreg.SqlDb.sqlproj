@@ -91,6 +91,10 @@
     <Folder Include="IgdContext\RedirectRajalFeature\" />
     <Folder Include="IgdContext\TindakanIgdFeature\" />
     <Folder Include="IgdContext\" />
+    <Folder Include="LabContext\" />
+    <Folder Include="LabContext\LabOrderFeature\" />
+    <Folder Include="LabContext\LabOwareFeature\" />
+    <Folder Include="LabContext\LabResultFeature\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OpCase.sql" />
