@@ -91,6 +91,7 @@
     <Folder Include="IgdContext\RedirectRajalFeature\" />
     <Folder Include="IgdContext\TindakanIgdFeature\" />
     <Folder Include="IgdContext\" />
+    <Folder Include="Shared\AuditLogFeature\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OpCase.sql" />
@@ -241,5 +242,6 @@
     <Build Include="IgdContext\IgdVisitFeature\BILRG_IgdVisitTriage.sql" />
     <Build Include="IgdContext\RedirectRajalFeature\BILRG_RedirectRajal.sql" />
     <Build Include="IgdContext\TindakanIgdFeature\BILRG_TindakanIgd.sql" />
+    <Build Include="Shared\AuditLogFeature\BILRG_AuditLog.sql" />
   </ItemGroup>
 </Project>
