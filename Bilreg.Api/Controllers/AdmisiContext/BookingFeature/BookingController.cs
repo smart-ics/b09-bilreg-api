@@ -1,6 +1,6 @@
-﻿//TODO: Refactor AntrianMap Model
-
- using Bilreg.Application.AdmisiContext.BookingFeature.UseCases;
+﻿
+using Bilreg.Api.Helpers;
+using Bilreg.Application.AdmisiContext.BookingFeature.UseCases;
  using MediatR;
  using Microsoft.AspNetCore.Mvc;
  using Nuna.Lib.ActionResultHelper;
@@ -58,10 +58,13 @@ public class BookingController : ControllerBase
     }
 
     [HttpDelete]
-    [Route("{id}")]
-    public async Task<IActionResult> Delete(string id)
+    [Route("delete")]
+    public async Task<IActionResult> Delete(BookingBatalRequestDto req)
     {
-        var cmd = new BookingDeleteCmd(id);
+        var userAgent = HttpHelper.GetUserAgent(Request);
+        var remoteIpAddress = HttpHelper.GetIpAddress(Request, HttpContext);
+
+        var cmd = new BookingDeleteCmd(req.BookingId, req.UserId, req.VoidReason, remoteIpAddress, userAgent);
         await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));
     }
@@ -111,3 +114,5 @@ public class BookingController : ControllerBase
     }
 
 }
+
+public record BookingBatalRequestDto(string BookingId, string UserId, string VoidReason);

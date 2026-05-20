@@ -1,24 +1,27 @@
-﻿ using Ardalis.GuardClauses;
- using Bilreg.Application.AccountingContext.JurnalFeature;
- using Bilreg.Application.AdmisiContext.AntrianFeature;
- using Bilreg.Application.AdmisiContext.BookingFeature;
- using Bilreg.Application.ChargeContext.TindakanFeature;
- using Bilreg.Application.PaymentContext.TrsBillingFeature;
- using Bilreg.Domain.AccountingContext.JurnalFeature;
- using Bilreg.Domain.AdmisiContext.AntrianFeature;
- using Bilreg.Domain.AdmisiContext.BookingFeature;
- using Bilreg.Domain.AdmisiContext.LayananFeature;
- using Bilreg.Domain.AdmisiContext.PpaFeature;
- using Bilreg.Domain.AdmisiContext.RegFeature;
- using Bilreg.Domain.ChargeContext.TindakanFeature;
- using Bilreg.Domain.PaymentContext.TrsBillingFeature;
- using MediatR;
- using Nuna.Lib.TransactionHelper;
- using Nuna.Lib.ValidationHelper;
+﻿using Ardalis.GuardClauses;
+using Bilreg.Application.AccountingContext.JurnalFeature;
+using Bilreg.Application.AdmisiContext.AntrianFeature;
+using Bilreg.Application.AdmisiContext.BookingFeature;
+using Bilreg.Application.ChargeContext.TindakanFeature;
+using Bilreg.Application.PaymentContext.TrsBillingFeature;
+using Bilreg.Application.Shared.AuditLogFeature;
+using Bilreg.Domain.AccountingContext.JurnalFeature;
+using Bilreg.Domain.AdmisiContext.AntrianFeature;
+using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.ChargeContext.TindakanFeature;
+using Bilreg.Domain.PaymentContext.TrsBillingFeature;
+using Bilreg.Domain.Shared.AuditLogFeature;
+using MediatR;
+using Nuna.Lib.TransactionHelper;
+using Nuna.Lib.ValidationHelper;
 
  namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 
-public record RegJalanBatalCmd(string RegId, string UserId) : IRequest, IRegKey;
+public record RegJalanBatalCmd(string RegId, string UserId, string VoidReason,
+    string ClientIpAddress, string UserAgent) : IRequest, IRegKey;
 
 public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
 {
@@ -32,6 +35,7 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
     private readonly IJurnalRepo _jurnalRepo;
     private readonly IDashboardEmrRemoveRegService _dashboardEmrRemoveRegService;
     private readonly IBookingRepo _bookingRepo;
+    private readonly IAuditRepo _auditRepo;
     public RegJalanBatalHandler(IRegRepo regRepo,
         IRegAktifRepo regAktifRepo,
         IAntrianRepo antrianRepo,
@@ -41,7 +45,8 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
         IPasienTrackerRepo pasienTrackerRepo,
         IJurnalRepo jurnalRepo,
         IDashboardEmrRemoveRegService dashboardEmrRemoveRegService,
-        IBookingRepo bookingRepo)
+        IBookingRepo bookingRepo,
+        IAuditRepo auditRepo)
     {
         _regRepo = regRepo;
         _regAktifRepo = regAktifRepo;
@@ -53,6 +58,7 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
         _jurnalRepo = jurnalRepo;
         _dashboardEmrRemoveRegService = dashboardEmrRemoveRegService;
         _bookingRepo = bookingRepo;
+        _auditRepo = auditRepo;
     }
 
     public Task Handle(RegJalanBatalCmd request, CancellationToken cancellationToken)
@@ -65,6 +71,8 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
             return Task.CompletedTask;
         if (reg.IsAktif == false)
             throw new KeyNotFoundException($"Register {request.RegId} sudah tidak aktif");
+        var snapshotJson = AuditLogSnapshotJson.Serialize(reg);
+
         var book = BookingModel.Default;
         var periode = new Periode(reg.RegDate.ToDateTime(TimeOnly.MinValue));
         var listBook = _bookingRepo.ListDataTglBerobat(periode)?.ToList() ?? [];
@@ -96,6 +104,9 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
         }
         var removeReg = new RemoveRegCmd(reg.RegId);
         _dashboardEmrRemoveRegService.Execute(removeReg);
+
+        var audit = CreateAudit(reg, snapshotJson, request);
+        _auditRepo.SaveChanges(audit);
 
         return Task.CompletedTask;
     }
@@ -166,7 +177,21 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
 
         return result;
     }
-
+    private AuditLog CreateAudit(RegModel reg, string snapShotJson, RegJalanBatalCmd cmd)
+    {
+        var result = AuditLog.Create(
+            reg.RegVoidAudit.UserId,
+            actionType: "VOID",
+            entityName: nameof(RegModel),
+            entityId: reg.RegId,
+            reason: cmd.VoidReason,
+            originalDataJson: snapShotJson,
+            correlationId: reg.RegId,
+            clientIpAddress: cmd.ClientIpAddress,
+            userAgent: cmd.UserAgent
+            );
+        return result;
+    }
     // VOID
     private void VoidReg(RegModel reg, string userId)
     {

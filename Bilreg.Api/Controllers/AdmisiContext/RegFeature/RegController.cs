@@ -1,6 +1,7 @@
 ﻿//TODO: Refactor AntrianMap Model
-  
- using Bilreg.Application.AdmisiContext.RegFeature.UseCases;
+
+using Bilreg.Api.Helpers;
+using Bilreg.Application.AdmisiContext.RegFeature.UseCases;
  using MediatR;
  using Microsoft.AspNetCore.Mvc;
  using Nuna.Lib.ActionResultHelper;
@@ -60,8 +61,12 @@ public class RegController : Controller
 
     [HttpPatch]
     [Route("rajalBatal")]
-    public async Task<IActionResult> Void(RegJalanBatalCmd cmd)
+    public async Task<IActionResult> Void(RegBatalRequestDto req)
     {
+        var userAgent = HttpHelper.GetUserAgent(Request);
+        var remoteIpAddress = HttpHelper.GetIpAddress(Request, HttpContext);
+
+        var cmd = new RegJalanBatalCmd(req.RegId, req.UserId, req.VoidReason, remoteIpAddress, userAgent);
         await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));
     }
@@ -102,3 +107,5 @@ public class RegController : Controller
         return Ok(new JSendOk(result));
     }
 }
+
+public record RegBatalRequestDto(string RegId, string UserId, string VoidReason);
