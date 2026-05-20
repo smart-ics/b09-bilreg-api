@@ -24,3 +24,5 @@ Core principles:
 - optimize for maintainability and token efficiency
 
 Use SKILL documents for implementation details.
+
+See [ARTIFACTS.md](ARTIFACTS.md) for the full documentation index and bounded-context paths.
