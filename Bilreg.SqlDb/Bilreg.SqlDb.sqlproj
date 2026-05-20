@@ -91,6 +91,7 @@
     <Folder Include="IgdContext\RedirectRajalFeature\" />
     <Folder Include="IgdContext\TindakanIgdFeature\" />
     <Folder Include="IgdContext\" />
+    <Folder Include="Shared\AuditLogFeature\" />
     <Folder Include="LabContext\" />
     <Folder Include="LabContext\LabOrderFeature\" />
     <Folder Include="LabContext\LabOwareFeature\" />
@@ -245,5 +246,6 @@
     <Build Include="IgdContext\IgdVisitFeature\BILRG_IgdVisitTriage.sql" />
     <Build Include="IgdContext\RedirectRajalFeature\BILRG_RedirectRajal.sql" />
     <Build Include="IgdContext\TindakanIgdFeature\BILRG_TindakanIgd.sql" />
+    <Build Include="Shared\AuditLogFeature\BILRG_AuditLog.sql" />
   </ItemGroup>
 </Project>

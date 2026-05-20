@@ -1,0 +1,28 @@
+CREATE TABLE BILRG_AuditLog (
+    AuditId VARCHAR(12) NOT NULL CONSTRAINT DF_BILRG_AuditLog_AuditId DEFAULT(''),
+    EventTime DATETIME NOT NULL CONSTRAINT DF_BILRG_AuditLog_EventTime DEFAULT('3000-01-01'),
+    UserId VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_AuditLog_UserId DEFAULT(''),
+    ActionType VARCHAR(100) NOT NULL CONSTRAINT DF_BILRG_AuditLog_ActionType DEFAULT(''),
+    EntityName VARCHAR(100) NOT NULL CONSTRAINT DF_BILRG_AuditLog_EntityName DEFAULT(''),
+    EntityId VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_AuditLog_EntityId DEFAULT(''),
+    Reason NVARCHAR(500) NOT NULL CONSTRAINT DF_BILRG_AuditLog_Reason DEFAULT(''),
+    OriginalDataJson NVARCHAR(MAX) NOT NULL CONSTRAINT DF_BILRG_AuditLog_OriginalDataJson DEFAULT(''),
+    CorrelationId VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_AuditLog_CorrelationId DEFAULT(''),
+    ClientIpAddress VARCHAR(45) NOT NULL CONSTRAINT DF_BILRG_AuditLog_ClientIpAddress DEFAULT(''),
+    UserAgent NVARCHAR(500) NOT NULL CONSTRAINT DF_BILRG_AuditLog_UserAgent DEFAULT(''),
+
+    CONSTRAINT PK_BILRG_AuditLog PRIMARY KEY CLUSTERED (AuditId)
+);
+GO
+
+CREATE INDEX IX_BILRG_AuditLog_EventTime ON BILRG_AuditLog(EventTime);
+GO
+
+CREATE INDEX IX_BILRG_AuditLog_UserId ON BILRG_AuditLog(UserId);
+GO
+
+CREATE INDEX IX_BILRG_AuditLog_Entity ON BILRG_AuditLog(EntityName, EntityId);
+GO
+
+CREATE INDEX IX_BILRG_AuditLog_CorrelationId ON BILRG_AuditLog(CorrelationId) WHERE CorrelationId <> '';
+GO
