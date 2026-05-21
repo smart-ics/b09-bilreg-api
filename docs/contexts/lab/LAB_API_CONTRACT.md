@@ -74,14 +74,50 @@ Internal lab UI may use `OrderId` / `OrderNo`; EMR integration uses **`EmrOrderI
 
 ---
 
-## Master catalog APIs (planned)
+## Lab component master (vendor catalog — implemented)
+
+Read-only vendor-owned catalog. **No** POST/PUT/DELETE. Operational identity is `ComponentCode`; `LoincCode` is optional metadata only.
+
+### List / search components
+
+| | |
+|--|--|
+| **Route** | `GET /api/LabContext/LabComponentMasterFeature/components` |
+| **Query** | `activeOnly` (bool, default `true`) — when true, only `IsActive = 1` rows |
+| **Query** | `search` (string, optional) — case-insensitive partial match on `ComponentCode` or `ComponentName` |
+| **Response** | Array of `LabComponentMasterListResponse` |
+
+**Response fields (list item):**
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `componentId` | string | `MLC` + 4 uppercase hex (e.g. `MLC0001`) |
+| `loincCode` | string \| null | Optional metadata |
+| `componentCode` | string | Operational code |
+| `componentName` | string | Display name |
+| `resultType` | int | `LabResultTypeEnum`: 1 Numeric, 2 Text, 3 Option, 4 Narrative |
+| `defaultUnit` | string | |
+| `isSystem` | bool | |
+| `isActive` | bool | |
+
+### Get component detail
+
+| | |
+|--|--|
+| **Route** | `GET /api/LabContext/LabComponentMasterFeature/components/{componentId}` |
+| **Path** | `componentId` — `MLCxxxx` |
+| **Response** | `LabComponentMasterGetResponse` (same fields as list item) |
+| **Not found** | Same pattern as other Lab GET handlers (e.g. `LabOrderGetQuery`) |
+
+---
+
+## Lab test definition (planned)
 
 | Feature | Routes (planned) |
 |---------|------------------|
-| `LabComponentMasterFeature` | `GET .../components`, `GET .../components/{componentId}` (`MLCxxxx`) — read-only |
 | `LabTestDefinitionFeature` | CRUD + `GET byTarif/{tarifId}` — hospital admin |
 
-Document request/response JSON when each phase lands.
+Document request/response JSON when Phase 2 lands.
 
 ---
 
