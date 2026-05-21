@@ -46,6 +46,8 @@
 | `docs/contexts/lab/lab-workflow.md` | LWF workflow lifecycle and rules |
 | `docs/contexts/lab/lab-integration.md` | EMR, REG, BIL, OWR integration |
 | `docs/contexts/lab/lab-test-scenarios.md` | Test scenarios |
+| `docs/contexts/lab/LAB_MASTER_TEST_IMPLEMENTATION_PLAN.md` | Master component, test definition, Tarif resolution blueprint |
+| `docs/contexts/lab/LAB_API_CONTRACT.md` | Frontend/API integration contract |
 
 ### IGD (`docs/contexts/igd/`)
 
