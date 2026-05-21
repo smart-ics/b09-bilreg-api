@@ -22,7 +22,7 @@ public class LabResultDocumentRepoTest
     private static LabResultDocumentModel CreateDoc()
     {
         var doc = LabResultDocumentModel.CreateInitial("LBO111111111", new AuditInfoType("U1", DateTime.Now));
-        var cap = new LabResultItemCapture("T1", "HB", "", "", LabResultTypeEnum.Numeric, 13m, "", "", "", "g/dL", "12-16");
+        var cap = LabResultTestSupport.Capture(numeric: 13m);
         doc.RecordResult(LabResultSourceEnum.Manual, [cap], "U1");
         doc.MarkRecorded("U1");
         return doc;

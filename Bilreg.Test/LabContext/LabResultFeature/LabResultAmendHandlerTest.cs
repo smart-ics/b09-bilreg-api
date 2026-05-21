@@ -2,8 +2,10 @@ using Bilreg.Application.LabContext.LabOrderFeature;
 using Bilreg.Application.LabContext.LabResultFeature;
 using Bilreg.Application.LabContext.LabResultFeature.UseCases;
 using Bilreg.Domain.LabContext.LabOrderFeature;
+using Bilreg.Test.LabContext.LabOrderFeature;
 using Bilreg.Domain.LabContext.LabResultFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
+using Bilreg.Infrastructure.LabContext.LabResultFeature;
 using FluentAssertions;
 using Moq;
 using Nuna.Lib.PatternHelper;
@@ -19,17 +21,19 @@ public class LabResultAmendHandlerTest
 
     public LabResultAmendHandlerTest()
     {
-        _sut = new LabResultAmendHandler(_orderRepo.Object, _resultRepo.Object);
+        _sut = new LabResultAmendHandler(
+            _orderRepo.Object,
+            _resultRepo.Object,
+            new LabResultScaffoldService());
     }
 
     private static LabOrderModel VerifiedOrder()
     {
         var snapshot = new PatientSnapshotType("R1", "P1", "Name", new DateTime(1990, 1, 1), "L", 30);
-        var order = LabOrderModel.CreateFromEmr(
-            snapshot,
-            [LabOrderItemModel.Create("T1", "HB", "HB", "TR", "TC", "TN", VacutainerTypeEnum.Edta, "Blood", 1)],
+        var order = LabOrderTestSupport.CreateEmrOrder(
             "LAB001",
-            new AuditInfoType("U1", DateTime.Now));
+            snapshot: snapshot,
+            audit: new AuditInfoType("U1", DateTime.Now));
         order.Charge("U2");
         order.MarkCharged("TDK1", "U2");
         order.MarkRecorded("U3");
@@ -40,8 +44,7 @@ public class LabResultAmendHandlerTest
     private static LabResultDocumentModel VerifiedResult(string orderId)
     {
         var doc = LabResultDocumentModel.CreateInitial(orderId, new AuditInfoType("U1", DateTime.Now));
-        var cap = new LabResultItemCapture("T1", "HB", "", "", LabResultTypeEnum.Numeric, 14m, "", "", "", "g/dL", "12-16");
-        doc.RecordResult(LabResultSourceEnum.Manual, [cap], "U2");
+        doc.RecordResult(LabResultSourceEnum.Manual, [LabResultTestSupport.Capture()], "U2");
         doc.MarkRecorded("U3");
         doc.Verify("PATH", new DateTime(2026, 5, 18, 14, 0, 0));
         return doc;
@@ -62,17 +65,20 @@ public class LabResultAmendHandlerTest
         _resultRepo.Verify(x => x.SaveChanges(It.Is<LabResultDocumentModel>(d =>
             d.IsCurrentVersion == false)), Times.Once);
         _resultRepo.Verify(x => x.SaveChanges(It.Is<LabResultDocumentModel>(d =>
-            d.IsCurrentVersion && d.ResultStatus == LabResultStatusEnum.Recorded && d.VersionNo == 2)), Times.Once);
+            d.IsCurrentVersion
+            && d.ResultStatus == LabResultStatusEnum.Recorded
+            && d.VersionNo == 2
+            && d.Items.Single().ComponentId == "MLC0001"
+            && d.Items.Single().NumericValue == 0)), Times.Once);
     }
 
     [Fact]
     public async Task Handle_WhenOrderCharged_Throws()
     {
-        var order = LabOrderModel.CreateFromEmr(
-            new PatientSnapshotType("R1", "P1", "Name", new DateTime(1990, 1, 1), "L", 30),
-            [LabOrderItemModel.Create("T1", "HB", "HB", "TR", "TC", "TN", VacutainerTypeEnum.Edta, "Blood", 1)],
+        var order = LabOrderTestSupport.CreateEmrOrder(
             "LAB002",
-            new AuditInfoType("U1", DateTime.Now));
+            snapshot: new PatientSnapshotType("R1", "P1", "Name", new DateTime(1990, 1, 1), "L", 30),
+            audit: new AuditInfoType("U1", DateTime.Now));
         _orderRepo.Setup(x => x.LoadEntity(It.IsAny<ILabOrderKey>())).Returns(MayBe.From(order));
 
         var act = async () => await _sut.Handle(new LabResultAmendCmd(order.OrderId, "r", "U1"), CancellationToken.None);
@@ -86,8 +92,7 @@ public class LabResultAmendHandlerTest
     {
         var order = VerifiedOrder();
         var result = LabResultDocumentModel.CreateInitial(order.OrderId, new AuditInfoType("U1", DateTime.Now));
-        var cap = new LabResultItemCapture("T1", "HB", "", "", LabResultTypeEnum.Numeric, 14m, "", "", "", "g/dL", "12-16");
-        result.RecordResult(LabResultSourceEnum.Manual, [cap], "U2");
+        result.RecordResult(LabResultSourceEnum.Manual, [LabResultTestSupport.Capture()], "U2");
         result.MarkRecorded("U3");
 
         _orderRepo.Setup(x => x.LoadEntity(It.IsAny<ILabOrderKey>())).Returns(MayBe.From(order));

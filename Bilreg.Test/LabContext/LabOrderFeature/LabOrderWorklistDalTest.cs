@@ -19,6 +19,7 @@ public class LabOrderWorklistDalTest
         string patientName = "Pasien Worklist")
         => new(
             OrderId: orderId,
+            EmrOrderId: "",
             OrderNo: "LAB00000010",
             OrderSource: 1,
             LabOrderStatus: labOrderStatus,

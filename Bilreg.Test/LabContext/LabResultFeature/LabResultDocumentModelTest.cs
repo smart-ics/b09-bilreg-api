@@ -1,5 +1,7 @@
 using Bilreg.Domain.LabContext.LabResultFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
+using Bilreg.Infrastructure.LabContext.LabResultFeature;
+using Bilreg.Test.LabContext.LabOrderFeature;
 using FluentAssertions;
 using Xunit;
 
@@ -8,25 +10,6 @@ namespace Bilreg.Test.LabContext.LabResultFeature;
 public class LabResultDocumentModelTest
 {
     private static AuditInfoType Audit() => new("U1", new DateTime(2026, 5, 18, 10, 0, 0));
-
-    private static LabResultItemCapture Capture(
-        string testId = "T1",
-        string testName = "HB",
-        LabResultTypeEnum type = LabResultTypeEnum.Numeric,
-        decimal numeric = 14m,
-        string refText = "12-16")
-        => new(
-            testId,
-            testName,
-            "HB",
-            "Hemoglobin",
-            type,
-            numeric,
-            "",
-            "",
-            "",
-            "g/dL",
-            refText);
 
     [Fact]
     public void CreateInitial_SetsDraftAndVersionOne()
@@ -46,19 +29,20 @@ public class LabResultDocumentModelTest
     {
         var doc = LabResultDocumentModel.CreateInitial("LBO000000001", Audit());
 
-        doc.RecordResult(LabResultSourceEnum.Manual, [Capture()], "U2");
+        doc.RecordResult(LabResultSourceEnum.Manual, [LabResultTestSupport.Capture()], "U2");
 
         doc.ResultSource.Should().Be(LabResultSourceEnum.Manual);
         doc.Items.Should().HaveCount(1);
         doc.Items[0].FlagStatus.Should().Be(LabResultFlagEnum.Normal);
         doc.Items[0].ItemNo.Should().Be(1);
+        doc.Items[0].ComponentId.Should().Be("MLC0001");
     }
 
     [Fact]
     public void MarkRecorded_SetsStatusAndRecordedMeta()
     {
         var doc = LabResultDocumentModel.CreateInitial("LBO000000001", Audit());
-        doc.RecordResult(LabResultSourceEnum.Instrument, [Capture()], "U2");
+        doc.RecordResult(LabResultSourceEnum.Instrument, [LabResultTestSupport.Capture()], "U2");
 
         doc.MarkRecorded("U3");
 
@@ -71,7 +55,7 @@ public class LabResultDocumentModelTest
     public void Verify_FromRecorded_SetsVerifiedAndMeta()
     {
         var doc = LabResultDocumentModel.CreateInitial("LBO000000001", Audit());
-        doc.RecordResult(LabResultSourceEnum.Manual, [Capture()], "U2");
+        doc.RecordResult(LabResultSourceEnum.Manual, [LabResultTestSupport.Capture()], "U2");
         doc.MarkRecorded("U3");
         var verifiedAt = new DateTime(2026, 5, 18, 14, 30, 0);
 
@@ -86,7 +70,7 @@ public class LabResultDocumentModelTest
     public void Verify_WhenAlreadyVerified_Throws()
     {
         var doc = LabResultDocumentModel.CreateInitial("LBO000000001", Audit());
-        doc.RecordResult(LabResultSourceEnum.Manual, [Capture()], "U2");
+        doc.RecordResult(LabResultSourceEnum.Manual, [LabResultTestSupport.Capture()], "U2");
         doc.MarkRecorded("U3");
         doc.Verify("PATH1", new DateTime(2026, 5, 18, 14, 0, 0));
 
@@ -99,7 +83,7 @@ public class LabResultDocumentModelTest
     public void Verify_FromDraft_Throws()
     {
         var doc = LabResultDocumentModel.CreateInitial("LBO000000001", Audit());
-        doc.RecordResult(LabResultSourceEnum.Manual, [Capture()], "U2");
+        doc.RecordResult(LabResultSourceEnum.Manual, [LabResultTestSupport.Capture()], "U2");
 
         var act = () => doc.Verify("PATH1", new DateTime(2026, 5, 18, 14, 0, 0));
 
@@ -110,11 +94,11 @@ public class LabResultDocumentModelTest
     public void RecordResult_WhenVerified_Throws()
     {
         var doc = LabResultDocumentModel.CreateInitial("LBO000000001", Audit());
-        doc.RecordResult(LabResultSourceEnum.Manual, [Capture()], "U2");
+        doc.RecordResult(LabResultSourceEnum.Manual, [LabResultTestSupport.Capture()], "U2");
         doc.MarkRecorded("U3");
         doc.Verify("PATH1", new DateTime(2026, 5, 18, 14, 0, 0));
 
-        var act = () => doc.RecordResult(LabResultSourceEnum.Manual, [Capture()], "U4");
+        var act = () => doc.RecordResult(LabResultSourceEnum.Manual, [LabResultTestSupport.Capture()], "U4");
 
         act.Should().Throw<InvalidOperationException>().WithMessage("*diverifikasi*");
     }
@@ -123,7 +107,7 @@ public class LabResultDocumentModelTest
     public void MarkRecorded_WhenVerified_Throws()
     {
         var doc = LabResultDocumentModel.CreateInitial("LBO000000001", Audit());
-        doc.RecordResult(LabResultSourceEnum.Manual, [Capture()], "U2");
+        doc.RecordResult(LabResultSourceEnum.Manual, [LabResultTestSupport.Capture()], "U2");
         doc.MarkRecorded("U3");
         doc.Verify("PATH1", new DateTime(2026, 5, 18, 14, 0, 0));
 
@@ -145,7 +129,7 @@ public class LabResultDocumentModelTest
     private static LabResultDocumentModel VerifiedDocument()
     {
         var doc = LabResultDocumentModel.CreateInitial("LBO000000001", Audit());
-        doc.RecordResult(LabResultSourceEnum.Manual, [Capture()], "U2");
+        doc.RecordResult(LabResultSourceEnum.Manual, [LabResultTestSupport.Capture()], "U2");
         doc.MarkRecorded("U3");
         doc.Verify("PATH1", new DateTime(2026, 5, 18, 14, 0, 0));
         return doc;
@@ -156,14 +140,17 @@ public class LabResultDocumentModelTest
     {
         var doc = VerifiedDocument();
         var amendedAt = new DateTime(2026, 5, 18, 16, 0, 0);
+        var regenerated = new LabResultScaffoldService().BuildStructureOnlyItems(
+            new LabResultScaffoldService().BuildFromOrder(LabOrderTestSupport.CreateEmrOrder()));
 
-        var (retired, newVersion) = doc.AmendVerifiedToNewVersion("Koreksi nilai", "UAMEND", amendedAt);
+        var (retired, newVersion) = doc.AmendVerifiedToNewVersion(regenerated, "Koreksi nilai", "UAMEND", amendedAt);
 
         retired.ResultDocumentId.Should().Be(doc.ResultDocumentId);
         retired.IsCurrentVersion.Should().BeFalse();
         retired.ResultStatus.Should().Be(LabResultStatusEnum.Verified);
         retired.VerifiedUserId.Should().Be("PATH1");
         retired.Items.Should().HaveCount(1);
+        retired.Items[0].NumericValue.Should().Be(14m);
 
         newVersion.ResultDocumentId.Should().NotBe(doc.ResultDocumentId);
         newVersion.VersionNo.Should().Be(2);
@@ -174,18 +161,20 @@ public class LabResultDocumentModelTest
         newVersion.AmendedUserId.Should().Be("UAMEND");
         newVersion.VerifiedUserId.Should().BeEmpty();
         newVersion.Items.Should().HaveCount(1);
-        newVersion.Items[0].TestId.Should().Be("T1");
-        newVersion.Items[0].NumericValue.Should().Be(14m);
+        newVersion.Items[0].ComponentId.Should().Be("MLC0001");
+        newVersion.Items[0].NumericValue.Should().Be(0);
     }
 
     [Fact]
     public void AmendVerifiedToNewVersion_WhenRecorded_Throws()
     {
         var doc = LabResultDocumentModel.CreateInitial("LBO000000001", Audit());
-        doc.RecordResult(LabResultSourceEnum.Manual, [Capture()], "U2");
+        doc.RecordResult(LabResultSourceEnum.Manual, [LabResultTestSupport.Capture()], "U2");
         doc.MarkRecorded("U3");
+        var regenerated = new LabResultScaffoldService().BuildStructureOnlyItems(
+            new LabResultScaffoldService().BuildFromOrder(LabOrderTestSupport.CreateEmrOrder()));
 
-        var act = () => doc.AmendVerifiedToNewVersion("reason", "U1", DateTime.Now);
+        var act = () => doc.AmendVerifiedToNewVersion(regenerated, "reason", "U1", DateTime.Now);
 
         act.Should().Throw<InvalidOperationException>().WithMessage("*Verified*");
     }
@@ -194,8 +183,10 @@ public class LabResultDocumentModelTest
     public void AmendVerifiedToNewVersion_EmptyReason_Throws()
     {
         var doc = VerifiedDocument();
+        var regenerated = new LabResultScaffoldService().BuildStructureOnlyItems(
+            new LabResultScaffoldService().BuildFromOrder(LabOrderTestSupport.CreateEmrOrder()));
 
-        var act = () => doc.AmendVerifiedToNewVersion("   ", "U1", DateTime.Now);
+        var act = () => doc.AmendVerifiedToNewVersion(regenerated, "   ", "U1", DateTime.Now);
 
         act.Should().Throw<ArgumentException>();
     }

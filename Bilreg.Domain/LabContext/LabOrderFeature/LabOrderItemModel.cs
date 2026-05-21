@@ -2,9 +2,9 @@ namespace Bilreg.Domain.LabContext.LabOrderFeature;
 
 public record LabOrderItemModel(
     int ItemNo,
-    string TestId,
-    string TestCode,
-    string TestName,
+    string TestDefinitionId,
+    string LabTestCode,
+    string LabTestName,
     string TarifId,
     string TarifCode,
     string TarifName,
@@ -13,9 +13,9 @@ public record LabOrderItemModel(
     int RequiredTubeCount)
 {
     public static LabOrderItemModel Create(
-        string testId,
-        string testCode,
-        string testName,
+        string testDefinitionId,
+        string labTestCode,
+        string labTestName,
         string tarifId,
         string tarifCode,
         string tarifName,
@@ -24,9 +24,9 @@ public record LabOrderItemModel(
         int requiredTubeCount)
         => new(
             ItemNo: 0,
-            TestId: testId,
-            TestCode: testCode,
-            TestName: testName,
+            TestDefinitionId: testDefinitionId,
+            LabTestCode: labTestCode,
+            LabTestName: labTestName,
             TarifId: tarifId,
             TarifCode: tarifCode,
             TarifName: tarifName,

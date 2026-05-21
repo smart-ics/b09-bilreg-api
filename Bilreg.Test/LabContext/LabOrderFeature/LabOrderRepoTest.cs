@@ -11,21 +11,16 @@ public class LabOrderRepoTest
 {
     private readonly Mock<ILabOrderDal> _orderDal = new();
     private readonly Mock<ILabOrderItemDal> _itemDal = new();
+    private readonly Mock<ILabOrderItemComponentDal> _itemComponentDal = new();
     private readonly LabOrderRepo _sut;
 
     public LabOrderRepoTest()
     {
-        _sut = new LabOrderRepo(_orderDal.Object, _itemDal.Object);
+        _sut = new LabOrderRepo(_orderDal.Object, _itemDal.Object, _itemComponentDal.Object);
     }
 
-    private static LabOrderModel CreateTestModel()
-    {
-        var snapshot = new PatientSnapshotType(
-            "REG1", "MR1", "Pasien", new DateTime(1990, 1, 1), "L", 35);
-        var item = LabOrderItemModel.Create(
-            "T1", "HB", "Hemoglobin", "TR1", "T-HB", "Tarif", VacutainerTypeEnum.Edta, "Blood", 1);
-        return LabOrderModel.CreateFromEmr(snapshot, [item], "LAB00000001", new AuditInfoType("U1", DateTime.Now));
-    }
+    private static LabOrderModel CreateTestModel() =>
+        LabOrderTestSupport.CreateEmrOrder(audit: new AuditInfoType("U1", DateTime.Now));
 
     private static LabOrderDto CreateTestDto(LabOrderModel model)
         => LabOrderDto.FromModel(model);
@@ -42,6 +37,8 @@ public class LabOrderRepoTest
         _orderDal.Verify(x => x.Update(It.IsAny<LabOrderDto>()), Times.Never);
         _itemDal.Verify(x => x.Delete(model), Times.Once);
         _itemDal.Verify(x => x.Insert(It.Is<IEnumerable<LabOrderItemDto>>(l => l.Count() == 1)), Times.Once);
+        _itemComponentDal.Verify(x => x.Delete(model), Times.Once);
+        _itemComponentDal.Verify(x => x.Insert(It.IsAny<IEnumerable<LabOrderItemComponentDto>>()), Times.Once);
     }
 
     [Fact]
@@ -63,8 +60,9 @@ public class LabOrderRepoTest
         var dto = CreateTestDto(model);
         var itemDto = LabOrderItemDto.FromModel(model.OrderId, model.Items.First());
 
-        _orderDal.Setup(x => x.GetData(model)).Returns(dto);
-        _itemDal.Setup(x => x.ListData(model)).Returns([itemDto]);
+        _orderDal.Setup(x => x.GetData(It.IsAny<ILabOrderKey>())).Returns(dto);
+        _itemDal.Setup(x => x.ListData(It.IsAny<ILabOrderKey>())).Returns([itemDto]);
+        _itemComponentDal.Setup(x => x.ListData(It.IsAny<ILabOrderKey>())).Returns([]);
 
         var result = _sut.LoadEntity(model);
 

@@ -1,5 +1,6 @@
 CREATE TABLE BILRG_LabOrder (
     OrderId VARCHAR(12) NOT NULL CONSTRAINT DF_BILRG_LabOrder_OrderId DEFAULT(''),
+    EmrOrderId VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_LabOrder_EmrOrderId DEFAULT(''),
     OrderNo VARCHAR(20) NOT NULL CONSTRAINT DF_BILRG_LabOrder_OrderNo DEFAULT(''),
     OrderSource INT NOT NULL CONSTRAINT DF_BILRG_LabOrder_OrderSource DEFAULT(0),
     LabOrderStatus INT NOT NULL CONSTRAINT DF_BILRG_LabOrder_LabOrderStatus DEFAULT(0),
@@ -53,4 +54,6 @@ GO
 CREATE INDEX IX_BILRG_LabOrder_Reg ON BILRG_LabOrder(RegId, LabOrderStatus) WHERE RegId <> '';
 GO
 CREATE INDEX IX_BILRG_LabOrder_OrderNo ON BILRG_LabOrder(OrderNo);
+GO
+CREATE INDEX IX_BILRG_LabOrder_EmrOrderId ON BILRG_LabOrder(EmrOrderId) WHERE EmrOrderId <> '';
 GO

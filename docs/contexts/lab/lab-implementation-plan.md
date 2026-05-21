@@ -25,6 +25,9 @@
 |----------|----------|
 | `docs/contexts/lab/lab-domain.md` | Aggregates, states, boundaries |
 | `docs/contexts/lab/lab-agent.md` | Invariants, forbidden design |
+| `docs/contexts/lab/LAB_MASTER_TEST_IMPLEMENTATION_PLAN.md` | Master catalog, Tarif resolution, EMR contract, phased master rollout |
+| `docs/contexts/lab/LAB_MASTER_TEST_ALIGNMENT.md` | Phase-0 alignment report (read before master-test slices) |
+| `docs/contexts/lab/LAB_API_CONTRACT.md` | Evolving frontend/API contract (pre-release) |
 | `docs/ENGINEERING.md` | Layers, repo/query philosophy |
 | `docs/DATABASE.md` | Table/column/audit rules |
 | `docs/NAMING.md` | Naming |
@@ -39,7 +42,7 @@
 | Folder | Aggregate |
 |--------|-----------|
 | `LabOrderFeature` | `LabOrderModel` — workflow, billing orchestration, collection, release eligibility |
-| `LabResultFeature` | `LabResultDocumentModel` — versions, components, verification |
+| `LabResultFeature` | `LabResultDocumentModel` — document + `LabResultItem` lines, verification |
 
 ---
 
@@ -118,8 +121,7 @@ Bilreg.Domain/LabContext/
   LabResultFeature/
     ILabResultDocumentKey.cs
     LabResultDocumentModel.cs
-    LabResultVersionModel.cs
-    LabResultComponentModel.cs
+    LabResultItemModel.cs
     ...
 
 Bilreg.Application/LabContext/
@@ -151,8 +153,7 @@ Bilreg.SqlDb/LabContext/
   LabOrderFeature/BILRG_LabOrderItem.sql
   LabOrderFeature/BILRG_LabOwareOutboundQueue.sql
   LabResultFeature/BILRG_LabResultDocument.sql
-  LabResultFeature/BILRG_LabResultVersion.sql
-  LabResultFeature/BILRG_LabResultComponent.sql
+  LabResultFeature/BILRG_LabResultItem.sql
 
 Bilreg.Test/LabContext/...
 ```
@@ -186,7 +187,11 @@ Persist on `BILRG_LabOrder`. External patient may start with `RegId` / `PatientI
 
 **Header fields (conceptual):** `OrderNo`, `OrderSource`, `LabOrderStatus`, `FinancialClearance`, `OwareStatus`, patient snapshot, `DeferredInfo`, `CollectionInfo`, `BillingTindakanId`, `BillingLastError`, `ExecutionRegId`, audit columns.
 
-**Children:** `LabOrderItemModel` — PK `(OrderId, ItemNo)`; snapshot test name, tarif refs, `SpecimenRequirementType` (tube/specimen/count).
+**Children:** `LabOrderItemModel` — PK `(OrderId, ItemNo)`.
+
+**Current baseline (legacy, pre–master-test):** EMR-supplied `TestId`, `TestCode`, `TestName`, tarif refs, and `SpecimenRequirementType` (tube/specimen/count) are snapshotted on create.
+
+**Target (master-test Phases 1–3):** EMR sends `TarifId` (+ optional `TarifName`) and `EmrOrderId` only; LWF resolves `LabTestDefinition` and snapshots `TestDefinitionId` (`LTDxxxx`), `LabTestCode`, `LabTestName`, specimen/vacutainer, and `LabOrderItemComponent` rows. See [`LAB_MASTER_TEST_IMPLEMENTATION_PLAN.md`](LAB_MASTER_TEST_IMPLEMENTATION_PLAN.md) §7.3.
 
 **Vacutainer (V1):** Pragmatic grouping in handler or small private helper — group items by specimen/tube type (`EDTA`, `Serum`, `Citrate`, `Heparin`), return counts. **No** `IVacutainerGroupResolver` in V1.
 
@@ -226,14 +231,17 @@ Released order workflow is operationally final.
 ### 5.3 `LabResultDocumentModel`
 
 - 1 order : 1 result document.
-- Versions: full immutable snapshot per version; amendment = new version only.
+- **Implemented persistence:** `BILRG_LabResultDocument` + `BILRG_LabResultItem` (component lines on the document).
+- Amendment replaces item lines on the document (immutable verified state rules per `lab-agent.md`).
 - `Verify(pathologistId, userId)` on document — medical validation, **not** release.
+
+**Target (master-test Phase 4):** result line **structure** server-owned from order component snapshots; client supplies **values** only. See [`LAB_MASTER_TEST_IMPLEMENTATION_PLAN.md`](LAB_MASTER_TEST_IMPLEMENTATION_PLAN.md) §8.
 
 ### 5.4 Domain implementation order
 
 1. Enums + keys + `PatientSnapshotType`  
 2. `LabOrderModel` + items + transitions + tests  
-3. `LabResultDocumentModel` + versions + components + tests  
+3. `LabResultDocumentModel` + items + tests  
 
 **Skill:** `docs/skills/feature-model-generation.md`
 
@@ -248,11 +256,17 @@ Released order workflow is operationally final.
 | Table | Purpose |
 |-------|---------|
 | `BILRG_LabOrder` | Root workflow + patient snapshot (6 fields) + deferred/collection/billing refs |
-| `BILRG_LabOrderItem` | PK `(OrderId, ItemNo)` |
+| `BILRG_LabOrderItem` | PK `(OrderId, ItemNo)` — legacy EMR-shaped columns until master-test Phase 3 |
 | `BILRG_LabResultDocument` | PK `OrderId` |
-| `BILRG_LabResultVersion` | PK `(OrderId, VersionNo)` |
-| `BILRG_LabResultComponent` | PK `(OrderId, VersionNo, ComponentNo)` |
+| `BILRG_LabResultItem` | PK `(ResultDocumentId, ItemNo)` — result component lines |
 | `BILRG_LabOwareOutboundQueue` | Async OWR outbound |
+
+**Implemented (master-test Phase 1):** `BILRG_LabComponentMaster` + `LabComponentMasterFeature` read APIs — see [`LAB_API_CONTRACT.md`](LAB_API_CONTRACT.md).  
+**Implemented (master-test Phase 1):** `BILRG_LabComponentMaster` + read APIs — [`LAB_API_CONTRACT.md`](LAB_API_CONTRACT.md).
+
+**Implemented (master-test Phase 2):** `BILRG_LabTestDefinition`, `BILRG_LabTestComponent`, `LabTestDefinitionFeature` admin CRUD + `byTarif` — [`LAB_API_CONTRACT.md`](LAB_API_CONTRACT.md).
+
+**Planned (master-test Phase 3+):** `BILRG_LabOrderItemComponent` — see [`LAB_MASTER_TEST_IMPLEMENTATION_PLAN.md`](LAB_MASTER_TEST_IMPLEMENTATION_PLAN.md) §5.
 
 **Not in V1:** `BILRG_LabOrderStateHist`.
 
@@ -273,9 +287,9 @@ Released order workflow is operationally final.
 
 - OrderId -> VARCHAR(12), generated using INunaCounterBL
 - OrderNo -> Human-readable LAB transaction number
-- VersionNo -> Incremental integer per ResultDocument
 - QueueId -> VARCHAR(12), generated using INunaCounterBL
-- ItemNo -> Incremental integer inside aggregate
+- ItemNo -> Incremental integer inside aggregate (`LabOrderItem`, `LabResultItem`)
+- Master catalog IDs (`MLCxxxx`, `LTDxxxx`) -> `VARCHAR(7)` per [`LAB_MASTER_TEST_IMPLEMENTATION_PLAN.md`](LAB_MASTER_TEST_IMPLEMENTATION_PLAN.md) §5.1
 
 ### 6.4 Result Persistence Strategy
 
@@ -443,9 +457,8 @@ Register implementations in `InfrastructureService.cs` (scoped).
 1. `BILRG_LabOrder.sql`  
 2. `BILRG_LabOrderItem.sql`  
 3. `BILRG_LabResultDocument.sql`  
-4. `BILRG_LabResultVersion.sql`  
-5. `BILRG_LabResultComponent.sql`  
-6. `BILRG_LabOwareOutboundQueue.sql`  
+4. `BILRG_LabResultItem.sql`  
+5. `BILRG_LabOwareOutboundQueue.sql`  
 
 Follow `DATABASE.md` formatting (`aa` alias in queries, `GO` separators).
 
@@ -565,7 +578,7 @@ Each milestone: domain tests for transitions + Dal/Repo tests.
 7. Skills order: model → persistence → use case.  
 8. OWARE queue: store opaque JSON string; worker deserializes/sends/retries.  
 9. Billing field on order: `BillingTindakanId` (not generic BillingTrsId).  
-10. Stop and ask if EMR payload contract is undefined (§19).
+10. EMR create contract is defined in [`LAB_MASTER_TEST_IMPLEMENTATION_PLAN.md`](LAB_MASTER_TEST_IMPLEMENTATION_PLAN.md) §7.3 and [`LAB_API_CONTRACT.md`](LAB_API_CONTRACT.md) — do not re-open unless product changes Tarif-only rule.
 
 ---
 
@@ -595,12 +608,12 @@ Each milestone: domain tests for transitions + Dal/Repo tests.
 
 | # | Question | Default for V1 |
 |---|----------|----------------|
-| 1 | EMR create-order payload schema | Minimal DTO + manual mapping |
-| 2 | Real `LabBillingIntegration` contract when BIL ready | Placeholder `TindakanId` |
+| 1 | EMR create-order payload schema | **`EmrOrderId` + `Items[]: { TarifId, TarifName? }`** — LWF resolves lab structure ([`LAB_MASTER_TEST_IMPLEMENTATION_PLAN.md`](LAB_MASTER_TEST_IMPLEMENTATION_PLAN.md) §7.3). Legacy DTO fields remain in code until Phase 3. |
+| 2 | Real `LabBillingIntegration` contract when BIL ready | Placeholder `TindakanId`; target **one Tindakan per order** with all Tarif lines (master plan §6.5) |
 | 3 | Real deferred REG flow | Placeholder `RegId` via `ILabRegIntegration` |
 | 4 | Financial clearance source (BIL push vs manual) | Financial clearance is manually updated in V1 through administrative command/use-case. Future integration with BIL may automate clearance synchronization. |
 | 5 | OWR endpoint + retry policy | Queue + opaque JSON + manual retry |
-| 6 | Test catalog at order create | Snapshot from EMR payload |
+| 6 | Lab test catalog at order create | LWF resolves **`LabTestDefinition`** per `TarifId` and snapshots on order (not EMR-supplied `TestId`/`TestCode`). Legacy: EMR payload snapshot until Phase 3. |
 | 7 | `OrderNo` counter key | `INunaCounterBL` prefix `LAB` |
 | 8 | Pathologist auth | Role check deferred to API auth layer |
 | 9 | State history audit | **Skipped** unless requirement added |
@@ -622,9 +635,9 @@ Each milestone: domain tests for transitions + Dal/Repo tests.
 
 **`ResultSourceEnum`:** `Manual=1`, `Instrument=2`, `ExternalLis=3`
 
-Enum numeric values are considered stable contract once frontend/API integration begins.
-Do not reorder or renumber existing enum values.
-New values may only be appended.
+Enum **numeric values** are stable once frontend integration begins — do not reorder or renumber; append only.
+
+HTTP routes and request/response DTO shapes are **not** frozen during pre-release LWF; update [`LAB_API_CONTRACT.md`](LAB_API_CONTRACT.md) in place when handlers change (no API versioning).
 
 ---
 
@@ -637,9 +650,9 @@ New values may only be appended.
 | `ILabBillingIntegration` | Application | — |
 | `LabBillingIntegration` | Infrastructure | Placeholder V1 |
 
-**`LabRegIntegration` V2:** Inject `IRegRepo`, call existing reg logic (same as IGD assign-register pattern, but behind interface).
+**`LabRegIntegration` (next implementation):** Inject `IRegRepo`, call existing reg logic (same as IGD assign-register pattern, but behind interface). *Not* a parallel HTTP API version.
 
-**`LabBillingIntegration` V2:** Inject `ITindakanRepo` + charge use case when BIL ready; return real `TindakanId`.
+**`LabBillingIntegration` (next implementation):** Inject `ITindakanRepo` + charge use case when BIL ready; return real `TindakanId` for **one Tindakan per order** (all Tarif lines). *Not* a parallel HTTP API version.
 
 ---
 

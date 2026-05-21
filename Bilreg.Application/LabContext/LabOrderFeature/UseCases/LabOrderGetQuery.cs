@@ -9,6 +9,7 @@ public record LabOrderGetQuery(string OrderId) : IRequest<LabOrderGetResponse>, 
 
 public record LabOrderGetResponse(
     string OrderId,
+    string EmrOrderId,
     string OrderNo,
     int OrderSource,
     int LabOrderStatus,
@@ -41,19 +42,32 @@ public record LabOrderGetResponse(
     DateTime TerminationDate,
     string TerminationUserId,
     bool IsVoided,
-    IEnumerable<LabOrderItemResponse> Items);
+    IEnumerable<LabOrderItemResponse> Items,
+    IEnumerable<LabOrderItemComponentResponse> ItemComponents);
 
 public record LabOrderItemResponse(
     int ItemNo,
-    string TestId,
-    string TestCode,
-    string TestName,
+    string TestDefinitionId,
+    string LabTestCode,
+    string LabTestName,
     string TarifId,
     string TarifCode,
     string TarifName,
     int TubeType,
     string SpecimenType,
     int RequiredTubeCount);
+
+public record LabOrderItemComponentResponse(
+    int ItemNo,
+    int ComponentNo,
+    string ComponentId,
+    string ComponentCode,
+    string ComponentName,
+    int ResultType,
+    string Unit,
+    string ReferenceRangeText,
+    int SequenceNo,
+    bool IsMandatory);
 
 public class LabOrderGetHandler : IRequestHandler<LabOrderGetQuery, LabOrderGetResponse>
 {
@@ -72,9 +86,9 @@ public class LabOrderGetHandler : IRequestHandler<LabOrderGetQuery, LabOrderGetR
 
         var items = order.Items.Select(x => new LabOrderItemResponse(
             x.ItemNo,
-            x.TestId,
-            x.TestCode,
-            x.TestName,
+            x.TestDefinitionId,
+            x.LabTestCode,
+            x.LabTestName,
             x.TarifId,
             x.TarifCode,
             x.TarifName,
@@ -82,8 +96,21 @@ public class LabOrderGetHandler : IRequestHandler<LabOrderGetQuery, LabOrderGetR
             x.SpecimenType,
             x.RequiredTubeCount)).ToList();
 
+        var components = order.ItemComponents.Select(x => new LabOrderItemComponentResponse(
+            x.ItemNo,
+            x.ComponentNo,
+            x.ComponentId,
+            x.ComponentCode,
+            x.ComponentName,
+            x.ResultType,
+            x.Unit,
+            x.ReferenceRangeText,
+            x.SequenceNo,
+            x.IsMandatory)).ToList();
+
         var response = new LabOrderGetResponse(
             OrderId: order.OrderId,
+            EmrOrderId: order.EmrOrderId,
             OrderNo: order.OrderNo,
             OrderSource: (int)order.OrderSource,
             LabOrderStatus: (int)order.LabOrderStatus,
@@ -116,7 +143,8 @@ public class LabOrderGetHandler : IRequestHandler<LabOrderGetQuery, LabOrderGetR
             TerminationDate: order.TerminationDate,
             TerminationUserId: order.TerminationUserId,
             IsVoided: order.AuditTrail.IsVoided,
-            Items: items);
+            Items: items,
+            ItemComponents: components);
 
         return Task.FromResult(response);
     }

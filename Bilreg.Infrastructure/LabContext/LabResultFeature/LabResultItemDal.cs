@@ -36,10 +36,12 @@ public class LabResultItemDal : ILabResultItemDal
         conn.Open();
         bcp.AddMap("ResultDocumentId", "ResultDocumentId");
         bcp.AddMap("ItemNo", "ItemNo");
+        bcp.AddMap("ComponentId", "ComponentId");
         bcp.AddMap("TestId", "TestId");
         bcp.AddMap("TestName", "TestName");
         bcp.AddMap("ComponentCode", "ComponentCode");
         bcp.AddMap("ComponentName", "ComponentName");
+        bcp.AddMap("SequenceNo", "SequenceNo");
         bcp.AddMap("ResultType", "ResultType");
         bcp.AddMap("NumericValue", "NumericValue");
         bcp.AddMap("TextValue", "TextValue");
@@ -47,6 +49,7 @@ public class LabResultItemDal : ILabResultItemDal
         bcp.AddMap("NarrativeValue", "NarrativeValue");
         bcp.AddMap("Unit", "Unit");
         bcp.AddMap("ReferenceRangeText", "ReferenceRangeText");
+        bcp.AddMap("IsMandatory", "IsMandatory");
         bcp.AddMap("FlagStatus", "FlagStatus");
 
         bcp.BatchSize = fetched.Count;
@@ -73,11 +76,11 @@ public class LabResultItemDal : ILabResultItemDal
         const string sql = """
             SELECT
                 aa.ResultDocumentId, aa.ItemNo,
-                aa.TestId, aa.TestName,
-                aa.ComponentCode, aa.ComponentName,
+                aa.ComponentId, aa.TestId, aa.TestName,
+                aa.ComponentCode, aa.ComponentName, aa.SequenceNo,
                 aa.ResultType, aa.NumericValue,
                 aa.TextValue, aa.OptionValue, aa.NarrativeValue,
-                aa.Unit, aa.ReferenceRangeText, aa.FlagStatus
+                aa.Unit, aa.ReferenceRangeText, aa.IsMandatory, aa.FlagStatus
             FROM BILRG_LabResultItem aa
             WHERE aa.ResultDocumentId = @ResultDocumentId
             ORDER BY aa.ItemNo

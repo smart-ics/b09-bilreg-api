@@ -1,5 +1,6 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.LabContext.LabOrderFeature;
+using Bilreg.Application.LabContext.LabResultFeature;
 using Bilreg.Domain.LabContext.LabOrderFeature;
 using Bilreg.Domain.LabContext.LabResultFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
@@ -10,45 +11,34 @@ using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.LabContext.LabResultFeature.UseCases;
 
-public record LabResultRecordItemDto(
-    string TestId,
-    string TestName,
-    string ComponentCode,
-    string ComponentName,
-    int ResultType,
-    decimal NumericValue,
-    string? TextValue,
-    string? OptionValue,
-    string? NarrativeValue,
-    string? Unit,
-    string? ReferenceRangeText);
-
 public record LabResultRecordCmd(
     string OrderId,
     string UserId,
     int ResultSource,
-    IEnumerable<LabResultRecordItemDto> Items)
+    IEnumerable<LabResultRecordValueDto> Values)
     : IRequest;
 
 public class LabResultRecordHandler : IRequestHandler<LabResultRecordCmd>
 {
     private readonly ILabOrderRepo _labOrderRepo;
     private readonly ILabResultDocumentRepo _labResultDocumentRepo;
+    private readonly ILabResultScaffoldService _scaffoldService;
 
-    public LabResultRecordHandler(ILabOrderRepo labOrderRepo, ILabResultDocumentRepo labResultDocumentRepo)
+    public LabResultRecordHandler(
+        ILabOrderRepo labOrderRepo,
+        ILabResultDocumentRepo labResultDocumentRepo,
+        ILabResultScaffoldService scaffoldService)
     {
         _labOrderRepo = labOrderRepo;
         _labResultDocumentRepo = labResultDocumentRepo;
+        _scaffoldService = scaffoldService;
     }
 
     public Task Handle(LabResultRecordCmd request, CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.OrderId, nameof(request.OrderId));
         Guard.Against.NullOrWhiteSpace(request.UserId, nameof(request.UserId));
-        Guard.Against.Null(request.Items, nameof(request.Items));
-
-        var itemList = request.Items.ToList();
-        Guard.Against.NullOrEmpty(itemList, nameof(request.Items));
+        Guard.Against.Null(request.Values, nameof(request.Values));
 
         var order = _labOrderRepo.LoadEntity(new OrderIdKey(request.OrderId))
             .GetValueOrThrow($"LabOrder '{request.OrderId}' not found");
@@ -63,24 +53,8 @@ public class LabResultRecordHandler : IRequestHandler<LabResultRecordCmd>
         if (!Enum.IsDefined(typeof(LabResultSourceEnum), source))
             throw new ArgumentException("ResultSource tidak valid.", nameof(request.ResultSource));
 
-        foreach (var x in itemList)
-        {
-            if (!Enum.IsDefined(typeof(LabResultTypeEnum), x.ResultType))
-                throw new ArgumentException("ResultType tidak valid.", nameof(request.Items));
-        }
-
-        var captures = itemList.Select(x => new LabResultItemCapture(
-            x.TestId,
-            x.TestName,
-            x.ComponentCode ?? "",
-            x.ComponentName ?? "",
-            (LabResultTypeEnum)x.ResultType,
-            x.NumericValue,
-            x.TextValue ?? "",
-            x.OptionValue ?? "",
-            x.NarrativeValue ?? "",
-            x.Unit ?? "",
-            x.ReferenceRangeText ?? "")).ToList();
+        var scaffold = _scaffoldService.BuildFromOrder(order);
+        var captures = _scaffoldService.BuildCaptures(scaffold, request.Values);
 
         var result = _labResultDocumentRepo.LoadByOrderId(request.OrderId)
             .Match(

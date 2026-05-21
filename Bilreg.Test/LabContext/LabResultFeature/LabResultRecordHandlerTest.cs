@@ -2,8 +2,10 @@ using Bilreg.Application.LabContext.LabOrderFeature;
 using Bilreg.Application.LabContext.LabResultFeature;
 using Bilreg.Application.LabContext.LabResultFeature.UseCases;
 using Bilreg.Domain.LabContext.LabOrderFeature;
+using Bilreg.Test.LabContext.LabOrderFeature;
 using Bilreg.Domain.LabContext.LabResultFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
+using Bilreg.Infrastructure.LabContext.LabResultFeature;
 using FluentAssertions;
 using Moq;
 using Nuna.Lib.PatternHelper;
@@ -19,16 +21,21 @@ public class LabResultRecordHandlerTest
 
     public LabResultRecordHandlerTest()
     {
-        _sut = new LabResultRecordHandler(_orderRepo.Object, _resultRepo.Object);
+        _sut = new LabResultRecordHandler(
+            _orderRepo.Object,
+            _resultRepo.Object,
+            new LabResultScaffoldService());
     }
 
     private static LabOrderModel ChargedLabOrder()
     {
         var snapshot = new PatientSnapshotType(
             "REG1", "MR1", "Pasien", new DateTime(1990, 1, 1), "L", 35);
-        var item = LabOrderItemModel.Create(
-            "T1", "HB", "Hemoglobin", "TR1", "T-HB", "Tarif", VacutainerTypeEnum.Edta, "Blood", 1);
-        var order = LabOrderModel.CreateFromEmr(snapshot, [item], "LAB00000001", new AuditInfoType("U1", DateTime.Now));
+        var order = LabOrderTestSupport.CreateEmrOrder(
+            "LAB00000001",
+            lines: [LabOrderTestSupport.ResolvedLine()],
+            snapshot: snapshot,
+            audit: new AuditInfoType("U1", DateTime.Now));
         order.Charge("U1");
         order.MarkCharged("TDK1", "U1");
         return order;
@@ -46,17 +53,16 @@ public class LabResultRecordHandlerTest
             order.OrderId,
             "UR1",
             (int)LabResultSourceEnum.Manual,
-            [
-                new LabResultRecordItemDto(
-                    "T1", "HB", "", "", (int)LabResultTypeEnum.Numeric, 13m, null, null, null, "g/dL", "12-16")
-            ]);
+            [new LabResultRecordValueDto("MLC0001", "13.2")]);
 
         await _sut.Handle(cmd, CancellationToken.None);
 
         _orderRepo.Verify(x => x.SaveChanges(It.Is<LabOrderModel>(o => o.LabOrderStatus == LabOrderStatusEnum.Recorded)), Times.Once);
         _resultRepo.Verify(x => x.SaveChanges(It.Is<LabResultDocumentModel>(r =>
             r.OrderId == order.OrderId
-            && r.ResultStatus == LabResultStatusEnum.Recorded)), Times.Once);
+            && r.ResultStatus == LabResultStatusEnum.Recorded
+            && r.Items.Single().ComponentId == "MLC0001"
+            && r.Items.Single().NumericValue == 13.2m)), Times.Once);
     }
 
     [Fact]
@@ -65,7 +71,11 @@ public class LabResultRecordHandlerTest
         _orderRepo.Setup(x => x.LoadEntity(It.IsAny<ILabOrderKey>()))
             .Returns(MayBe<LabOrderModel>.None);
 
-        var cmd = new LabResultRecordCmd("MISSING", "U1", 1, [new LabResultRecordItemDto("T1", "N", "", "", 1, 1m, null, null, null, "", "")]);
+        var cmd = new LabResultRecordCmd(
+            "MISSING",
+            "U1",
+            1,
+            [new LabResultRecordValueDto("MLC0001", "1")]);
 
         var act = async () => await _sut.Handle(cmd, CancellationToken.None);
 

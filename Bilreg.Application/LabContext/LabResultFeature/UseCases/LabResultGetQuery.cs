@@ -25,10 +25,12 @@ public record LabResultView(
 
 public record LabResultItemView(
     int ItemNo,
+    string ComponentId,
     string TestId,
     string TestName,
     string ComponentCode,
     string ComponentName,
+    int SequenceNo,
     int ResultType,
     decimal NumericValue,
     string TextValue,
@@ -36,6 +38,7 @@ public record LabResultItemView(
     string NarrativeValue,
     string Unit,
     string ReferenceRangeText,
+    bool IsMandatory,
     int FlagStatus);
 
 public class LabResultGetHandler : IRequestHandler<LabResultGetQuery, LabResultView>
@@ -86,10 +89,12 @@ public class LabResultGetHandler : IRequestHandler<LabResultGetQuery, LabResultV
                     m.VerifiedUserId,
                     m.Items.Select(x => new LabResultItemView(
                         x.ItemNo,
+                        x.ComponentId,
                         x.TestId,
                         x.TestName,
                         x.ComponentCode,
                         x.ComponentName,
+                        x.SequenceNo,
                         (int)x.ResultType,
                         x.NumericValue,
                         x.TextValue,
@@ -97,6 +102,7 @@ public class LabResultGetHandler : IRequestHandler<LabResultGetQuery, LabResultV
                         x.NarrativeValue,
                         x.Unit,
                         x.ReferenceRangeText,
+                        x.IsMandatory,
                         (int)x.FlagStatus)).ToList()),
                 onNone: () => empty));
     }

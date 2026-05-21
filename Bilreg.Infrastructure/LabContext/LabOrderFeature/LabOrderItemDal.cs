@@ -36,9 +36,9 @@ public class LabOrderItemDal : ILabOrderItemDal
         conn.Open();
         bcp.AddMap("OrderId", "OrderId");
         bcp.AddMap("ItemNo", "ItemNo");
-        bcp.AddMap("TestId", "TestId");
-        bcp.AddMap("TestCode", "TestCode");
-        bcp.AddMap("TestName", "TestName");
+        bcp.AddMap("TestDefinitionId", "TestDefinitionId");
+        bcp.AddMap("LabTestCode", "LabTestCode");
+        bcp.AddMap("LabTestName", "LabTestName");
         bcp.AddMap("TarifId", "TarifId");
         bcp.AddMap("TarifCode", "TarifCode");
         bcp.AddMap("TarifName", "TarifName");
@@ -70,7 +70,7 @@ public class LabOrderItemDal : ILabOrderItemDal
         const string sql = """
             SELECT
                 aa.OrderId, aa.ItemNo,
-                aa.TestId, aa.TestCode, aa.TestName,
+                aa.TestDefinitionId, aa.LabTestCode, aa.LabTestName,
                 aa.TarifId, aa.TarifCode, aa.TarifName,
                 aa.TubeType, aa.SpecimenType, aa.RequiredTubeCount
             FROM BILRG_LabOrderItem aa

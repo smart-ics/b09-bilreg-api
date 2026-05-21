@@ -18,6 +18,7 @@ public class LabCollectionPreparationDalTest
     private static LabOrderDto ChargedHeader(string orderId = OrderId)
         => new(
             OrderId: orderId,
+            EmrOrderId: "",
             OrderNo: "LAB00000020",
             OrderSource: 1,
             LabOrderStatus: (int)LabOrderStatusEnum.Charged,
@@ -67,7 +68,7 @@ public class LabCollectionPreparationDalTest
         => new(
             orderId,
             itemNo,
-            $"T{itemNo}",
+            $"LTD{itemNo:D4}",
             testCode,
             testName,
             "TR1",

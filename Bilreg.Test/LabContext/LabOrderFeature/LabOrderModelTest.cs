@@ -25,22 +25,12 @@ public class LabOrderModelTest
         Gender: "P",
         AgeAtOrder: 40);
 
-    private static LabOrderItemModel TestItem() =>
-        LabOrderItemModel.Create(
-            testId: "T1",
-            testCode: "HB",
-            testName: "Hemoglobin",
-            tarifId: "TR1",
-            tarifCode: "T-HB",
-            tarifName: "Tarif HB",
-            tubeType: VacutainerTypeEnum.Edta,
-            specimenType: "Blood",
-            requiredTubeCount: 1);
+    private static LabOrderItemModel TestItem() => LabOrderTestSupport.SampleItem();
 
     [Fact]
     public void CreateFromEmr_SetsInitialWorkflowState()
     {
-        var order = LabOrderModel.CreateFromEmr(EmrSnapshot(), [TestItem()], "LAB000001", TestAudit());
+        var order = LabOrderTestSupport.CreateEmrOrder("LAB000001", audit: TestAudit());
 
         order.OrderId.Should().StartWith("LBO");
         order.OrderNo.Should().Be("LAB000001");
@@ -57,7 +47,7 @@ public class LabOrderModelTest
     [Fact]
     public void CreateExternal_AllowsEmptyRegAndPatientId()
     {
-        var order = LabOrderModel.CreateExternal(ExternalSnapshot(), [TestItem()], "LAB000002", TestAudit());
+        var order = LabOrderModel.CreateExternal(null, ExternalSnapshot(), [LabOrderTestSupport.ResolvedLine()], "LAB000002", TestAudit());
 
         order.OrderSource.Should().Be(LabOrderSourceEnum.ExternalPatient);
         order.Patient.RegId.Should().BeEmpty();
@@ -69,28 +59,31 @@ public class LabOrderModelTest
     public void CreateFromEmr_EmptyRegId_Throws()
     {
         var bad = EmrSnapshot() with { RegId = "" };
-        var act = () => LabOrderModel.CreateFromEmr(bad, [TestItem()], "LAB000003", TestAudit());
+        var act = () => LabOrderTestSupport.CreateEmrOrder("LAB000003", snapshot: bad, audit: TestAudit());
         act.Should().Throw<ArgumentException>();
     }
 
     [Fact]
     public void CreateFromEmr_NoItems_Throws()
     {
-        var act = () => LabOrderModel.CreateFromEmr(EmrSnapshot(), [], "LAB000004", TestAudit());
+        var act = () => LabOrderTestSupport.CreateEmrOrder("LAB000004", lines: [], audit: TestAudit());
         act.Should().Throw<ArgumentException>();
     }
 
     [Fact]
     public void CreateFromEmr_AssignsSequentialItemNumbers()
     {
-        var item2 = TestItem() with { TestId = "T2", TestName = "Glucose" };
-        var order = LabOrderModel.CreateFromEmr(EmrSnapshot(), [TestItem(), item2], "LAB000005", TestAudit());
+        var item2 = TestItem() with { TestDefinitionId = "LTD0002", LabTestName = "Glucose" };
+        var order = LabOrderTestSupport.CreateEmrOrder(
+            "LAB000005",
+            lines: [LabOrderTestSupport.ResolvedLine(), LabOrderTestSupport.ResolvedLine(item2)],
+            audit: TestAudit());
 
         order.Items.Select(x => x.ItemNo).Should().Equal(1, 2);
     }
 
     private static LabOrderModel OrderedOrder() =>
-        LabOrderModel.CreateFromEmr(EmrSnapshot(), [TestItem()], "LAB000010", TestAudit());
+        LabOrderTestSupport.CreateEmrOrder("LAB000010", audit: TestAudit());
 
     [Fact]
     public void Defer_FromOrdered_SetsDeferredState()
@@ -295,6 +288,7 @@ public class LabOrderModelTest
         audit.Batal("UV", new DateTime(2026, 5, 2, 10, 0, 0));
         var order = LabOrderModel.Load(
             "LBO000000777",
+            "",
             "LAB0000777",
             LabOrderSourceEnum.Emr,
             LabOrderStatusEnum.Charged,
@@ -319,7 +313,8 @@ public class LabOrderModelTest
             terminationDate: new DateTime(3000, 1, 1),
             terminationUserId: "",
             audit,
-            [TestItem()]);
+            [TestItem()],
+            []);
         var info = new CollectionInfoType(DateTime.Now, "U1", "");
 
         var act = () => order.CollectSpecimen("U1", info);
@@ -675,6 +670,7 @@ public class LabOrderModelTest
         audit.Batal("UV", new DateTime(2026, 5, 2, 10, 0, 0));
         var order = LabOrderModel.Load(
             "LBO000000888",
+            "",
             "LAB0000888",
             LabOrderSourceEnum.Emr,
             LabOrderStatusEnum.Ordered,
@@ -699,7 +695,8 @@ public class LabOrderModelTest
             terminationDate: new DateTime(3000, 1, 1),
             terminationUserId: "",
             audit,
-            [TestItem()]);
+            [TestItem()],
+            []);
 
         var act = () => order.Cancel("U1", "x");
 
@@ -713,6 +710,7 @@ public class LabOrderModelTest
         audit.Batal("UV", new DateTime(2026, 5, 2, 10, 0, 0));
         var order = LabOrderModel.Load(
             "LBO000000889",
+            "",
             "LAB0000889",
             LabOrderSourceEnum.Emr,
             LabOrderStatusEnum.Collected,
@@ -737,7 +735,8 @@ public class LabOrderModelTest
             terminationDate: new DateTime(3000, 1, 1),
             terminationUserId: "",
             audit,
-            [TestItem()]);
+            [TestItem()],
+            []);
 
         var act = () => order.Terminate("U1", "x");
 
@@ -746,7 +745,7 @@ public class LabOrderModelTest
 
     private static LabOrderModel ChargedOrderForOware()
     {
-        var order = LabOrderModel.CreateFromEmr(EmrSnapshot(), [TestItem()], "LAB000100", TestAudit());
+        var order = LabOrderTestSupport.CreateEmrOrder("LAB000100", audit: TestAudit());
         order.Charge("U1");
         order.MarkCharged("TDK1", "U1");
         return order;
@@ -763,7 +762,7 @@ public class LabOrderModelTest
     [Fact]
     public void EnsureCanEnqueueOware_WhenOrdered_Throws()
     {
-        var order = LabOrderModel.CreateFromEmr(EmrSnapshot(), [TestItem()], "LAB000101", TestAudit());
+        var order = LabOrderTestSupport.CreateEmrOrder("LAB000101", audit: TestAudit());
         var act = () => order.EnsureCanEnqueueOware();
         act.Should().Throw<InvalidOperationException>();
     }

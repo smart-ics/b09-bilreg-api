@@ -1,5 +1,6 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.LabContext.LabOrderFeature;
+using Bilreg.Application.LabContext.LabResultFeature;
 using Bilreg.Domain.LabContext.LabOrderFeature;
 using Bilreg.Domain.LabContext.LabResultFeature;
 using MediatR;
@@ -19,11 +20,16 @@ public class LabResultAmendHandler : IRequestHandler<LabResultAmendCmd>
 {
     private readonly ILabOrderRepo _labOrderRepo;
     private readonly ILabResultDocumentRepo _labResultDocumentRepo;
+    private readonly ILabResultScaffoldService _scaffoldService;
 
-    public LabResultAmendHandler(ILabOrderRepo labOrderRepo, ILabResultDocumentRepo labResultDocumentRepo)
+    public LabResultAmendHandler(
+        ILabOrderRepo labOrderRepo,
+        ILabResultDocumentRepo labResultDocumentRepo,
+        ILabResultScaffoldService scaffoldService)
     {
         _labOrderRepo = labOrderRepo;
         _labResultDocumentRepo = labResultDocumentRepo;
+        _scaffoldService = scaffoldService;
     }
 
     public Task Handle(LabResultAmendCmd request, CancellationToken cancellationToken)
@@ -47,8 +53,12 @@ public class LabResultAmendHandler : IRequestHandler<LabResultAmendCmd>
             throw new InvalidOperationException(
                 $"Hasil untuk order '{request.OrderId}' berstatus {current.ResultStatus}; amend hanya diperbolehkan untuk hasil Verified.");
 
+        var scaffold = _scaffoldService.BuildFromOrder(order);
+        var regeneratedItems = _scaffoldService.BuildStructureOnlyItems(scaffold);
+
         var amendedAt = DateTime.Now;
         var (retired, newVersion) = current.AmendVerifiedToNewVersion(
+            regeneratedItems,
             request.Reason,
             request.AmendedBy,
             amendedAt);

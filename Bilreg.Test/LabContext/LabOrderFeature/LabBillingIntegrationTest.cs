@@ -12,7 +12,10 @@ public class LabBillingIntegrationTest
     {
         var sut = new LabBillingIntegration();
 
-        var tindakanId = sut.CreateTindakan(new LabBillingChargeRequest("LBO000000001", "U1"));
+        var tindakanId = sut.CreateTindakan(new LabBillingChargeRequest(
+            "LBO000000001",
+            "U1",
+            [new LabBillingTarifLine("TR1", "T-HB", "Tarif HB")]));
 
         tindakanId.Should().StartWith("TDK-FAKE-");
     }

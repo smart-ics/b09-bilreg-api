@@ -59,6 +59,13 @@ public class LabOrderController : ControllerBase
         return Ok(new JSendOk(response));
     }
 
+    [HttpGet("byEmrOrderId/{emrOrderId}")]
+    public async Task<IActionResult> GetByEmrOrderId(string emrOrderId)
+    {
+        var response = await _mediator.Send(new LabOrderGetByEmrOrderIdQuery(emrOrderId));
+        return Ok(new JSendOk(response));
+    }
+
     [HttpGet("{orderId}")]
     public async Task<IActionResult> Get(string orderId)
     {

@@ -4,7 +4,7 @@
 > **Revision:** 1.2 — terminology, naming, ID format, pre-release contract simplification (architecture unchanged)  
 > **Canonical location:** `docs/contexts/lab/LAB_MASTER_TEST_IMPLEMENTATION_PLAN.md`  
 > **Audience:** Backend developers, product owners  
-> **Related:** [`lab-domain.md`](lab-domain.md), [`lab-workflow.md`](lab-workflow.md), [`lab-integration.md`](lab-integration.md), [`lab-agent.md`](lab-agent.md), [`lab-implementation-plan.md`](lab-implementation-plan.md), [`LAB_API_CONTRACT.md`](LAB_API_CONTRACT.md)  
+> **Related:** [`lab-domain.md`](lab-domain.md), [`lab-workflow.md`](lab-workflow.md), [`lab-integration.md`](lab-integration.md), [`lab-agent.md`](lab-agent.md), [`lab-implementation-plan.md`](lab-implementation-plan.md), [`LAB_MASTER_TEST_ALIGNMENT.md`](LAB_MASTER_TEST_ALIGNMENT.md), [`LAB_API_CONTRACT.md`](LAB_API_CONTRACT.md)  
 > **Skills (when implementing):** [`docs/skills/feature-model-generation.md`](../../skills/feature-model-generation.md), [`docs/skills/feature-persistence-generation.md`](../../skills/feature-persistence-generation.md)
 
 **Pre-release note:** LWF has **not** been released. This plan assumes **no** backward compatibility, dual APIs, or migration-period contracts. Implement **one** authoritative shape per endpoint.
@@ -145,7 +145,7 @@ Do **not** use bare “test” in domain docs, DTO names, or examples without `L
 
 **ID:** `ComponentId` `VARCHAR(7)` — format `MLC` + 4 uppercase hex (e.g. `MLC0001`, `MLC00AF`). Deterministic sequential allocation in seed tooling.
 
-**Responsibilities:** `ComponentCode`, `ComponentName`, `ResultType`, `DefaultUnit`, optional `LoincCode` (metadata only), `IsSystem`, `IsActive`.
+**Responsibilities:** `ComponentCode`, `ComponentName` (canonical/international/vendor), `ComponentNameIndonesia` (Indonesian operational, nullable), `ResultType`, `DefaultUnit`, optional `LoincCode` (metadata only), `IsSystem`, `IsActive`.
 
 **Domain type:** `LabComponentMasterModel` — read-only; no hospital behaviour methods.
 
@@ -242,10 +242,10 @@ It exists to:
 | **`LabTestDefinition`** | **LWF** | Operational lab-test authority |
 | **`LabComponentMaster`** | **Vendor** | Read-only; full seed replace |
 | **`EmrOrderId`** | **EMR** | Stored on `LabOrder`; lookup key for EMR |
-| **Lab order/result snapshots** | **LWF** | Historical SOt after capture |
+| **Lab order/result snapshots** | **LWF** | Historical source of truth after capture |
 | **Tindakan / payment** | **BIL** | One Tindakan per order (multi-Tarif lines inside) |
 | **Patient** | **REG** | Snapshot on order |
-| **OWR transport** | **OWR** | Async; not SOt |
+| **OWR transport** | **OWR** | Async; not source of truth |
 
 ```text
 EMR ── EmrOrderId + TarifId[] ──► LWF ── resolve LabTestDefinition ──► snapshots
@@ -281,7 +281,8 @@ EMR ── EmrOrderId + TarifId[] ──► LWF ── resolve LabTestDefinition
 | `ComponentId` | VARCHAR(7) PK | `MLC` + 4 hex |
 | `LoincCode` | VARCHAR(20) | Optional metadata |
 | `ComponentCode` | VARCHAR(30) | Unique among active |
-| `ComponentName` | VARCHAR(120) | |
+| `ComponentName` | VARCHAR(120) | Canonical / international / vendor name |
+| `ComponentNameIndonesia` | VARCHAR(120) | Nullable; Indonesian operational name |
 | `ResultType` | INT | |
 | `DefaultUnit` | VARCHAR(30) | |
 | `IsSystem` | BIT | |
@@ -592,9 +593,9 @@ Update [`LAB_API_CONTRACT.md`](LAB_API_CONTRACT.md) when implemented — **co-ev
 
 ### Phase 0 — Alignment
 
-- [ ] Field list, error codes, `MLC`/`LTD` allocator rules  
-- [ ] EMR payload: `EmrOrderId` + Tarif only  
-- [ ] BIL target: one Tindakan / many Tarif lines  
+- [x] Field list, error codes, `MLC`/`LTD` allocator rules — see [`LAB_MASTER_TEST_ALIGNMENT.md`](LAB_MASTER_TEST_ALIGNMENT.md); seed `MLC` sequential hex in seed file; hospital `LTD` allocator detail deferred to Phase 2 admin  
+- [x] EMR payload: `EmrOrderId` + Tarif only — documented §7.3; propagated to `lab-integration.md`, `lab-implementation-plan.md`, `LAB_API_CONTRACT.md`  
+- [x] BIL target: one Tindakan / many Tarif lines — documented §6.5; propagated to sibling docs  
 
 ### Phase 1 — `LabComponentMaster`
 

@@ -9,24 +9,32 @@ namespace Bilreg.Application.LabContext.LabOrderFeature.UseCases;
 
 public record LabOrderCreateExternalPatientCmd(
     string UserId,
+    string? EmrOrderId,
     string? RegId,
     string? PatientId,
     string PatientName,
     string? BirthDateYmd,
     string? Gender,
-    List<LabOrderItemInput> Items)
+    List<LabOrderTarifItemInput> Items)
     : IRequest<LabOrderCreateResponse>;
+
+public record LabOrderCreateResponse(string OrderId, string OrderNo);
 
 public class LabOrderCreateExternalPatientHandler
     : IRequestHandler<LabOrderCreateExternalPatientCmd, LabOrderCreateResponse>
 {
     private readonly ILabOrderRepo _labOrderRepo;
     private readonly ISequencer _sequencer;
+    private readonly ILabTestResolutionService _resolutionService;
 
-    public LabOrderCreateExternalPatientHandler(ILabOrderRepo labOrderRepo, ISequencer sequencer)
+    public LabOrderCreateExternalPatientHandler(
+        ILabOrderRepo labOrderRepo,
+        ISequencer sequencer,
+        ILabTestResolutionService resolutionService)
     {
         _labOrderRepo = labOrderRepo;
         _sequencer = sequencer;
+        _resolutionService = resolutionService;
     }
 
     public Task<LabOrderCreateResponse> Handle(
@@ -44,10 +52,10 @@ public class LabOrderCreateExternalPatientHandler
             request.BirthDateYmd ?? "",
             request.Gender ?? "",
             audit.Timestamp);
-        var items = LabOrderCreateHelper.MapItems(request.Items);
+        var lines = LabOrderCreateHelper.MapResolvedLines(_resolutionService.ResolveByTarifItems(request.Items));
         var orderNo = LabOrderCreateHelper.NextOrderNo(_sequencer);
 
-        var order = LabOrderModel.CreateExternal(snapshot, items, orderNo, audit);
+        var order = LabOrderModel.CreateExternal(request.EmrOrderId, snapshot, lines, orderNo, audit);
 
         LabOrderCreateResponse response;
         using (var trans = TransHelper.NewScope())

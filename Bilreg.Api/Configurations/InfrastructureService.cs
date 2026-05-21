@@ -1,5 +1,6 @@
 ﻿using Bilreg.Application.LabContext.LabOrderFeature;
 using Bilreg.Application.LabContext.LabOrderFeature.Integration;
+using Bilreg.Infrastructure.LabContext.LabOrderFeature;
 using Bilreg.Application.LabContext.LabOwareFeature;
 using Bilreg.Application.LabContext.LabOwareFeature.Integration;
 using Bilreg.Application.LabContext.LabResultFeature;
@@ -7,7 +8,6 @@ using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Infrastructure;
 using Bilreg.Infrastructure.LabContext.Integration;
-using Bilreg.Infrastructure.LabContext.LabOrderFeature;
 using Bilreg.Infrastructure.LabContext.LabOwareFeature;
 using Bilreg.Infrastructure.LabContext.LabResultFeature;
 using Bilreg.Infrastructure.PasienContext.PasienFeature;
@@ -38,10 +38,12 @@ public static class InfrastructureService
             .AddScoped<ILabCollectionPreparationDal, LabCollectionPreparationDal>()
             .AddScoped<ILabRegIntegration, LabRegIntegration>()
             .AddScoped<ILabBillingIntegration, LabBillingIntegration>()
+            .AddScoped<ILabTestResolutionService, LabTestResolutionService>()
             .AddScoped<ILabOwareIntegration, LabOwareIntegration>()
             .AddScoped<ILabOwareQueueWorklistDal, LabOwareQueueWorklistDal>()
             .AddScoped<LabOwareQueueProcessor>()
             .AddScoped<ILabResultPdfRenderer, LabResultPdfRenderer>()
+            .AddScoped<ILabResultScaffoldService, LabResultScaffoldService>()
             .AddMemoryCache();
 
         services

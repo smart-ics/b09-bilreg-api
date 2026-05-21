@@ -14,6 +14,7 @@ public class LabOrderDalTest
     private static LabOrderDto FakerHeader(string orderId = "LBO000000001")
         => new(
             OrderId: orderId,
+            EmrOrderId: "EMR-001",
             OrderNo: "LAB00000001",
             OrderSource: 1,
             LabOrderStatus: 1,
@@ -56,7 +57,7 @@ public class LabOrderDalTest
         => new(
             orderId,
             1,
-            "T1",
+            "LTD0001",
             "HB",
             "Hemoglobin",
             "TR1",
@@ -184,7 +185,7 @@ public class LabOrderDalTest
         _itemDal.Insert([FakerItem()]);
         var items = _itemDal.ListData(FakerKey()).ToList();
         items.Should().HaveCount(1);
-        items[0].TestName.Should().Be("Hemoglobin");
+        items[0].LabTestName.Should().Be("Hemoglobin");
     }
 
     [Fact]

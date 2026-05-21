@@ -9,11 +9,13 @@ public class LabOrderModel : ILabOrderKey
     private const string IdPrefix = "LBO";
     private static readonly DateTime EmptyDate = new(3000, 1, 1);
     private readonly List<LabOrderItemModel> _items;
+    private readonly List<LabOrderItemComponentModel> _itemComponents;
 
     #region CREATION
 
     private LabOrderModel(
         string orderId,
+        string emrOrderId,
         string orderNo,
         LabOrderSourceEnum orderSource,
         LabOrderStatusEnum labOrderStatus,
@@ -38,9 +40,11 @@ public class LabOrderModel : ILabOrderKey
         DateTime terminationDate,
         string terminationUserId,
         AuditTrailType auditTrail,
-        IEnumerable<LabOrderItemModel> items)
+        IEnumerable<LabOrderItemModel> items,
+        IEnumerable<LabOrderItemComponentModel> itemComponents)
     {
         OrderId = orderId;
+        EmrOrderId = emrOrderId ?? string.Empty;
         OrderNo = orderNo;
         OrderSource = orderSource;
         LabOrderStatus = labOrderStatus;
@@ -66,10 +70,12 @@ public class LabOrderModel : ILabOrderKey
         TerminationUserId = terminationUserId;
         AuditTrail = auditTrail;
         _items = items.ToList();
+        _itemComponents = itemComponents.ToList();
     }
 
     public static LabOrderModel Default => new(
         orderId: "-",
+        emrOrderId: "",
         orderNo: "",
         orderSource: LabOrderSourceEnum.Emr,
         labOrderStatus: LabOrderStatusEnum.Ordered,
@@ -94,10 +100,12 @@ public class LabOrderModel : ILabOrderKey
         terminationDate: EmptyDate,
         terminationUserId: "",
         auditTrail: AuditTrailType.Default,
-        items: []);
+        items: [],
+        itemComponents: []);
 
     public static ILabOrderKey Key(string orderId) => new LabOrderModel(
         orderId,
+        "",
         "",
         LabOrderSourceEnum.Emr,
         LabOrderStatusEnum.Ordered,
@@ -122,10 +130,12 @@ public class LabOrderModel : ILabOrderKey
         EmptyDate,
         "",
         AuditTrailType.Default,
+        [],
         []);
 
     public static LabOrderModel Load(
         string orderId,
+        string emrOrderId,
         string orderNo,
         LabOrderSourceEnum orderSource,
         LabOrderStatusEnum labOrderStatus,
@@ -150,9 +160,11 @@ public class LabOrderModel : ILabOrderKey
         DateTime terminationDate,
         string terminationUserId,
         AuditTrailType auditTrail,
-        IEnumerable<LabOrderItemModel> items)
+        IEnumerable<LabOrderItemModel> items,
+        IEnumerable<LabOrderItemComponentModel> itemComponents)
         => new(
             orderId,
+            emrOrderId,
             orderNo,
             orderSource,
             labOrderStatus,
@@ -177,14 +189,17 @@ public class LabOrderModel : ILabOrderKey
             terminationDate,
             terminationUserId,
             auditTrail,
-            items);
+            items,
+            itemComponents);
 
     public static LabOrderModel CreateFromEmr(
+        string emrOrderId,
         PatientSnapshotType snapshot,
-        IEnumerable<LabOrderItemModel> items,
+        IEnumerable<ResolvedOrderLine> lines,
         string orderNo,
         AuditInfoType audit)
     {
+        Guard.Against.NullOrWhiteSpace(emrOrderId, nameof(emrOrderId));
         Guard.Against.Null(snapshot);
         Guard.Against.NullOrWhiteSpace(snapshot.RegId, nameof(snapshot.RegId));
         Guard.Against.NullOrWhiteSpace(snapshot.PatientId, nameof(snapshot.PatientId));
@@ -194,16 +209,18 @@ public class LabOrderModel : ILabOrderKey
         Guard.Against.NullOrWhiteSpace(audit.UserId, nameof(audit.UserId));
 
         return CreateInternal(
+            emrOrderId,
             LabOrderSourceEnum.Emr,
             snapshot,
-            items,
+            lines,
             orderNo,
             audit);
     }
 
     public static LabOrderModel CreateExternal(
+        string? emrOrderId,
         PatientSnapshotType snapshot,
-        IEnumerable<LabOrderItemModel> items,
+        IEnumerable<ResolvedOrderLine> lines,
         string orderNo,
         AuditInfoType audit)
     {
@@ -213,26 +230,29 @@ public class LabOrderModel : ILabOrderKey
         Guard.Against.NullOrWhiteSpace(audit.UserId, nameof(audit.UserId));
 
         return CreateInternal(
+            emrOrderId ?? string.Empty,
             LabOrderSourceEnum.ExternalPatient,
             snapshot,
-            items,
+            lines,
             orderNo,
             audit);
     }
 
     private static LabOrderModel CreateInternal(
+        string emrOrderId,
         LabOrderSourceEnum orderSource,
         PatientSnapshotType snapshot,
-        IEnumerable<LabOrderItemModel> items,
+        IEnumerable<ResolvedOrderLine> lines,
         string orderNo,
         AuditInfoType audit)
     {
-        var itemList = AssignItemNumbers(items);
+        var (itemList, componentList) = AssignLineNumbers(lines);
         var orderId = NunaId.New(IdPrefix);
         var auditTrail = AuditTrailType.Create(audit.UserId, audit.Timestamp);
 
         return new LabOrderModel(
             orderId,
+            emrOrderId,
             orderNo,
             orderSource,
             LabOrderStatusEnum.Ordered,
@@ -257,25 +277,43 @@ public class LabOrderModel : ILabOrderKey
             terminationDate: EmptyDate,
             terminationUserId: "",
             auditTrail,
-            itemList);
+            itemList,
+            componentList);
     }
 
-    private static List<LabOrderItemModel> AssignItemNumbers(IEnumerable<LabOrderItemModel> items)
+    private static (List<LabOrderItemModel> Items, List<LabOrderItemComponentModel> Components) AssignLineNumbers(
+        IEnumerable<ResolvedOrderLine> lines)
     {
-        var source = items?.ToList() ?? [];
-        Guard.Against.NullOrEmpty(source, nameof(items));
+        var source = lines?.ToList() ?? [];
+        Guard.Against.NullOrEmpty(source, nameof(lines));
 
-        var result = new List<LabOrderItemModel>();
-        var no = 1;
-        foreach (var item in source)
+        var items = new List<LabOrderItemModel>();
+        var components = new List<LabOrderItemComponentModel>();
+        var itemNo = 1;
+
+        foreach (var line in source)
         {
-            Guard.Against.NullOrWhiteSpace(item.TestId, nameof(item.TestId));
-            Guard.Against.NullOrWhiteSpace(item.TestName, nameof(item.TestName));
-            result.Add(item with { ItemNo = no++ });
+            Guard.Against.Null(line.Item);
+            Guard.Against.NullOrWhiteSpace(line.Item.TestDefinitionId, nameof(line.Item.TestDefinitionId));
+            Guard.Against.NullOrWhiteSpace(line.Item.LabTestName, nameof(line.Item.LabTestName));
+
+            items.Add(line.Item with { ItemNo = itemNo });
+
+            var componentNo = 1;
+            foreach (var component in line.Components.OrderBy(x => x.SequenceNo))
+            {
+                components.Add(component with { ItemNo = itemNo, ComponentNo = componentNo++ });
+            }
+
+            itemNo++;
         }
 
-        return result;
+        return (items, components);
     }
+
+    public record ResolvedOrderLine(
+        LabOrderItemModel Item,
+        IReadOnlyList<LabOrderItemComponentModel> Components);
 
     #endregion
 
@@ -600,6 +638,7 @@ public class LabOrderModel : ILabOrderKey
     #region PROPERTIES
 
     public string OrderId { get; init; }
+    public string EmrOrderId { get; init; }
     public string OrderNo { get; init; }
     public LabOrderSourceEnum OrderSource { get; init; }
     public LabOrderStatusEnum LabOrderStatus { get; set; }
@@ -625,6 +664,7 @@ public class LabOrderModel : ILabOrderKey
     public string TerminationUserId { get; set; }
     public AuditTrailType AuditTrail { get; init; }
     public IReadOnlyList<LabOrderItemModel> Items => _items;
+    public IReadOnlyList<LabOrderItemComponentModel> ItemComponents => _itemComponents;
 
     #endregion
 }

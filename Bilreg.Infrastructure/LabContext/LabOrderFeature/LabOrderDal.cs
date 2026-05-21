@@ -14,10 +14,25 @@ public interface ILabOrderDal :
     IDelete<ILabOrderKey>,
     IGetData<LabOrderDto, ILabOrderKey>
 {
+    LabOrderDto? GetByEmrOrderId(string emrOrderId);
 }
 
 public class LabOrderDal : ILabOrderDal
 {
+    private const string SelectColumns = """
+        aa.OrderId, aa.EmrOrderId, aa.OrderNo, aa.OrderSource, aa.LabOrderStatus,
+        aa.FinancialClearance, aa.OwareStatus,
+        aa.RegId, aa.PatientId, aa.PatientName, aa.BirthDate, aa.Gender, aa.AgeAtOrder,
+        aa.ExecutionRegId, aa.DeferredReason, aa.DeferredUntil,
+        aa.BillingTindakanId, aa.BillingLastError,
+        aa.CollectedDate, aa.CollectedUserId, aa.CollectionNote,
+        aa.FinancialClearanceDate, aa.FinancialClearanceUserId, aa.FinancialClearanceReason,
+        aa.ReleasedDate, aa.ReleasedUserId, aa.ReleaseNote,
+        aa.CancelledReason, aa.CancelledDate, aa.CancelledUserId,
+        aa.TerminationReason, aa.TerminationDate, aa.TerminationUserId,
+        aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate
+        """;
+
     private readonly DatabaseOptions _opt;
 
     public LabOrderDal(IOptions<DatabaseOptions> opt)
@@ -29,7 +44,7 @@ public class LabOrderDal : ILabOrderDal
     {
         const string sql = """
             INSERT INTO BILRG_LabOrder (
-                OrderId, OrderNo, OrderSource, LabOrderStatus, FinancialClearance, OwareStatus,
+                OrderId, EmrOrderId, OrderNo, OrderSource, LabOrderStatus, FinancialClearance, OwareStatus,
                 RegId, PatientId, PatientName, BirthDate, Gender, AgeAtOrder,
                 ExecutionRegId, DeferredReason, DeferredUntil,
                 BillingTindakanId, BillingLastError,
@@ -40,7 +55,7 @@ public class LabOrderDal : ILabOrderDal
                 TerminationReason, TerminationDate, TerminationUserId,
                 CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
             VALUES (
-                @OrderId, @OrderNo, @OrderSource, @LabOrderStatus, @FinancialClearance, @OwareStatus,
+                @OrderId, @EmrOrderId, @OrderNo, @OrderSource, @LabOrderStatus, @FinancialClearance, @OwareStatus,
                 @RegId, @PatientId, @PatientName, @BirthDate, @Gender, @AgeAtOrder,
                 @ExecutionRegId, @DeferredReason, @DeferredUntil,
                 @BillingTindakanId, @BillingLastError,
@@ -60,7 +75,8 @@ public class LabOrderDal : ILabOrderDal
     {
         const string sql = """
             UPDATE BILRG_LabOrder
-            SET OrderNo = @OrderNo,
+            SET EmrOrderId = @EmrOrderId,
+                OrderNo = @OrderNo,
                 OrderSource = @OrderSource,
                 LabOrderStatus = @LabOrderStatus,
                 FinancialClearance = @FinancialClearance,
@@ -114,19 +130,8 @@ public class LabOrderDal : ILabOrderDal
 
     public LabOrderDto GetData(ILabOrderKey key)
     {
-        const string sql = """
-            SELECT
-                aa.OrderId, aa.OrderNo, aa.OrderSource, aa.LabOrderStatus,
-                aa.FinancialClearance, aa.OwareStatus,
-                aa.RegId, aa.PatientId, aa.PatientName, aa.BirthDate, aa.Gender, aa.AgeAtOrder,
-                aa.ExecutionRegId, aa.DeferredReason, aa.DeferredUntil,
-                aa.BillingTindakanId, aa.BillingLastError,
-                aa.CollectedDate, aa.CollectedUserId, aa.CollectionNote,
-                aa.FinancialClearanceDate, aa.FinancialClearanceUserId, aa.FinancialClearanceReason,
-                aa.ReleasedDate, aa.ReleasedUserId, aa.ReleaseNote,
-                aa.CancelledReason, aa.CancelledDate, aa.CancelledUserId,
-                aa.TerminationReason, aa.TerminationDate, aa.TerminationUserId,
-                aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate
+        var sql = $"""
+            SELECT {SelectColumns}
             FROM BILRG_LabOrder aa
             WHERE aa.OrderId = @OrderId
             """;
@@ -138,10 +143,27 @@ public class LabOrderDal : ILabOrderDal
         return conn.ReadSingle<LabOrderDto>(sql, dp);
     }
 
+    public LabOrderDto? GetByEmrOrderId(string emrOrderId)
+    {
+        var sql = $"""
+            SELECT TOP 1 {SelectColumns}
+            FROM BILRG_LabOrder aa
+            WHERE aa.EmrOrderId = @EmrOrderId
+            ORDER BY aa.CrtDate DESC
+            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@EmrOrderId", emrOrderId, SqlDbType.VarChar);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<LabOrderDto>(sql, dp).FirstOrDefault();
+    }
+
     private static DynamicParameters BuildParams(LabOrderDto dto)
     {
         var dp = new DynamicParameters();
         dp.AddParam("@OrderId", dto.OrderId, SqlDbType.VarChar);
+        dp.AddParam("@EmrOrderId", dto.EmrOrderId, SqlDbType.VarChar);
         dp.AddParam("@OrderNo", dto.OrderNo, SqlDbType.VarChar);
         dp.AddParam("@OrderSource", dto.OrderSource, SqlDbType.Int);
         dp.AddParam("@LabOrderStatus", dto.LabOrderStatus, SqlDbType.Int);
