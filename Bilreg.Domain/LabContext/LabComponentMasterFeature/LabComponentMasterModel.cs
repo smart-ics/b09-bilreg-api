@@ -15,7 +15,8 @@ public record LabComponentMasterModel : ILabComponentMasterKey
         LabResultTypeEnum resultType,
         string defaultUnit,
         bool isSystem,
-        bool isActive)
+        bool isActive,
+        string? componentNameIndonesia = null)
     {
         Guard.Against.NullOrWhiteSpace(componentId, nameof(componentId));
         Guard.Against.NullOrWhiteSpace(componentCode, nameof(componentCode));
@@ -25,6 +26,7 @@ public record LabComponentMasterModel : ILabComponentMasterKey
         LoincCode = loincCode;
         ComponentCode = componentCode;
         ComponentName = componentName;
+        ComponentNameIndonesia = componentNameIndonesia;
         ResultType = resultType;
         DefaultUnit = defaultUnit ?? string.Empty;
         IsSystem = isSystem;
@@ -43,6 +45,7 @@ public record LabComponentMasterModel : ILabComponentMasterKey
     public string? LoincCode { get; init; }
     public string ComponentCode { get; init; }
     public string ComponentName { get; init; }
+    public string? ComponentNameIndonesia { get; init; }
     public LabResultTypeEnum ResultType { get; init; }
     public string DefaultUnit { get; init; }
     public bool IsSystem { get; init; }

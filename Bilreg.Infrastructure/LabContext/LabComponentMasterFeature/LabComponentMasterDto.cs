@@ -8,6 +8,7 @@ public record LabComponentMasterDto(
     string? LoincCode,
     string ComponentCode,
     string ComponentName,
+    string? ComponentNameIndonesia,
     int ResultType,
     string DefaultUnit,
     bool IsSystem,
@@ -25,6 +26,7 @@ public record LabComponentMasterDto(
             LoincCode: model.LoincCode,
             ComponentCode: model.ComponentCode,
             ComponentName: model.ComponentName,
+            ComponentNameIndonesia: model.ComponentNameIndonesia,
             ResultType: (int)model.ResultType,
             DefaultUnit: model.DefaultUnit,
             IsSystem: model.IsSystem,
@@ -45,5 +47,6 @@ public record LabComponentMasterDto(
             resultType: (LabResultTypeEnum)ResultType,
             defaultUnit: DefaultUnit,
             isSystem: IsSystem,
-            isActive: IsActive);
+            isActive: IsActive,
+            componentNameIndonesia: ComponentNameIndonesia);
 }

@@ -133,13 +133,20 @@ Creates a new result **version** with structure **regenerated** from order compo
 
 Read-only vendor-owned catalog. **No** POST/PUT/DELETE. Operational identity is `ComponentCode`; `LoincCode` is optional metadata only.
 
+**Naming (bilingual metadata, not i18n):**
+
+| Field | Role |
+|-------|------|
+| `componentName` | Canonical / international / vendor name |
+| `componentNameIndonesia` | Localized Indonesian operational wording (nullable) |
+
 ### List / search components
 
 | | |
 |--|--|
 | **Route** | `GET /api/LabContext/LabComponentMasterFeature/components` |
 | **Query** | `activeOnly` (bool, default `true`) — when true, only `IsActive = 1` rows |
-| **Query** | `search` (string, optional) — case-insensitive partial match on `ComponentCode` or `ComponentName` |
+| **Query** | `search` (string, optional) — case-insensitive partial match on `ComponentCode` or `ComponentName` (canonical only; not `ComponentNameIndonesia`) |
 | **Response** | Array of `LabComponentMasterListResponse` |
 
 **Response fields (list item):**
@@ -149,7 +156,8 @@ Read-only vendor-owned catalog. **No** POST/PUT/DELETE. Operational identity is 
 | `componentId` | string | `MLC` + 4 uppercase hex (e.g. `MLC0001`) |
 | `loincCode` | string \| null | Optional metadata |
 | `componentCode` | string | Operational code |
-| `componentName` | string | Display name |
+| `componentName` | string | Canonical / international / vendor name |
+| `componentNameIndonesia` | string \| null | Indonesian operational name |
 | `resultType` | int | `LabResultTypeEnum`: 1 Numeric, 2 Text, 3 Option, 4 Narrative |
 | `defaultUnit` | string | |
 | `isSystem` | bool | |

@@ -145,7 +145,7 @@ Do **not** use bare “test” in domain docs, DTO names, or examples without `L
 
 **ID:** `ComponentId` `VARCHAR(7)` — format `MLC` + 4 uppercase hex (e.g. `MLC0001`, `MLC00AF`). Deterministic sequential allocation in seed tooling.
 
-**Responsibilities:** `ComponentCode`, `ComponentName`, `ResultType`, `DefaultUnit`, optional `LoincCode` (metadata only), `IsSystem`, `IsActive`.
+**Responsibilities:** `ComponentCode`, `ComponentName` (canonical/international/vendor), `ComponentNameIndonesia` (Indonesian operational, nullable), `ResultType`, `DefaultUnit`, optional `LoincCode` (metadata only), `IsSystem`, `IsActive`.
 
 **Domain type:** `LabComponentMasterModel` — read-only; no hospital behaviour methods.
 
@@ -281,7 +281,8 @@ EMR ── EmrOrderId + TarifId[] ──► LWF ── resolve LabTestDefinition
 | `ComponentId` | VARCHAR(7) PK | `MLC` + 4 hex |
 | `LoincCode` | VARCHAR(20) | Optional metadata |
 | `ComponentCode` | VARCHAR(30) | Unique among active |
-| `ComponentName` | VARCHAR(120) | |
+| `ComponentName` | VARCHAR(120) | Canonical / international / vendor name |
+| `ComponentNameIndonesia` | VARCHAR(120) | Nullable; Indonesian operational name |
 | `ResultType` | INT | |
 | `DefaultUnit` | VARCHAR(30) | |
 | `IsSystem` | BIT | |

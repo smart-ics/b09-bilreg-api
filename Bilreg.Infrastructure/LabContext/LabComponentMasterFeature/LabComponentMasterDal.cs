@@ -24,6 +24,7 @@ public class LabComponentMasterDal : ILabComponentMasterDal
         LoincCode,
         ComponentCode,
         ComponentName,
+        ComponentNameIndonesia,
         ResultType,
         DefaultUnit,
         IsSystem,

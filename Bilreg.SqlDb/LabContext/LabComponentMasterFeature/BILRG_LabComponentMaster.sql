@@ -3,6 +3,7 @@ CREATE TABLE BILRG_LabComponentMaster (
     LoincCode VARCHAR(20) NULL,
     ComponentCode VARCHAR(30) NOT NULL CONSTRAINT DF_BILRG_LabComponentMaster_ComponentCode DEFAULT(''),
     ComponentName VARCHAR(120) NOT NULL CONSTRAINT DF_BILRG_LabComponentMaster_ComponentName DEFAULT(''),
+    ComponentNameIndonesia VARCHAR(120) NULL,
     ResultType INT NOT NULL CONSTRAINT DF_BILRG_LabComponentMaster_ResultType DEFAULT(0),
     DefaultUnit VARCHAR(30) NOT NULL CONSTRAINT DF_BILRG_LabComponentMaster_DefaultUnit DEFAULT(''),
     IsSystem BIT NOT NULL CONSTRAINT DF_BILRG_LabComponentMaster_IsSystem DEFAULT(0),
