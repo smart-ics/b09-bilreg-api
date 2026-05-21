@@ -25,9 +25,12 @@ public class LabOrderChargeHandlerTest
     {
         var snapshot = new PatientSnapshotType(
             "REG001", "MR0001", "Pasien", new DateTime(1990, 1, 1), "L", 36);
-        var item = LabOrderItemModel.Create(
-            "T1", "HB", "Hemoglobin", "TR1", "T-HB", "Tarif", VacutainerTypeEnum.Edta, "Blood", 1);
-        return LabOrderModel.CreateFromEmr(snapshot, [item], "LAB00000001", new AuditInfoType("U1", DateTime.Now));
+        var item = LabOrderTestSupport.SampleItem();
+        return LabOrderTestSupport.CreateEmrOrder(
+            "LAB00000001",
+            lines: [LabOrderTestSupport.ResolvedLine(item)],
+            snapshot: snapshot,
+            audit: new AuditInfoType("U1", DateTime.Now));
     }
 
     private static LabOrderModel DeferredOrder()
@@ -61,7 +64,7 @@ public class LabOrderChargeHandlerTest
         persisted.BillingTindakanId.Should().Be("TDK-FAKE-0001");
         _billingIntegration.Verify(
             i => i.CreateTindakan(It.Is<LabBillingChargeRequest>(r =>
-                r.OrderId == order.OrderId && r.UserId == "U3")),
+                r.OrderId == order.OrderId && r.UserId == "U3" && r.TarifLines.Count == 1)),
             Times.Once);
         _repo.Verify(r => r.SaveChanges(It.IsAny<LabOrderModel>()), Times.Once);
     }

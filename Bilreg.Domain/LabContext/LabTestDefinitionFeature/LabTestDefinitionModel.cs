@@ -190,6 +190,15 @@ public record LabTestDefinitionModel : ILabTestDefinitionKey
         return audit;
     }
 
+    public void ValidateForOrderResolution(IReadOnlyDictionary<string, LabComponentMasterModel> componentCatalog)
+    {
+        if (!IsActive)
+            throw new InvalidOperationException(
+                $"LAB_TEST_DEFINITION_INACTIVE: LabTestDefinition '{TestDefinitionId}' is inactive.");
+
+        ValidateActiveInvariants(componentCatalog);
+    }
+
     private void ValidateComponentStructure(IReadOnlyDictionary<string, LabComponentMasterModel> componentCatalog)
     {
         if (_components.Count == 0)

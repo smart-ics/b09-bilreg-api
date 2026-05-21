@@ -5,6 +5,7 @@ namespace Bilreg.Infrastructure.LabContext.LabOrderFeature;
 
 public record LabOrderDto(
     string OrderId,
+    string EmrOrderId,
     string OrderNo,
     int OrderSource,
     int LabOrderStatus,
@@ -48,6 +49,7 @@ public record LabOrderDto(
     public static LabOrderDto FromModel(LabOrderModel model)
         => new(
             OrderId: model.OrderId,
+            EmrOrderId: model.EmrOrderId,
             OrderNo: model.OrderNo,
             OrderSource: (int)model.OrderSource,
             LabOrderStatus: (int)model.LabOrderStatus,
@@ -86,7 +88,9 @@ public record LabOrderDto(
             VodUser: model.AuditTrail.Voided.UserId,
             VodDate: model.AuditTrail.Voided.Timestamp);
 
-    public LabOrderModel ToModel(IEnumerable<LabOrderItemModel> items)
+    public LabOrderModel ToModel(
+        IEnumerable<LabOrderItemModel> items,
+        IEnumerable<LabOrderItemComponentModel> itemComponents)
     {
         var patient = new PatientSnapshotType(
             RegId,
@@ -108,6 +112,7 @@ public record LabOrderDto(
 
         return LabOrderModel.Load(
             OrderId,
+            EmrOrderId,
             OrderNo,
             (LabOrderSourceEnum)OrderSource,
             (LabOrderStatusEnum)LabOrderStatus,
@@ -132,6 +137,7 @@ public record LabOrderDto(
             TerminationDate,
             TerminationUserId,
             auditTrail,
-            items);
+            items,
+            itemComponents);
     }
 }

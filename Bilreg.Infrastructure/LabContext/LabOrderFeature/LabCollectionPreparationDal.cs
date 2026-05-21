@@ -30,7 +30,7 @@ public class LabCollectionPreparationDal : ILabCollectionPreparationDal
 
         const string itemsSql = """
             SELECT
-                bb.ItemNo, bb.TestId, bb.TestCode, bb.TestName,
+                bb.ItemNo, bb.TestDefinitionId, bb.LabTestCode, bb.LabTestName,
                 bb.TubeType, bb.SpecimenType, bb.RequiredTubeCount
             FROM BILRG_LabOrderItem bb
             WHERE bb.OrderId = @OrderId
@@ -53,9 +53,9 @@ public class LabCollectionPreparationDal : ILabCollectionPreparationDal
         var tests = itemRows
             .Select(r => new LabCollectionPreparationTestItem(
                 r.ItemNo,
-                r.TestId,
-                r.TestCode,
-                r.TestName,
+                r.TestDefinitionId,
+                r.LabTestCode,
+                r.LabTestName,
                 r.TubeType,
                 r.SpecimenType,
                 r.RequiredTubeCount))
@@ -90,9 +90,9 @@ public class LabCollectionPreparationDal : ILabCollectionPreparationDal
 
     private sealed record LabCollectionItemRow(
         int ItemNo,
-        string TestId,
-        string TestCode,
-        string TestName,
+        string TestDefinitionId,
+        string LabTestCode,
+        string LabTestName,
         int TubeType,
         string SpecimenType,
         int RequiredTubeCount);

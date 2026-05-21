@@ -2,6 +2,7 @@ using Bilreg.Application.LabContext.LabOrderFeature;
 using Bilreg.Application.LabContext.LabOwareFeature;
 using Bilreg.Application.LabContext.LabOwareFeature.UseCases;
 using Bilreg.Domain.LabContext.LabOrderFeature;
+using Bilreg.Test.LabContext.LabOrderFeature;
 using Bilreg.Domain.LabContext.LabOwareFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using FluentAssertions;
@@ -26,9 +27,8 @@ public class LabOwareQueueEnqueueHandlerTest
     {
         var snapshot = new PatientSnapshotType(
             "REG1", "MR1", "Pasien", new DateTime(1990, 1, 1), "L", 35);
-        var item = LabOrderItemModel.Create(
-            "T1", "HB", "Hemoglobin", "TR1", "T-HB", "Tarif", VacutainerTypeEnum.Edta, "Blood", 1);
-        var order = LabOrderModel.CreateFromEmr(snapshot, [item], "LAB00000001", new AuditInfoType("U1", DateTime.Now));
+        var item = LabOrderTestSupport.SampleItem();
+        var order = LabOrderTestSupport.CreateEmrOrder("LAB00000001", lines: [LabOrderTestSupport.ResolvedLine(item)], snapshot: snapshot, audit: new AuditInfoType("U1", DateTime.Now));
         order.Charge("U1");
         order.MarkCharged("TDK1", "U1");
         return order;
@@ -58,9 +58,8 @@ public class LabOwareQueueEnqueueHandlerTest
     {
         var snapshot = new PatientSnapshotType(
             "REG1", "MR1", "Pasien", new DateTime(1990, 1, 1), "L", 35);
-        var item = LabOrderItemModel.Create(
-            "T1", "HB", "Hemoglobin", "TR1", "T-HB", "Tarif", VacutainerTypeEnum.Edta, "Blood", 1);
-        var order = LabOrderModel.CreateFromEmr(snapshot, [item], "LAB00000002", new AuditInfoType("U1", DateTime.Now));
+        var item = LabOrderTestSupport.SampleItem();
+        var order = LabOrderTestSupport.CreateEmrOrder("LAB00000002", lines: [LabOrderTestSupport.ResolvedLine(item)], snapshot: snapshot, audit: new AuditInfoType("U1", DateTime.Now));
         _orderRepo.Setup(x => x.LoadEntity(It.IsAny<ILabOrderKey>())).Returns(MayBe.From(order));
 
         var act = async () => await _handler.Handle(

@@ -2,6 +2,7 @@ using Bilreg.Application.LabContext.LabOrderFeature;
 using Bilreg.Application.LabContext.LabResultFeature;
 using Bilreg.Application.LabContext.LabResultFeature.UseCases;
 using Bilreg.Domain.LabContext.LabOrderFeature;
+using Bilreg.Test.LabContext.LabOrderFeature;
 using Bilreg.Domain.LabContext.LabResultFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using FluentAssertions;
@@ -25,11 +26,10 @@ public class LabResultAmendHandlerTest
     private static LabOrderModel VerifiedOrder()
     {
         var snapshot = new PatientSnapshotType("R1", "P1", "Name", new DateTime(1990, 1, 1), "L", 30);
-        var order = LabOrderModel.CreateFromEmr(
-            snapshot,
-            [LabOrderItemModel.Create("T1", "HB", "HB", "TR", "TC", "TN", VacutainerTypeEnum.Edta, "Blood", 1)],
+        var order = LabOrderTestSupport.CreateEmrOrder(
             "LAB001",
-            new AuditInfoType("U1", DateTime.Now));
+            snapshot: snapshot,
+            audit: new AuditInfoType("U1", DateTime.Now));
         order.Charge("U2");
         order.MarkCharged("TDK1", "U2");
         order.MarkRecorded("U3");
@@ -68,11 +68,10 @@ public class LabResultAmendHandlerTest
     [Fact]
     public async Task Handle_WhenOrderCharged_Throws()
     {
-        var order = LabOrderModel.CreateFromEmr(
-            new PatientSnapshotType("R1", "P1", "Name", new DateTime(1990, 1, 1), "L", 30),
-            [LabOrderItemModel.Create("T1", "HB", "HB", "TR", "TC", "TN", VacutainerTypeEnum.Edta, "Blood", 1)],
+        var order = LabOrderTestSupport.CreateEmrOrder(
             "LAB002",
-            new AuditInfoType("U1", DateTime.Now));
+            snapshot: new PatientSnapshotType("R1", "P1", "Name", new DateTime(1990, 1, 1), "L", 30),
+            audit: new AuditInfoType("U1", DateTime.Now));
         _orderRepo.Setup(x => x.LoadEntity(It.IsAny<ILabOrderKey>())).Returns(MayBe.From(order));
 
         var act = async () => await _sut.Handle(new LabResultAmendCmd(order.OrderId, "r", "U1"), CancellationToken.None);

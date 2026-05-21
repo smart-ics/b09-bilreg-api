@@ -5,9 +5,9 @@ namespace Bilreg.Infrastructure.LabContext.LabOrderFeature;
 public record LabOrderItemDto(
     string OrderId,
     int ItemNo,
-    string TestId,
-    string TestCode,
-    string TestName,
+    string TestDefinitionId,
+    string LabTestCode,
+    string LabTestName,
     string TarifId,
     string TarifCode,
     string TarifName,
@@ -19,9 +19,9 @@ public record LabOrderItemDto(
         => new(
             orderId,
             model.ItemNo,
-            model.TestId,
-            model.TestCode,
-            model.TestName,
+            model.TestDefinitionId,
+            model.LabTestCode,
+            model.LabTestName,
             model.TarifId,
             model.TarifCode,
             model.TarifName,
@@ -32,9 +32,9 @@ public record LabOrderItemDto(
     public LabOrderItemModel ToModel()
         => new(
             ItemNo,
-            TestId,
-            TestCode,
-            TestName,
+            TestDefinitionId,
+            LabTestCode,
+            LabTestName,
             TarifId,
             TarifCode,
             TarifName,

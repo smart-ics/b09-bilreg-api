@@ -9,30 +9,40 @@ namespace Bilreg.Application.LabContext.LabOrderFeature.UseCases;
 
 public record LabOrderCreateFromEmrCmd(
     string UserId,
+    string EmrOrderId,
     string RegId,
     string PatientId,
     string PatientName,
     string BirthDateYmd,
     string Gender,
-    List<LabOrderItemInput> Items)
-    : IRequest<LabOrderCreateResponse>;
+    List<LabOrderTarifItemInput> Items)
+    : IRequest<LabOrderCreateFromEmrResponse>;
 
-public record LabOrderCreateResponse(string OrderId, string OrderNo);
+public record LabOrderCreateFromEmrResponse(
+    string EmrOrderId,
+    int LabOrderStatus,
+    string OrderNo);
 
-public class LabOrderCreateFromEmrHandler : IRequestHandler<LabOrderCreateFromEmrCmd, LabOrderCreateResponse>
+public class LabOrderCreateFromEmrHandler : IRequestHandler<LabOrderCreateFromEmrCmd, LabOrderCreateFromEmrResponse>
 {
     private readonly ILabOrderRepo _labOrderRepo;
     private readonly ISequencer _sequencer;
+    private readonly ILabTestResolutionService _resolutionService;
 
-    public LabOrderCreateFromEmrHandler(ILabOrderRepo labOrderRepo, ISequencer sequencer)
+    public LabOrderCreateFromEmrHandler(
+        ILabOrderRepo labOrderRepo,
+        ISequencer sequencer,
+        ILabTestResolutionService resolutionService)
     {
         _labOrderRepo = labOrderRepo;
         _sequencer = sequencer;
+        _resolutionService = resolutionService;
     }
 
-    public Task<LabOrderCreateResponse> Handle(LabOrderCreateFromEmrCmd request, CancellationToken cancellationToken)
+    public Task<LabOrderCreateFromEmrResponse> Handle(LabOrderCreateFromEmrCmd request, CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.UserId, nameof(request.UserId));
+        Guard.Against.NullOrWhiteSpace(request.EmrOrderId, nameof(request.EmrOrderId));
         Guard.Against.NullOrWhiteSpace(request.RegId, nameof(request.RegId));
         Guard.Against.NullOrWhiteSpace(request.PatientId, nameof(request.PatientId));
         Guard.Against.NullOrWhiteSpace(request.PatientName, nameof(request.PatientName));
@@ -46,17 +56,20 @@ public class LabOrderCreateFromEmrHandler : IRequestHandler<LabOrderCreateFromEm
             request.BirthDateYmd,
             request.Gender,
             audit.Timestamp);
-        var items = LabOrderCreateHelper.MapItems(request.Items);
+        var lines = LabOrderCreateHelper.MapResolvedLines(_resolutionService.ResolveByTarifItems(request.Items));
         var orderNo = LabOrderCreateHelper.NextOrderNo(_sequencer);
 
-        var order = LabOrderModel.CreateFromEmr(snapshot, items, orderNo, audit);
+        var order = LabOrderModel.CreateFromEmr(request.EmrOrderId, snapshot, lines, orderNo, audit);
 
-        LabOrderCreateResponse response;
+        LabOrderCreateFromEmrResponse response;
         using (var trans = TransHelper.NewScope())
         {
             _labOrderRepo.SaveChanges(order);
             trans.Complete();
-            response = new LabOrderCreateResponse(order.OrderId, order.OrderNo);
+            response = new LabOrderCreateFromEmrResponse(
+                order.EmrOrderId,
+                (int)order.LabOrderStatus,
+                order.OrderNo);
         }
 
         return Task.FromResult(response);

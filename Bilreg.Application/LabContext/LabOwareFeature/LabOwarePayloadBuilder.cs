@@ -24,8 +24,8 @@ public static class LabOwarePayloadBuilder
         var testItems = order.Items
             .Select(x => new LabOwareTestItemPayload(
                 x.ItemNo,
-                x.TestCode,
-                x.TestName,
+                x.LabTestCode,
+                x.LabTestName,
                 (int)x.TubeType,
                 x.SpecimenType,
                 x.RequiredTubeCount))

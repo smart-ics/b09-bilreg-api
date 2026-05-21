@@ -59,7 +59,7 @@ Canonical contract (pre-release, Tarif-only target): [`LAB_MASTER_TEST_IMPLEMENT
 POST /api/LabContext/LabOrderFeature/fromEmr
 ```
 
-**EMR sends (target):**
+**EMR sends:**
 
 ```text
 EmrOrderId
@@ -67,17 +67,17 @@ Items[]: { TarifId, TarifName? }
 + patient snapshot fields (RegId, PatientId, PatientName, BirthDateYmd, Gender)
 ```
 
-**EMR does not send:** `TestId`, `TestCode`, `TestName`, tube/specimen/count, or component lists. LWF resolves `LabTestDefinition`, specimen, vacutainer, and component snapshots.
+**EMR does not send:** `TestId`, `TestCode`, `TestName`, tube/specimen/count, or component lists. LWF resolves `LabTestDefinition`, specimen, vacutainer, and persists immutable `LabOrderItem` + `LabOrderItemComponent` snapshots.
 
-**EMR response (target):** acknowledgment keyed by **`EmrOrderId`** — EMR must not depend on internal `LabOrderId`.
+**EMR response:** `EmrOrderId`, `LabOrderStatus`, `OrderNo` — EMR must not depend on internal `LabOrderId`.
 
-**Legacy note:** current handler still accepts EMR-supplied test/tube fields until master-test Phase 3 replaces the DTO in place.
-
-### Status lookup (planned)
+### Status lookup
 
 ```text
 GET /api/LabContext/LabOrderFeature/byEmrOrderId/{emrOrderId}
 ```
+
+Returns workflow summary for EMR correlation (`LabOrderStatus`, `OrderNo`, billing/cancel fields).
 
 ### Cancel Order
 

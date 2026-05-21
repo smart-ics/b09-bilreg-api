@@ -33,19 +33,21 @@ Authoritative business rules: [`LAB_MASTER_TEST_IMPLEMENTATION_PLAN.md`](LAB_MAS
 
 | | |
 |--|--|
-| **Route (current)** | `POST .../LabOrderFeature/fromEmr` |
-| **Target request** | `EmrOrderId`, patient snapshot fields, `Items[]: { TarifId, TarifName? }` |
+| **Route** | `POST .../LabOrderFeature/fromEmr` |
+| **Request** | `EmrOrderId`, patient snapshot fields, `Items[]: { TarifId, TarifName? }` |
 | **EMR must not send** | `TestId`, `TestCode`, `TestName`, tube/specimen/count, component lists |
-| **Target response** | Success + `EmrOrderId` + workflow status fields — **no** dependency on internal `LabOrderId` in EMR systems |
+| **Response** | `EmrOrderId`, `LabOrderStatus`, `OrderNo` — **no** internal `LabOrderId` |
 
-**Legacy (current code):** `LabOrderCreateFromEmrCmd` still accepts EMR-supplied test/tube fields and returns `OrderId` + `OrderNo`. Replace in place during master-test Phase 3.
+LWF resolves each `TarifId` to `LabTestDefinition`, specimen/vacutainer, and immutable `LabOrderItem` + `LabOrderItemComponent` snapshots.
 
-### EMR status lookup (planned)
+**Failure codes (order create):** `LAB_TEST_DEFINITION_NOT_FOUND`, `LAB_TEST_DEFINITION_INACTIVE`, `LAB_COMPONENT_INACTIVE`, `LAB_COMPONENT_NOT_FOUND`.
+
+### EMR status lookup
 
 | | |
 |--|--|
-| **Route (planned)** | `GET .../LabOrderFeature/byEmrOrderId/{emrOrderId}` |
-| **Purpose** | Workflow/result summary for EMR correlation |
+| **Route** | `GET .../LabOrderFeature/byEmrOrderId/{emrOrderId}` |
+| **Purpose** | Workflow status for EMR correlation (`EmrOrderId`, `LabOrderStatus`, `OrderNo`, billing/cancel fields) |
 
 ### Cancel from EMR
 
@@ -231,7 +233,7 @@ Hospital-configurable operational **LabTest** template: Tarif mapping, specimen/
 
 Not exposed as LWF HTTP. Target: **one BIL Tindakan per LWF order** containing **all Tarif lines** — see master plan §6.5.
 
-Current stub: `ILabBillingIntegration.CreateTindakan(LabBillingChargeRequest)` with `OrderId` + `UserId` only.
+Stub: `ILabBillingIntegration.CreateTindakan(LabBillingChargeRequest)` with `OrderId`, `UserId`, and **`TarifLines[]`** (`TarifId`, `TarifCode`, `TarifName`) collected from resolved order items — prepared for one Tindakan / many Tarif lines. Real BIL orchestration remains out of scope.
 
 ---
 

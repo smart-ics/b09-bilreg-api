@@ -16,9 +16,9 @@ public record LabCollectionPreparationView(
 
 public record LabCollectionPreparationTestItem(
     int ItemNo,
-    string TestId,
-    string TestCode,
-    string TestName,
+    string TestDefinitionId,
+    string LabTestCode,
+    string LabTestName,
     int TubeType,
     string SpecimenType,
     int RequiredTubeCount);

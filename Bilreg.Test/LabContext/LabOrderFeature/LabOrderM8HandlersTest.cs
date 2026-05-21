@@ -27,9 +27,8 @@ public class LabOrderM8HandlersTest
     {
         var snapshot = new PatientSnapshotType(
             "REG1", "MR1", "Pasien", new DateTime(1990, 1, 1), "L", 35);
-        var item = LabOrderItemModel.Create(
-            "T1", "HB", "Hemoglobin", "TR1", "T-HB", "Tarif", VacutainerTypeEnum.Edta, "Blood", 1);
-        var order = LabOrderModel.CreateFromEmr(snapshot, [item], "LAB00000001", new AuditInfoType("U1", DateTime.Now));
+        var item = LabOrderTestSupport.SampleItem();
+        var order = LabOrderTestSupport.CreateEmrOrder("LAB00000001", lines: [LabOrderTestSupport.ResolvedLine(item)], snapshot: snapshot, audit: new AuditInfoType("U1", DateTime.Now));
         order.Charge("U1");
         order.MarkCharged("TDK1", "U1");
         order.MarkRecorded("UR1");

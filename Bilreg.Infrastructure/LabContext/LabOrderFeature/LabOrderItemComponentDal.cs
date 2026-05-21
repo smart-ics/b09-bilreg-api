@@ -8,23 +8,23 @@ using Nuna.Lib.DataAccessHelper;
 
 namespace Bilreg.Infrastructure.LabContext.LabOrderFeature;
 
-public interface ILabOrderItemDal :
-    IInsertBulk<LabOrderItemDto>,
+public interface ILabOrderItemComponentDal :
+    IInsertBulk<LabOrderItemComponentDto>,
     IDelete<ILabOrderKey>,
-    IListData<LabOrderItemDto, ILabOrderKey>
+    IListData<LabOrderItemComponentDto, ILabOrderKey>
 {
 }
 
-public class LabOrderItemDal : ILabOrderItemDal
+public class LabOrderItemComponentDal : ILabOrderItemComponentDal
 {
     private readonly DatabaseOptions _opt;
 
-    public LabOrderItemDal(IOptions<DatabaseOptions> opt)
+    public LabOrderItemComponentDal(IOptions<DatabaseOptions> opt)
     {
         _opt = opt.Value;
     }
 
-    public void Insert(IEnumerable<LabOrderItemDto> listModel)
+    public void Insert(IEnumerable<LabOrderItemComponentDto> listModel)
     {
         var fetched = listModel.ToList();
         if (fetched.Count == 0)
@@ -36,25 +36,25 @@ public class LabOrderItemDal : ILabOrderItemDal
         conn.Open();
         bcp.AddMap("OrderId", "OrderId");
         bcp.AddMap("ItemNo", "ItemNo");
-        bcp.AddMap("TestDefinitionId", "TestDefinitionId");
-        bcp.AddMap("LabTestCode", "LabTestCode");
-        bcp.AddMap("LabTestName", "LabTestName");
-        bcp.AddMap("TarifId", "TarifId");
-        bcp.AddMap("TarifCode", "TarifCode");
-        bcp.AddMap("TarifName", "TarifName");
-        bcp.AddMap("TubeType", "TubeType");
-        bcp.AddMap("SpecimenType", "SpecimenType");
-        bcp.AddMap("RequiredTubeCount", "RequiredTubeCount");
+        bcp.AddMap("ComponentNo", "ComponentNo");
+        bcp.AddMap("ComponentId", "ComponentId");
+        bcp.AddMap("ComponentCode", "ComponentCode");
+        bcp.AddMap("ComponentName", "ComponentName");
+        bcp.AddMap("ResultType", "ResultType");
+        bcp.AddMap("Unit", "Unit");
+        bcp.AddMap("ReferenceRangeText", "ReferenceRangeText");
+        bcp.AddMap("SequenceNo", "SequenceNo");
+        bcp.AddMap("IsMandatory", "IsMandatory");
 
         bcp.BatchSize = fetched.Count;
-        bcp.DestinationTableName = "BILRG_LabOrderItem";
+        bcp.DestinationTableName = "BILRG_LabOrderItemComponent";
         bcp.WriteToServer(fetched.AsDataTable());
     }
 
     public void Delete(ILabOrderKey key)
     {
         const string sql = """
-            DELETE FROM BILRG_LabOrderItem
+            DELETE FROM BILRG_LabOrderItemComponent
             WHERE OrderId = @OrderId
             """;
 
@@ -65,23 +65,23 @@ public class LabOrderItemDal : ILabOrderItemDal
         conn.Execute(sql, dp);
     }
 
-    public IEnumerable<LabOrderItemDto> ListData(ILabOrderKey filter)
+    public IEnumerable<LabOrderItemComponentDto> ListData(ILabOrderKey filter)
     {
         const string sql = """
             SELECT
-                aa.OrderId, aa.ItemNo,
-                aa.TestDefinitionId, aa.LabTestCode, aa.LabTestName,
-                aa.TarifId, aa.TarifCode, aa.TarifName,
-                aa.TubeType, aa.SpecimenType, aa.RequiredTubeCount
-            FROM BILRG_LabOrderItem aa
+                aa.OrderId, aa.ItemNo, aa.ComponentNo,
+                aa.ComponentId, aa.ComponentCode, aa.ComponentName,
+                aa.ResultType, aa.Unit, aa.ReferenceRangeText,
+                aa.SequenceNo, aa.IsMandatory
+            FROM BILRG_LabOrderItemComponent aa
             WHERE aa.OrderId = @OrderId
-            ORDER BY aa.ItemNo
+            ORDER BY aa.ItemNo, aa.ComponentNo
             """;
 
         var dp = new DynamicParameters();
         dp.AddParam("@OrderId", filter.OrderId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<LabOrderItemDto>(sql, dp);
+        return conn.Read<LabOrderItemComponentDto>(sql, dp);
     }
 }

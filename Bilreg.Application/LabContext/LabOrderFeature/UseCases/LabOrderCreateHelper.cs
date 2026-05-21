@@ -48,6 +48,9 @@ public static class LabOrderCreateHelper
         return Math.Max(0, years);
     }
 
-    public static List<LabOrderItemModel> MapItems(IEnumerable<LabOrderItemInput> items)
-        => items.Select(x => x.ToModel()).ToList();
+    public static List<LabOrderModel.ResolvedOrderLine> MapResolvedLines(
+        IEnumerable<ResolvedLabOrderLine> lines)
+        => lines
+            .Select(x => new LabOrderModel.ResolvedOrderLine(x.Item, x.Components))
+            .ToList();
 }

@@ -37,8 +37,11 @@ public class LabOrderChargeHandler : IRequestHandler<LabOrderChargeCmd, LabOrder
         var success = false;
         try
         {
+            var tarifLines = order.Items
+                .Select(x => new LabBillingTarifLine(x.TarifId, x.TarifCode, x.TarifName))
+                .ToList();
             var tindakanId = _labBillingIntegration.CreateTindakan(
-                new LabBillingChargeRequest(request.OrderId, request.UserId));
+                new LabBillingChargeRequest(request.OrderId, request.UserId, tarifLines));
             order.MarkCharged(tindakanId, request.UserId);
             success = true;
         }
