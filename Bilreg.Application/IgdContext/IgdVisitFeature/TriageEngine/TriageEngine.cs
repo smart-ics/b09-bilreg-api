@@ -43,24 +43,22 @@ public class AtsTriageEngine : ITriageMethodEngine
 
     public TriageEngineResult Calculate(AtsAssessmentType assessment, DateTime assessedAt)
     {
+        var gcsTotal = assessment.GcsEyeScore + assessment.GcsMotorScore + assessment.GcsVoiceScore;
         var maxScore = new[]
         {
             assessment.AirwaysScore,
             assessment.BreathingScore,
             assessment.BloodCirculationScore,
-            assessment.GcsEyeScore,
-            assessment.GcsMotorScore,
-            assessment.GcsVoiceScore,
+            DetermineGcsSeverity(gcsTotal)
         }.Max();
 
         var level = maxScore switch
         {
-            1 => TriageLevelEnum.Ats1,
-            2 => TriageLevelEnum.Ats2,
+            5 => TriageLevelEnum.Ats1,
+            4 => TriageLevelEnum.Ats2,
             3 => TriageLevelEnum.Ats3,
-            4 => TriageLevelEnum.Ats4,
-            5 => TriageLevelEnum.Ats5,
-            _ => throw new ArgumentException("Ats assessment score must be between 1 and 5."),
+            2 => TriageLevelEnum.Ats4,
+            _ => TriageLevelEnum.Ats5
         };
 
         var color = level switch
@@ -78,5 +76,16 @@ public class AtsTriageEngine : ITriageMethodEngine
             Color: color,
             LastTriageAt: assessedAt,
             NextReTriageAt: interval.HasValue ? assessedAt.Add(interval.Value) : null);
+    }
+
+    private static int DetermineGcsSeverity(int gcs)
+    {
+        return gcs switch
+        {
+            <= 8 => 5,
+            <= 12 => 3,
+            < 15 => 1,
+            _ => 0
+        };
     }
 }
