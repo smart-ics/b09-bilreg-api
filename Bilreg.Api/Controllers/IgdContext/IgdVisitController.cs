@@ -1,3 +1,4 @@
+using Bilreg.Api.Helpers;
 using Bilreg.Application.IgdContext.BedIgdFeature.UseCases;
 using Bilreg.Application.IgdContext.IgdVisitFeature.UseCases;
 using MediatR;
@@ -113,7 +114,10 @@ public class IgdVisitController : Controller
     [HttpPost("{id}/void")]
     public async Task<IActionResult> Void(string id, [FromBody] IgdVoidBody body)
     {
-        var cmd = new IgdVisitVoidCmd(id, body.UserId);
+        var userAgent = HttpHelper.GetUserAgent(Request);
+        var remoteIpAddress = HttpHelper.GetIpAddress(Request, HttpContext);
+
+        var cmd = new IgdVisitVoidCmd(id, body.UserId, body.VoidReason, remoteIpAddress, userAgent);
         var result = await _mediator.Send(cmd);
         return Ok(new JSendOk(result));
     }
@@ -164,4 +168,4 @@ public record IgdCheckOutBedBody(string UserId);
 public record IgdRedirectRawatJalanBody(string Reason, string UserId);
 public record IgdAssignRegisterBody(string RegId, string UserId);
 public record IgdDischargeBody(string UserId);
-public record IgdVoidBody(string UserId);
+public record IgdVoidBody(string UserId, string VoidReason);
