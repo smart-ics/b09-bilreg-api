@@ -9,7 +9,7 @@ public record LabOrderGetByEmrOrderIdQuery(string EmrOrderId) : IRequest<LabOrde
 public record LabOrderEmrStatusResponse(
     string EmrOrderId,
     int LabOrderStatus,
-    int FinancialClearance,
+    int LastBillingReleaseStatus,
     int OwareStatus,
     string OrderNo,
     DateTime CreatedDate,
@@ -40,7 +40,7 @@ public class LabOrderGetByEmrOrderIdHandler : IRequestHandler<LabOrderGetByEmrOr
         var response = new LabOrderEmrStatusResponse(
             order.EmrOrderId,
             (int)order.LabOrderStatus,
-            (int)order.FinancialClearance,
+            (int)order.LastBillingReleaseStatus,
             (int)order.OwareStatus,
             order.OrderNo,
             order.AuditTrail.Created.Timestamp,

@@ -4,7 +4,7 @@ CREATE TABLE BILRG_LabOrder (
     OrderNo VARCHAR(20) NOT NULL CONSTRAINT DF_BILRG_LabOrder_OrderNo DEFAULT(''),
     OrderSource INT NOT NULL CONSTRAINT DF_BILRG_LabOrder_OrderSource DEFAULT(0),
     LabOrderStatus INT NOT NULL CONSTRAINT DF_BILRG_LabOrder_LabOrderStatus DEFAULT(0),
-    FinancialClearance INT NOT NULL CONSTRAINT DF_BILRG_LabOrder_FinancialClearance DEFAULT(0),
+    LastBillingReleaseStatus INT NOT NULL CONSTRAINT DF_BILRG_LabOrder_LastBillingReleaseStatus DEFAULT(0),
     OwareStatus INT NOT NULL CONSTRAINT DF_BILRG_LabOrder_OwareStatus DEFAULT(0),
 
     RegId VARCHAR(10) NOT NULL CONSTRAINT DF_BILRG_LabOrder_RegId DEFAULT(''),
@@ -24,9 +24,9 @@ CREATE TABLE BILRG_LabOrder (
     CollectedUserId VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_LabOrder_CollectedUserId DEFAULT(''),
     CollectionNote VARCHAR(200) NOT NULL CONSTRAINT DF_BILRG_LabOrder_CollectionNote DEFAULT(''),
 
-    FinancialClearanceDate DATETIME NOT NULL CONSTRAINT DF_BILRG_LabOrder_FinancialClearanceDate DEFAULT('3000-01-01'),
-    FinancialClearanceUserId VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_LabOrder_FinancialClearanceUserId DEFAULT(''),
-    FinancialClearanceReason VARCHAR(200) NOT NULL CONSTRAINT DF_BILRG_LabOrder_FinancialClearanceReason DEFAULT(''),
+    LastBillingReleaseCheckAt DATETIME NOT NULL CONSTRAINT DF_BILRG_LabOrder_LastBillingReleaseCheckAt DEFAULT('3000-01-01'),
+    LastBillingReleaseCheckUserId VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_LabOrder_LastBillingReleaseCheckUserId DEFAULT(''),
+    LastBillingReleaseMessage VARCHAR(200) NOT NULL CONSTRAINT DF_BILRG_LabOrder_LastBillingReleaseMessage DEFAULT(''),
     ReleasedDate DATETIME NOT NULL CONSTRAINT DF_BILRG_LabOrder_ReleasedDate DEFAULT('3000-01-01'),
     ReleasedUserId VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_LabOrder_ReleasedUserId DEFAULT(''),
     ReleaseNote VARCHAR(200) NOT NULL CONSTRAINT DF_BILRG_LabOrder_ReleaseNote DEFAULT(''),

@@ -292,9 +292,66 @@ Hospital-configurable operational **LabTest** template: Tarif mapping, specimen/
 
 ## Billing integration (application boundary)
 
-Not exposed as LWF HTTP. Target: **one BIL Tindakan per LWF order** containing **all Tarif lines** — see master plan §6.5.
+Not exposed as LWF HTTP. In-process only: `ILabBillingIntegration` (same modular monolith).
 
-Stub: `ILabBillingIntegration.CreateTindakan(LabBillingChargeRequest)` with `OrderId`, `UserId`, and **`TarifLines[]`** (`TarifId`, `TarifCode`, `TarifName`) collected from resolved order items — prepared for one Tindakan / many Tarif lines. Real BIL orchestration remains out of scope.
+| Method | Purpose |
+| ------ | ------- |
+| `CreateTindakan` | Charge orchestration (one Tindakan per order target) |
+| `ValidateReleaseEligibility` | **BIL authority** — synchronous release check |
+
+**OBSOLETE routes (removed):** `PATCH approveFinancialClearance`, `PATCH rejectFinancialClearance`.
+
+---
+
+## Result release (`PATCH .../LabOrderFeature/release`)
+
+| | |
+|--|--|
+| **Request** | `orderId`, `userId`, `releaseNote` |
+| **Flow** | Load order → BIL `ValidateReleaseEligibility` → record trace → CLEAR: release / BLOCKED: no state change |
+
+### Success — released
+
+```json
+{
+  "status": "success",
+  "data": {
+    "released": true,
+    "billingStatus": "CLEAR",
+    "message": ""
+  }
+}
+```
+
+### Success — blocked (operational, not error)
+
+```json
+{
+  "status": "success",
+  "data": {
+    "released": false,
+    "billingStatus": "BLOCKED",
+    "message": "Tagihan pasien belum memenuhi syarat release."
+  }
+}
+```
+
+Frontend MUST treat BLOCKED as normal UX (no exception dialog). Infrastructure/BIL-down failures use standard error handling — distinct from BLOCKED.
+
+### Release worklist
+
+`GET .../releaseWorklist` — **Verified** orders not yet released (`ReleasedDate` sentinel). **No** filter on cached approval/clearance enum.
+
+### GET projections
+
+- `lastBillingReleaseStatus`, `lastBillingReleaseCheckAt`, `lastBillingReleaseCheckUserId`, `lastBillingReleaseMessage` — audit trace only.
+- **OBSOLETE:** `financialClearance`, approve/reject semantics.
+
+---
+
+## Billing charge (stub)
+
+`ILabBillingIntegration.CreateTindakan(LabBillingChargeRequest)` with `OrderId`, `UserId`, **`TarifLines[]`**. Real BIL orchestration out of scope.
 
 ---
 

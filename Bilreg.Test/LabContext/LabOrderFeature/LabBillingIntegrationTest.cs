@@ -19,4 +19,25 @@ public class LabBillingIntegrationTest
 
         tindakanId.Should().StartWith("TDK-FAKE-");
     }
+
+    [Fact]
+    public void ValidateReleaseEligibility_DefaultOrderNo_ReturnsClear()
+    {
+        var sut = new LabBillingIntegration();
+        var result = sut.ValidateReleaseEligibility(
+            new LabBillingReleaseValidationRequest("LBO1", "LAB0001", "TDK1"));
+
+        result.Code.Should().Be(BillingReleaseValidationCode.Clear);
+    }
+
+    [Fact]
+    public void ValidateReleaseEligibility_BilBlockSuffix_ReturnsBlocked()
+    {
+        var sut = new LabBillingIntegration();
+        var result = sut.ValidateReleaseEligibility(
+            new LabBillingReleaseValidationRequest("LBO1", "LAB-BILBLOCK", "TDK1"));
+
+        result.Code.Should().Be(BillingReleaseValidationCode.Blocked);
+        result.Message.Should().NotBeEmpty();
+    }
 }

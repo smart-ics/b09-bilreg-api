@@ -25,7 +25,7 @@ public class LabOrderWorklistDal : ILabOrderWorklistDal
             SELECT
                 aa.OrderId, aa.OrderNo, aa.LabOrderStatus, aa.OrderSource,
                 aa.PatientId, aa.PatientName, aa.Gender, aa.AgeAtOrder,
-                aa.FinancialClearance, aa.OwareStatus, aa.CrtDate, aa.BillingTindakanId,
+                aa.LastBillingReleaseStatus, aa.OwareStatus, aa.CrtDate, aa.BillingTindakanId,
                 (SELECT COUNT(*) FROM BILRG_LabOrderItem bb WHERE bb.OrderId = aa.OrderId) AS ItemCount,
                 (
                     SELECT STRING_AGG(bb.LabTestName, ', ') WITHIN GROUP (ORDER BY bb.ItemNo)

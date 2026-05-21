@@ -10,4 +10,9 @@ public record LabBillingChargeRequest(
 public interface ILabBillingIntegration
 {
     string CreateTindakan(LabBillingChargeRequest request);
+
+    /// <summary>
+    /// Synchronous in-process BIL authority check for result release eligibility.
+    /// </summary>
+    BillingReleaseValidationResult ValidateReleaseEligibility(LabBillingReleaseValidationRequest request);
 }

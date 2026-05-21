@@ -15,7 +15,7 @@
 |------|----------------|
 | Workflow lifecycle (`Ordered` → … → `Released`) | Patient registration authority (REG) |
 | `LabOrderModel` + `LabResultDocumentModel` | Billing authority (BIL) — only requests `Tindakan` |
-| Billing charge **request**; financial clearance **gate** for external release | Payment, refund, receivable |
+| Billing charge **request**; **synchronous BIL release validation** on release attempt | Payment, refund, receivable; local approval clearance (**OBSOLETE**) |
 | Result verification + administrative release | OWR/LIS as source-of-truth |
 | OWR outbound queue (async) | Accessioning, QC, reagent, analyzer routing |
 
@@ -111,7 +111,7 @@ Bilreg.Domain/LabContext/
     LabOrderItemModel.cs
     LabOrderStatusEnum.cs
     LabOrderSourceEnum.cs
-    FinancialClearanceEnum.cs
+    BillingReleaseValidationStatusEnum.cs   # trace only: NotChecked, Clear, Blocked
     OwareStatusEnum.cs
     PatientSnapshotType.cs          # 6 fields — no MRNumber
     CollectionInfoType.cs
@@ -185,7 +185,7 @@ Persist on `BILRG_LabOrder`. External patient may start with `RegId` / `PatientI
 
 **Identity:** `OrderId` `VARCHAR(12)` (app-generated).
 
-**Header fields (conceptual):** `OrderNo`, `OrderSource`, `LabOrderStatus`, `FinancialClearance`, `OwareStatus`, patient snapshot, `DeferredInfo`, `CollectionInfo`, `BillingTindakanId`, `BillingLastError`, `ExecutionRegId`, audit columns.
+**Header fields (conceptual):** `OrderNo`, `OrderSource`, `LabOrderStatus`, `LastBillingReleaseStatus` (+ check at/user/message trace), `OwareStatus`, patient snapshot, `DeferredInfo`, `CollectionInfo`, `BillingTindakanId`, `BillingLastError`, `ExecutionRegId`, release audit columns, standard audit columns.
 
 **Children:** `LabOrderItemModel` — PK `(OrderId, ItemNo)`.
 
@@ -207,8 +207,8 @@ CollectSpecimen(...)
 MarkRecorded(userId)
 Cancel(userId, reason)      # Ordered | Deferred | Charged only
 Terminate(userId, reason)   # Collected | Recorded only
-UpdateFinancialClearance(status)
-Release(userId)             # requires clearance Approved
+RecordLastBillingReleaseValidation(status, message, userId)  # audit trace after BIL check
+Release(userId, releaseNote)  # operational transition only; BIL gate in handler
 AttachPatientSnapshot(...)  # after REG
 ```
 
@@ -506,9 +506,9 @@ trans.Complete();
 |---------|-----|
 | Left queue | `GET worklist?status=` |
 | Workspace | `GET {orderId}` |
-| Actions | Status + `FinancialClearance` + allowed transitions |
+| Actions | Status + last billing check trace + allowed transitions |
 | Collection prep | Grouped vacutainer counts (dedicated query or included in get) |
-| Release gate | Clearance must be `Approved` for external release |
+| Release | `PATCH release` → BIL sync check; BLOCKED = HTTP 200 operational payload |
 
 Enum numeric values fixed once published. Snapshot avoids live REG joins for display.
 
@@ -538,7 +538,7 @@ Enum numeric values fixed once published. Snapshot avoids live REG joins for dis
 | M5 | Collect + vacutainer grouping |
 | M6 | Record result |
 | M7 | Verify (internal visibility) |
-| M8 | Clearance + release |
+| M8 | BIL release validation + release (**supersedes** manual approve/reject clearance) |
 | M9 | Cancel / terminate |
 | M10 | Amendment + PDF |
 | M11 | OWARE queue + retry |
@@ -611,7 +611,7 @@ Each milestone: domain tests for transitions + Dal/Repo tests.
 | 1 | EMR create-order payload schema | **`EmrOrderId` + `Items[]: { TarifId, TarifName? }`** — LWF resolves lab structure ([`LAB_MASTER_TEST_IMPLEMENTATION_PLAN.md`](LAB_MASTER_TEST_IMPLEMENTATION_PLAN.md) §7.3). Legacy DTO fields remain in code until Phase 3. |
 | 2 | Real `LabBillingIntegration` contract when BIL ready | Placeholder `TindakanId`; target **one Tindakan per order** with all Tarif lines (master plan §6.5) |
 | 3 | Real deferred REG flow | Placeholder `RegId` via `ILabRegIntegration` |
-| 4 | Financial clearance source (BIL push vs manual) | Financial clearance is manually updated in V1 through administrative command/use-case. Future integration with BIL may automate clearance synchronization. |
+| 4 | Financial clearance source | **SUPERSEDED (OBSOLETE):** manual approve/reject in LWF. **Current:** `ValidateReleaseEligibility` on each release attempt; trace columns only. |
 | 5 | OWR endpoint + retry policy | Queue + opaque JSON + manual retry |
 | 6 | Lab test catalog at order create | LWF resolves **`LabTestDefinition`** per `TarifId` and snapshots on order (not EMR-supplied `TestId`/`TestCode`). Legacy: EMR payload snapshot until Phase 3. |
 | 7 | `OrderNo` counter key | `INunaCounterBL` prefix `LAB` |
@@ -624,8 +624,8 @@ Each milestone: domain tests for transitions + Dal/Repo tests.
 
 **`LabOrderStatusEnum`:** `Ordered=1`, `Deferred=2`, `Charged=3`, `Collected=4`, `Recorded=5`, `Verified=6`, `Released=7`, `Cancelled=8`, `Terminated=9`
 
-**`FinancialClearanceEnum`:** `Pending=0`, `Approved=1`, `Blocked=2`  
-— Release to patient/external requires `Approved`. Internal view of verified result allowed before approval.
+**`BillingReleaseValidationStatusEnum` (trace only):** `NotChecked=0`, `Clear=1`, `Blocked=2`  
+— **Not** release authority. BIL returns CLEAR/BLOCKED at attempt time. **OBSOLETE:** `FinancialClearanceEnum` + approve/reject endpoints.
 
 **`OwareStatusEnum`:** `Pending=0`, `Sent=1`, `Failed=2`
 

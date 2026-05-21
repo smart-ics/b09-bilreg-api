@@ -295,51 +295,54 @@ Pathologist verifies result.
 
 ## Scenario
 
-Result ready for release.
+Verified result; BIL returns CLEAR on release attempt.
 
 ---
 
 ## Steps
 
-1. Request release
-2. Check financial clearance
-3. Release result
+1. `PATCH .../release` (release attempt)
+2. Handler calls `ILabBillingIntegration.ValidateReleaseEligibility` (in-process)
+3. BIL returns CLEAR → LWF executes release
 
 ---
 
 ## Expected Result
 
-| Expected                     |
-| ---------------------------- |
-| Financial clearance required |
-| Status = Released            |
-| Result available to patient  |
+| Expected |
+| -------- |
+| HTTP 200; `released=true`, `billingStatus=CLEAR` |
+| Status = Released |
+| `LastBillingReleaseStatus` trace = Clear (audit only) |
+| Result available to patient |
 
 ---
 
-# 13. Release Blocked
+# 13. Release Blocked (operational outcome)
 
 ## Scenario
 
-Financial clearance still pending.
+Verified result; BIL returns BLOCKED at release attempt.
 
 ---
 
 ## Steps
 
 1. Verify result
-2. Request release
-3. BIL returns Pending
+2. `PATCH .../release`
+3. BIL returns BLOCKED (not infrastructure failure)
 
 ---
 
 ## Expected Result
 
-| Expected                      |
-| ----------------------------- |
-| Release blocked               |
+| Expected |
+| -------- |
+| HTTP 200; `released=false`, `billingStatus=BLOCKED`, `message` set |
+| **No** exception UX for BLOCKED |
 | Internal result still visible |
-| Status remains Verified       |
+| Status remains Verified |
+| Trace updated; stale trace cleared after amendment + re-verify |
 
 ---
 

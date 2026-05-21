@@ -156,33 +156,30 @@ Jika REG gagal:
 BIL digunakan untuk:
 
 * membuat billing charge,
-* dan financial clearance validation.
+* dan **release eligibility validation** (financial authority).
 
 ---
 
 ## Integration Type
 
 ```text id="r7m2v5"
-Synchronous API
+Synchronous in-process module orchestration (same backend / modular monolith)
 ```
+
+**Do not** use HTTP, message broker, or remote API **between LWF and BIL inside this solution**.
+
+Application boundary: `ILabBillingIntegration` in `Bilreg.Application`.
 
 ---
 
-## Main API
+## Main operations
 
-### Create Billing Charge
+| Operation | Contract | Notes |
+| --------- | -------- | ----- |
+| Create charge | `CreateTindakan(LabBillingChargeRequest)` | Actor-driven; failure blocks charge transition |
+| Release validation | `ValidateReleaseEligibility(LabBillingReleaseValidationRequest)` | Called on every release attempt; returns `CLEAR` or `BLOCKED` |
 
-```text id="t2x8w1"
-POST /api/bil/charges
-```
-
----
-
-### Check Financial Clearance
-
-```text id="p4v6m9"
-GET /api/bil/financial-clearance/{orderNo}
-```
+External HTTP examples (e.g. `POST /api/bil/charges`) describe **other systems** talking to BIL — not LWF→BIL inside Bilreg.
 
 ---
 
@@ -192,7 +189,8 @@ LWF:
 
 * tidak memiliki billing logic,
 * tidak menyimpan payment state,
-* dan bukan financial authority.
+* tidak menjalankan approve/reject clearance workflow (**OBSOLETE**),
+* hanya menyimpan **LastBillingRelease\*** audit trace after each check.
 
 Billing authority tetap milik BIL.
 
@@ -200,17 +198,11 @@ Billing authority tetap milik BIL.
 
 ## Failure Behavior
 
-Jika create billing gagal:
+**Charge failure:** workflow tidak advance; user retry setelah perbaikan data.
 
-* workflow tidak dilanjutkan,
-* user harus memperbaiki data,
-* lalu retry charge process.
+**Release BLOCKED:** HTTP 200 operational response — bukan error UX.
 
-Contoh:
-
-* tarif tidak aktif,
-* mapping tidak ditemukan,
-* registrasi invalid.
+**BIL infrastructure failure:** `LabBillingReleaseValidationException` — distinct from BLOCKED.
 
 ---
 

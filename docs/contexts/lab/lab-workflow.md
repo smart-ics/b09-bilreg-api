@@ -132,20 +132,19 @@ Result:
 
 ---
 
-# 8. Financial Clearance
+# 8. Billing Release Validation
 
-Financial clearance menentukan apakah hasil boleh dirilis ke pasien.
+Saat user melakukan **release attempt**, LWF memanggil modul BIL (in-process) untuk validasi realtime.
 
-Financial clearance:
+| Outcome | Behavior |
+| ------- | -------- |
+| **CLEAR** | LWF mengeksekusi `Released`; persist audit trace |
+| **BLOCKED** | HTTP 200; `released=false`, `billingStatus=BLOCKED`; order tetap **Verified** |
+| **Infrastructure failure** | Normal error path (BIL unavailable) — distinct from BLOCKED |
 
-* bukan payment status,
-* bukan workflow state,
-* dan bukan billing ownership.
+Hasil **verified** tetap visible internal meskipun BLOCKED.
 
-Jika clearance belum approved:
-
-* hasil tetap visible internal,
-* tetapi tidak boleh dirilis.
+LWF **tidak** menyimpan approval lifecycle (`approve`/`reject` clearance) — **OBSOLETE**.
 
 ---
 

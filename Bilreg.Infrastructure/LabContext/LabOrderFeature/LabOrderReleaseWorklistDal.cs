@@ -23,7 +23,7 @@ public class LabOrderReleaseWorklistDal : ILabOrderReleaseWorklistDal
     public IEnumerable<LabReleaseView> List(LabOrderReleaseWorklistFilter filter)
     {
         const int orderStatusVerified = (int)LabOrderStatusEnum.Verified;
-        const int clearanceApproved = (int)FinancialClearanceEnum.Approved;
+        var emptyDate = VoidSentinel;
 
         var sql = """
             SELECT
@@ -31,7 +31,7 @@ public class LabOrderReleaseWorklistDal : ILabOrderReleaseWorklistDal
                 o.OrderNo,
                 o.PatientName,
                 d.VerifiedDate,
-                o.FinancialClearance,
+                o.LastBillingReleaseStatus,
                 o.ReleasedDate,
                 o.LabOrderStatus
             FROM BILRG_LabOrder o
@@ -40,7 +40,7 @@ public class LabOrderReleaseWorklistDal : ILabOrderReleaseWorklistDal
               AND d.VodDate = @VodDate
               AND d.IsCurrentVersion = 1
               AND o.LabOrderStatus = @OrderStatusVerified
-              AND o.FinancialClearance = @ClearanceApproved
+              AND o.ReleasedDate = @EmptyReleasedDate
             """;
 
         if (filter.Date1.HasValue && filter.Date2.HasValue)
@@ -60,7 +60,7 @@ public class LabOrderReleaseWorklistDal : ILabOrderReleaseWorklistDal
         var dp = new DynamicParameters();
         dp.AddParam("@VodDate", VoidSentinel, SqlDbType.DateTime);
         dp.AddParam("@OrderStatusVerified", orderStatusVerified, SqlDbType.Int);
-        dp.AddParam("@ClearanceApproved", clearanceApproved, SqlDbType.Int);
+        dp.AddParam("@EmptyReleasedDate", emptyDate, SqlDbType.DateTime);
 
         if (filter.Date1.HasValue && filter.Date2.HasValue)
         {

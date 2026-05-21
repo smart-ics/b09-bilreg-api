@@ -148,21 +148,21 @@ Result:
 
 ---
 
-# 8. Financial Clearance
+# 8. Billing Release Validation (BIL authority)
 
-Financial clearance digunakan untuk menentukan apakah hasil boleh dirilis ke pasien.
+Release eligibility **truth** milik **BIL**. LWF hanya:
 
-Financial clearance:
+* memanggil validasi BIL secara **sinkron, in-process** saat release attempt,
+* mengeksekusi release workflow jika BIL mengembalikan **CLEAR**,
+* menyimpan **audit trace** terakhir (`LastBillingReleaseStatus`, timestamp, message) — **bukan** authority state machine.
 
-* bukan payment status,
-* bukan billing ownership,
-* dan bukan workflow status.
+**BLOCKED** adalah **operational business outcome** (HTTP 200, `released=false`), bukan exception.
 
-Financial clearance hanya menentukan:
+LWF **tidak** memiliki:
 
-```text id="j4m8p1"
-Result Release Eligibility
-```
+* approval/reject financial clearance lifecycle,
+* cached approval enum sebagai gate release,
+* billing/payment ownership.
 
 ---
 
@@ -179,7 +179,7 @@ Responsibilities:
 * operational workflow lifecycle
 * billing orchestration
 * collection workflow
-* release eligibility
+* release orchestration (BIL validates; LWF executes)
 * external integration coordination
 
 ---
@@ -209,7 +209,8 @@ LabOrder
  ├── OrderNo
  ├── OrderSource
  ├── WorkflowStatus
- ├── FinancialClearance
+ ├── LastBillingReleaseStatus (trace only)
+ ├── LastBillingReleaseCheckAt / Message
  ├── OwareStatus
  ├── PatientSnapshot
  ├── CollectionInfo
@@ -569,10 +570,10 @@ maka PDF harus menampilkan status hasil secara explicit.
 
 # 34. Internal Visibility
 
-Jika financial clearance belum approved:
+Jika BIL mengembalikan **BLOCKED** pada release attempt:
 
 * hasil tetap boleh dilihat internal RS,
-* tetapi tidak boleh dirilis ke pasien.
+* tetapi tidak boleh dirilis ke pasien (operational outcome, bukan error).
 
 ---
 

@@ -66,7 +66,7 @@ Responsibilities:
 - workflow lifecycle,
 - collection workflow,
 - billing orchestration,
-- release eligibility,
+- release orchestration (BIL validates on attempt),
 - integration coordination.
 
 Secondary Aggregate:
@@ -201,7 +201,7 @@ medical validation completed
 Verification does NOT mean:
 - released,
 - paid,
-- financially cleared.
+- released to patient (after BIL CLEAR on release attempt).
 
 ---
 
@@ -212,13 +212,19 @@ Release:
 - separate from verification,
 - allowed only once.
 
-Release requires:
+Release attempt flow (locked):
 
 ```text
-Financial Clearance = Approved
+Release Attempt → Ask BIL (sync, in-process) → CLEAR / BLOCKED → Release Decision
 ```
 
-Internal users may still view verified result before release.
+- **CLEAR:** LWF executes release; persists operational release metadata.
+- **BLOCKED:** operational payload only — **not** an exception; HTTP 200 + `released=false`.
+- **Last billing check trace** on `LabOrder` is audit-only; never used as cached authority gate.
+
+Internal users may view verified result before successful release.
+
+After result amendment from Released/Verified: clear release metadata and billing trace; re-verify; **revalidate BIL on next release attempt**.
 
 ---
 
@@ -227,11 +233,11 @@ Internal users may still view verified result before release.
 LWF does NOT own billing.
 
 LWF only:
-- requests billing charge,
-- receives billing response,
-- checks financial clearance.
+- requests billing charge (`ILabBillingIntegration.CreateTindakan`),
+- calls **synchronous** release eligibility validation (`ILabBillingIntegration.ValidateReleaseEligibility`),
+- stores non-authoritative last-check trace.
 
-Billing authority belongs to BIL.
+Billing authority belongs to BIL. **OBSOLETE:** `approveFinancialClearance`, `rejectFinancialClearance`, `FinancialClearanceEnum` approval model.
 
 Never:
 - calculate payment,
