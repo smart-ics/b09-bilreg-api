@@ -2,11 +2,13 @@ CREATE TABLE BILRG_LabResultItem (
     ResultDocumentId VARCHAR(12) NOT NULL CONSTRAINT DF_BILRG_LabResultItem_ResultDocumentId DEFAULT(''),
     ItemNo INT NOT NULL CONSTRAINT DF_BILRG_LabResultItem_ItemNo DEFAULT(0),
 
+    ComponentId VARCHAR(7) NOT NULL CONSTRAINT DF_BILRG_LabResultItem_ComponentId DEFAULT(''),
     TestId VARCHAR(30) NOT NULL CONSTRAINT DF_BILRG_LabResultItem_TestId DEFAULT(''),
     TestName VARCHAR(120) NOT NULL CONSTRAINT DF_BILRG_LabResultItem_TestName DEFAULT(''),
 
     ComponentCode VARCHAR(30) NOT NULL CONSTRAINT DF_BILRG_LabResultItem_ComponentCode DEFAULT(''),
     ComponentName VARCHAR(120) NOT NULL CONSTRAINT DF_BILRG_LabResultItem_ComponentName DEFAULT(''),
+    SequenceNo INT NOT NULL CONSTRAINT DF_BILRG_LabResultItem_SequenceNo DEFAULT(0),
 
     ResultType INT NOT NULL CONSTRAINT DF_BILRG_LabResultItem_ResultType DEFAULT(1),
 
@@ -17,6 +19,7 @@ CREATE TABLE BILRG_LabResultItem (
 
     Unit VARCHAR(30) NOT NULL CONSTRAINT DF_BILRG_LabResultItem_Unit DEFAULT(''),
     ReferenceRangeText VARCHAR(200) NOT NULL CONSTRAINT DF_BILRG_LabResultItem_ReferenceRangeText DEFAULT(''),
+    IsMandatory BIT NOT NULL CONSTRAINT DF_BILRG_LabResultItem_IsMandatory DEFAULT(0),
 
     FlagStatus INT NOT NULL CONSTRAINT DF_BILRG_LabResultItem_FlagStatus DEFAULT(1),
 

@@ -43,6 +43,7 @@ public static class InfrastructureService
             .AddScoped<ILabOwareQueueWorklistDal, LabOwareQueueWorklistDal>()
             .AddScoped<LabOwareQueueProcessor>()
             .AddScoped<ILabResultPdfRenderer, LabResultPdfRenderer>()
+            .AddScoped<ILabResultScaffoldService, LabResultScaffoldService>()
             .AddMemoryCache();
 
         services

@@ -38,7 +38,7 @@ public class LabResultVerifyHandlerTest
     private static LabResultDocumentModel RecordedResultDocument(string orderId)
     {
         var doc = LabResultDocumentModel.CreateInitial(orderId, new AuditInfoType("U1", DateTime.Now));
-        var cap = new LabResultItemCapture("T1", "HB", "", "", LabResultTypeEnum.Numeric, 13m, "", "", "", "g/dL", "12-16");
+        var cap = LabResultTestSupport.Capture(numeric: 13m);
         doc.RecordResult(LabResultSourceEnum.Manual, [cap], "U1");
         doc.MarkRecorded("U2");
         return doc;

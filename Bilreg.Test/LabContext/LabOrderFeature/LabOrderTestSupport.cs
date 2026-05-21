@@ -1,4 +1,5 @@
 using Bilreg.Domain.LabContext.LabOrderFeature;
+using Bilreg.Domain.LabContext.LabResultFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 
 namespace Bilreg.Test.LabContext.LabOrderFeature;
@@ -26,10 +27,31 @@ internal static class LabOrderTestSupport
             specimenType,
             requiredTubeCount);
 
+    public static LabOrderItemComponentModel SampleComponent(
+        string componentId = "MLC0001",
+        string componentCode = "HB",
+        string componentName = "Hemoglobin",
+        LabResultTypeEnum resultType = LabResultTypeEnum.Numeric,
+        string unit = "g/dL",
+        string referenceRangeText = "12-16",
+        int sequenceNo = 1,
+        bool isMandatory = true)
+        => new(
+            ItemNo: 0,
+            ComponentNo: 0,
+            componentId,
+            componentCode,
+            componentName,
+            (int)resultType,
+            unit,
+            referenceRangeText,
+            sequenceNo,
+            isMandatory);
+
     public static LabOrderModel.ResolvedOrderLine ResolvedLine(
         LabOrderItemModel? item = null,
         IReadOnlyList<LabOrderItemComponentModel>? components = null)
-        => new(item ?? SampleItem(), components ?? []);
+        => new(item ?? SampleItem(), components ?? [SampleComponent()]);
 
     public static PatientSnapshotType EmrSnapshot(
         string regId = "REG001",

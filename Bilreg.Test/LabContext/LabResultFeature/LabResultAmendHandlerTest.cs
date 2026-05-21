@@ -5,6 +5,7 @@ using Bilreg.Domain.LabContext.LabOrderFeature;
 using Bilreg.Test.LabContext.LabOrderFeature;
 using Bilreg.Domain.LabContext.LabResultFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
+using Bilreg.Infrastructure.LabContext.LabResultFeature;
 using FluentAssertions;
 using Moq;
 using Nuna.Lib.PatternHelper;
@@ -20,7 +21,10 @@ public class LabResultAmendHandlerTest
 
     public LabResultAmendHandlerTest()
     {
-        _sut = new LabResultAmendHandler(_orderRepo.Object, _resultRepo.Object);
+        _sut = new LabResultAmendHandler(
+            _orderRepo.Object,
+            _resultRepo.Object,
+            new LabResultScaffoldService());
     }
 
     private static LabOrderModel VerifiedOrder()
@@ -40,8 +44,7 @@ public class LabResultAmendHandlerTest
     private static LabResultDocumentModel VerifiedResult(string orderId)
     {
         var doc = LabResultDocumentModel.CreateInitial(orderId, new AuditInfoType("U1", DateTime.Now));
-        var cap = new LabResultItemCapture("T1", "HB", "", "", LabResultTypeEnum.Numeric, 14m, "", "", "", "g/dL", "12-16");
-        doc.RecordResult(LabResultSourceEnum.Manual, [cap], "U2");
+        doc.RecordResult(LabResultSourceEnum.Manual, [LabResultTestSupport.Capture()], "U2");
         doc.MarkRecorded("U3");
         doc.Verify("PATH", new DateTime(2026, 5, 18, 14, 0, 0));
         return doc;
@@ -62,7 +65,11 @@ public class LabResultAmendHandlerTest
         _resultRepo.Verify(x => x.SaveChanges(It.Is<LabResultDocumentModel>(d =>
             d.IsCurrentVersion == false)), Times.Once);
         _resultRepo.Verify(x => x.SaveChanges(It.Is<LabResultDocumentModel>(d =>
-            d.IsCurrentVersion && d.ResultStatus == LabResultStatusEnum.Recorded && d.VersionNo == 2)), Times.Once);
+            d.IsCurrentVersion
+            && d.ResultStatus == LabResultStatusEnum.Recorded
+            && d.VersionNo == 2
+            && d.Items.Single().ComponentId == "MLC0001"
+            && d.Items.Single().NumericValue == 0)), Times.Once);
     }
 
     [Fact]
@@ -85,8 +92,7 @@ public class LabResultAmendHandlerTest
     {
         var order = VerifiedOrder();
         var result = LabResultDocumentModel.CreateInitial(order.OrderId, new AuditInfoType("U1", DateTime.Now));
-        var cap = new LabResultItemCapture("T1", "HB", "", "", LabResultTypeEnum.Numeric, 14m, "", "", "", "g/dL", "12-16");
-        result.RecordResult(LabResultSourceEnum.Manual, [cap], "U2");
+        result.RecordResult(LabResultSourceEnum.Manual, [LabResultTestSupport.Capture()], "U2");
         result.MarkRecorded("U3");
 
         _orderRepo.Setup(x => x.LoadEntity(It.IsAny<ILabOrderKey>())).Returns(MayBe.From(order));

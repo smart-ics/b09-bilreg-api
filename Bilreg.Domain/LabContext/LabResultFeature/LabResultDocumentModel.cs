@@ -139,12 +139,17 @@ public class LabResultDocumentModel : ILabResultDocumentKey
     /// Creates a non-current snapshot of this verified version and a new current version in Recorded status (re-verification required).
     /// </summary>
     public (LabResultDocumentModel RetiredVersion, LabResultDocumentModel NewVersion) AmendVerifiedToNewVersion(
+        IEnumerable<LabResultItemModel> regeneratedScaffoldItems,
         string reason,
         string amendedBy,
         DateTime amendedAt)
     {
+        Guard.Against.Null(regeneratedScaffoldItems, nameof(regeneratedScaffoldItems));
         Guard.Against.NullOrWhiteSpace(reason, nameof(reason));
         Guard.Against.NullOrWhiteSpace(amendedBy, nameof(amendedBy));
+
+        var scaffoldItems = regeneratedScaffoldItems.ToList();
+        Guard.Against.NullOrEmpty(scaffoldItems, nameof(regeneratedScaffoldItems));
 
         if (AuditTrail.IsVoided)
             throw new InvalidOperationException(
@@ -191,7 +196,7 @@ public class LabResultDocumentModel : ILabResultDocumentKey
 
         var newId = NunaId.New(IdPrefix);
         var newAudit = AuditTrailType.Create(amendedBy, amendedAt);
-        var newItems = CloneItemsRenumbered(Items);
+        var newItems = RenumberItems(scaffoldItems);
         var newVersion = Load(
             newId,
             OrderId,
@@ -216,10 +221,12 @@ public class LabResultDocumentModel : ILabResultDocumentKey
     private static List<LabResultItemModel> CloneItems(IReadOnlyList<LabResultItemModel> items)
         => items.Select(i => new LabResultItemModel(
             i.ItemNo,
+            i.ComponentId,
             i.TestId,
             i.TestName,
             i.ComponentCode,
             i.ComponentName,
+            i.SequenceNo,
             i.ResultType,
             i.NumericValue,
             i.TextValue,
@@ -227,17 +234,20 @@ public class LabResultDocumentModel : ILabResultDocumentKey
             i.NarrativeValue,
             i.Unit,
             i.ReferenceRangeText,
+            i.IsMandatory,
             i.FlagStatus)).ToList();
 
-    private static List<LabResultItemModel> CloneItemsRenumbered(IReadOnlyList<LabResultItemModel> items)
+    private static List<LabResultItemModel> RenumberItems(IReadOnlyList<LabResultItemModel> items)
     {
         var n = 1;
         return items.Select(i => new LabResultItemModel(
             n++,
+            i.ComponentId,
             i.TestId,
             i.TestName,
             i.ComponentCode,
             i.ComponentName,
+            i.SequenceNo,
             i.ResultType,
             i.NumericValue,
             i.TextValue,
@@ -245,6 +255,7 @@ public class LabResultDocumentModel : ILabResultDocumentKey
             i.NarrativeValue,
             i.Unit,
             i.ReferenceRangeText,
+            i.IsMandatory,
             i.FlagStatus)).ToList();
     }
 
@@ -274,6 +285,7 @@ public class LabResultDocumentModel : ILabResultDocumentKey
         var no = 1;
         foreach (var c in list)
         {
+            Guard.Against.NullOrWhiteSpace(c.ComponentId, nameof(c.ComponentId));
             Guard.Against.NullOrWhiteSpace(c.TestId, nameof(c.TestId));
             Guard.Against.NullOrWhiteSpace(c.TestName, nameof(c.TestName));
 
@@ -293,10 +305,12 @@ public class LabResultDocumentModel : ILabResultDocumentKey
 
             next.Add(new LabResultItemModel(
                 no++,
+                c.ComponentId,
                 c.TestId,
                 c.TestName,
                 c.ComponentCode ?? "",
                 c.ComponentName ?? "",
+                c.SequenceNo,
                 c.ResultType,
                 c.NumericValue,
                 text,
@@ -304,6 +318,7 @@ public class LabResultDocumentModel : ILabResultDocumentKey
                 narrative,
                 c.Unit ?? "",
                 c.ReferenceRangeText ?? "",
+                c.IsMandatory,
                 flag));
         }
 
