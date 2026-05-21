@@ -8,6 +8,7 @@ using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.IgdContext.BedIgdFeature;
 using Bilreg.Domain.IgdContext.IgdVisitFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
+using Bilreg.Infrastructure.Shared.AuditLogFeature;
 using FluentAssertions;
 using Moq;
 using Nuna.Lib.PatternHelper;
@@ -22,6 +23,7 @@ public class IgdVisitVoidHandlerTest
     private readonly Mock<IPakaiBedRepo> _pakaiRepo = new();
     private readonly Mock<ITindakanIgdRepo> _tindakanRepo = new();
     private readonly Mock<IBhpIgdRepo> _bhpRepo = new();
+    private readonly Mock<AuditLogRepo> _auditLogRepo = new();
     private readonly IgdVisitVoidHandler _sut;
 
     public IgdVisitVoidHandlerTest()
@@ -31,7 +33,8 @@ public class IgdVisitVoidHandlerTest
             _bedRepo.Object,
             _pakaiRepo.Object,
             _tindakanRepo.Object,
-            _bhpRepo.Object);
+            _bhpRepo.Object,
+            _auditLogRepo.Object);
     }
 
     private static IgdVisitModel BuildVisit(string bedId = "-", bool voided = false)
@@ -69,7 +72,7 @@ public class IgdVisitVoidHandlerTest
             .Setup(r => r.LoadEntity(It.IsAny<IIgdVisitKey>()))
             .Returns(MayBe.From(visit));
 
-        var result = await _sut.Handle(new IgdVisitVoidCmd("IGV0001", "U1"), CancellationToken.None);
+        var result = await _sut.Handle(new IgdVisitVoidCmd("IGV0001", "U1", "Reason", "A", "B"), CancellationToken.None);
 
         result.IsVoided.Should().BeTrue();
         result.BedReleased.Should().BeFalse();
@@ -88,7 +91,7 @@ public class IgdVisitVoidHandlerTest
         _tindakanRepo.Setup(r => r.AnyForVisit(It.IsAny<IIgdVisitKey>())).Returns(true);
         _bhpRepo.Setup(r => r.AnyForVisit(It.IsAny<IIgdVisitKey>())).Returns(false);
 
-        var act = async () => await _sut.Handle(new IgdVisitVoidCmd("IGV0001", "U1"), CancellationToken.None);
+        var act = async () => await _sut.Handle(new IgdVisitVoidCmd("IGV0001", "U1", "Reason", "A", "B"), CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*tindakan*");
         _visitRepo.Verify(r => r.SaveChanges(It.IsAny<IgdVisitModel>()), Times.Never);
@@ -104,7 +107,7 @@ public class IgdVisitVoidHandlerTest
         _tindakanRepo.Setup(r => r.AnyForVisit(It.IsAny<IIgdVisitKey>())).Returns(false);
         _bhpRepo.Setup(r => r.AnyForVisit(It.IsAny<IIgdVisitKey>())).Returns(true);
 
-        var act = async () => await _sut.Handle(new IgdVisitVoidCmd("IGV0001", "U1"), CancellationToken.None);
+        var act = async () => await _sut.Handle(new IgdVisitVoidCmd("IGV0001", "U1", "Reason", "A", "B"), CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*BHP*");
     }
@@ -133,7 +136,7 @@ public class IgdVisitVoidHandlerTest
         _tindakanRepo.Setup(r => r.AnyForVisit(It.IsAny<IIgdVisitKey>())).Returns(false);
         _bhpRepo.Setup(r => r.AnyForVisit(It.IsAny<IIgdVisitKey>())).Returns(false);
 
-        var result = await _sut.Handle(new IgdVisitVoidCmd("IGV0001", "U1"), CancellationToken.None);
+        var result = await _sut.Handle(new IgdVisitVoidCmd("IGV0001", "U1", "Reason", "A", "B"), CancellationToken.None);
 
         result.IsVoided.Should().BeTrue();
         result.BedReleased.Should().BeTrue();

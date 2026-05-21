@@ -2,15 +2,18 @@ using Ardalis.GuardClauses;
 using Bilreg.Application.IgdContext.BedIgdFeature;
 using Bilreg.Application.IgdContext.BhpIgdFeature;
 using Bilreg.Application.IgdContext.TindakanIgdFeature;
+using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.IgdContext.BedIgdFeature;
 using Bilreg.Domain.IgdContext.IgdVisitFeature;
+using Bilreg.Domain.Shared.AuditLogFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
 
 namespace Bilreg.Application.IgdContext.IgdVisitFeature.UseCases;
 
-public record IgdVisitVoidCmd(string IgdVisitId, string UserId)
+public record IgdVisitVoidCmd(string IgdVisitId, string UserId, string VoidReason,
+    string ClientIpAddress, string UserAgent)
     : IRequest<IgdVisitVoidResponse>, IIgdVisitKey;
 
 public record IgdVisitVoidResponse(
@@ -25,25 +28,29 @@ public class IgdVisitVoidHandler : IRequestHandler<IgdVisitVoidCmd, IgdVisitVoid
     private readonly IPakaiBedRepo _pakaiBedRepo;
     private readonly ITindakanIgdRepo _tindakanRepo;
     private readonly IBhpIgdRepo _bhpRepo;
+    private readonly IAuditRepo _auditRepo;
 
     public IgdVisitVoidHandler(
         IIgdVisitRepo igdVisitRepo,
         IBedIgdRepo bedIgdRepo,
         IPakaiBedRepo pakaiBedRepo,
         ITindakanIgdRepo tindakanRepo,
-        IBhpIgdRepo bhpRepo)
+        IBhpIgdRepo bhpRepo,
+        IAuditRepo auditRepo)
     {
         _igdVisitRepo = igdVisitRepo;
         _bedIgdRepo = bedIgdRepo;
         _pakaiBedRepo = pakaiBedRepo;
         _tindakanRepo = tindakanRepo;
         _bhpRepo = bhpRepo;
+        _auditRepo = auditRepo;
     }
 
     public Task<IgdVisitVoidResponse> Handle(IgdVisitVoidCmd request, CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.IgdVisitId, nameof(request.IgdVisitId));
         Guard.Against.NullOrWhiteSpace(request.UserId, nameof(request.UserId));
+        Guard.Against.NullOrWhiteSpace(request.VoidReason, nameof(request.VoidReason));
 
         var visit = _igdVisitRepo.LoadEntity(request)
             .GetValueOrThrow($"IgdVisit '{request.IgdVisitId}' not found");
@@ -52,6 +59,7 @@ public class IgdVisitVoidHandler : IRequestHandler<IgdVisitVoidCmd, IgdVisitVoid
         {
             return Task.FromResult(new IgdVisitVoidResponse(visit.IgdVisitId, true, BedReleased: false));
         }
+        var snapshotJson = AuditLogSnapshotJson.Serialize(visit);
 
         var hasTindakan = _tindakanRepo.AnyForVisit(visit);
         var hasBhp = _bhpRepo.AnyForVisit(visit);
@@ -89,6 +97,25 @@ public class IgdVisitVoidHandler : IRequestHandler<IgdVisitVoidCmd, IgdVisitVoid
             trans.Complete();
         }
 
+        var auditLog = CreateAudit(visit, snapshotJson, request);
+        _auditRepo.SaveChanges(auditLog);
+
         return Task.FromResult(new IgdVisitVoidResponse(visit.IgdVisitId, visit.IsVoided, bedReleased));
+    }
+
+    private AuditLog CreateAudit(IgdVisitModel visit, string snapShotJson, IgdVisitVoidCmd cmd)
+    {
+        var result = AuditLog.Create(
+            visit.AuditTrail.Voided,
+            actionType: "VOID",
+            entityName: nameof(IgdVisitModel),
+            entityId: visit.IgdVisitId,
+            reason: cmd.VoidReason,
+            originalDataJson: snapShotJson,
+            correlationId: visit.Reg.RegId,
+            clientIpAddress: cmd.ClientIpAddress,
+            userAgent: cmd.UserAgent
+            );
+        return result;
     }
 }
