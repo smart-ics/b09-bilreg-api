@@ -111,13 +111,119 @@ Read-only vendor-owned catalog. **No** POST/PUT/DELETE. Operational identity is 
 
 ---
 
-## Lab test definition (planned)
+## Lab test definition (hospital admin — implemented)
 
-| Feature | Routes (planned) |
-|---------|------------------|
-| `LabTestDefinitionFeature` | CRUD + `GET byTarif/{tarifId}` — hospital admin |
+Hospital-configurable operational **LabTest** template: Tarif mapping, specimen/vacutainer metadata, and `LabTestComponent` membership. **No** standalone component CRUD — children are managed only through the parent aggregate.
 
-Document request/response JSON when Phase 2 lands.
+**ID:** `TestDefinitionId` = `LTD` + 4 uppercase hex (e.g. `LTD0001`). Allocated sequentially by the API on create (`SELECT MAX` + hex increment).
+
+### List / search definitions
+
+| | |
+|--|--|
+| **Route** | `GET /api/LabContext/LabTestDefinitionFeature/definitions` |
+| **Query** | `activeOnly` (bool, default `false`) |
+| **Query** | `search` (string, optional) — partial match on `LabTestCode`, `LabTestName`, `TarifCode`, `TarifId` |
+| **Query** | `tarifId` (string, optional) — exact filter |
+| **Response** | Array of `LabTestDefinitionListResponse` |
+
+**List item fields:**
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `testDefinitionId` | string | `LTDxxxx` |
+| `tarifId` | string | BIL Tarif reference |
+| `tarifCode` | string | Cached label |
+| `tarifName` | string | Cached label |
+| `labTestCode` | string | Operational code |
+| `labTestName` | string | Operational name |
+| `specimenType` | string | |
+| `vacutainerType` | int | `VacutainerTypeEnum`: 1 Edta, 2 Serum, 3 Citrate, 4 Heparin |
+| `isActive` | bool | |
+| `componentCount` | int | Child row count |
+
+### Get definition detail
+
+| | |
+|--|--|
+| **Route** | `GET /api/LabContext/LabTestDefinitionFeature/definitions/{testDefinitionId}` |
+| **Response** | `LabTestDefinitionDetailResponse` |
+
+**Detail fields:** list item fields plus `components[]`:
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `sequenceNo` | int | Display order (unique per definition) |
+| `componentId` | string | `MLCxxxx` → `LabComponentMaster` |
+| `referenceRangeOverride` | string | Hospital text override |
+| `requiredFlagging` | bool | |
+| `isMandatory` | bool | |
+
+### Preview active definition by Tarif
+
+| | |
+|--|--|
+| **Route** | `GET /api/LabContext/LabTestDefinitionFeature/byTarif/{tarifId}` |
+| **Purpose** | Resolve the **active** `LabTestDefinition` for a Tarif (future order-resolution preview) |
+| **Response** | `LabTestDefinitionDetailResponse` |
+| **Not found** | `LAB_TEST_DEFINITION_NOT_FOUND` |
+
+### Create definition
+
+| | |
+|--|--|
+| **Route** | `POST /api/LabContext/LabTestDefinitionFeature/definitions` |
+| **Body** | `LabTestDefinitionCreateCmd` |
+| **Response** | `{ testDefinitionId }` — server-allocated `LTDxxxx` |
+
+**Create body fields:**
+
+| Field | Type | Required |
+|-------|------|----------|
+| `tarifId` | string | yes |
+| `tarifCode` | string | |
+| `tarifName` | string | |
+| `labTestCode` | string | yes |
+| `labTestName` | string | yes |
+| `specimenType` | string | |
+| `vacutainerType` | int | yes |
+| `isActive` | bool | |
+| `userId` | string | yes |
+| `components` | `LabTestComponentInput[]` | yes (may be empty when `isActive` is false) |
+
+**Component input:** `sequenceNo`, `componentId` (`MLCxxxx`), `referenceRangeOverride`, `requiredFlagging`, `isMandatory`.
+
+### Update definition
+
+| | |
+|--|--|
+| **Route** | `PUT /api/LabContext/LabTestDefinitionFeature/definitions/{testDefinitionId}` |
+| **Body** | Same shape as create (without path id) — **replaces** all child rows (delete + bulk insert) |
+
+### Activate / deactivate
+
+| | |
+|--|--|
+| **Route** | `POST .../definitions/{testDefinitionId}/activate` |
+| **Route** | `POST .../definitions/{testDefinitionId}/deactivate` |
+| **Body** | `{ userId }` |
+
+### Validation / error codes (domain)
+
+| Code | When |
+|------|------|
+| `LAB_TEST_DEFINITION_NOT_FOUND` | No active definition for Tarif (byTarif) |
+| `LAB_TEST_DEFINITION_INACTIVE` | Inactive definition (byTarif guard) |
+| `LAB_TEST_DEFINITION_TARIF_CONFLICT` | Another active definition already uses this `TarifId` |
+| `LAB_TEST_DEFINITION_EMPTY_COMPONENTS` | Active definition with zero components |
+| `LAB_COMPONENT_INACTIVE` | Child references inactive `MLCxxxx` |
+| `LAB_COMPONENT_NOT_FOUND` | Unknown `MLCxxxx` |
+| `LAB_DUPLICATE_COMPONENT` | Same `ComponentId` twice on one definition |
+| `LAB_DUPLICATE_SEQUENCE` | Same `SequenceNo` twice on one definition |
+| `LAB_INVALID_LTD_FORMAT` | Invalid `TestDefinitionId` format |
+| `LAB_INVALID_MLC_FORMAT` | Invalid `ComponentId` format |
+
+**Out of scope for this feature:** standalone `LabTestComponent` APIs, order resolution, result scaffold, API versioning.
 
 ---
 

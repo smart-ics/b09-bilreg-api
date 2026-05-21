@@ -262,7 +262,11 @@ Released order workflow is operationally final.
 | `BILRG_LabOwareOutboundQueue` | Async OWR outbound |
 
 **Implemented (master-test Phase 1):** `BILRG_LabComponentMaster` + `LabComponentMasterFeature` read APIs — see [`LAB_API_CONTRACT.md`](LAB_API_CONTRACT.md).  
-**Planned (master-test):** `BILRG_LabTestDefinition`, `BILRG_LabTestComponent`, `BILRG_LabOrderItemComponent` — see [`LAB_MASTER_TEST_IMPLEMENTATION_PLAN.md`](LAB_MASTER_TEST_IMPLEMENTATION_PLAN.md) §5.
+**Implemented (master-test Phase 1):** `BILRG_LabComponentMaster` + read APIs — [`LAB_API_CONTRACT.md`](LAB_API_CONTRACT.md).
+
+**Implemented (master-test Phase 2):** `BILRG_LabTestDefinition`, `BILRG_LabTestComponent`, `LabTestDefinitionFeature` admin CRUD + `byTarif` — [`LAB_API_CONTRACT.md`](LAB_API_CONTRACT.md).
+
+**Planned (master-test Phase 3+):** `BILRG_LabOrderItemComponent` — see [`LAB_MASTER_TEST_IMPLEMENTATION_PLAN.md`](LAB_MASTER_TEST_IMPLEMENTATION_PLAN.md) §5.
 
 **Not in V1:** `BILRG_LabOrderStateHist`.
 
