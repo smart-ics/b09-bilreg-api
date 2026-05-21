@@ -51,18 +51,38 @@ Synchronous API
 
 ## Main API
 
+Canonical contract (pre-release, Tarif-only target): [`LAB_MASTER_TEST_IMPLEMENTATION_PLAN.md`](LAB_MASTER_TEST_IMPLEMENTATION_PLAN.md) **§7.3** and [`LAB_API_CONTRACT.md`](LAB_API_CONTRACT.md).
+
 ### Create Order
 
-```text id="z8v5k1"
-POST /api/lwf/orders
+```text
+POST /api/LabContext/LabOrderFeature/fromEmr
 ```
 
----
+**EMR sends (target):**
+
+```text
+EmrOrderId
+Items[]: { TarifId, TarifName? }
++ patient snapshot fields (RegId, PatientId, PatientName, BirthDateYmd, Gender)
+```
+
+**EMR does not send:** `TestId`, `TestCode`, `TestName`, tube/specimen/count, or component lists. LWF resolves `LabTestDefinition`, specimen, vacutainer, and component snapshots.
+
+**EMR response (target):** acknowledgment keyed by **`EmrOrderId`** — EMR must not depend on internal `LabOrderId`.
+
+**Legacy note:** current handler still accepts EMR-supplied test/tube fields until master-test Phase 3 replaces the DTO in place.
+
+### Status lookup (planned)
+
+```text
+GET /api/LabContext/LabOrderFeature/byEmrOrderId/{emrOrderId}
+```
 
 ### Cancel Order
 
-```text id="m1q7w4"
-POST /api/lwf/orders/{id}/cancel
+```text
+POST /api/LabContext/LabOrderFeature/emr/cancel
 ```
 
 ---
