@@ -29,20 +29,24 @@ public class BedIgdMarkCleanHandler : IRequestHandler<BedIgdMarkCleanCmd, BedIgd
 
         var audit = new AuditInfoType(request.UserId, DateTime.Now);
 
-        BedIgdMarkCleanResponse response;
-        using (var trans = TransHelper.NewScope())
-        {
-            var bedMayBe = _bedIgdRepo.LoadEntity(request);
-            if (!bedMayBe.HasValue)
-                throw new KeyNotFoundException($"BedIgdId {request.BedIgdId} not found");
-            var bed = bedMayBe.Value;
+        using var trans = TransHelper.NewScope();        
+        var bed = LoadBed(request);
+        bed.MarkClean(audit);
+        _bedIgdRepo.SaveChanges(bed);
+        trans.Complete();
 
-            bed.MarkClean(audit);
-            _bedIgdRepo.SaveChanges(bed);
-            trans.Complete();
-            response = new BedIgdMarkCleanResponse(bed.BedIgdId, bed.BedIgdName, bed.BedState.ToString());
-        }
+        var response = new BedIgdMarkCleanResponse(bed.BedIgdId, bed.BedIgdName, bed.BedState.ToString());        
 
         return Task.FromResult(response);
+    }
+
+    private BedIgdModel LoadBed(BedIgdMarkCleanCmd request)
+    {
+        var bedMayBe = _bedIgdRepo.LoadEntity(request);
+
+        if (!bedMayBe.HasValue)
+            throw new KeyNotFoundException($"BedIgdId {request.BedIgdId} not found");
+
+        return bedMayBe.Value;
     }
 }

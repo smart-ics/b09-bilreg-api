@@ -1,5 +1,4 @@
 using Bilreg.Application.IgdContext.BedIgdFeature.UseCases;
-using Bilreg.Domain.IgdContext.BedIgdFeature;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
