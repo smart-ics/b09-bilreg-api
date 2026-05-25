@@ -7,13 +7,21 @@ namespace Bilreg.Api.Controllers.IgdContext;
 
 [Route("api/[controller]")]
 [ApiController]
-public class BedIgdController : Controller
+public class BedIgdController : ControllerBase
 {
     private readonly IMediator _mediator;
 
     public BedIgdController(IMediator mediator)
     {
         _mediator = mediator;
+    }
+
+    [HttpPatch("{id}/markClean")]
+    public async Task<IActionResult> MarkClean(string id, [FromBody] MarkCleanBody body)
+    {
+        var cmd = new BedIgdMarkCleanCmd(id, body.UserId);
+        var result = await _mediator.Send(cmd);
+        return Ok(new JSendOk(result));
     }
 
     [HttpGet("available")]
@@ -30,3 +38,5 @@ public class BedIgdController : Controller
         return Ok(new JSendOk(result));
     }
 }
+
+public record MarkCleanBody(string UserId);
