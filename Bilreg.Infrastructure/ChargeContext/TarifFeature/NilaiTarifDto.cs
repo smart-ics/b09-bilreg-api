@@ -8,7 +8,7 @@ public record NilaiTarifDto(string NilaiTarifId, string TarifId, string TipeTari
     string KelasId, decimal Nilai, string TarifName, string TipeTarifName, string KelasName,
     string SourcePolicyId)
 {
-    public static NilaiTarifDto FromModel(NilaiTarifType model)
+    public static NilaiTarifDto FromModel(NilaiTarifType model, string sourcePolicyId = "")
     {
         var result = new NilaiTarifDto(
             model.NilaiTarifId, 
@@ -19,7 +19,7 @@ public record NilaiTarifDto(string NilaiTarifId, string TarifId, string TipeTari
             model.TarifName, 
             model.TipeTarif.TipeTarifName, 
             model.Kelas.KelasName,
-            "");
+            sourcePolicyId);
         return result;
     }
 

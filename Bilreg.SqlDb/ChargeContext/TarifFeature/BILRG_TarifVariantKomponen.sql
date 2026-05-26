@@ -1,0 +1,23 @@
+IF OBJECT_ID('BILRG_TarifVariantKomponen', 'U') IS NULL
+BEGIN
+    CREATE TABLE BILRG_TarifVariantKomponen
+    (
+        TarifPolicyId VARCHAR(12) NOT NULL CONSTRAINT DF_BILRG_TarifVariantKomponen_TarifPolicyId DEFAULT(''),
+        ItemNo        INT NOT NULL CONSTRAINT DF_BILRG_TarifVariantKomponen_ItemNo DEFAULT(0),
+        NoUrut        INT NOT NULL CONSTRAINT DF_BILRG_TarifVariantKomponen_NoUrut DEFAULT(0),
+        KomponenId    VARCHAR(3) NOT NULL CONSTRAINT DF_BILRG_TarifVariantKomponen_KomponenId DEFAULT(''),
+        Nilai         DECIMAL(18, 2) NOT NULL CONSTRAINT DF_BILRG_TarifVariantKomponen_Nilai DEFAULT(0),
+
+        CONSTRAINT PK_BILRG_TarifVariantKomponen PRIMARY KEY CLUSTERED (TarifPolicyId, ItemNo, NoUrut)
+    );
+END
+GO
+
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE name = 'IX_BILRG_TarifVariantKomponen_Policy' AND object_id = OBJECT_ID('BILRG_TarifVariantKomponen'))
+BEGIN
+    CREATE NONCLUSTERED INDEX IX_BILRG_TarifVariantKomponen_Policy
+    ON BILRG_TarifVariantKomponen (TarifPolicyId, ItemNo);
+END
+GO

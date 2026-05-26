@@ -37,9 +37,9 @@ public class NilaiTarifDal : INilaiTarifDal
     {
         const string sql = """
            INSERT INTO BILRG_NilaiTarif(
-               NilaiTarifId, TarifId, TipeTarifId, KelasId, Nilai)
+               NilaiTarifId, TarifId, TipeTarifId, KelasId, Nilai, SourcePolicyId)
            VALUES( 
-               @NilaiTarifId, @TarifId, @TipeTarifId, @KelasId, @Nilai)
+               @NilaiTarifId, @TarifId, @TipeTarifId, @KelasId, @Nilai, @SourcePolicyId)
            """;
 
         var dp = new DynamicParameters();
@@ -48,6 +48,7 @@ public class NilaiTarifDal : INilaiTarifDal
         dp.AddParam("@TipeTarifId", dto.TipeTarifId, SqlDbType.VarChar);
         dp.AddParam("@KelasId", dto.KelasId, SqlDbType.VarChar);
         dp.AddParam("@Nilai", dto.Nilai, SqlDbType.Decimal);
+        dp.AddParam("@SourcePolicyId", dto.SourcePolicyId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -80,7 +81,8 @@ public class NilaiTarifDal : INilaiTarifDal
                TarifId = @TarifId,
                TipeTarifId = @TipeTarifId,
                KelasId = @KelasId,
-               Nilai = @Nilai
+               Nilai = @Nilai,
+               SourcePolicyId = @SourcePolicyId
            WHERE
                NilaiTarifId = @NilaiTarifId
            """;
@@ -91,6 +93,7 @@ public class NilaiTarifDal : INilaiTarifDal
         dp.AddParam("@TipeTarifId", dto.TipeTarifId, SqlDbType.VarChar);
         dp.AddParam("@KelasId", dto.KelasId, SqlDbType.VarChar);
         dp.AddParam("@Nilai", dto.Nilai, SqlDbType.Decimal);
+        dp.AddParam("@SourcePolicyId", dto.SourcePolicyId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);

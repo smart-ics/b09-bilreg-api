@@ -17,8 +17,9 @@
 | Kelas | **External** (Ward) | `KelasType` / `KelasReff` |
 | SatTugas | **External** (Admisi/PPA) | `SatTugasType` |
 | COA on komponen | **External** (Payment) | `CoaType` on `KomponenType` |
-| TarifPolicy | **Planned** | — |
-| TarifVariant | **Planned** | — |
+| TarifPolicy | **Persistence (Phase 2)** | `TarifPolicyType`, `TarifPolicyStatus` |
+| TarifVariant | **Persistence (Phase 2)** | `TarifVariantType`, `TarifVariantKomponenType` |
+| PublishLog | **Persistence (Phase 2)** | `TarifPublishLogType`, `TarifPublishLogDetailType` |
 
 ---
 
@@ -87,8 +88,9 @@ classDiagram
 | **TarifType** | Service catalog identity, classification refs (`GroupTarif`, `JenisTarif`, `RekapCetak`) | Money amounts, history |
 | **NilaiTarifType** | One operational variant: header `Nilai` + child komponen lines | Billing lines, policy audit |
 | **KomponenType** | Distribution definition: COA pair, group, SatTugas eligibility set | Tarif header nilai |
-| **TarifPolicy** *(planned)* | Policy metadata, draft/publish lifecycle, mass-edit scope | Live projection rows |
-| **TarifVariant** *(planned)* | One `(Tarif, Kelas, TipeTarif)` combination + komponen lines under a policy; immutable after publish | Live `NilaiTarif` projection rows |
+| **TarifPolicy** *(persistence live; workflow Phase 3+)* | Policy metadata, draft/publish lifecycle, mass-edit scope | Live projection rows |
+| **TarifVariant** *(persistence live)* | One `(Tarif, Kelas, TipeTarif)` combination + komponen lines under a policy; immutable after publish | Live `NilaiTarif` projection rows |
+| **PublishLog** *(persistence live)* | Publish activation audit header + optional per-variant detail | — |
 
 **Lookup masters** (`TipeTarifType`, `GroupKomponenType`, …): owned as Charge/Tarif reference data; not full aggregates in tactical sense.
 

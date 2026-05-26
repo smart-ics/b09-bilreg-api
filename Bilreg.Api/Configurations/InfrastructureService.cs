@@ -6,7 +6,9 @@ using Bilreg.Application.LabContext.LabOwareFeature.Integration;
 using Bilreg.Application.LabContext.LabResultFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers;
+using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Infrastructure;
+using Bilreg.Infrastructure.ChargeContext.TarifFeature;
 using Bilreg.Infrastructure.LabContext.Integration;
 using Bilreg.Infrastructure.LabContext.LabOwareFeature;
 using Bilreg.Infrastructure.LabContext.LabResultFeature;
@@ -44,6 +46,8 @@ public static class InfrastructureService
             .AddScoped<LabOwareQueueProcessor>()
             .AddScoped<ILabResultPdfRenderer, LabResultPdfRenderer>()
             .AddScoped<ILabResultScaffoldService, LabResultScaffoldService>()
+            .AddScoped<ITarifPublishLogRepo, TarifPublishLogRepo>()
+            .AddScoped<INilaiTarifProjectionWriter, NilaiTarifProjectionWriter>()
             .AddMemoryCache();
 
         services

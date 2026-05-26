@@ -84,11 +84,29 @@ Historical pricing must **not** be resolved by scanning projection alone once `T
 - `Search(layananId, variant, keyword)` for barang/tarif picker.
 - `INilaiTarifRepo.SaveChanges` exists; **no application caller** (grep) — maintenance today is import-only.
 
-### Migration direction (planned)
+### Policy persistence (Phase 2 — implemented)
+
+| Table | Role |
+| ----- | ---- |
+| `BILRG_TarifPolicy` | Policy header + `PolicyStatus` + audit columns |
+| `BILRG_TarifVariant` | Variant lines `(TarifPolicyId, ItemNo)` + optional `PublishedNilaiTarifId` |
+| `BILRG_TarifVariantKomponen` | Komponen breakdown per variant line |
+| `BILRG_TarifPublishLog` | Publish audit header |
+| `BILRG_TarifPublishLogDetail` | Optional per-variant publish snapshot |
+
+**Repositories:** `ITarifPolicyRepo` (load/save draft + list summary), `ITarifPublishLogRepo` (insert/load/list by policy).
+
+**Child replace:** policy save deletes all variant/komponen rows for the policy id, then bulk re-inserts (deterministic `ItemNo` / `NoUrut` ordering).
+
+**Projection writer (Phase 2 helper, no orchestration):** `INilaiTarifProjectionWriter.Upsert` — upserts one `NilaiTarifType` into `BILRG_NilaiTarif*`, **preserves** existing `NilaiTarifId` when composite `(TarifId, TipeTarifId, KelasId)` exists, sets `SourcePolicyId` on header. Intended for Phase-3 publish handler inside an explicit transaction.
+
+`INilaiTarifRepo` consumer surface is **unchanged** (import, load, search).
+
+### Migration direction (remaining)
 
 1. Keep `BILRG_*` as operational projection store.
-2. Add `TarifPolicy` / `TarifVariant` / publish log tables.
-3. Implement publish service → deterministic variant upsert/replace on `BILRG_*`.
+2. ~~Add `TarifPolicy` / `TarifVariant` / publish log tables.~~ **Done (Phase 2).**
+3. Implement publish service (Phase 3) → call `INilaiTarifProjectionWriter` per variant + write publish log.
 4. Reduce reliance on destructive full import; legacy import remains fallback during transition.
 5. Preserve `TarifType`, `NilaiTarifType`, `KomponenType` and consumer contracts.
 
@@ -104,6 +122,9 @@ Historical pricing must **not** be resolved by scanning projection alone once `T
 | `TrfImportNilaiTarifHandler` | Application | MediatR → `Import()` |
 | `TrfGetNilaiTarifHandler` | Application | Load composite + enrich SatTugas ids |
 | `TrfListTarifBrgHandler` | Application | Search + stok linkage |
+| `TarifPolicyRepo` / `*Dal` | Infrastructure | Policy aggregate persistence (Phase 2) |
+| `TarifPublishLogRepo` | Infrastructure | Publish log insert/load (Phase 2) |
+| `NilaiTarifProjectionWriter` | Infrastructure | Single-variant projection upsert for future publish (Phase 2) |
 
 **Cross-context domain references (compile-time):** `KomponenType` → `CoaType` (Payment), `SatTugasType` (Admisi); `NilaiTarifType` → `KelasReff` (Ward).
 

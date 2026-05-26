@@ -529,15 +529,15 @@ Agentic slices — each slice = one PR, one vertical concern, tests where valuab
 
 **Gate:** no Infrastructure/API yet.
 
-### Phase 2 — Persistence (PLANNED)
+### Phase 2 — Persistence (**LIVE**)
 
-| # | Slice | Outcome |
-| - | ----- | ------- |
-| 2.1 | SQL scripts `BILRG_TarifPolicy*`, publish log | `Bilreg.SqlDb` |
-| 2.2 | Dto/Dal/Repo policy aggregate | Load/save draft |
-| 2.3 | Publish projection writer (extends nilai child replace) | Unit-tested upsert |
+| # | Slice | Status |
+| - | ----- | ------ |
+| 2.1 | SQL scripts `BILRG_TarifPolicy*`, publish log | **LIVE** — `Bilreg.SqlDb/ChargeContext/TarifFeature/BILRG_Tarif*.sql` |
+| 2.2 | Dto/Dal/Repo policy aggregate | **LIVE** — `TarifPolicyRepo`, `ITarifPolicyRepo` |
+| 2.3 | Publish projection writer | **LIVE** — `INilaiTarifProjectionWriter` / `NilaiTarifProjectionWriter` |
 
-**Gate:** repo tests; no HTTP.
+**Gate:** `dotnet test --filter FullyQualifiedName~TarifFeature`; deploy SQL before integration tests. Report: `TARIF_PHASE2_REPORT.md`. No HTTP / publish orchestration.
 
 ### Phase 3 — Publish engine (PLANNED)
 
