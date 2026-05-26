@@ -1,5 +1,6 @@
 using Bilreg.Application.ChargeContext.TarifFeature.UseCases;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
 
@@ -7,6 +8,7 @@ namespace Bilreg.Api.Controllers.ChargeContext;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class NilaiTarifController : Controller
 {
     private readonly IMediator _mediator;
@@ -18,10 +20,13 @@ public class NilaiTarifController : Controller
 
     [HttpPost]
     [Route("import")]
-    public async Task<IActionResult> Import(TrfImportNilaiTarifCmd cmd)
+    public async Task<IActionResult> Import([FromBody] TrfImportNilaiTarifBody? body = null)
     {
-        await _mediator.Send(cmd);
-        return Ok(new JSendOk("Done"));
+        var cmd = new TrfImportNilaiTarifCmd(
+            body?.ImportedBy,
+            body?.IsEmergency ?? false);
+        var result = await _mediator.Send(cmd);
+        return Ok(new JSendOk(result));
     }
 
     [HttpGet]
@@ -48,3 +53,5 @@ public class NilaiTarifController : Controller
     //}
 
 }
+
+public record TrfImportNilaiTarifBody(string? ImportedBy = null, bool IsEmergency = false);

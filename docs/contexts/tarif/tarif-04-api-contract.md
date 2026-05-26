@@ -26,10 +26,13 @@ POST /api/NilaiTarif/import
 | ---- | ------ |
 | Controller | `Bilreg.Api/Controllers/ChargeContext/NilaiTarifController` |
 | Handler | `TrfImportNilaiTarifCmd` → `INilaiTarifRepo.Import()` |
+| Auth | JWT `[Authorize]` (Phase 5) |
 | Effect | Clears `BILRG_NilaiTarif` + `BILRG_NilaiTarifKomponen`; reloads from legacy `ta_trs_tarif2/3` (filter: parent `fd_tgl_expired = '3000-01-01'`, `fn_nilai > 0`) |
-| Body | None |
-| Success | 200 (handler completes import) |
-| Failure | Unhandled exception → 500; **no** structured Tarif error catalog yet |
+| Body (optional) | `{ "importedBy": "USR001", "isEmergency": false }` |
+| Migration guard | Blocked when effective mode is `PublishPrimary` / `ImportDeprecated` unless `isEmergency` and `Tarif:AllowEmergencyImport` = true |
+| Mutex | In-process lock vs publish/baseline on same instance |
+| Success | 200 + `{ message, warnings[] }` |
+| Failure | `InvalidOperationException` → 400 (mode/mutex/rollback message) |
 
 **Operational warning:** destructive full replace — coordinate maintenance window (see runbook).
 
@@ -176,6 +179,37 @@ POST /api/tarif-policy/{policyId}/publish
 
 Workflow detail: [`tarif-07-admin-workflow.md`](tarif-07-admin-workflow.md).
 
+Publish is blocked when effective migration mode is `ImportOnly`.
+
+---
+
+## [Live] Tarif migration API (Phase 5)
+
+**Controller:** `Bilreg.Api/Controllers/ChargeContext/TarifMigrationController`  
+**Route prefix:** `/api/tarif-migration`  
+**Auth:** JWT required on all routes.
+
+| Method | Route | Handler | Notes |
+| ------ | ----- | ------- | ----- |
+| GET | `/status` | `TrfGetTarifMigrationStatusQry` | Effective/config/DB mode, projection summary, last import/publish/baseline |
+| GET | `/consistency` | `TrfCheckTarifProjectionConsistencyQry` | Duplicate keys, headers without komponen, orphan `SourcePolicyId` |
+| POST | `/baseline` | `TrfCreateBaselineTarifPolicyCmd` | One-time anchor from current `BILRG_*`; body: `userId`, optional `policyNo`, `publishedBy` |
+| PUT | `/mode` | `TrfSetTarifMigrationModeCmd` | DB override; body: `mode` (`ImportOnly`…`ImportDeprecated`), `userId` |
+| DELETE | `/mode` | `TrfSetTarifMigrationModeCmd` (null mode) | Clear DB override; body: `userId` |
+
+### Configuration (`appsettings.json`)
+
+```json
+"Tarif": {
+  "Mode": "Hybrid",
+  "AllowEmergencyImport": false
+}
+```
+
+Effective mode = DB override in `BILRG_TarifOperationalState` when set, else config.
+
+Strategy: [`tarif-10-migration-strategy.md`](tarif-10-migration-strategy.md).
+
 ---
 
 ## [Deprecated / inactive] legacy BillContext controllers
@@ -213,10 +247,11 @@ Structured error codes (`DUPLICATE_VARIANT`, etc.) remain **future** hardening.
 
 ## Authorization
 
-| Action | Phase 4 (LIVE) | Target (future) |
-| ------ | -------------- | --------------- |
+| Action | LIVE | Target (future) |
+| ------ | ---- | --------------- |
 | TarifPolicy routes | Authenticated JWT | Keuangan = edit; Supervisor = publish |
-| Import projection | No controller auth | Keuangan / DBA |
+| Tarif migration routes | Authenticated JWT | Keuangan / DBA |
+| Import projection | Authenticated JWT (Phase 5) | Keuangan / DBA |
 | View nilai / search | Existing routes | Operational user |
 
 ---

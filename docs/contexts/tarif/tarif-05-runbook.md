@@ -10,10 +10,26 @@
 | Mode | When | Primary action |
 | ---- | ---- | -------------- |
 | **Production today** | Day-to-day billing | Maintain legacy `ta_trs_tarif*` → **import** → verify `BILRG_*` |
-| **Policy publish** | Draft/reviewed policy in `BILRG_Tarif*` | MediatR `TrfPublishTarifPolicyCmd` → verify `BILRG_*` + publish log |
+| **Policy publish** | Draft/reviewed policy in `BILRG_Tarif*` | `POST .../publish` → verify `BILRG_*` + publish log |
 | **HTTP policy workspace** | Phase 4 LIVE | `TarifPolicyController` — draft → publish |
+| **Migration control** | Phase 5 LIVE | `GET /api/tarif-migration/status` — effective M0–M3 mode |
 
-This runbook covers import (HTTP), policy admin (HTTP), and publish.
+### Migration stages (M0–M3)
+
+| Stage | `Tarif:Mode` (appsettings) | Routine import | Publish |
+| ----- | -------------------------- | -------------- | ------- |
+| **M0** | `ImportOnly` | Allowed | Blocked |
+| **M1** | `Hybrid` | Allowed | Allowed |
+| **M2** | `PublishPrimary` | Blocked (emergency only) | Allowed |
+| **M3** | `ImportDeprecated` | Blocked (emergency only) | Allowed |
+
+- **Config default:** `appsettings.json` → section `Tarif`.
+- **DB override (ops):** `PUT /api/tarif-migration/mode` writes `BILRG_TarifOperationalState`; `DELETE /api/tarif-migration/mode` clears override.
+- **Emergency import:** set `Tarif:AllowEmergencyImport` = `true` and call import with body `{ "isEmergency": true, "importedBy": "..." }`.
+
+Detail: [`tarif-10-migration-strategy.md`](tarif-10-migration-strategy.md), checklist: [`tarif-09-rollout-checklist.md`](tarif-09-rollout-checklist.md).
+
+This runbook covers import (HTTP), policy admin (HTTP), publish, and migration controls.
 
 ---
 
@@ -136,6 +152,8 @@ See [`tarif-07-admin-workflow.md`](tarif-07-admin-workflow.md) and [`tarif-04-ap
 
 Do **not** run full **import** and **publish** concurrently on the same environment (last writer wins per variant).
 
+**LIVE (Phase 5):** API enforces an in-process lock — concurrent import + publish on the **same app instance** returns `InvalidOperationException`. Multi-instance deployments still require ops coordination (see [`tarif-10-migration-strategy.md`](tarif-10-migration-strategy.md)).
+
 ### Re-publish
 
 Already `Published` policy may be re-published to refresh projection deterministically; each run adds a new publish log row.
@@ -250,14 +268,39 @@ Always preview draft totals before publish. Copy-policy is **template only** —
 
 ---
 
+## Phase 5 — Baseline backfill (optional, one-time)
+
+Creates a **Published** `TarifPolicy` from current `BILRG_NilaiTarif*` (audit anchor). Does **not** change nilai; stamps `SourcePolicyId` via publish upsert.
+
+### Preconditions
+
+- [ ] Deploy `BILRG_TarifOperationalState.sql`
+- [ ] `BILRG_*` populated and validated
+- [ ] No existing policy with same `PolicyNo` (default `BASELINE-{yyyyMMdd}`)
+- [ ] Mode allows publish (`Hybrid` or later)
+
+### Procedure
+
+1. `GET /api/tarif-migration/status` — confirm projection counts.
+2. `GET /api/tarif-migration/consistency` — resolve duplicates before baseline if unhealthy.
+3. `POST /api/tarif-migration/baseline` with JWT body `{ "userId": "...", "policyNo": "BASELINE-20260526" }` (optional policyNo).
+4. Verify `GET /api/tarif-policy/{id}` and publish log; spot-check `SourcePolicyId` on sample `BILRG_NilaiTarif` rows.
+
+### Rollback
+
+Baseline is forward-only: do **not** delete published policy rows. If baseline was wrong, leave policy archived operationally and publish a corrective policy. Restore projection from backup only via standard import recovery (see below).
+
+---
+
 ## Rollout order (engineering + ops)
 
-1. Stabilize import procedure and backups (**now**).
-2. Add DB unique constraint on projection variant (**backlog**).
-3. Introduce `TarifPolicy` draft UI/API.
-4. Introduce publish log + transactional publish.
-5. Train Keuangan on publish vs effective date.
-6. Reduce import frequency as publish becomes authoritative.
+1. Stabilize import procedure and backups (**done** — Phase 0).
+2. Unique index on projection variant (**done** — Phase 0).
+3. Policy draft API + publish engine (**done** — Phases 3–4).
+4. Deploy Phase 5 SQL + API; set `Tarif:Mode` = `Hybrid` in UAT.
+5. Optional baseline in UAT; train Keuangan on publish vs import authority.
+6. Production: `PublishPrimary` after parallel validation; keep `AllowEmergencyImport` for fallback.
+7. `ImportDeprecated` when routine legacy import is retired (endpoint remains for emergency).
 
 ---
 
@@ -295,5 +338,7 @@ HTTP API at `/api/tarif-policy` — UI may be separate; see [`tarif-07-admin-wor
 | ---- | ---- |
 | `docs/contexts/tarif/tarif-04-api-contract.md` | Endpoint reference |
 | `docs/contexts/tarif/tarif-07-admin-workflow.md` | Draft → publish flow |
+| `docs/contexts/tarif/tarif-09-rollout-checklist.md` | M0–M3 gates |
+| `docs/contexts/tarif/tarif-10-migration-strategy.md` | Dual authority + fallback |
 | `docs/contexts/tarif/tarif-03-design.md` | Import technical detail |
 | `docs/tarif/tarif-codebase-retrieval-report.md` | Code/file index |

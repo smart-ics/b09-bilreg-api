@@ -48,10 +48,17 @@ public static class InfrastructureService
             .AddScoped<ILabResultScaffoldService, LabResultScaffoldService>()
             .AddScoped<ITarifPublishLogRepo, TarifPublishLogRepo>()
             .AddScoped<INilaiTarifProjectionWriter, NilaiTarifProjectionWriter>()
+            .AddScoped<ITarifOperationalStateRepo, TarifOperationalStateRepo>()
+            .AddScoped<ITarifOperationalStateDal, TarifOperationalStateDal>()
+            .AddScoped<ITarifProjectionReadRepo, TarifProjectionReadRepo>()
+            .AddScoped<ITarifMigrationModeResolver, TarifMigrationModeResolver>()
+            .AddScoped<ITarifMigrationGuard, TarifMigrationGuard>()
+            .AddSingleton<TarifOperationalGate>()
             .AddMemoryCache();
 
         services
             .Configure<DatabaseOptions>(configuration.GetSection(DatabaseOptions.SECTION_NAME))
+            .Configure<TarifMigrationOptions>(configuration.GetSection(TarifMigrationOptions.SECTION_NAME))
             .Configure<LabResultPdfOptions>(configuration.GetSection(LabResultPdfOptions.SECTION_NAME))
             .Configure<PasienContextOptions>(configuration.GetSection(PasienContextOptions.SECTION_NAME))
             .Configure<RemoteCetakOptions>(configuration.GetSection(RemoteCetakOptions.SECTION_NAME))

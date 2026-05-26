@@ -1,6 +1,6 @@
 # TARIF_IMPLEMENTATION_PLAN.md — Tarif Policy & Publish Rollout
 
-> **Status:** Phase ledger — Phases 0–4 **LIVE** in codebase; Phase 5+ **PLANNED**.  
+> **Status:** Phase ledger — Phases 0–5 **LIVE** in codebase.  
 > **Canonical location:** `docs/contexts/tarif/TARIF_IMPLEMENTATION_PLAN.md`  
 > **Scope root:** `{Layer}/ChargeContext/TarifFeature/` (extend existing folders)  
 > **Evidence:** `docs/tarif/tarif-codebase-retrieval-report.md`
@@ -497,7 +497,7 @@ Coordinate with `tarif-05-runbook.md` checklists for import sign-off and publish
 | Risk | Likelihood | Impact | Mitigation |
 | ---- | ---------- | ------ | ---------- |
 | Partial `BILRG_*` after import | Medium | High | Phase 0 transaction |
-| Publish/import race | Medium | High | Ops lock; later app mutex |
+| Publish/import race | Medium | High | **LIVE** in-process gate + ops lock for multi-instance |
 | Orphan `NilaiTarifId` on tindakan after import | High (known) | Low | Stable ids on publish path |
 | Scope error in mass adjust | Medium | High | Preview endpoint; draft-only adjust |
 | Komponen SatTugas not saved | High | Medium | Phase 0 Komponen fix |
@@ -566,13 +566,17 @@ Agentic slices — each slice = one PR, one vertical concern, tests where valuab
 
 **Gate:** `dotnet test --filter FullyQualifiedName~TarifFeature`; UAT checklist in runbook.
 
-### Phase 5 — Migration & decommission (PLANNED)
+### Phase 5 — Migration & decommission (**LIVE**)
 
-| # | Slice | Outcome |
-| - | ----- | ------- |
-| 5.1 | Baseline backfill script (optional) | Audit anchor |
-| 5.2 | Feature flag: publish vs import | M1–M2 |
-| 5.3 | Runbook + `ARTIFACTS.md` index update | Ops M3 |
+| # | Slice | Status |
+| - | ----- | ------ |
+| 5.1 | Baseline backfill (`POST /api/tarif-migration/baseline`) | **LIVE** — `TrfCreateBaselineTarifPolicyHandler` |
+| 5.2 | Migration mode (appsettings + DB override) | **LIVE** — `TarifMigrationOptions`, `BILRG_TarifOperationalState` |
+| 5.3 | Import/publish guard + operational gate | **LIVE** — `ITarifMigrationGuard`, `TarifOperationalGate` |
+| 5.4 | Visibility (`/status`, `/consistency`) | **LIVE** — `TarifMigrationController` |
+| 5.5 | Runbook + rollout docs | **LIVE** — `tarif-05-runbook.md`, `tarif-09`, `tarif-10` |
+
+**Gate:** `dotnet test --filter FullyQualifiedName~TarifFeature`; deploy `BILRG_TarifOperationalState.sql` before migration API.
 
 **Dependency graph:**
 
@@ -615,7 +619,7 @@ Phase 0 ──► Phase 2 ──► Phase 1 (retroactive domain) ──► Phase
 When executing a slice:
 
 1. Read **Primary references** table for slice.
-2. Respect **LIVE vs PLANNED** — Phases 0–4 are **LIVE**; Phase 5 migration/decommission is **PLANNED**.
+2. Respect **LIVE vs PLANNED** — Phases 0–5 are **LIVE**.
 3. Do not modify `TrsBilling`, tindakan snapshot logic, or consumer handler signatures without explicit slice.
 4. Follow `feature-*-generation.md` skills for code shape.
 5. One aggregate per PR where possible; publish engine after persistence.

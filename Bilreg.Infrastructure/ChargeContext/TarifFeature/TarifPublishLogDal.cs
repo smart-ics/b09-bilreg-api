@@ -13,6 +13,7 @@ public interface ITarifPublishLogDal :
     IGetData<TarifPublishLogDto, ITarifPublishLogKey>,
     IListData<TarifPublishLogDto, ITarifPolicyKey>
 {
+    TarifLastPublishRow? GetLastPublish();
 }
 
 public class TarifPublishLogDal : ITarifPublishLogDal
@@ -65,6 +66,19 @@ public class TarifPublishLogDal : ITarifPublishLogDal
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<TarifPublishLogDto>(sql, dp);
+    }
+
+    public TarifLastPublishRow? GetLastPublish()
+    {
+        const string sql = """
+            SELECT TOP 1
+                PublishedDate, TarifPolicyId, PublishLogId
+            FROM BILRG_TarifPublishLog
+            ORDER BY PublishedDate DESC, PublishLogId DESC
+            """;
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<TarifLastPublishRow>(sql).FirstOrDefault();
     }
 
     private static DynamicParameters MapParams(TarifPublishLogDto dto)

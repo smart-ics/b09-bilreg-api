@@ -21,11 +21,14 @@ public class TrfPublishTarifPolicyHandlerTest
     private readonly Mock<ITipeTarifRepo> _tipeTarifRepoMock = new();
     private readonly Mock<IKelasRepo> _kelasRepoMock = new();
     private readonly Mock<IKomponenRepo> _komponenRepoMock = new();
+    private readonly Mock<ITarifMigrationGuard> _migrationGuardMock = new();
+    private readonly TarifOperationalGate _operationalGate = new();
     private readonly TrfPublishTarifPolicyHandler _handler;
 
     public TrfPublishTarifPolicyHandlerTest()
     {
         SetupMastersExist();
+        _migrationGuardMock.Setup(x => x.EnsurePublishAllowed());
         _handler = new TrfPublishTarifPolicyHandler(
             _policyRepoMock.Object,
             _publishLogRepoMock.Object,
@@ -34,6 +37,8 @@ public class TrfPublishTarifPolicyHandlerTest
             _tipeTarifRepoMock.Object,
             _kelasRepoMock.Object,
             _komponenRepoMock.Object,
+            _migrationGuardMock.Object,
+            _operationalGate,
             NullLogger<TrfPublishTarifPolicyHandler>.Instance);
     }
 

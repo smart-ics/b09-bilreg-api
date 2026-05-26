@@ -62,7 +62,7 @@
 
 ### Tarif (`docs/contexts/tarif/`)
 
-Charge-context tariff master, operational projection (`NilaiTarif`), and komponen breakdown. **Phases 1–4 LIVE:** policy domain, persistence, publish engine, admin HTTP (`TarifPolicyController`). Live ops may use legacy import and/or policy publish → `BILRG_*`.
+Charge-context tariff master, operational projection (`NilaiTarif`), and komponen breakdown. **Phases 1–5 LIVE:** policy domain, persistence, publish engine, admin HTTP, migration controls (`TarifMigrationController`). Live ops use staged import/publish authority per `Tarif:Mode` → `BILRG_*`.
 
 | Path | Purpose |
 |------|---------|
@@ -73,6 +73,8 @@ Charge-context tariff master, operational projection (`NilaiTarif`), and kompone
 | `docs/contexts/tarif/tarif-05-runbook.md` | Tarif — operation (import, validation, recovery) |
 | `docs/contexts/tarif/tarif-06-publish-engine.md` | Tarif — publish orchestration (Phase 3 LIVE) |
 | `docs/contexts/tarif/tarif-07-admin-workflow.md` | Tarif — policy admin HTTP workflow (Phase 4 LIVE) |
+| `docs/contexts/tarif/tarif-09-rollout-checklist.md` | Tarif — M0–M3 rollout gates (Phase 5 LIVE) |
+| `docs/contexts/tarif/tarif-10-migration-strategy.md` | Tarif — import → publish migration strategy (Phase 5 LIVE) |
 | `docs/contexts/tarif/TARIF_IMPLEMENTATION_PLAN.md` | Tarif — phased implementation plan (policy, publish, migration) |
 | `docs/contexts/tarif/TARIF_PHASE0_REPORT.md` | Phase 0 hardening — what shipped, migration order, rollback |
 | `docs/contexts/tarif/TARIF_PHASE1_ALIGNMENT_REPORT.md` | Phase 1 retroactive alignment — domain vs persistence audit |

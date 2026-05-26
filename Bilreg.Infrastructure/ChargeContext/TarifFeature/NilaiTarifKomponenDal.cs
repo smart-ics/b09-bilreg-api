@@ -14,6 +14,8 @@ public interface INilaiTarifKompDal:
     IListData<NilaiTarifKompDto, INilaiTarifKey>
 {
     void Clear();
+
+    IEnumerable<NilaiTarifKompDto> ListAll();
 }
 
 public class NilaiTarifKompDal : INilaiTarifKompDal
@@ -84,5 +86,20 @@ public class NilaiTarifKompDal : INilaiTarifKompDal
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<NilaiTarifKompDto>(sql, dp);
+    }
+
+    public IEnumerable<NilaiTarifKompDto> ListAll()
+    {
+        const string sql = """
+            SELECT
+                aa.NilaiTarifId, aa.NoUrut, aa.KomponenId, aa.Nilai,
+                ISNULL(bb.fs_nm_detil_tarif, '') AS KomponenName
+            FROM BILRG_NilaiTarifKomponen aa
+                LEFT JOIN ta_detil_tarif bb ON aa.KomponenId = bb.fs_kd_detil_tarif
+            ORDER BY aa.NilaiTarifId, aa.NoUrut
+            """;
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<NilaiTarifKompDto>(sql);
     }
 }

@@ -1,6 +1,5 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.BedUsageContext.WardFeature;
-using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.ChargeContext.TindakanFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
@@ -12,99 +11,146 @@ using Nuna.Lib.TransactionHelper;
 
 namespace Bilreg.Application.ChargeContext.TarifFeature.UseCases;
 
-public record TrfPublishTarifPolicyCmd(
+public record TrfCreateBaselineTarifPolicyCmd(
+    string UserId,
+    string? PolicyNo = null,
+    string PublishedBy = "") : IRequest<TrfCreateBaselineTarifPolicyResponse>;
+
+public record TrfCreateBaselineTarifPolicyResponse(
     string TarifPolicyId,
-    string PublishedBy,
-    string Note = "") : IRequest<TrfPublishTarifPolicyResponse>, ITarifPolicyKey;
-
-public record TrfPublishTarifPolicyVariantResult(int ItemNo, string NilaiTarifId);
-
-public record TrfPublishTarifPolicyResponse(
+    string PolicyNo,
     string PublishLogId,
-    string TarifPolicyId,
-    TarifPolicyStatus PolicyStatus,
-    int VariantCount,
-    IReadOnlyList<TrfPublishTarifPolicyVariantResult> Variants);
+    int VariantCount);
 
-public class TrfPublishTarifPolicyHandler : IRequestHandler<TrfPublishTarifPolicyCmd, TrfPublishTarifPolicyResponse>
+public class TrfCreateBaselineTarifPolicyHandler
+    : IRequestHandler<TrfCreateBaselineTarifPolicyCmd, TrfCreateBaselineTarifPolicyResponse>
 {
     private const string PublishLogIdPrefix = "TPL";
+    private const string BaselineDescription =
+        "Phase-5 baseline anchor imported from current BILRG_NilaiTarif projection.";
 
     private readonly ITarifPolicyRepo _tarifPolicyRepo;
     private readonly ITarifPublishLogRepo _tarifPublishLogRepo;
     private readonly INilaiTarifProjectionWriter _nilaiTarifProjectionWriter;
+    private readonly ITarifProjectionReadRepo _projectionReadRepo;
+    private readonly ITarifOperationalStateRepo _operationalStateRepo;
+    private readonly ITarifMigrationGuard _migrationGuard;
+    private readonly TarifOperationalGate _operationalGate;
     private readonly ITarifRepo _tarifRepo;
     private readonly ITipeTarifRepo _tipeTarifRepo;
     private readonly IKelasRepo _kelasRepo;
     private readonly IKomponenRepo _komponenRepo;
-    private readonly ITarifMigrationGuard _migrationGuard;
-    private readonly TarifOperationalGate _operationalGate;
-    private readonly ILogger<TrfPublishTarifPolicyHandler> _logger;
+    private readonly ILogger<TrfCreateBaselineTarifPolicyHandler> _logger;
 
-    public TrfPublishTarifPolicyHandler(
+    public TrfCreateBaselineTarifPolicyHandler(
         ITarifPolicyRepo tarifPolicyRepo,
         ITarifPublishLogRepo tarifPublishLogRepo,
         INilaiTarifProjectionWriter nilaiTarifProjectionWriter,
+        ITarifProjectionReadRepo projectionReadRepo,
+        ITarifOperationalStateRepo operationalStateRepo,
+        ITarifMigrationGuard migrationGuard,
+        TarifOperationalGate operationalGate,
         ITarifRepo tarifRepo,
         ITipeTarifRepo tipeTarifRepo,
         IKelasRepo kelasRepo,
         IKomponenRepo komponenRepo,
-        ITarifMigrationGuard migrationGuard,
-        TarifOperationalGate operationalGate,
-        ILogger<TrfPublishTarifPolicyHandler> logger)
+        ILogger<TrfCreateBaselineTarifPolicyHandler> logger)
     {
         _tarifPolicyRepo = tarifPolicyRepo;
         _tarifPublishLogRepo = tarifPublishLogRepo;
         _nilaiTarifProjectionWriter = nilaiTarifProjectionWriter;
+        _projectionReadRepo = projectionReadRepo;
+        _operationalStateRepo = operationalStateRepo;
+        _migrationGuard = migrationGuard;
+        _operationalGate = operationalGate;
         _tarifRepo = tarifRepo;
         _tipeTarifRepo = tipeTarifRepo;
         _kelasRepo = kelasRepo;
         _komponenRepo = komponenRepo;
-        _migrationGuard = migrationGuard;
-        _operationalGate = operationalGate;
         _logger = logger;
     }
 
-    public Task<TrfPublishTarifPolicyResponse> Handle(
-        TrfPublishTarifPolicyCmd request,
+    public Task<TrfCreateBaselineTarifPolicyResponse> Handle(
+        TrfCreateBaselineTarifPolicyCmd request,
         CancellationToken cancellationToken)
     {
-        Guard.Against.NullOrWhiteSpace(request.TarifPolicyId, nameof(request.TarifPolicyId));
-        Guard.Against.NullOrWhiteSpace(request.PublishedBy, nameof(request.PublishedBy));
+        Guard.Against.NullOrWhiteSpace(request.UserId);
+        var publishedBy = string.IsNullOrWhiteSpace(request.PublishedBy)
+            ? request.UserId
+            : request.PublishedBy;
 
         _migrationGuard.EnsurePublishAllowed();
 
-        var policy = _tarifPolicyRepo.LoadEntity(request)
-            .Match(
-                onSome: p => p,
-                onNone: () => throw new KeyNotFoundException(
-                    $"TarifPolicy '{request.TarifPolicyId}' tidak ditemukan."));
+        var policyNo = string.IsNullOrWhiteSpace(request.PolicyNo)
+            ? $"BASELINE-{DateTime.UtcNow:yyyyMMdd}"
+            : request.PolicyNo.Trim();
 
-        EnsurePublishable(policy);
+        EnsurePolicyNoAvailable(policyNo);
 
-        var isRepublish = policy.PolicyStatus == TarifPolicyStatus.Published;
+        var projectionRows = _projectionReadRepo.ListAllProjection();
+        if (projectionRows.Count == 0)
+        {
+            throw new InvalidOperationException(
+                "BILRG projection kosong; tidak dapat membuat baseline policy.");
+        }
+
+        var rowsWithKomponen = projectionRows
+            .Where(r => r.Komponen.Count > 0)
+            .ToList();
+        if (rowsWithKomponen.Count == 0)
+        {
+            throw new InvalidOperationException(
+                "Tidak ada variant dengan baris komponen pada projection; baseline dibatalkan.");
+        }
+
+        var policy = TarifPolicyType.Create(
+            policyNo,
+            "Baseline from BILRG projection",
+            DateTime.Now,
+            BaselineDescription,
+            request.UserId);
+
+        foreach (var row in rowsWithKomponen)
+        {
+            var komponenLines = row.Komponen
+                .Select(k => new TarifVariantKomponenType(
+                    k.NoUrut,
+                    new KomponenReff(k.KomponenId, ""),
+                    k.Nilai))
+                .ToList();
+
+            policy = policy.AddVariant(
+                row.TarifId,
+                row.KelasId,
+                row.TipeTarifId,
+                row.Nilai,
+                komponenLines);
+        }
+
+        EnsureMasterReferences(policy.Variants.ToList());
+
         var publishLogId = NunaId.New(PublishLogIdPrefix);
         var publishedAt = DateTime.Now;
 
         _logger.LogInformation(
-            "TarifPolicy publish started for {TarifPolicyId} (republish={IsRepublish})",
-            policy.TarifPolicyId,
-            isRepublish);
+            "Baseline TarifPolicy creation started for {PolicyNo} with {VariantCount} variants",
+            policyNo,
+            policy.Variants.Count());
 
         using var gate = _operationalGate.Acquire(TarifOperation.Publish);
         using var trans = TransHelper.NewScope();
         try
         {
+            _tarifPolicyRepo.SaveChanges(policy);
+
             var snapshotVariants = new List<TarifVariantType>();
             var logDetails = new List<TarifPublishLogDetailType>();
-            var variantResults = new List<TrfPublishTarifPolicyVariantResult>();
 
             foreach (var variant in policy.Variants.OrderBy(v => v.ItemNo))
             {
                 var projection = CreateProjection(variant);
                 var nilaiTarifId = _nilaiTarifProjectionWriter.Upsert(projection, policy.TarifPolicyId);
                 var snapshot = variant.ToPublishedSnapshot(nilaiTarifId);
-
                 snapshotVariants.Add(snapshot);
                 logDetails.Add(new TarifPublishLogDetailType(
                     snapshot.ItemNo,
@@ -113,87 +159,58 @@ public class TrfPublishTarifPolicyHandler : IRequestHandler<TrfPublishTarifPolic
                     snapshot.TipeTarifId,
                     nilaiTarifId,
                     snapshot.Nilai));
-                variantResults.Add(new TrfPublishTarifPolicyVariantResult(snapshot.ItemNo, nilaiTarifId));
             }
 
-            var policyWithSnapshots = WithVariants(policy, snapshotVariants);
-            var policyToSave = isRepublish
-                ? policyWithSnapshots
-                : policyWithSnapshots.MarkPublished(request.PublishedBy);
-
+            var publishedPolicy = WithVariants(policy, snapshotVariants).MarkPublished(publishedBy);
             var publishLog = new TarifPublishLogType(
                 publishLogId,
                 policy.TarifPolicyId,
-                request.PublishedBy,
+                publishedBy,
                 publishedAt,
                 snapshotVariants.Count,
-                request.Note ?? "",
+                $"BASELINE backfill {policyNo}",
                 logDetails);
 
             _tarifPublishLogRepo.Insert(publishLog);
-            _tarifPolicyRepo.SaveChanges(policyToSave);
+            _tarifPolicyRepo.SaveChanges(publishedPolicy);
             trans.Complete();
 
-            _logger.LogInformation(
-                "TarifPolicy publish succeeded for {TarifPolicyId}; PublishLogId={PublishLogId}; variants={VariantCount}",
-                policy.TarifPolicyId,
-                publishLogId,
-                snapshotVariants.Count);
+            _operationalStateRepo.RecordBaseline(
+                publishedPolicy.TarifPolicyId,
+                request.UserId,
+                publishedAt);
 
-            return Task.FromResult(new TrfPublishTarifPolicyResponse(
+            _logger.LogInformation(
+                "Baseline TarifPolicy {TarifPolicyId} created and published; PublishLogId={PublishLogId}",
+                publishedPolicy.TarifPolicyId,
+                publishLogId);
+
+            return Task.FromResult(new TrfCreateBaselineTarifPolicyResponse(
+                publishedPolicy.TarifPolicyId,
+                publishedPolicy.PolicyNo,
                 publishLogId,
-                policyToSave.TarifPolicyId,
-                policyToSave.PolicyStatus,
-                snapshotVariants.Count,
-                variantResults));
+                snapshotVariants.Count));
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                ex,
-                "TarifPolicy publish failed for {TarifPolicyId}; transaction rolled back",
-                policy.TarifPolicyId);
+            _logger.LogError(ex, "Baseline TarifPolicy creation failed for {PolicyNo}", policyNo);
             throw new InvalidOperationException(
-                "TarifPolicy publish failed; projection and policy unchanged (transaction rolled back).",
+                "Baseline policy creation failed; perubahan dibatalkan (transaction rolled back).",
                 ex);
         }
     }
 
-    private void EnsurePublishable(TarifPolicyType policy)
+    private void EnsurePolicyNoAvailable(string policyNo)
     {
-        var variants = policy.Variants.ToList();
+        var exists = _tarifPolicyRepo
+            .ListData(new TarifPolicyListFilter(Keyword: policyNo))
+            .Any(p => string.Equals(p.PolicyNo, policyNo, StringComparison.OrdinalIgnoreCase));
 
-        if (variants.Count == 0)
+        if (exists)
         {
             throw new InvalidOperationException(
-                $"TarifPolicy {policy.TarifPolicyId} tidak memiliki variant.");
+                $"Policy dengan PolicyNo '{policyNo}' sudah ada; baseline tidak dijalankan.");
         }
-
-        var duplicateGroup = variants
-            .GroupBy(v => v.VariantCompositeKey)
-            .FirstOrDefault(g => g.Count() > 1);
-        if (duplicateGroup is not null)
-        {
-            var (tarifId, kelasId, tipeTarifId) = duplicateGroup.Key;
-            throw new InvalidOperationException(
-                $"Variant duplikat untuk kombinasi Tarif={tarifId}, Kelas={kelasId}, TipeTarif={tipeTarifId}.");
-        }
-
-        var isFirstPublish = policy.PolicyStatus is TarifPolicyStatus.Draft or TarifPolicyStatus.Reviewed;
-        var isRepublish = policy.PolicyStatus == TarifPolicyStatus.Published;
-
-        if (!isFirstPublish && !isRepublish)
-        {
-            throw new InvalidOperationException(
-                $"TarifPolicy {policy.TarifPolicyId} berstatus {policy.PolicyStatus}; publish tidak diperbolehkan.");
-        }
-
-        if (isFirstPublish)
-            policy.ValidateForPublish();
-        else
-            policy.ValidateForRepublish();
-
-        EnsureMasterReferences(variants);
     }
 
     private void EnsureMasterReferences(IReadOnlyList<TarifVariantType> variants)
@@ -201,19 +218,13 @@ public class TrfPublishTarifPolicyHandler : IRequestHandler<TrfPublishTarifPolic
         foreach (var variant in variants)
         {
             if (!_tarifRepo.LoadEntity(TarifType.Key(variant.TarifId)).HasValue)
-            {
                 throw new InvalidOperationException($"Tarif '{variant.TarifId}' tidak ditemukan.");
-            }
 
             if (!_tipeTarifRepo.LoadEntity(TipeTarifType.Key(variant.TipeTarifId)).HasValue)
-            {
                 throw new InvalidOperationException($"TipeTarif '{variant.TipeTarifId}' tidak ditemukan.");
-            }
 
             if (!_kelasRepo.LoadEntity(KelasType.Key(variant.KelasId)).HasValue)
-            {
                 throw new InvalidOperationException($"Kelas '{variant.KelasId}' tidak ditemukan.");
-            }
         }
 
         var komponenKeys = variants
@@ -229,9 +240,7 @@ public class TrfPublishTarifPolicyHandler : IRequestHandler<TrfPublishTarifPolic
         foreach (var key in komponenKeys)
         {
             if (masters.All(m => m.KomponenId != key.KomponenId))
-            {
                 throw new InvalidOperationException($"Komponen '{key.KomponenId}' tidak ditemukan.");
-            }
         }
     }
 

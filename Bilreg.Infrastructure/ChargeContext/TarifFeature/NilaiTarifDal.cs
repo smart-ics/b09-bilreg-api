@@ -22,6 +22,12 @@ public interface INilaiTarifDal :
     IEnumerable<ta_trs_tarif3_dto> ListData3();
     void Clear();
     IEnumerable<NilaiTarifDto> ListData(ILayananKey lyn, INilaiTarifVariant variant, string keywprd);
+
+    IEnumerable<NilaiTarifDto> ListAllHeaders();
+
+    NilaiTarifProjectionSummaryRow GetProjectionSummary();
+
+    NilaiTarifProjectionConsistencyRow GetConsistencyCounts();
 }
 
 public class NilaiTarifDal : INilaiTarifDal
@@ -237,5 +243,61 @@ public class NilaiTarifDal : INilaiTarifDal
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<ta_trs_tarif3_dto>(sql);
+    }
+
+    public IEnumerable<NilaiTarifDto> ListAllHeaders()
+    {
+        const string sql = """
+            SELECT
+                NilaiTarifId, TarifId, TipeTarifId, KelasId, Nilai,
+                '' AS TarifName, '' AS TipeTarifName, '' AS KelasName,
+                ISNULL(SourcePolicyId, '') AS SourcePolicyId
+            FROM BILRG_NilaiTarif
+            ORDER BY TarifId, KelasId, TipeTarifId
+            """;
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<NilaiTarifDto>(sql);
+    }
+
+    public NilaiTarifProjectionSummaryRow GetProjectionSummary()
+    {
+        const string sql = """
+            SELECT
+                COUNT(*) AS TotalVariantCount,
+                SUM(CASE WHEN ISNULL(SourcePolicyId, '') = '' THEN 1 ELSE 0 END) AS ImportOnlyCount,
+                SUM(CASE WHEN ISNULL(SourcePolicyId, '') <> '' THEN 1 ELSE 0 END) AS PolicySourcedCount
+            FROM BILRG_NilaiTarif
+            """;
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<NilaiTarifProjectionSummaryRow>(sql).First();
+    }
+
+    public NilaiTarifProjectionConsistencyRow GetConsistencyCounts()
+    {
+        const string sql = """
+            SELECT
+                (SELECT COUNT(*) FROM (
+                    SELECT TarifId, TipeTarifId, KelasId
+                    FROM BILRG_NilaiTarif
+                    GROUP BY TarifId, TipeTarifId, KelasId
+                    HAVING COUNT(*) > 1
+                ) dup) AS DuplicateVariantKeyCount,
+                (SELECT COUNT(*)
+                 FROM BILRG_NilaiTarif nt
+                 WHERE NOT EXISTS (
+                     SELECT 1 FROM BILRG_NilaiTarifKomponen k
+                     WHERE k.NilaiTarifId = nt.NilaiTarifId)) AS HeadersWithoutKomponenCount,
+                (SELECT COUNT(*)
+                 FROM BILRG_NilaiTarif nt
+                 WHERE ISNULL(nt.SourcePolicyId, '') <> ''
+                   AND NOT EXISTS (
+                     SELECT 1 FROM BILRG_TarifPolicy p
+                     WHERE p.TarifPolicyId = nt.SourcePolicyId)) AS OrphanSourcePolicyIdCount
+            """;
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<NilaiTarifProjectionConsistencyRow>(sql).First();
     }
 }
