@@ -17,9 +17,9 @@
 | Kelas | **External** (Ward) | `KelasType` / `KelasReff` |
 | SatTugas | **External** (Admisi/PPA) | `SatTugasType` |
 | COA on komponen | **External** (Payment) | `CoaType` on `KomponenType` |
-| TarifPolicy | **Persistence (Phase 2)** | `TarifPolicyType`, `TarifPolicyStatus` |
-| TarifVariant | **Persistence (Phase 2)** | `TarifVariantType`, `TarifVariantKomponenType` |
-| PublishLog | **Persistence (Phase 2)** | `TarifPublishLogType`, `TarifPublishLogDetailType` |
+| TarifPolicy | **Implemented** (domain Phase 1; persistence Phase 2) | `TarifPolicyType`, `TarifPolicyStatus` |
+| TarifVariant | **Implemented** (child of policy) | `TarifVariantType`, `TarifVariantKomponenType` |
+| PublishLog | **Implemented** (audit; orchestration Phase 3) | `TarifPublishLogType`, `TarifPublishLogDetailType` |
 
 ---
 
@@ -59,13 +59,12 @@ classDiagram
     }
 
     class TarifPolicy {
-        Planned
         PolicyId
-        PublishStatus
+        PolicyStatus
+        variants owned
     }
 
     class TarifVariant {
-        Planned
         Tarif Kelas TipeTarif
         komponen breakdown
     }
@@ -74,7 +73,7 @@ classDiagram
     NilaiTarifType "1" --> "*" NilaiTarifKomponenType
     NilaiTarifKomponenType --> KomponenType
 
-    TarifPolicy "1" --> "*" TarifVariant : planned only
+    TarifPolicy "1" --> "*" TarifVariant
     TarifVariant --> TarifType
     TarifVariant --> KomponenType
 ```
@@ -88,9 +87,9 @@ classDiagram
 | **TarifType** | Service catalog identity, classification refs (`GroupTarif`, `JenisTarif`, `RekapCetak`) | Money amounts, history |
 | **NilaiTarifType** | One operational variant: header `Nilai` + child komponen lines | Billing lines, policy audit |
 | **KomponenType** | Distribution definition: COA pair, group, SatTugas eligibility set | Tarif header nilai |
-| **TarifPolicy** *(persistence live; workflow Phase 3+)* | Policy metadata, draft/publish lifecycle, mass-edit scope | Live projection rows |
-| **TarifVariant** *(persistence live)* | One `(Tarif, Kelas, TipeTarif)` combination + komponen lines under a policy; immutable after publish | Live `NilaiTarif` projection rows |
-| **PublishLog** *(persistence live)* | Publish activation audit header + optional per-variant detail | — |
+| **TarifPolicy** | Policy metadata, draft/publish lifecycle, mass-edit scope; variants owned in aggregate | Live `BILRG_NilaiTarif*` rows; publish orchestration |
+| **TarifVariant** | One `(Tarif, Kelas, TipeTarif)` + komponen lines; immutable after parent published | Operational projection rows (separate aggregate) |
+| **PublishLog** | Publish activation audit header + optional per-variant detail | Policy variant editing |
 
 **Lookup masters** (`TipeTarifType`, `GroupKomponenType`, …): owned as Charge/Tarif reference data; not full aggregates in tactical sense.
 
@@ -124,19 +123,21 @@ classDiagram
 
 At least one komponen line per `NilaiTarif` is a **business** requirement; domain does not yet enforce sum(header) = sum(lines).
 
-### TarifPolicy — business change container *(planned)*
+### TarifPolicy — business change container
 
 - May hold **1** or **hundreds** of tariff variants.
 - Represents SK, operational adjustment, or draft revision.
 - **Independent** policies — no revision chain.
-- **Copy previous policy** → new draft only; **no** inheritance.
+- **Copy previous policy** → new draft only; **no** inheritance (`CopyFrom`).
+- Domain behaviour: `Create`, `AddVariant`, `CopyFrom`, `MassAdjust`, `MarkReviewed`, `ValidateForPublish`, `MarkPublished` (status only — no projection/log).
+- `PublishedNilaiTarifId` on variant is a **post-publish snapshot link** to `BILRG_NilaiTarif`; set by Phase-3 handler, cleared on copy.
 
-### TarifVariant — pricing variant under policy *(planned)*
+### TarifVariant — pricing variant under policy
 
 - One operational combination: **`Tarif` + `Kelas` + `TipeTarif`** with header nilai and **`TarifVariantKomponen`** lines.
-- Records value + komponen breakdown for that combination under a policy (historical snapshot after publish).
-- Immutable after publish.
-- Publish refreshes matching **`NilaiTarifType`** projection row(s).
+- `VariantCompositeKey` for uniqueness within policy.
+- Immutable after parent policy published (enforced via `TarifPolicyType.EnsureEditable`).
+- Phase-3 publish refreshes matching **`NilaiTarifType`** projection row(s) via `INilaiTarifProjectionWriter` (not in domain).
 
 ---
 
@@ -151,17 +152,26 @@ At least one komponen line per `NilaiTarif` is a **business** requirement; domai
 | TipeTarif id/name; `NoUrut` ≥ 0 | `TipeTarifType.Create` |
 | PPA valid only if komponen SatTugas intersects PPA SatTugas | `KomponenType.IsValidPpa` |
 | PPA tindakan line requires valid komponen–PPA pairing | `TindakanKomponenWithPpaType.Create` |
+| Unique variant per policy `(Tarif, Kelas, TipeTarif)` | `TarifPolicyType.AddVariant` |
+| Cannot edit published/archived policy | `TarifPolicyType.EnsureEditable` |
+| Cannot publish empty policy | `TarifPolicyType.ValidateForPublish` |
+| ≥ 1 komponen per policy variant; header = Σ komponen (±0.01) | `TarifVariantType` constructor / `EnsureValidForPublish` |
+| Copy policy → new id, Draft, cleared `PublishedNilaiTarifId` | `TarifPolicyType.CopyFrom` |
+| Mass % adjust on draft variants only | `TarifPolicyType.MassAdjust` |
+| Review transition Draft → Reviewed only | `TarifPolicyType.MarkReviewed` |
+| Publish validation (status Draft/Reviewed) | `TarifPolicyType.ValidateForPublish` |
 
 ### Business rules (target / partial enforcement)
 
 | Rule | Status |
 | ---- | ------ |
-| ≥ 1 komponen per NilaiTarif | Business; **not** domain-enforced |
-| Unique (Tarif, Kelas, TipeTarif) per projection | Business; **no** DB unique index today |
-| Header nilai = Σ komponen nilai | **Not** enforced |
+| ≥ 1 komponen per NilaiTarif projection | Business; **not** domain-enforced on `NilaiTarifType` |
+| Unique (Tarif, Kelas, TipeTarif) per projection | **LIVE** — `UX_BILRG_NilaiTarif_Variant` (Phase 0) |
+| Header nilai = Σ komponen on projection | **Not** domain-enforced on `NilaiTarifType` |
 | Published nilai affects future transactions only | Billing boundary; Tarif agnostic |
-| TarifPolicy overlap / publish audit | **Planned** |
-| Effective date does not auto-activate | **Planned** publish semantics |
+| TarifPolicy overlap at publish time | **Planned** — Phase 3 application validator |
+| Effective date does not auto-activate | **Design** — manual publish only |
+| Master ref existence (Tarif, Kelas, Komponen) at publish | **Planned** — Phase 3 validator |
 
 ### Komponen / PPA
 
@@ -205,7 +215,7 @@ stateDiagram-v2
 
 ---
 
-## TarifPolicy state *(planned)*
+## TarifPolicy state
 
 ```mermaid
 stateDiagram-v2
@@ -216,11 +226,11 @@ stateDiagram-v2
     Published --> Archived : superseded or closed
 ```
 
-Publish (**planned**): explicit operator action; writes audit log; refreshes `NilaiTarif` projection; does **not** reschedule by effective date alone.
+Domain `MarkPublished` transitions status only. **Publish orchestration** (audit log, `BILRG_*` upsert) is **Phase 3** — explicit operator action; does **not** reschedule by effective date alone.
 
 ---
 
-## Publish semantics *(planned — preserve in design)*
+## Publish semantics *(orchestration planned — preserve in design)*
 
 | Principle | Detail |
 | --------- | ------ |
@@ -233,13 +243,13 @@ Publish (**planned**): explicit operator action; writes audit log; refreshes `Ni
 
 ---
 
-## Operational helpers *(planned)*
+## Operational helpers
 
-| Helper | Behavior |
-| ------ | -------- |
-| Copy policy | New `TarifPolicy` + cloned variants; **independent** draft |
-| Mass % adjust | Recalculate draft variants only |
-| Component-only adjust | Scope by komponen group/type |
+| Helper | Domain | Status |
+| ------ | ------ | ------ |
+| Copy policy | `TarifPolicyType.CopyFrom` | **Implemented** |
+| Mass % adjust | `TarifPolicyType.MassAdjust` (`percentFactor` = e.g. `10` → +10%) | **Implemented** |
+| Component-only adjust | Scope by komponen group/type | **Planned** (Phase 4) |
 
 Helpers do **not** create policy inheritance or automatic lineage.
 
@@ -263,8 +273,8 @@ Helpers do **not** create policy inheritance or automatic lineage.
 | ------- | ---- |
 | `TarifType` | **What** service is being priced (catalog) |
 | `NilaiTarifType` | **What** it costs **now** operationally (projection) |
-| `TarifPolicy` | **Why/how** a batch of changes is grouped (planned) |
-| `TarifVariant` | **Which** `(Tarif, Kelas, TipeTarif)` combination and nilai were decided under that policy (planned) |
-| `TarifVariantKomponen` | Komponen breakdown on a policy variant (planned) |
-| `PublishLog` | **When** a policy was activated to projection (planned) |
+| `TarifPolicy` | **Why/how** a batch of changes is grouped |
+| `TarifVariant` | **Which** `(Tarif, Kelas, TipeTarif)` combination and nilai under that policy |
+| `TarifVariantKomponen` | Komponen breakdown on a policy variant |
+| `PublishLog` | **When** a policy was activated to projection (persistence live; write on publish Phase 3) |
 | `KomponenType` | **How** amount splits for accounting and jasa |

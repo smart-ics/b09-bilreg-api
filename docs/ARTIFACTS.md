@@ -62,7 +62,7 @@
 
 ### Tarif (`docs/contexts/tarif/`)
 
-Charge-context tariff master, operational projection (`NilaiTarif`), and komponen breakdown. **Phase 2:** policy/variant/publish-log persistence + projection upsert helper. Publish orchestration/API still **planned**; live ops today use legacy import → `BILRG_*`.
+Charge-context tariff master, operational projection (`NilaiTarif`), and komponen breakdown. **Phase 1 (retroactive):** policy domain behaviours + invariants. **Phase 2:** policy/variant/publish-log persistence + projection upsert helper. Publish orchestration/API still **planned**; live ops today use legacy import → `BILRG_*`.
 
 | Path | Purpose |
 |------|---------|
@@ -73,6 +73,7 @@ Charge-context tariff master, operational projection (`NilaiTarif`), and kompone
 | `docs/contexts/tarif/tarif-05-runbook.md` | Tarif — operation (import, validation, recovery) |
 | `docs/contexts/tarif/TARIF_IMPLEMENTATION_PLAN.md` | Tarif — phased implementation plan (policy, publish, migration) |
 | `docs/contexts/tarif/TARIF_PHASE0_REPORT.md` | Phase 0 hardening — what shipped, migration order, rollback |
+| `docs/contexts/tarif/TARIF_PHASE1_ALIGNMENT_REPORT.md` | Phase 1 retroactive alignment — domain vs persistence audit |
 | `docs/contexts/tarif/TARIF_PHASE2_REPORT.md` | Phase 2 persistence — tables, repos, projection writer, migration |
 | `docs/tarif/tarif-codebase-retrieval-report.md` | Codebase evidence / gap analysis (retrieval, not stewardship artifact) |
 

@@ -18,7 +18,8 @@
 | ------- | ------ |
 | `TarifType`, `NilaiTarifType`, `KomponenType`, masters (`TipeTarif`, `Kelas`, `SatTugas`, …) | **Implemented** |
 | Operational projection (`BILRG_NilaiTarif*`) | **Implemented** (via legacy import today) |
-| `TarifPolicy`, `TarifVariant`, manual publish orchestration | **Planned** |
+| `TarifPolicy` / `TarifVariant` domain + `BILRG_Tarif*` persistence | **Implemented** (Phase 1 domain + Phase 2 persistence) |
+| Manual publish orchestration, policy HTTP workflow | **Planned** (Phase 3–4) |
 
 Do not treat **Planned** concepts as already built when operating or integrating.
 

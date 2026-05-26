@@ -83,7 +83,7 @@ Scripts (idempotent `IF OBJECT_ID` guards): `Bilreg.SqlDb/ChargeContext/TarifFea
 - Publish validator (komponen sum, duplicate variant, master refs).
 - Update `PublishedNilaiTarifId` on `BILRG_TarifVariant` after successful upsert.
 - Policy CRUD/review HTTP (Phase 4).
-- Full `TarifPolicyType` domain behaviours (copy, mass adjust, immutability) if not completed in Phase 1.
+- ~~Full `TarifPolicyType` domain behaviours~~ — completed in Phase 1 retroactive alignment (`TARIF_PHASE1_ALIGNMENT_REPORT.md`).
 
 ---
 

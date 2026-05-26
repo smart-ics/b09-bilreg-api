@@ -63,7 +63,8 @@ Legacy ta_trs_tarif2/3  →  POST /api/NilaiTarif/import  →  BILRG_NilaiTarif*
 | `NilaiTarifRepo.Import()` | **LIVE** | Legacy read + transactional clear/BCP (Phase 0) |
 | `NilaiTarifRepo.SaveChanges` | **PARTIAL** | Per-variant upsert path; **no** application caller |
 | Master HTTP admin (`BillContext/TindakanSub/*`) | **PARTIAL** | Controllers commented; DAL/Repo exist |
-| `TarifPolicy`, `TarifVariant`, publish | **PLANNED** | Documented only |
+| `TarifPolicy`, `TarifVariant` domain + persistence | **LIVE** | Phase 1 domain (retroactive) + Phase 2 tables/repos |
+| Publish orchestration / policy HTTP | **PLANNED** | Phase 3–4 |
 
 ### 1.2 Known LIVE risks (must address in rollout)
 
@@ -188,7 +189,7 @@ Implement per `docs/skills/feature-model-generation.md`:
 | `TarifPolicyType` | `ITarifPolicyKey` | `Create`, `CopyFrom`, `AddVariant`, `MassAdjust`, `MarkReviewed`, `Publish` (validates only — projection in app service) |
 | `TarifVariantType` | `ITarifVariantKey` | `Create`, `SetKomponenLines`, immutable after parent published |
 | `TarifVariantKomponenType` | — | `NoUrut`, `KomponenReff`, `Nilai` |
-| `TarifPolicyStatusEnum` | — | `Draft`, `Reviewed`, `Published`, `Archived` |
+| `TarifPolicyStatus` | — | `Draft`, `Reviewed`, `Published`, `Archived` |
 
 **Domain invariants to implement in model:**
 
@@ -520,14 +521,14 @@ Agentic slices — each slice = one PR, one vertical concern, tests where valuab
 
 **Gate:** `dotnet test --filter FullyQualifiedName~TarifFeature`; deploy SQL order in `tarif-05-runbook.md`. Report: `TARIF_PHASE0_REPORT.md`.
 
-### Phase 1 — Domain model (PLANNED)
+### Phase 1 — Domain model (**LIVE** — retroactive after Phase 2)
 
-| # | Slice | Outcome |
-| - | ----- | ------- |
-| 1.1 | `TarifPolicyType`, `TarifVariantType`, enums, keys | Domain tests green |
-| 1.2 | Mass adjust + copy behaviour | Business rules in model |
+| # | Slice | Status |
+| - | ----- | ------ |
+| 1.1 | `TarifPolicyType`, `TarifVariantType`, `TarifPolicyStatus`, keys, invariants | **LIVE** — `TarifPolicyTypeTest` |
+| 1.2 | `CopyFrom`, `MassAdjust`, `MarkReviewed`, `ValidateForPublish`, `MarkPublished` | **LIVE** — no projection/log in domain |
 
-**Gate:** no Infrastructure/API yet.
+**Gate:** domain tests green; persistence unchanged. Report: `TARIF_PHASE1_ALIGNMENT_REPORT.md`.
 
 ### Phase 2 — Persistence (**LIVE**)
 
@@ -571,9 +572,9 @@ Agentic slices — each slice = one PR, one vertical concern, tests where valuab
 **Dependency graph:**
 
 ```text
-Phase 0 ──► Phase 1 ──► Phase 2 ──► Phase 3 ──► Phase 4 ──► Phase 5
-              │                      ▲
-              └──────────────────────┘ (publish needs domain + persistence)
+Phase 0 ──► Phase 2 ──► Phase 1 (retroactive domain) ──► Phase 3 ──► Phase 4 ──► Phase 5
+                              ▲
+                              └── domain aligned to persistence; publish needs both
 ```
 
 ---
@@ -609,7 +610,7 @@ Phase 0 ──► Phase 1 ──► Phase 2 ──► Phase 3 ──► Phase 4 
 When executing a slice:
 
 1. Read **Primary references** table for slice.
-2. Respect **LIVE vs PLANNED** — never assume `TarifPolicy` exists in code.
+2. Respect **LIVE vs PLANNED** — policy domain + persistence are **LIVE**; publish handler/API are **PLANNED**.
 3. Do not modify `TrsBilling`, tindakan snapshot logic, or consumer handler signatures without explicit slice.
 4. Follow `feature-*-generation.md` skills for code shape.
 5. One aggregate per PR where possible; publish engine after persistence.

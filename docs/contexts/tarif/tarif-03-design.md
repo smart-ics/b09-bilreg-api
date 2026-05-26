@@ -209,10 +209,10 @@ Legacy import filter uses fixed expiry `'3000-01-01'` on `ta_trs_tarif2` — not
 | --- | ------ |
 | `KomponenRepo` master HTTP still mostly off | Admin via DB/legacy tools |
 | Import regenerates ULIDs each run | Tindakan ids from prior import orphaned in DB |
-| TarifPolicy / publish | Policy workflow **planned** only |
+| TarifPolicy publish orchestration | Domain + persistence **live**; `TrfPublishTarifPolicyHandler` **planned** (Phase 3) |
 | `KelasDal.Update` SQL mismatch | Ward master update defect (adjacent) |
 | Master HTTP controllers commented (`BillContext/TindakanSub/*`) | Admin via DB/legacy tools |
-| `TarifPolicy` / `TarifVariant` absent | Policy workflow documentation is **target** only |
+| Policy CRUD/review HTTP | **Planned** (Phase 4) |
 
 ---
 

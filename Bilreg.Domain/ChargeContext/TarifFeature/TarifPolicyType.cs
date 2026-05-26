@@ -1,9 +1,12 @@
+using Ardalis.GuardClauses;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
+using Nuna.Lib.AutoNumberHelper;
 
 namespace Bilreg.Domain.ChargeContext.TarifFeature;
 
 public record TarifPolicyType : ITarifPolicyKey
 {
+    private const string IdPrefix = "TPF";
     private readonly List<TarifVariantType> _variants;
 
     public TarifPolicyType(
@@ -26,11 +29,40 @@ public record TarifPolicyType : ITarifPolicyKey
         _variants = variants?.OrderBy(x => x.ItemNo).ToList() ?? [];
     }
 
+    #region CREATION
+
+    public static TarifPolicyType Create(
+        string policyNo,
+        string policyName,
+        DateTime effectiveDateInfo,
+        string description,
+        string auditUserId)
+    {
+        Guard.Against.NullOrWhiteSpace(policyNo);
+        Guard.Against.NullOrWhiteSpace(policyName);
+        Guard.Against.NullOrWhiteSpace(auditUserId);
+
+        var now = DateTime.Now;
+        return new TarifPolicyType(
+            NunaId.New(IdPrefix),
+            policyNo,
+            policyName,
+            effectiveDateInfo,
+            description ?? "",
+            TarifPolicyStatus.Draft,
+            AuditTrailType.Create(auditUserId, now),
+            []);
+    }
+
     public static TarifPolicyType Default => new(
         "-", "", "", new DateTime(3000, 1, 1), "", TarifPolicyStatus.Draft,
         AuditTrailType.Default, []);
 
     public static ITarifPolicyKey Key(string id) => Default with { TarifPolicyId = id };
+
+    #endregion
+
+    #region PROPERTIES
 
     public string TarifPolicyId { get; init; }
     public string PolicyNo { get; init; }
@@ -40,6 +72,174 @@ public record TarifPolicyType : ITarifPolicyKey
     public TarifPolicyStatus PolicyStatus { get; init; }
     public AuditTrailType AuditTrail { get; init; }
     public IEnumerable<TarifVariantType> Variants => _variants;
+
+    #endregion
+
+    #region BEHAVIOUR
+
+    public void EnsureEditable()
+    {
+        if (PolicyStatus is TarifPolicyStatus.Published or TarifPolicyStatus.Archived)
+            throw new InvalidOperationException(
+                $"TarifPolicy {TarifPolicyId} berstatus {PolicyStatus}; perubahan tidak diperbolehkan.");
+    }
+
+    public TarifPolicyType AddVariant(
+        string tarifId,
+        string kelasId,
+        string tipeTarifId,
+        decimal nilai,
+        IEnumerable<TarifVariantKomponenType> komponenLines)
+    {
+        EnsureEditable();
+        Guard.Against.NullOrWhiteSpace(tarifId);
+        Guard.Against.NullOrWhiteSpace(kelasId);
+        Guard.Against.NullOrWhiteSpace(tipeTarifId);
+
+        if (HasVariant(tarifId, kelasId, tipeTarifId))
+            throw new InvalidOperationException(
+                $"Variant duplikat untuk kombinasi Tarif={tarifId}, Kelas={kelasId}, TipeTarif={tipeTarifId}.");
+
+        var itemNo = NextItemNo();
+        var variant = TarifVariantType.Create(
+            TarifPolicyId, itemNo, tarifId, kelasId, tipeTarifId, nilai, komponenLines);
+
+        var nextVariants = _variants.ToList();
+        nextVariants.Add(variant);
+        return CloneWithVariants(nextVariants);
+    }
+
+    public static TarifPolicyType CopyFrom(
+        TarifPolicyType source,
+        string newPolicyNo,
+        string newPolicyName,
+        string auditUserId)
+    {
+        Guard.Against.Null(source);
+        Guard.Against.NullOrWhiteSpace(newPolicyNo);
+        Guard.Against.NullOrWhiteSpace(newPolicyName);
+        Guard.Against.NullOrWhiteSpace(auditUserId);
+
+        var newPolicyId = NunaId.New(IdPrefix);
+        var clonedVariants = source._variants
+            .Select(v => TarifVariantType.Create(
+                newPolicyId,
+                v.ItemNo,
+                v.TarifId,
+                v.KelasId,
+                v.TipeTarifId,
+                v.Nilai,
+                v.ListKomponen))
+            .ToList();
+
+        return new TarifPolicyType(
+            newPolicyId,
+            newPolicyNo,
+            newPolicyName,
+            source.EffectiveDateInfo,
+            source.Description,
+            TarifPolicyStatus.Draft,
+            AuditTrailType.Create(auditUserId, DateTime.Now),
+            clonedVariants);
+    }
+
+    public TarifPolicyType MassAdjust(decimal percentFactor, string auditUserId)
+    {
+        EnsureEditable();
+        Guard.Against.NullOrWhiteSpace(auditUserId);
+
+        var adjusted = _variants.Select(v => v.WithMassAdjustedNilai(percentFactor)).ToList();
+        var audit = AuditTrail;
+        audit.Modif(auditUserId, DateTime.Now);
+        return new TarifPolicyType(
+            TarifPolicyId,
+            PolicyNo,
+            PolicyName,
+            EffectiveDateInfo,
+            Description,
+            PolicyStatus,
+            audit,
+            adjusted);
+    }
+
+    public TarifPolicyType MarkReviewed(string auditUserId)
+    {
+        Guard.Against.NullOrWhiteSpace(auditUserId);
+
+        if (PolicyStatus != TarifPolicyStatus.Draft)
+            throw new InvalidOperationException(
+                $"TarifPolicy {TarifPolicyId} harus Draft untuk ditandai Reviewed (status saat ini: {PolicyStatus}).");
+
+        var audit = AuditTrail;
+        audit.Modif(auditUserId, DateTime.Now);
+        return new TarifPolicyType(
+            TarifPolicyId,
+            PolicyNo,
+            PolicyName,
+            EffectiveDateInfo,
+            Description,
+            TarifPolicyStatus.Reviewed,
+            audit,
+            _variants);
+    }
+
+    public void ValidateForPublish()
+    {
+        if (PolicyStatus is not TarifPolicyStatus.Draft and not TarifPolicyStatus.Reviewed)
+            throw new InvalidOperationException(
+                $"TarifPolicy {TarifPolicyId} tidak dapat dipublish dari status {PolicyStatus}.");
+
+        if (_variants.Count == 0)
+            throw new InvalidOperationException(
+                $"TarifPolicy {TarifPolicyId} tidak memiliki variant; publish tidak diperbolehkan.");
+
+        foreach (var variant in _variants)
+            variant.EnsureValidForPublish();
+    }
+
+    public TarifPolicyType MarkPublished(string auditUserId)
+    {
+        ValidateForPublish();
+        Guard.Against.NullOrWhiteSpace(auditUserId);
+
+        var audit = AuditTrail;
+        audit.Modif(auditUserId, DateTime.Now);
+        return new TarifPolicyType(
+            TarifPolicyId,
+            PolicyNo,
+            PolicyName,
+            EffectiveDateInfo,
+            Description,
+            TarifPolicyStatus.Published,
+            audit,
+            _variants);
+    }
+
+    #endregion
+
+    #region HELPERS
+
+    private bool HasVariant(string tarifId, string kelasId, string tipeTarifId) =>
+        _variants.Any(v =>
+            v.TarifId == tarifId &&
+            v.KelasId == kelasId &&
+            v.TipeTarifId == tipeTarifId);
+
+    private int NextItemNo() =>
+        _variants.Count == 0 ? 1 : _variants.Max(v => v.ItemNo) + 1;
+
+    private TarifPolicyType CloneWithVariants(IReadOnlyList<TarifVariantType> variants) =>
+        new(
+            TarifPolicyId,
+            PolicyNo,
+            PolicyName,
+            EffectiveDateInfo,
+            Description,
+            PolicyStatus,
+            AuditTrail,
+            variants);
+
+    #endregion
 }
 
 public interface ITarifPolicyKey
