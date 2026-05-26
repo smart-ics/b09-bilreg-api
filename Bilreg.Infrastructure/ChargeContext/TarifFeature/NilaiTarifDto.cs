@@ -5,7 +5,8 @@ using Bilreg.Domain.ChargeContext.TarifFeature;
 namespace Bilreg.Infrastructure.ChargeContext.TarifFeature;
 
 public record NilaiTarifDto(string NilaiTarifId, string TarifId, string TipeTarifId, 
-    string KelasId, decimal Nilai, string TarifName, string TipeTarifName, string KelasName)
+    string KelasId, decimal Nilai, string TarifName, string TipeTarifName, string KelasName,
+    string SourcePolicyId)
 {
     public static NilaiTarifDto FromModel(NilaiTarifType model)
     {
@@ -17,7 +18,8 @@ public record NilaiTarifDto(string NilaiTarifId, string TarifId, string TipeTari
             model.Nilai, 
             model.TarifName, 
             model.TipeTarif.TipeTarifName, 
-            model.Kelas.KelasName);
+            model.Kelas.KelasName,
+            "");
         return result;
     }
 

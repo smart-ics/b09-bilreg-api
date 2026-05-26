@@ -29,7 +29,7 @@ flowchart TD
 
     subgraph future [Planned]
         D[Create TarifPolicy draft]
-        D --> E[Edit versions / mass adjust]
+        D --> E[Edit variants / mass adjust]
         E --> R[Review checklist]
         R --> P[Manual publish]
         P --> V
@@ -45,6 +45,17 @@ flowchart TD
 - After RS updates tariff in legacy transactional tables.
 - Before go-live of new tariff set in Bilreg environment.
 - During migration windows (coordinate with billing ops).
+
+### Pre-deploy migration (existing environments)
+
+Run once per environment **before** relying on unique variant constraint (greenfield: use `BILRG_NilaiTarif.sql`).
+
+| Order | Script | Purpose |
+| ----- | ------ | ------- |
+| 1 | `Bilreg.SqlDb/.../BILRG_NilaiTarif_Phase0_DuplicateReport.sql` | Audit duplicates — archive output |
+| 2 | `Bilreg.SqlDb/.../BILRG_NilaiTarif_Phase0_DuplicateCleanup.sql` | Keep `MAX(NilaiTarifId)` per `(TarifId, TipeTarifId, KelasId)` |
+| 3 | `Bilreg.SqlDb/.../BILRG_NilaiTarif_Phase0_SourcePolicyId_Alter.sql` | Add `SourcePolicyId` column (empty for import) |
+| 4 | `Bilreg.SqlDb/.../BILRG_NilaiTarif_Phase0_UX_Variant_Index.sql` | Unique index on variant key |
 
 ### Procedure
 
@@ -66,7 +77,7 @@ POST /api/NilaiTarif/import
 | Property | Detail |
 | -------- | ------ |
 | Scope | **Full** replace of both BILRG tables |
-| Transaction | **No** explicit DB transaction in code — failure may leave empty or partial data |
+| Transaction | **LIVE** — `TransactionScope` via `TransHelper`; failure rolls back (handler logs + rethrows) |
 | IDs | New `NilaiTarifId` (ULID) generated per variant row |
 | Header nilai | Sum of komponen lines from legacy |
 
@@ -102,7 +113,7 @@ POST /api/NilaiTarif/import
 
 1. Create draft `TarifPolicy` with SK reference and informational effective date.
 2. Optional: **copy** previous policy as template (new independent draft).
-3. Run mass % or komponen-scoped adjustment on **draft versions only**.
+3. Run mass % or komponen-scoped adjustment on **draft variants only**.
 4. Incremental manual edits over days if needed.
 5. Complete review checklist (below).
 6. **Manual publish** — do not rely on effective date alone.
@@ -111,7 +122,7 @@ POST /api/NilaiTarif/import
 ### Ad-hoc single-tariff change
 
 1. Small operational policy (may precede signed SK).
-2. Edit one or few `TarifVersion` lines.
+2. Edit one or few `TarifVariant` lines.
 3. Publish with audit note explaining urgency.
 4. Verify affected variant only.
 
@@ -205,9 +216,9 @@ Always preview draft totals before publish. Copy-policy is **template only** —
 | Scenario | Recommended action |
 | -------- | ------------------ |
 | Bad import | Restore BILRG tables from backup; or fix legacy and re-import |
-| Wrong published policy *(future)* | New corrective policy + publish; **do not** mutate old `TarifVersion` |
+| Wrong published policy *(future)* | New corrective policy + publish; **do not** mutate old `TarifVariant` |
 | Wrong billing already posted | Billing correction process — **outside** Tarif |
-| Need historical nilai at date | Today: legacy `ta_trs_tarif*`; future: `TarifVersion` archive |
+| Need historical nilai at date | Today: legacy `ta_trs_tarif*`; future: `TarifVariant` archive |
 
 ---
 

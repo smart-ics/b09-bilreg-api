@@ -21,6 +21,13 @@ public class KomponenRepo : IKomponenRepo
             .Match(
                 onSome: _ => _komponenDal.Update(KomponenDto.FromModel(model)),
                 onNone: () => _komponenDal.Insert(KomponenDto.FromModel(model)));
+
+        _komponenSatTugasDal.Delete(model);
+        var listSatTugas = model.ListSatTugas
+            .Select(x => KomponenSatTugasDto.FromModel(model.KomponenId, x))
+            .ToList();
+        if (listSatTugas.Count > 0)
+            _komponenSatTugasDal.Insert(listSatTugas);
     }
 
     public MayBe<KomponenType> LoadEntity(IKomponenKey key)
@@ -38,6 +45,7 @@ public class KomponenRepo : IKomponenRepo
 
     public void DeleteEntity(IKomponenKey key)
     {
+        _komponenSatTugasDal.Delete(key);
         _komponenDal.Delete(key);
     }
 

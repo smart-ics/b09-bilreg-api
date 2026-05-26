@@ -29,7 +29,7 @@ Bilreg.Api (NilaiTarifController, TarifController)
 flowchart TB
     subgraph planned_hist [Planned historical source]
         TP[TarifPolicy]
-        TV[TarifVersion]
+        TV[TarifVariant]
     end
 
     subgraph impl_proj [Implemented operational projection]
@@ -52,7 +52,7 @@ flowchart TB
     TDK --> PAY
 ```
 
-Historical pricing must **not** be resolved by scanning projection alone once `TarifVersion` exists. Until then, legacy `ta_trs_tarif*` + import is the de-facto upstream.
+Historical pricing must **not** be resolved by scanning projection alone once `TarifVariant` exists. Until then, legacy `ta_trs_tarif*` + import is the de-facto upstream.
 
 ---
 
@@ -74,7 +74,9 @@ Historical pricing must **not** be resolved by scanning projection alone once `T
 2. **Clear** both `BILRG_*` tables.
 3. Bulk insert header (ULID `NilaiTarifId`) and komponen lines; header `Nilai` = **sum** of line values per (tarif, kelas, tipe).
 
-**Not implemented:** continuous sync from legacy; date-based auto-cutover; transactional wrapper around clear+insert (risk: partial state on failure).
+**Not implemented:** continuous sync from legacy; date-based auto-cutover.
+
+**LIVE (Phase 0):** `TrfImportNilaiTarifHandler` wraps `NilaiTarifRepo.Import()` write phase in `TransHelper.NewScope()` — failed import rolls back `BILRG_*` changes. `Import()` clears komponen before header, then bulk inserts.
 
 ### Projection read path (implemented)
 
@@ -85,7 +87,7 @@ Historical pricing must **not** be resolved by scanning projection alone once `T
 ### Migration direction (planned)
 
 1. Keep `BILRG_*` as operational projection store.
-2. Add `TarifPolicy` / `TarifVersion` / publish log tables.
+2. Add `TarifPolicy` / `TarifVariant` / publish log tables.
 3. Implement publish service → deterministic variant upsert/replace on `BILRG_*`.
 4. Reduce reliance on destructive full import; legacy import remains fallback during transition.
 5. Preserve `TarifType`, `NilaiTarifType`, `KomponenType` and consumer contracts.
@@ -138,7 +140,7 @@ sequenceDiagram
 
 | Mechanism | Status | Characteristics |
 | --------- | ------ | ----------------- |
-| Full import | **Implemented** | Destructive global replace; idempotent only if import succeeds end-to-end |
+| Full import | **LIVE** | Destructive global replace inside `TransactionScope`; rolls back on failure |
 | Per-variant save | **Partial** | Repo `SaveChanges` + child replace; unused |
 | Policy publish | **Planned** | Transactional batch; variant-level upsert; audit log |
 
@@ -156,7 +158,7 @@ sequenceDiagram
 | Operation | Boundary |
 | --------- | -------- |
 | Tindakan + billing create | `TransHelper.NewScope()` in `TdkCreateTindakanCmd` / save |
-| NilaiTarif import | **No** explicit scope today — two-table clear + BCP |
+| NilaiTarif import | **LIVE** — `TransHelper.NewScope()` in `TrfImportNilaiTarifHandler`; komponen cleared before header |
 | Tarif publish (planned) | Should be single transactional unit for log + projection |
 
 Tarif subsystem **ends** at: published projection row + komponen metadata available to loaders. It does **not** open billing or payment transactions.
@@ -165,7 +167,7 @@ Tarif subsystem **ends** at: published projection row + komponen metadata availa
 
 ## Effective date (design decision)
 
-- Stored on policy/version as **information** for RS reporting and SK reference.
+- Stored on policy/variant as **information** for RS reporting and SK reference.
 - **No** scheduler auto-activating projection by date.
 - Operator **publish** selects moment of operational switch.
 
@@ -184,12 +186,12 @@ Legacy import filter uses fixed expiry `'3000-01-01'` on `ta_trs_tarif2` — not
 
 | Gap | Impact |
 | --- | ------ |
-| No unique index on `(TarifId, TipeTarifId, KelasId)` in `BILRG_NilaiTarif` | Duplicate variants possible |
-| `KomponenRepo.SaveChanges` does not persist SatTugas children | Master edit incomplete |
-| Import without transaction | Partial BILRG state on failure |
+| `KomponenRepo` master HTTP still mostly off | Admin via DB/legacy tools |
+| Import regenerates ULIDs each run | Tindakan ids from prior import orphaned in DB |
+| TarifPolicy / publish | Policy workflow **planned** only |
 | `KelasDal.Update` SQL mismatch | Ward master update defect (adjacent) |
 | Master HTTP controllers commented (`BillContext/TindakanSub/*`) | Admin via DB/legacy tools |
-| `TarifPolicy` / `TarifVersion` absent | Policy workflow documentation is **target** only |
+| `TarifPolicy` / `TarifVariant` absent | Policy workflow documentation is **target** only |
 
 ---
 

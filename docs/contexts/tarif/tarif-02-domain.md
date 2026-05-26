@@ -18,7 +18,7 @@
 | SatTugas | **External** (Admisi/PPA) | `SatTugasType` |
 | COA on komponen | **External** (Payment) | `CoaType` on `KomponenType` |
 | TarifPolicy | **Planned** | — |
-| TarifVersion | **Planned** | — |
+| TarifVariant | **Planned** | — |
 
 ---
 
@@ -63,7 +63,7 @@ classDiagram
         PublishStatus
     }
 
-    class TarifVersion {
+    class TarifVariant {
         Planned
         Tarif Kelas TipeTarif
         komponen breakdown
@@ -73,9 +73,9 @@ classDiagram
     NilaiTarifType "1" --> "*" NilaiTarifKomponenType
     NilaiTarifKomponenType --> KomponenType
 
-    TarifPolicy "1" --> "*" TarifVersion : planned only
-    TarifVersion --> TarifType
-    TarifVersion --> KomponenType
+    TarifPolicy "1" --> "*" TarifVariant : planned only
+    TarifVariant --> TarifType
+    TarifVariant --> KomponenType
 ```
 
 ---
@@ -88,7 +88,7 @@ classDiagram
 | **NilaiTarifType** | One operational variant: header `Nilai` + child komponen lines | Billing lines, policy audit |
 | **KomponenType** | Distribution definition: COA pair, group, SatTugas eligibility set | Tarif header nilai |
 | **TarifPolicy** *(planned)* | Policy metadata, draft/publish lifecycle, mass-edit scope | Live projection rows |
-| **TarifVersion** *(planned)* | Immutable published pricing rows under a policy | Runtime lookup table |
+| **TarifVariant** *(planned)* | One `(Tarif, Kelas, TipeTarif)` combination + komponen lines under a policy; immutable after publish | Live `NilaiTarif` projection rows |
 
 **Lookup masters** (`TipeTarifType`, `GroupKomponenType`, …): owned as Charge/Tarif reference data; not full aggregates in tactical sense.
 
@@ -124,14 +124,15 @@ At least one komponen line per `NilaiTarif` is a **business** requirement; domai
 
 ### TarifPolicy — business change container *(planned)*
 
-- May hold **1** or **hundreds** of tariff versions.
+- May hold **1** or **hundreds** of tariff variants.
 - Represents SK, operational adjustment, or draft revision.
 - **Independent** policies — no revision chain.
 - **Copy previous policy** → new draft only; **no** inheritance.
 
-### TarifVersion — historical pricing *(planned)*
+### TarifVariant — pricing variant under policy *(planned)*
 
-- Records value + komponen breakdown for a variant under a policy.
+- One operational combination: **`Tarif` + `Kelas` + `TipeTarif`** with header nilai and **`TarifVariantKomponen`** lines.
+- Records value + komponen breakdown for that combination under a policy (historical snapshot after publish).
 - Immutable after publish.
 - Publish refreshes matching **`NilaiTarifType`** projection row(s).
 
@@ -195,10 +196,10 @@ stateDiagram-v2
 
 | Stage | Implemented | Planned |
 | ----- | ----------- | ------- |
-| Authoring | Legacy tables + external RS tools | `TarifPolicy` draft + `TarifVersion` edit |
+| Authoring | Legacy tables + external RS tools | `TarifPolicy` draft + `TarifVariant` edit |
 | Activation | `POST /api/NilaiTarif/import` (full replace) | Manual `publish` |
 | Operational read | `INilaiTarifRepo` → `BILRG_*` | Same projection store |
-| Historical read | Legacy `ta_trs_tarif*` only | `TarifVersion` store |
+| Historical read | Legacy `ta_trs_tarif*` only | `TarifVariant` store |
 
 ---
 
@@ -234,8 +235,8 @@ Publish (**planned**): explicit operator action; writes audit log; refreshes `Ni
 
 | Helper | Behavior |
 | ------ | -------- |
-| Copy policy | New `TarifPolicy` + cloned versions; **independent** draft |
-| Mass % adjust | Recalculate draft versions only |
+| Copy policy | New `TarifPolicy` + cloned variants; **independent** draft |
+| Mass % adjust | Recalculate draft variants only |
 | Component-only adjust | Scope by komponen group/type |
 
 Helpers do **not** create policy inheritance or automatic lineage.
@@ -261,5 +262,7 @@ Helpers do **not** create policy inheritance or automatic lineage.
 | `TarifType` | **What** service is being priced (catalog) |
 | `NilaiTarifType` | **What** it costs **now** operationally (projection) |
 | `TarifPolicy` | **Why/how** a batch of changes is grouped (planned) |
-| `TarifVersion` | **What** was decided historically under that policy (planned) |
+| `TarifVariant` | **Which** `(Tarif, Kelas, TipeTarif)` combination and nilai were decided under that policy (planned) |
+| `TarifVariantKomponen` | Komponen breakdown on a policy variant (planned) |
+| `PublishLog` | **When** a policy was activated to projection (planned) |
 | `KomponenType` | **How** amount splits for accounting and jasa |

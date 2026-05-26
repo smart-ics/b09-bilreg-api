@@ -112,10 +112,10 @@ POST /api/tarif-policy/{policyId}/copy
 
 Creates **new independent** policy; no lineage link.
 
-### Add version line
+### Add variant line
 
 ```http
-POST /api/tarif-policy/{policyId}/tarif-version
+POST /api/tarif-policy/{policyId}/tarif-variant
 ```
 
 ```json
@@ -218,7 +218,7 @@ sequenceDiagram
 
     Note over Client,BILRG: Proposed — not live
     Client->>Policy: POST draft
-    Client->>Policy: POST tarif-version / mass-adjustment
+    Client->>Policy: POST tarif-variant / mass-adjustment
     Client->>Publish: POST publish
     Publish->>BILRG: refresh variants
 ```

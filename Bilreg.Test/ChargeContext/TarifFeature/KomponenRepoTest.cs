@@ -1,4 +1,6 @@
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
+using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using Bilreg.Infrastructure.ChargeContext.TarifFeature;
 using FluentAssertions;
 using Moq;
@@ -106,6 +108,7 @@ public class KomponenRepoTests
         _repository.DeleteEntity(key);
 
         // Assert
+        _komponenSatTugasDalMock.Verify(x => x.Delete(key), Times.Once);
         _komponenDalMock.Verify(x => x.Delete(key), Times.Once);
     }
 
@@ -165,6 +168,59 @@ public class KomponenRepoTests
 
         // Assert
         _komponenSatTugasDalMock.Verify(x => x.ListData(key), Times.Once);
+    }
+
+    [Fact]
+    public void UT9_GivenModelWithSatTugas_WhenSaveChanges_ThenDeleteAndInsertSatTugas()
+    {
+        // Arrange
+        var satTugas = new SatTugasType("ST1", "Sat Tugas 1", new ProfesiType("P1", "Profesi 1"));
+        var model = new KomponenType(
+            "KOMP01", "Komponen 1",
+            GroupKomponenType.Default, CoaType.Default, CoaType.Default,
+            [satTugas]);
+        _komponenDalMock
+            .Setup(x => x.GetData(It.IsAny<IKomponenKey>()))
+            .Returns((KomponenDto)null!);
+
+        // Act
+        _repository.SaveChanges(model);
+
+        // Assert
+        _komponenSatTugasDalMock.Verify(x => x.Delete(It.Is<IKomponenKey>(k => k.KomponenId == "KOMP01")), Times.Once);
+        _komponenSatTugasDalMock.Verify(
+            x => x.Insert(It.Is<IEnumerable<KomponenSatTugasDto>>(list =>
+                list.Count() == 1 &&
+                list.First().fs_kd_detil_tarif == "KOMP01" &&
+                list.First().fs_kd_sat_tugas == "ST1")),
+            Times.Once);
+        _komponenDalMock.Verify(x => x.Insert(It.IsAny<KomponenDto>()), Times.Once);
+    }
+
+    [Fact]
+    public void UT10_GivenExistingEntityWithSatTugas_WhenSaveChanges_ThenDeleteAndInsertSatTugas()
+    {
+        // Arrange
+        var satTugas = new SatTugasType("ST2", "Sat Tugas 2", new ProfesiType("P2", "Profesi 2"));
+        var model = new KomponenType(
+            "KOMP02", "Komponen 2",
+            GroupKomponenType.Default, CoaType.Default, CoaType.Default,
+            [satTugas]);
+        _komponenDalMock
+            .Setup(x => x.GetData(It.IsAny<IKomponenKey>()))
+            .Returns(CreateTestDto());
+
+        // Act
+        _repository.SaveChanges(model);
+
+        // Assert
+        _komponenSatTugasDalMock.Verify(x => x.Delete(It.Is<IKomponenKey>(k => k.KomponenId == "KOMP02")), Times.Once);
+        _komponenSatTugasDalMock.Verify(
+            x => x.Insert(It.Is<IEnumerable<KomponenSatTugasDto>>(list =>
+                list.Count() == 1 &&
+                list.First().fs_kd_sat_tugas == "ST2")),
+            Times.Once);
+        _komponenDalMock.Verify(x => x.Update(It.IsAny<KomponenDto>()), Times.Once);
     }
 
     private static KomponenType CreateTestModel()

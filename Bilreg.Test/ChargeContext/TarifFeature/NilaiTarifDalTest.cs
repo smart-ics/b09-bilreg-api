@@ -13,7 +13,7 @@ public class NilaiTarifDalTest
     private readonly NilaiTarifDal _sut = new(ConnStringHelper.GetTestEnv());
 
     private static NilaiTarifDto Faker()
-        => new NilaiTarifDto("A", "B", "C", "D", 100000, "E", "F", "G");
+        => new NilaiTarifDto("A", "B", "C", "D", 100000, "E", "F", "G", "");
 
     private static INilaiTarifKey FakerKey()
         => NilaiTarifType.Default with { NilaiTarifId = "A" };

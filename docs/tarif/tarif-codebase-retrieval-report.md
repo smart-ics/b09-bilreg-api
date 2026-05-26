@@ -6,7 +6,7 @@
 **Code focus:** `Bilreg.Domain/ChargeContext`, `Bilreg.Application/ChargeContext`, `Bilreg.Infrastructure/ChargeContext` (Tarif-related), plus cross-context types explicitly referenced by Tarif code.
 
 **In scope (domain types):** `TarifType`, `NilaiTarifType`, `KomponenType`, `GroupKomponenType`, `Kelas`, `TipeTarif`, `SatTugas`  
-**Explicitly out of scope (not in codebase):** `TarifPolicy`, `TarifVersion`, `BillingTransaction` (as a named subsystem)  
+**Explicitly out of scope (not in codebase):** `TarifPolicy`, `TarifVariant`, `BillingTransaction` (as a named subsystem)  
 **Boundary:** Billing workflow is not inferred; only **documented call-site dependencies** are listed.
 
 ---
@@ -203,7 +203,7 @@ Import filter (`NilaiTarifRepo.Import`): only rows where parent `ta_trs_tarif2.f
 
 - **Implemented:** legacy → import → BILRG projection
 - **Runtime truth for app code:** `BILRG_*` tables
-- **Not implemented:** continuous sync, versioning, or policy-driven effective dating
+- **Not implemented:** continuous sync, policy-variant history, or policy-driven effective dating
 
 ### 3.6 Komponen: accounting vs fee distribution
 
@@ -321,7 +321,7 @@ API (Controllers)
 
 ### 5.5 What is NOT present (confirmed)
 
-- No `TarifPolicy`, `TarifVersion`, or `BillingTransaction` types in `.cs` codebase (grep: zero matches)
+- No `TarifPolicy`, `TarifVariant`, or `BillingTransaction` types in `.cs` codebase (grep: zero matches)
 - No domain events for tarif changes
 - No EF Core entities for Tarif
 
@@ -383,7 +383,7 @@ Aligns with mixed ID/EN style described in `docs/NAMING.md` (operational Indones
 |----------------------------|------------|
 | Header nilai = sum(komponen nilai) | **Not enforced** |
 | Unique (TarifId, TipeTarifId, KelasId) | **Not enforced** in DB or domain |
-| TarifPolicy / effective date / version selection | **Missing** (out of scope; not in code) |
+| TarifPolicy / effective date / variant selection | **Missing** (out of scope; not in code) |
 | Komponen SatTugas persisted on save | **Incomplete** in `KomponenRepo.SaveChanges` |
 
 ---
@@ -406,7 +406,7 @@ Aligns with mixed ID/EN style described in `docs/NAMING.md` (operational Indones
 | Area | Intended model (scope list) | Codebase state |
 |------|----------------------------|----------------|
 | TarifPolicy | Not yet implemented | **Missing** — no types, tables, or handlers |
-| TarifVersion | Not yet implemented | **Missing** — effective dating only visible in legacy `ta_trs_tarif2.fd_tgl_expired` import filter |
+| TarifVariant | Not yet implemented | **Missing** — effective dating only visible in legacy `ta_trs_tarif2.fd_tgl_expired` import filter |
 | BillingTransaction | Agnostic boundary | **No Tarif coupling to a “BillingTransaction” aggregate**; `TrsBillingType` is separate Payment aggregate fed at call sites |
 | NilaiTarif CRUD API | — | **Partial** — import + read queries; `SaveChanges` unused |
 | Tarif master API | — | **Partial** — DAL/repo read; search endpoint commented; write controllers commented |
@@ -415,7 +415,7 @@ Aligns with mixed ID/EN style described in `docs/NAMING.md` (operational Indones
 | Kelas admin | — | **Ward context** (`KelasRepo`, `KelasDal`) |
 | Aggregate consistency NilaiTarif | — | **Partial** — repo replaces komponen children on save, but save path unused |
 | Single source of truth | — | **Hybrid** (legacy import → BILRG) |
-| Domain services | — | **Missing** for tarif selection/versioning |
+| Domain services | — | **Missing** for tarif selection/variant resolution |
 | Authorization per endpoint | — | **Not specified** on Tarif controllers |
 
 ### NilaiTarif behavior classification (for artifacts)
@@ -424,7 +424,7 @@ Aligns with mixed ID/EN style described in `docs/NAMING.md` (operational Indones
 |-------|-------------|
 | **Implemented** | BILRG tables, repo, import, composite/id load, search by layanan+tipe+kelas |
 | **Partially implemented** | SaveChanges, master CRUD APIs, SatTugas write on Komponen save |
-| **Missing** | TarifPolicy, TarifVersion, non-import nilai maintenance API |
+| **Missing** | TarifPolicy, TarifVariant, non-import nilai maintenance API |
 | **Inferred (do not document as built)** | Future billing workflow, policy resolution rules |
 
 ---
@@ -441,7 +441,7 @@ When producing `tarif-01-context.md` … `tarif-05-runbook.md` per feature-knowl
 
 4. **Komponen dual role** should be explicit in domain: COA fields (accounting) + SatTugas mapping (PPA/jasa eligibility), with billing consumption cited only as integration boundary in design (`TrsBillingType.CreateFromTindakan`).
 
-5. **Do not invent TarifPolicy/TarifVersion** in artifacts until implemented; mark as planned with zero code references.
+5. **Do not invent TarifPolicy/TarifVariant** in artifacts until implemented; mark as planned with zero code references.
 
 6. **API contract artifact** should list only the **3 live endpoints** plus `TarifController.GetNilai`; note commented legacy BillContext controllers as **deprecated path**.
 

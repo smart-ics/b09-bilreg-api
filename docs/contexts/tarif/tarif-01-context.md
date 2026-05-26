@@ -18,7 +18,7 @@
 | ------- | ------ |
 | `TarifType`, `NilaiTarifType`, `KomponenType`, masters (`TipeTarif`, `Kelas`, `SatTugas`, …) | **Implemented** |
 | Operational projection (`BILRG_NilaiTarif*`) | **Implemented** (via legacy import today) |
-| `TarifPolicy`, `TarifVersion`, manual publish orchestration | **Planned** |
+| `TarifPolicy`, `TarifVariant`, manual publish orchestration | **Planned** |
 
 Do not treat **Planned** concepts as already built when operating or integrating.
 
@@ -62,7 +62,9 @@ Legacy pain: weak audit trail, painful mass adjustment, duplicated updates, poli
 | **TipeTarif** | Variant dimension (e.g. umum vs jaminan channel) |
 | **Kelas** | Patient class variant (owned by Ward context) |
 | **TarifPolicy** | **Planned** — business container for a pricing change (SK, draft, mass edit) |
-| **TarifVersion** | **Planned** — historical pricing line inside a policy |
+| **TarifVariant** | **Planned** — one pricing variant under a policy: `(Tarif + Kelas + TipeTarif)` + komponen breakdown (historical snapshot after publish) |
+| **TarifVariantKomponen** | **Planned** — komponen line on a policy variant |
+| **PublishLog** | **Planned** — publish activation audit (who, when, which policy) |
 | **Publish** | **Planned** — explicit manual activation of policy → refresh `NilaiTarif` projection |
 
 ---
@@ -72,13 +74,17 @@ Legacy pain: weak audit trail, painful mass adjustment, duplicated updates, poli
 Four concepts stay **separate** (do not collapse):
 
 ```text
+TarifPolicy
+ └── TarifVariant
+      └── TarifVariantKomponen
+
 TarifType          → service tariff master (catalog)
-NilaiTarifType     → operational projection (fast lookup)
-TarifPolicy        → business change container (planned)
-TarifVersion       → historical pricing definition (planned)
+NilaiTarifType     → operational published projection (fast lookup)
+TarifPolicy        → pricing decision container / SK (planned)
+TarifVariant       → one variant combination under policy (planned)
 ```
 
-**Projection rule:** `NilaiTarif` is operational truth for **new** transactions; **not** historical source. History belongs to `TarifPolicy` + `TarifVersion` when implemented.
+**Projection rule:** `NilaiTarif` is operational truth for **new** transactions; **not** historical source. History belongs to `TarifPolicy` + `TarifVariant` when implemented.
 
 **Publish rule (target):** manual, explicit, auditable. Effective date is **informational only** — no auto-publish or auto-switch by date.
 
@@ -126,7 +132,7 @@ TarifVersion       → historical pricing definition (planned)
 
 **Today (implemented):** legacy `ta_trs_tarif*` → **import** → `BILRG_*` projection → consumers (Reg, Tindakan, Lab).
 
-**Target (planned):** policy draft → edit versions → review → **manual publish** → projection refresh → consumers.
+**Target (planned):** policy draft → edit variants → review → **manual publish** → projection refresh → consumers.
 
 ```mermaid
 flowchart TD
@@ -136,7 +142,7 @@ flowchart TD
     end
 
     subgraph target [Planned target]
-        A[Keuangan: TarifPolicy draft] --> B[Edit TarifVersion]
+        A[Keuangan: TarifPolicy draft] --> B[Edit TarifVariant]
         B --> C[Mass adjustment optional]
         C --> D[Review]
         D --> E[Manual publish]

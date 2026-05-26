@@ -63,6 +63,7 @@ public class NilaiTarifDal : INilaiTarifDal
         bcp.AddMap("TipeTarifId", "TipeTarifId");
         bcp.AddMap("KelasId", "KelasId");
         bcp.AddMap("Nilai", "Nilai");
+        bcp.AddMap("SourcePolicyId", "SourcePolicyId");
 
         var fetched = listModel.ToList();
         bcp.BatchSize = fetched.Count;
@@ -126,7 +127,8 @@ public class NilaiTarifDal : INilaiTarifDal
                aa.NilaiTarifId, aa.TarifId, aa.TipeTarifId, aa.KelasId, aa.Nilai,
                ISNULL(bb.fs_nm_tarif, '') AS TarifName,
                ISNULL(cc.fs_nm_tarif_tipe, '') AS TipeTarifName,
-               ISNULL(dd.fs_nm_kelas, '') AS KelasName
+               ISNULL(dd.fs_nm_kelas, '') AS KelasName,
+               ISNULL(aa.SourcePolicyId, '') AS SourcePolicyId
            FROM 
                BILRG_NilaiTarif aa
                LEFT JOIN ta_tarif bb ON aa.TarifId = bb.fs_kd_tarif
@@ -151,7 +153,8 @@ public class NilaiTarifDal : INilaiTarifDal
                 aa.NilaiTarifId, aa.TarifId, aa.TipeTarifId, aa.KelasId, aa.Nilai,
                 ISNULL(bb.fs_nm_tarif, '') AS TarifName,
                 ISNULL(cc.fs_nm_tarif_tipe, '') AS TipeTarifName,
-                ISNULL(dd.fs_nm_kelas, '') AS KelasName
+                ISNULL(dd.fs_nm_kelas, '') AS KelasName,
+                ISNULL(aa.SourcePolicyId, '') AS SourcePolicyId
             FROM 
                 BILRG_NilaiTarif aa
                 LEFT JOIN ta_tarif bb ON aa.TarifId = bb.fs_kd_tarif
@@ -175,7 +178,8 @@ public class NilaiTarifDal : INilaiTarifDal
                aa.NilaiTarifId, aa.TarifId, aa.TipeTarifId, aa.KelasId, aa.Nilai,
                ISNULL(bb.fs_nm_tarif, '') AS TarifName,
                ISNULL(cc.fs_nm_tarif_tipe, '') AS TipeTarifName,
-               ISNULL(dd.fs_nm_kelas, '') AS KelasName
+               ISNULL(dd.fs_nm_kelas, '') AS KelasName,
+               ISNULL(aa.SourcePolicyId, '') AS SourcePolicyId
            FROM 
                BILRG_NilaiTarif aa
                LEFT JOIN ta_tarif bb ON aa.TarifId = bb.fs_kd_tarif

@@ -62,7 +62,7 @@
 
 ### Tarif (`docs/contexts/tarif/`)
 
-Charge-context tariff master, operational projection (`NilaiTarif`), and komponen breakdown. Policy/version publish is **planned**; live ops today use legacy import → `BILRG_*`.
+Charge-context tariff master, operational projection (`NilaiTarif`), and komponen breakdown. Policy/variant publish is **planned**; live ops today use legacy import → `BILRG_*`.
 
 | Path | Purpose |
 |------|---------|
@@ -71,6 +71,8 @@ Charge-context tariff master, operational projection (`NilaiTarif`), and kompone
 | `docs/contexts/tarif/tarif-03-design.md` | Tarif — how (ChargeContext layering, import, migration) |
 | `docs/contexts/tarif/tarif-04-api-contract.md` | Tarif — integration (live vs proposed HTTP) |
 | `docs/contexts/tarif/tarif-05-runbook.md` | Tarif — operation (import, validation, recovery) |
+| `docs/contexts/tarif/TARIF_IMPLEMENTATION_PLAN.md` | Tarif — phased implementation plan (policy, publish, migration) |
+| `docs/contexts/tarif/TARIF_PHASE0_REPORT.md` | Phase 0 hardening — what shipped, migration order, rollback |
 | `docs/tarif/tarif-codebase-retrieval-report.md` | Codebase evidence / gap analysis (retrieval, not stewardship artifact) |
 
 ---
