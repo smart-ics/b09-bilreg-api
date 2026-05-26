@@ -7,7 +7,7 @@
 ## Prompt recipe (ordered)
 
 1. [`docs/INSTRUCTION.md`](INSTRUCTION.md) — global engineering stance
-2. **Bounded context** — [`docs/contexts/{context}/`](contexts/) (see table below). IGD UI/integration: also [`docs/contexts/igd/igd-04-api-contract.md`](contexts/igd/igd-04-api-contract.md); ops/DBA: [`docs/contexts/igd/igd-05-runbook.md`](contexts/igd/igd-05-runbook.md). Tarif: [`docs/contexts/tarif/tarif-01-context.md`](contexts/tarif/tarif-01-context.md) through `tarif-06-publish-engine.md`.
+2. **Bounded context** — [`docs/contexts/{context}/`](contexts/) (see table below). IGD UI/integration: also [`docs/contexts/igd/igd-04-api-contract.md`](contexts/igd/igd-04-api-contract.md); ops/DBA: [`docs/contexts/igd/igd-05-runbook.md`](contexts/igd/igd-05-runbook.md). Tarif: [`docs/contexts/tarif/tarif-01-context.md`](contexts/tarif/tarif-01-context.md) through `tarif-07-admin-workflow.md`.
 3. **Global standards** (as needed):
    - [`docs/ENGINEERING.md`](ENGINEERING.md) — layers, repository, domain events philosophy
    - [`docs/DATABASE.md`](DATABASE.md) — SQL, tables, audit columns
@@ -62,7 +62,7 @@
 
 ### Tarif (`docs/contexts/tarif/`)
 
-Charge-context tariff master, operational projection (`NilaiTarif`), and komponen breakdown. **Phase 1–3 LIVE:** policy domain, persistence, publish orchestration (`TrfPublishTarifPolicyHandler`). **Phase 4:** policy HTTP. Live ops may use legacy import and/or policy publish → `BILRG_*`.
+Charge-context tariff master, operational projection (`NilaiTarif`), and komponen breakdown. **Phases 1–4 LIVE:** policy domain, persistence, publish engine, admin HTTP (`TarifPolicyController`). Live ops may use legacy import and/or policy publish → `BILRG_*`.
 
 | Path | Purpose |
 |------|---------|
@@ -72,6 +72,7 @@ Charge-context tariff master, operational projection (`NilaiTarif`), and kompone
 | `docs/contexts/tarif/tarif-04-api-contract.md` | Tarif — integration (live vs proposed HTTP) |
 | `docs/contexts/tarif/tarif-05-runbook.md` | Tarif — operation (import, validation, recovery) |
 | `docs/contexts/tarif/tarif-06-publish-engine.md` | Tarif — publish orchestration (Phase 3 LIVE) |
+| `docs/contexts/tarif/tarif-07-admin-workflow.md` | Tarif — policy admin HTTP workflow (Phase 4 LIVE) |
 | `docs/contexts/tarif/TARIF_IMPLEMENTATION_PLAN.md` | Tarif — phased implementation plan (policy, publish, migration) |
 | `docs/contexts/tarif/TARIF_PHASE0_REPORT.md` | Phase 0 hardening — what shipped, migration order, rollback |
 | `docs/contexts/tarif/TARIF_PHASE1_ALIGNMENT_REPORT.md` | Phase 1 retroactive alignment — domain vs persistence audit |

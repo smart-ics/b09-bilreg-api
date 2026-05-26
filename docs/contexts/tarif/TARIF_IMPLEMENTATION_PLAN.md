@@ -1,6 +1,6 @@
 # TARIF_IMPLEMENTATION_PLAN.md — Tarif Policy & Publish Rollout
 
-> **Status:** Phase ledger — Phases 0–3 **LIVE** in codebase; Phase 4+ **PLANNED**.  
+> **Status:** Phase ledger — Phases 0–4 **LIVE** in codebase; Phase 5+ **PLANNED**.  
 > **Canonical location:** `docs/contexts/tarif/TARIF_IMPLEMENTATION_PLAN.md`  
 > **Scope root:** `{Layer}/ChargeContext/TarifFeature/` (extend existing folders)  
 > **Evidence:** `docs/tarif/tarif-codebase-retrieval-report.md`
@@ -65,7 +65,7 @@ Legacy ta_trs_tarif2/3  →  POST /api/NilaiTarif/import  →  BILRG_NilaiTarif*
 | Master HTTP admin (`BillContext/TindakanSub/*`) | **PARTIAL** | Controllers commented; DAL/Repo exist |
 | `TarifPolicy`, `TarifVariant` domain + persistence | **LIVE** | Phase 1 domain (retroactive) + Phase 2 tables/repos |
 | Publish orchestration (`TrfPublishTarifPolicyHandler`) | **LIVE** | Phase 3 — see `tarif-06-publish-engine.md` |
-| Policy HTTP / workflow UI | **PLANNED** | Phase 4 |
+| Policy HTTP / admin workflow | **LIVE** | Phase 4 — `TarifPolicyController` |
 
 ### 1.2 Known LIVE risks (must address in rollout)
 
@@ -356,17 +356,17 @@ Prefer **explicit orchestration** over domain events (`ENGINEERING.md` §14).
 
 Align routes with `tarif-04-api-contract.md` **[Proposed]** section.
 
-| Phase | Deliverable | HTTP (PLANNED unless noted) |
-| ----- | ----------- | --------------------------- |
-| 4a | Policy CRUD draft | `POST /api/tarif-policy`, `GET`, `PATCH` draft metadata |
-| 4b | Variant lines | `POST .../tarif-variant`, `PUT`, `DELETE` (draft only) |
-| 4c | Copy + mass adjust | `POST .../copy`, `POST .../mass-adjustment` |
-| 4d | Review transition | `POST .../review` (optional approval gate) |
-| 4e | Publish | `POST .../publish` |
-| 4f | Publish history | `GET .../publish-log` |
+| Phase | Deliverable | HTTP |
+| ----- | ----------- | ---- |
+| 4a | Policy CRUD draft | `POST/GET/PUT /api/tarif-policy` **LIVE** |
+| 4b | Variant lines | `POST/PUT/DELETE .../variant` **LIVE** |
+| 4c | Copy + mass adjust | `POST .../copy`, `POST .../mass-adjustment` **LIVE** |
+| 4d | Review transition | `POST .../review` **LIVE** |
+| 4e | Publish | `POST .../publish` **LIVE** |
+| 4f | Publish history | `GET .../publish-log` **LIVE** |
 | — | **LIVE retained** | `POST /api/NilaiTarif/import`, `GET` nilai/search |
 
-**Authorization (PLANNED):** Keuangan = draft/edit; Supervisor = publish; DBA = import (`tarif-04-api-contract.md`).
+**Authorization (Phase 4):** JWT `[Authorize]` on policy routes; role gates **PLANNED** (`tarif-07-admin-workflow.md`).
 
 **Workflow UI:** queue of draft policies + contextual workspace per `WORKFLOW.md` — not CRUD forms.
 
@@ -553,16 +553,18 @@ Agentic slices — each slice = one PR, one vertical concern, tests where valuab
 
 **Gate:** `dotnet test --filter FullyQualifiedName~TarifFeature`; publish updates `BILRG_*`; consumers unchanged.
 
-### Phase 4 — Admin API & workflow (PLANNED)
+### Phase 4 — Admin API & workflow (LIVE)
 
 | # | Slice | Outcome |
 | - | ----- | ------- |
-| 4.1 | Policy CRUD + variant lines | `tarif-04-api-contract` |
-| 4.2 | Copy + mass adjustment | Keuangan workflow |
-| 4.3 | Review + publish endpoints + auth | Supervisor gate |
-| 4.4 | Publish history query | Ops visibility |
+| 4.1 | Policy CRUD + variant lines | `TarifPolicyController` + MediatR handlers |
+| 4.2 | Copy + mass adjustment | `TrfCopyTarifPolicyCmd`, `TrfMassAdjustTarifPolicyCmd` |
+| 4.3 | Review + publish + publish-log | HTTP + existing publish engine |
+| 4.4 | Auth | JWT `[Authorize]` only; role gates deferred |
 
-**Gate:** UAT checklist from runbook.
+**Artifact:** [`tarif-07-admin-workflow.md`](tarif-07-admin-workflow.md)
+
+**Gate:** `dotnet test --filter FullyQualifiedName~TarifFeature`; UAT checklist in runbook.
 
 ### Phase 5 — Migration & decommission (PLANNED)
 
@@ -613,7 +615,7 @@ Phase 0 ──► Phase 2 ──► Phase 1 (retroactive domain) ──► Phase
 When executing a slice:
 
 1. Read **Primary references** table for slice.
-2. Respect **LIVE vs PLANNED** — policy domain + persistence are **LIVE**; publish handler/API are **PLANNED**.
+2. Respect **LIVE vs PLANNED** — Phases 0–4 are **LIVE**; Phase 5 migration/decommission is **PLANNED**.
 3. Do not modify `TrsBilling`, tindakan snapshot logic, or consumer handler signatures without explicit slice.
 4. Follow `feature-*-generation.md` skills for code shape.
 5. One aggregate per PR where possible; publish engine after persistence.

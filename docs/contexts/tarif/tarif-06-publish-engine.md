@@ -2,7 +2,7 @@
 
 **Bounded context:** `ChargeContext` / Tarif  
 **Artifact role:** HOW — manual publish orchestration (application layer)  
-**Status:** **LIVE** (explicit handler; HTTP in Phase 4)
+**Status:** **LIVE** (handler + HTTP `POST /api/tarif-policy/{id}/publish`)
 
 **Code:**
 
@@ -24,7 +24,7 @@ Enable **manual** activation of a `TarifPolicy` draft (or deterministic **re-pub
 3. Persisting **`PublishedNilaiTarifId`** on policy variant lines.
 4. Transitioning policy status to **`Published`** on first publish.
 
-**Out of scope:** scheduler, effective-date auto activation, billing recalculation, HTTP API (Phase 4).
+**Out of scope:** scheduler, effective-date auto activation, billing recalculation.
 
 ---
 
@@ -93,17 +93,19 @@ Handler uses standard exceptions (aligned with other ChargeContext use-cases):
 | Komponen invariant | `ArgumentException` (domain) |
 | Transaction failure | `InvalidOperationException` wrapper with rollback message |
 
-Structured HTTP error codes are **Phase 4** (API layer).
+Structured HTTP error codes remain **future** hardening (`ErrorHandlerMiddleware` maps exceptions today).
 
 ---
 
-## MediatR usage (no HTTP yet)
+## HTTP trigger (LIVE)
 
 ```http
-POST /api/tarif-policy/{policyId}/publish   # Phase 4 — not implemented
+POST /api/tarif-policy/{policyId}/publish
 ```
 
-Today invoke via MediatR:
+Body: `{ "publishedBy": "...", "note": "..." }` — see [`tarif-04-api-contract.md`](tarif-04-api-contract.md).
+
+MediatR (same handler):
 
 ```csharp
 await mediator.Send(new TrfPublishTarifPolicyCmd(policyId, publishedBy, note));
@@ -129,7 +131,8 @@ Key suites: `TrfPublishTarifPolicyHandlerTest`, `NilaiTarifProjectionWriterTest`
 
 - [`tarif-02-domain.md`](tarif-02-domain.md) — aggregates, publish semantics
 - [`tarif-03-design.md`](tarif-03-design.md) — persistence layout
-- [`tarif-04-api-contract.md`](tarif-04-api-contract.md) — proposed HTTP + error shapes
+- [`tarif-04-api-contract.md`](tarif-04-api-contract.md) — HTTP contract
+- [`tarif-07-admin-workflow.md`](tarif-07-admin-workflow.md) — operational workspace flow
 - [`tarif-05-runbook.md`](tarif-05-runbook.md) — ops: import vs publish
 - [`TARIF_IMPLEMENTATION_PLAN.md`](TARIF_IMPLEMENTATION_PLAN.md) — phase ledger
 - [`TARIF_PHASE3_REFACTOR_REPORT.md`](TARIF_PHASE3_REFACTOR_REPORT.md) — pragmatic simplification notes

@@ -1,7 +1,7 @@
 # Tarif Subsystem — API Contract
 
 **Artifact role:** INTEGRATION — HTTP surface for clients  
-**Base:** JWT authentication enabled globally (`Program.cs`); Tarif controllers inherit default auth — **no** feature-specific policies on controllers today.
+**Base:** JWT authentication enabled (`Program.cs`). `TarifPolicyController` requires `[Authorize]` (authenticated JWT). Role-based Keuangan/Supervisor gates are **deferred** — see [`tarif-07-admin-workflow.md`](tarif-07-admin-workflow.md).
 
 ---
 
@@ -85,9 +85,26 @@ These flows call `INilaiTarifRepo` internally — document for integrators debug
 
 ---
 
-## [Proposed] TarifPolicy / publish API
+## [Live] TarifPolicy admin API
 
-> **Future implementation** — routes and payloads below are design targets only.
+**Controller:** `Bilreg.Api/Controllers/ChargeContext/TarifPolicyController`  
+**Route prefix:** `/api/tarif-policy`  
+**Auth:** JWT required on all routes (`[Authorize]`).
+
+| Method | Route | Handler | Notes |
+| ------ | ----- | ------- | ----- |
+| POST | `/` | `TrfCreateTarifPolicyCmd` | Creates `Draft` policy |
+| GET | `/{id}` | `TrfGetTarifPolicyQry` | Detail + variants + komponen |
+| GET | `/` | `TrfListTarifPolicyQry` | Query: `policyStatus`, `keyword` |
+| PUT | `/{id}` | `TrfUpdateTarifPolicyCmd` | Metadata only; `Draft`/`Reviewed` |
+| POST | `/{id}/variant` | `TrfAddTarifPolicyVariantCmd` | Body includes `userId` |
+| PUT | `/{id}/variant/{itemNo}` | `TrfUpdateTarifPolicyVariantCmd` | |
+| DELETE | `/{id}/variant/{itemNo}` | `TrfRemoveTarifPolicyVariantCmd` | |
+| POST | `/{id}/copy` | `TrfCopyTarifPolicyCmd` | Independent draft; body: `newPolicyNo`, `newPolicyName`, `userId` |
+| POST | `/{id}/mass-adjustment` | `TrfMassAdjustTarifPolicyCmd` | `scope=ALL`, `adjustmentType=PERCENTAGE` |
+| POST | `/{id}/review` | `TrfReviewTarifPolicyCmd` | `Draft` → `Reviewed` |
+| POST | `/{id}/publish` | `TrfPublishTarifPolicyCmd` | Body: `publishedBy`, optional `note` |
+| GET | `/{id}/publish-log` | `TrfListTarifPolicyPublishLogQry` | Append-only audit |
 
 ### Create policy draft
 
@@ -99,23 +116,16 @@ POST /api/tarif-policy
 {
   "policyNo": "SK-007",
   "policyName": "Penyesuaian Tarif 2026",
-  "effectiveDateInfo": "2026-06-01",
-  "description": "Kenaikan tarif laboratorium"
+  "effectiveDateInfo": "2026-06-01T00:00:00",
+  "description": "Kenaikan tarif laboratorium",
+  "userId": "USR001"
 }
 ```
-
-### Copy policy (operational helper)
-
-```http
-POST /api/tarif-policy/{policyId}/copy
-```
-
-Creates **new independent** policy; no lineage link.
 
 ### Add variant line
 
 ```http
-POST /api/tarif-policy/{policyId}/tarif-variant
+POST /api/tarif-policy/{policyId}/variant
 ```
 
 ```json
@@ -125,11 +135,12 @@ POST /api/tarif-policy/{policyId}/tarif-variant
   "tipeTarifId": "UMUM",
   "komponen": [
     { "komponenId": "JASA", "nilai": 50000 }
-  ]
+  ],
+  "userId": "USR001"
 }
 ```
 
-### Mass adjustment (draft only)
+### Mass adjustment (draft/reviewed only)
 
 ```http
 POST /api/tarif-policy/{policyId}/mass-adjustment
@@ -139,7 +150,8 @@ POST /api/tarif-policy/{policyId}/mass-adjustment
 {
   "scope": "ALL",
   "adjustmentType": "PERCENTAGE",
-  "value": 10
+  "value": 10,
+  "userId": "USR001"
 }
 ```
 
@@ -149,11 +161,20 @@ POST /api/tarif-policy/{policyId}/mass-adjustment
 POST /api/tarif-policy/{policyId}/publish
 ```
 
+```json
+{
+  "publishedBy": "USR-SPV",
+  "note": "Aktivasi SK-007"
+}
+```
+
 | Item | Detail |
 | ---- | ------ |
-| Behavior | Validate draft → write publish log → refresh `BILRG_*` projection |
-| Handler (LIVE) | `TrfPublishTarifPolicyCmd` — MediatR only until controller ships |
+| Behavior | Validate → publish log → upsert `BILRG_*` → `Published` (first publish) |
+| Handler | `TrfPublishTarifPolicyHandler` |
 | Trigger | **Manual** only |
+
+Workflow detail: [`tarif-07-admin-workflow.md`](tarif-07-admin-workflow.md).
 
 ---
 
@@ -165,60 +186,60 @@ Under `Bilreg.Api/Controllers/BillContext/TindakanSub/` — e.g. `KomponenTarifC
 
 ## Validation matrix
 
-| Rule | [Live] enforcement | [Proposed] |
-| ---- | ------------------ | ---------- |
-| ≥ 1 komponen per policy variant | — | **LIVE** handler `EnsurePublishable` + domain |
-| Unique (tarif, kelas, tipe) in policy | DB unique on projection | **LIVE** handler duplicate check |
-| Σ komponen = header nilai | Import sums on build only | **LIVE** domain + handler |
-| COA on komponen | Master data assumption | Master API + publish check |
-| PPA vs SatTugas | `IsValidPpa` at tindakan create | Unchanged |
-| Policy overlap | N/A | Publish rejects |
+| Rule | [Live] enforcement |
+| ---- | ------------------ |
+| ≥ 1 komponen per policy variant | Domain + `EnsurePublishable` on publish |
+| Unique (tarif, kelas, tipe) in policy | `AddVariant` / `UpdateVariant` + publish duplicate check |
+| Σ komponen = header nilai | Domain `TarifVariantType` |
+| Edit after published | `EnsureEditable` on policy mutations |
+| COA on komponen | Master refs validated at publish |
+| PPA vs SatTugas | `IsValidPpa` at tindakan create (unchanged) |
 
 ---
 
-## Publish errors (handler LIVE; HTTP codes Phase 4)
+## Publish / policy errors (HTTP)
 
-`TrfPublishTarifPolicyHandler` throws standard exceptions:
+`ErrorHandlerMiddleware` maps exceptions to JSend JSON:
 
-| Case | Exception |
-| ---- | --------- |
-| Policy not found | `KeyNotFoundException` |
-| Invalid status / empty policy / duplicate variant / missing master | `InvalidOperationException` |
-| Komponen invariant | `ArgumentException` (domain) |
+| Case | Exception | HTTP |
+| ---- | --------- | ---- |
+| Policy / variant not found | `KeyNotFoundException` | 400 (`Data Not Found`) |
+| Invalid status / duplicate / business rule | `InvalidOperationException` | 400 |
+| Komponen invariant | `ArgumentException` | 400 |
 
-Phase 4 HTTP may map these to structured JSON codes. Import and other live Tarif routes unchanged.
-
----
-
-## Authorization (proposed)
-
-| Action | Suggested role |
-| ------ | -------------- |
-| View nilai / search | Operational user |
-| Import projection | Keuangan / DBA (restricted) |
-| Edit policy draft | Keuangan |
-| Publish | Supervisor / Direktur |
-| Mass adjustment | Keuangan |
+Structured error codes (`DUPLICATE_VARIANT`, etc.) remain **future** hardening.
 
 ---
 
-## Workflow sequence (target)
+## Authorization
+
+| Action | Phase 4 (LIVE) | Target (future) |
+| ------ | -------------- | --------------- |
+| TarifPolicy routes | Authenticated JWT | Keuangan = edit; Supervisor = publish |
+| Import projection | No controller auth | Keuangan / DBA |
+| View nilai / search | Existing routes | Operational user |
+
+---
+
+## Workflow sequence
 
 ```mermaid
 sequenceDiagram
     participant Client
     participant Policy as TarifPolicy API
-    participant Publish as Publish service
+    participant Publish as TrfPublishTarifPolicyHandler
     participant BILRG as BILRG projection
 
-    Note over Client,BILRG: Proposed — not live
     Client->>Policy: POST draft
-    Client->>Policy: POST tarif-variant / mass-adjustment
-    Client->>Publish: POST publish
-    Publish->>BILRG: refresh variants
+    Client->>Policy: POST variant / mass-adjustment
+    Client->>Policy: POST review
+    Client->>Policy: POST publish
+    Policy->>Publish: MediatR
+    Publish->>BILRG: upsert projection
+    Client->>Policy: GET publish-log
 ```
 
-**Live today:** `Client → POST /api/NilaiTarif/import → BILRG`.
+**Legacy path (unchanged):** `Client → POST /api/NilaiTarif/import → BILRG`.
 
 ---
 
@@ -228,3 +249,4 @@ sequenceDiagram
 | ---- | ---- |
 | `docs/contexts/tarif/tarif-03-design.md` | Import and persistence |
 | `docs/contexts/tarif/tarif-05-runbook.md` | Import procedure and checks |
+| `docs/contexts/tarif/tarif-07-admin-workflow.md` | Policy draft → publish operational flow |

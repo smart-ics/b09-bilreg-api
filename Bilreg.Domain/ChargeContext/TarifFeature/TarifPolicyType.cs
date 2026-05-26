@@ -229,9 +229,83 @@ public record TarifPolicyType : ITarifPolicyKey
             _variants);
     }
 
+    public TarifPolicyType UpdateMetadata(
+        string policyNo,
+        string policyName,
+        DateTime effectiveDateInfo,
+        string description,
+        string auditUserId)
+    {
+        EnsureEditable();
+        Guard.Against.NullOrWhiteSpace(policyNo);
+        Guard.Against.NullOrWhiteSpace(policyName);
+        Guard.Against.NullOrWhiteSpace(auditUserId);
+
+        var audit = AuditTrail;
+        audit.Modif(auditUserId, DateTime.Now);
+        return new TarifPolicyType(
+            TarifPolicyId,
+            policyNo,
+            policyName,
+            effectiveDateInfo,
+            description ?? "",
+            PolicyStatus,
+            audit,
+            _variants);
+    }
+
+    public TarifPolicyType UpdateVariant(
+        int itemNo,
+        string tarifId,
+        string kelasId,
+        string tipeTarifId,
+        IEnumerable<TarifVariantKomponenType> komponenLines)
+    {
+        EnsureEditable();
+        Guard.Against.NullOrWhiteSpace(tarifId);
+        Guard.Against.NullOrWhiteSpace(kelasId);
+        Guard.Against.NullOrWhiteSpace(tipeTarifId);
+
+        var existing = _variants.FirstOrDefault(v => v.ItemNo == itemNo)
+            ?? throw new KeyNotFoundException(
+                $"Variant ItemNo {itemNo} tidak ditemukan pada TarifPolicy {TarifPolicyId}.");
+
+        if (HasVariantExcept(itemNo, tarifId, kelasId, tipeTarifId))
+            throw new InvalidOperationException(
+                $"Variant duplikat untuk kombinasi Tarif={tarifId}, Kelas={kelasId}, TipeTarif={tipeTarifId}.");
+
+        var updated = TarifVariantType
+            .Create(TarifPolicyId, itemNo, tarifId, kelasId, tipeTarifId, existing.Nilai, komponenLines)
+            .SetKomponenLines(komponenLines);
+
+        var nextVariants = _variants
+            .Select(v => v.ItemNo == itemNo ? updated : v)
+            .ToList();
+        return CloneWithVariants(nextVariants);
+    }
+
+    public TarifPolicyType RemoveVariant(int itemNo)
+    {
+        EnsureEditable();
+
+        if (_variants.All(v => v.ItemNo != itemNo))
+            throw new KeyNotFoundException(
+                $"Variant ItemNo {itemNo} tidak ditemukan pada TarifPolicy {TarifPolicyId}.");
+
+        var nextVariants = _variants.Where(v => v.ItemNo != itemNo).ToList();
+        return CloneWithVariants(nextVariants);
+    }
+
     #endregion
 
     #region HELPERS
+
+    private bool HasVariantExcept(int itemNo, string tarifId, string kelasId, string tipeTarifId) =>
+        _variants.Any(v =>
+            v.ItemNo != itemNo &&
+            v.TarifId == tarifId &&
+            v.KelasId == kelasId &&
+            v.TipeTarifId == tipeTarifId);
 
     private bool HasVariant(string tarifId, string kelasId, string tipeTarifId) =>
         _variants.Any(v =>

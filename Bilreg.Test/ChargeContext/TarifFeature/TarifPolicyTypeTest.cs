@@ -201,4 +201,71 @@ public class TarifPolicyTypeTest
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*hanya dapat di-republish*");
     }
+
+    [Fact]
+    public void DT17_GivenReviewed_WhenUpdateMetadata_ThenMetadataUpdated()
+    {
+        var policy = CreateDraftWithOneVariant().MarkReviewed("supervisor");
+
+        var updated = policy.UpdateMetadata(
+            "SK-REV", "Revised Name", new DateTime(2026, 8, 1), "new desc", "user1");
+
+        updated.PolicyNo.Should().Be("SK-REV");
+        updated.PolicyName.Should().Be("Revised Name");
+        updated.PolicyStatus.Should().Be(TarifPolicyStatus.Reviewed);
+    }
+
+    [Fact]
+    public void DT18_GivenVariant_WhenUpdateVariant_ThenReplacesLines()
+    {
+        var policy = CreateDraftWithOneVariant();
+
+        var updated = policy.UpdateVariant(1, "T01", "K1", "01", [Line(1, 100m)]);
+
+        updated.Variants.Single().Nilai.Should().Be(100m);
+        updated.Variants.Single().ListKomponen.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void DT19_GivenDuplicateComposite_WhenUpdateVariant_ThenThrows()
+    {
+        var policy = CreateDraftWithOneVariant()
+            .AddVariant("T02", "K2", "02", 50m, [Line(1, 50m)]);
+
+        var act = () => policy.UpdateVariant(2, "T01", "K1", "01", [Line(1, 50m)]);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*duplikat*");
+    }
+
+    [Fact]
+    public void DT20_GivenVariant_WhenRemoveVariant_ThenEmpty()
+    {
+        var policy = CreateDraftWithOneVariant();
+
+        var updated = policy.RemoveVariant(1);
+
+        updated.Variants.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void DT21_GivenMissingItemNo_WhenRemoveVariant_ThenThrows()
+    {
+        var policy = CreateDraftWithOneVariant();
+
+        var act = () => policy.RemoveVariant(99);
+
+        act.Should().Throw<KeyNotFoundException>();
+    }
+
+    [Fact]
+    public void DT22_GivenPublished_WhenUpdateMetadata_ThenThrows()
+    {
+        var published = CreateDraftWithOneVariant().MarkPublished("pub");
+
+        var act = () => published.UpdateMetadata("X", "Y", DateTime.Now, "", "u");
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*tidak diperbolehkan*");
+    }
 }

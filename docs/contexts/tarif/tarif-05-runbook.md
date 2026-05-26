@@ -11,9 +11,9 @@
 | ---- | ---- | -------------- |
 | **Production today** | Day-to-day billing | Maintain legacy `ta_trs_tarif*` → **import** → verify `BILRG_*` |
 | **Policy publish** | Draft/reviewed policy in `BILRG_Tarif*` | MediatR `TrfPublishTarifPolicyCmd` → verify `BILRG_*` + publish log |
-| **HTTP publish** | Phase 4 | `POST /api/tarif-policy/{id}/publish` *(not wired yet)* |
+| **HTTP policy workspace** | Phase 4 LIVE | `TarifPolicyController` — draft → publish |
 
-This runbook covers import (HTTP) and publish (MediatR today).
+This runbook covers import (HTTP), policy admin (HTTP), and publish.
 
 ---
 
@@ -28,12 +28,13 @@ flowchart TD
         V --> U[Users: tindakan / reg / search APIs]
     end
 
-    subgraph policy [Policy publish LIVE]
-        D[Create TarifPolicy draft]
-        D --> E[Edit variants / mass adjust]
-        E --> R[Review checklist]
-        R --> P[TrfPublishTarifPolicyCmd]
-        P --> V
+    subgraph policy [Policy admin LIVE]
+        D[POST /api/tarif-policy]
+        D --> E[variant / mass-adjustment]
+        E --> R[POST review optional]
+        R --> P[POST publish]
+        P --> L[GET publish-log]
+        L --> V
     end
 ```
 
@@ -108,18 +109,28 @@ POST /api/NilaiTarif/import
 
 ---
 
-## Policy publish workflow (MediatR — LIVE)
+## Policy admin workflow (HTTP — LIVE)
 
-**Handler:** `TrfPublishTarifPolicyCmd` (`TrfPublishTarifPolicyHandler`). See [`tarif-06-publish-engine.md`](tarif-06-publish-engine.md).
+See [`tarif-07-admin-workflow.md`](tarif-07-admin-workflow.md) and [`tarif-04-api-contract.md`](tarif-04-api-contract.md).
 
 ### Procedure
 
 1. Ensure `BILRG_TarifPolicy*` tables deployed (Phase 2 SQL).
-2. Policy in `Draft` or `Reviewed` (first publish) or `Published` (re-publish refresh).
-3. Complete review checklist (below).
-4. Invoke MediatR: `TrfPublishTarifPolicyCmd(tarifPolicyId, publishedBy, note)`.
-5. On success: verify `BILRG_TarifPublishLog`, `PublishedNilaiTarifId` on variants, and `GET /api/Tarif/nilai/...` for sample composites.
-6. On failure: transaction rolled back — fix validation error and retry; no partial projection.
+2. `POST /api/tarif-policy` — create draft SK.
+3. `POST /api/tarif-policy/{id}/variant` — add/edit lines; optional `POST .../mass-adjustment`.
+4. Optional: `POST .../review` (`Draft` → `Reviewed`).
+5. Complete review checklist (below).
+6. `POST /api/tarif-policy/{id}/publish` with `publishedBy` and `note`.
+7. `GET /api/tarif-policy/{id}/publish-log` — confirm audit row.
+8. Spot-check `GET /api/Tarif/nilai/{tarifId}/{tipeTarifId}/{kelasId}` for sample composites.
+
+**MediatR fallback:** `TrfPublishTarifPolicyCmd` (same handler as HTTP publish).
+
+### Procedure (publish only)
+
+1. Policy in `Draft` or `Reviewed` (first publish) or `Published` (re-publish).
+2. Publish via HTTP or MediatR.
+3. On failure: transaction rolled back — fix validation error and retry; no partial projection.
 
 ### Ops mutex
 
@@ -135,13 +146,13 @@ Already `Published` policy may be re-published to refresh projection determinist
 2. Optional: **copy** previous policy as template (new independent draft).
 3. Run mass % adjustment on **draft variants only** (domain).
 4. Complete review checklist.
-5. **Manual publish** via MediatR — do not rely on effective date alone.
+5. **Manual publish** via HTTP — do not rely on effective date alone.
 6. Post-publish spot-check same as import validation.
 
 ### Ad-hoc single-tariff change
 
 1. Small operational policy (may precede signed SK).
-2. Edit one or few `TarifVariant` lines (draft save — future HTTP).
+2. Edit one or few variant lines via `POST`/`PUT .../variant`.
 3. Publish with audit `Note` explaining urgency.
 4. Verify affected variant only.
 
@@ -156,7 +167,7 @@ Already `Published` policy may be re-published to refresh projection determinist
 | Accounting | Every komponen has COA; breakdown sensible |
 | Jasa | SatTugas mapping for PPA-enabled komponen |
 | Layanan | Tarif visible in correct layanan search |
-| Audit | Operator, timestamp, policy/SK note recorded *(planned publish log)* |
+| Audit | `publishedBy`, `note`, `GET .../publish-log` |
 
 ---
 
@@ -172,15 +183,13 @@ Already `Published` policy may be re-published to refresh projection determinist
 
 ---
 
-## Mass adjustment *(planned)*
+## Mass adjustment (HTTP — LIVE)
 
-| Tool | Example use |
-| ---- | ----------- |
-| All tariffs +10% | Annual SK |
-| Komponen jasa +7% | Doctor fee component only |
-| Lab group only | Selective scope |
+`POST /api/tarif-policy/{id}/mass-adjustment` — `scope=ALL`, `adjustmentType=PERCENTAGE`, `value` = percent (e.g. `10` = +10%).
 
-Always preview draft totals before publish. Copy-policy is **template only** — confirm policy id after copy.
+Component-scoped or fixed-amount adjustment is **not** implemented — use variant edit or copy + adjust.
+
+Always preview draft totals before publish. Copy-policy is **template only** — confirm new policy id after `POST .../copy`.
 
 ---
 
@@ -258,8 +267,8 @@ Always preview draft totals before publish. Copy-policy is **template only** —
 | ---- | ----- |
 | Legacy tariff entry | RS keuangan / legacy admin |
 | BILRG import execution | Authorized operator / DBA |
-| Draft policy *(planned)* | Keuangan |
-| Publish approval *(planned)* | Supervisor / Direktur |
+| Draft policy HTTP | Keuangan (JWT today; role gate future) |
+| Publish | Supervisor / Direktur (role gate future) |
 | Billing discrepancy | Billing support (snapshot-based) |
 
 ---
@@ -276,7 +285,7 @@ No. Only **new** loads use refreshed projection.
 Discouraged. Use legacy source + import, or future publish. Direct SQL bypasses audit and may desync from legacy.
 
 **Where is TarifPolicy in the app?**  
-Not implemented — use legacy + import until publish feature ships.
+HTTP API at `/api/tarif-policy` — UI may be separate; see [`tarif-07-admin-workflow.md`](tarif-07-admin-workflow.md).
 
 ---
 
@@ -285,5 +294,6 @@ Not implemented — use legacy + import until publish feature ships.
 | Path | Role |
 | ---- | ---- |
 | `docs/contexts/tarif/tarif-04-api-contract.md` | Endpoint reference |
+| `docs/contexts/tarif/tarif-07-admin-workflow.md` | Draft → publish flow |
 | `docs/contexts/tarif/tarif-03-design.md` | Import technical detail |
 | `docs/tarif/tarif-codebase-retrieval-report.md` | Code/file index |
