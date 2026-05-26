@@ -18,7 +18,7 @@ public class NilaiTarifController : Controller
 
     [HttpPost]
     [Route("import")]
-    public async Task<IActionResult> CreateByKtp(TrfImportNilaiTarifCmd cmd)
+    public async Task<IActionResult> Import(TrfImportNilaiTarifCmd cmd)
     {
         await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));

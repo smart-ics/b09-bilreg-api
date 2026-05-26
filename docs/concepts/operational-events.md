@@ -8,7 +8,7 @@ The codebase uses **"event"** for several different concepts. Use this glossary 
 
 | | |
 |--|--|
-| **Documentation** | [`docs/contexts/igd/igd-domain.md`](../contexts/igd/igd-domain.md) §6.2 |
+| **Documentation** | [`docs/contexts/igd/igd-02-domain.md`](../contexts/igd/igd-02-domain.md) — DOMAIN EVENT |
 | **Code** | `Bilreg.Domain/IgdContext/IgdVisitFeature/IgdVisitEventType.cs` |
 | **Persistence** | `Bilreg.Infrastructure/IgdContext/IgdVisitFeature/IgdVisitEvent*` |
 | **SQL** | `Bilreg.SqlDb/IgdContext/IgdVisitFeature/BILRG_IgdVisitEvent.sql` |
@@ -60,7 +60,7 @@ When adding Admisi documentation, use `docs/contexts/admisi/` with a prefixed fi
 
 | You need… | Read / use |
 |-----------|------------|
-| IGD patient activity history | `igd-domain.md` + `IgdVisitEvent*` |
+| IGD patient activity history | `docs/contexts/igd/igd-02-domain.md` + `IgdVisitEvent*` |
 | Antrian / tracker history | `PasienTrackerEvent*` (+ future admisi doc) |
 | Who changed what for compliance | `audit-log.md` + `AuditLog.Create` |
 | Async integration between aggregates | Orchestration in use-cases, not a generic event framework |

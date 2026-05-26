@@ -42,6 +42,7 @@ public record NilaiTarifType : INilaiTarifKey, INilaiTarifCompositKey, INilaiTar
     public string KelasId => Kelas.KelasId;
     public TipeTarifReff TipeTarif { get; init; }
     public KelasReff Kelas { get; init; }
+    
     public decimal Nilai { get; init; }
     
     public IEnumerable<NilaiTarifKomponenType> ListKomponen => _listKomponen;

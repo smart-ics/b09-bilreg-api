@@ -1,3 +1,3 @@
 # Moved
 
-Canonical: [docs/contexts/igd/igd-domain.md](../../../docs/contexts/igd/igd-domain.md)
+Canonical: [`docs/contexts/igd/igd-02-domain.md`](../../../docs/contexts/igd/igd-02-domain.md)
