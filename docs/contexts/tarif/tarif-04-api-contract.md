@@ -152,6 +152,7 @@ POST /api/tarif-policy/{policyId}/publish
 | Item | Detail |
 | ---- | ------ |
 | Behavior | Validate draft → write publish log → refresh `BILRG_*` projection |
+| Handler (LIVE) | `TrfPublishTarifPolicyCmd` — MediatR only until controller ships |
 | Trigger | **Manual** only |
 
 ---
@@ -166,32 +167,26 @@ Under `Bilreg.Api/Controllers/BillContext/TindakanSub/` — e.g. `KomponenTarifC
 
 | Rule | [Live] enforcement | [Proposed] |
 | ---- | ------------------ | ---------- |
-| ≥ 1 komponen per nilai | Not enforced in domain | Publish validator |
-| Unique (tarif, kelas, tipe) | In-memory filter on composite load only | DB unique + publish check |
-| Σ komponen = header nilai | Import sums on build only | Publish validator |
+| ≥ 1 komponen per policy variant | — | **LIVE** handler `EnsurePublishable` + domain |
+| Unique (tarif, kelas, tipe) in policy | DB unique on projection | **LIVE** handler duplicate check |
+| Σ komponen = header nilai | Import sums on build only | **LIVE** domain + handler |
 | COA on komponen | Master data assumption | Master API + publish check |
 | PPA vs SatTugas | `IsValidPpa` at tindakan create | Unchanged |
 | Policy overlap | N/A | Publish rejects |
 
 ---
 
-## [Proposed] error shapes
+## Publish errors (handler LIVE; HTTP codes Phase 4)
 
-```json
-{
-  "code": "TARIF_OVERLAP",
-  "message": "Tarif effective date overlap detected"
-}
-```
+`TrfPublishTarifPolicyHandler` throws standard exceptions:
 
-```json
-{
-  "code": "DUPLICATE_VARIANT",
-  "message": "Projection variant already exists"
-}
-```
+| Case | Exception |
+| ---- | --------- |
+| Policy not found | `KeyNotFoundException` |
+| Invalid status / empty policy / duplicate variant / missing master | `InvalidOperationException` |
+| Komponen invariant | `ArgumentException` (domain) |
 
-Live endpoints today rely on standard exceptions, not these codes.
+Phase 4 HTTP may map these to structured JSON codes. Import and other live Tarif routes unchanged.
 
 ---
 

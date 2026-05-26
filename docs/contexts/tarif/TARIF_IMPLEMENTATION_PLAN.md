@@ -1,6 +1,6 @@
 # TARIF_IMPLEMENTATION_PLAN.md — Tarif Policy & Publish Rollout
 
-> **Status:** Planning only — **no production code** in this document.  
+> **Status:** Phase ledger — Phases 0–3 **LIVE** in codebase; Phase 4+ **PLANNED**.  
 > **Canonical location:** `docs/contexts/tarif/TARIF_IMPLEMENTATION_PLAN.md`  
 > **Scope root:** `{Layer}/ChargeContext/TarifFeature/` (extend existing folders)  
 > **Evidence:** `docs/tarif/tarif-codebase-retrieval-report.md`
@@ -64,7 +64,8 @@ Legacy ta_trs_tarif2/3  →  POST /api/NilaiTarif/import  →  BILRG_NilaiTarif*
 | `NilaiTarifRepo.SaveChanges` | **PARTIAL** | Per-variant upsert path; **no** application caller |
 | Master HTTP admin (`BillContext/TindakanSub/*`) | **PARTIAL** | Controllers commented; DAL/Repo exist |
 | `TarifPolicy`, `TarifVariant` domain + persistence | **LIVE** | Phase 1 domain (retroactive) + Phase 2 tables/repos |
-| Publish orchestration / policy HTTP | **PLANNED** | Phase 3–4 |
+| Publish orchestration (`TrfPublishTarifPolicyHandler`) | **LIVE** | Phase 3 — see `tarif-06-publish-engine.md` |
+| Policy HTTP / workflow UI | **PLANNED** | Phase 4 |
 
 ### 1.2 Known LIVE risks (must address in rollout)
 
@@ -540,15 +541,17 @@ Agentic slices — each slice = one PR, one vertical concern, tests where valuab
 
 **Gate:** `dotnet test --filter FullyQualifiedName~TarifFeature`; deploy SQL before integration tests. Report: `TARIF_PHASE2_REPORT.md`. No HTTP / publish orchestration.
 
-### Phase 3 — Publish engine (PLANNED)
+### Phase 3 — Publish engine (**LIVE**)
 
-| # | Slice | Outcome |
-| - | ----- | ------- |
-| 3.1 | `TrfPublishTarifPolicyHandler` + transaction | End-to-end publish in test DB |
-| 3.2 | Publish validator + structured errors | Contract alignment |
-| 3.3 | Idempotency + publish log read | Audit trail |
+| # | Slice | Status |
+| - | ----- | ------ |
+| 3.1 | `TrfPublishTarifPolicyHandler` + transaction | **LIVE** |
+| 3.2 | Handler `EnsurePublishable` + standard exceptions | **LIVE** |
+| 3.3 | Re-publish determinism + publish log insert | **LIVE** — `ITarifPublishLogRepo.ListByPolicy` for audit read |
 
-**Gate:** publish updates `BILRG_*`; consumers unchanged.
+**Artifact:** [`tarif-06-publish-engine.md`](tarif-06-publish-engine.md)
+
+**Gate:** `dotnet test --filter FullyQualifiedName~TarifFeature`; publish updates `BILRG_*`; consumers unchanged.
 
 ### Phase 4 — Admin API & workflow (PLANNED)
 

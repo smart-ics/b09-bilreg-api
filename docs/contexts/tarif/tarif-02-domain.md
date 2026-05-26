@@ -19,7 +19,7 @@
 | COA on komponen | **External** (Payment) | `CoaType` on `KomponenType` |
 | TarifPolicy | **Implemented** (domain Phase 1; persistence Phase 2) | `TarifPolicyType`, `TarifPolicyStatus` |
 | TarifVariant | **Implemented** (child of policy) | `TarifVariantType`, `TarifVariantKomponenType` |
-| PublishLog | **Implemented** (audit; orchestration Phase 3) | `TarifPublishLogType`, `TarifPublishLogDetailType` |
+| PublishLog | **Implemented** (audit + Phase 3 write path) | `TarifPublishLogType`, `TarifPublishLogDetailType` |
 
 ---
 
@@ -137,7 +137,7 @@ At least one komponen line per `NilaiTarif` is a **business** requirement; domai
 - One operational combination: **`Tarif` + `Kelas` + `TipeTarif`** with header nilai and **`TarifVariantKomponen`** lines.
 - `VariantCompositeKey` for uniqueness within policy.
 - Immutable after parent policy published (enforced via `TarifPolicyType.EnsureEditable`).
-- Phase-3 publish refreshes matching **`NilaiTarifType`** projection row(s) via `INilaiTarifProjectionWriter` (not in domain).
+- Publish refreshes matching **`NilaiTarifType`** projection row(s) via `INilaiTarifProjectionWriter` orchestrated in **`TrfPublishTarifPolicyHandler`** (not in domain).
 
 ---
 
@@ -160,6 +160,7 @@ At least one komponen line per `NilaiTarif` is a **business** requirement; domai
 | Mass % adjust on draft variants only | `TarifPolicyType.MassAdjust` |
 | Review transition Draft → Reviewed only | `TarifPolicyType.MarkReviewed` |
 | Publish validation (status Draft/Reviewed) | `TarifPolicyType.ValidateForPublish` |
+| Re-publish validation (status Published) | `TarifPolicyType.ValidateForRepublish` |
 
 ### Business rules (target / partial enforcement)
 
@@ -171,7 +172,7 @@ At least one komponen line per `NilaiTarif` is a **business** requirement; domai
 | Published nilai affects future transactions only | Billing boundary; Tarif agnostic |
 | TarifPolicy overlap at publish time | **Planned** — Phase 3 application validator |
 | Effective date does not auto-activate | **Design** — manual publish only |
-| Master ref existence (Tarif, Kelas, Komponen) at publish | **Planned** — Phase 3 validator |
+| Master ref existence (Tarif, Kelas, TipeTarif, Komponen) at publish | **Implemented** — `TrfPublishTarifPolicyHandler.EnsureMasterReferences` |
 
 ### Komponen / PPA
 
@@ -198,7 +199,7 @@ stateDiagram-v2
 
     [*] --> legacy : historical RS data
     legacy --> bilrg : Import implemented
-    note right of bilrg : Planned: Policy publish refresh
+    note right of bilrg : Policy publish refresh (Phase 3 LIVE)
 
     bilrg --> consumed : Load at tindakan/reg create
     consumed --> [*] : immutable billing snapshot
@@ -209,7 +210,7 @@ stateDiagram-v2
 | Stage | Implemented | Planned |
 | ----- | ----------- | ------- |
 | Authoring | Legacy tables + external RS tools | `TarifPolicy` draft + `TarifVariant` edit |
-| Activation | `POST /api/NilaiTarif/import` (full replace) | Manual `publish` |
+| Activation | `POST /api/NilaiTarif/import` (full replace) | `TrfPublishTarifPolicyCmd` (MediatR; HTTP Phase 4) |
 | Operational read | `INilaiTarifRepo` → `BILRG_*` | Same projection store |
 | Historical read | Legacy `ta_trs_tarif*` only | `TarifVariant` store |
 
@@ -226,11 +227,11 @@ stateDiagram-v2
     Published --> Archived : superseded or closed
 ```
 
-Domain `MarkPublished` transitions status only. **Publish orchestration** (audit log, `BILRG_*` upsert) is **Phase 3** — explicit operator action; does **not** reschedule by effective date alone.
+Domain `MarkPublished` transitions status only. **Publish orchestration** (audit log, `BILRG_*` upsert) is **LIVE** in `TrfPublishTarifPolicyHandler` — explicit operator action; does **not** reschedule by effective date alone.
 
 ---
 
-## Publish semantics *(orchestration planned — preserve in design)*
+## Publish semantics *(orchestration LIVE — see tarif-06-publish-engine.md)*
 
 | Principle | Detail |
 | --------- | ------ |
@@ -276,5 +277,5 @@ Helpers do **not** create policy inheritance or automatic lineage.
 | `TarifPolicy` | **Why/how** a batch of changes is grouped |
 | `TarifVariant` | **Which** `(Tarif, Kelas, TipeTarif)` combination and nilai under that policy |
 | `TarifVariantKomponen` | Komponen breakdown on a policy variant |
-| `PublishLog` | **When** a policy was activated to projection (persistence live; write on publish Phase 3) |
+| `PublishLog` | **When** a policy was activated to projection (`TrfPublishTarifPolicyHandler`) |
 | `KomponenType` | **How** amount splits for accounting and jasa |

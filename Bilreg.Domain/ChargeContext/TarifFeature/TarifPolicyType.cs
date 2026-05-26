@@ -197,6 +197,20 @@ public record TarifPolicyType : ITarifPolicyKey
             variant.EnsureValidForPublish();
     }
 
+    public void ValidateForRepublish()
+    {
+        if (PolicyStatus != TarifPolicyStatus.Published)
+            throw new InvalidOperationException(
+                $"TarifPolicy {TarifPolicyId} hanya dapat di-republish dari status Published (status saat ini: {PolicyStatus}).");
+
+        if (_variants.Count == 0)
+            throw new InvalidOperationException(
+                $"TarifPolicy {TarifPolicyId} tidak memiliki variant; publish tidak diperbolehkan.");
+
+        foreach (var variant in _variants)
+            variant.EnsureValidForPublish();
+    }
+
     public TarifPolicyType MarkPublished(string auditUserId)
     {
         ValidateForPublish();

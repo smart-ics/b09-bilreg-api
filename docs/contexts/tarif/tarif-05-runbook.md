@@ -10,9 +10,10 @@
 | Mode | When | Primary action |
 | ---- | ---- | -------------- |
 | **Production today** | Day-to-day billing | Maintain legacy `ta_trs_tarif*` → **import** → verify `BILRG_*` |
-| **Target** | After policy feature ships | Draft `TarifPolicy` → review → **manual publish** |
+| **Policy publish** | Draft/reviewed policy in `BILRG_Tarif*` | MediatR `TrfPublishTarifPolicyCmd` → verify `BILRG_*` + publish log |
+| **HTTP publish** | Phase 4 | `POST /api/tarif-policy/{id}/publish` *(not wired yet)* |
 
-This runbook covers **both**; steps marked *(planned)* are not available in application yet.
+This runbook covers import (HTTP) and publish (MediatR today).
 
 ---
 
@@ -27,11 +28,11 @@ flowchart TD
         V --> U[Users: tindakan / reg / search APIs]
     end
 
-    subgraph future [Planned]
+    subgraph policy [Policy publish LIVE]
         D[Create TarifPolicy draft]
         D --> E[Edit variants / mass adjust]
         E --> R[Review checklist]
-        R --> P[Manual publish]
+        R --> P[TrfPublishTarifPolicyCmd]
         P --> V
     end
 ```
@@ -107,28 +108,46 @@ POST /api/NilaiTarif/import
 
 ---
 
-## *(Planned)* Policy draft and publish workflow
+## Policy publish workflow (MediatR — LIVE)
+
+**Handler:** `TrfPublishTarifPolicyCmd` (`TrfPublishTarifPolicyHandler`). See [`tarif-06-publish-engine.md`](tarif-06-publish-engine.md).
+
+### Procedure
+
+1. Ensure `BILRG_TarifPolicy*` tables deployed (Phase 2 SQL).
+2. Policy in `Draft` or `Reviewed` (first publish) or `Published` (re-publish refresh).
+3. Complete review checklist (below).
+4. Invoke MediatR: `TrfPublishTarifPolicyCmd(tarifPolicyId, publishedBy, note)`.
+5. On success: verify `BILRG_TarifPublishLog`, `PublishedNilaiTarifId` on variants, and `GET /api/Tarif/nilai/...` for sample composites.
+6. On failure: transaction rolled back — fix validation error and retry; no partial projection.
+
+### Ops mutex
+
+Do **not** run full **import** and **publish** concurrently on the same environment (last writer wins per variant).
+
+### Re-publish
+
+Already `Published` policy may be re-published to refresh projection deterministically; each run adds a new publish log row.
 
 ### Periodic mass adjustment (dozens–hundreds of tariffs)
 
 1. Create draft `TarifPolicy` with SK reference and informational effective date.
 2. Optional: **copy** previous policy as template (new independent draft).
-3. Run mass % or komponen-scoped adjustment on **draft variants only**.
-4. Incremental manual edits over days if needed.
-5. Complete review checklist (below).
-6. **Manual publish** — do not rely on effective date alone.
-7. Post-publish spot-check same as import validation.
+3. Run mass % adjustment on **draft variants only** (domain).
+4. Complete review checklist.
+5. **Manual publish** via MediatR — do not rely on effective date alone.
+6. Post-publish spot-check same as import validation.
 
 ### Ad-hoc single-tariff change
 
 1. Small operational policy (may precede signed SK).
-2. Edit one or few `TarifVariant` lines.
-3. Publish with audit note explaining urgency.
+2. Edit one or few `TarifVariant` lines (draft save — future HTTP).
+3. Publish with audit `Note` explaining urgency.
 4. Verify affected variant only.
 
 ---
 
-## Review checklist before publish *(planned)* / before import sign-off *[live]*
+## Review checklist before publish / before import sign-off
 
 | Area | Check |
 | ---- | ----- |

@@ -98,7 +98,9 @@ Historical pricing must **not** be resolved by scanning projection alone once `T
 
 **Child replace:** policy save deletes all variant/komponen rows for the policy id, then bulk re-inserts (deterministic `ItemNo` / `NoUrut` ordering).
 
-**Projection writer (Phase 2 helper, no orchestration):** `INilaiTarifProjectionWriter.Upsert` — upserts one `NilaiTarifType` into `BILRG_NilaiTarif*`, **preserves** existing `NilaiTarifId` when composite `(TarifId, TipeTarifId, KelasId)` exists, sets `SourcePolicyId` on header. Intended for Phase-3 publish handler inside an explicit transaction.
+**Projection writer (Phase 2):** `INilaiTarifProjectionWriter.Upsert` — upserts one `NilaiTarifType` into `BILRG_NilaiTarif*`, **preserves** existing `NilaiTarifId` when composite `(TarifId, TipeTarifId, KelasId)` exists, sets `SourcePolicyId` on header.
+
+**Publish orchestration (Phase 3 — LIVE):** `TrfPublishTarifPolicyHandler` — single `TransHelper.NewScope()` spanning log insert, N×`Upsert`, `MarkPublished` (or re-publish), `TarifPolicyRepo.SaveChanges`. See [`tarif-06-publish-engine.md`](tarif-06-publish-engine.md).
 
 `INilaiTarifRepo` consumer surface is **unchanged** (import, load, search).
 
@@ -106,7 +108,7 @@ Historical pricing must **not** be resolved by scanning projection alone once `T
 
 1. Keep `BILRG_*` as operational projection store.
 2. ~~Add `TarifPolicy` / `TarifVariant` / publish log tables.~~ **Done (Phase 2).**
-3. Implement publish service (Phase 3) → call `INilaiTarifProjectionWriter` per variant + write publish log.
+3. ~~Implement publish service (Phase 3)~~ **Done** — `TrfPublishTarifPolicyHandler`.
 4. Reduce reliance on destructive full import; legacy import remains fallback during transition.
 5. Preserve `TarifType`, `NilaiTarifType`, `KomponenType` and consumer contracts.
 
@@ -124,7 +126,8 @@ Historical pricing must **not** be resolved by scanning projection alone once `T
 | `TrfListTarifBrgHandler` | Application | Search + stok linkage |
 | `TarifPolicyRepo` / `*Dal` | Infrastructure | Policy aggregate persistence (Phase 2) |
 | `TarifPublishLogRepo` | Infrastructure | Publish log insert/load (Phase 2) |
-| `NilaiTarifProjectionWriter` | Infrastructure | Single-variant projection upsert for future publish (Phase 2) |
+| `NilaiTarifProjectionWriter` | Infrastructure | Single-variant projection upsert (called from publish handler) |
+| `TrfPublishTarifPolicyHandler` | Application | Publish orchestration + private validation/mapping (Phase 3) |
 
 **Cross-context domain references (compile-time):** `KomponenType` → `CoaType` (Payment), `SatTugasType` (Admisi); `NilaiTarifType` → `KelasReff` (Ward).
 
@@ -163,13 +166,13 @@ sequenceDiagram
 | --------- | ------ | ----------------- |
 | Full import | **LIVE** | Destructive global replace inside `TransactionScope`; rolls back on failure |
 | Per-variant save | **Partial** | Repo `SaveChanges` + child replace; unused |
-| Policy publish | **Planned** | Transactional batch; variant-level upsert; audit log |
+| Policy publish | **LIVE** | `TrfPublishTarifPolicyHandler`; variant-level upsert; audit log |
 
-**Planned publish steps:**
+**Publish steps (implemented):**
 
-1. Validate policy (draft, no illegal overlap).
-2. Write publish log (user, time, policy id, counts).
-3. Refresh `BILRG_*` rows for affected variants only (or full replace per policy scope — TBD in implementation).
+1. Handler `EnsurePublishable` (status, duplicates, domain publish rules, master refs).
+2. Transaction: upsert `BILRG_*` per variant (mode A — upsert only).
+3. Insert publish log + details; save policy with `PublishedNilaiTarifId`.
 4. Do **not** touch existing `TrsBilling` rows.
 
 ---
@@ -180,7 +183,7 @@ sequenceDiagram
 | --------- | -------- |
 | Tindakan + billing create | `TransHelper.NewScope()` in `TdkCreateTindakanCmd` / save |
 | NilaiTarif import | **LIVE** — `TransHelper.NewScope()` in `TrfImportNilaiTarifHandler`; komponen cleared before header |
-| Tarif publish (planned) | Should be single transactional unit for log + projection |
+| Tarif publish | **LIVE** — `TransHelper.NewScope()` in `TrfPublishTarifPolicyHandler` |
 
 Tarif subsystem **ends** at: published projection row + komponen metadata available to loaders. It does **not** open billing or payment transactions.
 
@@ -209,7 +212,7 @@ Legacy import filter uses fixed expiry `'3000-01-01'` on `ta_trs_tarif2` — not
 | --- | ------ |
 | `KomponenRepo` master HTTP still mostly off | Admin via DB/legacy tools |
 | Import regenerates ULIDs each run | Tindakan ids from prior import orphaned in DB |
-| TarifPolicy publish orchestration | Domain + persistence **live**; `TrfPublishTarifPolicyHandler` **planned** (Phase 3) |
+| Policy CRUD/review HTTP | **Planned** (Phase 4) |
 | `KelasDal.Update` SQL mismatch | Ward master update defect (adjacent) |
 | Master HTTP controllers commented (`BillContext/TindakanSub/*`) | Admin via DB/legacy tools |
 | Policy CRUD/review HTTP | **Planned** (Phase 4) |

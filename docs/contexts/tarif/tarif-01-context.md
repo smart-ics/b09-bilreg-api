@@ -19,7 +19,8 @@
 | `TarifType`, `NilaiTarifType`, `KomponenType`, masters (`TipeTarif`, `Kelas`, `SatTugas`, …) | **Implemented** |
 | Operational projection (`BILRG_NilaiTarif*`) | **Implemented** (via legacy import today) |
 | `TarifPolicy` / `TarifVariant` domain + `BILRG_Tarif*` persistence | **Implemented** (Phase 1 domain + Phase 2 persistence) |
-| Manual publish orchestration, policy HTTP workflow | **Planned** (Phase 3–4) |
+| Manual publish orchestration (`TrfPublishTarifPolicyHandler`) | **Implemented** (Phase 3) |
+| Policy HTTP workflow | **Planned** (Phase 4) |
 
 Do not treat **Planned** concepts as already built when operating or integrating.
 
@@ -62,11 +63,11 @@ Legacy pain: weak audit trail, painful mass adjustment, duplicated updates, poli
 | **Komponen** | Breakdown unit: **COA** (accounting) + **SatTugas** (jasa/PPA eligibility) |
 | **TipeTarif** | Variant dimension (e.g. umum vs jaminan channel) |
 | **Kelas** | Patient class variant (owned by Ward context) |
-| **TarifPolicy** | **Planned** — business container for a pricing change (SK, draft, mass edit) |
-| **TarifVariant** | **Planned** — one pricing variant under a policy: `(Tarif + Kelas + TipeTarif)` + komponen breakdown (historical snapshot after publish) |
-| **TarifVariantKomponen** | **Planned** — komponen line on a policy variant |
-| **PublishLog** | **Planned** — publish activation audit (who, when, which policy) |
-| **Publish** | **Planned** — explicit manual activation of policy → refresh `NilaiTarif` projection |
+| **TarifPolicy** | **Implemented** — business container for a pricing change (SK, draft, mass edit) |
+| **TarifVariant** | **Implemented** — one pricing variant under a policy: `(Tarif + Kelas + TipeTarif)` + komponen breakdown |
+| **TarifVariantKomponen** | **Implemented** — komponen line on a policy variant |
+| **PublishLog** | **Implemented** — publish activation audit (who, when, which policy) |
+| **Publish** | **Implemented** — `TrfPublishTarifPolicyHandler` refreshes `NilaiTarif` projection (manual; no scheduler) |
 
 ---
 

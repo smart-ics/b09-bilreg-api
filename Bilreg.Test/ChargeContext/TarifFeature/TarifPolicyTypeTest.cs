@@ -180,4 +180,25 @@ public class TarifPolicyTypeTest
 
         snapshot.PublishedNilaiTarifId.Should().Be("01AR00000000000000000042");
     }
+
+    [Fact]
+    public void DT15_GivenPublishedPolicy_WhenValidateForRepublish_ThenSucceeds()
+    {
+        var published = CreateDraftWithOneVariant().MarkPublished("pub");
+
+        var act = () => published.ValidateForRepublish();
+
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void DT16_GivenDraft_WhenValidateForRepublish_ThenThrows()
+    {
+        var policy = CreateDraftWithOneVariant();
+
+        var act = () => policy.ValidateForRepublish();
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*hanya dapat di-republish*");
+    }
 }
