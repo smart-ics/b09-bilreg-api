@@ -7,7 +7,7 @@
 ## Prompt recipe (ordered)
 
 1. [`docs/INSTRUCTION.md`](INSTRUCTION.md) — global engineering stance
-2. **Bounded context** — [`docs/contexts/{context}/`](contexts/) (see table below). IGD UI/integration: also [`docs/contexts/igd/igd-04-api-contract.md`](contexts/igd/igd-04-api-contract.md); ops/DBA: [`docs/contexts/igd/igd-05-runbook.md`](contexts/igd/igd-05-runbook.md).
+2. **Bounded context** — [`docs/contexts/{context}/`](contexts/) (see table below). IGD UI/integration: also [`docs/contexts/igd/igd-04-api-contract.md`](contexts/igd/igd-04-api-contract.md); ops/DBA: [`docs/contexts/igd/igd-05-runbook.md`](contexts/igd/igd-05-runbook.md). Tarif: [`docs/contexts/tarif/tarif-01-context.md`](contexts/tarif/tarif-01-context.md) through `tarif-05-runbook.md`.
 3. **Global standards** (as needed):
    - [`docs/ENGINEERING.md`](ENGINEERING.md) — layers, repository, domain events philosophy
    - [`docs/DATABASE.md`](DATABASE.md) — SQL, tables, audit columns
@@ -59,6 +59,20 @@
 | `docs/contexts/igd/igd-03-design.md` | IGD visit — how (architecture, persistence) |
 | `docs/contexts/igd/igd-04-api-contract.md` | IGD visit — integration (frontend/API contract) |
 | `docs/contexts/igd/igd-05-runbook.md` | IGD visit — operation (runbook, troubleshooting, recovery) |
+
+### Tarif (`docs/contexts/tarif/`)
+
+Charge-context tariff master, operational projection (`NilaiTarif`), and komponen breakdown. Policy/version publish is **planned**; live ops today use legacy import → `BILRG_*`.
+
+| Path | Purpose |
+|------|---------|
+| `docs/contexts/tarif/tarif-01-context.md` | Tarif — why (business context, scope, operational intent) |
+| `docs/contexts/tarif/tarif-02-domain.md` | Tarif — what (aggregates, invariants, projection vs history) |
+| `docs/contexts/tarif/tarif-03-design.md` | Tarif — how (ChargeContext layering, import, migration) |
+| `docs/contexts/tarif/tarif-04-api-contract.md` | Tarif — integration (live vs proposed HTTP) |
+| `docs/contexts/tarif/tarif-05-runbook.md` | Tarif — operation (import, validation, recovery) |
+| `docs/tarif/tarif-codebase-retrieval-report.md` | Codebase evidence / gap analysis (retrieval, not stewardship artifact) |
+
 ---
 
 ## Shared (`docs/shared/`)
@@ -97,6 +111,7 @@ Old locations may contain short redirect stubs during transition.
 | `DOMAIN.md` (no path) | `docs/contexts/lab/lab-domain.md` or `docs/contexts/igd/igd-02-domain.md` |
 | `igd-domain.md` (no path) | `docs/contexts/igd/igd-02-domain.md` (domain); use full trio for feature work |
 | `01-context.md` / `02-domain.md` / `03-design.md` (IGD, no `igd-` prefix) | `docs/contexts/igd/igd-01-context.md`, `igd-02-domain.md`, `igd-03-design.md` |
+| `tarif-01-context.md` … `tarif-05-runbook.md` (no path) | `docs/contexts/tarif/tarif-01-context.md` … `tarif-05-runbook.md` |
 | `igd-operational-recovery.md` (no path) | `docs/contexts/igd/igd-05-runbook.md` |
 | `AGENT.md` (no path) | `docs/contexts/lab/lab-agent.md` |
 | `WORKFLOW.md` without path | `docs/WORKFLOW.md` (global) **or** `docs/contexts/lab/lab-workflow.md` (Lab) |
