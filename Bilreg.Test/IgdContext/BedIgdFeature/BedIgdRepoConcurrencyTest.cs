@@ -20,10 +20,10 @@ public class BedIgdRepoConcurrencyTest
 
     private static AuditInfoType TestAudit() => new("U1", new DateTime(2026, 1, 1, 8, 0, 0));
 
-    private void SeedActiveBed()
+    private void SeedActiveBed(string bedIgdId = "TBED02")
     {
         var dto = new BedIgdDto(
-            BedIgdId: "TBED02",
+            BedIgdId: bedIgdId,
             BedIgdName: "Bed Tes 2",
             KamarName: "K1",
             BedState: "ACTIVE",
@@ -34,6 +34,27 @@ public class BedIgdRepoConcurrencyTest
             UpdUser: "U1", UpdDate: new DateTime(2026, 1, 1),
             VodUser: "", VodDate: new DateTime(3000, 1, 1));
         _dal.Insert(dto);
+    }
+
+    [Fact]
+    public void OccupySameTargetBed_TwoSnapshots_OnlyOneSucceeds()
+    {
+        using var trans = TransHelper.NewScope();
+        SeedActiveBed("TBED03");
+
+        var bedA = _sut.LoadEntity(BedIgdModel.Key("TBED03")).Value;
+        var bedB = _sut.LoadEntity(BedIgdModel.Key("TBED03")).Value;
+
+        bedA.Occupy("IGV0001", TestAudit());
+        bedB.Occupy("IGV0002", TestAudit());
+
+        _sut.SaveChanges(bedA);
+
+        var act = () => _sut.SaveChanges(bedB);
+        act.Should().Throw<InvalidOperationException>().WithMessage("*occupancy stale*");
+
+        var stored = _sut.LoadEntity(BedIgdModel.Key("TBED03")).Value;
+        stored.CurrentIgdVisitId.Should().Be("IGV0001");
     }
 
     [Fact]

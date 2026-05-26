@@ -19,7 +19,7 @@ Sistem legacy mengutamakan `RegId` sebagai identitas kunjungan. Di IGD, pasien s
 | Pendaftaran visit IGD (`Daftar`) | Master pasien penuh |
 | Assign dokter jaga | Billing engine legacy |
 | Triage ATS (assessment, re-assessment, monitoring) | LIS / radiologi |
-| Assign bed, check-out bed, occupancy | Rawat inap / ICU transfer penuh |
+| Assign bed, check-out bed, **transfer bed** (satu bed aktif per visit), occupancy | Rawat inap / ICU transfer penuh |
 | Tindakan medis IGD | Death handling / medical resume |
 | Pemakaian BHP | Nursing notes / vital sign monitoring |
 | Link registrasi administratif (`RegId`) | BPJS / asuransi orchestration |
@@ -45,6 +45,7 @@ Alur operasional standar (clinical flow first):
 4. Keputusan klinis:
    - **Redirect Rawat Jalan** → visit terminal (`REDIRECTED`), tanpa bed aktif.
    - Lanjut IGD → **Assign Bed** → observasi / tindakan / BHP.
+   - Saat observasi: **Transfer Bed** (UC04b) jika salah tempat bed atau prioritas ulang ke bed lain — **bukan** multi-bed (tetap satu bed aktif per visit).
 5. **Registrasi Administratif** (`RegId`) dapat dilakukan setelah layanan medis dimulai.
 6. **Discharge** setelah `RegId` ada dan pasien tidak menempati bed.
 
@@ -60,7 +61,11 @@ flowchart TD
     F --> G[Visit Terminal REDIRECTED]
     E -->|Tidak| H[Assign Bed]
     H --> I[Observasi / Tindakan / BHP]
-    I --> J[Registrasi Administratif RegId]
+    I --> T{Pindah bed?}
+    T -->|Ya| T1[Transfer Bed UC04b]
+    T1 --> I
+    T -->|Tidak| J[Registrasi Administratif RegId]
+    I --> J
     J --> K[Discharge]
     K --> L[Visit Terminal DISCHARGED]
 ```
@@ -74,7 +79,7 @@ flowchart TD
 | Delayed registration | Registrasi administratif boleh mengikuti layanan medis |
 | Billing gate | Billing legacy hanya jika visit sudah punya `RegId` |
 | Triage before bed | Assign bed ditolak jika belum triage |
-| Bed occupancy | Satu bed satu pasien aktif; bed shared resource dengan prioritas kegawatan |
+| Bed occupancy | Satu bed satu pasien aktif; satu visit hanya satu bed aktif; transfer bed memindahkan occupancy tanpa mengakhiri visit |
 | Redirect constraint | Redirect tidak diperbolehkan saat masih menempati bed |
 | Discharge gate | Discharge wajib `RegId` dan tidak ada bed aktif |
 | Void gate | Void ditolak jika sudah ada tindakan atau BHP |
@@ -94,6 +99,7 @@ flowchart TD
 | Bed IGD | Resource observasi/tindakan terbatas |
 | Observed / HasObserved | Pasien sedang menempati bed |
 | PakaiBed | Histori penggunaan bed (check-in/check-out) |
+| Transfer bed (UC04b) | Pindah occupancy ke bed lain tanpa check-out administratif terpisah; satu event `TRANSFER_BED` |
 | Redirect Rawat Jalan | Pengalihan ke layanan rawat jalan |
 | Discharge | Penyelesaian pelayanan IGD |
 | Void Visit | Pembatalan visit (audit `VodDate`) |
@@ -121,7 +127,7 @@ flowchart TD
 
 ## OUT OF SCOPE
 
-- Take over dokter, bed reservation, multi-bed transfer
+- Take over dokter, bed reservation, **multi-bed occupancy** (satu visit beberapa bed sekaligus)
 - Transfer rawat inap / ICU, death handling, medical resume
 - Nursing notes, vital sign monitoring terintegrasi
 - Integrasi BPJS / asuransi, queue dashboard terpusat

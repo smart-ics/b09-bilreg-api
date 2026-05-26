@@ -64,9 +64,9 @@ Layer dependency: Api → Application → Domain; Infrastructure implements repo
 | --------- | ----------- | ---------- | ------------ |
 | IgdVisit | `IgdVisitModel` | `IIgdVisitRepo` / `IgdVisitRepo` | `LoadEntity` + `AttachTriages` / `AttachEvents` |
 | BedIgd | `BedIgdModel` | `IBedIgdRepo` / `BedIgdRepo` | Snapshot fields (`BedStateSnapshot`, `CurrentIgdVisitIdSnapshot`) untuk optimistic concurrency |
-| PakaiBed | `PakaiBedModel` | `IPakaiBedRepo` | `LoadOpenForBed` pada discharge/void/checkout |
+| PakaiBed | `PakaiBedModel` | `IPakaiBedRepo` | `LoadOpenForBed` pada discharge/void/checkout/**transfer** |
 
-Domain behaviour tetap di model (`AssignBed`, `Discharge`, `Void`, dll.); handler hanya orchestrasi, validasi cross-aggregate, dan persist.
+Domain behaviour tetap di model (`AssignBed`, `TransferBed`, `Discharge`, `Void`, dll.); handler hanya orchestrasi, validasi cross-aggregate, dan persist.
 
 ## PERSISTENCE DESIGN
 
@@ -98,6 +98,7 @@ Use-case yang menulis lebih dari satu aggregate memakai `TransHelper.NewScope()`
 | -------- | --------------------------- |
 | AssignBed | `BedIgd` + `PakaiBed` + `IgdVisit` |
 | CheckOut | `BedIgd` + `PakaiBed` + `IgdVisit` |
+| TransferBed (UC04b) | `BedIgd` asal + `PakaiBed` tutup + `BedIgd` tujuan + `PakaiBed` buka + `IgdVisit` (lima entitas persist, satu scope) |
 | Discharge | optional bed release + `IgdVisit` |
 | Void | optional bed release + `IgdVisit` + compliance `AuditLog` |
 | Redirect | `RedirectRajal` + `IgdVisit` (bed harus sudah kosong) |
@@ -109,6 +110,7 @@ Tidak ada distributed saga; kegagalan parcial ditangani operasional (orphan swee
 - `BedIgd` menyimpan snapshot state pada load; `SaveChanges` memvalidasi occupancy belum berubah.
 - Filtered unique index `UQ_BILRG_BedIgd_VisitActive` mencegah double active occupancy di DB.
 - Assign bed handler: validasi `bed.IsAvailable` dan `visit` belum observed sebelum `Occupy`.
+- Transfer bed: dua bed dalam satu transaksi; bed **tujuan** memakai CAS yang sama — race ke bed kosong yang sama akan gagal pada `SaveChanges` tujuan (*occupancy stale*).
 
 ## QUERY STRATEGY
 
@@ -167,7 +169,7 @@ Saat menambah use case IGD:
 | ---- | ----------- |
 | Domain invariant | `Bilreg.Test/IgdContext/IgdVisitFeature/IgdVisitModelTest.cs` |
 | Handlers | `IgdVisitDaftarHandlerTest`, `DischargeHandlerTest`, `VoidHandlerTest`, … |
-| DAL / orphan | `PakaiBedDalTest`, `BedIgdRepoConcurrencyTest` |
+| DAL / orphan | `PakaiBedDalTest`, `BedIgdRepoConcurrencyTest` (assign + transfer target CAS) |
 | Triage | `IgdVisitTriageDalTest` |
 
 Uji minimal: assign bed tanpa triage (gagal), discharge tanpa reg (gagal), void dengan tindakan (gagal), concurrent bed assign.

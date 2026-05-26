@@ -14,6 +14,7 @@ public enum IgdEventEnum
     ClearBed = 9,
     AddTindakan = 10,
     AddBhp = 11,
+    TransferBed = 12,
 }
 
 public static class IgdEventEnumExtensions
@@ -32,6 +33,7 @@ public static class IgdEventEnumExtensions
         IgdEventEnum.ClearBed => "CLEAR_BED",
         IgdEventEnum.AddTindakan => "ADD_TINDAKAN",
         IgdEventEnum.AddBhp => "ADD_BHP",
+        IgdEventEnum.TransferBed => "TRANSFER_BED",
         _ => "DAFTAR",
     };
 
@@ -49,6 +51,7 @@ public static class IgdEventEnumExtensions
         "CLEAR_BED" => IgdEventEnum.ClearBed,
         "ADD_TINDAKAN" => IgdEventEnum.AddTindakan,
         "ADD_BHP" => IgdEventEnum.AddBhp,
+        "TRANSFER_BED" => IgdEventEnum.TransferBed,
         _ => IgdEventEnum.Daftar,
     };
 }

@@ -1,4 +1,5 @@
 using Bilreg.Domain.AdmisiContext.PpaFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.IgdContext.IgdVisitFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
@@ -120,6 +121,69 @@ public class IgdVisitModelTest
         var act = () => visit.AssignBed("B02", TestAudit());
 
         act.Should().Throw<InvalidOperationException>().WithMessage("*sudah menempati bed*");
+    }
+
+    [Fact]
+    public void TransferBed_WithoutObservation_Throws()
+    {
+        var visit = IgdVisitModel.Create(TestVisitor(), TestAudit());
+        visit.AssessTriage(TriageLevelEnum.Ats3, "-", TestAudit());
+
+        var act = () => visit.TransferBed("B02", "WRONG_ASSIGNMENT", "-", TestAudit());
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*tidak sedang menempati bed*");
+    }
+
+    [Fact]
+    public void TransferBed_ToSameBed_Throws()
+    {
+        var visit = IgdVisitModel.Create(TestVisitor(), TestAudit());
+        visit.AssessTriage(TriageLevelEnum.Ats3, "-", TestAudit());
+        visit.AssignBed("B01", TestAudit());
+
+        var act = () => visit.TransferBed("B01", "WRONG_ASSIGNMENT", "-", TestAudit());
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*sudah di bed*");
+    }
+
+    [Fact]
+    public void TransferBed_WhenObserved_UpdatesBedIdAndEmitsEvent()
+    {
+        var visit = IgdVisitModel.Create(TestVisitor(), TestAudit());
+        visit.AssessTriage(TriageLevelEnum.Ats3, "-", TestAudit());
+        visit.AssignBed("B01", TestAudit());
+
+        visit.TransferBed("B02", "PRIORITY_REALLOCATION", "ATS2 trauma incoming", TestAudit());
+
+        visit.BedId.Should().Be("B02");
+        visit.HasObserved.Should().BeTrue();
+        visit.ListEvent.Should().Contain(x => x.EventKind == IgdEventEnum.TransferBed);
+    }
+
+    [Fact]
+    public void TransferBed_WhenTerminal_Throws()
+    {
+        var visit = IgdVisitModel.Create(TestVisitor(), TestAudit());
+        visit.AssessTriage(TriageLevelEnum.Ats3, "-", TestAudit());
+        visit.AssignRegister((RegModel)RegModel.Key("R001")!, TestAudit());
+        visit.AssignBed("B01", TestAudit());
+        visit.Discharge(TestAudit());
+
+        var act = () => visit.TransferBed("B02", "X", "-", TestAudit());
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*tidak dapat transfer bed*");
+    }
+
+    [Fact]
+    public void TransferBed_EmptyReason_Throws()
+    {
+        var visit = IgdVisitModel.Create(TestVisitor(), TestAudit());
+        visit.AssessTriage(TriageLevelEnum.Ats3, "-", TestAudit());
+        visit.AssignBed("B01", TestAudit());
+
+        var act = () => visit.TransferBed("B02", "  ", "-", TestAudit());
+
+        act.Should().Throw<ArgumentException>();
     }
 
     [Fact]

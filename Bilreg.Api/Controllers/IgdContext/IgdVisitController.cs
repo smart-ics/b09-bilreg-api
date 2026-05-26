@@ -79,6 +79,14 @@ public class IgdVisitController : Controller
         return Ok(new JSendOk(result));
     }
 
+    [HttpPost("{id}/transferBed")]
+    public async Task<IActionResult> TransferBed(string id, [FromBody] IgdTransferBedBody body)
+    {
+        var cmd = new IgdTransferBedCmd(id, body.TargetBedIgdId, body.Reason, body.Notes ?? string.Empty, body.UserId);
+        var result = await _mediator.Send(cmd);
+        return Ok(new JSendOk(result));
+    }
+
     [HttpPost("{id}/checkOut")]
     public async Task<IActionResult> CheckOut(string id, [FromBody] IgdCheckOutBedBody body)
     {
@@ -164,6 +172,7 @@ public record IgdVisitAssessTriageBody(
     string Notes,
     string UserId);
 public record IgdAssignBedBody(string BedIgdId, string UserId);
+public record IgdTransferBedBody(string TargetBedIgdId, string Reason, string? Notes, string UserId);
 public record IgdCheckOutBedBody(string UserId);
 public record IgdRedirectRawatJalanBody(string Reason, string UserId);
 public record IgdAssignRegisterBody(string RegId, string UserId);

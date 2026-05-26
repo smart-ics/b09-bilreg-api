@@ -295,6 +295,37 @@ public class IgdVisitModel : IIgdVisitKey
         Emit(IgdEventEnum.AssignBed, audit, $"Bed {bedId}");
     }
 
+    public void TransferBed(string toBedId, string reason, string notes, AuditInfoType audit)
+    {
+        Guard.Against.NullOrWhiteSpace(toBedId, nameof(toBedId));
+        Guard.Against.NullOrWhiteSpace(reason, nameof(reason));
+        notes ??= string.Empty;
+
+        if (IsTerminal)
+            throw new InvalidOperationException(
+                $"Visit {IgdVisitId} sudah {AdministrativeState}; tidak dapat transfer bed.");
+        if (!HasObserved)
+            throw new InvalidOperationException(
+                $"Visit {IgdVisitId} tidak sedang menempati bed; transfer bed tidak diperbolehkan.");
+        if (toBedId == BedId)
+            throw new InvalidOperationException(
+                $"Visit {IgdVisitId} sudah di bed {BedId}; pilih bed tujuan lain.");
+
+        var fromBed = BedId;
+        BedId = toBedId;
+        AuditTrail.Modif(audit.UserId, audit.Timestamp);
+
+        var segment = $"{reason}: {fromBed} → {toBedId}";
+        if (!string.IsNullOrWhiteSpace(notes))
+            segment = $"{segment}; {notes.Trim()}";
+
+        const int maxNotes = 200;
+        if (segment.Length > maxNotes)
+            segment = segment[..maxNotes];
+
+        Emit(IgdEventEnum.TransferBed, audit, segment);
+    }
+
     public void CheckOutBed(AuditInfoType audit)
     {
         if (!HasObserved)

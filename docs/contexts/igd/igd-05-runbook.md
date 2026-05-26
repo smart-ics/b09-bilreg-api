@@ -22,6 +22,7 @@ Standard visit (clinical flow first — registrasi boleh mengikuti layanan medis
 | 3 | Assessment triage (ATS) | `HasTriage` true; note `NextReTriageAt` |
 | 4a | **Redirect rawat jalan** — only if clinical decision | Visit `REDIRECTED`; **no active bed** |
 | 4b | **Continue IGD** — assign bed from available list | Bed `Occupied`; patient observed |
+| 4c | **Transfer bed** (UC04b) — salah bed atau prioritas ulang | Satu transaksi; timeline `TRANSFER_BED`; histori `PakaiBed` tetap |
 | 5 | Tindakan / BHP as needed | Transactions linked to visit |
 | 6 | Registrasi administratif (`RegId`) | State `REGISTERED` |
 | 7 | Check-out bed if still observed (optional before discharge) | `BedIgdId` empty on visit |
@@ -50,7 +51,10 @@ flowchart TD
     end
     S1 --> S2 --> S3 --> S4
     S4 -->|Redirect| R[Terminal_REDIRECTED]
-    S4 -->|IGD| S5 --> S6 --> S7 --> S8
+        S4 -->|IGD| S5 --> S6
+        S5 --> S5b[Transfer_bed_optional]
+        S5b --> S6
+        S6 --> S7 --> S8
     D1 --> D2 --> D3
 ```
 
@@ -89,6 +93,10 @@ After deploy or incident:
 | ------- | ------------ | ------ |
 | Assign bed rejected — belum triage | DR-05 | Complete triage first |
 | Assign bed rejected — bed occupied | DR-06 | Pick another bed or check-out current patient from bed |
+| Transfer bed rejected — belum di bed / visit terminal | DR-11 | Assign bed dulu; transfer tidak untuk visit selesai |
+| Transfer bed rejected — bed tujuan sama | DR-11 | Pilih bed lain |
+| Transfer bed rejected — bed tujuan tidak `Active` / sudah terisi | DR-06 / cleaning | `GET /api/BedIgd/available`; bersihkan bed (`MarkClean` internal) jika `Dirty` |
+| Transfer bed — concurrent failure | Race ke bed tujuan | Refresh daftar bed; ulangi transfer |
 | Discharge rejected — belum registrasi | DR-08 | Link `RegId` via register endpoint |
 | Discharge rejected — masih di bed | DR-08 | Check-out bed or use discharge (cascade releases bed) |
 | Void rejected — ada tindakan/BHP | DR-09 | Cannot void; use discharge path if appropriate |
@@ -152,7 +160,7 @@ WHERE PakaiBedId = @PakaiBedId
 - Do **not** delete `PakaiBed` rows (billing/audit history).
 - Do **not** mutate `BedIgd` directly — use application routes (`checkOut`, `discharge`, `void`).
 - Do **not** drop `UQ_BILRG_BedIgd_VisitActive`.
-- Do **not** reopen closed `PakaiBed`; re-admit via `POST .../assignBed`.
+- Do **not** reopen closed `PakaiBed`; re-admit via `POST .../assignBed` atau **transfer** via `POST .../transferBed` (bukan mengedit baris lama).
 
 ---
 
@@ -160,7 +168,7 @@ WHERE PakaiBedId = @PakaiBedId
 
 - [ ] SQL scripts for `BILRG_IgdVisit*` / `BILRG_BedIgd` / `BILRG_PakaiBed` applied
 - [ ] Bed master seeded and `Active`
-- [ ] Smoke: daftar → triage → assign bed → register → discharge
+- [ ] Smoke: daftar → triage → assign bed → **transfer bed** (opsional) → register → discharge
 - [ ] Orphan sweep empty on production after cutover
 - [ ] Frontend uses `IgdVisitId` as operational key (not `RegId` until billing)
 
@@ -174,4 +182,4 @@ WHERE PakaiBedId = @PakaiBedId
 | Can patient occupy bed without triage? | No (DR-05) |
 | Can visit void after tindakan? | No (DR-09) |
 | Where is triage history? | `GET /api/IgdVisit/{id}/triage-history` — append-only |
-| Who runs orphan sweep? | Operator/DBA only when inconsistency suspected |
+| Can patient move bed without ending visit? | Yes — `POST .../transferBed` (UC04b); satu bed aktif; bukan check-out + assign terpisah untuk narasi audit |

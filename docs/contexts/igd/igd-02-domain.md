@@ -106,6 +106,7 @@ classDiagram
 | UC03a | ReAssessTriage | Sama UC03; histori tetap |
 | UC04 | AssignBed | `BedId` terisi; requires `HasTriage`; koordinasi `BedIgd` + `PakaiBed` |
 | UC04a | CheckOut | Kosongkan `BedId`; release bed + close `PakaiBed` |
+| UC04b | TransferBed | Pindah occupancy ke bed lain tanpa mengakhiri visit; tutup `PakaiBed` lama (update checkout), buka `PakaiBed` baru; `BedId` ke bed tujuan; event `TRANSFER_BED` |
 | UC05 | RedirectRawatJalan | `REDIRECTED`, `Redirection`; tidak boleh `HasObserved` |
 | UC06 | Tindakan | Transaksi + event AddTindakan |
 | UC07 | PakaiObatBhp | Transaksi + event AddBhp |
@@ -161,7 +162,7 @@ stateDiagram-v2
 
 | Jenis | Nama | Catatan |
 | ----- | ---- | ------- |
-| Operational timeline | `IgdVisitEvent` (`IgdEventEnum`) | Daftar, AssignDokter, AssessTriage, AssignBed, CheckOut, ClearBed, AssignRegister, Redirect, AddTindakan, AddBhp, Discharge, Void |
+| Operational timeline | `IgdVisitEvent` (`IgdEventEnum`) | Daftar, AssignDokter, AssessTriage, AssignBed, CheckOut, TransferBed, ClearBed, AssignRegister, Redirect, AddTindakan, AddBhp, Discharge, Void |
 
 Bukan domain event untuk event sourcing. Lihat [`docs/concepts/operational-events.md`](../../concepts/operational-events.md) §1.
 
@@ -179,6 +180,7 @@ Bukan domain event untuk event sourcing. Lihat [`docs/concepts/operational-event
 | DR-08 | Discharge wajib `HasReg` dan tidak observed (bed dilepas dulu atau cascade) |
 | DR-09 | Void ditolak jika `hasTindakan` atau `hasBhp` |
 | DR-10 | Billing eksternal hanya dengan `RegId` |
+| DR-11 | Transfer bed (UC04b): hanya jika visit **observed** dan **non-terminal**; bed tujuan **tersedia** (DR-06) dan **bukan** bed saat ini; tutup `PakaiBed` terbuka di bed asal + release asal + occupy tujuan + buka `PakaiBed` baru + update `BedId` dalam **satu** transaksi aplikasi; baris `PakaiBed` tertutup tidak diubah; bukan multi-bed occupancy |
 
 ## BOUNDED CONTEXT INTERACTION
 

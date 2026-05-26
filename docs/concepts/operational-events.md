@@ -15,6 +15,10 @@ The codebase uses **"event"** for several different concepts. Use this glossary 
 
 **Purpose:** Operational audit trail and activity timeline for an IGD visit. **Not** event sourcing.
 
+| Event kind (code) | Typical use |
+|-------------------|-------------|
+| `TRANSFER_BED` | UC04b — pindah bed dalam observasi; satu transaksi dengan dual-write bed + `PakaiBed` |
+
 ---
 
 ## 2. Queue / tracker timeline (`PasienTrackerEvent`)

@@ -77,6 +77,26 @@ Command failures surface as HTTP errors with exception message text (operational
 | **Response `data`** | `IgdVisitId`, `BedIgdId`, `PakaiBedId` |
 | **Gate** | DR-05 (has triage), DR-06 (bed available), visit not terminal, not already observed |
 
+### Transfer bed (UC04b)
+
+| | |
+|--|--|
+| **Route** | `POST /api/IgdVisit/{id}/transferBed` |
+| **Body** | `TargetBedIgdId`, `Reason`, `Notes`, `UserId` |
+| **Response `data`** | `IgdVisitId`, `FromBedIgdId`, `ToBedIgdId`, `ClosedPakaiBedId`, `NewPakaiBedId` |
+| **Gate** | Visit **observed** (DR-11); visit not terminal; target ≠ current bed; target bed available (DR-06); source bed occupied by this visit |
+
+Contoh body:
+
+```json
+{
+  "targetBedIgdId": "BED-002",
+  "reason": "PRIORITY_REALLOCATION",
+  "notes": "ATS2 trauma incoming",
+  "userId": "USR001"
+}
+```
+
 ### Check out bed
 
 | | |
@@ -214,9 +234,12 @@ sequenceDiagram
     API-->>UI: triageLevel, nextReTriageAt
   alt redirect
     UI->>API: POST /api/IgdVisit/{id}/redirectRawatJalan
-  else continue IGD
+  alt continue IGD
     UI->>API: GET /api/BedIgd/available
     UI->>API: POST /api/IgdVisit/{id}/assignBed
+    opt pindah bed dalam observasi
+      UI->>API: POST /api/IgdVisit/{id}/transferBed
+    end
     UI->>API: POST /api/TindakanIgd/{visitId}
     UI->>API: PATCH /api/IgdVisit/{id}/register
     UI->>API: POST /api/IgdVisit/{id}/discharge
@@ -231,6 +254,7 @@ sequenceDiagram
 | ---- | ---- |
 | Triage scores | Ranges enforced in `IgdVisitAssessTriageHandler` (see assess triage body) |
 | UserId | Required on all write bodies |
+| Transfer bed | `TargetBedIgdId`, `Reason`, `UserId` required; `Notes` optional |
 | Void | `VoidReason` required |
 | Register | `RegId` must resolve in Admisi `Reg` aggregate |
 | Idempotency | Discharge on already-discharged visit returns current state without error |
