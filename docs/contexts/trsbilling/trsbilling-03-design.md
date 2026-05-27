@@ -2,7 +2,7 @@
 
 ## FEATURE NAME
 
-TRSBILLING (`BillingCharge`)
+TRSBILLING (`TrsBillingRegister`)
 
 ---
 
@@ -18,33 +18,20 @@ Pragmatic Tactical DDD
 Legacy Compatibility First
 ```
 
-Design prioritizes:
-- compatibility with existing HIS billing structure,
+TRSBILLING design prioritizes:
+- aggregate clarity,
 - operational stability,
-- accounting continuity,
-- gradual semantic clarification.
+- accounting compatibility,
+- transactional consistency,
+- low-risk migration.
 
-TRSBILLING is designed as:
-
-# Operational Financial Receivable Ledger
-
-NOT:
-- full accounting journal engine,
-- immutable event sourcing ledger,
-- distributed financial orchestration system.
-
-Core design principle:
+Core principle:
 
 ```text
-current-state financial receivable
-with immutable pricing/accounting snapshot
+registration-scoped orchestration
++
+legacy financial persistence
 ```
-
-Architecture preserves:
-- existing `ta_trs_billing`,
-- existing `ta_trs_billing2`,
-- existing cashier/accounting workflow,
-- synchronous operational billing generation.
 
 ---
 
@@ -53,274 +40,170 @@ Architecture preserves:
 ```mermaid
 flowchart TB
 
-    subgraph Api["Bilreg.Api"]
-        BC[BillingChargeController]
-        BS[BillingSettlementController]
-        BA[BillingAllocationController]
+    subgraph Api
+        API[Billing API]
     end
 
-    subgraph App["Bilreg.Application"]
-        UC[MediatR Use Cases]
-        AE[AllocationEngine]
-        PE[AccountingProjectionEngine]
+    subgraph App
+        UC[Use Cases]
+        AE[Allocation Engine]
+        PE[Projection Engine]
     end
 
-    subgraph Domain["Bilreg.Domain"]
-        BCM[BillingChargeModel]
-        ALM[BillingAllocationModel]
+    subgraph Domain
+        REG[TrsBillingRegister]
+        BILL[BillingCharge]
+        COMP[BillingComponent]
     end
 
-    subgraph Infra["Bilreg.Infrastructure"]
-        BCR[BillingChargeRepo]
-        BAR[BillingAllocationRepo]
-        APR[AccountingProjectionRepo]
+    subgraph Infra
+        REPO[Repositories]
+        DAL[DAL]
     end
 
-    subgraph Sql["Bilreg.SqlDb"]
+    subgraph Sql
+        AGG[(BILRG_TrsBillingRegister)]
         TB1[(ta_trs_billing)]
         TB2[(ta_trs_billing2)]
         REG3[(ta_registrasi3)]
     end
 
-    subgraph External["External Context"]
-        REG[Registration]
-        TARIF[Tarif Master]
+    subgraph External
         OPS[Operational Subsystem]
+        TARIF[Tarif]
         ACC[Accounting]
     end
 
     OPS --> UC
-    BC --> UC
-    BS --> UC
-    BA --> UC
+    API --> UC
 
-    UC --> BCM
-    UC --> ALM
+    UC --> REG
+    UC --> BILL
+    UC --> COMP
+
     UC --> AE
     UC --> PE
 
-    UC --> BCR
-    UC --> BAR
-    UC --> APR
+    UC --> REPO
+    REPO --> DAL
 
-    BCR --> TB1
-    BAR --> TB2
-    AE --> REG3
+    DAL --> AGG
+    DAL --> TB1
+    DAL --> TB2
+    DAL --> REG3
 
-    UC --> REG
-    UC --> TARIF
-
-    APR --> ACC
-```
-
-Layer dependency:
-
-```text
-Api
-→ Application
-→ Domain
-
-Infrastructure
-implements repository & persistence detail
+    PE --> ACC
 ```
 
 ---
 
 # AGGREGATE IMPLEMENTATION
 
-TRSBILLING uses one primary aggregate:
+## Aggregate Root
 
-# BillingCharge Aggregate
+```text
+TrsBillingRegister
+```
+
+Persistence:
+
+```text
+BILRG_TrsBillingRegister
+```
+
+Purpose:
+- lifecycle orchestration,
+- finalize/reopen control,
+- settlement boundary,
+- concurrency boundary.
 
 ---
 
-## Aggregate Root
+## Child Entity
 
-### `BillingChargeModel`
+### `BillingCharge`
 
-Persisted into:
+Persistence:
 
 ```text
 ta_trs_billing
 ```
 
-Represents:
-
-```text
-authoritative operational financial billing
-```
-
-Stores:
-- registration,
-- tarif,
-- source transaction,
+Purpose:
+- authoritative financial charge,
 - pricing snapshot,
-- billing amount,
-- operational context,
-- billing state.
+- source transaction snapshot.
 
 ---
 
-## Child Collection
+## Child Projection
 
-### `BillingAllocationModel`
+### `BillingComponent`
 
-Persisted into:
+Persistence:
 
 ```text
 ta_trs_billing2
 ```
 
-Represents:
-
-```text
-financial allocation projection rows
-```
+Purpose:
+- financial decomposition,
+- payer allocation projection,
+- accounting projection source.
 
 NOT:
-- immutable event history,
-- accounting journal,
-- event sourcing stream.
-
-Stores:
-- tarif component allocation,
-- payer allocation,
-- financial responsibility distribution,
-- accounting projection source,
-- component accounting snapshot.
+- event sourcing stream,
+- immutable history,
+- accounting journal.
 
 ---
 
 # PERSISTENCE DESIGN
 
-| Table | Responsibility |
-|---|---|
-| `ta_trs_billing` | Billing current state / authoritative charge |
-| `ta_trs_billing2` | Financial allocation and accounting projection detail |
-| `ta_registrasi3` | Registration-level payer allocation authority |
+## `BILRG_TrsBillingRegister`
+
+Stores:
+- RegId,
+- BillState,
+- CloseDate,
+- FinalizeDate,
+- PaidDate,
+- orchestration metadata.
+
+Does NOT store:
+- financial totals,
+- pricing amount,
+- accounting amount.
+
+Reason:
+- financial authority remains in legacy tables.
 
 ---
 
 ## `ta_trs_billing`
 
-Stores:
-- billing identity,
-- registration,
-- tarif identity,
-- pricing snapshot,
-- source transaction snapshot,
-- operational status,
-- billing lifecycle state.
-
-Characteristics:
-
-| Characteristic | Value |
-|---|---|
-| authoritative | YES |
-| mutable before finalize | YES |
-| mutable after payment | NO |
-| historical pricing | immutable |
-| accounting snapshot | immutable |
+Remains:
+- authoritative billing persistence,
+- legacy-compatible financial row,
+- pricing snapshot authority.
 
 ---
 
 ## `ta_trs_billing2`
 
-Stores:
-- tarif component rows,
-- payer allocation rows,
-- accounting projection rows.
+Remains:
+- financial distribution projection,
+- accounting-ready decomposition,
+- payer allocation projection.
 
-Rows are progressively generated during lifecycle.
-
-Example:
-
-```text
-Transaction Recognition
-→ PDP rows
-
-Close Bill / Allocation
-→ payer allocation rows
-```
-
-Characteristics:
-
-| Characteristic | Value |
-|---|---|
-| derived projection | YES |
-| recalculable | YES |
-| delete-regenerate allowed | YES |
-| authoritative financial amount | NO |
-| accounting-ready | YES |
+Rows may be:
+- deleted,
+- regenerated,
+- recalculated.
 
 ---
 
-# FINANCIAL DISTRIBUTION SEMANTICS
-
-Example:
-
-```text
-Hecting = 140000
-```
-
-Components:
-
-| Component | Amount |
-|---|---|
-| Medical Service | 100000 |
-| Hospital Service | 40000 |
-
-Payer allocation:
-
-| Payer | Amount |
-|---|---|
-| JKN00 | 130000 |
-| KAS | 10000 |
-
-Generated projection:
-
-| JenisBayar | Component | NilaiP | NilaiN |
-|---|---|---|---|
-| PDP | Medical Service | 100000 | 0 |
-| PDP | Hospital Service | 40000 | 0 |
-| JKN00 | Medical Service | 0 | 92857.14 |
-| JKN00 | Hospital Service | 0 | 37142.86 |
-| KAS | Medical Service | 0 | 7142.86 |
-| KAS | Hospital Service | 0 | 2857.14 |
-
----
-
-## Semantic Meaning
-
-### `FN_TRS_P`
-
-Represents:
-
-```text
-receivable acquisition
-financial ownership creation
-```
-
----
-
-### `FN_TRS_N`
-
-Represents:
-
-```text
-receivable release
-financial ownership transfer
-```
-
-NOT:
-- debit/credit,
-- positive/negative accounting number.
-
----
-
-# BILLING LIFECYCLE DESIGN
-
-TRSBILLING uses pragmatic operational lifecycle.
+# BILLING LIFECYCLE IMPLEMENTATION
 
 ```text
 OPEN
@@ -336,238 +219,189 @@ PAID
 
 ## OPEN
 
-Billing still operationally mutable.
-
 Allowed:
 - add charge,
 - remove charge,
-- modify allocation,
-- regenerate billing2 projection.
+- allocation recalculation,
+- projection regeneration.
 
 ---
 
 ## CLOSE BILL
 
-Operational freeze point.
-
 Triggered by:
-- patient discharge,
-- outpatient completion,
-- operational close process.
+- discharge,
+- operational closing,
+- outpatient completion.
 
 Effects:
-- no more operational charge generation,
-- payer allocation still adjustable,
-- billing reconciliation still allowed.
+- operational billing generation disabled,
+- recalculation still allowed.
 
 ---
 
 ## FINALIZED
 
-Financial verification completed.
+Triggered by:
+- Tata Rekening verification,
+- auto-finalize workflow,
+- cashier-ready validation.
 
-Billing becomes:
-- cashier-ready,
-- payment-ready,
-- accounting-stable.
-
-Allocation becomes locked.
-
-Future workflow may:
-- auto-finalize,
-- or require Tata Rekening verification.
+Effects:
+- allocation locked,
+- accounting projection stable,
+- reopen restricted.
 
 ---
 
 ## PAID
 
-Payment settlement completed.
+Triggered by:
+- payment settlement.
 
-Billing becomes:
-- financially frozen,
-- accounting finalized,
-- no longer operationally editable.
+Effects:
+- financial freeze,
+- no operational modification,
+- no allocation regeneration.
 
 ---
 
 # TRANSACTION STRATEGY
 
-Billing generation remains:
+TRSBILLING uses:
 
-# synchronous
+# synchronous transactional persistence
 
-with operational subsystem.
-
-Operational subsystem:
-- directly inserts billing,
-- directly generates billing projection,
-- transactionally consistent within operational transaction.
-
-No distributed saga is used.
+No distributed saga.
 
 ---
 
-## Transaction Scope
+## Transaction Boundary
 
-Use cases involving:
-- billing header,
-- allocation rows,
-- payer distribution regeneration
+Transaction scope exists at:
 
-must execute inside single transaction scope.
+```text
+registration aggregate scope
+```
 
-Example:
+NOT billing-row scope.
+
+---
+
+## Required Atomic Operations
 
 | Use Case | Transaction Scope |
 |---|---|
-| Create Billing | billing + billing2 |
-| Recalculate Allocation | delete old billing2 + regenerate |
-| Close Bill | allocation regeneration + finalize state |
-| Payment Settlement | settlement + posting status |
+| Create Charge | aggregate + billing + projection |
+| Recalculate Allocation | delete old projection + regenerate |
+| Close Bill | lifecycle update + projection sync |
+| Finalize Bill | finalize state + projection validation |
+| Payment Settlement | settlement + freeze validation |
 
 ---
 
-# ALLOCATION STRATEGY
+# ALLOCATION IMPLEMENTATION
 
-Allocation authority comes from:
+Allocation authority source:
 
 ```text
 ta_registrasi3
 ```
 
-TRSBILLING performs:
+Allocation strategy:
 
 ```text
 proportional decomposition
 ```
 
-per:
+across:
+- billing charge,
 - tarif component,
-- payer allocation,
-- accounting projection.
+- payer allocation.
 
-Allocation is stored as:
+---
+
+## Allocation Process
 
 ```text
-absolute currency value
+Load payer allocation
+    ↓
+Load billing components
+    ↓
+Calculate proportional value
+    ↓
+Generate billing2 projection rows
 ```
-
-NOT:
-- percentage responsibility.
 
 ---
 
-# REOPEN STRATEGY
+# PROJECTION REGENERATION STRATEGY
 
-Reopen allowed only before payment settlement.
-
-Reopen process:
+Projection regeneration uses:
 
 ```text
-DELETE old billing2 rows
-→ regenerate projection
+DELETE
+→ REGENERATE
 ```
 
-because:
-- billing2 is derived allocation projection,
-- not authoritative financial history.
+Reason:
+- billing2 is derived projection,
+- not immutable financial history.
 
 ---
 
-# VOID STRATEGY
+## Regeneration Trigger
 
-Before finalization/payment:
-
-```text
-physical delete
-```
-
-is allowed.
-
-TRSBILLING intentionally prioritizes:
-- pragmatic operational workflow,
-- legacy compatibility,
-- simpler reconciliation.
-
-Operational history responsibility remains in:
-- source transaction subsystem.
-
----
-
-# ACCOUNTING PROJECTION DESIGN
-
-TRSBILLING is NOT accounting journal engine.
-
-TRSBILLING acts as:
-
-# accounting-ready projection source
-
-Accounting journal generation:
-- asynchronous,
-- externalized,
-- cronjob/service based.
-
----
-
-## Posting Strategy
-
-Current legacy strategy:
-- posting flag exists in `ta_trs_billing2`.
-
-This design intentionally preserves:
-- existing accounting integration,
-- existing accounting workflow,
-- existing posting mechanism.
-
-Future enhancement MAY introduce:
-- aggregate-level posting tracking,
-- posting batch abstraction,
-
-without breaking legacy accounting compatibility.
+Triggered when:
+- payer allocation changes,
+- billing recalculation occurs,
+- reopen occurs,
+- finalize rollback occurs.
 
 ---
 
 # CONCURRENCY STRATEGY
 
-TRSBILLING prioritizes:
-- operational simplicity,
-- transactional consistency,
-- compatibility-first behavior.
+Concurrency controlled at:
 
-Concurrency protection focuses on:
-- transaction scope consistency,
-- preventing duplicate billing,
-- preventing double allocation regeneration.
+```text
+TrsBillingRegister
+```
+
+NOT:
+- billing row,
+- projection row.
 
 ---
 
-## Recommended Protection
+## Concurrency Goals
+
+Prevent:
+- double finalize,
+- reopen-after-payment,
+- duplicate projection regeneration,
+- concurrent settlement.
+
+---
+
+## Recommended Strategy
 
 | Area | Strategy |
 |---|---|
-| Duplicate billing | source transaction idempotency |
-| Allocation regeneration | transactional delete-regenerate |
-| Payment settlement | finalized-state validation |
-| Accounting posting | posting-status validation |
+| Finalize | aggregate state validation |
+| Reopen | paid-state validation |
+| Settlement | paid-state CAS |
+| Projection regeneration | transaction lock |
 
 ---
 
-# QUERY STRATEGY
+# SOURCE TRANSACTION STRATEGY
 
-| Query | Purpose |
-|---|---|
-| Get Billing | Billing detail |
-| List Billing by Registration | Patient receivable |
-| List Open Billing | Billing monitoring |
-| List Finalized Billing | Cashier-ready billing |
-| List Unposted Billing | Accounting projection |
-| Allocation Projection | Financial distribution detail |
+Operational subsystem:
+- directly creates billing,
+- synchronously persists financial charge.
 
----
-
-# INTEGRATION DESIGN
-
-External subsystem integration pattern:
+Integration pattern:
 
 ```text
 Subsystem
@@ -575,82 +409,162 @@ Subsystem
 → TRSBILLING
 ```
 
-Subsystem:
-- MUST NOT manipulate billing2 directly,
-- MUST NOT own financial receivable logic,
-- MUST NOT know billing internal decomposition structure.
+---
+
+## Idempotency
+
+Idempotency key:
+
+```text
+OrderNumber
+```
+
+Purpose:
+- retry-safe integration,
+- duplicate prevention.
+
+---
+
+# ACCOUNTING PROJECTION DESIGN
+
+TRSBILLING acts as:
+
+# accounting-ready projection source
+
+Accounting journal generation remains:
+- asynchronous,
+- externalized,
+- legacy-compatible.
+
+---
+
+## Posting Strategy
+
+Posting status remains compatible with:
+- existing accounting workflow,
+- existing posting cronjob,
+- existing billing2 posting mechanism.
+
+Future enhancement MAY:
+- introduce aggregate-level posting state,
+- introduce posting batch tracking.
+
+WITHOUT:
+- breaking legacy accounting integration.
+
+---
+
+# QUERY STRATEGY
+
+| Query | Purpose |
+|---|---|
+| Get Register Billing | aggregate detail |
+| List Open Bill | operational monitoring |
+| List Finalized Bill | cashier queue |
+| List Unposted Projection | accounting projection |
+| Allocation Projection | financial decomposition |
 
 ---
 
 # SECURITY DESIGN
 
-Authorization remains aligned with:
+Sensitive operation:
+- finalize,
+- reopen,
+- settlement,
+- allocation recalculation.
+
+Authorization remains compatible with:
 - existing HIS authorization,
-- existing cashier workflow,
-- existing finance authority.
-
-Sensitive operations:
-- reopen billing,
-- finalize billing,
-- payment settlement
-
-should require operational authorization.
+- cashier workflow,
+- Tata Rekening authority.
 
 ---
 
-# PERFORMANCE CONSIDERATION
+# PERFORMANCE DESIGN
 
-Design optimized for:
-- large billing volume,
-- legacy SQL performance,
-- accounting batch generation.
+Optimized for:
+- large transaction volume,
+- legacy SQL workload,
+- accounting batch projection.
 
 ---
 
 ## Recommended Index
 
-| Table | Recommended Index |
+| Table | Index |
 |---|---|
-| `ta_trs_billing` | registration, billing status |
-| `ta_trs_billing2` | posting flag, payer type |
-| `ta_trs_billing2` | transaction batch id |
+| `BILRG_TrsBillingRegister` | RegId, BillState |
+| `ta_trs_billing` | RegId, TrsId |
+| `ta_trs_billing2` | posting flag |
+| `ta_trs_billing2` | payer type |
 
 ---
 
 # ERROR HANDLING STRATEGY
 
-Domain validation:
-- invalid lifecycle transition,
-- invalid payer allocation,
-- settlement on finalized billing,
-- duplicate billing generation.
+## Domain Validation
 
-Application layer:
-- transactional rollback,
-- allocation regeneration rollback,
-- posting validation.
+Prevent:
+- invalid lifecycle transition,
+- settlement before finalize,
+- reopen after payment,
+- duplicate charge.
+
+---
+
+## Application Validation
+
+Rollback on:
+- projection regeneration failure,
+- settlement failure,
+- finalize validation failure.
 
 ---
 
 # AI IMPLEMENTATION NOTE
 
-When implementing TRSBILLING:
+When implementing:
 
-1. Respect existing legacy billing structure.
-2. Do NOT redesign accounting workflow.
-3. Do NOT convert billing2 into event sourcing model.
-4. Treat billing2 as:
-   - allocation projection,
-   - accounting projection detail,
+1. Aggregate boundary is:
+   ```text
+   registration scope
+   ```
+
+2. `TrsBillingRegister` is:
+   - orchestration aggregate,
+   - NOT financial authority.
+
+3. `ta_trs_billing` remains:
+   - financial authority,
+   - legacy-compatible source.
+
+4. `ta_trs_billing2` is:
+   - derived financial projection,
    - NOT immutable history.
-5. Pricing snapshot MUST remain historically immutable.
-6. Accounting snapshot MUST remain historically immutable.
-7. Prefer compatibility over architectural purity.
-8. Preserve existing operational workflow whenever possible.
-9. Use delete-regenerate strategy for allocation recalculation.
-10. Billing settlement granularity is:
-    - per registration,
-    - then decomposed proportionally into billing components.
+
+5. Projection recalculation MUST use:
+   ```text
+   DELETE → REGENERATE
+   ```
+
+6. Pricing snapshot and accounting snapshot are immutable.
+
+7. Prefer:
+   - compatibility,
+   - operational stability,
+   - accounting continuity
+
+   over architectural purity.
+
+8. Do NOT redesign accounting workflow.
+
+9. Do NOT convert billing2 into event sourcing model.
+
+10. Lifecycle orchestration belongs to:
+    ```text
+    TrsBillingRegister
+    ```
 
 ---
 
@@ -658,49 +572,41 @@ When implementing TRSBILLING:
 
 | Area | Validation |
 |---|---|
-| Pricing snapshot | historical consistency |
-| Allocation engine | proportional decomposition |
-| Billing2 regeneration | delete-regenerate consistency |
-| Posting projection | accounting compatibility |
 | Lifecycle | OPEN → CLOSE → FINALIZED → PAID |
-| Settlement | multiple payer allocation |
-| Composite billing | multi-component support |
+| Allocation | proportional decomposition |
+| Projection | delete-regenerate consistency |
+| Settlement | freeze validation |
+| Snapshot | historical consistency |
+| Idempotency | duplicate prevention |
+| Reopen | payment restriction |
 
 ---
 
-# DEPLOYMENT / ROLLOUT NOTE
+# DEPLOYMENT STRATEGY
 
-Deployment strategy:
+Deployment uses:
 
-# compatibility-first incremental rollout
+# incremental compatibility-first rollout
 
 Principles:
-- existing billing table remains authoritative,
-- existing accounting integration remains operational,
-- existing cashier workflow remains unchanged,
-- migration should be additive and low-risk.
-
-Avoid:
-- big-bang accounting redesign,
-- distributed orchestration,
-- immutable financial rewrite,
-- event sourcing conversion.
+- preserve existing billing tables,
+- preserve accounting integration,
+- preserve cashier workflow,
+- additive migration only.
 
 ---
 
 # FUTURE EXTENSION POINT
 
-Allowed future extension:
-
 | Area | Extension |
 |---|---|
-| Posting tracking | aggregate-level posting batch |
-| Allocation engine | configurable decomposition strategy |
-| Accounting projection | async queue optimization |
-| Integration gateway | centralized billing API |
+| Posting | aggregate posting state |
+| Projection | async projection queue |
 | Monitoring | reconciliation dashboard |
+| Allocation | configurable decomposition |
+| Integration | centralized charge gateway |
 
 WITHOUT:
-- breaking existing accounting module,
-- replacing legacy accounting workflow,
-- forcing accounting migration.
+- replacing accounting module,
+- replacing cashier workflow,
+- requiring big-bang migration.
