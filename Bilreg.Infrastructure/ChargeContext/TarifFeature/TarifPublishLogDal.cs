@@ -78,7 +78,7 @@ public class TarifPublishLogDal : ITarifPublishLogDal
             """;
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<TarifLastPublishRow>(sql).FirstOrDefault();
+        return conn.Read<TarifLastPublishRow>(sql)?.FirstOrDefault();
     }
 
     private static DynamicParameters MapParams(TarifPublishLogDto dto)

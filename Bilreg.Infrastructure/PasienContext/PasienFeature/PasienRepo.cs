@@ -245,7 +245,7 @@ public class PasienRepo : IPasienRepo
             alamat, contact, identitas);
 
         var result = new PasienPersonView(
-            pasien.fs_mr,
+            pasien.fs_mr, pasien.fb_aktif,
             person);
         return MayBe.From(result);
     }
@@ -259,6 +259,7 @@ public class PasienRepo : IPasienRepo
         
         var result = new PasienPersonView(
             pasienDb.Value.PasienId,
+            pasienDb.Value.IsAktif,
             pasienDb.Value.Person);
         return [result];
     }
@@ -271,7 +272,7 @@ public class PasienRepo : IPasienRepo
             return [];
         
         var result = pasienDb.Select(x => new PasienPersonView(
-            x.fs_mr,
+            x.fs_mr, x.fb_aktif,
             new PersonInfoType(
                 x.fs_nm_pasien,
                 DateOnly.Parse(x.fd_tgl_lahir),
@@ -290,7 +291,7 @@ public class PasienRepo : IPasienRepo
             return [];
         
         var result = pasienDb.Select(x => new PasienPersonView(
-            x.fs_mr,
+            x.fs_mr, x.fb_aktif,
             new PersonInfoType(
                 x.fs_nm_pasien,
                 DateOnly.Parse(x.fd_tgl_lahir),
