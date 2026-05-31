@@ -13,14 +13,19 @@ namespace Bilreg.Domain.PaymentContext.TrsBillingFeature;
 
 public record TrsBillingType : ITrsBillingKey
 {
-    private readonly List<TrsBilling2Base> _listTrsBilling2 = [];
+    private readonly List<TrsBill2TransEventType> _listTrsBill2TransEvent = [];
+    private readonly List<TrsBill2PaymentEventType> _listTrsBill2PaymentEvent = [];
+    private readonly List<TrsBill2DischargeEventType> _listTrsBill2DischargeEvent = [];
     
     #region CREATION
     public TrsBillingType(string billingId, int modul, DateTime tglTrs, 
         RegReff reg, LayananReff layanan, KelasReff kelas, 
         AuditInfoType auditInfo, decimal subTotal, decimal diskon, 
         decimal tax, decimal biaya, RekapCetakReff rekapCetak, 
-        TrsBillKetType keterangan, IEnumerable<TrsBilling2Base> listTrsBilling2)
+        TrsBillKetType keterangan, 
+        IEnumerable<TrsBill2TransEventType> listTrsBilling2,
+        IEnumerable<TrsBill2PaymentEventType> listTrsBilling2PaymentEvent,
+        IEnumerable<TrsBill2DischargeEventType> listTrsBilling2DischargeEvent)
     {
         TrsBillingId = billingId;
         Modul = modul;
@@ -35,15 +40,19 @@ public record TrsBillingType : ITrsBillingKey
         Biaya = biaya;
         RekapCetak = rekapCetak;
         Keterangan = keterangan;
-        _listTrsBilling2 = listTrsBilling2.ToList();
+        _listTrsBill2TransEvent = listTrsBilling2.ToList();
+        _listTrsBill2PaymentEvent = listTrsBilling2PaymentEvent.ToList();
+        _listTrsBill2DischargeEvent = listTrsBilling2DischargeEvent.ToList();
     }
 
-    public static TrsBillingType CreateFromTindakan(TindakanModel tindakan,
-    RegModel reg, TarifType tarif, JaminanType jaminan,
-    IEnumerable<KomponenType> listReffKomp)
+    public static TrsBillingType CreateFromTindakan(
+        TindakanModel tindakan,
+        RegModel reg, TarifType tarif, JaminanType jaminan,
+        IEnumerable<KomponenType> listReffKomp)
     {
         if (tarif.ToReff() != tindakan.Tarif)
             throw new ArgumentException("Tarif tidak sesuai");
+
         if (jaminan.JaminanId != reg.TipeJaminan.TipeJaminanId[..3])
             throw new ArgumentException("Jaminan tidak sesuai registrasi");
 
@@ -51,7 +60,7 @@ public record TrsBillingType : ITrsBillingKey
         var ketBilling = new TrsBillKetType(tarif.TarifName, "", tarif.TarifId, 1, "");
         var result = new TrsBillingType(tindakan.TindakanId, 0, tindakan.TindakanDate,
             tindakan.Reg, tindakan.Layanan, tindakan.Kelas, audit.Created, tindakan.Total, 0, 0, 0,
-            tarif.RekapCetak, ketBilling, []);
+            tarif.RekapCetak, ketBilling, [], [], []);
 
         var rekPpdp = reg.JenisReg == JenisRegEnum.RegInap
             ? jaminan.Rekening.PpdpJasaRanap.CoaId
@@ -65,17 +74,25 @@ public record TrsBillingType : ITrsBillingKey
 
             var rekPdpt = reffKomp?.RekPdpt?.CoaId ?? string.Empty;
             var rekDiskon = reffKomp?.RekDiskon?.CoaId ?? string.Empty;
-            var rekJasa = new RekJasaType(rekPpdp, rekPdpt, rekDiskon);
 
             var ppa = item is TindakanKomponenWithPpaType kompWithPpa
                 ? kompWithPpa.Ppa
                 : PpaType.Default.ToReff();
+            var bill2Coa = new TrsBill2CoaType(
+                new CoaType(rekPpdp, " "),
+                new CoaType(rekPdpt, ""),
+                CoaType.Default,
+                CoaType.Default,
+                CoaType.Default,
+                new CoaType(rekDiskon, ""));
+            
+            var komponen = new TrsBill2KomponenType(item.Komponen.KomponenId, item.Komponen.KomponenName);
+            
+            var trsBill2 = new TrsBill2TransEventType(
+                i++,  komponen, TrsBill2JenisBayarType.Pdp, 
+                item.Nilai, ppa, bill2Coa);
 
-            var trsBill2 = new TrsBilling2JasaType(i++, tindakan.TindakanId, tindakan.TindakanDate,
-                new NilaiBillingType("PDP", item.Nilai, 0), ppa, PegType.Default,
-                item.Komponen, rekJasa);
-
-            result.AddTrsBilling2(trsBill2);
+            result.AddTransactionEvent(trsBill2);
         }
         return result;
     }
@@ -109,7 +126,7 @@ public record TrsBillingType : ITrsBillingKey
             var trsBill2 = new TrsBilling2JasaType(i++, reg.RegId, reg.RegDate.ToDateTime(TimeOnly.FromDateTime(reg.RegMasukAudit.Timestamp)),
                 new NilaiBillingType("PDP", item.Nilai, 0), ppa, PegType.Default,
                 item.Komponen, rekJasa);
-            result.AddTrsBilling2(trsBill2);
+            result.AddTransactionEvent(trsBill2);
         }
         return result;
     }
@@ -138,12 +155,15 @@ public record TrsBillingType : ITrsBillingKey
     public decimal Biaya { get; init; }
     public decimal Total => SubTotal - Diskon + Tax + Biaya;
     public TrsBillKetType Keterangan { get; init; }
-    public IEnumerable<TrsBilling2Base> ListTrsBilling2 => _listTrsBilling2;
+    public IEnumerable<TrsBill2TransEventType> ListBill2Transaction => _listTrsBill2TransEvent;
+    public IEnumerable<TrsBill2DischargeEventType> ListBill2Discharge => _listTrsBill2DischargeEvent;
+    public IEnumerable<TrsBill2PaymentEventType> ListBill2Payment => _listTrsBill2PaymentEvent;
+    
     #endregion
     
-    public void AddTrsBilling2(TrsBilling2Base trsBilling2)
+    private void AddTransactionEvent(TrsBill2TransEventType trsBill2)
     {
-        _listTrsBilling2.Add(trsBilling2);
+        _listTrsBill2TransEvent.Add(trsBill2);
     }
 }
 
