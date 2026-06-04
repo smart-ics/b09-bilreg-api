@@ -62,9 +62,8 @@ public class AntrianMapRepo : IAntrianMapRepo
         var lynKey = jadwal.Layanan;
         var ppaKey = jadwal.Dokter;
         var listAnt = _antrianMapDal.ListData(lynKey, ppaKey, tgl)?.ToList() ?? [];
-        var antrianMapKey = listAnt.Count == 1 ?
-            listAnt.First()
-            : listAnt.FirstOrDefault(x => x.fs_jam_jadwal == jadwal.JamMulai.ToString("HH:mm", CultureInfo.InvariantCulture));
+        var antrianMapKey = listAnt
+            .FirstOrDefault(x => x.fs_jam_jadwal == jadwal.JamMulai.ToString("HH:mm", CultureInfo.InvariantCulture));
         if (antrianMapKey is null)
             return MayBe<AntrianMapModel>.None;
         
