@@ -1,11 +1,11 @@
 -- Phase 0: enforce one projection row per tariff variant.
 -- Requires BILRG_NilaiTarif_Phase0_DuplicateCleanup.sql (index creation fails if duplicates remain).
 
-IF NOT EXISTS (
-    SELECT 1 FROM sys.indexes
-    WHERE name = 'UX_BILRG_NilaiTarif_Variant' AND object_id = OBJECT_ID('BILRG_NilaiTarif'))
-BEGIN
-    CREATE UNIQUE NONCLUSTERED INDEX UX_BILRG_NilaiTarif_Variant
-    ON BILRG_NilaiTarif (TarifId, TipeTarifId, KelasId);
-END
-GO
+--IF NOT EXISTS (
+--    SELECT 1 FROM sys.indexes
+--    WHERE name = 'UX_BILRG_NilaiTarif_Variant' AND object_id = OBJECT_ID('BILRG_NilaiTarif'))
+--BEGIN
+--    CREATE UNIQUE NONCLUSTERED INDEX UX_BILRG_NilaiTarif_Variant
+--    ON BILRG_NilaiTarif (TarifId, TipeTarifId, KelasId);
+--END
+--GO

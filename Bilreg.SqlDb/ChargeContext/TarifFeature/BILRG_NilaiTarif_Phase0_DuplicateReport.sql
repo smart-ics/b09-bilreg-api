@@ -1,14 +1,14 @@
 -- Phase 0: read-only duplicate variant report for ops sign-off.
 -- Deploy before BILRG_NilaiTarif_Phase0_DuplicateCleanup.sql and UX index creation.
 
-SELECT
-    TarifId,
-    TipeTarifId,
-    KelasId,
-    COUNT(*) AS VariantCount,
-    STRING_AGG(NilaiTarifId, ', ') WITHIN GROUP (ORDER BY NilaiTarifId DESC) AS NilaiTarifIds
-FROM BILRG_NilaiTarif
-GROUP BY TarifId, TipeTarifId, KelasId
-HAVING COUNT(*) > 1
-ORDER BY TarifId, TipeTarifId, KelasId;
-GO
+--SELECT
+--    TarifId,
+--    TipeTarifId,
+--    KelasId,
+--    COUNT(*) AS VariantCount,
+--    STRING_AGG(NilaiTarifId, ', ') WITHIN GROUP (ORDER BY NilaiTarifId DESC) AS NilaiTarifIds
+--FROM BILRG_NilaiTarif
+--GROUP BY TarifId, TipeTarifId, KelasId
+--HAVING COUNT(*) > 1
+--ORDER BY TarifId, TipeTarifId, KelasId;
+--GO

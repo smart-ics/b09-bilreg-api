@@ -17,10 +17,11 @@ public interface IPasienRepo :
 
 public record PasienPersonView(
     string PasienId,
+    bool IsActive,
     PersonInfoType Person)
 {
     public static PasienPersonView Default()
-        => new("-", PersonInfoType.Default);
+        => new("-", false, PersonInfoType.Default);
 
     public bool IsEmpty => PasienId == "-";
 }
