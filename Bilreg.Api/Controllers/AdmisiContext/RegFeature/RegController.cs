@@ -106,6 +106,15 @@ public class RegController : Controller
         var result = await _mediator.Send(query);
         return Ok(new JSendOk(result));
     }
+
+    [HttpGet]
+    [Route("aktif/{jenisReg}/jenisReg")]
+    public async Task<IActionResult> ListAktifByJenisReg(int jenisReg)
+    {
+        var query = new RegAktifByJenisRegListQuery(jenisReg);
+        var result = await _mediator.Send(query);
+        return Ok(new JSendOk(result));
+    }
 }
 
 public record RegBatalRequestDto(string RegId, string UserId, string VoidReason);
