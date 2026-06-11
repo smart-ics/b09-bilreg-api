@@ -32,11 +32,13 @@ public class TindakanIgdDal : ITindakanIgdDal
     {
         const string sql = """
             INSERT INTO BILRG_TindakanIgd (
-                TindakanIgdId, IgdVisitId, RegId, TarifId, TarifName,
-                Qty, Price, CrtUser, CrtDate)
+                TindakanIgdId, IgdVisitId, RegId, ReffId, Descriptions,
+                Qty, Aktifitas, PpaId, PpaName, 
+                CrtUser, CrtDate)
             VALUES (
-                @TindakanIgdId, @IgdVisitId, @RegId, @TarifId, @TarifName,
-                @Qty, @Price, @CrtUser, @CrtDate)
+                @TindakanIgdId, @IgdVisitId, @RegId, @ReffId, @Descriptions,
+                @Qty, @Aktifitas, @PpaId, @PpaName, 
+                @CrtUser, @CrtDate)
             """;
         var dp = BuildParams(dto);
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
@@ -49,10 +51,12 @@ public class TindakanIgdDal : ITindakanIgdDal
             UPDATE BILRG_TindakanIgd
             SET IgdVisitId = @IgdVisitId,
                 RegId = @RegId,
-                TarifId = @TarifId,
-                TarifName = @TarifName,
+                ReffId = @ReffId,
+                Descriptions = @Descriptions,
                 Qty = @Qty,
-                Price = @Price,
+                Aktifitas = @Aktifitas,
+                PpaId = @PpaId,
+                PpaName = @PpaName,
                 CrtUser = @CrtUser,
                 CrtDate = @CrtDate
             WHERE TindakanIgdId = @TindakanIgdId
@@ -74,8 +78,9 @@ public class TindakanIgdDal : ITindakanIgdDal
     public TindakanIgdDto GetData(ITindakanIgdKey key)
     {
         const string sql = """
-            SELECT TindakanIgdId, IgdVisitId, RegId, TarifId, TarifName,
-                Qty, Price, CrtUser, CrtDate
+            SELECT TindakanIgdId, IgdVisitId, RegId, ReffId, Descriptions,
+                Qty, Aktifitas, PpaId, PpaName,
+                CrtUser, CrtDate
             FROM BILRG_TindakanIgd
             WHERE TindakanIgdId = @TindakanIgdId
             """;
@@ -88,8 +93,9 @@ public class TindakanIgdDal : ITindakanIgdDal
     public IEnumerable<TindakanIgdDto> ListData(IIgdVisitKey filter)
     {
         const string sql = """
-            SELECT TindakanIgdId, IgdVisitId, RegId, TarifId, TarifName,
-                Qty, Price, CrtUser, CrtDate
+            SELECT TindakanIgdId, IgdVisitId, RegId, ReffId, Descriptions,
+                Qty, Aktifitas, PpaId, PpaName, 
+                CrtUser, CrtDate
             FROM BILRG_TindakanIgd
             WHERE IgdVisitId = @IgdVisitId
             ORDER BY CrtDate
@@ -115,10 +121,12 @@ public class TindakanIgdDal : ITindakanIgdDal
         dp.AddParam("@TindakanIgdId", dto.TindakanIgdId, SqlDbType.VarChar);
         dp.AddParam("@IgdVisitId", dto.IgdVisitId, SqlDbType.VarChar);
         dp.AddParam("@RegId", dto.RegId, SqlDbType.VarChar);
-        dp.AddParam("@TarifId", dto.TarifId, SqlDbType.VarChar);
-        dp.AddParam("@TarifName", dto.TarifName, SqlDbType.VarChar);
+        dp.AddParam("@ReffId", dto.ReffId, SqlDbType.VarChar);
+        dp.AddParam("@Descriptions", dto.Descriptions, SqlDbType.VarChar);
         dp.AddParam("@Qty", dto.Qty, SqlDbType.Int);
-        dp.AddParam("@Price", dto.Price, SqlDbType.Decimal);
+        dp.AddParam("@Aktifitas", dto.Aktifitas, SqlDbType.Int);
+        dp.AddParam("@PpaId", dto.PpaId, SqlDbType.VarChar);
+        dp.AddParam("@PpaName", dto.PpaName, SqlDbType.VarChar);
         dp.AddParam("@CrtUser", dto.CrtUser, SqlDbType.VarChar);
         dp.AddParam("@CrtDate", dto.CrtDate, SqlDbType.DateTime);
         return dp;

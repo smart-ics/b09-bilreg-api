@@ -17,10 +17,12 @@ public class TindakanIgdDalTest
             TindakanIgdId: id,
             IgdVisitId: "TIGV0000000001",
             RegId: "R001",
-            TarifId: "TR001",
-            TarifName: "Tindakan A",
+            ReffId: "TR001",
+            Descriptions: "Tindakan A",
             Qty: 2,
-            Price: 50000m,
+            Aktifitas: 0,
+            PpaId: "DR01",
+            PpaName: "DOKTER1",
             CrtUser: "U1",
             CrtDate: new DateTime(2026, 1, 1, 12, 0, 0));
 

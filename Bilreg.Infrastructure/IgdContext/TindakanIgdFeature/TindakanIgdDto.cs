@@ -1,4 +1,5 @@
 using Bilreg.Application.IgdContext.TindakanIgdFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.IgdContext.TindakanIgdFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 
@@ -8,45 +9,56 @@ public record TindakanIgdDto(
     string TindakanIgdId,
     string IgdVisitId,
     string RegId,
-    string TarifId,
-    string TarifName,
+    string ReffId,
+    string Descriptions,
     int Qty,
-    decimal Price,
+    int Aktifitas,
+    string PpaId, 
+    string PpaName,
     string CrtUser,
-    DateTime CrtDate)
+    DateTime CrtDate
+    )
 {
     public static TindakanIgdDto FromModel(TindakanIgdModel model)
         => new(
             TindakanIgdId: model.TindakanIgdId,
             IgdVisitId: model.IgdVisitId,
             RegId: model.RegId,
-            TarifId: model.TarifId,
-            TarifName: model.TarifName,
+            ReffId: model.ReffId,
+            Descriptions: model.Descriptions,
             Qty: model.Qty,
-            Price: model.Price,
-            CrtUser: model.Audit.UserId,
-            CrtDate: model.Audit.Timestamp);
+            Aktifitas: (int)model.Aktifitas,
+            PpaId: model.Ppa.PpaId,
+            PpaName: model.Ppa.PpaName,model.Audit.UserId, model.Audit.Timestamp);
 
     public TindakanIgdModel ToModel()
-        => new(
+    {
+        var audit = new AuditInfoType(CrtUser, CrtDate);
+        var petugasMedis = new PpaReff(PpaId, PpaName);
+
+        var result = new TindakanIgdModel(
             tindakanIgdId: TindakanIgdId,
             igdVisitId: IgdVisitId,
             regId: RegId,
-            tarifId: TarifId,
-            tarifName: TarifName,
+            reffId: ReffId,
+            descriptions: Descriptions,
             qty: Qty,
-            price: Price,
-            audit: new AuditInfoType(CrtUser, CrtDate));
+            aktifitas: (ActivityTindakanIgd)Aktifitas,
+            ppa: petugasMedis,
+            audit: audit);
+        return result;
+    }
 
     public TindakanIgdView ToView()
         => new(
             TindakanIgdId: TindakanIgdId,
             IgdVisitId: IgdVisitId,
             RegId: RegId,
-            TarifId: TarifId,
-            TarifName: TarifName,
+            ReffId: ReffId,
+            Descriptions: Descriptions,
             Qty: Qty,
-            Price: Price,
-            Subtotal: Qty * Price,
+            Aktifitas: (ActivityTindakanIgd)Aktifitas,
+            Ppa: new PpaReff(PpaId, PpaName),
+            CrtUserId: CrtUser,
             CreatedDateTime: CrtDate);
 }
