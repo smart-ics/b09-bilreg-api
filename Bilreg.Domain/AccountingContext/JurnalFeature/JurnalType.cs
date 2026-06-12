@@ -51,7 +51,7 @@ public record JurnalType : IJurnalKey
                 {
                     case "PDP":
                         nilaiPpdp += trsBilling2Jasa.NilaiBilling.NilaiP;
-                        rekPpdp = trsBilling2Jasa.Rekening.Pdpt;
+                        rekPpdp = trsBilling2Jasa.Rekening.Ppdp;
                         var jurnalNilaiPdpt = new Jurnal2NilaiType(trsBilling2Jasa.Rekening.Pdpt, 
                             $"Pendapatan \n{trsBilling.Keterangan.Keterangan}", 
                             0, trsBilling2Jasa.NilaiBilling.NilaiP);
