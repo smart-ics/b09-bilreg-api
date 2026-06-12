@@ -6,7 +6,7 @@ public record TrsBill2DischargeEventType
 {
     public TrsBill2DischargeEventType(int noUrut,
         TrsBill2KomponenType komponen,
-        TrsBill2JenisBayarType jenisBayar,
+        TrsBillJenisBayarType jenisBayar,
         decimal nilai,
         PpaReff petugasMedis,
         string petugasKasir,
@@ -23,13 +23,13 @@ public record TrsBill2DischargeEventType
         TglBayar = tglBayar;
     }
     public static TrsBill2DischargeEventType Default 
-        => new(0, TrsBill2KomponenType.Default, TrsBill2JenisBayarType.Default, 0, 
+        => new(0, TrsBill2KomponenType.Default, TrsBillJenisBayarType.Default, 0, 
             PpaType.Default.ToReff(), "", "", DateTime.MinValue);
 
     public static TrsBill2DischargeEventType Create(
         int noUrut,
         TrsBill2KomponenType komponen,
-        TrsBill2JenisBayarType jenisBayar,
+        TrsBillJenisBayarType jenisBayar,
         decimal nilai,
         PpaReff petugasMedis,
         string petugasKasir,
@@ -40,8 +40,8 @@ public record TrsBill2DischargeEventType
         if (komponen == TrsBill2KomponenType.Default)
             throw new ArgumentException("Komponen must not be default", nameof(komponen));
 
-        if (jenisBayar != TrsBill2JenisBayarType.Kas &&
-            jenisBayar != TrsBill2JenisBayarType.Hut &&
+        if (jenisBayar != TrsBillJenisBayarType.Kas &&
+            jenisBayar != TrsBillJenisBayarType.Hut &&
             !jenisBayar.IsTipeJaminan)
             throw new ArgumentException("JenisBayar must be KAS, HUT, or a jenisBayar with IsTipeJaminan", nameof(jenisBayar));
         
@@ -53,7 +53,7 @@ public record TrsBill2DischargeEventType
 
     public int NoUrut { get; init; }
     public TrsBill2KomponenType Komponen { get; init; }
-    public TrsBill2JenisBayarType JenisBayar { get; init; }
+    public TrsBillJenisBayarType JenisBayar { get; init; }
     public decimal Nilai { get; init; }
     public PpaReff PetugasMedis { get; init; }
     public string PetugasKasir { get; init; }

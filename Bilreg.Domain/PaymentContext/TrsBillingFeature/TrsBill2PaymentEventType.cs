@@ -3,7 +3,7 @@ namespace Bilreg.Domain.PaymentContext.TrsBillingFeature;
 public record TrsBill2PaymentEventType
 {
     public TrsBill2PaymentEventType(int noUrut, TrsBill2KomponenType komponen, 
-        TrsBill2JenisBayarType jenisBayar, decimal nilaiP, decimal nilaiN)
+        TrsBillJenisBayarType jenisBayar, decimal nilaiP, decimal nilaiN)
     {
         NoUrut = noUrut;
         Komponen = komponen;
@@ -14,15 +14,15 @@ public record TrsBill2PaymentEventType
 
     public static TrsBill2PaymentEventType Create(
         int noUrut, TrsBill2KomponenType komponen,
-        TrsBill2JenisBayarType jenisBayar, 
+        TrsBillJenisBayarType jenisBayar, 
         decimal nilaiP, decimal nilaiN
     )
     {
         if (komponen == TrsBill2KomponenType.Default)
             throw new ArgumentException("Komponen must not be default", nameof(komponen));
         
-        if (jenisBayar != TrsBill2JenisBayarType.Kas &&
-            jenisBayar != TrsBill2JenisBayarType.Hut &&
+        if (jenisBayar != TrsBillJenisBayarType.Kas &&
+            jenisBayar != TrsBillJenisBayarType.Hut &&
             !jenisBayar.IsTipeJaminan)
             throw new ArgumentException("JenisBayar must be KAS, HUT, or a jenisBayar with IsTipeJaminan", nameof(jenisBayar));
         
@@ -38,7 +38,7 @@ public record TrsBill2PaymentEventType
     
     public int NoUrut { get; init; }
     public TrsBill2KomponenType Komponen { get; init; }
-    public TrsBill2JenisBayarType JenisBayar { get; init; }
+    public TrsBillJenisBayarType JenisBayar { get; init; }
     public decimal NilaiP { get; init; }
     public decimal NilaiN { get; init; }
 }

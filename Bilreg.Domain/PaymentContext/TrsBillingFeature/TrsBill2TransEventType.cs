@@ -6,7 +6,7 @@ public record TrsBill2TransEventType
 {
     public TrsBill2TransEventType(int noUrut,
         TrsBill2KomponenType komponen,
-        TrsBill2JenisBayarType jenisBayar,
+        TrsBillJenisBayarType jenisBayar,
         decimal nilai,
         PpaReff petugasMedis,
         TrsBill2CoaType coa)
@@ -22,7 +22,7 @@ public record TrsBill2TransEventType
     public static TrsBill2TransEventType Create(
         int noUrut,
         TrsBill2KomponenType komponen,
-        TrsBill2JenisBayarType jenisBayar,
+        TrsBillJenisBayarType jenisBayar,
         decimal nilai,
         PpaReff petugasMedis,
         TrsBill2CoaType coa)
@@ -38,23 +38,23 @@ public record TrsBill2TransEventType
         return new TrsBill2TransEventType(noUrut, komponen, jenisBayar, nilai, petugasMedis, coa);
     }
     
-    public static TrsBill2TransEventType Default => new(0, TrsBill2KomponenType.Default, TrsBill2JenisBayarType.Default, 0, 
+    public static TrsBill2TransEventType Default => new(0, TrsBill2KomponenType.Default, TrsBillJenisBayarType.Default, 0, 
         PpaType.Default.ToReff(), TrsBill2CoaType.Default);
     
-    private static readonly HashSet<TrsBill2JenisBayarType> AllowedJenisBayar =
+    private static readonly HashSet<TrsBillJenisBayarType> AllowedJenisBayar =
     [
-        TrsBill2JenisBayarType.Pdp,
-        TrsBill2JenisBayarType.Byl,
-        TrsBill2JenisBayarType.Pot,
-        TrsBill2JenisBayarType.Tax,
+        TrsBillJenisBayarType.Pdp,
+        TrsBillJenisBayarType.Byl,
+        TrsBillJenisBayarType.Pot,
+        TrsBillJenisBayarType.Tax,
     ];
 
-    private static void ValidateCoa(TrsBill2JenisBayarType jenisBayar, TrsBill2CoaType coa)
+    private static void ValidateCoa(TrsBillJenisBayarType jenisBayar, TrsBill2CoaType coa)
     {
         var (isValid, message) = true switch
         {
             // PPDP, PDPT required | PERSEDIAAN optional | rest must be empty
-            _ when jenisBayar == TrsBill2JenisBayarType.Pdp => (
+            _ when jenisBayar == TrsBillJenisBayarType.Pdp => (
                 coa.Ppdp     != CoaType.Default && 
                 coa.Pdpt     != CoaType.Default &&
                 coa.PdptLain == CoaType.Default &&
@@ -63,7 +63,7 @@ public record TrsBill2TransEventType
                 "For PDP, Coa PPDP and PDPT are required; PERSEDIAAN is optional; PDPTLAIN, TAX, and DISC must be empty"),
 
             // PPDP, PDPT, PDPT-LAIN required | rest must be empty
-            _ when jenisBayar == TrsBill2JenisBayarType.Byl => (
+            _ when jenisBayar == TrsBillJenisBayarType.Byl => (
                 coa.Ppdp     != CoaType.Default &&
                 coa.Pdpt     != CoaType.Default &&
                 coa.PdptLain != CoaType.Default &&
@@ -72,7 +72,7 @@ public record TrsBill2TransEventType
                 "For BYL, Coa PPDP, PDPT, and PDPTLAIN are required; TAX and DISC must be empty"),
 
             // PDPT, TAX required | rest must be empty
-            _ when jenisBayar == TrsBill2JenisBayarType.Tax => (
+            _ when jenisBayar == TrsBillJenisBayarType.Tax => (
                 coa.Pdpt     != CoaType.Default &&
                 coa.Tax      != CoaType.Default &&
                 coa.Ppdp     == CoaType.Default &&
@@ -81,7 +81,7 @@ public record TrsBill2TransEventType
                 "For TAX, Coa PDPT and TAX are required; PPDP, PDPTLAIN, and DISC must be empty"),
 
             // DISC required | PERSEDIAAN optional | rest must be empty
-            _ when jenisBayar == TrsBill2JenisBayarType.Pot => (
+            _ when jenisBayar == TrsBillJenisBayarType.Pot => (
                 coa.Disc     != CoaType.Default &&
                 coa.Ppdp     == CoaType.Default &&
                 coa.Pdpt     == CoaType.Default &&
@@ -98,7 +98,7 @@ public record TrsBill2TransEventType
 
     public int NoUrut { get; init; }
     public TrsBill2KomponenType Komponen { get; init; }
-    public TrsBill2JenisBayarType JenisBayar { get; init; }
+    public TrsBillJenisBayarType JenisBayar { get; init; }
     public decimal Nilai { get; init; }
     public PpaReff PetugasMedis { get; init; }
     public TrsBill2CoaType Coa { get; init; }
