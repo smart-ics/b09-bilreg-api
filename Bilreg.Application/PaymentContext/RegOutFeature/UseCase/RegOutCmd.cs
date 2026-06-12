@@ -62,7 +62,7 @@ public class RegOutHandler : IRequestHandler<RegOutCmd>
         var existingBilling = _trsBillingBayarRepo.ListData(request).ToList();
 
         // 6. ⚡ DOMAIN FACTORY: Generate billing RegOut (polymorphic: Jasa/Obat)
-        var billing2RegOut = TrsBilling2GenRegOut.CreateFromRegKeluar(
+        var billing2RegOut = TrsBillingType. TrsBilling2GenRegOut.CreateFromRegKeluar(
             processedPembayaran,
             existingBilling,
             jenisBayarMap,
