@@ -8,7 +8,7 @@ namespace Bilreg.Domain.PaymentContext.TrsBillingFeature;
 
 public class TrsBillRegFactory
 {
-    public static TrsBillingType Create(RegModel reg,
+    public static TrsBillType Create(RegModel reg,
         KarcisType karcis, JaminanType jaminan, PpaType dokter,
         IEnumerable<KomponenType> listReffKomp)
     {
@@ -52,7 +52,7 @@ public class TrsBillRegFactory
         }
 
         var nilai = new TrsBillNilaiType(karcis.NilaiKarcis, reg.ListKomponen.Sum(x => x.Diskon), 0, 0);
-        var result = new TrsBillingType(reg.RegId, 0, reg.RegDate.ToDateTime(TimeOnly.FromDateTime(reg.RegMasukAudit.Timestamp)),
+        var result = new TrsBillType(reg.RegId, 0, reg.RegDate.ToDateTime(TimeOnly.FromDateTime(reg.RegMasukAudit.Timestamp)),
             reg.ToReff(), reg.Layanan, reg.Kelas, audit.Created, karcis.RekapCetak,  
             nilai, ketBilling, listBill2TransEvent, [], []);
 

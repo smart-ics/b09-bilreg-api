@@ -9,7 +9,7 @@ namespace Bilreg.Domain.PaymentContext.TrsBillingFeature;
 
 public class TrsBillTindakanFactory
 {
-    public TrsBillingType Create(
+    public TrsBillType Create(
         TindakanModel tindakan,
         RegModel reg, TarifType tarif, JaminanType jaminan,
         IEnumerable<KomponenType> listReffKomp)
@@ -60,7 +60,7 @@ public class TrsBillTindakanFactory
 
         var nilai = new TrsBillNilaiType(tindakan.Total, 0, 0, 0);
         
-        var result = new TrsBillingType(tindakan.TindakanId, 0, tindakan.TindakanDate,
+        var result = new TrsBillType(tindakan.TindakanId, 0, tindakan.TindakanDate,
             tindakan.Reg, tindakan.Layanan, tindakan.Kelas, audit.Created, tarif.RekapCetak, 
             nilai, ketBilling, listBill2TransEvent, [], []);
         return result;

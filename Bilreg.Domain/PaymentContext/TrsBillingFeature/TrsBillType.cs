@@ -6,14 +6,14 @@ using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 
 namespace Bilreg.Domain.PaymentContext.TrsBillingFeature;
 
-public record TrsBillingType : ITrsBillingKey
+public record TrsBillType : ITrsBillingKey
 {
     private readonly List<TrsBill2TransEventType> _listTrsBill2TransEvent = [];
     private readonly List<TrsBill2PaymentEventType> _listTrsBill2PaymentEvent = [];
     private readonly List<TrsBill2DischargeEventType> _listTrsBill2DischargeEvent = [];
     
     #region CREATION
-    public TrsBillingType(string billingId, int modul, DateTime tglTrs, 
+    public TrsBillType(string billingId, int modul, DateTime tglTrs, 
         RegReff reg, LayananReff layanan, KelasReff kelas, 
         AuditInfoType auditInfo, RekapCetakReff rekapCetak,
         TrsBillNilaiType nilai, 
@@ -37,7 +37,7 @@ public record TrsBillingType : ITrsBillingKey
         _listTrsBill2DischargeEvent = listTrsBilling2DischargeEvent.ToList();
     }
 
-    public static TrsBillingType Default => new("-", 0, DateTime.MinValue, 
+    public static TrsBillType Default => new("-", 0, DateTime.MinValue, 
         RegModel.Default.ToReff(), LayananType.Default.ToReff(), 
         KelasType.Default.ToReff(), 
         AuditInfoType.Default, RekapCetakType.Default.ToReff(),

@@ -5,9 +5,9 @@ using Nuna.Lib.DataAccessHelper;
 namespace Bilreg.Application.PaymentContext.TrsBillingFeature;
 
 public interface ITrsBillingRepo :
-    ISaveChange<TrsBillingType>,
-    ILoadEntity<TrsBillingType, ITrsBillingKey>,
+    ISaveChange<TrsBillType>,
+    ILoadEntity<TrsBillType, ITrsBillingKey>,
     IDeleteEntity<ITrsBillingKey>,
-    IListData<TrsBillingType, IRegKey>
+    IListData<TrsBillType, IRegKey>
 {
 }
