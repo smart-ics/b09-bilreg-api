@@ -26,7 +26,8 @@ public class TrsBillCreationDomainServiceTest
     public void UT01_GivenClosedTataRekening_WhenCreateFromRegistration_ThenShouldThrowInvalidOperationException()
     {
         var reg = CreateRegWithKomponen("REG-001");
-        var tataRekening = new TataRekeningModel(reg.RegId, TataRekeningStatusEnum.Closed, []);
+        var tataRekening = TataRekeningModel.Create(reg.RegId);
+        tataRekening.Close();
 
         Action act = () => _sut.FromReg(
             tataRekening,
@@ -44,7 +45,8 @@ public class TrsBillCreationDomainServiceTest
     public void UT02_GivenOpenedTataRekening_WhenCreateFromRegistration_ThenShouldCreateTrsBill()
     {
         var reg = CreateRegWithKomponen("REG-002");
-        var tataRekening = new TataRekeningModel(reg.RegId, TataRekeningStatusEnum.Opened, []);
+        var tataRekening = TataRekeningModel.Create(reg.RegId);
+        tataRekening.ReOpen();
 
         var result = _sut.FromReg(
             tataRekening,
@@ -64,7 +66,7 @@ public class TrsBillCreationDomainServiceTest
     public void UT03_GivenDifferentRegistration_WhenCreateFromRegistration_ThenShouldThrowArgumentException()
     {
         var reg = CreateRegWithKomponen("REG-003");
-        var tataRekening = new TataRekeningModel("REG-LAIN", TataRekeningStatusEnum.Opened, []);
+        var tataRekening = TataRekeningModel.Create("REG-LAIN");
 
         Action act = () => _sut.FromReg(
             tataRekening,

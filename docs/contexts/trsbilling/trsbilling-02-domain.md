@@ -1,6 +1,6 @@
 # 02-domain.md — TRSBILLING
 
-# 1. Domain Purpose
+## 1. Domain Purpose
 
 TRSBILLING is the hospital financial charge and allocation domain.
 
@@ -36,7 +36,7 @@ TRSBILLING owns:
 
 ---
 
-# 2. Domain Boundary
+## 2. Domain Boundary
 
 TRSBILLING owns:
 
@@ -74,22 +74,54 @@ TRSBILLING does not own:
 
 ---
 
-# 3. Aggregate Structure
+## 3. Aggregate Structure
 
-TRSBILLING consists of two aggregates:
+TRSBILLING consists of two business concepts:
 
 ```text
 TataRekening
 TrsBill
 ```
 
+However, they participate in different responsibilities.
+
+```text
+TrsBill
+```
+
+represents an individual financial charge.
+
+```text
+TataRekening
+```
+
+represents the patient financial authority for a registration.
+
+Every TrsBill belongs to exactly one TataRekening.
+
+A TataRekening maintains the Billing Set for its registration.
+
+The Billing Set is required because financial lifecycle operations are performed at registration scope, not individual bill scope.
+
+Examples:
+
+```text
+Discharge
+Payment
+CancelDischarge
+CloseBilling
+ReOpen
+```
+
+always operate against the complete Billing Set belonging to the TataRekening.
+
+Bill creation remains independent and may occur without loading the entire Billing Set.
+
 ---
 
-# 4. TataRekening Aggregate
+## 4. TataRekening Aggregate
 
-Represents:
-
-# Patient Financial Authority
+Represents: **Patient Financial Authority**
 
 TataRekening owns:
 
@@ -97,7 +129,12 @@ TataRekening owns:
 * discharge authority,
 * payment authority,
 * allocation orchestration,
-* financial validation.
+* financial validation,
+* billing set ownership.
+
+TataRekening contains the Billing Set belonging to a registration.
+
+The Billing Set represents all TrsBill participating in the patient financial lifecycle.
 
 TataRekening does not own:
 
@@ -105,11 +142,18 @@ TataRekening does not own:
 * tariff component snapshot,
 * operational transaction details.
 
-Those belong to TrsBill.
+Those remain the responsibility of each TrsBill.
+
+TataRekening is the authority that determines:
+
+```text
+which bills participate
+in discharge and payment processing.
+```
 
 ---
 
-# 5. TataRekening Lifecycle
+## 5. TataRekening Lifecycle
 
 ```text
 OPEN
@@ -123,7 +167,7 @@ LUNAS
 
 ---
 
-## OPEN
+### OPEN
 
 Allowed:
 
@@ -133,7 +177,7 @@ Allowed:
 
 ---
 
-## CLOSED
+### CLOSED
 
 No new bill may be created.
 
@@ -147,7 +191,7 @@ operational freeze point
 
 ---
 
-## FINALIZED
+### FINALIZED
 
 Triggered by:
 
@@ -169,7 +213,7 @@ At this state:
 
 ---
 
-## LUNAS
+### LUNAS
 
 All financial responsibility has been converted into cash settlement.
 
@@ -177,13 +221,15 @@ No further modification allowed.
 
 ---
 
-# 6. TataRekening Responsibilities
+## 6. TataRekening Responsibilities
 
 TataRekening owns:
 
 ```text
 Create Bill Control
+Delete Bill Control
 Close Billing
+ReOpen
 Discharge
 Cancel Discharge
 Payment Allocation
@@ -193,20 +239,34 @@ Lifecycle Validation
 TataRekening acts as:
 
 ```text
+Financial Authority
 Allocation Orchestrator
+Lifecycle Controller
 ```
 
-It does not perform operational billing creation.
+Important distinction:
 
-Operational subsystem remains responsible for creating charge requests.
+Bill creation may occur independently through CreateBillService without loading the complete Billing Set.
+
+However:
+
+```text
+CloseBilling
+ReOpen
+Discharge
+CancelDischarge
+Payment
+```
+
+always operate against the Billing Set owned by TataRekening.
+
+These operations are aggregate-wide operations.
 
 ---
 
-# 7. TrsBill Aggregate
+## 7. TrsBill Aggregate
 
-Represents:
-
-# Financial Charge Entry
+Represents: **Financial Charge Entry**
 
 TrsBill is the authoritative representation of a financial charge.
 
@@ -219,24 +279,38 @@ Stores:
 * charge amount,
 * component snapshot.
 
+Every TrsBill belongs to exactly one TataRekening.
+
+A TrsBill may be created independently.
+
+However, once associated with a TataRekening, it participates in the TataRekening financial lifecycle.
+
 ---
 
-# 8. TrsBill Characteristics
+## 8. TrsBill Characteristics
 
 | Characteristic              | Value     |
 | --------------------------- | --------- |
 | Financial Authority         | YES       |
 | Pricing Snapshot            | Immutable |
 | Accounting Snapshot         | Immutable |
+| Independently Creatable     | YES       |
 | Independently Dischargeable | NO        |
 | Independently Payable       | NO        |
 | Independently Finalizable   | NO        |
 
-Lifecycle is controlled exclusively by TataRekening.
+A TrsBill cannot:
+
+* discharge itself,
+* pay itself,
+* finalize itself,
+* reopen itself.
+
+These operations belong exclusively to TataRekening because they require visibility over the complete Billing Set.
 
 ---
 
-# 9. Bill Components
+## 9. Bill Components
 
 TrsBill contains financial breakdown information.
 
@@ -250,7 +324,7 @@ Payment
 
 ---
 
-## Transaction Component
+### Transaction Component
 
 Represents original charge decomposition.
 
@@ -269,7 +343,7 @@ Immutable.
 
 ---
 
-## Discharge Component
+### Discharge Component
 
 Represents financial responsibility allocation result.
 
@@ -292,7 +366,7 @@ Each discharge component is a copy of transaction component with:
 
 ---
 
-## Payment Component
+### Payment Component
 
 Represents settlement allocation result.
 
@@ -315,13 +389,13 @@ Each payment component is a copy of discharge component with:
 
 ---
 
-# 10. Allocation Model
+## 10. Allocation Model
 
 Allocation occurs in two levels.
 
 ---
 
-## Level 1
+### Level 1
 
 TataRekening Allocation
 
@@ -348,7 +422,7 @@ ASURANSI
 
 ---
 
-## Level 2
+### Level 2
 
 TrsBill Allocation
 
@@ -368,7 +442,7 @@ using proportional calculation.
 
 ---
 
-# 11. Allocation Partition Rule
+## 11. Allocation Partition Rule
 
 Every TrsBill belongs to a module group:
 
@@ -413,7 +487,7 @@ This is a domain invariant.
 
 ---
 
-# 12. Discharge Invariant
+## 12. Discharge Invariant
 
 Discharge must allocate:
 
@@ -445,7 +519,7 @@ Partial discharge is not allowed.
 
 ---
 
-# 13. Payment Model
+## 13. Payment Model
 
 Payment may occur multiple times.
 
@@ -465,7 +539,7 @@ TrsBill owns payment decomposition.
 
 ---
 
-# 14. Cancel Discharge
+## 14. Cancel Discharge
 
 Allowed only when:
 
@@ -482,7 +556,7 @@ Regenerate Discharge Components
 
 ---
 
-# 15. Bill Deletion
+## 15. Bill Deletion
 
 Bill deletion is allowed only while:
 
@@ -498,7 +572,7 @@ TRSBILLING does not preserve deleted billing history.
 
 ---
 
-# 16. Financial Adjustment
+## 16. Financial Adjustment
 
 TRSBILLING allows financial adjustment through additional bill creation.
 
@@ -516,7 +590,7 @@ TataRekening only processes financial values provided to it.
 
 ---
 
-# 17. Authority Matrix
+## 17. Authority Matrix
 
 | Domain                | Authority               |
 | --------------------- | ----------------------- |
@@ -529,7 +603,7 @@ TataRekening only processes financial values provided to it.
 
 ---
 
-# 18. Final Domain Position
+## 18. Final Domain Position
 
 TRSBILLING is:
 
@@ -542,19 +616,39 @@ consisting of:
 ```text
 TataRekening
     → Financial Authority
+    → Billing Set Owner
+    → Lifecycle Controller
 
 TrsBill
     → Financial Charge
+    → Pricing Snapshot
+    → Financial Decomposition
 ```
 
 where:
 
 ```text
 TataRekening
-    allocates responsibility
+    owns the patient billing lifecycle
+
+TataRekening
+    owns the Billing Set
 
 TrsBill
-    decomposes responsibility
+    represents individual financial charges
+
+TrsBill
+    decomposes financial allocation
 ```
 
-while operational ownership remains outside the billing domain.
+Important distinction:
+
+```text
+Creation Scope
+≠
+Lifecycle Scope
+```
+
+Bill creation may occur independently.
+
+Discharge, Payment, CancelDischarge, CloseBilling, and ReOpen always occur at TataRekening scope and operate against the complete Billing Set.

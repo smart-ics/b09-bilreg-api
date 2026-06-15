@@ -72,7 +72,7 @@ public record TrsBillType : ITrsBillingKey
     
     #region BEHAVIOR
 
-    public void Discharge(
+    internal void Discharge(
         PaymentType payment,
         decimal nilai,
         string petugasKasir,
