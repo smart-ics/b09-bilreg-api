@@ -10,8 +10,8 @@ namespace Bilreg.Domain.PaymentContext.TrsBillFeature;
 public record TrsBillType : ITrsBillingKey
 {
     private readonly List<TrsBill2TransEventType> _listTrsBill2TransEvent = [];
-    private readonly List<TrsBill2PaymentEventType> _listTrsBill2PaymentEvent = [];
     private readonly List<TrsBill2DischargeEventType> _listTrsBill2DischargeEvent = [];
+    private readonly List<TrsBill2PaymentEventType> _listTrsBill2PaymentEvent = [];
     
     #region CREATION
     public TrsBillType(string billingId, int modul, DateTime tglTrs, 
@@ -63,6 +63,10 @@ public record TrsBillType : ITrsBillingKey
     public IEnumerable<TrsBill2TransEventType> ListTransaction => _listTrsBill2TransEvent;
     public IEnumerable<TrsBill2DischargeEventType> ListDischarge => _listTrsBill2DischargeEvent;
     public IEnumerable<TrsBill2PaymentEventType> ListPayment => _listTrsBill2PaymentEvent;
+    public TrsBillStatusEnum Status =>
+        _listTrsBill2PaymentEvent.Count > 0 ? TrsBillStatusEnum.Paid
+        : _listTrsBill2DischargeEvent.Count > 0 ? TrsBillStatusEnum.Discharged
+        : TrsBillStatusEnum.Transactioned;
     
     #endregion
     
@@ -134,6 +138,11 @@ public record TrsBillType : ITrsBillingKey
             throw new InvalidOperationException("Cannot cancel discharge with existing payments.");
 
         _listTrsBill2DischargeEvent.Clear();
+    }
+
+    public void Pay()
+    {
+        
     }
 
     #endregion
