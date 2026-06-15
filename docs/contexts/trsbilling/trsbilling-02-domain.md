@@ -2,23 +2,37 @@
 
 # 1. Domain Purpose
 
-TRSBILLING is:
+TRSBILLING is the hospital financial charge and allocation domain.
 
-# Hospital Operational Financial Receivable Ledger
+Its responsibility is:
 
-responsible for:
-- billing recognition,
-- receivable allocation,
-- billing finalization,
-- payment settlement,
-- accounting projection source.
+* recognize financial charge,
+* organize patient financial responsibility,
+* allocate charge ownership,
+* finalize billing responsibility,
+* distribute payment settlement,
+* generate financial decomposition.
 
-TRSBILLING receives financial charge from:
-- operational subsystem,
-- pharmacy,
-- inventory,
-- room charge,
-- external workflow subsystem.
+TRSBILLING separates:
+
+```text
+Operational Truth
+≠
+Financial Truth
+```
+
+Operational subsystems own:
+
+* medical activity,
+* workflow execution,
+* operational history.
+
+TRSBILLING owns:
+
+* financial charge,
+* financial responsibility,
+* financial allocation,
+* financial settlement decomposition.
 
 ---
 
@@ -30,480 +44,517 @@ TRSBILLING owns:
 financial truth
 ```
 
-Operational subsystem owns:
+Operational subsystems own:
 
 ```text
 operational truth
 ```
 
----
+Examples of operational truth:
 
-## Operational Truth
+* tindakan,
+* room charge,
+* pharmacy transaction,
+* transport transaction,
+* inventory usage.
 
-Represents:
-- medical activity,
-- workflow execution,
-- operational history,
-- operational correction.
+Examples of financial truth:
 
-Examples:
-- tindakan,
-- room occupancy,
-- transport usage,
-- drug dispensing.
+* billable charge,
+* payer responsibility,
+* discharge allocation,
+* payment allocation.
 
----
+TRSBILLING does not own:
 
-## Financial Truth
-
-Represents:
-- receivable,
-- billing responsibility,
-- settlement state,
-- accounting projection source.
-
-TRSBILLING does NOT own:
-- medical workflow,
-- operational audit trail,
-- clinical history.
+* clinical workflow,
+* operational audit trail,
+* medical history,
+* inventory stock movement.
 
 ---
 
-# 3. Aggregate Boundary
+# 3. Aggregate Structure
 
-TRSBILLING aggregate exists at:
-
-# Registration Scope
-
-because:
-- payer allocation is registration-based,
-- finalize/reopen is registration-based,
-- settlement is registration-based,
-- financial responsibility is registration-based.
-
-Aggregate root:
+TRSBILLING consists of two aggregates:
 
 ```text
-TrsBillingRegister
+TataRekening
+TrsBill
 ```
 
 ---
 
-# 4. Aggregate Composition
-
-| Model | Responsibility |
-|---|---|
-| `TrsBillingRegister` | lifecycle orchestration aggregate |
-| `BillingCharge` | financial charge entry |
-| `BillingComponent` | financial distribution projection |
-| `PayerAllocation` | payer responsibility authority |
-
----
-
-# 5. Aggregate Persistence
-
-| Model | Persistence |
-|---|---|
-| `TrsBillingRegister` | `BILRG_TrsBillingRegister` |
-| `BillingCharge` | `ta_trs_billing` |
-| `BillingComponent` | `ta_trs_billing2` |
-| `PayerAllocation` | `ta_registrasi3` |
-
----
-
-# 6. TrsBillingRegister
+# 4. TataRekening Aggregate
 
 Represents:
 
-# Registration Financial Lifecycle
+# Patient Financial Authority
 
-Responsibilities:
-- billing state,
-- finalize state,
-- reopen state,
-- settlement state,
-- orchestration boundary.
+TataRekening owns:
+
+* billing lifecycle,
+* discharge authority,
+* payment authority,
+* allocation orchestration,
+* financial validation.
+
+TataRekening does not own:
+
+* pricing snapshot,
+* tariff component snapshot,
+* operational transaction details.
+
+Those belong to TrsBill.
 
 ---
 
-## Billing Lifecycle
+# 5. TataRekening Lifecycle
 
 ```text
 OPEN
     ↓
-CLOSE BILL
+CLOSED
     ↓
 FINALIZED
     ↓
-PAID
+LUNAS
 ```
 
 ---
 
 ## OPEN
 
-Billing still mutable.
-
 Allowed:
-- add/remove charge,
-- allocation recalculation,
-- projection regeneration.
+
+* create bill,
+* delete bill,
+* modify operational billing source.
 
 ---
 
-## CLOSE BILL
+## CLOSED
 
-Operational freeze point.
+No new bill may be created.
 
-No more operational billing generation allowed.
+Existing bill remains unchanged.
+
+Purpose:
+
+```text
+operational freeze point
+```
 
 ---
 
 ## FINALIZED
 
-Billing verified and ready for:
-- cashier,
-- settlement,
-- accounting projection.
+Triggered by:
 
-Allocation becomes locked.
+```text
+Discharge()
+```
+
+Discharge represents:
+
+```text
+financial responsibility allocation
+```
+
+At this state:
+
+* all receivable ownership has been allocated,
+* bill responsibility becomes fixed,
+* discharge may be cancelled only if no payment exists.
 
 ---
 
-## PAID
+## LUNAS
 
-Payment completed.
+All financial responsibility has been converted into cash settlement.
 
-Billing becomes financially frozen.
+No further modification allowed.
 
 ---
 
-# 7. BillingCharge
+# 6. TataRekening Responsibilities
+
+TataRekening owns:
+
+```text
+Create Bill Control
+Close Billing
+Discharge
+Cancel Discharge
+Payment Allocation
+Lifecycle Validation
+```
+
+TataRekening acts as:
+
+```text
+Allocation Orchestrator
+```
+
+It does not perform operational billing creation.
+
+Operational subsystem remains responsible for creating charge requests.
+
+---
+
+# 7. TrsBill Aggregate
 
 Represents:
 
-# Authoritative Financial Charge
+# Financial Charge Entry
 
-Persistence:
-
-```text
-ta_trs_billing
-```
+TrsBill is the authoritative representation of a financial charge.
 
 Stores:
-- registration,
-- tarif,
-- pricing snapshot,
-- source transaction snapshot,
-- financial amount,
-- operational reference.
+
+* charge identity,
+* pricing snapshot,
+* accounting snapshot,
+* source reference,
+* charge amount,
+* component snapshot.
 
 ---
 
-## Characteristics
+# 8. TrsBill Characteristics
 
-| Characteristic | Value |
-|---|---|
-| authoritative | YES |
-| mutable before finalize | YES |
-| mutable after payment | NO |
-| pricing immutable | YES |
-| accounting snapshot immutable | YES |
+| Characteristic              | Value     |
+| --------------------------- | --------- |
+| Financial Authority         | YES       |
+| Pricing Snapshot            | Immutable |
+| Accounting Snapshot         | Immutable |
+| Independently Dischargeable | NO        |
+| Independently Payable       | NO        |
+| Independently Finalizable   | NO        |
+
+Lifecycle is controlled exclusively by TataRekening.
 
 ---
 
-# 8. BillingComponent
+# 9. Bill Components
 
-Represents:
+TrsBill contains financial breakdown information.
 
-# Financial Distribution Projection
-
-Persistence:
+Three business component types exist:
 
 ```text
-ta_trs_billing2
+Transaction
+Discharge
+Payment
 ```
 
 ---
 
-## BillingComponent is NOT
+## Transaction Component
 
-- event sourcing history,
-- accounting journal,
-- immutable mutation stream,
-- payment history.
+Represents original charge decomposition.
 
----
-
-## BillingComponent Represents
-
-- tarif component distribution,
-- payer allocation distribution,
-- receivable ownership transfer,
-- accounting-ready decomposition.
-
----
-
-## Projection Semantics
-
-### `FN_TRS_P`
-
-Represents:
+Example:
 
 ```text
-receivable acquisition
+Jasa Medis
+Jasa Rumah Sakit
+Obat
+BHP
 ```
+
+Resolved at transaction time.
+
+Immutable.
 
 ---
 
-### `FN_TRS_N`
+## Discharge Component
 
-Represents:
+Represents financial responsibility allocation result.
+
+Generated from:
 
 ```text
-receivable release
-ownership transfer
+Transaction Component
 ```
 
-NOT:
-- debit/credit,
-- positive/negative accounting value.
-
----
-
-# 9. PayerAllocation
-
-Represents:
-
-# Registration-Level Financial Responsibility
-
-Persistence:
+using:
 
 ```text
-ta_registrasi3
+Discharge Allocation
 ```
 
-Defines:
-- who financially pays,
-- payer distribution,
-- guarantor allocation.
+Each discharge component is a copy of transaction component with:
 
-Allocation authority exists at:
-- registration scope,
-- not billing-row scope.
+* payer ownership,
+* proportional value allocation.
 
 ---
 
-# 10. Financial Allocation Strategy
+## Payment Component
 
-Allocation uses:
+Represents settlement allocation result.
 
-# proportional decomposition
-
-across:
-- billing component,
-- payer allocation,
-- accounting projection.
-
-Allocation stores:
+Generated from:
 
 ```text
-absolute currency value
+Discharge Component
 ```
 
-NOT:
-- percentage responsibility.
-
----
-
-# 11. Composite Charge
-
-TRSBILLING supports:
-
-- bundled charge,
-- package billing,
-- multi-component charge,
-- compressed commercial representation.
-
-Reason:
+using:
 
 ```text
-Operational Atomicity
-≠
-Commercial Atomicity
+Payment Allocation
 ```
 
-One operational workflow may produce:
-- single commercial charge,
-- multiple financial charge,
-- composite billing decomposition.
+Each payment component is a copy of discharge component with:
+
+* payment ownership,
+* proportional settlement value.
 
 ---
 
-# 12. Source Transaction
+# 10. Allocation Model
 
-Every BillingCharge must reference:
+Allocation occurs in two levels.
 
-# operational charge source
+---
+
+## Level 1
+
+TataRekening Allocation
+
+Distributes responsibility from:
+
+```text
+Payment Provider
+```
+
+to:
+
+```text
+TrsBill
+```
 
 Examples:
-- tindakan,
-- room charge,
-- pharmacy,
-- transport,
-- external subsystem charge.
-
-TRSBILLING requires:
-- operational traceability,
-- source idempotency,
-- retry-safe charge generation.
-
----
-
-# 13. Pricing Snapshot
-
-Pricing resolved at:
-
-# transaction time
-
-Snapshot becomes immutable.
-
-Changes in:
-- tarif,
-- patient class,
-- payer configuration,
-- pricing policy
-
-must NOT alter historical billing.
-
----
-
-# 14. Accounting Snapshot
-
-Accounting mapping resolved at:
-
-# transaction time
-
-Snapshot becomes immutable.
-
-Changes in:
-- COA mapping,
-- accounting configuration,
-- tarif-account mapping
-
-must NOT alter historical projection.
-
----
-
-# 15. Reopen Semantics
-
-Reopen allowed only before payment settlement.
-
-Reopen strategy:
 
 ```text
-DELETE projection
-→ REGENERATE projection
+BPJS
+KAS
+SUBSIDI RS
+ASURANSI
 ```
 
-because:
-- billing2 is derived projection,
-- not immutable financial history.
+---
+
+## Level 2
+
+TrsBill Allocation
+
+Distributes responsibility from:
+
+```text
+Bill Share
+```
+
+to:
+
+```text
+Bill Components
+```
+
+using proportional calculation.
 
 ---
 
-# 16. Void Semantics
+# 11. Allocation Partition Rule
 
-Before finalize/payment:
-- physical delete allowed.
+Every TrsBill belongs to a module group:
 
-Operational correction responsibility remains in:
-- source subsystem,
-- not TRSBILLING history.
+```text
+JASA
+OBAT
+```
+
+Allocation must occur within the same group.
+
+Example:
+
+```text
+BPJS JASA
+```
+
+may only be distributed to:
+
+```text
+JASA bills
+```
+
+and never to:
+
+```text
+OBAT bills
+```
+
+Likewise:
+
+```text
+BPJS OBAT
+```
+
+may only be distributed to:
+
+```text
+OBAT bills
+```
+
+This is a domain invariant.
 
 ---
 
-# 17. Accounting Position
+# 12. Discharge Invariant
+
+Discharge must allocate:
+
+```text
+100%
+```
+
+of outstanding receivable.
+
+Rule:
+
+```text
+Σ Allocation
+=
+Σ Outstanding Bill
+```
+
+always.
+
+If a payer cannot cover the amount:
+
+```text
+SUBSIDI RS
+```
+
+or another responsibility allocation must be added.
+
+Partial discharge is not allowed.
+
+---
+
+# 13. Payment Model
+
+Payment may occur multiple times.
+
+Example:
+
+```text
+Payment-1
+Payment-2
+Payment-3
+```
+
+Each payment distributes value proportionally across discharged responsibility.
+
+TataRekening owns payment orchestration.
+
+TrsBill owns payment decomposition.
+
+---
+
+# 14. Cancel Discharge
+
+Allowed only when:
+
+```text
+No Payment Exists
+```
+
+Process:
+
+```text
+Remove Discharge Allocation
+Regenerate Discharge Components
+```
+
+---
+
+# 15. Bill Deletion
+
+Bill deletion is allowed only while:
+
+```text
+TataRekening = OPEN
+```
+
+Deletion is physical removal.
+
+Billing history is owned by operational source subsystem.
+
+TRSBILLING does not preserve deleted billing history.
+
+---
+
+# 16. Financial Adjustment
+
+TRSBILLING allows financial adjustment through additional bill creation.
+
+Examples:
+
+```text
+Pendapatan BPJS
+```
+
+or other adjustment charge.
+
+Adjustment responsibility belongs to user workflow.
+
+TataRekening only processes financial values provided to it.
+
+---
+
+# 17. Authority Matrix
+
+| Domain                | Authority               |
+| --------------------- | ----------------------- |
+| Operational Subsystem | operational activity    |
+| Pricing               | tariff & pricing policy |
+| TrsBill               | financial charge        |
+| TataRekening          | allocation & lifecycle  |
+| Accounting            | settlement execution    |
+| Cashier               | payment processing      |
+
+---
+
+# 18. Final Domain Position
 
 TRSBILLING is:
 
-# Accounting Projection Source
-
-NOT:
-- accounting journal engine,
-- general ledger,
-- financial reporting engine.
-
-Accounting journal generation:
-- asynchronous,
-- externalized,
-- accounting-owned.
-
----
-
-# 18. Integration Pattern
-
-Integration pattern:
-
 ```text
-Subsystem
-→ Charge Request
-→ TRSBILLING
+Patient Financial Allocation Domain
 ```
 
-Subsystem:
-- MUST NOT manipulate billing persistence directly,
-- MUST NOT manipulate billing allocation directly,
-- MUST NOT own financial receivable state.
+consisting of:
 
----
+```text
+TataRekening
+    → Financial Authority
 
-# 19. Authority Matrix
+TrsBill
+    → Financial Charge
+```
 
-| Domain | Authority |
-|---|---|
-| Operational Subsystem | operational activity |
-| Pricing | tarif & pricing policy |
-| TRSBILLING | financial receivable |
-| Tata Rekening | billing verification |
-| Cashier | settlement |
-| Accounting | journal generation |
+where:
 
----
+```text
+TataRekening
+    allocates responsibility
 
-# 20. Legacy Compatibility Principle
+TrsBill
+    decomposes responsibility
+```
 
-TRSBILLING prioritizes:
-
-# compatibility over architectural purity
-
-Therefore:
-- existing billing workflow preserved,
-- existing accounting integration preserved,
-- existing posting strategy preserved,
-- migration remains incremental.
-
-New orchestration aggregate exists to:
-- clarify aggregate boundary,
-- simplify lifecycle handling,
-- improve orchestration consistency,
-- reduce modeling ambiguity.
-
-NOT to replace legacy financial tables.
-
----
-
-# 21. Final Domain Positioning
-
-TRSBILLING is:
-
-# Registration-Scoped Operational Financial Receivable Aggregate
-
-that:
-- receives financial recognition,
-- stores immutable pricing/accounting snapshot,
-- orchestrates billing lifecycle,
-- manages payer allocation,
-- supports settlement,
-- generates accounting projection,
-- while preserving legacy HIS compatibility.
+while operational ownership remains outside the billing domain.

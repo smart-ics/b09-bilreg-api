@@ -94,7 +94,7 @@ public record TrsBillType : ITrsBillingKey
 
         var totalDischarged = _listTrsBill2DischargeEvent.Sum(x => x.Nilai);
         if (totalDischarged + nilai > totalBase)
-            return;
+            throw new InvalidOperationException("Discharge nilai exceeds remaining bill total.");
 
         var jenisBayar = ToJenisBayar(payment);
         var allocated = 0m;
@@ -140,9 +140,45 @@ public record TrsBillType : ITrsBillingKey
         _listTrsBill2DischargeEvent.Clear();
     }
 
-    public void Pay()
+    public void Pay(PaymentType payment, decimal nilai, string trsBayarId, DateTime tglBayar)
     {
-        
+        if (nilai < 0)
+            throw new ArgumentOutOfRangeException(nameof(nilai));
+
+        if (string.IsNullOrWhiteSpace(trsBayarId))
+            throw new ArgumentException("Trs bayar id should not be empty", nameof(trsBayarId));
+
+        if (Status is not (TrsBillStatusEnum.Discharged or TrsBillStatusEnum.Paid))
+            throw new InvalidOperationException("Cannot pay bill unless status is Discharged or Paid.");
+
+        if (_listTrsBill2TransEvent.Count == 0)
+            throw new InvalidOperationException("Cannot pay bill without transaction components.");
+
+        var totalBase = _listTrsBill2TransEvent.Sum(x => x.Nilai);
+        if (totalBase == 0)
+            throw new InvalidOperationException("Cannot pay bill when total component nilai is zero.");
+
+        var totalPaid = _listTrsBill2PaymentEvent.Sum(x => x.Nilai);
+        if (totalPaid + nilai > totalBase)
+            throw new InvalidOperationException("Payment nilai exceeds remaining bill total.");
+
+        var jenisBayar = ToJenisBayar(payment);
+        var allocated = 0m;
+        var noUrut = _listTrsBill2PaymentEvent.Count;
+
+        for (var i = 0; i < _listTrsBill2TransEvent.Count; i++)
+        {
+            var trans = _listTrsBill2TransEvent[i];
+            var share = i == _listTrsBill2TransEvent.Count - 1
+                ? nilai - allocated
+                : nilai * trans.Nilai / totalBase;
+
+            var paymentEvent = TrsBill2PaymentEventType.Create(
+                noUrut++, trans.Komponen, jenisBayar, payment, trsBayarId, share, tglBayar);
+
+            _listTrsBill2PaymentEvent.Add(paymentEvent);
+            allocated += share;
+        }
     }
 
     #endregion
