@@ -1,6 +1,6 @@
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 
-namespace Bilreg.Domain.PaymentContext.TrsBillingFeature;
+namespace Bilreg.Domain.PaymentContext.TrsBillFeature;
 
 public record TrsBill2DischargeEventType
 {

@@ -15,4 +15,15 @@ public record TataRekeningModel : IRegKey
     public string RegId { get; init; }
     public TataRekeningStatusEnum Status { get; init; }
     public IEnumerable<TataRekeningPaymentType> ListPayment => _listTataRekeningPayment;
+
+    public void AddPayment(TataRekeningPaymentType payment)
+    {
+        
+    }
+    public void EnsureCanCreateTrsBill()
+    {
+        if (Status == TataRekeningStatusEnum.Closed)
+            throw new InvalidOperationException(
+                $"TrsBillType tidak dapat dibuat karena TataRekening untuk registrasi '{RegId}' berstatus Closed.");
+    }
 }

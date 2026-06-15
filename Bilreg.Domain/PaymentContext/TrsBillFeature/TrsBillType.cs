@@ -2,9 +2,10 @@ using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PaymentContext.RekapCetakFeature;
+using Bilreg.Domain.PaymentContext.TataRekeningFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 
-namespace Bilreg.Domain.PaymentContext.TrsBillingFeature;
+namespace Bilreg.Domain.PaymentContext.TrsBillFeature;
 
 public record TrsBillType : ITrsBillingKey
 {
@@ -43,6 +44,7 @@ public record TrsBillType : ITrsBillingKey
         AuditInfoType.Default, RekapCetakType.Default.ToReff(),
         TrsBillNilaiType.Default,
         TrsBillKetType.Default, [],[],[]);
+    
 
     public static ITrsBillingKey Key(string id) => Default with { TrsBillingId = id };
     #endregion
@@ -66,10 +68,74 @@ public record TrsBillType : ITrsBillingKey
     
     #region BEHAVIOR
 
-    public void Discharge()
+    public void Discharge(
+        PaymentType payment,
+        decimal nilai,
+        string petugasKasir,
+        string trsBayarId,
+        DateTime tglBayar)
     {
-        
+        if (nilai < 0)
+            throw new ArgumentOutOfRangeException(nameof(nilai));
+
+        if (string.IsNullOrWhiteSpace(petugasKasir))
+            throw new ArgumentException("Petugas kasir should not be empty", nameof(petugasKasir));
+
+        if (_listTrsBill2TransEvent.Count == 0)
+            throw new InvalidOperationException("Cannot discharge bill without transaction components.");
+
+        var totalBase = _listTrsBill2TransEvent.Sum(x => x.Nilai);
+        if (totalBase == 0)
+            throw new InvalidOperationException("Cannot discharge bill when total component nilai is zero.");
+
+        var totalDischarged = _listTrsBill2DischargeEvent.Sum(x => x.Nilai);
+        if (totalDischarged + nilai > totalBase)
+            return;
+
+        var jenisBayar = ToJenisBayar(payment);
+        var allocated = 0m;
+        var noUrut = _listTrsBill2DischargeEvent.Count;
+
+        for (var i = 0; i < _listTrsBill2TransEvent.Count; i++)
+        {
+            var trans = _listTrsBill2TransEvent[i];
+            var share = i == _listTrsBill2TransEvent.Count - 1
+                ? nilai - allocated
+                : nilai * trans.Nilai / totalBase;
+
+            var discharge = TrsBill2DischargeEventType.Create(
+                noUrut++, trans.Komponen, jenisBayar, share,
+                trans.PetugasMedis, petugasKasir, trsBayarId, tglBayar);
+
+            _listTrsBill2DischargeEvent.Add(discharge);
+            allocated += share;
+        }
     }
+
+    private static TrsBillJenisBayarType ToJenisBayar(PaymentType payment)
+    {
+        if (payment == PaymentType.ByKas)
+            return TrsBillJenisBayarType.Kas;
+
+        if (payment == PaymentType.ByPri)
+            return TrsBillJenisBayarType.Hut;
+
+        if (payment.IsTipeJaminan)
+            return new TrsBillJenisBayarType(payment.PaymentId, payment.PaymentName, true);
+
+        throw new ArgumentException(
+            $"Payment type '{payment.PaymentId}' is not supported for discharge.",
+            nameof(payment));
+    }
+
+    public void CancelDischarge()
+    {
+        if (_listTrsBill2PaymentEvent.Count > 0)
+            throw new InvalidOperationException("Cannot cancel discharge with existing payments.");
+
+        _listTrsBill2DischargeEvent.Clear();
+    }
+
     #endregion
 }
 

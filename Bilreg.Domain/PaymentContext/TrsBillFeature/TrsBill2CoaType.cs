@@ -1,4 +1,6 @@
-namespace Bilreg.Domain.PaymentContext.TrsBillingFeature;
+using Bilreg.Domain.PaymentContext.TrsBillingFeature;
+
+namespace Bilreg.Domain.PaymentContext.TrsBillFeature;
 
 public record TrsBill2CoaType
 {

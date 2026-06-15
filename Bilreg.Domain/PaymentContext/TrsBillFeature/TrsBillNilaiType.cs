@@ -1,4 +1,4 @@
-namespace Bilreg.Domain.PaymentContext.TrsBillingFeature;
+namespace Bilreg.Domain.PaymentContext.TrsBillFeature;
 
 public record TrsBillNilaiType(decimal SubTotal, decimal Diskon, decimal Tax, decimal Biaya)
 {

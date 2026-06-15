@@ -1,4 +1,5 @@
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.PaymentContext.TrsBillFeature;
 using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using Nuna.Lib.DataAccessHelper;
 
