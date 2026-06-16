@@ -54,7 +54,7 @@ public class TrsBillFactory
         }
 
         var nilai = new TrsBillNilaiType(karcis.NilaiKarcis, reg.ListKomponen.Sum(x => x.Diskon), 0, 0);
-        var result = new TrsBillType(reg.RegId, 0, reg.RegDate.ToDateTime(TimeOnly.FromDateTime(reg.RegMasukAudit.Timestamp)),
+        var result = new TrsBillType(reg.RegId, BillModulGroup.Jasa, reg.RegDate.ToDateTime(TimeOnly.FromDateTime(reg.RegMasukAudit.Timestamp)),
             reg.ToReff(), reg.Layanan, reg.Kelas, audit.Created, karcis.RekapCetak,  
             nilai, ketBilling, listBill2TransEvent, [], []);
 
@@ -112,7 +112,7 @@ public class TrsBillFactory
 
         var nilai = new TrsBillNilaiType(tindakan.Total, 0, 0, 0);
         
-        var result = new TrsBillType(tindakan.TindakanId, 0, tindakan.TindakanDate,
+        var result = new TrsBillType(tindakan.TindakanId, BillModulGroup.Jasa, tindakan.TindakanDate,
             tindakan.Reg, tindakan.Layanan, tindakan.Kelas, audit.Created, tarif.RekapCetak, 
             nilai, ketBilling, listBill2TransEvent, [], []);
         return result;

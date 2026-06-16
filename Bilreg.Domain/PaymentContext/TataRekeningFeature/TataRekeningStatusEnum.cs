@@ -5,5 +5,5 @@ public enum TataRekeningStatusEnum
     Opened = 0,
     Closed = 1,
     Finalized = 2,
-    Paid = 3
+    Lunas = 3
 }
