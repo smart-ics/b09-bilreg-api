@@ -14,6 +14,7 @@ public interface ITrsBillingRepo :
     IDeleteEntity<ITrsBillingKey>,
     IListData<TrsBillView, IRegKey>
 {
+    IEnumerable<TrsBillType> ListEntity(IRegKey regKey);
 }
 
 public record TrsBillView

@@ -70,4 +70,23 @@ public class TrsBillingRepo : ITrsBillingRepo
         return result;
     }
 
+    public IEnumerable<TrsBillType> ListEntity(IRegKey regKey)
+    {
+        var headers = _billingDal.ListData(regKey)?.ToList() ?? [];
+        if (headers.Count == 0)
+            return [];
+
+        var allBill2 = _billing2Dal.ListData(regKey)?.ToList() ?? [];
+        var bill2ById = allBill2
+            .GroupBy(x => x.fs_kd_trs)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        return headers.Select(header =>
+        {
+            var children = bill2ById.GetValueOrDefault(header.fs_kd_trs, []);
+            var events = children.Select(x => x.ToModel((int)header.fn_modul)).ToList();
+            return header.ToModel(events);
+        });
+    }
+
 }

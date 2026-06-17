@@ -297,4 +297,45 @@ public class TrsBillingRepoTest
         // Then
         result.Should().BeEmpty();
     }
+
+    [Fact]
+    public void GivenNoHeaders_WhenListEntity_ThenReturnsEmptyWithoutLoadingBill2()
+    {
+        _billingDalMock
+            .Setup(x => x.ListData(It.IsAny<IRegKey>()))
+            .Returns([]);
+
+        var result = _sut.ListEntity(RegModel.Key(RegId)).ToList();
+
+        result.Should().BeEmpty();
+        _billing2DalMock.Verify(x => x.ListData(It.IsAny<IRegKey>()), Times.Never);
+    }
+
+    [Fact]
+    public void GivenMultipleBills_WhenListEntity_ThenHydratesAllBillsWithTwoDalCalls()
+    {
+        var header1 = BuildHeaderDto("BIL-REPO-002");
+        var header2 = BuildHeaderDto("BIL-REPO-003");
+        var bill2Rows = new List<TaTrsBilling2Dto>
+        {
+            BuildTransBill2Dto("BIL-REPO-002"),
+            BuildTransBill2Dto("BIL-REPO-003")
+        };
+
+        _billingDalMock
+            .Setup(x => x.ListData(It.IsAny<IRegKey>()))
+            .Returns([header1, header2]);
+        _billing2DalMock
+            .Setup(x => x.ListData(It.IsAny<IRegKey>()))
+            .Returns(bill2Rows);
+
+        var result = _sut.ListEntity(RegModel.Key(RegId)).ToList();
+
+        result.Should().HaveCount(2);
+        result.Should().Contain(x => x.TrsBillingId == "BIL-REPO-002");
+        result.Should().Contain(x => x.TrsBillingId == "BIL-REPO-003");
+        _billingDalMock.Verify(x => x.ListData(It.IsAny<IRegKey>()), Times.Once);
+        _billing2DalMock.Verify(x => x.ListData(It.IsAny<IRegKey>()), Times.Once);
+        _billing2DalMock.Verify(x => x.ListData(It.IsAny<ITrsBillingKey>()), Times.Never);
+    }
 }

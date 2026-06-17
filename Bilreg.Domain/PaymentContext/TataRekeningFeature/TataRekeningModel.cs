@@ -72,7 +72,7 @@ public record TataRekeningModel : IRegKey
                 "TataRekening can not be re-opened since current status is not CLOSED.");
     }
 
-    public void Discharge(IEnumerable<TataRekeningPaymentType> listPayment, string petugasKair, DateTime dischargeDate)
+    public void Discharge(IEnumerable<TataRekeningPaymentType> listPayment, string petugasVerif, DateTime dischargeDate)
     {
         EnsureNotLunas();
         EnsureCanDischarge();
@@ -83,7 +83,7 @@ public record TataRekeningModel : IRegKey
 
         _listTataRekeningPayment.Clear();
         _listTataRekeningPayment.AddRange(payments);
-        DischargeInfo = new TataRekeningDischargeType(petugasKair, dischargeDate);
+        DischargeInfo = new TataRekeningDischargeType(petugasVerif, dischargeDate);
         DischargeAllocation();
         AssertDischargeComplete();
         Status = TataRekeningStatusEnum.Finalized;
@@ -252,7 +252,7 @@ public record TataRekeningModel : IRegKey
                 : modulAllocation * bill.Nilai.Total / modulTotal;
 
             bill.Discharge(
-                item.Payment, share, DischargeInfo.PetugasKair, trsBayarId, DischargeInfo.DischargeDate);
+                item.Payment, share, DischargeInfo.PetugasVerif, trsBayarId, DischargeInfo.DischargeDate);
             allocated += share;
         }
     }
@@ -349,7 +349,7 @@ public record TataRekeningModel : IRegKey
     }
 }
 
-public record TataRekeningDischargeType(string PetugasKair, DateTime DischargeDate)
+public record TataRekeningDischargeType(string PetugasVerif, DateTime DischargeDate)
 {
     public static TataRekeningDischargeType Default => new("-", new DateTime(3000, 1, 1));
 }
