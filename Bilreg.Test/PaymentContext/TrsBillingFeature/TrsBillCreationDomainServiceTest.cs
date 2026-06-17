@@ -17,11 +17,11 @@ namespace Bilreg.Test.PaymentContext.TrsBillingFeature;
 
 public class TrsBillCreationDomainServiceTest
 {
-    private readonly CreateBillService _sut;
+    private readonly CreateBillDomService _sut;
 
     public TrsBillCreationDomainServiceTest()
     {
-        _sut = new CreateBillService();
+        _sut = new CreateBillDomService();
     }
 
     [Fact]

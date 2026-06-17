@@ -13,4 +13,15 @@ public record TrsBillJenisBayarType(
     
     public static TrsBillJenisBayarType Hut => new("HUT", "Hutang", false);
     public static TrsBillJenisBayarType Kas => new("KAS", "Kas", false);
+
+    public static TrsBillJenisBayarType GetData(string jenisBayarId) => jenisBayarId switch
+    {
+        "PDP" => Pdp,
+        "POT" => Pot,
+        "BYL" => Byl,
+        "TAX" => Tax,
+        "HUT" => Hut,
+        "KAS" => Kas,
+        _ => new TrsBillJenisBayarType(jenisBayarId, jenisBayarId, true)
+    };
 }

@@ -3,7 +3,7 @@ using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 
 namespace Bilreg.Domain.PaymentContext.TrsBillFeature;
 
-public record TrsBill2TransEventType
+public record TrsBill2TransEventType : ITrsBill2Event
 {
     public TrsBill2TransEventType(int noUrut,
         TrsBill2KomponenType komponen,
@@ -104,3 +104,5 @@ public record TrsBill2TransEventType
     public PpaReff PetugasMedis { get; init; }
     public TrsBill2CoaType Coa { get; init; }
 }
+
+public interface ITrsBill2Event;

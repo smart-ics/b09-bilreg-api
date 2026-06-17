@@ -21,8 +21,8 @@ public record TrsBillType : ITrsBillingKey
         TrsBillNilaiType nilai,
         TrsBillKetType keterangan,
         IEnumerable<TrsBill2TransEventType> listTrsBilling2,
-        IEnumerable<TrsBill2PaymentEventType> listTrsBilling2PaymentEvent,
-        IEnumerable<TrsBill2DischargeEventType> listTrsBilling2DischargeEvent)
+        IEnumerable<TrsBill2DischargeEventType> listTrsBilling2DischargeEvent,
+        IEnumerable<TrsBill2PaymentEventType> listTrsBilling2PaymentEvent)
     {
         TrsBillingId = billingId;
         ModulGroup = modulGroup;
@@ -166,7 +166,8 @@ public record TrsBillType : ITrsBillingKey
                 : nilai * discharge.Nilai / totalBase;
 
             var paymentEvent = TrsBill2PaymentEventType.Create(
-                noUrut++, discharge.Komponen, discharge.JenisBayar, payment, trsBayarId, share, tglBayar);
+                noUrut++, discharge.Komponen, discharge.JenisBayar, payment, trsBayarId, share, tglBayar,
+                discharge.PetugasMedis);
 
             _listTrsBill2PaymentEvent.Add(paymentEvent);
             allocated += share;

@@ -26,7 +26,7 @@ public interface ICreateBillService
         IEnumerable<KomponenType> listReffKomp);
 }
 
-public sealed class CreateBillService : ICreateBillService
+public sealed class CreateBillDomService : ICreateBillService
 {
     public TrsBillType FromReg(
         TataRekeningModel tataRekening,

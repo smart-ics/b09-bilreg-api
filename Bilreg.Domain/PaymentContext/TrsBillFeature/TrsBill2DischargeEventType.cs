@@ -2,7 +2,7 @@ using Bilreg.Domain.AdmisiContext.PpaFeature;
 
 namespace Bilreg.Domain.PaymentContext.TrsBillFeature;
 
-public record TrsBill2DischargeEventType
+public record TrsBill2DischargeEventType: ITrsBill2Event
 {
     public TrsBill2DischargeEventType(int noUrut,
         TrsBill2KomponenType komponen,
