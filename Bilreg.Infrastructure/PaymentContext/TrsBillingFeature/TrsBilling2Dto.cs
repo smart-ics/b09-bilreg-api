@@ -116,16 +116,11 @@ public record TaTrsBilling2Dto(
 
     public ITrsBill2Event ToModel(int modul)
     {
-        ITrsBill2Event result;
         if (fs_kd_trs == fs_kd_trs_bayar)
-            result = ToTransEventModel(modul);
+            return ToTransEventModel(modul);
         if (fs_kd_trs_bayar[..2] == "RO")
-            result = ToDischargeEventModel(modul);
-        else
-        {
-            result = ToPaymentEventModel(modul);
-        }
-        return result;
+            return ToDischargeEventModel(modul);
+        return ToPaymentEventModel(modul);
     }
 
     private TrsBill2TransEventType ToTransEventModel(int modul)

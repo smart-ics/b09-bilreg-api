@@ -47,15 +47,15 @@ public class TrsBillingRepo : ITrsBillingRepo
 
      public MayBe<TrsBillType> LoadEntity(ITrsBillingKey key)
      {
-         // var data = _billingDal.GetData(key);
-         // if (data is null)
-         //     return MayBe<TrsBillingType>.None;
-         //
-         // var listKomp = _billing2Dal.ListData(key);
-         // var result = data.ToModel(listKomp.Select(x => x.ToModel()));
-         //
-         // return MayBe.From(result);
-         throw new NotImplementedException();
+         var data = _billingDal.GetData(key);
+         if (data is null)
+             return MayBe<TrsBillType>.None;
+         
+         var listBill2Dto = _billing2Dal.ListData(key)?.ToList() ?? [];
+         var list2Bill = listBill2Dto.Select(x => x.ToModel((int)data.fn_modul)).ToList();
+         var result = data.ToModel(list2Bill);
+         
+         return MayBe.From(result);
      }
      public void DeleteEntity(ITrsBillingKey key)
      {
@@ -63,23 +63,11 @@ public class TrsBillingRepo : ITrsBillingRepo
          _billing2Dal.Delete(key);
      }
 
-    public IEnumerable<TrsBillType> ListData(IRegKey regKey)
+    public IEnumerable<TrsBillView> ListData(IRegKey regKey)
     {
-        // var listDto = _billingDal.ListData(regKey);
-        // if (listDto is null)
-        //     return Enumerable.Empty<TrsBillingType>();
-        //
-        // var result = new List<TrsBillingType>();
-        // foreach (var dto in listDto)
-        // {
-        //     var key = TrsBillingType.Key(dto.fs_kd_trs);
-        //     var listKomp = _billing2Dal.ListData(key);
-        //     var entity = dto.ToModel(listKomp?.Select(x => x.ToModel()) ?? Enumerable.Empty<TrsBilling2Base>());
-        //     result.Add(entity);
-        // }
-        //
-        // return result;
-        throw new NotImplementedException();
+        var listDto = _billingDal.ListData(regKey)?.ToList() ?? [];
+        var result = listDto.Select(x => x.ToView()).ToList();
+        return result;
     }
 
 }

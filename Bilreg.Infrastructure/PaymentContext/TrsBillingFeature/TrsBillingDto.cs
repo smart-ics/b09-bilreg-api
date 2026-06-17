@@ -1,4 +1,5 @@
 using System.Globalization;
+using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
@@ -77,11 +78,12 @@ public record TrsBillingDto(
         );
     }
 
-    public TrsBillType ToModel(
-        IEnumerable<TrsBill2TransEventType> listTrans,
-        IEnumerable<TrsBill2DischargeEventType> listDischarge,
-        IEnumerable<TrsBill2PaymentEventType> listPayment)
+    public TrsBillType ToModel(IEnumerable<ITrsBill2Event> listBill2Enum)
     {
+        var listBill2 = listBill2Enum.ToList();
+        var listTrans = listBill2.OfType<TrsBill2TransEventType>();
+        var listDischarge = listBill2.OfType<TrsBill2DischargeEventType>();
+        var listPayment = listBill2.OfType<TrsBill2PaymentEventType>();
         var reg = new RegReff(fs_kd_reg, fs_mr, fs_nm_pasien);
         var layanan = new LayananReff(fs_kd_layanan, fs_nm_layanan);
         var kelas = new KelasReff(fs_kd_kelas, fs_nm_kelas);
@@ -100,4 +102,24 @@ public record TrsBillingDto(
             listTrans, listDischarge, listPayment
         );
     }
+    public TrsBillView ToView()
+    {
+        var reg = new RegReff(fs_kd_reg, fs_mr, fs_nm_pasien);
+        var layanan = new LayananReff(fs_kd_layanan, fs_nm_layanan);
+        var kelas = new KelasReff(fs_kd_kelas, fs_nm_kelas);
+        var rekapCetak = new RekapCetakReff(fs_kd_rekap_cetak, fs_nm_rekap_cetak);
+        var keterangan = new TrsBillKetType(
+            fs_keterangan, fs_keterangan2, fs_kd_ref_biaya, 
+            fn_qty, fs_kd_trs_main);
+        var tglTrs = DateTime.ParseExact($"{fd_tgl_trs} {fs_jam_trs}","yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+        var auditinfo = new AuditInfoType(fs_kd_petugas, tglTrs);
+        var modul = fn_modul == 0 ? BillModulGroup.Jasa : BillModulGroup.Obat;
+        var nilai = new TrsBillNilaiType(fn_sub_total, fn_diskon, fn_tax, fn_biaya);
+        var result = new TrsBillView(
+            fs_kd_trs, modul, tglTrs,
+            reg, layanan, kelas, auditinfo, rekapCetak,
+            nilai, keterangan);
+        return result;
+    }
+    
 }
