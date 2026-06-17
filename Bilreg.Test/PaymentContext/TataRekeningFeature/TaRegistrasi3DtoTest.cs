@@ -3,7 +3,7 @@ using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using Bilreg.Infrastructure.PaymentContext.TataRekeningFeature;
 using FluentAssertions;
 
-namespace Bilreg.Test.PaymentContext.TrsBillingFeature;
+namespace Bilreg.Test.PaymentContext.TataRekeningFeature;
 
 public class TaRegistrasi3DtoTest
 {

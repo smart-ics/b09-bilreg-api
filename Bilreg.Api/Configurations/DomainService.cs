@@ -8,6 +8,7 @@ using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
+using Bilreg.Domain.PaymentContext.TrsBillFeature;
 using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Domain.Shared.Param;
 using Bilreg.Infrastructure.AdmisiContext.BookingFeature;
@@ -44,6 +45,7 @@ public static class DomainService
             .AddScoped<IGetKelasRadarService, GetKelasRadarService>()
             .AddScoped<IAntrianMapWithBookingResolver, AntrianMapWithBookingResolver>()
             .AddScoped<IAntrianMapWithRegResolver, AntrianMapWithRegResolver>()
+            .AddScoped<ICreateBillDomService, CreateBillDomService>()
             ;
 
         return services;

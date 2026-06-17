@@ -7,7 +7,7 @@ using Bilreg.Infrastructure.PaymentContext.TataRekeningFeature;
 using FluentAssertions;
 using Moq;
 
-namespace Bilreg.Test.PaymentContext.TrsBillingFeature;
+namespace Bilreg.Test.PaymentContext.TataRekeningFeature;
 
 public class TataRekeningRepoTest
 {

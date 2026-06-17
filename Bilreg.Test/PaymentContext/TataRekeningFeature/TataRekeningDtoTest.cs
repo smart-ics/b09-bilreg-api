@@ -2,9 +2,9 @@ using Bilreg.Domain.PaymentContext.TataRekeningFeature;
 using Bilreg.Infrastructure.PaymentContext.TataRekeningFeature;
 using FluentAssertions;
 
-namespace Bilreg.Test.PaymentContext.TrsBillingFeature;
+namespace Bilreg.Test.PaymentContext.TataRekeningFeature;
 
-public class BilrgTataRekeningDtoTest
+public class TataRekeningDtoTest
 {
     private static readonly DateTime DischargeDate = new(2026, 6, 17, 14, 0, 0);
 

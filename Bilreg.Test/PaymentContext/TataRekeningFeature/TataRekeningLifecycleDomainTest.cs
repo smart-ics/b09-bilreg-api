@@ -9,7 +9,7 @@ using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using FluentAssertions;
 
-namespace Bilreg.Test.PaymentContext.TrsBillingFeature;
+namespace Bilreg.Test.PaymentContext.TataRekeningFeature;
 
 public class TataRekeningLifecycleDomainTest
 {

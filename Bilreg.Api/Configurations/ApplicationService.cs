@@ -1,5 +1,6 @@
 ﻿using Bilreg.Application;
 using Bilreg.Application.IgdContext.IgdVisitFeature.TriageEngine;
+using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Nuna.Lib.AutoNumberHelper;
 using Nuna.Lib.CleanArchHelper;
 using Scrutor;
@@ -20,7 +21,8 @@ public static class ApplicationService
         services
             .AddScoped<INunaCounterBL, NunaCounterBL>()
             .AddScoped<ITriageMethodEngine, AtsTriageEngine>()
-            .AddScoped<ITriageMethodEngineResolver, TriageMethodEngineResolver>();
+            .AddScoped<ITriageMethodEngineResolver, TriageMethodEngineResolver>()
+            .AddScoped<IAddBillAppService, AddBillAppService>();
         
         services
             .Scan(selector => selector

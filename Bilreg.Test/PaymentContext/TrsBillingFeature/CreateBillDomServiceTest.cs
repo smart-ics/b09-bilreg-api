@@ -15,11 +15,11 @@ using FluentAssertions;
 
 namespace Bilreg.Test.PaymentContext.TrsBillingFeature;
 
-public class TrsBillCreationDomainServiceTest
+public class CreateBillDomServiceTest
 {
     private readonly CreateBillDomService _sut;
 
-    public TrsBillCreationDomainServiceTest()
+    public CreateBillDomServiceTest()
     {
         _sut = new CreateBillDomService();
     }
