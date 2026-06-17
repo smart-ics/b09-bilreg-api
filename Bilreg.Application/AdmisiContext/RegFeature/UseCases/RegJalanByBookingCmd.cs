@@ -33,6 +33,7 @@
 // using Nuna.Lib.TransactionHelper;
 // using Ardalis.GuardClauses;
 // using System.Globalization;
+// using Bilreg.Domain.PaymentContext.TrsBillFeature;
 //
 // namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 //
@@ -175,7 +176,7 @@
 //             var komp = LoadKomponen(KomponenType.Key(item.KomponenTarif.KomponenId));
 //             listKompKarcis.Add(komp);
 //         }
-//         var trsBillingReg = TrsBillingType.CreateFromRegistrasi(reg, karcis,
+//         var trsBillingReg = TrsBillType.CreateFromRegistrasi(reg, karcis,
 //             jaminan, dokter, listKompKarcis);
 //
 //         var tindakan = karcis.DefaultTarif == TarifType.Default.ToReff()
@@ -194,7 +195,7 @@
 //             ? TarifType.Default
 //             : LoadTarif(TarifType.Key(karcis.DefaultTarif.TarifId));
 //         var trsBilling = tindakan == TindakanModel.Default
-//             ? TrsBillingType.Default
+//             ? TrsBillType.Default
 //             : GenBill(tindakan, reg, tarif, jaminan);
 //
 //         //      BUILD Jurnal Tindakan
@@ -316,7 +317,7 @@
 //         return tindakan;
 //     }
 //
-//     private TrsBillingType GenBill(TindakanModel tdk, RegModel reg, TarifType tarif,
+//     private TrsBillType GenBill(TindakanModel tdk, RegModel reg, TarifType tarif,
 //         JaminanType jaminan)
 //     {
 //         var listKomp = new List<KomponenType>();
@@ -325,7 +326,7 @@
 //             var komp = LoadKomponen(KomponenType.Key(item.Komponen.KomponenId));
 //             listKomp.Add(komp);
 //         }
-//         var trsBilling = TrsBillingType.CreateFromTindakan(tdk, reg, tarif, jaminan, listKomp);
+//         var trsBilling = TrsBillType.CreateFromTindakan(tdk, reg, tarif, jaminan, listKomp);
 //         return trsBilling;
 //     }
 //

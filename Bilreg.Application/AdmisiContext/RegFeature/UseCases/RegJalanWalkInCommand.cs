@@ -199,6 +199,7 @@
 //         var listKompKarcis = karcis.ListKomponen
 //             .Select(x => LoadKomponen(KomponenType.Key(x.KomponenTarif.KomponenId)))
 //             .ToList();
+//         //  TODO: jude-dev-trs-billing
 //         var trsBillingReg = _createBillService.FromReg(reg, karcis,
 //             jaminan, dokter, listKompKarcis);
 //         //      4-jurnal-karcis

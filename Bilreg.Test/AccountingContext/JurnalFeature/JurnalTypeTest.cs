@@ -1,17 +1,14 @@
 ﻿//  TODO: jude-dev-trs-billing
 // using Bilreg.Domain.AccountingContext.JurnalFeature;
 // using Bilreg.Domain.AccountingContext.UnitFeature;
-// using Bilreg.Domain.AdmisiContext.JaminanFeature;
 // using Bilreg.Domain.AdmisiContext.LayananFeature;
 // using Bilreg.Domain.AdmisiContext.PpaFeature;
 // using Bilreg.Domain.AdmisiContext.RegFeature;
-// using Bilreg.Domain.AdmisiContext.RujukanFeature;
 // using Bilreg.Domain.BedUsageContext.WardFeature;
 // using Bilreg.Domain.ChargeContext.TarifFeature;
-// using Bilreg.Domain.ChargeContext.TindakanFeature;
 // using Bilreg.Domain.PasienContext.PasienFeature;
 // using Bilreg.Domain.PaymentContext.RekapCetakFeature;
-// using Bilreg.Domain.PaymentContext.TrsBillingFeature;
+// using Bilreg.Domain.PaymentContext.TrsBillFeature;
 // using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 // using FluentAssertions;
 //
@@ -309,7 +306,7 @@
 //         bylJurnal.NilaiJurnal.NilaiK.Should().Be(0m);
 //     }
 //
-//     private static TrsBillingType CreateSampleTrsBillingWithJasaPdp()
+//     private static TrsBillType CreateSampleTrsBillingWithJasaPdp()
 //     {
 //         var reg = new RegReff("REG001", "MR001", "John Doe");
 //         var layanan = new LayananReff("LY001", "Layanan Umum");
@@ -319,7 +316,7 @@
 //             new GroupRekapCetakType("1","Group Rekap Cetak"), new RekapCetakDkType("2", "Rekap Dk")).ToReff();
 //         var keterangan = new TrsBillKetType("Pemeriksaan Dokter", "Ket 2", "REF001", 1, "MAIN001");
 //
-//         var trsBilling = new TrsBillingType(
+//         var trsBilling = new TrsBillType(
 //             "JRN001", 1, DateTime.Now,
 //             reg, layanan, kelas,
 //             auditInfo, 50000m, 0m, 0m, 0m, rekapCetak,

@@ -7,7 +7,7 @@ using Bilreg.Domain.PaymentContext.TataRekeningFeature;
 
 namespace Bilreg.Domain.PaymentContext.TrsBillFeature;
 
-public interface ICreateBillService
+public interface ICreateBillDomService
 {
     TrsBillType FromReg(
         TataRekeningModel tataRekening,
@@ -26,7 +26,7 @@ public interface ICreateBillService
         IEnumerable<KomponenType> listReffKomp);
 }
 
-public sealed class CreateBillDomService : ICreateBillService
+public sealed class CreateBillDomService : ICreateBillDomService
 {
     public TrsBillType FromReg(
         TataRekeningModel tataRekening,
