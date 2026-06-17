@@ -8,7 +8,7 @@ using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 
 namespace Bilreg.Domain.PaymentContext.TrsBillFeature;
 
-public class TrsBillFactory
+internal class TrsBillFactory
 {
     public static TrsBillType CreateFromReg(RegModel reg,
         KarcisType karcis, JaminanType jaminan, PpaType dokter,

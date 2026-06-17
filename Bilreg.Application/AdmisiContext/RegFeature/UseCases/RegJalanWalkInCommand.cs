@@ -1,5 +1,4 @@
-﻿//  TODO: jude-dev-trs-billing
-// using Ardalis.GuardClauses;
+﻿// using Ardalis.GuardClauses;
 // using Bilreg.Application.AccountingContext.JurnalFeature;
 // using Bilreg.Application.AccountingContext.JurnalFeature.JkAgg;
 // using Bilreg.Application.AdmisiContext.AntrianFeature;
@@ -33,6 +32,7 @@
 // using MediatR;
 // using Nuna.Lib.TransactionHelper;
 // using System.Globalization;
+// using Bilreg.Domain.PaymentContext.TrsBillFeature;
 //
 // namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 //
@@ -73,6 +73,8 @@
 //     private readonly ITarifRepo _tarifRepo;
 //     // trsBill
 //     private readonly ITrsBillingRepo _trsBillingRepo;
+//
+//     private readonly ICreateBillService _createBillService;
 //     // jurnal
 //     private readonly IMapJaminanJkRepo _mapJaminanJkRepo;
 //     private readonly IJurnalRepo _jurnalRepo;
@@ -110,6 +112,7 @@
 //         ITarifRepo tarifRepo,
 //         //  trsBill
 //         ITrsBillingRepo trsBillingRepo,
+//         ICreateBillService createBillService,
 //         // jurnal
 //         IMapJaminanJkRepo mapJaminanJkRepo,
 //         IJurnalRepo jurnalRepo,
@@ -145,6 +148,7 @@
 //         _tarifRepo = tarifRepo;
 //         //      trsBill
 //         _trsBillingRepo = trsBillingRepo;
+//         _createBillService = createBillService;
 //         //      jurnal
 //         _mapJaminanJkRepo = mapJaminanJkRepo;
 //         _jurnalRepo = jurnalRepo;
@@ -195,7 +199,7 @@
 //         var listKompKarcis = karcis.ListKomponen
 //             .Select(x => LoadKomponen(KomponenType.Key(x.KomponenTarif.KomponenId)))
 //             .ToList();
-//         var trsBillingReg = TrsBillingType.CreateFromRegistrasi(reg, karcis,
+//         var trsBillingReg = _createBillService.FromReg(reg, karcis,
 //             jaminan, dokter, listKompKarcis);
 //         //      4-jurnal-karcis
 //         var mapJaminanJk = LoadMapJmnJk(tipeJaminan.Jaminan);
@@ -333,7 +337,7 @@
 //         return tindakan;
 //     }
 //
-//     private TrsBillingType GenBill(TindakanModel tdk, RegModel reg, TarifType tarif,
+//     private TrsBillType GenBill(TindakanModel tdk, RegModel reg, TarifType tarif,
 //         JaminanType jaminan)
 //     {
 //         var listKomp = new List<KomponenType>();
@@ -342,7 +346,7 @@
 //             var komp = LoadKomponen(KomponenType.Key(item.Komponen.KomponenId));
 //             listKomp.Add(komp);
 //         }
-//         var trsBilling = TrsBillingType.CreateFromTindakan(tdk, reg, tarif, jaminan, listKomp);
+//         var trsBilling = TrsBillType.CreateFromTindakan(tdk, reg, tarif, jaminan, listKomp);
 //         return trsBilling;
 //     }
 //     private KomponenType LoadKomponen(IKomponenKey key)
