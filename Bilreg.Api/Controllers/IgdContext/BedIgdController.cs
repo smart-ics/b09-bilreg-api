@@ -24,6 +24,13 @@ public class BedIgdController : ControllerBase
         return Ok(new JSendOk(result));
     }
 
+    [HttpGet]
+    public async Task<IActionResult> ListBed()
+    {
+        var result = await _mediator.Send(new BedIgdListQuery());
+        return Ok(new JSendOk(result));
+    }
+
     [HttpGet("available")]
     public async Task<IActionResult> ListAvailable()
     {

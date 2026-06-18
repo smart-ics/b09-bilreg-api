@@ -248,5 +248,15 @@
     <Build Include="IgdContext\RedirectRajalFeature\BILRG_RedirectRajal.sql" />
     <Build Include="IgdContext\TindakanIgdFeature\BILRG_TindakanIgd.sql" />
     <Build Include="Shared\AuditLogFeature\BILRG_AuditLog.sql" />
+    <Build Include="ChargeContext\TarifFeature\BILRG_TarifPolicy.sql" />
+    <Build Include="ChargeContext\TarifFeature\BILRG_TarifVariant.sql" />
+    <Build Include="ChargeContext\TarifFeature\BILRG_TarifVariantKomponen.sql" />
+    <Build Include="ChargeContext\TarifFeature\BILRG_TarifPublishLog.sql" />
+    <Build Include="ChargeContext\TarifFeature\BILRG_TarifPublishLogDetail.sql" />
+    <Build Include="ChargeContext\TarifFeature\BILRG_NilaiTarif_Phase0_DuplicateCleanup.sql" />
+    <Build Include="ChargeContext\TarifFeature\BILRG_NilaiTarif_Phase0_DuplicateReport.sql" />
+    <Build Include="ChargeContext\TarifFeature\BILRG_NilaiTarif_Phase0_SourcePolicyId_Alter.sql" />
+    <Build Include="ChargeContext\TarifFeature\BILRG_NilaiTarif_Phase0_UX_Variant_Index.sql" />
+    <Build Include="ChargeContext\TarifFeature\BILRG_TarifOperationalState.sql" />
   </ItemGroup>
 </Project>

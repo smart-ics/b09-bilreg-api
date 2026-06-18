@@ -67,6 +67,8 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
     private readonly IMapJaminanJkRepo _mapJaminanJkRepo;
     private readonly IJurnalRepo _jurnalRepo;
 
+
+    private readonly IAddAntrianEmrByRegService _addAntrianEmrByRegService;
     private const string BAYAR_SENDIRI = "1";
     public RegDaruratCreateHandler(IPasienRepo pasienRepo,
         ITipeJaminanRepo tipeJaminanRepo,
@@ -89,7 +91,8 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
         ITrsBillingRepo trsBillingRepo,
         IAddBillAppService addBillAppService,
         IMapJaminanJkRepo mapJaminanJkRepo,
-        IJurnalRepo jurnalRepo)
+        IJurnalRepo jurnalRepo,
+        IAddAntrianEmrByRegService addAntrianEmrByRegService)
     {
         _pasienRepo = pasienRepo;
         _tipeJaminanRepo = tipeJaminanRepo;
@@ -114,6 +117,7 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
 
         _mapJaminanJkRepo = mapJaminanJkRepo;
         _jurnalRepo = jurnalRepo;
+        _addAntrianEmrByRegService = addAntrianEmrByRegService;
     }
 
     public Task<RegDaruratCreateResponse> Handle(RegDaruratCreateCmd request, CancellationToken cancellationToken)
@@ -179,8 +183,9 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
             SaveJurnal(jurnalReg, jurnalTindakan);
             trans.Complete();
         }
+        AddAntrianEmr(reg);
         #endregion
-        
+
         var response = new RegDaruratCreateResponse(reg.RegId);
         return Task.FromResult(response);
     }
@@ -273,6 +278,19 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
         _jurnalRepo.SaveChanges(jurnalReg);
         if (jurnalTindakan.JurnalId != "-")
             _jurnalRepo.SaveChanges(jurnalTindakan);
+    }
+
+    private void AddAntrianEmr(RegModel reg)
+    {
+        var payload = new AddAntrianEmrByRegCommand(
+            reg.RegId, "-", 
+            reg.Pasien.PasienId,
+            reg.Pasien.PasienName,
+            reg.Layanan.LayananId,
+            reg.Dokter.PpaId,
+            reg.RegDate.ToString("yyyy-MM-dd"),
+            "00:00", 0);
+        _addAntrianEmrByRegService.Execute(payload);
     }
     #endregion
     #endregion

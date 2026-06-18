@@ -79,6 +79,18 @@ public class RegController : Controller
         return Ok(new JSendOk(result));
     }
 
+    [HttpPost]
+    [Route("{id}/deactivate")]
+    public async Task<IActionResult> Delete(string id)
+    {
+        var userAgent = HttpHelper.GetUserAgent(Request);
+        var remoteIpAddress = HttpHelper.GetIpAddress(Request, HttpContext);
+
+        var cmd = new RegAktifDeleteCmd(id, remoteIpAddress, userAgent);
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
 
     [HttpGet]
     [Route("{id}")]
@@ -103,6 +115,15 @@ public class RegController : Controller
     public async Task<IActionResult> ListAktifByMr(string pasienId)
     {
         var query = new RegAktifByMrListQuery(pasienId);
+        var result = await _mediator.Send(query);
+        return Ok(new JSendOk(result));
+    }
+
+    [HttpGet]
+    [Route("aktif/{jenisReg}/jenisReg")]
+    public async Task<IActionResult> ListAktifByJenisReg(int jenisReg)
+    {
+        var query = new RegAktifByJenisRegListQuery(jenisReg);
         var result = await _mediator.Send(query);
         return Ok(new JSendOk(result));
     }

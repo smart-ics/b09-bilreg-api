@@ -1,24 +1,24 @@
-IF OBJECT_ID('BILRG_TarifPublishLog', 'U') IS NULL
-BEGIN
-    CREATE TABLE BILRG_TarifPublishLog
-    (
-        PublishLogId  VARCHAR(12) NOT NULL CONSTRAINT DF_BILRG_TarifPublishLog_PublishLogId DEFAULT(''),
-        TarifPolicyId VARCHAR(12) NOT NULL CONSTRAINT DF_BILRG_TarifPublishLog_TarifPolicyId DEFAULT(''),
-        PublishedBy   VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_TarifPublishLog_PublishedBy DEFAULT(''),
-        PublishedDate DATETIME NOT NULL CONSTRAINT DF_BILRG_TarifPublishLog_PublishedDate DEFAULT('3000-01-01'),
-        VariantCount  INT NOT NULL CONSTRAINT DF_BILRG_TarifPublishLog_VariantCount DEFAULT(0),
-        Note          VARCHAR(500) NOT NULL CONSTRAINT DF_BILRG_TarifPublishLog_Note DEFAULT(''),
+--IF OBJECT_ID('BILRG_TarifPublishLog', 'U') IS NULL
+--BEGIN
+--    CREATE TABLE BILRG_TarifPublishLog
+--    (
+--        PublishLogId  VARCHAR(12) NOT NULL CONSTRAINT DF_BILRG_TarifPublishLog_PublishLogId DEFAULT(''),
+--        TarifPolicyId VARCHAR(12) NOT NULL CONSTRAINT DF_BILRG_TarifPublishLog_TarifPolicyId DEFAULT(''),
+--        PublishedBy   VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_TarifPublishLog_PublishedBy DEFAULT(''),
+--        PublishedDate DATETIME NOT NULL CONSTRAINT DF_BILRG_TarifPublishLog_PublishedDate DEFAULT('3000-01-01'),
+--        VariantCount  INT NOT NULL CONSTRAINT DF_BILRG_TarifPublishLog_VariantCount DEFAULT(0),
+--        Note          VARCHAR(500) NOT NULL CONSTRAINT DF_BILRG_TarifPublishLog_Note DEFAULT(''),
 
-        CONSTRAINT PK_BILRG_TarifPublishLog PRIMARY KEY CLUSTERED (PublishLogId)
-    );
-END
-GO
+--        CONSTRAINT PK_BILRG_TarifPublishLog PRIMARY KEY CLUSTERED (PublishLogId)
+--    );
+--END
+--GO
 
-IF NOT EXISTS (
-    SELECT 1 FROM sys.indexes
-    WHERE name = 'IX_BILRG_TarifPublishLog_Policy' AND object_id = OBJECT_ID('BILRG_TarifPublishLog'))
-BEGIN
-    CREATE NONCLUSTERED INDEX IX_BILRG_TarifPublishLog_Policy
-    ON BILRG_TarifPublishLog (TarifPolicyId, PublishedDate DESC);
-END
-GO
+--IF NOT EXISTS (
+--    SELECT 1 FROM sys.indexes
+--    WHERE name = 'IX_BILRG_TarifPublishLog_Policy' AND object_id = OBJECT_ID('BILRG_TarifPublishLog'))
+--BEGIN
+--    CREATE NONCLUSTERED INDEX IX_BILRG_TarifPublishLog_Policy
+--    ON BILRG_TarifPublishLog (TarifPolicyId, PublishedDate DESC);
+--END
+--GO

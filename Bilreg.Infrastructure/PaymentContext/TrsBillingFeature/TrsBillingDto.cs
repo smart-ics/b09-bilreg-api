@@ -6,6 +6,7 @@ using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PaymentContext.RekapCetakFeature;
 using Bilreg.Domain.PaymentContext.TrsBillFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
+using Nuna.Lib.DataTypeExtension;
 using Nuna.Lib.ValidationHelper;
 
 // ReSharper disable  InconsistentNaming
@@ -45,6 +46,12 @@ public record TrsBillingDto(
 {
     public static TrsBillingDto FromModel(TrsBillType model)
     {
+        var ket = model.Keterangan.Keterangan ?? string.Empty;
+        var keterangan = ket[..Math.Min(ket.Length, 40)];
+
+        var ket2 = model.Keterangan.Keterangan2 ?? string.Empty;
+        var keterangan2 = ket2[..Math.Min(ket2.Length, 40)];
+
         return new TrsBillingDto(
             model.TrsBillingId,
             (int)model.ModulGroup,
@@ -64,8 +71,8 @@ public record TrsBillingDto(
             model.Nilai.Tax,
             model.Nilai.Total,
             
-            model.Keterangan.Keterangan,
-            model.Keterangan.Keterangan2,
+            keterangan,
+            keterangan2,
             model.Keterangan.RefBiaya,
             model.Keterangan.Qty,
             model.Keterangan.TrsMainId,
