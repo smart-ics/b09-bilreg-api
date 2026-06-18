@@ -19,7 +19,7 @@ using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
-using Bilreg.Domain.PaymentContext.TrsBillingFeature;
+using Bilreg.Domain.PaymentContext.TrsBillFeature;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
 
@@ -54,6 +54,7 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
 
     private readonly ITindakanRepo _tindakanRepo;
     private readonly ITrsBillingRepo _trsBillingRepo;
+    private readonly IAddBillAppService _addBillAppService;
     private readonly IMapJaminanJkRepo _mapJaminanJkRepo;
     private readonly IJurnalRepo _jurnalRepo;
 
@@ -75,6 +76,7 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
         ITarifRepo tarifRepo,
         IPasienTrackerRepo trackerRepo,
         ITrsBillingRepo trsBillingRepo,
+        IAddBillAppService addBillAppService,
         ITindakanRepo tindakanRepo,
         IJurnalRepo jurnalRepo,
         IMapJaminanJkRepo mapJaminanJkRepo
@@ -97,6 +99,7 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
         _tarifRepo = tarifRepo;
         _trackerRepo = trackerRepo;
         _trsBillingRepo = trsBillingRepo;
+        _addBillAppService = addBillAppService;
         _tindakanRepo = tindakanRepo;
         _jurnalRepo = jurnalRepo;
         _mapJaminanJkRepo = mapJaminanJkRepo;
@@ -135,7 +138,7 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
 
         //  billing karcis
         var billKarcis = reg.Karcis.KarcisId == request.KarcisId
-            ? TrsBillingType.Default :
+            ? TrsBillType.Default :
             GenBillKarcis(reg, dokter, karcis, jaminan);
         //  billing tindakan
         var tarif = karcis.DefaultTarif == TarifType.Default.ToReff()
@@ -143,7 +146,7 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
             : LoadTarif(TarifType.Key(karcis.DefaultTarif.TarifId));
         var billTdk = (tindakan.TindakanId != "-" && karcis.KarcisId != "-")
             ? GenBillTdk(tindakan, reg, jaminan, tarif)
-            : TrsBillingType.Default;
+            : TrsBillType.Default;
 
         //  jurnal-karcis
         var mapJaminanJk = LoadMapJmnJk(jaminan);
@@ -238,19 +241,19 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
         }
         return TindakanModel.Default;
     }
-    private TrsBillingType GenBillKarcis(RegModel reg, PpaType dokter, KarcisType karcis, JaminanType jaminan)
+    private TrsBillType GenBillKarcis(RegModel reg, PpaType dokter, KarcisType karcis, JaminanType jaminan)
     {
         var listKompKarcis = karcis.ListKomponen
             .Select(x => LoadKomponen(KomponenType.Key(x.KomponenTarif.KomponenId)))?.ToList() ?? [];
-        var trsBillKarcis = TrsBillingType.CreateFromRegistrasi(reg, karcis,
+        var trsBillKarcis = _addBillAppService.FromReg(reg, karcis,
             jaminan, dokter, listKompKarcis);
         return trsBillKarcis;
 
     }
-    private TrsBillingType GenBillTdk(TindakanModel tdk, RegModel reg, JaminanType jaminan, TarifType tarif)
+    private TrsBillType GenBillTdk(TindakanModel tdk, RegModel reg, JaminanType jaminan, TarifType tarif)
     {
         if (tdk.TindakanId == "-")
-            return TrsBillingType.Default;
+            return TrsBillType.Default;
 
         var listKomp = new List<KomponenType>();
         foreach (var item in tdk.ListKomponen)
@@ -258,7 +261,7 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
             var komp = LoadKomponen(KomponenType.Key(item.Komponen.KomponenId));
             listKomp.Add(komp);
         }
-        var trsBilling = TrsBillingType.CreateFromTindakan(tdk, reg, tarif, jaminan, listKomp);
+        var trsBilling = _addBillAppService.FromTindakan(tdk, reg, tarif, jaminan, listKomp);
         return trsBilling;
     }
     private KomponenType LoadKomponen(IKomponenKey key)
@@ -349,10 +352,10 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
         if (tdkDefaultOld is null)
             return;
         _jurnalRepo.DeleteEntity(JurnalType.Key(tdkDefaultOld.TindakanId));
-        _trsBillingRepo.DeleteEntity(TrsBillingType.Key(tdkDefaultOld.TindakanId));
+        _trsBillingRepo.DeleteEntity(TrsBillType.Key(tdkDefaultOld.TindakanId));
         _tindakanRepo.Delete(TindakanModel.Key(tdkDefaultOld.TindakanId));
     }
-    private void SaveBillTdk(TrsBillingType billTdk)
+    private void SaveBillTdk(TrsBillType billTdk)
     {
         if (billTdk.TrsBillingId == "-")
             return;
@@ -375,7 +378,7 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
         _antrianRepo.SaveChanges(Que);
         _trackerRepo.DeleteEntity(TrackerKey);
     }
-    private void SaveBillKarcis(TrsBillingType billKarcis)
+    private void SaveBillKarcis(TrsBillType billKarcis)
     {
         if (billKarcis.TrsBillingId == "-")
             return;

@@ -1,10 +1,10 @@
-// resharper disable InconsistentNaming
-
 using System.Globalization;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
-using Bilreg.Domain.ChargeContext.TarifFeature;
+using Bilreg.Domain.PaymentContext.TataRekeningFeature;
+using Bilreg.Domain.PaymentContext.TrsBillFeature;
 using Bilreg.Domain.PaymentContext.TrsBillingFeature;
-using Nuna.Lib.ValidationHelper;
+
+//  resharper disable InconsistentNaming
 
 namespace Bilreg.Infrastructure.PaymentContext.TrsBillingFeature;
 
@@ -21,89 +21,155 @@ public record TaTrsBilling2Dto(
     
     string fs_nm_detil_tarif, string fs_nm_grup_rek, string fs_nm_peg_kasir, string fs_nm_peg_medis)
 {
-    public static TaTrsBilling2Dto FromModel(TrsBilling2Base model, string billingId)
+    public static TaTrsBilling2Dto FromModelTrans(TrsBill2TransEventType model, string billingId, int modul)
     {
-        var result = model switch
-        {
-            TrsBilling2JasaType jasa => FromModelJasa(jasa, billingId),
-            TrsBilling2ObatType obat => FromModelObat(obat, billingId),
-            _ => throw new ArgumentOutOfRangeException(nameof(model), model, null)
-        };
-        return result;
-    }
-    private static TaTrsBilling2Dto FromModelJasa(TrsBilling2JasaType model, string billingId)
-    {
-        return new TaTrsBilling2Dto(
+        var komponenTarifId = modul == 0 ? model.Komponen.BillKompId : string.Empty;
+        var komponenTarifName = modul == 0 ? model.Komponen.BillKompName : string.Empty;
+        var groupRekId = modul == 1 ? model.Komponen.BillKompId : string.Empty;
+        var groupRekName = modul == 1 ? model.Komponen.BillKompName : string.Empty;
+        
+        var result = new TaTrsBilling2Dto(
             billingId, model.NoUrut,
-            model.NilaiBilling.JenisBayar, model.NilaiBilling.NilaiP, model.NilaiBilling.NilaiN,
+            model.JenisBayar.JenisBayarId, model.Nilai, 0,
             //  payment
-            model.PaymentId, model.PaymentDate.ToString(DateFormatEnum.YMD),
-            model.PaymentDate.ToString(DateFormatEnum.HMS),
+            billingId, "3000-01-01", "00:00:00",
             //  kasir
-            model.Kasir.PegId, 
+            string.Empty, 
             //  jasa-only props
-            model.Ppa.PpaId, model.Komponen.KomponenId, 
+            model.PetugasMedis.PpaId, komponenTarifId, 
             //  obat-only props
-            "", 
+            groupRekId, 
             //  rekening
-            model.Rekening.Ppdp, model.Rekening.Pdpt, model.Rekening.Diskon,
+            model.Coa.Ppdp.CoaId, model.Coa.Pdpt.CoaId, model.Coa.Pdpt.CoaId,
             "", "", "", "", 
             //  support      
-            model.Komponen.KomponenName, "", model.Kasir.PegName, model.Ppa.PpaName);
+            komponenTarifName, groupRekName, "", model.PetugasMedis.PpaName);
+        return result;
+    }
+    
+    public static TaTrsBilling2Dto FromModelDischarge(TrsBill2DischargeEventType model, 
+        string billingId, int modul, string regId)
+    {
+        var komponenTarifId = modul == 0 ? model.Komponen.BillKompId : string.Empty;
+        var komponenTarifName = modul == 0 ? model.Komponen.BillKompName : string.Empty;
+        var groupRekId = modul == 1 ? model.Komponen.BillKompId : string.Empty;
+        var groupRekName = modul == 1 ? model.Komponen.BillKompName : string.Empty;
+        var tglBayar = model.TglBayar.ToString("yyyy-mm-dd");
+        var jamBayar = model.TglBayar.ToString("HH:mm:ss");
+        var paymentId = $"RO{regId[^8..]}";
+        
+        var result = new TaTrsBilling2Dto(
+            billingId, model.NoUrut,
+            model.JenisBayar.JenisBayarId, 0, model.Nilai,
+            //  payment
+            paymentId, tglBayar, jamBayar,
+            //  kasir
+            model.PetugasKasir, 
+            //  jasa-only props
+            model.PetugasMedis.PpaId, komponenTarifId, 
+            //  obat-only props
+            groupRekId, 
+            //  rekening
+            string.Empty, string.Empty, string.Empty, string.Empty, string.Empty,
+            string.Empty, string.Empty, 
+            //  support      
+            komponenTarifName, groupRekName, model.PetugasKasir, model.PetugasMedis.PpaName);
+        return result;
+    }
+    
+    public static (TaTrsBilling2Dto,TaTrsBilling2Dto)  FromModelPayment(TrsBill2PaymentEventType model, 
+        string billingId, int modul, string paymentId)
+    {
+        var komponenTarifId = modul == 0 ? model.Komponen.BillKompId : string.Empty;
+        var komponenTarifName = modul == 0 ? model.Komponen.BillKompName : string.Empty;
+        var groupRekId = modul == 1 ? model.Komponen.BillKompId : string.Empty;
+        var groupRekName = modul == 1 ? model.Komponen.BillKompName : string.Empty;
+        var tglBayar = model.TglBayar.ToString("yyyy-mm-dd");
+        var jamBayar = model.TglBayar.ToString("HH:mm:ss");
+        
+        var resultP = new TaTrsBilling2Dto(
+            billingId, model.NoUrut,
+            model.JenisBayar.JenisBayarId, 0, model.Nilai, 
+            //  payment
+            paymentId, tglBayar, jamBayar,
+            //  kasir
+            string.Empty, 
+            //  jasa-only props
+            model.PetugasMedis.PpaId, komponenTarifId, 
+            //  obat-only props
+            groupRekId, 
+            //  rekening
+            string.Empty, string.Empty, string.Empty, string.Empty, string.Empty,
+            string.Empty, string.Empty, 
+            //  support      
+            komponenTarifName, groupRekName, string.Empty, model.PetugasMedis.PpaName);
+
+        var resultN = resultP with
+        {
+            fn_trs_p = 0,
+            fn_trs_n = model.Nilai,
+            fs_kd_jenis_bayar = "KAS"
+        };
+        
+        return (resultP, resultN);
     }
 
-    private static TaTrsBilling2Dto FromModelObat(TrsBilling2ObatType model, string billingId)
+    public ITrsBill2Event ToModel(int modul)
     {
-        return new TaTrsBilling2Dto(
-            billingId, model.NoUrut,
-            model.NilaiBilling.JenisBayar, model.NilaiBilling.NilaiP, model.NilaiBilling.NilaiN,
-            //  payment
-            model.PaymentId, model.PaymentDate.ToString(DateFormatEnum.YMD),
-            model.PaymentDate.ToString(DateFormatEnum.HMS),
-            //  kasir
-            model.Kasir.PegId, 
-            //  jasa-only props
-            "", "", 
-            //  obat-only props
-            model.GroupRek.GroupRekId, 
-            //  rekening
-            model.Rekening.Ppdp, model.Rekening.Pdpt, model.Rekening.Diskon,
-            model.Rekening.PdptLain, model.Rekening.Persediaan, 
-            model.Rekening.Tax, model.Rekening.Retur,  
-            //  support      
-            "", model.GroupRek.GroupRekName, model.Kasir.PegName, "");
+        if (fs_kd_trs == fs_kd_trs_bayar)
+            return ToTransEventModel(modul);
+        if (fs_kd_trs_bayar[..2] == "RO")
+            return ToDischargeEventModel(modul);
+        return ToPaymentEventModel(modul);
     }
-    
-    public TrsBilling2Base ToModel()
+
+    private TrsBill2TransEventType ToTransEventModel(int modul)
     {
-        if (fs_kd_detil_tarif.Trim() == "")
-            return ToJasaModel();
-        return ToObatModel();
+        var komponen = modul == 0 ? 
+            new TrsBill2KomponenType(fs_kd_detil_tarif,"") : 
+            new TrsBill2KomponenType(fs_kd_grup_rek, "");
+        var jenisBayar = TrsBillJenisBayarType.GetData(fs_kd_jenis_bayar);
+        var ppa = new PpaReff(fs_kd_petugas_medis, "");
+        var coa = new TrsBill2CoaType(
+            new CoaType(fs_kd_rek_ppdp, ""),
+            new CoaType(fs_kd_rek_pdpt, ""),
+            new CoaType(fs_kd_rek_persediaan, ""),
+            new CoaType(fs_kd_rek_pdpt_lain, ""),
+            new CoaType(fs_kd_rek_tax, ""),
+            new CoaType(fs_kd_rek_disc, ""));
+        var result = new TrsBill2TransEventType(
+            (int)fn_no_urut, komponen, jenisBayar, fn_trs_p, ppa, coa);
+        return result;
     }
-    private TrsBilling2JasaType ToJasaModel()
+
+    private TrsBill2DischargeEventType ToDischargeEventModel(int modul)
     {
-        var komponen = new KomponenReff(fs_kd_detil_tarif, fs_nm_detil_tarif);
-        var ppa = new PpaReff(fs_kd_petugas_medis, fs_nm_peg_medis);
-        var kasir = PegType.Create(fs_kd_petugas_kasir, fs_nm_peg_kasir);
-        var paymentDate = DateTime.ParseExact($"{fd_tgl_bayar} {fs_jam_bayar}", "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
-        var nilaiBilling = new NilaiBillingType(fs_kd_jenis_bayar, fn_trs_p, fn_trs_n);
-        var rekening = new RekJasaType(fs_kd_rek_ppdp, fs_kd_rek_pdpt, fs_kd_rek_disc);
-        return new TrsBilling2JasaType(
-            (int)fn_no_urut, fs_kd_trs_bayar, paymentDate,
-            nilaiBilling, ppa, kasir, komponen, rekening);
+        var komponen = modul == 0 ? 
+            new TrsBill2KomponenType(fs_kd_detil_tarif,"") : 
+            new TrsBill2KomponenType(fs_kd_grup_rek, "");
+        var jenisBayar = TrsBillJenisBayarType.GetData(fs_kd_jenis_bayar);
+        var ppa = new PpaReff(fs_kd_petugas_medis, "");
+        var tglBayar = DateTime.ParseExact(fd_tgl_bayar, "yyyy-MM-dd", CultureInfo.InvariantCulture);
+        var result = new TrsBill2DischargeEventType(
+            (int)fn_no_urut, komponen, jenisBayar, fn_trs_n, ppa, fs_kd_petugas_kasir,
+            fs_kd_trs_bayar, tglBayar);
+        return result;
     }
-    
-    private TrsBilling2ObatType ToObatModel()
+
+    private TrsBill2PaymentEventType ToPaymentEventModel(int modul)
     {
-        var groupRek = new GroupRekReff(fs_kd_detil_tarif, fs_nm_detil_tarif);
-        var kasir = PegType.Create(fs_kd_petugas_kasir, fs_nm_peg_kasir);
-        var paymentDate = DateTime.ParseExact($"{fd_tgl_bayar} {fs_jam_bayar}", "yyyy-MM-dd HH:mm:ss", 
-            CultureInfo.InvariantCulture);
-        var nilaiBilling = new NilaiBillingType(fs_kd_jenis_bayar, fn_trs_p, fn_trs_n);
-        var rekening = new RekObatType(fs_kd_rek_ppdp, fs_kd_rek_pdpt, fs_kd_rek_disc,
-            fs_kd_rek_pdpt_lain, fs_kd_rek_persediaan, fs_kd_rek_tax, fs_kd_rek_retur);
-        return new TrsBilling2ObatType(
-            (int)fn_no_urut, fs_kd_trs_bayar, paymentDate,
-            nilaiBilling, kasir, groupRek, rekening);
+        if (fs_kd_jenis_bayar == "KAS")
+            throw new ArgumentException("JenisBayar must be KAS", nameof(fs_kd_jenis_bayar));
+
+        var komponen = modul == 0 ? 
+            new TrsBill2KomponenType(fs_kd_detil_tarif,"") : 
+            new TrsBill2KomponenType(fs_kd_grup_rek, "");
+        var jenisBayar = TrsBillJenisBayarType.GetData(fs_kd_jenis_bayar);
+        var ppa = new PpaReff(fs_kd_petugas_medis, "");
+        var tglBayar = DateTime.ParseExact(fd_tgl_bayar, "yyyy-MM-dd", CultureInfo.InvariantCulture);
+        var payment = new PaymentType(fs_kd_trs_bayar, "", true);
+        var result = new TrsBill2PaymentEventType(
+            (int)fn_no_urut, komponen, jenisBayar, payment, fn_trs_p, tglBayar, ppa);
+        return result;
     }
 }

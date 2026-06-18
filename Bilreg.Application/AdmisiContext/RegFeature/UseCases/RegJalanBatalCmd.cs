@@ -12,6 +12,7 @@ using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
+using Bilreg.Domain.PaymentContext.TrsBillFeature;
 using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using Bilreg.Domain.Shared.AuditLogFeature;
 using MediatR;
@@ -151,7 +152,7 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
             .ToList();
     }
 
-    private List<TrsBillingType> LoadAndValidateBilling(RegJalanBatalCmd request)
+    private List<TrsBillView> LoadAndValidateBilling(RegJalanBatalCmd request)
     {
         var billingList = _bilingRepo.ListData(request)?.ToList() ?? [];
 
@@ -223,12 +224,12 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
             _tdkRepo.SaveChanges(tindakan);
         }
     }
-    private void VoidBilling(IEnumerable<TrsBillingType> listBill)
+    private void VoidBilling(IEnumerable<TrsBillView> listBill)
     {
         foreach (var bill in listBill)
         {
             _jurnalRepo.DeleteEntity(JurnalType.Key(bill.TrsBillingId));
-            _bilingRepo.DeleteEntity(TrsBillingType.Key(bill.TrsBillingId));
+            _bilingRepo.DeleteEntity(TrsBillType.Key(bill.TrsBillingId));
         }
 
     }

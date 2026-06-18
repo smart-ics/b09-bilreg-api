@@ -1,5 +1,7 @@
 using System.Data;
 using System.Data.SqlClient;
+using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.PaymentContext.TrsBillFeature;
 using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
@@ -11,7 +13,8 @@ namespace Bilreg.Infrastructure.PaymentContext.TrsBillingFeature;
 public interface ITrsBilling2Dal :
     IInsertBulk<TaTrsBilling2Dto>,
     IDelete<ITrsBillingKey>,
-    IListData<TaTrsBilling2Dto, ITrsBillingKey>
+    IListData<TaTrsBilling2Dto, ITrsBillingKey>,
+    IListData<TaTrsBilling2Dto, IRegKey>
 {
 }
 
@@ -86,7 +89,27 @@ public class TrsBilling2Dal : ITrsBilling2Dal
     
     public IEnumerable<TaTrsBilling2Dto> ListData(ITrsBillingKey key)
     {
-        const string sql = """
+        var dp = new DynamicParameters();
+        dp.AddParam("@fs_kd_trs", key.TrsBillingId, SqlDbType.VarChar);
+        return ListBill2Rows("aa.fs_kd_trs = @fs_kd_trs", dp, includeBillingJoin: false);
+    }
+
+    public IEnumerable<TaTrsBilling2Dto> ListData(IRegKey key)
+    {
+        var dp = new DynamicParameters();
+        dp.AddParam("@fs_kd_reg", key.RegId, SqlDbType.VarChar);
+        return ListBill2Rows("bill.fs_kd_reg = @fs_kd_reg", dp, includeBillingJoin: true);
+    }
+
+    private IEnumerable<TaTrsBilling2Dto> ListBill2Rows(
+        string whereClause,
+        DynamicParameters dp,
+        bool includeBillingJoin)
+    {
+        var billingJoin = includeBillingJoin
+            ? "INNER JOIN ta_trs_billing bill ON aa.fs_kd_trs = bill.fs_kd_trs"
+            : string.Empty;
+        var sql = $"""
             SELECT
                 aa.fs_kd_trs, aa.fn_no_urut,
                 aa.fs_kd_jenis_bayar, aa.fn_trs_p, aa.fn_trs_n,
@@ -105,17 +128,15 @@ public class TrsBilling2Dal : ITrsBilling2Dal
                 ISNULL(dd.fs_nm_peg, '') AS fs_nm_peg_medis 
             FROM
                 ta_trs_billing2 aa
-                left join ta_detil_tarif bb on aa.fs_kd_detil_tarif = bb.fs_kd_detil_tarif
-                left join tb_grup_rek cc on aa.fs_kd_grup_rek = cc.fs_kd_grup_rek
-                left join td_peg dd on aa.fs_kd_petugas_medis = dd.fs_kd_peg
-                left join td_peg ee on aa.fs_kd_petugas_kasir = ee.fs_kd_peg
+                {billingJoin}
+                LEFT JOIN ta_detil_tarif bb ON aa.fs_kd_detil_tarif = bb.fs_kd_detil_tarif
+                LEFT JOIN tb_grup_rek cc ON aa.fs_kd_grup_rek = cc.fs_kd_grup_rek
+                LEFT JOIN td_peg dd ON aa.fs_kd_petugas_medis = dd.fs_kd_peg
+                LEFT JOIN td_peg ee ON aa.fs_kd_petugas_kasir = ee.fs_kd_peg
             WHERE
-                fs_kd_trs = @fs_kd_trs
+                {whereClause}
             """;
-        var dp = new DynamicParameters();
-        dp.AddParam("@fs_kd_trs", key.TrsBillingId, SqlDbType.VarChar);
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<TaTrsBilling2Dto>(sql, dp);
     }
-
 }

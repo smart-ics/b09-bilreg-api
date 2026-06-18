@@ -10,7 +10,6 @@ using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
-using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
 
@@ -36,12 +35,14 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
     private readonly ITarifRepo _tarifRepo;
     private readonly IJaminanRepo _jaminanRepo;
     private readonly ITrsBillingRepo _trsBillingRepo;
+    private readonly IAddBillAppService _addBillAppService;
 
     public TindakanCreateHandler(ITindakanRepo tindakanRepo, 
         IRegRepo regRepo, ILayananRepo layananRepo, INilaiTarifRepo nilaiTarifRepo, 
         IKomponenRepo komponenRepo, IPpaRepo ppaRepo,  
         ITarifRepo tarifRepo, IJaminanRepo jaminanRepo,
-        ITrsBillingRepo trsBillingRepo)
+        ITrsBillingRepo trsBillingRepo,
+        IAddBillAppService addBillAppService)
     {
         _tindakanRepo = tindakanRepo;
         _regRepo = regRepo;
@@ -52,6 +53,7 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
         _tarifRepo = tarifRepo;
         _jaminanRepo = jaminanRepo;
         _trsBillingRepo = trsBillingRepo;
+        _addBillAppService = addBillAppService;
     }
 
     public Task<TindakanCreateRespose> Handle(TdkCreateTindakanCmd request, CancellationToken cancellationToken)
@@ -74,7 +76,7 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
         }
 
         var tindakan = TindakanModel.Create(reg, layanan, nilaiTarif, listPpa, request.UserId);
-        var trsBilling = TrsBillingType.CreateFromTindakan(tindakan, reg, tarif, jaminan, listKomp);
+        var trsBilling = _addBillAppService.FromTindakan(tindakan, reg, tarif, jaminan, listKomp);
 
         //  WRITE
         using var trans = TransHelper.NewScope();

@@ -1,13 +1,13 @@
-﻿//TODO: Refactor AntrianMap Model
+﻿ //TODO: Refactor AntrianMap Model
 
 using Bilreg.Api.Helpers;
 using Bilreg.Application.AdmisiContext.RegFeature.UseCases;
- using MediatR;
- using Microsoft.AspNetCore.Mvc;
- using Nuna.Lib.ActionResultHelper;
- using Nuna.Lib.PatternHelper;
+using MediatR;
+using Microsoft.AspNetCore.Mvc;
+using Nuna.Lib.ActionResultHelper;
+using Nuna.Lib.PatternHelper;
 
- namespace Bilreg.Api.Controllers.AdmisiContext.RegFeature;
+namespace Bilreg.Api.Controllers.AdmisiContext.RegFeature;
 
 [Route("api/[controller]")]
 [ApiController]

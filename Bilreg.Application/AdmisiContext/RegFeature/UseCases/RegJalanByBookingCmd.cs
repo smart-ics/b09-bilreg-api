@@ -32,6 +32,7 @@ using MediatR;
 using Nuna.Lib.TransactionHelper;
 using Ardalis.GuardClauses;
 using System.Globalization;
+using Bilreg.Domain.PaymentContext.TrsBillFeature;
 
 namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 
@@ -63,6 +64,7 @@ public class RegJalanByBookingHandler
     private readonly ITindakanRepo _tindakanRepo;
     private readonly IKomponenRepo _komponenRepo;
     private readonly ITrsBillingRepo _trsBillingRepo;
+    private readonly IAddBillAppService _addBillAppService;
     
     private readonly IRemoteCetakRepo _remoteCetakRepo;
     private readonly IGetAppSettingService _getAppSettingSvc;
@@ -92,6 +94,7 @@ public class RegJalanByBookingHandler
         ITindakanRepo tindakanRepo,
         IKomponenRepo komponenRepo,
         ITrsBillingRepo trsBillingRepo,
+        IAddBillAppService addBillAppService,
         IAntrianRepo antrianRepo,
         IMapJaminanJkRepo mapJaminanJkRepo,
         IJurnalRepo jurnalRepo,
@@ -118,6 +121,7 @@ public class RegJalanByBookingHandler
         _tindakanRepo = tindakanRepo;
         _komponenRepo = komponenRepo;
         _trsBillingRepo = trsBillingRepo;
+        _addBillAppService = addBillAppService;
         _antrianRepo = antrianRepo;
         _mapJaminanJkRepo = mapJaminanJkRepo;
         _jurnalRepo = jurnalRepo;
@@ -174,7 +178,7 @@ public class RegJalanByBookingHandler
             var komp = LoadKomponen(KomponenType.Key(item.KomponenTarif.KomponenId));
             listKompKarcis.Add(komp);
         }
-        var trsBillingReg = TrsBillingType.CreateFromRegistrasi(reg, karcis,
+        var trsBillingReg = _addBillAppService.FromReg(reg, karcis,
             jaminan, dokter, listKompKarcis);
 
         var tindakan = karcis.DefaultTarif == TarifType.Default.ToReff()
@@ -193,7 +197,7 @@ public class RegJalanByBookingHandler
             ? TarifType.Default
             : LoadTarif(TarifType.Key(karcis.DefaultTarif.TarifId));
         var trsBilling = tindakan == TindakanModel.Default
-            ? TrsBillingType.Default
+            ? TrsBillType.Default
             : GenBill(tindakan, reg, tarif, jaminan);
 
         //      BUILD Jurnal Tindakan
@@ -315,7 +319,7 @@ public class RegJalanByBookingHandler
         return tindakan;
     }
 
-    private TrsBillingType GenBill(TindakanModel tdk, RegModel reg, TarifType tarif,
+    private TrsBillType GenBill(TindakanModel tdk, RegModel reg, TarifType tarif,
         JaminanType jaminan)
     {
         var listKomp = new List<KomponenType>();
@@ -324,7 +328,7 @@ public class RegJalanByBookingHandler
             var komp = LoadKomponen(KomponenType.Key(item.Komponen.KomponenId));
             listKomp.Add(komp);
         }
-        var trsBilling = TrsBillingType.CreateFromTindakan(tdk, reg, tarif, jaminan, listKomp);
+        var trsBilling = _addBillAppService.FromTindakan(tdk, reg, tarif, jaminan, listKomp);
         return trsBilling;
     }
 

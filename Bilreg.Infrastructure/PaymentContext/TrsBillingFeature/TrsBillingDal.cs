@@ -1,6 +1,7 @@
 using System.Data;
 using System.Data.SqlClient;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.PaymentContext.TrsBillFeature;
 using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
@@ -140,12 +141,13 @@ public class TrsBillingDal : ITrsBillingDal
     {
         const string sql = """
             SELECT
-                aa.fs_kd_trs, aa.fn_modul, aa.fd_tgl_trs, aa.fs_jam_trs, aa.fd_tgl_jam_trs,
+                aa.fs_kd_trs, CAST(aa.fn_modul AS DECIMAL(18,0)) AS fn_modul,
+                aa.fd_tgl_trs, aa.fs_jam_trs, aa.fd_tgl_jam_trs,
                 aa.fs_kd_reg, aa.fs_kd_layanan, aa.fs_kd_kelas, 
                 aa.fs_kd_rekap_cetak, aa.fs_kd_petugas, 
                 aa.fn_sub_total, aa.fn_diskon, aa.fn_biaya, aa.fn_tax, aa.fn_total,
                 aa.fs_keterangan, aa.fs_keterangan2, aa.fs_kd_ref_biaya,
-                aa.fn_qty, aa.fs_kd_trs_main,
+                CAST(aa.fn_qty AS DECIMAL(18,0)) AS fn_qty, aa.fs_kd_trs_main,
                 ISNULL(bb.fs_mr, '') AS fs_mr, 
                 ISNULL(cc.fs_nm_pasien, '') AS fs_nm_pasien, 
                 ISNULL(dd.fs_nm_layanan, '') AS fs_nm_layanan, 
@@ -172,12 +174,13 @@ public class TrsBillingDal : ITrsBillingDal
     {
         const string sql = """
             SELECT
-                aa.fs_kd_trs, aa.fn_modul, aa.fd_tgl_trs, aa.fs_jam_trs, aa.fd_tgl_jam_trs,
+                aa.fs_kd_trs, CAST(aa.fn_modul AS DECIMAL(18,0)) AS fn_modul,
+                aa.fd_tgl_trs, aa.fs_jam_trs, aa.fd_tgl_jam_trs,
                 aa.fs_kd_reg, aa.fs_kd_layanan, aa.fs_kd_kelas, 
                 aa.fs_kd_rekap_cetak, aa.fs_kd_petugas, 
                 aa.fn_sub_total, aa.fn_diskon, aa.fn_biaya, aa.fn_tax, aa.fn_total,
                 aa.fs_keterangan, aa.fs_keterangan2, aa.fs_kd_ref_biaya,
-                aa.fn_qty, aa.fs_kd_trs_main,
+                CAST(aa.fn_qty AS DECIMAL(18,0)) AS fn_qty, aa.fs_kd_trs_main,
                 ISNULL(bb.fs_mr, '') AS fs_mr, 
                 ISNULL(cc.fs_nm_pasien, '') AS fs_nm_pasien, 
                 ISNULL(dd.fs_nm_layanan, '') AS fs_nm_layanan, 
