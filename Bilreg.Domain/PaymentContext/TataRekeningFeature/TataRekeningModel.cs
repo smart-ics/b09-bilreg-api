@@ -23,20 +23,19 @@ public record TataRekeningModel : IRegKey
         _listTataRekeningPayment = listTataRekeningPayment.ToList();
         _listTrsBill = listTrsBill.ToList();
     }
-
+    
+    //  PROPERTEIS
     public static TataRekeningModel Create(string regId)
     {
         return new TataRekeningModel(regId, TataRekeningStatusEnum.Opened,
             TataRekeningDischargeType.Default, [], []);
     }
-
     public string RegId { get; init; }
     public TataRekeningDischargeType DischargeInfo { get; private set; }
     public TataRekeningStatusEnum Status { get; private set; }
     public IEnumerable<TataRekeningPaymentType> ListPayment => _listTataRekeningPayment;
-
     public IEnumerable<TrsBillType> ListTrsBill => _listTrsBill;
-
+    //  BEHAVIOIR
     public void DeleteBill(string trsBillingId)
     {
         EnsureNotLunas();
@@ -49,7 +48,6 @@ public record TataRekeningModel : IRegKey
 
         _listTrsBill.RemoveAt(index);
     }
-
     public void Close()
     {
         EnsureNotLunas();
@@ -60,7 +58,6 @@ public record TataRekeningModel : IRegKey
             throw new InvalidOperationException(
                 "TataRekening can not be closed since current status is not OPENED.");
     }
-
     public void ReOpen()
     {
         EnsureNotLunas();
@@ -71,7 +68,6 @@ public record TataRekeningModel : IRegKey
             throw new InvalidOperationException(
                 "TataRekening can not be re-opened since current status is not CLOSED.");
     }
-
     public void Discharge(IEnumerable<TataRekeningPaymentType> listPayment, string petugasVerif, DateTime dischargeDate)
     {
         EnsureNotLunas();
@@ -88,7 +84,6 @@ public record TataRekeningModel : IRegKey
         AssertDischargeComplete();
         Status = TataRekeningStatusEnum.Finalized;
     }
-
     public void Pay(IEnumerable<TataRekeningPaymentType> listPayment, string trsBayarId, DateTime tglBayar)
     {
         EnsureNotLunas();
@@ -107,7 +102,6 @@ public record TataRekeningModel : IRegKey
         PaymentAllocation(payments, trsBayarId, tglBayar);
         TryTransitionToLunas();
     }
-
     public void CancelDischarge()
     {
         EnsureNotLunas();

@@ -5,9 +5,12 @@ namespace Bilreg.Domain.PaymentContext.TrsBillFeature;
 
 public record TrsBill2PaymentEventType : ITrsBill2Event
 {
-    public TrsBill2PaymentEventType(int noUrut, TrsBill2KomponenType komponen, 
-        TrsBillJenisBayarType jenisBayar, PaymentType payment, 
-        decimal nilai, DateTime tglBayar, PpaReff petugasMedis)
+    public TrsBill2PaymentEventType(int noUrut, 
+        TrsBill2KomponenType komponen, 
+        TrsBillJenisBayarType jenisBayar, 
+        PaymentType payment, 
+        decimal nilai, 
+        DateTime tglBayar, PpaReff petugasMedis)
     {
         NoUrut = noUrut;
         Komponen = komponen;

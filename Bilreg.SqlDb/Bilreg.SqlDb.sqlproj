@@ -77,7 +77,6 @@
     <Folder Include="BedUsageContext\KamarOperasiFeature\" />
     <Folder Include="ChargeContext\TarifFeature\" />
     <Folder Include="PaymentContext\" />
-    <Folder Include="PaymentContext\TrsBillingFeature\" />
     <Folder Include="PaymentContext\RekapCatakFeature\" />
     <Folder Include="PaymentContext\RekeningFeature\" />
     <Folder Include="AccountingContext" />
@@ -234,6 +233,7 @@
     <Content Include="LabContext\LabResultFeature\BILRG_LabResultItem.sql" />
     <Build Include="PaymentContext\RekapCatakFeature\ta_trs_billing2.sql" />
     <Build Include="PaymentContext\RekeningFeature\t_rek.sql" />
+    <Build Include="PaymentContext\TrsBillingFeature\BILRG_TataRekening.sql" />
     <Build Include="PaymentContext\TrsBillingFeature\ta_trs_billing.sql" />
     <None Include="AdmisiContext\BookingFeature\BILRG_BookingExternal.sql" />
     <Build Include="BedUsageContext\KamarOperasiFeature\BILRG_StartOp.sql" />

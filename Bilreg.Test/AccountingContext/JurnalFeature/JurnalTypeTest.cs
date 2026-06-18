@@ -1,5 +1,4 @@
-﻿//  TODO: jude-dev-trs-billing
-// using Bilreg.Domain.AccountingContext.JurnalFeature;
+﻿// using Bilreg.Domain.AccountingContext.JurnalFeature;
 // using Bilreg.Domain.AccountingContext.UnitFeature;
 // using Bilreg.Domain.AdmisiContext.LayananFeature;
 // using Bilreg.Domain.AdmisiContext.PpaFeature;

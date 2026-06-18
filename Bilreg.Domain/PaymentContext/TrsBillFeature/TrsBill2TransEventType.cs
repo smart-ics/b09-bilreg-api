@@ -20,6 +20,9 @@ public record TrsBill2TransEventType : ITrsBill2Event
         Coa = coa;
     }
 
+    
+    
+    
     public static TrsBill2TransEventType Create(
         int noUrut,
         TrsBill2KomponenType komponen,

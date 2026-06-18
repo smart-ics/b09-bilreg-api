@@ -29,24 +29,16 @@ public interface ICreateBillDomService
 public sealed class CreateBillDomService : ICreateBillDomService
 {
     public TrsBillType FromReg(
-        TataRekeningModel tataRekening,
-        RegModel reg,
-        KarcisType karcis,
-        JaminanType jaminan,
-        PpaType dokter,
-        IEnumerable<KomponenType> listReffKomp)
+        TataRekeningModel tataRekening, RegModel reg, KarcisType karcis,
+        JaminanType jaminan, PpaType dokter, IEnumerable<KomponenType> listReffKomp)
     {
         ValidateReg(tataRekening, reg.RegId);
         return TrsBillFactory.CreateFromReg(reg, karcis, jaminan, dokter, listReffKomp);
     }
 
     public TrsBillType FromTindakan(
-        TataRekeningModel tataRekening,
-        TindakanModel tindakan,
-        RegModel reg,
-        TarifType tarif,
-        JaminanType jaminan,
-        IEnumerable<KomponenType> listReffKomp)
+        TataRekeningModel tataRekening, TindakanModel tindakan, RegModel reg,
+        TarifType tarif, JaminanType jaminan, IEnumerable<KomponenType> listReffKomp)
     {
         ValidateReg(tataRekening, reg.RegId);
         return TrsBillFactory.CreateFromTindakan(tindakan, reg, tarif, jaminan, listReffKomp);
