@@ -5,8 +5,10 @@ using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
+using Bilreg.Domain.Shared.Param;
 using MediatR;
 using System.Globalization;
+using System.Net.Http.Headers;
 
 namespace Bilreg.Application.AdmisiContext.BookingFeature;
 
@@ -28,17 +30,23 @@ public class JadwalPraktekSaveHandler : IRequestHandler<JadwalPraktekSaveCmd, Ja
     private readonly IPpaRepo _petugasRepo;
     private readonly ILayananRepo _layananRepo;
     private readonly IRuangRepo _ruangRepo;
+    private readonly IGetKodeRsService _getKodeRsService;
+    private readonly IJadwalPraktekSendToHfisService _jadwalSendToHfisService;
     public JadwalPraktekSaveHandler(IJadwalPraktekRepo jadwalRepo,
         IJadwalPraktekFactory jadwalNunaFactory,
         IPpaRepo petugasRepo,
         ILayananRepo layananRepo,
-        IRuangRepo ruangRepo)
+        IRuangRepo ruangRepo,
+        IJadwalPraktekSendToHfisService jadwalSendToHfisService,
+        IGetKodeRsService getKodeRsService)
     {
         _jadwalRepo = jadwalRepo;
         _jadwalNunaFactory = jadwalNunaFactory;
         _petugasRepo = petugasRepo;
         _layananRepo = layananRepo;
         _ruangRepo = ruangRepo;
+        _jadwalSendToHfisService = jadwalSendToHfisService;
+        _getKodeRsService = getKodeRsService;
     }
 
     public Task<JadwalPraktekSaveResponse> Handle(JadwalPraktekSaveCmd request, CancellationToken cancellationToken)
@@ -79,9 +87,12 @@ public class JadwalPraktekSaveHandler : IRequestHandler<JadwalPraktekSaveCmd, Ja
             jadwal = UpdateJadwal(request, dokter, layanan, ruang, jadwalDb, jamMulai, jamSelesai, antrianPattern);
 
         ValidateOverlap(jadwal, listJadwal);
+        var jadwalHfis = BuildPayloadHfis(jadwal);
 
         //  WRITE
         _jadwalRepo.SaveChanges(jadwal);
+        _jadwalSendToHfisService.Execute(jadwalHfis);
+
         return Task.FromResult(new JadwalPraktekSaveResponse(jadwal.JadwalPraktekId));
     }
 
@@ -161,6 +172,46 @@ public class JadwalPraktekSaveHandler : IRequestHandler<JadwalPraktekSaveCmd, Ja
 
         if (isOverlap)
             throw new Exception("Jadwal beririsan");
+    }
+
+
+    // Build Payload toHfis
+    private JadwalPraktekSendHfisPayload BuildPayloadHfis(JadwalPraktekType jadwal)
+    {
+        int limitBpjs = jadwal.MaxPasien;
+        int limitAll = jadwal.MaxPasien;
+
+        if (jadwal.AntrianPattern.Tipe == "FLAG")
+        {
+            var maxPasien = jadwal.MaxPasien;
+            var bpjsPart = jadwal.AntrianPattern.Pttrn.FirstOrDefault(x => x.Desc == "BPJS")?.Qty ?? 0;
+            var umumPart = jadwal.AntrianPattern.Pttrn.FirstOrDefault(x => x.Desc == "UMUM")?.Qty ?? 0;
+            var totalRasio = bpjsPart + umumPart;
+
+            limitBpjs = totalRasio > 0
+                ? (int)Math.Round((double)(bpjsPart * maxPasien) / totalRasio)
+                : maxPasien;
+
+            limitAll = maxPasien;
+        }
+        
+        var rsid = _getKodeRsService.Execute() ?? string.Empty;
+        var hari = (int)jadwal.Hari;
+
+        var result = new JadwalPraktekSendHfisPayload(
+            rsid,
+            new[]
+            {
+            new ItemJadwalPraktekHfis(
+                jadwal.Dokter.PpaId,
+                hari,
+                jadwal.JamMulai.ToString("HH:mm", CultureInfo.InvariantCulture),
+                jadwal.JamSelesai.ToString("HH:mm", CultureInfo.InvariantCulture),
+                limitAll,
+                limitBpjs)
+            });
+
+        return result;
     }
     #endregion
 }

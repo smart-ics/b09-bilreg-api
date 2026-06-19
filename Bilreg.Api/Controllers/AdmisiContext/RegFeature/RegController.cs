@@ -79,18 +79,17 @@ public class RegController : Controller
         return Ok(new JSendOk(result));
     }
 
-    [HttpPost]
+    [HttpPatch]
     [Route("{id}/deactivate")]
-    public async Task<IActionResult> Delete(string id)
+    public async Task<IActionResult> Deactivate(string id)
     {
         var userAgent = HttpHelper.GetUserAgent(Request);
         var remoteIpAddress = HttpHelper.GetIpAddress(Request, HttpContext);
 
-        var cmd = new RegAktifDeleteCmd(id, remoteIpAddress, userAgent);
+        var cmd = new RegRegAktifRemoveCmd(id, remoteIpAddress, userAgent);
         await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));
     }
-
 
     [HttpGet]
     [Route("{id}")]

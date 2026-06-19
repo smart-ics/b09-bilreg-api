@@ -64,7 +64,8 @@ public static class InfrastructureService
             .Configure<RemoteCetakOptions>(configuration.GetSection(RemoteCetakOptions.SECTION_NAME))
             .Configure<EmrOptions>(configuration.GetSection(EmrOptions.SECTION_NAME))
             .Configure<HiDokOptions>(configuration.GetSection(HiDokOptions.SECTION_NAME))
-            .Configure<JetliOptions>(configuration.GetSection(JetliOptions.SECTION_NAME));
+            .Configure<JetliOptions>(configuration.GetSection(JetliOptions.SECTION_NAME))
+            .Configure<JknOptions>(configuration.GetSection(JknOptions.SECTION_NAME));
 
         services
             .Scan(selector => selector
@@ -115,6 +116,11 @@ public static class InfrastructureService
                     .WithScopedLifetime()
                 .FromAssemblyOf<InfrastructureAssemblyAnchor>()
                     .AddClasses(c => c.AssignableTo(typeof(INunaService<,>)))
+                    .UsingRegistrationStrategy(RegistrationStrategy.Skip)
+                    .AsSelfWithInterfaces()
+                    .WithScopedLifetime()
+                .FromAssemblyOf<InfrastructureAssemblyAnchor>()
+                    .AddClasses(c => c.AssignableTo(typeof(INunaService<>)))
                     .UsingRegistrationStrategy(RegistrationStrategy.Skip)
                     .AsSelfWithInterfaces()
                     .WithScopedLifetime()

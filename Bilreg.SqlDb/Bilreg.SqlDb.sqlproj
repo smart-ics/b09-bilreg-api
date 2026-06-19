@@ -96,6 +96,7 @@
     <Folder Include="LabContext\LabOwareFeature\" />
     <Folder Include="LabContext\LabResultFeature\" />
     <Folder Include="Shared\" />
+    <Folder Include="PaymentContext\TrsBillingFeature\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OpCase.sql" />

@@ -28,6 +28,9 @@ public class RegAktifModel : IRegKey
             reg.Dokter, reg.TipeJaminan);
         return result;
     }
+    public static RegAktifModel Default => new RegAktifModel("-", new DateOnly(3000, 1, 1),
+        PasienModel.Default.ToReff(), JenisRegEnum.RegJalan, LayananType.Default.ToReff(),
+        PpaType.Default.ToReff(), TipeJaminanType.Default.ToReff());
     #endregion
     
     #region PROPERTIES
