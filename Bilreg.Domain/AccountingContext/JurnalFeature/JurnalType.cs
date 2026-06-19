@@ -2,6 +2,7 @@
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
+using Bilreg.Domain.PaymentContext.TrsBillFeature;
 using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 
@@ -26,7 +27,7 @@ public record JurnalType : IJurnalKey
     }
 
     #region CREATION
-    public static JurnalType CreateFromTrsBilling(TrsBillingType trsBilling, LayananType layanan, MapJaminanJkType mapJaminanJk)
+    public static JurnalType CreateFromTrsBilling(TrsBillType trsBilling, LayananType layanan, MapJaminanJkType mapJaminanJk)
     {
         var pasien = new PasienReff(trsBilling.Reg.PasienId, trsBilling.Reg.PasienName, new DateOnly(3000, 1, 1), "-");
         var pasienId = trsBilling.Reg.PasienId.Length >= 8
@@ -43,101 +44,66 @@ public record JurnalType : IJurnalKey
         var i = 1;
         var rekPpdp = string.Empty;
         decimal nilaiPpdp = 0;
-        foreach (var item in trsBilling.ListTrsBilling2)
+        foreach (var item in trsBilling.ListTransaction)
         {
-            if (item is TrsBilling2JasaType trsBilling2Jasa)
+            switch (item.JenisBayar.JenisBayarId)
             {
-                switch (trsBilling2Jasa.NilaiBilling.JenisBayar)
-                {
-                    case "PDP":
-                        nilaiPpdp += trsBilling2Jasa.NilaiBilling.NilaiP;
-                        rekPpdp = trsBilling2Jasa.Rekening.Ppdp;
-                        var jurnalNilaiPdpt = new Jurnal2NilaiType(trsBilling2Jasa.Rekening.Pdpt, 
-                            $"Pendapatan \n{trsBilling.Keterangan.Keterangan}", 
-                            0, trsBilling2Jasa.NilaiBilling.NilaiP);
-                        var jurnalPdpt = new Jurnal2JasaType(i++, jurnalNilaiPdpt, unitJk, "", "", trsBilling2Jasa.Ppa.PpaId);
-                        result.AddJurnal2(jurnalPdpt);
-                        break;
+                case "PDP":
+                    nilaiPpdp += item.Nilai;
+                    rekPpdp = item.Coa.Ppdp.CoaId;
+                    var jurnalNilaiPdpt = new Jurnal2NilaiType(item.Coa.Pdpt.CoaId, 
+                        $"Pendapatan \n{trsBilling.Keterangan.Keterangan}", 
+                        0, item.Nilai);
+                    var jurnalPdpt = new Jurnal2JasaType(i++, jurnalNilaiPdpt, unitJk, "", "", item.PetugasMedis.PpaId);
+                    result.AddJurnal2(jurnalPdpt);
+                    break;
 
-                    case "POT":
-                        nilaiPpdp += trsBilling2Jasa.NilaiBilling.NilaiP;
-                        var jurnalNilaiPot = new Jurnal2NilaiType(trsBilling2Jasa.Rekening.Diskon, 
-                            $"Potongan Pendapatan \n{trsBilling.Keterangan.Keterangan}", 
-                            Math.Abs(trsBilling2Jasa.NilaiBilling.NilaiP), 0);
-                        var jurnalPot = new Jurnal2JasaType(i++, jurnalNilaiPot, unitJk, "", "", trsBilling2Jasa.Ppa.PpaId);
-                        result.AddJurnal2(jurnalPot);
-                        break;
+                case "POT":
+                    nilaiPpdp += item.Nilai;
+                    var jurnalNilaiPot = new Jurnal2NilaiType(item.Coa.Disc.CoaId, 
+                        $"Potongan Pendapatan \n{trsBilling.Keterangan.Keterangan}", 
+                        Math.Abs(item.Nilai), 0);
+                    var jurnalPot = new Jurnal2JasaType(i++, jurnalNilaiPot, unitJk, "", "", item.PetugasMedis.PpaId);
+                    result.AddJurnal2(jurnalPot);
+                    break;
 
-                    default:
-                        break;
-                }
+                case "BYL":
+                    nilaiPpdp += item.Nilai;
+                    if (item.Nilai > 0)
+                    {
+                        var jurnalNilaiByl = new Jurnal2NilaiType(item.Coa.PdptLain.CoaId, 
+                            $"Pendapatan Biaya+ \n{trsBilling.Keterangan.Keterangan}", 
+                            0, item.Nilai);
+                        var jurnalByl = new Jurnal2ObatType(i++, jurnalNilaiByl, unitJk, "", "", "");
+                        result.AddJurnal2(jurnalByl);
+                    }
+                    else
+                    {
+                        var jurnalNilaiByl = new Jurnal2NilaiType(item.Coa.Pdpt.CoaId, 
+                            $"Retur Biaya+ \n{trsBilling.Keterangan.Keterangan}", 
+                            Math.Abs(item.Nilai), 0);
+                        var jurnalByl = new Jurnal2ObatType(i++, jurnalNilaiByl, unitJk, "", "", "");
+                        result.AddJurnal2(jurnalByl);
+                    }
+                    break;
 
-            }
-            else if (item is TrsBilling2ObatType trsBilling2Obat)
-            {
-                // Generate Jurnal for Obat : detil persediaan dan hpp belum di proses di sini
-                switch (trsBilling2Obat.NilaiBilling.JenisBayar)
-                {
-                    case "PDP":
-                        nilaiPpdp += trsBilling2Obat.NilaiBilling.NilaiP;
-                        rekPpdp = trsBilling2Obat.Rekening.Pdpt;
-                        var jurnalNilaiPdpt = new Jurnal2NilaiType(trsBilling2Obat.Rekening.Pdpt, 
-                            $"Pendapatan \n{trsBilling.Keterangan.Keterangan}", 
-                            0, trsBilling2Obat.NilaiBilling.NilaiP);
-                        var jurnalPdpt = new Jurnal2ObatType(i++, jurnalNilaiPdpt, unitJk, "", "", "");
-                        result.AddJurnal2(jurnalPdpt);
-                        break;
+                case "TAX":
+                    nilaiPpdp += item.Nilai;
+                    var jurnalNilaiTax = new Jurnal2NilaiType(item.Coa.Tax.CoaId,
+                        $"Pajak \n{trsBilling.Keterangan.Keterangan}", 
+                        0, item.Nilai);
+                    var jurnalTax = new Jurnal2ObatType(i++, jurnalNilaiTax, unitJk, "", "", "");
+                    result.AddJurnal2(jurnalTax);
+                    break;
 
-                    case "POT":
-                        nilaiPpdp += trsBilling2Obat.NilaiBilling.NilaiP;
-                        var jurnalNilaiPot = new Jurnal2NilaiType(trsBilling2Obat.Rekening.Diskon, 
-                            $"Potongan Pendapatan \n{trsBilling.Keterangan.Keterangan}", 
-                            Math.Abs(trsBilling2Obat.NilaiBilling.NilaiP), 0);
-                        var jurnalPot = new Jurnal2ObatType(i++, jurnalNilaiPot, unitJk, "", "", "");
-                        result.AddJurnal2(jurnalPot);
-                        break;
-
-                    case "BYL":
-                        nilaiPpdp += trsBilling2Obat.NilaiBilling.NilaiP;
-                        if (trsBilling2Obat.NilaiBilling.NilaiP > 0)
-                        {
-                            var jurnalNilaiByl = new Jurnal2NilaiType(trsBilling2Obat.Rekening.PdptLain, 
-                                $"Pendapatan Biaya+ \n{trsBilling.Keterangan.Keterangan}", 
-                                0, trsBilling2Obat.NilaiBilling.NilaiP);
-                            var jurnalByl = new Jurnal2ObatType(i++, jurnalNilaiByl, unitJk, "", "", "");
-                            result.AddJurnal2(jurnalByl);
-                        }
-                        else
-                        {
-                            var jurnalNilaiByl = new Jurnal2NilaiType(trsBilling2Obat.Rekening.Pdpt, 
-                                $"Retur Biaya+ \n{trsBilling.Keterangan.Keterangan}", 
-                                Math.Abs(trsBilling2Obat.NilaiBilling.NilaiP), 0);
-                            var jurnalByl = new Jurnal2ObatType(i++, jurnalNilaiByl, unitJk, "", "", "");
-                            result.AddJurnal2(jurnalByl);
-                        }
-                        break;
-
-                    case "TAX":
-                        nilaiPpdp += trsBilling2Obat.NilaiBilling.NilaiP;
-                        var jurnalNilaiTax = new Jurnal2NilaiType(trsBilling2Obat.Rekening.Tax,
-                            $"Pajak \n{trsBilling.Keterangan.Keterangan}", 
-                            0, trsBilling2Obat.NilaiBilling.NilaiP);
-                        var jurnalTax = new Jurnal2ObatType(i++, jurnalNilaiTax, unitJk, "", "", "");
-                        result.AddJurnal2(jurnalTax);
-                        break;
-
-                    case "RET":
-                        nilaiPpdp += trsBilling2Obat.NilaiBilling.NilaiP;
-                        var jurnalNilaiRet = new Jurnal2NilaiType(trsBilling2Obat.Rekening.Retur, 
-                            $"Retur \n{trsBilling.Keterangan.Keterangan}", 
-                            Math.Abs(trsBilling2Obat.NilaiBilling.NilaiP), 0);
-                        var jurnalRet = new Jurnal2ObatType(i++, jurnalNilaiRet, unitJk, "", "", "");
-                        result.AddJurnal2(jurnalRet);
-                        break;
-
-                    default:
-                        break;
-                }
+                // case "RET":
+                //     nilaiPpdp += item.Nilai;
+                //     var jurnalNilaiRet = new Jurnal2NilaiType(item.Coa.trsBilling2Obat.Rekening.Retur, 
+                //         $"Retur \n{trsBilling.Keterangan.Keterangan}", 
+                //         Math.Abs(trsBilling2Obat.NilaiBilling.NilaiP), 0);
+                //     var jurnalRet = new Jurnal2ObatType(i++, jurnalNilaiRet, unitJk, "", "", "");
+                //     result.AddJurnal2(jurnalRet);
+                //     break;
             }
         }
         var jurnalNilaiPpdp = new Jurnal2NilaiType(rekPpdp, "Piutang Pasien Dalam Perawatan", nilaiPpdp, 0);

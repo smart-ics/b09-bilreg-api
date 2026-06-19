@@ -1,7 +1,6 @@
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
-using Bilreg.Domain.PaymentContext.TrsBillingFeature;
-using Nuna.Lib.DataAccessHelper;
+using Bilreg.Domain.PaymentContext.TrsBillFeature;
 using Nuna.Lib.PatternHelper;
 
 namespace Bilreg.Infrastructure.PaymentContext.TrsBillingFeature;
@@ -16,29 +15,46 @@ public class TrsBillingRepo : ITrsBillingRepo
          _billing2Dal = billing2Dal;
      }
 
-     public void SaveChanges(TrsBillingType model)
+     public void SaveChanges(TrsBillType model)
      {
-         LoadEntity(model)
+        LoadEntity(model)
              .Match(
                  onSome: x => _billingDal.Update(TrsBillingDto.FromModel(model)),
                  onNone: () => _billingDal.Insert(TrsBillingDto.FromModel(model)));
 
-        var listBilling2Dto = model.ListTrsBilling2
-            .Select(x => TaTrsBilling2Dto.FromModel(x,model.TrsBillingId));
-
+         
+        var listBillTrans = model.ListTransaction
+            .Select(x => TaTrsBilling2Dto.FromModelTrans(x, model.TrsBillingId, (int)model.ModulGroup));
+        var listBillDischarge = model.ListDischarge
+            .Select(x => TaTrsBilling2Dto.FromModelDischarge(x, model.TrsBillingId, (int)model.ModulGroup, model.Reg.RegId));
+        var listBillPayment = model.ListPayment
+            .SelectMany(x =>
+            {
+                var (resultP, resultN) = TaTrsBilling2Dto.FromModelPayment(
+                    x, model.TrsBillingId, (int)model.ModulGroup, x.Payment.PaymentId);
+                return new[] { resultP, resultN };
+            });
+        
+        //Combine all
+        var listBillAll = listBillTrans
+            .Union(listBillDischarge)
+            .Union(listBillPayment)
+            .ToList();
+        
         _billing2Dal.Delete(model);
-        _billing2Dal.Insert(listBilling2Dto);
+        _billing2Dal.Insert(listBillAll);
      }
 
-     public MayBe<TrsBillingType> LoadEntity(ITrsBillingKey key)
+     public MayBe<TrsBillType> LoadEntity(ITrsBillingKey key)
      {
          var data = _billingDal.GetData(key);
          if (data is null)
-             return MayBe<TrsBillingType>.None;
-
-         var listKomp = _billing2Dal.ListData(key);
-         var result = data.ToModel(listKomp.Select(x => x.ToModel()));
-
+             return MayBe<TrsBillType>.None;
+         
+         var listBill2Dto = _billing2Dal.ListData(key)?.ToList() ?? [];
+         var list2Bill = listBill2Dto.Select(x => x.ToModel((int)data.fn_modul)).ToList();
+         var result = data.ToModel(list2Bill);
+         
          return MayBe.From(result);
      }
      public void DeleteEntity(ITrsBillingKey key)
@@ -47,22 +63,30 @@ public class TrsBillingRepo : ITrsBillingRepo
          _billing2Dal.Delete(key);
      }
 
-    public IEnumerable<TrsBillingType> ListData(IRegKey regKey)
+    public IEnumerable<TrsBillView> ListData(IRegKey regKey)
     {
-        var listDto = _billingDal.ListData(regKey);
-        if (listDto is null)
-            return Enumerable.Empty<TrsBillingType>();
-
-        var result = new List<TrsBillingType>();
-        foreach (var dto in listDto)
-        {
-            var key = TrsBillingType.Key(dto.fs_kd_trs);
-            var listKomp = _billing2Dal.ListData(key);
-            var entity = dto.ToModel(listKomp?.Select(x => x.ToModel()) ?? Enumerable.Empty<TrsBilling2Base>());
-            result.Add(entity);
-        }
-
+        var listDto = _billingDal.ListData(regKey)?.ToList() ?? [];
+        var result = listDto.Select(x => x.ToView()).ToList();
         return result;
+    }
+
+    public IEnumerable<TrsBillType> ListEntity(IRegKey regKey)
+    {
+        var headers = _billingDal.ListData(regKey)?.ToList() ?? [];
+        if (headers.Count == 0)
+            return [];
+
+        var allBill2 = _billing2Dal.ListData(regKey)?.ToList() ?? [];
+        var bill2ById = allBill2
+            .GroupBy(x => x.fs_kd_trs)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        return headers.Select(header =>
+        {
+            var children = bill2ById.GetValueOrDefault(header.fs_kd_trs, []);
+            var events = children.Select(x => x.ToModel((int)header.fn_modul)).ToList();
+            return header.ToModel(events);
+        });
     }
 
 }
