@@ -10,7 +10,6 @@ using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
-using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
 
@@ -35,6 +34,7 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
     private readonly IPpaRepo _ppaRepo;
     private readonly ITindakanRepo _tindakanRepo;
     private readonly ITrsBillingRepo _trsBillingRepo;
+    private readonly IAddBillAppService _addBillAppService;
     public TdkSaveTindakanHandler(IRegRepo regRepo,
         ILayananRepo layananRepo,
         ITarifRepo tarifRepo,
@@ -43,7 +43,8 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
         IKomponenRepo komponenRepo,
         IPpaRepo ppaRepo,
         ITindakanRepo tindakanRepo,
-        ITrsBillingRepo trsBillingRepo)
+        ITrsBillingRepo trsBillingRepo,
+        IAddBillAppService addBillAppService)
     {
         _regRepo = regRepo;
         _layananRepo = layananRepo;
@@ -54,6 +55,7 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
         _ppaRepo = ppaRepo;
         _tindakanRepo = tindakanRepo;
         _trsBillingRepo = trsBillingRepo;
+        _addBillAppService = addBillAppService;
     }
 
     public Task<TdkSaveTindakanRespose> Handle(TdkSaveTindakanCmd request, CancellationToken cancellationToken)
@@ -80,7 +82,7 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
         }
 
         var tdk = CreateOrEdit(tindakan, reg, layanan, nilaiTarif, listPpa, request.UserId);
-        var trsBilling = TrsBillingType.CreateFromTindakan(tdk, reg, tarif, jaminan, listKomp);
+        var trsBilling = _addBillAppService.FromTindakan(tdk, reg, tarif, jaminan, listKomp);
 
         //  WRITE
         using var trans = TransHelper.NewScope();

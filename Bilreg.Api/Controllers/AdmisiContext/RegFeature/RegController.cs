@@ -1,13 +1,13 @@
-﻿//TODO: Refactor AntrianMap Model
+﻿ //TODO: Refactor AntrianMap Model
 
 using Bilreg.Api.Helpers;
 using Bilreg.Application.AdmisiContext.RegFeature.UseCases;
- using MediatR;
- using Microsoft.AspNetCore.Mvc;
- using Nuna.Lib.ActionResultHelper;
- using Nuna.Lib.PatternHelper;
+using MediatR;
+using Microsoft.AspNetCore.Mvc;
+using Nuna.Lib.ActionResultHelper;
+using Nuna.Lib.PatternHelper;
 
- namespace Bilreg.Api.Controllers.AdmisiContext.RegFeature;
+namespace Bilreg.Api.Controllers.AdmisiContext.RegFeature;
 
 [Route("api/[controller]")]
 [ApiController]
@@ -79,6 +79,17 @@ public class RegController : Controller
         return Ok(new JSendOk(result));
     }
 
+    [HttpPatch]
+    [Route("{id}/deactivate")]
+    public async Task<IActionResult> Deactivate(string id)
+    {
+        var userAgent = HttpHelper.GetUserAgent(Request);
+        var remoteIpAddress = HttpHelper.GetIpAddress(Request, HttpContext);
+
+        var cmd = new RegRegAktifRemoveCmd(id, remoteIpAddress, userAgent);
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
 
     [HttpGet]
     [Route("{id}")]

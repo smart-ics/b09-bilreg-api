@@ -20,7 +20,7 @@ using Bilreg.Domain.AdmisiContext.RujukanFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
-using Bilreg.Domain.PaymentContext.TrsBillingFeature;
+using Bilreg.Domain.PaymentContext.TrsBillFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
@@ -61,6 +61,8 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
     private readonly ITarifRepo _tarifRepo;
     // trsBill
     private readonly ITrsBillingRepo _trsBillingRepo;
+
+    private readonly IAddBillAppService _addBillAppService;
     // jurnal
     private readonly IMapJaminanJkRepo _mapJaminanJkRepo;
     private readonly IJurnalRepo _jurnalRepo;
@@ -87,6 +89,7 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
         ITarifRepo tarifRepo,
 
         ITrsBillingRepo trsBillingRepo,
+        IAddBillAppService addBillAppService,
         IMapJaminanJkRepo mapJaminanJkRepo,
         IJurnalRepo jurnalRepo,
         IAddAntrianEmrByRegService addAntrianEmrByRegService)
@@ -110,6 +113,7 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
         _tarifRepo = tarifRepo;
 
         _trsBillingRepo = trsBillingRepo;
+        _addBillAppService = addBillAppService;
 
         _mapJaminanJkRepo = mapJaminanJkRepo;
         _jurnalRepo = jurnalRepo;
@@ -147,7 +151,7 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
         var listKompKarcis = karcis.ListKomponen
             .Select(x => LoadKomponen(KomponenType.Key(x.KomponenTarif.KomponenId)))
             .ToList();
-        var trsBillingReg = TrsBillingType.CreateFromRegistrasi(reg, karcis,
+        var trsBillingReg = _addBillAppService.FromReg(reg, karcis,
             jaminan, dokter, listKompKarcis);
         //      3-jurnal-karcis
         var mapJaminanJk = LoadMapJmnJk(tipeJaminan.Jaminan);
@@ -161,7 +165,7 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
             ? TarifType.Default
             : LoadTarif(TarifType.Key(karcis.DefaultTarif.TarifId));
         var trsBilling = tindakan == TindakanModel.Default
-            ? TrsBillingType.Default
+            ? TrsBillType.Default
             : GenBill(tindakan, reg, tarif, jaminan);
         //      6-jurnal-tindakan
         var jurnalTindakan = tindakan == TindakanModel.Default
@@ -237,7 +241,7 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
         var tindakan = TindakanModel.FromReg(reg, nilaiTarif, listPpa, userId);
         return tindakan;
     }
-    private TrsBillingType GenBill(TindakanModel tdk, RegModel reg, TarifType tarif,
+    private TrsBillType GenBill(TindakanModel tdk, RegModel reg, TarifType tarif,
         JaminanType jaminan)
     {
         var listKomp = new List<KomponenType>();
@@ -246,7 +250,7 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
             var komp = LoadKomponen(KomponenType.Key(item.Komponen.KomponenId));
             listKomp.Add(komp);
         }
-        var trsBilling = TrsBillingType.CreateFromTindakan(tdk, reg, tarif, jaminan, listKomp);
+        var trsBilling = _addBillAppService.FromTindakan(tdk, reg, tarif, jaminan, listKomp);
         return trsBilling;
     }
     #endregion
@@ -262,7 +266,7 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
         if (tindakan.TindakanId != "-")
             _tindakanRepo.SaveChanges(tindakan);
     }
-    private void SaveTrsBilling(TrsBillingType trsBillingTdk, TrsBillingType trsBillingReg)
+    private void SaveTrsBilling(TrsBillType trsBillingTdk, TrsBillType trsBillingReg)
     {
         _trsBillingRepo.SaveChanges(trsBillingReg);
         if (trsBillingTdk.TrsBillingId != "-")

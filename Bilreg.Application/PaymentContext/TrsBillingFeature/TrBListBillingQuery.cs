@@ -25,7 +25,7 @@ public class TrBListBillingHandler : IRequestHandler<TrBListBillingQuery, IEnume
 
         var listBill = _trsBillRepo.ListData(request)?.ToList() ?? [];
         var response = listBill.Select(x => new TrBListBillingResponse(
-            x.TrsBillingId, x.Reg, x.Layanan, x.Keterangan.Keterangan, x.Total));
+            x.TrsBillingId, x.Reg, x.Layanan, x.Keterangan.Keterangan, x.Nilai.Total));
         return Task.FromResult(response);
     }
 }
