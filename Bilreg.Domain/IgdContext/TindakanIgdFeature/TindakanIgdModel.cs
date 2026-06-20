@@ -89,7 +89,7 @@ public class TindakanIgdModel : ITindakanIgdKey
     public string IgdVisitId { get; init; }
     public string RegId { get; init; }
     public ActivityTindakanIgd Aktifitas { get; init;  }
-    public string ReffId { get; init; }
+    public string ReffId { get; init; } // tarifId atau barangId
     public string Descriptions { get; init; }
     public int Qty { get; init; }
     public PpaReff Ppa {  get; init; }
