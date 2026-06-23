@@ -1,4 +1,7 @@
-﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
+using Bilreg.Application.AdmisiContext.BookingFeature;
+using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
+using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
+using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
@@ -28,13 +31,14 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
     private readonly IPasienRepo _pasienRepo;
     private readonly IPpaRepo _ppaRepo;
     private readonly IAddAntrianEmrByBookingService _addBookingSvc;
-
+    private readonly IJadwalPraktekFeatureResolver _featureResolver;
 
     public BookingCreateFromHidokHandler(IJadwalPraktekRepo jadwalPraktekRepo,
         IAntrianRepo antrianRepo, IAntrianFactory antrianFactory,
         IBookingRepo bookingRepo, IPasienTrackerRepo trackerRepo,
         IPasienRepo pasienRepo, IPpaRepo ppaRepo, 
-        IAddAntrianEmrByBookingService addBookingSvc)
+        IAddAntrianEmrByBookingService addBookingSvc,
+        IJadwalPraktekFeatureResolver featureResolver)
     {
         _jadwalPraktekRepo = jadwalPraktekRepo;
         _antrianRepo = antrianRepo;
@@ -44,6 +48,7 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
         _pasienRepo = pasienRepo;
         _ppaRepo = ppaRepo;
         _addBookingSvc = addBookingSvc;
+        _featureResolver = featureResolver;
     }
     public Task<BookingCreateFromHidokResponse> Handle(BookingCreateFromHidokCommand request, CancellationToken cancellationToken)
     {
@@ -57,13 +62,10 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
                 onSome: x => x,
                 onNone: () => throw new KeyNotFoundException($"Dokter {request.DokterEmail} not found")
                 );
-        var listJadwal = _jadwalPraktekRepo.ListData(dokter)?.ToList() ?? [];
-        var hari = DateOnly.Parse(request.TglBerobat).DayOfWeek;
+        var tglBerobat = DateOnly.Parse(request.TglBerobat);
         var jamMulai = TimeOnly.Parse(request.JamMulai);
-        var jadwal = listJadwal
-             .Where(x => x.Hari == hari)
-             .FirstOrDefault(x => x.JamMulai == jamMulai)
-            ?? throw new ArgumentException("Jadwal tidak ditemukan");
+        var schedule = BookingScheduleResolver.Resolve(
+            _featureResolver, _jadwalPraktekRepo, dokter, tglBerobat, jamMulai);
 
         //      create person
         var px = request.PasienId != string.Empty ?
@@ -74,19 +76,25 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
             CreatePerson(request) :
             px.Person;
 
-        //      create booking
-        var tglBerobat = DateOnly.Parse(request.TglBerobat);
         var extApp = new ExtAppReffType("HiDok", request.ReffId, "");
         var coverage = new CoverageInfoType(request.AsuransiName, request.NoPeserta, request.NoRujukan);
-        var booking = BookingModel.CreateFromExternal(person, tglBerobat, jadwal, extApp, coverage, request.UserId);
+        var booking = _featureResolver.UseResolver
+            ? BookingModel.CreateFromExternalFromEffective(
+                person, schedule.Effective, extApp, coverage, request.UserId)
+            : BookingModel.CreateFromExternal(
+                person, tglBerobat, schedule.LegacyJadwal, extApp, coverage, request.UserId);
 
         //      ambil nomor antrian
         var listAntrian = _antrianRepo.ListData(tglBerobat);
-        var sequenceTag = AntrianModel.GenSequenceTag(tglBerobat, jadwal);
+        var sequenceTag = _featureResolver.UseResolver
+            ? AntrianModel.GenSequenceTag(tglBerobat, schedule.Effective)
+            : AntrianModel.GenSequenceTag(tglBerobat, schedule.LegacyJadwal);
         var antrianView = listAntrian.FirstOrDefault(x => x.SequenceTag == sequenceTag);
-        var antrian = antrianView is null ?
-            _antrianFactory.Create(tglBerobat, jadwal) :
-            _antrianRepo.LoadEntity(antrianView).Value;
+        var antrian = antrianView is null
+            ? (_featureResolver.UseResolver
+                ? _antrianFactory.Create(tglBerobat, schedule.Effective)
+                : _antrianFactory.Create(tglBerobat, schedule.LegacyJadwal))
+            : _antrianRepo.LoadEntity(antrianView).Value;
 
         var tracker = PasienTrackerModel.Create(booking);
 

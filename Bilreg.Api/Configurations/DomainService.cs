@@ -1,10 +1,11 @@
 ﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.BookingFeature;
+using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Application.Shared.Helpers;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
-using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
@@ -28,6 +29,9 @@ public static class DomainService
         services
             .AddScoped<IAntrianFactory, AntrianFactory>()
             .AddScoped<IJadwalPraktekFactory, JadwalPraktekFactory>()
+            .AddScoped<IJadwalPraktekResolver, JadwalPraktekResolver>()
+            .AddScoped<IJadwalPraktekFeatureResolver, JadwalPraktekFeatureResolver>()
+            .AddScoped<IJadwalPraktekHarianOverrideGuard, JadwalPraktekHarianOverrideGuard>()
             .AddScoped<IPasienFactory, PasienFactory>()
             .AddScoped<ISequencerManual, SequencerManual>()
             .AddScoped<IGetKodeRsService, GetKodeRsService>()

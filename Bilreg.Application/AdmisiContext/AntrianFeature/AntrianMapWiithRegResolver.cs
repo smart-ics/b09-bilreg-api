@@ -1,6 +1,10 @@
+using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
+using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
+using Bilreg.Application.AdmisiContext.BookingFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Nuna.Lib.PatternHelper;
 
@@ -14,24 +18,31 @@ public class AntrianMapWithRegResolver :  IAntrianMapWithRegResolver
 {
     private readonly IAntrianMapRepo _antrianMapRepo;
     private readonly IGetGrupJaminanJetliService _getGrupJaminanJetliService;
+    private readonly IJadwalPraktekFeatureResolver _featureResolver;
+
     public AntrianMapWithRegResolver(IAntrianMapRepo antrianMapRepo, 
-        IGetGrupJaminanJetliService getGrupJaminanJetliService)
+        IGetGrupJaminanJetliService getGrupJaminanJetliService,
+        IJadwalPraktekFeatureResolver featureResolver)
     {
         _antrianMapRepo = antrianMapRepo;
         _getGrupJaminanJetliService = getGrupJaminanJetliService;
+        _featureResolver = featureResolver;
     }
 
     public Result<(AntrianMapModel, AntrianMapDetilModel)> Resolve(JadwalPraktekType jadwal, DateOnly tgl, RegModel reg)
     {
-        // /*
-        //     1. Resolve Jadwal + Tgl jadi AntrianMapId (Key)
-        //     2. Jika not resolve => Create New Model (Header)
-        //     3. Load Model()
-        //  */
         var antrianMap = _antrianMapRepo.Find(jadwal, tgl)
             .Match(
                 onSome: x => x,
-                onNone: () => AntrianMapModel.CreateFromJadwal(jadwal, tgl)
+                onNone: () => _featureResolver.UseResolver
+                    ? AntrianMapModel.CreateFromEffective(
+                        _featureResolver.Resolve(new JadwalPraktekResolveRequest(
+                            tgl,
+                            PpaType.Key(jadwal.Dokter.PpaId),
+                            jadwal.JamMulai,
+                            new JadwalPraktekResolveOptions(AllowSynthetic: true))),
+                        tgl)
+                    : AntrianMapModel.CreateFromJadwal(jadwal, tgl)
             );
 
         if (!antrianMap.ListMap.Any())

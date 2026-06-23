@@ -1,4 +1,6 @@
 ﻿using Ardalis.GuardClauses;
+using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
+using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Application.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
@@ -18,12 +20,15 @@ public class QueListAntrianHeaderHandler : IRequestHandler<QueListAntrianHeaderQ
 {
     public readonly IAntrianRepo _queRepo;
     public readonly IJadwalPraktekRepo _jadwalRepo;
+    private readonly IJadwalPraktekFeatureResolver _featureResolver;
 
     public QueListAntrianHeaderHandler(IAntrianRepo queRepo, 
-        IJadwalPraktekRepo jadwalRepo)
+        IJadwalPraktekRepo jadwalRepo,
+        IJadwalPraktekFeatureResolver featureResolver)
     {
         _queRepo = queRepo;
         _jadwalRepo = jadwalRepo;
+        _featureResolver = featureResolver;
     }
 
     public Task<IEnumerable<QueListAntrianHeaderResponse>> Handle(QueListAntrianHeaderQuery request, CancellationToken cancellationToken)
@@ -33,9 +38,20 @@ public class QueListAntrianHeaderHandler : IRequestHandler<QueListAntrianHeaderQ
         var date = DateOnly.Parse(request.TglYmd);
         var listAntrian = _queRepo.ListData(date)?.ToList() ?? [];
         var listQue = ConvertQue(listAntrian);
-        
-        var listJadwal = _jadwalRepo.ListData()?.ToList() ?? [];
-        var listSchedule = listJadwal.Where(x => x.Hari == date.DayOfWeek)?.ToList() ?? [];
+
+        List<JadwalPraktekType> listSchedule;
+        if (_featureResolver.UseResolver)
+        {
+            listSchedule = _featureResolver.ResolveForDate(
+                    new JadwalPraktekResolveForDateRequest(date))
+                .Select(JadwalPraktekLegacyAdapter.ToTemplate)
+                .ToList();
+        }
+        else
+        {
+            var listJadwal = _jadwalRepo.ListData()?.ToList() ?? [];
+            listSchedule = listJadwal.Where(x => x.Hari == date.DayOfWeek).ToList();
+        }
 
         var result = GenResponse(listQue, listSchedule);
         return Task.FromResult(result.AsEnumerable()); 

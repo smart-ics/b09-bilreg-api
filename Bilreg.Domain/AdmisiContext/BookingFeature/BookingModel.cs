@@ -3,6 +3,7 @@ using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
+using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 
 namespace Bilreg.Domain.AdmisiContext.BookingFeature;
@@ -14,7 +15,8 @@ public class BookingModel : IBookingKey
     public BookingModel(string bookindId, DateTime bookingDate,
         PersonInfoType person, string pasienId, RegReff reg, DateOnly tglBerobat, TimeOnly jamPraktek,
         LayananReff layanan, PpaReff dokter, int noAntrian,
-        AuditTrailType auditTrail, ExtAppReffType extBookingReff, CoverageInfoType coverageInfo)
+        AuditTrailType auditTrail, ExtAppReffType extBookingReff, CoverageInfoType coverageInfo,
+        string? jadwalPraktekId = null, string? jadwalPraktekHarianId = null)
     {
         BookingId = bookindId;
         BookingDate = bookingDate;
@@ -33,6 +35,8 @@ public class BookingModel : IBookingKey
 
         ExtAppReff = extBookingReff;
         CoverageInfo = coverageInfo;
+        JadwalPraktekId = jadwalPraktekId;
+        JadwalPraktekHarianId = jadwalPraktekHarianId;
     }
 
     public static BookingModel Default => new("-", new DateTime(3000,1,1),
@@ -45,6 +49,45 @@ public class BookingModel : IBookingKey
         LayananType.Default.ToReff(), PpaType.Default.ToReff(), 0, 
         AuditTrailType.Default, ExtAppReffType.Default, CoverageInfoType.Default);
     
+    public static BookingModel CreateLocalFromEffective(
+        PersonInfoType person, JadwalPraktekEffective effective, string userId)
+    {
+        Guard.Against.Null(person);
+        Guard.Against.Null(effective);
+
+        if (effective.Status == JadwalPraktekScheduleStatus.CANCELLED)
+            throw new ArgumentException("Jadwal praktek dibatalkan untuk tanggal ini");
+
+        var newId = Ulid.NewUlid().ToString();
+        return new BookingModel(newId, DateTime.Now, person, "-", RegModel.Default.ToReff(),
+            effective.TglPraktek, effective.JamMulai, effective.Layanan, effective.Dokter, -1,
+            AuditTrailType.Create(userId, DateTime.Now),
+            ExtAppReffType.Default, CoverageInfoType.Default,
+            effective.JadwalPraktekId, effective.JadwalPraktekHarianId);
+    }
+
+    public static BookingModel CreateFromExternalFromEffective(
+        PersonInfoType person, JadwalPraktekEffective effective,
+        ExtAppReffType extAppReff, CoverageInfoType coverage, string userId)
+    {
+        Guard.Against.Null(person);
+        Guard.Against.Null(effective);
+        Guard.Against.Null(extAppReff);
+
+        if (effective.Status == JadwalPraktekScheduleStatus.CANCELLED)
+            throw new ArgumentException("Jadwal praktek dibatalkan untuk tanggal ini");
+
+        if (extAppReff.ExtAppName.Length == 0)
+            throw new ArgumentException("Source External Booking tidak boleh kosong");
+
+        var newId = Ulid.NewUlid().ToString();
+        return new BookingModel(newId, DateTime.Now, person, "-", RegModel.Default.ToReff(),
+            effective.TglPraktek, effective.JamMulai, effective.Layanan, effective.Dokter, -1,
+            AuditTrailType.Create(userId, DateTime.Now),
+            extAppReff, coverage,
+            effective.JadwalPraktekId, effective.JadwalPraktekHarianId);
+    }
+
     public static BookingModel CreateLocal(PersonInfoType person, DateOnly tglBerobat, 
         JadwalPraktekType jadwal, string userId)
     {
@@ -100,6 +143,8 @@ public class BookingModel : IBookingKey
     public LayananReff Layanan { get; init; }
     public PpaReff Dokter { get; init; }
     public int NoAntrian { get; private set; }
+    public string? JadwalPraktekId { get; init; }
+    public string? JadwalPraktekHarianId { get; init; }
     public ExtAppReffType ExtAppReff { get; private set; }
     public CoverageInfoType CoverageInfo { get; private set; }
     public AuditTrailType AuditTrail { get; init; }

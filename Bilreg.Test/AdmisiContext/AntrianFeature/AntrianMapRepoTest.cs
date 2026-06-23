@@ -39,6 +39,7 @@ public class AntrianMapRepoTest
         => new AntrianMapDto(
             fs_kd_antrian_map: antrianMapId,
             fs_kd_jadwal: jadwalId,
+            fs_kd_jadwal_harian: null,
             fs_kd_dokter: kdDokter,
             fs_kd_layanan: kdLayanan,
             fd_tgl_jadwal: new DateTime(2026, 4, 23),

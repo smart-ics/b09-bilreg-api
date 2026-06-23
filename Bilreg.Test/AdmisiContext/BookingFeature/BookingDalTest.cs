@@ -1,4 +1,7 @@
 ﻿using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Infrastructure.AdmisiContext.JadwalPraktekFeature;
+using Bilreg.Application.AdmisiContext.JadwalPraktekFeature.UseCases;
+using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Infrastructure.AdmisiContext.BookingFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using FluentAssertions;
@@ -28,6 +31,8 @@ public class BookingDalTest
             LayananId: "F",
             DokterId: "G",
             NoAntrian: 1,
+            JadwalPraktekId: null,
+            JadwalPraktekHarianId: null,
             AsuransiName: "H1",
             NoPeserta: "H",
             NoRujukan: "I",

@@ -1,4 +1,7 @@
 ﻿using System.Diagnostics;
+using Bilreg.Infrastructure.AdmisiContext.JadwalPraktekFeature;
+using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
+using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Infrastructure.AdmisiContext.BookingFeature;

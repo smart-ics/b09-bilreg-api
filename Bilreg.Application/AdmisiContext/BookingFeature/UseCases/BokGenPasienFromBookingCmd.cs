@@ -1,4 +1,4 @@
-﻿using Bilreg.Application.PasienContext.PasienFeature;
+using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;

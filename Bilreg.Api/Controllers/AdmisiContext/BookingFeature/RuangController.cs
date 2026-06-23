@@ -1,4 +1,5 @@
-﻿using Bilreg.Application.AdmisiContext.BookingFeature;
+
+using Bilreg.Application.AdmisiContext.JadwalPraktekFeature.UseCases;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;

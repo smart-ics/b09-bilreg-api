@@ -1,5 +1,5 @@
 ﻿using Ardalis.GuardClauses;
-using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Domain.Shared.Helpers;
 
 
@@ -8,6 +8,7 @@ namespace Bilreg.Domain.AdmisiContext.AntrianFeature;
 public interface IAntrianFactory : INunaFactory<AntrianModel>
 {
     AntrianModel Create(DateOnly antrianDate, JadwalPraktekType jadwalPraktek);
+    AntrianModel Create(DateOnly antrianDate, JadwalPraktekEffective effective);
     AntrianModel Create(ServicePointType servicePoint);
 }
 
@@ -18,6 +19,24 @@ public class AntrianFactory : IAntrianFactory
     public AntrianFactory(ISequencer antrianSequencer)
     {
         _antrianSequencer = antrianSequencer;
+    }
+
+    public AntrianModel Create(DateOnly antrianDate, JadwalPraktekEffective effective)
+    {
+        Guard.Against.Null(effective, nameof(effective));
+
+        if (antrianDate != effective.TglPraktek)
+            throw new ArgumentException(
+                $"{antrianDate:dd-MM-yyyy} tidak sesuai tanggal praktek ({effective.TglPraktek:dd-MM-yyyy}).",
+                nameof(antrianDate));
+
+        var newId = Ulid.NewUlid().ToString();
+        var sequenceTag = AntrianModel.GenSequenceTag(antrianDate, effective);
+        var antrianDesc = $"Praktek Dokter {effective.Dokter.PpaId}";
+
+        return new AntrianModel(newId, antrianDate, effective.JamMulai,
+            effective.JamSelesai, sequenceTag, antrianDesc,
+            new List<AntrianEntryModel>(), _antrianSequencer);
     }
 
     public AntrianModel Create(DateOnly antrianDate, JadwalPraktekType jadwalPraktek)
