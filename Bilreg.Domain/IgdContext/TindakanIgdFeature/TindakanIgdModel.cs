@@ -1,4 +1,5 @@
 using Ardalis.GuardClauses;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.IgdContext.IgdVisitFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using Nuna.Lib.AutoNumberHelper;
@@ -14,19 +15,21 @@ public class TindakanIgdModel : ITindakanIgdKey
         string tindakanIgdId,
         string igdVisitId,
         string regId,
-        string tarifId,
-        string tarifName,
+        string reffId,
+        string descriptions,
         int qty,
-        decimal price,
+        ActivityTindakanIgd aktifitas,
+        PpaReff ppa,
         AuditInfoType audit)
     {
         TindakanIgdId = tindakanIgdId;
         IgdVisitId = igdVisitId;
         RegId = regId;
-        TarifId = tarifId;
-        TarifName = tarifName;
+        ReffId = reffId;
+        Descriptions = descriptions;
         Qty = qty;
-        Price = price;
+        Aktifitas = aktifitas;
+        Ppa = ppa;
         Audit = audit;
     }
 
@@ -34,49 +37,50 @@ public class TindakanIgdModel : ITindakanIgdKey
         tindakanIgdId: "-",
         igdVisitId: "-",
         regId: "-",
-        tarifId: "-",
-        tarifName: "-",
+        reffId: "-",
+        descriptions: "-",
         qty: 0,
-        price: 0,
+        aktifitas: 0,
+        ppa: PpaType.Default.ToReff(),
         audit: AuditInfoType.Default);
 
     public static ITindakanIgdKey Key(string id) => new TindakanIgdModel(
         tindakanIgdId: id,
         igdVisitId: "-",
         regId: "-",
-        tarifId: "-",
-        tarifName: "-",
+        reffId: "-",
+        descriptions: "-",
         qty: 0,
-        price: 0,
+        aktifitas: 0,
+        ppa: PpaType.Default.ToReff(),
         audit: AuditInfoType.Default);
 
     public static TindakanIgdModel Create(
         IgdVisitModel visit,
-        string tarifId, string tarifName, int qty, decimal price,
-        AuditInfoType audit)
+        string reffId, string desciption, int qty, ActivityTindakanIgd aktifitas,
+        PpaType ppa, string userId)
     {
         Guard.Against.Null(visit);
-        Guard.Against.NullOrWhiteSpace(tarifId, nameof(tarifId));
+        Guard.Against.NullOrWhiteSpace(reffId, nameof(reffId));
         Guard.Against.NegativeOrZero(qty, nameof(qty));
-        Guard.Against.Negative(price, nameof(price));
-        Guard.Against.NullOrWhiteSpace(audit.UserId, nameof(audit.UserId));
+        Guard.Against.Null(aktifitas, nameof(aktifitas));
+        Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
 
         if (visit.IsTerminal)
             throw new InvalidOperationException(
                 $"Visit {visit.IgdVisitId} sudah terminal; tindakan tidak dapat ditambahkan.");
-        if (!visit.HasReg)
-            throw new InvalidOperationException(
-                $"Visit {visit.IgdVisitId} belum memiliki RegId; tindakan tidak dapat ditambahkan (rule 7.3).");
+        var audit = new AuditInfoType(userId, DateTime.Now);
 
         return new TindakanIgdModel(
-            tindakanIgdId: NunaId.New(ID_PREFIX),
-            igdVisitId: visit.IgdVisitId,
-            regId: visit.Reg.RegId,
-            tarifId: tarifId,
-            tarifName: string.IsNullOrWhiteSpace(tarifName) ? "-" : tarifName,
-            qty: qty,
-            price: price,
-            audit: audit);
+            NunaId.New(ID_PREFIX),
+            visit.IgdVisitId,
+            visit.Reg.RegId,
+            reffId,
+            string.IsNullOrWhiteSpace(desciption) ? "-" : desciption,
+            qty,
+            aktifitas,
+            ppa.ToReff(),
+            audit);
     }
     #endregion
 
@@ -84,11 +88,18 @@ public class TindakanIgdModel : ITindakanIgdKey
     public string TindakanIgdId { get; init; }
     public string IgdVisitId { get; init; }
     public string RegId { get; init; }
-    public string TarifId { get; init; }
-    public string TarifName { get; init; }
+    public ActivityTindakanIgd Aktifitas { get; init;  }
+    public string ReffId { get; init; } // tarifId atau barangId
+    public string Descriptions { get; init; }
     public int Qty { get; init; }
-    public decimal Price { get; init; }
+    public PpaReff Ppa {  get; init; }
     public AuditInfoType Audit { get; init; }
-    public decimal Subtotal => Qty * Price;
     #endregion
+
+}
+
+
+public enum ActivityTindakanIgd
+{
+    Tindakan, Barang
 }

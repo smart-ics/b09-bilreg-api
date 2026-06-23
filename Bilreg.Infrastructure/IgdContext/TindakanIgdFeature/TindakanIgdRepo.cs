@@ -23,7 +23,10 @@ public class TindakanIgdRepo : ITindakanIgdRepo
         else
             _dal.Update(dto);
     }
-
+    public void DeleteEntity(ITindakanIgdKey key)
+    {
+        _dal.Delete(key);
+    }
     public MayBe<TindakanIgdModel> LoadEntity(ITindakanIgdKey key)
     {
         var dto = _dal.GetData(key);
@@ -34,4 +37,6 @@ public class TindakanIgdRepo : ITindakanIgdRepo
         => (_dal.ListData(filter)?.ToList() ?? []).Select(x => x.ToView());
 
     public bool AnyForVisit(IIgdVisitKey visit) => _dal.CountForVisit(visit) > 0;
+
+    
 }

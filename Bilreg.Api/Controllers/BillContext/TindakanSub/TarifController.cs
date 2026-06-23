@@ -15,14 +15,14 @@ namespace Bilreg.Api.Controllers.BillContext.TindakanSub
         {
             _mediator = mediator;
         }
-        //[HttpGet]
-        //[Route("search/{keyword}")]
-        //public async Task<IActionResult> GetData(string keyword)
-        //{
-        //    var query = new TarifSearchQuery(keyword);
-        //    var response = await _mediator.Send(query);
-        //    return Ok(new JSendOk(response));
-        //}
+        [HttpGet]
+        [Route("search/{layananId}/{keyword}")]
+        public async Task<IActionResult> GetData(string layananId, string keyword)
+        {
+            var query = new TrfSearchTarifBrgQuery(layananId, keyword);
+            var response = await _mediator.Send(query);
+            return Ok(new JSendOk(response));
+        }
 
 
         [HttpGet]

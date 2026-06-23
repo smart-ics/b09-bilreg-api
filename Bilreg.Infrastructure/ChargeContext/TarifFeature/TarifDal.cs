@@ -64,7 +64,8 @@ public class TarifDal : ITarifDal
                  TA_TARIF a
                  LEFT JOIN ta_grup_tarif b ON a.fs_kd_grup_tarif = b.fs_kd_grup_tarif 
                  LEFT JOIN ta_grup_tarif_dk c ON a.fs_kd_grup_tarif_dk = c.fs_kd_grup_tarif_dk 
-                 LEFT JOIN ta_jenis_tarif d ON a.fs_kd_jenis_tarif = d.fs_kd_jenis_tarif ";
+                 LEFT JOIN ta_jenis_tarif d ON a.fs_kd_jenis_tarif = d.fs_kd_jenis_tarif
+                 LEFT JOIN ta_rekap_cetak_tarif e ON a.fs_kd_rekap_cetak_tarif = e.fs_kd_rekap_cetak_tarif ";
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<TarifDto>(sql);
@@ -75,22 +76,21 @@ public class TarifDal : ITarifDal
         var filter = EscapeForContains(keyword);
         var sql = $"""
              SELECT 
-                 a.fs_kd_tarif, 
-                 a.fs_nm_tarif,
-                 a.fs_kd_grup_tarif,
-                 a.fs_kd_grup_tarif_dk,
-                 a.fs_kd_jenis_tarif,
+                 a.fs_kd_tarif, a.fs_nm_tarif, a.fs_kd_grup_tarif,
+                 a.fs_kd_grup_tarif_dk, a.fs_kd_jenis_tarif, a.fs_kd_rekap_cetak_tarif,
                  ISNULL(b.fs_nm_grup_tarif,'') fs_nm_grup_tarif,
                  ISNULL(c.fs_nm_grup_tarif_dk,'') fs_nm_grup_tarif_dk,
-                 ISNULL(d.fs_nm_jenis_tarif,'') fs_nm_jenis_tarif
+                 ISNULL(d.fs_nm_jenis_tarif,'') fs_nm_jenis_tarif,
+                 ISNULL(e.fs_nm_rekap_cetak_tarif, '') fs_nm_rekap_cetak_tarif
              FROM 
                  TA_TARIF a
                  LEFT JOIN ta_grup_tarif b ON a.fs_kd_grup_tarif = b.fs_kd_grup_tarif 
                  LEFT JOIN ta_grup_tarif_dk c ON a.fs_kd_grup_tarif_dk = c.fs_kd_grup_tarif_dk 
                  LEFT JOIN ta_jenis_tarif d ON a.fs_kd_jenis_tarif = d.fs_kd_jenis_tarif
+                 LEFT JOIN ta_rekap_cetak_tarif e ON a.fs_kd_rekap_cetak_tarif = e.fs_kd_rekap_cetak_tarif 
              WHERE
                  CONTAINS(a.fs_nm_tarif, '{filter}')
-                 AND a.FB_AKTIF = 1
+                 AND a.fb_aktif = 1
          """;
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));

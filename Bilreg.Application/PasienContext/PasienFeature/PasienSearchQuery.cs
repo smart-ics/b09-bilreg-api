@@ -1,13 +1,13 @@
 ﻿using Bilreg.Application.AdmisiContext.JaminanFeature;
+using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.Shared.Helpers;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
-using Newtonsoft.Json.Linq;
 using Nuna.Lib.DataTypeExtension;
 using System.Text.RegularExpressions;
-using System.Xml.Linq;
 
 namespace Bilreg.Application.PasienContext.PasienFeature;
 
@@ -17,20 +17,28 @@ public class PasienSearchHandler : IRequestHandler<PasienSearchQuery, IEnumerabl
 {
     private readonly IPasienRepo _pasienRepo;
     private readonly IPolisRepo _polisRepo;
+    private readonly IRegRepo _regRepo;
+    private readonly IPasienRepo _pasieRepo;
     private const int LIMIT_CONTER = 200;
 
-    public PasienSearchHandler(IPasienRepo pasienRepo, 
-        IPolisRepo polisRepo)
+    public PasienSearchHandler(IPasienRepo pasienRepo,
+        IPolisRepo polisRepo,
+        IRegRepo regRepo,
+        IPasienRepo pasieRepo)
     {
         _pasienRepo = pasienRepo;
         _polisRepo = polisRepo;
+        _regRepo = regRepo;
+        _pasieRepo = pasieRepo;
     }
 
     public Task<IEnumerable<PasienSearchResponse>> Handle(PasienSearchQuery request, CancellationToken cancellationToken)
     {
         var isNik = IsKeywordNik(request.Keyword);
         var isNoPesertaBpjs = IsNoPesertaBpjs(request.Keyword);
-        
+        var isReg = IsRegistrasi(request.Keyword);
+
+
         List<PasienPersonView> datas = new();
         switch (true)
         {
@@ -44,6 +52,12 @@ public class PasienSearchHandler : IRequestHandler<PasienSearchQuery, IEnumerabl
                 var pasienPeserta = GetPasienByNoPesertaBpjs(request.Keyword);
                 if (!pasienPeserta.IsEmpty)
                     datas.Add(pasienPeserta);
+                break;
+
+            case var _ when isReg:
+                var reg = GetRegistrasi(request.Keyword);
+                if(reg.IsActive)
+                    datas.Add(reg);
                 break;
 
             default:
@@ -81,6 +95,14 @@ public class PasienSearchHandler : IRequestHandler<PasienSearchQuery, IEnumerabl
             return true;
         return false;
     }
+    private static bool IsRegistrasi(string keyword)
+    {
+        if (string.IsNullOrWhiteSpace(keyword))
+            return false;
+        if(keyword.Left(2) == "RG" && keyword.Trim().Length == 10)
+            return true;
+        return false;
+    }
     private PasienPersonView GetPasienByNik(string nik)
     {
         var pasienPersonViewDefault = new PasienPersonView("-", false, PersonInfoType.Default);
@@ -100,6 +122,22 @@ public class PasienSearchHandler : IRequestHandler<PasienSearchQuery, IEnumerabl
         var result = new PasienPersonView(
             pasien.PasienId, pasien.IsAktif, pasien.Person);
         return result;
+    }
+
+    private PasienPersonView GetRegistrasi(string regId)
+    {
+        var pasienPersonViewDefault = new PasienPersonView("-", false, PersonInfoType.Default);
+        var reg = _regRepo.LoadEntity(RegModel.Key(regId)).GetValueOrDefault(RegModel.Default);
+        var pasien = reg.RegId == "-"
+            ? PasienModel.Default
+            : _pasienRepo.LoadEntity(PasienModel.Key(reg.Pasien.PasienId))
+                .GetValueOrDefault(PasienModel.Default);
+
+        var resultData = new PasienPersonView(reg.Pasien.PasienId, pasien.IsAktif, pasien.Person);
+        var result = reg.RegId == "-" ? pasienPersonViewDefault : resultData;
+
+        return result;
+
     }
     #endregion
 }

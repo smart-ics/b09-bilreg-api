@@ -1,6 +1,7 @@
 using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.IgdContext.TindakanIgdFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using Nuna.Lib.AutoNumberHelper;
@@ -384,13 +385,20 @@ public class IgdVisitModel : IIgdVisitKey
         Emit(IgdEventEnum.Redirect, audit, $"Redirect ke rawat jalan ({redirectRajalId})");
     }
 
-    public void RecordTindakanEvent(string tindakanId, AuditInfoType audit)
+    public void RecordTindakanEvent(TindakanIgdModel tindakan, AuditInfoType audit)
     {
         if (IsTerminal)
             throw new InvalidOperationException(
                 $"Visit {IgdVisitId} sudah {AdministrativeState}; tidak dapat add tindakan.");
+
         AuditTrail.Modif(audit.UserId, audit.Timestamp);
-        Emit(IgdEventEnum.AddTindakan, audit, $"Tindakan {tindakanId}");
+        Emit(IgdEventEnum.AddTindakan, audit, $"{tindakan.Aktifitas.ToString()} {tindakan.TindakanIgdId} {tindakan.Descriptions}");
+    }
+
+    public void RecordVoidTindakanEvent(TindakanIgdModel tdk, AuditInfoType audit)
+    {
+        AuditTrail.Modif(audit.UserId, audit.Timestamp);
+        Emit(IgdEventEnum.VoidTindakan, audit, $"{tdk.Aktifitas.ToString()} {tdk.TindakanIgdId} {tdk.Descriptions}");
     }
 
     public void RecordBhpEvent(string bhpId, AuditInfoType audit)

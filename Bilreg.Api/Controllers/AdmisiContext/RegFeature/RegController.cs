@@ -79,6 +79,13 @@ public class RegController : Controller
         return Ok(new JSendOk(result));
     }
 
+    [HttpPost]
+    [Route("regAktif/add")]
+    public async Task<IActionResult> RegAktifAdd(RegRegAktifAddCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
     [HttpPatch]
     [Route("{id}/deactivate")]
     public async Task<IActionResult> Deactivate(string id)

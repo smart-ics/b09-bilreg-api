@@ -1,3 +1,4 @@
+using Bilreg.Api.Helpers;
 using Bilreg.Application.ChargeContext.TindakanFeature.UseCases;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -42,9 +43,14 @@ public class TindakanController : Controller
     }
     [HttpPatch]
     [Route("batal")]
-    public async Task<IActionResult> Batal(TindakanVoidCmd cmd)
+    public async Task<IActionResult> Batal(TindakanVoidRequest req)
     {
+        var userAgent = HttpHelper.GetUserAgent(Request);
+        var remoteIpAddress = HttpHelper.GetIpAddress(Request, HttpContext);
+        var cmd = new TindakanVoidCmd(req.TindakanId, req.UserId, req.VoidReason, userAgent, remoteIpAddress);
         await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));
     }
 }
+
+public record TindakanVoidRequest(string TindakanId, string UserId, string VoidReason);
