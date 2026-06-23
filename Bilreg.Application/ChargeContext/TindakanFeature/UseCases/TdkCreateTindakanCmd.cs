@@ -67,6 +67,9 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
 
     public Task<TindakanCreateRespose> Handle(TdkCreateTindakanCmd request, CancellationToken cancellationToken)
     {
+        if (request.ListPpa is null)
+            throw new ArgumentException("List PPA tidak boleh null");
+
         //  BUILD
         var reg = LoadReg(request);
         var layanan = LoadLayanan(request);
@@ -74,14 +77,14 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
         var tarif = LoadTarif(nilaiTarif);
         var jaminanKey = reg.TipeJaminan.TipeJaminanId[..3];
         var jaminan = LoadJaminan(JaminanType.Key(jaminanKey));
-        var listKomp = new List<KomponenType>();
+        
+        var listKomp = ListKomponenTarif(nilaiTarif.ListKomponen.Select(x => x.Komponen));
         var listPpa = new List<KomponenPpaView>();
         foreach (var item in request.ListPpa)
         {
-            var komp = LoadKomponen(KomponenType.Key(item.KomponenId));
-            var ppa =  LoadPpa(PpaType.Key(item.PpaId));
-            listPpa.Add( new KomponenPpaView(komp, ppa));
-            listKomp.Add(komp);
+            var komp = listKomp.First(x => x.KomponenId == item.KomponenId);
+            var ppa = LoadPpa(PpaType.Key(item.PpaId));
+            listPpa.Add(new KomponenPpaView(komp, ppa));
         }
 
         var tindakan = TindakanModel.Create(reg, layanan, nilaiTarif, listPpa, request.UserId);
@@ -156,14 +159,11 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
         return jmn;
     }
 
-    private KomponenType LoadKomponen(IKomponenKey key)
+    private IEnumerable<KomponenType> ListKomponenTarif(IEnumerable<IKomponenKey> listKey)
     {
-        var komponen = _komponenRepo.LoadEntity(key)
-            .Match(
-                onSome: x => x,
-                onNone: () => throw new KeyNotFoundException($"Komponen Nilai Tarif '{key.KomponenId}' invalid")
-            );
-        return komponen;
+        var result = _komponenRepo
+            .ListData(listKey)?.ToList() ?? [];
+        return result;
     }
     private PpaType LoadPpa(IPpaKey key)
     {

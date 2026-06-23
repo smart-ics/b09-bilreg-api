@@ -82,20 +82,14 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
         var tarif = LoadTarif(nilaiTarif);
         var jaminanKey = reg.TipeJaminan.TipeJaminanId[..3];
         var jaminan = LoadJaminan(JaminanType.Key(jaminanKey));
-        var listKomp = new List<KomponenType>();
+        
+        var listKomp = ListKomponenTarif(nilaiTarif.ListKomponen.Select(x => x.Komponen));
         var listPpa = new List<KomponenPpaView>();
-        foreach (var item in nilaiTarif.ListKomponen)
+        foreach (var item in request.ListPpa)
         {
-            var komp = LoadKomponen(KomponenType.Key(item.Komponen.KomponenId));
-            
-            var ppaRequest = request.ListPpa
-                .FirstOrDefault(x => x.KomponenId == item.Komponen.KomponenId);
-            if (ppaRequest != null)
-            {
-                var ppa = LoadPpa(PpaType.Key(ppaRequest.PpaId));
-                listPpa.Add(new KomponenPpaView(komp, ppa));
-            }
-            listKomp.Add(komp);
+            var komp = listKomp.First(x => x.KomponenId == item.KomponenId);
+            var ppa = LoadPpa(PpaType.Key(item.PpaId));
+            listPpa.Add(new KomponenPpaView(komp, ppa));
         }
 
         var tdk = CreateOrEdit(tindakan, reg, layanan, nilaiTarif, listPpa, request.UserId);
@@ -170,16 +164,13 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
             );
         return jmn;
     }
-
-    private KomponenType LoadKomponen(IKomponenKey key)
+    private IEnumerable<KomponenType> ListKomponenTarif(IEnumerable<IKomponenKey> listKey)
     {
-        var komponen = _komponenRepo.LoadEntity(key)
-            .Match(
-                onSome: x => x,
-                onNone: () => throw new KeyNotFoundException($"Komponen Nilai Tarif '{key.KomponenId}' invalid")
-            );
-        return komponen;
+        var result = _komponenRepo
+            .ListData(listKey)?.ToList() ?? [];
+        return result;
     }
+    
     private PpaType LoadPpa(IPpaKey key)
     {
         var ppa = _ppaRepo.LoadEntity(key)

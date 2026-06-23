@@ -3,13 +3,14 @@ using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
+using Nuna.Lib.AutoNumberHelper;
 
 namespace Bilreg.Domain.ChargeContext.TindakanFeature;
 
 public record TindakanModel : ITindakanKey
 {
     private readonly List<TindakanKomponenBase> _listKomponen;
-
+    private const string ID_PREFIX = "TDK";
     #region CREATION
     public TindakanModel(
         string tindakanId, DateTime tindakanDate, string orderTindakanId,
@@ -38,7 +39,7 @@ public record TindakanModel : ITindakanKey
         IEnumerable<KomponenPpaView> listKomponenPpaView, 
         string userId)
     {
-        var newId = Ulid.NewUlid().ToString();
+        var newId = NunaId.New(ID_PREFIX);
 
         var listKomp = GenListKomponen(nilaiTarif, listKomponenPpaView);
         var audit = AuditTrailType.Create(userId, DateTime.Now);
@@ -68,7 +69,7 @@ public record TindakanModel : ITindakanKey
         IEnumerable<KomponenPpaView> listKomponenPpaView, 
         string userId)
     {
-        var newId = Ulid.NewUlid().ToString();
+        var newId = NunaId.New(ID_PREFIX);
 
         var listKomp = GenListKomponen(nilaiTarif, listKomponenPpaView);
         var audit = AuditTrailType.Create(userId, DateTime.Now);
