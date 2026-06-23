@@ -60,6 +60,13 @@
 | `docs/contexts/igd/igd-04-api-contract.md` | IGD visit — integration (frontend/API contract) |
 | `docs/contexts/igd/igd-05-runbook.md` | IGD visit — operation (runbook, troubleshooting, recovery) |
 
+### Admisi — Booking / Jadwal Praktek (`docs/contexts/admisi/`)
+
+| Path | Purpose |
+|------|---------|
+| `docs/contexts/admisi/jadwal-praktek-investigation-report.md` | Codebase investigation — `JadwalPraktekType` usage, consumers, and update paths |
+| `docs/contexts/admisi/jadwal-praktek-harian-architecture-analysis.md` | Architecture analysis — daily schedule (`JadwalPraktekHarian`) design, resolver, migration roadmap |
+
 ### Tarif (`docs/contexts/tarif/`)
 
 Charge-context tariff master, operational projection (`NilaiTarif`), and komponen breakdown. **Phases 1–5 LIVE:** policy domain, persistence, publish engine, admin HTTP, migration controls (`TarifMigrationController`). Live ops use staged import/publish authority per `Tarif:Mode` → `BILRG_*`.
