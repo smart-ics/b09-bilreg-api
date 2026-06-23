@@ -1,9 +1,13 @@
-﻿using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
+﻿using Bilreg.Application.AccountingContext.JurnalFeature;
+using Bilreg.Application.AccountingContext.JurnalFeature.JkAgg;
+using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
 using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
+using Bilreg.Domain.AccountingContext.JurnalFeature;
+using Bilreg.Domain.AccountingContext.UnitFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
@@ -36,13 +40,16 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
     private readonly IJaminanRepo _jaminanRepo;
     private readonly ITrsBillingRepo _trsBillingRepo;
     private readonly IAddBillAppService _addBillAppService;
-
-    public TindakanCreateHandler(ITindakanRepo tindakanRepo, 
-        IRegRepo regRepo, ILayananRepo layananRepo, INilaiTarifRepo nilaiTarifRepo, 
-        IKomponenRepo komponenRepo, IPpaRepo ppaRepo,  
+    private readonly IMapJaminanJkRepo _mapJaminanJkRepo;
+    private readonly IJurnalRepo _jurnalRepo;
+    public TindakanCreateHandler(ITindakanRepo tindakanRepo,
+        IRegRepo regRepo, ILayananRepo layananRepo, INilaiTarifRepo nilaiTarifRepo,
+        IKomponenRepo komponenRepo, IPpaRepo ppaRepo,
         ITarifRepo tarifRepo, IJaminanRepo jaminanRepo,
         ITrsBillingRepo trsBillingRepo,
-        IAddBillAppService addBillAppService)
+        IAddBillAppService addBillAppService, 
+        IMapJaminanJkRepo mapJaminanJkRepo, 
+        IJurnalRepo jurnalRepo)
     {
         _tindakanRepo = tindakanRepo;
         _regRepo = regRepo;
@@ -54,10 +61,15 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
         _jaminanRepo = jaminanRepo;
         _trsBillingRepo = trsBillingRepo;
         _addBillAppService = addBillAppService;
+        _mapJaminanJkRepo = mapJaminanJkRepo;
+        _jurnalRepo = jurnalRepo;
     }
 
     public Task<TindakanCreateRespose> Handle(TdkCreateTindakanCmd request, CancellationToken cancellationToken)
     {
+        if (request.ListPpa is null)
+            throw new ArgumentException("List PPA tidak boleh null");
+
         //  BUILD
         var reg = LoadReg(request);
         var layanan = LoadLayanan(request);
@@ -65,23 +77,28 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
         var tarif = LoadTarif(nilaiTarif);
         var jaminanKey = reg.TipeJaminan.TipeJaminanId[..3];
         var jaminan = LoadJaminan(JaminanType.Key(jaminanKey));
-        var listKomp = new List<KomponenType>();
+        
+        var listKomp = ListKomponenTarif(nilaiTarif.ListKomponen.Select(x => x.Komponen));
         var listPpa = new List<KomponenPpaView>();
         foreach (var item in request.ListPpa)
         {
-            var komp = LoadKomponen(KomponenType.Key(item.KomponenId));
-            var ppa =  LoadPpa(PpaType.Key(item.PpaId));
-            listPpa.Add( new KomponenPpaView(komp, ppa));
-            listKomp.Add(komp);
+            var komp = listKomp.First(x => x.KomponenId == item.KomponenId);
+            var ppa = LoadPpa(PpaType.Key(item.PpaId));
+            listPpa.Add(new KomponenPpaView(komp, ppa));
         }
 
         var tindakan = TindakanModel.Create(reg, layanan, nilaiTarif, listPpa, request.UserId);
         var trsBilling = _addBillAppService.FromTindakan(tindakan, reg, tarif, jaminan, listKomp);
-
+        var mapJaminanJk = LoadMapJmnJk(jaminan);
+        var jurnal = tindakan == TindakanModel.Default
+            ? JurnalType.Default
+            : JurnalType.CreateFromTrsBilling(trsBilling,
+                layanan, mapJaminanJk);
         //  WRITE
         using var trans = TransHelper.NewScope();
         _tindakanRepo.SaveChanges(tindakan);
         _trsBillingRepo.SaveChanges(trsBilling);
+        _jurnalRepo.SaveChanges(jurnal);
         trans.Complete();
 
         //  RESPONSE
@@ -142,14 +159,11 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
         return jmn;
     }
 
-    private KomponenType LoadKomponen(IKomponenKey key)
+    private IEnumerable<KomponenType> ListKomponenTarif(IEnumerable<IKomponenKey> listKey)
     {
-        var komponen = _komponenRepo.LoadEntity(key)
-            .Match(
-                onSome: x => x,
-                onNone: () => throw new KeyNotFoundException($"Komponen Nilai Tarif '{key.KomponenId}' invalid")
-            );
-        return komponen;
+        var result = _komponenRepo
+            .ListData(listKey)?.ToList() ?? [];
+        return result;
     }
     private PpaType LoadPpa(IPpaKey key)
     {
@@ -159,6 +173,15 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
                 onNone: () => throw new KeyNotFoundException($"PPA '{key.PpaId}' invalid")
             );
         return ppa;
+    }
+    private MapJaminanJkType LoadMapJmnJk(IJaminanKey key)
+    {
+        var map = _mapJaminanJkRepo.LoadEntity(key)
+            .Match(
+                onSome: x => x,
+                onNone: () => MapJaminanJkType.Default
+            );
+        return map;
     }
 
     #endregion
