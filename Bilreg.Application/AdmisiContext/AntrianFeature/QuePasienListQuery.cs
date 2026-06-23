@@ -1,5 +1,8 @@
 ﻿using Ardalis.GuardClauses;
+using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
+using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Application.AdmisiContext.BookingFeature;
+using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.Shared.Helpers;
@@ -18,11 +21,15 @@ public class QuePasienListHandler : IRequestHandler<QuePasienListQuery, IEnumera
 {
     private readonly IAntrianRepo _antrianRepo;
     private readonly IJadwalPraktekRepo _jadwalRepo;
+    private readonly IJadwalPraktekFeatureResolver _featureResolver;
+
     public QuePasienListHandler(IAntrianRepo antrianRepo, 
-        IJadwalPraktekRepo jadwalRepo)
+        IJadwalPraktekRepo jadwalRepo,
+        IJadwalPraktekFeatureResolver featureResolver)
     {
         _antrianRepo = antrianRepo;
         _jadwalRepo = jadwalRepo;
+        _featureResolver = featureResolver;
     }
 
     public Task<IEnumerable<QuePasienListResponse>> Handle(QuePasienListQuery request, CancellationToken cancellationToken)
@@ -30,9 +37,22 @@ public class QuePasienListHandler : IRequestHandler<QuePasienListQuery, IEnumera
         Guard.Against.InvalidDateFormat(request.TglYmd, nameof(request.TglYmd));
 
         var date = request.TglYmd.ToDate("yyyy-MM-dd");
+        var tgl = DateOnly.FromDateTime(date);
         var listQue = _antrianRepo.ListData(date)?.ToList() ?? [];
-        var listJadwal = _jadwalRepo.ListData()?.ToList() ?? [];
-        var listJadwalThisDay = listJadwal.Where(x => x.Hari == date.DayOfWeek)?.ToList() ?? [];
+
+        List<JadwalPraktekType> listJadwalThisDay;
+        if (_featureResolver.UseResolver)
+        {
+            listJadwalThisDay = _featureResolver.ResolveForDate(
+                    new JadwalPraktekResolveForDateRequest(tgl))
+                .Select(JadwalPraktekLegacyAdapter.ToTemplate)
+                .ToList();
+        }
+        else
+        {
+            var listJadwal = _jadwalRepo.ListData()?.ToList() ?? [];
+            listJadwalThisDay = listJadwal.Where(x => x.Hari == tgl.DayOfWeek).ToList();
+        }
 
         var result =(
             from q in listQue

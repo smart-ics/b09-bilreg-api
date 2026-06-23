@@ -14,6 +14,8 @@
     LayananId VARCHAR(5) NOT NULL CONSTRAINT DF_BILRG_Booking_LayananId DEFAULT(''),
     DokterId VARCHAR(10) NOT NULL CONSTRAINT DF_BILRG_Booking_DokterId DEFAULT(''),
     NoAntrian INT NOT NULL CONSTRAINT DF_BILRG_Booking_NoAntrian DEFAULT(0),
+    JadwalPraktekId VARCHAR(7) NULL,
+    JadwalPraktekHarianId VARCHAR(12) NULL,
     
     AsuransiName VARCHAR(60) NOT NULL CONSTRAINT DF_BILRG_Booking_AsuransiName DEFAULT(''),
     NoPeserta VARCHAR(13) NOT NULL CONSTRAINT DF_BILRG_Booking_NoPeserta DEFAULT(''),

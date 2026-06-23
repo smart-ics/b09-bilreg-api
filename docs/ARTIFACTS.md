@@ -66,6 +66,10 @@
 |------|---------|
 | `docs/contexts/admisi/jadwal-praktek-investigation-report.md` | Codebase investigation — `JadwalPraktekType` usage, consumers, and update paths |
 | `docs/contexts/admisi/jadwal-praktek-harian-architecture-analysis.md` | Architecture analysis — daily schedule (`JadwalPraktekHarian`) design, resolver, migration roadmap |
+| `docs/contexts/admisi/jadwal-praktek-harian-deployment-manual.md` | Deployment & operations — SQL order, feature toggle rollout, validation, rollback |
+| `docs/contexts/admisi/adr/ADR-001-runtime-effective-schedule.md` | ADR — runtime `JadwalPraktekEffective` and resolver as single authority |
+| `docs/contexts/admisi/adr/ADR-002-manual-override-independence.md` | ADR — `Source = MANUAL` daily rows independent from template |
+| `docs/contexts/admisi/adr/ADR-003-booking-schedule-references.md` | ADR — dual nullable schedule IDs on booking |
 
 ### Tarif (`docs/contexts/tarif/`)
 

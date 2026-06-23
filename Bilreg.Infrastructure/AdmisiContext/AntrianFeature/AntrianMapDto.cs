@@ -14,7 +14,7 @@ namespace Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
 public record AntrianMapDto
 {
     public AntrianMapDto(string fs_kd_antrian_map, 
-        string fs_kd_jadwal, string fs_kd_dokter, string fs_kd_layanan, 
+        string fs_kd_jadwal, string? fs_kd_jadwal_harian, string fs_kd_dokter, string fs_kd_layanan, 
         DateTime fd_tgl_jadwal, string fs_jam_jadwal, 
         string fs_jam_praktek, string fs_pattern, int fn_max, 
         string fs_nm_dokter, string fs_nm_layanan)
@@ -22,6 +22,7 @@ public record AntrianMapDto
         this.fs_kd_antrian_map = fs_kd_antrian_map;
 
         this.fs_kd_jadwal = fs_kd_jadwal;
+        this.fs_kd_jadwal_harian = fs_kd_jadwal_harian;
         this.fs_kd_dokter = fs_kd_dokter;
         this.fs_kd_layanan = fs_kd_layanan;
         this.fd_tgl_jadwal = fd_tgl_jadwal;
@@ -38,6 +39,7 @@ public record AntrianMapDto
     public string fs_kd_antrian_map { get; set; }
 
     public string fs_kd_jadwal { get; set; }
+    public string? fs_kd_jadwal_harian { get; set; }
     public string fs_kd_dokter { get; set; }
     public string fs_kd_layanan { get; set; }
     public DateTime fd_tgl_jadwal { get; set; }
@@ -57,6 +59,7 @@ public record AntrianMapDto
         var result = new AntrianMapDto(
             model.AntrianMapId,
             model.JadwalId,
+            model.JadwalHarianId,
             model.Dokter.PpaId,
             model.Layanan.LayananId,
             model.TglJadwal.ToDateTime(TimeOnly.MinValue),
@@ -103,8 +106,8 @@ public record AntrianMapDto
             TimeOnly.ParseExact(fs_jam_praktek, @"HH\:mm", CultureInfo.InvariantCulture),
             antrianPattern,
             fn_max,
-            listMap: listDetil
-        );
+            listMap: listDetil,
+            jadwalHarianId: fs_kd_jadwal_harian);
     }
 
     public AntrianMapHdrView ToView()

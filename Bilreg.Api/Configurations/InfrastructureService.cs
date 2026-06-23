@@ -1,4 +1,6 @@
 ﻿using Bilreg.Application.LabContext.LabOrderFeature;
+using Bilreg.Application.AdmisiContext.JadwalPraktekFeature.UseCases;
+using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Application.LabContext.LabOrderFeature.Integration;
 using Bilreg.Infrastructure.LabContext.LabOrderFeature;
 using Bilreg.Application.LabContext.LabOwareFeature;
@@ -7,8 +9,10 @@ using Bilreg.Application.LabContext.LabResultFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Application.ChargeContext.TarifFeature;
+using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Infrastructure;
 using Bilreg.Infrastructure.ChargeContext.TarifFeature;
+using Bilreg.Infrastructure.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Infrastructure.LabContext.Integration;
 using Bilreg.Infrastructure.LabContext.LabOwareFeature;
 using Bilreg.Infrastructure.LabContext.LabResultFeature;
@@ -53,6 +57,7 @@ public static class InfrastructureService
             .AddScoped<ITarifProjectionReadRepo, TarifProjectionReadRepo>()
             .AddScoped<ITarifMigrationModeResolver, TarifMigrationModeResolver>()
             .AddScoped<ITarifMigrationGuard, TarifMigrationGuard>()
+            .AddScoped<IJadwalPraktekHarianRepo, JadwalPraktekHarianRepo>()
             .AddSingleton<TarifOperationalGate>()
             .AddMemoryCache();
 
@@ -65,7 +70,8 @@ public static class InfrastructureService
             .Configure<EmrOptions>(configuration.GetSection(EmrOptions.SECTION_NAME))
             .Configure<HiDokOptions>(configuration.GetSection(HiDokOptions.SECTION_NAME))
             .Configure<JetliOptions>(configuration.GetSection(JetliOptions.SECTION_NAME))
-            .Configure<JknOptions>(configuration.GetSection(JknOptions.SECTION_NAME));
+            .Configure<JknOptions>(configuration.GetSection(JknOptions.SECTION_NAME))
+            .Configure<JadwalPraktekOptions>(configuration.GetSection(JadwalPraktekOptions.SECTION_NAME));
 
         services
             .Scan(selector => selector

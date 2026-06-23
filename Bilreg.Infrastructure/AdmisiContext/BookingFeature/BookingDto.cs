@@ -1,4 +1,7 @@
 ﻿using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Infrastructure.AdmisiContext.JadwalPraktekFeature;
+using Bilreg.Application.AdmisiContext.JadwalPraktekFeature.UseCases;
+using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
@@ -14,6 +17,7 @@ public record BookingDto(
     string PasienName, DateTime TglLahir, string Gender, string Alamat, string TelpPasien,
     string PasienId, string RegId, DateTime TglBerobat, string JamPraktek, 
     string LayananId, string DokterId, int NoAntrian,
+    string? JadwalPraktekId, string? JadwalPraktekHarianId,
     //      kepesertaan asuransi
     string AsuransiName, string NoPeserta, string NoRujukan,
 
@@ -40,6 +44,7 @@ public record BookingDto(
             //      tujuan berobat
             tglBerobat, jamPraktek, 
             model.Layanan.LayananId, model.Dokter.PpaId, model.NoAntrian,
+            model.JadwalPraktekId, model.JadwalPraktekHarianId,
             //      kepesertaan bpjs
             model.CoverageInfo.AsuransiName, model.CoverageInfo.NoPeserta, model.CoverageInfo.NoRujukan,
 
@@ -78,7 +83,7 @@ public record BookingDto(
 
         var result = new BookingModel(BookingId, BookingDate, person, PasienId, 
             reg, tglBerobat, jamPraktek, layanan, dokter, NoAntrian, auditTrail,
-            extApp, coverage);
+            extApp, coverage, JadwalPraktekId, JadwalPraktekHarianId);
         return result;
     }
 

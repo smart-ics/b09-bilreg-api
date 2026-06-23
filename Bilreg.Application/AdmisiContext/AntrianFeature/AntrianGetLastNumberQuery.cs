@@ -1,4 +1,6 @@
 ﻿using Ardalis.GuardClauses;
+using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
+using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Application.AdmisiContext.BookingFeature;
 using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
@@ -22,13 +24,17 @@ public class AntrianGetQuotaHandler : IRequestHandler<AntrianGetQuotaQuery, Antr
     private readonly IAntrianRepo _antrianRepo;
     private readonly IJadwalPraktekRepo _jadwalPraktekRepo;
     private readonly IPpaRepo _ppaRepo;
+    private readonly IJadwalPraktekFeatureResolver _featureResolver;
+
     public AntrianGetQuotaHandler(IAntrianRepo antrianRepo,
         IJadwalPraktekRepo jadwalPraktekRepo,
-        IPpaRepo ppaRepo)
+        IPpaRepo ppaRepo,
+        IJadwalPraktekFeatureResolver featureResolver)
     {
         _antrianRepo = antrianRepo;
         _jadwalPraktekRepo = jadwalPraktekRepo;
         _ppaRepo = ppaRepo;
+        _featureResolver = featureResolver;
     }
 
 
@@ -51,37 +57,38 @@ public class AntrianGetQuotaHandler : IRequestHandler<AntrianGetQuotaQuery, Antr
             "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
         var jamPraktek = TimeOnly.Parse(request.JamMulai);
 
+        var maxPasien = ResolveMaxPasien(dokter, tglAntrian, jamPraktek);
+
         var sequenceTag = AntrianModel.GenSequenceTag(tglAntrian, jamPraktek, dokter);
-        // listAntrian
-        var listAntrianDb = _antrianRepo.ListData(tglAntrian)?.ToList()
-            ?? throw new ArgumentException($"Antrian at {tglAntrian.ToString("yyyy-MM-dd")} not foud");
-        var antrianHeader = listAntrianDb.Where(x => x.SequenceTag == sequenceTag).FirstOrDefault();
-        var antrian = _antrianRepo.LoadEntity(antrianHeader!)
-            .Match(
-                onSome: x => x,
-                onNone: () => throw new KeyNotFoundException($"Antrian at {tglAntrian.ToString("yyyy-MM-dd")} not foud")
-            );
-        // --
+        var listAntrianDb = _antrianRepo.ListData(tglAntrian)?.ToList() ?? [];
+        var antrianHeader = listAntrianDb.FirstOrDefault(x => x.SequenceTag == sequenceTag);
+        var used = antrianHeader is null
+            ? 0
+            : _antrianRepo.LoadEntity(antrianHeader).Value.ListEntry.Count();
+        var available = maxPasien - used;
 
-        var jadwalThatDay = GetJadwalThatDay(dokter, tglAntrian);
-
-        var used = antrian.ListEntry.Count();
-        var available = jadwalThatDay.MaxPasien - antrian.ListEntry.Count();
-
-        // RETURN
-        var result = new AntrianGetQuotaResponse(jadwalThatDay.MaxPasien, used, available);
+        var result = new AntrianGetQuotaResponse(maxPasien, used, available);
         return Task.FromResult(result); 
     }
+
+    private int ResolveMaxPasien(PpaType dokter, DateOnly tglAntrian, TimeOnly jamPraktek)
+    {
+        if (_featureResolver.UseResolver)
+        {
+            var effective = _featureResolver.Resolve(new JadwalPraktekResolveRequest(
+                tglAntrian, dokter, jamPraktek, new JadwalPraktekResolveOptions()));
+            return effective.MaxPasien;
+        }
+
+        return GetJadwalThatDay(dokter, tglAntrian, jamPraktek).MaxPasien;
+    }
+
     #region PRIVATE_HELPER
     
-    private JadwalPraktekType GetJadwalThatDay(PpaType dokter, DateOnly tglAntrian)
+    private JadwalPraktekType GetJadwalThatDay(PpaType dokter, DateOnly tglAntrian, TimeOnly jamPraktek)
     {
-        var jadwals = _jadwalPraktekRepo.ListData(dokter)?.ToList() ?? [];
-        var result = jadwals
-            .Where(x => x.Hari == tglAntrian.DayOfWeek).FirstOrDefault()
-            ?? throw new KeyNotFoundException($"Tidak ada jadwal atas dokter {dokter.PpaId} di tanggal " +
-            $"{tglAntrian.ToString("yyyy-MM-dd")}");
-        return result;
+        return LegacyJadwalPraktekLookup.Resolve(
+            _jadwalPraktekRepo, dokter, tglAntrian, jamPraktek);
     }
     #endregion
 }

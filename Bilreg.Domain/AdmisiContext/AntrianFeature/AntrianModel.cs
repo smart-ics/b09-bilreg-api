@@ -1,5 +1,5 @@
 ﻿using Ardalis.GuardClauses;
-using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.Shared.Helpers;
 
@@ -80,6 +80,13 @@ public class AntrianModel : IAntrianKey
         _listEntry.Add(entry);
         return entry;
     }
+    public static string GenSequenceTag(DateOnly tglAntrian, JadwalPraktekEffective effective)
+    {
+        Guard.Against.Null(effective, nameof(effective));
+        var sequenceTag = $"AN{tglAntrian:yyMMdd}{effective.JamMulai:HHmm}_{effective.Dokter.PpaId.Replace(' ', '$')}";
+        return sequenceTag;
+    }
+
     public static string GenSequenceTag(DateOnly tglAntrian, JadwalPraktekType jadwal)
     {
         Guard.Against.Null(jadwal, nameof(jadwal));

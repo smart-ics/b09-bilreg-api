@@ -1,4 +1,7 @@
 ﻿using System.Data;
+using Bilreg.Infrastructure.AdmisiContext.JadwalPraktekFeature;
+using Bilreg.Application.AdmisiContext.JadwalPraktekFeature.UseCases;
+using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using System.Data.SqlClient;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
@@ -36,12 +39,14 @@ public class BookingDal : IBookingDal
                 BookingId, BookingDate,
                 PasienName, TglLahir, Gender, Alamat, PasienId, RegId,
                 TglBerobat, JamPraktek, LayananId, DokterId, NoAntrian,
+                JadwalPraktekId, JadwalPraktekHarianId,
                 TelpPasien, AsuransiName, NoPeserta, NoRujukan,  
                 CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
             VALUES (
                 @BookingId, @BookingDate,
                 @PasienName, @TglLahir, @Gender, @Alamat, @PasienId, @RegId,
                 @TglBerobat, @JamPraktek, @LayananId, @DokterId, @NoAntrian,
+                @JadwalPraktekId, @JadwalPraktekHarianId,
                 @TelpPasien, @AsuransiName, @NoPeserta, @NoRujukan, 
                 @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
             """;
@@ -63,6 +68,8 @@ public class BookingDal : IBookingDal
         dp.AddParam("@LayananId", dto.LayananId, SqlDbType.VarChar);
         dp.AddParam("@DokterId", dto.DokterId, SqlDbType.VarChar);
         dp.AddParam("@NoAntrian", dto.NoAntrian, SqlDbType.Int);
+        dp.AddParam("@JadwalPraktekId", dto.JadwalPraktekId, SqlDbType.VarChar);
+        dp.AddParam("@JadwalPraktekHarianId", dto.JadwalPraktekHarianId, SqlDbType.VarChar);
 
         dp.AddParam("@AsuransiName", dto.AsuransiName, SqlDbType.VarChar);
         dp.AddParam("@NoPeserta", dto.NoPeserta, SqlDbType.VarChar);
@@ -97,6 +104,8 @@ public class BookingDal : IBookingDal
                LayananId = @LayananId,
                DokterId = @DokterId,
                NoAntrian = @NoAntrian,
+               JadwalPraktekId = @JadwalPraktekId,
+               JadwalPraktekHarianId = @JadwalPraktekHarianId,
                AsuransiName = @AsuransiName,
                NoPeserta = @NoPeserta,
                NoRujukan = @NoRujukan,
@@ -126,6 +135,8 @@ public class BookingDal : IBookingDal
         dp.AddParam("@LayananId", dto.LayananId, SqlDbType.VarChar);
         dp.AddParam("@DokterId", dto.DokterId, SqlDbType.VarChar);
         dp.AddParam("@NoAntrian", dto.NoAntrian, SqlDbType.Int);
+        dp.AddParam("@JadwalPraktekId", dto.JadwalPraktekId, SqlDbType.VarChar);
+        dp.AddParam("@JadwalPraktekHarianId", dto.JadwalPraktekHarianId, SqlDbType.VarChar);
 
         dp.AddParam("@AsuransiName", dto.AsuransiName, SqlDbType.VarChar);
         dp.AddParam("@NoPeserta", dto.NoPeserta, SqlDbType.VarChar);
@@ -164,6 +175,7 @@ public class BookingDal : IBookingDal
                 aa.PasienName, aa.TglLahir, aa.Gender, aa.Alamat, aa.TelpPasien, 
                 aa.PasienId, aa.RegId, aa.TglBerobat, aa.JamPraktek,
                 aa.LayananId, aa.DokterId, aa.NoAntrian,
+                aa.JadwalPraktekId, aa.JadwalPraktekHarianId,
                 aa.AsuransiName, aa.NoPeserta, aa.NoRujukan,  
                 aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
                 ISNULL(bb.fs_nm_layanan, '') AS LayananName,
@@ -221,6 +233,7 @@ public class BookingDal : IBookingDal
                 aa.PasienName, aa.TglLahir, aa.Gender, aa.Alamat, aa.TelpPasien, 
                 aa.PasienId, aa.RegId, aa.TglBerobat, aa.JamPraktek,
                 aa.LayananId, aa.DokterId, aa.NoAntrian,
+                aa.JadwalPraktekId, aa.JadwalPraktekHarianId,
                 aa.AsuransiName, aa.NoPeserta, aa.NoRujukan,  
                 aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate,
                 ISNULL(bb.fs_nm_layanan, '') AS LayananName,

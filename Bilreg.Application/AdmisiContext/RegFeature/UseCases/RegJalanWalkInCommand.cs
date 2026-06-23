@@ -1,4 +1,6 @@
 ﻿using Ardalis.GuardClauses;
+using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
+using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Application.AccountingContext.JurnalFeature;
 using Bilreg.Application.AccountingContext.JurnalFeature.JkAgg;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
@@ -84,6 +86,8 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
     private readonly IGetAppSettingService _getAppSettingSvc;
     private readonly IAddAntrianEmrByRegService _addAntrianEmrByRegService;
     private readonly IAntrianMapWithRegResolver _antrianMapWithRegResolver;
+    private readonly IJadwalPraktekFeatureResolver _featureResolver;
+
     public RegJalanCreateHandler(
         //  reg support
         IPasienRepo pasienRepo,
@@ -119,7 +123,8 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         IRemoteCetakRepo remoteCetakRepo,
         IGetAppSettingService getAppSettingSvc,
         IAddAntrianEmrByRegService addRegSvc, 
-        IAntrianMapWithRegResolver antrianMapResolver)
+        IAntrianMapWithRegResolver antrianMapResolver,
+        IJadwalPraktekFeatureResolver featureResolver)
     {
         //      reg-support
         _pasienRepo = pasienRepo;
@@ -156,6 +161,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         _getAppSettingSvc = getAppSettingSvc;
         _addAntrianEmrByRegService = addRegSvc;
         _antrianMapWithRegResolver = antrianMapResolver;
+        _featureResolver = featureResolver;
     }
 
     public Task<RegJalanCreateResponse> Handle(RegJalanWalkInCommand request, CancellationToken cancellationToken)
@@ -189,9 +195,10 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         var regAktif = RegAktifModel.CreateFromReg(reg);
         //      2-antrian
         var tglBerobat = DateOnly.FromDateTime(DateTime.Now);
-        var jadwal = ResolveJadwalPraktek(dokter, request.JamPraktek, tglBerobat);
-        var antrian = ResolveAntrian(tglBerobat, dokter, jadwal);
-        var antrianMap = _antrianMapWithRegResolver.Resolve(jadwal, tglBerobat, reg);
+        var schedule = BookingScheduleResolver.ResolveWalkIn(
+            _featureResolver, _jadwalPraktekRepo, dokter, tglBerobat, request.JamPraktek);
+        var antrian = ResolveAntrian(tglBerobat, dokter, schedule);
+        var antrianMap = _antrianMapWithRegResolver.Resolve(schedule.LegacyJadwal, tglBerobat, reg);
         var tracker = PasienTrackerModel.Create(reg);
 
         //      3-trs-billing-karcis
@@ -257,7 +264,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             trans.Complete();
             response = new RegJalanCreateResponse(reg.RegId, antEntry.NoUrut);
         }
-        AddAntrianEmr(reg, antrianMap.Value.Item2, jadwal);
+        AddAntrianEmr(reg, antrianMap.Value.Item2, schedule.LegacyJadwal);
         
         return Task.FromResult(response);
         
@@ -280,33 +287,17 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             : _rujukanRepo.LoadEntity(RujukanType.Key(rujukanId))
                 .GetValueOrThrow("'Rujukan' not found");
 
-    private JadwalPraktekType ResolveJadwalPraktek(PpaType dokter, string jamPraktek, DateOnly tgl)
-    {
-        var listJadwal = _jadwalPraktekRepo.ListData(dokter)?.ToList() ?? [];
-        var listJadwalHari = listJadwal.Where(x => x.Hari == tgl.DayOfWeek)?.ToList() ?? [];
-
-        return listJadwalHari.Count switch
-        {
-            1 => listJadwalHari.First(),
-            > 1 => listJadwalHari.FirstOrDefault(x => x.JamMulai == TimeOnly.ParseExact(jamPraktek, "HH:mm", CultureInfo.InvariantCulture))
-                ?? throw new ArgumentException($"Dokter tidak praktek pada jam {jamPraktek}"),
-            _ => JadwalPraktekType.Default with
-            {
-                Dokter = dokter.ToReff(),
-                Hari = tgl.DayOfWeek,
-                JamMulai = TimeOnly.ParseExact("00:00:00", "HH:mm:ss", CultureInfo.InvariantCulture),
-                JamSelesai = TimeOnly.ParseExact("23:59:59", "HH:mm:ss", CultureInfo.InvariantCulture)
-            }
-        };
-    }
-
-    private AntrianModel ResolveAntrian(DateOnly tgl, PpaType dokter, JadwalPraktekType jadwal)
+    private AntrianModel ResolveAntrian(DateOnly tgl, PpaType dokter, BookingScheduleContext schedule)
     {
         var listAntrian = _antrianRepo.ListData(tgl);
-        var tag = AntrianModel.GenSequenceTag(tgl, jadwal.JamMulai, dokter);
+        var tag = _featureResolver.UseResolver
+            ? AntrianModel.GenSequenceTag(tgl, schedule.Effective)
+            : AntrianModel.GenSequenceTag(tgl, schedule.LegacyJadwal.JamMulai, dokter);
         var existingView = listAntrian.FirstOrDefault(x => x.SequenceTag == tag);
         return existingView is null
-            ? _antrianFactory.Create(tgl, jadwal)
+            ? (_featureResolver.UseResolver
+                ? _antrianFactory.Create(tgl, schedule.Effective)
+                : _antrianFactory.Create(tgl, schedule.LegacyJadwal))
             : _antrianRepo.LoadEntity(existingView).Value;
     }
 

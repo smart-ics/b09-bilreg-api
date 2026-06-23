@@ -1,3 +1,5 @@
+using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
+using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Application.AccountingContext.JurnalFeature;
 using Bilreg.Application.AccountingContext.JurnalFeature.JkAgg;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
@@ -57,7 +59,7 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
     private readonly IAddBillAppService _addBillAppService;
     private readonly IMapJaminanJkRepo _mapJaminanJkRepo;
     private readonly IJurnalRepo _jurnalRepo;
-
+    private readonly IJadwalPraktekFeatureResolver _featureResolver;
 
     public RegJalanUbahKunjunganHandler(IRegRepo regRepo,
         IRegAktifRepo regAktifRepo,
@@ -79,7 +81,8 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
         IAddBillAppService addBillAppService,
         ITindakanRepo tindakanRepo,
         IJurnalRepo jurnalRepo,
-        IMapJaminanJkRepo mapJaminanJkRepo
+        IMapJaminanJkRepo mapJaminanJkRepo,
+        IJadwalPraktekFeatureResolver featureResolver
         )
     {
         _regRepo = regRepo;
@@ -103,7 +106,7 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
         _tindakanRepo = tindakanRepo;
         _jurnalRepo = jurnalRepo;
         _mapJaminanJkRepo = mapJaminanJkRepo;
-        
+        _featureResolver = featureResolver;
     }
     public Task<RegJalanUbahKunjunganResponse> Handle(RegJalanUbahKunjunganCmd request, CancellationToken cancellationToken)
     {
@@ -122,9 +125,10 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
         #region BUILD
         //  antrian
         var tglBerobat = reg.RegDate;
-        var jadwal = ResolveJadwalPraktek(dokter, request.JamPraktek, tglBerobat);
-        var antrian = ResolveAntrian(tglBerobat, dokter, jadwal);
-        var antrianMap = _antrianMapWithRegResolver.Resolve(jadwal, tglBerobat, reg);
+        var schedule = BookingScheduleResolver.ResolveWalkIn(
+            _featureResolver, _jadwalPraktekRepo, dokter, tglBerobat, request.JamPraktek);
+        var antrian = ResolveAntrian(tglBerobat, dokter, schedule);
+        var antrianMap = _antrianMapWithRegResolver.Resolve(schedule.LegacyJadwal, tglBerobat, reg);
         var tracker = PasienTrackerModel.Create(reg);
 
         //  registrasi
@@ -177,32 +181,17 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
 
     #region PRIVATE-HELPER
     //  Load & Resolve
-    private JadwalPraktekType ResolveJadwalPraktek(PpaType dokter, string jamPraktek, DateOnly tgl)
-    {
-        var listJadwal = _jadwalPraktekRepo.ListData(dokter)?.ToList() ?? [];
-        var listJadwalHari = listJadwal.Where(x => x.Hari == tgl.DayOfWeek)?.ToList() ?? [];
-
-        return listJadwalHari.Count switch
-        {
-            1 => listJadwalHari.First(),
-            > 1 => listJadwalHari.FirstOrDefault(x => x.JamMulai == TimeOnly.Parse(jamPraktek))
-                   ?? throw new ArgumentException($"Dokter tidak praktek pada jam {jamPraktek}"),
-            _ => JadwalPraktekType.Default with
-            {
-                Dokter = dokter.ToReff(),
-                Hari = tgl.DayOfWeek,
-                JamMulai = TimeOnly.Parse("00:00:00"),
-                JamSelesai = TimeOnly.Parse("23:59:59")
-            }
-        };
-    }
-    private AntrianModel ResolveAntrian(DateOnly tgl, PpaType dokter, JadwalPraktekType jadwal)
+    private AntrianModel ResolveAntrian(DateOnly tgl, PpaType dokter, BookingScheduleContext schedule)
     {
         var listAntrian = _antrianRepo.ListData(tgl);
-        var tag = AntrianModel.GenSequenceTag(tgl, jadwal.JamMulai, dokter);
+        var tag = _featureResolver.UseResolver
+            ? AntrianModel.GenSequenceTag(tgl, schedule.Effective)
+            : AntrianModel.GenSequenceTag(tgl, schedule.LegacyJadwal.JamMulai, dokter);
         var existingView = listAntrian.FirstOrDefault(x => x.SequenceTag == tag);
         return existingView is null
-            ? _antrianFactory.Create(tgl, jadwal)
+            ? (_featureResolver.UseResolver
+                ? _antrianFactory.Create(tgl, schedule.Effective)
+                : _antrianFactory.Create(tgl, schedule.LegacyJadwal))
             : _antrianRepo.LoadEntity(existingView).Value;
     }
     private TipeJaminanType LoadTipeJaminan(ITipeJaminanKey key)

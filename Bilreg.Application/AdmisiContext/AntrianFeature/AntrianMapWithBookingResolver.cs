@@ -1,4 +1,8 @@
-﻿using Bilreg.Domain.AdmisiContext.AntrianFeature;
+﻿using Bilreg.Application.AdmisiContext.BookingFeature;
+using Bilreg.Application.AdmisiContext.JadwalPraktekFeature.UseCases;
+using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
+using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
+using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Nuna.Lib.PatternHelper;
@@ -10,10 +14,14 @@ public interface IAntrianMapWithBookingResolver : INunaResolver<(AntrianMapModel
 public class AntrianMapWithBookingResolver : IAntrianMapWithBookingResolver
 {
     private readonly IAntrianMapRepo _antrianMapRepo;
+    private readonly IJadwalPraktekFeatureResolver _featureResolver;
 
-    public AntrianMapWithBookingResolver(IAntrianMapRepo antrianMapRepo)
+    public AntrianMapWithBookingResolver(
+        IAntrianMapRepo antrianMapRepo,
+        IJadwalPraktekFeatureResolver featureResolver)
     {
         _antrianMapRepo = antrianMapRepo;
+        _featureResolver = featureResolver;
     }
 
     public Result<(AntrianMapModel, AntrianMapDetilModel)> Resolve(JadwalPraktekType jadwal, DateOnly tgl, BookingModel booking, PasienModel pasien)
@@ -21,7 +29,14 @@ public class AntrianMapWithBookingResolver : IAntrianMapWithBookingResolver
         var antrianMap = _antrianMapRepo.Find(jadwal, tgl)
             .Match(
                 onSome: x => x,
-                onNone: () => AntrianMapModel.CreateFromJadwal(jadwal, tgl)
+                onNone: () => _featureResolver.UseResolver
+                    ? AntrianMapModel.CreateFromEffective(
+                        JadwalPraktekEffectiveMapper.FromTemplate(jadwal, tgl) with
+                        {
+                            JadwalPraktekHarianId = booking.JadwalPraktekHarianId,
+                            JadwalPraktekId = booking.JadwalPraktekId ?? jadwal.JadwalPraktekId
+                        }, tgl)
+                    : AntrianMapModel.CreateFromJadwal(jadwal, tgl)
             );
 
         if (!antrianMap.ListMap.Any())

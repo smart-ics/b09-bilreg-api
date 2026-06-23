@@ -30,11 +30,11 @@ public class AntrianMapDal : IAntrianMapDal
     {
         const string sql = """
              INSERT INTO ta_no_antrian_map_hdr(
-                 fs_kd_antrian_map, fs_kd_jadwal, fs_kd_dokter, fs_kd_layanan, 
+                 fs_kd_antrian_map, fs_kd_jadwal, fs_kd_jadwal_harian, fs_kd_dokter, fs_kd_layanan, 
                  fd_tgl_jadwal, fs_jam_jadwal, fs_jam_praktek,
                  fs_pattern, fn_max)
              VALUES(
-                 @fs_kd_antrian_map, @fs_kd_jadwal, @fs_kd_dokter, @fs_kd_layanan, 
+                 @fs_kd_antrian_map, @fs_kd_jadwal, @fs_kd_jadwal_harian, @fs_kd_dokter, @fs_kd_layanan, 
                  @fd_tgl_jadwal, @fs_jam_jadwal, @fs_jam_praktek,
                  @fs_pattern, @fn_max)
             """;
@@ -42,6 +42,7 @@ public class AntrianMapDal : IAntrianMapDal
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_antrian_map", dto.fs_kd_antrian_map, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_jadwal", dto.fs_kd_jadwal, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_jadwal_harian", dto.fs_kd_jadwal_harian, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_dokter", dto.fs_kd_dokter, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_layanan", dto.fs_kd_layanan, SqlDbType.VarChar);
         dp.AddParam("@fd_tgl_jadwal", dto.fd_tgl_jadwal, SqlDbType.DateTime);
@@ -60,7 +61,8 @@ public class AntrianMapDal : IAntrianMapDal
             UPDATE
                 ta_no_antrian_map_hdr
             SET
-                fs_kd_jadwal = @fs_kd_jadwal, 
+                fs_kd_jadwal = @fs_kd_jadwal,
+                fs_kd_jadwal_harian = @fs_kd_jadwal_harian,
                 fs_kd_dokter = @fs_kd_dokter, 
                 fs_kd_layanan = @fs_kd_layanan, 
                 fd_tgl_jadwal = @fd_tgl_jadwal, 
@@ -75,6 +77,7 @@ public class AntrianMapDal : IAntrianMapDal
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_antrian_map", dto.fs_kd_antrian_map, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_jadwal", dto.fs_kd_jadwal, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_jadwal_harian", dto.fs_kd_jadwal_harian, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_dokter", dto.fs_kd_dokter, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_layanan", dto.fs_kd_layanan, SqlDbType.VarChar);
         dp.AddParam("@fd_tgl_jadwal", dto.fd_tgl_jadwal, SqlDbType.DateTime);
@@ -91,7 +94,7 @@ public class AntrianMapDal : IAntrianMapDal
     {
         const string sql = """
             SELECT 
-               	aa.fs_kd_antrian_map, aa.fs_kd_jadwal, aa.fs_kd_dokter, 
+               	aa.fs_kd_antrian_map, aa.fs_kd_jadwal, aa.fs_kd_jadwal_harian, aa.fs_kd_dokter, 
                	aa.fs_kd_layanan, aa.fd_tgl_jadwal, aa.fs_jam_jadwal, 
                	aa.fs_jam_praktek, aa.fs_pattern, aa.fn_max,
             	ISNULL(bb.fs_nm_peg,'') AS fs_nm_dokter,
@@ -115,7 +118,7 @@ public class AntrianMapDal : IAntrianMapDal
     {
         const string sql = """
             SELECT 
-               	aa.fs_kd_antrian_map, aa.fs_kd_jadwal, aa.fs_kd_dokter, aa.fs_kd_layanan, 
+               	aa.fs_kd_antrian_map, aa.fs_kd_jadwal, aa.fs_kd_jadwal_harian, aa.fs_kd_dokter, aa.fs_kd_layanan, 
                 aa.fd_tgl_jadwal, aa.fs_jam_jadwal, aa.fs_jam_praktek, aa.fs_pattern, aa.fn_max,
             	ISNULL(bb.fs_nm_peg,'') AS fs_nm_dokter,
             	ISNULL(cc.fs_nm_layanan,'') AS fs_nm_layanan

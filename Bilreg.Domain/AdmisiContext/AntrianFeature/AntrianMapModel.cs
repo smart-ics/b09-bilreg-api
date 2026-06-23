@@ -1,4 +1,5 @@
 ﻿using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
@@ -15,10 +16,12 @@ public record AntrianMapModel : IAntrianMapKey, IAntrianMapCompositeKey
         PpaReff dokter, LayananReff layanan, 
         DateOnly tglJadwal, TimeOnly jamJadwal, TimeOnly jamPraktek,
         AntrianPatternType pattern, int maxPasien,
-        IEnumerable<AntrianMapDetilModel> listMap)
+        IEnumerable<AntrianMapDetilModel> listMap,
+        string? jadwalHarianId = null)
     {
         AntrianMapId = antrianMapId;
         JadwalId = jadwalId;
+        JadwalHarianId = jadwalHarianId;
         Dokter = dokter;
         Layanan = layanan;
         TglJadwal = tglJadwal;
@@ -47,6 +50,24 @@ public record AntrianMapModel : IAntrianMapKey, IAntrianMapCompositeKey
         );
         return result;
     }
+
+    public static AntrianMapModel CreateFromEffective(JadwalPraktekEffective effective, DateOnly tgl)
+    {
+        var newKey = NunaId.New("ANM");
+        return new AntrianMapModel(
+            antrianMapId: newKey,
+            jadwalId: effective.JadwalPraktekId ?? "-",
+            dokter: effective.Dokter,
+            layanan: effective.Layanan,
+            tglJadwal: tgl,
+            jamJadwal: effective.JamMulai,
+            jamPraktek: effective.JamMulai,
+            pattern: effective.AntrianPattern,
+            maxPasien: effective.MaxPasien,
+            listMap: [],
+            jadwalHarianId: effective.JadwalPraktekHarianId);
+    }
+
     public static AntrianMapModel Default => new(
         antrianMapId: "-",
         jadwalId: "-",
@@ -77,6 +98,7 @@ public record AntrianMapModel : IAntrianMapKey, IAntrianMapCompositeKey
     #region PROPERTIES
     public string AntrianMapId { get; init; }
     public string JadwalId { get; init; }
+    public string? JadwalHarianId { get; init; }
     public PpaReff Dokter { get; init; }
     public LayananReff Layanan { get; init; }
     public DateOnly TglJadwal { get; init; }

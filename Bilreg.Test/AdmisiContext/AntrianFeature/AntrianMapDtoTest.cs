@@ -37,7 +37,7 @@ public class AntrianMapDtoTest
     [Fact]
     public void ToModel_MapsAllFields()
     {
-        var dto = new AntrianMapDto("AM02", "J002", "D002", "L002", new DateTime(2026, 4, 23), 
+        var dto = new AntrianMapDto("AM02", "J002", null, "D002", "L002", new DateTime(2026, 4, 23), 
             "08:15", "08:45", "PATTRN", 30, "Dr Two", "Layanan Two");
         dto.fs_pattern = "P1";
         dto.fn_max = 10;
@@ -62,7 +62,7 @@ public class AntrianMapDtoTest
     [Fact]
     public void ToView_ParsesDateAndTimes()
     {
-        var dto = new AntrianMapDto("AM03", "J003", "D003", "L003", 
+        var dto = new AntrianMapDto("AM03", "J003", null, "D003", "L003",
             new DateTime(2026, 4, 24), "07:00", "07:30", 
             "PPPPP", 30, "Dr Three", "Layanan Three");
 
@@ -81,7 +81,7 @@ public class AntrianMapDtoTest
     [Fact]
     public void RoundTrip_Dto_Model_Dto_PreservesKeyFields()
     {
-        var dto = new AntrianMapDto("AM04", "J004", "D004", "L004", new DateTime(2026, 4, 25),
+        var dto = new AntrianMapDto("AM04", "J004", null, "D004", "L004", new DateTime(2026, 4, 25),
             "11:11", "11:30", "CCCC", 30, "Dr Four", "Layanan Four");
         var model = dto.ToModel(new List<AntrianMapDetilModel>());
 

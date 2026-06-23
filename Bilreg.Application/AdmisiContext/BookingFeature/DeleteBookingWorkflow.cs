@@ -1,8 +1,13 @@
-﻿ using Bilreg.Application.AdmisiContext.AntrianFeature;
+using Bilreg.Application.AdmisiContext.JadwalPraktekFeature.UseCases;
+using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
+using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
+ using Bilreg.Application.AdmisiContext.AntrianFeature;
+ using Bilreg.Application.AdmisiContext.BookingFeature;
  using Bilreg.Application.AdmisiContext.PpaFeature;
  using Bilreg.Domain.AdmisiContext.AntrianFeature;
  using Bilreg.Domain.AdmisiContext.BookingFeature;
  using Bilreg.Domain.AdmisiContext.PpaFeature;
+ using Nuna.Lib.PatternHelper;
  using Nuna.Lib.TransactionHelper;
 
  namespace Bilreg.Application.AdmisiContext.BookingFeature;
@@ -19,13 +24,18 @@ public sealed class DeleteBookingWorkflow : IDeleteBookingWorkflow
     private readonly IPasienTrackerRepo _pasienTrackerRepo;
     private readonly IAntrianMapRepo _antrianMapRepo;
     private readonly IJadwalPraktekRepo _jadwalPraktekRepo;
+    private readonly IJadwalPraktekHarianRepo _jadwalPraktekHarianRepo;
+    private readonly IJadwalPraktekFeatureResolver _featureResolver;
+
     public DeleteBookingWorkflow(
         IBookingRepo bookingRepo,
         IPpaRepo ppaRepo,
         IAntrianRepo antrianRepo,
         IPasienTrackerRepo pasienTrackerRepo,
         IAntrianMapRepo antrianMapRepo,
-        IJadwalPraktekRepo jadwalPraktekRepo)
+        IJadwalPraktekRepo jadwalPraktekRepo,
+        IJadwalPraktekHarianRepo jadwalPraktekHarianRepo,
+        IJadwalPraktekFeatureResolver featureResolver)
     {
         _bookingRepo = bookingRepo;
         _ppaRepo = ppaRepo;
@@ -33,6 +43,8 @@ public sealed class DeleteBookingWorkflow : IDeleteBookingWorkflow
         _pasienTrackerRepo = pasienTrackerRepo;
         _antrianMapRepo = antrianMapRepo;
         _jadwalPraktekRepo = jadwalPraktekRepo;
+        _jadwalPraktekHarianRepo = jadwalPraktekHarianRepo;
+        _featureResolver = featureResolver;
     }
 
     public Task Execute(IBookingKey key)
@@ -53,13 +65,7 @@ public sealed class DeleteBookingWorkflow : IDeleteBookingWorkflow
             .FirstOrDefault(x => x.NoUrut == booking.NoAntrian);
 
         // AntrianMap
-        var listJadwal = _jadwalPraktekRepo.ListData(dokter)?.ToList() ?? [];
-        var hari = booking.TglBerobat.DayOfWeek;
-        var jamMulai = booking.JamPraktek;
-        var jadwal = listJadwal
-             .Where(x => x.Hari == hari)
-             .FirstOrDefault(x => x.JamMulai == jamMulai)
-            ?? throw new ArgumentException("Jadwal tidak ditemukan");
+        var jadwal = ResolveJadwalForDelete(booking, dokter);
         var antrianMap = CekAntrianMap(jadwal, booking.TglBerobat);
 
         // EXECUTE
@@ -120,6 +126,35 @@ public sealed class DeleteBookingWorkflow : IDeleteBookingWorkflow
         return _antrianRepo
             .ListData(booking.TglBerobat)
             .FirstOrDefault(x => x.SequenceTag == tag);
+    }
+
+    private JadwalPraktekType ResolveJadwalForDelete(BookingModel booking, PpaType dokter)
+    {
+        if (_featureResolver.UseResolver)
+        {
+            if (!string.IsNullOrWhiteSpace(booking.JadwalPraktekHarianId))
+            {
+                var daily = _jadwalPraktekHarianRepo
+                    .LoadEntity(JadwalPraktekHarianType.Key(booking.JadwalPraktekHarianId))
+                    .GetValueOrThrow("Jadwal harian tidak ditemukan");
+                return JadwalPraktekLegacyAdapter.ToTemplate(
+                    JadwalPraktekEffectiveMapper.FromDaily(daily));
+            }
+
+            if (!string.IsNullOrWhiteSpace(booking.JadwalPraktekId))
+            {
+                return _jadwalPraktekRepo.LoadEntity(JadwalPraktekType.Key(booking.JadwalPraktekId))
+                    .GetValueOrThrow("Jadwal template tidak ditemukan");
+            }
+
+            var effective = _featureResolver.Resolve(new JadwalPraktekResolveRequest(
+                booking.TglBerobat, dokter, booking.JamPraktek,
+                new JadwalPraktekResolveOptions(ThrowIfNotFound: true)));
+            return JadwalPraktekLegacyAdapter.ToTemplate(effective);
+        }
+
+        return LegacyJadwalPraktekLookup.Resolve(
+            _jadwalPraktekRepo, dokter, booking.TglBerobat, booking.JamPraktek);
     }
 
     private AntrianMapModel CekAntrianMap(JadwalPraktekType jadwal, DateOnly tglJadwal)

@@ -18,6 +18,7 @@ public class AntrianMapDalTest
         var result = new AntrianMapDto(
             "AAAA",
             "BBB",
+            null,
             "PPA001",
             "LYN001",
             tglJadwal,
