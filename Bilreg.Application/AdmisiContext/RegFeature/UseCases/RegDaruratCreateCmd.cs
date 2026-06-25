@@ -128,8 +128,7 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
         if (pasien.IsAktif == false) throw new KeyNotFoundException($"Pasien {request.PasienId} tidak aktif ");
         if (_regAktifRepo.IsPasienAktif(pasien))
             throw new KeyNotFoundException($"Pasien sudah aktif registrasi");
-
-        if (string.IsNullOrWhiteSpace(pasien.Ktp.Nik) || pasien.Ktp.Nik == "-")
+        if (IsAdult(pasien.Person.TglLahir) && (string.IsNullOrWhiteSpace(pasien.Ktp.Nik) || pasien.Ktp.Nik == "-"))
             throw new KeyNotFoundException($"Nik Kosong, Lengkapi data Nik pasien {pasien.PasienId}");
 
         var tipeJaminan = _tipeJaminanRepo.LoadEntity(request).GetValueOrThrow("TipeJaminan not found");
@@ -192,6 +191,18 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
 
     #region PRIVATE-HELPER
     #region LOAD-RESOLVE
+    public bool IsAdult(DateOnly TglLahir)
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+
+        int age = today.Year - TglLahir.Year;
+
+        // Koreksi jika ulang tahun belum lewat tahun ini
+        if (today < TglLahir.AddYears(age))
+            age--;
+
+        return age > 17; 
+    }
     private PolisModel ResolvePolis(PasienModel pasien, TipeJaminanType tipeJaminan) =>
         tipeJaminan.CaraBayarDk.CaraBayarDkId == BAYAR_SENDIRI
             ? PolisModel.Default
@@ -279,7 +290,6 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
         if (jurnalTindakan.JurnalId != "-")
             _jurnalRepo.SaveChanges(jurnalTindakan);
     }
-
     private void AddAntrianEmr(RegModel reg)
     {
         var payload = new AddAntrianEmrByRegCommand(

@@ -26,7 +26,7 @@ public class JadwalFoDal : IJadwalFoDal
                	aa.fs_kd_layanan AS LayananId,
             	aa.fs_kd_fruang AS RuangId,
                	aa.fn_hari - 1 AS Hari,
-               	aa.fs_jam_mulai_real AS JamMulai,
+               	aa.fs_jam_mulai AS JamMulai,
                	aa.fs_jam_selesai AS JamSelesai,
                	aa.fn_max AS MaxPasien, aa.fs_pola_antrian AS AntrianPattern,
                	ISNULL(bb.fs_nm_peg,'') AS DokterName,

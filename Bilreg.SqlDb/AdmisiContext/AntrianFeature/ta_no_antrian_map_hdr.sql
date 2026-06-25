@@ -1,6 +1,7 @@
 CREATE TABLE ta_no_antrian_map_hdr(
     fs_kd_antrian_map VARCHAR(26) NOT NULL CONSTRAINT DF_ta_no_antrian_map_hdr_fs_kd_antrian_map DEFAULT(''),
     fs_kd_jadwal	varchar	(50) NOT NULL CONSTRAINT DF_ta_no_antrian_map_hdr_fs_kd_jadwal DEFAULT(''),
+    fs_kd_jadwal_harian varchar(12) NULL,
     fs_kd_dokter	varchar	(50) NOT NULL CONSTRAINT DF_ta_no_antrian_map_hdr_fs_kd_dokter DEFAULT(''),
     fs_kd_layanan	varchar	(50) NOT NULL CONSTRAINT DF_ta_no_antrian_map_hdr_fs_kd_layanan DEFAULT(''),
     fd_tgl_jadwal	datetime NOT NULL CONSTRAINT DF_ta_no_antrian_map_hdr_fd_tgl_jadwal DEFAULT('3000-01-01'),

@@ -139,8 +139,7 @@ public class RegJalanByBookingHandler
         var pasien = LoadPasien(booking.PasienId);
         if (IsPasienAktifReg(pasien))
             throw new KeyNotFoundException($"Pasien sudah aktif registrasi");
-        
-        if (string.IsNullOrWhiteSpace(pasien.Ktp.Nik) || pasien.Ktp.Nik == "-")
+        if (IsAdult(pasien.Person.TglLahir) && (string.IsNullOrWhiteSpace(pasien.Ktp.Nik) || pasien.Ktp.Nik == "-"))
             throw new KeyNotFoundException($"Nik Kosong, Lengkapi data Nik pasien {pasien.PasienId}");
 
         var dokter = LoadDokter(booking.Dokter.PpaId);
@@ -244,6 +243,18 @@ public class RegJalanByBookingHandler
     }
 
     #region PRIVATE HELPER
+    public bool IsAdult(DateOnly TglLahir)
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+
+        int age = today.Year - TglLahir.Year;
+
+        // Koreksi jika ulang tahun belum lewat tahun ini
+        if (today < TglLahir.AddYears(age))
+            age--;
+
+        return age > 17;
+    }
     private BookingModel LoadBooking(string id)
     {
         var booking = _bookingRepo.LoadEntity(BookingModel.Key(id))

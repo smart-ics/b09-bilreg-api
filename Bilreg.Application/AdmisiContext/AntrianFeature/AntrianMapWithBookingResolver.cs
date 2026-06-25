@@ -64,6 +64,7 @@ public class AntrianMapWithBookingResolver : IAntrianMapWithBookingResolver
         if (emptyMap is null)
         {
             newDetil = antrianMap.AddAuto(booking);
+            newDetil.SetPasien(booking.Person.PersonName, pasien.PasienId, booking.BookingId);
         }
         else
         {

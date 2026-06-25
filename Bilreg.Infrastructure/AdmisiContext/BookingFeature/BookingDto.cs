@@ -44,7 +44,7 @@ public record BookingDto(
             //      tujuan berobat
             tglBerobat, jamPraktek, 
             model.Layanan.LayananId, model.Dokter.PpaId, model.NoAntrian,
-            model.JadwalPraktekId, model.JadwalPraktekHarianId,
+            model.JadwalPraktekId ?? string.Empty, model.JadwalPraktekHarianId ?? string.Empty,
             //      kepesertaan bpjs
             model.CoverageInfo.AsuransiName, model.CoverageInfo.NoPeserta, model.CoverageInfo.NoRujukan,
 

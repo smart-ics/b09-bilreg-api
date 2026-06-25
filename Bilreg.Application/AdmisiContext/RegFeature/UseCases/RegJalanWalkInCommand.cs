@@ -175,9 +175,9 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         if(IsPasienAktifReg(pasien))
             throw new KeyNotFoundException($"Pasien sudah aktif registrasi");
 
-        if (string.IsNullOrWhiteSpace(pasien.Ktp.Nik) || pasien.Ktp.Nik == "-")
+        if (IsAdult(pasien.Person.TglLahir) && (string.IsNullOrWhiteSpace(pasien.Ktp.Nik) || pasien.Ktp.Nik == "-"))
             throw new KeyNotFoundException($"Nik Kosong, Lengkapi data Nik pasien {pasien.PasienId}");
-
+        
         var tipeJaminan = _tipeJaminanRepo.LoadEntity(request).GetValueOrThrow("TipeJaminan not found");
         var polis = ResolvePolis(pasien, tipeJaminan);
         var caraMasuk = _caraMasukDkRepo.LoadEntity(request).GetValueOrThrow("CaraMasuk not found");
@@ -275,6 +275,17 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
     {
         return _regAktifRepo.IsPasienAktif(pasien)
             || _regRepo.IsPasienAktifReg(pasien);
+    }
+    public bool IsAdult(DateOnly TglLahir)
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+
+        int age = today.Year - TglLahir.Year;
+        // Koreksi jika ulang tahun belum lewat tahun ini
+        if (today < TglLahir.AddYears(age))
+            age--;
+        
+        return age > 17;
     }
     private PolisModel ResolvePolis(PasienModel pasien, TipeJaminanType tipeJaminan) =>
         tipeJaminan.CaraBayarDk.CaraBayarDkId == BAYAR_SENDIRI
