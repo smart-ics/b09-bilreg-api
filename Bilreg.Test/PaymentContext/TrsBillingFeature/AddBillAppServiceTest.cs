@@ -163,8 +163,7 @@ public class AddBillAppServiceTest
             PpaType.Default.ToReff(),
             LayananType.Default.ToReff(),
             KarcisType.Default.ToReff(),
-            "-",
-            "-",
+            RegEligibilityType.Default,
             [komponen]);
     }
 
@@ -189,8 +188,7 @@ public class AddBillAppServiceTest
             PpaType.Default.ToReff(),
             LayananType.Default.ToReff(),
             KarcisType.Default.ToReff(),
-            "-",
-            "-",
+            RegEligibilityType.Default,
             []);
     }
 

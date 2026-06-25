@@ -56,12 +56,14 @@ public class RegFactory : IRegFactory
         var regId = $"RG{newNo:D8}";
         var tglMasuk = DateOnly.FromDateTime(regMasukAudit.Timestamp);
         var kelasRajal = _getKelasRajalService.Execute();
+        var eligibility = new RegEligibilityType("-", "-", pesertaJaminanId);
         var reg = new RegModel(regId, tglMasuk, regMasukAudit,
             AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default, JenisRegEnum.RegJalan,
             pasien.ToReff(), TipeJaminanType.Default.ToReff(),
             PolisModel.Default.ToReff(), kelasRajal.ToReff(), CaraMasukDkType.Default,
             RujukanType.Default.ToReff(), PpaType.Default.ToReff(), 
-            LayananType.Default.ToReff(), KarcisType.Default.ToReff(), "-", pesertaJaminanId, []);
+            LayananType.Default.ToReff(), KarcisType.Default.ToReff(), 
+            eligibility, []);
 
         reg.ApplyJaminan(tipeJaminan, polis);
         reg.SpecifyCaraMasuk (caraMasukDk, rujukan);
@@ -79,13 +81,14 @@ public class RegFactory : IRegFactory
         var regId = $"RG{newNo:D8}";
         var tglMasuk = DateOnly.FromDateTime(regMasukAudit.Timestamp);
         var kelasRajal = _getKelasRadarService.Execute();
+        var eligibility = new RegEligibilityType("-", "-", pesertaJaminanId);
 
         var reg = new RegModel(regId, tglMasuk, regMasukAudit,
             AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default, JenisRegEnum.Darurat,
             pasien.ToReff(), TipeJaminanType.Default.ToReff(),
             PolisModel.Default.ToReff(), kelasRajal.ToReff(), CaraMasukDkType.Default,
             RujukanType.Default.ToReff(), PpaType.Default.ToReff(),
-            LayananType.Default.ToReff(), KarcisType.Default.ToReff(), "-", pesertaJaminanId, []);
+            LayananType.Default.ToReff(), KarcisType.Default.ToReff(), eligibility, []);
 
         reg.ApplyJaminan(tipeJaminan, polis);
         reg.SpecifyCaraMasuk(caraMasukDk, RujukanType.Default);
