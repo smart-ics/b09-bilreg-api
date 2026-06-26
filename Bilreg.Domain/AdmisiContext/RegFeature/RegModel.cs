@@ -19,7 +19,8 @@ public class RegModel : IRegKey
         AuditInfoType regMasukAudit, AuditInfoType regKeluarAudit, AuditInfoType regCancelOutAudit, AuditInfoType regVoidAudit,
         JenisRegEnum jenisReg, PasienReff pasien, TipeJaminanReff tipeJaminan, 
         PolisReff polis, KelasReff kelas, CaraMasukDkType caraMasukDk, RujukanReff rujukan, 
-        PpaReff dokter, LayananReff layanan, KarcisReff karcis, string sjpNo, string pesertaJaminanId,
+        PpaReff dokter, LayananReff layanan, KarcisReff karcis, 
+        RegEligibilityType eligibility,
         IEnumerable<RegKomponenType> listKomponen)
     {
         RegId = regId;
@@ -38,8 +39,7 @@ public class RegModel : IRegKey
         Dokter = dokter;
         Layanan = layanan;
         Karcis = karcis;
-        SjpNo = sjpNo; 
-        PesertaJaminanId = pesertaJaminanId;
+        Eligibility = eligibility;
         _listKomponen = listKomponen.ToList();
     }
 
@@ -48,14 +48,16 @@ public class RegModel : IRegKey
         JenisRegEnum.RegJalan, PasienModel.Default.ToReff(), TipeJaminanType.Default.ToReff(),
         PolisModel.Default.ToReff(), KelasType.Default.ToReff(), CaraMasukDkType.Default,
         RujukanType.Default.ToReff(), PpaType.Default.ToReff(), LayananType.Default.ToReff(),
-        KarcisType.Default.ToReff(), "-", "-", []);
+        KarcisType.Default.ToReff(), 
+        new RegEligibilityType("-", "-", "-"), []);
     
     public static IRegKey Key(string id) => new RegModel(id, new DateOnly(3000, 1, 1),
         AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default,
         JenisRegEnum.RegJalan, PasienModel.Default.ToReff(), TipeJaminanType.Default.ToReff(),
         PolisModel.Default.ToReff(), KelasType.Default.ToReff(), CaraMasukDkType.Default,
         RujukanType.Default.ToReff(), PpaType.Default.ToReff(), LayananType.Default.ToReff(),
-        KarcisType.Default.ToReff(), "-", "-", []);
+        KarcisType.Default.ToReff(), 
+        new RegEligibilityType("-", "-", "-"), []);
     #endregion
 
     #region PROPERTIES
@@ -81,8 +83,8 @@ public class RegModel : IRegKey
     public PpaReff Dokter { get; private set; }
     public LayananReff Layanan { get; private set; }
     public KarcisReff Karcis { get; private set; }
-    public string SjpNo { get; private set; }
-    public string PesertaJaminanId { get; private set; }
+    //      Eligibility
+    public RegEligibilityType Eligibility { get; private set; }
     //
     public IEnumerable<RegKomponenType> ListKomponen => _listKomponen;
     #endregion
@@ -171,9 +173,10 @@ public class RegModel : IRegKey
         RegVoidAudit = new AuditInfoType(userId, DateTime.Now);
     }
 
-    public void SetNoSjp(string noSjp)
+    public void SetEligibility(string noSjp, string pesertaJaminanId, string sjpId)
     {
-        SjpNo = noSjp;
+        var data = new RegEligibilityType(sjpId, noSjp, pesertaJaminanId);
+        Eligibility = data;
     }
     #endregion
 }
@@ -188,5 +191,13 @@ public record RegReff(
     string RegId,
     string PasienId,
     string PasienName);
+public record RegEligibilityType(
+    string SjpId,
+    string SjpNo,
+    string PesertaJaminanId)
+{
+    public static RegEligibilityType Default
+        => new RegEligibilityType("-", "-", "-");
+}
     
     

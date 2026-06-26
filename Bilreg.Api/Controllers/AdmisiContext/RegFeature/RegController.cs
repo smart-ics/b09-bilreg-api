@@ -36,8 +36,8 @@ public class RegController : Controller
     }
 
     [HttpPatch]
-    [Route("setSjpNumber")]
-    public async Task<IActionResult> SetNoSep(RegSetNoSjpCmd cmd)
+    [Route("setDataEligibility")]
+    public async Task<IActionResult> SetDataEligibility(RegSetDataEligibilityCmd cmd)
     {
         await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));

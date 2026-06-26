@@ -73,6 +73,8 @@ public class RegRepo : IRegRepo
         var regJmnDto = _regJaminanDal.GetData(key) ?? new RegJaminanDto("-", "-", "-", "-");
         var polis = new PolisReff(regJmnDto.fs_kd_polis, regJmnDto.fs_no_polis,
             regJmnDto.fs_atas_nama);
+        // eligibility
+        var eligibility = new RegEligibilityType(regDto.fs_kd_trs_sjp, regDto.fs_no_sjp, regDto.fs_no_peserta);
 
         //  komponen
         var regJaminanDto = _regJaminanDal.GetData(key) ?? new RegJaminanDto("-", "-", "-", "-");
@@ -82,7 +84,9 @@ public class RegRepo : IRegRepo
             regDto.fs_kd_reg, DateOnly.Parse(regDto.fd_tgl_masuk),
             regMasukAudit, regKeluarAudit, regCancelOutAudit, regVoidAudit, jenisReg,
             pasien, tipeJmn, polis, kelas, caraMasukDk, rujukan, dokter,
-            layanan, karcis, regDto.fs_no_sjp, regDto.fs_no_peserta, listKomponenDto.Select(x => x.ToModel()));
+            layanan, karcis, 
+            //regDto.fs_no_sjp, regDto.fs_no_peserta, 
+            eligibility, listKomponenDto.Select(x => x.ToModel()));
         return MayBe.From(result);
     }
     public IEnumerable<RegView> ListData(Periode filter, ILayananKey layanan)

@@ -59,7 +59,7 @@ public record AntrianMapDto
         var result = new AntrianMapDto(
             model.AntrianMapId,
             model.JadwalId,
-            model.JadwalHarianId,
+            model.JadwalHarianId ?? string.Empty,
             model.Dokter.PpaId,
             model.Layanan.LayananId,
             model.TglJadwal.ToDateTime(TimeOnly.MinValue),

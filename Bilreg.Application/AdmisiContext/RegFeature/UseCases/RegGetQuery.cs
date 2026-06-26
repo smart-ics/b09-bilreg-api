@@ -86,7 +86,7 @@ public class RegJalanGethandler : IRequestHandler<RegGetQuery, RegGetResponse>
             reg.Pasien, umur, reg.TipeJaminan, reg.Polis,
             reg.Kelas, reg.CaraMasukDk, reg.Rujukan,
             reg.Dokter, reg.Layanan, reg.Karcis,
-            tipeTarif, tipeBrg, que.NoUrut, reg.SjpNo);
+            tipeTarif, tipeBrg, que.NoUrut, reg.Eligibility.SjpNo);
 
         return Task.FromResult(result);
 

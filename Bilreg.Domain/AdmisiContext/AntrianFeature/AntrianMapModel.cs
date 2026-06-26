@@ -172,12 +172,14 @@ public record AntrianMapModel : IAntrianMapKey, IAntrianMapCompositeKey
     {
         var newDetil = AntrianMapDetilModel.AutoSlot(LastNoUrut + 1)
             .SetPasien(reg.Pasien.PasienName, reg.Pasien.PasienId, reg.RegId);
+        _listMap.Add(newDetil);
         return newDetil;
     }
     public AntrianMapDetilModel AddAuto(BookingModel booking)
     {
         var newDetil = AntrianMapDetilModel.AutoSlot(LastNoUrut + 1)
             .SetPasien(booking.Person.PersonName, booking.PasienId, booking.BookingId);
+        _listMap.Add(newDetil);
         return newDetil;
     }
     private void SeedingMapAuto()
