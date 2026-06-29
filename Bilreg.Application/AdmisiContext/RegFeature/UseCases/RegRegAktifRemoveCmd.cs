@@ -51,7 +51,7 @@ public class RegRegAktifRemoveHandler : IRequestHandler<RegRegAktifRemoveCmd>
     private bool IsValidToBeRemove(RegRegAktifRemoveCmd request, out RegModel reg, out RegAktifModel regAktif)
     {
         reg = LoadReg(request);
-        if (reg.RegId == "-" || reg.IsAktif == false)
+        if (reg.RegId == "-")
         {
             regAktif = RegAktifModel.Default;
             return false;
