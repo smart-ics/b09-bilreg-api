@@ -93,6 +93,16 @@ Charge-context tariff master, operational projection (`NilaiTarif`), and kompone
 | `docs/contexts/tarif/TARIF_PHASE3_REFACTOR_REPORT.md` | Phase 3 publish simplification — removed validator/mapper abstractions |
 | `docs/tarif/tarif-codebase-retrieval-report.md` | Codebase evidence / gap analysis (retrieval, not stewardship artifact) |
 
+### TRSBILLING (`docs/contexts/trsbilling/`)
+
+| Path | Purpose |
+|------|---------|
+| `docs/contexts/trsbilling/trsbilling-01-context.md` | TRSBILLING — why (business context) |
+| `docs/contexts/trsbilling/trsbilling-02-domain.md` | TRSBILLING — what (aggregates, rules, TataRekening / TrsBill) |
+| `docs/contexts/trsbilling/trsbilling-03-design.md` | TRSBILLING — how (architecture, persistence) |
+| `docs/contexts/trsbilling/trsbilling-04-pasien-balance.md` | PasienBalance — patient-level cumulative outstanding (foundational slice) |
+| `docs/contexts/trsbilling/trsbilling-domain-gap-analysis-report.md` | Domain gap analysis report |
+
 ---
 
 ## Shared (`docs/shared/`)
