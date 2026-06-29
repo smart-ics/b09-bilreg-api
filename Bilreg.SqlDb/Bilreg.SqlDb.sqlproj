@@ -76,7 +76,6 @@
     <Folder Include="BedUsageContext\RoomRateFeature\" />
     <Folder Include="BedUsageContext\KamarOperasiFeature\" />
     <Folder Include="ChargeContext\TarifFeature\" />
-    <Folder Include="PaymentContext\" />
     <Folder Include="PaymentContext\RekapCatakFeature\" />
     <Folder Include="PaymentContext\RekeningFeature\" />
     <Folder Include="AccountingContext" />
@@ -232,8 +231,13 @@
     <Content Include="LabContext\LabResultFeature\BILRG_LabResultDocument.sql" />
     <Content Include="LabContext\LabResultFeature\BILRG_LabResultDocument_M10_Alter.sql" />
     <Content Include="LabContext\LabResultFeature\BILRG_LabResultItem.sql" />
+    <Build Include="PaymentContext\PasienBalanceFeature\BILRG_TataRekPasienBalance.sql" />
+    <Build Include="PaymentContext\PasienBalanceFeature\BILRG_TataRekPasienBalanceHistory.sql" />
+    <Build Include="PaymentContext\PasienBalanceFeature\BILRG_TataRekPasienBalanceHistory_M1_JasaObatPartition_Alter.sql" />
+    <Build Include="PaymentContext\PasienBalanceFeature\BILRG_TataRekPasienBalance_M1_JasaObatPartition_Alter.sql" />
     <Build Include="PaymentContext\RekapCatakFeature\ta_trs_billing2.sql" />
     <Build Include="PaymentContext\RekeningFeature\t_rek.sql" />
+    <Build Include="PaymentContext\TataRekeningFeature\BILRG_TataRekening.sql" />
     <Build Include="PaymentContext\TrsBillingFeature\BILRG_TataRekening.sql" />
     <Build Include="PaymentContext\TrsBillingFeature\ta_trs_billing.sql" />
     <None Include="AdmisiContext\BookingFeature\BILRG_BookingExternal.sql" />
