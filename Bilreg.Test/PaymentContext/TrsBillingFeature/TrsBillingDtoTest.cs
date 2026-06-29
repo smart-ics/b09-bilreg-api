@@ -134,7 +134,7 @@ public class TrsBillingDtoTest
         model.Keterangan.Qty.Should().Be(0m);
         model.Keterangan.TrsMainId.Should().Be("");
         model.ListTransaction.Should().BeEmpty();
-        model.ListDischarge.Should().BeEmpty();
+        model.ListFinalization.Should().BeEmpty();
         model.ListPayment.Should().BeEmpty();
     }
 
@@ -172,7 +172,7 @@ public class TrsBillingDtoTest
                     CoaType.Default)),
             "BIL-004",
             0);
-        var dischargeDto = new TaTrsBilling2Dto(
+        var finalizationDto = new TaTrsBilling2Dto(
             "BIL-004", 2,
             "KAS", 0m, 5_000m,
             "RO00001234", "2026-06-19", "00:00:00",
@@ -185,16 +185,16 @@ public class TrsBillingDtoTest
         var bill2 = new ITrsBill2Event[]
         {
             transDto.ToModel(0),
-            dischargeDto.ToModel(0)
+            finalizationDto.ToModel(0)
         };
 
         var model = dto.ToModel(bill2);
 
         model.ListTransaction.Should().HaveCount(1);
-        model.ListDischarge.Should().HaveCount(1);
+        model.ListFinalization.Should().HaveCount(1);
         model.ListPayment.Should().BeEmpty();
         model.ListTransaction.First().NoUrut.Should().Be(1);
-        model.ListDischarge.First().NoUrut.Should().Be(2);
+        model.ListFinalization.First().NoUrut.Should().Be(2);
     }
 
     [Fact]

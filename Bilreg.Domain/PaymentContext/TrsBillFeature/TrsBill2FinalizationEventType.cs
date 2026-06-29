@@ -2,9 +2,12 @@ using Bilreg.Domain.AdmisiContext.PpaFeature;
 
 namespace Bilreg.Domain.PaymentContext.TrsBillFeature;
 
-public record TrsBill2DischargeEventType: ITrsBill2Event
+/// <summary>
+/// Finalization component — financial responsibility allocation at charge level.
+/// </summary>
+public record TrsBill2FinalizationEventType : ITrsBill2Event
 {
-    public TrsBill2DischargeEventType(int noUrut,
+    public TrsBill2FinalizationEventType(int noUrut,
         TrsBill2KomponenType komponen,
         TrsBillJenisBayarType jenisBayar,
         decimal nilai,
@@ -22,11 +25,12 @@ public record TrsBill2DischargeEventType: ITrsBill2Event
         TrsBayarId = trsBayarId;
         TglBayar = tglBayar;
     }
-    public static TrsBill2DischargeEventType Default 
-        => new(0, TrsBill2KomponenType.Default, TrsBillJenisBayarType.Default, 0, 
+
+    public static TrsBill2FinalizationEventType Default
+        => new(0, TrsBill2KomponenType.Default, TrsBillJenisBayarType.Default, 0,
             PpaType.Default.ToReff(), "", "", DateTime.MinValue);
 
-    public static TrsBill2DischargeEventType Create(
+    public static TrsBill2FinalizationEventType Create(
         int noUrut,
         TrsBill2KomponenType komponen,
         TrsBillJenisBayarType jenisBayar,
@@ -34,8 +38,7 @@ public record TrsBill2DischargeEventType: ITrsBill2Event
         PpaReff petugasMedis,
         string petugasKasir,
         string trsBayarId,
-        DateTime tglBayar
-    )
+        DateTime tglBayar)
     {
         if (komponen == TrsBill2KomponenType.Default)
             throw new ArgumentException("Komponen must not be default", nameof(komponen));
@@ -44,11 +47,11 @@ public record TrsBill2DischargeEventType: ITrsBill2Event
             jenisBayar != TrsBillJenisBayarType.Hut &&
             !jenisBayar.IsTipeJaminan)
             throw new ArgumentException("JenisBayar must be KAS, HUT, or a jenisBayar with IsTipeJaminan", nameof(jenisBayar));
-        
+
         if (petugasKasir.Trim() == string.Empty)
             throw new ArgumentException("Petugas Kasir should not empty", nameof(jenisBayar));
-        
-        return new TrsBill2DischargeEventType(noUrut, komponen, jenisBayar, nilai, petugasMedis, petugasKasir, trsBayarId, tglBayar);
+
+        return new TrsBill2FinalizationEventType(noUrut, komponen, jenisBayar, nilai, petugasMedis, petugasKasir, trsBayarId, tglBayar);
     }
 
     public int NoUrut { get; init; }

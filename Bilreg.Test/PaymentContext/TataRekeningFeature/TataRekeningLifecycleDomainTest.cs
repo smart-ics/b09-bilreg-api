@@ -21,7 +21,7 @@ public class TataRekeningLifecycleDomainTest
         var tataRekening = HydrateOpened(CreateBill("BILL-JASA-01", BillModulGroup.Jasa, 100_000m));
 
         tataRekening.Close();
-        tataRekening.Discharge(
+        tataRekening.FinalizeFinancialResponsibility(
             [BuildPayment(PaymentType.ByKas, 100_000m, 0m)],
             "kasir-01",
             new DateTime(2026, 6, 16, 10, 0, 0));
@@ -106,12 +106,12 @@ public class TataRekeningLifecycleDomainTest
     }
 
     [Fact]
-    public void UT08_GivenPartialDischargeInput_WhenDischarge_ThenShouldReject()
+    public void UT08_GivenPartialFinalizationInput_WhenFinalizeFinancialResponsibility_ThenShouldReject()
     {
         var tataRekening = HydrateOpened(CreateBill("BILL-JASA-02", BillModulGroup.Jasa, 100_000m));
         tataRekening.Close();
 
-        Action act = () => tataRekening.Discharge(
+        Action act = () => tataRekening.FinalizeFinancialResponsibility(
             [BuildPayment(PaymentType.ByKas, 50_000m, 0m)],
             "kasir-01",
             DateTime.Now);
@@ -121,18 +121,18 @@ public class TataRekeningLifecycleDomainTest
     }
 
     [Fact]
-    public void UT09_GivenNoPayment_WhenCancelDischarge_ThenShouldRevertToClosed()
+    public void UT09_GivenNoPayment_WhenCancelFinalization_ThenShouldRevertToClosed()
     {
         var tataRekening = CreateFinalizedTataRekening();
 
-        tataRekening.CancelDischarge();
+        tataRekening.CancelFinalization();
 
         tataRekening.Status.Should().Be(TataRekeningStatusEnum.Closed);
-        tataRekening.ListTrsBill.Single().ListDischarge.Should().BeEmpty();
+        tataRekening.ListTrsBill.Single().ListFinalization.Should().BeEmpty();
     }
 
     [Fact]
-    public void UT10_GivenPaymentExists_WhenCancelDischarge_ThenShouldReject()
+    public void UT10_GivenPaymentExists_WhenCancelFinalization_ThenShouldReject()
     {
         var tataRekening = CreateFinalizedTataRekening();
         tataRekening.Pay(
@@ -142,14 +142,14 @@ public class TataRekeningLifecycleDomainTest
 
         tataRekening.Status.Should().Be(TataRekeningStatusEnum.Finalized);
 
-        Action act = () => tataRekening.CancelDischarge();
+        Action act = () => tataRekening.CancelFinalization();
 
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*sudah ada pembayaran*");
     }
 
     [Fact]
-    public void UT11_GivenDischargedBill_WhenPay_ThenPaymentComponentsDeriveFromDischargeComponents()
+    public void UT11_GivenFinalizedBill_WhenPay_ThenPaymentComponentsDeriveFromFinalizationComponents()
     {
         var tataRekening = CreateFinalizedTataRekening();
 
@@ -159,40 +159,40 @@ public class TataRekeningLifecycleDomainTest
             new DateTime(2026, 6, 16, 12, 0, 0));
 
         var bill = tataRekening.ListTrsBill.Single();
-        var discharge = bill.ListDischarge.Single();
+        var finalization = bill.ListFinalization.Single();
         var payment = bill.ListPayment.Single();
 
-        payment.Komponen.BillKompId.Should().Be(discharge.Komponen.BillKompId);
-        payment.JenisBayar.Should().Be(discharge.JenisBayar);
-        payment.Nilai.Should().Be(discharge.Nilai);
+        payment.Komponen.BillKompId.Should().Be(finalization.Komponen.BillKompId);
+        payment.JenisBayar.Should().Be(finalization.JenisBayar);
+        payment.Nilai.Should().Be(finalization.Nilai);
     }
 
     [Fact]
-    public void UT12_GivenJasaAndObatBills_WhenDischarge_ThenEachModulGroupReceivesOnlyItsAllocation()
+    public void UT12_GivenJasaAndObatBills_WhenFinalizeFinancialResponsibility_ThenEachModulGroupReceivesOnlyItsAllocation()
     {
         var jasaBill = CreateBill("BILL-JASA-03", BillModulGroup.Jasa, 80_000m);
         var obatBill = CreateBill("BILL-OBAT-01", BillModulGroup.Obat, 20_000m);
         var tataRekening = HydrateOpened(jasaBill, obatBill);
         tataRekening.Close();
 
-        tataRekening.Discharge(
+        tataRekening.FinalizeFinancialResponsibility(
             [BuildPayment(PaymentType.ByKas, 80_000m, 20_000m)],
             "kasir-01",
             DateTime.Now);
 
-        jasaBill.ListDischarge.Sum(x => x.Nilai).Should().Be(80_000m);
-        obatBill.ListDischarge.Sum(x => x.Nilai).Should().Be(20_000m);
-        jasaBill.ListDischarge.Should().NotBeEmpty();
-        obatBill.ListDischarge.Should().NotBeEmpty();
+        jasaBill.ListFinalization.Sum(x => x.Nilai).Should().Be(80_000m);
+        obatBill.ListFinalization.Sum(x => x.Nilai).Should().Be(20_000m);
+        jasaBill.ListFinalization.Should().NotBeEmpty();
+        obatBill.ListFinalization.Should().NotBeEmpty();
     }
 
     [Fact]
-    public void UT13_GivenJasaAllocationWithoutJasaBills_WhenDischarge_ThenShouldReject()
+    public void UT13_GivenJasaAllocationWithoutJasaBills_WhenFinalizeFinancialResponsibility_ThenShouldReject()
     {
         var tataRekening = HydrateOpened(CreateBill("BILL-OBAT-02", BillModulGroup.Obat, 20_000m));
         tataRekening.Close();
 
-        Action act = () => tataRekening.Discharge(
+        Action act = () => tataRekening.FinalizeFinancialResponsibility(
             [BuildPayment(PaymentType.ByKas, 10_000m, 20_000m)],
             "kasir-01",
             DateTime.Now);
@@ -208,27 +208,27 @@ public class TataRekeningLifecycleDomainTest
 
         Action close = () => tataRekening.Close();
         Action reopen = () => tataRekening.ReOpen();
-        Action discharge = () => tataRekening.Discharge([], "kasir", DateTime.Now);
+        Action finalize = () => tataRekening.FinalizeFinancialResponsibility([], "kasir", DateTime.Now);
         Action pay = () => tataRekening.Pay([], "PAY", DateTime.Now);
-        Action cancel = () => tataRekening.CancelDischarge();
+        Action cancel = () => tataRekening.CancelFinalization();
         Action delete = () => tataRekening.DeleteBill("BILL-JASA-01");
 
         close.Should().Throw<InvalidOperationException>().WithMessage("*LUNAS*");
         reopen.Should().Throw<InvalidOperationException>().WithMessage("*LUNAS*");
-        discharge.Should().Throw<InvalidOperationException>().WithMessage("*LUNAS*");
+        finalize.Should().Throw<InvalidOperationException>().WithMessage("*LUNAS*");
         pay.Should().Throw<InvalidOperationException>().WithMessage("*LUNAS*");
         cancel.Should().Throw<InvalidOperationException>().WithMessage("*LUNAS*");
         delete.Should().Throw<InvalidOperationException>().WithMessage("*LUNAS*");
     }
 
     private static TataRekeningModel HydrateOpened(params TrsBillType[] listTrsBill) =>
-        new(REG_ID, TataRekeningStatusEnum.Opened, TataRekeningDischargeType.Default, [], listTrsBill);
+        new(REG_ID, TataRekeningStatusEnum.Opened, TataRekeningFinalizationType.Default, [], listTrsBill);
 
     private static TataRekeningModel CreateFinalizedTataRekening()
     {
         var tataRekening = HydrateOpened(CreateBill("BILL-JASA-01", BillModulGroup.Jasa, 100_000m));
         tataRekening.Close();
-        tataRekening.Discharge(
+        tataRekening.FinalizeFinancialResponsibility(
             [BuildPayment(PaymentType.ByKas, 100_000m, 0m)],
             "kasir-01",
             new DateTime(2026, 6, 16, 10, 0, 0));

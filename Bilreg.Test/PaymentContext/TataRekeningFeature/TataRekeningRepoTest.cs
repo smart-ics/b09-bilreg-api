@@ -35,7 +35,7 @@ public class TataRekeningRepoTest
         new(
             RegId,
             status,
-            TataRekeningDischargeType.Default,
+            TataRekeningFinalizationType.Default,
             payments ?? [new TataRekeningPaymentType(PaymentType.ByKas, 10_000m, 0m, CoaType.Default)],
             []);
 
