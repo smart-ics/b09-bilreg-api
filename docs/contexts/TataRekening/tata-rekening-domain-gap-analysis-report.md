@@ -1,7 +1,7 @@
-# TRSBILLING Domain Gap Analysis Report
+# Tata Rekening Domain Gap Analysis Report
 
 **Audit date:** 2026-06-16  
-**Source of truth:** [`trsbilling-02-domain.md`](trsbilling-02-domain.md)  
+**Source of truth:** [`02-domain.md`](02-domain.md)  
 **Implementation scope (domain layer only):** `Bilreg.Domain/PaymentContext/TataRekeningFeature`, `Bilreg.Domain/PaymentContext/TrsBillFeature`, `Bilreg.Domain/PaymentContext/CoaFeature`  
 **Out of scope:** Infrastructure, repositories, application orchestration, API, persistence, legacy migration
 
@@ -11,7 +11,7 @@
 
 **Overall assessment: Moderate Alignment**
 
-The TRSBILLING domain layer has the correct **core vocabulary** (`TataRekening`, `TrsBill`, three component event types, Level-1 payment shape with JASA/OBAT split) and a **partially correct lifecycle skeleton** on `TataRekeningModel` (OPEN → CLOSED → FINALIZED). `CreateBillService` and `TrsBillFactory` establish a credible financial charge snapshot at bill creation.
+The Tata Rekening domain layer has the correct **core vocabulary** (`TataRekening`, `TrsBill`, three component event types, Level-1 payment shape with JASA/OBAT split) and a **partially correct lifecycle skeleton** on `TataRekeningModel` (OPEN → CLOSED → FINALIZED). `CreateBillService` and `TrsBillFactory` establish a credible financial charge snapshot at bill creation.
 
 However, several **authoritative responsibilities are inverted or missing**:
 

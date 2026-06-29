@@ -93,15 +93,16 @@ Charge-context tariff master, operational projection (`NilaiTarif`), and kompone
 | `docs/contexts/tarif/TARIF_PHASE3_REFACTOR_REPORT.md` | Phase 3 publish simplification — removed validator/mapper abstractions |
 | `docs/tarif/tarif-codebase-retrieval-report.md` | Codebase evidence / gap analysis (retrieval, not stewardship artifact) |
 
-### TRSBILLING (`docs/contexts/trsbilling/`)
+### Tata Rekening (`docs/contexts/TataRekening/`)
+
+Patient financial responsibility domain (registration-scoped lifecycle, TrsBill charges, PasienBalance carry-over integration). Legacy persistence: `ta_trs_billing`, `ta_trs_billing2`, `ta_registrasi3`.
 
 | Path | Purpose |
 |------|---------|
-| `docs/contexts/trsbilling/trsbilling-01-context.md` | TRSBILLING — why (business context) |
-| `docs/contexts/trsbilling/trsbilling-02-domain.md` | TRSBILLING — what (aggregates, rules, TataRekening / TrsBill) |
-| `docs/contexts/trsbilling/trsbilling-03-design.md` | TRSBILLING — how (architecture, persistence) |
-| `docs/contexts/trsbilling/trsbilling-04-pasien-balance.md` | PasienBalance — patient-level outstanding receivable collection (foundational slice) |
-| `docs/contexts/trsbilling/trsbilling-domain-gap-analysis-report.md` | Domain gap analysis report |
+| `docs/contexts/TataRekening/01-context.md` | Tata Rekening — why (business context, bounded contexts, carry-over) |
+| `docs/contexts/TataRekening/02-domain.md` | Tata Rekening — what (aggregates, lifecycle, PasienBalance relationship) |
+| `docs/contexts/TataRekening/03-design.md` | Tata Rekening — how (architecture, persistence, PasienBalance integration) |
+| `docs/contexts/TataRekening/tata-rekening-domain-gap-analysis-report.md` | Domain gap analysis report (implementation vs artifact) |
 
 ---
 
@@ -128,6 +129,11 @@ Charge-context tariff master, operational projection (`NilaiTarif`), and kompone
 | `Bilreg.Domain/IgdContext/docs/OPERATIONAL_RECOVERY.md` | `docs/contexts/igd/igd-05-runbook.md` |
 | `docs/contexts/igd/igd-domain.md` | `docs/contexts/igd/igd-01-context.md`, `igd-02-domain.md`, `igd-03-design.md`, `igd-04-api-contract.md`, `igd-05-runbook.md` |
 | `docs/contexts/igd/igd-operational-recovery.md` (content) | `docs/contexts/igd/igd-05-runbook.md` |
+| `docs/contexts/trsbilling/trsbilling-01-context.md` | `docs/contexts/TataRekening/01-context.md` |
+| `docs/contexts/trsbilling/trsbilling-02-domain.md` | `docs/contexts/TataRekening/02-domain.md` |
+| `docs/contexts/trsbilling/trsbilling-03-design.md` | `docs/contexts/TataRekening/03-design.md` |
+| `docs/contexts/trsbilling/trsbilling-04-pasien-balance.md` | merged into `docs/contexts/TataRekening/01-context.md`, `02-domain.md`, `03-design.md` |
+| `docs/contexts/trsbilling/trsbilling-domain-gap-analysis-report.md` | `docs/contexts/TataRekening/tata-rekening-domain-gap-analysis-report.md` |
 | `Bilreg.Domain/Shared/AuditLogFeature/AUDIT_LOG_README.md` | `docs/shared/audit-log.md` |
 
 Old locations may contain short redirect stubs during transition.
