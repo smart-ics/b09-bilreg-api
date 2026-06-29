@@ -4,10 +4,6 @@ namespace Bilreg.Infrastructure.PaymentContext.PasienBalanceFeature;
 
 public record BilrgTataRekPasienBalanceDto(
     string PasienId,
-    decimal CurrentJasaBalance,
-    decimal CurrentObatBalance,
-    string LastHistoryId,
-    DateTime UpdatedAt,
     int Version,
     string CrtUser,
     DateTime CrtDate,
@@ -20,18 +16,15 @@ public record BilrgTataRekPasienBalanceDto(
 
     public static BilrgTataRekPasienBalanceDto FromModelForInsert(PasienBalanceModel model)
     {
-        var updDate = model.UpdatedAt;
+        var auditUser = ResolveAuditUser(model);
+        var now = DateTime.Now;
         return new BilrgTataRekPasienBalanceDto(
             model.PasienId,
-            model.CurrentJasaBalance,
-            model.CurrentObatBalance,
-            model.LastHistoryId == "-" ? string.Empty : model.LastHistoryId,
-            model.UpdatedAt,
             model.Version,
-            model.LastModifiedBy,
-            updDate,
-            model.LastModifiedBy,
-            updDate,
+            auditUser,
+            now,
+            auditUser,
+            now,
             string.Empty,
             EmptyDate);
     }
@@ -39,29 +32,26 @@ public record BilrgTataRekPasienBalanceDto(
     public static BilrgTataRekPasienBalanceDto FromModelForUpdate(PasienBalanceModel model) =>
         new(
             model.PasienId,
-            model.CurrentJasaBalance,
-            model.CurrentObatBalance,
-            model.LastHistoryId == "-" ? string.Empty : model.LastHistoryId,
-            model.UpdatedAt,
             model.Version,
             string.Empty,
             EmptyDate,
-            model.LastModifiedBy,
-            model.UpdatedAt == EmptyDate ? EmptyDate : model.UpdatedAt,
+            ResolveAuditUser(model),
+            DateTime.Now,
             string.Empty,
             EmptyDate);
 
-    public PasienBalanceModel ToModel(IEnumerable<PasienBalanceHistoryType> listHistory)
+    public PasienBalanceModel ToModel(IEnumerable<OutstandingEntryType> outstandingEntries)
     {
-        var history = listHistory.ToList();
+        var entries = outstandingEntries.ToList();
         return PasienBalanceModel.Hydrate(
             PasienId,
-            CurrentJasaBalance,
-            CurrentObatBalance,
-            string.IsNullOrEmpty(LastHistoryId) ? "-" : LastHistoryId,
-            UpdatedAt,
             Version,
-            UpdUser,
-            history.Select(x => x with { IsPersisted = true }));
+            entries.Select(x => x with { IsPersisted = true }));
+    }
+
+    private static string ResolveAuditUser(PasienBalanceModel model)
+    {
+        var entry = model.OutstandingEntries.FirstOrDefault();
+        return string.IsNullOrWhiteSpace(entry?.CreatedBy) ? "system" : entry.CreatedBy;
     }
 }

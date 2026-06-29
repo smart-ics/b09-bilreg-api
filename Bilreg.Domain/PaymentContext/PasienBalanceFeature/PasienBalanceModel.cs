@@ -5,34 +5,24 @@ using Nuna.Lib.AutoNumberHelper;
 namespace Bilreg.Domain.PaymentContext.PasienBalanceFeature;
 
 /// <summary>
-/// Patient-level cumulative outstanding balance across registrations, partitioned by JASA and OBAT.
+/// Patient-level collection of unsettled receivables, one entry per registration.
 /// </summary>
 public class PasienBalanceModel : IPasienKey
 {
-    private const string HistoryIdPrefix = "PBH";
+    private const string EntryIdPrefix = "PBO";
     private static readonly DateTime EmptyDate = new(3000, 1, 1);
 
-    private readonly List<PasienBalanceHistoryType> _listHistory = [];
+    private readonly List<OutstandingEntryType> _outstandingEntries = [];
 
     private PasienBalanceModel(
         string pasienId,
-        decimal currentJasaBalance,
-        decimal currentObatBalance,
-        string lastHistoryId,
-        DateTime updatedAt,
         int version,
-        string lastModifiedBy,
-        IEnumerable<PasienBalanceHistoryType> listHistory)
+        IEnumerable<OutstandingEntryType> outstandingEntries)
     {
         PasienId = pasienId;
-        CurrentJasaBalance = currentJasaBalance;
-        CurrentObatBalance = currentObatBalance;
-        LastHistoryId = lastHistoryId;
-        UpdatedAt = updatedAt;
         Version = version;
-        LastModifiedBy = lastModifiedBy;
-        _listHistory = listHistory.ToList();
-        AssertBalanceConsistent();
+        _outstandingEntries = outstandingEntries.ToList();
+        AssertInvariants();
     }
 
     #region CREATION
@@ -40,192 +30,206 @@ public class PasienBalanceModel : IPasienKey
     public static PasienBalanceModel Create(string pasienId)
     {
         Guard.Against.NullOrWhiteSpace(pasienId, nameof(pasienId));
-
-        return new PasienBalanceModel(
-            pasienId,
-            currentJasaBalance: 0m,
-            currentObatBalance: 0m,
-            lastHistoryId: "-",
-            updatedAt: EmptyDate,
-            version: 0,
-            lastModifiedBy: string.Empty,
-            listHistory: []);
+        return new PasienBalanceModel(pasienId, version: 0, outstandingEntries: []);
     }
 
     public static PasienBalanceModel Default =>
-        new("-", 0m, 0m, "-", EmptyDate, 0, string.Empty, []);
+        new("-", 0, []);
 
     public static IPasienKey Key(string pasienId) =>
-        Hydrate(pasienId, 0m, 0m, "-", EmptyDate, 0, string.Empty, []);
+        Hydrate(pasienId, 0, []);
 
     public static PasienBalanceModel Hydrate(
         string pasienId,
-        decimal currentJasaBalance,
-        decimal currentObatBalance,
-        string lastHistoryId,
-        DateTime updatedAt,
         int version,
-        string lastModifiedBy,
-        IEnumerable<PasienBalanceHistoryType> listHistory) =>
-        new(pasienId, currentJasaBalance, currentObatBalance, lastHistoryId, updatedAt, version, lastModifiedBy, listHistory);
+        IEnumerable<OutstandingEntryType> outstandingEntries) =>
+        new(pasienId, version, outstandingEntries);
 
     #endregion
 
     #region PROPERTIES
 
     public string PasienId { get; init; }
-    public decimal CurrentJasaBalance { get; private set; }
-    public decimal CurrentObatBalance { get; private set; }
-    public decimal CurrentBalance => CurrentJasaBalance + CurrentObatBalance;
-    public string LastHistoryId { get; private set; }
-    public DateTime UpdatedAt { get; private set; }
     public int Version { get; private set; }
-    public string LastModifiedBy { get; private set; }
-    public IEnumerable<PasienBalanceHistoryType> ListHistory => _listHistory;
+    public IEnumerable<OutstandingEntryType> OutstandingEntries => _outstandingEntries;
 
-    public IEnumerable<PasienBalanceHistoryType> PendingHistory =>
-        _listHistory.Where(x => !x.IsPersisted);
+    public decimal TotalOutstandingJasa =>
+        _outstandingEntries.Sum(x => x.OutstandingJasa);
+
+    public decimal TotalOutstandingObat =>
+        _outstandingEntries.Sum(x => x.OutstandingObat);
+
+    public decimal TotalOutstanding =>
+        _outstandingEntries.Sum(x => x.OutstandingTotal);
 
     #endregion
 
     #region BEHAVIOUR
 
-    public void ApplyCharge(
-        decimal jasaAmount,
-        decimal obatAmount,
+    public void AddOutstanding(
         string regId,
-        DateTime trsDate,
-        string remarks,
+        decimal outstandingJasa,
+        decimal outstandingObat,
+        DateTime lastTransactionDate,
+        string sourceReference,
         string createdBy)
     {
-        EnsureNonNegativeAmount(jasaAmount, nameof(jasaAmount));
-        EnsureNonNegativeAmount(obatAmount, nameof(obatAmount));
-        EnsureAtLeastOnePositive(jasaAmount, obatAmount);
-        EnsureValidTrsDate(trsDate);
+        EnsureValidRegId(regId);
+        EnsureNonNegativeAmount(outstandingJasa, nameof(outstandingJasa));
+        EnsureNonNegativeAmount(outstandingObat, nameof(outstandingObat));
+        EnsureValidTransactionDate(lastTransactionDate);
         EnsureValidUser(createdBy);
 
-        AppendHistory(
-            regId ?? string.Empty,
-            trsDate,
-            chargeJasa: jasaAmount,
-            chargeObat: obatAmount,
-            paymentJasa: 0m,
-            paymentObat: 0m,
-            remarks,
-            createdBy);
+        if (_outstandingEntries.Any(x => x.RegId == regId))
+            throw new InvalidOperationException(
+                $"Outstanding untuk registrasi {regId} sudah ada.");
+
+        var now = lastTransactionDate;
+        var entry = new OutstandingEntryType(
+            NunaId.New(EntryIdPrefix),
+            PasienId,
+            regId,
+            outstandingJasa,
+            outstandingObat,
+            lastTransactionDate,
+            sourceReference ?? string.Empty,
+            now,
+            createdBy,
+            isPersisted: false);
+
+        _outstandingEntries.Add(entry);
+        AssertInvariants();
     }
 
-    public void ApplyPayment(
-        decimal jasaAmount,
-        decimal obatAmount,
+    public void UpdateOutstanding(
         string regId,
-        DateTime trsDate,
-        string remarks,
+        decimal outstandingJasa,
+        decimal outstandingObat,
+        DateTime lastTransactionDate,
+        string sourceReference)
+    {
+        EnsureValidRegId(regId);
+        EnsureNonNegativeAmount(outstandingJasa, nameof(outstandingJasa));
+        EnsureNonNegativeAmount(outstandingObat, nameof(outstandingObat));
+        EnsureValidTransactionDate(lastTransactionDate);
+
+        var index = FindEntryIndex(regId);
+        var existing = _outstandingEntries[index];
+
+        _outstandingEntries[index] = existing with
+        {
+            OutstandingJasa = outstandingJasa,
+            OutstandingObat = outstandingObat,
+            LastTransactionDate = lastTransactionDate,
+            SourceReference = sourceReference ?? string.Empty,
+            IsPersisted = false
+        };
+
+        AssertInvariants();
+    }
+
+    public void RemoveOutstanding(string regId)
+    {
+        EnsureValidRegId(regId);
+
+        var index = FindEntryIndex(regId);
+        _outstandingEntries.RemoveAt(index);
+        AssertInvariants();
+    }
+
+    public void ReplaceOutstandingEntries(
+        IEnumerable<OutstandingEntryType> entries,
         string createdBy)
     {
-        EnsureNonNegativeAmount(jasaAmount, nameof(jasaAmount));
-        EnsureNonNegativeAmount(obatAmount, nameof(obatAmount));
-        EnsureAtLeastOnePositive(jasaAmount, obatAmount);
-        EnsureValidTrsDate(trsDate);
         EnsureValidUser(createdBy);
 
-        if (jasaAmount > CurrentJasaBalance)
-            throw new InvalidOperationException(
-                $"Pembayaran JASA ({jasaAmount}) melebihi saldo outstanding JASA ({CurrentJasaBalance}).");
+        var list = entries.ToList();
+        var duplicateRegIds = list
+            .GroupBy(x => x.RegId)
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .ToList();
 
-        if (obatAmount > CurrentObatBalance)
+        if (duplicateRegIds.Count > 0)
             throw new InvalidOperationException(
-                $"Pembayaran OBAT ({obatAmount}) melebihi saldo outstanding OBAT ({CurrentObatBalance}).");
+                $"RegId duplikat tidak diizinkan: {string.Join(", ", duplicateRegIds)}.");
 
-        AppendHistory(
-            regId ?? string.Empty,
-            trsDate,
-            chargeJasa: 0m,
-            chargeObat: 0m,
-            paymentJasa: jasaAmount,
-            paymentObat: obatAmount,
-            remarks,
-            createdBy);
+        foreach (var entry in list)
+        {
+            if (entry.PasienId != PasienId)
+                throw new InvalidOperationException(
+                    $"Entry {entry.EntryId} tidak milik pasien {PasienId}.");
+
+            EnsureNonNegativeAmount(entry.OutstandingJasa, nameof(entry.OutstandingJasa));
+            EnsureNonNegativeAmount(entry.OutstandingObat, nameof(entry.OutstandingObat));
+            EnsureValidRegId(entry.RegId);
+            EnsureValidTransactionDate(entry.LastTransactionDate);
+        }
+
+        _outstandingEntries.Clear();
+
+        var now = DateTime.Now;
+        foreach (var entry in list)
+        {
+            _outstandingEntries.Add(new OutstandingEntryType(
+                string.IsNullOrWhiteSpace(entry.EntryId) ? NunaId.New(EntryIdPrefix) : entry.EntryId,
+                PasienId,
+                entry.RegId,
+                entry.OutstandingJasa,
+                entry.OutstandingObat,
+                entry.LastTransactionDate,
+                entry.SourceReference,
+                entry.CreatedAt == EmptyDate || entry.CreatedAt == DateTime.MinValue ? now : entry.CreatedAt,
+                string.IsNullOrWhiteSpace(entry.CreatedBy) ? createdBy : entry.CreatedBy,
+                isPersisted: false));
+        }
+
+        AssertInvariants();
     }
 
     public void CommitVersionIncrement() => Version++;
 
     #endregion
 
-    private void AppendHistory(
-        string regId,
-        DateTime trsDate,
-        decimal chargeJasa,
-        decimal chargeObat,
-        decimal paymentJasa,
-        decimal paymentObat,
-        string remarks,
-        string createdBy)
+    private int FindEntryIndex(string regId)
     {
-        var openingJasa = CurrentJasaBalance;
-        var openingObat = CurrentObatBalance;
-        var closingJasa = openingJasa + chargeJasa - paymentJasa;
-        var closingObat = openingObat + chargeObat - paymentObat;
-
-        if (closingJasa < 0m)
+        var index = _outstandingEntries.FindIndex(x => x.RegId == regId);
+        if (index < 0)
             throw new InvalidOperationException(
-                "Operasi saldo JASA menghasilkan outstanding negatif yang tidak diizinkan.");
-
-        if (closingObat < 0m)
-            throw new InvalidOperationException(
-                "Operasi saldo OBAT menghasilkan outstanding negatif yang tidak diizinkan.");
-
-        var historyId = NunaId.New(HistoryIdPrefix);
-        var entry = new PasienBalanceHistoryType(
-            historyId,
-            PasienId,
-            regId,
-            trsDate,
-            openingJasa,
-            openingObat,
-            chargeJasa,
-            chargeObat,
-            paymentJasa,
-            paymentObat,
-            closingJasa,
-            closingObat,
-            remarks,
-            trsDate,
-            createdBy,
-            isPersisted: false);
-
-        _listHistory.Add(entry);
-        CurrentJasaBalance = closingJasa;
-        CurrentObatBalance = closingObat;
-        LastHistoryId = historyId;
-        UpdatedAt = trsDate;
-        LastModifiedBy = createdBy;
-        AssertBalanceConsistent();
+                $"Outstanding untuk registrasi {regId} tidak ditemukan.");
+        return index;
     }
 
-    private void AssertBalanceConsistent()
+    private void AssertInvariants()
     {
-        if (_listHistory.Count == 0)
-        {
-            if (CurrentJasaBalance != 0m || CurrentObatBalance != 0m)
-                throw new InvalidOperationException(
-                    "Invariant PasienBalance dilanggar: saldo partition tidak nol tanpa history.");
-            return;
-        }
-
-        var latest = _listHistory[^1];
-
-        if (CurrentJasaBalance != latest.ClosingJasaBalance)
+        if (_outstandingEntries.Any(x => x.PasienId != PasienId))
             throw new InvalidOperationException(
-                "Invariant PasienBalance dilanggar: CurrentJasaBalance tidak sama dengan ClosingJasaBalance history terakhir.");
+                "Invariant PasienBalance dilanggar: entry tidak milik pasien aggregate.");
 
-        if (CurrentObatBalance != latest.ClosingObatBalance)
-            throw new InvalidOperationException(
-                "Invariant PasienBalance dilanggar: CurrentObatBalance tidak sama dengan ClosingObatBalance history terakhir.");
+        var duplicateRegIds = _outstandingEntries
+            .GroupBy(x => x.RegId)
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .ToList();
 
-        if (CurrentBalance != latest.ClosingBalance)
+        if (duplicateRegIds.Count > 0)
             throw new InvalidOperationException(
-                "Invariant PasienBalance dilanggar: CurrentBalance tidak sama dengan ClosingBalance history terakhir.");
+                "Invariant PasienBalance dilanggar: RegId duplikat dalam aggregate.");
+
+        if (_outstandingEntries.Any(x => x.OutstandingJasa < 0m || x.OutstandingObat < 0m))
+            throw new InvalidOperationException(
+                "Invariant PasienBalance dilanggar: outstanding tidak boleh negatif.");
+
+        var expectedTotal = _outstandingEntries.Sum(x => x.OutstandingTotal);
+        if (TotalOutstanding != expectedTotal)
+            throw new InvalidOperationException(
+                "Invariant PasienBalance dilanggar: TotalOutstanding tidak sama dengan jumlah entry.");
+    }
+
+    private static void EnsureValidRegId(string regId)
+    {
+        if (string.IsNullOrWhiteSpace(regId))
+            throw new ArgumentException("RegId tidak boleh kosong.", nameof(regId));
     }
 
     private static void EnsureNonNegativeAmount(decimal amount, string paramName)
@@ -234,16 +238,10 @@ public class PasienBalanceModel : IPasienKey
             throw new ArgumentException("Nilai tidak boleh negatif.", paramName);
     }
 
-    private static void EnsureAtLeastOnePositive(decimal jasaAmount, decimal obatAmount)
+    private static void EnsureValidTransactionDate(DateTime lastTransactionDate)
     {
-        if (jasaAmount == 0m && obatAmount == 0m)
-            throw new ArgumentException("Minimal satu nilai JASA atau OBAT harus lebih besar dari nol.");
-    }
-
-    private static void EnsureValidTrsDate(DateTime trsDate)
-    {
-        if (trsDate == EmptyDate || trsDate == DateTime.MinValue)
-            throw new ArgumentException("Tanggal transaksi tidak valid.", nameof(trsDate));
+        if (lastTransactionDate == EmptyDate || lastTransactionDate == DateTime.MinValue)
+            throw new ArgumentException("Tanggal transaksi tidak valid.", nameof(lastTransactionDate));
     }
 
     private static void EnsureValidUser(string createdBy)

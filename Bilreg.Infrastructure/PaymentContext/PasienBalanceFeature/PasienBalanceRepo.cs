@@ -8,41 +8,37 @@ namespace Bilreg.Infrastructure.PaymentContext.PasienBalanceFeature;
 public class PasienBalanceRepo : IPasienBalanceRepo
 {
     private readonly IBilrgTataRekPasienBalanceDal _headerDal;
-    private readonly IBilrgTataRekPasienBalanceHistoryDal _historyDal;
+    private readonly IBilrgTataRekPasienBalanceOutstandingDal _outstandingDal;
 
     public PasienBalanceRepo(
         IBilrgTataRekPasienBalanceDal headerDal,
-        IBilrgTataRekPasienBalanceHistoryDal historyDal)
+        IBilrgTataRekPasienBalanceOutstandingDal outstandingDal)
     {
         _headerDal = headerDal;
-        _historyDal = historyDal;
+        _outstandingDal = outstandingDal;
     }
 
     public void SaveChanges(PasienBalanceModel model)
     {
-        var exists = _headerDal.GetData(model) is not null;
+        LoadEntity(model)
+            .Match(
+                onSome: _ =>
+                {
+                    var dto = BilrgTataRekPasienBalanceDto.FromModelForUpdate(model);
+                    var rows = _headerDal.UpdateConditional(dto, model.Version);
+                    if (rows == 0)
+                        throw new InvalidOperationException(
+                            $"PasienBalance {model.PasienId} stale; please reload (expected version: {model.Version}).");
 
-        if (!exists)
-        {
-            _headerDal.Insert(BilrgTataRekPasienBalanceDto.FromModelForInsert(model));
-        }
-        else
-        {
-            var dto = BilrgTataRekPasienBalanceDto.FromModelForUpdate(model);
-            var rows = _headerDal.UpdateConditional(dto, model.Version);
-            if (rows == 0)
-                throw new InvalidOperationException(
-                    $"PasienBalance {model.PasienId} stale; please reload (expected version: {model.Version}).");
+                    model.CommitVersionIncrement();
+                },
+                onNone: () => _headerDal.Insert(BilrgTataRekPasienBalanceDto.FromModelForInsert(model)));
 
-            model.CommitVersionIncrement();
-        }
-
-        var pendingHistory = model.PendingHistory
-            .Select(BilrgTataRekPasienBalanceHistoryDto.FromModel)
+        _outstandingDal.Delete(model);
+        var outstandingRows = model.OutstandingEntries
+            .Select(BilrgTataRekPasienBalanceOutstandingDto.FromModel)
             .ToList();
-
-        if (pendingHistory.Count > 0)
-            _historyDal.Insert(pendingHistory);
+        _outstandingDal.Insert(outstandingRows);
     }
 
     public MayBe<PasienBalanceModel> LoadEntity(IPasienKey key)
@@ -51,11 +47,10 @@ public class PasienBalanceRepo : IPasienBalanceRepo
         if (header is null)
             return MayBe<PasienBalanceModel>.None;
 
-        var history = ListHistory(key).ToList();
-        return MayBe.From(header.ToModel(history));
-    }
+        var entries = (_outstandingDal.ListData(key)?.ToList() ?? [])
+            .Select(x => x.ToModel())
+            .ToList();
 
-    public IEnumerable<PasienBalanceHistoryType> ListHistory(IPasienKey key)
-        => (_historyDal.ListData(key)?.ToList() ?? [])
-            .Select(x => x.ToModel());
+        return MayBe.From(header.ToModel(entries));
+    }
 }

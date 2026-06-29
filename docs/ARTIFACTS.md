@@ -100,7 +100,7 @@ Charge-context tariff master, operational projection (`NilaiTarif`), and kompone
 | `docs/contexts/trsbilling/trsbilling-01-context.md` | TRSBILLING — why (business context) |
 | `docs/contexts/trsbilling/trsbilling-02-domain.md` | TRSBILLING — what (aggregates, rules, TataRekening / TrsBill) |
 | `docs/contexts/trsbilling/trsbilling-03-design.md` | TRSBILLING — how (architecture, persistence) |
-| `docs/contexts/trsbilling/trsbilling-04-pasien-balance.md` | PasienBalance — patient-level cumulative outstanding (foundational slice) |
+| `docs/contexts/trsbilling/trsbilling-04-pasien-balance.md` | PasienBalance — patient-level outstanding receivable collection (foundational slice) |
 | `docs/contexts/trsbilling/trsbilling-domain-gap-analysis-report.md` | Domain gap analysis report |
 
 ---

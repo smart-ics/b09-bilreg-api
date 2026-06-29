@@ -28,10 +28,10 @@ public class BilrgTataRekPasienBalanceDal : IBilrgTataRekPasienBalanceDal
     {
         const string sql = """
             INSERT INTO BILRG_TataRekPasienBalance (
-                PasienId, CurrentJasaBalance, CurrentObatBalance, LastHistoryId, UpdatedAt, Version,
+                PasienId, Version,
                 CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
             VALUES (
-                @PasienId, @CurrentJasaBalance, @CurrentObatBalance, @LastHistoryId, @UpdatedAt, @Version,
+                @PasienId, @Version,
                 @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
             """;
 
@@ -43,11 +43,7 @@ public class BilrgTataRekPasienBalanceDal : IBilrgTataRekPasienBalanceDal
     {
         const string sql = """
             UPDATE BILRG_TataRekPasienBalance
-            SET CurrentJasaBalance = @CurrentJasaBalance,
-                CurrentObatBalance = @CurrentObatBalance,
-                LastHistoryId = @LastHistoryId,
-                UpdatedAt = @UpdatedAt,
-                UpdUser = @UpdUser,
+            SET UpdUser = @UpdUser,
                 UpdDate = @UpdDate,
                 Version = Version + 1
             WHERE PasienId = @PasienId
@@ -65,7 +61,7 @@ public class BilrgTataRekPasienBalanceDal : IBilrgTataRekPasienBalanceDal
     {
         const string sql = """
             SELECT
-                PasienId, CurrentJasaBalance, CurrentObatBalance, LastHistoryId, UpdatedAt, Version,
+                PasienId, Version,
                 CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate
             FROM BILRG_TataRekPasienBalance
             WHERE PasienId = @PasienId
@@ -82,10 +78,6 @@ public class BilrgTataRekPasienBalanceDal : IBilrgTataRekPasienBalanceDal
     {
         var dp = new DynamicParameters();
         dp.AddParam("@PasienId", model.PasienId, SqlDbType.VarChar);
-        dp.AddParam("@CurrentJasaBalance", model.CurrentJasaBalance, SqlDbType.Decimal);
-        dp.AddParam("@CurrentObatBalance", model.CurrentObatBalance, SqlDbType.Decimal);
-        dp.AddParam("@LastHistoryId", model.LastHistoryId, SqlDbType.VarChar);
-        dp.AddParam("@UpdatedAt", model.UpdatedAt, SqlDbType.DateTime);
         dp.AddParam("@Version", model.Version, SqlDbType.Int);
         dp.AddParam("@CrtUser", model.CrtUser, SqlDbType.VarChar);
         dp.AddParam("@CrtDate", model.CrtDate, SqlDbType.DateTime);

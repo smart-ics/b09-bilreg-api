@@ -2,11 +2,11 @@
 
 ## 1. Purpose
 
-`PasienBalance` maintains a **patient-level cumulative outstanding balance** across all registrations, partitioned by **JASA** and **OBAT** to align with TataRekening modul groups.
+`PasienBalance` maintains the **current outstanding receivables** belonging to one patient — one entry per registration with unsettled JASA/OBAT amounts.
 
-Registration-scoped `TataRekening` remains the financial authority per visit. `PasienBalance` is the **cross-registration ledger** that TataRekening use cases will orchestrate later.
+It does **not** own carry-over decisions, payment allocation, registration workflow, or settlement. Those responsibilities belong to **TataRekening**.
 
-This slice is **foundational only** — no HTTP API, no application commands, no TataRekening integration yet.
+This slice is **foundational only** — no HTTP API, no TataRekening integration yet.
 
 ---
 
@@ -14,7 +14,7 @@ This slice is **foundational only** — no HTTP API, no application commands, no
 
 ```text
 PasienBalanceModel (root)
-└── PasienBalanceHistoryType (append-only child)
+└── OutstandingEntryType (child — one unsettled receivable per RegId)
 ```
 
 ### Root state
@@ -22,51 +22,42 @@ PasienBalanceModel (root)
 | Field | Meaning |
 |-------|---------|
 | `PasienId` | Aggregate identity (`IPasienKey`) |
-| `CurrentJasaBalance` | Outstanding JASA (persisted) |
-| `CurrentObatBalance` | Outstanding OBAT (persisted) |
-| `CurrentBalance` | **Computed:** `CurrentJasaBalance + CurrentObatBalance` |
-| `LastHistoryId` | Latest history entry id |
-| `UpdatedAt` | Last mutation timestamp |
 | `Version` | Optimistic concurrency token |
+| `OutstandingEntries` | Current unsettled receivables |
 
-### History entry
+### Computed projections (not persisted)
+
+| Property | Formula |
+|----------|---------|
+| `TotalOutstandingJasa` | Σ `OutstandingJasa` |
+| `TotalOutstandingObat` | Σ `OutstandingObat` |
+| `TotalOutstanding` | Σ `OutstandingTotal` |
+
+### Outstanding entry
 
 | Field | Meaning |
 |-------|---------|
-| `HistoryId` | App-generated id (`PBH` prefix) |
-| `PasienId` | Patient reference |
-| `RegId` | Optional registration reference (empty when N/A) |
-| `TrsDate` | Transaction date |
-| `OpeningJasaBalance`, `OpeningObatBalance` | Partition opening |
-| `ChargeJasa`, `ChargeObat` | Increase per modul |
-| `PaymentJasa`, `PaymentObat` | Decrease per modul |
-| `ClosingJasaBalance`, `ClosingObatBalance` | Partition closing (persisted) |
-| `ClosingBalance` | **Computed:** `ClosingJasaBalance + ClosingObatBalance` |
-| `Remarks` | Free text |
+| `EntryId` | App-generated id (`PBO` prefix) |
+| `PasienId` | Patient reference (must match root) |
+| `RegId` | **Required** registration reference — unique within aggregate |
+| `OutstandingJasa` | Unsettled JASA amount |
+| `OutstandingObat` | Unsettled OBAT amount |
+| `OutstandingTotal` | **Computed:** `OutstandingJasa + OutstandingObat` |
+| `LastTransactionDate` | Last financial activity date for this receivable |
+| `SourceReference` | Traceability (e.g. legacy `fs_kd_piutang`) |
 | `CreatedAt`, `CreatedBy` | Immutable audit |
 
 ---
 
 ## 3. Invariants
 
-```text
-CurrentJasaBalance == LatestHistory.ClosingJasaBalance   (or 0 when no history)
-CurrentObatBalance == LatestHistory.ClosingObatBalance   (or 0 when no history)
-CurrentBalance     == CurrentJasaBalance + CurrentObatBalance
+- Every outstanding entry belongs to exactly one patient (`PasienId`).
+- Every entry references exactly one registration (`RegId` — required).
+- At most one outstanding entry per `RegId` within a patient's aggregate.
+- Outstanding partition values cannot be negative.
+- `TotalOutstanding` always equals the sum of entry totals.
 
-ClosingJasaBalance = OpeningJasaBalance + ChargeJasa - PaymentJasa
-ClosingObatBalance = OpeningObatBalance + ChargeObat - PaymentObat
-ClosingBalance     = ClosingJasaBalance + ClosingObatBalance
-```
-
-Rules:
-
-- Every balance modification creates **exactly one** history entry.
-- History is **append-only** — no update, no delete.
-- No partition closing may go negative.
-- `ApplyCharge` / `ApplyPayment` require at least one of JASA or OBAT amount > 0.
-- Payment is validated **per partition** (JASA payment cannot exceed JASA balance, same for OBAT).
-- `PasienBalance` must **not** reference other billing aggregates (`TataRekening`, `TrsBill`, etc.).
+`PasienBalance` must **not** reference other billing aggregates (`TataRekening`, `TrsBill`, etc.).
 
 ---
 
@@ -74,20 +65,13 @@ Rules:
 
 | Method | Effect |
 |--------|--------|
-| `Create(pasienId)` | Zero both partitions, no history |
-| `ApplyCharge(jasaAmount, obatAmount, regId, trsDate, remarks, createdBy)` | Increases partition balances |
-| `ApplyPayment(jasaAmount, obatAmount, regId, trsDate, remarks, createdBy)` | Decreases partition balances; rejects over-payment per modul |
+| `Create(pasienId)` | Empty aggregate, zero totals |
+| `AddOutstanding(regId, jasa, obat, lastTransactionDate, sourceReference, createdBy)` | Add new receivable; rejects duplicate `RegId` |
+| `UpdateOutstanding(regId, jasa, obat, lastTransactionDate, sourceReference)` | Update existing entry by `RegId` |
+| `RemoveOutstanding(regId)` | Remove entry by `RegId` |
+| `ReplaceOutstandingEntries(entries, createdBy)` | Full collection replace (bootstrap); enforces unique `RegId` |
 
-`AdjustBalance` has been **removed**. Manual corrections use explicit JASA/OBAT charge or payment amounts.
-
-`AppendHistory` is private — all mutations flow through the public methods above.
-
-### Example
-
-```text
-RG-007: charge jasa 300k + obat 200k, pay jasa 200k + obat 100k → jasa 100k, obat 100k, total 200k
-RG-008: charge jasa 150k + obat 100k, pay jasa 100k + obat 150k → jasa 150k, obat 50k, total 200k
-```
+Mutation history concepts (`OpeningBalance`, `ClosingBalance`, `ChargeAmount`, `PaymentAmount`, `MutationType`) are **not** part of this aggregate.
 
 ---
 
@@ -97,17 +81,17 @@ RG-008: charge jasa 150k + obat 100k, pay jasa 100k + obat 150k → jasa 150k, o
 
 | Table | Role |
 |-------|------|
-| `BILRG_TataRekPasienBalance` | Aggregate root state (`CurrentJasaBalance`, `CurrentObatBalance`) |
-| `BILRG_TataRekPasienBalanceHistory` | Append-only ledger with partition columns |
+| `BILRG_TataRekPasienBalance` | Aggregate root (`PasienId`, `Version`, audit columns) |
+| `BILRG_TataRekPasienBalanceOutstanding` | Current outstanding entries |
 
 Scripts: `Bilreg.SqlDb/PaymentContext/PasienBalanceFeature/`
 
-Migration from initial schema:
+Migration path:
 
-- `BILRG_TataRekPasienBalance_M1_JasaObatPartition_Alter.sql`
-- `BILRG_TataRekPasienBalanceHistory_M1_JasaObatPartition_Alter.sql`
+- `BILRG_TataRekPasienBalance_M1_JasaObatPartition_Alter.sql` (legacy — superseded)
+- `BILRG_TataRekPasienBalance_M2_OutstandingEntry_Redesign_Alter.sql`
 
-`CurrentBalance` and scalar history totals are **not persisted** — only partition columns are stored.
+Partition totals and `OutstandingTotal` are **not persisted** — only partition columns per entry are stored.
 
 ### Concurrency
 
@@ -119,10 +103,13 @@ UPDATE ... WHERE PasienId = @PasienId AND Version = @ExpectedVersion
 
 Stale writes throw `InvalidOperationException`.
 
-### History persistence
+### Entry persistence
 
-- **Insert only** for new pending history rows on `SaveChanges`.
-- No DELETE or UPDATE on history table.
+On `SaveChanges`:
+
+1. Insert or update header.
+2. Delete all outstanding rows for `PasienId`.
+3. Bulk insert current entry collection.
 
 ---
 
@@ -134,53 +121,47 @@ Stale writes throw `InvalidOperationException`.
 |-----------|--------|
 | Find by patient | `LoadEntity(IPasienKey)` |
 | Save | `SaveChanges(PasienBalanceModel)` |
-| List history | `ListHistory(IPasienKey)` |
 
 Implementation: `PasienBalanceRepo` in Infrastructure. Auto-registered via Scrutor.
 
-Repository remains **persistence only** — no reconstruction logic.
+Repository is **persistence only** — no bootstrap logic.
 
 ---
 
-## 7. Reconstruction Strategy (future)
+## 7. Legacy Bootstrap
 
-During legacy migration, authoritative financial data remains in the legacy system. `PasienBalance` must be **fully reconstructable**.
+During migration, authoritative outstanding data remains in legacy `t_bp_piutang_hdr`. Bootstrap imports one `OutstandingEntry` per unsettled legacy receivable.
 
-### Contract (defined, not implemented)
+### Legacy reader
 
-`IPasienBalanceRebuilder` in Application layer:
+`IPasienBalanceLegacyReader` → `LegacyOutstandingReceivableReader`
 
-| Method | Purpose |
-|--------|---------|
-| `RebuildPatient(IPasienKey)` | Rebuild one patient from legacy source |
-| `RebuildAll()` | Batch rebuild all patients |
-| `ValidatePatient(IPasienKey)` | Compare stored vs legacy partition balances |
+Returns `LegacyOutstandingReceivable` rows using the same filters as `RegHutangDal`:
 
-Result type: `PasienBalanceValidationResult` (legacy vs stored JASA/OBAT comparison).
+- `fn_sisa > 0`
+- `fd_tgl_void = '3000-01-01'`
+- `fs_kd_iii = 'JAMINAN000'`
+- `fs_kd_mr = @PasienId`
 
-### Future flow
+### Bootstrap service
+
+`PasienBalanceBootstrapService.Bootstrap(IPasienKey)`:
+
+1. Read legacy outstanding receivables.
+2. `Create(pasienId)` then `ReplaceOutstandingEntries(...)`.
+3. Skip rows with zero JASA + OBAT.
+
+### Loader (transparent bootstrap)
+
+`IPasienBalanceLoader` → `PasienBalanceLoader`
 
 ```text
-Delete existing PasienBalance (+ history)
-    ↓
-Read authoritative legacy financial data
-    ↓
-Reconstruct aggregate (Hydrate / replay domain operations)
-    ↓
-Rebuild history
-    ↓
-Recalculate partition balances
-    ↓
-SaveChanges
+repo.LoadEntity(key)
+  → Some: return aggregate
+  → None: bootstrap from legacy → repo.SaveChanges → return aggregate
 ```
 
-Notes:
-
-- Rebuilder orchestrates **outside** the repository.
-- Future implementation will require **delete-capable DAL methods** (not yet added).
-- `PasienBalanceModel.Hydrate` supports full in-memory regeneration with complete history list.
-
-No DI registration or implementation class exists yet.
+Bootstrap is transparent to callers.
 
 ---
 
@@ -189,23 +170,29 @@ No DI registration or implementation class exists yet.
 ```text
 Bilreg.Domain/PaymentContext/PasienBalanceFeature/
   PasienBalanceModel.cs
-  PasienBalanceHistoryType.cs
+  OutstandingEntryType.cs
 
 Bilreg.Application/PaymentContext/PasienBalanceFeature/
   IPasienBalanceRepo.cs
-  IPasienBalanceRebuilder.cs
-  PasienBalanceValidationResult.cs
+  IPasienBalanceLegacyReader.cs
+  LegacyOutstandingReceivable.cs
+  PasienBalanceBootstrapService.cs
+  IPasienBalanceLoader.cs
+  PasienBalanceLoader.cs
 
 Bilreg.Infrastructure/PaymentContext/PasienBalanceFeature/
   BilrgTataRekPasienBalanceDto.cs
   BilrgTataRekPasienBalanceDal.cs
-  BilrgTataRekPasienBalanceHistoryDto.cs
-  BilrgTataRekPasienBalanceHistoryDal.cs
+  BilrgTataRekPasienBalanceOutstandingDto.cs
+  BilrgTataRekPasienBalanceOutstandingDal.cs
+  LegacyOutstandingReceivableReader.cs
   PasienBalanceRepo.cs
 
 Bilreg.Test/PaymentContext/PasienBalanceFeature/
   PasienBalanceDomainTest.cs
   PasienBalanceRepoTest.cs
+  PasienBalanceBootstrapTest.cs
+  PasienBalanceLoaderTest.cs
 ```
 
 ---
@@ -214,21 +201,26 @@ Bilreg.Test/PaymentContext/PasienBalanceFeature/
 
 - REST API / controllers
 - MediatR handlers / application use cases
-- TataRekening orchestration
-- Rebuilder implementation
-- Legacy queries, batch workers, scheduled jobs
+- TataRekening orchestration and carry-over workflow
 - Payment allocation, accounting, cashier workflow
 - Domain events
-- Data migration from legacy tables
 
 ---
 
-## 10. Future Integration
+## 10. Future TataRekening Integration
 
-TataRekening use cases will:
+```text
+Open Registration
+    ↓
+Load PasienBalance (via IPasienBalanceLoader)
+    ↓
+List OutstandingEntries
+    ↓
+User selects entries to carry over
+    ↓
+TataRekening performs carry-over
+    ↓
+Selected entries updated or removed via domain operations
+```
 
-1. Load or create `PasienBalance` by `PasienId`.
-2. Call `ApplyCharge(jasa, obat, ...)` / `ApplyPayment(jasa, obat, ...)` when registration-level financial events affect patient outstanding.
-3. Persist via `IPasienBalanceRepo.SaveChanges`.
-
-Partition structure matches TataRekening JASA/OBAT responsibility — no further structural change expected.
+TataRekening alone decides which outstanding receivables become part of the new registration. `PasienBalance` remains agnostic about **why** an entry is consumed.
