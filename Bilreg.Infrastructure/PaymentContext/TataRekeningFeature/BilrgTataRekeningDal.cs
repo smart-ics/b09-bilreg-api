@@ -37,7 +37,7 @@ public class BilrgTataRekeningDal : IBilrgTataRekeningDal
         dp.AddParam("@RegId", model.RegId, SqlDbType.VarChar);
         dp.AddParam("@Status", model.Status, SqlDbType.Int);
         dp.AddParam("@PetugasVerif", model.PetugasVerif, SqlDbType.VarChar);
-        dp.AddParam("@DischargeDate", model.DischargeDate, SqlDbType.DateTime);
+        dp.AddParam("@DischargeDate", model.FinalizationDate, SqlDbType.DateTime);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -59,7 +59,7 @@ public class BilrgTataRekeningDal : IBilrgTataRekeningDal
         dp.AddParam("@RegId", model.RegId, SqlDbType.VarChar);
         dp.AddParam("@Status", model.Status, SqlDbType.Int);
         dp.AddParam("@PetugasVerif", model.PetugasVerif, SqlDbType.VarChar);
-        dp.AddParam("@DischargeDate", model.DischargeDate, SqlDbType.DateTime);
+        dp.AddParam("@DischargeDate", model.FinalizationDate, SqlDbType.DateTime);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -84,7 +84,7 @@ public class BilrgTataRekeningDal : IBilrgTataRekeningDal
     {
         const string sql = """
             SELECT
-                RegId, Status, PetugasVerif, DischargeDate
+                RegId, Status, PetugasVerif, DischargeDate AS FinalizationDate
             FROM
                 BILRG_TataRekening
             WHERE

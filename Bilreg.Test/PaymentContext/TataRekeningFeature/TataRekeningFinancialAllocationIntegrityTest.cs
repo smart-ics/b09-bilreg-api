@@ -23,28 +23,28 @@ public class TataRekeningFinancialAllocationIntegrityTest
     private static readonly PaymentType BpjsJasa = new("BPJS-JASA", "BPJS Jasa", true);
     private static readonly PaymentType Kas = PaymentType.ByKas;
 
-    private static readonly DateTime DischargeDate = new(2026, 6, 16, 10, 0, 0);
+    private static readonly DateTime FinalizationDate = new(2026, 6, 16, 10, 0, 0);
     private static readonly DateTime PaymentDate = new(2026, 6, 16, 11, 0, 0);
 
     #region Test Group 1 — Single Provider → Multiple Bills
 
     [Fact]
-    public void TG01_GivenSingleProviderAndMultipleBills_WhenDischarge_ThenProviderAndBillTotalsConserved()
+    public void TG01_GivenSingleProviderAndMultipleBills_WhenFinalizeFinancialResponsibility_ThenProviderAndBillTotalsConserved()
     {
         var billA = CreateBillWithComponents("BILL-A", BillModulGroup.Jasa, ("KOMP-A", "Bill-A", 600m));
         var billB = CreateBillWithComponents("BILL-B", BillModulGroup.Jasa, ("KOMP-B", "Bill-B", 400m));
         var tataRekening = HydrateOpened(billA, billB);
         tataRekening.Close();
 
-        tataRekening.Discharge(
+        tataRekening.FinalizeFinancialResponsibility(
             [BuildPayment(Bpjs, 1_000m, 0m)],
             "kasir-01",
-            DischargeDate);
+            FinalizationDate);
 
-        SumDischargeByProvider(billA, Bpjs).Should().Be(600m);
-        SumDischargeByProvider(billB, Bpjs).Should().Be(400m);
+        SumFinalizationByProvider(billA, Bpjs).Should().Be(600m);
+        SumFinalizationByProvider(billB, Bpjs).Should().Be(400m);
 
-        FinancialConservationAudit.AssertDischargeConservation(tataRekening, 1_000m);
+        FinancialConservationAudit.AssertFinalizationConservation(tataRekening, 1_000m);
     }
 
     #endregion
@@ -52,25 +52,25 @@ public class TataRekeningFinancialAllocationIntegrityTest
     #region Test Group 2 — Multiple Providers → Multiple Bills
 
     [Fact]
-    public void TG02_GivenMultipleProvidersAndMultipleBills_WhenDischarge_ThenProviderAndBillTotalsConserved()
+    public void TG02_GivenMultipleProvidersAndMultipleBills_WhenFinalizeFinancialResponsibility_ThenProviderAndBillTotalsConserved()
     {
         var billA = CreateBillWithComponents("BILL-A", BillModulGroup.Jasa, ("KOMP-A", "Bill-A", 600m));
         var billB = CreateBillWithComponents("BILL-B", BillModulGroup.Jasa, ("KOMP-B", "Bill-B", 400m));
         var tataRekening = HydrateOpened(billA, billB);
         tataRekening.Close();
 
-        tataRekening.Discharge(
+        tataRekening.FinalizeFinancialResponsibility(
             [
                 BuildPayment(Bpjs, 700m, 0m),
                 BuildPayment(Kas, 300m, 0m)
             ],
             "kasir-01",
-            DischargeDate);
+            FinalizationDate);
 
         FinancialConservationAudit.ProviderTotal(tataRekening).Should().Be(1_000m);
         FinancialConservationAudit.BillTotal(tataRekening).Should().Be(1_000m);
-        FinancialConservationAudit.DischargeComponentTotal(tataRekening).Should().Be(1_000m);
-        FinancialConservationAudit.AssertDischargeConservation(tataRekening, 1_000m);
+        FinancialConservationAudit.FinalizationComponentTotal(tataRekening).Should().Be(1_000m);
+        FinancialConservationAudit.AssertFinalizationConservation(tataRekening, 1_000m);
     }
 
     #endregion
@@ -78,7 +78,7 @@ public class TataRekeningFinancialAllocationIntegrityTest
     #region Test Group 3 — Bill → Component Proportional Split
 
     [Fact]
-    public void TG03_GivenBillWithComponents_WhenSingleProviderDischarge_ThenComponentTotalsMatchBill()
+    public void TG03_GivenBillWithComponents_WhenSingleProviderFinalization_ThenComponentTotalsMatchBill()
     {
         var bill = CreateBillWithComponents(
             "BILL-A",
@@ -89,17 +89,17 @@ public class TataRekeningFinancialAllocationIntegrityTest
         var tataRekening = HydrateOpened(bill);
         tataRekening.Close();
 
-        tataRekening.Discharge(
+        tataRekening.FinalizeFinancialResponsibility(
             [BuildPayment(Bpjs, 1_000m, 0m)],
             "kasir-01",
-            DischargeDate);
+            FinalizationDate);
 
-        SumDischargeByComponent(bill, "DOCTOR", Bpjs).Should().Be(500m);
-        SumDischargeByComponent(bill, "HOSPITAL", Bpjs).Should().Be(300m);
-        SumDischargeByComponent(bill, "BHP", Bpjs).Should().Be(200m);
+        SumFinalizationByComponent(bill, "DOCTOR", Bpjs).Should().Be(500m);
+        SumFinalizationByComponent(bill, "HOSPITAL", Bpjs).Should().Be(300m);
+        SumFinalizationByComponent(bill, "BHP", Bpjs).Should().Be(200m);
 
-        FinancialConservationAudit.DischargeComponentTotal(tataRekening).Should().Be(1_000m);
-        FinancialConservationAudit.AssertDischargeConservation(tataRekening, 1_000m);
+        FinancialConservationAudit.FinalizationComponentTotal(tataRekening).Should().Be(1_000m);
+        FinancialConservationAudit.AssertFinalizationConservation(tataRekening, 1_000m);
     }
 
     #endregion
@@ -107,7 +107,7 @@ public class TataRekeningFinancialAllocationIntegrityTest
     #region Test Group 4 — Provider → Bill → Component Full Chain
 
     [Fact]
-    public void TG04_GivenFullChain_WhenDischarge_ThenProportionalSplitAcrossProvidersAndComponents()
+    public void TG04_GivenFullChain_WhenFinalizeFinancialResponsibility_ThenProportionalSplitAcrossProvidersAndComponents()
     {
         var bill = CreateBillWithComponents(
             "BILL-A",
@@ -118,25 +118,25 @@ public class TataRekeningFinancialAllocationIntegrityTest
         var tataRekening = HydrateOpened(bill);
         tataRekening.Close();
 
-        tataRekening.Discharge(
+        tataRekening.FinalizeFinancialResponsibility(
             [
                 BuildPayment(Bpjs, 700m, 0m),
                 BuildPayment(Kas, 300m, 0m)
             ],
             "kasir-01",
-            DischargeDate);
+            FinalizationDate);
 
-        SumDischargeByComponent(bill, "DOCTOR", Bpjs).Should().Be(350m);
-        SumDischargeByComponent(bill, "DOCTOR", Kas).Should().Be(150m);
-        SumDischargeByComponent(bill, "HOSPITAL", Bpjs).Should().Be(210m);
-        SumDischargeByComponent(bill, "HOSPITAL", Kas).Should().Be(90m);
-        SumDischargeByComponent(bill, "BHP", Bpjs).Should().Be(140m);
-        SumDischargeByComponent(bill, "BHP", Kas).Should().Be(60m);
+        SumFinalizationByComponent(bill, "DOCTOR", Bpjs).Should().Be(350m);
+        SumFinalizationByComponent(bill, "DOCTOR", Kas).Should().Be(150m);
+        SumFinalizationByComponent(bill, "HOSPITAL", Bpjs).Should().Be(210m);
+        SumFinalizationByComponent(bill, "HOSPITAL", Kas).Should().Be(90m);
+        SumFinalizationByComponent(bill, "BHP", Bpjs).Should().Be(140m);
+        SumFinalizationByComponent(bill, "BHP", Kas).Should().Be(60m);
 
-        SumDischargeByProvider(bill, Bpjs).Should().Be(700m);
-        SumDischargeByProvider(bill, Kas).Should().Be(300m);
+        SumFinalizationByProvider(bill, Bpjs).Should().Be(700m);
+        SumFinalizationByProvider(bill, Kas).Should().Be(300m);
 
-        FinancialConservationAudit.AssertDischargeConservation(tataRekening, 1_000m);
+        FinancialConservationAudit.AssertFinalizationConservation(tataRekening, 1_000m);
     }
 
     #endregion
@@ -144,7 +144,7 @@ public class TataRekeningFinancialAllocationIntegrityTest
     #region Test Group 5 — Multiple Bills Multiple Components
 
     [Fact]
-    public void TG05_GivenMultipleBillsWithComponents_WhenDischarge_ThenAllLevelsConserved()
+    public void TG05_GivenMultipleBillsWithComponents_WhenFinalizeFinancialResponsibility_ThenAllLevelsConserved()
     {
         var billA = CreateBillWithComponents(
             "BILL-A",
@@ -161,26 +161,26 @@ public class TataRekeningFinancialAllocationIntegrityTest
         var tataRekening = HydrateOpened(billA, billB);
         tataRekening.Close();
 
-        tataRekening.Discharge(
+        tataRekening.FinalizeFinancialResponsibility(
             [
                 BuildPayment(Bpjs, 700m, 0m),
                 BuildPayment(Kas, 300m, 0m)
             ],
             "kasir-01",
-            DischargeDate);
+            FinalizationDate);
 
         FinancialConservationAudit.ProviderTotal(tataRekening).Should().Be(1_000m);
         FinancialConservationAudit.BillTotal(tataRekening).Should().Be(1_000m);
-        FinancialConservationAudit.DischargeComponentTotal(tataRekening).Should().Be(1_000m);
-        FinancialConservationAudit.AssertDischargeConservation(tataRekening, 1_000m);
+        FinancialConservationAudit.FinalizationComponentTotal(tataRekening).Should().Be(1_000m);
+        FinancialConservationAudit.AssertFinalizationConservation(tataRekening, 1_000m);
     }
 
     #endregion
 
-    #region Test Group 6 — Payment Allocation Uses Discharge Allocation
+    #region Test Group 6 — Payment Allocation Uses Finalization Allocation
 
     [Fact]
-    public void TG06_GivenDischarge_WhenPay_ThenPaymentComponentsDeriveFromDischargeNotTransaction()
+    public void TG06_GivenFinalization_WhenPay_ThenPaymentComponentsDeriveFromFinalizationNotTransaction()
     {
         var bill = CreateBillWithComponents(
             "BILL-A",
@@ -190,20 +190,20 @@ public class TataRekeningFinancialAllocationIntegrityTest
             ("BHP", "BHP", 200m));
         var tataRekening = HydrateOpened(bill);
         tataRekening.Close();
-        tataRekening.Discharge(
+        tataRekening.FinalizeFinancialResponsibility(
             [
                 BuildPayment(Bpjs, 700m, 0m),
                 BuildPayment(Kas, 300m, 0m)
             ],
             "kasir-01",
-            DischargeDate);
+            FinalizationDate);
 
         tataRekening.Pay(
             [BuildPayment(Kas, 300m, 0m)],
             "PAY-001",
             PaymentDate);
 
-        var dischargeKomponenKeys = bill.ListDischarge
+        var finalizationKomponenKeys = bill.ListFinalization
             .Select(d => (d.Komponen.BillKompId, d.JenisBayar))
             .ToHashSet();
         var transactionKomponenIds = bill.ListTransaction
@@ -212,28 +212,28 @@ public class TataRekeningFinancialAllocationIntegrityTest
 
         foreach (var payment in bill.ListPayment)
         {
-            dischargeKomponenKeys.Should().Contain(
+            finalizationKomponenKeys.Should().Contain(
                 (payment.Komponen.BillKompId, payment.JenisBayar),
-                "payment component must reference a discharge component, not be independently derived from transaction");
+                "payment component must reference a finalization component, not be independently derived from transaction");
 
-            var matchingDischarge = bill.ListDischarge.Single(d =>
+            var matchingFinalization = bill.ListFinalization.Single(d =>
                 d.Komponen.BillKompId == payment.Komponen.BillKompId &&
                 d.JenisBayar == payment.JenisBayar);
 
-            payment.Komponen.BillKompId.Should().Be(matchingDischarge.Komponen.BillKompId);
-            payment.JenisBayar.Should().Be(matchingDischarge.JenisBayar);
+            payment.Komponen.BillKompId.Should().Be(matchingFinalization.Komponen.BillKompId);
+            payment.JenisBayar.Should().Be(matchingFinalization.JenisBayar);
         }
 
-        // Payment proportions follow discharge proportions for the paid provider, not raw transaction weights.
-        var kasDischarges = bill.ListDischarge.Where(d => MatchesProvider(d.JenisBayar, Kas)).ToList();
+        // Payment proportions follow finalization proportions for the paid provider, not raw transaction weights.
+        var kasFinalizations = bill.ListFinalization.Where(d => MatchesProvider(d.JenisBayar, Kas)).ToList();
         var kasPayments = bill.ListPayment.Where(p => MatchesProvider(p.JenisBayar, Kas)).ToList();
         kasPayments.Sum(p => p.Nilai).Should().Be(300m);
-        foreach (var discharge in kasDischarges)
+        foreach (var finalization in kasFinalizations)
         {
             var paid = kasPayments
-                .Where(p => p.Komponen.BillKompId == discharge.Komponen.BillKompId)
+                .Where(p => p.Komponen.BillKompId == finalization.Komponen.BillKompId)
                 .Sum(p => p.Nilai);
-            paid.Should().Be(discharge.Nilai);
+            paid.Should().Be(finalization.Nilai);
         }
 
         transactionKomponenIds.Should().NotBeEmpty();
@@ -255,10 +255,10 @@ public class TataRekeningFinancialAllocationIntegrityTest
             ("BHP", "BHP", 200m));
         var tataRekening = HydrateOpened(bill);
         tataRekening.Close();
-        tataRekening.Discharge(
+        tataRekening.FinalizeFinancialResponsibility(
             [BuildPayment(Kas, 1_000m, 0m)],
             "kasir-01",
-            DischargeDate);
+            FinalizationDate);
 
         tataRekening.Pay([BuildPayment(Kas, 300m, 0m)], "PAY-001", PaymentDate);
         tataRekening.Pay([BuildPayment(Kas, 500m, 0m)], "PAY-002", PaymentDate.AddHours(1));
@@ -276,7 +276,7 @@ public class TataRekeningFinancialAllocationIntegrityTest
     #region Test Group 8 — Rounding Stress Test
 
     [Fact]
-    public void TG08_GivenRoundingComponents_WhenDischarge_ThenNoCentLostOrDuplicated()
+    public void TG08_GivenRoundingComponents_WhenFinalizeFinancialResponsibility_ThenNoCentLostOrDuplicated()
     {
         var bill = CreateBillWithComponents(
             "BILL-A",
@@ -287,14 +287,14 @@ public class TataRekeningFinancialAllocationIntegrityTest
         var tataRekening = HydrateOpened(bill);
         tataRekening.Close();
 
-        tataRekening.Discharge(
+        tataRekening.FinalizeFinancialResponsibility(
             [BuildPayment(Bpjs, 100m, 0m)],
             "kasir-01",
-            DischargeDate);
+            FinalizationDate);
 
-        FinancialConservationAudit.DischargeComponentTotal(tataRekening).Should().Be(100m);
-        bill.ListDischarge.Sum(d => d.Nilai).Should().Be(100m);
-        FinancialConservationAudit.AssertDischargeConservation(tataRekening, 100m);
+        FinancialConservationAudit.FinalizationComponentTotal(tataRekening).Should().Be(100m);
+        bill.ListFinalization.Sum(d => d.Nilai).Should().Be(100m);
+        FinancialConservationAudit.AssertFinalizationConservation(tataRekening, 100m);
     }
 
     #endregion
@@ -302,7 +302,7 @@ public class TataRekeningFinancialAllocationIntegrityTest
     #region Test Group 9 — Very Small Amount Stress Test
 
     [Fact]
-    public void TG09_GivenVerySmallAmounts_WhenDischarge_ThenFinancialConservationHolds()
+    public void TG09_GivenVerySmallAmounts_WhenFinalizeFinancialResponsibility_ThenFinancialConservationHolds()
     {
         var bill = CreateBillWithComponents(
             "BILL-A",
@@ -313,13 +313,13 @@ public class TataRekeningFinancialAllocationIntegrityTest
         var tataRekening = HydrateOpened(bill);
         tataRekening.Close();
 
-        tataRekening.Discharge(
+        tataRekening.FinalizeFinancialResponsibility(
             [BuildPayment(Bpjs, 0.03m, 0m)],
             "kasir-01",
-            DischargeDate);
+            FinalizationDate);
 
-        FinancialConservationAudit.DischargeComponentTotal(tataRekening).Should().Be(0.03m);
-        FinancialConservationAudit.AssertDischargeConservation(tataRekening, 0.03m);
+        FinancialConservationAudit.FinalizationComponentTotal(tataRekening).Should().Be(0.03m);
+        FinancialConservationAudit.AssertFinalizationConservation(tataRekening, 0.03m);
     }
 
     #endregion
@@ -327,79 +327,79 @@ public class TataRekeningFinancialAllocationIntegrityTest
     #region Test Group 10 — JASA / OBAT Partition Integrity
 
     [Fact]
-    public void TG10_GivenJasaOnlyProvider_WhenDischarge_ThenAllocationNeverAppearsOnObatBills()
+    public void TG10_GivenJasaOnlyProvider_WhenFinalizeFinancialResponsibility_ThenAllocationNeverAppearsOnObatBills()
     {
         var jasaBill = CreateBillWithComponents("BILL-JASA", BillModulGroup.Jasa, ("KOMP-J", "Jasa", 700m));
         var obatBill = CreateBillWithComponents("BILL-OBAT", BillModulGroup.Obat, ("KOMP-O", "Obat", 300m));
         var tataRekening = HydrateOpened(jasaBill, obatBill);
         tataRekening.Close();
 
-        tataRekening.Discharge(
+        tataRekening.FinalizeFinancialResponsibility(
             [
                 BuildPayment(BpjsJasa, 700m, 0m),
                 BuildPayment(Kas, 0m, 300m)
             ],
             "kasir-01",
-            DischargeDate);
+            FinalizationDate);
 
-        SumDischargeByProvider(jasaBill, BpjsJasa).Should().Be(700m);
-        jasaBill.ListDischarge.Should().NotBeEmpty();
-        obatBill.ListDischarge.Where(d => MatchesProvider(d.JenisBayar, BpjsJasa)).Should().BeEmpty();
-        SumDischargeByProvider(obatBill, Kas).Should().Be(300m);
+        SumFinalizationByProvider(jasaBill, BpjsJasa).Should().Be(700m);
+        jasaBill.ListFinalization.Should().NotBeEmpty();
+        obatBill.ListFinalization.Where(d => MatchesProvider(d.JenisBayar, BpjsJasa)).Should().BeEmpty();
+        SumFinalizationByProvider(obatBill, Kas).Should().Be(300m);
 
-        FinancialConservationAudit.AssertDischargeConservation(tataRekening, 1_000m);
+        FinancialConservationAudit.AssertFinalizationConservation(tataRekening, 1_000m);
     }
 
     #endregion
 
-    #region Test Group 11 — Discharge Invariant
+    #region Test Group 11 — Finalization Invariant
 
     [Fact]
-    public void TG11_GivenUnderAllocation_WhenDischarge_ThenShouldReject()
+    public void TG11_GivenUnderAllocation_WhenFinalizeFinancialResponsibility_ThenShouldReject()
     {
         var bill = CreateBillWithComponents("BILL-A", BillModulGroup.Jasa, ("KOMP-A", "Bill-A", 1_000m));
         var tataRekening = HydrateOpened(bill);
         tataRekening.Close();
 
-        Action act = () => tataRekening.Discharge(
+        Action act = () => tataRekening.FinalizeFinancialResponsibility(
             [BuildPayment(Bpjs, 999m, 0m)],
             "kasir-01",
-            DischargeDate);
+            FinalizationDate);
 
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*tidak sama*");
     }
 
     [Fact]
-    public void TG11_GivenOverAllocation_WhenDischarge_ThenShouldReject()
+    public void TG11_GivenOverAllocation_WhenFinalizeFinancialResponsibility_ThenShouldReject()
     {
         var bill = CreateBillWithComponents("BILL-A", BillModulGroup.Jasa, ("KOMP-A", "Bill-A", 1_000m));
         var tataRekening = HydrateOpened(bill);
         tataRekening.Close();
 
-        Action act = () => tataRekening.Discharge(
+        Action act = () => tataRekening.FinalizeFinancialResponsibility(
             [BuildPayment(Bpjs, 1_001m, 0m)],
             "kasir-01",
-            DischargeDate);
+            FinalizationDate);
 
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*tidak sama*");
     }
 
     [Fact]
-    public void TG11_GivenExactAllocation_WhenDischarge_ThenShouldAccept()
+    public void TG11_GivenExactAllocation_WhenFinalizeFinancialResponsibility_ThenShouldAccept()
     {
         var bill = CreateBillWithComponents("BILL-A", BillModulGroup.Jasa, ("KOMP-A", "Bill-A", 1_000m));
         var tataRekening = HydrateOpened(bill);
         tataRekening.Close();
 
-        tataRekening.Discharge(
+        tataRekening.FinalizeFinancialResponsibility(
             [BuildPayment(Bpjs, 1_000m, 0m)],
             "kasir-01",
-            DischargeDate);
+            FinalizationDate);
 
         tataRekening.Status.Should().Be(TataRekeningStatusEnum.Finalized);
-        FinancialConservationAudit.AssertDischargeConservation(tataRekening, 1_000m);
+        FinancialConservationAudit.AssertFinalizationConservation(tataRekening, 1_000m);
     }
 
     #endregion
@@ -412,12 +412,12 @@ public class TataRekeningFinancialAllocationIntegrityTest
         var bill = CreateBillWithComponents("BILL-A", BillModulGroup.Jasa, ("KOMP-A", "Bill-A", 1_000m));
         var tataRekening = HydrateOpened(bill);
         tataRekening.Close();
-        tataRekening.Discharge(
+        tataRekening.FinalizeFinancialResponsibility(
             [BuildPayment(Bpjs, 1_000m, 0m)],
             "kasir-01",
-            DischargeDate);
+            FinalizationDate);
 
-        Action act = () => FinancialConservationAudit.AssertDischargeConservation(tataRekening, 999m);
+        Action act = () => FinancialConservationAudit.AssertFinalizationConservation(tataRekening, 999m);
 
         act.Should().Throw<Exception>()
             .WithMessage("*Financial conservation violated*");
@@ -435,53 +435,53 @@ public class TataRekeningFinancialAllocationIntegrityTest
         public static decimal BillTotal(TataRekeningModel tataRekening) =>
             tataRekening.ListTrsBill.Sum(b => b.Nilai.Total);
 
-        public static decimal DischargeComponentTotal(TataRekeningModel tataRekening) =>
-            tataRekening.ListTrsBill.SelectMany(b => b.ListDischarge).Sum(d => d.Nilai);
+        public static decimal FinalizationComponentTotal(TataRekeningModel tataRekening) =>
+            tataRekening.ListTrsBill.SelectMany(b => b.ListFinalization).Sum(d => d.Nilai);
 
-        public static decimal DischargeBillTotal(TataRekeningModel tataRekening) =>
-            tataRekening.ListTrsBill.Sum(b => b.ListDischarge.Sum(d => d.Nilai));
+        public static decimal FinalizationBillTotal(TataRekeningModel tataRekening) =>
+            tataRekening.ListTrsBill.Sum(b => b.ListFinalization.Sum(d => d.Nilai));
 
         public static decimal PaymentComponentTotal(TataRekeningModel tataRekening) =>
             tataRekening.ListTrsBill.SelectMany(b => b.ListPayment).Sum(p => p.Nilai);
 
-        public static void AssertDischargeConservation(TataRekeningModel tataRekening, decimal expectedTotal)
+        public static void AssertFinalizationConservation(TataRekeningModel tataRekening, decimal expectedTotal)
         {
             var providerTotal = ProviderTotal(tataRekening);
             var billTotal = BillTotal(tataRekening);
-            var dischargeComponentTotal = DischargeComponentTotal(tataRekening);
-            var dischargeBillTotal = DischargeBillTotal(tataRekening);
+            var finalizationComponentTotal = FinalizationComponentTotal(tataRekening);
+            var finalizationBillTotal = FinalizationBillTotal(tataRekening);
 
             if (providerTotal != expectedTotal ||
                 billTotal != expectedTotal ||
-                dischargeComponentTotal != expectedTotal ||
-                dischargeBillTotal != expectedTotal ||
+                finalizationComponentTotal != expectedTotal ||
+                finalizationBillTotal != expectedTotal ||
                 providerTotal != billTotal ||
-                providerTotal != dischargeComponentTotal)
+                providerTotal != finalizationComponentTotal)
             {
                 throw new Exception(
-                    $"Financial conservation violated at discharge: " +
+                    $"Financial conservation violated at finalization: " +
                     $"expected={expectedTotal}, provider={providerTotal}, bill={billTotal}, " +
-                    $"dischargeComponent={dischargeComponentTotal}, dischargeBill={dischargeBillTotal}");
+                    $"finalizationComponent={finalizationComponentTotal}, finalizationBill={finalizationBillTotal}");
             }
 
             foreach (var bill in tataRekening.ListTrsBill)
             {
-                var billDischarged = bill.ListDischarge.Sum(d => d.Nilai);
-                if (billDischarged != bill.Nilai.Total)
+                var billFinalized = bill.ListFinalization.Sum(d => d.Nilai);
+                if (billFinalized != bill.Nilai.Total)
                     throw new Exception(
                         $"Financial conservation violated on bill '{bill.TrsBillingId}': " +
-                        $"discharged={billDischarged}, billTotal={bill.Nilai.Total}");
+                        $"finalized={billFinalized}, billTotal={bill.Nilai.Total}");
             }
         }
 
         public static void AssertPaymentConservation(TataRekeningModel tataRekening, decimal expectedPaymentTotal)
         {
             var paymentTotal = PaymentComponentTotal(tataRekening);
-            var dischargeTotal = DischargeComponentTotal(tataRekening);
+            var finalizationTotal = FinalizationComponentTotal(tataRekening);
 
-            if (paymentTotal > dischargeTotal)
+            if (paymentTotal > finalizationTotal)
                 throw new Exception(
-                    $"Financial conservation violated at payment: payment={paymentTotal} exceeds discharge={dischargeTotal}");
+                    $"Financial conservation violated at payment: payment={paymentTotal} exceeds finalization={finalizationTotal}");
 
             if (paymentTotal != expectedPaymentTotal)
                 throw new Exception(
@@ -490,16 +490,16 @@ public class TataRekeningFinancialAllocationIntegrityTest
 
         public static void AssertFullConservation(TataRekeningModel tataRekening, decimal expectedTotal)
         {
-            AssertDischargeConservation(tataRekening, expectedTotal);
+            AssertFinalizationConservation(tataRekening, expectedTotal);
 
             var paymentTotal = PaymentComponentTotal(tataRekening);
             if (paymentTotal != expectedTotal)
                 throw new Exception(
                     $"Financial conservation violated at full settlement: payment={paymentTotal}, expected={expectedTotal}");
 
-            if (paymentTotal != DischargeComponentTotal(tataRekening))
+            if (paymentTotal != FinalizationComponentTotal(tataRekening))
                 throw new Exception(
-                    "Financial conservation violated: payment components do not equal discharge components.");
+                    "Financial conservation violated: payment components do not equal finalization components.");
         }
     }
 
@@ -507,19 +507,19 @@ public class TataRekeningFinancialAllocationIntegrityTest
 
     #region Query Helpers
 
-    private static decimal SumDischargeByProvider(TrsBillType bill, PaymentType provider) =>
-        bill.ListDischarge
+    private static decimal SumFinalizationByProvider(TrsBillType bill, PaymentType provider) =>
+        bill.ListFinalization
             .Where(d => MatchesProvider(d.JenisBayar, provider))
             .Sum(d => d.Nilai);
 
-    private static decimal SumDischargeByComponent(TrsBillType bill, string kompId, PaymentType provider) =>
-        bill.ListDischarge
+    private static decimal SumFinalizationByComponent(TrsBillType bill, string kompId, PaymentType provider) =>
+        bill.ListFinalization
             .Where(d => d.Komponen.BillKompId == kompId && MatchesProvider(d.JenisBayar, provider))
             .Sum(d => d.Nilai);
 
     private static decimal Outstanding(TataRekeningModel tataRekening) =>
         tataRekening.ListTrsBill.Sum(b =>
-            b.ListDischarge.Sum(d => d.Nilai) - b.ListPayment.Sum(p => p.Nilai));
+            b.ListFinalization.Sum(d => d.Nilai) - b.ListPayment.Sum(p => p.Nilai));
 
     private static bool MatchesProvider(TrsBillJenisBayarType jenisBayar, PaymentType payment)
     {
@@ -537,7 +537,7 @@ public class TataRekeningFinancialAllocationIntegrityTest
     #region Bill Builders
 
     private static TataRekeningModel HydrateOpened(params TrsBillType[] listTrsBill) =>
-        new(REG_ID, TataRekeningStatusEnum.Opened, TataRekeningDischargeType.Default, [], listTrsBill);
+        new(REG_ID, TataRekeningStatusEnum.Opened, TataRekeningFinalizationType.Default, [], listTrsBill);
 
     private static TataRekeningPaymentType BuildPayment(PaymentType payment, decimal nilaiJasa, decimal nilaiObat) =>
         new(payment, nilaiJasa, nilaiObat, CoaType.Default);

@@ -41,7 +41,7 @@ public class TrsBillingRepoTest
     private static TrsBillType BuildBill(
         string billingId = BillingId,
         IEnumerable<TrsBill2TransEventType>? transactions = null,
-        IEnumerable<TrsBill2DischargeEventType>? discharges = null,
+        IEnumerable<TrsBill2FinalizationEventType>? finalizations = null,
         IEnumerable<TrsBill2PaymentEventType>? payments = null)
     {
         var trans = TrsBill2TransEventType.Create(
@@ -64,12 +64,12 @@ public class TrsBillingRepoTest
             new TrsBillNilaiType(50_000m, 0m, 0m, 0m),
             new TrsBillKetType("Ket", "Ket2", "REF-01", 1m, "MAIN-01"),
             transactions ?? [trans],
-            discharges ?? [],
+            finalizations ?? [],
             payments ?? []);
     }
 
     private static TrsBillingDto BuildHeaderDto(string billingId = BillingId) =>
-        TrsBillingDto.FromModel(BuildBill(billingId, transactions: [], discharges: [], payments: []));
+        TrsBillingDto.FromModel(BuildBill(billingId, transactions: [], finalizations: [], payments: []));
 
     private static TaTrsBilling2Dto BuildTransBill2Dto(string billingId = BillingId) =>
         TaTrsBilling2Dto.FromModelTrans(
@@ -125,10 +125,10 @@ public class TrsBillingRepoTest
     }
 
     [Fact]
-    public void GivenBillWithTransDischargeAndPayment_WhenSaveChanges_ThenInsertFourBill2Rows()
+    public void GivenBillWithTransFinalizationAndPayment_WhenSaveChanges_ThenInsertFourBill2Rows()
     {
         // Given
-        var discharge = new TrsBill2DischargeEventType(
+        var finalization = new TrsBill2FinalizationEventType(
             2,
             new TrsBill2KomponenType("DT-002", "Detil 2"),
             TrsBillJenisBayarType.Kas,
@@ -145,7 +145,7 @@ public class TrsBillingRepoTest
             10_000m,
             new DateTime(2026, 6, 19),
             new PpaReff("MED-03", "Dr 3"));
-        var model = BuildBill(discharges: [discharge], payments: [payment]);
+        var model = BuildBill(finalizations: [finalization], payments: [payment]);
 
         List<TaTrsBilling2Dto>? captured = null;
         _billingDalMock
@@ -187,7 +187,7 @@ public class TrsBillingRepoTest
                 bill.TrsBillingId.Should().Be(BillingId);
                 bill.Reg.RegId.Should().Be(RegId);
                 bill.ListTransaction.Should().HaveCount(1);
-                bill.ListDischarge.Should().BeEmpty();
+                bill.ListFinalization.Should().BeEmpty();
                 bill.ListPayment.Should().BeEmpty();
             },
             onNone: () => Assert.Fail("Expected Some but got None"));
@@ -226,7 +226,7 @@ public class TrsBillingRepoTest
             onSome: bill =>
             {
                 bill.ListTransaction.Should().BeEmpty();
-                bill.ListDischarge.Should().BeEmpty();
+                bill.ListFinalization.Should().BeEmpty();
                 bill.ListPayment.Should().BeEmpty();
             },
             onNone: () => Assert.Fail("Expected Some but got None"));

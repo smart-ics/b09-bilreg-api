@@ -10,7 +10,7 @@ namespace Bilreg.Domain.PaymentContext.TrsBillFeature;
 public record TrsBillType : ITrsBillingKey
 {
     private readonly List<TrsBill2TransEventType> _listTrsBill2TransEvent = [];
-    private readonly List<TrsBill2DischargeEventType> _listTrsBill2DischargeEvent = [];
+    private readonly List<TrsBill2FinalizationEventType> _listTrsBill2FinalizationEvent = [];
     private readonly List<TrsBill2PaymentEventType> _listTrsBill2PaymentEvent = [];
 
     #region CREATION
@@ -21,7 +21,7 @@ public record TrsBillType : ITrsBillingKey
         TrsBillNilaiType nilai,
         TrsBillKetType keterangan,
         IEnumerable<TrsBill2TransEventType> listTrsBilling2,
-        IEnumerable<TrsBill2DischargeEventType> listTrsBilling2DischargeEvent,
+        IEnumerable<TrsBill2FinalizationEventType> listTrsBilling2FinalizationEvent,
         IEnumerable<TrsBill2PaymentEventType> listTrsBilling2PaymentEvent)
     {
         TrsBillingId = billingId;
@@ -36,7 +36,7 @@ public record TrsBillType : ITrsBillingKey
         Keterangan = keterangan;
         _listTrsBill2TransEvent = listTrsBilling2.ToList();
         _listTrsBill2PaymentEvent = listTrsBilling2PaymentEvent.ToList();
-        _listTrsBill2DischargeEvent = listTrsBilling2DischargeEvent.ToList();
+        _listTrsBill2FinalizationEvent = listTrsBilling2FinalizationEvent.ToList();
     }
 
     public static TrsBillType Default => new("-", BillModulGroup.Jasa, DateTime.MinValue,
@@ -62,18 +62,18 @@ public record TrsBillType : ITrsBillingKey
     public TrsBillNilaiType Nilai { get; init; }
     public TrsBillKetType Keterangan { get; init; }
     public IEnumerable<TrsBill2TransEventType> ListTransaction => _listTrsBill2TransEvent;
-    public IEnumerable<TrsBill2DischargeEventType> ListDischarge => _listTrsBill2DischargeEvent;
+    public IEnumerable<TrsBill2FinalizationEventType> ListFinalization => _listTrsBill2FinalizationEvent;
     public IEnumerable<TrsBill2PaymentEventType> ListPayment => _listTrsBill2PaymentEvent;
     public TrsBillStatusEnum Status =>
         _listTrsBill2PaymentEvent.Count > 0 ? TrsBillStatusEnum.Paid
-        : _listTrsBill2DischargeEvent.Count > 0 ? TrsBillStatusEnum.Discharged
+        : _listTrsBill2FinalizationEvent.Count > 0 ? TrsBillStatusEnum.Finalized
         : TrsBillStatusEnum.Transactioned;
 
     #endregion
 
     #region BEHAVIOR
 
-    internal void Discharge(
+    internal void FinalizeAllocation(
         PaymentType payment,
         decimal nilai,
         string petugasKasir,
@@ -87,19 +87,19 @@ public record TrsBillType : ITrsBillingKey
             throw new ArgumentException("Petugas kasir should not be empty", nameof(petugasKasir));
 
         if (_listTrsBill2TransEvent.Count == 0)
-            throw new InvalidOperationException("Cannot discharge bill without transaction components.");
+            throw new InvalidOperationException("Cannot finalize bill without transaction components.");
 
         var totalBase = _listTrsBill2TransEvent.Sum(x => x.Nilai);
         if (totalBase == 0)
-            throw new InvalidOperationException("Cannot discharge bill when total component nilai is zero.");
+            throw new InvalidOperationException("Cannot finalize bill when total component nilai is zero.");
 
-        var totalDischarged = _listTrsBill2DischargeEvent.Sum(x => x.Nilai);
-        if (totalDischarged + nilai > totalBase)
-            throw new InvalidOperationException("Discharge nilai exceeds remaining bill total.");
+        var totalFinalized = _listTrsBill2FinalizationEvent.Sum(x => x.Nilai);
+        if (totalFinalized + nilai > totalBase)
+            throw new InvalidOperationException("Finalization nilai exceeds remaining bill total.");
 
         var jenisBayar = ToJenisBayar(payment);
         var allocated = 0m;
-        var noUrut = _listTrsBill2DischargeEvent.Count;
+        var noUrut = _listTrsBill2FinalizationEvent.Count;
 
         for (var i = 0; i < _listTrsBill2TransEvent.Count; i++)
         {
@@ -108,21 +108,21 @@ public record TrsBillType : ITrsBillingKey
                 ? nilai - allocated
                 : nilai * trans.Nilai / totalBase;
 
-            var discharge = TrsBill2DischargeEventType.Create(
+            var finalization = TrsBill2FinalizationEventType.Create(
                 noUrut++, trans.Komponen, jenisBayar, share,
                 trans.PetugasMedis, petugasKasir, trsBayarId, tglBayar);
 
-            _listTrsBill2DischargeEvent.Add(discharge);
+            _listTrsBill2FinalizationEvent.Add(finalization);
             allocated += share;
         }
     }
 
-    internal void CancelDischarge()
+    internal void CancelFinalization()
     {
         if (_listTrsBill2PaymentEvent.Count > 0)
-            throw new InvalidOperationException("Cannot cancel discharge with existing payments.");
+            throw new InvalidOperationException("Cannot cancel finalization with existing payments.");
 
-        _listTrsBill2DischargeEvent.Clear();
+        _listTrsBill2FinalizationEvent.Clear();
     }
 
     internal void Pay(PaymentType payment, decimal nilai, string trsBayarId, DateTime tglBayar)
@@ -133,41 +133,41 @@ public record TrsBillType : ITrsBillingKey
         if (string.IsNullOrWhiteSpace(trsBayarId))
             throw new ArgumentException("Trs bayar id should not be empty", nameof(trsBayarId));
 
-        if (Status is not (TrsBillStatusEnum.Discharged or TrsBillStatusEnum.Paid))
-            throw new InvalidOperationException("Cannot pay bill unless status is Discharged or Paid.");
+        if (Status is not (TrsBillStatusEnum.Finalized or TrsBillStatusEnum.Paid))
+            throw new InvalidOperationException("Cannot pay bill unless status is Finalized or Paid.");
 
-        var matchingDischarge = _listTrsBill2DischargeEvent
+        var matchingFinalization = _listTrsBill2FinalizationEvent
             .Where(d => JenisBayarMatchesPayment(d.JenisBayar, payment))
             .ToList();
 
-        if (matchingDischarge.Count == 0)
+        if (matchingFinalization.Count == 0)
             throw new InvalidOperationException(
-                "Cannot pay bill without matching discharge components for the payment provider.");
+                "Cannot pay bill without matching finalization components for the payment provider.");
 
-        var totalBase = matchingDischarge.Sum(x => x.Nilai);
+        var totalBase = matchingFinalization.Sum(x => x.Nilai);
         if (totalBase == 0)
-            throw new InvalidOperationException("Cannot pay bill when matching discharge nilai is zero.");
+            throw new InvalidOperationException("Cannot pay bill when matching finalization nilai is zero.");
 
         var totalPaid = _listTrsBill2PaymentEvent
             .Where(p => JenisBayarMatchesPayment(p.JenisBayar, payment))
             .Sum(x => x.Nilai);
 
         if (totalPaid + nilai > totalBase)
-            throw new InvalidOperationException("Payment nilai exceeds remaining discharged responsibility.");
+            throw new InvalidOperationException("Payment nilai exceeds remaining finalized responsibility.");
 
         var allocated = 0m;
         var noUrut = _listTrsBill2PaymentEvent.Count;
 
-        for (var i = 0; i < matchingDischarge.Count; i++)
+        for (var i = 0; i < matchingFinalization.Count; i++)
         {
-            var discharge = matchingDischarge[i];
-            var share = i == matchingDischarge.Count - 1
+            var finalization = matchingFinalization[i];
+            var share = i == matchingFinalization.Count - 1
                 ? nilai - allocated
-                : nilai * discharge.Nilai / totalBase;
+                : nilai * finalization.Nilai / totalBase;
 
             var paymentEvent = TrsBill2PaymentEventType.Create(
-                noUrut++, discharge.Komponen, discharge.JenisBayar, payment, trsBayarId, share, tglBayar,
-                discharge.PetugasMedis);
+                noUrut++, finalization.Komponen, finalization.JenisBayar, payment, trsBayarId, share, tglBayar,
+                finalization.PetugasMedis);
 
             _listTrsBill2PaymentEvent.Add(paymentEvent);
             allocated += share;
@@ -186,7 +186,7 @@ public record TrsBillType : ITrsBillingKey
             return new TrsBillJenisBayarType(payment.PaymentId, payment.PaymentName, true);
 
         throw new ArgumentException(
-            $"Payment type '{payment.PaymentId}' is not supported for discharge.",
+            $"Payment type '{payment.PaymentId}' is not supported for finalization.",
             nameof(payment));
     }
 

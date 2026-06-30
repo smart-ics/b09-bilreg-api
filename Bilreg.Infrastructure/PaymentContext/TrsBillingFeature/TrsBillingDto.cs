@@ -89,7 +89,7 @@ public record TrsBillingDto(
     {
         var listBill2 = listBill2Enum.ToList();
         var listTrans = listBill2.OfType<TrsBill2TransEventType>();
-        var listDischarge = listBill2.OfType<TrsBill2DischargeEventType>();
+        var listFinalization = listBill2.OfType<TrsBill2FinalizationEventType>();
         var listPayment = listBill2.OfType<TrsBill2PaymentEventType>();
         var reg = new RegReff(fs_kd_reg, fs_mr, fs_nm_pasien);
         var layanan = new LayananReff(fs_kd_layanan, fs_nm_layanan);
@@ -106,7 +106,7 @@ public record TrsBillingDto(
             fs_kd_trs, modul, tglTrs,
             reg, layanan, kelas, auditinfo, rekapCetak,
             nilai, keterangan,
-            listTrans, listDischarge, listPayment
+            listTrans, listFinalization, listPayment
         );
     }
     public TrsBillView ToView()

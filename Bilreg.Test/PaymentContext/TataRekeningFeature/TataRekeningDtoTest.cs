@@ -6,15 +6,15 @@ namespace Bilreg.Test.PaymentContext.TataRekeningFeature;
 
 public class TataRekeningDtoTest
 {
-    private static readonly DateTime DischargeDate = new(2026, 6, 17, 14, 0, 0);
+    private static readonly DateTime FinalizationDate = new(2026, 6, 17, 14, 0, 0);
 
     [Fact]
-    public void FromModel_MapsStatusAndDischargeInfo()
+    public void FromModel_MapsStatusAndFinalizationInfo()
     {
         var model = new TataRekeningModel(
             "REG-001",
             TataRekeningStatusEnum.Finalized,
-            new TataRekeningDischargeType("KSR-01", DischargeDate),
+            new TataRekeningFinalizationType("KSR-01", FinalizationDate),
             [],
             []);
 
@@ -23,18 +23,18 @@ public class TataRekeningDtoTest
         dto.RegId.Should().Be("REG-001");
         dto.Status.Should().Be((int)TataRekeningStatusEnum.Finalized);
         dto.PetugasVerif.Should().Be("KSR-01");
-        dto.DischargeDate.Should().Be(DischargeDate);
+        dto.FinalizationDate.Should().Be(FinalizationDate);
     }
 
     [Fact]
-    public void ToHeaderParts_MapsStatusAndDischargeInfo()
+    public void ToHeaderParts_MapsStatusAndFinalizationInfo()
     {
-        var dto = new BilrgTataRekeningDto("REG-002", 1, "KSR-02", DischargeDate);
+        var dto = new BilrgTataRekeningDto("REG-002", 1, "KSR-02", FinalizationDate);
 
-        var (status, dischargeInfo) = dto.ToHeaderParts();
+        var (status, finalizationInfo) = dto.ToHeaderParts();
 
         status.Should().Be(TataRekeningStatusEnum.Closed);
-        dischargeInfo.PetugasVerif.Should().Be("KSR-02");
-        dischargeInfo.DischargeDate.Should().Be(DischargeDate);
+        finalizationInfo.PetugasVerif.Should().Be("KSR-02");
+        finalizationInfo.FinalizationDate.Should().Be(FinalizationDate);
     }
 }

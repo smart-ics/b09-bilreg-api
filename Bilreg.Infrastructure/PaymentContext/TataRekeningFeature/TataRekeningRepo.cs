@@ -42,14 +42,14 @@ public class TataRekeningRepo : ITataRekeningRepo
         if (header is null)
             return MayBe<TataRekeningModel>.None;
 
-        var (status, dischargeInfo) = header.ToHeaderParts();
+        var (status, finalizationInfo) = header.ToHeaderParts();
         var payments = _paymentDal.ListData(key)?.Select(x => x.ToModel()).ToList() ?? [];
         var bills = _trsBillingRepo.ListEntity(key).ToList();
 
         return MayBe.From(new TataRekeningModel(
             header.RegId,
             status,
-            dischargeInfo,
+            finalizationInfo,
             payments,
             bills));
     }

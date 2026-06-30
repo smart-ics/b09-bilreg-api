@@ -70,7 +70,7 @@ public class CreateBillDomServiceTest
         var reg = CreateRegWithKomponen("REG-004");
         var tataRekening = HydrateOpened(reg.RegId, CreateMinimalBill(reg.RegId, 10_000m));
         tataRekening.Close();
-        tataRekening.Discharge(
+        tataRekening.FinalizeFinancialResponsibility(
             [new TataRekeningPaymentType(PaymentType.ByKas, 10_000m, 0m, CoaType.Default)],
             "kasir",
             DateTime.Now);
@@ -93,7 +93,7 @@ public class CreateBillDomServiceTest
         var reg = CreateRegWithKomponen("REG-005");
         var tataRekening = HydrateOpened(reg.RegId, CreateMinimalBill(reg.RegId, 10_000m));
         tataRekening.Close();
-        tataRekening.Discharge(
+        tataRekening.FinalizeFinancialResponsibility(
             [new TataRekeningPaymentType(PaymentType.ByKas, 10_000m, 0m, CoaType.Default)],
             "kasir",
             DateTime.Now);
@@ -133,7 +133,7 @@ public class CreateBillDomServiceTest
     }
 
     private static TataRekeningModel HydrateOpened(string regId, params TrsBillType[] listTrsBill) =>
-        new(regId, TataRekeningStatusEnum.Opened, TataRekeningDischargeType.Default, [], listTrsBill);
+        new(regId, TataRekeningStatusEnum.Opened, TataRekeningFinalizationType.Default, [], listTrsBill);
 
     private static RegModel CreateRegWithKomponen(string regId)
     {

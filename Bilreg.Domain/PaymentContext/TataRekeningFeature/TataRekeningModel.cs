@@ -4,7 +4,7 @@ using Bilreg.Domain.PaymentContext.TrsBillFeature;
 namespace Bilreg.Domain.PaymentContext.TataRekeningFeature;
 
 /// <summary>
-/// Patient financial authority — owns billing lifecycle and list TrsBill.
+/// Tata Rekening aggregate — patient financial authority for one registration.
 /// </summary>
 public record TataRekeningModel : IRegKey
 {
@@ -12,30 +12,27 @@ public record TataRekeningModel : IRegKey
     private readonly List<TrsBillType> _listTrsBill = [];
 
     public TataRekeningModel(string regId, TataRekeningStatusEnum status,
-        TataRekeningDischargeType dischargeInfo,
+        TataRekeningFinalizationType finalizationInfo,
         IEnumerable<TataRekeningPaymentType> listTataRekeningPayment,
         IEnumerable<TrsBillType> listTrsBill)
     {
         RegId = regId;
         Status = status;
-        DischargeInfo = dischargeInfo;
+        FinalizationInfo = finalizationInfo;
 
         _listTataRekeningPayment = listTataRekeningPayment.ToList();
         _listTrsBill = listTrsBill.ToList();
     }
-    
-    //  PROPERTEIS
-    public static TataRekeningModel Create(string regId)
-    {
-        return new TataRekeningModel(regId, TataRekeningStatusEnum.Opened,
-            TataRekeningDischargeType.Default, [], []);
-    }
+
+    public static TataRekeningModel Create(string regId) =>
+        new(regId, TataRekeningStatusEnum.Opened, TataRekeningFinalizationType.Default, [], []);
+
     public string RegId { get; init; }
-    public TataRekeningDischargeType DischargeInfo { get; private set; }
+    public TataRekeningFinalizationType FinalizationInfo { get; private set; }
     public TataRekeningStatusEnum Status { get; private set; }
     public IEnumerable<TataRekeningPaymentType> ListPayment => _listTataRekeningPayment;
     public IEnumerable<TrsBillType> ListTrsBill => _listTrsBill;
-    //  BEHAVIOIR
+
     public void DeleteBill(string trsBillingId)
     {
         EnsureNotLunas();
@@ -48,6 +45,7 @@ public record TataRekeningModel : IRegKey
 
         _listTrsBill.RemoveAt(index);
     }
+
     public void Close()
     {
         EnsureNotLunas();
@@ -58,6 +56,7 @@ public record TataRekeningModel : IRegKey
             throw new InvalidOperationException(
                 "TataRekening can not be closed since current status is not OPENED.");
     }
+
     public void ReOpen()
     {
         EnsureNotLunas();
@@ -68,22 +67,30 @@ public record TataRekeningModel : IRegKey
             throw new InvalidOperationException(
                 "TataRekening can not be re-opened since current status is not CLOSED.");
     }
-    public void Discharge(IEnumerable<TataRekeningPaymentType> listPayment, string petugasVerif, DateTime dischargeDate)
+
+    /// <summary>
+    /// Finalize financial responsibility for the registration Billing Set.
+    /// </summary>
+    public void FinalizeFinancialResponsibility(
+        IEnumerable<TataRekeningPaymentType> listPayment,
+        string petugasVerif,
+        DateTime finalizationDate)
     {
         EnsureNotLunas();
-        EnsureCanDischarge();
+        EnsureCanFinalize();
         EnsureListTrsBillNotEmpty();
 
         var payments = listPayment.ToList();
-        ValidateDischargeTotals(payments);
+        ValidateFinalizationTotals(payments);
 
         _listTataRekeningPayment.Clear();
         _listTataRekeningPayment.AddRange(payments);
-        DischargeInfo = new TataRekeningDischargeType(petugasVerif, dischargeDate);
-        DischargeAllocation();
-        AssertDischargeComplete();
+        FinalizationInfo = new TataRekeningFinalizationType(petugasVerif, finalizationDate);
+        FinalizationAllocation();
+        AssertFinalizationComplete();
         Status = TataRekeningStatusEnum.Finalized;
     }
+
     public void Pay(IEnumerable<TataRekeningPaymentType> listPayment, string trsBayarId, DateTime tglBayar)
     {
         EnsureNotLunas();
@@ -102,25 +109,26 @@ public record TataRekeningModel : IRegKey
         PaymentAllocation(payments, trsBayarId, tglBayar);
         TryTransitionToLunas();
     }
-    public void CancelDischarge()
+
+    public void CancelFinalization()
     {
         EnsureNotLunas();
 
         if (Status != TataRekeningStatusEnum.Finalized)
             throw new InvalidOperationException(
-                "TataRekening tidak dapat cancel discharge kecuali berstatus FINALIZED.");
+                "TataRekening tidak dapat cancel finalization kecuali berstatus FINALIZED.");
 
         EnsureListTrsBillNotEmpty();
 
         if (_listTrsBill.Any(bill => bill.ListPayment.Any()))
             throw new InvalidOperationException(
-                "Tidak dapat cancel discharge karena sudah ada pembayaran pada list TrsBill.");
+                "Tidak dapat cancel finalization karena sudah ada pembayaran pada list TrsBill.");
 
         foreach (var bill in _listTrsBill)
-            bill.CancelDischarge();
+            bill.CancelFinalization();
 
         _listTataRekeningPayment.Clear();
-        DischargeInfo = TataRekeningDischargeType.Default;
+        FinalizationInfo = TataRekeningFinalizationType.Default;
         Status = TataRekeningStatusEnum.Closed;
     }
 
@@ -149,25 +157,25 @@ public record TataRekeningModel : IRegKey
                 "Operasi lifecycle memerlukan list TrsBill yang tidak kosong.");
     }
 
-    private void EnsureCanDischarge()
+    private void EnsureCanFinalize()
     {
         if (Status == TataRekeningStatusEnum.Opened)
             throw new InvalidOperationException(
-                "TataRekening tidak dapat discharge karena masih open.");
+                "Tanggungan keuangan tidak dapat difinalisasi karena TataRekening masih OPEN.");
 
         if (Status == TataRekeningStatusEnum.Finalized)
             throw new InvalidOperationException(
-                "TataRekening tidak dapat discharge karena sudah finalized.");
+                "Tanggungan keuangan sudah difinalisasi.");
 
         if (Status == TataRekeningStatusEnum.Lunas)
             throw new InvalidOperationException(
-                "TataRekening tidak dapat discharge karena sudah lunas.");
+                "Tanggungan keuangan tidak dapat difinalisasi karena TataRekening sudah LUNAS.");
     }
 
     private decimal TotalBillByModul(BillModulGroup modulGroup) =>
         _listTrsBill.Where(x => x.ModulGroup == modulGroup).Sum(x => x.Nilai.Total);
 
-    private void ValidateDischargeTotals(IReadOnlyList<TataRekeningPaymentType> listPayment)
+    private void ValidateFinalizationTotals(IReadOnlyList<TataRekeningPaymentType> listPayment)
     {
         var totalJasaPayment = listPayment.Sum(x => x.NilaiJasa);
         var totalObatPayment = listPayment.Sum(x => x.NilaiObat);
@@ -194,9 +202,9 @@ public record TataRekeningModel : IRegKey
                 .Where(x => x.ModulGroup == modulGroup)
                 .Sum(bill =>
                 {
-                    var discharged = bill.ListDischarge.Sum(d => d.Nilai);
+                    var finalized = bill.ListFinalization.Sum(d => d.Nilai);
                     var paid = bill.ListPayment.Sum(p => p.Nilai);
-                    return discharged - paid;
+                    return finalized - paid;
                 });
 
             if (paymentTotal > outstanding)
@@ -205,7 +213,7 @@ public record TataRekeningModel : IRegKey
         }
     }
 
-    private void DischargeAllocation()
+    private void FinalizationAllocation()
     {
         var trsBayarId = $"RO{(RegId.Length >= 8 ? RegId[^8..] : RegId)}";
         var totalJasaTrans = TotalBillByModul(BillModulGroup.Jasa);
@@ -213,15 +221,15 @@ public record TataRekeningModel : IRegKey
 
         foreach (var item in _listTataRekeningPayment)
         {
-            AllocateDischargeToModulGroup(
+            AllocateFinalizationToModuleGroup(
                 item, item.NilaiJasa, BillModulGroup.Jasa, totalJasaTrans, trsBayarId);
 
-            AllocateDischargeToModulGroup(
+            AllocateFinalizationToModuleGroup(
                 item, item.NilaiObat, BillModulGroup.Obat, totalObatTrans, trsBayarId);
         }
     }
 
-    private void AllocateDischargeToModulGroup(
+    private void AllocateFinalizationToModuleGroup(
         TataRekeningPaymentType item,
         decimal modulAllocation,
         BillModulGroup modulGroup,
@@ -245,8 +253,8 @@ public record TataRekeningModel : IRegKey
                 ? modulAllocation - allocated
                 : modulAllocation * bill.Nilai.Total / modulTotal;
 
-            bill.Discharge(
-                item.Payment, share, DischargeInfo.PetugasVerif, trsBayarId, DischargeInfo.DischargeDate);
+            bill.FinalizeAllocation(
+                item.Payment, share, FinalizationInfo.PetugasVerif, trsBayarId, FinalizationInfo.FinalizationDate);
             allocated += share;
         }
     }
@@ -272,7 +280,7 @@ public record TataRekeningModel : IRegKey
     private decimal OutstandingByModul(BillModulGroup modulGroup) =>
         _listTrsBill
             .Where(x => x.ModulGroup == modulGroup)
-            .Sum(bill => bill.ListDischarge.Sum(d => d.Nilai) - bill.ListPayment.Sum(p => p.Nilai));
+            .Sum(bill => bill.ListFinalization.Sum(d => d.Nilai) - bill.ListPayment.Sum(p => p.Nilai));
 
     private void AllocatePaymentToModulGroup(
         TataRekeningPaymentType item,
@@ -294,7 +302,7 @@ public record TataRekeningModel : IRegKey
             .Select(bill => new
             {
                 Bill = bill,
-                Outstanding = bill.ListDischarge.Sum(d => d.Nilai) - bill.ListPayment.Sum(p => p.Nilai)
+                Outstanding = bill.ListFinalization.Sum(d => d.Nilai) - bill.ListPayment.Sum(p => p.Nilai)
             })
             .Where(x => x.Outstanding > 0)
             .ToList();
@@ -315,14 +323,14 @@ public record TataRekeningModel : IRegKey
         }
     }
 
-    private void AssertDischargeComplete()
+    private void AssertFinalizationComplete()
     {
         foreach (var bill in _listTrsBill)
         {
-            var discharged = bill.ListDischarge.Sum(x => x.Nilai);
-            if (discharged != bill.Nilai.Total)
+            var finalized = bill.ListFinalization.Sum(x => x.Nilai);
+            if (finalized != bill.Nilai.Total)
                 throw new InvalidOperationException(
-                    $"Discharge pada bill '{bill.TrsBillingId}' tidak lengkap: {discharged} dari {bill.Nilai.Total}.");
+                    $"Finalisasi pada bill '{bill.TrsBillingId}' tidak lengkap: {finalized} dari {bill.Nilai.Total}.");
         }
     }
 
@@ -333,9 +341,9 @@ public record TataRekeningModel : IRegKey
 
         foreach (var bill in _listTrsBill)
         {
-            var totalDischarged = bill.ListDischarge.Sum(x => x.Nilai);
+            var totalFinalized = bill.ListFinalization.Sum(x => x.Nilai);
             var totalPaid = bill.ListPayment.Sum(x => x.Nilai);
-            if (totalPaid < totalDischarged)
+            if (totalPaid < totalFinalized)
                 return;
         }
 
@@ -343,7 +351,10 @@ public record TataRekeningModel : IRegKey
     }
 }
 
-public record TataRekeningDischargeType(string PetugasVerif, DateTime DischargeDate)
+/// <summary>
+/// Finalization metadata recorded when financial responsibility is finalized.
+/// </summary>
+public record TataRekeningFinalizationType(string PetugasVerif, DateTime FinalizationDate)
 {
-    public static TataRekeningDischargeType Default => new("-", new DateTime(3000, 1, 1));
+    public static TataRekeningFinalizationType Default => new("-", new DateTime(3000, 1, 1));
 }

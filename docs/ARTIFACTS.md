@@ -7,7 +7,7 @@
 ## Prompt recipe (ordered)
 
 1. [`docs/INSTRUCTION.md`](INSTRUCTION.md) — global engineering stance
-2. **Bounded context** — [`docs/contexts/{context}/`](contexts/) (see table below). IGD UI/integration: also [`docs/contexts/igd/igd-04-api-contract.md`](contexts/igd/igd-04-api-contract.md); ops/DBA: [`docs/contexts/igd/igd-05-runbook.md`](contexts/igd/igd-05-runbook.md). Tarif: [`docs/contexts/tarif/tarif-01-context.md`](contexts/tarif/tarif-01-context.md) through `tarif-07-admin-workflow.md`.
+2. **Bounded context** — [`docs/contexts/{context}/`](contexts/) (see table below). IGD UI/integration: also [`docs/contexts/igd/igd-04-api-contract.md`](contexts/igd/igd-04-api-contract.md); ops/DBA: [`docs/contexts/igd/igd-05-runbook.md`](contexts/igd/igd-05-runbook.md). Tarif: [`docs/contexts/tarif/tarif-01-context.md`](contexts/tarif/tarif-01-context.md) through `tarif-07-admin-workflow.md`. Tata Rekening: [`docs/contexts/TataRekening/01-context.md`](contexts/TataRekening/01-context.md) through [`04-sop.md`](contexts/TataRekening/04-sop.md) and `SOP-TR-01` … `SOP-TR-10`.
 3. **Global standards** (as needed):
    - [`docs/ENGINEERING.md`](ENGINEERING.md) — layers, repository, domain events philosophy
    - [`docs/DATABASE.md`](DATABASE.md) — SQL, tables, audit columns
@@ -93,6 +93,28 @@ Charge-context tariff master, operational projection (`NilaiTarif`), and kompone
 | `docs/contexts/tarif/TARIF_PHASE3_REFACTOR_REPORT.md` | Phase 3 publish simplification — removed validator/mapper abstractions |
 | `docs/tarif/tarif-codebase-retrieval-report.md` | Codebase evidence / gap analysis (retrieval, not stewardship artifact) |
 
+### Tata Rekening (`docs/contexts/TataRekening/`)
+
+Patient financial responsibility domain (registration-scoped lifecycle, TrsBill charges, Financial Projection). Legacy persistence: `ta_trs_billing`, `ta_trs_billing2`, `ta_registrasi3`.
+
+| Path | Purpose |
+|------|---------|
+| `docs/contexts/TataRekening/01-context.md` | Tata Rekening — why (business context, bounded contexts, lifecycle) |
+| `docs/contexts/TataRekening/02-domain.md` | Tata Rekening — what (aggregates, invariants, domain events) |
+| `docs/contexts/TataRekening/03-design.md` | Tata Rekening — how (architecture, persistence, integration) |
+| `docs/contexts/TataRekening/04-sop.md` | Tata Rekening — workflow overview and SOP index |
+| `docs/contexts/TataRekening/SOP-TR-01 — Open Tata Rekening.md` | SOP — Open Tata Rekening |
+| `docs/contexts/TataRekening/SOP-TR-02 — Close Bill.md` | SOP — Close Bill |
+| `docs/contexts/TataRekening/SOP-TR-03 — Merge Billing.md` | SOP — Merge Billing |
+| `docs/contexts/TataRekening/SOP-TR-04 — Financial Verification.md` | SOP — Financial Verification |
+| `docs/contexts/TataRekening/SOP-TR-05 — Financial Adjustment.md` | SOP — Financial Adjustment |
+| `docs/contexts/TataRekening/SOP-TR-06 — Financial Responsibility Allocation.md` | SOP — Financial Responsibility Allocation |
+| `docs/contexts/TataRekening/SOP-TR-07 — Finalize Financial Responsibility.md` | SOP — Finalize Financial Responsibility |
+| `docs/contexts/TataRekening/SOP-TR-08 — Cancel Finalization.md` | SOP — Cancel Finalization |
+| `docs/contexts/TataRekening/SOP-TR-09 — Reopen Billing.md` | SOP — Reopen Billing |
+| `docs/contexts/TataRekening/SOP-TR-10 — Settlement Initiation.md` | SOP — Settlement Initiation |
+| `docs/contexts/TataRekening/tata-rekening-domain-gap-analysis-report.md` | Domain gap analysis (implementation vs artifact) |
+
 ---
 
 ## Shared (`docs/shared/`)
@@ -118,6 +140,11 @@ Charge-context tariff master, operational projection (`NilaiTarif`), and kompone
 | `Bilreg.Domain/IgdContext/docs/OPERATIONAL_RECOVERY.md` | `docs/contexts/igd/igd-05-runbook.md` |
 | `docs/contexts/igd/igd-domain.md` | `docs/contexts/igd/igd-01-context.md`, `igd-02-domain.md`, `igd-03-design.md`, `igd-04-api-contract.md`, `igd-05-runbook.md` |
 | `docs/contexts/igd/igd-operational-recovery.md` (content) | `docs/contexts/igd/igd-05-runbook.md` |
+| `docs/contexts/trsbilling/trsbilling-01-context.md` | `docs/contexts/TataRekening/01-context.md` |
+| `docs/contexts/trsbilling/trsbilling-02-domain.md` | `docs/contexts/TataRekening/02-domain.md` |
+| `docs/contexts/trsbilling/trsbilling-03-design.md` | `docs/contexts/TataRekening/03-design.md` |
+| `docs/contexts/trsbilling/trsbilling-04-pasien-balance.md` | merged into `docs/contexts/TataRekening/01-context.md`, `02-domain.md`, `03-design.md` |
+| `docs/contexts/trsbilling/trsbilling-domain-gap-analysis-report.md` | `docs/contexts/TataRekening/tata-rekening-domain-gap-analysis-report.md` |
 | `Bilreg.Domain/Shared/AuditLogFeature/AUDIT_LOG_README.md` | `docs/shared/audit-log.md` |
 
 Old locations may contain short redirect stubs during transition.
@@ -132,6 +159,8 @@ Old locations may contain short redirect stubs during transition.
 | `igd-domain.md` (no path) | `docs/contexts/igd/igd-02-domain.md` (domain); use full trio for feature work |
 | `01-context.md` / `02-domain.md` / `03-design.md` (IGD, no `igd-` prefix) | `docs/contexts/igd/igd-01-context.md`, `igd-02-domain.md`, `igd-03-design.md` |
 | `tarif-01-context.md` … `tarif-05-runbook.md` (no path) | `docs/contexts/tarif/tarif-01-context.md` … `tarif-05-runbook.md` |
+| `01-context.md` / `02-domain.md` / `03-design.md` / `04-sop.md` (Tata Rekening, no path) | `docs/contexts/TataRekening/01-context.md`, `02-domain.md`, `03-design.md`, `04-sop.md` |
+| `SOP-TR-01` … `SOP-TR-10` (no path) | `docs/contexts/TataRekening/SOP-TR-01 — Open Tata Rekening.md` … `SOP-TR-10 — Settlement Initiation.md` |
 | `igd-operational-recovery.md` (no path) | `docs/contexts/igd/igd-05-runbook.md` |
 | `AGENT.md` (no path) | `docs/contexts/lab/lab-agent.md` |
 | `WORKFLOW.md` without path | `docs/WORKFLOW.md` (global) **or** `docs/contexts/lab/lab-workflow.md` (Lab) |

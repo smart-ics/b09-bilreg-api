@@ -16,7 +16,8 @@ using Bilreg.Infrastructure.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Infrastructure.LabContext.Integration;
 using Bilreg.Infrastructure.LabContext.LabOwareFeature;
 using Bilreg.Infrastructure.LabContext.LabResultFeature;
-using Bilreg.Infrastructure.PasienContext.PasienFeature;
+using Bilreg.Application.PaymentContext.PasienBalanceFeature;
+using Bilreg.Infrastructure.PaymentContext.PasienBalanceFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Bilreg.Infrastructure.Shared.Param;
 using Nuna.Lib.AutoNumberHelper;
@@ -58,6 +59,7 @@ public static class InfrastructureService
             .AddScoped<ITarifMigrationModeResolver, TarifMigrationModeResolver>()
             .AddScoped<ITarifMigrationGuard, TarifMigrationGuard>()
             .AddScoped<IJadwalPraktekHarianRepo, JadwalPraktekHarianRepo>()
+            .AddScoped<IPasienBalanceLegacyReader, LegacyOutstandingReceivableReader>()
             .AddSingleton<TarifOperationalGate>()
             .AddMemoryCache();
 

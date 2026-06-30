@@ -25,8 +25,8 @@ public class TrsBillingRepo : ITrsBillingRepo
          
         var listBillTrans = model.ListTransaction
             .Select(x => TaTrsBilling2Dto.FromModelTrans(x, model.TrsBillingId, (int)model.ModulGroup));
-        var listBillDischarge = model.ListDischarge
-            .Select(x => TaTrsBilling2Dto.FromModelDischarge(x, model.TrsBillingId, (int)model.ModulGroup, model.Reg.RegId));
+        var listBillFinalization = model.ListFinalization
+            .Select(x => TaTrsBilling2Dto.FromModelFinalization(x, model.TrsBillingId, (int)model.ModulGroup, model.Reg.RegId));
         var listBillPayment = model.ListPayment
             .SelectMany(x =>
             {
@@ -37,7 +37,7 @@ public class TrsBillingRepo : ITrsBillingRepo
         
         //Combine all
         var listBillAll = listBillTrans
-            .Union(listBillDischarge)
+            .Union(listBillFinalization)
             .Union(listBillPayment)
             .ToList();
         

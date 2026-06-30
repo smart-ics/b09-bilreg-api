@@ -47,7 +47,7 @@ public record TaTrsBilling2Dto(
         return result;
     }
     
-    public static TaTrsBilling2Dto FromModelDischarge(TrsBill2DischargeEventType model, 
+    public static TaTrsBilling2Dto FromModelFinalization(TrsBill2FinalizationEventType model, 
         string billingId, int modul, string regId)
     {
         var komponenTarifId = modul == 0 ? model.Komponen.BillKompId : string.Empty;
@@ -119,7 +119,7 @@ public record TaTrsBilling2Dto(
         if (fs_kd_trs == fs_kd_trs_bayar)
             return ToTransEventModel(modul);
         if (fs_kd_trs_bayar[..2] == "RO")
-            return ToDischargeEventModel(modul);
+            return ToFinalizationEventModel(modul);
         return ToPaymentEventModel(modul);
     }
 
@@ -142,15 +142,15 @@ public record TaTrsBilling2Dto(
         return result;
     }
 
-    private TrsBill2DischargeEventType ToDischargeEventModel(int modul)
+    private TrsBill2FinalizationEventType ToFinalizationEventModel(int modul)
     {
-        var komponen = modul == 0 ? 
-            new TrsBill2KomponenType(fs_kd_detil_tarif,"") : 
+        var komponen = modul == 0 ?
+            new TrsBill2KomponenType(fs_kd_detil_tarif, "") :
             new TrsBill2KomponenType(fs_kd_grup_rek, "");
         var jenisBayar = TrsBillJenisBayarType.GetData(fs_kd_jenis_bayar);
         var ppa = new PpaReff(fs_kd_petugas_medis, "");
         var tglBayar = DateTime.ParseExact(fd_tgl_bayar, "yyyy-MM-dd", CultureInfo.InvariantCulture);
-        var result = new TrsBill2DischargeEventType(
+        var result = new TrsBill2FinalizationEventType(
             (int)fn_no_urut, komponen, jenisBayar, fn_trs_n, ppa, fs_kd_petugas_kasir,
             fs_kd_trs_bayar, tglBayar);
         return result;

@@ -75,10 +75,10 @@ public class TrsBilling2DtoTest
     }
 
     [Fact]
-    public void FromModelDischarge_MapsPaymentKasirAndNilai()
+    public void FromModelFinalization_MapsPaymentKasirAndNilai()
     {
         var tglBayar = new DateTime(2026, 6, 17, 15, 45, 0);
-        var model = new TrsBill2DischargeEventType(
+        var model = new TrsBill2FinalizationEventType(
             3,
             JasaKomponen(),
             TrsBillJenisBayarType.Kas,
@@ -88,7 +88,7 @@ public class TrsBilling2DtoTest
             "IGNORED",
             tglBayar);
 
-        var dto = TaTrsBilling2Dto.FromModelDischarge(model, BillingId, modul: 0, RegId);
+        var dto = TaTrsBilling2Dto.FromModelFinalization(model, BillingId, modul: 0, RegId);
 
         dto.fs_kd_trs.Should().Be(BillingId);
         dto.fn_no_urut.Should().Be(3);
@@ -163,7 +163,7 @@ public class TrsBilling2DtoTest
     }
 
     [Fact]
-    public void ToModel_DischargeDto_MapsToDischargeEvent()
+    public void ToModel_FinalizationDto_MapsToFinalizationEvent()
     {
         var dto = new TaTrsBilling2Dto(
             BillingId, 2,
@@ -176,16 +176,16 @@ public class TrsBilling2DtoTest
 
         var result = dto.ToModel(modul: 0);
 
-        result.Should().BeOfType<TrsBill2DischargeEventType>();
-        var discharge = (TrsBill2DischargeEventType)result;
-        discharge.NoUrut.Should().Be(2);
-        discharge.JenisBayar.JenisBayarId.Should().Be("KAS");
-        discharge.Nilai.Should().Be(25_000m);
-        discharge.PetugasKasir.Should().Be("KSR-01");
-        discharge.TrsBayarId.Should().Be("RO00001234");
-        discharge.TglBayar.Should().Be(new DateTime(2026, 6, 17));
-        discharge.Komponen.BillKompId.Should().Be("DT-002");
-        discharge.PetugasMedis.PpaId.Should().Be("MED-02");
+        result.Should().BeOfType<TrsBill2FinalizationEventType>();
+        var finalization = (TrsBill2FinalizationEventType)result;
+        finalization.NoUrut.Should().Be(2);
+        finalization.JenisBayar.JenisBayarId.Should().Be("KAS");
+        finalization.Nilai.Should().Be(25_000m);
+        finalization.PetugasKasir.Should().Be("KSR-01");
+        finalization.TrsBayarId.Should().Be("RO00001234");
+        finalization.TglBayar.Should().Be(new DateTime(2026, 6, 17));
+        finalization.Komponen.BillKompId.Should().Be("DT-002");
+        finalization.PetugasMedis.PpaId.Should().Be("MED-02");
     }
 
     [Fact]
