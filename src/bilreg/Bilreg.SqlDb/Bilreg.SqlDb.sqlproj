@@ -96,6 +96,9 @@
     <Folder Include="LabContext\LabResultFeature\" />
     <Folder Include="Shared\" />
     <Folder Include="PaymentContext\TrsBillingFeature\" />
+    <Folder Include="PaymentContext\" />
+    <Folder Include="PaymentContext\PasienBalanceFeature\" />
+    <Folder Include="PaymentContext\TataRekeningFeature\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OpCase.sql" />
