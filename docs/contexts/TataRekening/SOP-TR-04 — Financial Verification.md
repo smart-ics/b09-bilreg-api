@@ -30,8 +30,8 @@ Financial Verification merupakan proses validasi akhir terhadap Billing Set yang
 3. Verifikator memverifikasi bahwa tidak terdapat Financial Charge yang hilang, ganda, atau tidak semestinya.
 4. Verifikator memverifikasi bahwa seluruh hasil Merge Billing (apabila ada) telah berpindah secara benar ke Registrasi tujuan.
 5. Verifikator memverifikasi bahwa Billing Set telah sesuai dengan dokumen pendukung dan ketentuan yang berlaku.
-6. Apabila ditemukan ketidaksesuaian, proses dilanjutkan ke **SOP-TR-05 — Financial Adjustment**.
-7. Apabila seluruh Billing Set telah dinyatakan benar, proses dilanjutkan ke **SOP-TR-06 — Financial Responsibility Allocation**.
+6. Apabila ditemukan ketidaksesuaian, proses dilanjutkan ke **[SOP-TR-05 — Financial Adjustment](<SOP-TR-05 — Financial Adjustment.md>)**.
+7. Apabila seluruh Billing Set telah dinyatakan benar, proses dilanjutkan ke **[SOP-TR-06 — Financial Responsibility Allocation](<SOP-TR-06 — Financial Responsibility Allocation.md>)**.
 
 ---
 
@@ -60,7 +60,7 @@ Status Financial Verification telah ditentukan sebagai:
 - Financial Verification tidak mengubah Billing Set.
 - Financial Verification tidak mengubah Financial Responsibility Allocation.
 - Financial Verification tidak mengubah Billing Lifecycle.
-- Apabila ditemukan ketidaksesuaian yang memerlukan perubahan Financial Responsibility, proses harus dilanjutkan ke **SOP-TR-05 — Financial Adjustment** sebelum Financial Responsibility Allocation dapat dilakukan.
+- Apabila ditemukan ketidaksesuaian yang memerlukan perubahan Financial Responsibility, proses harus dilanjutkan ke **[SOP-TR-05 — Financial Adjustment](<SOP-TR-05 — Financial Adjustment.md>)** sebelum Financial Responsibility Allocation dapat dilakukan.
 
 ---
 
@@ -73,3 +73,13 @@ Status Financial Verification telah ditentukan sebagai:
 - Data Billing Set tidak dapat dimuat.
 - Verifikator tidak memiliki hak akses.
   
+
+---
+
+## Related Documents
+
+| Document | Description |
+|----------|-------------|
+| [04-sop.md](04-sop.md) | SOP index & workflow overview |
+| [02-domain.md](02-domain.md) | Domain model |
+| [03-design.md](03-design.md) | Architecture & persistence |

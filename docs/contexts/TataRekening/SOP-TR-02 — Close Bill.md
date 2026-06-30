@@ -29,8 +29,8 @@ Menutup Billing untuk menghentikan pembentukan Financial Charge dari seluruh Cha
 4. Sistem memvalidasi bahwa Billing dapat ditutup.
 5. Sistem mengubah status Billing dari **OPEN** menjadi **CLOSED**.
 6. Sistem menghentikan pembentukan Financial Charge baru dari seluruh Charge Source.
-7. Apabila terdapat Merge Request berstatus **Pending**, proses dilanjutkan ke **SOP-TR-03 — Merge Billing**.
-8. Apabila tidak terdapat Merge Request, proses langsung dilanjutkan ke **SOP-TR-04 — Financial Verification**.
+7. Apabila terdapat Merge Request berstatus **Pending**, proses dilanjutkan ke **[SOP-TR-03 — Merge Billing](<SOP-TR-03 — Merge Billing.md>)**.
+8. Apabila tidak terdapat Merge Request, proses langsung dilanjutkan ke **[SOP-TR-04 — Financial Verification](<SOP-TR-04 — Financial Verification.md>)**.
 
 ---
 
@@ -59,7 +59,7 @@ Billing berhasil ditutup dan berada pada kondisi stabil untuk memasuki proses Fi
 - Close Bill tidak melakukan Financial Responsibility Allocation.
 - Close Bill tidak melakukan Finalize Financial Responsibility.
 - Close Bill tidak menghasilkan Settlement.
-- Apabila setelah Close Bill masih diperlukan Financial Charge baru, Billing harus melalui **SOP-TR-09 — Reopen Billing** sebelum Charge Source dapat menambahkan Financial Charge kembali.
+- Apabila setelah Close Bill masih diperlukan Financial Charge baru, Billing harus melalui **[SOP-TR-09 — Reopen Billing](<SOP-TR-09 — Reopen Billing.md>)** sebelum Charge Source dapat menambahkan Financial Charge kembali.
 
 ---
 
@@ -71,3 +71,13 @@ Billing berhasil ditutup dan berada pada kondisi stabil untuk memasuki proses Fi
 - Verifikator tidak memiliki hak akses.
 - Masih terdapat transaksi operasional yang belum selesai sehingga Billing belum dapat ditutup.
 - Validasi Close Bill gagal.
+
+---
+
+## Related Documents
+
+| Document | Description |
+|----------|-------------|
+| [04-sop.md](04-sop.md) | SOP index & workflow overview |
+| [02-domain.md](02-domain.md) | Domain model |
+| [03-design.md](03-design.md) | Architecture & persistence |

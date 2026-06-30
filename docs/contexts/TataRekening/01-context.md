@@ -279,6 +279,7 @@ Penjelasan lebih rinci tersedia pada dokumen berikut:
 
 | Document | Description |
 |----------|-------------|
-| **02-domain.md** | Domain Model, Aggregate, Entity, Value Object, Business Rules |
-| **03-design.md** | Clean Architecture, Persistence, Integration, Implementation |
-| **04-sop.md** | Business Workflow dan Standard Operating Procedure |
+| **[02-domain.md](02-domain.md)** | Domain Model, Aggregate, Entity, Value Object, Business Rules |
+| **[03-design.md](03-design.md)** | Clean Architecture, Persistence, Integration, Implementation |
+| **[04-sop.md](04-sop.md)** | Business Workflow dan Standard Operating Procedure |
+| **[tata-rekening-domain-gap-analysis-report.md](tata-rekening-domain-gap-analysis-report.md)** | Domain gap analysis (implementation vs artifact) |

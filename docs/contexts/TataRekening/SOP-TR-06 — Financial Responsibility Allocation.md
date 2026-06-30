@@ -33,7 +33,7 @@ Financial Responsibility Allocation memastikan seluruh Financial Charge telah me
 5. Sistem membentuk atau meregenerasi Financial Projection berdasarkan hasil Allocation.
 6. Sistem menampilkan hasil Financial Responsibility Allocation.
 7. Verifikator memverifikasi hasil Allocation.
-8. Apabila Allocation telah sesuai, proses dilanjutkan ke **SOP-TR-07 — Finalize Financial Responsibility**.
+8. Apabila Allocation telah sesuai, proses dilanjutkan ke **[SOP-TR-07 — Finalize Financial Responsibility](<SOP-TR-07 — Finalize Financial Responsibility.md>)**.
 9. Apabila Allocation belum sesuai, Verifikator melakukan perbaikan Allocation hingga seluruh Financial Responsibility tervalidasi.
 
 ---
@@ -76,3 +76,13 @@ Financial Responsibility Allocation berhasil ditetapkan dan Financial Projection
 - Masih terdapat Billing yang belum memiliki Payer.
 - Gagal meregenerasi Financial Projection.
 - Verifikator tidak memiliki hak akses.
+
+---
+
+## Related Documents
+
+| Document | Description |
+|----------|-------------|
+| [04-sop.md](04-sop.md) | SOP index & workflow overview |
+| [02-domain.md](02-domain.md) | Domain model |
+| [03-design.md](03-design.md) | Architecture & persistence |

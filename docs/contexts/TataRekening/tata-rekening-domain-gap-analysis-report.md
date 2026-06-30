@@ -2,6 +2,7 @@
 
 **Audit date:** 2026-06-16  
 **Source of truth:** [`02-domain.md`](02-domain.md)  
+**Related artifacts:** [`01-context.md`](01-context.md), [`03-design.md`](03-design.md), [`04-sop.md`](04-sop.md)  
 **Implementation scope (domain layer only):** `Bilreg.Domain/PaymentContext/TataRekeningFeature`, `Bilreg.Domain/PaymentContext/TrsBillFeature`, `Bilreg.Domain/PaymentContext/CoaFeature`  
 **Out of scope:** Infrastructure, repositories, application orchestration, API, persistence, legacy migration
 
@@ -550,6 +551,17 @@ However, the implementation is **not yet artifact compliant** because:
 5. Fix payment decomposition source (discharge → payment).
 6. Implement BillModulGroup at creation.
 7. Align ubiquitous language (LUNAS, Billing Set, component naming).
+
+---
+
+## Related Documents
+
+| Document | Description |
+|----------|-------------|
+| [`01-context.md`](01-context.md) | Business context |
+| [`02-domain.md`](02-domain.md) | Domain model (source of truth) |
+| [`03-design.md`](03-design.md) | Architecture & persistence |
+| [`04-sop.md`](04-sop.md) | Workflow overview & SOP index |
 
 ---
 

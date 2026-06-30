@@ -35,7 +35,7 @@ Finalize Financial Responsibility merupakan batas akhir proses Financial Control
 6. Sistem mengubah status Billing menjadi **FINALIZED**.
 7. Sistem mengunci Financial Responsibility Allocation.
 8. Sistem menjadikan Financial Projection sebagai dasar Settlement.
-9. Proses dilanjutkan ke **SOP-TR-08 — Cancel Finalization** apabila diperlukan, atau **SOP-TR-10 — Settlement Initiation**.
+9. Proses dilanjutkan ke **[SOP-TR-08 — Cancel Finalization](<SOP-TR-08 — Cancel Finalization.md>)** apabila diperlukan, atau **[SOP-TR-10 — Settlement Initiation](<SOP-TR-10 — Settlement Initiation.md>)**.
 
 ---
 
@@ -78,4 +78,13 @@ Billing berhasil difinalisasi dan siap diproses untuk Settlement.
 - Billing telah berstatus **FINALIZED**.
 - Billing telah berstatus **LUNAS**.
 - Verifikator tidak memiliki hak akses.
-  
+
+---
+
+## Related Documents
+
+| Document | Description |
+|----------|-------------|
+| [04-sop.md](04-sop.md) | SOP index & workflow overview |
+| [02-domain.md](02-domain.md) | Domain model |
+| [03-design.md](03-design.md) | Architecture & persistence |

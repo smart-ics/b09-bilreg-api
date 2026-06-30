@@ -302,6 +302,7 @@ Prinsip migrasi:
 
 | Document | Description |
 |----------|-------------|
-| **01-context.md** | Business Context |
-| **02-domain.md** | Domain Model |
-| **04-sop.md** | Business Workflow & SOP |
+| **[01-context.md](01-context.md)** | Business Context |
+| **[02-domain.md](02-domain.md)** | Domain Model |
+| **[04-sop.md](04-sop.md)** | Business Workflow & SOP |
+| **[tata-rekening-domain-gap-analysis-report.md](tata-rekening-domain-gap-analysis-report.md)** | Domain gap analysis (implementation vs artifact) |

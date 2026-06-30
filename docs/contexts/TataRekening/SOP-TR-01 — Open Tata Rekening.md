@@ -33,7 +33,7 @@ Membuka Tata Rekening untuk suatu Registrasi sebagai awal proses Financial Contr
    - **TargetReg = Registrasi yang sedang dibuka**, atau
    - **TargetReg masih kosong**, tetapi **PatientId** sama dengan Registrasi yang sedang dibuka.
 7. Sistem menampilkan Ringkasan Tata Rekening beserta daftar Merge Request yang ditemukan (apabila ada).
-8. Proses dilanjutkan ke **SOP-TR-02 — Close Bill**.
+8. Proses dilanjutkan ke **[SOP-TR-02 — Close Bill](<SOP-TR-02 — Close Bill.md>)**.
 
 ---
 
@@ -72,3 +72,13 @@ Apabila terdapat Merge Request yang masih Pending, sistem menampilkannya sebagai
 - Registrasi telah berstatus **LUNAS**.
 - Verifikator tidak memiliki hak akses.
 - Data Tata Rekening gagal dimuat.
+
+---
+
+## Related Documents
+
+| Document | Description |
+|----------|-------------|
+| [04-sop.md](04-sop.md) | SOP index & workflow overview |
+| [02-domain.md](02-domain.md) | Domain model |
+| [03-design.md](03-design.md) | Architecture & persistence |

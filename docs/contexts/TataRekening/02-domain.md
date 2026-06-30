@@ -251,6 +251,7 @@ Peristiwa bisnis utama:
 
 | Document | Description |
 |----------|-------------|
-| **01-context.md** | Business Context |
-| **03-design.md** | Architecture & Persistence |
-| **04-sop.md** | Business Workflow |
+| **[01-context.md](01-context.md)** | Business Context |
+| **[03-design.md](03-design.md)** | Architecture & Persistence |
+| **[04-sop.md](04-sop.md)** | Business Workflow |
+| **[tata-rekening-domain-gap-analysis-report.md](tata-rekening-domain-gap-analysis-report.md)** | Domain gap analysis (implementation vs artifact) |

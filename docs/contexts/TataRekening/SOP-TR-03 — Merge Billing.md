@@ -46,7 +46,7 @@ Contoh penggunaan:
 10. Sistem mengirim permintaan **Transfer Receivable** kepada Accounting untuk memindahkan kepemilikan Accounts Receivable dari Registrasi sumber ke Registrasi tujuan.
 11. Sistem mengubah status Merge Request menjadi **Executed**.
 12. Sistem mencatat Audit Trail Merge Billing.
-13. Proses dilanjutkan ke **SOP-TR-04 — Financial Verification**.
+13. Proses dilanjutkan ke **[SOP-TR-04 — Financial Verification](<SOP-TR-04 — Financial Verification.md>)**.
 
 ---
 
@@ -104,3 +104,13 @@ Billing Set Registrasi tujuan telah mencakup seluruh Billing hasil Merge dan Fin
 - Gagal meregenerasi Financial Projection.
 - Gagal melakukan **Transfer Receivable** pada Accounting.
 - Verifikator tidak memiliki hak akses.
+
+---
+
+## Related Documents
+
+| Document | Description |
+|----------|-------------|
+| [04-sop.md](04-sop.md) | SOP index & workflow overview |
+| [02-domain.md](02-domain.md) | Domain model |
+| [03-design.md](03-design.md) | Architecture & persistence |
