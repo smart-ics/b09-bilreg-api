@@ -1,7 +1,10 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.PaymentContext.TataRekeningFeature.Dtos;
 using Bilreg.Application.Shared;
+using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.PaymentContext.TataRekeningFeature;
+using Bilreg.Domain.Shared.AuditLogFeature;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
 
@@ -17,11 +20,16 @@ public record SettlementInitiationResponse(TataRekeningSummaryDto Summary);
 public class SettlementInitiationHandler : IRequestHandler<SettlementInitiationCommand, SettlementInitiationResponse>
 {
     private readonly ITataRekeningRepo _tataRekeningRepo;
+    private readonly IAuditRepo _auditRepo;
     private readonly IUnitOfWork _unitOfWork;
 
-    public SettlementInitiationHandler(ITataRekeningRepo tataRekeningRepo, IUnitOfWork unitOfWork)
+    public SettlementInitiationHandler(
+        ITataRekeningRepo tataRekeningRepo,
+        IAuditRepo auditRepo,
+        IUnitOfWork unitOfWork)
     {
         _tataRekeningRepo = tataRekeningRepo;
+        _auditRepo = auditRepo;
         _unitOfWork = unitOfWork;
     }
 
@@ -40,6 +48,21 @@ public class SettlementInitiationHandler : IRequestHandler<SettlementInitiationC
         tataRekening.InitiateSettlement(request.PetugasVerif, request.InitiatedAt);
 
         _tataRekeningRepo.SaveChanges(tataRekening);
+
+        var audit = AuditLog.Create(
+            userId: request.PetugasVerif,
+            actionType: "TATA_REKENING_SETTLEMENT_INITIATION",
+            entityName: nameof(TataRekeningModel),
+            entityId: request.RegId,
+            originalDataJson: AuditLogSnapshotJson.Serialize(new
+            {
+                request.RegId,
+                request.PetugasVerif,
+                request.InitiatedAt
+            }),
+            correlationId: request.RegId);
+        _auditRepo.SaveChanges(audit);
+
         scope.Complete();
 
         return Task.FromResult(

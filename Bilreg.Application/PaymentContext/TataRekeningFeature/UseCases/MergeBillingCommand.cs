@@ -2,8 +2,10 @@ using Ardalis.GuardClauses;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Bilreg.Application.PaymentContext.TataRekeningFeature.Dtos;
 using Bilreg.Application.Shared;
+using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PaymentContext.TataRekeningFeature;
+using Bilreg.Domain.Shared.AuditLogFeature;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
 
@@ -18,10 +20,14 @@ public record MergeBillingResponse(
 
 public class MergeBillingHandler : IRequestHandler<MergeBillingCommand, MergeBillingResponse>
 {
+    private const string SystemActor = "SYSTEM";
+
     private readonly ITataRekeningRepo _tataRekeningRepo;
     private readonly IMergeRequestRepo _mergeRequestRepo;
     private readonly ITrsBillingRepo _trsBillingRepo;
     private readonly IMergeBillingDomainService _mergeBillingService;
+    private readonly ITransferReceivableService _transferReceivableService;
+    private readonly IAuditRepo _auditRepo;
     private readonly IUnitOfWork _unitOfWork;
 
     public MergeBillingHandler(
@@ -29,12 +35,16 @@ public class MergeBillingHandler : IRequestHandler<MergeBillingCommand, MergeBil
         IMergeRequestRepo mergeRequestRepo,
         ITrsBillingRepo trsBillingRepo,
         IMergeBillingDomainService mergeBillingService,
+        ITransferReceivableService transferReceivableService,
+        IAuditRepo auditRepo,
         IUnitOfWork unitOfWork)
     {
         _tataRekeningRepo = tataRekeningRepo;
         _mergeRequestRepo = mergeRequestRepo;
         _trsBillingRepo = trsBillingRepo;
         _mergeBillingService = mergeBillingService;
+        _transferReceivableService = transferReceivableService;
+        _auditRepo = auditRepo;
         _unitOfWork = unitOfWork;
     }
 
@@ -67,6 +77,22 @@ public class MergeBillingHandler : IRequestHandler<MergeBillingCommand, MergeBil
 
         foreach (var bill in target.ListTrsBill.Where(b => sourceBillIds.Contains(b.TrsBillingId)))
             _trsBillingRepo.SaveChanges(bill);
+
+        _transferReceivableService.Transfer(mergeRequest.SourceRegId, mergeRequest.TargetRegId!);
+
+        var audit = AuditLog.Create(
+            userId: SystemActor,
+            actionType: "TATA_REKENING_MERGE_BILLING",
+            entityName: nameof(MergeRequestModel),
+            entityId: mergeRequest.MergeRequestId,
+            originalDataJson: AuditLogSnapshotJson.Serialize(new
+            {
+                mergeRequest.MergeRequestId,
+                mergeRequest.SourceRegId,
+                mergeRequest.TargetRegId
+            }),
+            correlationId: mergeRequest.TargetRegId);
+        _auditRepo.SaveChanges(audit);
 
         scope.Complete();
 

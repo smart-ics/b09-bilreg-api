@@ -2,8 +2,10 @@ using Ardalis.GuardClauses;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Bilreg.Application.PaymentContext.TataRekeningFeature.Dtos;
 using Bilreg.Application.Shared;
+using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PaymentContext.TataRekeningFeature;
+using Bilreg.Domain.Shared.AuditLogFeature;
 using Bilreg.Domain.PaymentContext.TrsBillFeature;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
@@ -26,17 +28,20 @@ public class FinancialAdjustmentHandler : IRequestHandler<FinancialAdjustmentCom
     private readonly ITataRekeningRepo _tataRekeningRepo;
     private readonly ITrsBillingRepo _trsBillingRepo;
     private readonly IFinancialAdjustmentDomainService _adjustmentService;
+    private readonly IAuditRepo _auditRepo;
     private readonly IUnitOfWork _unitOfWork;
 
     public FinancialAdjustmentHandler(
         ITataRekeningRepo tataRekeningRepo,
         ITrsBillingRepo trsBillingRepo,
         IFinancialAdjustmentDomainService adjustmentService,
+        IAuditRepo auditRepo,
         IUnitOfWork unitOfWork)
     {
         _tataRekeningRepo = tataRekeningRepo;
         _trsBillingRepo = trsBillingRepo;
         _adjustmentService = adjustmentService;
+        _auditRepo = auditRepo;
         _unitOfWork = unitOfWork;
     }
 
@@ -59,6 +64,21 @@ public class FinancialAdjustmentHandler : IRequestHandler<FinancialAdjustmentCom
         {
             _tataRekeningRepo.SaveChanges(tataRekening);
             PersistMutatedBills(tataRekening, adjustmentRequest);
+
+            var audit = AuditLog.Create(
+                userId: "SYSTEM",
+                actionType: "TATA_REKENING_FINANCIAL_ADJUSTMENT",
+                entityName: nameof(TataRekeningModel),
+                entityId: request.RegId,
+                reason: request.Adjustment.Reason,
+                originalDataJson: AuditLogSnapshotJson.Serialize(new
+                {
+                    request.Adjustment.Type,
+                    request.Adjustment.Amount,
+                    request.Adjustment.TrsBillingId
+                }),
+                correlationId: request.RegId);
+            _auditRepo.SaveChanges(audit);
         }
 
         scope.Complete();

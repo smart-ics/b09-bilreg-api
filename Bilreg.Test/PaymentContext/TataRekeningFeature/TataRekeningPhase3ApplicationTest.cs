@@ -4,6 +4,7 @@ using Bilreg.Application.PaymentContext.TataRekeningFeature.Dtos;
 using Bilreg.Application.PaymentContext.TataRekeningFeature.UseCases;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Bilreg.Application.Shared;
+using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PaymentContext.TataRekeningFeature;
 using Bilreg.Domain.PaymentContext.TrsBillFeature;
@@ -26,6 +27,8 @@ public class TataRekeningPhase3ApplicationTest
     private readonly Mock<IRegRepo> _regRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IUnitOfWorkScope> _unitOfWorkScope = new();
+    private readonly Mock<ITransferReceivableService> _transferReceivableService = new();
+    private readonly Mock<IAuditRepo> _auditRepo = new();
 
     public TataRekeningPhase3ApplicationTest()
     {
@@ -118,6 +121,8 @@ public class TataRekeningPhase3ApplicationTest
             _mergeRequestRepo.Object,
             _trsBillingRepo.Object,
             TataRekeningDomainTestHelper.MergeBillingService,
+            _transferReceivableService.Object,
+            _auditRepo.Object,
             _unitOfWork.Object);
 
         var result = await handler.Handle(new MergeBillingCommand("MR-MERGE"), CancellationToken.None);
@@ -129,6 +134,8 @@ public class TataRekeningPhase3ApplicationTest
         _tataRekeningRepo.Verify(r => r.SaveChanges(It.IsAny<TataRekeningModel>()), Times.Exactly(2));
         _mergeRequestRepo.Verify(r => r.SaveChanges(mergeRequest), Times.Once);
         _trsBillingRepo.Verify(r => r.SaveChanges(It.IsAny<TrsBillType>()), Times.Once);
+        _transferReceivableService.Verify(s => s.Transfer(SourceRegId, RegId), Times.Once);
+        _auditRepo.Verify(r => r.SaveChanges(It.IsAny<Bilreg.Domain.Shared.AuditLogFeature.AuditLog>()), Times.Once);
         _unitOfWorkScope.Verify(s => s.Complete(), Times.Once);
     }
 
@@ -151,6 +158,8 @@ public class TataRekeningPhase3ApplicationTest
             _mergeRequestRepo.Object,
             _trsBillingRepo.Object,
             TataRekeningDomainTestHelper.MergeBillingService,
+            _transferReceivableService.Object,
+            _auditRepo.Object,
             _unitOfWork.Object);
 
         var act = () => handler.Handle(new MergeBillingCommand("MR-FAIL"), CancellationToken.None);
@@ -252,7 +261,7 @@ public class TataRekeningPhase3ApplicationTest
         };
 
         var handler = new AllocateFinancialResponsibilityHandler(
-            _tataRekeningRepo.Object, _unitOfWork.Object);
+            _tataRekeningRepo.Object, _trsBillingRepo.Object, _unitOfWork.Object);
 
         var result = await handler.Handle(
             new AllocateFinancialResponsibilityCommand(RegId, payments),
@@ -274,7 +283,7 @@ public class TataRekeningPhase3ApplicationTest
         SetupTataRekeningLoad(RegId, tataRekening);
 
         var handler = new FinalizeFinancialResponsibilityHandler(
-            _tataRekeningRepo.Object, _unitOfWork.Object);
+            _tataRekeningRepo.Object, _trsBillingRepo.Object, _unitOfWork.Object);
 
         var result = await handler.Handle(
             new FinalizeFinancialResponsibilityCommand(RegId, PetugasVerif, TestDate),
@@ -294,7 +303,8 @@ public class TataRekeningPhase3ApplicationTest
             [TataRekeningTestDataBuilder.BuildPayment(PaymentType.ByKas, 60_000m, 0m)]);
         SetupTataRekeningLoad(RegId, tataRekening);
 
-        var handler = new CancelFinalizationHandler(_tataRekeningRepo.Object, _unitOfWork.Object);
+        var handler = new CancelFinalizationHandler(
+            _tataRekeningRepo.Object, _trsBillingRepo.Object, _auditRepo.Object, _unitOfWork.Object);
 
         var result = await handler.Handle(new CancelFinalizationCommand(RegId), CancellationToken.None);
 
@@ -318,6 +328,7 @@ public class TataRekeningPhase3ApplicationTest
             _tataRekeningRepo.Object,
             _trsBillingRepo.Object,
             TataRekeningDomainTestHelper.AdjustmentService,
+            _auditRepo.Object,
             _unitOfWork.Object);
 
         var result = await handler.Handle(
@@ -345,6 +356,7 @@ public class TataRekeningPhase3ApplicationTest
             _tataRekeningRepo.Object,
             _trsBillingRepo.Object,
             TataRekeningDomainTestHelper.AdjustmentService,
+            _auditRepo.Object,
             _unitOfWork.Object);
 
         var result = await handler.Handle(
@@ -370,7 +382,8 @@ public class TataRekeningPhase3ApplicationTest
             RegId, TataRekeningTestDataBuilder.CreateBill("BILL-RP", RegId, 25_000m));
         SetupTataRekeningLoad(RegId, tataRekening);
 
-        var handler = new ReopenBillingHandler(_tataRekeningRepo.Object, _unitOfWork.Object);
+        var handler = new ReopenBillingHandler(
+            _tataRekeningRepo.Object, _auditRepo.Object, _unitOfWork.Object);
 
         var result = await handler.Handle(
             new ReopenBillingCommand(RegId, "Koreksi charge source"),
@@ -394,7 +407,8 @@ public class TataRekeningPhase3ApplicationTest
             [TataRekeningTestDataBuilder.BuildPayment(PaymentType.ByKas, 80_000m, 0m)]);
         SetupTataRekeningLoad(RegId, tataRekening);
 
-        var handler = new SettlementInitiationHandler(_tataRekeningRepo.Object, _unitOfWork.Object);
+        var handler = new SettlementInitiationHandler(
+            _tataRekeningRepo.Object, _auditRepo.Object, _unitOfWork.Object);
 
         var result = await handler.Handle(
             new SettlementInitiationCommand(RegId, PetugasVerif, TestDate),

@@ -65,7 +65,7 @@ public static class InfrastructureService
             .AddScoped<IJadwalPraktekHarianRepo, JadwalPraktekHarianRepo>()
             .AddScoped<IPasienBalanceLegacyReader, LegacyOutstandingReceivableReader>()
             .AddScoped<IUnitOfWork, TransHelperUnitOfWork>()
-            .AddScoped<IMergeRequestRepo, InMemoryMergeRequestRepo>()
+            .AddScoped<ITransferReceivableService, TransferReceivableService>()
             .AddSingleton<TarifOperationalGate>()
             .AddMemoryCache();
 

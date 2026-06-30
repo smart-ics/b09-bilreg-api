@@ -20,11 +20,13 @@ public record TataRekeningModel : IRegKey
         FinancialVerificationStatusEnum financialVerificationStatus = FinancialVerificationStatusEnum.NotVerified,
         FinancialVerificationInfo? financialVerificationInfo = null,
         bool isFinancialResponsibilityAllocated = false,
-        bool settlementInitiated = false)
+        bool settlementInitiated = false,
+        int version = 1)
     {
         RegId = regId;
         Status = status;
         FinalizationInfo = finalizationInfo;
+        Version = version;
 
         _listTataRekeningPayment = listTataRekeningPayment.ToList();
         _listTrsBill = listTrsBill.ToList();
@@ -38,7 +40,7 @@ public record TataRekeningModel : IRegKey
     }
 
     public static TataRekeningModel Create(string regId) =>
-        new(regId, TataRekeningStatusEnum.Opened, TataRekeningFinalizationType.Default, [], []);
+        new(regId, TataRekeningStatusEnum.Opened, TataRekeningFinalizationType.Default, [], [], version: 1);
 
     public string RegId { get; init; }
     public TataRekeningFinalizationType FinalizationInfo { get; private set; }
@@ -47,6 +49,7 @@ public record TataRekeningModel : IRegKey
     public FinancialVerificationInfo? FinancialVerificationInfo { get; private set; }
     public bool IsFinancialResponsibilityAllocated { get; private set; }
     public bool SettlementInitiated { get; private set; }
+    public int Version { get; private set; }
     public IEnumerable<TataRekeningPaymentType> ListPayment => _listTataRekeningPayment;
     public IEnumerable<TrsBillType> ListTrsBill => _listTrsBill;
 
@@ -593,6 +596,8 @@ public record TataRekeningModel : IRegKey
 
         Status = TataRekeningStatusEnum.Lunas;
     }
+
+    public void CommitVersionIncrement() => Version++;
 }
 
 /// <summary>

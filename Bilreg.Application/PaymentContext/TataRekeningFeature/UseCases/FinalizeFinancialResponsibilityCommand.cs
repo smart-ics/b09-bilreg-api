@@ -1,4 +1,5 @@
 using Ardalis.GuardClauses;
+using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Bilreg.Application.PaymentContext.TataRekeningFeature.Dtos;
 using Bilreg.Application.Shared;
 using Bilreg.Domain.AdmisiContext.RegFeature;
@@ -18,11 +19,16 @@ public class FinalizeFinancialResponsibilityHandler
     : IRequestHandler<FinalizeFinancialResponsibilityCommand, FinalizeFinancialResponsibilityResponse>
 {
     private readonly ITataRekeningRepo _tataRekeningRepo;
+    private readonly ITrsBillingRepo _trsBillingRepo;
     private readonly IUnitOfWork _unitOfWork;
 
-    public FinalizeFinancialResponsibilityHandler(ITataRekeningRepo tataRekeningRepo, IUnitOfWork unitOfWork)
+    public FinalizeFinancialResponsibilityHandler(
+        ITataRekeningRepo tataRekeningRepo,
+        ITrsBillingRepo trsBillingRepo,
+        IUnitOfWork unitOfWork)
     {
         _tataRekeningRepo = tataRekeningRepo;
+        _trsBillingRepo = trsBillingRepo;
         _unitOfWork = unitOfWork;
     }
 
@@ -41,6 +47,9 @@ public class FinalizeFinancialResponsibilityHandler
         tataRekening.FinalizeFinancialResponsibility(request.PetugasVerif, request.FinalizationDate);
 
         _tataRekeningRepo.SaveChanges(tataRekening);
+        foreach (var bill in tataRekening.ListTrsBill)
+            _trsBillingRepo.SaveChanges(bill);
+
         scope.Complete();
 
         return Task.FromResult(

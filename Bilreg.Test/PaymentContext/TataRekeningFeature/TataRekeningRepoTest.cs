@@ -6,6 +6,7 @@ using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using Bilreg.Infrastructure.PaymentContext.TataRekeningFeature;
 using FluentAssertions;
 using Moq;
+using Nuna.Lib.PatternHelper;
 
 namespace Bilreg.Test.PaymentContext.TataRekeningFeature;
 
@@ -31,16 +32,15 @@ public class TataRekeningRepoTest
 
     private static TataRekeningModel BuildModel(
         TataRekeningStatusEnum status = TataRekeningStatusEnum.Closed,
-        IEnumerable<TataRekeningPaymentType>? payments = null) =>
+        IEnumerable<TataRekeningPaymentType>? payments = null,
+        int version = 1) =>
         new(
             RegId,
             status,
             TataRekeningFinalizationType.Default,
             payments ?? [new TataRekeningPaymentType(PaymentType.ByKas, 10_000m, 0m, CoaType.Default)],
-            []);
-
-    private static BilrgTataRekeningDto BuildHeaderDto() =>
-        new(RegId, (int)TataRekeningStatusEnum.Closed, "-", new DateTime(3000, 1, 1));
+            [],
+            version: version);
 
     [Fact]
     public void GivenNewTataRekening_WhenSaveChanges_ThenInsertHeaderAndReplacePayments()
@@ -53,34 +53,62 @@ public class TataRekeningRepoTest
         _sut.SaveChanges(model);
 
         _headerDalMock.Verify(x => x.Insert(It.Is<BilrgTataRekeningDto>(d => d.RegId == RegId)), Times.Once);
-        _headerDalMock.Verify(x => x.Update(It.IsAny<BilrgTataRekeningDto>()), Times.Never);
+        _headerDalMock.Verify(x => x.UpdateConditional(It.IsAny<BilrgTataRekeningDto>(), It.IsAny<int>()), Times.Never);
         _paymentDalMock.Verify(x => x.Delete(It.Is<IRegKey>(k => k.RegId == RegId)), Times.Once);
         _paymentDalMock.Verify(x => x.Insert(It.IsAny<IEnumerable<TaRegistrasi3Dto>>()), Times.Once);
         _trsBillingRepoMock.Verify(x => x.SaveChanges(It.IsAny<TrsBillType>()), Times.Never);
+        model.Version.Should().Be(2);
     }
 
     [Fact]
-    public void GivenExistingTataRekening_WhenSaveChanges_ThenUpdateHeaderAndReplacePayments()
+    public void GivenExistingTataRekening_WhenSaveChanges_ThenUpdateConditionalHeaderAndReplacePayments()
     {
-        var model = BuildModel();
+        var model = BuildModel(version: 3);
         _headerDalMock
             .Setup(x => x.GetData(It.IsAny<IRegKey>()))
-            .Returns(BuildHeaderDto());
+            .Returns(TataRekeningDtoTestHelper.BuildHeaderDto(RegId, version: 3));
+        _headerDalMock
+            .Setup(x => x.UpdateConditional(It.IsAny<BilrgTataRekeningDto>(), 3))
+            .Returns(1);
 
         _sut.SaveChanges(model);
 
-        _headerDalMock.Verify(x => x.Update(It.Is<BilrgTataRekeningDto>(d => d.RegId == RegId)), Times.Once);
+        _headerDalMock.Verify(x => x.UpdateConditional(It.Is<BilrgTataRekeningDto>(d => d.RegId == RegId), 3), Times.Once);
         _headerDalMock.Verify(x => x.Insert(It.IsAny<BilrgTataRekeningDto>()), Times.Never);
         _paymentDalMock.Verify(x => x.Delete(It.Is<IRegKey>(k => k.RegId == RegId)), Times.Once);
         _paymentDalMock.Verify(x => x.Insert(It.IsAny<IEnumerable<TaRegistrasi3Dto>>()), Times.Once);
+        model.Version.Should().Be(4);
     }
 
     [Fact]
-    public void GivenHeaderExists_WhenLoadEntity_ThenHydratesPaymentsAndBills()
+    public void GivenStaleVersion_WhenSaveChanges_ThenThrows()
     {
-        var header = BuildHeaderDto();
+        var model = BuildModel(version: 2);
+        _headerDalMock
+            .Setup(x => x.GetData(It.IsAny<IRegKey>()))
+            .Returns(TataRekeningDtoTestHelper.BuildHeaderDto(RegId, version: 2));
+        _headerDalMock
+            .Setup(x => x.UpdateConditional(It.IsAny<BilrgTataRekeningDto>(), 2))
+            .Returns(0);
+
+        var act = () => _sut.SaveChanges(model);
+
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void GivenHeaderExists_WhenLoadEntity_ThenHydratesPaymentsBillsAndPhase1State()
+    {
+        var header = TataRekeningDtoTestHelper.BuildHeaderDto(RegId) with
+        {
+            FinVerifStatus = (int)FinancialVerificationStatusEnum.Valid,
+            FinVerifPetugas = "VER-01",
+            FinVerifDate = new DateTime(2026, 6, 1),
+            IsAllocated = true,
+            SettlementInitiated = true,
+            Version = 5
+        };
         var paymentDto = new TaRegistrasi3Dto(RegId, "BYKAS", "Bayar Pribadi", 10_000m, 0m, "REK-01", false);
-        var bill = TrsBillType.Key("BIL-001");
 
         _headerDalMock.Setup(x => x.GetData(It.IsAny<IRegKey>())).Returns(header);
         _paymentDalMock.Setup(x => x.ListData(It.IsAny<IRegKey>())).Returns([paymentDto]);
@@ -96,11 +124,14 @@ public class TataRekeningRepoTest
             {
                 model.RegId.Should().Be(RegId);
                 model.Status.Should().Be(TataRekeningStatusEnum.Closed);
+                model.FinancialVerificationStatus.Should().Be(FinancialVerificationStatusEnum.Valid);
+                model.IsFinancialResponsibilityAllocated.Should().BeTrue();
+                model.SettlementInitiated.Should().BeTrue();
+                model.Version.Should().Be(5);
                 model.ListPayment.Should().HaveCount(1);
                 model.ListPayment.First().Coa.CoaId.Should().Be("REK-01");
             },
             onNone: () => Assert.Fail("Expected Some"));
-        _trsBillingRepoMock.Verify(x => x.ListEntity(It.Is<IRegKey>(k => k.RegId == RegId)), Times.Once);
     }
 
     [Fact]

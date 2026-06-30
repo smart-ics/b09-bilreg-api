@@ -1,8 +1,11 @@
 using Ardalis.GuardClauses;
+using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Bilreg.Application.PaymentContext.TataRekeningFeature.Dtos;
 using Bilreg.Application.Shared;
+using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PaymentContext.TataRekeningFeature;
+using Bilreg.Domain.Shared.AuditLogFeature;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
 
@@ -14,12 +17,19 @@ public record ReopenBillingResponse(TataRekeningSummaryDto Summary);
 
 public class ReopenBillingHandler : IRequestHandler<ReopenBillingCommand, ReopenBillingResponse>
 {
+    private const string SystemActor = "SYSTEM";
+
     private readonly ITataRekeningRepo _tataRekeningRepo;
+    private readonly IAuditRepo _auditRepo;
     private readonly IUnitOfWork _unitOfWork;
 
-    public ReopenBillingHandler(ITataRekeningRepo tataRekeningRepo, IUnitOfWork unitOfWork)
+    public ReopenBillingHandler(
+        ITataRekeningRepo tataRekeningRepo,
+        IAuditRepo auditRepo,
+        IUnitOfWork unitOfWork)
     {
         _tataRekeningRepo = tataRekeningRepo;
+        _auditRepo = auditRepo;
         _unitOfWork = unitOfWork;
     }
 
@@ -36,6 +46,16 @@ public class ReopenBillingHandler : IRequestHandler<ReopenBillingCommand, Reopen
         tataRekening.ReOpen();
 
         _tataRekeningRepo.SaveChanges(tataRekening);
+
+        var audit = AuditLog.Create(
+            userId: SystemActor,
+            actionType: "TATA_REKENING_REOPEN_BILLING",
+            entityName: nameof(TataRekeningModel),
+            entityId: request.RegId,
+            reason: request.Reason,
+            correlationId: request.RegId);
+        _auditRepo.SaveChanges(audit);
+
         scope.Complete();
 
         return Task.FromResult(new ReopenBillingResponse(TataRekeningApplicationMapper.ToSummaryDto(tataRekening)));
