@@ -8,6 +8,7 @@ using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.PaymentContext.RekapCetakFeature;
 using Bilreg.Domain.PaymentContext.TataRekeningFeature;
+using Bilreg.Test.PaymentContext.TataRekeningFeature;
 using Bilreg.Domain.PaymentContext.TrsBillFeature;
 using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
@@ -70,10 +71,10 @@ public class CreateBillDomServiceTest
         var reg = CreateRegWithKomponen("REG-004");
         var tataRekening = HydrateOpened(reg.RegId, CreateMinimalBill(reg.RegId, 10_000m));
         tataRekening.Close();
-        tataRekening.FinalizeFinancialResponsibility(
-            [new TataRekeningPaymentType(PaymentType.ByKas, 10_000m, 0m, CoaType.Default)],
-            "kasir",
-            DateTime.Now);
+        TataRekeningDomainTestHelper.VerifyAndAllocate(
+            tataRekening,
+            [new TataRekeningPaymentType(PaymentType.ByKas, 10_000m, 0m, CoaType.Default)]);
+        tataRekening.FinalizeFinancialResponsibility("kasir", DateTime.Now);
 
         Action act = () => _sut.FromReg(
             tataRekening,
@@ -93,10 +94,10 @@ public class CreateBillDomServiceTest
         var reg = CreateRegWithKomponen("REG-005");
         var tataRekening = HydrateOpened(reg.RegId, CreateMinimalBill(reg.RegId, 10_000m));
         tataRekening.Close();
-        tataRekening.FinalizeFinancialResponsibility(
-            [new TataRekeningPaymentType(PaymentType.ByKas, 10_000m, 0m, CoaType.Default)],
-            "kasir",
-            DateTime.Now);
+        TataRekeningDomainTestHelper.VerifyAndAllocate(
+            tataRekening,
+            [new TataRekeningPaymentType(PaymentType.ByKas, 10_000m, 0m, CoaType.Default)]);
+        tataRekening.FinalizeFinancialResponsibility("kasir", DateTime.Now);
         tataRekening.Pay(
             [new TataRekeningPaymentType(PaymentType.ByKas, 10_000m, 0m, CoaType.Default)],
             "PAY-001",

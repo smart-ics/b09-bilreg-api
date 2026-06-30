@@ -20,11 +20,11 @@ public class TataRekeningLifecycleDomainTest
     {
         var tataRekening = HydrateOpened(CreateBill("BILL-JASA-01", BillModulGroup.Jasa, 100_000m));
 
-        tataRekening.Close();
-        tataRekening.FinalizeFinancialResponsibility(
+        TataRekeningDomainTestHelper.CloseVerifyAllocateFinalize(
+            tataRekening,
             [BuildPayment(PaymentType.ByKas, 100_000m, 0m)],
             "kasir-01",
-            new DateTime(2026, 6, 16, 10, 0, 0));
+            finalizationDate: new DateTime(2026, 6, 16, 10, 0, 0));
 
         tataRekening.Status.Should().Be(TataRekeningStatusEnum.Finalized);
 
@@ -106,15 +106,14 @@ public class TataRekeningLifecycleDomainTest
     }
 
     [Fact]
-    public void UT08_GivenPartialFinalizationInput_WhenFinalizeFinancialResponsibility_ThenShouldReject()
+    public void UT08_GivenPartialAllocationInput_WhenAllocateFinancialResponsibility_ThenShouldReject()
     {
         var tataRekening = HydrateOpened(CreateBill("BILL-JASA-02", BillModulGroup.Jasa, 100_000m));
         tataRekening.Close();
+        tataRekening.CompleteFinancialVerification("kasir-01", DateTime.Now);
 
-        Action act = () => tataRekening.FinalizeFinancialResponsibility(
-            [BuildPayment(PaymentType.ByKas, 50_000m, 0m)],
-            "kasir-01",
-            DateTime.Now);
+        Action act = () => tataRekening.AllocateFinancialResponsibility(
+            [BuildPayment(PaymentType.ByKas, 50_000m, 0m)]);
 
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*tidak sama*");
@@ -168,17 +167,16 @@ public class TataRekeningLifecycleDomainTest
     }
 
     [Fact]
-    public void UT12_GivenJasaAndObatBills_WhenFinalizeFinancialResponsibility_ThenEachModulGroupReceivesOnlyItsAllocation()
+    public void UT12_GivenJasaAndObatBills_WhenAllocateFinancialResponsibility_ThenEachModulGroupReceivesOnlyItsAllocation()
     {
         var jasaBill = CreateBill("BILL-JASA-03", BillModulGroup.Jasa, 80_000m);
         var obatBill = CreateBill("BILL-OBAT-01", BillModulGroup.Obat, 20_000m);
         var tataRekening = HydrateOpened(jasaBill, obatBill);
         tataRekening.Close();
-
-        tataRekening.FinalizeFinancialResponsibility(
+        TataRekeningDomainTestHelper.VerifyAndAllocate(
+            tataRekening,
             [BuildPayment(PaymentType.ByKas, 80_000m, 20_000m)],
-            "kasir-01",
-            DateTime.Now);
+            "kasir-01");
 
         jasaBill.ListFinalization.Sum(x => x.Nilai).Should().Be(80_000m);
         obatBill.ListFinalization.Sum(x => x.Nilai).Should().Be(20_000m);
@@ -187,15 +185,14 @@ public class TataRekeningLifecycleDomainTest
     }
 
     [Fact]
-    public void UT13_GivenJasaAllocationWithoutJasaBills_WhenFinalizeFinancialResponsibility_ThenShouldReject()
+    public void UT13_GivenJasaAllocationWithoutJasaBills_WhenAllocateFinancialResponsibility_ThenShouldReject()
     {
         var tataRekening = HydrateOpened(CreateBill("BILL-OBAT-02", BillModulGroup.Obat, 20_000m));
         tataRekening.Close();
+        tataRekening.CompleteFinancialVerification("kasir-01", DateTime.Now);
 
-        Action act = () => tataRekening.FinalizeFinancialResponsibility(
-            [BuildPayment(PaymentType.ByKas, 10_000m, 20_000m)],
-            "kasir-01",
-            DateTime.Now);
+        Action act = () => tataRekening.AllocateFinancialResponsibility(
+            [BuildPayment(PaymentType.ByKas, 10_000m, 20_000m)]);
 
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*tidak sama*");
@@ -208,7 +205,10 @@ public class TataRekeningLifecycleDomainTest
 
         Action close = () => tataRekening.Close();
         Action reopen = () => tataRekening.ReOpen();
-        Action finalize = () => tataRekening.FinalizeFinancialResponsibility([], "kasir", DateTime.Now);
+        Action finalize = () => tataRekening.FinalizeFinancialResponsibility("kasir", DateTime.Now);
+        Action verify = () => tataRekening.CompleteFinancialVerification("kasir", DateTime.Now);
+        Action allocate = () => tataRekening.AllocateFinancialResponsibility([]);
+        Action initiateSettlement = () => tataRekening.InitiateSettlement("kasir", DateTime.Now);
         Action pay = () => tataRekening.Pay([], "PAY", DateTime.Now);
         Action cancel = () => tataRekening.CancelFinalization();
         Action delete = () => tataRekening.DeleteBill("BILL-JASA-01");
@@ -216,6 +216,9 @@ public class TataRekeningLifecycleDomainTest
         close.Should().Throw<InvalidOperationException>().WithMessage("*LUNAS*");
         reopen.Should().Throw<InvalidOperationException>().WithMessage("*LUNAS*");
         finalize.Should().Throw<InvalidOperationException>().WithMessage("*LUNAS*");
+        verify.Should().Throw<InvalidOperationException>().WithMessage("*LUNAS*");
+        allocate.Should().Throw<InvalidOperationException>().WithMessage("*LUNAS*");
+        initiateSettlement.Should().Throw<InvalidOperationException>().WithMessage("*LUNAS*");
         pay.Should().Throw<InvalidOperationException>().WithMessage("*LUNAS*");
         cancel.Should().Throw<InvalidOperationException>().WithMessage("*LUNAS*");
         delete.Should().Throw<InvalidOperationException>().WithMessage("*LUNAS*");
@@ -227,11 +230,11 @@ public class TataRekeningLifecycleDomainTest
     private static TataRekeningModel CreateFinalizedTataRekening()
     {
         var tataRekening = HydrateOpened(CreateBill("BILL-JASA-01", BillModulGroup.Jasa, 100_000m));
-        tataRekening.Close();
-        tataRekening.FinalizeFinancialResponsibility(
+        TataRekeningDomainTestHelper.CloseVerifyAllocateFinalize(
+            tataRekening,
             [BuildPayment(PaymentType.ByKas, 100_000m, 0m)],
             "kasir-01",
-            new DateTime(2026, 6, 16, 10, 0, 0));
+            finalizationDate: new DateTime(2026, 6, 16, 10, 0, 0));
         return tataRekening;
     }
 
