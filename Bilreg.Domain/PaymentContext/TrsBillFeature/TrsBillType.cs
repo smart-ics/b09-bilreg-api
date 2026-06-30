@@ -12,6 +12,8 @@ public record TrsBillType : ITrsBillingKey
     private readonly List<TrsBill2TransEventType> _listTrsBill2TransEvent = [];
     private readonly List<TrsBill2FinalizationEventType> _listTrsBill2FinalizationEvent = [];
     private readonly List<TrsBill2PaymentEventType> _listTrsBill2PaymentEvent = [];
+    private readonly List<TrsBillFinancialAdjustmentRecord> _financialAdjustments = [];
+    private decimal _financialAdjustmentOffset;
 
     #region CREATION
 
@@ -61,9 +63,11 @@ public record TrsBillType : ITrsBillingKey
     public RekapCetakReff RekapCetak { get; init; }
     public TrsBillNilaiType Nilai { get; init; }
     public TrsBillKetType Keterangan { get; init; }
+    public decimal FinancialTotal => Nilai.Total + _financialAdjustmentOffset;
     public IEnumerable<TrsBill2TransEventType> ListTransaction => _listTrsBill2TransEvent;
     public IEnumerable<TrsBill2FinalizationEventType> ListFinalization => _listTrsBill2FinalizationEvent;
     public IEnumerable<TrsBill2PaymentEventType> ListPayment => _listTrsBill2PaymentEvent;
+    public IEnumerable<TrsBillFinancialAdjustmentRecord> ListFinancialAdjustment => _financialAdjustments;
     public TrsBillStatusEnum Status =>
         _listTrsBill2PaymentEvent.Count > 0 ? TrsBillStatusEnum.Paid
         : _listTrsBill2FinalizationEvent.Count > 0 ? TrsBillStatusEnum.Finalized
@@ -89,9 +93,10 @@ public record TrsBillType : ITrsBillingKey
         if (_listTrsBill2TransEvent.Count == 0)
             throw new InvalidOperationException("Cannot finalize bill without transaction components.");
 
-        var totalBase = _listTrsBill2TransEvent.Sum(x => x.Nilai);
+        var totalTrans = _listTrsBill2TransEvent.Sum(x => x.Nilai);
+        var totalBase = FinancialTotal;
         if (totalBase == 0)
-            throw new InvalidOperationException("Cannot finalize bill when total component nilai is zero.");
+            throw new InvalidOperationException("Cannot finalize bill when effective nilai is zero.");
 
         var totalFinalized = _listTrsBill2FinalizationEvent.Sum(x => x.Nilai);
         if (totalFinalized + nilai > totalBase)
@@ -106,7 +111,7 @@ public record TrsBillType : ITrsBillingKey
             var trans = _listTrsBill2TransEvent[i];
             var share = i == _listTrsBill2TransEvent.Count - 1
                 ? nilai - allocated
-                : nilai * trans.Nilai / totalBase;
+                : totalTrans > 0 ? nilai * trans.Nilai / totalTrans : 0m;
 
             var finalization = TrsBill2FinalizationEventType.Create(
                 noUrut++, trans.Komponen, jenisBayar, share,
@@ -198,6 +203,79 @@ public record TrsBillType : ITrsBillingKey
             return string.Equals(jenisBayar.JenisBayarId, expected.JenisBayarId, StringComparison.Ordinal);
 
         return jenisBayar == expected;
+    }
+
+    internal TrsBillType TransferToRegistration(RegReff targetReg) =>
+        this with { Reg = targetReg };
+
+    internal void EnsureMergeable()
+    {
+        if (_listTrsBill2PaymentEvent.Count > 0)
+            throw new InvalidOperationException(
+                $"TrsBill '{TrsBillingId}' tidak dapat di-merge karena sudah memiliki pembayaran.");
+
+        if (_listTrsBill2FinalizationEvent.Count > 0)
+            throw new InvalidOperationException(
+                $"TrsBill '{TrsBillingId}' tidak dapat di-merge karena sudah memiliki finalization.");
+    }
+
+    internal TrsBillFinancialAdjustmentRecord ApplyFinancialAdjustment(
+        FinancialAdjustmentTypeEnum type,
+        decimal amount,
+        string reason,
+        DateTime appliedAt,
+        PaymentType? subsidyPayer = null)
+    {
+        if (amount <= 0)
+            throw new ArgumentOutOfRangeException(nameof(amount), "Adjustment amount must be positive.");
+
+        if (string.IsNullOrWhiteSpace(reason))
+            throw new ArgumentException("Alasan adjustment tidak boleh kosong.", nameof(reason));
+
+        if (_listTrsBill2FinalizationEvent.Count > 0 || _listTrsBill2PaymentEvent.Count > 0)
+            throw new InvalidOperationException(
+                "Financial Adjustment tidak dapat diterapkan pada bill yang sudah dialokasikan atau dibayar.");
+
+        switch (type)
+        {
+            case FinancialAdjustmentTypeEnum.Waive:
+            case FinancialAdjustmentTypeEnum.Subsidy:
+                ApplyWaiveOrSubsidy(amount);
+                break;
+
+            case FinancialAdjustmentTypeEnum.BillingCorrection:
+            case FinancialAdjustmentTypeEnum.MergeBillingCorrection:
+                ApplyBillingCorrection(amount);
+                break;
+
+            default:
+                throw new InvalidOperationException(
+                    $"Adjustment type '{type}' memerlukan operasi pada billing set, bukan bill individual.");
+        }
+
+        var record = new TrsBillFinancialAdjustmentRecord(
+            type, amount, reason, appliedAt,
+            subsidyPayer?.PaymentId);
+
+        _financialAdjustments.Add(record);
+        return record;
+    }
+
+    private void ApplyWaiveOrSubsidy(decimal amount)
+    {
+        if (amount > FinancialTotal)
+            throw new InvalidOperationException(
+                $"Waive/Subsidy ({amount}) melebihi total bill ({FinancialTotal}).");
+
+        _financialAdjustmentOffset -= amount;
+    }
+
+    private void ApplyBillingCorrection(decimal correctedTotal)
+    {
+        if (correctedTotal < 0)
+            throw new ArgumentOutOfRangeException(nameof(correctedTotal));
+
+        _financialAdjustmentOffset = correctedTotal - Nilai.Total;
     }
 
     #endregion

@@ -114,20 +114,19 @@ public record TataRekeningModel : IRegKey
         FinancialVerificationInfo = null;
     }
 
+    public void ResetFinancialVerification()
+    {
+        FinancialVerificationStatus = FinancialVerificationStatusEnum.NotVerified;
+        FinancialVerificationInfo = null;
+    }
+
     public void AllocateFinancialResponsibility(IEnumerable<TataRekeningPaymentType> listPayment)
     {
         EnsureNotLunas();
         EnsureCanAllocate();
         EnsureListTrsBillNotEmpty();
 
-        var payments = listPayment.ToList();
-        ValidateFinalizationTotals(payments);
-
-        ClearFinancialResponsibilityAllocation();
-        _listTataRekeningPayment.AddRange(payments);
-        FinalizationAllocation();
-        AssertFinalizationComplete();
-        IsFinancialResponsibilityAllocated = true;
+        RegenerateFinancialProjection(listPayment);
     }
 
     /// <summary>
@@ -199,6 +198,100 @@ public record TataRekeningModel : IRegKey
 
     public void EnsureCanDeleteBill() => EnsureOpenForBillMutation();
 
+    internal void ClearFinancialProjection() => ClearFinancialResponsibilityAllocation();
+
+    internal void RegenerateFinancialProjection(IEnumerable<TataRekeningPaymentType> listPayment)
+    {
+        var payments = listPayment.ToList();
+        ValidateFinalizationTotals(payments);
+
+        ClearFinancialResponsibilityAllocation();
+        _listTataRekeningPayment.AddRange(payments);
+        FinalizationAllocation();
+        AssertFinalizationComplete();
+        IsFinancialResponsibilityAllocated = true;
+    }
+
+    internal IReadOnlyList<TrsBillType> ReleaseBillingSetForMerge()
+    {
+        EnsureNotLunas();
+
+        if (Status is TataRekeningStatusEnum.Finalized or TataRekeningStatusEnum.Lunas)
+            throw new InvalidOperationException(
+                "Registrasi sumber tidak dapat di-merge karena sudah FINALIZED atau LUNAS.");
+
+        if (_listTrsBill.Count == 0)
+            throw new InvalidOperationException(
+                "Registrasi sumber tidak memiliki Billing yang dapat dipindahkan.");
+
+        foreach (var bill in _listTrsBill)
+            bill.EnsureMergeable();
+
+        ClearFinancialResponsibilityAllocation();
+        ResetFinancialVerification();
+
+        var released = _listTrsBill.ToList();
+        _listTrsBill.Clear();
+        return released;
+    }
+
+    internal void AcceptMergedBillingSet(IEnumerable<TrsBillType> bills, RegReff targetReg)
+    {
+        EnsureNotLunas();
+
+        if (Status != TataRekeningStatusEnum.Closed)
+            throw new InvalidOperationException(
+                "Merge Billing hanya dapat dilakukan apabila Billing Registrasi tujuan berstatus CLOSED.");
+
+        if (Status is TataRekeningStatusEnum.Finalized or TataRekeningStatusEnum.Lunas)
+            throw new InvalidOperationException(
+                "Registrasi tujuan tidak dapat menerima merge karena sudah FINALIZED atau LUNAS.");
+
+        var billList = bills.ToList();
+        if (billList.Count == 0)
+            throw new InvalidOperationException(
+                "Tidak ada Billing untuk diterima pada Registrasi tujuan.");
+
+        ClearFinancialResponsibilityAllocation();
+        ResetFinancialVerification();
+
+        foreach (var bill in billList)
+        {
+            var transferred = bill.TransferToRegistration(targetReg);
+            _listTrsBill.Add(transferred);
+        }
+    }
+
+    internal void AcceptManualChargeBill(TrsBillType bill)
+    {
+        EnsureNotLunas();
+        EnsureStatusClosed();
+
+        if (Status is TataRekeningStatusEnum.Finalized or TataRekeningStatusEnum.Lunas)
+            throw new InvalidOperationException(
+                "Manual Charge tidak dapat ditambahkan setelah FINALIZED atau LUNAS.");
+
+        if (FinancialVerificationStatus != FinancialVerificationStatusEnum.RequiresAdjustment)
+            throw new InvalidOperationException(
+                "Manual Charge hanya dapat ditambahkan saat memerlukan Financial Adjustment.");
+
+        if (!string.Equals(bill.Reg.RegId, RegId, StringComparison.Ordinal))
+            throw new InvalidOperationException(
+                "Manual Charge bill harus dimiliki oleh Registrasi Tata Rekening yang sama.");
+
+        _listTrsBill.Add(bill);
+    }
+
+    internal TrsBillType GetBillById(string trsBillingId)
+    {
+        var bill = _listTrsBill.FirstOrDefault(x => x.TrsBillingId == trsBillingId);
+        if (bill is null)
+            throw new InvalidOperationException(
+                $"TrsBill '{trsBillingId}' tidak ditemukan pada list TrsBill.");
+
+        return bill;
+    }
+
     #region LegacyCashierBridge
 
     /// <summary>
@@ -240,12 +333,6 @@ public record TataRekeningModel : IRegKey
         {
             FinancialVerificationStatus = FinancialVerificationStatusEnum.Valid;
         }
-    }
-
-    private void ResetFinancialVerification()
-    {
-        FinancialVerificationStatus = FinancialVerificationStatusEnum.NotVerified;
-        FinancialVerificationInfo = null;
     }
 
     private void ClearFinancialResponsibilityAllocation()
@@ -326,7 +413,7 @@ public record TataRekeningModel : IRegKey
     }
 
     private decimal TotalBillByModul(BillModulGroup modulGroup) =>
-        _listTrsBill.Where(x => x.ModulGroup == modulGroup).Sum(x => x.Nilai.Total);
+        _listTrsBill.Where(x => x.ModulGroup == modulGroup).Sum(x => x.FinancialTotal);
 
     private void ValidateFinalizationTotals(IReadOnlyList<TataRekeningPaymentType> listPayment)
     {
@@ -408,7 +495,7 @@ public record TataRekeningModel : IRegKey
             var bill = bills[i];
             var share = i == bills.Count - 1
                 ? modulAllocation - allocated
-                : modulAllocation * bill.Nilai.Total / modulTotal;
+                : modulAllocation * bill.FinancialTotal / modulTotal;
 
             bill.FinalizeAllocation(
                 item.Payment, share, petugasVerif, trsBayarId, allocationDate);
@@ -485,9 +572,9 @@ public record TataRekeningModel : IRegKey
         foreach (var bill in _listTrsBill)
         {
             var finalized = bill.ListFinalization.Sum(x => x.Nilai);
-            if (finalized != bill.Nilai.Total)
+            if (finalized != bill.FinancialTotal)
                 throw new InvalidOperationException(
-                    $"Finalisasi pada bill '{bill.TrsBillingId}' tidak lengkap: {finalized} dari {bill.Nilai.Total}.");
+                    $"Finalisasi pada bill '{bill.TrsBillingId}' tidak lengkap: {finalized} dari {bill.FinancialTotal}.");
         }
     }
 
