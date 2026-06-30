@@ -1,556 +1,613 @@
-# Tata Rekening Domain Gap Analysis Report
+# Tata Rekening Gap Analysis Report
 
-**Audit date:** 2026-06-16  
-**Source of truth:** [`02-domain.md`](02-domain.md)  
-**Related artifacts:** [`01-context.md`](01-context.md), [`03-design.md`](03-design.md), [`04-sop.md`](04-sop.md)  
-**Implementation scope (domain layer only):** `Bilreg.Domain/PaymentContext/TataRekeningFeature`, `Bilreg.Domain/PaymentContext/TrsBillFeature`, `Bilreg.Domain/PaymentContext/CoaFeature`  
-**Out of scope:** Infrastructure, repositories, application orchestration, API, persistence, legacy migration
+**Audit date:** 2026-06-30  
+**Source of truth:** `docs/contexts/TataRekening/` (01-context.md, 02-domain.md, 03-design.md, 04-sop.md, SOP-TR-01 … SOP-TR-10)  
+**Implementation scope:** Full bounded context — Domain, Application, Presentation, Infrastructure, Database, Integration, Authorization, Workflow, Persistence, API, UI, Tests
 
 ---
 
-# Executive Summary
+## Executive Summary
 
-**Overall assessment: Moderate Alignment**
+- **Overall implementation completeness:** ~**30%**
+- **Overall architecture alignment:** ~**38%**
+- **Total findings by severity:** Critical **5** · High **12** · Medium **10** · Low **5** · **32 total**
 
-The Tata Rekening domain layer has the correct **core vocabulary** (`TataRekening`, `TrsBill`, three component event types, Level-1 payment shape with JASA/OBAT split) and a **partially correct lifecycle skeleton** on `TataRekeningModel` (OPEN → CLOSED → FINALIZED). `CreateBillService` and `TrsBillFactory` establish a credible financial charge snapshot at bill creation.
+The Tata Rekening bounded context has a **credible domain foundation**: `TataRekeningModel` implements the OPEN → CLOSED → FINALIZED → LUNAS lifecycle, proportional allocation math, bill-mutation guards, and `CancelFinalization`. Persistence scaffolding (`BILRG_TataRekening`, `ta_registrasi3`, `ta_trs_billing` / `ta_trs_billing2`) and Charge Source entry via `AddBillAppService` are in place.
 
-However, several **authoritative responsibilities are inverted or missing**:
+However, **seven of ten SOP workflows have no application or API surface**, Merge Billing and Financial Verification/Adjustment are **entirely absent**, and **privileged operations lack Verifikator authorization**. Legacy `RegOutFeature` still writes `ta_registrasi3` in parallel with `TataRekeningRepo`, creating a **dual-writer risk** for Financial Responsibility. Domain lifecycle methods are **never orchestrated or persisted** in production paths beyond bill creation.
 
-- TataRekening does not own payment orchestration, cancel-discharge coordination, bill deletion, or the LUNAS terminal transition.
-- `TrsBillType` exposes public `Pay()` and `CancelDischarge()` even though the artifact assigns those operations to TataRekening scope over the Billing Set.
-- Payment decomposition uses **transaction components** instead of **discharge components**.
-- The Billing Set is represented as `_listTrsBill` but is never populated by bill creation, so lifecycle operations cannot reliably operate on the complete set.
-- Module partition (JASA/OBAT) logic exists in discharge math but `Modul` is always `0` at creation, making the invariant unenforceable in practice.
-
-The implementation is **not artifact compliant**, but it is **not a greenfield miss** either: the charge aggregate structure and discharge allocation math are a usable foundation once aggregate boundaries and missing lifecycle behaviors are corrected.
+Artifacts win on every conflict below.
 
 ---
 
-# Gap Findings
+## Findings Summary
 
-## GAP-001
-
-### Artifact Expectation
-
-> **TataRekening** owns: Close Billing, ReOpen, Discharge, Cancel Discharge, **Payment Allocation**, Lifecycle Validation.  
-> CloseBilling, ReOpen, Discharge, CancelDischarge, Payment always operate against the **complete Billing Set** belonging to the TataRekening.
-
-### Current Implementation
-
-`TataRekeningModel` implements `Close()`, `ReOpen()`, and `Discharge()` only. There is no `Pay()`, `CancelDischarge()`, or transition to LUNAS. Payment settlement is implemented as `TrsBillType.Pay()` — a public method on the charge aggregate with no TataRekening lifecycle guard.
-
-```143:152:Bilreg.Domain/PaymentContext/TrsBillFeature/TrsBillType.cs
-    public void Pay(PaymentType payment, decimal nilai, string trsBayarId, DateTime tglBayar)
-    {
-        // ...
-        if (Status is not (TrsBillStatusEnum.Discharged or TrsBillStatusEnum.Paid))
-            throw new InvalidOperationException("Cannot pay bill unless status is Discharged or Paid.");
-```
-
-### Impact
-
-**High** — Payment can be invoked per bill without TataRekening FINALIZED authority or Billing Set orchestration. Violates financial authority matrix and payment model (§13).
-
-### Recommendation
-
-Introduce TataRekening-scoped payment orchestration (domain service or aggregate method) that: (1) guards `Status == Finalized`, (2) accepts Level-1 payment input per provider/modul group, (3) distributes across the Billing Set, (4) delegates Level-2 decomposition to `TrsBill` internal methods, and (5) transitions TataRekening to LUNAS when all outstanding responsibility is settled.
+| Severity | Count |
+|----------|------:|
+| Critical | 5 |
+| High | 12 |
+| Medium | 10 |
+| Low | 5 |
 
 ---
 
-## GAP-002
+## Detailed Findings
 
-### Artifact Expectation
+### GAP-001
 
-> Cancel Discharge: allowed only when **No Payment Exists**. Process: Remove Discharge Allocation, Regenerate Discharge Components.  
-> Always operates at TataRekening scope against the Billing Set.
-
-### Current Implementation
-
-`TrsBillType.CancelDischarge()` exists as a **public** per-bill operation. It clears discharge events when no payment events exist on that bill. `TataRekeningModel` has no `CancelDischarge()` and does not revert `Status` from FINALIZED to CLOSED.
-
-```135:141:Bilreg.Domain/PaymentContext/TrsBillFeature/TrsBillType.cs
-    public void CancelDischarge()
-    {
-        if (_listTrsBill2PaymentEvent.Count > 0)
-            throw new InvalidOperationException("Cannot cancel discharge with existing payments.");
-
-        _listTrsBill2DischargeEvent.Clear();
-    }
-```
-
-### Impact
-
-**High** — Cancel discharge is not coordinated across the Billing Set; TataRekening lifecycle state can remain FINALIZED while individual bills are partially cleared.
-
-### Recommendation
-
-Add `TataRekeningModel.CancelDischarge(IEnumerable<TrsBillType> billingSet)` (or equivalent domain service) that validates no payment exists on any bill, clears discharge components on all bills, clears Level-1 allocation records, and transitions FINALIZED → CLOSED.
+**Category:** Workflow / Persistence  
+**Current Implementation:** `TataRekeningModel.Close()`, `FinalizeFinancialResponsibility()`, `Pay()`, `CancelFinalization()`, and `ReOpen()` exist in domain and are covered by unit tests, but **no application command, handler, or service invokes them**. `TataRekeningRepo.SaveChanges` persists header + `ta_registrasi3` payment rows only; it does **not** call `TrsBillingRepo.SaveChanges` for bill finalization/payment projection rows in `ta_trs_billing2`.  
+**Expected Artifact:** Every lifecycle transition (SOP-TR-02, 06, 07, 08, 09, 10) must be orchestrated at Application layer with registration-scoped transaction boundaries including projection regeneration (`03-design.md` §TRANSACTION STRATEGY).  
+**Impact:** **Critical** — Financial lifecycle changes cannot be executed end-to-end; finalization and payment projections would not persist even if called manually.  
+**Recommendation:** Add MediatR commands/handlers per SOP; implement a unit-of-work that atomically saves `TataRekeningRepo` + all affected `TrsBillingRepo` instances within one transaction.  
+**Affected Files:** `Bilreg.Domain/PaymentContext/TataRekeningFeature/TataRekeningModel.cs`, `Bilreg.Infrastructure/PaymentContext/TataRekeningFeature/TataRekeningRepo.cs`, `Bilreg.Application/PaymentContext/TataRekeningFeature/ITataRekeningRepo.cs` (interface only)
 
 ---
 
-## GAP-003
+### GAP-002
 
-### Artifact Expectation
-
-> TataRekening contains the **Billing Set** — all TrsBill participating in the patient financial lifecycle.  
-> Bill creation may occur independently without loading the entire Billing Set, but lifecycle operations require the complete set.
-
-### Current Implementation
-
-`TataRekeningModel` holds `_listTrsBill` and exposes `ListTrsBill`, but `CreateBillService` creates a `TrsBillType` without registering it on the aggregate. No `AddBill`, `RemoveBill`, or Billing Set management API exists.
-
-```29:41:Bilreg.Domain/PaymentContext/TrsBillFeature/CreateBillService.cs
-public sealed class CreateBillService : ICreateBillService
-{
-    public TrsBillType FromReg(...)
-    {
-        ValidateReg(tataRekening, reg.RegId);
-        return TrsBillFactory.CreateFromReg(...);
-    }
-```
-
-`Discharge()` operates only on bills already present in `_listTrsBill` at construction/load time.
-
-### Impact
-
-**High** — Lifecycle operations cannot guarantee completeness of the Billing Set. Discharge invariant (Σ Allocation = Σ Outstanding Bill) may pass on a subset while omitting bills created but not loaded.
-
-### Recommendation
-
-Model Billing Set ownership explicitly: either (a) add aggregate methods to register/deregister bills while preserving independent creation scope, or (b) require lifecycle domain services to receive the full Billing Set as an argument with TataRekening validating completeness. Align with artifact: creation scope ≠ lifecycle scope, but lifecycle scope = full Billing Set.
+**Category:** Integration / Financial Truth  
+**Current Implementation:** Two independent writers target `ta_registrasi3`: `TaRegistrasi3Dal` (used by `TataRekeningRepo`) and `RegPembayaranDal` (used by `RegAddPembayaranHandler` → `RegPembayaranRepo`). `RegAddPembayaranCmd` inserts `RegPembayaranType` without loading or updating `TataRekeningModel`.  
+**Expected Artifact:** Tata Rekening owns Financial Responsibility per registration (`01-context.md` §RESPONSIBILITY BOUNDARY); Cashier settlement operates on finalized projection (`04-sop.md` §3.5). Level-1 allocation must flow through the aggregate.  
+**Impact:** **Critical** — Parallel legacy path can produce inconsistent Financial Responsibility vs. aggregate state.  
+**Recommendation:** Route all `ta_registrasi3` mutations through `TataRekeningRepo`; deprecate or gate `RegAddPembayaranCmd` behind Tata Rekening orchestration.  
+**Affected Files:** `Bilreg.Application/PaymentContext/RegOutFeature/UseCase/RegAddPembayaranCmd.cs`, `Bilreg.Infrastructure/PaymentContext/RegOutFeature/RegPembayaranDal.cs`, `Bilreg.Infrastructure/PaymentContext/TataRekeningFeature/TaRegistrasi3Dal.cs`
 
 ---
 
-## GAP-004
+### GAP-003
 
-### Artifact Expectation
-
-> Bill deletion is allowed only while **TataRekening = OPEN**. Deletion is physical removal.
-
-### Current Implementation
-
-No delete-bill behavior exists in `TataRekeningModel`, `TrsBillType`, or any domain service.
-
-### Impact
-
-**Medium** — OPEN-state bill control is incomplete; callers cannot enforce the deletion invariant through the domain model.
-
-### Recommendation
-
-Add `DeleteBill` control on TataRekening (or `DeleteBillService`) that guards `Status == Opened` and removes the bill from the Billing Set / authorizes physical removal.
+**Category:** Domain / Workflow  
+**Current Implementation:** No `MergeRequest` entity, status enum, repository, SQL table, or command. Grep across `*.cs` and `*.sql` returns zero matches for `MergeRequest`, `MergeBilling`, or `TransferReceivable`.  
+**Expected Artifact:** Merge Request (Pending / Executed / Cancelled) as input to Merge Billing; moves Billing Set, regenerates projection, sends Transfer Receivable to Accounting, marks request Executed (`02-domain.md` §ENTITY Merge Request; `SOP-TR-03`).  
+**Impact:** **Critical** — Cross-registration billing consolidation (Rawat Jalan → Rawat Inap, IGD → Rawat Inap, etc.) cannot be performed.  
+**Recommendation:** Implement `MergeRequest` persistence, `MergeBillingDomService`, application command with transactional rollback on Accounting failure per SOP-TR-03 §Business Rules.  
+**Affected Files:** *(none exist — fully missing)*
 
 ---
 
-## GAP-005
+### GAP-004
 
-### Artifact Expectation
-
-> Lifecycle: OPEN → CLOSED → FINALIZED → **LUNAS**.  
-> LUNAS: all financial responsibility converted to cash settlement; no further modification allowed.
-
-### Current Implementation
-
-`TataRekeningStatusEnum` defines `Paid = 3` instead of `Lunas`. No code path sets `Status` to `Paid`. `TrsBillStatusEnum.Paid` is derived from payment events on individual bills, not from TataRekening lifecycle authority.
-
-```3:9:Bilreg.Domain/PaymentContext/TataRekeningFeature/TataRekeningStatusEnum.cs
-public enum TataRekeningStatusEnum
-{
-    Opened = 0,
-    Closed = 1,
-    Finalized = 2,
-    Paid = 3
-}
-```
-
-### Impact
-
-**High** — Terminal settlement state is undefined at the financial authority aggregate. No domain rule prevents mutation after full payment.
-
-### Recommendation
-
-Rename `Paid` → `Lunas` (or alias with ubiquitous language alignment). Implement transition to LUNAS when Billing Set settlement is complete. Guard all mutating operations when `Status == Lunas`.
+**Category:** Workflow  
+**Current Implementation:** No Financial Verification step, status, or query. `FinalizeFinancialResponsibility` proceeds directly from CLOSED without verification gate.  
+**Expected Artifact:** Mandatory SOP-TR-04 after Close Bill (and optional Merge); blocks Allocation until verification passes or routes to Adjustment (`04-sop.md` §4.2).  
+**Impact:** **High** — Financial Control phase can be bypassed; violates precondition chain in SOP-TR-06 and SOP-TR-07.  
+**Recommendation:** Introduce verification state (domain flag or workflow record) and application command; enforce in finalization precondition.  
+**Affected Files:** `Bilreg.Domain/PaymentContext/TataRekeningFeature/TataRekeningModel.cs` (`EnsureCanFinalize` has no verification check)
 
 ---
 
-## GAP-006
+### GAP-005
 
-### Artifact Expectation
-
-> **Payment Component** is generated from **Discharge Component** using Payment Allocation.  
-> Each payment component is a copy of discharge component with payment ownership and proportional settlement value.
-
-### Current Implementation
-
-`TrsBillType.Pay()` iterates `_listTrsBill2TransEvent` (transaction components), not `_listTrsBill2DischargeEvent` (discharge components).
-
-```169:180:Bilreg.Domain/PaymentContext/TrsBillFeature/TrsBillType.cs
-        for (var i = 0; i < _listTrsBill2TransEvent.Count; i++)
-        {
-            var trans = _listTrsBill2TransEvent[i];
-            var share = i == _listTrsBill2TransEvent.Count - 1
-                ? nilai - allocated
-                : nilai * trans.Nilai / totalBase;
-            // creates payment event from transaction component
-```
-
-### Impact
-
-**High** — Payment decomposition ignores discharge responsibility structure. Breaks the three-stage component pipeline (Transaction → Discharge → Payment) defined in §9.
-
-### Recommendation
-
-Refactor `Pay()` to iterate matching discharge components, allocate proportionally within each payer line, and copy discharge component identity (komponen, jenis bayar, petugas) into payment events.
+**Category:** Workflow  
+**Current Implementation:** No Financial Adjustment types, commands, or domain methods (Manual Charge, Billing Correction, Waive, Subsidy, Merge Billing Correction).  
+**Expected Artifact:** SOP-TR-05 — optional correction of Financial Truth without changing operational history; may trigger Reopen Billing.  
+**Impact:** **High** — No artifact-compliant correction path before Allocation.  
+**Recommendation:** Add adjustment domain operations and application handlers; link to Reopen when Charge Source change is required.  
+**Affected Files:** *(none — not implemented)*
 
 ---
 
-## GAP-007
+### GAP-006
 
-### Artifact Expectation
-
-> Allocation Partition Rule: every TrsBill belongs to module group **JASA** or **OBAT**. BPJS JASA may only distribute to JASA bills; BPJS OBAT only to OBAT bills. Domain invariant.
-
-### Current Implementation
-
-`TataRekeningModel.Discharge()` filters bills by `Modul == 0` (JASA) and `Modul == 1` (OBAT). However `TrsBillFactory` always sets `Modul = 0` for both registration and tindakan bills.
-
-```57:58:Bilreg.Domain/PaymentContext/TrsBillFeature/TrsBillFactory.cs
-        var result = new TrsBillType(reg.RegId, 0, reg.RegDate.ToDateTime(...),
-```
-
-```115:116:Bilreg.Domain/PaymentContext/TrsBillFeature/TrsBillFactory.cs
-        var result = new TrsBillType(tindakan.TindakanId, 0, tindakan.TindakanDate,
-```
-
-### Impact
-
-**High** — Partition rule is structurally present but **functionally unimplemented**. All bills are JASA; OBAT allocation path is never exercised.
-
-### Recommendation
-
-Introduce `BillModulGroup` (or equivalent) value object with `Jasa` / `Obat` semantics. Set `Modul` correctly at bill creation based on charge source. Add domain tests enforcing cross-partition rejection.
+**Category:** Domain Model / Workflow  
+**Current Implementation:** Financial Responsibility Allocation is **coupled inside** `FinalizeFinancialResponsibility()` — allocation (`FinalizationAllocation`) and status transition to FINALIZED occur in one atomic domain call.  
+**Expected Artifact:** SOP-TR-06 (Allocation) is a **separate mandatory step** before SOP-TR-07 (Finalize); Allocation can be iterated and reviewed by Verifikator before locking (`SOP-TR-06` §Workflow steps 7–9).  
+**Impact:** **High** — Workflow granularity mismatch; no standalone allocation without finalization.  
+**Recommendation:** Extract `AllocateFinancialResponsibility(payments)` that regenerates projection but keeps status CLOSED; restrict `FinalizeFinancialResponsibility` to locking pre-validated allocation.  
+**Affected Files:** `Bilreg.Domain/PaymentContext/TataRekeningFeature/TataRekeningModel.cs` (lines 74–92, 216–260)
 
 ---
 
-## GAP-008
+### GAP-007
 
-### Artifact Expectation
-
-> A TrsBill cannot discharge itself, pay itself, finalize itself, reopen itself. These operations belong exclusively to TataRekening.
-
-### Current Implementation
-
-`Discharge()` on `TrsBillType` is `internal` (correct for Level-2 decomposition). `Pay()` and `CancelDischarge()` are **public** (incorrect). External callers can invoke bill-level lifecycle behavior without TataRekening authority.
-
-### Impact
-
-**High** — Aggregate boundary violation; responsibility inversion between financial authority and financial charge.
-
-### Recommendation
-
-Make `Pay()` and `CancelDischarge()` internal. Expose lifecycle only through TataRekening or dedicated domain services (`DischargeBillService`, `PaymentBillService`) that coordinate the Billing Set.
+**Category:** Workflow / Bounded Context Boundary  
+**Current Implementation:** `TataRekeningModel.Pay()` performs payment allocation across bills and transitions to LUNAS. No `SettlementInitiation` operation exists.  
+**Expected Artifact:** SOP-TR-10 — Settlement Initiation hands FINALIZED billing to **Cashier** without payment; Payment Settlement is Cashier responsibility (`01-context.md` §Cashier; `SOP-TR-10` §Business Rules).  
+**Impact:** **High** — Payment orchestration lives in wrong bounded context; conflates Financial Control handoff with Payment Settlement.  
+**Recommendation:** Add `InitiateSettlement()` domain transition (metadata only, no payment); move `Pay()` invocation to Cashier integration or rename/re-scope under Cashier context.  
+**Affected Files:** `Bilreg.Domain/PaymentContext/TataRekeningFeature/TataRekeningModel.cs` (`Pay`, `TryTransitionToLunas`)
 
 ---
 
-## GAP-009
+### GAP-008
 
-### Artifact Expectation
-
-> **OPEN**: create bill, delete bill, modify operational billing source.  
-> **CLOSED**: no new bill may be created.  
-> **FINALIZED** / **LUNAS**: no bill creation.
-
-### Current Implementation
-
-`EnsureCanCreateTrsBill()` blocks creation only when `Status == Closed`. Creation is allowed when `Opened`, `Finalized`, and `Paid`.
-
-```114:119:Bilreg.Domain/PaymentContext/TataRekeningFeature/TataRekeningModel.cs
-    public void EnsureCanCreateTrsBill()
-    {
-        if (Status == TataRekeningStatusEnum.Closed)
-            throw new InvalidOperationException(...);
-    }
-```
-
-### Impact
-
-**Medium** — Bills can be created after discharge (FINALIZED) or settlement (PAID), violating lifecycle freeze semantics.
-
-### Recommendation
-
-Guard bill creation with `Status == Opened` only. Reject create/delete for Closed, Finalized, and Lunas.
+**Category:** Authorization  
+**Current Implementation:** `petugasVerif` is stored as a string parameter with no role validation. No `[Authorize]`, policy, or Verifikator check on any Payment/Tata Rekening endpoint. Grep for `Verifikator` in `*.cs` returns zero matches. Payment API controllers are commented out.  
+**Expected Artifact:** `03-design.md` §SECURITY — Close Bill, Merge Billing, Adjustment, Allocation, Finalize, Cancel Finalization, Reopen, Settlement Initiation require Verifikator authorization.  
+**Impact:** **High** — Privileged financial operations would be unprotected when API is enabled.  
+**Recommendation:** Define Verifikator authorization policy; enforce in handlers before domain mutation.  
+**Affected Files:** `Bilreg.Api/Controllers/PaymentContext/TrsBillingControllerController.cs`, `Bilreg.Api/Controllers/PaymentContext/RegOutSub/RegOutController.cs`, all future Tata Rekening handlers
 
 ---
 
-## GAP-010
+### GAP-009
 
-### Artifact Expectation
-
-> Discharge must allocate **100%** of outstanding receivable.  
-> Rule: Σ Allocation = Σ Outstanding Bill — always. Partial discharge is not allowed.
-
-### Current Implementation
-
-`TataRekeningModel.Discharge()` validates that total JASA and OBAT payment inputs match total JASA and OBAT bill totals separately. This is a **partial** implementation of the invariant at Level-1. Per-bill discharge caps exist (`totalDischarged + nilai > totalBase`), but there is no explicit assertion that after discharge every bill's outstanding equals zero across all payers.
-
-### Impact
-
-**Medium** — Level-1 totals are checked; Level-2 completeness and rounding residue across bills/components are not explicitly validated.
-
-### Recommendation
-
-After distributing allocation across the Billing Set, assert per modul group and per bill that Σ discharge components equals bill outstanding. Fail discharge if any bill remains partially allocated.
+**Category:** Domain Events  
+**Current Implementation:** No domain events emitted. Grep for `BillClosed`, `SettlementInitiated`, `FinancialResponsibilityFinalized` returns zero matches in code.  
+**Expected Artifact:** `02-domain.md` §DOMAIN EVENTS — Bill Closed, Merge Billing Executed, Financial Adjusted, Financial Responsibility Allocated, Financial Responsibility Finalized, Finalization Cancelled, Billing Reopened, Settlement Initiated.  
+**Impact:** **High** — No integration hooks for Accounting, Cashier, or audit subscribers.  
+**Recommendation:** Raise domain events from aggregate methods; dispatch from application layer.  
+**Affected Files:** `Bilreg.Domain/PaymentContext/TataRekeningFeature/TataRekeningModel.cs`
 
 ---
 
-## GAP-011
+### GAP-010
 
-### Artifact Expectation
-
-> `PaymentAllocation` on TataRekening distributes payment provider responsibility to TrsBill (Level 1).  
-> TrsBill distributes bill share to components (Level 2).
-
-### Current Implementation
-
-`TataRekeningModel` has a private method named `PaymentAllocation()` that is invoked from `Discharge()` and performs **discharge** distribution to bills — not payment settlement.
-
-```91:112:Bilreg.Domain/PaymentContext/TataRekeningFeature/TataRekeningModel.cs
-    private void PaymentAllocation()
-    {
-        // distributes TataRekeningPaymentType to bills via item2.Discharge(...)
-    }
-```
-
-### Impact
-
-**Medium** — Misleading ubiquitous language conflates discharge allocation with payment allocation. Increases risk of incorrect future changes.
-
-### Recommendation
-
-Rename to `DischargeAllocation()` or extract to `DischargeAllocationCalculator`. Introduce separate payment allocation logic when payment orchestration is implemented.
+**Category:** Integration  
+**Current Implementation:** Accounting journal creation occurs at bill creation (`TdkCreateTindakanCmd` → `JurnalRepo`) only. No Transfer Receivable on merge, no accounting hook on finalization or settlement initiation.  
+**Expected Artifact:** Merge Billing sends Transfer Receivable to Accounting (`SOP-TR-03` step 10); Financial Projection is basis for Accounting Projection (`01-context.md` §Financial Projection).  
+**Impact:** **High** — Accounts Receivable ownership will not move on merge; ledger may diverge from Financial Truth.  
+**Recommendation:** Implement Accounting integration contracts invoked from Merge Billing and Finalization handlers with rollback on failure.  
+**Affected Files:** Accounting context (`Bilreg.Application/AccountingContext/`, `Bilreg.Infrastructure/AccountingContext/`)
 
 ---
 
-## GAP-012
+### GAP-011
 
-### Artifact Expectation
-
-> TrsBill stores pricing snapshot and accounting snapshot as **immutable**.  
-> Component snapshot resolved at transaction time; immutable.
-
-### Current Implementation
-
-`TrsBillType` uses mutable `List<>` collections for all three event types. No immutability enforcement after creation. `TrsBillNilaiType` and `TrsBill2CoaType` are records but can be replaced if the aggregate is reconstructed.
-
-### Impact
-
-**Low** — Conceptual model allows mutation paths that contradict financial truth immutability.
-
-### Recommendation
-
-Freeze transaction components after creation. Restrict mutation to append-only discharge/payment event lists via controlled internal methods. Consider read-only exposure of transaction components.
+**Category:** Application / SOP-TR-01  
+**Current Implementation:** "Open Tata Rekening" is partially realized as lazy header creation in `AddBillAppService.ResolveTataRekening` when first bill is created. No dedicated open/query use case loads Billing Set summary, Financial Projection, Payer info, or Pending Merge Requests.  
+**Expected Artifact:** SOP-TR-01 — read-only preparation: load billing set, projection, payer, pending merge requests (by TargetReg or PatientId); no mutation.  
+**Impact:** **Medium** — Verifikator workspace cannot be built from current API.  
+**Recommendation:** Add `OpenTataRekeningQuery` composing `ITataRekeningRepo`, merge request repo, and payer resolution.  
+**Affected Files:** `Bilreg.Application/PaymentContext/TrsBillingFeature/AddBillAppService.cs`, `TrBListBillingQuery.cs` (lists bills only, no Tata Rekening context)
 
 ---
 
-## GAP-013
+### GAP-012
 
-### Artifact Expectation
-
-> Ubiquitous language: **TrsBill**, **Billing Set**, **LUNAS**, **OPEN** / **CLOSED** / **FINALIZED**.
-
-### Current Implementation
-
-| Artifact term | Code term | Notes |
-|---------------|-----------|-------|
-| TrsBill | `TrsBillType`, `TrsBillingId` | Mixed TrsBill / TrsBilling naming |
-| Billing Set | `_listTrsBill` / `ListTrsBill` | No explicit Billing Set type or term |
-| LUNAS | `Paid` | Terminology mismatch |
-| OPEN | `Opened` | Minor naming drift |
-| Financial Charge | `TrsBillType` | Acceptable |
-| Transaction Component | `TrsBill2TransEventType` | Persistence-oriented `TrsBill2` prefix |
-| Discharge Component | `TrsBill2DischargeEventType` | Same |
-| Payment Component | `TrsBill2PaymentEventType` | Same |
-
-### Impact
-
-**Low** — Readability and onboarding friction; `TrsBill2*` naming signals table-driven modeling.
-
-### Recommendation
-
-Introduce type aliases or rename toward domain language (`TransactionComponent`, `DischargeComponent`, `PaymentComponent`) when refactoring. Align status enum names with artifact states.
+**Category:** Audit  
+**Current Implementation:** `CancelFinalization()` and `ReOpen()` accept no reason parameter and write no audit trail. No Tata Rekening–specific audit tables.  
+**Expected Artifact:** SOP-TR-08 and SOP-TR-09 require audit trail (registrasi, waktu, verifikator, alasan); SOP-TR-03 requires merge audit trail.  
+**Impact:** **Medium** — Regulatory and operational traceability missing.  
+**Recommendation:** Add audit records on privileged transitions; require reason for Cancel/Reopen.  
+**Affected Files:** `Bilreg.Domain/PaymentContext/TataRekeningFeature/TataRekeningModel.cs` (`CancelFinalization`, `ReOpen`)
 
 ---
 
-## GAP-014
+### GAP-013
 
-### Artifact Expectation
-
-> Domain services where cross-aggregate orchestration is required. Examples: CreateBillService, allocation logic, payment allocation.
-
-### Current Implementation
-
-| Expected service | Status |
-|------------------|--------|
-| `CreateBillService` | Present and aligned for creation guards |
-| Discharge allocation orchestration | Embedded in `TataRekeningModel.Discharge()` |
-| Payment allocation orchestration | Missing |
-| `DeleteBillService` | Missing |
-| Dedicated allocation calculators | Missing |
-
-### Impact
-
-**Medium** — Orchestration logic is split between aggregate private methods and public TrsBill APIs without a consistent domain service pattern.
-
-### Recommendation
-
-Extract `DischargeBillService` and `PaymentBillService` with calculators for Level-1 distribution. Keep `CreateBillService`. Keep TataRekening as lifecycle authority with guards and state transitions.
+**Category:** Presentation / API  
+**Current Implementation:** `TrsBillingControllerController` and `RegOutController` are **fully commented out** (`// TODO: jude-dev-trs-billing`). No active HTTP endpoints for Tata Rekening workflows.  
+**Expected Artifact:** `03-design.md` — Client → Presentation → Application → Domain.  
+**Impact:** **Medium** — No API exposure for any SOP.  
+**Recommendation:** Implement REST/MediatR controllers per workflow with Verifikator authorization.  
+**Affected Files:** `Bilreg.Api/Controllers/PaymentContext/TrsBillingControllerController.cs`, `Bilreg.Api/Controllers/PaymentContext/RegOutSub/RegOutController.cs`
 
 ---
 
-## GAP-015
+### GAP-014
 
-### Artifact Expectation
-
-> TRSBILLING owns financial truth. Operational subsystems own operational truth. Domain model reflects business concepts, not table structure.
-
-### Current Implementation
-
-- `TrsBill2*` naming mirrors legacy `trs_billing_2` table decomposition.
-- `CoaType` lives under `TrsBillingFeature` namespace in some imports (legacy namespace coupling).
-- Parallel legacy models in `RegOutFeature` (`RegBiayaType`, `RegHutangType`, `RegPembayaranType`) represent overlapping registration discharge/payment concepts outside the TrsBill/TataRekening model.
-- `Modul` as `int` magic numbers `0`/`1` instead of domain enum `Jasa`/`Obat`.
-- `TrsBillStatusEnum` provides a derived per-bill status parallel to TataRekening lifecycle, which can confuse authority (bill appears Paid while TataRekening is not Lunas).
-
-### Impact
-
-**Medium** — Persistence and legacy shapes leak into domain language; dual models risk inconsistent financial truth.
-
-### Recommendation
-
-Domain refactor should treat `TrsBill2*EventType` as component value objects with domain names. Deprecate `RegOutFeature` financial types in favor of TRSBILLING aggregates (domain-only concern; no infra changes in this report).
+**Category:** UI  
+**Current Implementation:** No frontend or UI project for Tata Rekening exists in this repository.  
+**Expected Artifact:** Workflow screens for all ten SOPs with lifecycle visibility and permission-gated actions.  
+**Impact:** **Medium** — End users cannot execute Tata Rekening through this codebase.  
+**Recommendation:** Implement UI per global `docs/WORKFLOW.md` queue/workspace patterns when frontend is in scope.  
+**Affected Files:** *(none in repo)*
 
 ---
 
-# Missing Domain Concepts
+### GAP-015
 
-| Concept (from artifact) | Status in code |
-|-------------------------|----------------|
-| **Billing Set** (explicit bounded collection concept) | Implicit list only; no type, invariant, or registration API |
-| **LUNAS** terminal lifecycle state | Enum value `Paid` exists but never assigned; no behavior |
-| **TataRekening Payment Allocation** (orchestrated payment settlement) | Absent |
-| **TataRekening Cancel Discharge** (aggregate-wide) | Absent |
-| **Delete Bill Control** | Absent |
-| **BillModulGroup** (JASA / OBAT) | Magic `int Modul` without domain enum |
-| **DischargeAllocationCalculator** | Logic inline in `TataRekeningModel` |
-| **PaymentAllocationCalculator** | Absent |
-| **Level-1 allocation state** (persisted discharge/payment responsibility records on TataRekening beyond input list) | `TataRekeningPaymentType` exists as input shape only |
-| **Financial adjustment** as explicit bill category | Not modeled (may be acceptable as generic bill creation) |
-| **Immutability enforcement** for pricing/accounting/component snapshots | Not enforced |
+**Category:** Domain Services  
+**Current Implementation:** Merge Billing, Financial Verification, Allocation, and Projection are not implemented as named domain services (`02-domain.md` §DOMAIN SERVICES). Allocation/projection logic is private methods on the aggregate.  
+**Expected Artifact:** Explicit domain services for merge, verification, allocation, projection generation.  
+**Impact:** **Medium** — Complex cross-aggregate merge logic has no home; verification/adjustment cannot be added cleanly.  
+**Recommendation:** Extract services as artifacts specify; keep aggregate as consistency boundary.  
+**Affected Files:** `Bilreg.Domain/PaymentContext/TataRekeningFeature/`
 
 ---
 
-# Incorrect Domain Concepts
+### GAP-016
 
-| Code concept | Artifact inconsistency |
-|--------------|------------------------|
-| `PaymentAllocation()` method performing discharge | Misnamed; performs discharge allocation, not payment |
-| `TrsBillType.Pay()` as public API | Payment belongs to TataRekening orchestration |
-| `TrsBillType.CancelDischarge()` as public API | Cancel discharge belongs to TataRekening scope |
-| Payment decomposition from transaction components | Must decompose from discharge components |
-| `TataRekeningStatusEnum.Paid` | Artifact term is **LUNAS** |
-| `TrsBillStatusEnum` as lifecycle authority | Artifact: TrsBill cannot independently finalize/pay; status is projection only |
-| `EnsureCanCreateTrsBill` blocking Closed only | Artifact: only OPEN allows create |
-| `Modul = 0` for all factory-created bills | Violates JASA/OBAT partition model |
-| `RegOutFeature` financial types | Parallel domain model outside TRSBILLING aggregate design |
+**Category:** Workflow Preconditions  
+**Current Implementation:** `EnsureCanFinalize` checks status CLOSED and allocation totals only. No check for pending Merge Requests, incomplete verification, or projection availability as separate preconditions.  
+**Expected Artifact:** SOP-TR-07 preconditions: verification complete, adjustments complete, allocation complete, projection regenerated. SOP-TR-04 exception: pending merge requests block verification.  
+**Impact:** **Medium** — Invalid state transitions possible in domain.  
+**Recommendation:** Add explicit precondition validation aligned with SOP sequence.  
+**Affected Files:** `Bilreg.Domain/PaymentContext/TataRekeningFeature/TataRekeningModel.cs` (`EnsureCanFinalize`, `AssertFinalizationComplete`)
 
 ---
 
-# Aggregate Boundary Assessment
+### GAP-017
 
-| Aspect | Assessment |
-|--------|------------|
-| TataRekening as aggregate root for lifecycle | **Partial** — Close, ReOpen, Discharge present; payment, cancel discharge, LUNAS, delete missing |
-| TataRekening owns Billing Set | **Partial** — Collection exists but is not maintained on bill creation |
-| TrsBill as financial charge aggregate | **Mostly correct** — charge snapshot, components, Level-2 decomposition structure |
-| TrsBill excluded from independent discharge/payment | **Violated** — public Pay and CancelDischarge |
-| Creation scope ≠ lifecycle scope | **Partial** — CreateBillService does not load full Billing Set (good) but also does not link bill to authority (gap) |
-| Aggregate leakage | **Present** — lifecycle callable on TrsBill without TataRekening; payment ignores discharge component chain |
-
-**Summary:** Aggregate boundaries are **conceptually drawn** but **not enforced**. TataRekening behaves as a lifecycle skeleton; TrsBill is over-scoped with public settlement APIs.
+**Category:** Concurrency  
+**Current Implementation:** `BILRG_TataRekening` has no rowversion/timestamp column. No optimistic concurrency in `BilrgTataRekeningDal.Update`.  
+**Expected Artifact:** `03-design.md` §CONCURRENCY — registration-level concurrency to prevent double finalization, concurrent merge, concurrent reopen.  
+**Impact:** **Medium** — Race conditions on lifecycle transitions under concurrent Verifikator sessions.  
+**Recommendation:** Add `RowVersion` column and concurrency checks on update.  
+**Affected Files:** `Bilreg.SqlDb/PaymentContext/TataRekeningFeature/BILRG_TataRekening.sql`, `BilrgTataRekeningDal.cs`
 
 ---
 
-# Lifecycle Assessment
+### GAP-018
 
-| Transition | Artifact | Implementation | Status |
-|------------|----------|----------------|--------|
-| OPEN → CLOSED | `CloseBilling()` | `Close()` from `Opened` | Implemented |
-| CLOSED → OPEN | `ReOpen()` | `ReOpen()` from `Closed` | Implemented |
-| CLOSED → FINALIZED | `Discharge()` | `Discharge()` from `Closed` | Implemented |
-| FINALIZED → CLOSED | `CancelDischarge()` (no payment) | Not on TataRekening | Missing |
-| FINALIZED → LUNAS | Payment complete | No transition | Missing |
-| OPEN: create/delete bill | Allowed | Create partial; delete missing | Partial |
-| CLOSED: no create | Forbidden | Create blocked | Implemented |
-| FINALIZED: payment allowed | Yes | Per-bill Pay without guard | Incorrect |
-| LUNAS: terminal | No mutations | Not reachable | Missing |
-
-**Invalid transitions prevented:**
-
-- Discharge from OPEN — **yes** (`EnsureCanDischarge`)
-- Discharge from FINALIZED/PAID — **yes**
-- ReOpen from non-CLOSED — **yes**
-- Close from non-OPEN — **yes** (throws)
-
-**Missing guards:**
-
-- Payment from OPEN/CLOSED — not prevented at TataRekening level
-- Bill create from FINALIZED/PAID — not prevented
-- Mutation after LUNAS — not applicable (state unreachable)
+**Category:** Application / Validators  
+**Current Implementation:** No FluentValidation validators for PaymentContext Tata Rekening commands. Validator assembly registration appears disabled in application bootstrap.  
+**Expected Artifact:** Application layer validates command shape and preconditions; domain enforces invariants.  
+**Impact:** **Medium** — Input validation gap when commands are added.  
+**Recommendation:** Add validators per command following `docs/skills/use-case-generation.md`.  
+**Affected Files:** `Bilreg.Application/PaymentContext/`
 
 ---
 
-# Invariant Assessment
+### GAP-019
 
-| Invariant | Coverage |
-|-----------|----------|
-| Billing Set scope for lifecycle ops | **Partial** — discharge uses in-memory list; completeness not guaranteed |
-| Σ Allocation = Σ Outstanding (discharge 100%) | **Partial** — Level-1 JASA/OBAT totals enforced; per-bill completeness not asserted |
-| Payment on discharged responsibility | **Partial** — bill must be Discharged/Paid; no TataRekening FINALIZED guard |
-| Cancel discharge only when no payment | **Partial** — per-bill check only |
-| Bill deletion only when OPEN | **Missing** |
-| JASA allocation → JASA bills only | **Partial** — logic exists; all bills created as JASA |
-| OBAT allocation → OBAT bills only | **Not implemented** — no OBAT bills created |
-| Pricing/accounting snapshot immutable | **Missing** — mutable collections |
-| TrsBill cannot self-discharge/pay/finalize | **Violated** — public Pay/CancelDischarge |
-| Partial discharge forbidden | **Partial** — input totals must match; edge rounding not validated |
+**Category:** Billing Set Consistency  
+**Current Implementation:** `AddBillAppService` persists bills via `ITrsBillingRepo` without adding to aggregate `_listTrsBill`. Aggregate billing set is populated only on `LoadEntity`. `DeleteBill` exists on aggregate but has no application path.  
+**Expected Artifact:** Billing Set owned by aggregate; lifecycle operates on complete set (`02-domain.md` §Billing Set invariants).  
+**Impact:** **Medium** — In-memory aggregate during bill creation does not reflect persisted bills until reload.  
+**Recommendation:** Either add bills to aggregate on creation or always reload before lifecycle operations in application layer.  
+**Affected Files:** `Bilreg.Application/PaymentContext/TrsBillingFeature/AddBillAppService.cs`, `TataRekeningModel.cs` (`DeleteBill`)
 
 ---
 
-# Final Verdict
+### GAP-020
 
-**Classification: Partially Compliant**
+**Category:** Persistence Naming  
+**Current Implementation:** Table `BILRG_TataRekening` with column `DischargeDate` mapped to domain `FinalizationDate`. Design doc references `BILRG_TrsBillingRegister` and maps business Tata Rekening to `TrsBillingRegister`.  
+**Expected Artifact:** `03-design.md` §PERSISTENCE DESIGN — `BILRG_TrsBillingRegister` for lifecycle.  
+**Impact:** **Low** — Naming divergence; functionally acceptable under Compatibility First if documented, but confuses onboarding.  
+**Recommendation:** Document alias in persistence layer or align naming in next migration phase.  
+**Affected Files:** `Bilreg.SqlDb/PaymentContext/TataRekeningFeature/BILRG_TataRekening.sql`, `03-design.md`
 
-**Rationale:**
+---
 
-The domain layer demonstrates **intentional alignment** with the artifact's two-concept model (TataRekening + TrsBill), three component types, and the OPEN → CLOSED → FINALIZED lifecycle spine. Discharge allocation math with JASA/OBAT partitioning and proportional component decomposition shows the team understood the allocation model.
+### GAP-021
 
-However, the implementation is **not yet artifact compliant** because:
+**Category:** Domain Model Mapping  
+**Current Implementation:** Artifact aggregate name **Tata Rekening** maps to `TataRekeningModel`; artifact **TrsBill** maps to `TrsBillType` / `BillingCharge` naming in design table.  
+**Expected Artifact:** `03-design.md` §DOMAIN IMPLEMENTATION mapping table.  
+**Impact:** **Low** — Ubiquitous language partially preserved (`TataRekening*` types) but `TrsBill` vs `TrsBillType` and missing `TrsBillingRegister` type name reduce clarity.  
+**Recommendation:** Align public type names with artifact glossary where refactor cost is low.  
+**Affected Files:** `Bilreg.Domain/PaymentContext/TataRekeningFeature/`, `Bilreg.Domain/PaymentContext/TrsBillFeature/`
 
-1. **Financial authority is inverted** — payment and cancel discharge are exposed on TrsBill instead of TataRekening.
-2. **Billing Set ownership is incomplete** — bills are created but not registered for lifecycle scope.
-3. **Terminal settlement (LUNAS) is absent** — the lifecycle cannot complete.
-4. **Component pipeline is broken at payment** — payment decomposes from transaction, not discharge components.
-5. **Module partition is a dead invariant** — factory always assigns JASA.
-6. **Bill lifecycle guards are incomplete** — create allowed beyond OPEN; delete not implemented.
+---
 
-**Recommended priority order (domain layer only):**
+### GAP-022
 
-1. Enforce aggregate boundaries (internalize TrsBill lifecycle; TataRekening orchestration).
-2. Complete Billing Set registration semantics for lifecycle operations.
-3. Implement payment orchestration and LUNAS transition.
-4. Implement cancel discharge and delete bill with correct guards.
-5. Fix payment decomposition source (discharge → payment).
-6. Implement BillModulGroup at creation.
-7. Align ubiquitous language (LUNAS, Billing Set, component naming).
+**Category:** Tests  
+**Current Implementation:** Strong domain unit tests (`TataRekeningLifecycleDomainTest` — 14 tests, `TataRekeningFinancialAllocationIntegrityTest` — 14 tests) and repo/DTO tests. No integration test executes full SOP chain with database. No application handler tests. No merge/verification/adjustment tests.  
+**Expected Artifact:** Tests covering business rules, lifecycle, invariants, and workflow per analysis scope.  
+**Impact:** **Low** for domain coverage; **Medium** for end-to-end confidence — gaps will widen as application layer is built.  
+**Recommendation:** Add workflow integration tests per SOP once handlers exist.  
+**Affected Files:** `Bilreg.Test/PaymentContext/TataRekeningFeature/`
+
+---
+
+### GAP-023
+
+**Category:** Unexpected Implementation  
+**Current Implementation:** `TataRekeningModel.Pay()` and automatic LUNAS transition implement Cashier settlement inside Tata Rekening aggregate.  
+**Expected Artifact:** Payment Settlement is Cashier bounded context (`01-context.md` §OUT OF SCOPE).  
+**Impact:** **High** — Wrong ownership; should be refactored when Cashier integration is built.  
+**Recommendation:** Treat `Pay()` as interim/legacy bridge; replace with Settlement Initiation + Cashier command.  
+**Affected Files:** `TataRekeningModel.cs`, `TataRekeningFinancialAllocationIntegrityTest.cs` (TG07 partial pay → Lunas)
+
+---
+
+### GAP-024
+
+**Category:** Charge Source Guard  
+**Current Implementation:** `CreateBillDomService` calls `tataRekening.EnsureCanCreateTrsBill()` — correctly blocks bill creation when not OPEN. Charge Source commands use `IAddBillAppService`.  
+**Expected Artifact:** OPEN status allows Charge Source; CLOSED blocks new Financial Charge (`04-sop.md` §3.3).  
+**Impact:** **Positive partial alignment** — guard exists at domain level.  
+**Recommendation:** Ensure `ResolveTataRekening` always loads existing header (not recreate) so CLOSED status is enforced. Current implementation does load existing — **aligned**.  
+**Affected Files:** `CreateBillDomService.cs`, `AddBillAppService.cs`
+
+---
+
+### GAP-025
+
+**Category:** Projection Strategy  
+**Current Implementation:** `TrsBillingRepo.SaveChanges` deletes and re-inserts all `ta_trs_billing2` rows for a bill (DELETE → REGENERATE per bill). Matches design at bill level.  
+**Expected Artifact:** `03-design.md` §FINANCIAL PROJECTION — derived data, regenerable before Finalization.  
+**Impact:** **Low** — Strategy aligned for TrsBill projection; registration-level regeneration orchestration missing (see GAP-001).  
+**Recommendation:** Wire aggregate lifecycle to trigger per-bill projection save.  
+**Affected Files:** `Bilreg.Infrastructure/PaymentContext/TrsBillingFeature/TrsBillingRepo.cs`
+
+---
+
+### GAP-026
+
+**Category:** Legacy Parallel Feature  
+**Current Implementation:** `RegOutFeature` (dischargeable list, pembayaran, hutang) operates independently with active MediatR handlers (`RegAddPembayaranCmd`, `RegListRegDischargeableQuery`, etc.) while RegOut API is commented out.  
+**Expected Artifact:** Tata Rekening replaces Financial Control; legacy maintained only for compatibility during migration (`03-design.md` §DEPLOYMENT STRATEGY).  
+**Impact:** **High** — Legacy behavior preserved without feature toggle or migration path to Tata Rekening aggregate.  
+**Recommendation:** Define migration feature flag; route RegOut flows through Tata Rekening when enabled.  
+**Affected Files:** `Bilreg.Application/PaymentContext/RegOutFeature/`
+
+---
+
+### GAP-027
+
+**Category:** Value Objects  
+**Current Implementation:** `TataRekeningPaymentType` (Jasa/Obat split per payer) and `PaymentType` providers exist. No distinct `FinancialProjection` value object type — projection is materialized as `TrsBill2FinalizationEventType` / `TrsBill2PaymentEventType` lists on bills.  
+**Expected Artifact:** `02-domain.md` §VALUE OBJECT Financial Projection as derived allocation result.  
+**Impact:** **Low** — Representation differs but functionally maps to `ta_trs_billing2`; acceptable pragmatic DDD.  
+**Recommendation:** Optional: introduce read-model type for Open Tata Rekening summary.  
+**Affected Files:** `TrsBill2FinalizationEventType.cs`, `TrsBill2PaymentEventType.cs`
+
+---
+
+### GAP-028
+
+**Category:** Cancel Finalization Semantics  
+**Current Implementation:** `CancelFinalization()` clears level-1 payments and bill finalization events; blocks if any bill has payment events. No reason/audit.  
+**Expected Artifact:** SOP-TR-08 — revert FINALIZED → CLOSED, unlock allocation, retain charges; audit with reason.  
+**Impact:** **Medium** — Core state transition present; procedural requirements missing.  
+**Recommendation:** Add reason parameter, audit persistence, application command.  
+**Affected Files:** `TataRekeningModel.cs` (lines 113–133)
+
+---
+
+### GAP-029
+
+**Category:** Reopen Billing Semantics  
+**Current Implementation:** `ReOpen()` transitions CLOSED → OPEN only. No link to Financial Adjustment precondition or audit.  
+**Expected Artifact:** SOP-TR-09 — only after adjustment determines Charge Source change needed; requires reason and audit.  
+**Impact:** **Medium** — State transition exists without workflow context.  
+**Recommendation:** Add `ReopenBilling(reason)` with audit; enforce adjustment precondition in handler.  
+**Affected Files:** `TataRekeningModel.cs` (lines 60–68)
+
+---
+
+### GAP-030
+
+**Category:** Operational vs Financial Truth  
+**Current Implementation:** Charge Source creates bills via `AddBillAppService`; operational events stay in source contexts (Tindakan, Reg, Lab). Tata Rekening guards OPEN for new charges.  
+**Expected Artifact:** Operational Truth ≠ Financial Truth separation (`01-context.md`).  
+**Impact:** **Low** — Directionally correct; incomplete until Close Bill is enforced system-wide.  
+**Recommendation:** Propagate CLOSED status check to all Charge Source entry points (verify each command uses `IAddBillAppService`).  
+**Affected Files:** Charge Source commands using `IAddBillAppService`
+
+---
+
+### GAP-031
+
+**Category:** Database Duplication  
+**Current Implementation:** `BILRG_TataRekening.sql` exists in both `Bilreg.SqlDb/PaymentContext/TataRekeningFeature/` and `Bilreg.SqlDb/PaymentContext/TrsBillingFeature/`.  
+**Expected Artifact:** Single canonical table definition per `docs/DATABASE.md`.  
+**Impact:** **Low** — Maintenance duplication risk.  
+**Recommendation:** Consolidate to one SQL file path.  
+**Affected Files:** Both `BILRG_TataRekening.sql` copies
+
+---
+
+### GAP-032
+
+**Category:** Pasien Balance Adjacency  
+**Current Implementation:** `BILRG_TataRekPasienBalance` feature exists separately from registration lifecycle.  
+**Expected Artifact:** Not in Tata Rekening core scope; patient-level balance is adjacent concern.  
+**Impact:** **Low** — Unexpected but not conflicting if kept separate.  
+**Recommendation:** Document boundary in integration guide; avoid duplicating allocation logic.  
+**Affected Files:** `Bilreg.Application/PaymentContext/PasienBalanceFeature/`
+
+---
+
+## Missing Features
+
+| Feature (from artifacts) | Status |
+|----------------------------|--------|
+| Merge Request entity and persistence | **Not Implemented** |
+| Merge Billing workflow (SOP-TR-03) | **Not Implemented** |
+| Transfer Receivable to Accounting on merge | **Not Implemented** |
+| Financial Verification workflow (SOP-TR-04) | **Not Implemented** |
+| Financial Adjustment types and workflow (SOP-TR-05) | **Not Implemented** |
+| Standalone Financial Responsibility Allocation step (SOP-TR-06) | **Partially Implemented** (embedded in finalize only) |
+| Settlement Initiation (SOP-TR-10) | **Not Implemented** |
+| Open Tata Rekening query/workspace (SOP-TR-01) | **Partially Implemented** (header on first bill only) |
+| Application commands/handlers for Close, Finalize, Cancel, Reopen | **Not Implemented** |
+| Verifikator authorization | **Not Implemented** |
+| Domain events (8 event types) | **Not Implemented** |
+| Merge / Cancel / Reopen audit trails | **Not Implemented** |
+| Tata Rekening API endpoints | **Not Implemented** (commented stubs only) |
+| UI screens for Tata Rekening | **Not Implemented** (not in repo) |
+| Registration-scoped unit of work (header + all bills) | **Not Implemented** |
+| Optimistic concurrency on lifecycle header | **Not Implemented** |
+| Pending Merge Request discovery on Open | **Not Implemented** |
+
+---
+
+## Unexpected Features
+
+| Implementation | Notes |
+|----------------|-------|
+| `TataRekeningModel.Pay()` with LUNAS transition | Payment Settlement belongs to Cashier per artifacts — **Implemented Differently** |
+| `RegOutFeature` / `RegAddPembayaranCmd` direct `ta_registrasi3` writes | Legacy parallel path — **Legacy Behavior** |
+| `PasienBalanceFeature` | Patient balance tracking — not described in Tata Rekening artifacts |
+| `DeleteBill()` on aggregate | Bill removal when OPEN — not listed in artifact aggregate responsibilities (may be operational correction) |
+| `DischargeDate` column name | Legacy naming — **Legacy Behavior** |
+| Commented `TrsBillingControllerController` / `RegOutController` | Scaffold only — not active |
+
+---
+
+## Workflow Deviations
+
+| SOP | Status | Notes |
+|-----|--------|-------|
+| SOP-TR-01 Open Tata Rekening | **Partially Implemented** | Lazy `TataRekeningModel.Create` on first bill; no read-model for projection, payer, merge requests |
+| SOP-TR-02 Close Bill | **Partially Implemented** | Domain `Close()` + tests; no app/API; Charge Source guard via `EnsureCanCreateTrsBill` works when header loaded |
+| SOP-TR-03 Merge Billing | **Not Implemented** | No code, tables, or integration |
+| SOP-TR-04 Financial Verification | **Not Implemented** | No verification step or status |
+| SOP-TR-05 Financial Adjustment | **Not Implemented** | No adjustment operations |
+| SOP-TR-06 Financial Responsibility Allocation | **Implemented Differently** | Allocation math exists but only inside `FinalizeFinancialResponsibility`, not as separate iterative step |
+| SOP-TR-07 Finalize Financial Responsibility | **Partially Implemented** | Domain method + allocation tests; no orchestration, no verification preconditions, no persistence of bill projections |
+| SOP-TR-08 Cancel Finalization | **Partially Implemented** | Domain `CancelFinalization()`; missing reason, audit, application layer |
+| SOP-TR-09 Reopen Billing | **Partially Implemented** | Domain `ReOpen()`; missing adjustment precondition, reason, audit |
+| SOP-TR-10 Settlement Initiation | **Not Implemented** | `Pay()` conflates with Cashier settlement |
+
+---
+
+## Domain Model Deviations
+
+### Aggregate
+
+| Artifact | Implementation | Deviation |
+|----------|----------------|-----------|
+| Tata Rekening (one per Registrasi) | `TataRekeningModel` | Aligned |
+| Responsibilities: Close, Merge, Verify, Adjust, Allocate, Finalize, Cancel, Reopen, Settlement Initiation | Close, ReOpen, Finalize (with allocate), Cancel, Pay | Missing Merge, Verify, Adjust, Settlement Initiation; Pay should not be here |
+| Billing Set in aggregate | `_listTrsBill` loaded on read, not updated on create | **Partial** |
+
+### Entities
+
+| Artifact | Implementation | Deviation |
+|----------|----------------|-----------|
+| TrsBill | `TrsBillType` | Aligned (naming) |
+| Merge Request | — | **Missing** |
+
+### Value Objects
+
+| Artifact | Implementation | Deviation |
+|----------|----------------|-----------|
+| Financial Responsibility | `TataRekeningPaymentType` + `PaymentType` | Aligned shape (Jasa/Obat per payer) |
+| Financial Projection | `TrsBill2FinalizationEventType` / `TrsBill2PaymentEventType` on bills | **Implemented Differently** (no standalone VO) |
+
+### Services
+
+| Artifact | Implementation | Deviation |
+|----------|----------------|-----------|
+| Merge Billing service | — | **Missing** |
+| Financial Verification service | — | **Missing** |
+| Allocation service | Private methods on aggregate | **Implemented Differently** |
+| Projection service | `TrsBillingRepo` per-bill regenerate | **Partial** |
+
+### Events
+
+| Artifact | Implementation | Deviation |
+|----------|----------------|-----------|
+| 8 domain events | None | **Missing** |
+
+---
+
+## Architecture Deviations
+
+| Layer | Expected | Current | Gap |
+|-------|----------|---------|-----|
+| Presentation | Tata Rekening API + UI | Commented controllers; no UI | **High** |
+| Application | Commands/queries per SOP | `ITataRekeningRepo` + `AddBillAppService` only | **High** |
+| Domain | Full aggregate + services + events | Strong lifecycle/allocation core; missing merge, verify, adjust, events | **Medium** |
+| Infrastructure | Repos + integrations | Header/payment/bill repos exist; no merge, accounting hooks, UoW | **High** |
+| Persistence | Registration transaction boundary | Separate repo saves | **High** |
+| Integration | Charge Source, Accounting, Cashier | Charge Source partial; Accounting at bill create only; Cashier via legacy RegOut | **High** |
+
+---
+
+## Database Deviations
+
+| Area | Artifact | Implementation | Deviation |
+|------|----------|----------------|-----------|
+| Lifecycle table | `BILRG_TrsBillingRegister` | `BILRG_TataRekening` | Naming (**Low**) |
+| Financial Charge | `ta_trs_billing` | `ta_trs_billing` | Aligned |
+| Financial Projection | `ta_trs_billing2` | `ta_trs_billing2` | Aligned |
+| Level-1 allocation | (via projection design) | `ta_registrasi3` | Aligned legacy table; dual writers (**Critical**) |
+| Merge Request table | Implied by domain | — | **Missing** |
+| Audit tables | Required by SOPs 3, 8, 9 | — | **Missing** |
+| Relationships | One Registrasi → one header → many bills | FK via `fs_kd_reg` on bills | Aligned |
+| Indexes | Registration-centric access | PK on `RegId` only | No concurrency column (**Medium**) |
+| Derived data | DELETE → REGENERATE | Per-bill in `TrsBillingRepo` | Aligned at bill level |
+| Lifecycle storage | Status on register | `Status` INT on `BILRG_TataRekening` | Aligned |
+
+---
+
+## Test Coverage Gaps
+
+### Missing unit tests
+
+- Merge Billing business rules (no implementation)
+- Financial Verification preconditions
+- Financial Adjustment scenarios
+- Standalone Allocation without Finalize
+- Settlement Initiation (handoff semantics)
+- Verifikator authorization policies
+- Domain event publication
+
+### Missing integration tests
+
+- Full SOP chain: Open → Close → Allocate → Finalize → Settlement Initiation (with DB)
+- Merge Billing with Accounting rollback
+- Transaction rollback when projection regeneration fails
+- Concurrent finalization attempts
+
+### Missing workflow tests
+
+- Exception paths per SOP (e.g. finalize while merge pending)
+- Reopen → Close → re-verify sequence
+- Cancel Finalization after partial payment blocked
+
+### Missing business rule tests
+
+- SOP-TR-03 merge invariants (CLOSED target, Pending request only)
+- SOP-TR-08 audit/reason required
+- SOP-TR-09 adjustment precondition
+
+### Existing coverage (strengths)
+
+- `TataRekeningLifecycleDomainTest` — lifecycle guards and OPEN→LUNAS path
+- `TataRekeningFinancialAllocationIntegrityTest` — conservation, rounding, partial pay
+- `TataRekeningRepoTest`, DTO round-trips
+- `AddBillAppServiceTest`, `CreateBillDomServiceTest` — Charge Source entry
+
+---
+
+## Refactoring Roadmap
+
+### Phase 1 — Critical fixes
+
+1. Implement registration-scoped **unit of work** (`TataRekeningRepo` + `TrsBillingRepo` in one transaction).
+2. **Eliminate dual `ta_registrasi3` writers** — route legacy RegOut through Tata Rekening or feature-flag off.
+3. Add application handlers for **Close Bill**, **Finalize**, **Cancel Finalization**, **Reopen** with persistence.
+4. **Do not enable API** until Verifikator authorization is in place.
+
+### Phase 2 — Architecture alignment
+
+1. Extract **AllocateFinancialResponsibility** from finalize; add verification gate.
+2. Implement **Settlement Initiation**; relocate `Pay()` to Cashier boundary.
+3. Add **domain events** and Accounting integration on finalize/merge.
+4. Add **optimistic concurrency** on `BILRG_TataRekening`.
+
+### Phase 3 — Feature completion
+
+1. **Merge Request** persistence + **Merge Billing** SOP-TR-03 with Transfer Receivable.
+2. **Financial Verification** and **Financial Adjustment** workflows.
+3. **Open Tata Rekening** query with merge request discovery.
+4. Enable **API controllers** and external UI integration.
+
+### Phase 4 — Code quality improvements
+
+1. Consolidate duplicate SQL definitions.
+2. Align naming (`TrsBillingRegister` vs `TataRekening` table).
+3. Add workflow integration test suite.
+4. Document legacy migration toggles for RegOut.
+
+---
+
+## Final Assessment
+
+### Overall implementation maturity
+
+**Early domain-centric stage.** The team invested correctly in aggregate lifecycle, allocation integrity, and legacy-compatible persistence shapes. The bounded context is **not production-ready** for Financial Control: application orchestration, authorization, merge, verification, adjustment, settlement handoff, and API/UI are largely absent. Legacy RegOut remains a parallel financial path.
+
+### Risks
+
+1. **Financial inconsistency** if legacy `RegAddPembayaranCmd` and new aggregate paths run concurrently.
+2. **Incorrect AR ownership** when merge is needed but unavailable.
+3. **Unauthorized financial mutations** when API is uncommented without Verifikator checks.
+4. **Lost projection data** if finalize is invoked without bill-level `TrsBillingRepo.SaveChanges`.
+5. **Workflow bypass** — finalize without verification or pending-merge checks.
+
+### Recommended implementation order
+
+1. Unit of work + Close/Finalize/Cancel/Reopen handlers (persist header + bills).
+2. Verifikator authorization policy.
+3. Decommission or gate legacy `ta_registrasi3` direct writes.
+4. Split Allocation from Finalize; add Verification gate.
+5. Open Tata Rekening query + API.
+6. Settlement Initiation + Cashier integration (move `Pay`).
+7. Merge Request + Merge Billing + Accounting Transfer Receivable.
+8. Financial Adjustment + audit trails.
+9. Domain events + integration tests.
+10. UI workspace.
 
 ---
 
@@ -558,17 +615,8 @@ However, the implementation is **not yet artifact compliant** because:
 
 | Document | Description |
 |----------|-------------|
-| [`01-context.md`](01-context.md) | Business context |
-| [`02-domain.md`](02-domain.md) | Domain model (source of truth) |
-| [`03-design.md`](03-design.md) | Architecture & persistence |
-| [`04-sop.md`](04-sop.md) | Workflow overview & SOP index |
-
----
-
-## Analysis metadata
-
-| Item | Value |
-|------|-------|
-| Domain files reviewed | 18 types across `TataRekeningFeature`, `TrsBillFeature`, `CoaFeature` |
-| Tests referenced | `TrsBillCreationDomainServiceTest` (creation guards only) |
-| Related internal doc | `trsbilling-04-domain-refactor-plan.md` (implementation plan; BD-1 therein conflicts with artifact §3 on Billing Set ownership — **artifact wins** for this report) |
+| [01-context.md](01-context.md) | Business context |
+| [02-domain.md](02-domain.md) | Domain model |
+| [03-design.md](03-design.md) | Architecture & persistence |
+| [04-sop.md](04-sop.md) | Workflow index |
+| SOP-TR-01 … SOP-TR-10 | Per-step procedures |
