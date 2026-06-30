@@ -39,7 +39,8 @@ internal sealed class TataRekeningPhase3ApplicationTestHarness
             TataRekeningDomainTestHelper.MergeBillingService,
             transferReceivableService,
             auditRepo,
-            UnitOfWork.Object);
+            UnitOfWork.Object,
+            new FixedCurrentUserContext());
 
     private void SetupMergeScenario()
     {

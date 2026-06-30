@@ -17,20 +17,21 @@ public record ReopenBillingResponse(TataRekeningSummaryDto Summary);
 
 public class ReopenBillingHandler : IRequestHandler<ReopenBillingCommand, ReopenBillingResponse>
 {
-    private const string SystemActor = "SYSTEM";
-
     private readonly ITataRekeningRepo _tataRekeningRepo;
     private readonly IAuditRepo _auditRepo;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUserContext _currentUser;
 
     public ReopenBillingHandler(
         ITataRekeningRepo tataRekeningRepo,
         IAuditRepo auditRepo,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ICurrentUserContext currentUser)
     {
         _tataRekeningRepo = tataRekeningRepo;
         _auditRepo = auditRepo;
         _unitOfWork = unitOfWork;
+        _currentUser = currentUser;
     }
 
     public Task<ReopenBillingResponse> Handle(ReopenBillingCommand request, CancellationToken cancellationToken)
@@ -48,7 +49,7 @@ public class ReopenBillingHandler : IRequestHandler<ReopenBillingCommand, Reopen
         _tataRekeningRepo.SaveChanges(tataRekening);
 
         var audit = AuditLog.Create(
-            userId: SystemActor,
+            userId: _currentUser.GetActorUserId(),
             actionType: "TATA_REKENING_REOPEN_BILLING",
             entityName: nameof(TataRekeningModel),
             entityId: request.RegId,

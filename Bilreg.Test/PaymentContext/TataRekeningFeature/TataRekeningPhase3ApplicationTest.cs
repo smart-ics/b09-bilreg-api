@@ -29,6 +29,7 @@ public class TataRekeningPhase3ApplicationTest
     private readonly Mock<IUnitOfWorkScope> _unitOfWorkScope = new();
     private readonly Mock<ITransferReceivableService> _transferReceivableService = new();
     private readonly Mock<IAuditRepo> _auditRepo = new();
+    private readonly FixedCurrentUserContext _currentUser = new();
 
     public TataRekeningPhase3ApplicationTest()
     {
@@ -123,7 +124,8 @@ public class TataRekeningPhase3ApplicationTest
             TataRekeningDomainTestHelper.MergeBillingService,
             _transferReceivableService.Object,
             _auditRepo.Object,
-            _unitOfWork.Object);
+            _unitOfWork.Object,
+            _currentUser);
 
         var result = await handler.Handle(new MergeBillingCommand("MR-MERGE"), CancellationToken.None);
 
@@ -160,7 +162,8 @@ public class TataRekeningPhase3ApplicationTest
             TataRekeningDomainTestHelper.MergeBillingService,
             _transferReceivableService.Object,
             _auditRepo.Object,
-            _unitOfWork.Object);
+            _unitOfWork.Object,
+            _currentUser);
 
         var act = () => handler.Handle(new MergeBillingCommand("MR-FAIL"), CancellationToken.None);
 
@@ -304,9 +307,9 @@ public class TataRekeningPhase3ApplicationTest
         SetupTataRekeningLoad(RegId, tataRekening);
 
         var handler = new CancelFinalizationHandler(
-            _tataRekeningRepo.Object, _trsBillingRepo.Object, _auditRepo.Object, _unitOfWork.Object);
+            _tataRekeningRepo.Object, _trsBillingRepo.Object, _auditRepo.Object, _unitOfWork.Object, _currentUser);
 
-        var result = await handler.Handle(new CancelFinalizationCommand(RegId), CancellationToken.None);
+        var result = await handler.Handle(new CancelFinalizationCommand(RegId, "Koreksi alokasi"), CancellationToken.None);
 
         result.Summary.Status.Should().Be(TataRekeningStatusEnum.Closed);
         result.Summary.IsFinancialResponsibilityAllocated.Should().BeFalse();
@@ -329,7 +332,8 @@ public class TataRekeningPhase3ApplicationTest
             _trsBillingRepo.Object,
             TataRekeningDomainTestHelper.AdjustmentService,
             _auditRepo.Object,
-            _unitOfWork.Object);
+            _unitOfWork.Object,
+            _currentUser);
 
         var result = await handler.Handle(
             new FinancialAdjustmentCommand(
@@ -357,7 +361,8 @@ public class TataRekeningPhase3ApplicationTest
             _trsBillingRepo.Object,
             TataRekeningDomainTestHelper.AdjustmentService,
             _auditRepo.Object,
-            _unitOfWork.Object);
+            _unitOfWork.Object,
+            _currentUser);
 
         var result = await handler.Handle(
             new FinancialAdjustmentCommand(
@@ -383,7 +388,7 @@ public class TataRekeningPhase3ApplicationTest
         SetupTataRekeningLoad(RegId, tataRekening);
 
         var handler = new ReopenBillingHandler(
-            _tataRekeningRepo.Object, _auditRepo.Object, _unitOfWork.Object);
+            _tataRekeningRepo.Object, _auditRepo.Object, _unitOfWork.Object, _currentUser);
 
         var result = await handler.Handle(
             new ReopenBillingCommand(RegId, "Koreksi charge source"),

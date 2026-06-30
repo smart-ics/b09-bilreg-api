@@ -31,6 +31,14 @@ public record RolePermissionDto(string RoleId, string RoleName, string Permissio
 
             new RolePermissionDto("ADM-USR","ADMISI USER","BOK-CREATE","BOOKING CREATE"),
             new RolePermissionDto("ADM-USR","ADMISI USER","BOK-EDIT","BOOKING EDIT"),
+
+            // ================= VERIF-SPV =================
+            new RolePermissionDto("VERIF-SPV","VERIFIKATOR SPV","TATA-REKENING-READ","TATA REKENING READ"),
+            new RolePermissionDto("VERIF-SPV","VERIFIKATOR SPV","TATA-REKENING-WRITE","TATA REKENING WRITE"),
+
+            // ================= VERIF-USR =================
+            new RolePermissionDto("VERIF-USR","VERIFIKATOR USER","TATA-REKENING-READ","TATA REKENING READ"),
+            new RolePermissionDto("VERIF-USR","VERIFIKATOR USER","TATA-REKENING-WRITE","TATA REKENING WRITE"),
         };
     }
 }

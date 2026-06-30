@@ -25,31 +25,42 @@ public class ErrorHandlerMiddleware
             var response = context.Response;
             response.ContentType = "application/json";
 
-            string? status;
+            int statusCode;
+            string status;
             switch (error)
             {
+                case KeyNotFoundException:
+                    statusCode = (int)HttpStatusCode.NotFound;
+                    status = "Not Found";
+                    break;
                 case ArgumentException:
+                    statusCode = (int)HttpStatusCode.UnprocessableEntity;
+                    status = "Validation Error";
+                    break;
+                case InvalidOperationException stale when stale.Message.Contains("stale", StringComparison.OrdinalIgnoreCase):
+                    statusCode = (int)HttpStatusCode.Conflict;
+                    status = "Conflict";
+                    break;
                 case InvalidOperationException:
-                    response.StatusCode = (int)HttpStatusCode.BadRequest;
+                    statusCode = (int)HttpStatusCode.BadRequest;
                     status = "Bad Request";
                     break;
-                case KeyNotFoundException:
-                    // not found error
-                    response.StatusCode = (int)HttpStatusCode.BadRequest;
-                    status = "Data Not Found";
+                case UnauthorizedAccessException:
+                    statusCode = (int)HttpStatusCode.Unauthorized;
+                    status = "Unauthorized";
                     break;
                 case TooManyResultsException:
-                    response.StatusCode = (int)HttpStatusCode.UnprocessableEntity;
+                    statusCode = (int)HttpStatusCode.UnprocessableEntity;
                     status = "Too Many Results";
                     break;
                 default:
-                    // unhandled error
-                    response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                    statusCode = (int)HttpStatusCode.InternalServerError;
                     status = "Internal Server Error";
                     break;
             }
 
-            var resultObj = new JSend(response.StatusCode, status, error.Message);
+            response.StatusCode = statusCode;
+            var resultObj = new JSend(statusCode, status, error.Message);
             var result = JsonSerializer.Serialize(resultObj);
             await response.WriteAsync(result);
         }

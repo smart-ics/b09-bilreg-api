@@ -20,8 +20,6 @@ public record MergeBillingResponse(
 
 public class MergeBillingHandler : IRequestHandler<MergeBillingCommand, MergeBillingResponse>
 {
-    private const string SystemActor = "SYSTEM";
-
     private readonly ITataRekeningRepo _tataRekeningRepo;
     private readonly IMergeRequestRepo _mergeRequestRepo;
     private readonly ITrsBillingRepo _trsBillingRepo;
@@ -29,6 +27,7 @@ public class MergeBillingHandler : IRequestHandler<MergeBillingCommand, MergeBil
     private readonly ITransferReceivableService _transferReceivableService;
     private readonly IAuditRepo _auditRepo;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUserContext _currentUser;
 
     public MergeBillingHandler(
         ITataRekeningRepo tataRekeningRepo,
@@ -37,7 +36,8 @@ public class MergeBillingHandler : IRequestHandler<MergeBillingCommand, MergeBil
         IMergeBillingDomainService mergeBillingService,
         ITransferReceivableService transferReceivableService,
         IAuditRepo auditRepo,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ICurrentUserContext currentUser)
     {
         _tataRekeningRepo = tataRekeningRepo;
         _mergeRequestRepo = mergeRequestRepo;
@@ -46,6 +46,7 @@ public class MergeBillingHandler : IRequestHandler<MergeBillingCommand, MergeBil
         _transferReceivableService = transferReceivableService;
         _auditRepo = auditRepo;
         _unitOfWork = unitOfWork;
+        _currentUser = currentUser;
     }
 
     public Task<MergeBillingResponse> Handle(MergeBillingCommand request, CancellationToken cancellationToken)
@@ -81,7 +82,7 @@ public class MergeBillingHandler : IRequestHandler<MergeBillingCommand, MergeBil
         _transferReceivableService.Transfer(mergeRequest.SourceRegId, mergeRequest.TargetRegId!);
 
         var audit = AuditLog.Create(
-            userId: SystemActor,
+            userId: _currentUser.GetActorUserId(),
             actionType: "TATA_REKENING_MERGE_BILLING",
             entityName: nameof(MergeRequestModel),
             entityId: mergeRequest.MergeRequestId,

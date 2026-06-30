@@ -30,19 +30,22 @@ public class FinancialAdjustmentHandler : IRequestHandler<FinancialAdjustmentCom
     private readonly IFinancialAdjustmentDomainService _adjustmentService;
     private readonly IAuditRepo _auditRepo;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUserContext _currentUser;
 
     public FinancialAdjustmentHandler(
         ITataRekeningRepo tataRekeningRepo,
         ITrsBillingRepo trsBillingRepo,
         IFinancialAdjustmentDomainService adjustmentService,
         IAuditRepo auditRepo,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ICurrentUserContext currentUser)
     {
         _tataRekeningRepo = tataRekeningRepo;
         _trsBillingRepo = trsBillingRepo;
         _adjustmentService = adjustmentService;
         _auditRepo = auditRepo;
         _unitOfWork = unitOfWork;
+        _currentUser = currentUser;
     }
 
     public Task<FinancialAdjustmentResponse> Handle(
@@ -66,7 +69,7 @@ public class FinancialAdjustmentHandler : IRequestHandler<FinancialAdjustmentCom
             PersistMutatedBills(tataRekening, adjustmentRequest);
 
             var audit = AuditLog.Create(
-                userId: "SYSTEM",
+                userId: _currentUser.GetActorUserId(),
                 actionType: "TATA_REKENING_FINANCIAL_ADJUSTMENT",
                 entityName: nameof(TataRekeningModel),
                 entityId: request.RegId,
