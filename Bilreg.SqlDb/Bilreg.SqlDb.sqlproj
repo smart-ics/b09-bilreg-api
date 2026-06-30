@@ -232,9 +232,9 @@
     <Content Include="LabContext\LabResultFeature\BILRG_LabResultDocument_M10_Alter.sql" />
     <Content Include="LabContext\LabResultFeature\BILRG_LabResultItem.sql" />
     <Build Include="PaymentContext\PasienBalanceFeature\BILRG_TataRekPasienBalance.sql" />
-    <Build Include="PaymentContext\PasienBalanceFeature\BILRG_TataRekPasienBalanceHistory.sql" />
-    <Build Include="PaymentContext\PasienBalanceFeature\BILRG_TataRekPasienBalanceHistory_M1_JasaObatPartition_Alter.sql" />
+    <Build Include="PaymentContext\PasienBalanceFeature\BILRG_TataRekPasienBalanceOutstanding.sql" />
     <Build Include="PaymentContext\PasienBalanceFeature\BILRG_TataRekPasienBalance_M1_JasaObatPartition_Alter.sql" />
+    <Build Include="PaymentContext\PasienBalanceFeature\BILRG_TataRekPasienBalance_M2_OutstandingEntry_Redesign_Alter.sql" />
     <Build Include="PaymentContext\RekapCatakFeature\ta_trs_billing2.sql" />
     <Build Include="PaymentContext\RekeningFeature\t_rek.sql" />
     <Build Include="PaymentContext\TataRekeningFeature\BILRG_TataRekening.sql" />
