@@ -1,0 +1,7 @@
+CREATE TABLE FARIN_JenisLokasi
+(
+    JenisLokasiId VARCHAR(3) NOT NULL CONSTRAINT DF_FARIN_JenisLokasi_JenisLokasiId DEFAULT(''),
+    JenisLokasiName VARCHAR(10) NOT NULL CONSTRAINT DF_FARIN_JenisLokasi_JenisLokasiName DEFAULT(''),
+    CONSTRAINT PK_FARIN_JenisLokasi PRIMARY KEY CLUSTERED(JenisLokasiId)
+)
+GO

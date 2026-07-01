@@ -1,0 +1,18 @@
+﻿CREATE TABLE FARPU_Fornas (
+    FornasId VARCHAR(5) NOT NULL CONSTRAINT FARPU_Fornas_FornasId DEFAULT(''),
+    FornasName VARCHAR(128) NOT NULL CONSTRAINT FARPU_Fornas_FornasName DEFAULT(''),
+    KelasTerapi VARCHAR(128) NOT NULL CONSTRAINT FARPU_Fornas_KelasTerapi DEFAULT(''),
+    KelasTerapi1 VARCHAR(128) NOT NULL CONSTRAINT FARPU_Fornas_KelasTerapi1 DEFAULT(''),
+    KelasTerapi2 VARCHAR(128) NOT NULL CONSTRAINT FARPU_Fornas_KelasTerapi2 DEFAULT(''),
+    KelasTerapi3 VARCHAR(128) NOT NULL CONSTRAINT FARPU_Fornas_KelasTerapi3 DEFAULT(''),
+    NamaObat VARCHAR(128) NOT NULL CONSTRAINT FARPU_Fornas_NamaObat DEFAULT(''),
+    Sediaan VARCHAR(128) NOT NULL CONSTRAINT FARPU_Fornas_Sediaan DEFAULT(''),
+    Kekuatan VARCHAR(128) NOT NULL CONSTRAINT FARPU_Fornas_Kekuatan DEFAULT(''),
+    Satuan VARCHAR(50) NOT NULL CONSTRAINT FARPU_Fornas_Satuan DEFAULT(''),
+    MaksPeresepan VARCHAR(5) NOT NULL CONSTRAINT FARPU_Fornas_MaksPeresepan DEFAULT(''),
+    RestriksiKelasTerapi VARCHAR(128) NOT NULL CONSTRAINT FARPU_Fornas_RestriksiKelasTerapi DEFAULT(''),
+    RestriksiObat VARCHAR(512) NOT NULL CONSTRAINT FARPU_Fornas_RestriksiObat DEFAULT(''),
+    RestriksiSediaan VARCHAR(512) NOT NULL CONSTRAINT FARPU_Fornas_RestriksiSediaan DEFAULT(''),
+   
+    CONSTRAINT PK_FARPU_Fornas_FornasId PRIMARY KEY CLUSTERED(FornasId)
+)

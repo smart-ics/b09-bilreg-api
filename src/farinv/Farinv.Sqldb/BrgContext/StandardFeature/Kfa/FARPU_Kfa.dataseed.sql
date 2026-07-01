@@ -1,0 +1,4 @@
+﻿--	note: khusus tabel FARPU_Kfa gak bisa pakai script, jadi pakai BCP (FarpuKfaData.7z). 
+--	* format : bcp [NamaDB].dbo.[NamaTabel] in [LokasiFile.dat] -S [NamaServer] -U [User] -P [Password] -n
+--	* buka CMD as admin, ketikkan ini lalu Enter (sesuaikan):
+--	bcp hospital.dbo.FARPU_Kfa in D:\KFA\FarpuKfaData.dat -S xserver -U sa -P passwordnya -n
