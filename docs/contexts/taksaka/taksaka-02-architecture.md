@@ -1,47 +1,30 @@
 # Taksaka V2 — Architecture
 
-Version: 1.0
+Version: **2.0**
 
 ---
 
-# Purpose
+# Architecture Vision
 
-This document defines the architecture of Taksaka V2.
+Taksaka is not merely a Job Scheduler.
 
-It is the authoritative architecture specification for the repository.
+Taksaka is an **Operational Background Processing Platform**.
 
-All implementations MUST conform to this document.
+Its responsibilities are to:
 
-If implementation conflicts with this document, this document has authority.
+* Execute background workloads
+* Coordinate execution
+* Allocate execution resources
+* Monitor platform health
+* Observe platform behavior
+* Provide operational visibility
+* Support diagnosis and recovery
 
----
+The platform exists so Hospital IT can **understand, control and recover** background processing.
 
-# Architecture Philosophy
+Business systems create work.
 
-Taksaka is **not** a Hospital Information System.
-
-Taksaka is a generic Background Processing Platform.
-
-The Engine executes work.
-
-Business Modules define work.
-
-Therefore:
-
-Business knowledge MUST NEVER exist inside the Engine.
-
-The Engine understands only:
-
-- Job
-- Queue
-- Worker
-- Scheduler
-- Dispatcher
-- Health
-- Alert
-- Plugin
-
-Nothing else.
+Taksaka manages its execution.
 
 ---
 
@@ -49,544 +32,363 @@ Nothing else.
 
 Taksaka adopts:
 
-- Modular Monolith
-- Hexagonal Architecture
-- Plugin Architecture
-- Pipeline Execution Architecture
-- Dependency Injection
-- Event-driven Background Processing
+* Modular Monolith
+* Hexagonal Architecture
+* Plugin Architecture
+* Pipeline Architecture
+* Event Driven Architecture
+* Resource Oriented Scheduling
 
-The platform is designed so it can evolve into distributed execution without redesign.
+The platform is designed so it can evolve into distributed execution in the future without redesign.
 
 ---
 
-# High-Level Architecture
+# High Level Architecture
 
-```
-                Operator Console
+```text
+                    Browser
                        │
-                REST / gRPC API
+                SignalR + REST
                        │
-               ┌──────────────────┐
-               │    Taksaka Host   │
-               └────────┬──────────┘
+        ┌────────────────────────────────┐
+        │        Taksaka Server          │
+        │────────────────────────────────│
+        │                                │
+        │ REST API                       │
+        │ SignalR Hub                    │
+        │ Plugin Loader                  │
+        │ Configuration                  │
+        │ Dependency Injection           │
+        │                                │
+        └───────────────┬────────────────┘
                         │
-              ┌──────────────────────┐
-              │   Taksaka Engine      │
-              └──────────────────────┘
+        ┌────────────────────────────────┐
+        │         Taksaka Engine         │
+        │────────────────────────────────│
+        │                                │
+        │ Scheduler                      │
+        │ Queue Manager                  │
+        │ Dispatcher                     │
+        │ Resource Manager               │
+        │ Execution Pipeline             │
+        │ Retry Manager                  │
+        │ Dead Letter Manager            │
+        │ Health Monitor                 │
+        │ Metrics                        │
+        │ Event Publisher                │
+        │                                │
+        └───────────────┬────────────────┘
                         │
         ┌───────────────┼────────────────┐
         │               │                │
- Projection        Integration      Business
-  Workers            Workers         Workers
+ Projection      Integration      Business
+  Workers          Workers          Workers
         │               │                │
         └───────────────┼────────────────┘
                         │
-               Infrastructure
+                Infrastructure
 ```
 
 ---
 
-# Design Principles
+# Core Runtime Components
 
-## 1.
+The Engine consists of independent runtime services.
 
-Engine contains no business rules.
+## Scheduler
 
-Never.
+Creates Jobs.
 
----
-
-## 2.
-
-Workers contain business logic.
-
-Always.
-
----
-
-## 3.
-
-Engine discovers Workers.
-
-Workers never register themselves manually.
-
----
-
-## 4.
-
-Everything executes through Jobs.
-
-Never call Worker directly.
-
----
-
-## 5.
-
-Everything is observable.
-
-Every execution generates
-
-- log
-- metrics
-- duration
-- execution history
-
----
-
-## 6.
-
-Everything is replayable.
-
-Any failed Job can be replayed independently.
-
----
-
-## 7.
-
-Workers are stateless.
-
-State belongs to Jobs.
-
----
-
-## 8.
-
-Infrastructure is replaceable.
-
-Business logic must never depend on SQL Server, Redis, Windows Service, or HTTP.
-
----
-
-# Solution Structure
-
-```
-src/
-
-    Taksaka.Core
-
-    Taksaka.Abstractions
-
-    Taksaka.Engine
-
-    Taksaka.Infrastructure
-
-    Taksaka.Persistence
-
-    Taksaka.Hosting
-
-    Taksaka.ConsoleApi
-
-plugins/
-
-    Projection/
-
-    Integration/
-
-    Business/
-
-    Maintenance/
-
-tests/
-
-shared/
-```
-
----
-
-# Project Responsibilities
-
-## Taksaka.Core
-
-Contains platform domain.
-
-Allowed:
-
-- Job
-- Queue
-- Worker
-- Scheduler
-- Dispatcher
-- Alert
-- Health
-- ExecutionHistory
-
-Forbidden:
-
-- SQL
-- HTTP
-- File System
-- Business Rules
-
----
-
-## Taksaka.Abstractions
-
-Contains interfaces only.
-
-Examples
-
-- IWorker
-- IQueue
-- IDispatcher
-- IScheduler
-- IHealthRule
-- IAlertRule
-- IPlugin
-
-Contains no implementation.
-
----
-
-## Taksaka.Engine
-
-Contains orchestration.
-
-Responsible for
-
-- Dispatch
-- Scheduling
-- Retry
-- Dead Letter
-- Worker Discovery
-- Execution Pipeline
-
-Must never contain hospital business logic.
-
----
-
-## Taksaka.Persistence
-
-Responsible for storing platform state.
-
-Examples
-
-Jobs
-
-Schedules
-
-Execution History
-
-Alerts
-
-Configuration
-
-Never stores hospital business entities.
-
----
-
-## Taksaka.Infrastructure
-
-Contains technical implementation.
-
-Examples
-
-SQL Server
-
-Redis
-
-Cron
-
-SMTP
-
-Logging
-
-SignalR
-
-Windows Service
-
-REST Client
-
-Infrastructure is replaceable.
-
----
-
-## Taksaka.Hosting
-
-Application bootstrap.
-
-Responsible for
-
-- Dependency Injection
-- Plugin Loading
-- Configuration
-- Host Lifecycle
-
-Contains no business logic.
-
----
-
-## Taksaka.ConsoleApi
-
-API consumed by Operator Console.
-
-Console never accesses database directly.
-
----
-
-# Plugin Architecture
-
-Workers are plugins.
-
-Plugins may be added without modifying Engine.
+Scheduler never executes Jobs.
 
 Example
 
 ```
-plugins/
+Every Minute
 
-    AccountingWorker
+↓
 
-    ProjectionWorker
-
-    NotificationWorker
-
-    BPJSWorker
-
-    SatuSehatWorker
+Create Health Check Job
 ```
-
-Plugins reference only
-
-```
-Taksaka.Abstractions
-```
-
-Plugins must never reference Engine internals.
 
 ---
 
-# Dependency Rules
+## Queue Manager
 
-Allowed
+Owns all queued Jobs.
+
+Responsibilities
+
+* Persistent queue
+* Priority ordering
+* Queue statistics
+* Queue visibility
+
+Queue Manager never executes Jobs.
+
+---
+
+## Dispatcher
+
+Owns execution decisions.
+
+Responsibilities
+
+* Select next Job
+* Resolve Worker
+* Start execution
+* Coordinate retry
+* Publish execution events
+
+Dispatcher never checks CPU, memory or concurrency.
+
+Those belong to Resource Manager.
+
+---
+
+## Resource Manager
+
+Resource Manager owns execution capacity.
+
+Responsibilities
+
+* Global concurrency
+* Worker concurrency
+* Resource allocation
+* Resource locks
+* Fair scheduling
+* Starvation prevention
+
+Dispatcher asks
 
 ```
-Plugin
+May this Job execute?
+```
+
+Resource Manager answers
+
+```
+Yes
+
+or
+
+Wait
+```
+
+---
+
+## Retry Manager
+
+Retry belongs to Engine.
+
+Workers never retry themselves.
+
+Retry policy is configurable.
+
+---
+
+## Dead Letter Manager
+
+Owns permanently failed Jobs.
+
+Operators decide replay.
+
+---
+
+## Health Monitor
+
+Produces platform health.
+
+Never executes business logic.
+
+---
+
+# Execution Flow
+
+```
+Scheduler
 
 ↓
 
-Abstractions
+Create Job
 
 ↓
 
-Core
-```
-
-Allowed
-
-```
-Infrastructure
+Queue
 
 ↓
 
-Abstractions
-```
-
-Allowed
-
-```
-Hosting
+Dispatcher
 
 ↓
 
-Engine
-```
-
-Forbidden
-
-```
-Engine
+Resource Manager
 
 ↓
 
-Plugin
-```
-
-Forbidden
-
-```
-Core
-
-↓
-
-Infrastructure
-```
-
-Forbidden
-
-```
-Core
-
-↓
-
-SQL Server
-```
-
-Forbidden
-
-```
 Worker
 
 ↓
 
-Another Worker
-```
-
-Workers communicate only through Jobs.
-
----
-
-# Job Lifecycle
-
-```
-Created
+Execution Pipeline
 
 ↓
 
-Queued
+Metrics
 
 ↓
 
-Dispatched
-
-↓
-
-Running
+History
 
 ↓
 
 Completed
 ```
 
-or
-
-```
-Running
-
-↓
-
-Failed
-
-↓
-
-Retry Waiting
-
-↓
-
-Running
-
-↓
-
-Completed
-```
-
-or
-
-```
-Running
-
-↓
-
-Failed
-
-↓
-
-Dead Letter
-```
+Every Job follows exactly this lifecycle.
 
 ---
 
-# Worker Lifecycle
+# Worker Philosophy
 
-Worker is
+Workers are capabilities.
 
-Discovered
+Workers are not schedulers.
+
+Workers are not threads.
+
+Workers are not services.
+
+Workers execute one Job at a time.
+
+Workers never
+
+* schedule themselves
+* retry themselves
+* create threads
+* allocate resources
+
+Workers only execute business logic.
+
+---
+
+# Worker Policy
+
+Every Worker declares an execution policy.
+
+Example
+
+```
+Accounting Worker
+
+Priority             High
+
+Max Concurrency      2
+
+Retry                5
+
+Timeout              5 minutes
+
+Circuit Breaker      Enabled
+```
+
+Projection Worker
+
+```
+Priority             Background
+
+Max Concurrency      4
+
+Retry                Infinite
+
+Timeout              None
+```
+
+Dispatcher reads policy automatically.
+
+---
+
+# Queue Model
+
+There is one logical queue.
+
+Jobs have priority.
+
+Priority determines execution order.
+
+Example
+
+```
+Critical
+
+High
+
+Normal
+
+Low
+
+Background
+```
+
+Jobs from every source become identical once they enter Queue.
+
+Sources include
+
+* Scheduler
+* Business Modules
+* Operator Replay
+* Immediate Recovery
+* Retry Manager
+
+Dispatcher does not distinguish Job origin.
+
+---
+
+# Immediate Execution
+
+Immediate execution never bypasses Queue.
+
+Instead
+
+```
+Business Module
 
 ↓
 
-Validated
+Create Critical Job
 
 ↓
 
-Registered
+Queue
 
 ↓
 
-Idle
+Dispatcher
 
 ↓
 
-Executing
+Execute
+```
 
-↓
+Immediate Jobs therefore
 
-Idle
-
-Workers must never retain execution state.
+* appear in history
+* support retry
+* support replay
+* generate metrics
+* generate alerts
 
 ---
 
 # Execution Pipeline
 
-Every Job executes through the same pipeline.
+Every Job executes through identical middleware.
 
 ```
-Load Job
+Acquire Resource
 
 ↓
 
-Acquire Lock
-
-↓
-
-Deserialize Payload
-
-↓
-
-Resolve Worker
-
-↓
-
-Execute
-
-↓
-
-Collect Metrics
-
-↓
-
-Persist History
-
-↓
-
-Publish Events
-
-↓
-
-Release Lock
-```
-
-Retry
-
-Timeout
-
-Logging
-
-Metrics
-
-Exception Handling
-
-must be middleware.
-
-Workers should never implement these concerns.
-
----
-
-# Middleware Pipeline
-
-Standard execution order
-
-```
 Logging
 
 ↓
@@ -608,238 +410,302 @@ Transaction
 ↓
 
 Worker
+
+↓
+
+Publish Events
+
+↓
+
+Persist History
+
+↓
+
+Release Resource
 ```
 
-Every Job executes through this pipeline.
+Workers never implement these concerns.
 
 ---
 
-# Queue Rules
+# Operator Console
 
-Queue is persistent.
+Operator Console is a Web Application.
 
-Queue guarantees eventual execution.
+It never executes business processing.
 
-Queue ordering is configurable.
+It communicates exclusively through
 
-Queue must support priority.
+* REST API
+* SignalR
 
-Queue implementation is replaceable.
-
----
-
-# Retry Rules
-
-Retry policy belongs to Engine.
-
-Workers must not retry themselves.
-
-Retry strategy must be configurable.
+The Console is an operational control center.
 
 ---
 
-# Dead Letter
+# Live Monitoring
 
-Permanent failures enter Dead Letter.
-
-Dead Letter items are never deleted automatically.
-
-Operator decides replay.
-
----
-
-# Health Monitoring
-
-Health checks include
-
-Queue
-
-Worker
-
-Infrastructure
-
-Execution
-
-Scheduler
-
-Alerts
-
-Health checks never execute business logic.
-
----
-
-# Configuration
-
-Everything configurable.
+The platform continuously publishes runtime events.
 
 Examples
 
-Worker Enabled
+```
+Queue Changed
 
-Retry Count
+Worker Started
 
-Timeout
+Worker Completed
 
-Polling Interval
+Worker Failed
 
-Concurrency
+Health Changed
 
-Queue Priority
+Alert Raised
 
-Alert Threshold
+Resource Allocated
+```
 
-No magic numbers.
+SignalR pushes updates immediately.
+
+No polling required.
 
 ---
 
-# Logging
+# Observable Runtime
 
-Every execution produces
+Every runtime component is observable.
 
-Correlation Id
+## Scheduler
 
-Job Id
+Current schedules
 
-Worker
+Upcoming Jobs
 
-Duration
+Execution history
+
+---
+
+## Queue
+
+Queue length
+
+Priority distribution
+
+Oldest Job
+
+Estimated wait time
+
+---
+
+## Dispatcher
+
+Current activity
+
+Running Jobs
+
+Dispatch rate
+
+---
+
+## Resource Manager
+
+Global concurrency
+
+Worker concurrency
+
+Resource utilization
+
+Allocation history
+
+---
+
+## Worker
 
 Status
 
-Error
+Idle
 
-Timestamp
+Running
 
-Logging is automatic.
+Offline
 
-Workers should log business information only.
+Disabled
 
----
-
-# Metrics
-
-Minimum metrics
-
-Execution Count
-
-Success Rate
-
-Failure Rate
-
-Average Duration
-
-Retry Count
-
-Queue Length
-
-Worker Utilization
+Current Job
 
 ---
 
-# Error Handling
+## Retry
 
-Workers throw exceptions.
+Retry count
 
-Engine catches exceptions.
+Retry queue
 
-Engine decides
-
-Retry
-
-Dead Letter
-
-Alert
-
-Workers must never swallow exceptions.
+Retry delay
 
 ---
 
-# Concurrency
+## Dead Letter
 
-Only one Worker may own one Job.
+Dead Letter Jobs
 
-Job ownership is enforced by Engine.
+Failure reason
 
-Workers must assume concurrent execution.
-
-Workers must therefore be stateless.
+Replay history
 
 ---
 
-# Extensibility Rules
+# Operator Dashboards
 
-Adding a new capability should require
+## Queue Dashboard
 
-- new Worker
+Shows
 
-NOT
+```
+Critical
 
-- Engine modification
+High
 
-Engine changes are reserved for platform evolution.
+Normal
+
+Low
+
+Background
+```
+
+Every priority displays
+
+* Job count
+* Oldest Job
+* Estimated waiting time
 
 ---
 
-# Architecture Violations
+## Worker Dashboard
 
-The following are architecture violations.
+Shows every Worker
 
-❌ Engine references Accounting
+* Running
+* Idle
+* Disabled
+* Current Job
+* Average Duration
+* Failure Rate
 
-❌ Engine references Pharmacy
+---
 
-❌ Engine references Registration
+## Resource Dashboard
 
-❌ Worker directly invokes another Worker
+Displays
 
-❌ Worker modifies Queue directly
+```
+Global Slots
 
-❌ Business rules inside Infrastructure
+16 / 20
+```
 
-❌ SQL inside Core
+Worker utilization
 
-❌ HTTP inside Core
+```
+Projection
 
-❌ Infrastructure referenced by Core
+2 / 4
 
-❌ Static global state
+Accounting
 
-❌ Singleton mutable business objects
+1 / 2
+
+Notification
+
+8 / 16
+```
+
+---
+
+## Dispatcher Dashboard
+
+Displays
+
+Current dispatch decisions
+
+Current running Jobs
+
+Dispatch throughput
+
+---
+
+## Execution Timeline
+
+Live execution stream
+
+```
+10:01
+
+Accounting Completed
+
+10:01
+
+Projection Started
+
+10:02
+
+SATUSEHAT Retry
+
+Running
+```
+
+---
+
+## Health Dashboard
+
+Platform
+
+Queue
+
+Workers
+
+Infrastructure
+
+Business Capability
+
+All updated in real time.
 
 ---
 
 # AI Agent Rules
 
-When implementing code:
+When implementing Taksaka
 
-1. Never place hospital business logic inside Engine.
+Always remember
 
-2. Prefer adding a new Worker over modifying Engine.
-
-3. Respect dependency direction.
-
-4. Never bypass Dispatcher.
-
-5. Never execute Worker directly.
-
-6. Never introduce circular dependencies.
-
-7. Keep Workers stateless.
-
-8. Keep Infrastructure replaceable.
-
-9. Keep Core framework-independent.
-
-10. If uncertain where code belongs, choose the higher-level abstraction rather than leaking infrastructure into Core.
+1. Scheduler creates Jobs only.
+2. Queue owns pending Jobs.
+3. Dispatcher decides execution.
+4. Resource Manager decides capacity.
+5. Workers execute business logic only.
+6. Retry belongs to Engine.
+7. Every Job passes through Queue.
+8. Immediate Jobs never bypass Queue.
+9. Every runtime component must be observable.
+10. Prefer adding a Worker over modifying Engine.
+11. Keep Workers stateless.
+12. Engine must remain business-agnostic.
+13. The Operator Console must expose the platform's runtime state, not just job lists.
+14. Every new runtime feature should publish events for monitoring and SignalR updates.
 
 ---
 
-# Long-Term Vision
+## My Final Observation
 
-Taksaka is intended to become the universal execution platform for asynchronous processing across MyHospital.
+The architecture of Taksaks V2 resembles an **operating system for background workloads**:
 
-Business capabilities evolve by introducing new Workers.
+* **Scheduler** creates work.
+* **Queue Manager** owns work.
+* **Dispatcher** selects work.
+* **Resource Manager** allocates execution capacity.
+* **Execution Pipeline** provides reliability.
+* **Workers** provide capabilities.
+* **Health Monitor** evaluates operational state.
+* **Operator Console** visualizes the entire runtime.
 
-The Engine should remain stable over time.
-
-The architecture is successful when new features are added without modifying the Engine.
+That separation of responsibilities is what will allow the platform to scale from **3 workers today** to **50+ workers in the future** without becoming difficult to reason about or maintain. I believe this is a much stronger architectural foundation than the original version and aligns well with the vision described in your domain artifact.
