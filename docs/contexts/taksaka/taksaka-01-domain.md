@@ -2,11 +2,15 @@
 
 # Taksaka V2 — Background Processing Platform
 
-## Vision
+---
+
+# Vision
 
 Taksaka V2 is the centralized Background Processing Platform for MyHospital.
 
-Its purpose is to execute asynchronous workloads reliably, monitor their execution, detect failures early, and provide operational visibility for Hospital IT (EDP).
+Its purpose is to execute asynchronous workloads reliably, continuously monitor platform health, detect operational problems early, and provide an operational control center for Hospital IT (EDP).
+
+Taksaka is not a Hospital Information System.
 
 Taksaka is not a Hospital Operational Dashboard.
 
@@ -14,75 +18,70 @@ Taksaka is an Operational Control Center dedicated to background processing.
 
 ---
 
+# Mission
+
+Provide a reliable, observable, extensible, and self-monitoring platform for all asynchronous processing within MyHospital.
+
+---
+
 # Problem Statement
 
-Hospital Information Systems perform many operations that should not execute synchronously inside the user interface.
+Modern Hospital Information Systems execute many operations that should not run synchronously inside the user interface.
 
-Examples:
+Examples include
 
 - Accounting Journal Generation
 - BPJS Integration
 - SATUSEHAT Integration
-- Dashboard Projection
 - Legacy Projection
+- Dashboard Projection
+- Notification Delivery
 - Cache Refresh
 - Data Repair
-- Notification Delivery
 
-Executing these operations during user interaction increases response time and degrades user experience.
+Executing these operations directly during user interaction increases response time and negatively affects user experience.
 
-Therefore these operations are executed asynchronously by Taksaka.
-
----
-
-# Mission
-
-Provide a reliable, observable, and extensible platform for executing background workloads across MyHospital.
+Therefore these operations are delegated to Taksaka.
 
 ---
 
 # Goals
 
-## Functional
+## Functional Goals
 
 - Execute background jobs
-- Schedule recurring jobs
+- Execute scheduled jobs
 - Execute queued jobs
 - Retry failed jobs
-- Replay jobs
+- Replay failed jobs
 - Execute projection workers
 - Execute integration workers
 - Execute maintenance workers
 
-## Operational
+## Operational Goals
 
-- Monitor worker health
-- Monitor queue health
-- Detect failures automatically
-- Generate alerts
-- Display execution history
-- Display execution progress
-
-## Architectural
-
-- Plugin architecture
-- Worker isolation
-- Independent deployment
-- Extensible without modifying the engine
+- Monitor platform health
+- Detect abnormal conditions
+- Notify operators before failures become incidents
+- Provide execution history
+- Provide execution visibility
+- Provide diagnostic capability
 
 ---
 
 # Non Goals
 
-Taksaka DOES NOT:
+Taksaka does NOT
 
-- Perform hospital operational analytics
+- Replace HIS modules
+- Replace Hospital Operational Dashboard
 - Replace Business Intelligence
-- Replace EMR dashboard
-- Replace Admission dashboard
-- Replace Bed dashboard
+- Perform hospital operational analytics
+- Manage hospital workflow
 
-Those systems consume data produced by Taksaka but are not part of Taksaka.
+Business systems create work.
+
+Taksaka executes work.
 
 ---
 
@@ -90,122 +89,91 @@ Those systems consume data produced by Taksaka but are not part of Taksaka.
 
 ## Job
 
-A unit of work.
+A Job is a unit of background work.
 
 Examples
 
 - Generate Accounting Journal
-- Upload SEP
-- Update Dashboard
-- Generate Projection
+- Upload SATUSEHAT Data
+- Generate Legacy Projection
+- Refresh Cache
 
-Every Job has
+A Job has
 
 - identity
-- status
 - payload
+- priority
+- status
 - execution history
 
 ---
 
 ## Worker
 
-A software component capable of executing one type of Job.
+A Worker is a capability that executes one type of Job.
 
 Examples
 
-- AccountingWorker
-- ProjectionWorker
-- SatuSehatWorker
-- NotificationWorker
+- Accounting Worker
+- Projection Worker
+- SATUSEHAT Worker
+- Notification Worker
 
-Workers are plugins.
-
-The platform discovers Workers dynamically.
+Workers encapsulate business processing.
 
 ---
 
 ## Queue
 
-A persistent list of pending Jobs.
+A Queue represents pending work waiting for execution.
 
-The Queue guarantees that work is eventually executed.
+The Queue guarantees eventual execution.
 
 ---
 
 ## Scheduler
 
-Creates Jobs automatically based on schedule.
+The Scheduler creates Jobs according to predefined schedules.
 
 Examples
 
-Every minute
-
-Every midnight
-
-Every Sunday
-
-Every 30 seconds
+- Every minute
+- Every midnight
+- Every Sunday
+- Every 30 seconds
 
 ---
 
 ## Dispatcher
 
-Responsible for assigning queued Jobs to the appropriate Worker.
-
-Dispatcher knows:
-
-Job Type
-
-↓
-
-Matching Worker
-
-Dispatcher does not know business logic.
-
----
-
-## Health Monitor
-
-Continuously evaluates platform health.
-
-Examples
-
-Worker Offline
-
-Queue Growing
-
-Retry Storm
-
-Projection Delay
-
-Database Unreachable
+The Dispatcher assigns queued Jobs to the appropriate Worker.
 
 ---
 
 ## Alert
 
-A warning generated when Health Rules are violated.
+An Alert represents an operational warning requiring operator attention.
 
-Alerts exist to notify operators before users experience failures.
+Alerts exist to prevent unnoticed failures.
+
+Alerts are generated from Operational Health.
 
 ---
 
 ## Operator Console
 
-Desktop application used by Hospital IT.
+The Operator Console is the application used by Hospital IT (EDP).
 
-Provides
+It provides
 
 - Monitoring
 - Diagnostics
 - Replay
 - Retry
 - Configuration
+- Alert Management
 
-The Console never performs business processing.
-
-It communicates with the platform.
+The Operator Console never performs business processing.
 
 ---
 
@@ -213,15 +181,13 @@ It communicates with the platform.
 
 ## Projection
 
-Generate DDD read models from legacy data.
+Generate DDD models from legacy systems.
 
 Examples
 
-Registration Projection
-
-Billing Projection
-
-Patient Projection
+- Registration Projection
+- Billing Projection
+- Patient Projection
 
 ---
 
@@ -231,27 +197,22 @@ Communicate with external systems.
 
 Examples
 
-SATUSEHAT
-
-BPJS
-
-LIS
-
-RIS
+- SATUSEHAT
+- BPJS
+- LIS
+- RIS
 
 ---
 
 ## Business
 
-Execute hospital business processes asynchronously.
+Execute asynchronous hospital business processes.
 
 Examples
 
-Accounting Journal
-
-Notification
-
-Dashboard Update
+- Accounting Journal
+- Notification
+- Dashboard Update
 
 ---
 
@@ -261,13 +222,10 @@ Maintain platform integrity.
 
 Examples
 
-Cleanup
-
-Rebuild Index
-
-Repair Data
-
-Cache Refresh
+- Cleanup
+- Data Repair
+- Cache Refresh
+- Rebuild Index
 
 ---
 
@@ -313,149 +271,155 @@ Dead Letter
 
 ---
 
-# Health Model
+# Operational Health
 
-The platform continuously evaluates:
+Operational Health describes the current ability of Taksaka to execute background processing reliably.
 
-## Queue Health
+Health is a business concept.
 
-- Pending Count
-- Oldest Pending
-- Queue Growth
+It represents the operational condition of the platform from the perspective of Hospital IT.
+
+Operational Health is independent from implementation details.
 
 ---
 
-## Worker Health
+## Health Dimensions
 
-- Running
-- Idle
+Taksaka continuously evaluates health across several dimensions.
+
+### Platform Health
+
+Overall condition of the Background Processing Platform.
+
+Examples
+
+- Platform Available
+- Platform Degraded
+- Platform Offline
+
+---
+
+### Queue Health
+
+Measures workload waiting for execution.
+
+Examples
+
+- Queue backlog
+- Queue growth
+- Oldest pending job
+
+---
+
+### Worker Health
+
+Measures whether Workers continue to process Jobs correctly.
+
+Examples
+
+- Worker available
+- Worker delayed
+- Worker offline
+
+---
+
+### Execution Health
+
+Measures execution quality.
+
+Examples
+
+- Success rate
+- Failure rate
+- Retry rate
+- Execution duration
+
+---
+
+### Integration Health
+
+Measures connectivity with external systems.
+
+Examples
+
+- SATUSEHAT
+- BPJS
+- Email
+- SMS
+- WhatsApp
+
+---
+
+### Business Capability Health
+
+Represents the operational condition of asynchronous business capabilities.
+
+Examples
+
+- Accounting Journal
+- Registration Projection
+- Billing Projection
+- Notification Delivery
+
+Business Capability Health allows operators to identify which business services are degraded without understanding technical implementation.
+
+---
+
+# Health States
+
+Every Health Dimension reports one of the following states.
+
+- Healthy
+- Warning
+- Critical
 - Offline
 - Disabled
-- Error
+- Unknown
+
+These states form the ubiquitous language used throughout Taksaka.
 
 ---
 
-## Execution Health
+# Alert Model
 
-- Success Rate
-- Failure Rate
-- Retry Count
-- Average Duration
+Alerts are generated when Operational Health transitions into abnormal states.
 
----
+Alert severity
 
-## Infrastructure Health
+- Information
+- Warning
+- Critical
 
-- Database
-- Network
-- External APIs
-- Disk Space
+An Alert should answer
 
----
-
-# Design Principles
-
-## 1
-
-Never block UI.
-
-Everything that can be asynchronous should become a Job.
+- What happened?
+- Which capability is affected?
+- Why is it unhealthy?
+- What action is recommended?
 
 ---
 
-## 2
+# Operator Responsibilities
 
-Workers are isolated.
+Taksaka assists Hospital IT by providing early warning before background processing failures become business incidents.
 
-Failure of one Worker must not stop others.
+Typical operator actions include
 
----
-
-## 3
-
-Workers are stateless.
-
-State belongs to Jobs.
-
----
-
-## 4
-
-Business logic belongs inside Workers.
-
-Engine never contains business rules.
-
----
-
-## 5
-
-Engine knows nothing about Registration, Billing or Pharmacy.
-
-It only understands Jobs and Workers.
-
----
-
-## 6
-
-Everything is observable.
-
-Every Job execution produces:
-
-- log
-- duration
-- status
-- metrics
-
----
-
-## 7
-
-Everything is replayable.
-
-Operators can replay:
-
-- one Job
-- one aggregate
-- one failed execution
-
-without affecting unrelated Jobs.
+- Investigate
+- Retry failed Jobs
+- Replay failed Jobs
+- Restart Workers
+- Escalate infrastructure failures
+- Notify vendor support
 
 ---
 
 # Future Direction
 
-Taksaka is intended to become the execution platform for all asynchronous processing inside MyHospital.
+Taksaka is intended to become the universal Background Processing Platform for MyHospital.
 
-As new bounded contexts are migrated to DDD, they integrate with Taksaka by providing new Workers.
+Every new asynchronous capability should integrate by introducing new Workers.
 
-The platform itself should require little or no modification.
+As MyHospital evolves, the platform itself should remain stable while new capabilities are introduced through plugins.
 
-New capability is introduced by adding Workers, not by changing the Engine.
-
----
-
-# Architecture Philosophy
-
-Business Modules
-
-↓
-
-Create Jobs
-
-↓
-
-Background Processing Platform
-
-↓
-
-Workers
-
-↓
-
-Infrastructure / External Systems
-
-The platform executes work.
-
-Business modules define work.
-
-This separation keeps business concerns independent from execution concerns.
+The success of Taksaka is measured by its ability to execute, observe, diagnose, and recover background processing without requiring changes to the platform itself.
