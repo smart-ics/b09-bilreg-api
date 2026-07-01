@@ -115,6 +115,15 @@ Patient financial responsibility domain (registration-scoped lifecycle, TrsBill 
 | `docs/contexts/TataRekening/SOP-TR-10 — Settlement Initiation.md` | SOP — Settlement Initiation |
 | `docs/contexts/TataRekening/tata-rekening-domain-gap-analysis-report.md` | Domain gap analysis (implementation vs artifact) |
 
+### Taksaka (`docs/contexts/taksaka/`)
+
+Background processing platform — job orchestration, worker plugins, operator console.
+
+| Path | Purpose |
+|------|---------|
+| `docs/contexts/taksaka/taksaka-01-domain.md` | Taksaka — what (domain vision, ubiquitous language, health model) |
+| `docs/contexts/taksaka/taksaka-02-architecture.md` | Taksaka — how (engine, plugins, SignalR, operator console) |
+
 ---
 
 ## Shared (`docs/shared/`)
