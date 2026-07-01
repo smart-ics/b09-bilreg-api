@@ -115,7 +115,7 @@ Patient financial responsibility domain (registration-scoped lifecycle, TrsBill 
 | `docs/contexts/TataRekening/SOP-TR-10 — Settlement Initiation.md` | SOP — Settlement Initiation |
 | `docs/contexts/TataRekening/tata-rekening-domain-gap-analysis-report.md` | Domain gap analysis (implementation vs artifact) |
 
-### Taksaka (`docs/contexts/taksaka/`)
+### Taksaka (`docs/contexts/taksaka/` + `docs/taksaka/`)
 
 Background processing platform — job orchestration, worker plugins, operator console.
 
@@ -123,6 +123,16 @@ Background processing platform — job orchestration, worker plugins, operator c
 |------|---------|
 | `docs/contexts/taksaka/taksaka-01-domain.md` | Taksaka — what (domain vision, ubiquitous language, health model) |
 | `docs/contexts/taksaka/taksaka-02-architecture.md` | Taksaka — how (engine, plugins, SignalR, operator console) |
+| `docs/taksaka/README.md` | **Operations docs index** — deployment, config, runbook, administrator guide |
+| `docs/taksaka/01-deployment-guide.md` | Deploy, build, publish, first startup |
+| `docs/taksaka/02-configuration-reference.md` | All configuration keys from code |
+| `docs/taksaka/03-operator-manual.md` | Operator procedures (start/stop, logs, monitoring) |
+| `docs/taksaka/04-troubleshooting.md` | Troubleshooting guide |
+| `docs/taksaka/05-architecture-runtime.md` | Runtime architecture (implemented vs stub) |
+| `docs/taksaka/06-plugin-development-guide.md` | Worker plugin development |
+| `docs/taksaka/07-production-checklist.md` | Production deployment checklist |
+| `docs/taksaka/08-operations-runbook.md` | Daily/weekly/monthly runbook, DR, upgrade |
+| `docs/taksaka/09-administrator-guide.md` | Practical guide for hospital EDP (Bahasa Indonesia) |
 
 ---
 

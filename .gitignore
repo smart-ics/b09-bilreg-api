@@ -363,3 +363,7 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 /Bilreg.SqlDb/Bilreg.SqlDb.sqlproj
+
+# Taksaka local SQLite database (created on dotnet run)
+taksaka.db
+taksaka.db-*

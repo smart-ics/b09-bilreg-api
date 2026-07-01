@@ -79,15 +79,46 @@ The platform is designed so it can evolve into distributed execution in the futu
         │                                │
         └───────────────┬────────────────┘
                         │
-        ┌───────────────┼────────────────┐
-        │               │                │
- Projection      Integration      Business
-  Workers          Workers          Workers
-        │               │                │
-        └───────────────┼────────────────┘
+                    Workers
                         │
                 Infrastructure
 ```
+
+---
+
+# Solution Structure
+
+Worker plugins are organized by implementation, not by architectural category.
+
+```text
+plugins/
+
+    RegistrationProjection/
+
+    SatusehatUpload/
+
+    AccountingJournal/
+
+    EmailNotification/
+
+    CacheRefresh/
+```
+
+Or, generically:
+
+```text
+plugins/
+
+    <WorkerPlugin1>/
+
+    <WorkerPlugin2>/
+
+    ...
+```
+
+There are no category folders such as Projection, Integration, Business, or Maintenance.
+
+Each plugin references only `Taksaka.Abstractions`. The Engine never references plugins.
 
 ---
 
@@ -279,7 +310,7 @@ Every Worker declares an execution policy.
 Example
 
 ```
-Accounting Worker
+Accounting Journal Worker
 
 Priority             High
 
@@ -292,7 +323,7 @@ Timeout              5 minutes
 Circuit Breaker      Enabled
 ```
 
-Projection Worker
+Registration Projection Worker
 
 ```
 Priority             Background
@@ -607,15 +638,15 @@ Global Slots
 Worker utilization
 
 ```
-Projection
+Registration Projection
 
 2 / 4
 
-Accounting
+Accounting Journal
 
 1 / 2
 
-Notification
+Email Notification
 
 8 / 16
 ```
@@ -641,15 +672,15 @@ Live execution stream
 ```
 10:01
 
-Accounting Completed
+Accounting Journal Completed
 
 10:01
 
-Projection Started
+Registration Projection Started
 
 10:02
 
-SATUSEHAT Retry
+SATUSEHAT Upload Retry
 
 Running
 ```

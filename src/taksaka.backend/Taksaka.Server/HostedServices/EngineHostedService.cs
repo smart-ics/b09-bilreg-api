@@ -1,16 +1,20 @@
+using Taksaka.Abstractions;
+
 namespace Taksaka.Server.HostedServices;
 
-public sealed class EngineHostedService(ILogger<EngineHostedService> logger) : IHostedService
+public sealed class EngineHostedService(
+    IScheduler scheduler,
+    ILogger<EngineHostedService> logger) : IHostedService
 {
-    public Task StartAsync(CancellationToken cancellationToken)
+    public async Task StartAsync(CancellationToken cancellationToken)
     {
+        await scheduler.StartAsync(cancellationToken);
         logger.LogInformation("Taksaka Engine hosted service started.");
-        return Task.CompletedTask;
     }
 
-    public Task StopAsync(CancellationToken cancellationToken)
+    public async Task StopAsync(CancellationToken cancellationToken)
     {
+        await scheduler.StopAsync(cancellationToken);
         logger.LogInformation("Taksaka Engine hosted service stopped.");
-        return Task.CompletedTask;
     }
 }
