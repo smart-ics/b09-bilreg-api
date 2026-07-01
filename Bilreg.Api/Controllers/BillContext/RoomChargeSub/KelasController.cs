@@ -32,6 +32,15 @@ namespace Bilreg.Api.Controllers.BillContext.RoomChargeSub
             return Ok(new JSendOk(response));
         }
 
+        [HttpGet]
+        [Route("dk")]
+        public async Task<IActionResult> ListDataDk()
+        {
+            var query = new KelasDkListQuery();
+            var response = await _mediator.Send(query);
+            return Ok(new JSendOk(response));
+        }
+
         //[HttpPut]
         //public async Task<IActionResult> SetKelasDk(string kelasId, string kelasDkId)
         //{
