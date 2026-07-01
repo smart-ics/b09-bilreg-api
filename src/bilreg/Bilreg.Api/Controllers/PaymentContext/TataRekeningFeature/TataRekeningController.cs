@@ -1,4 +1,3 @@
-using Bilreg.Api.Authorization;
 using Bilreg.Api.Controllers.PaymentContext.TataRekeningFeature.Contracts;
 using Bilreg.Application.PaymentContext.TataRekeningFeature.UseCases;
 using Bilreg.Application.Shared;
@@ -14,7 +13,7 @@ namespace Bilreg.Api.Controllers.PaymentContext.TataRekeningFeature;
 /// </summary>
 [Route("api/tatarekening")]
 [ApiController]
-[Authorize(Policy = TataRekeningPolicies.Verifikator)]
+[Authorize]
 public class TataRekeningController : ControllerBase
 {
     private readonly IMediator _mediator;

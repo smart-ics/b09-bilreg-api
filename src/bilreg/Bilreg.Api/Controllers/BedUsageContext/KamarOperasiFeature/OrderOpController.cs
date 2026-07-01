@@ -1,6 +1,7 @@
 ﻿using Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
 using System.Text.Json.Serialization;
@@ -9,6 +10,7 @@ namespace Bilreg.Api.Controllers.BedUsageContext.KamarOperasiFeature;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class OrderOpController : ControllerBase
 {
     private readonly IMediator _mediator;

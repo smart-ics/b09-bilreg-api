@@ -76,13 +76,7 @@ public static class PresentationService
             };
         });
 
-        services.AddAuthorization(options =>
-        {
-            options.AddPolicy(TataRekeningPolicies.Verifikator, policy =>
-                policy.RequireAuthenticatedUser()
-                    .AddRequirements(new PermissionRequirement(TataRekeningPolicies.WritePermission)));
-        });
-        services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
+        services.AddAuthorization();
         services.AddScoped<ICurrentUserContext, HttpCurrentUserContext>();
 
         services.AddCors(p => p.AddPolicy("corsapp", policyBuilder =>

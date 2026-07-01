@@ -1,6 +1,7 @@
 ﻿using Bilreg.Application.BedUsageContext.WardFeature.UseCases;
 using MediatR;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
 
@@ -8,6 +9,7 @@ namespace Bilreg.Api.Controllers.BillContext.RoomChargeSub
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class KelasController : ControllerBase
     {
         private readonly IMediator _mediator;
