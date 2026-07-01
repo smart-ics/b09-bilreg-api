@@ -17,7 +17,11 @@ using Bilreg.Infrastructure.LabContext.Integration;
 using Bilreg.Infrastructure.LabContext.LabOwareFeature;
 using Bilreg.Infrastructure.LabContext.LabResultFeature;
 using Bilreg.Application.PaymentContext.PasienBalanceFeature;
+using Bilreg.Application.PaymentContext.TataRekeningFeature;
+using Bilreg.Application.Shared;
 using Bilreg.Infrastructure.PaymentContext.PasienBalanceFeature;
+using Bilreg.Infrastructure.PaymentContext.TataRekeningFeature;
+using Bilreg.Infrastructure.Shared;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Bilreg.Infrastructure.Shared.Param;
 using Nuna.Lib.AutoNumberHelper;
@@ -60,6 +64,8 @@ public static class InfrastructureService
             .AddScoped<ITarifMigrationGuard, TarifMigrationGuard>()
             .AddScoped<IJadwalPraktekHarianRepo, JadwalPraktekHarianRepo>()
             .AddScoped<IPasienBalanceLegacyReader, LegacyOutstandingReceivableReader>()
+            .AddScoped<IUnitOfWork, TransHelperUnitOfWork>()
+            .AddScoped<ITransferReceivableService, TransferReceivableService>()
             .AddSingleton<TarifOperationalGate>()
             .AddMemoryCache();
 

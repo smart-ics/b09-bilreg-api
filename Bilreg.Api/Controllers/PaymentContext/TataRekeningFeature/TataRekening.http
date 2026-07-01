@@ -1,0 +1,93 @@
+@baseUrl = http://localhost:5000
+@regId = REG-TGT-001
+@token = {{$dotenv JWT_TOKEN}}
+
+### SOP-TR-01 Open (anonymous)
+GET {{baseUrl}}/api/tatarekening/{{regId}}
+
+### SOP-TR-02 Close
+POST {{baseUrl}}/api/tatarekening/{{regId}}/close
+Authorization: Bearer {{token}}
+
+### SOP-TR-03 Merge
+POST {{baseUrl}}/api/tatarekening/merge
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "mergeRequestId": "MR-00001"
+}
+
+### SOP-TR-04 Verify
+POST {{baseUrl}}/api/tatarekening/{{regId}}/verify
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "action": "Verify"
+}
+
+### SOP-TR-05 Adjust
+POST {{baseUrl}}/api/tatarekening/{{regId}}/adjust
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "adjustment": {
+    "type": 0,
+    "amount": 10000,
+    "reason": "Waive selisih",
+    "trsBillingId": "BILL-01"
+  }
+}
+
+### SOP-TR-06 Allocate
+POST {{baseUrl}}/api/tatarekening/{{regId}}/allocate
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "payments": [
+    {
+      "paymentId": "BYKAS",
+      "paymentName": "KAS",
+      "isTipeJaminan": false,
+      "nilaiJasa": 100000,
+      "nilaiObat": 0,
+      "coaId": "COA-01",
+      "coaName": "COA"
+    }
+  ]
+}
+
+### SOP-TR-07 Finalize
+POST {{baseUrl}}/api/tatarekening/{{regId}}/finalize
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{}
+
+### SOP-TR-08 Cancel Finalization
+POST {{baseUrl}}/api/tatarekening/{{regId}}/cancel-finalization
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "reason": "Koreksi alokasi jaminan"
+}
+
+### SOP-TR-09 Reopen
+POST {{baseUrl}}/api/tatarekening/{{regId}}/reopen
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "reason": "Koreksi charge source"
+}
+
+### SOP-TR-10 Settlement Initiation
+POST {{baseUrl}}/api/tatarekening/{{regId}}/settlement-initiation
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{}

@@ -34,12 +34,11 @@ public class TataRekeningFinancialAllocationIntegrityTest
         var billA = CreateBillWithComponents("BILL-A", BillModulGroup.Jasa, ("KOMP-A", "Bill-A", 600m));
         var billB = CreateBillWithComponents("BILL-B", BillModulGroup.Jasa, ("KOMP-B", "Bill-B", 400m));
         var tataRekening = HydrateOpened(billA, billB);
-        tataRekening.Close();
-
-        tataRekening.FinalizeFinancialResponsibility(
+        TataRekeningDomainTestHelper.CloseVerifyAllocateFinalize(
+            tataRekening,
             [BuildPayment(Bpjs, 1_000m, 0m)],
             "kasir-01",
-            FinalizationDate);
+            finalizationDate: FinalizationDate);
 
         SumFinalizationByProvider(billA, Bpjs).Should().Be(600m);
         SumFinalizationByProvider(billB, Bpjs).Should().Be(400m);
@@ -57,15 +56,14 @@ public class TataRekeningFinancialAllocationIntegrityTest
         var billA = CreateBillWithComponents("BILL-A", BillModulGroup.Jasa, ("KOMP-A", "Bill-A", 600m));
         var billB = CreateBillWithComponents("BILL-B", BillModulGroup.Jasa, ("KOMP-B", "Bill-B", 400m));
         var tataRekening = HydrateOpened(billA, billB);
-        tataRekening.Close();
-
-        tataRekening.FinalizeFinancialResponsibility(
+        TataRekeningDomainTestHelper.CloseVerifyAllocateFinalize(
+            tataRekening,
             [
                 BuildPayment(Bpjs, 700m, 0m),
                 BuildPayment(Kas, 300m, 0m)
             ],
             "kasir-01",
-            FinalizationDate);
+            finalizationDate: FinalizationDate);
 
         FinancialConservationAudit.ProviderTotal(tataRekening).Should().Be(1_000m);
         FinancialConservationAudit.BillTotal(tataRekening).Should().Be(1_000m);
@@ -87,12 +85,11 @@ public class TataRekeningFinancialAllocationIntegrityTest
             ("HOSPITAL", "Hospital", 300m),
             ("BHP", "BHP", 200m));
         var tataRekening = HydrateOpened(bill);
-        tataRekening.Close();
-
-        tataRekening.FinalizeFinancialResponsibility(
+        TataRekeningDomainTestHelper.CloseVerifyAllocateFinalize(
+            tataRekening,
             [BuildPayment(Bpjs, 1_000m, 0m)],
             "kasir-01",
-            FinalizationDate);
+            finalizationDate: FinalizationDate);
 
         SumFinalizationByComponent(bill, "DOCTOR", Bpjs).Should().Be(500m);
         SumFinalizationByComponent(bill, "HOSPITAL", Bpjs).Should().Be(300m);
@@ -116,15 +113,14 @@ public class TataRekeningFinancialAllocationIntegrityTest
             ("HOSPITAL", "Hospital", 300m),
             ("BHP", "BHP", 200m));
         var tataRekening = HydrateOpened(bill);
-        tataRekening.Close();
-
-        tataRekening.FinalizeFinancialResponsibility(
+        TataRekeningDomainTestHelper.CloseVerifyAllocateFinalize(
+            tataRekening,
             [
                 BuildPayment(Bpjs, 700m, 0m),
                 BuildPayment(Kas, 300m, 0m)
             ],
             "kasir-01",
-            FinalizationDate);
+            finalizationDate: FinalizationDate);
 
         SumFinalizationByComponent(bill, "DOCTOR", Bpjs).Should().Be(350m);
         SumFinalizationByComponent(bill, "DOCTOR", Kas).Should().Be(150m);
@@ -159,15 +155,14 @@ public class TataRekeningFinancialAllocationIntegrityTest
             ("HOSPITAL", "Hospital", 100m),
             ("BHP", "BHP", 100m));
         var tataRekening = HydrateOpened(billA, billB);
-        tataRekening.Close();
-
-        tataRekening.FinalizeFinancialResponsibility(
+        TataRekeningDomainTestHelper.CloseVerifyAllocateFinalize(
+            tataRekening,
             [
                 BuildPayment(Bpjs, 700m, 0m),
                 BuildPayment(Kas, 300m, 0m)
             ],
             "kasir-01",
-            FinalizationDate);
+            finalizationDate: FinalizationDate);
 
         FinancialConservationAudit.ProviderTotal(tataRekening).Should().Be(1_000m);
         FinancialConservationAudit.BillTotal(tataRekening).Should().Be(1_000m);
@@ -189,14 +184,14 @@ public class TataRekeningFinancialAllocationIntegrityTest
             ("HOSPITAL", "Hospital", 300m),
             ("BHP", "BHP", 200m));
         var tataRekening = HydrateOpened(bill);
-        tataRekening.Close();
-        tataRekening.FinalizeFinancialResponsibility(
+        TataRekeningDomainTestHelper.CloseVerifyAllocateFinalize(
+            tataRekening,
             [
                 BuildPayment(Bpjs, 700m, 0m),
                 BuildPayment(Kas, 300m, 0m)
             ],
             "kasir-01",
-            FinalizationDate);
+            finalizationDate: FinalizationDate);
 
         tataRekening.Pay(
             [BuildPayment(Kas, 300m, 0m)],
@@ -254,11 +249,11 @@ public class TataRekeningFinancialAllocationIntegrityTest
             ("HOSPITAL", "Hospital", 300m),
             ("BHP", "BHP", 200m));
         var tataRekening = HydrateOpened(bill);
-        tataRekening.Close();
-        tataRekening.FinalizeFinancialResponsibility(
+        TataRekeningDomainTestHelper.CloseVerifyAllocateFinalize(
+            tataRekening,
             [BuildPayment(Kas, 1_000m, 0m)],
             "kasir-01",
-            FinalizationDate);
+            finalizationDate: FinalizationDate);
 
         tataRekening.Pay([BuildPayment(Kas, 300m, 0m)], "PAY-001", PaymentDate);
         tataRekening.Pay([BuildPayment(Kas, 500m, 0m)], "PAY-002", PaymentDate.AddHours(1));
@@ -285,12 +280,11 @@ public class TataRekeningFinancialAllocationIntegrityTest
             ("C2", "Component-2", 33.33m),
             ("C3", "Component-3", 33.34m));
         var tataRekening = HydrateOpened(bill);
-        tataRekening.Close();
-
-        tataRekening.FinalizeFinancialResponsibility(
+        TataRekeningDomainTestHelper.CloseVerifyAllocateFinalize(
+            tataRekening,
             [BuildPayment(Bpjs, 100m, 0m)],
             "kasir-01",
-            FinalizationDate);
+            finalizationDate: FinalizationDate);
 
         FinancialConservationAudit.FinalizationComponentTotal(tataRekening).Should().Be(100m);
         bill.ListFinalization.Sum(d => d.Nilai).Should().Be(100m);
@@ -311,12 +305,11 @@ public class TataRekeningFinancialAllocationIntegrityTest
             ("C2", "Component-2", 0.01m),
             ("C3", "Component-3", 0.01m));
         var tataRekening = HydrateOpened(bill);
-        tataRekening.Close();
-
-        tataRekening.FinalizeFinancialResponsibility(
+        TataRekeningDomainTestHelper.CloseVerifyAllocateFinalize(
+            tataRekening,
             [BuildPayment(Bpjs, 0.03m, 0m)],
             "kasir-01",
-            FinalizationDate);
+            finalizationDate: FinalizationDate);
 
         FinancialConservationAudit.FinalizationComponentTotal(tataRekening).Should().Be(0.03m);
         FinancialConservationAudit.AssertFinalizationConservation(tataRekening, 0.03m);
@@ -332,15 +325,14 @@ public class TataRekeningFinancialAllocationIntegrityTest
         var jasaBill = CreateBillWithComponents("BILL-JASA", BillModulGroup.Jasa, ("KOMP-J", "Jasa", 700m));
         var obatBill = CreateBillWithComponents("BILL-OBAT", BillModulGroup.Obat, ("KOMP-O", "Obat", 300m));
         var tataRekening = HydrateOpened(jasaBill, obatBill);
-        tataRekening.Close();
-
-        tataRekening.FinalizeFinancialResponsibility(
+        TataRekeningDomainTestHelper.CloseVerifyAllocateFinalize(
+            tataRekening,
             [
                 BuildPayment(BpjsJasa, 700m, 0m),
                 BuildPayment(Kas, 0m, 300m)
             ],
             "kasir-01",
-            FinalizationDate);
+            finalizationDate: FinalizationDate);
 
         SumFinalizationByProvider(jasaBill, BpjsJasa).Should().Be(700m);
         jasaBill.ListFinalization.Should().NotBeEmpty();
@@ -355,32 +347,30 @@ public class TataRekeningFinancialAllocationIntegrityTest
     #region Test Group 11 — Finalization Invariant
 
     [Fact]
-    public void TG11_GivenUnderAllocation_WhenFinalizeFinancialResponsibility_ThenShouldReject()
+    public void TG11_GivenUnderAllocation_WhenAllocateFinancialResponsibility_ThenShouldReject()
     {
         var bill = CreateBillWithComponents("BILL-A", BillModulGroup.Jasa, ("KOMP-A", "Bill-A", 1_000m));
         var tataRekening = HydrateOpened(bill);
         tataRekening.Close();
+        tataRekening.CompleteFinancialVerification("kasir-01", FinalizationDate);
 
-        Action act = () => tataRekening.FinalizeFinancialResponsibility(
-            [BuildPayment(Bpjs, 999m, 0m)],
-            "kasir-01",
-            FinalizationDate);
+        Action act = () => tataRekening.AllocateFinancialResponsibility(
+            [BuildPayment(Bpjs, 999m, 0m)]);
 
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*tidak sama*");
     }
 
     [Fact]
-    public void TG11_GivenOverAllocation_WhenFinalizeFinancialResponsibility_ThenShouldReject()
+    public void TG11_GivenOverAllocation_WhenAllocateFinancialResponsibility_ThenShouldReject()
     {
         var bill = CreateBillWithComponents("BILL-A", BillModulGroup.Jasa, ("KOMP-A", "Bill-A", 1_000m));
         var tataRekening = HydrateOpened(bill);
         tataRekening.Close();
+        tataRekening.CompleteFinancialVerification("kasir-01", FinalizationDate);
 
-        Action act = () => tataRekening.FinalizeFinancialResponsibility(
-            [BuildPayment(Bpjs, 1_001m, 0m)],
-            "kasir-01",
-            FinalizationDate);
+        Action act = () => tataRekening.AllocateFinancialResponsibility(
+            [BuildPayment(Bpjs, 1_001m, 0m)]);
 
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*tidak sama*");
@@ -391,12 +381,11 @@ public class TataRekeningFinancialAllocationIntegrityTest
     {
         var bill = CreateBillWithComponents("BILL-A", BillModulGroup.Jasa, ("KOMP-A", "Bill-A", 1_000m));
         var tataRekening = HydrateOpened(bill);
-        tataRekening.Close();
-
-        tataRekening.FinalizeFinancialResponsibility(
+        TataRekeningDomainTestHelper.CloseVerifyAllocateFinalize(
+            tataRekening,
             [BuildPayment(Bpjs, 1_000m, 0m)],
             "kasir-01",
-            FinalizationDate);
+            finalizationDate: FinalizationDate);
 
         tataRekening.Status.Should().Be(TataRekeningStatusEnum.Finalized);
         FinancialConservationAudit.AssertFinalizationConservation(tataRekening, 1_000m);
@@ -411,11 +400,11 @@ public class TataRekeningFinancialAllocationIntegrityTest
     {
         var bill = CreateBillWithComponents("BILL-A", BillModulGroup.Jasa, ("KOMP-A", "Bill-A", 1_000m));
         var tataRekening = HydrateOpened(bill);
-        tataRekening.Close();
-        tataRekening.FinalizeFinancialResponsibility(
+        TataRekeningDomainTestHelper.CloseVerifyAllocateFinalize(
+            tataRekening,
             [BuildPayment(Bpjs, 1_000m, 0m)],
             "kasir-01",
-            FinalizationDate);
+            finalizationDate: FinalizationDate);
 
         Action act = () => FinancialConservationAudit.AssertFinalizationConservation(tataRekening, 999m);
 

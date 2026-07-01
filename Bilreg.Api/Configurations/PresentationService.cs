@@ -1,7 +1,12 @@
 ﻿using System.Text;
+using Bilreg.Api.Authorization;
+using Bilreg.Application.Shared;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Nuna.Lib.ActionResultHelper;
 
 namespace Bilreg.Api.Configurations;
 
@@ -11,10 +16,52 @@ public static class PresentationService
     public static IServiceCollection AddPresentation(this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.AddControllers();
+        services.AddControllers()
+            .ConfigureApiBehaviorOptions(options =>
+            {
+                options.InvalidModelStateResponseFactory = context =>
+                {
+                    var errors = string.Join("; ",
+                        context.ModelState.Values
+                            .SelectMany(v => v.Errors)
+                            .Select(e => e.ErrorMessage));
+                    var payload = new JSend(
+                        StatusCodes.Status422UnprocessableEntity,
+                        "Validation Error",
+                        string.IsNullOrWhiteSpace(errors) ? "Invalid request." : errors);
+                    return new UnprocessableEntityObjectResult(payload);
+                };
+            });
         services.AddEndpointsApiExplorer();
-        services.AddSwaggerGen();
-        
+        services.AddSwaggerGen(c =>
+        {
+            c.SchemaFilter<DefaultExampleSchemaFilter>();
+            c.SchemaFilter<TataRekeningExampleSchemaFilter>();
+            c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+            {
+                Description = "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\"",
+                Name = "Authorization",
+                In = ParameterLocation.Header,
+                Type = SecuritySchemeType.Http,
+                Scheme = "bearer",
+                BearerFormat = "JWT"
+            });
+            c.AddSecurityRequirement(new OpenApiSecurityRequirement
+            {
+                {
+                    new OpenApiSecurityScheme
+                    {
+                        Reference = new OpenApiReference
+                        {
+                            Type = ReferenceType.SecurityScheme,
+                            Id = "Bearer"
+                        }
+                    },
+                    Array.Empty<string>()
+                }
+            });
+        });
+
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
         {
             options.RequireHttpsMetadata = false;
@@ -28,6 +75,15 @@ public static class PresentationService
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["Jwt:Key"] ?? string.Empty))
             };
         });
+
+        services.AddAuthorization(options =>
+        {
+            options.AddPolicy(TataRekeningPolicies.Verifikator, policy =>
+                policy.RequireAuthenticatedUser()
+                    .AddRequirements(new PermissionRequirement(TataRekeningPolicies.WritePermission)));
+        });
+        services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
+        services.AddScoped<ICurrentUserContext, HttpCurrentUserContext>();
 
         services.AddCors(p => p.AddPolicy("corsapp", policyBuilder =>
         {

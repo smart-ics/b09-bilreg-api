@@ -9,6 +9,7 @@ using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
+using Bilreg.Domain.PaymentContext.TataRekeningFeature;
 using Bilreg.Domain.PaymentContext.TrsBillFeature;
 using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Domain.Shared.Param;
@@ -50,6 +51,10 @@ public static class DomainService
             .AddScoped<IAntrianMapWithBookingResolver, AntrianMapWithBookingResolver>()
             .AddScoped<IAntrianMapWithRegResolver, AntrianMapWithRegResolver>()
             .AddScoped<ICreateBillDomService, CreateBillDomService>()
+            .AddScoped<IProjectionRegenerationDomainService, ProjectionRegenerationDomainService>()
+            .AddScoped<IMergeBillingDomainService, MergeBillingDomainService>()
+            .AddScoped<IFinancialVerificationDomainService, FinancialVerificationDomainService>()
+            .AddScoped<IFinancialAdjustmentDomainService, FinancialAdjustmentDomainService>()
             ;
 
         return services;
