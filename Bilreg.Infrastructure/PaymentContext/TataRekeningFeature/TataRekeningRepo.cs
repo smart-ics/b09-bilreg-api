@@ -24,10 +24,23 @@ public class TataRekeningRepo : ITataRekeningRepo
 
     public void SaveChanges(TataRekeningModel model)
     {
-        LoadEntity(model)
-            .Match(
-                onSome: _ => _headerDal.Update(BilrgTataRekeningDto.FromModel(model)),
-                onNone: () => _headerDal.Insert(BilrgTataRekeningDto.FromModel(model)));
+        var exists = LoadEntity(model).HasValue;
+
+        if (exists)
+        {
+            var dto = BilrgTataRekeningDto.FromModel(model);
+            var rows = _headerDal.UpdateConditional(dto, model.Version);
+            if (rows == 0)
+                throw new InvalidOperationException(
+                    $"Tata Rekening '{model.RegId}' stale; please reload (expected version: {model.Version}).");
+
+            model.CommitVersionIncrement();
+        }
+        else
+        {
+            _headerDal.Insert(BilrgTataRekeningDto.FromModelForInsert(model));
+            model.CommitVersionIncrement();
+        }
 
         _paymentDal.Delete(model);
         var paymentRows = model.ListPayment
@@ -43,6 +56,7 @@ public class TataRekeningRepo : ITataRekeningRepo
             return MayBe<TataRekeningModel>.None;
 
         var (status, finalizationInfo) = header.ToHeaderParts();
+        var (finVerifStatus, finVerifInfo, isAllocated, settlementInitiated, version) = header.ToPhase1Parts();
         var payments = _paymentDal.ListData(key)?.Select(x => x.ToModel()).ToList() ?? [];
         var bills = _trsBillingRepo.ListEntity(key).ToList();
 
@@ -51,7 +65,12 @@ public class TataRekeningRepo : ITataRekeningRepo
             status,
             finalizationInfo,
             payments,
-            bills));
+            bills,
+            finVerifStatus,
+            finVerifInfo,
+            isAllocated,
+            settlementInitiated,
+            version));
     }
 
     public void DeleteEntity(IRegKey key)

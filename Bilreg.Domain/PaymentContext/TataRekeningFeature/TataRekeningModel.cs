@@ -11,25 +11,45 @@ public record TataRekeningModel : IRegKey
     private readonly List<TataRekeningPaymentType> _listTataRekeningPayment = [];
     private readonly List<TrsBillType> _listTrsBill = [];
 
-    public TataRekeningModel(string regId, TataRekeningStatusEnum status,
+    public TataRekeningModel(
+        string regId,
+        TataRekeningStatusEnum status,
         TataRekeningFinalizationType finalizationInfo,
         IEnumerable<TataRekeningPaymentType> listTataRekeningPayment,
-        IEnumerable<TrsBillType> listTrsBill)
+        IEnumerable<TrsBillType> listTrsBill,
+        FinancialVerificationStatusEnum financialVerificationStatus = FinancialVerificationStatusEnum.NotVerified,
+        FinancialVerificationInfo? financialVerificationInfo = null,
+        bool isFinancialResponsibilityAllocated = false,
+        bool settlementInitiated = false,
+        int version = 1)
     {
         RegId = regId;
         Status = status;
         FinalizationInfo = finalizationInfo;
+        Version = version;
 
         _listTataRekeningPayment = listTataRekeningPayment.ToList();
         _listTrsBill = listTrsBill.ToList();
+
+        FinancialVerificationStatus = financialVerificationStatus;
+        FinancialVerificationInfo = financialVerificationInfo;
+        IsFinancialResponsibilityAllocated = isFinancialResponsibilityAllocated;
+        SettlementInitiated = settlementInitiated;
+
+        ApplyRehydrationInference();
     }
 
     public static TataRekeningModel Create(string regId) =>
-        new(regId, TataRekeningStatusEnum.Opened, TataRekeningFinalizationType.Default, [], []);
+        new(regId, TataRekeningStatusEnum.Opened, TataRekeningFinalizationType.Default, [], [], version: 1);
 
     public string RegId { get; init; }
     public TataRekeningFinalizationType FinalizationInfo { get; private set; }
     public TataRekeningStatusEnum Status { get; private set; }
+    public FinancialVerificationStatusEnum FinancialVerificationStatus { get; private set; }
+    public FinancialVerificationInfo? FinancialVerificationInfo { get; private set; }
+    public bool IsFinancialResponsibilityAllocated { get; private set; }
+    public bool SettlementInitiated { get; private set; }
+    public int Version { get; private set; }
     public IEnumerable<TataRekeningPaymentType> ListPayment => _listTataRekeningPayment;
     public IEnumerable<TrsBillType> ListTrsBill => _listTrsBill;
 
@@ -50,47 +70,237 @@ public record TataRekeningModel : IRegKey
     {
         EnsureNotLunas();
 
-        if (Status == TataRekeningStatusEnum.Opened)
-            Status = TataRekeningStatusEnum.Closed;
-        else
+        if (Status != TataRekeningStatusEnum.Opened)
             throw new InvalidOperationException(
                 "TataRekening can not be closed since current status is not OPENED.");
+
+        Status = TataRekeningStatusEnum.Closed;
+        ResetFinancialVerification();
     }
 
     public void ReOpen()
     {
         EnsureNotLunas();
 
-        if (Status == TataRekeningStatusEnum.Closed)
-            Status = TataRekeningStatusEnum.Opened;
-        else
+        if (Status != TataRekeningStatusEnum.Closed)
             throw new InvalidOperationException(
                 "TataRekening can not be re-opened since current status is not CLOSED.");
+
+        ClearFinancialResponsibilityAllocation();
+        ResetFinancialVerification();
+        SettlementInitiated = false;
+        Status = TataRekeningStatusEnum.Opened;
+    }
+
+    public void CompleteFinancialVerification(string petugasVerif, DateTime verifiedAt)
+    {
+        EnsureNotLunas();
+        EnsureStatusClosed();
+
+        if (FinancialVerificationStatus != FinancialVerificationStatusEnum.NotVerified)
+            throw new InvalidOperationException(
+                "Financial Verification hanya dapat diselesaikan saat belum diverifikasi.");
+
+        if (string.IsNullOrWhiteSpace(petugasVerif))
+            throw new ArgumentException("Petugas verifikator tidak boleh kosong.", nameof(petugasVerif));
+
+        FinancialVerificationStatus = FinancialVerificationStatusEnum.Valid;
+        FinancialVerificationInfo = new FinancialVerificationInfo(petugasVerif, verifiedAt);
+    }
+
+    public void RequireFinancialAdjustment()
+    {
+        EnsureNotLunas();
+        EnsureStatusClosed();
+
+        FinancialVerificationStatus = FinancialVerificationStatusEnum.RequiresAdjustment;
+        FinancialVerificationInfo = null;
+    }
+
+    public void ResetFinancialVerification()
+    {
+        FinancialVerificationStatus = FinancialVerificationStatusEnum.NotVerified;
+        FinancialVerificationInfo = null;
+    }
+
+    public void AllocateFinancialResponsibility(IEnumerable<TataRekeningPaymentType> listPayment)
+    {
+        EnsureNotLunas();
+        EnsureCanAllocate();
+        EnsureListTrsBillNotEmpty();
+
+        RegenerateFinancialProjection(listPayment);
     }
 
     /// <summary>
-    /// Finalize financial responsibility for the registration Billing Set.
+    /// Locks pre-validated Financial Responsibility Allocation and transitions to FINALIZED.
     /// </summary>
-    public void FinalizeFinancialResponsibility(
-        IEnumerable<TataRekeningPaymentType> listPayment,
-        string petugasVerif,
-        DateTime finalizationDate)
+    public void FinalizeFinancialResponsibility(string petugasVerif, DateTime finalizationDate)
     {
         EnsureNotLunas();
         EnsureCanFinalize();
         EnsureListTrsBillNotEmpty();
 
-        var payments = listPayment.ToList();
-        ValidateFinalizationTotals(payments);
+        if (string.IsNullOrWhiteSpace(petugasVerif))
+            throw new ArgumentException("Petugas verifikator tidak boleh kosong.", nameof(petugasVerif));
 
-        _listTataRekeningPayment.Clear();
-        _listTataRekeningPayment.AddRange(payments);
         FinalizationInfo = new TataRekeningFinalizationType(petugasVerif, finalizationDate);
-        FinalizationAllocation();
         AssertFinalizationComplete();
         Status = TataRekeningStatusEnum.Finalized;
     }
 
+    public void InitiateSettlement(string petugasVerif, DateTime initiatedAt)
+    {
+        EnsureNotLunas();
+
+        if (Status != TataRekeningStatusEnum.Finalized)
+            throw new InvalidOperationException(
+                "Settlement Initiation hanya dapat dilakukan saat TataRekening berstatus FINALIZED.");
+
+        if (!IsFinancialResponsibilityAllocated)
+            throw new InvalidOperationException(
+                "Settlement Initiation memerlukan Financial Responsibility Allocation yang lengkap.");
+
+        if (SettlementInitiated)
+            throw new InvalidOperationException(
+                "Settlement Initiation sudah dilakukan sebelumnya.");
+
+        EnsureListTrsBillNotEmpty();
+
+        if (_listTrsBill.Any(bill => bill.ListPayment.Any()))
+            throw new InvalidOperationException(
+                "Settlement Initiation tidak dapat dilakukan karena Payment Settlement sudah dimulai.");
+
+        if (string.IsNullOrWhiteSpace(petugasVerif))
+            throw new ArgumentException("Petugas verifikator tidak boleh kosong.", nameof(petugasVerif));
+
+        SettlementInitiated = true;
+    }
+
+    public void CancelFinalization()
+    {
+        EnsureNotLunas();
+
+        if (Status != TataRekeningStatusEnum.Finalized)
+            throw new InvalidOperationException(
+                "TataRekening tidak dapat cancel finalization kecuali berstatus FINALIZED.");
+
+        EnsureListTrsBillNotEmpty();
+
+        if (_listTrsBill.Any(bill => bill.ListPayment.Any()))
+            throw new InvalidOperationException(
+                "Tidak dapat cancel finalization karena sudah ada pembayaran pada list TrsBill.");
+
+        ClearFinancialResponsibilityAllocation();
+        FinalizationInfo = TataRekeningFinalizationType.Default;
+        SettlementInitiated = false;
+        Status = TataRekeningStatusEnum.Closed;
+    }
+
+    public void EnsureCanCreateTrsBill() => EnsureOpenForBillMutation();
+
+    public void EnsureCanDeleteBill() => EnsureOpenForBillMutation();
+
+    internal void ClearFinancialProjection() => ClearFinancialResponsibilityAllocation();
+
+    internal void RegenerateFinancialProjection(IEnumerable<TataRekeningPaymentType> listPayment)
+    {
+        var payments = listPayment.ToList();
+        ValidateFinalizationTotals(payments);
+
+        ClearFinancialResponsibilityAllocation();
+        _listTataRekeningPayment.AddRange(payments);
+        FinalizationAllocation();
+        AssertFinalizationComplete();
+        IsFinancialResponsibilityAllocated = true;
+    }
+
+    internal IReadOnlyList<TrsBillType> ReleaseBillingSetForMerge()
+    {
+        EnsureNotLunas();
+
+        if (Status is TataRekeningStatusEnum.Finalized or TataRekeningStatusEnum.Lunas)
+            throw new InvalidOperationException(
+                "Registrasi sumber tidak dapat di-merge karena sudah FINALIZED atau LUNAS.");
+
+        if (_listTrsBill.Count == 0)
+            throw new InvalidOperationException(
+                "Registrasi sumber tidak memiliki Billing yang dapat dipindahkan.");
+
+        foreach (var bill in _listTrsBill)
+            bill.EnsureMergeable();
+
+        ClearFinancialResponsibilityAllocation();
+        ResetFinancialVerification();
+
+        var released = _listTrsBill.ToList();
+        _listTrsBill.Clear();
+        return released;
+    }
+
+    internal void AcceptMergedBillingSet(IEnumerable<TrsBillType> bills, RegReff targetReg)
+    {
+        EnsureNotLunas();
+
+        if (Status != TataRekeningStatusEnum.Closed)
+            throw new InvalidOperationException(
+                "Merge Billing hanya dapat dilakukan apabila Billing Registrasi tujuan berstatus CLOSED.");
+
+        if (Status is TataRekeningStatusEnum.Finalized or TataRekeningStatusEnum.Lunas)
+            throw new InvalidOperationException(
+                "Registrasi tujuan tidak dapat menerima merge karena sudah FINALIZED atau LUNAS.");
+
+        var billList = bills.ToList();
+        if (billList.Count == 0)
+            throw new InvalidOperationException(
+                "Tidak ada Billing untuk diterima pada Registrasi tujuan.");
+
+        ClearFinancialResponsibilityAllocation();
+        ResetFinancialVerification();
+
+        foreach (var bill in billList)
+        {
+            var transferred = bill.TransferToRegistration(targetReg);
+            _listTrsBill.Add(transferred);
+        }
+    }
+
+    internal void AcceptManualChargeBill(TrsBillType bill)
+    {
+        EnsureNotLunas();
+        EnsureStatusClosed();
+
+        if (Status is TataRekeningStatusEnum.Finalized or TataRekeningStatusEnum.Lunas)
+            throw new InvalidOperationException(
+                "Manual Charge tidak dapat ditambahkan setelah FINALIZED atau LUNAS.");
+
+        if (FinancialVerificationStatus != FinancialVerificationStatusEnum.RequiresAdjustment)
+            throw new InvalidOperationException(
+                "Manual Charge hanya dapat ditambahkan saat memerlukan Financial Adjustment.");
+
+        if (!string.Equals(bill.Reg.RegId, RegId, StringComparison.Ordinal))
+            throw new InvalidOperationException(
+                "Manual Charge bill harus dimiliki oleh Registrasi Tata Rekening yang sama.");
+
+        _listTrsBill.Add(bill);
+    }
+
+    internal TrsBillType GetBillById(string trsBillingId)
+    {
+        var bill = _listTrsBill.FirstOrDefault(x => x.TrsBillingId == trsBillingId);
+        if (bill is null)
+            throw new InvalidOperationException(
+                $"TrsBill '{trsBillingId}' tidak ditemukan pada list TrsBill.");
+
+        return bill;
+    }
+
+    #region LegacyCashierBridge
+
+    /// <summary>
+    /// LEGACY: Payment Settlement belongs to Cashier (SOP Kasir).
+    /// Retained for backward compatibility only — new workflow uses InitiateSettlement + Cashier.
+    /// </summary>
     public void Pay(IEnumerable<TataRekeningPaymentType> listPayment, string trsBayarId, DateTime tglBayar)
     {
         EnsureNotLunas();
@@ -110,31 +320,32 @@ public record TataRekeningModel : IRegKey
         TryTransitionToLunas();
     }
 
-    public void CancelFinalization()
+    #endregion
+
+    private void ApplyRehydrationInference()
     {
-        EnsureNotLunas();
+        if (_listTrsBill.Any(bill => bill.ListFinalization.Any()) ||
+            Status is TataRekeningStatusEnum.Finalized or TataRekeningStatusEnum.Lunas)
+        {
+            IsFinancialResponsibilityAllocated = true;
+        }
 
-        if (Status != TataRekeningStatusEnum.Finalized)
-            throw new InvalidOperationException(
-                "TataRekening tidak dapat cancel finalization kecuali berstatus FINALIZED.");
+        if (FinancialVerificationStatus == FinancialVerificationStatusEnum.NotVerified &&
+            Status is TataRekeningStatusEnum.Closed or TataRekeningStatusEnum.Finalized or TataRekeningStatusEnum.Lunas &&
+            (IsFinancialResponsibilityAllocated || Status >= TataRekeningStatusEnum.Finalized))
+        {
+            FinancialVerificationStatus = FinancialVerificationStatusEnum.Valid;
+        }
+    }
 
-        EnsureListTrsBillNotEmpty();
-
-        if (_listTrsBill.Any(bill => bill.ListPayment.Any()))
-            throw new InvalidOperationException(
-                "Tidak dapat cancel finalization karena sudah ada pembayaran pada list TrsBill.");
-
+    private void ClearFinancialResponsibilityAllocation()
+    {
         foreach (var bill in _listTrsBill)
             bill.CancelFinalization();
 
         _listTataRekeningPayment.Clear();
-        FinalizationInfo = TataRekeningFinalizationType.Default;
-        Status = TataRekeningStatusEnum.Closed;
+        IsFinancialResponsibilityAllocated = false;
     }
-
-    public void EnsureCanCreateTrsBill() => EnsureOpenForBillMutation();
-
-    public void EnsureCanDeleteBill() => EnsureOpenForBillMutation();
 
     private void EnsureOpenForBillMutation()
     {
@@ -150,11 +361,31 @@ public record TataRekeningModel : IRegKey
                 "TataRekening sudah LUNAS dan tidak dapat dimodifikasi.");
     }
 
+    private void EnsureStatusClosed()
+    {
+        if (Status != TataRekeningStatusEnum.Closed)
+            throw new InvalidOperationException(
+                "Operasi ini hanya diizinkan saat TataRekening berstatus CLOSED.");
+    }
+
     private void EnsureListTrsBillNotEmpty()
     {
         if (_listTrsBill.Count == 0)
             throw new InvalidOperationException(
                 "Operasi lifecycle memerlukan list TrsBill yang tidak kosong.");
+    }
+
+    private void EnsureCanAllocate()
+    {
+        EnsureStatusClosed();
+
+        if (FinancialVerificationStatus == FinancialVerificationStatusEnum.RequiresAdjustment)
+            throw new InvalidOperationException(
+                "Financial Responsibility Allocation tidak dapat dilakukan karena memerlukan Financial Adjustment.");
+
+        if (FinancialVerificationStatus != FinancialVerificationStatusEnum.Valid)
+            throw new InvalidOperationException(
+                "Financial Responsibility Allocation memerlukan Financial Verification yang valid.");
     }
 
     private void EnsureCanFinalize()
@@ -170,10 +401,22 @@ public record TataRekeningModel : IRegKey
         if (Status == TataRekeningStatusEnum.Lunas)
             throw new InvalidOperationException(
                 "Tanggungan keuangan tidak dapat difinalisasi karena TataRekening sudah LUNAS.");
+
+        if (Status != TataRekeningStatusEnum.Closed)
+            throw new InvalidOperationException(
+                "Tanggungan keuangan hanya dapat difinalisasi saat TataRekening berstatus CLOSED.");
+
+        if (FinancialVerificationStatus != FinancialVerificationStatusEnum.Valid)
+            throw new InvalidOperationException(
+                "Finalization memerlukan Financial Verification yang valid.");
+
+        if (!IsFinancialResponsibilityAllocated)
+            throw new InvalidOperationException(
+                "Finalization memerlukan Financial Responsibility Allocation yang lengkap.");
     }
 
     private decimal TotalBillByModul(BillModulGroup modulGroup) =>
-        _listTrsBill.Where(x => x.ModulGroup == modulGroup).Sum(x => x.Nilai.Total);
+        _listTrsBill.Where(x => x.ModulGroup == modulGroup).Sum(x => x.FinancialTotal);
 
     private void ValidateFinalizationTotals(IReadOnlyList<TataRekeningPaymentType> listPayment)
     {
@@ -218,14 +461,16 @@ public record TataRekeningModel : IRegKey
         var trsBayarId = $"RO{(RegId.Length >= 8 ? RegId[^8..] : RegId)}";
         var totalJasaTrans = TotalBillByModul(BillModulGroup.Jasa);
         var totalObatTrans = TotalBillByModul(BillModulGroup.Obat);
+        var petugasVerif = FinalizationInfo.PetugasVerif;
+        var allocationDate = FinalizationInfo.FinalizationDate;
 
         foreach (var item in _listTataRekeningPayment)
         {
             AllocateFinalizationToModuleGroup(
-                item, item.NilaiJasa, BillModulGroup.Jasa, totalJasaTrans, trsBayarId);
+                item, item.NilaiJasa, BillModulGroup.Jasa, totalJasaTrans, trsBayarId, petugasVerif, allocationDate);
 
             AllocateFinalizationToModuleGroup(
-                item, item.NilaiObat, BillModulGroup.Obat, totalObatTrans, trsBayarId);
+                item, item.NilaiObat, BillModulGroup.Obat, totalObatTrans, trsBayarId, petugasVerif, allocationDate);
         }
     }
 
@@ -234,7 +479,9 @@ public record TataRekeningModel : IRegKey
         decimal modulAllocation,
         BillModulGroup modulGroup,
         decimal modulTotal,
-        string trsBayarId)
+        string trsBayarId,
+        string petugasVerif,
+        DateTime allocationDate)
     {
         if (modulAllocation == 0)
             return;
@@ -251,10 +498,10 @@ public record TataRekeningModel : IRegKey
             var bill = bills[i];
             var share = i == bills.Count - 1
                 ? modulAllocation - allocated
-                : modulAllocation * bill.Nilai.Total / modulTotal;
+                : modulAllocation * bill.FinancialTotal / modulTotal;
 
             bill.FinalizeAllocation(
-                item.Payment, share, FinalizationInfo.PetugasVerif, trsBayarId, FinalizationInfo.FinalizationDate);
+                item.Payment, share, petugasVerif, trsBayarId, allocationDate);
             allocated += share;
         }
     }
@@ -328,9 +575,9 @@ public record TataRekeningModel : IRegKey
         foreach (var bill in _listTrsBill)
         {
             var finalized = bill.ListFinalization.Sum(x => x.Nilai);
-            if (finalized != bill.Nilai.Total)
+            if (finalized != bill.FinancialTotal)
                 throw new InvalidOperationException(
-                    $"Finalisasi pada bill '{bill.TrsBillingId}' tidak lengkap: {finalized} dari {bill.Nilai.Total}.");
+                    $"Finalisasi pada bill '{bill.TrsBillingId}' tidak lengkap: {finalized} dari {bill.FinancialTotal}.");
         }
     }
 
@@ -349,6 +596,8 @@ public record TataRekeningModel : IRegKey
 
         Status = TataRekeningStatusEnum.Lunas;
     }
+
+    public void CommitVersionIncrement() => Version++;
 }
 
 /// <summary>

@@ -12,11 +12,7 @@ builder.Services
     .AddDomain(builder.Configuration)
     .AddApplication(builder.Configuration)
     .AddInfrastructure(builder.Configuration)
-    .AddPresentation(builder.Configuration)
-    .AddSwaggerGen(c =>
-    {
-        c.SchemaFilter<DefaultExampleSchemaFilter>();
-    });
+    .AddPresentation(builder.Configuration);
 
 builder.Host
     .UseSerilog(SerilogConfiguration.ContextConfiguration);
@@ -45,5 +41,5 @@ app
 
 app.Run();
 
-
+public partial class Program { }
 
