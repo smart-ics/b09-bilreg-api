@@ -1,5 +1,6 @@
 using Serilog;
 using Taksaka.Engine;
+using Taksaka.Hosting.DependencyInjection;
 using Taksaka.Infrastructure.DependencyInjection;
 using Taksaka.Infrastructure.Logging;
 using Taksaka.Infrastructure.SignalR;
@@ -14,6 +15,7 @@ builder.Host.UseSerilog();
 builder.Services
     .AddTaksakaInfrastructure(builder.Configuration)
     .AddTaksakaEngine()
+    .AddTaksakaHosting(builder.Configuration)
     .AddTaksakaServer(builder.Configuration);
 
 var app = builder.Build();

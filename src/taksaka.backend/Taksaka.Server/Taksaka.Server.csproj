@@ -1,41 +1,61 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
-
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="FluentValidation.AspNetCore" Version="11.3.1" />
-    <PackageReference Include="Serilog.AspNetCore" Version="8.0.2" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\Taksaka.Engine\Taksaka.Engine.csproj" />
-    <ProjectReference Include="..\Taksaka.Infrastructure\Taksaka.Infrastructure.csproj" />
-    <ProjectReference Include="..\Taksaka.Workers.Projection\Taksaka.Workers.Projection.csproj">
-      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-    </ProjectReference>
-    <ProjectReference Include="..\Taksaka.Workers.Integration\Taksaka.Workers.Integration.csproj">
-      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-    </ProjectReference>
-  </ItemGroup>
-
-  <Target Name="CopyPlugins" AfterTargets="Build">
-    <PropertyGroup>
-      <PluginsOutputPath>$(OutputPath)plugins</PluginsOutputPath>
-    </PropertyGroup>
-    <MakeDir Directories="$(PluginsOutputPath)" />
-    <Copy
-      SourceFiles="$(MSBuildProjectDirectory)\..\Taksaka.Workers.Projection\bin\$(Configuration)\$(TargetFramework)\Taksaka.Workers.Projection.dll"
-      DestinationFolder="$(PluginsOutputPath)"
-      SkipUnchangedFiles="true" />
-    <Copy
-      SourceFiles="$(MSBuildProjectDirectory)\..\Taksaka.Workers.Integration\bin\$(Configuration)\$(TargetFramework)\Taksaka.Workers.Integration.dll"
-      DestinationFolder="$(PluginsOutputPath)"
-      SkipUnchangedFiles="true" />
-  </Target>
-
-</Project>
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentValidation.AspNetCore" Version="11.3.1" />
+    <PackageReference Include="Serilog.AspNetCore" Version="8.0.2" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Taksaka.Engine\Taksaka.Engine.csproj" />
+    <ProjectReference Include="..\Taksaka.Hosting\Taksaka.Hosting.csproj" />
+    <ProjectReference Include="..\Taksaka.Infrastructure\Taksaka.Infrastructure.csproj" />
+    <ProjectReference Include="..\Taksaka.Workers.Projection\Taksaka.Workers.Projection.csproj">
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+    <ProjectReference Include="..\Taksaka.Workers.Integration\Taksaka.Workers.Integration.csproj">
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+    <ProjectReference Include="..\Taksaka.Workers.Maintenance\Taksaka.Workers.Maintenance.csproj">
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+  </ItemGroup>
+
+  <Target Name="CopyPlugins" AfterTargets="Build">
+    <PropertyGroup>
+      <PluginsOutputPath>$(OutputPath)plugins</PluginsOutputPath>
+    </PropertyGroup>
+    <MakeDir Directories="$(PluginsOutputPath)" />
+    <Copy
+      SourceFiles="$(MSBuildProjectDirectory)\..\Taksaka.Workers.Projection\bin\$(Configuration)\$(TargetFramework)\Taksaka.Workers.Projection.dll"
+      DestinationFolder="$(PluginsOutputPath)"
+      SkipUnchangedFiles="true" />
+    <Copy
+      SourceFiles="$(MSBuildProjectDirectory)\..\Taksaka.Workers.Projection\bin\$(Configuration)\$(TargetFramework)\Taksaka.Workers.Projection.plugin.json"
+      DestinationFolder="$(PluginsOutputPath)"
+      SkipUnchangedFiles="true" />
+    <Copy
+      SourceFiles="$(MSBuildProjectDirectory)\..\Taksaka.Workers.Integration\bin\$(Configuration)\$(TargetFramework)\Taksaka.Workers.Integration.dll"
+      DestinationFolder="$(PluginsOutputPath)"
+      SkipUnchangedFiles="true" />
+    <Copy
+      SourceFiles="$(MSBuildProjectDirectory)\..\Taksaka.Workers.Integration\bin\$(Configuration)\$(TargetFramework)\Taksaka.Workers.Integration.plugin.json"
+      DestinationFolder="$(PluginsOutputPath)"
+      SkipUnchangedFiles="true" />
+    <Copy
+      SourceFiles="$(MSBuildProjectDirectory)\..\Taksaka.Workers.Maintenance\bin\$(Configuration)\$(TargetFramework)\Taksaka.Workers.Maintenance.dll"
+      DestinationFolder="$(PluginsOutputPath)"
+      SkipUnchangedFiles="true" />
+    <Copy
+      SourceFiles="$(MSBuildProjectDirectory)\..\Taksaka.Workers.Maintenance\bin\$(Configuration)\$(TargetFramework)\Taksaka.Workers.Maintenance.plugin.json"
+      DestinationFolder="$(PluginsOutputPath)"
+      SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

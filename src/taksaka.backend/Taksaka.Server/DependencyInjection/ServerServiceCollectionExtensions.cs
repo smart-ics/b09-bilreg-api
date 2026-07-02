@@ -1,6 +1,4 @@
 using FluentValidation;
-using Taksaka.Server.Configuration;
-using Taksaka.Server.HostedServices;
 
 namespace Taksaka.Server.DependencyInjection;
 
@@ -10,8 +8,6 @@ public static class ServerServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.Configure<PluginLoaderOptions>(configuration.GetSection(PluginLoaderOptions.SectionName));
-
         services.AddControllers();
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen();
@@ -20,20 +16,20 @@ public static class ServerServiceCollectionExtensions
 
         services.AddSignalR();
 
+        var corsOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+            ?? ["http://localhost:5173"];
+
         services.AddCors(options =>
         {
             options.AddPolicy("TaksakaCors", policy =>
             {
                 policy
-                    .WithOrigins("http://localhost:5173")
+                    .WithOrigins(corsOrigins)
                     .AllowAnyHeader()
                     .AllowAnyMethod()
                     .AllowCredentials();
             });
         });
-
-        services.AddHostedService<EngineHostedService>();
-        services.AddHostedService<PluginLoaderHostedService>();
 
         return services;
     }

@@ -4,27 +4,62 @@ Version: **2.0**
 
 ---
 
-# Architecture Vision
+# Purpose
 
-Taksaka is not merely a Job Scheduler.
+This document defines the architecture of Taksaka V2.
 
-Taksaka is an **Operational Background Processing Platform**.
+It is the authoritative architecture specification for the repository.
 
-Its responsibilities are to:
+All implementations MUST conform to this document.
 
-* Execute background workloads
-* Coordinate execution
-* Allocate execution resources
-* Monitor platform health
-* Observe platform behavior
-* Provide operational visibility
-* Support diagnosis and recovery
+If implementation conflicts with this document, this document has authority.
 
-The platform exists so Hospital IT can **understand, control and recover** background processing.
+---
 
-Business systems create work.
+# Vision
 
-Taksaka manages its execution.
+Taksaka is a Background Processing Platform.
+
+It executes work.
+
+It does not define work.
+
+Business capabilities evolve independently by introducing new Worker Plugins.
+
+The platform itself should remain stable.
+
+---
+
+# Architecture Philosophy
+
+Taksaka is **not** a Hospital Information System.
+
+Taksaka is **not** a Business Framework.
+
+Taksaka is an execution platform.
+
+The platform understands only:
+
+* Job
+* Queue
+* Worker
+* Scheduler
+* Dispatcher
+* Health
+* Alert
+* Plugin
+
+Nothing else.
+
+Hospital business knowledge belongs entirely inside Worker Plugins.
+
+---
+
+# Core Principle
+
+> **The Worker Plugin is the deployment unit, development unit, ownership unit, and extension unit of the platform.**
+
+Everything required to execute a business capability belongs inside its Worker Plugin.
 
 ---
 
@@ -33,418 +68,545 @@ Taksaka manages its execution.
 Taksaka adopts:
 
 * Modular Monolith
-* Hexagonal Architecture
 * Plugin Architecture
-* Pipeline Architecture
-* Event Driven Architecture
-* Resource Oriented Scheduling
+* Pipeline Execution
+* Event-driven Background Processing
 
-The platform is designed so it can evolve into distributed execution in the future without redesign.
+The platform is designed to support hundreds of independent Worker Plugins without requiring platform modification.
 
 ---
 
-# High Level Architecture
+# High-Level Architecture
 
-```text
-                    Browser
-                       │
-                SignalR + REST
-                       │
-        ┌────────────────────────────────┐
-        │        Taksaka Server          │
-        │────────────────────────────────│
-        │                                │
-        │ REST API                       │
-        │ SignalR Hub                    │
-        │ Plugin Loader                  │
-        │ Configuration                  │
-        │ Dependency Injection           │
-        │                                │
-        └───────────────┬────────────────┘
-                        │
-        ┌────────────────────────────────┐
-        │         Taksaka Engine         │
-        │────────────────────────────────│
-        │                                │
-        │ Scheduler                      │
-        │ Queue Manager                  │
-        │ Dispatcher                     │
-        │ Resource Manager               │
-        │ Execution Pipeline             │
-        │ Retry Manager                  │
-        │ Dead Letter Manager            │
-        │ Health Monitor                 │
-        │ Metrics                        │
-        │ Event Publisher                │
-        │                                │
-        └───────────────┬────────────────┘
-                        │
-                    Workers
-                        │
-                Infrastructure
 ```
+                 Operator Console
+                        │
+                 REST / gRPC API
+                        │
+               ┌──────────────────┐
+               │   Taksaka Host    │
+               └────────┬──────────┘
+                        │
+               ┌──────────────────┐
+               │  Taksaka Engine   │
+               └────────┬──────────┘
+                        │
+          discovers Worker Plugins
+                        │
+        ┌───────────────┼────────────────┐
+        │               │                │
+     Worker A       Worker B        Worker C
+        │               │                │
+        └───────────────┼────────────────┘
+                        │
+            Database / APIs / Files
+```
+
+---
+
+# Design Principles
+
+## 1.
+
+Engine contains no business rules.
+
+Never.
+
+---
+
+## 2.
+
+Workers contain business rules.
+
+Always.
+
+---
+
+## 3.
+
+Workers are Plugins.
+
+They are discovered automatically.
+
+They are never registered manually.
+
+---
+
+## 4.
+
+Everything executes through Jobs.
+
+Workers are never invoked directly.
+
+---
+
+## 5.
+
+Workers are isolated.
+
+Each Worker owns its implementation.
+
+Workers do not share business code.
+
+---
+
+## 6.
+
+Workers are stateless.
+
+Execution state belongs to Jobs.
+
+---
+
+## 7.
+
+Platform projects remain stable.
+
+Business capabilities evolve through Worker Plugins.
+
+---
+
+## 8.
+
+Adding a new Worker must never require modifying the platform.
 
 ---
 
 # Solution Structure
 
-Worker plugins are organized by implementation, not by architectural category.
+```
+src/
 
-```text
+    Taksaka.Core
+
+    Taksaka.Abstractions
+
+    Taksaka.Engine
+
+    Taksaka.Hosting
+
+    Taksaka.Persistence
+
+    Taksaka.Infrastructure
+
+    Taksaka.ConsoleApi
+
+plugins/
+
+    Accounting/
+
+    SatuSehat/
+
+    Dashboard/
+
+    Notification/
+
+    Maintenance/
+
+tests/
+```
+
+---
+
+# Platform Responsibilities
+
+## Taksaka.Core
+
+Contains platform domain only.
+
+Examples
+
+* Job
+* Queue
+* Scheduler
+* Dispatcher
+* ExecutionHistory
+* Health
+
+Never contains:
+
+* SQL
+* Hospital rules
+* Business entities
+
+---
+
+## Taksaka.Abstractions
+
+Contains stable platform contracts only.
+
+Examples
+
+* IWorker
+* IJobContext
+* ILogger
+* IPlugin
+
+Never contains
+
+* Worker DTO
+* Worker Repository
+* Worker Options
+* Worker SQL
+* Business Model
+
+---
+
+## Taksaka.Engine
+
+Responsible for
+
+* Scheduling
+* Dispatching
+* Retry
+* Timeout
+* Pipeline
+* Worker Discovery
+
+Contains no hospital business logic.
+
+---
+
+## Taksaka.Persistence
+
+Stores platform state only.
+
+Examples
+
+* Jobs
+* Queue
+* History
+* Alerts
+* Scheduler
+
+Never stores hospital business entities.
+
+---
+
+## Taksaka.Infrastructure
+
+Reusable technical services only.
+
+Examples
+
+* Logging
+* SMTP
+* HTTP
+* Redis
+* SQL Connection Factory
+* Metrics
+
+Never contains
+
+* Business SQL
+* Business Repository
+* Business DTO
+* Business Mapping
+
+---
+
+## Taksaka.Hosting
+
+Application bootstrap.
+
+Responsible for
+
+* Plugin Loading
+* Host Lifecycle
+* Engine Startup
+
+Contains no Worker registration.
+
+---
+
+## Taksaka.ConsoleApi
+
+Provides operator APIs.
+
+Never contains business processing.
+
+---
+
+# Worker Plugin
+
+A Worker Plugin is completely self-contained.
+
+Typical structure:
+
+```
 plugins/
 
     RegistrationProjection/
 
-    SatusehatUpload/
+        RegistrationProjection.csproj
 
-    AccountingJournal/
+        Worker/
 
-    EmailNotification/
+        Repository/
 
-    CacheRefresh/
+        Queries/
+
+        Models/
+
+        Configuration/
+
+        Helpers/
+
+        Tests/
+
+        README.md
+
+        plugin.json
 ```
 
-Or, generically:
-
-```text
-plugins/
-
-    <WorkerPlugin1>/
-
-    <WorkerPlugin2>/
-
-    ...
-```
-
-There are no category folders such as Projection, Integration, Business, or Maintenance.
-
-Each plugin references only `Taksaka.Abstractions`. The Engine never references plugins.
+The Worker owns everything required to execute its business capability.
 
 ---
 
-# Core Runtime Components
+# Worker Ownership
 
-The Engine consists of independent runtime services.
+Each Worker owns:
 
-## Scheduler
+* Business Logic
+* Repository
+* SQL
+* DTO
+* Model
+* Mapping
+* Configuration
+* Validation
+* Tests
+* Documentation
 
-Creates Jobs.
+Nothing is shared unless it is truly platform infrastructure.
 
-Scheduler never executes Jobs.
+---
+
+# Plugin Manifest
+
+Every Worker Plugin provides metadata.
 
 Example
 
 ```
-Every Minute
+Name
+
+Version
+
+Worker Type
+
+Description
+
+Dependencies
+
+Configuration
+```
+
+The platform discovers this automatically.
+
+---
+
+# Worker Discovery
+
+The Host scans the plugin directory.
+
+```
+plugins/
+
+    *.dll
+```
+
+For every assembly:
+
+```
+Load Assembly
 
 ↓
 
-Create Health Check Job
-```
-
----
-
-## Queue Manager
-
-Owns all queued Jobs.
-
-Responsibilities
-
-* Persistent queue
-* Priority ordering
-* Queue statistics
-* Queue visibility
-
-Queue Manager never executes Jobs.
-
----
-
-## Dispatcher
-
-Owns execution decisions.
-
-Responsibilities
-
-* Select next Job
-* Resolve Worker
-* Start execution
-* Coordinate retry
-* Publish execution events
-
-Dispatcher never checks CPU, memory or concurrency.
-
-Those belong to Resource Manager.
-
----
-
-## Resource Manager
-
-Resource Manager owns execution capacity.
-
-Responsibilities
-
-* Global concurrency
-* Worker concurrency
-* Resource allocation
-* Resource locks
-* Fair scheduling
-* Starvation prevention
-
-Dispatcher asks
-
-```
-May this Job execute?
-```
-
-Resource Manager answers
-
-```
-Yes
-
-or
-
-Wait
-```
-
----
-
-## Retry Manager
-
-Retry belongs to Engine.
-
-Workers never retry themselves.
-
-Retry policy is configurable.
-
----
-
-## Dead Letter Manager
-
-Owns permanently failed Jobs.
-
-Operators decide replay.
-
----
-
-## Health Monitor
-
-Produces platform health.
-
-Never executes business logic.
-
----
-
-# Execution Flow
-
-```
-Scheduler
+Find IWorker
 
 ↓
 
-Create Job
+Validate
 
 ↓
 
-Queue
+Register
 
 ↓
 
-Dispatcher
+Ready
+```
 
-↓
+No manual registration is permitted.
 
-Resource Manager
+---
 
-↓
+# Configuration
 
+Worker configuration belongs to the Worker.
+
+Platform configuration belongs to the Platform.
+
+Worker configuration is never added to platform projects.
+
+---
+
+# Dependency Rules
+
+Allowed
+
+```
 Worker
 
 ↓
 
-Execution Pipeline
-
-↓
-
-Metrics
-
-↓
-
-History
-
-↓
-
-Completed
+Taksaka.Abstractions
 ```
 
-Every Job follows exactly this lifecycle.
+Allowed
+
+```
+Worker
+
+↓
+
+Platform Infrastructure Services
+```
+
+Allowed
+
+```
+Hosting
+
+↓
+
+Engine
+```
+
+Forbidden
+
+```
+Engine
+
+↓
+
+Worker
+```
+
+Forbidden
+
+```
+Worker
+
+↓
+
+Another Worker
+```
+
+Forbidden
+
+```
+Worker
+
+↓
+
+Platform Business Code
+```
+
+Forbidden
+
+```
+Platform
+
+↓
+
+Worker-specific Repository
+```
+
+Forbidden
+
+```
+Platform
+
+↓
+
+Worker-specific DTO
+```
 
 ---
 
-# Worker Philosophy
+# Extensibility Rules
 
-Workers are capabilities.
+Adding a new business capability requires:
 
-Workers are not schedulers.
+* New Worker Plugin
 
-Workers are not threads.
+It must not require:
 
-Workers are not services.
+* Engine modification
+* Hosting modification
+* Infrastructure modification
+* Persistence modification
+* Abstractions modification
+* ConsoleApi modification
 
-Workers execute one Job at a time.
-
-Workers never
-
-* schedule themselves
-* retry themselves
-* create threads
-* allocate resources
-
-Workers only execute business logic.
+If one of these projects must change, the implementation is introducing a platform capability rather than a Worker.
 
 ---
 
-# Worker Policy
-
-Every Worker declares an execution policy.
-
-Example
+# Worker Lifecycle
 
 ```
-Accounting Journal Worker
-
-Priority             High
-
-Max Concurrency      2
-
-Retry                5
-
-Timeout              5 minutes
-
-Circuit Breaker      Enabled
-```
-
-Registration Projection Worker
-
-```
-Priority             Background
-
-Max Concurrency      4
-
-Retry                Infinite
-
-Timeout              None
-```
-
-Dispatcher reads policy automatically.
-
----
-
-# Queue Model
-
-There is one logical queue.
-
-Jobs have priority.
-
-Priority determines execution order.
-
-Example
-
-```
-Critical
-
-High
-
-Normal
-
-Low
-
-Background
-```
-
-Jobs from every source become identical once they enter Queue.
-
-Sources include
-
-* Scheduler
-* Business Modules
-* Operator Replay
-* Immediate Recovery
-* Retry Manager
-
-Dispatcher does not distinguish Job origin.
-
----
-
-# Immediate Execution
-
-Immediate execution never bypasses Queue.
-
-Instead
-
-```
-Business Module
+Plugin discovered
 
 ↓
 
-Create Critical Job
+Validated
 
 ↓
 
-Queue
+Loaded
 
 ↓
 
-Dispatcher
+Idle
 
 ↓
 
-Execute
+Executing
+
+↓
+
+Idle
 ```
 
-Immediate Jobs therefore
-
-* appear in history
-* support retry
-* support replay
-* generate metrics
-* generate alerts
+Workers never retain execution state.
 
 ---
 
 # Execution Pipeline
 
-Every Job executes through identical middleware.
+Every Job executes through:
 
 ```
-Acquire Resource
+Load Job
 
 ↓
 
-Logging
+Acquire Lock
 
 ↓
 
-Metrics
+Resolve Worker
 
 ↓
 
-Timeout
+Execute
 
 ↓
 
-Retry
-
-↓
-
-Transaction
-
-↓
-
-Worker
-
-↓
-
-Publish Events
+Collect Metrics
 
 ↓
 
@@ -452,291 +614,97 @@ Persist History
 
 ↓
 
-Release Resource
+Release Lock
 ```
 
-Workers never implement these concerns.
+Retry, timeout, metrics, logging, transactions, and exception handling are platform responsibilities.
 
 ---
 
-# Operator Console
+# Architecture Invariants
 
-Operator Console is a Web Application.
+The following statements are always true.
 
-It never executes business processing.
+1. A Worker Plugin is self-contained.
 
-It communicates exclusively through
+2. A Worker owns all of its business implementation.
 
-* REST API
-* SignalR
+3. The platform owns only execution.
 
-The Console is an operational control center.
+4. Platform projects remain stable.
 
----
+5. Business capabilities evolve through Plugins.
 
-# Live Monitoring
+6. Worker Plugins are independently deployable.
 
-The platform continuously publishes runtime events.
+7. Creating a new Worker modifies only the Worker Plugin project.
 
-Examples
-
-```
-Queue Changed
-
-Worker Started
-
-Worker Completed
-
-Worker Failed
-
-Health Changed
-
-Alert Raised
-
-Resource Allocated
-```
-
-SignalR pushes updates immediately.
-
-No polling required.
+8. Copying a new Worker Plugin into the `plugins` directory is sufficient to extend the platform.
 
 ---
 
-# Observable Runtime
+# Architecture Violations
 
-Every runtime component is observable.
+The following are violations.
 
-## Scheduler
+❌ Adding DTOs to `Taksaka.Abstractions` for a Worker.
 
-Current schedules
+❌ Adding repositories to `Taksaka.Infrastructure`.
 
-Upcoming Jobs
+❌ Adding SQL to platform projects.
 
-Execution history
+❌ Adding Worker Options to platform projects.
 
----
+❌ Editing Hosting to register a Worker.
 
-## Queue
+❌ Editing Engine because a new Worker is introduced.
 
-Queue length
+❌ Worker directly invoking another Worker.
 
-Priority distribution
+❌ Business rules inside Engine.
 
-Oldest Job
+❌ Business rules inside Infrastructure.
 
-Estimated wait time
-
----
-
-## Dispatcher
-
-Current activity
-
-Running Jobs
-
-Dispatch rate
-
----
-
-## Resource Manager
-
-Global concurrency
-
-Worker concurrency
-
-Resource utilization
-
-Allocation history
-
----
-
-## Worker
-
-Status
-
-Idle
-
-Running
-
-Offline
-
-Disabled
-
-Current Job
-
----
-
-## Retry
-
-Retry count
-
-Retry queue
-
-Retry delay
-
----
-
-## Dead Letter
-
-Dead Letter Jobs
-
-Failure reason
-
-Replay history
-
----
-
-# Operator Dashboards
-
-## Queue Dashboard
-
-Shows
-
-```
-Critical
-
-High
-
-Normal
-
-Low
-
-Background
-```
-
-Every priority displays
-
-* Job count
-* Oldest Job
-* Estimated waiting time
-
----
-
-## Worker Dashboard
-
-Shows every Worker
-
-* Running
-* Idle
-* Disabled
-* Current Job
-* Average Duration
-* Failure Rate
-
----
-
-## Resource Dashboard
-
-Displays
-
-```
-Global Slots
-
-16 / 20
-```
-
-Worker utilization
-
-```
-Registration Projection
-
-2 / 4
-
-Accounting Journal
-
-1 / 2
-
-Email Notification
-
-8 / 16
-```
-
----
-
-## Dispatcher Dashboard
-
-Displays
-
-Current dispatch decisions
-
-Current running Jobs
-
-Dispatch throughput
-
----
-
-## Execution Timeline
-
-Live execution stream
-
-```
-10:01
-
-Accounting Journal Completed
-
-10:01
-
-Registration Projection Started
-
-10:02
-
-SATUSEHAT Upload Retry
-
-Running
-```
-
----
-
-## Health Dashboard
-
-Platform
-
-Queue
-
-Workers
-
-Infrastructure
-
-Business Capability
-
-All updated in real time.
+❌ Platform projects changing because a Worker is added.
 
 ---
 
 # AI Agent Rules
 
-When implementing Taksaka
+When implementing code:
 
-Always remember
+1. Treat every Worker as an independent plugin.
 
-1. Scheduler creates Jobs only.
-2. Queue owns pending Jobs.
-3. Dispatcher decides execution.
-4. Resource Manager decides capacity.
-5. Workers execute business logic only.
-6. Retry belongs to Engine.
-7. Every Job passes through Queue.
-8. Immediate Jobs never bypass Queue.
-9. Every runtime component must be observable.
-10. Prefer adding a Worker over modifying Engine.
-11. Keep Workers stateless.
-12. Engine must remain business-agnostic.
-13. The Operator Console must expose the platform's runtime state, not just job lists.
-14. Every new runtime feature should publish events for monitoring and SignalR updates.
+2. Keep every Worker self-contained.
+
+3. Never add Worker-specific code to platform projects.
+
+4. Never modify Hosting to register a Worker.
+
+5. Never modify Infrastructure for Worker-specific repositories or SQL.
+
+6. Never add Worker DTOs or Options to `Taksaka.Abstractions`.
+
+7. Never modify Engine when introducing a new Worker.
+
+8. If implementing a Worker requires modifying another project, stop and explain why.
+
+9. Platform projects may change only when introducing a new platform capability.
+
+10. The success criterion is simple:
+
+> **A new Worker can be added by copying its plugin into the `plugins` directory without modifying any existing platform project.**
 
 ---
 
-## My Final Observation
+# Long-Term Vision
 
-The architecture of Taksaks V2 resembles an **operating system for background workloads**:
+Taksaka becomes a stable execution platform.
 
-* **Scheduler** creates work.
-* **Queue Manager** owns work.
-* **Dispatcher** selects work.
-* **Resource Manager** allocates execution capacity.
-* **Execution Pipeline** provides reliability.
-* **Workers** provide capabilities.
-* **Health Monitor** evaluates operational state.
-* **Operator Console** visualizes the entire runtime.
+The Engine changes rarely.
 
-That separation of responsibilities is what will allow the platform to scale from **3 workers today** to **50+ workers in the future** without becoming difficult to reason about or maintain. I believe this is a much stronger architectural foundation than the original version and aligns well with the vision described in your domain artifact.
+Platform capabilities evolve deliberately.
+
+Business capabilities evolve continuously by introducing new Worker Plugins.
+
+The architecture is successful when hundreds of Workers can coexist while the platform itself remains largely unchanged.

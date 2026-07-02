@@ -1,6 +1,6 @@
 using Taksaka.Abstractions;
 
-namespace Taksaka.Server.HostedServices;
+namespace Taksaka.Hosting.HostedServices;
 
 public sealed class EngineHostedService(
     IScheduler scheduler,

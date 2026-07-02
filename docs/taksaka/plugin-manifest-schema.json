@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Taksaka Worker Plugin Manifest",
+  "type": "object",
+  "required": ["name", "version", "workerType", "description", "configuration"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Unique worker identifier matching IWorker.Descriptor.Name"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+",
+      "description": "Semantic version of the plugin"
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable plugin description"
+    },
+    "workerType": {
+      "type": "string",
+      "enum": ["Projection", "Integration", "Business", "Maintenance"],
+      "description": "Worker category"
+    },
+    "configuration": {
+      "type": "object",
+      "description": "Plugin-owned default configuration"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,4 +1,4 @@
-namespace Taksaka.Server.Configuration;
+namespace Taksaka.Hosting.Configuration;
 
 public sealed class PluginLoaderOptions
 {

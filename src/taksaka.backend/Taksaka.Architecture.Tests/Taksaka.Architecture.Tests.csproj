@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="NetArchTest.Rules" Version="1.3.2" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Taksaka.Abstractions\Taksaka.Abstractions.csproj" />
+    <ProjectReference Include="..\Taksaka.Engine\Taksaka.Engine.csproj" />
+    <ProjectReference Include="..\Taksaka.Hosting\Taksaka.Hosting.csproj" />
+    <ProjectReference Include="..\Taksaka.Infrastructure\Taksaka.Infrastructure.csproj" />
+    <ProjectReference Include="..\Taksaka.Server\Taksaka.Server.csproj" />
+    <ProjectReference Include="..\Taksaka.Workers.Maintenance\Taksaka.Workers.Maintenance.csproj" />
+    <ProjectReference Include="..\Taksaka.Workers.Integration\Taksaka.Workers.Integration.csproj" />
+    <ProjectReference Include="..\Taksaka.Workers.Projection\Taksaka.Workers.Projection.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -5,7 +5,7 @@ using Taksaka.Core.Enums;
 namespace Taksaka.Server.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("[controller]")]
 public sealed class HealthController : ControllerBase
 {
     private readonly IHealthMonitor _healthMonitor;

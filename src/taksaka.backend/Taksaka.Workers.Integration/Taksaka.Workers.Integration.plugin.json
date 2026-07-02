@@ -1,0 +1,7 @@
+{
+  "name": "sample-integration",
+  "version": "1.0.0",
+  "description": "Sample integration worker plugin.",
+  "workerType": "Integration",
+  "configuration": {}
+}
