@@ -9,12 +9,12 @@ public sealed class EngineHostedService(
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         await scheduler.StartAsync(cancellationToken);
-        logger.LogInformation("Taksaka Engine hosted service started.");
+        logger.LogInformation("Scheduler started.");
     }
 
     public async Task StopAsync(CancellationToken cancellationToken)
     {
         await scheduler.StopAsync(cancellationToken);
-        logger.LogInformation("Taksaka Engine hosted service stopped.");
+        logger.LogInformation("Scheduler stopped.");
     }
 }

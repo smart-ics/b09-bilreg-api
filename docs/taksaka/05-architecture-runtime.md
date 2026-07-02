@@ -38,15 +38,18 @@ sequenceDiagram
     Main->>Serilog: ConfigureSerilog(configuration)
     Main->>Main: Host.UseSerilog()
     Main->>Infra: DatabaseOptions, IDbConnectionFactory, repositories
-    Main->>Engine: Register engine singletons
-    Main->>Server: Controllers, SignalR, CORS, hosted services
+    Main->>Hosting: Plugin catalog, PluginLoaderHostedService
+    Main->>Engine: Dispatcher, scheduler, health hosted services
+    Main->>Server: Controllers, SignalR, CORS
     Main->>Host: Build()
     Host->>Host: UseSerilogRequestLogging()
-    Host->>Host: MapControllers, MapHub, MapGet /health
+    Host->>Host: MapControllers, MapHub
     Host->>Host: Run() — start Kestrel
     Host->>DIH: StartAsync — create schema if missing
-    Host->>PHS: StartAsync — scan plugins folder
+    Host->>PHS: StartAsync — scan plugins folder, register workers
     Host->>EHS: StartAsync — start scheduler loop
+    Host->>DHS: StartAsync — start queue polling (dispatcher)
+    Host->>HMS: StartAsync — start health monitor
 ```
 
 ### Step-by-step
@@ -54,16 +57,14 @@ sequenceDiagram
 1. **`Program.cs`** creates `WebApplicationBuilder`.
 2. **Serilog** configured from `IConfiguration`; host uses Serilog.
 3. **`AddTaksakaInfrastructure`** binds `DatabaseOptions`, registers `IDbConnectionFactory`, Dapper repositories, and `DatabaseInitializerHostedService`.
-4. **`AddTaksakaEngine`** registers engine singletons (queue, retry, scheduler wired to repositories).
-5. **`AddTaksakaServer`** registers MVC, Swagger, FluentValidation, SignalR, CORS, hosted services.
-6. **Middleware pipeline:** request logging → (Swagger dev only) → CORS → routing → endpoints.
-7. **Hosted services** start: schema init, plugin scan, scheduler loop.
-8. **Kestrel** listens on configured URLs.
+4. **`AddTaksakaHosting`** registers plugin discovery, `IWorkerRegistry`, `PluginLoaderHostedService`, and `EngineHostedService` (scheduler).
+5. **`AddTaksakaEngine`** registers dispatcher, queue, retry, dead letter, health monitor, and their hosted services.
+6. **`AddTaksakaServer`** registers MVC, Swagger, SignalR, CORS, and `SignalREventPublisher`.
+7. **Middleware pipeline:** request logging → (Swagger dev only) → CORS → routing → endpoints.
+8. **Hosted services** start in order: schema init → plugin load → scheduler → dispatcher → health monitor.
+9. **Kestrel** listens on configured URLs; `Server ready` is logged when startup completes.
 
-**Not started today:**
-
-- Dispatcher background loop (worker execution pipeline)
-- Worker plugin loading into runtime
+**All background services start automatically — no manual invocation required.**
 
 ---
 

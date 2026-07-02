@@ -7,6 +7,8 @@ using Taksaka.Infrastructure.SignalR;
 using Taksaka.Server.DependencyInjection;
 using Taksaka.Server.SignalR;
 
+Log.Information("Server starting");
+
 var builder = WebApplication.CreateBuilder(args);
 
 SerilogConfiguration.ConfigureSerilog(builder.Configuration);
@@ -14,11 +16,14 @@ builder.Host.UseSerilog();
 
 builder.Services
     .AddTaksakaInfrastructure(builder.Configuration)
-    .AddTaksakaEngine()
     .AddTaksakaHosting(builder.Configuration)
+    .AddTaksakaEngine(builder.Configuration)
     .AddTaksakaServer(builder.Configuration);
 
 var app = builder.Build();
+
+app.Lifetime.ApplicationStarted.Register(() =>
+    Log.Information("Server ready"));
 
 app.UseSerilogRequestLogging();
 
@@ -35,7 +40,6 @@ app.UseCors("TaksakaCors");
 app.UseRouting();
 app.MapControllers();
 app.MapHub<OperationsHub>(SignalREndpoints.Operations);
-app.MapGet("/health", () => Results.Ok(new { status = "Healthy" }));
 
 app.Run();
 

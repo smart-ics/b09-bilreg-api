@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Taksaka.Abstractions;
 using Taksaka.Abstractions.Persistence;
 using Taksaka.Core.Entities;
@@ -9,18 +10,24 @@ namespace Taksaka.Engine.Tests;
 public sealed class EngineDependencyInjectionTests
 {
     [Fact]
-    public void AddTaksakaEngine_RegistersScheduler()
+    public void AddTaksakaEngine_RegistersSchedulerAndDispatcher()
     {
         var services = new ServiceCollection();
+        services.AddLogging();
         services.AddSingleton<IScheduleRepository, StubScheduleRepository>();
         services.AddSingleton<IJobRepository, StubJobRepository>();
         services.AddSingleton<IQueueRepository, StubQueueRepository>();
+        services.AddSingleton<IExecutionHistoryRepository, StubExecutionHistoryRepository>();
+        services.AddSingleton<IConfigurationRepository, StubConfigurationRepository>();
+        services.AddSingleton<IAlertRepository, StubAlertRepository>();
+        services.AddSingleton<IWorkerRegistry, StubWorkerRegistry>();
         services.AddTaksakaEngine();
 
         using var provider = services.BuildServiceProvider();
-        var scheduler = provider.GetRequiredService<IScheduler>();
 
-        Assert.NotNull(scheduler);
+        Assert.NotNull(provider.GetRequiredService<IScheduler>());
+        Assert.NotNull(provider.GetRequiredService<IDispatcher>());
+        Assert.NotNull(provider.GetRequiredService<IHealthMonitor>());
     }
 
     private sealed class StubScheduleRepository : IScheduleRepository
@@ -63,5 +70,45 @@ public sealed class EngineDependencyInjectionTests
 
         public Task<int> GetQueueDepthAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(0);
+    }
+
+    private sealed class StubExecutionHistoryRepository : IExecutionHistoryRepository
+    {
+        public Task InsertAsync(ExecutionHistory history, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task<IReadOnlyList<ExecutionHistory>> GetByJobIdAsync(Guid jobId, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<ExecutionHistory>>([]);
+    }
+
+    private sealed class StubConfigurationRepository : IConfigurationRepository
+    {
+        public Task<string?> GetValueAsync(string key, CancellationToken cancellationToken = default) =>
+            Task.FromResult<string?>(null);
+
+        public Task SetValueAsync(string key, string value, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+    }
+
+    private sealed class StubAlertRepository : IAlertRepository
+    {
+        public Task InsertAsync(Alert alert, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task<IReadOnlyList<Alert>> GetRecentAsync(int limit, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<Alert>>([]);
+    }
+
+    private sealed class StubWorkerRegistry : IWorkerRegistry
+    {
+        public bool TryGetWorker(string name, out IWorker? worker)
+        {
+            worker = null;
+            return false;
+        }
+
+        public IReadOnlyCollection<string> RegisteredWorkerNames => [];
+
+        public int RegisteredWorkerCount => 0;
     }
 }

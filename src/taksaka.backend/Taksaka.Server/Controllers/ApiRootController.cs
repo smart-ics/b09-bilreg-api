@@ -13,7 +13,8 @@ public sealed class ApiRootController : ControllerBase
         return Ok(new
         {
             service = "Taksaka API",
-            health = "/health",
+            health = "/api/health",
+            jobs = "/api/jobs",
             signalR = SignalREndpoints.Operations
         });
     }

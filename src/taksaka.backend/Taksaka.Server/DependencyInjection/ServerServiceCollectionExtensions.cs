@@ -1,4 +1,6 @@
 using FluentValidation;
+using Taksaka.Abstractions;
+using Taksaka.Server.SignalR;
 
 namespace Taksaka.Server.DependencyInjection;
 
@@ -15,6 +17,7 @@ public static class ServerServiceCollectionExtensions
         services.AddValidatorsFromAssemblyContaining<Program>();
 
         services.AddSignalR();
+        services.AddSingleton<IEventPublisher, SignalREventPublisher>();
 
         var corsOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
             ?? ["http://localhost:5173"];
