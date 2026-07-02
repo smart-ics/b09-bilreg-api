@@ -12,17 +12,19 @@ Every configuration key discovered from binding code, `appsettings.json`, and la
 |---------|---------------|-------|
 | `ConnectionStrings` | Legacy | SQL Server fallback when `Database:Provider` unset |
 | `Database` | Yes | Provider (`SQLite` / `SqlServer`) + connection string |
-| `PluginLoader` | Yes | Plugin directory path |
+| `PluginLoader` | Yes | Plugin directory path (`Taksaka.Hosting.Configuration.PluginLoaderOptions`) |
+| `Engine` | Yes | Dispatch poll interval, health monitor interval |
 | `Serilog` | Yes | Serilog pipeline |
 | `Logging` | Yes | ASP.NET Core logging (secondary to Serilog host) |
 | `AllowedHosts` | Yes | ASP.NET Core built-in |
-| Queue | Partial | `QueueManager` persists via Dapper; `Queue:LockLeaseSeconds` in `TAKS_Configuration` |
-| Retry | Partial | `RetryManager` persists; `Retry:BaseDelaySeconds` in `TAKS_Configuration` |
-| Timeout | **No** | Only per-worker `WorkerExecutionPolicy.Timeout` in code |
-| Scheduler | Partial | `Scheduler` runs periodic loop; reads `TAKS_Schedule` |
-| Health monitoring | **No** | Stub returns static Healthy |
-| Alerting | **No** | Entity exists; no service |
-| Worker discovery | Partial | Path only; no load/register settings |
+| `Cors` | Yes | Operator console origins |
+| Queue | Yes | `Queue:LockLeaseSeconds` in `TAKS_Configuration` (default 300) |
+| Retry | Yes | `Retry:BaseDelaySeconds` in `TAKS_Configuration` (default 30) |
+| Timeout | Yes | Per-worker `WorkerExecutionPolicy.Timeout` enforced by dispatcher |
+| Scheduler | Yes | 15s tick; reads `TAKS_Schedule` |
+| Health monitoring | Yes | Background service + `GET /api/health` |
+| Alerting | Partial | Alerts written on health warnings/critical |
+| Worker discovery | Yes | Full manifest validation + assembly load |
 
 ---
 
