@@ -1,6 +1,7 @@
 ﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.Shared.Helpers;
+using Nuna.Lib.DataTypeExtension;
 using Nuna.Lib.PatternHelper;
 using Nuna.Lib.ValidationHelper;
 using System.Globalization;
@@ -111,7 +112,13 @@ public class AntrianRepo : IAntrianRepo
                persisted.ReffDesc == current.ReffDesc;
     }
 
-    
+    public void FixOutstandingReference()
+    {
+        var listOutStanding = _antrianEntryDal.ListOutStanding() ?? [];
+        listOutStanding.ForEach(x => _antrianEntryDal.UpdateOutStanding(x));
+    }
+
+
     #endregion
 
 }

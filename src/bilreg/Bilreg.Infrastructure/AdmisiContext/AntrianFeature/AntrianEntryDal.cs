@@ -1,10 +1,11 @@
-﻿using System.Data;
-using System.Data.SqlClient;
-using Bilreg.Domain.AdmisiContext.AntrianFeature;
+﻿using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
+using PdfSharp.Pdf.Filters;
+using System.Data;
+using System.Data.SqlClient;
 
 namespace Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
 
@@ -16,6 +17,8 @@ public interface IAntrianEntryDal :
 {
     void Delete(IAntrianKey key, int noUrut);
     AntrianEntryDto GetData(IAntrianKey key, int noUrut);
+    IEnumerable<AntaianEntryOutStandingDto> ListOutStanding();
+    void UpdateOutStanding(AntaianEntryOutStandingDto data);
 }
 
 public class AntrianEntryDal : IAntrianEntryDal
@@ -167,5 +170,52 @@ public class AntrianEntryDal : IAntrianEntryDal
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<AntrianEntryDto>(sql, dp);
+    }
+
+    public IEnumerable<AntaianEntryOutStandingDto> ListOutStanding()
+    {
+        const string sql = """
+            SELECT 
+                  TOP 50
+                  aa.AntrianId, aa.NoUrut, aa.PersonName, aa.ReffId, aa.ReffDesc,
+                  ISNULL(bb.BookingId ,'') AS Bok_Ulid,   
+                  ISNULL(cc.BookingId ,'') AS Bok_Bh,     
+                  ISNULL(dd.fs_kd_booking ,'') AS Bok_Bo, 
+                  ISNULL(dd.fs_kd_reg ,'') AS RegId,        
+                  ISNULL(dd.fd_tgl_masuk ,'') AS RegDate
+            FROM BILRG_AntrianEntry aa
+            LEFT JOIN BILRG_BookingExternal bb ON aa.ReffId = bb.BookingId
+            LEFT JOIN HIDOK_BookingBridge cc ON bb.ReffId = cc.BookingId
+            LEFT JOIN ta_registrasi dd ON cc.KodeTrsBookingRS = dd.fs_kd_booking AND dd.fs_kd_booking <> ''
+            WHERE ISNULL(dd.fs_kd_reg, '??') LIKE 'RG%'
+            AND aa.ReffDesc = 'BOK'
+            ORDER BY dd.fd_tgl_masuk desc, aa.AntrianId, aa.NoUrut
+            """;
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<AntaianEntryOutStandingDto>(sql);
+    }
+
+    public void UpdateOutStanding(AntaianEntryOutStandingDto data
+    {
+        const string sql = """
+           UPDATE
+                BILRG_AntrianEntry
+           SET
+               ReffId = @ReffId,
+               ReffDesc = @ReffDesc
+           WHERE
+               AntrianId = @AntrianId 
+               AND NoUrut = @NoUrut
+           """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@AntrianId", data.AntrianId, SqlDbType.VarChar);
+        dp.AddParam("@NoUrut", data.NoUrut, SqlDbType.Int);
+        dp.AddParam("@ReffId", data.RegId, SqlDbType.VarChar);
+        dp.AddParam("@ReffDesc", "REG", SqlDbType.VarChar);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        conn.Execute(sql, dp);
     }
 }

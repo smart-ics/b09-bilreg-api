@@ -69,6 +69,14 @@ public class AntrianController : Controller
         return Ok(new JSendOk("Done"));
     }
 
+    [HttpPatch]
+    [Route("fixOutstandingReference")]
+    public async Task<IActionResult> FixOutstandingReference(QueFixOutstandingReferenceCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
     // [HttpPost]
     // [Route("mapMigrasi")]
     // public async Task<IActionResult> MigrasiMapHdr(AntrianMapHdrMigrasiCmd cmd)
