@@ -36,7 +36,7 @@ public static class PresentationService
         services.AddSwaggerGen(c =>
         {
             c.SchemaFilter<DefaultExampleSchemaFilter>();
-            c.SchemaFilter<TataRekeningExampleSchemaFilter>();
+            //c.SchemaFilter<TataRekeningExampleSchemaFilter>();
             c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
             {
                 Description = "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\"",

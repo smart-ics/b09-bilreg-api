@@ -9,7 +9,7 @@ using Nuna.Lib.ValidationHelper;
 namespace Bilreg.Application.PaymentContext.TataRekeningFeature.UseCases;
 
 public record FinalizeFinancialResponsibilityCommand(
-    string RegId,
+    string RegId, string UserId,
     DateTime FinalizationDate) : IRequest<FinalizeFinancialResponsibilityResponse>, IRegKey;
 
 public record FinalizeFinancialResponsibilityResponse(TataRekeningSummaryDto Summary);
@@ -39,8 +39,9 @@ public class FinalizeFinancialResponsibilityHandler
         CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.RegId);
+        Guard.Against.NullOrWhiteSpace(request.UserId);
 
-        var petugasVerif = _currentUser.GetActorUserId();
+        var petugasVerif = request.UserId; //_currentUser.GetActorUserId();
         Guard.Against.NullOrWhiteSpace(petugasVerif);
 
         using var scope = _unitOfWork.Begin();

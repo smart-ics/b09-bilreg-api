@@ -395,7 +395,7 @@ public class TataRekeningPhase3ApplicationTest
             _tataRekeningRepo.Object, _auditRepo.Object, _unitOfWork.Object, _currentUser);
 
         var result = await handler.Handle(
-            new ReopenBillingCommand(RegId, "Koreksi charge source"),
+            new ReopenBillingCommand(RegId, "Koreksi charge source", PetugasVerif),
             CancellationToken.None);
 
         result.Summary.Status.Should().Be(TataRekeningStatusEnum.Opened);

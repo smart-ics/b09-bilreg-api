@@ -17,7 +17,7 @@ public enum FinancialVerificationAction
 public record FinancialVerificationCommand(
     string RegId,
     FinancialVerificationAction Action,
-    DateTime VerifiedAt) : IRequest<FinancialVerificationResponse>, IRegKey;
+    DateTime VerifiedAt, string UserId) : IRequest<FinancialVerificationResponse>, IRegKey;
 
 public record FinancialVerificationResponse(TataRekeningSummaryDto Summary);
 
@@ -48,6 +48,7 @@ public class FinancialVerificationHandler : IRequestHandler<FinancialVerificatio
         CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.RegId);
+        Guard.Against.NullOrWhiteSpace(request.UserId);
 
         using var scope = _unitOfWork.Begin();
 
@@ -57,7 +58,7 @@ public class FinancialVerificationHandler : IRequestHandler<FinancialVerificatio
         switch (request.Action)
         {
             case FinancialVerificationAction.Verify:
-                var petugasVerif = _currentUser.GetActorUserId();
+                var petugasVerif = request.UserId; // _currentUser.GetActorUserId();
                 Guard.Against.NullOrWhiteSpace(petugasVerif);
                 var pendingMerges = _mergeRequestRepo.ListPendingByReg(request).ToList();
                 _verificationService.Verify(
