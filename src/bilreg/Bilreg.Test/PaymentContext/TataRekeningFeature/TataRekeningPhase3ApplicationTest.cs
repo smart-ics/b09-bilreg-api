@@ -29,7 +29,8 @@ public class TataRekeningPhase3ApplicationTest
     private readonly Mock<IUnitOfWorkScope> _unitOfWorkScope = new();
     private readonly Mock<ITransferReceivableService> _transferReceivableService = new();
     private readonly Mock<IAuditRepo> _auditRepo = new();
-    private readonly FixedCurrentUserContext _currentUser = new();
+    private readonly FixedCurrentUserContext _currentUser =
+        new(TataRekeningDomainTestHelper.DefaultPetugasVerif);
 
     public TataRekeningPhase3ApplicationTest()
     {
@@ -189,11 +190,12 @@ public class TataRekeningPhase3ApplicationTest
             _tataRekeningRepo.Object,
             _mergeRequestRepo.Object,
             TataRekeningDomainTestHelper.VerificationService,
-            _unitOfWork.Object);
+            _unitOfWork.Object,
+            _currentUser);
 
         var result = await handler.Handle(
             new FinancialVerificationCommand(
-                RegId, FinancialVerificationAction.Verify, PetugasVerif, TestDate),
+                RegId, FinancialVerificationAction.Verify, TestDate),
             CancellationToken.None);
 
         result.Summary.FinancialVerificationStatus.Should().Be(FinancialVerificationStatusEnum.Valid);
@@ -213,11 +215,12 @@ public class TataRekeningPhase3ApplicationTest
             _tataRekeningRepo.Object,
             _mergeRequestRepo.Object,
             TataRekeningDomainTestHelper.VerificationService,
-            _unitOfWork.Object);
+            _unitOfWork.Object,
+            _currentUser);
 
         var act = () => handler.Handle(
             new FinancialVerificationCommand(
-                RegId, FinancialVerificationAction.Verify, PetugasVerif, TestDate),
+                RegId, FinancialVerificationAction.Verify, TestDate),
             CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
@@ -235,11 +238,12 @@ public class TataRekeningPhase3ApplicationTest
             _tataRekeningRepo.Object,
             _mergeRequestRepo.Object,
             TataRekeningDomainTestHelper.VerificationService,
-            _unitOfWork.Object);
+            _unitOfWork.Object,
+            _currentUser);
 
         var result = await handler.Handle(
             new FinancialVerificationCommand(
-                RegId, FinancialVerificationAction.RequireAdjustment, PetugasVerif, TestDate),
+                RegId, FinancialVerificationAction.RequireAdjustment, TestDate),
             CancellationToken.None);
 
         result.Summary.FinancialVerificationStatus
@@ -286,10 +290,10 @@ public class TataRekeningPhase3ApplicationTest
         SetupTataRekeningLoad(RegId, tataRekening);
 
         var handler = new FinalizeFinancialResponsibilityHandler(
-            _tataRekeningRepo.Object, _trsBillingRepo.Object, _unitOfWork.Object);
+            _tataRekeningRepo.Object, _trsBillingRepo.Object, _unitOfWork.Object, _currentUser);
 
         var result = await handler.Handle(
-            new FinalizeFinancialResponsibilityCommand(RegId, PetugasVerif, TestDate),
+            new FinalizeFinancialResponsibilityCommand(RegId, TestDate),
             CancellationToken.None);
 
         result.Summary.Status.Should().Be(TataRekeningStatusEnum.Finalized);
@@ -413,10 +417,10 @@ public class TataRekeningPhase3ApplicationTest
         SetupTataRekeningLoad(RegId, tataRekening);
 
         var handler = new SettlementInitiationHandler(
-            _tataRekeningRepo.Object, _auditRepo.Object, _unitOfWork.Object);
+            _tataRekeningRepo.Object, _auditRepo.Object, _unitOfWork.Object, _currentUser);
 
         var result = await handler.Handle(
-            new SettlementInitiationCommand(RegId, PetugasVerif, TestDate),
+            new SettlementInitiationCommand(RegId, TestDate),
             CancellationToken.None);
 
         result.Summary.SettlementInitiated.Should().BeTrue();

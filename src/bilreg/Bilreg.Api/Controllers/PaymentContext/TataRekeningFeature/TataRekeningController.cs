@@ -1,6 +1,5 @@
 using Bilreg.Api.Controllers.PaymentContext.TataRekeningFeature.Contracts;
 using Bilreg.Application.PaymentContext.TataRekeningFeature.UseCases;
-using Bilreg.Application.Shared;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,16 +16,15 @@ namespace Bilreg.Api.Controllers.PaymentContext.TataRekeningFeature;
 public class TataRekeningController : ControllerBase
 {
     private readonly IMediator _mediator;
-    private readonly ICurrentUserContext _currentUser;
 
-    public TataRekeningController(IMediator mediator, ICurrentUserContext currentUser)
+    public TataRekeningController(IMediator mediator)
     {
         _mediator = mediator;
-        _currentUser = currentUser;
     }
 
     /// <summary>SOP-TR-01 — Open Tata Rekening workspace for a registration.</summary>
     [HttpGet("{regId}")]
+    
     [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -76,10 +74,9 @@ public class TataRekeningController : ControllerBase
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> Verify(string regId, [FromBody] FinancialVerificationRequest request)
     {
-        var petugasVerif = _currentUser.GetActorUserId();
         var verifiedAt = request.VerifiedAt ?? DateTime.UtcNow;
         var result = await _mediator.Send(
-            new FinancialVerificationCommand(regId, request.Action, petugasVerif, verifiedAt));
+            new FinancialVerificationCommand(regId, request.Action, verifiedAt));
         return Ok(new JSendOk(TataRekeningApiMapper.ToApiResponse(result)));
     }
 
@@ -131,10 +128,9 @@ public class TataRekeningController : ControllerBase
         string regId,
         [FromBody] FinalizeFinancialResponsibilityRequest? request)
     {
-        var petugasVerif = _currentUser.GetActorUserId();
         var finalizationDate = request?.FinalizationDate ?? DateTime.UtcNow;
         var result = await _mediator.Send(
-            new FinalizeFinancialResponsibilityCommand(regId, petugasVerif, finalizationDate));
+            new FinalizeFinancialResponsibilityCommand(regId, finalizationDate));
         return Ok(new JSendOk(TataRekeningApiMapper.ToApiResponse(result)));
     }
 
@@ -183,10 +179,9 @@ public class TataRekeningController : ControllerBase
         string regId,
         [FromBody] SettlementInitiationRequest? request)
     {
-        var petugasVerif = _currentUser.GetActorUserId();
         var initiatedAt = request?.InitiatedAt ?? DateTime.UtcNow;
         var result = await _mediator.Send(
-            new SettlementInitiationCommand(regId, petugasVerif, initiatedAt));
+            new SettlementInitiationCommand(regId, initiatedAt));
         return Ok(new JSendOk(TataRekeningApiMapper.ToApiResponse(result)));
     }
 }

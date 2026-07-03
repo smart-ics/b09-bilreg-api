@@ -12,7 +12,6 @@ namespace Bilreg.Application.PaymentContext.TataRekeningFeature.UseCases;
 
 public record SettlementInitiationCommand(
     string RegId,
-    string PetugasVerif,
     DateTime InitiatedAt) : IRequest<SettlementInitiationResponse>, IRegKey;
 
 public record SettlementInitiationResponse(TataRekeningSummaryDto Summary);
@@ -22,15 +21,18 @@ public class SettlementInitiationHandler : IRequestHandler<SettlementInitiationC
     private readonly ITataRekeningRepo _tataRekeningRepo;
     private readonly IAuditRepo _auditRepo;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUserContext _currentUser;
 
     public SettlementInitiationHandler(
         ITataRekeningRepo tataRekeningRepo,
         IAuditRepo auditRepo,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ICurrentUserContext currentUser)
     {
         _tataRekeningRepo = tataRekeningRepo;
         _auditRepo = auditRepo;
         _unitOfWork = unitOfWork;
+        _currentUser = currentUser;
     }
 
     public Task<SettlementInitiationResponse> Handle(
@@ -38,26 +40,28 @@ public class SettlementInitiationHandler : IRequestHandler<SettlementInitiationC
         CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.RegId);
-        Guard.Against.NullOrWhiteSpace(request.PetugasVerif);
+
+        var petugasVerif = _currentUser.GetActorUserId();
+        Guard.Against.NullOrWhiteSpace(petugasVerif);
 
         using var scope = _unitOfWork.Begin();
 
         var tataRekening = _tataRekeningRepo.LoadEntity(request)
             .GetValueOrThrow($"Tata Rekening '{request.RegId}' tidak ditemukan.");
 
-        tataRekening.InitiateSettlement(request.PetugasVerif, request.InitiatedAt);
+        tataRekening.InitiateSettlement(petugasVerif, request.InitiatedAt);
 
         _tataRekeningRepo.SaveChanges(tataRekening);
 
         var audit = AuditLog.Create(
-            userId: request.PetugasVerif,
+            userId: petugasVerif,
             actionType: "TATA_REKENING_SETTLEMENT_INITIATION",
             entityName: nameof(TataRekeningModel),
             entityId: request.RegId,
             originalDataJson: AuditLogSnapshotJson.Serialize(new
             {
                 request.RegId,
-                request.PetugasVerif,
+                PetugasVerif = petugasVerif,
                 request.InitiatedAt
             }),
             correlationId: request.RegId);

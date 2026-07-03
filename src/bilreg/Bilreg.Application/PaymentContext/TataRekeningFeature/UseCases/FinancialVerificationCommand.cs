@@ -17,7 +17,6 @@ public enum FinancialVerificationAction
 public record FinancialVerificationCommand(
     string RegId,
     FinancialVerificationAction Action,
-    string PetugasVerif,
     DateTime VerifiedAt) : IRequest<FinancialVerificationResponse>, IRegKey;
 
 public record FinancialVerificationResponse(TataRekeningSummaryDto Summary);
@@ -28,17 +27,20 @@ public class FinancialVerificationHandler : IRequestHandler<FinancialVerificatio
     private readonly IMergeRequestRepo _mergeRequestRepo;
     private readonly IFinancialVerificationDomainService _verificationService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUserContext _currentUser;
 
     public FinancialVerificationHandler(
         ITataRekeningRepo tataRekeningRepo,
         IMergeRequestRepo mergeRequestRepo,
         IFinancialVerificationDomainService verificationService,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ICurrentUserContext currentUser)
     {
         _tataRekeningRepo = tataRekeningRepo;
         _mergeRequestRepo = mergeRequestRepo;
         _verificationService = verificationService;
         _unitOfWork = unitOfWork;
+        _currentUser = currentUser;
     }
 
     public Task<FinancialVerificationResponse> Handle(
@@ -55,11 +57,12 @@ public class FinancialVerificationHandler : IRequestHandler<FinancialVerificatio
         switch (request.Action)
         {
             case FinancialVerificationAction.Verify:
-                Guard.Against.NullOrWhiteSpace(request.PetugasVerif);
+                var petugasVerif = _currentUser.GetActorUserId();
+                Guard.Against.NullOrWhiteSpace(petugasVerif);
                 var pendingMerges = _mergeRequestRepo.ListPendingByReg(request).ToList();
                 _verificationService.Verify(
                     tataRekening,
-                    request.PetugasVerif,
+                    petugasVerif,
                     request.VerifiedAt,
                     pendingMerges);
                 break;

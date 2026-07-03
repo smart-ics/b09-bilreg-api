@@ -10,7 +10,6 @@ namespace Bilreg.Application.PaymentContext.TataRekeningFeature.UseCases;
 
 public record FinalizeFinancialResponsibilityCommand(
     string RegId,
-    string PetugasVerif,
     DateTime FinalizationDate) : IRequest<FinalizeFinancialResponsibilityResponse>, IRegKey;
 
 public record FinalizeFinancialResponsibilityResponse(TataRekeningSummaryDto Summary);
@@ -21,15 +20,18 @@ public class FinalizeFinancialResponsibilityHandler
     private readonly ITataRekeningRepo _tataRekeningRepo;
     private readonly ITrsBillingRepo _trsBillingRepo;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentUserContext _currentUser;
 
     public FinalizeFinancialResponsibilityHandler(
         ITataRekeningRepo tataRekeningRepo,
         ITrsBillingRepo trsBillingRepo,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ICurrentUserContext currentUser)
     {
         _tataRekeningRepo = tataRekeningRepo;
         _trsBillingRepo = trsBillingRepo;
         _unitOfWork = unitOfWork;
+        _currentUser = currentUser;
     }
 
     public Task<FinalizeFinancialResponsibilityResponse> Handle(
@@ -37,14 +39,16 @@ public class FinalizeFinancialResponsibilityHandler
         CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.RegId);
-        Guard.Against.NullOrWhiteSpace(request.PetugasVerif);
+
+        var petugasVerif = _currentUser.GetActorUserId();
+        Guard.Against.NullOrWhiteSpace(petugasVerif);
 
         using var scope = _unitOfWork.Begin();
 
         var tataRekening = _tataRekeningRepo.LoadEntity(request)
             .GetValueOrThrow($"Tata Rekening '{request.RegId}' tidak ditemukan.");
 
-        tataRekening.FinalizeFinancialResponsibility(request.PetugasVerif, request.FinalizationDate);
+        tataRekening.FinalizeFinancialResponsibility(petugasVerif, request.FinalizationDate);
 
         _tataRekeningRepo.SaveChanges(tataRekening);
         foreach (var bill in tataRekening.ListTrsBill)
