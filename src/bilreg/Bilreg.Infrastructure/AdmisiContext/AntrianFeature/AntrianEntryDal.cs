@@ -196,7 +196,7 @@ public class AntrianEntryDal : IAntrianEntryDal
         return conn.Read<AntaianEntryOutStandingDto>(sql);
     }
 
-    public void UpdateOutStanding(AntaianEntryOutStandingDto data
+    public void UpdateOutStanding(AntaianEntryOutStandingDto data)
     {
         const string sql = """
            UPDATE
