@@ -32,4 +32,13 @@
     <ProjectReference Include="..\Bilreg.Application\Bilreg.Application.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="AdmisiRanapContext\" />
+    <Folder Include="AdmisiRanapContext\OpnameRequestFeature\" />
+    <Folder Include="AdmisiRanapContext\ReservationFeature\" />
+    <Folder Include="AdmisiRanapContext\AdmissionFeature\" />
+    <Folder Include="AdmisiRanapContext\WaitingListFeature\" />
+    <Folder Include="AdmisiRanapContext\Integration\" />
+  </ItemGroup>
+
 </Project>

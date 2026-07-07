@@ -38,4 +38,12 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="AdmisiRanapContext\" />
+    <Folder Include="AdmisiRanapContext\OpnameRequestFeature\" />
+    <Folder Include="AdmisiRanapContext\ReservationFeature\" />
+    <Folder Include="AdmisiRanapContext\AdmissionFeature\" />
+    <Folder Include="AdmisiRanapContext\WaitingListFeature\" />
+  </ItemGroup>
+
 </Project>

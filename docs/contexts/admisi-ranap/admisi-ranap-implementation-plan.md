@@ -185,7 +185,7 @@ Bilreg.Test           → Domain, handler, repo, optional DAL integration tests
 | Validation | `Guard` in handler; invariants in model |
 | API | `JSendOk`; route prefix `api/admisi-ranap/...` |
 | Transaction | `TransHelper.NewScope()` in handler when cross-repo |
-| **Tables** | Prefix **`BILRG_`** (e.g. `BILRG_Admission`) |
+| **Tables** | `BILRG_Adm*` for admission workflow roots; `BILRG_BedWaitingList` for Waiting List |
 
 Per `docs/ENGINEERING.md` §14: domain events are **allowed but optional**. Prefer **direct orchestration** in use-case handlers. If operational timeline rows are needed, follow `docs/concepts/operational-events.md` — not event sourcing.
 
@@ -248,10 +248,10 @@ Bilreg.Api/Controllers/AdmisiRanapContext/
   WaitingListController.cs
 
 Bilreg.SqlDb/AdmisiRanapContext/
-  OpnameRequestFeature/BILRG_OpnameRequest.sql
-  ReservationFeature/BILRG_Reservation.sql
-  AdmissionFeature/BILRG_Admission.sql
-  WaitingListFeature/BILRG_WaitingList.sql
+  OpnameRequestFeature/BILRG_AdmOpnameRequest.sql
+  ReservationFeature/BILRG_AdmReservation.sql
+  AdmissionFeature/BILRG_AdmAdmission.sql
+  WaitingListFeature/BILRG_BedWaitingList.sql
 
 Bilreg.Test/AdmisiRanapContext/
   OpnameRequestFeature/...
@@ -317,27 +317,27 @@ Behaviour and lifecycles are defined in `admisi-ranap-domain.md`. This section r
 
 ### 7.1 Tables
 
-**Prefix:** `BILRG_` for all Admisi Ranap tables.
+**Naming:**
 
 | Table | Purpose |
 |-------|---------|
-| `BILRG_OpnameRequest` | Opname Request aggregate root |
-| `BILRG_Reservation` | Reservation aggregate root |
-| `BILRG_Admission` | Admission aggregate root |
-| `BILRG_WaitingList` | Waiting List aggregate root (independent operational working set) |
+| `BILRG_AdmOpnameRequest` | Opname Request aggregate root |
+| `BILRG_AdmReservation` | Reservation aggregate root |
+| `BILRG_AdmAdmission` | Admission aggregate root |
+| `BILRG_BedWaitingList` | Waiting List aggregate root (independent operational working set) |
 
 Detail tables added only when aggregate owns child collections requiring deterministic ordering. Use composite PK `(ParentId, ItemNo)` per `DATABASE.md`.
 
-**Standards:** `VARCHAR(12)` PK on roots, no FK constraints, audit + void columns, `INT` status enums, `'3000-01-01'` empty dates, PascalCase columns.
+**Standards:** Application-generated PK on roots (see §7.3 for per-aggregate length), no FK constraints, audit + void columns, `INT` status enums, `'3000-01-01'` empty dates, PascalCase columns.
 
 Logical references (no DB FK):
 
-| Column (conceptual) | References |
-|---------------------|------------|
-| `OpnameRequestId` on Admission | Opname Request (optional) |
-| `ReservationId` on Admission | Reservation (optional) |
-| `AdmissionId` on Waiting List | Admission (required) |
-| `PasienId`, `DokterId`, `BangsalId` | External master / Ward |
+| Column (conceptual) | Type | References |
+|---------------------|------|------------|
+| `OpnameRequestId` on Admission | `VARCHAR(12)` | Opname Request (optional) |
+| `ReservationId` on Admission | `VARCHAR(12)` | Reservation (optional) |
+| `AdmissionId` on Waiting List | `VARCHAR(10)` | Admission (required) |
+| `PasienId`, `DokterId`, `BangsalId` | per master | External master / Ward |
 
 Snapshot columns (Patient name, Doctor name, Ward name) per `DATABASE.md` §9 where operationally queried.
 
@@ -345,17 +345,31 @@ Snapshot columns (Patient name, Doctor name, Ward name) per `DATABASE.md` §9 wh
 
 | Table | Index | Purpose |
 |-------|-------|---------|
-| `BILRG_WaitingList` | `(WaitingListStatus, CrtDate)` | Active queue scan |
-| `BILRG_WaitingList` | `(BangsalId, WaitingListStatus)` | Ward-filtered queue |
-| `BILRG_Admission` | `(AdmissionStatus, CrtDate)` | Admission lookup |
-| `BILRG_Admission` | `(PasienId, AdmissionStatus)` | Patient admission history |
-| `BILRG_OpnameRequest` | `(OpnameRequestStatus, CrtDate)` | Open requests |
-| `BILRG_Reservation` | `(ReservationStatus, PlannedDate)` | Planned admissions |
+| `BILRG_BedWaitingList` | `(WaitingListStatus, CrtDate)` | Active queue scan |
+| `BILRG_BedWaitingList` | `(BangsalId, WaitingListStatus)` | Ward-filtered queue |
+| `BILRG_AdmAdmission` | `(AdmissionStatus, CrtDate)` | Admission lookup |
+| `BILRG_AdmAdmission` | `(PasienId, AdmissionStatus)` | Patient admission history |
+| `BILRG_AdmOpnameRequest` | `(OpnameRequestStatus, CrtDate)` | Open requests |
+| `BILRG_AdmReservation` | `(ReservationStatus, PlannedDate)` | Planned admissions |
 
 ### 7.3 Identifier strategy
 
-- Aggregate root IDs → `VARCHAR(12)`, application-generated (ULID or `INunaCounterBL` per project convention).
-- Status → `INT` enum storage.
+Application-generated opaque IDs. Status columns → `INT` enum storage.
+
+| Aggregate | PK column | SQL type | Generator | Prefix |
+|-----------|-----------|----------|-----------|--------|
+| Admission | `AdmissionId` | `VARCHAR(10)` | `NunaId.NewLegacyCompact()` | `RG` |
+| Opname Request | `OpnameRequestId` | `VARCHAR(12)` | `NunaId.NewLegacy()` | `OPN` |
+| Reservation | `ReservationId` | `VARCHAR(12)` | `NunaId.NewLegacy()` | `RES` |
+| Waiting List | `WaitingListId` | `VARCHAR(12)` | `NunaId.NewLegacy()` | `WTL` |
+
+**Examples (illustrative):** `RG00001234`, `OPN000000001`, `RES000000001`, `WTL000000001`.
+
+**Rules:**
+
+- Admission uses the compact legacy format aligned with existing registration identifiers (`RG` prefix, 10 chars).
+- All other aggregate roots use standard legacy format (`VARCHAR(12)`).
+- Foreign-key columns must match the referenced aggregate PK width (`AdmissionId` → `VARCHAR(10)` on `BILRG_BedWaitingList`).
 
 **Skill:** `docs/skills/feature-persistence-generation.md`
 
@@ -503,7 +517,7 @@ Recommended order minimizes risk: **new context, new tables, new routes** — no
 |--|--|
 | **Objective** | Durable storage with one repository per aggregate root; independent Waiting List persistence. |
 | **Scope** | SQL scripts, DTOs, DALs, repos; repo unit tests; optional DAL integration tests. |
-| **Deliverables** | `BILRG_*` tables; `OpnameRequestRepo`, `ReservationRepo`, `AdmissionRepo`, `WaitingListRepo`; `IWaitingListWorklistDal` for queue projection. |
+| **Deliverables** | `BILRG_AdmOpnameRequest`, `BILRG_AdmReservation`, `BILRG_AdmAdmission`, `BILRG_BedWaitingList`; `OpnameRequestRepo`, `ReservationRepo`, `AdmissionRepo`, `WaitingListRepo`; `IWaitingListWorklistDal` for queue projection. |
 | **Dependencies** | Phase 1. |
 | **Acceptance criteria** | Aggregate round-trip save/load; active Waiting List query does not scan Admission history; repos contain no workflow orchestration. |
 
@@ -621,7 +635,7 @@ Recommended order minimizes risk: **new context, new tables, new routes** — no
 
 ### 13.2 Deployment order
 
-1. Deploy SQL create scripts (`BILRG_OpnameRequest`, `BILRG_Reservation`, `BILRG_Admission`, `BILRG_WaitingList`).  
+1. Deploy SQL create scripts (`BILRG_AdmOpnameRequest`, `BILRG_AdmReservation`, `BILRG_AdmAdmission`, `BILRG_BedWaitingList`).  
 2. Deploy application binaries (new handlers inactive until API routed).  
 3. Enable API routes.  
 4. Configure permissions in identity provider.  
@@ -684,7 +698,7 @@ Phases 1–4 deliver a vertically testable module. Phases 5–7 make it producti
 
 | Phase | Status | Notes |
 |-------|--------|-------|
-| 0 — Scaffolding | **PLANNED** | — |
+| 0 — Scaffolding | **LIVE** | See `admisi-ranap-phase-0-implementation-report.md` |
 | 1 — Domain | **PLANNED** | — |
 | 2 — Persistence | **PLANNED** | — |
 | 3 — Use cases | **PLANNED** | — |
