@@ -8,7 +8,7 @@ namespace Bilreg.Api.Controllers.AdmisiContext.RegSub
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    //[Authorize]
     public class KarcisController : ControllerBase
     {
         private readonly IMediator _mediator;

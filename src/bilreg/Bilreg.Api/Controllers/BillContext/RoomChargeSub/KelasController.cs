@@ -9,7 +9,7 @@ namespace Bilreg.Api.Controllers.BillContext.RoomChargeSub
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    //[Authorize]
     public class KelasController : ControllerBase
     {
         private readonly IMediator _mediator;

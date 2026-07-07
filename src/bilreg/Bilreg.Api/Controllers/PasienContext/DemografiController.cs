@@ -8,7 +8,7 @@ namespace Bilreg.Api.Controllers.PasienContext;
 
 [Route("api/[controller]")]
 [ApiController]
-[Authorize]
+//[Authorize]
 public class DemografiController : Controller
 {
     private readonly IMediator _mediator;

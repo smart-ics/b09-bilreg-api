@@ -9,7 +9,7 @@ namespace Bilreg.Api.Controllers.ChargeContext;
 
 [Route("api/tarif-policy")]
 [ApiController]
-[Authorize]
+//[Authorize]
 public class TarifPolicyController : Controller
 {
     private readonly IMediator _mediator;

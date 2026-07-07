@@ -9,7 +9,7 @@ namespace Bilreg.Api.Controllers.AdmisiContext.JaminanSub
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    //[Authorize]
     public class TipeJaminanController : ControllerBase
     {
         private readonly IMediator _mediator;

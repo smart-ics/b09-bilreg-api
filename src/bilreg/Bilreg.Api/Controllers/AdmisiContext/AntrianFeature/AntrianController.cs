@@ -8,7 +8,7 @@ namespace Bilreg.Api.Controllers.AdmisiContext.AntrianFeature;
 
 [Route("api/[controller]")]
 [ApiController]
-[Authorize]
+//[Authorize]
 public class AntrianController : Controller
 {
     private readonly IMediator _mediator;
