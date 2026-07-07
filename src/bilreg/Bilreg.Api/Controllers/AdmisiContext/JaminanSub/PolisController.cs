@@ -10,7 +10,7 @@ namespace Bilreg.Api.Controllers.AdmisiContext.JaminanSub;
 
 [Route("api/[controller]")]
 [ApiController]
-[Authorize]
+//[Authorize]
 public class PolisController : Controller
 {
     private readonly IMediator _mediator;

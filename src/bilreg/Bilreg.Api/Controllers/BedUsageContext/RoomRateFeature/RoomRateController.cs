@@ -8,7 +8,7 @@ namespace Bilreg.Api.Controllers.BedUsageContext.RoomRateFeature;
 
 [Route("api/[controller]")]
 [ApiController]
-[Authorize]
+//[Authorize]
 public class RoomRateController : ControllerBase
 {
     private readonly IMediator _mediator;

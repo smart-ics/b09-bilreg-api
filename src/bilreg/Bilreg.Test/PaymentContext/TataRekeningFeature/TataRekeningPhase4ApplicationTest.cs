@@ -24,7 +24,7 @@ public class TataRekeningPhase4ApplicationTest
             _transferReceivableService.Object,
             _auditRepo.Object);
 
-        var act = () => handler.Handle(new MergeBillingCommand("MR-MERGE"), CancellationToken.None);
+        var act = () => handler.Handle(new MergeBillingCommand("MR-MERGE", "UserId"), CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
         phase3.UnitOfWorkScope.Verify(s => s.Complete(), Times.Never);
@@ -39,7 +39,7 @@ public class TataRekeningPhase4ApplicationTest
             _transferReceivableService.Object,
             _auditRepo.Object);
 
-        await handler.Handle(new MergeBillingCommand("MR-MERGE"), CancellationToken.None);
+        await handler.Handle(new MergeBillingCommand("MR-MERGE", "UserId"), CancellationToken.None);
 
         _transferReceivableService.Verify(
             s => s.Transfer(TataRekeningPhase3ApplicationTestHarness.SourceRegId, TataRekeningPhase3ApplicationTestHarness.RegId),

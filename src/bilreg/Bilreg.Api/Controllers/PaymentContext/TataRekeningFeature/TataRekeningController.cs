@@ -186,4 +186,13 @@ public class TataRekeningController : ControllerBase
             new SettlementInitiationCommand(regId, petugas, initiatedAt));
         return Ok(new JSendOk(TataRekeningApiMapper.ToApiResponse(result)));
     }
+
+    [HttpGet]
+    [Route("summaryBill/{regId}")]
+    public async Task<IActionResult> GetSummaryBills(string regId)
+    {
+        var query = new TataRekeningListSummaryBillQuery(regId);
+        var result = await _mediator.Send(query);
+        return Ok(new JSendOk(result));
+    }
 }
