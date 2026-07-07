@@ -175,7 +175,8 @@ Bilreg.Test           → Domain, handler, repo, optional DAL integration tests
 | Context name | `AdmisiRanapContext` |
 | Domain type | `{Name}Model` (e.g. `AdmissionModel`) |
 | Value objects | `{Name}Type`, `{Name}Reff` |
-| Key | `I{Name}Key` |
+| Key | `I{Name}Key` (Admission reuses `IRegKey` / `RegId`) |
+| Accommodation attrs | `KelasRawat` (`KelasReff`), `Bangsal` (`BangsalReff`) |
 | Status enum | `{Name}StatusEnum` |
 | Command / Query | `Rir{Name}{Action}Cmd`, `Rir{Name}{Action}Qry` (`Rir` = Rawat Inap Ranap prefix) |
 | Handler | `Rir{Name}{Action}Handler` |
@@ -204,7 +205,6 @@ Bilreg.Domain/AdmisiRanapContext/
     ReservationModel.cs
     ReservationStatusEnum.cs
   AdmissionFeature/
-    IAdmissionKey.cs
     AdmissionModel.cs
     AdmissionStatusEnum.cs
   WaitingListFeature/
@@ -297,13 +297,13 @@ Behaviour and lifecycles are defined in `admisi-ranap-domain.md`. This section r
 |------|--------|
 | States | Waiting → Accepted → Closed |
 | Key rules | BR-RI-007–BR-RI-010, BR-RI-008 (≤1 active per Admission) |
-| Owns | Waiting status, priority, accommodation requirements, destination Ward info |
+| Owns | Waiting status, priority, Kelas Rawat (`KelasReff`), destination Bangsal (`BangsalReff`) |
 | Independent persistence | Separate table(s) and repo per ADR-003 |
 | Ward contract | Ward consumes Waiting List, not Admission (ADR-004) |
 
 ### 6.5 Domain implementation order
 
-1. Status enums + keys + shared value objects (Care Class, Care Level refs)  
+1. Status enums + keys; reuse `KelasReff`, `BangsalReff` from WardFeature  
 2. `OpnameRequestModel` + transitions + tests  
 3. `ReservationModel` + transitions + tests  
 4. `AdmissionModel` + transitions + tests  
@@ -334,12 +334,14 @@ Logical references (no DB FK):
 
 | Column (conceptual) | Type | References |
 |---------------------|------|------------|
+| `RegId` on Admission | `VARCHAR(10)` | Registration episode key (`RG` + 8 digits) |
 | `OpnameRequestId` on Admission | `VARCHAR(12)` | Opname Request (optional) |
 | `ReservationId` on Admission | `VARCHAR(12)` | Reservation (optional) |
-| `AdmissionId` on Waiting List | `VARCHAR(10)` | Admission (required) |
-| `PasienId`, `DokterId`, `BangsalId` | per master | External master / Ward |
+| `FulfilledRegId` / `RealizedRegId` | `VARCHAR(10)` | Logical refs to Admission (`RegId`) |
+| `RegId` on Waiting List | `VARCHAR(10)` | Admission (`IRegKey`) |
+| `PasienId`, `DokterId`, `KelasId`, `BangsalId` | per master | External master / Ward |
 
-Snapshot columns (Patient name, Doctor name, Ward name) per `DATABASE.md` §9 where operationally queried.
+Snapshot columns (Patient name, Doctor name, Kelas name, Bangsal name) per `DATABASE.md` §9 where operationally queried.
 
 ### 7.2 Indexes (initial)
 
@@ -358,18 +360,18 @@ Application-generated opaque IDs. Status columns → `INT` enum storage.
 
 | Aggregate | PK column | SQL type | Generator | Prefix |
 |-----------|-----------|----------|-----------|--------|
-| Admission | `AdmissionId` | `VARCHAR(10)` | `NunaId.NewLegacyCompact()` | `RG` |
-| Opname Request | `OpnameRequestId` | `VARCHAR(12)` | `NunaId.NewLegacy()` | `OPN` |
-| Reservation | `ReservationId` | `VARCHAR(12)` | `NunaId.NewLegacy()` | `RES` |
-| Waiting List | `WaitingListId` | `VARCHAR(12)` | `NunaId.NewLegacy()` | `WTL` |
+| Admission | `RegId` | `VARCHAR(10)` | Sequencer / `RG{n:D8}` (see `RegFactory`) | `RG` |
+| Opname Request | `OpnameRequestId` | `VARCHAR(12)` | `NunaId.New("OPN")` | `OPN` |
+| Reservation | `ReservationId` | `VARCHAR(12)` | `NunaId.New("RES")` | `RES` |
+| Waiting List | `WaitingListId` | `VARCHAR(12)` | `NunaId.New("WTL")` | `WTL` |
 
-**Examples (illustrative):** `RG00001234`, `OPN000000001`, `RES000000001`, `WTL000000001`.
+**Examples (illustrative):** `RG00001234`, `OPN064DMB1V6`, `RES064DMB1V6`, `WTL064DMB1V6`.
 
 **Rules:**
 
-- Admission uses the compact legacy format aligned with existing registration identifiers (`RG` prefix, 10 chars).
-- All other aggregate roots use standard legacy format (`VARCHAR(12)`).
-- Foreign-key columns must match the referenced aggregate PK width (`AdmissionId` → `VARCHAR(10)` on `BILRG_BedWaitingList`).
+- Admission uses compact legacy registration format (`RG` prefix, 10 chars) aligned with `RegFactory`.
+- All other aggregate roots use standard `NunaId.New` 3-letter prefix format (`VARCHAR(12)`).
+- Foreign-key columns referencing Admission use `RegId` (`VARCHAR(10)`).
 
 **Skill:** `docs/skills/feature-persistence-generation.md`
 
@@ -699,7 +701,7 @@ Phases 1–4 deliver a vertically testable module. Phases 5–7 make it producti
 | Phase | Status | Notes |
 |-------|--------|-------|
 | 0 — Scaffolding | **LIVE** | See `admisi-ranap-phase-0-implementation-report.md` |
-| 1 — Domain | **PLANNED** | — |
+| 1 — Domain | **LIVE** | See `admisi-ranap-phase-1-implementation-report.md` |
 | 2 — Persistence | **PLANNED** | — |
 | 3 — Use cases | **PLANNED** | — |
 | 4 — API | **PLANNED** | — |

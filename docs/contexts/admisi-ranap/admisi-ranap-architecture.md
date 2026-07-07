@@ -290,6 +290,8 @@ Owns
 
 - Reservation information
 - Reservation status
+- Kelas Rawat (`KelasReff`)
+- Destination Bangsal (`BangsalReff`)
 
 Consistency Boundary
 
@@ -307,6 +309,8 @@ Owns
 - Admission status
 - Reservation realization
 - Opname Request fulfillment
+- Kelas Rawat (`KelasReff`)
+- Destination Bangsal (`BangsalReff`)
 
 Does not own
 
@@ -329,8 +333,8 @@ Owns
 
 - Waiting status
 - Waiting priority
-- Accommodation requirements
-- Destination Ward information
+- Kelas Rawat (`KelasReff`)
+- Destination Bangsal (`BangsalReff`)
 
 Does not own
 

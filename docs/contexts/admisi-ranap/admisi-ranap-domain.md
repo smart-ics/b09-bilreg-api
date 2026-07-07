@@ -36,8 +36,8 @@ Room allocation and Bed allocation are outside this business domain and belong t
 | Reservation | Administrative plan for a future inpatient admission. |
 | Admission | Administrative acceptance of a patient into an inpatient episode. |
 | Waiting List | Represents an Admission awaiting suitable accommodation before the next Bed Assignment. |
-| Care Class | Accommodation class determined by insurance entitlement or patient preference. |
-| Care Level | Clinical level of care required by the patient. |
+| Kelas Rawat | Accommodation class (kelas perawatan) determined by insurance entitlement or patient preference; persisted as `KelasReff`. |
+| Bangsal | Destination inpatient ward responsible for accommodating the patient; persisted as `BangsalReff`. |
 
 ---
 
@@ -159,6 +159,8 @@ Business Responsibility:
 
 Maintain planned inpatient admissions before administrative admission.
 
+Reservation owns Kelas Rawat and destination Bangsal for planning.
+
 ---
 
 ### Admission
@@ -175,6 +177,7 @@ Admission owns:
 - Administrative status
 - Reservation realization
 - Opname Request fulfillment
+- Kelas Rawat and destination Bangsal (planning attributes; not room/bed allocation)
 
 Admission does **not** own patient accommodation.
 
@@ -192,7 +195,8 @@ Waiting List owns:
 
 - Waiting status
 - Waiting priority
-- Accommodation requirements
+- Kelas Rawat (`KelasReff`)
+- Destination Bangsal (`BangsalReff`)
 
 Waiting List is independent from Ward operations.
 
