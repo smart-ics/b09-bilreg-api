@@ -2,10 +2,12 @@ using Bilreg.Application.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
 using Bilreg.Application.AdmisiRanapContext.Integration;
 using Bilreg.Application.AdmisiRanapContext.ReservationFeature;
+using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
+using Bilreg.Domain.Shared.AuditLogFeature;
 using FluentAssertions;
 using Moq;
 using Nuna.Lib.PatternHelper;
@@ -17,6 +19,7 @@ public class AdmProcessReservationHandlerTest
     private readonly Mock<IAdmissionRepo> _admissionRepoMock = new();
     private readonly Mock<IReservationRepo> _reservationRepoMock = new();
     private readonly Mock<IWardAccommodationGateway> _wardGatewayMock = new();
+    private readonly Mock<IAuditRepo> _auditRepoMock = new();
 
     [Fact]
     public async Task UT01_GivenReservedReservation_WhenProcess_ThenRealizesAndSavesBoth()
@@ -57,6 +60,7 @@ public class AdmProcessReservationHandlerTest
         savedReservation.RealizedRegId.Should().Be(response.RegId);
         _admissionRepoMock.Verify(x => x.SaveChanges(It.IsAny<AdmissionModel>()), Times.Once);
         _reservationRepoMock.Verify(x => x.SaveChanges(It.IsAny<ReservationModel>()), Times.Once);
+        _auditRepoMock.Verify(x => x.SaveChanges(It.IsAny<AuditLog>()), Times.Exactly(2));
     }
 
     [Fact]
@@ -92,7 +96,8 @@ public class AdmProcessReservationHandlerTest
         new(
             _admissionRepoMock.Object,
             _reservationRepoMock.Object,
-            _wardGatewayMock.Object);
+            _wardGatewayMock.Object,
+            _auditRepoMock.Object);
 
     private void SetupMasters()
     {

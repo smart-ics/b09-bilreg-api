@@ -1,3 +1,4 @@
+using Bilreg.Api.Filters;
 using Bilreg.Application.AdmisiRanapContext.ReservationFeature.UseCases;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
 using MediatR;
@@ -10,6 +11,7 @@ namespace Bilreg.Api.Controllers.AdmisiRanapContext;
 [Route("api/admisi-ranap/reservation")]
 [ApiController]
 [Authorize]
+[ServiceFilter(typeof(AdmisiRanapEnabledFilter))]
 public class ReservationController : ControllerBase
 {
     private readonly IMediator _mediator;

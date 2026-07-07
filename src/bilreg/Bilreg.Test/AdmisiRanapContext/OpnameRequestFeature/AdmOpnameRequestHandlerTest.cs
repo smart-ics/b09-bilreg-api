@@ -1,9 +1,11 @@
 using Bilreg.Application.AdmisiRanapContext.Integration;
 using Bilreg.Application.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Application.AdmisiRanapContext.OpnameRequestFeature.UseCases;
+using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
+using Bilreg.Domain.Shared.AuditLogFeature;
 using FluentAssertions;
 using Moq;
 using Nuna.Lib.PatternHelper;
@@ -15,6 +17,7 @@ public class AdmOpnameRequestHandlerTest
     private readonly Mock<IOpnameRequestRepo> _opnameRepoMock = new();
     private readonly Mock<IPatientAdministrationGateway> _patientGatewayMock = new();
     private readonly Mock<IDoctorServiceGateway> _doctorGatewayMock = new();
+    private readonly Mock<IAuditRepo> _auditRepoMock = new();
 
     [Fact]
     public async Task UT01_GivenValidRequest_WhenCreate_ThenSavesOpnameRequest()
@@ -33,7 +36,8 @@ public class AdmOpnameRequestHandlerTest
         var handler = new AdmCreateOpnameRequestHandler(
             _opnameRepoMock.Object,
             _patientGatewayMock.Object,
-            _doctorGatewayMock.Object);
+            _doctorGatewayMock.Object,
+            _auditRepoMock.Object);
 
         var response = await handler.Handle(
             new AdmCreateOpnameRequestCmd("P001", "D001", "Catatan", "user1"),
@@ -43,6 +47,7 @@ public class AdmOpnameRequestHandlerTest
         saved.Should().NotBeNull();
         saved!.OpnameRequestStatus.Should().Be(OpnameRequestStatusEnum.Requested);
         _opnameRepoMock.Verify(x => x.SaveChanges(It.IsAny<OpnameRequestModel>()), Times.Once);
+        _auditRepoMock.Verify(x => x.SaveChanges(It.IsAny<AuditLog>()), Times.Once);
     }
 
     [Fact]
@@ -63,13 +68,16 @@ public class AdmOpnameRequestHandlerTest
             .Setup(x => x.SaveChanges(It.IsAny<OpnameRequestModel>()))
             .Callback<OpnameRequestModel>(m => saved = m);
 
-        var handler = new AdmCancelOpnameRequestHandler(_opnameRepoMock.Object);
+        var handler = new AdmCancelOpnameRequestHandler(
+            _opnameRepoMock.Object,
+            _auditRepoMock.Object);
         await handler.Handle(
             new AdmCancelOpnameRequestCmd(requested.OpnameRequestId, "user2"),
             CancellationToken.None);
 
         saved.Should().NotBeNull();
         saved!.OpnameRequestStatus.Should().Be(OpnameRequestStatusEnum.Cancelled);
+        _auditRepoMock.Verify(x => x.SaveChanges(It.IsAny<AuditLog>()), Times.Once);
     }
 
     private static PasienReff SamplePasienReff() =>

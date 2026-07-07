@@ -2,11 +2,13 @@ using Bilreg.Application.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
 using Bilreg.Application.AdmisiRanapContext.Integration;
 using Bilreg.Application.AdmisiRanapContext.OpnameRequestFeature;
+using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
+using Bilreg.Domain.Shared.AuditLogFeature;
 using FluentAssertions;
 using Moq;
 using Nuna.Lib.PatternHelper;
@@ -18,6 +20,7 @@ public class AdmProcessOpnameRequestHandlerTest
     private readonly Mock<IAdmissionRepo> _admissionRepoMock = new();
     private readonly Mock<IOpnameRequestRepo> _opnameRepoMock = new();
     private readonly Mock<IWardAccommodationGateway> _wardGatewayMock = new();
+    private readonly Mock<IAuditRepo> _auditRepoMock = new();
 
     [Fact]
     public async Task UT01_GivenOpnameRequest_WhenProcess_ThenFulfillsOpnameAndSavesBoth()
@@ -57,6 +60,7 @@ public class AdmProcessOpnameRequestHandlerTest
         savedOpname.FulfilledRegId.Should().Be(response.RegId);
         _admissionRepoMock.Verify(x => x.SaveChanges(It.IsAny<AdmissionModel>()), Times.Once);
         _opnameRepoMock.Verify(x => x.SaveChanges(It.IsAny<OpnameRequestModel>()), Times.Once);
+        _auditRepoMock.Verify(x => x.SaveChanges(It.IsAny<AuditLog>()), Times.Exactly(2));
     }
 
     [Fact]
@@ -90,7 +94,8 @@ public class AdmProcessOpnameRequestHandlerTest
         new(
             _admissionRepoMock.Object,
             _opnameRepoMock.Object,
-            _wardGatewayMock.Object);
+            _wardGatewayMock.Object,
+            _auditRepoMock.Object);
 
     private void SetupMasters()
     {

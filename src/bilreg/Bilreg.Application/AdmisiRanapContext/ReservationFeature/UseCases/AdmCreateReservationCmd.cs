@@ -1,6 +1,8 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiRanapContext.Integration;
+using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
+using Bilreg.Domain.Shared.AuditLogFeature;
 using MediatR;
 
 namespace Bilreg.Application.AdmisiRanapContext.ReservationFeature.UseCases;
@@ -19,15 +21,18 @@ public class AdmCreateReservationHandler : IRequestHandler<AdmCreateReservationC
     private readonly IReservationRepo _reservationRepo;
     private readonly IPatientAdministrationGateway _patientGateway;
     private readonly IWardAccommodationGateway _wardGateway;
+    private readonly IAuditRepo _auditRepo;
 
     public AdmCreateReservationHandler(
         IReservationRepo reservationRepo,
         IPatientAdministrationGateway patientGateway,
-        IWardAccommodationGateway wardGateway)
+        IWardAccommodationGateway wardGateway,
+        IAuditRepo auditRepo)
     {
         _reservationRepo = reservationRepo;
         _patientGateway = patientGateway;
         _wardGateway = wardGateway;
+        _auditRepo = auditRepo;
     }
 
     public Task<AdmCreateReservationResponse> Handle(
@@ -51,6 +56,12 @@ public class AdmCreateReservationHandler : IRequestHandler<AdmCreateReservationC
             request.UserId);
 
         _reservationRepo.SaveChanges(reservation);
+
+        _auditRepo.SaveChanges(AuditLog.Create(
+            reservation.AuditTrail.Created,
+            "CREATE",
+            nameof(ReservationModel),
+            reservation.ReservationId));
 
         return Task.FromResult(new AdmCreateReservationResponse(reservation.ReservationId));
     }

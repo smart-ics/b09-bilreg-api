@@ -1,9 +1,11 @@
 using Bilreg.Application.AdmisiRanapContext.Integration;
 using Bilreg.Application.AdmisiRanapContext.ReservationFeature;
 using Bilreg.Application.AdmisiRanapContext.ReservationFeature.UseCases;
+using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
+using Bilreg.Domain.Shared.AuditLogFeature;
 using FluentAssertions;
 using Moq;
 using Nuna.Lib.PatternHelper;
@@ -15,6 +17,7 @@ public class AdmReservationHandlerTest
     private readonly Mock<IReservationRepo> _reservationRepoMock = new();
     private readonly Mock<IPatientAdministrationGateway> _patientGatewayMock = new();
     private readonly Mock<IWardAccommodationGateway> _wardGatewayMock = new();
+    private readonly Mock<IAuditRepo> _auditRepoMock = new();
 
     [Fact]
     public async Task UT01_GivenValidRequest_WhenCreate_ThenSavesReservation()
@@ -28,7 +31,8 @@ public class AdmReservationHandlerTest
         var handler = new AdmCreateReservationHandler(
             _reservationRepoMock.Object,
             _patientGatewayMock.Object,
-            _wardGatewayMock.Object);
+            _wardGatewayMock.Object,
+            _auditRepoMock.Object);
 
         var response = await handler.Handle(
             new AdmCreateReservationCmd(
@@ -42,6 +46,7 @@ public class AdmReservationHandlerTest
         response.ReservationId.Should().StartWith("RSV");
         saved.Should().NotBeNull();
         saved!.ReservationStatus.Should().Be(ReservationStatusEnum.Reserved);
+        _auditRepoMock.Verify(x => x.SaveChanges(It.IsAny<AuditLog>()), Times.Once);
     }
 
     [Fact]
@@ -66,7 +71,8 @@ public class AdmReservationHandlerTest
 
         var handler = new AdmMaintainReservationHandler(
             _reservationRepoMock.Object,
-            _wardGatewayMock.Object);
+            _wardGatewayMock.Object,
+            _auditRepoMock.Object);
 
         await handler.Handle(
             new AdmMaintainReservationCmd(
@@ -79,6 +85,7 @@ public class AdmReservationHandlerTest
 
         saved.Should().NotBeNull();
         saved!.ReservationStatus.Should().Be(ReservationStatusEnum.Maintained);
+        _auditRepoMock.Verify(x => x.SaveChanges(It.IsAny<AuditLog>()), Times.Once);
     }
 
     private void SetupMasters()

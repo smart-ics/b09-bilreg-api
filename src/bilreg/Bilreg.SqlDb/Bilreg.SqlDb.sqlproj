@@ -119,6 +119,7 @@
     <None Include="AdmisiRanapContext\AdmissionFeature\BILRG_AdmAdmission_M1_DropPasienSnapshot_Alter.sql" />
     <None Include="AdmisiRanapContext\WaitingListFeature\BILRG_BedWaitingList.sql" />
     <None Include="AdmisiRanapContext\WaitingListFeature\BILRG_BedWaitingList_M1_DropPasienSnapshot_Alter.sql" />
+    <None Include="AdmisiRanapContext\BILRG_AdmisiRanap_Phase7_Rollback.sql" />
     <None Include="AdmisiContext\AntrianFeature\BILRG_Antrian.sql" />
     <None Include="AdmisiContext\AntrianFeature\BILRG_AntrianEntry.sql" />
     <None Include="AdmisiContext\AntrianFeature\BILRG_PasienTracker.sql" />

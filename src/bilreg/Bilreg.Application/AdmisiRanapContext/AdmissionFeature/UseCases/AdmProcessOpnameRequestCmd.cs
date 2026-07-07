@@ -1,8 +1,10 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiRanapContext.Integration;
 using Bilreg.Application.AdmisiRanapContext.OpnameRequestFeature;
+using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
+using Bilreg.Domain.Shared.AuditLogFeature;
 using MediatR;
 using Nuna.Lib.PatternHelper;
 using Nuna.Lib.TransactionHelper;
@@ -20,15 +22,18 @@ public class AdmProcessOpnameRequestHandler : IRequestHandler<AdmProcessOpnameRe
     private readonly IAdmissionRepo _admissionRepo;
     private readonly IOpnameRequestRepo _opnameRequestRepo;
     private readonly IWardAccommodationGateway _wardGateway;
+    private readonly IAuditRepo _auditRepo;
 
     public AdmProcessOpnameRequestHandler(
         IAdmissionRepo admissionRepo,
         IOpnameRequestRepo opnameRequestRepo,
-        IWardAccommodationGateway wardGateway)
+        IWardAccommodationGateway wardGateway,
+        IAuditRepo auditRepo)
     {
         _admissionRepo = admissionRepo;
         _opnameRequestRepo = opnameRequestRepo;
         _wardGateway = wardGateway;
+        _auditRepo = auditRepo;
     }
 
     public Task<AdmProcessAdmissionResponse> Handle(
@@ -61,6 +66,8 @@ public class AdmProcessOpnameRequestHandler : IRequestHandler<AdmProcessOpnameRe
         var kelas = _wardGateway.ResolveKelas(request.KelasId);
         var bangsal = _wardGateway.ResolveBangsal(request.BangsalId);
 
+        var opnameSnapshot = AuditLogSnapshotJson.Serialize(opname);
+
         var admission = AdmissionModel.Admit(
             pasien,
             kelas,
@@ -74,6 +81,20 @@ public class AdmProcessOpnameRequestHandler : IRequestHandler<AdmProcessOpnameRe
         using var trans = TransHelper.NewScope();
         _admissionRepo.SaveChanges(admission);
         _opnameRequestRepo.SaveChanges(fulfilled);
+
+        _auditRepo.SaveChanges(AuditLog.Create(
+            admission.AuditTrail.Created,
+            "CREATE",
+            nameof(AdmissionModel),
+            admission.RegId));
+
+        _auditRepo.SaveChanges(AuditLog.Create(
+            fulfilled.AuditTrail.Modified,
+            "UPDATE",
+            nameof(OpnameRequestModel),
+            fulfilled.OpnameRequestId,
+            originalDataJson: opnameSnapshot));
+
         trans.Complete();
 
         return Task.FromResult(new AdmProcessAdmissionResponse(

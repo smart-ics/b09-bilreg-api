@@ -1,6 +1,8 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiRanapContext.Integration;
+using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
+using Bilreg.Domain.Shared.AuditLogFeature;
 using MediatR;
 
 namespace Bilreg.Application.AdmisiRanapContext.OpnameRequestFeature.UseCases;
@@ -18,15 +20,18 @@ public class AdmCreateOpnameRequestHandler : IRequestHandler<AdmCreateOpnameRequ
     private readonly IOpnameRequestRepo _opnameRequestRepo;
     private readonly IPatientAdministrationGateway _patientGateway;
     private readonly IDoctorServiceGateway _doctorGateway;
+    private readonly IAuditRepo _auditRepo;
 
     public AdmCreateOpnameRequestHandler(
         IOpnameRequestRepo opnameRequestRepo,
         IPatientAdministrationGateway patientGateway,
-        IDoctorServiceGateway doctorGateway)
+        IDoctorServiceGateway doctorGateway,
+        IAuditRepo auditRepo)
     {
         _opnameRequestRepo = opnameRequestRepo;
         _patientGateway = patientGateway;
         _doctorGateway = doctorGateway;
+        _auditRepo = auditRepo;
     }
 
     public Task<AdmCreateOpnameRequestResponse> Handle(
@@ -47,6 +52,12 @@ public class AdmCreateOpnameRequestHandler : IRequestHandler<AdmCreateOpnameRequ
             request.UserId);
 
         _opnameRequestRepo.SaveChanges(opnameRequest);
+
+        _auditRepo.SaveChanges(AuditLog.Create(
+            opnameRequest.AuditTrail.Created,
+            "CREATE",
+            nameof(OpnameRequestModel),
+            opnameRequest.OpnameRequestId));
 
         return Task.FromResult(new AdmCreateOpnameRequestResponse(opnameRequest.OpnameRequestId));
     }

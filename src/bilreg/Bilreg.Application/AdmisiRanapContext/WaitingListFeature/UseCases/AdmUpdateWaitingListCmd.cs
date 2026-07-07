@@ -1,6 +1,8 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiRanapContext.Integration;
+using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Domain.Shared.AuditLogFeature;
 using MediatR;
 using Nuna.Lib.PatternHelper;
 
@@ -17,13 +19,16 @@ public class AdmUpdateWaitingListHandler : IRequestHandler<AdmUpdateWaitingListC
 {
     private readonly IWaitingListRepo _waitingListRepo;
     private readonly IWardAccommodationGateway _wardGateway;
+    private readonly IAuditRepo _auditRepo;
 
     public AdmUpdateWaitingListHandler(
         IWaitingListRepo waitingListRepo,
-        IWardAccommodationGateway wardGateway)
+        IWardAccommodationGateway wardGateway,
+        IAuditRepo auditRepo)
     {
         _waitingListRepo = waitingListRepo;
         _wardGateway = wardGateway;
+        _auditRepo = auditRepo;
     }
 
     public Task Handle(AdmUpdateWaitingListCmd request, CancellationToken cancellationToken)
@@ -38,9 +43,18 @@ public class AdmUpdateWaitingListHandler : IRequestHandler<AdmUpdateWaitingListC
 
         var waitingList = _waitingListRepo.LoadEntity(request)
             .GetValueOrThrow($"Waiting List '{request.WaitingListId}' tidak ditemukan.");
+        var snapshotJson = AuditLogSnapshotJson.Serialize(waitingList);
         var updated = waitingList.Update(request.Priority, kelas, bangsal, request.UserId);
 
         _waitingListRepo.SaveChanges(updated);
+
+        _auditRepo.SaveChanges(AuditLog.Create(
+            updated.AuditTrail.Modified,
+            "UPDATE",
+            nameof(WaitingListModel),
+            updated.WaitingListId,
+            originalDataJson: snapshotJson));
+
         return Task.CompletedTask;
     }
 }

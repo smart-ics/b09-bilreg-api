@@ -1,3 +1,4 @@
+using Bilreg.Api.Filters;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
 using MediatR;
@@ -10,6 +11,7 @@ namespace Bilreg.Api.Controllers.AdmisiRanapContext;
 [Route("api/admisi-ranap/admission")]
 [ApiController]
 [Authorize]
+[ServiceFilter(typeof(AdmisiRanapEnabledFilter))]
 public class AdmissionController : ControllerBase
 {
     private readonly IMediator _mediator;

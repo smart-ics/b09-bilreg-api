@@ -1,6 +1,8 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiRanapContext.Integration;
+using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
+using Bilreg.Domain.Shared.AuditLogFeature;
 using MediatR;
 using Nuna.Lib.PatternHelper;
 
@@ -17,13 +19,16 @@ public class AdmMaintainReservationHandler : IRequestHandler<AdmMaintainReservat
 {
     private readonly IReservationRepo _reservationRepo;
     private readonly IWardAccommodationGateway _wardGateway;
+    private readonly IAuditRepo _auditRepo;
 
     public AdmMaintainReservationHandler(
         IReservationRepo reservationRepo,
-        IWardAccommodationGateway wardGateway)
+        IWardAccommodationGateway wardGateway,
+        IAuditRepo auditRepo)
     {
         _reservationRepo = reservationRepo;
         _wardGateway = wardGateway;
+        _auditRepo = auditRepo;
     }
 
     public Task Handle(AdmMaintainReservationCmd request, CancellationToken cancellationToken)
@@ -38,9 +43,18 @@ public class AdmMaintainReservationHandler : IRequestHandler<AdmMaintainReservat
 
         var reservation = _reservationRepo.LoadEntity(request)
             .GetValueOrThrow($"Reservation '{request.ReservationId}' tidak ditemukan.");
+        var snapshotJson = AuditLogSnapshotJson.Serialize(reservation);
         var maintained = reservation.Maintain(request.PlannedDate, kelas, bangsal, request.UserId);
 
         _reservationRepo.SaveChanges(maintained);
+
+        _auditRepo.SaveChanges(AuditLog.Create(
+            maintained.AuditTrail.Modified,
+            "UPDATE",
+            nameof(ReservationModel),
+            maintained.ReservationId,
+            originalDataJson: snapshotJson));
+
         return Task.CompletedTask;
     }
 }

@@ -709,7 +709,7 @@ Phases 1–4 deliver a vertically testable module. Phases 5–7 make it producti
 | 4 — API | **LIVE** | See `admisi-ranap-phase-4-implementation-report.md` |
 | 5 — Integration | **LIVE** | See `admisi-ranap-phase-5-implementation-report.md` |
 | 6 — Authorization | **PLANNED** | — |
-| 7 — Hardening / rollout | **PLANNED** | — |
+| 7 — Hardening / rollout | **LIVE** | See `admisi-ranap-phase-7-implementation-report.md` |
 
 Update this ledger as phases ship.
 

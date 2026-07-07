@@ -1,8 +1,10 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiRanapContext.Integration;
 using Bilreg.Application.AdmisiRanapContext.ReservationFeature;
+using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
+using Bilreg.Domain.Shared.AuditLogFeature;
 using MediatR;
 using Nuna.Lib.PatternHelper;
 using Nuna.Lib.TransactionHelper;
@@ -20,15 +22,18 @@ public class AdmProcessReservationHandler : IRequestHandler<AdmProcessReservatio
     private readonly IAdmissionRepo _admissionRepo;
     private readonly IReservationRepo _reservationRepo;
     private readonly IWardAccommodationGateway _wardGateway;
+    private readonly IAuditRepo _auditRepo;
 
     public AdmProcessReservationHandler(
         IAdmissionRepo admissionRepo,
         IReservationRepo reservationRepo,
-        IWardAccommodationGateway wardGateway)
+        IWardAccommodationGateway wardGateway,
+        IAuditRepo auditRepo)
     {
         _admissionRepo = admissionRepo;
         _reservationRepo = reservationRepo;
         _wardGateway = wardGateway;
+        _auditRepo = auditRepo;
     }
 
     public Task<AdmProcessAdmissionResponse> Handle(
@@ -70,6 +75,8 @@ public class AdmProcessReservationHandler : IRequestHandler<AdmProcessReservatio
             throw new InvalidOperationException(
                 $"Reservation '{reservation.ReservationId}' harus Maintained untuk direalisasi (status: {reservation.ReservationStatus}).");
 
+        var reservationSnapshot = AuditLogSnapshotJson.Serialize(reservation);
+
         var admission = AdmissionModel.Admit(
             pasien,
             kelas,
@@ -83,6 +90,20 @@ public class AdmProcessReservationHandler : IRequestHandler<AdmProcessReservatio
         using var trans = TransHelper.NewScope();
         _admissionRepo.SaveChanges(admission);
         _reservationRepo.SaveChanges(realized);
+
+        _auditRepo.SaveChanges(AuditLog.Create(
+            admission.AuditTrail.Created,
+            "CREATE",
+            nameof(AdmissionModel),
+            admission.RegId));
+
+        _auditRepo.SaveChanges(AuditLog.Create(
+            realized.AuditTrail.Modified,
+            "UPDATE",
+            nameof(ReservationModel),
+            realized.ReservationId,
+            originalDataJson: reservationSnapshot));
+
         trans.Complete();
 
         return Task.FromResult(new AdmProcessAdmissionResponse(

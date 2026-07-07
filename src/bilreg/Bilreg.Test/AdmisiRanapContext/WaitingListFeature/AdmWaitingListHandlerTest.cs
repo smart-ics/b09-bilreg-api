@@ -1,12 +1,15 @@
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature;
+using Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
 using Bilreg.Application.AdmisiRanapContext.Integration;
 using Bilreg.Application.AdmisiRanapContext.WaitingListFeature;
 using Bilreg.Application.AdmisiRanapContext.WaitingListFeature.UseCases;
+using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
+using Bilreg.Domain.Shared.AuditLogFeature;
 using FluentAssertions;
 using Moq;
 using Nuna.Lib.PatternHelper;
@@ -18,6 +21,7 @@ public class AdmWaitingListHandlerTest
     private readonly Mock<IWaitingListRepo> _waitingListRepoMock = new();
     private readonly Mock<IAdmissionRepo> _admissionRepoMock = new();
     private readonly Mock<IWardAccommodationGateway> _wardGatewayMock = new();
+    private readonly Mock<IAuditRepo> _auditRepoMock = new();
 
     [Fact]
     public async Task UT01_GivenCancelledAdmission_WhenCreateWaitingList_ThenThrows()
@@ -42,7 +46,8 @@ public class AdmWaitingListHandlerTest
         var handler = new AdmCreateWaitingListHandler(
             _waitingListRepoMock.Object,
             _admissionRepoMock.Object,
-            _wardGatewayMock.Object);
+            _wardGatewayMock.Object,
+            _auditRepoMock.Object);
 
         var act = async () => await handler.Handle(
             new AdmCreateWaitingListCmd(admission.RegId, "K1", "B1", 1, "user2"),
@@ -76,7 +81,9 @@ public class AdmWaitingListHandlerTest
             .Setup(x => x.SaveChanges(It.IsAny<WaitingListModel>()))
             .Callback<WaitingListModel>(m => saved = m);
 
-        var handler = new AdmCloseWaitingListHandler(_waitingListRepoMock.Object);
+        var handler = new AdmCloseWaitingListHandler(
+            _waitingListRepoMock.Object,
+            _auditRepoMock.Object);
         await handler.Handle(
             new AdmCloseWaitingListCmd(waitingList.WaitingListId, "user2"),
             CancellationToken.None);
@@ -84,6 +91,7 @@ public class AdmWaitingListHandlerTest
         saved.Should().NotBeNull();
         saved!.WaitingListStatus.Should().Be(WaitingListStatusEnum.Closed);
         _admissionRepoMock.Verify(x => x.SaveChanges(It.IsAny<AdmissionModel>()), Times.Never);
+        _auditRepoMock.Verify(x => x.SaveChanges(It.IsAny<AuditLog>()), Times.Once);
     }
 
     [Fact]
@@ -108,7 +116,8 @@ public class AdmWaitingListHandlerTest
         var handler = new AdmCreateWaitingListHandler(
             _waitingListRepoMock.Object,
             _admissionRepoMock.Object,
-            _wardGatewayMock.Object);
+            _wardGatewayMock.Object,
+            _auditRepoMock.Object);
 
         await handler.Handle(
             new AdmCreateWaitingListCmd(admission.RegId, "K1", "B1", 1, "user2"),
@@ -121,6 +130,7 @@ public class AdmWaitingListHandlerTest
                 h.KelasId == "K1" &&
                 h.Status == WaitingListStatusEnum.Waiting)),
             Times.Once);
+        _auditRepoMock.Verify(x => x.SaveChanges(It.IsAny<AuditLog>()), Times.Once);
     }
 
     private void SetupMasters()

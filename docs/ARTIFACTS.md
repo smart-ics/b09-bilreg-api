@@ -73,6 +73,9 @@
 | `docs/contexts/admisi-ranap/admisi-ranap-phase-3-implementation-report.md` | Phase 3 — MediatR use cases, cross-aggregate orchestration, handler tests |
 | `docs/contexts/admisi-ranap/admisi-ranap-phase-4-implementation-report.md` | Phase 4 — REST API controllers, 19 endpoints, JSendOk, baseline auth |
 | `docs/contexts/admisi-ranap/admisi-ranap-phase-5-implementation-report.md` | Phase 5 — integration gateways (Doctor, Patient, Ward), handler refactor, adapter tests |
+| `docs/contexts/admisi-ranap/admisi-ranap-phase-7-implementation-report.md` | Phase 7 — hardening, rollout, audit logging, E2E workflow validation |
+| `docs/contexts/admisi-ranap/admisi-ranap-runbook.md` | Admisi Ranap — operation (deployment, validation, rollback) |
+| `docs/contexts/admisi-ranap/admisi-ranap-rollout-checklist.md` | Admisi Ranap — production rollout gates |
 
 ### Admisi — Booking / Jadwal Praktek (`docs/contexts/admisi/`)
 

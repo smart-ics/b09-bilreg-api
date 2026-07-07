@@ -1,8 +1,10 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Application.AdmisiRanapContext.Integration;
+using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Domain.Shared.AuditLogFeature;
 using MediatR;
 using Nuna.Lib.PatternHelper;
 
@@ -22,15 +24,18 @@ public class AdmCreateWaitingListHandler : IRequestHandler<AdmCreateWaitingListC
     private readonly IWaitingListRepo _waitingListRepo;
     private readonly IAdmissionRepo _admissionRepo;
     private readonly IWardAccommodationGateway _wardGateway;
+    private readonly IAuditRepo _auditRepo;
 
     public AdmCreateWaitingListHandler(
         IWaitingListRepo waitingListRepo,
         IAdmissionRepo admissionRepo,
-        IWardAccommodationGateway wardGateway)
+        IWardAccommodationGateway wardGateway,
+        IAuditRepo auditRepo)
     {
         _waitingListRepo = waitingListRepo;
         _admissionRepo = admissionRepo;
         _wardGateway = wardGateway;
+        _auditRepo = auditRepo;
     }
 
     public Task<AdmCreateWaitingListResponse> Handle(
@@ -62,6 +67,12 @@ public class AdmCreateWaitingListHandler : IRequestHandler<AdmCreateWaitingListC
             request.UserId);
 
         _waitingListRepo.SaveChanges(waitingList);
+
+        _auditRepo.SaveChanges(AuditLog.Create(
+            waitingList.AuditTrail.Created,
+            "CREATE",
+            nameof(WaitingListModel),
+            waitingList.WaitingListId));
 
         _wardGateway.NotifyHandOver(new WardAccommodationHandOver(
             waitingList.WaitingListId,

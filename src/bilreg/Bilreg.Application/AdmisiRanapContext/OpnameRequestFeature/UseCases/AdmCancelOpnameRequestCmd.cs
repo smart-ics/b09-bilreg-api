@@ -1,5 +1,7 @@
 using Ardalis.GuardClauses;
+using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
+using Bilreg.Domain.Shared.AuditLogFeature;
 using MediatR;
 using Nuna.Lib.PatternHelper;
 
@@ -12,9 +14,15 @@ public record AdmCancelOpnameRequestCmd(
 public class AdmCancelOpnameRequestHandler : IRequestHandler<AdmCancelOpnameRequestCmd>
 {
     private readonly IOpnameRequestRepo _opnameRequestRepo;
+    private readonly IAuditRepo _auditRepo;
 
-    public AdmCancelOpnameRequestHandler(IOpnameRequestRepo opnameRequestRepo) =>
+    public AdmCancelOpnameRequestHandler(
+        IOpnameRequestRepo opnameRequestRepo,
+        IAuditRepo auditRepo)
+    {
         _opnameRequestRepo = opnameRequestRepo;
+        _auditRepo = auditRepo;
+    }
 
     public Task Handle(AdmCancelOpnameRequestCmd request, CancellationToken cancellationToken)
     {
@@ -23,9 +31,18 @@ public class AdmCancelOpnameRequestHandler : IRequestHandler<AdmCancelOpnameRequ
 
         var opnameRequest = _opnameRequestRepo.LoadEntity(request)
             .GetValueOrThrow($"Opname Request '{request.OpnameRequestId}' tidak ditemukan.");
+        var snapshotJson = AuditLogSnapshotJson.Serialize(opnameRequest);
         var cancelled = opnameRequest.Cancel(request.UserId);
 
         _opnameRequestRepo.SaveChanges(cancelled);
+
+        _auditRepo.SaveChanges(AuditLog.Create(
+            cancelled.AuditTrail.Modified,
+            "VOID",
+            nameof(OpnameRequestModel),
+            cancelled.OpnameRequestId,
+            originalDataJson: snapshotJson));
+
         return Task.CompletedTask;
     }
 }

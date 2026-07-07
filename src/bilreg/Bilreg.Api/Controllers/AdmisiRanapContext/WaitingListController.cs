@@ -1,3 +1,4 @@
+using Bilreg.Api.Filters;
 using Bilreg.Application.AdmisiRanapContext.WaitingListFeature.UseCases;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -9,6 +10,7 @@ namespace Bilreg.Api.Controllers.AdmisiRanapContext;
 [Route("api/admisi-ranap/waiting-list")]
 [ApiController]
 [Authorize]
+[ServiceFilter(typeof(AdmisiRanapEnabledFilter))]
 public class WaitingListController : ControllerBase
 {
     private readonly IMediator _mediator;

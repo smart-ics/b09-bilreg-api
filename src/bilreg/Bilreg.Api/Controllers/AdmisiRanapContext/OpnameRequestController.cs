@@ -1,3 +1,4 @@
+using Bilreg.Api.Filters;
 using Bilreg.Application.AdmisiRanapContext.OpnameRequestFeature.UseCases;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
 using MediatR;
@@ -10,6 +11,7 @@ namespace Bilreg.Api.Controllers.AdmisiRanapContext;
 [Route("api/admisi-ranap/opname-request")]
 [ApiController]
 [Authorize]
+[ServiceFilter(typeof(AdmisiRanapEnabledFilter))]
 public class OpnameRequestController : ControllerBase
 {
     private readonly IMediator _mediator;
