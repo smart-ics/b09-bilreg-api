@@ -1,7 +1,7 @@
 using Ardalis.GuardClauses;
-using Bilreg.Application.AdmisiRanapContext.Shared;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
 using MediatR;
+using Nuna.Lib.PatternHelper;
 
 namespace Bilreg.Application.AdmisiRanapContext.OpnameRequestFeature.UseCases;
 
@@ -21,7 +21,8 @@ public class AdmCancelOpnameRequestHandler : IRequestHandler<AdmCancelOpnameRequ
         Guard.Against.NullOrWhiteSpace(request.OpnameRequestId);
         Guard.Against.NullOrWhiteSpace(request.UserId);
 
-        var opnameRequest = AdmisiRanapSupport.LoadOpnameRequest(_opnameRequestRepo, request);
+        var opnameRequest = _opnameRequestRepo.LoadEntity(request)
+            .GetValueOrThrow($"Opname Request '{request.OpnameRequestId}' tidak ditemukan.");
         var cancelled = opnameRequest.Cancel(request.UserId);
 
         _opnameRequestRepo.SaveChanges(cancelled);

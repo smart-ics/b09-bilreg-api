@@ -1,10 +1,10 @@
 using Ardalis.GuardClauses;
+using Bilreg.Application.AdmisiRanapContext.Integration;
 using Bilreg.Application.AdmisiRanapContext.ReservationFeature;
-using Bilreg.Application.AdmisiRanapContext.Shared;
-using Bilreg.Application.BedUsageContext.WardFeature;
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
 using MediatR;
+using Nuna.Lib.PatternHelper;
 using Nuna.Lib.TransactionHelper;
 
 namespace Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
@@ -19,19 +19,16 @@ public class AdmProcessReservationHandler : IRequestHandler<AdmProcessReservatio
 {
     private readonly IAdmissionRepo _admissionRepo;
     private readonly IReservationRepo _reservationRepo;
-    private readonly IKelasRepo _kelasRepo;
-    private readonly IBangsalRepo _bangsalRepo;
+    private readonly IWardAccommodationGateway _wardGateway;
 
     public AdmProcessReservationHandler(
         IAdmissionRepo admissionRepo,
         IReservationRepo reservationRepo,
-        IKelasRepo kelasRepo,
-        IBangsalRepo bangsalRepo)
+        IWardAccommodationGateway wardGateway)
     {
         _admissionRepo = admissionRepo;
         _reservationRepo = reservationRepo;
-        _kelasRepo = kelasRepo;
-        _bangsalRepo = bangsalRepo;
+        _wardGateway = wardGateway;
     }
 
     public Task<AdmProcessAdmissionResponse> Handle(
@@ -43,13 +40,22 @@ public class AdmProcessReservationHandler : IRequestHandler<AdmProcessReservatio
         Guard.Against.NullOrWhiteSpace(request.BangsalId);
         Guard.Against.NullOrWhiteSpace(request.UserId);
 
-        var reservation = AdmisiRanapSupport.LoadReservation(_reservationRepo, request);
+        var reservation = _reservationRepo.LoadEntity(request)
+            .GetValueOrThrow($"Reservation '{request.ReservationId}' tidak ditemukan.");
         var pasien = reservation.Pasien;
 
-        AdmisiRanapSupport.EnsureNoActiveAdmission(_admissionRepo, pasien.PasienId);
+        var activeAdmissions = _admissionRepo
+            .ListData(new AdmissionListFilter(PasienId: pasien.PasienId))
+            .Where(a => a.AdmissionStatus is not AdmissionStatusEnum.Completed
+                and not AdmissionStatusEnum.Cancelled)
+            .ToList();
 
-        var kelas = AdmisiRanapSupport.LoadKelasReff(_kelasRepo, request.KelasId);
-        var bangsal = AdmisiRanapSupport.LoadBangsalReff(_bangsalRepo, request.BangsalId);
+        if (activeAdmissions.Count > 0)
+            throw new InvalidOperationException(
+                $"Pasien '{pasien.PasienId}' masih memiliki admission aktif ({activeAdmissions[0].RegId}).");
+
+        var kelas = _wardGateway.ResolveKelas(request.KelasId);
+        var bangsal = _wardGateway.ResolveBangsal(request.BangsalId);
 
         if (reservation.ReservationStatus == ReservationStatusEnum.Reserved)
         {

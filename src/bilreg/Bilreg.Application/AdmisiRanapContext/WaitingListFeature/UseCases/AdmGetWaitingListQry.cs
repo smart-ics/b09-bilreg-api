@@ -1,8 +1,8 @@
-using Bilreg.Application.AdmisiRanapContext.Shared;
 using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
+using Nuna.Lib.PatternHelper;
 
 namespace Bilreg.Application.AdmisiRanapContext.WaitingListFeature.UseCases;
 
@@ -30,7 +30,8 @@ public class AdmGetWaitingListHandler : IRequestHandler<AdmGetWaitingListQry, Ad
         AdmGetWaitingListQry request,
         CancellationToken cancellationToken)
     {
-        var waitingList = AdmisiRanapSupport.LoadWaitingList(_waitingListRepo, request);
+        var waitingList = _waitingListRepo.LoadEntity(request)
+            .GetValueOrThrow($"Waiting List '{request.WaitingListId}' tidak ditemukan.");
 
         return Task.FromResult(new AdmGetWaitingListResponse(
             waitingList.WaitingListId,

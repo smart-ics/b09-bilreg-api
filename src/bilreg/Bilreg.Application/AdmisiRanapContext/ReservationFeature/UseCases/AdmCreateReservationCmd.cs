@@ -1,7 +1,5 @@
 using Ardalis.GuardClauses;
-using Bilreg.Application.AdmisiRanapContext.Shared;
-using Bilreg.Application.BedUsageContext.WardFeature;
-using Bilreg.Application.PasienContext.PasienFeature;
+using Bilreg.Application.AdmisiRanapContext.Integration;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
 using MediatR;
 
@@ -19,20 +17,17 @@ public record AdmCreateReservationResponse(string ReservationId);
 public class AdmCreateReservationHandler : IRequestHandler<AdmCreateReservationCmd, AdmCreateReservationResponse>
 {
     private readonly IReservationRepo _reservationRepo;
-    private readonly IPasienRepo _pasienRepo;
-    private readonly IKelasRepo _kelasRepo;
-    private readonly IBangsalRepo _bangsalRepo;
+    private readonly IPatientAdministrationGateway _patientGateway;
+    private readonly IWardAccommodationGateway _wardGateway;
 
     public AdmCreateReservationHandler(
         IReservationRepo reservationRepo,
-        IPasienRepo pasienRepo,
-        IKelasRepo kelasRepo,
-        IBangsalRepo bangsalRepo)
+        IPatientAdministrationGateway patientGateway,
+        IWardAccommodationGateway wardGateway)
     {
         _reservationRepo = reservationRepo;
-        _pasienRepo = pasienRepo;
-        _kelasRepo = kelasRepo;
-        _bangsalRepo = bangsalRepo;
+        _patientGateway = patientGateway;
+        _wardGateway = wardGateway;
     }
 
     public Task<AdmCreateReservationResponse> Handle(
@@ -44,9 +39,9 @@ public class AdmCreateReservationHandler : IRequestHandler<AdmCreateReservationC
         Guard.Against.NullOrWhiteSpace(request.BangsalId);
         Guard.Against.NullOrWhiteSpace(request.UserId);
 
-        var pasien = AdmisiRanapSupport.LoadPasienReff(_pasienRepo, request.PasienId);
-        var kelas = AdmisiRanapSupport.LoadKelasReff(_kelasRepo, request.KelasId);
-        var bangsal = AdmisiRanapSupport.LoadBangsalReff(_bangsalRepo, request.BangsalId);
+        var pasien = _patientGateway.ResolvePatient(request.PasienId);
+        var kelas = _wardGateway.ResolveKelas(request.KelasId);
+        var bangsal = _wardGateway.ResolveBangsal(request.BangsalId);
 
         var reservation = ReservationModel.Create(
             pasien,

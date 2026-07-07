@@ -1,10 +1,10 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature;
-using Bilreg.Application.AdmisiRanapContext.Shared;
-using Bilreg.Application.BedUsageContext.WardFeature;
+using Bilreg.Application.AdmisiRanapContext.Integration;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
 using MediatR;
+using Nuna.Lib.PatternHelper;
 
 namespace Bilreg.Application.AdmisiRanapContext.WaitingListFeature.UseCases;
 
@@ -21,19 +21,16 @@ public class AdmCreateWaitingListHandler : IRequestHandler<AdmCreateWaitingListC
 {
     private readonly IWaitingListRepo _waitingListRepo;
     private readonly IAdmissionRepo _admissionRepo;
-    private readonly IKelasRepo _kelasRepo;
-    private readonly IBangsalRepo _bangsalRepo;
+    private readonly IWardAccommodationGateway _wardGateway;
 
     public AdmCreateWaitingListHandler(
         IWaitingListRepo waitingListRepo,
         IAdmissionRepo admissionRepo,
-        IKelasRepo kelasRepo,
-        IBangsalRepo bangsalRepo)
+        IWardAccommodationGateway wardGateway)
     {
         _waitingListRepo = waitingListRepo;
         _admissionRepo = admissionRepo;
-        _kelasRepo = kelasRepo;
-        _bangsalRepo = bangsalRepo;
+        _wardGateway = wardGateway;
     }
 
     public Task<AdmCreateWaitingListResponse> Handle(
@@ -45,14 +42,15 @@ public class AdmCreateWaitingListHandler : IRequestHandler<AdmCreateWaitingListC
         Guard.Against.NullOrWhiteSpace(request.BangsalId);
         Guard.Against.NullOrWhiteSpace(request.UserId);
 
-        var admission = AdmisiRanapSupport.LoadAdmission(_admissionRepo, request);
+        var admission = _admissionRepo.LoadEntity(request)
+            .GetValueOrThrow($"Admission '{request.RegId}' tidak ditemukan.");
 
         if (_waitingListRepo.HasActiveByRegId(request.RegId))
             throw new InvalidOperationException(
                 $"Admission '{request.RegId}' sudah memiliki Waiting List aktif.");
 
-        var kelas = AdmisiRanapSupport.LoadKelasReff(_kelasRepo, request.KelasId);
-        var bangsal = AdmisiRanapSupport.LoadBangsalReff(_bangsalRepo, request.BangsalId);
+        var kelas = _wardGateway.ResolveKelas(request.KelasId);
+        var bangsal = _wardGateway.ResolveBangsal(request.BangsalId);
 
         var waitingList = WaitingListModel.Create(
             admission.RegId,
@@ -64,6 +62,13 @@ public class AdmCreateWaitingListHandler : IRequestHandler<AdmCreateWaitingListC
             request.UserId);
 
         _waitingListRepo.SaveChanges(waitingList);
+
+        _wardGateway.NotifyHandOver(new WardAccommodationHandOver(
+            waitingList.WaitingListId,
+            waitingList.RegId,
+            waitingList.Bangsal.BangsalId,
+            waitingList.KelasRawat.KelasId,
+            waitingList.WaitingListStatus));
 
         return Task.FromResult(new AdmCreateWaitingListResponse(waitingList.WaitingListId));
     }

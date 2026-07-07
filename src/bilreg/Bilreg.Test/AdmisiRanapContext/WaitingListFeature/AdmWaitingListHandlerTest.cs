@@ -1,7 +1,7 @@
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature;
+using Bilreg.Application.AdmisiRanapContext.Integration;
 using Bilreg.Application.AdmisiRanapContext.WaitingListFeature;
 using Bilreg.Application.AdmisiRanapContext.WaitingListFeature.UseCases;
-using Bilreg.Application.BedUsageContext.WardFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
@@ -17,8 +17,7 @@ public class AdmWaitingListHandlerTest
 {
     private readonly Mock<IWaitingListRepo> _waitingListRepoMock = new();
     private readonly Mock<IAdmissionRepo> _admissionRepoMock = new();
-    private readonly Mock<IKelasRepo> _kelasRepoMock = new();
-    private readonly Mock<IBangsalRepo> _bangsalRepoMock = new();
+    private readonly Mock<IWardAccommodationGateway> _wardGatewayMock = new();
 
     [Fact]
     public async Task UT01_GivenCancelledAdmission_WhenCreateWaitingList_ThenThrows()
@@ -43,8 +42,7 @@ public class AdmWaitingListHandlerTest
         var handler = new AdmCreateWaitingListHandler(
             _waitingListRepoMock.Object,
             _admissionRepoMock.Object,
-            _kelasRepoMock.Object,
-            _bangsalRepoMock.Object);
+            _wardGatewayMock.Object);
 
         var act = async () => await handler.Handle(
             new AdmCreateWaitingListCmd(admission.RegId, "K1", "B1", 1, "user2"),
@@ -53,6 +51,7 @@ public class AdmWaitingListHandlerTest
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*belum dalam status admisi*");
         _waitingListRepoMock.Verify(x => x.SaveChanges(It.IsAny<WaitingListModel>()), Times.Never);
+        _wardGatewayMock.Verify(x => x.NotifyHandOver(It.IsAny<WardAccommodationHandOver>()), Times.Never);
     }
 
     [Fact]
@@ -87,19 +86,52 @@ public class AdmWaitingListHandlerTest
         _admissionRepoMock.Verify(x => x.SaveChanges(It.IsAny<AdmissionModel>()), Times.Never);
     }
 
+    [Fact]
+    public async Task UT03_GivenAdmittedAdmission_WhenCreateWaitingList_ThenNotifiesWardHandOver()
+    {
+        var admission = AdmissionModel.Admit(
+            SamplePasienReff(),
+            SampleKelas(),
+            SampleBangsal(),
+            null,
+            null,
+            "user1");
+
+        _admissionRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == admission.RegId)))
+            .Returns(MayBe.From(admission));
+        _waitingListRepoMock
+            .Setup(x => x.HasActiveByRegId(admission.RegId))
+            .Returns(false);
+        SetupMasters();
+
+        var handler = new AdmCreateWaitingListHandler(
+            _waitingListRepoMock.Object,
+            _admissionRepoMock.Object,
+            _wardGatewayMock.Object);
+
+        await handler.Handle(
+            new AdmCreateWaitingListCmd(admission.RegId, "K1", "B1", 1, "user2"),
+            CancellationToken.None);
+
+        _wardGatewayMock.Verify(
+            x => x.NotifyHandOver(It.Is<WardAccommodationHandOver>(h =>
+                h.RegId == admission.RegId &&
+                h.BangsalId == "B1" &&
+                h.KelasId == "K1" &&
+                h.Status == WaitingListStatusEnum.Waiting)),
+            Times.Once);
+    }
+
     private void SetupMasters()
     {
-        _kelasRepoMock
-            .Setup(x => x.LoadEntity(It.Is<IKelasKey>(k => k.KelasId == "K1")))
-            .Returns(MayBe.From(KelasType.Default with { KelasId = "K1", KelasName = "Kelas 1" }));
+        _wardGatewayMock
+            .Setup(x => x.ResolveKelas("K1"))
+            .Returns(new KelasReff("K1", "Kelas 1"));
 
-        _bangsalRepoMock
-            .Setup(x => x.LoadEntity(It.Is<IBangsalKey>(k => k.BangsalId == "B1")))
-            .Returns(MayBe.From(new BangsalType(
-                "B1",
-                "Bangsal A",
-                RoomCatType.Default,
-                new Bilreg.Domain.AdmisiContext.LayananFeature.LayananReff("-", "-"))));
+        _wardGatewayMock
+            .Setup(x => x.ResolveBangsal("B1"))
+            .Returns(new BangsalReff("B1", "Bangsal A"));
     }
 
     private static PasienReff SamplePasienReff() =>

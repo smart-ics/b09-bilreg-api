@@ -1,8 +1,8 @@
-using Bilreg.Application.AdmisiRanapContext.Shared;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
+using Nuna.Lib.PatternHelper;
 
 namespace Bilreg.Application.AdmisiRanapContext.ReservationFeature.UseCases;
 
@@ -30,7 +30,8 @@ public class AdmGetReservationHandler : IRequestHandler<AdmGetReservationQry, Ad
         AdmGetReservationQry request,
         CancellationToken cancellationToken)
     {
-        var reservation = AdmisiRanapSupport.LoadReservation(_reservationRepo, request);
+        var reservation = _reservationRepo.LoadEntity(request)
+            .GetValueOrThrow($"Reservation '{request.ReservationId}' tidak ditemukan.");
 
         return Task.FromResult(new AdmGetReservationResponse(
             reservation.ReservationId,

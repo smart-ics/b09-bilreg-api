@@ -1,7 +1,7 @@
 using Ardalis.GuardClauses;
-using Bilreg.Application.AdmisiRanapContext.Shared;
 using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
 using MediatR;
+using Nuna.Lib.PatternHelper;
 
 namespace Bilreg.Application.AdmisiRanapContext.WaitingListFeature.UseCases;
 
@@ -21,7 +21,8 @@ public class AdmCloseWaitingListHandler : IRequestHandler<AdmCloseWaitingListCmd
         Guard.Against.NullOrWhiteSpace(request.WaitingListId);
         Guard.Against.NullOrWhiteSpace(request.UserId);
 
-        var waitingList = AdmisiRanapSupport.LoadWaitingList(_waitingListRepo, request);
+        var waitingList = _waitingListRepo.LoadEntity(request)
+            .GetValueOrThrow($"Waiting List '{request.WaitingListId}' tidak ditemukan.");
         var closed = waitingList.Close(request.UserId);
 
         _waitingListRepo.SaveChanges(closed);

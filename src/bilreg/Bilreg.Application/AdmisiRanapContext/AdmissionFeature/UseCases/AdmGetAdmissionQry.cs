@@ -1,9 +1,9 @@
-using Bilreg.Application.AdmisiRanapContext.Shared;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
+using Nuna.Lib.PatternHelper;
 
 namespace Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
 
@@ -31,7 +31,8 @@ public class AdmGetAdmissionHandler : IRequestHandler<AdmGetAdmissionQry, AdmGet
         AdmGetAdmissionQry request,
         CancellationToken cancellationToken)
     {
-        var admission = AdmisiRanapSupport.LoadAdmission(_admissionRepo, request);
+        var admission = _admissionRepo.LoadEntity(request)
+            .GetValueOrThrow($"Admission '{request.RegId}' tidak ditemukan.");
 
         return Task.FromResult(new AdmGetAdmissionResponse(
             admission.RegId,

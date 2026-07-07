@@ -1,7 +1,7 @@
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
+using Bilreg.Application.AdmisiRanapContext.Integration;
 using Bilreg.Application.AdmisiRanapContext.OpnameRequestFeature;
-using Bilreg.Application.BedUsageContext.WardFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
@@ -17,8 +17,7 @@ public class AdmProcessOpnameRequestHandlerTest
 {
     private readonly Mock<IAdmissionRepo> _admissionRepoMock = new();
     private readonly Mock<IOpnameRequestRepo> _opnameRepoMock = new();
-    private readonly Mock<IKelasRepo> _kelasRepoMock = new();
-    private readonly Mock<IBangsalRepo> _bangsalRepoMock = new();
+    private readonly Mock<IWardAccommodationGateway> _wardGatewayMock = new();
 
     [Fact]
     public async Task UT01_GivenOpnameRequest_WhenProcess_ThenFulfillsOpnameAndSavesBoth()
@@ -91,22 +90,17 @@ public class AdmProcessOpnameRequestHandlerTest
         new(
             _admissionRepoMock.Object,
             _opnameRepoMock.Object,
-            _kelasRepoMock.Object,
-            _bangsalRepoMock.Object);
+            _wardGatewayMock.Object);
 
     private void SetupMasters()
     {
-        _kelasRepoMock
-            .Setup(x => x.LoadEntity(It.Is<IKelasKey>(k => k.KelasId == "K1")))
-            .Returns(MayBe.From(KelasType.Default with { KelasId = "K1", KelasName = "Kelas 1" }));
+        _wardGatewayMock
+            .Setup(x => x.ResolveKelas("K1"))
+            .Returns(new KelasReff("K1", "Kelas 1"));
 
-        _bangsalRepoMock
-            .Setup(x => x.LoadEntity(It.Is<IBangsalKey>(k => k.BangsalId == "B1")))
-            .Returns(MayBe.From(new BangsalType(
-                "B1",
-                "Bangsal A",
-                RoomCatType.Default,
-                new Bilreg.Domain.AdmisiContext.LayananFeature.LayananReff("-", "-"))));
+        _wardGatewayMock
+            .Setup(x => x.ResolveBangsal("B1"))
+            .Returns(new BangsalReff("B1", "Bangsal A"));
     }
 
     private static PasienReff SamplePasienReff() =>

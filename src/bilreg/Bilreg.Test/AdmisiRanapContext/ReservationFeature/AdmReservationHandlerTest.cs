@@ -1,7 +1,6 @@
+using Bilreg.Application.AdmisiRanapContext.Integration;
 using Bilreg.Application.AdmisiRanapContext.ReservationFeature;
 using Bilreg.Application.AdmisiRanapContext.ReservationFeature.UseCases;
-using Bilreg.Application.BedUsageContext.WardFeature;
-using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
@@ -14,9 +13,8 @@ namespace Bilreg.Test.AdmisiRanapContext.ReservationFeature;
 public class AdmReservationHandlerTest
 {
     private readonly Mock<IReservationRepo> _reservationRepoMock = new();
-    private readonly Mock<IPasienRepo> _pasienRepoMock = new();
-    private readonly Mock<IKelasRepo> _kelasRepoMock = new();
-    private readonly Mock<IBangsalRepo> _bangsalRepoMock = new();
+    private readonly Mock<IPatientAdministrationGateway> _patientGatewayMock = new();
+    private readonly Mock<IWardAccommodationGateway> _wardGatewayMock = new();
 
     [Fact]
     public async Task UT01_GivenValidRequest_WhenCreate_ThenSavesReservation()
@@ -29,9 +27,8 @@ public class AdmReservationHandlerTest
 
         var handler = new AdmCreateReservationHandler(
             _reservationRepoMock.Object,
-            _pasienRepoMock.Object,
-            _kelasRepoMock.Object,
-            _bangsalRepoMock.Object);
+            _patientGatewayMock.Object,
+            _wardGatewayMock.Object);
 
         var response = await handler.Handle(
             new AdmCreateReservationCmd(
@@ -69,8 +66,7 @@ public class AdmReservationHandlerTest
 
         var handler = new AdmMaintainReservationHandler(
             _reservationRepoMock.Object,
-            _kelasRepoMock.Object,
-            _bangsalRepoMock.Object);
+            _wardGatewayMock.Object);
 
         await handler.Handle(
             new AdmMaintainReservationCmd(
@@ -87,23 +83,23 @@ public class AdmReservationHandlerTest
 
     private void SetupMasters()
     {
-        _pasienRepoMock
-            .Setup(x => x.LoadEntity(It.IsAny<IPasienKey>()))
-            .Returns(MayBe.From(PasienModel.Key("P001") as PasienModel));
+        _patientGatewayMock
+            .Setup(x => x.ResolvePatient("P001"))
+            .Returns(SamplePasienReff());
 
-        _kelasRepoMock
-            .Setup(x => x.LoadEntity(It.Is<IKelasKey>(k => k.KelasId == "K1")))
-            .Returns(MayBe.From(KelasType.Default with { KelasId = "K1", KelasName = "Kelas 1" }));
-        _kelasRepoMock
-            .Setup(x => x.LoadEntity(It.Is<IKelasKey>(k => k.KelasId == "K2")))
-            .Returns(MayBe.From(KelasType.Default with { KelasId = "K2", KelasName = "Kelas 2" }));
+        _wardGatewayMock
+            .Setup(x => x.ResolveKelas("K1"))
+            .Returns(new KelasReff("K1", "Kelas 1"));
+        _wardGatewayMock
+            .Setup(x => x.ResolveKelas("K2"))
+            .Returns(new KelasReff("K2", "Kelas 2"));
 
-        _bangsalRepoMock
-            .Setup(x => x.LoadEntity(It.Is<IBangsalKey>(k => k.BangsalId == "B1")))
-            .Returns(MayBe.From(CreateBangsal("B1", "Bangsal A")));
-        _bangsalRepoMock
-            .Setup(x => x.LoadEntity(It.Is<IBangsalKey>(k => k.BangsalId == "B2")))
-            .Returns(MayBe.From(CreateBangsal("B2", "Bangsal B")));
+        _wardGatewayMock
+            .Setup(x => x.ResolveBangsal("B1"))
+            .Returns(new BangsalReff("B1", "Bangsal A"));
+        _wardGatewayMock
+            .Setup(x => x.ResolveBangsal("B2"))
+            .Returns(new BangsalReff("B2", "Bangsal B"));
     }
 
     private static PasienReff SamplePasienReff() =>
@@ -112,7 +108,4 @@ public class AdmReservationHandlerTest
     private static KelasReff SampleKelas() => new("K1", "Kelas 1");
 
     private static BangsalReff SampleBangsal() => new("B1", "Bangsal A");
-
-    private static BangsalType CreateBangsal(string id, string name) =>
-        new(id, name, RoomCatType.Default, new Bilreg.Domain.AdmisiContext.LayananFeature.LayananReff("-", "-"));
 }

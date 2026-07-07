@@ -1,7 +1,7 @@
-using Bilreg.Application.AdmisiRanapContext.Shared;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
+using Nuna.Lib.PatternHelper;
 
 namespace Bilreg.Application.AdmisiRanapContext.OpnameRequestFeature.UseCases;
 
@@ -29,7 +29,8 @@ public class AdmGetOpnameRequestHandler : IRequestHandler<AdmGetOpnameRequestQry
         AdmGetOpnameRequestQry request,
         CancellationToken cancellationToken)
     {
-        var opname = AdmisiRanapSupport.LoadOpnameRequest(_opnameRequestRepo, request);
+        var opname = _opnameRequestRepo.LoadEntity(request)
+            .GetValueOrThrow($"Opname Request '{request.OpnameRequestId}' tidak ditemukan.");
 
         return Task.FromResult(new AdmGetOpnameRequestResponse(
             opname.OpnameRequestId,

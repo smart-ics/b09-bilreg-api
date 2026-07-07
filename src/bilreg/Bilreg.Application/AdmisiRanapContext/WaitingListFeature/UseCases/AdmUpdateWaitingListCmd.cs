@@ -1,8 +1,8 @@
 using Ardalis.GuardClauses;
-using Bilreg.Application.AdmisiRanapContext.Shared;
-using Bilreg.Application.BedUsageContext.WardFeature;
+using Bilreg.Application.AdmisiRanapContext.Integration;
 using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
 using MediatR;
+using Nuna.Lib.PatternHelper;
 
 namespace Bilreg.Application.AdmisiRanapContext.WaitingListFeature.UseCases;
 
@@ -16,17 +16,14 @@ public record AdmUpdateWaitingListCmd(
 public class AdmUpdateWaitingListHandler : IRequestHandler<AdmUpdateWaitingListCmd>
 {
     private readonly IWaitingListRepo _waitingListRepo;
-    private readonly IKelasRepo _kelasRepo;
-    private readonly IBangsalRepo _bangsalRepo;
+    private readonly IWardAccommodationGateway _wardGateway;
 
     public AdmUpdateWaitingListHandler(
         IWaitingListRepo waitingListRepo,
-        IKelasRepo kelasRepo,
-        IBangsalRepo bangsalRepo)
+        IWardAccommodationGateway wardGateway)
     {
         _waitingListRepo = waitingListRepo;
-        _kelasRepo = kelasRepo;
-        _bangsalRepo = bangsalRepo;
+        _wardGateway = wardGateway;
     }
 
     public Task Handle(AdmUpdateWaitingListCmd request, CancellationToken cancellationToken)
@@ -36,10 +33,11 @@ public class AdmUpdateWaitingListHandler : IRequestHandler<AdmUpdateWaitingListC
         Guard.Against.NullOrWhiteSpace(request.BangsalId);
         Guard.Against.NullOrWhiteSpace(request.UserId);
 
-        var kelas = AdmisiRanapSupport.LoadKelasReff(_kelasRepo, request.KelasId);
-        var bangsal = AdmisiRanapSupport.LoadBangsalReff(_bangsalRepo, request.BangsalId);
+        var kelas = _wardGateway.ResolveKelas(request.KelasId);
+        var bangsal = _wardGateway.ResolveBangsal(request.BangsalId);
 
-        var waitingList = AdmisiRanapSupport.LoadWaitingList(_waitingListRepo, request);
+        var waitingList = _waitingListRepo.LoadEntity(request)
+            .GetValueOrThrow($"Waiting List '{request.WaitingListId}' tidak ditemukan.");
         var updated = waitingList.Update(request.Priority, kelas, bangsal, request.UserId);
 
         _waitingListRepo.SaveChanges(updated);

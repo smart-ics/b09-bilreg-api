@@ -1,7 +1,6 @@
-using Bilreg.Application.AdmisiContext.PpaFeature;
+using Bilreg.Application.AdmisiRanapContext.Integration;
 using Bilreg.Application.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Application.AdmisiRanapContext.OpnameRequestFeature.UseCases;
-using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
@@ -14,27 +13,27 @@ namespace Bilreg.Test.AdmisiRanapContext.OpnameRequestFeature;
 public class AdmOpnameRequestHandlerTest
 {
     private readonly Mock<IOpnameRequestRepo> _opnameRepoMock = new();
-    private readonly Mock<IPasienRepo> _pasienRepoMock = new();
-    private readonly Mock<IPpaRepo> _ppaRepoMock = new();
+    private readonly Mock<IPatientAdministrationGateway> _patientGatewayMock = new();
+    private readonly Mock<IDoctorServiceGateway> _doctorGatewayMock = new();
 
     [Fact]
     public async Task UT01_GivenValidRequest_WhenCreate_ThenSavesOpnameRequest()
     {
         OpnameRequestModel? saved = null;
-        _pasienRepoMock
-            .Setup(x => x.LoadEntity(It.IsAny<IPasienKey>()))
-            .Returns(MayBe.From(SamplePasien()));
-        _ppaRepoMock
-            .Setup(x => x.LoadEntity(It.IsAny<IPpaKey>()))
-            .Returns(MayBe.From(SampleDokter()));
+        _patientGatewayMock
+            .Setup(x => x.ResolvePatient("P001"))
+            .Returns(SamplePasienReff());
+        _doctorGatewayMock
+            .Setup(x => x.ResolveDoctor("D001"))
+            .Returns(new PpaReff("D001", "Dr. Test"));
         _opnameRepoMock
             .Setup(x => x.SaveChanges(It.IsAny<OpnameRequestModel>()))
             .Callback<OpnameRequestModel>(m => saved = m);
 
         var handler = new AdmCreateOpnameRequestHandler(
             _opnameRepoMock.Object,
-            _pasienRepoMock.Object,
-            _ppaRepoMock.Object);
+            _patientGatewayMock.Object,
+            _doctorGatewayMock.Object);
 
         var response = await handler.Handle(
             new AdmCreateOpnameRequestCmd("P001", "D001", "Catatan", "user1"),
@@ -73,9 +72,6 @@ public class AdmOpnameRequestHandlerTest
         saved!.OpnameRequestStatus.Should().Be(OpnameRequestStatusEnum.Cancelled);
     }
 
-    private static PasienModel SamplePasien() =>
-        PasienModel.Key("P001") as PasienModel ?? throw new InvalidOperationException();
-
-    private static PpaType SampleDokter() =>
-        PpaType.Default with { PpaId = "D001", PpaName = "Dr. Test" };
+    private static PasienReff SamplePasienReff() =>
+        new("P001", "Pasien Test", new DateOnly(1990, 1, 1), "L");
 }

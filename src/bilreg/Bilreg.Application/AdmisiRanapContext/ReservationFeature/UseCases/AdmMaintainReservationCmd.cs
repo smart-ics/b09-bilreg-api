@@ -1,8 +1,8 @@
 using Ardalis.GuardClauses;
-using Bilreg.Application.AdmisiRanapContext.Shared;
-using Bilreg.Application.BedUsageContext.WardFeature;
+using Bilreg.Application.AdmisiRanapContext.Integration;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
 using MediatR;
+using Nuna.Lib.PatternHelper;
 
 namespace Bilreg.Application.AdmisiRanapContext.ReservationFeature.UseCases;
 
@@ -16,17 +16,14 @@ public record AdmMaintainReservationCmd(
 public class AdmMaintainReservationHandler : IRequestHandler<AdmMaintainReservationCmd>
 {
     private readonly IReservationRepo _reservationRepo;
-    private readonly IKelasRepo _kelasRepo;
-    private readonly IBangsalRepo _bangsalRepo;
+    private readonly IWardAccommodationGateway _wardGateway;
 
     public AdmMaintainReservationHandler(
         IReservationRepo reservationRepo,
-        IKelasRepo kelasRepo,
-        IBangsalRepo bangsalRepo)
+        IWardAccommodationGateway wardGateway)
     {
         _reservationRepo = reservationRepo;
-        _kelasRepo = kelasRepo;
-        _bangsalRepo = bangsalRepo;
+        _wardGateway = wardGateway;
     }
 
     public Task Handle(AdmMaintainReservationCmd request, CancellationToken cancellationToken)
@@ -36,10 +33,11 @@ public class AdmMaintainReservationHandler : IRequestHandler<AdmMaintainReservat
         Guard.Against.NullOrWhiteSpace(request.BangsalId);
         Guard.Against.NullOrWhiteSpace(request.UserId);
 
-        var kelas = AdmisiRanapSupport.LoadKelasReff(_kelasRepo, request.KelasId);
-        var bangsal = AdmisiRanapSupport.LoadBangsalReff(_bangsalRepo, request.BangsalId);
+        var kelas = _wardGateway.ResolveKelas(request.KelasId);
+        var bangsal = _wardGateway.ResolveBangsal(request.BangsalId);
 
-        var reservation = AdmisiRanapSupport.LoadReservation(_reservationRepo, request);
+        var reservation = _reservationRepo.LoadEntity(request)
+            .GetValueOrThrow($"Reservation '{request.ReservationId}' tidak ditemukan.");
         var maintained = reservation.Maintain(request.PlannedDate, kelas, bangsal, request.UserId);
 
         _reservationRepo.SaveChanges(maintained);

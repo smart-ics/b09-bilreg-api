@@ -1,7 +1,5 @@
 using Ardalis.GuardClauses;
-using Bilreg.Application.AdmisiContext.PpaFeature;
-using Bilreg.Application.AdmisiRanapContext.Shared;
-using Bilreg.Application.PasienContext.PasienFeature;
+using Bilreg.Application.AdmisiRanapContext.Integration;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
 using MediatR;
 
@@ -18,17 +16,17 @@ public record AdmCreateOpnameRequestResponse(string OpnameRequestId);
 public class AdmCreateOpnameRequestHandler : IRequestHandler<AdmCreateOpnameRequestCmd, AdmCreateOpnameRequestResponse>
 {
     private readonly IOpnameRequestRepo _opnameRequestRepo;
-    private readonly IPasienRepo _pasienRepo;
-    private readonly IPpaRepo _ppaRepo;
+    private readonly IPatientAdministrationGateway _patientGateway;
+    private readonly IDoctorServiceGateway _doctorGateway;
 
     public AdmCreateOpnameRequestHandler(
         IOpnameRequestRepo opnameRequestRepo,
-        IPasienRepo pasienRepo,
-        IPpaRepo ppaRepo)
+        IPatientAdministrationGateway patientGateway,
+        IDoctorServiceGateway doctorGateway)
     {
         _opnameRequestRepo = opnameRequestRepo;
-        _pasienRepo = pasienRepo;
-        _ppaRepo = ppaRepo;
+        _patientGateway = patientGateway;
+        _doctorGateway = doctorGateway;
     }
 
     public Task<AdmCreateOpnameRequestResponse> Handle(
@@ -39,8 +37,8 @@ public class AdmCreateOpnameRequestHandler : IRequestHandler<AdmCreateOpnameRequ
         Guard.Against.NullOrWhiteSpace(request.DokterId);
         Guard.Against.NullOrWhiteSpace(request.UserId);
 
-        var pasien = AdmisiRanapSupport.LoadPasienReff(_pasienRepo, request.PasienId);
-        var dokter = AdmisiRanapSupport.LoadPpaReff(_ppaRepo, request.DokterId);
+        var pasien = _patientGateway.ResolvePatient(request.PasienId);
+        var dokter = _doctorGateway.ResolveDoctor(request.DokterId);
 
         var opnameRequest = OpnameRequestModel.Create(
             pasien,

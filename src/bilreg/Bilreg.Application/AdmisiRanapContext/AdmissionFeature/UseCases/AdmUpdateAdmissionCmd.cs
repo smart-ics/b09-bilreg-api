@@ -1,8 +1,8 @@
 using Ardalis.GuardClauses;
-using Bilreg.Application.AdmisiRanapContext.Shared;
-using Bilreg.Application.BedUsageContext.WardFeature;
+using Bilreg.Application.AdmisiRanapContext.Integration;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using MediatR;
+using Nuna.Lib.PatternHelper;
 
 namespace Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
 
@@ -15,17 +15,14 @@ public record AdmUpdateAdmissionCmd(
 public class AdmUpdateAdmissionHandler : IRequestHandler<AdmUpdateAdmissionCmd>
 {
     private readonly IAdmissionRepo _admissionRepo;
-    private readonly IKelasRepo _kelasRepo;
-    private readonly IBangsalRepo _bangsalRepo;
+    private readonly IWardAccommodationGateway _wardGateway;
 
     public AdmUpdateAdmissionHandler(
         IAdmissionRepo admissionRepo,
-        IKelasRepo kelasRepo,
-        IBangsalRepo bangsalRepo)
+        IWardAccommodationGateway wardGateway)
     {
         _admissionRepo = admissionRepo;
-        _kelasRepo = kelasRepo;
-        _bangsalRepo = bangsalRepo;
+        _wardGateway = wardGateway;
     }
 
     public Task Handle(AdmUpdateAdmissionCmd request, CancellationToken cancellationToken)
@@ -35,10 +32,11 @@ public class AdmUpdateAdmissionHandler : IRequestHandler<AdmUpdateAdmissionCmd>
         Guard.Against.NullOrWhiteSpace(request.BangsalId);
         Guard.Against.NullOrWhiteSpace(request.UserId);
 
-        var kelas = AdmisiRanapSupport.LoadKelasReff(_kelasRepo, request.KelasId);
-        var bangsal = AdmisiRanapSupport.LoadBangsalReff(_bangsalRepo, request.BangsalId);
+        var kelas = _wardGateway.ResolveKelas(request.KelasId);
+        var bangsal = _wardGateway.ResolveBangsal(request.BangsalId);
 
-        var admission = AdmisiRanapSupport.LoadAdmission(_admissionRepo, request);
+        var admission = _admissionRepo.LoadEntity(request)
+            .GetValueOrThrow($"Admission '{request.RegId}' tidak ditemukan.");
         var updated = admission.Update(kelas, bangsal, request.UserId);
 
         _admissionRepo.SaveChanges(updated);

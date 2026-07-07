@@ -707,7 +707,7 @@ Phases 1–4 deliver a vertically testable module. Phases 5–7 make it producti
 | 2 — Persistence | **LIVE** | See `admisi-ranap-phase-2-implementation-report.md` |
 | 3 — Use cases | **LIVE** | See `admisi-ranap-phase-3-implementation-report.md` |
 | 4 — API | **LIVE** | See `admisi-ranap-phase-4-implementation-report.md` |
-| 5 — Integration | **PLANNED** | — |
+| 5 — Integration | **LIVE** | See `admisi-ranap-phase-5-implementation-report.md` |
 | 6 — Authorization | **PLANNED** | — |
 | 7 — Hardening / rollout | **PLANNED** | — |
 

@@ -1,5 +1,6 @@
 ﻿using Bilreg.Application.LabContext.LabOrderFeature;
 using Bilreg.Application.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Application.AdmisiRanapContext.Integration;
 using Bilreg.Application.AdmisiContext.JadwalPraktekFeature.UseCases;
 using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Application.LabContext.LabOrderFeature.Integration;
@@ -15,6 +16,7 @@ using Bilreg.Infrastructure;
 using Bilreg.Infrastructure.ChargeContext.TarifFeature;
 using Bilreg.Infrastructure.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Infrastructure.AdmisiRanapContext.Integration;
 using Bilreg.Infrastructure.LabContext.Integration;
 using Bilreg.Infrastructure.LabContext.LabOwareFeature;
 using Bilreg.Infrastructure.LabContext.LabResultFeature;
@@ -55,6 +57,9 @@ public static class InfrastructureService
             .AddScoped<ILabOwareIntegration, LabOwareIntegration>()
             .AddScoped<ILabOwareQueueWorklistDal, LabOwareQueueWorklistDal>()
             .AddScoped<IWaitingListWorklistDal, WaitingListWorklistDal>()
+            .AddScoped<IDoctorServiceGateway, DoctorServiceGateway>()
+            .AddScoped<IPatientAdministrationGateway, PatientAdministrationGateway>()
+            .AddScoped<IWardAccommodationGateway, WardAccommodationGateway>()
             .AddScoped<LabOwareQueueProcessor>()
             .AddScoped<ILabResultPdfRenderer, LabResultPdfRenderer>()
             .AddScoped<ILabResultScaffoldService, LabResultScaffoldService>()
