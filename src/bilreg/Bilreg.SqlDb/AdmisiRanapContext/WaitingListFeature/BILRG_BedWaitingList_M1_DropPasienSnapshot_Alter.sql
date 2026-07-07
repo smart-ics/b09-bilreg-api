@@ -1,0 +1,20 @@
+IF COL_LENGTH('BILRG_BedWaitingList', 'PasienName') IS NOT NULL
+BEGIN
+    ALTER TABLE BILRG_BedWaitingList DROP CONSTRAINT DF_BILRG_BedWaitingList_PasienName;
+    ALTER TABLE BILRG_BedWaitingList DROP COLUMN PasienName;
+END
+GO
+
+IF COL_LENGTH('BILRG_BedWaitingList', 'TglLahir') IS NOT NULL
+BEGIN
+    ALTER TABLE BILRG_BedWaitingList DROP CONSTRAINT DF_BILRG_BedWaitingList_TglLahir;
+    ALTER TABLE BILRG_BedWaitingList DROP COLUMN TglLahir;
+END
+GO
+
+IF COL_LENGTH('BILRG_BedWaitingList', 'Gender') IS NOT NULL
+BEGIN
+    ALTER TABLE BILRG_BedWaitingList DROP CONSTRAINT DF_BILRG_BedWaitingList_Gender;
+    ALTER TABLE BILRG_BedWaitingList DROP COLUMN Gender;
+END
+GO

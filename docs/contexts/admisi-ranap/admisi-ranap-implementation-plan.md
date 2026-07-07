@@ -702,7 +702,7 @@ Phases 1–4 deliver a vertically testable module. Phases 5–7 make it producti
 |-------|--------|-------|
 | 0 — Scaffolding | **LIVE** | See `admisi-ranap-phase-0-implementation-report.md` |
 | 1 — Domain | **LIVE** | See `admisi-ranap-phase-1-implementation-report.md` |
-| 2 — Persistence | **PLANNED** | — |
+| 2 — Persistence | **LIVE** | See `admisi-ranap-phase-2-implementation-report.md` |
 | 3 — Use cases | **PLANNED** | — |
 | 4 — API | **PLANNED** | — |
 | 5 — Integration | **PLANNED** | — |
