@@ -60,6 +60,14 @@
 | `docs/contexts/igd/igd-04-api-contract.md` | IGD visit — integration (frontend/API contract) |
 | `docs/contexts/igd/igd-05-runbook.md` | IGD visit — operation (runbook, troubleshooting, recovery) |
 
+### Admisi — Rawat Inap (`docs/contexts/admisi-ranap/`)
+
+| Path | Purpose |
+|------|---------|
+| `docs/contexts/admisi-ranap/admisi-ranap-domain.md` | Admisi Ranap — what (aggregates, rules, lifecycles) |
+| `docs/contexts/admisi-ranap/admisi-ranap-architecture.md` | Admisi Ranap — how (use cases, repos, API, integration, ADRs) |
+| `docs/contexts/admisi-ranap/admisi-ranap-implementation-plan.md` | Admisi Ranap — phased backend implementation plan |
+
 ### Admisi — Booking / Jadwal Praktek (`docs/contexts/admisi/`)
 
 | Path | Purpose |
