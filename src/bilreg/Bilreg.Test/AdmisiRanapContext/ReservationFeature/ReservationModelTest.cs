@@ -15,18 +15,16 @@ public class ReservationModelTest
     private static BangsalReff SampleBangsal() => new("B1", "Bangsal A");
 
     [Fact]
-    public void DT_RS_01_GivenElectivePath_WhenCreateWithoutOpnameRequest_ThenReserved()
+    public void DT_RS_01_GivenElectivePath_WhenCreate_ThenReserved()
     {
         var reservation = ReservationModel.Create(
             SamplePasien(),
             new DateTime(2026, 8, 1),
             SampleKelas(),
             SampleBangsal(),
-            opnameRequestId: null,
             "user1");
 
         reservation.ReservationStatus.Should().Be(ReservationStatusEnum.Reserved);
-        reservation.OpnameRequestId.Should().Be("-");
         reservation.ReservationId.Should().StartWith("RSV");
     }
 
@@ -38,7 +36,6 @@ public class ReservationModelTest
             new DateTime(2026, 8, 1),
             SampleKelas(),
             SampleBangsal(),
-            null,
             "user1");
 
         var maintained = reservation.Maintain(
@@ -59,7 +56,6 @@ public class ReservationModelTest
                 new DateTime(2026, 8, 1),
                 SampleKelas(),
                 SampleBangsal(),
-                null,
                 "user1")
             .Maintain(new DateTime(2026, 8, 1), SampleKelas(), SampleBangsal(), "user1");
 
@@ -77,7 +73,6 @@ public class ReservationModelTest
                 new DateTime(2026, 8, 1),
                 SampleKelas(),
                 SampleBangsal(),
-                null,
                 "user1")
             .Maintain(new DateTime(2026, 8, 1), SampleKelas(), SampleBangsal(), "user1")
             .Realize("RG00000001", "user1");
@@ -95,7 +90,6 @@ public class ReservationModelTest
             new DateTime(2026, 8, 1),
             SampleKelas(),
             SampleBangsal(),
-            null,
             "user1");
 
         var cancelled = reservation.Cancel("user1");

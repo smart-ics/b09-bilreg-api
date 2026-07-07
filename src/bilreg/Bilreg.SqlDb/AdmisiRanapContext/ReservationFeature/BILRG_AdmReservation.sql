@@ -8,7 +8,6 @@ BEGIN
         PasienName        VARCHAR(60) NOT NULL CONSTRAINT DF_BILRG_AdmReservation_PasienName DEFAULT(''),
         TglLahir          DATETIME    NOT NULL CONSTRAINT DF_BILRG_AdmReservation_TglLahir DEFAULT('3000-01-01'),
         Gender            VARCHAR(1)  NOT NULL CONSTRAINT DF_BILRG_AdmReservation_Gender DEFAULT(''),
-        OpnameRequestId   VARCHAR(12) NOT NULL CONSTRAINT DF_BILRG_AdmReservation_OpnameRequestId DEFAULT('-'),
         PlannedDate       DATETIME    NOT NULL CONSTRAINT DF_BILRG_AdmReservation_PlannedDate DEFAULT('3000-01-01'),
         KelasId           VARCHAR(3)  NOT NULL CONSTRAINT DF_BILRG_AdmReservation_KelasId DEFAULT('-'),
         KelasName         VARCHAR(30) NOT NULL CONSTRAINT DF_BILRG_AdmReservation_KelasName DEFAULT(''),

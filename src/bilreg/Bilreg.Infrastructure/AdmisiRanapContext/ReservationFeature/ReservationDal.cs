@@ -31,13 +31,13 @@ public class ReservationDal : IReservationDal
             INSERT INTO BILRG_AdmReservation (
                 ReservationId, ReservationStatus,
                 PasienId, PasienName, TglLahir, Gender,
-                OpnameRequestId, PlannedDate,
+                PlannedDate,
                 KelasId, KelasName, BangsalId, BangsalName, RealizedRegId,
                 CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
             VALUES (
                 @ReservationId, @ReservationStatus,
                 @PasienId, @PasienName, @TglLahir, @Gender,
-                @OpnameRequestId, @PlannedDate,
+                @PlannedDate,
                 @KelasId, @KelasName, @BangsalId, @BangsalName, @RealizedRegId,
                 @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
             """;
@@ -56,7 +56,6 @@ public class ReservationDal : IReservationDal
                 PasienName = @PasienName,
                 TglLahir = @TglLahir,
                 Gender = @Gender,
-                OpnameRequestId = @OpnameRequestId,
                 PlannedDate = @PlannedDate,
                 KelasId = @KelasId,
                 KelasName = @KelasName,
@@ -81,7 +80,7 @@ public class ReservationDal : IReservationDal
             SELECT
                 ReservationId, ReservationStatus,
                 PasienId, PasienName, TglLahir, Gender,
-                OpnameRequestId, PlannedDate,
+                PlannedDate,
                 KelasId, KelasName, BangsalId, BangsalName, RealizedRegId,
                 CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate
             FROM BILRG_AdmReservation
@@ -101,7 +100,7 @@ public class ReservationDal : IReservationDal
             SELECT
                 aa.ReservationId, aa.ReservationStatus,
                 aa.PasienId, aa.PasienName, aa.TglLahir, aa.Gender,
-                aa.OpnameRequestId, aa.PlannedDate,
+                aa.PlannedDate,
                 aa.KelasId, aa.KelasName, aa.BangsalId, aa.BangsalName, aa.RealizedRegId,
                 aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate
             FROM BILRG_AdmReservation aa
@@ -134,7 +133,6 @@ public class ReservationDal : IReservationDal
         dp.AddParam("@PasienName", dto.PasienName, SqlDbType.VarChar);
         dp.AddParam("@TglLahir", dto.TglLahir, SqlDbType.DateTime);
         dp.AddParam("@Gender", dto.Gender, SqlDbType.VarChar);
-        dp.AddParam("@OpnameRequestId", dto.OpnameRequestId, SqlDbType.VarChar);
         dp.AddParam("@PlannedDate", dto.PlannedDate, SqlDbType.DateTime);
         dp.AddParam("@KelasId", dto.KelasId, SqlDbType.VarChar);
         dp.AddParam("@KelasName", dto.KelasName, SqlDbType.VarChar);

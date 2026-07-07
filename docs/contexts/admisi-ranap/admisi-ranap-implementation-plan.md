@@ -155,7 +155,7 @@ Bilreg.Test           → Domain, handler, repo, optional DAL integration tests
 | Target | Gap |
 |--------|-----|
 | Permission-based authorization per business responsibility | Only `[Authorize]` (authentication) today |
-| Examples: Process Admission, Maintain Reservation, Manage Waiting List | No permission model or policies |
+| Examples: Process Opname Request Admission, Process Reservation Admission, Maintain Reservation, Manage Waiting List | No permission model or policies |
 
 ### 3.6 Tests
 
@@ -178,8 +178,8 @@ Bilreg.Test           → Domain, handler, repo, optional DAL integration tests
 | Key | `I{Name}Key` (Admission reuses `IRegKey` / `RegId`) |
 | Accommodation attrs | `KelasRawat` (`KelasReff`), `Bangsal` (`BangsalReff`) |
 | Status enum | `{Name}StatusEnum` |
-| Command / Query | `Rir{Name}{Action}Cmd`, `Rir{Name}{Action}Qry` (`Rir` = Rawat Inap Ranap prefix) |
-| Handler | `Rir{Name}{Action}Handler` |
+| Command / Query | `Adm{Name}{Action}Cmd`, `Adm{Name}{Action}Qry` (`Adm` = Admisi Ranap prefix) |
+| Handler | `Adm{Name}{Action}Handler` |
 | Repo interface | `Application/.../I{Name}Repo` |
 | Repo implementation | `Infrastructure/.../{Name}Repo` |
 | DAL | Dapper, Nuna `IInsert`/`IUpdate`/`IGetData`/`IListData` |
@@ -272,7 +272,7 @@ Behaviour and lifecycles are defined in `admisi-ranap-domain.md`. This section r
 |------|--------|
 | States | Requested → Fulfilled \| Cancelled |
 | Key rules | BR-RI-001 (Doctor only creates), BR-RI-002 (not an Admission), BR-RI-005 (≤1 Admission fulfillment) |
-| Cross-aggregate | Fulfillment coordinated when Process Admission references Opname Request |
+| Cross-aggregate | Fulfillment coordinated when Process Opname Request Admission runs |
 
 ### 6.2 Reservation
 
@@ -280,7 +280,7 @@ Behaviour and lifecycles are defined in `admisi-ranap-domain.md`. This section r
 |------|--------|
 | States | Reserved → Maintained → Realized \| Cancelled |
 | Key rules | BR-RI-003 (optional before Admission), BR-RI-006 (≤1 Admission realization) |
-| Cross-aggregate | Realization coordinated when Process Admission references Reservation |
+| Cross-aggregate | Realization coordinated when Process Reservation Admission runs |
 
 ### 6.3 Admission
 
@@ -385,39 +385,40 @@ Use cases are authoritative in `admisi-ranap-architecture.md` §3. API exposes b
 
 | Use Case | HTTP (proposed) | Command / Query |
 |----------|-----------------|-----------------|
-| Create Opname Request | `POST api/admisi-ranap/opname-request` | `RirCreateOpnameRequestCmd` |
-| Cancel Opname Request | `POST api/admisi-ranap/opname-request/{id}/cancel` | `RirCancelOpnameRequestCmd` |
-| Get Opname Request | `GET api/admisi-ranap/opname-request/{id}` | `RirGetOpnameRequestQry` |
-| List Opname Requests | `GET api/admisi-ranap/opname-request` | `RirListOpnameRequestQry` |
+| Create Opname Request | `POST api/admisi-ranap/opname-request` | `AdmCreateOpnameRequestCmd` |
+| Cancel Opname Request | `POST api/admisi-ranap/opname-request/{id}/cancel` | `AdmCancelOpnameRequestCmd` |
+| Get Opname Request | `GET api/admisi-ranap/opname-request/{id}` | `AdmGetOpnameRequestQry` |
+| List Opname Requests | `GET api/admisi-ranap/opname-request` | `AdmListOpnameRequestQry` |
 
 ### 8.2 Reservation
 
 | Use Case | HTTP (proposed) | Command / Query |
 |----------|-----------------|-----------------|
-| Create Reservation | `POST api/admisi-ranap/reservation` | `RirCreateReservationCmd` |
-| Maintain Reservation | `PUT api/admisi-ranap/reservation/{id}` | `RirMaintainReservationCmd` |
-| Get Reservation | `GET api/admisi-ranap/reservation/{id}` | `RirGetReservationQry` |
-| List Reservations | `GET api/admisi-ranap/reservation` | `RirListReservationQry` |
+| Create Reservation | `POST api/admisi-ranap/reservation` | `AdmCreateReservationCmd` |
+| Maintain Reservation | `PUT api/admisi-ranap/reservation/{id}` | `AdmMaintainReservationCmd` |
+| Get Reservation | `GET api/admisi-ranap/reservation/{id}` | `AdmGetReservationQry` |
+| List Reservations | `GET api/admisi-ranap/reservation` | `AdmListReservationQry` |
 
 ### 8.3 Admission
 
 | Use Case | HTTP (proposed) | Command / Query |
 |----------|-----------------|-----------------|
-| Process Admission | `POST api/admisi-ranap/admission` | `RirProcessAdmissionCmd` |
-| Update Admission | `PUT api/admisi-ranap/admission/{id}` | `RirUpdateAdmissionCmd` |
-| Cancel Admission | `POST api/admisi-ranap/admission/{id}/cancel` | `RirCancelAdmissionCmd` |
-| Get Admission | `GET api/admisi-ranap/admission/{id}` | `RirGetAdmissionQry` |
-| Admission lookup | `GET api/admisi-ranap/admission` | `RirLookupAdmissionQry` |
+| Process Opname Request Admission | `POST api/admisi-ranap/admission/from-opname-request` | `AdmProcessOpnameRequestCmd` |
+| Process Reservation Admission | `POST api/admisi-ranap/admission/from-reservation` | `AdmProcessReservationCmd` |
+| Update Admission | `PUT api/admisi-ranap/admission/{id}` | `AdmUpdateAdmissionCmd` |
+| Cancel Admission | `POST api/admisi-ranap/admission/{id}/cancel` | `AdmCancelAdmissionCmd` |
+| Get Admission | `GET api/admisi-ranap/admission/{id}` | `AdmGetAdmissionQry` |
+| Admission lookup | `GET api/admisi-ranap/admission` | `AdmLookupAdmissionQry` |
 
 ### 8.4 Waiting List
 
 | Use Case | HTTP (proposed) | Command / Query |
 |----------|-----------------|-----------------|
-| Create Waiting List | `POST api/admisi-ranap/waiting-list` | `RirCreateWaitingListCmd` |
-| Update Waiting List | `PUT api/admisi-ranap/waiting-list/{id}` | `RirUpdateWaitingListCmd` |
-| Close Waiting List | `POST api/admisi-ranap/waiting-list/{id}/close` | `RirCloseWaitingListCmd` |
-| Get Waiting List | `GET api/admisi-ranap/waiting-list/{id}` | `RirGetWaitingListQry` |
-| List active Waiting List | `GET api/admisi-ranap/waiting-list` | `RirListWaitingListQry` |
+| Create Waiting List | `POST api/admisi-ranap/waiting-list` | `AdmCreateWaitingListCmd` |
+| Update Waiting List | `PUT api/admisi-ranap/waiting-list/{id}` | `AdmUpdateWaitingListCmd` |
+| Close Waiting List | `POST api/admisi-ranap/waiting-list/{id}/close` | `AdmCloseWaitingListCmd` |
+| Get Waiting List | `GET api/admisi-ranap/waiting-list/{id}` | `AdmGetWaitingListQry` |
+| List active Waiting List | `GET api/admisi-ranap/waiting-list` | `AdmListWaitingListQry` |
 
 **Ward consumer:** `GET api/admisi-ranap/waiting-list` is the primary integration surface (ADR-004).
 
@@ -453,7 +454,8 @@ Architecture requires **permission-based authorization** aligned to business res
 | `admisi-ranap.opname-request.cancel` | Cancel Opname Request |
 | `admisi-ranap.reservation.create` | Create Reservation |
 | `admisi-ranap.reservation.maintain` | Maintain Reservation |
-| `admisi-ranap.admission.process` | Process Admission |
+| `admisi-ranap.admission.process-opname-request` | Process Opname Request Admission |
+| `admisi-ranap.admission.process-reservation` | Process Reservation Admission |
 | `admisi-ranap.admission.update` | Update Admission |
 | `admisi-ranap.admission.cancel` | Cancel Admission |
 | `admisi-ranap.waiting-list.manage` | Create, Update, Close Waiting List |
@@ -481,7 +483,7 @@ Recommended order minimizes risk: **new context, new tables, new routes** — no
 | | |
 |--|--|
 | **Objective** | Establish module boundary and naming so parallel work is predictable. |
-| **Scope** | Create empty `AdmisiRanapContext` folders in Domain, Application, Infrastructure, Api, SqlDb, Test. Document table prefix, command prefix (`Rir`), route prefix. |
+| **Scope** | Create empty `AdmisiRanapContext` folders in Domain, Application, Infrastructure, Api, SqlDb, Test. Document table prefix, command prefix (`Adm`), route prefix. |
 | **Deliverables** | Folder skeleton; solution builds with no behaviour. |
 | **Dependencies** | None. |
 | **Acceptance criteria** | Build succeeds; no existing endpoint changes; conventions documented in this plan §4. |
@@ -538,27 +540,27 @@ Recommended order minimizes risk: **new context, new tables, new routes** — no
 
 | | |
 |--|--|
-| **Objective** | Implement all 10 architecture use cases with cross-aggregate orchestration. |
+| **Objective** | Implement all architecture use cases with single-source admission orchestration. |
 | **Scope** | MediatR commands/queries + handlers; mock-repo handler tests. |
-| **Deliverables** | Handlers for Create/Cancel Opname Request; Create/Maintain Reservation; Process/Update/Cancel Admission; Create/Update/Close Waiting List; query handlers. |
+| **Deliverables** | Handlers for Create/Cancel Opname Request; Create/Maintain Reservation; Process Opname Request Admission / Process Reservation Admission; Update/Cancel Admission; Create/Update/Close Waiting List; query handlers. |
 | **Dependencies** | Phase 2. |
-| **Acceptance criteria** | Handler tests pass; BR-RI-005/006/008 enforced in orchestration; Process Admission can optionally fulfill Opname Request and realize Reservation in one transaction scope. |
+| **Acceptance criteria** | Handler tests pass; BR-RI-005/006/008 enforced in orchestration; each admission command fulfills or realizes exactly one source aggregate in its own `TransHelper` transaction scope (no combined opname + reservation txn). |
 
 **Workflow coverage:**
 
 | Workflow | Use-case chain |
 |----------|----------------|
-| Direct Admission | Create Opname Request → Process Admission → (optional) Create Waiting List |
-| Planned Admission | Create Opname Request → Create Reservation → Process Admission → (optional) Create Waiting List |
-| Elective Admission | Create Reservation → Process Admission → (optional) Create Waiting List |
+| Direct Admission | Create Opname Request → Process Opname Request Admission → (optional) Create Waiting List |
+| Planned Admission | Create Opname Request + Create Reservation (independent) → Maintain Reservation → Process Reservation Admission → (optional) Create Waiting List; Opname fulfilled only via Process Opname Request Admission if that path is taken separately |
+| Elective Admission | Create Reservation → Maintain Reservation → Process Reservation Admission → (optional) Create Waiting List |
 | Patient Transfer | (Ward release — external) → Create Waiting List → (Ward accommodation — external) |
 
 **Tests:**
 
 | ID | Scenario |
 |----|----------|
-| UT-UC-01 | Process Admission fulfills Opname Request |
-| UT-UC-02 | Second Admission for same Opname Request rejected |
+| UT-UC-01 | Process Opname Request Admission fulfills Opname Request |
+| UT-UC-02 | Process Reservation Admission realizes Reservation |
 | UT-UC-03 | Create Waiting List requires admitted patient |
 | UT-UC-04 | Close Waiting List does not cancel Admission |
 
@@ -703,7 +705,7 @@ Phases 1–4 deliver a vertically testable module. Phases 5–7 make it producti
 | 0 — Scaffolding | **LIVE** | See `admisi-ranap-phase-0-implementation-report.md` |
 | 1 — Domain | **LIVE** | See `admisi-ranap-phase-1-implementation-report.md` |
 | 2 — Persistence | **LIVE** | See `admisi-ranap-phase-2-implementation-report.md` |
-| 3 — Use cases | **PLANNED** | — |
+| 3 — Use cases | **LIVE** | See `admisi-ranap-phase-3-implementation-report.md` |
 | 4 — API | **PLANNED** | — |
 | 5 — Integration | **PLANNED** | — |
 | 6 — Authorization | **PLANNED** | — |

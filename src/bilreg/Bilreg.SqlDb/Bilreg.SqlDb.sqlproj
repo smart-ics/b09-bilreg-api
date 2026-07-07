@@ -114,6 +114,7 @@
     <None Include="AdmisiRanapContext\OpnameRequestFeature\BILRG_AdmOpnameRequest.sql" />
     <None Include="AdmisiRanapContext\OpnameRequestFeature\BILRG_AdmOpnameRequest_M1_DropPasienSnapshot_Alter.sql" />
     <None Include="AdmisiRanapContext\ReservationFeature\BILRG_AdmReservation.sql" />
+    <None Include="AdmisiRanapContext\ReservationFeature\BILRG_AdmReservation_M2_DropOpnameRequestId_Alter.sql" />
     <None Include="AdmisiRanapContext\AdmissionFeature\BILRG_AdmAdmission.sql" />
     <None Include="AdmisiRanapContext\AdmissionFeature\BILRG_AdmAdmission_M1_DropPasienSnapshot_Alter.sql" />
     <None Include="AdmisiRanapContext\WaitingListFeature\BILRG_BedWaitingList.sql" />

@@ -57,7 +57,6 @@ public class ReservationRepoTest
                 model.Pasien.PasienId.Should().Be("P0001");
                 model.KelasRawat.KelasId.Should().Be("K01");
                 model.Bangsal.BangsalId.Should().Be("B001");
-                model.OpnameRequestId.Should().Be("-");
                 model.RealizedRegId.Should().Be("-");
             },
             onNone: () => Assert.Fail("Expected Some but got None"));
@@ -68,7 +67,6 @@ public class ReservationRepoTest
             "RSV00000001",
             ReservationStatusEnum.Reserved,
             new PasienReff("P0001", "Pasien Test", new DateOnly(1990, 5, 15), "L"),
-            "-",
             new DateTime(2026, 7, 10),
             new KelasReff("K01", "Kelas 1"),
             new BangsalReff("B001", "Bangsal A"),

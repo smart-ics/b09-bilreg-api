@@ -64,6 +64,8 @@ Responsibilities
 - Planned admission
 - Reservation lifecycle
 
+Independent from Opname Request — no cross-aggregate reference at domain or persistence level.
+
 Depends on
 
 - Admission Module
@@ -169,19 +171,43 @@ Reservation updated.
 
 ---
 
-### Process Admission
+### Process Opname Request Admission
 
 Purpose
 
-Administratively admit a patient.
+Administratively admit a patient from a clinical Opname Request.
 
 Primary Aggregate
 
 Admission
 
+Supporting Aggregate
+
+Opname Request (fulfilled in the same application transaction)
+
 Outcome
 
-Admission fulfilled.
+Admission created; Opname Request fulfilled.
+
+---
+
+### Process Reservation Admission
+
+Purpose
+
+Administratively admit a patient from a planned Reservation.
+
+Primary Aggregate
+
+Admission
+
+Supporting Aggregate
+
+Reservation (realized in the same application transaction; auto-maintained when still `Reserved`)
+
+Outcome
+
+Admission created; Reservation realized.
 
 ---
 
@@ -447,7 +473,8 @@ Permissions are granted according to business responsibilities.
 
 Examples
 
-- Process Admission
+- Process Opname Request Admission
+- Process Reservation Admission
 - Maintain Reservation
 - Manage Waiting List
 

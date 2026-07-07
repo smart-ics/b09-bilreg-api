@@ -9,14 +9,13 @@ namespace Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
 public record ReservationModel : IReservationKey
 {
     private const string ID_PREFIX = "RSV";
-    private const string EMPTY_REF_ID = "-";
+    private const string EMPTY_REG_ID = "-";
     private static readonly DateTime EmptyDate = new(3000, 1, 1);
 
     public ReservationModel(
         string reservationId,
         ReservationStatusEnum reservationStatus,
         PasienReff pasien,
-        string opnameRequestId,
         DateTime plannedDate,
         KelasReff kelasRawat,
         BangsalReff bangsal,
@@ -26,7 +25,6 @@ public record ReservationModel : IReservationKey
         ReservationId = reservationId;
         ReservationStatus = reservationStatus;
         Pasien = pasien;
-        OpnameRequestId = opnameRequestId;
         PlannedDate = plannedDate;
         KelasRawat = kelasRawat;
         Bangsal = bangsal;
@@ -41,7 +39,6 @@ public record ReservationModel : IReservationKey
         DateTime plannedDate,
         KelasReff kelasRawat,
         BangsalReff bangsal,
-        string? opnameRequestId,
         string auditUserId)
     {
         Guard.Against.Null(pasien);
@@ -54,11 +51,10 @@ public record ReservationModel : IReservationKey
             NunaId.New(ID_PREFIX),
             ReservationStatusEnum.Reserved,
             pasien,
-            string.IsNullOrWhiteSpace(opnameRequestId) ? EMPTY_REF_ID : opnameRequestId,
             plannedDate,
             kelasRawat,
             bangsal,
-            EMPTY_REF_ID,
+            EMPTY_REG_ID,
             AuditTrailType.Create(auditUserId, now));
     }
 
@@ -66,11 +62,10 @@ public record ReservationModel : IReservationKey
         "-",
         ReservationStatusEnum.Reserved,
         new PasienReff("-", "-", new DateOnly(3000, 1, 1), "-"),
-        EMPTY_REF_ID,
         EmptyDate,
         new KelasReff("-", "-"),
         new BangsalReff("-", "-"),
-        EMPTY_REF_ID,
+        EMPTY_REG_ID,
         AuditTrailType.Default);
 
     public static IReservationKey Key(string id) => Default with { ReservationId = id };
@@ -82,7 +77,6 @@ public record ReservationModel : IReservationKey
     public string ReservationId { get; init; }
     public ReservationStatusEnum ReservationStatus { get; init; }
     public PasienReff Pasien { get; init; }
-    public string OpnameRequestId { get; init; }
     public DateTime PlannedDate { get; init; }
     public KelasReff KelasRawat { get; init; }
     public BangsalReff Bangsal { get; init; }
@@ -132,7 +126,7 @@ public record ReservationModel : IReservationKey
             throw new InvalidOperationException(
                 $"Reservation {ReservationId} harus Maintained untuk direalisasi (status saat ini: {ReservationStatus}).");
 
-        if (!string.IsNullOrWhiteSpace(RealizedRegId) && RealizedRegId != EMPTY_REF_ID)
+        if (!string.IsNullOrWhiteSpace(RealizedRegId) && RealizedRegId != EMPTY_REG_ID)
             throw new InvalidOperationException(
                 $"Reservation {ReservationId} sudah direalisasi oleh Reg {RealizedRegId}.");
 
@@ -185,7 +179,6 @@ public record ReservationModel : IReservationKey
             ReservationId,
             status,
             Pasien,
-            OpnameRequestId,
             plannedDate,
             kelasRawat,
             bangsal,
