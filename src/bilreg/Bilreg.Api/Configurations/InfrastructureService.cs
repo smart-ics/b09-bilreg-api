@@ -1,38 +1,40 @@
-﻿using Bilreg.Application.LabContext.LabOrderFeature;
+﻿using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
+using Bilreg.Application.AdmisiContext.JadwalPraktekFeature.UseCases;
 using Bilreg.Application.AdmisiRanapContext;
+using Bilreg.Application.AdmisiRanapContext.Integration;
 using Bilreg.Application.AdmisiRanapContext.RolloutFeature;
 using Bilreg.Application.AdmisiRanapContext.OperationalWorklistFeature;
 using Bilreg.Application.AdmisiRanapContext.WaitingListFeature;
-using Bilreg.Application.AdmisiRanapContext.Integration;
-using Bilreg.Application.AdmisiContext.JadwalPraktekFeature.UseCases;
-using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
+using Bilreg.Application.ChargeContext.TarifFeature;
+using Bilreg.Application.LabContext.LabOrderFeature;
 using Bilreg.Application.LabContext.LabOrderFeature.Integration;
-using Bilreg.Infrastructure.LabContext.LabOrderFeature;
 using Bilreg.Application.LabContext.LabOwareFeature;
 using Bilreg.Application.LabContext.LabOwareFeature.Integration;
 using Bilreg.Application.LabContext.LabResultFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
+using Bilreg.Application.PaymentContext.PasienBalanceFeature;
+using Bilreg.Application.PaymentContext.TataRekeningFeature;
+using Bilreg.Application.Shared;
+using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Domain.Shared.Helpers;
-using Bilreg.Application.ChargeContext.TarifFeature;
-using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Infrastructure;
-using Bilreg.Infrastructure.ChargeContext.TarifFeature;
 using Bilreg.Infrastructure.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.OperationalWorklistFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.WaitingListFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.Integration;
 using Bilreg.Infrastructure.AdmisiRanapContext.RolloutFeature;
+using Bilreg.Infrastructure.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Infrastructure.ChargeContext.TarifFeature;
 using Bilreg.Infrastructure.LabContext.Integration;
+using Bilreg.Infrastructure.LabContext.LabOrderFeature;
 using Bilreg.Infrastructure.LabContext.LabOwareFeature;
 using Bilreg.Infrastructure.LabContext.LabResultFeature;
-using Bilreg.Application.PaymentContext.PasienBalanceFeature;
-using Bilreg.Application.PaymentContext.TataRekeningFeature;
-using Bilreg.Application.Shared;
 using Bilreg.Infrastructure.PaymentContext.PasienBalanceFeature;
 using Bilreg.Infrastructure.PaymentContext.TataRekeningFeature;
 using Bilreg.Infrastructure.Shared;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Bilreg.Infrastructure.Shared.Param;
+using Bilreg.Infrastructure.Shared.User;
 using Nuna.Lib.AutoNumberHelper;
 using Nuna.Lib.CleanArchHelper;
 using Nuna.Lib.DataAccessHelper;
@@ -81,6 +83,7 @@ public static class InfrastructureService
             .AddScoped<IPasienBalanceLegacyReader, LegacyOutstandingReceivableReader>()
             .AddScoped<IUnitOfWork, TransHelperUnitOfWork>()
             .AddScoped<ITransferReceivableService, TransferReceivableService>()
+            .AddScoped<IUsmanGetTokenService,  UsmanGetTokenService>()
             .AddSingleton<TarifOperationalGate>()
             .AddMemoryCache();
 
@@ -95,7 +98,9 @@ public static class InfrastructureService
             .Configure<JetliOptions>(configuration.GetSection(JetliOptions.SECTION_NAME))
             .Configure<JknOptions>(configuration.GetSection(JknOptions.SECTION_NAME))
             .Configure<JadwalPraktekOptions>(configuration.GetSection(JadwalPraktekOptions.SECTION_NAME))
-            .Configure<AdmisiRanapOptions>(configuration.GetSection(AdmisiRanapOptions.SECTION_NAME));
+            .Configure<AdmisiRanapOptions>(configuration.GetSection(AdmisiRanapOptions.SECTION_NAME))
+            .Configure<UsmanOptions>(configuration.GetSection(UsmanOptions.SECTION_NAME));
+
 
         services
             .Scan(selector => selector
