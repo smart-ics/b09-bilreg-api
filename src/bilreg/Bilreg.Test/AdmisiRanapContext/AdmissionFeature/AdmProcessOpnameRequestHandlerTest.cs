@@ -28,6 +28,7 @@ public class AdmProcessOpnameRequestHandlerTest
         var opname = OpnameRequestModel.Create(
             SamplePasienReff(),
             new PpaReff("D001", "Dr. Test"),
+            new DateTime(2026, 7, 20),
             "Catatan",
             "user1");
 
@@ -69,6 +70,7 @@ public class AdmProcessOpnameRequestHandlerTest
         var opname = OpnameRequestModel.Create(
             SamplePasienReff(),
             new PpaReff("D001", "Dr. Test"),
+            new DateTime(2026, 7, 20),
             "Catatan",
             "user1")
             .Fulfill("RG00000099", "user1");

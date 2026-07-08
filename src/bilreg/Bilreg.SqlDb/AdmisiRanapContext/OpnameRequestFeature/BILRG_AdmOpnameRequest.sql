@@ -7,6 +7,7 @@ BEGIN
         PasienId            VARCHAR(15)  NOT NULL CONSTRAINT DF_BILRG_AdmOpnameRequest_PasienId DEFAULT('-'),
         DokterId            VARCHAR(10)  NOT NULL CONSTRAINT DF_BILRG_AdmOpnameRequest_DokterId DEFAULT('-'),
         DokterName          VARCHAR(60)  NOT NULL CONSTRAINT DF_BILRG_AdmOpnameRequest_DokterName DEFAULT(''),
+        PlannedDate         DATETIME     NOT NULL CONSTRAINT DF_BILRG_AdmOpnameRequest_PlannedDate DEFAULT('3000-01-01'),
         ClinicalNotes       VARCHAR(500) NOT NULL CONSTRAINT DF_BILRG_AdmOpnameRequest_ClinicalNotes DEFAULT(''),
         FulfilledRegId      VARCHAR(10)  NOT NULL CONSTRAINT DF_BILRG_AdmOpnameRequest_FulfilledRegId DEFAULT('-'),
 

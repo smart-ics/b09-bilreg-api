@@ -27,7 +27,7 @@ public class OpnameRequestDal : IOpnameRequestDal
         ISNULL(bb.fs_nm_pasien, '') AS PasienName,
         ISNULL(bb.fd_tgl_lahir, '3000-01-01') AS TglLahir,
         ISNULL(bb.fs_jns_kelamin, '') AS Gender,
-        aa.DokterId, aa.DokterName, aa.ClinicalNotes, aa.FulfilledRegId,
+        aa.DokterId, aa.DokterName, aa.PlannedDate, aa.ClinicalNotes, aa.FulfilledRegId,
         aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate
         """;
 
@@ -41,12 +41,12 @@ public class OpnameRequestDal : IOpnameRequestDal
             INSERT INTO BILRG_AdmOpnameRequest (
                 OpnameRequestId, OpnameRequestStatus,
                 PasienId,
-                DokterId, DokterName, ClinicalNotes, FulfilledRegId,
+                DokterId, DokterName, PlannedDate, ClinicalNotes, FulfilledRegId,
                 CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
             VALUES (
                 @OpnameRequestId, @OpnameRequestStatus,
                 @PasienId,
-                @DokterId, @DokterName, @ClinicalNotes, @FulfilledRegId,
+                @DokterId, @DokterName, @PlannedDate, @ClinicalNotes, @FulfilledRegId,
                 @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
             """;
 
@@ -63,6 +63,7 @@ public class OpnameRequestDal : IOpnameRequestDal
                 PasienId = @PasienId,
                 DokterId = @DokterId,
                 DokterName = @DokterName,
+                PlannedDate = @PlannedDate,
                 ClinicalNotes = @ClinicalNotes,
                 FulfilledRegId = @FulfilledRegId,
                 UpdUser = @UpdUser,
@@ -123,6 +124,7 @@ public class OpnameRequestDal : IOpnameRequestDal
         dp.AddParam("@PasienId", dto.PasienId, SqlDbType.VarChar);
         dp.AddParam("@DokterId", dto.DokterId, SqlDbType.VarChar);
         dp.AddParam("@DokterName", dto.DokterName, SqlDbType.VarChar);
+        dp.AddParam("@PlannedDate", dto.PlannedDate, SqlDbType.DateTime);
         dp.AddParam("@ClinicalNotes", dto.ClinicalNotes, SqlDbType.VarChar);
         dp.AddParam("@FulfilledRegId", dto.FulfilledRegId, SqlDbType.VarChar);
         dp.AddParam("@CrtUser", dto.CrtUser, SqlDbType.VarChar);

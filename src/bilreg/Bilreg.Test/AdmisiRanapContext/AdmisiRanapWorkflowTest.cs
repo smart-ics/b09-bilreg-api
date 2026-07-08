@@ -33,7 +33,7 @@ public class AdmisiRanapWorkflowTest
         var h = new WorkflowHarness();
 
         var opnameResponse = await h.CreateOpnameHandler.Handle(
-            new AdmCreateOpnameRequestCmd("P001", "D001", "Direct", "user1"),
+            new AdmCreateOpnameRequestCmd("P001", "D001","2026-07-30", "Direct", "user1"),
             CancellationToken.None);
 
         var admissionResponse = await h.ProcessOpnameHandler.Handle(
@@ -59,7 +59,7 @@ public class AdmisiRanapWorkflowTest
         var h = new WorkflowHarness();
 
         await h.CreateOpnameHandler.Handle(
-            new AdmCreateOpnameRequestCmd("P001", "D001", "Planned clinical", "user1"),
+            new AdmCreateOpnameRequestCmd("P001", "D001", "2026-07-30", "Planned clinical", "user1"),
             CancellationToken.None);
 
         var reservationResponse = await h.CreateReservationHandler.Handle(
@@ -118,7 +118,7 @@ public class AdmisiRanapWorkflowTest
         var h = new WorkflowHarness();
 
         var opnameResponse = await h.CreateOpnameHandler.Handle(
-            new AdmCreateOpnameRequestCmd("P001", "D001", "Transfer prep", "user1"),
+            new AdmCreateOpnameRequestCmd("P001", "D001", "2026-07-30", "Transfer prep", "user1"),
             CancellationToken.None);
 
         var admissionResponse = await h.ProcessOpnameHandler.Handle(
