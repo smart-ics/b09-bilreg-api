@@ -8,7 +8,7 @@ namespace Bilreg.Api.Controllers.AdmisiRanapContext;
 
 [Route("api/admisi-ranap/rollout")]
 [ApiController]
-[Authorize]
+//[Authorize]
 public class AdmisiRanapRolloutController : ControllerBase
 {
     private readonly IMediator _mediator;

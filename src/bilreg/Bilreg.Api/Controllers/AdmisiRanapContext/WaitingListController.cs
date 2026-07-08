@@ -8,7 +8,7 @@ using Nuna.Lib.ActionResultHelper;
 namespace Bilreg.Api.Controllers.AdmisiRanapContext;
 
 [Route("api/admisi-ranap/waiting-list")]
-[ApiController]
+//[ApiController]
 [Authorize]
 [ServiceFilter(typeof(AdmisiRanapEnabledFilter))]
 public class WaitingListController : ControllerBase

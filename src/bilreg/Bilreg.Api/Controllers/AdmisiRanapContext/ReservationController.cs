@@ -10,7 +10,7 @@ namespace Bilreg.Api.Controllers.AdmisiRanapContext;
 
 [Route("api/admisi-ranap/reservation")]
 [ApiController]
-[Authorize]
+//[Authorize]
 [ServiceFilter(typeof(AdmisiRanapEnabledFilter))]
 public class ReservationController : ControllerBase
 {
