@@ -37,7 +37,7 @@ public class AdmReservationHandlerTest
         var response = await handler.Handle(
             new AdmCreateReservationCmd(
                 "P001",
-                new DateTime(2026, 8, 1),
+                "2026-08-01",
                 "K1",
                 "B1",
                 "user1"),
@@ -77,7 +77,7 @@ public class AdmReservationHandlerTest
         await handler.Handle(
             new AdmMaintainReservationCmd(
                 reserved.ReservationId,
-                new DateTime(2026, 8, 5),
+                "2026-08-05",
                 "K2",
                 "B2",
                 "user2"),

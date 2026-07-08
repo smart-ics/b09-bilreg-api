@@ -63,13 +63,13 @@ public class AdmisiRanapWorkflowTest
             CancellationToken.None);
 
         var reservationResponse = await h.CreateReservationHandler.Handle(
-            new AdmCreateReservationCmd("P001", new DateTime(2026, 9, 1), "K1", "B1", "user1"),
+            new AdmCreateReservationCmd("P001", "2026-09-01", "K1", "B1", "user1"),
             CancellationToken.None);
 
         await h.MaintainReservationHandler.Handle(
             new AdmMaintainReservationCmd(
                 reservationResponse.ReservationId,
-                new DateTime(2026, 9, 5),
+                "2026-09-05",
                 "K1",
                 "B1",
                 "user2"),
@@ -91,13 +91,13 @@ public class AdmisiRanapWorkflowTest
         var h = new WorkflowHarness();
 
         var reservationResponse = await h.CreateReservationHandler.Handle(
-            new AdmCreateReservationCmd("P001", new DateTime(2026, 10, 1), "K1", "B1", "user1"),
+            new AdmCreateReservationCmd("P001", "2026-10-01", "K1", "B1", "user1"),
             CancellationToken.None);
 
         await h.MaintainReservationHandler.Handle(
             new AdmMaintainReservationCmd(
                 reservationResponse.ReservationId,
-                new DateTime(2026, 10, 1),
+                "2026-10-01",
                 "K2",
                 "B2",
                 "user2"),
