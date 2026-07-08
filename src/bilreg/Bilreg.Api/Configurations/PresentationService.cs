@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using Bilreg.Api.Authorization;
+using Bilreg.Api.Filters;
 using Bilreg.Application.Shared;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -78,6 +79,7 @@ public static class PresentationService
 
         services.AddAuthorization();
         services.AddScoped<ICurrentUserContext, HttpCurrentUserContext>();
+        services.AddScoped<AdmisiRanapEnabledFilter>();
 
         services.AddCors(p => p.AddPolicy("corsapp", policyBuilder =>
         {

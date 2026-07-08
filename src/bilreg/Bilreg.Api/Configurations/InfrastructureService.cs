@@ -1,4 +1,8 @@
 ﻿using Bilreg.Application.LabContext.LabOrderFeature;
+using Bilreg.Application.AdmisiRanapContext;
+using Bilreg.Application.AdmisiRanapContext.RolloutFeature;
+using Bilreg.Application.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Application.AdmisiRanapContext.Integration;
 using Bilreg.Application.AdmisiContext.JadwalPraktekFeature.UseCases;
 using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Application.LabContext.LabOrderFeature.Integration;
@@ -13,6 +17,9 @@ using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Infrastructure;
 using Bilreg.Infrastructure.ChargeContext.TarifFeature;
 using Bilreg.Infrastructure.AdmisiContext.JadwalPraktekFeature;
+using Bilreg.Infrastructure.AdmisiRanapContext.WaitingListFeature;
+using Bilreg.Infrastructure.AdmisiRanapContext.Integration;
+using Bilreg.Infrastructure.AdmisiRanapContext.RolloutFeature;
 using Bilreg.Infrastructure.LabContext.Integration;
 using Bilreg.Infrastructure.LabContext.LabOwareFeature;
 using Bilreg.Infrastructure.LabContext.LabResultFeature;
@@ -52,6 +59,11 @@ public static class InfrastructureService
             .AddScoped<ILabTestResolutionService, LabTestResolutionService>()
             .AddScoped<ILabOwareIntegration, LabOwareIntegration>()
             .AddScoped<ILabOwareQueueWorklistDal, LabOwareQueueWorklistDal>()
+            .AddScoped<IWaitingListWorklistDal, WaitingListWorklistDal>()
+            .AddScoped<IDoctorServiceGateway, DoctorServiceGateway>()
+            .AddScoped<IPatientAdministrationGateway, PatientAdministrationGateway>()
+            .AddScoped<IWardAccommodationGateway, WardAccommodationGateway>()
+            .AddScoped<IAdmisiRanapRolloutDal, AdmisiRanapRolloutDal>()
             .AddScoped<LabOwareQueueProcessor>()
             .AddScoped<ILabResultPdfRenderer, LabResultPdfRenderer>()
             .AddScoped<ILabResultScaffoldService, LabResultScaffoldService>()
@@ -79,7 +91,8 @@ public static class InfrastructureService
             .Configure<HiDokOptions>(configuration.GetSection(HiDokOptions.SECTION_NAME))
             .Configure<JetliOptions>(configuration.GetSection(JetliOptions.SECTION_NAME))
             .Configure<JknOptions>(configuration.GetSection(JknOptions.SECTION_NAME))
-            .Configure<JadwalPraktekOptions>(configuration.GetSection(JadwalPraktekOptions.SECTION_NAME));
+            .Configure<JadwalPraktekOptions>(configuration.GetSection(JadwalPraktekOptions.SECTION_NAME))
+            .Configure<AdmisiRanapOptions>(configuration.GetSection(AdmisiRanapOptions.SECTION_NAME));
 
         services
             .Scan(selector => selector

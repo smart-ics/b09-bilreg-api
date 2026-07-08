@@ -6,6 +6,7 @@ using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
+using Nuna.Lib.AutoNumberHelper;
 using Nuna.Lib.CleanArchHelper;
 
 namespace Bilreg.Domain.AdmisiContext.RegFeature;
