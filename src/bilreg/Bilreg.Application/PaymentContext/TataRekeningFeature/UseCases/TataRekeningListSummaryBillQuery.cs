@@ -1,4 +1,5 @@
-﻿using Bilreg.Application.AdmisiContext.RegFeature;
+﻿using Ardalis.GuardClauses;
+using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.PaymentContext.TrsBillFeature;
@@ -26,6 +27,8 @@ public class TataRekeningListSummaryBillHandler : IRequestHandler<TataRekeningLi
 
     public Task<TataRekeningListSummaryBillResponse> Handle(TataRekeningListSummaryBillQuery request, CancellationToken cancellationToken)
     {
+        Guard.Against.NullOrWhiteSpace(request.RegId, nameof(request.RegId));
+
         var reg = _regRepo.LoadEntity(request).GetValueOrThrow($"Registrasi {request.RegId} not found");
         var tataRekening = _tataRekeningRepo.LoadEntity(request).GetValueOrThrow($"Bills {request.RegId} not found");
 

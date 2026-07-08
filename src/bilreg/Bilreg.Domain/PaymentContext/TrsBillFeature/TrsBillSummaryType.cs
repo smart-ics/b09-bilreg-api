@@ -1,6 +1,4 @@
-﻿using Bilreg.Domain.PaymentContext.TataRekeningFeature;
-
-namespace Bilreg.Domain.PaymentContext.TrsBillFeature;
+﻿namespace Bilreg.Domain.PaymentContext.TrsBillFeature;
 
 public record TrsBillSummaryType
 {
