@@ -36,8 +36,8 @@ Room allocation and Bed allocation are outside this business domain and belong t
 | Reservation | Administrative plan for a future inpatient admission. |
 | Admission | Administrative acceptance of a patient into an inpatient episode. |
 | Waiting List | Represents an Admission awaiting suitable accommodation before the next Bed Assignment. |
-| Care Class | Accommodation class determined by insurance entitlement or patient preference. |
-| Care Level | Clinical level of care required by the patient. |
+| Kelas Rawat | Accommodation class (kelas perawatan) determined by insurance entitlement or patient preference; persisted as `KelasReff`. |
+| Bangsal | Destination inpatient ward responsible for accommodating the patient; persisted as `BangsalReff`. |
 
 ---
 
@@ -88,7 +88,8 @@ Responsibilities:
 
 - Create Reservation
 - Maintain Reservation
-- Process Admission
+- Process Opname Request Admission
+- Process Reservation Admission
 - Update Admission
 - Cancel Admission
 - Manage Waiting List
@@ -120,6 +121,8 @@ Represents a clinical decision requiring inpatient treatment.
 ### Reservation
 
 Represents a planned inpatient admission before administrative admission occurs.
+
+Reservation is independent from Opname Request — it does not store or reference a clinical opname. Staff may create both aggregates separately for planned admissions; each is an independent admission source.
 
 ---
 
@@ -159,6 +162,8 @@ Business Responsibility:
 
 Maintain planned inpatient admissions before administrative admission.
 
+Reservation owns Kelas Rawat and destination Bangsal for planning. Reservation has no persistent link to Opname Request.
+
 ---
 
 ### Admission
@@ -175,6 +180,7 @@ Admission owns:
 - Administrative status
 - Reservation realization
 - Opname Request fulfillment
+- Kelas Rawat and destination Bangsal (planning attributes; not room/bed allocation)
 
 Admission does **not** own patient accommodation.
 
@@ -192,7 +198,8 @@ Waiting List owns:
 
 - Waiting status
 - Waiting priority
-- Accommodation requirements
+- Kelas Rawat (`KelasReff`)
+- Destination Bangsal (`BangsalReff`)
 
 Waiting List is independent from Ward operations.
 
@@ -388,11 +395,14 @@ Ward Accommodation
 
 ### Planned Admission
 
-Opname Request
+Opname Request (clinical) and Reservation (administrative plan) may be created independently. Clinical context may be copied at the application/UI layer when creating the reservation — there is no domain FK between them.
 
 ↓
 
-Reservation
+Process **one** admission source:
+
+- Process Opname Request Admission (fulfills Opname Request), or
+- Process Reservation Admission (realizes Reservation; maintain first if still `Reserved`)
 
 ↓
 
