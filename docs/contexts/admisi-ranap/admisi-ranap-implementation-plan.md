@@ -422,6 +422,14 @@ Use cases are authoritative in `admisi-ranap-architecture.md` §3. API exposes b
 
 **Ward consumer:** `GET api/admisi-ranap/waiting-list` is the primary integration surface (ADR-004).
 
+### 8.5 Operational Work List (read-only projection)
+
+| Use Case | HTTP | Command / Query |
+|----------|------|-----------------|
+| Unified operational work list | `GET api/admisi-ranap/operational-worklist` | `AdmListOperationalWorklistQry` |
+
+Read-only UNION projection over Opname Request, Reservation, Admission, and Waiting List tables. Not a new aggregate. Supports composable filters including penjamin (via `ta_registrasi` join on `RegId`).
+
 **Skill:** `docs/skills/use-case-generation.md`
 
 ---

@@ -1,6 +1,7 @@
 ﻿using Bilreg.Application.LabContext.LabOrderFeature;
 using Bilreg.Application.AdmisiRanapContext;
 using Bilreg.Application.AdmisiRanapContext.RolloutFeature;
+using Bilreg.Application.AdmisiRanapContext.OperationalWorklistFeature;
 using Bilreg.Application.AdmisiRanapContext.WaitingListFeature;
 using Bilreg.Application.AdmisiRanapContext.Integration;
 using Bilreg.Application.AdmisiContext.JadwalPraktekFeature.UseCases;
@@ -17,6 +18,7 @@ using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Infrastructure;
 using Bilreg.Infrastructure.ChargeContext.TarifFeature;
 using Bilreg.Infrastructure.AdmisiContext.JadwalPraktekFeature;
+using Bilreg.Infrastructure.AdmisiRanapContext.OperationalWorklistFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.WaitingListFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.Integration;
 using Bilreg.Infrastructure.AdmisiRanapContext.RolloutFeature;
@@ -60,6 +62,7 @@ public static class InfrastructureService
             .AddScoped<ILabOwareIntegration, LabOwareIntegration>()
             .AddScoped<ILabOwareQueueWorklistDal, LabOwareQueueWorklistDal>()
             .AddScoped<IWaitingListWorklistDal, WaitingListWorklistDal>()
+            .AddScoped<IOperationalWorklistDal, OperationalWorklistDal>()
             .AddScoped<IDoctorServiceGateway, DoctorServiceGateway>()
             .AddScoped<IPatientAdministrationGateway, PatientAdministrationGateway>()
             .AddScoped<IWardAccommodationGateway, WardAccommodationGateway>()
