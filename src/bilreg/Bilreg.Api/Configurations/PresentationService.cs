@@ -82,21 +82,27 @@ public static class PresentationService
             {
                 OnAuthenticationFailed = context =>
                 {
-                    Console.WriteLine("JWT Authentication Failed");
-                    Console.WriteLine(context.Exception.ToString());
+                    CreateAuthLogger(context.HttpContext).LogWarning(
+                        context.Exception,
+                        "JWT authentication failed: {ErrorMessage}",
+                        context.Exception.Message);
                     return Task.CompletedTask;
                 },
 
                 OnTokenValidated = context =>
                 {
-                    Console.WriteLine("JWT Token Valid");
+                    CreateAuthLogger(context.HttpContext).LogDebug(
+                        "JWT token validated for {UserName}",
+                        context.Principal?.Identity?.Name ?? "(unknown)");
                     return Task.CompletedTask;
                 },
 
                 OnChallenge = context =>
                 {
-                    Console.WriteLine($"JWT Challenge: {context.Error}");
-                    Console.WriteLine(context.ErrorDescription);
+                    CreateAuthLogger(context.HttpContext).LogWarning(
+                        "JWT challenge issued: {Error} {ErrorDescription}",
+                        context.Error,
+                        context.ErrorDescription);
                     return Task.CompletedTask;
                 }
             };
@@ -118,4 +124,9 @@ public static class PresentationService
         
         return services;
     }
+
+    private static ILogger CreateAuthLogger(HttpContext httpContext) =>
+        httpContext.RequestServices
+            .GetRequiredService<ILoggerFactory>()
+            .CreateLogger("Bilreg.Api.Authentication");
 }
