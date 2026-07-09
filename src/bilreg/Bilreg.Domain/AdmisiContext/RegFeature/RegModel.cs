@@ -12,6 +12,7 @@ namespace Bilreg.Domain.AdmisiContext.RegFeature;
 public class RegModel : IRegKey
 {
     private readonly List<RegKomponenType> _listKomponen;
+    private readonly List<RegDokterType> _listDokter;
     private const string BAYAR_SENDIRI = "00000";
 
     #region  CREATION
@@ -19,9 +20,10 @@ public class RegModel : IRegKey
         AuditInfoType regMasukAudit, AuditInfoType regKeluarAudit, AuditInfoType regCancelOutAudit, AuditInfoType regVoidAudit,
         JenisRegEnum jenisReg, PasienReff pasien, TipeJaminanReff tipeJaminan, 
         PolisReff polis, KelasReff kelas, CaraMasukDkType caraMasukDk, RujukanReff rujukan, 
-        PpaReff dokter, LayananReff layanan, KarcisReff karcis, 
+        LayananReff layanan, KarcisReff karcis, 
         RegEligibilityType eligibility,
-        IEnumerable<RegKomponenType> listKomponen)
+        IEnumerable<RegKomponenType> listKomponen,
+        IEnumerable<RegDokterType> listDokter)
     {
         RegId = regId;
         RegDate = regDate;
@@ -36,28 +38,28 @@ public class RegModel : IRegKey
         Kelas = kelas;
         CaraMasukDk = caraMasukDk;
         Rujukan = rujukan;
-        Dokter = dokter;
         Layanan = layanan;
         Karcis = karcis;
         Eligibility = eligibility;
-        _listKomponen = listKomponen.ToList();
+        _listKomponen = listKomponen?.ToList() ?? [];
+        _listDokter = listDokter?.ToList() ?? [];
     }
 
     public static RegModel Default => new RegModel("-", new DateOnly(3000, 1, 1),
         AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default,
         JenisRegEnum.RegJalan, PasienModel.Default.ToReff(), TipeJaminanType.Default.ToReff(),
         PolisModel.Default.ToReff(), KelasType.Default.ToReff(), CaraMasukDkType.Default,
-        RujukanType.Default.ToReff(), PpaType.Default.ToReff(), LayananType.Default.ToReff(),
+        RujukanType.Default.ToReff(), LayananType.Default.ToReff(),
         KarcisType.Default.ToReff(), 
-        new RegEligibilityType("-", "-", "-"), []);
+        new RegEligibilityType("-", "-", "-"), [], []);
     
     public static IRegKey Key(string id) => new RegModel(id, new DateOnly(3000, 1, 1),
         AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default,
         JenisRegEnum.RegJalan, PasienModel.Default.ToReff(), TipeJaminanType.Default.ToReff(),
         PolisModel.Default.ToReff(), KelasType.Default.ToReff(), CaraMasukDkType.Default,
-        RujukanType.Default.ToReff(), PpaType.Default.ToReff(), LayananType.Default.ToReff(),
+        RujukanType.Default.ToReff(), LayananType.Default.ToReff(),
         KarcisType.Default.ToReff(), 
-        new RegEligibilityType("-", "-", "-"), []);
+        new RegEligibilityType("-", "-", "-"), [], []);
     #endregion
 
     #region PROPERTIES
@@ -80,17 +82,57 @@ public class RegModel : IRegKey
     public CaraMasukDkType CaraMasukDk { get; private set; }
     public RujukanReff Rujukan { get; private set; }
     //      ke mana (catat tujuan utama di header)
-    public PpaReff Dokter { get; private set; }
+    public PpaReff Dokter =>
+        _listDokter.FirstOrDefault(x => x.IsActive && x.IsPrimer)?.Dokter
+        ?? PpaType.Default.ToReff();
     public LayananReff Layanan { get; private set; }
     public KarcisReff Karcis { get; private set; }
     //      Eligibility
     public RegEligibilityType Eligibility { get; private set; }
     //
     public IEnumerable<RegKomponenType> ListKomponen => _listKomponen;
+    public IEnumerable<RegDokterType> ListDokter => _listDokter;
     #endregion
     
     #region BEHAVIOUR
+    private static DateOnly BusinessDate => DateOnly.FromDateTime(DateTime.Now);
+
     public RegReff ToReff()=> new RegReff(RegId, Pasien.PasienId, Pasien.PasienName);
+
+    public void AssignDokter(PpaReff dokter)
+    {
+        if (dokter.IsDefault)
+            throw new ArgumentException("Dokter wajib diisi");
+
+        if (FindActiveAssignment(dokter.PpaId) is not null)
+            throw new InvalidOperationException(
+                $"Dokter {dokter.PpaId} sudah memiliki penugasan aktif pada registrasi {RegId}");
+
+        _listDokter.Add(new RegDokterType(dokter, BusinessDate));
+    }
+
+    public void ReleaseDokter(PpaReff dokter)
+    {
+        var assignment = FindActiveAssignment(dokter.PpaId)
+            ?? throw new InvalidOperationException(
+                $"Dokter {dokter.PpaId} tidak memiliki penugasan aktif pada registrasi {RegId}");
+
+        // BR-REG-009: Release clears IsPrimer; historical row is retained with dates.
+        assignment.Release(BusinessDate);
+    }
+
+    public void SetDpjp(PpaReff dokter)
+    {
+        var assignment = FindActiveAssignment(dokter.PpaId)
+            ?? throw new InvalidOperationException(
+                $"Dokter {dokter.PpaId} harus memiliki penugasan aktif sebelum ditetapkan sebagai DPJP");
+
+        foreach (var other in _listDokter.Where(x => x.IsActive && x.Dokter.PpaId != dokter.PpaId))
+            other.SetPrimer(false);
+
+        assignment.SetPrimer(true);
+    }
+
     public void ApplyJaminan(TipeJaminanType tipeJaminan, PolisModel polis)
     {
         if (tipeJaminan.TipeJaminanId == BAYAR_SENDIRI)
@@ -137,7 +179,7 @@ public class RegModel : IRegKey
         if (!karcis.IsValidLayanan(layanan))
             throw new InvalidOperationException("Karcis tidak valid untuk layanan ini");
 
-        Dokter = dokter.ToReff();
+        EnsurePrimaryDokter(dokter.ToReff());
         Layanan = layanan.ToReff();
         Karcis = karcis.ToReff();
     }
@@ -154,12 +196,13 @@ public class RegModel : IRegKey
         Rujukan = rujukan.ToReff();
         Karcis = karcis.ToReff();
     }
+
     public void AssignVisitTo(PpaType dokter, LayananType layanan, KarcisType karcis)
     {
         if (karcis.ListLayanan.All(x => x.LayananId != layanan.LayananId))
             throw new ArgumentException($"Layanan {layanan.LayananName} tidak terdaftar di karcis {karcis.KarcisName}");
         
-        Dokter = dokter.ToReff();
+        EnsurePrimaryDokter(dokter.ToReff());
         Layanan = layanan.ToReff();
         Karcis = karcis.ToReff();
         
@@ -178,6 +221,23 @@ public class RegModel : IRegKey
         var data = new RegEligibilityType(sjpId, noSjp, pesertaJaminanId);
         Eligibility = data;
     }
+
+    private void EnsurePrimaryDokter(PpaReff dokter)
+    {
+        foreach (var prior in _listDokter
+                     .Where(x => x.IsActive && x.IsPrimer && x.Dokter.PpaId != dokter.PpaId)
+                     .ToList())
+            prior.Release(BusinessDate);
+
+        if (FindActiveAssignment(dokter.PpaId) is null)
+            AssignDokter(dokter);
+
+        SetDpjp(dokter);
+    }
+
+    private RegDokterType? FindActiveAssignment(string ppaId) =>
+        _listDokter.FirstOrDefault(x => x.IsActive && x.Dokter.PpaId == ppaId);
+
     #endregion
 }
 
@@ -199,5 +259,4 @@ public record RegEligibilityType(
     public static RegEligibilityType Default
         => new RegEligibilityType("-", "-", "-");
 }
-    
     

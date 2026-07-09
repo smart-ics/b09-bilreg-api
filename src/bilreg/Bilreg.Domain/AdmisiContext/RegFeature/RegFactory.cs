@@ -62,9 +62,9 @@ public class RegFactory : IRegFactory
             AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default, JenisRegEnum.RegJalan,
             pasien.ToReff(), TipeJaminanType.Default.ToReff(),
             PolisModel.Default.ToReff(), kelasRajal.ToReff(), CaraMasukDkType.Default,
-            RujukanType.Default.ToReff(), PpaType.Default.ToReff(), 
+            RujukanType.Default.ToReff(),  
             LayananType.Default.ToReff(), KarcisType.Default.ToReff(), 
-            eligibility, []);
+            eligibility, [], []);
 
         reg.ApplyJaminan(tipeJaminan, polis);
         reg.SpecifyCaraMasuk (caraMasukDk, rujukan);
@@ -88,8 +88,8 @@ public class RegFactory : IRegFactory
             AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default, JenisRegEnum.Darurat,
             pasien.ToReff(), TipeJaminanType.Default.ToReff(),
             PolisModel.Default.ToReff(), kelasRajal.ToReff(), CaraMasukDkType.Default,
-            RujukanType.Default.ToReff(), PpaType.Default.ToReff(),
-            LayananType.Default.ToReff(), KarcisType.Default.ToReff(), eligibility, []);
+            RujukanType.Default.ToReff(),
+            LayananType.Default.ToReff(), KarcisType.Default.ToReff(), eligibility, [], []);
 
         reg.ApplyJaminan(tipeJaminan, polis);
         reg.SpecifyCaraMasuk(caraMasukDk, RujukanType.Default);
