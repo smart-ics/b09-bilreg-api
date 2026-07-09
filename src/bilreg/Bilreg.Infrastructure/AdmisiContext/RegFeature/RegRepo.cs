@@ -38,7 +38,7 @@ public class RegRepo : IRegRepo
         _regJaminanDal.Delete(model);
         _regJaminanDal.Insert(RegJaminanDto.FromModel(model));
         
-        var listKomponen = _regKomponenDal.ListData(model)?.ToList() ?? [];
+        var listKomponen = model.ListKomponen.Select(x => RegKomponenDto.FromModel(model.RegId, x)) ?? [];
         _regKomponenDal.Delete(model);
         _regKomponenDal.Insert(listKomponen);
     }
