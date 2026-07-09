@@ -8,7 +8,7 @@ namespace Bilreg.Api.Controllers.BillContext.TindakanSub
 {
     [Route("api/[controller]")]
     [ApiController]
-    //[Authorize]
+    [Authorize]
     public class TarifController : Controller
     {
         private readonly IMediator _mediator;

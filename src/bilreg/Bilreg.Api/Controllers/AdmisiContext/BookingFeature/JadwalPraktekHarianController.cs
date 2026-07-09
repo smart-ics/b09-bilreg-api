@@ -12,7 +12,7 @@ namespace Bilreg.Api.Controllers.AdmisiContext.BookingFeature;
 
 [Route("api/[controller]")]
 [ApiController]
-//[Authorize]
+[Authorize]
 public class JadwalPraktekHarianController : ControllerBase
 {
     private readonly IMediator _mediator;

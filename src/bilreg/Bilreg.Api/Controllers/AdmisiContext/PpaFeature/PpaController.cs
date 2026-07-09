@@ -8,7 +8,7 @@ namespace Bilreg.Api.Controllers.AdmisiContext.PpaFeature;
 
 [Route("api/[controller]")]
 [ApiController]
-//[Authorize]
+[Authorize]
 public class PpaController : Controller
 {
     private readonly IMediator _mediator;

@@ -8,7 +8,7 @@ namespace Bilreg.Api.Controllers.AdmisiContext.LayananSub
 {
     [Route("api/[controller]")]
     [ApiController]
-    //[Authorize]
+    [Authorize]
     public class LayananController : ControllerBase
     {
         private readonly IMediator _mediator;

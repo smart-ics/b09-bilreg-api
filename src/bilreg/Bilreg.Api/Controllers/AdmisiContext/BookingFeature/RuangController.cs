@@ -9,7 +9,7 @@ namespace Bilreg.Api.Controllers.AdmisiContext.BookingFeature;
 
 [Route("api/[controller]")]
 [ApiController]
-//[Authorize]
+[Authorize]
 public class RuangController : Controller
 {
     private readonly IMediator _mediator;

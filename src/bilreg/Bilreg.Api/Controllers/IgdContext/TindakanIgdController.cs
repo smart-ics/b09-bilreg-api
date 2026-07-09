@@ -9,7 +9,7 @@ namespace Bilreg.Api.Controllers.IgdContext;
 
 [Route("api/[controller]")]
 [ApiController]
-//[Authorize]
+[Authorize]
 public class TindakanIgdController : Controller
 {
     private readonly IMediator _mediator;

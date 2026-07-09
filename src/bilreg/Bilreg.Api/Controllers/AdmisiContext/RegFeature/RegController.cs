@@ -12,7 +12,7 @@ namespace Bilreg.Api.Controllers.AdmisiContext.RegFeature;
 
 [Route("api/[controller]")]
 [ApiController]
-//[Authorize]
+[Authorize]
 public class RegController : Controller
 {
     private readonly IMediator _mediator;

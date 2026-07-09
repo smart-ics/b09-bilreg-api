@@ -8,7 +8,7 @@ namespace Bilreg.Api.Controllers.AdmisiContext.RegFeature;
 
 [Route("api/[controller]")]
 [ApiController]
-//[Authorize]
+[Authorize]
 public class ProsedurMasukInapController : Controller
 {
     private readonly IMediator _mediator;

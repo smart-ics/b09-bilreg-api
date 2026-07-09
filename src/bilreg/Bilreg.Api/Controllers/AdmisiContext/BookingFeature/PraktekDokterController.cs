@@ -9,7 +9,7 @@ using Nuna.Lib.ActionResultHelper;
 namespace Bilreg.Api.Controllers.AdmisiContext.BookingFeature;
 [Route("api/[controller]")]
 [ApiController]
-//[Authorize]
+[Authorize]
 public class PraktekDokterController : Controller
 {
     private readonly IMediator _mediator;

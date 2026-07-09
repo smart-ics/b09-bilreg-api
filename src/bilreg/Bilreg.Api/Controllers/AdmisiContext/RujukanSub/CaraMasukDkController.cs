@@ -8,7 +8,7 @@ namespace Bilreg.Api.Controllers.AdmisiContext.RujukanSub
 {
     [Route("api/[controller]")]
     [ApiController]
-    //[Authorize]
+    [Authorize]
     public class CaraMasukDkController : ControllerBase
     {
         private readonly IMediator _mediator;

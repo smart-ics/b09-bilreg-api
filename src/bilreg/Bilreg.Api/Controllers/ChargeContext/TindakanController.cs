@@ -10,7 +10,7 @@ namespace Bilreg.Api.Controllers.ChargeContext;
 
 [Route("api/[controller]")]
 [ApiController]
-//[Authorize]
+[Authorize]
 public class TindakanController : Controller
 {
     private readonly IMediator _mediator;
