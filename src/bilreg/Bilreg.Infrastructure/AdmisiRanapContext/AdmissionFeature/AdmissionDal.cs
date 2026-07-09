@@ -28,7 +28,7 @@ public class AdmissionDal : IAdmissionDal
         ISNULL(bb.fd_tgl_lahir, '3000-01-01') AS TglLahir,
         ISNULL(bb.fs_jns_kelamin, '') AS Gender,
         aa.OpnameRequestId, aa.ReservationId,
-        aa.KelasId, aa.KelasName, aa.BangsalId, aa.BangsalName, aa.AdmissionDate,
+        aa.KelasDkId, aa.KelasDkName, aa.BangsalId, aa.BangsalName, aa.AdmissionDate,
         aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate
         """;
 
@@ -43,13 +43,13 @@ public class AdmissionDal : IAdmissionDal
                 RegId, AdmissionStatus,
                 PasienId,
                 OpnameRequestId, ReservationId,
-                KelasId, KelasName, BangsalId, BangsalName, AdmissionDate,
+                KelasDkId, KelasDkName, BangsalId, BangsalName, AdmissionDate,
                 CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
             VALUES (
                 @RegId, @AdmissionStatus,
                 @PasienId,
                 @OpnameRequestId, @ReservationId,
-                @KelasId, @KelasName, @BangsalId, @BangsalName, @AdmissionDate,
+                @KelasDkId, @KelasDkName, @BangsalId, @BangsalName, @AdmissionDate,
                 @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
             """;
 
@@ -66,8 +66,8 @@ public class AdmissionDal : IAdmissionDal
                 PasienId = @PasienId,
                 OpnameRequestId = @OpnameRequestId,
                 ReservationId = @ReservationId,
-                KelasId = @KelasId,
-                KelasName = @KelasName,
+                KelasDkId = @KelasDkId,
+                KelasDkName = @KelasDkName,
                 BangsalId = @BangsalId,
                 BangsalName = @BangsalName,
                 AdmissionDate = @AdmissionDate,
@@ -131,8 +131,8 @@ public class AdmissionDal : IAdmissionDal
         dp.AddParam("@PasienId", dto.PasienId, SqlDbType.VarChar);
         dp.AddParam("@OpnameRequestId", dto.OpnameRequestId, SqlDbType.VarChar);
         dp.AddParam("@ReservationId", dto.ReservationId, SqlDbType.VarChar);
-        dp.AddParam("@KelasId", dto.KelasId, SqlDbType.VarChar);
-        dp.AddParam("@KelasName", dto.KelasName, SqlDbType.VarChar);
+        dp.AddParam("@KelasDkId", dto.KelasDkId, SqlDbType.VarChar);
+        dp.AddParam("@KelasDkName", dto.KelasDkName, SqlDbType.VarChar);
         dp.AddParam("@BangsalId", dto.BangsalId, SqlDbType.VarChar);
         dp.AddParam("@BangsalName", dto.BangsalName, SqlDbType.VarChar);
         dp.AddParam("@AdmissionDate", dto.AdmissionDate, SqlDbType.DateTime);

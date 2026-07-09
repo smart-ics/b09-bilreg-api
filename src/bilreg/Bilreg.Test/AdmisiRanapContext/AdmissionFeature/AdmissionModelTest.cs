@@ -12,12 +12,12 @@ public class AdmissionModelTest
     private static PasienReff SamplePasien() =>
         new("P001", "Pasien Test", new DateOnly(1990, 1, 1), "L");
 
-    private static KelasReff SampleKelas() => new("K1", "Kelas 1");
+    private static KelasDkType SampleKelasDk() => new("1", "Kelas DK 1");
 
     private static BangsalReff SampleBangsal() => new("B1", "Bangsal A");
 
     private static AdmissionModel CreateAdmitted() =>
-        AdmissionModel.Admit(SamplePasien(), SampleKelas(), SampleBangsal(), null, null, "user1");
+        AdmissionModel.Admit(SamplePasien(), SampleKelasDk(), SampleBangsal(), null, null, "user1");
 
     [Fact]
     public void DT_AD_01_GivenAdmit_WhenLifecycle_ThenReachesCompleted()
@@ -28,7 +28,7 @@ public class AdmissionModelTest
         admitted.RegId.Should().StartWith("RG");
         admitted.AdmissionStatus.Should().Be(AdmissionStatusEnum.Admitted);
 
-        var updated = admitted.Update(new KelasReff("K2", "Kelas 2"), SampleBangsal(), "user1");
+        var updated = admitted.Update(new KelasDkType("2", "Kelas DK 2"), SampleBangsal(), "user1");
         updated.AdmissionStatus.Should().Be(AdmissionStatusEnum.Updated);
 
         var waiting = updated.MarkWaiting("user1");
@@ -59,7 +59,7 @@ public class AdmissionModelTest
     {
         var completed = CreateAdmitted().Complete("user1");
 
-        var act = () => completed.Update(SampleKelas(), SampleBangsal(), "user1");
+        var act = () => completed.Update(SampleKelasDk(), SampleBangsal(), "user1");
 
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*tidak diperbolehkan*");

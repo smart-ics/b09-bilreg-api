@@ -59,7 +59,7 @@ public class AdmissionRepoTest
                 model.Pasien.PasienName.Should().Be("Pasien Test");
                 model.Pasien.TglLahir.Should().Be(new DateOnly(1990, 5, 15));
                 model.Pasien.Gender.Should().Be("L");
-                model.KelasRawat.KelasId.Should().Be("K01");
+                model.KelasDk.KelasDkId.Should().Be("1");
                 model.Bangsal.BangsalId.Should().Be("B001");
                 model.OpnameRequestId.Should().Be("-");
                 model.ReservationId.Should().Be("-");
@@ -74,7 +74,7 @@ public class AdmissionRepoTest
             new PasienReff("P0001", "Pasien Test", new DateOnly(1990, 5, 15), "L"),
             "-",
             "-",
-            new KelasReff("K01", "Kelas 1"),
+            new KelasDkType("1", "Kelas DK 1"),
             new BangsalReff("B001", "Bangsal A"),
             new DateTime(2026, 7, 7),
             AuditTrailType.Create("user1", new DateTime(2026, 7, 7)));

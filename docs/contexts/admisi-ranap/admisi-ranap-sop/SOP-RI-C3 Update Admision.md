@@ -43,15 +43,25 @@ SOP ini berlaku untuk seluruh proses perubahan informasi **Admission** yang masi
 
 2. **Admisi** membuka data **Admission** yang akan diperbarui.
 
-3. **Admisi** melakukan perubahan terhadap informasi administrasi yang diperbolehkan, seperti penjamin, kelas perawatan, dokter penanggung jawab, atau informasi administrasi lainnya sesuai kebijakan rumah sakit.
+3. **Admisi** melakukan perubahan terhadap informasi administrasi yang diperbolehkan, seperti penjamin, **Care Class** (kelas perawatan / `KelasDk`), dokter penanggung jawab, atau informasi administrasi lainnya sesuai kebijakan rumah sakit.
 
-4. Sistem melakukan validasi terhadap perubahan yang dilakukan.
+4. Apabila **Care Class** diubah, sistem memuat ulang daftar **Bangsal** yang memenuhi syarat.
 
-5. Apabila validasi berhasil, sistem menyimpan perubahan **Admission**.
+5. Apabila **Bangsal** tujuan yang sudah dipilih tidak lagi memenuhi syarat, sistem mengosongkan pilihan **Bangsal**.
 
-6. Status **Admission** tetap **Admitted**.
+6. **Admisi** harus memilih **Bangsal** baru sebelum perubahan dapat disimpan.
 
-7. Proses selesai.
+7. Sistem melakukan validasi terhadap perubahan yang dilakukan.
+
+8. Apabila validasi berhasil, sistem menyimpan perubahan **Admission**.
+
+9. Status **Admission** tetap **Admitted**.
+
+10. Proses selesai.
+
+### Ketentuan Khusus — Perubahan Care Class
+
+Apabila tidak terdapat **Bangsal** yang memenuhi syarat untuk **Care Class** yang baru dipilih, sistem menolak penyimpanan perubahan **Admission** dan menampilkan pesan bahwa tidak ada **Bangsal** tersedia. Apabila **Bangsal** tujuan telah dikosongkan karena tidak lagi memenuhi syarat, **Admission** tidak dapat disimpan hingga **Admisi** memilih **Bangsal** baru yang memenuhi syarat.
 
 ---
 
@@ -98,6 +108,18 @@ Perubahan **Admission** tidak secara otomatis mengubah **Opname Request** maupun
 **BR-RI-C3-06**
 
 Perubahan **Admission** tidak melakukan **Bed Assignment** maupun menentukan **Bed**.
+
+---
+
+**BR-RI-C3-07**
+
+Perubahan **Care Class** memicu validasi ulang kelayakan **Bangsal** tujuan.
+
+---
+
+**BR-RI-C3-08**
+
+**Admission** tidak dapat disimpan apabila **Bangsal** tujuan kosong atau tidak memenuhi syarat **Care Class** yang berlaku.
 
 ---
 

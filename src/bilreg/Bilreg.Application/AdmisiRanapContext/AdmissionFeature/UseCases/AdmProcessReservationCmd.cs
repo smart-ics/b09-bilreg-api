@@ -13,7 +13,7 @@ namespace Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
 
 public record AdmProcessReservationCmd(
     string ReservationId,
-    string KelasId,
+    string KelasDkId,
     string BangsalId,
     string UserId) : IRequest<AdmProcessAdmissionResponse>, IReservationKey;
 
@@ -41,7 +41,7 @@ public class AdmProcessReservationHandler : IRequestHandler<AdmProcessReservatio
         CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.ReservationId);
-        Guard.Against.NullOrWhiteSpace(request.KelasId);
+        Guard.Against.NullOrWhiteSpace(request.KelasDkId);
         Guard.Against.NullOrWhiteSpace(request.BangsalId);
         Guard.Against.NullOrWhiteSpace(request.UserId);
 
@@ -59,14 +59,14 @@ public class AdmProcessReservationHandler : IRequestHandler<AdmProcessReservatio
             throw new InvalidOperationException(
                 $"Pasien '{pasien.PasienId}' masih memiliki admission aktif ({activeAdmissions[0].RegId}).");
 
-        var kelas = _wardGateway.ResolveKelas(request.KelasId);
-        var bangsal = _wardGateway.ResolveBangsal(request.BangsalId);
+        var kelasDk = _wardGateway.ResolveKelasDk(request.KelasDkId);
+        var bangsal = _wardGateway.ResolveBangsalForCareClass(request.BangsalId, request.KelasDkId);
 
         if (reservation.ReservationStatus == ReservationStatusEnum.Reserved)
         {
             reservation = reservation.Maintain(
                 reservation.PlannedDate,
-                kelas,
+                reservation.KelasRawat,
                 bangsal,
                 request.UserId);
         }
@@ -79,7 +79,7 @@ public class AdmProcessReservationHandler : IRequestHandler<AdmProcessReservatio
 
         var admission = AdmissionModel.Admit(
             pasien,
-            kelas,
+            kelasDk,
             bangsal,
             null,
             reservation.ReservationId,

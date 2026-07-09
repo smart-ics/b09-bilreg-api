@@ -37,7 +37,7 @@ public class AdmisiRanapWorkflowTest
             CancellationToken.None);
 
         var admissionResponse = await h.ProcessOpnameHandler.Handle(
-            new AdmProcessOpnameRequestCmd(opnameResponse.OpnameRequestId, "K1", "B1", "user2"),
+            new AdmProcessOpnameRequestCmd(opnameResponse.OpnameRequestId, "1", "B1", "user2"),
             CancellationToken.None);
 
         h.Opnames[opnameResponse.OpnameRequestId].OpnameRequestStatus
@@ -76,7 +76,7 @@ public class AdmisiRanapWorkflowTest
             CancellationToken.None);
 
         var admissionResponse = await h.ProcessReservationHandler.Handle(
-            new AdmProcessReservationCmd(reservationResponse.ReservationId, "K1", "B1", "user3"),
+            new AdmProcessReservationCmd(reservationResponse.ReservationId, "1", "B1", "user3"),
             CancellationToken.None);
 
         h.Reservations[reservationResponse.ReservationId].ReservationStatus
@@ -104,7 +104,7 @@ public class AdmisiRanapWorkflowTest
             CancellationToken.None);
 
         var admissionResponse = await h.ProcessReservationHandler.Handle(
-            new AdmProcessReservationCmd(reservationResponse.ReservationId, "K2", "B2", "user3"),
+            new AdmProcessReservationCmd(reservationResponse.ReservationId, "2", "B2", "user3"),
             CancellationToken.None);
 
         h.Admissions[admissionResponse.RegId].AdmissionStatus
@@ -122,7 +122,7 @@ public class AdmisiRanapWorkflowTest
             CancellationToken.None);
 
         var admissionResponse = await h.ProcessOpnameHandler.Handle(
-            new AdmProcessOpnameRequestCmd(opnameResponse.OpnameRequestId, "K1", "B1", "user2"),
+            new AdmProcessOpnameRequestCmd(opnameResponse.OpnameRequestId, "1", "B1", "user2"),
             CancellationToken.None);
 
         var wlResponse = await h.CreateWaitingListHandler.Handle(
@@ -253,8 +253,14 @@ public class AdmisiRanapWorkflowTest
             var mock = new Mock<IWardAccommodationGateway>();
             mock.Setup(x => x.ResolveKelas("K1")).Returns(new KelasReff("K1", "Kelas 1"));
             mock.Setup(x => x.ResolveKelas("K2")).Returns(new KelasReff("K2", "Kelas 2"));
+            mock.Setup(x => x.ResolveKelasDk("1")).Returns(new KelasDkType("1", "Kelas DK 1"));
+            mock.Setup(x => x.ResolveKelasDk("2")).Returns(new KelasDkType("2", "Kelas DK 2"));
             mock.Setup(x => x.ResolveBangsal("B1")).Returns(new BangsalReff("B1", "Bangsal A"));
             mock.Setup(x => x.ResolveBangsal("B2")).Returns(new BangsalReff("B2", "Bangsal B"));
+            mock.Setup(x => x.ResolveBangsalForCareClass("B1", "1")).Returns(new BangsalReff("B1", "Bangsal A"));
+            mock.Setup(x => x.ResolveBangsalForCareClass("B2", "2")).Returns(new BangsalReff("B2", "Bangsal B"));
+            mock.Setup(x => x.ListEligibleBangsal("1")).Returns([new BangsalReff("B1", "Bangsal A")]);
+            mock.Setup(x => x.ListEligibleBangsal("2")).Returns([new BangsalReff("B2", "Bangsal B")]);
             return mock;
         }
     }

@@ -28,7 +28,7 @@ public class AdmWaitingListHandlerTest
     {
         var admission = AdmissionModel.Admit(
             SamplePasienReff(),
-            SampleKelas(),
+            SampleKelasDk(),
             SampleBangsal(),
             null,
             null,
@@ -99,7 +99,7 @@ public class AdmWaitingListHandlerTest
     {
         var admission = AdmissionModel.Admit(
             SamplePasienReff(),
-            SampleKelas(),
+            SampleKelasDk(),
             SampleBangsal(),
             null,
             null,
@@ -146,6 +146,8 @@ public class AdmWaitingListHandlerTest
 
     private static PasienReff SamplePasienReff() =>
         new("P001", "Pasien Test", new DateOnly(1990, 1, 1), "L");
+
+    private static KelasDkType SampleKelasDk() => new("1", "Kelas DK 1");
 
     private static KelasReff SampleKelas() => new("K1", "Kelas 1");
 

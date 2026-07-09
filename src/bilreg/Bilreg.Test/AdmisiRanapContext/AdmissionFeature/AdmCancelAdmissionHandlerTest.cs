@@ -22,7 +22,7 @@ public class AdmCancelAdmissionHandlerTest
     {
         var admission = AdmissionModel.Admit(
             SamplePasienReff(),
-            SampleKelas(),
+            SampleKelasDk(),
             SampleBangsal(),
             null,
             null,
@@ -55,7 +55,7 @@ public class AdmCancelAdmissionHandlerTest
     {
         var admission = AdmissionModel.Admit(
             SamplePasienReff(),
-            SampleKelas(),
+            SampleKelasDk(),
             SampleBangsal(),
             null,
             null,
@@ -81,7 +81,7 @@ public class AdmCancelAdmissionHandlerTest
     private static PasienReff SamplePasienReff() =>
         new("P001", "Pasien Test", new DateOnly(1990, 1, 1), "L");
 
-    private static KelasReff SampleKelas() => new("K1", "Kelas 1");
+    private static KelasDkType SampleKelasDk() => new("1", "Kelas DK 1");
 
     private static BangsalReff SampleBangsal() => new("B1", "Bangsal A");
 }

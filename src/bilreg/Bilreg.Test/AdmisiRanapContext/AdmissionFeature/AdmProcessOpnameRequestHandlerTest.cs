@@ -51,7 +51,7 @@ public class AdmProcessOpnameRequestHandlerTest
 
         var handler = CreateHandler();
         var response = await handler.Handle(
-            new AdmProcessOpnameRequestCmd(opname.OpnameRequestId, "K1", "B1", "user2"),
+            new AdmProcessOpnameRequestCmd(opname.OpnameRequestId, "1", "B1", "user2"),
             CancellationToken.None);
 
         response.RegId.Should().StartWith("RG");
@@ -59,6 +59,7 @@ public class AdmProcessOpnameRequestHandlerTest
         savedOpname.Should().NotBeNull();
         savedOpname!.OpnameRequestStatus.Should().Be(OpnameRequestStatusEnum.Fulfilled);
         savedOpname.FulfilledRegId.Should().Be(response.RegId);
+        savedAdmission!.KelasDk.KelasDkId.Should().Be("1");
         _admissionRepoMock.Verify(x => x.SaveChanges(It.IsAny<AdmissionModel>()), Times.Once);
         _opnameRepoMock.Verify(x => x.SaveChanges(It.IsAny<OpnameRequestModel>()), Times.Once);
         _auditRepoMock.Verify(x => x.SaveChanges(It.IsAny<AuditLog>()), Times.Exactly(2));
@@ -85,11 +86,44 @@ public class AdmProcessOpnameRequestHandlerTest
 
         var handler = CreateHandler();
         var act = async () => await handler.Handle(
-            new AdmProcessOpnameRequestCmd(opname.OpnameRequestId, "K1", "B1", "user2"),
+            new AdmProcessOpnameRequestCmd(opname.OpnameRequestId, "1", "B1", "user2"),
             CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*harus Requested*");
+    }
+
+    [Fact]
+    public async Task UT03_GivenIneligibleBangsal_WhenProcess_ThenThrows()
+    {
+        var opname = OpnameRequestModel.Create(
+            SamplePasienReff(),
+            new PpaReff("D001", "Dr. Test"),
+            new DateTime(2026, 7, 20),
+            "Catatan",
+            "user1");
+
+        _wardGatewayMock
+            .Setup(x => x.ResolveKelasDk("1"))
+            .Returns(new KelasDkType("1", "Kelas DK 1"));
+        _wardGatewayMock
+            .Setup(x => x.ResolveBangsalForCareClass("B9", "1"))
+            .Throws(new InvalidOperationException("Bangsal tidak memenuhi syarat"));
+
+        _admissionRepoMock
+            .Setup(x => x.ListData(It.IsAny<AdmissionListFilter>()))
+            .Returns([]);
+        _opnameRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IOpnameRequestKey>(k => k.OpnameRequestId == opname.OpnameRequestId)))
+            .Returns(MayBe.From(opname));
+
+        var handler = CreateHandler();
+        var act = async () => await handler.Handle(
+            new AdmProcessOpnameRequestCmd(opname.OpnameRequestId, "1", "B9", "user2"),
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*tidak memenuhi syarat*");
     }
 
     private AdmProcessOpnameRequestHandler CreateHandler() =>
@@ -102,11 +136,11 @@ public class AdmProcessOpnameRequestHandlerTest
     private void SetupMasters()
     {
         _wardGatewayMock
-            .Setup(x => x.ResolveKelas("K1"))
-            .Returns(new KelasReff("K1", "Kelas 1"));
+            .Setup(x => x.ResolveKelasDk("1"))
+            .Returns(new KelasDkType("1", "Kelas DK 1"));
 
         _wardGatewayMock
-            .Setup(x => x.ResolveBangsal("B1"))
+            .Setup(x => x.ResolveBangsalForCareClass("B1", "1"))
             .Returns(new BangsalReff("B1", "Bangsal A"));
     }
 

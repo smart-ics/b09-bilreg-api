@@ -12,7 +12,9 @@ namespace Bilreg.Test.AdmisiRanapContext.Integration;
 public class WardAccommodationGatewayTest
 {
     private readonly Mock<IKelasRepo> _kelasRepoMock = new();
+    private readonly Mock<IKelasDkRepo> _kelasDkRepoMock = new();
     private readonly Mock<IBangsalRepo> _bangsalRepoMock = new();
+    private readonly Mock<IBangsalByKelasDkDal> _bangsalByKelasDkDalMock = new();
 
     [Fact]
     public void UT01_GivenValidKelasId_WhenResolve_ThenReturnsKelasReff()
@@ -29,7 +31,21 @@ public class WardAccommodationGatewayTest
     }
 
     [Fact]
-    public void UT02_GivenValidBangsalId_WhenResolve_ThenReturnsBangsalReff()
+    public void UT02_GivenValidKelasDkId_WhenResolve_ThenReturnsKelasDkType()
+    {
+        _kelasDkRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IKelasDkKey>(k => k.KelasDkId == "1")))
+            .Returns(MayBe.From(new KelasDkType("1", "Kelas DK 1")));
+
+        var gateway = CreateGateway();
+        var result = gateway.ResolveKelasDk("1");
+
+        result.KelasDkId.Should().Be("1");
+        result.KelasDkName.Should().Be("Kelas DK 1");
+    }
+
+    [Fact]
+    public void UT03_GivenValidBangsalId_WhenResolve_ThenReturnsBangsalReff()
     {
         _bangsalRepoMock
             .Setup(x => x.LoadEntity(It.Is<IBangsalKey>(k => k.BangsalId == "B1")))
@@ -47,7 +63,58 @@ public class WardAccommodationGatewayTest
     }
 
     [Fact]
-    public void UT03_GivenHandOver_WhenNotify_ThenDoesNotThrow()
+    public void UT04_GivenEligibleBangsal_WhenResolveForCareClass_ThenReturnsBangsal()
+    {
+        _kelasDkRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IKelasDkKey>(k => k.KelasDkId == "1")))
+            .Returns(MayBe.From(new KelasDkType("1", "Kelas DK 1")));
+        _bangsalByKelasDkDalMock
+            .Setup(x => x.ListByKelasDkId("1"))
+            .Returns([new BangsalReff("B1", "Bangsal A")]);
+
+        var gateway = CreateGateway();
+        var result = gateway.ResolveBangsalForCareClass("B1", "1");
+
+        result.BangsalId.Should().Be("B1");
+    }
+
+    [Fact]
+    public void UT05_GivenIneligibleBangsal_WhenResolveForCareClass_ThenThrows()
+    {
+        _kelasDkRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IKelasDkKey>(k => k.KelasDkId == "1")))
+            .Returns(MayBe.From(new KelasDkType("1", "Kelas DK 1")));
+        _bangsalByKelasDkDalMock
+            .Setup(x => x.ListByKelasDkId("1"))
+            .Returns([new BangsalReff("B1", "Bangsal A")]);
+
+        var gateway = CreateGateway();
+        var act = () => gateway.ResolveBangsalForCareClass("B9", "1");
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*tidak memenuhi syarat*");
+    }
+
+    [Fact]
+    public void UT06_GivenKelasDk_WhenListEligibleBangsal_ThenReturnsDistinctBangsal()
+    {
+        _bangsalByKelasDkDalMock
+            .Setup(x => x.ListByKelasDkId("1"))
+            .Returns(
+            [
+                new BangsalReff("B1", "Bangsal A"),
+                new BangsalReff("B1", "Bangsal A"),
+                new BangsalReff("B2", "Bangsal B")
+            ]);
+
+        var gateway = CreateGateway();
+        var result = gateway.ListEligibleBangsal("1");
+
+        result.Should().HaveCount(3);
+    }
+
+    [Fact]
+    public void UT07_GivenHandOver_WhenNotify_ThenDoesNotThrow()
     {
         var gateway = CreateGateway();
         var act = () => gateway.NotifyHandOver(new WardAccommodationHandOver(
@@ -61,5 +128,9 @@ public class WardAccommodationGatewayTest
     }
 
     private WardAccommodationGateway CreateGateway() =>
-        new(_kelasRepoMock.Object, _bangsalRepoMock.Object);
+        new(
+            _kelasRepoMock.Object,
+            _kelasDkRepoMock.Object,
+            _bangsalRepoMock.Object,
+            _bangsalByKelasDkDalMock.Object);
 }

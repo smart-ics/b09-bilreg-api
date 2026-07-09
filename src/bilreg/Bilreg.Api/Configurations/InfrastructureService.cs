@@ -19,9 +19,8 @@ using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Infrastructure;
 using Bilreg.Infrastructure.AdmisiContext.JadwalPraktekFeature;
-using Bilreg.Infrastructure.AdmisiRanapContext.OperationalWorklistFeature;
-using Bilreg.Infrastructure.AdmisiRanapContext.WaitingListFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.Integration;
+using Bilreg.Infrastructure.AdmisiRanapContext.OperationalWorklistFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.RolloutFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.WaitingListFeature;
 using Bilreg.Infrastructure.ChargeContext.TarifFeature;
@@ -68,6 +67,7 @@ public static class InfrastructureService
             .AddScoped<IDoctorServiceGateway, DoctorServiceGateway>()
             .AddScoped<IPatientAdministrationGateway, PatientAdministrationGateway>()
             .AddScoped<IWardAccommodationGateway, WardAccommodationGateway>()
+            .AddScoped<IBangsalByKelasDkDal, BangsalByKelasDkDal>()
             .AddScoped<IAdmisiRanapRolloutDal, AdmisiRanapRolloutDal>()
             .AddScoped<LabOwareQueueProcessor>()
             .AddScoped<ILabResultPdfRenderer, LabResultPdfRenderer>()

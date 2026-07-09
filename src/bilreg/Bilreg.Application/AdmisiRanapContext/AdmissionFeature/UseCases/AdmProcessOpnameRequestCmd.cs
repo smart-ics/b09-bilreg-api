@@ -13,7 +13,7 @@ namespace Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
 
 public record AdmProcessOpnameRequestCmd(
     string OpnameRequestId,
-    string KelasId,
+    string KelasDkId,
     string BangsalId,
     string UserId) : IRequest<AdmProcessAdmissionResponse>, IOpnameRequestKey;
 
@@ -41,7 +41,7 @@ public class AdmProcessOpnameRequestHandler : IRequestHandler<AdmProcessOpnameRe
         CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.OpnameRequestId);
-        Guard.Against.NullOrWhiteSpace(request.KelasId);
+        Guard.Against.NullOrWhiteSpace(request.KelasDkId);
         Guard.Against.NullOrWhiteSpace(request.BangsalId);
         Guard.Against.NullOrWhiteSpace(request.UserId);
 
@@ -63,14 +63,14 @@ public class AdmProcessOpnameRequestHandler : IRequestHandler<AdmProcessOpnameRe
             throw new InvalidOperationException(
                 $"Opname Request '{opname.OpnameRequestId}' harus Requested untuk diproses (status: {opname.OpnameRequestStatus}).");
 
-        var kelas = _wardGateway.ResolveKelas(request.KelasId);
-        var bangsal = _wardGateway.ResolveBangsal(request.BangsalId);
+        var kelasDk = _wardGateway.ResolveKelasDk(request.KelasDkId);
+        var bangsal = _wardGateway.ResolveBangsalForCareClass(request.BangsalId, request.KelasDkId);
 
         var opnameSnapshot = AuditLogSnapshotJson.Serialize(opname);
 
         var admission = AdmissionModel.Admit(
             pasien,
-            kelas,
+            kelasDk,
             bangsal,
             opname.OpnameRequestId,
             null,

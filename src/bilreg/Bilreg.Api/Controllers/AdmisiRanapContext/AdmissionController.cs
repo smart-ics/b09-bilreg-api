@@ -2,7 +2,6 @@ using Bilreg.Api.Filters;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
 using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
 using MediatR;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
 
@@ -23,7 +22,7 @@ public class AdmissionController : ControllerBase
     {
         var cmd = new AdmProcessOpnameRequestCmd(
             body.OpnameRequestId,
-            body.KelasId,
+            body.KelasDkId,
             body.BangsalId,
             body.UserId);
         var result = await _mediator.Send(cmd);
@@ -35,7 +34,7 @@ public class AdmissionController : ControllerBase
     {
         var cmd = new AdmProcessReservationCmd(
             body.ReservationId,
-            body.KelasId,
+            body.KelasDkId,
             body.BangsalId,
             body.UserId);
         var result = await _mediator.Send(cmd);
@@ -45,7 +44,7 @@ public class AdmissionController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(string id, [FromBody] AdmUpdateAdmissionBody body)
     {
-        var cmd = new AdmUpdateAdmissionCmd(id, body.KelasId, body.BangsalId, body.UserId);
+        var cmd = new AdmUpdateAdmissionCmd(id, body.KelasDkId, body.BangsalId, body.UserId);
         await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));
     }
@@ -72,22 +71,29 @@ public class AdmissionController : ControllerBase
         var result = await _mediator.Send(new AdmLookupAdmissionQry(status, pasienId));
         return Ok(new JSendOk(result));
     }
+
+    [HttpGet("bangsal")]
+    public async Task<IActionResult> ListEligibleBangsal([FromQuery] string kelasDkId)
+    {
+        var result = await _mediator.Send(new AdmListEligibleBangsalQry(kelasDkId));
+        return Ok(new JSendOk(result));
+    }
 }
 
 public record AdmProcessOpnameRequestBody(
     string OpnameRequestId,
-    string KelasId,
+    string KelasDkId,
     string BangsalId,
     string UserId);
 
 public record AdmProcessReservationBody(
     string ReservationId,
-    string KelasId,
+    string KelasDkId,
     string BangsalId,
     string UserId);
 
 public record AdmUpdateAdmissionBody(
-    string KelasId,
+    string KelasDkId,
     string BangsalId,
     string UserId);
 

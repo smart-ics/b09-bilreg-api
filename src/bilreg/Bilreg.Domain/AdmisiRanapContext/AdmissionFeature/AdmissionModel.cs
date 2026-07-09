@@ -19,7 +19,7 @@ public record AdmissionModel : IRegKey
         PasienReff pasien,
         string opnameRequestId,
         string reservationId,
-        KelasReff kelasRawat,
+        KelasDkType kelasDk,
         BangsalReff bangsal,
         DateTime admissionDate,
         AuditTrailType auditTrail)
@@ -29,7 +29,7 @@ public record AdmissionModel : IRegKey
         Pasien = pasien;
         OpnameRequestId = opnameRequestId;
         ReservationId = reservationId;
-        KelasRawat = kelasRawat;
+        KelasDk = kelasDk;
         Bangsal = bangsal;
         AdmissionDate = admissionDate;
         AuditTrail = auditTrail;
@@ -39,14 +39,14 @@ public record AdmissionModel : IRegKey
 
     public static AdmissionModel Admit(
         PasienReff pasien,
-        KelasReff kelasRawat,
+        KelasDkType kelasDk,
         BangsalReff bangsal,
         string? opnameRequestId,
         string? reservationId,
         string auditUserId)
     {
         Guard.Against.Null(pasien);
-        Guard.Against.Null(kelasRawat);
+        Guard.Against.Null(kelasDk);
         Guard.Against.Null(bangsal);
         Guard.Against.NullOrWhiteSpace(auditUserId);
 
@@ -58,7 +58,7 @@ public record AdmissionModel : IRegKey
             pasien,
             string.IsNullOrWhiteSpace(opnameRequestId) ? EmptyRefId : opnameRequestId,
             string.IsNullOrWhiteSpace(reservationId) ? EmptyRefId : reservationId,
-            kelasRawat,
+            kelasDk,
             bangsal,
             now,
             AuditTrailType.Create(auditUserId, now));
@@ -70,7 +70,7 @@ public record AdmissionModel : IRegKey
         new PasienReff("-", "-", new DateOnly(3000, 1, 1), "-"),
         EmptyRefId,
         EmptyRefId,
-        new KelasReff("-", "-"),
+        KelasDkType.Default,
         new BangsalReff("-", "-"),
         EmptyDate,
         AuditTrailType.Default);
@@ -86,7 +86,7 @@ public record AdmissionModel : IRegKey
     public PasienReff Pasien { get; init; }
     public string OpnameRequestId { get; init; }
     public string ReservationId { get; init; }
-    public KelasReff KelasRawat { get; init; }
+    public KelasDkType KelasDk { get; init; }
     public BangsalReff Bangsal { get; init; }
     public DateTime AdmissionDate { get; init; }
     public AuditTrailType AuditTrail { get; init; }
@@ -95,9 +95,9 @@ public record AdmissionModel : IRegKey
 
     #region BEHAVIOUR
 
-    public AdmissionModel Update(KelasReff kelasRawat, BangsalReff bangsal, string auditUserId)
+    public AdmissionModel Update(KelasDkType kelasDk, BangsalReff bangsal, string auditUserId)
     {
-        Guard.Against.Null(kelasRawat);
+        Guard.Against.Null(kelasDk);
         Guard.Against.Null(bangsal);
         Guard.Against.NullOrWhiteSpace(auditUserId);
         EnsureMutable();
@@ -110,7 +110,7 @@ public record AdmissionModel : IRegKey
 
         var audit = AuditTrail;
         audit.Modif(auditUserId, DateTime.Now);
-        return WithState(AdmissionStatusEnum.Updated, kelasRawat, bangsal, audit);
+        return WithState(AdmissionStatusEnum.Updated, kelasDk, bangsal, audit);
     }
 
     public AdmissionModel MarkWaiting(string auditUserId)
@@ -124,7 +124,7 @@ public record AdmissionModel : IRegKey
 
         var audit = AuditTrail;
         audit.Modif(auditUserId, DateTime.Now);
-        return WithState(AdmissionStatusEnum.Waiting, KelasRawat, Bangsal, audit);
+        return WithState(AdmissionStatusEnum.Waiting, KelasDk, Bangsal, audit);
     }
 
     public AdmissionModel Complete(string auditUserId)
@@ -134,7 +134,7 @@ public record AdmissionModel : IRegKey
 
         var audit = AuditTrail;
         audit.Modif(auditUserId, DateTime.Now);
-        return WithState(AdmissionStatusEnum.Completed, KelasRawat, Bangsal, audit);
+        return WithState(AdmissionStatusEnum.Completed, KelasDk, Bangsal, audit);
     }
 
     public AdmissionModel Cancel(string auditUserId)
@@ -144,7 +144,7 @@ public record AdmissionModel : IRegKey
 
         var audit = AuditTrail;
         audit.Modif(auditUserId, DateTime.Now);
-        return WithState(AdmissionStatusEnum.Cancelled, KelasRawat, Bangsal, audit);
+        return WithState(AdmissionStatusEnum.Cancelled, KelasDk, Bangsal, audit);
     }
 
     #endregion
@@ -160,7 +160,7 @@ public record AdmissionModel : IRegKey
 
     private AdmissionModel WithState(
         AdmissionStatusEnum status,
-        KelasReff kelasRawat,
+        KelasDkType kelasDk,
         BangsalReff bangsal,
         AuditTrailType audit) =>
         new(
@@ -169,7 +169,7 @@ public record AdmissionModel : IRegKey
             Pasien,
             OpnameRequestId,
             ReservationId,
-            kelasRawat,
+            kelasDk,
             bangsal,
             AdmissionDate,
             audit);

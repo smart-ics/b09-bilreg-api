@@ -177,6 +177,8 @@ Purpose
 
 Administratively admit a patient from a clinical Opname Request.
 
+Operator selects Care Class (`KelasDk`); system validates against `ta_kelas_dk`. System loads Bangsal eligible for the selected Care Class. Operator selects destination Bangsal from the filtered list.
+
 Primary Aggregate
 
 Admission
@@ -197,6 +199,8 @@ Purpose
 
 Administratively admit a patient from a planned Reservation.
 
+Operator selects Care Class (`KelasDk`); system validates against `ta_kelas_dk`. System loads Bangsal eligible for the selected Care Class. Operator selects destination Bangsal from the filtered list.
+
 Primary Aggregate
 
 Admission
@@ -216,6 +220,8 @@ Admission created; Reservation realized.
 Purpose
 
 Maintain administrative admission information.
+
+Care Class may be changed; system reloads eligible Bangsal. If the current Bangsal is no longer eligible, selection is cleared; save is blocked until a new Bangsal is chosen.
 
 Primary Aggregate
 
@@ -335,12 +341,13 @@ Owns
 - Admission status
 - Reservation realization
 - Opname Request fulfillment
-- Kelas Rawat (`KelasReff`)
-- Destination Bangsal (`BangsalReff`)
+- Care Class (`KelasDkId`, validated via `ta_kelas_dk`)
+- Destination Bangsal (`BangsalId` / `BangsalReff`)
 
 Does not own
 
 - Waiting List
+- `ta_kelas`
 - Room
 - Bed
 - Accommodation
@@ -388,6 +395,8 @@ Repositories reconstruct complete aggregates and persist aggregate state atomica
 Cross-aggregate updates are coordinated by the Application layer.
 
 Repositories never coordinate business workflows.
+
+Admission repository validates Care Class existence via the `ta_kelas_dk` master. Bangsal validation confirms the Bangsal is eligible for the given `KelasDkId` (via Room → `ta_kelas` → `ta_kelas_dk` mapping in infrastructure). Admission persistence does not reference `ta_kelas` directly.
 
 ---
 
@@ -560,3 +569,19 @@ Waiting List represents accommodation demand independent of how the Admission or
 Consequence
 
 The integration contract between Admission and Ward is stable and reusable across accommodation scenarios.
+
+---
+
+### ADR-005 — Canonical Care Class
+
+Decision
+
+Admission uses `ta_kelas_dk` as the canonical Care Class (`KelasDkId`).
+
+Rationale
+
+`ta_kelas` is hospital-customizable and unsuitable as a stable business reference.
+
+Consequence
+
+Admission business logic becomes independent of hospital-specific room configuration. `ta_kelas` remains an infrastructure mapping between Room and Care Class.

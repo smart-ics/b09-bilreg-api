@@ -49,17 +49,29 @@ SOP ini berlaku untuk seluruh proses pembentukan **Admission** oleh petugas **Ad
 
 3. Apabila tersedia, **Admisi** memilih **Opname Request** dan/atau **Reservation** yang menjadi dasar proses **Admission**.
 
-4. **Admisi** melengkapi data **Admission**, termasuk informasi penjamin, kelas perawatan, dokter penanggung jawab, serta informasi administrasi lainnya.
+4. **Admisi** memilih **Care Class** (kelas perawatan / `KelasDk`).
 
-5. Sistem melakukan validasi terhadap data **Admission**.
+5. Sistem memvalidasi **Care Class** terhadap master `ta_kelas_dk`.
 
-6. Apabila validasi berhasil, sistem membentuk **Admission** dengan status **Admitted**.
+6. Sistem memuat daftar **Bangsal** yang memenuhi syarat untuk **Care Class** yang dipilih.
 
-7. Apabila **Opname Request** digunakan, sistem menandainya sebagai telah diproses.
+7. **Admisi** memilih **Bangsal** tujuan dari daftar yang tersedia.
 
-8. Apabila **Reservation** digunakan, sistem menandainya sebagai telah direalisasikan.
+8. **Admisi** melengkapi data **Admission** lainnya, termasuk informasi penjamin, dokter penanggung jawab, serta informasi administrasi lainnya.
 
-9. Proses selesai.
+9. Sistem melakukan validasi terhadap data **Admission**.
+
+10. Apabila validasi berhasil, sistem membentuk **Admission** dengan status **Admitted**.
+
+11. Apabila **Opname Request** digunakan, sistem menandainya sebagai telah diproses.
+
+12. Apabila **Reservation** digunakan, sistem menandainya sebagai telah direalisasikan.
+
+13. Proses selesai.
+
+### Ketentuan Khusus — Tidak Ada Bangsal yang Memenuhi Syarat
+
+Apabila tidak terdapat **Bangsal** yang memenuhi syarat untuk **Care Class** yang dipilih, sistem menolak penyimpanan **Admission** dan menampilkan pesan bahwa tidak ada **Bangsal** tersedia. **Admisi** harus memilih **Care Class** lain atau menunggu hingga ketersediaan **Bangsal** memenuhi syarat.
 
 ---
 
@@ -108,6 +120,18 @@ Pembentukan **Admission** tidak secara otomatis melakukan **Bed Assignment**.
 **BR-RI-C1-06**
 
 Setelah **Admission** terbentuk, proses operasional Rawat Inap dilanjutkan melalui SOP-RI-D1 **Bed Assignment**.
+
+---
+
+**BR-RI-C1-07**
+
+**Care Class** harus dipilih sebelum **Bangsal** tujuan.
+
+---
+
+**BR-RI-C1-08**
+
+**Bangsal** tujuan harus memenuhi syarat berdasarkan **Care Class** yang dipilih.
 
 ---
 

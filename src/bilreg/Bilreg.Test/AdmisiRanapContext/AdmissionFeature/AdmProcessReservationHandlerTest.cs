@@ -50,7 +50,7 @@ public class AdmProcessReservationHandlerTest
 
         var handler = CreateHandler();
         var response = await handler.Handle(
-            new AdmProcessReservationCmd(reservation.ReservationId, "K1", "B1", "user2"),
+            new AdmProcessReservationCmd(reservation.ReservationId, "1", "B1", "user2"),
             CancellationToken.None);
 
         response.RegId.Should().StartWith("RG");
@@ -85,7 +85,7 @@ public class AdmProcessReservationHandlerTest
 
         var handler = CreateHandler();
         var act = async () => await handler.Handle(
-            new AdmProcessReservationCmd(reservation.ReservationId, "K1", "B1", "user2"),
+            new AdmProcessReservationCmd(reservation.ReservationId, "1", "B1", "user2"),
             CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
@@ -102,11 +102,11 @@ public class AdmProcessReservationHandlerTest
     private void SetupMasters()
     {
         _wardGatewayMock
-            .Setup(x => x.ResolveKelas("K1"))
-            .Returns(new KelasReff("K1", "Kelas 1"));
+            .Setup(x => x.ResolveKelasDk("1"))
+            .Returns(new KelasDkType("1", "Kelas DK 1"));
 
         _wardGatewayMock
-            .Setup(x => x.ResolveBangsal("B1"))
+            .Setup(x => x.ResolveBangsalForCareClass("B1", "1"))
             .Returns(new BangsalReff("B1", "Bangsal A"));
     }
 
