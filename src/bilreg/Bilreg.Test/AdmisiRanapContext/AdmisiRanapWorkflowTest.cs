@@ -33,7 +33,7 @@ public class AdmisiRanapWorkflowTest
         var h = new WorkflowHarness();
 
         var opnameResponse = await h.CreateOpnameHandler.Handle(
-            new AdmCreateOpnameRequestCmd("P001", "D001", "Direct", "user1"),
+            new AdmCreateOpnameRequestCmd("P001", "D001","2026-07-30", "Direct", "user1"),
             CancellationToken.None);
 
         var admissionResponse = await h.ProcessOpnameHandler.Handle(
@@ -59,17 +59,17 @@ public class AdmisiRanapWorkflowTest
         var h = new WorkflowHarness();
 
         await h.CreateOpnameHandler.Handle(
-            new AdmCreateOpnameRequestCmd("P001", "D001", "Planned clinical", "user1"),
+            new AdmCreateOpnameRequestCmd("P001", "D001", "2026-07-30", "Planned clinical", "user1"),
             CancellationToken.None);
 
         var reservationResponse = await h.CreateReservationHandler.Handle(
-            new AdmCreateReservationCmd("P001", new DateTime(2026, 9, 1), "K1", "B1", "user1"),
+            new AdmCreateReservationCmd("P001", "2026-09-01", "K1", "B1", "user1"),
             CancellationToken.None);
 
         await h.MaintainReservationHandler.Handle(
             new AdmMaintainReservationCmd(
                 reservationResponse.ReservationId,
-                new DateTime(2026, 9, 5),
+                "2026-09-05",
                 "K1",
                 "B1",
                 "user2"),
@@ -91,13 +91,13 @@ public class AdmisiRanapWorkflowTest
         var h = new WorkflowHarness();
 
         var reservationResponse = await h.CreateReservationHandler.Handle(
-            new AdmCreateReservationCmd("P001", new DateTime(2026, 10, 1), "K1", "B1", "user1"),
+            new AdmCreateReservationCmd("P001", "2026-10-01", "K1", "B1", "user1"),
             CancellationToken.None);
 
         await h.MaintainReservationHandler.Handle(
             new AdmMaintainReservationCmd(
                 reservationResponse.ReservationId,
-                new DateTime(2026, 10, 1),
+                "2026-10-01",
                 "K2",
                 "B2",
                 "user2"),
@@ -118,7 +118,7 @@ public class AdmisiRanapWorkflowTest
         var h = new WorkflowHarness();
 
         var opnameResponse = await h.CreateOpnameHandler.Handle(
-            new AdmCreateOpnameRequestCmd("P001", "D001", "Transfer prep", "user1"),
+            new AdmCreateOpnameRequestCmd("P001", "D001", "2026-07-30", "Transfer prep", "user1"),
             CancellationToken.None);
 
         var admissionResponse = await h.ProcessOpnameHandler.Handle(

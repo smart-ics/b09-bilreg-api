@@ -16,6 +16,7 @@ public record OpnameRequestModel : IOpnameRequestKey
         OpnameRequestStatusEnum opnameRequestStatus,
         PasienReff pasien,
         PpaReff dokter,
+        DateTime plannedDate,
         string clinicalNotes,
         string fulfilledRegId,
         AuditTrailType auditTrail)
@@ -24,6 +25,7 @@ public record OpnameRequestModel : IOpnameRequestKey
         OpnameRequestStatus = opnameRequestStatus;
         Pasien = pasien;
         Dokter = dokter;
+        PlannedDate = plannedDate;
         ClinicalNotes = clinicalNotes ?? "";
         FulfilledRegId = fulfilledRegId;
         AuditTrail = auditTrail;
@@ -34,6 +36,7 @@ public record OpnameRequestModel : IOpnameRequestKey
     public static OpnameRequestModel Create(
         PasienReff pasien,
         PpaReff dokter,
+        DateTime plannedDate,
         string clinicalNotes,
         string auditUserId)
     {
@@ -47,6 +50,7 @@ public record OpnameRequestModel : IOpnameRequestKey
             OpnameRequestStatusEnum.Requested,
             pasien,
             dokter,
+            plannedDate,
             clinicalNotes ?? "",
             EMPTY_REG_ID,
             AuditTrailType.Create(auditUserId, now));
@@ -57,6 +61,7 @@ public record OpnameRequestModel : IOpnameRequestKey
         OpnameRequestStatusEnum.Requested,
         new PasienReff("-", "-", new DateOnly(3000, 1, 1), "-"),
         new PpaReff("-", "-"),
+        new DateTime(3000,1,1),
         "",
         EMPTY_REG_ID,
         AuditTrailType.Default);
@@ -71,6 +76,7 @@ public record OpnameRequestModel : IOpnameRequestKey
     public OpnameRequestStatusEnum OpnameRequestStatus { get; init; }
     public PasienReff Pasien { get; init; }
     public PpaReff Dokter { get; init; }
+    public DateTime PlannedDate { get; init; }
     public string ClinicalNotes { get; init; }
     public string FulfilledRegId { get; init; }
     public AuditTrailType AuditTrail { get; init; }
@@ -128,6 +134,7 @@ public record OpnameRequestModel : IOpnameRequestKey
             status,
             Pasien,
             Dokter,
+            PlannedDate,
             ClinicalNotes,
             fulfilledRegId,
             audit);

@@ -40,7 +40,7 @@ public class AdmOpnameRequestHandlerTest
             _auditRepoMock.Object);
 
         var response = await handler.Handle(
-            new AdmCreateOpnameRequestCmd("P001", "D001", "Catatan", "user1"),
+            new AdmCreateOpnameRequestCmd("P001", "D001", "2026-07-30", "Catatan", "user1"),
             CancellationToken.None);
 
         response.OpnameRequestId.Should().StartWith("OPN");
@@ -56,6 +56,7 @@ public class AdmOpnameRequestHandlerTest
         var requested = OpnameRequestModel.Create(
             new PasienReff("P001", "Pasien Test", new DateOnly(1990, 1, 1), "L"),
             new PpaReff("D001", "Dr. Test"),
+            new DateTime(2026, 7, 20),
             "Catatan",
             "user1");
 

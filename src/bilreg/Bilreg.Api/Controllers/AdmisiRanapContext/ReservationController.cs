@@ -48,8 +48,8 @@ public class ReservationController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> List(
         [FromQuery] ReservationStatusEnum? status,
-        [FromQuery] DateTime? plannedFrom,
-        [FromQuery] DateTime? plannedTo)
+        [FromQuery] string? plannedFrom,
+        [FromQuery] string? plannedTo)
     {
         var result = await _mediator.Send(new AdmListReservationQry(status, plannedFrom, plannedTo));
         return Ok(new JSendOk(result));
@@ -57,7 +57,7 @@ public class ReservationController : ControllerBase
 }
 
 public record AdmMaintainReservationBody(
-    DateTime PlannedDate,
+    string PlannedDate,
     string KelasId,
     string BangsalId,
     string UserId);

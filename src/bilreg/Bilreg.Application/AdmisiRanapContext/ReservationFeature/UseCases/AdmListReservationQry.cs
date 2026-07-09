@@ -1,12 +1,15 @@
+using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
 using MediatR;
+using Nuna.Lib.ValidationHelper;
+using System.Globalization;
 
 namespace Bilreg.Application.AdmisiRanapContext.ReservationFeature.UseCases;
 
 public record AdmListReservationQry(
     ReservationStatusEnum? Status = null,
-    DateTime? PlannedFrom = null,
-    DateTime? PlannedTo = null) : IRequest<AdmListReservationResponse>;
+    string? PlannedFrom = null,
+    string? PlannedTo = null) : IRequest<AdmListReservationResponse>;
 
 public record AdmListReservationResponse(IReadOnlyList<AdmReservationListItem> Items);
 
@@ -33,8 +36,15 @@ public class AdmListReservationHandler : IRequestHandler<AdmListReservationQry, 
         AdmListReservationQry request,
         CancellationToken cancellationToken)
     {
+        Guard.Against.NullOrWhiteSpace(request.PlannedTo, nameof(request.PlannedTo));
+        Guard.Against.NullOrWhiteSpace(request.PlannedFrom, nameof(request.PlannedTo));
+
+
+        var plannedFrom = request.PlannedFrom.ToDate("yyyy-MM-dd");
+        var plannedTo = request.PlannedTo.ToDate("yyyy-MM-dd");
+        
         var items = _reservationRepo
-            .ListData(new ReservationListFilter(request.Status, request.PlannedFrom, request.PlannedTo))
+            .ListData(new ReservationListFilter(request.Status, plannedFrom, plannedTo))
             .Select(Map)
             .ToList();
 

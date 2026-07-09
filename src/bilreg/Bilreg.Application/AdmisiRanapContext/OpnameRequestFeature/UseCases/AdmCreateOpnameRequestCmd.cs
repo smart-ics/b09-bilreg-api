@@ -4,12 +4,14 @@ using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Domain.Shared.AuditLogFeature;
 using MediatR;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiRanapContext.OpnameRequestFeature.UseCases;
 
 public record AdmCreateOpnameRequestCmd(
     string PasienId,
     string DokterId,
+    string PlannedDate,
     string ClinicalNotes,
     string UserId) : IRequest<AdmCreateOpnameRequestResponse>;
 
@@ -40,14 +42,16 @@ public class AdmCreateOpnameRequestHandler : IRequestHandler<AdmCreateOpnameRequ
     {
         Guard.Against.NullOrWhiteSpace(request.PasienId);
         Guard.Against.NullOrWhiteSpace(request.DokterId);
+        Guard.Against.NullOrWhiteSpace(request.PlannedDate);
         Guard.Against.NullOrWhiteSpace(request.UserId);
 
         var pasien = _patientGateway.ResolvePatient(request.PasienId);
         var dokter = _doctorGateway.ResolveDoctor(request.DokterId);
-
+        var plannedDate = request.PlannedDate.ToDate("yyyy-MM-dd");
         var opnameRequest = OpnameRequestModel.Create(
             pasien,
             dokter,
+            plannedDate,
             request.ClinicalNotes ?? "",
             request.UserId);
 

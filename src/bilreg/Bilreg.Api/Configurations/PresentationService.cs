@@ -71,9 +71,40 @@ public static class PresentationService
             {
                 ValidateIssuer = true,
                 ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
                 ValidAudience = configuration["Jwt:Audience"],
                 ValidIssuer = configuration["Jwt:Issuer"],
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["Jwt:Key"] ?? string.Empty))
+            };
+
+            options.Events = new JwtBearerEvents
+            {
+                OnAuthenticationFailed = context =>
+                {
+                    CreateAuthLogger(context.HttpContext).LogWarning(
+                        context.Exception,
+                        "JWT authentication failed: {ErrorMessage}",
+                        context.Exception.Message);
+                    return Task.CompletedTask;
+                },
+
+                OnTokenValidated = context =>
+                {
+                    CreateAuthLogger(context.HttpContext).LogDebug(
+                        "JWT token validated for {UserName}",
+                        context.Principal?.Identity?.Name ?? "(unknown)");
+                    return Task.CompletedTask;
+                },
+
+                OnChallenge = context =>
+                {
+                    CreateAuthLogger(context.HttpContext).LogWarning(
+                        "JWT challenge issued: {Error} {ErrorDescription}",
+                        context.Error,
+                        context.ErrorDescription);
+                    return Task.CompletedTask;
+                }
             };
         });
 
@@ -93,4 +124,9 @@ public static class PresentationService
         
         return services;
     }
+
+    private static ILogger CreateAuthLogger(HttpContext httpContext) =>
+        httpContext.RequestServices
+            .GetRequiredService<ILoggerFactory>()
+            .CreateLogger("Bilreg.Api.Authentication");
 }

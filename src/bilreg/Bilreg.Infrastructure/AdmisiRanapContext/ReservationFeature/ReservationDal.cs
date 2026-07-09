@@ -116,6 +116,7 @@ public class ReservationDal : IReservationDal
         dp.AddParam("@VodDate", VoidSentinel, SqlDbType.DateTime);
         dp.AddParam("@Status", filter.Status.HasValue ? (int)filter.Status.Value : null, SqlDbType.Int);
         dp.AddParam("@PlannedFrom", filter.PlannedFrom, SqlDbType.DateTime);
+        dp.AddParam("@PlannedTo", filter.PlannedTo, SqlDbType.DateTime);
         dp.AddParam("@PlannedToEnd",
             filter.PlannedTo?.Date.AddDays(1),
             SqlDbType.DateTime);
