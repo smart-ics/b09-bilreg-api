@@ -12,6 +12,7 @@ namespace Bilreg.Application.PaymentContext.TataRekeningFeature.UseCases;
 
 public record SettlementInitiationCommand(
     string RegId,
+    string UserId,
     DateTime InitiatedAt) : IRequest<SettlementInitiationResponse>, IRegKey;
 
 public record SettlementInitiationResponse(TataRekeningSummaryDto Summary);
@@ -40,8 +41,8 @@ public class SettlementInitiationHandler : IRequestHandler<SettlementInitiationC
         CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.RegId);
-
-        var petugasVerif = _currentUser.GetActorUserId();
+        
+        var petugasVerif = request.UserId;
         Guard.Against.NullOrWhiteSpace(petugasVerif);
 
         using var scope = _unitOfWork.Begin();
