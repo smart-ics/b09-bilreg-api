@@ -17,14 +17,17 @@ public class RegRepo : IRegRepo
     private readonly IRegDal _regDal;
     private readonly IRegJaminanDal _regJaminanDal;
     private readonly IRegKomponenDal _regKomponenDal;
+    private readonly IRegHistoryDokterDal _regHistoryDokterDal;
 
     public RegRepo(IRegDal regDal, 
         IRegJaminanDal regJaminanDal, 
-        IRegKomponenDal regKomponenDal)
+        IRegKomponenDal regKomponenDal,
+        IRegHistoryDokterDal regHistoryDokterDal)
     {
         _regDal = regDal;
         _regJaminanDal = regJaminanDal;
         _regKomponenDal = regKomponenDal;
+        _regHistoryDokterDal = regHistoryDokterDal;
     }
 
     public void SaveChanges(RegModel model)
@@ -41,6 +44,10 @@ public class RegRepo : IRegRepo
         var listKomponen = _regKomponenDal.ListData(model)?.ToList() ?? [];
         _regKomponenDal.Delete(model);
         _regKomponenDal.Insert(listKomponen);
+
+        _regHistoryDokterDal.Delete(model);
+        _regHistoryDokterDal.Insert(
+            model.ListDokter.Select(x => RegHistoryDokterDto.FromModel(model.RegId, x)));
     }
 
     public void Delete(IRegKey key)
@@ -48,6 +55,7 @@ public class RegRepo : IRegRepo
         _regDal.Delete(key);
         _regJaminanDal.Delete(key);
         _regKomponenDal.Delete(key);
+        _regHistoryDokterDal.Delete(key);
     }
 
     public MayBe<RegModel> LoadEntity(IRegKey key)
@@ -66,7 +74,6 @@ public class RegRepo : IRegRepo
         var kelas = new KelasReff(regDto.fs_kd_kelas, regDto.fs_nm_kelas);
         var caraMasukDk = new CaraMasukDkType(regDto.fs_kd_cara_masuk_dk, regDto.fs_nm_cara_masuk_dk);
         var rujukan = new RujukanReff(regDto.fs_kd_rujukan, regDto.fs_nm_rujukan);
-        var dokter = new PpaReff(regDto.fs_kd_medis, regDto.fs_nm_medis);
         var layanan = new LayananReff(regDto.fs_kd_layanan, regDto.fs_nm_layanan);
         var karcis = new KarcisReff(regDto.fs_kd_karcis, regDto.fs_nm_karcis);
         // polis
@@ -79,6 +86,7 @@ public class RegRepo : IRegRepo
         //  komponen
         var regJaminanDto = _regJaminanDal.GetData(key) ?? new RegJaminanDto("-", "-", "-", "-");
         var listKomponenDto = _regKomponenDal.ListData(key)?.ToList() ?? [];
+        var listDokterDto = _regHistoryDokterDal.ListData(key)?.ToList() ?? [];
         //  main object
         var result = new RegModel(
             regDto.fs_kd_reg, DateOnly.Parse(regDto.fd_tgl_masuk),
@@ -86,7 +94,7 @@ public class RegRepo : IRegRepo
             pasien, tipeJmn, polis, kelas, caraMasukDk, rujukan,
             layanan, karcis, 
             //regDto.fs_no_sjp, regDto.fs_no_peserta, 
-            eligibility, listKomponenDto.Select(x => x.ToModel()), []);
+            eligibility, listKomponenDto.Select(x => x.ToModel()), listDokterDto.Select(x => x.ToModel()));
         return MayBe.From(result);
     }
     public IEnumerable<RegView> ListData(Periode filter, ILayananKey layanan)

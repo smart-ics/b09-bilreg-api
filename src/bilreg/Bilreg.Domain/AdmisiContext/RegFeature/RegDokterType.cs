@@ -27,4 +27,13 @@ public class RegDokterType
     }
 
     internal void SetPrimer(bool isPrimer) => IsPrimer = isPrimer;
+
+    public static RegDokterType Rehydrate(
+        PpaReff dokter, DateOnly assignDate, DateOnly? releaseDate, bool isPrimer)
+    {
+        var result = new RegDokterType(dokter, assignDate, isPrimer);
+        if (releaseDate is not null)
+            result.Release(releaseDate.Value);
+        return result;
+    }
 }
