@@ -10,7 +10,7 @@ namespace Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
 
 public record AdmissionModel : IRegKey
 {
-    private const string EmptyRefId = "-";
+    private const string EMPTY_REF_ID = "-";
     private static readonly DateTime EmptyDate = new(3000, 1, 1);
 
     public AdmissionModel(
@@ -56,8 +56,8 @@ public record AdmissionModel : IRegKey
             regId,
             AdmissionStatusEnum.Admitted,
             pasien,
-            string.IsNullOrWhiteSpace(opnameRequestId) ? EmptyRefId : opnameRequestId,
-            string.IsNullOrWhiteSpace(reservationId) ? EmptyRefId : reservationId,
+            string.IsNullOrWhiteSpace(opnameRequestId) ? EMPTY_REF_ID : opnameRequestId,
+            string.IsNullOrWhiteSpace(reservationId) ? EMPTY_REF_ID : reservationId,
             kelasDk,
             bangsal,
             now,
@@ -68,8 +68,8 @@ public record AdmissionModel : IRegKey
         "-",
         AdmissionStatusEnum.Admitted,
         new PasienReff("-", "-", new DateOnly(3000, 1, 1), "-"),
-        EmptyRefId,
-        EmptyRefId,
+        EMPTY_REF_ID,
+        EMPTY_REF_ID,
         KelasDkType.Default,
         new BangsalReff("-", "-"),
         EmptyDate,

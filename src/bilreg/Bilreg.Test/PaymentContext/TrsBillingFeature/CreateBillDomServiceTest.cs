@@ -158,10 +158,11 @@ public class CreateBillDomServiceTest
             KelasType.Default.ToReff(),
             CaraMasukDkType.Default,
             RujukanType.Default.ToReff(),
+            PpaType.Default.ToReff(),
             LayananType.Default.ToReff(),
             KarcisType.Default.ToReff(),
             RegEligibilityType.Default,
-            [komponen], []);
+            [komponen]);
     }
 
     private static TrsBill2CoaType ValidPdpCoa => new(

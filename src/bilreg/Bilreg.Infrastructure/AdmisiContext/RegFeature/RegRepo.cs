@@ -9,6 +9,7 @@ using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using Nuna.Lib.PatternHelper;
 using Nuna.Lib.ValidationHelper;
+// ReSharper disable InconsistentNaming
 
 namespace Bilreg.Infrastructure.AdmisiContext.RegFeature;
 
@@ -18,16 +19,19 @@ public class RegRepo : IRegRepo
     private readonly IRegJaminanDal _regJaminanDal;
     private readonly IRegKomponenDal _regKomponenDal;
     private readonly IRegHistoryDokterDal _regHistoryDokterDal;
+    private readonly Ita_reg_inap_dal _ta_reg_inap_dal;
 
     public RegRepo(IRegDal regDal, 
         IRegJaminanDal regJaminanDal, 
         IRegKomponenDal regKomponenDal,
-        IRegHistoryDokterDal regHistoryDokterDal)
+        IRegHistoryDokterDal regHistoryDokterDal, 
+        Ita_reg_inap_dal taRegInapDal)
     {
         _regDal = regDal;
         _regJaminanDal = regJaminanDal;
         _regKomponenDal = regKomponenDal;
         _regHistoryDokterDal = regHistoryDokterDal;
+        _ta_reg_inap_dal = taRegInapDal;
     }
 
     public void SaveChanges(RegModel model)
@@ -46,16 +50,6 @@ public class RegRepo : IRegRepo
         _regKomponenDal.Insert(listKomponen);
 
         _regHistoryDokterDal.Delete(model);
-        _regHistoryDokterDal.Insert(
-            model.ListDokter.Select(x => RegHistoryDokterDto.FromModel(model.RegId, x)));
-    }
-
-    public void Delete(IRegKey key)
-    {
-        _regDal.Delete(key);
-        _regJaminanDal.Delete(key);
-        _regKomponenDal.Delete(key);
-        _regHistoryDokterDal.Delete(key);
     }
 
     public MayBe<RegModel> LoadEntity(IRegKey key)
@@ -82,21 +76,30 @@ public class RegRepo : IRegRepo
             regJmnDto.fs_atas_nama);
         // eligibility
         var eligibility = new RegEligibilityType(regDto.fs_kd_trs_sjp, regDto.fs_no_sjp, regDto.fs_no_peserta);
+        // dokter
+        var dokter = new PpaReff(regDto.fs_kd_medis, regDto.fs_nm_medis);
 
         //  komponen
-        var regJaminanDto = _regJaminanDal.GetData(key) ?? new RegJaminanDto("-", "-", "-", "-");
         var listKomponenDto = _regKomponenDal.ListData(key)?.ToList() ?? [];
-        var listDokterDto = _regHistoryDokterDal.ListData(key)?.ToList() ?? [];
+
         //  main object
         var result = new RegModel(
             regDto.fs_kd_reg, DateOnly.Parse(regDto.fd_tgl_masuk),
             regMasukAudit, regKeluarAudit, regCancelOutAudit, regVoidAudit, jenisReg,
-            pasien, tipeJmn, polis, kelas, caraMasukDk, rujukan,
+            pasien, tipeJmn, polis, kelas, caraMasukDk, rujukan, dokter,
             layanan, karcis, 
-            //regDto.fs_no_sjp, regDto.fs_no_peserta, 
-            eligibility, listKomponenDto.Select(x => x.ToModel()), listDokterDto.Select(x => x.ToModel()));
+            eligibility, listKomponenDto.Select(x => x.ToModel()));
         return MayBe.From(result);
     }
+
+    public void Delete(IRegKey key)
+    {
+        _regDal.Delete(key);
+        _regJaminanDal.Delete(key);
+        _regKomponenDal.Delete(key);
+        _regHistoryDokterDal.Delete(key);
+    }
+
     public IEnumerable<RegView> ListData(Periode filter, ILayananKey layanan)
     {
         var listDto = _regDal.ListData(filter, layanan);

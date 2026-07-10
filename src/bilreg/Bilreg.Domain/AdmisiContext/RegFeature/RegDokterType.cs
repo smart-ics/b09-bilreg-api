@@ -1,39 +1,87 @@
+using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 
 namespace Bilreg.Domain.AdmisiContext.RegFeature;
 
 public class RegDokterType
 {
-    public PpaReff Dokter { get; }
-    public bool IsPrimer { get; private set; }
-    public DateOnly AssignDate { get; }
+    internal RegDokterType(
+        PpaReff dokter,
+        DokterRoleEnum role,
+        DpjpResponsibilityEnum? dpjpResponsibility,
+        DateOnly assignDate,
+        DateOnly? releaseDate)
+    {
+        Guard.Against.Null(dokter);
+        EnsureDpjpResponsibility(role, dpjpResponsibility);
+        if (releaseDate.HasValue)
+            EnsureReleaseDateValid(assignDate, releaseDate.Value);
+
+        Dokter = dokter;
+        DokterRole = role;
+        DpjpResponsibility = dpjpResponsibility;
+        AssignDate = assignDate;
+        ReleaseDate = releaseDate;
+    }
+
+    public PpaReff Dokter { get; init; }
+    public DokterRoleEnum DokterRole { get; init; }
+    public DpjpResponsibilityEnum? DpjpResponsibility { get; init; }
+    public DateOnly AssignDate { get; init; }
     public DateOnly? ReleaseDate { get; private set; }
 
     public bool IsActive => ReleaseDate is null;
 
-    internal RegDokterType(PpaReff dokter, DateOnly assignDate, bool isPrimer = false)
-    {
-        Dokter = dokter;
-        AssignDate = assignDate;
-        IsPrimer = isPrimer;
-    }
+    public static RegDokterType Rehydrate(
+        PpaReff dokter,
+        DokterRoleEnum role,
+        DpjpResponsibilityEnum? dpjpResponsibility,
+        DateOnly assignDate,
+        DateOnly? releaseDate)
+        => new(dokter, role, dpjpResponsibility, assignDate, releaseDate);
 
-    // BR-REG-009: clear IsPrimer on release so only active assignments can be DPJP.
-    // AssignDate/ReleaseDate retain sufficient audit history.
     internal void Release(DateOnly releaseDate)
     {
+        if (!IsActive)
+            throw new InvalidOperationException(
+                $"Penugasan dokter {Dokter.PpaName} sudah dilepas.");
+
+        EnsureReleaseDateValid(AssignDate, releaseDate);
         ReleaseDate = releaseDate;
-        IsPrimer = false;
     }
 
-    internal void SetPrimer(bool isPrimer) => IsPrimer = isPrimer;
-
-    public static RegDokterType Rehydrate(
-        PpaReff dokter, DateOnly assignDate, DateOnly? releaseDate, bool isPrimer)
+    private static void EnsureDpjpResponsibility(
+        DokterRoleEnum role,
+        DpjpResponsibilityEnum? dpjpResponsibility)
     {
-        var result = new RegDokterType(dokter, assignDate, isPrimer);
-        if (releaseDate is not null)
-            result.Release(releaseDate.Value);
-        return result;
+        if (role == DokterRoleEnum.Dpjp)
+        {
+            if (dpjpResponsibility is null)
+                throw new ArgumentException("DPJP harus memiliki tanggung jawab Primary atau Secondary.");
+            return;
+        }
+
+        if (dpjpResponsibility is not null)
+            throw new ArgumentException(
+                $"Peran {role} tidak boleh memiliki tanggung jawab DPJP.");
     }
+
+    private static void EnsureReleaseDateValid(DateOnly assignDate, DateOnly releaseDate)
+    {
+        if (releaseDate < assignDate)
+            throw new ArgumentException("Tanggal lepas tidak boleh lebih awal dari tanggal penugasan.");
+    }
+}
+
+public enum DokterRoleEnum
+{
+    Dpjp,
+    Konsulen,
+    Residen
+}
+
+public enum DpjpResponsibilityEnum
+{
+    Primary,
+    Secondary
 }

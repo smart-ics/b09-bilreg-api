@@ -160,10 +160,11 @@ public class AddBillAppServiceTest
             KelasType.Default.ToReff(),
             CaraMasukDkType.Default,
             RujukanType.Default.ToReff(),
+            PpaType.Default.ToReff(),
             LayananType.Default.ToReff(),
             KarcisType.Default.ToReff(),
             RegEligibilityType.Default,
-            [komponen], []);
+            [komponen]);
     }
 
     private static RegModel CreateRegForTindakan(string regId)
@@ -184,10 +185,11 @@ public class AddBillAppServiceTest
             KelasType.Default.ToReff(),
             CaraMasukDkType.Default,
             RujukanType.Default.ToReff(),
+            PpaType.Default.ToReff(),
             LayananType.Default.ToReff(),
             KarcisType.Default.ToReff(),
             RegEligibilityType.Default,
-            [], []);
+            []);
     }
 
     private static JaminanType CreateJaminanForReg(RegModel reg) =>

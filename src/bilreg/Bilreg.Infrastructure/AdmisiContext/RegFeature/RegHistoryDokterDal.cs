@@ -31,7 +31,8 @@ public record RegHistoryDokterDto(
         return new RegHistoryDokterDto(
             regId,
             model.Dokter.PpaId,
-            model.IsPrimer,
+            model.DokterRole == DokterRoleEnum.Dpjp
+                && model.DpjpResponsibility == DpjpResponsibilityEnum.Primary,
             model.AssignDate.ToString("yyyy-MM-dd"),
             model.ReleaseDate?.ToString("yyyy-MM-dd") ?? string.Empty,
             true,
@@ -46,9 +47,10 @@ public record RegHistoryDokterDto(
 
         return RegDokterType.Rehydrate(
             new PpaReff(fs_kd_dokter, fs_nm_peg),
+            DokterRoleEnum.Dpjp,
+            fb_primer ? DpjpResponsibilityEnum.Primary : DpjpResponsibilityEnum.Secondary,
             DateOnly.Parse(fd_tgl_mulai),
-            releaseDate,
-            fb_primer);
+            releaseDate);
     }
 }
 
