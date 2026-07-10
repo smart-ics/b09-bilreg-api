@@ -80,7 +80,7 @@ public class RegInapModel : IRegKey
     public string RegId { get; init; }
     public ProsedurMasukInapType ProsedurMasukInap { get; init; }
 
-    public IEnumerable<RegDokterType> ListDokter => _assignments;
+    public IReadOnlyList<RegDokterType> ListDokter => _assignments.AsReadOnly();
 
     public PpaReff Dpjp => _assignments
         .FirstOrDefault(x => x.IsActive
@@ -221,24 +221,36 @@ public class RegInapModel : IRegKey
         ValidateInvariants();
     }
 
-    public void DemotePrimaryToSecondary(DateOnly effectiveDate)
+    public void DemotePrimaryToSecondary(PpaReff secondaryDpjp, DateOnly effectiveDate)
     {
-        var activePrimaries = _assignments
-            .Where(x => x.IsActive
-                && x.DokterRole == DokterRoleEnum.Dpjp
-                && x.DpjpResponsibility == DpjpResponsibilityEnum.Primary)
-            .OrderBy(x => x.AssignDate)
-            .ToList();
+        Guard.Against.Null(secondaryDpjp);
 
-        if (activePrimaries.Count < 2)
+        var secondaryAssignment = FindActiveAssignment(secondaryDpjp)
+            ?? throw new InvalidOperationException(
+                $"Dokter {secondaryDpjp.PpaName} tidak memiliki penugasan aktif.");
+
+        if (secondaryAssignment.DokterRole != DokterRoleEnum.Dpjp
+            || secondaryAssignment.DpjpResponsibility != DpjpResponsibilityEnum.Secondary)
             throw new InvalidOperationException(
-                "DemotePrimaryToSecondary hanya dapat dilakukan jika DPJP Primary pengganti sudah aktif.");
+                $"Dokter {secondaryDpjp.PpaName} bukan DPJP Secondary aktif.");
 
-        var toDemote = activePrimaries[0];
-        toDemote.Release(effectiveDate);
+        var currentPrimary = FindActivePrimaryDpjp()
+            ?? throw new InvalidOperationException("Tidak ada DPJP Primary aktif untuk diturunkan.");
+
+        var formerPrimary = currentPrimary.Dokter;
+
+        secondaryAssignment.Release(effectiveDate);
+        currentPrimary.Release(effectiveDate);
 
         _assignments.Add(new RegDokterType(
-            toDemote.Dokter,
+            secondaryDpjp,
+            DokterRoleEnum.Dpjp,
+            DpjpResponsibilityEnum.Primary,
+            effectiveDate,
+            null));
+
+        _assignments.Add(new RegDokterType(
+            formerPrimary,
             DokterRoleEnum.Dpjp,
             DpjpResponsibilityEnum.Secondary,
             effectiveDate,
