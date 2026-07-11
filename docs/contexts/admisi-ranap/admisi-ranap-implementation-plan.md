@@ -418,7 +418,10 @@ Use cases are authoritative in `admisi-ranap-architecture.md` §3. API exposes b
 | Update Waiting List | `PUT api/admisi-ranap/waiting-list/{id}` | `AdmUpdateWaitingListCmd` |
 | Close Waiting List | `POST api/admisi-ranap/waiting-list/{id}/close` | `AdmCloseWaitingListCmd` |
 | Get Waiting List | `GET api/admisi-ranap/waiting-list/{id}` | `AdmGetWaitingListQry` |
+| Get active Waiting List by Admission | `GET api/admisi-ranap/waiting-list/by-reg/{regId}` | `AdmGetWaitingListByRegIdQry` |
 | List active Waiting List | `GET api/admisi-ranap/waiting-list` | `AdmListWaitingListQry` |
+
+**Get by Admission (`regId`):** returns the active Waiting List (`Waiting` or `Accepted`) or empty (`null` data). Does not throw when none exists. Used by the Admisi workspace to suppress duplicate create and show ActiveWaitingListCard.
 
 **Ward consumer:** `GET api/admisi-ranap/waiting-list` is the primary integration surface (ADR-004).
 

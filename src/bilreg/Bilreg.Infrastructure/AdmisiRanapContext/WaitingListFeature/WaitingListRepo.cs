@@ -26,5 +26,13 @@ public class WaitingListRepo : IWaitingListRepo
         return MayBe.From(dto.ToModel());
     }
 
-    public bool HasActiveByRegId(string regId) => _dal.HasActiveByRegId(regId);
+    public MayBe<WaitingListModel> LoadActiveByRegId(string regId)
+    {
+        var dto = _dal.GetActiveByRegId(regId);
+        if (dto is null)
+            return MayBe<WaitingListModel>.None;
+        return MayBe.From(dto.ToModel());
+    }
+
+    public bool HasActiveByRegId(string regId) => LoadActiveByRegId(regId).HasValue;
 }

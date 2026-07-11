@@ -44,6 +44,13 @@ public class WaitingListController : ControllerBase
         return Ok(new JSendOk("Done"));
     }
 
+    [HttpGet("by-reg/{regId}")]
+    public async Task<IActionResult> GetByReg(string regId)
+    {
+        var result = await _mediator.Send(new AdmGetWaitingListByRegIdQry(regId));
+        return Ok(new JSendOk(result));
+    }
+
     [HttpGet("{id}")]
     public async Task<IActionResult> Get(string id)
     {

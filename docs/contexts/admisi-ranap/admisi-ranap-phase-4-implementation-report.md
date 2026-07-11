@@ -78,9 +78,12 @@ Route `{id}` = `RegId`. Query: `status?`, `pasienId?`.
 | PUT | `/{id}` | `AdmUpdateWaitingListCmd` | `"Done"` |
 | POST | `/{id}/close` | `AdmCloseWaitingListCmd` | `"Done"` |
 | GET | `/{id}` | `AdmGetWaitingListQry` | `AdmGetWaitingListResponse` |
+| GET | `/by-reg/{regId}` | `AdmGetWaitingListByRegIdQry` | `AdmGetWaitingListResponse?` (null when none) |
 | GET | `/` | `AdmListWaitingListQry` | `AdmListWaitingListResponse` |
 
 Query: `bangsalId?`, `waitingListStatus?` (int).
+
+**Amendment (persistent-workspace Phase 2, 2026-07-11):** `GET /by-reg/{regId}` returns the active Waiting List (`Waiting`/`Accepted`) or empty null data — does not throw when none exists.
 
 ---
 
