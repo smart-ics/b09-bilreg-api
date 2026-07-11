@@ -1,4 +1,5 @@
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
@@ -6,6 +7,7 @@ using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.LabContext.LabOrderFeature;
 using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
+using Nuna.Lib.DataTypeExtension;
 
 namespace Bilreg.Domain.PaymentContext.TrsBillFeature;
 
@@ -120,12 +122,9 @@ internal class TrsBillFactory
         return result;
     }
 
-    public static TrsBillType CreateFromLabOrder(LabOrderModel labOrder,
-        RegModel reg, JaminanType jaminan, IEnumerable<KomponenType> listReffKomp)
+    public static TrsBillType CreateFromLabOrderItem(LabOrderModel labOrder, LabOrderItemModel labOrderItem, RegModel reg,
+        JaminanType jaminan, TarifType tarif, NilaiTarifType nilaiTarif, IEnumerable<KomponenType> listReffKomp)
     {
-        if (tarif.ToReff() != tindakan.Tarif)
-            throw new ArgumentException("Tarif tidak sesuai");
-
         if (jaminan.JaminanId != reg.TipeJaminan.TipeJaminanId[..3])
             throw new ArgumentException("Jaminan tidak sesuai registrasi");
 
@@ -140,16 +139,13 @@ internal class TrsBillFactory
         var listReffKompFetched = listReffKomp.ToList();
         var listBill2TransEvent = new List<TrsBill2TransEventType>();
 
-        foreach (var item in labOrder.ItemComponents)
+        nilaiTarif.ListKomponen.ForEach(item =>
         {
-            var reffKomp = listReffKompFetched.FirstOrDefault(x => x.KomponenId == item.ComponentId);
+            var reffKomp = listReffKompFetched.FirstOrDefault(x => x.KomponenId == item.Komponen.KomponenId);
 
             var rekPdpt = reffKomp?.RekPdpt.CoaId ?? string.Empty;
             var rekDiskon = reffKomp?.RekDiskon.CoaId ?? string.Empty;
 
-            var ppa = item is TindakanKomponenWithPpaType kompWithPpa
-                ? kompWithPpa.Ppa
-                : PpaType.Default.ToReff();
             var bill2Coa = new TrsBill2CoaType(
                 new CoaType(rekPpdp, ""),
                 new CoaType(rekPdpt, ""),
@@ -160,19 +156,18 @@ internal class TrsBillFactory
 
             var komponen = new TrsBill2KomponenType(item.Komponen.KomponenId, item.Komponen.KomponenName);
 
-            var trsBill2 = new TrsBill2TransEventType(
-                i++, komponen, TrsBillJenisBayarType.Pdp,
-                item.Nilai, ppa, bill2Coa);
+            var trsBill2 = new TrsBill2TransEventType(i++, komponen, TrsBillJenisBayarType.Pdp,
+                item.Nilai, PpaType.Default.ToReff(), bill2Coa);
 
             listBill2TransEvent.Add(trsBill2);
-        }
+        });
 
-        var nilai = new TrsBillNilaiType(tindakan.Total, 0, 0, 0);
+        var nilai = new TrsBillNilaiType(nilaiTarif.Nilai, 0, 0, 0);
+        var billId = $"{labOrder.OrderId}-{labOrderItem.ItemNo:D2}";
 
-        var result = new TrsBillType(tindakan.TindakanId, BillModulGroup.Jasa, tindakan.TindakanDate,
-            tindakan.Reg, tindakan.Layanan, tindakan.Kelas, audit.Created, tarif.RekapCetak,
+        var result = new TrsBillType(billId, BillModulGroup.Jasa, DateTime.Now,
+            reg.ToReff(), LayananType.Default.ToReff(), nilaiTarif.Kelas, audit.Created, tarif.RekapCetak,
             nilai, ketBilling, listBill2TransEvent, [], []);
         return result;
     }
-
 }

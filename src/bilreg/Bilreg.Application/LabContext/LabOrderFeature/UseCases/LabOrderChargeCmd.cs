@@ -150,7 +150,7 @@ public class LabOrderChargeHandler : IRequestHandler<LabOrderChargeCmd, LabOrder
         };
     }
 
-    private IEnumerable<KomponenType> ListKomponenTarif(IEnumerable<IKomponenKey> listKey)
+    private List<KomponenType> ListKomponenTarif(IEnumerable<IKomponenKey> listKey)
     {
         var result = _komponenRepo
             .ListData(listKey)?.ToList() ?? [];

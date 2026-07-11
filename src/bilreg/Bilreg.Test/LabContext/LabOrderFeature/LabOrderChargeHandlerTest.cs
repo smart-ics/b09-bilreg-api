@@ -1,6 +1,11 @@
+using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
+using Bilreg.Application.AdmisiContext.RegFeature;
+using Bilreg.Application.ChargeContext.TarifFeature;
+using Bilreg.Application.ChargeContext.TindakanFeature;
 using Bilreg.Application.LabContext.LabOrderFeature;
 using Bilreg.Application.LabContext.LabOrderFeature.Integration;
 using Bilreg.Application.LabContext.LabOrderFeature.UseCases;
+using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Bilreg.Domain.LabContext.LabOrderFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using FluentAssertions;
@@ -13,12 +18,18 @@ namespace Bilreg.Test.LabContext.LabOrderFeature;
 public class LabOrderChargeHandlerTest
 {
     private readonly Mock<ILabOrderRepo> _repo = new();
+    private readonly Mock<IRegRepo> _regRepo = new();
+    private readonly Mock<INilaiTarifRepo> _nilaiTarifRepo = new();
+    private readonly Mock<IKomponenRepo> _komponenRepo = new();
+    private readonly Mock<IJaminanRepo> _jaminanRepo = new();
+    private readonly Mock<IAddBillAppService> _addBillAppService = new();
     private readonly Mock<ILabBillingIntegration> _billingIntegration = new();
     private readonly LabOrderChargeHandler _sut;
 
     public LabOrderChargeHandlerTest()
     {
-        _sut = new LabOrderChargeHandler(_repo.Object, _billingIntegration.Object);
+        _sut = new LabOrderChargeHandler(_repo.Object, _regRepo.Object, _nilaiTarifRepo.Object, _komponenRepo.Object,
+            _jaminanRepo.Object, _addBillAppService.Object, _billingIntegration.Object);
     }
 
     private static LabOrderModel OrderedOrder()
