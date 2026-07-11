@@ -22,10 +22,12 @@ public record AdmissionModel : IRegKey
         KelasDkType kelasDk,
         BangsalReff bangsal,
         DateTime admissionDate,
-        AuditTrailType auditTrail)
+        AuditTrailType auditTrail,
+        AdmissionSourceEnum admissionSource = AdmissionSourceEnum.Admission)
     {
         RegId = regId;
         AdmissionStatus = admissionStatus;
+        AdmissionSource = admissionSource;
         Pasien = pasien;
         OpnameRequestId = opnameRequestId;
         ReservationId = reservationId;
@@ -61,7 +63,40 @@ public record AdmissionModel : IRegKey
             kelasDk,
             bangsal,
             now,
-            AuditTrailType.Create(auditUserId, now));
+            AuditTrailType.Create(auditUserId, now),
+            AdmissionSourceEnum.Admission);
+    }
+
+    public static AdmissionModel CreateFromLegacyRegistration(
+        RegModel reg,
+        string auditUserId)
+    {
+        Guard.Against.Null(reg);
+        Guard.Against.NullOrWhiteSpace(auditUserId);
+
+        if (reg.JenisReg != JenisRegEnum.RegInap)
+            throw new InvalidOperationException("Admission hanya dibuat untuk RegInap.");
+
+        if (IsEmpty(reg.KelasDk.KelasDkId))
+            throw new InvalidOperationException(
+                $"KelasDk untuk RegInap '{reg.RegId}' belum terpetakan.");
+
+        if (IsEmpty(reg.Bangsal.BangsalId))
+            throw new InvalidOperationException(
+                $"Bangsal untuk RegInap '{reg.RegId}' belum terpetakan.");
+
+        var now = DateTime.Now;
+        return new AdmissionModel(
+            reg.RegId,
+            AdmissionStatusEnum.Admitted,
+            reg.Pasien,
+            EMPTY_REF_ID,
+            EMPTY_REF_ID,
+            reg.KelasDk,
+            reg.Bangsal,
+            now,
+            AuditTrailType.Create(auditUserId, now),
+            AdmissionSourceEnum.Legacy);
     }
 
     public static AdmissionModel Default => new(
@@ -73,7 +108,8 @@ public record AdmissionModel : IRegKey
         KelasDkType.Default,
         new BangsalReff("-", "-"),
         EmptyDate,
-        AuditTrailType.Default);
+        AuditTrailType.Default,
+        AdmissionSourceEnum.Admission);
 
     public static IRegKey Key(string id) => Default with { RegId = id };
 
@@ -83,6 +119,7 @@ public record AdmissionModel : IRegKey
 
     public string RegId { get; init; }
     public AdmissionStatusEnum AdmissionStatus { get; init; }
+    public AdmissionSourceEnum AdmissionSource { get; init; }
     public PasienReff Pasien { get; init; }
     public string OpnameRequestId { get; init; }
     public string ReservationId { get; init; }
@@ -158,6 +195,9 @@ public record AdmissionModel : IRegKey
                 $"Admission {RegId} berstatus {AdmissionStatus}; perubahan tidak diperbolehkan.");
     }
 
+    private static bool IsEmpty(string value) =>
+        string.IsNullOrWhiteSpace(value) || value == EMPTY_REF_ID;
+
     private AdmissionModel WithState(
         AdmissionStatusEnum status,
         KelasDkType kelasDk,
@@ -172,7 +212,8 @@ public record AdmissionModel : IRegKey
             kelasDk,
             bangsal,
             AdmissionDate,
-            audit);
+            audit,
+            AdmissionSource);
 
     #endregion
 }

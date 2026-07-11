@@ -8,6 +8,7 @@ namespace Bilreg.Infrastructure.AdmisiRanapContext.AdmissionFeature;
 public record AdmissionDto(
     string RegId,
     int AdmissionStatus,
+    int AdmissionSource,
     string PasienId,
     string PasienName,
     string TglLahir,
@@ -30,6 +31,7 @@ public record AdmissionDto(
         new(
             model.RegId,
             (int)model.AdmissionStatus,
+            (int)model.AdmissionSource,
             model.Pasien.PasienId,
             "",
             "3000-01-01",
@@ -69,6 +71,7 @@ public record AdmissionDto(
             kelasDk,
             bangsal,
             AdmissionDate,
-            audit);
+            audit,
+            (AdmissionSourceEnum)AdmissionSource);
     }
 }

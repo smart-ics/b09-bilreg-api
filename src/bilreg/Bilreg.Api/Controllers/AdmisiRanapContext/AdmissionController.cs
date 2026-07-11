@@ -25,7 +25,8 @@ public class AdmissionController : ControllerBase
             body.OpnameRequestId,
             body.KelasDkId,
             body.BangsalId,
-            body.UserId);
+            body.UserId,
+            body.Registration);
         var result = await _mediator.Send(cmd);
         return Ok(new JSendOk(result));
     }
@@ -37,7 +38,8 @@ public class AdmissionController : ControllerBase
             body.ReservationId,
             body.KelasDkId,
             body.BangsalId,
-            body.UserId);
+            body.UserId,
+            body.Registration);
         var result = await _mediator.Send(cmd);
         return Ok(new JSendOk(result));
     }
@@ -85,13 +87,15 @@ public record AdmProcessOpnameRequestBody(
     string OpnameRequestId,
     string KelasDkId,
     string BangsalId,
-    string UserId);
+    string UserId,
+    AdmissionRegistrationData Registration);
 
 public record AdmProcessReservationBody(
     string ReservationId,
     string KelasDkId,
     string BangsalId,
-    string UserId);
+    string UserId,
+    AdmissionRegistrationData Registration);
 
 public record AdmUpdateAdmissionBody(
     string KelasDkId,

@@ -4,6 +4,7 @@ BEGIN
     (
         RegId             VARCHAR(10) NOT NULL CONSTRAINT DF_BILRG_AdmAdmission_RegId DEFAULT(''),
         AdmissionStatus   INT         NOT NULL CONSTRAINT DF_BILRG_AdmAdmission_AdmissionStatus DEFAULT(0),
+        AdmissionSource   INT         NOT NULL CONSTRAINT DF_BILRG_AdmAdmission_AdmissionSource DEFAULT(0),
         PasienId          VARCHAR(15) NOT NULL CONSTRAINT DF_BILRG_AdmAdmission_PasienId DEFAULT('-'),
         OpnameRequestId   VARCHAR(12) NOT NULL CONSTRAINT DF_BILRG_AdmAdmission_OpnameRequestId DEFAULT('-'),
         ReservationId     VARCHAR(12) NOT NULL CONSTRAINT DF_BILRG_AdmAdmission_ReservationId DEFAULT('-'),
@@ -22,6 +23,14 @@ BEGIN
 
         CONSTRAINT PK_BILRG_AdmAdmission PRIMARY KEY CLUSTERED (RegId)
     );
+END
+GO
+
+IF COL_LENGTH('BILRG_AdmAdmission', 'AdmissionSource') IS NULL
+BEGIN
+    ALTER TABLE BILRG_AdmAdmission
+        ADD AdmissionSource INT NOT NULL
+            CONSTRAINT DF_BILRG_AdmAdmission_AdmissionSource DEFAULT(0);
 END
 GO
 
