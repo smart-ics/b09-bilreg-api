@@ -585,3 +585,19 @@ Rationale
 Consequence
 
 Admission business logic becomes independent of hospital-specific room configuration. `ta_kelas` remains an infrastructure mapping between Room and Care Class.
+
+---
+
+### ADR-006 — Persistent workspace contract (documentation)
+
+Decision
+
+Frontend Registration is a persistent case-workspace body (Work List remains mounted). Post-admission edits use only Ready owner commands from the persistent-workspace capability matrix. Process admission accepts exactly one source. Bed Management is Ward hand-off only.
+
+Rationale
+
+Aligns UX with `docs/WORKFLOW.md` Queue + Contextual Workspace, prevents uncertified outpatient command reuse, and removes documentation contradictions that drove wrong timeline/action rules.
+
+Consequence
+
+Phase 2 implements Propose rows (at minimum Waiting List by `regId`) before FE depends on them. Deferred rows stay read-only in the UI. See `admisi-ranap-persistent-workspace-capability-matrix.md` and the FE Phase 1 contract.

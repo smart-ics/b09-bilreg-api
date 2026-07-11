@@ -341,25 +341,27 @@ Cancelled
 
 ### Admission
 
+Enum values in code: **Admitted**, **Updated**, **Waiting**, **Completed**, **Cancelled**.
+
+Typical transitions:
+
 Admitted
 
 ↓
 
-Updated
-
-↓
-
-Waiting
-
-↓
-
-Completed
+Updated *(via Care Class / Bangsal update)*
 
 or
 
 ↓
 
 Cancelled
+
+**Operational notes (code-authoritative, July 2026):**
+
+- Creating a Waiting List does **not** change Admission status (`BR-RI-009`). `MarkWaiting` exists on the model but is not invoked by the Waiting List create use case.
+- `Waiting` and `Completed` remain valid enum values for future/legacy paths; Admisi FE registry filters currently emphasise Admitted / Updated / Cancelled.
+- Do not document Waiting List create as an Admission status transition.
 
 ---
 
@@ -421,7 +423,7 @@ Opname Request (clinical) and Reservation (administrative plan) may be created i
 
 ↓
 
-Process **one** admission source:
+Process **exactly one** admission source (no combined process command):
 
 - Process Opname Request Admission (fulfills Opname Request), or
 - Process Reservation Admission (realizes Reservation; maintain first if still `Reserved`)
@@ -438,7 +440,7 @@ or
 
 ↓
 
-Ward Accommodation
+Ward Accommodation (Bed Assignment is Ward-owned; Admisi hands off only)
 
 ---
 

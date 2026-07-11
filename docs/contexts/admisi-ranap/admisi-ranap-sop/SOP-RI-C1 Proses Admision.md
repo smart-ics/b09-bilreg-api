@@ -2,13 +2,15 @@
 
 ## 1. Tujuan
 
-Mendokumentasikan proses administrasi penerimaan **Patient** sebagai pasien Rawat Inap melalui pembentukan **Admission**, sehingga proses Rawat Inap dapat dilanjutkan ke tahap **Bed Assignment**.
+Mendokumentasikan proses administrasi penerimaan **Patient** sebagai pasien Rawat Inap melalui pembentukan **Admission**, sehingga proses Rawat Inap dapat dilanjutkan ke tahap akomodasi (**Waiting List** dan/atau **Bed Assignment** di domain Ward).
 
 ---
 
 ## 2. Ruang Lingkup
 
-SOP ini berlaku untuk seluruh proses pembentukan **Admission** oleh petugas **Admisi**, baik berdasarkan **Opname Request**, **Reservation**, maupun kombinasi keduanya.
+SOP ini berlaku untuk seluruh proses pembentukan **Admission** oleh petugas **Admisi** berdasarkan **satu** sumber proses: **Opname Request** *atau* **Reservation**.
+
+> **Catatan kontrak (Juli 2026):** Endpoint proses menerima tepat satu sumber (`from-opname-request` *atau* `from-reservation`). Opname Request dan Reservation dapat keduanya ada sebagai agregat independen untuk pasien yang sama, tetapi operator memilih **satu** perintah proses. Jalur “kombinasi keduanya dalam satu transaksi proses” **ditunda** (Deferred).
 
 ---
 
@@ -18,9 +20,8 @@ SOP ini berlaku untuk seluruh proses pembentukan **Admission** oleh petugas **Ad
 * Salah satu kondisi berikut terpenuhi:
 
   * Terdapat **Opname Request** dengan status **Requested**, atau
-  * Terdapat **Reservation** dengan status **Reserved**, atau
-  * Terdapat **Reservation** yang terkait dengan **Opname Request**.
-* Belum terdapat **Admission** yang masih aktif untuk proses Rawat Inap yang sama.
+  * Terdapat **Reservation** dengan status yang dapat direalisasikan (**Reserved** / **Maintained** sesuai aturan Maintain Reservation).
+* Belum terdapat **Admission** yang masih aktif untuk **Patient** yang sama.
 
 ---
 
@@ -36,8 +37,9 @@ SOP ini berlaku untuk seluruh proses pembentukan **Admission** oleh petugas **Ad
 ## 5. Partisipan
 
 * **Admission**
-* **Opname Request** *(opsional)*
-* **Reservation** *(opsional)*
+* **Opname Request** *(opsional — jika sumber proses adalah Opname)*
+* **Reservation** *(opsional — jika sumber proses adalah Reservation)*
+* **Registration** legacy (`ta_registrasi`) — dibuat dengan `RegId` yang sama
 
 ---
 
@@ -47,7 +49,7 @@ SOP ini berlaku untuk seluruh proses pembentukan **Admission** oleh petugas **Ad
 
 2. **Admisi** melakukan verifikasi identitas **Patient**, kelengkapan administrasi, serta dokumen pendukung yang diperlukan.
 
-3. Apabila tersedia, **Admisi** memilih **Opname Request** dan/atau **Reservation** yang menjadi dasar proses **Admission**.
+3. **Admisi** memilih **satu** sumber proses: **Opname Request** *atau* **Reservation**.
 
 4. **Admisi** memilih **Care Class** (kelas perawatan / `KelasDk`).
 
@@ -57,15 +59,21 @@ SOP ini berlaku untuk seluruh proses pembentukan **Admission** oleh petugas **Ad
 
 7. **Admisi** memilih **Bangsal** tujuan dari daftar yang tersedia.
 
-8. **Admisi** melengkapi data **Admission** lainnya, termasuk informasi penjamin, dokter penanggung jawab, serta informasi administrasi lainnya.
+8. **Admisi** melengkapi data registrasi yang wajib dikirim bersama **Admission**:
+   * Tipe Jaminan dan Peserta Jaminan
+   * Cara Masuk
+   * Rujukan
+   * Dokter
+   * Layanan Rawat Inap
+   * Karcis
 
-9. Sistem melakukan validasi terhadap data **Admission**.
+9. Sistem melakukan validasi terhadap data **Admission** dan data registrasi.
 
-10. Apabila validasi berhasil, sistem membentuk **Admission** dengan status **Admitted**.
+10. Apabila validasi berhasil, sistem membentuk **Admission** dengan status **Admitted** dan membuat **Registration** legacy dengan `RegId` yang sama dalam satu transaksi.
 
-11. Apabila **Opname Request** digunakan, sistem menandainya sebagai telah diproses.
+11. Apabila sumber proses adalah **Opname Request**, sistem menandainya sebagai telah diproses (**Fulfilled**).
 
-12. Apabila **Reservation** digunakan, sistem menandainya sebagai telah direalisasikan.
+12. Apabila sumber proses adalah **Reservation**, sistem menandainya sebagai telah direalisasikan (**Realized**).
 
 13. Proses selesai.
 
@@ -79,9 +87,13 @@ Apabila tidak terdapat **Bangsal** yang memenuhi syarat untuk **Care Class** yan
 
 * **Admission** berhasil dibuat.
 * Status **Admission** menjadi **Admitted**.
-* **Opname Request** (apabila ada) telah diproses.
-* **Reservation** (apabila ada) telah direalisasikan.
-* **Admission** siap dilanjutkan ke SOP-RI-D1 **Bed Assignment**.
+* **Registration** legacy (`ta_registrasi`) dibuat dengan `RegId` yang sama.
+* **Opname Request** (apabila menjadi sumber proses) telah diproses.
+* **Reservation** (apabila menjadi sumber proses) telah direalisasikan.
+* **Admission** siap dilanjutkan ke:
+  * SOP-RI-D1 **Waiting List Management** (apabila akomodasi belum tersedia), dan/atau
+  * hand-off ke modul Ward untuk SOP-RI-D2 **Assign Room & Bed**.
+* Workspace Admisi **tidak** menampilkan UI alokasi Room/Bed; hanya status dan tautan hand-off (ADR-002).
 
 ---
 
@@ -89,7 +101,7 @@ Apabila tidak terdapat **Bangsal** yang memenuhi syarat untuk **Care Class** yan
 
 **BR-RI-C1-01**
 
-**Admission** dapat diproses berdasarkan **Opname Request**, **Reservation**, maupun kombinasi keduanya, sesuai kebijakan rumah sakit.
+**Admission** diproses berdasarkan **tepat satu** sumber: **Opname Request** *atau* **Reservation**. Opname dan Reservation independen dapat keduanya ada sebelum proses; kombinasi keduanya dalam satu perintah proses **tidak didukung** pada implementasi saat ini (Deferred).
 
 ---
 
@@ -119,7 +131,7 @@ Pembentukan **Admission** tidak secara otomatis melakukan **Bed Assignment**.
 
 **BR-RI-C1-06**
 
-Setelah **Admission** terbentuk, proses operasional Rawat Inap dilanjutkan melalui SOP-RI-D1 **Bed Assignment**.
+Setelah **Admission** terbentuk, proses akomodasi dilanjutkan melalui **Waiting List** (SOP-RI-D1) dan/atau **Bed Assignment** di domain Ward (SOP-RI-D2). Modul Admisi hanya melakukan hand-off, bukan alokasi bed.
 
 ---
 
@@ -139,5 +151,5 @@ Setelah **Admission** terbentuk, proses operasional Rawat Inap dilanjutkan melal
 
 * **Admission** berada pada status **Admitted**.
 * **Patient** telah resmi diterima sebagai pasien Rawat Inap secara administratif.
-* **Admission** siap diproses pada SOP-RI-D1 **Bed Assignment**.
-* Belum terdapat **Bed Assignment** yang terbentuk.
+* **Admission** siap diproses pada SOP-RI-D1 (**Waiting List**) dan/atau hand-off ke SOP-RI-D2 (**Bed Assignment**, Ward).
+* Belum terdapat **Bed Assignment** yang terbentuk di dalam workspace Admisi.
