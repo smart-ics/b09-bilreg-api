@@ -115,7 +115,9 @@ public class WaitingListDal : IWaitingListDal
         dp.AddParam("@Accepted", (int)WaitingListStatusEnum.Accepted, SqlDbType.Int);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<WaitingListDto>(sql, dp).FirstOrDefault();
+        var resultDto = conn.Read<WaitingListDto>(sql, dp);
+        var result = resultDto?.FirstOrDefault();
+        return result;
     }
 
     private static DynamicParameters MapWriteParams(WaitingListDto dto)
