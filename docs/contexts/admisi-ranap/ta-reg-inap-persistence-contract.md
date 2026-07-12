@@ -62,6 +62,16 @@ What is written on success:
 | `ta_reg_history_dokter` | Yes (via `RegInapRepo`) |
 | `BILRG_RegAktif` | Yes |
 | Source fulfill/realize + audit | Yes |
+| `ta_registrasi2` | **No** — Rawat Inap does not create registration components. That table belongs to Rawat Jalan and IGD only. An empty result after successful inpatient registration is expected, not a defect. |
+
+### Ownership distinction
+
+| Concern | Persistence |
+|---------|-------------|
+| Outpatient / IGD registration components | `ta_registrasi2` via `RegRepo` (not used for Rawat Inap) |
+| Inpatient extension | `ta_reg_inap` via `RegInapRepo` |
+| Guarantor | `ta_reg_jaminan` via `RegRepo` |
+| Doctor / DPJP history | `ta_reg_history_dokter` via `RegInapRepo` |
 
 ---
 
@@ -210,5 +220,15 @@ Covered by:
 - `ta_reg_inap_dal_Test`
 - `RegInapRepoTest`
 - `AdmissionRegistrationOrchestratorTest` (including RegInap failure short-circuit on mocks)
-- `AdmissionRegistrationStep4CDbTest` — real `HOSPITAL_HPL` HTTP+SQL verification (Opname/Reservation happy path, RegInap round-trip, invalid prosedur, ambient rollback via failing `IRegInapRepo`, reprocess rejection); see `docs/contexts/admisi-ranap/admisi-ranap-step-4c-verification-report.md`
-- Existing `RegRepoTest` / outpatient / shared-`RegId` regression suite
+- `AdmissionRegistrationStep4CDbTest` — real `HOSPITAL_HPL` HTTP+SQL verification (Opname/Reservation happy path, RegInap round-trip, invalid prosedur, ambient rollback via failing `IRegInapRepo`, reprocess rejection, **assert `ta_registrasi2` count = 0**); see `docs/contexts/admisi-ranap/admisi-ranap-step-4c-verification-report.md`
+- `RegRepoTest.GivenRawatInapRegistration_WhenPersisted_ThenDoesNotCreateRegistrasi2` — inpatient never inserts komponen; RJ/IGD preserve existing DAL replace path
+- `RegFactoryInapTest` — inpatient factory leaves `ListKomponen` empty even when karcis has komponen
+- Existing outpatient / shared-`RegId` regression suite
+
+---
+
+## Changelog
+
+| Date | Change |
+|------|--------|
+| 12 July 2026 | Documented confirmed rule: Rawat Inap does not create `ta_registrasi2` (RJ/IGD only). Removed incorrect inpatient “missing komponen” defect wording from Step 4C follow-ups. Domain `AssignInpatientVisitTo` clears komponen; `RegRepo.SaveChanges` deletes but does not insert komponen for `JenisRegEnum.RegInap`. |

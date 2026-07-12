@@ -107,4 +107,44 @@ public class WaitingListModelTest
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*harus Accepted*");
     }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void GivenWaitingOrAccepted_WhenCancel_ThenVoidsWithReasonAndTimestamp(bool accepted)
+    {
+        var waitingList = CreateWaiting();
+        if (accepted)
+            waitingList = waitingList.Accept("user1");
+        var timestamp = new DateTime(2026, 7, 12, 10, 30, 0);
+
+        var cancelled = waitingList.Cancel("void-user", "Pasien membatalkan rencana rawat inap", timestamp);
+
+        cancelled.WaitingListStatus.Should().Be(WaitingListStatusEnum.Cancelled);
+        cancelled.IsActive.Should().BeFalse();
+        cancelled.AuditTrail.Voided.Should().Be(new Bilreg.Domain.Shared.Helpers.CommonValueObjects.AuditInfoType("void-user", timestamp));
+    }
+
+    [Fact]
+    public void GivenClosedOrCancelled_WhenCancel_ThenThrows()
+    {
+        var closed = CreateWaiting().Accept("user1").Close("user1");
+        var cancelled = CreateWaiting().Cancel("void-user", "reason", new DateTime(2026, 7, 12));
+
+        Action cancelClosed = () => closed.Cancel("void-user", "reason", new DateTime(2026, 7, 12));
+        Action cancelAgain = () => cancelled.Cancel("void-user", "reason", new DateTime(2026, 7, 12));
+
+        cancelClosed.Should().Throw<InvalidOperationException>();
+        cancelAgain.Should().Throw<InvalidOperationException>();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void GivenBlankReason_WhenCancel_ThenThrows(string reason)
+    {
+        var act = () => CreateWaiting().Cancel("void-user", reason, new DateTime(2026, 7, 12));
+
+        act.Should().Throw<ArgumentException>();
+    }
 }

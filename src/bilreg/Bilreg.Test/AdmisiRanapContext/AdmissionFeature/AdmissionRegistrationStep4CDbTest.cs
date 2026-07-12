@@ -209,6 +209,8 @@ public class AdmissionRegistrationStep4CDbTest
                 WHERE fs_kd_reg=@regId AND LTRIM(RTRIM(fs_kd_dokter))='DR00000015' AND fb_primer=1
                 """, new { regId })).Should().Be(1);
             (await ScalarCountAsync("SELECT COUNT(*) FROM BILRG_RegAktif WHERE RegId=@regId", new { regId })).Should().Be(1);
+            // Confirmed rule: Rawat Inap does not create ta_registrasi2 (RJ/IGD only).
+            (await ScalarCountAsync("SELECT COUNT(*) FROM ta_registrasi2 WHERE fs_kd_reg=@regId", new { regId })).Should().Be(0);
             (await ScalarCountAsync("""
                 SELECT COUNT(*) FROM BILRG_AdmOpnameRequest
                 WHERE OpnameRequestId=@opnameId AND OpnameRequestStatus=1 AND FulfilledRegId=@regId
@@ -310,6 +312,7 @@ public class AdmissionRegistrationStep4CDbTest
                 """, new { reservationId = reservation.ReservationId, regId })).Should().Be(1);
             (await ScalarCountAsync("SELECT COUNT(*) FROM BILRG_RegAktif WHERE RegId=@regId", new { regId })).Should().Be(1);
             (await ScalarCountAsync("SELECT COUNT(*) FROM BILRG_AdmAdmission WHERE RegId=@regId", new { regId })).Should().Be(1);
+            (await ScalarCountAsync("SELECT COUNT(*) FROM ta_registrasi2 WHERE fs_kd_reg=@regId", new { regId })).Should().Be(0);
         }
         finally
         {

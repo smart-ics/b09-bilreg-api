@@ -6,6 +6,7 @@ namespace Bilreg.Domain.AdmisiContext.RegFeature;
 public class RegInapModel : IRegKey
 {
     private readonly List<RegDokterType> _assignments;
+    private bool _isTerminal;
 
     private RegInapModel(
         string regId,
@@ -15,6 +16,7 @@ public class RegInapModel : IRegKey
         RegId = regId;
         ProsedurMasukInap = prosedurMasukInap;
         _assignments = assignments.ToList();
+        _isTerminal = _assignments.All(x => !x.IsActive);
     }
 
     #region CREATION
@@ -81,6 +83,7 @@ public class RegInapModel : IRegKey
     public ProsedurMasukInapType ProsedurMasukInap { get; init; }
 
     public IReadOnlyList<RegDokterType> ListDokter => _assignments.AsReadOnly();
+    public bool IsTerminal => _isTerminal;
 
     public PpaReff Dpjp => _assignments
         .FirstOrDefault(x => x.IsActive
@@ -98,6 +101,7 @@ public class RegInapModel : IRegKey
         DateOnly assignDate)
     {
         Guard.Against.Null(dokter);
+        EnsureNotTerminal();
 
         if (responsibility == DpjpResponsibilityEnum.Primary
             && FindActivePrimaryDpjp() is not null)
@@ -124,6 +128,7 @@ public class RegInapModel : IRegKey
     public void AssignKonsulen(PpaReff dokter, DateOnly assignDate)
     {
         Guard.Against.Null(dokter);
+        EnsureNotTerminal();
         EnsureDoctorNotActive(dokter);
 
         _assignments.Add(new RegDokterType(
@@ -139,6 +144,7 @@ public class RegInapModel : IRegKey
     public void AssignResiden(PpaReff dokter, DateOnly assignDate)
     {
         Guard.Against.Null(dokter);
+        EnsureNotTerminal();
         EnsureDoctorNotActive(dokter);
 
         _assignments.Add(new RegDokterType(
@@ -169,9 +175,21 @@ public class RegInapModel : IRegKey
         ValidateInvariants();
     }
 
+    public void EndAllDoctorAssignments(DateOnly effectiveDate)
+    {
+        EnsureNotTerminal();
+
+        foreach (var assignment in _assignments.Where(x => x.IsActive))
+            assignment.Release(effectiveDate);
+
+        _isTerminal = true;
+        ValidateInvariants();
+    }
+
     public void ChangePrimaryDpjp(PpaReff newDpjp, DateOnly effectiveDate)
     {
         Guard.Against.Null(newDpjp);
+        EnsureNotTerminal();
 
         var currentPrimary = FindActivePrimaryDpjp()
             ?? throw new InvalidOperationException("Tidak ada DPJP Primary aktif untuk diganti.");
@@ -195,6 +213,7 @@ public class RegInapModel : IRegKey
     public void PromoteToPrimary(PpaReff secondaryDpjp, DateOnly effectiveDate)
     {
         Guard.Against.Null(secondaryDpjp);
+        EnsureNotTerminal();
 
         var secondaryAssignment = FindActiveAssignment(secondaryDpjp)
             ?? throw new InvalidOperationException(
@@ -224,6 +243,7 @@ public class RegInapModel : IRegKey
     public void DemotePrimaryToSecondary(PpaReff secondaryDpjp, DateOnly effectiveDate)
     {
         Guard.Against.Null(secondaryDpjp);
+        EnsureNotTerminal();
 
         var secondaryAssignment = FindActiveAssignment(secondaryDpjp)
             ?? throw new InvalidOperationException(
@@ -270,6 +290,13 @@ public class RegInapModel : IRegKey
                 $"Dokter {dokter.PpaName} sudah memiliki penugasan aktif pada registrasi ini.");
     }
 
+    private void EnsureNotTerminal()
+    {
+        if (_isTerminal)
+            throw new InvalidOperationException(
+                $"Registrasi inap {RegId} telah terminal; penugasan dokter tidak dapat diubah.");
+    }
+
     private RegDokterType? FindActiveAssignment(PpaReff dokter)
         => _assignments.FirstOrDefault(x =>
             x.IsActive && x.Dokter.PpaId == dokter.PpaId);
@@ -289,6 +316,14 @@ public class RegInapModel : IRegKey
     private void ValidateInvariants()
     {
         var activePrimaryCount = CountActivePrimaryDpjp();
+        if (_isTerminal)
+        {
+            if (_assignments.Any(x => x.IsActive))
+                throw new InvalidOperationException(
+                    "Registrasi inap terminal tidak boleh memiliki penugasan dokter aktif.");
+            return;
+        }
+
         if (activePrimaryCount != 1)
             throw new InvalidOperationException(
                 $"Registrasi inap harus memiliki tepat satu DPJP Primary aktif (ditemukan: {activePrimaryCount}).");

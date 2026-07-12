@@ -138,6 +138,24 @@ public record WaitingListModel : IWaitingListKey
         return WithState(WaitingListStatusEnum.Closed, Priority, KelasRawat, Bangsal, AuditTrail);
     }
 
+    public WaitingListModel Cancel(string userId, string reason, DateTime timestamp)
+    {
+        Guard.Against.NullOrWhiteSpace(userId);
+        Guard.Against.NullOrWhiteSpace(reason);
+
+        if (WaitingListStatus is not WaitingListStatusEnum.Waiting
+            and not WaitingListStatusEnum.Accepted)
+            throw new InvalidOperationException(
+                $"Waiting List {WaitingListId} harus Waiting atau Accepted untuk dibatalkan (status saat ini: {WaitingListStatus}).");
+
+        var audit = new AuditTrailType(
+            AuditTrail.Created,
+            AuditTrail.Modified,
+            AuditTrail.Voided);
+        audit.Batal(userId, timestamp);
+        return WithState(WaitingListStatusEnum.Cancelled, Priority, KelasRawat, Bangsal, audit);
+    }
+
     #endregion
 
     #region HELPERS

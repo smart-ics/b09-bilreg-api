@@ -114,6 +114,24 @@ public record OpnameRequestModel : IOpnameRequestKey
         return WithState(OpnameRequestStatusEnum.Fulfilled, regId, audit);
     }
 
+    public OpnameRequestModel Restore(string regId, string userId, DateTime timestamp)
+    {
+        Guard.Against.NullOrWhiteSpace(regId);
+        Guard.Against.NullOrWhiteSpace(userId);
+
+        if (OpnameRequestStatus != OpnameRequestStatusEnum.Fulfilled
+            || FulfilledRegId != regId)
+            throw new InvalidOperationException(
+                $"Opname Request {OpnameRequestId} harus Fulfilled oleh Reg {regId} untuk dipulihkan.");
+
+        var audit = new AuditTrailType(
+            AuditTrail.Created,
+            AuditTrail.Modified,
+            AuditTrail.Voided);
+        audit.Modif(userId, timestamp);
+        return WithState(OpnameRequestStatusEnum.Requested, EMPTY_REG_ID, audit);
+    }
+
     #endregion
 
     #region HELPERS

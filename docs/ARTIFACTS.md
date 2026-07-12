@@ -67,6 +67,7 @@
 | `docs/contexts/admisi-ranap/admisi-ranap-domain.md` | Admisi Ranap — what (aggregates, rules, lifecycles) |
 | `docs/contexts/admisi-ranap/admisi-ranap-architecture.md` | Admisi Ranap — how (use cases, repos, API, integration, ADRs) |
 | `docs/contexts/admisi-ranap/admisi-ranap-registration-orchestration.md` | Admission + legacy Registration orchestration, shared `RegId`, mapping rules, and AI implementation guidance |
+| `docs/contexts/admisi-ranap/admisi-ranap-coordinated-cancellation-design.md` | Coordinated Admission/Registration cancellation — eligibility, state transitions, source restoration, transaction, concurrency, and tests |
 | `docs/contexts/admisi-ranap/ta-reg-inap-persistence-contract.md` | `ta_reg_inap` / `RegInapModel` persistence contract for inpatient registration — ownership, fields, DAL defects, readiness |
 | `docs/contexts/admisi-ranap/admisi-ranap-step-4c-verification-report.md` | Step 4C — end-to-end + DB verification report (Opname/Reservation, RegInap, rollback, follow-ups) |
 | `docs/contexts/admisi-ranap/admisi-ranap-persistent-workspace-capability-matrix.md` | Persistent workspace — backend capability matrix (Ready / Propose / Defer); Phase 2 WL-by-regId Ready |

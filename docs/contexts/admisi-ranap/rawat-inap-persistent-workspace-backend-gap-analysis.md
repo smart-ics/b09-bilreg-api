@@ -92,6 +92,7 @@ The orchestrator encloses all persistence writes in a transaction scope, and the
 3. **Waiting List association is authoritative.** `GET api/admisi-ranap/waiting-list/by-reg/{regId}` returns only active `Waiting`/`Accepted` rows or null, and its access path has a `(RegId, WaitingListStatus)` index.
 4. **Unsafe outpatient reuse was avoided.** No Admisi Ranap controller aliases `RegJalanUbahJaminanCmd` or `RegJalanUbahKunjunganCmd`.
 5. **Deferred risk is documented honestly.** `admisi-ranap-persistent-workspace-capability-matrix.md` explicitly records cancellation, concurrency, authz, and post-admission correction limitations.
+6. **Inpatient registration does not use `ta_registrasi2`.** Empty komponen after Rawat Inap registration is expected (table is Rawat Jalan / IGD only); inpatient extension lives in `ta_reg_inap` / `ta_reg_history_dokter`.
 
 ## Verification performed
 

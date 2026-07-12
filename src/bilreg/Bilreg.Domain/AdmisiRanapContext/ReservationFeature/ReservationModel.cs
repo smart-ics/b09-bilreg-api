@@ -157,6 +157,30 @@ public record ReservationModel : IReservationKey
             audit);
     }
 
+    public ReservationModel Restore(string regId, string userId, DateTime timestamp)
+    {
+        Guard.Against.NullOrWhiteSpace(regId);
+        Guard.Against.NullOrWhiteSpace(userId);
+
+        if (ReservationStatus != ReservationStatusEnum.Realized
+            || RealizedRegId != regId)
+            throw new InvalidOperationException(
+                $"Reservation {ReservationId} harus Realized oleh Reg {regId} untuk dipulihkan.");
+
+        var audit = new AuditTrailType(
+            AuditTrail.Created,
+            AuditTrail.Modified,
+            AuditTrail.Voided);
+        audit.Modif(userId, timestamp);
+        return WithState(
+            ReservationStatusEnum.Maintained,
+            PlannedDate,
+            KelasRawat,
+            Bangsal,
+            EMPTY_REG_ID,
+            audit);
+    }
+
     #endregion
 
     #region HELPERS

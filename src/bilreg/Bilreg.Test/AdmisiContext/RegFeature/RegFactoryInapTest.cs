@@ -41,7 +41,35 @@ public class RegFactoryInapTest
         reg.KelasDk.Should().Be(admission.KelasDk);
         reg.Bangsal.Should().Be(admission.Bangsal);
         reg.Layanan.Should().Be(layanan.ToReff());
+        // Rawat Inap must not build registration components (ta_registrasi2 is RJ/IGD only).
+        reg.ListKomponen.Should().BeEmpty();
         _sequencer.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public void GivenKarcisWithKomponen_WhenCreateRegInap_ThenDoesNotCopyKomponenToRegistrasi2Model()
+    {
+        var admission = AdmissionModel.Admit(
+            PasienModel.Default.ToReff(),
+            new KelasDkType("1", "Kelas 1"),
+            new BangsalReff("B1", "Bangsal 1"),
+            null, null, "user1");
+        var (layanan, _) = InpatientVisit();
+        var karcis = new KarcisType("KRI", "Karcis Inap", true,
+            InstalasiDkType.RawatInap, RekapCetakType.Default.ToReff(),
+            TarifType.Default.ToReff(),
+            [new KarcisKomponenType(KomponenType.Default.ToReff(), 25000m)],
+            [layanan.ToReff()]);
+        var factory = new RegFactory(_sequencer.Object,
+            Mock.Of<IGetKelasRajalService>(), Mock.Of<IGetKelasRadarService>());
+
+        var reg = factory.CreateRegInapFromAdmission(
+            admission, PasienModel.Default, TipeJaminanType.BayarSendiri,
+            PolisModel.Default, CaraMasukDkType.DatangSendiri, RujukanType.Default,
+            PpaType.Default, layanan, karcis, "PESERTA1");
+
+        reg.ListKomponen.Should().BeEmpty();
+        karcis.ListKomponen.Should().HaveCount(1);
     }
 
     [Fact]

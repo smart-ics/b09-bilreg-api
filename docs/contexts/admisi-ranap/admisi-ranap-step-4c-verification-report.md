@@ -112,6 +112,7 @@ Verified by assertions in `Step4C_OpnamePath_PersistsSharedRegIdIncludingRegInap
 | `ta_reg_jaminan` | Present |
 | `ta_reg_history_dokter` | One Primary DPJP row for selected doctor |
 | `BILRG_RegAktif` | Present; same `RegId` |
+| `ta_registrasi2` | **Empty (expected)** — Rawat Inap does not create registration components; table is Rawat Jalan / IGD only |
 | Opname source | `OpnameRequestStatus=1` (Fulfilled) + `FulfilledRegId` |
 | Reservation source | `ReservationStatus=2` (Realized) + `RealizedRegId` |
 | `BILRG_AuditLog` | Admission `CREATE` + source `UPDATE` |
@@ -199,8 +200,11 @@ This closes gap **G-07** with real SQL assertions (not mock call-order only).
 |--------|--------|
 | Missing `BILRG_AdmAdmission.AdmissionSource` on `HOSPITAL_HPL` | **Fixed** — applied existing SQL alter; required for any admission read/write |
 | Remote deployed Bilreg API processes admission **without** writing `ta_reg_inap` / history | **Not a local code defect** — remote binary stale vs current workspace. Local code verified. **Follow-up: redeploy Bilreg.Api** |
-| `ta_registrasi2` empty after new inpatient Reg | Known `RegRepo.SaveChanges` reloads komponen from DAL (empty for new id) then re-inserts empty list — **not fixed** (adjacent; does not block RegInap contract) |
 | Cancel leaves RegAktif (G-01) | **Not fixed** — deferred; no cancelled rows observed in DB sample; code still cancels Admission only |
+
+### Clarification (not a defect)
+
+Empty `ta_registrasi2` after successful inpatient registration is **expected**. Rawat Inap does not create `ta_registrasi2`; that table is used only by Rawat Jalan and IGD. Inpatient-specific persistence lives in `ta_reg_inap` (+ `ta_reg_history_dokter`); guarantor remains `ta_reg_jaminan`. Do not reopen this as a `RegRepo.SaveChanges` persistence gap for Rawat Inap.
 
 No broad refactors performed.
 
@@ -210,8 +214,7 @@ No broad refactors performed.
 
 1. **Deploy** current Bilreg.Api (with RegInap orchestration + AdmissionSource schema) to `dev.smart-ics.com:8089` so UI E2E against remote matches local persistence.
 2. **G-01** coordinated cancellation (Admission + Reg + RegAktif).
-3. **`ta_registrasi2` / RegKomponen** write path in `RegRepo.SaveChanges` (use model `ListKomponen`, not DAL reload for new regs).
-4. Intentionally retained remote smoke data (stale binary artifact):
+3. Intentionally retained remote smoke data (stale binary artifact):
    - `RegId=RGA4LISM7N`, pasien `347137300000070`, opname `OPN065SPTG0Y` Fulfilled
    - Has Admission/Reg/RegAktif/jaminan/audit; **missing** `ta_reg_inap`
    - Safe cleanup can delete these rows when ops approve; patient remains blocked for re-admission until cleaned or cancelled properly.
@@ -224,4 +227,4 @@ Integration test leftovers: cleaned automatically by `CleanupRegAsync` in `Admis
 
 **verified with non-blocking follow-ups**
 
-Local application stack + `HOSPITAL_HPL` prove Opname and Reservation paths, shared `RegId`, RegInap/DPJP persistence, repository round-trip, validation rejection, real transactional rollback, and reprocess rejection. Non-blocking follow-ups: remote redeploy, `ta_registrasi2`, G-01 cancellation, and cleanup of retained smoke `RGA4LISM7N`.
+Local application stack + `HOSPITAL_HPL` prove Opname and Reservation paths, shared `RegId`, RegInap/DPJP persistence, repository round-trip, validation rejection, real transactional rollback, and reprocess rejection. Non-blocking follow-ups: remote redeploy, G-01 cancellation, and cleanup of retained smoke `RGA4LISM7N`.

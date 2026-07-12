@@ -49,9 +49,18 @@ public class RegRepo : IRegRepo
         _regJaminanDal.Delete(model);
         _regJaminanDal.Insert(RegJaminanDto.FromModel(model));
 
-        var listKomponen = _regKomponenDal.ListData(model)?.ToList() ?? [];
-        _regKomponenDal.Delete(model);
-        _regKomponenDal.Insert(listKomponen);
+        // Rawat Inap does not use ta_registrasi2 (Rawat Jalan / IGD only).
+        // RJ/IGD keep the existing replace path: list → delete → insert.
+        if (model.JenisReg == JenisRegEnum.RegInap)
+        {
+            _regKomponenDal.Delete(model);
+        }
+        else
+        {
+            var listKomponen = _regKomponenDal.ListData(model)?.ToList() ?? [];
+            _regKomponenDal.Delete(model);
+            _regKomponenDal.Insert(listKomponen);
+        }
 
         _regHistoryDokterDal.Delete(model);
     }

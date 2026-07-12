@@ -80,6 +80,51 @@ public class AdmissionModelTest
         cancelled.AdmissionSource.Should().Be(AdmissionSourceEnum.Admission);
     }
 
+    [Theory]
+    [InlineData(AdmissionStatusEnum.Admitted)]
+    [InlineData(AdmissionStatusEnum.Updated)]
+    [InlineData(AdmissionStatusEnum.Waiting)]
+    public void GivenCancellableStatus_WhenCancelWithCoordinatedTimestamp_ThenVoidsWithSuppliedAudit(
+        AdmissionStatusEnum status)
+    {
+        var timestamp = new DateTime(2026, 7, 12, 10, 30, 0);
+        var admission = status switch
+        {
+            AdmissionStatusEnum.Updated => CreateAdmitted().Update(SampleKelasDk(), SampleBangsal(), "user1"),
+            AdmissionStatusEnum.Waiting => CreateAdmitted().MarkWaiting("user1"),
+            _ => CreateAdmitted()
+        };
+
+        var cancelled = admission.Cancel("void-user", "Pasien membatalkan rencana rawat inap", timestamp);
+
+        cancelled.AdmissionStatus.Should().Be(AdmissionStatusEnum.Cancelled);
+        cancelled.AuditTrail.IsVoided.Should().BeTrue();
+        cancelled.AuditTrail.Voided.Should().Be(new AuditInfoType("void-user", timestamp));
+    }
+
+    [Theory]
+    [InlineData(" ")]
+    [InlineData("")]
+    public void GivenBlankReason_WhenCancel_ThenThrows(string reason)
+    {
+        var act = () => CreateAdmitted().Cancel("void-user", reason, new DateTime(2026, 7, 12));
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void GivenCompletedOrCancelled_WhenCancel_ThenThrows()
+    {
+        var completed = CreateAdmitted().Complete("user1");
+        var cancelled = CreateAdmitted().Cancel("void-user", "reason", new DateTime(2026, 7, 12));
+
+        Action cancelCompleted = () => completed.Cancel("void-user", "reason", new DateTime(2026, 7, 12));
+        Action cancelAgain = () => cancelled.Cancel("void-user", "reason", new DateTime(2026, 7, 12));
+
+        cancelCompleted.Should().Throw<InvalidOperationException>();
+        cancelAgain.Should().Throw<InvalidOperationException>();
+    }
+
     [Fact]
     public void GivenLegacyRegInap_WhenCreateFromLegacyRegistration_ThenUsesExistingRegIdAndLegacySource()
     {

@@ -174,12 +174,30 @@ public record AdmissionModel : IRegKey
         return WithState(AdmissionStatusEnum.Completed, KelasDk, Bangsal, audit);
     }
 
+    public AdmissionModel Cancel(string userId, string reason, DateTime timestamp)
+    {
+        Guard.Against.NullOrWhiteSpace(userId);
+        Guard.Against.NullOrWhiteSpace(reason);
+        EnsureMutable();
+
+        if (AdmissionStatus is not AdmissionStatusEnum.Admitted
+            and not AdmissionStatusEnum.Updated
+            and not AdmissionStatusEnum.Waiting)
+            throw new InvalidOperationException(
+                $"Admission {RegId} tidak dapat dibatalkan pada status {AdmissionStatus}.");
+
+        var audit = CopyAuditTrail();
+        audit.Batal(userId, timestamp);
+        return WithState(AdmissionStatusEnum.Cancelled, KelasDk, Bangsal, audit);
+    }
+
+    // Retained for existing callers pending the coordinated-cancellation orchestrator.
     public AdmissionModel Cancel(string auditUserId)
     {
         Guard.Against.NullOrWhiteSpace(auditUserId);
         EnsureMutable();
 
-        var audit = AuditTrail;
+        var audit = CopyAuditTrail();
         audit.Modif(auditUserId, DateTime.Now);
         return WithState(AdmissionStatusEnum.Cancelled, KelasDk, Bangsal, audit);
     }
@@ -197,6 +215,11 @@ public record AdmissionModel : IRegKey
 
     private static bool IsEmpty(string value) =>
         string.IsNullOrWhiteSpace(value) || value == EMPTY_REF_ID;
+
+    private AuditTrailType CopyAuditTrail() => new(
+        AuditTrail.Created,
+        AuditTrail.Modified,
+        AuditTrail.Voided);
 
     private AdmissionModel WithState(
         AdmissionStatusEnum status,

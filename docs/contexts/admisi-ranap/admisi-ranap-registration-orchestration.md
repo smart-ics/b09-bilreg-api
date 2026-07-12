@@ -137,10 +137,22 @@ The persisted records are:
 5. Source aggregate state transition (Opname fulfill / Reservation realize)
 6. Audit log rows
 
+### Persistence ownership (do not conflate)
+
+| Concern | Table(s) | Used by |
+|---------|----------|---------|
+| Registration header | `ta_registrasi` | All jenis reg |
+| Registration components (karcis breakdown) | `ta_registrasi2` | **Rawat Jalan and IGD only** |
+| Inpatient extension | `ta_reg_inap` | Rawat Inap |
+| Guarantor | `ta_reg_jaminan` | Via `RegRepo` for all jenis that persist jaminan |
+| Doctor history / DPJP | `ta_reg_history_dokter` | Rawat Inap via `RegInapRepo` |
+
+**Confirmed rule:** Rawat Inap does **not** create `ta_registrasi2`. An empty `ta_registrasi2` result after successful inpatient registration is **expected behavior**, not a persistence defect. Do not add komponen rows for inpatient, and do not treat their absence as a gap.
+
 Write order inside `TransHelper.NewScope()`:
 
 1. Admission
-2. Registration and guarantor
+2. Registration and guarantor (`RegRepo` clears any stray `ta_registrasi2` for inpatient; does not insert komponen)
 3. `RegInapModel` (`ta_reg_inap` + doctor history)
 4. RegAktif
 5. Source fulfillment or realization
@@ -167,9 +179,10 @@ It must:
 
 - `Layanan.InstalasiDk == InstalasiDkType.RawatInap`;
 - the selected `Karcis` supports the selected Layanan;
-- doctor, Layanan, Karcis, and registration components are populated.
+- doctor, Layanan, and Karcis are populated;
+- `ListKomponen` stays empty (Rawat Inap does not own `ta_registrasi2`).
 
-The existing outpatient `AssignVisitTo(...)` behavior must remain unchanged.
+The existing outpatient / IGD `AssignVisitTo(...)` behavior must remain unchanged (it still builds `ListKomponen` from karcis for Rawat Jalan and IGD).
 
 ## Legacy Compatibility
 
@@ -290,11 +303,13 @@ Focused tests cover:
 - Admission source preservation;
 - legacy Registration enrichment;
 - inpatient factory identity and validation;
+- inpatient factory leaving `ListKomponen` empty (no `ta_registrasi2` model data);
 - handler delegation;
 - Opname Request / Reservation orchestration;
 - shared `RegId` across Admission, RegModel, RegInapModel, and RegAktifModel;
 - `ta_reg_inap` DAL insert/get/update/delete;
 - `RegInapRepo` idempotent save and load, including Primary DPJP history;
-- RegInap persistence failure rolling back the complete workflow.
+- RegInap persistence failure rolling back the complete workflow;
+- `RegRepo.SaveChanges` never inserting `ta_registrasi2` for Rawat Inap while preserving Rawat Jalan / IGD komponen replace behavior.
 
 The affected solution must build successfully after changes.
