@@ -61,13 +61,14 @@ SOP ini berlaku untuk seluruh proses pembentukan **Admission** oleh petugas **Ad
 
 8. **Admisi** melengkapi data registrasi yang wajib dikirim bersama **Admission**:
    * Tipe Jaminan dan Peserta Jaminan
-   * Cara Masuk
+   * Cara Masuk *(klasifikasi masuk untuk pelaporan / `ta_registrasi`)*
+   * **Prosedur Masuk Inap** *(prosedur operasional masuk inap; wajib; terpisah dari Cara Masuk)*
    * Rujukan
    * Dokter
    * Layanan Rawat Inap
    * Karcis
 
-9. Sistem melakukan validasi terhadap data **Admission** dan data registrasi.
+9. Sistem melakukan validasi terhadap data **Admission** dan data registrasi, termasuk memastikan **Prosedur Masuk Inap** terisi dan valid terhadap master `ta_caramasuk_inap`.
 
 10. Apabila validasi berhasil, sistem membentuk **Admission** dengan status **Admitted** dan membuat **Registration** legacy dengan `RegId` yang sama dalam satu transaksi.
 

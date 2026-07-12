@@ -20,7 +20,6 @@ public class RegRepoTest
     private readonly Mock<IRegJaminanDal> _regJaminanDal = new();
     private readonly Mock<IRegKomponenDal> _regKomponenDal = new();
     private readonly Mock<IRegHistoryDokterDal> _regHistoryDokterDal = new();
-    private readonly Mock<Ita_reg_inap_dal> _taRegInapDal = new();
     private readonly Mock<IKelasRepo> _kelasRepo = new();
     private readonly Mock<IBangsalRepo> _bangsalRepo = new();
 
@@ -30,7 +29,6 @@ public class RegRepoTest
             _regJaminanDal.Object,
             _regKomponenDal.Object,
             _regHistoryDokterDal.Object,
-            _taRegInapDal.Object,
             _kelasRepo.Object,
             _bangsalRepo.Object);
 

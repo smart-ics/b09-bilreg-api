@@ -20,7 +20,6 @@ public class RegRepo : IRegRepo
     private readonly IRegJaminanDal _regJaminanDal;
     private readonly IRegKomponenDal _regKomponenDal;
     private readonly IRegHistoryDokterDal _regHistoryDokterDal;
-    private readonly Ita_reg_inap_dal _ta_reg_inap_dal;
     private readonly IKelasRepo _kelasRepo;
     private readonly IBangsalRepo _bangsalRepo;
 
@@ -28,7 +27,6 @@ public class RegRepo : IRegRepo
         IRegJaminanDal regJaminanDal,
         IRegKomponenDal regKomponenDal,
         IRegHistoryDokterDal regHistoryDokterDal,
-        Ita_reg_inap_dal taRegInapDal,
         IKelasRepo kelasRepo,
         IBangsalRepo bangsalRepo)
     {
@@ -36,7 +34,6 @@ public class RegRepo : IRegRepo
         _regJaminanDal = regJaminanDal;
         _regKomponenDal = regKomponenDal;
         _regHistoryDokterDal = regHistoryDokterDal;
-        _ta_reg_inap_dal = taRegInapDal;
         _kelasRepo = kelasRepo;
         _bangsalRepo = bangsalRepo;
     }

@@ -68,6 +68,7 @@ Both Admission processing commands receive the same registration payload:
 public record AdmissionRegistrationData(
     string TipeJaminanId,
     string CaraMasukDkId,
+    string ProsedurMasukInapId,
     string RujukanId,
     string DokterId,
     string LayananId,
@@ -76,6 +77,15 @@ public record AdmissionRegistrationData(
 ```
 
 This payload contains values entered or selected during the Admission workflow. It is not added to `AdmissionModel`; these values belong to Registration construction.
+
+`ProsedurMasukInapId` is **mandatory** for new inpatient registration. It is distinct from `CaraMasukDkId`:
+
+| Field | Meaning | Persistence target |
+|-------|---------|--------------------|
+| `CaraMasukDkId` | Government/reporting entry classification | `ta_registrasi` (via `RegModel`) |
+| `ProsedurMasukInapId` | Inpatient operational entry procedure | `ta_reg_inap.fs_kd_caramasuk_inap` (via `RegInapModel` / `IRegInapRepo`) |
+
+The orchestrator validates `ProsedurMasukInapId` is non-empty and resolves it through `IProsedureMasukInapRepo` **before** any persistence begins. Unknown IDs are rejected. Do not hard-code hospital-specific values or infer the procedure from Opname/Reservation.
 
 `KelasDkId` and `BangsalId` remain Admission processing inputs. They are used to create Admission placement and transient Registration enrichment, but they do not populate the legacy `RegModel.Kelas` persistence field in the new flow.
 
@@ -93,6 +103,10 @@ Load and validate source aggregate
 Reject active Admission or active legacy registration
         |
         v
+Validate registration inputs (including ProsedurMasukInapId)
+Resolve ProsedurMasukInap via IProsedureMasukInapRepo
+        |
+        v
 Resolve KelasDk and eligible Bangsal
         |
         v
@@ -101,6 +115,9 @@ AdmissionModel.Admit(...)
         v
 RegFactory.CreateRegInapFromAdmission(...)
         |  reuses Admission.RegId
+        v
+RegInapModel.Create(...)
+        |  same RegId, resolved ProsedurMasukInap, selected doctor as Primary DPJP
         v
 RegAktifModel.CreateFromReg(reg)
         |
@@ -114,11 +131,22 @@ Save all records in one transaction
 The persisted records are:
 
 1. `BILRG_AdmAdmission`
-2. `ta_registrasi` through `RegRepo` and `RegDto`
-3. The existing active-registration persistence through `RegAktifRepo`
-4. Source aggregate state and audit log rows
+2. `ta_registrasi` through `RegRepo` and `RegDto` (including guarantor via `ta_reg_jaminan`)
+3. `ta_reg_inap` and `ta_reg_history_dokter` through `IRegInapRepo` / `RegInapRepo`
+4. `BILRG_RegAktif` through `RegAktifRepo`
+5. Source aggregate state transition (Opname fulfill / Reservation realize)
+6. Audit log rows
 
-If any construction or persistence step fails, the transaction must not leave an Admission without its Registration.
+Write order inside `TransHelper.NewScope()`:
+
+1. Admission
+2. Registration and guarantor
+3. `RegInapModel` (`ta_reg_inap` + doctor history)
+4. RegAktif
+5. Source fulfillment or realization
+6. Audit records
+
+If any construction or persistence step fails — including `RegInapRepo.SaveChanges` — the ambient transaction must not leave an Admission without its Registration, and must not leave an inpatient Registration without its `ta_reg_inap` extension.
 
 ## Domain Factory Rules
 
@@ -151,6 +179,12 @@ The legacy persistence shape is protected:
 - do not change `RegDto` write parameters to persist `KelasDk` or `Bangsal`;
 - do not make legacy code depend on an Admission navigation property;
 - do not replace `RegModel.Kelas` with `KelasDkType`.
+
+### `ta_reg_inap` read compatibility
+
+- Historical inpatient `ta_registrasi` rows may lack a `ta_reg_inap` extension. `IRegInapRepo.LoadEntity` returns `MayBe.None` in that case and must not crash unrelated registration reads.
+- New-system Admission processing always writes `ta_reg_inap` (and Primary DPJP history in `ta_reg_history_dokter`) in the same transaction as Registration.
+- Do not invent missing procedure or doctor values when rehydrating.
 
 `RegModel` has read-side enrichment fields:
 
@@ -201,9 +235,8 @@ When modifying this feature, preserve these invariants:
 
 ## Current Scope and Deferred Work
 
-The orchestrator currently creates Admission, legacy Registration, and active-registration state. It does not create:
+The orchestrator currently creates Admission, legacy Registration, inpatient extension (`RegInapModel`), and active-registration state. Deferred capabilities that are still out of scope:
 
-- `RegInapModel` procedure/doctor extension data;
 - billing records;
 - journals;
 - tindakan;
@@ -239,11 +272,16 @@ When implementing legacy-to-Admission synchronization:
 ## Implementation References
 
 - `src/bilreg/Bilreg.Application/AdmisiRanapContext/AdmissionFeature/UseCases/AdmissionRegistrationOrchestrator.cs`
+- `src/bilreg/Bilreg.Application/AdmisiContext/RegFeature/IRegInapRepo.cs`
 - `src/bilreg/Bilreg.Domain/AdmisiContext/RegFeature/RegFactory.cs`
 - `src/bilreg/Bilreg.Domain/AdmisiContext/RegFeature/RegModel.cs`
+- `src/bilreg/Bilreg.Domain/AdmisiContext/RegFeature/RegInapModel.cs`
 - `src/bilreg/Bilreg.Domain/AdmisiRanapContext/AdmissionFeature/AdmissionModel.cs`
 - `src/bilreg/Bilreg.Infrastructure/AdmisiContext/RegFeature/RegRepo.cs`
+- `src/bilreg/Bilreg.Infrastructure/AdmisiContext/RegFeature/RegInapRepo.cs`
+- `src/bilreg/Bilreg.Infrastructure/AdmisiContext/RegFeature/ta_reg_inap_dal.cs`
 - `src/bilreg/Bilreg.Infrastructure/AdmisiRanapContext/AdmissionFeature/AdmissionDto.cs`
+- `docs/contexts/admisi-ranap/ta-reg-inap-persistence-contract.md`
 
 ## Verification References
 
@@ -253,7 +291,10 @@ Focused tests cover:
 - legacy Registration enrichment;
 - inpatient factory identity and validation;
 - handler delegation;
-- Opname Request orchestration;
-- shared `RegId` across Admission, RegModel, and RegAktifModel.
+- Opname Request / Reservation orchestration;
+- shared `RegId` across Admission, RegModel, RegInapModel, and RegAktifModel;
+- `ta_reg_inap` DAL insert/get/update/delete;
+- `RegInapRepo` idempotent save and load, including Primary DPJP history;
+- RegInap persistence failure rolling back the complete workflow.
 
 The affected solution must build successfully after changes.

@@ -367,3 +367,7 @@ FodyWeavers.xsd
 # Taksaka local SQLite database (created on dotnet run)
 taksaka.db
 taksaka.db-*
+
+# Step 4C local verification artifacts
+tools/step4c_artifacts/
+.step4c_jwt.txt

@@ -299,5 +299,5 @@ public class AdmisiRanapWorkflowTest
     }
 
     private static AdmissionRegistrationData RegistrationData() =>
-        new("J1", "CM1", "R1", "D1", "L1", "K1", "PESERTA1");
+        new("J1", "CM1", "IGD", "R1", "D1", "L1", "K1", "PESERTA1");
 }

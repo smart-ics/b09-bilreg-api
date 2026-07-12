@@ -29,12 +29,13 @@ namespace Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
 public record AdmissionRegistrationData(
     string TipeJaminanId,
     string CaraMasukDkId,
+    string ProsedurMasukInapId,
     string RujukanId,
     string DokterId,
     string LayananId,
     string KarcisId,
     string PesertaJaminanId) :
-    ITipeJaminanKey, ICaraMasukDkKey, IRujukanKey, ILayananKey, IKarcisKey;
+    ITipeJaminanKey, ICaraMasukDkKey, IProsedurMasukInapKey, IRujukanKey, ILayananKey, IKarcisKey;
 
 public interface IAdmissionRegistrationOrchestrator
 {
@@ -61,8 +62,10 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
     private readonly IPpaRepo _ppaRepo;
     private readonly ILayananRepo _layananRepo;
     private readonly IKarcisRepo _karcisRepo;
+    private readonly IProsedureMasukInapRepo _prosedurMasukInapRepo;
     private readonly IRegFactory _regFactory;
     private readonly IRegRepo _regRepo;
+    private readonly IRegInapRepo _regInapRepo;
     private readonly IRegAktifRepo _regAktifRepo;
     private readonly IAuditRepo _auditRepo;
 
@@ -79,8 +82,10 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         IPpaRepo ppaRepo,
         ILayananRepo layananRepo,
         IKarcisRepo karcisRepo,
+        IProsedureMasukInapRepo prosedurMasukInapRepo,
         IRegFactory regFactory,
         IRegRepo regRepo,
+        IRegInapRepo regInapRepo,
         IRegAktifRepo regAktifRepo,
         IAuditRepo auditRepo)
     {
@@ -96,8 +101,10 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         _ppaRepo = ppaRepo;
         _layananRepo = layananRepo;
         _karcisRepo = karcisRepo;
+        _prosedurMasukInapRepo = prosedurMasukInapRepo;
         _regFactory = regFactory;
         _regRepo = regRepo;
+        _regInapRepo = regInapRepo;
         _regAktifRepo = regAktifRepo;
         _auditRepo = auditRepo;
     }
@@ -114,14 +121,16 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
                 $"Opname Request '{opname.OpnameRequestId}' harus Requested untuk diproses (status: {opname.OpnameRequestStatus}).");
 
         EnsurePatientAvailable(opname.Pasien);
+        var prosedur = ResolveProsedurMasukInap(request.Registration);
         var admission = CreateAdmission(opname.Pasien, request.KelasDkId, request.BangsalId,
             opname.OpnameRequestId, null, request.UserId);
         var reg = CreateRegistration(admission, request.Registration);
+        var regInap = CreateRegInap(admission, reg, prosedur);
         var fulfilled = opname.Fulfill(admission.RegId, request.UserId);
         var snapshot = AuditLogSnapshotJson.Serialize(opname);
 
         using var trans = TransHelper.NewScope();
-        SaveCommon(admission, reg);
+        SaveCommon(admission, reg, regInap);
         _opnameRequestRepo.SaveChanges(fulfilled);
         SaveSourceAudit(fulfilled.AuditTrail.Modified, nameof(OpnameRequestModel),
             fulfilled.OpnameRequestId, snapshot);
@@ -139,6 +148,7 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
             .GetValueOrThrow($"Reservation '{request.ReservationId}' tidak ditemukan.");
 
         EnsurePatientAvailable(reservation.Pasien);
+        var prosedur = ResolveProsedurMasukInap(request.Registration);
         var bangsal = _wardGateway.ResolveBangsalForCareClass(request.BangsalId, request.KelasDkId);
         if (reservation.ReservationStatus == ReservationStatusEnum.Reserved)
             reservation = reservation.Maintain(
@@ -151,11 +161,12 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         var admission = CreateAdmission(reservation.Pasien, request.KelasDkId, request.BangsalId,
             null, reservation.ReservationId, request.UserId, bangsal);
         var reg = CreateRegistration(admission, request.Registration);
+        var regInap = CreateRegInap(admission, reg, prosedur);
         var realized = reservation.Realize(admission.RegId, request.UserId);
         var snapshot = AuditLogSnapshotJson.Serialize(reservation);
 
         using var trans = TransHelper.NewScope();
-        SaveCommon(admission, reg);
+        SaveCommon(admission, reg, regInap);
         _reservationRepo.SaveChanges(realized);
         SaveSourceAudit(realized.AuditTrail.Modified, nameof(ReservationModel),
             realized.ReservationId, snapshot);
@@ -194,6 +205,16 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
             caraMasuk, rujukan, dokter, layanan, karcis, data.PesertaJaminanId);
     }
 
+    private static RegInapModel CreateRegInap(
+        AdmissionModel admission,
+        RegModel reg,
+        ProsedurMasukInapType prosedur)
+        => RegInapModel.Create(
+            reg.RegId,
+            prosedur,
+            reg.Dokter,
+            DateOnly.FromDateTime(admission.AuditTrail.Created.Timestamp));
+
     private PolisModel ResolvePolis(PasienModel pasien, TipeJaminanType tipeJaminan)
     {
         if (tipeJaminan.CaraBayarDk.CaraBayarDkId == BAYAR_SENDIRI)
@@ -204,6 +225,11 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
             ?? throw new ArgumentException("Polis not found");
         return _polisRepo.LoadEntity(polisView).GetValueOrThrow("Polis not found");
     }
+
+    private ProsedurMasukInapType ResolveProsedurMasukInap(AdmissionRegistrationData data)
+        => _prosedurMasukInapRepo.LoadEntity(data)
+            .GetValueOrThrow(
+                $"Prosedur Masuk Inap '{data.ProsedurMasukInapId}' tidak ditemukan.");
 
     private void EnsurePatientAvailable(PasienReff pasien)
     {
@@ -220,10 +246,11 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
                 $"Pasien '{pasien.PasienId}' masih memiliki registrasi aktif.");
     }
 
-    private void SaveCommon(AdmissionModel admission, RegModel reg)
+    private void SaveCommon(AdmissionModel admission, RegModel reg, RegInapModel regInap)
     {
         _admissionRepo.SaveChanges(admission);
         _regRepo.SaveChanges(reg);
+        _regInapRepo.SaveChanges(regInap);
         _regAktifRepo.SaveChanges(RegAktifModel.CreateFromReg(reg));
         _auditRepo.SaveChanges(AuditLog.Create(
             admission.AuditTrail.Created, "CREATE", nameof(AdmissionModel), admission.RegId));
@@ -246,6 +273,7 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         Guard.Against.Null(data);
         Guard.Against.NullOrWhiteSpace(data.TipeJaminanId);
         Guard.Against.NullOrWhiteSpace(data.CaraMasukDkId);
+        Guard.Against.NullOrWhiteSpace(data.ProsedurMasukInapId);
         Guard.Against.NullOrWhiteSpace(data.RujukanId);
         Guard.Against.NullOrWhiteSpace(data.DokterId);
         Guard.Against.NullOrWhiteSpace(data.LayananId);
