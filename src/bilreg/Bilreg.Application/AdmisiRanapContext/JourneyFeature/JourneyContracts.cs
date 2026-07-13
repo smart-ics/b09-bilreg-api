@@ -135,15 +135,17 @@ public sealed record JourneyIdentity(
     bool IsTerminal);
 
 /// <summary>
-/// Pure Release 1 resolution result: identity, stage, condition, next task, boundary executability,
-/// and supporting contract sections derived only from normalized facts.
+/// Pure Release 1 resolution result: identity, stage, condition, next task, candidate actions
+/// (stage/ownership boundary only), and supporting contract sections from normalized facts.
+/// Final executability for command dependencies is applied by the projection (see
+/// <see cref="JourneyAllowedActionEvaluator"/>).
 /// </summary>
 public sealed record Release1JourneyResolution(
     JourneyIdentity Identity,
     JourneyOperationalStage Stage,
     JourneyCurrentCondition CurrentCondition,
     JourneyNextTask? NextTask,
-    IReadOnlyList<JourneyAllowedAction> AllowedAdmisiActions,
+    IReadOnlyList<JourneyAllowedAction> CandidateAdmisiActions,
     JourneyAccommodationHandoverSummary HandoverSummary,
     JourneyPlacementAvailability PlacementAvailability,
     IReadOnlyList<JourneyTimelineEvent> Timeline,

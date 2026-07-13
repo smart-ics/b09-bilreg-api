@@ -31,14 +31,14 @@ public static class Release1JourneyStageResolver
         var timeline = BuildTimeline(facts);
         var identity = BuildIdentity(journeyId, facts, admission, stageDecision.Stage);
         var audit = BuildAudit(facts, admission);
-        var allowed = BuildAllowedActions(facts, admission, stageDecision);
+        var candidates = BuildCandidateActions(facts, admission, stageDecision);
 
         return new Release1JourneyResolution(
             identity,
             stageDecision.Stage,
             stageDecision.Condition,
             stageDecision.NextTask,
-            allowed,
+            candidates,
             handover,
             placement,
             timeline,
@@ -256,7 +256,11 @@ public static class Release1JourneyStageResolver
             BlockedReason: "Status rekonsiliasi bersifat baca-saja dari batas Admisi.",
             RequiredPermission: null);
 
-    private static IReadOnlyList<JourneyAllowedAction> BuildAllowedActions(
+    /// <summary>
+    /// Stage/ownership candidates only. Final CancelAdmission executability requires Tata Rekening
+    /// billing evaluation in the projection layer (<see cref="JourneyAllowedActionEvaluator"/>).
+    /// </summary>
+    private static IReadOnlyList<JourneyAllowedAction> BuildCandidateActions(
         JourneyNormalizedFacts facts,
         AdmissionJourneyFact? admission,
         StageDecision decision)

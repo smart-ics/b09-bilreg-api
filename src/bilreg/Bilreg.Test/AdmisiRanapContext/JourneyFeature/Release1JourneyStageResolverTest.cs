@@ -74,7 +74,7 @@ public class Release1JourneyStageResolverTest
         result.NextTask.Owner.Domain.Should().Be(JourneyOwnerDomain.Admisi);
         result.NextTask.CanExecute.Should().BeTrue();
         result.ReconciliationIssues.Should().BeEmpty();
-        result.AllowedAdmisiActions.Should().Contain(a =>
+        result.CandidateAdmisiActions.Should().Contain(a =>
             a.Code == JourneyActionCode.CancelOpnameRequest && a.CanExecute);
     }
 
@@ -108,7 +108,7 @@ public class Release1JourneyStageResolverTest
         result.Stage.Should().Be(JourneyOperationalStage.HandoverRequired);
         result.NextTask!.Code.Should().Be(JourneyActionCode.CreateAccommodationHandover);
         result.NextTask.CanExecute.Should().BeTrue();
-        result.AllowedAdmisiActions.Should().Contain(a =>
+        result.CandidateAdmisiActions.Should().Contain(a =>
             a.Code == JourneyActionCode.CancelAdmission && a.CanExecute);
     }
 
@@ -224,7 +224,7 @@ public class Release1JourneyStageResolverTest
         result.Stage.Should().Be(JourneyOperationalStage.Cancelled);
         result.Identity.IsTerminal.Should().BeTrue();
         result.NextTask.Should().BeNull();
-        result.AllowedAdmisiActions.Should().BeEmpty();
+        result.CandidateAdmisiActions.Should().BeEmpty();
     }
 
     [Fact]

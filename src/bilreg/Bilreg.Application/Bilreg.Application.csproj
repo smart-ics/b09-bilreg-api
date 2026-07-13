@@ -36,6 +36,7 @@
     <Folder Include="AdmisiRanapContext\WaitingListFeature\" />
     <Folder Include="AdmisiRanapContext\WaitingListFeature\UseCases\" />
     <Folder Include="AdmisiRanapContext\JourneyFeature\" />
+    <Folder Include="AdmisiRanapContext\JourneyFeature\UseCases\" />
     <Folder Include="AdmisiRanapContext\Integration\" />
   </ItemGroup>
 
