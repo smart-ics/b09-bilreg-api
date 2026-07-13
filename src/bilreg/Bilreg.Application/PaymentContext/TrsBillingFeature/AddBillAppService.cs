@@ -4,6 +4,7 @@ using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
+using Bilreg.Domain.LabContext.LabOrderFeature;
 using Bilreg.Domain.PaymentContext.TataRekeningFeature;
 using Bilreg.Domain.PaymentContext.TrsBillFeature;
 
@@ -24,8 +25,16 @@ public interface IAddBillAppService
         TarifType tarif,
         JaminanType jaminan,
         IEnumerable<KomponenType> listReffKomp);
-}
 
+    TrsBillType FromLabOrderItem(
+        LabOrderModel labOrder,
+        LabOrderItemModel labOrderItem,
+        RegModel reg,
+        JaminanType jaminan,
+        TarifType tarif,
+        NilaiTarifType nilaiTarif,
+        IEnumerable<KomponenType> listReffKomp);
+}
 
 public sealed class AddBillAppService : IAddBillAppService
 {
@@ -71,6 +80,27 @@ public sealed class AddBillAppService : IAddBillAppService
         var (tataRekening, isNew) = ResolveTataRekening(reg);
         var bill = _createBillDomService.FromTindakan(
             tataRekening, tindakan, reg, tarif, jaminan, listReffKomp);
+
+        if (isNew)
+            _tataRekeningRepo.SaveChanges(tataRekening);
+
+        _trsBillingRepo.SaveChanges(bill);
+
+        return bill;
+    }
+
+    public TrsBillType FromLabOrderItem(
+        LabOrderModel labOrder,
+        LabOrderItemModel labOrderItem,
+        RegModel reg,
+        JaminanType jaminan,
+        TarifType tarif,
+        NilaiTarifType nilaiTarif,
+        IEnumerable<KomponenType> listReffKomp)
+    {
+        var (tataRekening, isNew) = ResolveTataRekening(reg);
+        var bill = _createBillDomService.FromLabOrderItem(tataRekening, labOrder, labOrderItem, reg, jaminan, tarif, nilaiTarif,
+            listReffKomp);
 
         if (isNew)
             _tataRekeningRepo.SaveChanges(tataRekening);

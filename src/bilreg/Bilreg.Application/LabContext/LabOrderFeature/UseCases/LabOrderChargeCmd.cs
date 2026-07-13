@@ -29,18 +29,20 @@ public class LabOrderChargeHandler : IRequestHandler<LabOrderChargeCmd, LabOrder
 {
     private readonly ILabOrderRepo _labOrderRepo;
     private readonly IRegRepo _regRepo;
+    private readonly ITarifRepo _tarifRepo;
     private readonly INilaiTarifRepo _nilaiTarifRepo;
     private readonly IKomponenRepo _komponenRepo;
     private readonly IJaminanRepo _jaminanRepo;
     private readonly IAddBillAppService _addBillAppService;
     private readonly ILabBillingIntegration _labBillingIntegration;
 
-    public LabOrderChargeHandler(ILabOrderRepo labOrderRepo, IRegRepo regRepo, INilaiTarifRepo nilaiTarifRepo,
-        IKomponenRepo komponenRepo, IJaminanRepo jaminanRepo, IAddBillAppService addBillAppService,
-        ILabBillingIntegration labBillingIntegration)
+    public LabOrderChargeHandler(ILabOrderRepo labOrderRepo, IRegRepo regRepo, ITarifRepo tarifRepo,
+        INilaiTarifRepo nilaiTarifRepo, IKomponenRepo komponenRepo, IJaminanRepo jaminanRepo,
+        IAddBillAppService addBillAppService, ILabBillingIntegration labBillingIntegration)
     {
         _labOrderRepo = labOrderRepo;
         _regRepo = regRepo;
+        _tarifRepo = tarifRepo;
         _nilaiTarifRepo = nilaiTarifRepo;
         _komponenRepo = komponenRepo;
         _jaminanRepo = jaminanRepo;
@@ -67,10 +69,12 @@ public class LabOrderChargeHandler : IRequestHandler<LabOrderChargeCmd, LabOrder
         order.Items.ForEach(item =>
         {
             var tarifKey = TarifType.Key(item.TarifId);
+            var tarif = LoadTarif(tarifKey);
             var tipeTarifKey = ResolveTipe(reg.JenisReg, jaminan);
             var nilaiTarifKey = NilaiTarifType.KeyComposite(tarifKey, tipeTarifKey, reg.Kelas);
             var nilaiTarif = LoadNilaiTarif(nilaiTarifKey);
             var listKomp = ListKomponenTarif(nilaiTarif.ListKomponen.Select(x => x.Komponen));
+            _ = _addBillAppService.FromLabOrderItem(order, item, reg, jaminan, tarif, nilaiTarif, listKomp);
         });
 
         var success = false;
@@ -124,6 +128,16 @@ public class LabOrderChargeHandler : IRequestHandler<LabOrderChargeCmd, LabOrder
                 onNone: () => throw new KeyNotFoundException($"Jaminan invalid")
             );
         return jmn;
+    }
+    
+    private TarifType LoadTarif(ITarifKey tarifKey)
+    {
+        var tarif = _tarifRepo.LoadEntity(tarifKey)
+            .Match(
+                onSome: x => x,
+                onNone: () => throw new KeyNotFoundException($"Tarif invalid")
+            );
+        return tarif;
     }
 
     private NilaiTarifType LoadNilaiTarif(INilaiTarifCompositKey nilaiTarifKey)
