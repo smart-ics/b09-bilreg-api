@@ -8,6 +8,7 @@ using Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
 using Bilreg.Application.AdmisiRanapContext.Integration;
 using Bilreg.Application.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Application.AdmisiRanapContext.ReservationFeature;
+using Bilreg.Application.BedUsageContext.WardFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
@@ -19,9 +20,7 @@ using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
-using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
-using Bilreg.Domain.PaymentContext.RekapCetakFeature;
 using Bilreg.Domain.Shared.Helpers;
 using FluentAssertions;
 using Moq;
@@ -47,6 +46,9 @@ public class AdmissionRegistrationOrchestratorTest
         harness.SavedAdmission!.AdmissionSource.Should().Be(AdmissionSourceEnum.Admission);
         harness.SavedReg!.JenisReg.Should().Be(JenisRegEnum.RegInap);
         harness.SavedReg.RegId.Should().Be(harness.SavedAdmission.RegId).And.Be(response.RegId);
+        harness.SavedReg.Layanan.LayananId.Should().Be("RI1");
+        harness.SavedReg.Karcis.KarcisId.Should().Be(KarcisType.Default.KarcisId);
+        harness.SavedReg.ListKomponen.Should().BeEmpty();
         harness.SavedRegInap!.RegId.Should().Be(response.RegId);
         harness.SavedRegInap.ProsedurMasukInap.ProsedurMasukInapId.Should().Be("IGD");
         harness.SavedRegInap.Dpjp.PpaId.Should().Be(harness.SavedReg.Dokter.PpaId);
@@ -54,6 +56,12 @@ public class AdmissionRegistrationOrchestratorTest
         harness.SavedOpname!.FulfilledRegId.Should().Be(response.RegId);
         harness.ProsedurRepo.Verify(
             x => x.LoadEntity(It.Is<IProsedurMasukInapKey>(k => k.ProsedurMasukInapId == "IGD")),
+            Times.Once);
+        harness.BangsalRepo.Verify(
+            x => x.LoadEntity(It.Is<IBangsalKey>(k => k.BangsalId == "B1")),
+            Times.Once);
+        harness.LayananRepo.Verify(
+            x => x.LoadEntity(It.Is<ILayananKey>(k => k.LayananId == "RI1")),
             Times.Once);
         harness.RegInapRepo.Verify(x => x.SaveChanges(It.IsAny<RegInapModel>()), Times.Once);
     }
@@ -81,6 +89,51 @@ public class AdmissionRegistrationOrchestratorTest
             Times.Once);
         harness.AdmissionRepo.Verify(x => x.SaveChanges(It.IsAny<AdmissionModel>()), Times.Once);
         harness.RegInapRepo.Verify(x => x.SaveChanges(It.IsAny<RegInapModel>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GivenBangsalWithoutLayananMapping_WhenProcessed_ThenRejectsBeforePersistence()
+    {
+        var harness = CreateOpnameHarness();
+        harness.BangsalRepo
+            .Setup(x => x.LoadEntity(It.IsAny<IBangsalKey>()))
+            .Returns(MayBe.From(new BangsalType("B1", "Bangsal 1", RoomCatType.Default, new LayananReff("-", "-"))));
+        var command = new AdmProcessOpnameRequestCmd(
+            harness.Opname.OpnameRequestId, "1", "B1", "user2", RegistrationData());
+
+        var act = () => harness.Sut.ProcessOpnameRequest(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*tidak memiliki mapping Layanan Rawat Inap*");
+        harness.AdmissionRepo.Verify(x => x.SaveChanges(It.IsAny<AdmissionModel>()), Times.Never);
+        harness.RegRepo.Verify(x => x.SaveChanges(It.IsAny<RegModel>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenBangsalMappedToNonInpatientLayanan_WhenProcessed_ThenRejectsBeforePersistence()
+    {
+        var harness = CreateOpnameHarness();
+        var layanan = LayananType.Default with
+        {
+            LayananId = "RJ1",
+            LayananName = "Poli",
+            InstalasiDk = InstalasiDkType.RawatJalan
+        };
+        harness.BangsalRepo
+            .Setup(x => x.LoadEntity(It.IsAny<IBangsalKey>()))
+            .Returns(MayBe.From(new BangsalType("B1", "Bangsal 1", RoomCatType.Default, layanan.ToReff())));
+        harness.LayananRepo
+            .Setup(x => x.LoadEntity(It.IsAny<ILayananKey>()))
+            .Returns(MayBe.From(layanan));
+        var command = new AdmProcessOpnameRequestCmd(
+            harness.Opname.OpnameRequestId, "1", "B1", "user2", RegistrationData());
+
+        var act = () => harness.Sut.ProcessOpnameRequest(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*bukan instalasi rawat inap*");
+        harness.AdmissionRepo.Verify(x => x.SaveChanges(It.IsAny<AdmissionModel>()), Times.Never);
+        harness.RegRepo.Verify(x => x.SaveChanges(It.IsAny<RegModel>()), Times.Never);
     }
 
     [Fact]
@@ -216,7 +269,7 @@ public class AdmissionRegistrationOrchestratorTest
     }
 
     private static AdmissionRegistrationData RegistrationData() =>
-        new("00000", CaraMasukDkType.DatangSendiri.CaraMasukDkId, "IGD", null, "-", "RI1", "KRI", "PESERTA1");
+        new("00000", CaraMasukDkType.DatangSendiri.CaraMasukDkId, "IGD", null, "-", "PESERTA1");
 
     private static OpnameHarness CreateOpnameHarness()
     {
@@ -249,11 +302,12 @@ public class AdmissionRegistrationOrchestratorTest
             .Returns(MayBe.From(RujukanType.Default));
         var ppaRepo = new Mock<IPpaRepo>();
         ppaRepo.Setup(x => x.LoadEntity(It.IsAny<IPpaKey>())).Returns(MayBe.From(PpaType.Default));
-        var (layanan, karcis) = InpatientVisit();
+        var layanan = InpatientLayanan();
         var layananRepo = new Mock<ILayananRepo>();
         layananRepo.Setup(x => x.LoadEntity(It.IsAny<ILayananKey>())).Returns(MayBe.From(layanan));
-        var karcisRepo = new Mock<IKarcisRepo>();
-        karcisRepo.Setup(x => x.LoadEntity(It.IsAny<IKarcisKey>())).Returns(MayBe.From(karcis));
+        var bangsalRepo = new Mock<IBangsalRepo>();
+        bangsalRepo.Setup(x => x.LoadEntity(It.IsAny<IBangsalKey>()))
+            .Returns(MayBe.From(new BangsalType("B1", "Bangsal 1", RoomCatType.Default, layanan.ToReff())));
 
         var ward = new Mock<IWardAccommodationGateway>();
         ward.Setup(x => x.ResolveKelasDk("1")).Returns(new KelasDkType("1", "Kelas 1"));
@@ -280,14 +334,14 @@ public class AdmissionRegistrationOrchestratorTest
 
         var sut = new AdmissionRegistrationOrchestrator(
             admissionRepo.Object, opnameRepo.Object, reservationRepo.Object, ward.Object,
-            pasienRepo.Object, tipeJaminanRepo.Object, Mock.Of<IPolisRepo>(),
+            bangsalRepo.Object, pasienRepo.Object, tipeJaminanRepo.Object, Mock.Of<IPolisRepo>(),
             caraMasukRepo.Object, rujukanRepo.Object, ppaRepo.Object, layananRepo.Object,
-            karcisRepo.Object, prosedurRepo.Object, factory, regRepo.Object, regInapRepo.Object,
+            prosedurRepo.Object, factory, regRepo.Object, regInapRepo.Object,
             regAktifRepo.Object, auditRepo.Object);
 
         return new OpnameHarness(
             sut, opname, admissionRepo, opnameRepo, regRepo, regInapRepo, regAktifRepo, prosedurRepo,
-            auditRepo, caraMasukRepo, rujukanRepo,
+            auditRepo, caraMasukRepo, rujukanRepo, bangsalRepo, layananRepo,
             () => savedAdmission, () => savedReg, () => savedRegInap, () => savedRegAktif, () => savedOpname);
     }
 
@@ -329,11 +383,12 @@ public class AdmissionRegistrationOrchestratorTest
             .Returns(MayBe.From(RujukanType.Default));
         var ppaRepo = new Mock<IPpaRepo>();
         ppaRepo.Setup(x => x.LoadEntity(It.IsAny<IPpaKey>())).Returns(MayBe.From(PpaType.Default));
-        var (layanan, karcis) = InpatientVisit();
+        var layanan = InpatientLayanan();
         var layananRepo = new Mock<ILayananRepo>();
         layananRepo.Setup(x => x.LoadEntity(It.IsAny<ILayananKey>())).Returns(MayBe.From(layanan));
-        var karcisRepo = new Mock<IKarcisRepo>();
-        karcisRepo.Setup(x => x.LoadEntity(It.IsAny<IKarcisKey>())).Returns(MayBe.From(karcis));
+        var bangsalRepo = new Mock<IBangsalRepo>();
+        bangsalRepo.Setup(x => x.LoadEntity(It.IsAny<IBangsalKey>()))
+            .Returns(MayBe.From(new BangsalType("B1", "Bangsal 1", RoomCatType.Default, layanan.ToReff())));
 
         var ward = new Mock<IWardAccommodationGateway>();
         ward.Setup(x => x.ResolveKelasDk("1")).Returns(new KelasDkType("1", "Kelas 1"));
@@ -352,26 +407,20 @@ public class AdmissionRegistrationOrchestratorTest
 
         var sut = new AdmissionRegistrationOrchestrator(
             admissionRepo.Object, opnameRepo.Object, reservationRepo.Object, ward.Object,
-            pasienRepo.Object, tipeJaminanRepo.Object, Mock.Of<IPolisRepo>(),
+            bangsalRepo.Object, pasienRepo.Object, tipeJaminanRepo.Object, Mock.Of<IPolisRepo>(),
             caraMasukRepo.Object, rujukanRepo.Object, ppaRepo.Object, layananRepo.Object,
-            karcisRepo.Object, prosedurRepo.Object, factory, regRepo.Object, regInapRepo.Object,
+            prosedurRepo.Object, factory, regRepo.Object, regInapRepo.Object,
             regAktifRepo.Object, Mock.Of<IAuditRepo>());
 
         return new ReservationHarness(
             sut, reservation, admissionRepo, prosedurRepo, regInapRepo, () => savedRegInap);
     }
 
-    private static (LayananType, KarcisType) InpatientVisit()
-    {
-        var layanan = LayananType.Default with
+    private static LayananType InpatientLayanan() =>
+        LayananType.Default with
         {
             LayananId = "RI1", LayananName = "Rawat Inap", InstalasiDk = InstalasiDkType.RawatInap
         };
-        var karcis = new KarcisType("KRI", "Karcis Inap", true,
-            InstalasiDkType.RawatInap, RekapCetakType.Default.ToReff(),
-            TarifType.Default.ToReff(), [], [layanan.ToReff()]);
-        return (layanan, karcis);
-    }
 
     private sealed class OpnameHarness(
         AdmissionRegistrationOrchestrator sut,
@@ -385,6 +434,8 @@ public class AdmissionRegistrationOrchestratorTest
         Mock<IAuditRepo> auditRepo,
         Mock<ICaraMasukDkRepo> caraMasukRepo,
         Mock<IRujukanRepo> rujukanRepo,
+        Mock<IBangsalRepo> bangsalRepo,
+        Mock<ILayananRepo> layananRepo,
         Func<AdmissionModel?> savedAdmission,
         Func<RegModel?> savedReg,
         Func<RegInapModel?> savedRegInap,
@@ -402,6 +453,8 @@ public class AdmissionRegistrationOrchestratorTest
         public Mock<IAuditRepo> AuditRepo { get; } = auditRepo;
         public Mock<ICaraMasukDkRepo> CaraMasukRepo { get; } = caraMasukRepo;
         public Mock<IRujukanRepo> RujukanRepo { get; } = rujukanRepo;
+        public Mock<IBangsalRepo> BangsalRepo { get; } = bangsalRepo;
+        public Mock<ILayananRepo> LayananRepo { get; } = layananRepo;
         public AdmissionModel? SavedAdmission => savedAdmission();
         public RegModel? SavedReg => savedReg();
         public RegInapModel? SavedRegInap => savedRegInap();

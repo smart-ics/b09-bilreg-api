@@ -179,17 +179,14 @@ public class RegModel : IRegKey
             .Select(x => new RegKomponenType(x.KomponenTarif, dokter.ToReff(), x.Nilai, 0)));
     }
 
-    public void AssignInpatientVisitTo(PpaType dokter, LayananType layanan, KarcisType karcis)
+    public void AssignInpatientVisitTo(PpaType dokter, LayananType layanan)
     {
         if (layanan.InstalasiDk.InstalasiDkId != InstalasiDkType.RawatInap.InstalasiDkId)
             throw new ArgumentException($"Layanan {layanan.LayananId} bukan instalasi rawat inap");
 
-        if (!karcis.IsValidLayanan(layanan))
-            throw new ArgumentException($"Layanan {layanan.LayananName} tidak terdaftar di karcis {karcis.KarcisName}");
-
         Dokter = dokter.ToReff();
         Layanan = layanan.ToReff();
-        Karcis = karcis.ToReff();
+        Karcis = KarcisType.Default.ToReff();
 
         // Rawat Inap does not create ta_registrasi2 rows (Rawat Jalan / IGD only).
         _listKomponen.Clear();

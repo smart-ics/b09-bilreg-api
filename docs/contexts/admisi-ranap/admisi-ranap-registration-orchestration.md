@@ -71,12 +71,17 @@ public record AdmissionRegistrationData(
     string ProsedurMasukInapId,
     string? RujukanId,
     string DokterId,
-    string LayananId,
-    string KarcisId,
     string PesertaJaminanId);
 ```
 
 This payload contains values entered or selected during the Admission workflow. It is not added to `AdmissionModel`; these values belong to Registration construction.
+
+`LayananId` and `KarcisId` are **not** client inputs for Rawat Inap:
+
+| Field | Source | Behavior |
+|-------|--------|----------|
+| `LayananId` | Derived from selected `BangsalId` via `ta_bangsal.fs_kd_layanan` | Orchestrator loads Bangsal, rejects missing/empty/`-` mapping, loads Layanan master, rejects non-inpatient instalasi |
+| `KarcisId` | Not applicable | Persisted as `KarcisType.Default` (`"-"`); no karcis load, no komponen, no billing inference |
 
 `ProsedurMasukInapId` is **mandatory** for new inpatient registration. It is distinct from `CaraMasukDkId`:
 
@@ -94,7 +99,7 @@ This payload contains values entered or selected during the Admission workflow. 
 
 The orchestrator validates `ProsedurMasukInapId` is non-empty and resolves it through `IProsedureMasukInapRepo` **before** any persistence begins. Unknown IDs are rejected. Do not hard-code hospital-specific values or infer the procedure from Opname/Reservation.
 
-`KelasDkId` and `BangsalId` remain Admission processing inputs. They are used to create Admission placement and transient Registration enrichment, but they do not populate the legacy `RegModel.Kelas` persistence field in the new flow.
+`KelasDkId` and `BangsalId` remain Admission processing inputs. They are used to create Admission placement, derive Registration Layanan from Bangsal, and transient Registration enrichment, but they do not populate the legacy `RegModel.Kelas` persistence field in the new flow.
 
 ## New-System Workflow
 
@@ -120,8 +125,11 @@ Resolve KelasDk and eligible Bangsal
 AdmissionModel.Admit(...)
         |  creates RegId
         v
+Resolve Layanan from Bangsal (IBangsalRepo → ILayananRepo)
+        |
+        v
 RegFactory.CreateRegInapFromAdmission(...)
-        |  reuses Admission.RegId
+        |  reuses Admission.RegId; Karcis = Default ("-")
         v
 RegInapModel.Create(...)
         |  same RegId, resolved ProsedurMasukInap, selected doctor as Primary DPJP
@@ -179,14 +187,15 @@ It must:
 - set persisted `RegModel.Kelas` to `KelasType.Default.ToReff()`;
 - keep legacy Bed data empty/default because `ta_registrasi` does not own the new Admission placement;
 - copy `admission.KelasDk` and `admission.Bangsal` into transient RegModel enrichment properties;
-- apply insurance, policy, entry method, referral, doctor, Layanan, Karcis, and eligibility;
-- assign only an inpatient Layanan.
+- apply insurance, policy, entry method, referral, doctor, Layanan (from Bangsal), and eligibility;
+- assign only an inpatient Layanan;
+- leave Karcis as `KarcisType.Default` (`"-"`) — Rawat Inap does not select or bill from karcis at admission.
 
-`RegModel.AssignInpatientVisitTo(...)` enforces:
+`RegModel.AssignInpatientVisitTo(dokter, layanan)` enforces:
 
 - `Layanan.InstalasiDk == InstalasiDkType.RawatInap`;
-- the selected `Karcis` supports the selected Layanan;
-- doctor, Layanan, and Karcis are populated;
+- doctor and Layanan are populated;
+- `Karcis` is set to `KarcisType.Default` (empty sentinel; not a billable default);
 - `ListKomponen` stays empty (Rawat Inap does not own `ta_registrasi2`).
 
 The existing outpatient / IGD `AssignVisitTo(...)` behavior must remain unchanged (it still builds `ListKomponen` from karcis for Rawat Jalan and IGD).

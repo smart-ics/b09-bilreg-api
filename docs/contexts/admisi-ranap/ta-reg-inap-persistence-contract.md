@@ -222,7 +222,7 @@ Covered by:
 - `AdmissionRegistrationOrchestratorTest` (including RegInap failure short-circuit on mocks)
 - `AdmissionRegistrationStep4CDbTest` — real `HOSPITAL_HPL` HTTP+SQL verification (Opname/Reservation happy path, RegInap round-trip, invalid prosedur, ambient rollback via failing `IRegInapRepo`, reprocess rejection, **assert `ta_registrasi2` count = 0**); see `docs/contexts/admisi-ranap/admisi-ranap-step-4c-verification-report.md`
 - `RegRepoTest.GivenRawatInapRegistration_WhenPersisted_ThenDoesNotCreateRegistrasi2` — inpatient never inserts komponen; RJ/IGD preserve existing DAL replace path
-- `RegFactoryInapTest` — inpatient factory leaves `ListKomponen` empty even when karcis has komponen
+- `RegFactoryInapTest` — inpatient factory leaves `ListKomponen` empty and persists `KarcisType.Default` (`"-"`)
 - Existing outpatient / shared-`RegId` regression suite
 
 ---
