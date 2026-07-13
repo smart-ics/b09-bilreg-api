@@ -19,6 +19,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using MediatR;
 using Nuna.Lib.PatternHelper;
 
 namespace Bilreg.Test.AdmisiRanapContext.AdmissionFeature;
@@ -117,6 +118,7 @@ public class AdmissionRegistrationStep4CDbTest
     private sealed record ProcessResponse(string RegId, int AdmissionStatus);
     private sealed record CreateOpnameResponse(string OpnameRequestId);
     private sealed record CreateReservationResponse(string ReservationId);
+    private sealed record CreatePasienResponse(string PasienId);
 
     private static async Task<int> ScalarCountAsync(string sql, object param)
     {
@@ -124,7 +126,7 @@ public class AdmissionRegistrationStep4CDbTest
         return await conn.ExecuteScalarAsync<int>(sql, param);
     }
 
-    private static async Task CleanupRegAsync(string? regId, string? opnameId = null, string? reservationId = null)
+    private static async Task CleanupRegAsync(string? regId, string? opnameId = null, string? reservationId = null, string? requestId = null)
     {
         await using var conn = new SqlConnection(ConnStr);
         await conn.OpenAsync();
@@ -154,7 +156,32 @@ public class AdmissionRegistrationStep4CDbTest
             await conn.ExecuteAsync("DELETE FROM BILRG_AdmReservation WHERE ReservationId=@reservationId", new { reservationId }, tx);
         }
 
+        if (!string.IsNullOrWhiteSpace(requestId))
+            await conn.ExecuteAsync("IF OBJECT_ID('BILRG_AdmCoordinatedCancellationRequest', 'U') IS NOT NULL DELETE FROM BILRG_AdmCoordinatedCancellationRequest WHERE RequestId=@requestId", new { requestId }, tx);
+
         tx.Commit();
+    }
+
+    private static async Task<string> CreateOwnedPatientAsync(HttpClient client)
+    {
+        var nonce = Guid.NewGuid().ToString("N");
+        var nik = DateTime.UtcNow.ToString("yyMMddHHmmss") + Random.Shared.Next(1000, 9999);
+        var response = await client.PostAsJsonAsync("api/pasien", new
+        {
+            pasienName = "Cancellation SQL " + nonce[..8],
+            tempatLahir = "Jakarta", tglLahir = "1990-01-01", gender = "L",
+            nickName = "SQL", ibuKandung = "Fixture", golDarah = "O",
+            alamat1 = "Fixture", alamat2 = "", alamat3 = "", kota = "Jakarta", kodePos = "10110",
+            noTelp = "0812" + Random.Shared.Next(10000000, 99999999), noKtp = nik,
+        });
+        return (await ReadJSendDataAsync<CreatePasienResponse>(response)).PasienId;
+    }
+
+    private static async Task CleanupOwnedPatientAsync(string? pasienId)
+    {
+        if (string.IsNullOrWhiteSpace(pasienId)) return;
+        await using var conn = new SqlConnection(ConnStr);
+        await conn.ExecuteAsync("DELETE FROM tc_mr_id WHERE fs_mr=@pasienId; DELETE FROM tc_mr_ktp WHERE fs_kd_mr=@pasienId; DELETE FROM tc_mr WHERE fs_mr=@pasienId", new { pasienId });
     }
 
     private static object RegistrationBody(string dokterId = "DR00000015") => new
@@ -169,13 +196,61 @@ public class AdmissionRegistrationStep4CDbTest
         pesertaJaminanId = "",
     };
 
+    private sealed record OwnedOpnameFixture(string PasienId, string OpnameId, string RegId);
+
+    private static async Task<OwnedOpnameFixture> CreateOwnedOpnameRegistrationAsync(HttpClient client)
+    {
+        var pasienId = await CreateOwnedPatientAsync(client);
+        try
+        {
+            var create = await client.PostAsJsonAsync("api/admisi-ranap/opname-request", new
+            {
+                pasienId, dokterId = "DR00000015", plannedDate = "2026-07-24",
+                clinicalNotes = "owned coordinated cancellation fixture", userId = "sqlverify",
+            });
+            var opnameId = (await ReadJSendDataAsync<CreateOpnameResponse>(create)).OpnameRequestId;
+            var process = await client.PostAsJsonAsync("api/admisi-ranap/admission/from-opname-request", new
+            {
+                opnameRequestId = opnameId, kelasDkId = "3", bangsalId = "R1", userId = "sqlverify",
+                registration = RegistrationBody(),
+            });
+            return new OwnedOpnameFixture(pasienId, opnameId,
+                (await ReadJSendDataAsync<ProcessResponse>(process)).RegId);
+        }
+        catch
+        {
+            await CleanupOwnedPatientAsync(pasienId);
+            throw;
+        }
+    }
+
+    private static async Task AddWaitingListAsync(string regId, string pasienId, int status)
+    {
+        var id = "WL" + Guid.NewGuid().ToString("N")[..10];
+        await using var conn = new SqlConnection(ConnStr);
+        await conn.ExecuteAsync("""
+            INSERT INTO BILRG_BedWaitingList
+                (WaitingListId,WaitingListStatus,RegId,PasienId,KelasId,KelasName,BangsalId,BangsalName,Priority,CrtUser,CrtDate,UpdUser,UpdDate,VodUser,VodDate)
+            VALUES (@id,@status,@regId,@pasienId,'3','Kelas 3','R1','Bangsal 1',1,'sqlverify',GETUTCDATE(),'sqlverify',GETUTCDATE(),'','3000-01-01')
+            """, new { id, status, regId, pasienId });
+    }
+
+    private static async Task CancelAsync(IServiceProvider services, string regId, string requestId)
+    {
+        using var scope = services.CreateScope();
+        await scope.ServiceProvider.GetRequiredService<IMediator>().Send(new
+            Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases.AdmCoordinatedCancelCmd(
+                regId, "real SQL verification", "sqlverify",
+                Bilreg.Domain.AdmisiRanapContext.AdmissionFeature.AdmissionStatusEnum.Admitted,
+                null, requestId, null, null));
+    }
+
     [Fact]
     public async Task Step4C_OpnamePath_PersistsSharedRegIdIncludingRegInapAndHistory()
     {
         await using var factory = new Step4CRealDbWebApplicationFactory();
         using var client = CreateClient(factory);
-
-        const string pasienId = "347137300000057";
+        var pasienId = await CreateOwnedPatientAsync(client);
         var createOpname = await client.PostAsJsonAsync("api/admisi-ranap/opname-request", new
         {
             pasienId,
@@ -262,6 +337,7 @@ public class AdmissionRegistrationStep4CDbTest
         finally
         {
             await CleanupRegAsync(regId, opname.OpnameRequestId);
+            await CleanupOwnedPatientAsync(pasienId);
         }
     }
 
@@ -270,8 +346,7 @@ public class AdmissionRegistrationStep4CDbTest
     {
         await using var factory = new Step4CRealDbWebApplicationFactory();
         using var client = CreateClient(factory);
-
-        const string pasienId = "347137300000037";
+        var pasienId = await CreateOwnedPatientAsync(client);
         var createRes = await client.PostAsJsonAsync("api/admisi-ranap/reservation", new
         {
             pasienId,
@@ -317,6 +392,7 @@ public class AdmissionRegistrationStep4CDbTest
         finally
         {
             await CleanupRegAsync(regId, reservationId: reservation.ReservationId);
+            await CleanupOwnedPatientAsync(pasienId);
         }
     }
 
@@ -325,10 +401,11 @@ public class AdmissionRegistrationStep4CDbTest
     {
         await using var factory = new Step4CRealDbWebApplicationFactory();
         using var client = CreateClient(factory);
+        var pasienId = await CreateOwnedPatientAsync(client);
 
         var createOpname = await client.PostAsJsonAsync("api/admisi-ranap/opname-request", new
         {
-            pasienId = "347137300000014",
+            pasienId,
             dokterId = "DR00000010",
             plannedDate = "2026-07-21",
             clinicalNotes = "STEP4C invalid prosedur",
@@ -339,7 +416,7 @@ public class AdmissionRegistrationStep4CDbTest
         {
             var before = await ScalarCountAsync(
                 "SELECT COUNT(*) FROM BILRG_AdmAdmission WHERE PasienId=@pasienId",
-                new { pasienId = "347137300000014" });
+                new { pasienId });
 
             var process = await client.PostAsJsonAsync("api/admisi-ranap/admission/from-opname-request", new
             {
@@ -365,7 +442,7 @@ public class AdmissionRegistrationStep4CDbTest
 
             (await ScalarCountAsync(
                 "SELECT COUNT(*) FROM BILRG_AdmAdmission WHERE PasienId=@pasienId",
-                new { pasienId = "347137300000014" })).Should().Be(before);
+                new { pasienId })).Should().Be(before);
             (await ScalarCountAsync("""
                 SELECT COUNT(*) FROM BILRG_AdmOpnameRequest
                 WHERE OpnameRequestId=@opnameId AND OpnameRequestStatus=0
@@ -374,6 +451,7 @@ public class AdmissionRegistrationStep4CDbTest
         finally
         {
             await CleanupRegAsync(null, opname.OpnameRequestId);
+            await CleanupOwnedPatientAsync(pasienId);
         }
     }
 
@@ -386,8 +464,7 @@ public class AdmissionRegistrationStep4CDbTest
             services.AddScoped<IRegInapRepo, FailingRegInapRepo>();
         });
         using var client = CreateClient(factory);
-
-        const string pasienId = "347137300000057";
+        var pasienId = await CreateOwnedPatientAsync(client);
         var createOpname = await client.PostAsJsonAsync("api/admisi-ranap/opname-request", new
         {
             pasienId,
@@ -430,6 +507,7 @@ public class AdmissionRegistrationStep4CDbTest
         finally
         {
             await CleanupRegAsync(null, opname.OpnameRequestId);
+            await CleanupOwnedPatientAsync(pasienId);
         }
     }
 
@@ -438,10 +516,11 @@ public class AdmissionRegistrationStep4CDbTest
     {
         await using var factory = new Step4CRealDbWebApplicationFactory();
         using var client = CreateClient(factory);
+        var pasienId = await CreateOwnedPatientAsync(client);
 
         var createOpname = await client.PostAsJsonAsync("api/admisi-ranap/opname-request", new
         {
-            pasienId = "347137300000014",
+            pasienId,
             dokterId = "DR00000010",
             plannedDate = "2026-07-23",
             clinicalNotes = "STEP4C reprocess verify",
@@ -479,6 +558,221 @@ public class AdmissionRegistrationStep4CDbTest
         finally
         {
             await CleanupRegAsync(regId, opname.OpnameRequestId);
+            await CleanupOwnedPatientAsync(pasienId);
+        }
+    }
+
+    [Fact]
+    public async Task CancellationSql_OpnameFixture_PersistsVoidRetentionRestoreAndEntitySnapshots()
+    {
+        await using var factory = new Step4CRealDbWebApplicationFactory();
+        using var client = CreateClient(factory);
+        var pasienId = await CreateOwnedPatientAsync(client);
+        string? opnameId = null;
+        string? regId = null;
+        const string requestId = "CANSQL-OPNAME-01";
+        try
+        {
+            var create = await client.PostAsJsonAsync("api/admisi-ranap/opname-request", new
+            {
+                pasienId, dokterId = "DR00000015", plannedDate = "2026-07-24",
+                clinicalNotes = "owned coordinated cancellation SQL fixture", userId = "sqlverify",
+            });
+            opnameId = (await ReadJSendDataAsync<CreateOpnameResponse>(create)).OpnameRequestId;
+            var process = await client.PostAsJsonAsync("api/admisi-ranap/admission/from-opname-request", new
+            {
+                opnameRequestId = opnameId, kelasDkId = "3", bangsalId = "R1", userId = "sqlverify",
+                registration = RegistrationBody(),
+            });
+            regId = (await ReadJSendDataAsync<ProcessResponse>(process)).RegId;
+
+            using var scope = factory.Services.CreateScope();
+            var cancel = await scope.ServiceProvider.GetRequiredService<IMediator>().Send(new
+                Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases.AdmCoordinatedCancelCmd(
+                    regId, "real SQL verification", "sqlverify",
+                    Bilreg.Domain.AdmisiRanapContext.AdmissionFeature.AdmissionStatusEnum.Admitted,
+                    null, requestId, null, null));
+            cancel.RegistrationVoided.Should().BeTrue();
+
+            (await ScalarCountAsync("SELECT COUNT(*) FROM BILRG_AdmAdmission WHERE RegId=@regId AND AdmissionStatus=4 AND VodUser='sqlverify' AND VodDate <> '3000-01-01'", new { regId })).Should().Be(1);
+            (await ScalarCountAsync("SELECT COUNT(*) FROM ta_registrasi WHERE fs_kd_reg=@regId AND fd_tgl_void <> '3000-01-01' AND fs_jam_void <> '' AND fs_kd_petugas_void='sqlverify' AND fd_tgl_keluar='3000-01-01' AND fd_tgl_cancel_out='3000-01-01'", new { regId })).Should().Be(1);
+            (await ScalarCountAsync("SELECT COUNT(*) FROM ta_reg_inap WHERE fs_kd_reg=@regId", new { regId })).Should().Be(1);
+            (await ScalarCountAsync("SELECT COUNT(*) FROM ta_reg_jaminan WHERE fs_kd_reg=@regId", new { regId })).Should().Be(1);
+            (await ScalarCountAsync("SELECT COUNT(*) FROM ta_reg_history_dokter WHERE fs_kd_reg=@regId AND ISNULL(LTRIM(RTRIM(fd_tgl_selesai)),'')=''", new { regId })).Should().Be(0);
+            (await ScalarCountAsync("SELECT COUNT(*) FROM ta_reg_history_dokter WHERE fs_kd_reg=@regId", new { regId })).Should().BeGreaterThan(0);
+            (await ScalarCountAsync("SELECT COUNT(*) FROM BILRG_RegAktif WHERE RegId=@regId", new { regId })).Should().Be(0);
+            (await ScalarCountAsync("SELECT COUNT(*) FROM BILRG_AdmOpnameRequest WHERE OpnameRequestId=@opnameId AND OpnameRequestStatus=0 AND FulfilledRegId='-'", new { opnameId })).Should().Be(1);
+            (await ScalarCountAsync("SELECT COUNT(*) FROM BILRG_AuditLog WHERE CorrelationId=@requestId", new { requestId })).Should().Be(5);
+            (await ScalarCountAsync("SELECT COUNT(*) FROM BILRG_AuditLog WHERE CorrelationId=@requestId AND EntityName='RegInapModel' AND OriginalDataJson LIKE '%DoctorHistory%'", new { requestId })).Should().Be(1);
+            (await ScalarCountAsync("SELECT COUNT(*) FROM BILRG_AuditLog WHERE CorrelationId=@requestId AND EntityName='RegAktifModel' AND OriginalDataJson LIKE '%RegId%'", new { requestId })).Should().Be(1);
+        }
+        finally
+        {
+            await CleanupRegAsync(regId, opnameId, requestId: requestId);
+            await CleanupOwnedPatientAsync(pasienId);
+        }
+    }
+
+    [Theory]
+    [InlineData(0)] // Waiting
+    [InlineData(1)] // Accepted
+    public async Task CancellationSql_ActiveWaitingList_IsRetainedAndCancelled(int waitingStatus)
+    {
+        await using var factory = new Step4CRealDbWebApplicationFactory();
+        using var client = CreateClient(factory);
+        OwnedOpnameFixture? fixture = null;
+        var requestId = "CANSQL-WL-" + waitingStatus + "-" + Guid.NewGuid().ToString("N")[..12];
+        try
+        {
+            fixture = await CreateOwnedOpnameRegistrationAsync(client);
+            await AddWaitingListAsync(fixture.RegId, fixture.PasienId, waitingStatus);
+
+            await CancelAsync(factory.Services, fixture.RegId, requestId);
+
+            (await ScalarCountAsync("SELECT COUNT(*) FROM BILRG_BedWaitingList WHERE RegId=@regId AND WaitingListStatus=3 AND VodUser='sqlverify' AND VodDate <> '3000-01-01'", new { regId = fixture.RegId })).Should().Be(1);
+            (await ScalarCountAsync("SELECT COUNT(*) FROM BILRG_AuditLog WHERE CorrelationId=@requestId AND EntityName='WaitingListModel' AND OriginalDataJson LIKE '%WaitingListStatus%'", new { requestId })).Should().Be(1);
+            (await ScalarCountAsync("SELECT COUNT(*) FROM BILRG_RegAktif WHERE RegId=@regId", new { regId = fixture.RegId })).Should().Be(0);
+        }
+        finally
+        {
+            if (fixture is not null)
+            {
+                await CleanupRegAsync(fixture.RegId, fixture.OpnameId, requestId: requestId);
+                await CleanupOwnedPatientAsync(fixture.PasienId);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task CancellationSql_BillingItem_BlocksWithoutAnyMutationOrLedger()
+    {
+        await using var factory = new Step4CRealDbWebApplicationFactory();
+        using var client = CreateClient(factory);
+        OwnedOpnameFixture? fixture = null;
+        var requestId = "CANSQL-BILL-" + Guid.NewGuid().ToString("N")[..12];
+        var billingId = "CAN" + Guid.NewGuid().ToString("N")[..20];
+        try
+        {
+            fixture = await CreateOwnedOpnameRegistrationAsync(client);
+            await using (var conn = new SqlConnection(ConnStr))
+                await conn.ExecuteAsync("INSERT INTO ta_trs_billing (fs_kd_trs,fs_kd_reg) VALUES (@billingId,@regId)", new { billingId, regId = fixture.RegId });
+
+            var action = () => CancelAsync(factory.Services, fixture.RegId, requestId);
+            (await action.Should().ThrowAsync<Bilreg.Application.AdmisiRanapContext.AdmissionFeature.CoordinatedCancellationException>()).Which.Code
+                .Should().Be(Bilreg.Application.AdmisiRanapContext.AdmissionFeature.CoordinatedCancellationErrorCode.RegistrationHasBillingItems);
+            (await ScalarCountAsync("SELECT COUNT(*) FROM BILRG_AdmAdmission WHERE RegId=@regId AND AdmissionStatus=0", new { regId = fixture.RegId })).Should().Be(1);
+            (await ScalarCountAsync("SELECT COUNT(*) FROM BILRG_AuditLog WHERE CorrelationId=@requestId", new { requestId })).Should().Be(0);
+            (await ScalarCountAsync("SELECT COUNT(*) FROM BILRG_AdmCoordinatedCancellationRequest WHERE RequestId=@requestId", new { requestId })).Should().Be(0);
+        }
+        finally
+        {
+            await using var conn = new SqlConnection(ConnStr);
+            await conn.ExecuteAsync("DELETE FROM ta_trs_billing WHERE fs_kd_trs=@billingId", new { billingId });
+            if (fixture is not null)
+            {
+                await CleanupRegAsync(fixture.RegId, fixture.OpnameId, requestId: requestId);
+                await CleanupOwnedPatientAsync(fixture.PasienId);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task CancellationSql_LegacySource_HasNoSourceRestoreButCancelsCoherently()
+    {
+        await using var factory = new Step4CRealDbWebApplicationFactory();
+        using var client = CreateClient(factory);
+        OwnedOpnameFixture? fixture = null;
+        var requestId = "CANSQL-LEGACY-" + Guid.NewGuid().ToString("N")[..10];
+        try
+        {
+            fixture = await CreateOwnedOpnameRegistrationAsync(client);
+            await using (var conn = new SqlConnection(ConnStr))
+                await conn.ExecuteAsync("UPDATE BILRG_AdmAdmission SET AdmissionSource=1,OpnameRequestId='-',ReservationId='-' WHERE RegId=@regId", new { regId = fixture.RegId });
+
+            await CancelAsync(factory.Services, fixture.RegId, requestId);
+
+            (await ScalarCountAsync("SELECT COUNT(*) FROM BILRG_AdmAdmission WHERE RegId=@regId AND AdmissionStatus=4", new { regId = fixture.RegId })).Should().Be(1);
+            (await ScalarCountAsync("SELECT COUNT(*) FROM BILRG_AuditLog WHERE CorrelationId=@requestId AND ActionType='RESTORE'", new { requestId })).Should().Be(0);
+        }
+        finally
+        {
+            if (fixture is not null)
+            {
+                await CleanupRegAsync(fixture.RegId, fixture.OpnameId, requestId: requestId);
+                await CleanupOwnedPatientAsync(fixture.PasienId);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task CancellationSql_DurableIdempotency_ReplaysAndRejectsReusedRequestId()
+    {
+        await using var factory = new Step4CRealDbWebApplicationFactory();
+        using var client = CreateClient(factory);
+        OwnedOpnameFixture? fixture = null;
+        var requestId = "CANSQL-IDEMP-" + Guid.NewGuid().ToString("N")[..10];
+        var secondRequestId = "CANSQL-IDEMP2-" + Guid.NewGuid().ToString("N")[..9];
+        try
+        {
+            fixture = await CreateOwnedOpnameRegistrationAsync(client);
+            await CancelAsync(factory.Services, fixture.RegId, requestId);
+            var auditCount = await ScalarCountAsync("SELECT COUNT(*) FROM BILRG_AuditLog WHERE CorrelationId=@requestId", new { requestId });
+
+            await CancelAsync(factory.Services, fixture.RegId, requestId);
+            (await ScalarCountAsync("SELECT COUNT(*) FROM BILRG_AuditLog WHERE CorrelationId=@requestId", new { requestId })).Should().Be(auditCount);
+            (await ScalarCountAsync("SELECT COUNT(*) FROM BILRG_AdmCoordinatedCancellationRequest WHERE RequestId=@requestId AND Lifecycle='Completed'", new { requestId })).Should().Be(1);
+
+            using (var scope = factory.Services.CreateScope())
+            {
+                var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+                var reused = () => mediator.Send(new Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases.AdmCoordinatedCancelCmd(
+                    fixture.RegId, "different reason", "sqlverify", Bilreg.Domain.AdmisiRanapContext.AdmissionFeature.AdmissionStatusEnum.Admitted,
+                    null, requestId, null, null));
+                (await reused.Should().ThrowAsync<Bilreg.Application.AdmisiRanapContext.AdmissionFeature.CoordinatedCancellationException>()).Which.Code
+                    .Should().Be(Bilreg.Application.AdmisiRanapContext.AdmissionFeature.CoordinatedCancellationErrorCode.RequestIdReused);
+            }
+
+            await CancelAsync(factory.Services, fixture.RegId, secondRequestId);
+            (await ScalarCountAsync("SELECT COUNT(*) FROM BILRG_AdmCoordinatedCancellationRequest WHERE RequestId=@requestId AND Lifecycle='Completed'", new { requestId = secondRequestId })).Should().Be(1);
+        }
+        finally
+        {
+            if (fixture is not null)
+            {
+                await CleanupRegAsync(fixture.RegId, fixture.OpnameId, requestId: requestId);
+                await CleanupRegAsync(null, requestId: secondRequestId);
+                await CleanupOwnedPatientAsync(fixture.PasienId);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task CancellationSql_TwoIndependentRequests_ProduceOneTransitionAndNoLoserResidue()
+    {
+        await using var factory = new Step4CRealDbWebApplicationFactory();
+        using var client = CreateClient(factory);
+        OwnedOpnameFixture? fixture = null;
+        var first = "CANSQL-CON-A-" + Guid.NewGuid().ToString("N")[..9];
+        var second = "CANSQL-CON-B-" + Guid.NewGuid().ToString("N")[..9];
+        try
+        {
+            fixture = await CreateOwnedOpnameRegistrationAsync(client);
+            var results = await Task.WhenAll(
+                CancelAsync(factory.Services, fixture.RegId, first).ContinueWith(t => t.Exception),
+                CancelAsync(factory.Services, fixture.RegId, second).ContinueWith(t => t.Exception));
+            results.Count(x => x is null).Should().Be(2);
+            (await ScalarCountAsync("SELECT COUNT(*) FROM BILRG_AdmAdmission WHERE RegId=@regId AND AdmissionStatus=4", new { regId = fixture.RegId })).Should().Be(1);
+            (await ScalarCountAsync("SELECT COUNT(*) FROM BILRG_AuditLog WHERE EntityId=@regId AND ActionType='VOID' AND EntityName='AdmissionModel'", new { regId = fixture.RegId })).Should().Be(1);
+            (await ScalarCountAsync("SELECT COUNT(*) FROM BILRG_RegAktif WHERE RegId=@regId", new { regId = fixture.RegId })).Should().Be(0);
+        }
+        finally
+        {
+            if (fixture is not null)
+            {
+                await CleanupRegAsync(fixture.RegId, fixture.OpnameId, requestId: first);
+                await CleanupRegAsync(null, requestId: second);
+                await CleanupOwnedPatientAsync(fixture.PasienId);
+            }
         }
     }
 }

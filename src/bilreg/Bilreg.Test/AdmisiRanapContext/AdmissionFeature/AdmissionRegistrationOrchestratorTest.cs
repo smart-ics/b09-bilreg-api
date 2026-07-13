@@ -141,8 +141,82 @@ public class AdmissionRegistrationOrchestratorTest
         harness.AuditRepo.Verify(x => x.SaveChanges(It.IsAny<Domain.Shared.AuditLogFeature.AuditLog>()), Times.Never);
     }
 
+    [Fact]
+    public async Task GivenDatangSendiriWithoutRujukan_WhenProcessed_ThenPersistsDefaultRujukanWithoutLoadingRepo()
+    {
+        var harness = CreateOpnameHarness();
+        var command = new AdmProcessOpnameRequestCmd(
+            harness.Opname.OpnameRequestId, "1", "B1", "user2",
+            RegistrationData() with { CaraMasukDkId = CaraMasukDkType.DatangSendiri.CaraMasukDkId, RujukanId = null });
+
+        var response = await harness.Sut.ProcessOpnameRequest(command, CancellationToken.None);
+
+        response.RegId.Should().NotBeNullOrWhiteSpace();
+        harness.SavedReg.Should().NotBeNull();
+        harness.SavedReg!.Rujukan.RujukanId.Should().Be(RujukanType.Default.RujukanId);
+        harness.SavedReg.CaraMasukDk.CaraMasukDkId.Should().Be(CaraMasukDkType.DatangSendiri.CaraMasukDkId);
+        harness.RujukanRepo.Verify(x => x.LoadEntity(It.IsAny<IRujukanKey>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenCaraMasukRequiresRujukanWithoutRujukanId_WhenProcessed_ThenRejectsBeforePersistence()
+    {
+        var harness = CreateOpnameHarness();
+        harness.CaraMasukRepo
+            .Setup(x => x.LoadEntity(It.IsAny<ICaraMasukDkKey>()))
+            .Returns(MayBe.From(CaraMasukDkType.RujukanRs));
+        var command = new AdmProcessOpnameRequestCmd(
+            harness.Opname.OpnameRequestId, "1", "B1", "user2",
+            RegistrationData() with
+            {
+                CaraMasukDkId = CaraMasukDkType.RujukanRs.CaraMasukDkId,
+                RujukanId = null
+            });
+
+        var act = () => harness.Sut.ProcessOpnameRequest(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<ArgumentException>();
+        harness.AdmissionRepo.Verify(x => x.SaveChanges(It.IsAny<AdmissionModel>()), Times.Never);
+        harness.RegRepo.Verify(x => x.SaveChanges(It.IsAny<RegModel>()), Times.Never);
+        harness.RujukanRepo.Verify(x => x.LoadEntity(It.IsAny<IRujukanKey>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GivenCaraMasukRequiresRujukanWithValidRujukan_WhenProcessed_ThenLoadsAndPersistsRujukan()
+    {
+        var harness = CreateOpnameHarness();
+        var rujukan = RujukanType.Default with
+        {
+            RujukanId = "RJ1",
+            RujukanName = "RS Rujukan",
+            CaraMasukDk = CaraMasukDkType.RujukanRs
+        };
+        harness.CaraMasukRepo
+            .Setup(x => x.LoadEntity(It.IsAny<ICaraMasukDkKey>()))
+            .Returns(MayBe.From(CaraMasukDkType.RujukanRs));
+        harness.RujukanRepo
+            .Setup(x => x.LoadEntity(It.IsAny<IRujukanKey>()))
+            .Returns(MayBe.From(rujukan));
+        var command = new AdmProcessOpnameRequestCmd(
+            harness.Opname.OpnameRequestId, "1", "B1", "user2",
+            RegistrationData() with
+            {
+                CaraMasukDkId = CaraMasukDkType.RujukanRs.CaraMasukDkId,
+                RujukanId = "RJ1"
+            });
+
+        var response = await harness.Sut.ProcessOpnameRequest(command, CancellationToken.None);
+
+        response.RegId.Should().NotBeNullOrWhiteSpace();
+        harness.SavedReg.Should().NotBeNull();
+        harness.SavedReg!.Rujukan.RujukanId.Should().Be("RJ1");
+        harness.RujukanRepo.Verify(
+            x => x.LoadEntity(It.Is<IRujukanKey>(k => k.RujukanId == "RJ1")),
+            Times.Once);
+    }
+
     private static AdmissionRegistrationData RegistrationData() =>
-        new("00000", "1", "IGD", "-", "-", "RI1", "KRI", "PESERTA1");
+        new("00000", CaraMasukDkType.DatangSendiri.CaraMasukDkId, "IGD", null, "-", "RI1", "KRI", "PESERTA1");
 
     private static OpnameHarness CreateOpnameHarness()
     {
@@ -213,7 +287,7 @@ public class AdmissionRegistrationOrchestratorTest
 
         return new OpnameHarness(
             sut, opname, admissionRepo, opnameRepo, regRepo, regInapRepo, regAktifRepo, prosedurRepo,
-            auditRepo,
+            auditRepo, caraMasukRepo, rujukanRepo,
             () => savedAdmission, () => savedReg, () => savedRegInap, () => savedRegAktif, () => savedOpname);
     }
 
@@ -309,6 +383,8 @@ public class AdmissionRegistrationOrchestratorTest
         Mock<IRegAktifRepo> regAktifRepo,
         Mock<IProsedureMasukInapRepo> prosedurRepo,
         Mock<IAuditRepo> auditRepo,
+        Mock<ICaraMasukDkRepo> caraMasukRepo,
+        Mock<IRujukanRepo> rujukanRepo,
         Func<AdmissionModel?> savedAdmission,
         Func<RegModel?> savedReg,
         Func<RegInapModel?> savedRegInap,
@@ -324,6 +400,8 @@ public class AdmissionRegistrationOrchestratorTest
         public Mock<IRegAktifRepo> RegAktifRepo { get; } = regAktifRepo;
         public Mock<IProsedureMasukInapRepo> ProsedurRepo { get; } = prosedurRepo;
         public Mock<IAuditRepo> AuditRepo { get; } = auditRepo;
+        public Mock<ICaraMasukDkRepo> CaraMasukRepo { get; } = caraMasukRepo;
+        public Mock<IRujukanRepo> RujukanRepo { get; } = rujukanRepo;
         public AdmissionModel? SavedAdmission => savedAdmission();
         public RegModel? SavedReg => savedReg();
         public RegInapModel? SavedRegInap => savedRegInap();

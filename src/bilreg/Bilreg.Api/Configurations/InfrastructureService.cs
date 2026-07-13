@@ -1,6 +1,7 @@
 ﻿using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Application.AdmisiContext.JadwalPraktekFeature.UseCases;
 using Bilreg.Application.AdmisiRanapContext;
+using Bilreg.Application.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Application.AdmisiRanapContext.Integration;
 using Bilreg.Application.AdmisiRanapContext.RolloutFeature;
 using Bilreg.Application.AdmisiRanapContext.OperationalWorklistFeature;
@@ -19,6 +20,7 @@ using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Infrastructure;
 using Bilreg.Infrastructure.AdmisiContext.JadwalPraktekFeature;
+using Bilreg.Infrastructure.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.Integration;
 using Bilreg.Infrastructure.AdmisiRanapContext.OperationalWorklistFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.RolloutFeature;
@@ -63,6 +65,9 @@ public static class InfrastructureService
             .AddScoped<ILabOwareIntegration, LabOwareIntegration>()
             .AddScoped<ILabOwareQueueWorklistDal, LabOwareQueueWorklistDal>()
             .AddScoped<IWaitingListWorklistDal, WaitingListWorklistDal>()
+            .AddScoped<IRegistrationCancellationEligibilityDal, RegistrationCancellationEligibilityDal>()
+            .AddScoped<IRegistrationCancellationEligibilityRepo, RegistrationCancellationEligibilityRepo>()
+            .AddScoped<ICoordinatedCancellationRepo, CoordinatedCancellationRepo>()
             .AddScoped<IOperationalWorklistDal, OperationalWorklistDal>()
             .AddScoped<IDoctorServiceGateway, DoctorServiceGateway>()
             .AddScoped<IPatientAdministrationGateway, PatientAdministrationGateway>()

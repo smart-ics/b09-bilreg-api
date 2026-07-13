@@ -122,7 +122,7 @@ public class RegModel : IRegKey
 
     public void SpecifyCaraMasuk(CaraMasukDkType caraMasukDk, RujukanType rujukan)
     {
-        if (caraMasukDk == CaraMasukDkType.DatangSendiri)
+        if (!caraMasukDk.RequiresRujukan)
         {
             CaraMasukDk = caraMasukDk;
             Rujukan = rujukan.ToReff();

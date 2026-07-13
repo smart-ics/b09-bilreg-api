@@ -121,6 +121,7 @@
     <None Include="AdmisiRanapContext\AdmissionFeature\BILRG_AdmAdmission.sql" />
     <None Include="AdmisiRanapContext\AdmissionFeature\BILRG_AdmAdmission_M1_DropPasienSnapshot_Alter.sql" />
     <None Include="AdmisiRanapContext\AdmissionFeature\BILRG_AdmAdmission_M2_KelasDk_Alter.sql" />
+    <None Include="AdmisiRanapContext\AdmissionFeature\BILRG_AdmCoordinatedCancellationRequest.sql" />
     <None Include="AdmisiRanapContext\WaitingListFeature\BILRG_BedWaitingList.sql" />
     <None Include="AdmisiRanapContext\WaitingListFeature\BILRG_BedWaitingList_M1_DropPasienSnapshot_Alter.sql" />
     <None Include="AdmisiRanapContext\BILRG_AdmisiRanap_Phase7_Rollback.sql" />

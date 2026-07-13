@@ -1,20 +1,24 @@
 # Admission Cancellation — Implementation Contract
 
-**Status:** Frozen implementation baseline  
+**Status:** Revised implementation baseline
 **Date:** 12 July 2026  
-**Scope:** Coordinated cancellation of an eligible Rawat Inap Admission and its shared Registration. This document resolves implementation mechanics only; the business boundary and state rules remain those in [docs/contexts/admisi-ranap/admisi-ranap-coordinated-cancellation-design.md](admisi-ranap-coordinated-cancellation-design.md).
+**Scope:** Coordinated cancellation of an eligible Rawat Inap Admission and its shared Registration. This contract supersedes the prior multi-dependency eligibility design.
 
-## 1. Non-negotiable scope
+## 1. Scope and decision
 
-The command implements only design stages A and B. It is a registration-wide administrative void, performed atomically. It retains Registration, RegInap, guarantor, Waiting List, doctor history, and source records; it deletes only the `BILRG_RegAktif` current-state projection.
+Coordinated cancellation is a registration-wide administrative void, performed atomically. It retains Registration, RegInap, guarantor, Waiting List, doctor history, and source records; it deletes only the `BILRG_RegAktif` current-state projection.
 
-Stage C (bed held/assigned/occupied), Stage D (downstream activity), Stage E (discharged/finalized), legacy repair, and any compensation workflow are out of scope. Unknown dependency authority is a blocker, never permission to proceed.
+The sole downstream eligibility blocker is Tata Rekening billing activity:
 
-The source design's state transitions, source restoration outcomes, and prohibition on physical deletion of transactional history are **Frozen**.
+- one or more billing items for `RegId` reject cancellation with `REGISTRATION_HAS_BILLING_ITEMS`;
+- zero billing items permit eligibility to continue;
+- an empty Tata Rekening header is not a blocker and is not queried.
 
-## 2. Command and HTTP API contract
+All required Registration, Admission, Waiting List, source, and concurrency validations remain separate orchestration-state validations. This change does not authorize a coordinated-cancellation orchestrator or endpoint implementation.
 
-### 2.1 Application command
+## 2. API and command contract
+
+The planned command and endpoint remain unchanged:
 
 ```csharp
 public record AdmCoordinatedCancelCmd(
@@ -28,249 +32,73 @@ public record AdmCoordinatedCancelCmd(
     string? UserAgent) : IRequest<AdmCoordinatedCancelResponse>, IRegKey;
 ```
 
-`AdmCancelAdmissionCmd` and its handler are superseded by this command; they must not remain reachable through the cancellation endpoint. The command is handled by one explicit application orchestrator. Domain models own their own transitions; repositories and DALs do not coordinate the workflow.
-
-### 2.2 Endpoint
-
-```http
+```text
 POST /api/admisi-ranap/admission/{regId}/cancel
-Content-Type: application/json
 ```
+
+`RegId` is required and has a maximum length of 50. `Reason` is trimmed and required (1–500 characters), `UserId` is required (maximum 50), and `RequestId` is a trimmed required client-generated idempotency/correlation key (1–50). `ExpectedAdmissionStatus` is required and must equal the locked cancellable status. `ExpectedUpdatedAt`, when supplied, is an exact ISO-8601 UTC compatibility token in the Admission compare-and-set predicate.
+
+Success remains HTTP 200 in the JSend success envelope with `regId`, `admissionStatus`, `registrationVoided`, `alreadyCancelled`, optional `waitingListId`, optional restored source, and `correlationId`. Missing roots remain 404, malformed commands 422, and stale/concurrent/inconsistent/idempotency conflicts 409. A billing rejection is the sole downstream HTTP 400 business rejection and has this payload shape:
 
 ```json
 {
-  "reason": "Pasien membatalkan rencana rawat inap",
-  "userId": "SPR001",
-  "expectedAdmissionStatus": 0,
-  "expectedUpdatedAt": "2026-07-12T03:15:30.1234567Z",
-  "requestId": "6b81e8c8-d3d2-4bdf-b3b0-4d7a5d02d7c0"
-}
-```
-
-The route value is `RegId`. `expectedAdmissionStatus` uses the current integer serialization of `AdmissionStatusEnum`. `expectedUpdatedAt`, when supplied, is an ISO-8601 UTC instant and must be compared exactly to the persisted admission update timestamp; it is not rounded or converted to local time.
-
-| Input | Contract |
-| --- | --- |
-| `RegId` | Required route identity; max 50 characters. |
-| `Reason` | Required after trimming; 1–500 characters. Persist the trimmed value. |
-| `UserId` | Required; max 50 characters. This remains the actor until claims-based identity is introduced. |
-| `ExpectedAdmissionStatus` | Required. Must be an allowed pre-cancellation status and equal the locked current status. |
-| `ExpectedUpdatedAt` | Optional compatibility token. If present, it participates in the admission compare-and-set predicate. |
-| `RequestId` | Required client-generated idempotency and correlation key; 1–50 characters, trimmed. |
-
-Success is HTTP 200 using the existing JSend success envelope:
-
-```json
-{
-  "status": "success",
-  "data": {
-    "regId": "RG...",
-    "admissionStatus": "Cancelled",
-    "registrationVoided": true,
-    "alreadyCancelled": false,
-    "waitingListId": "WL...",
-    "restoredSource": { "type": "OpnameRequest", "id": "OPN..." },
-    "correlationId": "6b81e8c8-d3d2-4bdf-b3b0-4d7a5d02d7c0"
-  }
-}
-```
-
-`waitingListId` and `restoredSource` are `null` when absent. `alreadyCancelled` is `true` only for the coherent-final-state idempotency case in section 8.
-
-### 2.3 Error model
-
-All expected failures return the API's JSend failure/error envelope with this machine-readable body inside `data`; exception messages are not the contract.
-
-```json
-{
-  "code": "ADMISSION_HAS_BILLING",
-  "message": "Admission cancellation is not eligible.",
-  "blockers": ["ADMISSION_HAS_BILLING"],
+  "code": "REGISTRATION_HAS_BILLING_ITEMS",
+  "message": "Registration cancellation is not eligible.",
+  "blockers": ["REGISTRATION_HAS_BILLING_ITEMS"],
   "correlationId": "6b81e8c8-d3d2-4bdf-b3b0-4d7a5d02d7c0"
 }
 ```
 
-| HTTP | Category | Codes |
-| --- | --- | --- |
-| 422 | malformed command | `VALIDATION_FAILED` (with field errors) |
-| 404 | required root absent | `ADMISSION_NOT_FOUND`, `REGISTRATION_NOT_FOUND` |
-| 400 | eligibility/business rejection | all `ADMISSION_*`, `REGISTRATION_*`, and `WAITING_LIST_*` blocker codes below |
-| 409 | stale, concurrent, inconsistent, or idempotency conflict | `CONCURRENCY_CONFLICT`, `SOURCE_STATE_MISMATCH`, `COORDINATED_STATE_INCONSISTENT`, `REGINAP_HEADER_MISSING`, `REGAKTIF_MISSING`, `REQUEST_ID_REUSED` |
-| 500 | unexpected persistence/infrastructure failure | no partially committed cancellation is permitted |
+No other downstream blocker code or dependency-authority result exists in this contract.
 
-Return every independently observed eligibility blocker in a stable order, rather than only the first one. State/CAS failures discovered after the eligibility read return only their specific 409 code because the facts are no longer trustworthy.
-
-## 3. Eligibility query contract
-
-### 3.1 Application-facing port
+## 3. Eligibility read contract
 
 ```csharp
-public interface IAdmissionCancellationEligibilityRepo
+public interface IRegistrationCancellationEligibilityRepo
 {
-    AdmissionCancellationFacts LoadForCancellation(string regId);
+    bool HasBillingItems(string regId);
 }
-
-public sealed record AdmissionCancellationFacts(
-    bool HasActiveBedAssignment,
-    bool HasAnyBedOrWardActivity,
-    bool HasBilling,
-    bool HasTataRekeningOrFinancialFinalization,
-    bool HasTindakan,
-    bool HasMedicationOrPharmacyActivity,
-    bool HasClinicalDocumentation,
-    bool HasMedicalOrServiceOrders,
-    bool HasLabOrders,
-    bool HasTransfer,
-    bool IsDischarged,
-    bool IsRegistrationVoided,
-    bool IsRegistrationFinalized,
-    IReadOnlyList<CancellationDependencyAuthority> Authorities);
 ```
 
-`CancellationDependencyAuthority` is a named authority and one of `VerifiedClear`, `Blocked`, or `Unavailable`. It covers inpatient bed/ward, medication/pharmacy, clinical documentation, transfer, and every external/legacy dependency in the facts. `Unavailable` produces `DEPENDENCY_AUTHORITY_UNAVAILABLE` with the authority name. This is the design's enablement gate expressed as a query result.
+The implementation performs one read-only existence check against Tata Rekening's authoritative Financial Charge Ledger:
 
-The repository uses explicit existence queries by `RegId`; it must not reconstruct downstream aggregates or become a generic rules engine. `AdmissionCancellationPolicy` maps these facts and the locked aggregate states to the following stable blocker codes:
+```sql
+SELECT
+    CAST(CASE WHEN EXISTS (
+        SELECT 1
+        FROM ta_trs_billing aa
+        WHERE aa.fs_kd_reg = @RegId
+    ) THEN 1 ELSE 0 END AS bit)
+```
 
-| Fact or state | Blocker code |
-| --- | --- |
-| bed assigned, held, or occupied | `ADMISSION_HAS_ACTIVE_BED_ASSIGNMENT` |
-| any ward/bed activity | `ADMISSION_HAS_BED_OR_WARD_ACTIVITY` |
-| billing | `ADMISSION_HAS_BILLING` |
-| Tata Rekening or financial finalization | `ADMISSION_HAS_FINANCIAL_ACTIVITY` |
-| tindakan | `ADMISSION_HAS_TINDAKAN` |
-| medication/pharmacy | `ADMISSION_HAS_MEDICATION_ACTIVITY` |
-| clinical documentation | `ADMISSION_HAS_CLINICAL_DOCUMENTATION` |
-| medical/service order | `ADMISSION_HAS_MEDICAL_OR_SERVICE_ORDER` |
-| lab order | `ADMISSION_HAS_LAB_ORDER` |
-| transfer | `ADMISSION_HAS_TRANSFER` |
-| discharged | `REGISTRATION_DISCHARGED` |
-| registration already voided | `REGISTRATION_ALREADY_VOIDED` |
-| registration finalized | `REGISTRATION_FINALIZED` |
-| unverified external/legacy authority | `DEPENDENCY_AUTHORITY_UNAVAILABLE` |
-| non-RegInap registration | `REGISTRATION_NOT_INPATIENT` |
-| Admission not `Admitted`, `Updated`, or `Waiting` | `ADMISSION_STATUS_NOT_CANCELLABLE` |
-| Waiting List not `Waiting` or `Accepted` | `WAITING_LIST_STATUS_NOT_CANCELLABLE` |
+`ta_trs_billing` rows are billing items. `BILRG_TataRekening` (or another Tata Rekening header) and `ta_trs_billing2` financial projection rows are deliberately not queried. The check is scoped exclusively to the requested `RegId` and does not reconstruct a Tata Rekening aggregate.
 
-No source state mismatch is treated as a blocker: it is stale/concurrent state and returns `SOURCE_STATE_MISMATCH` (409).
+The application maps `true` to `REGISTRATION_HAS_BILLING_ITEMS`; `false` permits the existing non-eligibility state validations to proceed. There is no facts object, dependency enum, authority availability state, generic cancellation policy, or blocker mapping table.
 
-### 3.2 Required invariants before mutation
+## 4. Preserved coordinated-cancellation contract
 
-The orchestrator must load and lock Admission, Registration, active Waiting List (if any), RegInap, RegAktif, and source (if any). It then verifies:
+The future orchestrator must still load and lock Admission, Registration, active Waiting List (if any), RegInap, RegAktif, and source (if any), then validate shared identity, Registration type/active state, RegInap and RegAktif presence, source ownership/state, and expected Admission/Waiting List states.
 
-- exactly the one shared `RegId` is present on all applicable records;
-- Registration is active `RegInap`, not voided, discharged, or finalized;
-- `ta_reg_inap` exists for a normal new-system cancellation; absence is `REGINAP_HEADER_MISSING` and is never repaired or deleted here;
-- `BILRG_RegAktif` exists; absence is `REGAKTIF_MISSING` unless the request is handled as coherent idempotent completion;
-- an Opname source is `Fulfilled` by this `RegId`, and a Reservation source is `Realized` by this `RegId`;
-- a legacy-sourced Admission has no source to restore.
+The complete operation remains one `TransHelper.NewScope()` transaction. Acquire locks in this order: Registration, Admission, RegInap/doctor history, active Waiting List, RegAktif, then source. The billing-item existence check is re-read within that same transaction before mutation. SQL must use update locks/serializable protection where an expected row can be absent, plus conditional writes.
 
-These checks and the dependency facts are re-read/revalidated inside the write transaction. A dry-run query, if later exposed, is advisory only and must use the same facts but cannot authorize the write.
+Every mutable write retains its expected-state predicate: Admission uses `RegId`, expected/current cancellable status, and optional exact `UpdDate`; Waiting List uses active `RegId` and a cancellable status; Registration uses `RegId`, `JenisReg = RegInap`, and no void/discharge/finalization marker; doctor history updates only active assignments for `RegId`; RegAktif has exactly one row for `RegId`; and a source must be `Fulfilled`/`Realized` by this `RegId`. A zero-row conditional mutation rolls back with `CONCURRENCY_CONFLICT`, except source state/ownership, which returns `SOURCE_STATE_MISMATCH`.
 
-## 4. Transaction, locks, and execution order
+The effective transition order remains: claim/read the idempotency record; lock/revalidate state and billing; cancel Waiting List; end active RegInap doctor assignments; void Registration; remove RegAktif; restore source; cancel Admission; append audits; complete the idempotency record; commit. A failed conditional write, audit insert, ledger write, or persistence operation rolls back the entire unit.
 
-**Frozen:** the complete operation runs in one `TransHelper.NewScope()`; audit and idempotency writes enlist in the same ambient transaction. There is no event bus, asynchronous compensation, or process-local lock.
+Capture pre-change snapshots with `AuditLogSnapshotJson.Serialize`; append `VOID` audits for Admission, Registration, RegInap/doctor-history, and Waiting List where changed, a `DELETE` audit for RegAktif, and a `RESTORE` audit for a restored source. Every audit uses the request's correlation ID, actor, reason, effective timestamp, and optional request metadata. Rejected commands write no audit.
 
-Acquire locks in this fixed order to reduce deadlock risk: Registration by `RegId`, Admission by `RegId`, RegInap/doctor history by `RegId`, active Waiting List by `RegId`, RegAktif by `RegId`, source by its ID, then dependency/bed authority rows. SQL implementations use update locks/serializable key-range protection where a row may be absent, plus conditional updates. The concrete DAL may express those mechanics differently, but must preserve this observable contract.
+The durable idempotency ledger remains keyed by globally unique `RequestId` and holds the request fingerprint, `RegId`, `InProgress`/`Completed` lifecycle, completed response payload, timestamps, and correlation ID in the same transaction. Same key plus same completed fingerprint replays the stored response; a different fingerprint returns `REQUEST_ID_REUSED`; a different key with a coherent completed state returns the idempotent completed response without duplicate audits; partial state returns `COORDINATED_STATE_INCONSISTENT` without repair.
 
-Within the transaction:
+No physical deletion is allowed for transactional history other than the active `BILRG_RegAktif` projection. Tata Rekening is not queried by, and must not be represented in, any domain model.
 
-1. claim/read the idempotency record (section 8) and return its completed response if it matches;
-2. load and lock the records above, obtain eligibility facts, and evaluate the policy;
-3. revalidate all expected states and source ownership under the locks;
-4. cancel the active Waiting List, if present;
-5. end every active RegInap doctor assignment on the one orchestration effective date and persist RegInap/history;
-6. void Registration through `RegModel.BatalBerobat` using the same timestamp;
-7. conditionally delete the one `BILRG_RegAktif` projection row;
-8. conditionally restore the originating Opname Request or Reservation, if any;
-9. conditionally cancel Admission using its expected status and optional exact update timestamp;
-10. insert the complete audit set and mark the idempotency record completed with the response payload;
-11. call `Complete()`.
+## 5. Required tests
 
-Any zero-row conditional mutation, failed audit insert, or persistence exception aborts the scope. No catch-and-continue behavior is allowed.
+- zero billing items permits eligibility;
+- one billing item blocks cancellation;
+- multiple billing items also block cancellation;
+- an empty Tata Rekening header does not block cancellation;
+- the billing query is scoped to the requested `RegId` and reads `ta_trs_billing` only;
+- no discarded downstream dependency affects eligibility;
+- domain transitions, transaction, concurrency, audit, idempotency, source restoration, and rollback tests remain valid when the orchestrator is implemented.
 
-## 5. Optimistic concurrency contract
-
-The first implementation uses **lock + compare-and-set**, not a new row-version migration. This is **Frozen** for this slice because current tables have no row version. A later row-version migration is an explicit compatibility change, not a silent replacement of this contract.
-
-Every mutable write has an expected-state predicate:
-
-| Target | Required predicate |
-| --- | --- |
-| Admission | `RegId`, required expected status, current cancellable status, and `UpdDate` when `ExpectedUpdatedAt` is supplied |
-| Waiting List | active row for `RegId`; status is `Waiting` or `Accepted` |
-| Registration | `RegId`, `JenisReg = RegInap`, no void/discharge/finalization marker |
-| doctor history | active assignments for `RegId` only; update only rows with no finish date |
-| RegAktif | exactly one row for `RegId` |
-| Opname | `Fulfilled` and `FulfilledRegId = RegId` |
-| Reservation | `Realized` and `RealizedRegId = RegId` |
-
-A predicate affecting zero rows rolls back and returns `CONCURRENCY_CONFLICT`, except source predicates, which return `SOURCE_STATE_MISMATCH`. Concurrent Waiting List acceptance, bed assignment, source edit, or Admission update has one winner only; the other operation must observe a conflict or blocker and leave no partial state.
-
-## 6. Audit contract
-
-Capture a full pre-change snapshot with `AuditLogSnapshotJson.Serialize` before each mutated aggregate/projection. Append these audit rows within the transaction, all with the same `RequestId` as `CorrelationId`, the trimmed reason, actor, one orchestration timestamp, and API-captured optional IP/User-Agent:
-
-| Changed record | `EntityName` | action | event source |
-| --- | --- | --- | --- |
-| Admission | `AdmissionModel` | `VOID` | `Voided` |
-| Registration | `RegModel` | `VOID` | `Voided` |
-| RegInap and its doctor-history transition | `RegInapModel` | `VOID` | `Voided` |
-| Waiting List, if changed | `WaitingListModel` | `VOID` | `Voided` |
-| RegAktif projection removal | `RegAktifModel` | `DELETE` | primitive audit info using the orchestration actor/time |
-| restored Opname or Reservation | concrete model name | `RESTORE` | its transition audit slot |
-
-`BILRG_AuditLog` is append-only. The audit snapshot describes the record before the transition; no audit row is created for a rejected command. Audit is a compliance record, not a domain-event bus. The existing audit-log semantics are otherwise **Frozen**.
-
-## 7. Correlation and request identity
-
-`RequestId` is the correlation ID for the whole cancellation. The API passes it unchanged to the command and every audit row. It must be logged in structured request logging and returned on both success and expected failures. It is not regenerated by handlers or repositories.
-
-## 8. Idempotency contract
-
-The system needs a durable, transactionally enlisted cancellation-request ledger; audit lookup alone is not a safe idempotency implementation. Add a narrowly scoped persistence record keyed by `RequestId` with: request fingerprint, `RegId`, lifecycle (`InProgress`/`Completed`), completed response JSON, created/completed timestamp, and correlation ID. `RequestId` is globally unique for this endpoint; no database FK is introduced.
-
-The fingerprint is SHA-256 over canonical UTF-8 JSON containing `RegId`, trimmed `Reason`, `UserId`, `ExpectedAdmissionStatus`, and `ExpectedUpdatedAt` in round-trip UTC format. It is an implementation integrity check, not a business value.
-
-| Situation | Required result |
-| --- | --- |
-| same key + same fingerprint + completed | HTTP 200 with the stored response; no new writes or audits |
-| same key + different fingerprint | HTTP 409 `REQUEST_ID_REUSED` |
-| same key currently in progress | serialize on the ledger row; after lock, return the completed response or perform the command if the prior transaction rolled back |
-| different key + coherently completed final state | HTTP 200, `alreadyCancelled: true`, after verifying cancelled Admission, voided Registration, no RegAktif, no active Waiting List, correct doctor end dates, and restored/no-source state; persist this response in the new ledger record without creating duplicate transition audits |
-| different key + partially cancelled/inconsistent state | HTTP 409 `COORDINATED_STATE_INCONSISTENT`; no repair is attempted |
-
-The idempotency record is created and completed in the same transaction as the cancellation. A rollback leaves no completed result and permits a safe retry.
-
-## 9. Test matrix
-
-| Area | Scenario | Expected assertion |
-| --- | --- | --- |
-| Success | Stage A with legacy source | Admission/Registration voided; doctors ended; RegAktif removed; no source restore; correlated audit set and ledger committed |
-| Success | Stage B Waiting | Waiting List cancelled and all coordinated transitions commit |
-| Success | Stage B Accepted without bed | same as Waiting, with no bed activity |
-| Success | Opname and Reservation separately | exact source state/reference restoration (`Requested` / `Maintained`) and `RESTORE` audit |
-| Rejection | each dependency fact | each fact independently yields its named blocker and no mutation/audit/ledger completion |
-| Rejection | unavailable authority | `DEPENDENCY_AUTHORITY_UNAVAILABLE`; no mutation |
-| Rejection | invalid Admission/Registration/Waiting List state | stable status blocker; no mutation |
-| Rejection | missing RegInap or RegAktif, source mismatch, non-RegInap | stated 409 code; no repair/delete |
-| Rollback | each write step, including audit and ledger completion, throws | all earlier data writes roll back; no audit or ledger residue |
-| Persistence | legacy void mapping | only `fd_tgl_void`, `fs_jam_void`, `fs_kd_petugas_void` are set; discharge/cancel-discharge remain unchanged |
-| Persistence | retained/deleted records | RegInap, guarantor, Waiting List, doctor history remain; only RegAktif is physically deleted |
-| Idempotency | same key replay | one transition/audit set; byte-equivalent stored response |
-| Idempotency | different-key coherent replay / inconsistent state | idempotent success / `COORDINATED_STATE_INCONSISTENT` respectively |
-| Concurrency | Waiting acceptance, bed assignment, source update, Admission update | one winner; loser receives 409 or blocker; no partial state |
-| HTTP | validation, 404, 400 blockers, 409 conflicts, 500 | documented status, JSend envelope, code, and correlation ID |
-| Regression | queries consuming active Registration | voided Registration is not active/searchable/dischargeable; `RegModel.IsAktif` is false when voided |
-
-Run domain, handler/orchestration, DAL/integration, and HTTP/SQL tests. Concurrency tests must use separate database connections/transactions; mock-only concurrency tests are insufficient.
-
-## 10. Open implementation decisions and enablement gates
-
-The following are not new business decisions. They are required confirmations before enabling the endpoint in an environment:
-
-1. Identify and wire the authoritative production sources and lock/CAS mechanism for inpatient bed occupancy, ward activity/transfer, medication/pharmacy, clinical documentation, and external legacy records. Until each is `VerifiedClear`, the command returns `DEPENDENCY_AUTHORITY_UNAVAILABLE`.
-2. Confirm actual SQL Server column precision for Admission `UpdDate`; if it cannot support exact `ExpectedUpdatedAt` comparison, omit that optional token from the API until a compatible row-version migration is separately approved. Status CAS and transactional locks remain mandatory.
-3. Confirm Waiting List enum numeric compatibility before adding `Cancelled`, and add terminal-state-safe `RegInapModel` rehydration before persisting zero active Primary DPJP assignments.
-4. Confirm the existing response/error middleware can emit the stated non-200 JSend envelopes. If it cannot, implement that mapping in this feature's API layer without changing the codes or statuses.
-
-No coding may treat these gates as a reason to weaken dependency checks or to broaden the cancellation workflow.
+The current code adds only the narrow read port and its tests. It does not add the orchestrator.

@@ -30,12 +30,12 @@ public record AdmissionRegistrationData(
     string TipeJaminanId,
     string CaraMasukDkId,
     string ProsedurMasukInapId,
-    string RujukanId,
+    string? RujukanId,
     string DokterId,
     string LayananId,
     string KarcisId,
     string PesertaJaminanId) :
-    ITipeJaminanKey, ICaraMasukDkKey, IProsedurMasukInapKey, IRujukanKey, ILayananKey, IKarcisKey;
+    ITipeJaminanKey, ICaraMasukDkKey, IProsedurMasukInapKey, ILayananKey, IKarcisKey;
 
 public interface IAdmissionRegistrationOrchestrator
 {
@@ -191,8 +191,7 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
             .GetValueOrThrow($"Tipe Jaminan '{data.TipeJaminanId}' tidak ditemukan.");
         var caraMasuk = _caraMasukRepo.LoadEntity(data)
             .GetValueOrThrow($"Cara Masuk '{data.CaraMasukDkId}' tidak ditemukan.");
-        var rujukan = _rujukanRepo.LoadEntity(data)
-            .GetValueOrThrow($"Rujukan '{data.RujukanId}' tidak ditemukan.");
+        var rujukan = ResolveRujukan(caraMasuk, data.RujukanId);
         var dokter = _ppaRepo.LoadEntity(PpaType.Key(data.DokterId))
             .GetValueOrThrow($"Dokter '{data.DokterId}' tidak ditemukan.");
         var layanan = _layananRepo.LoadEntity(data)
@@ -203,6 +202,16 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
 
         return _regFactory.CreateRegInapFromAdmission(admission, pasien, tipeJaminan, polis,
             caraMasuk, rujukan, dokter, layanan, karcis, data.PesertaJaminanId);
+    }
+
+    private RujukanType ResolveRujukan(CaraMasukDkType caraMasuk, string? rujukanId)
+    {
+        if (!caraMasuk.RequiresRujukan)
+            return RujukanType.Default;
+
+        Guard.Against.NullOrWhiteSpace(rujukanId, nameof(AdmissionRegistrationData.RujukanId));
+        return _rujukanRepo.LoadEntity(RujukanType.Key(rujukanId))
+            .GetValueOrThrow($"Rujukan '{rujukanId}' tidak ditemukan.");
     }
 
     private static RegInapModel CreateRegInap(
@@ -274,7 +283,6 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         Guard.Against.NullOrWhiteSpace(data.TipeJaminanId);
         Guard.Against.NullOrWhiteSpace(data.CaraMasukDkId);
         Guard.Against.NullOrWhiteSpace(data.ProsedurMasukInapId);
-        Guard.Against.NullOrWhiteSpace(data.RujukanId);
         Guard.Against.NullOrWhiteSpace(data.DokterId);
         Guard.Against.NullOrWhiteSpace(data.LayananId);
         Guard.Against.NullOrWhiteSpace(data.KarcisId);

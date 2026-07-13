@@ -69,7 +69,7 @@ public record AdmissionRegistrationData(
     string TipeJaminanId,
     string CaraMasukDkId,
     string ProsedurMasukInapId,
-    string RujukanId,
+    string? RujukanId,
     string DokterId,
     string LayananId,
     string KarcisId,
@@ -84,6 +84,13 @@ This payload contains values entered or selected during the Admission workflow. 
 |-------|---------|--------------------|
 | `CaraMasukDkId` | Government/reporting entry classification | `ta_registrasi` (via `RegModel`) |
 | `ProsedurMasukInapId` | Inpatient operational entry procedure | `ta_reg_inap.fs_kd_caramasuk_inap` (via `RegInapModel` / `IRegInapRepo`) |
+
+`RujukanId` is **conditionally required** based on `CaraMasukDkType.RequiresRujukan`:
+
+| Cara Masuk | `RequiresRujukan` | Behavior |
+|------------|-------------------|----------|
+| Datang Sendiri (`8`) | `false` | `RujukanId` may be null/empty; orchestrator persists `RujukanType.Default` (`-`) |
+| Any other Cara Masuk | `true` | Non-empty `RujukanId` required; must resolve via `IRujukanRepo` |
 
 The orchestrator validates `ProsedurMasukInapId` is non-empty and resolves it through `IProsedureMasukInapRepo` **before** any persistence begins. Unknown IDs are rejected. Do not hard-code hospital-specific values or infer the procedure from Opname/Reservation.
 
