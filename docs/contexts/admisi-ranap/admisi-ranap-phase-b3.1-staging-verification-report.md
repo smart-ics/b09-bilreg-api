@@ -9,7 +9,7 @@
 | Item | Result |
 |---|---|
 | Verification host | Local development workspace (`D:\\Project.Aktif\\MyHospitalWeb\\b09-bilreg-api`) |
-| Staging API base URL | Not supplied / unavailable |
+| Staging API base URL | `http://dev.smart-ics.com:8089/BilregApi` |
 | Authenticated Bearer token | Not supplied / unavailable |
 | `BILREG_JOURNEY_IT_SERVER` | Not set |
 | `BILREG_JOURNEY_IT_DATABASE` | Not set |
@@ -17,7 +17,7 @@
 | API-to-SQL network position | Not measurable |
 | Developer-to-API network position | Not measurable |
 
-`AdmisiRanap:JourneyEndpointsEnabled` defaults to `false` in the checked-in API configuration. It was not changed. The required staging-true setting could not be inspected or exercised without a staging endpoint.
+`AdmisiRanap:JourneyEndpointsEnabled` defaults to `false` in the checked-in API configuration. It was not changed. The staging route is reachable, but the required staging-true setting could not be inspected or exercised without an authenticated client.
 
 ## 2. Integration-test results
 
@@ -65,9 +65,10 @@ The required real-data HTTP smoke cases could not be executed: no staging URL/to
 
 | Requirement | Staging result |
 |---|---|
-| Active/history list, real detail, and legacy resolution | Not executed — no authenticated staging route |
+| Active/history list, real detail, and legacy resolution | Not executed — no authenticated token |
 | Feature flag `true` | Not verified in staging |
-| Feature disabled `503`, missing-token `401`, invalid request `400`, unknown `404`, ambiguity `409`, `InWard` `400` | Verified by local B3 integration tests only |
+| Missing token `401` | **Verified on staging.** `GET /journeys?scope=active&pageSize=10`, `GET /journeys?scope=invalid`, and `GET /operational-worklist` each returned `401`. |
+| Feature disabled `503`, invalid request `400`, unknown `404`, ambiguity `409`, `InWard` `400` | Verified by local B3 integration tests only; staging requires an authenticated token before validation. |
 | Atiqa-like Admission + Waiting List consolidated as one journey | Not verified against staging data; covered by local/integration test design |
 | Registration/Waiting List IDs confined to system/audit detail | Not verified against a real staging response |
 | Facet exclusivity and active/history schema parity | Not verified against a real staging response |
@@ -93,7 +94,7 @@ Server-versus-client comparison and slow-query investigation are likewise not ap
 
 Exact remaining blockers:
 
-1. A non-production staging API base URL deployed with Phase B3 and `AdmisiRanap:JourneyEndpointsEnabled=true`.
+1. Confirmation that the supplied staging API is deployed with Phase B3 and `AdmisiRanap:JourneyEndpointsEnabled=true`.
 2. A valid authenticated Bearer token.
 3. `BILREG_JOURNEY_IT_SERVER` and `BILREG_JOURNEY_IT_DATABASE` pointing to a schema-complete staging database reachable from this verification environment (or execution from the staging API host).
 4. Access to the B2.1 DAL diagnostic logs and, only if warm server timing exceeds about two seconds, DBA-supported actual plans plus `STATISTICS IO`/`STATISTICS TIME`.
