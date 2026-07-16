@@ -147,7 +147,7 @@ public record ReservationModel : IReservationKey
         EnsureEditable();
 
         var audit = AuditTrail;
-        audit.Modif(auditUserId, DateTime.Now);
+        audit.Batal(auditUserId, DateTime.Now);
         return WithState(
             ReservationStatusEnum.Cancelled,
             PlannedDate,
