@@ -1,7 +1,9 @@
 ﻿using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using MediatR;
+using Nuna.Lib.TransactionHelper;
 using Nuna.Lib.ValidationHelper;
+using System.Net.Http.Headers;
 
 namespace Bilreg.Application.AdmisiContext.AntrianFeature;
 
@@ -44,9 +46,17 @@ public  class QueGetNoAntrianByServicePointHandler : IRequestHandler<QueGetNoAnt
 
         var pasienTracker = PasienTrackerModel.Default;
 
+        using (var trans = TransHelper.NewScope())
+        {
+            que.AddEntry();
+            pasienTracker.AddEvent(servicePoint.ServicePointCode, "-");
 
+            _antrianRepo.SaveChanges(que);
+            _pasienTrackerRepo.SaveChanges(pasienTracker);
 
-
-        throw new NotImplementedException();
+            trans.Complete();
+        }
+        var response = new QueGetNoAntrianByServicePointRespone(que.ListEntry.FirstOrDefault().NoUrut);
+        return Task.FromResult(response);
     }
 }
