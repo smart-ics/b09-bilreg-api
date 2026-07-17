@@ -3,8 +3,8 @@ using Bilreg.Domain.IgdContext.BedIgdFeature;
 
 namespace Bilreg.Infrastructure.IgdContext.BedIgdFeature;
 
-public record PakaiBedDto(
-    string PakaiBedId,
+public record PakaiBedIgdDto(
+    string PakaiBedIgdId,
     string IgdVisitId,
     string BedIgdId,
     string BedIgdName,
@@ -13,9 +13,9 @@ public record PakaiBedDto(
     DateTime CheckOutDateTime,
     string CheckOutUserId)
 {
-    public static PakaiBedDto FromModel(PakaiBedModel model)
+    public static PakaiBedIgdDto FromModel(PakaiBedIgdModel model)
         => new(
-            PakaiBedId: model.PakaiBedId,
+            PakaiBedIgdId: model.PakaiBedIgdId,
             IgdVisitId: model.IgdVisitId,
             BedIgdId: model.BedIgdId,
             BedIgdName: model.BedIgdName,
@@ -24,9 +24,9 @@ public record PakaiBedDto(
             CheckOutDateTime: model.CheckOutDateTime,
             CheckOutUserId: model.CheckOutUserId == "-" ? "" : model.CheckOutUserId);
 
-    public PakaiBedModel ToModel()
+    public PakaiBedIgdModel ToModel()
         => new(
-            pakaiBedId: PakaiBedId,
+            pakaiBedIgdId: PakaiBedIgdId,
             igdVisitId: IgdVisitId,
             bedIgdId: BedIgdId,
             bedIgdName: BedIgdName,
@@ -35,9 +35,9 @@ public record PakaiBedDto(
             checkOutDateTime: CheckOutDateTime,
             checkOutUserId: string.IsNullOrEmpty(CheckOutUserId) ? "-" : CheckOutUserId);
 
-    public PakaiBedView ToView()
+    public PakaiBedIgdView ToView()
         => new(
-            PakaiBedId: PakaiBedId,
+            PakaiBedIgdId: PakaiBedIgdId,
             IgdVisitId: IgdVisitId,
             BedIgdId: BedIgdId,
             BedIgdName: BedIgdName,

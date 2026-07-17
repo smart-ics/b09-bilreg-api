@@ -6,26 +6,26 @@ using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.IgdContext.BedIgdFeature;
 
-public interface IPakaiBedRepo :
-    ISaveChange<PakaiBedModel>,
-    ILoadEntity<PakaiBedModel, IPakaiBedKey>,
-    IListData<PakaiBedView, IIgdVisitKey>
+public interface IPakaiBedIgdRepo :
+    ISaveChange<PakaiBedIgdModel>,
+    ILoadEntity<PakaiBedIgdModel, IPakaiBedIgdKey>,
+    IListData<PakaiBedIgdView, IIgdVisitKey>
 {
-    MayBe<PakaiBedModel> LoadOpenForBed(IBedIgdKey bed);
-    MayBe<PakaiBedModel> LoadOpenForVisit(IIgdVisitKey visit);
-    IEnumerable<PakaiBedOrphanView> ListOrphans();
+    MayBe<PakaiBedIgdModel> LoadOpenForBed(IBedIgdKey bed);
+    MayBe<PakaiBedIgdModel> LoadOpenForVisit(IIgdVisitKey visit);
+    IEnumerable<PakaiBedIgdOrphanView> ListOrphans();
 }
 
-public record PakaiBedView(
-    string PakaiBedId,
+public record PakaiBedIgdView(
+    string PakaiBedIgdId,
     string IgdVisitId,
     string BedIgdId,
     string BedIgdName,
     DateTime CheckInDateTime,
     DateTime CheckOutDateTime);
 
-public record PakaiBedOrphanView(
-    string PakaiBedId,
+public record PakaiBedIgdOrphanView(
+    string PakaiBedIgdId,
     string IgdVisitId,
     string BedIgdId,
     string BedIgdName,

@@ -14,22 +14,22 @@ public record IgdAssignBedCmd(
     string UserId)
     : IRequest<IgdAssignBedResponse>, IIgdVisitKey, IBedIgdKey;
 
-public record IgdAssignBedResponse(string IgdVisitId, string BedIgdId, string PakaiBedId);
+public record IgdAssignBedResponse(string IgdVisitId, string BedIgdId, string PakaiBedIgdId);
 
 public class IgdAssignBedHandler : IRequestHandler<IgdAssignBedCmd, IgdAssignBedResponse>
 {
     private readonly IIgdVisitRepo _igdVisitRepo;
     private readonly IBedIgdRepo _bedIgdRepo;
-    private readonly IPakaiBedRepo _pakaiBedRepo;
+    private readonly IPakaiBedIgdRepo _pakaiBedIgdRepo;
 
     public IgdAssignBedHandler(
         IIgdVisitRepo igdVisitRepo,
         IBedIgdRepo bedIgdRepo,
-        IPakaiBedRepo pakaiBedRepo)
+        IPakaiBedIgdRepo pakaiBedIgdRepo)
     {
         _igdVisitRepo = igdVisitRepo;
         _bedIgdRepo = bedIgdRepo;
-        _pakaiBedRepo = pakaiBedRepo;
+        _pakaiBedIgdRepo = pakaiBedIgdRepo;
     }
 
     public Task<IgdAssignBedResponse> Handle(IgdAssignBedCmd request, CancellationToken cancellationToken)
@@ -45,16 +45,16 @@ public class IgdAssignBedHandler : IRequestHandler<IgdAssignBedCmd, IgdAssignBed
 
         bed.Occupy(visit.IgdVisitId, audit);
         visit.AssignBed(bed.BedIgdId, audit);
-        var pakaiBed = PakaiBedModel.Open(visit, bed, audit);
+        var pakaiBedIgd = PakaiBedIgdModel.Open(visit, bed, audit);
 
         IgdAssignBedResponse response;
         using (var trans = TransHelper.NewScope())
         {
             _bedIgdRepo.SaveChanges(bed);
-            _pakaiBedRepo.SaveChanges(pakaiBed);
+            _pakaiBedIgdRepo.SaveChanges(pakaiBedIgd);
             _igdVisitRepo.SaveChanges(visit);
             trans.Complete();
-            response = new IgdAssignBedResponse(visit.IgdVisitId, bed.BedIgdId, pakaiBed.PakaiBedId);
+            response = new IgdAssignBedResponse(visit.IgdVisitId, bed.BedIgdId, pakaiBedIgd.PakaiBedIgdId);
         }
 
         return Task.FromResult(response);

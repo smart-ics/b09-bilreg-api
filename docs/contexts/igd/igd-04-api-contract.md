@@ -74,7 +74,7 @@ Command failures surface as HTTP errors with exception message text (operational
 |--|--|
 | **Route** | `POST /api/IgdVisit/{id}/assignBed` |
 | **Body** | `BedIgdId`, `UserId` |
-| **Response `data`** | `IgdVisitId`, `BedIgdId`, `PakaiBedId` |
+| **Response `data`** | `IgdVisitId`, `BedIgdId`, `PakaiBedIgdId` |
 | **Gate** | DR-05 (has triage), DR-06 (bed available), visit not terminal, not already observed |
 
 ### Transfer bed (UC04b)
@@ -83,7 +83,7 @@ Command failures surface as HTTP errors with exception message text (operational
 |--|--|
 | **Route** | `POST /api/IgdVisit/{id}/transferBed` |
 | **Body** | `TargetBedIgdId`, `Reason`, `Notes`, `UserId` |
-| **Response `data`** | `IgdVisitId`, `FromBedIgdId`, `ToBedIgdId`, `ClosedPakaiBedId`, `NewPakaiBedId` |
+| **Response `data`** | `IgdVisitId`, `FromBedIgdId`, `ToBedIgdId`, `ClosedPakaiBedIgdId`, `NewPakaiBedIgdId` |
 | **Gate** | Visit **observed** (DR-11); visit not terminal; target ≠ current bed; target bed available (DR-06); source bed occupied by this visit |
 
 Contoh body:
@@ -104,7 +104,7 @@ Contoh body:
 | **Route** | `POST /api/IgdVisit/{id}/checkOut` |
 | **Body** | `UserId` |
 | **Response `data`** | `"Done"` |
-| **Gate** | Visit must be observed; releases bed + closes open `PakaiBed` |
+| **Gate** | Visit must be observed; releases bed + closes open `PakaiBedIgd` |
 
 ### Redirect rawat jalan
 
@@ -188,12 +188,12 @@ Contoh body:
 | **Response `data`** | `BedIgdView[]`: `BedIgdId`, `BedIgdName`, `KamarName`, `BedState`, `CurrentIgdVisitId`, `OccupyDateTime` |
 | **Note** | Only beds in `Active` state with no occupancy |
 
-### List orphan PakaiBed (reconciliation)
+### List orphan PakaiBedIgd (reconciliation)
 
 | | |
 |--|--|
-| **Route** | `GET /api/BedIgd/pakaiBed/orphan` |
-| **Response `data`** | `PakaiBedOrphanView[]`: `PakaiBedId`, `IgdVisitId`, `BedIgdId`, `BedIgdName`, `CheckInDateTime`, `OrphanReason`, `VisitState`, `BedState`, `BedCurrentIgdVisitId` |
+| **Route** | `GET /api/BedIgd/pakaiBedIgd/orphan` |
+| **Response `data`** | `PakaiBedIgdOrphanView[]`: `PakaiBedIgdId`, `IgdVisitId`, `BedIgdId`, `BedIgdName`, `CheckInDateTime`, `OrphanReason`, `VisitState`, `BedState`, `BedCurrentIgdVisitId` |
 | **Audience** | Operator / DBA — see [`igd-05-runbook.md`](igd-05-runbook.md) |
 
 ---

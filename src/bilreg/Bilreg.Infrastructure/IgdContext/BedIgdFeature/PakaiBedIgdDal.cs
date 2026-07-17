@@ -9,20 +9,20 @@ using Nuna.Lib.DataAccessHelper;
 
 namespace Bilreg.Infrastructure.IgdContext.BedIgdFeature;
 
-public interface IPakaiBedDal :
-    IInsert<PakaiBedDto>,
-    IUpdate<PakaiBedDto>,
-    IDelete<IPakaiBedKey>,
-    IGetData<PakaiBedDto, IPakaiBedKey>,
-    IListData<PakaiBedDto, IIgdVisitKey>
+public interface IPakaiBedIgdDal :
+    IInsert<PakaiBedIgdDto>,
+    IUpdate<PakaiBedIgdDto>,
+    IDelete<IPakaiBedIgdKey>,
+    IGetData<PakaiBedIgdDto, IPakaiBedIgdKey>,
+    IListData<PakaiBedIgdDto, IIgdVisitKey>
 {
-    PakaiBedDto? GetOpenForBed(IBedIgdKey bed);
-    PakaiBedDto? GetOpenForVisit(IIgdVisitKey visit);
-    IEnumerable<OrphanPakaiBedRow> ListOrphans();
+    PakaiBedIgdDto? GetOpenForBed(IBedIgdKey bed);
+    PakaiBedIgdDto? GetOpenForVisit(IIgdVisitKey visit);
+    IEnumerable<OrphanPakaiBedIgdRow> ListOrphans();
 }
 
-public record OrphanPakaiBedRow(
-    string PakaiBedId,
+public record OrphanPakaiBedIgdRow(
+    string PakaiBedIgdId,
     string IgdVisitId,
     string BedIgdId,
     string BedIgdName,
@@ -32,24 +32,24 @@ public record OrphanPakaiBedRow(
     string BedState,
     string BedCurrentIgdVisitId);
 
-public class PakaiBedDal : IPakaiBedDal
+public class PakaiBedIgdDal : IPakaiBedIgdDal
 {
     private static readonly DateTime OPEN_SENTINEL = new(3000, 1, 1);
     private readonly DatabaseOptions _opt;
 
-    public PakaiBedDal(IOptions<DatabaseOptions> opt)
+    public PakaiBedIgdDal(IOptions<DatabaseOptions> opt)
     {
         _opt = opt.Value;
     }
 
-    public void Insert(PakaiBedDto dto)
+    public void Insert(PakaiBedIgdDto dto)
     {
         const string sql = """
-            INSERT INTO BILRG_PakaiBed (
-                PakaiBedId, IgdVisitId, BedIgdId, BedIgdName,
+            INSERT INTO BILRG_PakaiBedIgd (
+                PakaiBedIgdId, IgdVisitId, BedIgdId, BedIgdName,
                 CheckInDateTime, CheckInUserId, CheckOutDateTime, CheckOutUserId)
             VALUES (
-                @PakaiBedId, @IgdVisitId, @BedIgdId, @BedIgdName,
+                @PakaiBedIgdId, @IgdVisitId, @BedIgdId, @BedIgdName,
                 @CheckInDateTime, @CheckInUserId, @CheckOutDateTime, @CheckOutUserId)
             """;
         var dp = BuildParams(dto);
@@ -57,10 +57,10 @@ public class PakaiBedDal : IPakaiBedDal
         conn.Execute(sql, dp);
     }
 
-    public void Update(PakaiBedDto dto)
+    public void Update(PakaiBedIgdDto dto)
     {
         const string sql = """
-            UPDATE BILRG_PakaiBed
+            UPDATE BILRG_PakaiBedIgd
             SET IgdVisitId = @IgdVisitId,
                 BedIgdId = @BedIgdId,
                 BedIgdName = @BedIgdName,
@@ -68,57 +68,57 @@ public class PakaiBedDal : IPakaiBedDal
                 CheckInUserId = @CheckInUserId,
                 CheckOutDateTime = @CheckOutDateTime,
                 CheckOutUserId = @CheckOutUserId
-            WHERE PakaiBedId = @PakaiBedId
+            WHERE PakaiBedIgdId = @PakaiBedIgdId
             """;
         var dp = BuildParams(dto);
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
 
-    public void Delete(IPakaiBedKey key)
+    public void Delete(IPakaiBedIgdKey key)
     {
-        const string sql = "DELETE BILRG_PakaiBed WHERE PakaiBedId = @PakaiBedId";
+        const string sql = "DELETE BILRG_PakaiBedIgd WHERE PakaiBedIgdId = @PakaiBedIgdId";
         var dp = new DynamicParameters();
-        dp.AddParam("@PakaiBedId", key.PakaiBedId, SqlDbType.VarChar);
+        dp.AddParam("@PakaiBedIgdId", key.PakaiBedIgdId, SqlDbType.VarChar);
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
 
-    public PakaiBedDto GetData(IPakaiBedKey key)
+    public PakaiBedIgdDto GetData(IPakaiBedIgdKey key)
     {
         const string sql = """
-            SELECT PakaiBedId, IgdVisitId, BedIgdId, BedIgdName,
+            SELECT PakaiBedIgdId, IgdVisitId, BedIgdId, BedIgdName,
                 CheckInDateTime, CheckInUserId, CheckOutDateTime, CheckOutUserId
-            FROM BILRG_PakaiBed
-            WHERE PakaiBedId = @PakaiBedId
+            FROM BILRG_PakaiBedIgd
+            WHERE PakaiBedIgdId = @PakaiBedIgdId
             """;
         var dp = new DynamicParameters();
-        dp.AddParam("@PakaiBedId", key.PakaiBedId, SqlDbType.VarChar);
+        dp.AddParam("@PakaiBedIgdId", key.PakaiBedIgdId, SqlDbType.VarChar);
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.ReadSingle<PakaiBedDto>(sql, dp);
+        return conn.ReadSingle<PakaiBedIgdDto>(sql, dp);
     }
 
-    public IEnumerable<PakaiBedDto> ListData(IIgdVisitKey filter)
+    public IEnumerable<PakaiBedIgdDto> ListData(IIgdVisitKey filter)
     {
         const string sql = """
-            SELECT PakaiBedId, IgdVisitId, BedIgdId, BedIgdName,
+            SELECT PakaiBedIgdId, IgdVisitId, BedIgdId, BedIgdName,
                 CheckInDateTime, CheckInUserId, CheckOutDateTime, CheckOutUserId
-            FROM BILRG_PakaiBed
+            FROM BILRG_PakaiBedIgd
             WHERE IgdVisitId = @IgdVisitId
             ORDER BY CheckInDateTime
             """;
         var dp = new DynamicParameters();
         dp.AddParam("@IgdVisitId", filter.IgdVisitId, SqlDbType.VarChar);
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<PakaiBedDto>(sql, dp);
+        return conn.Read<PakaiBedIgdDto>(sql, dp);
     }
 
-    public PakaiBedDto? GetOpenForBed(IBedIgdKey bed)
+    public PakaiBedIgdDto? GetOpenForBed(IBedIgdKey bed)
     {
         const string sql = """
-            SELECT TOP 1 PakaiBedId, IgdVisitId, BedIgdId, BedIgdName,
+            SELECT TOP 1 PakaiBedIgdId, IgdVisitId, BedIgdId, BedIgdName,
                 CheckInDateTime, CheckInUserId, CheckOutDateTime, CheckOutUserId
-            FROM BILRG_PakaiBed
+            FROM BILRG_PakaiBedIgd
             WHERE BedIgdId = @BedIgdId
               AND CheckOutDateTime = @OpenSentinel
             ORDER BY CheckInDateTime DESC
@@ -127,15 +127,15 @@ public class PakaiBedDal : IPakaiBedDal
         dp.AddParam("@BedIgdId", bed.BedIgdId, SqlDbType.VarChar);
         dp.AddParam("@OpenSentinel", OPEN_SENTINEL, SqlDbType.DateTime);
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.ReadSingle<PakaiBedDto>(sql, dp);
+        return conn.ReadSingle<PakaiBedIgdDto>(sql, dp);
     }
 
-    public PakaiBedDto? GetOpenForVisit(IIgdVisitKey visit)
+    public PakaiBedIgdDto? GetOpenForVisit(IIgdVisitKey visit)
     {
         const string sql = """
-            SELECT TOP 1 PakaiBedId, IgdVisitId, BedIgdId, BedIgdName,
+            SELECT TOP 1 PakaiBedIgdId, IgdVisitId, BedIgdId, BedIgdName,
                 CheckInDateTime, CheckInUserId, CheckOutDateTime, CheckOutUserId
-            FROM BILRG_PakaiBed
+            FROM BILRG_PakaiBedIgd
             WHERE IgdVisitId = @IgdVisitId
               AND CheckOutDateTime = @OpenSentinel
             ORDER BY CheckInDateTime DESC
@@ -144,14 +144,14 @@ public class PakaiBedDal : IPakaiBedDal
         dp.AddParam("@IgdVisitId", visit.IgdVisitId, SqlDbType.VarChar);
         dp.AddParam("@OpenSentinel", OPEN_SENTINEL, SqlDbType.DateTime);
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.ReadSingle<PakaiBedDto>(sql, dp);
+        return conn.ReadSingle<PakaiBedIgdDto>(sql, dp);
     }
 
-    public IEnumerable<OrphanPakaiBedRow> ListOrphans()
+    public IEnumerable<OrphanPakaiBedIgdRow> ListOrphans()
     {
         const string sql = """
             SELECT
-                pb.PakaiBedId,
+                pb.PakaiBedIgdId,
                 pb.IgdVisitId,
                 pb.BedIgdId,
                 pb.BedIgdName,
@@ -168,7 +168,7 @@ public class PakaiBedDal : IPakaiBedDal
                 ISNULL(v.AdministrativeState,'-')   AS VisitState,
                 ISNULL(b.BedState,'-')              AS BedState,
                 ISNULL(b.CurrentIgdVisitId,'-')     AS BedCurrentIgdVisitId
-            FROM BILRG_PakaiBed pb
+            FROM BILRG_PakaiBedIgd pb
             LEFT JOIN BILRG_IgdVisit v ON v.IgdVisitId = pb.IgdVisitId
             LEFT JOIN BILRG_BedIgd   b ON b.BedIgdId   = pb.BedIgdId
             WHERE pb.CheckOutDateTime = @OpenSentinel
@@ -186,13 +186,13 @@ public class PakaiBedDal : IPakaiBedDal
         dp.AddParam("@OpenSentinel", OPEN_SENTINEL, SqlDbType.DateTime);
         dp.AddParam("@VoidSentinel", new DateTime(3000, 1, 1), SqlDbType.DateTime);
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Read<OrphanPakaiBedRow>(sql, dp);
+        return conn.Read<OrphanPakaiBedIgdRow>(sql, dp);
     }
 
-    private static DynamicParameters BuildParams(PakaiBedDto dto)
+    private static DynamicParameters BuildParams(PakaiBedIgdDto dto)
     {
         var dp = new DynamicParameters();
-        dp.AddParam("@PakaiBedId", dto.PakaiBedId, SqlDbType.VarChar);
+        dp.AddParam("@PakaiBedIgdId", dto.PakaiBedIgdId, SqlDbType.VarChar);
         dp.AddParam("@IgdVisitId", dto.IgdVisitId, SqlDbType.VarChar);
         dp.AddParam("@BedIgdId", dto.BedIgdId, SqlDbType.VarChar);
         dp.AddParam("@BedIgdName", dto.BedIgdName, SqlDbType.VarChar);

@@ -5,14 +5,14 @@ using Nuna.Lib.AutoNumberHelper;
 
 namespace Bilreg.Domain.IgdContext.BedIgdFeature;
 
-public class PakaiBedModel : IPakaiBedKey
+public class PakaiBedIgdModel : IPakaiBedIgdKey
 {
     private static readonly DateTime OPEN_SENTINEL = new(3000, 1, 1);
-    private const string ID_PREFIX = "PKB";
+    private const string ID_PREFIX = "PBI";
 
     #region CREATION
-    public PakaiBedModel(
-        string pakaiBedId,
+    public PakaiBedIgdModel(
+        string pakaiBedIgdId,
         string igdVisitId,
         string bedIgdId,
         string bedIgdName,
@@ -21,7 +21,7 @@ public class PakaiBedModel : IPakaiBedKey
         DateTime checkOutDateTime,
         string checkOutUserId)
     {
-        PakaiBedId = pakaiBedId;
+        PakaiBedIgdId = pakaiBedIgdId;
         IgdVisitId = igdVisitId;
         BedIgdId = bedIgdId;
         BedIgdName = bedIgdName;
@@ -31,8 +31,8 @@ public class PakaiBedModel : IPakaiBedKey
         CheckOutUserId = checkOutUserId;
     }
 
-    public static PakaiBedModel Default => new(
-        pakaiBedId: "-",
+    public static PakaiBedIgdModel Default => new(
+        pakaiBedIgdId: "-",
         igdVisitId: "-",
         bedIgdId: "-",
         bedIgdName: "-",
@@ -41,8 +41,8 @@ public class PakaiBedModel : IPakaiBedKey
         checkOutDateTime: OPEN_SENTINEL,
         checkOutUserId: "-");
 
-    public static IPakaiBedKey Key(string id) => new PakaiBedModel(
-        pakaiBedId: id,
+    public static IPakaiBedIgdKey Key(string id) => new PakaiBedIgdModel(
+        pakaiBedIgdId: id,
         igdVisitId: "-",
         bedIgdId: "-",
         bedIgdName: "-",
@@ -51,15 +51,15 @@ public class PakaiBedModel : IPakaiBedKey
         checkOutDateTime: OPEN_SENTINEL,
         checkOutUserId: "-");
 
-    public static PakaiBedModel Open(IgdVisitModel visit, BedIgdModel bed, AuditInfoType audit)
+    public static PakaiBedIgdModel Open(IgdVisitModel visit, BedIgdModel bed, AuditInfoType audit)
     {
         Guard.Against.Null(visit);
         Guard.Against.Null(bed);
         Guard.Against.NullOrWhiteSpace(audit.UserId, nameof(audit.UserId));
 
         var newId = NunaId.New(ID_PREFIX);
-        return new PakaiBedModel(
-            pakaiBedId: newId,
+        return new PakaiBedIgdModel(
+            pakaiBedIgdId: newId,
             igdVisitId: visit.IgdVisitId,
             bedIgdId: bed.BedIgdId,
             bedIgdName: bed.BedIgdName,
@@ -71,7 +71,7 @@ public class PakaiBedModel : IPakaiBedKey
     #endregion
 
     #region PROPERTIES
-    public string PakaiBedId { get; init; }
+    public string PakaiBedIgdId { get; init; }
     public string IgdVisitId { get; init; }
     public string BedIgdId { get; init; }
     public string BedIgdName { get; init; }
@@ -89,7 +89,7 @@ public class PakaiBedModel : IPakaiBedKey
         Guard.Against.NullOrWhiteSpace(audit.UserId, nameof(audit.UserId));
         if (!IsOpen)
             throw new InvalidOperationException(
-                $"PakaiBed {PakaiBedId} sudah ditutup pada {CheckOutDateTime:yyyy-MM-dd HH:mm}.");
+                $"PakaiBedIgd {PakaiBedIgdId} sudah ditutup pada {CheckOutDateTime:yyyy-MM-dd HH:mm}.");
         if (audit.Timestamp < CheckInDateTime)
             throw new ArgumentException(
                 $"CheckOutDateTime ({audit.Timestamp}) tidak boleh lebih awal dari CheckInDateTime ({CheckInDateTime}).");

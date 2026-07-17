@@ -17,7 +17,7 @@ public class IgdTransferBedHandlerTest
 {
     private readonly Mock<IIgdVisitRepo> _visitRepo = new();
     private readonly Mock<IBedIgdRepo> _bedRepo = new();
-    private readonly Mock<IPakaiBedRepo> _pakaiRepo = new();
+    private readonly Mock<IPakaiBedIgdRepo> _pakaiRepo = new();
     private readonly IgdTransferBedHandler _sut;
 
     public IgdTransferBedHandlerTest()
@@ -71,7 +71,7 @@ public class IgdTransferBedHandlerTest
 
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*tidak sedang menempati bed*");
         _bedRepo.Verify(r => r.SaveChanges(It.IsAny<BedIgdModel>()), Times.Never);
-        _pakaiRepo.Verify(r => r.SaveChanges(It.IsAny<PakaiBedModel>()), Times.Never);
+        _pakaiRepo.Verify(r => r.SaveChanges(It.IsAny<PakaiBedIgdModel>()), Times.Never);
         _visitRepo.Verify(r => r.SaveChanges(It.IsAny<IgdVisitModel>()), Times.Never);
     }
 
@@ -99,7 +99,7 @@ public class IgdTransferBedHandlerTest
         _bedRepo.Setup(r => r.LoadEntity(It.IsAny<IBedIgdKey>()))
             .Returns((IBedIgdKey k) => k.BedIgdId == "B01" ? MayBe.From(sourceBed) : MayBe.From(targetBed));
 
-        var openPakai = PakaiBedModel.Open(visit, sourceBed, Audit());
+        var openPakai = PakaiBedIgdModel.Open(visit, sourceBed, Audit());
         _pakaiRepo.Setup(r => r.LoadOpenForBed(It.IsAny<IBedIgdKey>())).Returns(MayBe.From(openPakai));
 
         var act = async () => await _sut.Handle(
@@ -120,7 +120,7 @@ public class IgdTransferBedHandlerTest
         _bedRepo.Setup(r => r.LoadEntity(It.IsAny<IBedIgdKey>()))
             .Returns((IBedIgdKey k) => k.BedIgdId == "B01" ? MayBe.From(sourceBed) : MayBe.From(targetBed));
 
-        var openPakai = PakaiBedModel.Open(visit, sourceBed, Audit());
+        var openPakai = PakaiBedIgdModel.Open(visit, sourceBed, Audit());
         _pakaiRepo.Setup(r => r.LoadOpenForBed(It.IsAny<IBedIgdKey>())).Returns(MayBe.From(openPakai));
 
         var result = await _sut.Handle(
@@ -128,8 +128,8 @@ public class IgdTransferBedHandlerTest
 
         result.FromBedIgdId.Should().Be("B01");
         result.ToBedIgdId.Should().Be("B02");
-        result.ClosedPakaiBedId.Should().Be(openPakai.PakaiBedId);
-        result.NewPakaiBedId.Should().NotBeNullOrWhiteSpace();
+        result.ClosedPakaiBedIgdId.Should().Be(openPakai.PakaiBedIgdId);
+        result.NewPakaiBedIgdId.Should().NotBeNullOrWhiteSpace();
 
         visit.BedId.Should().Be("B02");
         visit.ListEvent.Should().Contain(e => e.EventKind == IgdEventEnum.TransferBed);
@@ -138,7 +138,7 @@ public class IgdTransferBedHandlerTest
         openPakai.IsOpen.Should().BeFalse();
 
         _bedRepo.Verify(r => r.SaveChanges(It.IsAny<BedIgdModel>()), Times.Exactly(2));
-        _pakaiRepo.Verify(r => r.SaveChanges(It.IsAny<PakaiBedModel>()), Times.Exactly(2));
+        _pakaiRepo.Verify(r => r.SaveChanges(It.IsAny<PakaiBedIgdModel>()), Times.Exactly(2));
         _visitRepo.Verify(r => r.SaveChanges(It.IsAny<IgdVisitModel>()), Times.Once);
     }
 
@@ -153,7 +153,7 @@ public class IgdTransferBedHandlerTest
         _bedRepo.Setup(r => r.LoadEntity(It.IsAny<IBedIgdKey>()))
             .Returns((IBedIgdKey k) => k.BedIgdId == "B01" ? MayBe.From(sourceBed) : MayBe.From(targetBed));
 
-        var openPakai = PakaiBedModel.Open(visit, sourceBed, Audit());
+        var openPakai = PakaiBedIgdModel.Open(visit, sourceBed, Audit());
         _pakaiRepo.Setup(r => r.LoadOpenForBed(It.IsAny<IBedIgdKey>())).Returns(MayBe.From(openPakai));
 
         _visitRepo.Setup(r => r.SaveChanges(It.IsAny<IgdVisitModel>()))
@@ -164,7 +164,7 @@ public class IgdTransferBedHandlerTest
 
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("persist visit failed");
         _bedRepo.Verify(r => r.SaveChanges(It.IsAny<BedIgdModel>()), Times.Exactly(2));
-        _pakaiRepo.Verify(r => r.SaveChanges(It.IsAny<PakaiBedModel>()), Times.Exactly(2));
+        _pakaiRepo.Verify(r => r.SaveChanges(It.IsAny<PakaiBedIgdModel>()), Times.Exactly(2));
         _visitRepo.Verify(r => r.SaveChanges(It.IsAny<IgdVisitModel>()), Times.Once);
     }
 }

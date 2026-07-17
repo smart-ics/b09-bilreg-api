@@ -8,13 +8,13 @@ using Xunit;
 
 namespace Bilreg.Test.IgdContext.BedIgdFeature;
 
-public class PakaiBedDalTest
+public class PakaiBedIgdDalTest
 {
-    private readonly PakaiBedDal _sut = new(ConnStringHelper.GetTestEnv());
+    private readonly PakaiBedIgdDal _sut = new(ConnStringHelper.GetTestEnv());
 
-    private static PakaiBedDto Faker(string id = "TPKB000001", DateTime? checkOut = null)
-        => new PakaiBedDto(
-            PakaiBedId: id,
+    private static PakaiBedIgdDto Faker(string id = "TPBI000001", DateTime? checkOut = null)
+        => new PakaiBedIgdDto(
+            PakaiBedIgdId: id,
             IgdVisitId: "TIGV0000000001",
             BedIgdId: "TBED01",
             BedIgdName: "Bed Tes",
@@ -23,7 +23,7 @@ public class PakaiBedDalTest
             CheckOutDateTime: checkOut ?? new DateTime(3000, 1, 1),
             CheckOutUserId: checkOut.HasValue ? "U1" : "");
 
-    private static IPakaiBedKey FakerKey() => PakaiBedModel.Key("TPKB000001");
+    private static IPakaiBedIgdKey FakerKey() => PakaiBedIgdModel.Key("TPBI000001");
     private static IBedIgdKey BedKey() => BedIgdModel.Key("TBED01");
     private static IIgdVisitKey VisitKey() => IgdVisitModel.Key("TIGV0000000001");
 
@@ -52,7 +52,7 @@ public class PakaiBedDalTest
         _sut.Insert(Faker());
         var open = _sut.GetOpenForBed(BedKey());
         open.Should().NotBeNull();
-        open!.PakaiBedId.Should().Be("TPKB000001");
+        open!.PakaiBedIgdId.Should().Be("TPBI000001");
     }
 
     [Fact]
@@ -71,15 +71,15 @@ public class PakaiBedDalTest
         _sut.Insert(Faker());
         var open = _sut.GetOpenForVisit(VisitKey());
         open.Should().NotBeNull();
-        open!.PakaiBedId.Should().Be("TPKB000001");
+        open!.PakaiBedIgdId.Should().Be("TPBI000001");
     }
 
     [Fact]
     public void ListDataTest()
     {
         using var trans = TransHelper.NewScope();
-        _sut.Insert(Faker("TPKB000001"));
-        _sut.Insert(Faker("TPKB000002"));
+        _sut.Insert(Faker("TPBI000001"));
+        _sut.Insert(Faker("TPBI000002"));
 
         var actual = _sut.ListData(VisitKey()).ToList();
         actual.Should().HaveCount(2);

@@ -6,7 +6,7 @@ using Xunit;
 
 namespace Bilreg.Test.IgdContext.BedIgdFeature;
 
-public class PakaiBedModelTest
+public class PakaiBedIgdModelTest
 {
     private static AuditInfoType TestAudit(int hour = 8) =>
         new("U1", new DateTime(2026, 1, 1, hour, 0, 0));
@@ -23,9 +23,9 @@ public class PakaiBedModelTest
     public void Open_ProducesOpenRowWithSentinelCheckOut()
     {
         var (visit, bed) = Pair();
-        var pakai = PakaiBedModel.Open(visit, bed, TestAudit());
+        var pakai = PakaiBedIgdModel.Open(visit, bed, TestAudit());
 
-        pakai.PakaiBedId.Should().StartWith("PKB");
+        pakai.PakaiBedIgdId.Should().StartWith("PBI");
         pakai.IgdVisitId.Should().Be(visit.IgdVisitId);
         pakai.BedIgdId.Should().Be(bed.BedIgdId);
         pakai.IsOpen.Should().BeTrue();
@@ -36,7 +36,7 @@ public class PakaiBedModelTest
     public void Close_FromOpen_SetsCheckOut()
     {
         var (visit, bed) = Pair();
-        var pakai = PakaiBedModel.Open(visit, bed, TestAudit(8));
+        var pakai = PakaiBedIgdModel.Open(visit, bed, TestAudit(8));
 
         pakai.Close(TestAudit(10));
 
@@ -49,7 +49,7 @@ public class PakaiBedModelTest
     public void Close_AlreadyClosed_Throws()
     {
         var (visit, bed) = Pair();
-        var pakai = PakaiBedModel.Open(visit, bed, TestAudit(8));
+        var pakai = PakaiBedIgdModel.Open(visit, bed, TestAudit(8));
         pakai.Close(TestAudit(10));
 
         var act = () => pakai.Close(TestAudit(11));
@@ -61,7 +61,7 @@ public class PakaiBedModelTest
     public void Close_BeforeCheckIn_Throws()
     {
         var (visit, bed) = Pair();
-        var pakai = PakaiBedModel.Open(visit, bed, TestAudit(8));
+        var pakai = PakaiBedIgdModel.Open(visit, bed, TestAudit(8));
 
         var act = () => pakai.Close(TestAudit(7));
 

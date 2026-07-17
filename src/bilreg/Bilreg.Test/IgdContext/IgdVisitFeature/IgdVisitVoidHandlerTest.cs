@@ -20,7 +20,7 @@ public class IgdVisitVoidHandlerTest
 {
     private readonly Mock<IIgdVisitRepo> _visitRepo = new();
     private readonly Mock<IBedIgdRepo> _bedRepo = new();
-    private readonly Mock<IPakaiBedRepo> _pakaiRepo = new();
+    private readonly Mock<IPakaiBedIgdRepo> _pakaiRepo = new();
     private readonly Mock<ITindakanIgdRepo> _tindakanRepo = new();
     private readonly Mock<IBhpIgdRepo> _bhpRepo = new();
     private readonly Mock<AuditLogRepo> _auditLogRepo = new();
@@ -127,7 +127,7 @@ public class IgdVisitVoidHandlerTest
             .Setup(r => r.LoadEntity(It.IsAny<IBedIgdKey>()))
             .Returns(MayBe.From(bed));
 
-        var pakai = PakaiBedModel.Open(visit, bed,
+        var pakai = PakaiBedIgdModel.Open(visit, bed,
             new AuditInfoType("U1", new DateTime(2026, 1, 1, 8, 0, 0)));
         _pakaiRepo
             .Setup(r => r.LoadOpenForBed(It.IsAny<IBedIgdKey>()))
@@ -141,7 +141,7 @@ public class IgdVisitVoidHandlerTest
         result.IsVoided.Should().BeTrue();
         result.BedReleased.Should().BeTrue();
         _bedRepo.Verify(r => r.SaveChanges(It.IsAny<BedIgdModel>()), Times.Once);
-        _pakaiRepo.Verify(r => r.SaveChanges(It.IsAny<PakaiBedModel>()), Times.Once);
+        _pakaiRepo.Verify(r => r.SaveChanges(It.IsAny<PakaiBedIgdModel>()), Times.Once);
         _visitRepo.Verify(r => r.SaveChanges(It.IsAny<IgdVisitModel>()), Times.Once);
         bed.IsOccupied.Should().BeFalse();
         pakai.IsOpen.Should().BeFalse();
