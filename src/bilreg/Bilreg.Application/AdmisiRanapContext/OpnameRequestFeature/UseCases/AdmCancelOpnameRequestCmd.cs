@@ -37,7 +37,7 @@ public class AdmCancelOpnameRequestHandler : IRequestHandler<AdmCancelOpnameRequ
         _opnameRequestRepo.SaveChanges(cancelled);
 
         _auditRepo.SaveChanges(AuditLog.Create(
-            cancelled.AuditTrail.Modified,
+            cancelled.AuditTrail.Voided,
             "VOID",
             nameof(OpnameRequestModel),
             cancelled.OpnameRequestId,

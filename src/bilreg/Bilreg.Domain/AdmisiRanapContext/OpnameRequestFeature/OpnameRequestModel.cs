@@ -90,7 +90,7 @@ public record OpnameRequestModel : IOpnameRequestKey
         Guard.Against.NullOrWhiteSpace(auditUserId);
         EnsureStatus(OpnameRequestStatusEnum.Requested, "dibatalkan");
 
-        AuditTrail.Modif(auditUserId, DateTime.Now);
+        AuditTrail.Batal(auditUserId, DateTime.Now);
         return WithState(OpnameRequestStatusEnum.Cancelled, FulfilledRegId, AuditTrail);
     }
 
