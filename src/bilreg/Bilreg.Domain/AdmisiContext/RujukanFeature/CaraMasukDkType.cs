@@ -26,7 +26,8 @@ public record CaraMasukDkType : ICaraMasukDkKey
     
     public string CaraMasukDkId { get; init; }
     public string CaraMasukDkName { get; init; }
-    
+
+    public bool RequiresRujukan => CaraMasukDkId != DatangSendiri.CaraMasukDkId;
 }
 
 public interface ICaraMasukDkKey

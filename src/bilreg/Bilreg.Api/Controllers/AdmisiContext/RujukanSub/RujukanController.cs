@@ -1,5 +1,6 @@
 ﻿using Bilreg.Application.AdmisiContext.RujukanFeature;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
 
@@ -7,6 +8,7 @@ namespace Bilreg.Api.Controllers.AdmisiContext.RujukanSub
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class RujukanController : ControllerBase
     {
         private readonly IMediator _mediator;

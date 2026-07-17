@@ -7,8 +7,7 @@ public record ProsedurMasukInapGetQuery(string ProsedurMasukInapId)
     : IRequest<ProsedurMasukInapGetResponse>, IProsedurMasukInapKey;
 
 public record ProsedurMasukInapGetResponse(
-    string ProsedurMasukInapId, string ProsedurMasukInapName, 
-    string ProsedurMasukInapDkId, string ProsedurMasukInapDkName); 
+    string ProsedurMasukInapId, string ProsedurMasukInapName); 
 
 public class ProsedurMasukInapGethandler : IRequestHandler<ProsedurMasukInapGetQuery, ProsedurMasukInapGetResponse>
 {
@@ -25,9 +24,7 @@ public class ProsedurMasukInapGethandler : IRequestHandler<ProsedurMasukInapGetQ
             .GetValueOrThrow($"Prosedur Masuk Inap {request.ProsedurMasukInapId} not found");
         var result = new ProsedurMasukInapGetResponse(
             prosedurMasukInap.ProsedurMasukInapId, 
-            prosedurMasukInap.ProsedurMasukInapName,
-            prosedurMasukInap.ProsedurMasukInapDkId,
-            prosedurMasukInap.ProsedurMasukInapDkName);
+            prosedurMasukInap.ProsedurMasukInapName);
 
         return Task.FromResult(result);
     }

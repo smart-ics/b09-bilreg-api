@@ -1,5 +1,6 @@
 using Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
 
@@ -7,6 +8,7 @@ namespace Bilreg.Api.Controllers.BedUsageContext.KamarOperasiFeature;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class ScheduleOpController : ControllerBase
 {
     private readonly IMediator _mediator;

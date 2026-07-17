@@ -1,5 +1,6 @@
 using Bilreg.Application.LabContext.LabOrderFeature.UseCases;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
 
@@ -7,6 +8,7 @@ namespace Bilreg.Api.Controllers.LabContext.LabOrderFeature;
 
 [Route("api/LabContext/LabOrderFeature")]
 [ApiController]
+[Authorize]
 public class LabOrderController : ControllerBase
 {
     private readonly IMediator _mediator;

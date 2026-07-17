@@ -16,12 +16,15 @@ public class RegModel : IRegKey
 
     #region  CREATION
     public RegModel(string regId, DateOnly regDate,
-        AuditInfoType regMasukAudit, AuditInfoType regKeluarAudit, AuditInfoType regCancelOutAudit, AuditInfoType regVoidAudit,
+        AuditInfoType regMasukAudit, AuditInfoType regKeluarAudit, 
+        AuditInfoType regCancelOutAudit, AuditInfoType regVoidAudit,
         JenisRegEnum jenisReg, PasienReff pasien, TipeJaminanReff tipeJaminan, 
         PolisReff polis, KelasReff kelas, CaraMasukDkType caraMasukDk, RujukanReff rujukan, 
         PpaReff dokter, LayananReff layanan, KarcisReff karcis, 
         RegEligibilityType eligibility,
-        IEnumerable<RegKomponenType> listKomponen)
+        IEnumerable<RegKomponenType> listKomponen,
+        KelasDkType? kelasDk = null,
+        BangsalReff? bangsal = null)
     {
         RegId = regId;
         RegDate = regDate;
@@ -40,7 +43,9 @@ public class RegModel : IRegKey
         Layanan = layanan;
         Karcis = karcis;
         Eligibility = eligibility;
-        _listKomponen = listKomponen.ToList();
+        KelasDk = kelasDk ?? KelasDkType.Default;
+        Bangsal = bangsal ?? new BangsalReff("-", "-");
+        _listKomponen = listKomponen?.ToList() ?? [];
     }
 
     public static RegModel Default => new RegModel("-", new DateOnly(3000, 1, 1),
@@ -68,7 +73,8 @@ public class RegModel : IRegKey
     public AuditInfoType RegKeluarAudit { get; private set;}
     public AuditInfoType RegCancelOutAudit { get; private set; }
     public AuditInfoType RegVoidAudit { get; private set;  }
-    public bool IsAktif => RegKeluarAudit == AuditInfoType.Default;
+    public bool IsAktif => RegKeluarAudit == AuditInfoType.Default
+        && RegVoidAudit == AuditInfoType.Default;
     public JenisRegEnum JenisReg { get; init; }
     //      siapa yang berobat
     public PasienReff Pasien { get; init; }
@@ -83,6 +89,9 @@ public class RegModel : IRegKey
     public PpaReff Dokter { get; private set; }
     public LayananReff Layanan { get; private set; }
     public KarcisReff Karcis { get; private set; }
+    //      Sync enrichment for Admission bridge; not persisted in ta_registrasi.
+    public KelasDkType KelasDk { get; init; }
+    public BangsalReff Bangsal { get; init; }
     //      Eligibility
     public RegEligibilityType Eligibility { get; private set; }
     //
@@ -91,6 +100,7 @@ public class RegModel : IRegKey
     
     #region BEHAVIOUR
     public RegReff ToReff()=> new RegReff(RegId, Pasien.PasienId, Pasien.PasienName);
+
     public void ApplyJaminan(TipeJaminanType tipeJaminan, PolisModel polis)
     {
         if (tipeJaminan.TipeJaminanId == BAYAR_SENDIRI)
@@ -112,7 +122,7 @@ public class RegModel : IRegKey
 
     public void SpecifyCaraMasuk(CaraMasukDkType caraMasukDk, RujukanType rujukan)
     {
-        if (caraMasukDk == CaraMasukDkType.DatangSendiri)
+        if (!caraMasukDk.RequiresRujukan)
         {
             CaraMasukDk = caraMasukDk;
             Rujukan = rujukan.ToReff();
@@ -154,6 +164,7 @@ public class RegModel : IRegKey
         Rujukan = rujukan.ToReff();
         Karcis = karcis.ToReff();
     }
+
     public void AssignVisitTo(PpaType dokter, LayananType layanan, KarcisType karcis)
     {
         if (karcis.ListLayanan.All(x => x.LayananId != layanan.LayananId))
@@ -168,16 +179,42 @@ public class RegModel : IRegKey
             .Select(x => new RegKomponenType(x.KomponenTarif, dokter.ToReff(), x.Nilai, 0)));
     }
 
-    public void BatalBerobat(string userId)
+    public void AssignInpatientVisitTo(PpaType dokter, LayananType layanan)
     {
-        RegVoidAudit = new AuditInfoType(userId, DateTime.Now);
+        if (layanan.InstalasiDk.InstalasiDkId != InstalasiDkType.RawatInap.InstalasiDkId)
+            throw new ArgumentException($"Layanan {layanan.LayananId} bukan instalasi rawat inap");
+
+        Dokter = dokter.ToReff();
+        Layanan = layanan.ToReff();
+        Karcis = KarcisType.Default.ToReff();
+
+        // Rawat Inap does not create ta_registrasi2 rows (Rawat Jalan / IGD only).
+        _listKomponen.Clear();
     }
+
+    public void BatalBerobat(string userId, DateTime timestamp)
+    {
+        if (string.IsNullOrWhiteSpace(userId))
+            throw new ArgumentException("UserId wajib diisi.", nameof(userId));
+
+        if (RegVoidAudit != AuditInfoType.Default)
+            throw new InvalidOperationException($"Registrasi {RegId} sudah dibatalkan.");
+
+        if (RegKeluarAudit != AuditInfoType.Default)
+            throw new InvalidOperationException($"Registrasi {RegId} sudah keluar dan tidak dapat dibatalkan.");
+
+        RegVoidAudit = new AuditInfoType(userId, timestamp);
+    }
+
+    // Retained for existing registration-cancellation callers.
+    public void BatalBerobat(string userId) => BatalBerobat(userId, DateTime.Now);
 
     public void SetEligibility(string noSjp, string pesertaJaminanId, string sjpId)
     {
         var data = new RegEligibilityType(sjpId, noSjp, pesertaJaminanId);
         Eligibility = data;
     }
+
     #endregion
 }
 
@@ -199,5 +236,4 @@ public record RegEligibilityType(
     public static RegEligibilityType Default
         => new RegEligibilityType("-", "-", "-");
 }
-    
     

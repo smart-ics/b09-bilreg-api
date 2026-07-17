@@ -96,6 +96,14 @@
     <Folder Include="LabContext\LabResultFeature\" />
     <Folder Include="Shared\" />
     <Folder Include="PaymentContext\TrsBillingFeature\" />
+    <Folder Include="PaymentContext\" />
+    <Folder Include="PaymentContext\PasienBalanceFeature\" />
+    <Folder Include="PaymentContext\TataRekeningFeature\" />
+    <Folder Include="AdmisiRanapContext\" />
+    <Folder Include="AdmisiRanapContext\OpnameRequestFeature\" />
+    <Folder Include="AdmisiRanapContext\ReservationFeature\" />
+    <Folder Include="AdmisiRanapContext\AdmissionFeature\" />
+    <Folder Include="AdmisiRanapContext\WaitingListFeature\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OpCase.sql" />
@@ -106,6 +114,17 @@
     <None Include="BedUsageContext\KamarOperasiFeature\ta_jenis_operasi.sql" />
     <None Include="BedUsageContext\WardFeature\BILRG_RoomCat.sql" />
     <None Include="BedUsageContext\WardFeature\BILRG_RoomCatDataSeed.sql" />
+    <None Include="AdmisiRanapContext\OpnameRequestFeature\BILRG_AdmOpnameRequest.sql" />
+    <None Include="AdmisiRanapContext\OpnameRequestFeature\BILRG_AdmOpnameRequest_M1_DropPasienSnapshot_Alter.sql" />
+    <None Include="AdmisiRanapContext\ReservationFeature\BILRG_AdmReservation.sql" />
+    <None Include="AdmisiRanapContext\ReservationFeature\BILRG_AdmReservation_M2_DropOpnameRequestId_Alter.sql" />
+    <None Include="AdmisiRanapContext\AdmissionFeature\BILRG_AdmAdmission.sql" />
+    <None Include="AdmisiRanapContext\AdmissionFeature\BILRG_AdmAdmission_M1_DropPasienSnapshot_Alter.sql" />
+    <None Include="AdmisiRanapContext\AdmissionFeature\BILRG_AdmAdmission_M2_KelasDk_Alter.sql" />
+    <None Include="AdmisiRanapContext\AdmissionFeature\BILRG_AdmCoordinatedCancellationRequest.sql" />
+    <None Include="AdmisiRanapContext\WaitingListFeature\BILRG_BedWaitingList.sql" />
+    <None Include="AdmisiRanapContext\WaitingListFeature\BILRG_BedWaitingList_M1_DropPasienSnapshot_Alter.sql" />
+    <None Include="AdmisiRanapContext\BILRG_AdmisiRanap_Phase7_Rollback.sql" />
     <None Include="AdmisiContext\AntrianFeature\BILRG_Antrian.sql" />
     <None Include="AdmisiContext\AntrianFeature\BILRG_AntrianEntry.sql" />
     <None Include="AdmisiContext\AntrianFeature\BILRG_PasienTracker.sql" />

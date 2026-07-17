@@ -2,12 +2,14 @@ using Bilreg.Application.AdmisiContext.JadwalPraktekFeature.UseCases;
 using Bilreg.Application.AdmisiContext.BookingFeature;
 
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
 
 namespace Bilreg.Api.Controllers.AdmisiContext.BookingFeature;
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class PraktekDokterController : Controller
 {
     private readonly IMediator _mediator;

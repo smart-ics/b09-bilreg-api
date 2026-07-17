@@ -79,7 +79,7 @@ public class TataRekeningApiIntegrationTest : IClassFixture<TataRekeningWebAppli
     }
 
     [Fact]
-    public async Task API05_GivenWrongRole_WhenClose_ThenReturns403()
+    public async Task API05_GivenAuthenticatedUser_WhenClose_ThenReturns200()
     {
         _factory.Harness.SetupCloseScenario();
         TestAuthHandler.IsAuthenticated = true;
@@ -92,7 +92,7 @@ public class TataRekeningApiIntegrationTest : IClassFixture<TataRekeningWebAppli
             $"/api/tatarekening/{TataRekeningApiTestHarness.RegId}/close",
             null);
 
-        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     [Fact]

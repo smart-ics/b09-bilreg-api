@@ -54,9 +54,7 @@ Therefore these operations are delegated to Taksaka.
 - Execute queued jobs
 - Retry failed jobs
 - Replay failed jobs
-- Execute projection workers
-- Execute integration workers
-- Execute maintenance workers
+- Execute workers
 
 ## Operational Goals
 
@@ -110,16 +108,17 @@ A Job has
 
 ## Worker
 
-A Worker is a capability that executes one type of Job.
+A Worker is a plugin that executes one type of Job.
+
+Workers encapsulate application-specific processing while the Engine remains generic.
 
 Examples
 
-- Accounting Worker
-- Projection Worker
-- SATUSEHAT Worker
-- Notification Worker
-
-Workers encapsulate business processing.
+- Registration Projection
+- SATUSEHAT Upload
+- Accounting Journal
+- Email Notification
+- Cache Refresh
 
 ---
 
@@ -174,58 +173,6 @@ It provides
 - Alert Management
 
 The Operator Console never performs business processing.
-
----
-
-# Worker Categories
-
-## Projection
-
-Generate DDD models from legacy systems.
-
-Examples
-
-- Registration Projection
-- Billing Projection
-- Patient Projection
-
----
-
-## Integration
-
-Communicate with external systems.
-
-Examples
-
-- SATUSEHAT
-- BPJS
-- LIS
-- RIS
-
----
-
-## Business
-
-Execute asynchronous hospital business processes.
-
-Examples
-
-- Accounting Journal
-- Notification
-- Dashboard Update
-
----
-
-## Maintenance
-
-Maintain platform integrity.
-
-Examples
-
-- Cleanup
-- Data Repair
-- Cache Refresh
-- Rebuild Index
 
 ---
 
