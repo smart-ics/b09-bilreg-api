@@ -236,6 +236,9 @@
     <Build Include="AdmisiContext\AntrianFeature\ta_no_antrian_map_hdr.sql" />
     <Build Include="BedUsageContext\KamarOperasiFeature\BILRG_ScheduleOp.sql" />
     <Build Include="BedUsageContext\KamarOperasiFeature\BILRG_SchedulOpPpa.sql" />
+    <Build Include="BedUsageContext\BedOperationalFeature\BILRG_RnaBedOperational.sql" />
+    <Build Include="BedUsageContext\BedOperationalFeature\BILRG_RnaBedReadinessTransaction.sql" />
+    <Build Include="BedUsageContext\BedOperationalFeature\BILRG_RnaBedReadinessCorrection.sql" />
     <Build Include="BedUsageContext\PakaiBedFeature\ta_trs_bed.sql" />
     <Build Include="BedUsageContext\PakaiBedFeature\BILRG_RnaPakaiBedAlokasi.sql" />
     <Build Include="BedUsageContext\PakaiBedFeature\BILRG_RnaPakaiBedKoreksi.sql" />
