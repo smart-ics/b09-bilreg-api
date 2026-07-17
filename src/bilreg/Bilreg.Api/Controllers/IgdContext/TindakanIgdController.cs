@@ -1,6 +1,7 @@
 using Bilreg.Api.Helpers;
 using Bilreg.Application.IgdContext.TindakanIgdFeature.UseCases;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
 
@@ -8,6 +9,7 @@ namespace Bilreg.Api.Controllers.IgdContext;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class TindakanIgdController : Controller
 {
     private readonly IMediator _mediator;

@@ -1,14 +1,16 @@
 ﻿
 using Bilreg.Api.Helpers;
 using Bilreg.Application.AdmisiContext.BookingFeature.UseCases;
- using MediatR;
- using Microsoft.AspNetCore.Mvc;
- using Nuna.Lib.ActionResultHelper;
+using MediatR;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Nuna.Lib.ActionResultHelper;
 
- namespace Bilreg.Api.Controllers.AdmisiContext.BookingFeature;
+namespace Bilreg.Api.Controllers.AdmisiContext.BookingFeature;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class BookingController : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -43,6 +45,7 @@ public class BookingController : ControllerBase
 
     [HttpPost]
     [Route("createFromHidok")]
+    [AllowAnonymous]
     public async Task<IActionResult> CreateFromHidok(BookingCreateFromHidokCommand cmd)
     {
         var response = await _mediator.Send(cmd);
@@ -71,6 +74,7 @@ public class BookingController : ControllerBase
 
     [HttpDelete]
     [Route("{bookingIdHidok}/hidok")]
+    [AllowAnonymous]
     public async Task<IActionResult> DeleteFromHidok(string bookingIdHidok)
     {
         var cmd = new BookingDeleteFromHidokCmd(bookingIdHidok);

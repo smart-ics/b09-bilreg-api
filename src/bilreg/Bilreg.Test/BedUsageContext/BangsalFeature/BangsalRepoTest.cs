@@ -1,4 +1,5 @@
 using Bilreg.Domain.BedUsageContext.WardFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Infrastructure.BedUsageContext.WardFeature;
 using FluentAssertions;
 using Moq;
@@ -136,6 +137,26 @@ public class BangsalRepoTests
         var bangsalTypes = result.ToList();
         bangsalTypes.Should().NotBeNull();
         bangsalTypes.Count.Should().Be(2);
+    }
+
+    [Fact]
+    public void UT8_GivenLayananFilter_WhenListData_ThenOnlyMatchingBangsalIsReturned()
+    {
+        var target = new LayananReff("LYN-1", "Layanan 1");
+        var other = new LayananReff("LYN-2", "Layanan 2");
+        var dtos = new List<BangsalDto>
+        {
+            BangsalDto.FromModel(new BangsalType("B1", "Bangsal 1", RoomCatType.Default, target)),
+            BangsalDto.FromModel(new BangsalType("B2", "Bangsal 2", RoomCatType.Default, other))
+        };
+        _bangsalDalMock
+            .Setup(x => x.ListData())
+            .Returns(dtos);
+
+        var result = _repository.ListData(target).ToList();
+
+        result.Should().ContainSingle();
+        result[0].BangsalId.Should().Be("B1");
     }
 
     private static BangsalType CreateTestModel()

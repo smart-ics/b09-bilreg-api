@@ -1,0 +1,12 @@
+{
+  "name": "antrian-consistency-repair",
+  "version": "1.0.0",
+  "description": "Repairs BILRG_AntrianEntry rows still referencing bookings after registration.",
+  "workerType": "Maintenance",
+  "configuration": {
+    "batchSize": 50,
+    "workerEnabled": true,
+    "executionTimeout": "00:10:00",
+    "connectionString": ""
+  }
+}

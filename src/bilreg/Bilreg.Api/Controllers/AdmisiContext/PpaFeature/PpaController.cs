@@ -1,5 +1,6 @@
 ﻿using Bilreg.Application.AdmisiContext.PpaFeature.UseCases;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
 
@@ -7,6 +8,7 @@ namespace Bilreg.Api.Controllers.AdmisiContext.PpaFeature;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class PpaController : Controller
 {
     private readonly IMediator _mediator;

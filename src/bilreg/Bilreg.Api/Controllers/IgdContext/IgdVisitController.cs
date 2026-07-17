@@ -2,6 +2,7 @@ using Bilreg.Api.Helpers;
 using Bilreg.Application.IgdContext.BedIgdFeature.UseCases;
 using Bilreg.Application.IgdContext.IgdVisitFeature.UseCases;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
 
@@ -9,6 +10,7 @@ namespace Bilreg.Api.Controllers.IgdContext;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class IgdVisitController : Controller
 {
     private readonly IMediator _mediator;

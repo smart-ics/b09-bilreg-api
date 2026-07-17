@@ -1,0 +1,7 @@
+{
+  "name": "sample-projection",
+  "version": "1.0.0",
+  "description": "Sample projection worker plugin.",
+  "workerType": "Projection",
+  "configuration": {}
+}

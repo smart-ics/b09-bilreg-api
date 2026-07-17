@@ -1,0 +1,43 @@
+{
+  "regId": "RGA4LISM7N",
+  "admission": [
+    {
+      "RegId": "RGA4LISM7N",
+      "AdmissionStatus": 0,
+      "AdmissionSource": 0,
+      "PasienId": "347137300000070"
+    }
+  ],
+  "jaminan": [
+    {
+      "fs_kd_reg": "RGA4LISM7N",
+      "fs_kd_polis": "-"
+    }
+  ],
+  "registrasi": [
+    {
+      "fs_kd_reg": "RGA4LISM7N",
+      "fs_kd_jenis_reg": "1",
+      "fs_kd_medis": "DR00000015",
+      "fs_kd_layanan": "RI001",
+      "fs_kd_tipe_jaminan": "00000"
+    }
+  ],
+  "reg_inap": [],
+  "history_dokter": [],
+  "reg_aktif": [
+    {
+      "RegId": "RGA4LISM7N",
+      "PasienId": "347137300000070"
+    }
+  ],
+  "audit_admission": [
+    {
+      "EntityId": "RGA4LISM7N",
+      "ActionType": "CREATE",
+      "EntityName": "AdmissionModel"
+    }
+  ],
+  "waiting_list": [],
+  "source": {}
+}

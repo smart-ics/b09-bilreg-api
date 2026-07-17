@@ -1,6 +1,7 @@
 using Bilreg.Application.LabContext.LabOwareFeature;
 using Bilreg.Application.LabContext.LabOwareFeature.UseCases;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
 
@@ -8,6 +9,7 @@ namespace Bilreg.Api.Controllers.LabContext.LabOwareFeature;
 
 [Route("api/LabContext/LabOwareFeature")]
 [ApiController]
+[Authorize]
 public class LabOwareController : ControllerBase
 {
     private readonly IMediator _mediator;

@@ -1,6 +1,7 @@
 using Bilreg.Api.Helpers;
 using Bilreg.Application.ChargeContext.TindakanFeature.UseCases;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi.Services;
 using Nuna.Lib.ActionResultHelper;
@@ -9,6 +10,7 @@ namespace Bilreg.Api.Controllers.ChargeContext;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class TindakanController : Controller
 {
     private readonly IMediator _mediator;

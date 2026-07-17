@@ -60,6 +60,34 @@
 | `docs/contexts/igd/igd-04-api-contract.md` | IGD visit — integration (frontend/API contract) |
 | `docs/contexts/igd/igd-05-runbook.md` | IGD visit — operation (runbook, troubleshooting, recovery) |
 
+### Admisi — Rawat Inap (`docs/contexts/admisi-ranap/`)
+
+| Path | Purpose |
+|------|---------|
+| `docs/contexts/admisi-ranap/admisi-ranap-domain.md` | Admisi Ranap — what (aggregates, rules, lifecycles) |
+| `docs/contexts/admisi-ranap/admisi-ranap-architecture.md` | Admisi Ranap — how (use cases, repos, API, integration, ADRs) |
+| `docs/contexts/admisi-ranap/admisi-ranap-registration-orchestration.md` | Admission + legacy Registration orchestration, shared `RegId`, mapping rules, and AI implementation guidance |
+| `docs/contexts/admisi-ranap/admisi-ranap-coordinated-cancellation-design.md` | Coordinated Admission/Registration cancellation — eligibility, state transitions, source restoration, transaction, concurrency, and tests |
+| `docs/contexts/admisi-ranap/ta-reg-inap-persistence-contract.md` | `ta_reg_inap` / `RegInapModel` persistence contract for inpatient registration — ownership, fields, DAL defects, readiness |
+| `docs/contexts/admisi-ranap/admisi-ranap-step-4c-verification-report.md` | Step 4C — end-to-end + DB verification report (Opname/Reservation, RegInap, rollback, follow-ups) |
+| `docs/contexts/admisi-ranap/admisi-ranap-persistent-workspace-capability-matrix.md` | Persistent workspace — backend capability matrix (Ready / Propose / Defer); Phase 2 WL-by-regId Ready |
+| `docs/contexts/admisi-ranap/admisi-ranap-implementation-plan.md` | Admisi Ranap — phased backend implementation plan |
+| `docs/contexts/admisi-ranap/admisi-ranap-phase-0-implementation-report.md` | Phase 0 — folder scaffolding, conventions, build verification |
+| `docs/contexts/admisi-ranap/admisi-ranap-phase-1-implementation-report.md` | Phase 1 — domain aggregates, state machines, invariant tests |
+| `docs/contexts/admisi-ranap/admisi-ranap-phase-2-implementation-report.md` | Phase 2 — SQL, DTO/DAL, repositories, worklist projection |
+| `docs/contexts/admisi-ranap/admisi-ranap-phase-3-implementation-report.md` | Phase 3 — MediatR use cases, cross-aggregate orchestration, handler tests |
+| `docs/contexts/admisi-ranap/admisi-ranap-phase-4-implementation-report.md` | Phase 4 — REST API controllers, 19 endpoints, JSendOk, baseline auth |
+| `docs/contexts/admisi-ranap/admisi-ranap-phase-5-implementation-report.md` | Phase 5 — integration gateways (Doctor, Patient, Ward), handler refactor, adapter tests |
+| `docs/contexts/admisi-ranap/admisi-ranap-phase-7-implementation-report.md` | Phase 7 — hardening, rollout, audit logging, E2E workflow validation |
+| `docs/contexts/admisi-ranap/admisi-ranap-phase-b1-journey-resolver-implementation-report.md` | Release 1 Phase B1 — journey contracts, JourneyId, integrity, pure stage resolver |
+| `docs/contexts/admisi-ranap/admisi-ranap-phase-b2-journey-projection-implementation-report.md` | Release 1 Phase B2 — journey read DAL/projection, SQL stage parity, list/detail, integration tests |
+| `docs/contexts/admisi-ranap/admisi-ranap-phase-b2.1-journey-projection-hardening-report.md` | Release 1 Phase B2.1 — batch list hydration, IT isolation, allowed-action billing gate, volume evidence |
+| `docs/contexts/admisi-ranap/admisi-ranap-phase-b3.1-staging-verification-report.md` | Release 1 Phase B3.1 — staging verification result, API/DB prerequisites, contract evidence, and performance gate |
+| `docs/contexts/admisi-ranap/admisi-ranap-runbook.md` | Admisi Ranap — operation (deployment, validation, rollback) |
+| `docs/contexts/admisi-ranap/admisi-ranap-rollout-checklist.md` | Admisi Ranap — production rollout gates |
+
+Persistent-workspace Phase 2 close-out summary (frontend docs tree): `c012_myhospital_web/docs/modules/admisi-ranap/persistent-workspace-phase-2-implementation-summary.md`
+
 ### Admisi — Booking / Jadwal Praktek (`docs/contexts/admisi/`)
 
 | Path | Purpose |
@@ -114,6 +142,25 @@ Patient financial responsibility domain (registration-scoped lifecycle, TrsBill 
 | `docs/contexts/TataRekening/SOP-TR-09 — Reopen Billing.md` | SOP — Reopen Billing |
 | `docs/contexts/TataRekening/SOP-TR-10 — Settlement Initiation.md` | SOP — Settlement Initiation |
 | `docs/contexts/TataRekening/tata-rekening-domain-gap-analysis-report.md` | Domain gap analysis (implementation vs artifact) |
+
+### Taksaka (`docs/contexts/taksaka/` + `docs/taksaka/`)
+
+Background processing platform — job orchestration, worker plugins, operator console.
+
+| Path | Purpose |
+|------|---------|
+| `docs/contexts/taksaka/taksaka-01-domain.md` | Taksaka — what (domain vision, ubiquitous language, health model) |
+| `docs/contexts/taksaka/taksaka-02-architecture.md` | Taksaka — how (engine, plugins, SignalR, operator console) |
+| `docs/taksaka/README.md` | **Operations docs index** — deployment, config, runbook, administrator guide |
+| `docs/taksaka/01-deployment-guide.md` | Deploy, build, publish, first startup |
+| `docs/taksaka/02-configuration-reference.md` | All configuration keys from code |
+| `docs/taksaka/03-operator-manual.md` | Operator procedures (start/stop, logs, monitoring) |
+| `docs/taksaka/04-troubleshooting.md` | Troubleshooting guide |
+| `docs/taksaka/05-architecture-runtime.md` | Runtime architecture (implemented vs stub) |
+| `docs/taksaka/06-plugin-development-guide.md` | Worker plugin development |
+| `docs/taksaka/07-production-checklist.md` | Production deployment checklist |
+| `docs/taksaka/08-operations-runbook.md` | Daily/weekly/monthly runbook, DR, upgrade |
+| `docs/taksaka/09-administrator-guide.md` | Practical guide for hospital EDP (Bahasa Indonesia) |
 
 ---
 
@@ -181,4 +228,4 @@ Feature artifacts are maintained by:
 Feature artifact lifecycle and maintenance policy:
 
 - see `docs/agents/feature-knowledge-steward.md`
-- 
+-

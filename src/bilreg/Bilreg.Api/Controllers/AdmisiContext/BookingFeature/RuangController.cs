@@ -1,6 +1,7 @@
 
 using Bilreg.Application.AdmisiContext.JadwalPraktekFeature.UseCases;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
 
@@ -8,6 +9,7 @@ namespace Bilreg.Api.Controllers.AdmisiContext.BookingFeature;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class RuangController : Controller
 {
     private readonly IMediator _mediator;
