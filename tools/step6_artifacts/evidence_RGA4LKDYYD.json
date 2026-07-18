@@ -1,0 +1,82 @@
+{
+  "regId": "RGA4LKDYYD",
+  "admission": [
+    {
+      "RegId": "RGA4LKDYYD",
+      "AdmissionStatus": 0,
+      "AdmissionSource": 0,
+      "PasienId": "347137300000037"
+    }
+  ],
+  "jaminan": [
+    {
+      "fs_kd_reg": "RGA4LKDYYD",
+      "fs_kd_polis": "-"
+    }
+  ],
+  "registrasi": [
+    {
+      "fs_kd_reg": "RGA4LKDYYD",
+      "fs_kd_jenis_reg": "1",
+      "fs_kd_medis": "DR00000015",
+      "fs_kd_layanan": "RI001",
+      "fs_kd_tipe_jaminan": "00000"
+    }
+  ],
+  "reg_inap": [
+    {
+      "fs_kd_reg": "RGA4LKDYYD",
+      "fs_kd_caramasuk_inap": "IGD",
+      "fs_kd_trs_booking_bed": " ",
+      "fs_kd_medis_sekunder": " "
+    }
+  ],
+  "history_dokter": [
+    {
+      "fs_kd_reg": "RGA4LKDYYD",
+      "fs_kd_dokter": "DR00000015",
+      "fb_primer": true
+    }
+  ],
+  "reg_aktif": [
+    {
+      "RegId": "RGA4LKDYYD",
+      "PasienId": "347137300000037"
+    }
+  ],
+  "audit_admission": [
+    {
+      "EntityId": "RGA4LKDYYD",
+      "ActionType": "CREATE",
+      "EntityName": "AdmissionModel"
+    }
+  ],
+  "waiting_list": [],
+  "source": {
+    "reservation": [
+      {
+        "ReservationId": "RSV0688J6X3W",
+        "ReservationStatus": 2,
+        "RealizedRegId": "RGA4LKDYYD",
+        "PasienId": "347137300000037"
+      }
+    ],
+    "reservation_audit": [
+      {
+        "EntityId": "RSV0688J6X3W",
+        "ActionType": "CREATE",
+        "EntityName": "ReservationModel"
+      },
+      {
+        "EntityId": "RSV0688J6X3W",
+        "ActionType": "UPDATE",
+        "EntityName": "ReservationModel"
+      },
+      {
+        "EntityId": "RSV0688J6X3W",
+        "ActionType": "UPDATE",
+        "EntityName": "ReservationModel"
+      }
+    ]
+  }
+}

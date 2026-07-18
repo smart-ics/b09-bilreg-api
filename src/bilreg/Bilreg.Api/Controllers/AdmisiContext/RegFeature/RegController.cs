@@ -3,6 +3,7 @@
 using Bilreg.Api.Helpers;
 using Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
 using Nuna.Lib.PatternHelper;
@@ -11,6 +12,7 @@ namespace Bilreg.Api.Controllers.AdmisiContext.RegFeature;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class RegController : Controller
 {
     private readonly IMediator _mediator;

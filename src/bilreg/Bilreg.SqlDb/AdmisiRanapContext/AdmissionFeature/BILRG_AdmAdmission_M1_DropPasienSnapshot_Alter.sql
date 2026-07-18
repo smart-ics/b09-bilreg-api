@@ -1,0 +1,20 @@
+IF COL_LENGTH('BILRG_AdmAdmission', 'PasienName') IS NOT NULL
+BEGIN
+    ALTER TABLE BILRG_AdmAdmission DROP CONSTRAINT DF_BILRG_AdmAdmission_PasienName;
+    ALTER TABLE BILRG_AdmAdmission DROP COLUMN PasienName;
+END
+GO
+
+IF COL_LENGTH('BILRG_AdmAdmission', 'TglLahir') IS NOT NULL
+BEGIN
+    ALTER TABLE BILRG_AdmAdmission DROP CONSTRAINT DF_BILRG_AdmAdmission_TglLahir;
+    ALTER TABLE BILRG_AdmAdmission DROP COLUMN TglLahir;
+END
+GO
+
+IF COL_LENGTH('BILRG_AdmAdmission', 'Gender') IS NOT NULL
+BEGIN
+    ALTER TABLE BILRG_AdmAdmission DROP CONSTRAINT DF_BILRG_AdmAdmission_Gender;
+    ALTER TABLE BILRG_AdmAdmission DROP COLUMN Gender;
+END
+GO

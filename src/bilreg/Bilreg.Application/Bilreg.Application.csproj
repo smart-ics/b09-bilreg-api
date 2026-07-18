@@ -26,6 +26,15 @@
 
   <ItemGroup>
     <Folder Include="AdmisiContext\LayananFeature\LayananAgg\" />
+    <Folder Include="AdmisiRanapContext\OpnameRequestFeature\" />
+    <Folder Include="AdmisiRanapContext\OpnameRequestFeature\UseCases\" />
+    <Folder Include="AdmisiRanapContext\AdmissionFeature\" />
+    <Folder Include="AdmisiRanapContext\AdmissionFeature\UseCases\" />
+    <Folder Include="AdmisiRanapContext\WaitingListFeature\" />
+    <Folder Include="AdmisiRanapContext\WaitingListFeature\UseCases\" />
+    <Folder Include="AdmisiRanapContext\JourneyFeature\" />
+    <Folder Include="AdmisiRanapContext\JourneyFeature\UseCases\" />
+    <Folder Include="AdmisiRanapContext\Integration\" />
   </ItemGroup>
 
 </Project>

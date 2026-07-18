@@ -1,5 +1,6 @@
 ﻿using Bilreg.Application.PasienContext.StatusSosialFeature;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
 
@@ -7,6 +8,7 @@ namespace Bilreg.Api.Controllers.PasienContext;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class StatusSosialController : ControllerBase
 {
     private readonly IMediator _mediator;

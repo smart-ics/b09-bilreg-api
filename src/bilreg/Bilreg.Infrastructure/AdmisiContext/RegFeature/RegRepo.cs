@@ -1,4 +1,5 @@
-﻿using Bilreg.Application.AdmisiContext.RegFeature;
+using Bilreg.Application.AdmisiContext.RegFeature;
+using Bilreg.Application.BedUsageContext.WardFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
@@ -9,6 +10,7 @@ using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using Nuna.Lib.PatternHelper;
 using Nuna.Lib.ValidationHelper;
+// ReSharper disable InconsistentNaming
 
 namespace Bilreg.Infrastructure.AdmisiContext.RegFeature;
 
@@ -17,14 +19,23 @@ public class RegRepo : IRegRepo
     private readonly IRegDal _regDal;
     private readonly IRegJaminanDal _regJaminanDal;
     private readonly IRegKomponenDal _regKomponenDal;
+    private readonly IRegHistoryDokterDal _regHistoryDokterDal;
+    private readonly IKelasRepo _kelasRepo;
+    private readonly IBangsalRepo _bangsalRepo;
 
-    public RegRepo(IRegDal regDal, 
-        IRegJaminanDal regJaminanDal, 
-        IRegKomponenDal regKomponenDal)
+    public RegRepo(IRegDal regDal,
+        IRegJaminanDal regJaminanDal,
+        IRegKomponenDal regKomponenDal,
+        IRegHistoryDokterDal regHistoryDokterDal,
+        IKelasRepo kelasRepo,
+        IBangsalRepo bangsalRepo)
     {
         _regDal = regDal;
         _regJaminanDal = regJaminanDal;
         _regKomponenDal = regKomponenDal;
+        _regHistoryDokterDal = regHistoryDokterDal;
+        _kelasRepo = kelasRepo;
+        _bangsalRepo = bangsalRepo;
     }
 
     public void SaveChanges(RegModel model)
@@ -34,20 +45,24 @@ public class RegRepo : IRegRepo
                 onSome: _ => _regDal.Update(RegDto.FromModel(model)),
                 onNone: () => _regDal.Insert(RegDto.FromModel(model))
             );
-        
+
         _regJaminanDal.Delete(model);
         _regJaminanDal.Insert(RegJaminanDto.FromModel(model));
-        
-        var listKomponen = _regKomponenDal.ListData(model)?.ToList() ?? [];
-        _regKomponenDal.Delete(model);
-        _regKomponenDal.Insert(listKomponen);
-    }
 
-    public void Delete(IRegKey key)
-    {
-        _regDal.Delete(key);
-        _regJaminanDal.Delete(key);
-        _regKomponenDal.Delete(key);
+        // Rawat Inap does not use ta_registrasi2 (Rawat Jalan / IGD only).
+        // RJ/IGD keep the existing replace path: list → delete → insert.
+        if (model.JenisReg == JenisRegEnum.RegInap)
+        {
+            _regKomponenDal.Delete(model);
+        }
+        else
+        {
+            var listKomponen = _regKomponenDal.ListData(model)?.ToList() ?? [];
+            _regKomponenDal.Delete(model);
+            _regKomponenDal.Insert(listKomponen);
+        }
+
+        _regHistoryDokterDal.Delete(model);
     }
 
     public MayBe<RegModel> LoadEntity(IRegKey key)
@@ -55,7 +70,7 @@ public class RegRepo : IRegRepo
         var regDto = _regDal.GetData(key);
         if (regDto is null)
             return MayBe<RegModel>.None;
-        
+
         var regMasukAudit = new AuditInfoType(regDto.fs_kd_petugas, regDto.fd_tgl_masuk, regDto.fs_jam_masuk);
         var regKeluarAudit = new AuditInfoType(regDto.fs_kd_petugas_keluar, regDto.fd_tgl_keluar, regDto.fs_jam_keluar);
         var regCancelOutAudit = new AuditInfoType(regDto.fs_kd_petugas_cancel_out, regDto.fd_tgl_cancel_out, regDto.fs_jam_cancel_out);
@@ -66,34 +81,45 @@ public class RegRepo : IRegRepo
         var kelas = new KelasReff(regDto.fs_kd_kelas, regDto.fs_nm_kelas);
         var caraMasukDk = new CaraMasukDkType(regDto.fs_kd_cara_masuk_dk, regDto.fs_nm_cara_masuk_dk);
         var rujukan = new RujukanReff(regDto.fs_kd_rujukan, regDto.fs_nm_rujukan);
-        var dokter = new PpaReff(regDto.fs_kd_medis, regDto.fs_nm_medis);
         var layanan = new LayananReff(regDto.fs_kd_layanan, regDto.fs_nm_layanan);
         var karcis = new KarcisReff(regDto.fs_kd_karcis, regDto.fs_nm_karcis);
+        var kelasDk = ResolveKelasDk(kelas);
+        var bangsal = ResolveBangsal(layanan, jenisReg, regDto.fs_kd_reg);
         // polis
         var regJmnDto = _regJaminanDal.GetData(key) ?? new RegJaminanDto("-", "-", "-", "-");
         var polis = new PolisReff(regJmnDto.fs_kd_polis, regJmnDto.fs_no_polis,
             regJmnDto.fs_atas_nama);
         // eligibility
         var eligibility = new RegEligibilityType(regDto.fs_kd_trs_sjp, regDto.fs_no_sjp, regDto.fs_no_peserta);
+        // dokter
+        var dokter = new PpaReff(regDto.fs_kd_medis, regDto.fs_nm_medis);
 
         //  komponen
-        var regJaminanDto = _regJaminanDal.GetData(key) ?? new RegJaminanDto("-", "-", "-", "-");
         var listKomponenDto = _regKomponenDal.ListData(key)?.ToList() ?? [];
+
         //  main object
         var result = new RegModel(
             regDto.fs_kd_reg, DateOnly.Parse(regDto.fd_tgl_masuk),
             regMasukAudit, regKeluarAudit, regCancelOutAudit, regVoidAudit, jenisReg,
             pasien, tipeJmn, polis, kelas, caraMasukDk, rujukan, dokter,
-            layanan, karcis, 
-            //regDto.fs_no_sjp, regDto.fs_no_peserta, 
-            eligibility, listKomponenDto.Select(x => x.ToModel()));
+            layanan, karcis,
+            eligibility, listKomponenDto.Select(x => x.ToModel()), kelasDk, bangsal);
         return MayBe.From(result);
     }
+
+    public void Delete(IRegKey key)
+    {
+        _regDal.Delete(key);
+        _regJaminanDal.Delete(key);
+        _regKomponenDal.Delete(key);
+        _regHistoryDokterDal.Delete(key);
+    }
+
     public IEnumerable<RegView> ListData(Periode filter, ILayananKey layanan)
     {
         var listDto = _regDal.ListData(filter, layanan);
         var listView = listDto.Select(x => new RegView(
-            x.fs_kd_reg, 
+            x.fs_kd_reg,
             x.fd_tgl_masuk,
             new PasienReff(x.fs_mr, x.fs_nm_pasien, DateOnly.Parse(x.fd_tgl_lahir), x.fs_jns_kelamin),
             new LayananReff(x.fs_kd_layanan, x.fs_nm_layanan),
@@ -105,5 +131,31 @@ public class RegRepo : IRegRepo
     {
         var listDto = _regDal.ListData(pasien)?.ToList() ?? [];
         return listDto.Any(x => x.fd_tgl_keluar == "3000-01-01");
+    }
+
+    private KelasDkType ResolveKelasDk(KelasReff kelas)
+    {
+        if (string.IsNullOrWhiteSpace(kelas.KelasId) || kelas.KelasId == "-")
+            return KelasDkType.Default;
+
+        var kelasType = _kelasRepo.LoadEntity(KelasType.Key(kelas.KelasId))
+            .GetValueOrThrow($"Kelas '{kelas.KelasId}' tidak ditemukan.");
+        return kelasType.KelasDk;
+    }
+
+    private BangsalReff ResolveBangsal(LayananReff layanan, JenisRegEnum jenisReg, string regId)
+    {
+        if (jenisReg != JenisRegEnum.RegInap)
+            return new BangsalReff("-", "-");
+
+        var listBangsal = _bangsalRepo.ListData(layanan).ToList();
+        return listBangsal.Count switch
+        {
+            1 => listBangsal[0].ToReff(),
+            0 => throw new InvalidOperationException(
+                $"Bangsal untuk Layanan '{layanan.LayananId}' pada RegInap '{regId}' tidak ditemukan."),
+            _ => throw new InvalidOperationException(
+                $"Layanan '{layanan.LayananId}' pada RegInap '{regId}' terpetakan ke lebih dari satu Bangsal.")
+        };
     }
 }

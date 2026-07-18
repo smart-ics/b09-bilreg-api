@@ -11,7 +11,7 @@ using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.PaymentContext.TataRekeningFeature.UseCases;
 
-public record CancelFinalizationCommand(string RegId, string Reason) : IRequest<CancelFinalizationResponse>, IRegKey;
+public record CancelFinalizationCommand(string RegId, string UserId, string Reason) : IRequest<CancelFinalizationResponse>, IRegKey;
 
 public record CancelFinalizationResponse(TataRekeningSummaryDto Summary);
 
@@ -54,7 +54,7 @@ public class CancelFinalizationHandler : IRequestHandler<CancelFinalizationComma
             _trsBillingRepo.SaveChanges(bill);
 
         var audit = AuditLog.Create(
-            userId: _currentUser.GetActorUserId(),
+            userId: request.UserId,
             actionType: "TATA_REKENING_CANCEL_FINALIZATION",
             entityName: nameof(TataRekeningModel),
             entityId: request.RegId,

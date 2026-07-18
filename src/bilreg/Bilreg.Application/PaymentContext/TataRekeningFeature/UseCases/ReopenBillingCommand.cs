@@ -11,7 +11,7 @@ using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.PaymentContext.TataRekeningFeature.UseCases;
 
-public record ReopenBillingCommand(string RegId, string Reason) : IRequest<ReopenBillingResponse>, IRegKey;
+public record ReopenBillingCommand(string RegId, string Reason, string UserId) : IRequest<ReopenBillingResponse>, IRegKey;
 
 public record ReopenBillingResponse(TataRekeningSummaryDto Summary);
 
@@ -38,6 +38,7 @@ public class ReopenBillingHandler : IRequestHandler<ReopenBillingCommand, Reopen
     {
         Guard.Against.NullOrWhiteSpace(request.RegId);
         Guard.Against.NullOrWhiteSpace(request.Reason);
+        Guard.Against.NullOrWhiteSpace(request.UserId);
 
         using var scope = _unitOfWork.Begin();
 
@@ -49,7 +50,7 @@ public class ReopenBillingHandler : IRequestHandler<ReopenBillingCommand, Reopen
         _tataRekeningRepo.SaveChanges(tataRekening);
 
         var audit = AuditLog.Create(
-            userId: _currentUser.GetActorUserId(),
+            userId: request.UserId,
             actionType: "TATA_REKENING_REOPEN_BILLING",
             entityName: nameof(TataRekeningModel),
             entityId: request.RegId,

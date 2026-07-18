@@ -1,5 +1,6 @@
 using Bilreg.Application.LabContext.LabTestDefinitionFeature;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
 
@@ -7,6 +8,7 @@ namespace Bilreg.Api.Controllers.LabContext.LabTestDefinitionFeature;
 
 [Route("api/LabContext/LabTestDefinitionFeature")]
 [ApiController]
+[Authorize]
 public class LabTestDefinitionController : ControllerBase
 {
     private readonly IMediator _mediator;

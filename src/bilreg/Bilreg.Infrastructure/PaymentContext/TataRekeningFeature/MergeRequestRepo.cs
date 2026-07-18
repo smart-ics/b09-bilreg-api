@@ -46,10 +46,10 @@ public sealed class MergeRequestRepo : IMergeRequestRepo
     }
 
     public IEnumerable<MergeRequestModel> ListPendingByReg(IRegKey regKey) =>
-        _dal.ListPendingByReg(regKey).Select(x => x.ToModel());
+        (_dal.ListPendingByReg(regKey) ?? []).Select(x => x.ToModel());
 
     public IEnumerable<MergeRequestModel> ListPendingByPatient(string pasienId) =>
-        _dal.ListPendingByPatient(pasienId).Select(x => x.ToModel());
+        (_dal.ListPendingByPatient(pasienId) ?? []).Select(x => x.ToModel());
 
     private string ResolvePatientId(string sourceRegId)
     {

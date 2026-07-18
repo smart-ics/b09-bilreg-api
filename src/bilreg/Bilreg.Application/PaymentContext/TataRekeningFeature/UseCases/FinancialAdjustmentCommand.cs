@@ -15,7 +15,8 @@ namespace Bilreg.Application.PaymentContext.TataRekeningFeature.UseCases;
 public record FinancialAdjustmentCommand(
     string RegId,
     FinancialAdjustmentInputDto Adjustment,
-    DateTime AppliedAt) : IRequest<FinancialAdjustmentResponse>, IRegKey;
+    DateTime AppliedAt,
+    string UserId) : IRequest<FinancialAdjustmentResponse>, IRegKey;
 
 public record FinancialAdjustmentResponse(
     TataRekeningSummaryDto Summary,
@@ -54,6 +55,7 @@ public class FinancialAdjustmentHandler : IRequestHandler<FinancialAdjustmentCom
     {
         Guard.Against.NullOrWhiteSpace(request.RegId);
         Guard.Against.Null(request.Adjustment);
+        Guard.Against.NullOrWhiteSpace(request.UserId);
 
         using var scope = _unitOfWork.Begin();
 
@@ -69,7 +71,7 @@ public class FinancialAdjustmentHandler : IRequestHandler<FinancialAdjustmentCom
             PersistMutatedBills(tataRekening, adjustmentRequest);
 
             var audit = AuditLog.Create(
-                userId: _currentUser.GetActorUserId(),
+                userId: request.UserId,
                 actionType: "TATA_REKENING_FINANCIAL_ADJUSTMENT",
                 entityName: nameof(TataRekeningModel),
                 entityId: request.RegId,

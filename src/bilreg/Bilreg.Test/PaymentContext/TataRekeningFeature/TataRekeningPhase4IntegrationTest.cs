@@ -130,7 +130,7 @@ public class TataRekeningPhase4IntegrationTest
         var audit = new Mock<IAuditRepo>();
         var handler = harness.CreateMergeBillingHandler(transfer.Object, audit.Object);
 
-        var act = () => handler.Handle(new MergeBillingCommand("MR-MERGE"), CancellationToken.None);
+        var act = () => handler.Handle(new MergeBillingCommand("MR-MERGE", "UserId"), CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
         harness.UnitOfWorkScope.Verify(s => s.Complete(), Times.Never);
