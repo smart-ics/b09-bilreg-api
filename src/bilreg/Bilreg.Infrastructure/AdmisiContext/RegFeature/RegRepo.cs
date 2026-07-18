@@ -48,6 +48,11 @@ public class RegRepo : IRegRepo
 
         _regJaminanDal.Delete(model);
         _regJaminanDal.Insert(RegJaminanDto.FromModel(model));
+        
+        var listKomponen = model.ListKomponen.Select(x => RegKomponenDto.FromModel(model.RegId, x)) ?? [];
+        _regKomponenDal.Delete(model);
+        _regKomponenDal.Insert(listKomponen);
+    }
 
         // Rawat Inap does not use ta_registrasi2 (Rawat Jalan / IGD only).
         // RJ/IGD keep the existing replace path: list → delete → insert.
