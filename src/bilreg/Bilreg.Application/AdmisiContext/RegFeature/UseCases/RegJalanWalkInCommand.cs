@@ -293,7 +293,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             : FindPolis(pasien, tipeJaminan);
 
     private RujukanType ResolveRujukan(CaraMasukDkType caraMasuk, string rujukanId) =>
-        caraMasuk == CaraMasukDkType.DatangSendiri
+        !caraMasuk.RequiresRujukan
             ? RujukanType.Default
             : _rujukanRepo.LoadEntity(RujukanType.Key(rujukanId))
                 .GetValueOrThrow("'Rujukan' not found");

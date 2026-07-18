@@ -1,5 +1,6 @@
 ﻿using Bilreg.Application.ChargeContext.TarifFeature.UseCases;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
 
@@ -7,6 +8,7 @@ namespace Bilreg.Api.Controllers.BillContext.TindakanSub
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class TarifController : Controller
     {
         private readonly IMediator _mediator;

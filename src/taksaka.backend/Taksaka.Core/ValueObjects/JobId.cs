@@ -1,0 +1,8 @@
+namespace Taksaka.Core.ValueObjects;
+
+public readonly record struct JobId(Guid Value)
+{
+    public static JobId New() => new(Guid.NewGuid());
+
+    public override string ToString() => Value.ToString();
+}

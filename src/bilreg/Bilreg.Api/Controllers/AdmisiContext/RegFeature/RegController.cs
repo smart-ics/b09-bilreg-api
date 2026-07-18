@@ -3,6 +3,7 @@
 using Bilreg.Api.Helpers;
 using Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
 using Nuna.Lib.PatternHelper;
@@ -11,6 +12,7 @@ namespace Bilreg.Api.Controllers.AdmisiContext.RegFeature;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class RegController : Controller
 {
     private readonly IMediator _mediator;
@@ -132,6 +134,15 @@ public class RegController : Controller
         var query = new RegAktifByJenisRegListQuery(jenisReg);
         var result = await _mediator.Send(query);
         return Ok(new JSendOk(result));
+    }
+
+    [HttpGet]
+    [Route("listAktif")]
+    public async Task<IActionResult> ListAktif()
+    {
+        var query = new RegRegAktifListQuery();
+        var resutl = await _mediator.Send(query);
+        return Ok(new JSendOk(resutl));
     }
 }
 

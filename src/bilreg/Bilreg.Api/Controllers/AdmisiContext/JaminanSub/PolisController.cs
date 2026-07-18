@@ -2,6 +2,7 @@
 using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
 using JetBrains.Annotations;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
 
@@ -9,6 +10,7 @@ namespace Bilreg.Api.Controllers.AdmisiContext.JaminanSub;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class PolisController : Controller
 {
     private readonly IMediator _mediator;

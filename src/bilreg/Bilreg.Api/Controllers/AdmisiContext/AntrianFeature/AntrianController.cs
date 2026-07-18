@@ -1,5 +1,6 @@
 ﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
 
@@ -7,6 +8,7 @@ namespace Bilreg.Api.Controllers.AdmisiContext.AntrianFeature;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class AntrianController : Controller
 {
     private readonly IMediator _mediator;
@@ -66,6 +68,14 @@ public class AntrianController : Controller
     {
         var query = new QueSelesaiPeriksaCmd(antrianId, noUrut);
         var response = _mediator.Send(query);
+        return Ok(new JSendOk("Done"));
+    }
+
+    [HttpPatch]
+    [Route("fixOutstandingReference")]
+    public async Task<IActionResult> FixOutstandingReference(QueFixOutstandingReferenceCmd cmd)
+    {
+        await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));
     }
 

@@ -52,6 +52,36 @@ public record TataRekeningModel : IRegKey
     public int Version { get; private set; }
     public IEnumerable<TataRekeningPaymentType> ListPayment => _listTataRekeningPayment;
     public IEnumerable<TrsBillType> ListTrsBill => _listTrsBill;
+    
+    public IEnumerable<TrsBillSummaryType> ListSummaryBill
+    {
+        get
+        {
+            var sumPerModul = _listTrsBill
+                .GroupBy(x => x.ModulGroup)
+                .ToDictionary(
+                    g => g.Key,
+                    g => new
+                    {
+                        SubTotal = g.Sum(x => x.Nilai.SubTotal),
+                        Diskon = g.Sum(x => x.Nilai.Diskon),
+                        Tax = g.Sum(x => x.Nilai.Tax),
+                        Biaya = g.Sum(x => x.Nilai.Biaya)
+                    });
+
+            var jasa = sumPerModul.GetValueOrDefault(BillModulGroup.Jasa);
+            var obat = sumPerModul.GetValueOrDefault(BillModulGroup.Obat);
+
+            return
+            [
+                new(1, BillSumType.ToBill, jasa?.SubTotal ?? 0, obat?.SubTotal ?? 0),
+                new(2, BillSumType.ToDisk, jasa?.Diskon ?? 0, obat?.Diskon ?? 0),
+                new(3, BillSumType.ToTax,  jasa?.Tax ?? 0, obat?.Tax ?? 0),
+                new(4, BillSumType.ToBia,  jasa?.Biaya ?? 0, obat?.Biaya ?? 0),
+            ];
+        }
+    }
+
 
     public void DeleteBill(string trsBillingId)
     {
@@ -598,6 +628,8 @@ public record TataRekeningModel : IRegKey
     }
 
     public void CommitVersionIncrement() => Version++;
+
+
 }
 
 /// <summary>

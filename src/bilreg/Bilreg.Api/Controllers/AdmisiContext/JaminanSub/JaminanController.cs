@@ -1,6 +1,7 @@
 using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
 using MediatR;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
 
@@ -8,6 +9,7 @@ namespace Bilreg.Api.Controllers.AdmisiContext.JaminanSub
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class JaminanController : ControllerBase
     {
         private readonly IMediator _mediator;
