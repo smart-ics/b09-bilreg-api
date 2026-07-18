@@ -19,6 +19,7 @@ public class LabOrderChargeHandlerTest
 {
     private readonly Mock<ILabOrderRepo> _repo = new();
     private readonly Mock<IRegRepo> _regRepo = new();
+    private readonly Mock<ITarifRepo> _tarifRepo = new();
     private readonly Mock<INilaiTarifRepo> _nilaiTarifRepo = new();
     private readonly Mock<IKomponenRepo> _komponenRepo = new();
     private readonly Mock<IJaminanRepo> _jaminanRepo = new();
@@ -28,8 +29,8 @@ public class LabOrderChargeHandlerTest
 
     public LabOrderChargeHandlerTest()
     {
-        _sut = new LabOrderChargeHandler(_repo.Object, _regRepo.Object, _nilaiTarifRepo.Object, _komponenRepo.Object,
-            _jaminanRepo.Object, _addBillAppService.Object, _billingIntegration.Object);
+        _sut = new LabOrderChargeHandler(_repo.Object, _regRepo.Object, _tarifRepo.Object, _nilaiTarifRepo.Object,
+            _komponenRepo.Object, _jaminanRepo.Object, _addBillAppService.Object, _billingIntegration.Object);
     }
 
     private static LabOrderModel OrderedOrder()
