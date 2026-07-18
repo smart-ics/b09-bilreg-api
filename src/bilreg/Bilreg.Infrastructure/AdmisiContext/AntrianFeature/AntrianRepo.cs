@@ -1,6 +1,7 @@
 ﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.Shared.Helpers;
+using Nuna.Lib.DataTypeExtension;
 using Nuna.Lib.PatternHelper;
 using Nuna.Lib.ValidationHelper;
 using System.Globalization;
@@ -71,6 +72,13 @@ public class AntrianRepo : IAntrianRepo
         var result = listDto.Select(x => x.ToView());
         return result;
     }
+
+    public void FixOutstandingReference()
+    {
+        var listOutStanding = _antrianEntryDal.ListOutStanding() ?? [];
+        listOutStanding.ForEach(x => _antrianEntryDal.UpdateOutStanding(x));
+    }
+
     #region HELPER
     private (List<AntrianEntryDto> addedItems, 
         List<AntrianEntryDto> deletedItems, 
@@ -112,6 +120,8 @@ public class AntrianRepo : IAntrianRepo
     }
 
     
+
+
     #endregion
 
 }
