@@ -167,6 +167,7 @@ Background processing platform — job orchestration, worker plugins, operator c
 | Path | Purpose |
 |------|---------|
 | `docs/contexts/cpoe/CPOE-DOMAIN.md` | CPOE — what (clinical-order business truth, aggregates, rules, lifecycles) |
+| `docs/contexts/cpoe/CPOE-DOMAIN-ID.md` | CPOE — versi Bahasa Indonesia (istilah domain standar tetap dipertahankan) |
 | `docs/contexts/cpoe/CPOE-ARCHITECTURE.md` | CPOE — how (module boundaries, use cases, persistence, API, integrations, security, infrastructure, ADRs) |
 
 ### RUANG RANAP Operational Management (`docs/contexts/bangsal/`)

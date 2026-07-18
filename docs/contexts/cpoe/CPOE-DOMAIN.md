@@ -44,7 +44,7 @@ Where no specialized fulfilment domain exists, CPOE may temporarily govern Gener
 | Order Type | A clinically meaningful classification that determines the requested activity, required information, permitted authority, destination, and fulfilment completion criterion. |
 | Order Set | A governed collection of related Clinical Orders intended for a defined clinical situation. Each contained order retains its own lifecycle. |
 | Clinical Indication | The clinical reason or question that justifies a Clinical Order. |
-| Priority | The clinically required urgency of an order, such as routine, urgent, or emergency. |
+Coul| Priority | The clinically required urgency of an order, such as routine, urgent, or emergency. |
 | Requested Timing | The intended time, schedule, frequency, duration, or condition for fulfilment. |
 | Order Instruction | Information necessary for safe and appropriate fulfilment beyond the identity of the requested activity. |
 | Destination | The organizational service responsible for receiving and coordinating fulfilment of an order. |
