@@ -172,7 +172,7 @@ Minimum fields:
 - `OrderOccurrenceId` — required when the obligation is occurrence-specific; otherwise absent, not fabricated;
 - `FulfilmentObligationId` — stable deduplication identity for one routed obligation;
 - `InstructionRevision` and `OrderDefinitionVersionId`;
-- `PatientId`, `RegistrationId`, and `CareContextId` as stable references required to identify the correct patient/work context;
+- `PatientId` and `RegId` as stable references required to identify the correct patient and registration; current Ward and Destination are carried separately;
 - `DestinationId` and `DestinationWardId` identifying RNA scope;
 - `Priority`, requested start/due timing, and the minimum structured instruction values required by the bound Order Definition;
 - `OrderingActorId` and `AuthorizerId` as accountable references;
@@ -216,7 +216,7 @@ Minimum fields:
 - `OrderOccurrenceId` when applicable;
 - `FulfilmentObligationId`;
 - `InstructionRevisionExecuted`;
-- `PatientId`, `RegistrationId`, and `CareContextId` stable references;
+- `PatientId` and `RegId` stable references; current Ward and Destination remain separate routing facts;
 - `ServiceId` — required for a billable execution and selected by RNA from Tarif services allowed for the Bangsal's mapped `Layanan`; absent for a non-billable execution;
 - `NonBillableDescription` — required free text when `ServiceId` is absent;
 - `PerformerId` — captured from the authenticated user when execution is saved;

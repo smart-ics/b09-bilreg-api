@@ -180,6 +180,7 @@ Background processing platform — job orchestration, worker plugins, operator c
 | `docs/contexts/bangsal/RNA-TATA-REKENING-INTEGRATION.md` | RNA ↔ Tata Rekening — execution facts, corrections, lifecycle query, acknowledgement, reliability, and reconciliation semantic contract |
 | `docs/contexts/bangsal/rna-sop/RNA-SOP-INDEX.md` | RNA — approved accommodation and service-execution SOP index |
 | `docs/contexts/bangsal/rna-sop/RNA-SOP-GAPS.md` | RNA — unresolved policy decisions that gate architecture and implementation |
+| `docs/contexts/bangsal/rna-sop/RNA-CPOE-DOMAIN-GAP-ANALYSIS.md` | RNA SOP versus simplified CPOE domain — alignment, cross-context gaps, and recommended change order |
 
 ---
 

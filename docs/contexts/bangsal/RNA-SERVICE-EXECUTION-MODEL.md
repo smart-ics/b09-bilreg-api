@@ -15,7 +15,7 @@ The aggregate owns its source identity and revisions, optional performer assignm
 | Property/group | Meaning |
 |---|---|
 | `ServiceExecutionId`, `Version` | Aggregate identity and optimistic-concurrency version. |
-| `RegistrationId`, `PatientId`, `CareContextId`, `ResponsibleWardId` | Stable references identifying the patient care context and RNA Ward that owns the operational record. |
+| `RegId`, `PatientId`, `ResponsibleWardId` | Stable references identifying the patient registration and RNA Ward that owns the operational record. Current Ward and Destination remain separate routing facts. |
 | `ExecutionSource` | `Ordered`, `AdHoc`, or `Independent`; RNA never fabricates a prospective order for the latter two. |
 | Order/source references | `ClinicalOrderId`, `OrderOccurrenceId`, `FulfilmentObligationId`, `SourceContext`, `SourceFactId`, and `SourceRevision` preserve ordered-work correlation and deduplication identity. |
 | `AssignedPerformerId`, `WorkStatus` | Optional coordination assignment and the pending/assigned/executed/withdrawn/cancelled/error lifecycle. Assignment is not execution evidence. |
@@ -49,9 +49,8 @@ direction LR
 
 class RnaServiceExecutionModel {
   +string ServiceExecutionId
-  +string RegistrationId
+  +string RegId
   +string PatientId
-  +string CareContextId
   +string ResponsibleWardId
   +ExecutionSourceEnum ExecutionSource
   +RnaServiceWorkStatusEnum WorkStatus

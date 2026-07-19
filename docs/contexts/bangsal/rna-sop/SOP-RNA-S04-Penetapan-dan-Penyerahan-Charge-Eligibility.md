@@ -20,8 +20,8 @@ Mempublikasikan Service Execution Fact yang diklasifikasikan billable kepada pem
 ## 3. Prasyarat
 
 - Service Execution Fact telah tersimpan dengan stable fact identity.
-- Fakta diklasifikasikan billable dan memuat Service eligible, Performer, Performed At, dan korelasi sumber/occurrence. Eksekusi non-billable berhenti di RNA dengan description.
-- Fakta menggunakan `OccurredAt` sebagai waktu bisnis otoritatif dan `RecordedAt` hanya sebagai waktu persistence untuk audit/technical tracing; bila waktu bisnis tidak diketahui, `OccurredAt = RecordedAt`.
+- Fakta diklasifikasikan billable dan memuat Service eligible, Performer, Performed At, serta referensi sumber yang diperlukan. Eksekusi non-billable berhenti di RNA dengan description.
+- Waktu pelaksanaan aktual pada fakta merupakan waktu bisnis otoritatif; waktu penyimpanan hanya digunakan untuk audit dan penelusuran teknis.
 - Kontrak inbound Tata Rekening mendukung idempotency, acknowledgement, dan correction fact.
 
 ## 4. Langkah Operasional

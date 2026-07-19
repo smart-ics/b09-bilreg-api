@@ -1,60 +1,80 @@
-# SOP-RNA-S02 — Pencatatan Pelaksanaan Tindakan Ad Hoc atau Independen
+# SOP-RNA-S02 — Pencatatan Tindakan Ad Hoc atau Independen
 
 ## 1. Tujuan
 
-Mencatat secara benar tindakan RUANG RANAP yang telah dilakukan tanpa Clinical Order prospektif individual, menggunakan Service Tarif yang eligible bila billable atau description bila non-billable.
+Mencatat tindakan RUANG RANAP yang dilakukan secara sah tanpa Clinical Order prospektif individual, dengan sumber, dasar kewenangan, Performer, waktu pelaksanaan, dan klasifikasi billable atau non-billable yang benar.
 
 ## 2. Aktor dan Tanggung Jawab
 
 | Aktor | Tipe | Tanggung jawab operasional |
 |---|---|---|
-| Performer RUANG RANAP | Manusia | Melakukan tindakan dalam kewenangannya dan mencatat fakta aktual. |
-| Kepala Ruangan | Manusia | Mengawasi pengecualian dan memastikan follow-up diserahkan kepada accountable authorizer. |
-| Dokter Penanggung Jawab Klinis/Attending | Manusia | Menjadi accountable authorizer; dokter on-call yang ditunjuk mengambil kewajiban bila attending tidak tersedia. |
-| Dokter On-Call/Ketua Layanan dan Clinical Governance | Manusia/Organisasi | Menerima eskalasi, melakukan acknowledgement atas tugas, dan menyelesaikan atau merekonsiliasi follow-up sesuai kewenangan. |
-| CPOE | Sistem | Mengelola assignment, acknowledgement, eskalasi, deadline, `Authorization Overdue`, dan late review untuk otorisasi lanjutan. |
-| Tarif Context | Sistem | Menyediakan Service aktif yang eligible melalui `Bangsal → Layanan → AllowedLayanan` dan tetap memiliki Service Definition. |
-| Tata Rekening | Sistem | Menerima fakta pelaksanaan dan menentukan seluruh konsekuensi billing. |
-| Sistem RNA | Sistem | Menyimpan sumber, dasar kewenangan, fakta pelaksanaan, dan status pengiriman. |
+| Performer RUANG RANAP | Manusia | Melakukan tindakan sesuai kewenangannya dan mencatat fakta pelaksanaan yang sebenarnya. |
+| Kepala Ruangan | Manusia | Meninjau pengecualian, membantu memastikan dasar kewenangan tercatat, dan menyerahkan kebutuhan follow-up kepada Penanggung Jawab Klinis / Clinical Governance. |
+| Penanggung Jawab Klinis / Clinical Governance | Manusia/Organisasi | Menerima kasus yang memerlukan peninjauan atau akuntabilitas lanjutan melalui prosedur governance yang berlaku. |
+| Sistem RNA | Sistem | Menyimpan sumber tindakan, dasar kewenangan, fakta pelaksanaan, dan status publikasi finansial. |
+| Tarif Context | Sistem | Menyediakan Service aktif yang eligible bagi Layanan Bangsal untuk tindakan billable. |
+| Tata Rekening | Sistem | Menerima fakta pelaksanaan billable melalui prosedur publikasi terpisah dan menentukan konsekuensi finansial. |
 
 ## 3. Prasyarat
 
-- Tindakan benar-benar dilakukan dalam kewenangan profesional atau dasar kewenangan yang dapat dinyatakan secara jujur.
-- Bangsal memiliki `LayananId` otoritatif. Eksekusi billable dapat memilih Service aktif yang eligible dari Tarif; eksekusi non-billable akan memakai description tanpa Service.
-- RNA tidak membuat Clinical Order retrospektif atau Service Definition lokal.
+- Performer RUANG RANAP telah masuk ke aplikasi dan memiliki akses untuk mencatat pelaksanaan pada RUANG RANAP yang bersangkutan.
+- Tindakan dilakukan tanpa Clinical Order prospektif individual dan dapat diklasifikasikan sebagai `Ad Hoc` atau `Independen`.
+- Identitas pasien, registrasi atau care context, lokasi RUANG RANAP, dan waktu pelaksanaan tersedia.
+- Dasar kewenangan tindakan dapat dicatat secara jujur.
+- Bangsal memiliki Layanan yang dapat digunakan untuk memperoleh Service eligible ketika tindakan diklasifikasikan billable.
 
 ## 4. Langkah Operasional
 
-1. **Performer RUANG RANAP** memilih sumber Ad Hoc atau Independen dan mencatat dasar kewenangannya pada **Sistem RNA**.
-2. **Performer RUANG RANAP** memilih klasifikasi billable atau non-billable. Untuk billable, Performer memilih Service aktif yang eligible dari **Tarif Context** dan Sistem RNA memvalidasinya ulang saat simpan. Untuk non-billable, Performer mengisi description tanpa Service.
-3. Setelah tindakan dilakukan, **Performer RUANG RANAP** mencatat Performer aktual dan **Performed At** sebagai `OccurredAt`.
-4. **Sistem RNA** mencatat `RecordedAt` sebagai waktu persistence sistem, identitas fakta, dan kronologi late entry bila waktu pencatatan berbeda. Bila waktu tindakan tidak diketahui, sistem menetapkan `OccurredAt = RecordedAt`.
-5. Bila exceptional-order accountability diperlukan, **Sistem RNA** menyerahkan `ExceptionalExecutionRecorded` beserta `OccurredAt`, kronologi, dan authority basis kepada **CPOE** tanpa membuat order prospektif palsu.
-6. **CPOE** menetapkan deadline paling lambat **24 jam sejak `OccurredAt` atau sebelum discharge, mana yang lebih dahulu**, dan menugaskan dokter penanggung jawab klinis/attending; bila tidak tersedia, kewajiban berpindah ke dokter on-call yang ditunjuk.
-7. Bila belum diselesaikan, **CPOE** mengeskalasi accountable authorizer → dokter on-call/ketua layanan → Clinical Governance. Penerima eskalasi melakukan acknowledgement penerimaan tugas; acknowledgement bukan keputusan authorization.
-8. Bila deadline terlewati, **CPOE** menetapkan status terminal `Authorization Overdue` dan mempertahankan kewajiban rekonsiliasi. Review setelah deadline dicatat sebagai late review, bukan authorization prospektif atau tepat waktu.
-9. **Sistem RNA** mempublikasikan Service Execution Fact kepada **Tata Rekening** tanpa keputusan eligibility atau data finansial.
+1. **Performer RUANG RANAP** membuka pencatatan tindakan Ad Hoc atau Independen pada **Sistem RNA**.
+
+2. **Performer RUANG RANAP** memilih sumber tindakan `Ad Hoc` atau `Independen` sesuai fakta yang terjadi.
+
+3. **Performer RUANG RANAP** mencatat identitas pasien, registrasi atau care context, lokasi RUANG RANAP, dasar kewenangan, dan alasan tindakan.
+
+4. **Performer RUANG RANAP** memastikan bahwa pencatatan tidak memakai `ClinicalOrderId` dan tidak dikaitkan sebagai Completion dari Clinical Order yang tidak pernah diterbitkan secara prospektif.
+
+5. **Performer RUANG RANAP** memilih klasifikasi billable atau non-billable.
+
+6. Untuk tindakan billable, **Performer RUANG RANAP** memilih Service aktif yang eligible dan **Tarif Context** menampilkan hasil validasi Service. Untuk tindakan non-billable, **Performer RUANG RANAP** mencatat description tanpa memilih Service.
+
+7. **Performer RUANG RANAP** mencatat Performer aktual dan `OccurredAt` sebagai waktu tindakan benar-benar dilakukan.
+
+8. Bila pencatatan dilakukan setelah waktu tindakan, **Performer RUANG RANAP** mencatat alasan keterlambatan secara benar.
+
+9. **Sistem RNA** mencatat `RecordedAt` sebagai waktu pencatatan, membuat identitas fakta pelaksanaan, dan menampilkan ringkasan fakta kepada **Performer RUANG RANAP**.
+
+10. **Performer RUANG RANAP** memeriksa kembali sumber, dasar kewenangan, klasifikasi, Service atau description, Performer, `OccurredAt`, dan `RecordedAt` yang ditampilkan oleh **Sistem RNA**.
+
+11. Bila tindakan memerlukan peninjauan atau akuntabilitas lanjutan menurut kebijakan rumah sakit, **Kepala Ruangan** menyerahkan kasus beserta referensi fakta RNA kepada **Penanggung Jawab Klinis / Clinical Governance** melalui prosedur governance yang berlaku. Prosedur ini selesai pada penyerahan tersebut dan tidak menetapkan lifecycle follow-up governance.
+
+12. Untuk fakta billable, **Sistem RNA** menampilkan bahwa fakta siap dilanjutkan kepada **Tata Rekening** melalui SOP-RNA-S04. Fakta non-billable tetap tersimpan di RNA tanpa publikasi finansial.
 
 ## 5. Pengecualian Operasional
 
-- Bila dasar kewenangan tidak tersedia dan bukan keadaan darurat, **Performer RUANG RANAP** tidak melanjutkan tindakan dan meminta arahan melalui konteks pemilik otorisasi.
-- Dalam keadaan darurat, dasar darurat dan kronologi dicatat; **CPOE** atau pemilik governance tetap mengelola akuntabilitas lanjutan.
-- Status `Authorization Overdue`, acknowledgement, atau late review tidak menghapus, mengubah, atau membatalkan fakta pelaksanaan RNA.
-- Bila **Tarif Context** tidak tersedia, Sistem RNA menampilkan `ServiceDependencyUnavailable`; bila query berhasil tetapi tidak ada Service eligible, sistem menampilkan `NoEligibleService`. Keduanya menahan simpan billable dan tidak boleh dipaksakan ke Service lokal; catatan non-billable dengan description tetap dapat disimpan.
-- Bila catatan salah atau duplikat, gunakan SOP-RNA-S03.
-- Kegagalan pengiriman tidak menghapus fakta pelaksanaan yang sudah benar.
+- Bila sebelum tindakan dilakukan **Performer RUANG RANAP** tidak dapat menyatakan dasar kewenangan yang sah dan keadaan tidak darurat, **Performer RUANG RANAP** tidak melanjutkan tindakan dan meminta arahan kepada **Kepala Ruangan** atau **Penanggung Jawab Klinis / Clinical Governance**.
+- Bila tindakan telah dilakukan dalam keadaan darurat, **Performer RUANG RANAP** mencatat dasar keadaan darurat dan kronologi sebenarnya. **Kepala Ruangan** menyerahkan kebutuhan follow-up kepada **Penanggung Jawab Klinis / Clinical Governance** tanpa membuat Clinical Order retrospektif.
+- Bila **Performer RUANG RANAP** menemukan bahwa Clinical Order prospektif yang sesuai sebenarnya sudah `Active`, aktor tidak menggunakan prosedur S02. **Performer RUANG RANAP** menggunakan `ClinicalOrderId` tersebut dan mengikuti SOP-RNA-S01.
+- Bila **Tarif Context** tidak tersedia, **Sistem RNA** menampilkan `ServiceDependencyUnavailable`. Bila tidak ada Service eligible, **Sistem RNA** menampilkan `NoEligibleService`. **Performer RUANG RANAP** tidak membuat Service lokal atau memilih Service yang tidak eligible; pencatatan non-billable tetap menggunakan description tanpa Service.
+- Bila fakta yang sama telah tercatat, **Sistem RNA** menampilkan fakta yang sudah ada dan **Performer RUANG RANAP** tidak membuat fakta pelaksanaan kedua.
+- Bila fakta yang tersimpan salah, **Performer RUANG RANAP** tidak menghapus atau menimpanya dan mengikuti SOP-RNA-S03.
+- Bila publikasi finansial gagal, **Sistem RNA** tetap menampilkan fakta pelaksanaan yang telah tersimpan. **Performer RUANG RANAP** tidak mengulangi tindakan atau membuat fakta baru; pemulihan publikasi mengikuti SOP-RNA-S04.
 
 ## 6. Kriteria Penyelesaian
 
-- **Sistem RNA** menampilkan sumber, dasar kewenangan, klasifikasi, identitas Service bila billable atau description bila non-billable, Performer, `OccurredAt`/Performed At, `RecordedAt`, dan identitas fakta; urutan bisnis menggunakan `OccurredAt`.
-- Status pengiriman ke **CPOE** bila berlaku dan ke **Tata Rekening** terlihat.
-- Untuk subsequent authorization, status assignment, acknowledgement, authorization, escalation, `Authorization Overdue`, dan late review dari CPOE terlihat tanpa direpresentasikan sebagai keputusan RNA.
-- RNA tidak menetapkan outcome catalogue, completion criterion, Charge Eligibility, atau konsekuensi finansial.
+Prosedur selesai bila:
+
+- **Sistem RNA** menampilkan identitas fakta pelaksanaan, sumber `Ad Hoc` atau `Independen`, dasar kewenangan, pasien, registrasi atau care context, lokasi, Performer, `OccurredAt`, dan `RecordedAt`.
+- Untuk tindakan billable, **Sistem RNA** menampilkan Service eligible dan status bahwa fakta siap dipublikasikan melalui SOP-RNA-S04.
+- Untuk tindakan non-billable, **Sistem RNA** menampilkan description tanpa Service dan tanpa publikasi finansial.
+- Bila peninjauan lanjutan diperlukan, penyerahan referensi fakta RNA kepada **Penanggung Jawab Klinis / Clinical Governance** telah tercatat menurut prosedur governance yang berlaku.
+- Tidak ada `ClinicalOrderId`, Clinical Order retrospektif, atau status Clinical Order yang dibuat dari tindakan tersebut.
 
 ## 7. Referensi
 
-- `docs/contexts/bangsal/RNA-DOMAIN.md` — Ad Hoc/Independent execution dan fakta pelaksanaan.
-- `docs/contexts/tarif/tarif-01-context.md` — kepemilikan Service Definition.
-- `docs/contexts/cpoe/CPOE-DOMAIN.md` — exceptional-order accountability.
-- `docs/contexts/TataRekening/01-context.md` — financial authority.
-- `docs/contexts/bangsal/rna-sop/RNA-SOP-GAPS.md` — GAP-RNA-010 CLOSED serta dependensi integrasi.
+- `docs/contexts/bangsal/RNA-DOMAIN.md` — kepemilikan bukti pelaksanaan Ad Hoc/Independen oleh RNA.
+- `docs/contexts/cpoe/CPOE-DOMAIN.md` — batas CPOE sebagai pemilik Clinical Order prospektif; tindakan dalam SOP ini tidak menjadi Clinical Order.
+- `docs/contexts/tarif/tarif-01-context.md` — kepemilikan Service Definition dan Service eligible.
+- `docs/contexts/TataRekening/01-context.md` — kepemilikan konsekuensi finansial.
+- `docs/contexts/bangsal/rna-sop/SOP-RNA-S01-Pelaksanaan-RNA-Service-Berdasarkan-Clinical-Order.md` — pelaksanaan yang memiliki Clinical Order aktif.
+- `docs/contexts/bangsal/rna-sop/SOP-RNA-S03-Koreksi-RNA-Service-Execution.md` — koreksi fakta pelaksanaan RNA.
+- `docs/contexts/bangsal/rna-sop/SOP-RNA-S04-Penetapan-dan-Penyerahan-Charge-Eligibility.md` — publikasi fakta billable kepada Tata Rekening.

@@ -1,719 +1,513 @@
-# Domain CPOE — Bahasa Indonesia
+# Domain CPOE
 
-> Versi Bahasa Indonesia dari [`CPOE-DOMAIN.md`](CPOE-DOMAIN.md). Istilah domain, nama state, dan nama event berbahasa Inggris dipertahankan apabila merupakan terminologi standar atau lebih umum digunakan dalam praktik klinis dan pengembangan perangkat lunak.
+**Status artefak:** Spesifikasi bisnis kanonis  
+**Bounded context:** Computerized Physician Order Entry (CPOE)  
+**Cakupan versi:** V1 pragmatis  
+**Sumber kanonis bahasa Inggris:** [CPOE-DOMAIN.md](./CPOE-DOMAIN.md)
 
 ## 1. Gambaran Umum Bisnis
 
-Computerized Provider Order Entry (CPOE) mengatur penyampaian, authorization, routing, koordinasi, dan closure dari clinical order.
+### 1.1 Tujuan
 
-Tujuan bisnisnya adalah memastikan suatu kebutuhan klinis menjadi instruksi yang eksplisit, sampai ke unit fulfilment yang bertanggung jawab, memperoleh outcome yang dapat dipertanggungjawabkan, dan tetap dapat ditelusuri sepanjang lifecycle-nya.
+CPOE menangkap, merutekan, dan melacak maksud seorang klinisi sebagai `Clinical Order`. CPOE menjaga maksud tersebut beserta riwayat bisnis lengkapnya sejak dibuat hingga mencapai outcome akhir.
 
-CPOE memperluas praktik legacy yang mencatat `Tindakan` terutama untuk billing. Clinical Order merepresentasikan tujuan klinis yang diharapkan (prospective clinical intent). Clinical Order bukan bukti bahwa suatu pelayanan telah dilakukan dan tidak otomatis menimbulkan biaya (charge).
+CPOE tidak melaksanakan pekerjaan klinis. `Destination` melaksanakan pekerjaan yang diminta dan menyediakan `Fulfilment Evidence`; CPOE mencatat outcome yang dilaporkan.
 
-Domain ini mencakup:
+### 1.2 Nilai bisnis
 
-- Structured order entry dan authorization.
-- Klasifikasi order dan routing ke unit pelaksana.
-- Priority, Requested Timing, Clinical Indication, dan Order Instruction.
-- Pengelolaan Outstanding Order dan pekerjaan Receiver.
-- Acceptance, Rejection, dan Clarification.
-- Koordinasi dan pencatatan Hasil Pelaksanaan (Fulfilment Outcome).
-- Amendment, Cancellation, Discontinuation, serta riwayat koreksi.
-- Hubungan dengan departmental fulfilment, result, execution documentation, dan Charge Eligibility.
-- Emergency Action, Verbal Order, Protocol-Based Action, dan Retrospective Order.
-- Auditability dan tanggung jawab atas Outstanding Order.
-- Discharge Reconciliation tanpa menghambat discharge.
+CPOE menyediakan satu catatan otoritatif mengenai:
 
-Domain ini tidak memiliki kewenangan atas:
+- pekerjaan klinis yang diminta;
+- pihak yang meminta dan `Patient` yang menjadi subjeknya;
+- tujuan perutean setiap pelaksanaan yang direncanakan;
+- apakah setiap pelaksanaan masih `Active`, telah `Completed`, `Not Performed`, atau `Cancelled`;
+- kemajuan sebuah scheduled order; dan
+- apa yang berubah, alasan perubahan, serta pihak yang melakukan perubahan.
 
-- Asuhan keperawatan rutin yang dilakukan dalam tanggung jawab normal perawat.
-- Workflow fulfilment departemen secara terperinci apabila sudah ada domain fulfilment yang authoritative.
-- Clinical result atau execution document authoritative yang dimiliki domain klinis lain.
-- Penentuan tarif, coverage finansial, perhitungan bill, atau pembayaran.
-- Konsumsi inventory dan stock control.
-- Clinical review dan tindak lanjut atas result yang telah dirilis pada Phase 1.
+### 1.3 Cakupan
 
-Apabila belum tersedia domain fulfilment khusus, CPOE dapat sementara mengatur Generic Fulfilment. Tanggung jawab transisional ini tidak mengubah batas antara Clinical Order dan bukti pelaksanaannya.
+V1 memiliki tepat empat kapabilitas bisnis utama:
+
+1. Clinical Order Management.
+2. Order Routing.
+3. Order Fulfilment Tracking.
+4. Scheduled Order Management.
+
+V1 juga memiliki satu kapabilitas pendukung: Active Order Reconciliation untuk `Inter Ward Transfer`.
+
+### 1.4 Batasan bisnis
+
+CPOE memiliki maksud klinisi, penetapan destination, status order dan occurrence, completion progress, keputusan rekonsiliasi, serta riwayat order lengkap.
+
+CPOE tidak memiliki:
+
+- pelaksanaan pekerjaan klinis yang diminta;
+- hasil klinis atau result review;
+- detail pelaksanaan khusus destination;
+- workflow draft, acceptance, atau clarification;
+- workflow generic fulfilment atau workflow escalation;
+- aturan routing yang kompleks;
+- discharge reconciliation;
+- recurrence tingkat lanjut atau tak terbatas;
+- protocol atau order template;
+- pembuatan order berbantuan AI; atau
+- model otorisasi.
 
 ## 2. Ubiquitous Language
 
 | Inggris | Indonesia | Definisi |
 |---|---|---|
-| Clinical Order | Instruksi Klinis | Instruksi klinis prospective yang telah di-authorize untuk meminta pelayanan, intervensi, pemeriksaan, terapi, konsultasi, atau aktivitas klinis lain bagi seorang pasien. |
-| Order Author | Penyusun Instruksi | Tenaga profesional yang diizinkan untuk menyiapkan Clinical Order. Author tidak selalu menjadi Authorizer. |
-| Order Authorizer | Pemberi Otorisasi Instruksi | Tenaga profesional yang mengambil accountability atas Clinical Order sesuai professional authority dan clinical privilege-nya. |
-| Ordering PPA | PPA Pemberi Instruksi | Profesional Pemberi Asuhan yang membuat atau meng-authorize Clinical Order dalam scope kewenangannya. |
-| Order Type | Jenis Instruksi | Klasifikasi yang bermakna secara klinis dan menentukan aktivitas yang diminta, informasi wajib, kewenangan yang diizinkan, Destination, serta Completion Criterion. |
-| Order Set | Paket Instruksi | Kumpulan Clinical Order terkait yang dikelola untuk situasi klinis tertentu. Setiap order di dalamnya tetap memiliki lifecycle sendiri. |
-| Clinical Indication | Indikasi Klinis | Alasan atau pertanyaan klinis yang mendasari Clinical Order. |
-| Priority | Prioritas | Tingkat urgensi klinis suatu order, misalnya routine, urgent, atau emergency. |
-| Requested Timing | Waktu Pelaksanaan yang Diminta | Waktu, jadwal, frequency, duration, atau kondisi fulfilment yang diinginkan. |
-| Order Instruction | Petunjuk Pelaksanaan Instruksi | Informasi di luar identitas aktivitas yang diminta dan diperlukan agar fulfilment aman serta tepat. |
-| Destination | Unit Tujuan | Layanan organisasi yang bertanggung jawab menerima dan mengoordinasikan fulfilment suatu order. |
-| Receiver | Penerima Instruksi | Tenaga profesional berwenang di Destination yang mengambil penanganan operasional atas order yang telah di-dispatch. |
-| Outstanding Order | Instruksi yang Belum Terselesaikan | Order yang masih memiliki tanggung jawab koordinasi CPOE yang belum terselesaikan. |
-| Acceptance | Penerimaan | Komitmen Destination untuk mengoordinasikan fulfilment suatu order. |
-| Rejection | Penolakan | Penolakan Destination untuk melakukan fulfilment karena order tidak dapat atau tidak boleh dilaksanakan sebagaimana diminta. |
-| Clarification Request | Permintaan Klarifikasi | Permintaan formal untuk menyelesaikan ambiguitas, inkonsistensi, kekurangan informasi, atau masalah keselamatan sebelum fulfilment dilanjutkan. |
-| Fulfilment | Pelaksanaan | Pelaksanaan aktivitas yang diminta oleh Clinical Order. |
-| Executing Domain | Domain Pelaksana | Layanan klinis yang memiliki workflow fulfilment authoritative dan execution record untuk suatu Order Type. |
-| Generic Fulfilment | Pelaksanaan Generik | Kapabilitas fulfilment sementara yang diatur CPOE bagi aktivitas yang belum mempunyai Executing Domain khusus. |
-| Fulfilment Outcome | Hasil Pelaksanaan | Kesimpulan terstruktur dari fulfilment, termasuk completion atau alasan aktivitas tidak dilakukan. |
-| Fulfilment Summary | Ringkasan Pelaksanaan | Fakta operasional umum mengenai fulfilment yang disimpan CPOE, sementara detail execution tetap dimiliki Executing Domain. |
-| Fulfilment Reference | Referensi Pelaksanaan | Identitas aktivitas departmental fulfilment authoritative yang terkait dengan Clinical Order. |
-| Result Reference | Referensi Hasil | Hubungan antara Clinical Order dan clinical result authoritative-nya. |
-| Execution Documentation Reference | Referensi Dokumentasi Pelaksanaan | Hubungan antara Clinical Order dan execution/procedure documentation authoritative-nya. |
-| Completion Criterion | Kriteria Penyelesaian | Kondisi bisnis untuk suatu Order Type yang menentukan kapan fulfilment dinyatakan selesai. |
-| Occurrence | Kejadian Pelaksanaan | Satu pelaksanaan yang diwajibkan dalam Clinical Order recurring atau terjadwal. |
-| Amendment | Amandemen | Perubahan yang dapat dipertanggungjawabkan terhadap authorized order, dengan mempertahankan instruksi sebelumnya dan mengomunikasikan perubahan kepada pihak terdampak. |
-| Cancellation | Pembatalan | Penghentian order sebelum clinical fulfilment dimulai. |
-| Discontinuation | Penghentian | Penghentian fulfilment yang akan datang atau tersisa setelah order menjadi active, started, recurring, atau partially fulfilled. |
-| Entered in Error | Dimasukkan secara Keliru | Pernyataan bahwa order keliru dicatat sebagai instruksi yang valid, tanpa menghapus riwayatnya. |
-| Not Fulfilled | Tidak Dilaksanakan | Outcome akhir bahwa aktivitas yang diminta tidak dilakukan, disertai alasan yang dapat dipertanggungjawabkan. |
-| Independent Tindakan | Tindakan Mandiri | Tindakan klinis yang dilakukan berdasarkan kewenangan profesional sendiri tanpa individual prospective Clinical Order. |
-| Ad Hoc Tindakan | Tindakan Tidak Terencana | Tindakan klinis tidak terencana karena kebutuhan pasien yang segera dan diklasifikasikan berdasarkan kewenangan yang melandasi pelaksanaannya. |
-| Verbal Order | Instruksi Lisan | Clinical Order yang disampaikan secara lisan atau melalui telepon ketika prospective electronic authorization tidak praktis; membutuhkan pencatatan read-back dan Subsequent Authorization sesuai kebijakan rumah sakit. |
-| Emergency Action | Tindakan Darurat | Tindakan mendesak sebelum authorization order biasa karena penundaan akan membahayakan pasien. |
-| Protocol-Based Action | Tindakan Berbasis Protokol | Tindakan yang di-authorize oleh protokol klinis yang disetujui ketika triggering criteria terpenuhi. |
-| Retrospective Order | Instruksi Retrospektif | Order yang dicatat setelah execution dan secara jujur menunjukkan actual instruction time, execution time, waktu entry kemudian, serta alasan keterlambatan. |
-| Subsequent Authorization | Otorisasi Susulan | Konfirmasi accountability setelah Verbal Order, Emergency Action, atau Retrospective Order. Hal ini tidak menyiratkan bahwa prospective authorization pernah terjadi. |
-| Countersignature | Pengesahan Susulan | Konfirmasi berikutnya oleh tenaga profesional yang bertanggung jawab atas exceptional order atau action. |
-| Charge Eligibility | Kelayakan Pembebanan Biaya | Fakta fulfilment yang menyatakan bahwa pelayanan aktual atau bagian yang dapat dibenarkan boleh dipertimbangkan untuk billing. Ini bukan tarif ataupun bill. |
-| Discharge Reconciliation | Rekonsiliasi Pemulangan | Penilaian dan disposition atas Outstanding Order ketika inpatient encounter berakhir. |
-| Reconciliation Warning | Peringatan Rekonsiliasi | Pemberitahuan wajib yang tidak memblokir bahwa masih terdapat unresolved order saat discharge dan membutuhkan acknowledgement, disposition, atau escalation. |
-| Carry Forward | Pelanjutan Instruksi | Kelanjutan atau penggantian order secara eksplisit dalam care context yang berbeda setelah discharge atau transfer. |
-| Clinical Result Review | Tinjauan Hasil Klinis | Acknowledgement, interpretasi, dan tindak lanjut result oleh Responsible Clinician. Hal ini berada di luar Phase 1. |
+| Clinical Order | Instruksi Klinis | Pernyataan otoritatif atas maksud seorang klinisi agar pekerjaan klinis tertentu dilakukan untuk satu Patient. |
+| Clinical Order Identifier | Identitas Instruksi Klinis | Identitas bisnis yang stabil untuk sebuah Clinical Order sepanjang lifecycle-nya. |
+| Ordering Clinician | Klinisi Pemesan | Klinisi yang bertanggung jawab membuat Clinical Order serta melakukan modification atau cancellation yang diizinkan. |
+| Patient | Pasien | Orang yang menjadi subjek pekerjaan klinis yang dipesan. |
+| RegId | Identitas Registrasi | Identitas registrasi yang stabil untuk episode perawatan Patient. Inter Ward Transfer mempertahankan RegId yang sama. |
+| Order Type | Jenis Order | Klasifikasi bisnis dari pekerjaan klinis yang diminta dan digunakan untuk menentukan Destination yang sesuai. |
+| Order Specification | Spesifikasi Order | Pekerjaan klinis yang diminta dan instruksi yang diperlukan agar Destination memahami maksud Ordering Clinician. |
+| Destination | Unit Tujuan | Unit operasional yang bertanggung jawab melaksanakan Order Occurrence yang telah dirutekan, misalnya ward, laboratorium, unit radiologi, atau farmasi. |
+| Order Occurrence | Kejadian Pelaksanaan Order | Satu pelaksanaan Clinical Order yang direncanakan secara eksplisit, dengan identitas, waktu pelaksanaan terencana, Destination, status, dan Fulfilment Evidence opsionalnya sendiri. |
+| Single-Occurrence Order | Order Satu Kejadian | Clinical Order yang berisi tepat satu Order Occurrence. |
+| Scheduled Order | Order Terjadwal | Clinical Order yang berisi lebih dari satu Order Occurrence yang terbatas dan direncanakan secara eksplisit. |
+| Planned Execution Time | Waktu Pelaksanaan Terencana | Waktu bisnis ketika sebuah Order Occurrence dimaksudkan untuk dilakukan. |
+| Active | Aktif | Status belum final yang menandakan Clinical Order atau Order Occurrence masih tertunda. |
+| Completed | Selesai Dilaksanakan | Status final yang menandakan occurrence telah dilakukan, atau order ditutup melalui fulfilment dengan setidaknya satu occurrence Completed. |
+| Not Performed | Tidak Dilaksanakan | Status final yang menandakan occurrence tidak dilakukan, atau order ditutup melalui fulfilment tanpa occurrence yang Completed. |
+| Cancelled | Dibatalkan | Status final yang menandakan Ordering Clinician mengakhiri maksud yang tersisa sebelum semua occurrence tertunda dipenuhi. |
+| Fulfilment Evidence | Bukti Pemenuhan | Pengesahan bisnis dari Destination bahwa sebuah Order Occurrence telah Completed atau Not Performed, mencakup outcome, waktu berlaku, Destination yang bertanggung jawab, referensi bukti, serta alasan bila tidak dilakukan. |
+| Completion Progress | Kemajuan Penyelesaian | Jumlah occurrence total, Active, Completed, Not Performed, dan Cancelled untuk sebuah Clinical Order. |
+| Destination Worklist | Daftar Kerja Tujuan | Kumpulan Order Occurrence Active yang saat ini ditetapkan pada satu Destination, masing-masing dengan konteks order yang cukup untuk memahami pekerjaan yang diminta. |
+| Order History | Riwayat Order | Catatan bisnis lengkap, kronologis, dan append-only mengenai pembuatan, modification, keputusan routing, outcome fulfilment, keputusan rekonsiliasi, serta cancellation. |
+| Inter Ward Transfer | Transfer Antar-Ward | Perpindahan dari satu ward ke ward lain dalam registrasi Patient yang berlanjut dan diidentifikasi oleh RegId. |
+| Active Order Reconciliation | Rekonsiliasi Order Aktif | Peninjauan berbantuan atas Order Occurrence Active setelah Inter Ward Transfer untuk menentukan apakah Destination-nya masih sesuai. |
+| Transfer Reconciliation | Rekonsiliasi Transfer | Catatan bisnis yang mengoordinasikan satu Active Order Reconciliation untuk satu transfer Patient. |
+| Affected Occurrence Review | Peninjauan Kejadian Terdampak | Assessment dan keputusan manusia untuk satu Order Occurrence Active yang Destination-nya mungkin terdampak Inter Ward Transfer. |
+| Reconciliation Reviewer | Peninjau Rekonsiliasi | Klinisi atau wakil operasional yang bertanggung jawab memutuskan apakah Destination terdampak dipertahankan atau diubah. |
 
 ## 3. Kapabilitas Bisnis
 
-Kapabilitas Bisnis adalah kemampuan yang harus dimiliki organisasi atau domain untuk menjalankan tanggung jawab bisnis dan menghasilkan outcome tertentu. Kapabilitas menjelaskan **apa yang harus mampu dilakukan**, bukan urutan aktivitasnya, fitur aplikasi, atau cara teknis kemampuan tersebut diimplementasikan. Kapabilitas dapat didukung oleh tenaga profesional, kebijakan, proses, dan sistem informasi.
+### 3.1 Primary: Clinical Order Management
 
-### 3.1 Clinical Order Definition
+**Indonesia:** Manajemen Instruksi Klinis
 
-**Indonesia:** Definisi Instruksi Klinis
+CPOE dapat:
 
-Mendefinisikan Order Type terstruktur, makna klinis yang wajib, Authorizer yang diizinkan, Destination, dan Completion Criterion.
+- membuat Clinical Order yang langsung menjadi Active;
+- mengubah maksud klinisi hanya selama pekerjaan klinis yang terdampak belum dieksekusi;
+- membatalkan Clinical Order Active beserta occurrence Active yang tersisa; dan
+- menjaga Order History yang lengkap tanpa menggantikan fakta bisnis sebelumnya.
 
-### 3.2 Order Authoring and Authorization
+Tidak ada status Draft pada V1.
 
-**Indonesia:** Penyusunan dan Otorisasi Instruksi
+### 3.2 Primary: Order Routing
 
-Menangkap clinical intent dan menetapkan professional accountability sebelum order menjadi actionable.
+**Indonesia:** Perutean Order
 
-### 3.3 Order Routing
+CPOE dapat:
 
-**Indonesia:** Pengarahan Instruksi
+- menentukan Destination berdasarkan Order Type, Order Specification, RegId, dan ward saat ini bila relevan;
+- menetapkan tepat satu Destination untuk setiap Order Occurrence Active;
+- memperbarui Destination yang memenuhi syarat melalui keputusan bisnis eksplisit; dan
+- menyediakan Destination Worklist yang dikelompokkan berdasarkan Destination.
 
-Mengarahkan authorized order ke Destination yang bertanggung jawab atas fulfilment-nya.
+Routing menetapkan tanggung jawab pelaksanaan. Routing tidak berarti Destination telah menerima order atau melaksanakan pekerjaan.
 
-### 3.4 Receiver Work Management
+### 3.3 Primary: Order Fulfilment Tracking
 
-**Indonesia:** Pengelolaan Pekerjaan Penerima Instruksi
+**Indonesia:** Pelacakan Pemenuhan Order
 
-Menjaga visibility dan responsibility untuk order yang menunggu acceptance, clarification, scheduling, execution, atau resolution.
+CPOE dapat:
 
-### 3.5 Acceptance, Rejection, and Clarification
+- mencatat Fulfilment Evidence yang disediakan oleh Destination;
+- memfinalkan Order Occurrence sebagai Completed atau Not Performed;
+- menurunkan status Clinical Order dari outcome occurrence dan cancellation eksplisit; dan
+- melaporkan Completion Progress tanpa memiliki detail pelaksanaan atau hasil klinis.
 
-**Indonesia:** Penerimaan, Penolakan, dan Klarifikasi
+### 3.4 Primary: Scheduled Order Management
 
-Memungkinkan Destination berkomitmen terhadap fulfilment, menolak dengan alasan, atau menahan pekerjaan terdampak hingga clarification selesai.
+**Indonesia:** Manajemen Order Terjadwal
 
-### 3.6 Fulfilment Coordination
+CPOE dapat merepresentasikan satu Clinical Order sebagai kumpulan terbatas dari Order Occurrence yang dilacak secara independen.
 
-**Indonesia:** Koordinasi Pelaksanaan
+Penjadwalan V1 sengaja dibuat eksplisit:
 
-Melacak outcome operasional umum dari departmental fulfilment tanpa mengambil kepemilikan atas detail execution khusus.
+- setiap occurrence direncanakan sebagai bagian dari daftar terbatas;
+- setiap occurrence memiliki Planned Execution Time, Destination, dan statusnya sendiri;
+- occurrence tidak memiliki dependensi satu sama lain; dan
+- order final tidak dapat memperbarui dirinya atau menghasilkan occurrence tambahan.
 
-### 3.7 Generic Fulfilment
+V1 tidak menggunakan recurrence rule, cron expression, recurrence tak terbatas, atau scheduling engine tingkat lanjut.
 
-**Indonesia:** Pelaksanaan Generik
+### 3.5 Supporting: Active Order Reconciliation
 
-Mencatat execution bagi ordered activity yang belum mempunyai Executing Domain khusus.
+**Indonesia:** Rekonsiliasi Order Aktif
 
-### 3.8 Order Change Control
+Setelah Inter Ward Transfer, CPOE dapat:
 
-**Indonesia:** Pengendalian Perubahan Instruksi
+- mengevaluasi Order Occurrence Active milik Patient;
+- mengidentifikasi occurrence yang Destination-nya mungkin bergantung pada ward sebelumnya;
+- menyajikan setiap occurrence terdampak untuk ditinjau;
+- mencatat keputusan untuk mempertahankan atau mengubah Destination; dan
+- menjaga keputusan tersebut dalam Order History terkait.
 
-Mengatur Amendment, Cancellation, Discontinuation, koreksi, serta pemeliharaan riwayat order.
-
-### 3.9 Exceptional Order Governance
-
-**Indonesia:** Tata Kelola Instruksi Khusus
-
-Mengatur Verbal Order, Emergency Action, Protocol-Based Action, dan Retrospective Order, termasuk Subsequent Authorization yang diwajibkan.
-
-### 3.10 Result and Documentation Association
-
-**Indonesia:** Pengaitan Hasil dan Dokumentasi
-
-Menghubungkan order dengan result dan execution documentation authoritative tanpa menduplikasi konten klinisnya.
-
-### 3.11 Billing Eligibility Handover
-
-**Indonesia:** Serah Terima Kelayakan Pembebanan Biaya
-
-Mengomunikasikan bahwa fulfilment aktual dapat membenarkan charge, sementara penentuan finansial tetap menjadi kewenangan Tata Rekening.
-
-### 3.12 Outstanding-Order Reconciliation
-
-**Indonesia:** Rekonsiliasi Instruksi yang Belum Terselesaikan
-
-Memastikan responsibility dinilai kembali saat ward transfer, pergantian DPJP, dan discharge.
-
-### 3.13 Clinical Order Audit
-
-**Indonesia:** Audit Instruksi Klinis
-
-Mempertahankan authorship, authorization, responsibility, decision, perubahan, exceptional authority, Fulfilment Outcome, dan discharge acknowledgement.
+Rekonsiliasi bersifat berbantuan. Transfer ward tidak pernah mengubah Destination secara otomatis.
 
 ## 4. Aktor & Peran
 
-| Aktor atau Peran | Tanggung Jawab dan Kewenangan Bisnis |
-|---|---|
-| Patient atau Patient Representative | Memberikan consent bila diperlukan, mengikuti preparation instruction, dan dapat menerima atau menolak aktivitas yang diminta. |
-| Order Author | Menyiapkan Clinical Order dalam professional scope yang diizinkan. Draft yang disiapkan Author tanpa authorization tidak actionable. |
-| Order Authorizer | Mengambil clinical accountability atas order. Dapat berupa dokter atau PPA lain sesuai professional authority dan clinical privilege. |
-| Responsible Clinician | Memiliki tanggung jawab clinical follow-up dalam care context saat ini, termasuk unresolved order ketika tanggung jawab pelayanan berubah. |
-| DPJP | Memegang tanggung jawab klinis utama dalam inpatient care context dan menerima pengalihan responsibility ketika DPJP berganti. |
-| Receiver | Meninjau dispatched order dan dapat accept, reject, atau meminta clarification dalam kewenangan Destination. |
-| Fulfilment Coordinator | Mengoordinasikan scheduling, resource, preparation, location, dan assignment di dalam Destination. |
-| Clinical Verifier | Menentukan apakah order memenuhi persyaratan klinis atau keselamatan khusus layanan sebelum execution. |
-| Performer | Melaksanakan ordered activity sesuai professional competency dan mencatat outcome-nya. |
-| Result Author atau Validator | Menghasilkan atau memvalidasi result authoritative apabila diwajibkan oleh Order Type. |
-| Discharge Actor | Melakukan reconciliation atau acknowledgement atas Outstanding Order ketika menyelesaikan discharge. |
-| Clinical Governance Authority | Mendefinisikan Order Type, professional authority, clinical privilege, protocol, Completion Criterion, kebijakan exceptional order, dan periode Countersignature. |
-| Billing Officer | Menangani konsekuensi finansial dari eligible fulfilled service sesuai kebijakan Tata Rekening. |
+### 4.1 Ordering Clinician
 
-Satu orang dapat menjalankan beberapa peran bila diizinkan kebijakan rumah sakit. Penggabungan peran tidak menghilangkan accountability yang berbeda untuk authoring, authorization, reception, verification, execution, atau reconciliation.
+Ordering Clinician:
+
+- menyatakan maksud klinis dengan membuat Clinical Order;
+- menyediakan Patient, RegId, Order Type, Order Specification, dan rencana occurrence terbatas;
+- mengubah maksud yang memenuhi syarat sebelum eksekusi;
+- membatalkan Clinical Order yang memenuhi syarat dengan alasan bisnis; dan
+- tetap dapat diidentifikasi dalam Order History.
+
+### 4.2 Destination Fulfilment Representative
+
+Destination Fulfilment Representative adalah klinisi atau wakil operasional yang bertindak untuk Destination. Peran ini:
+
+- menggunakan Destination Worklist untuk memahami occurrence yang masih tertunda;
+- menyediakan Fulfilment Evidence untuk occurrence Completed atau Not Performed; dan
+- tidak mendefinisikan ulang maksud klinis awal.
+
+### 4.3 Reconciliation Reviewer
+
+Reconciliation Reviewer:
+
+- menilai Affected Occurrence Review setelah Inter Ward Transfer;
+- memutuskan apakah setiap Destination terdampak dipertahankan atau diubah;
+- menyediakan alasan keputusan tersebut; dan
+- tidak mengubah Destination hanya karena transfer terjadi.
 
 ## 5. Domain Objects
 
-### 5.1 Clinical Order
+### 5.1 Entities
 
-Merepresentasikan instruksi klinis untuk satu pasien dan satu care context. Objek ini membawa Order Type, Clinical Indication, Priority, Requested Timing, Order Instruction, Author, Authorizer, Destination, responsibility saat ini, dan lifecycle.
+#### Clinical Order
 
-### 5.2 Order Definition
+Tujuan: merepresentasikan satu maksud klinisi untuk satu Patient.
 
-Mendefinisikan makna bisnis stabil dari Order Type, termasuk:
+Tanggung jawab:
 
-- Informasi klinis yang wajib.
-- Peran Author dan Authorizer yang diizinkan.
-- Destination yang diizinkan.
-- Apakah acceptance, verification, scheduling, result, atau execution documentation diwajibkan.
-- Apakah fulfilment bersifat single, recurring, scheduled, atau conditional.
-- Completion Criterion.
-- Apakah ordered activity dapat menghasilkan Charge Eligibility.
+- mempertahankan Clinical Order Identifier yang stabil;
+- mengidentifikasi Patient, RegId, Ordering Clinician, Order Type, dan Order Specification;
+- memiliki satu atau lebih Order Occurrence;
+- mengatur modification, cancellation, status, dan Completion Progress; dan
+- memiliki Order History lengkap.
 
-### 5.3 Order Authorization
+#### Order Occurrence
 
-Merepresentasikan keputusan yang dapat dipertanggungjawabkan bahwa Clinical Order yang telah disiapkan boleh dilanjutkan. Objek ini mengidentifikasi Authorizer, dasar kewenangan, dan authorization time.
+Tujuan: merepresentasikan satu pelaksanaan Clinical Order yang direncanakan.
 
-### 5.4 Order Responsibility
+Tanggung jawab:
 
-Mengidentifikasi clinical role dan care context yang accountable atas Outstanding Order. Responsibility dapat dialihkan tanpa mengubah authorship atau authorization awal.
+- mempertahankan identitas yang unik di dalam Clinical Order;
+- mempertahankan Planned Execution Time dan Destination;
+- bertransisi secara independen dari Active ke satu status final; dan
+- mempertahankan paling banyak satu catatan Fulfilment Evidence.
 
-### 5.5 Order Destination
+Order Occurrence tidak memiliki makna bisnis di luar Clinical Order induknya.
 
-Mengidentifikasi layanan organisasi yang bertanggung jawab menerima dan mengoordinasikan fulfilment.
+#### Order History Entry
 
-### 5.6 Receiver Decision
+Tujuan: menjaga satu fakta bisnis material dalam lifecycle sebuah Clinical Order.
 
-Merepresentasikan Acceptance, Rejection, atau Clarification Request oleh Destination, termasuk actor, time, dan reason yang bertanggung jawab.
+Setiap entri mengidentifikasi apa yang terjadi, kapan terjadi, pihak yang bertanggung jawab, alasan bila diperlukan, serta nilai bisnis sebelum dan sesudah yang relevan. Sebuah entri tidak pernah direvisi atau dihapus.
 
-### 5.7 Clarification
+#### Transfer Reconciliation
 
-Merepresentasikan pertanyaan yang harus dijawab untuk menyelesaikan ambiguitas atau risiko. Memuat question, requester, responsible responder, urgency, response, dan resolution.
+Tujuan: mengoordinasikan peninjauan berbantuan setelah satu Inter Ward Transfer untuk satu Patient.
 
-### 5.8 Order Occurrence
+Tanggung jawab:
 
-Merepresentasikan satu pelaksanaan yang diwajibkan dalam recurring atau scheduled order. Occurrence dapat fulfilled, omitted dengan reason, atau dihentikan melalui Discontinuation atas sisa order.
+- mengidentifikasi ward sebelumnya, ward baru, dan waktu efektif transfer;
+- mempertahankan kumpulan Affected Occurrence Review; dan
+- selesai hanya ketika setiap occurrence terdampak memiliki keputusan yang tercatat.
 
-### 5.9 Fulfilment Summary
+#### Affected Occurrence Review
 
-Merepresentasikan outcome operasional bersama yang diperlukan CPOE:
+Tujuan: merepresentasikan assessment rekonsiliasi atas satu Order Occurrence Active.
 
-- Fulfilment status.
-- Start dan completion time bila berlaku.
-- Performer dan place of execution bila berlaku.
-- Not-performed reason bila berlaku.
-- Explanatory note opsional.
-- Fulfilment, result, dan execution-documentation reference.
+Tanggung jawab:
 
-Fulfilment Summary bukan specialized clinical execution record yang authoritative.
+- mengidentifikasi Clinical Order dan Order Occurrence yang ditinjau;
+- menjelaskan alasan occurrence mungkin terdampak;
+- mencatat keputusan untuk mempertahankan atau mengubah Destination; dan
+- mengidentifikasi Reconciliation Reviewer, waktu keputusan, dan alasan.
 
-### 5.10 Generic Fulfilment Record
+### 5.2 Value Objects
 
-Merepresentasikan execution evidence authoritative bagi ordered activity hanya ketika belum tersedia Executing Domain khusus. Objek ini mengidentifikasi apa yang dilakukan, oleh siapa, kapan, di mana, outcome, deviation, serta not-performed reason bila ada.
+#### RegId
 
-### 5.11 Order Amendment
+Identitas registrasi yang stabil untuk episode perawatan Patient. RegId tidak berubah selama Inter Ward Transfer; ward saat ini dan Destination merupakan fakta routing yang terpisah.
 
-Merepresentasikan perubahan yang dapat dipertanggungjawabkan atas authorized Clinical Order. Objek ini mempertahankan previous instruction, reason, amending authority, time, serta dampaknya terhadap pending fulfilment.
+#### Order Specification
 
-### 5.12 Exceptional Authority Record
+Pekerjaan klinis yang diminta dan instruksi klinis yang diperlukan untuk menyatakan maksud Ordering Clinician. Order Specification tidak mencakup catatan eksekusi atau hasil klinis.
 
-Mengidentifikasi dasar Verbal Order, Emergency Action, Protocol-Based Action, atau Retrospective Order, termasuk Subsequent Authorization yang diwajibkan.
+#### Destination
 
-### 5.13 Charge Eligibility
+Unit operasional teridentifikasi yang bertanggung jawab atas pelaksanaan sebuah Order Occurrence.
 
-Merepresentasikan pernyataan dari fulfilment bahwa actual service, Occurrence, atau bagian yang dapat dibenarkan boleh dipertimbangkan untuk billing. Tata Rekening menentukan konsekuensi finansial secara independen.
+#### Fulfilment Evidence
 
-### 5.14 Discharge Reconciliation
+Pengesahan yang tidak dapat diubah dari Destination yang bertanggung jawab. Fulfilment Evidence hanya memuat informasi yang diperlukan untuk mendukung outcome Completed atau Not Performed. Fulfilment Evidence bukan hasil klinis.
 
-Merepresentasikan penilaian Outstanding Order saat discharge, disposition-nya, acknowledged exception, responsibility yang dialihkan, dan escalation bila diperlukan.
+#### Completion Progress
+
+Ringkasan turunan atas jumlah occurrence. Totalnya tetap setelah occurrence mana pun meninggalkan status Active.
 
 ## 6. Aggregates
 
 ### 6.1 Clinical Order Aggregate
 
-**Aggregate Root:** Clinical Order
+**Aggregate Root:** `Clinical Order`
 
-**Tanggung jawab bisnis:** Mempertahankan makna, accountability, lifecycle, dan current operational responsibility dari satu instruksi klinis.
+**Owned entities:**
 
-**Consistency boundary mencakup:**
+- satu atau lebih entity `Order Occurrence`;
+- nol atau lebih entity `Order History Entry`.
 
-- Order Authorization.
-- Current Order Responsibility.
-- Destination dan Receiver Decision.
-- Clarification.
-- Occurrence.
-- Amendment.
-- Exceptional Authority Record.
-- Fulfilment Summary.
-- Result dan documentation association.
-- Charge Eligibility association.
+**Consistency boundary:**
 
-Clinical Order Aggregate memastikan tidak ada order yang menjadi actionable tanpa authority yang valid, tidak ada material change yang kehilangan riwayatnya, dan tidak ada lifecycle outcome yang bertentangan dengan recorded fulfilment.
+Aggregate ini menjaga maksud klinisi, outcome occurrence, status keseluruhan, Completion Progress, penetapan routing, dan Order History tetap konsisten satu sama lain.
 
-Order Set tidak membentuk satu lifecycle yang tidak dapat dipisahkan. Setiap Clinical Order di dalamnya tetap dapat secara independen di-accept, reject, amend, cancel, fulfil, dan dinyatakan charge-eligible.
+Hanya Clinical Order yang dapat:
 
-### 6.2 Generic Fulfilment Aggregate
+- mengubah Order Specification atau rencana occurrence;
+- mengubah Destination atau Planned Execution Time occurrence Active;
+- memfinalkan occurrence berdasarkan Fulfilment Evidence;
+- membatalkan occurrence Active yang tersisa; atau
+- menurunkan status keseluruhan dan Completion Progress-nya.
 
-**Aggregate Root:** Generic Fulfilment Record
+### 6.2 Transfer Reconciliation Aggregate
 
-**Tanggung jawab bisnis:** Mengatur authoritative execution evidence ketika belum tersedia Executing Domain khusus.
+**Aggregate Root:** `Transfer Reconciliation`
 
-**Consistency boundary mencakup:**
+**Owned entities:**
 
-- Assigned atau actual Performer.
-- Execution timing dan place.
-- Execution outcome.
-- Not-performed reason.
-- Execution deviation dan supporting documentation association.
+- nol atau lebih entity `Affected Occurrence Review`.
 
-Generic Fulfilment hanya tersedia untuk ordered activity. Aggregate ini tidak mengatur routine nursing care atau independent professional documentation.
+**Consistency boundary:**
 
-### 6.3 Discharge Reconciliation Aggregate
+Aggregate ini memastikan satu transfer Patient dinilai satu kali sebagai rekonsiliasi yang koheren dan setiap occurrence terdampak memperoleh tepat satu keputusan eksplisit.
 
-**Aggregate Root:** Discharge Reconciliation
-
-**Tanggung jawab bisnis:** Mempertahankan disposition Outstanding Order pada tingkat encounter yang dapat dipertanggungjawabkan, tanpa menjadikan unresolved order sebagai larangan discharge secara universal.
-
-**Consistency boundary mencakup:**
-
-- Order yang teridentifikasi outstanding saat discharge.
-- Disposition setiap order yang dinilai.
-- Unresolved exception.
-- Acknowledgement dan reason untuk melanjutkan.
-- Responsibility yang dialihkan setelah discharge.
-- Escalation yang diwajibkan.
+Transfer Reconciliation dapat merekomendasikan dan mencatat keputusan Destination. Transfer Reconciliation tidak dapat menetapkan ulang Order Occurrence secara langsung. Perubahan yang dikonfirmasi harus diterima oleh Clinical Order terkait berdasarkan aturannya sendiri dan harus menjadi bagian dari Order History-nya.
 
 ## 7. Aturan Bisnis
 
-### Clinical intent dan authorization
-
-**BR-CPOE-001** — Clinical Order harus merepresentasikan clinical intent dan tidak boleh diperlakukan sebagai bukti bahwa aktivitas yang diminta telah terjadi.
-
-**BR-CPOE-002** — Clinical Order harus mengidentifikasi satu pasien, satu care context, satu Order Type, Clinical Indication, Priority, Requested Timing, Order Instruction, Author, dan intended Destination sebagaimana diwajibkan Order Definition-nya.
-
-**BR-CPOE-003** — Draft order tidak boleh di-dispatch atau di-fulfil sebelum memiliki authorization yang valid.
-
-**BR-CPOE-004** — Order Authorizer dapat berupa dokter atau PPA lain yang bertindak sesuai professional authority, clinical privilege, dan kebijakan Order Type.
-
-**BR-CPOE-005** — Authorship dan authorization harus tetap dapat dibedakan meskipun dilakukan oleh orang yang sama.
-
-**BR-CPOE-006** — Order Set tidak boleh menghilangkan authorization, lifecycle, atau outcome independen dari setiap Clinical Order di dalamnya.
-
-### Routing dan tanggung jawab Receiver
-
-**BR-CPOE-007** — Setiap authorized order harus memiliki Destination yang bertanggung jawab menerimanya.
-
-**BR-CPOE-008** — Acceptance berarti Destination berkomitmen mengoordinasikan fulfilment; tidak berarti execution telah dimulai atau selesai.
-
-**BR-CPOE-009** — Rejection harus mengidentifikasi Receiver yang accountable dan business reason.
-
-**BR-CPOE-010** — Clarification Request harus mengidentifikasi question, requester, responsible responder, urgency, dan resolution.
-
-**BR-CPOE-011** — Unresolved Clarification harus menempatkan order terdampak dalam status hold untuk clinical fulfilment.
-
-**BR-CPOE-012** — Persiapan nonklinis yang aman boleh berlanjut selama Clarification apabila tidak mengubah kondisi pasien dan tidak menimbulkan risiko klinis.
-
-**BR-CPOE-013** — Emergency fulfilment boleh berlanjut selama unresolved Clarification hanya jika emergency authority dan alasan melanjutkan dicatat.
-
-**BR-CPOE-014** — Clarification yang memengaruhi satu order tidak boleh secara otomatis menahan order lain yang tidak terkait.
-
-### Fulfilment dan completion
-
-**BR-CPOE-015** — Executing Domain memiliki execution record authoritative apabila tersedia specialized fulfilment authority.
-
-**BR-CPOE-016** — CPOE harus menyimpan Fulfilment Summary terstruktur yang cukup untuk menentukan apakah operational responsibility-nya masih outstanding.
-
-**BR-CPOE-017** — Free text boleh menjelaskan Fulfilment Outcome, tetapi tidak boleh menggantikan fulfilment status atau not-performed reason terstruktur.
-
-**BR-CPOE-018** — Koreksi atas execution fact authoritative harus dilakukan di bawah kewenangan Executing Domain.
-
-**BR-CPOE-019** — Generic Fulfilment hanya boleh memiliki execution ketika ordered activity belum mempunyai Executing Domain khusus.
-
-**BR-CPOE-020** — Setiap Order Type harus mendefinisikan Completion Criterion.
-
-**BR-CPOE-021** — Clinical Order menjadi Fulfilled hanya ketika Completion Criterion dari Order Type-nya terpenuhi.
-
-**BR-CPOE-022** — Acceptance, scheduling, preparation, atau execution start tidak dengan sendirinya berarti order telah Fulfilled.
-
-**BR-CPOE-023** — Clinical Order menjadi Closed hanya ketika tidak ada lagi CPOE coordination responsibility, unresolved Clarification, required Occurrence, atau required fulfilment association.
-
-**BR-CPOE-024** — Clinical Result Review tidak diwajibkan untuk closure pada Phase 1.
-
-**BR-CPOE-025** — Expected result atau execution document diwajibkan untuk fulfilment hanya jika Order Definition menjadikannya bagian dari Completion Criterion.
-
-**BR-CPOE-026** — Outcome Not Fulfilled harus menyatakan alasan aktivitas yang diminta tidak dilakukan.
-
-### Perubahan dan penghentian
-
-**BR-CPOE-027** — Perubahan sebelum authorization boleh memperbarui draft tanpa membuat Amendment.
-
-**BR-CPOE-028** — Material change setelah authorization harus dicatat sebagai Amendment yang mempertahankan previous instruction serta mengidentifikasi reason dan authority.
-
-**BR-CPOE-029** — Amendment yang memengaruhi pending fulfilment harus dikomunikasikan kepada Destination yang bertanggung jawab.
-
-**BR-CPOE-030** — Cancellation hanya berlaku sebelum clinical fulfilment dimulai.
-
-**BR-CPOE-031** — Discontinuation menghentikan fulfilment yang akan datang atau tersisa setelah order active, started, recurring, atau partially fulfilled.
-
-**BR-CPOE-032** — Discontinuation tidak boleh membatalkan completed Occurrence atau execution history yang valid.
-
-**BR-CPOE-033** — Order yang dicatat untuk pasien yang salah atau dibuat tanpa clinical intent yang sah harus ditandai Entered in Error, bukan Cancelled.
-
-**BR-CPOE-034** — Riwayat order, authorization, Amendment, termination, fulfilment, atau exceptional authority tidak boleh dihapus dari business history.
-
-### Ad hoc dan exceptional action
-
-**BR-CPOE-035** — Routine nursing care dalam tanggung jawab normal keperawatan berada di luar CPOE.
-
-**BR-CPOE-036** — Tindakan keperawatan yang secara spesifik di-order dapat diatur oleh CPOE.
-
-**BR-CPOE-037** — Independent Tindakan harus dibedakan dari tindakan yang semestinya memerlukan prior authorization tetapi tidak memilikinya.
-
-**BR-CPOE-038** — Verbal Order harus mengidentifikasi issuer, Receiver, instruction, read-back confirmation, dan actual instruction time.
-
-**BR-CPOE-039** — Emergency Action boleh mendahului authorization biasa ketika penundaan membahayakan pasien, tetapi emergency basis, Performer, action, dan execution time harus dicatat.
-
-**BR-CPOE-040** — Protocol-Based Action harus mengidentifikasi approved protocol, applicable version, triggering criteria, dan Performer.
-
-**BR-CPOE-041** — Retrospective Order harus membedakan instruction time, execution time, recording time, dan alasan keterlambatan pencatatan.
-
-**BR-CPOE-042** — Subsequent Authorization yang diwajibkan harus mengonfirmasi accountability tanpa memberi kesan palsu bahwa prospective authorization pernah terjadi.
-
-**BR-CPOE-043** — Kegagalan memperoleh Subsequent Authorization dalam governed period tetap menjadi outstanding exception dan tidak menghapus execution aktual.
-
-### Responsibility dan transisi pelayanan
-
-**BR-CPOE-044** — Responsibility atas Outstanding Order melekat pada clinical role dan care context yang ditentukan, bukan secara permanen pada Author awal.
-
-**BR-CPOE-045** — Ward transfer tidak boleh diam-diam membatalkan Outstanding Order; Destination, validity, dan responsibility-nya harus dinilai kembali.
-
-**BR-CPOE-046** — Pergantian DPJP harus mengalihkan unresolved clinical responsibility kepada DPJP penerus atau responsible care team tanpa mengubah authorship awal.
-
-**BR-CPOE-047** — Discharge harus memulai reconciliation atas seluruh Outstanding Order.
-
-**BR-CPOE-048** — Outstanding Order tidak boleh secara universal memblokir discharge.
-
-**BR-CPOE-049** — Discharge dengan unresolved order harus mewajibkan acknowledgement eksplisit atas Reconciliation Warning.
-
-**BR-CPOE-050** — Reconciliation harus mempertahankan status, disposition, acknowledgement, reason untuk melanjutkan, serta post-discharge responsibility atau escalation bagi setiap unresolved order.
-
-**BR-CPOE-051** — Discharge tidak boleh diam-diam membatalkan seluruh Outstanding Order.
-
-**BR-CPOE-052** — Inpatient recurring order yang tidak sengaja dilanjutkan harus memiliki remaining Occurrence yang di-discontinue saat discharge.
-
-**BR-CPOE-053** — Order yang masih dibutuhkan secara klinis setelah discharge harus secara eksplisit di-carry forward, convert, replace, atau diberi continuing responsibility.
-
-### Result, dokumentasi, dan billing
-
-**BR-CPOE-054** — Result atau execution document authoritative harus tetap dimiliki domain klinis yang bertanggung jawab.
-
-**BR-CPOE-055** — CPOE harus menghubungkan Clinical Order dengan fulfilment, result, dan execution-documentation reference authoritative yang tersedia.
-
-**BR-CPOE-056** — Pembuatan, authorization, dispatch, acceptance, scheduling, atau preparation order tidak boleh menghasilkan Charge Eligibility.
-
-**BR-CPOE-057** — Charge Eligibility hanya timbul dari fulfilment event aktual atau fulfilled portion yang dapat dibenarkan sesuai kebijakan fulfilment terkait.
-
-**BR-CPOE-058** — Cancellation pada umumnya tidak menghasilkan Charge Eligibility.
-
-**BR-CPOE-059** — Discontinuation harus mempertahankan Charge Eligibility yang telah dihasilkan oleh completed Occurrence yang valid atau justified partial fulfilment.
-
-**BR-CPOE-060** — Tata Rekening secara independen menentukan tarif, coverage, bundling, pembuatan bill, adjustment, dan payment berdasarkan eligible fulfilment fact.
-
-### Koeksistensi legacy dan audit
-
-**BR-CPOE-061** — CPOE adalah canonical authority untuk prospective clinical intent yang dimasukkan melalui CPOE.
-
-**BR-CPOE-062** — Legacy departmental order boleh tetap authoritative atas departmental fulfilment-nya sambil mempertahankan hubungan dengan originating Clinical Order.
-
-**BR-CPOE-063** — Legacy transaction yang dibuat langsung harus secara jujur diidentifikasi sebagai legacy-originated atau retrospective; transaction tersebut tidak boleh direpresentasikan sebagai prospectively authorized native CPOE order.
-
-**BR-CPOE-064** — Satu Clinical Order tidak boleh membuat kewajiban departmental fulfilment ganda akibat handover berulang.
-
-**BR-CPOE-065** — Setiap material order decision harus mengidentifikasi responsible actor, business time, reason apabila diwajibkan, dan resulting state.
-
-## 8. State Machine & Lifecycle
-
-### 8.1 Clinical Order Lifecycle
+### 7.1 Identitas dan pembuatan Clinical Order
+
+- **BR-CPOE-001** — Sebuah Clinical Order wajib merepresentasikan tepat satu maksud Ordering Clinician untuk tepat satu Patient.
+- **BR-CPOE-002** — Sebuah Clinical Order wajib memiliki Clinical Order Identifier yang stabil, RegId, Order Type, Order Specification, dan setidaknya satu Order Occurrence.
+- **BR-CPOE-003** — Clinical Order yang valid wajib langsung menjadi Active saat dibuat; V1 tidak boleh menyimpan Clinical Order Draft.
+- **BR-CPOE-004** — Setiap Order Occurrence wajib memiliki identitas yang unik dalam Clinical Order-nya dan satu Planned Execution Time yang eksplisit.
+- **BR-CPOE-005** — Clinical Order dengan satu occurrence adalah Single-Occurrence Order; Clinical Order dengan lebih dari satu occurrence adalah Scheduled Order.
+
+### 7.2 Routing dan worklist
+
+- **BR-CPOE-006** — Setiap Order Occurrence Active wajib memiliki tepat satu Destination.
+- **BR-CPOE-007** — Sebuah Destination wajib sesuai dengan Order Type, Order Specification, RegId, dan ward saat ini yang diketahui ketika keputusan routing dibuat.
+- **BR-CPOE-008** — Sebuah Destination Worklist hanya boleh memuat Order Occurrence Active yang ditetapkan ke Destination tersebut.
+- **BR-CPOE-009** — Routing tidak boleh menyiratkan bahwa Destination telah menerima, memulai, atau melakukan pekerjaan yang diminta.
+- **BR-CPOE-010** — Perubahan Destination wajib mengidentifikasi pihak yang bertanggung jawab, waktu keputusan, alasan, Destination sebelumnya, dan Destination baru dalam Order History.
+
+### 7.3 Modification dan cancellation
+
+- **BR-CPOE-011** — Patient dan Clinical Order Identifier tidak boleh berubah setelah pembuatan.
+- **BR-CPOE-012** — Order Type atau Order Specification hanya boleh diubah selama setiap Order Occurrence masih Active.
+- **BR-CPOE-013** — Rencana occurrence terbatas hanya boleh diubah selama setiap Order Occurrence masih Active.
+- **BR-CPOE-014** — Planned Execution Time atau Destination pada occurrence tertentu hanya boleh diubah selama occurrence tersebut masih Active.
+- **BR-CPOE-015** — Setiap modification wajib mencatat pihak yang bertanggung jawab, waktu modification, alasan, dan nilai sebelum-serta-sesudah yang relevan dalam Order History.
+- **BR-CPOE-016** — Hanya Clinical Order Active yang boleh dibatalkan.
+- **BR-CPOE-017** — Membatalkan Clinical Order wajib mengubah setiap occurrence Active yang tersisa menjadi Cancelled dan tidak boleh mengubah occurrence yang sudah Completed atau Not Performed.
+- **BR-CPOE-018** — Cancellation wajib mencatat pihak yang bertanggung jawab, waktu cancellation, dan alasan dalam Order History.
+- **BR-CPOE-019** — Clinical Order atau Order Occurrence final tidak boleh kembali menjadi Active.
+
+### 7.4 Fulfilment dan kemajuan
+
+- **BR-CPOE-020** — Order Occurrence Active hanya boleh menjadi Completed berdasarkan Fulfilment Evidence yang disediakan oleh Destination yang bertanggung jawab.
+- **BR-CPOE-021** — Order Occurrence Active hanya boleh menjadi Not Performed berdasarkan Fulfilment Evidence yang disediakan oleh Destination yang bertanggung jawab, dan bukti tersebut wajib memuat alasan.
+- **BR-CPOE-022** — Fulfilment Evidence wajib berlaku untuk tepat satu Order Occurrence Active dan tidak dapat diubah setelah dicatat.
+- **BR-CPOE-023** — CPOE hanya boleh mencatat outcome fulfilment yang dilaporkan beserta buktinya; CPOE tidak boleh menyimpulkan detail eksekusi atau hasil klinis.
+- **BR-CPOE-024** — Completion Progress wajib sama dengan jumlah occurrence dalam setiap status, dan jumlah tersebut harus selalu sama dengan jumlah occurrence total.
+- **BR-CPOE-025** — Clinical Order wajib tetap Active selama setidaknya satu occurrence masih Active, kecuali Clinical Order dibatalkan secara eksplisit.
+- **BR-CPOE-026** — Ketika semua occurrence menjadi final melalui fulfilment dan setidaknya satu occurrence Completed, Clinical Order wajib menjadi Completed.
+- **BR-CPOE-027** — Ketika semua occurrence menjadi final melalui fulfilment dan tidak ada occurrence yang Completed, Clinical Order wajib menjadi Not Performed.
+- **BR-CPOE-028** — Cancellation eksplisit wajib menjadikan Clinical Order Cancelled bahkan ketika occurrence sebelumnya sudah Completed atau Not Performed; outcome sebelumnya tersebut wajib tetap terlihat pada Completion Progress dan Order History.
+
+### 7.5 Scheduled order
+
+- **BR-CPOE-029** — Scheduled Order wajib berisi daftar Order Occurrence yang terbatas dan eksplisit.
+- **BR-CPOE-030** — Setiap occurrence wajib dilacak secara independen; outcome satu occurrence tidak boleh secara langsung mengubah status occurrence lain.
+- **BR-CPOE-031** — Order Occurrence tidak boleh bergantung pada completion, kegagalan, atau waktu occurrence lain.
+- **BR-CPOE-032** — Clinical Order tidak boleh menghasilkan occurrence dari recurrence tak terbatas, recurrence rule, cron expression, atau kebijakan auto-renewal.
+- **BR-CPOE-033** — Setelah occurrence mana pun menjadi final, jumlah occurrence total Clinical Order tidak boleh bertambah atau berkurang.
+
+### 7.6 Active Order Reconciliation
+
+- **BR-CPOE-034** — Active Order Reconciliation hanya boleh dimulai untuk Inter Ward Transfer.
+- **BR-CPOE-035** — Rekonsiliasi hanya boleh mengevaluasi Order Occurrence Active untuk Patient yang ditransfer.
+- **BR-CPOE-036** — Sebuah occurrence hanya boleh diidentifikasi terdampak apabila Destination-nya mungkin bergantung pada ward sebelumnya atau ward saat ini, sedangkan RegId tetap tidak berubah.
+- **BR-CPOE-037** — Inter Ward Transfer tidak boleh menetapkan ulang Destination secara otomatis.
+- **BR-CPOE-038** — Setiap Affected Occurrence Review wajib berakhir dengan tepat satu keputusan: mempertahankan Destination saat ini atau mengubah ke Destination tertentu.
+- **BR-CPOE-039** — Keputusan rekonsiliasi wajib mengidentifikasi Reconciliation Reviewer, waktu keputusan, dan alasan.
+- **BR-CPOE-040** — Keputusan untuk mengubah Destination hanya boleh diterapkan jika occurrence masih Active dan Destination yang diusulkan sesuai pada saat perubahan.
+- **BR-CPOE-041** — Apabila occurrence menjadi final sebelum keputusan rekonsiliasinya diterapkan, Destination occurrence tersebut wajib tetap tidak berubah dan keputusan yang tidak diterapkan wajib dicatat demikian.
+- **BR-CPOE-042** — Transfer Reconciliation hanya boleh menjadi Completed setelah setiap Affected Occurrence Review memiliki keputusan yang tercatat; Transfer Reconciliation dapat selesai segera apabila tidak ditemukan occurrence terdampak.
+
+### 7.7 Riwayat audit
+
+- **BR-CPOE-043** — Order History wajib kronologis, append-only, dan lengkap untuk seluruh fakta lifecycle order yang material.
+- **BR-CPOE-044** — Koreksi atau keputusan yang lebih baru wajib menambahkan Order History Entry baru dan tidak boleh menghapus atau menggantikan entri sebelumnya.
+
+## 8. State Machines & Lifecycles
+
+### 8.1 Lifecycle Clinical Order
 
 ```text
-Draft
-  → Authorized
-  → Dispatched
-  → Accepted
-  → In Fulfilment
-  → Fulfilled
-  → Closed
+Create valid Clinical Order
+          |
+          v
+        Active
+       /   |   \
+      /    |    \
+     v     v     v
+Completed  Not Performed  Cancelled
 ```
 
-Makna bisnis:
+| State | Makna bisnis | Allowed next states |
+|---|---|---|
+| Active | Setidaknya satu occurrence masih tertunda dan order belum dibatalkan secara eksplisit. | Completed, Not Performed, Cancelled |
+| Completed | Semua occurrence final melalui fulfilment dan setidaknya satu occurrence Completed. | None |
+| Not Performed | Semua occurrence final melalui fulfilment dan tidak ada occurrence yang Completed. | None |
+| Cancelled | Maksud klinisi yang tersisa diakhiri secara eksplisit; outcome occurrence sebelumnya, bila ada, tetap dipertahankan. | None |
 
-| State | Makna |
+Pembuatan tidak memiliki tahap Draft. Completed, Not Performed, dan Cancelled adalah status final.
+
+### 8.2 Lifecycle Order Occurrence
+
+```text
+          Active
+         /   |   \
+        v    v    v
+Completed  Not Performed  Cancelled
+```
+
+| Transition | Penyebab |
 |---|---|
-| Draft | Clinical intent sedang disiapkan dan belum actionable. |
-| Authorized | Tenaga profesional yang diizinkan telah mengambil accountability atas order. |
-| Dispatched | Order telah diserahkan kepada Destination. |
-| Accepted | Destination telah berkomitmen mengoordinasikan fulfilment. |
-| In Fulfilment | Preparation atau clinical execution telah dimulai. |
-| Fulfilled | Completion Criterion dari Order Type telah terpenuhi. |
-| Closed | CPOE tidak lagi memiliki coordination responsibility atas order pada Phase 1. |
+| Active -> Completed | Destination yang bertanggung jawab menyediakan Fulfilment Evidence Completed. |
+| Active -> Not Performed | Destination yang bertanggung jawab menyediakan Fulfilment Evidence Not Performed dengan alasan. |
+| Active -> Cancelled | Clinical Order induk dibatalkan secara eksplisit. |
 
-Alternatif terminal yang diizinkan:
+Setiap occurrence final mempertahankan outcomenya secara permanen.
 
-| State | Makna |
-|---|---|
-| Rejected | Destination menolak order dengan alasan yang dapat dipertanggungjawabkan. |
-| Cancelled | Order dihentikan sebelum clinical fulfilment dimulai. |
-| Discontinued | Fulfilment yang akan datang atau tersisa dihentikan setelah order active, started, recurring, atau partially fulfilled. |
-| Not Fulfilled | Aktivitas yang diminta mencapai outcome akhir tidak dilaksanakan, disertai alasan. |
-| Entered in Error | Order seharusnya tidak pernah ada sebagai instruksi klinis yang valid. |
+### 8.3 Lifecycle Completion Progress
 
-Unresolved Clarification Request menambahkan kondisi `On Hold for Clarification` pada order yang semula active. Resolution mengembalikan order ke lifecycle state yang tepat, menghasilkan Amendment dan penanganan ulang, atau menghentikan order melalui Rejection, Cancellation, Discontinuation, atau Entered in Error.
+Completion Progress dimulai ketika semua occurrence Active. Setiap transition occurrence memindahkan tepat satu occurrence dari Active ke satu jumlah final. Kemajuan menjadi lengkap ketika jumlah Active mencapai nol.
 
-### 8.2 Occurrence Lifecycle
+Untuk Clinical Order Cancelled, kemajuan tetap membedakan occurrence Completed dan Not Performed sebelumnya dari occurrence yang dibatalkan sebelum eksekusi.
+
+### 8.4 Lifecycle Transfer Reconciliation
 
 ```text
-Planned
-  → Due
-  → In Fulfilment
-  → Fulfilled
+Inter Ward Transfer reported
+            |
+            v
+          Active
+            |
+            v
+        Completed
 ```
 
-Outcome alternatif:
+| State | Makna bisnis | Allowed next states |
+|---|---|---|
+| Active | Occurrence Active sedang dievaluasi atau occurrence terdampak menunggu keputusan. | Completed |
+| Completed | Setiap occurrence terdampak memiliki keputusan tercatat, atau tidak ditemukan occurrence terdampak. | None |
 
-- Omitted dengan reason.
-- Cancelled sebelum execution.
-- Discontinued sebagai bagian dari remaining order.
-- Not Fulfilled dengan reason.
-
-Parent Clinical Order menjadi Fulfilled hanya ketika seluruh required Occurrence memenuhi Completion Criterion, atau remaining Occurrence memiliki terminal disposition yang valid.
-
-### 8.3 Clarification Lifecycle
-
-```text
-Requested
-  → Responded
-  → Resolved
-```
-
-Clarification dapat di-withdraw ketika requester menentukan bahwa response tidak lagi diperlukan. Responded tidak berarti Resolved; Receiver menentukan apakah response memungkinkan safe fulfilment.
-
-### 8.4 Exceptional Authorization Lifecycle
-
-```text
-Exceptional Action Recorded
-  → Subsequent Authorization Required
-  → Authorized
-```
-
-Jika authorization tidak selesai dalam governed period, record menjadi `Authorization Overdue`. Execution aktual tetap menjadi bagian dari clinical history.
-
-Protocol-Based Action dapat dinyatakan complete berdasarkan standing authority dari protocol ketika individual Countersignature tidak diwajibkan.
-
-### 8.5 Discharge Reconciliation Lifecycle
-
-```text
-Outstanding Orders Identified
-  → Orders Assessed
-  → Dispositions Recorded
-  → Reconciliation Completed
-```
-
-Ketika order tetap unresolved:
-
-```text
-Unresolved Order Identified
-  → Warning Acknowledged
-  → Responsibility Assigned or Exception Escalated
-  → Discharge May Proceed
-```
-
-Reconciliation completion berarti kondisi unresolved terlihat dan dapat dipertanggungjawabkan. Hal ini tidak berarti setiap order telah selesai secara klinis.
+Selesainya rekonsiliasi tidak berarti setiap perubahan Destination yang diusulkan telah diterapkan; keputusan yang tidak diterapkan tetap dicatat.
 
 ## 9. Domain Events
 
-| Domain Event | Makna Bisnis |
+| Domain Event | Makna bisnis |
 |---|---|
-| Clinical Order Drafted | Prospective clinical instruction telah disiapkan tetapi belum actionable. |
-| Clinical Order Authorized | Tenaga profesional yang diizinkan telah mengambil accountability atas order. |
-| Clinical Order Dispatched | Order telah diserahkan kepada Destination. |
-| Clinical Order Accepted | Destination telah berkomitmen terhadap fulfilment coordination. |
-| Clinical Order Rejected | Destination menolak fulfilment dengan alasan. |
-| Order Clarification Requested | Destination atau pihak yang bertanggung jawab mengajukan pertanyaan yang memengaruhi safe fulfilment. |
-| Order Clarification Responded | Pihak yang bertanggung jawab telah memberikan jawaban. |
-| Order Clarification Resolved | Order boleh dilanjutkan atau telah memperoleh disposition eksplisit lainnya. |
-| Order Fulfilment Started | Clinical preparation atau execution telah dimulai. |
-| Order Occurrence Fulfilled | Satu required Occurrence telah memenuhi Completion Criterion. |
-| Clinical Order Fulfilled | Order telah memenuhi Completion Criterion. |
-| Clinical Order Closed | CPOE tidak lagi memiliki Phase 1 coordination responsibility. |
-| Clinical Order Amended | Authorized instruction telah direvisi secara accountable. |
-| Clinical Order Cancelled | Order dihentikan sebelum fulfilment dimulai. |
-| Clinical Order Discontinued | Fulfilment yang akan datang atau tersisa telah dihentikan. |
-| Clinical Order Not Fulfilled | Aktivitas yang diminta berakhir tanpa pelaksanaan dan disertai alasan. |
-| Clinical Order Entered in Error | Order dinyatakan tidak valid sebagai instruksi klinis dengan tetap mempertahankan riwayatnya. |
-| Fulfilment Outcome Recorded | Executing Domain atau Generic Fulfilment telah menyatakan structured operational outcome. |
-| Clinical Result Made Available | Result authoritative telah dihubungkan dengan order. |
-| Execution Documentation Made Available | Execution documentation authoritative telah dihubungkan dengan order. |
-| Charge Eligibility Established | Fulfilment aktual menghasilkan fakta yang boleh dipertimbangkan untuk billing. |
-| Verbal Order Recorded | Instruksi yang disampaikan secara verbal dan read-back telah didokumentasikan. |
-| Emergency Action Recorded | Tindakan di bawah emergency authority telah didokumentasikan. |
-| Protocol-Based Action Recorded | Tindakan telah dilakukan berdasarkan approved protocol. |
-| Retrospective Order Recorded | Order telah didokumentasikan setelah execution dengan chronology aktual. |
-| Exceptional Order Subsequently Authorized | Accountability yang diwajibkan telah dikonfirmasi setelah exceptional action. |
-| Exceptional Authorization Became Overdue | Subsequent accountability yang diwajibkan tidak selesai dalam policy period. |
-| Order Responsibility Transferred | Accountability atas Outstanding Order telah berpindah ke role atau care context penerus. |
-| Discharge Reconciliation Started | Outstanding Order sedang dinilai pada akhir encounter. |
-| Reconciliation Warning Acknowledged | Discharge Actor secara eksplisit mengakui unresolved order. |
-| Outstanding Order Escalated | Unresolved order telah ditugaskan untuk exceptional follow-up. |
-| Discharge Reconciliation Completed | Outstanding Order memiliki disposition yang accountable atau acknowledged exception. |
+| Clinical Order Created | Clinical Order valid menjadi Active dengan rencana occurrence terbatas dan routing awalnya. |
+| Clinical Order Modified | Maksud klinisi atau perencanaan occurrence yang memenuhi syarat berubah sebelum pekerjaan terdampak dieksekusi. |
+| Order Occurrence Routed | Order Occurrence Active ditetapkan ke sebuah Destination. |
+| Order Occurrence Destination Changed | Keputusan eksplisit mengubah Destination sebuah Order Occurrence Active. |
+| Order Occurrence Completed | Fulfilment Evidence menetapkan bahwa satu Order Occurrence telah dilakukan. |
+| Order Occurrence Not Performed | Fulfilment Evidence menetapkan bahwa satu Order Occurrence tidak dilakukan. |
+| Clinical Order Completed | Fulfilment menutup seluruh occurrence dan setidaknya satu occurrence Completed. |
+| Clinical Order Not Performed | Fulfilment menutup seluruh occurrence dan tidak ada yang Completed. |
+| Clinical Order Cancelled | Ordering Clinician mengakhiri Clinical Order Active beserta occurrence Active yang tersisa. |
+| Transfer Reconciliation Started | Inter Ward Transfer memulai evaluasi atas Order Occurrence Active milik Patient. |
+| Affected Order Occurrence Identified | Order Occurrence Active ditemukan memiliki Destination yang berpotensi bergantung pada ward. |
+| Reconciliation Decision Recorded | Reconciliation Reviewer memutuskan untuk mempertahankan atau mengubah Destination occurrence terdampak. |
+| Transfer Reconciliation Completed | Setiap occurrence terdampak telah memperoleh keputusan, atau tidak ditemukan occurrence terdampak. |
+
+Setiap event mencatat fakta bisnis setelah aturan yang mengaturnya dipenuhi. Event tidak menyatakan pekerjaan klinis telah terjadi kecuali didukung oleh Fulfilment Evidence.
 
 ## 10. Workflow Bisnis
 
-### 10.1 Standard Clinical Order
+### 10.1 Create and route a Clinical Order
 
-```text
-Clinical Need Identified
-  → Clinical Order Authored
-  → Clinical Order Authorized
-  → Order Routed to Destination
-  → Destination Accepts Order
-  → Order Fulfilled
-  → Required Result or Documentation Associated
-  → Clinical Order Closed
-```
+1. Ordering Clinician menyatakan Order Specification untuk satu Patient dan RegId.
+2. Ordering Clinician mendefinisikan satu occurrence atau satu kumpulan occurrence terjadwal yang terbatas.
+3. Destination yang sesuai ditentukan untuk setiap occurrence.
+4. Clinical Order menjadi Active.
+5. Setiap occurrence Active muncul dalam Destination Worklist-nya.
 
-### 10.2 Receiver Clarification
+**Outcome:** satu Clinical Order Active tersedia dengan routing dan riwayat awal yang lengkap.
 
-```text
-Order Received
-  → Ambiguity or Risk Identified
-  → Clarification Requested
-  → Affected Fulfilment Held
-  → Clarification Responded
-  → Order Resumed, Amended, or Terminated
-```
+### 10.2 Modify unexecuted clinical intent
 
-### 10.3 Specialized Departmental Fulfilment
+1. Ordering Clinician mengidentifikasi Clinical Order Active atau Order Occurrence Active yang memenuhi syarat.
+2. Perubahan yang diusulkan dinilai terhadap aturan modification.
+3. Nilai bisnis yang memenuhi syarat diubah.
+4. Routing dinilai kembali apabila perubahan dapat memengaruhi Destination.
+5. Perubahan dan alasannya ditambahkan ke Order History.
 
-```text
-Clinical Order Accepted
-  → Departmental Fulfilment Begins
-  → Authoritative Execution Recorded by Executing Domain
-  → Fulfilment Summary Associated with Clinical Order
-  → Required Result or Documentation Associated
-  → Order Fulfilled and Closed
-```
+**Outcome:** maksud yang belum dieksekusi diperbarui tanpa mengubah fakta bisnis sebelumnya.
 
-### 10.4 Generic Fulfilment
+### 10.3 Record occurrence fulfilment
 
-```text
-Clinical Order Accepted
-  → No Specialized Executing Domain Exists
-  → Generic Fulfilment Performed
-  → Execution Outcome Recorded
-  → Order Fulfilled and Closed
-```
+1. Destination yang bertanggung jawab menyediakan Fulfilment Evidence untuk satu occurrence Active.
+2. Occurrence menjadi Completed atau Not Performed.
+3. Completion Progress dihitung ulang.
+4. Clinical Order tetap Active bila occurrence lain masih Active.
+5. Ketika tidak ada occurrence yang Active melalui fulfilment, Clinical Order menjadi Completed bila setidaknya satu occurrence Completed; jika tidak, menjadi Not Performed.
 
-### 10.5 Order Amendment
+**Outcome:** outcome eksekusi yang dilaporkan dicatat tanpa CPOE melaksanakan atau menafsirkan pekerjaan klinis.
 
-```text
-Material Change Required
-  → Amendment Authorized
-  → Previous Instruction Preserved
-  → Destination Informed
-  → Pending Fulfilment Continues Under Amended Instruction or Is Reassessed
-```
+### 10.4 Cancel a Clinical Order
 
-### 10.6 Cancellation and Discontinuation
+1. Ordering Clinician mengidentifikasi Clinical Order Active dan menyediakan alasan cancellation.
+2. Setiap occurrence Active yang tersisa menjadi Cancelled.
+3. Outcome occurrence Completed dan Not Performed sebelumnya tetap tidak berubah.
+4. Clinical Order menjadi Cancelled.
+5. Completion Progress dan Order History mempertahankan outcome lengkap.
 
-```text
-Order No Longer Required
-  → Fulfilment History Assessed
-  → Not Started: Cancelled
-  → Active, Recurring, or Partially Fulfilled: Discontinued
-  → Completed History and Eligible Fulfilment Preserved
-```
+**Outcome:** maksud klinisi yang masih tertunda berakhir tanpa menyamarkan pekerjaan yang sudah dilakukan atau tidak dilakukan.
 
-### 10.7 Exceptional Action
+### 10.5 Track a Scheduled Order
 
-```text
-Immediate or Exceptional Need Identified
-  → Verbal, Emergency, Protocol, or Retrospective Authority Identified
-  → Action Performed and Truthful Chronology Recorded
-  → Subsequent Authorization Completed When Required
-  → Overdue Accountability Escalated When Not Completed
-```
+1. Rencana occurrence terbatas ditetapkan ketika Clinical Order dibuat.
+2. Setiap occurrence dirutekan dan dilacak secara independen.
+3. Setiap Fulfilment Evidence hanya memfinalkan occurrence yang dirujuknya.
+4. Completion Progress melaporkan seluruh jumlah occurrence.
+5. Clinical Order mencapai status final ketika tidak ada occurrence Active atau ketika order dibatalkan secara eksplisit.
 
-### 10.8 Ward Transfer atau Pergantian DPJP
+**Outcome:** satu Clinical Order menyediakan pelaksanaan terbatas yang dapat ditelusuri secara independen serta kemajuan keseluruhan yang deterministik.
 
-```text
-Care Context or Responsible Clinician Changes
-  → Outstanding Orders Identified
-  → Clinical Validity, Destination, and Responsibility Reassessed
-  → Responsibility Transferred, Order Amended, or Order Terminated
-```
+### 10.6 Reconcile Active Orders after an Inter Ward Transfer
 
-### 10.9 Discharge Reconciliation
+1. Inter Ward Transfer memulai satu Transfer Reconciliation untuk Patient.
+2. Order Occurrence Active milik Patient dievaluasi terhadap konteks ward sebelumnya dan ward baru.
+3. Occurrence yang berpotensi bergantung pada ward menjadi Affected Occurrence Review.
+4. Reconciliation Reviewer memutuskan untuk mempertahankan atau mengubah setiap Destination terdampak serta mencatat alasannya.
+5. Perubahan yang dikonfirmasi hanya diterapkan bila occurrence masih Active dan Destination yang diusulkan tetap sesuai.
+6. Setiap keputusan dan perubahan yang diterapkan ditambahkan ke Order History terkait.
+7. Transfer Reconciliation menjadi Completed setelah setiap occurrence terdampak memiliki keputusan, atau segera ketika tidak ada occurrence terdampak.
 
-```text
-Discharge Initiated
-  → Outstanding Orders Identified
-  → Each Order Assessed
-  → Complete, Cancel, Discontinue, Carry Forward, or Escalate
-  → Unresolved Exceptions Explicitly Acknowledged
-  → Discharge Proceeds
-```
-
-### 10.10 Fulfilment ke Billing
-
-```text
-Clinical Order Fulfilment Occurs
-  → Executing Authority Determines Charge Eligibility
-  → Eligible Fulfilment Handed to Tata Rekening
-  → Tata Rekening Determines Financial Consequence
-```
-
-### 10.11 Koeksistensi Legacy Departmental
-
-```text
-CPOE Clinical Intent Authorized
-  → Order Associated with Legacy Departmental Fulfilment
-  → Legacy Department Performs Existing Fulfilment Responsibility
-  → Fulfilment Outcome Returned to CPOE
-  → Result, Documentation, and Billing Eligibility Associated
-```
-
-Aktivitas yang berasal langsung dari sistem legacy mengikuti klasifikasi legacy atau retrospective secara jujur dan tidak diklasifikasikan ulang sebagai prospectively authorized CPOE intent.
+**Outcome:** routing yang bergantung pada ward ditinjau secara eksplisit tanpa penetapan ulang otomatis.
