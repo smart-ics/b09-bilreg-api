@@ -1,7 +1,7 @@
 using Bilreg.Application.Shared.BusinessDateFeature;
 using MediatR;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Nuna.Lib.ActionResultHelper;
 
 namespace Bilreg.Api.Controllers.System;
 
@@ -17,6 +17,6 @@ public class BusinessDateController : ControllerBase
     public async Task<IActionResult> GetBusinessDate()
     {
         var result = await _mediator.Send(new GetBusinessDateStatusQry());
-        return Ok(result);
+        return Ok(new JSendOk(result));
     }
 }
