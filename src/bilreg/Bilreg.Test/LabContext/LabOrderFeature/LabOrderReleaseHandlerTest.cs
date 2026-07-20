@@ -153,7 +153,7 @@ public class LabOrderReleaseHandlerTest
             BillingReleaseValidationStatusEnum.Clear,
             "stale",
             "OLD");
-        order.ReturnToRecordedAfterResultAmendment("AMEND");
+        order.ReturnToRecordedAfterResultAmendment("AMEND", new DateTime(2025, 5, 3, 10, 15, 30));
         order.MarkVerified("PATH2");
 
         order.LastBillingReleaseStatus.Should().Be(BillingReleaseValidationStatusEnum.NotChecked);

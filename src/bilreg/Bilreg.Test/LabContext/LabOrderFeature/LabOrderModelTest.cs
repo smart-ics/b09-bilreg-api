@@ -419,7 +419,7 @@ public class LabOrderModelTest
     {
         var order = VerifiedOrder();
 
-        order.ReturnToRecordedAfterResultAmendment("UAMEND");
+        order.ReturnToRecordedAfterResultAmendment("UAMEND", new DateTime(2025, 5, 3, 10, 15, 30));
 
         order.LabOrderStatus.Should().Be(LabOrderStatusEnum.Recorded);
         order.AuditTrail.Modified.UserId.Should().Be("UAMEND");
@@ -432,7 +432,7 @@ public class LabOrderModelTest
         order.RecordLastBillingReleaseValidation(BillingReleaseValidationStatusEnum.Clear, "", "FC");
         order.Release("REL1", "ok");
 
-        order.ReturnToRecordedAfterResultAmendment("UAMEND");
+        order.ReturnToRecordedAfterResultAmendment("UAMEND", new DateTime(2025, 5, 3, 10, 15, 30));
 
         order.LabOrderStatus.Should().Be(LabOrderStatusEnum.Recorded);
         order.ReleasedUserId.Should().BeEmpty();
@@ -444,7 +444,7 @@ public class LabOrderModelTest
     {
         var order = ChargedOrder();
 
-        var act = () => order.ReturnToRecordedAfterResultAmendment("U1");
+        var act = () => order.ReturnToRecordedAfterResultAmendment("U1", new DateTime(2025, 5, 3, 10, 15, 30));
 
         act.Should().Throw<InvalidOperationException>().WithMessage("*Verified*");
     }

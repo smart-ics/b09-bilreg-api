@@ -1,4 +1,4 @@
-﻿using Bilreg.Application.AccountingContext.JurnalFeature;
+using Bilreg.Application.AccountingContext.JurnalFeature;
 using Bilreg.Application.AccountingContext.JurnalFeature.JkAgg;
 using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
 using Bilreg.Application.AdmisiContext.LayananFeature;
@@ -42,6 +42,7 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
     private readonly IAddBillAppService _addBillAppService;
     private readonly IMapJaminanJkRepo _mapJaminanJkRepo;
     private readonly IJurnalRepo _jurnalRepo;
+    private readonly ITglJamProvider _tglJamProvider;
     public TdkSaveTindakanHandler(IRegRepo regRepo,
         ILayananRepo layananRepo,
         ITarifRepo tarifRepo,
@@ -53,7 +54,8 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
         ITrsBillingRepo trsBillingRepo,
         IAddBillAppService addBillAppService,
         IMapJaminanJkRepo mapJaminanJkRepo,
-        IJurnalRepo jurnalRepo)
+        IJurnalRepo jurnalRepo,
+        ITglJamProvider? tglJamProvider = null)
     {
         _regRepo = regRepo;
         _layananRepo = layananRepo;
@@ -67,6 +69,7 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
         _addBillAppService = addBillAppService;
         _mapJaminanJkRepo = mapJaminanJkRepo;
         _jurnalRepo = jurnalRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<TdkSaveTindakanRespose> Handle(TdkSaveTindakanCmd request, CancellationToken cancellationToken)
@@ -92,8 +95,9 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
             listPpa.Add(new KomponenPpaView(komp, ppa));
         }
 
-        var tdk = CreateOrEdit(tindakan, reg, layanan, nilaiTarif, listPpa, request.UserId);
-        var trsBilling = _addBillAppService.FromTindakan(tdk, reg, tarif, jaminan, listKomp);
+        var occurredAt = _tglJamProvider.Now;
+        var tdk = CreateOrEdit(tindakan, reg, layanan, nilaiTarif, listPpa, request.UserId, occurredAt);
+        var trsBilling = _addBillAppService.FromTindakan(tdk, reg, tarif, jaminan, listKomp, occurredAt);
         var mapJaminanJk = LoadMapJmnJk(jaminan);
         var jurnal = tdk == TindakanModel.Default
             ? JurnalType.Default
@@ -193,15 +197,16 @@ public class TdkSaveTindakanHandler : IRequestHandler<TdkSaveTindakanCmd, TdkSav
 
     private TindakanModel CreateOrEdit(
         TindakanModel tdk, RegModel reg, LayananType lyn,
-        NilaiTarifType nilaiTarif, List<KomponenPpaView> listPpa, string userId)
+        NilaiTarifType nilaiTarif, List<KomponenPpaView> listPpa, string userId,
+        DateTime occurredAt)
     {
         if (tdk.TindakanId == "-")
-            return TindakanModel.Create(reg, lyn, nilaiTarif, listPpa, userId);
+            return TindakanModel.Create(reg, lyn, nilaiTarif, listPpa, userId, occurredAt);
 
-        tdk.AuditTrail.Modif(userId, DateTime.Now);
+        tdk.AuditTrail.Modif(userId, occurredAt);
 
         return TindakanModel.Save(
-            tdk.TindakanId, reg, lyn, nilaiTarif, listPpa, tdk.AuditTrail
+            tdk.TindakanId, reg, lyn, nilaiTarif, listPpa, tdk.AuditTrail, occurredAt
         );
     }
 

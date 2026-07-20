@@ -1,9 +1,10 @@
-﻿using Ardalis.GuardClauses;
+using Ardalis.GuardClauses;
 using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Domain.AdmisiRanapContext.ReservationFeature;
 using Bilreg.Domain.Shared.AuditLogFeature;
 using MediatR;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiRanapContext.ReservationFeature.UseCases;
 
@@ -13,11 +14,13 @@ public class AdmCancelReservationHandler : IRequestHandler<AdmCancelReservationC
 {
     private readonly IReservationRepo _reservationRepo;
     private readonly IAuditRepo _auditRepo;
+    private readonly ITglJamProvider _tglJamProvider;
     public AdmCancelReservationHandler(IReservationRepo reservationRepo, 
-        IAuditRepo auditRepo)
+        IAuditRepo auditRepo, ITglJamProvider? tglJamProvider = null)
     {
         _reservationRepo = reservationRepo;
         _auditRepo = auditRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task Handle(AdmCancelReservationCmd request, CancellationToken cancellationToken)
@@ -28,7 +31,8 @@ public class AdmCancelReservationHandler : IRequestHandler<AdmCancelReservationC
         var reservation = _reservationRepo.LoadEntity(request)
             .GetValueOrThrow($"Reservation {request.ReservationId} not found");
         var snapshotJson = AuditLogSnapshotJson.Serialize(reservation);
-        var cancelled = reservation.Cancel(request.UserId);
+        var occurredAt = _tglJamProvider.Now;
+        var cancelled = reservation.Cancel(request.UserId, occurredAt);
 
         _reservationRepo.SaveChanges(cancelled);
         _auditRepo.SaveChanges(AuditLog.Create(

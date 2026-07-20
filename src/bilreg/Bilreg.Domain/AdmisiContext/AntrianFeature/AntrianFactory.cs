@@ -9,7 +9,7 @@ public interface IAntrianFactory : INunaFactory<AntrianModel>
 {
     AntrianModel Create(DateOnly antrianDate, JadwalPraktekType jadwalPraktek);
     AntrianModel Create(DateOnly antrianDate, JadwalPraktekEffective effective);
-    AntrianModel Create(ServicePointType servicePoint);
+    AntrianModel Create(ServicePointType servicePoint, DateOnly businessDate);
 }
 
 public class AntrianFactory : IAntrianFactory
@@ -56,12 +56,12 @@ public class AntrianFactory : IAntrianFactory
         return result;
     }
 
-    public AntrianModel Create(ServicePointType servicePoint)
+    public AntrianModel Create(ServicePointType servicePoint, DateOnly businessDate)
     {
         Guard.Against.Null(servicePoint, nameof(servicePoint));
 
         var newId = Ulid.NewUlid().ToString();
-        var antrianDate = DateOnly.FromDateTime(DateTime.Now);
+        var antrianDate = businessDate;
         var mulai = TimeOnly.MinValue;
         var selesai = TimeOnly.MaxValue;
         var sequenceTag = AntrianModel.GenSequenceTag(antrianDate, mulai, servicePoint);

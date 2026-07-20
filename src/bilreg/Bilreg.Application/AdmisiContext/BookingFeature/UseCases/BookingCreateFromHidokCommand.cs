@@ -9,6 +9,7 @@ using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiContext.BookingFeature.UseCases;
 
@@ -32,13 +33,15 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
     private readonly IPpaRepo _ppaRepo;
     private readonly IAddAntrianEmrByBookingService _addBookingSvc;
     private readonly IJadwalPraktekFeatureResolver _featureResolver;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public BookingCreateFromHidokHandler(IJadwalPraktekRepo jadwalPraktekRepo,
         IAntrianRepo antrianRepo, IAntrianFactory antrianFactory,
         IBookingRepo bookingRepo, IPasienTrackerRepo trackerRepo,
         IPasienRepo pasienRepo, IPpaRepo ppaRepo, 
         IAddAntrianEmrByBookingService addBookingSvc,
-        IJadwalPraktekFeatureResolver featureResolver)
+        IJadwalPraktekFeatureResolver featureResolver,
+        ITglJamProvider? tglJamProvider = null)
     {
         _jadwalPraktekRepo = jadwalPraktekRepo;
         _antrianRepo = antrianRepo;
@@ -49,9 +52,11 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
         _ppaRepo = ppaRepo;
         _addBookingSvc = addBookingSvc;
         _featureResolver = featureResolver;
+        _tglJamProvider = tglJamProvider;
     }
     public Task<BookingCreateFromHidokResponse> Handle(BookingCreateFromHidokCommand request, CancellationToken cancellationToken)
     {
+        var occurredAt = _tglJamProvider.Now;
         //  GUARD
         if (request.PasienId.Trim() != string.Empty && request.PasienName.Trim() != string.Empty)
             throw new ArgumentException("Kosongkan PasienName jika booking menggunakan PasienId");
@@ -80,9 +85,9 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
         var coverage = new CoverageInfoType(request.AsuransiName, request.NoPeserta, request.NoRujukan);
         var booking = _featureResolver.UseResolver
             ? BookingModel.CreateFromExternalFromEffective(
-                person, schedule.Effective, extApp, coverage, request.UserId)
+                person, schedule.Effective, extApp, coverage, request.UserId, occurredAt)
             : BookingModel.CreateFromExternal(
-                person, tglBerobat, schedule.LegacyJadwal, extApp, coverage, request.UserId);
+                person, tglBerobat, schedule.LegacyJadwal, extApp, coverage, request.UserId, occurredAt);
 
         //      ambil nomor antrian
         var listAntrian = _antrianRepo.ListData(tglBerobat);
@@ -96,13 +101,13 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
                 : _antrianFactory.Create(tglBerobat, schedule.LegacyJadwal))
             : _antrianRepo.LoadEntity(antrianView).Value;
 
-        var tracker = PasienTrackerModel.Create(booking);
+        var tracker = PasienTrackerModel.Create(booking, occurredAt);
 
         //  WRITE
         BookingCreateFromHidokResponse response;
         using (var trans = TransHelper.NewScope())
         {
-            var antEntry = antrian.AddEntry(request.NoAntrian, tracker, booking.BookingId, "BOK");
+            var antEntry = antrian.AddEntry(request.NoAntrian, tracker, booking.BookingId, "BOK", occurredAt);
             booking.AssignNoAntrian(antEntry.NoUrut);
 
             _bookingRepo.SaveChanges(booking);

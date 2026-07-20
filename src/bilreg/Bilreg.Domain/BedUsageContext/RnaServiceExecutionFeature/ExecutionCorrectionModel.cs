@@ -30,7 +30,7 @@ public record ExecutionCorrectionModel(
         string? secondReviewerId,
         string? evidenceReference,
         DateTime correctedAt,
-        DateTime recordedAt)
+        DateTime recordedAt = default)
     {
         Guard.Against.NullOrWhiteSpace(originalServiceExecutionFactId);
         Guard.Against.NullOrWhiteSpace(correctionReason);

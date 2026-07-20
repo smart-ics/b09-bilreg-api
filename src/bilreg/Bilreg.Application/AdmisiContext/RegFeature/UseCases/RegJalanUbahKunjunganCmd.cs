@@ -24,6 +24,7 @@ using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.PaymentContext.TrsBillFeature;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 
@@ -60,6 +61,7 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
     private readonly IMapJaminanJkRepo _mapJaminanJkRepo;
     private readonly IJurnalRepo _jurnalRepo;
     private readonly IJadwalPraktekFeatureResolver _featureResolver;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public RegJalanUbahKunjunganHandler(IRegRepo regRepo,
         IRegAktifRepo regAktifRepo,
@@ -82,8 +84,8 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
         ITindakanRepo tindakanRepo,
         IJurnalRepo jurnalRepo,
         IMapJaminanJkRepo mapJaminanJkRepo,
-        IJadwalPraktekFeatureResolver featureResolver
-        )
+        IJadwalPraktekFeatureResolver featureResolver,
+        ITglJamProvider? tglJamProvider = null)
     {
         _regRepo = regRepo;
         _regAktifRepo = regAktifRepo;
@@ -107,9 +109,11 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
         _jurnalRepo = jurnalRepo;
         _mapJaminanJkRepo = mapJaminanJkRepo;
         _featureResolver = featureResolver;
+        _tglJamProvider = tglJamProvider;
     }
     public Task<RegJalanUbahKunjunganResponse> Handle(RegJalanUbahKunjunganCmd request, CancellationToken cancellationToken)
     {
+        var occurredAt = _tglJamProvider.Now;
         #region GUARD & LOAD
         var regCurrent = _regAktifRepo.LoadEntity(request).GetValueOrThrow("Register tidak ditemukan atau sudah tidak aktif");
         var regOld = _regRepo.LoadEntity(request).GetValueOrThrow("Register tidak ditemukan");
@@ -129,7 +133,7 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
             _featureResolver, _jadwalPraktekRepo, dokter, tglBerobat, request.JamPraktek);
         var antrian = ResolveAntrian(tglBerobat, dokter, schedule);
         var antrianMap = _antrianMapWithRegResolver.Resolve(schedule.LegacyJadwal, tglBerobat, reg);
-        var tracker = PasienTrackerModel.Create(reg);
+        var tracker = PasienTrackerModel.Create(reg, occurredAt);
 
         //  registrasi
         reg.ChangeDataKunjungan(layanan, karcis, dokter);
@@ -138,18 +142,18 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
         //  tindakan
         var tindakan = karcis.DefaultTarif == TarifType.Default.ToReff()
             ? TindakanModel.Default
-            : GenTindakan(reg, jaminan, karcis, request.UserId, dokter, request.KarcisId);
+            : GenTindakan(reg, jaminan, karcis, request.UserId, dokter, request.KarcisId, occurredAt);
 
         //  billing karcis
         var billKarcis = reg.Karcis.KarcisId == request.KarcisId
             ? TrsBillType.Default :
-            GenBillKarcis(reg, dokter, karcis, jaminan);
+            GenBillKarcis(reg, dokter, karcis, jaminan, occurredAt);
         //  billing tindakan
         var tarif = karcis.DefaultTarif == TarifType.Default.ToReff()
             ? TarifType.Default
             : LoadTarif(TarifType.Key(karcis.DefaultTarif.TarifId));
         var billTdk = (tindakan.TindakanId != "-" && karcis.KarcisId != "-")
-            ? GenBillTdk(tindakan, reg, jaminan, tarif)
+            ? GenBillTdk(tindakan, reg, jaminan, tarif, occurredAt)
             : TrsBillType.Default;
 
         //  jurnal-karcis
@@ -165,7 +169,7 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
         using var trans = TransHelper.NewScope();
 
         SaveRegister(reg, regAktif);
-        SaveAntrian(antrian, antrianMap.Value.Item1, tracker, antrianMap.Value.Item2.NoUrut, reg, regOld);
+        SaveAntrian(antrian, antrianMap.Value.Item1, tracker, antrianMap.Value.Item2.NoUrut, reg, regOld, occurredAt);
         SaveBillKarcis(billKarcis);
         SaveTindakan(tindakan, reg, karcisOld);
         SaveBillTdk(billTdk);
@@ -210,7 +214,7 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
     
     //  Gen Data
     private TindakanModel GenTindakan(RegModel reg, JaminanType jaminan,
-        KarcisType karcis, string userId, PpaType dokter, string karcisReq)
+        KarcisType karcis, string userId, PpaType dokter, string karcisReq, DateTime occurredAt)
     {
         if (reg.Karcis.KarcisId != karcisReq)
         {
@@ -225,21 +229,21 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
                 .Where(x => x.ListSatTugas.Any())
                 .Select(x => new KomponenPpaView(x, dokter));
 
-            var tindakan = TindakanModel.FromReg(reg, nilaiTarif, listPpa, userId);
+            var tindakan = TindakanModel.FromReg(reg, nilaiTarif, listPpa, userId, occurredAt);
             return tindakan;
         }
         return TindakanModel.Default;
     }
-    private TrsBillType GenBillKarcis(RegModel reg, PpaType dokter, KarcisType karcis, JaminanType jaminan)
+    private TrsBillType GenBillKarcis(RegModel reg, PpaType dokter, KarcisType karcis, JaminanType jaminan, DateTime occurredAt)
     {
         var listKompKarcis = karcis.ListKomponen
             .Select(x => LoadKomponen(KomponenType.Key(x.KomponenTarif.KomponenId)))?.ToList() ?? [];
         var trsBillKarcis = _addBillAppService.FromReg(reg, karcis,
-            jaminan, dokter, listKompKarcis);
+            jaminan, dokter, listKompKarcis, occurredAt);
         return trsBillKarcis;
 
     }
-    private TrsBillType GenBillTdk(TindakanModel tdk, RegModel reg, JaminanType jaminan, TarifType tarif)
+    private TrsBillType GenBillTdk(TindakanModel tdk, RegModel reg, JaminanType jaminan, TarifType tarif, DateTime occurredAt)
     {
         if (tdk.TindakanId == "-")
             return TrsBillType.Default;
@@ -250,7 +254,7 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
             var komp = LoadKomponen(KomponenType.Key(item.Komponen.KomponenId));
             listKomp.Add(komp);
         }
-        var trsBilling = _addBillAppService.FromTindakan(tdk, reg, tarif, jaminan, listKomp);
+        var trsBilling = _addBillAppService.FromTindakan(tdk, reg, tarif, jaminan, listKomp, occurredAt);
         return trsBilling;
     }
     private KomponenType LoadKomponen(IKomponenKey key)
@@ -297,7 +301,7 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
 
     //  Save
     private void SaveAntrian(AntrianModel antrian, AntrianMapModel antrianMapNew,
-        PasienTrackerModel tracker, int noAntrian, RegModel regNew, RegModel regOld)
+        PasienTrackerModel tracker, int noAntrian, RegModel regNew, RegModel regOld, DateTime occurredAt)
     {
         //      delete antrian lama
         var queOldContext = LoadAntrianOldContext(regOld);
@@ -305,10 +309,10 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
         VoidAntrianMap(antrianMapVoid, queOldContext.NoUrut);
         VoidAntrian(queOldContext.Que, queOldContext.NoUrut, tracker);
 
-        var antEntry = antrian.AddEntry(noAntrian, tracker, regNew.RegId, "REG");
+        var antEntry = antrian.AddEntry(noAntrian, tracker, regNew.RegId, "REG", occurredAt);
         var itemQueue = antrian.ListEntry.FirstOrDefault(x => x.NoUrut == noAntrian)
             ?? AntrianEntryModel.Default;
-        itemQueue.Serve();
+        itemQueue.Serve(occurredAt);
         _antrianRepo.SaveChanges(antrian);
         _trackerRepo.SaveChanges(tracker);
         //      antrianMap

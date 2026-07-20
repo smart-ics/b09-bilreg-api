@@ -1,7 +1,8 @@
-﻿using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
+using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
 
@@ -12,14 +13,17 @@ public class OkScheduleOpCancelHandler : IRequestHandler<OkScheduleOpCancelComma
     private readonly IScheduleOpRepo _scheduleOpRepo;
     private readonly IOrderOpRepo _orderOpRepo;
     private readonly IOpCaseRepo _opCaseRepo;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public OkScheduleOpCancelHandler(IScheduleOpRepo scheduleOpRepo,
         IOrderOpRepo orderOpRepo,
-        IOpCaseRepo opCaseRepo)
+        IOpCaseRepo opCaseRepo,
+        ITglJamProvider? tglJamProvider = null)
     {
         _scheduleOpRepo = scheduleOpRepo;
         _orderOpRepo = orderOpRepo;
         _opCaseRepo = opCaseRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task Handle(OkScheduleOpCancelCommand request, CancellationToken cancellationToken)
@@ -41,7 +45,7 @@ public class OkScheduleOpCancelHandler : IRequestHandler<OkScheduleOpCancelComma
         var scheduleOp = _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(scheduleWithOrderOpId.ScheduleOpId))
             .GetValueOrThrow("Schedule Operasi tidak ditemukan.");
 
-        scheduleOp.CancelSchedule(request.UserId);
+        scheduleOp.CancelSchedule(request.UserId, _tglJamProvider.Now);
 
         opCase.CancelSchedule();
 

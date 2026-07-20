@@ -11,10 +11,12 @@ public record LabOrderTerminateCmd(string OrderId, string UserId, string Reason)
 public class LabOrderTerminateHandler : IRequestHandler<LabOrderTerminateCmd>
 {
     private readonly ILabOrderRepo _labOrderRepo;
+    private readonly ITglJamProvider _tglJamProvider;
 
-    public LabOrderTerminateHandler(ILabOrderRepo labOrderRepo)
+    public LabOrderTerminateHandler(ILabOrderRepo labOrderRepo, ITglJamProvider? tglJamProvider = null)
     {
         _labOrderRepo = labOrderRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task Handle(LabOrderTerminateCmd request, CancellationToken cancellationToken)
@@ -24,7 +26,8 @@ public class LabOrderTerminateHandler : IRequestHandler<LabOrderTerminateCmd>
         Guard.Against.NullOrWhiteSpace(request.Reason, nameof(request.Reason));
 
         var order = _labOrderRepo.LoadEntity(request).GetValueOrThrow($"LabOrder '{request.OrderId}' not found");
-        order.Terminate(request.UserId, request.Reason);
+        var occurredAt = _tglJamProvider.Now;
+        order.Terminate(request.UserId, request.Reason, occurredAt);
         _labOrderRepo.SaveChanges(order);
         return Task.CompletedTask;
     }

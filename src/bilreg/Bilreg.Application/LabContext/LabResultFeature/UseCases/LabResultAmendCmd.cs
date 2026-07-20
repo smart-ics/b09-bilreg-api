@@ -21,15 +21,18 @@ public class LabResultAmendHandler : IRequestHandler<LabResultAmendCmd>
     private readonly ILabOrderRepo _labOrderRepo;
     private readonly ILabResultDocumentRepo _labResultDocumentRepo;
     private readonly ILabResultScaffoldService _scaffoldService;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public LabResultAmendHandler(
         ILabOrderRepo labOrderRepo,
         ILabResultDocumentRepo labResultDocumentRepo,
-        ILabResultScaffoldService scaffoldService)
+        ILabResultScaffoldService scaffoldService,
+        ITglJamProvider? tglJamProvider = null)
     {
         _labOrderRepo = labOrderRepo;
         _labResultDocumentRepo = labResultDocumentRepo;
         _scaffoldService = scaffoldService;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task Handle(LabResultAmendCmd request, CancellationToken cancellationToken)
@@ -56,14 +59,14 @@ public class LabResultAmendHandler : IRequestHandler<LabResultAmendCmd>
         var scaffold = _scaffoldService.BuildFromOrder(order);
         var regeneratedItems = _scaffoldService.BuildStructureOnlyItems(scaffold);
 
-        var amendedAt = DateTime.Now;
+        var amendedAt = _tglJamProvider.Now;
         var (retired, newVersion) = current.AmendVerifiedToNewVersion(
             regeneratedItems,
             request.Reason,
             request.AmendedBy,
             amendedAt);
 
-        order.ReturnToRecordedAfterResultAmendment(request.AmendedBy);
+        order.ReturnToRecordedAfterResultAmendment(request.AmendedBy, amendedAt);
 
         using var trans = TransHelper.NewScope();
         _labOrderRepo.SaveChanges(order);

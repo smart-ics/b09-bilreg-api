@@ -5,6 +5,7 @@ using Bilreg.Domain.IgdContext.RedirectRajalFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.IgdContext.IgdVisitFeature.UseCases;
 
@@ -20,13 +21,16 @@ public class IgdVisitRedirectRawatJalanHandler : IRequestHandler<IgdVisitRedirec
 {
     private readonly IIgdVisitRepo _igdVisitRepo;
     private readonly IRedirectRajalRepo _redirectRepo;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public IgdVisitRedirectRawatJalanHandler(
         IIgdVisitRepo igdVisitRepo,
-        IRedirectRajalRepo redirectRepo)
+        IRedirectRajalRepo redirectRepo,
+        ITglJamProvider? tglJamProvider = null)
     {
         _igdVisitRepo = igdVisitRepo;
         _redirectRepo = redirectRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<IgdVisitRedirectRawatJalanResponse> Handle(IgdVisitRedirectRawatJalanCmd request, CancellationToken cancellationToken)
@@ -36,7 +40,7 @@ public class IgdVisitRedirectRawatJalanHandler : IRequestHandler<IgdVisitRedirec
 
         var visit = _igdVisitRepo.LoadEntity(request).GetValueOrThrow($"IgdVisit '{request.IgdVisitId}' not found");
 
-        var audit = new AuditInfoType(request.UserId, DateTime.Now);
+        var audit = new AuditInfoType(request.UserId, _tglJamProvider.Now);
         var redirect = RedirectRajalModel.Create(visit, request.Reason, audit);
         visit.RedirectToRawatJalan(redirect.RedirectRajalId, request.Reason ?? "-", audit);
 

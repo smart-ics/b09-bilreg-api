@@ -19,11 +19,14 @@ public class LabOrderChargeHandler : IRequestHandler<LabOrderChargeCmd, LabOrder
 {
     private readonly ILabOrderRepo _labOrderRepo;
     private readonly ILabBillingIntegration _labBillingIntegration;
+    private readonly ITglJamProvider _tglJamProvider;
 
-    public LabOrderChargeHandler(ILabOrderRepo labOrderRepo, ILabBillingIntegration labBillingIntegration)
+    public LabOrderChargeHandler(ILabOrderRepo labOrderRepo, ILabBillingIntegration labBillingIntegration,
+        ITglJamProvider? tglJamProvider = null)
     {
         _labOrderRepo = labOrderRepo;
         _labBillingIntegration = labBillingIntegration;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<LabOrderChargeResponse> Handle(LabOrderChargeCmd request, CancellationToken cancellationToken)
@@ -32,6 +35,7 @@ public class LabOrderChargeHandler : IRequestHandler<LabOrderChargeCmd, LabOrder
         Guard.Against.NullOrWhiteSpace(request.UserId, nameof(request.UserId));
 
         var order = _labOrderRepo.LoadEntity(request).GetValueOrThrow($"LabOrder '{request.OrderId}' not found");
+        var occurredAt = _tglJamProvider.Now;
         order.Charge(request.UserId);
 
         var success = false;
@@ -42,12 +46,12 @@ public class LabOrderChargeHandler : IRequestHandler<LabOrderChargeCmd, LabOrder
                 .ToList();
             var tindakanId = _labBillingIntegration.CreateTindakan(
                 new LabBillingChargeRequest(request.OrderId, request.UserId, tarifLines));
-            order.MarkCharged(tindakanId, request.UserId);
+            order.MarkCharged(tindakanId, request.UserId, occurredAt);
             success = true;
         }
         catch (LabBillingChargeException ex)
         {
-            order.RecordBillingError(ex.Message, request.UserId);
+            order.RecordBillingError(ex.Message, request.UserId, occurredAt);
         }
 
         LabOrderChargeResponse response;

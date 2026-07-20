@@ -1,4 +1,4 @@
-﻿using Ardalis.GuardClauses;
+using Ardalis.GuardClauses;
 using Bilreg.Application.IgdContext.IgdVisitFeature;
 using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.IgdContext.IgdVisitFeature;
@@ -7,6 +7,7 @@ using Bilreg.Domain.Shared.AuditLogFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.IgdContext.TindakanIgdFeature.UseCases;
 
@@ -18,13 +19,16 @@ public class IgdTindakanVoidHandler : IRequestHandler<IgdTindakanVoidCmd>
     private readonly ITindakanIgdRepo _tindakanIgdRepo;
     private readonly IAuditRepo _auditRepo;
     private readonly IIgdVisitRepo _igdVisitRepo;
+    private readonly ITglJamProvider _tglJamProvider;
     public IgdTindakanVoidHandler(ITindakanIgdRepo tindakanIgdRepo,
         IAuditRepo auditRepo,
-        IIgdVisitRepo igdVisitRepo)
+        IIgdVisitRepo igdVisitRepo,
+        ITglJamProvider? tglJamProvider = null)
     {
         _tindakanIgdRepo = tindakanIgdRepo;
         _auditRepo = auditRepo;
         _igdVisitRepo = igdVisitRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task Handle(IgdTindakanVoidCmd request, CancellationToken cancellationToken)
@@ -39,7 +43,7 @@ public class IgdTindakanVoidHandler : IRequestHandler<IgdTindakanVoidCmd>
         var snapshotJson = AuditLogSnapshotJson.Serialize(tdk);
         var visit = _igdVisitRepo.LoadEntity(IgdVisitModel.Key(tdk.IgdVisitId))
             .GetValueOrThrow($"IgdVisit '{tdk.IgdVisitId}' not found");
-        var auditVoid = new AuditInfoType(request.UserId, DateTime.Now);
+        var auditVoid = new AuditInfoType(request.UserId, _tglJamProvider.Now);
         visit.RecordVoidTindakanEvent(tdk, auditVoid);
         
         // WRITE

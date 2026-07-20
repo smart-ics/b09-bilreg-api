@@ -20,7 +20,7 @@ public class LegacyOutstandingReceivableReader : IPasienBalanceLegacyReader
         _opt = opt.Value;
     }
 
-    public IEnumerable<LegacyOutstandingReceivable> ListOutstanding(IPasienKey key)
+    public IEnumerable<LegacyOutstandingReceivable> ListOutstanding(IPasienKey key, DateOnly businessDate)
     {
         const string sql = """
             SELECT
@@ -40,7 +40,7 @@ public class LegacyOutstandingReceivableReader : IPasienBalanceLegacyReader
             """;
 
         var dp = new DynamicParameters();
-        dp.AddParam("@TglNow", DateTime.Now.ToString(DateFormatEnum.YMD), SqlDbType.VarChar);
+        dp.AddParam("@TglNow", businessDate.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
         dp.AddParam("@PasienId", key.PasienId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));

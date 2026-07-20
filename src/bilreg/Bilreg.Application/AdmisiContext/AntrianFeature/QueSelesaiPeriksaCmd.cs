@@ -1,6 +1,7 @@
-﻿using Ardalis.GuardClauses;
+using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using MediatR;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiContext.AntrianFeature;
 
@@ -9,10 +10,12 @@ public record QueSelesaiPeriksaCmd(string AntrianId, int NoUrut) : IRequest, IAn
 public class QueSelesaiPeriksaHandler : IRequestHandler<QueSelesaiPeriksaCmd>
 {
     private readonly IAntrianRepo _queRepo;
+    private readonly ITglJamProvider _tglJamProvider;
 
-    public QueSelesaiPeriksaHandler(IAntrianRepo queRepo)
+    public QueSelesaiPeriksaHandler(IAntrianRepo queRepo, ITglJamProvider? tglJamProvider = null)
     {
         _queRepo = queRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task Handle(QueSelesaiPeriksaCmd request, CancellationToken cancellationToken)
@@ -23,7 +26,7 @@ public class QueSelesaiPeriksaHandler : IRequestHandler<QueSelesaiPeriksaCmd>
         var que = _queRepo.LoadEntity(request).GetValueOrDefault();
         var item = que.ListEntry.FirstOrDefault(x => x.NoUrut == request.NoUrut) ?? 
             throw new KeyNotFoundException($"antrian {request.NoUrut} not found");
-        item.Done();
+        item.Done(_tglJamProvider.Now);
 
         _queRepo.SaveChanges(que);
 

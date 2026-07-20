@@ -71,7 +71,7 @@ public record ClinicalOrderModel : IClinicalOrderKey
         OrderTypeType orderType,
         OrderSpecificationType orderSpecification,
         IEnumerable<OrderOccurrencePlanType> occurrencePlan,
-        DateTime createdAt)
+        DateTime createdAt = default)
     {
         Guard.Against.NullOrWhiteSpace(patientId);
         Guard.Against.NullOrWhiteSpace(regId);

@@ -1,4 +1,4 @@
-﻿using Ardalis.GuardClauses;
+using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 
@@ -18,23 +18,23 @@ public class PasienTrackerModel : IPasienTrackerKey
         VisitDate = visitDate;
         _listEvent = listEvent.ToList() ?? [];;
     }
-    public static PasienTrackerModel Create(BookingModel booking)
+    public static PasienTrackerModel Create(BookingModel booking, DateTime occurredAt = default)
     {
         var newId = Ulid.NewUlid().ToString();
         var visitor = new PersonType(booking.Person.PersonName, booking.Person.TglLahir);
         var result = new PasienTrackerModel(newId, visitor, booking.TglBerobat, 
             new List<PasienTrackerEventType>());
-        result.AddEvent("BOOKING", booking.BookingId);
+        result.AddEvent("BOOKING", booking.BookingId, occurredAt);
         return result;
     }
 
-    public static PasienTrackerModel Create(RegModel reg)
+    public static PasienTrackerModel Create(RegModel reg, DateTime occurredAt = default)
     {
         var newId = Ulid.NewUlid().ToString();
         var visitor = new PersonType(reg.Pasien.PasienName, reg.Pasien.TglLahir);
         var result = new PasienTrackerModel(newId, visitor, reg.RegDate, 
             new List<PasienTrackerEventType>());
-        result.AddEvent("REGISTER", reg.RegId);
+        result.AddEvent("REGISTER", reg.RegId, occurredAt);
         return result;
     }
     public static PasienTrackerModel Default => new PasienTrackerModel(
@@ -55,13 +55,13 @@ public class PasienTrackerModel : IPasienTrackerKey
     #endregion
 
     #region METHOD BEHAVIOUR
-    public void AddEvent(string eventName, string reffId)
+    public void AddEvent(string eventName, string reffId, DateTime occurredAt = default)
     {
         Guard.Against.NullOrWhiteSpace(eventName, nameof(eventName));
         Guard.Against.NullOrWhiteSpace(reffId, nameof(reffId));
         var noUrut = _listEvent.Select(x => x.NoUrut).DefaultIfEmpty(0).Max();
         noUrut++;
-        var newEvent = new PasienTrackerEventType(noUrut, eventName, DateTime.Now, reffId);
+        var newEvent = new PasienTrackerEventType(noUrut, eventName, occurredAt, reffId);
         _listEvent.Add(newEvent);
     }
     #endregion

@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Nuna.Lib.AutoNumberHelper;
 using Nuna.Lib.PatternHelper;
 using Nuna.Lib.TransactionHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.ChargeContext.TarifFeature.UseCases;
 
@@ -40,6 +41,7 @@ public class TrfPublishTarifPolicyHandler : IRequestHandler<TrfPublishTarifPolic
     private readonly ITarifMigrationGuard _migrationGuard;
     private readonly TarifOperationalGate _operationalGate;
     private readonly ILogger<TrfPublishTarifPolicyHandler> _logger;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public TrfPublishTarifPolicyHandler(
         ITarifPolicyRepo tarifPolicyRepo,
@@ -51,7 +53,8 @@ public class TrfPublishTarifPolicyHandler : IRequestHandler<TrfPublishTarifPolic
         IKomponenRepo komponenRepo,
         ITarifMigrationGuard migrationGuard,
         TarifOperationalGate operationalGate,
-        ILogger<TrfPublishTarifPolicyHandler> logger)
+        ILogger<TrfPublishTarifPolicyHandler> logger,
+        ITglJamProvider? tglJamProvider = null)
     {
         _tarifPolicyRepo = tarifPolicyRepo;
         _tarifPublishLogRepo = tarifPublishLogRepo;
@@ -63,6 +66,7 @@ public class TrfPublishTarifPolicyHandler : IRequestHandler<TrfPublishTarifPolic
         _migrationGuard = migrationGuard;
         _operationalGate = operationalGate;
         _logger = logger;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<TrfPublishTarifPolicyResponse> Handle(
@@ -84,7 +88,7 @@ public class TrfPublishTarifPolicyHandler : IRequestHandler<TrfPublishTarifPolic
 
         var isRepublish = policy.PolicyStatus == TarifPolicyStatus.Published;
         var publishLogId = NunaId.New(PublishLogIdPrefix);
-        var publishedAt = DateTime.Now;
+        var publishedAt = _tglJamProvider.Now;
 
         _logger.LogInformation(
             "TarifPolicy publish started for {TarifPolicyId} (republish={IsRepublish})",
@@ -119,7 +123,7 @@ public class TrfPublishTarifPolicyHandler : IRequestHandler<TrfPublishTarifPolic
             var policyWithSnapshots = WithVariants(policy, snapshotVariants);
             var policyToSave = isRepublish
                 ? policyWithSnapshots
-                : policyWithSnapshots.MarkPublished(request.PublishedBy);
+                : policyWithSnapshots.MarkPublished(request.PublishedBy, publishedAt);
 
             var publishLog = new TarifPublishLogType(
                 publishLogId,

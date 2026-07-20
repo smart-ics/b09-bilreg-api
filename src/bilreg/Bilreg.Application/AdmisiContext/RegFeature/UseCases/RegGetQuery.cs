@@ -1,4 +1,4 @@
-﻿using Ardalis.GuardClauses;
+using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
@@ -15,6 +15,7 @@ using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
 using System;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 
@@ -49,15 +50,18 @@ public class RegJalanGethandler : IRequestHandler<RegGetQuery, RegGetResponse>
     private readonly IJaminanRepo _jaminanRepo;
     private readonly ITipeJaminanRepo _tipeJaminanRepo;
     private readonly IAntrianRepo _queRepo;
+    private readonly ITglJamProvider _tglJamProvider;
     public RegJalanGethandler(IRegRepo regRepo,
         IJaminanRepo jaminanRepo,
         ITipeJaminanRepo tipeJaminanRepo,
-        IAntrianRepo queRepo)
+        IAntrianRepo queRepo,
+        ITglJamProvider? tglJamProvider = null)
     {
         _regRepo = regRepo;
         _jaminanRepo = jaminanRepo;
         _tipeJaminanRepo = tipeJaminanRepo;
         _queRepo = queRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<RegGetResponse> Handle(RegGetQuery request, CancellationToken cancellationToken)
@@ -70,7 +74,8 @@ public class RegJalanGethandler : IRequestHandler<RegGetQuery, RegGetResponse>
             .GetValueOrThrow($"Jaminan {tipeJaminan.Jaminan.JaminanId} not found");
         
         var (tipeTarif, tipeBrg) = ResolveTipe(reg.JenisReg, jaminan);
-        var umur = UmurHelper.HitungUmur(reg.Pasien.TglLahir);
+        var businessDate = DateOnly.FromDateTime(_tglJamProvider.Now);
+        var umur = UmurHelper.HitungUmur(reg.Pasien.TglLahir, businessDate);
 
         var dateTime = reg.RegDate.ToDateTime(TimeOnly.MinValue);
         var listQue = _queRepo.ListData(dateTime)?.ToList() ?? [];

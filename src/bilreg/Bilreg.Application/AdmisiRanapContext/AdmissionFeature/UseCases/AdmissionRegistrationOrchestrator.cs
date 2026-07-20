@@ -24,6 +24,7 @@ using Bilreg.Domain.Shared.AuditLogFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using Nuna.Lib.PatternHelper;
 using Nuna.Lib.TransactionHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
 
@@ -67,6 +68,7 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
     private readonly IRegInapRepo _regInapRepo;
     private readonly IRegAktifRepo _regAktifRepo;
     private readonly IAuditRepo _auditRepo;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public AdmissionRegistrationOrchestrator(
         IAdmissionRepo admissionRepo,
@@ -86,7 +88,8 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         IRegRepo regRepo,
         IRegInapRepo regInapRepo,
         IRegAktifRepo regAktifRepo,
-        IAuditRepo auditRepo)
+        IAuditRepo auditRepo,
+        ITglJamProvider? tglJamProvider = null)
     {
         _admissionRepo = admissionRepo;
         _opnameRequestRepo = opnameRequestRepo;
@@ -106,6 +109,7 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         _regInapRepo = regInapRepo;
         _regAktifRepo = regAktifRepo;
         _auditRepo = auditRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<AdmProcessAdmissionResponse> ProcessOpnameRequest(
@@ -113,6 +117,7 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
     {
         ValidateRequest(request.OpnameRequestId, request.KelasDkId, request.BangsalId,
             request.UserId, request.Registration);
+        var occurredAt = _tglJamProvider.Now;
         var opname = _opnameRequestRepo.LoadEntity(request)
             .GetValueOrThrow($"Opname Request '{request.OpnameRequestId}' tidak ditemukan.");
         if (opname.OpnameRequestStatus != OpnameRequestStatusEnum.Requested)
@@ -122,10 +127,10 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         EnsurePatientAvailable(opname.Pasien);
         var prosedur = ResolveProsedurMasukInap(request.Registration);
         var admission = CreateAdmission(opname.Pasien, request.KelasDkId, request.BangsalId,
-            opname.OpnameRequestId, null, request.UserId);
+            opname.OpnameRequestId, null, request.UserId, occurredAt);
         var reg = CreateRegistration(admission, request.Registration);
         var regInap = CreateRegInap(admission, reg, prosedur);
-        var fulfilled = opname.Fulfill(admission.RegId, request.UserId);
+        var fulfilled = opname.Fulfill(admission.RegId, request.UserId, occurredAt);
         var snapshot = AuditLogSnapshotJson.Serialize(opname);
 
         using var trans = TransHelper.NewScope();
@@ -143,6 +148,7 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
     {
         ValidateRequest(request.ReservationId, request.KelasDkId, request.BangsalId,
             request.UserId, request.Registration);
+        var occurredAt = _tglJamProvider.Now;
         var reservation = _reservationRepo.LoadEntity(request)
             .GetValueOrThrow($"Reservation '{request.ReservationId}' tidak ditemukan.");
 
@@ -151,17 +157,17 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         var bangsal = _wardGateway.ResolveBangsalForCareClass(request.BangsalId, request.KelasDkId);
         if (reservation.ReservationStatus == ReservationStatusEnum.Reserved)
             reservation = reservation.Maintain(
-                reservation.PlannedDate, reservation.KelasRawat, bangsal, request.UserId);
+                reservation.PlannedDate, reservation.KelasRawat, bangsal, request.UserId, occurredAt);
 
         if (reservation.ReservationStatus != ReservationStatusEnum.Maintained)
             throw new InvalidOperationException(
                 $"Reservation '{reservation.ReservationId}' harus Maintained untuk direalisasi (status: {reservation.ReservationStatus}).");
 
         var admission = CreateAdmission(reservation.Pasien, request.KelasDkId, request.BangsalId,
-            null, reservation.ReservationId, request.UserId, bangsal);
+            null, reservation.ReservationId, request.UserId, occurredAt, bangsal);
         var reg = CreateRegistration(admission, request.Registration);
         var regInap = CreateRegInap(admission, reg, prosedur);
-        var realized = reservation.Realize(admission.RegId, request.UserId);
+        var realized = reservation.Realize(admission.RegId, request.UserId, occurredAt);
         var snapshot = AuditLogSnapshotJson.Serialize(reservation);
 
         using var trans = TransHelper.NewScope();
@@ -175,11 +181,12 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
     }
 
     private AdmissionModel CreateAdmission(PasienReff pasien, string kelasDkId, string bangsalId,
-        string? opnameRequestId, string? reservationId, string userId, BangsalReff? resolvedBangsal = null)
+        string? opnameRequestId, string? reservationId, string userId, DateTime occurredAt,
+        BangsalReff? resolvedBangsal = null)
     {
         var kelasDk = _wardGateway.ResolveKelasDk(kelasDkId);
         var bangsal = resolvedBangsal ?? _wardGateway.ResolveBangsalForCareClass(bangsalId, kelasDkId);
-        return AdmissionModel.Admit(pasien, kelasDk, bangsal, opnameRequestId, reservationId, userId);
+        return AdmissionModel.Admit(pasien, kelasDk, bangsal, opnameRequestId, reservationId, userId, occurredAt);
     }
 
     private RegModel CreateRegistration(AdmissionModel admission, AdmissionRegistrationData data)

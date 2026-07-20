@@ -4,6 +4,7 @@ using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.PasienContext.StatusSosialFeature;
 using Bilreg.Domain.Shared.Param;
 using MediatR;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.PasienContext.PasienFeature;
 
@@ -40,15 +41,18 @@ public class PasienGetHandler : IRequestHandler<PasienGetQuery, PasienGetRespons
     private readonly IParamSistemDal _paramSistemDal;
     private readonly IPasienRepo _pasienRepo;
     private readonly IGetKodeRsService _getKdRsSvc;
+    private readonly ITglJamProvider _tglJamProvider;
     //private const string KODE_RS_PARAM_KEY = "RS__XXXXXX_KODE";
 
     public PasienGetHandler(IParamSistemDal paramSistemDal, 
         IPasienRepo pasienRepo, 
-        IGetKodeRsService getKdRsSvc)
+        IGetKodeRsService getKdRsSvc,
+        ITglJamProvider? tglJamProvider = null)
     {
         _paramSistemDal = paramSistemDal;
         _pasienRepo = pasienRepo;
         _getKdRsSvc = getKdRsSvc;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<PasienGetResponse> Handle(PasienGetQuery request, CancellationToken cancellationToken)
@@ -59,7 +63,8 @@ public class PasienGetHandler : IRequestHandler<PasienGetQuery, PasienGetRespons
         var pasien = _pasienRepo.LoadEntity(PasienModel.Key(pasienId)).GetValueOrThrow($"Pasien id {request.PasienId} not found");
 
         // RESPONSE
-        var response = BuildPasienResponse(pasien);
+        var businessDate = DateOnly.FromDateTime(_tglJamProvider.Now);
+        var response = BuildPasienResponse(pasien, businessDate);
         return Task.FromResult(response);
     }
 
@@ -75,7 +80,7 @@ public class PasienGetHandler : IRequestHandler<PasienGetQuery, PasienGetRespons
         };
     }
 
-    private static PasienGetResponse BuildPasienResponse(PasienModel pasien)
+    private static PasienGetResponse BuildPasienResponse(PasienModel pasien, DateOnly businessDate)
     {
         
         return new PasienGetResponse(
@@ -84,7 +89,7 @@ public class PasienGetHandler : IRequestHandler<PasienGetQuery, PasienGetRespons
             pasien.Person.PersonName,
             pasien.TempatLahir,
             pasien.Person.TglLahir.ToString("yyyy-MM-dd"),
-            pasien.GetUmur(),
+            pasien.GetUmur(businessDate),
             pasien.NickName,
             pasien.Person.Gender,
             pasien.NamaIbuKandung,

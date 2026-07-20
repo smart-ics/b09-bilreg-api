@@ -129,10 +129,10 @@ public class AntrianFactoryTests
     {
         // Arrange
         var servicePoint = new ServicePointType("SP001", "Loket Pendaftaran");
-        var expectedDate = DateOnly.FromDateTime(DateTime.Now);
+        var expectedDate = new DateOnly(2025, 10, 13);
 
         // Act
-        var result = _sut.Create(servicePoint);
+        var result = _sut.Create(servicePoint, expectedDate);
 
         // Assert
         result.Should().NotBeNull();
@@ -152,7 +152,7 @@ public class AntrianFactoryTests
         ServicePointType servicePoint = null!;
 
         // Act
-        Action act = () => _sut.Create(servicePoint);
+        Action act = () => _sut.Create(servicePoint, new DateOnly(2025, 10, 13));
 
         // Assert
         act.Should().Throw<ArgumentNullException>()
@@ -166,7 +166,7 @@ public class AntrianFactoryTests
         var servicePoint = new ServicePointType("SP-001-A", "Loket Khusus");
 
         // Act
-        var result = _sut.Create(servicePoint);
+        var result = _sut.Create(servicePoint, new DateOnly(2025, 10, 13));
 
         // Assert
         result.SequenceTag.Should().Be("SP-001-A");

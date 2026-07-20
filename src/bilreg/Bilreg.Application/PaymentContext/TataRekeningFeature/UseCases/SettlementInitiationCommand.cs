@@ -13,7 +13,7 @@ namespace Bilreg.Application.PaymentContext.TataRekeningFeature.UseCases;
 public record SettlementInitiationCommand(
     string RegId,
     string UserId,
-    DateTime InitiatedAt) : IRequest<SettlementInitiationResponse>, IRegKey;
+    DateTime? InitiatedAt) : IRequest<SettlementInitiationResponse>, IRegKey;
 
 public record SettlementInitiationResponse(TataRekeningSummaryDto Summary);
 
@@ -23,17 +23,20 @@ public class SettlementInitiationHandler : IRequestHandler<SettlementInitiationC
     private readonly IAuditRepo _auditRepo;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserContext _currentUser;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public SettlementInitiationHandler(
         ITataRekeningRepo tataRekeningRepo,
         IAuditRepo auditRepo,
         IUnitOfWork unitOfWork,
-        ICurrentUserContext currentUser)
+        ICurrentUserContext currentUser,
+        ITglJamProvider? tglJamProvider = null)
     {
         _tataRekeningRepo = tataRekeningRepo;
         _auditRepo = auditRepo;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<SettlementInitiationResponse> Handle(
@@ -50,12 +53,14 @@ public class SettlementInitiationHandler : IRequestHandler<SettlementInitiationC
         var tataRekening = _tataRekeningRepo.LoadEntity(request)
             .GetValueOrThrow($"Tata Rekening '{request.RegId}' tidak ditemukan.");
 
-        tataRekening.InitiateSettlement(petugasVerif, request.InitiatedAt);
+        var occurredAt = request.InitiatedAt ?? _tglJamProvider.Now;
+        tataRekening.InitiateSettlement(petugasVerif, occurredAt);
 
         _tataRekeningRepo.SaveChanges(tataRekening);
 
         var audit = AuditLog.Create(
             userId: petugasVerif,
+            eventTime: occurredAt,
             actionType: "TATA_REKENING_SETTLEMENT_INITIATION",
             entityName: nameof(TataRekeningModel),
             entityId: request.RegId,
@@ -63,7 +68,7 @@ public class SettlementInitiationHandler : IRequestHandler<SettlementInitiationC
             {
                 request.RegId,
                 PetugasVerif = petugasVerif,
-                request.InitiatedAt
+                InitiatedAt = occurredAt
             }),
             correlationId: request.RegId);
         _auditRepo.SaveChanges(audit);

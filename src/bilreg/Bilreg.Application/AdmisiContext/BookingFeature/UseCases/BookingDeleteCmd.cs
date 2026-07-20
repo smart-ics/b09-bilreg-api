@@ -3,6 +3,7 @@ using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.Shared.AuditLogFeature;
 using MediatR;
+using Nuna.Lib.ValidationHelper;
 
  namespace Bilreg.Application.AdmisiContext.BookingFeature.UseCases;
 
@@ -15,15 +16,18 @@ public class BookingDeleteHandler : IRequestHandler<BookingDeleteCmd>
     private readonly IDashboardEmrRemoveBookingService _dashboardEmrRemoveSvc;
     private readonly IAuditRepo _auditRepo;
     public readonly IBookingRepo _bookingRepo;
+    private readonly ITglJamProvider _tglJamProvider;
     public BookingDeleteHandler(IDeleteBookingWorkflow deleteBookingWorkflow,
         IDashboardEmrRemoveBookingService dashboardEmrRemoveSvc,
         IAuditRepo auditRepo,
-        IBookingRepo bookingRepo)
+        IBookingRepo bookingRepo,
+        ITglJamProvider? tglJamProvider = null)
     {
         _deleteBookingWorkflow = deleteBookingWorkflow;
         _dashboardEmrRemoveSvc = dashboardEmrRemoveSvc;
         _auditRepo = auditRepo;
         _bookingRepo = bookingRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task Handle(BookingDeleteCmd request, CancellationToken cancellationToken)
@@ -41,15 +45,16 @@ public class BookingDeleteHandler : IRequestHandler<BookingDeleteCmd>
         var removeBooking = new RemoveBookingCmd(request.BookingId);
         _dashboardEmrRemoveSvc.Execute(removeBooking);
 
-        var audit = CreateAudit(snapshotJson, request);
+        var audit = CreateAudit(snapshotJson, request, _tglJamProvider.Now);
         _auditRepo.SaveChanges(audit);
 
         return Task.CompletedTask;
     }
-    private AuditLog CreateAudit(string snapShotJson, BookingDeleteCmd cmd)
+    private static AuditLog CreateAudit(string snapShotJson, BookingDeleteCmd cmd, DateTime occurredAt)
     {
         var result = AuditLog.Create(
             cmd.UserId,
+            occurredAt,
             actionType: "DELETE",
             entityName: nameof(BookingModel),
             entityId: cmd.BookingId,

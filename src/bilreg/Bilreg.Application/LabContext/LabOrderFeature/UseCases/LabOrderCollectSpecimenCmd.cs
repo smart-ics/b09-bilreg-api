@@ -16,10 +16,12 @@ public record LabOrderCollectSpecimenCmd(
 public class LabOrderCollectSpecimenHandler : IRequestHandler<LabOrderCollectSpecimenCmd>
 {
     private readonly ILabOrderRepo _labOrderRepo;
+    private readonly ITglJamProvider _tglJamProvider;
 
-    public LabOrderCollectSpecimenHandler(ILabOrderRepo labOrderRepo)
+    public LabOrderCollectSpecimenHandler(ILabOrderRepo labOrderRepo, ITglJamProvider? tglJamProvider = null)
     {
         _labOrderRepo = labOrderRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task Handle(LabOrderCollectSpecimenCmd request, CancellationToken cancellationToken)
@@ -29,13 +31,13 @@ public class LabOrderCollectSpecimenHandler : IRequestHandler<LabOrderCollectSpe
 
         var order = _labOrderRepo.LoadEntity(request).GetValueOrThrow($"LabOrder '{request.OrderId}' not found");
 
-        var collectedAt = request.CollectedDate ?? DateTime.Now;
+        var collectedAt = request.CollectedDate ?? _tglJamProvider.Now;
         var info = new CollectionInfoType(
             collectedAt,
             request.UserId,
             request.CollectionNote ?? "");
 
-        order.CollectSpecimen(request.UserId, info);
+        order.CollectSpecimen(request.UserId, info, collectedAt);
 
         using var trans = TransHelper.NewScope();
         _labOrderRepo.SaveChanges(order);

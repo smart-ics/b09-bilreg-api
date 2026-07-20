@@ -9,9 +9,9 @@ using System.Data.SqlClient;
 
 namespace Bilreg.Infrastructure.PaymentContext.RegOutFeature;
 
-public interface IRegHutangDal :
-    IListData<RegHutangDto, IPasienKey>
+public interface IRegHutangDal
 {
+    IEnumerable<RegHutangDto> ListData(IPasienKey key, DateOnly businessDate);
 }
 
 public class RegHutangDal : IRegHutangDal
@@ -21,7 +21,7 @@ public class RegHutangDal : IRegHutangDal
     {
         _opt = opt.Value;
     }
-    public IEnumerable<RegHutangDto> ListData(IPasienKey key)
+    public IEnumerable<RegHutangDto> ListData(IPasienKey key, DateOnly businessDate)
     {
         const string sql = """
            SELECT
@@ -37,7 +37,7 @@ public class RegHutangDal : IRegHutangDal
                AND fs_kd_iii = 'JAMINAN000'
            """;
         var dp = new DynamicParameters();
-        dp.AddParam("@TglNow", DateTime.Now.ToString(DateFormatEnum.YMD), SqlDbType.VarChar);
+        dp.AddParam("@TglNow", businessDate.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
         dp.AddParam("@PasienId", key.PasienId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));

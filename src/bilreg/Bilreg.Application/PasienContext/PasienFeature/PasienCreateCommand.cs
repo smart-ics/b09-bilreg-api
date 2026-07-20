@@ -1,4 +1,4 @@
-﻿using Ardalis.GuardClauses;
+using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers;
@@ -22,12 +22,15 @@ public class PasienCreateHandler : IRequestHandler<PasienCreateCommand, PasienCr
 {
     private readonly IPasienRepo _pasienRepo;
     private readonly IPasienFactory _pasienFactory;
+    private readonly ITglJamProvider _tglJamProvider;
     private const string FORMAT_TGL_YMD = "yyyy-MM-dd";
 
-    public PasienCreateHandler(IPasienRepo pasienRepo, IPasienFactory pasienFactory)
+    public PasienCreateHandler(IPasienRepo pasienRepo, IPasienFactory pasienFactory,
+        ITglJamProvider? tglJamProvider = null)
     {
         _pasienRepo = pasienRepo;
         _pasienFactory = pasienFactory;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<PasienCreateResponse> Handle(PasienCreateCommand request, CancellationToken cancellationToken)
@@ -51,7 +54,8 @@ public class PasienCreateHandler : IRequestHandler<PasienCreateCommand, PasienCr
         var person = new PersonInfoType(request.PasienName, tglLahir, request.Gender,
             alamat, contactPhone, IdentitasType.Default);
         var golDarah = new GolDarahType(request.GolDarah);
-        var pasien = _pasienFactory.CreateFromPerson(person, request.NickName, request.TempatLahir, golDarah, request.IbuKandung);
+        var pasien = _pasienFactory.CreateFromPerson(person, request.NickName, request.TempatLahir,
+            golDarah, request.IbuKandung, _tglJamProvider.Now);
 
         //  WRITE
         var result = _pasienRepo.SaveChanges(pasien);

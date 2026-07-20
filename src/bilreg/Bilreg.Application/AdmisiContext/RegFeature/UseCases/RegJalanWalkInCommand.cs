@@ -1,4 +1,4 @@
-﻿using Ardalis.GuardClauses;
+using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Application.AccountingContext.JurnalFeature;
@@ -33,6 +33,7 @@ using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
+using Nuna.Lib.ValidationHelper;
 using System.Globalization;
 using Bilreg.Domain.PaymentContext.TrsBillFeature;
 
@@ -87,6 +88,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
     private readonly IAddAntrianEmrByRegService _addAntrianEmrByRegService;
     private readonly IAntrianMapWithRegResolver _antrianMapWithRegResolver;
     private readonly IJadwalPraktekFeatureResolver _featureResolver;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public RegJalanCreateHandler(
         //  reg support
@@ -124,7 +126,8 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         IGetAppSettingService getAppSettingSvc,
         IAddAntrianEmrByRegService addRegSvc, 
         IAntrianMapWithRegResolver antrianMapResolver,
-        IJadwalPraktekFeatureResolver featureResolver)
+        IJadwalPraktekFeatureResolver featureResolver,
+        ITglJamProvider? tglJamProvider = null)
     {
         //      reg-support
         _pasienRepo = pasienRepo;
@@ -162,10 +165,12 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         _addAntrianEmrByRegService = addRegSvc;
         _antrianMapWithRegResolver = antrianMapResolver;
         _featureResolver = featureResolver;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<RegJalanCreateResponse> Handle(RegJalanWalkInCommand request, CancellationToken cancellationToken)
     {
+        var occurredAt = _tglJamProvider.Now;
         /*  ▐▀▀▀▀▀▀▀▀▀▀▀▌
             ▐   GUARD   ▌
             ▐▄▄▄▄▄▄▄▄▄▄▄▌*/
@@ -175,7 +180,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         if(IsPasienAktifReg(pasien))
             throw new KeyNotFoundException($"Pasien sudah aktif registrasi");
 
-        if (IsAdult(pasien.Person.TglLahir) && (string.IsNullOrWhiteSpace(pasien.Ktp.Nik) || pasien.Ktp.Nik == "-"))
+        if (IsAdult(pasien.Person.TglLahir, DateOnly.FromDateTime(occurredAt)) && (string.IsNullOrWhiteSpace(pasien.Ktp.Nik) || pasien.Ktp.Nik == "-"))
             throw new KeyNotFoundException($"Nik Kosong, Lengkapi data Nik pasien {pasien.PasienId}");
         
         var tipeJaminan = _tipeJaminanRepo.LoadEntity(request).GetValueOrThrow("TipeJaminan not found");
@@ -189,17 +194,17 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             ▐   BUILD   ▌
             ▐▄▄▄▄▄▄▄▄▄▄▄▌*/
         //      1-register
-        var regMasukAudit = new AuditInfoType(request.UserId, DateTime.Now);
+        var regMasukAudit = new AuditInfoType(request.UserId, occurredAt);
         var reg = _regFactory.CreateRegRajal(pasien, regMasukAudit,
             tipeJaminan, polis, caraMasuk, rujukan, dokter, layanan, karcis, request.PesertaJaminanId);
         var regAktif = RegAktifModel.CreateFromReg(reg);
         //      2-antrian
-        var tglBerobat = DateOnly.FromDateTime(DateTime.Now);
+        var tglBerobat = DateOnly.FromDateTime(occurredAt);
         var schedule = BookingScheduleResolver.ResolveWalkIn(
             _featureResolver, _jadwalPraktekRepo, dokter, tglBerobat, request.JamPraktek);
         var antrian = ResolveAntrian(tglBerobat, dokter, schedule);
         var antrianMap = _antrianMapWithRegResolver.Resolve(schedule.LegacyJadwal, tglBerobat, reg);
-        var tracker = PasienTrackerModel.Create(reg);
+        var tracker = PasienTrackerModel.Create(reg, occurredAt);
 
         //      3-trs-billing-karcis
         var jaminan = LoadJaminan(tipeJaminan.Jaminan);
@@ -207,21 +212,21 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             .Select(x => LoadKomponen(KomponenType.Key(x.KomponenTarif.KomponenId)))
             .ToList();
         var trsBillingReg = _addBillAppService.FromReg(reg, karcis,
-            jaminan, dokter, listKompKarcis);
+            jaminan, dokter, listKompKarcis, occurredAt);
         //      4-jurnal-karcis
         var mapJaminanJk = LoadMapJmnJk(tipeJaminan.Jaminan);
         var jurnalReg = JurnalType.CreateFromTrsBilling(trsBillingReg, layanan, mapJaminanJk);
         //      5-tindakan
         var tindakan =  karcis.DefaultTarif == TarifType.Default.ToReff()
             ? TindakanModel.Default
-            : GenTindakan(reg, jaminan, karcis, request.UserId, dokter);
+            : GenTindakan(reg, jaminan, karcis, request.UserId, dokter, occurredAt);
         //      6-trs-billing-tindakan
         var tarif = karcis.DefaultTarif == TarifType.Default.ToReff()
             ? TarifType.Default
             : LoadTarif(TarifType.Key(karcis.DefaultTarif.TarifId));
         var trsBilling = tindakan == TindakanModel.Default 
             ? TrsBillType.Default
-            : GenBill(tindakan, reg, tarif, jaminan);
+            : GenBill(tindakan, reg, tarif, jaminan, occurredAt);
         //      7-jurnal-tindakan
         var jurnalTindakan = tindakan == TindakanModel.Default
             ? JurnalType.Default
@@ -230,7 +235,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         //      8-remote Cetak
         var appSetting = _getAppSettingSvc.Execute();
         var rmtCetak = new RemoteCetakType(
-            reg.RegId, "RG-ANTRIAN", DateTime.Now,
+            reg.RegId, "RG-ANTRIAN", occurredAt,
             appSetting.Registrasi.RemoteCetakRegistrasi,
             false, new DateTime(3000, 1, 1),
             "", "");
@@ -242,10 +247,10 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         
         using (var trans = TransHelper.NewScope())
         {
-            var antEntry = antrian.AddEntry(antrianMap.Value.Item2.NoUrut, tracker, reg.RegId, "REG");
+            var antEntry = antrian.AddEntry(antrianMap.Value.Item2.NoUrut, tracker, reg.RegId, "REG", occurredAt);
             var itemQueue = antrian.ListEntry.FirstOrDefault(x => x.NoUrut == antrianMap.Value.Item2.NoUrut)
                 ?? AntrianEntryModel.Default;
-            itemQueue.Serve();
+            itemQueue.Serve(occurredAt);
             _regRepo.SaveChanges(reg);
             _regAktifRepo.SaveChanges(regAktif);
             _antrianRepo.SaveChanges(antrian);
@@ -276,10 +281,8 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         return _regAktifRepo.IsPasienAktif(pasien)
             || _regRepo.IsPasienAktifReg(pasien);
     }
-    public bool IsAdult(DateOnly TglLahir)
+    public bool IsAdult(DateOnly TglLahir, DateOnly today)
     {
-        var today = DateOnly.FromDateTime(DateTime.Today);
-
         int age = today.Year - TglLahir.Year;
         // Koreksi jika ulang tahun belum lewat tahun ini
         if (today < TglLahir.AddYears(age))
@@ -322,7 +325,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
     }
 
     private TindakanModel GenTindakan(RegModel reg, JaminanType jaminan, 
-        KarcisType karcis, string userId, PpaType dokter)
+        KarcisType karcis, string userId, PpaType dokter, DateTime occurredAt)
     {
         var tipeTarifReff = jaminan.TipeTarif.Rajal;
         var tarifKey = karcis.DefaultTarif;
@@ -335,12 +338,12 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             .Where(x => x.ListSatTugas.Any())
             .Select(x => new KomponenPpaView(x, dokter));
 
-        var tindakan = TindakanModel.FromReg(reg, nilaiTarif, listPpa, userId);
+        var tindakan = TindakanModel.FromReg(reg, nilaiTarif, listPpa, userId, occurredAt);
         return tindakan;
     }
 
     private TrsBillType GenBill(TindakanModel tdk, RegModel reg, TarifType tarif,
-        JaminanType jaminan)
+        JaminanType jaminan, DateTime occurredAt)
     {
         var listKomp = new List<KomponenType>();
         foreach(var item in tdk.ListKomponen)
@@ -348,7 +351,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             var komp = LoadKomponen(KomponenType.Key(item.Komponen.KomponenId));
             listKomp.Add(komp);
         }
-        var trsBilling = _addBillAppService.FromTindakan(tdk, reg, tarif, jaminan, listKomp);
+        var trsBilling = _addBillAppService.FromTindakan(tdk, reg, tarif, jaminan, listKomp, occurredAt);
         return trsBilling;
     }
     private KomponenType LoadKomponen(IKomponenKey key)

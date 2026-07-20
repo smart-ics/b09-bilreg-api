@@ -1,4 +1,4 @@
-﻿using Ardalis.GuardClauses;
+using Ardalis.GuardClauses;
 using Bilreg.Application.AccountingContext.JurnalFeature;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.BookingFeature;
@@ -37,6 +37,7 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
     private readonly IDashboardEmrRemoveRegService _dashboardEmrRemoveRegService;
     private readonly IBookingRepo _bookingRepo;
     private readonly IAuditRepo _auditRepo;
+    private readonly ITglJamProvider _tglJamProvider;
     public RegJalanBatalHandler(IRegRepo regRepo,
         IRegAktifRepo regAktifRepo,
         IAntrianRepo antrianRepo,
@@ -47,7 +48,8 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
         IJurnalRepo jurnalRepo,
         IDashboardEmrRemoveRegService dashboardEmrRemoveRegService,
         IBookingRepo bookingRepo,
-        IAuditRepo auditRepo)
+        IAuditRepo auditRepo,
+        ITglJamProvider? tglJamProvider = null)
     {
         _regRepo = regRepo;
         _regAktifRepo = regAktifRepo;
@@ -60,10 +62,12 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
         _dashboardEmrRemoveRegService = dashboardEmrRemoveRegService;
         _bookingRepo = bookingRepo;
         _auditRepo = auditRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task Handle(RegJalanBatalCmd request, CancellationToken cancellationToken)
     {
+        var occurredAt = _tglJamProvider.Now;
         Guard.Against.NullOrWhiteSpace(request.RegId);
         Guard.Against.NullOrWhiteSpace(request.UserId);
 
@@ -94,10 +98,10 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
         {
             if (book.BookingId != "-")
                 _bookingRepo.SaveChanges(book);
-            VoidReg(reg, request.UserId);
+            VoidReg(reg, request.UserId, occurredAt);
             VoidAntrian(antrianContext);
             VoidAntrianMap(queMap, antrianContext.NoUrut);
-            VoidTindakan(tindakanList, request.UserId);
+            VoidTindakan(tindakanList, request.UserId, occurredAt);
             VoidBilling(billingList);
             _regAktifRepo.Delete(reg);
 
@@ -106,7 +110,7 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
         var removeReg = new RemoveRegCmd(reg.RegId);
         _dashboardEmrRemoveRegService.Execute(removeReg);
 
-        var audit = CreateAudit(reg, snapshotJson, request);
+        var audit = CreateAudit(reg, snapshotJson, request, occurredAt);
         _auditRepo.SaveChanges(audit);
 
         return Task.CompletedTask;
@@ -178,10 +182,11 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
 
         return result;
     }
-    private AuditLog CreateAudit(RegModel reg, string snapShotJson, RegJalanBatalCmd cmd)
+    private static AuditLog CreateAudit(RegModel reg, string snapShotJson, RegJalanBatalCmd cmd, DateTime occurredAt)
     {
         var result = AuditLog.Create(
             reg.RegVoidAudit.UserId,
+            occurredAt,
             actionType: "VOID",
             entityName: nameof(RegModel),
             entityId: reg.RegId,
@@ -194,9 +199,9 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
         return result;
     }
     // VOID
-    private void VoidReg(RegModel reg, string userId)
+    private void VoidReg(RegModel reg, string userId, DateTime occurredAt)
     {
-        reg.BatalBerobat(userId);
+        reg.BatalBerobat(userId, occurredAt);
         _regRepo.SaveChanges(reg);
     }
     private void VoidAntrian((AntrianModel Que, int NoUrut, IPasienTrackerKey TrackerKey) ctx)
@@ -216,11 +221,11 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
         queMap.VoidSlot(noUrut);
         _antrianMapRepo.SaveChanges(queMap);
     }
-    private void VoidTindakan(IEnumerable<TindakanModel> listTindakan, string userId)
+    private void VoidTindakan(IEnumerable<TindakanModel> listTindakan, string userId, DateTime occurredAt)
     {
         foreach (var tindakan in listTindakan)
         {
-            tindakan.Void(userId);
+            tindakan.Void(userId, occurredAt);
             _tdkRepo.SaveChanges(tindakan);
         }
     }

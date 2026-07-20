@@ -1,4 +1,4 @@
-﻿using Ardalis.GuardClauses;
+using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
@@ -9,6 +9,7 @@ using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.ChargeContext.TindakanFeature.UseCases;
 
@@ -26,17 +27,20 @@ public class OrderTdkCreateWithoutRegHandler : IRequestHandler<OrderTdkCreateWit
     private readonly IPpaRepo _ppaRepo;
     private readonly ITarifRepo _tarifRepo;
     private readonly IOrderTdkRepo _orderTdkRepo;
+    private readonly ITglJamProvider _tglJamProvider;
     public OrderTdkCreateWithoutRegHandler(IPasienRepo pasienRepo,
         ILayananRepo lynRepo,
         IPpaRepo ppaRepo,
         ITarifRepo tarifRepo,
-        IOrderTdkRepo orderTdkRepo)
+        IOrderTdkRepo orderTdkRepo,
+        ITglJamProvider? tglJamProvider = null)
     {
         _pasienRepo = pasienRepo;
         _lynRepo = lynRepo;
         _ppaRepo = ppaRepo;
         _tarifRepo = tarifRepo;
         _orderTdkRepo = orderTdkRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<OrderTdkCreateWithoutRegResponse> Handle(OrderTdkCreateWithoutRegCmd request, CancellationToken cancellationToken)
@@ -73,11 +77,12 @@ public class OrderTdkCreateWithoutRegHandler : IRequestHandler<OrderTdkCreateWit
         // BUILD
         var tarif = _tarifRepo.LoadEntity(request).GetValueOrDefault();
         var freeTextOrder = request.TarifName;
+        var occurredAt = _tglJamProvider.Now;
         OrderTdkModel order;
         if (tarif is not null)
-            order = OrderTdkModel.Create(pasien, ppa, layanan, tarif, request.UserId);
+            order = OrderTdkModel.Create(pasien, ppa, layanan, tarif, request.UserId, occurredAt);
         else
-            order = OrderTdkModel.Create(pasien, ppa, layanan, freeTextOrder, request.UserId);
+            order = OrderTdkModel.Create(pasien, ppa, layanan, freeTextOrder, request.UserId, occurredAt);
 
         // WRITE
         _orderTdkRepo.SaveChanges(order);

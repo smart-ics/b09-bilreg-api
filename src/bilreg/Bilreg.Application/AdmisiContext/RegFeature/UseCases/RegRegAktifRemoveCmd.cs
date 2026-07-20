@@ -1,9 +1,10 @@
-﻿using Ardalis.GuardClauses;
+using Ardalis.GuardClauses;
 using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.Shared.AuditLogFeature;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 
@@ -14,13 +15,16 @@ public class RegRegAktifRemoveHandler : IRequestHandler<RegRegAktifRemoveCmd>
     private readonly IRegRepo _regRepo;
     private readonly IRegAktifRepo _regAktifRepo;
     private readonly IAuditRepo _auditRepo;
+    private readonly ITglJamProvider _tglJamProvider;
     public RegRegAktifRemoveHandler(IRegRepo regRepo, 
         IRegAktifRepo regAktifRepo, 
-        IAuditRepo auditRepo)
+        IAuditRepo auditRepo,
+        ITglJamProvider? tglJamProvider = null)
     {
         _regRepo = regRepo;
         _regAktifRepo = regAktifRepo;
         _auditRepo = auditRepo;
+        _tglJamProvider = tglJamProvider;
     }
     public Task Handle(RegRegAktifRemoveCmd request, CancellationToken cancellationToken)
     {
@@ -35,7 +39,7 @@ public class RegRegAktifRemoveHandler : IRequestHandler<RegRegAktifRemoveCmd>
                 trans.Complete();
             }
 
-            var audit = CreateAudit(regAktif, snapshotJson, request);
+            var audit = CreateAudit(regAktif, snapshotJson, request, _tglJamProvider.Now);
             _auditRepo.SaveChanges(audit);
         }
 
@@ -65,10 +69,11 @@ public class RegRegAktifRemoveHandler : IRequestHandler<RegRegAktifRemoveCmd>
 
         return true; // Lolos semua validasi
     }
-    private AuditLog CreateAudit(RegAktifModel reg, string snapShotJson, RegRegAktifRemoveCmd cmd)
+    private static AuditLog CreateAudit(RegAktifModel reg, string snapShotJson, RegRegAktifRemoveCmd cmd, DateTime occurredAt)
     {
         var result = AuditLog.Create(
             userId: "FO-User",
+            eventTime: occurredAt,
             actionType: "DELETE",
             entityName: nameof(RegAktifModel),
             entityId: reg.RegId,

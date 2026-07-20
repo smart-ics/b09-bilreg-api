@@ -23,17 +23,20 @@ public class AdmCreateReservationHandler : IRequestHandler<AdmCreateReservationC
     private readonly IPatientAdministrationGateway _patientGateway;
     private readonly IWardAccommodationGateway _wardGateway;
     private readonly IAuditRepo _auditRepo;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public AdmCreateReservationHandler(
         IReservationRepo reservationRepo,
         IPatientAdministrationGateway patientGateway,
         IWardAccommodationGateway wardGateway,
-        IAuditRepo auditRepo)
+        IAuditRepo auditRepo,
+        ITglJamProvider? tglJamProvider = null)
     {
         _reservationRepo = reservationRepo;
         _patientGateway = patientGateway;
         _wardGateway = wardGateway;
         _auditRepo = auditRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<AdmCreateReservationResponse> Handle(
@@ -50,12 +53,14 @@ public class AdmCreateReservationHandler : IRequestHandler<AdmCreateReservationC
         var kelas = _wardGateway.ResolveKelas(request.KelasId);
         var bangsal = _wardGateway.ResolveBangsal(request.BangsalId);
         var plannedDate = request.PlannedDate.ToDate("yyyy-MM-dd");
+        var occurredAt = _tglJamProvider.Now;
         var reservation = ReservationModel.Create(
             pasien,
             plannedDate,
             kelas,
             bangsal,
-            request.UserId);
+            request.UserId,
+            occurredAt);
 
         _reservationRepo.SaveChanges(reservation);
 

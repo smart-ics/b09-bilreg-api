@@ -8,6 +8,7 @@ using Bilreg.Domain.AdmisiContext.PpaFeature;
 using MediatR;
 using Nuna.Lib.PatternHelper;
 using System.Globalization;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiContext.JadwalPraktekFeature.UseCases;
 
@@ -34,19 +35,22 @@ public class JadwalPraktekHarianSaveHandler : IRequestHandler<JadwalPraktekHaria
     private readonly ILayananRepo _layananRepo;
     private readonly IRuangRepo _ruangRepo;
     private readonly IJadwalPraktekHarianOverrideGuard _overrideGuard;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public JadwalPraktekHarianSaveHandler(
         IJadwalPraktekHarianRepo harianRepo,
         IPpaRepo ppaRepo,
         ILayananRepo layananRepo,
         IRuangRepo ruangRepo,
-        IJadwalPraktekHarianOverrideGuard overrideGuard)
+        IJadwalPraktekHarianOverrideGuard overrideGuard,
+        ITglJamProvider? tglJamProvider = null)
     {
         _harianRepo = harianRepo;
         _ppaRepo = ppaRepo;
         _layananRepo = layananRepo;
         _ruangRepo = ruangRepo;
         _overrideGuard = overrideGuard;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<JadwalPraktekHarianSaveResponse> Handle(
@@ -72,6 +76,7 @@ public class JadwalPraktekHarianSaveHandler : IRequestHandler<JadwalPraktekHaria
             request.AntrianPattern.Rsrvd, patternItems);
 
         JadwalPraktekHarianType model;
+        var occurredAt = _tglJamProvider.Now;
         if (!string.IsNullOrWhiteSpace(request.JadwalPraktekHarianId))
         {
             model = _harianRepo.LoadEntity(JadwalPraktekHarianType.Key(request.JadwalPraktekHarianId))
@@ -79,14 +84,14 @@ public class JadwalPraktekHarianSaveHandler : IRequestHandler<JadwalPraktekHaria
             model = model.ApplyManualOverride(
                 dokter.ToReff(), layanan.ToReff(), ruang,
                 jamMulai, jamSelesai, request.MaxPasien, antrianPattern,
-                request.Catatan, request.UserId);
+                request.Catatan, request.UserId, occurredAt);
         }
         else
         {
             model = JadwalPraktekHarianType.Create(
                 request.JadwalPraktekId, tglPraktek, dokter, layanan, ruang,
                 jamMulai, jamSelesai, request.MaxPasien, antrianPattern,
-                JadwalPraktekHarianSource.MANUAL, request.Catatan, request.UserId);
+                JadwalPraktekHarianSource.MANUAL, request.Catatan, request.UserId, occurredAt);
         }
 
         _harianRepo.SaveChanges(model);

@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
 
@@ -13,15 +13,17 @@ public record RegAktifLayananListResponse(string RegId, string RegDate, string P
 public class RegAktifListHandler : IRequestHandler<RegAktifLayananListQuery, IEnumerable<RegAktifLayananListResponse>>
 {
     private readonly IRegAktifRepo _regAktifRepo;
+    private readonly ITglJamProvider _tglJamProvider;
 
-    public RegAktifListHandler(IRegAktifRepo regAktifRepo)
+    public RegAktifListHandler(IRegAktifRepo regAktifRepo, ITglJamProvider? tglJamProvider = null)
     {
         _regAktifRepo = regAktifRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<IEnumerable<RegAktifLayananListResponse>> Handle(RegAktifLayananListQuery request, CancellationToken cancellationToken)
     {
-        var periode = new Periode(DateTime.Now);
+        var periode = new Periode(_tglJamProvider.Now);
         var listRegLayanan = _regAktifRepo.ListData(LayananType.Key(request.LayananId))?.ToList() ?? [];
         var result = listRegLayanan
             .Select(x => new RegAktifLayananListResponse(

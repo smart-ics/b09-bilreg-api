@@ -11,13 +11,15 @@ builder.Configuration
 builder.Services
     .AddDomain(builder.Configuration)
     .AddApplication(builder.Configuration)
-    .AddInfrastructure(builder.Configuration)
+    .AddInfrastructure(builder.Configuration, builder.Environment)
     .AddPresentation(builder.Configuration);
 
 builder.Host
     .UseSerilog(SerilogConfiguration.ContextConfiguration);
 
 var app = builder.Build();
+
+BusinessDateStartup.LogBusinessDateStatus(app);
 
 app
     .UseSerilogRequestLogging(SerilogConfiguration.SerilogRequestLoggingOption)

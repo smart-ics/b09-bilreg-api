@@ -1,9 +1,10 @@
-﻿using Bilreg.Application.AdmisiContext.PpaFeature;
+using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
 
@@ -16,20 +17,24 @@ public class OkScheduleOpRemovePpaHandler : IRequestHandler<OkScheduleOpRemovePp
     private readonly IOrderOpRepo _orderOpRepo;
     private readonly IPpaRepo _ppaRepo;
     private readonly IOpCaseRepo _opCaseRepo;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public OkScheduleOpRemovePpaHandler(IScheduleOpRepo scheduleOpRepo,
         IOrderOpRepo orderOpRepo,
         IPpaRepo ppaRepo,
-        IOpCaseRepo opCaseRepo)
+        IOpCaseRepo opCaseRepo,
+        ITglJamProvider? tglJamProvider = null)
     {
         _scheduleOpRepo = scheduleOpRepo;
         _orderOpRepo = orderOpRepo;
         _ppaRepo = ppaRepo;
         _opCaseRepo = opCaseRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task Handle(OkScheduleOpRemovePpaCommand request, CancellationToken cancellationToken)
     {
+        var occurredAt = _tglJamProvider.Now;
         var orderOp = _orderOpRepo.LoadEntity(OrderOpModel.Key(request.OrderOpId))
             .GetValueOrThrow($"Order Operasi ID {request.OrderOpId} tidak ditemukan.");
 
@@ -53,9 +58,9 @@ public class OkScheduleOpRemovePpaHandler : IRequestHandler<OkScheduleOpRemovePp
         if (ppa is null)
             return Task.CompletedTask;
 
-        scheduleOp.RemovePpa(ppa, request.UserId);
+        scheduleOp.RemovePpa(ppa, request.UserId, occurredAt);
 
-        opCase.Schedule(scheduleOp);
+        opCase.Schedule(scheduleOp, occurredAt);
 
         using var trans = TransHelper.NewScope();
         _scheduleOpRepo.SaveChanges(scheduleOp);

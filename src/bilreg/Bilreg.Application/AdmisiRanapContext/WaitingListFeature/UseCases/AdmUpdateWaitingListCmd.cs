@@ -5,6 +5,7 @@ using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
 using Bilreg.Domain.Shared.AuditLogFeature;
 using MediatR;
 using Nuna.Lib.PatternHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiRanapContext.WaitingListFeature.UseCases;
 
@@ -20,15 +21,18 @@ public class AdmUpdateWaitingListHandler : IRequestHandler<AdmUpdateWaitingListC
     private readonly IWaitingListRepo _waitingListRepo;
     private readonly IWardAccommodationGateway _wardGateway;
     private readonly IAuditRepo _auditRepo;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public AdmUpdateWaitingListHandler(
         IWaitingListRepo waitingListRepo,
         IWardAccommodationGateway wardGateway,
-        IAuditRepo auditRepo)
+        IAuditRepo auditRepo,
+        ITglJamProvider? tglJamProvider = null)
     {
         _waitingListRepo = waitingListRepo;
         _wardGateway = wardGateway;
         _auditRepo = auditRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task Handle(AdmUpdateWaitingListCmd request, CancellationToken cancellationToken)
@@ -44,7 +48,8 @@ public class AdmUpdateWaitingListHandler : IRequestHandler<AdmUpdateWaitingListC
         var waitingList = _waitingListRepo.LoadEntity(request)
             .GetValueOrThrow($"Waiting List '{request.WaitingListId}' tidak ditemukan.");
         var snapshotJson = AuditLogSnapshotJson.Serialize(waitingList);
-        var updated = waitingList.Update(request.Priority, kelas, bangsal, request.UserId);
+        var occurredAt = _tglJamProvider.Now;
+        var updated = waitingList.Update(request.Priority, kelas, bangsal, request.UserId, occurredAt);
 
         _waitingListRepo.SaveChanges(updated);
 

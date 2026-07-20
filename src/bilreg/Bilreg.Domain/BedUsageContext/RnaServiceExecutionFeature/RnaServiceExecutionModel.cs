@@ -274,7 +274,7 @@ public record RnaServiceExecutionModel : IRnaServiceExecutionKey
         string secondReviewerId,
         string evidenceReference,
         DateTime correctedAt,
-        DateTime recordedAt)
+        DateTime recordedAt = default)
     {
         var current = RequireCurrentExecutionFact();
         EnsureCorrectionReview(ExecutionCorrectionKindEnum.EnteredInError, correctingActorId, secondReviewerId);

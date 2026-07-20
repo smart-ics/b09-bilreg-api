@@ -6,6 +6,7 @@ using Bilreg.Domain.IgdContext.IgdVisitFeature;
 using Bilreg.Domain.IgdContext.TindakanIgdFeature;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.IgdContext.TindakanIgdFeature.UseCases;
 
@@ -26,14 +27,17 @@ public class IgdTindakanAddHandler : IRequestHandler<IgdTindakanAddCmd, IgdTinda
     private readonly IIgdVisitRepo _igdVisitRepo;
     private readonly ITindakanIgdRepo _tindakanRepo;
     private readonly IPpaRepo _ppaRepo;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public IgdTindakanAddHandler(IIgdVisitRepo igdVisitRepo, 
         ITindakanIgdRepo tindakanRepo, 
-        IPpaRepo ppaRepo)
+        IPpaRepo ppaRepo,
+        ITglJamProvider? tglJamProvider = null)
     {
         _igdVisitRepo = igdVisitRepo;
         _tindakanRepo = tindakanRepo;
         _ppaRepo = ppaRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<IgdTindakanAddResponse> Handle(IgdTindakanAddCmd request, CancellationToken cancellationToken)
@@ -49,9 +53,10 @@ public class IgdTindakanAddHandler : IRequestHandler<IgdTindakanAddCmd, IgdTinda
         var visit = _igdVisitRepo.LoadEntity(request).GetValueOrThrow($"IgdVisit '{request.IgdVisitId}' not found");
         var ppa = _ppaRepo.LoadEntity(PpaType.Key(request.PetugasMedisId)).GetValueOrThrow($"Petugas Medis {request.PetugasMedisId} not found");
 
+        var occurredAt = _tglJamProvider.Now;
         var tindakan = TindakanIgdModel.Create
             (visit, request.ReffId, request.Descriptions, request.Qty, 
-            (ActivityTindakanIgd)request.Aktifitas, ppa, request.UserId);
+            (ActivityTindakanIgd)request.Aktifitas, ppa, request.UserId, occurredAt);
         visit.RecordTindakanEvent(tindakan, tindakan.Audit);
 
         IgdTindakanAddResponse response;

@@ -48,13 +48,17 @@ namespace Bilreg.Api.Configurations;
 
 public static class InfrastructureService
 {
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services, 
-        IConfiguration configuration)
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services,
+        IConfiguration configuration,
+        IHostEnvironment environment)
     {
         services
             .AddScoped<INunaCounterDal, ParamNoDal>()
             .AddScoped<INunaCounterDecDal, ParamNoDal>()
-            .AddScoped<ITglJamProvider, TglJamProvider>()
+            .AddScoped<ISqlServerClock, SqlServerClock>()
+            .AddScoped<TglJamProvider>()
+            .AddScoped<ITglJamProvider>(sp => sp.GetRequiredService<TglJamProvider>())
+            .AddScoped<IBusinessDateStatus>(sp => sp.GetRequiredService<TglJamProvider>())
             .AddScoped<ISequencer, Sequencer>()
             .AddScoped<IRestClientFactory, RestClientFactory>()
             .AddScoped<ILabOrderWorklistDal, LabOrderWorklistDal>()
@@ -97,6 +101,13 @@ public static class InfrastructureService
 
         services
             .Configure<DatabaseOptions>(configuration.GetSection(DatabaseOptions.SECTION_NAME))
+            .AddSingleton<Microsoft.Extensions.Options.IValidateOptions<BusinessDateOptions>>(
+                new BusinessDateOptionsValidator(environment.IsProduction()))
+            .AddOptions<BusinessDateOptions>()
+                .Bind(configuration.GetSection(BusinessDateOptions.SECTION_NAME))
+                .ValidateOnStart();
+
+        services
             .Configure<TarifMigrationOptions>(configuration.GetSection(TarifMigrationOptions.SECTION_NAME))
             .Configure<LabResultPdfOptions>(configuration.GetSection(LabResultPdfOptions.SECTION_NAME))
             .Configure<PasienContextOptions>(configuration.GetSection(PasienContextOptions.SECTION_NAME))

@@ -30,6 +30,7 @@
 | `docs/DATABASE.md` | SQL persistence standard |
 | `docs/NAMING.md` | Naming standard |
 | `docs/WORKFLOW.md` | Operational workflow UX standard (not Lab-specific) |
+| `docs/business-date-implementation-review.md` | Business Date implementation, clock audit, migrations, and verification |
 | `docs/skills/*.md` | AI generation skills |
 
 ---

@@ -1,4 +1,4 @@
-﻿using Ardalis.GuardClauses;
+using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.Shared.Helpers;
@@ -28,7 +28,7 @@ public class AntrianModel : IAntrianKey
     }
     public static IAntrianKey Key(string id)
     {
-        var result = new AntrianModel(id, DateOnly.FromDateTime(DateTime.Now),
+        var result = new AntrianModel(id, DateOnly.MinValue,
             TimeOnly.MinValue, TimeOnly.MinValue, "-", "-", 
             new List<AntrianEntryModel>(), null!);
         return result;
@@ -50,19 +50,19 @@ public class AntrianModel : IAntrianKey
     #endregion
 
     #region METHODS BEHAVIOR    
-    public AntrianEntryModel AddEntry(PasienTrackerModel pasienTracker)
+    public AntrianEntryModel AddEntry(PasienTrackerModel pasienTracker, DateTime createdAt = default)
     {
         var visitor = pasienTracker.Person;
         var noUrut = _sequencer.GetNextNoUrut(SequenceTag); 
         
-        var entry = AntrianEntryModel.Create(noUrut, visitor, pasienTracker, "-", "-");
+        var entry = AntrianEntryModel.Create(noUrut, visitor, pasienTracker, "-", "-", createdAt);
         _listEntry.Add(entry);
         return entry;
     }
-    public void AddEntry()
+    public void AddEntry(DateTime createdAt = default)
     {
         var noUrut = _sequencer.GetNextNoUrut(SequenceTag); 
-        var entry = AntrianEntryModel.Create(noUrut, PersonType.Default, PasienTrackerModel.Key("-"), "-", "-");
+        var entry = AntrianEntryModel.Create(noUrut, PersonType.Default, PasienTrackerModel.Key("-"), "-", "-", createdAt);
         _listEntry.Add(entry); 
     }
     public void RemoveEntry(int noUrut)
@@ -73,10 +73,10 @@ public class AntrianModel : IAntrianKey
         _listEntry.Remove(itemRemove);
     }
 
-    public AntrianEntryModel AddEntry(int noUrut, PasienTrackerModel pasienTracker, string reffId, string reffDesc)
+    public AntrianEntryModel AddEntry(int noUrut, PasienTrackerModel pasienTracker, string reffId, string reffDesc, DateTime createdAt = default)
     {
         var visitor = pasienTracker.Person;
-        var entry = AntrianEntryModel.Create(noUrut, visitor, pasienTracker, reffId, reffDesc);
+        var entry = AntrianEntryModel.Create(noUrut, visitor, pasienTracker, reffId, reffDesc, createdAt);
         _listEntry.Add(entry);
         return entry;
     }

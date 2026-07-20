@@ -5,6 +5,7 @@ using Bilreg.Domain.IgdContext.IgdVisitFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.IgdContext.IgdVisitFeature.UseCases;
 
@@ -22,15 +23,18 @@ public class IgdVisitDischargeHandler : IRequestHandler<IgdVisitDischargeCmd, Ig
     private readonly IIgdVisitRepo _igdVisitRepo;
     private readonly IBedIgdRepo _bedIgdRepo;
     private readonly IPakaiBedIgdRepo _pakaiBedIgdRepo;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public IgdVisitDischargeHandler(
         IIgdVisitRepo igdVisitRepo,
         IBedIgdRepo bedIgdRepo,
-        IPakaiBedIgdRepo pakaiBedIgdRepo)
+        IPakaiBedIgdRepo pakaiBedIgdRepo,
+        ITglJamProvider? tglJamProvider = null)
     {
         _igdVisitRepo = igdVisitRepo;
         _bedIgdRepo = bedIgdRepo;
         _pakaiBedIgdRepo = pakaiBedIgdRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<IgdVisitDischargeResponse> Handle(IgdVisitDischargeCmd request, CancellationToken cancellationToken)
@@ -50,7 +54,7 @@ public class IgdVisitDischargeHandler : IRequestHandler<IgdVisitDischargeCmd, Ig
                 BedReleased: false));
         }
 
-        var audit = new AuditInfoType(request.UserId, DateTime.Now);
+        var audit = new AuditInfoType(request.UserId, _tglJamProvider.Now);
 
         BedIgdModel? bed = null;
         PakaiBedIgdModel? pakaiBedIgd = null;

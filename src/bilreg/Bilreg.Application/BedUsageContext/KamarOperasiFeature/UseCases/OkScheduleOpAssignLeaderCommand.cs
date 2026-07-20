@@ -1,9 +1,10 @@
-﻿using Bilreg.Application.AdmisiContext.PpaFeature;
+using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
 
@@ -16,20 +17,24 @@ public class OkScheduleOpAssignLeaderHandler : IRequestHandler<OkScheduleOpAssig
     private readonly IOrderOpRepo _orderOpRepo;
     private readonly IPpaRepo _ppaRepo;
     private readonly IOpCaseRepo _opCaseRepo;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public OkScheduleOpAssignLeaderHandler(IScheduleOpRepo scheduleOpRepo,
         IOrderOpRepo orderOpRepo,
         IPpaRepo ppaRepo,
-        IOpCaseRepo opCaseRepo)
+        IOpCaseRepo opCaseRepo,
+        ITglJamProvider? tglJamProvider = null)
     {
         _scheduleOpRepo = scheduleOpRepo;
         _orderOpRepo = orderOpRepo;
         _ppaRepo = ppaRepo;
         _opCaseRepo = opCaseRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task Handle(OkScheduleOpAssignLeaderCommand request, CancellationToken cancellationToken)
     {
+        var occurredAt = _tglJamProvider.Now;
         var orderOp = _orderOpRepo.LoadEntity(OrderOpModel.Key(request.OrderOpId))
             .GetValueOrThrow($"Order Operasi ID {request.OrderOpId} tidak ditemukan.");
 
@@ -50,10 +55,10 @@ public class OkScheduleOpAssignLeaderHandler : IRequestHandler<OkScheduleOpAssig
         var scheduleOp = _scheduleOpRepo.LoadEntity(ScheduleOpModel.Key(scheduleWithOrderOpId.ScheduleOpId))
             .GetValueOrThrow("Schedule Operasi tidak ditemukan.");
 
-        scheduleOp.CancelSchedule(request.UserId);
+        scheduleOp.CancelSchedule(request.UserId, occurredAt);
 
         ScheduleOpModel newScheduleOp;
-        newScheduleOp = ScheduleOpModel.CloneFrom(scheduleOp);
+        newScheduleOp = ScheduleOpModel.CloneFrom(scheduleOp, occurredAt);
 
         // Checks if TeamLead is not null AND if PpaId is a valid string
         if (scheduleOp.TeamLead is { PpaId: string ppaId } oldAssignedLead &&
@@ -62,16 +67,16 @@ public class OkScheduleOpAssignLeaderHandler : IRequestHandler<OkScheduleOpAssig
         {
             var assignedPpaLead = _ppaRepo.LoadEntity(PpaType.Key(ppaId))
                 .GetValueOrDefault();
-            newScheduleOp.RemovePpa(assignedPpaLead, request.UserId);
+            newScheduleOp.RemovePpa(assignedPpaLead, request.UserId, occurredAt);
         }
 
         var existingPpa = newScheduleOp.ListPpa
             .FirstOrDefault(x => x.Ppa.PpaId == request.PpaId);
         if (existingPpa is null)
-            newScheduleOp.AddPpa(ppa, request.UserId);
-        newScheduleOp.AssignLeader(ppa, request.UserId);
+            newScheduleOp.AddPpa(ppa, request.UserId, occurredAt);
+        newScheduleOp.AssignLeader(ppa, request.UserId, occurredAt);
 
-        opCase.Schedule(newScheduleOp);
+        opCase.Schedule(newScheduleOp, occurredAt);
 
         using var trans = TransHelper.NewScope();
         _scheduleOpRepo.SaveChanges(scheduleOp);

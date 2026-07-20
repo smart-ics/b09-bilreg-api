@@ -1,4 +1,4 @@
-﻿using Bilreg.Application.AccountingContext.JurnalFeature;
+using Bilreg.Application.AccountingContext.JurnalFeature;
 using Bilreg.Application.AccountingContext.JurnalFeature.JkAgg;
 using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
 using Bilreg.Application.AdmisiContext.LayananFeature;
@@ -16,6 +16,7 @@ using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.ChargeContext.TindakanFeature.UseCases;
 
@@ -42,6 +43,7 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
     private readonly IAddBillAppService _addBillAppService;
     private readonly IMapJaminanJkRepo _mapJaminanJkRepo;
     private readonly IJurnalRepo _jurnalRepo;
+    private readonly ITglJamProvider _tglJamProvider;
     public TindakanCreateHandler(ITindakanRepo tindakanRepo,
         IRegRepo regRepo, ILayananRepo layananRepo, INilaiTarifRepo nilaiTarifRepo,
         IKomponenRepo komponenRepo, IPpaRepo ppaRepo,
@@ -49,7 +51,8 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
         ITrsBillingRepo trsBillingRepo,
         IAddBillAppService addBillAppService, 
         IMapJaminanJkRepo mapJaminanJkRepo, 
-        IJurnalRepo jurnalRepo)
+        IJurnalRepo jurnalRepo,
+        ITglJamProvider? tglJamProvider = null)
     {
         _tindakanRepo = tindakanRepo;
         _regRepo = regRepo;
@@ -63,6 +66,7 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
         _addBillAppService = addBillAppService;
         _mapJaminanJkRepo = mapJaminanJkRepo;
         _jurnalRepo = jurnalRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<TindakanCreateRespose> Handle(TdkCreateTindakanCmd request, CancellationToken cancellationToken)
@@ -87,8 +91,9 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
             listPpa.Add(new KomponenPpaView(komp, ppa));
         }
 
-        var tindakan = TindakanModel.Create(reg, layanan, nilaiTarif, listPpa, request.UserId);
-        var trsBilling = _addBillAppService.FromTindakan(tindakan, reg, tarif, jaminan, listKomp);
+        var occurredAt = _tglJamProvider.Now;
+        var tindakan = TindakanModel.Create(reg, layanan, nilaiTarif, listPpa, request.UserId, occurredAt);
+        var trsBilling = _addBillAppService.FromTindakan(tindakan, reg, tarif, jaminan, listKomp, occurredAt);
         var mapJaminanJk = LoadMapJmnJk(jaminan);
         var jurnal = tindakan == TindakanModel.Default
             ? JurnalType.Default

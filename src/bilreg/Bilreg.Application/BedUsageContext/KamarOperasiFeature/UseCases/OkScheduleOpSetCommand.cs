@@ -1,4 +1,4 @@
-﻿using Ardalis.GuardClauses;
+using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.BedUsageContext.WardFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
@@ -8,6 +8,7 @@ using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
+using Nuna.Lib.ValidationHelper;
 using System.Globalization;
 
 namespace Bilreg.Application.BedUsageContext.KamarOperasiFeature.UseCases;
@@ -30,6 +31,7 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
     private readonly IPpaRepo _ppaRepo;
     private readonly IOpCaseRepo _opCaseRepo;
     private readonly IMediator _mediator;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public OkScheduleOpSetCommandHandler(
         IScheduleOpRepo scheduleOpRepo,
@@ -37,7 +39,8 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
         IKamarRepo kamarRepo,
         IPpaRepo ppaRepo,
         IOpCaseRepo opCaseRepo,
-        IMediator mediator)
+        IMediator mediator,
+        ITglJamProvider? tglJamProvider = null)
     {
         _scheduleOpRepo = scheduleOpRepo;
         _orderOpRepo = orderOpRepo;
@@ -45,10 +48,12 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
         _ppaRepo = ppaRepo;
         _opCaseRepo = opCaseRepo;
         _mediator = mediator;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<OkScheduleOpSetResponse> Handle(OkScheduleOpSetCommand request, CancellationToken cancellationToken)
     {
+        var occurredAt = _tglJamProvider.Now;
         Guard.Against.InvalidDateFormat(request.Tgl, nameof(request.Tgl));
 
         var orderOp = _orderOpRepo.LoadEntity(OrderOpModel.Key(request.OrderOpId))
@@ -81,15 +86,15 @@ public class OkScheduleOpSetCommandHandler : IRequestHandler<OkScheduleOpSetComm
         ScheduleOpModel newScheduleOp;
         if (scheduleOp != null)
         {
-            scheduleOp.CancelSchedule(request.UserId);
-            newScheduleOp = ScheduleOpModel.CloneFrom(scheduleOp);
+            scheduleOp.CancelSchedule(request.UserId, occurredAt);
+            newScheduleOp = ScheduleOpModel.CloneFrom(scheduleOp, occurredAt);
         }
         else
             newScheduleOp = ScheduleOpModel.CreateFromOrder(orderOp, request.UserId,
-                 kamar, teamLead, tglOp);
-        newScheduleOp.SetSchedule(tglOp, kamar.ToReff(), request.Durasi, request.UserId);
+                 kamar, teamLead, tglOp, occurredAt);
+        newScheduleOp.SetSchedule(tglOp, kamar.ToReff(), request.Durasi, request.UserId, occurredAt);
 
-        opCase.Schedule(newScheduleOp);
+        opCase.Schedule(newScheduleOp, occurredAt);
 
         OkScheduleOpSetEvent domainEvent = new OkScheduleOpSetEvent(request, newScheduleOp);
 

@@ -5,6 +5,7 @@ using Bilreg.Domain.IgdContext.IgdVisitFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.IgdContext.BedIgdFeature.UseCases;
 
@@ -28,15 +29,18 @@ public class IgdTransferBedHandler : IRequestHandler<IgdTransferBedCmd, IgdTrans
     private readonly IIgdVisitRepo _igdVisitRepo;
     private readonly IBedIgdRepo _bedIgdRepo;
     private readonly IPakaiBedIgdRepo _pakaiBedIgdRepo;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public IgdTransferBedHandler(
         IIgdVisitRepo igdVisitRepo,
         IBedIgdRepo bedIgdRepo,
-        IPakaiBedIgdRepo pakaiBedIgdRepo)
+        IPakaiBedIgdRepo pakaiBedIgdRepo,
+        ITglJamProvider? tglJamProvider = null)
     {
         _igdVisitRepo = igdVisitRepo;
         _bedIgdRepo = bedIgdRepo;
         _pakaiBedIgdRepo = pakaiBedIgdRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<IgdTransferBedResponse> Handle(IgdTransferBedCmd request, CancellationToken cancellationToken)
@@ -76,7 +80,7 @@ public class IgdTransferBedHandler : IRequestHandler<IgdTransferBedCmd, IgdTrans
         var openPakaiBedIgd = _pakaiBedIgdRepo.LoadOpenForBed(sourceBed)
             .GetValueOrThrow($"PakaiBedIgd terbuka untuk bed '{sourceBed.BedIgdId}' tidak ditemukan.");
 
-        var audit = new AuditInfoType(request.UserId, DateTime.Now);
+        var audit = new AuditInfoType(request.UserId, _tglJamProvider.Now);
 
         openPakaiBedIgd.Close(audit);
         sourceBed.Release(audit);

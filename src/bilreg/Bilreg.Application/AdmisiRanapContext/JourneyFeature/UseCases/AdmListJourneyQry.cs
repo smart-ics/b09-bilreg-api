@@ -1,4 +1,5 @@
 using MediatR;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiRanapContext.JourneyFeature.UseCases;
 
@@ -19,8 +20,10 @@ public sealed record AdmListJourneyQry(
 public sealed class AdmListJourneyHandler : IRequestHandler<AdmListJourneyQry, JourneyListResult>
 {
     private readonly IJourneyDal _dal;
+    private readonly ITglJamProvider _tglJamProvider;
 
-    public AdmListJourneyHandler(IJourneyDal dal) => _dal = dal;
+    public AdmListJourneyHandler(IJourneyDal dal, ITglJamProvider? tglJamProvider = null) =>
+        (_dal, _tglJamProvider) = (dal, tglJamProvider);
 
     public Task<JourneyListResult> Handle(AdmListJourneyQry request, CancellationToken cancellationToken)
     {
@@ -36,7 +39,7 @@ public sealed class AdmListJourneyHandler : IRequestHandler<AdmListJourneyQry, J
             request.DateFrom,
             request.DateTo,
             request.Cursor,
-            request.PageSize <= 0 ? 50 : Math.Min(request.PageSize, 200)));
+            request.PageSize <= 0 ? 50 : Math.Min(request.PageSize, 200)), _tglJamProvider.Now);
         return Task.FromResult(result);
     }
 }
@@ -46,15 +49,17 @@ public sealed record AdmGetJourneyQry(string JourneyId) : IRequest<JourneyDetail
 public sealed class AdmGetJourneyHandler : IRequestHandler<AdmGetJourneyQry, JourneyDetailWorkspace?>
 {
     private readonly IJourneyDal _dal;
+    private readonly ITglJamProvider _tglJamProvider;
 
-    public AdmGetJourneyHandler(IJourneyDal dal) => _dal = dal;
+    public AdmGetJourneyHandler(IJourneyDal dal, ITglJamProvider? tglJamProvider = null) =>
+        (_dal, _tglJamProvider) = (dal, tglJamProvider);
 
     public Task<JourneyDetailWorkspace?> Handle(AdmGetJourneyQry request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.JourneyId))
             return Task.FromResult<JourneyDetailWorkspace?>(null);
 
-        return Task.FromResult(_dal.GetByJourneyId(request.JourneyId.Trim()));
+        return Task.FromResult(_dal.GetByJourneyId(request.JourneyId.Trim(), _tglJamProvider.Now));
     }
 }
 
@@ -66,11 +71,13 @@ public sealed class AdmResolveJourneyLegacyRecordHandler
     : IRequestHandler<AdmResolveJourneyLegacyRecordQry, JourneyLegacyResolution?>
 {
     private readonly IJourneyDal _dal;
+    private readonly ITglJamProvider _tglJamProvider;
 
-    public AdmResolveJourneyLegacyRecordHandler(IJourneyDal dal) => _dal = dal;
+    public AdmResolveJourneyLegacyRecordHandler(IJourneyDal dal, ITglJamProvider? tglJamProvider = null) =>
+        (_dal, _tglJamProvider) = (dal, tglJamProvider);
 
     public Task<JourneyLegacyResolution?> Handle(
         AdmResolveJourneyLegacyRecordQry request,
         CancellationToken cancellationToken) =>
-        Task.FromResult(_dal.ResolveLegacyRecord(request.RecordType, request.RecordId));
+        Task.FromResult(_dal.ResolveLegacyRecord(request.RecordType, request.RecordId, _tglJamProvider.Now));
 }

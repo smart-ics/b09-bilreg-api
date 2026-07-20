@@ -1,4 +1,4 @@
-﻿using Bilreg.Application.AccountingContext.JurnalFeature;
+using Bilreg.Application.AccountingContext.JurnalFeature;
 using Bilreg.Application.AccountingContext.JurnalFeature.JkAgg;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.BookingFeature;
@@ -30,6 +30,7 @@ using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
+using Nuna.Lib.ValidationHelper;
 using Ardalis.GuardClauses;
 using System.Globalization;
 using Bilreg.Domain.PaymentContext.TrsBillFeature;
@@ -72,6 +73,7 @@ public class RegJalanByBookingHandler
     private readonly IMapJaminanJkRepo _mapJaminanJkRepo;
     private readonly IJurnalRepo _jurnalRepo;
     private readonly IAddAntrianEmrByRegService _addRegSvc;
+    private readonly ITglJamProvider _tglJamProvider;
 
     private const string BAYAR_SENDIRI = "1";
     public RegJalanByBookingHandler(
@@ -100,7 +102,8 @@ public class RegJalanByBookingHandler
         IJurnalRepo jurnalRepo,
         IRemoteCetakRepo remoteCetakRepo,
         IGetAppSettingService getAppSettingSvc,
-        IAddAntrianEmrByRegService addRegSvc)
+        IAddAntrianEmrByRegService addRegSvc,
+        ITglJamProvider? tglJamProvider = null)
     {
         _bookingRepo = bookingRepo;
         _pasienRepo = pasienRepo;
@@ -128,18 +131,20 @@ public class RegJalanByBookingHandler
         _remoteCetakRepo = remoteCetakRepo;
         _getAppSettingSvc = getAppSettingSvc;
         _addRegSvc = addRegSvc;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<RegJalanByBookingResponse> Handle(RegJalanByBookingCmd request, CancellationToken cancellationToken)
     {
+        var occurredAt = _tglJamProvider.Now;
         //  LOAD and GUARD
         Guard.Against.Null(request.PesertaJaminanId, nameof(request.PesertaJaminanId));
         var booking = LoadBooking(request.BookingId);
-        var antrian = LoadAntrian(booking);
+        var antrian = LoadAntrian(booking, DateOnly.FromDateTime(occurredAt));
         var pasien = LoadPasien(booking.PasienId);
         if (IsPasienAktifReg(pasien))
             throw new KeyNotFoundException($"Pasien sudah aktif registrasi");
-        if (IsAdult(pasien.Person.TglLahir) && (string.IsNullOrWhiteSpace(pasien.Ktp.Nik) || pasien.Ktp.Nik == "-"))
+        if (IsAdult(pasien.Person.TglLahir, DateOnly.FromDateTime(occurredAt)) && (string.IsNullOrWhiteSpace(pasien.Ktp.Nik) || pasien.Ktp.Nik == "-"))
             throw new KeyNotFoundException($"Nik Kosong, Lengkapi data Nik pasien {pasien.PasienId}");
 
         var dokter = LoadDokter(booking.Dokter.PpaId);
@@ -151,7 +156,7 @@ public class RegJalanByBookingHandler
         var rujukan = ResolveRujukan(caraMasuk, request.RujukanId);
 
         //  BUILD
-        var regAudit = new AuditInfoType(request.UserId, DateTime.Now);
+        var regAudit = new AuditInfoType(request.UserId, occurredAt);
         var reg = _regFactory.CreateRegRajal(
             pasien, regAudit, tipeJaminan,
             polis, caraMasuk, rujukan,
@@ -167,7 +172,7 @@ public class RegJalanByBookingHandler
         var itemQueue = antrian.ListEntry.FirstOrDefault(x => x.NoUrut == booking.NoAntrian) 
             ?? AntrianEntryModel.Default;
         itemQueue.SetReff(reg.RegId, "REG");
-        itemQueue.Serve();
+        itemQueue.Serve(occurredAt);
 
         //      BUILD TINDAKAN
         var jaminan = LoadJaminan(tipeJaminan.Jaminan);
@@ -178,11 +183,11 @@ public class RegJalanByBookingHandler
             listKompKarcis.Add(komp);
         }
         var trsBillingReg = _addBillAppService.FromReg(reg, karcis,
-            jaminan, dokter, listKompKarcis);
+            jaminan, dokter, listKompKarcis, occurredAt);
 
         var tindakan = karcis.DefaultTarif == TarifType.Default.ToReff()
             ? TindakanModel.Default
-            : GenTindakan(reg, jaminan, karcis, request.UserId, dokter);
+            : GenTindakan(reg, jaminan, karcis, request.UserId, dokter, occurredAt);
 
 
         //     BUILD Jurnal Reg
@@ -197,7 +202,7 @@ public class RegJalanByBookingHandler
             : LoadTarif(TarifType.Key(karcis.DefaultTarif.TarifId));
         var trsBilling = tindakan == TindakanModel.Default
             ? TrsBillType.Default
-            : GenBill(tindakan, reg, tarif, jaminan);
+            : GenBill(tindakan, reg, tarif, jaminan, occurredAt);
 
         //      BUILD Jurnal Tindakan
         var jurnalTindakan = tindakan == TindakanModel.Default
@@ -207,7 +212,7 @@ public class RegJalanByBookingHandler
         //      REMOTE-CETAK
         var appSetting = _getAppSettingSvc.Execute();
         var rmtCetak = new RemoteCetakType(
-            reg.RegId, "RG-ANTRIAN", DateTime.Now, 
+            reg.RegId, "RG-ANTRIAN", occurredAt,
             appSetting.Registrasi.RemoteCetakRegistrasi, 
             false, new DateTime(3000, 1, 1),
             "", "");
@@ -243,10 +248,8 @@ public class RegJalanByBookingHandler
     }
 
     #region PRIVATE HELPER
-    public bool IsAdult(DateOnly TglLahir)
+    public bool IsAdult(DateOnly TglLahir, DateOnly today)
     {
-        var today = DateOnly.FromDateTime(DateTime.Today);
-
         int age = today.Year - TglLahir.Year;
 
         // Koreksi jika ulang tahun belum lewat tahun ini
@@ -313,7 +316,7 @@ public class RegJalanByBookingHandler
                 .GetValueOrThrow("'Rujukan' not found");
 
     private TindakanModel GenTindakan(RegModel reg, JaminanType jaminan,
-        KarcisType karcis, string userId, PpaType dokter)
+        KarcisType karcis, string userId, PpaType dokter, DateTime occurredAt)
     {
         var tipeTarifReff = jaminan.TipeTarif.Rajal;
         var tarifKey = karcis.DefaultTarif;
@@ -326,12 +329,12 @@ public class RegJalanByBookingHandler
             .Where(x => x.ListSatTugas.Any())
             .Select(x => new KomponenPpaView(x, dokter));
 
-        var tindakan = TindakanModel.FromReg(reg, nilaiTarif, listPpa, userId);
+        var tindakan = TindakanModel.FromReg(reg, nilaiTarif, listPpa, userId, occurredAt);
         return tindakan;
     }
 
     private TrsBillType GenBill(TindakanModel tdk, RegModel reg, TarifType tarif,
-        JaminanType jaminan)
+        JaminanType jaminan, DateTime occurredAt)
     {
         var listKomp = new List<KomponenType>();
         foreach (var item in tdk.ListKomponen)
@@ -339,7 +342,7 @@ public class RegJalanByBookingHandler
             var komp = LoadKomponen(KomponenType.Key(item.Komponen.KomponenId));
             listKomp.Add(komp);
         }
-        var trsBilling = _addBillAppService.FromTindakan(tdk, reg, tarif, jaminan, listKomp);
+        var trsBilling = _addBillAppService.FromTindakan(tdk, reg, tarif, jaminan, listKomp, occurredAt);
         return trsBilling;
     }
 
@@ -372,10 +375,9 @@ public class RegJalanByBookingHandler
         return tarif;
     }
     
-    private AntrianModel LoadAntrian(BookingModel booking)
+    private AntrianModel LoadAntrian(BookingModel booking, DateOnly date)
     {
         var ppa = LoadDokter(booking.Dokter.PpaId);
-        var date = DateOnly.FromDateTime(DateTime.Now);
         var listQueue = _antrianRepo.ListData(date)?.ToList() ?? [];
         var squesceTag = AntrianModel.GenSequenceTag(date, booking.JamPraktek, ppa);
         var antrian = listQueue.FirstOrDefault(x => x.SequenceTag == squesceTag) 

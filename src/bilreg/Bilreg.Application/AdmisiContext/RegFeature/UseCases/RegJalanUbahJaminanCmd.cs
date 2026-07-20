@@ -1,4 +1,4 @@
-﻿using Bilreg.Application.AccountingContext.JurnalFeature;
+using Bilreg.Application.AccountingContext.JurnalFeature;
 using Bilreg.Application.AccountingContext.JurnalFeature.JkAgg;
 using Bilreg.Application.AdmisiContext.JaminanFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
@@ -23,6 +23,7 @@ using Bilreg.Domain.PaymentContext.TrsBillFeature;
 using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 
@@ -56,6 +57,7 @@ public class RegJalanUbahJaminanHandler : IRequestHandler<RegJalanUbahJaminanCmd
     private readonly IKomponenRepo _komponenRepo;
     private readonly IJurnalRepo _jurnalRepo;
     private readonly IMapJaminanJkRepo _mapJaminanJkRepo;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public RegJalanUbahJaminanHandler(IRegRepo regRepo,
         IRegAktifRepo regAktifRepo,
@@ -75,7 +77,8 @@ public class RegJalanUbahJaminanHandler : IRequestHandler<RegJalanUbahJaminanCmd
         INilaiTarifRepo nilaiTarifRepo,
         IKomponenRepo komponenRepo,
         IJurnalRepo jurnalRepo,
-        IMapJaminanJkRepo mapJaminanJkRepo)
+        IMapJaminanJkRepo mapJaminanJkRepo,
+        ITglJamProvider? tglJamProvider = null)
     {
         _regRepo = regRepo;
         _regAktifRepo = regAktifRepo;
@@ -96,10 +99,12 @@ public class RegJalanUbahJaminanHandler : IRequestHandler<RegJalanUbahJaminanCmd
         _komponenRepo = komponenRepo;
         _jurnalRepo = jurnalRepo;
         _mapJaminanJkRepo = mapJaminanJkRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task Handle(RegJalanUbahJaminanCmd request, CancellationToken cancellationToken)
     {
+        var occurredAt = _tglJamProvider.Now;
         #region GUARD & LOAD
         var regCurrent = _regAktifRepo.LoadEntity(request).GetValueOrThrow("Register tidak ditemukan atau sudah tidak aktif");
         var regOld = _regRepo.LoadEntity(request).GetValueOrThrow("Register tidak ditemukan");
@@ -123,18 +128,18 @@ public class RegJalanUbahJaminanHandler : IRequestHandler<RegJalanUbahJaminanCmd
         //  tindakan
         var tindakan = karcis.DefaultTarif == TarifType.Default.ToReff()
             ? TindakanModel.Default
-            : GenTindakan(reg, jaminan, karcis, request.UserId, dokter, karcisOld.KarcisId);
+            : GenTindakan(reg, jaminan, karcis, request.UserId, dokter, karcisOld.KarcisId, occurredAt);
         
         //  billing karcis
         var billKarcis = reg.Karcis.KarcisId == request.KarcisId
             ? TrsBillType.Default :
-            GenBillKarcis(reg, dokter, karcis, jaminan);
+            GenBillKarcis(reg, dokter, karcis, jaminan, occurredAt);
         //  billing tindakan
         var tarif = karcis.DefaultTarif == TarifType.Default.ToReff()
             ? TarifType.Default
             : LoadTarif(TarifType.Key(karcis.DefaultTarif.TarifId));
         var billTdk = (tindakan.TindakanId != "-" && karcis.KarcisId != "-")
-            ? GenBillTdk(tindakan, reg, jaminan, tarif)
+            ? GenBillTdk(tindakan, reg, jaminan, tarif, occurredAt)
             : TrsBillType.Default;
 
         //  jurnal-karcis
@@ -199,7 +204,7 @@ public class RegJalanUbahJaminanHandler : IRequestHandler<RegJalanUbahJaminanCmd
     
     //  Gen Data
     private TindakanModel GenTindakan(RegModel reg, JaminanType jaminan,
-        KarcisType karcis, string userId, PpaType dokter, string karcisOld)
+        KarcisType karcis, string userId, PpaType dokter, string karcisOld, DateTime occurredAt)
     {
         if (reg.Karcis.KarcisId != karcisOld)
         {
@@ -214,20 +219,20 @@ public class RegJalanUbahJaminanHandler : IRequestHandler<RegJalanUbahJaminanCmd
                 .Where(x => x.ListSatTugas.Any())
                 .Select(x => new KomponenPpaView(x, dokter));
 
-            var tindakan = TindakanModel.FromReg(reg, nilaiTarif, listPpa, userId);
+            var tindakan = TindakanModel.FromReg(reg, nilaiTarif, listPpa, userId, occurredAt);
             return tindakan;
         }
         return TindakanModel.Default;
     }
-    private TrsBillType GenBillKarcis(RegModel reg, PpaType dokter, KarcisType karcis, JaminanType jaminan)
+    private TrsBillType GenBillKarcis(RegModel reg, PpaType dokter, KarcisType karcis, JaminanType jaminan, DateTime occurredAt)
     {
         var listKompKarcis = karcis.ListKomponen
             .Select(x => LoadKomponen(KomponenType.Key(x.KomponenTarif.KomponenId)))?.ToList() ?? [];
         var trsBillKarcis = _addBillAppService.FromReg(reg, karcis,
-            jaminan, dokter, listKompKarcis);
+            jaminan, dokter, listKompKarcis, occurredAt);
         return trsBillKarcis;
     }
-    private TrsBillType GenBillTdk(TindakanModel tdk, RegModel reg, JaminanType jaminan, TarifType tarif)
+    private TrsBillType GenBillTdk(TindakanModel tdk, RegModel reg, JaminanType jaminan, TarifType tarif, DateTime occurredAt)
     {
         if (tdk.TindakanId == "-")
             return TrsBillType.Default;
@@ -238,7 +243,7 @@ public class RegJalanUbahJaminanHandler : IRequestHandler<RegJalanUbahJaminanCmd
             var komp = LoadKomponen(KomponenType.Key(item.Komponen.KomponenId));
             listKomp.Add(komp);
         }
-        var trsBilling = _addBillAppService.FromTindakan(tdk, reg, tarif, jaminan, listKomp);
+        var trsBilling = _addBillAppService.FromTindakan(tdk, reg, tarif, jaminan, listKomp, occurredAt);
         return trsBilling;
     }
 

@@ -36,6 +36,7 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
     private readonly IAddAntrianEmrByBookingService _addAntrianEmrByBookingService;
     private readonly IAntrianMapWithBookingResolver _antrianMapWithBookingResolver;
     private readonly IJadwalPraktekFeatureResolver _featureResolver;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public BookingCreateHandler(IJadwalPraktekRepo jadwalPraktekRepo,
         IAntrianRepo antrianRepo, IAntrianFactory antrianFactory,
@@ -43,7 +44,8 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         IPasienRepo pasienRepo, IAntrianMapRepo antrianMapRepo,
         IAddAntrianEmrByBookingService addAntrianEmrByBookingService, 
         IAntrianMapWithBookingResolver antrianMapWithBookingResolver,
-        IJadwalPraktekFeatureResolver featureResolver)
+        IJadwalPraktekFeatureResolver featureResolver,
+        ITglJamProvider? tglJamProvider = null)
     {
         _jadwalPraktekRepo = jadwalPraktekRepo;
         _antrianRepo = antrianRepo;
@@ -55,10 +57,12 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         _addAntrianEmrByBookingService = addAntrianEmrByBookingService;
         _antrianMapWithBookingResolver = antrianMapWithBookingResolver;
         _featureResolver = featureResolver;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<BookingCreateResponse> Handle(BookingCreateCmd request, CancellationToken cancellationToken)
     {
+        var occurredAt = _tglJamProvider.Now;
         //  GUARD
         if (request.PasienId.Trim() != string.Empty && request.PasienName.Trim() != string.Empty)
             throw new ArgumentException("Kosongkan PasienName jika booking menggunakan PasienId");
@@ -80,8 +84,8 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
 
         //  create booking
         var booking = _featureResolver.UseResolver
-            ? BookingModel.CreateLocalFromEffective(person, schedule.Effective, request.UserId)
-            : BookingModel.CreateLocal(person, tglBerobat, schedule.LegacyJadwal, request.UserId);
+            ? BookingModel.CreateLocalFromEffective(person, schedule.Effective, request.UserId, occurredAt)
+            : BookingModel.CreateLocal(person, tglBerobat, schedule.LegacyJadwal, request.UserId, occurredAt);
 
         //  ambil nomor antrian
         var listAntrian = _antrianRepo.ListData(tglBerobat);
@@ -97,7 +101,7 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
 
         if (!request.IsForceDuplicatedTracker)
             ThrowExceptionIfTrackerExists(booking);
-        var tracker = PasienTrackerModel.Create(booking);
+        var tracker = PasienTrackerModel.Create(booking, occurredAt);
 
         // antrianMap
         var antrianMap = _antrianMapWithBookingResolver.Resolve(
@@ -109,7 +113,7 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         using (var trans = TransHelper.NewScope())
         {
             //      no antrian masuk ke transaction agar bisa rollback jika gagal
-            var antEntry = antrian.AddEntry(antrianMap.Value.Item2.NoUrut, tracker, booking.BookingId, "BOK");
+            var antEntry = antrian.AddEntry(antrianMap.Value.Item2.NoUrut, tracker, booking.BookingId, "BOK", occurredAt);
             booking.AssignNoAntrian(antEntry.NoUrut);
 
             //      writing database

@@ -1,4 +1,4 @@
-﻿using Ardalis.GuardClauses;
+using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
@@ -50,7 +50,7 @@ public class BookingModel : IBookingKey
         AuditTrailType.Default, ExtAppReffType.Default, CoverageInfoType.Default);
     
     public static BookingModel CreateLocalFromEffective(
-        PersonInfoType person, JadwalPraktekEffective effective, string userId)
+        PersonInfoType person, JadwalPraktekEffective effective, string userId, DateTime createdAt = default)
     {
         Guard.Against.Null(person);
         Guard.Against.Null(effective);
@@ -59,16 +59,16 @@ public class BookingModel : IBookingKey
             throw new ArgumentException("Jadwal praktek dibatalkan untuk tanggal ini");
 
         var newId = Ulid.NewUlid().ToString();
-        return new BookingModel(newId, DateTime.Now, person, "-", RegModel.Default.ToReff(),
+        return new BookingModel(newId, createdAt, person, "-", RegModel.Default.ToReff(),
             effective.TglPraktek, effective.JamMulai, effective.Layanan, effective.Dokter, -1,
-            AuditTrailType.Create(userId, DateTime.Now),
+            AuditTrailType.Create(userId, createdAt),
             ExtAppReffType.Default, CoverageInfoType.Default,
             effective.JadwalPraktekId, effective.JadwalPraktekHarianId);
     }
 
     public static BookingModel CreateFromExternalFromEffective(
         PersonInfoType person, JadwalPraktekEffective effective,
-        ExtAppReffType extAppReff, CoverageInfoType coverage, string userId)
+        ExtAppReffType extAppReff, CoverageInfoType coverage, string userId, DateTime createdAt = default)
     {
         Guard.Against.Null(person);
         Guard.Against.Null(effective);
@@ -81,15 +81,15 @@ public class BookingModel : IBookingKey
             throw new ArgumentException("Source External Booking tidak boleh kosong");
 
         var newId = Ulid.NewUlid().ToString();
-        return new BookingModel(newId, DateTime.Now, person, "-", RegModel.Default.ToReff(),
+        return new BookingModel(newId, createdAt, person, "-", RegModel.Default.ToReff(),
             effective.TglPraktek, effective.JamMulai, effective.Layanan, effective.Dokter, -1,
-            AuditTrailType.Create(userId, DateTime.Now),
+            AuditTrailType.Create(userId, createdAt),
             extAppReff, coverage,
             effective.JadwalPraktekId, effective.JadwalPraktekHarianId);
     }
 
     public static BookingModel CreateLocal(PersonInfoType person, DateOnly tglBerobat, 
-        JadwalPraktekType jadwal, string userId)
+        JadwalPraktekType jadwal, string userId, DateTime createdAt = default)
     {
         Guard.Against.Null(person);
         Guard.Against.Null(tglBerobat);
@@ -99,14 +99,14 @@ public class BookingModel : IBookingKey
             throw new ArgumentException("Tanggal berobat tidak sesuai dengan jadwal");
         
         var newId = Ulid.NewUlid().ToString();
-        var result = new BookingModel(newId, DateTime.Now, person, "-", RegModel.Default.ToReff(), 
+        var result = new BookingModel(newId, createdAt, person, "-", RegModel.Default.ToReff(),
             tglBerobat, jadwal.JamMulai, jadwal.Layanan, jadwal.Dokter,  -1, 
-            AuditTrailType.Create(userId, DateTime.Now), 
+            AuditTrailType.Create(userId, createdAt),
             ExtAppReffType.Default, CoverageInfoType.Default);
         return result;
     }
     public static BookingModel CreateFromExternal(PersonInfoType person, DateOnly tglBerobat, 
-        JadwalPraktekType jadwal, ExtAppReffType extAppReff, CoverageInfoType coverage, string userId)
+        JadwalPraktekType jadwal, ExtAppReffType extAppReff, CoverageInfoType coverage, string userId, DateTime createdAt = default)
     {
         Guard.Against.Null(person);
         Guard.Against.Null(tglBerobat);
@@ -120,9 +120,9 @@ public class BookingModel : IBookingKey
             throw new ArgumentException("Source External Booking tidak boleh kosong");
         
         var newId = Ulid.NewUlid().ToString();
-        var result = new BookingModel(newId, DateTime.Now, person, "-", RegModel.Default.ToReff(), 
+        var result = new BookingModel(newId, createdAt, person, "-", RegModel.Default.ToReff(),
             tglBerobat, jadwal.JamMulai, jadwal.Layanan, jadwal.Dokter,  -1, 
-            AuditTrailType.Create(userId, DateTime.Now), 
+            AuditTrailType.Create(userId, createdAt),
             extAppReff, coverage);
         return result;
     }

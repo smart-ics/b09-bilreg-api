@@ -22,16 +22,16 @@ public class AntrianEntryModel
         ReffDesc = reffDesc;
     }
 
-    public static AntrianEntryModel Create(int noUrut, PersonType visitor, IPasienTrackerKey tracker, string reffId, string reffDesc)
+    public static AntrianEntryModel Create(int noUrut, PersonType visitor, IPasienTrackerKey tracker, string reffId, string reffDesc, DateTime createdAt = default)
     {
-        var newEntry = new AntrianEntryModel(noUrut, visitor, tracker, AntrianStatusEnum.Waiting, DateTime.Now,
+        var newEntry = new AntrianEntryModel(noUrut, visitor, tracker, AntrianStatusEnum.Waiting, createdAt,
             new DateTime(3000, 1, 1), new DateTime(3000, 1, 1), reffId, reffDesc);
         return newEntry;
     }
     
     public static AntrianEntryModel Default => 
         new AntrianEntryModel(-1, PersonType.Default, PasienTrackerModel.Default, AntrianStatusEnum.Waiting,
-            DateTime.Now, new DateTime(3000, 1, 1), new DateTime(3000, 1, 1), "-", "-");
+            new DateTime(3000, 1, 1), new DateTime(3000, 1, 1), new DateTime(3000, 1, 1), "-", "-");
     #endregion
     
     #region PROPERTIES
@@ -55,22 +55,21 @@ public class AntrianEntryModel
         Visitor = visitor;
     }
 
-    public void Serve()
+    public void Serve(DateTime servedAt = default)
     {
-        ServedAt = DateTime.Now;
+        ServedAt = servedAt;
         AntrianStatus = AntrianStatusEnum.InService;
     }
 
-    public void Done()
+    public void Done(DateTime doneAt = default)
     { 
         if (ServedAt == new DateTime(3000,1,1))
             throw new ArgumentException("Pasien belum dilayani");
 
-        var now = DateTime.Now;
-        if (ServedAt >= now)
+        if (ServedAt >= doneAt)
             throw new ArgumentException("Pasien belum dilayani");
         
-        DoneAt = now;
+        DoneAt = doneAt;
         AntrianStatus = AntrianStatusEnum.Done;
     }
 

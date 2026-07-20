@@ -1,8 +1,9 @@
-﻿using Ardalis.GuardClauses;
+using Ardalis.GuardClauses;
 using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.Shared.AuditLogFeature;
 using MediatR;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.ChargeContext.TindakanFeature.UseCases;
 
@@ -13,11 +14,13 @@ public class TindakanVoidHandler : IRequestHandler<TindakanVoidCmd>
 {
     private readonly ITindakanRepo _tdkRepo;
     private readonly IAuditRepo _auditRepo;
+    private readonly ITglJamProvider _tglJamProvider;
     public TindakanVoidHandler(ITindakanRepo tdkRepo, 
-        IAuditRepo auditRepo)
+        IAuditRepo auditRepo, ITglJamProvider? tglJamProvider = null)
     {
         _tdkRepo = tdkRepo;
         _auditRepo = auditRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task Handle(TindakanVoidCmd request, CancellationToken cancellationToken)
@@ -34,7 +37,8 @@ public class TindakanVoidHandler : IRequestHandler<TindakanVoidCmd>
 
         var snapshotJson = AuditLogSnapshotJson.Serialize(tdk);
 
-        tdk.Void(request.UserId);
+        var occurredAt = _tglJamProvider.Now;
+        tdk.Void(request.UserId, occurredAt);
         _tdkRepo.SaveChanges(tdk);
 
         var audit = CreateAudit(tdk, snapshotJson, request);
