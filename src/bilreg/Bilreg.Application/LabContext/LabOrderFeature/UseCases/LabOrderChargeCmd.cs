@@ -60,7 +60,7 @@ public class LabOrderChargeHandler : IRequestHandler<LabOrderChargeCmd, LabOrder
         order.Charge(request.UserId);
 
         // BUILD
-        var regKey = RegModel.Key(order.ExecutionRegId);
+        var regKey = RegModel.Key(order.Patient.RegId);
         var reg = LoadReg(regKey);
 
         var jaminanKey = reg.TipeJaminan.TipeJaminanId[..3];
