@@ -127,7 +127,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         IAddAntrianEmrByRegService addRegSvc, 
         IAntrianMapWithRegResolver antrianMapResolver,
         IJadwalPraktekFeatureResolver featureResolver,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         //      reg-support
         _pasienRepo = pasienRepo;

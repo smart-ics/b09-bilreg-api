@@ -22,7 +22,7 @@ public class IgdTransferBedHandlerTest
 
     public IgdTransferBedHandlerTest()
     {
-        _sut = new IgdTransferBedHandler(_visitRepo.Object, _bedRepo.Object, _pakaiRepo.Object);
+        _sut = new IgdTransferBedHandler(_visitRepo.Object, _bedRepo.Object, _pakaiRepo.Object, TestTglJamProvider.Instance);
     }
 
     private static AuditInfoType Audit() => new("U1", new DateTime(2026, 1, 1, 8, 0, 0));

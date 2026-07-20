@@ -23,7 +23,7 @@ public class TrfCopyTarifPolicyHandler : IRequestHandler<TrfCopyTarifPolicyCmd, 
     private readonly ITarifPolicyRepo _tarifPolicyRepo;
     private readonly ITglJamProvider _tglJamProvider;
 
-    public TrfCopyTarifPolicyHandler(ITarifPolicyRepo tarifPolicyRepo, ITglJamProvider? tglJamProvider = null)
+    public TrfCopyTarifPolicyHandler(ITarifPolicyRepo tarifPolicyRepo, ITglJamProvider tglJamProvider)
     {
         _tarifPolicyRepo = tarifPolicyRepo;
         _tglJamProvider = tglJamProvider;

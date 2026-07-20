@@ -33,7 +33,7 @@ public class OrderTdkCreateWithoutRegHandler : IRequestHandler<OrderTdkCreateWit
         IPpaRepo ppaRepo,
         ITarifRepo tarifRepo,
         IOrderTdkRepo orderTdkRepo,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _pasienRepo = pasienRepo;
         _lynRepo = lynRepo;

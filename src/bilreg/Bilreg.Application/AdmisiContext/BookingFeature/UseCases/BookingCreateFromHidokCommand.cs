@@ -41,7 +41,7 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
         IPasienRepo pasienRepo, IPpaRepo ppaRepo, 
         IAddAntrianEmrByBookingService addBookingSvc,
         IJadwalPraktekFeatureResolver featureResolver,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _jadwalPraktekRepo = jadwalPraktekRepo;
         _antrianRepo = antrianRepo;

@@ -11,7 +11,7 @@ public class OrderTdkCancelHandler : IRequestHandler<OrderTdkCancelCmd>
     private readonly IOrderTdkRepo _orderTdkrepo;
     private readonly ITglJamProvider _tglJamProvider;
 
-    public OrderTdkCancelHandler(IOrderTdkRepo orderTdkrepo, ITglJamProvider? tglJamProvider = null)
+    public OrderTdkCancelHandler(IOrderTdkRepo orderTdkrepo, ITglJamProvider tglJamProvider)
     {
         _orderTdkrepo = orderTdkrepo;
         _tglJamProvider = tglJamProvider;

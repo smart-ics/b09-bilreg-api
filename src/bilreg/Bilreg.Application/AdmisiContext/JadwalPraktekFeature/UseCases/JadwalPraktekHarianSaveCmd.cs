@@ -43,7 +43,7 @@ public class JadwalPraktekHarianSaveHandler : IRequestHandler<JadwalPraktekHaria
         ILayananRepo layananRepo,
         IRuangRepo ruangRepo,
         IJadwalPraktekHarianOverrideGuard overrideGuard,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _harianRepo = harianRepo;
         _ppaRepo = ppaRepo;

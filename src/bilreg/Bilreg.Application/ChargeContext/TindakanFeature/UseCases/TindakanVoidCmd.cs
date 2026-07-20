@@ -16,7 +16,7 @@ public class TindakanVoidHandler : IRequestHandler<TindakanVoidCmd>
     private readonly IAuditRepo _auditRepo;
     private readonly ITglJamProvider _tglJamProvider;
     public TindakanVoidHandler(ITindakanRepo tdkRepo, 
-        IAuditRepo auditRepo, ITglJamProvider? tglJamProvider = null)
+        IAuditRepo auditRepo, ITglJamProvider tglJamProvider)
     {
         _tdkRepo = tdkRepo;
         _auditRepo = auditRepo;

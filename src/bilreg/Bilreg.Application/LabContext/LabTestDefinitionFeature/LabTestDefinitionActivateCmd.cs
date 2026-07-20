@@ -19,7 +19,7 @@ public class LabTestDefinitionActivateHandler : IRequestHandler<LabTestDefinitio
     public LabTestDefinitionActivateHandler(
         ILabTestDefinitionRepo definitionRepo,
         ILabComponentMasterRepo componentMasterRepo,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _definitionRepo = definitionRepo;
         _componentMasterRepo = componentMasterRepo;

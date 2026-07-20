@@ -30,7 +30,7 @@ public class AdmCreateOpnameRequestHandler : IRequestHandler<AdmCreateOpnameRequ
         IPatientAdministrationGateway patientGateway,
         IDoctorServiceGateway doctorGateway,
         IAuditRepo auditRepo,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _opnameRequestRepo = opnameRequestRepo;
         _patientGateway = patientGateway;

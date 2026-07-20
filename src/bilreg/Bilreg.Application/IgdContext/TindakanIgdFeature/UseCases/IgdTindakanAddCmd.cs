@@ -32,7 +32,7 @@ public class IgdTindakanAddHandler : IRequestHandler<IgdTindakanAddCmd, IgdTinda
     public IgdTindakanAddHandler(IIgdVisitRepo igdVisitRepo, 
         ITindakanIgdRepo tindakanRepo, 
         IPpaRepo ppaRepo,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _igdVisitRepo = igdVisitRepo;
         _tindakanRepo = tindakanRepo;

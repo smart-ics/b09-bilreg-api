@@ -50,7 +50,7 @@ public class OkCreateOrderOpByRegHandler
         IPpaRepo dokterRepo,
         IOpCaseRepo opCaseRepo,
         ITarifRepo tarifRepo,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _orderOpRepo = orderOpRepo;
         _regRepo = regRepo;

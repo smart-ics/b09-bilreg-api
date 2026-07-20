@@ -15,7 +15,7 @@ public class RegAktifListHandler : IRequestHandler<RegAktifLayananListQuery, IEn
     private readonly IRegAktifRepo _regAktifRepo;
     private readonly ITglJamProvider _tglJamProvider;
 
-    public RegAktifListHandler(IRegAktifRepo regAktifRepo, ITglJamProvider? tglJamProvider = null)
+    public RegAktifListHandler(IRegAktifRepo regAktifRepo, ITglJamProvider tglJamProvider)
     {
         _regAktifRepo = regAktifRepo;
         _tglJamProvider = tglJamProvider;

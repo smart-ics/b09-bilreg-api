@@ -23,7 +23,7 @@ public class IgdVisitDaftarHandler : IRequestHandler<IgdVisitDaftarCmd, IgdVisit
     private readonly IIgdVisitRepo _igdVisitRepo;
     private readonly ITglJamProvider _tglJamProvider;
 
-    public IgdVisitDaftarHandler(IIgdVisitRepo igdVisitRepo, ITglJamProvider? tglJamProvider = null)
+    public IgdVisitDaftarHandler(IIgdVisitRepo igdVisitRepo, ITglJamProvider tglJamProvider)
     {
         _igdVisitRepo = igdVisitRepo;
         _tglJamProvider = tglJamProvider;

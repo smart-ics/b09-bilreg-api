@@ -85,7 +85,7 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
         IJurnalRepo jurnalRepo,
         IMapJaminanJkRepo mapJaminanJkRepo,
         IJadwalPraktekFeatureResolver featureResolver,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _regRepo = regRepo;
         _regAktifRepo = regAktifRepo;

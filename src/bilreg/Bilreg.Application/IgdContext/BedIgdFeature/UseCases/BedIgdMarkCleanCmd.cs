@@ -19,7 +19,7 @@ public class BedIgdMarkCleanHandler : IRequestHandler<BedIgdMarkCleanCmd, BedIgd
     private readonly IBedIgdRepo _bedIgdRepo;
     private readonly ITglJamProvider _tglJamProvider;
 
-    public BedIgdMarkCleanHandler(IBedIgdRepo bedIgdRepo, ITglJamProvider? tglJamProvider = null)
+    public BedIgdMarkCleanHandler(IBedIgdRepo bedIgdRepo, ITglJamProvider tglJamProvider)
     {
         _bedIgdRepo = bedIgdRepo;
         _tglJamProvider = tglJamProvider;

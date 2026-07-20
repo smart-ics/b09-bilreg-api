@@ -33,7 +33,7 @@ public class AdmCreateWaitingListHandler : IRequestHandler<AdmCreateWaitingListC
         IAdmissionRepo admissionRepo,
         IWardAccommodationGateway wardGateway,
         IAuditRepo auditRepo,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _waitingListRepo = waitingListRepo;
         _admissionRepo = admissionRepo;

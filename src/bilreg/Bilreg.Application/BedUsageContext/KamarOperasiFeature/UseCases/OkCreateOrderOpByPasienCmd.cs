@@ -47,7 +47,7 @@ public class OkCreateOrderOpByPasienHandler :
         IIcd10Repo icdRepo,
         IJenisOperasiRepo jenisOperasiRepo,
         IPpaRepo dokterRepo, IOpCaseRepo opCaseRepo, ITarifRepo tarifRepo,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _orderOpRepo = orderOpRepo;
         _pasienRepo = pasienRepo;

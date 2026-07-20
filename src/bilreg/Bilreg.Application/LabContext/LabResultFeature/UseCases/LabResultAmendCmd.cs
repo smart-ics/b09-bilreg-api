@@ -27,7 +27,7 @@ public class LabResultAmendHandler : IRequestHandler<LabResultAmendCmd>
         ILabOrderRepo labOrderRepo,
         ILabResultDocumentRepo labResultDocumentRepo,
         ILabResultScaffoldService scaffoldService,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _labOrderRepo = labOrderRepo;
         _labResultDocumentRepo = labResultDocumentRepo;

@@ -42,7 +42,7 @@ public sealed class AdmCoordinatedCancelHandler : IRequestHandler<AdmCoordinated
 
     public AdmCoordinatedCancelHandler(ICoordinatedCancellationRepo repo,
         IRegistrationCancellationEligibilityRepo eligibility, IAuditRepo auditRepo,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
         => (_repo, _eligibility, _auditRepo, _tglJamProvider) = (repo, eligibility, auditRepo, tglJamProvider);
 
     public Task<AdmCoordinatedCancelResponse> Handle(AdmCoordinatedCancelCmd request, CancellationToken cancellationToken)

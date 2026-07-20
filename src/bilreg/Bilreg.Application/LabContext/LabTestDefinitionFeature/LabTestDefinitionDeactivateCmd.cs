@@ -14,7 +14,7 @@ public class LabTestDefinitionDeactivateHandler : IRequestHandler<LabTestDefinit
     private readonly ITglJamProvider _tglJamProvider;
 
     public LabTestDefinitionDeactivateHandler(ILabTestDefinitionRepo definitionRepo,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _definitionRepo = definitionRepo;
         _tglJamProvider = tglJamProvider;

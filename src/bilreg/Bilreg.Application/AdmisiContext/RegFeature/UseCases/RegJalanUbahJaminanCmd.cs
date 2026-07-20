@@ -78,7 +78,7 @@ public class RegJalanUbahJaminanHandler : IRequestHandler<RegJalanUbahJaminanCmd
         IKomponenRepo komponenRepo,
         IJurnalRepo jurnalRepo,
         IMapJaminanJkRepo mapJaminanJkRepo,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _regRepo = regRepo;
         _regAktifRepo = regAktifRepo;

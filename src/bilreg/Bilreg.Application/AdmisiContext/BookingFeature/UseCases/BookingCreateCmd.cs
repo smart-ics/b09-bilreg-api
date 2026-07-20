@@ -45,7 +45,7 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         IAddAntrianEmrByBookingService addAntrianEmrByBookingService, 
         IAntrianMapWithBookingResolver antrianMapWithBookingResolver,
         IJadwalPraktekFeatureResolver featureResolver,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _jadwalPraktekRepo = jadwalPraktekRepo;
         _antrianRepo = antrianRepo;

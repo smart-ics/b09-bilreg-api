@@ -28,7 +28,7 @@ public class FinalizeFinancialResponsibilityHandler
         ITrsBillingRepo trsBillingRepo,
         IUnitOfWork unitOfWork,
         ICurrentUserContext currentUser,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _tataRekeningRepo = tataRekeningRepo;
         _trsBillingRepo = trsBillingRepo;

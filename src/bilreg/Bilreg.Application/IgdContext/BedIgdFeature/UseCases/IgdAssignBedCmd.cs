@@ -28,7 +28,7 @@ public class IgdAssignBedHandler : IRequestHandler<IgdAssignBedCmd, IgdAssignBed
         IIgdVisitRepo igdVisitRepo,
         IBedIgdRepo bedIgdRepo,
         IPakaiBedIgdRepo pakaiBedIgdRepo,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _igdVisitRepo = igdVisitRepo;
         _bedIgdRepo = bedIgdRepo;

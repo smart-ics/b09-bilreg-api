@@ -19,7 +19,7 @@ public class IgdVisitGetTriageMonitoringHandler : IRequestHandler<IgdVisitGetTri
     private readonly IIgdVisitRepo _repo;
     private readonly ITglJamProvider _tglJamProvider;
 
-    public IgdVisitGetTriageMonitoringHandler(IIgdVisitRepo repo, ITglJamProvider? tglJamProvider = null)
+    public IgdVisitGetTriageMonitoringHandler(IIgdVisitRepo repo, ITglJamProvider tglJamProvider)
     {
         _repo = repo;
         _tglJamProvider = tglJamProvider;

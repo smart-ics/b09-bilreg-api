@@ -12,7 +12,7 @@ public class QueSelesaiPeriksaHandler : IRequestHandler<QueSelesaiPeriksaCmd>
     private readonly IAntrianRepo _queRepo;
     private readonly ITglJamProvider _tglJamProvider;
 
-    public QueSelesaiPeriksaHandler(IAntrianRepo queRepo, ITglJamProvider? tglJamProvider = null)
+    public QueSelesaiPeriksaHandler(IAntrianRepo queRepo, ITglJamProvider tglJamProvider)
     {
         _queRepo = queRepo;
         _tglJamProvider = tglJamProvider;

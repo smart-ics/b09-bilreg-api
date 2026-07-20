@@ -24,7 +24,7 @@ public class LabOrderReleaseHandler : IRequestHandler<LabOrderReleaseCmd, LabOrd
     public LabOrderReleaseHandler(
         ILabOrderRepo labOrderRepo,
         ILabBillingIntegration labBillingIntegration,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _labOrderRepo = labOrderRepo;
         _labBillingIntegration = labBillingIntegration;

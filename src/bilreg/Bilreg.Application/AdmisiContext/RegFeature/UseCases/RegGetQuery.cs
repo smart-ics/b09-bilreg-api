@@ -55,7 +55,7 @@ public class RegJalanGethandler : IRequestHandler<RegGetQuery, RegGetResponse>
         IJaminanRepo jaminanRepo,
         ITipeJaminanRepo tipeJaminanRepo,
         IAntrianRepo queRepo,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _regRepo = regRepo;
         _jaminanRepo = jaminanRepo;

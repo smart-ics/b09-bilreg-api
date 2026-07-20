@@ -21,7 +21,7 @@ public class AdmCancelOpnameRequestHandler : IRequestHandler<AdmCancelOpnameRequ
     public AdmCancelOpnameRequestHandler(
         IOpnameRequestRepo opnameRequestRepo,
         IAuditRepo auditRepo,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _opnameRequestRepo = opnameRequestRepo;
         _auditRepo = auditRepo;

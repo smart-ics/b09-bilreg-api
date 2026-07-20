@@ -13,7 +13,7 @@ public class LabOrderTerminateHandler : IRequestHandler<LabOrderTerminateCmd>
     private readonly ILabOrderRepo _labOrderRepo;
     private readonly ITglJamProvider _tglJamProvider;
 
-    public LabOrderTerminateHandler(ILabOrderRepo labOrderRepo, ITglJamProvider? tglJamProvider = null)
+    public LabOrderTerminateHandler(ILabOrderRepo labOrderRepo, ITglJamProvider tglJamProvider)
     {
         _labOrderRepo = labOrderRepo;
         _tglJamProvider = tglJamProvider;

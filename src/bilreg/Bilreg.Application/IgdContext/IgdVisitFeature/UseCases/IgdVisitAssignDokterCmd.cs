@@ -25,7 +25,7 @@ public class IgdVisitAssignDokterHandler : IRequestHandler<IgdVisitAssignDokterC
     private readonly ITglJamProvider _tglJamProvider;
 
     public IgdVisitAssignDokterHandler(IIgdVisitRepo igdVisitRepo, IPpaRepo ppaRepo,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _igdVisitRepo = igdVisitRepo;
         _ppaRepo = ppaRepo;

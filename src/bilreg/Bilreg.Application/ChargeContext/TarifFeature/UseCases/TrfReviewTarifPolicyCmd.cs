@@ -18,7 +18,7 @@ public class TrfReviewTarifPolicyHandler : IRequestHandler<TrfReviewTarifPolicyC
     private readonly ITarifPolicyRepo _tarifPolicyRepo;
     private readonly ITglJamProvider _tglJamProvider;
 
-    public TrfReviewTarifPolicyHandler(ITarifPolicyRepo tarifPolicyRepo, ITglJamProvider? tglJamProvider = null)
+    public TrfReviewTarifPolicyHandler(ITarifPolicyRepo tarifPolicyRepo, ITglJamProvider tglJamProvider)
     {
         _tarifPolicyRepo = tarifPolicyRepo;
         _tglJamProvider = tglJamProvider;

@@ -18,7 +18,7 @@ public class LabOrderCollectSpecimenHandler : IRequestHandler<LabOrderCollectSpe
     private readonly ILabOrderRepo _labOrderRepo;
     private readonly ITglJamProvider _tglJamProvider;
 
-    public LabOrderCollectSpecimenHandler(ILabOrderRepo labOrderRepo, ITglJamProvider? tglJamProvider = null)
+    public LabOrderCollectSpecimenHandler(ILabOrderRepo labOrderRepo, ITglJamProvider tglJamProvider)
     {
         _labOrderRepo = labOrderRepo;
         _tglJamProvider = tglJamProvider;

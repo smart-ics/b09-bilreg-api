@@ -39,7 +39,7 @@ public class MergeBillingHandler : IRequestHandler<MergeBillingCommand, MergeBil
         IAuditRepo auditRepo,
         IUnitOfWork unitOfWork,
         ICurrentUserContext currentUser,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _tataRekeningRepo = tataRekeningRepo;
         _mergeRequestRepo = mergeRequestRepo;

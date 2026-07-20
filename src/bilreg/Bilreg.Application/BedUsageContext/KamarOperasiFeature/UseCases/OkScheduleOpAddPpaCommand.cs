@@ -22,7 +22,7 @@ public class OkScheduleOpAddPpaHandler : IRequestHandler<OkScheduleOpAddPpaComma
         IOrderOpRepo orderOpRepo,
         IPpaRepo ppaRepo,
         IOpCaseRepo opCaseRepo,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _scheduleOpRepo = scheduleOpRepo;
         _orderOpRepo = orderOpRepo;

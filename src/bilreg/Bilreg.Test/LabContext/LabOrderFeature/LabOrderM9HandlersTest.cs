@@ -17,8 +17,8 @@ public class LabOrderM9HandlersTest
 
     public LabOrderM9HandlersTest()
     {
-        _cancelHandler = new LabOrderCancelHandler(_repo.Object);
-        _terminateHandler = new LabOrderTerminateHandler(_repo.Object);
+        _cancelHandler = new LabOrderCancelHandler(_repo.Object, TestTglJamProvider.Instance);
+        _terminateHandler = new LabOrderTerminateHandler(_repo.Object, TestTglJamProvider.Instance);
     }
 
     private static LabOrderModel ChargedOrder()

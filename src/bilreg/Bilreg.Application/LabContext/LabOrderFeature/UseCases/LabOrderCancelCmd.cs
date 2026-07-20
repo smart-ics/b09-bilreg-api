@@ -13,7 +13,7 @@ public class LabOrderCancelHandler : IRequestHandler<LabOrderCancelCmd>
     private readonly ILabOrderRepo _labOrderRepo;
     private readonly ITglJamProvider _tglJamProvider;
 
-    public LabOrderCancelHandler(ILabOrderRepo labOrderRepo, ITglJamProvider? tglJamProvider = null)
+    public LabOrderCancelHandler(ILabOrderRepo labOrderRepo, ITglJamProvider tglJamProvider)
     {
         _labOrderRepo = labOrderRepo;
         _tglJamProvider = tglJamProvider;

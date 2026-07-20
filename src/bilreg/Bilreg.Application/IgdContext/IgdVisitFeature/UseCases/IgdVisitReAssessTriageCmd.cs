@@ -29,7 +29,7 @@ public class IgdVisitReAssessTriageHandler : IRequestHandler<IgdVisitReAssessTri
     private readonly ITglJamProvider _tglJamProvider;
 
     public IgdVisitReAssessTriageHandler(IIgdVisitRepo igdVisitRepo, ITriageMethodEngineResolver engineResolver,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _igdVisitRepo = igdVisitRepo;
         _engineResolver = engineResolver;

@@ -22,7 +22,7 @@ public sealed class AdmListJourneyHandler : IRequestHandler<AdmListJourneyQry, J
     private readonly IJourneyDal _dal;
     private readonly ITglJamProvider _tglJamProvider;
 
-    public AdmListJourneyHandler(IJourneyDal dal, ITglJamProvider? tglJamProvider = null) =>
+    public AdmListJourneyHandler(IJourneyDal dal, ITglJamProvider tglJamProvider) =>
         (_dal, _tglJamProvider) = (dal, tglJamProvider);
 
     public Task<JourneyListResult> Handle(AdmListJourneyQry request, CancellationToken cancellationToken)
@@ -51,7 +51,7 @@ public sealed class AdmGetJourneyHandler : IRequestHandler<AdmGetJourneyQry, Jou
     private readonly IJourneyDal _dal;
     private readonly ITglJamProvider _tglJamProvider;
 
-    public AdmGetJourneyHandler(IJourneyDal dal, ITglJamProvider? tglJamProvider = null) =>
+    public AdmGetJourneyHandler(IJourneyDal dal, ITglJamProvider tglJamProvider) =>
         (_dal, _tglJamProvider) = (dal, tglJamProvider);
 
     public Task<JourneyDetailWorkspace?> Handle(AdmGetJourneyQry request, CancellationToken cancellationToken)
@@ -73,7 +73,7 @@ public sealed class AdmResolveJourneyLegacyRecordHandler
     private readonly IJourneyDal _dal;
     private readonly ITglJamProvider _tglJamProvider;
 
-    public AdmResolveJourneyLegacyRecordHandler(IJourneyDal dal, ITglJamProvider? tglJamProvider = null) =>
+    public AdmResolveJourneyLegacyRecordHandler(IJourneyDal dal, ITglJamProvider tglJamProvider) =>
         (_dal, _tglJamProvider) = (dal, tglJamProvider);
 
     public Task<JourneyLegacyResolution?> Handle(

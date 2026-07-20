@@ -32,7 +32,7 @@ public class OrderTdkCreatehandler : IRequestHandler<OrderTdkCreateCmd, OrderTdk
         ILayananRepo lynRepo,
         ITarifRepo tarifRepo,
         IOrderTdkRepo orderTdkRepo,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _regRepo = regRepo;
         _ppaRepo = ppaRepo;

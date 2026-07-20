@@ -25,7 +25,7 @@ public class PasienCreateByKtpHandler : IRequestHandler<PasienCreateByKtpCommand
     public PasienCreateByKtpHandler(IPasienRepo pasienRepo,
         IPasienFactory pasienFactory,
         IKelurahanRepo kelurahanRepo,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _pasienRepo = pasienRepo;
         _pasienFactory = pasienFactory;

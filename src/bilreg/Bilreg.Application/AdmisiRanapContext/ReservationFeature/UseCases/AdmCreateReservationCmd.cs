@@ -30,7 +30,7 @@ public class AdmCreateReservationHandler : IRequestHandler<AdmCreateReservationC
         IPatientAdministrationGateway patientGateway,
         IWardAccommodationGateway wardGateway,
         IAuditRepo auditRepo,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _reservationRepo = reservationRepo;
         _patientGateway = patientGateway;

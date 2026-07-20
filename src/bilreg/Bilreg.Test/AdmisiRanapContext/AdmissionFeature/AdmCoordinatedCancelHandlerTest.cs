@@ -28,7 +28,7 @@ public class AdmCoordinatedCancelHandlerTest
         repo.Setup(x => x.CancelAdmission(state, It.IsAny<DateTime?>(), It.IsAny<string>(), It.IsAny<DateTime>())).Returns(1);
         repo.Setup(x => x.CompleteLedger("REQ1", It.IsAny<string>(), It.IsAny<DateTime>())).Returns(1);
         eligibility.Setup(x => x.HasBillingItems("RG00000001")).Returns(false);
-        var sut = new AdmCoordinatedCancelHandler(repo.Object, eligibility.Object, audit.Object);
+        var sut = new AdmCoordinatedCancelHandler(repo.Object, eligibility.Object, audit.Object, TestTglJamProvider.Instance);
 
         var result = await sut.Handle(Command(), CancellationToken.None);
 
@@ -64,7 +64,7 @@ public class AdmCoordinatedCancelHandlerTest
         repo.Setup(x => x.CompleteLedger("REQ1", It.IsAny<string>(), It.IsAny<DateTime>())).Returns(1);
         eligibility.Setup(x => x.HasBillingItems("RG00000001")).Returns(false);
 
-        await new AdmCoordinatedCancelHandler(repo.Object, eligibility.Object, audit.Object).Handle(Command(), CancellationToken.None);
+        await new AdmCoordinatedCancelHandler(repo.Object, eligibility.Object, audit.Object, TestTglJamProvider.Instance).Handle(Command(), CancellationToken.None);
 
         var saved = audit.Invocations.Where(x => x.Method.Name == nameof(IAuditRepo.SaveChanges))
             .Select(x => (Bilreg.Domain.Shared.AuditLogFeature.AuditLog)x.Arguments[0]).ToList();
@@ -82,7 +82,7 @@ public class AdmCoordinatedCancelHandlerTest
         repo.Setup(x => x.TryStartLedger(It.IsAny<CoordinatedCancellationLedger>())).Returns(true);
         repo.Setup(x => x.LockState("RG00000001")).Returns(State());
         eligibility.Setup(x => x.HasBillingItems("RG00000001")).Returns(true);
-        var sut = new AdmCoordinatedCancelHandler(repo.Object, eligibility.Object, Mock.Of<IAuditRepo>());
+        var sut = new AdmCoordinatedCancelHandler(repo.Object, eligibility.Object, Mock.Of<IAuditRepo>(), TestTglJamProvider.Instance);
 
         var act = () => sut.Handle(Command(), CancellationToken.None);
 
@@ -97,7 +97,7 @@ public class AdmCoordinatedCancelHandlerTest
         var response = new AdmCoordinatedCancelResponse("RG00000001", AdmissionStatusEnum.Cancelled, true, false, null, null, "REQ1");
         var ledger = new CoordinatedCancellationLedger("REQ1", FingerprintFor(Command()), "RG00000001", "Completed", JsonSerializer.Serialize(response), DateTime.UtcNow, DateTime.UtcNow, "REQ1");
         var repo = new Mock<ICoordinatedCancellationRepo>(); repo.Setup(x => x.LockLedger("REQ1")).Returns(ledger);
-        var sut = new AdmCoordinatedCancelHandler(repo.Object, Mock.Of<IRegistrationCancellationEligibilityRepo>(), Mock.Of<IAuditRepo>());
+        var sut = new AdmCoordinatedCancelHandler(repo.Object, Mock.Of<IRegistrationCancellationEligibilityRepo>(), Mock.Of<IAuditRepo>(), TestTglJamProvider.Instance);
 
         var replay = await sut.Handle(Command(), CancellationToken.None);
 
@@ -110,7 +110,7 @@ public class AdmCoordinatedCancelHandlerTest
     {
         var repo = new Mock<ICoordinatedCancellationRepo>();
         repo.Setup(x => x.LockLedger("REQ1")).Returns(new CoordinatedCancellationLedger("REQ1", "OTHER", "RG00000001", "Completed", "{}", DateTime.UtcNow, DateTime.UtcNow, "REQ1"));
-        var sut = new AdmCoordinatedCancelHandler(repo.Object, Mock.Of<IRegistrationCancellationEligibilityRepo>(), Mock.Of<IAuditRepo>());
+        var sut = new AdmCoordinatedCancelHandler(repo.Object, Mock.Of<IRegistrationCancellationEligibilityRepo>(), Mock.Of<IAuditRepo>(), TestTglJamProvider.Instance);
         var act = () => sut.Handle(Command(), CancellationToken.None);
         (await act.Should().ThrowAsync<CoordinatedCancellationException>()).Which.Code.Should().Be(CoordinatedCancellationErrorCode.RequestIdReused);
     }
@@ -122,7 +122,7 @@ public class AdmCoordinatedCancelHandlerTest
         repo.Setup(x => x.LockLedger("REQ1")).Returns((CoordinatedCancellationLedger?)null);
         repo.Setup(x => x.TryStartLedger(It.IsAny<CoordinatedCancellationLedger>())).Returns(true);
         repo.Setup(x => x.LockState("RG00000001")).Returns(State("OPN00000001", "OpnameRequestModel") with { SourceOwnedAndCancellable = false });
-        var sut = new AdmCoordinatedCancelHandler(repo.Object, Mock.Of<IRegistrationCancellationEligibilityRepo>(), Mock.Of<IAuditRepo>());
+        var sut = new AdmCoordinatedCancelHandler(repo.Object, Mock.Of<IRegistrationCancellationEligibilityRepo>(), Mock.Of<IAuditRepo>(), TestTglJamProvider.Instance);
         var act = () => sut.Handle(Command(), CancellationToken.None);
         (await act.Should().ThrowAsync<CoordinatedCancellationException>()).Which.Code.Should().Be(CoordinatedCancellationErrorCode.SourceStateMismatch);
         repo.Verify(x => x.CancelAdmission(It.IsAny<CoordinatedCancellationState>(), It.IsAny<DateTime?>(), It.IsAny<string>(), It.IsAny<DateTime>()), Times.Never);
@@ -136,7 +136,7 @@ public class AdmCoordinatedCancelHandlerTest
         repo.Setup(x => x.LockLedger("REQ1")).Returns((CoordinatedCancellationLedger?)null);
         repo.Setup(x => x.TryStartLedger(It.IsAny<CoordinatedCancellationLedger>())).Returns(true);
         repo.Setup(x => x.LockState("RG00000001")).Returns(State() with { AdmissionExists = false });
-        var sut = new AdmCoordinatedCancelHandler(repo.Object, eligibility.Object, Mock.Of<IAuditRepo>());
+        var sut = new AdmCoordinatedCancelHandler(repo.Object, eligibility.Object, Mock.Of<IAuditRepo>(), TestTglJamProvider.Instance);
 
         var act = () => sut.Handle(Command(), CancellationToken.None);
 

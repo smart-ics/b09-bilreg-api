@@ -19,7 +19,7 @@ public class RegRegAktifRemoveHandler : IRequestHandler<RegRegAktifRemoveCmd>
     public RegRegAktifRemoveHandler(IRegRepo regRepo, 
         IRegAktifRepo regAktifRepo, 
         IAuditRepo auditRepo,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _regRepo = regRepo;
         _regAktifRepo = regAktifRepo;

@@ -36,7 +36,7 @@ public class BokGenPasienFromBookingHandler
     public BokGenPasienFromBookingHandler(IBookingRepo bookingRepo, 
         IPasienRepo pasienRepo, 
         IPasienFactory pasienFactory,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _bookingRepo = bookingRepo;
         _pasienRepo = pasienRepo;

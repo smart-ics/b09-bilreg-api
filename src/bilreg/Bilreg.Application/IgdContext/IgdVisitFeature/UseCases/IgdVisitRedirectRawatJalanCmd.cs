@@ -26,7 +26,7 @@ public class IgdVisitRedirectRawatJalanHandler : IRequestHandler<IgdVisitRedirec
     public IgdVisitRedirectRawatJalanHandler(
         IIgdVisitRepo igdVisitRepo,
         IRedirectRajalRepo redirectRepo,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _igdVisitRepo = igdVisitRepo;
         _redirectRepo = redirectRepo;

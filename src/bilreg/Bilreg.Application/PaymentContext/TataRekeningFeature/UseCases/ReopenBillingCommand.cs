@@ -28,7 +28,7 @@ public class ReopenBillingHandler : IRequestHandler<ReopenBillingCommand, Reopen
         IAuditRepo auditRepo,
         IUnitOfWork unitOfWork,
         ICurrentUserContext currentUser,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _tataRekeningRepo = tataRekeningRepo;
         _auditRepo = auditRepo;

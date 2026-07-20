@@ -16,7 +16,7 @@ public class AdmCancelReservationHandler : IRequestHandler<AdmCancelReservationC
     private readonly IAuditRepo _auditRepo;
     private readonly ITglJamProvider _tglJamProvider;
     public AdmCancelReservationHandler(IReservationRepo reservationRepo, 
-        IAuditRepo auditRepo, ITglJamProvider? tglJamProvider = null)
+        IAuditRepo auditRepo, ITglJamProvider tglJamProvider)
     {
         _reservationRepo = reservationRepo;
         _auditRepo = auditRepo;

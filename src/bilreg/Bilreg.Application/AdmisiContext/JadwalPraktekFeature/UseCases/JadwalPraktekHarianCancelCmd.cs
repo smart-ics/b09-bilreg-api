@@ -20,7 +20,7 @@ public class JadwalPraktekHarianCancelHandler : IRequestHandler<JadwalPraktekHar
     public JadwalPraktekHarianCancelHandler(
         IJadwalPraktekHarianRepo harianRepo,
         IJadwalPraktekHarianOverrideGuard overrideGuard,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _harianRepo = harianRepo;
         _overrideGuard = overrideGuard;

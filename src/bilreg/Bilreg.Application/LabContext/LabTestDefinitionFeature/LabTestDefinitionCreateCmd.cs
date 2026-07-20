@@ -32,7 +32,7 @@ public class LabTestDefinitionCreateHandler
     public LabTestDefinitionCreateHandler(
         ILabTestDefinitionRepo definitionRepo,
         ILabComponentMasterRepo componentMasterRepo,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _definitionRepo = definitionRepo;
         _componentMasterRepo = componentMasterRepo;

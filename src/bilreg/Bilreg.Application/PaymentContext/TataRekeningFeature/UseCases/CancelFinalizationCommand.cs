@@ -30,7 +30,7 @@ public class CancelFinalizationHandler : IRequestHandler<CancelFinalizationComma
         IAuditRepo auditRepo,
         IUnitOfWork unitOfWork,
         ICurrentUserContext currentUser,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _tataRekeningRepo = tataRekeningRepo;
         _trsBillingRepo = trsBillingRepo;

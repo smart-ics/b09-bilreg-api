@@ -47,7 +47,7 @@ public class PasienGetHandler : IRequestHandler<PasienGetQuery, PasienGetRespons
     public PasienGetHandler(IParamSistemDal paramSistemDal, 
         IPasienRepo pasienRepo, 
         IGetKodeRsService getKdRsSvc,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _paramSistemDal = paramSistemDal;
         _pasienRepo = pasienRepo;

@@ -52,7 +52,7 @@ public class TindakanCreateHandler : IRequestHandler<TdkCreateTindakanCmd, Tinda
         IAddBillAppService addBillAppService, 
         IMapJaminanJkRepo mapJaminanJkRepo, 
         IJurnalRepo jurnalRepo,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _tindakanRepo = tindakanRepo;
         _regRepo = regRepo;

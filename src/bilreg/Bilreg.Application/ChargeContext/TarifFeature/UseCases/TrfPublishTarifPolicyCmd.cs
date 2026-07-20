@@ -54,7 +54,7 @@ public class TrfPublishTarifPolicyHandler : IRequestHandler<TrfPublishTarifPolic
         ITarifMigrationGuard migrationGuard,
         TarifOperationalGate operationalGate,
         ILogger<TrfPublishTarifPolicyHandler> logger,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _tarifPolicyRepo = tarifPolicyRepo;
         _tarifPublishLogRepo = tarifPublishLogRepo;

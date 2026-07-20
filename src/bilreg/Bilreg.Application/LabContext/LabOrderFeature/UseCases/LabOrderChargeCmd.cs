@@ -22,7 +22,7 @@ public class LabOrderChargeHandler : IRequestHandler<LabOrderChargeCmd, LabOrder
     private readonly ITglJamProvider _tglJamProvider;
 
     public LabOrderChargeHandler(ILabOrderRepo labOrderRepo, ILabBillingIntegration labBillingIntegration,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _labOrderRepo = labOrderRepo;
         _labBillingIntegration = labBillingIntegration;

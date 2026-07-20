@@ -21,6 +21,8 @@ The read-only status endpoint is `GET /api/system/business-date`. There is no mu
 - `src/bilreg/Bilreg.Test/Shared/BusinessDateFeature/BusinessDateOptionsValidatorTest.cs`
 - `src/bilreg/Bilreg.Test/Shared/BusinessDateFeature/GetBusinessDateStatusHandlerTest.cs`
 - `src/bilreg/Bilreg.Test/Shared/BusinessDateFeature/TglJamProviderTest.cs`
+- `src/bilreg/Bilreg.Test/Shared/TestTglJamProvider.cs`
+- `src/bilreg/Bilreg.Test/GlobalUsings.cs`
 
 ## Files modified
 
@@ -99,7 +101,7 @@ Explicit `DateTime`/`DateOnly` inputs were added to the creation and transition 
 - Lab: order lifecycle, result record/amend/verify, test-definition lifecycle, and Oware queue domain transitions.
 - Patient/payment: patient factories/mutations, balance replacement, Tata Rekening transitions, bill factories/domain service, audit log creation, and age calculation reference date.
 
-Application call sites pass the captured timestamp explicitly. Some trailing timestamp parameters retain `= default` solely for source compatibility with older tests and callers; they never read a hidden clock.
+Application call sites pass the captured timestamp explicitly. Provider injection is mandatory in every Application constructor; tests supply a deterministic provider.
 
 ## Verification
 
@@ -113,6 +115,5 @@ Application call sites pass the captured timestamp explicitly. Some trailing tim
 
 ## Remaining technical debt
 
-- Older unit tests construct many handlers directly. To preserve source compatibility during this cross-cutting migration, newly appended provider constructor parameters are nullable/optional in several handlers, while production DI always supplies the scoped provider. These constructors should become strictly required as those older tests are modernized to inject a clock mock.
-- Several Domain timestamp parameters retain deterministic `= default` compatibility defaults. Removing those defaults is a follow-up hardening step after all external callers are confirmed migrated.
+- Some Domain timestamp parameters retain deterministic `= default` compatibility defaults. Removing those defaults is a follow-up hardening step after all external callers are confirmed migrated.
 - Existing repository nullable warnings outside this feature remain; no new clock behavior depends on them.

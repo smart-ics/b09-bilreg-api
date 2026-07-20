@@ -29,7 +29,7 @@ public class IgdVisitDischargeHandler : IRequestHandler<IgdVisitDischargeCmd, Ig
         IIgdVisitRepo igdVisitRepo,
         IBedIgdRepo bedIgdRepo,
         IPakaiBedIgdRepo pakaiBedIgdRepo,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _igdVisitRepo = igdVisitRepo;
         _bedIgdRepo = bedIgdRepo;

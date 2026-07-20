@@ -27,7 +27,7 @@ public class IgdBhpAddHandler : IRequestHandler<IgdBhpAddCmd, IgdBhpAddResponse>
     private readonly ITglJamProvider _tglJamProvider;
 
     public IgdBhpAddHandler(IIgdVisitRepo igdVisitRepo, IBhpIgdRepo bhpRepo,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _igdVisitRepo = igdVisitRepo;
         _bhpRepo = bhpRepo;

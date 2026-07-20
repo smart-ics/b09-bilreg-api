@@ -38,7 +38,7 @@ public class IgdVisitAssessTriageHandler : IRequestHandler<IgdVisitAssessTriageC
     private readonly ITglJamProvider _tglJamProvider;
 
     public IgdVisitAssessTriageHandler(IIgdVisitRepo igdVisitRepo, ITriageMethodEngineResolver engineResolver,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _igdVisitRepo = igdVisitRepo;
         _engineResolver = engineResolver;

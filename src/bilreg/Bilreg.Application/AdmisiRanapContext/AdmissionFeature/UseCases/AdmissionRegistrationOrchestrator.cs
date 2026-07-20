@@ -89,7 +89,7 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         IRegInapRepo regInapRepo,
         IRegAktifRepo regAktifRepo,
         IAuditRepo auditRepo,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _admissionRepo = admissionRepo;
         _opnameRequestRepo = opnameRequestRepo;

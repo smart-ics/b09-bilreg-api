@@ -337,7 +337,7 @@ public class AdmissionRegistrationOrchestratorTest
             bangsalRepo.Object, pasienRepo.Object, tipeJaminanRepo.Object, Mock.Of<IPolisRepo>(),
             caraMasukRepo.Object, rujukanRepo.Object, ppaRepo.Object, layananRepo.Object,
             prosedurRepo.Object, factory, regRepo.Object, regInapRepo.Object,
-            regAktifRepo.Object, auditRepo.Object);
+            regAktifRepo.Object, auditRepo.Object, TestTglJamProvider.Instance);
 
         return new OpnameHarness(
             sut, opname, admissionRepo, opnameRepo, regRepo, regInapRepo, regAktifRepo, prosedurRepo,
@@ -410,7 +410,7 @@ public class AdmissionRegistrationOrchestratorTest
             bangsalRepo.Object, pasienRepo.Object, tipeJaminanRepo.Object, Mock.Of<IPolisRepo>(),
             caraMasukRepo.Object, rujukanRepo.Object, ppaRepo.Object, layananRepo.Object,
             prosedurRepo.Object, factory, regRepo.Object, regInapRepo.Object,
-            regAktifRepo.Object, Mock.Of<IAuditRepo>());
+            regAktifRepo.Object, Mock.Of<IAuditRepo>(), TestTglJamProvider.Instance);
 
         return new ReservationHarness(
             sut, reservation, admissionRepo, prosedurRepo, regInapRepo, () => savedRegInap);

@@ -36,7 +36,7 @@ public class FinancialVerificationHandler : IRequestHandler<FinancialVerificatio
         IFinancialVerificationDomainService verificationService,
         IUnitOfWork unitOfWork,
         ICurrentUserContext currentUser,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _tataRekeningRepo = tataRekeningRepo;
         _mergeRequestRepo = mergeRequestRepo;

@@ -12,7 +12,7 @@ public class PasienBalanceBootstrapService
     private readonly ITglJamProvider _tglJamProvider;
 
     public PasienBalanceBootstrapService(IPasienBalanceLegacyReader legacyReader,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _legacyReader = legacyReader;
         _tglJamProvider = tglJamProvider;

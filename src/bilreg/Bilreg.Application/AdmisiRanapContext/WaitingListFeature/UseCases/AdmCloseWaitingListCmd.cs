@@ -21,7 +21,7 @@ public class AdmCloseWaitingListHandler : IRequestHandler<AdmCloseWaitingListCmd
     public AdmCloseWaitingListHandler(
         IWaitingListRepo waitingListRepo,
         IAuditRepo auditRepo,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _waitingListRepo = waitingListRepo;
         _auditRepo = auditRepo;

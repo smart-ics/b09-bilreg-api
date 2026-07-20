@@ -26,7 +26,7 @@ public class PasienCreateHandler : IRequestHandler<PasienCreateCommand, PasienCr
     private const string FORMAT_TGL_YMD = "yyyy-MM-dd";
 
     public PasienCreateHandler(IPasienRepo pasienRepo, IPasienFactory pasienFactory,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _pasienRepo = pasienRepo;
         _pasienFactory = pasienFactory;

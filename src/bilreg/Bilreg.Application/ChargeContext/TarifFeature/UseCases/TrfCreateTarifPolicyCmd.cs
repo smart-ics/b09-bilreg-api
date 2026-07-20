@@ -23,7 +23,7 @@ public class TrfCreateTarifPolicyHandler : IRequestHandler<TrfCreateTarifPolicyC
     private readonly ITarifPolicyRepo _tarifPolicyRepo;
     private readonly ITglJamProvider _tglJamProvider;
 
-    public TrfCreateTarifPolicyHandler(ITarifPolicyRepo tarifPolicyRepo, ITglJamProvider? tglJamProvider = null)
+    public TrfCreateTarifPolicyHandler(ITarifPolicyRepo tarifPolicyRepo, ITglJamProvider tglJamProvider)
     {
         _tarifPolicyRepo = tarifPolicyRepo;
         _tglJamProvider = tglJamProvider;

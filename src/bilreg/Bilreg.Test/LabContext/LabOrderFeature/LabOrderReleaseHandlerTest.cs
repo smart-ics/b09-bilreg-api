@@ -39,7 +39,7 @@ public class LabOrderReleaseHandlerTest
         var order = VerifiedOrder();
         _repo.Setup(x => x.LoadEntity(It.IsAny<ILabOrderKey>())).Returns(MayBe.From(order));
 
-        var handler = new LabOrderReleaseHandler(_repo.Object, _billing);
+        var handler = new LabOrderReleaseHandler(_repo.Object, _billing, TestTglJamProvider.Instance);
         var response = await handler.Handle(
             new LabOrderReleaseCmd(order.OrderId, "REL1", "Catatan"),
             CancellationToken.None);
@@ -57,7 +57,7 @@ public class LabOrderReleaseHandlerTest
         var order = VerifiedOrder("LAB-BILBLOCK");
         _repo.Setup(x => x.LoadEntity(It.IsAny<ILabOrderKey>())).Returns(MayBe.From(order));
 
-        var handler = new LabOrderReleaseHandler(_repo.Object, _billing);
+        var handler = new LabOrderReleaseHandler(_repo.Object, _billing, TestTglJamProvider.Instance);
         var response = await handler.Handle(
             new LabOrderReleaseCmd(order.OrderId, "REL1", ""),
             CancellationToken.None);
@@ -136,7 +136,7 @@ public class LabOrderReleaseHandlerTest
 
         _repo.Setup(x => x.LoadEntity(It.IsAny<ILabOrderKey>())).Returns(MayBe.From(infraOrder));
 
-        var handler = new LabOrderReleaseHandler(_repo.Object, _billing);
+        var handler = new LabOrderReleaseHandler(_repo.Object, _billing, TestTglJamProvider.Instance);
         var act = async () => await handler.Handle(
             new LabOrderReleaseCmd(infraOrder.OrderId, "REL1", ""),
             CancellationToken.None);
@@ -161,7 +161,7 @@ public class LabOrderReleaseHandlerTest
 
         _repo.Setup(x => x.LoadEntity(It.IsAny<ILabOrderKey>())).Returns(MayBe.From(order));
 
-        var handler = new LabOrderReleaseHandler(_repo.Object, _billing);
+        var handler = new LabOrderReleaseHandler(_repo.Object, _billing, TestTglJamProvider.Instance);
         await handler.Handle(new LabOrderReleaseCmd(order.OrderId, "REL2", "ok"), CancellationToken.None);
 
         _repo.Verify(x => x.SaveChanges(It.Is<LabOrderModel>(o =>

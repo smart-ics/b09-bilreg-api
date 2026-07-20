@@ -28,7 +28,7 @@ public class QueGetAntrianHandler : IRequestHandler<QueGetAntrianQuery, IEnumera
     private readonly ITglJamProvider _tglJamProvider;
     public QueGetAntrianHandler(IAntrianRepo queRepo,
         IRegAktifRepo regAktifRepo,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _queRepo = queRepo;
         _regAktifRepo = regAktifRepo;

@@ -27,7 +27,7 @@ public class AdmUpdateAdmissionHandler : IRequestHandler<AdmUpdateAdmissionCmd>
         IAdmissionRepo admissionRepo,
         IWardAccommodationGateway wardGateway,
         IAuditRepo auditRepo,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _admissionRepo = admissionRepo;
         _wardGateway = wardGateway;

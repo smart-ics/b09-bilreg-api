@@ -57,7 +57,7 @@ public class TrfCreateBaselineTarifPolicyHandler
         IKelasRepo kelasRepo,
         IKomponenRepo komponenRepo,
         ILogger<TrfCreateBaselineTarifPolicyHandler> logger,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _tarifPolicyRepo = tarifPolicyRepo;
         _tarifPublishLogRepo = tarifPublishLogRepo;

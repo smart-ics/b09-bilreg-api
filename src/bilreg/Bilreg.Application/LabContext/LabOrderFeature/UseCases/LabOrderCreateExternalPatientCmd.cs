@@ -33,7 +33,7 @@ public class LabOrderCreateExternalPatientHandler
         ILabOrderRepo labOrderRepo,
         ISequencer sequencer,
         ILabTestResolutionService resolutionService,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _labOrderRepo = labOrderRepo;
         _sequencer = sequencer;

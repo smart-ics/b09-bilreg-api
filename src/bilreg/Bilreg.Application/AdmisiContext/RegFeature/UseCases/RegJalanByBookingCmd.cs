@@ -103,7 +103,7 @@ public class RegJalanByBookingHandler
         IRemoteCetakRepo remoteCetakRepo,
         IGetAppSettingService getAppSettingSvc,
         IAddAntrianEmrByRegService addRegSvc,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _bookingRepo = bookingRepo;
         _pasienRepo = pasienRepo;

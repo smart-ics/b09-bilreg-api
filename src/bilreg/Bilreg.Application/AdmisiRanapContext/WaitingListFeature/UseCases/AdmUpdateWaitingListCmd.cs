@@ -27,7 +27,7 @@ public class AdmUpdateWaitingListHandler : IRequestHandler<AdmUpdateWaitingListC
         IWaitingListRepo waitingListRepo,
         IWardAccommodationGateway wardGateway,
         IAuditRepo auditRepo,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _waitingListRepo = waitingListRepo;
         _wardGateway = wardGateway;

@@ -27,7 +27,7 @@ public class OkDischargeOpHandler : IRequestHandler<OkDischargeOpCommand, OkDisc
         IOrderOpRepo orderOpRepo,
         IKamarRepo kamarRepo,
         IOpCaseRepo opCaseRepo,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _dischargeOpRepo = dischargeOpRepo;
         _orderOpRepo = orderOpRepo;

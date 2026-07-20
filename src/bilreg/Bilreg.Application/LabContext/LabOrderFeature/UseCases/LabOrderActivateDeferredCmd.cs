@@ -20,7 +20,7 @@ public class LabOrderActivateDeferredHandler
     private readonly ITglJamProvider _tglJamProvider;
 
     public LabOrderActivateDeferredHandler(ILabOrderRepo labOrderRepo, ILabRegIntegration labRegIntegration,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _labOrderRepo = labOrderRepo;
         _labRegIntegration = labRegIntegration;

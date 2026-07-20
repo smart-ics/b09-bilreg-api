@@ -27,7 +27,7 @@ public class AdmMaintainReservationHandler : IRequestHandler<AdmMaintainReservat
         IReservationRepo reservationRepo,
         IWardAccommodationGateway wardGateway,
         IAuditRepo auditRepo,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _reservationRepo = reservationRepo;
         _wardGateway = wardGateway;

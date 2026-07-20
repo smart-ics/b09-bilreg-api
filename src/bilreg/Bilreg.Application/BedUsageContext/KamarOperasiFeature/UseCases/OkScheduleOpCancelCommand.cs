@@ -18,7 +18,7 @@ public class OkScheduleOpCancelHandler : IRequestHandler<OkScheduleOpCancelComma
     public OkScheduleOpCancelHandler(IScheduleOpRepo scheduleOpRepo,
         IOrderOpRepo orderOpRepo,
         IOpCaseRepo opCaseRepo,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _scheduleOpRepo = scheduleOpRepo;
         _orderOpRepo = orderOpRepo;

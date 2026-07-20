@@ -39,7 +39,7 @@ public class IgdVisitVoidHandler : IRequestHandler<IgdVisitVoidCmd, IgdVisitVoid
         ITindakanIgdRepo tindakanRepo,
         IBhpIgdRepo bhpRepo,
         IAuditRepo auditRepo,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _igdVisitRepo = igdVisitRepo;
         _bedIgdRepo = bedIgdRepo;

@@ -23,7 +23,7 @@ public class IgdTindakanVoidHandler : IRequestHandler<IgdTindakanVoidCmd>
     public IgdTindakanVoidHandler(ITindakanIgdRepo tindakanIgdRepo,
         IAuditRepo auditRepo,
         IIgdVisitRepo igdVisitRepo,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _tindakanIgdRepo = tindakanIgdRepo;
         _auditRepo = auditRepo;

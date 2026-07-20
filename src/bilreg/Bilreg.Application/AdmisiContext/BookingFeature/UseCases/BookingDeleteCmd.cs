@@ -21,7 +21,7 @@ public class BookingDeleteHandler : IRequestHandler<BookingDeleteCmd>
         IDashboardEmrRemoveBookingService dashboardEmrRemoveSvc,
         IAuditRepo auditRepo,
         IBookingRepo bookingRepo,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _deleteBookingWorkflow = deleteBookingWorkflow;
         _dashboardEmrRemoveSvc = dashboardEmrRemoveSvc;

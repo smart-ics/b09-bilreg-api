@@ -34,7 +34,7 @@ public class IgdVisitVoidHandlerTest
             _pakaiRepo.Object,
             _tindakanRepo.Object,
             _bhpRepo.Object,
-            _auditLogRepo.Object);
+            _auditLogRepo.Object, TestTglJamProvider.Instance);
     }
 
     private static IgdVisitModel BuildVisit(string bedId = "-", bool voided = false)

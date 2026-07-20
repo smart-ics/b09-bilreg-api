@@ -22,7 +22,7 @@ public class IgdVisitAssignRegisterHandler : IRequestHandler<IgdVisitAssignRegis
     private readonly ITglJamProvider _tglJamProvider;
 
     public IgdVisitAssignRegisterHandler(IIgdVisitRepo igdVisitRepo, IRegRepo regRepo,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _igdVisitRepo = igdVisitRepo;
         _regRepo = regRepo;

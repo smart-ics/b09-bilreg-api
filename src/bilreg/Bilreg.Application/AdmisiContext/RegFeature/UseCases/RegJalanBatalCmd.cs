@@ -49,7 +49,7 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
         IDashboardEmrRemoveRegService dashboardEmrRemoveRegService,
         IBookingRepo bookingRepo,
         IAuditRepo auditRepo,
-        ITglJamProvider? tglJamProvider = null)
+        ITglJamProvider tglJamProvider)
     {
         _regRepo = regRepo;
         _regAktifRepo = regAktifRepo;

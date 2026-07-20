@@ -18,7 +18,7 @@ public class LabOrderDeferHandler : IRequestHandler<LabOrderDeferCmd>
     private readonly ILabOrderRepo _labOrderRepo;
     private readonly ITglJamProvider _tglJamProvider;
 
-    public LabOrderDeferHandler(ILabOrderRepo labOrderRepo, ITglJamProvider? tglJamProvider = null)
+    public LabOrderDeferHandler(ILabOrderRepo labOrderRepo, ITglJamProvider tglJamProvider)
     {
         _labOrderRepo = labOrderRepo;
         _tglJamProvider = tglJamProvider;
