@@ -25,7 +25,7 @@ public class IgdVisitVoidHandler : IRequestHandler<IgdVisitVoidCmd, IgdVisitVoid
 {
     private readonly IIgdVisitRepo _igdVisitRepo;
     private readonly IBedIgdRepo _bedIgdRepo;
-    private readonly IPakaiBedRepo _pakaiBedRepo;
+    private readonly IPakaiBedIgdRepo _pakaiBedIgdRepo;
     private readonly ITindakanIgdRepo _tindakanRepo;
     private readonly IBhpIgdRepo _bhpRepo;
     private readonly IAuditRepo _auditRepo;
@@ -33,14 +33,14 @@ public class IgdVisitVoidHandler : IRequestHandler<IgdVisitVoidCmd, IgdVisitVoid
     public IgdVisitVoidHandler(
         IIgdVisitRepo igdVisitRepo,
         IBedIgdRepo bedIgdRepo,
-        IPakaiBedRepo pakaiBedRepo,
+        IPakaiBedIgdRepo pakaiBedIgdRepo,
         ITindakanIgdRepo tindakanRepo,
         IBhpIgdRepo bhpRepo,
         IAuditRepo auditRepo)
     {
         _igdVisitRepo = igdVisitRepo;
         _bedIgdRepo = bedIgdRepo;
-        _pakaiBedRepo = pakaiBedRepo;
+        _pakaiBedIgdRepo = pakaiBedIgdRepo;
         _tindakanRepo = tindakanRepo;
         _bhpRepo = bhpRepo;
         _auditRepo = auditRepo;
@@ -67,7 +67,7 @@ public class IgdVisitVoidHandler : IRequestHandler<IgdVisitVoidCmd, IgdVisitVoid
         var audit = new AuditInfoType(request.UserId, DateTime.Now);
 
         BedIgdModel? bed = null;
-        PakaiBedModel? pakaiBed = null;
+        PakaiBedIgdModel? pakaiBedIgd = null;
         var bedReleased = false;
 
         if (visit.HasObserved)
@@ -78,11 +78,11 @@ public class IgdVisitVoidHandler : IRequestHandler<IgdVisitVoidCmd, IgdVisitVoid
                 throw new InvalidOperationException(
                     $"Bed '{bed.BedIgdId}' tidak ditempati oleh visit '{visit.IgdVisitId}'.");
 
-            pakaiBed = _pakaiBedRepo.LoadOpenForBed(bed)
-                .GetValueOrThrow($"PakaiBed terbuka untuk bed '{bed.BedIgdId}' tidak ditemukan.");
+            pakaiBedIgd = _pakaiBedIgdRepo.LoadOpenForBed(bed)
+                .GetValueOrThrow($"PakaiBedIgd terbuka untuk bed '{bed.BedIgdId}' tidak ditemukan.");
 
             bed.Release(audit);
-            pakaiBed.Close(audit);
+            pakaiBedIgd.Close(audit);
             visit.ClearBed(audit);
             bedReleased = true;
         }
@@ -92,7 +92,7 @@ public class IgdVisitVoidHandler : IRequestHandler<IgdVisitVoidCmd, IgdVisitVoid
         using (var trans = TransHelper.NewScope())
         {
             if (bed is not null) _bedIgdRepo.SaveChanges(bed);
-            if (pakaiBed is not null) _pakaiBedRepo.SaveChanges(pakaiBed);
+            if (pakaiBedIgd is not null) _pakaiBedIgdRepo.SaveChanges(pakaiBedIgd);
             _igdVisitRepo.SaveChanges(visit);
             trans.Complete();
         }

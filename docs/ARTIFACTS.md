@@ -162,6 +162,27 @@ Background processing platform — job orchestration, worker plugins, operator c
 | `docs/taksaka/08-operations-runbook.md` | Daily/weekly/monthly runbook, DR, upgrade |
 | `docs/taksaka/09-administrator-guide.md` | Practical guide for hospital EDP (Bahasa Indonesia) |
 
+### CPOE (`docs/contexts/cpoe/`)
+
+| Path | Purpose |
+|------|---------|
+| `docs/contexts/cpoe/CPOE-DOMAIN.md` | CPOE — what (clinical-order business truth, aggregates, rules, lifecycles) |
+| `docs/contexts/cpoe/CPOE-DOMAIN-ID.md` | CPOE — versi Bahasa Indonesia (istilah domain standar tetap dipertahankan) |
+| `docs/contexts/cpoe/CPOE-ARCHITECTURE.md` | CPOE — how (module boundaries, use cases, persistence, API, integrations, security, infrastructure, ADRs) |
+
+### RUANG RANAP Operational Management (`docs/contexts/bangsal/`)
+
+| Path | Purpose |
+|------|---------|
+| `docs/contexts/bangsal/RNA-DOMAIN.md` | RNA — what (accommodation and RUANG RANAP service-execution business truth) |
+| `docs/contexts/bangsal/RNA-DOMAIN-ID.md` | RNA — versi Bahasa Indonesia (semantic companion; canonical domain identities retained) |
+| `docs/contexts/bangsal/RNA-ARCHITECTURE.md` | RNA — how (codebase-grounded modules, use cases, persistence, integrations, consistency, security, ADRs, and gaps) |
+| `docs/contexts/bangsal/CPOE-RNA-INTEGRATION.md` | CPOE ↔ RNA — order dispatch/change, Ward coordination requests, execution facts/corrections, exceptional accountability, reliability, and reconciliation semantic contract |
+| `docs/contexts/bangsal/RNA-TATA-REKENING-INTEGRATION.md` | RNA ↔ Tata Rekening — execution facts, corrections, lifecycle query, acknowledgement, reliability, and reconciliation semantic contract |
+| `docs/contexts/bangsal/rna-sop/RNA-SOP-INDEX.md` | RNA — approved accommodation and service-execution SOP index |
+| `docs/contexts/bangsal/rna-sop/RNA-SOP-GAPS.md` | RNA — unresolved policy decisions that gate architecture and implementation |
+| `docs/contexts/bangsal/rna-sop/RNA-CPOE-DOMAIN-GAP-ANALYSIS.md` | RNA SOP versus simplified CPOE domain — alignment, cross-context gaps, and recommended change order |
+
 ---
 
 ## Shared (`docs/shared/`)

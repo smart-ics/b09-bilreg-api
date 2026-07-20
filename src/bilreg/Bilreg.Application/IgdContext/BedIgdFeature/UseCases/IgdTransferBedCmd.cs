@@ -20,23 +20,23 @@ public record IgdTransferBedResponse(
     string IgdVisitId,
     string FromBedIgdId,
     string ToBedIgdId,
-    string ClosedPakaiBedId,
-    string NewPakaiBedId);
+    string ClosedPakaiBedIgdId,
+    string NewPakaiBedIgdId);
 
 public class IgdTransferBedHandler : IRequestHandler<IgdTransferBedCmd, IgdTransferBedResponse>
 {
     private readonly IIgdVisitRepo _igdVisitRepo;
     private readonly IBedIgdRepo _bedIgdRepo;
-    private readonly IPakaiBedRepo _pakaiBedRepo;
+    private readonly IPakaiBedIgdRepo _pakaiBedIgdRepo;
 
     public IgdTransferBedHandler(
         IIgdVisitRepo igdVisitRepo,
         IBedIgdRepo bedIgdRepo,
-        IPakaiBedRepo pakaiBedRepo)
+        IPakaiBedIgdRepo pakaiBedIgdRepo)
     {
         _igdVisitRepo = igdVisitRepo;
         _bedIgdRepo = bedIgdRepo;
-        _pakaiBedRepo = pakaiBedRepo;
+        _pakaiBedIgdRepo = pakaiBedIgdRepo;
     }
 
     public Task<IgdTransferBedResponse> Handle(IgdTransferBedCmd request, CancellationToken cancellationToken)
@@ -73,32 +73,32 @@ public class IgdTransferBedHandler : IRequestHandler<IgdTransferBedCmd, IgdTrans
             throw new InvalidOperationException(
                 $"Bed '{targetBed.BedIgdId}' tidak tersedia untuk ditempati.");
 
-        var openPakaiBed = _pakaiBedRepo.LoadOpenForBed(sourceBed)
-            .GetValueOrThrow($"PakaiBed terbuka untuk bed '{sourceBed.BedIgdId}' tidak ditemukan.");
+        var openPakaiBedIgd = _pakaiBedIgdRepo.LoadOpenForBed(sourceBed)
+            .GetValueOrThrow($"PakaiBedIgd terbuka untuk bed '{sourceBed.BedIgdId}' tidak ditemukan.");
 
         var audit = new AuditInfoType(request.UserId, DateTime.Now);
 
-        openPakaiBed.Close(audit);
+        openPakaiBedIgd.Close(audit);
         sourceBed.Release(audit);
         targetBed.Occupy(visit.IgdVisitId, audit);
-        var newPakaiBed = PakaiBedModel.Open(visit, targetBed, audit);
+        var newPakaiBedIgd = PakaiBedIgdModel.Open(visit, targetBed, audit);
         visit.TransferBed(targetBed.BedIgdId, request.Reason, request.Notes, audit);
 
         IgdTransferBedResponse response;
         using (var trans = TransHelper.NewScope())
         {
             _bedIgdRepo.SaveChanges(sourceBed);
-            _pakaiBedRepo.SaveChanges(openPakaiBed);
+            _pakaiBedIgdRepo.SaveChanges(openPakaiBedIgd);
             _bedIgdRepo.SaveChanges(targetBed);
-            _pakaiBedRepo.SaveChanges(newPakaiBed);
+            _pakaiBedIgdRepo.SaveChanges(newPakaiBedIgd);
             _igdVisitRepo.SaveChanges(visit);
             trans.Complete();
             response = new IgdTransferBedResponse(
                 visit.IgdVisitId,
                 sourceBed.BedIgdId,
                 targetBed.BedIgdId,
-                openPakaiBed.PakaiBedId,
-                newPakaiBed.PakaiBedId);
+                openPakaiBedIgd.PakaiBedIgdId,
+                newPakaiBedIgd.PakaiBedIgdId);
         }
 
         return Task.FromResult(response);

@@ -17,16 +17,16 @@ public class IgdCheckOutBedHandler : IRequestHandler<IgdCheckOutBedCmd>
 {
     private readonly IIgdVisitRepo _igdVisitRepo;
     private readonly IBedIgdRepo _bedIgdRepo;
-    private readonly IPakaiBedRepo _pakaiBedRepo;
+    private readonly IPakaiBedIgdRepo _pakaiBedIgdRepo;
 
     public IgdCheckOutBedHandler(
         IIgdVisitRepo igdVisitRepo,
         IBedIgdRepo bedIgdRepo,
-        IPakaiBedRepo pakaiBedRepo)
+        IPakaiBedIgdRepo pakaiBedIgdRepo)
     {
         _igdVisitRepo = igdVisitRepo;
         _bedIgdRepo = bedIgdRepo;
-        _pakaiBedRepo = pakaiBedRepo;
+        _pakaiBedIgdRepo = pakaiBedIgdRepo;
     }
 
     public Task Handle(IgdCheckOutBedCmd request, CancellationToken cancellationToken)
@@ -45,17 +45,17 @@ public class IgdCheckOutBedHandler : IRequestHandler<IgdCheckOutBedCmd>
             throw new InvalidOperationException(
                 $"Bed '{bed.BedIgdId}' tidak ditempati oleh visit '{visit.IgdVisitId}'.");
 
-        var pakaiBed = _pakaiBedRepo.LoadOpenForBed(bed)
-            .GetValueOrThrow($"PakaiBed terbuka untuk bed '{bed.BedIgdId}' tidak ditemukan.");
+        var pakaiBedIgd = _pakaiBedIgdRepo.LoadOpenForBed(bed)
+            .GetValueOrThrow($"PakaiBedIgd terbuka untuk bed '{bed.BedIgdId}' tidak ditemukan.");
 
         var audit = new AuditInfoType(request.UserId, DateTime.Now);
         bed.Release(audit);
-        pakaiBed.Close(audit);
+        pakaiBedIgd.Close(audit);
         visit.CheckOutBed(audit);
 
         using var trans = TransHelper.NewScope();
         _bedIgdRepo.SaveChanges(bed);
-        _pakaiBedRepo.SaveChanges(pakaiBed);
+        _pakaiBedIgdRepo.SaveChanges(pakaiBedIgd);
         _igdVisitRepo.SaveChanges(visit);
         trans.Complete();
         return Task.CompletedTask;

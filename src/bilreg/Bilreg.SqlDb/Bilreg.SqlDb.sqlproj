@@ -72,7 +72,6 @@
     <Folder Include="PasienContext\StatusSosialFeature" />
     <Folder Include="ChargeContext\AmbulanceFeature" />
     <Folder Include="Helpers" />
-    <Folder Include="BedUsageContext\" />
     <Folder Include="BedUsageContext\RoomRateFeature\" />
     <Folder Include="BedUsageContext\KamarOperasiFeature\" />
     <Folder Include="ChargeContext\TarifFeature\" />
@@ -238,6 +237,17 @@
     <Build Include="AdmisiContext\AntrianFeature\ta_no_antrian_map_hdr.sql" />
     <Build Include="BedUsageContext\KamarOperasiFeature\BILRG_ScheduleOp.sql" />
     <Build Include="BedUsageContext\KamarOperasiFeature\BILRG_SchedulOpPpa.sql" />
+    <Build Include="BedUsageContext\BedOperationalFeature\BILRG_RnaBedOperational.sql" />
+    <Build Include="BedUsageContext\BedOperationalFeature\BILRG_RnaBedReadinessTransaction.sql" />
+    <Build Include="BedUsageContext\BedOperationalFeature\BILRG_RnaBedReadinessCorrection.sql" />
+    <Build Include="BedUsageContext\RnaServiceExecutionFeature\BILRG_RnaServiceExecution.sql" />
+    <Build Include="BedUsageContext\RnaServiceExecutionFeature\BILRG_RnaServiceExecutionSourceRevision.sql" />
+    <Build Include="BedUsageContext\RnaServiceExecutionFeature\BILRG_RnaServiceExecutionFact.sql" />
+    <Build Include="BedUsageContext\RnaServiceExecutionFeature\BILRG_RnaServiceExecutionCorrection.sql" />
+    <Build Include="BedUsageContext\PakaiBedFeature\ta_trs_bed.sql" />
+    <Build Include="BedUsageContext\PakaiBedFeature\BILRG_RnaPakaiBedAlokasi.sql" />
+    <Build Include="BedUsageContext\PakaiBedFeature\BILRG_RnaPakaiBedKoreksi.sql" />
+    <Build Include="BedUsageContext\PakaiBedFeature\BILRG_RnaPakaiBedTransisi.sql" />
     <Build Include="BedUsageContext\RoomRateFeature\ta_kamar2.sql" />
     <Build Include="BedUsageContext\RoomRateFeature\ta_kamar_tipe.sql" />
     <Build Include="ChargeContext\TarifFeature\BILRG_NilaiTarif.sql" />
@@ -265,7 +275,7 @@
     <Build Include="PasienContext\PasienFeature\tc_mr_id.sql" />
     <Build Include="PasienContext\PasienFeature\tc_mr_ktp.sql" />
     <Build Include="IgdContext\BedIgdFeature\BILRG_BedIgd.sql" />
-    <Build Include="IgdContext\BedIgdFeature\BILRG_PakaiBed.sql" />
+    <Build Include="IgdContext\BedIgdFeature\BILRG_PakaiBedIgd.sql" />
     <Build Include="IgdContext\BhpIgdFeature\BILRG_BhpIgd.sql" />
     <Build Include="IgdContext\IgdVisitFeature\BILRG_IgdVisit.sql" />
     <Build Include="IgdContext\IgdVisitFeature\BILRG_IgdVisitEvent.sql" />

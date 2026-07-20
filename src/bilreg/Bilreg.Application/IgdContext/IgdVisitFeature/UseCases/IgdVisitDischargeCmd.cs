@@ -21,16 +21,16 @@ public class IgdVisitDischargeHandler : IRequestHandler<IgdVisitDischargeCmd, Ig
 {
     private readonly IIgdVisitRepo _igdVisitRepo;
     private readonly IBedIgdRepo _bedIgdRepo;
-    private readonly IPakaiBedRepo _pakaiBedRepo;
+    private readonly IPakaiBedIgdRepo _pakaiBedIgdRepo;
 
     public IgdVisitDischargeHandler(
         IIgdVisitRepo igdVisitRepo,
         IBedIgdRepo bedIgdRepo,
-        IPakaiBedRepo pakaiBedRepo)
+        IPakaiBedIgdRepo pakaiBedIgdRepo)
     {
         _igdVisitRepo = igdVisitRepo;
         _bedIgdRepo = bedIgdRepo;
-        _pakaiBedRepo = pakaiBedRepo;
+        _pakaiBedIgdRepo = pakaiBedIgdRepo;
     }
 
     public Task<IgdVisitDischargeResponse> Handle(IgdVisitDischargeCmd request, CancellationToken cancellationToken)
@@ -53,7 +53,7 @@ public class IgdVisitDischargeHandler : IRequestHandler<IgdVisitDischargeCmd, Ig
         var audit = new AuditInfoType(request.UserId, DateTime.Now);
 
         BedIgdModel? bed = null;
-        PakaiBedModel? pakaiBed = null;
+        PakaiBedIgdModel? pakaiBedIgd = null;
         var bedReleased = false;
 
         if (visit.HasObserved)
@@ -64,11 +64,11 @@ public class IgdVisitDischargeHandler : IRequestHandler<IgdVisitDischargeCmd, Ig
                 throw new InvalidOperationException(
                     $"Bed '{bed.BedIgdId}' tidak ditempati oleh visit '{visit.IgdVisitId}'.");
 
-            pakaiBed = _pakaiBedRepo.LoadOpenForBed(bed)
-                .GetValueOrThrow($"PakaiBed terbuka untuk bed '{bed.BedIgdId}' tidak ditemukan.");
+            pakaiBedIgd = _pakaiBedIgdRepo.LoadOpenForBed(bed)
+                .GetValueOrThrow($"PakaiBedIgd terbuka untuk bed '{bed.BedIgdId}' tidak ditemukan.");
 
             bed.Release(audit);
-            pakaiBed.Close(audit);
+            pakaiBedIgd.Close(audit);
             visit.ClearBed(audit);
             bedReleased = true;
         }
@@ -78,7 +78,7 @@ public class IgdVisitDischargeHandler : IRequestHandler<IgdVisitDischargeCmd, Ig
         using (var trans = TransHelper.NewScope())
         {
             if (bed is not null) _bedIgdRepo.SaveChanges(bed);
-            if (pakaiBed is not null) _pakaiBedRepo.SaveChanges(pakaiBed);
+            if (pakaiBedIgd is not null) _pakaiBedIgdRepo.SaveChanges(pakaiBedIgd);
             _igdVisitRepo.SaveChanges(visit);
             trans.Complete();
         }
