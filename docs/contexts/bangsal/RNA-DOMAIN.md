@@ -13,7 +13,7 @@ The domain covers two primary responsibilities:
 
 Accommodation Management governs patient placement, occupancy purpose, current clinical location, rooming-in arrangements, retained accommodation, transfer, release, and bed readiness.
 
-RUANG RANAP Service Execution governs truthful recording of work performed by the ruang ranap, whether work originates from a Clinical Order or is recorded as an authorized Ad Hoc Tindakan. RNA receives the work, may assign a Performer, and records an eligible Service for billable work or a description for non-billable work. It does not own the clinical intent or authorization of a Clinical Order, and it does not define the service. The Domain and SOP artifacts define these business authority semantics; the current implementation assumes only baseline authentication and coarse-grained application access, with fine-grained contextual authorization enforcement intentionally deferred to Phase-99 under ARCH-020.
+RUANG RANAP Service Execution governs truthful recording of work performed by the ruang ranap, whether work originates from a Clinical Order or is recorded as an authorized Ad Hoc Tindakan. RNA receives the work, may assign a Performer, and records the execution description or reference independently of Tarif availability. An eligible ServiceId enriches billable publication when resolved but is not a prerequisite for recording execution truth. RNA does not own the clinical intent or authorization of a Clinical Order, and it does not define the service. The Domain and SOP artifacts define these business authority semantics; the current implementation assumes only baseline authentication and coarse-grained application access, with fine-grained contextual authorization enforcement intentionally deferred to Phase-99 under ARCH-020.
 
 RUANG RANAP Operational Management does not own:
 
@@ -56,27 +56,29 @@ RUANG RANAP Operational Management may present relevant information from neighbo
 | Bed Assignability | The mandatory determination that a bed may receive an allocation: the bed exists and is active, belongs to the intended Ward, is Ready, has no conflicting active allocation, and satisfies applicable capacity or occupancy constraints. |
 | Mandatory Bed Assignability | The complete and only automated placement determination in RNA: the bed exists and is active, belongs to the intended Ward, is Ready, has no conflicting active allocation, and has capacity available under the occupancy policy. |
 | Accommodation Correction Fact | A new append-only fact that corrects a prior Accommodation Fact without modifying or deleting the original, identifies the correction reason, actor, time, and original fact, and remains within the original fact's Ward. |
+| RegId | The stable identity of one inpatient registration. An inter-ward transfer retains the same RegId while prior Ward, new Ward, and accommodation facts remain separately traceable. |
 | Assign Accommodation | Establish a new Accommodation Allocation for a registration. |
 | Transfer Accommodation | Move or reclassify a patient’s accommodation while preserving prior allocation history. |
 | Release Accommodation | End an active Accommodation Allocation because its declared purpose no longer applies. |
 | Internal Transfer | A transfer between beds or rooms while responsibility remains within the same ruang ranap. |
-| Inter-RUANG RANAP Transfer | A release-to-Admission workflow: the source RUANG RANAP releases accommodation and notifies Admisi, Admisi owns the Waiting List, and the destination RUANG RANAP later receives the patient through the ordinary Waiting List placement flow. |
+| Inter-RUANG RANAP Transfer | A release-to-Admission workflow that retains the same RegId: the source RUANG RANAP releases accommodation and notifies Admisi, Admisi owns the Waiting List, and the destination RUANG RANAP later receives the patient through the ordinary Waiting List placement flow. |
 | Bed Ready | A bed condition indicating that the bed may receive an allocation permitted by policy. |
 | Cleaning Required | A bed condition indicating that occupancy has ended but the bed is not yet ready for reassignment. |
 | Out of Service | A bed condition indicating that the bed cannot be used because of maintenance, safety, or operational restriction. |
 | RUANG RANAP Service | A service identity defined by Tarif Context and referenced by RNA when the service is executed under ruang ranap responsibility. |
-| RUANG RANAP Service Execution | RNA's authoritative fact that billable work used an eligible Service, or non-billable work was described, by a Performer at a stated time, together with source and correction history. |
+| RUANG RANAP Service Execution | RNA's authoritative fact that described or referenced work was performed by a Performer at a stated time for a Patient, RegId, and responsible Destination, together with source and correction history. Tarif enrichment is separate from execution truth. |
 | Ordered RUANG RANAP Service | A RUANG RANAP Service Execution originating from a Clinical Order. |
 | Ad Hoc Tindakan | An unplanned clinical action arising from an immediate patient need and performed under a declared professional, emergency, protocol, or other permitted authority. |
 | Independent Tindakan | A RUANG RANAP Service performed under the professional’s own authority without an individual prospective Clinical Order. |
 | Execution Source | The declared origin and authority basis of a RUANG RANAP Service Execution. |
-| Planned Occurrence | One expected performance derived from a scheduled or recurring Clinical Order. |
+| Order Occurrence | One explicitly planned, finite execution of a Clinical Order, identified by its `OrderOccurrenceId` and tracked independently by CPOE. |
 | Performer | The professional who carries out or directly leads a RUANG RANAP Service Execution. |
 | Responsible RUANG RANAP | The ruang ranap accountable for received work and truthful execution recording. |
 | Entered in Error | A declaration that an execution record should not have existed as a valid record, without erasing its history. |
 | Performed At | The actual business time at which the service was performed; it is the Service Execution fact's `OccurredAt`. |
 | Recorded At | The system persistence time for the execution fact; it is `RecordedAt` and is used only for audit and technical tracing. |
-| Service Execution Fact | The immutable business statement that a Performer executed billable Service X or described non-billable work at time Z, identified for correction and, when billable, idempotent publication. |
+| Service Execution Fact | The immutable business statement that a Performer executed described or referenced work at time Z for the identified Patient, RegId, and responsible Destination. For native CPOE work it also identifies ClinicalOrderId and OrderOccurrenceId. A resolved ServiceId may support idempotent billable publication but does not establish whether execution occurred. |
+| Not Performed Fulfilment Evidence | RNA's authoritative statement that one routed Order Occurrence was not performed, identifying the occurrence, effective time, responsible Destination, evidence reference, and reason. It is not a Service Execution Fact or an outcome catalogue. |
 
 ### Business Time Standard
 
@@ -106,7 +108,7 @@ Maintains current clinical accommodation, retained accommodation, rooming-in, co
 
 ### 3.4 Accommodation Transfer
 
-Coordinates internal accommodation changes and releases inter-ruang ranap cases back to the Admisi Waiting List without losing allocation history. RNA never coordinates a direct ward-to-ward transfer queue.
+Coordinates internal accommodation changes and releases inter-ruang ranap cases back to the Admisi Waiting List without losing allocation history. RNA never coordinates a direct ward-to-ward transfer queue. For inter-ward movement, RNA provides the accommodation facts needed for CPOE to start Active Order Reconciliation but does not own the Transfer Reconciliation Aggregate or its decisions.
 
 ### 3.5 Accommodation Release and Bed Readiness
 
@@ -118,7 +120,7 @@ Maintains visibility of received work and optional assignment until execution is
 
 ### 3.7 Ordered RUANG RANAP Service Execution
 
-Records execution of a Tarif-defined service originating from a Clinical Order and publishes the authoritative Service Execution Fact to CPOE and other authorized consumers.
+Records execution originating from a Clinical Order and immediately reports the authoritative Service Execution Fact as Completed fulfilment evidence to CPOE, independently of Tarif resolution. When the responsible Destination determines that a routed Order Occurrence was not performed, RNA reports minimal Not Performed Fulfilment Evidence with a reason instead of creating a Service Execution Fact.
 
 ### 3.8 Ad Hoc Tindakan Execution
 
@@ -132,7 +134,7 @@ Authorized care-team actors may report an error. The owning Ward's Head Nurse ma
 
 ### 3.10 Billable Service Execution Fact Publication
 
-Publishes billable Service Execution Facts and corrections to the Tindakan/Tata Rekening boundary. One billable fact creates at most one linked `Tindakan`; non-billable execution creates none. Tata Rekening owns every subsequent tariff, billing, adjustment, and settlement consequence.
+Publishes financially enriched billable Service Execution Facts and corrections to the Tindakan/Tata Rekening boundary after an eligible ServiceId is resolved. Financial publication may remain pending without delaying execution recording or CPOE fulfilment evidence. One billable fact creates at most one linked `Tindakan`; non-billable execution creates none. Tata Rekening owns every subsequent tariff, billing, adjustment, and settlement consequence.
 
 ### 3.11 Accommodation Correction
 
@@ -158,7 +160,7 @@ Preserves accountability for accommodation decisions, ruang ranap execution deci
 | Patient or Patient Representative | Participates in accommodation and service execution, may provide required consent, and may refuse a service. |
 | Housekeeping Actor | Restores bed readiness where cleaning responsibility is assigned to housekeeping. |
 | Maintenance or Facilities Actor | Resolves bed or room conditions that make accommodation unavailable or unsafe. |
-| Clinical Governance Authority | Defines permitted rooming-in, allocation purposes, and ad hoc authority without redefining Tarif-owned services or Tata Rekening-owned financial policy. It does not add automated RNA placement restrictions. |
+| Clinical Governance Authority | Defines permitted rooming-in, allocation purposes, and Ad Hoc or Independent Tindakan authority, review, and escalation without redefining Tarif-owned services or Tata Rekening-owned financial policy. It does not add automated RNA placement restrictions. |
 | Tarif Context | Owns Service Definition, service identity, performer types, quantity/unit rules, documentation requirements, completion criteria, outcome catalogues, and service configuration. |
 | Tindakan / Tata Rekening | Tindakan owner creates one linked record per billable execution; Tata Rekening owns tariff, package, coverage, amount, adjustment, payment, settlement, and every subsequent financial consequence. |
 
@@ -229,7 +231,7 @@ Each patient retains a distinct registration and accommodation history. Every be
 
 ### 5.8 Tarif Service Reference
 
-For billable execution, RNA resolves an active Service identity through the authoritative `Bangsal → Layanan → Tarif.AllowedLayanan` path. RNA may retain the stable Tarif/Service ID and the minimum immutable display snapshot needed to understand historical work, but it does not copy or govern Service Definition rules. A non-billable execution has no Service reference and instead carries its required description.
+For billable publication, RNA resolves an active Service identity through the authoritative `Bangsal → Layanan → Tarif.AllowedLayanan` path. RNA may retain the stable Tarif/Service ID and the minimum immutable display snapshot needed to understand historical work, but it does not copy or govern Service Definition rules. If Tarif is unavailable, ServiceId resolution and billable publication remain pending while the Service Execution Fact and CPOE fulfilment evidence remain valid. Every execution carries its description or reference; a non-billable execution has no ServiceId.
 
 Tarif Context, or another explicitly named owner coordinated by Tarif, remains authoritative for performer types, quantity/unit rules, documentation requirements, completion criteria, outcome catalogues, and service configuration.
 
@@ -240,14 +242,37 @@ Represents one authoritative ruang ranap execution instance.
 It identifies:
 
 - The patient and care context.
-- For billable execution, the Tarif Service identity; for non-billable execution, the required description.
+- The execution description or reference, plus the Tarif Service identity when already resolved for billable publication.
 - The Execution Source.
-- The originating Clinical Order and Planned Occurrence when applicable.
-- The Responsible RUANG RANAP.
+- The originating Clinical Order and Order Occurrence for native CPOE work.
+- The Patient, RegId, and Responsible RUANG RANAP Destination.
 - The optional assignment and actual Performer.
 - Performed At and Recorded At.
 - The stable Service Execution Fact identity and publication state.
 - Correction or Entered in Error history.
+
+For native CPOE work, the execution relationship is:
+
+```text
+Clinical Order
+  → one or more finite Order Occurrences
+  → zero or one final RNA fulfilment evidence chain per Order Occurrence
+```
+
+A correction revises the existing evidence chain for its referenced Order Occurrence. It does not represent or create an additional performance. When the corrected evidence belongs to native CPOE work, RNA reports the correction evidence to CPOE; CPOE records the resulting conflict or reconciliation need without automatically rewriting the existing terminal status.
+
+When the responsible Destination determines that the Order Occurrence was not performed, RNA records and reports only this minimal evidence:
+
+```text
+OrderOccurrenceId
+Outcome = Not Performed
+EffectiveTime
+ResponsibleDestination
+EvidenceReference
+Reason
+```
+
+Not Performed Fulfilment Evidence does not assert execution, does not create a Service Execution Fact, and does not introduce a complex outcome catalogue.
 
 ### 5.10 Execution Authority Record
 
@@ -260,11 +285,8 @@ It may identify:
 - Emergency basis.
 - Verbal instruction.
 - Retrospective documentation.
-- Required subsequent authorization.
 
-The existence of an execution is not erased when subsequent accountability remains incomplete.
-
-When subsequent authorization is required, it is due within 24 hours of `OccurredAt` or before discharge, whichever is earlier. The accountable authorizer is the attending or clinically responsible physician; when unavailable, accountability moves to the designated on-call physician. Escalation proceeds from the accountable authorizer to the on-call physician/service lead and then Clinical Governance. Acknowledgement records acceptance of the follow-up task and is not an authorization decision. CPOE owns enforcement and records terminal `Authorization Overdue`; any review after the deadline is a late review, not prospective or timely authorization.
+RNA owns truthful capture of the authority basis and accountable actor. Clinical Governance owns any required review, exception decision, or escalation. This accountability does not create a retrospective Clinical Order, and CPOE is involved only when the execution references both an existing `ClinicalOrderId` and `OrderOccurrenceId`.
 
 ## 6. Aggregates
 
@@ -306,20 +328,22 @@ The Bed Aggregate does not contain all Accommodation Allocations and does not tr
 
 **Aggregate Root:** RUANG RANAP Service Execution
 
-**Business responsibility:** Preserve received work, optional assignment, the truthful fact that billable work used an eligible Service or non-billable work was described, and its non-destructive correction history.
+**Business responsibility:** Preserve received work, optional assignment, truthful execution independently of Tarif availability, optional ServiceId enrichment for billable publication, and non-destructive correction history.
 
 **Consistency boundary includes:**
 
 - Execution Source.
-- Clinical Order and Planned Occurrence references where applicable.
+- `ClinicalOrderId` and `OrderOccurrenceId` references for native CPOE work.
 - Execution Authority Record for Ad Hoc or Independent Tindakan.
 - Responsible RUANG RANAP.
 - Optional assignment and actual Performer accountability.
-- Billable Tarif Service identity or non-billable description, Performed At, Recorded At, and execution-fact identity.
-- Correction and Entered in Error history.
+- Patient, RegId, responsible Destination, execution description or reference, actual Performer, Performed At, Recorded At, and execution-fact identity.
+- Optional resolved ServiceId and pending-or-completed financial publication state, without making either part of execution truth.
+- Minimal Not Performed Fulfilment Evidence when the responsible Destination determines that the Order Occurrence was not performed.
+- Correction and Entered in Error history within the same occurrence evidence chain.
 - Per-destination publication and acknowledgement state, outside the business decision itself.
 
-One Clinical Order may be associated with multiple RUANG RANAP Service Execution Aggregates when the order is recurring, scheduled, conditional, or otherwise requires several performances.
+One Clinical Order may be associated with multiple RUANG RANAP Service Execution Aggregates only when each aggregate references a different finite Order Occurrence. Each Order Occurrence has at most one current valid RNA fulfilment evidence chain.
 
 ## 7. Business Rules
 
@@ -385,6 +409,16 @@ Care Class and Care Context are derived facts of the active Clinical Accommodati
 
 **BR-RNA-019b** — A cancelled inter-ward transfer returns through the same Admission Waiting List process; RNA does not create a separate cancellation-return workflow.
 
+**BR-RNA-019c** — An inter-ward transfer shall retain the same `RegId`; prior Ward, new Ward, and accommodation histories shall remain separately identifiable.
+
+**BR-RNA-019d** — Release from a prior Ward or assignment to a new Ward shall not automatically change the Destination of any Clinical Order or Order Occurrence.
+
+**BR-RNA-019e** — For an inter-ward transfer, RNA shall expose the `RegId`, prior Ward, new Ward, transfer effective time, and references to relevant Active CPOE work known to RNA so CPOE can start its assisted reconciliation.
+
+**BR-RNA-019f** — RNA shall apply a Destination change to its matching pending-work responsibility only after receiving a confirmed CPOE reconciliation decision. RNA shall not directly change the Clinical Order Aggregate.
+
+**BR-RNA-019g** — Accommodation transfer, release, or new Ward assignment shall not be interpreted as cancellation of a Clinical Order or Order Occurrence. Active work remains governed by CPOE until CPOE records an eligible fulfilment outcome, cancellation, or reconciliation decision.
+
 **BR-RNA-020** — Temporary Absence is not modeled, stored, displayed, or actioned by RNA. It has no RNA lifecycle and shall not affect accommodation, occupancy, bed readiness, patient reporting, or billing facts.
 
 **BR-RNA-021** — Discharge authorization shall not by itself prove that accommodation has been physically released.
@@ -405,7 +439,7 @@ Care Class and Care Context are derived facts of the active Clinical Accommodati
 
 ### RUANG RANAP execution authority and source
 
-**BR-RNA-026** — RNA shall record authoritative execution only for work routed to ruang ranap responsibility. A billable record requires an eligible Tarif Service identity; a non-billable record requires description. RNA shall not define which services exist or configure their execution rules.
+**BR-RNA-026** — RNA shall record authoritative execution for work performed under ruang ranap responsibility regardless of Tarif availability. The execution shall identify Patient, RegId, responsible Destination, actual Performer, Performed At, and an execution description or reference; native CPOE work shall additionally identify `ClinicalOrderId` and `OrderOccurrenceId`. RNA shall not define which services exist or configure their execution rules.
 
 **BR-RNA-027** — Laboratory, Radiology, Operating Theatre, Pharmacy, Rehabilitation, and other specialized services shall remain authoritative for their own execution workflows.
 
@@ -413,7 +447,7 @@ Care Class and Care Context are derived facts of the active Clinical Accommodati
 
 **BR-RNA-029** — Every RUANG RANAP Service Execution shall declare its Execution Source.
 
-**BR-RNA-030** — An Ordered RUANG RANAP Service shall reference the originating Clinical Order and Planned Occurrence when applicable.
+**BR-RNA-030** — A native Ordered RUANG RANAP Service Execution shall reference both the originating `ClinicalOrderId` and its `OrderOccurrenceId`.
 
 **BR-RNA-031** — An Ad Hoc Tindakan shall identify the authority basis under which it was performed.
 
@@ -421,7 +455,7 @@ Care Class and Care Context are derived facts of the active Clinical Accommodati
 
 **BR-RNA-033** — RUANG RANAP Operational Management shall not retrospectively represent an Ad Hoc, Emergency, Verbal, Protocol-Based, Independent, or late-recorded action as a prospectively authorized Clinical Order.
 
-**BR-RNA-034** — CPOE remains authoritative for Clinical Order intent, authorization, lifecycle, and exceptional-order accountability; RUANG RANAP Service Execution remains authoritative for actual ruang ranap execution evidence.
+**BR-RNA-034** — CPOE remains authoritative for the intent, authorization, and lifecycle of an existing Clinical Order. RNA and Clinical Governance own the authority basis, review, and escalation for Ad Hoc or Independent Tindakan. RNA shall involve CPOE only when the execution references both a real `ClinicalOrderId` and `OrderOccurrenceId`.
 
 **BR-RNA-035** — A RUANG RANAP Service routed to RNA shall not produce a duplicate execution fact through CPOE Generic Fulfilment.
 
@@ -431,19 +465,19 @@ Care Class and Care Context are derived facts of the active Clinical Accommodati
 
 **BR-RNA-037** — Performer assignment is optional RNA work coordination and does not prove execution.
 
-**BR-RNA-038** — Recording execution shall identify actual Performer and Performed At time, plus either an eligible Tarif Service for billable work or a description for non-billable work. Together these form RNA's authoritative Service Execution Fact.
+**BR-RNA-038** — Recording execution shall identify Patient, RegId, responsible Destination, actual Performer, Performed At, and an execution description or reference, plus `ClinicalOrderId` and `OrderOccurrenceId` for native CPOE work. Together these form RNA's authoritative Service Execution Fact and shall be reported immediately as Completed fulfilment evidence for the referenced Order Occurrence without waiting for ServiceId resolution or financial publication.
 
 **BR-RNA-039** — Receipt, viewing, assignment, or preparation shall not be represented as a Service Execution Fact.
 
-**BR-RNA-040** — Work withdrawn, cancelled, deferred, or otherwise not executed shall remain a work/source coordination fact and shall not create a Service Execution Fact.
+**BR-RNA-040** — When CPOE cancels the source Clinical Order, RNA shall mark its matching pending work as source-cancelled. Source cancellation shall not create RNA Fulfilment Evidence or a Service Execution Fact because CPOE already owns the cancellation outcome.
 
-**BR-RNA-041** — RNA shall not invent or own partial, aborted, not-performed, completion, or outcome catalogues. Any such classification required by another context remains owned and supplied by that context.
+**BR-RNA-041** — When the responsible RNA Destination determines that a routed Order Occurrence was not performed, RNA shall report Not Performed Fulfilment Evidence containing `OrderOccurrenceId`, `Outcome = Not Performed`, `EffectiveTime`, `ResponsibleDestination`, `EvidenceReference`, and `Reason`. RNA shall not create a Service Execution Fact for that occurrence or introduce a complex partial, aborted, completion, or outcome catalogue.
 
-**BR-RNA-042** — One Planned Occurrence shall not produce more than one active Service Execution Fact for the same actual execution.
+**BR-RNA-042** — One `OrderOccurrenceId` shall produce at most one current valid RNA fulfilment evidence chain. Repeated delivery or recording shall not create an additional execution.
 
-**BR-RNA-043** — One Clinical Order may produce multiple RUANG RANAP Service Executions when multiple Occurrences or repeated performances are required.
+**BR-RNA-043** — One Clinical Order may produce multiple RUANG RANAP Service Executions only when each execution references a different Order Occurrence.
 
-**BR-RNA-044** — A legacy order status such as `Implemented`, `Done`, or `Executed` shall not be treated as RNA's Service Execution Fact without billable eligible Service or non-billable description, actual Performer, and Performed At evidence.
+**BR-RNA-044** — A legacy order status such as `Implemented`, `Done`, or `Executed` shall not be treated as RNA's Service Execution Fact without Patient, RegId, responsible Destination, actual Performer, Performed At, and an execution description or reference.
 
 ### Timing, late entry, correction, and audit
 
@@ -451,7 +485,7 @@ Care Class and Care Context are derived facts of the active Clinical Accommodati
 
 **BR-RNA-046** — A retrospective or late entry shall preserve the actual execution time, recording time, recorder, and reason for delayed recording.
 
-**BR-RNA-047** — A correction shall preserve the original execution history and identify the correcting actor, correction time, and reason.
+**BR-RNA-047** — A correction shall preserve the original execution history, identify the correcting actor, correction time, and reason, and revise the existing fulfilment evidence chain for the same `OrderOccurrenceId`. It shall not create or imply an additional performance. For native CPOE work, RNA shall report correction evidence to CPOE, which records a conflict or reconciliation need without automatically rewriting a terminal occurrence status.
 
 **BR-RNA-048** — An execution recorded against the wrong patient, wrong service, duplicate occurrence, or without legitimate basis shall be marked Entered in Error rather than physically deleted.
 
@@ -465,27 +499,27 @@ Care Class and Care Context are derived facts of the active Clinical Accommodati
 
 ### Service reference and execution fact
 
-**BR-RNA-050** — Each Bangsal shall have one authoritative `LayananId`. For billable execution, RNA shall query Tarif for active Services whose `AllowedLayanan` includes that Layanan and shall save only a selected eligible stable `ServiceId`. Non-billable execution shall save no `ServiceId` and shall require description. RNA shall not create a local Service Definition.
+**BR-RNA-050** — Each Bangsal shall have one authoritative `LayananId`. For intended billable publication, RNA shall query Tarif for active Services whose `AllowedLayanan` includes that Layanan and shall retain only a selected eligible stable `ServiceId`. If Tarif is unavailable or ServiceId is unresolved, execution recording shall still commit and financial enrichment and billable publication shall remain pending. Non-billable execution shall retain no ServiceId. RNA shall not create a local Service Definition.
 
 **BR-RNA-051** — Performer types, quantity/unit rules, documentation requirements, completion criteria, outcome catalogues, and service configuration remain owned by Tarif Context or another explicitly named owning context and shall not become RNA aggregate invariants.
 
-**BR-RNA-052** — The published Service Execution Fact shall contain only the stable fact identity, selected Service identity when billable, required non-billable description when not, Performer identity, Performed At, source/occurrence correlation where applicable, and correction metadata required by the integration contract.
+**BR-RNA-052** — The Service Execution Fact reported as clinical execution evidence shall contain the stable fact identity, Patient, RegId, responsible Destination, Performer, Performed At, execution description or reference, source/order/occurrence correlation where applicable, and correction metadata. ServiceId is included when resolved but is not required for CPOE fulfilment evidence.
 
 **BR-RNA-053** — Authoritative clinical documentation remains in NERS or its owning documentation domain. RNA does not require or copy it merely to establish the execution fact.
 
 ### Financial boundary and publication
 
-**BR-RNA-054** — The RNA execution user shall explicitly classify execution as billable or non-billable. Billable execution requires an eligible `ServiceId`; non-billable execution requires description and creates no `Tindakan`. RNA shall not calculate tariff, coverage, amount, journal, payment, or settlement.
+**BR-RNA-054** — The RNA execution user shall explicitly classify execution as intended billable or non-billable without delaying the execution fact. Intended billable execution with an unresolved ServiceId shall remain pending for financial enrichment and publication; non-billable execution creates no `Tindakan`. RNA shall not calculate tariff, coverage, amount, journal, payment, or settlement.
 
-**BR-RNA-055** — RNA shall publish only billable Service Execution Facts to the Tindakan/Tata Rekening boundary, carrying stable execution identity and selected Service but no tariff, package, coverage, amount, journal, payment, or settlement fields.
+**BR-RNA-055** — RNA shall publish only financially enriched billable Service Execution Facts to the Tindakan/Tata Rekening boundary, carrying stable execution identity and selected Service but no tariff, package, coverage, amount, journal, payment, or settlement fields. An unresolved ServiceId keeps only financial publication pending and shall not delay CPOE fulfilment evidence.
 
 **BR-RNA-056** — Tata Rekening is the sole authority that evaluates the Service Execution Fact and determines whether any billing consequence exists.
 
 **BR-RNA-057** — Tata Rekening may combine the fact with Tarif and other financial policies; RNA shall not duplicate those rules.
 
-**BR-RNA-058** — RNA shall not determine financial eligibility, tariff, package inclusion, coverage, bill amount, adjustment, journal, or payment. Its user-selected billable/non-billable classification only controls whether the recorded fact must carry an eligible Service and be delivered to Tindakan; it is not a financial calculation or approval.
+**BR-RNA-058** — RNA shall not determine financial eligibility, tariff, package inclusion, coverage, bill amount, adjustment, journal, or payment. Its user-selected intended-billable/non-billable classification controls financial enrichment and delivery to Tindakan, not whether execution truth may be recorded or reported to CPOE; it is not a financial calculation or approval.
 
-**BR-RNA-059** — Correction or Entered in Error after publication shall produce a new versioned correction fact referencing the original execution fact; downstream financial correction remains Tata Rekening's responsibility.
+**BR-RNA-059** — Correction or Entered in Error after publication shall produce a new versioned correction fact referencing the original execution fact; downstream financial correction remains Tata Rekening's responsibility. RNA shall not assume that CPOE reopens, supersedes, reactivates, or otherwise rewrites a final Order Occurrence because correction evidence was reported.
 
 ### Legacy coexistence
 
@@ -563,7 +597,13 @@ Pending
   → Executed
 ```
 
-Source coordination may instead end pending work as Cancelled or Withdrawn before execution. Correction may later mark an execution Entered in Error. These are not an RNA-owned clinical outcome catalogue.
+For native CPOE work, source cancellation may instead end pending work as source-cancelled before execution. Correction may later mark an execution Entered in Error. These are not an RNA-owned clinical outcome catalogue.
+
+For native CPOE work, the terminal coordination meanings are distinct:
+
+- source cancellation changes pending RNA work to source-cancelled and creates no RNA Fulfilment Evidence;
+- a Destination determination that work was not performed records Not Performed Fulfilment Evidence with a reason; and
+- performed work records a Service Execution Fact and reports Completed fulfilment evidence.
 
 Business meaning:
 
@@ -571,38 +611,23 @@ Business meaning:
 |---|---|
 | Pending | The ruang ranap has an unresolved service responsibility that has not started. |
 | Assigned | A Performer has optionally been assigned; execution is not implied. |
-| Executed | RNA recorded the referenced Service, actual Performer, and Performed At as an authoritative Service Execution Fact. |
+| Executed | RNA recorded Patient, RegId, responsible Destination, actual Performer, Performed At, and the execution description or reference as an authoritative Service Execution Fact. ServiceId may still be unresolved. |
 | Cancelled or Withdrawn | The source-owned work obligation ended without an RNA execution fact. |
 | Entered in Error | The execution record should not have existed as a valid record. |
 
 RNA does not use this lifecycle to define service completion criteria or clinical outcomes. Those definitions remain with Tarif Context or another explicitly named owning context.
 
-### 8.4 Execution Authority Lifecycle
-
-For exceptional or ad hoc actions requiring later accountability:
-
-```text
-Action Recorded
-  → Subsequent Authorization Required
-  → Authorized
-```
-
-If the governed period expires:
-
-```text
-Subsequent Authorization Required
-  → Authorization Overdue
-```
-
-The actual execution remains part of the clinical history even when accountability is overdue.
-The governed period is 24 hours from execution `OccurredAt` or until discharge, whichever occurs first. A review completed afterward is retained as late review and does not reverse or relabel the terminal overdue history.
-
-### 8.5 Service Execution Fact Delivery Lifecycle
+### 8.4 Service Execution Fact Delivery Lifecycle
 
 ```text
 Execution Fact Recorded
-  → Delivery Pending
-  → Acknowledged by Tata Rekening or Delivery Failed
+  → Completed Evidence Reported to CPOE Immediately When Ordered
+  → Financial Classification Recorded
+      → Non-Billable: No Financial Publication
+      → Intended Billable: Tarif Resolution Pending When ServiceId Is Unavailable
+          → ServiceId Resolved
+          → Financial Publication Pending
+          → Acknowledged by Tata Rekening or Delivery Failed
 ```
 
 When execution is corrected:
@@ -610,10 +635,13 @@ When execution is corrected:
 ```text
 Execution Fact Previously Published
   → Correction Fact Recorded
-  → Correction Delivery Pending/Acknowledged
+  → Correction Evidence Reported to CPOE When ClinicalOrderId and OrderOccurrenceId Exist
+  → CPOE Records Conflict or Reconciliation Need
+  → Existing CPOE Terminal Status Is Not Automatically Rewritten
+  → Financial Correction Delivery Pending/Acknowledged When Applicable
 ```
 
-Delivery state is integration metadata. Acknowledgement may expose linked `TindakanId` but not tariff or settlement outcomes; Tata Rekening owns every subsequent financial lifecycle.
+Delivery state is integration metadata. Tarif resolution or financial delivery failure never invalidates execution truth or delays Completed evidence to CPOE. Acknowledgement may expose linked `TindakanId` but not tariff or settlement outcomes; Tata Rekening owns every subsequent financial lifecycle.
 
 ## 9. Domain Events
 
@@ -626,6 +654,8 @@ Delivery state is integration metadata. Acknowledgement may expose linked `Tinda
 | Rooming-In Started | A Primary Occupant and Associated Occupant have begun an authorized rooming-in arrangement. |
 | Rooming-In Ended | An authorized rooming-in arrangement has ended. |
 | Inter-Ward Accommodation Released to Admission | The source RNA released the Clinical Accommodation for an inter-ward move and must notify Admisi. |
+| Inter-Ward Reconciliation Facts Exposed | RNA exposed the unchanged RegId, prior Ward, new Ward, transfer effective time, and relevant Active CPOE work references so CPOE can start assisted reconciliation. |
+| Confirmed CPOE Destination Decision Applied | RNA applied a confirmed CPOE reconciliation decision to matching pending-work responsibility without modifying the Clinical Order Aggregate. |
 | Admission Waiting List Notification Prepared | RNA prepared the release fact for Admisi; Admisi remains the Waiting List owner. |
 | Accommodation Released | An active accommodation purpose has ended. |
 | Accommodation Correction Fact Recorded | A Head Nurse appended a correction that references an Accommodation Fact owned by the same Ward. |
@@ -640,15 +670,13 @@ Delivery state is integration metadata. Acknowledgement may expose linked `Tinda
 | RUANG RANAP Service Execution Created | A RUANG RANAP Service Execution has been established from an order, ad hoc action, or other permitted source. |
 | RUANG RANAP Service Assigned | Responsibility for execution has been assigned to a ruang ranap actor or team. |
 | RUANG RANAP Service Executed | RNA recorded that the referenced Service was executed by the stated Performer at Performed At. |
-| RUANG RANAP Service Execution Cancelled | The execution obligation ended before execution began. |
+| RUANG RANAP Service Work Source-Cancelled | CPOE cancelled the source Clinical Order, so matching pending RNA work ended without RNA Fulfilment Evidence or a Service Execution Fact. |
+| RUANG RANAP Service Not Performed Evidence Recorded | The responsible Destination established that one routed Order Occurrence was not performed and recorded the required reason and evidence reference. |
 | RUANG RANAP Service Execution Entered in Error | The execution record has been declared invalid while retaining history. |
 | Ad Hoc Tindakan Recorded | An unplanned or independently authorized ruang ranap action has been documented with its authority basis. |
-| Subsequent Authorization Required | An exceptional execution requires later accountable confirmation. |
-| Subsequent Authorization Completed | Required accountability has been confirmed. |
-| Subsequent Authorization Became Overdue | Required later accountability was not completed within policy. |
 | RUANG RANAP Service Execution Fact Published | The authoritative execution fact was handed to an authorized consumer without a billing interpretation. |
-| RUANG RANAP Service Execution Fact Corrected | A versioned correction referencing a previously published execution fact was recorded. |
-| RUANG RANAP Execution Fact Reported to CPOE | The authoritative execution fact has been handed to CPOE for order coordination. |
+| RUANG RANAP Service Execution Fact Corrected | A versioned correction referencing a previously published execution fact was recorded. For native CPOE work, the correction is reported as evidence of a conflict or reconciliation need and does not promise a terminal-status rewrite. |
+| RUANG RANAP Execution Fact Reported to CPOE | The authoritative execution fact, carrying both a real ClinicalOrderId and OrderOccurrenceId, has been handed to CPOE for order coordination. |
 
 ## 10. Business Workflows
 
@@ -686,9 +714,12 @@ Transfer Need Identified
   → Admisi Returns Patient to Its Waiting List
   → Destination Ward Reviews Ordinary Waiting List Entry
   → Destination Accommodation Assigned Through Standard Placement
+  → RegId, Prior Ward, New Ward, Transfer Effective Time, and Relevant Active Work References Exposed to CPOE
+  → CPOE Performs Assisted Active Order Reconciliation
+  → RNA Applies a Pending-Work Destination Change Only After a Confirmed CPOE Decision
 ```
 
-RNA does not own the Waiting List, a transfer queue, or operational responsibility after Release. Destination Ward rejection leaves responsibility with Admission until successful Bed Assignment. Inter-ward clinical content belongs to EMR. Cancellation returns through the same Admisi Waiting List process.
+RNA does not own the Waiting List, a transfer queue, the Transfer Reconciliation Aggregate, or the reconciliation decision. Destination Ward rejection leaves responsibility with Admission until successful Bed Assignment. Inter-ward clinical content belongs to EMR. Cancellation returns through the same Admisi Waiting List process. Release, assignment, and transfer facts never automatically change an order Destination or cancel an order.
 
 ### 10.4 ICU Transfer with Retained VIP Accommodation
 
@@ -746,11 +777,13 @@ If Tata Rekening is `FINALIZED`, RNA rejects ordinary correction and the request
 ```text
 Clinical Order Routed to RUANG RANAP
   → RUANG RANAP Service Work Received
-  → Planned Occurrence Identified When Applicable
+  → Order Occurrence Identified by OrderOccurrenceId
   → Execution Assigned or Taken
-  → Service Execution Fact Recorded: Service, Performer, Performed At
-  → Authoritative Execution Fact Reported to CPOE
-  → Authoritative Execution Fact Published to Tata Rekening
+  → Service Execution Fact Recorded: Patient, RegId, ClinicalOrderId, OrderOccurrenceId, Responsible Destination, Performer, Performed At, Description or Reference
+  → Completed Fulfilment Evidence Reported to CPOE Immediately
+  → If Intended Billable, ServiceId Resolution Attempted
+      → If Unavailable, Financial Enrichment and Publication Remain Pending
+      → When Resolved, Financially Enriched Fact Published to Tata Rekening
 ```
 
 ### 10.8 Ad Hoc Tindakan
@@ -758,22 +791,27 @@ Clinical Order Routed to RUANG RANAP
 ```text
 Immediate Patient Need Identified
   → Permitted Authority Basis Determined
-  → Existing Tarif Service Identity Referenced
   → RUANG RANAP Service Performed
-  → Service Execution Fact Recorded with Truthful Chronology
-  → Subsequent Authorization Requested When Required
-  → Execution Fact Reported to CPOE When CPOE Coordination Applies
-  → Execution Fact Published to Tata Rekening
+  → Service Execution Fact Recorded with Patient, RegId, Destination, Performer, Performed At, and Description or Reference
+  → Authority Accountability Retained by RNA
+  → Clinical Governance Review or Escalation When Required
+  → If Intended Billable, ServiceId Resolution and Financial Publication Proceed Independently
 ```
+
+Ad Hoc or Independent Tindakan accountability remains solely with RNA and Clinical Governance and is not reported to CPOE. CPOE coordination applies only to an execution that already references both a real `ClinicalOrderId` and `OrderOccurrenceId`.
 
 ### 10.9 RUANG RANAP Work Not Executed
 
 ```text
 RUANG RANAP Service Work Is Pending
-  → Source Cancels/Withdraws Work or Execution Does Not Occur
-  → Work Coordination State Updated
-  → CPOE Informed When an Order Exists
-  → No Service Execution Fact Published
+  → Source Cancellation Received from CPOE
+      → Matching Pending Work Marked Source-Cancelled
+      → No RNA Fulfilment Evidence Created
+      → No Service Execution Fact Created
+  → or Destination Determines Work Was Not Performed
+      → Reason and Effective Time Recorded
+      → Not Performed Fulfilment Evidence Reported to CPOE
+      → No Service Execution Fact Created
 ```
 
 ### 10.10 Execution Correction
@@ -782,9 +820,13 @@ RUANG RANAP Service Work Is Pending
 Execution Error Identified
   → Original Execution Preserved
   → Correction or Entered in Error Recorded
-  → CPOE Coordination Corrected When Applicable
+  → If ClinicalOrderId and OrderOccurrenceId Both Exist, Correction Evidence Reported to CPOE
+  → CPOE Records Conflict or Reconciliation Need
+  → Existing CPOE Terminal Status Is Not Automatically Rewritten
   → Versioned Execution Correction Fact Published to Tata Rekening
 ```
+
+RNA does not assume that CPOE supports reopening, superseding, or reactivating a final Order Occurrence. RNA preserves and reports its authoritative correction while CPOE preserves its own terminal lifecycle and accountable reconciliation record.
 
 ### 10.11 Legacy Order Coexistence
 

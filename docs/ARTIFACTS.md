@@ -175,6 +175,7 @@ Background processing platform — job orchestration, worker plugins, operator c
 | Path | Purpose |
 |------|---------|
 | `docs/contexts/bangsal/RNA-DOMAIN.md` | RNA — what (accommodation and RUANG RANAP service-execution business truth) |
+| `docs/contexts/bangsal/RNA-DOMAIN-ID.md` | RNA — versi Bahasa Indonesia (semantic companion; canonical domain identities retained) |
 | `docs/contexts/bangsal/RNA-ARCHITECTURE.md` | RNA — how (codebase-grounded modules, use cases, persistence, integrations, consistency, security, ADRs, and gaps) |
 | `docs/contexts/bangsal/CPOE-RNA-INTEGRATION.md` | CPOE ↔ RNA — order dispatch/change, Ward coordination requests, execution facts/corrections, exceptional accountability, reliability, and reconciliation semantic contract |
 | `docs/contexts/bangsal/RNA-TATA-REKENING-INTEGRATION.md` | RNA ↔ Tata Rekening — execution facts, corrections, lifecycle query, acknowledgement, reliability, and reconciliation semantic contract |
