@@ -41,7 +41,8 @@ public class AntrianFactoryTests
         result.AntrianDate.Should().Be(antrianDate);
         result.StartTime.Should().Be(new TimeOnly(8, 0));
         result.EndTime.Should().Be(new TimeOnly(12, 0));
-        result.SequenceTag.Should().Be("DOK001"); // Space-free version
+        result.SequenceTag.Should().Be("AN2510130800_DOK001");
+        result.ServicePoint.ServicePointCode.Should().Be("DOK001");
         result.AntrianDescription.Should().Be("Praktek Dokter DOK001");
         result.ListEntry.Should().BeEmpty();
     }
@@ -59,7 +60,8 @@ public class AntrianFactoryTests
         var result = _sut.Create(antrianDate, jadwalPraktek);
 
         // Assert
-        result.SequenceTag.Should().Be("DOK$001$A");
+        result.SequenceTag.Should().Be("AN2510130800_DOK$001$A");
+        result.ServicePoint.ServicePointCode.Should().Be("DOK$001$A");
     }
 
     [Fact]
@@ -140,7 +142,9 @@ public class AntrianFactoryTests
         result.AntrianDate.Should().Be(expectedDate);
         result.StartTime.Should().Be(TimeOnly.MinValue);
         result.EndTime.Should().Be(TimeOnly.MaxValue);
-        result.SequenceTag.Should().Be("SP001");
+        result.SequenceTag.Should().Be("AN2510130000_SP001");
+        result.ServicePoint.ServicePointCode.Should().Be("SP001");
+        result.ServicePoint.ServicePointName.Should().Be("Loket Pendaftaran");
         result.AntrianDescription.Should().Be("Loket Pendaftaran");
         result.ListEntry.Should().BeEmpty();
     }
@@ -169,7 +173,8 @@ public class AntrianFactoryTests
         var result = _sut.Create(servicePoint, new DateOnly(2025, 10, 13));
 
         // Assert
-        result.SequenceTag.Should().Be("SP-001-A");
+        result.SequenceTag.Should().Be("AN2510130000_SP-001-A");
+        result.ServicePoint.ServicePointCode.Should().Be("SP-001-A");
     }
 
     #endregion
@@ -190,7 +195,32 @@ public class AntrianFactoryTests
         result.EndTime.Should().Be(TimeOnly.MinValue);
         result.SequenceTag.Should().Be("-");
         result.AntrianDescription.Should().Be("-");
+        result.ServicePoint.Should().Be(ServicePointType.Default);
         result.ListEntry.Should().BeEmpty();
+    }
+
+    #endregion
+
+    #region Duplicate NoUrut Tests
+
+    [Fact]
+    public void UT10_Given_ExistingNoUrut_When_AddEntryWithSameNumber_Then_Throws()
+    {
+        var person = new PersonType("SINTA", new DateOnly(2008, 5, 5));
+        var tracker = PasienTrackerModel.Create(
+            person, new DateOnly(2025, 8, 3), "BOOKING", "B1",
+            new DateTime(2025, 8, 1, 9, 0, 0));
+        var createdAt = new DateTime(2025, 8, 3, 6, 51, 0);
+        var queue = new AntrianModel(
+            "AN001", new DateOnly(2025, 8, 3), TimeOnly.MinValue, TimeOnly.MaxValue,
+            "tag", "Loket", new ServicePointType("Loket", "Loket"),
+            [], _mockAntrianSequencer.Object);
+
+        queue.AddEntry(7, tracker, "B1", "BOK", createdAt);
+        var act = () => queue.AddEntry(7, tracker, "B2", "BOK", createdAt);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*already assigned*");
     }
 
     #endregion

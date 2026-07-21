@@ -78,6 +78,7 @@ public class DeleteBookingWorkflowTest
             new DateTime(2025, 10, 1, 9, 0, 0));
         var tag = AntrianModel.GenSequenceTag(tgl, jam, dokter);
         var antrian = new AntrianModel("AN1", tgl, jam, new TimeOnly(12, 0), tag, "desc",
+            new ServicePointType(dokter.PpaId.Replace(' ', '$'), "desc"),
             [entry], null!);
         var header = new AntrianHeaderView("AN1", "desc", tgl, jam, tag);
         var jadwal = JadwalPraktekType.Default with

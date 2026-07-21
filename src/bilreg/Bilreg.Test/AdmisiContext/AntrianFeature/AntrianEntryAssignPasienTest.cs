@@ -49,7 +49,8 @@ public class AntrianEntryAssignPasienTest
     public void AssignPasien_WhenSentinelTracker_ThenThrows()
     {
         var entry = AntrianEntryModel.Create(
-            1, PersonType.Default, PasienTrackerModel.Key("-"), "-", "-");
+            1, PersonType.Default, PasienTrackerModel.Key("-"), "-", "-",
+            new DateTime(2025, 8, 3, 6, 51, 0));
 
         var act = () => entry.AssignPasien(PasienTrackerModel.Default);
 
@@ -91,7 +92,7 @@ public class AntrianAnonymousAddEntryTest
         var createdAt = new DateTime(2025, 8, 3, 6, 51, 0);
         var queue = new AntrianModel(
             "AN001", new DateOnly(2025, 8, 3), TimeOnly.MinValue, TimeOnly.MaxValue,
-            "tag", "Loket", [], sequencer.Object);
+            "tag", "Loket", new ServicePointType("Loket", "Loket"), [], sequencer.Object);
 
         var entry = queue.AddEntry(createdAt);
 

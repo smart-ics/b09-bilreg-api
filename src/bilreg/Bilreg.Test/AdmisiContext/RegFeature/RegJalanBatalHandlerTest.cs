@@ -74,7 +74,7 @@ public class RegJalanBatalHandlerTest
         var entry = AntrianEntryModel.Create(1, tracker.Person, tracker, reg.RegId, "REG",
             new DateTime(2025, 11, 1, 8, 0, 0));
         var antrian = new AntrianModel("AN1", regDate, new TimeOnly(8, 0), new TimeOnly(12, 0),
-            "TAG1", "desc", [entry], null!);
+            "TAG1", "desc", new ServicePointType("TAG1", "desc"), [entry], null!);
         var antrianView = new AntrianView(
             "AN1", (int)AntrianStatusEnum.Waiting, 1, tracker.Person.PersonName,
             reg.RegId, "REG", regDate.ToDateTime(TimeOnly.MinValue), "TAG1",

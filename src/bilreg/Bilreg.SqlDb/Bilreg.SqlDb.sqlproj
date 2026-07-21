@@ -125,6 +125,7 @@
     <None Include="AdmisiRanapContext\WaitingListFeature\BILRG_BedWaitingList_M1_DropPasienSnapshot_Alter.sql" />
     <None Include="AdmisiRanapContext\BILRG_AdmisiRanap_Phase7_Rollback.sql" />
     <None Include="AdmisiContext\AntrianFeature\BILRG_Antrian.sql" />
+    <None Include="AdmisiContext\AntrianFeature\BILRG_Antrian_M1_ServicePointCode_Alter.sql" />
     <None Include="AdmisiContext\AntrianFeature\BILRG_AntrianEntry.sql" />
     <None Include="AdmisiContext\AntrianFeature\BILRG_PasienTracker.sql" />
     <None Include="AdmisiContext\AntrianFeature\BILRG_PasienTracker_M1_TrackingPeriod_Alter.sql" />

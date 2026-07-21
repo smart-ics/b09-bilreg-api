@@ -157,7 +157,9 @@ public class BookingCreateSoftDuplicateHandlerTest
 
         var antrian = new AntrianModel(
             "AN1", tglBerobat, jamMulai, new TimeOnly(12, 0),
-            AntrianModel.GenSequenceTag(tglBerobat, jadwal), "desc", [], null!);
+            AntrianModel.GenSequenceTag(tglBerobat, jadwal), "desc",
+            new ServicePointType(dokter.PpaId.Replace(' ', '$'), "desc"),
+            [], null!);
         _antrianRepo.Setup(x => x.ListData(tglBerobat)).Returns([]);
         _antrianFactory
             .Setup(x => x.Create(tglBerobat, It.IsAny<JadwalPraktekType>()))

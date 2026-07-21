@@ -23,7 +23,7 @@ public class TrkJourneyResolveHandlerTest
     [Fact]
     public async Task Select_WhenTrackerAndAnonymousEntry_ThenIdentifiesAndAppendsEvidence()
     {
-        var createdAt = new DateTime(2025, 8, 3, 6, 51, 0);
+        var createdAt = new DateTime(2025, 5, 3, 8, 0, 0);
         var person = new PersonType("ANI", new DateOnly(2000, 1, 2));
         var tracker = PasienTrackerModel.Create(
             person, new DateOnly(2025, 10, 24), "BOOKING", "B1",
@@ -100,7 +100,7 @@ public class TrkJourneyResolveHandlerTest
     [Fact]
     public async Task New_WhenValid_ThenCreatesTrackerIdentifiesAndAppendsEvidence()
     {
-        var createdAt = new DateTime(2025, 8, 3, 6, 51, 0);
+        var createdAt = new DateTime(2025, 5, 3, 8, 0, 0);
         var queue = CreateQueueWithAnonymousEntry("AN002", createdAt);
 
         _antrianRepo
@@ -145,8 +145,8 @@ public class TrkJourneyResolveHandlerTest
     private AntrianModel CreateQueueWithAnonymousEntry(string antrianId, DateTime createdAt)
     {
         var queue = new AntrianModel(
-            antrianId, new DateOnly(2025, 8, 3), TimeOnly.MinValue, TimeOnly.MaxValue,
-            "tag", "Loket", [], _sequencer.Object);
+            antrianId, DateOnly.FromDateTime(createdAt), TimeOnly.MinValue, TimeOnly.MaxValue,
+            "tag", "Loket", new ServicePointType("Loket", "Loket"), [], _sequencer.Object);
         queue.AddEntry(createdAt);
         return queue;
     }

@@ -24,7 +24,7 @@ public class AntrianRepoAreEqualTest
             1, PersonType.Default, PasienTrackerModel.Key("-"), "-", "-", createdAt);
         var queue = new AntrianModel(
             antrianId, new DateOnly(2025, 8, 3), TimeOnly.MinValue, TimeOnly.MaxValue,
-            "tag", "Loket", [entry], sequencer.Object);
+            "tag", "Loket", new ServicePointType("Loket", "Loket"), [entry], sequencer.Object);
 
         antrianDal
             .Setup(x => x.GetData(It.IsAny<IAntrianKey>()))
@@ -44,7 +44,7 @@ public class AntrianRepoAreEqualTest
             createdAt, sentinelServed, sentinelServed, "-", "-");
         var currentQueue = new AntrianModel(
             antrianId, new DateOnly(2025, 8, 3), TimeOnly.MinValue, TimeOnly.MaxValue,
-            "tag", "Loket", [identified], sequencer.Object);
+            "tag", "Loket", new ServicePointType("Loket", "Loket"), [identified], sequencer.Object);
 
         AntrianEntryDto? updated = null;
         entryDal
