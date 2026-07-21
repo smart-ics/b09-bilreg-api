@@ -172,6 +172,6 @@ Git order on the tracker refactor branch (each gap ≈ one commit):
 
 - Domain spec: [`TRACKER-DOMAIN.md`](TRACKER-DOMAIN.md) §3.2, §5 Tracker Event, BR-TRK-017..019
 - Gap report finding: [`tracker-codebase-gap-report.md`](tracker-codebase-gap-report.md) §5 F-03; recommended sequence §8 step 3
-- Prior / next slices: [`tracker-f01-implementation-report.md`](tracker-f01-implementation-report.md), [`tracker-f02-implementation-report.md`](tracker-f02-implementation-report.md)
+- Prior / next slices: [`tracker-f01-implementation-report.md`](tracker-f01-implementation-report.md), [`tracker-f02-implementation-report.md`](tracker-f02-implementation-report.md), [`tracker-f04-implementation-report.md`](tracker-f04-implementation-report.md)
 - Compatibility: [`TRACKER-COMPATIBILITY.md`](TRACKER-COMPATIBILITY.md) (slot release ≠ Tracker deletion; evidence stays cumulative)
 - Operational vs audit events: [`docs/concepts/operational-events.md`](../../concepts/operational-events.md)

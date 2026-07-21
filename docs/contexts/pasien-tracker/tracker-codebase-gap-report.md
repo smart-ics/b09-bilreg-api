@@ -13,15 +13,15 @@ The strongest implemented portion is booking-time creation: a booking creates a 
 
 The implementation diverges from the canonical domain at the points that determine business meaning:
 
-- Tracking Period persistence exists (`StartPeriod`/`LastPeriod` in model, DAL, and additive DDL), but change/cancel paths and incomplete later evidence still limit BR-TRK-005 through BR-TRK-008 in live workflows (see F-01/F-02/F-08).
-- There is no operational Journey Resolution use case. Booking creation performs a duplicate rejection, not candidate presentation and accountable selection. Anonymous queue intake is present only as an unused domain method and a fully commented-out handler.
-- `AntrianEntryModel.AssignPasien` copies only the name and does not assign the `Tracker` key. Even if the dormant anonymous flow were enabled, it would not make the entry Identified.
+- Tracking Period persistence exists (`StartPeriod`/`LastPeriod` in model, DAL, and additive DDL), but change/cancel paths still limit BR-TRK-005 through BR-TRK-008 in some live workflows (see F-01/F-02). Later milestone evidence (consult/pharmacy) is present in source (F-08/F-09).
+- Journey Candidate Resolution and anonymous admission identify are closed in source (F-04/F-05); see implementation reports. Booking soft-duplicate replaces hard rejection; `POST anonymous-intake` and resolve select/new with `AntrianId`/`NoUrut` identify entries and append Check In / Reg-Start.
+- `AntrianEntryModel.AssignPasien` sets TrackerId + Visitor (F-05). Registration Done and physician milestone separation closed in **F-07** (`3def0ded`).
 - Registration and physician service semantics are conflated. Both walk-in and booking-based registration call `Serve` on the physician queue entry at registration time. No separate admission queue service is completed, so registration waiting time, registration service duration, and post-registration consultation waiting time cannot be calculated according to BR-TRK-040 through BR-TRK-043.
-- Tracker event persistence shape is append-only with deterministic `(PasienTrackerId, NoUrut)` ordering (see F-12/F-03), but only Booking/Registration produce evidence today and cancellation still deletes tracker headers (see F-02/F-08).
+- Tracker event persistence shape is append-only with deterministic `(PasienTrackerId, NoUrut)` ordering (see F-12/F-03). Milestone producers include Booking, admission/reg, Consult-*, and Apotek-* (F-05/F-07/F-08/F-09); cancellation retention remains an F-02 concern.
 - Registration cancellation and booking deletion physically remove queue entries and tracker headers. A change-of-visit creates a new `TrackerId` for the same registration. These paths conflict with stable journey identity and cumulative evidence, although the correct cancellation/reschedule representation requires a domain decision because `TRACKER-DOMAIN.md` does not define those workflows.
 - Consultation evidence is not recorded in the tracker. Pharmacy has a separate `FARIN_Antrian` model and lifecycle, but it has no `TrackerId`, no integration with Bilreg Tracker, and no application handlers that invoke its prepare/deliver transitions from drug-sale confirmation or medicine handover.
-- No candidate, timeline, anonymous intake, identification, service-start, or Tracker-specific API contract exists. The only completion endpoint returns without awaiting its command.
-- None of the ten stable domain facts in section 9 are represented explicitly. Direct orchestration is acceptable under `docs/ENGINEERING.md`, but the required cross-context facts and workflows are still absent.
+- Tracker/queue HTTP contracts exist after F-05/F-10 (candidates, resolve, anonymous-intake, timeline, mulai/selesai periksa). Prefer current controllers over this report’s original “no API” snapshot.
+- Section-9 domain facts remain mostly implicit (direct orchestration); F-11 covers EMR outbox slice.
 
 Overall assessment: the implementation is a **partial, pre-domain queue/booking solution**, not a conforming V1 Tracker bounded context. The most urgent issues are journey identity continuity, evidence durability, Journey Resolution, and separation of admission/registration milestones from physician service milestones.
 
@@ -93,7 +93,7 @@ This was a source investigation. No production or staging database was queried, 
 | Area | Current implementation | Verified behavior |
 |---|---|---|
 | Logical tracker | `PasienTrackerModel` | ULID `PasienTrackerId`; name/date-of-birth snapshot; `VisitDate` plus `StartPeriod`/`LastPeriod`; list of `PasienTrackerEventType`. Factories exist only for Booking and Registration. |
-| Tracker timeline persistence | `PasienTrackerRepo`, `PasienTrackerEventDal`, `BILRG_PasienTracker*` | Header plus detail rows with `StartPeriod`/`LastPeriod`. Events use PK `(PasienTrackerId, NoUrut)`, `ORDER BY EventDate, NoUrut`, and insert-only repo path; later-stage evidence and cancellation retention remain gaps (F-02/F-08). |
+| Tracker timeline persistence | `PasienTrackerRepo`, `PasienTrackerEventDal`, `BILRG_PasienTracker*` | Header plus detail rows with `StartPeriod`/`LastPeriod`. Events use PK `(PasienTrackerId, NoUrut)`, `ORDER BY EventDate, NoUrut`, and insert-only repo path. Milestone evidence includes Booking/admission/reg/consult (F-05/F-07/F-08) and pharmacy (F-09); cancellation retention still F-02. |
 | Queue session | `AntrianModel`, `AntrianFactory`, `BILRG_Antrian` | Date/time-bounded header with `SequenceTag`, description, and explicit `ServicePointCode` column (dual-read fallback from tag when empty). `UX_BILRG_Antrian_SequenceTag` enforces lookup uniqueness. |
 | Queue entry | `AntrianEntryModel`, `BILRG_AntrianEntry` | Composite `(AntrianId, NoUrut)` identity, optional sentinel tracker `"-"`, name snapshot, `CreatedAt`, `ServedAt`, `DoneAt`, and status. |
 | Booking workflow | `BookingCreateHandler`, `BookingCreateFromHidokHandler` | Creates booking, new tracker with `BOOKING` event, physician queue entry, legacy map slot, and queue number. Local flow performs duplicate rejection; external flow does not. |
@@ -114,21 +114,21 @@ The current ownership is split: Bilreg `AntrianModel` behaves like the proposed 
 | Requirement | Status | Primary evidence and conclusion |
 |---|---|---|
 | Logical Patient Journey Tracking | Partially Implemented | `PasienTrackerModel.Create` creates a stable-looking ULID, but only one `VisitDate` exists and change/cancel paths replace or delete identity. See F-01/F-02. |
-| Operational Evidence Timeline | Partially Implemented | Booking/Registration events can be stored, but only those two event descriptions are produced; ordering, immutability, and later-stage evidence are missing/conflicting. See F-03/F-08. |
-| Service Point Queue Coordination | Partially Implemented | Queue header/entries/numbers/statuses exist. Anonymous intake is inactive, identification is defective, lifecycle guards are incomplete, and Service Point identity is implicit. See F-05/F-06. |
+| Operational Evidence Timeline | Implemented | Append-only persistence (F-03); admission/reg evidence (F-05/F-07); Consult-Start/Done (F-08); Apotek-* (F-09). Free-text EventName remains display-only. |
+| Service Point Queue Coordination | Partially Implemented | Anonymous intake + identify closed (F-05). Lifecycle guards closed in source (F-06). Service Point identity / map authority: see F-12/F-13. |
 | Journey Candidate Resolution | Not Implemented | Repository filtering is used only as duplicate rejection. There is no candidate query with evidence, operator selection, or association command. See F-04. |
-| Operational Time Interpretation | Implemented Differently | Milestone columns exist, but registration calls `Serve` on the physician entry and there are no canonical duration projections. See F-07/F-09. |
-| Patient Tracker aggregate | Partially Implemented | Root, Tracking Period columns, and append-only event persistence exist; continuity rules and later evidence are still incomplete (F-01/F-02/F-08). |
+| Operational Time Interpretation | Partially Implemented | F-07 separates admission vs physician milestones; dedicated duration projection API (workflow 10.8) still deferred. See F-07/F-09/F-10 remaining. |
+| Patient Tracker aggregate | Partially Implemented | Root, Tracking Period, append-only events, and consult/pharmacy milestone producers exist; continuity under some cancel paths still F-02. |
 | Queue Session aggregate | Partially Implemented | Root, entries, and explicit `ServicePointCode` persistence exist; aggregate invariants and natural session uniqueness policy remain incomplete (F-06/F-12 residual). |
 | Patient Tracker entity | Partially Implemented | ID/person/event collection exist; period and continuity rules do not. |
-| Tracker Event entity | Partially Implemented | Description/reference/time/order fields exist; PK `(PasienTrackerId, NoUrut)` and chronological reads are durable; only Booking/Reg events are produced (F-08). |
+| Tracker Event entity | Implemented | Description/reference/time/order fields; PK `(PasienTrackerId, NoUrut)`; chronological reads; Consult-* and Apotek-* producers exist (F-08/F-09). |
 | Queue Session entity | Partially Implemented | Stable ID/date/start/end and `ServicePointCode` column exist; `SequenceTag` remains operational lookup key; natural tuple uniqueness deferred (F-12 residual). |
 | Queue Entry entity | Partially Implemented | Number/tracker/name/milestones/state exist; identification and state guards conflict with the domain. |
 | TrackerId | Partially Implemented | ULID and queue reference exist, but replacement/deletion workflows break logical stability. |
 | Person Identity Snapshot | Implemented | Name and date of birth are copied into `PersonType` and tracker persistence. Matching policy remains ambiguous. |
 | Tracking Period | Partially Implemented | Model, DTO, SQL columns, and overlap list filter exist; workflow continuity and extension in all paths remain incomplete (F-01). |
 | Evidence Reference | Partially Implemented | `ReffId` exists on tracker events; there is no typed provenance or source/queue-reference distinction. |
-| Queue Evidence Reference | Not Implemented | No composite value, serialization, or event contributor uses `(Queue Session identity, Queue Number)`. |
+| Queue Evidence Reference | Implemented | `QueueEvidenceReference` → `{AntrianId}/No.{NoUrut}`; used on Check In / Reg-Start (F-05). Format versioning still open (§7.1). |
 | Service Point | Partially Implemented | `ServicePointType` and `BILRG_Antrian.ServicePointCode` exist with dual-read fallback from `SequenceTag`; no catalogue table/`IServicePointDal` implementation. |
 | Patient or Visitor role | Partially Implemented | Booking/registration contracts accept identity evidence and queue numbers are returned, but no anonymous admission-number contract is active. |
 | Journey Resolution Operator role | Not Implemented | No candidate review, selection/new decision, accountable actor field, or association command exists. |
@@ -151,7 +151,7 @@ The current ownership is split: Bilreg `AntrianModel` behaves like the proposed 
 | BR-TRK-010 | Event has tracker, description, reference, OccurredAt | Partially Implemented | Aggregate ownership plus `PasienTrackerEventType`; default `DateTime` is accepted and event does not independently carry root identity. |
 | BR-TRK-011 | Evidence only from accountable source or queue | Partially Implemented | Active calls originate from Booking/Reg, but public `AddEvent(string,string,DateTime)` accepts arbitrary evidence without source validation. |
 | BR-TRK-012 | Use primary source stable identity when it exists | Partially Implemented | Booking/Reg factories use their IDs. No Medical Chart, drug-sale, or other source integration exists. |
-| BR-TRK-013 | Queue evidence may be used before source transaction exists | Not Implemented | No Queue Evidence Reference; dormant handler proposed `"-"` instead. |
+| BR-TRK-013 | Queue evidence may be used before source transaction exists | Implemented | F-05 Check In / Reg-Start use `QueueEvidenceReference` as `ReffId` |
 | BR-TRK-014 | Start and Done may use different reference kinds | Not Implemented | No start/done tracker evidence orchestration exists. |
 | BR-TRK-015 | Evidence reference is provenance, not lifecycle correlation | Partially Implemented | Per-event `ReffId` exists, but queue repair mutates a general `ReffId` from Booking to Reg and no provenance type documents the distinction. |
 | BR-TRK-016 | Description is free text and non-behavioral | Implemented | `EventName` is a string; no Tracker search or transition branches on it. |
@@ -164,24 +164,24 @@ The current ownership is split: Bilreg `AntrianModel` behaves like the proposed 
 | BR-TRK-023 | Accountable operator selects among candidates | Not Implemented | No command, actor, audit, API, or UI contract. |
 | BR-TRK-024 | Equal demographics do not merge/prove identity | Implemented Differently | No automatic merge occurs, but `ThrowExceptionIfTrackerExists` treats equal name/DOB/VisitDate as a duplicate unless `IsForceDuplicatedTracker` is set (`BookingCreateCmd.cs:102-104,152-163`). |
 | BR-TRK-025 | Establish new tracker when no candidate applies | Partially Implemented | Booking and walk-in can create new trackers, but not as an outcome of Journey Resolution. |
-| BR-TRK-026 | Session has one Service Point/date/start/end | Partially Implemented | Date/start/end exist. Service Point is encoded in `SequenceTag`/description; physician queues use doctor/schedule instead of an explicit Service Point field. |
-| BR-TRK-027 | Queue number unique within session, reusable elsewhere | Partially Implemented | SQL composite PK enforces uniqueness per `AntrianId`; aggregate `AddEntry(int,...)` has no duplicate guard and relies on persistence failure. |
+| BR-TRK-026 | Session has one Service Point/date/start/end | Implemented | Explicit `AntrianModel.ServicePoint` + persisted `ServicePointCode` (`a3232c56` / F-06). SequenceTag remains lookup key. |
+| BR-TRK-027 | Queue number unique within session, reusable elsewhere | Implemented | Aggregate `EnsureUniqueNoUrut` + SQL PK `(AntrianId, NoUrut)` (`a3232c56` / F-06). |
 | BR-TRK-028 | Entry belongs to exactly one session and number | Implemented | Aggregate ownership and `(AntrianId, NoUrut)` persistence key match this requirement. |
-| BR-TRK-029 | Anonymous entry may be created | Partially Implemented | `AntrianModel.AddEntry(DateTime)` creates sentinel identity, but the only application handler is entirely commented out and no API invokes it. |
+| BR-TRK-029 | Anonymous entry may be created | Implemented | `QueAnonymousIntakeCmd` / `AddEntry(DateTime)`; see F-05 report |
 | BR-TRK-030 | Booking/identified source starts with one tracker | Implemented | Both Booking create handlers pass the newly created tracker into the physician queue entry. Walk-in registration does the same. |
-| BR-TRK-031 | Anonymous entry becomes identified only after resolution | Implemented Differently | No resolution path; `AssignPasien` changes only `Visitor`, not `Tracker` (`AntrianEntryModel.cs:51-56`). |
+| BR-TRK-031 | Anonymous entry becomes identified only after resolution | Implemented | Resolve select/new + `AssignPasien` set TrackerId; intake stays anonymous (F-05) |
 | BR-TRK-032 | Tracker can join many sessions; entry has at most one tracker | Partially Implemented | One scalar `PasienTrackerId` exists per entry, but no active multi-Service-Point journey orchestration exists. |
 | BR-TRK-033 | CreatedAt is create/reserve time, not universally arrival | Implemented | Booking uses booking `occurredAt` when reserving a future physician entry. No physical-arrival claim is stored. |
 | BR-TRK-034 | Booking entry may predate its session | Implemented | Booking queue session is on `TglBerobat`; entry `CreatedAt` is booking creation time (`BookingCreateCmd.cs:65,116`). |
-| BR-TRK-035 | New entry Waiting; Created present; Served/Done absent | Partially Implemented | Status/sentinel milestones match logically, but `createdAt = default` can persist `DateTime.MinValue`. |
-| BR-TRK-036 | Only Waiting may enter In Service | Implemented Differently | `Serve` unconditionally changes status and time, with no current-state or chronology check (`AntrianEntryModel.cs:58-62`). |
-| BR-TRK-037 | Only In Service may become Done | Implemented Differently | `Done` checks only the ServedAt sentinel and ordering, not `AntrianStatus == InService`. |
-| BR-TRK-038 | Served >= Created; Done >= Served | Partially Implemented | Done-before-Served is guarded; Served-before-Created is not. Code also rejects equal Served/Done although the rule only prohibits precedence. |
-| BR-TRK-039 | Done is final | Implemented Differently | `Serve` can be called again after Done and return it to In Service; queue rows can also be physically removed by cancellation workflows. |
-| BR-TRK-040 | Registration wait = admission Created→Served | Not Implemented | No active admission queue workflow or metric. |
-| BR-TRK-041 | Registration duration = admission Served→Done | Not Implemented | Registration does not complete an admission queue entry. |
-| BR-TRK-042 | Post-reg consultation wait = registration Done→physician Served | Implemented Differently | Registration calls `Serve` on the physician entry immediately (`RegJalanByBookingCmd.cs:170-175`; `RegJalanWalkInCommand.cs:250-253`). |
-| BR-TRK-043 | Consultation duration = physician Served→Done | Implemented Differently | Milestones exist and `QueSelesaiPeriksaHandler` calls Done, but Served has registration-time semantics and no duration projection exists. |
+| BR-TRK-035 | New entry Waiting; Created present; Served/Done absent | Implemented | `AntrianEntryModel.Create` requires business `createdAt`; ServedAt/DoneAt sentinel (`a3232c56` / F-06). |
+| BR-TRK-036 | Only Waiting may enter In Service | Implemented | `Serve` requires Waiting + valid `servedAt` >= CreatedAt (`a3232c56` / F-06). |
+| BR-TRK-037 | Only In Service may become Done | Implemented | `Done` requires InService + valid `doneAt` >= ServedAt (`a3232c56` / F-06). |
+| BR-TRK-038 | Served >= Created; Done >= Served | Implemented | Chronology guards; equal timestamps allowed (`a3232c56` / F-06). |
+| BR-TRK-039 | Done is final | Implemented | `Serve` rejects non-Waiting (Done cannot reopen). Physical queue-row removal on cancel remains a separate workflow concern. |
+| BR-TRK-040 | Registration wait = admission Created→Served | Partially Implemented | F-07 admission milestones; create-on-reg may collapse wait to ~0. See [`tracker-f07-implementation-report.md`](tracker-f07-implementation-report.md). |
+| BR-TRK-041 | Registration duration = admission Served→Done | Implemented | F-07 `AdmissionQueueComplete` Done (or create-on-reg Serve+Done) at Reg |
+| BR-TRK-042 | Post-reg consultation wait = registration Done→physician Served | Implemented | F-07: physician stays Waiting at Reg; Served only via `QueMulaiPeriksa` |
+| BR-TRK-043 | Consultation duration = physician Served→Done | Implemented | F-07 MulaiPeriksa + SelesaiPeriksa; F-08 appends Consult-* evidence |
 | BR-TRK-044 | Pharmacy queue creation is not physical arrival | Partially Implemented | Farinv has `TakenAt`, not physical location, but it is a separate queue with no Tracker journey integration. |
 | BR-TRK-045 | Confirmed drug sale establishes pharmacy ServedAt/evidence | Not Implemented | No Penjualan use case invokes Farinv queue transitions; no Bilreg Tracker evidence integration exists. |
 | BR-TRK-046 | Pharmacy duration = Served→Done | Not Implemented | Farinv has Assigned/Prepared/Delivered timestamps, not canonical Served/Done mapping or Tracker metric. |
@@ -198,10 +198,10 @@ The current ownership is split: Bilreg `AntrianModel` behaves like the proposed 
 | Later evidence appends and may extend period | Not Implemented | No application path appends later journey evidence; no LastPeriod behavior. |
 | Tracker has no Open/Closed/Completed state | Implemented | No Tracker status exists. Physical deletion nevertheless terminates visibility. |
 | Tracker Event becomes immutable after recording | Implemented Differently | Record type is immutable in memory, but repository/DAL update/delete it. |
-| Queue Entry: Waiting → In Service | Implemented Differently | Transition exists without state/chronology guards and is invoked at the wrong business milestone. |
-| Queue Entry: In Service → Done | Partially Implemented | Transition/time guard exists, but status is not checked and endpoint dispatch is not awaited. |
-| Queue Entry: Done → no next state | Implemented Differently | `Serve` permits Done → In Service. |
-| Anonymous → Identified | Implemented Differently | `AssignPasien` does not assign TrackerId; no Journey Resolution orchestration. |
+| Queue Entry: Waiting → In Service | Implemented | F-06: Waiting-only Serve + chronology (`a3232c56`). When Serve is invoked (admission vs physician) is F-07. |
+| Queue Entry: In Service → Done | Implemented | F-06: InService-only Done + chronology. |
+| Queue Entry: Done → no next state | Implemented | F-06: Serve rejects Done; physical row removal on cancel is separate. |
+| Anonymous → Identified | Implemented | F-05: `AdmissionQueueIdentify` + resolve select/new |
 | Identified entries never pass through Anonymous | Implemented | Booking/walk-in entries are constructed with a tracker. |
 
 ### 4.4 Stable domain facts
@@ -216,7 +216,7 @@ Section 9 does not mandate an event bus, and `docs/ENGINEERING.md` prefers direc
 | Journey Candidate Selected | Not Implemented | No selection workflow. |
 | Queue Session Established | Partially Implemented | Queue header is saved, without explicit fact or robust Service Point identity. |
 | Queue Entry Created | Partially Implemented | Rows are created; no explicit fact or anonymous intake endpoint. |
-| Queue Entry Identified | Not Implemented | Identification behavior is defective and unused. |
+| Queue Entry Identified | Partially Implemented | F-05 performs identify + evidence in orchestration; no separate MediatR domain-fact notification |
 | Queue Service Started | Partially Implemented | `Serve` changes state, but at registration rather than physician service recognition and without an explicit integration fact. |
 | Queue Service Completed | Partially Implemented | `Done` changes state; no Tracker evidence/fact is produced. |
 | Booking Queue Number Assigned | Partially Implemented | Booking is assigned a number in the same transaction, then separately sent to legacy EMR; no explicit fact or reliable delivery record exists. |
@@ -226,9 +226,9 @@ Section 9 does not mandate an event bus, and `docs/ENGINEERING.md` prefers direc
 | Workflow | Status | Actual behavior |
 |---|---|---|
 | 10.1 Establish journey from Booking | Partially Implemented | Tracker/event/session/identified entry/number exist. Start/LastPeriod do not; queue-session uniqueness is not protected; external delivery is after commit and unverified. |
-| 10.2 Anonymous admission queue | Not Implemented | Only an unused model method and commented-out handler exist. |
+| 10.2 Anonymous admission queue | Implemented | `POST api/Antrian/anonymous-intake` (F-05); no tracker evidence at intake |
 | 10.3 Resolve journey and perform Registration | Implemented Differently | Walk-in skips anonymous intake/candidate resolution, creates a new tracker, and starts the physician queue. Booking registration reuses the tracker key but appends no evidence and also starts physician service. |
-| 10.4 Physician consultation | Partially Implemented | One physician queue entry can be completed, but service start occurs during registration and start/done Tracker evidence is absent. |
+| 10.4 Physician consultation | Implemented | F-07 Mulai/Selesai on physician entry; F-08 appends `Consult-Start` / `Consult-Done` with Queue Evidence Reference. |
 | 10.5 Establish downstream pharmacy work | Not Implemented | Farinv queue is independent and no consultation/prescription integration creates a same-Tracker entry. |
 | 10.6 Perform/complete pharmacy service | Not Implemented | Domain methods exist in Farinv, but no application handlers invoke them from drug sale/handover and no Tracker events are written. |
 | 10.7 Resolve multiple candidates | Not Implemented | No candidate evidence or operator selection. |
@@ -239,9 +239,9 @@ Section 9 does not mandate an event bus, and `docs/ENGINEERING.md` prefers direc
 | Source/integration described by the domain | Status | Traceable evidence / gap |
 |---|---|---|
 | Booking → Tracker and physician queue | Partially Implemented | Both Booking handlers create a Tracker, `BOOKING` evidence, and identified physician entry; Tracking Period and reliable `Booking Queue Number Assigned` fact are absent. |
-| Admission queue → Tracker evidence | Not Implemented | No active anonymous admission handler, identification, Queue Evidence Reference, check-in evidence, or registration-start evidence. |
+| Admission queue → Tracker evidence | Partially Implemented | F-05 Check In + Reg-Start on identify; F-07 Registration Done / REGISTER on admission complete |
 | Registration → existing journey | Implemented Differently | Booking registration retains the queue TrackerId but appends no evidence; walk-in creates a new Tracker and starts the physician queue; change-of-visit replaces identity. |
-| Medical Chart/consultation → Tracker | Not Implemented | No Medical Chart reference is used by Tracker code; `QueSelesaiPeriksaHandler` only marks the queue Done. |
+| Medical Chart/consultation → Tracker | Implemented Differently | No Medical Chart ReffId in Bilreg; F-08 records Consult-* with Queue Evidence Reference at Mulai/Selesai (BR-TRK-013). Chart-primary reference deferred. |
 | Prescription/completed consultation → pharmacy queue | Not Implemented | No Bilreg-to-Farinv queue contract or same-Tracker entry creation exists. |
 | Drug sale confirmation → pharmacy service start | Not Implemented | Farinv Penjualan does not call queue transitions and no Tracker service-start evidence is written. |
 | Medicine handover → pharmacy completion | Not Implemented | Farinv `DeliverSlot` exists only as an unused domain method; no Tracker completion evidence. |
@@ -300,47 +300,47 @@ This section contains confirmed implementation gaps. Ambiguities, missing runtim
 
 ### F-05 — Anonymous admission intake and identification are not operational
 
-- **Domain requirement:** BR-TRK-029, BR-TRK-031, lifecycle 8.4, workflows 10.2–10.3.
-- **Status:** Partially Implemented / Implemented Differently.
-- **Evidence:** `AntrianModel.AddEntry(DateTime)` can create a sentinel anonymous row, but `QueGetNoAntrianByServicePointCmd.cs` is entirely commented out. `AntrianEntryModel.AssignPasien` sets only `Visitor`; it never sets `Tracker` (`AntrianEntryModel.cs:51-56`). `AntrianRepo.AreEqual` also omits `PasienTrackerId` from change detection (`AntrianRepo.cs:110-119`).
-- **Gap/conflict:** No active use case creates the admission queue entry, and the apparent identification behavior cannot associate a TrackerId.
-- **Business impact:** Continuity from anonymous number to identified journey—the central bridge in the domain—cannot occur.
-- **Legacy compatibility impact:** Legacy admission-number allocation and display rules need discovery. A new admission Queue Session can coexist with physician `AntrianMap` slots if identifiers and counters are kept distinct.
-- **Recommended direction:** Add active anonymous intake and resolution commands. Identification must atomically set TrackerId and snapshot under the Queue Session aggregate, then append the required queue evidence to the selected tracker in one application transaction/orchestration boundary.
-- **Severity:** Critical.
+- **Domain requirement:** BR-TRK-029, BR-TRK-031, lifecycle 8.4, workflows 10.2–10.3 (identify through Reg-Start).
+- **Status:** **Closed in source** (2026-07-21) for intake + atomic identification + Check In / Reg-Start evidence. Registration Done / physician milestone separation closed in **F-07**.
+- **Evidence (after fix):** Commit `cb07cd59`. `QueAnonymousIntakeCmd` + `POST api/Antrian/anonymous-intake` create anonymous Waiting entries without tracker evidence (10.2). `AssignPasien` sets TrackerId + Visitor and rejects sentinel / already-identified entries. `AntrianRepo.AreEqual` includes `PasienTrackerId`. `QueueEvidenceReference` (`{AntrianId}/No.{NoUrut}`) + M3 `ReffId VARCHAR(40)`. `TrkJourneyResolveSelectCmd` / `TrkJourneyResolveNewCmd` require `AntrianId`+`NoUrut` and, via `AdmissionQueueIdentify`, AssignPasien → Serve → Check In (CreatedAt) + Reg-Start (ServedAt) in one `TransHelper` scope.
+- **Gap/conflict (resolved for F-05 scope):** Active intake exists; identification associates TrackerId and persists; queue evidence is appended atomically.
+- **Remaining note:** Registration Done / physician Served semantics closed in **F-07**; Consult-* Tracker Events closed in **F-08** ([`tracker-f08-implementation-report.md`](tracker-f08-implementation-report.md)). `IServicePointDal` catalogue deferred (request carries code+name). See [`tracker-f05-implementation-report.md`](tracker-f05-implementation-report.md) and [`tracker-f07-implementation-report.md`](tracker-f07-implementation-report.md).
+- **Recommended direction:** **Applied** — active anonymous intake and resolution commands; identification atomically sets TrackerId and snapshot, then appends queue evidence in one application transaction.
+- **Severity:** Critical (closed in source).
 
 ### F-06 — Queue aggregate does not protect identity and service lifecycle invariants
 
 - **Domain requirement:** BR-TRK-026 through BR-TRK-039.
-- **Status:** Partially Implemented / Implemented Differently.
-- **Evidence:** `AntrianModel.AddEntry(int,...)` does not check duplicate numbers; SQL PK is the final guard. Queue header has no `ServicePointCode` column. `Serve` has no state or time checks; `Done` does not check `InService`; `Serve` can reopen Done (`AntrianEntryModel.cs:58-73`). Public constructors can reconstruct invalid combinations. The focused test run confirms default `Serve()` then `Done()` fails.
-- **Gap/conflict:** Consistency is enforced late or not at all. The aggregate permits illegal transitions and timestamp sequences.
-- **Business impact:** Queue state and durations can be invalid even when rows persist successfully; concurrent number allocation can fail unpredictably.
-- **Legacy compatibility impact:** Legacy number maps may remain the transitional allocator. Their assigned number must be reserved atomically in the canonical Queue Session instead of bypassing its uniqueness guard.
-- **Recommended direction:** Make Service Point explicit; enforce duplicate prevention and allowed transitions in the aggregate; require valid business times; add optimistic/concurrency protection for queue creation and number assignment.
+- **Status:** **Closed in source** (2026-07-21) for aggregate lifecycle guards, in-session number uniqueness, explicit `ServicePoint` / `ServicePointCode`, and light concurrency via `UX_BILRG_Antrian_SequenceTag`. RowVersion optimistic token and natural session-tuple uniqueness remain deferred (see F-12 residual / domain §7.1.5).
+- **Evidence (historical gap):** Pre-fix code allowed duplicate `AddEntry(int)`, unguarded `Serve`/`Done`, default timestamps, and Service Point only in `SequenceTag`.
+- **Closed by:** commit `a3232c56` — see [`tracker-f06-implementation-report.md`](tracker-f06-implementation-report.md).
+- **Gap/conflict (residual):** Public rehydration ctor remains permissive for historical rows; natural `(ServicePointCode, Date, Start, End)` UX not added; no concurrency token.
+- **Business impact (if unfixed):** Queue state and durations can be invalid even when rows persist successfully; concurrent number allocation can fail unpredictably.
+- **Legacy compatibility impact:** Legacy number maps may remain the transitional allocator (F-13). Their assigned number must still pass canonical session uniqueness (`EnsureUniqueNoUrut` + PK).
+- **Recommended direction:** **Applied** for domain guards + additive `ServicePointCode` + SequenceTag uniqueness. **Deferred:** RowVersion; natural session-tuple unique policy.
 - **Severity:** High.
 
 ### F-07 — Registration and consultation milestones are semantically conflated
 
 - **Domain requirement:** BR-TRK-040 through BR-TRK-043; workflows 10.3, 10.4, and 10.8.
-- **Status:** Implemented Differently.
-- **Evidence:** Booking registration changes the physician queue reference to `REG` and calls `Serve` immediately (`RegJalanByBookingCmd.cs:170-175`). Walk-in creates a physician queue entry and calls `Serve` in the registration transaction (`RegJalanWalkInCommand.cs:250-257`). No admission Queue Session/entry is created or completed. `QueSelesaiPeriksaHandler` later completes the same physician row.
-- **Gap/conflict:** Physician `ServedAt` represents registration time, not physician-recognized service start. Registration Created/Served/Done milestones do not exist separately.
-- **Business impact:** Registration wait, registration duration, post-registration consultation wait, and consultation duration are all absent or materially wrong. Operational performance reporting would misstate patient experience.
-- **Legacy compatibility impact:** Existing desktop dashboards may expect a booking/registration queue row to become active at registration. Preserve that projection if needed, but do not reuse its timestamp as canonical Tracker consultation evidence.
-- **Recommended direction:** Introduce a distinct admission Queue Session/entry; complete it when Registration completes; keep the booking-created physician entry Waiting until physician service actually begins. Project legacy states separately from canonical milestones during transition.
-- **Severity:** Critical.
+- **Status:** **Closed in source** (2026-07-21) for milestone separation: admission Done at Reg; physician Waiting until MulaiPeriksa; create-on-reg fallback for callers without admission keys. Dedicated duration/timeline projection API (workflow 10.8 read model) remains deferred.
+- **Evidence (after fix):** `AdmissionQueueComplete` completes admission at Reg (`RegJalanByBookingCmd` / `RegJalanWalkInCommand`); physician entry only `SetReff(..., "REG")` — no `Serve` at Reg or visit-change (`RegJalanUbahKunjunganCmd`). `QueMulaiPeriksaCmd` + `PATCH api/Antrian/mulaiPeriksa` starts physician service; `QueSelesaiPeriksa` completes it (awaited). Optional `AdmissionAntrianId`/`AdmissionNoUrut` Done the F-05 InService admission entry; otherwise create-on-reg Serve+Done on default SP `ADM`.
+- **Gap/conflict (resolved):** Physician `ServedAt` is no longer registration time. Registration milestones live on the admission Queue Entry; consultation milestones on the physician entry.
+- **Remaining note:** Historical rows with physician ServedAt = Reg time are not backfilled. Create-on-reg may yield ~0 loket wait/duration. Workflow 10.8 projection endpoints are separate (see F-10 remaining / sequence step 9). Consult-* Tracker Events added in **F-08**.
+- **Closed by:** commit `3def0ded` — see [`tracker-f07-implementation-report.md`](tracker-f07-implementation-report.md).
+- **Recommended direction:** **Applied** for orchestration semantics. **Deferred:** duration projection API; historical backfill.
+- **Severity:** Critical (closed in source).
 
 ### F-08 — Evidence timeline stops after Booking or initial Registration
 
-- **Domain requirement:** BR-TRK-010 through BR-TRK-019; workflows 10.3–10.6.
-- **Status:** Partially Implemented.
-- **Evidence:** Global call search found active `AddEvent` only inside `PasienTrackerModel.Create(Booking)` and `.Create(Reg)`. Booking-based registration never loads/saves the tracker; consultation completion does not append Medical Chart evidence; no pharmacy code references Bilreg Tracker.
-- **Gap/conflict:** Check-in, registration-start, registration-done, consultation-start, consultation-done, pharmacy-start, and pharmacy-done evidence are absent. Queue Evidence Reference is absent.
-- **Business impact:** The timeline cannot explain a journey or expose evidence for human resolution. LastPeriod could not be extended even if added.
-- **Legacy compatibility impact:** Existing `EventName`/`ReffId` columns can carry transitional events but length/key/order limits must be fixed first. Legacy event wording must remain display-only.
-- **Recommended direction:** After fixing append-only persistence and reference representation, append each workflow milestone from its accountable source time/reference. Do not infer unobserved movement.
-- **Severity:** High.
+- **Domain requirement:** BR-TRK-010 through BR-TRK-019; workflows 10.3–10.6 (this finding’s Bilreg close = workflow 10.4 consultation evidence; 10.3 admission/reg evidence prior; 10.5–10.6 pharmacy = F-09).
+- **Status:** **Closed in source** (2026-07-21) for consultation-start/done Tracker Events on MulaiPeriksa / SelesaiPeriksa. Pharmacy Apotek-* evidence is **F-09**. Medical Chart as Consult-Done ReffId remains deferred (no Bilreg Chart contract; Queue Evidence Reference used per BR-TRK-013).
+- **Evidence (after fix):** Commit `fb73201b`. `PhysicianQueueEvidence` appends idempotent `Consult-Start` / `Consult-Done` with `ReffId = QueueEvidenceReference` (`{AntrianId}/No.{NoUrut}`) at physician Serve/Done. Unidentified entries are rejected. Prerequisites: F-03 append-only, F-05 QueueEvidenceReference, F-07 physician Serve only via MulaiPeriksa. Earlier slices already produce BOOKING / Check In / Reg-Start / REGISTER.
+- **Gap/conflict (resolved for F-08 consultation scope):** Timeline no longer stops at Registration for physician service; Journey Resolution can see consult proof; LastPeriod can extend from consult OccurredAt.
+- **Remaining note:** Do not invent physical-movement events. Do not backfill Consult-* for historical Mulai/Selesai before `fb73201b`. Chart-primary ReffId and duration projection API remain deferred. Pharmacy = F-09.
+- **Closed by:** commit `fb73201b` — see [`tracker-f08-implementation-report.md`](tracker-f08-implementation-report.md).
+- **Recommended direction:** **Applied** for workflow 10.4 consultation evidence from accountable Mulai/Selesai times/references. **Deferred:** Medical Chart reference; historical backfill; pharmacy (F-09).
+- **Severity:** High (closed in source for consultation evidence).
 
 ### F-09 — Pharmacy queue is a separate, unintegrated lifecycle
 

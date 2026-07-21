@@ -195,6 +195,15 @@ Background processing platform — job orchestration, worker plugins, operator c
 | `docs/contexts/pasien-tracker/tracker-f01-implementation-report.md` | Patient Tracker — F-01 closed: explicit Tracking Period |
 | `docs/contexts/pasien-tracker/tracker-f02-implementation-report.md` | Patient Tracker — F-02 closed: stable TrackerId across visit change / cancel |
 | `docs/contexts/pasien-tracker/tracker-f03-implementation-report.md` | Patient Tracker — F-03 closed: append-only Tracker Event persistence (PK NoUrut, insert-only DAL/repo) |
+| `docs/contexts/pasien-tracker/tracker-f04-implementation-report.md` | Patient Tracker — F-04 closed: Journey Candidate Resolution (soft-duplicate Booking, candidate query, select/new) |
+| `docs/contexts/pasien-tracker/tracker-f05-implementation-report.md` | Patient Tracker — F-05 closed: anonymous admission intake & atomic identify + Queue Evidence Reference |
+| `docs/contexts/pasien-tracker/tracker-f06-implementation-report.md` | Patient Tracker — F-06 closed: Queue aggregate Service Point, number uniqueness, Serve/Done lifecycle invariants |
+| `docs/contexts/pasien-tracker/tracker-f07-implementation-report.md` | Patient Tracker — F-07 closed: registration vs consultation milestone separation (admission Done; physician Serve via MulaiPeriksa) |
+| `docs/contexts/pasien-tracker/tracker-f08-implementation-report.md` | Patient Tracker — F-08 closed: Consult-Start / Consult-Done evidence on MulaiPeriksa / SelesaiPeriksa |
+| `docs/contexts/pasien-tracker/tracker-f09-implementation-report.md` | Patient Tracker — F-09 closed: pharmacy queue same TrackerId; sale→Apotek-Start; handover→Apotek-Done (Farinv cmds completed in F-10 companion) |
+| `docs/contexts/pasien-tracker/tracker-f10-implementation-report.md` | Patient Tracker — F-10 closed: GET tracker/timeline + Mulai/Selesai/QueGet response contracts (Farinv Que* in same commit attributed to F-09) |
+| `docs/contexts/pasien-tracker/tracker-f11-implementation-report.md` | Patient Tracker — F-11 Slice 1 closed: EMR antrian outbox for BookingCreate + RegJalan (WalkIn/ByBooking); pharmacy/full §9 facts remain open |
+| `docs/contexts/pasien-tracker/tracker-f12-implementation-report.md` | Patient Tracker — F-12 closed in source: Queue Session + deterministic evidence persistence shape (cross-commit F-01/F-03/F-05/F-06; close `0256688d`) |
 | `docs/contexts/pasien-tracker/tracker-f13-implementation-report.md` | Patient Tracker — F-13 closed in source: queue-number compatibility adapter & authority map |
 
 ---
