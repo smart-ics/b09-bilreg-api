@@ -19,6 +19,15 @@ public class PasienTrackerController : ControllerBase
     }
 
     [HttpGet]
+    [Route("{pasienTrackerId}")]
+    public async Task<IActionResult> Get(string pasienTrackerId)
+    {
+        var query = new TrkGetQuery(pasienTrackerId);
+        var response = await _mediator.Send(query);
+        return Ok(new JSendOk(response));
+    }
+
+    [HttpGet]
     [Route("candidates")]
     public async Task<IActionResult> ListCandidates(
         [FromQuery] string personName,

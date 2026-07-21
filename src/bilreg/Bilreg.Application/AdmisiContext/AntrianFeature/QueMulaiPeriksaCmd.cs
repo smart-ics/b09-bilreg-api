@@ -5,9 +5,10 @@ using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiContext.AntrianFeature;
 
-public record QueMulaiPeriksaCmd(string AntrianId, int NoUrut) : IRequest, IAntrianKey;
+public record QueMulaiPeriksaCmd(string AntrianId, int NoUrut)
+    : IRequest<QueAntrianEntryActionResponse>, IAntrianKey;
 
-public class QueMulaiPeriksaHandler : IRequestHandler<QueMulaiPeriksaCmd>
+public class QueMulaiPeriksaHandler : IRequestHandler<QueMulaiPeriksaCmd, QueAntrianEntryActionResponse>
 {
     private readonly IAntrianRepo _queRepo;
     private readonly IPasienTrackerRepo _trackerRepo;
@@ -23,7 +24,9 @@ public class QueMulaiPeriksaHandler : IRequestHandler<QueMulaiPeriksaCmd>
         _tglJamProvider = tglJamProvider;
     }
 
-    public Task Handle(QueMulaiPeriksaCmd request, CancellationToken cancellationToken)
+    public Task<QueAntrianEntryActionResponse> Handle(
+        QueMulaiPeriksaCmd request,
+        CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.AntrianId);
         Guard.Against.Null(request.NoUrut);
@@ -42,6 +45,10 @@ public class QueMulaiPeriksaHandler : IRequestHandler<QueMulaiPeriksaCmd>
         _queRepo.SaveChanges(que);
         _trackerRepo.SaveChanges(tracker);
 
-        return Task.CompletedTask;
+        return Task.FromResult(new QueAntrianEntryActionResponse(
+            request.AntrianId,
+            request.NoUrut,
+            tracker.PasienTrackerId,
+            item.AntrianStatus.ToString()));
     }
 }

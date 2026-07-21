@@ -356,13 +356,12 @@ This section contains confirmed implementation gaps. Ambiguities, missing runtim
 ### F-10 — HTTP/application contracts do not expose core Tracker operations
 
 - **Domain requirement:** Journey Resolution, timeline evidence, anonymous intake/identification, queue service lifecycle, and time interpretation must be operable.
-- **Status:** Not Implemented / Partially Implemented.
-- **Evidence:** Bilreg `AntrianController` exposes quota, number generation, patient/header lists, one queue query, completion, and repair. Responses do not expose TrackerId/timeline/candidate evidence. `SelesaiPeriksa` creates `_mediator.Send(query)` but does not await it (`AntrianController.cs:65-71`). There is no Tracker controller or active service-start endpoint.
-- **Gap/conflict:** Required domain actions cannot be invoked or observed through the new web platform. Completion can return `Done` before the handler finishes or surface no handler exception to the caller.
-- **Business impact:** Operators cannot perform accountable resolution or inspect evidence, and service completion reliability is uncertain.
-- **Legacy compatibility impact:** Existing endpoint shapes may be consumed by the web/desktop bridge. Additive V1 endpoints/contracts are safer than changing them in place; fix dispatch semantics without changing route meaning.
-- **Recommended direction:** Define additive Tracker/Queue contracts around domain intents and evidence. Await all commands and return TrackerId plus stable queue-entry identity where required.
-- **Severity:** High.
+- **Status:** Closed for core Tracker/Queue intent contracts (2026-07-21). Operational time interpretation projection API (workflow 10.8 / BR-TRK-040..046) remains out of scope for this finding.
+- **Evidence (after fix):** `PasienTrackerController` exposes `GET {pasienTrackerId}` (`TrkGetQuery` with chronological `ListEvent`), `GET candidates`, `POST resolve/select`, `POST resolve/new`, and `POST pharmacy/evidence`. `AntrianController` exposes `POST anonymous-intake`, `PATCH mulaiPeriksa`, and `PATCH selesaiPeriksa`; all MediatR dispatches are awaited. `QueMulaiPeriksaCmd` / `QueSelesaiPeriksaCmd` return `QueAntrianEntryActionResponse` with `AntrianId`, `NoUrut`, `PasienTrackerId`, and `Status`. `QueGetAntrianResponse` includes `PasienTrackerId`, `ServedAt`, and `DoneAt`.
+- **Gap/conflict (resolved):** Core domain actions are now invocable and observable through additive HTTP contracts. Service start/complete responses carry stable queue-entry identity and TrackerId instead of opaque status strings.
+- **Remaining note:** Dedicated duration/timeline interpretation endpoints (BR-TRK-040..046) are tracked under workflow 10.8 / implementation sequence step 9, not this HTTP-contract gap.
+- **Recommended direction:** Define additive Tracker/Queue contracts around domain intents and evidence. Await all commands and return TrackerId plus stable queue-entry identity where required. **Applied.**
+- **Severity:** High (closed).
 
 ### F-11 — Domain facts and cross-context reliability are absent
 

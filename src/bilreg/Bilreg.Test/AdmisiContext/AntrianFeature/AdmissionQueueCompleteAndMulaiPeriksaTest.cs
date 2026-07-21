@@ -131,7 +131,12 @@ public class QueMulaiPeriksaHandlerTest
 
         var sut = new QueMulaiPeriksaHandler(
             _queRepo.Object, _trackerRepo.Object, TestTglJamProvider.Instance);
-        await sut.Handle(new QueMulaiPeriksaCmd("DOC-Q1", 15), CancellationToken.None);
+        var response = await sut.Handle(new QueMulaiPeriksaCmd("DOC-Q1", 15), CancellationToken.None);
+
+        response.AntrianId.Should().Be("DOC-Q1");
+        response.NoUrut.Should().Be(15);
+        response.PasienTrackerId.Should().Be(tracker.PasienTrackerId);
+        response.Status.Should().Be("InService");
 
         var entry = saved!.ListEntry.Single(e => e.NoUrut == 15);
         entry.AntrianStatus.Should().Be(AntrianStatusEnum.InService);
@@ -161,11 +166,17 @@ public class QueMulaiPeriksaHandlerTest
 
         var mulai = new QueMulaiPeriksaHandler(
             _queRepo.Object, _trackerRepo.Object, TestTglJamProvider.Instance);
-        await mulai.Handle(new QueMulaiPeriksaCmd("DOC-Q1", 15), CancellationToken.None);
+        var mulaiResponse = await mulai.Handle(new QueMulaiPeriksaCmd("DOC-Q1", 15), CancellationToken.None);
+        mulaiResponse.Status.Should().Be("InService");
+        mulaiResponse.PasienTrackerId.Should().Be(tracker.PasienTrackerId);
 
         var selesai = new QueSelesaiPeriksaHandler(
             _queRepo.Object, _trackerRepo.Object, TestTglJamProvider.Instance);
-        await selesai.Handle(new QueSelesaiPeriksaCmd("DOC-Q1", 15), CancellationToken.None);
+        var selesaiResponse = await selesai.Handle(new QueSelesaiPeriksaCmd("DOC-Q1", 15), CancellationToken.None);
+        selesaiResponse.Status.Should().Be("Done");
+        selesaiResponse.PasienTrackerId.Should().Be(tracker.PasienTrackerId);
+        selesaiResponse.AntrianId.Should().Be("DOC-Q1");
+        selesaiResponse.NoUrut.Should().Be(15);
 
         var entry = queue.ListEntry.Single(e => e.NoUrut == 15);
         entry.AntrianStatus.Should().Be(AntrianStatusEnum.Done);
