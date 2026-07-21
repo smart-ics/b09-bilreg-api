@@ -71,11 +71,18 @@ public class AntrianController : Controller
     }
 
     [HttpPatch]
+    [Route("mulaiPeriksa/{antrianId}/{noUrut:int}")]
+    public async Task<IActionResult> MulaiPeriksa(string antrianId, int noUrut)
+    {
+        await _mediator.Send(new QueMulaiPeriksaCmd(antrianId, noUrut));
+        return Ok(new JSendOk("InService"));
+    }
+
+    [HttpPatch]
     [Route("selesaiPeriksa/{antrianId}/{noUrut:int}")]
     public async Task<IActionResult> SelesaiPeriksa(string antrianId, int noUrut)
     {
-        var query = new QueSelesaiPeriksaCmd(antrianId, noUrut);
-        var response = _mediator.Send(query);
+        await _mediator.Send(new QueSelesaiPeriksaCmd(antrianId, noUrut));
         return Ok(new JSendOk("Done"));
     }
 

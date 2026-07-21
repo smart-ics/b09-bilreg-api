@@ -331,9 +331,7 @@ public record RegJalanUbahKunjunganHandler : IRequestHandler<RegJalanUbahKunjung
         VoidAntrian(queOldContext.Que, queOldContext.NoUrut);
 
         antrian.AddEntry(noAntrian, tracker, regNew.RegId, "REG", occurredAt);
-        var itemQueue = antrian.ListEntry.FirstOrDefault(x => x.NoUrut == noAntrian)
-            ?? AntrianEntryModel.Default;
-        itemQueue.Serve(occurredAt);
+        // Physician entry stays Waiting until MulaiPeriksa (F-07); do not Serve at visit change.
         _antrianRepo.SaveChanges(antrian);
         _trackerRepo.SaveChanges(tracker);
         _antrianMapRepo.SaveChanges(antrianMapNew);

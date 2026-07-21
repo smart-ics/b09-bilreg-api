@@ -41,7 +41,11 @@ namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 
 public record RegJalanWalkInCommand(string PasienId, string UserId,
     string TipeJaminanId, string CaraMasukDkId, string RujukanId, string DokterId,
-    string LayananId, string JamPraktek, string KarcisId, string PesertaJaminanId) 
+    string LayananId, string JamPraktek, string KarcisId, string PesertaJaminanId,
+    string? AdmissionAntrianId = null,
+    int? AdmissionNoUrut = null,
+    string? AdmissionServicePointCode = null,
+    string? AdmissionServicePointName = null) 
     : IRequest<RegJalanCreateResponse>, ILayananKey, ICaraMasukDkKey, IPasienKey,
         ITipeJaminanKey, IKarcisKey; 
  
@@ -204,7 +208,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             _featureResolver, _jadwalPraktekRepo, dokter, tglBerobat, request.JamPraktek);
         var antrian = ResolveAntrian(tglBerobat, dokter, schedule);
         var antrianMap = _antrianMapWithRegResolver.Resolve(schedule.LegacyJadwal, tglBerobat, reg);
-        var tracker = PasienTrackerModel.Create(reg, occurredAt);
+        var tracker = ResolveTrackerForWalkIn(reg, occurredAt, request);
 
         //      3-trs-billing-karcis
         var jaminan = LoadJaminan(tipeJaminan.Jaminan);
@@ -247,13 +251,16 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         
         using (var trans = TransHelper.NewScope())
         {
+            // Physician entry stays Waiting until MulaiPeriksa; legacy "active" = ReffDesc REG / AntrianMap (F-07).
             var antEntry = antrian.AddEntry(antrianMap.Value.Item2.NoUrut, tracker, reg.RegId, "REG", occurredAt);
-            var itemQueue = antrian.ListEntry.FirstOrDefault(x => x.NoUrut == antrianMap.Value.Item2.NoUrut)
-                ?? AntrianEntryModel.Default;
-            itemQueue.Serve(occurredAt);
+            var admissionQueue = AdmissionQueueComplete.CompleteAtRegistration(
+                _antrianRepo, _antrianFactory, tracker, reg.RegId, occurredAt,
+                request.AdmissionAntrianId, request.AdmissionNoUrut,
+                request.AdmissionServicePointCode, request.AdmissionServicePointName);
             _regRepo.SaveChanges(reg);
             _regAktifRepo.SaveChanges(regAktif);
             _antrianRepo.SaveChanges(antrian);
+            _antrianRepo.SaveChanges(admissionQueue);
             _trackerRepo.SaveChanges(tracker);
             _antrianMapRepo.SaveChanges(antrianMap.Value.Item1);
             _trsBillingRepo.SaveChanges(trsBillingReg);
@@ -276,6 +283,28 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
     }
 
     #region PRIVATE-HELPERS
+    private PasienTrackerModel ResolveTrackerForWalkIn(
+        RegModel reg,
+        DateTime occurredAt,
+        RegJalanWalkInCommand request)
+    {
+        if (string.IsNullOrWhiteSpace(request.AdmissionAntrianId) || request.AdmissionNoUrut is not > 0)
+            return PasienTrackerModel.Create(reg, occurredAt);
+
+        var admissionQueue = _antrianRepo.LoadEntity(AntrianModel.Key(request.AdmissionAntrianId!))
+            .GetValueOrThrow($"Admission queue '{request.AdmissionAntrianId}' not found");
+        var entry = admissionQueue.ListEntry.FirstOrDefault(x => x.NoUrut == request.AdmissionNoUrut)
+            ?? throw new KeyNotFoundException(
+                $"Queue entry '{request.AdmissionAntrianId}' / {request.AdmissionNoUrut} not found");
+
+        if (!PasienTrackerStableIdentity.IsRealTrackerId(entry.Tracker.PasienTrackerId))
+            throw new InvalidOperationException(
+                $"Admission queue entry '{request.AdmissionAntrianId}' / {request.AdmissionNoUrut} is not identified.");
+
+        return _trackerRepo.LoadEntity(entry.Tracker)
+            .GetValueOrThrow($"PasienTracker '{entry.Tracker.PasienTrackerId}' not found");
+    }
+
     private bool IsPasienAktifReg(IPasienKey pasien)
     {
         return _regAktifRepo.IsPasienAktif(pasien)
