@@ -13,11 +13,11 @@ The strongest implemented portion is booking-time creation: a booking creates a 
 
 The implementation diverges from the canonical domain at the points that determine business meaning:
 
-- There is no `StartPeriod` or `LastPeriod`; the model and database retain only one `VisitDate`. Candidate eligibility therefore cannot follow BR-TRK-005 through BR-TRK-008.
+- Tracking Period persistence exists (`StartPeriod`/`LastPeriod` in model, DAL, and additive DDL), but change/cancel paths and incomplete later evidence still limit BR-TRK-005 through BR-TRK-008 in live workflows (see F-01/F-02/F-08).
 - There is no operational Journey Resolution use case. Booking creation performs a duplicate rejection, not candidate presentation and accountable selection. Anonymous queue intake is present only as an unused domain method and a fully commented-out handler.
 - `AntrianEntryModel.AssignPasien` copies only the name and does not assign the `Tracker` key. Even if the dormant anonymous flow were enabled, it would not make the entry Identified.
 - Registration and physician service semantics are conflated. Both walk-in and booking-based registration call `Serve` on the physician queue entry at registration time. No separate admission queue service is completed, so registration waiting time, registration service duration, and post-registration consultation waiting time cannot be calculated according to BR-TRK-040 through BR-TRK-043.
-- Tracker evidence is not append-only in persistence. The repository explicitly calculates deleted and changed events, the DAL exposes update/delete operations, its update predicate targets every event for a tracker, and its aggregate-delete method executes a `SELECT` instead of a `DELETE`. The event table primary key also prevents two events with the same `OccurredAt`.
+- Tracker event persistence shape is append-only with deterministic `(PasienTrackerId, NoUrut)` ordering (see F-12/F-03), but only Booking/Registration produce evidence today and cancellation still deletes tracker headers (see F-02/F-08).
 - Registration cancellation and booking deletion physically remove queue entries and tracker headers. A change-of-visit creates a new `TrackerId` for the same registration. These paths conflict with stable journey identity and cumulative evidence, although the correct cancellation/reschedule representation requires a domain decision because `TRACKER-DOMAIN.md` does not define those workflows.
 - Consultation evidence is not recorded in the tracker. Pharmacy has a separate `FARIN_Antrian` model and lifecycle, but it has no `TrackerId`, no integration with Bilreg Tracker, and no application handlers that invoke its prepare/deliver transitions from drug-sale confirmation or medicine handover.
 - No candidate, timeline, anonymous intake, identification, service-start, or Tracker-specific API contract exists. The only completion endpoint returns without awaiting its command.
@@ -30,7 +30,7 @@ Severity totals for the confirmed detailed findings in section 5:
 | Severity | Count |
 |---|---:|
 | Critical | 5 |
-| High | 7 |
+| High | 6 |
 | Medium | 3 |
 | Low | 0 |
 
@@ -68,7 +68,7 @@ Name similarity or a dormant method was not counted as implementation unless an 
 
 ### 2.3 Verification performed
 
-Static searches found no implementation under Tracker-related code for `StartPeriod`, `LastPeriod`, `TrackingPeriod`, `JourneyCandidate`, `QueueEvidenceReference`, or the section-9 domain-fact names.
+Static searches found no implementation under Tracker-related code for `TrackingPeriod` (value object), `JourneyCandidate`, `QueueEvidenceReference`, or the section-9 domain-fact names. `StartPeriod`/`LastPeriod` and `ServicePointCode` persistence are present in source (see F-12).
 
 A bounded unit-test run was executed:
 
@@ -92,9 +92,9 @@ This was a source investigation. No production or staging database was queried, 
 
 | Area | Current implementation | Verified behavior |
 |---|---|---|
-| Logical tracker | `PasienTrackerModel` | ULID `PasienTrackerId`; name/date-of-birth snapshot; one `VisitDate`; list of `PasienTrackerEventType`. Factories exist only for Booking and Registration. |
-| Tracker timeline persistence | `PasienTrackerRepo`, `PasienTrackerEventDal`, `BILRG_PasienTracker*` | Header plus detail rows. Events have `NoUrut`, `EventName`, `EventDate`, and `ReffId`, but reads are unordered and persistence supports update/delete. |
-| Queue session | `AntrianModel`, `AntrianFactory`, `BILRG_Antrian` | A date/time-bounded header with generated `SequenceTag` and description. A Service Point code is encoded in the tag/description rather than persisted explicitly. |
+| Logical tracker | `PasienTrackerModel` | ULID `PasienTrackerId`; name/date-of-birth snapshot; `VisitDate` plus `StartPeriod`/`LastPeriod`; list of `PasienTrackerEventType`. Factories exist only for Booking and Registration. |
+| Tracker timeline persistence | `PasienTrackerRepo`, `PasienTrackerEventDal`, `BILRG_PasienTracker*` | Header plus detail rows with `StartPeriod`/`LastPeriod`. Events use PK `(PasienTrackerId, NoUrut)`, `ORDER BY EventDate, NoUrut`, and insert-only repo path; later-stage evidence and cancellation retention remain gaps (F-02/F-08). |
+| Queue session | `AntrianModel`, `AntrianFactory`, `BILRG_Antrian` | Date/time-bounded header with `SequenceTag`, description, and explicit `ServicePointCode` column (dual-read fallback from tag when empty). `UX_BILRG_Antrian_SequenceTag` enforces lookup uniqueness. |
 | Queue entry | `AntrianEntryModel`, `BILRG_AntrianEntry` | Composite `(AntrianId, NoUrut)` identity, optional sentinel tracker `"-"`, name snapshot, `CreatedAt`, `ServedAt`, `DoneAt`, and status. |
 | Booking workflow | `BookingCreateHandler`, `BookingCreateFromHidokHandler` | Creates booking, new tracker with `BOOKING` event, physician queue entry, legacy map slot, and queue number. Local flow performs duplicate rejection; external flow does not. |
 | Registration by booking | `RegJalanByBookingHandler` | Reuses the booking queue row and therefore retains its `PasienTrackerId`, changes queue reference from Booking to Registration, and immediately calls `Serve`. It does not append tracker evidence. |
@@ -118,18 +118,18 @@ The current ownership is split: Bilreg `AntrianModel` behaves like the proposed 
 | Service Point Queue Coordination | Partially Implemented | Queue header/entries/numbers/statuses exist. Anonymous intake is inactive, identification is defective, lifecycle guards are incomplete, and Service Point identity is implicit. See F-05/F-06. |
 | Journey Candidate Resolution | Not Implemented | Repository filtering is used only as duplicate rejection. There is no candidate query with evidence, operator selection, or association command. See F-04. |
 | Operational Time Interpretation | Implemented Differently | Milestone columns exist, but registration calls `Serve` on the physician entry and there are no canonical duration projections. See F-07/F-09. |
-| Patient Tracker aggregate | Partially Implemented | Root and owned event collection exist, but Tracking Period and append-only consistency are absent. |
-| Queue Session aggregate | Partially Implemented | Root and owned entries exist, but aggregate invariants are not consistently enforced and explicit Service Point identity is absent. |
+| Patient Tracker aggregate | Partially Implemented | Root, Tracking Period columns, and append-only event persistence exist; continuity rules and later evidence are still incomplete (F-01/F-02/F-08). |
+| Queue Session aggregate | Partially Implemented | Root, entries, and explicit `ServicePointCode` persistence exist; aggregate invariants and natural session uniqueness policy remain incomplete (F-06/F-12 residual). |
 | Patient Tracker entity | Partially Implemented | ID/person/event collection exist; period and continuity rules do not. |
-| Tracker Event entity | Partially Implemented | Description/reference/time/order fields exist under different names; persistence permits mutation/deletion and cannot store equal timestamps. |
-| Queue Session entity | Partially Implemented | Stable ID/date/start/end exist; Service Point is encoded, not modeled/persisted as an owned value. |
+| Tracker Event entity | Partially Implemented | Description/reference/time/order fields exist; PK `(PasienTrackerId, NoUrut)` and chronological reads are durable; only Booking/Reg events are produced (F-08). |
+| Queue Session entity | Partially Implemented | Stable ID/date/start/end and `ServicePointCode` column exist; `SequenceTag` remains operational lookup key; natural tuple uniqueness deferred (F-12 residual). |
 | Queue Entry entity | Partially Implemented | Number/tracker/name/milestones/state exist; identification and state guards conflict with the domain. |
 | TrackerId | Partially Implemented | ULID and queue reference exist, but replacement/deletion workflows break logical stability. |
 | Person Identity Snapshot | Implemented | Name and date of birth are copied into `PersonType` and tracker persistence. Matching policy remains ambiguous. |
-| Tracking Period | Not Implemented | No model, DTO, SQL columns, or query semantics for `StartPeriod`/`LastPeriod`. |
+| Tracking Period | Partially Implemented | Model, DTO, SQL columns, and overlap list filter exist; workflow continuity and extension in all paths remain incomplete (F-01). |
 | Evidence Reference | Partially Implemented | `ReffId` exists on tracker events; there is no typed provenance or source/queue-reference distinction. |
 | Queue Evidence Reference | Not Implemented | No composite value, serialization, or event contributor uses `(Queue Session identity, Queue Number)`. |
-| Service Point | Partially Implemented | `ServicePointType` exists, but `IServicePointDal` has no implementation/table and queue headers do not retain the code explicitly. |
+| Service Point | Partially Implemented | `ServicePointType` and `BILRG_Antrian.ServicePointCode` exist with dual-read fallback from `SequenceTag`; no catalogue table/`IServicePointDal` implementation. |
 | Patient or Visitor role | Partially Implemented | Booking/registration contracts accept identity evidence and queue numbers are returned, but no anonymous admission-number contract is active. |
 | Journey Resolution Operator role | Not Implemented | No candidate review, selection/new decision, accountable actor field, or association command exists. |
 | Service Point Operator role | Partially Implemented | Completion can be invoked, but service start is automated by registration rather than recognized by the responsible operator. |
@@ -156,10 +156,10 @@ The current ownership is split: Bilreg `AntrianModel` behaves like the proposed 
 | BR-TRK-015 | Evidence reference is provenance, not lifecycle correlation | Partially Implemented | Per-event `ReffId` exists, but queue repair mutates a general `ReffId` from Booking to Reg and no provenance type documents the distinction. |
 | BR-TRK-016 | Description is free text and non-behavioral | Implemented | `EventName` is a string; no Tracker search or transition branches on it. |
 | BR-TRK-017 | Events are cumulative and append-only | Implemented Differently | `PasienTrackerRepo.SaveChanges` computes deletions/changes (`:28-35`); DAL exposes update/delete; source deletion removes tracker roots. See F-03. |
-| BR-TRK-018 | Chronological timeline with deterministic tie order | Not Implemented | Event query has no `ORDER BY`; SQL PK is `(PasienTrackerId, EventDate)`, so equal timestamps collide instead of using `NoUrut`. |
+| BR-TRK-018 | Chronological timeline with deterministic tie order | Implemented | `PasienTrackerEventDal.ListData` orders by `EventDate, NoUrut`; PK is `(PasienTrackerId, NoUrut)` (`BILRG_PasienTrackerEvent.sql`, M2 alter). |
 | BR-TRK-019 | OccurredAt preserves source business time | Partially Implemented | Main Booking/Reg use cases pass `ITglJamProvider.Now`; domain defaults allow `DateTime.MinValue`, and no late-association workflow is present. |
 | BR-TRK-020 | Candidate search uses name, DOB, relevant date | Partially Implemented | `ListData(Periode, tglLahir)` filters VisitDate/DOB; Booking handler applies exact normalized name. It is a duplicate guard, not a candidate use case. |
-| BR-TRK-021 | Relevant date is inclusive within Start/Last | Not Implemented | DAL uses `VisitDate BETWEEN`, with no Start/Last columns (`PasienTrackerDal.cs:106-121`). |
+| BR-TRK-021 | Relevant date is inclusive within Start/Last | Partially Implemented | `PasienTrackerDal.ListData` uses overlap `StartPeriod <= @Tgl2 AND LastPeriod >= @Tgl1`; candidate workflow still incomplete (F-04). |
 | BR-TRK-022 | Return all candidates and never silently choose | Implemented Differently | Repository can return multiple rows, but Booking uses `FirstOrDefault` to reject and no evidence-bearing candidate response exists. |
 | BR-TRK-023 | Accountable operator selects among candidates | Not Implemented | No command, actor, audit, API, or UI contract. |
 | BR-TRK-024 | Equal demographics do not merge/prove identity | Implemented Differently | No automatic merge occurs, but `ThrowExceptionIfTrackerExists` treats equal name/DOB/VisitDate as a duplicate unless `IsForceDuplicatedTracker` is set (`BookingCreateCmd.cs:102-104,152-163`). |
@@ -377,13 +377,24 @@ This section contains confirmed implementation gaps. Ambiguities, missing runtim
 ### F-12 — Persistence shape cannot faithfully represent Queue Session and deterministic evidence
 
 - **Domain requirement:** Explicit Service Point/session identity, queue number uniqueness, optional Tracker association, deterministic event order, and durable milestones.
-- **Status:** Partially Implemented.
-- **Evidence:** `BILRG_Antrian` stores description/tag but no ServicePointCode and no uniqueness constraint for the operational session tuple. `BILRG_AntrianEntry.PasienTrackerId` is non-null with sentinel `"-"`. `BILRG_PasienTracker` has unused `RegId`, but no Start/LastPeriod. The four DDL files are included as `<None>` in `Bilreg.SqlDb.sqlproj`; deployed state was not verified.
-- **Gap/conflict:** The schema relies on encoded strings/sentinels and cannot express period or event tie ordering. Concurrent duplicate queue sessions are possible at the database level.
-- **Business impact:** Queries and migrations are brittle; session ownership and evidence ordering are not durable business facts.
-- **Legacy compatibility impact:** Existing column names and sentinel conventions may be widely consumed. Prefer additive columns/indexes and dual-read/backfill before removal or reinterpretation.
-- **Recommended direction:** Design an additive migration with explicit ServicePointCode, Start/LastPeriod, event identity/order, and session uniqueness/concurrency policy; profile production data before constraints.
-- **Severity:** High.
+- **Status:** Mostly Implemented / **Closed in source** (2026-07-21 verification).
+- **Evidence (after fix):**
+  - `BILRG_Antrian.ServicePointCode` in green DDL plus `BILRG_Antrian_M1_ServicePointCode_Alter.sql` (backfill from `SequenceTag`, `UX_BILRG_Antrian_SequenceTag` with duplicate guard).
+  - `BILRG_PasienTracker.StartPeriod`/`LastPeriod` in green DDL plus `BILRG_PasienTracker_M1_TrackingPeriod_Alter.sql` (backfill from events/`VisitDate`, period index).
+  - Event PK `(PasienTrackerId, NoUrut)` in green DDL plus `BILRG_PasienTrackerEvent_M2_AppendOnlyKey_Alter.sql` (profile orphans/duplicates before PK change); `ReffId` widened to `VARCHAR(40)` via M3.
+  - Domain/DAL mapping: `AntrianDto`/`AntrianDal` read-write `ServicePointCode`; `PasienTrackerDto`/`PasienTrackerDal` read-write periods with overlap filter; `PasienTrackerEventDal` insert-only with `ORDER BY EventDate, NoUrut`; `PasienTrackerRepo` append-only events and `DeleteEntity` throws.
+  - Alter scripts M1–M3 included in `Bilreg.SqlDb.sqlproj` as `<None>` (project-wide pattern).
+  - Bounded test run (29 tests, filter Antrian/PasienTracker persistence shape): **29 passed** after `PasienTrackerDalTest.EnsureTrackingPeriodColumns` helper aligned test DB with additive columns.
+- **Gap/conflict (remaining, deferred):**
+  - No unique constraint on natural session tuple `(ServicePointCode, AntrianDate, StartTime, EndTime)` — only `UX_BILRG_Antrian_SequenceTag`; policy still open in domain §7.1.5.
+  - `BILRG_AntrianEntry.PasienTrackerId` remains NOT NULL with sentinel `"-"`/`""` rather than NULL.
+  - `AntrianDal.ListData(DateTime)` view list omits `ServicePointCode` (still derivable from `SequenceTag`).
+  - Unused `RegId` on `BILRG_PasienTracker` header retained; not mapped in DTO.
+  - **Deployed schema:** Unable to Verify — M1–M3 must be applied and profiled per environment before production constraints take effect.
+- **Business impact (mitigated for source):** Queue Session identity, Tracking Period, and deterministic event ordering are now durable persistence facts in code and green DDL; residual items affect policy clarity and list projections, not the core additive shape.
+- **Legacy compatibility impact:** Additive columns/indexes preserve `VisitDate`, `SequenceTag`, and sentinel `PasienTrackerId` conventions; dual-read fallback from `SequenceTag` when `ServicePointCode` is empty.
+- **Recommended direction:** **Applied** — additive migration with `ServicePointCode`, `StartPeriod`/`LastPeriod`, event identity/order, and `SequenceTag` uniqueness with profile guards. **Deferred:** natural session tuple UX, nullable `PasienTrackerId`, concurrency token, production deploy verification.
+- **Severity:** High (closed in source; deploy/residual policy tracked separately).
 
 ### F-13 — Canonical Tracker ownership conflicts with legacy slot-map ownership
 
