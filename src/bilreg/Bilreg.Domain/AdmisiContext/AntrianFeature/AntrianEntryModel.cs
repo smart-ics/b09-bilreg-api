@@ -51,9 +51,19 @@ public class AntrianEntryModel
     public void AssignPasien(PasienTrackerModel pasienTracker)
     {
         Guard.Against.Null(pasienTracker, nameof(pasienTracker));
-        var visitor = pasienTracker.Person;
-        Visitor = visitor;
+        if (!IsRealTrackerId(pasienTracker.PasienTrackerId))
+            throw new ArgumentException("PasienTrackerId is required to identify a queue entry.", nameof(pasienTracker));
+        if (IsRealTrackerId(Tracker.PasienTrackerId))
+            throw new InvalidOperationException("Queue entry is already identified.");
+
+        Visitor = pasienTracker.Person;
+        Tracker = pasienTracker;
     }
+
+    private static bool IsRealTrackerId(string? trackerId)
+        => trackerId is not null
+           && trackerId.Trim() != ""
+           && trackerId != "-";
 
     public void Serve(DateTime servedAt = default)
     {

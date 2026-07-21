@@ -62,6 +62,14 @@ public class AntrianController : Controller
         return Ok(new JSendOk(response));
     }
 
+    [HttpPost]
+    [Route("anonymous-intake")]
+    public async Task<IActionResult> AnonymousIntake(QueAnonymousIntakeCmd cmd)
+    {
+        var response = await _mediator.Send(cmd);
+        return Ok(new JSendOk(response));
+    }
+
     [HttpPatch]
     [Route("selesaiPeriksa/{antrianId}/{noUrut:int}")]
     public async Task<IActionResult> SelesaiPeriksa(string antrianId, int noUrut)

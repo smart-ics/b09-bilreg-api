@@ -111,6 +111,7 @@ public class AntrianRepo : IAntrianRepo
     {
         return persisted.NoUrut == current.NoUrut && 
                persisted.PersonName == current.PersonName && 
+               persisted.PasienTrackerId == current.PasienTrackerId &&
                persisted.AntrianStatus == current.AntrianStatus && 
                persisted.CreatedAt == current.CreatedAt && 
                persisted.ServedAt == current.ServedAt && 

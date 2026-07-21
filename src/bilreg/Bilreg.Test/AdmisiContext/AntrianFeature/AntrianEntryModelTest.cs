@@ -16,9 +16,10 @@ public class AntrianEntryModelTest
     [Fact]
     public void T02_GivenServed_WhenDone_ThenSuccess()
     {
-        var entry = AntrianEntryModel.Create(1, PersonType.Default, PasienTrackerModel.Key("-"), "A", "B");
-        entry.Serve();
-        var actual = () => entry.Done();
+        var entry = AntrianEntryModel.Create(1, PersonType.Default, PasienTrackerModel.Key("-"), "A", "B",
+            new DateTime(2025, 8, 3, 6, 51, 0));
+        entry.Serve(new DateTime(2025, 8, 3, 7, 0, 0));
+        var actual = () => entry.Done(new DateTime(2025, 8, 3, 7, 30, 0));
         actual.Should().NotThrow<ArgumentException>();
     }
 }

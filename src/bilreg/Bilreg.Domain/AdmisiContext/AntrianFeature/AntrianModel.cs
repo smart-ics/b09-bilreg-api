@@ -59,11 +59,12 @@ public class AntrianModel : IAntrianKey
         _listEntry.Add(entry);
         return entry;
     }
-    public void AddEntry(DateTime createdAt = default)
+    public AntrianEntryModel AddEntry(DateTime createdAt = default)
     {
-        var noUrut = _sequencer.GetNextNoUrut(SequenceTag); 
+        var noUrut = _sequencer.GetNextNoUrut(SequenceTag);
         var entry = AntrianEntryModel.Create(noUrut, PersonType.Default, PasienTrackerModel.Key("-"), "-", "-", createdAt);
-        _listEntry.Add(entry); 
+        _listEntry.Add(entry);
+        return entry;
     }
     public void RemoveEntry(int noUrut)
     {
