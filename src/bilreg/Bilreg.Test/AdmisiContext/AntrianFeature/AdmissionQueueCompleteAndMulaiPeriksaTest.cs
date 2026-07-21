@@ -101,6 +101,7 @@ public class AdmissionQueueCompleteTest
 public class QueMulaiPeriksaHandlerTest
 {
     private readonly Mock<IAntrianRepo> _queRepo = new();
+    private readonly Mock<IPasienTrackerRepo> _trackerRepo = new();
     private readonly Mock<ISequencer> _sequencer = new();
 
     public QueMulaiPeriksaHandlerTest()
@@ -109,7 +110,7 @@ public class QueMulaiPeriksaHandlerTest
     }
 
     [Fact]
-    public async Task MulaiPeriksa_WhenWaiting_ThenInService()
+    public async Task MulaiPeriksa_WhenWaiting_ThenInServiceAndConsultStartEvidence()
     {
         var createdAt = new DateTime(2025, 5, 3, 7, 0, 0);
         var person = new PersonType("SITI", new DateOnly(1990, 5, 1));
@@ -121,21 +122,28 @@ public class QueMulaiPeriksaHandlerTest
         queue.AddEntry(15, tracker, "RG1", "REG", createdAt);
 
         _queRepo.Setup(x => x.LoadEntity(It.IsAny<IAntrianKey>())).Returns(MayBe.From(queue));
+        _trackerRepo.Setup(x => x.LoadEntity(tracker)).Returns(MayBe.From(tracker));
 
         AntrianModel? saved = null;
         _queRepo.Setup(x => x.SaveChanges(It.IsAny<AntrianModel>()))
             .Callback<AntrianModel>(m => saved = m);
+        _trackerRepo.Setup(x => x.SaveChanges(It.IsAny<PasienTrackerModel>()));
 
-        var sut = new QueMulaiPeriksaHandler(_queRepo.Object, TestTglJamProvider.Instance);
+        var sut = new QueMulaiPeriksaHandler(
+            _queRepo.Object, _trackerRepo.Object, TestTglJamProvider.Instance);
         await sut.Handle(new QueMulaiPeriksaCmd("DOC-Q1", 15), CancellationToken.None);
 
         var entry = saved!.ListEntry.Single(e => e.NoUrut == 15);
         entry.AntrianStatus.Should().Be(AntrianStatusEnum.InService);
         entry.ServedAt.Should().Be(TestTglJamProvider.Instance.Now);
+        tracker.ListEvent.Should().Contain(e =>
+            e.EventName == PhysicianQueueEvidence.ConsultStartEventName
+            && e.ReffId == "DOC-Q1/No.15"
+            && e.EventDate == TestTglJamProvider.Instance.Now);
     }
 
     [Fact]
-    public async Task SelesaiPeriksa_AfterMulai_ThenDone()
+    public async Task SelesaiPeriksa_AfterMulai_ThenDoneAndConsultDoneEvidence()
     {
         var createdAt = new DateTime(2025, 5, 3, 7, 0, 0);
         var person = new PersonType("SITI", new DateOnly(1990, 5, 1));
@@ -147,17 +155,28 @@ public class QueMulaiPeriksaHandlerTest
         queue.AddEntry(15, tracker, "RG1", "REG", createdAt);
 
         _queRepo.Setup(x => x.LoadEntity(It.IsAny<IAntrianKey>())).Returns(MayBe.From(queue));
+        _trackerRepo.Setup(x => x.LoadEntity(tracker)).Returns(MayBe.From(tracker));
         _queRepo.Setup(x => x.SaveChanges(It.IsAny<AntrianModel>()));
+        _trackerRepo.Setup(x => x.SaveChanges(It.IsAny<PasienTrackerModel>()));
 
-        var mulai = new QueMulaiPeriksaHandler(_queRepo.Object, TestTglJamProvider.Instance);
+        var mulai = new QueMulaiPeriksaHandler(
+            _queRepo.Object, _trackerRepo.Object, TestTglJamProvider.Instance);
         await mulai.Handle(new QueMulaiPeriksaCmd("DOC-Q1", 15), CancellationToken.None);
 
-        var selesai = new QueSelesaiPeriksaHandler(_queRepo.Object, TestTglJamProvider.Instance);
+        var selesai = new QueSelesaiPeriksaHandler(
+            _queRepo.Object, _trackerRepo.Object, TestTglJamProvider.Instance);
         await selesai.Handle(new QueSelesaiPeriksaCmd("DOC-Q1", 15), CancellationToken.None);
 
         var entry = queue.ListEntry.Single(e => e.NoUrut == 15);
         entry.AntrianStatus.Should().Be(AntrianStatusEnum.Done);
         entry.DoneAt.Should().Be(TestTglJamProvider.Instance.Now);
+        tracker.ListEvent.Should().Contain(e =>
+            e.EventName == PhysicianQueueEvidence.ConsultStartEventName
+            && e.ReffId == "DOC-Q1/No.15");
+        tracker.ListEvent.Should().Contain(e =>
+            e.EventName == PhysicianQueueEvidence.ConsultDoneEventName
+            && e.ReffId == "DOC-Q1/No.15"
+            && e.EventDate == TestTglJamProvider.Instance.Now);
     }
 
     [Fact]
@@ -175,10 +194,32 @@ public class QueMulaiPeriksaHandlerTest
 
         _queRepo.Setup(x => x.LoadEntity(It.IsAny<IAntrianKey>())).Returns(MayBe.From(queue));
 
-        var sut = new QueMulaiPeriksaHandler(_queRepo.Object, TestTglJamProvider.Instance);
+        var sut = new QueMulaiPeriksaHandler(
+            _queRepo.Object, _trackerRepo.Object, TestTglJamProvider.Instance);
         var act = () => sut.Handle(new QueMulaiPeriksaCmd("DOC-Q1", 15), CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task MulaiPeriksa_WhenNotIdentified_ThenThrowsWithoutEvidence()
+    {
+        var createdAt = new DateTime(2025, 5, 3, 7, 0, 0);
+        var queue = new AntrianModel(
+            "DOC-Q1", DateOnly.FromDateTime(createdAt), new TimeOnly(8, 0), new TimeOnly(12, 0),
+            "tag-doc", "Praktek", new ServicePointType("DR1", "Dokter"), [], _sequencer.Object);
+        queue.AddEntry(createdAt);
+
+        _queRepo.Setup(x => x.LoadEntity(It.IsAny<IAntrianKey>())).Returns(MayBe.From(queue));
+
+        var sut = new QueMulaiPeriksaHandler(
+            _queRepo.Object, _trackerRepo.Object, TestTglJamProvider.Instance);
+        var act = () => sut.Handle(new QueMulaiPeriksaCmd("DOC-Q1", queue.ListEntry.Single().NoUrut),
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*not identified*");
+        _trackerRepo.Verify(x => x.SaveChanges(It.IsAny<PasienTrackerModel>()), Times.Never);
     }
 }
 

@@ -10,11 +10,16 @@ public record QueSelesaiPeriksaCmd(string AntrianId, int NoUrut) : IRequest, IAn
 public class QueSelesaiPeriksaHandler : IRequestHandler<QueSelesaiPeriksaCmd>
 {
     private readonly IAntrianRepo _queRepo;
+    private readonly IPasienTrackerRepo _trackerRepo;
     private readonly ITglJamProvider _tglJamProvider;
 
-    public QueSelesaiPeriksaHandler(IAntrianRepo queRepo, ITglJamProvider tglJamProvider)
+    public QueSelesaiPeriksaHandler(
+        IAntrianRepo queRepo,
+        IPasienTrackerRepo trackerRepo,
+        ITglJamProvider tglJamProvider)
     {
         _queRepo = queRepo;
+        _trackerRepo = trackerRepo;
         _tglJamProvider = tglJamProvider;
     }
 
@@ -24,11 +29,18 @@ public class QueSelesaiPeriksaHandler : IRequestHandler<QueSelesaiPeriksaCmd>
         Guard.Against.Null(request.NoUrut);
 
         var que = _queRepo.LoadEntity(request).GetValueOrDefault();
-        var item = que.ListEntry.FirstOrDefault(x => x.NoUrut == request.NoUrut) ?? 
+        var item = que.ListEntry.FirstOrDefault(x => x.NoUrut == request.NoUrut) ??
             throw new KeyNotFoundException($"antrian {request.NoUrut} not found");
-        item.Done(_tglJamProvider.Now);
+
+        var doneAt = _tglJamProvider.Now;
+        item.Done(doneAt);
+
+        var tracker = PhysicianQueueEvidence.RequireTracker(_trackerRepo, item);
+        var queueRef = PhysicianQueueEvidence.QueueRef(que, item);
+        PhysicianQueueEvidence.AppendConsultDone(tracker, queueRef, doneAt);
 
         _queRepo.SaveChanges(que);
+        _trackerRepo.SaveChanges(tracker);
 
         return Task.CompletedTask;
     }
