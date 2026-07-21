@@ -24,3 +24,16 @@ public record AntrianEntryDto(
         return result;
     }
 }
+
+
+public record AntaianEntryOutStandingDto(
+      string AntrianId,
+      int NoUrut,
+      string PersonName,
+      string ReffId,
+      string ReffDesc,
+      string Bok_Ulid,
+      string Bok_Bh,
+      string Bok_Bo,
+      string RegId,
+      string RegDate);

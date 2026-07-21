@@ -44,7 +44,7 @@ public class AdmUpdateAdmissionHandlerTest
         var handler = new AdmUpdateAdmissionHandler(
             _admissionRepoMock.Object,
             _wardGatewayMock.Object,
-            _auditRepoMock.Object);
+            _auditRepoMock.Object, TestTglJamProvider.Instance);
 
         await handler.Handle(
             new AdmUpdateAdmissionCmd(admission.RegId, "2", "B2", "user2"),
@@ -76,7 +76,7 @@ public class AdmUpdateAdmissionHandlerTest
         var handler = new AdmUpdateAdmissionHandler(
             _admissionRepoMock.Object,
             _wardGatewayMock.Object,
-            _auditRepoMock.Object);
+            _auditRepoMock.Object, TestTglJamProvider.Instance);
 
         var act = async () => await handler.Handle(
             new AdmUpdateAdmissionCmd(admission.RegId, "2", "B2", "user2"),
@@ -111,7 +111,7 @@ public class AdmUpdateAdmissionHandlerTest
         var handler = new AdmUpdateAdmissionHandler(
             _admissionRepoMock.Object,
             _wardGatewayMock.Object,
-            _auditRepoMock.Object);
+            _auditRepoMock.Object, TestTglJamProvider.Instance);
 
         var act = async () => await handler.Handle(
             new AdmUpdateAdmissionCmd(admission.RegId, "2", "B1", "user2"),

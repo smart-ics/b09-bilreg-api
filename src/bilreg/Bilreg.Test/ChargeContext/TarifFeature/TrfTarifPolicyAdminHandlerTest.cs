@@ -33,7 +33,7 @@ public class TrfTarifPolicyAdminHandlerTest
             .Setup(x => x.SaveChanges(It.IsAny<TarifPolicyType>()))
             .Callback<TarifPolicyType>(p => saved = p);
 
-        var handler = new TrfCreateTarifPolicyHandler(_policyRepoMock.Object);
+        var handler = new TrfCreateTarifPolicyHandler(_policyRepoMock.Object, TestTglJamProvider.Instance);
         var response = await handler.Handle(
             new TrfCreateTarifPolicyCmd("SK-NEW", "New", new DateTime(2026, 7, 1), "", "user1"),
             CancellationToken.None);
@@ -101,7 +101,7 @@ public class TrfTarifPolicyAdminHandlerTest
             .Setup(x => x.SaveChanges(It.IsAny<TarifPolicyType>()))
             .Callback<TarifPolicyType>(p => saved = p);
 
-        var handler = new TrfCopyTarifPolicyHandler(_policyRepoMock.Object);
+        var handler = new TrfCopyTarifPolicyHandler(_policyRepoMock.Object, TestTglJamProvider.Instance);
         var response = await handler.Handle(
             new TrfCopyTarifPolicyCmd(source.TarifPolicyId, "SK-COPY", "Copy", "user2"),
             CancellationToken.None);
@@ -122,7 +122,7 @@ public class TrfTarifPolicyAdminHandlerTest
             .Setup(x => x.SaveChanges(It.IsAny<TarifPolicyType>()))
             .Callback<TarifPolicyType>(p => saved = p);
 
-        var handler = new TrfMassAdjustTarifPolicyHandler(_policyRepoMock.Object);
+        var handler = new TrfMassAdjustTarifPolicyHandler(_policyRepoMock.Object, TestTglJamProvider.Instance);
         await handler.Handle(
             new TrfMassAdjustTarifPolicyCmd(
                 policy.TarifPolicyId,
@@ -141,7 +141,7 @@ public class TrfTarifPolicyAdminHandlerTest
         var published = CreateDraftWithOneVariant().MarkPublished("pub");
         SetupPolicyLoad(published);
 
-        var handler = new TrfUpdateTarifPolicyHandler(_policyRepoMock.Object);
+        var handler = new TrfUpdateTarifPolicyHandler(_policyRepoMock.Object, TestTglJamProvider.Instance);
         var act = async () => await handler.Handle(
             new TrfUpdateTarifPolicyCmd(
                 published.TarifPolicyId,
@@ -166,7 +166,7 @@ public class TrfTarifPolicyAdminHandlerTest
             .Setup(x => x.SaveChanges(It.IsAny<TarifPolicyType>()))
             .Callback<TarifPolicyType>(p => saved = p);
 
-        var handler = new TrfReviewTarifPolicyHandler(_policyRepoMock.Object);
+        var handler = new TrfReviewTarifPolicyHandler(_policyRepoMock.Object, TestTglJamProvider.Instance);
         var response = await handler.Handle(
             new TrfReviewTarifPolicyCmd(policy.TarifPolicyId, "supervisor"),
             CancellationToken.None);

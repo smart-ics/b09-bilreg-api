@@ -5,6 +5,7 @@ using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiContext.RujukanFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
+using Bilreg.Domain.ChargeContext.TarifFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using Bilreg.Infrastructure.AdmisiContext.RegFeature;
@@ -20,7 +21,6 @@ public class RegRepoTest
     private readonly Mock<IRegJaminanDal> _regJaminanDal = new();
     private readonly Mock<IRegKomponenDal> _regKomponenDal = new();
     private readonly Mock<IRegHistoryDokterDal> _regHistoryDokterDal = new();
-    private readonly Mock<Ita_reg_inap_dal> _taRegInapDal = new();
     private readonly Mock<IKelasRepo> _kelasRepo = new();
     private readonly Mock<IBangsalRepo> _bangsalRepo = new();
 
@@ -30,7 +30,6 @@ public class RegRepoTest
             _regJaminanDal.Object,
             _regKomponenDal.Object,
             _regHistoryDokterDal.Object,
-            _taRegInapDal.Object,
             _kelasRepo.Object,
             _bangsalRepo.Object);
 
@@ -85,27 +84,7 @@ public class RegRepoTest
     public void GivenRegWithSyncFields_WhenSaveChanges_ThenRegDtoStillUsesLegacyRegistrationFields()
     {
         RegDto? inserted = null;
-        var model = new RegModel(
-            "RG00000002",
-            new DateOnly(2026, 7, 7),
-            new AuditInfoType("user1", new DateTime(2026, 7, 7, 8, 0, 0)),
-            AuditInfoType.Default,
-            AuditInfoType.Default,
-            AuditInfoType.Default,
-            JenisRegEnum.RegInap,
-            PasienModel.Default.ToReff(),
-            TipeJaminanType.Default.ToReff(),
-            PolisModel.Default.ToReff(),
-            new KelasReff("KLS1", "Kelas 1"),
-            CaraMasukDkType.Default,
-            RujukanType.Default.ToReff(),
-            PpaType.Default.ToReff(),
-            new LayananReff("LYN1", "Layanan 1"),
-            KarcisType.Default.ToReff(),
-            RegEligibilityType.Default,
-            [],
-            new KelasDkType("1", "Kelas DK 1"),
-            new BangsalReff("B1", "Bangsal 1"));
+        var model = CreateRegModel(JenisRegEnum.RegInap, "RG00000002", []);
         _regDal.Setup(x => x.GetData(It.IsAny<IRegKey>())).Returns((RegDto)null!);
         _regDal.Setup(x => x.Insert(It.IsAny<RegDto>()))
             .Callback<RegDto>(dto => inserted = dto);
@@ -118,6 +97,101 @@ public class RegRepoTest
         inserted.fs_kd_kelas.Should().Be("KLS1");
         inserted.fs_kd_layanan.Should().Be("LYN1");
     }
+
+    [Fact]
+    public void GivenRawatInapRegistration_WhenPersisted_ThenDoesNotCreateRegistrasi2()
+    {
+        var leftover = new RegKomponenDto(
+            "RGINAP0001", "KP1", 10000m, 0m, "DR1", "Komponen 1", "Dokter 1");
+        var model = CreateRegModel(
+            JenisRegEnum.RegInap,
+            "RGINAP0001",
+            [
+                new RegKomponenType(
+                    new KomponenReff("KP1", "Komponen 1"),
+                    new PpaReff("DR1", "Dokter 1"),
+                    10000m,
+                    0m)
+            ]);
+        _regDal.Setup(x => x.GetData(It.IsAny<IRegKey>())).Returns((RegDto)null!);
+        // Leftover rows must not be re-inserted for inpatient, even if DAL still has them.
+        _regKomponenDal.Setup(x => x.ListData(It.IsAny<IRegKey>())).Returns([leftover]);
+
+        CreateSut().SaveChanges(model);
+
+        _regKomponenDal.Verify(x => x.Delete(It.Is<IRegKey>(k => k.RegId == "RGINAP0001")), Times.Once);
+        _regKomponenDal.Verify(x => x.Insert(It.IsAny<IEnumerable<RegKomponenDto>>()), Times.Never);
+        _regJaminanDal.Verify(x => x.Insert(It.IsAny<RegJaminanDto>()), Times.Once);
+    }
+
+    [Fact]
+    public void GivenRawatJalanRegistration_WhenPersisted_ThenPreservesKomponenFromDal()
+    {
+        var existing = new[]
+        {
+            new RegKomponenDto("RGJALAN001", "KP1", 10000m, 0m, "DR1", "Komponen 1", "Dokter 1"),
+            new RegKomponenDto("RGJALAN001", "KP2", 5000m, 0m, "DR1", "Komponen 2", "Dokter 1"),
+        };
+        var model = CreateRegModel(JenisRegEnum.RegJalan, "RGJALAN001", []);
+        _regDal.Setup(x => x.GetData(It.IsAny<IRegKey>())).Returns((RegDto)null!);
+        _regKomponenDal.Setup(x => x.ListData(It.IsAny<IRegKey>())).Returns(existing);
+
+        CreateSut().SaveChanges(model);
+
+        _regKomponenDal.Verify(x => x.Delete(It.Is<IRegKey>(k => k.RegId == "RGJALAN001")), Times.Once);
+        _regKomponenDal.Verify(
+            x => x.Insert(It.Is<IEnumerable<RegKomponenDto>>(list =>
+                list.Count() == 2
+                && list.Any(i => i.fs_kd_detil_tarif == "KP1")
+                && list.Any(i => i.fs_kd_detil_tarif == "KP2"))),
+            Times.Once);
+    }
+
+    [Fact]
+    public void GivenIgdRegistration_WhenPersisted_ThenPreservesKomponenFromDal()
+    {
+        var existing = new[]
+        {
+            new RegKomponenDto("RGIGD00001", "KP1", 15000m, 0m, "DR1", "Komponen 1", "Dokter 1"),
+        };
+        var model = CreateRegModel(JenisRegEnum.Darurat, "RGIGD00001", []);
+        _regDal.Setup(x => x.GetData(It.IsAny<IRegKey>())).Returns((RegDto)null!);
+        _regKomponenDal.Setup(x => x.ListData(It.IsAny<IRegKey>())).Returns(existing);
+
+        CreateSut().SaveChanges(model);
+
+        _regKomponenDal.Verify(x => x.Delete(It.Is<IRegKey>(k => k.RegId == "RGIGD00001")), Times.Once);
+        _regKomponenDal.Verify(
+            x => x.Insert(It.Is<IEnumerable<RegKomponenDto>>(list =>
+                list.Count() == 1 && list.Single().fs_kd_detil_tarif == "KP1")),
+            Times.Once);
+    }
+
+    private static RegModel CreateRegModel(
+        JenisRegEnum jenisReg,
+        string regId,
+        IEnumerable<RegKomponenType> listKomponen) =>
+        new(
+            regId,
+            new DateOnly(2026, 7, 7),
+            new AuditInfoType("user1", new DateTime(2026, 7, 7, 8, 0, 0)),
+            AuditInfoType.Default,
+            AuditInfoType.Default,
+            AuditInfoType.Default,
+            jenisReg,
+            PasienModel.Default.ToReff(),
+            TipeJaminanType.Default.ToReff(),
+            PolisModel.Default.ToReff(),
+            new KelasReff("KLS1", "Kelas 1"),
+            CaraMasukDkType.Default,
+            RujukanType.Default.ToReff(),
+            PpaType.Default.ToReff(),
+            new LayananReff("LYN1", "Layanan 1"),
+            KarcisType.Default.ToReff(),
+            RegEligibilityType.Default,
+            listKomponen,
+            new KelasDkType("1", "Kelas DK 1"),
+            new BangsalReff("B1", "Bangsal 1"));
 
     private static RegDto CreateRegDto(JenisRegEnum jenisReg) =>
         new(
@@ -148,6 +222,7 @@ public class RegRepoTest
             "-",
             "2026-07-07 08:00:00",
             "3000-01-01 00:00:00",
+            0,
             "Pasien Test",
             "1990-01-01",
             "L",

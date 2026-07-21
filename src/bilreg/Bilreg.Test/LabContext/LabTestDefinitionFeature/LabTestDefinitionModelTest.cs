@@ -27,7 +27,7 @@ public class LabTestDefinitionModelTest
         var ex = Assert.Throws<InvalidOperationException>(() =>
             LabTestDefinitionModel.CreateNew(
                 "LTD0001", "TR1", "", "", "CBC", "Complete Blood Count", "Blood",
-                VacutainerTypeEnum.Edta, true, "admin", components, Catalog));
+                VacutainerTypeEnum.Edta, true, "admin", new DateTime(2025, 5, 3, 10, 15, 30), components, Catalog));
 
         Assert.Contains("LAB_DUPLICATE_SEQUENCE", ex.Message);
     }
@@ -40,7 +40,7 @@ public class LabTestDefinitionModelTest
         var ex = Assert.Throws<InvalidOperationException>(() =>
             LabTestDefinitionModel.CreateNew(
                 "LTD0001", "TR1", "", "", "CBC", "Complete Blood Count", "Blood",
-                VacutainerTypeEnum.Edta, true, "admin", components, Catalog));
+                VacutainerTypeEnum.Edta, true, "admin", new DateTime(2025, 5, 3, 10, 15, 30), components, Catalog));
 
         Assert.Contains("LAB_COMPONENT_INACTIVE", ex.Message);
     }
@@ -51,7 +51,7 @@ public class LabTestDefinitionModelTest
         var ex = Assert.Throws<InvalidOperationException>(() =>
             LabTestDefinitionModel.CreateNew(
                 "LTD0001", "TR1", "", "", "CBC", "Complete Blood Count", "Blood",
-                VacutainerTypeEnum.Edta, true, "admin", [], Catalog));
+                VacutainerTypeEnum.Edta, true, "admin", new DateTime(2025, 5, 3, 10, 15, 30), [], Catalog));
 
         Assert.Contains("LAB_TEST_DEFINITION_EMPTY_COMPONENTS", ex.Message);
     }

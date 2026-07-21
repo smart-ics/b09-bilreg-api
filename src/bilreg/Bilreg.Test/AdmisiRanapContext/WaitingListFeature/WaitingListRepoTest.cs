@@ -71,12 +71,51 @@ public class WaitingListRepoTest
     [Fact]
     public void UT_RP_04_GivenRegId_WhenHasActiveByRegId_ThenDelegatesToDal()
     {
-        _dalMock.Setup(x => x.HasActiveByRegId("RG00001234")).Returns(true);
+        _dalMock.Setup(x => x.GetActiveByRegId("RG00001234")).Returns(CreateTestDto());
 
         var result = _repository.HasActiveByRegId("RG00001234");
 
         result.Should().BeTrue();
-        _dalMock.Verify(x => x.HasActiveByRegId("RG00001234"), Times.Once);
+        _dalMock.Verify(x => x.GetActiveByRegId("RG00001234"), Times.Once);
+    }
+
+    [Fact]
+    public void UT_RP_05_GivenActiveWaitingList_WhenLoadActiveByRegId_ThenReturnsModel()
+    {
+        var dto = CreateTestDto();
+        _dalMock.Setup(x => x.GetActiveByRegId("RG00001234")).Returns(dto);
+
+        var result = _repository.LoadActiveByRegId("RG00001234");
+
+        result.HasValue.Should().BeTrue();
+        result.Match(
+            onSome: model =>
+            {
+                model.WaitingListId.Should().Be("WTL00000001");
+                model.RegId.Should().Be("RG00001234");
+                model.IsActive.Should().BeTrue();
+            },
+            onNone: () => Assert.Fail("Expected Some but got None"));
+    }
+
+    [Fact]
+    public void UT_RP_06_GivenNoActiveWaitingList_WhenLoadActiveByRegId_ThenReturnsNone()
+    {
+        _dalMock.Setup(x => x.GetActiveByRegId("RG00009999")).Returns((WaitingListDto)null!);
+
+        var result = _repository.LoadActiveByRegId("RG00009999");
+
+        result.HasValue.Should().BeFalse();
+    }
+
+    [Fact]
+    public void UT_RP_07_GivenNoActiveWaitingList_WhenHasActiveByRegId_ThenReturnsFalse()
+    {
+        _dalMock.Setup(x => x.GetActiveByRegId("RG00009999")).Returns((WaitingListDto)null!);
+
+        var result = _repository.HasActiveByRegId("RG00009999");
+
+        result.Should().BeFalse();
     }
 
     private static WaitingListModel CreateTestModel() =>

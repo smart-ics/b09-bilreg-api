@@ -44,6 +44,7 @@
     <Folder Include="AdmisiRanapContext\ReservationFeature\" />
     <Folder Include="AdmisiRanapContext\AdmissionFeature\" />
     <Folder Include="AdmisiRanapContext\WaitingListFeature\" />
+    <Folder Include="AdmisiRanapContext\JourneyFeature\" />
   </ItemGroup>
 
 </Project>

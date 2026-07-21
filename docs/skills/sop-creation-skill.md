@@ -8,6 +8,8 @@ Generate `SOP.md` for a business capability.
 
 Its purpose is to describe how an operator performs a business capability using the application.
 
+It must make the responsible actor for every part of the procedure unambiguous. An actor may be a human role, the application, or a named system/subsystem.
+
 The document answers:
 
 > How does an operator perform this task?
@@ -27,6 +29,7 @@ It translates business capabilities into repeatable operational steps for end us
 
 It owns:
 
+- actors and their operational responsibilities
 - operational procedures
 - operator actions
 - application usage
@@ -53,6 +56,7 @@ The document should remain valid even if the software architecture changes.
 SOP.md exclusively owns:
 
 - Purpose
+- Actors and Responsibilities
 - Preconditions
 - Operational Steps
 - Operational Exceptions
@@ -69,15 +73,17 @@ Every SOP must contain the following sections.
 
 1. Purpose
 
-2. Preconditions
+2. Actors and Responsibilities
 
-3. Operational Steps
+3. Preconditions
 
-4. Operational Exceptions
+4. Operational Steps
 
-5. Completion Criteria
+5. Operational Exceptions
 
-6. References
+6. Completion Criteria
+
+7. References
 
 Use exactly this order.
 
@@ -92,6 +98,32 @@ Do not explain business motivation.
 Do not explain business rules.
 
 Those belong to DOMAIN.md.
+
+---
+
+# ACTORS AND RESPONSIBILITIES
+
+Name every actor that participates in the procedure and state its operational responsibility.
+
+An actor can be:
+
+- a human role, such as Registration Officer, Cashier, Nurse, or Supervisor
+- the application as a whole
+- an identified system or subsystem, such as Billing Service, Payment Gateway, or EMR
+
+Use the role or system name, not an unnamed generic term such as "user" or "system", unless that is the actual product terminology.
+
+For each actor, describe only what it is responsible for in this SOP. Do not describe its implementation or business authority beyond the procedure.
+
+Example:
+
+| Actor | Type | Operational responsibility |
+|---|---|---|
+| Registration Officer | Human | Enters and submits the registration data. |
+| Registration Application | System | Validates the submitted data and displays the registration result. |
+| Patient Master Service | Subsystem | Provides the matched patient identity when requested by the application. |
+
+Every actor named in Operational Steps or Operational Exceptions must appear in this section. Do not list actors that have no role in the procedure.
 
 ---
 
@@ -127,19 +159,21 @@ Each step should identify:
 - data entered
 - system response
 
+State the actor explicitly in every step, including automated steps. A human actor is responsible for an action; an application, system, or subsystem is responsible for its observable response or automated action. Do not imply responsibility through context alone.
+
 Example:
 
-1. Login to PenaEl Portal.
+1. **Tenant Administrator** logs in to PenaEl Portal.
 
-2. Open **Tenant → Signer Management**.
+2. **Tenant Administrator** opens **Tenant → Signer Management**.
 
-3. Click **Add Signer**.
+3. **Tenant Administrator** clicks **Add Signer**.
 
-4. Complete all mandatory fields.
+4. **Tenant Administrator** completes all mandatory fields.
 
-5. Click **Save**.
+5. **Tenant Administrator** clicks **Save**.
 
-6. Verify the confirmation message.
+6. **PenaEl Portal** validates the data and displays the confirmation message; **Tenant Administrator** verifies the message.
 
 Focus on application usage.
 
@@ -168,6 +202,7 @@ Examples:
 
 Describe:
 
+- actor responsible for responding to the exception
 - system response
 - operator action
 
@@ -258,9 +293,17 @@ Before completing an SOP, verify:
 
 ✓ Operational objective is clear.
 
+✓ Actors and Responsibilities names every participating human, application, system, and subsystem.
+
+✓ Each actor has a clear operational responsibility.
+
 ✓ Preconditions are complete.
 
 ✓ Operational steps are sequential.
+
+✓ Every operational step explicitly names the actor responsible for its action or observable response.
+
+✓ Every actor named in Operational Steps or Operational Exceptions appears in Actors and Responsibilities.
 
 ✓ Menu navigation is correct.
 

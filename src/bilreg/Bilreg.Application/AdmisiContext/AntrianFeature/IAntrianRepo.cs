@@ -10,4 +10,5 @@ public interface IAntrianRepo :
     IListData<AntrianHeaderView, DateOnly>,
     IListData<AntrianView, DateTime>
 {
+    void FixOutstandingReference();
 }

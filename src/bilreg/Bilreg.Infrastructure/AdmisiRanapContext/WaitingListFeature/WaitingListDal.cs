@@ -14,6 +14,7 @@ public interface IWaitingListDal :
     IGetData<WaitingListDto, IWaitingListKey>
 {
     bool HasActiveByRegId(string regId);
+    WaitingListDto? GetActiveByRegId(string regId);
 }
 
 public class WaitingListDal : IWaitingListDal
@@ -93,16 +94,19 @@ public class WaitingListDal : IWaitingListDal
         return conn.ReadSingle<WaitingListDto>(sql, dp);
     }
 
-    public bool HasActiveByRegId(string regId)
+    public bool HasActiveByRegId(string regId) => GetActiveByRegId(regId) is not null;
+
+    public WaitingListDto? GetActiveByRegId(string regId)
     {
-        const string sql = """
-            SELECT CASE WHEN EXISTS (
-                SELECT 1
-                FROM BILRG_BedWaitingList aa
-                WHERE
-                    aa.RegId = @RegId
-                    AND aa.WaitingListStatus IN (@Waiting, @Accepted)
-            ) THEN 1 ELSE 0 END
+        var sql = $"""
+            SELECT TOP 1
+                {SelectColumns}
+            FROM BILRG_BedWaitingList aa
+            LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
+            WHERE
+                aa.RegId = @RegId
+                AND aa.WaitingListStatus IN (@Waiting, @Accepted)
+            ORDER BY aa.CrtDate DESC
             """;
 
         var dp = new DynamicParameters();
@@ -111,7 +115,9 @@ public class WaitingListDal : IWaitingListDal
         dp.AddParam("@Accepted", (int)WaitingListStatusEnum.Accepted, SqlDbType.Int);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.ExecuteScalar<int>(sql, dp) == 1;
+        var resultDto = conn.Read<WaitingListDto>(sql, dp);
+        var result = resultDto?.FirstOrDefault();
+        return result;
     }
 
     private static DynamicParameters MapWriteParams(WaitingListDto dto)

@@ -3,6 +3,7 @@ using Bilreg.Application.LabContext.LabComponentMasterFeature;
 using Bilreg.Domain.LabContext.LabOrderFeature;
 using Bilreg.Domain.LabContext.LabTestDefinitionFeature;
 using MediatR;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.LabContext.LabTestDefinitionFeature;
 
@@ -26,13 +27,16 @@ public class LabTestDefinitionCreateHandler
 {
     private readonly ILabTestDefinitionRepo _definitionRepo;
     private readonly ILabComponentMasterRepo _componentMasterRepo;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public LabTestDefinitionCreateHandler(
         ILabTestDefinitionRepo definitionRepo,
-        ILabComponentMasterRepo componentMasterRepo)
+        ILabComponentMasterRepo componentMasterRepo,
+        ITglJamProvider tglJamProvider)
     {
         _definitionRepo = definitionRepo;
         _componentMasterRepo = componentMasterRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<LabTestDefinitionCreateResponse> Handle(
@@ -64,6 +68,7 @@ public class LabTestDefinitionCreateHandler
             request.VacutainerType,
             request.IsActive,
             request.UserId,
+            _tglJamProvider.Now,
             components,
             catalog);
 

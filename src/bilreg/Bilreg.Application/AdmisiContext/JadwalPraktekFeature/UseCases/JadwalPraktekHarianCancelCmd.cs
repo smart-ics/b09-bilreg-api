@@ -2,6 +2,7 @@ using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using MediatR;
 using Nuna.Lib.PatternHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiContext.JadwalPraktekFeature.UseCases;
 
@@ -14,13 +15,16 @@ public class JadwalPraktekHarianCancelHandler : IRequestHandler<JadwalPraktekHar
 {
     private readonly IJadwalPraktekHarianRepo _harianRepo;
     private readonly IJadwalPraktekHarianOverrideGuard _overrideGuard;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public JadwalPraktekHarianCancelHandler(
         IJadwalPraktekHarianRepo harianRepo,
-        IJadwalPraktekHarianOverrideGuard overrideGuard)
+        IJadwalPraktekHarianOverrideGuard overrideGuard,
+        ITglJamProvider tglJamProvider)
     {
         _harianRepo = harianRepo;
         _overrideGuard = overrideGuard;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task Handle(JadwalPraktekHarianCancelCmd request, CancellationToken cancellationToken)
@@ -31,7 +35,7 @@ public class JadwalPraktekHarianCancelHandler : IRequestHandler<JadwalPraktekHar
         _overrideGuard.EnsureNoOperationalConflict(
             model.TglPraktek, PpaType.Key(model.Dokter.PpaId), model.JamMulai);
 
-        var cancelled = model.Cancel(request.Catatan, request.UserId);
+        var cancelled = model.Cancel(request.Catatan, request.UserId, _tglJamProvider.Now);
         _harianRepo.SaveChanges(cancelled);
         return Task.CompletedTask;
     }

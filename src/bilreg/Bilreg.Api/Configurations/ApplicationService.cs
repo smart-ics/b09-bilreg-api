@@ -1,4 +1,5 @@
 ﻿using Bilreg.Application;
+using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
 using Bilreg.Application.IgdContext.IgdVisitFeature.TriageEngine;
 using Bilreg.Application.PaymentContext.PasienBalanceFeature;
@@ -27,7 +28,8 @@ public static class ApplicationService
             .AddScoped<IAddBillAppService, AddBillAppService>()
             .AddScoped<IAdmissionRegistrationOrchestrator, AdmissionRegistrationOrchestrator>()
             .AddScoped<PasienBalanceBootstrapService>()
-            .AddScoped<IPasienBalanceLoader, PasienBalanceLoader>();
+            .AddScoped<IPasienBalanceLoader, PasienBalanceLoader>()
+            .AddScoped<IJourneyCandidateFinder, JourneyCandidateFinder>();
         
         services
             .Scan(selector => selector

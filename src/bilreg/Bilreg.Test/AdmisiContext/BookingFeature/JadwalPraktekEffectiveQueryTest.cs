@@ -68,13 +68,14 @@ public class JadwalPraktekEffectiveQueryTest
                 AntrianPatternType.Default), Tgl);
         var tag = AntrianModel.GenSequenceTag(Tgl, effective);
         var header = new AntrianHeaderView("A1", "desc", Tgl, new TimeOnly(8, 0), tag);
+        var createdAt = new DateTime(2026, 7, 15, 8, 0, 0);
         var entries = new[]
         {
-            AntrianEntryModel.Create(1, PersonType.Default, PasienTrackerModel.Default, "-", "-"),
-            AntrianEntryModel.Create(2, PersonType.Default, PasienTrackerModel.Default, "-", "-")
+            AntrianEntryModel.Create(1, PersonType.Default, PasienTrackerModel.Default, "-", "-", createdAt),
+            AntrianEntryModel.Create(2, PersonType.Default, PasienTrackerModel.Default, "-", "-", createdAt)
         };
         var antrian = new AntrianModel("A1", Tgl, new TimeOnly(8, 0), new TimeOnly(12, 0),
-            tag, "desc", entries, null!);
+            tag, "desc", new ServicePointType("DR001", "desc"), entries, null!);
 
         _featureResolver.Setup(f => f.Resolve(It.IsAny<JadwalPraktekResolveRequest>()))
             .Returns(effective);

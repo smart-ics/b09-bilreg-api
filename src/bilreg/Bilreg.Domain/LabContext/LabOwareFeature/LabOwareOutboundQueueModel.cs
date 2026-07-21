@@ -39,14 +39,13 @@ public class LabOwareOutboundQueueModel : ILabOwareOutboundQueueKey
     public static LabOwareOutboundQueueModel CreatePending(
         string orderId,
         string payloadJson,
+        DateTime createdAt = default,
         string? messageType = null)
     {
         Guard.Against.NullOrWhiteSpace(orderId, nameof(orderId));
         Guard.Against.NullOrWhiteSpace(payloadJson, nameof(payloadJson));
 
         var queueId = NunaId.New(IdPrefix);
-        var now = DateTime.Now;
-
         return new LabOwareOutboundQueueModel(
             queueId,
             orderId,
@@ -57,7 +56,7 @@ public class LabOwareOutboundQueueModel : ILabOwareOutboundQueueKey
             lastRetryDate: EmptyDate,
             processedDate: EmptyDate,
             lastError: "",
-            crtDate: now);
+            crtDate: createdAt);
     }
 
     public static LabOwareOutboundQueueModel Rehydrate(
@@ -93,18 +92,18 @@ public class LabOwareOutboundQueueModel : ILabOwareOutboundQueueKey
         QueueStatus = LabOwareQueueStatusEnum.Processing;
     }
 
-    public void MarkSucceeded()
+    public void MarkSucceeded(DateTime processedAt = default)
     {
         if (QueueStatus != LabOwareQueueStatusEnum.Processing)
             throw new InvalidOperationException(
                 $"Queue {QueueId} berstatus {QueueStatus}; succeeded hanya dari Processing.");
 
         QueueStatus = LabOwareQueueStatusEnum.Succeeded;
-        ProcessedDate = DateTime.Now;
+        ProcessedDate = processedAt;
         LastError = "";
     }
 
-    public void MarkFailed(string error)
+    public void MarkFailed(string error, DateTime failedAt = default)
     {
         if (QueueStatus != LabOwareQueueStatusEnum.Processing)
             throw new InvalidOperationException(
@@ -114,8 +113,8 @@ public class LabOwareOutboundQueueModel : ILabOwareOutboundQueueKey
         LastError = msg.Length > 200 ? msg[..200] : msg;
         QueueStatus = LabOwareQueueStatusEnum.Failed;
         RetryCount++;
-        LastRetryDate = DateTime.Now;
-        ProcessedDate = DateTime.Now;
+        LastRetryDate = failedAt;
+        ProcessedDate = failedAt;
     }
 
     public void AssertCanManualRetry()

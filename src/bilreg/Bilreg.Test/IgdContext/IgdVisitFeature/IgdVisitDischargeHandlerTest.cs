@@ -17,12 +17,12 @@ public class IgdVisitDischargeHandlerTest
 {
     private readonly Mock<IIgdVisitRepo> _visitRepo = new();
     private readonly Mock<IBedIgdRepo> _bedRepo = new();
-    private readonly Mock<IPakaiBedRepo> _pakaiRepo = new();
+    private readonly Mock<IPakaiBedIgdRepo> _pakaiRepo = new();
     private readonly IgdVisitDischargeHandler _sut;
 
     public IgdVisitDischargeHandlerTest()
     {
-        _sut = new IgdVisitDischargeHandler(_visitRepo.Object, _bedRepo.Object, _pakaiRepo.Object);
+        _sut = new IgdVisitDischargeHandler(_visitRepo.Object, _bedRepo.Object, _pakaiRepo.Object, TestTglJamProvider.Instance);
     }
 
     private static IgdVisitModel BuildVisit(
@@ -72,7 +72,7 @@ public class IgdVisitDischargeHandlerTest
         result.BedReleased.Should().BeFalse();
         _visitRepo.Verify(r => r.SaveChanges(It.IsAny<IgdVisitModel>()), Times.Never);
         _bedRepo.Verify(r => r.SaveChanges(It.IsAny<BedIgdModel>()), Times.Never);
-        _pakaiRepo.Verify(r => r.SaveChanges(It.IsAny<PakaiBedModel>()), Times.Never);
+        _pakaiRepo.Verify(r => r.SaveChanges(It.IsAny<PakaiBedIgdModel>()), Times.Never);
     }
 
     [Fact]
@@ -101,7 +101,7 @@ public class IgdVisitDischargeHandlerTest
         result.AdministrativeState.Should().Be(AdministrativeStateEnum.Discharged.ToCode());
         _visitRepo.Verify(r => r.SaveChanges(It.IsAny<IgdVisitModel>()), Times.Once);
         _bedRepo.Verify(r => r.SaveChanges(It.IsAny<BedIgdModel>()), Times.Never);
-        _pakaiRepo.Verify(r => r.SaveChanges(It.IsAny<PakaiBedModel>()), Times.Never);
+        _pakaiRepo.Verify(r => r.SaveChanges(It.IsAny<PakaiBedIgdModel>()), Times.Never);
     }
 
     [Fact]
@@ -119,7 +119,7 @@ public class IgdVisitDischargeHandlerTest
             .Setup(r => r.LoadEntity(It.IsAny<IBedIgdKey>()))
             .Returns(MayBe.From(bed));
 
-        var pakai = PakaiBedModel.Open(visit, bed,
+        var pakai = PakaiBedIgdModel.Open(visit, bed,
             new AuditInfoType("U1", new DateTime(2026, 1, 1, 8, 0, 0)));
         _pakaiRepo
             .Setup(r => r.LoadOpenForBed(It.IsAny<IBedIgdKey>()))
@@ -131,7 +131,7 @@ public class IgdVisitDischargeHandlerTest
         result.AdministrativeState.Should().Be(AdministrativeStateEnum.Discharged.ToCode());
         _visitRepo.Verify(r => r.SaveChanges(It.IsAny<IgdVisitModel>()), Times.Once);
         _bedRepo.Verify(r => r.SaveChanges(It.IsAny<BedIgdModel>()), Times.Once);
-        _pakaiRepo.Verify(r => r.SaveChanges(It.IsAny<PakaiBedModel>()), Times.Once);
+        _pakaiRepo.Verify(r => r.SaveChanges(It.IsAny<PakaiBedIgdModel>()), Times.Once);
         bed.IsOccupied.Should().BeFalse();
         pakai.IsOpen.Should().BeFalse();
         visit.HasObserved.Should().BeFalse();

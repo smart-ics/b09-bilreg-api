@@ -74,9 +74,8 @@ public class TataRekeningController : ControllerBase
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> Verify(string regId, [FromBody] FinancialVerificationRequest request)
     {
-        var verifiedAt = request.VerifiedAt ?? DateTime.UtcNow;
         var result = await _mediator.Send(
-            new FinancialVerificationCommand(regId, request.Action, verifiedAt, request.UserId));
+            new FinancialVerificationCommand(regId, request.Action, request.VerifiedAt, request.UserId));
         return Ok(new JSendOk(TataRekeningApiMapper.ToApiResponse(result)));
     }
 
@@ -91,9 +90,8 @@ public class TataRekeningController : ControllerBase
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> Adjust(string regId, [FromBody] FinancialAdjustmentRequest request)
     {
-        var appliedAt = request.AppliedAt ?? DateTime.UtcNow;
         var result = await _mediator.Send(
-            new FinancialAdjustmentCommand(regId, request.Adjustment, appliedAt, request.UserId));
+            new FinancialAdjustmentCommand(regId, request.Adjustment, request.AppliedAt, request.UserId));
         return Ok(new JSendOk(TataRekeningApiMapper.ToApiResponse(result)));
     }
 
@@ -129,9 +127,8 @@ public class TataRekeningController : ControllerBase
         [FromBody] FinalizeFinancialResponsibilityRequest? request)
     {
         var petugas = request?.UserId ?? "-";
-        var finalizationDate = request?.FinalizationDate ?? DateTime.UtcNow;
         var result = await _mediator.Send(
-            new FinalizeFinancialResponsibilityCommand(regId, petugas, finalizationDate));
+            new FinalizeFinancialResponsibilityCommand(regId, petugas, request?.FinalizationDate));
         return Ok(new JSendOk(TataRekeningApiMapper.ToApiResponse(result)));
     }
 
@@ -181,9 +178,8 @@ public class TataRekeningController : ControllerBase
         [FromBody] SettlementInitiationRequest? request)
     {
         var petugas = request?.UserId ?? "-";
-        var initiatedAt = request?.InitiatedAt ?? DateTime.UtcNow;
         var result = await _mediator.Send(
-            new SettlementInitiationCommand(regId, petugas, initiatedAt));
+            new SettlementInitiationCommand(regId, petugas, request?.InitiatedAt));
         return Ok(new JSendOk(TataRekeningApiMapper.ToApiResponse(result)));
     }
 

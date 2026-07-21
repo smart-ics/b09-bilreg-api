@@ -21,6 +21,8 @@
     fd_tgl_void VARCHAR (10) NOT NULL CONSTRAINT DF_ta_registrasi_fd_tgl_void DEFAULT('3000-01-01'),
     fs_jam_void VARCHAR (8) NOT NULL CONSTRAINT DF_ta_registrasi_fs_jam_void DEFAULT('00:00:00'),
     fs_kd_petugas_void VARCHAR (10) NOT NULL CONSTRAINT DF_ta_registrasi_fs_kd_petugas_void DEFAULT(''),
+    fn_karcis decimal (18, 2) NOT NULL CONSTRAINT DF_ta_registrasi_fn_karcis DEFAULT(0),
+    fn_karcis_sisa decimal (18, 2) NOT NULL CONSTRAINT DF_ta_registrasi_fn_karcis_sisa DEFAULT(0),
     
     CONSTRAINT PK_ta_registrasi PRIMARY KEY CLUSTERED (fs_kd_reg)
 )
