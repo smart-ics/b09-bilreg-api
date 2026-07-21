@@ -3,6 +3,8 @@
     PersonName VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_PasienTracker_PersonName DEFAULT(''),
     TglLahir DATETIME NOT NULL CONSTRAINT DF_BILRG_PasienTracker_TglLahir DEFAULT('3000-01-01'),
     VisitDate DATETIME NOT NULL CONSTRAINT DF_BILRG_PasienTracker_VisitDate DEFAULT('3000-01-01'),
+    StartPeriod DATETIME NOT NULL CONSTRAINT DF_BILRG_PasienTracker_StartPeriod DEFAULT('3000-01-01'),
+    LastPeriod DATETIME NOT NULL CONSTRAINT DF_BILRG_PasienTracker_LastPeriod DEFAULT('3000-01-01'),
 	RegId VARCHAR(10) NOT NULL CONSTRAINT DF_BILRG_PasienTracker_RegId DEFAULT(''),
     
     CONSTRAINT PK_BILRG_PasienTracker PRIMARY KEY CLUSTERED (PasienTrackerId)
@@ -11,4 +13,8 @@ GO
 
 CREATE INDEX IX_BILRG_PasienTracker_VisitDate 
     ON BILRG_PasienTracker(VisitDate);
+GO
+
+CREATE INDEX IX_BILRG_PasienTracker_TrackingPeriod
+    ON BILRG_PasienTracker(StartPeriod, LastPeriod);
 GO

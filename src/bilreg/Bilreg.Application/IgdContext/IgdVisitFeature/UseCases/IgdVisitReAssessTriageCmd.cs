@@ -4,6 +4,7 @@ using Bilreg.Domain.IgdContext.IgdVisitFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.IgdContext.IgdVisitFeature.UseCases;
 
@@ -25,11 +26,14 @@ public class IgdVisitReAssessTriageHandler : IRequestHandler<IgdVisitReAssessTri
 {
     private readonly IIgdVisitRepo _igdVisitRepo;
     private readonly ITriageMethodEngineResolver _engineResolver;
+    private readonly ITglJamProvider _tglJamProvider;
 
-    public IgdVisitReAssessTriageHandler(IIgdVisitRepo igdVisitRepo, ITriageMethodEngineResolver engineResolver)
+    public IgdVisitReAssessTriageHandler(IIgdVisitRepo igdVisitRepo, ITriageMethodEngineResolver engineResolver,
+        ITglJamProvider tglJamProvider)
     {
         _igdVisitRepo = igdVisitRepo;
         _engineResolver = engineResolver;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<IgdVisitAssessTriageResponse> Handle(IgdVisitReAssessTriageCmd request, CancellationToken cancellationToken)
@@ -45,7 +49,7 @@ public class IgdVisitReAssessTriageHandler : IRequestHandler<IgdVisitReAssessTri
 
         var visit = _igdVisitRepo.LoadEntity(request).GetValueOrThrow($"IgdVisit '{request.IgdVisitId}' not found");
 
-        var audit = new AuditInfoType(request.UserId, DateTime.Now);
+        var audit = new AuditInfoType(request.UserId, _tglJamProvider.Now);
         var assessment = new AtsAssessmentType(
             request.AirwaysScore,
             request.BreathingScore,

@@ -50,13 +50,13 @@ public class AntrianMapWithBookingResolver : IAntrianMapWithBookingResolver
 
         var emptyMap = antrianMap.ListMap
             .Where(x => x.Flag == "UMUM")
-            .Where(x => x.ReffId.Trim() == "")
+            .Where(x => x.IsFreeSlot())
             .OrderBy(x => x.NoUrut)
             .FirstOrDefault();
         emptyMap = emptyMap ??
                    antrianMap.ListMap
                        .Where(x => x.Flag == "AUTO")
-                       .Where(x => x.ReffId.Trim() == "")
+                       .Where(x => x.IsFreeSlot())
                        .OrderBy(x => x.NoUrut)
                        .FirstOrDefault();
 

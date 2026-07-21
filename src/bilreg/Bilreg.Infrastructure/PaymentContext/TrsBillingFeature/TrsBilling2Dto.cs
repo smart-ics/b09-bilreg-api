@@ -54,7 +54,7 @@ public record TaTrsBilling2Dto(
         var komponenTarifName = modul == 0 ? model.Komponen.BillKompName : string.Empty;
         var groupRekId = modul == 1 ? model.Komponen.BillKompId : string.Empty;
         var groupRekName = modul == 1 ? model.Komponen.BillKompName : string.Empty;
-        var tglBayar = model.TglBayar.ToString("yyyy-mm-dd");
+        var tglBayar = model.TglBayar.ToString("yyyy-MM-dd");
         var jamBayar = model.TglBayar.ToString("HH:mm:ss");
         var paymentId = $"RO{regId[^8..]}";
         

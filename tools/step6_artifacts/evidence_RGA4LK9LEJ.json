@@ -1,0 +1,77 @@
+{
+  "regId": "RGA4LK9LEJ",
+  "admission": [
+    {
+      "RegId": "RGA4LK9LEJ",
+      "AdmissionStatus": 0,
+      "AdmissionSource": 0,
+      "PasienId": "347137300000057"
+    }
+  ],
+  "jaminan": [
+    {
+      "fs_kd_reg": "RGA4LK9LEJ",
+      "fs_kd_polis": "-"
+    }
+  ],
+  "registrasi": [
+    {
+      "fs_kd_reg": "RGA4LK9LEJ",
+      "fs_kd_jenis_reg": "1",
+      "fs_kd_medis": "DR00000015",
+      "fs_kd_layanan": "RI001",
+      "fs_kd_tipe_jaminan": "00000"
+    }
+  ],
+  "reg_inap": [
+    {
+      "fs_kd_reg": "RGA4LK9LEJ",
+      "fs_kd_caramasuk_inap": "IGD",
+      "fs_kd_trs_booking_bed": " ",
+      "fs_kd_medis_sekunder": " "
+    }
+  ],
+  "history_dokter": [
+    {
+      "fs_kd_reg": "RGA4LK9LEJ",
+      "fs_kd_dokter": "DR00000015",
+      "fb_primer": true
+    }
+  ],
+  "reg_aktif": [
+    {
+      "RegId": "RGA4LK9LEJ",
+      "PasienId": "347137300000057"
+    }
+  ],
+  "audit_admission": [
+    {
+      "EntityId": "RGA4LK9LEJ",
+      "ActionType": "CREATE",
+      "EntityName": "AdmissionModel"
+    }
+  ],
+  "waiting_list": [],
+  "source": {
+    "opname": [
+      {
+        "OpnameRequestId": "OPN0688G0HH6",
+        "OpnameRequestStatus": 1,
+        "FulfilledRegId": "RGA4LK9LEJ",
+        "PasienId": "347137300000057"
+      }
+    ],
+    "opname_audit": [
+      {
+        "EntityId": "OPN0688G0HH6",
+        "ActionType": "CREATE",
+        "EntityName": "OpnameRequestModel"
+      },
+      {
+        "EntityId": "OPN0688G0HH6",
+        "ActionType": "UPDATE",
+        "EntityName": "OpnameRequestModel"
+      }
+    ]
+  }
+}

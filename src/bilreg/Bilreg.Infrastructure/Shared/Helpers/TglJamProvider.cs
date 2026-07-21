@@ -1,32 +1,57 @@
-﻿using System.Data.SqlClient;
+using System.Diagnostics;
+using Bilreg.Application.Shared;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Infrastructure.Shared.Helpers;
 
-public class TglJamProvider : ITglJamProvider
+public class TglJamProvider : ITglJamProvider, IBusinessDateStatus
 {
-    private readonly DatabaseOptions _opt;
+    private readonly ISqlServerClock _sqlServerClock;
+    private readonly BusinessDateOptions _options;
+    private readonly object _initializeLock = new();
+    private DateTime? _systemBaseTime;
+    private DateTime _businessBaseTime;
+    private Stopwatch? _stopwatch;
 
-    public TglJamProvider(IOptions<DatabaseOptions> opt)
+    public TglJamProvider(
+        ISqlServerClock sqlServerClock,
+        IOptions<BusinessDateOptions> options)
     {
-        _opt = opt.Value;
+        _sqlServerClock = sqlServerClock;
+        _options = options.Value;
     }
 
-    public DateTime Now 
-    { 
-        get 
-        {
-            const string sql = @"SELECT GETDATE() TglJam";
-            using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-            conn.Open();
-            
-            using var cmd = new SqlCommand(sql, conn);
-            using var dr = cmd.ExecuteReader();
-            dr.Read();
-            var result = Convert.ToDateTime(dr["TglJam"]);
+    public DateTime Now => BusinessNow;
+    public string Mode => _options.Mode.ToString();
+    public DateOnly? FixedDate => _options.FixedDate;
+    public bool IsSimulation => _options.Mode == BusinessDateMode.Fixed;
+    public DateTime BusinessNow => GetCurrentTimes().BusinessNow;
+    public DateTime SystemNow => GetCurrentTimes().SystemNow;
 
-            return result;
+    private (DateTime BusinessNow, DateTime SystemNow) GetCurrentTimes()
+    {
+        EnsureInitialized();
+        var elapsed = _stopwatch!.Elapsed;
+        return (_businessBaseTime + elapsed, _systemBaseTime!.Value + elapsed);
+    }
+
+    private void EnsureInitialized()
+    {
+        if (_systemBaseTime.HasValue)
+            return;
+
+        lock (_initializeLock)
+        {
+            if (_systemBaseTime.HasValue)
+                return;
+
+            var systemBaseTime = _sqlServerClock.GetDate();
+            _businessBaseTime = _options.Mode == BusinessDateMode.Fixed
+                ? _options.FixedDate!.Value.ToDateTime(TimeOnly.FromDateTime(systemBaseTime))
+                : systemBaseTime;
+            _systemBaseTime = systemBaseTime;
+            _stopwatch = Stopwatch.StartNew();
         }
     }
 }

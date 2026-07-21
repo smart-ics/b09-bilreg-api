@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using Nuna.Lib.AutoNumberHelper;
 using Nuna.Lib.PatternHelper;
 using Nuna.Lib.TransactionHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.ChargeContext.TarifFeature.UseCases;
 
@@ -41,6 +42,7 @@ public class TrfCreateBaselineTarifPolicyHandler
     private readonly IKelasRepo _kelasRepo;
     private readonly IKomponenRepo _komponenRepo;
     private readonly ILogger<TrfCreateBaselineTarifPolicyHandler> _logger;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public TrfCreateBaselineTarifPolicyHandler(
         ITarifPolicyRepo tarifPolicyRepo,
@@ -54,7 +56,8 @@ public class TrfCreateBaselineTarifPolicyHandler
         ITipeTarifRepo tipeTarifRepo,
         IKelasRepo kelasRepo,
         IKomponenRepo komponenRepo,
-        ILogger<TrfCreateBaselineTarifPolicyHandler> logger)
+        ILogger<TrfCreateBaselineTarifPolicyHandler> logger,
+        ITglJamProvider tglJamProvider)
     {
         _tarifPolicyRepo = tarifPolicyRepo;
         _tarifPublishLogRepo = tarifPublishLogRepo;
@@ -68,12 +71,14 @@ public class TrfCreateBaselineTarifPolicyHandler
         _kelasRepo = kelasRepo;
         _komponenRepo = komponenRepo;
         _logger = logger;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<TrfCreateBaselineTarifPolicyResponse> Handle(
         TrfCreateBaselineTarifPolicyCmd request,
         CancellationToken cancellationToken)
     {
+        var occurredAt = _tglJamProvider.Now;
         Guard.Against.NullOrWhiteSpace(request.UserId);
         var publishedBy = string.IsNullOrWhiteSpace(request.PublishedBy)
             ? request.UserId
@@ -82,7 +87,7 @@ public class TrfCreateBaselineTarifPolicyHandler
         _migrationGuard.EnsurePublishAllowed();
 
         var policyNo = string.IsNullOrWhiteSpace(request.PolicyNo)
-            ? $"BASELINE-{DateTime.UtcNow:yyyyMMdd}"
+            ? $"BASELINE-{occurredAt:yyyyMMdd}"
             : request.PolicyNo.Trim();
 
         EnsurePolicyNoAvailable(policyNo);
@@ -106,9 +111,10 @@ public class TrfCreateBaselineTarifPolicyHandler
         var policy = TarifPolicyType.Create(
             policyNo,
             "Baseline from BILRG projection",
-            DateTime.Now,
+            occurredAt,
             BaselineDescription,
-            request.UserId);
+            request.UserId,
+            occurredAt);
 
         foreach (var row in rowsWithKomponen)
         {
@@ -130,7 +136,7 @@ public class TrfCreateBaselineTarifPolicyHandler
         EnsureMasterReferences(policy.Variants.ToList());
 
         var publishLogId = NunaId.New(PublishLogIdPrefix);
-        var publishedAt = DateTime.Now;
+        var publishedAt = occurredAt;
 
         _logger.LogInformation(
             "Baseline TarifPolicy creation started for {PolicyNo} with {VariantCount} variants",
@@ -161,7 +167,7 @@ public class TrfCreateBaselineTarifPolicyHandler
                     snapshot.Nilai));
             }
 
-            var publishedPolicy = WithVariants(policy, snapshotVariants).MarkPublished(publishedBy);
+            var publishedPolicy = WithVariants(policy, snapshotVariants).MarkPublished(publishedBy, publishedAt);
             var publishLog = new TarifPublishLogType(
                 publishLogId,
                 policy.TarifPolicyId,

@@ -15,4 +15,6 @@ public interface IPasienTrackerRepo :
 public record PasienTrackerView(
     string PasienTrackerId,
     PersonType Person,
-    DateOnly VisitDate);
+    DateOnly VisitDate,
+    DateOnly StartPeriod,
+    DateOnly LastPeriod);

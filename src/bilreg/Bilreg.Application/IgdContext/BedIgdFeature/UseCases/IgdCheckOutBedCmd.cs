@@ -5,6 +5,7 @@ using Bilreg.Domain.IgdContext.IgdVisitFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.IgdContext.BedIgdFeature.UseCases;
 
@@ -17,16 +18,19 @@ public class IgdCheckOutBedHandler : IRequestHandler<IgdCheckOutBedCmd>
 {
     private readonly IIgdVisitRepo _igdVisitRepo;
     private readonly IBedIgdRepo _bedIgdRepo;
-    private readonly IPakaiBedRepo _pakaiBedRepo;
+    private readonly IPakaiBedIgdRepo _pakaiBedIgdRepo;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public IgdCheckOutBedHandler(
         IIgdVisitRepo igdVisitRepo,
         IBedIgdRepo bedIgdRepo,
-        IPakaiBedRepo pakaiBedRepo)
+        IPakaiBedIgdRepo pakaiBedIgdRepo,
+        ITglJamProvider tglJamProvider)
     {
         _igdVisitRepo = igdVisitRepo;
         _bedIgdRepo = bedIgdRepo;
-        _pakaiBedRepo = pakaiBedRepo;
+        _pakaiBedIgdRepo = pakaiBedIgdRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task Handle(IgdCheckOutBedCmd request, CancellationToken cancellationToken)
@@ -45,17 +49,17 @@ public class IgdCheckOutBedHandler : IRequestHandler<IgdCheckOutBedCmd>
             throw new InvalidOperationException(
                 $"Bed '{bed.BedIgdId}' tidak ditempati oleh visit '{visit.IgdVisitId}'.");
 
-        var pakaiBed = _pakaiBedRepo.LoadOpenForBed(bed)
-            .GetValueOrThrow($"PakaiBed terbuka untuk bed '{bed.BedIgdId}' tidak ditemukan.");
+        var pakaiBedIgd = _pakaiBedIgdRepo.LoadOpenForBed(bed)
+            .GetValueOrThrow($"PakaiBedIgd terbuka untuk bed '{bed.BedIgdId}' tidak ditemukan.");
 
-        var audit = new AuditInfoType(request.UserId, DateTime.Now);
+        var audit = new AuditInfoType(request.UserId, _tglJamProvider.Now);
         bed.Release(audit);
-        pakaiBed.Close(audit);
+        pakaiBedIgd.Close(audit);
         visit.CheckOutBed(audit);
 
         using var trans = TransHelper.NewScope();
         _bedIgdRepo.SaveChanges(bed);
-        _pakaiBedRepo.SaveChanges(pakaiBed);
+        _pakaiBedIgdRepo.SaveChanges(pakaiBedIgd);
         _igdVisitRepo.SaveChanges(visit);
         trans.Complete();
         return Task.CompletedTask;

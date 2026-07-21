@@ -17,7 +17,7 @@ The codebase uses **"event"** for several different concepts. Use this glossary 
 
 | Event kind (code) | Typical use |
 |-------------------|-------------|
-| `TRANSFER_BED` | UC04b — pindah bed dalam observasi; satu transaksi dengan dual-write bed + `PakaiBed` |
+| `TRANSFER_BED` | UC04b — pindah bed dalam observasi; satu transaksi dengan dual-write bed + `PakaiBedIgd` |
 
 ---
 

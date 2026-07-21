@@ -40,10 +40,10 @@ public class BedIgdController : ControllerBase
         return Ok(new JSendOk(result));
     }
 
-    [HttpGet("pakaiBed/orphan")]
-    public async Task<IActionResult> ListOrphanPakaiBed()
+    [HttpGet("pakaiBedIgd/orphan")]
+    public async Task<IActionResult> ListOrphanPakaiBedIgd()
     {
-        var result = await _mediator.Send(new PakaiBedListOrphanQuery());
+        var result = await _mediator.Send(new PakaiBedIgdListOrphanQuery());
         return Ok(new JSendOk(result));
     }
 }

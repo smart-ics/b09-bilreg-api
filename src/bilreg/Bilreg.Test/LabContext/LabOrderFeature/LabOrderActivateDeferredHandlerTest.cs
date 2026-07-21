@@ -18,7 +18,7 @@ public class LabOrderActivateDeferredHandlerTest
 
     public LabOrderActivateDeferredHandlerTest()
     {
-        _sut = new LabOrderActivateDeferredHandler(_repo.Object, _regIntegration.Object);
+        _sut = new LabOrderActivateDeferredHandler(_repo.Object, _regIntegration.Object, TestTglJamProvider.Instance);
     }
 
     private static LabOrderModel DeferredOrder()

@@ -23,15 +23,18 @@ public class LabResultRecordHandler : IRequestHandler<LabResultRecordCmd>
     private readonly ILabOrderRepo _labOrderRepo;
     private readonly ILabResultDocumentRepo _labResultDocumentRepo;
     private readonly ILabResultScaffoldService _scaffoldService;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public LabResultRecordHandler(
         ILabOrderRepo labOrderRepo,
         ILabResultDocumentRepo labResultDocumentRepo,
-        ILabResultScaffoldService scaffoldService)
+        ILabResultScaffoldService scaffoldService,
+        ITglJamProvider tglJamProvider)
     {
         _labOrderRepo = labOrderRepo;
         _labResultDocumentRepo = labResultDocumentRepo;
         _scaffoldService = scaffoldService;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task Handle(LabResultRecordCmd request, CancellationToken cancellationToken)
@@ -56,16 +59,17 @@ public class LabResultRecordHandler : IRequestHandler<LabResultRecordCmd>
         var scaffold = _scaffoldService.BuildFromOrder(order);
         var captures = _scaffoldService.BuildCaptures(scaffold, request.Values);
 
+        var occurredAt = _tglJamProvider.Now;
         var result = _labResultDocumentRepo.LoadByOrderId(request.OrderId)
             .Match(
                 onSome: m => m,
                 onNone: () => LabResultDocumentModel.CreateInitial(
                     request.OrderId,
-                    new AuditInfoType(request.UserId, DateTime.Now)));
+                    new AuditInfoType(request.UserId, occurredAt)));
 
-        result.RecordResult(source, captures, request.UserId);
-        result.MarkRecorded(request.UserId);
-        order.MarkRecorded(request.UserId);
+        result.RecordResult(source, captures, request.UserId, occurredAt);
+        result.MarkRecorded(request.UserId, occurredAt);
+        order.MarkRecorded(request.UserId, occurredAt);
 
         using var trans = TransHelper.NewScope();
         _labOrderRepo.SaveChanges(order);

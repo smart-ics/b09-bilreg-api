@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using Bilreg.Api.Authorization;
+using Bilreg.Api.Filters;
 using Bilreg.Application.Shared;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -36,7 +37,7 @@ public static class PresentationService
         services.AddSwaggerGen(c =>
         {
             c.SchemaFilter<DefaultExampleSchemaFilter>();
-            c.SchemaFilter<TataRekeningExampleSchemaFilter>();
+            //c.SchemaFilter<TataRekeningExampleSchemaFilter>();
             c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
             {
                 Description = "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\"",
@@ -70,14 +71,47 @@ public static class PresentationService
             {
                 ValidateIssuer = true,
                 ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
                 ValidAudience = configuration["Jwt:Audience"],
                 ValidIssuer = configuration["Jwt:Issuer"],
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["Jwt:Key"] ?? string.Empty))
+            };
+
+            options.Events = new JwtBearerEvents
+            {
+                OnAuthenticationFailed = context =>
+                {
+                    CreateAuthLogger(context.HttpContext).LogWarning(
+                        context.Exception,
+                        "JWT authentication failed: {ErrorMessage}",
+                        context.Exception.Message);
+                    return Task.CompletedTask;
+                },
+
+                OnTokenValidated = context =>
+                {
+                    CreateAuthLogger(context.HttpContext).LogDebug(
+                        "JWT token validated for {UserName}",
+                        context.Principal?.Identity?.Name ?? "(unknown)");
+                    return Task.CompletedTask;
+                },
+
+                OnChallenge = context =>
+                {
+                    CreateAuthLogger(context.HttpContext).LogWarning(
+                        "JWT challenge issued: {Error} {ErrorDescription}",
+                        context.Error,
+                        context.ErrorDescription);
+                    return Task.CompletedTask;
+                }
             };
         });
 
         services.AddAuthorization();
         services.AddScoped<ICurrentUserContext, HttpCurrentUserContext>();
+        services.AddScoped<AdmisiRanapEnabledFilter>();
+        services.AddScoped<JourneyEndpointsEnabledFilter>();
 
         services.AddCors(p => p.AddPolicy("corsapp", policyBuilder =>
         {
@@ -91,4 +125,9 @@ public static class PresentationService
         
         return services;
     }
+
+    private static ILogger CreateAuthLogger(HttpContext httpContext) =>
+        httpContext.RequestServices
+            .GetRequiredService<ILoggerFactory>()
+            .CreateLogger("Bilreg.Api.Authentication");
 }

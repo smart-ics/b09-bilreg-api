@@ -37,15 +37,15 @@ public record TindakanModel : ITindakanKey
     public static TindakanModel Create(RegModel reg, 
         LayananType layanan, NilaiTarifType nilaiTarif,
         IEnumerable<KomponenPpaView> listKomponenPpaView, 
-        string userId)
+        string userId, DateTime occurredAt = default)
     {
         var newId = NunaId.New(ID_PREFIX);
 
         var listKomp = GenListKomponen(nilaiTarif, listKomponenPpaView);
-        var audit = AuditTrailType.Create(userId, DateTime.Now);
+        var audit = AuditTrailType.Create(userId, occurredAt);
         var tarif = new TarifReff(nilaiTarif.TarifId, nilaiTarif.TarifName);
         
-        var result = new TindakanModel(newId, DateTime.Now, "",
+        var result = new TindakanModel(newId, occurredAt, "",
             reg.ToReff(), layanan.ToReff(), nilaiTarif.Kelas, nilaiTarif.TipeTarif,
             tarif, listKomp, audit);
         return result;
@@ -54,12 +54,12 @@ public record TindakanModel : ITindakanKey
     public static TindakanModel Save(string tindakanId, RegModel reg,
         LayananType layanan, NilaiTarifType nilaiTarif,
         IEnumerable<KomponenPpaView> listKomponenPpaView,
-        AuditTrailType auditTrail)
+        AuditTrailType auditTrail, DateTime occurredAt = default)
     {
         var listKomp = GenListKomponen(nilaiTarif, listKomponenPpaView);
         var tarif = new TarifReff(nilaiTarif.TarifId, nilaiTarif.TarifName);
 
-        var result = new TindakanModel(tindakanId, DateTime.Now, "",
+        var result = new TindakanModel(tindakanId, occurredAt, "",
             reg.ToReff(), layanan.ToReff(), nilaiTarif.Kelas, nilaiTarif.TipeTarif,
             tarif, listKomp, auditTrail);
         return result;
@@ -67,15 +67,15 @@ public record TindakanModel : ITindakanKey
 
     public static TindakanModel FromReg(RegModel reg, NilaiTarifType nilaiTarif,
         IEnumerable<KomponenPpaView> listKomponenPpaView, 
-        string userId)
+        string userId, DateTime occurredAt = default)
     {
         var newId = NunaId.New(ID_PREFIX);
 
         var listKomp = GenListKomponen(nilaiTarif, listKomponenPpaView);
-        var audit = AuditTrailType.Create(userId, DateTime.Now);
+        var audit = AuditTrailType.Create(userId, occurredAt);
         var tarif = new TarifReff(nilaiTarif.TarifId, nilaiTarif.TarifName);
         
-        var result = new TindakanModel(newId, DateTime.Now, "",
+        var result = new TindakanModel(newId, occurredAt, "",
             reg.ToReff(), reg.Layanan, nilaiTarif.Kelas, nilaiTarif.TipeTarif,
             tarif, listKomp, audit);
         return result;
@@ -106,7 +106,7 @@ public record TindakanModel : ITindakanKey
     
     public static TindakanModel Default => new(
         "-", 
-        DateTime.Today, 
+        new DateTime(3000, 1, 1),
         "", 
         RegModel.Default.ToReff(),
         LayananType.Default.ToReff(),
@@ -135,9 +135,9 @@ public record TindakanModel : ITindakanKey
     #endregion
 
     #region BEHAVIOR
-    public void Void(string userId)
+    public void Void(string userId, DateTime voidedAt = default)
     {
-        AuditTrail.Batal(userId, DateTime.Now);
+        AuditTrail.Batal(userId, voidedAt);
     }
     #endregion
 }
