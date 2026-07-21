@@ -39,7 +39,13 @@
     <Folder Include="AdmisiRanapContext\ReservationFeature\" />
     <Folder Include="AdmisiRanapContext\AdmissionFeature\" />
     <Folder Include="AdmisiRanapContext\WaitingListFeature\" />
+    <Folder Include="AdmisiRanapContext\JourneyFeature\" />
     <Folder Include="AdmisiRanapContext\Integration\" />
+    <Folder Include="BedUsageContext\BedOperationalFeature\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Bilreg.Test" />
   </ItemGroup>
 
 </Project>

@@ -40,7 +40,8 @@ internal sealed class TataRekeningPhase3ApplicationTestHarness
             transferReceivableService,
             auditRepo,
             UnitOfWork.Object,
-            new FixedCurrentUserContext());
+            new FixedCurrentUserContext(),
+            TestTglJamProvider.Instance);
 
     private void SetupMergeScenario()
     {

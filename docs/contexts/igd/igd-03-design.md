@@ -8,7 +8,7 @@ IGD Visit (`IgdVisit`)
 
 Implementasi mengikuti Clean Architecture + Pragmatic Tactical DDD: rich domain model di `Bilreg.Domain/IgdContext`, use-case orchestration di `Bilreg.Application`, persistence eksplisit di `Bilreg.Infrastructure` + `Bilreg.SqlDb`, API tipis di `Bilreg.Api`.
 
-Pola inti: **current state** (`BILRG_IgdVisit`, `BILRG_BedIgd`) + **transaction history** (`BILRG_IgdVisitTriage`, `BILRG_PakaiBed`, `BILRG_TindakanIgd`, dll.) dalam **explicit transaction** (`TransHelper.NewScope`).
+Pola inti: **current state** (`BILRG_IgdVisit`, `BILRG_BedIgd`) + **transaction history** (`BILRG_IgdVisitTriage`, `BILRG_PakaiBedIgd`, `BILRG_TindakanIgd`, dll.) dalam **explicit transaction** (`TransHelper.NewScope`).
 
 ## ARCHITECTURE
 
@@ -27,11 +27,11 @@ flowchart TB
     subgraph Domain["Bilreg.Domain"]
         IVM[IgdVisitModel]
         BED[BedIgdModel]
-        PBM[PakaiBedModel]
+        PBM[PakaiBedIgdModel]
     end
     subgraph Infra["Bilreg.Infrastructure"]
         IVR[IgdVisitRepo + Dal]
-        BRR[BedIgdRepo + PakaiBedDal]
+        BRR[BedIgdRepo + PakaiBedIgdDal]
     end
     subgraph Sql["Bilreg.SqlDb"]
         TBL[(BILRG_* tables)]
@@ -64,7 +64,7 @@ Layer dependency: Api → Application → Domain; Infrastructure implements repo
 | --------- | ----------- | ---------- | ------------ |
 | IgdVisit | `IgdVisitModel` | `IIgdVisitRepo` / `IgdVisitRepo` | `LoadEntity` + `AttachTriages` / `AttachEvents` |
 | BedIgd | `BedIgdModel` | `IBedIgdRepo` / `BedIgdRepo` | Snapshot fields (`BedStateSnapshot`, `CurrentIgdVisitIdSnapshot`) untuk optimistic concurrency |
-| PakaiBed | `PakaiBedModel` | `IPakaiBedRepo` | `LoadOpenForBed` pada discharge/void/checkout/**transfer** |
+| PakaiBedIgd | `PakaiBedIgdModel` | `IPakaiBedIgdRepo` | `LoadOpenForBed` pada discharge/void/checkout/**transfer** |
 
 Domain behaviour tetap di model (`AssignBed`, `TransferBed`, `Discharge`, `Void`, dll.); handler hanya orchestrasi, validasi cross-aggregate, dan persist.
 
@@ -76,7 +76,7 @@ Domain behaviour tetap di model (`AssignBed`, `TransferBed`, `Discharge`, `Void`
 | `BILRG_IgdVisitTriage` | `IgdVisitFeature` | Append-only triage history |
 | `BILRG_IgdVisitEvent` | `IgdVisitFeature` | Operational event timeline |
 | `BILRG_BedIgd` | `BedIgdFeature` | Bed master + occupancy |
-| `BILRG_PakaiBed` | `BedIgdFeature` | Bed usage history; open row `CheckOutDateTime = 3000-01-01` |
+| `BILRG_PakaiBedIgd` | `BedIgdFeature` | Bed usage history; open row `CheckOutDateTime = 3000-01-01` |
 | `BILRG_RedirectRajal` | `RedirectRajalFeature` | Redirect transaction |
 | `BILRG_TindakanIgd` | `TindakanIgdFeature` | Tindakan lines |
 | `BILRG_BhpIgd` | `BhpIgdFeature` | BHP lines |
@@ -96,9 +96,9 @@ Use-case yang menulis lebih dari satu aggregate memakai `TransHelper.NewScope()`
 
 | Use case | Writes dalam satu transaksi |
 | -------- | --------------------------- |
-| AssignBed | `BedIgd` + `PakaiBed` + `IgdVisit` |
-| CheckOut | `BedIgd` + `PakaiBed` + `IgdVisit` |
-| TransferBed (UC04b) | `BedIgd` asal + `PakaiBed` tutup + `BedIgd` tujuan + `PakaiBed` buka + `IgdVisit` (lima entitas persist, satu scope) |
+| AssignBed | `BedIgd` + `PakaiBedIgd` + `IgdVisit` |
+| CheckOut | `BedIgd` + `PakaiBedIgd` + `IgdVisit` |
+| TransferBed (UC04b) | `BedIgd` asal + `PakaiBedIgd` tutup + `BedIgd` tujuan + `PakaiBedIgd` buka + `IgdVisit` (lima entitas persist, satu scope) |
 | Discharge | optional bed release + `IgdVisit` |
 | Void | optional bed release + `IgdVisit` + compliance `AuditLog` |
 | Redirect | `RedirectRajal` + `IgdVisit` (bed harus sudah kosong) |
@@ -121,7 +121,7 @@ Tidak ada distributed saga; kegagalan parcial ditangani operasional (orphan swee
 | Triage history | `IgdVisitGetTriageHistoryQuery` | By visit |
 | Triage monitoring | `IgdVisitGetTriageMonitoringQuery` | `NextReTriageAt` untuk dashboard |
 | Bed available | `BedIgdListAvailableQuery` | `BedState = Active` |
-| Orphan PakaiBed | `PakaiBedListOrphanQuery` | Read-only reconciliation sweep |
+| Orphan PakaiBedIgd | `PakaiBedIgdListOrphanQuery` | Read-only reconciliation sweep |
 
 Perhitungan `NextReTriageAt` di backend (`AtsTriageEngine` / domain); frontend hanya menampilkan countdown.
 
@@ -169,7 +169,7 @@ Saat menambah use case IGD:
 | ---- | ----------- |
 | Domain invariant | `Bilreg.Test/IgdContext/IgdVisitFeature/IgdVisitModelTest.cs` |
 | Handlers | `IgdVisitDaftarHandlerTest`, `DischargeHandlerTest`, `VoidHandlerTest`, … |
-| DAL / orphan | `PakaiBedDalTest`, `BedIgdRepoConcurrencyTest` (assign + transfer target CAS) |
+| DAL / orphan | `PakaiBedIgdDalTest`, `BedIgdRepoConcurrencyTest` (assign + transfer target CAS) |
 | Triage | `IgdVisitTriageDalTest` |
 
 Uji minimal: assign bed tanpa triage (gagal), discharge tanpa reg (gagal), void dengan tindakan (gagal), concurrent bed assign.
@@ -177,7 +177,7 @@ Uji minimal: assign bed tanpa triage (gagal), discharge tanpa reg (gagal), void 
 ## DEPLOYMENT / ROLLOUT NOTE
 
 - **API surface (routes, bodies, responses):** [`igd-04-api-contract.md`](igd-04-api-contract.md)
-- **Operational usage, troubleshooting, orphan PakaiBed recovery:** [`igd-05-runbook.md`](igd-05-runbook.md)
+- **Operational usage, troubleshooting, orphan PakaiBedIgd recovery:** [`igd-05-runbook.md`](igd-05-runbook.md)
 
 ## FUTURE EXTENSION POINT
 

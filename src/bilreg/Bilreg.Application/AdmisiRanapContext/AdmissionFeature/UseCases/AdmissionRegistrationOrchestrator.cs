@@ -7,6 +7,7 @@ using Bilreg.Application.AdmisiContext.RujukanFeature;
 using Bilreg.Application.AdmisiRanapContext.Integration;
 using Bilreg.Application.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Application.AdmisiRanapContext.ReservationFeature;
+using Bilreg.Application.BedUsageContext.WardFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
@@ -23,6 +24,7 @@ using Bilreg.Domain.Shared.AuditLogFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using Nuna.Lib.PatternHelper;
 using Nuna.Lib.TransactionHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
 
@@ -32,10 +34,8 @@ public record AdmissionRegistrationData(
     string ProsedurMasukInapId,
     string? RujukanId,
     string DokterId,
-    string LayananId,
-    string KarcisId,
     string PesertaJaminanId) :
-    ITipeJaminanKey, ICaraMasukDkKey, IProsedurMasukInapKey, ILayananKey, IKarcisKey;
+    ITipeJaminanKey, ICaraMasukDkKey, IProsedurMasukInapKey;
 
 public interface IAdmissionRegistrationOrchestrator
 {
@@ -54,6 +54,7 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
     private readonly IOpnameRequestRepo _opnameRequestRepo;
     private readonly IReservationRepo _reservationRepo;
     private readonly IWardAccommodationGateway _wardGateway;
+    private readonly IBangsalRepo _bangsalRepo;
     private readonly IPasienRepo _pasienRepo;
     private readonly ITipeJaminanRepo _tipeJaminanRepo;
     private readonly IPolisRepo _polisRepo;
@@ -61,19 +62,20 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
     private readonly IRujukanRepo _rujukanRepo;
     private readonly IPpaRepo _ppaRepo;
     private readonly ILayananRepo _layananRepo;
-    private readonly IKarcisRepo _karcisRepo;
     private readonly IProsedureMasukInapRepo _prosedurMasukInapRepo;
     private readonly IRegFactory _regFactory;
     private readonly IRegRepo _regRepo;
     private readonly IRegInapRepo _regInapRepo;
     private readonly IRegAktifRepo _regAktifRepo;
     private readonly IAuditRepo _auditRepo;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public AdmissionRegistrationOrchestrator(
         IAdmissionRepo admissionRepo,
         IOpnameRequestRepo opnameRequestRepo,
         IReservationRepo reservationRepo,
         IWardAccommodationGateway wardGateway,
+        IBangsalRepo bangsalRepo,
         IPasienRepo pasienRepo,
         ITipeJaminanRepo tipeJaminanRepo,
         IPolisRepo polisRepo,
@@ -81,18 +83,19 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         IRujukanRepo rujukanRepo,
         IPpaRepo ppaRepo,
         ILayananRepo layananRepo,
-        IKarcisRepo karcisRepo,
         IProsedureMasukInapRepo prosedurMasukInapRepo,
         IRegFactory regFactory,
         IRegRepo regRepo,
         IRegInapRepo regInapRepo,
         IRegAktifRepo regAktifRepo,
-        IAuditRepo auditRepo)
+        IAuditRepo auditRepo,
+        ITglJamProvider tglJamProvider)
     {
         _admissionRepo = admissionRepo;
         _opnameRequestRepo = opnameRequestRepo;
         _reservationRepo = reservationRepo;
         _wardGateway = wardGateway;
+        _bangsalRepo = bangsalRepo;
         _pasienRepo = pasienRepo;
         _tipeJaminanRepo = tipeJaminanRepo;
         _polisRepo = polisRepo;
@@ -100,13 +103,13 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         _rujukanRepo = rujukanRepo;
         _ppaRepo = ppaRepo;
         _layananRepo = layananRepo;
-        _karcisRepo = karcisRepo;
         _prosedurMasukInapRepo = prosedurMasukInapRepo;
         _regFactory = regFactory;
         _regRepo = regRepo;
         _regInapRepo = regInapRepo;
         _regAktifRepo = regAktifRepo;
         _auditRepo = auditRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<AdmProcessAdmissionResponse> ProcessOpnameRequest(
@@ -114,6 +117,7 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
     {
         ValidateRequest(request.OpnameRequestId, request.KelasDkId, request.BangsalId,
             request.UserId, request.Registration);
+        var occurredAt = _tglJamProvider.Now;
         var opname = _opnameRequestRepo.LoadEntity(request)
             .GetValueOrThrow($"Opname Request '{request.OpnameRequestId}' tidak ditemukan.");
         if (opname.OpnameRequestStatus != OpnameRequestStatusEnum.Requested)
@@ -123,10 +127,10 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         EnsurePatientAvailable(opname.Pasien);
         var prosedur = ResolveProsedurMasukInap(request.Registration);
         var admission = CreateAdmission(opname.Pasien, request.KelasDkId, request.BangsalId,
-            opname.OpnameRequestId, null, request.UserId);
+            opname.OpnameRequestId, null, request.UserId, occurredAt);
         var reg = CreateRegistration(admission, request.Registration);
         var regInap = CreateRegInap(admission, reg, prosedur);
-        var fulfilled = opname.Fulfill(admission.RegId, request.UserId);
+        var fulfilled = opname.Fulfill(admission.RegId, request.UserId, occurredAt);
         var snapshot = AuditLogSnapshotJson.Serialize(opname);
 
         using var trans = TransHelper.NewScope();
@@ -144,6 +148,7 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
     {
         ValidateRequest(request.ReservationId, request.KelasDkId, request.BangsalId,
             request.UserId, request.Registration);
+        var occurredAt = _tglJamProvider.Now;
         var reservation = _reservationRepo.LoadEntity(request)
             .GetValueOrThrow($"Reservation '{request.ReservationId}' tidak ditemukan.");
 
@@ -152,17 +157,17 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         var bangsal = _wardGateway.ResolveBangsalForCareClass(request.BangsalId, request.KelasDkId);
         if (reservation.ReservationStatus == ReservationStatusEnum.Reserved)
             reservation = reservation.Maintain(
-                reservation.PlannedDate, reservation.KelasRawat, bangsal, request.UserId);
+                reservation.PlannedDate, reservation.KelasRawat, bangsal, request.UserId, occurredAt);
 
         if (reservation.ReservationStatus != ReservationStatusEnum.Maintained)
             throw new InvalidOperationException(
                 $"Reservation '{reservation.ReservationId}' harus Maintained untuk direalisasi (status: {reservation.ReservationStatus}).");
 
         var admission = CreateAdmission(reservation.Pasien, request.KelasDkId, request.BangsalId,
-            null, reservation.ReservationId, request.UserId, bangsal);
+            null, reservation.ReservationId, request.UserId, occurredAt, bangsal);
         var reg = CreateRegistration(admission, request.Registration);
         var regInap = CreateRegInap(admission, reg, prosedur);
-        var realized = reservation.Realize(admission.RegId, request.UserId);
+        var realized = reservation.Realize(admission.RegId, request.UserId, occurredAt);
         var snapshot = AuditLogSnapshotJson.Serialize(reservation);
 
         using var trans = TransHelper.NewScope();
@@ -176,11 +181,12 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
     }
 
     private AdmissionModel CreateAdmission(PasienReff pasien, string kelasDkId, string bangsalId,
-        string? opnameRequestId, string? reservationId, string userId, BangsalReff? resolvedBangsal = null)
+        string? opnameRequestId, string? reservationId, string userId, DateTime occurredAt,
+        BangsalReff? resolvedBangsal = null)
     {
         var kelasDk = _wardGateway.ResolveKelasDk(kelasDkId);
         var bangsal = resolvedBangsal ?? _wardGateway.ResolveBangsalForCareClass(bangsalId, kelasDkId);
-        return AdmissionModel.Admit(pasien, kelasDk, bangsal, opnameRequestId, reservationId, userId);
+        return AdmissionModel.Admit(pasien, kelasDk, bangsal, opnameRequestId, reservationId, userId, occurredAt);
     }
 
     private RegModel CreateRegistration(AdmissionModel admission, AdmissionRegistrationData data)
@@ -194,14 +200,32 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         var rujukan = ResolveRujukan(caraMasuk, data.RujukanId);
         var dokter = _ppaRepo.LoadEntity(PpaType.Key(data.DokterId))
             .GetValueOrThrow($"Dokter '{data.DokterId}' tidak ditemukan.");
-        var layanan = _layananRepo.LoadEntity(data)
-            .GetValueOrThrow($"Layanan '{data.LayananId}' tidak ditemukan.");
-        var karcis = _karcisRepo.LoadEntity(data)
-            .GetValueOrThrow($"Karcis '{data.KarcisId}' tidak ditemukan.");
+        var layanan = ResolveLayananFromBangsal(admission.Bangsal.BangsalId);
         var polis = ResolvePolis(pasien, tipeJaminan);
 
         return _regFactory.CreateRegInapFromAdmission(admission, pasien, tipeJaminan, polis,
-            caraMasuk, rujukan, dokter, layanan, karcis, data.PesertaJaminanId);
+            caraMasuk, rujukan, dokter, layanan, data.PesertaJaminanId);
+    }
+
+    private LayananType ResolveLayananFromBangsal(string bangsalId)
+    {
+        var bangsal = _bangsalRepo.LoadEntity(BangsalType.Key(bangsalId))
+            .GetValueOrThrow($"Bangsal '{bangsalId}' tidak ditemukan.");
+
+        var mappedLayananId = bangsal.Layanan.LayananId;
+        if (string.IsNullOrWhiteSpace(mappedLayananId) || mappedLayananId == "-")
+            throw new InvalidOperationException(
+                $"Bangsal '{bangsalId}' tidak memiliki mapping Layanan Rawat Inap.");
+
+        var layanan = _layananRepo.LoadEntity(LayananType.Key(mappedLayananId))
+            .GetValueOrThrow(
+                $"Layanan '{mappedLayananId}' untuk Bangsal '{bangsalId}' tidak ditemukan.");
+
+        if (layanan.InstalasiDk.InstalasiDkId != InstalasiDkType.RawatInap.InstalasiDkId)
+            throw new InvalidOperationException(
+                $"Layanan '{layanan.LayananId}' untuk Bangsal '{bangsalId}' bukan instalasi rawat inap.");
+
+        return layanan;
     }
 
     private RujukanType ResolveRujukan(CaraMasukDkType caraMasuk, string? rujukanId)
@@ -284,8 +308,6 @@ public class AdmissionRegistrationOrchestrator : IAdmissionRegistrationOrchestra
         Guard.Against.NullOrWhiteSpace(data.CaraMasukDkId);
         Guard.Against.NullOrWhiteSpace(data.ProsedurMasukInapId);
         Guard.Against.NullOrWhiteSpace(data.DokterId);
-        Guard.Against.NullOrWhiteSpace(data.LayananId);
-        Guard.Against.NullOrWhiteSpace(data.KarcisId);
         Guard.Against.Null(data.PesertaJaminanId);
     }
 }

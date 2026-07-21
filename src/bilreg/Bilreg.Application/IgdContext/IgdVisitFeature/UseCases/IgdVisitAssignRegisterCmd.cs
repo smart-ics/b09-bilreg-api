@@ -5,6 +5,7 @@ using Bilreg.Domain.IgdContext.IgdVisitFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.IgdContext.IgdVisitFeature.UseCases;
 
@@ -18,11 +19,14 @@ public class IgdVisitAssignRegisterHandler : IRequestHandler<IgdVisitAssignRegis
 {
     private readonly IIgdVisitRepo _igdVisitRepo;
     private readonly IRegRepo _regRepo;
+    private readonly ITglJamProvider _tglJamProvider;
 
-    public IgdVisitAssignRegisterHandler(IIgdVisitRepo igdVisitRepo, IRegRepo regRepo)
+    public IgdVisitAssignRegisterHandler(IIgdVisitRepo igdVisitRepo, IRegRepo regRepo,
+        ITglJamProvider tglJamProvider)
     {
         _igdVisitRepo = igdVisitRepo;
         _regRepo = regRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task Handle(IgdVisitAssignRegisterCmd request, CancellationToken cancellationToken)
@@ -34,7 +38,7 @@ public class IgdVisitAssignRegisterHandler : IRequestHandler<IgdVisitAssignRegis
         var visit = _igdVisitRepo.LoadEntity(request).GetValueOrThrow($"IgdVisit '{request.IgdVisitId}' not found");
         var reg = _regRepo.LoadEntity(request).GetValueOrThrow($"Reg '{request.RegId}' not found");
 
-        var audit = new AuditInfoType(request.UserId, DateTime.Now);
+        var audit = new AuditInfoType(request.UserId, _tglJamProvider.Now);
         visit.AssignRegister(reg, audit);
 
         using var trans = TransHelper.NewScope();

@@ -42,6 +42,7 @@ public class AuditLog
 
     public static AuditLog Create(
         string userId,
+        DateTime eventTime,
         string actionType,
         string entityName,
         string entityId,
@@ -56,7 +57,7 @@ public class AuditLog
 
         return CreateCore(
             userId,
-            DateTime.UtcNow,
+            eventTime,
             actionType,
             entityName,
             entityId,

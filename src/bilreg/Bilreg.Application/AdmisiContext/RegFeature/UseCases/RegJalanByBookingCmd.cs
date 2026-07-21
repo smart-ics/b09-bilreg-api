@@ -1,7 +1,8 @@
-﻿using Bilreg.Application.AccountingContext.JurnalFeature;
+using Bilreg.Application.AccountingContext.JurnalFeature;
 using Bilreg.Application.AccountingContext.JurnalFeature.JkAgg;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.BookingFeature;
+using Bilreg.Application.AdmisiContext.EmrAntrianOutboundFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
 using Bilreg.Application.AdmisiContext.LayananFeature;
@@ -30,14 +31,20 @@ using Bilreg.Domain.PaymentContext.TrsBillingFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
+using Nuna.Lib.ValidationHelper;
 using Ardalis.GuardClauses;
 using System.Globalization;
 using Bilreg.Domain.PaymentContext.TrsBillFeature;
 
 namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 
-public record RegJalanByBookingCmd(string BookingId, string UserId, string KarcisId, 
-    string CaraMasukDkId, string RujukanId, string TipeJaminanId, string PesertaJaminanId) : IRequest<RegJalanByBookingResponse>;
+public record RegJalanByBookingCmd(
+    string BookingId, string UserId, string KarcisId,
+    string CaraMasukDkId, string RujukanId, string TipeJaminanId, string PesertaJaminanId,
+    string? AdmissionAntrianId = null,
+    int? AdmissionNoUrut = null,
+    string? AdmissionServicePointCode = null,
+    string? AdmissionServicePointName = null) : IRequest<RegJalanByBookingResponse>;
 
 public record RegJalanByBookingResponse(string RegId, int NoAntrian);
 public class RegJalanByBookingHandler 
@@ -45,6 +52,8 @@ public class RegJalanByBookingHandler
 {
     private readonly IBookingRepo _bookingRepo;
     private readonly IAntrianRepo _antrianRepo;
+    private readonly IAntrianFactory _antrianFactory;
+    private readonly IPasienTrackerRepo _trackerRepo;
     private readonly IPasienRepo _pasienRepo;
     private readonly IRegFactory _regFactory;
     private readonly IPpaRepo _dokterRepo;
@@ -71,7 +80,10 @@ public class RegJalanByBookingHandler
 
     private readonly IMapJaminanJkRepo _mapJaminanJkRepo;
     private readonly IJurnalRepo _jurnalRepo;
-    private readonly IAddAntrianEmrByRegService _addRegSvc;
+    private readonly EmrAntrianOutboundEnqueueService _emrOutboundEnqueue;
+    private readonly IAntrianMapRepo _antrianMapRepo;
+    private readonly IQueueNumberCompatibilityAdapter _queueNumberAdapter;
+    private readonly ITglJamProvider _tglJamProvider;
 
     private const string BAYAR_SENDIRI = "1";
     public RegJalanByBookingHandler(
@@ -96,11 +108,16 @@ public class RegJalanByBookingHandler
         ITrsBillingRepo trsBillingRepo,
         IAddBillAppService addBillAppService,
         IAntrianRepo antrianRepo,
+        IAntrianFactory antrianFactory,
+        IPasienTrackerRepo trackerRepo,
         IMapJaminanJkRepo mapJaminanJkRepo,
         IJurnalRepo jurnalRepo,
         IRemoteCetakRepo remoteCetakRepo,
         IGetAppSettingService getAppSettingSvc,
-        IAddAntrianEmrByRegService addRegSvc)
+        EmrAntrianOutboundEnqueueService emrOutboundEnqueue,
+        IAntrianMapRepo antrianMapRepo,
+        IQueueNumberCompatibilityAdapter queueNumberAdapter,
+        ITglJamProvider tglJamProvider)
     {
         _bookingRepo = bookingRepo;
         _pasienRepo = pasienRepo;
@@ -123,23 +140,29 @@ public class RegJalanByBookingHandler
         _trsBillingRepo = trsBillingRepo;
         _addBillAppService = addBillAppService;
         _antrianRepo = antrianRepo;
+        _antrianFactory = antrianFactory;
+        _trackerRepo = trackerRepo;
         _mapJaminanJkRepo = mapJaminanJkRepo;
         _jurnalRepo = jurnalRepo;
         _remoteCetakRepo = remoteCetakRepo;
         _getAppSettingSvc = getAppSettingSvc;
-        _addRegSvc = addRegSvc;
+        _emrOutboundEnqueue = emrOutboundEnqueue;
+        _antrianMapRepo = antrianMapRepo;
+        _queueNumberAdapter = queueNumberAdapter;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<RegJalanByBookingResponse> Handle(RegJalanByBookingCmd request, CancellationToken cancellationToken)
     {
+        var occurredAt = _tglJamProvider.Now;
         //  LOAD and GUARD
         Guard.Against.Null(request.PesertaJaminanId, nameof(request.PesertaJaminanId));
         var booking = LoadBooking(request.BookingId);
-        var antrian = LoadAntrian(booking);
+        var antrian = LoadAntrian(booking, DateOnly.FromDateTime(occurredAt));
         var pasien = LoadPasien(booking.PasienId);
         if (IsPasienAktifReg(pasien))
             throw new KeyNotFoundException($"Pasien sudah aktif registrasi");
-        if (IsAdult(pasien.Person.TglLahir) && (string.IsNullOrWhiteSpace(pasien.Ktp.Nik) || pasien.Ktp.Nik == "-"))
+        if (IsAdult(pasien.Person.TglLahir, DateOnly.FromDateTime(occurredAt)) && (string.IsNullOrWhiteSpace(pasien.Ktp.Nik) || pasien.Ktp.Nik == "-"))
             throw new KeyNotFoundException($"Nik Kosong, Lengkapi data Nik pasien {pasien.PasienId}");
 
         var dokter = LoadDokter(booking.Dokter.PpaId);
@@ -151,7 +174,7 @@ public class RegJalanByBookingHandler
         var rujukan = ResolveRujukan(caraMasuk, request.RujukanId);
 
         //  BUILD
-        var regAudit = new AuditInfoType(request.UserId, DateTime.Now);
+        var regAudit = new AuditInfoType(request.UserId, occurredAt);
         var reg = _regFactory.CreateRegRajal(
             pasien, regAudit, tipeJaminan,
             polis, caraMasuk, rujukan,
@@ -162,12 +185,17 @@ public class RegJalanByBookingHandler
             reg.Pasien, reg.JenisReg, reg.Layanan,
             reg.Dokter, reg.TipeJaminan);
 
-        //      BUILD TrsBill Reg
-        //  ANTRIAN
+        //  ANTRIAN (physician): retag to REG for legacy projection; stay Waiting until MulaiPeriksa (F-07).
         var itemQueue = antrian.ListEntry.FirstOrDefault(x => x.NoUrut == booking.NoAntrian) 
             ?? AntrianEntryModel.Default;
         itemQueue.SetReff(reg.RegId, "REG");
-        itemQueue.Serve();
+
+        var tracker = _trackerRepo.LoadEntity(itemQueue.Tracker)
+            .GetValueOrThrow($"PasienTracker '{itemQueue.Tracker.PasienTrackerId}' not found");
+        var admissionQueue = AdmissionQueueComplete.CompleteAtRegistration(
+            _antrianRepo, _antrianFactory, tracker, reg.RegId, occurredAt,
+            request.AdmissionAntrianId, request.AdmissionNoUrut,
+            request.AdmissionServicePointCode, request.AdmissionServicePointName);
 
         //      BUILD TINDAKAN
         var jaminan = LoadJaminan(tipeJaminan.Jaminan);
@@ -178,11 +206,11 @@ public class RegJalanByBookingHandler
             listKompKarcis.Add(komp);
         }
         var trsBillingReg = _addBillAppService.FromReg(reg, karcis,
-            jaminan, dokter, listKompKarcis);
+            jaminan, dokter, listKompKarcis, occurredAt);
 
         var tindakan = karcis.DefaultTarif == TarifType.Default.ToReff()
             ? TindakanModel.Default
-            : GenTindakan(reg, jaminan, karcis, request.UserId, dokter);
+            : GenTindakan(reg, jaminan, karcis, request.UserId, dokter, occurredAt);
 
 
         //     BUILD Jurnal Reg
@@ -197,7 +225,7 @@ public class RegJalanByBookingHandler
             : LoadTarif(TarifType.Key(karcis.DefaultTarif.TarifId));
         var trsBilling = tindakan == TindakanModel.Default
             ? TrsBillType.Default
-            : GenBill(tindakan, reg, tarif, jaminan);
+            : GenBill(tindakan, reg, tarif, jaminan, occurredAt);
 
         //      BUILD Jurnal Tindakan
         var jurnalTindakan = tindakan == TindakanModel.Default
@@ -207,7 +235,7 @@ public class RegJalanByBookingHandler
         //      REMOTE-CETAK
         var appSetting = _getAppSettingSvc.Execute();
         var rmtCetak = new RemoteCetakType(
-            reg.RegId, "RG-ANTRIAN", DateTime.Now, 
+            reg.RegId, "RG-ANTRIAN", occurredAt,
             appSetting.Registrasi.RemoteCetakRegistrasi, 
             false, new DateTime(3000, 1, 1),
             "", "");
@@ -217,11 +245,17 @@ public class RegJalanByBookingHandler
         RegJalanByBookingResponse response;
         using (var trans = TransHelper.NewScope())
         {
+            var physicianMap = PhysicianAntrianMapLookup.FindForBooking(_antrianMapRepo, booking);
+            if (_queueNumberAdapter.ProjectSourceReffForRegistration(physicianMap, booking.NoAntrian, reg))
+                _antrianMapRepo.SaveChanges(physicianMap);
+
             _regRepo.SaveChanges(reg);
             _bookingRepo.SaveChanges(booking);
             _regAktifRepo.SaveChanges(regAktif);
             _trsBillingRepo.SaveChanges(trsBillingReg);
             _antrianRepo.SaveChanges(antrian);
+            _antrianRepo.SaveChanges(admissionQueue);
+            _trackerRepo.SaveChanges(tracker);
             if (tindakan.TindakanId != "-")
                 _tindakanRepo.SaveChanges(tindakan);
             if (trsBilling.TrsBillingId != "-")
@@ -233,20 +267,24 @@ public class RegJalanByBookingHandler
 
             _remoteCetakRepo.SaveChanges(rmtCetak);
 
+            var emrPayload = new AddAntrianEmrByRegCommand(
+                reg.RegId, booking.BookingId, reg.Pasien.PasienId,
+                reg.Pasien.PasienName, reg.Layanan.LayananId,
+                reg.Dokter.PpaId, reg.RegDate.ToString("yyyy-MM-dd"),
+                booking.JamPraktek.ToString("HH:mm", CultureInfo.InvariantCulture),
+                booking.NoAntrian);
+            _emrOutboundEnqueue.TryEnqueueAddReg(emrPayload, occurredAt);
+
             trans.Complete();
             response = new RegJalanByBookingResponse(reg.RegId, booking.NoAntrian);
         }
 
-        
-        AddReg(reg, booking);
         return Task.FromResult(response);
     }
 
     #region PRIVATE HELPER
-    public bool IsAdult(DateOnly TglLahir)
+    public bool IsAdult(DateOnly TglLahir, DateOnly today)
     {
-        var today = DateOnly.FromDateTime(DateTime.Today);
-
         int age = today.Year - TglLahir.Year;
 
         // Koreksi jika ulang tahun belum lewat tahun ini
@@ -313,7 +351,7 @@ public class RegJalanByBookingHandler
                 .GetValueOrThrow("'Rujukan' not found");
 
     private TindakanModel GenTindakan(RegModel reg, JaminanType jaminan,
-        KarcisType karcis, string userId, PpaType dokter)
+        KarcisType karcis, string userId, PpaType dokter, DateTime occurredAt)
     {
         var tipeTarifReff = jaminan.TipeTarif.Rajal;
         var tarifKey = karcis.DefaultTarif;
@@ -326,12 +364,12 @@ public class RegJalanByBookingHandler
             .Where(x => x.ListSatTugas.Any())
             .Select(x => new KomponenPpaView(x, dokter));
 
-        var tindakan = TindakanModel.FromReg(reg, nilaiTarif, listPpa, userId);
+        var tindakan = TindakanModel.FromReg(reg, nilaiTarif, listPpa, userId, occurredAt);
         return tindakan;
     }
 
     private TrsBillType GenBill(TindakanModel tdk, RegModel reg, TarifType tarif,
-        JaminanType jaminan)
+        JaminanType jaminan, DateTime occurredAt)
     {
         var listKomp = new List<KomponenType>();
         foreach (var item in tdk.ListKomponen)
@@ -339,7 +377,7 @@ public class RegJalanByBookingHandler
             var komp = LoadKomponen(KomponenType.Key(item.Komponen.KomponenId));
             listKomp.Add(komp);
         }
-        var trsBilling = _addBillAppService.FromTindakan(tdk, reg, tarif, jaminan, listKomp);
+        var trsBilling = _addBillAppService.FromTindakan(tdk, reg, tarif, jaminan, listKomp, occurredAt);
         return trsBilling;
     }
 
@@ -372,10 +410,9 @@ public class RegJalanByBookingHandler
         return tarif;
     }
     
-    private AntrianModel LoadAntrian(BookingModel booking)
+    private AntrianModel LoadAntrian(BookingModel booking, DateOnly date)
     {
         var ppa = LoadDokter(booking.Dokter.PpaId);
-        var date = DateOnly.FromDateTime(DateTime.Now);
         var listQueue = _antrianRepo.ListData(date)?.ToList() ?? [];
         var squesceTag = AntrianModel.GenSequenceTag(date, booking.JamPraktek, ppa);
         var antrian = listQueue.FirstOrDefault(x => x.SequenceTag == squesceTag) 
@@ -393,17 +430,6 @@ public class RegJalanByBookingHandler
                 onNone: () => MapJaminanJkType.Default
             );
         return map;
-    }
-
-    private void AddReg(RegModel reg, BookingModel booking)
-    {
-        var payload = new AddAntrianEmrByRegCommand(
-            reg.RegId, booking.BookingId, reg.Pasien.PasienId,
-            reg.Pasien.PasienName, reg.Layanan.LayananId, 
-            reg.Dokter.PpaId, reg.RegDate.ToString("yyyy-MM-dd"), 
-            booking.JamPraktek.ToString("HH:mm", CultureInfo.InvariantCulture),
-            booking.NoAntrian);
-        _addRegSvc.Execute(payload);
     }
     #endregion
 }

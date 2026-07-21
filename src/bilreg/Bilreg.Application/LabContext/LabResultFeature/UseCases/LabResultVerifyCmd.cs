@@ -51,7 +51,7 @@ public class LabResultVerifyHandler : IRequestHandler<LabResultVerifyCmd>
                 $"Hasil untuk order '{request.OrderId}' sudah diverifikasi.");
 
         result.Verify(request.VerifiedUserId, request.VerifiedDate);
-        order.MarkVerified(request.VerifiedUserId);
+        order.MarkVerified(request.VerifiedUserId, request.VerifiedDate);
 
         using var trans = TransHelper.NewScope();
         _labOrderRepo.SaveChanges(order);

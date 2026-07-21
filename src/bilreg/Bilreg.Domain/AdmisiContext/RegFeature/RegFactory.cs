@@ -32,7 +32,7 @@ public interface IRegFactory
     RegModel CreateRegInapFromAdmission(AdmissionModel admission, PasienModel pasien,
         TipeJaminanType tipeJaminan, PolisModel polis, CaraMasukDkType caraMasukDk,
         RujukanType rujukan, PpaType dokter, LayananType layanan,
-        KarcisType karcis, string pesertaJaminanId);
+        string pesertaJaminanId);
 }
 
 
@@ -107,7 +107,7 @@ public class RegFactory : IRegFactory
     public RegModel CreateRegInapFromAdmission(AdmissionModel admission, PasienModel pasien,
         TipeJaminanType tipeJaminan, PolisModel polis, CaraMasukDkType caraMasukDk,
         RujukanType rujukan, PpaType dokter, LayananType layanan,
-        KarcisType karcis, string pesertaJaminanId)
+        string pesertaJaminanId)
     {
         var regMasukAudit = admission.AuditTrail.Created;
         var eligibility = new RegEligibilityType("-", "-", pesertaJaminanId);
@@ -135,7 +135,7 @@ public class RegFactory : IRegFactory
 
         reg.ApplyJaminan(tipeJaminan, polis);
         reg.SpecifyCaraMasuk(caraMasukDk, rujukan);
-        reg.AssignInpatientVisitTo(dokter, layanan, karcis);
+        reg.AssignInpatientVisitTo(dokter, layanan);
         return reg;
     }
     

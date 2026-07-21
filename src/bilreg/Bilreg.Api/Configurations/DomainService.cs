@@ -50,6 +50,8 @@ public static class DomainService
             .AddScoped<IGetKelasRadarService, GetKelasRadarService>()
             .AddScoped<IAntrianMapWithBookingResolver, AntrianMapWithBookingResolver>()
             .AddScoped<IAntrianMapWithRegResolver, AntrianMapWithRegResolver>()
+            .Configure<QueueNumberCompatibilityOptions>(configuration.GetSection(QueueNumberCompatibilityOptions.SectionName))
+            .AddScoped<IQueueNumberCompatibilityAdapter, QueueNumberCompatibilityAdapter>()
             .AddScoped<ICreateBillDomService, CreateBillDomService>()
             .AddScoped<IProjectionRegenerationDomainService, ProjectionRegenerationDomainService>()
             .AddScoped<IMergeBillingDomainService, MergeBillingDomainService>()

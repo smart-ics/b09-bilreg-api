@@ -4,6 +4,7 @@ using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.LabContext.LabOrderFeature.UseCases;
 
@@ -28,15 +29,18 @@ public class LabOrderCreateFromEmrHandler : IRequestHandler<LabOrderCreateFromEm
     private readonly ILabOrderRepo _labOrderRepo;
     private readonly ISequencer _sequencer;
     private readonly ILabTestResolutionService _resolutionService;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public LabOrderCreateFromEmrHandler(
         ILabOrderRepo labOrderRepo,
         ISequencer sequencer,
-        ILabTestResolutionService resolutionService)
+        ILabTestResolutionService resolutionService,
+        ITglJamProvider tglJamProvider)
     {
         _labOrderRepo = labOrderRepo;
         _sequencer = sequencer;
         _resolutionService = resolutionService;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<LabOrderCreateFromEmrResponse> Handle(LabOrderCreateFromEmrCmd request, CancellationToken cancellationToken)
@@ -48,7 +52,7 @@ public class LabOrderCreateFromEmrHandler : IRequestHandler<LabOrderCreateFromEm
         Guard.Against.NullOrWhiteSpace(request.PatientName, nameof(request.PatientName));
         Guard.Against.NullOrEmpty(request.Items, nameof(request.Items));
 
-        var audit = new AuditInfoType(request.UserId, DateTime.Now);
+        var audit = new AuditInfoType(request.UserId, _tglJamProvider.Now);
         var snapshot = LabOrderCreateHelper.BuildSnapshot(
             request.RegId,
             request.PatientId,

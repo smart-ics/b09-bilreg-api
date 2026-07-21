@@ -191,8 +191,6 @@ public class AdmissionRegistrationStep4CDbTest
         prosedurMasukInapId = "IGD",
         rujukanId = "00084",
         dokterId,
-        layananId = "RI001",
-        karcisId = "02",
         pesertaJaminanId = "",
     };
 
@@ -431,8 +429,6 @@ public class AdmissionRegistrationStep4CDbTest
                     prosedurMasukInapId = "ZZZ",
                     rujukanId = "00084",
                     dokterId = "DR00000010",
-                    layananId = "RI001",
-                    karcisId = "02",
                     pesertaJaminanId = "",
                 },
             });

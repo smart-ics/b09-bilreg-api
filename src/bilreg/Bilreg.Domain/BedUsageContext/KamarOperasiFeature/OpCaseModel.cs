@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 
 namespace Bilreg.Domain.BedUsageContext.KamarOperasiFeature;
@@ -39,13 +39,13 @@ public class OpCaseModel : IOrderOpKey
         RegModel.Default.ToReff(), UrgencyLevelEnum.Elective, ScheduleOpReff.Default, 
         DischargeOpReff.Default, DuranteOpReff.Default, OpCaseStateEnum.Requested, [], []);
 
-    public static OpCaseModel Create(OrderOpModel orderOp)
+    public static OpCaseModel Create(OrderOpModel orderOp, DateTime createdAt = default)
     {
         var listStateHist = new List<OpCaseStateHistType>
         {
-            new(0, OpCaseStateEnum.Requested, DateTime.Now)
+            new(0, OpCaseStateEnum.Requested, createdAt)
         };
-        var dokterRequester = new OpCasePpaType(0, orderOp.Dokter, "REQUESTER", DateTime.Now);
+        var dokterRequester = new OpCasePpaType(0, orderOp.Dokter, "REQUESTER", createdAt);
         var result = new OpCaseModel(orderOp.OrderOpId, orderOp.ToReff(),
             orderOp.Pasien, orderOp.NamaOperasi, orderOp.Reg, orderOp.UrgencyLevel,
             ScheduleOpReff.Default, DischargeOpReff.Default, DuranteOpReff.Default,
@@ -89,7 +89,7 @@ public class OpCaseModel : IOrderOpKey
     #endregion
 
     #region BEHAVIOUR
-    public void Schedule(ScheduleOpModel schedule)
+    public void Schedule(ScheduleOpModel schedule, DateTime scheduledAt = default)
     {
         if ((int)OrderOpState >= (int)OpCaseStateEnum.OpStarted)
             throw new ArgumentException("Status Operasi tidak dapat diubah scheduled!");
@@ -102,9 +102,9 @@ public class OpCaseModel : IOrderOpKey
                     {
                         string profesi = x.Profesi.ProfesiName;
                         return new OpCasePpaType(x.NoUrut, x.Ppa, profesi, new DateTime(3000, 1, 1));
-                    }));
+                    }), scheduledAt);
 
-        UpsertStateHistory(OrderOpState);
+        UpsertStateHistory(OrderOpState, scheduledAt);
     }
 
     public void Start(DateTime startTime)
@@ -115,7 +115,7 @@ public class OpCaseModel : IOrderOpKey
         DuranteOp = new DuranteOpReff(startTime, new DateTime(3000, 1, 1));
         OrderOpState = OpCaseStateEnum.OpStarted;
 
-        UpsertStateHistory(OrderOpState);
+        UpsertStateHistory(OrderOpState, startTime);
     }
 
     public void CancelStart()
@@ -141,17 +141,17 @@ public class OpCaseModel : IOrderOpKey
         DuranteOp = new DuranteOpReff(DuranteOp.StartTime, finishTime);
         OrderOpState = OpCaseStateEnum.RecoveryStarted;
 
-        UpsertStateHistory(OrderOpState);
+        UpsertStateHistory(OrderOpState, finishTime);
     }
 
-    public void Discharge(DischargeOpModel discharge)
+    public void Discharge(DischargeOpModel discharge, DateTime dischargedAt = default)
     {
         if ((int)OrderOpState != (int)OpCaseStateEnum.RecoveryStarted)
             throw new ArgumentException("Status Operasi tidak dapat diubah discharged!");
         DischargeOp = discharge.ToReff();
         OrderOpState = OpCaseStateEnum.Discharged;
 
-        UpsertStateHistory(OrderOpState);
+        UpsertStateHistory(OrderOpState, dischargedAt);
     }
 
     public void CancelSchedule()
@@ -171,7 +171,7 @@ public class OpCaseModel : IOrderOpKey
     #endregion
 
     #region PRIVATE METHODS
-    private void SetListPpa(IEnumerable<OpCasePpaType> listPpa)
+    private void SetListPpa(IEnumerable<OpCasePpaType> listPpa, DateTime assignedAt)
     {
         if (listPpa == null)
             return;
@@ -196,7 +196,7 @@ public class OpCaseModel : IOrderOpKey
                 NoUrut: 0, // will be normalized later
                 Ppa: incoming.Ppa,
                 Role: incoming.Role,
-                AssignDate: DateTime.Now // ALWAYS current datetime
+                AssignDate: assignedAt
             );
 
             _listPpa.Add(newItem);
@@ -226,10 +226,8 @@ public class OpCaseModel : IOrderOpKey
         }
     }
 
-    private void UpsertStateHistory(OpCaseStateEnum newState)
+    private void UpsertStateHistory(OpCaseStateEnum newState, DateTime occurredAt = default)
     {
-        var now = DateTime.Now;
-
         // Find existing state
         var existingIndex = _listStateHistory
             .FindIndex(x => x.OpCaseState == newState);
@@ -240,7 +238,7 @@ public class OpCaseModel : IOrderOpKey
             _listStateHistory[existingIndex] =
                 _listStateHistory[existingIndex] with
                 {
-                    StateTimestamp = now
+                    StateTimestamp = occurredAt
                 };
         }
         else
@@ -250,7 +248,7 @@ public class OpCaseModel : IOrderOpKey
                 new OpCaseStateHistType(
                     NoUrut: 0, // normalized later
                     OpCaseState: newState,
-                    StateTimestamp: now
+                    StateTimestamp: occurredAt
                 )
             );
         }

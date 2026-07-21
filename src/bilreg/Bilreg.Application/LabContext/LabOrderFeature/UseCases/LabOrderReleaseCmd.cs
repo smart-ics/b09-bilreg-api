@@ -19,13 +19,16 @@ public class LabOrderReleaseHandler : IRequestHandler<LabOrderReleaseCmd, LabOrd
 {
     private readonly ILabOrderRepo _labOrderRepo;
     private readonly ILabBillingIntegration _labBillingIntegration;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public LabOrderReleaseHandler(
         ILabOrderRepo labOrderRepo,
-        ILabBillingIntegration labBillingIntegration)
+        ILabBillingIntegration labBillingIntegration,
+        ITglJamProvider tglJamProvider)
     {
         _labOrderRepo = labOrderRepo;
         _labBillingIntegration = labBillingIntegration;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<LabOrderReleaseResponse> Handle(LabOrderReleaseCmd request, CancellationToken cancellationToken)
@@ -35,6 +38,7 @@ public class LabOrderReleaseHandler : IRequestHandler<LabOrderReleaseCmd, LabOrd
         Guard.Against.Null(request.ReleaseNote, nameof(request.ReleaseNote));
 
         var order = _labOrderRepo.LoadEntity(request).GetValueOrThrow($"LabOrder '{request.OrderId}' not found");
+        var occurredAt = _tglJamProvider.Now;
 
         var validation = _labBillingIntegration.ValidateReleaseEligibility(
             new LabBillingReleaseValidationRequest(
@@ -49,7 +53,7 @@ public class LabOrderReleaseHandler : IRequestHandler<LabOrderReleaseCmd, LabOrd
             _ => throw new InvalidOperationException($"Unknown billing validation code: {validation.Code}")
         };
 
-        order.RecordLastBillingReleaseValidation(traceStatus, validation.Message, request.UserId);
+        order.RecordLastBillingReleaseValidation(traceStatus, validation.Message, request.UserId, occurredAt);
 
         LabOrderReleaseResponse response;
         if (validation.Code == BillingReleaseValidationCode.Blocked)
@@ -67,7 +71,7 @@ public class LabOrderReleaseHandler : IRequestHandler<LabOrderReleaseCmd, LabOrd
             return Task.FromResult(response);
         }
 
-        order.Release(request.UserId, request.ReleaseNote);
+        order.Release(request.UserId, request.ReleaseNote, occurredAt);
 
         using (var releaseTrans = TransHelper.NewScope())
         {

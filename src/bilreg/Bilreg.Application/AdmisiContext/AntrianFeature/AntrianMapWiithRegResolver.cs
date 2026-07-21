@@ -59,13 +59,13 @@ public class AntrianMapWithRegResolver :  IAntrianMapWithRegResolver
         var flag = grupJmnResp.GroupJaminanId == "JKN" ? "BPJS" : "UMUM";
         var emptyMap = antrianMap.ListMap
             .Where(x => x.Flag == flag)
-            .Where(x => x.ReffId.Trim() == "")
+            .Where(x => x.IsFreeSlot())
             .OrderBy(x => x.NoUrut)
             .FirstOrDefault();
         emptyMap = emptyMap ??
                    antrianMap.ListMap
                        .Where(x => x.Flag == "AUTO")
-                       .Where(x => x.ReffId.Trim() == "")
+                       .Where(x => x.IsFreeSlot())
                        .OrderBy(x => x.NoUrut)
                        .FirstOrDefault();
         

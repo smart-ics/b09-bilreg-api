@@ -239,7 +239,7 @@ public class TrfTarifMigrationHandlerTest
             tipeRepo.Object,
             kelasRepo.Object,
             komponenRepo.Object,
-            NullLogger<TrfCreateBaselineTarifPolicyHandler>.Instance);
+            NullLogger<TrfCreateBaselineTarifPolicyHandler>.Instance, TestTglJamProvider.Instance);
     }
 
     private static NilaiTarifProjectionRow CreateProjectionRow() =>

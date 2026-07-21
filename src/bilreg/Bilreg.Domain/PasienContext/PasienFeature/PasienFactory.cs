@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.PasienContext.DemografiFeature;
 using Bilreg.Domain.PasienContext.StatusSosialFeature;
 using Bilreg.Domain.Shared.Helpers;
@@ -9,7 +9,8 @@ namespace Bilreg.Domain.PasienContext.PasienFeature;
 public interface IPasienFactory : INunaFactory<PasienModel>
 {
     PasienModel CreateFromPerson(PersonInfoType person, string nickName,
-        string tempatLahir, GolDarahType golDarah, string namaIbuKandung);
+        string tempatLahir, GolDarahType golDarah, string namaIbuKandung,
+        DateTime createdAt = default);
 }
 
 public class PasienFactory : IPasienFactory
@@ -25,7 +26,8 @@ public class PasienFactory : IPasienFactory
     }
 
     public PasienModel CreateFromPerson(PersonInfoType person, string nickName,
-        string tempatLahir, GolDarahType golDarah, string namaIbuKandung)
+        string tempatLahir, GolDarahType golDarah, string namaIbuKandung,
+        DateTime createdAt = default)
     {
         var newNumber = _sequencer.GetNextNoUrut("NOMR", "Nomor Medical Record");
         var kodeRs = _getKodeRs.Execute();
@@ -35,7 +37,7 @@ public class PasienFactory : IPasienFactory
             new List<ContactType>(), PasienKeluargaType.Default, 
             AgamaType.Default, SukuType.Default, StatusKawinDkType.Default, 
             PendidikanDkType.Default, PekerjaanDkType.Default, 
-            DateTime.Now, true);
+            createdAt, true);
         return newPasien;
     }
 }

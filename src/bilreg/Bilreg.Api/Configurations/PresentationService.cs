@@ -111,6 +111,7 @@ public static class PresentationService
         services.AddAuthorization();
         services.AddScoped<ICurrentUserContext, HttpCurrentUserContext>();
         services.AddScoped<AdmisiRanapEnabledFilter>();
+        services.AddScoped<JourneyEndpointsEnabledFilter>();
 
         services.AddCors(p => p.AddPolicy("corsapp", policyBuilder =>
         {
