@@ -96,6 +96,7 @@
     <Build Include="InventoryContext\MutasiFeature\FARIN_OrderMutasiItem.sql" />
     <Build Include="SalesContext\AntrianFeature\FARIN_Antrian.sql" />
     <Build Include="SalesContext\AntrianFeature\FARIN_AntrianEntry.sql" />
+    <None Include="SalesContext\AntrianFeature\FARIN_AntrianEntry_M1_TrackerServed_Alter.sql" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BrgContext\StandardFeature\tb_gol_terapi.sql" />
