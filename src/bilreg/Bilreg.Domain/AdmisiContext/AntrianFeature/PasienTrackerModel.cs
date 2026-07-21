@@ -49,6 +49,27 @@ public class PasienTrackerModel : IPasienTrackerKey
         return result;
     }
 
+    /// <summary>
+    /// Establish a new journey from identity snapshot and first operational evidence (BR-TRK-004, BR-TRK-025).
+    /// </summary>
+    public static PasienTrackerModel Create(
+        PersonType person,
+        DateOnly visitDate,
+        string eventName,
+        string reffId,
+        DateTime occurredAt = default)
+    {
+        Guard.Against.Null(person, nameof(person));
+        Guard.Against.NullOrWhiteSpace(person.PersonName, nameof(person.PersonName));
+
+        var newId = Ulid.NewUlid().ToString();
+        var result = new PasienTrackerModel(newId, person, visitDate,
+            UnsetPeriod, UnsetPeriod,
+            new List<PasienTrackerEventType>());
+        result.AddEvent(eventName, reffId, occurredAt);
+        return result;
+    }
+
     public static PasienTrackerModel Default => new PasienTrackerModel(
         "-",
         PersonType.Default,

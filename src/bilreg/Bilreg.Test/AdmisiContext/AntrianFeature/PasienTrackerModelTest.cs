@@ -187,4 +187,21 @@ public class PasienTrackerModelTest
             "BOOKING_CANCELLED"
         });
     }
+
+    [Fact]
+    public void UT9_GivenPersonAndEvidence_WhenCreate_ThenEstablishesTrackerWithFirstEvent()
+    {
+        var person = new PersonType("ANI", new DateOnly(2000, 1, 2));
+        var visitDate = new DateOnly(2025, 10, 24);
+        var occurredAt = new DateTime(2025, 10, 24, 8, 0, 0);
+
+        var tracker = PasienTrackerModel.Create(person, visitDate, "CHECKIN", "Q-1", occurredAt);
+
+        tracker.PasienTrackerId.Should().NotBeNullOrWhiteSpace();
+        tracker.Person.Should().Be(person);
+        tracker.VisitDate.Should().Be(visitDate);
+        tracker.StartPeriod.Should().Be(visitDate);
+        tracker.LastPeriod.Should().Be(visitDate);
+        tracker.ListEvent.Should().ContainSingle(e => e.EventName == "CHECKIN" && e.ReffId == "Q-1");
+    }
 }
