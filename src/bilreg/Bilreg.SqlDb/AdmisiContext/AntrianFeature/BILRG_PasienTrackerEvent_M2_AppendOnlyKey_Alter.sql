@@ -24,7 +24,7 @@ WHERE NOT EXISTS (
 SELECT
     PasienTrackerId,
     NoUrut,
-    COUNT(*) AS RowCount
+    COUNT(*) AS RowCount2
 FROM BILRG_PasienTrackerEvent
 GROUP BY PasienTrackerId, NoUrut
 HAVING COUNT(*) > 1;
