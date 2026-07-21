@@ -25,12 +25,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Bilreg.Test" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="AdmisiContext\LayananFeature\LayananAgg\" />
-    <Folder Include="AdmisiRanapContext\" />
     <Folder Include="AdmisiRanapContext\OpnameRequestFeature\" />
     <Folder Include="AdmisiRanapContext\OpnameRequestFeature\UseCases\" />
-    <Folder Include="AdmisiRanapContext\ReservationFeature\" />
-    <Folder Include="AdmisiRanapContext\ReservationFeature\UseCases\" />
     <Folder Include="AdmisiRanapContext\AdmissionFeature\" />
     <Folder Include="AdmisiRanapContext\AdmissionFeature\UseCases\" />
     <Folder Include="AdmisiRanapContext\WaitingListFeature\" />

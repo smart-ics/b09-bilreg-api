@@ -1,6 +1,7 @@
 using Ardalis.GuardClauses;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using MediatR;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.ChargeContext.TarifFeature.UseCases;
 
@@ -20,9 +21,13 @@ public record TrfCreateTarifPolicyResponse(
 public class TrfCreateTarifPolicyHandler : IRequestHandler<TrfCreateTarifPolicyCmd, TrfCreateTarifPolicyResponse>
 {
     private readonly ITarifPolicyRepo _tarifPolicyRepo;
+    private readonly ITglJamProvider _tglJamProvider;
 
-    public TrfCreateTarifPolicyHandler(ITarifPolicyRepo tarifPolicyRepo) =>
+    public TrfCreateTarifPolicyHandler(ITarifPolicyRepo tarifPolicyRepo, ITglJamProvider tglJamProvider)
+    {
         _tarifPolicyRepo = tarifPolicyRepo;
+        _tglJamProvider = tglJamProvider;
+    }
 
     public Task<TrfCreateTarifPolicyResponse> Handle(
         TrfCreateTarifPolicyCmd request,
@@ -35,7 +40,8 @@ public class TrfCreateTarifPolicyHandler : IRequestHandler<TrfCreateTarifPolicyC
             request.PolicyName,
             request.EffectiveDateInfo,
             request.Description,
-            request.UserId);
+            request.UserId,
+            _tglJamProvider.Now);
 
         _tarifPolicyRepo.SaveChanges(policy);
 

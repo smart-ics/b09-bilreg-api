@@ -52,12 +52,12 @@ public class ScheduleOpModel : IScheduleOpKey
             OpCaseStateEnum.Scheduled, []);
 
     public static ScheduleOpModel CreateFromOrder(OrderOpModel orderOp, string userId,
-        KamarType kamar, PpaType teamLeader, DateTime tglOp)
+        KamarType kamar, PpaType teamLeader, DateTime tglOp, DateTime createdAt = default)
     {
         var newId = Ulid.NewUlid().ToString();
-        var audit = new AuditTrailType(new AuditInfoType(userId, DateTime.Now),
+        var audit = new AuditTrailType(new AuditInfoType(userId, createdAt),
             AuditInfoType.Default, AuditInfoType.Default);
-        var result = new ScheduleOpModel(newId, DateTime.Now, audit, orderOp.ToReff(),
+        var result = new ScheduleOpModel(newId, createdAt, audit, orderOp.ToReff(),
             orderOp.Pasien, orderOp.UrgencyLevel, orderOp.EstimasiDurasiInMinutes,
             tglOp, kamar.ToReff(), orderOp.Reg, PpaType.Default.ToReff(),
             new DateTime(3000, 1, 1), new DateTime(3000, 1, 1),
@@ -67,17 +67,17 @@ public class ScheduleOpModel : IScheduleOpKey
             teamLeader.PpaId == "-")
             return result;
 
-        result.AddPpa(teamLeader, userId);
-        result.AssignLeader(teamLeader, userId);
+        result.AddPpa(teamLeader, userId, createdAt);
+        result.AssignLeader(teamLeader, userId, createdAt);
         return result;
     }
 
-    public static ScheduleOpModel CloneFrom(ScheduleOpModel model)
+    public static ScheduleOpModel CloneFrom(ScheduleOpModel model, DateTime clonedAt = default)
     {
         var newId = Ulid.NewUlid().ToString();
-        var audit = new AuditTrailType(new AuditInfoType(model.AuditTrail.Voided.UserId, DateTime.Now),
+        var audit = new AuditTrailType(new AuditInfoType(model.AuditTrail.Voided.UserId, clonedAt),
             AuditInfoType.Default, AuditInfoType.Default);
-        var result = new ScheduleOpModel(newId, DateTime.Now, audit, model.OrderOp, model.Pasien,
+        var result = new ScheduleOpModel(newId, clonedAt, audit, model.OrderOp, model.Pasien,
             model.UrgencyLevel, model.Durasi, model.TglOp, model.KamarOp, model.Reg, model.TeamLead,
             model.StartOpDate, model.EndOpDate, model.OrderOpState, model.ListPpa);
         return result;
@@ -109,15 +109,15 @@ public class ScheduleOpModel : IScheduleOpKey
     #endregion
 
     #region BEHAVIOUR
-    public void SetSchedule(DateTime tglOp, KamarReff kamarOp, int durasi, string userId)
+    public void SetSchedule(DateTime tglOp, KamarReff kamarOp, int durasi, string userId, DateTime updatedAt = default)
     {
         TglOp = tglOp;
         KamarOp = kamarOp;
         Durasi = durasi;
-        AuditTrail.Modif(userId, DateTime.Now);
+        AuditTrail.Modif(userId, updatedAt);
     }
 
-    public void AddPpa(PpaType ppa, string userId)
+    public void AddPpa(PpaType ppa, string userId, DateTime updatedAt = default)
     {
         var profesi = ppa.ListSatTugas.FirstOrDefault()?.SatTugas?.Profesi;
         if (profesi is null)
@@ -129,10 +129,10 @@ public class ScheduleOpModel : IScheduleOpKey
         noUrut++;
         var newPpaMember = new ScheduleOpPpaType(noUrut, ppa.ToReff(), profesi, GroupSpesialisType.Default);
         _listPpa.Add(newPpaMember);
-        AuditTrail.Modif(userId, DateTime.Now);
+        AuditTrail.Modif(userId, updatedAt);
     }
 
-    public void RemovePpa(PpaType ppa, string userId)
+    public void RemovePpa(PpaType ppa, string userId, DateTime updatedAt = default)
     {
         _listPpa.RemoveAll(x => x.Ppa.PpaId == ppa.PpaId);
         var newList = new List<ScheduleOpPpaType>();
@@ -144,10 +144,10 @@ public class ScheduleOpModel : IScheduleOpKey
         }
         _listPpa.Clear();
         _listPpa.AddRange(newList);
-        AuditTrail.Modif(userId, DateTime.Now);
+        AuditTrail.Modif(userId, updatedAt);
     }
 
-    public void AssignLeader(PpaType ppa, string userId)
+    public void AssignLeader(PpaType ppa, string userId, DateTime updatedAt = default)
     {
         // harus dokter
         var profesi = ppa.ListSatTugas.FirstOrDefault()?.SatTugas?.Profesi;
@@ -160,12 +160,12 @@ public class ScheduleOpModel : IScheduleOpKey
         if (existing is null)
             throw new ArgumentException("PPA harus terdaftar di member");
         TeamLead = ppa.ToReff();
-        AuditTrail.Modif(userId, DateTime.Now);
+        AuditTrail.Modif(userId, updatedAt);
     }
 
-    public void CancelSchedule(string userId)
+    public void CancelSchedule(string userId, DateTime cancelledAt = default)
     {
-        AuditTrail.Batal(userId, DateTime.Now);
+        AuditTrail.Batal(userId, cancelledAt);
     }
 
     public ScheduleOpReff ToReff() =>

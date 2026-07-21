@@ -18,7 +18,7 @@ public interface INilaiTarifDal :
     IGetData<NilaiTarifDto, INilaiTarifKey>,
     IListData<NilaiTarifDto, ITarifKey>
 {
-    IEnumerable<ta_trs_tarif2_dto> ListData2();
+    IEnumerable<ta_trs_tarif2_dto> ListData2(DateOnly businessDate);
     IEnumerable<ta_trs_tarif3_dto> ListData3();
     void Clear();
     IEnumerable<NilaiTarifDto> ListData(ILayananKey lyn, INilaiTarifVariant variant, string keywprd);
@@ -211,7 +211,7 @@ public class NilaiTarifDal : INilaiTarifDal
         return conn.Read<NilaiTarifDto>(sql, dp);
     }
 
-    public IEnumerable<ta_trs_tarif2_dto> ListData2()
+    public IEnumerable<ta_trs_tarif2_dto> ListData2(DateOnly businessDate)
     {
         const string sql = """
            SELECT fs_kd_trs, fs_kd_tarif
@@ -220,7 +220,7 @@ public class NilaiTarifDal : INilaiTarifDal
            """;
 
         var dp = new DynamicParameters();
-        dp.AddParam("@fd_tgl_now", $"{DateTime.Now:yyyy-MM-dd}", SqlDbType.VarChar);
+        dp.AddParam("@fd_tgl_now", businessDate.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<ta_trs_tarif2_dto>(sql,dp);

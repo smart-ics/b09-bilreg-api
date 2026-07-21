@@ -21,15 +21,18 @@ public class AdmMaintainReservationHandler : IRequestHandler<AdmMaintainReservat
     private readonly IReservationRepo _reservationRepo;
     private readonly IWardAccommodationGateway _wardGateway;
     private readonly IAuditRepo _auditRepo;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public AdmMaintainReservationHandler(
         IReservationRepo reservationRepo,
         IWardAccommodationGateway wardGateway,
-        IAuditRepo auditRepo)
+        IAuditRepo auditRepo,
+        ITglJamProvider tglJamProvider)
     {
         _reservationRepo = reservationRepo;
         _wardGateway = wardGateway;
         _auditRepo = auditRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task Handle(AdmMaintainReservationCmd request, CancellationToken cancellationToken)
@@ -46,7 +49,8 @@ public class AdmMaintainReservationHandler : IRequestHandler<AdmMaintainReservat
             .GetValueOrThrow($"Reservation '{request.ReservationId}' tidak ditemukan.");
         var snapshotJson = AuditLogSnapshotJson.Serialize(reservation);
         var plannedDate = request.PlannedDate.ToDate("yyyy-MM-dd");
-        var maintained = reservation.Maintain(plannedDate, kelas, bangsal, request.UserId);
+        var occurredAt = _tglJamProvider.Now;
+        var maintained = reservation.Maintain(plannedDate, kelas, bangsal, request.UserId, occurredAt);
 
         _reservationRepo.SaveChanges(maintained);
 

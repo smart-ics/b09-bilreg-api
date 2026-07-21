@@ -45,14 +45,14 @@ public record AdmissionModel : IRegKey
         BangsalReff bangsal,
         string? opnameRequestId,
         string? reservationId,
-        string auditUserId)
+        string auditUserId,
+        DateTime admittedAt = default)
     {
         Guard.Against.Null(pasien);
         Guard.Against.Null(kelasDk);
         Guard.Against.Null(bangsal);
         Guard.Against.NullOrWhiteSpace(auditUserId);
 
-        var now = DateTime.Now;
         var regId = NunaId.NewLegacyCompact("RG");
         return new AdmissionModel(
             regId,
@@ -62,14 +62,15 @@ public record AdmissionModel : IRegKey
             string.IsNullOrWhiteSpace(reservationId) ? EMPTY_REF_ID : reservationId,
             kelasDk,
             bangsal,
-            now,
-            AuditTrailType.Create(auditUserId, now),
+            admittedAt,
+            AuditTrailType.Create(auditUserId, admittedAt),
             AdmissionSourceEnum.Admission);
     }
 
     public static AdmissionModel CreateFromLegacyRegistration(
         RegModel reg,
-        string auditUserId)
+        string auditUserId,
+        DateTime admittedAt = default)
     {
         Guard.Against.Null(reg);
         Guard.Against.NullOrWhiteSpace(auditUserId);
@@ -85,7 +86,6 @@ public record AdmissionModel : IRegKey
             throw new InvalidOperationException(
                 $"Bangsal untuk RegInap '{reg.RegId}' belum terpetakan.");
 
-        var now = DateTime.Now;
         return new AdmissionModel(
             reg.RegId,
             AdmissionStatusEnum.Admitted,
@@ -94,8 +94,8 @@ public record AdmissionModel : IRegKey
             EMPTY_REF_ID,
             reg.KelasDk,
             reg.Bangsal,
-            now,
-            AuditTrailType.Create(auditUserId, now),
+            admittedAt,
+            AuditTrailType.Create(auditUserId, admittedAt),
             AdmissionSourceEnum.Legacy);
     }
 
@@ -132,7 +132,7 @@ public record AdmissionModel : IRegKey
 
     #region BEHAVIOUR
 
-    public AdmissionModel Update(KelasDkType kelasDk, BangsalReff bangsal, string auditUserId)
+    public AdmissionModel Update(KelasDkType kelasDk, BangsalReff bangsal, string auditUserId, DateTime updatedAt = default)
     {
         Guard.Against.Null(kelasDk);
         Guard.Against.Null(bangsal);
@@ -146,11 +146,11 @@ public record AdmissionModel : IRegKey
                 $"Admission {RegId} tidak dapat diperbarui pada status {AdmissionStatus}.");
 
         var audit = AuditTrail;
-        audit.Modif(auditUserId, DateTime.Now);
+        audit.Modif(auditUserId, updatedAt);
         return WithState(AdmissionStatusEnum.Updated, kelasDk, bangsal, audit);
     }
 
-    public AdmissionModel MarkWaiting(string auditUserId)
+    public AdmissionModel MarkWaiting(string auditUserId, DateTime markedAt = default)
     {
         Guard.Against.NullOrWhiteSpace(auditUserId);
         EnsureMutable();
@@ -160,17 +160,17 @@ public record AdmissionModel : IRegKey
                 $"Admission {RegId} harus Admitted atau Updated untuk ditandai Waiting (status saat ini: {AdmissionStatus}).");
 
         var audit = AuditTrail;
-        audit.Modif(auditUserId, DateTime.Now);
+        audit.Modif(auditUserId, markedAt);
         return WithState(AdmissionStatusEnum.Waiting, KelasDk, Bangsal, audit);
     }
 
-    public AdmissionModel Complete(string auditUserId)
+    public AdmissionModel Complete(string auditUserId, DateTime completedAt = default)
     {
         Guard.Against.NullOrWhiteSpace(auditUserId);
         EnsureMutable();
 
         var audit = AuditTrail;
-        audit.Modif(auditUserId, DateTime.Now);
+        audit.Modif(auditUserId, completedAt);
         return WithState(AdmissionStatusEnum.Completed, KelasDk, Bangsal, audit);
     }
 
@@ -192,13 +192,13 @@ public record AdmissionModel : IRegKey
     }
 
     // Retained for existing callers pending the coordinated-cancellation orchestrator.
-    public AdmissionModel Cancel(string auditUserId)
+    public AdmissionModel Cancel(string auditUserId, DateTime cancelledAt = default)
     {
         Guard.Against.NullOrWhiteSpace(auditUserId);
         EnsureMutable();
 
         var audit = CopyAuditTrail();
-        audit.Modif(auditUserId, DateTime.Now);
+        audit.Modif(auditUserId, cancelledAt);
         return WithState(AdmissionStatusEnum.Cancelled, KelasDk, Bangsal, audit);
     }
 

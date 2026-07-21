@@ -41,6 +41,7 @@
     <Folder Include="AdmisiRanapContext\WaitingListFeature\" />
     <Folder Include="AdmisiRanapContext\JourneyFeature\" />
     <Folder Include="AdmisiRanapContext\Integration\" />
+    <Folder Include="BedUsageContext\BedOperationalFeature\" />
   </ItemGroup>
 
   <ItemGroup>

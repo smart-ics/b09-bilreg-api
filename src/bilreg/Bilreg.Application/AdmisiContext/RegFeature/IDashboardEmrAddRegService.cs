@@ -1,9 +1,11 @@
-﻿using Nuna.Lib.CleanArchHelper;
+﻿using Bilreg.Application.AdmisiContext.EmrAntrianOutboundFeature;
+using Nuna.Lib.CleanArchHelper;
 
 namespace Bilreg.Application.AdmisiContext.RegFeature;
 
 public interface IAddAntrianEmrByRegService : INunaServiceVoid<AddAntrianEmrByRegCommand>
 {
+    EmrAntrianSendResult Send(AddAntrianEmrByRegCommand cmd);
 }
 
 public record AddAntrianEmrByRegCommand

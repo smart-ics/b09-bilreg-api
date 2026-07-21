@@ -2,9 +2,9 @@
 
 public static class UmurHelper
 {
-    public static string HitungUmur(DateOnly tglLahir, DateOnly? referensi = null)
+    public static string HitungUmur(DateOnly tglLahir, DateOnly referensi)
     {
-        var today = referensi ?? DateOnly.FromDateTime(DateTime.Today);
+        var today = referensi;
 
         if (tglLahir > today)
             return "0 tahun, 0 bulan, 0 hari";

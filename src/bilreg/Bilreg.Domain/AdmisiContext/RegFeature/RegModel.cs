@@ -206,9 +206,6 @@ public class RegModel : IRegKey
         RegVoidAudit = new AuditInfoType(userId, timestamp);
     }
 
-    // Retained for existing registration-cancellation callers.
-    public void BatalBerobat(string userId) => BatalBerobat(userId, DateTime.Now);
-
     public void SetEligibility(string noSjp, string pesertaJaminanId, string sjpId)
     {
         var data = new RegEligibilityType(sjpId, noSjp, pesertaJaminanId);

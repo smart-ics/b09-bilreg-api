@@ -14,7 +14,7 @@ public class IgdVisitDaftarHandlerTest
 
     public IgdVisitDaftarHandlerTest()
     {
-        _sut = new IgdVisitDaftarHandler(_visitRepo.Object);
+        _sut = new IgdVisitDaftarHandler(_visitRepo.Object, TestTglJamProvider.Instance);
     }
 
     private static IgdVisitDaftarCmd ValidCmd() =>

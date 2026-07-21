@@ -69,6 +69,7 @@ public record LabTestDefinitionModel : ILabTestDefinitionKey
         VacutainerTypeEnum vacutainerType,
         bool isActive,
         string userId,
+        DateTime createdAt,
         IEnumerable<LabTestComponentModel> components,
         IReadOnlyDictionary<string, LabComponentMasterModel> componentCatalog)
     {
@@ -82,7 +83,7 @@ public record LabTestDefinitionModel : ILabTestDefinitionKey
             specimenType,
             vacutainerType,
             isActive,
-            AuditTrailType.Create(userId, DateTime.Now),
+            AuditTrailType.Create(userId, createdAt),
             components);
 
         model.ValidateComponentStructure(componentCatalog);
@@ -118,6 +119,7 @@ public record LabTestDefinitionModel : ILabTestDefinitionKey
         bool isActive,
         IEnumerable<LabTestComponentModel> components,
         string userId,
+        DateTime updatedAt,
         IReadOnlyDictionary<string, LabComponentMasterModel> componentCatalog)
     {
         var model = new LabTestDefinitionModel(
@@ -130,7 +132,7 @@ public record LabTestDefinitionModel : ILabTestDefinitionKey
             specimenType,
             vacutainerType,
             isActive,
-            ModifiedAudit(AuditTrail, userId),
+            ModifiedAudit(AuditTrail, userId, updatedAt),
             components);
 
         model.ValidateComponentStructure(componentCatalog);
@@ -142,6 +144,7 @@ public record LabTestDefinitionModel : ILabTestDefinitionKey
 
     public LabTestDefinitionModel Activate(
         string userId,
+        DateTime activatedAt,
         IReadOnlyDictionary<string, LabComponentMasterModel> componentCatalog)
     {
         if (IsActive)
@@ -157,14 +160,14 @@ public record LabTestDefinitionModel : ILabTestDefinitionKey
             SpecimenType,
             VacutainerType,
             true,
-            ModifiedAudit(AuditTrail, userId),
+            ModifiedAudit(AuditTrail, userId, activatedAt),
             _components);
 
         model.ValidateActiveInvariants(componentCatalog);
         return model;
     }
 
-    public LabTestDefinitionModel Deactivate(string userId)
+    public LabTestDefinitionModel Deactivate(string userId, DateTime deactivatedAt)
     {
         if (!IsActive)
             return this;
@@ -179,14 +182,14 @@ public record LabTestDefinitionModel : ILabTestDefinitionKey
             SpecimenType,
             VacutainerType,
             false,
-            ModifiedAudit(AuditTrail, userId),
+            ModifiedAudit(AuditTrail, userId, deactivatedAt),
             _components);
     }
 
-    private static AuditTrailType ModifiedAudit(AuditTrailType current, string userId)
+    private static AuditTrailType ModifiedAudit(AuditTrailType current, string userId, DateTime modifiedAt = default)
     {
         var audit = new AuditTrailType(current.Created, current.Modified, current.Voided);
-        audit.Modif(userId, DateTime.Now);
+        audit.Modif(userId, modifiedAt);
         return audit;
     }
 

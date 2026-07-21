@@ -39,7 +39,7 @@ public class TrfPublishTarifPolicyHandlerTest
             _komponenRepoMock.Object,
             _migrationGuardMock.Object,
             _operationalGate,
-            NullLogger<TrfPublishTarifPolicyHandler>.Instance);
+            NullLogger<TrfPublishTarifPolicyHandler>.Instance, TestTglJamProvider.Instance);
     }
 
     [Fact]

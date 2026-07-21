@@ -1,101 +1,177 @@
 # Release 1 Phase B3.1 — Journey API staging verification
 
 **Date:** 2026-07-13  
-**Decision:** **BLOCKED** — staging prerequisites were unavailable; this is not a demonstrated API, database, or business-rule defect.  
-**Scope:** Read-only verification of the Phase B3 Rawat Inap Patient Journey API. No frontend work, data repair, data seeding, configuration change, or business-rule change was performed.
+**Decision:** **PROVISIONAL PASS**  
+**Scope:** Read-only verification of the Phase B3 Rawat Inap Patient Journey API against staging. No frontend work, data repair, seeding, configuration change, or business-rule change was performed.
+
+Warm server-side list duration for page size 50 sits in the documented 1–2 second band with a fixed four database round trips. Correctness and parity gates passed. Recommend an initial client page size of **20–25** and continued monitoring before advertising a tighter list SLO.
 
 ## 1. Environment and topology
 
 | Item | Result |
 |---|---|
-| Verification host | Local development workspace (`D:\\Project.Aktif\\MyHospitalWeb\\b09-bilreg-api`) |
-| Staging API base URL | Not supplied / unavailable |
-| Authenticated Bearer token | Not supplied / unavailable |
-| `BILREG_JOURNEY_IT_SERVER` | Not set |
-| `BILREG_JOURNEY_IT_DATABASE` | Not set |
-| Staging database connection | Not attempted; unavailable |
-| API-to-SQL network position | Not measurable |
-| Developer-to-API network position | Not measurable |
+| Verification client | Developer workstation `JUDE7` |
+| Staging API base URL | `http://dev.smart-ics.com:8089/BilregApi` (resolved `202.152.141.36`) |
+| Authenticated Bearer token | Supplied for this verification session (value not recorded here) |
+| `BILREG_JOURNEY_IT_SERVER` | `dev.smart-ics.com` |
+| `BILREG_JOURNEY_IT_DATABASE` | `HOSPITAL_HPL` |
+| Staging database | Same host/database as `Bilreg.Api` appsettings (`dev.smart-ics.com` / `HOSPITAL_HPL`) |
+| API-host co-located client | Not available; all HTTP timings are workstation → staging API |
+| Seq (`dev.smart-ics:5341` / `dev.smart-ics.com:5341`) | Unreachable from the verification host (DNS miss / connection refused) |
 
-`AdmisiRanap:JourneyEndpointsEnabled` defaults to `false` in the checked-in API configuration. It was not changed. The required staging-true setting could not be inspected or exercised without a staging endpoint.
+Interpretation of topology:
 
-## 2. Integration-test results
+- `Server-Timing` is measured on the staging API host and is the authoritative server-side duration.
+- Client totals from the workstation are higher by roughly 50–150 ms on warm list calls (network/client path), with occasional client outliers above 2.5 s while `Server-Timing` stayed stable.
+- Direct DAL volume tests from the workstation under ambient `TransactionScope` were much slower (page50 ≈ 11 s) than API `Server-Timing` (page50 warm median ≈ 1.5 s). That gap supports “API nearer to SQL than the developer workstation,” not an API regression versus B2.1 ambient-TX profiling.
 
-Commands executed sequentially (to avoid a concurrent MSBuild test-manifest file lock):
+## 2. Feature-flag configuration
+
+| Check | Result |
+|---|---|
+| Checked-in `AdmisiRanap:JourneyEndpointsEnabled` | `true` in `src/bilreg/Bilreg.Api/appsettings.json` |
+| Staging behavior | Authenticated journey routes return `200` (not feature-disabled `503`) |
+| Feature disabled → `503` | Verified by local `JourneyApiIntegrationTest.FeatureFlagDisabled_ReturnsEstablished503_AndOperationalWorklistRouteStillExists` (staging flag left enabled; not flipped in production/staging config) |
+| `/operational-worklist` | Still present; authenticated `200` with existing worklist payload shape; unauthenticated `401` |
+
+Do not enable this feature in production as part of B3.1.
+
+## 3. Integration-test results
+
+Commands (transaction-scoped; no operational seed/void/repair outside rollback):
 
 ```powershell
-dotnet test src/bilreg/Bilreg.Test/Bilreg.Test.csproj --no-restore --filter "Category=JourneyDalIntegration"
-dotnet test src/bilreg/Bilreg.Test/Bilreg.Test.csproj --no-restore --filter "Category=JourneyDalVolume"
+$env:BILREG_JOURNEY_IT_SERVER='dev.smart-ics.com'
+$env:BILREG_JOURNEY_IT_DATABASE='HOSPITAL_HPL'
+dotnet test src/bilreg/Bilreg.Test/Bilreg.Test.csproj --filter "Category=JourneyDalIntegration"
+dotnet test src/bilreg/Bilreg.Test/Bilreg.Test.csproj --no-build --filter "Category=JourneyDalVolume"
 ```
 
 | Suite | Result | Evidence |
 |---|---:|---|
-| `JourneyDalIntegration` | Blocked: 19 failed at setup | `JourneyDalTestEnv.RequireConfiguredConnection()` rejected the missing `BILREG_JOURNEY_IT_SERVER` and `BILREG_JOURNEY_IT_DATABASE` values. |
-| `JourneyDalVolume` | Blocked: 3 failed at setup | Same explicit configuration error before a database connection/test record could be created. |
-| Soft skip | No | Both suites fail loudly with `InvalidOperationException`; they do not skip. |
-| Schema detection | Not run | Requires the configured staging connection. |
-| Transaction rollback proof | Not run | `TransactionRollback_Leaves_No_Seeded_Records` could not begin without the target connection. |
-| B1/B2/B2.1 DB parity/consolidation | Not run | Requires the configured staging connection. |
+| `JourneyDalIntegration` | **19 passed** | Schema gate, rollback, B1/B2/B2.1 parity, consolidation, fixed round trips, cancel blockers |
+| `JourneyDalVolume` | **3 passed** | 500-journey pagination stability; timings printed; `rt=4` |
+| Soft skip | None | Missing env/schema fails loud via `JourneyDalTestEnv` |
+| Transaction rollback | Pass | `TransactionRollback_Leaves_No_Seeded_Records` |
+| Supporting API contract suite | **12 passed** | `JourneyApiIntegrationTest` (503/401/400/404/409, Server-Timing, workspace without placement claims) |
 
-No operational records were seeded, voided, repaired, or cleaned. The test constructors failed before opening the required staging connection.
+Volume suite timings from the developer workstation (ambient `TransHelper` scope — **not** the API path):
 
-## 3. Local B3 contract regression evidence
+| Metric | page10 | page50 | notes |
+|---|---:|---:|---|
+| Total list ms | 2729 | 11304 | Ambient TX + remote SQL from workstation |
+| Facet+page / batch / resolve (page50 line) | facetPage50≈458; batch50≈10845; resolve50≈0 | | Same console line |
+| Round trips | 4 | 4 | Fixed |
 
-The database-independent JourneyFeature suite was run:
+## 4. HTTP smoke results
 
-```powershell
-dotnet test src/bilreg/Bilreg.Test/Bilreg.Test.csproj --no-restore --filter "FullyQualifiedName~JourneyFeature&Category!=JourneyDalIntegration&Category!=JourneyDalVolume"
-```
-
-**Result: 65 passed, 0 failed.** This is supporting regression evidence only; it is not a staging substitute.
-
-Covered behavior includes:
-
-- disabled journey routes return the established `503`, while `/operational-worklist` remains available;
-- no authentication returns `401`;
-- invalid scope, terminal active stage, `IN_WARD`, bad cursor, date range, and out-of-range page size return `400`;
-- unknown JourneyId/legacy record returns `404`, and explicit legacy ambiguity returns `409`;
-- successful list responses expose `Server-Timing`, and detail uses the complete workspace contract;
-- Waiting List `Accepted` resolves to handover accepted rather than bed assignment; no placement claims are present;
-- Ward-owned work remains non-executable; bill items block cancellation; no unimplemented blocker is invented; and SQL-stage/B1 resolver parity unit cases pass.
-
-The required real-data HTTP smoke cases could not be executed: no staging URL/token was available, so no real JourneyId could be selected from a list response and no legacy `{type}/{id}` could be responsibly chosen.
-
-## 4. HTTP smoke and response-contract findings
+Base: `GET http://dev.smart-ics.com:8089/BilregApi/api/admisi-ranap/...`  
+Real JourneyId selected from active list (not constructed): `opn:OPN068P8YJPC` (Atiqa-like registered episode).
 
 | Requirement | Staging result |
 |---|---|
-| Active/history list, real detail, and legacy resolution | Not executed — no authenticated staging route |
-| Feature flag `true` | Not verified in staging |
-| Feature disabled `503`, missing-token `401`, invalid request `400`, unknown `404`, ambiguity `409`, `InWard` `400` | Verified by local B3 integration tests only |
-| Atiqa-like Admission + Waiting List consolidated as one journey | Not verified against staging data; covered by local/integration test design |
-| Registration/Waiting List IDs confined to system/audit detail | Not verified against a real staging response |
-| Facet exclusivity and active/history schema parity | Not verified against a real staging response |
+| `GET .../journeys?scope=active&pageSize=10` | **200** — 10 items, `totalMatches=17`, facets 10+5+2=17 |
+| `GET .../journeys?scope=history&pageSize=10` | **200** — same list-item schema; history is full-corpus (active overlap expected) |
+| `GET .../journeys/{journeyId}` | **200** — JourneyId from list |
+| `GET .../journeys/resolve?recordType=OpnameRequest&recordId=...` | **200** — same JourneyId; no reconciliation |
+| `GET .../journeys/resolve?recordType=Registration&recordId=...` | **200** — same JourneyId |
+| Missing token | **401** on journeys and operational-worklist |
+| Invalid scope / `InWard` / bad cursor / bad page size / bad `dateFrom` | **400** |
+| Unknown JourneyId / unknown legacy record | **404** |
+| Ambiguous legacy → **409** | No contradictory specimen in the live snapshot; covered by `JourneyApiIntegrationTest.Resolver_MapsLegacyAndMakesAmbiguityExplicit` |
+| Feature disabled → **503** | Local API integration only (staging flag true) |
+| `/operational-worklist` unchanged | Authenticated success; route still distinct from journeys |
 
-## 5. Performance and DAL diagnostics
+## 5. Response-contract findings
 
-No API request was made. Therefore all cold and ten-warm measurements, medians, maxima, approximate p95 values, `Server-Timing` values, and B2.1 DAL diagnostics are **not available**.
+Representative journey: Atiqa search (`search=ATIQA`) returns exactly one journey (`opn:OPN068P8YJPC`).
 
-| Scenario | Cold | Warm n=10 | Median / max / p95 | Server timing | DAL diagnostics |
-|---|---:|---:|---|---|---|
-| Active, page 10 / 50 | — | — | — | — | — |
-| History, page 10 / 50 | — | — | — | — | — |
-| Stage, patient-name, doctor/Bangsal filters | — | — | — | — | — |
-| Detail and legacy resolution | — | — | — | — | — |
+| Check | Result |
+|---|---|
+| Admission + Waiting List as one journey | **Pass** — one row; `systemAudit` has `regId` + one `waitingListIds` entry; timeline shows Opname → Admission → Waiting List |
+| Registration / Waiting List IDs vs audit | API carries `regId` on list items and `identity.regId`, `handover.summary.activeWaitingListId`, and timeline `relatedRecordId`, in addition to `systemAudit`. This matches the Release 1 projection groups in the workspace plan (Identity / handover / timeline / audit). **UI must still confine raw ID display to Detail Sistem & Audit** (F3–F4). Not treated as an operational correctness defect. |
+| Waiting List `Accepted` ≠ bed assignment | **Pass** — Atiqa active WL status is `Waiting` (0) → stage `WardAcceptanceRequired` (“Menunggu penerimaan bangsal”). Placement is explicitly unavailable (Ward Management not implemented). No room/bed/occupancy/transfer/`IN_WARD` fields. |
+| Ward-owned task `canExecute=false` | **Pass** — next task / candidate action “Terima handover akomodasi”, owner domain Ward |
+| Cancellation candidate vs allowed | **Pass** — distinct `candidateAdmisiActions` and `allowedAdmisiActions` arrays present |
+| Tata Rekening bill items block cancellation | No registered active specimen with billing items in this snapshot (all sampled Cancel actions `canExecute=true`). Covered by DAL IT `CancelAdmission_NotExecutable_When_BillingItems_Exist` and API unit coverage. |
+| No nonexistent cancellation blocker | **Pass** — no invented bed/medication/documentation/transfer blockers observed |
+| Active/history list schema parity | **Pass** — same list-item keys |
+| Stage facet exclusivity | **Pass** — facet sum 17 = `totalMatches` 17 |
 
-The intended diagnostic contract remains four database round trips for non-empty list pages, with facet, page, batch-hydration, resolver, and total DAL measurements. That invariant was not re-proven against staging.
+## 6. Performance measurements
 
-Server-versus-client comparison and slow-query investigation are likewise not applicable: there is no request data indicating a server duration above two seconds. Do not begin B2.2/index work without that evidence.
+Method: one cold + ten warm requests per scenario from the developer workstation via `curl`.  
+`Server-Timing` header: `journey;dur={ms}` (API host).  
+Resolve endpoint does not emit `Server-Timing` (controller only stamps list/detail).
 
-## 6. Decision and exact blocker
+Nearest-rank approximate p95 over n=10 warm samples.
 
-**BLOCKED.** B3.1 cannot be classified PASS or PROVISIONAL PASS because the mandatory staging integration suites, authenticated HTTP smoke, response inspection, warm-request percentiles, DAL logs, and topology comparison were not executable.
+### 6.1 Cold and warm summary
 
-Exact remaining blockers:
+| Scenario | Cold client / server (ms) | Warm client med / max / p95 | Warm server med / max / p95 |
+|---|---:|---:|---:|
+| Active page 10 | 765 / 685 | 743.5 / 807 / 807 | **674 / 682 / 682** |
+| Active page 50 | 1659 / 1532 | 1627.5 / 2697 / 2697 | **1519 / 1551 / 1551** |
+| History page 10 | 862 / 675 | 753.5 / 952 / 952 | **667.5 / 687 / 687** |
+| History page 50 | 1560 / 1493 | 1608 / 2712 / 2712 | **1516.5 / 1563 / 1563** |
+| Stage `WardAcceptanceRequired` | 583 / 468 | 521.5 / 557 / 557 | **459 / 501 / 501** |
+| Search `ATIQA` | 661 / 602 | 298.5 / 317 / 317 | **241.5 / 245 / 245** |
+| Filter `dokterId` | 1187 / 1113 | 301 / 1354 / 1354 | **240 / 256 / 256** |
+| Filter `bangsalId` | 1578 / 1515 | 515.5 / 561 / 561 | **453.5 / 468 / 468** |
+| Detail (selected JourneyId) | 2791 / 1679 | 1793.5 / 2834 / 2834 | **1722.5 / 1751 / 1751** |
+| Resolve OpnameRequest | 1760 / — | 1800.5 / 2842 / 2842 | — (no Server-Timing) |
 
-1. A non-production staging API base URL deployed with Phase B3 and `AdmisiRanap:JourneyEndpointsEnabled=true`.
-2. A valid authenticated Bearer token.
-3. `BILREG_JOURNEY_IT_SERVER` and `BILREG_JOURNEY_IT_DATABASE` pointing to a schema-complete staging database reachable from this verification environment (or execution from the staging API host).
-4. Access to the B2.1 DAL diagnostic logs and, only if warm server timing exceeds about two seconds, DBA-supported actual plans plus `STATISTICS IO`/`STATISTICS TIME`.
+Page size 50 is reported explicitly; it is not hidden behind page size 10.
 
-Once available, rerun the two DAL categories, execute the specified HTTP matrix using a JourneyId selected from the list response, collect one cold plus ten warm samples per scenario from both network positions, and apply the B3.1 PASS/PROVISIONAL PASS/BLOCKED thresholds. F1/F2 frontend work must remain deferred until that verification passes.
+### 6.2 Server versus client
+
+| Observation | Implication |
+|---|---|
+| Warm page50 server median ≈ 1.52 s; client median ≈ 1.63 s | Small network/client overhead on the workstation path |
+| Occasional client max ≈ 2.7 s with server still ≈ 1.55 s | Client/network jitter, not server regression |
+| Workstation ambient-TX DAL page50 ≈ 11 s vs API Server-Timing ≈ 1.5 s | Do not use ambient-TX remote IT timings as the API SLO |
+
+API-host-local HTTP replay was not possible in this session.
+
+### 6.3 DAL diagnostic breakdown
+
+Live Seq ingestion of `JourneyDal.List` logs was unreachable from the verification host.
+
+Authoritative substitutes:
+
+| Source | Facet/page | Batch hydration | Resolver | Total | Round trips |
+|---|---:|---:|---:|---:|---:|
+| Volume IT console (ambient TX, workstation→SQL, page50) | ≈458 ms (facet+page) | ≈10845 ms | ≈0 ms | ≈11304 ms | **4** |
+| Integration `QueryCount_Is_Constant_Across_PageSizes_1_10_50` | — | — | — | — | **4** for sizes 1/10/50 |
+| Staging API `Server-Timing` (no ambient TX) | not split in header | not split | not split | list page50 warm med **1519 ms** | assumed 4 (unchanged DAL) |
+
+Staging warm list `Server-Timing` never exceeded ~2 s (page50 warm max **1551 ms**). Per B3.1 rules, actual execution plans / `STATISTICS IO` / `STATISTICS TIME` were **not** captured and no index was added.
+
+## 7. Slow-query investigation
+
+**Not required.** Warm server duration for list page sizes 10 and 50 stayed under the ~2 s investigation threshold. Detail warm server median was ~1.72 s (also under threshold). Round-trip count remains fixed at four in IT.
+
+## 8. Decision and remaining limitations
+
+**PROVISIONAL PASS.**
+
+Reasons:
+
+1. Warm server-side list duration is operationally usable; page10 ≈ 0.67 s, page50 ≈ 1.52 s (1–2 s band).
+2. Database round trips remain fixed at four; B1/B2/B2.1 parity and consolidation IT passed without soft-skip.
+3. HTTP smoke, Atiqa consolidation, placement-unavailable semantics, Ward non-executability, facet exclusivity, and validation status codes behave as specified.
+4. No warm server list duration above ~2 s, so B2.2 / index work is **not** started.
+
+Documented limitations (not blockers for F1/F2 foundation work):
+
+1. Recommend initial FE page size **20–25**; keep page50 as an explicit monitored path.
+2. Seq DAL facet/batch/resolver split was not harvested from the live API host; re-check after Seq access is restored.
+3. API-host co-located client timings were not collected.
+4. Live **409** ambiguity and billing-blocked cancel specimens were absent from the snapshot; covered by automated tests.
+5. Frontend must not surface raw Registration/Waiting List IDs in the normal list/workspace chrome; confine display to Detail Sistem & Audit even though the projection payload includes designed identity/handover/timeline references.
+
+### Exact remaining blocker
+
+None for starting **F1 + F2** (schemas/services/query state, JourneyId selection, legacy URL migration).
+
+Do **not** begin the worklist redesign / unified right panel (**F3–F4**) until F1/F2 are verified on this provisional performance envelope. Do **not** begin a focused B2.2 optimization unless monitoring shows warm server list duration climbing back above ~2 s.

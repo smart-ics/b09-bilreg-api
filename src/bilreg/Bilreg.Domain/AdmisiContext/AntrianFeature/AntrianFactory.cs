@@ -9,7 +9,7 @@ public interface IAntrianFactory : INunaFactory<AntrianModel>
 {
     AntrianModel Create(DateOnly antrianDate, JadwalPraktekType jadwalPraktek);
     AntrianModel Create(DateOnly antrianDate, JadwalPraktekEffective effective);
-    AntrianModel Create(ServicePointType servicePoint);
+    AntrianModel Create(ServicePointType servicePoint, DateOnly businessDate);
 }
 
 public class AntrianFactory : IAntrianFactory
@@ -33,9 +33,12 @@ public class AntrianFactory : IAntrianFactory
         var newId = Ulid.NewUlid().ToString();
         var sequenceTag = AntrianModel.GenSequenceTag(antrianDate, effective);
         var antrianDesc = $"Praktek Dokter {effective.Dokter.PpaId}";
+        var servicePoint = new ServicePointType(
+            effective.Dokter.PpaId.Replace(' ', '$'),
+            antrianDesc);
 
         return new AntrianModel(newId, antrianDate, effective.JamMulai,
-            effective.JamSelesai, sequenceTag, antrianDesc,
+            effective.JamSelesai, sequenceTag, antrianDesc, servicePoint,
             new List<AntrianEntryModel>(), _antrianSequencer);
     }
 
@@ -49,36 +52,41 @@ public class AntrianFactory : IAntrianFactory
         var newId = Ulid.NewUlid().ToString();
         var sequenceTag = AntrianModel.GenSequenceTag(antrianDate, jadwalPraktek);
         var antrianDesc = $"Praktek Dokter {jadwalPraktek.Dokter.PpaId}";
+        var servicePoint = new ServicePointType(
+            jadwalPraktek.Dokter.PpaId.Replace(' ', '$'),
+            antrianDesc);
         
         var result = new AntrianModel(newId, antrianDate, jadwalPraktek.JamMulai, 
-            jadwalPraktek.JamSelesai,sequenceTag, antrianDesc, 
+            jadwalPraktek.JamSelesai, sequenceTag, antrianDesc, servicePoint,
             new List<AntrianEntryModel>(), _antrianSequencer);
         return result;
     }
 
-    public AntrianModel Create(ServicePointType servicePoint)
+    public AntrianModel Create(ServicePointType servicePoint, DateOnly businessDate)
     {
         Guard.Against.Null(servicePoint, nameof(servicePoint));
 
         var newId = Ulid.NewUlid().ToString();
-        var antrianDate = DateOnly.FromDateTime(DateTime.Now);
+        var antrianDate = businessDate;
         var mulai = TimeOnly.MinValue;
         var selesai = TimeOnly.MaxValue;
         var sequenceTag = AntrianModel.GenSequenceTag(antrianDate, mulai, servicePoint);
         
         return new AntrianModel(newId, antrianDate, mulai, selesai, 
-            sequenceTag, servicePoint.ServicePointName, new List<AntrianEntryModel>(), 
+            sequenceTag, servicePoint.ServicePointName, servicePoint,
+            new List<AntrianEntryModel>(), 
             _antrianSequencer);
     }
 
     public AntrianModel Load(string antrianId, DateOnly antrianDate, TimeOnly startTime, TimeOnly endTime,
-        string sequenceTag, string antrianDesc, IEnumerable<AntrianEntryModel> listEntry)
+        string sequenceTag, string antrianDesc, ServicePointType servicePoint,
+        IEnumerable<AntrianEntryModel> listEntry)
     {
         return new AntrianModel(antrianId, antrianDate, startTime, endTime, 
-            sequenceTag, antrianDesc, listEntry, _antrianSequencer);
+            sequenceTag, antrianDesc, servicePoint, listEntry, _antrianSequencer);
     }
     
     public AntrianModel Default => new AntrianModel(
         "-", DateOnly.FromDateTime(new DateTime(3000, 1, 1)), TimeOnly.MinValue, TimeOnly.MinValue,
-        "-","-", new List<AntrianEntryModel>(), _antrianSequencer);
+        "-", "-", ServicePointType.Default, new List<AntrianEntryModel>(), _antrianSequencer);
 }

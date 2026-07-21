@@ -2,11 +2,11 @@ namespace Bilreg.Application.AdmisiRanapContext.JourneyFeature;
 
 public interface IJourneyDal
 {
-    JourneyListResult List(JourneyListFilter filter);
+    JourneyListResult List(JourneyListFilter filter, DateTime businessNow);
 
-    JourneyDetailWorkspace? GetByJourneyId(string journeyId);
+    JourneyDetailWorkspace? GetByJourneyId(string journeyId, DateTime businessNow);
 
-    JourneyLegacyResolution? ResolveLegacyRecord(string recordType, string recordId);
+    JourneyLegacyResolution? ResolveLegacyRecord(string recordType, string recordId, DateTime businessNow);
 
     /// <summary>Diagnostics from the most recent <see cref="List"/> call (round-trips and phase timings).</summary>
     JourneyListDiagnostics? LastListDiagnostics { get; }

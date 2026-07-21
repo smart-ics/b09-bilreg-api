@@ -12,6 +12,8 @@ using Bilreg.Application.LabContext.LabOrderFeature;
 using Bilreg.Application.LabContext.LabOrderFeature.Integration;
 using Bilreg.Application.LabContext.LabOwareFeature;
 using Bilreg.Application.LabContext.LabOwareFeature.Integration;
+using Bilreg.Application.AdmisiContext.EmrAntrianOutboundFeature;
+using Bilreg.Application.AdmisiContext.EmrAntrianOutboundFeature.Integration;
 using Bilreg.Application.LabContext.LabResultFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Application.PaymentContext.PasienBalanceFeature;
@@ -31,6 +33,7 @@ using Bilreg.Infrastructure.ChargeContext.TarifFeature;
 using Bilreg.Infrastructure.LabContext.Integration;
 using Bilreg.Infrastructure.LabContext.LabOrderFeature;
 using Bilreg.Infrastructure.LabContext.LabOwareFeature;
+using Bilreg.Infrastructure.AdmisiContext.EmrAntrianOutboundFeature;
 using Bilreg.Infrastructure.LabContext.LabResultFeature;
 using Bilreg.Infrastructure.PaymentContext.PasienBalanceFeature;
 using Bilreg.Infrastructure.PaymentContext.TataRekeningFeature;
@@ -48,13 +51,16 @@ namespace Bilreg.Api.Configurations;
 
 public static class InfrastructureService
 {
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services, 
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services,
         IConfiguration configuration)
     {
         services
             .AddScoped<INunaCounterDal, ParamNoDal>()
             .AddScoped<INunaCounterDecDal, ParamNoDal>()
-            .AddScoped<ITglJamProvider, TglJamProvider>()
+            .AddScoped<ISqlServerClock, SqlServerClock>()
+            .AddScoped<TglJamProvider>()
+            .AddScoped<ITglJamProvider>(sp => sp.GetRequiredService<TglJamProvider>())
+            .AddScoped<IBusinessDateStatus>(sp => sp.GetRequiredService<TglJamProvider>())
             .AddScoped<ISequencer, Sequencer>()
             .AddScoped<IRestClientFactory, RestClientFactory>()
             .AddScoped<ILabOrderWorklistDal, LabOrderWorklistDal>()
@@ -66,6 +72,10 @@ public static class InfrastructureService
             .AddScoped<ILabTestResolutionService, LabTestResolutionService>()
             .AddScoped<ILabOwareIntegration, LabOwareIntegration>()
             .AddScoped<ILabOwareQueueWorklistDal, LabOwareQueueWorklistDal>()
+            .AddScoped<IEmrAntrianOutboundIntegration, EmrAntrianOutboundIntegration>()
+            .AddScoped<IEmrAntrianOutboundWorklistDal, EmrAntrianOutboundWorklistDal>()
+            .AddScoped<EmrAntrianOutboundProcessor>()
+            .AddScoped<EmrAntrianOutboundEnqueueService>()
             .AddScoped<IWaitingListWorklistDal, WaitingListWorklistDal>()
             .AddScoped<IRegistrationCancellationEligibilityDal, RegistrationCancellationEligibilityDal>()
             .AddScoped<IRegistrationCancellationEligibilityRepo, RegistrationCancellationEligibilityRepo>()
@@ -97,6 +107,13 @@ public static class InfrastructureService
 
         services
             .Configure<DatabaseOptions>(configuration.GetSection(DatabaseOptions.SECTION_NAME))
+            .AddSingleton<Microsoft.Extensions.Options.IValidateOptions<BusinessDateOptions>>(
+                new BusinessDateOptionsValidator())
+            .AddOptions<BusinessDateOptions>()
+                .Bind(configuration.GetSection(BusinessDateOptions.SECTION_NAME))
+                .ValidateOnStart();
+
+        services
             .Configure<TarifMigrationOptions>(configuration.GetSection(TarifMigrationOptions.SECTION_NAME))
             .Configure<LabResultPdfOptions>(configuration.GetSection(LabResultPdfOptions.SECTION_NAME))
             .Configure<PasienContextOptions>(configuration.GetSection(PasienContextOptions.SECTION_NAME))

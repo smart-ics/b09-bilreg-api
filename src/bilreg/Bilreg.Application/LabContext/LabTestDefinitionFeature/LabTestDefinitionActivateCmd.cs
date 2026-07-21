@@ -14,13 +14,16 @@ public class LabTestDefinitionActivateHandler : IRequestHandler<LabTestDefinitio
 {
     private readonly ILabTestDefinitionRepo _definitionRepo;
     private readonly ILabComponentMasterRepo _componentMasterRepo;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public LabTestDefinitionActivateHandler(
         ILabTestDefinitionRepo definitionRepo,
-        ILabComponentMasterRepo componentMasterRepo)
+        ILabComponentMasterRepo componentMasterRepo,
+        ITglJamProvider tglJamProvider)
     {
         _definitionRepo = definitionRepo;
         _componentMasterRepo = componentMasterRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task Handle(LabTestDefinitionActivateCmd request, CancellationToken cancellationToken)
@@ -35,7 +38,8 @@ public class LabTestDefinitionActivateHandler : IRequestHandler<LabTestDefinitio
             _definitionRepo, existing.TarifId, true, request.TestDefinitionId);
 
         var catalog = BuildCatalogFromExistingComponents(existing);
-        var activated = existing.Activate(request.UserId, catalog);
+        var occurredAt = _tglJamProvider.Now;
+        var activated = existing.Activate(request.UserId, occurredAt, catalog);
         _definitionRepo.SaveChanges(activated);
         return Task.CompletedTask;
     }

@@ -25,13 +25,16 @@ public class LabTestDefinitionUpdateHandler : IRequestHandler<LabTestDefinitionU
 {
     private readonly ILabTestDefinitionRepo _definitionRepo;
     private readonly ILabComponentMasterRepo _componentMasterRepo;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public LabTestDefinitionUpdateHandler(
         ILabTestDefinitionRepo definitionRepo,
-        ILabComponentMasterRepo componentMasterRepo)
+        ILabComponentMasterRepo componentMasterRepo,
+        ITglJamProvider tglJamProvider)
     {
         _definitionRepo = definitionRepo;
         _componentMasterRepo = componentMasterRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task Handle(LabTestDefinitionUpdateCmd request, CancellationToken cancellationToken)
@@ -69,6 +72,7 @@ public class LabTestDefinitionUpdateHandler : IRequestHandler<LabTestDefinitionU
             request.IsActive,
             components,
             request.UserId,
+            _tglJamProvider.Now,
             catalog);
 
         _definitionRepo.SaveChanges(updated);

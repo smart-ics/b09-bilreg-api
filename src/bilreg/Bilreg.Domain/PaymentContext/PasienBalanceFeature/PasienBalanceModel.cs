@@ -139,7 +139,8 @@ public class PasienBalanceModel : IPasienKey
 
     public void ReplaceOutstandingEntries(
         IEnumerable<OutstandingEntryType> entries,
-        string createdBy)
+        string createdBy,
+        DateTime createdAt = default)
     {
         EnsureValidUser(createdBy);
 
@@ -168,7 +169,6 @@ public class PasienBalanceModel : IPasienKey
 
         _outstandingEntries.Clear();
 
-        var now = DateTime.Now;
         foreach (var entry in list)
         {
             _outstandingEntries.Add(new OutstandingEntryType(
@@ -179,7 +179,7 @@ public class PasienBalanceModel : IPasienKey
                 entry.OutstandingObat,
                 entry.LastTransactionDate,
                 entry.SourceReference,
-                entry.CreatedAt == EmptyDate || entry.CreatedAt == DateTime.MinValue ? now : entry.CreatedAt,
+                entry.CreatedAt == EmptyDate || entry.CreatedAt == DateTime.MinValue ? createdAt : entry.CreatedAt,
                 string.IsNullOrWhiteSpace(entry.CreatedBy) ? createdBy : entry.CreatedBy,
                 isPersisted: false));
         }

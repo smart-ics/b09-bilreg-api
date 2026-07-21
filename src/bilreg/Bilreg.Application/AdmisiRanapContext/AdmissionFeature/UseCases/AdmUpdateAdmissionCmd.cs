@@ -6,6 +6,7 @@ using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Domain.Shared.AuditLogFeature;
 using MediatR;
 using Nuna.Lib.PatternHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
 
@@ -20,15 +21,18 @@ public class AdmUpdateAdmissionHandler : IRequestHandler<AdmUpdateAdmissionCmd>
     private readonly IAdmissionRepo _admissionRepo;
     private readonly IWardAccommodationGateway _wardGateway;
     private readonly IAuditRepo _auditRepo;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public AdmUpdateAdmissionHandler(
         IAdmissionRepo admissionRepo,
         IWardAccommodationGateway wardGateway,
-        IAuditRepo auditRepo)
+        IAuditRepo auditRepo,
+        ITglJamProvider tglJamProvider)
     {
         _admissionRepo = admissionRepo;
         _wardGateway = wardGateway;
         _auditRepo = auditRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task Handle(AdmUpdateAdmissionCmd request, CancellationToken cancellationToken)
@@ -44,7 +48,8 @@ public class AdmUpdateAdmissionHandler : IRequestHandler<AdmUpdateAdmissionCmd>
         var admission = _admissionRepo.LoadEntity(request)
             .GetValueOrThrow($"Admission '{request.RegId}' tidak ditemukan.");
         var snapshotJson = AuditLogSnapshotJson.Serialize(admission);
-        var updated = admission.Update(kelasDk, bangsal, request.UserId);
+        var occurredAt = _tglJamProvider.Now;
+        var updated = admission.Update(kelasDk, bangsal, request.UserId, occurredAt);
 
         _admissionRepo.SaveChanges(updated);
 

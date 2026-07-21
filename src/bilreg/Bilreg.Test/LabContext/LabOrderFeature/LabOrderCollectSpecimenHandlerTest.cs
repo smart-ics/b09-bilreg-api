@@ -16,7 +16,7 @@ public class LabOrderCollectSpecimenHandlerTest
 
     public LabOrderCollectSpecimenHandlerTest()
     {
-        _sut = new LabOrderCollectSpecimenHandler(_repo.Object);
+        _sut = new LabOrderCollectSpecimenHandler(_repo.Object, TestTglJamProvider.Instance);
     }
 
     private static LabOrderModel ChargedOrder()
