@@ -4,11 +4,12 @@ BEGIN
     (
         RegId             VARCHAR(10) NOT NULL CONSTRAINT DF_BILRG_AdmAdmission_RegId DEFAULT(''),
         AdmissionStatus   INT         NOT NULL CONSTRAINT DF_BILRG_AdmAdmission_AdmissionStatus DEFAULT(0),
+        AdmissionSource   INT         NOT NULL CONSTRAINT DF_BILRG_AdmAdmission_AdmissionSource DEFAULT(0),
         PasienId          VARCHAR(15) NOT NULL CONSTRAINT DF_BILRG_AdmAdmission_PasienId DEFAULT('-'),
         OpnameRequestId   VARCHAR(12) NOT NULL CONSTRAINT DF_BILRG_AdmAdmission_OpnameRequestId DEFAULT('-'),
         ReservationId     VARCHAR(12) NOT NULL CONSTRAINT DF_BILRG_AdmAdmission_ReservationId DEFAULT('-'),
-        KelasId           VARCHAR(3)  NOT NULL CONSTRAINT DF_BILRG_AdmAdmission_KelasId DEFAULT('-'),
-        KelasName         VARCHAR(30) NOT NULL CONSTRAINT DF_BILRG_AdmAdmission_KelasName DEFAULT(''),
+        KelasDkId         VARCHAR(1)  NOT NULL CONSTRAINT DF_BILRG_AdmAdmission_KelasDkId DEFAULT('-'),
+        KelasDkName       VARCHAR(15) NOT NULL CONSTRAINT DF_BILRG_AdmAdmission_KelasDkName DEFAULT(''),
         BangsalId         VARCHAR(5)  NOT NULL CONSTRAINT DF_BILRG_AdmAdmission_BangsalId DEFAULT('-'),
         BangsalName       VARCHAR(40) NOT NULL CONSTRAINT DF_BILRG_AdmAdmission_BangsalName DEFAULT(''),
         AdmissionDate     DATETIME    NOT NULL CONSTRAINT DF_BILRG_AdmAdmission_AdmissionDate DEFAULT('3000-01-01'),
@@ -22,6 +23,14 @@ BEGIN
 
         CONSTRAINT PK_BILRG_AdmAdmission PRIMARY KEY CLUSTERED (RegId)
     );
+END
+GO
+
+IF COL_LENGTH('BILRG_AdmAdmission', 'AdmissionSource') IS NULL
+BEGIN
+    ALTER TABLE BILRG_AdmAdmission
+        ADD AdmissionSource INT NOT NULL
+            CONSTRAINT DF_BILRG_AdmAdmission_AdmissionSource DEFAULT(0);
 END
 GO
 

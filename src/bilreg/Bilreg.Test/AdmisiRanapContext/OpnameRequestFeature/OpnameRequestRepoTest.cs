@@ -71,6 +71,7 @@ public class OpnameRequestRepoTest
             OpnameRequestStatusEnum.Requested,
             new PasienReff("P0001", "Pasien Test", new DateOnly(1990, 5, 15), "L"),
             new PpaReff("D001", "Dr. Test"),
+            new DateTime(2026, 7, 20),
             "Catatan klinis",
             "-",
             AuditTrailType.Create("user1", new DateTime(2026, 7, 7)));

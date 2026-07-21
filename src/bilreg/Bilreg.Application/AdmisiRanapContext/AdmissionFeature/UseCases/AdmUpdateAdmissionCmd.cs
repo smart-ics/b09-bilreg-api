@@ -6,12 +6,13 @@ using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Domain.Shared.AuditLogFeature;
 using MediatR;
 using Nuna.Lib.PatternHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
 
 public record AdmUpdateAdmissionCmd(
     string RegId,
-    string KelasId,
+    string KelasDkId,
     string BangsalId,
     string UserId) : IRequest, IRegKey;
 
@@ -20,31 +21,35 @@ public class AdmUpdateAdmissionHandler : IRequestHandler<AdmUpdateAdmissionCmd>
     private readonly IAdmissionRepo _admissionRepo;
     private readonly IWardAccommodationGateway _wardGateway;
     private readonly IAuditRepo _auditRepo;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public AdmUpdateAdmissionHandler(
         IAdmissionRepo admissionRepo,
         IWardAccommodationGateway wardGateway,
-        IAuditRepo auditRepo)
+        IAuditRepo auditRepo,
+        ITglJamProvider tglJamProvider)
     {
         _admissionRepo = admissionRepo;
         _wardGateway = wardGateway;
         _auditRepo = auditRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task Handle(AdmUpdateAdmissionCmd request, CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.RegId);
-        Guard.Against.NullOrWhiteSpace(request.KelasId);
+        Guard.Against.NullOrWhiteSpace(request.KelasDkId);
         Guard.Against.NullOrWhiteSpace(request.BangsalId);
         Guard.Against.NullOrWhiteSpace(request.UserId);
 
-        var kelas = _wardGateway.ResolveKelas(request.KelasId);
-        var bangsal = _wardGateway.ResolveBangsal(request.BangsalId);
+        var kelasDk = _wardGateway.ResolveKelasDk(request.KelasDkId);
+        var bangsal = _wardGateway.ResolveBangsalForCareClass(request.BangsalId, request.KelasDkId);
 
         var admission = _admissionRepo.LoadEntity(request)
             .GetValueOrThrow($"Admission '{request.RegId}' tidak ditemukan.");
         var snapshotJson = AuditLogSnapshotJson.Serialize(admission);
-        var updated = admission.Update(kelas, bangsal, request.UserId);
+        var occurredAt = _tglJamProvider.Now;
+        var updated = admission.Update(kelasDk, bangsal, request.UserId, occurredAt);
 
         _admissionRepo.SaveChanges(updated);
 

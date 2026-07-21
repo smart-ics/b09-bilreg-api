@@ -21,7 +21,7 @@ public class LabOrderCreateFromEmrHandlerTest
         _resolution
             .Setup(r => r.ResolveByTarifItems(It.IsAny<IEnumerable<LabOrderTarifItemInput>>()))
             .Returns([new ResolvedLabOrderLine(LabOrderTestSupport.SampleItem(), [])]);
-        _sut = new LabOrderCreateFromEmrHandler(_repo.Object, _sequencer.Object, _resolution.Object);
+        _sut = new LabOrderCreateFromEmrHandler(_repo.Object, _sequencer.Object, _resolution.Object, TestTglJamProvider.Instance);
     }
 
     private static LabOrderCreateFromEmrCmd ValidCmd() =>

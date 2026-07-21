@@ -48,16 +48,25 @@ public class ReservationController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> List(
         [FromQuery] ReservationStatusEnum? status,
-        [FromQuery] DateTime? plannedFrom,
-        [FromQuery] DateTime? plannedTo)
+        [FromQuery] string? plannedFrom,
+        [FromQuery] string? plannedTo)
     {
         var result = await _mediator.Send(new AdmListReservationQry(status, plannedFrom, plannedTo));
         return Ok(new JSendOk(result));
     }
+
+    [HttpPost("{id}/cancel")]
+    public async Task<IActionResult> Cansel(string id, [FromBody] AdmCancelReservationBody body)
+    {
+        await _mediator.Send(new AdmCancelReservationCmd(id, body.UserId));
+        return Ok(new JSendOk("Done"));
+    }
 }
 
 public record AdmMaintainReservationBody(
-    DateTime PlannedDate,
+    string PlannedDate,
     string KelasId,
     string BangsalId,
     string UserId);
+
+public record AdmCancelReservationBody(string UserId);

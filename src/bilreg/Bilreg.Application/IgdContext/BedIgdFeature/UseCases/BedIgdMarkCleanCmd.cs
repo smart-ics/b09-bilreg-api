@@ -1,8 +1,9 @@
-﻿using Ardalis.GuardClauses;
+using Ardalis.GuardClauses;
 using Bilreg.Domain.IgdContext.BedIgdFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.IgdContext.BedIgdFeature.UseCases;
 
@@ -16,10 +17,12 @@ public record BedIgdMarkCleanResponse(string BedIgdId, string BedIgdName, string
 public class BedIgdMarkCleanHandler : IRequestHandler<BedIgdMarkCleanCmd, BedIgdMarkCleanResponse>
 {
     private readonly IBedIgdRepo _bedIgdRepo;
+    private readonly ITglJamProvider _tglJamProvider;
 
-    public BedIgdMarkCleanHandler(IBedIgdRepo bedIgdRepo)
+    public BedIgdMarkCleanHandler(IBedIgdRepo bedIgdRepo, ITglJamProvider tglJamProvider)
     {
         _bedIgdRepo = bedIgdRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<BedIgdMarkCleanResponse> Handle(BedIgdMarkCleanCmd request, CancellationToken cancellationToken)
@@ -27,7 +30,7 @@ public class BedIgdMarkCleanHandler : IRequestHandler<BedIgdMarkCleanCmd, BedIgd
         Guard.Against.NullOrWhiteSpace(request.BedIgdId, nameof(request.BedIgdId));
         Guard.Against.NullOrWhiteSpace(request.UserId, nameof(request.UserId));
 
-        var audit = new AuditInfoType(request.UserId, DateTime.Now);
+        var audit = new AuditInfoType(request.UserId, _tglJamProvider.Now);
 
         using var trans = TransHelper.NewScope();        
         var bed = LoadBed(request);

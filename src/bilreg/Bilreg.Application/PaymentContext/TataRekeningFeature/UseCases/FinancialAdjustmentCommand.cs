@@ -15,7 +15,8 @@ namespace Bilreg.Application.PaymentContext.TataRekeningFeature.UseCases;
 public record FinancialAdjustmentCommand(
     string RegId,
     FinancialAdjustmentInputDto Adjustment,
-    DateTime AppliedAt) : IRequest<FinancialAdjustmentResponse>, IRegKey;
+    DateTime? AppliedAt,
+    string UserId) : IRequest<FinancialAdjustmentResponse>, IRegKey;
 
 public record FinancialAdjustmentResponse(
     TataRekeningSummaryDto Summary,
@@ -31,6 +32,7 @@ public class FinancialAdjustmentHandler : IRequestHandler<FinancialAdjustmentCom
     private readonly IAuditRepo _auditRepo;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserContext _currentUser;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public FinancialAdjustmentHandler(
         ITataRekeningRepo tataRekeningRepo,
@@ -38,7 +40,8 @@ public class FinancialAdjustmentHandler : IRequestHandler<FinancialAdjustmentCom
         IFinancialAdjustmentDomainService adjustmentService,
         IAuditRepo auditRepo,
         IUnitOfWork unitOfWork,
-        ICurrentUserContext currentUser)
+        ICurrentUserContext currentUser,
+        ITglJamProvider tglJamProvider)
     {
         _tataRekeningRepo = tataRekeningRepo;
         _trsBillingRepo = trsBillingRepo;
@@ -46,14 +49,17 @@ public class FinancialAdjustmentHandler : IRequestHandler<FinancialAdjustmentCom
         _auditRepo = auditRepo;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<FinancialAdjustmentResponse> Handle(
         FinancialAdjustmentCommand request,
         CancellationToken cancellationToken)
     {
+        var occurredAt = request.AppliedAt ?? _tglJamProvider.Now;
         Guard.Against.NullOrWhiteSpace(request.RegId);
         Guard.Against.Null(request.Adjustment);
+        Guard.Against.NullOrWhiteSpace(request.UserId);
 
         using var scope = _unitOfWork.Begin();
 
@@ -61,7 +67,7 @@ public class FinancialAdjustmentHandler : IRequestHandler<FinancialAdjustmentCom
             .GetValueOrThrow($"Tata Rekening '{request.RegId}' tidak ditemukan.");
 
         var adjustmentRequest = BuildAdjustmentRequest(request.Adjustment);
-        var result = _adjustmentService.Apply(tataRekening, adjustmentRequest, request.AppliedAt);
+        var result = _adjustmentService.Apply(tataRekening, adjustmentRequest, occurredAt);
 
         if (!result.RequiresReopen)
         {
@@ -69,7 +75,8 @@ public class FinancialAdjustmentHandler : IRequestHandler<FinancialAdjustmentCom
             PersistMutatedBills(tataRekening, adjustmentRequest);
 
             var audit = AuditLog.Create(
-                userId: _currentUser.GetActorUserId(),
+                userId: request.UserId,
+                eventTime: occurredAt,
                 actionType: "TATA_REKENING_FINANCIAL_ADJUSTMENT",
                 entityName: nameof(TataRekeningModel),
                 entityId: request.RegId,

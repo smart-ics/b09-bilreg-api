@@ -2,21 +2,23 @@
 
 ## 1. Tujuan
 
-Mendokumentasikan proses pembaruan informasi **Admission** yang telah dibuat sebelumnya, agar data administrasi Rawat Inap tetap sesuai dengan kondisi dan kebutuhan **Patient** sebelum dilakukan **Bed Assignment**.
+Mendokumentasikan proses pembaruan informasi **Admission** yang telah dibuat sebelumnya, agar data perencanaan akomodasi Rawat Inap tetap sesuai dengan kondisi dan kebutuhan **Patient** sebelum dilakukan **Bed Assignment**.
 
 ---
 
 ## 2. Ruang Lingkup
 
-SOP ini berlaku untuk seluruh proses perubahan informasi **Admission** yang masih berada pada tahap administrasi dan belum dilanjutkan ke proses **Bed Assignment**.
+SOP ini berlaku untuk perubahan **Care Class** dan **Bangsal** tujuan pada **Admission** yang masih aktif secara administratif.
+
+> **Catatan kontrak (Juli 2026):** Perintah yang diimplementasikan adalah `PUT api/admisi-ranap/admission/{regId}` dengan body `kelasDkId`, `bangsalId`, `userId` saja. Perubahan penjamin, dokter, rujukan, atau field registrasi episode lainnya **belum** tersedia sebagai perintah inpatient tersertifikasi dan **ditunda** (Deferred) — lihat capability matrix persistent workspace. Aturan bisnis BR-RI-C3-01 (hanya sebelum Bed Assignment) belum ditegakkan di handler; penegakan Deferred.
 
 ---
 
 ## 3. Prasyarat
 
 * **Admission** telah dibuat.
-* Status **Admission** masih **Admitted**.
-* Belum dilakukan **Bed Assignment**.
+* Status **Admission** masih aktif (bukan **Completed** / **Cancelled**).
+* Belum dilakukan **Bed Assignment** *(aturan bisnis; penegakan teknis Deferred)*.
 
 ---
 
@@ -24,42 +26,61 @@ SOP ini berlaku untuk seluruh proses perubahan informasi **Admission** yang masi
 
 | Aktor            | Peran                                                                |
 | ---------------- | -------------------------------------------------------------------- |
-| Admisi           | Memperbarui informasi **Admission**                                  |
-| Patient / Family | Menyampaikan perubahan informasi administrasi *(apabila diperlukan)* |
+| Admisi           | Memperbarui **Care Class** dan **Bangsal** pada **Admission**        |
+| Patient / Family | Menyampaikan perubahan kebutuhan akomodasi *(apabila diperlukan)*    |
 
 ---
 
 ## 5. Partisipan
 
 * **Admission**
-* **Opname Request** *(opsional)*
-* **Reservation** *(opsional)*
+* **Opname Request** *(opsional — tidak diubah oleh update)*
+* **Reservation** *(opsional — tidak diubah oleh update)*
 
 ---
 
 ## 6. Alur Proses
 
-1. **Admisi** menerima permintaan atau kebutuhan untuk memperbarui informasi **Admission**.
+1. **Admisi** menerima permintaan atau kebutuhan untuk memperbarui perencanaan akomodasi **Admission**.
 
 2. **Admisi** membuka data **Admission** yang akan diperbarui.
 
-3. **Admisi** melakukan perubahan terhadap informasi administrasi yang diperbolehkan, seperti penjamin, kelas perawatan, dokter penanggung jawab, atau informasi administrasi lainnya sesuai kebijakan rumah sakit.
+3. **Admisi** mengubah **Care Class** (`KelasDk`) dan/atau **Bangsal** tujuan.
 
-4. Sistem melakukan validasi terhadap perubahan yang dilakukan.
+4. Apabila **Care Class** diubah, sistem memuat ulang daftar **Bangsal** yang memenuhi syarat.
 
-5. Apabila validasi berhasil, sistem menyimpan perubahan **Admission**.
+5. Apabila **Bangsal** tujuan yang sudah dipilih tidak lagi memenuhi syarat, sistem mengosongkan pilihan **Bangsal**.
 
-6. Status **Admission** tetap **Admitted**.
+6. **Admisi** harus memilih **Bangsal** baru sebelum perubahan dapat disimpan.
 
-7. Proses selesai.
+7. Sistem melakukan validasi terhadap perubahan yang dilakukan.
+
+8. Apabila validasi berhasil, sistem menyimpan perubahan **Admission** (Care Class + Bangsal secara bersama). Status dapat menjadi **Updated** sesuai state machine.
+
+9. Perubahan ini **tidak** menyinkronkan penempatan ke field legacy `RegModel` yang dipersistensi di `ta_registrasi` (Admission adalah source of truth untuk Care Class / Bangsal).
+
+10. Proses selesai.
+
+### Ketentuan Khusus — Perubahan Care Class
+
+Apabila tidak terdapat **Bangsal** yang memenuhi syarat untuk **Care Class** yang baru dipilih, sistem menolak penyimpanan perubahan **Admission** dan menampilkan pesan bahwa tidak ada **Bangsal** tersedia. Apabila **Bangsal** tujuan telah dikosongkan karena tidak lagi memenuhi syarat, **Admission** tidak dapat disimpan hingga **Admisi** memilih **Bangsal** baru yang memenuhi syarat.
+
+### Di luar ruang lingkup perintah ini
+
+* Perubahan penjamin / peserta jaminan episode
+* Perubahan dokter / rujukan / cara masuk / layanan / karcis
+* Perubahan data Patient / guardian
+* Alokasi Room / Bed
+
+Field-field tersebut tetap dapat ditampilkan read-only di workspace hingga perintah pemilik agregat yang sesuai berstatus Ready.
 
 ---
 
 ## 7. Hasil
 
-* Informasi **Admission** berhasil diperbarui.
-* Status **Admission** tetap **Admitted**.
-* **Admission** tetap siap dilanjutkan ke SOP-RI-D1 **Bed Assignment**.
+* Informasi perencanaan **Admission** (Care Class + Bangsal) berhasil diperbarui.
+* **Admission** tetap siap dilanjutkan ke Waiting List / hand-off Bed Assignment (Ward).
+* Tidak terbentuk **Admission** baru.
 
 ---
 
@@ -67,7 +88,7 @@ SOP ini berlaku untuk seluruh proses perubahan informasi **Admission** yang masi
 
 **BR-RI-C3-01**
 
-**Admission** hanya dapat diperbarui selama belum dilakukan **Bed Assignment**.
+**Admission** hanya dapat diperbarui selama belum dilakukan **Bed Assignment** *(aturan bisnis; penegakan teknis Deferred)*.
 
 ---
 
@@ -79,31 +100,42 @@ Setelah dilakukan **Bed Assignment**, perubahan terhadap informasi **Admission**
 
 **BR-RI-C3-03**
 
-Perubahan **Admission** tidak mengubah status **Admission**.
+Perubahan **Admission** melalui perintah update penempatan tidak membentuk **Admission** baru.
 
 ---
 
 **BR-RI-C3-04**
 
-Perubahan **Admission** tidak membentuk **Admission** baru.
+Perubahan **Admission** tidak secara otomatis mengubah **Opname Request** maupun **Reservation** yang menjadi dasar pembentukan **Admission**.
 
 ---
 
 **BR-RI-C3-05**
 
-Perubahan **Admission** tidak secara otomatis mengubah **Opname Request** maupun **Reservation** yang menjadi dasar pembentukan **Admission**.
+Perubahan **Admission** tidak melakukan **Bed Assignment** maupun menentukan **Bed**.
 
 ---
 
 **BR-RI-C3-06**
 
-Perubahan **Admission** tidak melakukan **Bed Assignment** maupun menentukan **Bed**.
+Perubahan **Care Class** memicu validasi ulang kelayakan **Bangsal** tujuan.
+
+---
+
+**BR-RI-C3-07**
+
+**Admission** tidak dapat disimpan apabila **Bangsal** tujuan kosong atau tidak memenuhi syarat **Care Class** yang berlaku.
+
+---
+
+**BR-RI-C3-08**
+
+Care Class dan Bangsal diperbarui secara **bersama** (coupled); tidak ada update mandiri salah satu tanpa validasi pasangan yang memenuhi syarat.
 
 ---
 
 ## 9. Post Condition
 
-* **Admission** tetap berada pada status **Admitted**.
-* Informasi **Admission** telah diperbarui sesuai kondisi terbaru.
-* **Admission** tetap siap diproses pada SOP-RI-D1 **Bed Assignment**.
-* Belum terdapat **Bed Assignment** yang terbentuk.
+* Informasi Care Class / Bangsal **Admission** telah diperbarui sesuai kondisi terbaru.
+* **Admission** tetap siap diproses pada SOP-RI-D1 (**Waiting List**) dan/atau hand-off ke SOP-RI-D2 (**Bed Assignment**, Ward).
+* Belum terdapat UI Bed Assignment di dalam workspace Admisi.

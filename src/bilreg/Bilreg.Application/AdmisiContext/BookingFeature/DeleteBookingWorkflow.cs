@@ -1,16 +1,16 @@
 using Bilreg.Application.AdmisiContext.JadwalPraktekFeature.UseCases;
 using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
- using Bilreg.Application.AdmisiContext.AntrianFeature;
- using Bilreg.Application.AdmisiContext.BookingFeature;
- using Bilreg.Application.AdmisiContext.PpaFeature;
- using Bilreg.Domain.AdmisiContext.AntrianFeature;
- using Bilreg.Domain.AdmisiContext.BookingFeature;
- using Bilreg.Domain.AdmisiContext.PpaFeature;
- using Nuna.Lib.PatternHelper;
- using Nuna.Lib.TransactionHelper;
+using Bilreg.Application.AdmisiContext.AntrianFeature;
+using Bilreg.Application.AdmisiContext.PpaFeature;
+using Bilreg.Domain.AdmisiContext.AntrianFeature;
+using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
+using Nuna.Lib.PatternHelper;
+using Nuna.Lib.TransactionHelper;
+using Nuna.Lib.ValidationHelper;
 
- namespace Bilreg.Application.AdmisiContext.BookingFeature;
+namespace Bilreg.Application.AdmisiContext.BookingFeature;
 
 public interface IDeleteBookingWorkflow
 {
@@ -26,6 +26,8 @@ public sealed class DeleteBookingWorkflow : IDeleteBookingWorkflow
     private readonly IJadwalPraktekRepo _jadwalPraktekRepo;
     private readonly IJadwalPraktekHarianRepo _jadwalPraktekHarianRepo;
     private readonly IJadwalPraktekFeatureResolver _featureResolver;
+    private readonly IQueueNumberCompatibilityAdapter _queueNumberAdapter;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public DeleteBookingWorkflow(
         IBookingRepo bookingRepo,
@@ -35,7 +37,9 @@ public sealed class DeleteBookingWorkflow : IDeleteBookingWorkflow
         IAntrianMapRepo antrianMapRepo,
         IJadwalPraktekRepo jadwalPraktekRepo,
         IJadwalPraktekHarianRepo jadwalPraktekHarianRepo,
-        IJadwalPraktekFeatureResolver featureResolver)
+        IJadwalPraktekFeatureResolver featureResolver,
+        IQueueNumberCompatibilityAdapter queueNumberAdapter,
+        ITglJamProvider tglJamProvider)
     {
         _bookingRepo = bookingRepo;
         _ppaRepo = ppaRepo;
@@ -45,10 +49,13 @@ public sealed class DeleteBookingWorkflow : IDeleteBookingWorkflow
         _jadwalPraktekRepo = jadwalPraktekRepo;
         _jadwalPraktekHarianRepo = jadwalPraktekHarianRepo;
         _featureResolver = featureResolver;
+        _queueNumberAdapter = queueNumberAdapter;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task Execute(IBookingKey key)
     {
+        var occurredAt = _tglJamProvider.Now;
         var booking = LoadBookingOrExit(key);
         if (booking is null)
             return Task.CompletedTask;
@@ -74,7 +81,7 @@ public sealed class DeleteBookingWorkflow : IDeleteBookingWorkflow
 
         if (antrianMap.JadwalId != "-")
         {
-            antrianMap.VoidSlot(booking.NoAntrian);
+            _queueNumberAdapter.Release(antrianMap, booking.NoAntrian);
             _antrianMapRepo.SaveChanges(antrianMap);
         }
         if (entry is not null)
@@ -82,16 +89,30 @@ public sealed class DeleteBookingWorkflow : IDeleteBookingWorkflow
             antrian.RemoveEntry(entry.NoUrut);
             _antrianRepo.SaveChanges(antrian);
 
-            _pasienTrackerRepo.DeleteEntity(
-                PasienTrackerModel.Key(entry.Tracker.PasienTrackerId));
+            RetainTrackerWithCancellation(entry, booking.BookingId, occurredAt);
         }
-
 
         trans.Complete();
         return Task.CompletedTask;
     }
 
     #region Helper
+    private void RetainTrackerWithCancellation(
+        AntrianEntryModel entry, string bookingId, DateTime occurredAt)
+    {
+        var trackerId = entry.Tracker.PasienTrackerId;
+        if (!PasienTrackerStableIdentity.IsRealTrackerId(trackerId))
+            return;
+
+        var trackerOpt = _pasienTrackerRepo.LoadEntity(PasienTrackerModel.Key(trackerId));
+        if (!trackerOpt.HasValue)
+            return;
+
+        var tracker = trackerOpt.Value;
+        tracker.AddEvent("BOOKING_CANCELLED", bookingId, occurredAt);
+        _pasienTrackerRepo.SaveChanges(tracker);
+    }
+
     private BookingModel? LoadBookingOrExit(IBookingKey key)
     {
         var opt = _bookingRepo.LoadEntity(key);

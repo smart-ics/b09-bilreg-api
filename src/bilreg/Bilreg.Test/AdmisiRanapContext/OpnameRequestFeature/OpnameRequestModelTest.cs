@@ -13,7 +13,7 @@ public class OpnameRequestModelTest
     private static PpaReff SampleDokter() => new("D001", "Dr. Test");
 
     private static OpnameRequestModel CreateRequested() =>
-        OpnameRequestModel.Create(SamplePasien(), SampleDokter(), "Catatan klinis", "user1");
+        OpnameRequestModel.Create(SamplePasien(), SampleDokter(), new DateTime(2026, 7, 20), "Catatan klinis", "user1");
 
     [Fact]
     public void DT_OR_01_GivenRequested_WhenFulfillOrCancel_ThenValidTransitions()
@@ -69,5 +69,30 @@ public class OpnameRequestModelTest
 
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*sudah dipenuhi*");
+    }
+
+    [Fact]
+    public void GivenFulfilledByMatchingRegistration_WhenRestore_ThenReturnsToRequestedAndClearsReference()
+    {
+        var timestamp = new DateTime(2026, 7, 12, 10, 30, 0);
+        var fulfilled = CreateRequested().Fulfill("RG00000001", "user1");
+
+        var restored = fulfilled.Restore("RG00000001", "restore-user", timestamp);
+
+        restored.OpnameRequestStatus.Should().Be(OpnameRequestStatusEnum.Requested);
+        restored.FulfilledRegId.Should().Be("-");
+        restored.AuditTrail.Modified.Should().Be(new Bilreg.Domain.Shared.Helpers.CommonValueObjects.AuditInfoType("restore-user", timestamp));
+    }
+
+    [Fact]
+    public void GivenWrongSourceStateOrRegistration_WhenRestore_ThenThrows()
+    {
+        var fulfilled = CreateRequested().Fulfill("RG00000001", "user1");
+
+        Action wrongRegistration = () => fulfilled.Restore("RG00000002", "restore-user", new DateTime(2026, 7, 12));
+        Action wrongState = () => CreateRequested().Restore("RG00000001", "restore-user", new DateTime(2026, 7, 12));
+
+        wrongRegistration.Should().Throw<InvalidOperationException>();
+        wrongState.Should().Throw<InvalidOperationException>();
     }
 }

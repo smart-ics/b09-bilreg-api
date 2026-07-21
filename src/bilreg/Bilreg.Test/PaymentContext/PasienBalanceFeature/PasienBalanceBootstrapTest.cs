@@ -2,6 +2,7 @@ using Bilreg.Application.PaymentContext.PasienBalanceFeature;
 using Bilreg.Domain.PaymentContext.PasienBalanceFeature;
 using FluentAssertions;
 using Moq;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Test.PaymentContext.PasienBalanceFeature;
 
@@ -16,7 +17,7 @@ public class PasienBalanceBootstrapTest
     {
         var legacyReaderMock = new Mock<IPasienBalanceLegacyReader>();
         legacyReaderMock
-            .Setup(x => x.ListOutstanding(It.IsAny<PasienBalanceModel>()))
+            .Setup(x => x.ListOutstanding(It.IsAny<PasienBalanceModel>(), It.IsAny<DateOnly>()))
             .Returns(
             [
                 new LegacyOutstandingReceivable(PasienId, "RG-007", 300_000m, 200_000m, TrsDate1, "PIU007"),
@@ -24,7 +25,9 @@ public class PasienBalanceBootstrapTest
                 new LegacyOutstandingReceivable(PasienId, "RG-009", 0m, 0m, TrsDate2, "PIU009")
             ]);
 
-        var sut = new PasienBalanceBootstrapService(legacyReaderMock.Object);
+        var clock = new Mock<ITglJamProvider>();
+        clock.SetupGet(x => x.Now).Returns(TrsDate1);
+        var sut = new PasienBalanceBootstrapService(legacyReaderMock.Object, clock.Object);
         var model = sut.Bootstrap(PasienBalanceModel.Key(PasienId));
 
         model.PasienId.Should().Be(PasienId);
@@ -39,10 +42,12 @@ public class PasienBalanceBootstrapTest
     {
         var legacyReaderMock = new Mock<IPasienBalanceLegacyReader>();
         legacyReaderMock
-            .Setup(x => x.ListOutstanding(It.IsAny<PasienBalanceModel>()))
+            .Setup(x => x.ListOutstanding(It.IsAny<PasienBalanceModel>(), It.IsAny<DateOnly>()))
             .Returns([]);
 
-        var sut = new PasienBalanceBootstrapService(legacyReaderMock.Object);
+        var clock = new Mock<ITglJamProvider>();
+        clock.SetupGet(x => x.Now).Returns(TrsDate1);
+        var sut = new PasienBalanceBootstrapService(legacyReaderMock.Object, clock.Object);
         var model = sut.Bootstrap(PasienBalanceModel.Key(PasienId));
 
         model.OutstandingEntries.Should().BeEmpty();

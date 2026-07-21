@@ -126,9 +126,9 @@ public class TataRekeningPhase3ApplicationTest
             _transferReceivableService.Object,
             _auditRepo.Object,
             _unitOfWork.Object,
-            _currentUser);
+            _currentUser, TestTglJamProvider.Instance);
 
-        var result = await handler.Handle(new MergeBillingCommand("MR-MERGE"), CancellationToken.None);
+        var result = await handler.Handle(new MergeBillingCommand("MR-MERGE", "UserId"), CancellationToken.None);
 
         result.MergeRequest.Status.Should().Be(MergeRequestStatusEnum.Executed);
         result.TargetSummary.RegId.Should().Be(RegId);
@@ -164,9 +164,9 @@ public class TataRekeningPhase3ApplicationTest
             _transferReceivableService.Object,
             _auditRepo.Object,
             _unitOfWork.Object,
-            _currentUser);
+            _currentUser, TestTglJamProvider.Instance);
 
-        var act = () => handler.Handle(new MergeBillingCommand("MR-FAIL"), CancellationToken.None);
+        var act = () => handler.Handle(new MergeBillingCommand("MR-FAIL", "UserId"), CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
         _tataRekeningRepo.Verify(r => r.SaveChanges(It.IsAny<TataRekeningModel>()), Times.Never);
@@ -191,11 +191,11 @@ public class TataRekeningPhase3ApplicationTest
             _mergeRequestRepo.Object,
             TataRekeningDomainTestHelper.VerificationService,
             _unitOfWork.Object,
-            _currentUser);
+            _currentUser, TestTglJamProvider.Instance);
 
         var result = await handler.Handle(
             new FinancialVerificationCommand(
-                RegId, FinancialVerificationAction.Verify, TestDate),
+                RegId, FinancialVerificationAction.Verify, TestDate, "UserId"),
             CancellationToken.None);
 
         result.Summary.FinancialVerificationStatus.Should().Be(FinancialVerificationStatusEnum.Valid);
@@ -216,11 +216,11 @@ public class TataRekeningPhase3ApplicationTest
             _mergeRequestRepo.Object,
             TataRekeningDomainTestHelper.VerificationService,
             _unitOfWork.Object,
-            _currentUser);
+            _currentUser, TestTglJamProvider.Instance);
 
         var act = () => handler.Handle(
             new FinancialVerificationCommand(
-                RegId, FinancialVerificationAction.Verify, TestDate),
+                RegId, FinancialVerificationAction.Verify, TestDate, "UserId"),
             CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
@@ -239,11 +239,11 @@ public class TataRekeningPhase3ApplicationTest
             _mergeRequestRepo.Object,
             TataRekeningDomainTestHelper.VerificationService,
             _unitOfWork.Object,
-            _currentUser);
+            _currentUser, TestTglJamProvider.Instance);
 
         var result = await handler.Handle(
             new FinancialVerificationCommand(
-                RegId, FinancialVerificationAction.RequireAdjustment, TestDate),
+                RegId, FinancialVerificationAction.RequireAdjustment, TestDate, "UserId"),
             CancellationToken.None);
 
         result.Summary.FinancialVerificationStatus
@@ -290,10 +290,10 @@ public class TataRekeningPhase3ApplicationTest
         SetupTataRekeningLoad(RegId, tataRekening);
 
         var handler = new FinalizeFinancialResponsibilityHandler(
-            _tataRekeningRepo.Object, _trsBillingRepo.Object, _unitOfWork.Object, _currentUser);
+            _tataRekeningRepo.Object, _trsBillingRepo.Object, _unitOfWork.Object, _currentUser, TestTglJamProvider.Instance);
 
         var result = await handler.Handle(
-            new FinalizeFinancialResponsibilityCommand(RegId, TestDate),
+            new FinalizeFinancialResponsibilityCommand(RegId, "UserId", TestDate),
             CancellationToken.None);
 
         result.Summary.Status.Should().Be(TataRekeningStatusEnum.Finalized);
@@ -311,9 +311,9 @@ public class TataRekeningPhase3ApplicationTest
         SetupTataRekeningLoad(RegId, tataRekening);
 
         var handler = new CancelFinalizationHandler(
-            _tataRekeningRepo.Object, _trsBillingRepo.Object, _auditRepo.Object, _unitOfWork.Object, _currentUser);
+            _tataRekeningRepo.Object, _trsBillingRepo.Object, _auditRepo.Object, _unitOfWork.Object, _currentUser, TestTglJamProvider.Instance);
 
-        var result = await handler.Handle(new CancelFinalizationCommand(RegId, "Koreksi alokasi"), CancellationToken.None);
+        var result = await handler.Handle(new CancelFinalizationCommand(RegId, "UserId", "Koreksi alokasi"), CancellationToken.None);
 
         result.Summary.Status.Should().Be(TataRekeningStatusEnum.Closed);
         result.Summary.IsFinancialResponsibilityAllocated.Should().BeFalse();
@@ -337,14 +337,14 @@ public class TataRekeningPhase3ApplicationTest
             TataRekeningDomainTestHelper.AdjustmentService,
             _auditRepo.Object,
             _unitOfWork.Object,
-            _currentUser);
+            _currentUser, TestTglJamProvider.Instance);
 
         var result = await handler.Handle(
             new FinancialAdjustmentCommand(
                 RegId,
                 new FinancialAdjustmentInputDto(
                     FinancialAdjustmentTypeEnum.Waive, 10_000m, "Waive test", "BILL-WV"),
-                TestDate),
+                TestDate, "UserId"),
             CancellationToken.None);
 
         result.RequiresReopen.Should().BeFalse();
@@ -366,7 +366,7 @@ public class TataRekeningPhase3ApplicationTest
             TataRekeningDomainTestHelper.AdjustmentService,
             _auditRepo.Object,
             _unitOfWork.Object,
-            _currentUser);
+            _currentUser, TestTglJamProvider.Instance);
 
         var result = await handler.Handle(
             new FinancialAdjustmentCommand(
@@ -377,7 +377,7 @@ public class TataRekeningPhase3ApplicationTest
                     "Need charge source",
                     "BILL-RO",
                     RequiresChargeSourceChange: true),
-                TestDate),
+                TestDate, "UserId"),
             CancellationToken.None);
 
         result.RequiresReopen.Should().BeTrue();
@@ -392,10 +392,10 @@ public class TataRekeningPhase3ApplicationTest
         SetupTataRekeningLoad(RegId, tataRekening);
 
         var handler = new ReopenBillingHandler(
-            _tataRekeningRepo.Object, _auditRepo.Object, _unitOfWork.Object, _currentUser);
+            _tataRekeningRepo.Object, _auditRepo.Object, _unitOfWork.Object, _currentUser, TestTglJamProvider.Instance);
 
         var result = await handler.Handle(
-            new ReopenBillingCommand(RegId, "Koreksi charge source"),
+            new ReopenBillingCommand(RegId, "Koreksi charge source", PetugasVerif),
             CancellationToken.None);
 
         result.Summary.Status.Should().Be(TataRekeningStatusEnum.Opened);
@@ -417,10 +417,10 @@ public class TataRekeningPhase3ApplicationTest
         SetupTataRekeningLoad(RegId, tataRekening);
 
         var handler = new SettlementInitiationHandler(
-            _tataRekeningRepo.Object, _auditRepo.Object, _unitOfWork.Object, _currentUser);
+            _tataRekeningRepo.Object, _auditRepo.Object, _unitOfWork.Object, _currentUser, TestTglJamProvider.Instance);
 
         var result = await handler.Handle(
-            new SettlementInitiationCommand(RegId, TestDate),
+            new SettlementInitiationCommand(RegId, "UserId", TestDate),
             CancellationToken.None);
 
         result.Summary.SettlementInitiated.Should().BeTrue();

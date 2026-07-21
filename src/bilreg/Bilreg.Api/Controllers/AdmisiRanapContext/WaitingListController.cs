@@ -8,7 +8,7 @@ using Nuna.Lib.ActionResultHelper;
 namespace Bilreg.Api.Controllers.AdmisiRanapContext;
 
 [Route("api/admisi-ranap/waiting-list")]
-[ApiController]
+//[ApiController]
 [Authorize]
 [ServiceFilter(typeof(AdmisiRanapEnabledFilter))]
 public class WaitingListController : ControllerBase
@@ -42,6 +42,13 @@ public class WaitingListController : ControllerBase
     {
         await _mediator.Send(new AdmCloseWaitingListCmd(id, body.UserId));
         return Ok(new JSendOk("Done"));
+    }
+
+    [HttpGet("by-reg/{regId}")]
+    public async Task<IActionResult> GetByReg(string regId)
+    {
+        var result = await _mediator.Send(new AdmGetWaitingListByRegIdQry(regId));
+        return Ok(new JSendOk(result));
     }
 
     [HttpGet("{id}")]

@@ -22,7 +22,7 @@ Standard visit (clinical flow first — registrasi boleh mengikuti layanan medis
 | 3 | Assessment triage (ATS) | `HasTriage` true; note `NextReTriageAt` |
 | 4a | **Redirect rawat jalan** — only if clinical decision | Visit `REDIRECTED`; **no active bed** |
 | 4b | **Continue IGD** — assign bed from available list | Bed `Occupied`; patient observed |
-| 4c | **Transfer bed** (UC04b) — salah bed atau prioritas ulang | Satu transaksi; timeline `TRANSFER_BED`; histori `PakaiBed` tetap |
+| 4c | **Transfer bed** (UC04b) — salah bed atau prioritas ulang | Satu transaksi; timeline `TRANSFER_BED`; histori `PakaiBedIgd` tetap |
 | 5 | Tindakan / BHP as needed | Transactions linked to visit |
 | 6 | Registrasi administratif (`RegId`) | State `REGISTERED` |
 | 7 | Check-out bed if still observed (optional before discharge) | `BedIgdId` empty on visit |
@@ -46,7 +46,7 @@ flowchart TD
     end
     subgraph dba [Operator_DBA]
         D1[Orphan_sweep]
-        D2[Manual_PakaiBed_close]
+        D2[Manual_PakaiBedIgd_close]
         D3[Re_run_sweep]
     end
     S1 --> S2 --> S3 --> S4
@@ -67,7 +67,7 @@ flowchart TD
 | Bed IGD master | `BedIgd` rows exist; state `Active` for assign |
 | Dokter PPA | Valid `DokterId` in Admisi PPA master |
 | Registrasi | `RegId` exists in Admisi before link (step 6) |
-| Sentinel dates | Open `PakaiBed` uses `CheckOutDateTime = 3000-01-01` |
+| Sentinel dates | Open `PakaiBedIgd` uses `CheckOutDateTime = 3000-01-01` |
 
 Bed lifecycle after release: `Occupied` → `Dirty` → cleaning → `Active` (via application bed maintenance use-cases when used).
 
@@ -82,7 +82,7 @@ After deploy or incident:
 | Active visits load | `GET /api/IgdVisit/aktif` returns expected rows |
 | Triage dashboard | `GET /api/IgdVisit/triage-monitoring`; overdue flags sensible |
 | Available beds | `GET /api/BedIgd/available` lists only assignable beds |
-| Orphan sweep clean | `GET /api/BedIgd/pakaiBed/orphan` returns **empty array** |
+| Orphan sweep clean | `GET /api/BedIgd/pakaiBedIgd/orphan` returns **empty array** |
 | No double occupancy | Same visit cannot hold two beds (DB index `UQ_BILRG_BedIgd_VisitActive`) |
 
 ---
@@ -101,7 +101,7 @@ After deploy or incident:
 | Discharge rejected — masih di bed | DR-08 | Check-out bed or use discharge (cascade releases bed) |
 | Void rejected — ada tindakan/BHP | DR-09 | Cannot void; use discharge path if appropriate |
 | Redirect rejected — masih di bed | DR-07 | Check-out bed first |
-| Orphan rows after incident | Partial DML / historical bug | Follow **Orphan PakaiBed recovery** below |
+| Orphan rows after incident | Partial DML / historical bug | Follow **Orphan PakaiBedIgd recovery** below |
 | Concurrent assign bed failure | Another user took bed | Refresh available list and retry |
 
 ---
@@ -110,29 +110,29 @@ After deploy or incident:
 
 ### What is an orphan?
 
-A `PakaiBed` row is **open** (`CheckOutDateTime = 3000-01-01`) but visit/bed state indicates occupancy ended:
+A `PakaiBedIgd` row is **open** (`CheckOutDateTime = 3000-01-01`) but visit/bed state indicates occupancy ended:
 
-| OrphanReason | Condition (open PakaiBed + ...) |
+| OrphanReason | Condition (open PakaiBedIgd + ...) |
 | ------------ | ------------------------------- |
 | `VISIT_NOT_FOUND` | `IgdVisitId` missing from `BILRG_IgdVisit` |
 | `VISIT_VOIDED` | Visit `VodDate` filled |
 | `VISIT_TERMINAL` | `AdministrativeState` is `DISCHARGED` or `REDIRECTED` |
 | `BED_NOT_FOUND` | `BedIgdId` missing from `BILRG_BedIgd` |
-| `BED_REASSIGNED` | Bed `CurrentIgdVisitId` ≠ PakaiBed visit |
+| `BED_REASSIGNED` | Bed `CurrentIgdVisitId` ≠ PakaiBedIgd visit |
 | `BED_NOT_OCCUPIED` | Bed `BedState` is not `OCCUPIED` |
 
-Steady-state operation writes `IgdVisit`, `BedIgd`, and `PakaiBed` in one application transaction; orphans imply historical bug, manual SQL, or rare mid-transaction failure.
+Steady-state operation writes `IgdVisit`, `BedIgd`, and `PakaiBedIgd` in one application transaction; orphans imply historical bug, manual SQL, or rare mid-transaction failure.
 
 ### Playbook
 
 > Run in low-traffic window. Use explicit DB transaction; backup affected rows before update.
 
-1. **Snapshot** — `GET /api/BedIgd/pakaiBed/orphan`; save JSON in incident ticket.
+1. **Snapshot** — `GET /api/BedIgd/pakaiBedIgd/orphan`; save JSON in incident ticket.
 2. **Per `OrphanReason` — default action** (sanity-check against incident):
 
 | OrphanReason | Default action |
 | ------------ | -------------- |
-| `VISIT_TERMINAL` | Close PakaiBed using visit discharge audit timestamps |
+| `VISIT_TERMINAL` | Close PakaiBedIgd using visit discharge audit timestamps |
 | `VISIT_VOIDED` | Close using visit `VodDate` / `VodUser` |
 | `VISIT_NOT_FOUND` | Close `CheckOutDateTime` ← `CheckInDateTime`, `CheckOutUserId` ← `SYSTEM`; investigate missing visit |
 | `BED_NOT_FOUND` | Same as `VISIT_NOT_FOUND`; ticket for missing bed master |
@@ -144,10 +144,10 @@ Steady-state operation writes `IgdVisit`, `BedIgd`, and `PakaiBed` in one applic
 ```sql
 BEGIN TRAN;
 
-UPDATE BILRG_PakaiBed
+UPDATE BILRG_PakaiBedIgd
 SET CheckOutDateTime = @CheckOutDateTime,
     CheckOutUserId   = @CheckOutUserId
-WHERE PakaiBedId = @PakaiBedId
+WHERE PakaiBedIgdId = @PakaiBedIgdId
   AND CheckOutDateTime = '3000-01-01';
 
 -- COMMIT after verification
@@ -157,16 +157,16 @@ WHERE PakaiBedId = @PakaiBedId
 
 ### Anti-procedures
 
-- Do **not** delete `PakaiBed` rows (billing/audit history).
+- Do **not** delete `PakaiBedIgd` rows (billing/audit history).
 - Do **not** mutate `BedIgd` directly — use application routes (`checkOut`, `discharge`, `void`).
 - Do **not** drop `UQ_BILRG_BedIgd_VisitActive`.
-- Do **not** reopen closed `PakaiBed`; re-admit via `POST .../assignBed` atau **transfer** via `POST .../transferBed` (bukan mengedit baris lama).
+- Do **not** reopen closed `PakaiBedIgd`; re-admit via `POST .../assignBed` atau **transfer** via `POST .../transferBed` (bukan mengedit baris lama).
 
 ---
 
 ## ROLLOUT CHECKLIST
 
-- [ ] SQL scripts for `BILRG_IgdVisit*` / `BILRG_BedIgd` / `BILRG_PakaiBed` applied
+- [ ] SQL scripts for `BILRG_IgdVisit*` / `BILRG_BedIgd` / `BILRG_PakaiBedIgd` applied
 - [ ] Bed master seeded and `Active`
 - [ ] Smoke: daftar → triage → assign bed → **transfer bed** (opsional) → register → discharge
 - [ ] Orphan sweep empty on production after cutover

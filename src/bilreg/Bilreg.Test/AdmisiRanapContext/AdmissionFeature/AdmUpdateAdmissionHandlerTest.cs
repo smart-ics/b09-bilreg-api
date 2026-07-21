@@ -25,7 +25,7 @@ public class AdmUpdateAdmissionHandlerTest
     {
         var admission = AdmissionModel.Admit(
             SamplePasienReff(),
-            SampleKelas(),
+            SampleKelasDk(),
             SampleBangsal(),
             null,
             null,
@@ -44,15 +44,15 @@ public class AdmUpdateAdmissionHandlerTest
         var handler = new AdmUpdateAdmissionHandler(
             _admissionRepoMock.Object,
             _wardGatewayMock.Object,
-            _auditRepoMock.Object);
+            _auditRepoMock.Object, TestTglJamProvider.Instance);
 
         await handler.Handle(
-            new AdmUpdateAdmissionCmd(admission.RegId, "K2", "B2", "user2"),
+            new AdmUpdateAdmissionCmd(admission.RegId, "2", "B2", "user2"),
             CancellationToken.None);
 
         saved.Should().NotBeNull();
         saved!.AdmissionStatus.Should().Be(AdmissionStatusEnum.Updated);
-        saved.KelasRawat.KelasId.Should().Be("K2");
+        saved.KelasDk.KelasDkId.Should().Be("2");
         _auditRepoMock.Verify(x => x.SaveChanges(It.IsAny<AuditLog>()), Times.Once);
     }
 
@@ -61,7 +61,7 @@ public class AdmUpdateAdmissionHandlerTest
     {
         var admission = AdmissionModel.Admit(
             SamplePasienReff(),
-            SampleKelas(),
+            SampleKelasDk(),
             SampleBangsal(),
             null,
             null,
@@ -76,31 +76,66 @@ public class AdmUpdateAdmissionHandlerTest
         var handler = new AdmUpdateAdmissionHandler(
             _admissionRepoMock.Object,
             _wardGatewayMock.Object,
-            _auditRepoMock.Object);
+            _auditRepoMock.Object, TestTglJamProvider.Instance);
 
         var act = async () => await handler.Handle(
-            new AdmUpdateAdmissionCmd(admission.RegId, "K2", "B2", "user2"),
+            new AdmUpdateAdmissionCmd(admission.RegId, "2", "B2", "user2"),
             CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*Cancelled*");
     }
 
+    [Fact]
+    public async Task UT03_GivenCareClassChange_WhenBangsalIneligible_ThenThrows()
+    {
+        var admission = AdmissionModel.Admit(
+            SamplePasienReff(),
+            SampleKelasDk(),
+            SampleBangsal(),
+            null,
+            null,
+            "user1");
+
+        _admissionRepoMock
+            .Setup(x => x.LoadEntity(It.Is<IRegKey>(k => k.RegId == admission.RegId)))
+            .Returns(MayBe.From(admission));
+
+        _wardGatewayMock
+            .Setup(x => x.ResolveKelasDk("2"))
+            .Returns(new KelasDkType("2", "Kelas DK 2"));
+        _wardGatewayMock
+            .Setup(x => x.ResolveBangsalForCareClass("B1", "2"))
+            .Throws(new InvalidOperationException("Bangsal tidak memenuhi syarat"));
+
+        var handler = new AdmUpdateAdmissionHandler(
+            _admissionRepoMock.Object,
+            _wardGatewayMock.Object,
+            _auditRepoMock.Object, TestTglJamProvider.Instance);
+
+        var act = async () => await handler.Handle(
+            new AdmUpdateAdmissionCmd(admission.RegId, "2", "B1", "user2"),
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*tidak memenuhi syarat*");
+    }
+
     private void SetupMasters()
     {
         _wardGatewayMock
-            .Setup(x => x.ResolveKelas("K2"))
-            .Returns(new KelasReff("K2", "Kelas 2"));
+            .Setup(x => x.ResolveKelasDk("2"))
+            .Returns(new KelasDkType("2", "Kelas DK 2"));
 
         _wardGatewayMock
-            .Setup(x => x.ResolveBangsal("B2"))
+            .Setup(x => x.ResolveBangsalForCareClass("B2", "2"))
             .Returns(new BangsalReff("B2", "Bangsal B"));
     }
 
     private static PasienReff SamplePasienReff() =>
         new("P001", "Pasien Test", new DateOnly(1990, 1, 1), "L");
 
-    private static KelasReff SampleKelas() => new("K1", "Kelas 1");
+    private static KelasDkType SampleKelasDk() => new("1", "Kelas DK 1");
 
     private static BangsalReff SampleBangsal() => new("B1", "Bangsal A");
 }

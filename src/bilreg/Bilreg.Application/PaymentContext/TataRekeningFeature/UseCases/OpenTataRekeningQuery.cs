@@ -2,6 +2,7 @@ using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.PaymentContext.TataRekeningFeature.Dtos;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.PaymentContext.TrsBillFeature;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
 

@@ -37,10 +37,10 @@ public class AdmOpnameRequestHandlerTest
             _opnameRepoMock.Object,
             _patientGatewayMock.Object,
             _doctorGatewayMock.Object,
-            _auditRepoMock.Object);
+            _auditRepoMock.Object, TestTglJamProvider.Instance);
 
         var response = await handler.Handle(
-            new AdmCreateOpnameRequestCmd("P001", "D001", "Catatan", "user1"),
+            new AdmCreateOpnameRequestCmd("P001", "D001", "2026-07-30", "Catatan", "user1"),
             CancellationToken.None);
 
         response.OpnameRequestId.Should().StartWith("OPN");
@@ -56,6 +56,7 @@ public class AdmOpnameRequestHandlerTest
         var requested = OpnameRequestModel.Create(
             new PasienReff("P001", "Pasien Test", new DateOnly(1990, 1, 1), "L"),
             new PpaReff("D001", "Dr. Test"),
+            new DateTime(2026, 7, 20),
             "Catatan",
             "user1");
 
@@ -70,7 +71,7 @@ public class AdmOpnameRequestHandlerTest
 
         var handler = new AdmCancelOpnameRequestHandler(
             _opnameRepoMock.Object,
-            _auditRepoMock.Object);
+            _auditRepoMock.Object, TestTglJamProvider.Instance);
         await handler.Handle(
             new AdmCancelOpnameRequestCmd(requested.OpnameRequestId, "user2"),
             CancellationToken.None);

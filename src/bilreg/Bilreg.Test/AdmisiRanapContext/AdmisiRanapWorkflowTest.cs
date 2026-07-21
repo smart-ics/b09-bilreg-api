@@ -33,11 +33,11 @@ public class AdmisiRanapWorkflowTest
         var h = new WorkflowHarness();
 
         var opnameResponse = await h.CreateOpnameHandler.Handle(
-            new AdmCreateOpnameRequestCmd("P001", "D001", "Direct", "user1"),
+            new AdmCreateOpnameRequestCmd("P001", "D001","2026-07-30", "Direct", "user1"),
             CancellationToken.None);
 
         var admissionResponse = await h.ProcessOpnameHandler.Handle(
-            new AdmProcessOpnameRequestCmd(opnameResponse.OpnameRequestId, "K1", "B1", "user2"),
+            new AdmProcessOpnameRequestCmd(opnameResponse.OpnameRequestId, "1", "B1", "user2", RegistrationData()),
             CancellationToken.None);
 
         h.Opnames[opnameResponse.OpnameRequestId].OpnameRequestStatus
@@ -59,24 +59,24 @@ public class AdmisiRanapWorkflowTest
         var h = new WorkflowHarness();
 
         await h.CreateOpnameHandler.Handle(
-            new AdmCreateOpnameRequestCmd("P001", "D001", "Planned clinical", "user1"),
+            new AdmCreateOpnameRequestCmd("P001", "D001", "2026-07-30", "Planned clinical", "user1"),
             CancellationToken.None);
 
         var reservationResponse = await h.CreateReservationHandler.Handle(
-            new AdmCreateReservationCmd("P001", new DateTime(2026, 9, 1), "K1", "B1", "user1"),
+            new AdmCreateReservationCmd("P001", "2026-09-01", "K1", "B1", "user1"),
             CancellationToken.None);
 
         await h.MaintainReservationHandler.Handle(
             new AdmMaintainReservationCmd(
                 reservationResponse.ReservationId,
-                new DateTime(2026, 9, 5),
+                "2026-09-05",
                 "K1",
                 "B1",
                 "user2"),
             CancellationToken.None);
 
         var admissionResponse = await h.ProcessReservationHandler.Handle(
-            new AdmProcessReservationCmd(reservationResponse.ReservationId, "K1", "B1", "user3"),
+            new AdmProcessReservationCmd(reservationResponse.ReservationId, "1", "B1", "user3", RegistrationData()),
             CancellationToken.None);
 
         h.Reservations[reservationResponse.ReservationId].ReservationStatus
@@ -91,20 +91,20 @@ public class AdmisiRanapWorkflowTest
         var h = new WorkflowHarness();
 
         var reservationResponse = await h.CreateReservationHandler.Handle(
-            new AdmCreateReservationCmd("P001", new DateTime(2026, 10, 1), "K1", "B1", "user1"),
+            new AdmCreateReservationCmd("P001", "2026-10-01", "K1", "B1", "user1"),
             CancellationToken.None);
 
         await h.MaintainReservationHandler.Handle(
             new AdmMaintainReservationCmd(
                 reservationResponse.ReservationId,
-                new DateTime(2026, 10, 1),
+                "2026-10-01",
                 "K2",
                 "B2",
                 "user2"),
             CancellationToken.None);
 
         var admissionResponse = await h.ProcessReservationHandler.Handle(
-            new AdmProcessReservationCmd(reservationResponse.ReservationId, "K2", "B2", "user3"),
+            new AdmProcessReservationCmd(reservationResponse.ReservationId, "2", "B2", "user3", RegistrationData()),
             CancellationToken.None);
 
         h.Admissions[admissionResponse.RegId].AdmissionStatus
@@ -118,11 +118,11 @@ public class AdmisiRanapWorkflowTest
         var h = new WorkflowHarness();
 
         var opnameResponse = await h.CreateOpnameHandler.Handle(
-            new AdmCreateOpnameRequestCmd("P001", "D001", "Transfer prep", "user1"),
+            new AdmCreateOpnameRequestCmd("P001", "D001", "2026-07-30", "Transfer prep", "user1"),
             CancellationToken.None);
 
         var admissionResponse = await h.ProcessOpnameHandler.Handle(
-            new AdmProcessOpnameRequestCmd(opnameResponse.OpnameRequestId, "K1", "B1", "user2"),
+            new AdmProcessOpnameRequestCmd(opnameResponse.OpnameRequestId, "1", "B1", "user2", RegistrationData()),
             CancellationToken.None);
 
         var wlResponse = await h.CreateWaitingListHandler.Handle(
@@ -161,17 +161,50 @@ public class AdmisiRanapWorkflowTest
             var auditRepo = new Mock<IAuditRepo>();
 
             CreateOpnameHandler = new AdmCreateOpnameRequestHandler(
-                opnameRepo.Object, patientGateway.Object, doctorGateway.Object, auditRepo.Object);
-            ProcessOpnameHandler = new AdmProcessOpnameRequestHandler(
-                admissionRepo.Object, opnameRepo.Object, wardGateway.Object, auditRepo.Object);
+                opnameRepo.Object, patientGateway.Object, doctorGateway.Object, auditRepo.Object, TestTglJamProvider.Instance);
+            var orchestrator = CreateOrchestrator();
+            ProcessOpnameHandler = new AdmProcessOpnameRequestHandler(orchestrator.Object);
             CreateReservationHandler = new AdmCreateReservationHandler(
-                reservationRepo.Object, patientGateway.Object, wardGateway.Object, auditRepo.Object);
+                reservationRepo.Object, patientGateway.Object, wardGateway.Object, auditRepo.Object, TestTglJamProvider.Instance);
             MaintainReservationHandler = new AdmMaintainReservationHandler(
-                reservationRepo.Object, wardGateway.Object, auditRepo.Object);
-            ProcessReservationHandler = new AdmProcessReservationHandler(
-                admissionRepo.Object, reservationRepo.Object, wardGateway.Object, auditRepo.Object);
+                reservationRepo.Object, wardGateway.Object, auditRepo.Object, TestTglJamProvider.Instance);
+            ProcessReservationHandler = new AdmProcessReservationHandler(orchestrator.Object);
             CreateWaitingListHandler = new AdmCreateWaitingListHandler(
-                waitingListRepo.Object, admissionRepo.Object, wardGateway.Object, auditRepo.Object);
+                waitingListRepo.Object, admissionRepo.Object, wardGateway.Object, auditRepo.Object, TestTglJamProvider.Instance);
+        }
+
+        private Mock<IAdmissionRegistrationOrchestrator> CreateOrchestrator()
+        {
+            var mock = new Mock<IAdmissionRegistrationOrchestrator>();
+            mock.Setup(x => x.ProcessOpnameRequest(
+                    It.IsAny<AdmProcessOpnameRequestCmd>(), It.IsAny<CancellationToken>()))
+                .Returns((AdmProcessOpnameRequestCmd cmd, CancellationToken _) =>
+                {
+                    var opname = Opnames[cmd.OpnameRequestId];
+                    var admission = AdmissionModel.Admit(opname.Pasien,
+                        new KelasDkType(cmd.KelasDkId, $"Kelas DK {cmd.KelasDkId}"),
+                        new BangsalReff(cmd.BangsalId, $"Bangsal {cmd.BangsalId}"),
+                        opname.OpnameRequestId, null, cmd.UserId);
+                    Admissions[admission.RegId] = admission;
+                    Opnames[opname.OpnameRequestId] = opname.Fulfill(admission.RegId, cmd.UserId);
+                    return Task.FromResult(new AdmProcessAdmissionResponse(
+                        admission.RegId, admission.AdmissionStatus));
+                });
+            mock.Setup(x => x.ProcessReservation(
+                    It.IsAny<AdmProcessReservationCmd>(), It.IsAny<CancellationToken>()))
+                .Returns((AdmProcessReservationCmd cmd, CancellationToken _) =>
+                {
+                    var reservation = Reservations[cmd.ReservationId];
+                    var admission = AdmissionModel.Admit(reservation.Pasien,
+                        new KelasDkType(cmd.KelasDkId, $"Kelas DK {cmd.KelasDkId}"),
+                        new BangsalReff(cmd.BangsalId, $"Bangsal {cmd.BangsalId}"),
+                        null, reservation.ReservationId, cmd.UserId);
+                    Admissions[admission.RegId] = admission;
+                    Reservations[reservation.ReservationId] = reservation.Realize(admission.RegId, cmd.UserId);
+                    return Task.FromResult(new AdmProcessAdmissionResponse(
+                        admission.RegId, admission.AdmissionStatus));
+                });
+            return mock;
         }
 
         private Mock<IOpnameRequestRepo> CreateOpnameRepo()
@@ -253,9 +286,18 @@ public class AdmisiRanapWorkflowTest
             var mock = new Mock<IWardAccommodationGateway>();
             mock.Setup(x => x.ResolveKelas("K1")).Returns(new KelasReff("K1", "Kelas 1"));
             mock.Setup(x => x.ResolveKelas("K2")).Returns(new KelasReff("K2", "Kelas 2"));
+            mock.Setup(x => x.ResolveKelasDk("1")).Returns(new KelasDkType("1", "Kelas DK 1"));
+            mock.Setup(x => x.ResolveKelasDk("2")).Returns(new KelasDkType("2", "Kelas DK 2"));
             mock.Setup(x => x.ResolveBangsal("B1")).Returns(new BangsalReff("B1", "Bangsal A"));
             mock.Setup(x => x.ResolveBangsal("B2")).Returns(new BangsalReff("B2", "Bangsal B"));
+            mock.Setup(x => x.ResolveBangsalForCareClass("B1", "1")).Returns(new BangsalReff("B1", "Bangsal A"));
+            mock.Setup(x => x.ResolveBangsalForCareClass("B2", "2")).Returns(new BangsalReff("B2", "Bangsal B"));
+            mock.Setup(x => x.ListEligibleBangsal("1")).Returns([new BangsalReff("B1", "Bangsal A")]);
+            mock.Setup(x => x.ListEligibleBangsal("2")).Returns([new BangsalReff("B2", "Bangsal B")]);
             return mock;
         }
     }
+
+    private static AdmissionRegistrationData RegistrationData() =>
+        new("J1", "CM1", "IGD", "R1", "D1", "PESERTA1");
 }

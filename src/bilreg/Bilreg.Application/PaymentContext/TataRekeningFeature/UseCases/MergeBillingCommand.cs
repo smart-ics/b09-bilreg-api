@@ -11,7 +11,7 @@ using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.PaymentContext.TataRekeningFeature.UseCases;
 
-public record MergeBillingCommand(string MergeRequestId) : IRequest<MergeBillingResponse>, IMergeRequestKey;
+public record MergeBillingCommand(string MergeRequestId, string UserId) : IRequest<MergeBillingResponse>, IMergeRequestKey;
 
 public record MergeBillingResponse(
     MergeRequestSummaryDto MergeRequest,
@@ -28,6 +28,7 @@ public class MergeBillingHandler : IRequestHandler<MergeBillingCommand, MergeBil
     private readonly IAuditRepo _auditRepo;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserContext _currentUser;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public MergeBillingHandler(
         ITataRekeningRepo tataRekeningRepo,
@@ -37,7 +38,8 @@ public class MergeBillingHandler : IRequestHandler<MergeBillingCommand, MergeBil
         ITransferReceivableService transferReceivableService,
         IAuditRepo auditRepo,
         IUnitOfWork unitOfWork,
-        ICurrentUserContext currentUser)
+        ICurrentUserContext currentUser,
+        ITglJamProvider tglJamProvider)
     {
         _tataRekeningRepo = tataRekeningRepo;
         _mergeRequestRepo = mergeRequestRepo;
@@ -47,11 +49,13 @@ public class MergeBillingHandler : IRequestHandler<MergeBillingCommand, MergeBil
         _auditRepo = auditRepo;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<MergeBillingResponse> Handle(MergeBillingCommand request, CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.MergeRequestId);
+        Guard.Against.NullOrWhiteSpace(request.UserId);
 
         using var scope = _unitOfWork.Begin();
 
@@ -82,7 +86,8 @@ public class MergeBillingHandler : IRequestHandler<MergeBillingCommand, MergeBil
         _transferReceivableService.Transfer(mergeRequest.SourceRegId, mergeRequest.TargetRegId!);
 
         var audit = AuditLog.Create(
-            userId: _currentUser.GetActorUserId(),
+            userId: request.UserId,
+            eventTime: _tglJamProvider.Now,
             actionType: "TATA_REKENING_MERGE_BILLING",
             entityName: nameof(MergeRequestModel),
             entityId: mergeRequest.MergeRequestId,

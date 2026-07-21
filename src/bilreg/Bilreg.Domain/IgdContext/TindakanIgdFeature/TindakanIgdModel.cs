@@ -58,7 +58,7 @@ public class TindakanIgdModel : ITindakanIgdKey
     public static TindakanIgdModel Create(
         IgdVisitModel visit,
         string reffId, string desciption, int qty, ActivityTindakanIgd aktifitas,
-        PpaType ppa, string userId)
+        PpaType ppa, string userId, DateTime occurredAt = default)
     {
         Guard.Against.Null(visit);
         Guard.Against.NullOrWhiteSpace(reffId, nameof(reffId));
@@ -69,7 +69,7 @@ public class TindakanIgdModel : ITindakanIgdKey
         if (visit.IsTerminal)
             throw new InvalidOperationException(
                 $"Visit {visit.IgdVisitId} sudah terminal; tindakan tidak dapat ditambahkan.");
-        var audit = new AuditInfoType(userId, DateTime.Now);
+        var audit = new AuditInfoType(userId, occurredAt);
 
         return new TindakanIgdModel(
             NunaId.New(ID_PREFIX),

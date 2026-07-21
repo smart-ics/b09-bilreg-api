@@ -1,4 +1,4 @@
-﻿using Ardalis.GuardClauses;
+using Ardalis.GuardClauses;
 using Bilreg.Application.PasienContext.DemografiFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.PasienContext.DemografiFeature;
@@ -20,14 +20,17 @@ public class PasienCreateByKtpHandler : IRequestHandler<PasienCreateByKtpCommand
     private readonly IPasienRepo _pasienRepo;
     private readonly IKelurahanRepo _kelurahanRepo;
     private readonly IPasienFactory _pasienFactory;
+    private readonly ITglJamProvider _tglJamProvider;
     private const string FORMAT_TGL_YMD = "yyyy-MM-dd";
     public PasienCreateByKtpHandler(IPasienRepo pasienRepo,
         IPasienFactory pasienFactory,
-        IKelurahanRepo kelurahanRepo)
+        IKelurahanRepo kelurahanRepo,
+        ITglJamProvider tglJamProvider)
     {
         _pasienRepo = pasienRepo;
         _pasienFactory = pasienFactory;
         _kelurahanRepo = kelurahanRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<PasienCreateByKtpResponse> Handle(PasienCreateByKtpCommand request, CancellationToken cancellationToken)
@@ -48,7 +51,7 @@ public class PasienCreateByKtpHandler : IRequestHandler<PasienCreateByKtpCommand
         var golDarah = new GolDarahType(request.GolDarah);
         
         var pasien = _pasienFactory.CreateFromPerson(person, request.PasienName, 
-            request.TempatLahir, golDarah, "-");
+            request.TempatLahir, golDarah, "-", _tglJamProvider.Now);
 
         //      KTP
         var kelurahan = _kelurahanRepo.LoadEntity(KelurahanType.Key(request.KelurahanKtpId))

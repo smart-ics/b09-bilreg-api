@@ -12,7 +12,7 @@ namespace Bilreg.Api.Controllers.PaymentContext.TataRekeningFeature;
 /// </summary>
 [Route("api/tatarekening")]
 [ApiController]
-[Authorize]
+//[Authorize]
 public class TataRekeningController : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -59,7 +59,7 @@ public class TataRekeningController : ControllerBase
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> Merge([FromBody] MergeBillingRequest request)
     {
-        var result = await _mediator.Send(new MergeBillingCommand(request.MergeRequestId));
+        var result = await _mediator.Send(new MergeBillingCommand(request.MergeRequestId, request.UserId));
         return Ok(new JSendOk(TataRekeningApiMapper.ToApiResponse(result)));
     }
 
@@ -74,9 +74,8 @@ public class TataRekeningController : ControllerBase
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> Verify(string regId, [FromBody] FinancialVerificationRequest request)
     {
-        var verifiedAt = request.VerifiedAt ?? DateTime.UtcNow;
         var result = await _mediator.Send(
-            new FinancialVerificationCommand(regId, request.Action, verifiedAt));
+            new FinancialVerificationCommand(regId, request.Action, request.VerifiedAt, request.UserId));
         return Ok(new JSendOk(TataRekeningApiMapper.ToApiResponse(result)));
     }
 
@@ -91,9 +90,8 @@ public class TataRekeningController : ControllerBase
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> Adjust(string regId, [FromBody] FinancialAdjustmentRequest request)
     {
-        var appliedAt = request.AppliedAt ?? DateTime.UtcNow;
         var result = await _mediator.Send(
-            new FinancialAdjustmentCommand(regId, request.Adjustment, appliedAt));
+            new FinancialAdjustmentCommand(regId, request.Adjustment, request.AppliedAt, request.UserId));
         return Ok(new JSendOk(TataRekeningApiMapper.ToApiResponse(result)));
     }
 
@@ -128,9 +126,9 @@ public class TataRekeningController : ControllerBase
         string regId,
         [FromBody] FinalizeFinancialResponsibilityRequest? request)
     {
-        var finalizationDate = request?.FinalizationDate ?? DateTime.UtcNow;
+        var petugas = request?.UserId ?? "-";
         var result = await _mediator.Send(
-            new FinalizeFinancialResponsibilityCommand(regId, finalizationDate));
+            new FinalizeFinancialResponsibilityCommand(regId, petugas, request?.FinalizationDate));
         return Ok(new JSendOk(TataRekeningApiMapper.ToApiResponse(result)));
     }
 
@@ -147,7 +145,7 @@ public class TataRekeningController : ControllerBase
         string regId,
         [FromBody] CancelFinalizationRequest request)
     {
-        var result = await _mediator.Send(new CancelFinalizationCommand(regId, request.Reason));
+        var result = await _mediator.Send(new CancelFinalizationCommand(regId, request.UserId, request.Reason));
         return Ok(new JSendOk(TataRekeningApiMapper.ToApiResponse(result)));
     }
 
@@ -162,7 +160,7 @@ public class TataRekeningController : ControllerBase
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> Reopen(string regId, [FromBody] ReopenBillingRequest request)
     {
-        var result = await _mediator.Send(new ReopenBillingCommand(regId, request.Reason));
+        var result = await _mediator.Send(new ReopenBillingCommand(regId, request.Reason, request.UserId));
         return Ok(new JSendOk(TataRekeningApiMapper.ToApiResponse(result)));
     }
 
@@ -179,9 +177,18 @@ public class TataRekeningController : ControllerBase
         string regId,
         [FromBody] SettlementInitiationRequest? request)
     {
-        var initiatedAt = request?.InitiatedAt ?? DateTime.UtcNow;
+        var petugas = request?.UserId ?? "-";
         var result = await _mediator.Send(
-            new SettlementInitiationCommand(regId, initiatedAt));
+            new SettlementInitiationCommand(regId, petugas, request?.InitiatedAt));
         return Ok(new JSendOk(TataRekeningApiMapper.ToApiResponse(result)));
+    }
+
+    [HttpGet]
+    [Route("summaryBill/{regId}")]
+    public async Task<IActionResult> GetSummaryBills(string regId)
+    {
+        var query = new TataRekeningListSummaryBillQuery(regId);
+        var result = await _mediator.Send(query);
+        return Ok(new JSendOk(result));
     }
 }

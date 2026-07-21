@@ -159,10 +159,11 @@ public class AntrianMapModelTest
 			// Act
 			model.VoidSlot(5);
 
-			// Assert: detil should have been voided (flag AUTO and ReffId set to "-")
+			// Assert: detil should have been voided (flag AUTO, empty reff, not occupied)
 			var updated = model.ListMap.Should().ContainSingle().Which;
 			updated.Flag.Should().Be("AUTO");
-			updated.ReffId.Should().Be("-");
+			updated.ReffId.Should().Be("");
+			updated.IsTerpakai.Should().BeFalse();
 			updated.PasienId.Should().Be(PasienModel.Default.ToReff().PasienId);
 		}
 

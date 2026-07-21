@@ -14,7 +14,13 @@ public interface IWardAccommodationGateway
 {
     KelasReff ResolveKelas(string kelasId);
 
+    KelasDkType ResolveKelasDk(string kelasDkId);
+
     BangsalReff ResolveBangsal(string bangsalId);
+
+    BangsalReff ResolveBangsalForCareClass(string bangsalId, string kelasDkId);
+
+    IReadOnlyList<BangsalReff> ListEligibleBangsal(string kelasDkId);
 
     void NotifyHandOver(WardAccommodationHandOver handOver);
 }

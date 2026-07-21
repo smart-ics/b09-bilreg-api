@@ -22,13 +22,13 @@ public class AdmissionDal : IAdmissionDal
     private static readonly DateTime VoidSentinel = new(3000, 1, 1);
 
     private const string SELECT_COLUMNS = """
-        aa.RegId, aa.AdmissionStatus,
+        aa.RegId, aa.AdmissionStatus, aa.AdmissionSource,
         aa.PasienId,
         ISNULL(bb.fs_nm_pasien, '') AS PasienName,
         ISNULL(bb.fd_tgl_lahir, '3000-01-01') AS TglLahir,
         ISNULL(bb.fs_jns_kelamin, '') AS Gender,
         aa.OpnameRequestId, aa.ReservationId,
-        aa.KelasId, aa.KelasName, aa.BangsalId, aa.BangsalName, aa.AdmissionDate,
+        aa.KelasDkId, aa.KelasDkName, aa.BangsalId, aa.BangsalName, aa.AdmissionDate,
         aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate
         """;
 
@@ -40,16 +40,16 @@ public class AdmissionDal : IAdmissionDal
     {
         const string sql = """
             INSERT INTO BILRG_AdmAdmission (
-                RegId, AdmissionStatus,
+                RegId, AdmissionStatus, AdmissionSource,
                 PasienId,
                 OpnameRequestId, ReservationId,
-                KelasId, KelasName, BangsalId, BangsalName, AdmissionDate,
+                KelasDkId, KelasDkName, BangsalId, BangsalName, AdmissionDate,
                 CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
             VALUES (
-                @RegId, @AdmissionStatus,
+                @RegId, @AdmissionStatus, @AdmissionSource,
                 @PasienId,
                 @OpnameRequestId, @ReservationId,
-                @KelasId, @KelasName, @BangsalId, @BangsalName, @AdmissionDate,
+                @KelasDkId, @KelasDkName, @BangsalId, @BangsalName, @AdmissionDate,
                 @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
             """;
 
@@ -63,11 +63,12 @@ public class AdmissionDal : IAdmissionDal
             UPDATE BILRG_AdmAdmission
             SET
                 AdmissionStatus = @AdmissionStatus,
+                AdmissionSource = @AdmissionSource,
                 PasienId = @PasienId,
                 OpnameRequestId = @OpnameRequestId,
                 ReservationId = @ReservationId,
-                KelasId = @KelasId,
-                KelasName = @KelasName,
+                KelasDkId = @KelasDkId,
+                KelasDkName = @KelasDkName,
                 BangsalId = @BangsalId,
                 BangsalName = @BangsalName,
                 AdmissionDate = @AdmissionDate,
@@ -128,11 +129,12 @@ public class AdmissionDal : IAdmissionDal
         var dp = new DynamicParameters();
         dp.AddParam("@RegId", dto.RegId, SqlDbType.VarChar);
         dp.AddParam("@AdmissionStatus", dto.AdmissionStatus, SqlDbType.Int);
+        dp.AddParam("@AdmissionSource", dto.AdmissionSource, SqlDbType.Int);
         dp.AddParam("@PasienId", dto.PasienId, SqlDbType.VarChar);
         dp.AddParam("@OpnameRequestId", dto.OpnameRequestId, SqlDbType.VarChar);
         dp.AddParam("@ReservationId", dto.ReservationId, SqlDbType.VarChar);
-        dp.AddParam("@KelasId", dto.KelasId, SqlDbType.VarChar);
-        dp.AddParam("@KelasName", dto.KelasName, SqlDbType.VarChar);
+        dp.AddParam("@KelasDkId", dto.KelasDkId, SqlDbType.VarChar);
+        dp.AddParam("@KelasDkName", dto.KelasDkName, SqlDbType.VarChar);
         dp.AddParam("@BangsalId", dto.BangsalId, SqlDbType.VarChar);
         dp.AddParam("@BangsalName", dto.BangsalName, SqlDbType.VarChar);
         dp.AddParam("@AdmissionDate", dto.AdmissionDate, SqlDbType.DateTime);

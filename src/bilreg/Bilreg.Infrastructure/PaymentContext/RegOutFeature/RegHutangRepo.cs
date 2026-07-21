@@ -11,9 +11,9 @@ public class RegHutangRepo : IRegHutangRepo
     {
         _regHutangDal = regHutangDal;
     }
-    public IEnumerable<RegHutangType> ListData(IPasienKey key)
+    public IEnumerable<RegHutangType> ListData(IPasienKey key, DateOnly businessDate)
     {
-        var listDto = _regHutangDal.ListData(key)?.ToList() ?? [];
+        var listDto = _regHutangDal.ListData(key, businessDate)?.ToList() ?? [];
         var result = listDto.Select(x => x.ToModel()).ToList();
         return result;
     }

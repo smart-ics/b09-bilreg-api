@@ -9,8 +9,8 @@ using Nuna.Lib.ValidationHelper;
 namespace Bilreg.Application.PaymentContext.TataRekeningFeature.UseCases;
 
 public record FinalizeFinancialResponsibilityCommand(
-    string RegId,
-    DateTime FinalizationDate) : IRequest<FinalizeFinancialResponsibilityResponse>, IRegKey;
+    string RegId, string UserId,
+    DateTime? FinalizationDate) : IRequest<FinalizeFinancialResponsibilityResponse>, IRegKey;
 
 public record FinalizeFinancialResponsibilityResponse(TataRekeningSummaryDto Summary);
 
@@ -21,17 +21,20 @@ public class FinalizeFinancialResponsibilityHandler
     private readonly ITrsBillingRepo _trsBillingRepo;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserContext _currentUser;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public FinalizeFinancialResponsibilityHandler(
         ITataRekeningRepo tataRekeningRepo,
         ITrsBillingRepo trsBillingRepo,
         IUnitOfWork unitOfWork,
-        ICurrentUserContext currentUser)
+        ICurrentUserContext currentUser,
+        ITglJamProvider tglJamProvider)
     {
         _tataRekeningRepo = tataRekeningRepo;
         _trsBillingRepo = trsBillingRepo;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<FinalizeFinancialResponsibilityResponse> Handle(
@@ -39,8 +42,9 @@ public class FinalizeFinancialResponsibilityHandler
         CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.RegId);
+        Guard.Against.NullOrWhiteSpace(request.UserId);
 
-        var petugasVerif = _currentUser.GetActorUserId();
+        var petugasVerif = request.UserId; //_currentUser.GetActorUserId();
         Guard.Against.NullOrWhiteSpace(petugasVerif);
 
         using var scope = _unitOfWork.Begin();
@@ -48,7 +52,8 @@ public class FinalizeFinancialResponsibilityHandler
         var tataRekening = _tataRekeningRepo.LoadEntity(request)
             .GetValueOrThrow($"Tata Rekening '{request.RegId}' tidak ditemukan.");
 
-        tataRekening.FinalizeFinancialResponsibility(petugasVerif, request.FinalizationDate);
+        var occurredAt = request.FinalizationDate ?? _tglJamProvider.Now;
+        tataRekening.FinalizeFinancialResponsibility(petugasVerif, occurredAt);
 
         _tataRekeningRepo.SaveChanges(tataRekening);
         foreach (var bill in tataRekening.ListTrsBill)

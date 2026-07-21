@@ -15,7 +15,7 @@ public record AdmGetAdmissionResponse(
     PasienReff Pasien,
     string OpnameRequestId,
     string ReservationId,
-    KelasReff KelasRawat,
+    KelasDkType KelasDk,
     BangsalReff Bangsal,
     DateTime AdmissionDate,
     DateTime CrtDate);
@@ -40,7 +40,7 @@ public class AdmGetAdmissionHandler : IRequestHandler<AdmGetAdmissionQry, AdmGet
             admission.Pasien,
             admission.OpnameRequestId,
             admission.ReservationId,
-            admission.KelasRawat,
+            admission.KelasDk,
             admission.Bangsal,
             admission.AdmissionDate,
             admission.AuditTrail.Created.Timestamp));

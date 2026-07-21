@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.PpaFeature;
+using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
@@ -41,10 +41,11 @@ public class DischargeOpModel : IDischargeOpKey
             RegModel.Default.ToReff(), KamarType.Default.ToReff(), PatientConditionEnum.Stable, "-");
 
     public static DischargeOpModel Create(OrderOpModel orderOp, DateTime dischargeDateTime,
-        KamarType kamar, PatientConditionEnum patientCondition, string postOpNote, string userId)
+        KamarType kamar, PatientConditionEnum patientCondition, string postOpNote, string userId,
+        DateTime createdAt = default)
     {
         var newId = Ulid.NewUlid().ToString();
-        var audit = new AuditTrailType(new AuditInfoType(userId, DateTime.Now),
+        var audit = new AuditTrailType(new AuditInfoType(userId, createdAt),
             AuditInfoType.Default, AuditInfoType.Default);
         var result = new DischargeOpModel(newId, dischargeDateTime, audit, orderOp.ToReff(),
             orderOp.Dokter, orderOp.Pasien, orderOp.Reg, kamar.ToReff(), patientCondition, postOpNote);

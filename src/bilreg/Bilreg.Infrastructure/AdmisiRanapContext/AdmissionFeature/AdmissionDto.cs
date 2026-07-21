@@ -8,14 +8,15 @@ namespace Bilreg.Infrastructure.AdmisiRanapContext.AdmissionFeature;
 public record AdmissionDto(
     string RegId,
     int AdmissionStatus,
+    int AdmissionSource,
     string PasienId,
     string PasienName,
     string TglLahir,
     string Gender,
     string OpnameRequestId,
     string ReservationId,
-    string KelasId,
-    string KelasName,
+    string KelasDkId,
+    string KelasDkName,
     string BangsalId,
     string BangsalName,
     DateTime AdmissionDate,
@@ -30,14 +31,15 @@ public record AdmissionDto(
         new(
             model.RegId,
             (int)model.AdmissionStatus,
+            (int)model.AdmissionSource,
             model.Pasien.PasienId,
             "",
             "3000-01-01",
             "",
             model.OpnameRequestId,
             model.ReservationId,
-            model.KelasRawat.KelasId,
-            model.KelasRawat.KelasName,
+            model.KelasDk.KelasDkId,
+            model.KelasDk.KelasDkName,
             model.Bangsal.BangsalId,
             model.Bangsal.BangsalName,
             model.AdmissionDate,
@@ -58,7 +60,7 @@ public record AdmissionDto(
         var gender = string.IsNullOrWhiteSpace(Gender) ? "-" : Gender;
         var tglLahirRaw = string.IsNullOrWhiteSpace(TglLahir) ? "3000-01-01" : TglLahir;
         var pasien = new PasienReff(PasienId, pasienName, DateOnly.Parse(tglLahirRaw), gender);
-        var kelasRawat = new KelasReff(KelasId, KelasName);
+        var kelasDk = new KelasDkType(KelasDkId, KelasDkName);
         var bangsal = new BangsalReff(BangsalId, BangsalName);
         return new AdmissionModel(
             RegId,
@@ -66,9 +68,10 @@ public record AdmissionDto(
             pasien,
             OpnameRequestId,
             ReservationId,
-            kelasRawat,
+            kelasDk,
             bangsal,
             AdmissionDate,
-            audit);
+            audit,
+            (AdmissionSourceEnum)AdmissionSource);
     }
 }

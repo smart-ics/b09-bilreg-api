@@ -13,18 +13,17 @@ public record ProsedurMasukInapDto(
         var result = new ProsedurMasukInapDto(
             model.ProsedurMasukInapId,
             model.ProsedurMasukInapName,
-            model.ProsedurMasukInapDkId,
-            model.ProsedurMasukInapDkName);
+            model.ProsedurMasukInapDk.ProsedurMasukInapDkId,
+            model.ProsedurMasukInapDk.ProsedurMasukInapDkName);
         return result;
     }
 
     public ProsedurMasukInapType ToModel()
     {
+        var dk = new ProsedurMasukInapDkType(fs_kd_caramasuk_inap_dk, fs_nm_caramasuk_inap_dk);
         var result = new ProsedurMasukInapType(
             fs_kd_caramasuk_inap,
-            fs_nm_caramasuk_inap,
-            fs_kd_caramasuk_inap_dk,
-            fs_nm_caramasuk_inap_dk);
+            fs_nm_caramasuk_inap, dk);
         return result;
     }
 }

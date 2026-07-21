@@ -69,14 +69,15 @@ public record JadwalPraktekHarianType : IJadwalPraktekHarianKey
         AntrianPatternType antrianPattern,
         JadwalPraktekHarianSource source,
         string? catatan,
-        string userId)
+        string userId,
+        DateTime createdAt = default)
     {
         Guard.Against.Null(dokter);
         Guard.Against.Null(layanan);
         Guard.Against.Null(ruang);
 
         var newId = NunaId.New(IdPrefix);
-        var audit = AuditTrailType.Create(userId, DateTime.Now);
+        var audit = AuditTrailType.Create(userId, createdAt);
 
         return new JadwalPraktekHarianType(
             newId, jadwalPraktekId, tglPraktek,
@@ -103,14 +104,14 @@ public record JadwalPraktekHarianType : IJadwalPraktekHarianKey
     public string? Catatan { get; init; }
     public AuditTrailType AuditTrail { get; init; }
 
-    public JadwalPraktekHarianType Cancel(string catatan, string userId)
+    public JadwalPraktekHarianType Cancel(string catatan, string userId, DateTime cancelledAt = default)
     {
         if (Status == JadwalPraktekScheduleStatus.CANCELLED)
             throw new ArgumentException("Jadwal harian sudah dibatalkan");
 
         var audit = new AuditTrailType(
             AuditTrail.Created,
-            new AuditInfoType(userId, DateTime.Now),
+            new AuditInfoType(userId, cancelledAt),
             AuditTrail.Voided);
 
         return this with
@@ -124,11 +125,11 @@ public record JadwalPraktekHarianType : IJadwalPraktekHarianKey
     public JadwalPraktekHarianType ApplyManualOverride(
         PpaReff dokter, LayananReff layanan, RuangType ruang,
         TimeOnly jamMulai, TimeOnly jamSelesai, int maxPasien,
-        AntrianPatternType antrianPattern, string? catatan, string userId)
+        AntrianPatternType antrianPattern, string? catatan, string userId, DateTime updatedAt = default)
     {
         var audit = new AuditTrailType(
             AuditTrail.Created,
-            new AuditInfoType(userId, DateTime.Now),
+            new AuditInfoType(userId, updatedAt),
             AuditTrail.Voided);
 
         return this with

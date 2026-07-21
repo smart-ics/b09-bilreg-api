@@ -16,6 +16,7 @@ public record OpnameRequestModel : IOpnameRequestKey
         OpnameRequestStatusEnum opnameRequestStatus,
         PasienReff pasien,
         PpaReff dokter,
+        DateTime plannedDate,
         string clinicalNotes,
         string fulfilledRegId,
         AuditTrailType auditTrail)
@@ -24,6 +25,7 @@ public record OpnameRequestModel : IOpnameRequestKey
         OpnameRequestStatus = opnameRequestStatus;
         Pasien = pasien;
         Dokter = dokter;
+        PlannedDate = plannedDate;
         ClinicalNotes = clinicalNotes ?? "";
         FulfilledRegId = fulfilledRegId;
         AuditTrail = auditTrail;
@@ -34,22 +36,24 @@ public record OpnameRequestModel : IOpnameRequestKey
     public static OpnameRequestModel Create(
         PasienReff pasien,
         PpaReff dokter,
+        DateTime plannedDate,
         string clinicalNotes,
-        string auditUserId)
+        string auditUserId,
+        DateTime createdAt = default)
     {
         Guard.Against.Null(pasien);
         Guard.Against.Null(dokter);
         Guard.Against.NullOrWhiteSpace(auditUserId);
 
-        var now = DateTime.Now;
         return new OpnameRequestModel(
             NunaId.New(ID_PREFIX),
             OpnameRequestStatusEnum.Requested,
             pasien,
             dokter,
+            plannedDate,
             clinicalNotes ?? "",
             EMPTY_REG_ID,
-            AuditTrailType.Create(auditUserId, now));
+            AuditTrailType.Create(auditUserId, createdAt));
     }
 
     public static OpnameRequestModel Default => new(
@@ -57,6 +61,7 @@ public record OpnameRequestModel : IOpnameRequestKey
         OpnameRequestStatusEnum.Requested,
         new PasienReff("-", "-", new DateOnly(3000, 1, 1), "-"),
         new PpaReff("-", "-"),
+        new DateTime(3000,1,1),
         "",
         EMPTY_REG_ID,
         AuditTrailType.Default);
@@ -71,6 +76,7 @@ public record OpnameRequestModel : IOpnameRequestKey
     public OpnameRequestStatusEnum OpnameRequestStatus { get; init; }
     public PasienReff Pasien { get; init; }
     public PpaReff Dokter { get; init; }
+    public DateTime PlannedDate { get; init; }
     public string ClinicalNotes { get; init; }
     public string FulfilledRegId { get; init; }
     public AuditTrailType AuditTrail { get; init; }
@@ -79,16 +85,16 @@ public record OpnameRequestModel : IOpnameRequestKey
 
     #region BEHAVIOUR
 
-    public OpnameRequestModel Cancel(string auditUserId)
+    public OpnameRequestModel Cancel(string auditUserId, DateTime cancelledAt = default)
     {
         Guard.Against.NullOrWhiteSpace(auditUserId);
         EnsureStatus(OpnameRequestStatusEnum.Requested, "dibatalkan");
 
-        AuditTrail.Modif(auditUserId, DateTime.Now);
+        AuditTrail.Batal(auditUserId, cancelledAt);
         return WithState(OpnameRequestStatusEnum.Cancelled, FulfilledRegId, AuditTrail);
     }
 
-    public OpnameRequestModel Fulfill(string regId, string auditUserId)
+    public OpnameRequestModel Fulfill(string regId, string auditUserId, DateTime fulfilledAt = default)
     {
         Guard.Against.NullOrWhiteSpace(regId);
         Guard.Against.NullOrWhiteSpace(auditUserId);
@@ -104,8 +110,26 @@ public record OpnameRequestModel : IOpnameRequestKey
         EnsureStatus(OpnameRequestStatusEnum.Requested, "dipenuhi");
 
         var audit = AuditTrail;
-        audit.Modif(auditUserId, DateTime.Now);
+        audit.Modif(auditUserId, fulfilledAt);
         return WithState(OpnameRequestStatusEnum.Fulfilled, regId, audit);
+    }
+
+    public OpnameRequestModel Restore(string regId, string userId, DateTime timestamp)
+    {
+        Guard.Against.NullOrWhiteSpace(regId);
+        Guard.Against.NullOrWhiteSpace(userId);
+
+        if (OpnameRequestStatus != OpnameRequestStatusEnum.Fulfilled
+            || FulfilledRegId != regId)
+            throw new InvalidOperationException(
+                $"Opname Request {OpnameRequestId} harus Fulfilled oleh Reg {regId} untuk dipulihkan.");
+
+        var audit = new AuditTrailType(
+            AuditTrail.Created,
+            AuditTrail.Modified,
+            AuditTrail.Voided);
+        audit.Modif(userId, timestamp);
+        return WithState(OpnameRequestStatusEnum.Requested, EMPTY_REG_ID, audit);
     }
 
     #endregion
@@ -128,6 +152,7 @@ public record OpnameRequestModel : IOpnameRequestKey
             status,
             Pasien,
             Dokter,
+            PlannedDate,
             ClinicalNotes,
             fulfilledRegId,
             audit);

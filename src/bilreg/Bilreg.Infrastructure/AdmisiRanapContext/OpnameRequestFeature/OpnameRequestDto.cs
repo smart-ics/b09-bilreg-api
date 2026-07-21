@@ -14,6 +14,7 @@ public record OpnameRequestDto(
     string Gender,
     string DokterId,
     string DokterName,
+    DateTime PlannedDate,
     string ClinicalNotes,
     string FulfilledRegId,
     string CrtUser,
@@ -33,6 +34,7 @@ public record OpnameRequestDto(
             "",
             model.Dokter.PpaId,
             model.Dokter.PpaName,
+            model.PlannedDate,
             model.ClinicalNotes,
             model.FulfilledRegId,
             model.AuditTrail.Created.UserId,
@@ -58,6 +60,7 @@ public record OpnameRequestDto(
             (OpnameRequestStatusEnum)OpnameRequestStatus,
             pasien,
             dokter,
+            PlannedDate,
             ClinicalNotes,
             FulfilledRegId,
             audit);

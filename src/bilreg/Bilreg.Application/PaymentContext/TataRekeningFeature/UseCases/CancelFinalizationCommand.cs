@@ -11,7 +11,7 @@ using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.PaymentContext.TataRekeningFeature.UseCases;
 
-public record CancelFinalizationCommand(string RegId, string Reason) : IRequest<CancelFinalizationResponse>, IRegKey;
+public record CancelFinalizationCommand(string RegId, string UserId, string Reason) : IRequest<CancelFinalizationResponse>, IRegKey;
 
 public record CancelFinalizationResponse(TataRekeningSummaryDto Summary);
 
@@ -22,19 +22,22 @@ public class CancelFinalizationHandler : IRequestHandler<CancelFinalizationComma
     private readonly IAuditRepo _auditRepo;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserContext _currentUser;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public CancelFinalizationHandler(
         ITataRekeningRepo tataRekeningRepo,
         ITrsBillingRepo trsBillingRepo,
         IAuditRepo auditRepo,
         IUnitOfWork unitOfWork,
-        ICurrentUserContext currentUser)
+        ICurrentUserContext currentUser,
+        ITglJamProvider tglJamProvider)
     {
         _tataRekeningRepo = tataRekeningRepo;
         _trsBillingRepo = trsBillingRepo;
         _auditRepo = auditRepo;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<CancelFinalizationResponse> Handle(CancelFinalizationCommand request, CancellationToken cancellationToken)
@@ -54,7 +57,8 @@ public class CancelFinalizationHandler : IRequestHandler<CancelFinalizationComma
             _trsBillingRepo.SaveChanges(bill);
 
         var audit = AuditLog.Create(
-            userId: _currentUser.GetActorUserId(),
+            userId: request.UserId,
+            eventTime: _tglJamProvider.Now,
             actionType: "TATA_REKENING_CANCEL_FINALIZATION",
             entityName: nameof(TataRekeningModel),
             entityId: request.RegId,

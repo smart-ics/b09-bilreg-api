@@ -2,6 +2,7 @@
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RujukanFeature;
+using Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers;
@@ -27,6 +28,11 @@ public interface IRegFactory
         AuditInfoType regMasukAudit, TipeJaminanType tipeJaminan, PolisModel polis,
         CaraMasukDkType caraMasukDk, PpaType dokter, LayananType layanan,
         KarcisType karcis, string pesertaJaminanId);
+
+    RegModel CreateRegInapFromAdmission(AdmissionModel admission, PasienModel pasien,
+        TipeJaminanType tipeJaminan, PolisModel polis, CaraMasukDkType caraMasukDk,
+        RujukanType rujukan, PpaType dokter, LayananType layanan,
+        string pesertaJaminanId);
 }
 
 
@@ -62,9 +68,9 @@ public class RegFactory : IRegFactory
             AuditInfoType.Default, AuditInfoType.Default, AuditInfoType.Default, JenisRegEnum.RegJalan,
             pasien.ToReff(), TipeJaminanType.Default.ToReff(),
             PolisModel.Default.ToReff(), kelasRajal.ToReff(), CaraMasukDkType.Default,
-            RujukanType.Default.ToReff(), PpaType.Default.ToReff(), 
+            RujukanType.Default.ToReff(), PpaType.Default.ToReff(),  
             LayananType.Default.ToReff(), KarcisType.Default.ToReff(), 
-            eligibility, []);
+            eligibility, [], kelasRajal.KelasDk);
 
         reg.ApplyJaminan(tipeJaminan, polis);
         reg.SpecifyCaraMasuk (caraMasukDk, rujukan);
@@ -89,12 +95,47 @@ public class RegFactory : IRegFactory
             pasien.ToReff(), TipeJaminanType.Default.ToReff(),
             PolisModel.Default.ToReff(), kelasRajal.ToReff(), CaraMasukDkType.Default,
             RujukanType.Default.ToReff(), PpaType.Default.ToReff(),
-            LayananType.Default.ToReff(), KarcisType.Default.ToReff(), eligibility, []);
+            LayananType.Default.ToReff(), KarcisType.Default.ToReff(), eligibility, [], kelasRajal.KelasDk);
 
         reg.ApplyJaminan(tipeJaminan, polis);
         reg.SpecifyCaraMasuk(caraMasukDk, RujukanType.Default);
         reg.AssignVisitTo(dokter, layanan, karcis);
 
+        return reg;
+    }
+
+    public RegModel CreateRegInapFromAdmission(AdmissionModel admission, PasienModel pasien,
+        TipeJaminanType tipeJaminan, PolisModel polis, CaraMasukDkType caraMasukDk,
+        RujukanType rujukan, PpaType dokter, LayananType layanan,
+        string pesertaJaminanId)
+    {
+        var regMasukAudit = admission.AuditTrail.Created;
+        var eligibility = new RegEligibilityType("-", "-", pesertaJaminanId);
+        var reg = new RegModel(
+            admission.RegId,
+            DateOnly.FromDateTime(regMasukAudit.Timestamp),
+            regMasukAudit,
+            AuditInfoType.Default,
+            AuditInfoType.Default,
+            AuditInfoType.Default,
+            JenisRegEnum.RegInap,
+            pasien.ToReff(),
+            TipeJaminanType.Default.ToReff(),
+            PolisModel.Default.ToReff(),
+            KelasType.Default.ToReff(),
+            CaraMasukDkType.Default,
+            RujukanType.Default.ToReff(),
+            PpaType.Default.ToReff(),
+            LayananType.Default.ToReff(),
+            KarcisType.Default.ToReff(),
+            eligibility,
+            [],
+            admission.KelasDk,
+            admission.Bangsal);
+
+        reg.ApplyJaminan(tipeJaminan, polis);
+        reg.SpecifyCaraMasuk(caraMasukDk, rujukan);
+        reg.AssignInpatientVisitTo(dokter, layanan);
         return reg;
     }
     

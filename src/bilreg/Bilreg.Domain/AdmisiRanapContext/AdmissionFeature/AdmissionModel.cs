@@ -10,7 +10,7 @@ namespace Bilreg.Domain.AdmisiRanapContext.AdmissionFeature;
 
 public record AdmissionModel : IRegKey
 {
-    private const string EmptyRefId = "-";
+    private const string EMPTY_REF_ID = "-";
     private static readonly DateTime EmptyDate = new(3000, 1, 1);
 
     public AdmissionModel(
@@ -19,17 +19,19 @@ public record AdmissionModel : IRegKey
         PasienReff pasien,
         string opnameRequestId,
         string reservationId,
-        KelasReff kelasRawat,
+        KelasDkType kelasDk,
         BangsalReff bangsal,
         DateTime admissionDate,
-        AuditTrailType auditTrail)
+        AuditTrailType auditTrail,
+        AdmissionSourceEnum admissionSource = AdmissionSourceEnum.Admission)
     {
         RegId = regId;
         AdmissionStatus = admissionStatus;
+        AdmissionSource = admissionSource;
         Pasien = pasien;
         OpnameRequestId = opnameRequestId;
         ReservationId = reservationId;
-        KelasRawat = kelasRawat;
+        KelasDk = kelasDk;
         Bangsal = bangsal;
         AdmissionDate = admissionDate;
         AuditTrail = auditTrail;
@@ -39,41 +41,75 @@ public record AdmissionModel : IRegKey
 
     public static AdmissionModel Admit(
         PasienReff pasien,
-        KelasReff kelasRawat,
+        KelasDkType kelasDk,
         BangsalReff bangsal,
         string? opnameRequestId,
         string? reservationId,
-        string auditUserId)
+        string auditUserId,
+        DateTime admittedAt = default)
     {
         Guard.Against.Null(pasien);
-        Guard.Against.Null(kelasRawat);
+        Guard.Against.Null(kelasDk);
         Guard.Against.Null(bangsal);
         Guard.Against.NullOrWhiteSpace(auditUserId);
 
-        var now = DateTime.Now;
         var regId = NunaId.NewLegacyCompact("RG");
         return new AdmissionModel(
             regId,
             AdmissionStatusEnum.Admitted,
             pasien,
-            string.IsNullOrWhiteSpace(opnameRequestId) ? EmptyRefId : opnameRequestId,
-            string.IsNullOrWhiteSpace(reservationId) ? EmptyRefId : reservationId,
-            kelasRawat,
+            string.IsNullOrWhiteSpace(opnameRequestId) ? EMPTY_REF_ID : opnameRequestId,
+            string.IsNullOrWhiteSpace(reservationId) ? EMPTY_REF_ID : reservationId,
+            kelasDk,
             bangsal,
-            now,
-            AuditTrailType.Create(auditUserId, now));
+            admittedAt,
+            AuditTrailType.Create(auditUserId, admittedAt),
+            AdmissionSourceEnum.Admission);
+    }
+
+    public static AdmissionModel CreateFromLegacyRegistration(
+        RegModel reg,
+        string auditUserId,
+        DateTime admittedAt = default)
+    {
+        Guard.Against.Null(reg);
+        Guard.Against.NullOrWhiteSpace(auditUserId);
+
+        if (reg.JenisReg != JenisRegEnum.RegInap)
+            throw new InvalidOperationException("Admission hanya dibuat untuk RegInap.");
+
+        if (IsEmpty(reg.KelasDk.KelasDkId))
+            throw new InvalidOperationException(
+                $"KelasDk untuk RegInap '{reg.RegId}' belum terpetakan.");
+
+        if (IsEmpty(reg.Bangsal.BangsalId))
+            throw new InvalidOperationException(
+                $"Bangsal untuk RegInap '{reg.RegId}' belum terpetakan.");
+
+        return new AdmissionModel(
+            reg.RegId,
+            AdmissionStatusEnum.Admitted,
+            reg.Pasien,
+            EMPTY_REF_ID,
+            EMPTY_REF_ID,
+            reg.KelasDk,
+            reg.Bangsal,
+            admittedAt,
+            AuditTrailType.Create(auditUserId, admittedAt),
+            AdmissionSourceEnum.Legacy);
     }
 
     public static AdmissionModel Default => new(
         "-",
         AdmissionStatusEnum.Admitted,
         new PasienReff("-", "-", new DateOnly(3000, 1, 1), "-"),
-        EmptyRefId,
-        EmptyRefId,
-        new KelasReff("-", "-"),
+        EMPTY_REF_ID,
+        EMPTY_REF_ID,
+        KelasDkType.Default,
         new BangsalReff("-", "-"),
         EmptyDate,
-        AuditTrailType.Default);
+        AuditTrailType.Default,
+        AdmissionSourceEnum.Admission);
 
     public static IRegKey Key(string id) => Default with { RegId = id };
 
@@ -83,10 +119,11 @@ public record AdmissionModel : IRegKey
 
     public string RegId { get; init; }
     public AdmissionStatusEnum AdmissionStatus { get; init; }
+    public AdmissionSourceEnum AdmissionSource { get; init; }
     public PasienReff Pasien { get; init; }
     public string OpnameRequestId { get; init; }
     public string ReservationId { get; init; }
-    public KelasReff KelasRawat { get; init; }
+    public KelasDkType KelasDk { get; init; }
     public BangsalReff Bangsal { get; init; }
     public DateTime AdmissionDate { get; init; }
     public AuditTrailType AuditTrail { get; init; }
@@ -95,9 +132,9 @@ public record AdmissionModel : IRegKey
 
     #region BEHAVIOUR
 
-    public AdmissionModel Update(KelasReff kelasRawat, BangsalReff bangsal, string auditUserId)
+    public AdmissionModel Update(KelasDkType kelasDk, BangsalReff bangsal, string auditUserId, DateTime updatedAt = default)
     {
-        Guard.Against.Null(kelasRawat);
+        Guard.Against.Null(kelasDk);
         Guard.Against.Null(bangsal);
         Guard.Against.NullOrWhiteSpace(auditUserId);
         EnsureMutable();
@@ -109,11 +146,11 @@ public record AdmissionModel : IRegKey
                 $"Admission {RegId} tidak dapat diperbarui pada status {AdmissionStatus}.");
 
         var audit = AuditTrail;
-        audit.Modif(auditUserId, DateTime.Now);
-        return WithState(AdmissionStatusEnum.Updated, kelasRawat, bangsal, audit);
+        audit.Modif(auditUserId, updatedAt);
+        return WithState(AdmissionStatusEnum.Updated, kelasDk, bangsal, audit);
     }
 
-    public AdmissionModel MarkWaiting(string auditUserId)
+    public AdmissionModel MarkWaiting(string auditUserId, DateTime markedAt = default)
     {
         Guard.Against.NullOrWhiteSpace(auditUserId);
         EnsureMutable();
@@ -123,28 +160,46 @@ public record AdmissionModel : IRegKey
                 $"Admission {RegId} harus Admitted atau Updated untuk ditandai Waiting (status saat ini: {AdmissionStatus}).");
 
         var audit = AuditTrail;
-        audit.Modif(auditUserId, DateTime.Now);
-        return WithState(AdmissionStatusEnum.Waiting, KelasRawat, Bangsal, audit);
+        audit.Modif(auditUserId, markedAt);
+        return WithState(AdmissionStatusEnum.Waiting, KelasDk, Bangsal, audit);
     }
 
-    public AdmissionModel Complete(string auditUserId)
+    public AdmissionModel Complete(string auditUserId, DateTime completedAt = default)
     {
         Guard.Against.NullOrWhiteSpace(auditUserId);
         EnsureMutable();
 
         var audit = AuditTrail;
-        audit.Modif(auditUserId, DateTime.Now);
-        return WithState(AdmissionStatusEnum.Completed, KelasRawat, Bangsal, audit);
+        audit.Modif(auditUserId, completedAt);
+        return WithState(AdmissionStatusEnum.Completed, KelasDk, Bangsal, audit);
     }
 
-    public AdmissionModel Cancel(string auditUserId)
+    public AdmissionModel Cancel(string userId, string reason, DateTime timestamp)
+    {
+        Guard.Against.NullOrWhiteSpace(userId);
+        Guard.Against.NullOrWhiteSpace(reason);
+        EnsureMutable();
+
+        if (AdmissionStatus is not AdmissionStatusEnum.Admitted
+            and not AdmissionStatusEnum.Updated
+            and not AdmissionStatusEnum.Waiting)
+            throw new InvalidOperationException(
+                $"Admission {RegId} tidak dapat dibatalkan pada status {AdmissionStatus}.");
+
+        var audit = CopyAuditTrail();
+        audit.Batal(userId, timestamp);
+        return WithState(AdmissionStatusEnum.Cancelled, KelasDk, Bangsal, audit);
+    }
+
+    // Retained for existing callers pending the coordinated-cancellation orchestrator.
+    public AdmissionModel Cancel(string auditUserId, DateTime cancelledAt = default)
     {
         Guard.Against.NullOrWhiteSpace(auditUserId);
         EnsureMutable();
 
-        var audit = AuditTrail;
-        audit.Modif(auditUserId, DateTime.Now);
-        return WithState(AdmissionStatusEnum.Cancelled, KelasRawat, Bangsal, audit);
+        var audit = CopyAuditTrail();
+        audit.Modif(auditUserId, cancelledAt);
+        return WithState(AdmissionStatusEnum.Cancelled, KelasDk, Bangsal, audit);
     }
 
     #endregion
@@ -158,9 +213,17 @@ public record AdmissionModel : IRegKey
                 $"Admission {RegId} berstatus {AdmissionStatus}; perubahan tidak diperbolehkan.");
     }
 
+    private static bool IsEmpty(string value) =>
+        string.IsNullOrWhiteSpace(value) || value == EMPTY_REF_ID;
+
+    private AuditTrailType CopyAuditTrail() => new(
+        AuditTrail.Created,
+        AuditTrail.Modified,
+        AuditTrail.Voided);
+
     private AdmissionModel WithState(
         AdmissionStatusEnum status,
-        KelasReff kelasRawat,
+        KelasDkType kelasDk,
         BangsalReff bangsal,
         AuditTrailType audit) =>
         new(
@@ -169,10 +232,11 @@ public record AdmissionModel : IRegKey
             Pasien,
             OpnameRequestId,
             ReservationId,
-            kelasRawat,
+            kelasDk,
             bangsal,
             AdmissionDate,
-            audit);
+            audit,
+            AdmissionSource);
 
     #endregion
 }

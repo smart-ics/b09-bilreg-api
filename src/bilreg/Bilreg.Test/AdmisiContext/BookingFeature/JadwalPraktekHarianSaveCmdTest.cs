@@ -30,7 +30,7 @@ public class JadwalPraktekHarianSaveCmdTest
     {
         _sut = new JadwalPraktekHarianSaveHandler(
             _harianRepo.Object, _ppaRepo.Object,
-            _layananRepo.Object, _ruangRepo.Object, _overrideGuard.Object);
+            _layananRepo.Object, _ruangRepo.Object, _overrideGuard.Object, TestTglJamProvider.Instance);
     }
 
     [Fact]

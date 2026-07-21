@@ -11,7 +11,7 @@ using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.PaymentContext.TataRekeningFeature.UseCases;
 
-public record ReopenBillingCommand(string RegId, string Reason) : IRequest<ReopenBillingResponse>, IRegKey;
+public record ReopenBillingCommand(string RegId, string Reason, string UserId) : IRequest<ReopenBillingResponse>, IRegKey;
 
 public record ReopenBillingResponse(TataRekeningSummaryDto Summary);
 
@@ -21,23 +21,27 @@ public class ReopenBillingHandler : IRequestHandler<ReopenBillingCommand, Reopen
     private readonly IAuditRepo _auditRepo;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserContext _currentUser;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public ReopenBillingHandler(
         ITataRekeningRepo tataRekeningRepo,
         IAuditRepo auditRepo,
         IUnitOfWork unitOfWork,
-        ICurrentUserContext currentUser)
+        ICurrentUserContext currentUser,
+        ITglJamProvider tglJamProvider)
     {
         _tataRekeningRepo = tataRekeningRepo;
         _auditRepo = auditRepo;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<ReopenBillingResponse> Handle(ReopenBillingCommand request, CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.RegId);
         Guard.Against.NullOrWhiteSpace(request.Reason);
+        Guard.Against.NullOrWhiteSpace(request.UserId);
 
         using var scope = _unitOfWork.Begin();
 
@@ -49,7 +53,8 @@ public class ReopenBillingHandler : IRequestHandler<ReopenBillingCommand, Reopen
         _tataRekeningRepo.SaveChanges(tataRekening);
 
         var audit = AuditLog.Create(
-            userId: _currentUser.GetActorUserId(),
+            userId: request.UserId,
+            eventTime: _tglJamProvider.Now,
             actionType: "TATA_REKENING_REOPEN_BILLING",
             entityName: nameof(TataRekeningModel),
             entityId: request.RegId,

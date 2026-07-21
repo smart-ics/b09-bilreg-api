@@ -11,10 +11,13 @@ public record LabTestDefinitionDeactivateCmd(string TestDefinitionId, string Use
 public class LabTestDefinitionDeactivateHandler : IRequestHandler<LabTestDefinitionDeactivateCmd>
 {
     private readonly ILabTestDefinitionRepo _definitionRepo;
+    private readonly ITglJamProvider _tglJamProvider;
 
-    public LabTestDefinitionDeactivateHandler(ILabTestDefinitionRepo definitionRepo)
+    public LabTestDefinitionDeactivateHandler(ILabTestDefinitionRepo definitionRepo,
+        ITglJamProvider tglJamProvider)
     {
         _definitionRepo = definitionRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task Handle(LabTestDefinitionDeactivateCmd request, CancellationToken cancellationToken)
@@ -25,7 +28,8 @@ public class LabTestDefinitionDeactivateHandler : IRequestHandler<LabTestDefinit
         var existing = _definitionRepo.LoadEntity(request)
             .GetValueOrThrow($"LabTestDefinition '{request.TestDefinitionId}' not found");
 
-        var deactivated = existing.Deactivate(request.UserId);
+        var occurredAt = _tglJamProvider.Now;
+        var deactivated = existing.Deactivate(request.UserId, occurredAt);
         _definitionRepo.SaveChanges(deactivated);
         return Task.CompletedTask;
     }

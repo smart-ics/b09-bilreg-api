@@ -24,7 +24,7 @@ public class LabResultRecordHandlerTest
         _sut = new LabResultRecordHandler(
             _orderRepo.Object,
             _resultRepo.Object,
-            new LabResultScaffoldService());
+            new LabResultScaffoldService(), TestTglJamProvider.Instance);
     }
 
     private static LabOrderModel ChargedLabOrder()

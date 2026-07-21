@@ -39,14 +39,14 @@ public record ReservationModel : IReservationKey
         DateTime plannedDate,
         KelasReff kelasRawat,
         BangsalReff bangsal,
-        string auditUserId)
+        string auditUserId,
+        DateTime createdAt = default)
     {
         Guard.Against.Null(pasien);
         Guard.Against.Null(kelasRawat);
         Guard.Against.Null(bangsal);
         Guard.Against.NullOrWhiteSpace(auditUserId);
 
-        var now = DateTime.Now;
         return new ReservationModel(
             NunaId.New(ID_PREFIX),
             ReservationStatusEnum.Reserved,
@@ -55,7 +55,7 @@ public record ReservationModel : IReservationKey
             kelasRawat,
             bangsal,
             EMPTY_REG_ID,
-            AuditTrailType.Create(auditUserId, now));
+            AuditTrailType.Create(auditUserId, createdAt));
     }
 
     public static ReservationModel Default => new(
@@ -91,7 +91,8 @@ public record ReservationModel : IReservationKey
         DateTime plannedDate,
         KelasReff kelasRawat,
         BangsalReff bangsal,
-        string auditUserId)
+        string auditUserId,
+        DateTime maintainedAt = default)
     {
         Guard.Against.Null(kelasRawat);
         Guard.Against.Null(bangsal);
@@ -103,7 +104,7 @@ public record ReservationModel : IReservationKey
                 $"Reservation {ReservationId} harus Reserved atau Maintained untuk dirawat (status saat ini: {ReservationStatus}).");
 
         var audit = AuditTrail;
-        audit.Modif(auditUserId, DateTime.Now);
+        audit.Modif(auditUserId, maintainedAt);
         return WithState(
             ReservationStatusEnum.Maintained,
             plannedDate,
@@ -113,7 +114,7 @@ public record ReservationModel : IReservationKey
             audit);
     }
 
-    public ReservationModel Realize(string regId, string auditUserId)
+    public ReservationModel Realize(string regId, string auditUserId, DateTime realizedAt = default)
     {
         Guard.Against.NullOrWhiteSpace(regId);
         Guard.Against.NullOrWhiteSpace(auditUserId);
@@ -131,7 +132,7 @@ public record ReservationModel : IReservationKey
                 $"Reservation {ReservationId} sudah direalisasi oleh Reg {RealizedRegId}.");
 
         var audit = AuditTrail;
-        audit.Modif(auditUserId, DateTime.Now);
+        audit.Modif(auditUserId, realizedAt);
         return WithState(
             ReservationStatusEnum.Realized,
             PlannedDate,
@@ -141,19 +142,43 @@ public record ReservationModel : IReservationKey
             audit);
     }
 
-    public ReservationModel Cancel(string auditUserId)
+    public ReservationModel Cancel(string auditUserId, DateTime cancelledAt = default)
     {
         Guard.Against.NullOrWhiteSpace(auditUserId);
         EnsureEditable();
 
         var audit = AuditTrail;
-        audit.Modif(auditUserId, DateTime.Now);
+        audit.Batal(auditUserId, cancelledAt);
         return WithState(
             ReservationStatusEnum.Cancelled,
             PlannedDate,
             KelasRawat,
             Bangsal,
             RealizedRegId,
+            audit);
+    }
+
+    public ReservationModel Restore(string regId, string userId, DateTime timestamp)
+    {
+        Guard.Against.NullOrWhiteSpace(regId);
+        Guard.Against.NullOrWhiteSpace(userId);
+
+        if (ReservationStatus != ReservationStatusEnum.Realized
+            || RealizedRegId != regId)
+            throw new InvalidOperationException(
+                $"Reservation {ReservationId} harus Realized oleh Reg {regId} untuk dipulihkan.");
+
+        var audit = new AuditTrailType(
+            AuditTrail.Created,
+            AuditTrail.Modified,
+            AuditTrail.Voided);
+        audit.Modif(userId, timestamp);
+        return WithState(
+            ReservationStatusEnum.Maintained,
+            PlannedDate,
+            KelasRawat,
+            Bangsal,
+            EMPTY_REG_ID,
             audit);
     }
 

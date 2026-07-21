@@ -50,4 +50,7 @@ public interface IPpaKey
     string PpaId { get; }
 }
 
-public record PpaReff(string PpaId, string PpaName) : IPpaKey;
+public record PpaReff(string PpaId, string PpaName) : IPpaKey
+{
+    public bool IsDefault => PpaId == "-";   
+}

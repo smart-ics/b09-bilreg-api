@@ -36,8 +36,12 @@ Room allocation and Bed allocation are outside this business domain and belong t
 | Reservation | Administrative plan for a future inpatient admission. |
 | Admission | Administrative acceptance of a patient into an inpatient episode. |
 | Waiting List | Represents an Admission awaiting suitable accommodation before the next Bed Assignment. |
-| Kelas Rawat | Accommodation class (kelas perawatan) determined by insurance entitlement or patient preference; persisted as `KelasReff`. |
-| Bangsal | Destination inpatient ward responsible for accommodating the patient; persisted as `BangsalReff`. |
+| Care Class | Canonical accommodation class (`KelasDk`) — the stable, government-defined kelas perawatan represented by `ta_kelas_dk`; determined by insurance entitlement or patient preference. |
+| Kelas Rawat | Synonym for Care Class (`KelasDk`) in operational language; refers to the canonical Care Class, not hospital-specific room configuration. |
+| Bangsal | Destination inpatient ward responsible for accommodating the patient. Bangsal selection is constrained by the chosen Care Class — a Bangsal is eligible when it contains at least one Room mapped to that Care Class (many-to-many relationship via Rooms). |
+| Room | Physical inpatient room belonging to a Bangsal. Each Room belongs to one hospital-specific `ta_kelas`, which maps to one Care Class (`ta_kelas_dk`). Rooms are outside the Admission business model. |
+
+Hospital-specific `ta_kelas` is an infrastructure mapping between Room and Care Class. It is not part of the Admission business model.
 
 ---
 
@@ -180,9 +184,9 @@ Admission owns:
 - Administrative status
 - Reservation realization
 - Opname Request fulfillment
-- Kelas Rawat and destination Bangsal (planning attributes; not room/bed allocation)
+- Care Class (`KelasDk`) and destination Bangsal (planning attributes; not room/bed allocation)
 
-Admission does **not** own patient accommodation.
+Admission does **not** own patient accommodation, Rooms, Beds, or hospital-specific `ta_kelas`.
 
 ---
 
@@ -279,6 +283,24 @@ Room and Bed allocation belong exclusively to the Ward domain.
 
 ---
 
+### BR-RI-013
+
+Admission uses Care Class (`KelasDk` / `ta_kelas_dk`) as its canonical accommodation class reference. Hospital-specific `ta_kelas` is not an Admission business concept.
+
+---
+
+### BR-RI-014
+
+Destination Bangsal must be eligible for the selected Care Class — i.e., the Bangsal must contain at least one Room mapped to that Care Class.
+
+---
+
+### BR-RI-015
+
+Care Class and destination Bangsal on Admission are planning attributes only. Room and Bed allocation remain outside Admission.
+
+---
+
 ## 8. State Machines & Lifecycles
 
 ### Opname Request
@@ -319,25 +341,27 @@ Cancelled
 
 ### Admission
 
+Enum values in code: **Admitted**, **Updated**, **Waiting**, **Completed**, **Cancelled**.
+
+Typical transitions:
+
 Admitted
 
 ↓
 
-Updated
-
-↓
-
-Waiting
-
-↓
-
-Completed
+Updated *(via Care Class / Bangsal update)*
 
 or
 
 ↓
 
 Cancelled
+
+**Operational notes (code-authoritative, July 2026):**
+
+- Creating a Waiting List does **not** change Admission status (`BR-RI-009`). `MarkWaiting` exists on the model but is not invoked by the Waiting List create use case.
+- `Waiting` and `Completed` remain valid enum values for future/legacy paths; Admisi FE registry filters currently emphasise Admitted / Updated / Cancelled.
+- Do not document Waiting List create as an Admission status transition.
 
 ---
 
@@ -399,7 +423,7 @@ Opname Request (clinical) and Reservation (administrative plan) may be created i
 
 ↓
 
-Process **one** admission source:
+Process **exactly one** admission source (no combined process command):
 
 - Process Opname Request Admission (fulfills Opname Request), or
 - Process Reservation Admission (realizes Reservation; maintain first if still `Reserved`)
@@ -416,7 +440,7 @@ or
 
 ↓
 
-Ward Accommodation
+Ward Accommodation (Bed Assignment is Ward-owned; Admisi hands off only)
 
 ---
 
