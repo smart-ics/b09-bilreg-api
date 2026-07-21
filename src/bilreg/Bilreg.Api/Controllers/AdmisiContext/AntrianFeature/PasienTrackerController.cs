@@ -45,4 +45,12 @@ public class PasienTrackerController : ControllerBase
         var response = await _mediator.Send(cmd);
         return Ok(new JSendOk(response));
     }
+
+    [HttpPost]
+    [Route("pharmacy/evidence")]
+    public async Task<IActionResult> AppendPharmacyEvidence(TrkAppendPharmacyEvidenceCmd cmd)
+    {
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
 }
