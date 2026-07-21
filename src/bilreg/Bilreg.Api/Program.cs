@@ -11,7 +11,7 @@ builder.Configuration
 builder.Services
     .AddDomain(builder.Configuration)
     .AddApplication(builder.Configuration)
-    .AddInfrastructure(builder.Configuration, builder.Environment)
+    .AddInfrastructure(builder.Configuration)
     .AddPresentation(builder.Configuration);
 
 builder.Host

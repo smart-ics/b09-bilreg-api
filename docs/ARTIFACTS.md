@@ -184,6 +184,13 @@ Background processing platform — job orchestration, worker plugins, operator c
 | `docs/contexts/bangsal/rna-sop/RNA-SOP-GAPS.md` | RNA — unresolved policy decisions that gate architecture and implementation |
 | `docs/contexts/bangsal/rna-sop/RNA-CPOE-DOMAIN-GAP-ANALYSIS.md` | RNA SOP versus simplified CPOE domain — alignment, cross-context gaps, and recommended change order |
 
+### Patient Tracker (`docs/contexts/pasien-tracker/`)
+
+| Path | Purpose |
+|------|---------|
+| `docs/contexts/pasien-tracker/TRACKER-DOMAIN.md` | Patient Tracker — canonical business truth for Patient Journey continuity and Service Point queues |
+| `docs/contexts/pasien-tracker/TRACKER-DOMAIN-ID.md` | Patient Tracker — Bahasa Indonesia semantic companion |
+
 ---
 
 ## Shared (`docs/shared/`)

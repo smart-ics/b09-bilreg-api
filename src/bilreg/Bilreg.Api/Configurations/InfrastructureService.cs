@@ -49,8 +49,7 @@ namespace Bilreg.Api.Configurations;
 public static class InfrastructureService
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services,
-        IConfiguration configuration,
-        IHostEnvironment environment)
+        IConfiguration configuration)
     {
         services
             .AddScoped<INunaCounterDal, ParamNoDal>()
@@ -102,7 +101,7 @@ public static class InfrastructureService
         services
             .Configure<DatabaseOptions>(configuration.GetSection(DatabaseOptions.SECTION_NAME))
             .AddSingleton<Microsoft.Extensions.Options.IValidateOptions<BusinessDateOptions>>(
-                new BusinessDateOptionsValidator(environment.IsProduction()))
+                new BusinessDateOptionsValidator())
             .AddOptions<BusinessDateOptions>()
                 .Bind(configuration.GetSection(BusinessDateOptions.SECTION_NAME))
                 .ValidateOnStart();

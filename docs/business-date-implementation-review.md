@@ -2,7 +2,7 @@
 
 ## Result
 
-Business time is sourced from SQL Server once per scoped `TglJamProvider`. The provider keeps the SQL value as its system base, starts a `Stopwatch`, and returns the base plus elapsed time. In Fixed mode it replaces only the date portion of the base value. Production rejects Fixed mode during options validation.
+Business time is sourced from SQL Server once per scoped `TglJamProvider`. The provider keeps the SQL value as its system base, starts a `Stopwatch`, and returns the base plus elapsed time. In Fixed mode it replaces only the date portion of the base value. Fixed mode is allowed in every hosting environment; the startup warning and frontend banner communicate that simulation is active.
 
 The read-only status endpoint is `GET /api/system/business-date`. There is no mutation endpoint.
 
@@ -48,7 +48,7 @@ Use `git diff --name-status` for the literal path-by-path manifest; no unrelated
 }
 ```
 
-`BusinessDateOptions` is bound with `ValidateOnStart`. Validation rejects Production + Fixed, Fixed without FixedDate, and System with FixedDate. `ITglJamProvider`, its SQL clock, and the endpoint status facade are scoped.
+`BusinessDateOptions` is bound with `ValidateOnStart`. Validation rejects Fixed without FixedDate and System with FixedDate. It deliberately does not restrict Fixed mode by hosting environment. `ITglJamProvider`, its SQL clock, and the endpoint status facade are scoped.
 
 ## Migrated direct current-time access
 
@@ -108,7 +108,7 @@ Application call sites pass the captured timestamp explicitly. Provider injectio
 - `dotnet build src/bilreg/Bilreg.Test/Bilreg.Test.csproj --no-restore -m:1 --verbosity:minimal`: succeeded.
 - `dotnet test ... --filter FullyQualifiedName~BusinessDateFeature`: 10 passed, 0 failed.
 - Provider tests cover System, Fixed, running time, preserved time of day, and one SQL initialization per provider scope.
-- Validation tests cover all three invalid startup combinations.
+- Validation tests cover both invalid configuration combinations and confirm that a valid Fixed configuration is allowed.
 - Endpoint response tests cover System and Fixed payloads.
 - The integration-style admission test starts with SQL time `2026-07-20 10:15:30`, fixes the business date to `2025-05-03`, captures the Application timestamp once, and verifies admission plus its business audit are dated `2025-05-03 10:15:30`.
 - Static audit result: Domain has zero active direct current-clock access and zero `ITglJamProvider` references.
