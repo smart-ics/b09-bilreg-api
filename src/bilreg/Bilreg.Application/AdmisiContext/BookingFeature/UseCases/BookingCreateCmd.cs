@@ -40,7 +40,7 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
     private readonly IPasienRepo _pasienRepo;
     private readonly IAntrianMapRepo _antrianMapRepo;
     private readonly EmrAntrianOutboundEnqueueService _emrOutboundEnqueue;
-    private readonly IAntrianMapWithBookingResolver _antrianMapWithBookingResolver;
+    private readonly IQueueNumberCompatibilityAdapter _queueNumberAdapter;
     private readonly IJadwalPraktekFeatureResolver _featureResolver;
     private readonly IJourneyCandidateFinder _candidateFinder;
     private readonly ITglJamProvider _tglJamProvider;
@@ -50,7 +50,7 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         IBookingRepo bookingRepo, IPasienTrackerRepo trackerRepo,
         IPasienRepo pasienRepo, IAntrianMapRepo antrianMapRepo,
         EmrAntrianOutboundEnqueueService emrOutboundEnqueue,
-        IAntrianMapWithBookingResolver antrianMapWithBookingResolver,
+        IQueueNumberCompatibilityAdapter queueNumberAdapter,
         IJadwalPraktekFeatureResolver featureResolver,
         IJourneyCandidateFinder candidateFinder,
         ITglJamProvider tglJamProvider)
@@ -63,7 +63,7 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         _pasienRepo = pasienRepo;
         _antrianMapRepo = antrianMapRepo;
         _emrOutboundEnqueue = emrOutboundEnqueue;
-        _antrianMapWithBookingResolver = antrianMapWithBookingResolver;
+        _queueNumberAdapter = queueNumberAdapter;
         _featureResolver = featureResolver;
         _candidateFinder = candidateFinder;
         _tglJamProvider = tglJamProvider;
@@ -126,23 +126,22 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
 
         var tracker = ResolveTracker(booking, selectedTrackerId, hasSelectedTracker, occurredAt);
 
-        // antrianMap
-        var antrianMap = _antrianMapWithBookingResolver.Resolve(
-            schedule.LegacyJadwal, tglBerobat, booking, px);
+        var reserved = _queueNumberAdapter.ReserveForBooking(
+            schedule.LegacyJadwal, tglBerobat, booking, px).Value;
 
         //  persisting
         BookingCreateResponse response;
         using (var trans = TransHelper.NewScope())
         {
-            //      no antrian masuk ke transaction agar bisa rollback jika gagal
-            var antEntry = antrian.AddEntry(antrianMap.Value.Item2.NoUrut, tracker, booking.BookingId, "BOK", occurredAt);
+            var antEntry = _queueNumberAdapter.ProjectIntoQueueSession(
+                antrian, reserved, tracker, booking.BookingId, "BOK", occurredAt);
             booking.AssignNoAntrian(antEntry.NoUrut);
 
             //      writing database
             _bookingRepo.SaveChanges(booking);
             _antrianRepo.SaveChanges(antrian);
             _trackerRepo.SaveChanges(tracker);
-            _antrianMapRepo.SaveChanges(antrianMap.Value.Item1);
+            _antrianMapRepo.SaveChanges(reserved.Map);
 
             var pasienId = px.PasienId == "-" ? "-" : px.PasienId;
             var emrPayload = new AddAntrianEmrByBookingCmd(

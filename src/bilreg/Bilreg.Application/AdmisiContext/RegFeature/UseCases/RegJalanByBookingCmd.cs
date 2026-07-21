@@ -81,6 +81,8 @@ public class RegJalanByBookingHandler
     private readonly IMapJaminanJkRepo _mapJaminanJkRepo;
     private readonly IJurnalRepo _jurnalRepo;
     private readonly EmrAntrianOutboundEnqueueService _emrOutboundEnqueue;
+    private readonly IAntrianMapRepo _antrianMapRepo;
+    private readonly IQueueNumberCompatibilityAdapter _queueNumberAdapter;
     private readonly ITglJamProvider _tglJamProvider;
 
     private const string BAYAR_SENDIRI = "1";
@@ -113,6 +115,8 @@ public class RegJalanByBookingHandler
         IRemoteCetakRepo remoteCetakRepo,
         IGetAppSettingService getAppSettingSvc,
         EmrAntrianOutboundEnqueueService emrOutboundEnqueue,
+        IAntrianMapRepo antrianMapRepo,
+        IQueueNumberCompatibilityAdapter queueNumberAdapter,
         ITglJamProvider tglJamProvider)
     {
         _bookingRepo = bookingRepo;
@@ -143,6 +147,8 @@ public class RegJalanByBookingHandler
         _remoteCetakRepo = remoteCetakRepo;
         _getAppSettingSvc = getAppSettingSvc;
         _emrOutboundEnqueue = emrOutboundEnqueue;
+        _antrianMapRepo = antrianMapRepo;
+        _queueNumberAdapter = queueNumberAdapter;
         _tglJamProvider = tglJamProvider;
     }
 
@@ -239,6 +245,10 @@ public class RegJalanByBookingHandler
         RegJalanByBookingResponse response;
         using (var trans = TransHelper.NewScope())
         {
+            var physicianMap = PhysicianAntrianMapLookup.FindForBooking(_antrianMapRepo, booking);
+            if (_queueNumberAdapter.ProjectSourceReffForRegistration(physicianMap, booking.NoAntrian, reg))
+                _antrianMapRepo.SaveChanges(physicianMap);
+
             _regRepo.SaveChanges(reg);
             _bookingRepo.SaveChanges(booking);
             _regAktifRepo.SaveChanges(regAktif);

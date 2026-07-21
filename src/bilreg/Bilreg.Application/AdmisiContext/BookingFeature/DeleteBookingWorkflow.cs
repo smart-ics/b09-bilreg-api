@@ -26,6 +26,7 @@ public sealed class DeleteBookingWorkflow : IDeleteBookingWorkflow
     private readonly IJadwalPraktekRepo _jadwalPraktekRepo;
     private readonly IJadwalPraktekHarianRepo _jadwalPraktekHarianRepo;
     private readonly IJadwalPraktekFeatureResolver _featureResolver;
+    private readonly IQueueNumberCompatibilityAdapter _queueNumberAdapter;
     private readonly ITglJamProvider _tglJamProvider;
 
     public DeleteBookingWorkflow(
@@ -37,6 +38,7 @@ public sealed class DeleteBookingWorkflow : IDeleteBookingWorkflow
         IJadwalPraktekRepo jadwalPraktekRepo,
         IJadwalPraktekHarianRepo jadwalPraktekHarianRepo,
         IJadwalPraktekFeatureResolver featureResolver,
+        IQueueNumberCompatibilityAdapter queueNumberAdapter,
         ITglJamProvider tglJamProvider)
     {
         _bookingRepo = bookingRepo;
@@ -47,6 +49,7 @@ public sealed class DeleteBookingWorkflow : IDeleteBookingWorkflow
         _jadwalPraktekRepo = jadwalPraktekRepo;
         _jadwalPraktekHarianRepo = jadwalPraktekHarianRepo;
         _featureResolver = featureResolver;
+        _queueNumberAdapter = queueNumberAdapter;
         _tglJamProvider = tglJamProvider;
     }
 
@@ -78,7 +81,7 @@ public sealed class DeleteBookingWorkflow : IDeleteBookingWorkflow
 
         if (antrianMap.JadwalId != "-")
         {
-            antrianMap.VoidSlot(booking.NoAntrian);
+            _queueNumberAdapter.Release(antrianMap, booking.NoAntrian);
             _antrianMapRepo.SaveChanges(antrianMap);
         }
         if (entry is not null)

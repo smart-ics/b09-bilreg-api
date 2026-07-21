@@ -42,6 +42,7 @@ public class RegJalanBatalHandlerTest
     private readonly Mock<IDashboardEmrRemoveRegService> _dashboard = new();
     private readonly Mock<IBookingRepo> _bookingRepo = new();
     private readonly Mock<IAuditRepo> _auditRepo = new();
+    private readonly Mock<IQueueNumberCompatibilityAdapter> _queueAdapter = new();
     private readonly RegJalanBatalHandler _sut;
 
     public RegJalanBatalHandlerTest()
@@ -58,6 +59,7 @@ public class RegJalanBatalHandlerTest
             _dashboard.Object,
             _bookingRepo.Object,
             _auditRepo.Object,
+            _queueAdapter.Object,
             TestTglJamProvider.Instance);
     }
 

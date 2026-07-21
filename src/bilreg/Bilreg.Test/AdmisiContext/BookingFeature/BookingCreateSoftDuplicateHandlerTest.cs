@@ -30,9 +30,9 @@ public class BookingCreateSoftDuplicateHandlerTest
     private readonly Mock<IAntrianMapRepo> _antrianMapRepo = new();
     private readonly Mock<IEmrAntrianOutboundQueueRepo> _emrQueueRepo = new();
     private readonly EmrAntrianOutboundEnqueueService _emrEnqueue;
-    private readonly Mock<IAntrianMapWithBookingResolver> _mapResolver = new();
     private readonly Mock<IJadwalPraktekFeatureResolver> _featureResolver = new();
     private readonly Mock<IJourneyCandidateFinder> _candidateFinder = new();
+    private readonly Mock<IQueueNumberCompatibilityAdapter> _queueAdapter = new();
     private readonly BookingCreateHandler _sut;
 
     public BookingCreateSoftDuplicateHandlerTest()
@@ -47,7 +47,7 @@ public class BookingCreateSoftDuplicateHandlerTest
             _pasienRepo.Object,
             _antrianMapRepo.Object,
             _emrEnqueue,
-            _mapResolver.Object,
+            _queueAdapter.Object,
             _featureResolver.Object,
             _candidateFinder.Object,
             TestTglJamProvider.Instance);
@@ -171,13 +171,25 @@ public class BookingCreateSoftDuplicateHandlerTest
 
         var mapHdr = AntrianMapModel.Default;
         var mapDetil = new AntrianMapDetilModel(7, "", "", "", "AUTO", false);
-        _mapResolver
-            .Setup(x => x.Resolve(
+        var reserved = ReservedQueueNumber.FromMap(mapHdr, mapDetil);
+        _queueAdapter
+            .Setup(x => x.ReserveForBooking(
                 It.IsAny<JadwalPraktekType>(),
                 tglBerobat,
                 It.IsAny<BookingModel>(),
                 It.IsAny<PasienModel>()))
-            .Returns(Result<(AntrianMapModel, AntrianMapDetilModel)>.Success((mapHdr, mapDetil)));
+            .Returns(Result<ReservedQueueNumber>.Success(reserved));
+        _queueAdapter
+            .Setup(x => x.ProjectIntoQueueSession(
+                It.IsAny<AntrianModel>(),
+                reserved,
+                It.IsAny<PasienTrackerModel>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<DateTime>()))
+            .Returns<AntrianModel, ReservedQueueNumber, PasienTrackerModel, string, string, DateTime>(
+                (q, r, t, reffId, reffDesc, at) =>
+                    q.AddEntry(r.NoUrut, t, reffId, reffDesc, at));
     }
 
     private static BookingCreateCmd BaseCmd(bool isForce, string selectedTrackerId = "") =>

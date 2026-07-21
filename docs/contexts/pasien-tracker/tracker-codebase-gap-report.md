@@ -399,13 +399,17 @@ This section contains confirmed implementation gaps. Ambiguities, missing runtim
 ### F-13 — Canonical Tracker ownership conflicts with legacy slot-map ownership
 
 - **Domain requirement:** Queue Session aggregate alone assigns numbers and owns queue identity/milestones; source activities remain authoritative for their transactions.
-- **Status:** Implemented Differently due to deliberate compatibility constraints.
-- **Evidence:** `AntrianMapWithBookingResolver`/`AntrianMapWithRegResolver` choose legacy `ta_no_antrian_map` slots. Booking/Reg then call `AntrianModel.AddEntry(noUrut,...)` with that externally selected number and dual-write both repositories. External EMR contracts carry booking/reg IDs and number but not TrackerId. Legacy map uses `IsTerpakai`, flags, patient/source IDs, and schedule keys rather than Tracker state.
-- **Gap/conflict:** Queue-number authority is split between legacy map, new queue aggregate, sequencer, and external caller-supplied numbers. State meanings are not equivalent.
-- **Business impact:** Divergence or concurrent allocation can produce mismatched numbers/ownership across platforms.
-- **Legacy compatibility impact:** This is not automatically a defect: desktop workflows may require the map and EMR payload. Replacing them directly would be high risk.
-- **Recommended direction:** Introduce a documented compatibility adapter/crosswalk. During transition, reserve one number atomically and project it to both schemas; do not reinterpret legacy `IsTerpakai`/flags as canonical Waiting/In Service/Done. Establish a deliberate future authority cutover.
-- **Severity:** Medium (compatibility risk; becomes High if concurrent divergence is observed).
+- **Status:** **Closed in source** (2026-07-21) for transitional compatibility layer; production cutover to `QueueSession` authority remains deferred.
+- **Evidence (after fix):**
+  - [`TRACKER-COMPATIBILITY.md`](TRACKER-COMPATIBILITY.md) documents authority map, identity crosswalk, and non-equivalence of `IsTerpakai` vs Waiting/In Service/Done.
+  - `IQueueNumberCompatibilityAdapter` / `QueueNumberCompatibilityAdapter` centralize reserve → project → release; handlers no longer dual-write inline.
+  - `QueueNumber:Authority` config (default `LegacyMap`); `QueueSession` branch throws until cutover is approved.
+  - `AntrianMapDetilModel.Void` + `IsFreeSlot()` align legacy slot release with allocator predicate.
+  - Reg-by-booking projects map `ReffId` Booking→Reg via adapter; Hidok uses `AcceptExternalNumber` (queue-only exception).
+- **Gap/conflict (resolved):** Queue-number authority is now explicit and transactional; legacy map is a documented projection during transition.
+- **Remaining note:** Enable `QueueSession` allocator after parity metrics; optional TrackerId on map/EMR payload is follow-up. See [`tracker-f13-implementation-report.md`](tracker-f13-implementation-report.md).
+- **Recommended direction:** **Applied** — compatibility adapter/crosswalk, atomic reserve+project, no `IsTerpakai`↔status mapping, deliberate future cutover flag.
+- **Severity:** Medium (closed in source; cutover monitoring tracked separately).
 
 ### F-14 — Consistency repair rewrites correlation state but does not repair Tracker truth
 

@@ -29,6 +29,7 @@ public class DeleteBookingWorkflowTest
     private readonly Mock<IJadwalPraktekRepo> _jadwalRepo = new();
     private readonly Mock<IJadwalPraktekHarianRepo> _jadwalHarianRepo = new();
     private readonly Mock<IJadwalPraktekFeatureResolver> _featureResolver = new();
+    private readonly Mock<IQueueNumberCompatibilityAdapter> _queueAdapter = new();
     private readonly DeleteBookingWorkflow _sut;
 
     public DeleteBookingWorkflowTest()
@@ -43,6 +44,7 @@ public class DeleteBookingWorkflowTest
             _jadwalRepo.Object,
             _jadwalHarianRepo.Object,
             _featureResolver.Object,
+            _queueAdapter.Object,
             TestTglJamProvider.Instance);
     }
 
