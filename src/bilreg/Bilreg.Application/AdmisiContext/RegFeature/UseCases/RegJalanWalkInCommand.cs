@@ -5,6 +5,7 @@ using Bilreg.Application.AccountingContext.JurnalFeature;
 using Bilreg.Application.AccountingContext.JurnalFeature.JkAgg;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.BookingFeature;
+using Bilreg.Application.AdmisiContext.EmrAntrianOutboundFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
 using Bilreg.Application.AdmisiContext.LayananFeature;
@@ -89,7 +90,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
 
     private readonly IRemoteCetakRepo _remoteCetakRepo;
     private readonly IGetAppSettingService _getAppSettingSvc;
-    private readonly IAddAntrianEmrByRegService _addAntrianEmrByRegService;
+    private readonly EmrAntrianOutboundEnqueueService _emrOutboundEnqueue;
     private readonly IAntrianMapWithRegResolver _antrianMapWithRegResolver;
     private readonly IJadwalPraktekFeatureResolver _featureResolver;
     private readonly ITglJamProvider _tglJamProvider;
@@ -128,7 +129,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         IJurnalRepo jurnalRepo,
         IRemoteCetakRepo remoteCetakRepo,
         IGetAppSettingService getAppSettingSvc,
-        IAddAntrianEmrByRegService addRegSvc, 
+        EmrAntrianOutboundEnqueueService emrOutboundEnqueue,
         IAntrianMapWithRegResolver antrianMapResolver,
         IJadwalPraktekFeatureResolver featureResolver,
         ITglJamProvider tglJamProvider)
@@ -166,7 +167,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         _jurnalRepo = jurnalRepo;
         _remoteCetakRepo = remoteCetakRepo;
         _getAppSettingSvc = getAppSettingSvc;
-        _addAntrianEmrByRegService = addRegSvc;
+        _emrOutboundEnqueue = emrOutboundEnqueue;
         _antrianMapWithRegResolver = antrianMapResolver;
         _featureResolver = featureResolver;
         _tglJamProvider = tglJamProvider;
@@ -273,11 +274,18 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
                 _jurnalRepo.SaveChanges(jurnalTindakan);
             _remoteCetakRepo.SaveChanges(rmtCetak);
 
+            var emrPayload = new AddAntrianEmrByRegCommand(
+                reg.RegId, "-", reg.Pasien.PasienId,
+                reg.Pasien.PasienName, reg.Layanan.LayananId,
+                reg.Dokter.PpaId, reg.RegDate.ToString("yyyy-MM-dd"),
+                schedule.LegacyJadwal.JamMulai.ToString("HH:mm", CultureInfo.InvariantCulture),
+                antrianMap.Value.Item2.NoUrut);
+            _emrOutboundEnqueue.TryEnqueueAddReg(emrPayload, occurredAt);
+
             trans.Complete();
             response = new RegJalanCreateResponse(reg.RegId, antEntry.NoUrut);
         }
-        AddAntrianEmr(reg, antrianMap.Value.Item2, schedule.LegacyJadwal);
-        
+
         return Task.FromResult(response);
         
     }
@@ -419,17 +427,6 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
                 onNone: () => MapJaminanJkType.Default
             );
         return map;
-    }
-
-    private void AddAntrianEmr(RegModel reg, AntrianMapDetilModel antrianMapDetil, JadwalPraktekType jadwal)
-    {
-        var payload = new AddAntrianEmrByRegCommand(
-            reg.RegId, "-", reg.Pasien.PasienId,
-            reg.Pasien.PasienName, reg.Layanan.LayananId, 
-            reg.Dokter.PpaId, reg.RegDate.ToString("yyyy-MM-dd"),
-            jadwal.JamMulai.ToString("HH:mm", CultureInfo.InvariantCulture), 
-            antrianMapDetil.NoUrut);
-        _addAntrianEmrByRegService.Execute(payload);
     }
     #endregion
 }

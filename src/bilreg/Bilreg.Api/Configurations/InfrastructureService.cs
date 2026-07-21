@@ -12,6 +12,8 @@ using Bilreg.Application.LabContext.LabOrderFeature;
 using Bilreg.Application.LabContext.LabOrderFeature.Integration;
 using Bilreg.Application.LabContext.LabOwareFeature;
 using Bilreg.Application.LabContext.LabOwareFeature.Integration;
+using Bilreg.Application.AdmisiContext.EmrAntrianOutboundFeature;
+using Bilreg.Application.AdmisiContext.EmrAntrianOutboundFeature.Integration;
 using Bilreg.Application.LabContext.LabResultFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Application.PaymentContext.PasienBalanceFeature;
@@ -31,6 +33,7 @@ using Bilreg.Infrastructure.ChargeContext.TarifFeature;
 using Bilreg.Infrastructure.LabContext.Integration;
 using Bilreg.Infrastructure.LabContext.LabOrderFeature;
 using Bilreg.Infrastructure.LabContext.LabOwareFeature;
+using Bilreg.Infrastructure.AdmisiContext.EmrAntrianOutboundFeature;
 using Bilreg.Infrastructure.LabContext.LabResultFeature;
 using Bilreg.Infrastructure.PaymentContext.PasienBalanceFeature;
 using Bilreg.Infrastructure.PaymentContext.TataRekeningFeature;
@@ -69,6 +72,10 @@ public static class InfrastructureService
             .AddScoped<ILabTestResolutionService, LabTestResolutionService>()
             .AddScoped<ILabOwareIntegration, LabOwareIntegration>()
             .AddScoped<ILabOwareQueueWorklistDal, LabOwareQueueWorklistDal>()
+            .AddScoped<IEmrAntrianOutboundIntegration, EmrAntrianOutboundIntegration>()
+            .AddScoped<IEmrAntrianOutboundWorklistDal, EmrAntrianOutboundWorklistDal>()
+            .AddScoped<EmrAntrianOutboundProcessor>()
+            .AddScoped<EmrAntrianOutboundEnqueueService>()
             .AddScoped<IWaitingListWorklistDal, WaitingListWorklistDal>()
             .AddScoped<IRegistrationCancellationEligibilityDal, RegistrationCancellationEligibilityDal>()
             .AddScoped<IRegistrationCancellationEligibilityRepo, RegistrationCancellationEligibilityRepo>()

@@ -1,10 +1,12 @@
 using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.BookingFeature;
+using Bilreg.Application.AdmisiContext.EmrAntrianOutboundFeature;
 using Bilreg.Application.AdmisiContext.BookingFeature.UseCases;
 using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.AdmisiContext.EmrAntrianOutboundFeature;
 using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
@@ -26,7 +28,8 @@ public class BookingCreateSoftDuplicateHandlerTest
     private readonly Mock<IPasienTrackerRepo> _trackerRepo = new();
     private readonly Mock<IPasienRepo> _pasienRepo = new();
     private readonly Mock<IAntrianMapRepo> _antrianMapRepo = new();
-    private readonly Mock<IAddAntrianEmrByBookingService> _emr = new();
+    private readonly Mock<IEmrAntrianOutboundQueueRepo> _emrQueueRepo = new();
+    private readonly EmrAntrianOutboundEnqueueService _emrEnqueue;
     private readonly Mock<IAntrianMapWithBookingResolver> _mapResolver = new();
     private readonly Mock<IJadwalPraktekFeatureResolver> _featureResolver = new();
     private readonly Mock<IJourneyCandidateFinder> _candidateFinder = new();
@@ -34,6 +37,7 @@ public class BookingCreateSoftDuplicateHandlerTest
 
     public BookingCreateSoftDuplicateHandlerTest()
     {
+        _emrEnqueue = new EmrAntrianOutboundEnqueueService(_emrQueueRepo.Object);
         _sut = new BookingCreateHandler(
             _jadwalRepo.Object,
             _antrianRepo.Object,
@@ -42,7 +46,7 @@ public class BookingCreateSoftDuplicateHandlerTest
             _trackerRepo.Object,
             _pasienRepo.Object,
             _antrianMapRepo.Object,
-            _emr.Object,
+            _emrEnqueue,
             _mapResolver.Object,
             _featureResolver.Object,
             _candidateFinder.Object,
@@ -72,7 +76,7 @@ public class BookingCreateSoftDuplicateHandlerTest
         result.NoAntrian.Should().Be(0);
         result.Candidates.Should().HaveCount(1);
         _bookingRepo.Verify(x => x.SaveChanges(It.IsAny<BookingModel>()), Times.Never);
-        _emr.Verify(x => x.Execute(It.IsAny<AddAntrianEmrByBookingCmd>()), Times.Never);
+        _emrQueueRepo.Verify(x => x.SaveChanges(It.IsAny<EmrAntrianOutboundQueueModel>()), Times.Never);
     }
 
     [Fact]

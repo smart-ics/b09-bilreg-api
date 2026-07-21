@@ -366,13 +366,13 @@ This section contains confirmed implementation gaps. Ambiguities, missing runtim
 ### F-11 — Domain facts and cross-context reliability are absent
 
 - **Domain requirement:** Section 9 stable facts and workflows involving Booking, Registration, Medical Chart, pharmacy sale, and Queue Entry evidence.
-- **Status:** Partially Implemented / Not Implemented.
-- **Evidence:** No corresponding `INotification`, outbox, direct fact contract, or handler names were found. Booking/Reg use direct calls. External EMR calls occur after the database transaction and ignore HTTP response success. The repair worker later mutates queue `ReffId/ReffDesc` only.
-- **Gap/conflict:** Facts are not available for downstream orchestration/reconciliation, and partial external delivery can diverge from committed Tracker/queue state.
-- **Business impact:** Missing queue-number publication, consultation, or pharmacy integration may silently leave an incomplete journey.
-- **Legacy compatibility impact:** Taksaka repair exists specifically because legacy/external synchronization is eventually consistent. It should remain until an idempotent replacement and reconciliation report are proven.
-- **Recommended direction:** Use explicit direct orchestration and/or an outbox-style fact record according to project standards; define idempotency and reconciliation for each cross-context fact. A generic event framework is not required.
-- **Severity:** High.
+- **Status:** Partially Implemented (Slice 1 applied 2026-07-21).
+- **Evidence:** EMR antrian publication for BookingCreate and RegJalan (WalkIn/ByBooking) now enqueues `BILRG_EmrAntrianOutboundQueue` in the same transaction as local writes; `EmrAntrianOutboundProcessor` delivers via `IEmrAntrianOutboundIntegration` with HTTP success/failure inspection, retry, and worklist API (`EmrAntrianOutboundController`). Direct post-commit fire-and-forget removed from those handlers. Pharmacy Farinv→Bilreg evidence, remaining section-9 fact contracts, and full reconciliation reporting remain open.
+- **Gap/conflict (remaining):** Pharmacy and consultation facts still lack durable cross-context delivery; Taksaka repair remains legacy projection-only (see F-14).
+- **Business impact (mitigated for Slice 1):** Booking/Reg queue-number publication to EMR is no longer silent; failed/empty-config deliveries are visible and retryable.
+- **Legacy compatibility impact:** Taksaka `AntrianConsistencyRepairWorker` retained until outbox parity is proven.
+- **Recommended direction:** Slice 1 applied for EMR Booking/Reg. Next: pharmacy outbox (Slice 2) and explicit fact contracts for remaining section-9 items.
+- **Severity:** High (Slice 1 closed for EMR Booking/Reg; pharmacy/full facts remain).
 
 ### F-12 — Persistence shape cannot faithfully represent Queue Session and deterministic evidence
 

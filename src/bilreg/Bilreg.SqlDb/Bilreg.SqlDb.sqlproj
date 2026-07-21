@@ -58,7 +58,7 @@
     <Folder Include="Properties" />
     <Folder Include="BedUsageContext\WardFeature" />
     <Folder Include="AdmisiContext" />
-    <Folder Include="AdmisiContext\BookingFeature" />
+    <Folder Include="AdmisiContext\EmrAntrianOutboundFeature\" />
     <Folder Include="AdmisiContext\JaminanFeature" />
     <Folder Include="AdmisiContext\LayananFeature" />
     <Folder Include="AdmisiContext\PpaFeature" />
@@ -132,6 +132,7 @@
     <None Include="AdmisiContext\AntrianFeature\BILRG_PasienTrackerEvent.sql" />
     <None Include="AdmisiContext\AntrianFeature\BILRG_PasienTrackerEvent_M2_AppendOnlyKey_Alter.sql" />
     <None Include="AdmisiContext\AntrianFeature\BILRG_PasienTrackerEvent_M3_ReffIdWiden_Alter.sql" />
+    <None Include="AdmisiContext\EmrAntrianOutboundFeature\BILRG_EmrAntrianOutboundQueue.sql" />
     <None Include="AdmisiContext\BookingFeature\BILRG_Booking.sql" />
     <None Include="AdmisiContext\BookingFeature\BILRG_JadwalPraktek.sql" />
     <None Include="AdmisiContext\JaminanFeature\ta_cara_bayar_dk.dataseed.sql" />

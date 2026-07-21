@@ -2,6 +2,7 @@ using Bilreg.Application.AccountingContext.JurnalFeature;
 using Bilreg.Application.AccountingContext.JurnalFeature.JkAgg;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.BookingFeature;
+using Bilreg.Application.AdmisiContext.EmrAntrianOutboundFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
 using Bilreg.Application.AdmisiContext.LayananFeature;
@@ -79,7 +80,7 @@ public class RegJalanByBookingHandler
 
     private readonly IMapJaminanJkRepo _mapJaminanJkRepo;
     private readonly IJurnalRepo _jurnalRepo;
-    private readonly IAddAntrianEmrByRegService _addRegSvc;
+    private readonly EmrAntrianOutboundEnqueueService _emrOutboundEnqueue;
     private readonly ITglJamProvider _tglJamProvider;
 
     private const string BAYAR_SENDIRI = "1";
@@ -111,7 +112,7 @@ public class RegJalanByBookingHandler
         IJurnalRepo jurnalRepo,
         IRemoteCetakRepo remoteCetakRepo,
         IGetAppSettingService getAppSettingSvc,
-        IAddAntrianEmrByRegService addRegSvc,
+        EmrAntrianOutboundEnqueueService emrOutboundEnqueue,
         ITglJamProvider tglJamProvider)
     {
         _bookingRepo = bookingRepo;
@@ -141,7 +142,7 @@ public class RegJalanByBookingHandler
         _jurnalRepo = jurnalRepo;
         _remoteCetakRepo = remoteCetakRepo;
         _getAppSettingSvc = getAppSettingSvc;
-        _addRegSvc = addRegSvc;
+        _emrOutboundEnqueue = emrOutboundEnqueue;
         _tglJamProvider = tglJamProvider;
     }
 
@@ -256,12 +257,18 @@ public class RegJalanByBookingHandler
 
             _remoteCetakRepo.SaveChanges(rmtCetak);
 
+            var emrPayload = new AddAntrianEmrByRegCommand(
+                reg.RegId, booking.BookingId, reg.Pasien.PasienId,
+                reg.Pasien.PasienName, reg.Layanan.LayananId,
+                reg.Dokter.PpaId, reg.RegDate.ToString("yyyy-MM-dd"),
+                booking.JamPraktek.ToString("HH:mm", CultureInfo.InvariantCulture),
+                booking.NoAntrian);
+            _emrOutboundEnqueue.TryEnqueueAddReg(emrPayload, occurredAt);
+
             trans.Complete();
             response = new RegJalanByBookingResponse(reg.RegId, booking.NoAntrian);
         }
 
-        
-        AddReg(reg, booking);
         return Task.FromResult(response);
     }
 
@@ -413,17 +420,6 @@ public class RegJalanByBookingHandler
                 onNone: () => MapJaminanJkType.Default
             );
         return map;
-    }
-
-    private void AddReg(RegModel reg, BookingModel booking)
-    {
-        var payload = new AddAntrianEmrByRegCommand(
-            reg.RegId, booking.BookingId, reg.Pasien.PasienId,
-            reg.Pasien.PasienName, reg.Layanan.LayananId, 
-            reg.Dokter.PpaId, reg.RegDate.ToString("yyyy-MM-dd"), 
-            booking.JamPraktek.ToString("HH:mm", CultureInfo.InvariantCulture),
-            booking.NoAntrian);
-        _addRegSvc.Execute(payload);
     }
     #endregion
 }

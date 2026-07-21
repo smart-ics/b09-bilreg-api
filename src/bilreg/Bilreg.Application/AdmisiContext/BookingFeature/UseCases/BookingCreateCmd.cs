@@ -1,4 +1,5 @@
 using Bilreg.Application.AdmisiContext.BookingFeature;
+using Bilreg.Application.AdmisiContext.EmrAntrianOutboundFeature;
 using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
@@ -38,7 +39,7 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
     private readonly IPasienTrackerRepo _trackerRepo;
     private readonly IPasienRepo _pasienRepo;
     private readonly IAntrianMapRepo _antrianMapRepo;
-    private readonly IAddAntrianEmrByBookingService _addAntrianEmrByBookingService;
+    private readonly EmrAntrianOutboundEnqueueService _emrOutboundEnqueue;
     private readonly IAntrianMapWithBookingResolver _antrianMapWithBookingResolver;
     private readonly IJadwalPraktekFeatureResolver _featureResolver;
     private readonly IJourneyCandidateFinder _candidateFinder;
@@ -48,7 +49,7 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         IAntrianRepo antrianRepo, IAntrianFactory antrianFactory,
         IBookingRepo bookingRepo, IPasienTrackerRepo trackerRepo,
         IPasienRepo pasienRepo, IAntrianMapRepo antrianMapRepo,
-        IAddAntrianEmrByBookingService addAntrianEmrByBookingService, 
+        EmrAntrianOutboundEnqueueService emrOutboundEnqueue,
         IAntrianMapWithBookingResolver antrianMapWithBookingResolver,
         IJadwalPraktekFeatureResolver featureResolver,
         IJourneyCandidateFinder candidateFinder,
@@ -61,7 +62,7 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         _trackerRepo = trackerRepo;
         _pasienRepo = pasienRepo;
         _antrianMapRepo = antrianMapRepo;
-        _addAntrianEmrByBookingService = addAntrianEmrByBookingService;
+        _emrOutboundEnqueue = emrOutboundEnqueue;
         _antrianMapWithBookingResolver = antrianMapWithBookingResolver;
         _featureResolver = featureResolver;
         _candidateFinder = candidateFinder;
@@ -143,6 +144,13 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
             _trackerRepo.SaveChanges(tracker);
             _antrianMapRepo.SaveChanges(antrianMap.Value.Item1);
 
+            var pasienId = px.PasienId == "-" ? "-" : px.PasienId;
+            var emrPayload = new AddAntrianEmrByBookingCmd(
+                booking.BookingId, pasienId, booking.Person.PersonName,
+                booking.Layanan.LayananId, booking.Dokter.PpaId, booking.TglBerobat.ToString("yyyy-MM-dd"),
+                booking.JamPraktek.ToString("HH:mm", CultureInfo.InvariantCulture), booking.NoAntrian);
+            _emrOutboundEnqueue.TryEnqueueAddBooking(emrPayload, occurredAt);
+
             trans.Complete();
             response = new BookingCreateResponse(
                 booking.BookingId,
@@ -152,8 +160,6 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
                 tracker.PasienTrackerId,
                 []);
         }
-
-        AddAntrianEmrByBooking(booking, px);
 
         return Task.FromResult(response);
     }
@@ -192,14 +198,5 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
             request.PasienName, tglLahir, request.Gender,
             alamat, contact, IdentitasType.Default);
         return person;
-    }
-
-    private void AddAntrianEmrByBooking(BookingModel book, PasienModel px)
-    {
-        var pasienId = px.PasienId == "-" ? "-" : px.PasienId;
-        var payload = new AddAntrianEmrByBookingCmd(book.BookingId, pasienId, book.Person.PersonName,
-            book.Layanan.LayananId, book.Dokter.PpaId, book.TglBerobat.ToString("yyyy-MM-dd"),
-            book.JamPraktek.ToString("HH:mm", CultureInfo.InvariantCulture), book.NoAntrian);
-        _addAntrianEmrByBookingService.Execute(payload);
     }
 }
