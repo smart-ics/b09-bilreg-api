@@ -5,5 +5,5 @@
     EventDate DATETIME NOT NULL CONSTRAINT DF_BILRG_PasienTrackerEvent_EventDate DEFAULT('3000-01-01'),
     ReffId VARCHAR(26) NOT NULL CONSTRAINT DF_BILRG_PasienTrackerEvent_ReffId DEFAULT(''),
     
-    CONSTRAINT PK_BILRG_PasienTrackerEvent PRIMARY KEY CLUSTERED (PasienTrackerId, EventDate)
+    CONSTRAINT PK_BILRG_PasienTrackerEvent PRIMARY KEY CLUSTERED (PasienTrackerId, NoUrut)
 )

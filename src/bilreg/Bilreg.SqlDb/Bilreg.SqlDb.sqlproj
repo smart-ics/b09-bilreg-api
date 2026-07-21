@@ -129,6 +129,7 @@
     <None Include="AdmisiContext\AntrianFeature\BILRG_PasienTracker.sql" />
     <None Include="AdmisiContext\AntrianFeature\BILRG_PasienTracker_M1_TrackingPeriod_Alter.sql" />
     <None Include="AdmisiContext\AntrianFeature\BILRG_PasienTrackerEvent.sql" />
+    <None Include="AdmisiContext\AntrianFeature\BILRG_PasienTrackerEvent_M2_AppendOnlyKey_Alter.sql" />
     <None Include="AdmisiContext\BookingFeature\BILRG_Booking.sql" />
     <None Include="AdmisiContext\BookingFeature\BILRG_JadwalPraktek.sql" />
     <None Include="AdmisiContext\JaminanFeature\ta_cara_bayar_dk.dataseed.sql" />
