@@ -163,4 +163,28 @@ public class PasienTrackerModelTest
         tracker.LastPeriod.Should().Be(priorLast);
         tracker.StartPeriod.Should().Be(new DateOnly(2025, 10, 10));
     }
+
+    [Fact]
+    public void UT8_GivenCancelAndRescheduleEvidence_WhenAddEvent_ThenTrackerIdRemainsStable()
+    {
+        // Arrange
+        var booking = CreateBooking(new DateOnly(2025, 10, 24));
+        var tracker = PasienTrackerModel.Create(booking, new DateTime(2025, 10, 10, 9, 0, 0));
+        var stableId = tracker.PasienTrackerId;
+
+        // Act
+        tracker.AddEvent("VISIT_CHANGED", "RG00000001", new DateTime(2025, 10, 24, 11, 0, 0));
+        tracker.AddEvent("REGISTER_CANCELLED", "RG00000001", new DateTime(2025, 10, 24, 12, 0, 0));
+        tracker.AddEvent("BOOKING_CANCELLED", booking.BookingId, new DateTime(2025, 10, 24, 13, 0, 0));
+
+        // Assert
+        tracker.PasienTrackerId.Should().Be(stableId);
+        tracker.ListEvent.Select(x => x.EventName).Should().Contain(new[]
+        {
+            "BOOKING",
+            "VISIT_CHANGED",
+            "REGISTER_CANCELLED",
+            "BOOKING_CANCELLED"
+        });
+    }
 }

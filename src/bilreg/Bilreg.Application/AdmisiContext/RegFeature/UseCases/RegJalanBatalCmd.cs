@@ -99,7 +99,7 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
             if (book.BookingId != "-")
                 _bookingRepo.SaveChanges(book);
             VoidReg(reg, request.UserId, occurredAt);
-            VoidAntrian(antrianContext);
+            VoidAntrian(antrianContext, reg.RegId, occurredAt);
             VoidAntrianMap(queMap, antrianContext.NoUrut);
             VoidTindakan(tindakanList, request.UserId, occurredAt);
             VoidBilling(billingList);
@@ -204,14 +204,28 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
         reg.BatalBerobat(userId, occurredAt);
         _regRepo.SaveChanges(reg);
     }
-    private void VoidAntrian((AntrianModel Que, int NoUrut, IPasienTrackerKey TrackerKey) ctx)
+    private void VoidAntrian(
+        (AntrianModel Que, int NoUrut, IPasienTrackerKey TrackerKey) ctx,
+        string regId,
+        DateTime occurredAt)
     {
-        if (ctx.Que.AntrianId == "-")
+        if (ctx.Que.AntrianId != "-")
+        {
+            ctx.Que.RemoveEntry(ctx.NoUrut);
+            _antrianRepo.SaveChanges(ctx.Que);
+        }
+
+        // Retain Tracker evidence; append cancellation (BR-TRK-009a/b/c).
+        if (!PasienTrackerStableIdentity.IsRealTrackerId(ctx.TrackerKey.PasienTrackerId))
             return;
 
-        ctx.Que.RemoveEntry(ctx.NoUrut);
-        _antrianRepo.SaveChanges(ctx.Que);
-        _pasienTrackerRepo.DeleteEntity(ctx.TrackerKey);
+        var trackerOpt = _pasienTrackerRepo.LoadEntity(ctx.TrackerKey);
+        if (!trackerOpt.HasValue)
+            return;
+
+        var tracker = trackerOpt.Value;
+        tracker.AddEvent("REGISTER_CANCELLED", regId, occurredAt);
+        _pasienTrackerRepo.SaveChanges(tracker);
     }
     private void VoidAntrianMap(AntrianMapModel queMap, int noUrut)
     {
