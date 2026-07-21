@@ -15,12 +15,15 @@ public record QueGetAntrianQuery(string AntrianId) : IRequest<IEnumerable<QueGet
 public record QueGetAntrianResponse(
     string AntrianId,
     int NoAntrian,
+    string PasienTrackerId,
     RegReff Reg,
     PasienReff Pasien,
     string Umur,
     TipeJaminanReff TipeJaminan,
     int StatusAntrian,
-    string StatusAntrianString);
+    string StatusAntrianString,
+    DateTime? ServedAt,
+    DateTime? DoneAt);
 public class QueGetAntrianHandler : IRequestHandler<QueGetAntrianQuery, IEnumerable<QueGetAntrianResponse>>
 {
     private readonly IAntrianRepo _queRepo;
@@ -61,14 +64,25 @@ public class QueGetAntrianHandler : IRequestHandler<QueGetAntrianQuery, IEnumera
                      select new QueGetAntrianResponse(
                          que.AntrianId,
                          c.NoUrut,
+                         c.Tracker.PasienTrackerId,
                          regReff,
                          d.Pasien,
                          UmurHelper.HitungUmur(d.Pasien.TglLahir, businessDate),
                          d.TipeJaminan,
                          (int)c.AntrianStatus,
-                         c.AntrianStatus.ToString()
+                         c.AntrianStatus.ToString(),
+                         ToNullableBusinessTime(c.ServedAt),
+                         ToNullableBusinessTime(c.DoneAt)
                      ))?.ToList() ?? [];
         return result;
+    }
+
+    private static DateTime? ToNullableBusinessTime(DateTime value)
+    {
+        if (value == default || value == DateTime.MinValue || value.Year >= 3000)
+            return null;
+
+        return value;
     }
     #endregion
 }

@@ -6,6 +6,7 @@
     EndTime            VARCHAR(5)   NOT NULL CONSTRAINT DF_BILRG_Antrian_EndTime DEFAULT('00:00'),
     SequenceTag        VARCHAR(50)  NOT NULL CONSTRAINT DF_BILRG_Antrian_SequenceTag DEFAULT(''),
     AntrianDescription VARCHAR(100) NOT NULL CONSTRAINT DF_BILRG_Antrian_AntrianDescription DEFAULT(''),
+    ServicePointCode   VARCHAR(50)  NOT NULL CONSTRAINT DF_BILRG_Antrian_ServicePointCode DEFAULT(''),
 
     CONSTRAINT PK_BILRG_Antrian PRIMARY KEY CLUSTERED (AntrianId)
 )

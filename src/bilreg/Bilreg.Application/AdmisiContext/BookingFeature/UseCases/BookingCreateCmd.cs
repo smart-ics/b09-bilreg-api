@@ -1,12 +1,11 @@
 using Bilreg.Application.AdmisiContext.BookingFeature;
+using Bilreg.Application.AdmisiContext.EmrAntrianOutboundFeature;
 using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
-using Bilreg.Application.AdmisiContext.JaminanFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
-using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers;
@@ -20,9 +19,16 @@ namespace Bilreg.Application.AdmisiContext.BookingFeature.UseCases;
 public record BookingCreateCmd(string PasienId, string PasienName, string TglLahir,
     string Gender, string Alamat, string NoTelp,
     string DokterId, string TglBerobat, string JamMulai, string UserId,
-    bool IsForceDuplicatedTracker) : IRequest<BookingCreateResponse>;
+    bool IsForceDuplicatedTracker,
+    string SelectedTrackerId = "") : IRequest<BookingCreateResponse>;
 
-public record BookingCreateResponse(string BookingId, int NoAntrian);
+public record BookingCreateResponse(
+    string BookingId,
+    int NoAntrian,
+    bool IsDuplicated,
+    bool IsCreated,
+    string PasienTrackerId,
+    IEnumerable<TrkJourneyCandidateDto> Candidates);
 
 public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCreateResponse>
 {
@@ -33,18 +39,20 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
     private readonly IPasienTrackerRepo _trackerRepo;
     private readonly IPasienRepo _pasienRepo;
     private readonly IAntrianMapRepo _antrianMapRepo;
-    private readonly IAddAntrianEmrByBookingService _addAntrianEmrByBookingService;
-    private readonly IAntrianMapWithBookingResolver _antrianMapWithBookingResolver;
+    private readonly EmrAntrianOutboundEnqueueService _emrOutboundEnqueue;
+    private readonly IQueueNumberCompatibilityAdapter _queueNumberAdapter;
     private readonly IJadwalPraktekFeatureResolver _featureResolver;
+    private readonly IJourneyCandidateFinder _candidateFinder;
     private readonly ITglJamProvider _tglJamProvider;
 
     public BookingCreateHandler(IJadwalPraktekRepo jadwalPraktekRepo,
         IAntrianRepo antrianRepo, IAntrianFactory antrianFactory,
         IBookingRepo bookingRepo, IPasienTrackerRepo trackerRepo,
         IPasienRepo pasienRepo, IAntrianMapRepo antrianMapRepo,
-        IAddAntrianEmrByBookingService addAntrianEmrByBookingService, 
-        IAntrianMapWithBookingResolver antrianMapWithBookingResolver,
+        EmrAntrianOutboundEnqueueService emrOutboundEnqueue,
+        IQueueNumberCompatibilityAdapter queueNumberAdapter,
         IJadwalPraktekFeatureResolver featureResolver,
+        IJourneyCandidateFinder candidateFinder,
         ITglJamProvider tglJamProvider)
     {
         _jadwalPraktekRepo = jadwalPraktekRepo;
@@ -54,9 +62,10 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         _trackerRepo = trackerRepo;
         _pasienRepo = pasienRepo;
         _antrianMapRepo = antrianMapRepo;
-        _addAntrianEmrByBookingService = addAntrianEmrByBookingService;
-        _antrianMapWithBookingResolver = antrianMapWithBookingResolver;
+        _emrOutboundEnqueue = emrOutboundEnqueue;
+        _queueNumberAdapter = queueNumberAdapter;
         _featureResolver = featureResolver;
+        _candidateFinder = candidateFinder;
         _tglJamProvider = tglJamProvider;
     }
 
@@ -66,12 +75,8 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         //  GUARD
         if (request.PasienId.Trim() != string.Empty && request.PasienName.Trim() != string.Empty)
             throw new ArgumentException("Kosongkan PasienName jika booking menggunakan PasienId");
-        //      cek jadwal
-        var dokter = PpaType.Key(request.DokterId);
+
         var tglBerobat = DateOnly.Parse(request.TglBerobat);
-        var jamMulai = TimeOnly.ParseExact(request.JamMulai, "HH:mm", CultureInfo.InvariantCulture);
-        var schedule = BookingScheduleResolver.Resolve(
-            _featureResolver, _jadwalPraktekRepo, dokter, tglBerobat, jamMulai);
 
         //  create person
         var px = request.PasienId != string.Empty ?
@@ -81,6 +86,26 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
         var person = request.PasienId == string.Empty ?
             CreatePerson(request) :
             px.Person;
+
+        var selectedTrackerId = request.SelectedTrackerId?.Trim() ?? string.Empty;
+        var hasSelectedTracker = !string.IsNullOrEmpty(selectedTrackerId);
+
+        // Soft-duplicate advisory: present all candidates; do not create (BR-TRK-022..025).
+        if (!request.IsForceDuplicatedTracker && !hasSelectedTracker)
+        {
+            var candidates = _candidateFinder.Find(person.PersonName, person.TglLahir, tglBerobat);
+            if (candidates.Count > 0)
+            {
+                return Task.FromResult(new BookingCreateResponse(
+                    "-", 0, true, false, "-", candidates));
+            }
+        }
+
+        //      cek jadwal
+        var dokter = PpaType.Key(request.DokterId);
+        var jamMulai = TimeOnly.ParseExact(request.JamMulai, "HH:mm", CultureInfo.InvariantCulture);
+        var schedule = BookingScheduleResolver.Resolve(
+            _featureResolver, _jadwalPraktekRepo, dokter, tglBerobat, jamMulai);
 
         //  create booking
         var booking = _featureResolver.UseResolver
@@ -99,36 +124,61 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
                 : _antrianFactory.Create(tglBerobat, schedule.LegacyJadwal))
             : _antrianRepo.LoadEntity(antrianView).Value;
 
-        if (!request.IsForceDuplicatedTracker)
-            ThrowExceptionIfTrackerExists(booking);
-        var tracker = PasienTrackerModel.Create(booking, occurredAt);
+        var tracker = ResolveTracker(booking, selectedTrackerId, hasSelectedTracker, occurredAt);
 
-        // antrianMap
-        var antrianMap = _antrianMapWithBookingResolver.Resolve(
-            schedule.LegacyJadwal, tglBerobat, booking, px);
-
+        var reserved = _queueNumberAdapter.ReserveForBooking(
+            schedule.LegacyJadwal, tglBerobat, booking, px).Value;
 
         //  persisting
         BookingCreateResponse response;
         using (var trans = TransHelper.NewScope())
         {
-            //      no antrian masuk ke transaction agar bisa rollback jika gagal
-            var antEntry = antrian.AddEntry(antrianMap.Value.Item2.NoUrut, tracker, booking.BookingId, "BOK", occurredAt);
+            var antEntry = _queueNumberAdapter.ProjectIntoQueueSession(
+                antrian, reserved, tracker, booking.BookingId, "BOK", occurredAt);
             booking.AssignNoAntrian(antEntry.NoUrut);
 
             //      writing database
             _bookingRepo.SaveChanges(booking);
             _antrianRepo.SaveChanges(antrian);
             _trackerRepo.SaveChanges(tracker);
-            _antrianMapRepo.SaveChanges(antrianMap.Value.Item1);
+            _antrianMapRepo.SaveChanges(reserved.Map);
+
+            var pasienId = px.PasienId == "-" ? "-" : px.PasienId;
+            var emrPayload = new AddAntrianEmrByBookingCmd(
+                booking.BookingId, pasienId, booking.Person.PersonName,
+                booking.Layanan.LayananId, booking.Dokter.PpaId, booking.TglBerobat.ToString("yyyy-MM-dd"),
+                booking.JamPraktek.ToString("HH:mm", CultureInfo.InvariantCulture), booking.NoAntrian);
+            _emrOutboundEnqueue.TryEnqueueAddBooking(emrPayload, occurredAt);
 
             trans.Complete();
-            response = new BookingCreateResponse(booking.BookingId, antEntry.NoUrut);
+            response = new BookingCreateResponse(
+                booking.BookingId,
+                antEntry.NoUrut,
+                false,
+                true,
+                tracker.PasienTrackerId,
+                []);
         }
 
-        AddAntrianEmrByBooking(booking, px);
-
         return Task.FromResult(response);
+    }
+
+    private PasienTrackerModel ResolveTracker(
+        BookingModel booking,
+        string selectedTrackerId,
+        bool hasSelectedTracker,
+        DateTime occurredAt)
+    {
+        if (!hasSelectedTracker)
+            return PasienTrackerModel.Create(booking, occurredAt);
+
+        var tracker = _trackerRepo.LoadEntity(PasienTrackerModel.Key(selectedTrackerId))
+            .Match(
+                onSome: x => x,
+                onNone: () => throw new KeyNotFoundException(
+                    $"PasienTracker '{selectedTrackerId}' not found"));
+        tracker.AddEvent("BOOKING", booking.BookingId, occurredAt);
+        return tracker;
     }
 
     private PasienModel FindPasien(BookingCreateCmd request)
@@ -148,29 +198,4 @@ public class BookingCreateHandler : IRequestHandler<BookingCreateCmd, BookingCre
             alamat, contact, IdentitasType.Default);
         return person;
     }
-
-    private void ThrowExceptionIfTrackerExists(BookingModel booking)
-    {
-        var periodeVisit = new Periode(booking.TglBerobat.ToDateTime(TimeOnly.MinValue));
-        var listTracker = _trackerRepo.ListData(periodeVisit, booking.Person.TglLahir)?.ToList()
-                          ?? [];
-        var personNameEyd = booking.Person.PersonName.ToEyd();
-        var duplicated = listTracker
-            .FirstOrDefault(x => x.Person.PersonName.ToEyd() == personNameEyd);
-
-        if (duplicated is not null)
-            throw new ArgumentException("Pasien terdeteksi di tracker. Booking terduplikasi");
-    }
-
-    private void AddAntrianEmrByBooking(BookingModel book, PasienModel px)
-    {
-        var pasienId = px.PasienId == "-" ? "-" : px.PasienId;
-        var payload = new AddAntrianEmrByBookingCmd(book.BookingId, pasienId, book.Person.PersonName,
-            book.Layanan.LayananId, book.Dokter.PpaId, book.TglBerobat.ToString("yyyy-MM-dd"),
-            book.JamPraktek.ToString("HH:mm", CultureInfo.InvariantCulture), book.NoAntrian);
-        _addAntrianEmrByBookingService.Execute(payload);
-    }
-
-
-
 }

@@ -315,6 +315,16 @@ A Queue Entry references a Patient Tracker by TrackerId but does not own or modi
 - **BR-TRK-007** — For a Patient Tracker established without a future VisitDate, LastPeriod shall initially equal StartPeriod.
 - **BR-TRK-008** — Recording later evidence shall set LastPeriod to the later of its current value and the Tracker Event's OccurredAt date; LastPeriod shall never move backward.
 - **BR-TRK-009** — Creation of a RegId or another source transaction shall not replace TrackerId.
+- **BR-TRK-009a** — TrackerId shall remain immutable across visit change (reschedule), registration cancellation, and booking deletion. Those workflows append Tracker Events and shall not create a replacement TrackerId or delete the Patient Tracker aggregate.
+- **BR-TRK-009b** — Cancellation and visit-change evidence use the following Event Descriptions and Evidence References; prior events remain append-only history:
+
+  | Workflow | Event Description | Evidence Reference |
+  |---|---|---|
+  | Booking deletion | `BOOKING_CANCELLED` | BookingId |
+  | Registration cancellation | `REGISTER_CANCELLED` | RegId |
+  | Visit change | `VISIT_CHANGED` | RegId |
+
+- **BR-TRK-009c** — Releasing a legacy physician slot (`AntrianMap`) or removing a Queue Entry shall not require deleting Patient Tracker evidence. Slot and queue cleanup remain independent of Tracker retention.
 
 ### 7.2 Tracker evidence
 

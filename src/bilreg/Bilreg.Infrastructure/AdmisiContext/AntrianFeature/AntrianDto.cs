@@ -5,7 +5,8 @@ using System.Globalization;
 namespace Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
 
 public record AntrianDto(string AntrianId, DateTime AntrianDate,
-    string StartTime, string EndTime, string SequenceTag, string AntrianDescription) : IAntrianKey
+    string StartTime, string EndTime, string SequenceTag, string AntrianDescription,
+    string ServicePointCode) : IAntrianKey
 {
     public static AntrianDto FromModel(AntrianModel model)
     {
@@ -15,12 +16,18 @@ public record AntrianDto(string AntrianId, DateTime AntrianDate,
             model.StartTime.ToString("HH:mm", CultureInfo.InvariantCulture),
             model.EndTime.ToString("HH:mm", CultureInfo.InvariantCulture),
             model.SequenceTag,
-            model.AntrianDescription);
+            model.AntrianDescription,
+            model.ServicePoint.ServicePointCode);
         return result;
     }
 
     public AntrianModel ToModel(IEnumerable<AntrianEntryModel> listEntry, ISequencer sequencer)
     {
+        var servicePointCode = string.IsNullOrWhiteSpace(ServicePointCode)
+            ? AntrianModel.ServicePointCodeFromSequenceTag(SequenceTag)
+            : ServicePointCode;
+        var servicePoint = new ServicePointType(servicePointCode, AntrianDescription);
+
         var result = new AntrianModel(
             AntrianId,
             DateOnly.FromDateTime(AntrianDate),
@@ -28,6 +35,7 @@ public record AntrianDto(string AntrianId, DateTime AntrianDate,
             TimeOnly.ParseExact(EndTime, "HH:mm", CultureInfo.InvariantCulture),
             SequenceTag,
             AntrianDescription,
+            servicePoint,
             listEntry, 
             sequencer);
         return result;

@@ -5,6 +5,7 @@ using Bilreg.Application.AccountingContext.JurnalFeature;
 using Bilreg.Application.AccountingContext.JurnalFeature.JkAgg;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.BookingFeature;
+using Bilreg.Application.AdmisiContext.EmrAntrianOutboundFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature;
 using Bilreg.Application.AdmisiContext.JaminanFeature.JaminanAgg;
 using Bilreg.Application.AdmisiContext.LayananFeature;
@@ -41,7 +42,11 @@ namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 
 public record RegJalanWalkInCommand(string PasienId, string UserId,
     string TipeJaminanId, string CaraMasukDkId, string RujukanId, string DokterId,
-    string LayananId, string JamPraktek, string KarcisId, string PesertaJaminanId) 
+    string LayananId, string JamPraktek, string KarcisId, string PesertaJaminanId,
+    string? AdmissionAntrianId = null,
+    int? AdmissionNoUrut = null,
+    string? AdmissionServicePointCode = null,
+    string? AdmissionServicePointName = null) 
     : IRequest<RegJalanCreateResponse>, ILayananKey, ICaraMasukDkKey, IPasienKey,
         ITipeJaminanKey, IKarcisKey; 
  
@@ -85,8 +90,8 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
 
     private readonly IRemoteCetakRepo _remoteCetakRepo;
     private readonly IGetAppSettingService _getAppSettingSvc;
-    private readonly IAddAntrianEmrByRegService _addAntrianEmrByRegService;
-    private readonly IAntrianMapWithRegResolver _antrianMapWithRegResolver;
+    private readonly EmrAntrianOutboundEnqueueService _emrOutboundEnqueue;
+    private readonly IQueueNumberCompatibilityAdapter _queueNumberAdapter;
     private readonly IJadwalPraktekFeatureResolver _featureResolver;
     private readonly ITglJamProvider _tglJamProvider;
 
@@ -124,8 +129,8 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         IJurnalRepo jurnalRepo,
         IRemoteCetakRepo remoteCetakRepo,
         IGetAppSettingService getAppSettingSvc,
-        IAddAntrianEmrByRegService addRegSvc, 
-        IAntrianMapWithRegResolver antrianMapResolver,
+        EmrAntrianOutboundEnqueueService emrOutboundEnqueue,
+        IQueueNumberCompatibilityAdapter queueNumberAdapter,
         IJadwalPraktekFeatureResolver featureResolver,
         ITglJamProvider tglJamProvider)
     {
@@ -162,8 +167,8 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         _jurnalRepo = jurnalRepo;
         _remoteCetakRepo = remoteCetakRepo;
         _getAppSettingSvc = getAppSettingSvc;
-        _addAntrianEmrByRegService = addRegSvc;
-        _antrianMapWithRegResolver = antrianMapResolver;
+        _emrOutboundEnqueue = emrOutboundEnqueue;
+        _queueNumberAdapter = queueNumberAdapter;
         _featureResolver = featureResolver;
         _tglJamProvider = tglJamProvider;
     }
@@ -203,8 +208,9 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         var schedule = BookingScheduleResolver.ResolveWalkIn(
             _featureResolver, _jadwalPraktekRepo, dokter, tglBerobat, request.JamPraktek);
         var antrian = ResolveAntrian(tglBerobat, dokter, schedule);
-        var antrianMap = _antrianMapWithRegResolver.Resolve(schedule.LegacyJadwal, tglBerobat, reg);
-        var tracker = PasienTrackerModel.Create(reg, occurredAt);
+        var reserved = _queueNumberAdapter.ReserveForRegistration(
+            schedule.LegacyJadwal, tglBerobat, reg).Value;
+        var tracker = ResolveTrackerForWalkIn(reg, occurredAt, request);
 
         //      3-trs-billing-karcis
         var jaminan = LoadJaminan(tipeJaminan.Jaminan);
@@ -247,15 +253,19 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         
         using (var trans = TransHelper.NewScope())
         {
-            var antEntry = antrian.AddEntry(antrianMap.Value.Item2.NoUrut, tracker, reg.RegId, "REG", occurredAt);
-            var itemQueue = antrian.ListEntry.FirstOrDefault(x => x.NoUrut == antrianMap.Value.Item2.NoUrut)
-                ?? AntrianEntryModel.Default;
-            itemQueue.Serve(occurredAt);
+            // Physician entry stays Waiting until MulaiPeriksa; legacy "active" = ReffDesc REG / AntrianMap (F-07).
+            var antEntry = _queueNumberAdapter.ProjectIntoQueueSession(
+                antrian, reserved, tracker, reg.RegId, "REG", occurredAt);
+            var admissionQueue = AdmissionQueueComplete.CompleteAtRegistration(
+                _antrianRepo, _antrianFactory, tracker, reg.RegId, occurredAt,
+                request.AdmissionAntrianId, request.AdmissionNoUrut,
+                request.AdmissionServicePointCode, request.AdmissionServicePointName);
             _regRepo.SaveChanges(reg);
             _regAktifRepo.SaveChanges(regAktif);
             _antrianRepo.SaveChanges(antrian);
+            _antrianRepo.SaveChanges(admissionQueue);
             _trackerRepo.SaveChanges(tracker);
-            _antrianMapRepo.SaveChanges(antrianMap.Value.Item1);
+            _antrianMapRepo.SaveChanges(reserved.Map);
             _trsBillingRepo.SaveChanges(trsBillingReg);
             if (tindakan.TindakanId != "-")
                 _tindakanRepo.SaveChanges(tindakan);
@@ -266,16 +276,45 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
                 _jurnalRepo.SaveChanges(jurnalTindakan);
             _remoteCetakRepo.SaveChanges(rmtCetak);
 
+            var emrPayload = new AddAntrianEmrByRegCommand(
+                reg.RegId, "-", reg.Pasien.PasienId,
+                reg.Pasien.PasienName, reg.Layanan.LayananId,
+                reg.Dokter.PpaId, reg.RegDate.ToString("yyyy-MM-dd"),
+                schedule.LegacyJadwal.JamMulai.ToString("HH:mm", CultureInfo.InvariantCulture),
+                antEntry.NoUrut);
+            _emrOutboundEnqueue.TryEnqueueAddReg(emrPayload, occurredAt);
+
             trans.Complete();
             response = new RegJalanCreateResponse(reg.RegId, antEntry.NoUrut);
         }
-        AddAntrianEmr(reg, antrianMap.Value.Item2, schedule.LegacyJadwal);
-        
+
         return Task.FromResult(response);
         
     }
 
     #region PRIVATE-HELPERS
+    private PasienTrackerModel ResolveTrackerForWalkIn(
+        RegModel reg,
+        DateTime occurredAt,
+        RegJalanWalkInCommand request)
+    {
+        if (string.IsNullOrWhiteSpace(request.AdmissionAntrianId) || request.AdmissionNoUrut is not > 0)
+            return PasienTrackerModel.Create(reg, occurredAt);
+
+        var admissionQueue = _antrianRepo.LoadEntity(AntrianModel.Key(request.AdmissionAntrianId!))
+            .GetValueOrThrow($"Admission queue '{request.AdmissionAntrianId}' not found");
+        var entry = admissionQueue.ListEntry.FirstOrDefault(x => x.NoUrut == request.AdmissionNoUrut)
+            ?? throw new KeyNotFoundException(
+                $"Queue entry '{request.AdmissionAntrianId}' / {request.AdmissionNoUrut} not found");
+
+        if (!PasienTrackerStableIdentity.IsRealTrackerId(entry.Tracker.PasienTrackerId))
+            throw new InvalidOperationException(
+                $"Admission queue entry '{request.AdmissionAntrianId}' / {request.AdmissionNoUrut} is not identified.");
+
+        return _trackerRepo.LoadEntity(entry.Tracker)
+            .GetValueOrThrow($"PasienTracker '{entry.Tracker.PasienTrackerId}' not found");
+    }
+
     private bool IsPasienAktifReg(IPasienKey pasien)
     {
         return _regAktifRepo.IsPasienAktif(pasien)
@@ -390,17 +429,6 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
                 onNone: () => MapJaminanJkType.Default
             );
         return map;
-    }
-
-    private void AddAntrianEmr(RegModel reg, AntrianMapDetilModel antrianMapDetil, JadwalPraktekType jadwal)
-    {
-        var payload = new AddAntrianEmrByRegCommand(
-            reg.RegId, "-", reg.Pasien.PasienId,
-            reg.Pasien.PasienName, reg.Layanan.LayananId, 
-            reg.Dokter.PpaId, reg.RegDate.ToString("yyyy-MM-dd"),
-            jadwal.JamMulai.ToString("HH:mm", CultureInfo.InvariantCulture), 
-            antrianMapDetil.NoUrut);
-        _addAntrianEmrByRegService.Execute(payload);
     }
     #endregion
 }
