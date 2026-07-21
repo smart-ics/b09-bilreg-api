@@ -1,6 +1,7 @@
 using Ardalis.GuardClauses;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using MediatR;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.ChargeContext.TarifFeature.UseCases;
 
@@ -20,9 +21,13 @@ public record TrfCopyTarifPolicyResponse(
 public class TrfCopyTarifPolicyHandler : IRequestHandler<TrfCopyTarifPolicyCmd, TrfCopyTarifPolicyResponse>
 {
     private readonly ITarifPolicyRepo _tarifPolicyRepo;
+    private readonly ITglJamProvider _tglJamProvider;
 
-    public TrfCopyTarifPolicyHandler(ITarifPolicyRepo tarifPolicyRepo) =>
+    public TrfCopyTarifPolicyHandler(ITarifPolicyRepo tarifPolicyRepo, ITglJamProvider tglJamProvider)
+    {
         _tarifPolicyRepo = tarifPolicyRepo;
+        _tglJamProvider = tglJamProvider;
+    }
 
     public Task<TrfCopyTarifPolicyResponse> Handle(
         TrfCopyTarifPolicyCmd request,
@@ -35,7 +40,8 @@ public class TrfCopyTarifPolicyHandler : IRequestHandler<TrfCopyTarifPolicyCmd, 
             source,
             request.NewPolicyNo,
             request.NewPolicyName,
-            request.UserId);
+            request.UserId,
+            _tglJamProvider.Now);
 
         _tarifPolicyRepo.SaveChanges(copy);
 

@@ -7,6 +7,7 @@ using Bilreg.Domain.AdmisiRanapContext.WaitingListFeature;
 using Bilreg.Domain.Shared.AuditLogFeature;
 using MediatR;
 using Nuna.Lib.PatternHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiRanapContext.WaitingListFeature.UseCases;
 
@@ -25,17 +26,20 @@ public class AdmCreateWaitingListHandler : IRequestHandler<AdmCreateWaitingListC
     private readonly IAdmissionRepo _admissionRepo;
     private readonly IWardAccommodationGateway _wardGateway;
     private readonly IAuditRepo _auditRepo;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public AdmCreateWaitingListHandler(
         IWaitingListRepo waitingListRepo,
         IAdmissionRepo admissionRepo,
         IWardAccommodationGateway wardGateway,
-        IAuditRepo auditRepo)
+        IAuditRepo auditRepo,
+        ITglJamProvider tglJamProvider)
     {
         _waitingListRepo = waitingListRepo;
         _admissionRepo = admissionRepo;
         _wardGateway = wardGateway;
         _auditRepo = auditRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<AdmCreateWaitingListResponse> Handle(
@@ -57,6 +61,7 @@ public class AdmCreateWaitingListHandler : IRequestHandler<AdmCreateWaitingListC
         var kelas = _wardGateway.ResolveKelas(request.KelasId);
         var bangsal = _wardGateway.ResolveBangsal(request.BangsalId);
 
+        var occurredAt = _tglJamProvider.Now;
         var waitingList = WaitingListModel.Create(
             admission.RegId,
             admission.AdmissionStatus,
@@ -64,7 +69,8 @@ public class AdmCreateWaitingListHandler : IRequestHandler<AdmCreateWaitingListC
             kelas,
             bangsal,
             request.Priority,
-            request.UserId);
+            request.UserId,
+            occurredAt);
 
         _waitingListRepo.SaveChanges(waitingList);
 

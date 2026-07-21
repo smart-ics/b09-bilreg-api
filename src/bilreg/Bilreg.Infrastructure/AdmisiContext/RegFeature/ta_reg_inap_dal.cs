@@ -31,11 +31,11 @@ public class ta_reg_inap_dal : Ita_reg_inap_dal
     {
         const string sql = """
            INSERT INTO ta_reg_inap (
-               fs_kd_reg, fs_kd_caramasuk_inap, 
+               fs_kd_reg, fs_kd_caramasuk_inap,
                fs_kd_trs_booking_bed, fs_kd_medis_sekunder)
            VALUES (
-               fs_kd_reg, fs_kd_caramasuk_inap, 
-               fs_kd_trs_booking_bed, fs_kd_medis_sekunder)
+               @fs_kd_reg, @fs_kd_caramasuk_inap,
+               @fs_kd_trs_booking_bed, @fs_kd_medis_sekunder)
            """;
 
         var dp = new DynamicParameters();
@@ -53,14 +53,13 @@ public class ta_reg_inap_dal : Ita_reg_inap_dal
         const string sql = """
            UPDATE ta_reg_inap
            SET
-               fs_kd_reg = @fs_kd_reg,
                fs_kd_caramasuk_inap = @fs_kd_caramasuk_inap,
                fs_kd_trs_booking_bed = @fs_kd_trs_booking_bed,
                fs_kd_medis_sekunder = @fs_kd_medis_sekunder
            WHERE
                fs_kd_reg = @fs_kd_reg
            """;
-        
+
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_reg", model.fs_kd_reg, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_caramasuk_inap", model.fs_kd_caramasuk_inap, SqlDbType.VarChar);
@@ -77,7 +76,7 @@ public class ta_reg_inap_dal : Ita_reg_inap_dal
            DELETE FROM ta_reg_inap
            WHERE fs_kd_reg = @fs_kd_reg
            """;
-        
+
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_reg", regKey.RegId, SqlDbType.VarChar);
 
@@ -96,12 +95,11 @@ public class ta_reg_inap_dal : Ita_reg_inap_dal
             FROM ta_reg_inap
             WHERE fs_kd_reg = @fs_kd_reg
             """;
-        
+
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_reg", key.RegId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        var result = conn.ReadSingle<ta_reg_inap_dto>(sql, dp);
-        return result;
+        return conn.ReadSingle<ta_reg_inap_dto>(sql, dp);
     }
 }

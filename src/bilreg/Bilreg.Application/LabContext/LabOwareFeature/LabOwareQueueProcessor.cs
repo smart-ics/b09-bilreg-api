@@ -45,13 +45,15 @@ public class LabOwareQueueProcessor
 
         if (sendResult.Success)
         {
-            queue.MarkSucceeded();
-            order.MarkOwareSent(actorUserId);
+            var technicalNow = DateTime.Now;
+            queue.MarkSucceeded(technicalNow);
+            order.MarkOwareSent(actorUserId, technicalNow);
         }
         else
         {
-            queue.MarkFailed(sendResult.ErrorMessage ?? "OWARE send failed");
-            order.MarkOwareFailed(actorUserId);
+            var technicalNow = DateTime.Now;
+            queue.MarkFailed(sendResult.ErrorMessage ?? "OWARE send failed", technicalNow);
+            order.MarkOwareFailed(actorUserId, technicalNow);
         }
 
         using (var trans = TransHelper.NewScope())

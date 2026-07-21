@@ -259,7 +259,7 @@ public class LabResultDocumentModel : ILabResultDocumentKey
             i.FlagStatus)).ToList();
     }
 
-    public void RecordResult(LabResultSourceEnum source, IEnumerable<LabResultItemCapture> captures, string userId)
+    public void RecordResult(LabResultSourceEnum source, IEnumerable<LabResultItemCapture> captures, string userId, DateTime recordedAt = default)
     {
         Guard.Against.Null(captures, nameof(captures));
         Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
@@ -324,10 +324,10 @@ public class LabResultDocumentModel : ILabResultDocumentKey
 
         _items.Clear();
         _items.AddRange(next);
-        AuditTrail.Modif(userId, DateTime.Now);
+        AuditTrail.Modif(userId, recordedAt);
     }
 
-    public void MarkRecorded(string userId)
+    public void MarkRecorded(string userId, DateTime recordedAt = default)
     {
         Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
 
@@ -340,9 +340,9 @@ public class LabResultDocumentModel : ILabResultDocumentKey
                 $"LabResultDocument {ResultDocumentId} sudah diverifikasi; MarkRecorded tidak diperbolehkan.");
 
         ResultStatus = LabResultStatusEnum.Recorded;
-        RecordedDate = DateTime.Now;
+        RecordedDate = recordedAt;
         RecordedUserId = userId;
-        AuditTrail.Modif(userId, DateTime.Now);
+        AuditTrail.Modif(userId, recordedAt);
     }
 
     public void Verify(string verifiedUserId, DateTime verifiedDate)
@@ -364,7 +364,7 @@ public class LabResultDocumentModel : ILabResultDocumentKey
         ResultStatus = LabResultStatusEnum.Verified;
         VerifiedUserId = verifiedUserId;
         VerifiedDate = verifiedDate;
-        AuditTrail.Modif(verifiedUserId, DateTime.Now);
+        AuditTrail.Modif(verifiedUserId, verifiedDate);
     }
 
     public string ResultDocumentId { get; init; }

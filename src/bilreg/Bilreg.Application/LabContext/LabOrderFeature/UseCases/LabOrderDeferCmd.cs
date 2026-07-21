@@ -16,10 +16,12 @@ public record LabOrderDeferCmd(
 public class LabOrderDeferHandler : IRequestHandler<LabOrderDeferCmd>
 {
     private readonly ILabOrderRepo _labOrderRepo;
+    private readonly ITglJamProvider _tglJamProvider;
 
-    public LabOrderDeferHandler(ILabOrderRepo labOrderRepo)
+    public LabOrderDeferHandler(ILabOrderRepo labOrderRepo, ITglJamProvider tglJamProvider)
     {
         _labOrderRepo = labOrderRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task Handle(LabOrderDeferCmd request, CancellationToken cancellationToken)
@@ -29,7 +31,8 @@ public class LabOrderDeferHandler : IRequestHandler<LabOrderDeferCmd>
         Guard.Against.NullOrWhiteSpace(request.Reason, nameof(request.Reason));
 
         var order = _labOrderRepo.LoadEntity(request).GetValueOrThrow($"LabOrder '{request.OrderId}' not found");
-        order.Defer(request.Reason, request.UntilDate, request.UserId);
+        var occurredAt = _tglJamProvider.Now;
+        order.Defer(request.Reason, request.UntilDate, request.UserId, occurredAt);
 
         using var trans = TransHelper.NewScope();
         _labOrderRepo.SaveChanges(order);

@@ -30,6 +30,7 @@
 | `docs/DATABASE.md` | SQL persistence standard |
 | `docs/NAMING.md` | Naming standard |
 | `docs/WORKFLOW.md` | Operational workflow UX standard (not Lab-specific) |
+| `docs/business-date-implementation-review.md` | Business Date implementation, clock audit, migrations, and verification |
 | `docs/skills/*.md` | AI generation skills |
 
 ---
@@ -67,6 +68,9 @@
 | `docs/contexts/admisi-ranap/admisi-ranap-domain.md` | Admisi Ranap — what (aggregates, rules, lifecycles) |
 | `docs/contexts/admisi-ranap/admisi-ranap-architecture.md` | Admisi Ranap — how (use cases, repos, API, integration, ADRs) |
 | `docs/contexts/admisi-ranap/admisi-ranap-registration-orchestration.md` | Admission + legacy Registration orchestration, shared `RegId`, mapping rules, and AI implementation guidance |
+| `docs/contexts/admisi-ranap/admisi-ranap-coordinated-cancellation-design.md` | Coordinated Admission/Registration cancellation — eligibility, state transitions, source restoration, transaction, concurrency, and tests |
+| `docs/contexts/admisi-ranap/ta-reg-inap-persistence-contract.md` | `ta_reg_inap` / `RegInapModel` persistence contract for inpatient registration — ownership, fields, DAL defects, readiness |
+| `docs/contexts/admisi-ranap/admisi-ranap-step-4c-verification-report.md` | Step 4C — end-to-end + DB verification report (Opname/Reservation, RegInap, rollback, follow-ups) |
 | `docs/contexts/admisi-ranap/admisi-ranap-persistent-workspace-capability-matrix.md` | Persistent workspace — backend capability matrix (Ready / Propose / Defer); Phase 2 WL-by-regId Ready |
 | `docs/contexts/admisi-ranap/admisi-ranap-implementation-plan.md` | Admisi Ranap — phased backend implementation plan |
 | `docs/contexts/admisi-ranap/admisi-ranap-phase-0-implementation-report.md` | Phase 0 — folder scaffolding, conventions, build verification |
@@ -76,6 +80,10 @@
 | `docs/contexts/admisi-ranap/admisi-ranap-phase-4-implementation-report.md` | Phase 4 — REST API controllers, 19 endpoints, JSendOk, baseline auth |
 | `docs/contexts/admisi-ranap/admisi-ranap-phase-5-implementation-report.md` | Phase 5 — integration gateways (Doctor, Patient, Ward), handler refactor, adapter tests |
 | `docs/contexts/admisi-ranap/admisi-ranap-phase-7-implementation-report.md` | Phase 7 — hardening, rollout, audit logging, E2E workflow validation |
+| `docs/contexts/admisi-ranap/admisi-ranap-phase-b1-journey-resolver-implementation-report.md` | Release 1 Phase B1 — journey contracts, JourneyId, integrity, pure stage resolver |
+| `docs/contexts/admisi-ranap/admisi-ranap-phase-b2-journey-projection-implementation-report.md` | Release 1 Phase B2 — journey read DAL/projection, SQL stage parity, list/detail, integration tests |
+| `docs/contexts/admisi-ranap/admisi-ranap-phase-b2.1-journey-projection-hardening-report.md` | Release 1 Phase B2.1 — batch list hydration, IT isolation, allowed-action billing gate, volume evidence |
+| `docs/contexts/admisi-ranap/admisi-ranap-phase-b3.1-staging-verification-report.md` | Release 1 Phase B3.1 — staging verification result, API/DB prerequisites, contract evidence, and performance gate |
 | `docs/contexts/admisi-ranap/admisi-ranap-runbook.md` | Admisi Ranap — operation (deployment, validation, rollback) |
 | `docs/contexts/admisi-ranap/admisi-ranap-rollout-checklist.md` | Admisi Ranap — production rollout gates |
 
@@ -154,6 +162,49 @@ Background processing platform — job orchestration, worker plugins, operator c
 | `docs/taksaka/07-production-checklist.md` | Production deployment checklist |
 | `docs/taksaka/08-operations-runbook.md` | Daily/weekly/monthly runbook, DR, upgrade |
 | `docs/taksaka/09-administrator-guide.md` | Practical guide for hospital EDP (Bahasa Indonesia) |
+
+### CPOE (`docs/contexts/cpoe/`)
+
+| Path | Purpose |
+|------|---------|
+| `docs/contexts/cpoe/CPOE-DOMAIN.md` | CPOE — what (clinical-order business truth, aggregates, rules, lifecycles) |
+| `docs/contexts/cpoe/CPOE-DOMAIN-ID.md` | CPOE — versi Bahasa Indonesia (istilah domain standar tetap dipertahankan) |
+| `docs/contexts/cpoe/CPOE-ARCHITECTURE.md` | CPOE — how (module boundaries, use cases, persistence, API, integrations, security, infrastructure, ADRs) |
+
+### RUANG RANAP Operational Management (`docs/contexts/bangsal/`)
+
+| Path | Purpose |
+|------|---------|
+| `docs/contexts/bangsal/RNA-DOMAIN.md` | RNA — what (accommodation and RUANG RANAP service-execution business truth) |
+| `docs/contexts/bangsal/RNA-DOMAIN-ID.md` | RNA — versi Bahasa Indonesia (semantic companion; canonical domain identities retained) |
+| `docs/contexts/bangsal/RNA-ARCHITECTURE.md` | RNA — how (codebase-grounded modules, use cases, persistence, integrations, consistency, security, ADRs, and gaps) |
+| `docs/contexts/bangsal/CPOE-RNA-INTEGRATION.md` | CPOE ↔ RNA — order dispatch/change, Ward coordination requests, execution facts/corrections, exceptional accountability, reliability, and reconciliation semantic contract |
+| `docs/contexts/bangsal/RNA-TATA-REKENING-INTEGRATION.md` | RNA ↔ Tata Rekening — execution facts, corrections, lifecycle query, acknowledgement, reliability, and reconciliation semantic contract |
+| `docs/contexts/bangsal/rna-sop/RNA-SOP-INDEX.md` | RNA — approved accommodation and service-execution SOP index |
+| `docs/contexts/bangsal/rna-sop/RNA-SOP-GAPS.md` | RNA — unresolved policy decisions that gate architecture and implementation |
+| `docs/contexts/bangsal/rna-sop/RNA-CPOE-DOMAIN-GAP-ANALYSIS.md` | RNA SOP versus simplified CPOE domain — alignment, cross-context gaps, and recommended change order |
+
+### Patient Tracker (`docs/contexts/pasien-tracker/`)
+
+| Path | Purpose |
+|------|---------|
+| `docs/contexts/pasien-tracker/TRACKER-DOMAIN.md` | Patient Tracker — canonical business truth for Patient Journey continuity and Service Point queues |
+| `docs/contexts/pasien-tracker/TRACKER-DOMAIN-ID.md` | Patient Tracker — Bahasa Indonesia semantic companion |
+| `docs/contexts/pasien-tracker/TRACKER-COMPATIBILITY.md` | Patient Tracker — legacy AntrianMap ↔ Queue Session authority map, crosswalk, and adapter contract (F-13) |
+| `docs/contexts/pasien-tracker/tracker-codebase-gap-report.md` | Patient Tracker — implementation gap report vs canonical domain |
+| `docs/contexts/pasien-tracker/tracker-f01-implementation-report.md` | Patient Tracker — F-01 closed: explicit Tracking Period |
+| `docs/contexts/pasien-tracker/tracker-f02-implementation-report.md` | Patient Tracker — F-02 closed: stable TrackerId across visit change / cancel |
+| `docs/contexts/pasien-tracker/tracker-f03-implementation-report.md` | Patient Tracker — F-03 closed: append-only Tracker Event persistence (PK NoUrut, insert-only DAL/repo) |
+| `docs/contexts/pasien-tracker/tracker-f04-implementation-report.md` | Patient Tracker — F-04 closed: Journey Candidate Resolution (soft-duplicate Booking, candidate query, select/new) |
+| `docs/contexts/pasien-tracker/tracker-f05-implementation-report.md` | Patient Tracker — F-05 closed: anonymous admission intake & atomic identify + Queue Evidence Reference |
+| `docs/contexts/pasien-tracker/tracker-f06-implementation-report.md` | Patient Tracker — F-06 closed: Queue aggregate Service Point, number uniqueness, Serve/Done lifecycle invariants |
+| `docs/contexts/pasien-tracker/tracker-f07-implementation-report.md` | Patient Tracker — F-07 closed: registration vs consultation milestone separation (admission Done; physician Serve via MulaiPeriksa) |
+| `docs/contexts/pasien-tracker/tracker-f08-implementation-report.md` | Patient Tracker — F-08 closed: Consult-Start / Consult-Done evidence on MulaiPeriksa / SelesaiPeriksa |
+| `docs/contexts/pasien-tracker/tracker-f09-implementation-report.md` | Patient Tracker — F-09 closed: pharmacy queue same TrackerId; sale→Apotek-Start; handover→Apotek-Done (Farinv cmds completed in F-10 companion) |
+| `docs/contexts/pasien-tracker/tracker-f10-implementation-report.md` | Patient Tracker — F-10 closed: GET tracker/timeline + Mulai/Selesai/QueGet response contracts (Farinv Que* in same commit attributed to F-09) |
+| `docs/contexts/pasien-tracker/tracker-f11-implementation-report.md` | Patient Tracker — F-11 Slice 1 closed: EMR antrian outbox for BookingCreate + RegJalan (WalkIn/ByBooking); pharmacy/full §9 facts remain open |
+| `docs/contexts/pasien-tracker/tracker-f12-implementation-report.md` | Patient Tracker — F-12 closed in source: Queue Session + deterministic evidence persistence shape (cross-commit F-01/F-03/F-05/F-06; close `0256688d`) |
+| `docs/contexts/pasien-tracker/tracker-f13-implementation-report.md` | Patient Tracker — F-13 closed in source: queue-number compatibility adapter & authority map |
 
 ---
 

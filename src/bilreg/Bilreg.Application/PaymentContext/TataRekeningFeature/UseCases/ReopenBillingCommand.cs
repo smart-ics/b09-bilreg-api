@@ -21,17 +21,20 @@ public class ReopenBillingHandler : IRequestHandler<ReopenBillingCommand, Reopen
     private readonly IAuditRepo _auditRepo;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserContext _currentUser;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public ReopenBillingHandler(
         ITataRekeningRepo tataRekeningRepo,
         IAuditRepo auditRepo,
         IUnitOfWork unitOfWork,
-        ICurrentUserContext currentUser)
+        ICurrentUserContext currentUser,
+        ITglJamProvider tglJamProvider)
     {
         _tataRekeningRepo = tataRekeningRepo;
         _auditRepo = auditRepo;
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<ReopenBillingResponse> Handle(ReopenBillingCommand request, CancellationToken cancellationToken)
@@ -51,6 +54,7 @@ public class ReopenBillingHandler : IRequestHandler<ReopenBillingCommand, Reopen
 
         var audit = AuditLog.Create(
             userId: request.UserId,
+            eventTime: _tglJamProvider.Now,
             actionType: "TATA_REKENING_REOPEN_BILLING",
             entityName: nameof(TataRekeningModel),
             entityId: request.RegId,

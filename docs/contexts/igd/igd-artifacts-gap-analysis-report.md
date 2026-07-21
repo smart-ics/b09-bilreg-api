@@ -15,7 +15,7 @@
 | **Missing implementations** | Bed lifecycle use-cases/API (`MarkClean`, `MarkMaintenance`); DR-01 triage role enforcement; optional ESI/CTAS/MTS engines (documented as future). |
 | **Documentation drift** | `igd-04-api-contract.md` states `TglLahirYmd` as `yyyyMMdd` while code/tests use `yyyy-MM-dd`; runbook bed-cleaning references application use-cases that are domain-only today. |
 
-**Summary:** The feature is **operationally usable** for the standard clinical-first flow (daftar → dokter → triage → bed/redirect → tindakan/BHP → register → discharge) with reconciliation support (`GET /api/BedIgd/pakaiBed/orphan`). Gaps concentrate on **terminal-state integrity**, **contract accuracy**, **persistence semantics for append-only triage**, and **test coverage** for handlers and triage engine.
+**Summary:** The feature is **operationally usable** for the standard clinical-first flow (daftar → dokter → triage → bed/redirect → tindakan/BHP → register → discharge) with reconciliation support (`GET /api/BedIgd/pakaiBedIgd/orphan`). Gaps concentrate on **terminal-state integrity**, **contract accuracy**, **persistence semantics for append-only triage**, and **test coverage** for handlers and triage engine.
 
 ---
 
@@ -43,7 +43,7 @@
 | 04-api-contract — routes | **Aligned** | Low | All documented routes exist on controllers. |
 | 04-api-contract — request shapes | **Partial** | **High** | `TglLahirYmd` format mismatch (GAP-001). |
 | 04-api-contract — responses | **Mostly aligned** | Low | Empty bed may appear as `"-"` not empty string (GAP-013). |
-| 05-runbook — orphan sweep | **Aligned** | Low | `PakaiBedDal.ListOrphans` matches runbook reasons. |
+| 05-runbook — orphan sweep | **Aligned** | Low | `PakaiBedIgdDal.ListOrphans` matches runbook reasons. |
 | 05-runbook — bed Dirty → Active | **Missing API** | Medium | Domain `MarkClean` only; no handler/route (GAP-007). |
 | Persistence / SQL | **Aligned** | Low | Tables, PKs, filtered unique index, sentinel dates present. |
 | Tests — domain invariants | **Good** | Low | `IgdVisitModelTest` covers DR-05,07,08,09. |
@@ -188,7 +188,7 @@ Persist only **new** triage/event rows (track `NoTriage`/`NoEvent` high-water ma
 
 #### Actual Implementation
 - `BedIgdModel.MarkClean` / `MarkMaintenance` — domain only
-- `BedIgdController` — only `available` and `pakaiBed/orphan`; **no** maintenance endpoints
+- `BedIgdController` — only `available` and `pakaiBedIgd/orphan`; **no** maintenance endpoints
 - `Bilreg.Test/IgdContext/BedIgdFeature/BedIgdModelTest.cs` — domain tests only
 
 #### Gap Description
@@ -277,14 +277,14 @@ Add `AtsTriageEngineTest` with boundary cases per ATS level and GCS branches; as
 | DR-08 discharge | `IgdVisitDischargeHandlerTest` (incl. cascade) |
 | DR-09 void | `IgdVisitVoidHandlerTest` |
 | Concurrency | `BedIgdRepoConcurrencyTest` |
-| DAL | `IgdVisitDalTest`, `PakaiBedDalTest`, `IgdVisitTriageDalTest` |
+| DAL | `IgdVisitDalTest`, `PakaiBedIgdDalTest`, `IgdVisitTriageDalTest` |
 
 #### Missing (evidence: no test files)
 - `IgdVisitRedirectRawatJalanHandler` / DR-07 at handler layer
 - `IgdCheckOutBedHandler`
 - `IgdVisitAssessTriageHandler` / re-assess
 - `IgdVisitAssignRegisterHandler`
-- `PakaiBedListOrphanQuery` / orphan SQL reasons
+- `PakaiBedIgdListOrphanQuery` / orphan SQL reasons
 - Transaction rollback on multi-aggregate failure
 - Redirect constraint integration
 
@@ -299,10 +299,10 @@ Prioritize handler tests for redirect, assign bed, and orphan query; one integra
 ### GAP-012 — Orphan reconciliation: no automated test coverage
 
 #### Artifact Reference
-- `docs/contexts/igd/igd-05-runbook.md` — Orphan PakaiBed recovery, `OrphanReason` table
+- `docs/contexts/igd/igd-05-runbook.md` — Orphan PakaiBedIgd recovery, `OrphanReason` table
 
 #### Actual Implementation
-- `PakaiBedDal.ListOrphans()` — SQL matches runbook reasons (`VISIT_NOT_FOUND`, `VISIT_VOIDED`, `VISIT_TERMINAL`, `BED_NOT_FOUND`, `BED_REASSIGNED`, `BED_NOT_OCCUPIED`)
+- `PakaiBedIgdDal.ListOrphans()` — SQL matches runbook reasons (`VISIT_NOT_FOUND`, `VISIT_VOIDED`, `VISIT_TERMINAL`, `BED_NOT_FOUND`, `BED_REASSIGNED`, `BED_NOT_OCCUPIED`)
 - **No** test invokes `ListOrphans`
 
 #### Gap Description
@@ -312,7 +312,7 @@ Reconciliation contract is implemented but unverified; regressions in JOIN/WHERE
 **Medium**
 
 #### Recommendation
-Add `PakaiBedDalTest.ListOrphans_*` fixtures per reason (seed visit/bed/pakaiBed states).
+Add `PakaiBedIgdDalTest.ListOrphans_*` fixtures per reason (seed visit/bed/pakaiBed states).
 
 ---
 
@@ -393,7 +393,7 @@ Insert-only new events by `NoEvent` max.
 **Medium** — any authenticated client could call orphan sweep.
 
 #### Recommendation
-Add role policy for `pakaiBed/orphan` (operator/DBA). Document in contract.
+Add role policy for `pakaiBedIgd/orphan` (operator/DBA). Document in contract.
 
 ---
 
@@ -474,7 +474,7 @@ Keep stubs during transition; no code change required.
 | Void idempotent when already voided | `IgdVisitVoidHandler` | Not explicit in contract; returns success |
 | `AssessTriage` simplified overload (level only, zero scores) | `IgdVisitModel.AssessTriage(TriageLevelEnum,...)` | Used in tests; not exposed via API |
 | Visit `BedIgdId` stored as `"-"` | `IgdVisitDto` / SQL | API consumers may not expect |
-| Orphan SQL `UNKNOWN` fallback | `PakaiBedDal.ListOrphans` | Should not appear in steady state |
+| Orphan SQL `UNKNOWN` fallback | `PakaiBedIgdDal.ListOrphans` | Should not appear in steady state |
 | `TriageHistoryItem` includes computed `NextReTriageAt` | `IgdVisitGetTriageHistoryQuery` | Contract lists fewer fields than implementation |
 
 ---
@@ -510,9 +510,9 @@ The following are **fully aligned** with artifacts (representative evidence):
 - **API routes** — `IgdVisitController`, `BedIgdController`, `TindakanIgdController`, `BhpIgdController` match `igd-04-api-contract.md` paths and HTTP verbs.
 - **Use-case coverage** — UC01–UC10 mapped to handlers (`Daftar`, `AssignDokter`, assess/re-assess triage, assign bed, checkout, redirect, tindakan/BHP, register, discharge, void).
 - **JSend envelope** — `Ok(new JSendOk(...))` on controllers.
-- **SQL artifacts** — `BILRG_IgdVisit`, `BILRG_IgdVisitTriage`, `BILRG_IgdVisitEvent`, `BILRG_BedIgd`, `BILRG_PakaiBed`, `BILRG_RedirectRajal`, `BILRG_TindakanIgd`, `BILRG_BhpIgd` under `Bilreg.SqlDb/IgdContext/`.
+- **SQL artifacts** — `BILRG_IgdVisit`, `BILRG_IgdVisitTriage`, `BILRG_IgdVisitEvent`, `BILRG_BedIgd`, `BILRG_PakaiBedIgd`, `BILRG_RedirectRajal`, `BILRG_TindakanIgd`, `BILRG_BhpIgd` under `Bilreg.SqlDb/IgdContext/`.
 - **Filtered unique index** — `UQ_BILRG_BedIgd_VisitActive` in `BILRG_BedIgd.sql`.
-- **Orphan playbook** — `PakaiBedDal.ListOrphans` conditions align with `igd-05-runbook.md` table.
+- **Orphan playbook** — `PakaiBedIgdDal.ListOrphans` conditions align with `igd-05-runbook.md` table.
 - **Dual-write transactions** — `IgdAssignBedCmd`, `IgdCheckOutBedCmd`, `IgdVisitDischargeCmd`, `IgdVisitVoidCmd`, `IgdVisitRedirectRawatJalanCmd` use `TransHelper.NewScope()` for multi-table writes.
 - **List aktif** — `IgdVisitDal.ListAktif` filters `DAFTAR`/`REGISTERED` and non-void `VodDate` sentinel.
 

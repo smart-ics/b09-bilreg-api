@@ -19,6 +19,8 @@ builder.Host
 
 var app = builder.Build();
 
+BusinessDateStartup.LogBusinessDateStatus(app);
+
 app
     .UseSerilogRequestLogging(SerilogConfiguration.SerilogRequestLoggingOption)
     .UseMiddleware<ErrorHandlerMiddleware>()

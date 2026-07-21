@@ -46,7 +46,8 @@ public class RegDal : IRegDal
                 fs_kd_jenis_reg, fs_mr, fs_kd_tipe_jaminan, fs_kd_kelas, 
                 fs_kd_cara_masuk_dk, fs_kd_rujukan, fs_kd_medis, 
                 fs_kd_layanan, fs_kd_karcis, fs_no_sjp, fs_no_peserta, 
-                fs_kd_trs_sjp, fd_tgl_jam_masuk, fd_tgl_jam_keluar)
+                fs_kd_trs_sjp, fd_tgl_jam_masuk, fd_tgl_jam_keluar,
+                fn_karcis, fn_karcis_sisa)
             VALUES (
                 @fs_kd_reg, @fd_tgl_masuk,  @fs_jam_masuk, @fs_kd_petugas,
                 @fd_tgl_keluar, @fs_jam_keluar, @fs_kd_petugas_keluar,
@@ -55,7 +56,8 @@ public class RegDal : IRegDal
                 @fs_kd_jenis_reg, @fs_mr, @fs_kd_tipe_jaminan, @fs_kd_kelas, 
                 @fs_kd_cara_masuk_dk, @fs_kd_rujukan, @fs_kd_medis, 
                 @fs_kd_layanan, @fs_kd_karcis, @fs_no_sjp, @fs_no_peserta, 
-                @fs_kd_trs_sjp, @fd_tgl_jam_masuk, @fd_tgl_jam_keluar)
+                @fs_kd_trs_sjp, @fd_tgl_jam_masuk, @fd_tgl_jam_keluar,
+                @fn_karcis, @fn_karcis_sisa)
             """;
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_reg", dto.fs_kd_reg, SqlDbType.VarChar); 
@@ -88,7 +90,8 @@ public class RegDal : IRegDal
         dp.AddParam("@fd_tgl_jam_masuk", dto.fd_tgl_jam_masuk, SqlDbType.VarChar);
         dp.AddParam("@fd_tgl_jam_keluar", dto.fd_tgl_jam_keluar, SqlDbType.VarChar);
 
-
+        dp.AddParam("@fn_karcis", dto.fn_karcis, SqlDbType.Decimal);
+        dp.AddParam("@fn_karcis_sisa", dto.fn_karcis, SqlDbType.Decimal);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -125,7 +128,9 @@ public class RegDal : IRegDal
                 fs_no_peserta = @fs_no_peserta,
                 fs_kd_trs_sjp = @fs_kd_trs_sjp,
                 fd_tgl_jam_masuk = @fd_tgl_jam_masuk,
-                fd_tgl_jam_keluar = @fd_tgl_jam_keluar
+                fd_tgl_jam_keluar = @fd_tgl_jam_keluar,
+                fn_karcis = @fn_karcis,
+                fn_karcis_sisa = @fn_karcis_sisa
             WHERE
                 fs_kd_reg = @fs_kd_reg
             """;
@@ -163,6 +168,9 @@ public class RegDal : IRegDal
 
         dp.AddParam("@fd_tgl_jam_masuk", dto.fd_tgl_jam_masuk, SqlDbType.VarChar);
         dp.AddParam("@fd_tgl_jam_keluar", dto.fd_tgl_jam_keluar, SqlDbType.VarChar);
+
+        dp.AddParam("@fn_karcis", dto.fn_karcis, SqlDbType.Decimal);
+        dp.AddParam("@fn_karcis_sisa", dto.fn_karcis, SqlDbType.Decimal);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -298,6 +306,7 @@ public class RegDal : IRegDal
             aa.fs_kd_cara_masuk_dk, aa.fs_kd_rujukan, aa.fs_kd_medis, 
             aa.fs_kd_layanan, aa.fs_kd_karcis, aa.fs_no_sjp, aa.fs_no_peserta,
             aa.fs_kd_trs_sjp, aa.fd_tgl_jam_masuk, aa.fd_tgl_jam_keluar,
+            aa.fn_karcis,
             ISNULL(bb.fs_nm_pasien, '-') AS fs_nm_pasien, 
             ISNULL(bb.fd_tgl_lahir, '-') AS fd_tgl_lahir, 
             ISNULL(bb.fs_jns_kelamin, '-') AS fs_jns_kelamin,

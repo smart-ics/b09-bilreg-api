@@ -235,9 +235,9 @@ public class RegInapModelTest
     }
 
     [Fact]
-    public void Rehydrate_ZeroActivePrimary_Throws()
+    public void Rehydrate_TerminalHistoryWithZeroActivePrimary_Succeeds()
     {
-        var act = () => RegInapModel.Rehydrate(
+        var model = RegInapModel.Rehydrate(
             "RG00000001",
             ProsedurMasukInapType.Default,
             [
@@ -249,8 +249,37 @@ public class RegInapModelTest
                     Day2)
             ]);
 
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*tepat satu DPJP Primary*");
+        model.IsTerminal.Should().BeTrue();
+        model.Dpjp.Should().Be(PpaType.Default.ToReff());
+    }
+
+    [Fact]
+    public void EndAllDoctorAssignments_EndsEveryActiveHistoryOnOneDate_AndMakesModelTerminal()
+    {
+        var model = CreateWithPrimary(Dokter("DK1", "Dr. Primary"));
+        model.AssignDpjp(Dokter("DK2", "Dr. Secondary"), DpjpResponsibilityEnum.Secondary, Day2);
+        model.AssignKonsulen(Dokter("DK3", "Dr. Konsulen"), Day2);
+        model.AssignResiden(Dokter("DK4", "Dr. Residen"), Day2);
+
+        model.EndAllDoctorAssignments(Day3);
+
+        model.IsTerminal.Should().BeTrue();
+        model.ListDokter.Should().HaveCount(4);
+        model.ListDokter.Should().OnlyContain(x => !x.IsActive && x.ReleaseDate == Day3);
+        CountActivePrimary(model).Should().Be(0);
+    }
+
+    [Fact]
+    public void GivenTerminalRegInap_WhenEndingOrAssigningAgain_ThenThrows()
+    {
+        var model = CreateWithPrimary();
+        model.EndAllDoctorAssignments(Day2);
+
+        Action endAgain = () => model.EndAllDoctorAssignments(Day3);
+        Action assignAgain = () => model.AssignKonsulen(Dokter("DK2", "Dr. Konsulen"), Day3);
+
+        endAgain.Should().Throw<InvalidOperationException>().WithMessage("*terminal*");
+        assignAgain.Should().Throw<InvalidOperationException>().WithMessage("*terminal*");
     }
 
     [Fact]

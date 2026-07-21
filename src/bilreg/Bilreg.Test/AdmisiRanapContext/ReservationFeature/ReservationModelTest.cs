@@ -96,4 +96,37 @@ public class ReservationModelTest
 
         cancelled.ReservationStatus.Should().Be(ReservationStatusEnum.Cancelled);
     }
+
+    [Fact]
+    public void GivenRealizedByMatchingRegistration_WhenRestore_ThenReturnsToMaintainedAndClearsReference()
+    {
+        var realized = ReservationModel.Create(
+                SamplePasien(), new DateTime(2026, 8, 1), SampleKelas(), SampleBangsal(), "user1")
+            .Maintain(new DateTime(2026, 8, 1), SampleKelas(), SampleBangsal(), "user1")
+            .Realize("RG00000001", "user1");
+        var timestamp = new DateTime(2026, 7, 12, 10, 30, 0);
+
+        var restored = realized.Restore("RG00000001", "restore-user", timestamp);
+
+        restored.ReservationStatus.Should().Be(ReservationStatusEnum.Maintained);
+        restored.RealizedRegId.Should().Be("-");
+        restored.AuditTrail.Modified.Should().Be(new Bilreg.Domain.Shared.Helpers.CommonValueObjects.AuditInfoType("restore-user", timestamp));
+    }
+
+    [Fact]
+    public void GivenWrongSourceStateOrRegistration_WhenRestore_ThenThrows()
+    {
+        var realized = ReservationModel.Create(
+                SamplePasien(), new DateTime(2026, 8, 1), SampleKelas(), SampleBangsal(), "user1")
+            .Maintain(new DateTime(2026, 8, 1), SampleKelas(), SampleBangsal(), "user1")
+            .Realize("RG00000001", "user1");
+
+        Action wrongRegistration = () => realized.Restore("RG00000002", "restore-user", new DateTime(2026, 7, 12));
+        Action wrongState = () => ReservationModel.Create(
+                SamplePasien(), new DateTime(2026, 8, 1), SampleKelas(), SampleBangsal(), "user1")
+            .Restore("RG00000001", "restore-user", new DateTime(2026, 7, 12));
+
+        wrongRegistration.Should().Throw<InvalidOperationException>();
+        wrongState.Should().Throw<InvalidOperationException>();
+    }
 }

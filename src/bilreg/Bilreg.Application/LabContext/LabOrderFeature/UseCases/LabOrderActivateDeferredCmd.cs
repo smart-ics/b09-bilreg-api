@@ -17,11 +17,14 @@ public class LabOrderActivateDeferredHandler
 {
     private readonly ILabOrderRepo _labOrderRepo;
     private readonly ILabRegIntegration _labRegIntegration;
+    private readonly ITglJamProvider _tglJamProvider;
 
-    public LabOrderActivateDeferredHandler(ILabOrderRepo labOrderRepo, ILabRegIntegration labRegIntegration)
+    public LabOrderActivateDeferredHandler(ILabOrderRepo labOrderRepo, ILabRegIntegration labRegIntegration,
+        ITglJamProvider tglJamProvider)
     {
         _labOrderRepo = labOrderRepo;
         _labRegIntegration = labRegIntegration;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<LabOrderActivateDeferredResponse> Handle(
@@ -34,7 +37,8 @@ public class LabOrderActivateDeferredHandler
         var order = _labOrderRepo.LoadEntity(request).GetValueOrThrow($"LabOrder '{request.OrderId}' not found");
         var executionRegId = _labRegIntegration.CreateExecutionRegistration(
             new LabRegExecutionRequest(request.OrderId, request.UserId));
-        order.ActivateFromDeferred(executionRegId, request.UserId);
+        var occurredAt = _tglJamProvider.Now;
+        order.ActivateFromDeferred(executionRegId, request.UserId, occurredAt);
 
         LabOrderActivateDeferredResponse response;
         using (var trans = TransHelper.NewScope())

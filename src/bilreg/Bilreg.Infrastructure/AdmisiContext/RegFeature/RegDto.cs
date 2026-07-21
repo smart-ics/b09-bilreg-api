@@ -13,7 +13,7 @@ public record RegDto(
     string fs_kd_jenis_reg, string fs_mr, string fs_kd_tipe_jaminan, string fs_kd_kelas, 
     string fs_kd_cara_masuk_dk,  string fs_kd_rujukan, string fs_kd_medis, 
     string fs_kd_layanan,  string fs_kd_karcis, string fs_no_sjp, string fs_no_peserta,
-    string fs_kd_trs_sjp, string fd_tgl_jam_masuk, string fd_tgl_jam_keluar,
+    string fs_kd_trs_sjp, string fd_tgl_jam_masuk, string fd_tgl_jam_keluar, decimal fn_karcis,
     //
     string fs_nm_pasien,  string fd_tgl_lahir, string fs_jns_kelamin,
     string fs_nm_tipe_jaminan, string fs_nm_kelas, string fs_nm_cara_masuk_dk, 
@@ -57,6 +57,7 @@ public record RegDto(
             model.Eligibility.SjpId,
             model.RegMasukAudit.Timestamp.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
             model.RegKeluarAudit.Timestamp.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
+            model.ListKomponen.Sum(k => k.Nilai),
             //
             model.Pasien.PasienName,
             model.Pasien.TglLahir.ToString("yyyy-MM-dd"),
@@ -67,8 +68,8 @@ public record RegDto(
             model.Rujukan.RujukanName,
             model.Dokter.PpaName,
             model.Layanan.LayananName,
-            model.Karcis.KarcisName 
-            
+            model.Karcis.KarcisName
+
             );
         return result;
     }

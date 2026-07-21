@@ -1,4 +1,5 @@
-﻿using Bilreg.Application.AdmisiContext.RegFeature;
+﻿using Bilreg.Application.AdmisiContext.EmrAntrianOutboundFeature;
+using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Microsoft.Extensions.Options;
 using RestSharp;
@@ -14,24 +15,32 @@ public class AddAntrianEmrByRegService : IAddAntrianEmrByRegService
         _opt = opt.Value;
     }
 
-    public void Execute(AddAntrianEmrByRegCommand cmd)
-    {
-        AddReg(cmd).ConfigureAwait(false).GetAwaiter().GetResult();
-    }
+    public void Execute(AddAntrianEmrByRegCommand cmd) => Send(cmd);
 
-    private async Task AddReg(AddAntrianEmrByRegCommand req)
+    public EmrAntrianSendResult Send(AddAntrianEmrByRegCommand cmd)
+        => AddReg(cmd).ConfigureAwait(false).GetAwaiter().GetResult();
+
+    private async Task<EmrAntrianSendResult> AddReg(AddAntrianEmrByRegCommand req)
     {
         if (_opt.BaseApiUrl.Trim().Length == 0)
-            return;
+            return new EmrAntrianSendResult(false, "EMR BaseApiUrl empty");
+
         var endpoint = $"{_opt.BaseApiUrl}/api/Dashboard/addReg";
         var client = new RestClient(endpoint);
         var request = new RestRequest()
             .AddJsonBody(req, "application/json");
-            //.AddParameter("regID", req.RegId, ParameterType.QueryString);
 
-        var result = await client.ExecutePostAsync(request);
+        var response = await client.ExecutePostAsync(request);
+        if (!response.IsSuccessful)
+        {
+            var detail = string.IsNullOrWhiteSpace(response.ErrorMessage)
+                ? response.StatusDescription
+                : response.ErrorMessage;
+            return new EmrAntrianSendResult(
+                false,
+                $"EMR addReg failed: HTTP {(int)response.StatusCode} {detail}");
+        }
+
+        return new EmrAntrianSendResult(true, null);
     }
 }
-
-
-

@@ -24,7 +24,7 @@ public class LabResultAmendHandlerTest
         _sut = new LabResultAmendHandler(
             _orderRepo.Object,
             _resultRepo.Object,
-            new LabResultScaffoldService());
+            new LabResultScaffoldService(), TestTglJamProvider.Instance);
     }
 
     private static LabOrderModel VerifiedOrder()

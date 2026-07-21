@@ -319,7 +319,7 @@ public class LabOrderModel : ILabOrderKey
 
     #region BEHAVIOUR
 
-    public void Defer(string reason, DateTime untilDate, string userId)
+    public void Defer(string reason, DateTime untilDate, string userId, DateTime deferredAt = default)
     {
         Guard.Against.NullOrWhiteSpace(reason, nameof(reason));
         Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
@@ -330,10 +330,10 @@ public class LabOrderModel : ILabOrderKey
 
         LabOrderStatus = LabOrderStatusEnum.Deferred;
         DeferredInfo = new DeferredInfoType(reason, untilDate);
-        AuditTrail.Modif(userId, DateTime.Now);
+        AuditTrail.Modif(userId, deferredAt);
     }
 
-    public void ActivateFromDeferred(string executionRegId, string userId)
+    public void ActivateFromDeferred(string executionRegId, string userId, DateTime activatedAt = default)
     {
         Guard.Against.NullOrWhiteSpace(executionRegId, nameof(executionRegId));
         Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
@@ -345,7 +345,7 @@ public class LabOrderModel : ILabOrderKey
         LabOrderStatus = LabOrderStatusEnum.Ordered;
         ExecutionRegId = executionRegId;
         DeferredInfo = DeferredInfoType.Default;
-        AuditTrail.Modif(userId, DateTime.Now);
+        AuditTrail.Modif(userId, activatedAt);
     }
 
     public void Charge(string userId)
@@ -365,7 +365,7 @@ public class LabOrderModel : ILabOrderKey
                 $"LabOrder {OrderId} sudah memiliki BillingTindakanId '{BillingTindakanId}'.");
     }
 
-    public void MarkCharged(string tindakanId, string userId)
+    public void MarkCharged(string tindakanId, string userId, DateTime chargedAt = default)
     {
         Guard.Against.NullOrWhiteSpace(tindakanId, nameof(tindakanId));
         Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
@@ -373,19 +373,19 @@ public class LabOrderModel : ILabOrderKey
         LabOrderStatus = LabOrderStatusEnum.Charged;
         BillingTindakanId = tindakanId;
         BillingLastError = "";
-        AuditTrail.Modif(userId, DateTime.Now);
+        AuditTrail.Modif(userId, chargedAt);
     }
 
-    public void RecordBillingError(string error, string userId)
+    public void RecordBillingError(string error, string userId, DateTime recordedAt = default)
     {
         Guard.Against.NullOrWhiteSpace(error, nameof(error));
         Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
 
         BillingLastError = error.Length > 200 ? error[..200] : error;
-        AuditTrail.Modif(userId, DateTime.Now);
+        AuditTrail.Modif(userId, recordedAt);
     }
 
-    public void CollectSpecimen(string userId, CollectionInfoType collectionInfo)
+    public void CollectSpecimen(string userId, CollectionInfoType collectionInfo, DateTime collectedAt = default)
     {
         Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
         Guard.Against.Null(collectionInfo);
@@ -410,10 +410,10 @@ public class LabOrderModel : ILabOrderKey
 
         LabOrderStatus = LabOrderStatusEnum.Collected;
         CollectionInfo = new CollectionInfoType(collectionInfo.CollectedDate, userId, note);
-        AuditTrail.Modif(userId, DateTime.Now);
+        AuditTrail.Modif(userId, collectedAt);
     }
 
-    public void MarkRecorded(string userId)
+    public void MarkRecorded(string userId, DateTime recordedAt = default)
     {
         Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
 
@@ -430,10 +430,10 @@ public class LabOrderModel : ILabOrderKey
         if (LabOrderStatus == LabOrderStatusEnum.Charged || LabOrderStatus == LabOrderStatusEnum.Collected)
             LabOrderStatus = LabOrderStatusEnum.Recorded;
 
-        AuditTrail.Modif(userId, DateTime.Now);
+        AuditTrail.Modif(userId, recordedAt);
     }
 
-    public void MarkVerified(string userId)
+    public void MarkVerified(string userId, DateTime verifiedAt = default)
     {
         Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
 
@@ -446,13 +446,13 @@ public class LabOrderModel : ILabOrderKey
                 $"LabOrder {OrderId} berstatus {LabOrderStatus}; verifikasi hanya diperbolehkan dari Recorded.");
 
         LabOrderStatus = LabOrderStatusEnum.Verified;
-        AuditTrail.Modif(userId, DateTime.Now);
+        AuditTrail.Modif(userId, verifiedAt);
     }
 
     /// <summary>
     /// After a verified result is amended, order returns to Recorded until the new result version is re-verified.
     /// </summary>
-    public void ReturnToRecordedAfterResultAmendment(string userId)
+    public void ReturnToRecordedAfterResultAmendment(string userId, DateTime amendedAt)
     {
         Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
 
@@ -467,13 +467,14 @@ public class LabOrderModel : ILabOrderKey
         LabOrderStatus = LabOrderStatusEnum.Recorded;
         ClearReleaseMetadata();
         ClearBillingReleaseValidationTrace();
-        AuditTrail.Modif(userId, DateTime.Now);
+        AuditTrail.Modif(userId, amendedAt);
     }
 
     public void RecordLastBillingReleaseValidation(
         BillingReleaseValidationStatusEnum status,
         string message,
-        string checkedByUserId)
+        string checkedByUserId,
+        DateTime checkedAt = default)
     {
         Guard.Against.NullOrWhiteSpace(checkedByUserId, nameof(checkedByUserId));
 
@@ -482,13 +483,13 @@ public class LabOrderModel : ILabOrderKey
             msg = msg[..200];
 
         LastBillingReleaseStatus = status;
-        LastBillingReleaseCheckAt = DateTime.Now;
+        LastBillingReleaseCheckAt = checkedAt;
         LastBillingReleaseCheckUserId = checkedByUserId;
         LastBillingReleaseMessage = msg;
-        AuditTrail.Modif(checkedByUserId, DateTime.Now);
+        AuditTrail.Modif(checkedByUserId, checkedAt);
     }
 
-    public void Release(string userId, string releaseNote)
+    public void Release(string userId, string releaseNote, DateTime releasedAt = default)
     {
         Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
         Guard.Against.Null(releaseNote);
@@ -507,10 +508,10 @@ public class LabOrderModel : ILabOrderKey
 
         var note = releaseNote.Length > 200 ? releaseNote[..200] : releaseNote;
         LabOrderStatus = LabOrderStatusEnum.Released;
-        ReleasedDate = DateTime.Now;
+        ReleasedDate = releasedAt;
         ReleasedUserId = userId;
         ReleaseNote = note;
-        AuditTrail.Modif(userId, DateTime.Now);
+        AuditTrail.Modif(userId, releasedAt);
     }
 
     private void ClearReleaseMetadata()
@@ -528,7 +529,7 @@ public class LabOrderModel : ILabOrderKey
         LastBillingReleaseMessage = "";
     }
 
-    public void Cancel(string userId, string reason)
+    public void Cancel(string userId, string reason, DateTime cancelledAt = default)
     {
         Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
         Guard.Against.NullOrWhiteSpace(reason, nameof(reason));
@@ -546,12 +547,12 @@ public class LabOrderModel : ILabOrderKey
         var r = reason.Length > 200 ? reason[..200] : reason;
         LabOrderStatus = LabOrderStatusEnum.Cancelled;
         CancelledReason = r;
-        CancelledDate = DateTime.Now;
+        CancelledDate = cancelledAt;
         CancelledUserId = userId;
-        AuditTrail.Modif(userId, DateTime.Now);
+        AuditTrail.Modif(userId, cancelledAt);
     }
 
-    public void Terminate(string userId, string reason)
+    public void Terminate(string userId, string reason, DateTime terminatedAt = default)
     {
         Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
         Guard.Against.NullOrWhiteSpace(reason, nameof(reason));
@@ -568,9 +569,9 @@ public class LabOrderModel : ILabOrderKey
         var r = reason.Length > 200 ? reason[..200] : reason;
         LabOrderStatus = LabOrderStatusEnum.Terminated;
         TerminationReason = r;
-        TerminationDate = DateTime.Now;
+        TerminationDate = terminatedAt;
         TerminationUserId = userId;
-        AuditTrail.Modif(userId, DateTime.Now);
+        AuditTrail.Modif(userId, terminatedAt);
     }
 
     public void EnsureCanEnqueueOware()
@@ -587,25 +588,25 @@ public class LabOrderModel : ILabOrderKey
                 $"LabOrder {OrderId} berstatus {LabOrderStatus}; enqueue OWARE hanya diperbolehkan setelah Charged.");
     }
 
-    public void MarkOwarePending(string userId)
+    public void MarkOwarePending(string userId, DateTime markedAt = default)
     {
         Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
         OwareStatus = OwareStatusEnum.Pending;
-        AuditTrail.Modif(userId, DateTime.Now);
+        AuditTrail.Modif(userId, markedAt);
     }
 
-    public void MarkOwareSent(string userId)
+    public void MarkOwareSent(string userId, DateTime markedAt = default)
     {
         Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
         OwareStatus = OwareStatusEnum.Sent;
-        AuditTrail.Modif(userId, DateTime.Now);
+        AuditTrail.Modif(userId, markedAt);
     }
 
-    public void MarkOwareFailed(string userId)
+    public void MarkOwareFailed(string userId, DateTime markedAt = default)
     {
         Guard.Against.NullOrWhiteSpace(userId, nameof(userId));
         OwareStatus = OwareStatusEnum.Failed;
-        AuditTrail.Modif(userId, DateTime.Now);
+        AuditTrail.Modif(userId, markedAt);
     }
 
     #endregion

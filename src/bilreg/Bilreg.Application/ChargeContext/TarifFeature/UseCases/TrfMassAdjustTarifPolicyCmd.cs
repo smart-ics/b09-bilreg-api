@@ -1,6 +1,7 @@
 using Ardalis.GuardClauses;
 using Bilreg.Domain.ChargeContext.TarifFeature;
 using MediatR;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.ChargeContext.TarifFeature.UseCases;
 
@@ -14,9 +15,13 @@ public record TrfMassAdjustTarifPolicyCmd(
 public class TrfMassAdjustTarifPolicyHandler : IRequestHandler<TrfMassAdjustTarifPolicyCmd>
 {
     private readonly ITarifPolicyRepo _tarifPolicyRepo;
+    private readonly ITglJamProvider _tglJamProvider;
 
-    public TrfMassAdjustTarifPolicyHandler(ITarifPolicyRepo tarifPolicyRepo) =>
+    public TrfMassAdjustTarifPolicyHandler(ITarifPolicyRepo tarifPolicyRepo, ITglJamProvider tglJamProvider)
+    {
         _tarifPolicyRepo = tarifPolicyRepo;
+        _tglJamProvider = tglJamProvider;
+    }
 
     public Task Handle(TrfMassAdjustTarifPolicyCmd request, CancellationToken cancellationToken)
     {
@@ -30,7 +35,7 @@ public class TrfMassAdjustTarifPolicyHandler : IRequestHandler<TrfMassAdjustTari
                 $"AdjustmentType '{request.AdjustmentType}' tidak didukung; gunakan PERCENTAGE.");
 
         var policy = TrfTarifPolicySupport.LoadPolicy(_tarifPolicyRepo, request);
-        var updated = policy.MassAdjust(request.Value, request.UserId);
+        var updated = policy.MassAdjust(request.Value, request.UserId, _tglJamProvider.Now);
         _tarifPolicyRepo.SaveChanges(updated);
         return Task.CompletedTask;
     }

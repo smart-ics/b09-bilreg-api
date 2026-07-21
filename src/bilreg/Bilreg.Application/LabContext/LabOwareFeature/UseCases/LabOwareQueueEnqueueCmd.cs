@@ -38,9 +38,10 @@ public class LabOwareQueueEnqueueHandler : IRequestHandler<LabOwareQueueEnqueueC
 
         var payload = LabOwarePayloadBuilder.Build(order);
         var payloadJson = LabOwarePayloadBuilder.Serialize(payload);
-        var queue = LabOwareOutboundQueueModel.CreatePending(request.OrderId, payloadJson);
+        var technicalNow = DateTime.Now;
+        var queue = LabOwareOutboundQueueModel.CreatePending(request.OrderId, payloadJson, technicalNow);
 
-        order.MarkOwarePending(request.UserId);
+        order.MarkOwarePending(request.UserId, technicalNow);
 
         LabOwareQueueEnqueueResponse response;
         using (var trans = TransHelper.NewScope())

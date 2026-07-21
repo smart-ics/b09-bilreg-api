@@ -106,9 +106,9 @@ public class PasienModel : IPasienKey
         return shortId;        
     }
 
-    public string GetUmur()
+    public string GetUmur(DateOnly businessDate)
     {
-        var today = DateOnly.FromDateTime(DateTime.Today);
+        var today = businessDate;
 
         if (Person.TglLahir > today)
             return "0 tahun, 0 bulan, 0 hari";

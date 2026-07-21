@@ -61,13 +61,16 @@ SOP ini berlaku untuk seluruh proses pembentukan **Admission** oleh petugas **Ad
 
 8. **Admisi** melengkapi data registrasi yang wajib dikirim bersama **Admission**:
    * Tipe Jaminan dan Peserta Jaminan
-   * Cara Masuk
-   * Rujukan
+   * Cara Masuk *(klasifikasi masuk untuk pelaporan / `ta_registrasi`)*
+   * **Prosedur Masuk Inap** *(prosedur operasional masuk inap; wajib; terpisah dari Cara Masuk)*
+   * Rujukan *(wajib bila Cara Masuk memerlukan rujukan)*
    * Dokter
-   * Layanan Rawat Inap
-   * Karcis
 
-9. Sistem melakukan validasi terhadap data **Admission** dan data registrasi.
+9. Sistem melakukan validasi terhadap data **Admission** dan data registrasi, termasuk:
+   * memastikan **Prosedur Masuk Inap** terisi dan valid terhadap master `ta_caramasuk_inap`;
+   * menurunkan **Layanan Rawat Inap** dari **Bangsal** tujuan (`ta_bangsal.fs_kd_layanan`) — operator tidak memilih Layanan secara manual;
+   * menolak proses bila Bangsal tidak memiliki mapping Layanan yang valid / instalasi Rawat Inap;
+   * tidak meminta atau menetapkan **Karcis** untuk Rawat Inap (disimpan sebagai sentinel kosong `-`).
 
 10. Apabila validasi berhasil, sistem membentuk **Admission** dengan status **Admitted** dan membuat **Registration** legacy dengan `RegId` yang sama dalam satu transaksi.
 
@@ -144,6 +147,18 @@ Setelah **Admission** terbentuk, proses akomodasi dilanjutkan melalui **Waiting 
 **BR-RI-C1-08**
 
 **Bangsal** tujuan harus memenuhi syarat berdasarkan **Care Class** yang dipilih.
+
+---
+
+**BR-RI-C1-09**
+
+**Layanan Rawat Inap** diturunkan dari **Bangsal** tujuan (satu Bangsal → tepat satu Layanan). Operator tidak memilih Layanan secara manual. Proses ditolak bila mapping Layanan tidak ada atau bukan instalasi Rawat Inap.
+
+---
+
+**BR-RI-C1-10**
+
+**Karcis** tidak berlaku untuk Rawat Inap pada proses Admission. Sistem tidak meminta, menginferensi, atau menetapkan karcis tagihan; nilai yang disimpan adalah sentinel kosong.
 
 ---
 

@@ -122,7 +122,7 @@ public record TataRekeningModel : IRegKey
         Status = TataRekeningStatusEnum.Opened;
     }
 
-    public void CompleteFinancialVerification(string petugasVerif, DateTime verifiedAt)
+    public void CompleteFinancialVerification(string petugasVerif, DateTime verifiedAt = default)
     {
         EnsureNotLunas();
         EnsureStatusClosed();

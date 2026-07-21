@@ -1,4 +1,4 @@
-﻿using Ardalis.GuardClauses;
+using Ardalis.GuardClauses;
 using Bilreg.Application.AccountingContext.JurnalFeature;
 using Bilreg.Application.AccountingContext.JurnalFeature.JkAgg;
 using Bilreg.Application.AdmisiContext.JaminanFeature;
@@ -24,6 +24,7 @@ using Bilreg.Domain.PaymentContext.TrsBillFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 
@@ -69,6 +70,7 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
 
 
     private readonly IAddAntrianEmrByRegService _addAntrianEmrByRegService;
+    private readonly ITglJamProvider _tglJamProvider;
     private const string BAYAR_SENDIRI = "1";
     public RegDaruratCreateHandler(IPasienRepo pasienRepo,
         ITipeJaminanRepo tipeJaminanRepo,
@@ -92,7 +94,8 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
         IAddBillAppService addBillAppService,
         IMapJaminanJkRepo mapJaminanJkRepo,
         IJurnalRepo jurnalRepo,
-        IAddAntrianEmrByRegService addAntrianEmrByRegService)
+        IAddAntrianEmrByRegService addAntrianEmrByRegService,
+        ITglJamProvider tglJamProvider)
     {
         _pasienRepo = pasienRepo;
         _tipeJaminanRepo = tipeJaminanRepo;
@@ -118,17 +121,19 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
         _mapJaminanJkRepo = mapJaminanJkRepo;
         _jurnalRepo = jurnalRepo;
         _addAntrianEmrByRegService = addAntrianEmrByRegService;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<RegDaruratCreateResponse> Handle(RegDaruratCreateCmd request, CancellationToken cancellationToken)
     {
+        var occurredAt = _tglJamProvider.Now;
         #region GUARD-LOAD
         Guard.Against.Null(request.PesertaJaminanId, nameof(request.PesertaJaminanId));
         var pasien = _pasienRepo.LoadEntity(request).GetValueOrThrow("Pasien not found");
         if (pasien.IsAktif == false) throw new KeyNotFoundException($"Pasien {request.PasienId} tidak aktif ");
         if (_regAktifRepo.IsPasienAktif(pasien))
             throw new KeyNotFoundException($"Pasien sudah aktif registrasi");
-        if (IsAdult(pasien.Person.TglLahir) && (string.IsNullOrWhiteSpace(pasien.Ktp.Nik) || pasien.Ktp.Nik == "-"))
+        if (IsAdult(pasien.Person.TglLahir, DateOnly.FromDateTime(occurredAt)) && (string.IsNullOrWhiteSpace(pasien.Ktp.Nik) || pasien.Ktp.Nik == "-"))
             throw new KeyNotFoundException($"Nik Kosong, Lengkapi data Nik pasien {pasien.PasienId}");
 
         var tipeJaminan = _tipeJaminanRepo.LoadEntity(request).GetValueOrThrow("TipeJaminan not found");
@@ -141,7 +146,7 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
 
         #region BUILD
         //      1-register
-        var regMasukAudit = new AuditInfoType(request.UserId, DateTime.Now);
+        var regMasukAudit = new AuditInfoType(request.UserId, occurredAt);
         var reg = _regFactory.CreateRegDarurat(pasien, regMasukAudit,
             tipeJaminan, polis, caraMasuk, dokter, layanan, karcis, request.PesertaJaminanId);
         var regAktif = RegAktifModel.CreateFromReg(reg);
@@ -151,21 +156,21 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
             .Select(x => LoadKomponen(KomponenType.Key(x.KomponenTarif.KomponenId)))
             .ToList();
         var trsBillingReg = _addBillAppService.FromReg(reg, karcis,
-            jaminan, dokter, listKompKarcis);
+            jaminan, dokter, listKompKarcis, occurredAt);
         //      3-jurnal-karcis
         var mapJaminanJk = LoadMapJmnJk(tipeJaminan.Jaminan);
         var jurnalReg = JurnalType.CreateFromTrsBilling(trsBillingReg, layanan, mapJaminanJk);
         //      4-tindakan
         var tindakan = karcis.DefaultTarif == TarifType.Default.ToReff()
             ? TindakanModel.Default
-            : GenTindakan(reg, jaminan, karcis, request.UserId, dokter);
+            : GenTindakan(reg, jaminan, karcis, request.UserId, dokter, occurredAt);
         //      5-trs-billing-tindakan
         var tarif = karcis.DefaultTarif == TarifType.Default.ToReff()
             ? TarifType.Default
             : LoadTarif(TarifType.Key(karcis.DefaultTarif.TarifId));
         var trsBilling = tindakan == TindakanModel.Default
             ? TrsBillType.Default
-            : GenBill(tindakan, reg, tarif, jaminan);
+            : GenBill(tindakan, reg, tarif, jaminan, occurredAt);
         //      6-jurnal-tindakan
         var jurnalTindakan = tindakan == TindakanModel.Default
             ? JurnalType.Default
@@ -191,10 +196,8 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
 
     #region PRIVATE-HELPER
     #region LOAD-RESOLVE
-    public bool IsAdult(DateOnly TglLahir)
+    public bool IsAdult(DateOnly TglLahir, DateOnly today)
     {
-        var today = DateOnly.FromDateTime(DateTime.Today);
-
         int age = today.Year - TglLahir.Year;
 
         // Koreksi jika ulang tahun belum lewat tahun ini
@@ -236,7 +239,7 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
         return tarif;
     }
     private TindakanModel GenTindakan(RegModel reg, JaminanType jaminan,
-        KarcisType karcis, string userId, PpaType dokter)
+        KarcisType karcis, string userId, PpaType dokter, DateTime occurredAt)
     {
         var tipeTarifReff = jaminan.TipeTarif.Rajal;
         var tarifKey = karcis.DefaultTarif;
@@ -249,11 +252,11 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
             .Where(x => x.ListSatTugas.Any())
             .Select(x => new KomponenPpaView(x, dokter));
 
-        var tindakan = TindakanModel.FromReg(reg, nilaiTarif, listPpa, userId);
+        var tindakan = TindakanModel.FromReg(reg, nilaiTarif, listPpa, userId, occurredAt);
         return tindakan;
     }
     private TrsBillType GenBill(TindakanModel tdk, RegModel reg, TarifType tarif,
-        JaminanType jaminan)
+        JaminanType jaminan, DateTime occurredAt)
     {
         var listKomp = new List<KomponenType>();
         foreach (var item in tdk.ListKomponen)
@@ -261,7 +264,7 @@ public class RegDaruratCreateHandler : IRequestHandler<RegDaruratCreateCmd, RegD
             var komp = LoadKomponen(KomponenType.Key(item.Komponen.KomponenId));
             listKomp.Add(komp);
         }
-        var trsBilling = _addBillAppService.FromTindakan(tdk, reg, tarif, jaminan, listKomp);
+        var trsBilling = _addBillAppService.FromTindakan(tdk, reg, tarif, jaminan, listKomp, occurredAt);
         return trsBilling;
     }
     #endregion

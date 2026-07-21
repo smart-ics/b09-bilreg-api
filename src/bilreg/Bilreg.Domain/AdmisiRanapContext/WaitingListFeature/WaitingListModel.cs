@@ -41,7 +41,8 @@ public record WaitingListModel : IWaitingListKey
         KelasReff kelasRawat,
         BangsalReff bangsal,
         int priority,
-        string auditUserId)
+        string auditUserId,
+        DateTime createdAt = default)
     {
         Guard.Against.NullOrWhiteSpace(regId);
         Guard.Against.Null(pasien);
@@ -50,7 +51,6 @@ public record WaitingListModel : IWaitingListKey
         Guard.Against.NullOrWhiteSpace(auditUserId);
         AdmissionStatusGuard.EnsureCanEnterWaitingList(admissionStatus);
 
-        var now = DateTime.Now;
         return new WaitingListModel(
             NunaId.New(ID_PREFIX),
             WaitingListStatusEnum.Waiting,
@@ -59,7 +59,7 @@ public record WaitingListModel : IWaitingListKey
             kelasRawat,
             bangsal,
             priority,
-            AuditTrailType.Create(auditUserId, now));
+            AuditTrailType.Create(auditUserId, createdAt));
     }
 
     public static WaitingListModel Default => new(
@@ -98,7 +98,8 @@ public record WaitingListModel : IWaitingListKey
         int priority,
         KelasReff kelasRawat,
         BangsalReff bangsal,
-        string auditUserId)
+        string auditUserId,
+        DateTime updatedAt = default)
     {
         Guard.Against.Null(kelasRawat);
         Guard.Against.Null(bangsal);
@@ -109,11 +110,11 @@ public record WaitingListModel : IWaitingListKey
                 $"Waiting List {WaitingListId} harus Waiting untuk diperbarui (status saat ini: {WaitingListStatus}).");
 
         var audit = AuditTrail;
-        audit.Modif(auditUserId, DateTime.Now);
+        audit.Modif(auditUserId, updatedAt);
         return WithState(WaitingListStatusEnum.Waiting, priority, kelasRawat, bangsal, audit);
     }
 
-    public WaitingListModel Accept(string auditUserId)
+    public WaitingListModel Accept(string auditUserId, DateTime acceptedAt = default)
     {
         Guard.Against.NullOrWhiteSpace(auditUserId);
 
@@ -122,11 +123,11 @@ public record WaitingListModel : IWaitingListKey
                 $"Waiting List {WaitingListId} harus Waiting untuk diterima (status saat ini: {WaitingListStatus}).");
 
         var audit = AuditTrail;
-        audit.Modif(auditUserId, DateTime.Now);
+        audit.Modif(auditUserId, acceptedAt);
         return WithState(WaitingListStatusEnum.Accepted, Priority, KelasRawat, Bangsal, audit);
     }
 
-    public WaitingListModel Close(string auditUserId)
+    public WaitingListModel Close(string auditUserId, DateTime closedAt = default)
     {
         Guard.Against.NullOrWhiteSpace(auditUserId);
 
@@ -134,8 +135,26 @@ public record WaitingListModel : IWaitingListKey
             throw new InvalidOperationException(
                 $"Waiting List {WaitingListId} harus Accepted untuk ditutup (status saat ini: {WaitingListStatus}).");
 
-        AuditTrail.Modif(auditUserId, DateTime.Now);
+        AuditTrail.Modif(auditUserId, closedAt);
         return WithState(WaitingListStatusEnum.Closed, Priority, KelasRawat, Bangsal, AuditTrail);
+    }
+
+    public WaitingListModel Cancel(string userId, string reason, DateTime timestamp)
+    {
+        Guard.Against.NullOrWhiteSpace(userId);
+        Guard.Against.NullOrWhiteSpace(reason);
+
+        if (WaitingListStatus is not WaitingListStatusEnum.Waiting
+            and not WaitingListStatusEnum.Accepted)
+            throw new InvalidOperationException(
+                $"Waiting List {WaitingListId} harus Waiting atau Accepted untuk dibatalkan (status saat ini: {WaitingListStatus}).");
+
+        var audit = new AuditTrailType(
+            AuditTrail.Created,
+            AuditTrail.Modified,
+            AuditTrail.Voided);
+        audit.Batal(userId, timestamp);
+        return WithState(WaitingListStatusEnum.Cancelled, Priority, KelasRawat, Bangsal, audit);
     }
 
     #endregion

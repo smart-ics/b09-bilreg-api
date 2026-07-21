@@ -73,7 +73,8 @@ public class RegModel : IRegKey
     public AuditInfoType RegKeluarAudit { get; private set;}
     public AuditInfoType RegCancelOutAudit { get; private set; }
     public AuditInfoType RegVoidAudit { get; private set;  }
-    public bool IsAktif => RegKeluarAudit == AuditInfoType.Default;
+    public bool IsAktif => RegKeluarAudit == AuditInfoType.Default
+        && RegVoidAudit == AuditInfoType.Default;
     public JenisRegEnum JenisReg { get; init; }
     //      siapa yang berobat
     public PasienReff Pasien { get; init; }
@@ -121,7 +122,7 @@ public class RegModel : IRegKey
 
     public void SpecifyCaraMasuk(CaraMasukDkType caraMasukDk, RujukanType rujukan)
     {
-        if (caraMasukDk == CaraMasukDkType.DatangSendiri)
+        if (!caraMasukDk.RequiresRujukan)
         {
             CaraMasukDk = caraMasukDk;
             Rujukan = rujukan.ToReff();
@@ -178,26 +179,31 @@ public class RegModel : IRegKey
             .Select(x => new RegKomponenType(x.KomponenTarif, dokter.ToReff(), x.Nilai, 0)));
     }
 
-    public void AssignInpatientVisitTo(PpaType dokter, LayananType layanan, KarcisType karcis)
+    public void AssignInpatientVisitTo(PpaType dokter, LayananType layanan)
     {
         if (layanan.InstalasiDk.InstalasiDkId != InstalasiDkType.RawatInap.InstalasiDkId)
             throw new ArgumentException($"Layanan {layanan.LayananId} bukan instalasi rawat inap");
 
-        if (!karcis.IsValidLayanan(layanan))
-            throw new ArgumentException($"Layanan {layanan.LayananName} tidak terdaftar di karcis {karcis.KarcisName}");
-
         Dokter = dokter.ToReff();
         Layanan = layanan.ToReff();
-        Karcis = karcis.ToReff();
+        Karcis = KarcisType.Default.ToReff();
 
+        // Rawat Inap does not create ta_registrasi2 rows (Rawat Jalan / IGD only).
         _listKomponen.Clear();
-        _listKomponen.AddRange(karcis.ListKomponen
-            .Select(x => new RegKomponenType(x.KomponenTarif, dokter.ToReff(), x.Nilai, 0)));
     }
 
-    public void BatalBerobat(string userId)
+    public void BatalBerobat(string userId, DateTime timestamp)
     {
-        RegVoidAudit = new AuditInfoType(userId, DateTime.Now);
+        if (string.IsNullOrWhiteSpace(userId))
+            throw new ArgumentException("UserId wajib diisi.", nameof(userId));
+
+        if (RegVoidAudit != AuditInfoType.Default)
+            throw new InvalidOperationException($"Registrasi {RegId} sudah dibatalkan.");
+
+        if (RegKeluarAudit != AuditInfoType.Default)
+            throw new InvalidOperationException($"Registrasi {RegId} sudah keluar dan tidak dapat dibatalkan.");
+
+        RegVoidAudit = new AuditInfoType(userId, timestamp);
     }
 
     public void SetEligibility(string noSjp, string pesertaJaminanId, string sjpId)

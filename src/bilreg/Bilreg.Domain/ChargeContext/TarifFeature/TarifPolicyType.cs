@@ -36,13 +36,13 @@ public record TarifPolicyType : ITarifPolicyKey
         string policyName,
         DateTime effectiveDateInfo,
         string description,
-        string auditUserId)
+        string auditUserId,
+        DateTime createdAt = default)
     {
         Guard.Against.NullOrWhiteSpace(policyNo);
         Guard.Against.NullOrWhiteSpace(policyName);
         Guard.Against.NullOrWhiteSpace(auditUserId);
 
-        var now = DateTime.Now;
         return new TarifPolicyType(
             NunaId.New(IdPrefix),
             policyNo,
@@ -50,7 +50,7 @@ public record TarifPolicyType : ITarifPolicyKey
             effectiveDateInfo,
             description ?? "",
             TarifPolicyStatus.Draft,
-            AuditTrailType.Create(auditUserId, now),
+            AuditTrailType.Create(auditUserId, createdAt),
             []);
     }
 
@@ -113,7 +113,8 @@ public record TarifPolicyType : ITarifPolicyKey
         TarifPolicyType source,
         string newPolicyNo,
         string newPolicyName,
-        string auditUserId)
+        string auditUserId,
+        DateTime copiedAt = default)
     {
         Guard.Against.Null(source);
         Guard.Against.NullOrWhiteSpace(newPolicyNo);
@@ -139,18 +140,18 @@ public record TarifPolicyType : ITarifPolicyKey
             source.EffectiveDateInfo,
             source.Description,
             TarifPolicyStatus.Draft,
-            AuditTrailType.Create(auditUserId, DateTime.Now),
+            AuditTrailType.Create(auditUserId, copiedAt),
             clonedVariants);
     }
 
-    public TarifPolicyType MassAdjust(decimal percentFactor, string auditUserId)
+    public TarifPolicyType MassAdjust(decimal percentFactor, string auditUserId, DateTime adjustedAt = default)
     {
         EnsureEditable();
         Guard.Against.NullOrWhiteSpace(auditUserId);
 
         var adjusted = _variants.Select(v => v.WithMassAdjustedNilai(percentFactor)).ToList();
         var audit = AuditTrail;
-        audit.Modif(auditUserId, DateTime.Now);
+        audit.Modif(auditUserId, adjustedAt);
         return new TarifPolicyType(
             TarifPolicyId,
             PolicyNo,
@@ -162,7 +163,7 @@ public record TarifPolicyType : ITarifPolicyKey
             adjusted);
     }
 
-    public TarifPolicyType MarkReviewed(string auditUserId)
+    public TarifPolicyType MarkReviewed(string auditUserId, DateTime reviewedAt = default)
     {
         Guard.Against.NullOrWhiteSpace(auditUserId);
 
@@ -171,7 +172,7 @@ public record TarifPolicyType : ITarifPolicyKey
                 $"TarifPolicy {TarifPolicyId} harus Draft untuk ditandai Reviewed (status saat ini: {PolicyStatus}).");
 
         var audit = AuditTrail;
-        audit.Modif(auditUserId, DateTime.Now);
+        audit.Modif(auditUserId, reviewedAt);
         return new TarifPolicyType(
             TarifPolicyId,
             PolicyNo,
@@ -211,13 +212,13 @@ public record TarifPolicyType : ITarifPolicyKey
             variant.EnsureValidForPublish();
     }
 
-    public TarifPolicyType MarkPublished(string auditUserId)
+    public TarifPolicyType MarkPublished(string auditUserId, DateTime publishedAt = default)
     {
         ValidateForPublish();
         Guard.Against.NullOrWhiteSpace(auditUserId);
 
         var audit = AuditTrail;
-        audit.Modif(auditUserId, DateTime.Now);
+        audit.Modif(auditUserId, publishedAt);
         return new TarifPolicyType(
             TarifPolicyId,
             PolicyNo,
@@ -234,7 +235,8 @@ public record TarifPolicyType : ITarifPolicyKey
         string policyName,
         DateTime effectiveDateInfo,
         string description,
-        string auditUserId)
+        string auditUserId,
+        DateTime updatedAt = default)
     {
         EnsureEditable();
         Guard.Against.NullOrWhiteSpace(policyNo);
@@ -242,7 +244,7 @@ public record TarifPolicyType : ITarifPolicyKey
         Guard.Against.NullOrWhiteSpace(auditUserId);
 
         var audit = AuditTrail;
-        audit.Modif(auditUserId, DateTime.Now);
+        audit.Modif(auditUserId, updatedAt);
         return new TarifPolicyType(
             TarifPolicyId,
             policyNo,

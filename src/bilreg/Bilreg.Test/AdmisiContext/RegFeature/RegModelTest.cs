@@ -51,6 +51,49 @@ public class RegModelTest
         return result;
     }
 
+    [Fact]
+    public void GivenActiveRegistration_WhenBatalBerobat_ThenUsesSuppliedTimestampAndBecomesInactive()
+    {
+        var registration = CreateReg();
+        var timestamp = new DateTime(2026, 7, 12, 10, 30, 0);
+
+        registration.BatalBerobat("void-user", timestamp);
+
+        registration.RegVoidAudit.Should().Be(new AuditInfoType("void-user", timestamp));
+        registration.RegKeluarAudit.Should().Be(AuditInfoType.Default);
+        registration.RegCancelOutAudit.Should().Be(AuditInfoType.Default);
+        registration.IsAktif.Should().BeFalse();
+    }
+
+    [Fact]
+    public void GivenVoidedRegistration_WhenBatalBerobatAgain_ThenThrows()
+    {
+        var registration = CreateReg();
+        registration.BatalBerobat("void-user", new DateTime(2026, 7, 12));
+
+        var act = () => registration.BatalBerobat("void-user", new DateTime(2026, 7, 13));
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*sudah dibatalkan*");
+    }
+
+    [Fact]
+    public void GivenDischargedRegistration_WhenBatalBerobat_ThenThrows()
+    {
+        var registration = new RegModel(
+            "RG00000002", RegDate,
+            new AuditInfoType("tester", new DateTime(2026, 6, 14, 8, 0, 0)),
+            new AuditInfoType("discharge-user", new DateTime(2026, 6, 15, 8, 0, 0)),
+            AuditInfoType.Default, AuditInfoType.Default,
+            JenisRegEnum.RegJalan, PasienModel.Default.ToReff(), TipeJaminanType.Default.ToReff(),
+            PolisModel.Default.ToReff(), KelasType.Default.ToReff(), CaraMasukDkType.Default,
+            RujukanType.Default.ToReff(), PpaType.Default.ToReff(), LayananType.Default.ToReff(),
+            KarcisType.Default.ToReff(), RegEligibilityType.Default, []);
+
+        var act = () => registration.BatalBerobat("void-user", new DateTime(2026, 7, 12));
+
+        act.Should().Throw<InvalidOperationException>().WithMessage("*sudah keluar*");
+    }
+
     private static (LayananType Layanan, KarcisType Karcis) CreateRajalVisitData(string layananId = "LYN01")
     {
         var layanan = LayananType.Default with
