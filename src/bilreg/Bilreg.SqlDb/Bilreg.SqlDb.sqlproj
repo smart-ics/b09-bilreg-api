@@ -127,6 +127,7 @@
     <None Include="AdmisiContext\AntrianFeature\BILRG_Antrian.sql" />
     <None Include="AdmisiContext\AntrianFeature\BILRG_AntrianEntry.sql" />
     <None Include="AdmisiContext\AntrianFeature\BILRG_PasienTracker.sql" />
+    <None Include="AdmisiContext\AntrianFeature\BILRG_PasienTracker_M1_TrackingPeriod_Alter.sql" />
     <None Include="AdmisiContext\AntrianFeature\BILRG_PasienTrackerEvent.sql" />
     <None Include="AdmisiContext\BookingFeature\BILRG_Booking.sql" />
     <None Include="AdmisiContext\BookingFeature\BILRG_JadwalPraktek.sql" />

@@ -59,7 +59,9 @@ public class PasienTrackerRepo : IPasienTrackerRepo
             .Select(x => new PasienTrackerView(
                 x.PasienTrackerId, 
                 new PersonType(x.PersonName, DateOnly.FromDateTime(x.TglLahir)),
-                DateOnly.FromDateTime(x.VisitDate)));
+                DateOnly.FromDateTime(x.VisitDate),
+                DateOnly.FromDateTime(x.StartPeriod),
+                DateOnly.FromDateTime(x.LastPeriod)));
         return listTglLahir;
     }
 

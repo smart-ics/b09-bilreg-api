@@ -13,7 +13,7 @@ public class PasienTrackerEventDalTest
     private static PasienTrackerEventDto Faker()
         => new PasienTrackerEventDto("A", 2, "B", new DateTime(2025, 1, 2), "C");
     private static IPasienTrackerKey FakerKey()
-        => new PasienTrackerModel("A", PersonType.Default, new DateOnly(3000,1,1), []);
+        => PasienTrackerModel.Key("A");
     
     [Fact]
     public void UT1_InsertTest()
