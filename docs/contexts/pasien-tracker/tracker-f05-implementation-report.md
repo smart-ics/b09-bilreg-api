@@ -1,5 +1,7 @@
 # F-05 Implementation Report — Anonymous Admission Intake & Identification
 
+> **Superseded for late identification (2026-07-22):** anonymous intake remains valid. Admission service now starts while the entry remains anonymous, existing-Tracker selection requires `InService`, and new Walk-In Tracker creation occurs atomically in Registration rather than through `resolve/new`. See [`tracker-admission-queue-late-identification-gap-analysis.md`](tracker-admission-queue-late-identification-gap-analysis.md).
+
 **Artifact status:** Implementation summary (closed)  
 **Bounded context:** Patient Tracker / Admisi Antrian  
 **Authoritative domain:** [`TRACKER-DOMAIN.md`](TRACKER-DOMAIN.md)  

@@ -1,5 +1,7 @@
 # Tracker Domain — Codebase Gap Report
 
+> **Superseded admission-flow findings (2026-07-22):** the late-identification remediation removes `resolve/new`, separates anonymous admission service start from identity association, and makes successful Walk-In Registration the authority that establishes and attaches a new Tracker. See [`tracker-admission-queue-late-identification-gap-analysis.md`](tracker-admission-queue-late-identification-gap-analysis.md).
+
 **Date:** 2026-07-21  
 **Authoritative business definition:** `docs/contexts/pasien-tracker/TRACKER-DOMAIN.md`  
 **Assessment type:** Static codebase investigation plus a bounded, non-database unit-test run  

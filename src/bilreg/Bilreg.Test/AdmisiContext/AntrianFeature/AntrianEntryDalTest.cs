@@ -57,4 +57,24 @@ public class AntrianEntryDalTest
         var actual = _sut.ListData(Key());
         actual.Should().ContainEquivalentOf(Faker());
     }
+
+    [Fact]
+    public void UT6_UpdateFromAnonymousInService_IsCompareAndSet()
+    {
+        using var trans = TransHelper.NewScope();
+        var createdAt = new DateTime(2025, 10, 1, 8, 0, 0);
+        var servedAt = createdAt.AddMinutes(5);
+        var anonymous = new AntrianEntryDto(
+            "CAS-ADM", 1, "", "-", (int)AntrianStatusEnum.InService,
+            createdAt, servedAt, new DateTime(3000, 1, 1), "-", "-");
+        _sut.Insert(anonymous);
+        var identified = anonymous with
+        {
+            PersonName = "SINTA",
+            PasienTrackerId = "01JTRACKER0000000000000000"
+        };
+
+        _sut.UpdateFromAnonymousInService(identified).Should().Be(1);
+        _sut.UpdateFromAnonymousInService(identified).Should().Be(0);
+    }
 }

@@ -15,6 +15,7 @@ public interface IAntrianEntryDal :
     IDelete<IAntrianKey>,
     IListData<AntrianEntryDto, IAntrianKey>
 {
+    int UpdateFromAnonymousInService(AntrianEntryDto dto);
     void Delete(IAntrianKey key, int noUrut);
     AntrianEntryDto GetData(IAntrianKey key, int noUrut);
     IEnumerable<AntaianEntryOutStandingDto> ListOutStanding();
@@ -93,6 +94,44 @@ public class AntrianEntryDal : IAntrianEntryDal
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
+    }
+
+    public int UpdateFromAnonymousInService(AntrianEntryDto dto)
+    {
+        const string sql = """
+           UPDATE
+                BILRG_AntrianEntry
+           SET
+               PersonName = @PersonName,
+               PasienTrackerId = @PasienTrackerId,
+               AntrianStatus = @AntrianStatus,
+               CreatedAt = @CreatedAt,
+               ServedAt = @ServedAt,
+               DoneAt = @DoneAt,
+               ReffId = @ReffId,
+               ReffDesc = @ReffDesc
+           WHERE
+               AntrianId = @AntrianId
+               AND NoUrut = @NoUrut
+               AND PasienTrackerId IN ('', '-')
+               AND AntrianStatus = @ExpectedStatus
+           """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@AntrianId", dto.AntrianId, SqlDbType.VarChar);
+        dp.AddParam("@NoUrut", dto.NoUrut, SqlDbType.Int);
+        dp.AddParam("@PersonName", dto.PersonName, SqlDbType.VarChar);
+        dp.AddParam("@PasienTrackerId", dto.PasienTrackerId, SqlDbType.VarChar);
+        dp.AddParam("@AntrianStatus", dto.AntrianStatus, SqlDbType.Int);
+        dp.AddParam("@CreatedAt", dto.CreatedAt, SqlDbType.DateTime);
+        dp.AddParam("@ServedAt", dto.ServedAt, SqlDbType.DateTime);
+        dp.AddParam("@DoneAt", dto.DoneAt, SqlDbType.DateTime);
+        dp.AddParam("@ReffId", dto.ReffId, SqlDbType.VarChar);
+        dp.AddParam("@ReffDesc", dto.ReffDesc, SqlDbType.VarChar);
+        dp.AddParam("@ExpectedStatus", (int)AntrianStatusEnum.InService, SqlDbType.Int);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Execute(sql, dp);
     }
 
     public void Delete(IAntrianKey key, int noUrut)

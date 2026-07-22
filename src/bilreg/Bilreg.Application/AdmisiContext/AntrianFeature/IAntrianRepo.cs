@@ -11,4 +11,5 @@ public interface IAntrianRepo :
     IListData<AntrianView, DateTime>
 {
     void FixOutstandingReference();
+    bool TrySaveAnonymousInServiceTransition(AntrianModel queue, AntrianEntryModel entry);
 }

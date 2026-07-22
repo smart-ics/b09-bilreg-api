@@ -70,6 +70,14 @@ public class AntrianController : Controller
         return Ok(new JSendOk(response));
     }
 
+    [HttpPost]
+    [Route("start")]
+    public async Task<IActionResult> Start(AdmissionQueueStartCmd cmd)
+    {
+        var response = await _mediator.Send(cmd);
+        return Ok(new JSendOk(response));
+    }
+
     [HttpPatch]
     [Route("mulaiPeriksa/{antrianId}/{noUrut:int}")]
     public async Task<IActionResult> MulaiPeriksa(string antrianId, int noUrut)

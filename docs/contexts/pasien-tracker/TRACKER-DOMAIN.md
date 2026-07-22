@@ -6,6 +6,8 @@
 
 **Version scope:** Pragmatic V1
 
+**Admission queue feature specification:** [Admission Queue Operations Domain](./TRACKER-ADMISSION-QUEUE-DOMAIN.md)
+
 ## 1. Business Overview
 
 ### 1.1 Purpose
@@ -35,10 +37,12 @@ V1 owns five business capabilities:
 4. Journey Candidate Resolution.
 5. Operational Time Interpretation.
 
-The domain contains exactly two aggregates:
+The V1 journey foundation contains two aggregates:
 
 1. `Patient Tracker Aggregate`.
 2. `Queue Session Aggregate`.
+
+The Admission Queue Operations feature elaborates Queue Session behavior and defines the supporting stable Service Point, Loket, and Kiosk business identities in its feature domain specification.
 
 ### 1.4 Business boundaries
 
@@ -75,7 +79,7 @@ Patient Tracker does not own:
 | Queue Evidence Reference | The combination of Queue Session identity and Queue Number used as Evidence Reference when no primary source transaction yet exists. |
 | OccurredAt | The business time at which the evidenced interaction occurred. It may differ from the later time at which the evidence is associated with a Patient Tracker. |
 | Journey Candidate | A Patient Tracker returned because its Person Identity Snapshot and Tracking Period match the available search evidence. |
-| Journey Resolution | The accountable human decision to select one Journey Candidate or establish a new Patient Tracker. |
+| Journey Resolution | The accountable human decision to associate a Queue Entry with an applicable existing Patient Tracker or, when an owning source activity establishes a new journey, with the newly established Patient Tracker. |
 | Queue Session | One time-bounded queue for one Service Point on one Session Date. |
 | Service Point | The operational place or responsibility at which Patients wait for service, such as an admission counter, physician, or outpatient pharmacy. |
 | Queue Entry | One Patient's or anonymous visitor's participation in one Queue Session. |
@@ -88,6 +92,7 @@ Patient Tracker does not own:
 | Waiting | The Queue Entry state after creation and before service starts. |
 | In Service | The Queue Entry state after service starts and before it completes. |
 | Done | The final Queue Entry state after service completes. |
+| Withdrawn | The final Queue Entry state when participation ends before service starts under an applicable feature policy. |
 | Registration Waiting Time | The interval from admission-counter CreatedAt to admission-counter ServedAt. |
 | Post-Registration Consultation Waiting Time | The interval from registration DoneAt to physician ServedAt, regardless of when the physician Queue Entry was created. |
 | Service Duration | The interval from ServedAt to DoneAt for one Queue Entry. |
@@ -122,7 +127,7 @@ Patient Tracker can:
 - assign Queue Numbers unique within that Queue Session;
 - admit anonymous or identified Queue Entries;
 - associate an anonymous Queue Entry with a resolved Patient Tracker; and
-- track each Queue Entry from Waiting through In Service to Done.
+- track each Queue Entry from Waiting through In Service to Done, or to Withdrawn when an applicable feature policy ends participation before service starts.
 
 ### 3.4 Journey Candidate Resolution
 
@@ -131,7 +136,7 @@ Patient Tracker can:
 - find Journey Candidates from name, date of birth, and a relevant business date;
 - expose each candidate's operational evidence;
 - preserve multiple valid candidates instead of guessing; and
-- let an accountable operator select the applicable journey or establish a new one.
+- let an accountable operator select the applicable existing journey; when no applicable journey exists, the owning source activity may establish a new Patient Tracker from its authoritative evidence.
 
 ### 3.5 Operational Time Interpretation
 
@@ -229,7 +234,7 @@ Responsibilities:
 - retain its Queue Number;
 - retain an optional Patient Tracker association and available name snapshot;
 - retain CreatedAt, ServedAt, and DoneAt milestones; and
-- transition from Waiting to In Service to Done.
+- transition from Waiting to In Service to Done, or from Waiting to Withdrawn under an applicable feature policy.
 
 ### 5.2 Value Objects
 
@@ -298,7 +303,8 @@ Only the Queue Session may:
 - add an Anonymous or Identified Queue Entry;
 - associate an Anonymous Queue Entry with one resolved Patient Tracker;
 - start service for a Waiting Queue Entry; or
-- complete an In Service Queue Entry.
+- complete an In Service Queue Entry; or
+- withdraw a Waiting Queue Entry under an applicable feature policy.
 
 A Queue Entry references a Patient Tracker by TrackerId but does not own or modify the Patient Tracker Aggregate.
 
@@ -346,16 +352,18 @@ A Queue Entry references a Patient Tracker by TrackerId but does not own or modi
 - **BR-TRK-022** — Search shall return every matching Journey Candidate and shall not silently choose among equal Person Identity Snapshots.
 - **BR-TRK-023** — When multiple candidates remain, an accountable Journey Resolution Operator shall select the applicable journey from the available evidence.
 - **BR-TRK-024** — Equal name and date of birth shall not merge Patient Trackers or prove that two journeys are the same.
-- **BR-TRK-025** — When no candidate is applicable, a new Patient Tracker may be established from the available identity and operational evidence.
+- **BR-TRK-025** — When no candidate is applicable, the accountable owning source activity may establish a new Patient Tracker from its authoritative identity and operational evidence; obtaining a Queue Number alone shall not establish a Patient Tracker.
 
 ### 7.4 Queue Session and Queue Entry identity
 
 - **BR-TRK-026** — Every Queue Session shall identify exactly one Service Point, one Session Date, one Start Time, and one End Time.
 - **BR-TRK-027** — Queue Numbers shall be unique within a Queue Session but may repeat across different Queue Sessions.
 - **BR-TRK-028** — Every Queue Entry shall belong to exactly one Queue Session and shall retain exactly one Queue Number within that session.
-- **BR-TRK-029** — A Queue Entry may be created anonymously when the Patient Journey is not yet known.
-- **BR-TRK-030** — A Queue Entry created from Booking or an identified upstream activity shall reference exactly one Patient Tracker from creation.
-- **BR-TRK-031** — An Anonymous Queue Entry may become Identified only after Journey Resolution selects or establishes one Patient Tracker.
+- **BR-TRK-029** — Obtaining a Queue Number may create an Anonymous Queue Entry when the applicable Patient Journey has not yet been accountably resolved; Queue Number allocation shall not by itself create a Patient Tracker.
+- **BR-TRK-030** — A Queue Entry directly created or reserved by Booking or another identified upstream source activity shall reference exactly one Patient Tracker from creation. An admission Queue Entry issued after a Booking Self-Registration attempt requires assistance is not a Booking-created Queue Entry for this rule and may remain Anonymous until an Admission Officer resolves the journey from Patient-supplied evidence.
+- **BR-TRK-031** — An Anonymous Queue Entry may become Identified only after an accountable resolution associates it with one existing Patient Tracker or an owning source activity establishes a new Patient Tracker from authoritative evidence.
+- **BR-TRK-031a** — A Walk-In admission Queue Entry shall remain Anonymous until Registration establishes a new Patient Tracker or accountable Journey Resolution selects an applicable existing Patient Tracker.
+- **BR-TRK-031b** — A Booking Patient's admission Queue Entry shall not be automatically associated from the presented Booking QR alone; an Admission Officer shall use Patient-supplied evidence to resolve and associate the applicable existing Booking Patient Tracker.
 - **BR-TRK-032** — One Patient Tracker may participate in multiple Queue Sessions, but one Queue Entry shall reference at most one Patient Tracker.
 - **BR-TRK-033** — CreatedAt shall record when the Queue Entry was created or reserved and shall not universally be interpreted as physical arrival.
 - **BR-TRK-034** — A booking-created Queue Entry may have CreatedAt before its Queue Session Date or Start Time without changing the Booking occurrence time.
@@ -367,6 +375,7 @@ A Queue Entry references a Patient Tracker by TrackerId but does not own or modi
 - **BR-TRK-037** — Only an In Service Queue Entry may become Done, and becoming Done shall record DoneAt.
 - **BR-TRK-038** — ServedAt shall not precede CreatedAt, and DoneAt shall not precede ServedAt.
 - **BR-TRK-039** — A Done Queue Entry is final in V1 and shall not return to Waiting or In Service.
+- **BR-TRK-039a** — An applicable feature policy may make a Waiting Queue Entry Withdrawn when participation ends before service starts; a Withdrawn Queue Entry is final and shall not be represented as completed service.
 
 ### 7.6 Operational time interpretation
 
@@ -440,25 +449,33 @@ Queue Entry created
         | Service completes / DoneAt recorded
         v
        Done
+
+     Waiting
+        |
+        | Participation ends before service starts
+        v
+    Withdrawn
 ```
 
 | State | Business meaning | Allowed next state |
 |---|---|---|
-| Waiting | The Queue Entry exists and service has not started. | In Service |
+| Waiting | The Queue Entry exists and service has not started. | In Service or Withdrawn under an applicable feature policy |
 | In Service | The Service Point has recognized service start. | Done |
 | Done | The Service Point has recognized service completion. | None |
+| Withdrawn | Queue participation ended before service started. | None |
 
 ### 8.4 Queue Entry identification lifecycle
 
 ```text
 Anonymous Queue Entry
           |
-          | Journey Resolution
+          | Accountable association with an existing Tracker,
+          | or new Tracker established by an owning source activity
           v
 Identified Queue Entry
 ```
 
-An entry created from Booking or another identified source begins as Identified and does not pass through the Anonymous condition.
+A physician Queue Entry directly created by Booking, or an entry directly created by another identified source activity, begins as Identified and does not pass through the Anonymous condition. An admission Queue Entry issued because Booking Self-Registration requires assistance is a separate Queue Entry and may begin Anonymous.
 
 ## 9. Domain Events
 
@@ -475,6 +492,7 @@ The events in this section are stable business facts of this bounded context. Th
 | Queue Entry Identified | An Anonymous Queue Entry was associated with one resolved Patient Tracker. |
 | Queue Service Started | A Waiting Queue Entry entered In Service and received ServedAt. |
 | Queue Service Completed | An In Service Queue Entry became Done and received DoneAt. |
+| Queue Entry Withdrawn | A Waiting Queue Entry ended before service started under an applicable feature policy. |
 | Booking Queue Number Assigned | A Queue Number reserved in a physician Queue Session was associated with its Booking. |
 
 ## 10. Business Workflows
@@ -502,15 +520,18 @@ Patient requests a number for an admission Service Point
   → Queue Number and CreatedAt recorded
 ```
 
-No Patient Tracker evidence is added until the Queue Entry is associated with a resolved journey.
+This flow applies to both a Walk-In Patient and a Booking Patient whose Self-Registration requires assistance. Presenting or scanning Booking evidence does not automatically identify the admission Queue Entry and does not create another Patient Tracker. No Patient Tracker evidence is added until the Queue Entry is accountably associated with a resolved journey.
 
 ### 10.3 Resolve the journey and perform Registration
 
 ```text
 Admission Queue Number called
-  → Journey Candidates found by name, date of birth, and relevant date
-  → Operator selects applicable candidate or establishes a new tracker
-  → Anonymous Queue Entry becomes Identified
+  → Admission Officer asks the Patient for identity and available visit evidence
+  → Journey Candidates found from the available evidence and relevant date
+  → Booking path: Operator selects the applicable existing Booking Tracker
+  → Walk-In path with applicable existing journey: Operator selects that Tracker
+  → Walk-In path without applicable journey: Registration establishes a new Tracker from Registration evidence
+  → Anonymous Queue Entry becomes Identified with the selected or newly established Tracker
   → Queue service starts and ServedAt is recorded
   → Check-in evidence uses Queue Evidence Reference and queue CreatedAt
   → Registration-start evidence uses Queue Evidence Reference and queue ServedAt
@@ -518,7 +539,7 @@ Admission Queue Number called
   → Registration-done evidence uses the Registration transaction reference
 ```
 
-The Registration transaction remains authoritative for the registration outcome.
+The Registration transaction remains authoritative for the registration outcome. For a Walk-In without an applicable existing journey, obtaining or calling the Queue Number does not create a Tracker; the Tracker is established when Registration provides the authoritative source evidence, and the existing Queue Entry is then associated with it. OccurredAt on later-appended queue evidence preserves the earlier queue milestone times.
 
 ### 10.4 Perform physician consultation
 

@@ -11,6 +11,32 @@ namespace Bilreg.Test.AdmisiContext.AntrianFeature;
 public class AntrianRepoAreEqualTest
 {
     [Fact]
+    public void ConditionalTransition_WhenDalAffectsOneRow_ThenReturnsTrue()
+    {
+        var sequencer = new Mock<ISequencer>();
+        var antrianDal = new Mock<IAntrianDal>();
+        var entryDal = new Mock<IAntrianEntryDal>();
+        var createdAt = new DateTime(2025, 8, 3, 6, 51, 0);
+        var queue = new AntrianModel(
+            "ADM-Q1", DateOnly.FromDateTime(createdAt), TimeOnly.MinValue, TimeOnly.MaxValue,
+            "tag", "Loket", new ServicePointType("ADM", "Loket Admisi"), [], sequencer.Object);
+        var entry = queue.AddEntry(createdAt);
+        entry.Serve(createdAt.AddMinutes(5));
+        var tracker = PasienTrackerModel.Create(
+            new PersonType("SINTA", new DateOnly(2008, 5, 5)),
+            DateOnly.FromDateTime(createdAt), "BOOKING", "B1", createdAt.AddDays(-1));
+        entry.AssignPasien(tracker);
+        entryDal.Setup(x => x.UpdateFromAnonymousInService(It.IsAny<AntrianEntryDto>()))
+            .Returns(1);
+
+        var sut = new AntrianRepo(antrianDal.Object, entryDal.Object, sequencer.Object);
+
+        sut.TrySaveAnonymousInServiceTransition(queue, entry).Should().BeTrue();
+        entryDal.Verify(x => x.UpdateFromAnonymousInService(
+            It.Is<AntrianEntryDto>(d => d.PasienTrackerId == tracker.PasienTrackerId)), Times.Once);
+    }
+
+    [Fact]
     public void SaveChanges_WhenOnlyPasienTrackerIdChanges_ThenUpdatesEntry()
     {
         var sequencer = new Mock<ISequencer>();

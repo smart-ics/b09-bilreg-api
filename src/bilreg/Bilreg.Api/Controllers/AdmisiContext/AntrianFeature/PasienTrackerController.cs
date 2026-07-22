@@ -48,14 +48,6 @@ public class PasienTrackerController : ControllerBase
     }
 
     [HttpPost]
-    [Route("resolve/new")]
-    public async Task<IActionResult> ResolveNew(TrkJourneyResolveNewCmd cmd)
-    {
-        var response = await _mediator.Send(cmd);
-        return Ok(new JSendOk(response));
-    }
-
-    [HttpPost]
     [Route("pharmacy/evidence")]
     public async Task<IActionResult> AppendPharmacyEvidence(TrkAppendPharmacyEvidenceCmd cmd)
     {

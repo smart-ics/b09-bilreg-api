@@ -8,6 +8,8 @@
 
 **Sumber kanonis bahasa Inggris:** [TRACKER-DOMAIN.md](./TRACKER-DOMAIN.md)
 
+**Spesifikasi fitur antrean admisi:** [Domain Operasi Antrean Admisi](./TRACKER-ADMISSION-QUEUE-DOMAIN-ID.md)
+
 ## 1. Gambaran Umum Bisnis
 
 ### 1.1 Tujuan
@@ -37,10 +39,12 @@ V1 memiliki lima kapabilitas bisnis:
 4. Journey Candidate Resolution.
 5. Operational Time Interpretation.
 
-Domain ini memiliki tepat dua aggregate:
+Fondasi journey V1 memiliki dua aggregate:
 
 1. `Patient Tracker Aggregate`.
 2. `Queue Session Aggregate`.
+
+Fitur Admission Queue Operations mengelaborasi perilaku Queue Session dan mendefinisikan identitas bisnis pendukung yang stabil untuk Service Point, Loket, dan Kiosk dalam spesifikasi domain fiturnya.
 
 ### 1.4 Batas bisnis
 
@@ -77,7 +81,7 @@ Patient Tracker tidak memiliki kepemilikan atas:
 | Queue Evidence Reference | Referensi Bukti Antrean | Gabungan identitas Queue Session dan Queue Number yang digunakan sebagai Evidence Reference ketika transaksi sumber utama belum tersedia. |
 | OccurredAt | Waktu Kejadian | Waktu bisnis saat interaksi yang dibuktikan terjadi. Waktu ini dapat berbeda dari waktu kemudian ketika bukti dikaitkan dengan Patient Tracker. |
 | Journey Candidate | Kandidat Perjalanan | Patient Tracker yang dikembalikan karena Person Identity Snapshot dan Tracking Period-nya sesuai dengan bukti pencarian yang tersedia. |
-| Journey Resolution | Resolusi Perjalanan | Keputusan manusia yang bertanggung jawab untuk memilih satu Journey Candidate atau membentuk Patient Tracker baru. |
+| Journey Resolution | Resolusi Perjalanan | Keputusan manusia yang bertanggung jawab untuk mengaitkan Queue Entry dengan Patient Tracker existing yang sesuai atau, ketika aktivitas sumber pemilik membentuk journey baru, dengan Patient Tracker yang baru dibentuk tersebut. |
 | Queue Session | Sesi Antrean | Satu antrean dengan batas waktu untuk satu Service Point pada satu Session Date. |
 | Service Point | Titik Layanan | Tempat atau tanggung jawab operasional tempat Patient menunggu pelayanan, seperti loket admisi, dokter, atau apotek rawat jalan. |
 | Queue Entry | Entri Antrean | Keikutsertaan satu Patient atau pengunjung anonim dalam satu Queue Session. |
@@ -90,6 +94,7 @@ Patient Tracker tidak memiliki kepemilikan atas:
 | Waiting | Menunggu | State Queue Entry setelah dibuat dan sebelum pelayanan dimulai. |
 | In Service | Sedang Dilayani | State Queue Entry setelah pelayanan dimulai dan sebelum pelayanan selesai. |
 | Done | Selesai | State final Queue Entry setelah pelayanan selesai. |
+| Withdrawn | Dihentikan sebelum Dilayani | State final Queue Entry ketika keikutsertaan berakhir sebelum pelayanan dimulai berdasarkan feature policy yang berlaku. |
 | Registration Waiting Time | Waktu Tunggu Registrasi | Interval dari CreatedAt antrean loket admisi sampai ServedAt antrean tersebut. |
 | Post-Registration Consultation Waiting Time | Waktu Tunggu Konsultasi Pasca-Registrasi | Interval dari DoneAt registrasi sampai ServedAt dokter, tanpa bergantung pada waktu pembuatan Queue Entry dokter. |
 | Service Duration | Durasi Pelayanan | Interval dari ServedAt sampai DoneAt untuk satu Queue Entry. |
@@ -130,7 +135,7 @@ Patient Tracker dapat:
 - menetapkan Queue Number yang unik dalam Queue Session tersebut;
 - menerima Queue Entry anonim atau teridentifikasi;
 - mengaitkan Anonymous Queue Entry dengan Patient Tracker yang telah diresolusi; dan
-- melacak setiap Queue Entry dari Waiting melalui In Service sampai Done.
+- melacak setiap Queue Entry dari Waiting melalui In Service sampai Done, atau sampai Withdrawn ketika feature policy yang berlaku mengakhiri keikutsertaan sebelum pelayanan dimulai.
 
 ### 3.4 Journey Candidate Resolution
 
@@ -141,7 +146,7 @@ Patient Tracker dapat:
 - menemukan Journey Candidate berdasarkan nama, tanggal lahir, dan tanggal bisnis yang relevan;
 - menampilkan bukti operasional setiap kandidat;
 - mempertahankan beberapa kandidat yang valid tanpa menebak; dan
-- memungkinkan operator yang bertanggung jawab memilih journey yang sesuai atau membentuk journey baru.
+- memungkinkan operator yang bertanggung jawab memilih journey existing yang sesuai; ketika tidak ada journey yang sesuai, aktivitas sumber pemilik dapat membentuk Patient Tracker baru dari bukti authoritative miliknya.
 
 ### 3.5 Operational Time Interpretation
 
@@ -241,7 +246,7 @@ Tanggung jawab:
 - mempertahankan Queue Number;
 - mempertahankan asosiasi opsional dengan Patient Tracker serta snapshot nama yang tersedia;
 - mempertahankan milestone CreatedAt, ServedAt, dan DoneAt; dan
-- bertransisi dari Waiting ke In Service lalu Done.
+- bertransisi dari Waiting ke In Service lalu Done, atau dari Waiting ke Withdrawn berdasarkan feature policy yang berlaku.
 
 ### 5.2 Value Objects
 
@@ -309,8 +314,9 @@ Hanya Queue Session yang dapat:
 - menetapkan Queue Number;
 - menambahkan Anonymous atau Identified Queue Entry;
 - mengaitkan Anonymous Queue Entry dengan satu Patient Tracker yang telah diresolusi;
-- memulai pelayanan bagi Waiting Queue Entry; atau
-- menyelesaikan In Service Queue Entry.
+- memulai pelayanan bagi Waiting Queue Entry;
+- menyelesaikan In Service Queue Entry; atau
+- menghentikan Waiting Queue Entry berdasarkan feature policy yang berlaku.
 
 Queue Entry mereferensikan Patient Tracker melalui TrackerId, tetapi tidak memiliki atau mengubah Patient Tracker Aggregate.
 
@@ -348,16 +354,18 @@ Queue Entry mereferensikan Patient Tracker melalui TrackerId, tetapi tidak memil
 - **BR-TRK-022** — Pencarian harus mengembalikan seluruh Journey Candidate yang cocok dan tidak boleh diam-diam memilih di antara Person Identity Snapshot yang sama.
 - **BR-TRK-023** — Ketika masih terdapat beberapa kandidat, Journey Resolution Operator yang bertanggung jawab harus memilih journey yang sesuai berdasarkan bukti yang tersedia.
 - **BR-TRK-024** — Kesamaan nama dan tanggal lahir tidak boleh menggabungkan Patient Tracker atau membuktikan bahwa dua journey merupakan journey yang sama.
-- **BR-TRK-025** — Ketika tidak ada kandidat yang sesuai, Patient Tracker baru dapat dibentuk dari identitas dan bukti operasional yang tersedia.
+- **BR-TRK-025** — Ketika tidak ada kandidat yang sesuai, aktivitas sumber pemilik yang bertanggung jawab dapat membentuk Patient Tracker baru dari identitas dan bukti operasional authoritative miliknya; memperoleh Queue Number saja tidak boleh membentuk Patient Tracker.
 
 ### 7.4 Queue Session and Queue Entry identity
 
 - **BR-TRK-026** — Setiap Queue Session harus mengidentifikasi tepat satu Service Point, satu Session Date, satu Start Time, dan satu End Time.
 - **BR-TRK-027** — Queue Number harus unik dalam satu Queue Session, tetapi dapat berulang pada Queue Session yang berbeda.
 - **BR-TRK-028** — Setiap Queue Entry harus termasuk dalam tepat satu Queue Session dan mempertahankan tepat satu Queue Number di dalam session tersebut.
-- **BR-TRK-029** — Queue Entry dapat dibuat secara anonim ketika Patient Journey belum diketahui.
-- **BR-TRK-030** — Queue Entry yang dibuat dari Booking atau aktivitas upstream teridentifikasi harus mereferensikan tepat satu Patient Tracker sejak pembentukannya.
-- **BR-TRK-031** — Anonymous Queue Entry hanya dapat menjadi Identified setelah Journey Resolution memilih atau membentuk satu Patient Tracker.
+- **BR-TRK-029** — Memperoleh Queue Number dapat membuat Anonymous Queue Entry ketika Patient Journey yang sesuai belum diresolusi secara accountable; alokasi Queue Number tidak boleh dengan sendirinya membentuk Patient Tracker.
+- **BR-TRK-030** — Queue Entry yang secara langsung dibuat atau direservasi oleh Booking atau aktivitas sumber upstream teridentifikasi lainnya harus mereferensikan tepat satu Patient Tracker sejak pembentukannya. Admission Queue Entry yang diterbitkan setelah Self-Registration Booking memerlukan bantuan bukan merupakan Queue Entry yang dibuat Booking untuk rule ini dan dapat tetap Anonymous sampai Admission Officer meresolusi journey dari bukti yang diberikan Patient.
+- **BR-TRK-031** — Anonymous Queue Entry hanya dapat menjadi Identified setelah resolusi accountable mengaitkannya dengan satu Patient Tracker existing atau aktivitas sumber pemilik membentuk Patient Tracker baru dari bukti authoritative.
+- **BR-TRK-031a** — Walk-In admission Queue Entry harus tetap Anonymous sampai Registration membentuk Patient Tracker baru atau Journey Resolution yang accountable memilih Patient Tracker existing yang sesuai.
+- **BR-TRK-031b** — Admission Queue Entry milik Booking Patient tidak boleh dikaitkan secara otomatis hanya dari Booking QR yang ditunjukkan; Admission Officer harus menggunakan bukti yang diberikan Patient untuk meresolusi dan mengaitkan existing Booking Patient Tracker yang sesuai.
 - **BR-TRK-032** — Satu Patient Tracker dapat berpartisipasi dalam beberapa Queue Session, tetapi satu Queue Entry hanya boleh mereferensikan paling banyak satu Patient Tracker.
 - **BR-TRK-033** — CreatedAt harus mencatat waktu ketika Queue Entry dibuat atau mendapat reservasi dan tidak boleh selalu ditafsirkan sebagai kedatangan fisik.
 - **BR-TRK-034** — Queue Entry yang dibuat dari booking dapat memiliki CreatedAt sebelum Session Date atau Start Time Queue Session tanpa mengubah waktu kejadian Booking.
@@ -369,6 +377,7 @@ Queue Entry mereferensikan Patient Tracker melalui TrackerId, tetapi tidak memil
 - **BR-TRK-037** — Hanya In Service Queue Entry yang dapat menjadi Done, dan perubahan menjadi Done harus mencatat DoneAt.
 - **BR-TRK-038** — ServedAt tidak boleh mendahului CreatedAt, dan DoneAt tidak boleh mendahului ServedAt.
 - **BR-TRK-039** — Done Queue Entry bersifat final pada V1 dan tidak boleh kembali menjadi Waiting atau In Service.
+- **BR-TRK-039a** — Feature policy yang berlaku dapat membuat Waiting Queue Entry menjadi Withdrawn ketika keikutsertaan berakhir sebelum pelayanan dimulai; Withdrawn Queue Entry bersifat final dan tidak boleh direpresentasikan sebagai pelayanan yang selesai.
 
 ### 7.6 Operational time interpretation
 
@@ -442,25 +451,33 @@ Queue Entry dibuat
         | Pelayanan selesai / DoneAt dicatat
         v
        Done
+
+     Waiting
+        |
+        | Keikutsertaan berakhir sebelum pelayanan dimulai
+        v
+    Withdrawn
 ```
 
 | State | Makna bisnis | State berikutnya yang diperbolehkan |
 |---|---|---|
-| Waiting | Queue Entry telah tersedia dan pelayanan belum dimulai. | In Service |
+| Waiting | Queue Entry telah tersedia dan pelayanan belum dimulai. | In Service atau Withdrawn berdasarkan feature policy yang berlaku |
 | In Service | Service Point telah mengakui bahwa pelayanan dimulai. | Done |
 | Done | Service Point telah mengakui bahwa pelayanan selesai. | Tidak ada |
+| Withdrawn | Keikutsertaan antrean berakhir sebelum pelayanan dimulai. | Tidak ada |
 
 ### 8.4 Queue Entry identification lifecycle
 
 ```text
 Anonymous Queue Entry
           |
-          | Journey Resolution
+          | Pengaitan accountable dengan Tracker existing,
+          | atau Tracker baru yang dibentuk aktivitas sumber pemilik
           v
 Identified Queue Entry
 ```
 
-Entri yang dibuat dari Booking atau sumber teridentifikasi lainnya dimulai sebagai Identified dan tidak melalui kondisi Anonymous.
+Physician Queue Entry yang secara langsung dibuat Booking, atau entry yang secara langsung dibuat aktivitas sumber teridentifikasi lain, dimulai sebagai Identified dan tidak melalui kondisi Anonymous. Admission Queue Entry yang diterbitkan karena Self-Registration Booking memerlukan bantuan merupakan Queue Entry terpisah dan dapat dimulai sebagai Anonymous.
 
 ## 9. Domain Events
 
@@ -477,6 +494,7 @@ Event pada bagian ini merupakan business fact stabil milik bounded context ini. 
 | Queue Entry Identified | Anonymous Queue Entry dikaitkan dengan satu Patient Tracker yang telah diresolusi. |
 | Queue Service Started | Waiting Queue Entry memasuki In Service dan memperoleh ServedAt. |
 | Queue Service Completed | In Service Queue Entry menjadi Done dan memperoleh DoneAt. |
+| Queue Entry Withdrawn | Waiting Queue Entry berakhir sebelum pelayanan dimulai berdasarkan feature policy yang berlaku. |
 | Booking Queue Number Assigned | Queue Number yang direservasi dalam Queue Session dokter dikaitkan dengan Booking. |
 
 ## 10. Workflow Bisnis
@@ -504,15 +522,18 @@ Patient meminta nomor untuk Service Point admisi
   → Queue Number dan CreatedAt dicatat
 ```
 
-Tidak ada bukti Patient Tracker yang ditambahkan sampai Queue Entry dikaitkan dengan journey yang telah diresolusi.
+Flow ini berlaku untuk Walk-In Patient maupun Booking Patient yang Self-Registration-nya memerlukan bantuan. Menunjukkan atau memindai bukti Booking tidak otomatis mengidentifikasi admission Queue Entry dan tidak membentuk Patient Tracker lain. Tidak ada bukti Patient Tracker yang ditambahkan sampai Queue Entry secara accountable dikaitkan dengan journey yang telah diresolusi.
 
 ### 10.3 Resolve the journey and perform Registration
 
 ```text
 Queue Number admisi dipanggil
-  → Journey Candidate ditemukan berdasarkan nama, tanggal lahir, dan tanggal relevan
-  → Operator memilih kandidat yang sesuai atau membentuk tracker baru
-  → Anonymous Queue Entry menjadi Identified
+  → Admission Officer meminta identitas dan bukti kunjungan yang tersedia kepada Patient
+  → Journey Candidate ditemukan dari bukti yang tersedia dan tanggal relevan
+  → Jalur Booking: Operator memilih existing Booking Tracker yang sesuai
+  → Jalur Walk-In dengan journey existing yang sesuai: Operator memilih Tracker tersebut
+  → Jalur Walk-In tanpa journey yang sesuai: Registration membentuk Tracker baru dari bukti Registration
+  → Anonymous Queue Entry menjadi Identified dengan Tracker yang dipilih atau baru dibentuk
   → Pelayanan antrean dimulai dan ServedAt dicatat
   → Bukti check-in menggunakan Queue Evidence Reference dan CreatedAt antrean
   → Bukti mulai registrasi menggunakan Queue Evidence Reference dan ServedAt antrean
@@ -520,7 +541,7 @@ Queue Number admisi dipanggil
   → Bukti selesai registrasi menggunakan referensi transaksi Registration
 ```
 
-Transaksi Registration tetap authoritative atas outcome registrasi.
+Transaksi Registration tetap authoritative atas outcome registrasi. Untuk Walk-In tanpa journey existing yang sesuai, memperoleh atau memanggil Queue Number tidak membentuk Tracker; Tracker dibentuk ketika Registration menyediakan bukti sumber authoritative, lalu Queue Entry existing dikaitkan dengannya. OccurredAt pada bukti antrean yang ditambahkan kemudian tetap mempertahankan waktu milestone antrean yang lebih awal.
 
 ### 10.4 Perform physician consultation
 

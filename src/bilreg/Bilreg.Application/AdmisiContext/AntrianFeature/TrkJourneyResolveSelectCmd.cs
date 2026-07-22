@@ -22,16 +22,16 @@ public class TrkJourneyResolveSelectHandler
 {
     private readonly IPasienTrackerRepo _trackerRepo;
     private readonly IAntrianRepo _antrianRepo;
-    private readonly ITglJamProvider _tglJamProvider;
+    private readonly IAdmissionServicePointResolver _servicePointResolver;
 
     public TrkJourneyResolveSelectHandler(
         IPasienTrackerRepo trackerRepo,
         IAntrianRepo antrianRepo,
-        ITglJamProvider tglJamProvider)
+        IAdmissionServicePointResolver servicePointResolver)
     {
         _trackerRepo = trackerRepo;
         _antrianRepo = antrianRepo;
-        _tglJamProvider = tglJamProvider;
+        _servicePointResolver = servicePointResolver;
     }
 
     public Task<TrkJourneyResolveSelectResponse> Handle(
@@ -44,32 +44,36 @@ public class TrkJourneyResolveSelectHandler
         if (request.NoUrut <= 0)
             throw new ArgumentOutOfRangeException(nameof(request.NoUrut));
 
-        var tracker = _trackerRepo.LoadEntity(PasienTrackerModel.Key(request.PasienTrackerId))
-            .Match(
-                onSome: x => x,
-                onNone: () => throw new KeyNotFoundException(
-                    $"PasienTracker '{request.PasienTrackerId}' not found"));
-
-        var queue = _antrianRepo.LoadEntity(AntrianModel.Key(request.AntrianId))
-            .Match(
-                onSome: x => x,
-                onNone: () => throw new KeyNotFoundException(
-                    $"Antrian '{request.AntrianId}' not found"));
-
-        var entry = AdmissionQueueIdentify.RequireAnonymousWaitingEntry(queue, request.NoUrut);
-        var servedAt = _tglJamProvider.Now;
+        TrkJourneyResolveSelectResponse response;
 
         using (var trans = TransHelper.NewScope())
         {
-            AdmissionQueueIdentify.IdentifyAndRecordEvidence(queue, entry, tracker, servedAt);
-            _antrianRepo.SaveChanges(queue);
+            var tracker = _trackerRepo.LoadEntity(PasienTrackerModel.Key(request.PasienTrackerId))
+                .Match(
+                    onSome: x => x,
+                    onNone: () => throw new KeyNotFoundException(
+                        $"PasienTracker '{request.PasienTrackerId}' not found"));
+            var queue = _antrianRepo.LoadEntity(AntrianModel.Key(request.AntrianId))
+                .Match(
+                    onSome: x => x,
+                    onNone: () => throw new KeyNotFoundException(
+                        $"Antrian '{request.AntrianId}' not found"));
+            _servicePointResolver.EnsureAdmissionQueue(queue);
+            var entry = AdmissionQueueIdentify.RequireAnonymousInServiceEntry(queue, request.NoUrut);
+
+            AdmissionQueueIdentify.IdentifyExistingTrackerAndRecordEvidence(queue, entry, tracker);
+            if (!_antrianRepo.TrySaveAnonymousInServiceTransition(queue, entry))
+                throw new AdmissionQueueConcurrencyException(
+                    $"Queue entry '{queue.AntrianId}' / {entry.NoUrut} was changed concurrently.");
             _trackerRepo.SaveChanges(tracker);
             trans.Complete();
+
+            response = new TrkJourneyResolveSelectResponse(
+                tracker.PasienTrackerId,
+                queue.AntrianId,
+                entry.NoUrut);
         }
 
-        return Task.FromResult(new TrkJourneyResolveSelectResponse(
-            tracker.PasienTrackerId,
-            queue.AntrianId,
-            entry.NoUrut));
+        return Task.FromResult(response);
     }
 }

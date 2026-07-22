@@ -5,6 +5,7 @@ using Bilreg.Test.Shared;
 using FluentAssertions;
 using Moq;
 using Nuna.Lib.PatternHelper;
+using Microsoft.Extensions.Options;
 using Xunit;
 
 namespace Bilreg.Test.AdmisiContext.AntrianFeature;
@@ -14,6 +15,8 @@ public class TrkJourneyResolveHandlerTest
     private readonly Mock<IPasienTrackerRepo> _trackerRepo = new();
     private readonly Mock<IAntrianRepo> _antrianRepo = new();
     private readonly Mock<ISequencer> _sequencer = new();
+    private readonly IAdmissionServicePointResolver _servicePointResolver =
+        new AdmissionServicePointResolver(Options.Create(new AdmisiRajalOptions()));
 
     public TrkJourneyResolveHandlerTest()
     {
@@ -29,6 +32,7 @@ public class TrkJourneyResolveHandlerTest
             person, new DateOnly(2025, 10, 24), "BOOKING", "B1",
             new DateTime(2025, 10, 10, 9, 0, 0));
         var queue = CreateQueueWithAnonymousEntry("AN001", createdAt);
+        queue.ListEntry.Single().Serve(TestTglJamProvider.Instance.Now);
 
         _trackerRepo
             .Setup(x => x.LoadEntity(It.IsAny<IPasienTrackerKey>()))
@@ -45,9 +49,14 @@ public class TrkJourneyResolveHandlerTest
         _antrianRepo
             .Setup(x => x.SaveChanges(It.IsAny<AntrianModel>()))
             .Callback<AntrianModel>(m => savedQueue = m);
+        _antrianRepo
+            .Setup(x => x.TrySaveAnonymousInServiceTransition(
+                It.IsAny<AntrianModel>(), It.IsAny<AntrianEntryModel>()))
+            .Callback<AntrianModel, AntrianEntryModel>((m, _) => savedQueue = m)
+            .Returns(true);
 
         var sut = new TrkJourneyResolveSelectHandler(
-            _trackerRepo.Object, _antrianRepo.Object, TestTglJamProvider.Instance);
+            _trackerRepo.Object, _antrianRepo.Object, _servicePointResolver);
         var result = await sut.Handle(
             new TrkJourneyResolveSelectCmd(tracker.PasienTrackerId, "AN001", 1, "user1"),
             CancellationToken.None);
@@ -77,7 +86,7 @@ public class TrkJourneyResolveHandlerTest
             .Returns(default(MayBe<PasienTrackerModel>));
 
         var sut = new TrkJourneyResolveSelectHandler(
-            _trackerRepo.Object, _antrianRepo.Object, TestTglJamProvider.Instance);
+            _trackerRepo.Object, _antrianRepo.Object, _servicePointResolver);
         var act = () => sut.Handle(
             new TrkJourneyResolveSelectCmd("MISSING", "AN001", 1, "user1"),
             CancellationToken.None);
@@ -89,7 +98,7 @@ public class TrkJourneyResolveHandlerTest
     public async Task Select_WhenUserIdEmpty_ThenThrows()
     {
         var sut = new TrkJourneyResolveSelectHandler(
-            _trackerRepo.Object, _antrianRepo.Object, TestTglJamProvider.Instance);
+            _trackerRepo.Object, _antrianRepo.Object, _servicePointResolver);
         var act = () => sut.Handle(
             new TrkJourneyResolveSelectCmd("T1", "AN001", 1, " "),
             CancellationToken.None);
@@ -98,55 +107,37 @@ public class TrkJourneyResolveHandlerTest
     }
 
     [Fact]
-    public async Task New_WhenValid_ThenCreatesTrackerIdentifiesAndAppendsEvidence()
+    public async Task Select_WhenConditionalUpdateLosesRace_ThenThrowsWithoutSavingTracker()
     {
         var createdAt = new DateTime(2025, 5, 3, 8, 0, 0);
-        var queue = CreateQueueWithAnonymousEntry("AN002", createdAt);
-
-        _antrianRepo
-            .Setup(x => x.LoadEntity(It.IsAny<IAntrianKey>()))
+        var person = new PersonType("ANI", new DateOnly(2000, 1, 2));
+        var tracker = PasienTrackerModel.Create(
+            person, new DateOnly(2025, 5, 3), "BOOKING", "B1", createdAt.AddDays(-1));
+        var queue = CreateQueueWithAnonymousEntry("AN003", createdAt);
+        queue.ListEntry.Single().Serve(createdAt.AddMinutes(5));
+        _trackerRepo.Setup(x => x.LoadEntity(It.IsAny<IPasienTrackerKey>()))
+            .Returns(MayBe.From(tracker));
+        _antrianRepo.Setup(x => x.LoadEntity(It.IsAny<IAntrianKey>()))
             .Returns(MayBe.From(queue));
+        _antrianRepo.Setup(x => x.TrySaveAnonymousInServiceTransition(
+                It.IsAny<AntrianModel>(), It.IsAny<AntrianEntryModel>()))
+            .Returns(false);
+        var sut = new TrkJourneyResolveSelectHandler(
+            _trackerRepo.Object, _antrianRepo.Object, _servicePointResolver);
 
-        PasienTrackerModel? savedTracker = null;
-        AntrianModel? savedQueue = null;
-        _trackerRepo
-            .Setup(x => x.SaveChanges(It.IsAny<PasienTrackerModel>()))
-            .Callback<PasienTrackerModel>(m => savedTracker = m);
-        _antrianRepo
-            .Setup(x => x.SaveChanges(It.IsAny<AntrianModel>()))
-            .Callback<AntrianModel>(m => savedQueue = m);
-
-        var sut = new TrkJourneyResolveNewHandler(
-            _trackerRepo.Object, _antrianRepo.Object, TestTglJamProvider.Instance);
-        var result = await sut.Handle(
-            new TrkJourneyResolveNewCmd(
-                "ANI", "2000-01-02", "2025-10-24", "AN002", 1, "user1"),
+        var act = () => sut.Handle(
+            new TrkJourneyResolveSelectCmd(tracker.PasienTrackerId, "AN003", 1, "user1"),
             CancellationToken.None);
 
-        result.PasienTrackerId.Should().NotBeNullOrWhiteSpace();
-        result.AntrianId.Should().Be("AN002");
-        result.NoUrut.Should().Be(1);
-
-        var queueRef = QueueEvidenceReference.Create("AN002", 1).Value;
-        savedTracker.Should().NotBeNull();
-        savedTracker!.ListEvent.Should().ContainSingle(e =>
-            e.EventName == "Check In" && e.ReffId == queueRef && e.EventDate == createdAt);
-        savedTracker.ListEvent.Should().ContainSingle(e =>
-            e.EventName == "Reg-Start" && e.ReffId == queueRef
-            && e.EventDate == TestTglJamProvider.Instance.Now);
-        savedTracker.StartPeriod.Should().Be(DateOnly.FromDateTime(createdAt));
-
-        var entry = savedQueue!.ListEntry.Single(e => e.NoUrut == 1);
-        entry.Tracker.PasienTrackerId.Should().Be(result.PasienTrackerId);
-        entry.Visitor.PersonName.Should().Be("ANI");
-        entry.AntrianStatus.Should().Be(AntrianStatusEnum.InService);
+        await act.Should().ThrowAsync<AdmissionQueueConcurrencyException>();
+        _trackerRepo.Verify(x => x.SaveChanges(It.IsAny<PasienTrackerModel>()), Times.Never);
     }
 
     private AntrianModel CreateQueueWithAnonymousEntry(string antrianId, DateTime createdAt)
     {
         var queue = new AntrianModel(
             antrianId, DateOnly.FromDateTime(createdAt), TimeOnly.MinValue, TimeOnly.MaxValue,
-            "tag", "Loket", new ServicePointType("Loket", "Loket"), [], _sequencer.Object);
+            "tag", "Loket", new ServicePointType("ADM", "Loket Admisi"), [], _sequencer.Object);
         queue.AddEntry(createdAt);
         return queue;
     }

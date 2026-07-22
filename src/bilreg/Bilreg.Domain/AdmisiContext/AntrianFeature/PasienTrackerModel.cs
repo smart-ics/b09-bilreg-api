@@ -50,6 +50,31 @@ public class PasienTrackerModel : IPasienTrackerKey
     }
 
     /// <summary>
+    /// Establish a Walk-In journey from Registration authority while preserving the
+    /// admission Queue Entry milestones that led to that registration.
+    /// </summary>
+    public static PasienTrackerModel CreateFromRegistrationWithAdmissionEvidence(
+        RegModel reg,
+        string queueEvidenceReference,
+        DateTime checkInAt,
+        DateTime regStartAt,
+        DateTime registeredAt)
+    {
+        Guard.Against.Null(reg, nameof(reg));
+        Guard.Against.NullOrWhiteSpace(queueEvidenceReference, nameof(queueEvidenceReference));
+
+        var newId = Ulid.NewUlid().ToString();
+        var visitor = new PersonType(reg.Pasien.PasienName, reg.Pasien.TglLahir);
+        var result = new PasienTrackerModel(newId, visitor, reg.RegDate,
+            UnsetPeriod, UnsetPeriod,
+            new List<PasienTrackerEventType>());
+        result.AddEvent("Check In", queueEvidenceReference, checkInAt);
+        result.AddEvent("Reg-Start", queueEvidenceReference, regStartAt);
+        result.AddEvent("REGISTER", reg.RegId, registeredAt);
+        return result;
+    }
+
+    /// <summary>
     /// Establish a new journey from identity snapshot and first operational evidence (BR-TRK-004, BR-TRK-025).
     /// </summary>
     public static PasienTrackerModel Create(

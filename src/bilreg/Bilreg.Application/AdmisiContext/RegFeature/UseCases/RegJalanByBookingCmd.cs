@@ -84,6 +84,7 @@ public class RegJalanByBookingHandler
     private readonly IAntrianMapRepo _antrianMapRepo;
     private readonly IQueueNumberCompatibilityAdapter _queueNumberAdapter;
     private readonly ITglJamProvider _tglJamProvider;
+    private readonly IAdmissionServicePointResolver _admissionServicePointResolver;
 
     private const string BAYAR_SENDIRI = "1";
     public RegJalanByBookingHandler(
@@ -117,7 +118,8 @@ public class RegJalanByBookingHandler
         EmrAntrianOutboundEnqueueService emrOutboundEnqueue,
         IAntrianMapRepo antrianMapRepo,
         IQueueNumberCompatibilityAdapter queueNumberAdapter,
-        ITglJamProvider tglJamProvider)
+        ITglJamProvider tglJamProvider,
+        IAdmissionServicePointResolver admissionServicePointResolver)
     {
         _bookingRepo = bookingRepo;
         _pasienRepo = pasienRepo;
@@ -150,6 +152,7 @@ public class RegJalanByBookingHandler
         _antrianMapRepo = antrianMapRepo;
         _queueNumberAdapter = queueNumberAdapter;
         _tglJamProvider = tglJamProvider;
+        _admissionServicePointResolver = admissionServicePointResolver;
     }
 
     public Task<RegJalanByBookingResponse> Handle(RegJalanByBookingCmd request, CancellationToken cancellationToken)
@@ -189,13 +192,6 @@ public class RegJalanByBookingHandler
         var itemQueue = antrian.ListEntry.FirstOrDefault(x => x.NoUrut == booking.NoAntrian) 
             ?? AntrianEntryModel.Default;
         itemQueue.SetReff(reg.RegId, "REG");
-
-        var tracker = _trackerRepo.LoadEntity(itemQueue.Tracker)
-            .GetValueOrThrow($"PasienTracker '{itemQueue.Tracker.PasienTrackerId}' not found");
-        var admissionQueue = AdmissionQueueComplete.CompleteAtRegistration(
-            _antrianRepo, _antrianFactory, tracker, reg.RegId, occurredAt,
-            request.AdmissionAntrianId, request.AdmissionNoUrut,
-            request.AdmissionServicePointCode, request.AdmissionServicePointName);
 
         //      BUILD TINDAKAN
         var jaminan = LoadJaminan(tipeJaminan.Jaminan);
@@ -245,6 +241,14 @@ public class RegJalanByBookingHandler
         RegJalanByBookingResponse response;
         using (var trans = TransHelper.NewScope())
         {
+            var tracker = _trackerRepo.LoadEntity(itemQueue.Tracker)
+                .GetValueOrThrow($"PasienTracker '{itemQueue.Tracker.PasienTrackerId}' not found");
+            var admissionQueue = AdmissionQueueComplete.CompleteAtRegistration(
+                _antrianRepo, _antrianFactory, tracker, reg.RegId, occurredAt,
+                request.AdmissionAntrianId, request.AdmissionNoUrut,
+                _admissionServicePointResolver.ServicePoint,
+                _admissionServicePointResolver);
+
             var physicianMap = PhysicianAntrianMapLookup.FindForBooking(_antrianMapRepo, booking);
             if (_queueNumberAdapter.ProjectSourceReffForRegistration(physicianMap, booking.NoAntrian, reg))
                 _antrianMapRepo.SaveChanges(physicianMap);

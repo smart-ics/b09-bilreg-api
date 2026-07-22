@@ -2,6 +2,7 @@
 using System.Net;
 using System.Text.Json;
 using Bilreg.Application.Shared.Helpers;
+using Bilreg.Application.AdmisiContext.AntrianFeature;
 
 namespace Bilreg.Api.Configurations;
 
@@ -29,6 +30,10 @@ public class ErrorHandlerMiddleware
             string status;
             switch (error)
             {
+                case AdmissionQueueConcurrencyException:
+                    statusCode = (int)HttpStatusCode.Conflict;
+                    status = "Conflict";
+                    break;
                 case KeyNotFoundException:
                     statusCode = (int)HttpStatusCode.NotFound;
                     status = "Not Found";

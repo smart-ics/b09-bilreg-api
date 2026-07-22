@@ -79,6 +79,14 @@ public class AntrianRepo : IAntrianRepo
         listOutStanding.ForEach(x => _antrianEntryDal.UpdateOutStanding(x));
     }
 
+    public bool TrySaveAnonymousInServiceTransition(
+        AntrianModel queue,
+        AntrianEntryModel entry)
+    {
+        var dto = AntrianEntryDto.FromModel(queue.AntrianId, entry);
+        return _antrianEntryDal.UpdateFromAnonymousInService(dto) == 1;
+    }
+
     #region HELPER
     private (List<AntrianEntryDto> addedItems, 
         List<AntrianEntryDto> deletedItems, 

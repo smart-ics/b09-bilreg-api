@@ -290,7 +290,7 @@ Queue consistency belongs to Patient Tracker. Canonical Patient identity consist
 - **BR-ARJ-005** — Every registration attempt shall have one Registration Intake Path: `By Booking` or `By Walk-In`.
 - **BR-ARJ-006** — Successful Self-Registration shall establish an authoritative Outpatient Registration without creating Registration Assistance.
 - **BR-ARJ-007** — `Self-Registration Requires Assistance` shall not be represented as successful Registration.
-- **BR-ARJ-008** — A Booking-based assistance request shall retain the Patient Journey already associated with the Booking when that journey is applicable.
+- **BR-ARJ-008** — After accountable evidence resolution, a Booking-based assistance request shall be associated with the applicable Patient Journey already associated with the Booking and shall not establish a duplicate Patient Journey. Presenting the Booking QR alone shall not automatically identify the Admisi Rajal Queue Entry.
 - **BR-ARJ-009** — A Walk-In may enter Registration Assistance before canonical Patient identity or Patient Journey identity is known.
 
 ### 7.3 Work List and Patient Tracker boundary
@@ -485,9 +485,11 @@ Booking Planned
 Booking Planned
   → Self-Registration attempted
   → Self-Registration Requires Assistance
-  → Identified Admisi Rajal Queue Entry provided by Patient Tracker
+  → Anonymous Admisi Rajal Queue Entry provided by Patient Tracker without creating or selecting a Tracker
   → Registration Assistance appears in the Admisi Rajal Work List
-  → Admission Officer resolves identity and other required registration context
+  → Admission Officer asks for evidence and resolves the applicable existing Booking Patient Journey
+  → Queue Entry is associated with that resolved Tracker
+  → Admission Officer resolves other required registration context
   → Outpatient Registration Established or Registration Not Established
   → Queue service completed through Patient Tracker
 ```

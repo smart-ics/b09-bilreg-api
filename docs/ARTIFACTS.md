@@ -192,6 +192,12 @@ Background processing platform — job orchestration, worker plugins, operator c
 |------|---------|
 | `docs/contexts/pasien-tracker/TRACKER-DOMAIN.md` | Patient Tracker — canonical business truth for Patient Journey continuity and Service Point queues |
 | `docs/contexts/pasien-tracker/TRACKER-DOMAIN-ID.md` | Patient Tracker — Bahasa Indonesia semantic companion |
+| `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-DOMAIN.md` | Patient Tracker — canonical Admission Queue Operations business specification for Service Points, Loket, Kiosks, Queue Labels, and Queue Calls |
+| `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-DOMAIN-ID.md` | Patient Tracker Admission Queue Operations — Bahasa Indonesia semantic companion |
+| `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-SOP.md` | Patient Tracker — canonical target operational procedure for admission queue intake, calling, service, Journey Resolution, and completion |
+| `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-SOP-ID.md` | Patient Tracker Admission Queue Operations SOP — Bahasa Indonesia operational companion |
+| `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-ARCHITECTURE.md` | Patient Tracker — codebase-grounded current-to-target architecture for admission queue resources, calls, projections, Kiosk, Queue Display, security, and delivery |
+| `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-IMPLEMENTATION-GAP-ANALYSIS.md` | Patient Tracker — artifact/codebase alignment and implementation-readiness verdict for Admission Queue Operations |
 | `docs/contexts/pasien-tracker/TRACKER-COMPATIBILITY.md` | Patient Tracker — legacy AntrianMap ↔ Queue Session authority map, crosswalk, and adapter contract (F-13) |
 | `docs/contexts/pasien-tracker/tracker-codebase-gap-report.md` | Patient Tracker — implementation gap report vs canonical domain |
 | `docs/contexts/pasien-tracker/tracker-f01-implementation-report.md` | Patient Tracker — F-01 closed: explicit Tracking Period |
@@ -207,6 +213,7 @@ Background processing platform — job orchestration, worker plugins, operator c
 | `docs/contexts/pasien-tracker/tracker-f11-implementation-report.md` | Patient Tracker — F-11 Slice 1 closed: EMR antrian outbox for BookingCreate + RegJalan (WalkIn/ByBooking); pharmacy/full §9 facts remain open |
 | `docs/contexts/pasien-tracker/tracker-f12-implementation-report.md` | Patient Tracker — F-12 closed in source: Queue Session + deterministic evidence persistence shape (cross-commit F-01/F-03/F-05/F-06; close `0256688d`) |
 | `docs/contexts/pasien-tracker/tracker-f13-implementation-report.md` | Patient Tracker — F-13 closed in source: queue-number compatibility adapter & authority map |
+| `docs/contexts/pasien-tracker/tracker-admission-queue-late-identification-gap-analysis.md` | Patient Tracker — implementation gap analysis for anonymous admission service, late Tracker association, and Registration-owned Walk-In Tracker creation |
 
 ---
 

@@ -24,20 +24,21 @@ internal static class AdmissionQueueComplete
         DateTime occurredAt,
         string? admissionAntrianId,
         int? admissionNoUrut,
-        string? servicePointCode = null,
-        string? servicePointName = null)
+        ServicePointType admissionServicePoint,
+        IAdmissionServicePointResolver servicePointResolver)
     {
         if (!string.IsNullOrWhiteSpace(admissionAntrianId) && admissionNoUrut is > 0)
         {
             var queue = antrianRepo.LoadEntity(AntrianModel.Key(admissionAntrianId!))
                 .GetValueOrThrow($"Admission queue '{admissionAntrianId}' not found");
+            servicePointResolver.EnsureAdmissionQueue(queue);
             var entry = RequireIdentifiedInServiceEntry(queue, admissionNoUrut.Value, tracker);
             CompleteInServiceEntry(entry, tracker, regId, occurredAt);
             return queue;
         }
 
         var admissionQueue = ResolveOrCreateAdmissionSession(
-            antrianRepo, antrianFactory, occurredAt, servicePointCode, servicePointName);
+            antrianRepo, antrianFactory, occurredAt, admissionServicePoint);
         CreateServeAndComplete(admissionQueue, tracker, regId, occurredAt);
         return admissionQueue;
     }
@@ -76,6 +77,19 @@ internal static class AdmissionQueueComplete
         AppendRegisterIfMissing(tracker, regId, doneAt);
     }
 
+    public static AntrianEntryModel AttachNewTrackerAndComplete(
+        AntrianModel queue,
+        int noUrut,
+        PasienTrackerModel tracker,
+        string regId,
+        DateTime doneAt)
+    {
+        var entry = AdmissionQueueIdentify.RequireAnonymousInServiceEntry(queue, noUrut);
+        entry.AssignPasien(tracker);
+        CompleteInServiceEntry(entry, tracker, regId, doneAt);
+        return entry;
+    }
+
     public static AntrianEntryModel CreateServeAndComplete(
         AntrianModel queue,
         PasienTrackerModel tracker,
@@ -93,16 +107,8 @@ internal static class AdmissionQueueComplete
         IAntrianRepo antrianRepo,
         IAntrianFactory antrianFactory,
         DateTime occurredAt,
-        string? servicePointCode,
-        string? servicePointName)
+        ServicePointType servicePoint)
     {
-        var code = string.IsNullOrWhiteSpace(servicePointCode)
-            ? DefaultServicePointCode
-            : servicePointCode.Trim();
-        var name = string.IsNullOrWhiteSpace(servicePointName)
-            ? DefaultServicePointName
-            : servicePointName.Trim();
-        var servicePoint = new ServicePointType(code, name);
         var businessDate = DateOnly.FromDateTime(occurredAt);
         var sequenceTag = AntrianModel.GenSequenceTag(businessDate, TimeOnly.MinValue, servicePoint);
 

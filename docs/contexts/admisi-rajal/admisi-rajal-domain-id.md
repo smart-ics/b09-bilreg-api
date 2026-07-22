@@ -308,7 +308,7 @@ Konsistensi antrean dimiliki Patient Tracker. Konsistensi identitas Patient kano
 - **BR-ARJ-005** — Setiap upaya registrasi harus memiliki satu Registration Intake Path: `By Booking` atau `By Walk-In`.
 - **BR-ARJ-006** — Self-Registration yang berhasil harus membentuk Outpatient Registration yang otoritatif tanpa menciptakan Registration Assistance.
 - **BR-ARJ-007** — `Self-Registration Requires Assistance` tidak boleh direpresentasikan sebagai Registration yang berhasil.
-- **BR-ARJ-008** — Permintaan bantuan berbasis Booking harus mempertahankan Patient Journey yang telah terkait dengan Booking ketika journey tersebut berlaku.
+- **BR-ARJ-008** — Setelah resolusi bukti yang accountable, permintaan bantuan berbasis Booking harus dikaitkan dengan Patient Journey yang sesuai dan telah terkait dengan Booking serta tidak boleh membentuk Patient Journey duplikat. Menunjukkan Booking QR saja tidak boleh otomatis mengidentifikasi Queue Entry Admisi Rajal.
 - **BR-ARJ-009** — Walk-In dapat memasuki Registration Assistance sebelum identitas Patient kanonis atau identitas Patient Journey diketahui.
 
 ### 7.3 Batas Work List dan Patient Tracker
@@ -503,9 +503,11 @@ Booking Planned
 Booking Planned
   → Self-Registration attempted
   → Self-Registration Requires Assistance
-  → Queue Entry Admisi Rajal teridentifikasi disediakan Patient Tracker
+  → Anonymous Queue Entry Admisi Rajal disediakan Patient Tracker tanpa membuat atau memilih Tracker
   → Registration Assistance muncul pada Admisi Rajal Work List
-  → Admission Officer menyelesaikan identitas dan konteks registrasi lain yang diwajibkan
+  → Admission Officer meminta bukti dan meresolusi existing Booking Patient Journey yang sesuai
+  → Queue Entry dikaitkan dengan Tracker yang telah diresolusi tersebut
+  → Admission Officer menyelesaikan konteks registrasi lain yang diwajibkan
   → Outpatient Registration Established atau Registration Not Established
   → Layanan antrean diselesaikan melalui Patient Tracker
 ```
