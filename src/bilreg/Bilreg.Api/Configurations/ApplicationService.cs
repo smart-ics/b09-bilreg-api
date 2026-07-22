@@ -1,3 +1,5 @@
+using Bilreg.Api.SignalR;
+using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
 using Bilreg.Application.IgdContext.IgdVisitFeature.TriageEngine;
 using Bilreg.Application.PaymentContext.PasienBalanceFeature;
@@ -30,6 +32,7 @@ public static class ApplicationService
             .AddScoped<PasienBalanceBootstrapService>()
             .AddScoped<IPasienBalanceLoader, PasienBalanceLoader>()
             .AddScoped<IJourneyCandidateFinder, JourneyCandidateFinder>();
+        
         services.AddScoped<IAdmissionQueueRefreshPublisher>(sp =>
         {
             var options = sp.GetRequiredService<IOptions<AdmissionQueueApiOptions>>().Value;
@@ -37,39 +40,45 @@ public static class ApplicationService
                 return new NullAdmissionQueueRefreshPublisher();
             return ActivatorUtilities.CreateInstance<SignalRAdmissionQueueRefreshPublisher>(sp);
         });
-        services
-            .Scan(selector => selector
-                .FromAssemblyOf<Bilreg.Application.ApplicationAssemblyAnchor>()
-                    .AddClasses(c => c.AssignableTo(typeof(INunaWriter<>)))
-                    .UsingRegistrationStrategy(RegistrationStrategy.Skip)
-                    .AsSelfWithInterfaces()
-                    .WithScopedLifetime()                
-                .FromAssemblyOf<Bilreg.Application.ApplicationAssemblyAnchor>()
-                    .AddClasses(c => c.AssignableTo(typeof(INunaWriterWithReturn<>)))
-                    .UsingRegistrationStrategy(RegistrationStrategy.Skip)
-                    .AsSelfWithInterfaces()
-                    .WithScopedLifetime() 
-                .FromAssemblyOf<Bilreg.Application.ApplicationAssemblyAnchor>()
-                    .AddClasses(c => c.AssignableTo(typeof(INunaBuilder<>)))
-                    .UsingRegistrationStrategy(RegistrationStrategy.Skip)
-                    .AsSelfWithInterfaces()
-                    .WithScopedLifetime()
-                .FromAssemblyOf<Bilreg.Application.ApplicationAssemblyAnchor>()
-                    .AddClasses(c => c.AssignableTo(typeof(INunaService<,>)))
-                    .UsingRegistrationStrategy(RegistrationStrategy.Skip)
-                    .AsSelfWithInterfaces()
-                    .WithScopedLifetime()
-                .FromAssemblyOf<Bilreg.Application.ApplicationAssemblyAnchor>()
-                    .AddClasses(c => c.AssignableTo(typeof(IFactoryLoadOrNull<,>)))
-                    .UsingRegistrationStrategy(RegistrationStrategy.Skip)
-                    .AsSelfWithInterfaces()
-                    .WithScopedLifetime()                 
-                .FromAssemblyOf<Bilreg.Application.ApplicationAssemblyAnchor>()
-                    .AddClasses(c => c.AssignableTo(typeof(IFactoryLoad<,>)))
-                    .UsingRegistrationStrategy(RegistrationStrategy.Skip)
-                    .AsSelfWithInterfaces()
-                    .WithScopedLifetime()                 
-            );
+        
+        var appAssemblies = new[]
+        {
+            typeof(Bilreg.Application.ApplicationAssemblyAnchor).Assembly,
+            typeof(Farinv.Application.ApplicationAssemblyAnchor).Assembly
+        };
+
+        services.Scan(scan => scan
+            .FromAssemblies(appAssemblies)
+                .AddClasses(c => c.AssignableTo(typeof(INunaWriter<>)))
+                .UsingRegistrationStrategy(RegistrationStrategy.Skip)
+                .AsSelfWithInterfaces()
+                .WithScopedLifetime()
+            .FromAssemblies(appAssemblies)
+                .AddClasses(c => c.AssignableTo(typeof(INunaWriterWithReturn<>)))
+                .UsingRegistrationStrategy(RegistrationStrategy.Skip)
+                .AsSelfWithInterfaces()
+                .WithScopedLifetime()
+            .FromAssemblies(appAssemblies)
+                .AddClasses(c => c.AssignableTo(typeof(INunaBuilder<>)))
+                .UsingRegistrationStrategy(RegistrationStrategy.Skip)
+                .AsSelfWithInterfaces()
+                .WithScopedLifetime()
+            .FromAssemblies(appAssemblies)
+                .AddClasses(c => c.AssignableTo(typeof(INunaService<,>)))
+                .UsingRegistrationStrategy(RegistrationStrategy.Skip)
+                .AsSelfWithInterfaces()
+                .WithScopedLifetime()
+            .FromAssemblies(appAssemblies)
+                .AddClasses(c => c.AssignableTo(typeof(IFactoryLoadOrNull<,>)))
+                .UsingRegistrationStrategy(RegistrationStrategy.Skip)
+                .AsSelfWithInterfaces()
+                .WithScopedLifetime()
+            .FromAssemblies(appAssemblies)
+                .AddClasses(c => c.AssignableTo(typeof(IFactoryLoad<,>)))
+                .UsingRegistrationStrategy(RegistrationStrategy.Skip)
+                .AsSelfWithInterfaces()
+                .WithScopedLifetime()
+        );
         return services;
     }
 }
