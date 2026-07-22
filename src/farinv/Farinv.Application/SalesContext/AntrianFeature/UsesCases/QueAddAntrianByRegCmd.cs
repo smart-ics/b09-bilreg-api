@@ -1,5 +1,7 @@
 ﻿using Ardalis.GuardClauses;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Farinv.Domain.SalesContext.AntrianFeature;
+using Bilreg.Application.AdmisiContext.RegFeature;
 using MediatR;
 
 namespace Farinv.Application.SalesContext.AntrianFeature.UsesCases;
@@ -10,12 +12,12 @@ public record QueAddAntrianByRegCmd(string RegId, int ServicePoint, int NoAntria
 public class AddAntrianByRegHandler : IRequestHandler<QueAddAntrianByRegCmd>
 {
     private readonly IAntrianRepo _antrianRepo;
-    private readonly IGetRegService _getRegService;
+    private readonly IRegRepo _regRepo;
 
-    public AddAntrianByRegHandler(IAntrianRepo antrianRepo, IGetRegService getRegService)
+    public AddAntrianByRegHandler(IAntrianRepo antrianRepo, IRegRepo regRepo)
     {
         _antrianRepo = antrianRepo;
-        _getRegService = getRegService;
+        _regRepo = regRepo;
     }
 
     public Task Handle(QueAddAntrianByRegCmd request, CancellationToken cancellationToken)
@@ -43,8 +45,7 @@ public class AddAntrianByRegHandler : IRequestHandler<QueAddAntrianByRegCmd>
 
     private RegReff LoadReg(QueAddAntrianByRegCmd request)
     {
-        var reg = _getRegService.Execute(request) 
-            ?? throw new KeyNotFoundException($"Reg {request.RegId} not found");
+        var reg = _regRepo.LoadEntity(request).GetValueOrThrow($"Register {request.RegId} not found");
         return reg.ToReff();
     }
     #endregion

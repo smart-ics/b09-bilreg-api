@@ -1,7 +1,7 @@
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Farinv.Domain.BrgContext.BrgFeature;
 using Farinv.Domain.BrgContext.PricingPolicyFeature;
 using Farinv.Domain.InventoryContext.StokFeature;
-using Farinv.Domain.SalesContext.AntrianFeature;
 using Farinv.Domain.Shared.Helpers.CommonValueObjects;
 
 namespace Farinv.Domain.SalesContext.ResepFeature;
@@ -27,11 +27,11 @@ public class ResepModel : IResepKey
         _listObat = listObat.ToList();
     }
 
-    public static ResepModel Key(string id) => new ResepModel(id, RegType.Default.ToReff(), BodyMetricType.Default(),
+    public static ResepModel Key(string id) => new ResepModel(id, RegModel.Default.ToReff(), BodyMetricType.Default(),
         DokterType.Default.ToReff(), LayananType.Default.ToReff(), UrgenitasType.Default, TipeBrgType.Default.ToReff(), 
         0, AppConst.DASH, AuditTrailType.Default, new List<ResepObatType>());
 
-    public static ResepModel Create(RegType reg, BodyMetricType bodyMetric, DokterType dokter, LayananType layanan, 
+    public static ResepModel Create(RegModel reg, BodyMetricType bodyMetric, DokterType dokter, LayananType layanan, 
         UrgenitasType urgenitasType, TipeBrgType tipeBrg, int iter, string description, string userId)
     {
         var newId = Ulid.NewUlid().ToString();
