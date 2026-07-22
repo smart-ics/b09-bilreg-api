@@ -32,10 +32,15 @@ public class QueAnonymousIntakeHandlerTest
             .Setup(x => x.Create(It.IsAny<ServicePointType>(), businessDate))
             .Returns(queue);
 
-        AntrianModel? saved = null;
+        AntrianModel? savedQueue = null;
+        AntrianEntryModel? savedEntry = null;
         _antrianRepo
-            .Setup(x => x.SaveChanges(It.IsAny<AntrianModel>()))
-            .Callback<AntrianModel>(m => saved = m);
+            .Setup(x => x.SaveNewEntry(It.IsAny<AntrianModel>(), It.IsAny<AntrianEntryModel>()))
+            .Callback<AntrianModel, AntrianEntryModel>((q, e) =>
+            {
+                savedQueue = q;
+                savedEntry = e;
+            });
 
         var sut = new QueAnonymousIntakeHandler(
             _antrianRepo.Object, _antrianFactory.Object, TestTglJamProvider.Instance);
@@ -47,9 +52,11 @@ public class QueAnonymousIntakeHandlerTest
         result.AntrianId.Should().Be(queue.AntrianId);
         result.NoUrut.Should().Be(3);
         result.CreatedAt.Should().Be(TestTglJamProvider.Instance.Now);
-        saved.Should().NotBeNull();
-        saved!.ListEntry.Should().ContainSingle(e =>
-            e.NoUrut == 3 && e.Tracker.PasienTrackerId == "-");
+        savedQueue.Should().NotBeNull();
+        savedEntry.Should().NotBeNull();
+        savedEntry!.NoUrut.Should().Be(3);
+        savedEntry.Tracker.PasienTrackerId.Should().Be("-");
+        _antrianRepo.Verify(x => x.SaveChanges(It.IsAny<AntrianModel>()), Times.Never);
         _antrianFactory.Verify(
             x => x.Create(It.IsAny<ServicePointType>(), businessDate), Times.Once);
     }

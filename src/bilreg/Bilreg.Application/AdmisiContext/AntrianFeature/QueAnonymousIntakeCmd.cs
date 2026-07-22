@@ -60,7 +60,7 @@ public class QueAnonymousIntakeHandler
         using (var trans = TransHelper.NewScope())
         {
             var entry = que.AddEntry(occurredAt);
-            _antrianRepo.SaveChanges(que);
+            _antrianRepo.SaveNewEntry(que, entry);
             trans.Complete();
 
             response = new QueAnonymousIntakeResponse(

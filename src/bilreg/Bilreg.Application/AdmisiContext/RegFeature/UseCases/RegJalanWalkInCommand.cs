@@ -257,6 +257,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         {
             PasienTrackerModel tracker;
             AntrianModel admissionQueue;
+            AntrianEntryModel? admissionEntryToInsert = null;
             if (!string.IsNullOrWhiteSpace(request.AdmissionAntrianId)
                 && request.AdmissionNoUrut is > 0)
             {
@@ -267,9 +268,12 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
                 var resolution = AdmissionQueueRegistrationResolver.ResolveAndComplete(
                     _trackerRepo, admissionQueue, request.AdmissionNoUrut.Value, reg, occurredAt);
                 tracker = resolution.Tracker;
-                if (resolution.RequiresConditionalSave
-                    && !_antrianRepo.TrySaveAnonymousInServiceTransition(
-                        admissionQueue, resolution.Entry))
+                var saved = resolution.RequiresConditionalSave
+                    ? _antrianRepo.TrySaveAnonymousInServiceTransition(
+                        admissionQueue, resolution.Entry)
+                    : _antrianRepo.TrySaveInServiceToDoneTransition(
+                        admissionQueue, resolution.Entry);
+                if (!saved)
                 {
                     throw new AdmissionQueueConcurrencyException(
                         $"Queue entry '{admissionQueue.AntrianId}' / {resolution.Entry.NoUrut} was changed concurrently.");
@@ -283,6 +287,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
                     null, null,
                     _admissionServicePointResolver.ServicePoint,
                     _admissionServicePointResolver);
+                admissionEntryToInsert = admissionQueue.ListEntry.MaxBy(x => x.NoUrut)!;
             }
 
             // Physician entry stays Waiting until MulaiPeriksa; legacy "active" = ReffDesc REG / AntrianMap (F-07).
@@ -291,7 +296,8 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             _regRepo.SaveChanges(reg);
             _regAktifRepo.SaveChanges(regAktif);
             _antrianRepo.SaveChanges(antrian);
-            _antrianRepo.SaveChanges(admissionQueue);
+            if (admissionEntryToInsert is not null)
+                _antrianRepo.SaveNewEntry(admissionQueue, admissionEntryToInsert);
             _trackerRepo.SaveChanges(tracker);
             _antrianMapRepo.SaveChanges(reserved.Map);
             _trsBillingRepo.SaveChanges(trsBillingReg);

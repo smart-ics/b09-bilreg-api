@@ -51,7 +51,9 @@ public class AdmissionQueueStartHandler
             _servicePointResolver.EnsureAdmissionQueue(queue);
             var entry = AdmissionQueueIdentify.RequireAnonymousWaitingEntry(queue, request.NoUrut);
             entry.Serve(_tglJamProvider.Now);
-            _antrianRepo.SaveChanges(queue);
+            if (!_antrianRepo.TrySaveWaitingToInServiceTransition(queue, entry))
+                throw new AdmissionQueueConcurrencyException(
+                    $"Queue entry '{queue.AntrianId}' / {entry.NoUrut} was changed concurrently.");
             trans.Complete();
 
             response = new AdmissionQueueStartResponse(

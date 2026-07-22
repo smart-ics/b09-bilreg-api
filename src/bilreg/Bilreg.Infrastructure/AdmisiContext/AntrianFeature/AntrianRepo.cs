@@ -87,6 +87,33 @@ public class AntrianRepo : IAntrianRepo
         return _antrianEntryDal.UpdateFromAnonymousInService(dto) == 1;
     }
 
+    public bool TrySaveWaitingToInServiceTransition(
+        AntrianModel queue,
+        AntrianEntryModel entry)
+    {
+        var dto = AntrianEntryDto.FromModel(queue.AntrianId, entry);
+        return _antrianEntryDal.UpdateWaitingToInService(dto) == 1;
+    }
+
+    public bool TrySaveInServiceToDoneTransition(
+        AntrianModel queue,
+        AntrianEntryModel entry)
+    {
+        var dto = AntrianEntryDto.FromModel(queue.AntrianId, entry);
+        return _antrianEntryDal.UpdateInServiceToDone(dto) == 1;
+    }
+
+    public void SaveNewEntry(AntrianModel queue, AntrianEntryModel entry)
+    {
+        var existingHeader = _antrianDal.GetData(queue);
+        if (existingHeader is null)
+            _antrianDal.Insert(AntrianDto.FromModel(queue));
+        else
+            _antrianDal.Update(AntrianDto.FromModel(queue));
+
+        _antrianEntryDal.Insert(AntrianEntryDto.FromModel(queue.AntrianId, entry));
+    }
+
     #region HELPER
     private (List<AntrianEntryDto> addedItems, 
         List<AntrianEntryDto> deletedItems, 

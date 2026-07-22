@@ -38,6 +38,10 @@ Solvability means:
 **Priority:** Blocker  
 **Solvability:** Requires additional artifact
 
+**Status:** Completed on 2026-07-22
+
+**Evidence:** [R-00 baseline implementation report](./tracker-admission-queue-r00-baseline-implementation-report.md)
+
 **Why it exists:** The assessed tracker and admission artifacts are modified in the working tree. Implementation cannot reliably distinguish the accepted late-identification baseline from new work.
 
 **Capability affected:** Safe incremental delivery, review, rollback, and reproducible verification.
@@ -52,7 +56,9 @@ Solvability means:
 - **Git/release:** commit or otherwise checkpoint the accepted baseline.
 - **Documentation:** record baseline commit, focused test command, and result.
 
-**Prerequisites:** None. This precedes every mutating implementation slice.
+**Resolution:** The accepted baseline is commit `2bac008b1da15946e7aa2fd23429fefdfacc8835`. The documented focused regression selection passed 17/17 tests from a clean working tree.
+
+**Prerequisites:** None. Gate satisfied; R-01 and R-02 may begin from the recorded baseline.
 
 ---
 
@@ -61,6 +67,10 @@ Solvability means:
 **Source:** GAP-READY-014, 015, 021  
 **Priority:** Blocker  
 **Solvability:** Ready to implement
+
+**Status:** Completed on 2026-07-22
+
+**Evidence:** [R-01 CAS persistence implementation report](./tracker-admission-queue-r01-cas-persistence-implementation-report.md)
 
 **Why it exists:** Admission lifecycle paths still use unrestricted whole-aggregate saves. Those saves can overwrite concurrent changes and physically delete entries omitted from the in-memory collection.
 

@@ -258,7 +258,21 @@ public class RegJalanByBookingHandler
             _regAktifRepo.SaveChanges(regAktif);
             _trsBillingRepo.SaveChanges(trsBillingReg);
             _antrianRepo.SaveChanges(antrian);
-            _antrianRepo.SaveChanges(admissionQueue);
+            if (!string.IsNullOrWhiteSpace(request.AdmissionAntrianId)
+                && request.AdmissionNoUrut is > 0)
+            {
+                var admissionEntry = admissionQueue.ListEntry
+                    .First(x => x.NoUrut == request.AdmissionNoUrut.Value);
+                if (!_antrianRepo.TrySaveInServiceToDoneTransition(admissionQueue, admissionEntry))
+                {
+                    throw new AdmissionQueueConcurrencyException(
+                        $"Queue entry '{admissionQueue.AntrianId}' / {admissionEntry.NoUrut} was changed concurrently.");
+                }
+            }
+            else
+            {
+                _antrianRepo.SaveNewEntry(admissionQueue, admissionQueue.ListEntry.MaxBy(x => x.NoUrut)!);
+            }
             _trackerRepo.SaveChanges(tracker);
             if (tindakan.TindakanId != "-")
                 _tindakanRepo.SaveChanges(tindakan);
