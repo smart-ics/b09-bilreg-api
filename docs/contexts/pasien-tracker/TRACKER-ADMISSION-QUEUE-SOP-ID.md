@@ -62,7 +62,7 @@ SOP ini berlaku bagi Walk-In Patient dan Booking Patient yang Self-Registration-
 
 3. **Kiosk** mengirim satu permintaan pengambilan antrean untuk Service Point yang dipilih tanpa memberikan Business Date otoritatif dan menampilkan indikator pemrosesan.
 
-4. **Patient Tracker Queue Service** menyelesaikan Business Date dari server, memverifikasi ServicePointId aktif, memuat atau membentuk dedicated Queue Session, menaikkan LastQueueNumber secara atomik, lalu mengembalikan Queue Entry beserta Queue Label-nya. Jika ClientRequestId diberikan, identifier yang sama mengembalikan hasil existing.
+4. **Patient Tracker Queue Service** menyelesaikan Business Date dari server, memverifikasi ServicePointId aktif, memuat atau membentuk dedicated Queue Session, mengalokasikan nomor melalui legacy `ISequencer` menggunakan SequenceTag kanonis session, menolak exhaustion atau nilai di luar 1–9999, lalu mengembalikan Queue Entry dengan Queue Label satu huruf dan empat digit. Jika ClientRequestId diberikan, identifier session-scoped yang sama mengembalikan hasil kompatibel yang sudah ada.
 
 5. **Kiosk** menampilkan Queue Label dan mengirim Queue Label yang sama kepada **Queue Ticket Printer**.
 
@@ -190,7 +190,7 @@ SOP ini berlaku bagi Walk-In Patient dan Booking Patient yang Self-Registration-
 
 - **Admission Officer** berhenti sebelum memulai Registration Assistance ketika ketidaksesuaian dikenali saat Queue Entry masih `Waiting`.
 - **Admission Officer** meminta pengalihan ke Service Point lain kepada **Queue Operations Supervisor**.
-- **Queue Operations Supervisor** menyetujui atau menolak pengalihan menggunakan bukti yang tersedia. Jika disetujui, entry asal menerima disposition nonaktif eksplisit dan entry tujuan baru dibuat dengan Priority, CreationReason `Redirected`, serta SourceAntrianEntryId wajib.
+- **Queue Operations Supervisor** menyetujui atau menolak pengalihan menggunakan bukti yang tersedia. Jika disetujui, entry asal menerima disposition nonaktif eksplisit dan entry tujuan baru dibuat dengan Priority, CreationReason `Redirected`, serta sumber komposit `(SourceAntrianId, SourceNoUrut)` yang wajib.
 - Ketika disetujui, **Patient Tracker Queue Service** menampilkan Queue Entry asli sebagai `Withdrawn` dan menerbitkan Queue Entry serta Queue Label pengganti untuk Service Point yang berlaku.
 - **Admission Module** menampilkan indikator Priority dan hubungan dengan Queue Entry asli. Priority tidak memaksa urutan pemanggilan; **Admission Officer** mempertahankan otoritas pemilihan serta menyampaikan Queue Label pengganti dan lokasi menunggu.
 

@@ -25,7 +25,7 @@ It distinguishes the queue category represented by a `Service Point` from the ph
 Admission Queue Operations provides:
 
 - independently managed queues for BPJS, general, building-specific, or other admission services;
-- recognizable Queue Labels such as `A001` and `B001`;
+- recognizable Queue Labels such as `A0001` and `B0001`;
 - controlled relationships between Kiosks, Service Points, and Loket;
 - accountable calling of a Queue Entry to a physical Loket;
 - separation between a queue call and actual service start;
@@ -68,7 +68,7 @@ Admission Queue Operations does not define:
 | Service Point | A recognized queue category representing one admission responsibility, such as BPJS Admission or General Admission. |
 | ServicePointId | The stable business identity of one Service Point. |
 | Service Point Name | The human-recognizable name of a Service Point. |
-| Queue Prefix | One through four uppercase ASCII letters assigned to a Service Point and used when forming a Queue Label. Input is normalized with `Trim` and `ToUpperInvariant`; spaces and separators are prohibited. |
+| Queue Prefix | Exactly one uppercase ASCII letter assigned to a Service Point and used when forming a Queue Label. Input is normalized with `Trim` and `ToUpperInvariant`; spaces and separators are prohibited. |
 | Loket | A recognized physical service desk at which a Service Point Operator provides Registration Assistance. |
 | LoketId | The stable business identity of one physical Loket. |
 | Configured Loket | A deployment-configured desk identifier supplied by trusted workstation configuration. It is not a Patient Tracker master resource in Pragmatic V1. |
@@ -77,12 +77,13 @@ Admission Queue Operations does not define:
 | Queue Display | An operational communication channel that presents current Queue Calls and their destination Loket. |
 | Current Queue Display State | The latest visible call for one LoketKey persisted in `BILRG_AdmLoketCurrentCall`. It is authoritative projection state, not call history. |
 | AnnouncementVersion | A monotonically increasing value owned by Current Queue Display State. It increments only for a Call or Recall requiring audio, not for ordinary refresh or service-state change. |
+| RowVersion | A database concurrency token for Current Queue Display State. It changes independently from AnnouncementVersion whenever the row is updated. |
 | Admission Queue Worklist Projection | The Patient Tracker-owned, queue-only read model containing Queue Label, Service Point, Queue Entry state, call state, LoketKey, queue timestamps, Priority indicator, and optional TrackerId. |
 | Business Date | The authoritative operational date resolved server-side by the shared Business Date capability. It is not supplied authoritatively by a Kiosk or another client. |
 | Queue Session | The single admission queue for one Service Point on one Business Date in Pragmatic V1, operating from `00:00:00` through `23:59:59.9999999`. |
 | Queue Entry | One Patient's or anonymous Visitor's participation in one Queue Session. |
 | Queue Number | The numeric ordinal assigned to one Queue Entry and unique within its Queue Session. |
-| Queue Label | The public-facing identifier formed by concatenating the Queue Prefix Snapshot and Queue Number with no separator. Queue Numbers use a minimum of three digits, such as `A001`, `BPJS027`, or `B1000`. |
+| Queue Label | The public-facing five-character identifier formed by concatenating the one-letter Queue Prefix Snapshot and a four-digit Queue Number with no separator, such as `A0001`, `A0032`, or `B1000`. |
 | Queue Prefix Snapshot | The Queue Prefix preserved by a Queue Session or Queue Entry so an issued Queue Label retains its original meaning after later Service Point changes. |
 | Queue Call | The accountable request for the holder of one Waiting Queue Entry to attend one Loket. A Queue Call is not proof that service started. |
 | CallCount | The number of times a Queue Entry has been called, incremented for the first call and every recall. It is not detailed call-attempt history. |
@@ -90,10 +91,10 @@ Admission Queue Operations does not define:
 | Registration Assistance | Human administrative work required to establish or resolve an Outpatient Registration. |
 | Registration Outcome Reference | The stable OutcomeId supplied by Admisi Rajal as proof that Registration Assistance reached a final `Established` or `NotEstablished` decision. |
 | No-Show | The operational conclusion that the holder of a called Queue Entry did not present for service under the applicable policy. |
-| Priority Replacement Entry | A new Priority Queue Entry created in a destination Service Point when unresolved demand is redirected, with SourceAntrianEntryId referencing the origin. It is not a first-class Queue Transfer aggregate. |
+| Priority Replacement Entry | A new Priority Queue Entry created in a destination Service Point when unresolved demand is redirected, with composite source identity `(SourceAntrianId, SourceNoUrut)` referencing the origin. It is not a first-class Queue Transfer aggregate. |
 | Priority | A queue-owned visual and sorting indicator. It does not force automatic call order; the operator retains call-selection authority. |
 | CreationReason | The Queue Entry provenance classification: `Normal`, `Redirected`, or `ManualPriority`. |
-| SourceAntrianEntryId | An optional reference to the originating Queue Entry, required for `Redirected` and absent for `Normal`. |
+| Source Queue Entry Identity | Optional composite `(SourceAntrianId, SourceNoUrut)` referencing the originating Queue Entry; both values are required for `Redirected` and both are absent for `Normal`. |
 | Withdrawn | The terminal Queue Entry state used when service will not start, including an approved transfer to another Service Point. |
 
 ## 3. Business Capabilities
@@ -203,7 +204,7 @@ Responsibilities:
 
 - retain the applicable Service Point and Queue Prefix Snapshot;
 - retain the authoritative Business Date and fixed Pragmatic V1 interval;
-- retain LastQueueNumber and allocate Queue Numbers unique within the session;
+- allocate Queue Numbers unique within the session through the legacy `ISequencer` keyed by the session's canonical SequenceTag;
 - own Queue Entries and their CallCount; and
 - preserve queue-service milestones.
 
@@ -233,7 +234,7 @@ Responsibilities:
 
 Purpose: provides the public identifier used by a Patient, Admission Officer, and Queue Display.
 
-The Queue Label concatenates the Queue Prefix Snapshot and formatted Queue Number without a separator. Queue Numbers from 1 through 999 use three digits with leading zeroes; numbers from 1000 through 9999 use their ordinary four digits. It remains unchanged after issuance.
+The Queue Label concatenates the one-letter Queue Prefix Snapshot and Queue Number formatted as exactly four digits without a separator. Examples: `1` → `A0001`, `32` → `A0032`, and `1000` → `A1000`. It remains unchanged after issuance.
 
 ### 5.8 Current Queue Display State
 
@@ -263,7 +264,7 @@ The aggregate keeps ServicePointId, Service Point Name, Queue Prefix, and availa
 
 **Consistency boundary:**
 
-The dedicated Queue Session persistence root keeps Service Point identity, Business Date, Queue Prefix Snapshot, LastQueueNumber, Queue Number uniqueness, Queue Entry identity association, current call state, destination configured Loket, and service milestones mutually consistent.
+The dedicated Queue Session persistence root keeps Service Point identity, Business Date, Queue Prefix Snapshot, canonical SequenceTag, Queue Number uniqueness, Queue Entry identity association, current call state, destination configured Loket, and service milestones mutually consistent. The legacy `ISequencer` is the sole allocation authority.
 
 A Queue Entry references a Patient Tracker by TrackerId after identification but does not own or modify the Patient Tracker Aggregate.
 
@@ -272,7 +273,7 @@ A Queue Entry references a Patient Tracker by TrackerId after identification but
 ### 7.1 Service Point and deployment configuration
 
 - **BR-AQO-001** — Every Service Point shall have one stable ServicePointId, one Service Point Name, and one Queue Prefix.
-- **BR-AQO-001a** — Queue Prefix input shall be normalized using `Trim` followed by `ToUpperInvariant` and shall contain one through four uppercase ASCII letters (`A`–`Z`) with no spaces or separators.
+- **BR-AQO-001a** — Queue Prefix input shall be normalized using `Trim` followed by `ToUpperInvariant` and shall contain exactly one uppercase ASCII letter (`A`–`Z`) with no spaces or separators.
 - **BR-AQO-002** — ServicePointId shall identify a queue category and shall not identify a physical Loket.
 - **BR-AQO-003** — A configured Loket identifier shall represent one physical service desk but is not a managed Patient Tracker master resource in Pragmatic V1.
 - **BR-AQO-004** — Every configured Loket may serve every active admission Service Point; the application shall not enforce a Loket-to-Service-Point authorization matrix in Pragmatic V1.
@@ -295,7 +296,7 @@ A Queue Entry references a Patient Tracker by TrackerId after identification but
 - **BR-AQO-007d** — Intake shall be rejected when the submitted ServicePointId does not identify an active Service Point. Kiosk-local offering configuration is not server authority.
 - **BR-AQO-008** — Every Queue Entry shall receive exactly one numeric Queue Number from 1 through 9999, unique within its Queue Session.
 - **BR-AQO-008a** — After Queue Number 9999 has been allocated, the Queue Session shall reject further allocation. Under the one-session-per-Service-Point-per-Business-Date V1 policy, the next session is available only for the next authoritative Business Date; the system shall not create a second same-date session, wrap the counter, or silently change the Queue Label format.
-- **BR-AQO-009** — Every Queue Entry shall have one Queue Label formed by concatenating its Queue Prefix Snapshot and Queue Number without a separator. Queue Numbers shall be formatted with a minimum of three digits: `1` → `001`, `27` → `027`, and `1000` → `1000`.
+- **BR-AQO-009** — Every Queue Entry shall have one five-character Queue Label formed by concatenating its one-letter Queue Prefix Snapshot and a four-digit Queue Number without a separator: `1` → `A0001`, `32` → `A0032`, and `1000` → `A1000` for prefix `A`.
 - **BR-AQO-010** — A Queue Label shall remain unchanged after issuance even when the Service Point Name or Queue Prefix changes later.
 - **BR-AQO-011** — Queue Prefix shall be unique across all active admission Service Points.
 - **BR-AQO-012** — When ClientRequestId is supplied, retrying the same identifier shall return the existing Queue Entry rather than allocate another Queue Number. Without ClientRequestId, duplicate prevention is not guaranteed.
@@ -327,9 +328,9 @@ A Queue Entry references a Patient Tracker by TrackerId after identification but
 ### 7.5 Exceptions and historical truth
 
 - **BR-AQO-026** — A No-Show conclusion shall not be represented as completed Registration Assistance. Pragmatic V1 retains only CallCount, so any rule requiring timing or detailed prior-call evidence remains a manual operational procedure.
-- **BR-AQO-027** — Redirecting unresolved demand creates a new Priority Queue Entry in the destination Service Point with CreationReason `Redirected` and SourceAntrianEntryId referencing the origin. The original entry must receive an explicit non-active disposition; it shall not be silently relabelled. No QueueTransfer aggregate or transfer-history table is introduced in Pragmatic V1.
+- **BR-AQO-027** — Redirecting unresolved demand creates a new Priority Queue Entry in the destination Service Point with CreationReason `Redirected` and composite `(SourceAntrianId, SourceNoUrut)` referencing the origin. The original entry must receive an explicit non-active disposition; it shall not be silently relabelled. No QueueTransfer aggregate or transfer-history table is introduced in Pragmatic V1.
 - **BR-AQO-027a** — A Priority entry shall display an indicator and may participate in sorting, but shall not automatically bypass another entry or force call order. The operator chooses which available entry to call.
-- **BR-AQO-027b** — CreationReason shall be exactly `Normal`, `Redirected`, or `ManualPriority`. `Normal` has no SourceAntrianEntryId; `Redirected` requires it; `ManualPriority` may retain it only when an actual source entry exists.
+- **BR-AQO-027b** — CreationReason shall be exactly `Normal`, `Redirected`, or `ManualPriority`. `Normal` has neither source-key field; `Redirected` requires both; `ManualPriority` may retain both only when an actual source entry exists. Partial composite source identity is prohibited.
 - **BR-AQO-028** — A Queue Display shall present recorded Queue Call truth and shall not own Queue Entry selection or lifecycle decisions.
 - **BR-AQO-029** — Queue waiting and service time shall be derived from Queue Entry milestones and shall not be inferred from a Queue Call alone.
 - **BR-AQO-030** — Admission Queue Operations shall not claim Patient physical presence before an accountable service interaction recognizes it.

@@ -264,7 +264,7 @@ Merepresentasikan kewajiban finansial awal yang timbul dari akses administratif 
 
 Merepresentasikan keputusan final Admisi Rajal yang eksplisit untuk satu Registration Assistance Queue Entry.
 
-Registration Outcome mempertahankan OutcomeId, QueueEntryId, Result, RegId dan ReasonCode kondisional, Explanation, DecidedAt, dan DecidedBy. `RegId` wajib hanya untuk `Established`; `ReasonCode` wajib untuk `NotEstablished`.
+Registration Outcome mempertahankan OutcomeId, referensi Patient Tracker Queue Entry yang direpresentasikan oleh komposit `(AntrianId, NoUrut)`, Result, RegId dan ReasonCode kondisional, Explanation, DecidedAt, dan DecidedBy. Ketika application contract memakai nama logis `QueueEntryId`, nama tersebut berarti identitas komposit itu dan bukan surrogate baru. `RegId` wajib hanya untuk `Established`; `ReasonCode` wajib untuk `NotEstablished`.
 
 ## 6. Aggregates
 
@@ -300,7 +300,7 @@ Aggregate memiliki satu kejadian jadwal spesifik tanggal atau pengecualian yang 
 
 **Aggregate Root:** `Registration Outcome`
 
-Aggregate menjaga OutcomeId stabil, QueueEntryId yang direferensikan, Result final, RegId/ReasonCode kondisional, Explanation, serta actor/waktu keputusan yang accountable tetap konsisten satu sama lain.
+Aggregate menjaga OutcomeId stabil, identitas Queue Entry komposit `(AntrianId, NoUrut)` yang direferensikan, Result final, RegId/ReasonCode kondisional, Explanation, serta actor/waktu keputusan yang accountable tetap konsisten satu sama lain.
 
 Aggregate mencatat keputusan final Admisi Rajal tetapi tidak memiliki atau memutasi Patient Tracker Queue Entry yang direferensikan. Queue completion tetap merupakan transition Patient Tracker yang dikoordinasikan melalui application contract.
 

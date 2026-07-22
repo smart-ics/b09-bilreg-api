@@ -246,7 +246,7 @@ Represents the initial financial obligation arising from administrative access t
 
 Represents the explicit final Admisi Rajal decision for one Registration Assistance Queue Entry.
 
-It retains OutcomeId, QueueEntryId, Result, conditional RegId and ReasonCode, Explanation, DecidedAt, and DecidedBy. `RegId` is required only for `Established`; `ReasonCode` is required for `NotEstablished`.
+It retains OutcomeId, the Patient Tracker Queue Entry reference represented by composite `(AntrianId, NoUrut)`, Result, conditional RegId and ReasonCode, Explanation, DecidedAt, and DecidedBy. Where an application contract uses the logical name `QueueEntryId`, it means that composite identity rather than a new surrogate. `RegId` is required only for `Established`; `ReasonCode` is required for `NotEstablished`.
 
 ## 6. Aggregates
 
@@ -282,7 +282,7 @@ The aggregate owns one date-specific schedule occurrence or approved exception. 
 
 **Aggregate Root:** `Registration Outcome`
 
-The aggregate keeps its stable OutcomeId, referenced QueueEntryId, final Result, conditional RegId/ReasonCode, Explanation, and accountable decision actor/time mutually consistent.
+The aggregate keeps its stable OutcomeId, referenced composite Queue Entry identity `(AntrianId, NoUrut)`, final Result, conditional RegId/ReasonCode, Explanation, and accountable decision actor/time mutually consistent.
 
 It records Admisi Rajal's final decision but does not own or mutate the referenced Patient Tracker Queue Entry. Queue completion remains a Patient Tracker transition coordinated through an application contract.
 

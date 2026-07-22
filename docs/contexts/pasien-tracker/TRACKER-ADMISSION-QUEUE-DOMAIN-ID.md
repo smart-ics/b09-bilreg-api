@@ -25,7 +25,7 @@ Domain ini membedakan kategori antrean yang direpresentasikan oleh `Service Poin
 Admission Queue Operations menyediakan:
 
 - antrean yang dikelola secara mandiri untuk BPJS, umum, gedung tertentu, atau layanan admisi lainnya;
-- Queue Label yang mudah dikenali seperti `A001` dan `B001`;
+- Queue Label yang mudah dikenali seperti `A0001` dan `B0001`;
 - hubungan terkendali antara Kiosk, Service Point, dan Loket;
 - pemanggilan Queue Entry secara accountable menuju Loket fisik;
 - pemisahan antara pemanggilan antrean dan pelayanan yang benar-benar dimulai;
@@ -68,7 +68,7 @@ Admission Queue Operations tidak mendefinisikan:
 | Service Point | Titik Layanan | Kategori antrean yang diakui dan merepresentasikan satu tanggung jawab admisi, seperti Admisi BPJS atau Admisi Umum. |
 | ServicePointId | Identitas Titik Layanan | Identitas bisnis yang stabil untuk satu Service Point. |
 | Service Point Name | Nama Titik Layanan | Nama Service Point yang dapat dikenali manusia. |
-| Queue Prefix | Awalan Antrean | Satu sampai empat huruf ASCII kapital yang ditetapkan kepada Service Point dan digunakan saat membentuk Queue Label. Input dinormalisasi dengan `Trim` dan `ToUpperInvariant`; spasi dan pemisah dilarang. |
+| Queue Prefix | Awalan Antrean | Tepat satu huruf ASCII kapital yang ditetapkan kepada Service Point dan digunakan saat membentuk Queue Label. Input dinormalisasi dengan `Trim` dan `ToUpperInvariant`; spasi dan pemisah dilarang. |
 | Loket | Meja Layanan | Meja layanan fisik yang diakui tempat Service Point Operator memberikan Registration Assistance. |
 | LoketId | Identitas Loket | Identitas bisnis yang stabil untuk satu Loket fisik. |
 | Configured Loket | Loket Terkonfigurasi | Identitas meja dari konfigurasi deployment workstation tepercaya. Dalam Pragmatic V1, objek ini bukan master resource Patient Tracker. |
@@ -77,12 +77,13 @@ Admission Queue Operations tidak mendefinisikan:
 | Queue Display | Tampilan Antrean | Kanal komunikasi operasional yang menampilkan Queue Call saat ini dan Loket tujuannya. |
 | Current Queue Display State | Status Tampilan Antrean Saat Ini | Panggilan terlihat terbaru untuk satu LoketKey yang dipersistenkan dalam `BILRG_AdmLoketCurrentCall`. Ini adalah authoritative projection state, bukan riwayat panggilan. |
 | AnnouncementVersion | Versi Pengumuman | Nilai yang selalu bertambah milik Current Queue Display State. Nilai bertambah hanya untuk Call atau Recall yang membutuhkan audio, bukan refresh biasa atau perubahan service state. |
+| RowVersion | Versi Baris | Token concurrency database untuk Current Queue Display State. Nilainya berubah secara independen dari AnnouncementVersion setiap kali row diperbarui. |
 | Admission Queue Worklist Projection | Proyeksi Daftar Kerja Antrean Admisi | Read model khusus antrean milik Patient Tracker yang memuat Queue Label, Service Point, state Queue Entry, call state, LoketKey, timestamp antrean, indikator Priority, dan TrackerId opsional. |
 | Business Date | Tanggal Operasional | Tanggal operasional otoritatif yang diselesaikan di sisi server melalui kapabilitas Business Date bersama. Tanggal ini tidak diberikan secara otoritatif oleh Kiosk atau client lain. |
 | Queue Session | Sesi Antrean | Satu-satunya antrean admisi untuk satu Service Point pada satu Business Date dalam Pragmatic V1, yang beroperasi dari `00:00:00` sampai `23:59:59.9999999`. |
 | Queue Entry | Entri Antrean | Keikutsertaan satu Patient atau Visitor anonim dalam satu Queue Session. |
 | Queue Number | Nomor Antrean | Nomor urut numerik yang ditetapkan kepada satu Queue Entry dan unik dalam Queue Session-nya. |
-| Queue Label | Label Antrean | Identitas publik yang dibentuk dengan menggabungkan Queue Prefix Snapshot dan Queue Number tanpa pemisah. Queue Number menggunakan minimum tiga digit, seperti `A001`, `BPJS027`, atau `B1000`. |
+| Queue Label | Label Antrean | Identitas publik lima karakter yang dibentuk dengan menggabungkan Queue Prefix Snapshot satu huruf dan Queue Number empat digit tanpa pemisah, seperti `A0001`, `A0032`, atau `B1000`. |
 | Queue Prefix Snapshot | Rekaman Awalan Antrean | Queue Prefix yang dipertahankan oleh Queue Session atau Queue Entry agar Queue Label yang telah diterbitkan mempertahankan makna aslinya setelah perubahan Service Point. |
 | Queue Call | Panggilan Antrean | Permintaan accountable agar pemegang satu Waiting Queue Entry menuju satu Loket. Queue Call bukan bukti bahwa pelayanan telah dimulai. |
 | CallCount | Jumlah Panggilan | Jumlah Queue Entry dipanggil, bertambah pada panggilan pertama dan setiap Recall. Nilai ini bukan riwayat detail Call Attempt. |
@@ -90,10 +91,10 @@ Admission Queue Operations tidak mendefinisikan:
 | Registration Assistance | Bantuan Registrasi | Pekerjaan administratif manusia yang diperlukan untuk membentuk atau menyelesaikan Outpatient Registration. |
 | Registration Outcome Reference | Referensi Hasil Registrasi | OutcomeId stabil yang diberikan Admisi Rajal sebagai bukti bahwa Registration Assistance mencapai keputusan final `Established` atau `NotEstablished`. |
 | No-Show | Tidak Hadir saat Dipanggil | Kesimpulan operasional bahwa pemegang Queue Entry yang dipanggil tidak hadir untuk pelayanan berdasarkan policy yang berlaku. |
-| Priority Replacement Entry | Entri Pengganti Prioritas | Queue Entry Priority baru pada Service Point tujuan ketika kebutuhan dialihkan, dengan SourceAntrianEntryId yang mereferensikan asal. Objek ini bukan Queue Transfer Aggregate tersendiri. |
+| Priority Replacement Entry | Entri Pengganti Prioritas | Queue Entry Priority baru pada Service Point tujuan ketika kebutuhan dialihkan, dengan identitas sumber komposit `(SourceAntrianId, SourceNoUrut)` yang mereferensikan asal. Objek ini bukan Queue Transfer Aggregate tersendiri. |
 | Priority | Prioritas | Indikator visual dan sorting milik antrean. Indikator tidak memaksa urutan pemanggilan otomatis; operator tetap memiliki otoritas pemilihan. |
 | CreationReason | Alasan Pembentukan | Klasifikasi provenance Queue Entry: `Normal`, `Redirected`, atau `ManualPriority`. |
-| SourceAntrianEntryId | Identitas Entri Asal | Referensi opsional ke Queue Entry asal, wajib untuk `Redirected` dan tidak ada untuk `Normal`. |
+| Source Queue Entry Identity | Identitas Entri Asal | Referensi komposit opsional `(SourceAntrianId, SourceNoUrut)` ke Queue Entry asal; keduanya wajib untuk `Redirected` dan keduanya tidak ada untuk `Normal`. |
 | Withdrawn | Dihentikan sebelum Dilayani | State terminal Queue Entry yang digunakan ketika pelayanan tidak akan dimulai, termasuk pengalihan yang disetujui menuju Service Point lain. |
 
 ## 3. Kapabilitas Bisnis
@@ -217,7 +218,7 @@ Tanggung jawab:
 
 - mempertahankan Service Point yang berlaku dan Queue Prefix Snapshot;
 - mempertahankan Business Date otoritatif dan interval tetap Pragmatic V1;
-- mempertahankan LastQueueNumber dan mengalokasikan Queue Number unik dalam session;
+- mengalokasikan Queue Number unik dalam session melalui legacy `ISequencer` yang menggunakan SequenceTag kanonis milik session;
 - memiliki Queue Entry dan CallCount-nya; dan
 - mempertahankan milestone pelayanan antrean.
 
@@ -247,7 +248,7 @@ Tanggung jawab:
 
 Tujuan: menyediakan identitas publik yang digunakan Patient, Admission Officer, dan Queue Display.
 
-Queue Label menggabungkan Queue Prefix Snapshot dan Queue Number terformat tanpa pemisah. Queue Number dari 1 sampai 999 menggunakan tiga digit dengan angka nol di depan; nomor 1000 sampai 9999 menggunakan empat digit sebagaimana adanya. Queue Label tetap tidak berubah setelah diterbitkan.
+Queue Label menggabungkan Queue Prefix Snapshot satu huruf dan Queue Number yang diformat tepat empat digit tanpa pemisah. Contoh: `1` → `A0001`, `32` → `A0032`, dan `1000` → `A1000`. Queue Label tetap tidak berubah setelah diterbitkan.
 
 ### 5.8 Current Queue Display State
 
@@ -277,7 +278,7 @@ Aggregate menjaga ServicePointId, Service Point Name, Queue Prefix, dan ketersed
 
 **Consistency boundary:**
 
-Persistence root Queue Session khusus menjaga Service Point identity, Business Date, Queue Prefix Snapshot, LastQueueNumber, keunikan Queue Number, asosiasi identitas Queue Entry, current call state, Loket terkonfigurasi tujuan, dan milestone pelayanan tetap konsisten satu sama lain.
+Persistence root Queue Session khusus menjaga Service Point identity, Business Date, Queue Prefix Snapshot, SequenceTag kanonis, keunikan Queue Number, asosiasi identitas Queue Entry, current call state, Loket terkonfigurasi tujuan, dan milestone pelayanan tetap konsisten satu sama lain. Legacy `ISequencer` menjadi satu-satunya otoritas alokasi.
 
 Queue Entry mereferensikan Patient Tracker melalui TrackerId setelah identifikasi tetapi tidak memiliki atau memodifikasi Patient Tracker Aggregate.
 
@@ -286,7 +287,7 @@ Queue Entry mereferensikan Patient Tracker melalui TrackerId setelah identifikas
 ### 7.1 Service Point dan konfigurasi deployment
 
 - **BR-AQO-001** — Setiap Service Point harus memiliki satu ServicePointId yang stabil, satu Service Point Name, dan satu Queue Prefix.
-- **BR-AQO-001a** — Input Queue Prefix harus dinormalisasi menggunakan `Trim` kemudian `ToUpperInvariant` dan harus berisi satu sampai empat huruf ASCII kapital (`A`–`Z`) tanpa spasi atau pemisah.
+- **BR-AQO-001a** — Input Queue Prefix harus dinormalisasi menggunakan `Trim` kemudian `ToUpperInvariant` dan harus berisi tepat satu huruf ASCII kapital (`A`–`Z`) tanpa spasi atau pemisah.
 - **BR-AQO-002** — ServicePointId harus mengidentifikasi kategori antrean dan tidak boleh mengidentifikasi Loket fisik.
 - **BR-AQO-003** — Identitas Loket terkonfigurasi harus merepresentasikan satu meja layanan fisik, tetapi bukan managed master resource Patient Tracker dalam Pragmatic V1.
 - **BR-AQO-004** — Setiap Loket terkonfigurasi boleh melayani seluruh Service Point admisi aktif; aplikasi tidak menegakkan matriks otorisasi Loket-ke-Service Point dalam Pragmatic V1.
@@ -309,7 +310,7 @@ Queue Entry mereferensikan Patient Tracker melalui TrackerId setelah identifikas
 - **BR-AQO-007d** — Intake harus ditolak ketika ServicePointId yang dikirim tidak mengidentifikasi Service Point aktif. Konfigurasi offering lokal Kiosk bukan otoritas server.
 - **BR-AQO-008** — Setiap Queue Entry harus menerima tepat satu Queue Number numerik dari 1 sampai 9999 yang unik dalam Queue Session-nya.
 - **BR-AQO-008a** — Setelah Queue Number 9999 dialokasikan, Queue Session harus menolak alokasi berikutnya. Berdasarkan kebijakan V1 satu session per Service Point per Business Date, session berikutnya hanya tersedia pada Business Date otoritatif berikutnya; sistem tidak boleh membuat session kedua pada tanggal yang sama, mengulang counter, atau diam-diam mengubah format Queue Label.
-- **BR-AQO-009** — Setiap Queue Entry harus memiliki satu Queue Label yang dibentuk dengan menggabungkan Queue Prefix Snapshot dan Queue Number tanpa pemisah. Queue Number harus diformat dengan minimum tiga digit: `1` → `001`, `27` → `027`, dan `1000` → `1000`.
+- **BR-AQO-009** — Setiap Queue Entry harus memiliki Queue Label lima karakter yang dibentuk dengan menggabungkan Queue Prefix Snapshot satu huruf dan Queue Number empat digit tanpa pemisah: `1` → `A0001`, `32` → `A0032`, dan `1000` → `A1000` untuk prefix `A`.
 - **BR-AQO-010** — Queue Label harus tetap tidak berubah setelah diterbitkan walaupun Service Point Name atau Queue Prefix berubah kemudian.
 - **BR-AQO-011** — Queue Prefix harus unik di seluruh admission Service Point yang aktif.
 - **BR-AQO-012** — Ketika ClientRequestId diberikan, retry dengan identifier yang sama harus mengembalikan Queue Entry existing dan tidak mengalokasikan Queue Number lain. Tanpa ClientRequestId, pencegahan duplikasi tidak dijamin.
@@ -341,9 +342,9 @@ Queue Entry mereferensikan Patient Tracker melalui TrackerId setelah identifikas
 ### 7.5 Pengecualian dan kebenaran historis
 
 - **BR-AQO-026** — Kesimpulan No-Show tidak boleh direpresentasikan sebagai Registration Assistance yang selesai. Pragmatic V1 hanya mempertahankan CallCount, sehingga aturan yang membutuhkan timing atau bukti detail panggilan sebelumnya tetap menjadi prosedur operasional manual.
-- **BR-AQO-027** — Pengalihan kebutuhan membentuk Queue Entry Priority baru pada Service Point tujuan dengan CreationReason `Redirected` dan SourceAntrianEntryId yang mereferensikan asal. Queue Entry asal harus menerima disposition nonaktif yang eksplisit dan tidak boleh diganti label secara diam-diam. Tidak ada QueueTransfer aggregate atau transfer-history table dalam Pragmatic V1.
+- **BR-AQO-027** — Pengalihan kebutuhan membentuk Queue Entry Priority baru pada Service Point tujuan dengan CreationReason `Redirected` dan `(SourceAntrianId, SourceNoUrut)` komposit yang mereferensikan asal. Queue Entry asal harus menerima disposition nonaktif yang eksplisit dan tidak boleh diganti label secara diam-diam. Tidak ada QueueTransfer aggregate atau transfer-history table dalam Pragmatic V1.
 - **BR-AQO-027a** — Priority entry harus menampilkan indikator dan boleh berpartisipasi dalam sorting, tetapi tidak boleh otomatis melewati entry lain atau memaksa urutan pemanggilan. Operator memilih entry tersedia yang akan dipanggil.
-- **BR-AQO-027b** — CreationReason harus tepat `Normal`, `Redirected`, atau `ManualPriority`. `Normal` tidak memiliki SourceAntrianEntryId; `Redirected` mewajibkannya; `ManualPriority` boleh mempertahankannya hanya ketika entry asal benar-benar ada.
+- **BR-AQO-027b** — CreationReason harus tepat `Normal`, `Redirected`, atau `ManualPriority`. `Normal` tidak memiliki kedua field source key; `Redirected` mewajibkan keduanya; `ManualPriority` boleh mempertahankan keduanya hanya ketika entry asal benar-benar ada. Source identity komposit parsial dilarang.
 - **BR-AQO-028** — Queue Display harus menampilkan Queue Call truth yang tercatat dan tidak boleh memiliki keputusan pemilihan atau lifecycle Queue Entry.
 - **BR-AQO-029** — Waktu tunggu dan pelayanan antrean harus diturunkan dari milestone Queue Entry dan tidak boleh disimpulkan hanya dari Queue Call.
 - **BR-AQO-030** — Admission Queue Operations tidak boleh menyatakan kehadiran fisik Patient sebelum interaksi pelayanan yang accountable mengakuinya.

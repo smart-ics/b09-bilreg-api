@@ -62,7 +62,7 @@ This SOP applies to Walk-In Patients and Booking Patients whose Self-Registratio
 
 3. **Kiosk** submits one queue-intake request for the chosen Service Point without supplying an authoritative Business Date and shows a processing indication.
 
-4. **Patient Tracker Queue Service** resolves the server Business Date, verifies that the submitted ServicePointId is active, loads or lazily establishes the dedicated Queue Session for that Service Point and Business Date, atomically advances LastQueueNumber, and returns one Queue Entry with its Queue Label. When ClientRequestId is supplied, the same identifier returns the existing result.
+4. **Patient Tracker Queue Service** resolves the server Business Date, verifies that the submitted ServicePointId is active, loads or lazily establishes the dedicated Queue Session for that Service Point and Business Date, allocates through the legacy `ISequencer` using the session's canonical SequenceTag, rejects exhaustion or values outside 1–9999, and returns one Queue Entry with its one-letter-plus-four-digit Queue Label. When ClientRequestId is supplied, the same session-scoped identifier returns the existing compatible result.
 
 5. **Kiosk** displays the Queue Label and sends that same Queue Label to **Queue Ticket Printer**.
 
@@ -190,7 +190,7 @@ This SOP applies to Walk-In Patients and Booking Patients whose Self-Registratio
 
 - **Admission Officer** stops before starting Registration Assistance when the mismatch is recognized while the Queue Entry is still `Waiting`.
 - **Admission Officer** requests redirection to another Service Point from **Queue Operations Supervisor**.
-- **Queue Operations Supervisor** approves or rejects the redirection using available evidence. On approval, the original entry receives an explicit non-active disposition and a new destination entry is created with Priority, CreationReason `Redirected`, and required SourceAntrianEntryId.
+- **Queue Operations Supervisor** approves or rejects the redirection using available evidence. On approval, the original entry receives an explicit non-active disposition and a new destination entry is created with Priority, CreationReason `Redirected`, and required composite source `(SourceAntrianId, SourceNoUrut)`.
 - When approved, **Patient Tracker Queue Service** displays the original Queue Entry as `Withdrawn` and issues a replacement Queue Entry and Queue Label for the applicable Service Point.
 - **Admission Module** shows the Priority indicator and relationship to the original Queue Entry. Priority does not force calling order; **Admission Officer** retains selection authority and communicates the replacement Queue Label and waiting destination.
 

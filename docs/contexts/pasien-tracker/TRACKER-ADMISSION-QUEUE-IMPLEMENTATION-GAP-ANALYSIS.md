@@ -20,7 +20,7 @@ The architecture is directionally sound and aligns with the major ownership rule
 
 However, implementation is blocked at several slice boundaries by missing authoritative decisions:
 
-1. conditional persistence and database constraints are described as goals, but the concrete persistence contract needed to protect cross-session LoketKey and idempotency invariants is absent.
+1. the approved simplified persistence direction is **partially supported** by the codebase, but its unresolved contradictions and missing key/concurrency details still prevent safe migration generation.
 2. cross-workstation duplicate LoketKey detection, passive-display access, API contracts, compatibility consumers, migration values, and production topology are not yet resolved.
 3. the Booking Self-Registration → Assistance decision and business-level duplicate-assistance guard are not represented in the architecture use cases.
 
@@ -62,8 +62,8 @@ Before implementation begins, preserve or commit this baseline so an implementat
 | Concern | Alignment result | Assessment |
 |---|---|---|
 | Queue ownership | Aligned | Patient Tracker owns Queue Session, Queue Entry, Queue Number, calls, and milestones; Admisi Rajal owns Registration truth. |
-| Queue Label grammar | Resolved | Decision A defines prefix normalization/validation, global active uniqueness, 1–9999 numbers, minimum-three-digit formatting, no separator, and rejection after 9999. |
-| Queue Session policy | Resolved/simplified | Decision B defines one session per Service Point per server-resolved Business Date and lazy all-day establishment. The later developer decision retains a dedicated table with LastQueueNumber and replaces Kiosk offering checks with active ServicePointId validation. |
+| Queue Label grammar | Resolved | The latest decision defines exactly one normalized uppercase ASCII prefix, an exactly four-digit number, labels such as `A0032`, global active-prefix uniqueness, and rejection after 9999. |
+| Queue Session policy | Resolved/simplified | Decision B defines one session per Service Point per server-resolved Business Date and lazy all-day establishment. Legacy `ISequencer`, keyed by canonical session SequenceTag, remains the sole number allocator; no LastQueueNumber is added. |
 | Anonymous intake | Aligned | Queue intake does not create or select a Patient Tracker. |
 | Late identification | Aligned | Existing journey selection and Registration-owned new Walk-In Tracker creation follow the parent Tracker and Admisi Rajal rules. |
 | Call versus service start | Aligned target; not current runtime | Domain, SOP, and architecture distinguish them. Current `AdmissionQueueStartCmd` directly moves Waiting to InService and has no Queue Call or Loket. |
@@ -83,7 +83,7 @@ The developer discussion reuses `GAP-READY-002` through `GAP-READY-010` for topi
 
 | Developer label | Topic adopted for V1 | Existing finding affected |
 |---|---|---|
-| 002 | Dedicated daily Queue Session with LastQueueNumber | GAP-READY-002, 008, 009 |
+| 002 | Reuse the dedicated daily Queue Session; allocate through legacy `ISequencer` | GAP-READY-002, 008, 009 |
 | 003 | Deployment-configured Loket; no master/assignment | GAP-READY-003, 007, 010 |
 | 004 | Passive displays; shared current-per-Loket state/version | GAP-READY-004, 009, 010, 018 |
 | 005 | CallCount instead of Call Attempt history | GAP-READY-017 and operational-history design |
@@ -101,7 +101,7 @@ The developer discussion reuses `GAP-READY-002` through `GAP-READY-010` for topi
 | One Outstanding or InService entry per LoketKey | Design decision | ADR-AQO-014; BR-AQO-020 | Database active-work claim remains GAP-READY-007 |
 | Call separate from explicit Start Service | Design decision | ADR-AQO-015; BR-AQO-021–023 | Compatibility/API migration remains open |
 | Priority is indicator/sorting aid, never automatic call order | Design decision | ADR-AQO-016; BR-AQO-027a | UI/API field contract remains open |
-| SourceAntrianEntryId and CreationReason provenance | Design decision/persistence contract | ADR-AQO-016; BR-AQO-027/027b | Exact SQL types/constraints remain GAP-READY-009 |
+| Composite source identity and CreationReason provenance | Design decision/persistence contract | ADR-AQO-016; BR-AQO-027/027b | Use `(SourceAntrianId, SourceNoUrut)`; exact SQL constraints remain GAP-READY-009 |
 | `BILRG_AdmLoketCurrentCall` is latest-state projection, not history | Design decision | ADR-AQO-017; BR-AQO-006d | Clear/replace timing remains GAP-AQO-012 |
 | AnnouncementVersion increments only for audio Call/Recall | Design decision | ADR-AQO-017; BR-AQO-021a | None semantically; implementation tests required |
 | SignalR trigger plus reload/reconnect/poll recovery | Design decision | ADR-AQO-017 | Poll interval and access/topology are implementation/deployment settings |
@@ -168,10 +168,10 @@ This proves that the current focused mechanics compile and their existing tests 
 
 The canonical decision is:
 
-- Queue Prefix accepts one through four uppercase ASCII letters after `Trim` + `ToUpperInvariant`, with no spaces or separators;
+- Queue Prefix contains exactly one uppercase ASCII letter after `Trim` + `ToUpperInvariant`, with no spaces or separators;
 - Queue Prefix is unique across active admission Service Points;
 - Queue Number is an integer from 1 through 9999;
-- Queue Number uses a minimum of three digits (`1` → `001`, `27` → `027`, `1000` → `1000`);
+- Queue Number uses exactly four digits (`1` → `0001`, `32` → `0032`, `1000` → `1000`);
 - Queue Label is Prefix + formatted Queue Number with no separator; and
 - after allocating 9999, the session rejects further allocation; Decision B prohibits a second same-date session, so the next session is available only on the next server-resolved Business Date.
 
@@ -192,9 +192,9 @@ The canonical Pragmatic V1 decision is:
 
 Combined with Decision A, an exhausted session cannot be replaced on the same Business Date. Further intake for that Service Point is rejected until the next authoritative Business Date.
 
-The developer decision additionally retains a dedicated Queue Session table with LastQueueNumber and a unique `(ServicePointId, BusinessDate)` constraint. Kiosk offering configuration is local and is not server authority.
+The developer decision retains the existing dedicated Queue Session table and legacy `ISequencer`, with a unique `(ServicePointId, BusinessDate)` session constraint. Kiosk offering configuration is local and is not server authority.
 
-**Implementation requirement:** remove authoritative date from the intake contract, resolve Business Date server-side, atomically create/load the dedicated row and advance LastQueueNumber, enforce its natural uniqueness, and validate the Service Point is active.
+**Implementation requirement:** remove authoritative date from the intake contract, resolve Business Date server-side, atomically create/load the dedicated row, allocate through the canonical session SequenceTag using `ISequencer`, enforce session/number uniqueness and the 9999 bound, and validate the Service Point is active.
 
 ### GAP-READY-003 — Superseded: Loket is deployment configuration in developer-approved V1
 
@@ -247,11 +247,11 @@ The architecture says database uniqueness must support the invariant, but it doe
 
 **Required resolution:** provide a persistence contract for the Loket active-work claim and every acquire/release transition. Domain/Application decide the transition; SQL conditional writes protect it across processes.
 
-### GAP-READY-008 — LastQueueNumber is decided; optional idempotency remains conditional
+### GAP-READY-008 — Legacy ISequencer retained; optional idempotency remains conditional
 
 **Severity:** Blocker for production Kiosk intake.
 
-The developer decision replaces per-Service Point SQL sequence design with LastQueueNumber on the dedicated daily Queue Session row. That resolves sequence ownership but requires an atomic database increment under concurrent intake.
+The latest decision retains legacy `ISequencer` as the sole Queue Number authority, keyed by the daily session's canonical SequenceTag. No `LastQueueNumber` column is added. Admission sequences must be bounded to 1–9999 and must not cycle; exhaustion or any out-of-range value is rejected. Sequence gaps are acceptable because SQL sequence consumption is not transactional.
 
 ClientRequestId is stored optionally on Queue Entry. Therefore:
 
@@ -259,26 +259,41 @@ ClientRequestId is stored optionally on Queue Entry. Therefore:
 - a request without the identifier is not idempotent and may create duplicates after an uncertain response; and
 - the identifier's maximum length, case/collation, global versus scoped uniqueness, and conflicting-payload behavior remain unspecified.
 
-**Required resolution:** define the atomic LastQueueNumber algorithm and ClientRequestId schema/unique index/scope. API documentation must call idempotency conditional, not guaranteed, while ClientRequestId remains optional.
+**Required resolution:** verify/configure the sequencer's canonical tag, 1–9999 bound, no-cycle behavior, and concurrency tests. Add nullable ClientRequestId with a filtered unique scope of `(AntrianId, ClientRequestId)`. The same identifier returns the existing compatible result; conflicting reuse is rejected. API documentation must call idempotency conditional while ClientRequestId remains optional.
 
-### GAP-READY-009 — Persistence additions are an inventory, not an implementable contract
+### GAP-READY-009 — Persistence design verification: partially supported
 
 **Severity:** Blocker before migration generation or DAL/repository implementation.
 
-The architecture intentionally defers columns and indexes. That is appropriate for an architecture artifact, but an implementation agent still needs an approved persistence design covering:
+**Verification conclusion: Partially supported.** The existing `BILRG_Antrian` and `BILRG_AntrianEntry` are reusable foundations, but none of the newly proposed queue-operational columns or new master/projection tables already exists under an equivalent name.
 
-- table names and aggregate ownership;
-- key sizes and immutable identities;
-- status numeric values, especially additive `Withdrawn`;
-- active/retired and effective-period representation;
-- Queue Prefix Snapshot, Priority, CreationReason values, and nullable SourceAntrianEntryId constraints;
-- current call fields, CallCount, and current-display AnnouncementVersion;
-- optional ClientRequestId shape and uniqueness scope;
-- expected-state update predicates and affected-row contracts;
-- audit columns, void/retention treatment, and operational indexes; and
-- additive deployment/backfill/rollback order.
+| Proposed persistence | Verified codebase state | Classification | Exact implementation consequence |
+|---|---|---|---|
+| `BILRG_AdmServicePoint` | No table, DTO, DAL, repository, or aggregate exists. `ServicePointType` is only a two-field value object constructed from request data or queue data. | Not supported | Add the master and its Domain/Application/Infrastructure contracts; validate configured references and active state server-side. |
+| Reuse `BILRG_Antrian` | It already stores session identity, date/time, sequence tag, description, and `ServicePointCode`; a migration makes `SequenceTag` unique. | Already supported as a session foundation | Do not create a second Queue Session table. Align `AntrianDate` to Business Date and reuse the existing row. |
+| Add session `Prefix` | Neither SQL, model, DTO, DAL, nor repository contains a prefix snapshot. | Not supported | Add one immutable prefix-snapshot column and map it end-to-end; never reconstruct old labels from current master data. |
+| Session uniqueness | The canonical admission `SequenceTag` includes date and Service Point code, but SQL does not directly constrain `(ServicePointCode, AntrianDate)`. | Partially supported | Formally constrain one canonical tag or add the explicit composite unique index required by Decision B. |
+| Queue-number allocation | `AntrianModel.AddEntry` already calls `ISequencer.GetNextNoUrut(SequenceTag)`; the 9999/no-cycle enforcement is not evidenced in this feature. | Partially supported | Retain `ISequencer` as sole authority, add no `LastQueueNumber`, and verify/configure bounded non-cycling admission sequences plus rejection tests. |
+| Reuse `BILRG_AntrianEntry` | It already persists composite identity `(AntrianId, NoUrut)`, Patient/Tracker association, Waiting/InService/Done, timestamps, and generic references. | Already supported as an entry foundation | Extend it rather than create another entry table. `ReffId/ReffDesc` are not equivalents for new queue behavior. |
+| Add `Priority` and `CallCount` | No equivalent columns, model properties, DTO mappings, DAL statements, or repository comparisons exist. | Not supported | Add and map both. CallCount is informational; Priority may affect display/query sorting but not automatic selection. |
+| `BILRG_AdmLoketCurrentCall` | No table, model, DAL, repository, or Call command exists. `AdmissionQueueStartCmd` currently moves Waiting directly to InService. | Not supported | Add latest-state persistence and a Call/Recall operation separate from Start Service; update entry/current-call state atomically. |
+| Current-call entry reference | Queue Entry has no scalar `QueueEntryId`; its physical key is `(AntrianId, NoUrut)`. | Not supported as proposed | Use the existing composite foreign key or approve an additive immutable surrogate before schema generation. |
+| Optimistic concurrency/audio version | No version exists. `AnnouncementVersion` changes only for audio Call/Recall. | Not supported; semantics resolved | Add separate `RowVersion` for every row update and `AnnouncementVersion` for audio Call/Recall only. |
+| Registration outcome exclusion | `ReffId/ReffDesc` can point to a Registration but cannot store stable outcome identity, NotEstablished reason, explanation, actor, or decision time. | Not equivalent | The exclusion can only mean “outside `AntrianFeature`”; Decision C still requires Admisi Rajal persistence unless explicitly superseded. |
 
-**Required resolution:** create a persistence contract artifact before generating SQL. Do not extend whole-aggregate delete/update behavior to new historical records.
+The inspection covered the SQL definitions/migration, Domain models, DTOs, Dapper DALs, `AntrianRepo`, `QueAnonymousIntakeCmd`, and `AdmissionQueueStartCmd`. It also confirms that whole-aggregate saves can delete omitted entries and that current intake accepts an optional client-supplied date plus Service Point name/code. The schema alone therefore does not establish Decision B or the trusted configuration boundary.
+
+#### Reconciliation decisions — resolved
+
+1. Queue Prefix is exactly one normalized uppercase ASCII character; Queue Number is exactly four digits. Use `VARCHAR(1)` and labels such as `A0032`.
+2. Legacy `ISequencer` is the sole allocator; do not add `LastQueueNumber`.
+3. Priority controls indication and default sorting only; it never automatically calls or selects an entry.
+4. `RowVersion` protects concurrent current-call updates; separate `AnnouncementVersion` increments only for Call/Recall requiring audio.
+5. Queue Entry identity remains composite `(AntrianId, NoUrut)` for current-call, provenance, and cross-context outcome references.
+6. Persist `CreationReason` plus nullable composite source `(SourceAntrianId, SourceNoUrut)`, and optional session-scoped ClientRequestId with filtered uniqueness `(AntrianId, ClientRequestId)`.
+7. Registration Outcome is persisted by Admisi Rajal outside queue tables. Queue persistence may exclude the table, but the final outcome concept is not excluded.
+
+**Remaining implementation work:** publish the additive SQL/mapping contract with exact lengths/defaults, composite foreign keys, filtered indexes, expected-state/CAS operations, audit fields, backfill, and rollback. Verify the legacy sequencer bound/no-cycle behavior. Do not extend whole-aggregate deletion to historical records.
 
 ### GAP-READY-010 — API, identity, and compatibility contracts are deferred beyond safe transport implementation
 
@@ -351,7 +366,7 @@ An agent must not yet:
 | Architecture increment | Readiness | Blocking items | Safe next action |
 |---|---|---|---|
 | 1. Service Point/configuration authority | Conditional | GAP-READY-009, 010; prefix backfill; workstation integrity | Implement Service Point persistence and explicit configuration adapters; no Loket/Kiosk/Display masters. |
-| 2. Retry-aware labelled intake | No-Go | GAP-READY-008, 009, 010, 011 | Implement atomic LastQueueNumber; define optional ClientRequestId contract and Booking-assistance orchestration before production. |
+| 2. Retry-aware labelled intake | Conditional | GAP-READY-008, 009, 010, 011 | Verify bounded legacy `ISequencer`; implement session-scoped optional ClientRequestId and Booking-assistance orchestration before production. |
 | 3. Operational projections | Partial | GAP-READY-009, 010 | Implement Decision D worklist plus shared current-per-Loket state/version and define display read policy. |
 | 4. Call and service transitions | No-Go | GAP-READY-007, 009, 010 | Define database active-work claim, controlled workstation Loket source, CallCount updates, and transport contract. |
 | 5. Best-effort display refresh | Partial foundation only | GAP-READY-009, 010, 018 | Current-state/version plus polling is implementable; topology, polling interval, access policy, and observability still gate production. |
@@ -387,7 +402,7 @@ An agent must not yet:
 
 - publish tables, columns, enum values, indexes, CAS operations, idempotency algorithm, audit fields, and migration order;
 - explicitly protect cross-session active Loket work;
-- validate atomic LastQueueNumber allocation and concurrent lazy session creation;
+- validate bounded/no-cycle `ISequencer` allocation and concurrent lazy session creation;
 - define prefix backfill and rollback.
 
 ### Gate 4 — Approve API and rollout contracts
@@ -405,4 +420,4 @@ For each increment: Domain tests → Application tests → SQL/DAL integration t
 
 The target architecture is a strong architecture **analysis**, but it is not yet a complete implementation contract. Its major boundaries are safe, and the current late-identification work provides a viable base. The remaining risk is not primarily coding difficulty; it is the possibility that an agent will fill policy and authority gaps with plausible but unauthorized behavior.
 
-The implementation can proceed safely only as gated slices. Decisions A–D remain intact; conflicting parts of Decision E are superseded by the developer-approved simplified V1 profile. Queue Session, configured Loket/Kiosk, passive display, CallCount, Priority redirection, optional ClientRequestId, post-commit SignalR, and universal Loket service access now have direction, but production implementation still requires the persistence, concurrency, API/security, migration, polling, and deployment contracts identified above.
+The implementation can proceed safely only as gated slices. Persistence remains **Partially supported**, but all seven persistence reconciliation questions are now resolved. Reuse `BILRG_Antrian` and `BILRG_AntrianEntry`; retain bounded legacy `ISequencer`; add the missing mapped fields, Service Point master, current-call state with separate versions, composite provenance, session-scoped optional idempotency, and Admisi Rajal-owned Registration Outcome. Complete the remaining SQL contract, concurrency, API/security, migration, and deployment gates incrementally without duplicating tables or concepts.
