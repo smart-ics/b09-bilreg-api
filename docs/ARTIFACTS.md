@@ -89,16 +89,18 @@
 
 Persistent-workspace Phase 2 close-out summary (frontend docs tree): `c012_myhospital_web/docs/modules/admisi-ranap/persistent-workspace-phase-2-implementation-summary.md`
 
-### Admisi — Booking / Jadwal Praktek (`docs/contexts/admisi/`)
+### Admisi — Rawat Jalan (`docs/contexts/admisi-rajal/`)
 
 | Path | Purpose |
 |------|---------|
-| `docs/contexts/admisi/jadwal-praktek-investigation-report.md` | Codebase investigation — `JadwalPraktekType` usage, consumers, and update paths |
-| `docs/contexts/admisi/jadwal-praktek-harian-architecture-analysis.md` | Architecture analysis — daily schedule (`JadwalPraktekHarian`) design, resolver, migration roadmap |
-| `docs/contexts/admisi/jadwal-praktek-harian-deployment-manual.md` | Deployment & operations — SQL order, feature toggle rollout, validation, rollback |
-| `docs/contexts/admisi/adr/ADR-001-runtime-effective-schedule.md` | ADR — runtime `JadwalPraktekEffective` and resolver as single authority |
-| `docs/contexts/admisi/adr/ADR-002-manual-override-independence.md` | ADR — `Source = MANUAL` daily rows independent from template |
-| `docs/contexts/admisi/adr/ADR-003-booking-schedule-references.md` | ADR — dual nullable schedule IDs on booking |
+| `docs/contexts/admisi-rajal/admisi-rajal-domain.md` | Admisi Rajal — canonical business truth, boundaries, foundational capabilities, and Work List ownership |
+| `docs/contexts/admisi-rajal/admisi-rajal-domain-id.md` | Admisi Rajal — Bahasa Indonesia semantic companion |
+| `docs/contexts/admisi-rajal/jadwal-praktek-investigation-report.md` | Codebase investigation — `JadwalPraktekType` usage, consumers, and update paths |
+| `docs/contexts/admisi-rajal/jadwal-praktek-harian-architecture-analysis.md` | Architecture analysis — daily schedule (`JadwalPraktekHarian`) design, resolver, migration roadmap |
+| `docs/contexts/admisi-rajal/jadwal-praktek-harian-deployment-manual.md` | Deployment & operations — SQL order, feature toggle rollout, validation, rollback |
+| `docs/contexts/admisi-rajal/adr/ADR-001-runtime-effective-schedule.md` | ADR — runtime `JadwalPraktekEffective` and resolver as single authority |
+| `docs/contexts/admisi-rajal/adr/ADR-002-manual-override-independence.md` | ADR — `Source = MANUAL` daily rows independent from template |
+| `docs/contexts/admisi-rajal/adr/ADR-003-booking-schedule-references.md` | ADR — dual nullable schedule IDs on booking |
 
 ### Tarif (`docs/contexts/tarif/`)
 

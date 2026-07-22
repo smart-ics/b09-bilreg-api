@@ -1,6 +1,6 @@
 # jadwal-praktek-harian-deployment-manual.md — Deployment & Operations
 
-> **Canonical location:** `docs/contexts/admisi/jadwal-praktek-harian-deployment-manual.md`  
+> **Canonical location:** `docs/contexts/admisi-rajal/jadwal-praktek-harian-deployment-manual.md`  
 > **Related:** [`jadwal-praktek-harian-architecture-analysis.md`](jadwal-praktek-harian-architecture-analysis.md) (design), [`adr/`](adr/) (decisions), [`jadwal-praktek-investigation-report.md`](jadwal-praktek-investigation-report.md) (baseline)
 
 ---
