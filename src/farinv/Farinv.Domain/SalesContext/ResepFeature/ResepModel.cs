@@ -24,12 +24,15 @@ public class ResepModel : IResepKey
         Iter = iter;
         Description = description;
         AuditTrail = auditTrail;
-        _listObat = listObat.ToList();
+        _listObat = [.. listObat];
     }
 
-    public static ResepModel Key(string id) => new ResepModel(id, RegModel.Default.ToReff(), BodyMetricType.Default(),
-        DokterType.Default.ToReff(), LayananType.Default.ToReff(), UrgenitasType.Default, TipeBrgType.Default.ToReff(), 
-        0, AppConst.DASH, AuditTrailType.Default, new List<ResepObatType>());
+    public static ResepModel Key(string id)
+    {
+        return new ResepModel(id, RegModel.Default.ToReff(), BodyMetricType.Default(),
+        DokterType.Default.ToReff(), LayananType.Default.ToReff(), UrgenitasType.Default, TipeBrgType.Default.ToReff(),
+        0, AppConst.DASH, AuditTrailType.Default, []);
+    }
 
     public static ResepModel Create(RegModel reg, BodyMetricType bodyMetric, DokterType dokter, LayananType layanan, 
         UrgenitasType urgenitasType, TipeBrgType tipeBrg, int iter, string description, string userId)
@@ -37,7 +40,7 @@ public class ResepModel : IResepKey
         var newId = Ulid.NewUlid().ToString();
         var model = new ResepModel(newId, reg.ToReff(), bodyMetric, dokter.ToReff(), layanan.ToReff(),
             urgenitasType, tipeBrg.ToReff(), iter, description, AuditTrailType.Create(userId, DateTime.Now),
-            new List<ResepObatType>());
+            []);
         return model;
     }
 
@@ -87,9 +90,8 @@ public class ResepModel : IResepKey
     
     public void AddItemRacik(IBrg obatRacik, IBrg itemRacik, SatuanType satuan, decimal qty, decimal dosis, string dosisTxt)
     {
-        var obat = _listObat.FirstOrDefault(x => x.Brg.BrgId == obatRacik.BrgId);
-        if (obat is null)
-            throw new KeyNotFoundException($"$Obat Racik tidak ditemukan.\n'{obatRacik}'");
+        var obat = _listObat.FirstOrDefault(x => x.Brg.BrgId == obatRacik.BrgId) 
+            ?? throw new KeyNotFoundException($"$Obat Racik tidak ditemukan.\n'{obatRacik}'");
         obat.AddItemRacik(itemRacik, satuan, qty, dosis, dosisTxt);
     }
     
