@@ -12,7 +12,7 @@
 
 ## 1. Purpose
 
-Provide one repeatable end-to-end procedure for issuing an admission Queue Label, calling the Queue Entry to an authorized Loket, starting Registration Assistance, resolving the applicable Patient Journey, recording the registration outcome, and completing the queue service.
+Provide one repeatable end-to-end procedure for issuing an admission Queue Label, calling the Queue Entry to a workstation-configured Loket, starting Registration Assistance, resolving the applicable Patient Journey, recording the registration outcome, and completing the queue service.
 
 This SOP applies to Walk-In Patients and Booking Patients whose Self-Registration requires assistance.
 
@@ -20,12 +20,12 @@ This SOP applies to Walk-In Patients and Booking Patients whose Self-Registratio
 
 | Actor | Type | Operational responsibility |
 |---|---|---|
-| Patient or Visitor | Human | Chooses an offered Service Point, retains the issued Queue Label, responds to a Queue Call, and presents available evidence. |
-| Admission Officer | Human | Operates an assigned Loket, selects an authorized Service Point, calls Queue Entries, starts Registration Assistance, resolves the applicable Patient Journey, and records the registration outcome. |
+| Patient or Visitor | Human | Chooses a locally displayed active Service Point, retains the issued Queue Label, responds to a Queue Call, and presents available evidence. |
+| Admission Officer | Human | Operates the workstation-configured Loket, may select any active Service Point, calls Queue Entries, starts Registration Assistance, resolves the applicable Patient Journey, and records the registration outcome. |
 | Queue Operations Supervisor | Human | Resolves authorization, no-show, display outage, and Service Point transfer exceptions that require accountable approval. |
-| Kiosk | Application | Displays the Service Points offered at that Kiosk, requests one Queue Entry, shows the issued Queue Label, and reports printing status. |
+| Kiosk | Application | Displays locally configured Service Points, requests one Queue Entry with optional ClientRequestId, shows the issued Queue Label, and reports printing status. |
 | Queue Ticket Printer | Device | Prints or reprints the Queue Label issued by the Kiosk. |
-| Admission Module | Application | Displays Loket assignment and authorized Service Points, presents the Work List, records queue actions, supports Journey Resolution and registration, and displays observable outcomes. |
+| Admission Module | Application | Uses the workstation-configured Loket, presents active Service Points and the Work List, records queue actions, supports Journey Resolution and registration, and displays observable outcomes. |
 | Queue Display | Application | Presents the current Queue Call and destination Loket and, when enabled, announces the call through audio. |
 | Patient Tracker Queue Service | Subsystem | Provides Queue Session, Queue Entry, Queue Label, Queue Call, identity-association, and queue-state results to the participating applications. |
 | Admisi Rajal Registration Service | Subsystem | Provides Journey Resolution context and the authoritative Outpatient Registration outcome. |
@@ -34,9 +34,9 @@ This SOP applies to Walk-In Patients and Booking Patients whose Self-Registratio
 
 1. The required Admission Queue Operations capabilities have been released for operational use.
 
-2. At least one active admission Service Point is offered through the Kiosk.
+2. At least one active admission Service Point is present in local Kiosk configuration.
 
-3. The active Service Point has a recognizable name and Queue Prefix, and an applicable Queue Session is available.
+3. The Service Point is active and has a recognizable name and Queue Prefix. Its daily Queue Session may be established lazily by the first valid intake.
 
 4. The Kiosk can request a Queue Entry and display the resulting Queue Label.
 
@@ -46,9 +46,9 @@ This SOP applies to Walk-In Patients and Booking Patients whose Self-Registratio
 
 7. The Admission Officer has signed in to the Admission Module.
 
-8. The Admission Module shows one active Loket assignment for the Admission Officer's workstation or session.
+8. The Admission Module obtains a valid Loket identifier from trusted workstation configuration.
 
-9. The assigned Loket has at least one active Service Point authorization.
+9. Every configured Loket may serve every active admission Service Point in V1.
 
 10. The Patient or Visitor requires assisted outpatient registration as a Walk-In or after Booking Self-Registration requires assistance.
 
@@ -60,9 +60,9 @@ This SOP applies to Walk-In Patients and Booking Patients whose Self-Registratio
 
 2. **Patient or Visitor** chooses the applicable Service Point, such as BPJS Admission or General Admission.
 
-3. **Kiosk** submits one queue-intake request for the chosen Service Point and shows a processing indication.
+3. **Kiosk** submits one queue-intake request for the chosen Service Point without supplying an authoritative Business Date and shows a processing indication.
 
-4. **Patient Tracker Queue Service** returns one Queue Entry with its Queue Label.
+4. **Patient Tracker Queue Service** resolves the server Business Date, verifies that the submitted ServicePointId is active, loads or lazily establishes the dedicated Queue Session for that Service Point and Business Date, atomically advances LastQueueNumber, and returns one Queue Entry with its Queue Label. When ClientRequestId is supplied, the same identifier returns the existing result.
 
 5. **Kiosk** displays the Queue Label and sends that same Queue Label to **Queue Ticket Printer**.
 
@@ -74,25 +74,25 @@ This SOP applies to Walk-In Patients and Booking Patients whose Self-Registratio
 
 ### 4.2 Prepare the Admission Loket
 
-9. **Admission Officer** opens the Admission Module and verifies the displayed Loket assignment before serving a queue.
+9. **Admission Officer** opens the Admission Module and verifies the workstation-configured Loket before serving a queue.
 
-10. **Admission Module** displays only the Service Points authorized for the assigned Loket.
+10. **Admission Module** displays active Service Points; V1 applies no per-Loket authorization filter.
 
 11. **Admission Officer** selects the Service Point to serve.
 
-12. **Admission Module** displays the active Work List for the selected Service Point, including each Waiting Queue Label.
+12. **Admission Module** displays the active enriched Admisi Rajal Work List for the selected Service Point by composing the Patient Tracker queue-only Admission Queue Worklist Projection with Booking, identity, Registration, and administrative context. Queue membership, state, call state, LoketKey, timestamps, Queue Label, Priority indicator, and optional TrackerId remain Patient Tracker truth. Priority may affect display/sorting but never auto-selects an entry.
 
-13. **Admission Officer** verifies that no other Queue Entry is currently outstanding or In Service at the assigned Loket before calling another Queue Entry.
+13. **Admission Officer** verifies that no other Queue Entry is currently outstanding or In Service at the configured Loket before calling another Queue Entry.
 
 ### 4.3 Call the Patient or Visitor
 
 14. **Admission Officer** selects one Waiting Queue Entry from the Work List and invokes **Call**.
 
-15. **Patient Tracker Queue Service** records the Queue Call only when the Queue Entry remains available and the assigned Loket remains authorized.
+15. **Patient Tracker Queue Service** conditionally records the Queue Call, increments CallCount, updates `BILRG_AdmLoketCurrentCall`, and increments AnnouncementVersion in the same transaction when audio is required.
 
 16. **Admission Module** displays the successful Queue Call with the Queue Label and destination Loket.
 
-17. **Queue Display** presents the Queue Label and destination Loket and, when audio is enabled, announces the same call.
+17. After a post-commit SignalR refresh hint or periodic poll, **Queue Display** reloads current state. It presents the Queue Label and destination Loket and plays audio only for a newly observed AnnouncementVersion.
 
 18. **Patient or Visitor** compares the announced Queue Label with the retained Queue Label and approaches the announced Loket.
 
@@ -100,13 +100,13 @@ This SOP applies to Walk-In Patients and Booking Patients whose Self-Registratio
 
 ### 4.4 Start Registration Assistance
 
-20. **Admission Officer** invokes the action for starting service only after the Patient or Visitor presents at the assigned Loket.
+20. **Admission Officer** invokes the action for starting service only after the Patient or Visitor presents at the configured Loket.
 
 21. **Patient Tracker Queue Service** acknowledges the outstanding Queue Call and changes the Queue Entry result from `Waiting` to `In Service`.
 
 22. **Admission Module** displays the Queue Entry as `In Service` and removes it from the Waiting Work List.
 
-23. **Queue Display** stops presenting the call as an outstanding call after receiving the updated result.
+23. **Queue Display** stops presenting the call as outstanding after a refresh or periodic poll reloads the updated current state.
 
 ### 4.5 Resolve the Patient Journey and perform Registration Assistance
 
@@ -128,13 +128,13 @@ This SOP applies to Walk-In Patients and Booking Patients whose Self-Registratio
 
 32. For a Walk-In registration that establishes a new journey, **Admisi Rajal Registration Service** establishes the Outpatient Registration and its Patient Tracker association; **Patient Tracker Queue Service** attaches the existing Queue Entry to that Tracker.
 
-33. **Admisi Rajal Registration Service** displays either the established Outpatient Registration or the accountable `Registration Not Established` outcome.
+33. **Admisi Rajal Registration Service** persists and displays one final Registration Outcome: `Established` with RegId, or `NotEstablished` with a required ReasonCode. The outcome retains OutcomeId, QueueEntryId, Explanation when supplied, DecidedAt, and DecidedBy.
 
 34. **Admission Officer** verifies the displayed registration outcome and completes any remaining operational communication with the Patient or Visitor.
 
 ### 4.6 Complete the queue service
 
-35. **Admission Officer** invokes the action for completing queue service after an accountable registration outcome has been displayed and no further Registration Assistance remains at the Loket.
+35. **Admission Officer** invokes the action for completing queue service only after the final Registration Outcome has been persisted and displayed and no further Registration Assistance remains at the Loket.
 
 36. **Patient Tracker Queue Service** changes the Queue Entry result from `In Service` to `Done`.
 
@@ -147,6 +147,7 @@ This SOP applies to Walk-In Patients and Booking Patients whose Self-Registratio
 ### 5.1 No Service Point is available at the Kiosk
 
 - **Kiosk** displays that no admission service is currently available and does not issue a Queue Label.
+- **Patient Tracker Queue Service** rejects intake when the submitted ServicePointId is not active. Kiosk-local offering configuration is not server authority.
 - **Patient or Visitor** requests direction from an Admission Officer or Queue Operations Supervisor.
 - **Queue Operations Supervisor** directs the Patient or Visitor to an available Kiosk, Service Point, or approved manual intake procedure.
 
@@ -159,15 +160,15 @@ This SOP applies to Walk-In Patients and Booking Patients whose Self-Registratio
 
 ### 5.3 Queue intake result is uncertain
 
-- **Kiosk** requests the result of the same intake attempt instead of initiating a second attempt.
+- When ClientRequestId was supplied, **Kiosk** requests the result using that same identifier instead of initiating a second attempt. Without it, retry-safe recovery is not guaranteed.
 - **Patient Tracker Queue Service** returns the previously issued Queue Label when the original attempt succeeded.
 - **Kiosk** displays or reprints that Queue Label; **Patient or Visitor** does not obtain a duplicate Queue Number for the same attempt.
 
-### 5.4 Loket assignment or Service Point authorization is unavailable
+### 5.4 Loket workstation configuration is unavailable
 
-- **Admission Module** does not present the affected Service Point as available for service at that Loket.
-- **Admission Officer** does not call a Queue Entry from the unavailable Service Point.
-- **Queue Operations Supervisor** corrects the operational assignment or directs the Admission Officer to an authorized Loket.
+- **Admission Module** blocks Call and Recall when LoketKey is missing or known to be duplicated.
+- **Admission Officer** does not call a Queue Entry until configuration is valid.
+- **Queue Operations Supervisor** corrects the controlled workstation configuration or directs the Admission Officer to another uniquely configured Loket. Renaming a PC requires a controlled configuration update.
 
 ### 5.5 Queue Entry was already called or claimed elsewhere
 
@@ -177,24 +178,26 @@ This SOP applies to Walk-In Patients and Booking Patients whose Self-Registratio
 
 ### 5.6 Patient or Visitor does not present after Call
 
-- **Admission Officer** invokes the Recall action for the same Queue Entry when another Call Attempt is appropriate.
-- **Patient Tracker Queue Service** retains the same Queue Label and records the additional Call Attempt.
+- **Admission Officer** invokes Recall for the same Queue Entry when another call is appropriate.
+- **Patient Tracker Queue Service** retains the same Queue Label, increments CallCount, updates `BILRG_AdmLoketCurrentCall`, and increments AnnouncementVersion when the Recall requires audio. No detailed Call Attempt history is retained in V1.
 - **Queue Display** presents and optionally announces the Recall with the same Queue Label and Loket.
-- When the applicable no-show threshold is reached, **Admission Officer** requests disposition from **Queue Operations Supervisor**.
+- CallCount is informational only. The system does not calculate thresholds, mark No-Show, postpone the entry, apply a “next five patients” rule, or choose the next entry.
+- **Admission Officer** manually requests disposition from **Queue Operations Supervisor** according to hospital policy.
 - **Queue Operations Supervisor** selects the approved disposition: retain the Queue Entry as `Waiting` for later service or conclude it as `Withdrawn`/No-Show.
 - **Admission Module** displays the resulting disposition; **Admission Officer** does not mark the Queue Entry `Done` merely because the Patient or Visitor did not present.
 
 ### 5.7 Patient or Visitor chose an inapplicable Service Point
 
 - **Admission Officer** stops before starting Registration Assistance when the mismatch is recognized while the Queue Entry is still `Waiting`.
-- **Admission Officer** requests a Service Point transfer from **Queue Operations Supervisor**.
-- **Queue Operations Supervisor** approves or rejects the transfer using the available evidence.
+- **Admission Officer** requests redirection to another Service Point from **Queue Operations Supervisor**.
+- **Queue Operations Supervisor** approves or rejects the redirection using available evidence. On approval, the original entry receives an explicit non-active disposition and a new destination entry is created with Priority, CreationReason `Redirected`, and required SourceAntrianEntryId.
 - When approved, **Patient Tracker Queue Service** displays the original Queue Entry as `Withdrawn` and issues a replacement Queue Entry and Queue Label for the applicable Service Point.
-- **Admission Module** shows the relationship to the original Queue Entry; **Admission Officer** communicates the replacement Queue Label and waiting destination to **Patient or Visitor**.
+- **Admission Module** shows the Priority indicator and relationship to the original Queue Entry. Priority does not force calling order; **Admission Officer** retains selection authority and communicates the replacement Queue Label and waiting destination.
 
 ### 5.8 Queue Display or audio is unavailable
 
 - **Queue Display** shows its unavailable condition when observable.
+- **Queue Display** reloads `BILRG_AdmLoketCurrentCall` after reconnect and every configured polling interval; SignalR is only a refresh trigger.
 - **Admission Officer** pauses new Queue Calls unless **Queue Operations Supervisor** has approved a temporary manual-calling procedure.
 - Under an approved manual procedure, **Admission Officer** communicates the same Queue Label and Loket without changing the Queue Entry or issuing another Queue Number.
 - **Queue Operations Supervisor** restores normal display-based calling when the Queue Display becomes available.
@@ -215,13 +218,25 @@ This SOP applies to Walk-In Patients and Booking Patients whose Self-Registratio
 
 - **Admisi Rajal Registration Service** displays the validation problem without reporting an established Registration.
 - **Admission Officer** corrects the displayed data while the Queue Entry remains `In Service` and resubmits the registration attempt.
+- The validation problem does not create a Registration Outcome or OutcomeId.
 - **Admission Officer** does not complete queue service until an accountable registration outcome is displayed.
 
 ### 5.12 Registration is not established after accountable resolution
 
-- **Admisi Rajal Registration Service** displays `Registration Not Established` with the available operational explanation.
+- **Admission Officer** explicitly decides the final `NotEstablished` result and selects the required ReasonCode after accountable resolution; it is not inferred from an error, timeout, or absent Registration.
+- **Admisi Rajal Registration Service** persists OutcomeId, QueueEntryId, Result `NotEstablished`, ReasonCode, Explanation when supplied, DecidedAt, and DecidedBy without a RegId.
+- **Admisi Rajal Registration Service** displays the persisted `Registration Not Established` outcome and its available operational explanation.
 - **Admission Officer** communicates the outcome and any approved next action to the Patient or Visitor.
-- When no further Registration Assistance remains, **Admission Officer** completes the queue service; **Admission Module** displays the Queue Entry as `Done` without presenting an Outpatient Registration as established.
+- When no further Registration Assistance remains, **Admission Officer** completes the queue service using that OutcomeId; **Admission Module** displays the Queue Entry as `Done` without presenting an Outpatient Registration as established.
+- The Queue Entry may remain Anonymous when no Patient Journey was established; the outcome and queue completion do not create one.
+
+### 5.13 Queue Session has allocated Queue Number 9999
+
+- **Patient Tracker Queue Service** rejects any further Queue Number allocation from that Queue Session after Queue Number 9999 has been allocated.
+- **Patient Tracker Queue Service** does not wrap the counter, issue a number above 9999, change the Queue Label format, or create a second session for the same Service Point and Business Date.
+- **Kiosk** displays that the selected Service Point cannot accept further intake on the current Business Date and does not automatically retry with a caller-selected date.
+- **Queue Operations Supervisor** directs the Patient or Visitor to another active Service Point when operationally applicable; otherwise intake resumes only on the next server-resolved Business Date.
+- Existing Queue Labels from the exhausted Queue Session remain unchanged and valid for their existing Queue Entries.
 
 ## 6. Completion Criteria
 
@@ -235,13 +250,13 @@ The procedure is complete when all applicable observable results are present:
 
 4. The Booking path reused the applicable existing Booking Patient Tracker, or the Walk-In path selected an applicable existing Patient Tracker or associated the entry with the Tracker established by Registration.
 
-5. The Admission Module displayed either an established Outpatient Registration or `Registration Not Established`.
+5. The Admission Module displayed a persisted final Registration Outcome with stable OutcomeId: `Established` with RegId, or `NotEstablished` with ReasonCode.
 
 6. The Queue Entry displays `Done` after Registration Assistance ends, or displays `Withdrawn` when the approved procedure ended participation before service start.
 
 7. The completed or withdrawn Queue Entry is absent from the active Waiting and In Service Work Lists.
 
-8. The assigned Loket has no remaining outstanding or In Service Queue Entry from this procedure.
+8. The configured Loket has no remaining outstanding or In Service Queue Entry from this procedure.
 
 ## 7. References
 

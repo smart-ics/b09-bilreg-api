@@ -31,7 +31,7 @@ The target is actor-facing and integration-facing but UI-agnostic:
 - Bilreg API is the composition and transport host; it is not the queue authority.
 - Patient Tracker aggregates and application use cases are the write authority.
 
-Major current constraints are the existing `BILRG_Antrian` / `BILRG_AntrianEntry` persistence shape, Dapper DALs, ambient `TransHelper` transactions, `ISequencer`, caller-supplied `UserId`, generic `[Authorize]`, and whole-aggregate queue saves. Major gaps are the absent resource catalogs, Queue Prefix, Queue Label, Queue Call, Loket/Kiosk assignment, display projection, real-time transport, durable notification delivery, contextual authorization, audit coverage, withdrawal, transfer, and intake idempotency.
+Major current constraints are the existing `BILRG_Antrian` / `BILRG_AntrianEntry` persistence shape, Dapper DALs, ambient `TransHelper` transactions, `ISequencer`, caller-supplied `UserId`, generic `[Authorize]`, and whole-aggregate queue saves. Major V1 gaps are the dedicated daily session/LastQueueNumber contract, Service Point catalog, Queue Prefix/Label, current call state/CallCount, trusted workstation configuration, shared current display state/version, SignalR/polling transport, audit coverage, Priority redirection, and conditional intake idempotency.
 
 ## 2. Codebase Evidence and Constraints
 
@@ -42,13 +42,13 @@ Major current constraints are the existing `BILRG_Antrian` / `BILRG_AntrianEntry
 | Queue Entry states are only `Waiting`, `InService`, and `Done` | `AntrianStatusEnum.cs` | `Withdrawn` and Queue Call disposition are target domain-realization gaps. |
 | Service Point is only a two-field value snapshot | `ServicePointType.cs` | It cannot satisfy the new Service Point Aggregate, Queue Prefix, lifecycle, or catalog queries. |
 | Unused Service Point persistence abstractions exist without an implementation | `ServicePointStatusEnum.cs`, Application-layer `IServicePointDal.cs` | Do not treat Service Point persistence as existing. Replace the Application DAL contract with an aggregate repository; keep DAL contracts and SQL mapping in Infrastructure. |
-| Anonymous intake trusts caller-supplied Service Point code and name | `QueAnonymousIntakeCmd.cs` | Target intake must resolve the Service Point from the authenticated Kiosk offering; caller text is not authority. |
+| Anonymous intake trusts caller-supplied Service Point code/name and permits optional `TglYmd` | `QueAnonymousIntakeCmd.cs` | Target intake resolves Business Date server-side and validates submitted ServicePointId against active Service Point persistence; local Kiosk offerings are presentation only. |
 | One configured admission Service Point is authoritative | `AdmisiRajalOptions.cs`, `DomainService.cs`, API settings | Configuration is a transitional constraint. Target authority is the Service Point repository; configuration may only seed or select a compatibility default. |
 | Admission `start` immediately serves an anonymous entry | `AdmissionQueueStartCmd.cs` | The current command conflates call and service start and carries no Loket. New clients must use separate Call and Start Service use cases. |
 | Queue identity and entry persistence exist | `AntrianDto.cs`, `AntrianEntryDto.cs`, `AntrianDal.cs`, `AntrianEntryDal.cs` | Existing tables require additive migration and compatibility mapping, not replacement. |
 | Existing queue transaction tables do not carry the full audit-column set required by `docs/DATABASE.md` | `BILRG_Antrian.sql`, `BILRG_AntrianEntry.sql` | Migration design must add accountable mutation evidence or provide the approved equivalent; new transaction tables must follow the current standard. |
 | Queue header uniqueness uses `SequenceTag` | `BILRG_Antrian_M1_ServicePointCode_Alter.sql` | Queue Session lookup remains deterministic, but Queue Prefix must not be inferred from `SequenceTag`. |
-| Queue numbers use `ISequencer` and `SequenceTag` | `AntrianModel.AddEntry`, `AntrianFactory.Create(ServicePointType, DateOnly)` | Preserve the sequencer initially, but bind its sequence key to the authoritative Queue Session and add intake idempotency. |
+| Queue numbers currently use `ISequencer` and `SequenceTag` | `AntrianModel.AddEntry`, `AntrianFactory.Create(ServicePointType, DateOnly)` | Target V1 replaces this admission allocation path with atomic LastQueueNumber on the dedicated Queue Session row. |
 | Whole-aggregate repository save compares every entry | `AntrianRepo.SaveChanges` | Concurrent queue actions can overwrite each other. Target lifecycle commands require conditional single-transition persistence. |
 | Whole-aggregate comparison physically deletes persisted entries missing from the in-memory list | `AntrianRepo.CompareCollections` and `AntrianEntryDal.Delete` | New admission operations must not use removal to represent withdrawal, no-show, or transfer; historical entries require explicit status/history. |
 | Anonymous InService Tracker association has compare-and-set | `TrySaveAnonymousInServiceTransition`, `UpdateFromAnonymousInService` | Reuse this proven pattern for call, start, withdraw, transfer, and complete transitions. |
@@ -88,12 +88,12 @@ Major current constraints are the existing `BILRG_Antrian` / `BILRG_AntrianEntry
 
 | Module | Responsibility | Owns | Depends on | Must not own |
 |---|---|---|---|---|
-| Queue Resource Catalog | Maintain queue resources and permitted relationships | Service Point, Loket, Kiosk aggregates and assignments | Authenticated administration context, business clock | Registration outcome, Patient identity, UI configuration |
-| Queue Execution | Allocate and transition admission queue participation | Queue Session, Queue Entry, Queue Call, Call Attempt, Queue Label snapshot | Resource identities, sequencer, business clock | Coverage eligibility or Registration outcome |
-| Queue Operational Projections | Provide Kiosk offerings, Loket worklists, display state, history, and recovery views | Read-only projections | Queue Resource Catalog and Queue Execution persistence | Lifecycle decisions or write authority |
-| Queue Notification Delivery | Deliver committed queue changes to subscribed clients | Durable notification delivery state | Queue Execution facts and real-time transport | Queue state or display interpretation policy |
+| Queue Resource Catalog | Maintain managed queue resources | Service Point only in Pragmatic V1 | Authenticated administration context, business clock | Loket, Kiosk, Queue Display, Announcement Scope, Registration outcome, Patient identity |
+| Queue Execution | Allocate and transition admission queue participation | Dedicated Queue Session with LastQueueNumber; Queue Entry with current call state, CallCount, Priority, CreationReason, and SourceAntrianEntryId | Service Point identity, workstation-configured LoketKey, business clock | Coverage eligibility or Registration outcome |
+| Queue Operational Projections | Provide queue-only worklists, shared current-per-Loket display state, and recovery views | Read-only projections and current display state | Service Point and Queue Execution persistence | Lifecycle decisions, write authority, or Admisi-owned enrichment |
+| Queue Notification Delivery | Publish best-effort refresh hints after commit | No durable delivery state in V1 | Current display state and SignalR transport | Queue truth, retries, or delivery guarantees |
 | Journey Association | Associate an anonymous entry with one applicable Patient Tracker | Queue Entry association and Tracker queue evidence within their aggregates | Patient Tracker repository, Journey Resolution application contracts | Canonical Patient master or Registration truth |
-| Admisi Rajal Registration | Establish or reject outpatient Registration | Outpatient Registration and registration outcome | Patient Tracker application contracts | Queue numbering, Queue Call, Queue Label, or queue lifecycle authority |
+| Admisi Rajal Registration | Establish Outpatient Registration or record an explicit final NotEstablished decision | Outpatient Registration and Registration Outcome aggregate | Patient Tracker application contracts | Queue numbering, Queue Call, Queue Label, or queue lifecycle authority |
 | Kiosk client | Initiate intake and present the issued result | Client session and local presentation only | Bilreg application interface, local printer | Service Point authority, sequence generation, Queue Entry state |
 | Queue Display client | Present committed display projection and announcements | Client presentation state only | Snapshot query and notification stream | Call selection, Queue Entry mutation, authoritative history |
 | Admission Module client | Compose queue and Registration use cases for an officer | Client interaction state only | Bilreg application interfaces | Queue, Tracker, or Registration business authority |
@@ -104,9 +104,9 @@ Kiosk and Queue Display are actor-facing hosts, not new bounded contexts. They m
 
 | Layer | Feature responsibilities | Permitted dependencies | Prohibited dependencies |
 |---|---|---|---|
-| Domain — `Bilreg.Domain/AdmisiContext/AntrianFeature` | Service Point, Loket, Kiosk, Queue Session, Queue Entry, Queue Call, Call Attempt behavior; Queue Label formation; lifecycle invariants | Domain value objects and shared pure utilities | MediatR, Dapper, SQL, HTTP, SignalR, configuration, DALs |
-| Application — `Bilreg.Application/AdmisiContext/AntrianFeature` | Commands, queries, orchestration, repository ports, authorization ports, transactions, notification-outbox port, cross-context contracts | Domain and application abstractions | SQL, Dapper, ASP.NET types, Hub contexts, database DTOs |
-| Infrastructure — `Bilreg.Infrastructure/AdmisiContext/AntrianFeature` | Repository implementations, DTO mapping, Dapper DALs, projection DALs, conditional transition persistence, outbox storage and claiming | Application ports, Domain models, SQL and external SDKs | Business decisions, actor authorization policy, UI behavior |
+| Domain — `Bilreg.Domain/AdmisiContext/AntrianFeature` | Service Point, Queue Session, Queue Entry/current call state/CallCount behavior; Queue Label formation; lifecycle invariants | Domain value objects and shared pure utilities | MediatR, Dapper, SQL, HTTP, SignalR, configuration, DALs |
+| Application — `Bilreg.Application/AdmisiContext/AntrianFeature` | Commands, queries, orchestration, repository ports, transactions, post-commit refresh port, cross-context contracts | Domain and application abstractions | SQL, Dapper, ASP.NET types, Hub contexts, database DTOs |
+| Infrastructure — `Bilreg.Infrastructure/AdmisiContext/AntrianFeature` | Repository implementations, DTO mapping, Dapper DALs, projection/current-display DALs, conditional transition persistence, SignalR adapter | Application ports, Domain models, SQL and external SDKs | Business decisions, UI behavior |
 | API — `Bilreg.Api` | Authentication, device/actor context mapping, transport adaptation, MediatR dispatch, SignalR hub transport, runtime registration | Application and Infrastructure composition | Aggregate mutation, queue sequencing, lifecycle decisions |
 | External clients | Kiosk intake, Queue Display presentation, Admission Module composition | Published application interfaces | Direct database access, caller-generated authoritative identities or state |
 
@@ -119,23 +119,21 @@ Domain methods decide whether a transition is valid. Application handlers author
 | UC-AQO-001 | Target | Establish Admission Service Point | Command | Create one active Service Point | Queue Operations Administrator | Service Point | Service Point repo, actor context, clock, audit | Service Point and audit committed atomically |
 | UC-AQO-002 | Target | Amend Admission Service Point | Command | Change its recognized name or future Queue Prefix | Queue Operations Administrator | Service Point | Service Point repo, actor context, clock, audit | New catalog state committed; snapshots unchanged |
 | UC-AQO-003 | Target | Retire Admission Service Point | Command | Stop future intake without erasing history | Queue Operations Administrator | Service Point | Service Point repo, active-session check, audit | Retired state and audit committed |
-| UC-AQO-004 | Target | Maintain Loket Authorizations | Command | Establish/retire Loket and its permitted Service Points | Queue Operations Administrator | Loket | Loket and Service Point repos, audit | Loket authorization state and audit committed |
-| UC-AQO-005 | Target | Maintain Kiosk Offerings | Command | Establish/retire Kiosk and its offered Service Points | Queue Operations Administrator | Kiosk | Kiosk and Service Point repos, audit | Kiosk offering state and audit committed |
-| UC-AQO-006 | Target | List Kiosk Service Offerings | Query | Return active choices authorized for one Kiosk | Authenticated Kiosk | Kiosk offering projection | Kiosk identity, projection DAL | Read-only result |
-| UC-AQO-007 | Existing partial / Target replacement | Issue Admission Queue Entry | Command | Resolve offered Service Point, find/create session, allocate one stable Queue Label | Authenticated Kiosk | Queue Session | Kiosk projection, Service Point repo, queue repo, sequencer, clock | Intake request, entry, and local notification committed once |
-| UC-AQO-008 | Target | Get Intake Attempt Result | Query | Recover the Queue Label for a retried or uncertain Kiosk attempt | Same authenticated Kiosk | Intake-result projection | Kiosk identity, request identity | Read-only result for reprint/recovery |
-| UC-AQO-009 | Target | List Loket Service Points | Query | Return active Service Points permitted at one Loket | Admission Officer | Loket authorization projection | Actor/Loket context, projection DAL | Read-only result |
-| UC-AQO-010 | Target | List Admission Worklist | Query | Return scoped Waiting, outstanding, and In Service entries | Admission Officer | Admission worklist projection | Actor/Loket context, projection DAL | Read-only paged result |
-| UC-AQO-011 | Target | Call Admission Queue Entry | Command | Claim one Waiting entry for one authorized Loket | Admission Officer | Queue Session / Queue Call | queue repo, Loket auth query, actor context, clock, outbox | Call, first attempt, and notification committed atomically |
-| UC-AQO-012 | Target | Recall Admission Queue Entry | Command | Add a Call Attempt to the outstanding call | Admission Officer | Queue Session / Queue Call | queue repo, actor context, clock, outbox | Attempt and notification committed atomically |
-| UC-AQO-013 | Existing partial / Target split | Start Admission Queue Service | Command | Acknowledge the call and move Waiting to In Service | Admission Officer | Queue Session / Queue Entry | queue repo, actor/Loket context, clock, outbox | Call acknowledgement, entry transition, and notification committed atomically |
-| UC-AQO-014 | Target | Conclude No-Show or Withdraw Entry | Command | End or retain waiting participation under approved disposition | Queue Operations Supervisor | Queue Session / Queue Call | queue repo, supervisor authorization, clock, audit, outbox | Disposition, audit, and notification committed atomically |
-| UC-AQO-015 | Target | Transfer Admission Queue Entry | Command | Withdraw original entry and create linked replacement participation | Queue Operations Supervisor | Two Queue Sessions | source/target queue repos, Service Point repo, sequencer, audit, outbox | Original and replacement state committed in one local transaction |
-| UC-AQO-016 | Target | Get Queue Display Snapshot | Query | Recover current and recent committed calls for an announcement scope | Authenticated Queue Display | Queue display projection | display identity/scope, projection DAL | Read-only snapshot |
+| UC-AQO-004–006 | Excluded from V1 | Managed Loket/Kiosk/Display resources and authorization | — | V1 uses deployment configuration and permits every configured Loket to serve every active Service Point | Deployment/operations | None | Local configuration | No business-resource persistence |
+| UC-AQO-007 | Existing partial / Target replacement | Issue Admission Queue Entry | Command | Validate an active Service Point, resolve server Business Date, lazily find/create the single daily session, atomically advance LastQueueNumber, and allocate one stable Queue Label | Kiosk client | Queue Session | Service Point repo, queue repo, Business Date/clock | Session/entry committed; same supplied ClientRequestId returns the prior entry |
+| UC-AQO-008 | Target | Get Intake Attempt Result | Query | Recover the Queue Label for a retried or uncertain intake when ClientRequestId was supplied | Same client/API access context | Intake-result projection | ClientRequestId | Read-only result; unavailable without correlation identity |
+| UC-AQO-009 | Target simplified | List Active Admission Service Points | Query | Return active Service Points; no per-Loket authorization filter exists in V1 | Admission Officer | Service Point projection | actor context, projection DAL | Read-only result |
+| UC-AQO-010 | Target | List Admission Queue Worklist | Query | Return the scoped queue-only Waiting, outstanding-call, and In Service projection | Admission Officer or composing Admisi query | Admission Queue Worklist Projection | Actor/Loket context, projection DAL | Read-only paged result |
+| UC-AQO-011 | Target | Call Admission Queue Entry | Command | Claim one Waiting entry for a workstation-configured LoketKey, increment CallCount, update `BILRG_AdmLoketCurrentCall`, and increment AnnouncementVersion when audio is required | Authenticated Admission Officer | Queue Session / Queue Entry | queue repo, workstation configuration, clock, display-state DAL | Queue/current-display state committed; refresh published after commit |
+| UC-AQO-012 | Target | Recall Admission Queue Entry | Command | Increment CallCount and, when audio is required, AnnouncementVersion for the same outstanding entry | Authenticated Admission Officer | Queue Session / Queue Entry | queue repo, workstation configuration, clock, display-state DAL | Current state committed; refresh published after commit |
+| UC-AQO-013 | Existing partial / Target split | Start Admission Queue Service | Command | Acknowledge the call and move Waiting to In Service | Admission Officer | Queue Session / Queue Entry | queue repo, actor/configured-Loket context, clock, display-state DAL | Entry/current-display state committed atomically; refresh follows commit |
+| UC-AQO-014 | Target | Conclude No-Show or Withdraw Entry | Command | End or retain waiting participation under approved disposition | Queue Operations Supervisor | Queue Session / Queue Entry | queue repo, supervisor authorization, clock, audit, display-state DAL | Disposition/current-display/audit committed; refresh follows commit |
+| UC-AQO-015 | Target simplified | Redirect with Priority Replacement | Command orchestration | Give the origin an explicit non-active disposition and create a Priority destination entry with CreationReason `Redirected` and required SourceAntrianEntryId | Authenticated Admission Officer | Two Queue Sessions | source/target queue repos, Service Point repo, audit | Prefer one transaction; no QueueTransfer aggregate/history |
+| UC-AQO-016 | Target | Get Current Queue Display State | Query | Reload shared current-per-Loket state and AnnouncementVersion | Passive Queue Display | Current display state | projection DAL | Read-only snapshot |
 | UC-AQO-017 | Target | Get Queue Call History | Query | Support investigation and approved operational review | Authorized officer/supervisor | Call-history projection | scoped projection DAL | Read-only paged history |
 | UC-AQO-018 | Existing | Select Existing Journey for Admission Entry | Command | Associate anonymous InService entry with selected existing Tracker | Admission Officer | Queue Session and Patient Tracker | queue repo, Tracker repo, admission Service Point authority | CAS association and Tracker evidence committed atomically |
-| UC-AQO-019 | Existing partial / Target boundary | Complete Queue through Registration | Integration Inbound | Reuse or establish the applicable Tracker and complete the same entry with Registration | Admisi Rajal Registration | Queue Session and Patient Tracker | Patient Tracker application contract, Registration authority, outbox | Registration, association, completion, evidence, and outbox commit locally or all roll back |
-| UC-AQO-020 | Target | Dispatch Queue Notifications | Background Process | Deliver committed projection-change notifications to active display/worklist subscribers | Queue notification worker | Notification outbox | outbox repo, SignalR transport, clock | Delivery attempt recorded; queue truth unchanged |
+| UC-AQO-019 | Existing partial / Target boundary | Complete Queue from Final Registration Outcome | Integration Inbound | Complete the matching InService entry from an Admisi-owned `Established` or `NotEstablished` outcome; reuse/create Tracker only when applicable | Admisi Rajal Registration | Queue Session and optional Patient Tracker | Patient Tracker application contract, Registration Outcome authority, outbox | Outcome and queue completion commit atomically; Established also coordinates Registration/Tracker writes; NotEstablished may leave entry anonymous |
+| UC-AQO-020 | Target simplified | Publish Queue Refresh | Post-commit best effort | Publish a SignalR refresh hint after queue/current-display transaction commits | Application handler | None | SignalR transport | No durable delivery record; polling recovers missed hints |
 | UC-AQO-021 | Target | List Queue Resource Catalog | Query | Support authorized catalog administration and selection | Queue Operations Administrator | Resource projections | scoped projection DALs | Read-only paged result |
 | UC-AQO-022 | Existing compatibility / Target constrained | Complete Registration without Prior Intake | Command collaboration | Preserve legacy callers that have no admission Queue Entry | Admisi Rajal Registration | Queue Session / Queue Entry | server-resolved compatibility Service Point, queue repo | Identified create/serve/complete remains one local transaction |
 
@@ -146,14 +144,14 @@ Exact transport routes, payloads, UI views, and visible labels belong to later A
 | Use case ID | Domain capabilities / rules | SOP references | Owning module | Authorization concern | Required tests |
 |---|---|---|---|---|---|
 | UC-AQO-001–003 | Admission Service Point Management; BR-AQO-001–002, 006–011 | §3.2–3.3 | Queue Resource Catalog | Queue administrator role | Aggregate lifecycle, prefix conflict, audit, persistence |
-| UC-AQO-004 | Loket Service Authorization; BR-AQO-003–004, 006, 018, 020 | §3.8–3.9; §4.2 | Queue Resource Catalog | Administrator plus active resource scope | Authorization invariant, projection, audit |
-| UC-AQO-005–008 | Admission Queue Intake; Queue Number Allocation and Labelling; BR-AQO-005, 007–016 | §4.1; §5.1–5.3 | Resource Catalog / Queue Execution | Device identity and offering scope | Idempotency, sequence concurrency, label snapshot, recovery |
-| UC-AQO-009–010 | Loket Service Authorization; Queue Call Coordination | §4.2 | Queue Operational Projections | Officer may see only assigned/authorized scope | Query scoping, ordering, paging, stale-state behavior |
-| UC-AQO-011–013 | Queue Call Coordination; BR-AQO-017–024 | §4.3–4.4; §5.5–5.6 | Queue Execution | Officer/Loket/Service Point contextual authorization | Domain transitions, CAS conflicts, outbox atomicity |
-| UC-AQO-014–015 | Admission Queue Exception Resolution; BR-AQO-026–030 | §5.6–5.8 | Queue Execution | Supervisor decision and reason | No-show alternatives, transfer rollback, audit, concurrency |
-| UC-AQO-016–017, 020 | Queue Call Coordination; BR-AQO-028–030 | §4.3–4.4; §5.8; §6.2, §6.7 | Projections / Notification Delivery | Display scope or authorized operational history | Snapshot recovery, duplicate delivery, reconnect, data scoping |
+| UC-AQO-004–006 | V1 deployment configuration; BR-AQO-003–006d | §3.8–3.9; §4.2 | Outside managed resource catalog | Authenticated operator plus trusted workstation configuration | Configuration parsing, unknown/empty Loket rejection, every-Loket/every-Service-Point behavior |
+| UC-AQO-007–008 | Admission Queue Intake; Queue Number Allocation and Labelling; BR-AQO-005, 007–016 | §4.1; §5.1–5.3 | Queue Execution | Active Service Point validation | Daily-session uniqueness, atomic LastQueueNumber, optional ClientRequestId behavior, label snapshot, recovery |
+| UC-AQO-009–010 | Configured Loket operation; Queue Call Coordination | §4.2 | Queue Operational Projections | Any authenticated officer; configured Loket scope | Query scoping, ordering, paging, stale-state behavior |
+| UC-AQO-011–013 | Queue Call Coordination; BR-AQO-017–024 | §4.3–4.4; §5.5–5.6 | Queue Execution | Authenticated officer and configured Loket | Domain transitions, CallCount/version increments, CAS conflicts, post-commit notification failure |
+| UC-AQO-014–015 | Admission Queue Exception Resolution; BR-AQO-026–030 | §5.6–5.8 | Queue Execution | Supervisor decision and reason | No-show limitations, origin disposition plus Priority replacement, partial-failure prevention, audit, concurrency |
+| UC-AQO-016–017, 020 | Queue Call Coordination; BR-AQO-028–030 | §4.3–4.4; §5.8; §6.2, §6.7 | Projections / Notification Delivery | Passive display read access | Shared-state reload, AnnouncementVersion audio decision, missed SignalR recovery by polling |
 | UC-AQO-018 | BR-AQO-013–016 | §4.5 steps 24–29; §5.9–5.10 | Journey Association | Authenticated Admission Officer | Existing CAS success/conflict and no losing evidence |
-| UC-AQO-019 | BR-AQO-014–016, 023–025 | §4.5–4.6; §5.11–5.12 | Journey Association / Admisi Rajal | Officer authorized for current InService entry | Walk-In branches, Booking reuse, rollback across all local writes |
+| UC-AQO-019 | BR-AQO-014–016, 023–025 | §4.5–4.6; §5.11–5.12 | Journey Association / Admisi Rajal | Accountable officer authorized for current InService entry | Established Walk-In/Booking branches; final NotEstablished with reason; correctable validation remains InService; anonymous Done; rollback across all local writes |
 | UC-AQO-021 | Admission Service Point Management; Loket/Kiosk administration | §3.2–3.9 | Queue Resource Catalog | Administrator-scoped query | Projection correctness and sensitive-field exclusion |
 | UC-AQO-022 | Compatibility constraint; parent BR-TRK-025, 029 | Not primary SOP path | Queue Execution / Admisi Rajal | Authenticated registration workflow only | Regression of no-kiosk registration behavior |
 
@@ -163,52 +161,38 @@ Exact transport routes, payloads, UI views, and visible labels belong to later A
 
 - **Existing:** `ServicePointType` is a two-field value snapshot; `ServicePointStatusEnum` is unused; no aggregate or repository implementation exists.
 - **Target root:** `ServicePointModel`, following repository naming standards.
-- **Target value objects:** Service Point identity/reference and Queue Prefix value.
+- **Target value objects:** Service Point identity/reference and Queue Prefix value. Queue Prefix normalizes with `Trim` + `ToUpperInvariant`, accepts only one through four ASCII letters, and participates in active-prefix uniqueness validation.
 - **Protected rules:** BR-AQO-001–002, 006–011.
 - **Consistency boundary:** stable identity, current name, prefix for future sessions, Active/Retired lifecycle.
 - **Mutations:** establish, rename, change future prefix, retire. Historical session snapshots are never mutated.
 - **Prohibited:** queue allocation, Loket assignment ownership, coverage eligibility decisions.
 
-### 7.2 Loket Aggregate
+### 7.2 Deployment-configured Loket and Kiosk
 
-- **Existing:** absent.
-- **Target root:** `LoketModel`.
-- **Owned children:** `LoketServiceAuthorizationModel` records.
-- **Protected rules:** BR-AQO-003–004, 006, 018, 020.
-- **Consistency boundary:** stable Loket identity, active state, authorized Service Point identities.
-- **References:** Service Points by identity only; resource existence is checked by Application before mutation.
-- **Prohibited:** owning Queue Calls or deciding which Queue Entry is next.
+Loket and Kiosk are not aggregates or master resources in Pragmatic V1. The Kiosk submits a stable ServicePointId selected from local configuration; the server validates only that the Service Point is active. The Admission Module supplies LoketId from trusted workstation configuration, and any authenticated Admission Officer may use any configured Loket for any active Service Point. These choices deliberately move configuration integrity into deployment operations.
 
-### 7.3 Kiosk Aggregate
-
-- **Existing:** absent.
-- **Target root:** `KioskModel`.
-- **Owned children:** `KioskServiceOfferingModel` records.
-- **Protected rules:** BR-AQO-005–006.
-- **Consistency boundary:** stable Kiosk identity, active state, offered Service Point identities.
-- **Prohibited:** queue-number sequencing and client-supplied Service Point authority.
-
-### 7.4 Queue Session Aggregate
+### 7.3 Queue Session Aggregate
 
 - **Existing root:** `AntrianModel` with `AntrianEntryModel` children.
-- **Target extensions:** immutable Queue Prefix Snapshot on an admission session; Queue Label behavior; `Withdrawn` entry transition; `QueueCallModel` and append-only `CallAttemptModel` children; link between transferred entries.
+- **Target extensions:** dedicated session table with one row per Service Point/Business Date, fixed interval, immutable Queue Prefix Snapshot, LastQueueNumber, Queue Label behavior, 1–9999 limit; Queue Entry current call state, CallCount, Priority, CreationReason, nullable SourceAntrianEntryId, and optional ClientRequestId.
 - **Protected rules:** BR-AQO-007–030 plus parent BR-TRK-026–039a.
 - **Consistency boundary:** Queue Number uniqueness, label stability, entry lifecycle, singular Tracker association, one outstanding call per entry, call disposition, and destination Loket identity.
 - **Creation/mutation entry points:** issue entry, call, recall, acknowledge/start, complete, withdraw, and transfer orchestration.
 - **Events/facts:** stable domain facts listed in Domain §9 may drive local projection notifications; they do not require a generic event bus.
-- **References:** ServicePointId, LoketId, KioskId/intake request provenance, optional TrackerId, and transfer counterpart identity.
+- **References:** ServicePointId, configured LoketId, optional ClientRequestId, optional TrackerId, and optional origin entry identity.
 - **Prohibited:** Registration outcome, Patient master mutation, eligibility decisions, SignalR delivery.
 
 The aggregate may contain many entries. Operational queries must use projections. Lifecycle persistence may use repository-owned expected-state operations for one entry/call rather than rewriting every child, provided the Domain model first authorizes the transition and the conditional persistence protects the same invariant.
 
-### 7.5 Patient Tracker Aggregate
+### 7.4 Patient Tracker Aggregate
 
 `PasienTrackerModel` remains the existing root for Patient Journey evidence. Queue issuance and calling do not create it. UC-AQO-018 and UC-AQO-019 append evidence only after accountable association or Registration-owned creation. It must not absorb Queue Call or resource-catalog behavior.
 
-### 7.6 Cross-aggregate orchestration
+### 7.5 Cross-aggregate orchestration
 
-- Transfer coordinates two Queue Session aggregates in Application and uses one local SQL transaction because original withdrawal and replacement creation are one operational outcome.
+- Redirection coordinates explicit origin disposition and Priority destination issuance. No QueueTransfer aggregate/history is created; one local transaction is preferred to avoid an active origin with a separately issued replacement.
 - Registration completion coordinates Admisi Rajal Registration, Patient Tracker, Queue Session, billing/outbox behavior already present in the registration use case. Each authority remains explicit even when the same local transaction provides atomicity.
+- A final `NotEstablished` decision coordinates the Admisi Rajal Registration Outcome aggregate and Patient Tracker Queue Session in one local transaction. It does not create a Registration, Patient Tracker, billing, or Registration evidence. The Queue Entry may remain anonymous and becomes Done only after the outcome is valid and persisted.
 - Resource validation reads Service Point/Loket/Kiosk authority before mutating Queue Session; Queue Session stores stable identity and snapshots rather than owning those aggregates.
 
 ## 8. Persistence and Repository Strategy
@@ -219,7 +203,7 @@ The aggregate may contain many entries. Operational queries must use projections
 - `BILRG_AntrianEntry` stores `(AntrianId, NoUrut)`, anonymous/Tracker association, status, timestamps, and references.
 - `AntrianRepo` reconstructs the aggregate and currently performs collection comparison for saves.
 - `AntrianEntryDal.UpdateFromAnonymousInService` is the existing conditional transition anchor.
-- `ISequencer` provides the next number using a sequence tag.
+- Current `ISequencer` provides the next number using a sequence tag; the target admission path replaces it with Queue Session LastQueueNumber.
 
 ### 8.2 Target repositories
 
@@ -238,14 +222,13 @@ Infrastructure owns repository implementations, DTOs, DAL contracts/implementati
 Use additive, module-prefixed SQL artifacts for:
 
 - Service Point aggregate state;
-- Loket and its Service Point authorizations;
-- Kiosk and its Service Point offerings;
-- Queue Call and append-only Call Attempt history;
-- intake request idempotency;
-- transfer linkage;
-- durable queue-notification outbox.
+- dedicated Queue Session state, including ServicePointId, BusinessDate, Queue Prefix Snapshot, and LastQueueNumber;
+- Queue Entry current call state, CallCount, Priority, CreationReason (`Normal`, `Redirected`, `ManualPriority`), nullable SourceAntrianEntryId, and optional ClientRequestId; and
+- `BILRG_AdmLoketCurrentCall`, keyed by unique LoketKey, storing only the latest visible call and AnnouncementVersion.
 
-Extend `BILRG_Antrian` or its owned snapshot persistence with Queue Prefix Snapshot. Extend `BILRG_AntrianEntry` for `Withdrawn` and any stable provenance needed for intake/transfer. Do not derive historical Queue Labels from the current Service Point record.
+Retain a dedicated Queue Session table and enforce uniqueness on `(ServicePointId, BusinessDate)`. Atomically advance LastQueueNumber in that row and reject values above 9999. Persist the fixed V1 interval and Queue Prefix Snapshot. Extend Queue Entry persistence for `Withdrawn`, current call state, CallCount, Priority, CreationReason, nullable SourceAntrianEntryId, and optional ClientRequestId. `Redirected` requires SourceAntrianEntryId; `Normal` prohibits it. Do not derive historical Queue Labels from the current Service Point record.
+
+Registration Outcome persistence belongs to Admisi Rajal, not `AntrianFeature`. It must retain OutcomeId, QueueEntryId, Result, conditional RegId/ReasonCode, Explanation, DecidedAt, and DecidedBy. The persistence/API contract must resolve how the existing `(AntrianId, NoUrut)` Queue Entry identity is represented as QueueEntryId.
 
 Detailed columns and indexes belong to implementation persistence artifacts, but migrations must follow `docs/DATABASE.md`: explicit SQL, no workflow triggers, non-null defaults where appropriate, audit columns on transaction tables, append/status history, and operational indexes.
 
@@ -254,7 +237,7 @@ Detailed columns and indexes belong to implementation persistence artifacts, but
 Whole-aggregate last-writer-wins updates are insufficient for active queues. Target repository operations must return affected-row counts and require exactly one expected transition:
 
 - available Waiting → outstanding Call created;
-- outstanding Call → another Call Attempt;
+- outstanding Call → CallCount incremented;
 - Waiting with matching outstanding Call → InService and Call acknowledged;
 - Waiting → Withdrawn;
 - InService → Done;
@@ -262,14 +245,18 @@ Whole-aggregate last-writer-wins updates are insufficient for active queues. Tar
 
 Zero affected rows is an explicit conflict. Do not automatically select another entry, Loket, or Tracker. The caller refreshes the relevant projection.
 
-Database uniqueness must support, not replace, domain decisions: unique intake request identity per Kiosk, unique Queue Number per session, at most one outstanding call per entry, and at most one active entry per Loket unless later approved policy says otherwise.
+Database uniqueness must support, not replace, domain decisions: one Queue Session per `(ServicePointId, BusinessDate)`, unique Queue Number per session, uniqueness for each non-null ClientRequestId under the approved scope, unique LoketKey/current-call row, at most one outstanding call per entry, and at most one Outstanding or InService entry per LoketKey.
+
+Admission allocation must reject a next sequence value outside 1–9999. Allocating 9999 exhausts that Queue Session. Because Pragmatic V1 permits only one admission session per Service Point per Business Date, the server must reject further same-date intake for that Service Point; the next session can be lazily established only on the next authoritative Business Date. The repository must not insert an out-of-range number, create a second same-date session, wrap the counter, or change formatting to accommodate a larger value.
 
 ### 8.5 Time and identity
 
 - Use `ITglJamProvider` for business occurrence times.
+- Derive the admission session Business Date from server-side `ITglJamProvider.Now` (which exposes business time) through the shared Business Date capability. Do not accept an authoritative date in Kiosk or client commands.
 - Use application-generated opaque identities consistent with the current ULID practice.
 - Derive human actor identity through `ICurrentUserContext`; do not trust request `UserId` for new commands.
-- Derive Kiosk and Queue Display identities from authenticated service/device context.
+- Validate submitted ServicePointId against active Service Point persistence; there is no Kiosk offering authority in V1.
+- Obtain LoketKey from trusted workstation deployment configuration such as controlled PC name or configuration file. Do not accept operator-entered arbitrary values. Missing or detectably duplicate configuration blocks calling; workstation rename requires controlled update. This value is not backed by a Loket master or assignment table in V1.
 
 ### 8.6 Compatibility
 
@@ -282,16 +269,16 @@ Database uniqueness must support, not replace, domain decisions: unique intake r
 
 | Projection | Consumer purpose | Source authority | Freshness | Filters / scope | Must not decide |
 |---|---|---|---|---|---|
-| Kiosk Service Offering View | Show active Service Point choices | Kiosk and Service Point aggregates | Request-time current | Authenticated Kiosk, active offerings | Eligibility, queue allocation, prefix authority |
-| Intake Attempt Result View | Recover/reprint one issued result | Queue Session/Entry and intake identity | Request-time current | Same Kiosk and request identity | Whether to allocate a second entry |
-| Loket Authorization View | Show Service Points available at a Loket | Loket and Service Point aggregates | Request-time current | Authenticated officer and assigned Loket | Authorization mutation |
-| Admission Worklist View | Scan Waiting, outstanding, and InService work | Queue Session/Entry/Call | Near-real-time; query is recovery truth | Session date, ServicePointId, Loket scope, state, paging | Claim, call, start, complete, identify |
-| Queue Display Snapshot View | Recover current/recent display state | Queue Call, Call Attempt, Entry, Loket, Service Point | Near-real-time plus reconnect query | Authenticated display announcement scope | Which entry to call or whether service started |
-| Queue Call History View | Investigate calls, recalls, dispositions | Queue Call and attempts | Request-time current | Date, Service Point, Loket, Queue Label, authorized scope | Correct or mutate history |
-| Queue Resource Catalog View | Administer/search active and retired resources | Resource aggregates | Request-time current | Resource type, status, location/scope when defined | Lifecycle decisions |
-| Notification Recovery View | Operate delivery retries and reconciliation | Notification outbox | Operationally current | status, age, retry eligibility | Queue state or domain outcome |
+| Active Admission Service Point View | Support Admission Module choices and optionally central Kiosk choices; local Kiosk configuration remains V1 presentation source | Service Point aggregate | Request-time current | Active Service Points; authenticated officer where applicable | Kiosk-specific offering, eligibility, or per-Loket authorization |
+| Intake Attempt Result View | Recover/reprint one issued result when correlation was supplied | Queue Session/Entry and ClientRequestId | Request-time current | ClientRequestId under API access contract | Whether to allocate a second entry |
+| Admission Queue Worklist Projection | Scan queue-only Waiting, outstanding-call, and InService work; expose Queue Label, Service Point, state, call state, LoketKey, queue timestamps, Priority indicator, and optional TrackerId | Queue Session/Entry/Call and existing Tracker association | Near-real-time; query is recovery truth | Session date, ServicePointId, LoketKey, state, paging; Priority may influence sorting only | Claim, auto-select/bypass, call, start, complete, identify, or enrich with Booking/identity/Registration/administrative context |
+| Current Queue Display State | Recover the latest visible call per LoketKey and AnnouncementVersion | `BILRG_AdmLoketCurrentCall` updated with queue mutation | Near-real-time plus polling | Configured LoketKey/all V1 display state per deployment contract | Call history, past activity, which entry to call, or whether service started |
+| Queue Call Summary View | Inspect current call state and CallCount | Queue Entry | Request-time current | Date, Service Point, Loket, Queue Label | Reconstruct detailed attempt timestamps or no-show evidence |
+| Service Point Catalog View | Administer/search active and retired Service Points | Service Point aggregate | Request-time current | status | Lifecycle decisions |
 
 Projection DALs should use stable SQL shapes and indexes optimized for queue scanning. They may denormalize names and Queue Labels for display but must retain source identities and must never become a second write model.
+
+The Admission Module or an Admisi Rajal application query composes `Admission Queue Worklist Projection` with Booking, identity, Registration, and administrative context to produce the enriched `Admisi Rajal Work List`. That composition remains a read concern: it neither creates another ledger nor moves Admisi-owned enrichment into Patient Tracker.
 
 ## 10. Application Interfaces and API Philosophy
 
@@ -300,7 +287,7 @@ Projection DALs should use stable SQL shapes and indexes optimized for queue sca
 - Exact routes, request/response fields, UI-specific view models, and labels are deferred to an API contract after UI design.
 - Commands return deterministic success identities and expected error categories: validation, not found, forbidden, conflict, and unavailable dependency.
 - Conflict remains HTTP 409 at HTTP transport; authorization distinguishes unauthenticated from forbidden access.
-- Kiosk intake requires a client-generated request identity scoped to an authenticated Kiosk. Repetition returns the original outcome rather than another Queue Number.
+- Kiosk intake may supply ClientRequestId. Repetition returns the original outcome only when the identifier is supplied and unique under the approved persistence scope.
 - Call, recall, start, withdraw, transfer, identify, and complete commands require an expected current identity/state or repository equivalent and never silently retry a different business choice.
 - Worklist, history, and catalog queries require paging and server-side filters appropriate to their operational volume.
 - Queue Display first requests a snapshot and then subscribes to scoped notifications. A notification is a refresh hint plus committed display data; it is not write authority.
@@ -313,15 +300,15 @@ Projection DALs should use stable SQL shapes and indexes optimized for queue sca
 |---|---|---|---|---|---|---|
 | Kiosk | Inbound to Patient Tracker | Query offerings and issue/recover Queue Entry | Patient Tracker | Authenticated application command/query | Synchronous; intake idempotent | Return existing result on retry; no offline number allocation |
 | Queue Ticket Printer | Local from Kiosk | Print the already issued Queue Label | Patient Tracker owns label; Kiosk owns presentation attempt | Client-local device integration | Not atomic with queue commit | Reprint same intake result; never allocate another number |
-| Admission Module | Inbound to Patient Tracker and Admisi Rajal | Worklist, call, service, Journey Resolution, Registration | Respective owning context | Authenticated commands/queries | Synchronous local transactions | Explicit validation/conflict; refresh projections |
+| Admission Module | Inbound to Patient Tracker and Admisi Rajal | Compose the queue-only projection into the enriched Admisi Rajal Work List; call, service, Journey Resolution, Registration | Respective owning context | Authenticated commands/queries | Read composition plus synchronous local command transactions | Explicit validation/conflict; refresh projections |
 | Queue Display | Query inbound; notification outbound | Recover and present committed calls | Patient Tracker | Snapshot query plus SignalR target transport | At-least-once notifications; snapshot recovery | Deduplicate by notification/call-attempt identity; reconnect and reload |
 | Admisi Rajal Registration | In-process collaboration | Establish Registration and coordinate queue completion | Admisi Rajal for Registration; Patient Tracker for queue/Tracker | Application contract, not table/DAL access | Same local SQL transaction where current registration orchestration already requires atomicity | Roll back local writes; return accountable registration result |
 | Patient master context | Indirect through Registration/Journey Resolution | Supply canonical identity evidence | Patient context | Existing application/domain contracts | No new queue-owned mutation | Keep entry InService until accountable resolution outcome |
 | Authentication authority | Inbound identity | Authenticate officers and device/service clients | Identity authority | JWT/service credential validation | Per connection/request | Reject unauthenticated or invalid scope |
-| Queue notification transport | Outbound | Push committed projection changes | Patient Tracker notification delivery | SignalR adapter behind Application port | Durable outbox to at-least-once transport | Retry with backoff; clients recover snapshot |
+| Queue refresh transport | Outbound best effort | Hint clients to reload committed current display state | Patient Tracker application | SignalR adapter behind Application port | Immediate publish after commit; no durable delivery guarantee | Periodic polling recovers missed hints |
 | Existing EMR queue integration | Existing outbound, unchanged | Physician/registration queue publication | Existing integration feature | Existing durable outbound queue | Existing behavior | Must not be reused as display notification authority |
 
-Do not introduce a generic cross-context event bus solely because the domain lists events. Use direct orchestration for local consistency and a dedicated durable notification outbox for client delivery.
+Do not introduce a generic cross-context event bus solely because the domain lists events. Use direct orchestration for local consistency. Pragmatic V1 intentionally accepts best-effort post-commit SignalR refresh plus periodic polling instead of a notification outbox.
 
 ## 12. Authentication, Authorization, and Audit
 
@@ -329,14 +316,14 @@ Do not introduce a generic cross-context event bus solely because the domain lis
 
 - Admission Officers and supervisors use the existing JWT authentication path.
 - New human commands derive the actor from `ICurrentUserContext` rather than accepting authoritative `UserId` input.
-- Kiosks and Queue Displays require non-human service/device identities distinct from officer identities.
-- A long-lived display connection must be authenticated at connection establishment and revalidated on reconnect.
+- `DecidedBy` for a final Registration Outcome is derived from the authenticated accountable operator; `DecidedAt` comes from the business clock.
+- Kiosk and passive Queue Display access follows the deployment/API security contract; no Kiosk or QueueDisplay master identity is resolved in V1.
 
 ### 12.2 Contextual authorization
 
-- Kiosk commands are scoped to that Kiosk's active offerings.
-- Queue Display queries/subscriptions are scoped to the display's approved announcement scope.
-- Admission Officer queries and commands are scoped to the assigned Loket and its active Service Point authorizations.
+- Kiosk intake validates only that submitted ServicePointId is active; local Kiosk configuration is not an authorization boundary.
+- Queue Display clients reload shared current-per-Loket state; no display-specific scope exists in V1.
+- Any authenticated Admission Officer may operate any configured Loket and active Service Point. LoketId is obtained from trusted workstation configuration, not an application assignment table.
 - Supervisor-only commands cover final no-show disposition, transfer approval, and exceptional overrides.
 - Resource-catalog commands require Queue Operations Administrator authority.
 - UI visibility is not authorization. Application handlers enforce scope before mutation or data return.
@@ -345,7 +332,7 @@ Current `[Authorize]` without contextual policies is a gap. Current caller-provi
 
 ### 12.3 Audit and operational history
 
-- Queue Call and Call Attempt records are operational queue truth, not substitutes for compliance audit.
+- Queue Entry current call state and CallCount are operational queue truth but are not detailed attempt history or substitutes for compliance audit.
 - Use `IAuditRepo` for Service Point/Loket/Kiosk administration, authorization changes, no-show disposition, transfer, override, and other material exceptional decisions.
 - Audit records include authenticated actor, occurrence time, reason where required, affected identity, and before/after snapshot where useful.
 - Do not put Patient demographics or Booking QR contents into notification payloads, display logs, or general structured logs.
@@ -355,19 +342,20 @@ Current `[Authorize]` without contextual policies is a gap. Current caller-provi
 
 | Use case | Local transaction boundary | Synchronous invariants | Eventual facts | Duplicate key / retry | Conflict and recovery |
 |---|---|---|---|---|---|
-| Issue entry | Intake identity, session create/load, sequence allocation, entry insert, local notification | Offering active, one result per request, number unique, prefix snapshot stable | Worklist refresh notification | KioskId + intake request identity | Return committed result; retry same request only |
-| Call | Conditional entry claim, Queue Call, first attempt, outbox | Waiting, authorized Loket, no competing outstanding call/active Loket work | Display/worklist notification | Command/request identity plus entry identity | 409; refresh worklist |
-| Recall | Conditional outstanding-call check, Call Attempt, outbox | Same call still outstanding, same authorized Loket | Display notification | Recall request identity | Return prior attempt on duplicate; 409 on concluded call |
-| Start service | Conditional Waiting transition, call acknowledgement, outbox | Matching outstanding call and Loket, ServedAt ordering | Display/worklist notification | Start request identity | 409; refresh entry/call |
-| Withdraw/no-show | Conditional Waiting transition or retained Waiting disposition, call conclusion, audit, outbox | Supervisor authority, no service start when withdrawing | Display/worklist notification | Disposition request identity | 409; supervisor reviews current state |
-| Transfer | Source withdrawal, target session/entry allocation, transfer link, audit, outbox | Source Waiting, target active, one linked replacement | Two scoped projection notifications | Transfer request identity | Roll back all local writes; no partial replacement |
+| Issue entry | Lazy daily session create/load, atomic LastQueueNumber increment, entry insert | Service Point active, server Business Date, one session per Service Point/date, number 1–9999 unique, prefix snapshot stable | Post-commit refresh hint if needed | Optional ClientRequestId | Same supplied identifier returns committed result; without it duplicates remain possible |
+| Call | Conditional entry claim, CallCount increment, `BILRG_AdmLoketCurrentCall` update, AnnouncementVersion increment when audio is required | Waiting, valid unique LoketKey, no competing Outstanding/InService work | Best-effort refresh after commit | Entry/current-state identity | 409; polling/worklist refresh recovers state |
+| Recall | Conditional outstanding-call check, CallCount increment, AnnouncementVersion increment when audio is required | Same call still outstanding, same valid LoketKey | Best-effort refresh after commit | Entry identity | 409 on concluded call; no detailed attempt history |
+| Start service | Conditional Waiting transition, call acknowledgement, current display update without AnnouncementVersion increment unless audio is explicitly required | Matching outstanding call and LoketKey, ServedAt ordering | Best-effort refresh after commit | Start request identity | 409; refresh entry/call |
+| Withdraw/no-show | Conditional Waiting transition or retained Waiting disposition, current display update, audit | Supervisor authority, no service start when withdrawing | Best-effort refresh after commit | Disposition request identity | 409; detailed prior calls cannot be reconstructed from CallCount |
+| Priority redirection | Explicit origin disposition, target allocation, Priority indicator, CreationReason `Redirected`, SourceAntrianEntryId | Source non-active after operation, target active | Best-effort refresh after commit | Command request identity when provided | Prefer one transaction; otherwise compensate/reconcile partial completion |
 | Identify existing Tracker | Existing CAS entry association plus Tracker evidence | Anonymous InService and one selected Tracker | Optional worklist refresh | Entry identity + expected anonymous status | Existing 409; no losing Tracker evidence |
-| Registration completion | Existing Registration transaction extended with conditional queue transition and local outbox | Registration outcome, Tracker association, entry completion | Display/worklist notifications and existing integrations | Registration/source identities | Roll back Registration, Tracker, queue, billing, local outbox on conflict |
-| Dispatch notification | Claim outbox row, send, record result | One worker owns an attempt | SignalR delivery is at least once | NotificationId | Retry; dead-letter/failed state remains operable |
+| Final outcome — Established | Registration Outcome, existing Registration transaction, conditional queue transition, optional association, local outbox | OutcomeId/QueueEntryId match, RegId required, Tracker rules satisfied, entry InService | Display/worklist notifications and existing integrations | OutcomeId plus Registration/source identities | Roll back Outcome, Registration, Tracker, queue, billing, and local outbox on conflict |
+| Final outcome — NotEstablished | Registration Outcome, conditional InService → Done transition, local outbox | Explicit operator decision, ReasonCode required, RegId absent, matching entry; Tracker optional | Display/worklist notification | OutcomeId | Roll back Outcome, queue, and local outbox on conflict; no Registration/Tracker manufactured |
+| Publish refresh | No database mutation after queue commit | Queue/current-display transaction already committed | SignalR best effort | None | Ignore transport failure operationally; polling reloads persisted state |
 
-No transaction includes a Kiosk printer, browser, Queue Display, audio device, or remote client. Once queue intake commits, a print failure is recovered by retrieving the same result. Once a call commits, display delivery failure is recovered from the durable outbox and display snapshot.
+No transaction includes a Kiosk printer, browser, Queue Display, audio device, or remote client. Once queue intake commits, a print failure can be recovered reliably only when ClientRequestId was supplied. Once a call commits, a missed SignalR refresh is recovered by polling current display state and comparing AnnouncementVersion.
 
-If multiple API/worker instances are deployed, outbox claiming and active-call uniqueness must remain database-coordinated. SignalR scale-out requirements are an open deployment decision.
+If multiple API instances are deployed, active-call/current-display uniqueness remains database-coordinated. SignalR scale-out remains an open deployment decision; polling is the V1 delivery recovery path.
 
 ## 14. Infrastructure and Operational Concerns
 
@@ -375,23 +363,24 @@ If multiple API/worker instances are deployed, outbox claiming and active-call u
 
 - Ship additive scripts under `Bilreg.SqlDb/AdmisiContext/AntrianFeature` in dependency order.
 - Seed/backfill the compatibility admission Service Point before enabling repository authority.
-- Validate duplicate active prefixes within the approved announcement scope before enforcing uniqueness.
+- Enforce one admission Queue Session per Service Point and Business Date; use the fixed Pragmatic V1 interval `00:00:00`–`23:59:59.9999999` as stored session truth.
+- Validate globally duplicate active prefixes before enforcing uniqueness.
 - Preserve legacy rows and sentinels; do not physically delete historical queue participation.
 
 ### 14.2 Real-time delivery
 
 - Add ASP.NET Core SignalR as the target transport adapter; no SignalR support exists today.
-- Group subscribers by authenticated announcement scope, not by caller-supplied arbitrary group name.
-- Persist a dedicated queue-notification outbox in the same transaction as queue mutation.
-- Add a hosted/background processor that claims pending notifications, broadcasts them, and records transport-dispatch attempts.
-- Clients deduplicate using stable notification and Call Attempt identities and reload the display snapshot after reconnect.
-- Polling the snapshot may be a temporary fallback, but it must not become write authority.
+- Atomically update `BILRG_AdmLoketCurrentCall` with queue mutation. Increment AnnouncementVersion only for Call/Recall that requires audio; ordinary refreshes and service-state changes do not increment it unless audio is explicitly required.
+- Publish a SignalR refresh hint immediately after commit; no notification outbox or hosted dispatcher is introduced in V1.
+- Passive displays reload persisted state after a hint, reconnect, or periodic polling.
+- A display plays audio only when the reloaded AnnouncementVersion is newer than its last observed version. The polling interval is configurable and does not change projection authority.
+- Polling is the V1 recovery mechanism for missed refresh hints and must not become write authority.
 
 A successful SignalR broadcast means the server transport accepted the dispatch; it does not prove that a particular Queue Display rendered the call or played audio. The authoritative recovery mechanism remains the persisted projection and snapshot query.
 
 ### 14.3 Observability
 
-Structured logs and metrics should include correlation/request identity, Kiosk/Loket/display identity, ServicePointId, AntrianId, NoUrut, CallId, transition result, conflict category, and notification delivery result. Do not log unnecessary Patient evidence.
+Structured logs and metrics should include correlation/ClientRequestId when present, configured LoketId, ServicePointId, AntrianId, NoUrut, CallCount, AnnouncementVersion, transition result, conflict category, and refresh-publish result. Do not log unnecessary Patient evidence.
 
 Minimum operational metrics:
 
@@ -400,27 +389,27 @@ Minimum operational metrics:
 - calls, recalls, starts, completions, withdrawals, and transfers;
 - CAS conflicts by transition;
 - outstanding calls and age;
-- notification outbox backlog, dispatch retry count, and oldest age;
+- SignalR publish failures, display polling freshness, and current-display state age;
 - active display connections and snapshot-recovery failures.
 
 ### 14.4 Configuration and rollout
 
-- Feature-gate repository-backed admission resources, split Call/Start behavior, and real-time notification independently from physician queues.
+- Feature-gate repository-backed Service Point/session behavior, split Call/Start behavior, and real-time refresh independently from physician queues.
 - Configuration may bootstrap default identities but must not remain runtime Service Point authority.
-- Health checks should cover database access, outbox backlog, and real-time endpoint readiness without exposing sensitive data.
+- Health checks should cover database access, current-display freshness, and real-time endpoint readiness without exposing sensitive data.
 - Offline Kiosk number allocation is prohibited; a disconnected Kiosk cannot safely allocate authoritative numbers.
 
 ## 15. Implementation Guidance for AI Agents
 
 | Increment | Included use cases | Required layers | External dependencies | Verification gate |
 |---|---|---|---|---|
-| 1. Resource authority | UC-AQO-001–006, 009, 021 | Domain, Application, Infrastructure, API | Existing auth/audit | Aggregate tests; repo/DAL integration; authorization/query tests; seed migration verification |
-| 2. Idempotent labelled intake | UC-AQO-007–008 | Domain, Application, Infrastructure, API | `ISequencer`, authenticated Kiosk context | Concurrent intake tests; duplicate request returns same label; prefix snapshot; existing anonymous intake regression |
-| 3. Operational projections | UC-AQO-010, 016–017 | Application, Infrastructure, API | Resource and queue persistence | Worklist/display/history query tests for scope, ordering, state, and volume |
-| 4. Call and service transitions | UC-AQO-011–013 | Domain, Application, Infrastructure, API | Officer/Loket authorization | Domain lifecycle tests; CAS integration tests; competing calls; one-active-entry constraint; old direct-start compatibility test |
-| 5. Durable display delivery | UC-AQO-020 plus notification production | Application, Infrastructure, API | SignalR and hosted worker | Transactional outbox test; duplicate delivery; reconnect snapshot; worker retry/recovery |
-| 6. Journey and Registration alignment | UC-AQO-018–019, 022 | Application boundary refactor, existing Domain/Infrastructure/API | Admisi Rajal, Patient Tracker, existing billing/outbox | Booking reuse; both Walk-In branches; complete rollback suite; no-kiosk regression |
-| 7. Exceptions | UC-AQO-014–015 | Domain, Application, Infrastructure, API | Supervisor authorization/audit | Recall/no-show/withdraw/transfer domain tests; atomic transfer rollback; audit tests |
+| 1. Service Point and deployment configuration | UC-AQO-001–006, 009, 021 | Domain, Application, Infrastructure, API/configuration | Existing auth/audit and trusted workstation configuration | Service Point tests; configuration validation; every-configured-Loket/every-active-Service-Point behavior; no resource tables |
+| 2. Retry-aware labelled intake | UC-AQO-007–008 | Domain, Application, Infrastructure, API | Dedicated Queue Session persistence, shared Business Date | Concurrent first-intake creates one daily session; atomic LastQueueNumber; active Service Point validation; same non-null ClientRequestId returns same label; no-ID duplicate limitation; formatting/exhaustion/prefix tests |
+| 3. Operational projections | UC-AQO-010, 016–017 | Application, Infrastructure, API | Queue/current-display persistence | Queue-worklist field-boundary tests; current-per-Loket state/version tests; polling recovery; CallCount summary limitations |
+| 4. Call and service transitions | UC-AQO-011–013 | Domain, Application, Infrastructure, API | Authenticated officer and workstation Loket configuration | Domain lifecycle tests; CallCount/version increments; CAS integration; competing calls; one-active-entry constraint; old direct-start compatibility test |
+| 5. Best-effort display refresh | UC-AQO-020 plus current display state | Application, Infrastructure, API | SignalR and client polling | Commit-before-publish; publish failure leaves committed truth; polling recovery; AnnouncementVersion/audio behavior |
+| 6. Journey and Registration alignment | UC-AQO-018–019, 022 | Application boundary refactor, Admisi Rajal Registration Outcome aggregate/persistence, existing Domain/Infrastructure/API | Admisi Rajal, Patient Tracker, existing billing/outbox | Booking reuse; both Walk-In Established branches; explicit NotEstablished with reason; validation remains InService; anonymous Done; outcome/queue rollback; no-kiosk regression |
+| 7. Exceptions | UC-AQO-014–015 | Domain, Application, Infrastructure, API | Supervisor authorization/audit | Recall/CallCount limitations; no-show/withdraw tests; origin disposition plus Priority replacement; partial-failure/rollback; audit tests |
 | 8. Hardening and rollout | All | All layers | Kiosk, Queue Display, Admission Module contract tests | End-to-end contract tests, load/concurrency tests, observability and feature-gate verification |
 
 Implementation agents must:
@@ -437,24 +426,26 @@ Implementation agents must:
 Implementation agents must not:
 
 - let Kiosk, Queue Display, or Admission Module access queue tables directly;
-- trust client Service Point name, Queue Prefix, Queue Label, Loket assignment, or UserId as authority;
+- trust client Service Point name, Queue Prefix, Queue Label, or UserId as authority; LoketId is accepted only from the explicitly trusted workstation-configuration adapter;
 - make SignalR delivery part of the queue transaction;
 - mark service started merely because a call was displayed;
 - create a Tracker when issuing or calling a Queue Number;
+- infer `NotEstablished` from validation failure, timeout, exception, missing Registration data, or queue state;
 - reuse the EMR outbound queue as a display transport;
 - put business decisions in controllers, DALs, projections, hubs, or background workers;
-- delete historical Queue Entries, Queue Calls, attempts, or audit records;
-- invent no-show thresholds, announcement scopes, or device-provisioning rules left open below.
+- claim detailed call-attempt evidence from CallCount or durable notification delivery from SignalR;
+- leave an origin Queue Entry active after issuing its Priority replacement; or
+- invent no-show automation not supported by persisted V1 evidence.
 
 ## 16. Architectural Decisions
 
-### ADR-AQO-001 — Persist queue resources under Patient Tracker authority
+### ADR-AQO-001 — Persist Service Point under Patient Tracker authority
 
-- **Decision:** Realize Service Point, Loket, and Kiosk as repository-backed Patient Tracker aggregates.
-- **Status:** Accepted Target.
+- **Decision:** Realize Service Point as a repository-backed Patient Tracker aggregate. Loket and Kiosk portions of the original decision are superseded by ADR-AQO-013.
+- **Status:** Accepted for Service Point only; partially superseded.
 - **Context:** Configuration and caller-supplied snapshots cannot enforce stable identities, prefix history, or assignments.
 - **Rationale:** The domain assigns these identities and queue relationships to Patient Tracker.
-- **Consequences:** Add repositories and migrations; configuration becomes bootstrap/compatibility only.
+- **Consequences:** Add Service Point repository/migration. Loket and Kiosk remain deployment configuration in V1.
 - **Rejected alternatives:** Multiple configured Service Points as runtime authority; client-supplied Service Point catalog.
 - **Evidence or governing references:** Domain §§5–7; current `ServicePointType` and `AdmisiRajalOptions` gaps.
 
@@ -470,21 +461,21 @@ Implementation agents must not:
 
 ### ADR-AQO-003 — Model Queue Call separately from service state
 
-- **Decision:** Queue Call and Call Attempt are Queue Session-owned records while Queue Entry remains Waiting until service actually starts.
-- **Status:** Accepted Target.
+- **Decision:** Current Queue Call state remains distinct from service state while Queue Entry remains Waiting until service actually starts. Detailed Call Attempt persistence is superseded by CallCount under ADR-AQO-013.
+- **Status:** Accepted with simplified V1 persistence.
 - **Context:** Current `AdmissionQueueStartCmd` conflates call with service start.
 - **Rationale:** Preserves correct ServedAt, waiting time, recall, and no-show evidence.
 - **Consequences:** Split new Call and Start Service use cases; migrate new clients away from direct start semantics.
 - **Rejected alternatives:** Add `Called` as the Queue Entry service state; treat display delivery as ServedAt.
 - **Evidence or governing references:** BR-AQO-017–024; SOP §§4.3–4.4.
 
-### ADR-AQO-004 — Snapshot Queue Prefix at Queue Session establishment
+### ADR-AQO-004 — Normalize and snapshot Queue Prefix at Queue Session establishment
 
-- **Decision:** Resolve Queue Prefix from the Service Point Aggregate and preserve it on the admission Queue Session; derive the Queue Label from that snapshot and NoUrut.
+- **Decision:** Normalize Queue Prefix with `Trim` + `ToUpperInvariant`; accept only one through four uppercase ASCII letters and enforce uniqueness across active admission Service Points. Preserve the normalized prefix on the admission Queue Session. Derive Queue Label by concatenating that snapshot and NoUrut without a separator, formatting the number with a minimum of three digits. Allocation is limited to 1–9999; after 9999, reject further allocation. Under ADR-AQO-009, a replacement session is not permitted on the same Business Date.
 - **Status:** Accepted Target.
 - **Context:** Historical labels must survive later catalog changes.
-- **Rationale:** One immutable session snapshot avoids unnecessary duplication while retaining deterministic labels.
-- **Consequences:** Migration adds prefix snapshot; existing sessions need an approved backfill strategy.
+- **Rationale:** One immutable session snapshot and one canonical formatting rule avoid client-specific labels while retaining deterministic historical labels.
+- **Consequences:** Domain validation, active-prefix uniqueness, allocation exhaustion, and format boundary tests are required. Migration adds prefix snapshot; existing sessions still need an approved backfill strategy.
 - **Rejected alternatives:** Resolve prefix from current Service Point on every read; encode prefix into `SequenceTag` as authority.
 - **Evidence or governing references:** BR-AQO-007–012.
 
@@ -501,7 +492,7 @@ Implementation agents must not:
 ### ADR-AQO-006 — Use durable notification outbox plus snapshot recovery
 
 - **Decision:** Commit a dedicated notification record with queue mutations, deliver it asynchronously over SignalR, and require snapshot recovery on connect/reconnect.
-- **Status:** Proposed; accepted in principle, pending deployment topology decision GAP-AQO-005.
+- **Status:** Superseded for Pragmatic V1 by ADR-AQO-013.
 - **Context:** Queue Display requires near-real-time updates but does not yet exist, and transient delivery cannot be authoritative.
 - **Rationale:** Separates queue consistency from client availability and reuses proven durable outbound patterns.
 - **Consequences:** Add outbox persistence, worker, hub adapter, idempotent client handling, snapshot recovery, and operational monitoring; transport dispatch success is not client-render acknowledgement.
@@ -511,7 +502,7 @@ Implementation agents must not:
 ### ADR-AQO-007 — Authenticate and scope device clients independently
 
 - **Decision:** Kiosk and Queue Display use authenticated service/device identities; human actors use JWT claims and contextual Loket authorization.
-- **Status:** Accepted Target; credential provisioning remains open.
+- **Status:** Superseded for Kiosk/Queue Display resource resolution by ADR-AQO-013; human authentication remains applicable.
 - **Context:** Current generic authorization and caller `UserId` cannot protect physical resource assignments.
 - **Rationale:** Server-side identity is required to authorize offerings, announcement scope, and accountable actions.
 - **Consequences:** Add client identity context and policies; remove caller identity authority from new commands.
@@ -528,19 +519,99 @@ Implementation agents must not:
 - **Rejected alternatives:** Allocate only after printer acknowledgement; allow Kiosk to choose a replacement number.
 - **Evidence or governing references:** SOP §§4.1, 5.2–5.3; BR-AQO-012.
 
-## 17. Open Gaps and Deferred Decisions
+### ADR-AQO-009 — Use one lazily established daily admission session per Service Point
+
+- **Decision:** Pragmatic V1 permits one admission Queue Session per `(ServicePointId, BusinessDate)`, with interval `00:00:00` through `23:59:59.9999999`. The server resolves Business Date through the shared capability. The first valid intake lazily establishes the dedicated session row. Intake is rejected when ServicePointId is inactive or the daily session is exhausted after 9999; Kiosk-local offerings are not server authority.
+- **Status:** Accepted Target.
+- **Context:** The previous architecture did not define session creation authority, daily uniqueness, interval, or date trust boundary.
+- **Rationale:** A single server-dated daily session is deterministic, matches the current all-day persistence shape, prevents clients from backdating/future-dating intake, and avoids speculative operating-hours administration in Pragmatic V1.
+- **Consequences:** Add natural uniqueness for Service Point and Business Date, handle concurrent lazy creation by one-winner/reload behavior, remove authoritative date from new intake commands, and reject same-date intake after exhaustion rather than creating a second session.
+- **Rejected alternatives:** Caller-supplied date; multiple intervals per Service Point/date; pre-creating every daily session; silently creating another same-date session after 9999.
+- **Evidence or governing references:** Decision B; BR-AQO-007–007d and BR-AQO-008a; shared Business Date implementation.
+
+### ADR-AQO-010 — Complete queue service only from an Admisi-owned final Registration Outcome
+
+- **Decision:** Admisi Rajal persists a Registration Outcome with stable OutcomeId and QueueEntryId. Result is `Established` with RegId or `NotEstablished` with ReasonCode. Validation errors create no final outcome and leave the Queue Entry InService. Patient Tracker may conditionally complete the matching Queue Entry after the final outcome is valid; `NotEstablished` may complete an anonymous entry without creating a Patient Journey.
+- **Status:** Accepted Target.
+- **Context:** Queue completion previously had no durable negative Registration outcome and successful Registration was the only implemented completion source.
+- **Rationale:** A durable final decision separates correctable failure from accountable completion while preserving Admisi Rajal's Registration authority and Patient Tracker's queue authority.
+- **Consequences:** Add the Admisi Rajal Registration Outcome aggregate/repository, a cross-context completion contract, conditional queue persistence, authenticated actor/time capture, and tests for both results and rollback.
+- **Rejected alternatives:** Treat validation errors/exceptions as final; use queue Done as proof of Registration outcome; require Tracker creation for NotEstablished; store the outcome as queue-owned truth.
+- **Evidence or governing references:** Decision C; BR-ARJ-020a–020h; BR-AQO-024–025; SOP §§4.5–4.6 and 5.11–5.12.
+
+### ADR-AQO-011 — Keep the Patient Tracker worklist projection queue-only
+
+- **Decision:** Patient Tracker owns an `Admission Queue Worklist Projection` containing Queue Label, Service Point, state, call state, Loket, queue timestamps, and optional TrackerId. The Admission Module or an Admisi Rajal application query composes it with Booking, identity, Registration, and administrative context to produce the `Admisi Rajal Work List`.
+- **Status:** Accepted by Decision D.
+- **Rationale:** Queue truth remains reusable and context-pure while Admisi Rajal can present the enriched operational view required by officers.
+- **Consequences:** UC-AQO-010 and its DAL/API must expose only the queue contract. Composition is read-only and must not introduce a second ledger or direct cross-context table writes.
+- **Evidence or governing references:** Decision D; `docs/contexts/admisi-rajal/admisi-rajal-domain.md` §5.6 and BR-ARJ-010–012a.
+
+### ADR-AQO-012 — Resolve Loket and Queue Display scope from authenticated server context
+
+- **Decision:** Pragmatic V1 assigns zero or one active Loket to an authenticated Login Session through `AdmissionLoketAssignment`. Queue handlers resolve Current User + Current Login Session → active assignment → Loket → authorized Service Points. Queue Display is an Active/Retired authenticated device resource assigned to one Announcement Scope; V1 uses one scope for all active admission Service Points.
+- **Status:** Superseded for Pragmatic V1 by the later developer decisions in ADR-AQO-013.
+- **Rationale:** Client payloads cannot confer physical-service or display-subscription authority. Server-owned assignment and device resources provide stable authorization and audit boundaries.
+- **Consequences:** Add assignment, display, and scope persistence; supervisor/admin use cases; active-assignment uniqueness; device/session context ports; authorization tests; and a bootstrapped V1 scope. Globally unique active Queue Prefixes remain required.
+- **Rejected alternatives:** Caller-authoritative LoketId; browser-local assignment; caller-selected SignalR groups; per-building scopes invented before hospital location policy exists.
+
+### ADR-AQO-013 — Adopt the developer-approved simplified persistence profile for Pragmatic V1
+
+- **Decision:** Retain a dedicated daily Queue Session table with LastQueueNumber and unique `(ServicePointId, BusinessDate)`; treat Loket and Kiosk as deployment configuration; permit every configured Loket to serve every active Service Point; use passive displays backed by shared current-per-Loket state and AnnouncementVersion; retain CallCount instead of Call Attempt history; redirect by explicit origin disposition plus a new Priority entry with CreationReason and SourceAntrianEntryId; store optional ClientRequestId on Queue Entry; and publish best-effort SignalR refresh after commit with polling recovery and no outbox.
+- **Status:** Accepted from developer discussion; supersedes conflicting V1 portions of ADR-AQO-001, 003, 006, 007, and 012.
+- **Rationale:** Reduce V1 persistence and administration scope while keeping queue numbering and current operational display state database-authoritative.
+- **Consequences:** Deployment configuration becomes a trusted boundary; kiosk-specific server authorization is absent; optional ClientRequestId provides only conditional deduplication; CallCount cannot reconstruct detailed attempt/no-show evidence; SignalR delivery is not durable; redirection needs explicit origin disposition and preferably one local transaction.
+- **Safety constraints:** do not automate history-dependent policies from CallCount, do not claim idempotency when ClientRequestId is absent, do not claim durable notifications, validate active ServicePointId server-side, reject missing/invalid workstation Loket configuration, and never leave both origin and Priority replacement active.
+
+### ADR-AQO-014 — Use deployment-owned LoketKey and enforce one current patient per Loket
+
+- **Decision:** A configured Loket is identified by a stable unique LoketKey sourced from controlled workstation configuration, such as PC name or a configuration file. The server does not accept an arbitrary operator-entered LoketKey. One LoketKey may have at most one Outstanding or InService Queue Entry.
+- **Status:** Accepted V1 design decision.
+- **Consequences:** Missing or duplicate LoketKey blocks Call/Recall; workstation rename requires controlled configuration update; a database-coordinated active-work claim is required across Queue Sessions.
+- **Limitation:** Without a Loket master, detecting two separate workstations configured with the same key requires an explicit deployment validation or runtime lease/registration mechanism; the exact mechanism remains GAP-AQO-004.
+
+### ADR-AQO-015 — Keep Call separate from service start and manual queue progression
+
+- **Decision:** Call/Recall updates current display state and CallCount. Queue Entry remains Waiting until the operator explicitly starts service. CallCount is informational only and does not automatically mark No-Show, postpone an entry, calculate subsequent-patient rules, or choose the next entry.
+- **Status:** Accepted V1 design decision.
+- **Consequences:** No-show and recall policy remain manual. Automated history-dependent behavior requires a later persistence/design decision.
+
+### ADR-AQO-016 — Treat Priority as an indicator with explicit provenance
+
+- **Decision:** Priority is a visual and sorting aid, not an automatic calling rule. The operator retains call-selection authority. Queue Entry persists CreationReason as `Normal`, `Redirected`, or `ManualPriority`, with nullable SourceAntrianEntryId; `Redirected` requires the source reference and `Normal` prohibits it.
+- **Status:** Accepted V1 design decision.
+- **Consequences:** Redirection creates a new Priority entry rather than moving the origin. UI/query sorting may surface it, but handlers must not automatically bypass other entries.
+
+### ADR-AQO-017 — Use authoritative current-call projection with recoverable passive displays
+
+- **Decision:** `BILRG_AdmLoketCurrentCall` stores only the latest visible call per LoketKey and is authoritative projection state, not history. SignalR is only a refresh trigger. Displays reload after a trigger, reconnect, and periodic polling. AnnouncementVersion increments only on Call/Recall requiring audio.
+- **Status:** Accepted V1 design decision.
+- **Consequences:** Missed SignalR does not cause permanent staleness; ordinary screen refresh/service-state changes do not retrigger audio; past activity cannot be reconstructed from this table.
+
+## 17. Pragmatic V1 Implementation Notes
+
+- Resolve LoketKey through a configuration adapter using controlled PC name or configuration file. Precedence, normalization, and duplicate-detection mechanism belong to the implementation/configuration contract.
+- Treat workstation rename as a deployment change; update configuration in a controlled rollout before queue operation resumes.
+- Validate configured ServicePointId references against existing active Service Point master data. Configuration cannot create or modify that data.
+- Store ClientRequestId on Queue Entry only when supplied; it provides kiosk retry idempotency only under the approved uniqueness scope.
+- Increment AnnouncementVersion on Call or Recall only when audio is required. Reloading a screen does not increment it.
+- Queue Display reloads after SignalR and reconnect, and polls every configured N seconds. The exact N is an operational setting, not an architecture invariant.
+- The Priority indicator must be visible in the queue-only worklist; sorting may surface Priority entries but never auto-selects them.
+
+## 18. Open Gaps and Deferred Decisions
 
 | ID | Gap or decision | Why it matters | Owner / authority needed | Blocks | Safe interim position |
 |---|---|---|---|---|---|
 | GAP-AQO-001 | Exact no-show threshold and whether an entry returns to Waiting or becomes Withdrawn | Determines supervisor action, timers, projections, and tests | Hospital Queue Operations policy owner | Final no-show UI/API and automation | Require explicit supervisor disposition; do not automate a threshold |
-| GAP-AQO-002 | Definition of Patient announcement scope/location and prefix uniqueness scope | Determines display subscriptions and whether prefixes may repeat across buildings | Hospital operations and facility/domain owner | Catalog validation, display grouping, multi-building rollout | Treat all active admission Service Points as one scope and require globally unambiguous prefixes |
-| GAP-AQO-003 | Trusted Admission workstation-to-Loket assignment mechanism | Browser-local selection alone is not authoritative | Security/operations owner | Contextual officer authorization | Require supervisor-managed server assignment; do not trust arbitrary LoketId |
-| GAP-AQO-004 | Kiosk and Queue Display credential provisioning/rotation | Device identity is required for offering and display scoping | Security/platform owner | Production device authentication | No anonymous device commands or subscriptions |
-| GAP-AQO-005 | API instance topology and SignalR scale-out/backplane | Multi-instance delivery and connection routing affect hub and worker design | Deployment/platform owner | Final real-time infrastructure | Implement snapshot recovery and durable outbox; do not assume in-memory delivery is sufficient across instances |
+| GAP-AQO-002 | Passive display API/access policy | No QueueDisplay master/scope exists, but read access still needs an explicit deployment/API security position | Security/platform owner | Production display exposure | Restrict at network/API layer until the contract is approved; display remains read-only |
+| GAP-AQO-004 | Trusted LoketKey distribution, integrity, and cross-workstation duplicate detection mechanism | Two machines using the same key are indistinguishable without a registry, deployment validation, or runtime lease; local validation alone cannot prove uniqueness | Deployment/security owner | Production Loket accountability and safe calling | Block missing/known duplicate values, log resolved key, control rename/config rollout, and choose a duplicate-detection mechanism before production |
+| GAP-AQO-005 | API instance topology and SignalR scale-out/backplane | Multi-instance refresh delivery can be missed across instances | Deployment/platform owner | Final real-time infrastructure | Poll persisted current display state; do not claim SignalR delivery guarantees |
 | GAP-AQO-006 | Kiosk and Queue Display client technology, repository, and hosting | Determines later UI and deployment artifacts, not backend authority | Product/platform owner | Client implementation | Keep backend contracts transport/client agnostic |
-| GAP-AQO-007 | Queue Call, Call Attempt, outbox, and audit retention periods | Affects storage volume and authorized history | Compliance and hospital operations | Retention jobs and capacity sizing | Retain records; do not delete automatically |
+| GAP-AQO-007 | Queue Entry/current-display/audit retention periods | Affects storage volume and authorized history | Compliance and hospital operations | Retention jobs and capacity sizing | Retain Queue Entries and audit; current display state is replaceable operational state |
 | GAP-AQO-008 | Exact API contract and visible UI labels beyond `Call` | Required for client implementation and contract tests | Product/UI/API owners | UI delivery and API endpoint implementation | Implement Application contracts first; do not invent routes or labels in architecture |
 | GAP-AQO-009 | Operational evidence used to offer or transfer BPJS versus General service | Queue does not own eligibility truth | Admisi Rajal/guarantor policy owner | Automated routing suggestions | Let Patient choose an offered Service Point and require accountable transfer when wrong |
 | GAP-AQO-010 | Prefix backfill for historical and currently active admission sessions | Historical rows have no authoritative prefix | Data migration and operations owner | Enabling Queue Label projection for legacy sessions | Preserve raw NoUrut and mark prefix migration unresolved; do not infer from arbitrary descriptions |
 | GAP-AQO-011 | Deprecation date and consumers of current direct admission `start` | New Call/Start split cannot safely replace unknown clients immediately | API/product owner | Removal or semantic change of existing capability | Keep compatibility endpoint feature-gated; new clients use split commands |
-| GAP-AQO-012 | Queue Display retention semantics after service starts | Determines whether display shows outstanding call only, current InService item, or recent calls | Hospital Queue Operations policy owner | Final display projection/UI contract | Persist all call facts; expose a recoverable snapshot without declaring final visual retention policy |
+| GAP-AQO-012 | When the latest visible current-call row is cleared or replaced after service starts | Determines what the passive display shows after call acknowledgement; the table cannot provide recent-call history | Hospital Queue Operations policy owner | Final display projection/UI contract | Keep `BILRG_AdmLoketCurrentCall` latest-state-only; do not infer history or increment AnnouncementVersion unless audio is required |
+| GAP-AQO-013 | Registration Outcome ReasonCode catalog and ownership | Required reasons must be stable and selectable without inventing codes in clients | Admisi Rajal operations/domain owner | Final NotEstablished API/UI and reporting | Require a non-empty code in the model; do not invent or hard-code reason values until approved |
+| GAP-AQO-014 | QueueEntryId representation for Registration Outcome | Existing durable identity is `(AntrianId, NoUrut)`, while Decision C names one QueueEntryId field | Patient Tracker/Admisi Rajal architecture owner | Outcome persistence and cross-context API schema | Preserve the existing composite identity; do not generate an unrelated queue identity until the mapping contract is approved |

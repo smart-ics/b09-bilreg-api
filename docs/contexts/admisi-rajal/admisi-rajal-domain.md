@@ -91,7 +91,7 @@ Admisi Rajal may use referenced facts from those contexts, but it does not repla
 | Self-Registration | Registration performed by the Patient through an authorized self-service channel without Admission Officer assistance. |
 | Self-Registration Requires Assistance | The business outcome that Self-Registration did not establish a Registration and assisted registration work is required. |
 | Registration Assistance | Human administrative work required to establish or resolve an Outpatient Registration. |
-| Admisi Rajal Work List | The collection of active Registration Assistance items represented by active Patient Tracker Queue Entries for the Admisi Rajal Service Point and enriched with Admisi Rajal context. |
+| Admisi Rajal Work List | A composed operational view whose queue membership and queue fields come from the Patient Tracker Admission Queue Worklist Projection and are enriched with Booking, identity, Registration, and administrative context owned by Admisi Rajal or its application collaborators. |
 | Work Item | The operational representation of one active Registration Assistance obligation. It is not a separate queue or Aggregate Root. |
 | Patient Identity Intake | Collection and accountable resolution of identity information needed to reference an existing Patient or request New Patient Recording. |
 | New Patient Recording | Establishment of a new canonical Patient identity when no applicable Patient record exists and governing policy permits creation. |
@@ -107,7 +107,9 @@ Admisi Rajal may use referenced facts from those contexts, but it does not repla
 | Patient Journey | One logical continuity of a Patient's operational interactions, owned by Patient Tracker. |
 | TrackerId | The stable logical identity of one Patient Journey, owned by Patient Tracker. |
 | Queue Entry | A Patient's or anonymous visitor's participation in a Queue Session, owned by Patient Tracker. |
-| Registration Outcome | The authoritative result of a registration attempt, including Registration Established or Registration Not Established. |
+| Registration Outcome | The durable final decision for one Registration Assistance Queue Entry. It has a stable OutcomeId and a Result of `Established` or `NotEstablished`. Correctable validation errors are not Registration Outcomes. |
+| OutcomeId | The stable identity of one final Registration Outcome. |
+| Registration Outcome Reason | The required ReasonCode and optional human-readable Explanation supporting a final `NotEstablished` decision. |
 
 ## 3. Business Capabilities
 
@@ -222,7 +224,7 @@ Represents the business need for an Admission Officer to resolve a registration 
 
 ### 5.6 Admisi Rajal Work List
 
-Represents the current collection of active Registration Assistance. It derives membership from Patient Tracker queue truth and combines it with Admisi Rajal registration context. It is not an independent business ledger.
+Represents the current collection of active Registration Assistance. It composes the Patient Tracker Admission Queue Worklist Projection—Queue Label, Service Point, state, call state, LoketKey, queue timestamps, Priority indicator, and optional TrackerId—with Booking, identity, Registration, and administrative context. The Admission Module or an Admisi Rajal application query performs this composition. It is not an independent business ledger.
 
 ### 5.7 Patient Identity Reference
 
@@ -239,6 +241,12 @@ Represents the intended Poli and responsible care provider for the outpatient vi
 ### 5.10 Initial Charge
 
 Represents the initial financial obligation arising from administrative access to the selected Outpatient Destination. It references applicable tariff truth without owning tariff policy or settlement.
+
+### 5.11 Registration Outcome
+
+Represents the explicit final Admisi Rajal decision for one Registration Assistance Queue Entry.
+
+It retains OutcomeId, QueueEntryId, Result, conditional RegId and ReasonCode, Explanation, DecidedAt, and DecidedBy. `RegId` is required only for `Established`; `ReasonCode` is required for `NotEstablished`.
 
 ## 6. Aggregates
 
@@ -270,7 +278,15 @@ The aggregate owns one recurring definition of provider availability, destinatio
 
 The aggregate owns one date-specific schedule occurrence or approved exception. It remains independent from later changes to a recurring template when established as a manual exception.
 
-### 6.5 Explicit non-aggregates
+### 6.5 Registration Outcome Aggregate
+
+**Aggregate Root:** `Registration Outcome`
+
+The aggregate keeps its stable OutcomeId, referenced QueueEntryId, final Result, conditional RegId/ReasonCode, Explanation, and accountable decision actor/time mutually consistent.
+
+It records Admisi Rajal's final decision but does not own or mutate the referenced Patient Tracker Queue Entry. Queue completion remains a Patient Tracker transition coordinated through an application contract.
+
+### 6.6 Explicit non-aggregates
 
 `Admisi Rajal Work List`, `Work Item`, `Queue Entry`, `TrackerId`, and `Patient Identity Reference` are not Admisi Rajal Aggregate Roots.
 
@@ -295,9 +311,10 @@ Queue consistency belongs to Patient Tracker. Canonical Patient identity consist
 
 ### 7.3 Work List and Patient Tracker boundary
 
-- **BR-ARJ-010** — The Admisi Rajal Work List shall contain only active Registration Assistance for the Admisi Rajal Service Point.
+- **BR-ARJ-010** — The Admisi Rajal Work List shall derive active queue membership and queue fields from the Patient Tracker Admission Queue Worklist Projection.
 - **BR-ARJ-011** — Each Work Item shall correspond to one active Queue Entry owned by Patient Tracker and shall not establish a second queue identity.
 - **BR-ARJ-012** — Admisi Rajal shall not independently assign Queue Numbers or redefine Queue Entry state.
+- **BR-ARJ-012a** — Admisi Rajal may enrich the composed Work List with Booking, identity, Registration, and administrative context, but shall not copy that enrichment into the Patient Tracker queue projection or use it to redefine queue truth.
 - **BR-ARJ-013** — Registration completion shall be determined by the Outpatient Registration outcome, not inferred solely from queue completion.
 - **BR-ARJ-014** — Queue completion shall be recorded through Patient Tracker and shall not be inferred solely from Registration establishment.
 - **BR-ARJ-015** — Repeated requests for assistance for the same unresolved Booking attempt shall not create more than one active Registration Assistance obligation.
@@ -309,6 +326,14 @@ Queue consistency belongs to Patient Tracker. Canonical Patient identity consist
 - **BR-ARJ-018** — The Registration shall retain the Coverage Arrangement, referral context, and Initial Charge context required by the policy applicable at establishment time.
 - **BR-ARJ-019** — Admisi Rajal shall not claim external guarantor eligibility when the required evidence has not been established.
 - **BR-ARJ-020** — Establishing an Initial Charge shall not transfer tariff-policy or settlement ownership into Admisi Rajal.
+- **BR-ARJ-020a** — Every final Registration Outcome shall retain one stable OutcomeId, one QueueEntryId, one Result, DecidedAt, and DecidedBy.
+- **BR-ARJ-020b** — Result shall be exactly one of `Established` or `NotEstablished`.
+- **BR-ARJ-020c** — An `Established` Registration Outcome shall reference the established Outpatient Registration through RegId; RegId is not permitted for `NotEstablished`.
+- **BR-ARJ-020d** — A `NotEstablished` Registration Outcome shall carry a ReasonCode and may carry an Explanation.
+- **BR-ARJ-020e** — Validation errors and correctable data problems shall not create a final Registration Outcome; Registration Assistance and its Queue Entry remain In Service.
+- **BR-ARJ-020f** — `NotEstablished` shall be an explicit final decision by an accountable Admission Officer and shall not be inferred from an exception, timeout, queue state, or missing Registration row.
+- **BR-ARJ-020g** — After a final Registration Outcome is persisted, Patient Tracker may complete the referenced In Service Queue Entry through its own authority.
+- **BR-ARJ-020h** — A `NotEstablished` outcome does not establish an Outpatient Registration or Patient Journey; the referenced Queue Entry may remain anonymous when no Patient Journey was established.
 
 ### 7.5 Booking Management
 
@@ -345,12 +370,22 @@ Queue consistency belongs to Patient Tracker. Canonical Patient identity consist
 ### 8.1 Outpatient Registration lifecycle
 
 ```text
-Registration Not Established
-  → Registration Established
-      → Registration Cancelled
+Registration Established
+  → Registration Cancelled
 ```
 
-`Registration Established` means authoritative outpatient administrative access exists. `Registration Cancelled` means that access was subsequently invalidated under an accountable cancellation policy. Detailed visit-closing and correction states require later elaboration.
+`Registration Established` means authoritative outpatient administrative access exists. `Registration Cancelled` means that access was subsequently invalidated under an accountable cancellation policy. `NotEstablished` is a final Registration Outcome result, not a state of an Outpatient Registration that does not exist. Detailed visit-closing and correction states require later elaboration.
+
+### 8.1a Registration Outcome decision lifecycle
+
+```text
+Registration Assistance In Service
+  → correctable validation: no final outcome; remain In Service
+  → final decision: Established(RegId)
+  → final decision: NotEstablished(ReasonCode)
+```
+
+Both final branches retain OutcomeId, QueueEntryId, Explanation when supplied, DecidedAt, and DecidedBy. Only a final branch permits the referenced Queue Entry to become Done through Patient Tracker.
 
 ### 8.2 Booking lifecycle
 
@@ -417,6 +452,7 @@ These are Patient Tracker Queue Entry states interpreted by Admisi Rajal for Wor
 | Registration Assistance Requested | An active need for assisted outpatient registration was recognized. |
 | Registration Assistance Started | An Admission Officer began resolving the assistance obligation; queue-service truth remains owned by Patient Tracker. |
 | Outpatient Registration Established | An authoritative Outpatient Registration was established. |
+| Registration Not Established Decided | An accountable Admission Officer made and recorded a final `NotEstablished` decision with a stable OutcomeId and reason. |
 | Outpatient Registration Cancelled | A previously established Outpatient Registration was invalidated under an accountable policy. |
 | Coverage Arrangement Determined | The applicable payment or guarantor basis was determined for a Registration. |
 | Outpatient Destination Assigned | The intended Poli and care provider were assigned to the Registration. |
@@ -490,7 +526,9 @@ Booking Planned
   → Admission Officer asks for evidence and resolves the applicable existing Booking Patient Journey
   → Queue Entry is associated with that resolved Tracker
   → Admission Officer resolves other required registration context
-  → Outpatient Registration Established or Registration Not Established
+  → Final Registration Outcome persisted:
+      → Established with RegId
+      → NotEstablished with ReasonCode
   → Queue service completed through Patient Tracker
 ```
 
@@ -505,7 +543,9 @@ Patient requests assisted outpatient registration
   → Admission Officer starts assistance
   → Patient Journey and canonical Patient identity resolved or established through their owning contexts
   → Visit Date, Outpatient Destination, and applicable registration context determined
-  → Outpatient Registration Established or Registration Not Established
+  → Final Registration Outcome persisted:
+      → Established with RegId
+      → NotEstablished with ReasonCode
   → Queue service completed through Patient Tracker
 ```
 

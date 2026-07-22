@@ -91,7 +91,7 @@ Admisi Rajal dapat memakai fakta rujukan dari konteks-konteks tersebut, tetapi t
 | Self-Registration | Registrasi Mandiri | Registrasi yang dilakukan Pasien melalui saluran mandiri resmi tanpa bantuan Admission Officer. |
 | Self-Registration Requires Assistance | Registrasi Mandiri Memerlukan Bantuan | Outcome bisnis bahwa Self-Registration tidak berhasil membentuk Registration dan diperlukan registrasi berbantuan. |
 | Registration Assistance | Bantuan Registrasi | Pekerjaan administratif oleh manusia yang diperlukan untuk membentuk atau menyelesaikan Outpatient Registration. |
-| Admisi Rajal Work List | Daftar Kerja Admisi Rawat Jalan | Kumpulan Registration Assistance aktif yang direpresentasikan oleh Queue Entry Patient Tracker yang aktif pada Service Point Admisi Rajal dan diperkaya dengan konteks Admisi Rajal. |
+| Admisi Rajal Work List | Daftar Kerja Admisi Rawat Jalan | View operasional tersusun yang keanggotaan dan field antreannya berasal dari Patient Tracker Admission Queue Worklist Projection serta diperkaya dengan konteks Booking, identitas, Registration, dan administratif milik Admisi Rajal atau kolaborator aplikasinya. |
 | Work Item | Butir Pekerjaan | Representasi operasional dari satu kewajiban Registration Assistance aktif. Work Item bukan antrean atau Aggregate Root tersendiri. |
 | Patient Identity Intake | Penerimaan Identitas Pasien | Pengumpulan dan penyelesaian identitas secara akuntabel untuk merujuk Pasien yang sudah ada atau mengajukan New Patient Recording. |
 | New Patient Recording | Pencatatan Pasien Baru | Pembentukan identitas Pasien kanonis baru ketika tidak ada catatan Pasien yang berlaku dan kebijakan mengizinkan pembentukan tersebut. |
@@ -107,7 +107,9 @@ Admisi Rajal dapat memakai fakta rujukan dari konteks-konteks tersebut, tetapi t
 | Patient Journey | Perjalanan Pasien | Satu kesinambungan logis interaksi operasional Pasien yang dimiliki Patient Tracker. |
 | TrackerId | Identitas Pelacakan Perjalanan | Identitas logis stabil dari satu Patient Journey yang dimiliki Patient Tracker. |
 | Queue Entry | Entri Antrean | Keikutsertaan Pasien atau pengunjung anonim dalam satu Queue Session yang dimiliki Patient Tracker. |
-| Registration Outcome | Hasil Registrasi | Hasil otoritatif dari suatu upaya registrasi, termasuk Registration Established atau Registration Not Established. |
+| Registration Outcome | Hasil Registrasi | Keputusan final yang durable untuk satu Registration Assistance Queue Entry. Registration Outcome memiliki OutcomeId stabil dan Result `Established` atau `NotEstablished`. Validation error yang dapat dikoreksi bukan Registration Outcome. |
+| OutcomeId | Identitas Hasil Registrasi | Identitas stabil untuk satu Registration Outcome final. |
+| Registration Outcome Reason | Alasan Hasil Registrasi | ReasonCode wajib dan Explanation yang dapat diisi untuk mendukung keputusan final `NotEstablished`. |
 
 ## 3. Kapabilitas Bisnis
 
@@ -240,7 +242,7 @@ Merepresentasikan kebutuhan bisnis agar Admission Officer menyelesaikan suatu up
 
 ### 5.6 Admisi Rajal Work List
 
-Merepresentasikan kumpulan Registration Assistance aktif saat ini. Keanggotaannya berasal dari kebenaran antrean Patient Tracker dan digabungkan dengan konteks registrasi Admisi Rajal. Objek ini bukan buku besar bisnis yang independen.
+Merepresentasikan kumpulan Registration Assistance aktif saat ini. View ini menyusun Patient Tracker Admission Queue Worklist Projection—Queue Label, Service Point, state, call state, LoketKey, timestamp antrean, indikator Priority, dan TrackerId opsional—dengan konteks Booking, identitas, Registration, dan administratif. Admission Module atau application query Admisi Rajal melakukan komposisi ini. Objek ini bukan ledger bisnis yang independen.
 
 ### 5.7 Patient Identity Reference
 
@@ -257,6 +259,12 @@ Merepresentasikan Poli dan pemberi asuhan yang bertanggung jawab sebagai tujuan 
 ### 5.10 Initial Charge
 
 Merepresentasikan kewajiban finansial awal yang timbul dari akses administratif ke Outpatient Destination terpilih. Initial Charge merujuk kebenaran tarif yang berlaku tanpa memiliki kebijakan tarif atau settlement.
+
+### 5.11 Registration Outcome
+
+Merepresentasikan keputusan final Admisi Rajal yang eksplisit untuk satu Registration Assistance Queue Entry.
+
+Registration Outcome mempertahankan OutcomeId, QueueEntryId, Result, RegId dan ReasonCode kondisional, Explanation, DecidedAt, dan DecidedBy. `RegId` wajib hanya untuk `Established`; `ReasonCode` wajib untuk `NotEstablished`.
 
 ## 6. Aggregates
 
@@ -288,7 +296,15 @@ Aggregate memiliki satu definisi berulang mengenai ketersediaan pemberi asuhan, 
 
 Aggregate memiliki satu kejadian jadwal spesifik tanggal atau pengecualian yang disetujui. Ketika ditetapkan sebagai pengecualian manual, Aggregate ini tetap independen dari perubahan berikutnya pada template berulang.
 
-### 6.5 Explicit non-aggregates
+### 6.5 Registration Outcome Aggregate
+
+**Aggregate Root:** `Registration Outcome`
+
+Aggregate menjaga OutcomeId stabil, QueueEntryId yang direferensikan, Result final, RegId/ReasonCode kondisional, Explanation, serta actor/waktu keputusan yang accountable tetap konsisten satu sama lain.
+
+Aggregate mencatat keputusan final Admisi Rajal tetapi tidak memiliki atau memutasi Patient Tracker Queue Entry yang direferensikan. Queue completion tetap merupakan transition Patient Tracker yang dikoordinasikan melalui application contract.
+
+### 6.6 Explicit non-aggregates
 
 `Admisi Rajal Work List`, `Work Item`, `Queue Entry`, `TrackerId`, dan `Patient Identity Reference` bukan Aggregate Root Admisi Rajal.
 
@@ -313,9 +329,10 @@ Konsistensi antrean dimiliki Patient Tracker. Konsistensi identitas Patient kano
 
 ### 7.3 Batas Work List dan Patient Tracker
 
-- **BR-ARJ-010** — Admisi Rajal Work List hanya boleh memuat Registration Assistance aktif untuk Service Point Admisi Rajal.
+- **BR-ARJ-010** — Admisi Rajal Work List harus memperoleh keanggotaan aktif dan field antrean dari Patient Tracker Admission Queue Worklist Projection.
 - **BR-ARJ-011** — Setiap Work Item harus berkorespondensi dengan satu Queue Entry aktif milik Patient Tracker dan tidak boleh membentuk identitas antrean kedua.
 - **BR-ARJ-012** — Admisi Rajal tidak boleh menetapkan Queue Number secara independen atau mendefinisikan ulang status Queue Entry.
+- **BR-ARJ-012a** — Admisi Rajal boleh memperkaya Work List tersusun dengan konteks Booking, identitas, Registration, dan administratif, tetapi tidak boleh menyalin enrichment tersebut ke proyeksi antrean Patient Tracker atau menggunakannya untuk mendefinisikan ulang kebenaran antrean.
 - **BR-ARJ-013** — Penyelesaian Registration harus ditentukan oleh outcome Outpatient Registration, bukan hanya disimpulkan dari selesainya antrean.
 - **BR-ARJ-014** — Penyelesaian antrean harus dicatat melalui Patient Tracker dan tidak boleh hanya disimpulkan dari terbentuknya Registration.
 - **BR-ARJ-015** — Permintaan bantuan berulang untuk upaya Booking yang sama dan belum terselesaikan tidak boleh membentuk lebih dari satu kewajiban Registration Assistance aktif.
@@ -327,6 +344,14 @@ Konsistensi antrean dimiliki Patient Tracker. Konsistensi identitas Patient kano
 - **BR-ARJ-018** — Registration harus mempertahankan Coverage Arrangement, konteks rujukan, dan konteks Initial Charge yang diwajibkan oleh kebijakan saat pembentukan.
 - **BR-ARJ-019** — Admisi Rajal tidak boleh menyatakan eligibility penjamin eksternal ketika bukti yang diwajibkan belum terbentuk.
 - **BR-ARJ-020** — Pembentukan Initial Charge tidak boleh memindahkan kepemilikan kebijakan tarif atau settlement ke Admisi Rajal.
+- **BR-ARJ-020a** — Setiap Registration Outcome final harus mempertahankan satu OutcomeId stabil, satu QueueEntryId, satu Result, DecidedAt, dan DecidedBy.
+- **BR-ARJ-020b** — Result harus tepat salah satu dari `Established` atau `NotEstablished`.
+- **BR-ARJ-020c** — Registration Outcome `Established` harus mereferensikan Outpatient Registration yang terbentuk melalui RegId; RegId tidak diizinkan untuk `NotEstablished`.
+- **BR-ARJ-020d** — Registration Outcome `NotEstablished` harus memiliki ReasonCode dan dapat memiliki Explanation.
+- **BR-ARJ-020e** — Validation error dan masalah data yang dapat dikoreksi tidak boleh membuat Registration Outcome final; Registration Assistance dan Queue Entry-nya tetap In Service.
+- **BR-ARJ-020f** — `NotEstablished` harus merupakan keputusan final eksplisit oleh Admission Officer yang accountable dan tidak boleh disimpulkan dari exception, timeout, queue state, atau tidak adanya Registration row.
+- **BR-ARJ-020g** — Setelah Registration Outcome final dipersistenkan, Patient Tracker dapat menyelesaikan In Service Queue Entry yang direferensikan melalui otoritasnya sendiri.
+- **BR-ARJ-020h** — Outcome `NotEstablished` tidak membentuk Outpatient Registration atau Patient Journey; Queue Entry yang direferensikan dapat tetap anonymous ketika tidak ada Patient Journey yang dibentuk.
 
 ### 7.5 Booking Management
 
@@ -363,12 +388,22 @@ Konsistensi antrean dimiliki Patient Tracker. Konsistensi identitas Patient kano
 ### 8.1 Lifecycle Outpatient Registration
 
 ```text
-Registration Not Established
-  → Registration Established
-      → Registration Cancelled
+Registration Established
+  → Registration Cancelled
 ```
 
-`Registration Established` berarti akses administratif rawat jalan yang otoritatif telah ada. `Registration Cancelled` berarti akses tersebut kemudian dibatalkan berdasarkan kebijakan pembatalan yang akuntabel. State penutupan kunjungan dan koreksi yang detail memerlukan elaborasi berikutnya.
+`Registration Established` berarti akses administratif rawat jalan yang otoritatif telah ada. `Registration Cancelled` berarti akses tersebut kemudian dibatalkan berdasarkan kebijakan pembatalan yang akuntabel. `NotEstablished` adalah Result Registration Outcome final, bukan state dari Outpatient Registration yang tidak ada. State penutupan kunjungan dan koreksi yang detail memerlukan elaborasi berikutnya.
+
+### 8.1a Lifecycle keputusan Registration Outcome
+
+```text
+Registration Assistance In Service
+  → validation dapat dikoreksi: tidak ada outcome final; tetap In Service
+  → keputusan final: Established(RegId)
+  → keputusan final: NotEstablished(ReasonCode)
+```
+
+Kedua cabang final mempertahankan OutcomeId, QueueEntryId, Explanation ketika tersedia, DecidedAt, dan DecidedBy. Hanya cabang final yang mengizinkan Queue Entry yang direferensikan menjadi Done melalui Patient Tracker.
 
 ### 8.2 Lifecycle Booking
 
@@ -435,6 +470,7 @@ Ini adalah state Queue Entry Patient Tracker yang diinterpretasikan Admisi Rajal
 | Registration Assistance Requested | Kebutuhan aktif akan registrasi rawat jalan berbantuan telah dikenali. |
 | Registration Assistance Started | Admission Officer mulai menyelesaikan kewajiban bantuan; kebenaran layanan antrean tetap dimiliki Patient Tracker. |
 | Outpatient Registration Established | Outpatient Registration yang otoritatif telah terbentuk. |
+| Registration Not Established Decided | Admission Officer yang accountable membuat dan mencatat keputusan final `NotEstablished` dengan OutcomeId stabil dan alasan. |
 | Outpatient Registration Cancelled | Outpatient Registration yang sebelumnya terbentuk dibatalkan berdasarkan kebijakan yang akuntabel. |
 | Coverage Arrangement Determined | Dasar pembayaran atau penjamin yang berlaku telah ditentukan untuk Registration. |
 | Outpatient Destination Assigned | Poli dan pemberi asuhan yang dimaksud telah ditetapkan pada Registration. |
@@ -508,7 +544,9 @@ Booking Planned
   → Admission Officer meminta bukti dan meresolusi existing Booking Patient Journey yang sesuai
   → Queue Entry dikaitkan dengan Tracker yang telah diresolusi tersebut
   → Admission Officer menyelesaikan konteks registrasi lain yang diwajibkan
-  → Outpatient Registration Established atau Registration Not Established
+  → Registration Outcome final dipersistenkan:
+      → Established dengan RegId
+      → NotEstablished dengan ReasonCode
   → Layanan antrean diselesaikan melalui Patient Tracker
 ```
 
@@ -523,7 +561,9 @@ Patient meminta registrasi rawat jalan berbantuan
   → Admission Officer memulai bantuan
   → Patient Journey dan identitas Patient kanonis diselesaikan atau dibentuk melalui konteks pemiliknya
   → Visit Date, Outpatient Destination, dan konteks registrasi yang berlaku ditentukan
-  → Outpatient Registration Established atau Registration Not Established
+  → Registration Outcome final dipersistenkan:
+      → Established dengan RegId
+      → NotEstablished dengan ReasonCode
   → Layanan antrean diselesaikan melalui Patient Tracker
 ```
 

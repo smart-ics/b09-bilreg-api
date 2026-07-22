@@ -20,15 +20,9 @@ The architecture is directionally sound and aligns with the major ownership rule
 
 However, implementation is blocked at several slice boundaries by missing authoritative decisions:
 
-1. Queue Label formatting is business-significant but undefined.
-2. Admission Queue Session establishment and operating-interval selection are undefined.
-3. trusted workstation-to-Loket assignment is required for authorization but is not modeled as an owned capability.
-4. Queue Display identity and announcement-scope assignment are required but are not modeled.
-5. completion after `Registration Not Established` has no explicit application contract or durable outcome reference.
-6. the relationship between the Patient Tracker queue projection and the Admisi Rajal enriched Work List is ambiguous.
-7. conditional persistence and database constraints are described as goals, but the concrete persistence contract needed to protect cross-session Loket and idempotency invariants is absent.
-8. device/API contracts, compatibility consumers, migration values, and production topology are not yet resolved.
-9. the Booking Self-Registration → Assistance decision and business-level duplicate-assistance guard are not represented in the architecture use cases.
+1. conditional persistence and database constraints are described as goals, but the concrete persistence contract needed to protect cross-session LoketKey and idempotency invariants is absent.
+2. cross-workstation duplicate LoketKey detection, passive-display access, API contracts, compatibility consumers, migration values, and production topology are not yet resolved.
+3. the Booking Self-Registration → Assistance decision and business-level duplicate-assistance guard are not represented in the architecture use cases.
 
 Therefore, the safe instruction is:
 
@@ -68,17 +62,54 @@ Before implementation begins, preserve or commit this baseline so an implementat
 | Concern | Alignment result | Assessment |
 |---|---|---|
 | Queue ownership | Aligned | Patient Tracker owns Queue Session, Queue Entry, Queue Number, calls, and milestones; Admisi Rajal owns Registration truth. |
+| Queue Label grammar | Resolved | Decision A defines prefix normalization/validation, global active uniqueness, 1–9999 numbers, minimum-three-digit formatting, no separator, and rejection after 9999. |
+| Queue Session policy | Resolved/simplified | Decision B defines one session per Service Point per server-resolved Business Date and lazy all-day establishment. The later developer decision retains a dedicated table with LastQueueNumber and replaces Kiosk offering checks with active ServicePointId validation. |
 | Anonymous intake | Aligned | Queue intake does not create or select a Patient Tracker. |
 | Late identification | Aligned | Existing journey selection and Registration-owned new Walk-In Tracker creation follow the parent Tracker and Admisi Rajal rules. |
 | Call versus service start | Aligned target; not current runtime | Domain, SOP, and architecture distinguish them. Current `AdmissionQueueStartCmd` directly moves Waiting to InService and has no Queue Call or Loket. |
-| Registration versus queue completion | Partly aligned | Ownership is explicit, but the application contract for completing after `Registration Not Established` is missing. |
-| Work List | Ambiguous | Admisi Rajal defines its Work List as Patient Tracker queue truth enriched with Admisi context. Architecture defines a Patient Tracker `Admission Worklist View` without saying where enrichment/composition occurs. |
-| Operational events | Aligned | Events are business facts; direct orchestration and a dedicated notification outbox avoid a speculative generic event bus. |
-| Display authority | Aligned in principle | Queue Display is read-only and snapshot recovery is authoritative, but display identity/scope administration is not modeled. |
+| Registration versus queue completion | Resolved at artifact level | Decision C gives Admisi Rajal a durable final Registration Outcome and allows Patient Tracker to complete the matching entry, including anonymous NotEstablished completion. |
+| Work List | Resolved at artifact level | Decision D defines the Patient Tracker `Admission Queue Worklist Projection` as queue-only and the `Admisi Rajal Work List` as a composed, enriched operational view rather than a second ledger. |
+| Operational events | Aligned with accepted V1 tradeoff | Events are business facts; direct orchestration preserves local consistency. Display refresh is intentionally best-effort SignalR plus polling, without a notification outbox. |
+| Loket authority | Superseded/simplified | The later developer decision supersedes Decision E: Loket comes from trusted workstation configuration, any authenticated officer may use it, and no master/assignment/authorization tables exist. |
+| Display authority | Superseded/simplified | The later developer decision supersedes Decision E: passive displays reload shared current-per-Loket state and AnnouncementVersion; no QueueDisplay or AnnouncementScope masters exist. |
 | Audit versus operational history | Aligned | Queue Call history remains operational truth; exceptional/admin decisions use compliance audit. |
 | Historical retention | Aligned | Withdraw/transfer preserve historical entries and calls rather than deleting them. |
 | Physician queue compatibility | Aligned | Admission queue numbering remains separate from the legacy physician `AntrianMap` compatibility adapter. |
 | Global queue flexibility | Mostly aligned | Manual selection and supervised exceptions fit `docs/WORKFLOW.md`; the architecture correctly avoids automatic re-selection after a conflict. |
+
+### 3.1 Developer-decision label reconciliation
+
+The developer discussion reuses `GAP-READY-002` through `GAP-READY-010` for topics that do not match the stable identifiers already used by this artifact (for example, this artifact's GAP-READY-005 is Final Registration Outcome, while the discussion's label 005 means Call History). To preserve traceability, the decisions are recorded here by topic and ADR-AQO-013 rather than renumbering existing findings:
+
+| Developer label | Topic adopted for V1 | Existing finding affected |
+|---|---|---|
+| 002 | Dedicated daily Queue Session with LastQueueNumber | GAP-READY-002, 008, 009 |
+| 003 | Deployment-configured Loket; no master/assignment | GAP-READY-003, 007, 010 |
+| 004 | Passive displays; shared current-per-Loket state/version | GAP-READY-004, 009, 010, 018 |
+| 005 | CallCount instead of Call Attempt history | GAP-READY-017 and operational-history design |
+| 006 | Priority replacement instead of QueueTransfer aggregate | GAP-READY-007, 009 and exception design |
+| 007 | Locally configured Kiosk offerings; no Kiosk master | GAP-READY-010, 011 |
+| 008 | Optional ClientRequestId on Queue Entry | GAP-READY-008, 010 |
+| 009 | Post-commit SignalR plus polling; no outbox | GAP-READY-018 and delivery design |
+| 010 | Every configured Loket may serve every Service Point | GAP-READY-003, 007 |
+
+### 3.2 Classification of the additional V1 concepts
+
+| Concept | Classification | Artifact treatment | Remaining gap? |
+|---|---|---|---|
+| Workstation-owned stable unique LoketKey; arbitrary operator input prohibited | Design decision | ADR-AQO-014; BR-AQO-006b/e/f | Exact cross-workstation duplicate-detection mechanism remains open |
+| One Outstanding or InService entry per LoketKey | Design decision | ADR-AQO-014; BR-AQO-020 | Database active-work claim remains GAP-READY-007 |
+| Call separate from explicit Start Service | Design decision | ADR-AQO-015; BR-AQO-021–023 | Compatibility/API migration remains open |
+| Priority is indicator/sorting aid, never automatic call order | Design decision | ADR-AQO-016; BR-AQO-027a | UI/API field contract remains open |
+| SourceAntrianEntryId and CreationReason provenance | Design decision/persistence contract | ADR-AQO-016; BR-AQO-027/027b | Exact SQL types/constraints remain GAP-READY-009 |
+| `BILRG_AdmLoketCurrentCall` is latest-state projection, not history | Design decision | ADR-AQO-017; BR-AQO-006d | Clear/replace timing remains GAP-AQO-012 |
+| AnnouncementVersion increments only for audio Call/Recall | Design decision | ADR-AQO-017; BR-AQO-021a | None semantically; implementation tests required |
+| SignalR trigger plus reload/reconnect/poll recovery | Design decision | ADR-AQO-017 | Poll interval and access/topology are implementation/deployment settings |
+| CallCount informational; no automatic no-show/progression | Design decision | ADR-AQO-015; BR-AQO-021b/026 | Hospital manual procedure remains operational policy |
+| PC name/config-file source and controlled rename procedure | Implementation note | Architecture §17 | Configuration adapter/rollout contract required |
+| Poll every N seconds | Implementation note | Architecture §17 | N is an operational setting, not an architecture gap |
+| Optional ClientRequestId for kiosk retries | Implementation note constrained by ADR-AQO-013 | Architecture §17; BR-AQO-012 | Uniqueness scope/API behavior remains GAP-READY-008/010 |
+| Configuration references existing active ServicePointId only | Design constraint plus implementation note | BR-AQO-006g; Architecture §17 | Validation/diagnostic behavior belongs implementation contract |
 
 ## 4. Codebase baseline
 
@@ -98,6 +129,7 @@ Before implementation begins, preserve or commit this baseline so an implementat
 - no Service Point, Loket, Kiosk, Queue Display, Queue Call, Call Attempt, intake-attempt, transfer-link, or queue-notification persistence exists;
 - no `Withdrawn` state exists in `AntrianStatusEnum`;
 - no admission-specific worklist/display/history projection exists;
+- no Admisi Rajal Registration Outcome aggregate, repository, table, or final NotEstablished command exists;
 - no SignalR registration, hub, worker, or queue notification outbox exists;
 - controllers use generic `[Authorize]` only;
 - current admission commands still accept caller-supplied `UserId`;
@@ -106,7 +138,7 @@ Before implementation begins, preserve or commit this baseline so an implementat
 - whole-aggregate `AntrianRepo.SaveChanges` still performs unrestricted updates and can physically delete missing entries;
 - identified InService → Done still uses an unrestricted whole-aggregate save;
 - current queue tables do not contain the global transaction audit columns;
-- current Service Point session factory always uses `00:00` through `23:59:59.9999999`, not an approved operational interval; and
+- current Service Point session factory already uses the approved all-day interval, but intake still permits a caller-supplied date and does not validate a stable submitted ServicePointId against active Service Point persistence; and
 - the current sequencer dynamically interpolates a sequence identifier derived from `SequenceTag` on a separate SQL connection.
 
 ### 4.3 Baseline verification
@@ -128,100 +160,106 @@ Skipped: 0
 
 This proves that the current focused mechanics compile and their existing tests pass. It does not prove target architecture conformance, real database concurrency, contextual authorization, or end-to-end Kiosk/display behavior.
 
-## 5. Blocking gaps to resolve before the affected implementation slice
+## 5. Readiness findings
 
-### GAP-READY-001 — Queue Label grammar is undefined
+### GAP-READY-001 — Queue Label grammar resolved by Decision A
 
-**Severity:** Blocker for labelled intake, display, reprint, prefix validation, and migration.
+**Status:** Resolved at artifact level; implementation remains pending.
 
-The domain requires a stable Queue Label formed from Queue Prefix Snapshot plus a **formatted** Queue Number, but no artifact defines padding width, separator, allowed prefix characters, case normalization, maximum length, overflow behavior, or examples that are declared normative.
+The canonical decision is:
 
-The architecture assigns Queue Label formation to Domain, so an agent cannot defer this as a UI detail without violating the business specification.
+- Queue Prefix accepts one through four uppercase ASCII letters after `Trim` + `ToUpperInvariant`, with no spaces or separators;
+- Queue Prefix is unique across active admission Service Points;
+- Queue Number is an integer from 1 through 9999;
+- Queue Number uses a minimum of three digits (`1` → `001`, `27` → `027`, `1000` → `1000`);
+- Queue Label is Prefix + formatted Queue Number with no separator; and
+- after allocating 9999, the session rejects further allocation; Decision B prohibits a second same-date session, so the next session is available only on the next server-resolved Business Date.
 
-**Required resolution:** add a canonical Queue Label value-object contract, for example its accepted prefix grammar, normalization, numeric formatting, maximum number, output examples, and validation errors. Do not allow each client to format the label independently.
+**Implementation requirement:** realize this as Domain value-object/allocation behavior with persistence uniqueness and boundary tests. Do not let clients format labels independently or create a second same-date session after exhaustion.
 
-### GAP-READY-002 — Queue Session operating policy is undefined
+### GAP-READY-002 — Queue Session policy resolved by Decision B
 
-**Severity:** Blocker for resource-backed intake and deterministic session lookup.
+**Status:** Resolved at artifact level; implementation remains pending.
 
-The parent domain defines a Queue Session by Service Point, Session Date, Start Time, and End Time. The SOP requires an applicable session to be available. The architecture says intake will “find/create” a session, but neither the Service Point nor Kiosk model owns operating hours, and no application policy explains:
+The canonical Pragmatic V1 decision is:
 
-- who establishes a session;
-- whether one Service Point has one or several intervals per business date;
-- whether intake outside the interval is rejected;
-- how overnight intervals behave;
-- how business date is selected; or
-- whether a Kiosk may supply a date.
+- one admission Queue Session per Service Point per Business Date;
+- fixed interval `00:00:00` through `23:59:59.9999999`;
+- Business Date resolved server-side through the shared Business Date capability;
+- no authoritative date in Kiosk/client requests;
+- lazy establishment by the first valid intake; and
+- rejection when the submitted ServicePointId is not active.
 
-Current code silently creates an all-day session and accepts optional caller-supplied `TglYmd`. That is transitional behavior, not enough to implement the target safely.
+Combined with Decision A, an exhausted session cannot be replaced on the same Business Date. Further intake for that Service Point is rejected until the next authoritative Business Date.
 
-**Required resolution:** define session establishment authority and lookup key. Prefer server-derived business date and an explicit configured/maintained interval; document any all-day V1 policy as an approved rule rather than an implementation accident.
+The developer decision additionally retains a dedicated Queue Session table with LastQueueNumber and a unique `(ServicePointId, BusinessDate)` constraint. Kiosk offering configuration is local and is not server authority.
 
-### GAP-READY-003 — Workstation/session-to-Loket assignment has no owner or persistence model
+**Implementation requirement:** remove authoritative date from the intake contract, resolve Business Date server-side, atomically create/load the dedicated row and advance LastQueueNumber, enforce its natural uniqueness, and validate the Service Point is active.
 
-**Severity:** Blocker for call, recall, start, worklist scoping, and the “one active entry per Loket” invariant.
+### GAP-READY-003 — Superseded: Loket is deployment configuration in developer-approved V1
 
-The SOP requires one active Loket assignment for the officer's workstation or session. The architecture correctly rejects a caller-supplied arbitrary `LoketId`, but only lists Service Point, Loket authorization, and Kiosk offering persistence. It does not define the aggregate, record, use cases, lifecycle, or repository that make the trusted assignment authoritative.
+**Status:** Decision E's assignment model is superseded. No Loket master, assignment table, or service-authorization table will be implemented in V1.
 
-**Required resolution:** identify the owner and model for assignment, including assignment subject (workstation, login session, user, or device), uniqueness, activation/expiry, supervisor actions, audit, and how handlers resolve it. Add it to module boundaries, use cases, persistence additions, and tests.
+LoketKey is supplied by trusted workstation configuration such as controlled PC name or local configuration file. It must be stable and unique. Missing or duplicate configuration blocks calling, PC rename requires controlled update, any authenticated Admission Officer may operate any configured Loket, and each configured Loket may serve every active Service Point.
 
-### GAP-READY-004 — Queue Display resource and announcement scope are not modeled
+**Implementation requirement:** define the configuration adapter, precedence, normalization, and controlled rename procedure; validate missing/malformed values; log LoketKey with the actor; and choose how duplicate keys across separate machines are detected. A unique current-call row alone cannot distinguish two machines sharing the same key. This is an accepted deployment trust boundary, not application authorization.
 
-**Severity:** Blocker for production display authorization and subscription scoping.
+### GAP-READY-004 — Superseded: passive displays and shared current state adopted for V1
 
-The architecture requires authenticated display identity and an approved announcement scope, but there is no Display aggregate/catalog, display-to-scope assignment, administration use case, or persistence entry. `GAP-AQO-002` and `GAP-AQO-004` acknowledge policy and credential gaps but do not close the ownership gap.
+**Status:** Decision E's QueueDisplay/AnnouncementScope masters are superseded.
 
-**Required resolution:** define the display resource identity and scope-assignment authority, or explicitly delegate them to an existing identity/device platform with a concrete application port and claims contract.
+V1 stores one `BILRG_AdmLoketCurrentCall` row per LoketKey containing only the latest visible call. Call/Recall updates the row and increments AnnouncementVersion only when audio is required. Passive displays reload it after SignalR, reconnect, and periodic polling. It is authoritative projection state but cannot reconstruct history.
 
-### GAP-READY-005 — `Registration Not Established` cannot yet complete queue service through an explicit contract
+**Implementation requirement:** define columns/key, atomic update with queue mutation, clear/replace semantics, configurable polling interval, and read-access policy. Ordinary refresh and service-state change must not increment AnnouncementVersion unless audio is explicitly required. No managed display identity or scope is implied.
 
-**Severity:** Blocker for the SOP's negative registration outcome and BR-AQO-024.
+### GAP-READY-005 — Final Registration Outcome semantics resolved by Decision C
 
-The SOP permits Queue Entry completion after either Registration Established or an accountable `Registration Not Established` outcome. Current code completes admission queue service inside successful Walk-In/Booking Registration creation and records `REGISTER` by `RegId`. The architecture's UC-AQO-019 and transaction table are also phrased around Registration completion/source identities.
+**Status:** Resolved at domain/architecture level; persistence, identity mapping, API, and ReasonCode catalog remain pending.
 
-No use case defines how a failed-but-accountably-resolved registration attempt is identified, who records the outcome, what stable reference/reason is retained, or how an anonymous InService entry can validly become Done without a new Tracker when no source activity established one.
+Decision C establishes a durable Admisi Rajal Registration Outcome with OutcomeId, QueueEntryId, Result, conditional RegId/ReasonCode, Explanation, DecidedAt, and DecidedBy. Validation errors are non-final; correctable validation leaves the Queue Entry InService. Explicit final `NotEstablished` may complete the Queue Entry as Done while it remains anonymous.
 
-**Required resolution:** define an explicit accountable Registration Outcome contract. It must distinguish correctable validation failure (remain InService) from final `Registration Not Established` (eligible for Done), identify its authority and evidence reference, and state whether the Queue Entry may remain anonymous when completed.
+Current code still implements only successful Registration completion and has no Registration Outcome aggregate/persistence or negative completion command.
 
-### GAP-READY-006 — Patient Tracker projection versus Admisi Rajal Work List composition is ambiguous
+**Implementation requirement:** add the Admisi Rajal outcome aggregate/repository and atomic Patient Tracker completion contract. Resolve the ReasonCode catalog/owner and how Decision C's QueueEntryId maps to existing `(AntrianId, NoUrut)` before final persistence/API generation. Do not infer an outcome or create a Tracker for NotEstablished.
 
-**Severity:** Blocker for UC-AQO-010 API/read-model ownership.
+### GAP-READY-006 — Work List ownership and composition resolved by Decision D
 
-Admisi Rajal defines its Work List as active Patient Tracker Queue Entries enriched with Admisi Rajal context. The architecture defines `Admission Worklist View` under Patient Tracker and says it is sourced from Queue Session/Entry/Call only.
+**Status:** Resolved at artifact level; implementation pending.
 
-Both can be valid if the Patient Tracker projection is explicitly a queue worklist slice and the Admission Module or an Admisi Rajal query composes the enrichment. Without that statement, an agent may either duplicate Admisi-owned fields in Patient Tracker or deliver a projection that does not satisfy the canonical Admisi Rajal Work List.
+Patient Tracker owns the queue-only `Admission Queue Worklist Projection`: Queue Label, Service Point, state, call state, LoketKey, queue timestamps, Priority indicator, and optional TrackerId. Priority may affect sorting but not auto-selection. The projection must not contain Booking, identity, Registration, or administrative enrichment.
 
-**Required resolution:** name the queue-only projection distinctly and define the composition boundary, query owner, and allowed cross-context contract.
+The Admission Module or an Admisi Rajal application query composes that projection with Admisi-owned context to produce the enriched `Admisi Rajal Work List`. This is a read composition, not a second ledger. Choosing whether the composition is delivered directly in the Admission Module or behind an Admisi Rajal application query is an API/deployment choice, not an ownership ambiguity.
 
-### GAP-READY-007 — Active-Loket concurrency spans Queue Sessions but the consistency mechanism is incomplete
+**Implementation requirement:** give UC-AQO-010 a purpose-built queue-only contract and DAL; verify its field boundary; compose enrichment through owning application contracts without direct cross-context table access or duplicated queue state.
+
+### GAP-READY-007 — Active configured-Loket concurrency still needs a database claim
 
 **Severity:** Blocker for safe multi-Service-Point calling.
 
-One Loket may serve multiple Service Points, while BR-AQO-020 permits only one outstanding or InService entry at a Loket by default. Those entries can belong to different Queue Session aggregates. A single Queue Session aggregate cannot enforce this cross-session invariant in memory.
+Every configured Loket may serve every Service Point, while BR-AQO-020 permits exactly one current Outstanding or InService entry per LoketKey. Those entries can belong to different Queue Sessions. Removing Loket master/authorization tables does not remove this concurrency invariant.
 
 The architecture says database uniqueness must support the invariant, but it does not specify:
 
 - where the active Loket claim is stored after a Queue Call is acknowledged;
 - how Outstanding and InService share one exclusivity key;
-- how the claim is released on no-show, withdrawal, transfer, completion, and rollback; or
+- how the claim is released on no-show, withdrawal, Priority redirection, completion, and rollback; or
 - the exact conditional SQL/index strategy.
 
 **Required resolution:** provide a persistence contract for the Loket active-work claim and every acquire/release transition. Domain/Application decide the transition; SQL conditional writes protect it across processes.
 
-### GAP-READY-008 — Intake sequencing and idempotency need a concrete concurrency contract
+### GAP-READY-008 — LastQueueNumber is decided; optional idempotency remains conditional
 
 **Severity:** Blocker for production Kiosk intake.
 
-The architecture requires one result per `(KioskId, RequestId)` and preserves `ISequencer` initially. Current `Sequencer`:
+The developer decision replaces per-Service Point SQL sequence design with LastQueueNumber on the dedicated daily Queue Session row. That resolves sequence ownership but requires an atomic database increment under concurrent intake.
 
-- opens its own connection;
-- consumes SQL Server sequence values outside rollback semantics;
-- creates a sequence dynamically on first use; and
-- interpolates a sequence identifier ultimately derived from caller-supplied Service Point code.
+ClientRequestId is stored optionally on Queue Entry. Therefore:
 
-Gaps in queue numbers may be acceptable, but first-use creation races, identifier validation, retry ordering, and the relationship between idempotency insertion and number allocation are not specified. The current caller-derived identifier must not be exposed to a device client.
+- a supplied identifier can prevent duplicate issuance only if a database uniqueness scope and same-request lookup are defined;
+- a request without the identifier is not idempotent and may create duplicates after an uncertain response; and
+- the identifier's maximum length, case/collation, global versus scoped uniqueness, and conflicting-payload behavior remain unspecified.
 
-**Required resolution:** define the exact intake transaction algorithm, safe server-owned sequence key, first-use provisioning/race handling, duplicate-request lookup, unique indexes, and recovery behavior. State explicitly that numbers are unique but not gapless if SQL sequences remain in use.
+**Required resolution:** define the atomic LastQueueNumber algorithm and ClientRequestId schema/unique index/scope. API documentation must call idempotency conditional, not guaranteed, while ClientRequestId remains optional.
 
 ### GAP-READY-009 — Persistence additions are an inventory, not an implementable contract
 
@@ -233,9 +271,9 @@ The architecture intentionally defers columns and indexes. That is appropriate f
 - key sizes and immutable identities;
 - status numeric values, especially additive `Withdrawn`;
 - active/retired and effective-period representation;
-- Queue Prefix Snapshot and transfer linkage;
-- Queue Call/Attempt ordering and dispositions;
-- intake idempotency result shape;
+- Queue Prefix Snapshot, Priority, CreationReason values, and nullable SourceAntrianEntryId constraints;
+- current call fields, CallCount, and current-display AnnouncementVersion;
+- optional ClientRequestId shape and uniqueness scope;
 - expected-state update predicates and affected-row contracts;
 - audit columns, void/retention treatment, and operational indexes; and
 - additive deployment/backfill/rollback order.
@@ -256,6 +294,8 @@ The architecture intentionally leaves exact routes and payloads to a later API a
 
 The SOP applies after Booking Self-Registration requires assistance. Admisi Rajal owns the decision that Registration was established or assistance is required, while Patient Tracker owns queue issuance. The architecture exposes a generic Kiosk issue-entry command but does not define the Admisi Rajal orchestration that:
 
+The later developer simplifications for Loket, Kiosk, and Queue Display still do not define this Booking Self-Registration assistance orchestration or its business deduplication key, so this gap remains open.
+
 - attempts or evaluates Self-Registration;
 - issues no admission Queue Entry when Registration succeeds;
 - requests anonymous admission intake only for an accountable assistance outcome; and
@@ -269,13 +309,13 @@ Request idempotency per Kiosk prevents retry duplication only when the same requ
 
 | ID | Gap | Why it matters | Safe treatment |
 |---|---|---|---|
-| GAP-READY-012 | Resource authorization/offering “active period” is not defined as dates versus active/retired state | Affects future scheduling and history | Use simple active/retired only if explicitly approved for V1; otherwise define effective dates. |
+| GAP-READY-012 | Service Point active period is not defined as dates versus active/retired state | Affects future scheduling and history | Use simple active/retired for V1 unless effective dating is separately approved. |
 | GAP-READY-013 | Current human commands trust `UserId` in request bodies | Weak accountability and authorization | New commands use `ICurrentUserContext`; compatibility fields are ignored or validated during migration. |
 | GAP-READY-014 | Existing identified InService → Done is not conditional | Concurrent completion can overwrite a competing transition | Add expected-state repository operation before relying on it in target flows. |
 | GAP-READY-015 | Whole-aggregate save can physically delete absent entries | Violates target historical truth | Prohibit removal for admission operations; replace active transitions with purpose-built repository operations. |
 | GAP-READY-016 | Historical prefix backfill is unresolved | Prevents trustworthy legacy labels | Do not fabricate labels; expose legacy number separately until an approved mapping exists. |
-| GAP-READY-017 | No-show threshold and display retention are unresolved | Blocks automation/final UI, not manual facts | Keep explicit supervisor disposition and persist full call history. |
-| GAP-READY-018 | Notification retention and multi-instance SignalR topology are unresolved | Affects production operations and capacity | Outbox/snapshot abstractions can be built; production rollout waits for topology and retention decisions. |
+| GAP-READY-017 | Manual no-show/progression semantics are resolved; detailed operational policy remains external | CallCount cannot prove attempt times, no-show outcomes, or “five subsequent patients” | CallCount is informational only; keep decisions manual and never automate from it. |
+| GAP-READY-018 | Multi-instance SignalR topology, display access, and polling configuration remain implementation/deployment work | Refresh hints may be missed or reach only some instances | Persist current state/version, reload after reconnect, poll at configured N, and do not claim durable delivery. |
 | GAP-READY-019 | Kiosk print status/reprint authorization has no backend contract | Affects support and auditability | Printing stays outside queue transaction; define later whether print attempts are client-only telemetry or durable operational records. |
 | GAP-READY-020 | Existing queue SQL lacks standard audit columns | Current schema does not meet `docs/DATABASE.md` | Approve additive audit migration/equivalent; all new transaction tables follow the standard. |
 | GAP-READY-021 | Real database volume/concurrency evidence is absent | Unit tests cannot prove multi-operator safety | Add SQL integration, race, volume, rollback, and worker recovery tests per increment. |
@@ -287,21 +327,22 @@ An agent may safely perform the following before every blocker is resolved, prov
 1. preserve and expand tests for anonymous intake, anonymous InService, existing-Tracker selection, Registration-owned Tracker creation, and transaction rollback;
 2. replace caller `UserId` use in new human commands with `ICurrentUserContext` without changing business policy;
 3. add explicit expected-state repository operations for existing lifecycle transitions and remove admission paths from unrestricted whole-aggregate updates;
-4. introduce transport-independent ports for actor/device identity, notification delivery, and projections without inventing claims or routes;
-5. prototype resource aggregates behind tests after identity and lifecycle assumptions are stated, but do not deploy catalog authority until prefix/session/backfill decisions are approved;
+4. introduce transport-independent ports for workstation configuration, best-effort refresh, and projections without inventing claims or routes;
+5. implement the dedicated Queue Session and current-display persistence behind integration tests after the remaining column/index contract is approved;
 6. prepare read-only investigation queries and migration preflight checks that do not mutate operational data; and
 7. create the missing persistence, API/security, and rollout artifacts.
 
 An agent must not yet:
 
-- finalize Queue Label formatting;
-- invent admission opening hours or session rollover;
-- trust request-body Kiosk, Display, Loket, Service Point, date, or User identity as authority;
-- invent workstation assignment or display announcement scopes;
+- accept a Kiosk/client-supplied authoritative Business Date or create a second same-date session after exhaustion;
+- treat Kiosk-local offerings as server authorization or accept an inactive/unknown ServicePointId;
+- accept arbitrary request-body LoketId outside the controlled workstation-configuration adapter;
 - mark a failed registration as a completed queue service without an accountable outcome contract;
 - implement a second Admisi Work List ledger;
 - use in-memory locks to protect multi-instance queue invariants;
-- expose SignalR groups chosen by callers;
+- claim SignalR delivery is durable or use AnnouncementVersion without atomic current-state update;
+- infer detailed attempt/no-show history from CallCount;
+- issue a Priority replacement while leaving the origin active;
 - infer historical prefixes from descriptions; or
 - replace or remove current endpoints without a consumer inventory.
 
@@ -309,13 +350,13 @@ An agent must not yet:
 
 | Architecture increment | Readiness | Blocking items | Safe next action |
 |---|---|---|---|
-| 1. Resource authority | Conditional | GAP-READY-001, 002, 003; prefix scope/backfill | Resolve resource/session/assignment contracts; then build aggregates and persistence. |
-| 2. Idempotent labelled intake | No-Go | GAP-READY-001, 002, 008, 009, 010, 011; device identity | Approve Queue Label, session, intake transaction, Booking-assistance orchestration, and Kiosk auth/API contracts. |
-| 3. Operational projections | Partial | GAP-READY-004, 006, 009, 010 | Define queue-only versus enriched worklist and display scope; then implement read models. |
-| 4. Call and service transitions | No-Go | GAP-READY-003, 007, 009, 010 | Define trusted Loket resolution and database active-work claim first. |
-| 5. Durable display delivery | Partial foundation only | GAP-READY-004, 009, 010, 018 | Outbox/transport ports and snapshot design are safe; production hub/scoping is not. |
-| 6. Journey and Registration alignment | Mostly ready for bounded hardening | GAP-READY-005, 010, 013, 014 | Preserve the passing late-identification baseline; add claim-derived actor identity, negative-outcome contract, and conditional completion. |
-| 7. Exceptions | Partial | GAP-READY-001, 007, 009; no-show policy | Explicit supervised no-show/transfer can follow after persistence and label rules; no automation yet. |
+| 1. Service Point/configuration authority | Conditional | GAP-READY-009, 010; prefix backfill; workstation integrity | Implement Service Point persistence and explicit configuration adapters; no Loket/Kiosk/Display masters. |
+| 2. Retry-aware labelled intake | No-Go | GAP-READY-008, 009, 010, 011 | Implement atomic LastQueueNumber; define optional ClientRequestId contract and Booking-assistance orchestration before production. |
+| 3. Operational projections | Partial | GAP-READY-009, 010 | Implement Decision D worklist plus shared current-per-Loket state/version and define display read policy. |
+| 4. Call and service transitions | No-Go | GAP-READY-007, 009, 010 | Define database active-work claim, controlled workstation Loket source, CallCount updates, and transport contract. |
+| 5. Best-effort display refresh | Partial foundation only | GAP-READY-009, 010, 018 | Current-state/version plus polling is implementable; topology, polling interval, access policy, and observability still gate production. |
+| 6. Journey and Registration alignment | Conditional | GAP-READY-009, 010, 013, 014; ReasonCode catalog and QueueEntryId mapping | Preserve the passing late-identification baseline; implement Decision C persistence, claim-derived decision identity, both final outcomes, and conditional completion. |
+| 7. Exceptions | Partial | GAP-READY-007, 009; no-show/redirection safety | Keep no-show procedural; require explicit origin disposition and preferably atomic Priority replacement. |
 | 8. Hardening and rollout | No-Go | All deployment, client, retention, migration, and performance gates | Execute only after prior increments and external decisions are verified. |
 
 ## 9. Required resolution order
@@ -328,25 +369,25 @@ An agent must not yet:
 
 ### Gate 1 — Close business semantics
 
-- approve Queue Label grammar;
-- approve Queue Session/open-hours/business-date policy;
-- define final `Registration Not Established` evidence and queue completion behavior;
-- clarify queue-only projection versus enriched Admisi Rajal Work List;
+- implement and verify the approved Queue Label grammar from Decision A;
+- implement and verify the approved Queue Session and Business Date policy from Decision B;
+- implement and verify the approved final Registration Outcome semantics from Decision C;
+- implement and verify the Decision D queue-only projection and read-only Admisi Rajal Work List composition;
 - define Booking Self-Registration-to-assistance orchestration and business deduplication;
 - approve default no-parallel-service behavior and manual no-show position.
 
 ### Gate 2 — Close authority and security
 
-- model trusted workstation/session-to-Loket assignment;
-- model or delegate Queue Display identity and announcement scope;
-- define Kiosk/Display credential claims and rotation;
+- specify and verify trusted workstation Loket configuration, validation, and audit logging;
+- specify passive display read access, shared current-state/version semantics, and polling recovery;
+- define Kiosk/passive-display API or network access policy despite the absence of device masters;
 - define administrator/supervisor/officer policies.
 
 ### Gate 3 — Approve persistence and concurrency design
 
 - publish tables, columns, enum values, indexes, CAS operations, idempotency algorithm, audit fields, and migration order;
 - explicitly protect cross-session active Loket work;
-- validate sequencer provisioning and concurrency behavior;
+- validate atomic LastQueueNumber allocation and concurrent lazy session creation;
 - define prefix backfill and rollback.
 
 ### Gate 4 — Approve API and rollout contracts
@@ -364,4 +405,4 @@ For each increment: Domain tests → Application tests → SQL/DAL integration t
 
 The target architecture is a strong architecture **analysis**, but it is not yet a complete implementation contract. Its major boundaries are safe, and the current late-identification work provides a viable base. The remaining risk is not primarily coding difficulty; it is the possibility that an agent will fill policy and authority gaps with plausible but unauthorized behavior.
 
-The implementation can proceed safely only as gated slices. The most immediately viable slice is hardening Journey/Registration alignment already present in the workspace. Resource-backed intake, Call/Loket operation, Queue Display, and production rollout must wait for the corresponding business, security, persistence, and API decisions identified above.
+The implementation can proceed safely only as gated slices. Decisions A–D remain intact; conflicting parts of Decision E are superseded by the developer-approved simplified V1 profile. Queue Session, configured Loket/Kiosk, passive display, CallCount, Priority redirection, optional ClientRequestId, post-commit SignalR, and universal Loket service access now have direction, but production implementation still requires the persistence, concurrency, API/security, migration, polling, and deployment contracts identified above.
