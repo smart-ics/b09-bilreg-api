@@ -1,4 +1,4 @@
-﻿using Farinv.Domain.SalesContext.PenjualanFeature;
+﻿using Bilreg.Domain.AdmisiContext.RegFeature;
 
 namespace Farinv.Domain.SalesContext.AntrianFeature;
 
@@ -48,7 +48,7 @@ public class AntrianModel: IAntrianKey
     public void AddEntry(int noAntrian)
     {
         EnsureSlotAvailable(noAntrian);
-        var entry = AntrianEntryModel.Create(noAntrian, RegType.Default.ToReff(), "-", "-");
+        var entry = AntrianEntryModel.Create(noAntrian, RegModel.Default.ToReff(), "-", "-");
         _listEntry.Add(entry);
     }
 
@@ -58,14 +58,6 @@ public class AntrianModel: IAntrianKey
         var entry = AntrianEntryModel.Create(noAntrian, reg, "-", "-");
         _listEntry.Add(entry);
     }
-
-    // public void AddEntry(int noAntrian, PenjualanReff penjualan)
-    // {
-    //     EnsureSlotAvailable(noAntrian);
-    //     var entry = AntrianEntryModel.Create(noAntrian, 
-    //         penjualan.Reg, penjualan.PenjualanId, "PENJUALAN");
-    //     _listEntry.Add(entry);
-    // }
 
     public void RemoveEntry(int noAntrian)
     {
