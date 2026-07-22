@@ -1,5 +1,6 @@
 ﻿using Farinv.Application.SalesContext.AntrianFeature.UsesCases;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
 
@@ -7,6 +8,7 @@ namespace Bilreg.Api.Controllers.SalesContext.AntrianFeature;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class AntrianApotekController : ControllerBase
 {
     private readonly IMediator _mediator;
