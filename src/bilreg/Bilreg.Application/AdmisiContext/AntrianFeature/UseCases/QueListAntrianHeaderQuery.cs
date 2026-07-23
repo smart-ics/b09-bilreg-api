@@ -9,8 +9,9 @@ using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.Shared.Helpers;
 using MediatR;
 using System.Globalization;
+using Bilreg.Application.AdmisiContext.AntrianFeature;
 
-namespace Bilreg.Application.AdmisiContext.AntrianFeature;
+namespace Bilreg.Application.AdmisiContext.AntrianFeature.UseCases;
 
 public record QueListAntrianHeaderQuery(string TglYmd): IRequest<IEnumerable<QueListAntrianHeaderResponse>>;
 

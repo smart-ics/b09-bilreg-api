@@ -9,8 +9,9 @@ using Bilreg.Domain.Shared.Helpers;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
 using System.Globalization;
+using Bilreg.Application.AdmisiContext.AntrianFeature;
 
-namespace Bilreg.Application.AdmisiContext.AntrianFeature;
+namespace Bilreg.Application.AdmisiContext.AntrianFeature.UseCases;
 
 public record QuePasienListQuery(string TglYmd) : IRequest<IEnumerable<QuePasienListResponse>>;
 

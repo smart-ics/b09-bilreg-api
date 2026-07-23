@@ -1,4 +1,5 @@
 using Bilreg.Application.AdmisiContext.AntrianFeature;
+using Bilreg.Application.AdmisiContext.AntrianFeature.UseCases;
 using FluentAssertions;
 using Moq;
 using Xunit;
@@ -43,9 +44,9 @@ public class AdmissionQueueOperationalQueriesTest
         projection.Setup(x => x.ListCurrentLoket("L1")).Returns([]);
         var sut = new CurrentLoketDisplaySnapshotHandler(projection.Object);
 
-        await sut.Handle(new CurrentLoketDisplaySnapshotQuery("L1"), CancellationToken.None);
-        await sut.Handle(new CurrentLoketDisplaySnapshotQuery("L1"), CancellationToken.None);
-        await sut.Handle(new CurrentLoketDisplaySnapshotQuery("L1"), CancellationToken.None);
+        await sut.Handle(new CurrentLoketDisplaySnapshotQry("L1"), CancellationToken.None);
+        await sut.Handle(new CurrentLoketDisplaySnapshotQry("L1"), CancellationToken.None);
+        await sut.Handle(new CurrentLoketDisplaySnapshotQry("L1"), CancellationToken.None);
 
         projection.Verify(x => x.ListCurrentLoket("L1"), Times.Exactly(3));
     }

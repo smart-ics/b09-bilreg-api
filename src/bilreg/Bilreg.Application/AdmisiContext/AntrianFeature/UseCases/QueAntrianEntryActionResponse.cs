@@ -1,4 +1,4 @@
-namespace Bilreg.Application.AdmisiContext.AntrianFeature;
+namespace Bilreg.Application.AdmisiContext.AntrianFeature.UseCases;
 
 public record QueAntrianEntryActionResponse(
     string AntrianId,

@@ -2,19 +2,20 @@ using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
+using Bilreg.Application.AdmisiContext.AntrianFeature;
 
-namespace Bilreg.Application.AdmisiContext.AntrianFeature;
+namespace Bilreg.Application.AdmisiContext.AntrianFeature.UseCases;
 
-public record QueSelesaiPeriksaCmd(string AntrianId, int NoUrut)
+public record QueMulaiPeriksaCmd(string AntrianId, int NoUrut)
     : IRequest<QueAntrianEntryActionResponse>, IAntrianKey;
 
-public class QueSelesaiPeriksaHandler : IRequestHandler<QueSelesaiPeriksaCmd, QueAntrianEntryActionResponse>
+public class QueMulaiPeriksaHandler : IRequestHandler<QueMulaiPeriksaCmd, QueAntrianEntryActionResponse>
 {
     private readonly IAntrianRepo _queRepo;
     private readonly IPasienTrackerRepo _trackerRepo;
     private readonly ITglJamProvider _tglJamProvider;
 
-    public QueSelesaiPeriksaHandler(
+    public QueMulaiPeriksaHandler(
         IAntrianRepo queRepo,
         IPasienTrackerRepo trackerRepo,
         ITglJamProvider tglJamProvider)
@@ -25,22 +26,22 @@ public class QueSelesaiPeriksaHandler : IRequestHandler<QueSelesaiPeriksaCmd, Qu
     }
 
     public Task<QueAntrianEntryActionResponse> Handle(
-        QueSelesaiPeriksaCmd request,
+        QueMulaiPeriksaCmd request,
         CancellationToken cancellationToken)
     {
         Guard.Against.NullOrWhiteSpace(request.AntrianId);
         Guard.Against.Null(request.NoUrut);
 
         var que = _queRepo.LoadEntity(request).GetValueOrDefault();
-        var item = que.ListEntry.FirstOrDefault(x => x.NoUrut == request.NoUrut) ??
-            throw new KeyNotFoundException($"antrian {request.NoUrut} not found");
+        var item = que.ListEntry.FirstOrDefault(x => x.NoUrut == request.NoUrut)
+            ?? throw new KeyNotFoundException($"antrian {request.NoUrut} not found");
 
-        var doneAt = _tglJamProvider.Now;
-        item.Done(doneAt);
+        var servedAt = _tglJamProvider.Now;
+        item.Serve(servedAt);
 
         var tracker = PhysicianQueueEvidence.RequireTracker(_trackerRepo, item);
         var queueRef = PhysicianQueueEvidence.QueueRef(que, item);
-        PhysicianQueueEvidence.AppendConsultDone(tracker, queueRef, doneAt);
+        PhysicianQueueEvidence.AppendConsultStart(tracker, queueRef, servedAt);
 
         _queRepo.SaveChanges(que);
         _trackerRepo.SaveChanges(tracker);

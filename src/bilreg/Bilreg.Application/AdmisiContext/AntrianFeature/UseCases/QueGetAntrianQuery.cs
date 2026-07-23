@@ -7,8 +7,9 @@ using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
+using Bilreg.Application.AdmisiContext.AntrianFeature;
 
-namespace Bilreg.Application.AdmisiContext.AntrianFeature;
+namespace Bilreg.Application.AdmisiContext.AntrianFeature.UseCases;
 
 public record QueGetAntrianQuery(string AntrianId) : IRequest<IEnumerable<QueGetAntrianResponse>>, IAntrianKey;
 

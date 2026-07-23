@@ -2,8 +2,9 @@ using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
+using Bilreg.Application.AdmisiContext.AntrianFeature;
 
-namespace Bilreg.Application.AdmisiContext.AntrianFeature;
+namespace Bilreg.Application.AdmisiContext.AntrianFeature.UseCases;
 
 public record TrkGetQuery(string PasienTrackerId) : IRequest<TrkGetResponse>, IPasienTrackerKey;
 

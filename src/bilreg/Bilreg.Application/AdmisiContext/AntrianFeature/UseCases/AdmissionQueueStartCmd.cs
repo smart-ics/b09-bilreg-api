@@ -3,14 +3,15 @@ using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
 using Nuna.Lib.ValidationHelper;
+using Bilreg.Application.AdmisiContext.AntrianFeature;
 
-namespace Bilreg.Application.AdmisiContext.AntrianFeature;
+namespace Bilreg.Application.AdmisiContext.AntrianFeature.UseCases;
 
 [Obsolete("Legacy compatibility path. New clients must use Call followed by AdmissionQueueStartServiceCmd.")]
 public record AdmissionQueueStartCmd(
     string AntrianId,
     int NoUrut,
-    string UserId) : IRequest<AdmissionQueueStartResponse>;
+    string UserId) : IRequest<AdmissionQueueStartResponse>, IAntrianKey;
 
 public record AdmissionQueueStartResponse(
     string AntrianId,
@@ -18,7 +19,7 @@ public record AdmissionQueueStartResponse(
     string Status,
     DateTime ServedAt);
 
-public class AdmissionQueueStartHandler
+public sealed class AdmissionQueueStartHandler
     : IRequestHandler<AdmissionQueueStartCmd, AdmissionQueueStartResponse>
 {
     private readonly IAntrianRepo _antrianRepo;
@@ -44,26 +45,26 @@ public class AdmissionQueueStartHandler
         if (request.NoUrut <= 0)
             throw new ArgumentOutOfRangeException(nameof(request.NoUrut));
 
-        AdmissionQueueStartResponse response;
-        using (var trans = TransHelper.NewScope())
-        {
-            var queue = _antrianRepo.LoadEntity(AntrianModel.Key(request.AntrianId))
-                .GetValueOrThrow($"Admission queue '{request.AntrianId}' not found");
-            _servicePointResolver.EnsureAdmissionQueue(queue);
-            var entry = AdmissionQueueIdentify.RequireAnonymousWaitingEntry(queue, request.NoUrut);
-            entry.Serve(_tglJamProvider.Now);
-            if (!_antrianRepo.TrySaveWaitingToInServiceTransition(queue, entry))
-                throw new AdmissionQueueConcurrencyException(
-                    $"Queue entry '{queue.AntrianId}' / {entry.NoUrut} was changed concurrently.");
-            trans.Complete();
+        using var trans = TransHelper.NewScope();
 
-            response = new AdmissionQueueStartResponse(
-                queue.AntrianId,
-                entry.NoUrut,
-                entry.AntrianStatus.ToString(),
-                entry.ServedAt);
-        }
+        var queue = _antrianRepo.LoadEntity(request)
+            .GetValueOrThrow($"Admission queue '{request.AntrianId}' not found");
+        _servicePointResolver.EnsureAdmissionQueue(queue);
 
-        return Task.FromResult(response);
+        var entry = AdmissionQueueIdentify.RequireAnonymousWaitingEntry(queue, request.NoUrut);
+        var servedAt = _tglJamProvider.Now;
+        entry.Serve(servedAt);
+
+        if (!_antrianRepo.TrySaveWaitingToInServiceTransition(queue, entry))
+            throw new AdmissionQueueConcurrencyException(
+                $"Queue entry '{queue.AntrianId}' / {entry.NoUrut} was changed concurrently.");
+
+        trans.Complete();
+
+        return Task.FromResult(new AdmissionQueueStartResponse(
+            queue.AntrianId,
+            entry.NoUrut,
+            entry.AntrianStatus.ToString(),
+            entry.ServedAt));
     }
 }

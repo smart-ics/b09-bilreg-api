@@ -9,8 +9,9 @@ using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers;
 using MediatR;
+using Bilreg.Application.AdmisiContext.AntrianFeature;
 
-namespace Bilreg.Application.AdmisiContext.AntrianFeature;
+namespace Bilreg.Application.AdmisiContext.AntrianFeature.UseCases;
 
 public record AntrianGetQuotaQuery(string DokterHidokId, string TglAntrianYmd, string JamMulai) 
     : IRequest<AntrianGetQuotaResponse>;

@@ -1,7 +1,8 @@
 using Ardalis.GuardClauses;
 using MediatR;
+using Bilreg.Application.AdmisiContext.AntrianFeature;
 
-namespace Bilreg.Application.AdmisiContext.AntrianFeature;
+namespace Bilreg.Application.AdmisiContext.AntrianFeature.UseCases;
 
 public record TrkJourneyCandidateListQry(
     string PersonName,

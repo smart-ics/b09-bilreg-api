@@ -1,6 +1,7 @@
 using Bilreg.Api.Configurations;
 using Bilreg.Api.Controllers.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
+using Bilreg.Application.AdmisiContext.AntrianFeature.UseCases;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -32,7 +33,7 @@ public class AdmissionQueueApiContractTest
     public async Task RolloutStatus_DispatchesAuthenticatedPreflightQuery()
     {
         var mediator=new Mock<IMediator>();
-        var response=new AdmissionQueueRolloutStatusResponse(
+        var response=new AdmissionQueueGetRolloutStatusResponse(
             true,[],[],true,true,true,0);
         mediator.Setup(x=>x.Send(It.IsAny<AdmissionQueueGetRolloutStatusQry>(),It.IsAny<CancellationToken>()))
             .ReturnsAsync(response);

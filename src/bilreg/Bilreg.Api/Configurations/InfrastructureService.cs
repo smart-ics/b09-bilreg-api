@@ -1,6 +1,5 @@
 ﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
-using Bilreg.Application.AdmisiContext.JadwalPraktekFeature.UseCases;
 using Bilreg.Application.AdmisiRanapContext;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Application.AdmisiRanapContext.Integration;
@@ -15,12 +14,11 @@ using Bilreg.Application.LabContext.LabOwareFeature;
 using Bilreg.Application.LabContext.LabOwareFeature.Integration;
 using Bilreg.Application.AdmisiContext.EmrAntrianOutboundFeature;
 using Bilreg.Application.AdmisiContext.EmrAntrianOutboundFeature.Integration;
+using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.LabContext.LabResultFeature;
-using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Application.PaymentContext.PasienBalanceFeature;
 using Bilreg.Application.PaymentContext.TataRekeningFeature;
 using Bilreg.Application.Shared;
-using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Infrastructure;
 using Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
@@ -36,6 +34,7 @@ using Bilreg.Infrastructure.LabContext.Integration;
 using Bilreg.Infrastructure.LabContext.LabOrderFeature;
 using Bilreg.Infrastructure.LabContext.LabOwareFeature;
 using Bilreg.Infrastructure.AdmisiContext.EmrAntrianOutboundFeature;
+using Bilreg.Infrastructure.AdmisiContext.RegFeature;
 using Bilreg.Infrastructure.LabContext.LabResultFeature;
 using Bilreg.Infrastructure.PaymentContext.PasienBalanceFeature;
 using Bilreg.Infrastructure.PaymentContext.TataRekeningFeature;
@@ -90,6 +89,7 @@ public static class InfrastructureService
             .AddScoped<IBangsalByKelasDkDal, BangsalByKelasDkDal>()
             .AddScoped<IAdmisiRanapRolloutDal, AdmisiRanapRolloutDal>()
             .AddScoped<IAdmissionQueueRolloutDal, AdmissionQueueRolloutDal>()
+            .AddScoped<IAdmissionQueueRolloutRepo, AdmissionQueueRolloutRepo>()
             .AddScoped<LabOwareQueueProcessor>()
             .AddScoped<ILabResultPdfRenderer, LabResultPdfRenderer>()
             .AddScoped<ILabResultScaffoldService, LabResultScaffoldService>()
@@ -130,17 +130,19 @@ public static class InfrastructureService
             .Configure<UsmanOptions>(configuration.GetSection(UsmanOptions.SECTION_NAME));
 
         services.AddScoped<
-            Bilreg.Application.AdmisiContext.AntrianFeature.IAdmissionQueueOperationalProjection,
-            Bilreg.Infrastructure.AdmisiContext.AntrianFeature.AdmissionQueueOperationalProjection>();
+            IAdmissionQueueOperationalProjection,
+            AdmissionQueueOperationalProjection>();
         services.AddScoped<
-            Bilreg.Application.AdmisiContext.AntrianFeature.IAdmissionQueueOperationRepo,
-            Bilreg.Infrastructure.AdmisiContext.AntrianFeature.AdmissionQueueOperationRepo>();
+            IAdmissionQueueOperationRepo,
+            AdmissionQueueOperationRepo>();
+        services.AddScoped<IAdmissionServicePointDal, AdmissionServicePointDal>();
+        services.AddScoped<IAdmissionServicePointRepo, AdmissionServicePointRepo>();
         services.AddScoped<
-            Bilreg.Application.AdmisiContext.AntrianFeature.IBookingAssistanceRepo,
-            Bilreg.Infrastructure.AdmisiContext.AntrianFeature.BookingAssistanceRepo>();
+            IBookingAssistanceRepo,
+            BookingAssistanceRepo>();
         services.AddScoped<
-            Bilreg.Application.AdmisiContext.RegFeature.IRegistrationOutcomeOperationRepo,
-            Bilreg.Infrastructure.AdmisiContext.RegFeature.RegistrationOutcomeOperationRepo>();
+            IRegistrationOutcomeOperationRepo,
+            RegistrationOutcomeOperationRepo>();
 
 
         services
