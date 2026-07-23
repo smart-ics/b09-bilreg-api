@@ -27,7 +27,6 @@ public interface IAddBillAppService
         JaminanType jaminan,
         IEnumerable<KomponenType> listReffKomp,
         DateTime createdAt = default);
-        IEnumerable<KomponenType> listReffKomp);
 
     TrsBillType FromLabOrderItem(
         LabOrderModel labOrder,
@@ -36,7 +35,8 @@ public interface IAddBillAppService
         JaminanType jaminan,
         TarifType tarif,
         NilaiTarifType nilaiTarif,
-        IEnumerable<KomponenType> listReffKomp);
+        IEnumerable<KomponenType> listReffKomp,
+        DateTime createdAt = default);
 }
 
 
@@ -102,11 +102,12 @@ public sealed class AddBillAppService : IAddBillAppService
         JaminanType jaminan,
         TarifType tarif,
         NilaiTarifType nilaiTarif,
-        IEnumerable<KomponenType> listReffKomp)
+        IEnumerable<KomponenType> listReffKomp,
+        DateTime createdAt = default)
     {
         var (tataRekening, isNew) = ResolveTataRekening(reg);
         var bill = _createBillDomService.FromLabOrderItem(tataRekening, labOrder, labOrderItem, reg, jaminan, tarif, nilaiTarif,
-            listReffKomp);
+            listReffKomp, createdAt);
 
         if (isNew)
             _tataRekeningRepo.SaveChanges(tataRekening);

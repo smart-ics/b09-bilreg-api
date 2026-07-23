@@ -77,7 +77,7 @@ public class LabOrderChargeHandler : IRequestHandler<LabOrderChargeCmd, LabOrder
             var nilaiTarifKey = NilaiTarifType.KeyComposite(tarifKey, tipeTarifKey, reg.Kelas);
             var nilaiTarif = LoadNilaiTarif(nilaiTarifKey);
             var listKomp = ListKomponenTarif(nilaiTarif.ListKomponen.Select(x => x.Komponen));
-            _ = _addBillAppService.FromLabOrderItem(order, item, reg, jaminan, tarif, nilaiTarif, listKomp);
+            _ = _addBillAppService.FromLabOrderItem(order, item, reg, jaminan, tarif, nilaiTarif, listKomp, occurredAt);
         });
 
         var success = false;

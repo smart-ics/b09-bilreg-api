@@ -125,12 +125,12 @@ internal class TrsBillFactory
     }
 
     public static TrsBillType CreateFromLabOrderItem(LabOrderModel labOrder, LabOrderItemModel labOrderItem, RegModel reg,
-        JaminanType jaminan, TarifType tarif, NilaiTarifType nilaiTarif, IEnumerable<KomponenType> listReffKomp)
+        JaminanType jaminan, TarifType tarif, NilaiTarifType nilaiTarif, IEnumerable<KomponenType> listReffKomp, DateTime createdAt = default)
     {
         if (jaminan.JaminanId != reg.TipeJaminan.TipeJaminanId[..3])
             throw new ArgumentException("Jaminan tidak sesuai registrasi");
 
-        var audit = AuditTrailType.Create(labOrder.AuditTrail.Created.UserId, DateTime.Now);
+        var audit = AuditTrailType.Create(labOrder.AuditTrail.Created.UserId, createdAt);
         var ketBilling = new TrsBillKetType(tarif.TarifName, "", tarif.TarifId, 1, "");
 
         var rekPpdp = reg.JenisReg == JenisRegEnum.RegInap

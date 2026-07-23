@@ -27,7 +27,6 @@ public interface ICreateBillDomService
         JaminanType jaminan,
         IEnumerable<KomponenType> listReffKomp,
         DateTime createdAt = default);
-        IEnumerable<KomponenType> listReffKomp);
 
     TrsBillType FromLabOrderItem(
         TataRekeningModel tataRekening,
@@ -37,7 +36,8 @@ public interface ICreateBillDomService
         JaminanType jaminan,
         TarifType tarif,
         NilaiTarifType nilaiTarif,
-        IEnumerable<KomponenType> listReffKomp);
+        IEnumerable<KomponenType> listReffKomp,
+        DateTime createdAt = default);
 }
 
 public sealed class CreateBillDomService : ICreateBillDomService
@@ -61,10 +61,11 @@ public sealed class CreateBillDomService : ICreateBillDomService
     }
 
     public TrsBillType FromLabOrderItem(TataRekeningModel tataRekening, LabOrderModel labOrder, LabOrderItemModel labOrderItem, RegModel reg,
-        JaminanType jaminan, TarifType tarif, NilaiTarifType nilaiTarif, IEnumerable<KomponenType> listReffKomp)
+        JaminanType jaminan, TarifType tarif, NilaiTarifType nilaiTarif, IEnumerable<KomponenType> listReffKomp, 
+        DateTime createdAt = default)
     {
         ValidateReg(tataRekening, reg.RegId);
-        return TrsBillFactory.CreateFromLabOrderItem(labOrder, labOrderItem, reg, jaminan, tarif, nilaiTarif, listReffKomp);
+        return TrsBillFactory.CreateFromLabOrderItem(labOrder, labOrderItem, reg, jaminan, tarif, nilaiTarif, listReffKomp, createdAt);
     }
 
     private static void ValidateReg(TataRekeningModel tataRekening, string regId)
