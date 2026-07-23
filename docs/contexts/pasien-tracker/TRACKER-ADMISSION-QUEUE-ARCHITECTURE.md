@@ -1,6 +1,6 @@
 # Patient Tracker — Admission Queue Operations Architecture
 
-**Artifact status:** Canonical target architecture analysis
+**Artifact status:** Reconciled canonical target architecture; implementation status is tracked separately
 
 **Bounded context:** Patient Tracker
 
@@ -8,11 +8,22 @@
 
 **Operational specification:** [Admission Queue Operations SOP](./TRACKER-ADMISSION-QUEUE-SOP.md)
 
-**Implementation truth date:** 2026-07-22
+**Implementation truth date:** 2026-07-23
+
+**Reconciliation report:** [Admission Queue Architecture Reconciliation](./TRACKER-ADMISSION-QUEUE-ARCHITECTURE-RECONCILIATION.md)
+
+The architecture in this artifact is authoritative for Pragmatic V1. Statements marked `Target`,
+`Existing partial`, or `gap` in the original current-to-target analysis are not evidence of current
+delivery status. The reconciliation report classifies the executable source, schema, tests, client
+delivery, deployment verification, and deferred decisions independently.
 
 ## 1. Architecture Overview
 
-Admission Queue Operations extends the existing Bilreg modular monolith so that persisted Service Points, Loket, Kiosks, Queue Labels, Queue Calls, and operational projections can realize the approved domain and SOP.
+Admission Queue Operations extends the existing Bilreg modular monolith with a persisted Service
+Point master, daily Queue Sessions, Queue Entries, latest current-per-Loket claims/display state,
+Registration Outcomes, and queue-only operational projections. Pragmatic V1 deliberately does not
+persist Loket, Kiosk, Loket assignment, Loket-ServicePoint authorization, managed Queue Display, or
+Call Attempt masters.
 
 The backend remains a .NET 8 Clean Architecture modular monolith with this dependency direction:
 
@@ -31,34 +42,41 @@ The target is actor-facing and integration-facing but UI-agnostic:
 - Bilreg API is the composition and transport host; it is not the queue authority.
 - Patient Tracker aggregates and application use cases are the write authority.
 
-Major current constraints are the existing `BILRG_Antrian` / `BILRG_AntrianEntry` persistence shape, Dapper DALs, ambient `TransHelper` transactions, legacy `ISequencer`, caller-supplied `UserId`, generic `[Authorize]`, and whole-aggregate queue saves. Major V1 gaps are hardening the legacy sequence to the 1–9999 admission range, Service Point catalog, Queue Prefix/Label, current call state/CallCount, trusted workstation configuration, shared current display state/version, SignalR/polling transport, audit coverage, Priority redirection, and conditional intake idempotency.
+The accepted target reuses `BILRG_Antrian` / `BILRG_AntrianEntry`, Dapper, ambient
+`TransHelper` transactions, and `ISequencer`. Intent-specific admission transitions must use
+expected-state SQL rather than whole-aggregate saves. The current source implements most backend
+contracts, but caller-supplied `UserId`, generic `[Authorize]`, a no-op refresh publisher, absent
+Kiosk/officer/display clients, and unexecuted real-SQL migration/concurrency verification remain
+material delivery qualifications. Kiosk transport idempotency is deferred, not a V1 completion
+requirement.
 
 ## 2. Codebase Evidence and Constraints
+
+This section was originally the pre-roadmap baseline. The table below is reconciled to the current
+workspace; implementation reports alone are not treated as executable evidence.
 
 | Evidence | Verified location | Architectural implication |
 |---|---|---|
 | Four Clean Architecture projects and inward project references | `src/bilreg/Bilreg.Domain`, `Bilreg.Application`, `Bilreg.Infrastructure`, `Bilreg.Api` project files | New behavior must follow the existing project boundaries; clients must not bypass Application. |
 | Queue Session aggregate and entries exist | `Bilreg.Domain/AdmisiContext/AntrianFeature/AntrianModel.cs`, `AntrianEntryModel.cs` | Extend the existing aggregate instead of creating a competing admission queue model. |
-| Queue Entry states are only `Waiting`, `InService`, and `Done` | `AntrianStatusEnum.cs` | `Withdrawn` and Queue Call disposition are target domain-realization gaps. |
-| Service Point is only a two-field value snapshot | `ServicePointType.cs` | It cannot satisfy the new Service Point Aggregate, Queue Prefix, lifecycle, or catalog queries. |
-| Unused Service Point persistence abstractions exist without an implementation | `ServicePointStatusEnum.cs`, Application-layer `IServicePointDal.cs` | Do not treat Service Point persistence as existing. Replace the Application DAL contract with an aggregate repository; keep DAL contracts and SQL mapping in Infrastructure. |
-| Anonymous intake trusts caller-supplied Service Point code/name and permits optional `TglYmd` | `QueAnonymousIntakeCmd.cs` | Target intake resolves Business Date server-side and validates submitted ServicePointId against active Service Point persistence; local Kiosk offerings are presentation only. |
-| One configured admission Service Point is authoritative | `AdmisiRajalOptions.cs`, `DomainService.cs`, API settings | Configuration is a transitional constraint. Target authority is the Service Point repository; configuration may only seed or select a compatibility default. |
-| Admission `start` immediately serves an anonymous entry | `AdmissionQueueStartCmd.cs` | The current command conflates call and service start and carries no Loket. New clients must use separate Call and Start Service use cases. |
+| Queue Entry supports `Waiting`, `InService`, `Done`, and `Withdrawn` | `AntrianStatusEnum.cs`, `AntrianEntryModel.cs` | Call/Recall intentionally leave the entry Waiting; current claim state distinguishes Outstanding from uncalled Waiting. |
+| Persisted Admission Service Point aggregate exists | `AdmissionServicePointModel.cs`, `AdmissionServicePointRepo.cs`, `BILRG_AdmServicePoint.sql` | Active/Retired and active-prefix uniqueness are implemented in source/schema; deployment still requires migration and approved seed data. |
+| Anonymous intake accepts only ServicePointId and resolves date/master server-side | `QueAnonymousIntakeCmd.cs` | Client configuration is not authority. Concurrent first-session creation still needs the documented real-SQL verification and retry hardening. |
+| Legacy configured admission Service Point remains only on compatibility paths | `AdmisiRajalOptions.cs`, legacy Registration handlers | New v1 intake is master-authoritative; legacy consumers must be migrated explicitly. |
+| Split Call and Start Service commands exist; legacy direct start remains | `AdmissionQueueOperationalCommands.cs`, `AdmissionQueueStartCmd.cs` | New clients use Call then Start Service. The legacy route is feature-gated and must not define target semantics. |
 | Queue identity and entry persistence exist | `AntrianDto.cs`, `AntrianEntryDto.cs`, `AntrianDal.cs`, `AntrianEntryDal.cs` | Existing tables require additive migration and compatibility mapping, not replacement. |
-| Existing queue transaction tables do not carry the full audit-column set required by `docs/DATABASE.md` | `BILRG_Antrian.sql`, `BILRG_AntrianEntry.sql` | Migration design must add accountable mutation evidence or provide the approved equivalent; new transaction tables must follow the current standard. |
+| Queue tables and new admission tables have additive audit migrations/scripts | `BILRG_AdmissionQueue_M3_Audit_Alter.sql` and new-table scripts | Source/schema contract exists; applied-database evidence is still required. |
 | Queue header uniqueness uses `SequenceTag` | `BILRG_Antrian_M1_ServicePointCode_Alter.sql` | Queue Session lookup remains deterministic, but Queue Prefix must not be inferred from `SequenceTag`. |
 | Queue numbers currently use `ISequencer` and `SequenceTag` | `AntrianModel.AddEntry`, `AntrianFactory.Create(ServicePointType, DateOnly)`, `Sequencer` | Target V1 retains this legacy authority, constrains each admission sequence to 1–9999 with no cycle, and rejects exhaustion. |
-| Whole-aggregate repository save compares every entry | `AntrianRepo.SaveChanges` | Concurrent queue actions can overwrite each other. Target lifecycle commands require conditional single-transition persistence. |
-| Whole-aggregate comparison physically deletes persisted entries missing from the in-memory list | `AntrianRepo.CompareCollections` and `AntrianEntryDal.Delete` | New admission operations must not use removal to represent withdrawal, no-show, or transfer; historical entries require explicit status/history. |
+| Legacy whole-aggregate save/delete behavior still exists | `AntrianRepo.SaveChanges`, `AntrianEntryDal.Delete` | V1 admission operational transitions use `AdmissionQueueOperationRepo` CAS operations and never represent transitions by deleting entries. Legacy paths remain a compatibility risk, not target architecture. |
 | Anonymous InService Tracker association has compare-and-set | `TrySaveAnonymousInServiceTransition`, `UpdateFromAnonymousInService` | Reuse this proven pattern for call, start, withdraw, transfer, and complete transitions. |
-| Existing queue queries are physician/Registration oriented | `QueListAntrianHeaderQuery.cs`, `QuePasienListQuery.cs`, `QueGetAntrianQuery.cs` | They are not an admission Work List or Queue Display projection and must not be stretched into write authority. |
+| Admission-specific queue-only and current-Loket projections exist beside legacy queries | `AdmissionQueueOperationalQueries.cs`, `AdmissionQueueOperationalProjection.cs` | These reads are queue truth only and must not be enriched into a second Admisi ledger. |
 | Registration and queue association share an ambient transaction | `RegJalanWalkInCommand.cs`, `RegJalanByBookingCmd.cs`, `TrkJourneyResolveSelectCmd.cs` | Preserve local atomicity for Registration, Tracker evidence, Queue Entry association, and local outbox records. |
 | HTTP controllers use MediatR and `[Authorize]` | `AntrianController.cs`, `PasienTrackerController.cs` | Expose new use cases through transport adapters; add policy/context authorization rather than controller business logic. |
-| Authenticated actor resolution exists but queue commands still accept `UserId` | `HttpCurrentUserContext.cs`, queue command contracts | Target queue commands derive human actor identity from claims and device identity from authenticated client context. |
+| Authenticated actor resolution exists but queue commands still accept `UserId` | `HttpCurrentUserContext.cs`, queue command contracts | Claims-derived human identity and contextual queue roles are deferred platform/security work; V1 must not claim that payload UserId is trusted production actor proof. |
 | Shared audit storage exists | `IAuditRepo`, `AuditLogRepo`, `BILRG_AuditLog.sql` | Use it for administrative and exceptional decisions; operational Queue Call history remains separate queue truth. |
 | Durable outbound queue patterns exist | `EmrAntrianOutboundFeature`, `LabOwareFeature` | Reuse explicit pending/processing/succeeded/failed storage and retry ideas for display notification delivery. |
-| No SignalR hub, registration, or mapping exists | API project and `Program.cs` | Real-time Queue Display delivery is a target capability, not an existing feature. |
+| No SignalR hub, registration, or mapping exists; refresh publisher is a no-op | `NullAdmissionQueueRefreshPublisher`, API composition | Persisted snapshots are usable recovery truth, but near-real-time refresh delivery is not implemented. |
 | No Kiosk or Queue Display application exists in this repository | repository file inventory | Their UI and deployment artifacts are later deliverables; backend contracts must remain client-agnostic. |
 
 ### 2.1 Constraints
@@ -72,17 +90,21 @@ Major current constraints are the existing `BILRG_Antrian` / `BILRG_AntrianEntry
 
 ### 2.2 Gaps
 
-- No maintained Service Point, Loket, or Kiosk aggregate repository exists.
-- No Queue Prefix Snapshot or Queue Label exists.
-- No Queue Call or Call Attempt model exists.
-- No atomic claim prevents two Loket calling the same Queue Entry.
-- No invariant prevents one Loket having multiple active entries.
-- No `Withdrawn`, No-Show, Recall, or transfer realization exists.
-- No admission-specific worklist or display snapshot projection exists.
-- No durable real-time notification mechanism exists.
-- No device-scoped authentication or assignment authorization exists.
-- No admission queue audit policy is implemented.
-- Existing queue tables and mutations do not satisfy the target accountable history and current audit-column standard.
+- The additive migrations have no repository-recorded applied-database verification for the current
+  environment, and the mandatory R-13 real-SQL race/rollback/query-plan gate is not implemented as
+  an executable integration suite.
+- Concurrent first creation of one daily Queue Session has a unique-index one-winner constraint but
+  ordinary intake does not transparently reload/retry the winner.
+- The refresh port is registered to a no-op; no SignalR transport or Queue Display client exists.
+- No Kiosk or officer client in the available source consumes the v1 operational workflow.
+- Human actor identity remains caller-supplied and authorization remains generic authenticated
+  access by accepted R-02/security deferral.
+- Workstation mapping is static per deployment; cross-installation duplicate identity remains a
+  deployment concern.
+- The Admisi-composed enriched worklist and the external HiDok AssistanceRequired call-site are not
+  present in this repository.
+- Production migration, seed, topology, monitoring, retention, and rollout evidence are absent and
+  must not be inferred from source or report completion.
 
 ## 3. Module and Bounded-Context Boundaries
 
@@ -509,11 +531,16 @@ Implementation agents must not:
 
 ### ADR-AQO-008 — Keep printing outside the backend transaction
 
-- **Decision:** Backend commits and returns the authoritative Queue Label; Kiosk owns printing and recovers by retrieving the same intake result.
-- **Status:** Accepted Target.
+- **Decision:** Backend commits and returns the authoritative Queue Label; Kiosk owns printing.
+  Current V1 has no transport-idempotent retrieval contract, so an uncertain retry may allocate a
+  second entry. The client prevents repeat submission while pending and requires a deliberate retry.
+- **Status:** Clarified by ADR-AQO-020; request-identity recovery is deferred to R-05B.
 - **Context:** Printer failure cannot roll back a safely allocated queue number after an uncertain network outcome.
-- **Rationale:** Idempotent recovery avoids duplicate numbers and distributed transactions with devices.
-- **Consequences:** Kiosk must retain request identity until the result is confirmed and support same-label reprint.
+- **Rationale:** Printing remains outside the database transaction. A future idempotent recovery
+  contract may reduce duplicate numbers without introducing a device transaction, but V1 does not
+  claim that behavior.
+- **Consequences:** Printing never participates in the backend transaction. Same-label recovery
+  requires a future approved and implemented ClientRequestId contract.
 - **Rejected alternatives:** Allocate only after printer acknowledgement; allow Kiosk to choose a replacement number.
 - **Evidence or governing references:** SOP §§4.1, 5.2–5.3; BR-AQO-012.
 
@@ -589,8 +616,12 @@ Implementation agents must not:
 ### ADR-AQO-018 — Reuse existing queue tables under the verified minimal persistence profile
 
 - **Decision:** Reuse `BILRG_Antrian` as Queue Session and `BILRG_AntrianEntry` as Queue Entry. Add a Service Point master and latest-state `BILRG_AdmLoketCurrentCall`; do not add Loket, Kiosk, assignment, authorization, call-history, or managed-display masters. Queue lifecycle remains on the existing entry model.
-- **Status:** Accepted direction; **partially supported** by the codebase and not migration-ready.
-- **Verified support:** The two queue tables, composite entry identity, lifecycle timestamps/status, `ServicePointCode`, and unique `SequenceTag` already exist. Prefix snapshot, Priority, CallCount, Service Point master, current-call projection, Call/Recall behavior, and versioning do not.
+- **Status:** Accepted and implemented in source plus additive migration scripts; applied-database
+  and real-SQL operational verification remain incomplete.
+- **Verified support:** The two queue tables retain composite entry identity. Prefix snapshot,
+  Priority, CreationReason, CallCount, Service Point master, current-call claim/projection,
+  RowVersion, AnnouncementVersion, explicit transitions, and outcome persistence are present in
+  current source/schema scripts.
 - **Resolved constraints:** Queue Prefix is exactly one normalized uppercase ASCII character; Queue Number is exactly four digits; legacy `ISequencer` is the sole allocator and no `LastQueueNumber` is added.
 - **Resolved persistence constraints:** Priority controls indication/default sorting only; `(AntrianId, NoUrut)` is retained for current-call, source, and cross-context outcome references; RowVersion is distinct from AnnouncementVersion; composite provenance is retained; ClientRequestId persistence is deferred; and Decision C outcomes are persisted separately in Admisi Rajal.
 - **Evidence:** The queue SQL definitions and migration, Domain models, DTO/DAL/repository mappings, anonymous-intake handler, and start-service handler; detailed findings are in GAP-READY-009 of the implementation-gap artifact.
@@ -632,9 +663,34 @@ Implementation agents must not:
 | GAP-AQO-005 | API instance topology and SignalR scale-out/backplane | Multi-instance refresh delivery can be missed across instances | Deployment/platform owner | Final real-time infrastructure | Poll persisted current display state; do not claim SignalR delivery guarantees |
 | GAP-AQO-006 | Kiosk and Queue Display client technology, repository, and hosting | Determines later UI and deployment artifacts, not backend authority | Product/platform owner | Client implementation | Keep backend contracts transport/client agnostic |
 | GAP-AQO-007 | Queue Entry/current-display/audit retention periods | Affects storage volume and authorized history | Compliance and hospital operations | Retention jobs and capacity sizing | Retain Queue Entries and audit; current display state is replaceable operational state |
-| GAP-AQO-008 | Exact API contract and visible UI labels beyond `Call` | Required for client implementation and contract tests | Product/UI/API owners | UI delivery and API endpoint implementation | Implement Application contracts first; do not invent routes or labels in architecture |
+| GAP-AQO-008 | Resolved for backend v1 by `TRACKER-ADMISSION-QUEUE-API-V1.md`; visible UI wording remains deferred | Backend routes and contracts exist, but no officer/Kiosk/display client is present | Product/UI owners | Client delivery only | Use the published v1 contract; do not invent presentation policy |
 | GAP-AQO-009 | Operational evidence used to offer or transfer BPJS versus General service | Queue does not own eligibility truth | Admisi Rajal/guarantor policy owner | Automated routing suggestions | Let Patient choose an offered Service Point and require accountable transfer when wrong |
-| GAP-AQO-010 | Prefix backfill for historical and currently active admission sessions | Historical rows have no authoritative prefix | Data migration and operations owner | Enabling Queue Label projection for legacy sessions | Preserve raw NoUrut and mark prefix migration unresolved; do not infer from arbitrary descriptions |
+| GAP-AQO-010 | Historical prefix backfill intentionally not performed | Historical rows have no authoritative prefix and fabricated labels would be false | Resolved V1 decision | Does not block V1 | Preserve raw NoUrut and return unavailable/null QueueLabel for sessions without a snapshot |
 | GAP-AQO-011 | Deprecation date and consumers of current direct admission `start` | New Call/Start split cannot safely replace unknown clients immediately | API/product owner | Removal or semantic change of existing capability | Keep compatibility endpoint feature-gated; new clients use split commands |
 | GAP-AQO-012 | Resolved by ADR-AQO-019: Start Service retains the row as InService; No-Show, Withdraw, Redirect, Complete, and rollback release it; a later Call may replace only Released | Active display queries exclude Released; the table cannot provide call history | Resolved | No longer blocks claim persistence; final UI labels remain GAP-AQO-008 | Preserve AnnouncementVersion except for audio Call/Recall |
 | GAP-AQO-013 | Registration Outcome ReasonCode catalog and ownership | Required reasons must be stable and selectable without inventing codes in clients | Admisi Rajal operations/domain owner | Final NotEstablished API/UI and reporting | Require a non-empty code in the model; do not invent or hard-code reason values until approved |
+
+## 19. Revision Record — 2026-07-23 Reconciliation
+
+This revision reconciles the original current-to-target analysis with R-00 through R-14 artifacts
+and the current workspace.
+
+- Sections 1 and 2 now distinguish approved target architecture from executable, deployment, and
+  production state.
+- The persisted-resource model explicitly excludes Loket, Kiosk, assignment,
+  Loket-ServicePoint authorization, managed display, and call-history masters from Pragmatic V1.
+- The evidence/gap baseline recognizes implemented source and schema for bounded allocation,
+  Service Points, labels, CAS transitions, current-Loket claims, projections, outcomes, API,
+  Booking assistance, workstation checks, and audit columns.
+- ADR-AQO-008 is superseded where it implied current idempotent intake recovery; ADR-AQO-020 governs
+  the non-idempotent V1 transport boundary.
+- ADR-AQO-012 remains superseded by deployment-owned workstation configuration. ADR-AQO-018 is
+  updated from pre-migration design status to source/schema implementation with an unclosed
+  applied-database verification gate.
+- Historical prefixes remain unknown rather than backfilled or inferred.
+- Platform actor migration, role/context authorization redesign, Kiosk retry idempotency,
+  automatic No-Show/routing, display timing, print telemetry, SignalR scale-out, and
+  retention/archive/purge/monitoring remain intentionally deferred.
+
+No feature implementation is claimed by this revision. Evidence classification and the remaining
+delivery sequence are maintained in the linked reconciliation report.
