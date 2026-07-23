@@ -4,7 +4,7 @@
 **Scope:** Officer Client, Kiosk Client, and Queue Display Client that consume Bilreg Admission Queue v1.  
 **Relationship:** Part 2 of Admission Queue delivery. Part 1 (backend) is [TRACKER-ADMISSION-QUEUE-IMPLEMENTATION-PLAN.md](./TRACKER-ADMISSION-QUEUE-IMPLEMENTATION-PLAN.md).  
 **Architecture addendum (C2/C3):** [kiosk-queue-display-web.md](./kiosk-queue-display-web.md)  
-**Evidence / revision date:** 2026-07-23 (C3 closed)
+**Evidence / revision date:** 2026-07-23 (C4 closed)
 
 **Roadmap status**
 
@@ -14,7 +14,7 @@
 | **C1** Officer Client | ✅ Completed — baseline; do not redesign |
 | **C2** Kiosk Client | ✅ Completed — monorepo path boot, intake, print ([report](./tracker-c2-kiosk-implementation-report.md)) |
 | **C3** Queue Display Client | ✅ Completed — snapshot-first, SignalR, TTS, version reload ([report](./tracker-c3-queue-display-implementation-report.md)) |
-| **C4** Integration & Deployment | ⏳ Next |
+| **C4** Integration & Deployment | ✅ Completed — E2E + IIS + runbook ([report](./tracker-c4-integration-deployment-implementation-report.md)) |
 
 **Primary references**
 
@@ -58,15 +58,16 @@ Backend Admission Queue Pragmatic V1 remains client-consumable: v1 REST under `/
 
 **Kiosk** and **Queue Display** are done in the monorepo (`apps/kiosk-web`, `apps/display-web`), deployed under one IIS site with path-based station/screen IDs, shared packages for API/SignalR/types/device-config, and snapshot-first display authority.
 
-Remaining delivery is **C4** cross-client E2E, IIS packaging, and runbook client sections.
+Part 2 external clients are **closed through C4**: cross-client E2E procedures, IIS packaging/cutover checklist, and runbook client sections are published. Remaining work is deferred technical gaps (device-config API, R-02 device auth, R-05B), not new C-phases.
 
 | Client | Platform | Placement | Status |
 |--------|----------|-----------|--------|
 | **Officer** | Vue 3 in `c012_myhospital_web` | Admisi `RegistrasiRajal` + `admissionQueue/*` | ✅ Baseline |
 | **Kiosk** | Vue 3 Vite (`kiosk-web`) + local print proxy | Monorepo `apps/kiosk-web`; IIS `/kiosk/{stationId}` | ✅ C2 |
 | **Queue Display** | Vue 3 Vite (`display-web`) fullscreen | Monorepo `apps/display-web`; IIS `/display/{screenId}` | ✅ C3 |
+| **Integration** | Ops docs + runbook | Runbook §§8–11 + IIS cutover checklist | ✅ C4 |
 
-**Next implementation slice:** C4 — cross-client E2E, IIS cutover checklist, runbook client sections.
+**Preferred next work:** deferred gaps only (device-config API, R-02, R-05B) — track outside this C-phase roadmap.
 
 ---
 
@@ -352,7 +353,7 @@ flowchart TD
 | **C1** | ✅ Done | Officer worklist + Call/Recall/Start + headers + flag | C0 + workstations |
 | **C2** | ✅ Done | Kiosk in monorepo: path routing, device config, intake, print | Device config (JSON provider) + Service Points |
 | **C3** | ✅ Done | Display in monorepo: snapshot-first, SignalR hint, audio, versioning | Device config + existing hub/snapshot |
-| **C4** | ⏳ | Cross-client E2E, IIS packaging, runbook client sections | C1–C3 |
+| **C4** | ✅ Done | Cross-client E2E, IIS packaging, runbook client sections | C1–C3 |
 
 **Parallelism:** After monorepo scaffold (C2.0 start), C2 and C3 may proceed in parallel once `packages/*` stubs exist. Full E2E needs Officer Call (already done) + Kiosk intake + Display.
 
@@ -575,11 +576,20 @@ Report: [`tracker-c2-kiosk-implementation-report.md`](./tracker-c2-kiosk-impleme
 
 Report: [`tracker-c3-queue-display-implementation-report.md`](./tracker-c3-queue-display-implementation-report.md).
 
+### Completed C4 (closed)
+
+| Slice | Status | Summary |
+|-------|--------|---------|
+| **C4** | ✅ | Cross-client E2E smoke, IIS cutover checklist, runbook client sections |
+
+Report: [`tracker-c4-integration-deployment-implementation-report.md`](./tracker-c4-integration-deployment-implementation-report.md).  
+Ops: [`TRACKER-ADMISSION-QUEUE-RUNBOOK.md`](./TRACKER-ADMISSION-QUEUE-RUNBOOK.md) §§8–11, [`TRACKER-ADMISSION-QUEUE-IIS-CLIENT-CUTOVER-CHECKLIST.md`](./TRACKER-ADMISSION-QUEUE-IIS-CLIENT-CUTOVER-CHECKLIST.md).
+
 ### Immediate follow-ons
 
-| Slice | Focus |
-|-------|--------|
-| **C4** | Cross-client E2E, IIS cutover checklist, runbook client sections |
+| Item | Focus |
+|------|--------|
+| Deferred gaps | Device-config API, R-02 device auth, R-05B intake idempotency — not a new C-phase |
 
 ---
 
@@ -604,5 +614,6 @@ Report: [`tracker-c3-queue-display-implementation-report.md`](./tracker-c3-queue
 | Companion backend plan | `TRACKER-ADMISSION-QUEUE-IMPLEMENTATION-PLAN.md` |
 | C2/C3 architecture addendum | `kiosk-queue-display-web.md` |
 | Implementation authorization | Not granted by this document alone |
-| Preferred next code change | **C4** cross-client E2E + IIS cutover checklist |
-| Officer codebase | `c012_myhospital_web` — baseline; do not redesign under C2/C3 |
+| Preferred next code change | Deferred gaps only (device-config API / R-02 / R-05B) — C0–C4 closed |
+| Officer codebase | `c012_myhospital_web` — baseline; do not redesign under C2–C4 |
+| C4 ops artifacts | `tracker-c4-integration-deployment-implementation-report.md`, runbook §§8–11, IIS client cutover checklist |

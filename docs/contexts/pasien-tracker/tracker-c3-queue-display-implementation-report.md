@@ -18,7 +18,7 @@ Phase **C3** delivers the Admission Queue **Queue Display** web client in the sa
 | **C3.0** | `display-web` `/display/{screenId}` path boot, `devices.json` display role, `GET displays/current` snapshot render, client `loketIds` filter, poll interval |
 | **C3.1** | Real `@aq/signalr-client` RefreshHint → snapshot refetch, AnnouncementVersion-gated TTS, reconnect snapshot-first, `version.json` idle soft reload |
 
-Officer Client remains baseline in `c012`. Kiosk Client remains C2. Next phase is **C4** (cross-client E2E + IIS cutover).
+Officer Client remains baseline in `c012`. Kiosk Client remains C2. Phase **C4** (cross-client E2E + IIS cutover + runbook) is closed — see [`tracker-c4-integration-deployment-implementation-report.md`](./tracker-c4-integration-deployment-implementation-report.md).
 
 ---
 
@@ -116,7 +116,7 @@ sequenceDiagram
 
 - Backend `GET /api/devices/{deviceId}/config` (JSON provider remains until that lands)
 - Parallel `GET /api/displays/{screenId}/snapshot` BFF
-- Cross-client E2E / IIS cutover runbook expansion (**C4**)
+- Cross-client E2E / IIS cutover runbook expansion — **closed in C4** ([report](./tracker-c4-integration-deployment-implementation-report.md))
 - R-02 display role policy / device login
 - Android TV; clip-based audio library
 - Officer redesign in `c012`
