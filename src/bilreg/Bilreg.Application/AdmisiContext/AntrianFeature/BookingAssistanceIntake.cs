@@ -15,6 +15,7 @@ public record BookingAssistanceActive(string BookingId,string AntrianId,int NoUr
 public interface IBookingAssistanceRepo
 {
     BookingAssistanceActive? FindActive(string bookingId);
+    BookingAssistanceActive? FindActiveByEntry(string antrianId,int noUrut);
     bool TryCreate(string bookingId,string correlation,string? failureCode,string kioskId,string userId,
         DateTime at,AntrianModel queue,AntrianEntryModel entry);
 }

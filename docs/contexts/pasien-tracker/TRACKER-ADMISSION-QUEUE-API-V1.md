@@ -56,6 +56,39 @@ be detected without the intentionally deferred cross-node coordination capabilit
 | `POST entries/{q}/{n}/outcomes/established` | `{loketKey,expectedRowVersion,regId,userId}` | immutable Established outcome and Done entry |
 | `POST entries/{q}/{n}/outcomes/not-established` | `{loketKey,expectedRowVersion,reasonCode,userId}` | immutable NotEstablished outcome and Done entry |
 
+`GET worklist` remains **queue-only**. It must not return Booking, patient identity, Registration,
+eligibility, or physician enrichment.
+
+### Admisi Rajal composed officer worklist (read-only)
+
+Base route: `/api/v1/admisi-rajal`. Authenticated. Same JSend success envelope.
+
+| Method and route | Request/query | Result and access context |
+|---|---|---|
+| `GET officer-worklist` | businessDate, optional servicePointId/status/loketKey, offset/limit | Composes the queue-only projection with Booking, identity, and Registration summaries for officer display |
+
+Composition rules:
+
+- Queue membership, state, call state, LoketKey, timestamps, Queue Label, Priority, and optional
+  TrackerId remain Patient Tracker truth (copied from the queue projection).
+- Enrichment is best-effort and nullable for anonymous or unresolved entries.
+- This route does **not** persist another worklist, duplicate queue state, or become a second ledger.
+- Loket workstation headers are not required for this read (same stance as queue `GET worklist`).
+
+### Journey association (existing officer contract)
+
+Journey resolve remains on `/api/PasienTracker` (not under admission-queue v1):
+
+- `GET /api/PasienTracker/{pasienTrackerId}`
+- `GET /api/PasienTracker/candidates`
+- `POST /api/PasienTracker/resolve/select`
+
+### NotEstablished ReasonCode boundary
+
+`reasonCode` is validated through `IRegistrationOutcomeReasonCatalog`. Until Operations publishes the
+approved catalog, the default pass-through implementation requires a non-empty code only and invents
+no business reason values. Rejection maps to `AQ_INVALID_REQUEST`.
+
 Every response containing a queue number exposes QueueLabel when its immutable session prefix exists;
 historical sessions may return null/unavailable.
 
@@ -80,6 +113,19 @@ as the authoritative ServicePointId and caller name/date are no longer authorita
 usage and are controlled by `AdmissionQueueApi:LegacyEndpointsEnabled` (default true); when disabled
 they return 404. New clients must not use them. No removal or deprecation date is invented; product
 ownership must supply it after consumer migration is verified.
+
+### Legacy / compatibility mutation inventory (Phase 2)
+
+| Route | Role | Gate / observation |
+|---|---|---|
+| `POST /api/Antrian/anonymous-intake` | Legacy AQ intake | `LegacyEndpointsEnabled`; warning log |
+| `POST /api/Antrian/start` | Legacy direct Waiting→InService | `LegacyEndpointsEnabled`; warning log |
+| `PATCH /api/Antrian/mulaiPeriksa/{id}/{n}` | Physician Serve (compat) | Ungated; warning log; not officer AQ v1 |
+| `PATCH /api/Antrian/selesaiPeriksa/{id}/{n}` | Physician Done (compat) | Ungated; warning log; not officer AQ v1 |
+| Registration create-on-queue paths | Legacy registration without prior intake | Compatibility; inventory for Phase 5 go/no-go |
+
+Physician/compat mutators are intentionally not feature-gated in Phase 2; they remain inventoried for
+Phase 5 compatibility closure.
 
 ## Frontend migration contract
 

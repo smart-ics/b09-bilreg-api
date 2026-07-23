@@ -56,10 +56,12 @@ public sealed class FinalizeRegistrationEstablishedHandler:RegistrationOutcomeHa
 public sealed class FinalizeRegistrationNotEstablishedHandler:RegistrationOutcomeHandlerBase,
     IRequestHandler<FinalizeRegistrationNotEstablishedCmd,RegistrationOutcomeResponse>
 {
+    private readonly IRegistrationOutcomeReasonCatalog _reasons;
     public FinalizeRegistrationNotEstablishedHandler(IAntrianRepo q,IRegistrationOutcomeOperationRepo o,
-      ITglJamProvider c,IAdmissionQueueRefreshPublisher p):base(q,o,c,p){}
+      ITglJamProvider c,IAdmissionQueueRefreshPublisher p,IRegistrationOutcomeReasonCatalog reasons):base(q,o,c,p)
+      =>_reasons=reasons;
     public Task<RegistrationOutcomeResponse> Handle(FinalizeRegistrationNotEstablishedCmd r,CancellationToken ct)
-    { Guard.Against.NullOrWhiteSpace(r.ReasonCode); Guard.Against.NullOrWhiteSpace(r.UserId);
+    { _reasons.EnsureAccepted(r.ReasonCode); Guard.Against.NullOrWhiteSpace(r.UserId);
       EnsureInService(r.AntrianId,r.NoUrut);
       return Finalize(RegistrationOutcomeModel.NotEstablished(r.AntrianId,r.NoUrut,r.ReasonCode,r.UserId,Clock.Now),r.LoketKey,r.ExpectedClaimVersion,ct); }
 }

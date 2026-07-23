@@ -18,6 +18,13 @@ public sealed class BookingAssistanceRepo:IBookingAssistanceRepo
       FROM BILRG_AdmBookingAssistance a INNER JOIN BILRG_Antrian q ON q.AntrianId=a.AntrianId
       WHERE a.BookingId=@bookingId AND a.IsActive=1
       """;using var c=Open();return c.QuerySingleOrDefault<BookingAssistanceActive>(sql,new{bookingId});}
+    public BookingAssistanceActive? FindActiveByEntry(string antrianId,int noUrut)
+    { const string sql="""
+      SELECT a.BookingId,a.AntrianId,a.NoUrut,
+        CASE WHEN q.QueuePrefixSnapshot='' THEN NULL ELSE q.QueuePrefixSnapshot+RIGHT('0000'+CONVERT(VARCHAR(4),a.NoUrut),4) END QueueLabel
+      FROM BILRG_AdmBookingAssistance a INNER JOIN BILRG_Antrian q ON q.AntrianId=a.AntrianId
+      WHERE a.AntrianId=@antrianId AND a.NoUrut=@noUrut AND a.IsActive=1
+      """;using var c=Open();return c.QuerySingleOrDefault<BookingAssistanceActive>(sql,new{antrianId,noUrut});}
     public bool TryCreate(string bookingId,string correlation,string? failureCode,string kioskId,string userId,
       DateTime at,AntrianModel q,AntrianEntryModel e)
     { const string sql="""

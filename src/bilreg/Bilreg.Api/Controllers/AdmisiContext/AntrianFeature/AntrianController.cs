@@ -92,6 +92,8 @@ public class AntrianController : Controller
     [Route("mulaiPeriksa/{antrianId}/{noUrut:int}")]
     public async Task<IActionResult> MulaiPeriksa(string antrianId, int noUrut)
     {
+        _logger.LogWarning(
+            "Physician/compat queue mutation used: mulaiPeriksa (not Admission Queue v1 officer path)");
         var response = await _mediator.Send(new QueMulaiPeriksaCmd(antrianId, noUrut));
         return Ok(new JSendOk(response));
     }
@@ -100,6 +102,8 @@ public class AntrianController : Controller
     [Route("selesaiPeriksa/{antrianId}/{noUrut:int}")]
     public async Task<IActionResult> SelesaiPeriksa(string antrianId, int noUrut)
     {
+        _logger.LogWarning(
+            "Physician/compat queue mutation used: selesaiPeriksa (not Admission Queue v1 officer path)");
         var response = await _mediator.Send(new QueSelesaiPeriksaCmd(antrianId, noUrut));
         return Ok(new JSendOk(response));
     }

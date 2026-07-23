@@ -87,4 +87,25 @@ public class AdmissionQueueApiContractTest
         result.Should().BeOfType<OkObjectResult>();
         mediator.Verify(x=>x.Send(It.Is<AdmissionQueueCallCmd>(c=>c.LoketKey=="L1"),It.IsAny<CancellationToken>()),Times.Once);
     }
+
+    [Fact]
+    public async Task LegacyGate_WhenDisabled_HidesDirectStartWithoutDispatching()
+    {
+        var mediator=new Mock<IMediator>();
+        var sut=new AntrianController(mediator.Object,
+            Options.Create(new AdmissionQueueApiOptions{LegacyEndpointsEnabled=false}),
+            NullLogger<AntrianController>.Instance);
+        var result=await sut.Start(new AdmissionQueueStartCmd("Q",1,"u"));
+        result.Should().BeOfType<NotFoundResult>(); mediator.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public void AdmisiRajalOfficerWorklistController_IsVersionedAuthenticatedCompositionRoute()
+    {
+        var type=typeof(Bilreg.Api.Controllers.AdmisiContext.RegFeature.AdmisiRajalOfficerWorklistController);
+        type.GetCustomAttributes(typeof(AuthorizeAttribute),true).Should().NotBeEmpty();
+        type.GetCustomAttributes(typeof(RouteAttribute),true).Cast<RouteAttribute>().Single().Template
+            .Should().Be("api/v1/admisi-rajal");
+        type.GetMethods().Select(x=>x.Name).Should().Contain("OfficerWorklist");
+    }
 }

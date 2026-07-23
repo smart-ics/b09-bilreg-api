@@ -203,7 +203,8 @@ public sealed class AdmissionQueueRealSqlGateTest
         var (intake, call, _, start, _, _, projection) = Build(clock);
         var outcomes = new RegistrationOutcomeOperationRepo(_fx.Options);
         var finalize = new FinalizeRegistrationNotEstablishedHandler(
-            Queues(), outcomes, clock, new NullAdmissionQueueRefreshPublisher());
+            Queues(), outcomes, clock, new NullAdmissionQueueRefreshPublisher(),
+            new PassThroughRegistrationOutcomeReasonCatalog());
 
         var e = await intake.Handle(new QueAnonymousIntakeCmd(SpA), default);
         await call.Handle(new AdmissionQueueCallCmd(e.AntrianId, e.NoUrut, loket, "u1"), default);
