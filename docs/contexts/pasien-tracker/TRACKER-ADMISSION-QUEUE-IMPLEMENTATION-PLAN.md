@@ -20,7 +20,7 @@
 
 **Physical location (unchanged):** `AdmisiContext/AntrianFeature` across Domain / Application / Infrastructure / Api. Logical owner remains Patient Tracker.
 
-**Out of scope of this plan:** Officer Queue Client, Kiosk Client, and Queue Display Client (screens, navigation, UI workflows, printing UX, reconnect/polling UX, display rendering). Those are summarized only under [External Client Deliverables](#external-client-deliverables-out-of-scope-of-this-implementation-plan).
+**Out of scope of this plan:** Officer Queue Client, Kiosk Client, and Queue Display Client (screens, navigation, UI workflows, printing UX, reconnect/polling UX, display rendering). Those are planned in Part 2: [TRACKER-ADMISSION-QUEUE-EXTERNAL-CLIENTS-IMPLEMENTATION-PLAN.md](./TRACKER-ADMISSION-QUEUE-EXTERNAL-CLIENTS-IMPLEMENTATION-PLAN.md). A short summary remains under [External Client Deliverables](#external-client-deliverables-out-of-scope-of-this-implementation-plan).
 
 ---
 
@@ -328,7 +328,9 @@ After Phase 1 exits, run backend Phases 2, 3, and 4 in parallel, then close with
 
 # External Client Deliverables (Out of Scope of This Implementation Plan)
 
-Informational only. Not part of the backend implementation phases above. No screens, navigation, or UI workflows are planned in this document.
+Informational only. Not part of the backend implementation phases above.
+
+**Canonical client plan (Part 2):** [TRACKER-ADMISSION-QUEUE-EXTERNAL-CLIENTS-IMPLEMENTATION-PLAN.md](./TRACKER-ADMISSION-QUEUE-EXTERNAL-CLIENTS-IMPLEMENTATION-PLAN.md) — platform choices, placement, reuse/replace, phases, gaps, and first slice C1.0.
 
 These clients consume backend capabilities already present or completed by the phases above. Codebase evidence shows Officer, Kiosk, and Queue Display applications are **not** in this repository.
 
