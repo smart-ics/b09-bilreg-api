@@ -95,6 +95,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
     private readonly IJadwalPraktekFeatureResolver _featureResolver;
     private readonly ITglJamProvider _tglJamProvider;
     private readonly IAdmissionServicePointResolver _admissionServicePointResolver;
+    private readonly IRegistrationOutcomeOperationRepo? _registrationOutcomeRepo;
 
     public RegJalanCreateHandler(
         //  reg support
@@ -134,7 +135,8 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         IQueueNumberCompatibilityAdapter queueNumberAdapter,
         IJadwalPraktekFeatureResolver featureResolver,
         ITglJamProvider tglJamProvider,
-        IAdmissionServicePointResolver admissionServicePointResolver)
+        IAdmissionServicePointResolver admissionServicePointResolver,
+        IRegistrationOutcomeOperationRepo? registrationOutcomeRepo = null)
     {
         //      reg-support
         _pasienRepo = pasienRepo;
@@ -174,6 +176,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         _featureResolver = featureResolver;
         _tglJamProvider = tglJamProvider;
         _admissionServicePointResolver = admissionServicePointResolver;
+        _registrationOutcomeRepo = registrationOutcomeRepo;
     }
 
     public Task<RegJalanCreateResponse> Handle(RegJalanWalkInCommand request, CancellationToken cancellationToken)
@@ -268,11 +271,13 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
                 var resolution = AdmissionQueueRegistrationResolver.ResolveAndComplete(
                     _trackerRepo, admissionQueue, request.AdmissionNoUrut.Value, reg, occurredAt);
                 tracker = resolution.Tracker;
-                var saved = resolution.RequiresConditionalSave
-                    ? _antrianRepo.TrySaveAnonymousInServiceTransition(
-                        admissionQueue, resolution.Entry)
-                    : _antrianRepo.TrySaveInServiceToDoneTransition(
-                        admissionQueue, resolution.Entry);
+                var outcome = RegistrationOutcomeModel.Established(admissionQueue.AntrianId,
+                    resolution.Entry.NoUrut, reg.RegId, request.UserId, occurredAt);
+                var saved = _registrationOutcomeRepo is not null
+                    ? _registrationOutcomeRepo.TryFinalizeEstablishedCompatibility(outcome, resolution.Entry)
+                    : resolution.RequiresConditionalSave
+                        ? _antrianRepo.TrySaveAnonymousInServiceTransition(admissionQueue, resolution.Entry)
+                        : _antrianRepo.TrySaveInServiceToDoneTransition(admissionQueue, resolution.Entry);
                 if (!saved)
                 {
                     throw new AdmissionQueueConcurrencyException(
@@ -297,7 +302,14 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             _regAktifRepo.SaveChanges(regAktif);
             _antrianRepo.SaveChanges(antrian);
             if (admissionEntryToInsert is not null)
+            {
                 _antrianRepo.SaveNewEntry(admissionQueue, admissionEntryToInsert);
+                if (_registrationOutcomeRepo is not null &&
+                    !_registrationOutcomeRepo.TryRecordLegacyEstablished(
+                        RegistrationOutcomeModel.Established(admissionQueue.AntrianId,
+                            admissionEntryToInsert.NoUrut, reg.RegId, request.UserId, occurredAt)))
+                    throw new AdmissionQueueConcurrencyException("Registration outcome changed concurrently.");
+            }
             _trackerRepo.SaveChanges(tracker);
             _antrianMapRepo.SaveChanges(reserved.Map);
             _trsBillingRepo.SaveChanges(trsBillingReg);

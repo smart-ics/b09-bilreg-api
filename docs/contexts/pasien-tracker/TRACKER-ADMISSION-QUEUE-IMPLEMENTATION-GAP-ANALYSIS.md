@@ -89,7 +89,7 @@ The developer discussion reuses `GAP-READY-002` through `GAP-READY-010` for topi
 | 005 | CallCount instead of Call Attempt history | GAP-READY-017 and operational-history design |
 | 006 | Priority replacement instead of QueueTransfer aggregate | GAP-READY-007, 009 and exception design |
 | 007 | Locally configured Kiosk offerings; no Kiosk master | GAP-READY-010, 011 |
-| 008 | Optional ClientRequestId on Queue Entry | GAP-READY-008, 010 |
+| 008 | ClientRequestId on Queue Entry | Deferred for Kiosk V1 as R-05B; no reliable client request-identity lifecycle exists |
 | 009 | Post-commit SignalR plus polling; no outbox | GAP-READY-018 and delivery design |
 | 010 | Every configured Loket may serve every Service Point | GAP-READY-003, 007 |
 
@@ -98,17 +98,17 @@ The developer discussion reuses `GAP-READY-002` through `GAP-READY-010` for topi
 | Concept | Classification | Artifact treatment | Remaining gap? |
 |---|---|---|---|
 | Workstation-owned stable unique LoketKey; arbitrary operator input prohibited | Design decision | ADR-AQO-014; BR-AQO-006b/e/f | Exact cross-workstation duplicate-detection mechanism remains open |
-| One Outstanding or InService entry per LoketKey | Design decision | ADR-AQO-014; BR-AQO-020 | Database active-work claim remains GAP-READY-007 |
+| One Outstanding or InService entry per LoketKey | Design and persistence decision | ADR-AQO-014/019; BR-AQO-020; R-04 claim contract | Design resolved; schema/DAL/use-case implementation remains GAP-READY-009/R-03/R-08 |
 | Call separate from explicit Start Service | Design decision | ADR-AQO-015; BR-AQO-021–023 | Compatibility/API migration remains open |
 | Priority is indicator/sorting aid, never automatic call order | Design decision | ADR-AQO-016; BR-AQO-027a | UI/API field contract remains open |
 | Composite source identity and CreationReason provenance | Design decision/persistence contract | ADR-AQO-016; BR-AQO-027/027b | Use `(SourceAntrianId, SourceNoUrut)`; exact SQL constraints remain GAP-READY-009 |
-| `BILRG_AdmLoketCurrentCall` is latest-state projection, not history | Design decision | ADR-AQO-017; BR-AQO-006d | Clear/replace timing remains GAP-AQO-012 |
+| `BILRG_AdmLoketCurrentCall` is latest-state projection and active claim, not history | Design and persistence decision | ADR-AQO-017/019; BR-AQO-006d; R-04 claim contract | Release/replace semantics resolved; schema/DAL/query implementation remains |
 | AnnouncementVersion increments only for audio Call/Recall | Design decision | ADR-AQO-017; BR-AQO-021a | None semantically; implementation tests required |
 | SignalR trigger plus reload/reconnect/poll recovery | Design decision | ADR-AQO-017 | Poll interval and access/topology are implementation/deployment settings |
 | CallCount informational; no automatic no-show/progression | Design decision | ADR-AQO-015; BR-AQO-021b/026 | Hospital manual procedure remains operational policy |
 | PC name/config-file source and controlled rename procedure | Implementation note | Architecture §17 | Configuration adapter/rollout contract required |
 | Poll every N seconds | Implementation note | Architecture §17 | N is an operational setting, not an architecture gap |
-| Optional ClientRequestId for kiosk retries | Implementation note constrained by ADR-AQO-013 | Architecture §17; BR-AQO-012 | Uniqueness scope/API behavior remains GAP-READY-008/010 |
+| ClientRequestId for kiosk retries | Deferred reliability capability | R-05B; future Kiosk retry contract | Non-blocking; current intake is explicitly non-idempotent and has no uniqueness constraint |
 | Configuration references existing active ServicePointId only | Design constraint plus implementation note | BR-AQO-006g; Architecture §17 | Validation/diagnostic behavior belongs implementation contract |
 
 ## 4. Codebase baseline
@@ -232,34 +232,31 @@ The Admission Module or an Admisi Rajal application query composes that projecti
 
 **Implementation requirement:** give UC-AQO-010 a purpose-built queue-only contract and DAL; verify its field boundary; compose enrichment through owning application contracts without direct cross-context table access or duplicated queue state.
 
-### GAP-READY-007 — Active configured-Loket concurrency still needs a database claim
+### GAP-READY-007 — Active configured-Loket database claim design resolved
 
 **Severity:** Blocker for safe multi-Service-Point calling.
 
+**Status:** Resolved at design level on 2026-07-23; implementation remains pending under R-03 and R-08.
+
 Every configured Loket may serve every Service Point, while BR-AQO-020 permits exactly one current Outstanding or InService entry per LoketKey. Those entries can belong to different Queue Sessions. Removing Loket master/authorization tables does not remove this concurrency invariant.
 
-The architecture says database uniqueness must support the invariant, but it does not specify:
+The accepted [R-04 Loket claim contract](./TRACKER-ADMISSION-QUEUE-R04-LOKET-CLAIM-CONTRACT.md) resolves the design: `BILRG_AdmLoketCurrentCall` owns one row per LoketKey, Outstanding and InService are active claim states, Released rows remain as latest-state/audit evidence, a filtered unique index prevents one Queue Entry being active at multiple Loket, and every acquire/retain/replace/release mutation is atomic with its Queue Entry transition. RowVersion protects expected-state operations; conflicts map to HTTP 409. Claim age never authorizes automatic release.
 
-- where the active Loket claim is stored after a Queue Call is acknowledged;
-- how Outstanding and InService share one exclusivity key;
-- how the claim is released on no-show, withdrawal, Priority redirection, completion, and rollback; or
-- the exact conditional SQL/index strategy.
+**Remaining implementation:** R-03 generates and verifies the additive schema/DAL contract; R-08 implements the business commands and transaction orchestration. Trusted LoketKey distribution and duplicate workstation configuration remain GAP-AQO-004/R-12 and are not solved by the claim table.
 
-**Required resolution:** provide a persistence contract for the Loket active-work claim and every acquire/release transition. Domain/Application decide the transition; SQL conditional writes protect it across processes.
-
-### GAP-READY-008 — Legacy ISequencer retained; optional idempotency remains conditional
+### GAP-READY-008 — Sequencer implemented; Kiosk idempotency deferred
 
 **Severity:** Blocker for production Kiosk intake.
 
+**Status:** R-05A implemented and verified on 2026-07-23. R-05B is deferred and non-blocking.
+
 The latest decision retains legacy `ISequencer` as the sole Queue Number authority, keyed by the daily session's canonical SequenceTag. No `LastQueueNumber` column is added. Admission sequences must be bounded to 1–9999 and must not cycle; exhaustion or any out-of-range value is rejected. Sequence gaps are acceptable because SQL sequence consumption is not transactional.
 
-ClientRequestId is stored optionally on Queue Entry. Therefore:
+R-05A retains `ISequencer` as sole authority and adds a bounded overload. Admission uses canonical `AN{yyMMdd}0000_{ServicePointCode}` tags. Serialized lazy configuration establishes `MINVALUE 1`, `MAXVALUE 9999`, `NO CYCLE`; SQL `NEXT VALUE FOR` remains the concurrency-safe allocator. Allocation of 9999 succeeds and the next call raises `SequenceExhaustedException`. Gaps remain acceptable. See the [R-05A implementation report](./tracker-admission-queue-r05a-sequencer-implementation-report.md).
 
-- a supplied identifier can prevent duplicate issuance only if a database uniqueness scope and same-request lookup are defined;
-- a request without the identifier is not idempotent and may create duplicates after an uncertain response; and
-- the identifier's maximum length, case/collation, global versus scoped uniqueness, and conflicting-payload behavior remain unspecified.
+R-05B is deferred because current Kiosk V1 cannot generate, retain, and reuse an identity for one specific button-press attempt while rotating it for the next patient. Adding only a server field/index would not provide reliable idempotency.
 
-**Required resolution:** verify/configure the sequencer's canonical tag, 1–9999 bound, no-cycle behavior, and concurrency tests. Add nullable ClientRequestId with a filtered unique scope of `(AntrianId, ClientRequestId)`. The same identifier returns the existing compatible result; conflicting reuse is rejected. API documentation must call idempotency conditional while ClientRequestId remains optional.
+**Current behavior:** Kiosk intake is explicitly non-idempotent; repeated requests may create separate Queue Entries. Prevent repeated UI submission while a request is pending and require deliberate retry after an uncertain response. Do not add ClientRequestId uniqueness or claim deduplication until the client retry lifecycle is designed end to end.
 
 ### GAP-READY-009 — Persistence design verification: partially supported
 
@@ -290,7 +287,7 @@ The inspection covered the SQL definitions/migration, Domain models, DTOs, Dappe
 3. Priority controls indication and default sorting only; it never automatically calls or selects an entry.
 4. `RowVersion` protects concurrent current-call updates; separate `AnnouncementVersion` increments only for Call/Recall requiring audio.
 5. Queue Entry identity remains composite `(AntrianId, NoUrut)` for current-call, provenance, and cross-context outcome references.
-6. Persist `CreationReason` plus nullable composite source `(SourceAntrianId, SourceNoUrut)`, and optional session-scoped ClientRequestId with filtered uniqueness `(AntrianId, ClientRequestId)`.
+6. Persist `CreationReason` plus nullable composite source `(SourceAntrianId, SourceNoUrut)`. ClientRequestId persistence/uniqueness is deferred under non-blocking R-05B.
 7. Registration Outcome is persisted by Admisi Rajal outside queue tables. Queue persistence may exclude the table, but the final outcome concept is not excluded.
 
 **Remaining implementation work:** publish the additive SQL/mapping contract with exact lengths/defaults, composite foreign keys, filtered indexes, expected-state/CAS operations, audit fields, backfill, and rollback. Verify the legacy sequencer bound/no-cycle behavior. Do not extend whole-aggregate deletion to historical records.
@@ -325,7 +322,7 @@ Request idempotency per Kiosk prevents retry duplication only when the same requ
 | ID | Gap | Why it matters | Safe treatment |
 |---|---|---|---|
 | GAP-READY-012 | Service Point active period is not defined as dates versus active/retired state | Affects future scheduling and history | Use simple active/retired for V1 unless effective dating is separately approved. |
-| GAP-READY-013 | Current human commands trust `UserId` in request bodies | Weak accountability and authorization | New commands use `ICurrentUserContext`; compatibility fields are ignored or validated during migration. |
+| GAP-READY-013 | Current human commands trust `UserId` in request bodies | Weak accountability and authorization | **Deferred by accepted decision:** retain the existing actor/audit convention for compatibility. Resolve authentication, claims, roles, and policies in the future Security / Authorization phase; this is non-blocking for current Admission Queue delivery. |
 | GAP-READY-014 | Existing identified InService → Done is not conditional | Concurrent completion can overwrite a competing transition | Add expected-state repository operation before relying on it in target flows. |
 | GAP-READY-015 | Whole-aggregate save can physically delete absent entries | Violates target historical truth | Prohibit removal for admission operations; replace active transitions with purpose-built repository operations. |
 | GAP-READY-016 | Historical prefix backfill is unresolved | Prevents trustworthy legacy labels | Do not fabricate labels; expose legacy number separately until an approved mapping exists. |
@@ -340,7 +337,7 @@ Request idempotency per Kiosk prevents retry duplication only when the same requ
 An agent may safely perform the following before every blocker is resolved, provided changes are isolated and do not claim production readiness:
 
 1. preserve and expand tests for anonymous intake, anonymous InService, existing-Tracker selection, Registration-owned Tracker creation, and transaction rollback;
-2. replace caller `UserId` use in new human commands with `ICurrentUserContext` without changing business policy;
+2. preserve the existing actor identity and audit convention; do not introduce queue-local authentication, claims-resolution, role, or policy design (R-02 is deferred to the Security / Authorization phase);
 3. add explicit expected-state repository operations for existing lifecycle transitions and remove admission paths from unrestricted whole-aggregate updates;
 4. introduce transport-independent ports for workstation configuration, best-effort refresh, and projections without inventing claims or routes;
 5. implement the dedicated Queue Session and current-display persistence behind integration tests after the remaining column/index contract is approved;
@@ -366,11 +363,11 @@ An agent must not yet:
 | Architecture increment | Readiness | Blocking items | Safe next action |
 |---|---|---|---|
 | 1. Service Point/configuration authority | Conditional | GAP-READY-009, 010; prefix backfill; workstation integrity | Implement Service Point persistence and explicit configuration adapters; no Loket/Kiosk/Display masters. |
-| 2. Retry-aware labelled intake | Conditional | GAP-READY-008, 009, 010, 011 | Verify bounded legacy `ISequencer`; implement session-scoped optional ClientRequestId and Booking-assistance orchestration before production. |
+| 2. Labelled intake | Conditional | GAP-READY-009, 010, 011 | R-05A bounded allocation is implemented. Current Kiosk intake is non-idempotent by accepted R-05B deferral; Booking-assistance orchestration remains separate. |
 | 3. Operational projections | Partial | GAP-READY-009, 010 | Implement Decision D worklist plus shared current-per-Loket state/version and define display read policy. |
-| 4. Call and service transitions | No-Go | GAP-READY-007, 009, 010 | Define database active-work claim, controlled workstation Loket source, CallCount updates, and transport contract. |
+| 4. Call and service transitions | Conditional | GAP-READY-009, 010; controlled workstation Loket source | Implement the accepted R-04 claim contract, CallCount updates, and transport contract. |
 | 5. Best-effort display refresh | Partial foundation only | GAP-READY-009, 010, 018 | Current-state/version plus polling is implementable; topology, polling interval, access policy, and observability still gate production. |
-| 6. Journey and Registration alignment | Conditional | GAP-READY-009, 010, 013, 014; ReasonCode catalog and QueueEntryId mapping | Preserve the passing late-identification baseline; implement Decision C persistence, claim-derived decision identity, both final outcomes, and conditional completion. |
+| 6. Journey and Registration alignment | Conditional | GAP-READY-009, 010, 014; ReasonCode catalog and QueueEntryId mapping | Preserve the passing late-identification baseline; implement Decision C persistence, both final outcomes, and conditional completion using the existing actor/audit convention. GAP-READY-013 is deferred and non-blocking. |
 | 7. Exceptions | Partial | GAP-READY-007, 009; no-show/redirection safety | Keep no-show procedural; require explicit origin disposition and preferably atomic Priority replacement. |
 | 8. Hardening and rollout | No-Go | All deployment, client, retention, migration, and performance gates | Execute only after prior increments and external decisions are verified. |
 

@@ -85,6 +85,7 @@ public class RegJalanByBookingHandler
     private readonly IQueueNumberCompatibilityAdapter _queueNumberAdapter;
     private readonly ITglJamProvider _tglJamProvider;
     private readonly IAdmissionServicePointResolver _admissionServicePointResolver;
+    private readonly IRegistrationOutcomeOperationRepo? _registrationOutcomeRepo;
 
     private const string BAYAR_SENDIRI = "1";
     public RegJalanByBookingHandler(
@@ -119,7 +120,8 @@ public class RegJalanByBookingHandler
         IAntrianMapRepo antrianMapRepo,
         IQueueNumberCompatibilityAdapter queueNumberAdapter,
         ITglJamProvider tglJamProvider,
-        IAdmissionServicePointResolver admissionServicePointResolver)
+        IAdmissionServicePointResolver admissionServicePointResolver,
+        IRegistrationOutcomeOperationRepo? registrationOutcomeRepo = null)
     {
         _bookingRepo = bookingRepo;
         _pasienRepo = pasienRepo;
@@ -153,6 +155,7 @@ public class RegJalanByBookingHandler
         _queueNumberAdapter = queueNumberAdapter;
         _tglJamProvider = tglJamProvider;
         _admissionServicePointResolver = admissionServicePointResolver;
+        _registrationOutcomeRepo = registrationOutcomeRepo;
     }
 
     public Task<RegJalanByBookingResponse> Handle(RegJalanByBookingCmd request, CancellationToken cancellationToken)
@@ -263,7 +266,12 @@ public class RegJalanByBookingHandler
             {
                 var admissionEntry = admissionQueue.ListEntry
                     .First(x => x.NoUrut == request.AdmissionNoUrut.Value);
-                if (!_antrianRepo.TrySaveInServiceToDoneTransition(admissionQueue, admissionEntry))
+                var outcome = RegistrationOutcomeModel.Established(admissionQueue.AntrianId,
+                    admissionEntry.NoUrut, reg.RegId, request.UserId, occurredAt);
+                var finalized = _registrationOutcomeRepo is not null
+                    ? _registrationOutcomeRepo.TryFinalizeEstablishedCompatibility(outcome, admissionEntry)
+                    : _antrianRepo.TrySaveInServiceToDoneTransition(admissionQueue, admissionEntry);
+                if (!finalized)
                 {
                     throw new AdmissionQueueConcurrencyException(
                         $"Queue entry '{admissionQueue.AntrianId}' / {admissionEntry.NoUrut} was changed concurrently.");
@@ -271,7 +279,13 @@ public class RegJalanByBookingHandler
             }
             else
             {
-                _antrianRepo.SaveNewEntry(admissionQueue, admissionQueue.ListEntry.MaxBy(x => x.NoUrut)!);
+                var admissionEntry = admissionQueue.ListEntry.MaxBy(x => x.NoUrut)!;
+                _antrianRepo.SaveNewEntry(admissionQueue, admissionEntry);
+                if (_registrationOutcomeRepo is not null &&
+                    !_registrationOutcomeRepo.TryRecordLegacyEstablished(
+                        RegistrationOutcomeModel.Established(admissionQueue.AntrianId,
+                            admissionEntry.NoUrut, reg.RegId, request.UserId, occurredAt)))
+                    throw new AdmissionQueueConcurrencyException("Registration outcome changed concurrently.");
             }
             _trackerRepo.SaveChanges(tracker);
             if (tindakan.TindakanId != "-")

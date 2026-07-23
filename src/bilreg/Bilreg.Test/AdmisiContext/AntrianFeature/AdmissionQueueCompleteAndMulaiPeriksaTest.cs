@@ -21,6 +21,7 @@ public class AdmissionQueueCompleteTest
     public AdmissionQueueCompleteTest()
     {
         _sequencer.Setup(x => x.GetNextNoUrut(It.IsAny<string>())).Returns(7);
+        _sequencer.Setup(x => x.GetNextNoUrut(It.IsAny<string>(), 9999)).Returns(7);
     }
 
     [Fact]

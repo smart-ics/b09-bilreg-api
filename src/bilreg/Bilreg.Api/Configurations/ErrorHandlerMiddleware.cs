@@ -3,6 +3,7 @@ using System.Net;
 using System.Text.Json;
 using Bilreg.Application.Shared.Helpers;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
+using Bilreg.Domain.Shared.Helpers;
 
 namespace Bilreg.Api.Configurations;
 
@@ -32,27 +33,31 @@ public class ErrorHandlerMiddleware
             {
                 case AdmissionQueueConcurrencyException:
                     statusCode = (int)HttpStatusCode.Conflict;
-                    status = "Conflict";
+                    status = "AQ_CONCURRENCY_CONFLICT";
                     break;
                 case KeyNotFoundException:
                     statusCode = (int)HttpStatusCode.NotFound;
-                    status = "Not Found";
+                    status = "AQ_RESOURCE_NOT_FOUND";
                     break;
                 case ArgumentException:
-                    statusCode = (int)HttpStatusCode.UnprocessableEntity;
-                    status = "Validation Error";
+                    statusCode = (int)HttpStatusCode.BadRequest;
+                    status = "AQ_INVALID_REQUEST";
+                    break;
+                case SequenceExhaustedException:
+                    statusCode = (int)HttpStatusCode.ServiceUnavailable;
+                    status = "AQ_SEQUENCE_EXHAUSTED";
                     break;
                 case InvalidOperationException stale when stale.Message.Contains("stale", StringComparison.OrdinalIgnoreCase):
                     statusCode = (int)HttpStatusCode.Conflict;
-                    status = "Conflict";
+                    status = "AQ_CONCURRENCY_CONFLICT";
                     break;
                 case InvalidOperationException:
                     statusCode = (int)HttpStatusCode.BadRequest;
-                    status = "Bad Request";
+                    status = "AQ_OPERATION_NOT_ALLOWED";
                     break;
                 case UnauthorizedAccessException:
                     statusCode = (int)HttpStatusCode.Unauthorized;
-                    status = "Unauthorized";
+                    status = "AQ_UNAUTHENTICATED";
                     break;
                 case TooManyResultsException:
                     statusCode = (int)HttpStatusCode.UnprocessableEntity;

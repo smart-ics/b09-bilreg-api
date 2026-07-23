@@ -96,7 +96,7 @@ internal static class AdmissionQueueComplete
         string regId,
         DateTime occurredAt)
     {
-        var entry = queue.AddEntry(tracker, occurredAt);
+        var entry = queue.AddAdmissionEntry(tracker, occurredAt);
         entry.Serve(occurredAt);
         entry.Done(occurredAt);
         AppendRegisterIfMissing(tracker, regId, occurredAt);

@@ -39,11 +39,13 @@ public class AntrianEntryDal : IAntrianEntryDal
             INSERT INTO BILRG_AntrianEntry(
                 AntrianId, NoUrut, PersonName, AntrianStatus,
                 PasienTrackerId, CreatedAt, ServedAt, DoneAt,
-                ReffId, ReffDesc) 
+                ReffId, ReffDesc, Priority, CreationReason, CallCount,
+                SourceAntrianId, SourceNoUrut, WithdrawalReason, WithdrawalUserId, WithdrawnAt)
             VALUES(
                 @AntrianId, @NoUrut, @PersonName, @AntrianStatus,
                 @PasienTrackerId, @CreatedAt, @ServedAt, @DoneAt,
-                @ReffId, @ReffDesc)
+                @ReffId, @ReffDesc, @Priority, @CreationReason, @CallCount,
+                @SourceAntrianId, @SourceNoUrut, @WithdrawalReason, @WithdrawalUserId, @WithdrawnAt)
             """;
 
         var dp = new DynamicParameters();
@@ -57,6 +59,7 @@ public class AntrianEntryDal : IAntrianEntryDal
         dp.AddParam("@DoneAt", dto.DoneAt, SqlDbType.DateTime);
         dp.AddParam("@ReffId", dto.ReffId, SqlDbType.VarChar);
         dp.AddParam("@ReffDesc", dto.ReffDesc, SqlDbType.VarChar);
+        AddOperationalParams(dp, dto);
 
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
@@ -76,7 +79,11 @@ public class AntrianEntryDal : IAntrianEntryDal
                ServedAt = @ServedAt, 
                DoneAt = @DoneAt,
                ReffId = @ReffId,
-               ReffDesc = @ReffDesc
+               ReffDesc = @ReffDesc,
+               Priority = @Priority, CreationReason = @CreationReason, CallCount = @CallCount,
+               SourceAntrianId = @SourceAntrianId, SourceNoUrut = @SourceNoUrut,
+               WithdrawalReason = @WithdrawalReason, WithdrawalUserId = @WithdrawalUserId,
+               WithdrawnAt = @WithdrawnAt
            WHERE
                AntrianId = @AntrianId 
                AND NoUrut = @NoUrut
@@ -93,6 +100,7 @@ public class AntrianEntryDal : IAntrianEntryDal
         dp.AddParam("@DoneAt", model.DoneAt, SqlDbType.DateTime);
         dp.AddParam("@ReffId", model.ReffId, SqlDbType.VarChar);
         dp.AddParam("@ReffDesc", model.ReffDesc, SqlDbType.VarChar);
+        AddOperationalParams(dp, model);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -252,7 +260,8 @@ public class AntrianEntryDal : IAntrianEntryDal
            SELECT
                AntrianId, NoUrut, PersonName, PasienTrackerId, 
                AntrianStatus, CreatedAt, ServedAt, DoneAt,
-               ReffId, ReffDesc
+               ReffId, ReffDesc, Priority, CreationReason, CallCount,
+               SourceAntrianId, SourceNoUrut, WithdrawalReason, WithdrawalUserId, WithdrawnAt
            FROM
                 BILRG_AntrianEntry
            WHERE
@@ -274,7 +283,8 @@ public class AntrianEntryDal : IAntrianEntryDal
             SELECT
             AntrianId, NoUrut, PersonName, PasienTrackerId, 
             AntrianStatus, CreatedAt, ServedAt, DoneAt,
-            ReffId, ReffDesc
+            ReffId, ReffDesc, Priority, CreationReason, CallCount,
+            SourceAntrianId, SourceNoUrut, WithdrawalReason, WithdrawalUserId, WithdrawnAt
             FROM
                 BILRG_AntrianEntry
             WHERE
@@ -333,5 +343,17 @@ public class AntrianEntryDal : IAntrianEntryDal
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
+    }
+
+    private static void AddOperationalParams(DynamicParameters dp, AntrianEntryDto dto)
+    {
+        dp.AddParam("@Priority", dto.Priority, SqlDbType.Bit);
+        dp.AddParam("@CreationReason", dto.CreationReason, SqlDbType.Int);
+        dp.AddParam("@CallCount", dto.CallCount, SqlDbType.Int);
+        dp.Add("@SourceAntrianId", dto.SourceAntrianId, DbType.String);
+        dp.Add("@SourceNoUrut", dto.SourceNoUrut, DbType.Int32);
+        dp.AddParam("@WithdrawalReason", dto.WithdrawalReason, SqlDbType.VarChar);
+        dp.AddParam("@WithdrawalUserId", dto.WithdrawalUserId, SqlDbType.VarChar);
+        dp.AddParam("@WithdrawnAt", dto.WithdrawnAt ?? new DateTime(3000, 1, 1), SqlDbType.DateTime);
     }
 }

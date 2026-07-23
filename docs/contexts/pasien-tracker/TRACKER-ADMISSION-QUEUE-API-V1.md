@@ -1,0 +1,89 @@
+# Tracker–Admission Queue API v1 and Compatibility Contract
+
+## Consumer inventory
+
+Repository search on 2026-07-23 confirmed no caller of `api/Antrian/anonymous-intake` or
+`api/Antrian/start` in `c012_myhospital_web`, and no Bilreg Queue Display/SignalR consumer. The only
+adjacent SignalR client belongs to Taksaka operations and is unrelated. Backend tests construct the
+legacy direct-start command. Consumers outside the checked repositories, deployed kiosk binaries,
+scripts, and third-party integrations cannot be verified; absence from source is not evidence of no
+production use.
+
+## Common contract
+
+Base route: `/api/v1/admission-queue`. All v1 endpoints use the existing JWT authentication
+mechanism. Current platform authorization has no approved queue role policies, so v1 uses the
+existing authenticated-access boundary; Officer/Supervisor/Administrator/Kiosk/Display policy
+mapping is an unresolved security/product decision. `UserId` remains in mutation payloads under the
+R-02 deferral. No new claims or actor model is introduced.
+
+Success uses the existing JSend envelope. Errors expose a stable code and no DAL detail:
+
+| HTTP | Code | Meaning |
+|---:|---|---|
+| 400 | `AQ_INVALID_REQUEST` / `AQ_OPERATION_NOT_ALLOWED` | malformed payload or invalid business transition |
+| 401 | `AQ_UNAUTHENTICATED` | missing/invalid authentication |
+| 403 | platform authorization response | authenticated but forbidden once approved policies are configured |
+| 404 | `AQ_RESOURCE_NOT_FOUND` | unknown queue, entry, Service Point, or Registration |
+| 409 | `AQ_CONCURRENCY_CONFLICT` | stale RowVersion, expected-state miss, duplicate outcome, or claim conflict |
+| 503 | `AQ_SEQUENCE_EXHAUSTED` | Service Point/Business Date sequence reached 9999 |
+
+`ExpectedRowVersion` is the Base64 representation returned by the current-display snapshot.
+Loket mutations require `X-Loket-Key` and `X-Workstation-Key`; the Loket header must match the
+payload and the configured static workstation-to-Loket mapping. The configuration rejects duplicate
+workstation keys and duplicate Loket keys at startup. An unmapped or mismatched workstation is a
+400 request error. A second Call on an already-active Loket remains an R-04 claim conflict and is
+409. This does not resolve user identity from claims. The deployment edge must protect these headers
+from spoofing; a physical workstation configured inconsistently in a separate installation cannot
+be detected without the intentionally deferred cross-node coordination capability.
+
+## Routes
+
+| Method and route | Request/query | Result and access context |
+|---|---|---|
+| `GET service-points?activeOnly=true` | none | ServicePointId, name, prefix, status; authenticated kiosk/officer/display |
+| `PUT service-points/{id}` | `{displayName,queuePrefix,active}` | managed Service Point; authenticated administrator pending approved policy |
+| `POST intake` | `{servicePointId}` | AntrianId, NoUrut, QueueLabel, CreatedAt; authenticated kiosk; no Loket |
+| `POST booking-assistance` | `{bookingId,servicePointId,failureCode?,kioskId,userId}` | ensure one unresolved Booking assistance entry; returns QueueLabel and Existing |
+| `GET worklist` | businessDate, optional servicePointId/status/loketKey, offset/limit | queue-only officer projection; authenticated officer |
+| `GET displays/current` | optional loketKey | authoritative active display snapshot and AnnouncementVersion; authenticated display |
+| `POST entries/{q}/{n}/call` | `{loketKey,userId}` | Outstanding; officer-selected entry only |
+| `POST entries/{q}/{n}/recall` | `{loketKey,expectedRowVersion,userId}` | retained Outstanding |
+| `POST entries/{q}/{n}/start-service` | versioned Loket payload | InService |
+| `POST entries/{q}/{n}/withdraw` | `{reason,loketKey?,expectedRowVersion?,userId}` | Withdrawn; Loket/version required when actively called |
+| `POST entries/{q}/{n}/no-show` | versioned Loket payload | Withdrawn with `NoShow` |
+| `POST entries/{q}/{n}/redirect` | `{targetServicePointId,loketKey?,expectedRowVersion?,userId}` | new Priority Waiting entry and label |
+| `POST entries/{q}/{n}/outcomes/established` | `{loketKey,expectedRowVersion,regId,userId}` | immutable Established outcome and Done entry |
+| `POST entries/{q}/{n}/outcomes/not-established` | `{loketKey,expectedRowVersion,reasonCode,userId}` | immutable NotEstablished outcome and Done entry |
+
+Every response containing a queue number exposes QueueLabel when its immutable session prefix exists;
+historical sessions may return null/unavailable.
+
+## Kiosk V1
+
+Intake is non-idempotent. There is no required `ClientRequestId`; repeated submissions may create
+different entries. The kiosk must disable its button while the request is pending and require a
+deliberate retry after uncertainty. Retry identity remains deferred to R-05B.
+
+## Display recovery
+
+Persisted snapshots are authoritative. A future SignalR message is only a reload hint. The client
+must reload after a hint and reconnect, poll at its configured interval, and play audio only when the
+reloaded AnnouncementVersion is greater than its last processed version. No Bilreg display frontend
+was found to migrate in the available source tree.
+
+## Legacy compatibility
+
+`POST /api/Antrian/anonymous-intake` retains its legacy payload shape; ServicePointCode is resolved
+as the authoritative ServicePointId and caller name/date are no longer authoritative under R-06.
+`POST /api/Antrian/start` retains direct Waiting-to-InService semantics. Both routes log warning-level
+usage and are controlled by `AdmissionQueueApi:LegacyEndpointsEnabled` (default true); when disabled
+they return 404. New clients must not use them. No removal or deprecation date is invented; product
+ownership must supply it after consumer migration is verified.
+
+## Frontend migration contract
+
+No confirmed frontend consumer exists in the available `c012_myhospital_web` tree, so no speculative
+frontend files were changed. Any external officer client must split Call from Start Service, reload on
+409, and use the worklist/current snapshot as recovery truth. Any display must implement the reload,
+poll, and AnnouncementVersion rules above.

@@ -199,8 +199,19 @@ Background processing platform — job orchestration, worker plugins, operator c
 | `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-ARCHITECTURE.md` | Patient Tracker — codebase-grounded current-to-target architecture for admission queue resources, calls, projections, Kiosk, Queue Display, security, and delivery |
 | `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-IMPLEMENTATION-GAP-ANALYSIS.md` | Patient Tracker — artifact/codebase alignment and implementation-readiness verdict for Admission Queue Operations |
 | `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-IMPLEMENTATION-ROADMAP.md` | Patient Tracker — prioritized, dependency-ordered roadmap for closing Admission Queue implementation gaps |
+| `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-R04-LOKET-CLAIM-CONTRACT.md` | Patient Tracker — accepted cross-session active Loket claim state, persistence, concurrency, and test contract |
 | `docs/contexts/pasien-tracker/tracker-admission-queue-r00-baseline-implementation-report.md` | Patient Tracker — R-00 accepted baseline commit and focused verification evidence |
 | `docs/contexts/pasien-tracker/tracker-admission-queue-r01-cas-persistence-implementation-report.md` | Patient Tracker — R-01 compare-and-set admission lifecycle persistence |
+| `docs/contexts/pasien-tracker/tracker-admission-queue-r05a-sequencer-implementation-report.md` | Patient Tracker — R-05A bounded, non-cycling, concurrency-safe Admission Queue sequencer implementation |
+| `docs/contexts/pasien-tracker/tracker-admission-queue-r06-service-point-implementation-report.md` | Patient Tracker — R-06 authoritative Admission Service Points and immutable Queue Label snapshots |
+| `docs/contexts/pasien-tracker/tracker-admission-queue-r07-projections-implementation-report.md` | Patient Tracker — R-07 queue-only officer worklist and current Loket recovery projections |
+| `docs/contexts/pasien-tracker/tracker-admission-queue-r08-transitions-implementation-report.md` | Patient Tracker — R-08 explicit Queue operational transition matrix, CAS coordination, and Redirect |
+| `docs/contexts/pasien-tracker/tracker-admission-queue-r09-registration-outcome-implementation-report.md` | Patient Tracker — R-09 immutable final Registration outcomes and atomic Queue completion |
+| `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-API-V1.md` | Patient Tracker — R-10 versioned Admission Queue API, errors, security boundary, consumer inventory, and compatibility |
+| `docs/contexts/pasien-tracker/tracker-admission-queue-r11-hidok-assistance-implementation-report.md` | Patient Tracker — R-11 HiDok Booking assistance ensure API, business deduplication, and external integration boundary |
+| `docs/contexts/pasien-tracker/tracker-admission-queue-r12a-workstation-identity-implementation-report.md` | Patient Tracker — R-12A configured workstation-to-Loket identity validation and R-12B operations boundary |
+| `docs/contexts/pasien-tracker/tracker-admission-queue-r13-audit-operational-validation-report.md` | Patient Tracker — R-13 audit-schema alignment, persistence classification, and continuous operational-validation gate |
+| `docs/contexts/pasien-tracker/tracker-admission-queue-r14-deferred-operational-policies.md` | Patient Tracker — R-14 explicit-action guardrail and intentionally deferred operational policies |
 | `docs/contexts/pasien-tracker/TRACKER-COMPATIBILITY.md` | Patient Tracker — legacy AntrianMap ↔ Queue Session authority map, crosswalk, and adapter contract (F-13) |
 | `docs/contexts/pasien-tracker/tracker-codebase-gap-report.md` | Patient Tracker — implementation gap report vs canonical domain |
 | `docs/contexts/pasien-tracker/tracker-f01-implementation-report.md` | Patient Tracker — F-01 closed: explicit Tracking Period |

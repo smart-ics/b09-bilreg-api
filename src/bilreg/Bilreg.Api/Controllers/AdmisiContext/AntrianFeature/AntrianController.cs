@@ -3,6 +3,8 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
+using Bilreg.Api.Configurations;
+using Microsoft.Extensions.Options;
 
 namespace Bilreg.Api.Controllers.AdmisiContext.AntrianFeature;
 
@@ -12,10 +14,14 @@ namespace Bilreg.Api.Controllers.AdmisiContext.AntrianFeature;
 public class AntrianController : Controller
 {
     private readonly IMediator _mediator;
+    private readonly AdmissionQueueApiOptions _options;
+    private readonly ILogger<AntrianController> _logger;
 
-    public AntrianController(IMediator mediator)
+    public AntrianController(IMediator mediator,IOptions<AdmissionQueueApiOptions> options,
+        ILogger<AntrianController> logger)
     {
         _mediator = mediator;
+        _options=options.Value; _logger=logger;
     }
 
     [HttpGet]
@@ -64,9 +70,11 @@ public class AntrianController : Controller
 
     [HttpPost]
     [Route("anonymous-intake")]
-    public async Task<IActionResult> AnonymousIntake(QueAnonymousIntakeCmd cmd)
+    public async Task<IActionResult> AnonymousIntake(LegacyAnonymousIntakeBody body)
     {
-        var response = await _mediator.Send(cmd);
+        if(!_options.LegacyEndpointsEnabled)return NotFound();
+        _logger.LogWarning("Deprecated admission queue endpoint used: anonymous-intake");
+        var response = await _mediator.Send(new QueAnonymousIntakeCmd(body.ServicePointCode));
         return Ok(new JSendOk(response));
     }
 
@@ -74,6 +82,8 @@ public class AntrianController : Controller
     [Route("start")]
     public async Task<IActionResult> Start(AdmissionQueueStartCmd cmd)
     {
+        if(!_options.LegacyEndpointsEnabled)return NotFound();
+        _logger.LogWarning("Deprecated admission queue endpoint used: direct start");
         var response = await _mediator.Send(cmd);
         return Ok(new JSendOk(response));
     }
@@ -110,3 +120,5 @@ public class AntrianController : Controller
     //     return Ok(new JSendOk("Done"));
     // }
 }
+
+public record LegacyAnonymousIntakeBody(string ServicePointCode,string ServicePointName,string? TglYmd=null);

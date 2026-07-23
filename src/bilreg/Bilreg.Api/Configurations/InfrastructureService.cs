@@ -126,6 +126,19 @@ public static class InfrastructureService
             .Configure<AdmisiRanapOptions>(configuration.GetSection(AdmisiRanapOptions.SECTION_NAME))
             .Configure<UsmanOptions>(configuration.GetSection(UsmanOptions.SECTION_NAME));
 
+        services.AddScoped<
+            Bilreg.Application.AdmisiContext.AntrianFeature.IAdmissionQueueOperationalProjection,
+            Bilreg.Infrastructure.AdmisiContext.AntrianFeature.AdmissionQueueOperationalProjection>();
+        services.AddScoped<
+            Bilreg.Application.AdmisiContext.AntrianFeature.IAdmissionQueueOperationRepo,
+            Bilreg.Infrastructure.AdmisiContext.AntrianFeature.AdmissionQueueOperationRepo>();
+        services.AddScoped<
+            Bilreg.Application.AdmisiContext.AntrianFeature.IBookingAssistanceRepo,
+            Bilreg.Infrastructure.AdmisiContext.AntrianFeature.BookingAssistanceRepo>();
+        services.AddScoped<
+            Bilreg.Application.AdmisiContext.RegFeature.IRegistrationOutcomeOperationRepo,
+            Bilreg.Infrastructure.AdmisiContext.RegFeature.RegistrationOutcomeOperationRepo>();
+
 
         services
             .Scan(selector => selector

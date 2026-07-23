@@ -6,6 +6,7 @@ using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiContext.AntrianFeature;
 
+[Obsolete("Legacy compatibility path. New clients must use Call followed by AdmissionQueueStartServiceCmd.")]
 public record AdmissionQueueStartCmd(
     string AntrianId,
     int NoUrut,

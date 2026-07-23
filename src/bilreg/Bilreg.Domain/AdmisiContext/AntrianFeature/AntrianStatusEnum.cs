@@ -4,5 +4,6 @@ public enum AntrianStatusEnum
 {
     Waiting,
     InService,
-    Done
+    Done,
+    Withdrawn
 }

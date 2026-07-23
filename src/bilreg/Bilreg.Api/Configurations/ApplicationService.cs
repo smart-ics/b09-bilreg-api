@@ -30,6 +30,7 @@ public static class ApplicationService
             .AddScoped<PasienBalanceBootstrapService>()
             .AddScoped<IPasienBalanceLoader, PasienBalanceLoader>()
             .AddScoped<IJourneyCandidateFinder, JourneyCandidateFinder>();
+        services.AddScoped<IAdmissionQueueRefreshPublisher, NullAdmissionQueueRefreshPublisher>();
         
         services
             .Scan(selector => selector

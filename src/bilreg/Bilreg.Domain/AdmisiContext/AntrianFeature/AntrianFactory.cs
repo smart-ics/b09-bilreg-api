@@ -10,6 +10,7 @@ public interface IAntrianFactory : INunaFactory<AntrianModel>
     AntrianModel Create(DateOnly antrianDate, JadwalPraktekType jadwalPraktek);
     AntrianModel Create(DateOnly antrianDate, JadwalPraktekEffective effective);
     AntrianModel Create(ServicePointType servicePoint, DateOnly businessDate);
+    AntrianModel Create(AdmissionServicePointModel servicePoint, DateOnly businessDate);
 }
 
 public class AntrianFactory : IAntrianFactory
@@ -76,6 +77,17 @@ public class AntrianFactory : IAntrianFactory
             sequenceTag, servicePoint.ServicePointName, servicePoint,
             new List<AntrianEntryModel>(), 
             _antrianSequencer);
+    }
+
+    public AntrianModel Create(AdmissionServicePointModel servicePoint, DateOnly businessDate)
+    {
+        Guard.Against.Null(servicePoint, nameof(servicePoint));
+        servicePoint.EnsureCanAcceptIntake();
+        var reference = new ServicePointType(servicePoint.ServicePointId, servicePoint.DisplayName);
+        var queue = Create(reference, businessDate);
+        return new AntrianModel(queue.AntrianId, queue.AntrianDate, queue.StartTime, queue.EndTime,
+            queue.SequenceTag, queue.AntrianDescription, queue.ServicePoint, queue.ListEntry,
+            _antrianSequencer, servicePoint.QueuePrefix);
     }
 
     public AntrianModel Load(string antrianId, DateOnly antrianDate, TimeOnly startTime, TimeOnly endTime,

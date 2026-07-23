@@ -7,13 +7,12 @@ using Nuna.Lib.ValidationHelper;
 namespace Bilreg.Application.AdmisiContext.AntrianFeature;
 
 public record QueAnonymousIntakeCmd(
-    string ServicePointCode,
-    string ServicePointName,
-    string? TglYmd = null) : IRequest<QueAnonymousIntakeResponse>;
+    string ServicePointId) : IRequest<QueAnonymousIntakeResponse>;
 
 public record QueAnonymousIntakeResponse(
     string AntrianId,
     int NoUrut,
+    string QueueLabel,
     DateTime CreatedAt);
 
 public class QueAnonymousIntakeHandler
@@ -22,33 +21,34 @@ public class QueAnonymousIntakeHandler
     private readonly IAntrianRepo _antrianRepo;
     private readonly IAntrianFactory _antrianFactory;
     private readonly ITglJamProvider _tglJamProvider;
+    private readonly IAdmissionServicePointRepo _servicePointRepo;
 
     public QueAnonymousIntakeHandler(
         IAntrianRepo antrianRepo,
         IAntrianFactory antrianFactory,
-        ITglJamProvider tglJamProvider)
+        ITglJamProvider tglJamProvider,
+        IAdmissionServicePointRepo servicePointRepo)
     {
         _antrianRepo = antrianRepo;
         _antrianFactory = antrianFactory;
         _tglJamProvider = tglJamProvider;
+        _servicePointRepo = servicePointRepo;
     }
 
     public Task<QueAnonymousIntakeResponse> Handle(
         QueAnonymousIntakeCmd request,
         CancellationToken cancellationToken)
     {
-        Guard.Against.NullOrWhiteSpace(request.ServicePointCode);
-        Guard.Against.NullOrWhiteSpace(request.ServicePointName);
+        Guard.Against.NullOrWhiteSpace(request.ServicePointId);
 
         var occurredAt = _tglJamProvider.Now;
-        var businessDate = string.IsNullOrWhiteSpace(request.TglYmd)
-            ? DateOnly.FromDateTime(occurredAt)
-            : DateOnly.ParseExact(request.TglYmd, "yyyy-MM-dd");
-
-        var servicePoint = new ServicePointType(
-            request.ServicePointCode.Trim(),
-            request.ServicePointName.Trim());
-        var sequenceTag = AntrianModel.GenSequenceTag(businessDate, TimeOnly.MinValue, servicePoint);
+        var businessDate = DateOnly.FromDateTime(occurredAt);
+        var servicePoint = _servicePointRepo
+            .LoadEntity(AdmissionServicePointModel.Key(request.ServicePointId))
+            .GetValueOrThrow($"Admission Service Point '{request.ServicePointId}' not found.");
+        servicePoint.EnsureCanAcceptIntake();
+        var reference = new ServicePointType(servicePoint.ServicePointId, servicePoint.DisplayName);
+        var sequenceTag = AntrianModel.GenSequenceTag(businessDate, TimeOnly.MinValue, reference);
 
         var listQue = _antrianRepo.ListData(businessDate);
         var queView = listQue.FirstOrDefault(x => x.SequenceTag == sequenceTag);
@@ -59,13 +59,14 @@ public class QueAnonymousIntakeHandler
         QueAnonymousIntakeResponse response;
         using (var trans = TransHelper.NewScope())
         {
-            var entry = que.AddEntry(occurredAt);
+            var entry = que.AddAdmissionEntry(occurredAt);
             _antrianRepo.SaveNewEntry(que, entry);
             trans.Complete();
 
             response = new QueAnonymousIntakeResponse(
                 que.AntrianId,
                 entry.NoUrut,
+                que.FormatQueueLabel(entry.NoUrut) ?? string.Empty,
                 entry.CreatedAt);
         }
 
