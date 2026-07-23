@@ -92,11 +92,60 @@ no business reason values. Rejection maps to `AQ_INVALID_REQUEST`.
 Every response containing a queue number exposes QueueLabel when its immutable session prefix exists;
 historical sessions may return null/unavailable.
 
+## Booking assistance / HiDok consumer contract (Phase 3)
+
+Receive-side ensure API only. Bilreg does **not** own Self-Registration decision branching.
+The external HiDok/Admisi Self-Registration caller owns when (and whether) to invoke this route.
+
+### When to call
+
+| Self-Registration outcome | Caller action |
+|---|---|
+| Registration established (success) | **Do not** call `POST booking-assistance` |
+| Definitive `AssistanceRequired` | Call `POST /api/v1/admission-queue/booking-assistance` once |
+| Transient / uncertain failure | **Do not** call; retry Self-Registration per caller policy |
+
+### Request and response
+
+- **Route:** `POST /api/v1/admission-queue/booking-assistance`
+- **Auth:** JWT `[Authorize]`; no `X-Loket-Key` / `X-Workstation-Key`
+- **Body:** `{ bookingId, servicePointId, failureCode?, kioskId, userId }`
+- **Correlation:** server-derived `BOOKING-ASSISTANCE:{BookingId}` (caller does not send it)
+- **Success data:** `{ antrianId, noUrut, queueLabel, existing }`
+  - `existing=false` — new unresolved assistance entry created
+  - `existing=true` — active assistance already exists; business-duplicate success (print/display
+    `queueLabel` the same as a new entry)
+- **`failureCode`:** optional opaque audit string from the caller; Bilreg stores it and invents no
+  business reason catalog values
+
+### Errors (ensure path)
+
+| Condition | HTTP / code |
+|---|---|
+| Missing/blank `bookingId` | 400 `AQ_INVALID_REQUEST` |
+| Unknown Booking or Service Point | 404 `AQ_RESOURCE_NOT_FOUND` |
+| Retired / inactive Service Point | 400 `AQ_OPERATION_NOT_ALLOWED` |
+| Sequence exhausted (9999) | 503 `AQ_SEQUENCE_EXHAUSTED` |
+| Concurrent create with no winner reloadable | 409 `AQ_CONCURRENCY_CONFLICT` |
+
+### Required consumer-contract tests (HiDok / Admisi — outside this repository)
+
+1. Successful Self-Registration creates Registration and **never** invokes booking-assistance
+   (`success/no-entry`).
+2. Transient / uncertain Self-Registration failure **never** invokes booking-assistance.
+3. Definitive `AssistanceRequired` invokes booking-assistance and handles `existing=false`.
+4. Retry of the same unresolved Booking treats `existing=true` as success and reuses `queueLabel`.
+5. Caller surfaces inactive Service Point and sequence-exhaustion errors without inventing a second
+   assistance obligation.
+
 ## Kiosk V1
 
 Intake is non-idempotent. There is no required `ClientRequestId`; repeated submissions may create
 different entries. The kiosk must disable its button while the request is pending and require a
 deliberate retry after uncertainty. Retry identity remains deferred to R-05B.
+
+Walk-in anonymous intake (`POST intake`) remains separate from Booking assistance. Booking
+assistance uses the ensure route above and business deduplication by BookingId.
 
 ## Display recovery
 
