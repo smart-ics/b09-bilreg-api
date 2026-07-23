@@ -80,4 +80,54 @@ public class QueAnonymousIntakeHandlerTest
         await act.Should().ThrowAsync<InvalidOperationException>();
         _antrianRepo.Verify(x => x.SaveNewEntry(It.IsAny<AntrianModel>(), It.IsAny<AntrianEntryModel>()), Times.Never);
     }
+
+    [Fact]
+    public async Task Intake_WhenConcurrentSessionRace_ThenReloadsWinnerAndContinues()
+    {
+        var businessDate = DateOnly.FromDateTime(TestTglJamProvider.Instance.Now);
+        var servicePoint = AdmissionServicePointModel.Create("ADM01", "Loket Admisi", "A");
+        var loser = new AntrianFactory(_sequencer.Object).Create(servicePoint, businessDate);
+        var winnerSequencer = new Mock<ISequencer>();
+        winnerSequencer.Setup(x => x.GetNextNoUrut(It.IsAny<string>(), 9999)).Returns(2);
+        var winner = new AntrianFactory(winnerSequencer.Object).Create(servicePoint, businessDate);
+        var tag = winner.SequenceTag;
+        var winnerView = new AntrianHeaderView(
+            winner.AntrianId, winner.AntrianDescription, winner.AntrianDate,
+            winner.StartTime, winner.SequenceTag);
+
+        _servicePointRepo.Setup(x => x.LoadEntity(It.IsAny<IAdmissionServicePointKey>()))
+            .Returns(MayBe.From(servicePoint));
+        _antrianFactory.Setup(x => x.Create(It.IsAny<AdmissionServicePointModel>(), businessDate))
+            .Returns(loser);
+
+        var listCalls = 0;
+        _antrianRepo.Setup(x => x.ListData(businessDate)).Returns(() =>
+        {
+            listCalls++;
+            return listCalls == 1 ? [] : [winnerView];
+        });
+        _antrianRepo.Setup(x => x.LoadEntity(It.IsAny<IAntrianKey>()))
+            .Returns(MayBe.From(winner));
+
+        var saveCalls = 0;
+        _antrianRepo
+            .Setup(x => x.SaveNewEntry(It.IsAny<AntrianModel>(), It.IsAny<AntrianEntryModel>()))
+            .Callback(() =>
+            {
+                saveCalls++;
+                if (saveCalls == 1)
+                    throw new AdmissionQueueSessionRaceException(tag);
+            });
+
+        var sut = new QueAnonymousIntakeHandler(
+            _antrianRepo.Object, _antrianFactory.Object, TestTglJamProvider.Instance,
+            _servicePointRepo.Object);
+
+        var result = await sut.Handle(new QueAnonymousIntakeCmd("ADM01"), CancellationToken.None);
+
+        result.AntrianId.Should().Be(winner.AntrianId);
+        result.NoUrut.Should().Be(2);
+        result.QueueLabel.Should().Be("A0002");
+        saveCalls.Should().Be(2);
+    }
 }

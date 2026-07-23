@@ -1,10 +1,11 @@
-﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
+﻿using System.Data.SqlClient;
+using System.Globalization;
+using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.Shared.Helpers;
 using Nuna.Lib.DataTypeExtension;
 using Nuna.Lib.PatternHelper;
 using Nuna.Lib.ValidationHelper;
-using System.Globalization;
 
 namespace Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
 
@@ -105,13 +106,20 @@ public class AntrianRepo : IAntrianRepo
 
     public void SaveNewEntry(AntrianModel queue, AntrianEntryModel entry)
     {
-        var existingHeader = _antrianDal.GetData(queue);
-        if (existingHeader is null)
-            _antrianDal.Insert(AntrianDto.FromModel(queue));
-        else
-            _antrianDal.Update(AntrianDto.FromModel(queue));
+        try
+        {
+            var existingHeader = _antrianDal.GetData(queue);
+            if (existingHeader is null)
+                _antrianDal.Insert(AntrianDto.FromModel(queue));
+            else
+                _antrianDal.Update(AntrianDto.FromModel(queue));
 
-        _antrianEntryDal.Insert(AntrianEntryDto.FromModel(queue.AntrianId, entry));
+            _antrianEntryDal.Insert(AntrianEntryDto.FromModel(queue.AntrianId, entry));
+        }
+        catch (SqlException ex) when (ex.Number is 2601 or 2627)
+        {
+            throw new AdmissionQueueSessionRaceException(queue.SequenceTag, ex);
+        }
     }
 
     #region HELPER

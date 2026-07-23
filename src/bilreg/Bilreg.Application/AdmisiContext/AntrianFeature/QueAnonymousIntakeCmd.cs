@@ -56,20 +56,34 @@ public class QueAnonymousIntakeHandler
             ? _antrianFactory.Create(servicePoint, businessDate)
             : _antrianRepo.LoadEntity(queView).Value;
 
-        QueAnonymousIntakeResponse response;
-        using (var trans = TransHelper.NewScope())
+        try
         {
-            var entry = que.AddAdmissionEntry(occurredAt);
-            _antrianRepo.SaveNewEntry(que, entry);
-            trans.Complete();
-
-            response = new QueAnonymousIntakeResponse(
-                que.AntrianId,
-                entry.NoUrut,
-                que.FormatQueueLabel(entry.NoUrut) ?? string.Empty,
-                entry.CreatedAt);
+            return Task.FromResult(CommitIntake(que, occurredAt));
         }
+        catch (AdmissionQueueSessionRaceException)
+        {
+            // One-winner reload: unique SequenceTag loser continues on the winner session.
+            var winnerView = _antrianRepo.ListData(businessDate)
+                .FirstOrDefault(x => x.SequenceTag == sequenceTag)
+                ?? throw new AdmissionQueueConcurrencyException(
+                    $"Daily queue session for '{sequenceTag}' was created concurrently but could not be reloaded.");
+            var winner = _antrianRepo.LoadEntity(winnerView)
+                .GetValueOrThrow($"Admission queue session '{winnerView.AntrianId}' not found after concurrent create.");
+            return Task.FromResult(CommitIntake(winner, occurredAt));
+        }
+    }
 
-        return Task.FromResult(response);
+    private QueAnonymousIntakeResponse CommitIntake(AntrianModel que, DateTime occurredAt)
+    {
+        using var trans = TransHelper.NewScope();
+        var entry = que.AddAdmissionEntry(occurredAt);
+        _antrianRepo.SaveNewEntry(que, entry);
+        trans.Complete();
+
+        return new QueAnonymousIntakeResponse(
+            que.AntrianId,
+            entry.NoUrut,
+            que.FormatQueueLabel(entry.NoUrut) ?? string.Empty,
+            entry.CreatedAt);
     }
 }
