@@ -1,379 +1,573 @@
-# ARCHITECTURE CREATION SKILL
-
-# PURPOSE
-
-Generate `ARCHITECT.md` for a business feature.
-
-`ARCHITECT.md` is the canonical Technical Specification.
-
-Its purpose is to describe how the software realizes the business defined in `DOMAIN.md`.
-
-The document answers:
-
-> How does the software realize the business?
-
-It does NOT answer:
-
-- What the business is.
-- How operators perform their work.
-
+---
+name: architecture-creation
+description: Create or revise a feature ARCHITECTURE.md after DOMAIN.md and business SOPs are established. Use for codebase-grounded technical specifications in a Clean Architecture modular monolith, especially when AI implementation agents need explicit ownership, dependencies, use cases, consistency boundaries, integrations, constraints, and traceability without UI design or endpoint payload specifications.
 ---
 
-# DESIGN PHILOSOPHY
+# Architecture Creation Skill
 
-ARCHITECT.md describes software realization.
+## Purpose
 
-It translates business concepts into application structure while preserving the business meaning defined in DOMAIN.md.
+Create `<FEATURE>-ARCHITECTURE.md`, the canonical technical specification for one business feature or bounded context.
 
-It owns:
+The document must answer:
 
-- software architecture
-- application boundaries
-- use cases
-- module organization
-- technical decisions
-- integrations
+> How does the existing software, or an explicitly identified target design, realize the business defined in `DOMAIN.md`?
 
-It does NOT describe:
+Write the specification so that an AI implementation agent can:
 
-- business definitions
-- business policies
-- operational procedures
-- menu navigation
-- user interactions
+- locate the relevant code;
+- preserve business and bounded-context ownership;
+- place responsibilities in the correct Clean Architecture layer;
+- identify the commands, queries, repositories, projections, and integrations to implement;
+- recognize existing behavior, target behavior, gaps, and prohibited shortcuts;
+- implement complete use cases incrementally without inventing missing decisions.
 
-The document should remain valid even if operational procedures change.
+`ARCHITECTURE.md` is not an API contract, UI specification, SOP, implementation plan, or database design document.
 
----
+## Position in the Delivery Workflow
 
-# OWNERSHIP
+Use this workflow:
 
-ARCHITECT.md exclusively owns:
+1. Define `DOMAIN.md`.
+2. Define business SOPs or operational scenarios.
+3. Create `ARCHITECTURE.md` using this skill.
+4. Design UI/UX from the approved business use cases and operational scenarios.
+5. Define the detailed API contract from approved UI needs and application interfaces.
+6. Implement and validate complete end-to-end use-case increments.
 
-- Architecture Overview
-- Module Boundaries
-- Use Cases
-- Aggregate Realization
-- Repository Strategy
-- API Philosophy
-- Integration
-- Authentication & Authorization
-- Infrastructure
-- Technical Decisions (ADRs)
+Do not interpret step 6 as adoption of Vertical Slice Architecture. It describes an incremental delivery method. The governing software structure remains Clean Architecture unless repository evidence and an explicit decision state otherwise.
 
-These topics must not be duplicated in DOMAIN.md or SOP.md.
+## Audience
 
----
+Treat AI coding agents as a first-class audience, while keeping the document readable by human architects and senior engineers.
 
-# REQUIRED STRUCTURE
+Prefer explicit statements over implied conventions. For every material responsibility, identify:
 
-Every ARCHITECT.md must contain the following sections.
+- the owning bounded context or module;
+- the responsible Clean Architecture layer;
+- the authoritative aggregate, read model, or external authority;
+- permitted dependencies;
+- consistency and transaction expectations;
+- integration direction;
+- known evidence, target decision, or unresolved gap.
 
-1. Architecture Overview
+Avoid prose that requires the reader to infer where behavior belongs.
 
-2. Module Boundaries
+## Required Inputs
 
-3. Use Cases
+Inspect all available evidence before writing:
 
-4. Aggregate Realization
+1. The feature's canonical `DOMAIN.md`.
+2. The feature's business SOPs or operational scenarios.
+3. Relevant neighboring-domain documents.
+4. Existing architecture documents and ADRs.
+5. The actual codebase, tests, project files, dependency registration, persistence mappings, migrations, and integration adapters.
+6. Existing repository conventions for commands, queries, handlers, repositories, DALs, result types, authorization, transactions, audit, and testing.
+7. Legacy behavior only when it remains an active compatibility constraint or migration source.
 
-5. Repository Strategy
+Do not generate a codebase-specific architecture from documentation alone when the codebase is available.
 
-6. API Philosophy
+If a required business decision is missing or contradictory, stop and ask for clarification. Do not turn a business ambiguity into a technical assumption.
 
-7. Integration
+If a technical detail is not yet decided, record it as an explicit target decision, constraint, or gap. Do not present it as existing fact.
 
-8. Authentication & Authorization
+## Evidence and Truth Classification
 
-9. Infrastructure
+Classify material technical statements using these meanings:
 
-10. Architectural Decisions (ADRs)
+- **Existing:** verified in the current codebase or authoritative technical artifact.
+- **Target:** required future design supported by business needs and architectural decisions.
+- **Constraint:** an existing condition the target must preserve or deliberately migrate.
+- **Gap:** required capability or mechanism that does not yet exist.
+- **Out of Scope:** intentionally excluded from this feature.
 
-Use exactly this order.
+The document need not prefix every sentence with a label, but it must make these categories unmistakable.
 
----
+Never describe a proposed class, table, endpoint, event, or worker as already implemented without evidence.
 
-# ARCHITECTURE OVERVIEW
+When code and technical documentation disagree:
 
-Describe the overall architecture.
+1. Treat `DOMAIN.md` as authoritative for business meaning and ownership.
+2. Treat verified code as authoritative for current implementation state.
+3. Record the mismatch as a gap, migration concern, or ADR candidate.
+4. Do not silently rewrite business meaning to match legacy code.
 
-Examples:
+## Governing Architecture
 
-- Clean Architecture
-- Vertical Slice
-- Layered Architecture
-- Modular Monolith
+Assume the application is a modular monolith using Clean Architecture when that matches repository evidence.
+
+Express the dependency direction explicitly:
+
+```text
+API / Presentation -> Application -> Domain
+Infrastructure     -> Application -> Domain
+```
+
+Apply these rules:
+
+- `Domain` owns aggregate behavior, entities, value objects, domain policies, and domain events.
+- `Application` owns use cases, commands, queries, handlers, orchestration, authorization ports, repository contracts, integration ports, and transaction boundaries.
+- `Infrastructure` implements persistence, DALs, external adapters, durable delivery, caches, clocks, identifiers, and other technical ports.
+- `API` adapts HTTP or other transports, authentication context, request/response mapping, dependency registration, and runtime composition.
+- Inner layers must not depend on API, Infrastructure, transport DTOs, database rows, or external SDK models.
+- Cross-context work must use application or integration contracts, never another context's tables, DALs, or repositories as its public contract.
+- Presentation may compose several contexts, but composition does not transfer business authority.
+
+Clean Architecture does not require global technical folders such as `Commands`, `Handlers`, or `Repositories`. Code may be grouped by business capability within each layer while preserving inward dependency rules.
+
+Do not call this organization Vertical Slice Architecture unless the repository and an explicit ADR establish it as the governing pattern.
+
+## Artifact Ownership
+
+### `DOMAIN.md` owns
+
+- ubiquitous language;
+- business capabilities;
+- actors and business authority;
+- domain objects and business aggregates;
+- business rules and invariants;
+- state machines and lifecycles;
+- domain events;
+- high-level business workflows.
+
+### SOP owns
+
+- operational purpose and trigger;
+- participant responsibilities;
+- operational sequence;
+- operational exceptions;
+- completion criteria and required business evidence.
+
+### `ARCHITECTURE.md` owns
+
+- software structure and dependency direction;
+- module and bounded-context realization;
+- application use cases;
+- Clean Architecture layer placement;
+- aggregate realization and consistency boundaries;
+- repositories, projections, and persistence strategy;
+- application interfaces and API philosophy;
+- cross-context and external integrations;
+- authorization, audit, transactions, concurrency, and idempotency;
+- infrastructure responsibilities;
+- target-state gaps and architectural decisions.
+
+### Later artifacts own
+
+- UI layout, components, interaction state, and navigation;
+- endpoint inventory and exact routes;
+- request and response schemas;
+- field-level validation messages;
+- implementation task breakdown and scheduling;
+- user operation manuals.
+
+Reference other artifacts rather than duplicating their owned content.
+
+## Creation Procedure
+
+### 1. Establish business coverage
+
+Read `DOMAIN.md` and build an internal mapping of:
+
+- business capability;
+- relevant aggregate or domain object;
+- business rules;
+- lifecycle transitions;
+- domain events;
+- neighboring authority.
+
+Use SOPs to discover required application interactions, exceptions, evidence, and hand-offs. Do not copy SOP steps into the architecture document.
+
+### 2. Discover the current architecture
+
+Inspect the codebase before proposing structure. Search for:
+
+- solution and project boundaries;
+- feature or bounded-context organization;
+- domain model conventions;
+- MediatR or equivalent application patterns;
+- repository interfaces and implementations;
+- Dapper, ORM, SQL, migration, and transaction conventions;
+- query projections and pagination patterns;
+- API controllers and transport mapping;
+- authentication, contextual authorization, and audit mechanisms;
+- integration adapters, outbox/inbox, retries, and background workers;
+- tests demonstrating expected architectural conventions.
+
+Name concrete files, namespaces, or types only when verified. Use them as evidence and implementation anchors, not as an exhaustive file inventory.
+
+### 3. Identify current-to-target gaps
+
+For every business capability, determine whether the codebase provides:
+
+- an authoritative write model;
+- the required application use cases;
+- operational read models;
+- cross-context contracts;
+- authorization and audit;
+- transactional and idempotent behavior;
+- tests at the appropriate boundaries.
+
+Record missing mechanisms as explicit gaps. Do not hide gaps behind generic statements such as "use repository pattern" or "integrate with CPOE."
+
+### 4. Design the technical realization
+
+Choose the smallest consistency boundary that preserves the domain rules. Separate:
+
+- domain decisions from application orchestration;
+- write models from operational projections;
+- local authority from external facts;
+- synchronous consistency from eventual propagation;
+- business time from recording time;
+- actor-initiated commands from service-originated integration facts.
+
+Reuse proven repository conventions unless they violate the domain or a recorded ADR.
+
+### 5. Validate implementability
+
+Before finalizing, confirm that an implementation agent can answer:
+
+- Which module owns this behavior?
+- Which use case initiates it?
+- Which aggregate or projection is involved?
+- Which layer contains the decision and which layer performs I/O?
+- Which dependencies may be called?
+- Where is the transaction boundary?
+- How are retries, duplicates, concurrency, and partial failure handled?
+- Which authority supplies each external fact?
+- What must be tested?
+- What is existing, target, missing, or forbidden?
+
+If the document cannot answer these questions, revise it.
+
+## Required `ARCHITECTURE.md` Structure
+
+Use the following sections in this exact order. Keep a section concise, but do not omit it. State `Not applicable` with a reason when necessary.
+
+### 1. Architecture Overview
 
 Describe:
 
-- architectural style
-- dependency direction
-- project organization
+- feature purpose as a technical capability, referencing `DOMAIN.md`;
+- current and target architectural style;
+- modular-monolith or deployment boundary;
+- Clean Architecture dependency direction;
+- major current constraints and target gaps;
+- whether the feature is actor-facing, UI-agnostic, integration-facing, or a composition host.
 
-Avoid implementation details of individual features.
+Do not redefine the business domain.
 
----
+### 2. Codebase Evidence and Constraints
 
-# MODULE BOUNDARIES
+Provide a compact table:
 
-Describe how the feature is organized.
+| Evidence | Verified location | Architectural implication |
+|---|---|---|
 
-Identify:
+Include only evidence that materially constrains the design, such as established layer projects, transaction mechanisms, repository patterns, legacy tables, integration mechanisms, or absent target modules.
 
-- modules
-- responsibilities
-- dependencies
+Then list explicit constraints and gaps. Distinguish current facts from target design.
 
-Modules should represent logical boundaries.
+### 3. Module and Bounded-Context Boundaries
 
-Avoid folder structures unless architecturally significant.
+For each module, state:
 
----
+| Module | Responsibility | Owns | Depends on | Must not own |
+|---|---|---|---|---|
 
-# USE CASES
+Use business capabilities as logical modules. Do not derive module boundaries from menus or database tables.
 
-Describe the application use cases.
+State cross-context authority explicitly. A host UI may invoke a neighboring context's use case without owning it.
 
-A use case represents one application interaction that realizes a business capability.
+### 4. Clean Architecture Layer Responsibilities
 
-Each use case should include:
+Map feature responsibilities to the existing projects or layers:
 
-- name
-- purpose
-- primary aggregate
-- primary outcome
+| Layer | Feature responsibilities | Permitted dependencies | Prohibited dependencies |
+|---|---|---|---|
 
-Examples:
+Identify verified project names or namespaces when available.
 
-- Register Tenant
-- Activate Subscription
-- Submit Signing Request
+Explain where these concerns belong:
 
-Do not describe implementation flow.
+- domain behavior;
+- application orchestration;
+- repository and integration ports;
+- persistence and external adapters;
+- transport mapping and composition root;
+- read-model queries.
 
-Do not describe UI interaction.
+### 5. Application Use Cases
 
----
+Define application interactions, not screens or endpoint inventory.
 
-# AGGREGATE REALIZATION
+Use a stable ID for each use case, such as `UC-<FEATURE>-001`.
 
-Describe how aggregates are realized in software.
+For every use case, provide:
 
-Include:
+| ID | Use case | Kind | Purpose | Authority / initiator | Primary model | Dependencies | Transaction outcome |
+|---|---|---|---|---|---|---|---|
 
-- Aggregate Root
-- child entities
-- aggregate responsibilities
-- consistency boundaries
+`Kind` must distinguish at least:
 
-Do not redefine business meaning already described in DOMAIN.md.
+- Command;
+- Query;
+- Integration Inbound;
+- Integration Outbound;
+- Background Process, when applicable.
 
-Focus on software realization.
+Cover every business capability and every SOP-triggered application interaction. Several SOPs may use one use case, and one SOP may coordinate several use cases.
 
----
+Do not describe clicks, forms, HTTP routes, payload fields, or handler pseudocode.
 
-# REPOSITORY STRATEGY
+### 6. Use-Case Traceability
 
-Describe the repository philosophy.
+Provide a traceability table:
 
-Examples:
+| Use case ID | Domain capabilities / rules | SOP references | Owning module | Authorization concern | Required tests |
+|---|---|---|---|---|---|
 
-- one repository per aggregate
-- aggregate reconstruction
-- explicit persistence mapping
+Reference rule and SOP identifiers rather than reproducing their content.
 
-Repository responsibilities should be described conceptually.
+Every domain capability must map to at least one use case, policy mechanism, projection, or explicit out-of-scope decision.
 
-Avoid SQL.
+### 7. Aggregate and Domain Model Realization
 
-Avoid implementation code.
+For each aggregate root, describe:
 
----
+- verified existing type or target type;
+- owned child entities and value objects;
+- protected invariants by domain-rule reference;
+- consistency boundary;
+- allowed creation and mutation entry points;
+- emitted domain facts or events;
+- references to other aggregates or contexts by identity;
+- prohibited responsibilities.
 
-# API PHILOSOPHY
+Do not restate business definitions. Do not turn DTOs or database rows into domain models without justification.
 
-Describe the application interface philosophy.
+When a use case spans multiple aggregates or contexts, keep each aggregate transactionally independent unless a verified local transaction and invariant require atomicity. Place coordination in Application.
 
-Examples:
+### 8. Persistence and Repository Strategy
 
-- REST
-- CQRS
-- Command/Query separation
-- endpoint conventions
-- versioning strategy
+Describe:
 
-Avoid documenting every endpoint.
+- one repository per aggregate root unless evidence justifies otherwise;
+- repository interface ownership in the inward layer;
+- explicit reconstruction and persistence mapping;
+- insert/update/history semantics;
+- transaction ownership;
+- optimistic concurrency or other conflict handling;
+- identifier and business-time handling;
+- migration and legacy compatibility boundaries;
+- which operations must not access another module's tables directly.
 
-Avoid payload specification.
+Name relevant tables or DAL types only when verified and architecturally significant. Do not provide full schemas or SQL.
 
----
+### 9. Read Models and Query Strategy
 
-# INTEGRATION
+Define purpose-built projections required for operational work, history, detail, reconciliation, search, and integration recovery.
 
-Describe external system integration.
+For each projection, state:
 
-Examples:
+| Projection | Consumer purpose | Source authority | Freshness | Filters / scope | Must not decide |
+|---|---|---|---|---|---|
 
-- HIS
-- Payment Gateway
-- Email Service
-- Digital Signature Provider
+Queries may use optimized DALs without reconstructing aggregates when they remain read-only, authorized, and do not decide lifecycle transitions.
 
-For each integration describe:
+Do not let a projection become a second write authority.
 
-- purpose
-- communication style
-- ownership
-- synchronization strategy
+### 10. Application Interfaces and API Philosophy
 
-Avoid implementation details.
+Describe the boundary exposed to UI hosts, other modules, and external services:
 
----
+- command/query separation;
+- transport independence of Application;
+- REST or repository-standard transport philosophy;
+- deterministic result and error categories;
+- idempotency requirements;
+- versioning and backward compatibility;
+- pagination, filtering, and history-query principles;
+- composition rules for actor-facing hosts.
 
-# AUTHENTICATION & AUTHORIZATION
+Do not specify exact routes, request/response payloads, or UI-specific view models. Those belong to the later API contract.
 
-Describe the security architecture.
+Make clear that an HTTP controller exposes an application capability; it does not become the business authority.
 
-Include:
+### 11. Integration and Cross-Context Collaboration
 
-- authentication mechanism
-- authorization philosophy
-- identity provider
-- permission model
+For each integration, provide:
 
-Avoid implementation code.
+| Collaborator | Direction | Purpose | Owning authority | Contract style | Consistency / delivery | Failure handling |
+|---|---|---|---|---|---|---|
 
-Avoid token format details.
+Distinguish:
 
----
+- direct in-process application calls;
+- authenticated inbound facts;
+- outbound notifications or hand-offs;
+- asynchronous durable delivery;
+- legacy anti-corruption adapters.
 
-# INFRASTRUCTURE
+Specify stable source identities and idempotency for retried facts. Do not use a generic event bus merely because `DOMAIN.md` names domain events.
 
-Describe infrastructure dependencies.
+### 12. Authentication, Authorization, and Audit
 
-Examples:
+Describe separately:
 
-- database
-- message broker
-- storage
-- cache
-- background workers
+- caller authentication;
+- actor identity versus service identity;
+- contextual authorization by patient, care context, organization, role, assignment, or destination;
+- command authorization versus query scoping;
+- accountable actor carried by service-originated facts;
+- audit evidence for material decisions, corrections, and exceptional actions;
+- protection of sensitive data.
 
-Describe architectural responsibilities rather than deployment procedures.
+Do not rely solely on hiding UI actions. Domain and Application boundaries must enforce authoritative decisions.
 
----
+### 13. Transactions, Consistency, Concurrency, and Idempotency
 
-# ARCHITECTURAL DECISIONS (ADRs)
+For each material multi-step use case, state:
 
-Record important architectural decisions.
+- transaction boundary;
+- invariants protected synchronously;
+- facts propagated eventually;
+- duplicate-detection key;
+- retry behavior;
+- concurrency conflict policy;
+- compensation or recovery responsibility after partial failure.
 
-Each ADR should contain:
+Do not claim distributed atomicity across bounded contexts unless the architecture truly provides it.
 
-- Decision
-- Rationale
-- Consequence
+### 14. Infrastructure and Operational Concerns
 
-Only include decisions that significantly affect the architecture.
+Describe only relevant infrastructure responsibilities:
 
-Avoid historical discussion.
+- database and migration ownership;
+- background workers;
+- durable delivery or recovery storage;
+- cache use and invalidation authority;
+- observability, structured logging, metrics, and correlation;
+- configuration and feature flags;
+- health and integration-recovery concerns.
 
----
+Do not include deployment procedures or environment-specific secrets.
 
-# WRITING STYLE
+### 15. Implementation Guidance for AI Agents
 
-Write from the software architect's perspective.
+Provide an implementation map, not a sprint plan:
 
-Use precise technical language.
+| Increment | Included use cases | Required layers | External dependencies | Verification gate |
+|---|---|---|---|---|
 
-Be concise.
+Order increments by dependency and risk. Each increment should be demonstrable end-to-end while remaining implemented through Clean Architecture layers.
 
-Prefer architectural principles over implementation details.
+For every increment, identify:
 
-Avoid unnecessary theory.
+- domain tests for invariant behavior;
+- application tests for orchestration and authorization;
+- infrastructure tests for persistence and adapters;
+- contract or integration tests at module boundaries;
+- API tests only after transport contracts exist;
+- regression behavior that must remain unchanged.
 
----
+List explicit implementation prohibitions, such as:
 
-# RELATIONSHIP WITH OTHER ARTIFACTS
+- do not mutate another context's tables;
+- do not put business decisions in controllers, handlers, DALs, or projections;
+- do not duplicate neighboring-domain lifecycle logic;
+- do not infer completion from billing or UI state;
+- do not erase correction history;
+- do not fabricate missing dependencies.
 
-DOMAIN.md defines business truth.
+### 16. Architectural Decisions
 
-ARCHITECT.md defines technical realization.
+Record only significant decisions using stable IDs such as `ADR-<FEATURE>-001`.
 
-SOP.md defines operational procedures.
+For each ADR include:
 
-Never duplicate ownership across these documents.
+- **Decision**
+- **Status:** Existing, Accepted Target, Proposed, or Superseded
+- **Context**
+- **Rationale**
+- **Consequences**
+- **Rejected alternatives**, when materially relevant
+- **Evidence or governing references**
 
-Reference DOMAIN.md when explaining business intent.
+Do not use ADRs to repeat ordinary framework conventions.
 
-Reference SOP.md only when operational procedures are relevant.
+### 17. Open Gaps and Deferred Decisions
 
----
+List only unresolved items that block or constrain later UI, API-contract, or implementation work.
 
-# QUALITY CHECKLIST
+For each gap include:
 
-Before completing ARCHITECT.md, verify:
+| ID | Gap or decision | Why it matters | Owner / authority needed | Blocks | Safe interim position |
+|---|---|---|---|---|---|
 
-✓ Architecture style is clearly defined.
+Do not silently resolve business questions. Do not use open gaps as permission for implementation agents to invent behavior.
 
-✓ Module boundaries are explicit.
+## Writing Rules
 
-✓ Use cases cover every business capability.
+Write in precise, imperative-friendly technical language.
 
-✓ Aggregate realization is consistent with DOMAIN.md.
+Use:
 
-✓ Repository strategy is defined.
-
-✓ API philosophy is documented.
-
-✓ Integration architecture is complete.
-
-✓ Authentication and authorization are defined.
-
-✓ Infrastructure dependencies are identified.
-
-✓ Important architectural decisions are recorded.
-
-✓ No business rules are duplicated from DOMAIN.md.
-
-✓ No operational procedures are duplicated from SOP.md.
-
-✓ No UI navigation is described.
-
-If any item fails, revise the document.
-
----
-
-# AI OPTIMIZATION RULE
-
-Generate deterministic documents.
-
-Prioritize:
-
-- clarity
-- consistency
-- explicit ownership
-- low ambiguity
-- maintainability
-- low token usage
+- stable identifiers;
+- compact tables for repeated mappings;
+- explicit `must`, `must not`, `may`, and `should` statements;
+- verified code references when they help an agent locate implementation anchors;
+- business-rule and SOP references instead of copied business prose;
+- one canonical term for each concept.
 
 Avoid:
 
-- speculative architecture
-- duplicated concepts
-- business leakage
-- operational leakage
-- unnecessary abstraction
+- generic architecture theory;
+- aspirational claims without evidence;
+- speculative classes, endpoints, events, tables, or folders;
+- full payloads, SQL, and implementation code;
+- UI components, navigation, and interaction details;
+- SOP step reproduction;
+- duplicate business rules;
+- ambiguous words such as `handle`, `manage`, `process`, or `support` without naming the authority, action, and outcome;
+- declaring every application command an independent architectural slice;
+- treating technical folder structure as a business module model.
 
-Consistency is more important than creativity.
+Prefer concise completeness over low token count. A shorter document is not better if it leaves an implementation agent to guess.
 
----
+## Completion Checklist
 
-# IMPORTANT PRINCIPLE
+Before delivering `ARCHITECTURE.md`, verify:
 
-ARCHITECT.md owns technical truth.
+- [ ] `DOMAIN.md`, relevant SOPs, neighboring contexts, and the codebase were inspected.
+- [ ] Business ambiguities were clarified or left explicitly unresolved.
+- [ ] Existing, target, constraint, gap, and out-of-scope statements are distinguishable.
+- [ ] Clean Architecture and dependency direction are explicit.
+- [ ] Existing project and repository conventions are preserved or consciously superseded by ADR.
+- [ ] Every business capability and relevant SOP interaction maps to application use cases.
+- [ ] Every use case has an owner, kind, model, dependencies, transaction outcome, authorization concern, and required tests.
+- [ ] Aggregate boundaries preserve domain rules without absorbing application orchestration.
+- [ ] Repository, projection, transaction, concurrency, and idempotency strategies are explicit.
+- [ ] Cross-context authority and integration direction are explicit.
+- [ ] Read models cannot mutate or decide authoritative state.
+- [ ] API philosophy is defined without prematurely specifying the API contract.
+- [ ] UI design and SOP details are absent.
+- [ ] Current code is not confused with target design.
+- [ ] AI implementation increments are end-to-end use-case increments, not a claim of Vertical Slice Architecture.
+- [ ] Open gaps identify what agents must not invent.
+- [ ] ADRs capture significant decisions and their consequences.
+- [ ] No section relies on vague conventions that an implementation agent must infer.
 
-It explains:
+If any check fails, revise the document before delivery.
 
-"How the software realizes the business."
+## Final Principle
 
-Nothing more.
+`DOMAIN.md` defines business truth.
+
+SOPs define operational truth.
+
+`ARCHITECTURE.md` defines codebase-grounded technical truth.
+
+UI/UX and API contracts are derived later from that approved foundation.
+
+The architecture document must be precise enough for an AI agent to implement without granting it authority to invent business behavior or bypass bounded-context ownership.

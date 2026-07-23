@@ -135,6 +135,15 @@ public class RegController : Controller
         var result = await _mediator.Send(query);
         return Ok(new JSendOk(result));
     }
+
+    [HttpGet]
+    [Route("listAktif")]
+    public async Task<IActionResult> ListAktif()
+    {
+        var query = new RegRegAktifListQuery();
+        var resutl = await _mediator.Send(query);
+        return Ok(new JSendOk(resutl));
+    }
 }
 
 public record RegBatalRequestDto(string RegId, string UserId, string VoidReason);

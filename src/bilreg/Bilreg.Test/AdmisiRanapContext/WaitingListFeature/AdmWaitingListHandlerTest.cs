@@ -47,7 +47,7 @@ public class AdmWaitingListHandlerTest
             _waitingListRepoMock.Object,
             _admissionRepoMock.Object,
             _wardGatewayMock.Object,
-            _auditRepoMock.Object);
+            _auditRepoMock.Object, TestTglJamProvider.Instance);
 
         var act = async () => await handler.Handle(
             new AdmCreateWaitingListCmd(admission.RegId, "K1", "B1", 1, "user2"),
@@ -83,7 +83,7 @@ public class AdmWaitingListHandlerTest
 
         var handler = new AdmCloseWaitingListHandler(
             _waitingListRepoMock.Object,
-            _auditRepoMock.Object);
+            _auditRepoMock.Object, TestTglJamProvider.Instance);
         await handler.Handle(
             new AdmCloseWaitingListCmd(waitingList.WaitingListId, "user2"),
             CancellationToken.None);
@@ -117,7 +117,7 @@ public class AdmWaitingListHandlerTest
             _waitingListRepoMock.Object,
             _admissionRepoMock.Object,
             _wardGatewayMock.Object,
-            _auditRepoMock.Object);
+            _auditRepoMock.Object, TestTglJamProvider.Instance);
 
         await handler.Handle(
             new AdmCreateWaitingListCmd(admission.RegId, "K1", "B1", 1, "user2"),

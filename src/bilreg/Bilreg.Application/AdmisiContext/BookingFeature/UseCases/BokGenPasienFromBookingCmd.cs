@@ -2,6 +2,7 @@ using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiContext.BookingFeature.UseCases;
 
@@ -30,19 +31,23 @@ public class BokGenPasienFromBookingHandler
     private readonly IBookingRepo _bookingRepo;
     private readonly IPasienRepo _pasienRepo;
     private readonly IPasienFactory _pasienFactory;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public BokGenPasienFromBookingHandler(IBookingRepo bookingRepo, 
         IPasienRepo pasienRepo, 
-        IPasienFactory pasienFactory)
+        IPasienFactory pasienFactory,
+        ITglJamProvider tglJamProvider)
     {
         _bookingRepo = bookingRepo;
         _pasienRepo = pasienRepo;
         _pasienFactory = pasienFactory;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<BokGenPasienFromBookingResponse> Handle(BokGenPasienFromBookingCmd request, 
         CancellationToken cancellationToken)
     {
+        var occurredAt = _tglJamProvider.Now;
         var booking = _bookingRepo.LoadEntity(BookingModel.Key(request.BookingId))
             .Match(
                 onSome: x => x,
@@ -50,8 +55,8 @@ public class BokGenPasienFromBookingHandler
             );
 
         var (generatedPasien, listDUplicated) = request.IsForceCreate 
-            ? CreatePasien(booking) 
-            : ListOrCreatePasien(booking);
+            ? CreatePasien(booking, occurredAt)
+            : ListOrCreatePasien(booking, occurredAt);
 
         var generatedPasienResp = new BokGenPasienFromBookingResponsePerson(
             generatedPasien.PasienId,
@@ -77,7 +82,7 @@ public class BokGenPasienFromBookingHandler
         return Task.FromResult(result);        
     }
 
-    private (PasienModel, List<PasienPersonView>) ListOrCreatePasien(BookingModel booking)
+    private (PasienModel, List<PasienPersonView>) ListOrCreatePasien(BookingModel booking, DateTime occurredAt)
     {
         var listTglLahir = _pasienRepo
             .ListData(booking.Person.TglLahir.ToString("yyyy-MM-dd"));
@@ -92,17 +97,17 @@ public class BokGenPasienFromBookingHandler
         var pasien = _pasienFactory
             .CreateFromPerson(booking.Person,
                 booking.Person.PersonName.Split(' ')[0], "-", 
-                GolDarahType.Default, "-");
+                GolDarahType.Default, "-", occurredAt);
         
         _pasienRepo.SaveChanges(pasien);
         return (pasien, []);
     }
 
-    private (PasienModel, List<PasienPersonView>) CreatePasien(BookingModel booking)
+    private (PasienModel, List<PasienPersonView>) CreatePasien(BookingModel booking, DateTime occurredAt)
     {
         var pasien = _pasienFactory.CreateFromPerson(booking.Person,
                 booking.Person.PersonName.Split(' ')[0], "-", 
-                GolDarahType.Default, "-");
+                GolDarahType.Default, "-", occurredAt);
         _pasienRepo.SaveChanges(pasien);
         return (pasien, []);
     }

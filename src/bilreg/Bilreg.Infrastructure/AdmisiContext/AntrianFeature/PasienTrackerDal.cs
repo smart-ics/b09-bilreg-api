@@ -31,9 +31,9 @@ public class PasienTrackerDal : IPasienTrackerDal
     {
         const string sql = """
             INSERT INTO BILRG_PasienTracker(
-               PasienTrackerId, PersonName, TglLahir, VisitDate)
+               PasienTrackerId, PersonName, TglLahir, VisitDate, StartPeriod, LastPeriod)
             VALUES (
-               @PasienTrackerId, @PersonName, @TglLahir, @VisitDate)
+               @PasienTrackerId, @PersonName, @TglLahir, @VisitDate, @StartPeriod, @LastPeriod)
             """;
 
         var dp = new DynamicParameters();
@@ -41,6 +41,8 @@ public class PasienTrackerDal : IPasienTrackerDal
         dp.AddParam("@PersonName", dto.PersonName, SqlDbType.VarChar);
         dp.AddParam("@TglLahir", dto.TglLahir, SqlDbType.DateTime);
         dp.AddParam("@VisitDate", dto.VisitDate, SqlDbType.DateTime);
+        dp.AddParam("@StartPeriod", dto.StartPeriod, SqlDbType.DateTime);
+        dp.AddParam("@LastPeriod", dto.LastPeriod, SqlDbType.DateTime);
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -54,7 +56,9 @@ public class PasienTrackerDal : IPasienTrackerDal
             SET
                 PersonName = @PersonName, 
                 TglLahir = @TglLahir, 
-                VisitDate = @VisitDate
+                VisitDate = @VisitDate,
+                StartPeriod = @StartPeriod,
+                LastPeriod = @LastPeriod
            WHERE
                 PasienTrackerId = @PasienTrackerId
            """;
@@ -64,6 +68,8 @@ public class PasienTrackerDal : IPasienTrackerDal
         dp.AddParam("@PersonName", dto.PersonName, SqlDbType.VarChar);
         dp.AddParam("@TglLahir", dto.TglLahir, SqlDbType.DateTime);
         dp.AddParam("@VisitDate", dto.VisitDate, SqlDbType.DateTime);
+        dp.AddParam("@StartPeriod", dto.StartPeriod, SqlDbType.DateTime);
+        dp.AddParam("@LastPeriod", dto.LastPeriod, SqlDbType.DateTime);
     
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -89,7 +95,7 @@ public class PasienTrackerDal : IPasienTrackerDal
     {           
         const string sql = """
             SELECT
-                PasienTrackerId, PersonName, TglLahir, VisitDate
+                PasienTrackerId, PersonName, TglLahir, VisitDate, StartPeriod, LastPeriod
             FROM
                 BILRG_PasienTracker
             WHERE
@@ -107,11 +113,12 @@ public class PasienTrackerDal : IPasienTrackerDal
     {
         const string sql = """
             SELECT
-               PasienTrackerId, PersonName, TglLahir, VisitDate
+               PasienTrackerId, PersonName, TglLahir, VisitDate, StartPeriod, LastPeriod
             FROM
                BILRG_PasienTracker
             WHERE
-               VisitDate BETWEEN @Tgl1 AND @Tgl2
+               StartPeriod <= @Tgl2
+               AND LastPeriod >= @Tgl1
             """;
 
         var dp = new DynamicParameters();

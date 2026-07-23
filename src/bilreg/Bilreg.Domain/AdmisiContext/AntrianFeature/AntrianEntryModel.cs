@@ -4,6 +4,8 @@ namespace Bilreg.Domain.AdmisiContext.AntrianFeature;
 
 public class AntrianEntryModel
 {
+    private static readonly DateTime SentinelAt = new(3000, 1, 1);
+
     #region CREATION
     public AntrianEntryModel(int noUrut, 
         PersonType visitor, IPasienTrackerKey tracker,
@@ -22,16 +24,17 @@ public class AntrianEntryModel
         ReffDesc = reffDesc;
     }
 
-    public static AntrianEntryModel Create(int noUrut, PersonType visitor, IPasienTrackerKey tracker, string reffId, string reffDesc)
+    public static AntrianEntryModel Create(int noUrut, PersonType visitor, IPasienTrackerKey tracker, string reffId, string reffDesc, DateTime createdAt)
     {
-        var newEntry = new AntrianEntryModel(noUrut, visitor, tracker, AntrianStatusEnum.Waiting, DateTime.Now,
-            new DateTime(3000, 1, 1), new DateTime(3000, 1, 1), reffId, reffDesc);
-        return newEntry;
+        EnsureBusinessTime(createdAt, nameof(createdAt));
+
+        return new AntrianEntryModel(noUrut, visitor, tracker, AntrianStatusEnum.Waiting, createdAt,
+            SentinelAt, SentinelAt, reffId, reffDesc);
     }
     
     public static AntrianEntryModel Default => 
         new AntrianEntryModel(-1, PersonType.Default, PasienTrackerModel.Default, AntrianStatusEnum.Waiting,
-            DateTime.Now, new DateTime(3000, 1, 1), new DateTime(3000, 1, 1), "-", "-");
+            SentinelAt, SentinelAt, SentinelAt, "-", "-");
     #endregion
     
     #region PROPERTIES
@@ -51,26 +54,43 @@ public class AntrianEntryModel
     public void AssignPasien(PasienTrackerModel pasienTracker)
     {
         Guard.Against.Null(pasienTracker, nameof(pasienTracker));
-        var visitor = pasienTracker.Person;
-        Visitor = visitor;
+        if (!IsRealTrackerId(pasienTracker.PasienTrackerId))
+            throw new ArgumentException("PasienTrackerId is required to identify a queue entry.", nameof(pasienTracker));
+        if (IsRealTrackerId(Tracker.PasienTrackerId))
+            throw new InvalidOperationException("Queue entry is already identified.");
+
+        Visitor = pasienTracker.Person;
+        Tracker = pasienTracker;
     }
 
-    public void Serve()
+    private static bool IsRealTrackerId(string? trackerId)
+        => trackerId is not null
+           && trackerId.Trim() != ""
+           && trackerId != "-";
+
+    public void Serve(DateTime servedAt)
     {
-        ServedAt = DateTime.Now;
+        if (AntrianStatus != AntrianStatusEnum.Waiting)
+            throw new InvalidOperationException("Only a Waiting queue entry may enter In Service.");
+
+        EnsureBusinessTime(servedAt, nameof(servedAt));
+        if (servedAt < CreatedAt)
+            throw new ArgumentException("ServedAt shall not precede CreatedAt.", nameof(servedAt));
+
+        ServedAt = servedAt;
         AntrianStatus = AntrianStatusEnum.InService;
     }
 
-    public void Done()
-    { 
-        if (ServedAt == new DateTime(3000,1,1))
-            throw new ArgumentException("Pasien belum dilayani");
+    public void Done(DateTime doneAt)
+    {
+        if (AntrianStatus != AntrianStatusEnum.InService)
+            throw new InvalidOperationException("Only an In Service queue entry may become Done.");
 
-        var now = DateTime.Now;
-        if (ServedAt >= now)
-            throw new ArgumentException("Pasien belum dilayani");
+        EnsureBusinessTime(doneAt, nameof(doneAt));
+        if (doneAt < ServedAt)
+            throw new ArgumentException("DoneAt shall not precede ServedAt.", nameof(doneAt));
         
-        DoneAt = now;
+        DoneAt = doneAt;
         AntrianStatus = AntrianStatusEnum.Done;
     }
 
@@ -79,7 +99,12 @@ public class AntrianEntryModel
         ReffId = reffId;
         ReffDesc = reffDesc;
     }
+
+    private static void EnsureBusinessTime(DateTime value, string paramName)
+    {
+        if (value == default || value == DateTime.MinValue || value == SentinelAt)
+            throw new ArgumentException("A valid business time is required.", paramName);
+    }
     #endregion
 
 }
-

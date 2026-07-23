@@ -25,6 +25,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Bilreg.Test" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="AdmisiContext\LayananFeature\LayananAgg\" />
     <Folder Include="AdmisiRanapContext\OpnameRequestFeature\" />
     <Folder Include="AdmisiRanapContext\OpnameRequestFeature\UseCases\" />

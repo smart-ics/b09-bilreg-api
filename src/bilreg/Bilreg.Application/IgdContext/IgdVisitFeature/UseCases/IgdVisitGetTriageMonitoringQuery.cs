@@ -1,4 +1,5 @@
 using MediatR;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.IgdContext.IgdVisitFeature.UseCases;
 
@@ -16,15 +17,17 @@ public record IgdVisitTriageMonitoringItem(
 public class IgdVisitGetTriageMonitoringHandler : IRequestHandler<IgdVisitGetTriageMonitoringQuery, IEnumerable<IgdVisitTriageMonitoringItem>>
 {
     private readonly IIgdVisitRepo _repo;
+    private readonly ITglJamProvider _tglJamProvider;
 
-    public IgdVisitGetTriageMonitoringHandler(IIgdVisitRepo repo)
+    public IgdVisitGetTriageMonitoringHandler(IIgdVisitRepo repo, ITglJamProvider tglJamProvider)
     {
         _repo = repo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<IEnumerable<IgdVisitTriageMonitoringItem>> Handle(IgdVisitGetTriageMonitoringQuery request, CancellationToken cancellationToken)
     {
-        var now = DateTime.Now;
+        var now = _tglJamProvider.Now;
         var list = _repo.ListAktif()
             .Where(x => x.HasTriage)
             .Select(x => new IgdVisitTriageMonitoringItem(

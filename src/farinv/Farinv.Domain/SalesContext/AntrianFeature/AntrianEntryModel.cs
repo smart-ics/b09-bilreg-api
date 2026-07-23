@@ -4,12 +4,14 @@ namespace Farinv.Domain.SalesContext.AntrianFeature;
 
 public class AntrianEntryModel
 {
+    private static readonly DateTime Sentinel = new(3000, 1, 1);
+
     #region CREATION
     public AntrianEntryModel(
         int noAntrian, AntrianStatusEnum status,
         DateTime takenAt, DateTime assignedAt, DateTime preparedAt,
-        DateTime deliveredAt, DateTime cancelAt,
-        RegReff reg, string reffId, string reffDesc)
+        DateTime deliveredAt, DateTime cancelAt, DateTime servedAt,
+        RegReff reg, string reffId, string reffDesc, string pasienTrackerId)
     {
         NoAntrian = noAntrian;
         AntrianStatus = status;
@@ -18,23 +20,35 @@ public class AntrianEntryModel
         PreparedAt = preparedAt;
         DeliveredAt = deliveredAt;
         CancelAt = cancelAt;
+        ServedAt = servedAt;
         Reg = reg;
         ReffId = reffId;
         ReffDesc = reffDesc;
+        PasienTrackerId = pasienTrackerId;
     }
 
     public static AntrianEntryModel Create(int noAntrian, RegReff reg, string reffId, string refDesc)
     {
-        var newEntry = new AntrianEntryModel(noAntrian, AntrianStatusEnum.Taken, DateTime.Now,
-            new DateTime(3000, 1, 1), new DateTime(3000, 1, 1), new DateTime(3000, 1, 1), new DateTime(3000, 1, 1),
-            reg, reffId, refDesc);
-        return newEntry;
+        return new AntrianEntryModel(noAntrian, AntrianStatusEnum.Taken, DateTime.Now,
+            Sentinel, Sentinel, Sentinel, Sentinel, Sentinel,
+            reg, reffId, refDesc, "-");
+    }
+
+    public static AntrianEntryModel CreateIdentified(
+        int noAntrian, RegReff reg, string pasienTrackerId, DateTime takenAt)
+    {
+        PharmacyTrackerIdentity.EnsureRealTrackerId(pasienTrackerId);
+        Guard.Against.Null(reg, nameof(reg));
+
+        return new AntrianEntryModel(noAntrian, AntrianStatusEnum.Taken, takenAt,
+            Sentinel, Sentinel, Sentinel, Sentinel, Sentinel,
+            reg, "-", "-", pasienTrackerId.Trim());
     }
 
     public static AntrianEntryModel Default =>
-        new(-1, AntrianStatusEnum.Open, new DateTime(3000, 1, 1), new DateTime(3000, 1, 1),
-            new DateTime(3000, 1, 1), new DateTime(3000, 1, 1), new DateTime(3000, 1, 1),
-            RegType.Default.ToReff(), "-", "");
+        new(-1, AntrianStatusEnum.Open, Sentinel, Sentinel,
+            Sentinel, Sentinel, Sentinel, Sentinel,
+            RegType.Default.ToReff(), "-", "", "-");
     #endregion
 
     #region PROPERTIES
@@ -45,10 +59,12 @@ public class AntrianEntryModel
     public DateTime PreparedAt { get; private set; }
     public DateTime DeliveredAt { get; private set; }
     public DateTime CancelAt { get; private set; }
+    public DateTime ServedAt { get; private set; }
 
     public RegReff Reg { get; private set; }
     public string ReffId { get; private set; }
     public string ReffDesc { get; private set; }
+    public string PasienTrackerId { get; private set; }
     #endregion
 
     #region METHOD BEHAVIOUR
@@ -83,11 +99,38 @@ public class AntrianEntryModel
         AntrianStatus = AntrianStatusEnum.Cancelled;
     }
 
+    internal void ConfirmSale(string penjualanId, DateTime servedAt)
+    {
+        Guard.Against.NullOrWhiteSpace(penjualanId, nameof(penjualanId));
+        PharmacyTrackerIdentity.EnsureRealTrackerId(PasienTrackerId);
+
+        if (IsFinalState())
+            throw new InvalidOperationException($"Status Antrian ({AntrianStatus}) cannot be change");
+
+        if (AntrianStatus == AntrianStatusEnum.Prepared
+            && ReffId == penjualanId
+            && ServedAt == servedAt)
+            return;
+
+        ServedAt = servedAt;
+        ReffId = penjualanId;
+        ReffDesc = "PENJUALAN";
+
+        if (AntrianStatus == AntrianStatusEnum.Taken)
+            Assign(Reg);
+
+        if (AntrianStatus == AntrianStatusEnum.Assigned)
+            Prepare();
+    }
+
     internal void SetReff(string reffId, string reffDesc)
     {
         ReffId = reffId;
         ReffDesc = reffDesc;
     }
+
+    internal bool IsActiveForTracker(string pasienTrackerId)
+        => PasienTrackerId == pasienTrackerId.Trim() && !IsFinalState();
 
     private void EnsureStatus(AntrianStatusEnum expected)
     {
@@ -98,7 +141,7 @@ public class AntrianEntryModel
             throw new InvalidOperationException($"Status Antrian must be {expected}");
     }
 
-    private bool IsFinalState() =>
+    internal bool IsFinalState() =>
         AntrianStatus == AntrianStatusEnum.Delivered || AntrianStatus == AntrianStatusEnum.Cancelled;
     #endregion
 }

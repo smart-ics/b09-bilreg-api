@@ -23,17 +23,20 @@ public class AdmCreateOpnameRequestHandler : IRequestHandler<AdmCreateOpnameRequ
     private readonly IPatientAdministrationGateway _patientGateway;
     private readonly IDoctorServiceGateway _doctorGateway;
     private readonly IAuditRepo _auditRepo;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public AdmCreateOpnameRequestHandler(
         IOpnameRequestRepo opnameRequestRepo,
         IPatientAdministrationGateway patientGateway,
         IDoctorServiceGateway doctorGateway,
-        IAuditRepo auditRepo)
+        IAuditRepo auditRepo,
+        ITglJamProvider tglJamProvider)
     {
         _opnameRequestRepo = opnameRequestRepo;
         _patientGateway = patientGateway;
         _doctorGateway = doctorGateway;
         _auditRepo = auditRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<AdmCreateOpnameRequestResponse> Handle(
@@ -48,12 +51,14 @@ public class AdmCreateOpnameRequestHandler : IRequestHandler<AdmCreateOpnameRequ
         var pasien = _patientGateway.ResolvePatient(request.PasienId);
         var dokter = _doctorGateway.ResolveDoctor(request.DokterId);
         var plannedDate = request.PlannedDate.ToDate("yyyy-MM-dd");
+        var occurredAt = _tglJamProvider.Now;
         var opnameRequest = OpnameRequestModel.Create(
             pasien,
             dokter,
             plannedDate,
             request.ClinicalNotes ?? "",
-            request.UserId);
+            request.UserId,
+            occurredAt);
 
         _opnameRequestRepo.SaveChanges(opnameRequest);
 

@@ -130,7 +130,8 @@ public class AntrianDal : IAntrianDal
                 aa.AntrianId, aa.NoAntrian, aa.AntrianStatus, 
                 aa.RegId, aa.PasienId, aa.PasienName, 
                 aa.ReffId, aa.ReffDesc,
-                ISNULL(bb.AntrianDate,'') AS AntrianDate, 
+                ISNULL(aa.PasienTrackerId, '-') AS PasienTrackerId,
+                ISNULL(bb.AntrianDate,'') AS AntrianDate,
                 ISNULL(bb.ServicePoint, 0) AS ServicePoint,
                 ISNULL(bb.AntrianDescription,'') AS AntrianDescription
            FROM

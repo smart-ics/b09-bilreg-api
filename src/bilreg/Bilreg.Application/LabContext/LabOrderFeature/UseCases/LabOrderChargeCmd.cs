@@ -35,10 +35,11 @@ public class LabOrderChargeHandler : IRequestHandler<LabOrderChargeCmd, LabOrder
     private readonly IJaminanRepo _jaminanRepo;
     private readonly IAddBillAppService _addBillAppService;
     private readonly ILabBillingIntegration _labBillingIntegration;
-
+    private readonly ITglJamProvider _tglJamProvider;
+    
     public LabOrderChargeHandler(ILabOrderRepo labOrderRepo, IRegRepo regRepo, ITarifRepo tarifRepo,
         INilaiTarifRepo nilaiTarifRepo, IKomponenRepo komponenRepo, IJaminanRepo jaminanRepo,
-        IAddBillAppService addBillAppService, ILabBillingIntegration labBillingIntegration)
+        IAddBillAppService addBillAppService, ILabBillingIntegration labBillingIntegration, ITglJamProvider tglJamProvider)
     {
         _labOrderRepo = labOrderRepo;
         _regRepo = regRepo;
@@ -48,6 +49,7 @@ public class LabOrderChargeHandler : IRequestHandler<LabOrderChargeCmd, LabOrder
         _jaminanRepo = jaminanRepo;
         _addBillAppService = addBillAppService;
         _labBillingIntegration = labBillingIntegration;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<LabOrderChargeResponse> Handle(LabOrderChargeCmd request, CancellationToken cancellationToken)
@@ -57,6 +59,7 @@ public class LabOrderChargeHandler : IRequestHandler<LabOrderChargeCmd, LabOrder
         Guard.Against.NullOrWhiteSpace(request.UserId, nameof(request.UserId));
 
         var order = _labOrderRepo.LoadEntity(request).GetValueOrThrow($"LabOrder '{request.OrderId}' not found");
+        var occurredAt = _tglJamProvider.Now;
         order.Charge(request.UserId);
 
         // BUILD
@@ -85,12 +88,12 @@ public class LabOrderChargeHandler : IRequestHandler<LabOrderChargeCmd, LabOrder
                 .ToList();
             var tindakanId = _labBillingIntegration.CreateTindakan(
                 new LabBillingChargeRequest(request.OrderId, request.UserId, tarifLines));
-            order.MarkCharged(tindakanId, request.UserId);
+            order.MarkCharged(tindakanId, request.UserId, occurredAt);
             success = true;
         }
         catch (LabBillingChargeException ex)
         {
-            order.RecordBillingError(ex.Message, request.UserId);
+            order.RecordBillingError(ex.Message, request.UserId, occurredAt);
         }
 
         LabOrderChargeResponse response;

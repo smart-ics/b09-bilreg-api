@@ -1,4 +1,4 @@
-﻿using Ardalis.GuardClauses;
+using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.ChargeContext.TarifFeature;
@@ -50,27 +50,27 @@ public class OrderOpModel : IOrderOpKey
         TarifType.Default.ToReff(), PpaType.Default.ToReff(), 0,
         new DateTime(3000, 1, 1), "-");
     
-    public static OrderOpModel CreateByPasien(PasienModel pasien, string userId)
+    public static OrderOpModel CreateByPasien(PasienModel pasien, string userId, DateTime createdAt = default)
     {
         Guard.Against.Null(pasien, nameof(pasien));
         
-        var auditTrail = AuditTrailType.Create(userId, DateTime.Now);
+        var auditTrail = AuditTrailType.Create(userId, createdAt);
         var result = new OrderOpModel(
-            Ulid.NewUlid().ToString(), DateTime.Now, auditTrail, 
+            Ulid.NewUlid().ToString(), createdAt, auditTrail,
             pasien.ToReff(), RegModel.Default.ToReff(),
             Icd10Type.Default, JenisOperasiType.Default, "-", UrgencyLevelEnum.Elective,
             TarifType.Default.ToReff(), PpaType.Default.ToReff(),
             0, new DateTime(3000,1,1),"-");
         return result;
     }
-    public static OrderOpModel CreateByReg(RegModel reg, string userId)
+    public static OrderOpModel CreateByReg(RegModel reg, string userId, DateTime createdAt = default)
     {
         Guard.Against.Null(reg, nameof(reg));
         
-        var auditTrail = AuditTrailType.Create(userId, DateTime.Now);
+        var auditTrail = AuditTrailType.Create(userId, createdAt);
         var pasien = reg.Pasien;
         var result = new OrderOpModel(
-            Ulid.NewUlid().ToString(), DateTime.Now, auditTrail, 
+            Ulid.NewUlid().ToString(), createdAt, auditTrail,
             pasien, reg.ToReff(),
             Icd10Type.Default, JenisOperasiType.Default, "-", UrgencyLevelEnum.Elective,
             TarifType.Default.ToReff(), PpaType.Default.ToReff(), 
@@ -115,13 +115,13 @@ public class OrderOpModel : IOrderOpKey
     }
 
     public void OperationalRequest(PpaType dokterDpjp,
-        int estimasiDurasi, DateTime preferedDate, string specialEquipment)
+        int estimasiDurasi, DateTime preferedDate, string specialEquipment, DateTime requestedAt = default)
     {
         Guard.Against.Null(dokterDpjp, nameof(dokterDpjp));
         Guard.Against.NullOrWhiteSpace(specialEquipment, nameof(specialEquipment));
         Guard.Against.Negative(estimasiDurasi, nameof(estimasiDurasi));
         
-        if (preferedDate < DateTime.Now)
+        if (preferedDate < requestedAt)
             throw new ArgumentException("Prefered Date invalid");
 
         Dokter = dokterDpjp.ToReff();

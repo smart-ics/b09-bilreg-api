@@ -30,7 +30,7 @@ public class LabOrderChargeHandlerTest
     public LabOrderChargeHandlerTest()
     {
         _sut = new LabOrderChargeHandler(_repo.Object, _regRepo.Object, _tarifRepo.Object, _nilaiTarifRepo.Object,
-            _komponenRepo.Object, _jaminanRepo.Object, _addBillAppService.Object, _billingIntegration.Object);
+            _komponenRepo.Object, _jaminanRepo.Object, _addBillAppService.Object, _billingIntegration.Object, TestTglJamProvider.Instance);
     }
 
     private static LabOrderModel OrderedOrder()

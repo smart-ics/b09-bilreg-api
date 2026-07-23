@@ -161,16 +161,16 @@ public class AdmisiRanapWorkflowTest
             var auditRepo = new Mock<IAuditRepo>();
 
             CreateOpnameHandler = new AdmCreateOpnameRequestHandler(
-                opnameRepo.Object, patientGateway.Object, doctorGateway.Object, auditRepo.Object);
+                opnameRepo.Object, patientGateway.Object, doctorGateway.Object, auditRepo.Object, TestTglJamProvider.Instance);
             var orchestrator = CreateOrchestrator();
             ProcessOpnameHandler = new AdmProcessOpnameRequestHandler(orchestrator.Object);
             CreateReservationHandler = new AdmCreateReservationHandler(
-                reservationRepo.Object, patientGateway.Object, wardGateway.Object, auditRepo.Object);
+                reservationRepo.Object, patientGateway.Object, wardGateway.Object, auditRepo.Object, TestTglJamProvider.Instance);
             MaintainReservationHandler = new AdmMaintainReservationHandler(
-                reservationRepo.Object, wardGateway.Object, auditRepo.Object);
+                reservationRepo.Object, wardGateway.Object, auditRepo.Object, TestTglJamProvider.Instance);
             ProcessReservationHandler = new AdmProcessReservationHandler(orchestrator.Object);
             CreateWaitingListHandler = new AdmCreateWaitingListHandler(
-                waitingListRepo.Object, admissionRepo.Object, wardGateway.Object, auditRepo.Object);
+                waitingListRepo.Object, admissionRepo.Object, wardGateway.Object, auditRepo.Object, TestTglJamProvider.Instance);
         }
 
         private Mock<IAdmissionRegistrationOrchestrator> CreateOrchestrator()

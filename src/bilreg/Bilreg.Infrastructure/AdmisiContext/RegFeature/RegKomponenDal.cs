@@ -56,20 +56,49 @@ public class RegKomponenDal : IRegKomponenDal
 
     public void Insert(IEnumerable<RegKomponenDto> listModel)
     {
-        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        using var bcp = new SqlBulkCopy(conn);
-        
-        conn.Open();
-        bcp.AddMap("fs_kd_reg", "fs_kd_reg");
-        bcp.AddMap("fs_kd_detil_tarif", "fs_kd_detil_tarif");
-        bcp.AddMap("fn_tarif", "fn_tarif");
-        bcp.AddMap("fn_diskon", "fn_diskon");
-        bcp.AddMap("fs_kd_petugas_medis", "fs_kd_petugas_medis");
+        var rows = listModel.ToList();
+        if (rows.Count == 0)
+            return;
 
-        var fetched = listModel.ToList();
-        bcp.BatchSize = fetched.Count;
-        bcp.DestinationTableName = "ta_registrasi2";
-        bcp.WriteToServer(fetched.AsDataTable());
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        conn.Open();
+
+        var dataTable = rows.AsDataTable();
+        var destTableName = "ta_registrasi2";
+
+        // 1. Ambil struktur kolom asli dari database menggunakan Helper
+        var dbColumns =  SqlBulkHelper.GetTableColumns(conn, destTableName);
+
+        using var bcp = new SqlBulkCopy(conn)
+        {
+            BatchSize = rows.Count,
+            DestinationTableName = destTableName
+        };
+
+        // 2. Lakukan mapping secara dinamis dan case-insensitive menggunakan Helper
+        SqlBulkHelper.MapColumnsCaseInsensitive(bcp, dataTable, dbColumns);
+
+        bcp.WriteToServer(dataTable);
+
+
+        //var rows = listModel.ToList();
+        //if (rows.Count == 0)
+        //    return;
+
+        //using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        //using var bcp = new SqlBulkCopy(conn);
+        
+        //conn.Open();
+        //bcp.AddMap("fs_kd_reg", "FS_KD_REG");
+        //bcp.AddMap("fs_kd_detil_tarif", "FS_KD_DETIL_TARIF");
+        //bcp.AddMap("fn_tarif", "FN_TARIF");
+        //bcp.AddMap("fn_diskon", "FN_DISKON");
+        //bcp.AddMap("fs_kd_petugas_medis", "FS_KD_PETUGAS_MEDIS");
+
+        //bcp.BatchSize = rows.Count;
+        //bcp.DestinationTableName = "ta_registrasi2";
+        //bcp.WriteToServer(rows.AsDataTable());
+
     }
 
     public void Delete(IRegKey key)

@@ -54,12 +54,15 @@ public record AntrianMapDetilModel
         return this;
     }
 
+    public bool IsFreeSlot() => !IsTerpakai && ReffId.Trim() == "";
+
     internal void Void()
     {
         PasienId = "-";
         PasienName = "-";
-        ReffId = "-";
+        ReffId = "";
         Flag = "AUTO";
+        IsTerpakai = false;
     }
     #endregion
 }

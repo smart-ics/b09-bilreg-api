@@ -10,6 +10,7 @@ using Bilreg.Domain.Shared.AuditLogFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
 
@@ -37,17 +38,20 @@ public sealed class AdmCoordinatedCancelHandler : IRequestHandler<AdmCoordinated
     private readonly ICoordinatedCancellationRepo _repo;
     private readonly IRegistrationCancellationEligibilityRepo _eligibility;
     private readonly IAuditRepo _auditRepo;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public AdmCoordinatedCancelHandler(ICoordinatedCancellationRepo repo,
-        IRegistrationCancellationEligibilityRepo eligibility, IAuditRepo auditRepo)
-        => (_repo, _eligibility, _auditRepo) = (repo, eligibility, auditRepo);
+        IRegistrationCancellationEligibilityRepo eligibility, IAuditRepo auditRepo,
+        ITglJamProvider tglJamProvider)
+        => (_repo, _eligibility, _auditRepo, _tglJamProvider) = (repo, eligibility, auditRepo, tglJamProvider);
 
     public Task<AdmCoordinatedCancelResponse> Handle(AdmCoordinatedCancelCmd request, CancellationToken cancellationToken)
     {
         Validate(request);
         var normalized = request with { RegId = request.RegId.Trim(), Reason = request.Reason.Trim(), UserId = request.UserId.Trim(), RequestId = request.RequestId.Trim() };
         var fingerprint = Fingerprint(normalized);
-        var now = DateTime.UtcNow;
+        var technicalNow = DateTime.UtcNow;
+        var occurredAt = _tglJamProvider.Now;
 
         using var trans = TransHelper.NewScope();
         var ledger = _repo.LockLedger(normalized.RequestId);
@@ -62,7 +66,7 @@ public sealed class AdmCoordinatedCancelHandler : IRequestHandler<AdmCoordinated
         }
 
         var newLedger = new CoordinatedCancellationLedger(normalized.RequestId, fingerprint, normalized.RegId,
-            "InProgress", "", now, new DateTime(3000, 1, 1), normalized.RequestId);
+            "InProgress", "", technicalNow, new DateTime(3000, 1, 1), normalized.RequestId);
         if (!_repo.TryStartLedger(newLedger))
             throw new CoordinatedCancellationException(CoordinatedCancellationErrorCode.ConcurrencyConflict, "Permintaan pembatalan sedang diproses.");
 
@@ -71,7 +75,7 @@ public sealed class AdmCoordinatedCancelHandler : IRequestHandler<AdmCoordinated
         {
             var replay = new AdmCoordinatedCancelResponse(normalized.RegId, AdmissionStatusEnum.Cancelled, true, true,
                 state.WaitingListId, state.SourceId, normalized.RequestId);
-            Ensure(_repo.CompleteLedger(normalized.RequestId, JsonSerializer.Serialize(replay), now));
+            Ensure(_repo.CompleteLedger(normalized.RequestId, JsonSerializer.Serialize(replay), technicalNow));
             trans.Complete();
             return Task.FromResult(replay);
         }
@@ -80,18 +84,18 @@ public sealed class AdmCoordinatedCancelHandler : IRequestHandler<AdmCoordinated
             throw new CoordinatedCancellationException(CoordinatedCancellationErrorCode.RegistrationHasBillingItems,
                 "Registration cancellation is not eligible.");
 
-        if (state.WaitingListId is not null) Ensure(_repo.CancelWaitingList(state, normalized.UserId, now));
-        if (_repo.EndDoctorAssignments(normalized.RegId, DateOnly.FromDateTime(now)) < 1)
+        if (state.WaitingListId is not null) Ensure(_repo.CancelWaitingList(state, normalized.UserId, occurredAt));
+        if (_repo.EndDoctorAssignments(normalized.RegId, DateOnly.FromDateTime(occurredAt)) < 1)
             throw new CoordinatedCancellationException(CoordinatedCancellationErrorCode.ConcurrencyConflict, "Penugasan dokter telah berubah.");
-        Ensure(_repo.VoidRegistration(normalized.RegId, normalized.UserId, now));
+        Ensure(_repo.VoidRegistration(normalized.RegId, normalized.UserId, occurredAt));
         Ensure(_repo.DeleteRegAktif(normalized.RegId));
-        if (state.SourceId is not null) EnsureSource(_repo.RestoreSource(state, normalized.UserId, now));
-        Ensure(_repo.CancelAdmission(state, normalized.ExpectedUpdatedAt, normalized.UserId, now));
+        if (state.SourceId is not null) EnsureSource(_repo.RestoreSource(state, normalized.UserId, occurredAt));
+        Ensure(_repo.CancelAdmission(state, normalized.ExpectedUpdatedAt, normalized.UserId, occurredAt));
 
-        WriteAudits(normalized, state, now);
+        WriteAudits(normalized, state, occurredAt);
         var response = new AdmCoordinatedCancelResponse(normalized.RegId, AdmissionStatusEnum.Cancelled, true, false,
             state.WaitingListId, state.SourceId, normalized.RequestId);
-        Ensure(_repo.CompleteLedger(normalized.RequestId, JsonSerializer.Serialize(response), now));
+        Ensure(_repo.CompleteLedger(normalized.RequestId, JsonSerializer.Serialize(response), technicalNow));
         trans.Complete();
         return Task.FromResult(response);
     }

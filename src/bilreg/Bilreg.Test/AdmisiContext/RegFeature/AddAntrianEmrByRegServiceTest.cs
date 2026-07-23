@@ -1,3 +1,4 @@
+using Bilreg.Application.AdmisiContext.EmrAntrianOutboundFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Infrastructure.AdmisiContext.RegFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
@@ -143,6 +144,32 @@ public class AddAntrianEmrByRegServiceTest : IDisposable
         root.GetProperty("tglBerobat").GetString().Should().Be(cmd.TglBerobat);
         root.GetProperty("jamJadwal").GetString().Should().Be(cmd.JamJadwal);
         root.GetProperty("noAntrian").GetInt32().Should().Be(cmd.NoAntrian);
+    }
+
+    [Fact]
+    public void Send_WhenHttpSucceeds_ThenReturnsSuccess()
+    {
+        StubAddRegEndpoint();
+        var result = _sut.Send(FakeCommand());
+        result.Success.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Send_WhenBaseUrlIsEmpty_ThenReturnsFailureWithoutHttpCall()
+    {
+        StubAddRegEndpoint();
+
+        var emptyOpt = Options.Create(new EmrOptions { BaseApiUrl = "" });
+        var serviceWithEmptyUrl = new AddAntrianEmrByRegService(emptyOpt);
+
+        var result = serviceWithEmptyUrl.Send(FakeCommand());
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("EMR BaseApiUrl empty");
+
+        var logEntries = _server.FindLogEntries(
+            Request.Create().WithPath(ENDPOINT_PATH).UsingAnyMethod()).ToList();
+        logEntries.Should().BeEmpty();
     }
 
     [Fact]

@@ -260,7 +260,7 @@ No `BILRG_Permission` or `BILRG_RolePermission` tables — permissions are code-
 | AntrianController | GetAntrian | /api/Antrian/{id} | GET | Anonymous |
 | BedIgdController | ListBed | /api/BedIgd | GET | Anonymous |
 | BedIgdController | ListAvailable | /api/BedIgd/available | GET | Anonymous |
-| BedIgdController | ListOrphanPakaiBed | /api/BedIgd/pakaiBed/orphan | GET | Anonymous |
+| BedIgdController | ListOrphanPakaiBedIgd | /api/BedIgd/pakaiBedIgd/orphan | GET | Anonymous |
 | BedIgdController | MarkClean | /api/BedIgd/{id}/markClean | PATCH | Anonymous |
 | BhpIgdController | AddBhp | /api/BhpIgd/{visitId} | POST | Anonymous |
 | BookingController | Save | /api/Booking | POST | Anonymous |
@@ -490,7 +490,7 @@ No `BILRG_Permission` or `BILRG_RolePermission` tables — permissions are code-
 | POST /api/Antrian/genNewNumber | AntrianController | No `[Authorize]`, policy, or global fallback |
 | GET /api/BedIgd | BedIgdController | No `[Authorize]`, policy, or global fallback |
 | GET /api/BedIgd/available | BedIgdController | No `[Authorize]`, policy, or global fallback |
-| GET /api/BedIgd/pakaiBed/orphan | BedIgdController | No `[Authorize]`, policy, or global fallback |
+| GET /api/BedIgd/pakaiBedIgd/orphan | BedIgdController | No `[Authorize]`, policy, or global fallback |
 | PATCH /api/BedIgd/{id}/markClean | BedIgdController | No `[Authorize]`, policy, or global fallback |
 | POST /api/BhpIgd/{visitId} | BhpIgdController | No `[Authorize]`, policy, or global fallback |
 | DELETE /api/Booking/delete | BookingController | No `[Authorize]`, policy, or global fallback |

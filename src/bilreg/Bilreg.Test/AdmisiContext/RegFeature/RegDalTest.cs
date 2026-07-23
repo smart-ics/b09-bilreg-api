@@ -18,7 +18,7 @@ public class RegDalTest
             "D", "E", "F", "G", "H", "I", "J",
             "3000-01-01", "J2", "J3", "K",
             "L", "M", "N", "O", "P", "Q", "R",
-            "S", "T", "U", "V", "W", "X", "Y",
+            "S", "T", "U", "V", "W", "X", 100, "Y", 
             "Z", "AA", "AB", "AC","AD", "AE", "AF", "AG", "AH");
 
     private static IRegKey FakerKey()

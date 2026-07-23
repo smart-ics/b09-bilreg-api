@@ -16,7 +16,7 @@ public class LabOrderDeferHandlerTest
 
     public LabOrderDeferHandlerTest()
     {
-        _sut = new LabOrderDeferHandler(_repo.Object);
+        _sut = new LabOrderDeferHandler(_repo.Object, TestTglJamProvider.Instance);
     }
 
     private static LabOrderModel OrderedOrder()

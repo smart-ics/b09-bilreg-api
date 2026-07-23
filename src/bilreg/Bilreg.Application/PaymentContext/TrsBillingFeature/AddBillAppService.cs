@@ -17,13 +17,16 @@ public interface IAddBillAppService
         KarcisType karcis,
         JaminanType jaminan,
         PpaType dokter,
-        IEnumerable<KomponenType> listReffKomp);
+        IEnumerable<KomponenType> listReffKomp,
+        DateTime createdAt = default);
 
     TrsBillType FromTindakan(
         TindakanModel tindakan,
         RegModel reg,
         TarifType tarif,
         JaminanType jaminan,
+        IEnumerable<KomponenType> listReffKomp,
+        DateTime createdAt = default);
         IEnumerable<KomponenType> listReffKomp);
 
     TrsBillType FromLabOrderItem(
@@ -35,6 +38,7 @@ public interface IAddBillAppService
         NilaiTarifType nilaiTarif,
         IEnumerable<KomponenType> listReffKomp);
 }
+
 
 public sealed class AddBillAppService : IAddBillAppService
 {
@@ -57,10 +61,11 @@ public sealed class AddBillAppService : IAddBillAppService
         KarcisType karcis,
         JaminanType jaminan,
         PpaType dokter,
-        IEnumerable<KomponenType> listReffKomp)
+        IEnumerable<KomponenType> listReffKomp,
+        DateTime createdAt = default)
     {
         var (tataRekening, isNew) = ResolveTataRekening(reg);
-        var bill = _createBillDomService.FromReg(tataRekening, reg, karcis, jaminan, dokter, listReffKomp);
+        var bill = _createBillDomService.FromReg(tataRekening, reg, karcis, jaminan, dokter, listReffKomp, createdAt);
 
         if (isNew)
             _tataRekeningRepo.SaveChanges(tataRekening);
@@ -75,11 +80,12 @@ public sealed class AddBillAppService : IAddBillAppService
         RegModel reg,
         TarifType tarif,
         JaminanType jaminan,
-        IEnumerable<KomponenType> listReffKomp)
+        IEnumerable<KomponenType> listReffKomp,
+        DateTime createdAt = default)
     {
         var (tataRekening, isNew) = ResolveTataRekening(reg);
         var bill = _createBillDomService.FromTindakan(
-            tataRekening, tindakan, reg, tarif, jaminan, listReffKomp);
+            tataRekening, tindakan, reg, tarif, jaminan, listReffKomp, createdAt);
 
         if (isNew)
             _tataRekeningRepo.SaveChanges(tataRekening);

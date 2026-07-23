@@ -15,9 +15,10 @@ internal class TrsBillFactory
 {
     public static TrsBillType CreateFromReg(RegModel reg,
         KarcisType karcis, JaminanType jaminan, PpaType dokter,
-        IEnumerable<KomponenType> listReffKomp)
+        IEnumerable<KomponenType> listReffKomp,
+        DateTime createdAt = default)
     {
-        var audit = AuditTrailType.Create(reg.RegMasukAudit.UserId, DateTime.Now);
+        var audit = AuditTrailType.Create(reg.RegMasukAudit.UserId, createdAt);
         var ketBilling = new TrsBillKetType($"REG : {karcis.KarcisName}", "", karcis.KarcisId, 1, "");
 
         var rekPpdp = reg.JenisReg == JenisRegEnum.RegInap
@@ -68,7 +69,8 @@ internal class TrsBillFactory
     public static TrsBillType CreateFromTindakan(
         TindakanModel tindakan,
         RegModel reg, TarifType tarif, JaminanType jaminan,
-        IEnumerable<KomponenType> listReffKomp)
+        IEnumerable<KomponenType> listReffKomp,
+        DateTime createdAt = default)
     {
         if (tarif.ToReff() != tindakan.Tarif)
             throw new ArgumentException("Tarif tidak sesuai");
@@ -76,7 +78,7 @@ internal class TrsBillFactory
         if (jaminan.JaminanId != reg.TipeJaminan.TipeJaminanId[..3])
             throw new ArgumentException("Jaminan tidak sesuai registrasi");
 
-        var audit = AuditTrailType.Create(tindakan.AuditTrail.Created.UserId, DateTime.Now);
+        var audit = AuditTrailType.Create(tindakan.AuditTrail.Created.UserId, createdAt);
         var ketBilling = new TrsBillKetType(tarif.TarifName, "", tarif.TarifId, 1, "");
 
         var rekPpdp = reg.JenisReg == JenisRegEnum.RegInap

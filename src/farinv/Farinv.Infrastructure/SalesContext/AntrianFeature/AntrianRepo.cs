@@ -126,7 +126,9 @@ public class AntrianRepo : IAntrianRepo
                persisted.CancelAt == current.CancelAt &&
                persisted.RegId == current.RegId &&
                persisted.ReffId == current.ReffId &&
-               persisted.ReffDesc == current.ReffDesc;
+               persisted.ReffDesc == current.ReffDesc &&
+               persisted.PasienTrackerId == current.PasienTrackerId &&
+               persisted.ServedAt == current.ServedAt;
     }    
     #endregion
 }

@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.AdmisiContext.RegFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
@@ -34,10 +34,10 @@ public class StartOpModel : IStartOpKey
             RegModel.Default.ToReff());
 
     public static StartOpModel CreateFromSchedule(ScheduleOpModel scheduleOp, DateTime tglOp,
-        KamarType kamar, string userId)
+        KamarType kamar, string userId, DateTime createdAt = default)
     {
         var newId = Ulid.NewUlid().ToString();
-        var audit = new AuditTrailType(new AuditInfoType(userId, DateTime.Now),
+        var audit = new AuditTrailType(new AuditInfoType(userId, createdAt),
             AuditInfoType.Default, AuditInfoType.Default);
         var order = scheduleOp.OrderOp;
         var pasien = scheduleOp.Pasien;
@@ -60,9 +60,9 @@ public class StartOpModel : IStartOpKey
     #endregion
 
     #region BEHAVIOURS
-    public void CancelStart(string userId)
+    public void CancelStart(string userId, DateTime cancelledAt = default)
     {
-        AuditTrail.Batal(userId, DateTime.Now);
+        AuditTrail.Batal(userId, cancelledAt);
     }
     #endregion
 }

@@ -1,4 +1,4 @@
-﻿using Ardalis.GuardClauses;
+using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
@@ -35,7 +35,7 @@ public record OrderTdkModel : IOrderTdkKey
     }
 
     public static OrderTdkModel Create(PasienModel pasien, PpaType dokter, 
-        LayananType layanan, TarifType tarif, string userId)
+        LayananType layanan, TarifType tarif, string userId, DateTime orderedAt = default)
     {
         Guard.Against.Null(pasien, nameof(pasien));
         Guard.Against.Null(dokter, nameof(dokter));
@@ -47,15 +47,15 @@ public record OrderTdkModel : IOrderTdkKey
         
         var newId = Ulid.NewUlid().ToString();
         
-        return new OrderTdkModel(newId, DateTime.Now, 
+        return new OrderTdkModel(newId, orderedAt,
             pasien.ToReff(), RegModel.Default.ToReff(), 
             dokter.ToReff(), layanan.ToReff(), tarif.ToReff(), "-", 
             StatusOrderEnum.Ordered,
-            AuditTrailType.Create(userId, DateTime.Now));
+            AuditTrailType.Create(userId, orderedAt));
     }
     
     public static OrderTdkModel Create(PasienModel pasien, PpaType dokter, 
-        LayananType layanan, string freeTextOrder, string userId)
+        LayananType layanan, string freeTextOrder, string userId, DateTime orderedAt = default)
     {
         Guard.Against.Null(pasien, nameof(pasien));
         Guard.Against.Null(dokter, nameof(dokter));
@@ -67,13 +67,13 @@ public record OrderTdkModel : IOrderTdkKey
         
         var newId = Ulid.NewUlid().ToString();
         
-        return new OrderTdkModel(newId, DateTime.Now,
+        return new OrderTdkModel(newId, orderedAt,
             pasien.ToReff(), RegModel.Default.ToReff(), 
             dokter.ToReff(), layanan.ToReff(), TarifType.Default.ToReff(), freeTextOrder, 
-            StatusOrderEnum.Ordered, AuditTrailType.Create(userId, DateTime.Now));
+            StatusOrderEnum.Ordered, AuditTrailType.Create(userId, orderedAt));
     }
     public static OrderTdkModel Create(RegModel reg, PpaType dokter, 
-        LayananType layanan, TarifType tarif, string userId)
+        LayananType layanan, TarifType tarif, string userId, DateTime orderedAt = default)
     {
         Guard.Against.Null(reg);
         Guard.Against.Null(dokter);
@@ -86,14 +86,14 @@ public record OrderTdkModel : IOrderTdkKey
             throw new ArgumentException("Pasien sudah tidak aktif");            
         var newId = Ulid.NewUlid().ToString();
         
-        return new OrderTdkModel(newId, DateTime.Now, reg.Pasien,
+        return new OrderTdkModel(newId, orderedAt, reg.Pasien,
             reg.ToReff(), dokter.ToReff(), 
             layanan.ToReff(), tarif.ToReff(), "-", StatusOrderEnum.Ordered, 
-            AuditTrailType.Create(userId, DateTime.Now));
+            AuditTrailType.Create(userId, orderedAt));
     }
 
     public static OrderTdkModel Create(RegModel reg, PpaType dokter, 
-        LayananType layanan, string freeTextOrder, string userId)
+        LayananType layanan, string freeTextOrder, string userId, DateTime orderedAt = default)
     {
         Guard.Against.Null(reg);
         Guard.Against.Null(dokter);
@@ -106,10 +106,10 @@ public record OrderTdkModel : IOrderTdkKey
             throw new ArgumentException("Pasien sudah tidak aktif");            
         var newId = Ulid.NewUlid().ToString();
         
-        return new OrderTdkModel(newId, DateTime.Now, reg.Pasien,
+        return new OrderTdkModel(newId, orderedAt, reg.Pasien,
             reg.ToReff(), dokter.ToReff(), 
             layanan.ToReff(), TarifType.Default.ToReff(), freeTextOrder, StatusOrderEnum.Ordered, 
-            AuditTrailType.Create(userId, DateTime.Now));
+            AuditTrailType.Create(userId, orderedAt));
     }
 
     public static OrderTdkModel Default => new(
@@ -141,15 +141,15 @@ public record OrderTdkModel : IOrderTdkKey
     #region BEHAVIOR
     public OrderTindakanReff ToReff() => new OrderTindakanReff(OrderTdkId, OrderTdkDate, Tarif);
 
-    public void Execute(string userId)
+    public void Execute(string userId, DateTime executedAt = default)
     {
-        AuditTrail.Modif(userId, DateTime.Now);
+        AuditTrail.Modif(userId, executedAt);
         StatusOrder = StatusOrderEnum.Executed;
     }
 
-    public void Cancel(string userId)
+    public void Cancel(string userId, DateTime cancelledAt = default)
     {
-        AuditTrail.Batal(userId, DateTime.Now);
+        AuditTrail.Batal(userId, cancelledAt);
         StatusOrder = StatusOrderEnum.Cancelled;
     }
     #endregion

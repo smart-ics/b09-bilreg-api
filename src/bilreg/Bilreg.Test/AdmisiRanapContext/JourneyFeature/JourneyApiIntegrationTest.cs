@@ -71,9 +71,9 @@ public sealed class JourneyApiIntegrationTest : IClassFixture<JourneyApiWebAppli
     {
         _factory = factory;
         _factory.Dal.Reset();
-        _factory.Dal.Setup(x => x.List(It.IsAny<JourneyListFilter>())).Returns(ListResult());
-        _factory.Dal.Setup(x => x.GetByJourneyId("opn:OPN-1")).Returns(Detail());
-        _factory.Dal.Setup(x => x.ResolveLegacyRecord("opname", "OPN-1"))
+        _factory.Dal.Setup(x => x.List(It.IsAny<JourneyListFilter>(), It.IsAny<DateTime>())).Returns(ListResult());
+        _factory.Dal.Setup(x => x.GetByJourneyId("opn:OPN-1", It.IsAny<DateTime>())).Returns(Detail());
+        _factory.Dal.Setup(x => x.ResolveLegacyRecord("opname", "OPN-1", It.IsAny<DateTime>()))
             .Returns(new JourneyLegacyResolution("opn:OPN-1", false, []));
     }
 
@@ -86,7 +86,7 @@ public sealed class JourneyApiIntegrationTest : IClassFixture<JourneyApiWebAppli
         var data = await Data(response);
         data.GetProperty("items").GetArrayLength().Should().Be(1);
         data.GetProperty("stageFacets")[0].GetProperty("stage").GetInt32().Should().Be((int)JourneyOperationalStage.RegistrationRequired);
-        _factory.Dal.Verify(x => x.List(It.Is<JourneyListFilter>(f => f.PageSize == 10 && f.Scope == JourneyListScope.Active)), Times.Once);
+        _factory.Dal.Verify(x => x.List(It.Is<JourneyListFilter>(f => f.PageSize == 10 && f.Scope == JourneyListScope.Active), It.IsAny<DateTime>()), Times.Once);
     }
 
     [Fact]
@@ -108,7 +108,7 @@ public sealed class JourneyApiIntegrationTest : IClassFixture<JourneyApiWebAppli
     {
         var response = await _factory.AuthenticatedClient().GetAsync("/api/admisi-ranap/journeys" + query);
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        _factory.Dal.Verify(x => x.List(It.IsAny<JourneyListFilter>()), Times.Never);
+        _factory.Dal.Verify(x => x.List(It.IsAny<JourneyListFilter>(), It.IsAny<DateTime>()), Times.Never);
     }
 
     [Fact]
@@ -130,7 +130,7 @@ public sealed class JourneyApiIntegrationTest : IClassFixture<JourneyApiWebAppli
         ok.StatusCode.Should().Be(HttpStatusCode.OK);
         (await Data(ok)).GetProperty("journeyId").GetString().Should().Be("opn:OPN-1");
 
-        _factory.Dal.Setup(x => x.ResolveLegacyRecord("waitinglist", "WL-1"))
+        _factory.Dal.Setup(x => x.ResolveLegacyRecord("waitinglist", "WL-1", It.IsAny<DateTime>()))
             .Returns(new JourneyLegacyResolution(null, true, [new JourneyReconciliationIssue("MULTIPLE_ACTIVE_WAITING_LISTS", "conflict", ["WL-1"])]));
         var ambiguous = await client.GetAsync("/api/admisi-ranap/journeys/resolve?recordType=waitinglist&recordId=WL-1");
         ambiguous.StatusCode.Should().Be(HttpStatusCode.Conflict);

@@ -98,7 +98,7 @@ flowchart TD
 | Black | Override manual dokter (bukan hasil scoring ATS) |
 | Bed IGD | Resource observasi/tindakan terbatas |
 | Observed / HasObserved | Pasien sedang menempati bed |
-| PakaiBed | Histori penggunaan bed (check-in/check-out) |
+| PakaiBedIgd | Histori penggunaan bed (check-in/check-out) |
 | Transfer bed (UC04b) | Pindah occupancy ke bed lain tanpa check-out administratif terpisah; satu event `TRANSFER_BED` |
 | Redirect Rawat Jalan | Pengalihan ke layanan rawat jalan |
 | Discharge | Penyelesaian pelayanan IGD |

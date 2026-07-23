@@ -35,6 +35,7 @@ public sealed partial class JourneyDal : IJourneyDal
     private readonly DatabaseOptions _opt;
     private readonly ILogger<JourneyDal> _logger;
     private readonly IRegistrationCancellationEligibilityRepo? _cancellationEligibility;
+    private DateOnly _businessDate;
 
     public JourneyListDiagnostics? LastListDiagnostics { get; private set; }
 
@@ -48,9 +49,10 @@ public sealed partial class JourneyDal : IJourneyDal
         _cancellationEligibility = cancellationEligibility;
     }
 
-    public JourneyListResult List(JourneyListFilter filter)
+    public JourneyListResult List(JourneyListFilter filter, DateTime businessNow = default)
     {
-        var asOf = DateTime.UtcNow;
+        var asOf = businessNow;
+        _businessDate = DateOnly.FromDateTime(businessNow);
         var pageSize = filter.PageSize <= 0 ? 50 : Math.Min(filter.PageSize, 200);
         var swTotal = System.Diagnostics.Stopwatch.StartNew();
         var roundTrips = 0;
@@ -147,12 +149,13 @@ public sealed partial class JourneyDal : IJourneyDal
             JourneyProjectionVersions.Release1);
     }
 
-    public JourneyDetailWorkspace? GetByJourneyId(string journeyId)
+    public JourneyDetailWorkspace? GetByJourneyId(string journeyId, DateTime businessNow = default)
     {
         if (string.IsNullOrWhiteSpace(journeyId))
             return null;
 
-        var asOf = DateTime.UtcNow;
+        var asOf = businessNow;
+        _businessDate = DateOnly.FromDateTime(businessNow);
         var sw = System.Diagnostics.Stopwatch.StartNew();
         using var conn = Open();
         var bag = LoadFactBag(conn, journeyId.Trim());
@@ -178,7 +181,7 @@ public sealed partial class JourneyDal : IJourneyDal
         return detail;
     }
 
-    public JourneyLegacyResolution? ResolveLegacyRecord(string recordType, string recordId)
+    public JourneyLegacyResolution? ResolveLegacyRecord(string recordType, string recordId, DateTime businessNow = default)
     {
         if (string.IsNullOrWhiteSpace(recordType) || string.IsNullOrWhiteSpace(recordId))
             return null;
@@ -187,10 +190,10 @@ public sealed partial class JourneyDal : IJourneyDal
         var id = recordId.Trim();
         JourneyDetailWorkspace? detail = type switch
         {
-            "opnamerequest" or "opname" or "opn" => GetByJourneyId(JourneyIdFactory.FromOpnameRequest(id)),
-            "reservation" or "rsv" => GetByJourneyId(JourneyIdFactory.FromReservation(id)),
-            "admission" or "registration" or "reg" => GetByJourneyId(JourneyIdFactory.FromRegId(id)),
-            "waitinglist" or "wl" or "wtl" => ResolveWaitingList(id),
+            "opnamerequest" or "opname" or "opn" => GetByJourneyId(JourneyIdFactory.FromOpnameRequest(id), businessNow),
+            "reservation" or "rsv" => GetByJourneyId(JourneyIdFactory.FromReservation(id), businessNow),
+            "admission" or "registration" or "reg" => GetByJourneyId(JourneyIdFactory.FromRegId(id), businessNow),
+            "waitinglist" or "wl" or "wtl" => ResolveWaitingList(id, businessNow),
             _ => null
         };
 
@@ -204,7 +207,7 @@ public sealed partial class JourneyDal : IJourneyDal
             detail.ReconciliationIssues);
     }
 
-    private JourneyDetailWorkspace? ResolveWaitingList(string waitingListId)
+    private JourneyDetailWorkspace? ResolveWaitingList(string waitingListId, DateTime businessNow)
     {
         using var conn = Open();
         var regId = conn.ExecuteScalar<string?>(new CommandDefinition(
@@ -218,7 +221,7 @@ public sealed partial class JourneyDal : IJourneyDal
 
         return string.IsNullOrWhiteSpace(regId)
             ? null
-            : GetByJourneyId(JourneyIdFactory.FromRegId(regId));
+            : GetByJourneyId(JourneyIdFactory.FromRegId(regId), businessNow);
     }
 
     /// <summary>
@@ -1149,7 +1152,7 @@ public sealed partial class JourneyDal : IJourneyDal
         return JourneyOriginKind.DirectOrLegacyAdmission;
     }
 
-    private static JourneyPatientSummary BuildPatient(
+    private JourneyPatientSummary BuildPatient(
         string pasienId,
         string? name,
         string? gender,
@@ -1160,7 +1163,7 @@ public sealed partial class JourneyDal : IJourneyDal
         if (tglLahir.HasValue && tglLahir.Value.Year > 1900 && tglLahir.Value.Year < 3000)
         {
             birth = DateOnly.FromDateTime(tglLahir.Value);
-            var today = DateOnly.FromDateTime(DateTime.Today);
+            var today = _businessDate;
             var years = today.Year - birth.Value.Year;
             if (birth.Value > today.AddYears(-years))
                 years--;

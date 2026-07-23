@@ -1,4 +1,4 @@
-﻿using Ardalis.GuardClauses;
+using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.PpaFeature;
 using Bilreg.Application.ChargeContext.TarifFeature;
 using Bilreg.Application.PasienContext.PasienFeature;
@@ -40,12 +40,14 @@ public class OkCreateOrderOpByPasienHandler :
     private readonly IPpaRepo _dokterRepo;
     private readonly IOpCaseRepo _opCaseRepo;
     private readonly ITarifRepo _tarifRepo;
+    private readonly ITglJamProvider _tglJamProvider;
 
     public OkCreateOrderOpByPasienHandler(IOrderOpRepo orderOpRepo,
         IPasienRepo pasienRepo,
         IIcd10Repo icdRepo,
         IJenisOperasiRepo jenisOperasiRepo,
-        IPpaRepo dokterRepo, IOpCaseRepo opCaseRepo, ITarifRepo tarifRepo)
+        IPpaRepo dokterRepo, IOpCaseRepo opCaseRepo, ITarifRepo tarifRepo,
+        ITglJamProvider tglJamProvider)
     {
         _orderOpRepo = orderOpRepo;
         _pasienRepo = pasienRepo;
@@ -54,11 +56,13 @@ public class OkCreateOrderOpByPasienHandler :
         _dokterRepo = dokterRepo;
         _opCaseRepo = opCaseRepo;
         _tarifRepo = tarifRepo;
+        _tglJamProvider = tglJamProvider;
     }
 
     public Task<OkCreateOrderOpByPasienResponse> Handle(
         OkCreateOrderOpByPasienCmd request, CancellationToken cancellationToken)
     {
+        var occurredAt = _tglJamProvider.Now;
         //  GUARD
         Guard.Against.NullOrEmpty(request.PasienId);
         Guard.Against.NullOrEmpty(request.DiagCode);
@@ -68,7 +72,7 @@ public class OkCreateOrderOpByPasienHandler :
 
         if (!request.IsForceCreate)
         {
-            var existing = FindExistingOrder(request.PasienId);
+            var existing = FindExistingOrder(request.PasienId, occurredAt);
             if (existing is not null)
                 return Task.FromResult(RespondDuplicated(request, existing));
         }
@@ -79,8 +83,8 @@ public class OkCreateOrderOpByPasienHandler :
         var jenisOperasi = LoadJenisOperasi(request.JenisOperasiId);
         var dokter = LoadDokter(request.DokterDpjpId);
         var tarif = LoadTarif(request.TarifId);
-        var orderOp = CreateOrder(pasien, icd, jenisOperasi, dokter, tarif, request);
-        var opCase = OpCaseModel.Create(orderOp);
+        var orderOp = CreateOrder(pasien, icd, jenisOperasi, dokter, tarif, request, occurredAt);
+        var opCase = OpCaseModel.Create(orderOp, occurredAt);
 
         //  WRITE
         using var trans = TransHelper.NewScope();
@@ -111,9 +115,9 @@ public class OkCreateOrderOpByPasienHandler :
         _tarifRepo.LoadEntity(TarifType.Key(id))
             .GetValueOrThrow("Tarif ID invalid");
 
-    private OrderOpView? FindExistingOrder(string pasienId)
+    private OrderOpView? FindExistingOrder(string pasienId, DateTime occurredAt)
     {
-        var list = _orderOpRepo.ListData(new Periode(DateTime.Now));
+        var list = _orderOpRepo.ListData(new Periode(occurredAt));
         return list.FirstOrDefault(x => x.PasienId == pasienId);
     }
 
@@ -124,16 +128,18 @@ public class OkCreateOrderOpByPasienHandler :
         JenisOperasiType jenisOp,
         PpaType dokter,
         TarifType tarif,
-        OkCreateOrderOpByPasienCmd req)
+        OkCreateOrderOpByPasienCmd req,
+        DateTime occurredAt)
     {
-        var orderOp = OrderOpModel.CreateByPasien(pasien, req.UserId);
+        var orderOp = OrderOpModel.CreateByPasien(pasien, req.UserId, occurredAt);
 
         orderOp.SetKlinis(icd, jenisOp, req.NamaOperasi);
         orderOp.OperationalRequest(
             dokter,
             req.EstimasiDurasiInMinutes,
             req.PreferedDate.ToDate(DateFormatEnum.YMD),
-            req.SpecialEquipment);
+            req.SpecialEquipment,
+            occurredAt);
         orderOp.SetTarif(tarif);
 
         return orderOp;
