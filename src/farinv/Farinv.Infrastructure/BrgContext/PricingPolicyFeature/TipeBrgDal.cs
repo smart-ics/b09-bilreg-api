@@ -1,6 +1,6 @@
 ﻿using Dapper;
 using Farinv.Domain.BrgContext.PricingPolicyFeature;
-using Farinv.Infrastructure.Helpers;
+using Bilreg.Infrastructure.Shared.Helpers;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
 using System.Data;

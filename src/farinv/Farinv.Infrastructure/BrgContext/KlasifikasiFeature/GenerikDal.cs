@@ -2,7 +2,7 @@ using System.Data;
 using System.Data.SqlClient;
 using Dapper;
 using Farinv.Domain.BrgContext.KlasifikasiFeature;
-using Farinv.Infrastructure.Helpers;
+using Bilreg.Infrastructure.Shared.Helpers;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
 

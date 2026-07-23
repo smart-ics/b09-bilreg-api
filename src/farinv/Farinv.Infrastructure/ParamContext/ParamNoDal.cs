@@ -1,7 +1,7 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
 using Dapper;
-using Farinv.Infrastructure.Helpers;
+using Bilreg.Infrastructure.Shared.Helpers;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.AutoNumberHelper;
