@@ -42,6 +42,18 @@ public class AdmissionQueueApiContractTest
     public void CompatibilityGate_DefaultsEnabled()=>new AdmissionQueueApiOptions().LegacyEndpointsEnabled.Should().BeTrue();
 
     [Fact]
+    public void SignalRRefresh_DefaultsEnabled()=>new AdmissionQueueApiOptions().SignalRRefreshEnabled.Should().BeTrue();
+
+    [Fact]
+    public void RefreshHub_IsAuthorizedAndExposesStablePath()
+    {
+        typeof(Bilreg.Api.SignalR.AdmissionQueueRefreshHub)
+            .GetCustomAttributes(typeof(AuthorizeAttribute),true).Should().NotBeEmpty();
+        Bilreg.Api.SignalR.AdmissionQueueRefreshContracts.HubPath.Should().Be("/hubs/admission-queue");
+        Bilreg.Api.SignalR.AdmissionQueueRefreshContracts.RefreshHintEvent.Should().Be("RefreshHint");
+    }
+
+    [Fact]
     public async Task V1LoketMutation_RejectsPayloadThatDoesNotMatchWorkstationContext()
     {
         var sut=new AdmissionQueueV1Controller(Mock.Of<IMediator>());

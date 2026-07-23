@@ -3,6 +3,10 @@ public sealed class AdmissionQueueApiOptions
 {
     public const string SectionName="AdmissionQueueApi";
     public bool LegacyEndpointsEnabled{get;set;}=true;
+    /// <summary>
+    /// When false, binds the no-op refresh publisher. Queue write truth is unchanged.
+    /// </summary>
+    public bool SignalRRefreshEnabled{get;set;}=true;
     public List<AdmissionQueueWorkstationOptions> Workstations{get;set;}=[];
 }
 

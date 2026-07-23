@@ -1,10 +1,12 @@
-﻿using Bilreg.Application;
+﻿using Bilreg.Api.SignalR;
+using Bilreg.Application;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature.UseCases;
 using Bilreg.Application.IgdContext.IgdVisitFeature.TriageEngine;
 using Bilreg.Application.PaymentContext.PasienBalanceFeature;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
+using Microsoft.Extensions.Options;
 using Nuna.Lib.AutoNumberHelper;
 using Nuna.Lib.CleanArchHelper;
 using Scrutor;
@@ -31,7 +33,13 @@ public static class ApplicationService
             .AddScoped<PasienBalanceBootstrapService>()
             .AddScoped<IPasienBalanceLoader, PasienBalanceLoader>()
             .AddScoped<IJourneyCandidateFinder, JourneyCandidateFinder>();
-        services.AddScoped<IAdmissionQueueRefreshPublisher, NullAdmissionQueueRefreshPublisher>();
+        services.AddScoped<IAdmissionQueueRefreshPublisher>(sp =>
+        {
+            var options = sp.GetRequiredService<IOptions<AdmissionQueueApiOptions>>().Value;
+            if (!options.SignalRRefreshEnabled)
+                return new NullAdmissionQueueRefreshPublisher();
+            return ActivatorUtilities.CreateInstance<SignalRAdmissionQueueRefreshPublisher>(sp);
+        });
         services.AddScoped<IRegistrationOutcomeReasonCatalog, PassThroughRegistrationOutcomeReasonCatalog>();
 
         services

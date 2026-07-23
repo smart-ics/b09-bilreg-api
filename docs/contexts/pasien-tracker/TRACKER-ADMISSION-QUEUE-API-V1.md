@@ -149,10 +149,24 @@ assistance uses the ensure route above and business deduplication by BookingId.
 
 ## Display recovery
 
-Persisted snapshots are authoritative. A future SignalR message is only a reload hint. The client
+Persisted snapshots are authoritative. SignalR delivers a best-effort reload hint only. The client
 must reload after a hint and reconnect, poll at its configured interval, and play audio only when the
 reloaded AnnouncementVersion is greater than its last processed version. No Bilreg display frontend
 was found to migrate in the available source tree.
+
+### SignalR refresh-hint contract (Phase 4)
+
+| Item | Value |
+|------|-------|
+| Hub path | `/hubs/admission-queue` |
+| Client event | `RefreshHint` |
+| Payload | `{ "loketKey": string \| null }` — hint only; no display fields and no AnnouncementVersion |
+| Scope | Broadcast to all connected clients (`Clients.All`); displays filter by `loketKey` |
+| Authentication | Same JWT `[Authorize]` boundary as v1 REST (including `GET displays/current`). WebSocket/SSE clients may pass the token as `?access_token=` on the hub negotiate/connect URL. No Display-specific role is introduced (R-02 deferred). |
+| Disable | `AdmissionQueueApi:SignalRRefreshEnabled` (default `true`). When `false`, DI binds the no-op publisher; queue write truth is unchanged. |
+| Failure | Transport failures are logged and swallowed after commit; polling recovers. |
+
+Do not treat SignalR messages as write authority. AnnouncementVersion semantics remain owned by claim/display persistence. Taksaka `/hubs/operations` is unrelated and must not be reused.
 
 ## Legacy compatibility
 

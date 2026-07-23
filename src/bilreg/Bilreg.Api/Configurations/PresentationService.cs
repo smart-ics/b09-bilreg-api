@@ -1,6 +1,7 @@
 ﻿using System.Text;
 using Bilreg.Api.Authorization;
 using Bilreg.Api.Filters;
+using Bilreg.Api.SignalR;
 using Bilreg.Application.Shared;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -86,6 +87,17 @@ public static class PresentationService
 
             options.Events = new JwtBearerEvents
             {
+                OnMessageReceived = context =>
+                {
+                    var accessToken = context.Request.Query["access_token"];
+                    var path = context.HttpContext.Request.Path;
+                    if (!string.IsNullOrEmpty(accessToken) &&
+                        path.StartsWithSegments(AdmissionQueueRefreshContracts.HubPath))
+                    {
+                        context.Token = accessToken;
+                    }
+                    return Task.CompletedTask;
+                },
                 OnAuthenticationFailed = context =>
                 {
                     CreateAuthLogger(context.HttpContext).LogWarning(
@@ -126,6 +138,7 @@ public static class PresentationService
         });
 
         services.AddAuthorization();
+        services.AddSignalR();
         services.AddScoped<ICurrentUserContext, HttpCurrentUserContext>();
         services.AddScoped<AdmisiRanapEnabledFilter>();
         services.AddScoped<JourneyEndpointsEnabledFilter>();
