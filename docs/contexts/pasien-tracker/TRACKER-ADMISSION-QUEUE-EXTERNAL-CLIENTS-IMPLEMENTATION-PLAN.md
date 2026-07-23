@@ -1,9 +1,20 @@
 # Patient Tracker — Admission Queue External Clients Implementation Plan
 
-**Status:** Planning only — this document does not authorize feature implementation.  
+**Status:** Authoritative external-client plan (living document).  
 **Scope:** Officer Client, Kiosk Client, and Queue Display Client that consume Bilreg Admission Queue v1.  
 **Relationship:** Part 2 of Admission Queue delivery. Part 1 (backend) is [TRACKER-ADMISSION-QUEUE-IMPLEMENTATION-PLAN.md](./TRACKER-ADMISSION-QUEUE-IMPLEMENTATION-PLAN.md).  
-**Evidence date:** 2026-07-23
+**Architecture addendum (C2/C3):** [kiosk-queue-display-web.md](./kiosk-queue-display-web.md)  
+**Evidence / revision date:** 2026-07-23 (C3 closed)
+
+**Roadmap status**
+
+| Phase | Status |
+|-------|--------|
+| **C0** Shared client foundations (Officer / `c012`) | ✅ Completed — baseline |
+| **C1** Officer Client | ✅ Completed — baseline; do not redesign |
+| **C2** Kiosk Client | ✅ Completed — monorepo path boot, intake, print ([report](./tracker-c2-kiosk-implementation-report.md)) |
+| **C3** Queue Display Client | ✅ Completed — snapshot-first, SignalR, TTS, version reload ([report](./tracker-c3-queue-display-implementation-report.md)) |
+| **C4** Integration & Deployment | ⏳ Next |
 
 **Primary references**
 
@@ -15,486 +26,560 @@
 | [TRACKER-ADMISSION-QUEUE-SOP.md](./TRACKER-ADMISSION-QUEUE-SOP.md) | Target operational procedure |
 | [TRACKER-ADMISSION-QUEUE-API-V1.md](./TRACKER-ADMISSION-QUEUE-API-V1.md) | Versioned REST / SignalR / error contract |
 | [TRACKER-ADMISSION-QUEUE-RUNBOOK.md](./TRACKER-ADMISSION-QUEUE-RUNBOOK.md) | Workstation mapping, seed, smoke |
-| Code under `c012_myhospital_web` (Admisi) and `Bilreg.Api` Admission Queue v1 | Executable client and API evidence |
+| [kiosk-queue-display-web.md](./kiosk-queue-display-web.md) | Path-based IIS deploy + monorepo strategy for kiosk/display |
+| Code under `c012_myhospital_web` (Admisi) and `Bilreg.Api` Admission Queue v1 | Executable Officer baseline and API evidence |
 
-**Out of scope of this plan:** Backend authority redesign, R-02 claims-derived actor, R-05B Kiosk transport idempotency, R-14 automations, HiDok Self-Registration decision ownership, production SignalR scale-out.
+**Out of scope of this plan:** Backend authority redesign, R-02 claims-derived actor, R-05B Kiosk transport idempotency, R-14 automations, HiDok Self-Registration decision ownership, production SignalR scale-out, redesign of completed C0/C1 Officer work.
 
 ---
 
-## 1. Executive summary
+## Migration summary (this revision)
 
-Backend Admission Queue Pragmatic V1 is present and client-consumable: v1 REST under `/api/v1/admission-queue`, Admisi-composed `GET /api/v1/admisi-rajal/officer-worklist`, journey APIs on `/api/PasienTracker`, SignalR hub `/hubs/admission-queue` (`RefreshHint`), and workstation header validation. No Officer, Kiosk, or Queue Display client consumes these contracts today.
+> **Changed sections are marked `[CHANGED]`.** Completed C0/C1 content is marked `[BASELINE — DO NOT REDESIGN]`.
 
-Recommended platforms (they need **not** share one technology):
+| Change | Why |
+|--------|-----|
+| Mark C0 and C1 ✅ completed | Officer foundations and Officer Client are implemented in `c012`; they are the baseline |
+| Replace dual-repo / `c013`+`c014` placement with **monorepo** `apps/*` + `packages/*` | [kiosk-queue-display-web.md](./kiosk-queue-display-web.md) §2 — shared API/SignalR/types must not diverge |
+| Replace per-app URL/query config with **path-based routing** `/kiosk/{stationId}`, `/display/{screenId}` | Same doc §1 — on-prem IIS without SSL; one site; clean kiosk shortcuts |
+| Replace “separate IIS apps `/AdmissionKiosk/`” with **single IIS site**, folders `kiosk/` + `display/`, SPA `web.config` rewrite | Same doc §1 |
+| Add device-config boot resolution and `version.json` auto-refresh | Same doc §4.1 / §4.6 / §2.5 |
+| Keep Officer in `c012`; monorepo covers **only** Kiosk + Display | Officer auth/lifecycle differs; C1 must not move |
+| Revise backend contract review for device config vs existing AQ snapshot/hub | Map new frontend needs to existing Bilreg surfaces; flag only technical gaps — no new business capabilities |
+| First slice becomes **C2.0** (monorepo scaffold + kiosk path routing), not C1.0 | C1.0 already shipped |
 
-| Client | Recommended platform | One-line rationale |
-|--------|----------------------|--------------------|
-| **Officer** | **Web — Vue 3 in `c012_myhospital_web`** | Replaces the existing Admisi Rajal worklist inside the Registration workspace; reuses auth, form, print, and Bilreg API patterns |
-| **Kiosk** | **Web (Vite) + local print proxy**; optional thin WebView2/WPF shell later | Bilreg is JWT/REST; silent thermal print already exists via c012 local proxy; legacy `X1\kiosk_wpf` is SQL-direct .NET 4.6.1 and not a fit to port |
-| **Queue Display** | **Web (Vite fullscreen)** | Passive snapshot + SignalR hint + polling; Taksaka.Web already proves Vue+SignalR; lobby TVs run browsers; no Bilreg WPF display exists |
+---
 
-**First implementation slice:** Officer Client worklist replacement + Call / Recall / Start Service / 409 refresh inside `RegistrasiRajal`, against composed officer-worklist and workstation headers — before Kiosk or Display packaging.
+## 1. Executive summary `[CHANGED]`
+
+Backend Admission Queue Pragmatic V1 remains client-consumable: v1 REST under `/api/v1/admission-queue`, Admisi-composed `GET /api/v1/admisi-rajal/officer-worklist`, journey APIs on `/api/PasienTracker`, SignalR hub `/hubs/admission-queue` (`RefreshHint { loketKey }`), and workstation header validation.
+
+**Officer Client is done** in `c012_myhospital_web` (Admission Queue worklist, Loket headers, Call / Recall / Start Service, feature-flag legacy sidebar). Do not redesign it.
+
+**Kiosk** and **Queue Display** are done in the monorepo (`apps/kiosk-web`, `apps/display-web`), deployed under one IIS site with path-based station/screen IDs, shared packages for API/SignalR/types/device-config, and snapshot-first display authority.
+
+Remaining delivery is **C4** cross-client E2E, IIS packaging, and runbook client sections.
+
+| Client | Platform | Placement | Status |
+|--------|----------|-----------|--------|
+| **Officer** | Vue 3 in `c012_myhospital_web` | Admisi `RegistrasiRajal` + `admissionQueue/*` | ✅ Baseline |
+| **Kiosk** | Vue 3 Vite (`kiosk-web`) + local print proxy | Monorepo `apps/kiosk-web`; IIS `/kiosk/{stationId}` | ✅ C2 |
+| **Queue Display** | Vue 3 Vite (`display-web`) fullscreen | Monorepo `apps/display-web`; IIS `/display/{screenId}` | ✅ C3 |
+
+**Next implementation slice:** C4 — cross-client E2E, IIS cutover checklist, runbook client sections.
 
 ---
 
 ## 2. Codebase investigation findings
 
-### 2.1 Repositories in scope
+### 2.1 Repositories in scope `[CHANGED]`
 
 | Location | Finding |
 |----------|---------|
-| `MyHospitalWeb/b09-bilreg-api` | Backend + docs; SignalR hub implemented; no desktop clients |
-| `MyHospitalWeb/c012_myhospital_web` | Vue 3 HIS frontend; Admisi Rawat Jalan officer workspace exists |
-| `Project.Aktif/X1/kiosk_wpf` | Legacy WPF kiosk (.NET 4.6.1, SQL direct, BarTender) — UX/print patterns only |
-| `Project.Aktif/X1/antres_display*`, `X1/queue/*` | Legacy VB6 lobby display + sound — do not port to Bilreg |
-| `Project.Aktif/_Published/A025_DisplayAntrian_SmartTV` | Android TV display reference — optional later TV track |
-| `b09-bilreg-api/src/taksaka.frontend/Taksaka.Web` | Vue + `@microsoft/signalr` ops console — **pattern only**; hub is `/hubs/operations`, unrelated |
+| `MyHospitalWeb/b09-bilreg-api` | Backend + docs; SignalR hub `/hubs/admission-queue` implemented |
+| `MyHospitalWeb/c012_myhospital_web` | **Officer baseline (C0/C1)** — do not move into monorepo |
+| **New monorepo** (working name `myhospitalweb-frontend` or under `MyHospitalWeb/`) | **C2/C3 home** — `apps/kiosk-web`, `apps/display-web`, `packages/*` per [kiosk-queue-display-web.md](./kiosk-queue-display-web.md) |
+| `Project.Aktif/X1/kiosk_wpf` | Legacy WPF — UX/print patterns only |
+| `Project.Aktif/X1/antres_display*`, `X1/queue/*` | Legacy VB6 — do not port |
+| `Project.Aktif/_Published/A025_DisplayAntrian_SmartTV` | Optional later Android TV track |
+| `b09-bilreg-api/src/taksaka.frontend/Taksaka.Web` | SignalR reconnect **pattern** only (`/hubs/operations` unrelated) |
 
-### 2.2 Officer surface today (`c012`)
+### 2.2 Officer baseline (`c012`) — `[BASELINE — DO NOT REDESIGN]`
 
-| Asset | Path | Verdict |
-|-------|------|---------|
-| Registrasi Rajal workspace | `src/modules/Admisi/views/RegistrasiRajal.vue` | **Keep shell**; replace left worklist + selection workflow |
-| Sidebar worklist | `SidebarAntrianPasien.vue` + `useRegistrasiPasien.ts` | **Replace** — today reads `GET Antrian/pasien/{tgl}` (BOK/REG/IGD), not Admission Queue |
-| Registration form stack | `useRegistrasiForm`, `useRegistrasiLayanan`, `useRegistrasiJaminan`, `useRegistrasiActions`, BillingBase forms | **Preserve** |
-| Registrasi API hooks | `queries/RegistrasiService.ts` | **Preserve** for walk-in / booking registration mutations |
-| Admission Queue API client | — | **Missing** |
-| Workstation / Loket headers | — | **Missing** in `global_config` and ApiService |
-| PasienTracker journey client | — | **Missing** (Ranap journey UI is a different pipeline) |
-| SignalR | `@microsoft/signalr` in package.json | **Installed, unused** in `src/` |
-| Print | `PrintService.ts`, `antrian_registrasi.html`, localProxy | **Reusable** for registration tickets; Kiosk needs a dedicated queue-label template |
+Implemented (evidence):
+
+| Asset | Path / note |
+|-------|-------------|
+| Zod DTOs + worklist/display shapes | `src/modules/Admisi/types/admissionQueue.ts` |
+| AQ error helpers (`AQ_*`, 409) | `src/core/api/admissionQueueErrors.ts` |
+| Workstation config + Loket mutation headers | `src/core/types/admissionQueueConfig.ts`, `global_config` `admissionQueue` |
+| Query keys | `src/core/api/queryConfigs.ts` → `admissionQueue.*` |
+| API service | `src/modules/Admisi/queries/AdmissionQueueService.ts` — officer-worklist, service-points, displays/current, call/recall/start-service |
+| Action rules + composable | `admissionQueueActionRules.ts`, `useOfficerAdmissionQueue.ts` |
+| UI | `OfficerAdmissionQueueSidebar`, `OfficerWorklistItemCard`, `AdmissionQueueActionBar` |
+| Feature flag | `admissionQueue.enabled` / `useLegacySidebarFallback` |
+
+Historical “missing API client / workstation headers” findings from the original plan are **closed for Officer**. Kiosk/Display still need their own clients in the monorepo (they must not import the full HIS app).
 
 ### 2.3 Backend contracts available to clients
 
 | Surface | Status |
 |---------|--------|
 | `GET/POST /api/v1/admission-queue/*` | Implemented |
-| `GET /api/v1/admisi-rajal/officer-worklist` | Implemented — queue truth + nullable Identity/Booking/Registration |
-| `GET/POST /api/PasienTracker/...` (candidates, resolve/select) | Implemented — requires anonymous **InService** entry for select |
-| SignalR `/hubs/admission-queue` → `RefreshHint { loketKey }` | Implemented; disable via `SignalRRefreshEnabled` |
-| Loket mutations: `X-Loket-Key` + `X-Workstation-Key` | Implemented; default `Workstations: []` must be provisioned |
-| ReasonCode catalog | Pass-through non-blank only — **no approved Ops list** |
-| Role policies Officer/Kiosk/Display | **Deferred (R-02)** — any JWT may hit routes |
-| Kiosk `ClientRequestId` | **Deferred (R-05B)** — intake non-idempotent |
+| `GET /api/v1/admisi-rajal/officer-worklist` | Implemented — used by C1 |
+| `GET/POST /api/PasienTracker/...` | Implemented |
+| SignalR `/hubs/admission-queue` → `RefreshHint { loketKey }` | Implemented |
+| `GET .../displays/current` (+ optional `loketKey`) with `AnnouncementVersion` on snapshot | Implemented — **display recovery truth** |
+| Loket mutations: `X-Loket-Key` + `X-Workstation-Key` | Implemented (Officer) |
+| Device config by station/screen ID | **Not implemented** — technical gap for C2/C3 boot (see §8) |
+| ReasonCode catalog | Pass-through non-blank — Ops list still external |
+| Role policies Officer/Kiosk/Display | Deferred (R-02) |
+| Kiosk `ClientRequestId` | Deferred (R-05B) |
 
 ### 2.4 Naming collision to avoid
 
-“Antrian” in the frontend today means (a) Admisi BOK/REG/IGD worklist, (b) Outpatient poli waiting list, (c) pharmacy mock loket. New Admission Queue UI language must use **Queue Label / Service Point / Loket / Call** from the domain docs, not overload `SidebarAntrianPasien` semantics.
+“Antrian” in HIS still means multiple things. Kiosk/Display UI language must use **Queue Label / Service Point / Loket / Call / AnnouncementVersion** from the domain docs. Monorepo `shared-types` names should align with API-V1 field names (`queueLabel`, `loketKey`, `announcementVersion`), not invent parallel domain vocabulary.
 
 ---
 
 ## 3. Platform recommendations
 
-### 3.1 Officer Client → Web (Vue 3 in `c012_myhospital_web`)
+### 3.1 Officer Client → Web (Vue 3 in `c012`) — `[BASELINE — DO NOT REDESIGN]`
 
-**Rationale**
+Completed. Remains in HIS for officer auth, registration form, and Admisi module navigation. Not part of the kiosk/display monorepo.
 
-- Officers already authenticate and work in Admisi `registrasi_rajal`.
-- Domain and SOP define the Admission Module as the place that composes queue actions with Registration Assistance.
-- Existing form, jaminan, print, and Bilreg TanStack Query patterns are the highest-value reuse.
-- No WPF officer admission app exists for Bilreg v1.
+### 3.2 Kiosk Client → Web + local print proxy + path-based IIS — `[CHANGED]`
 
-**Reject:** Separate WPF officer client; pharmacy loket mock; Outpatient poli `AntrianService`.
+**Decision (unchanged platform, changed deploy/repo):** Vue 3 Vite kiosk app + local print proxy (`localhost:5050` / `5800`). No WPF port for V1.
 
-### 3.2 Kiosk Client → Web + local print proxy (preferred)
+**New architecture decisions (authoritative for C2):**
 
-**Rationale**
+| Area | Decision |
+|------|----------|
+| Routing | `/kiosk/{stationId}` — station ID from `pathname`, not query string |
+| Deploy | Single IIS site; physical folder `wwwroot/kiosk/`; SPA fallback `web.config` |
+| Identity | `stationId` → device config at boot; offerings from config ∩ active Service Points |
+| Repo | Monorepo `apps/kiosk-web` + shared packages |
+| Versioning | App `version.json` for idle auto-refresh; Changesets for shared packages |
+| Print | Unchanged local proxy — out of backend scope |
 
-| Criterion | Web + proxy | New WPF | Legacy `kiosk_wpf` port |
-|-----------|-------------|---------|-------------------------|
-| API fit | JWT REST matches Bilreg | Possible | SQL-direct — wrong authority |
-| Print | Existing local proxy contract in c012 (`localhost:5050/5800`) | Native `PrintDocument` | BarTender/GDI — hospital-specific |
-| Maintainability | Same Vue/TS stack as HIS | Second stack | .NET 4.6.1 dead-end |
-| Recovery / retry UX | Easy to ship pending-button + deliberate retry | Same | Would need rewrite anyway |
-| Kiosk lockdown | Browser kiosk mode or later WebView2 shell | Strong | Already has chrome patterns |
-| Reusable code | PrintService patterns, templates, auth login | None in MyHospitalWeb | UX only |
+**Reject:** Client-side queue allocation; subdomain-per-device; polyrepo split of kiosk vs display; SQL-direct legacy `kiosk_wpf` as product.
 
-**Decision:** Build a **dedicated lightweight Vite web app** (not embedded in the officer workspace chrome). Add a thin **WebView2/WPF host later only if** silent USB print or OS kiosk lockdown fails with browser + proxy.
+### 3.3 Queue Display Client → Web fullscreen + path-based IIS — `[CHANGED]`
 
-**Reject:** Client-side queue allocation; porting VB6 `kiosk_reg_ticketing` or SQL-direct `kiosk_wpf` as the product.
+**Decision:** Vue 3 Vite fullscreen display. Android TV deferred.
 
-### 3.3 Queue Display Client → Web fullscreen (preferred)
+**Authority rule (non-negotiable):** Persisted snapshot GET is recovery truth. SignalR `RefreshHint` only triggers reload. Audio plays only when reloaded snapshot `AnnouncementVersion` increases.
 
-**Rationale**
+**New architecture decisions (authoritative for C3):**
 
-| Criterion | Web fullscreen | WPF | Android A025 |
-|-----------|----------------|-----|--------------|
-| Authority model | Snapshot GET + SignalR hint + poll | Same APIs | Same APIs |
-| Reconnect / stale recovery | Browser + SignalR reconnect + poll | Possible | Possible |
-| Audio | Web Speech / pre-recorded clips keyed by `AnnouncementVersion` | MediaElement | MediaPlayer (proven) |
-| Maintainability | Vue + existing SignalR package | New stack | Separate mobile CD |
-| Deployment | Chrome/Edge kiosk on lobby PC/TV stick | ClickOnce-style | APK |
-| Existing Bilreg UI | None — greenfield | None | Closest TV UX reference |
-
-**Decision:** Dedicated Vite **Display** web app, fullscreen. Treat Android TV as a **later optional track** if hospital TVs are already Android-only. Do not start a WPF display for V1.
-
-**Authority rule (non-negotiable):** Persisted `GET .../displays/current` is recovery truth. SignalR `RefreshHint` only triggers reload. Audio plays only when reloaded `AnnouncementVersion` increases.
+| Area | Decision |
+|------|----------|
+| Routing | `/display/{screenId}` |
+| Deploy | Same IIS site; folder `wwwroot/display/`; SPA `web.config` |
+| Boot | `screenId` → device config (`loketIds`, display options) |
+| Live updates | SignalR reconnect + backoff in `packages/signalr-client`; always snapshot-first on reconnect |
+| Poll | Periodic snapshot even when SignalR healthy |
+| Auto-refresh | Poll app `version.json`; soft reload when idle if version changed |
+| Repo | Monorepo `apps/display-web` |
 
 ---
 
-## 4. Architecture and repository / project placement
+## 4. Architecture and repository / project placement `[CHANGED]`
 
 ```mermaid
 flowchart LR
-  subgraph clients [External clients]
+  subgraph his [HIS — completed]
     OFF[Officer Web<br/>c012 Admisi]
-    KIO[Kiosk Web<br/>new Vite app]
-    DSP[Display Web<br/>new Vite app]
-    PROXY[Local print proxy]
   end
+
+  subgraph mono [Monorepo — C2/C3]
+    KIO[apps/kiosk-web]
+    DSP[apps/display-web]
+    PKG[packages:<br/>api-client / signalr-client<br/>shared-types / device-config<br/>ui-kit?]
+  end
+
+  PROXY[Local print proxy]
+  IIS[IIS single site<br/>/kiosk/{stationId}<br/>/display/{screenId}]
 
   subgraph bilreg [b09-bilreg-api]
     AQ["/api/v1/admission-queue"]
     OW["/api/v1/admisi-rajal/officer-worklist"]
     PT["/api/PasienTracker"]
     HUB["/hubs/admission-queue"]
+    DEV["device config<br/>technical contract — see §8"]
   end
 
   OFF --> AQ
   OFF --> OW
   OFF --> PT
+  KIO --> PKG
+  DSP --> PKG
   KIO --> AQ
+  KIO --> DEV
   KIO --> PROXY
   DSP --> AQ
+  DSP --> DEV
   DSP --> HUB
+  IIS --> KIO
+  IIS --> DSP
 ```
 
-### 4.1 Placement decisions
+### 4.1 Placement decisions `[CHANGED]`
 
 | Client | Repository | Project / path |
 |--------|------------|----------------|
-| Officer | `c012_myhospital_web` | Replace worklist inside `src/modules/Admisi/views/RegistrasiRajal.vue`; new `queries/AdmissionQueueService.ts`, `components/admissionQueue/*`, composables, types |
-| Kiosk | **New** repo or folder under `MyHospitalWeb`, e.g. `c013_admission_kiosk` (recommended) | Minimal Vite + Vue 3 app; depends only on Bilreg JWT + print proxy |
-| Display | **New** sibling, e.g. `c014_admission_display` (recommended) | Minimal Vite + Vue 3 + SignalR; no officer chrome |
-| Shared types (optional later) | Publish OpenAPI/Zod from API-V1, or thin shared npm package | Do **not** couple Kiosk/Display to full HIS `c012` |
+| Officer | `c012_myhospital_web` (**baseline**) | Existing `Admisi` admission-queue modules — **frozen architecture** |
+| Kiosk + Display | **Monorepo** (name TBD; structure fixed) | See §4.1.1 |
+| Shared (kiosk/display only) | Same monorepo `packages/*` | Do **not** couple to full HIS `c012` |
 
-**Why not put Kiosk/Display inside `c012` tabs:** Different auth lifecycle (long-lived device JWT vs officer session), fullscreen/kiosk chrome, and independent IIS applications. Officer stays in HIS; devices stay lean.
+#### 4.1.1 Monorepo structure (authoritative)
 
-**Why not put clients inside `b09-bilreg-api`:** Backend plan and architecture treat clients as external; Bilreg solutions are API-only.
+```text
+myhospitalweb-frontend/          # name TBD; may live under MyHospitalWeb/
+├── apps/
+│   ├── kiosk-web/
+│   │   ├── src/
+│   │   ├── web.config
+│   │   └── vite.config.ts
+│   └── display-web/
+│       ├── src/
+│       ├── web.config
+│       └── vite.config.ts
+├── packages/
+│   ├── api-client/        # JWT REST fetch + AQ route helpers
+│   ├── signalr-client/    # reconnect, backoff, RefreshHint → snapshot reload
+│   ├── shared-types/      # API-V1-aligned DTOs (Queue Label, Loket, AnnouncementVersion, DeviceConfig)
+│   ├── device-config/     # parse station/screen ID from path + fetch device config
+│   └── ui-kit/            # optional — only genuinely shared Vue UI
+├── package.json
+├── pnpm-workspace.yaml
+└── turbo.json             # optional build cache
+```
 
-### 4.2 Client-layer architecture (all three)
+Tooling: **pnpm workspaces** + **Turborepo** (optional) + **Changesets** for `packages/*`. App git tags: `kiosk-web@x.y.z`, `display-web@x.y.z`. CI path filters: app-only changes build that app; `packages/**` changes build+test **both** apps.
 
-1. **Transport adapters only** — Zod-validated REST via existing `ApiService`/`queryFactory` patterns (Officer) or a small fetch client (Kiosk/Display).
-2. **No second queue ledger** — Officer UI state is selection + mutation in-flight; membership and queue fields come from `officer-worklist` / worklist responses.
-3. **Workstation identity** — Officer and trusted edge supply Loket; Kiosk does not send Loket headers on intake.
-4. **Presentation state only** — Display keeps `lastAnnouncementVersion` and connection status; never invents Call/Recall.
+**Obsolete (removed):** separate repos `c013_admission_kiosk` / `c014_admission_display`; “shared types optional later via published npm only”; subdomain-per-device.
+
+### 4.2 Client-layer architecture
+
+**Officer (baseline):** Transport via `ApiService` / TanStack Query; no second queue ledger; workstation headers on Loket mutations; polling for worklist.
+
+**Kiosk / Display (C2/C3):**
+
+1. **Path identity** — `stationId` / `screenId` from Vue Router param bound to `/kiosk/:stationId` or `/display/:screenId`.
+2. **Device config first** — boot blocks on config resolution; then render main UI.
+3. **Transport** — `packages/api-client` against Bilreg AQ v1; JSend + `AQ_*` errors.
+4. **No second queue ledger / no client allocation.**
+5. **Display presentation state only** — `lastAnnouncementVersion`, connection status; never Call/Recall.
+6. **SignalR is hint-only** — hub path remains Bilreg `/hubs/admission-queue` (see §8); wrapper lives in `packages/signalr-client`.
+
+### 4.3 IIS physical layout `[CHANGED]`
+
+```text
+C:\inetpub\wwwroot\
+├── kiosk\           ← kiosk-web dist/
+│   ├── index.html
+│   ├── version.json
+│   ├── assets\
+│   └── web.config   ← SPA rewrite → /kiosk/index.html
+└── display\         ← display-web dist/
+    ├── index.html
+    ├── version.json
+    ├── assets\
+    └── web.config
+```
+
+Examples:
+
+```text
+http://<host-or-ip>/kiosk/loket-03
+http://<host-or-ip>/display/lobby-poli-1
+```
+
+Chrome kiosk shortcut:
+
+```text
+chrome.exe --kiosk --edge-kiosk-type=fullscreen http://192.168.10.5/kiosk/loket-03
+```
+
+Adding a device = new shortcut with a new path ID (no rebuild), provided device config exists for that ID.
+
+**On-prem without TLS:** network must be segmented; JWT/SignalR travel over HTTP. `index.html` / `version.json` → `Cache-Control: no-cache`; hashed Vite assets may use long `max-age`.
 
 ---
 
 ## 5. Reuse versus replace decisions
 
-### 5.1 Officer Client
+### 5.1 Officer Client — `[BASELINE — DO NOT REDESIGN]`
 
-| Decision | Asset | Action |
-|----------|-------|--------|
-| **Replace** | `SidebarAntrianPasien` BOK/REG/IGD workflow as the primary Admisi Rajal worklist | New Admission Queue worklist (Queue Label, Service Point, Priority, call state, enrichment) |
-| **Replace** | `useRegistrasiPasien` data source (`Antrian/pasien/{tgl}`) for active assistance | `GET /api/v1/admisi-rajal/officer-worklist` |
-| **Preserve** | Registration form, layanan/jaminan composables, submit actions | Wire after **Start Service** (+ journey resolve when Booking path) |
-| **Preserve** | Auth store, bilreg Bearer interceptor, roles tabs | Extend interceptor for workstation headers on AQ mutations |
-| **Preserve** | Print preview for registration/booking tickets | Unchanged |
-| **Add** | Loket banner, Call/Recall/Start/Withdraw/No-Show/Redirect/Outcome actions, 409 reload | New components |
-| **Add** | Journey candidate search + `resolve/select` | New thin client; do not invent Tracker creation from Queue Label |
-| **Do not reuse** | Pharmacy `RajalQueueSidebar`, Outpatient `AntrianService`, Ranap UnifiedWorkList | Wrong domain |
+Implemented decisions stand: Admission Queue worklist replaces BOK/REG/IGD as primary assistance list when flag enabled; registration form preserved; Loket headers on mutations; 409 reload. Further Officer enhancements (outcomes, journey UI) are **out of C2/C3 scope** unless product explicitly reopens C1 — they are not redesigned by this revision.
 
-**IGD / legacy REG rows:** Product must decide whether V1 officer worklist is **Admission Queue only** (recommended for this feature) or dual-mode with a temporary legacy accordion. This plan recommends **Admission Queue as the sole active assistance worklist** on `registrasi_rajal`, with a feature flag to fall back to legacy sidebar during rollout.
-
-### 5.2 Kiosk Client
+### 5.2 Kiosk Client `[CHANGED]`
 
 | Decision | Action |
 |----------|--------|
-| **Reuse patterns** | c012 `PrintService` / thermal template pipeline; JWT login; JSend error codes |
-| **Reuse UX ideas only** | Legacy `kiosk_wpf` touch layout, maximized chrome, printer-name config |
-| **Build new** | Service Point selection, pending intake, Queue Label screen, print/retry, error screens |
-| **Never** | Allocate numbers client-side; treat local clock as Business Date; auto-retry intake loops |
+| **Reuse patterns** | c012 print proxy contract; JSend/`AQ_*`; thermal ticket concepts |
+| **Reuse UX ideas only** | Legacy `kiosk_wpf` touch layout |
+| **Build in monorepo** | Path router, device-config boot, Service Point selection, pending intake, label + print/retry, `version.json` idle refresh |
+| **Share via packages** | Types, api-client, device-config (not HIS modules) |
+| **Never** | Allocate numbers; authoritative Business Date; auto-retry intake loops; embed in `c012` tabs |
 
-### 5.3 Queue Display Client
+### 5.3 Queue Display Client `[CHANGED]`
 
 | Decision | Action |
 |----------|--------|
-| **Reuse patterns** | Taksaka.Web `signalrClient.ts` reconnect style; `@microsoft/signalr` |
-| **Reuse UX ideas only** | Legacy antres digit-audio, Android A025 fullscreen |
-| **Build new** | Snapshot renderer, AnnouncementVersion audio gate, poll fallback, config screen |
-| **Never** | Treat SignalR payload as display fields; call entries; clear display without snapshot |
+| **Reuse patterns** | Taksaka SignalR reconnect style; Bilreg snapshot + `RefreshHint` contract |
+| **Build in monorepo** | Snapshot renderer, AnnouncementVersion audio gate, poll fallback, path `/display/:screenId`, auto-refresh |
+| **Share via packages** | `signalr-client`, `shared-types`, `device-config`, `api-client` |
+| **Never** | Treat SignalR as write authority or full-state carrier; invent Call; skip snapshot on reconnect |
 
 ---
 
-## 6. Implementation phases and dependency order
+## 6. Implementation phases and dependency order `[CHANGED]`
 
 ```mermaid
 flowchart TD
-  B[Backend Part 1 ready<br/>contracts + SignalR + enrichment]
-  CFG[Ops: seed Service Points<br/>+ workstation map + edge headers]
-  P0[Phase C0 — Shared client foundations]
-  P1[Phase C1 — Officer Client]
-  P2[Phase C2 — Kiosk Client]
-  P3[Phase C3 — Queue Display Client]
-  P4[Phase C4 — Integration E2E + docs]
+  B[Backend Part 1 ready]
+  CFG[Ops: Service Points + workstations + edge]
+  C0[C0 Shared foundations — DONE]
+  C1[C1 Officer Client — DONE]
+  C2A[C2.0 Monorepo + kiosk path/boot/intake]
+  C2B[C2.1 Print + recovery UX]
+  C3A[C3.0 Display snapshot + poll + path/boot]
+  C3B[C3.1 SignalR + audio + version auto-refresh]
+  C4[C4 Integration E2E + IIS cutover]
+  DEVCFG[Device config technical contract]
 
-  B --> P0
-  CFG --> P1
-  CFG --> P2
-  CFG --> P3
-  P0 --> P1
-  P0 --> P2
-  P0 --> P3
-  P1 --> P4
-  P2 --> P4
-  P3 --> P4
+  B --> C0
+  C0 --> C1
+  CFG --> C1
+  C0 -.->|types inspiration only| C2A
+  DEVCFG --> C2A
+  DEVCFG --> C3A
+  CFG --> C2A
+  CFG --> C3A
+  C2A --> C2B
+  C3A --> C3B
+  C1 --> C4
+  C2B --> C4
+  C3B --> C4
 ```
 
-| Phase | Purpose | Depends on | Parallelism |
-|-------|---------|------------|-------------|
-| **C0** Shared foundations | Zod DTOs from API-V1; error-code handling; workstation config shape; JSend helpers | Published API-V1 | Before all clients |
-| **C1** Officer Client | Replace worklist; Call→Start→Registration→Outcome; conflict UX; journey resolve | C0 + seeded workstations + ReasonCode interim | Critical path for assisted registration |
-| **C2** Kiosk Client | Service Point → intake → label → print → recovery | C0 + active Service Points | Parallel with C1 after C0 |
-| **C3** Queue Display | Snapshot + SignalR + poll + audio | C0 + Phase 4 SignalR backend | Parallel; needs Call from C1 for full E2E |
-| **C4** Integration closure | Cross-client E2E, runbook client sections, feature-flag cutover | C1–C3 | Sequential gate |
+| Phase | Status | Purpose | Depends on |
+|-------|--------|---------|------------|
+| **C0** | ✅ Done | Officer Zod/errors/config foundations in `c012` | API-V1 |
+| **C1** | ✅ Done | Officer worklist + Call/Recall/Start + headers + flag | C0 + workstations |
+| **C2** | ✅ Done | Kiosk in monorepo: path routing, device config, intake, print | Device config (JSON provider) + Service Points |
+| **C3** | ✅ Done | Display in monorepo: snapshot-first, SignalR hint, audio, versioning | Device config + existing hub/snapshot |
+| **C4** | ⏳ | Cross-client E2E, IIS packaging, runbook client sections | C1–C3 |
 
-**Backend soft prerequisites (already largely done; verify before C1):** Part 1 Phases 1–5 exit evidence, non-empty `Workstations`, edge header protection, at least one seeded Service Point. Officer enrichment and SignalR are already in source.
+**Parallelism:** After monorepo scaffold (C2.0 start), C2 and C3 may proceed in parallel once `packages/*` stubs exist. Full E2E needs Officer Call (already done) + Kiosk intake + Display.
 
 ---
 
 ## 7. Principal screens and workflows
 
-### 7.1 Officer Client (Admisi Rawat Jalan Work List)
+### 7.1 Officer Client — `[BASELINE — DO NOT REDESIGN]`
 
-**Screen composition (single workspace)**
+Completed workspace behavior (Loket header, Service Point filter, composed worklist, Call/Recall/Start, registration form, 409 reload) remains as shipped. See prior plan §7.1 and SOP §4.2–4.6 for the operational happy path. Do not reopen layout/architecture here.
 
-1. **Loket header** — configured `LoketKey` / workstation (read-only); connection/refresh status.
-2. **Service Point filter** — active Service Points; V1 no per-Loket matrix.
-3. **Composed worklist** — Queue Label, Priority indicator, call/service state, CallCount, optional identity/booking/registration enrichment; operator selects row (no auto-call).
-4. **Queue action bar** — Call, Recall, Start Service, Withdraw, No-Show, Redirect (target Service Point), outcomes.
-5. **Registration form** — existing RegistrasiRajal main pane (preserved).
-6. **Journey resolution panel** — candidates → select (Booking / existing Walk-In path).
-7. **Conflict toast** — on `409 AQ_CONCURRENCY_CONFLICT`, reload worklist + current Loket claim; do not force the failed mutation.
+### 7.2 Kiosk Client `[CHANGED]`
 
-**Primary happy path (SOP §4.2–4.6)**
+**Boot sequence**
 
 ```text
-Open Registrasi Rajal
-  → Verify workstation Loket
-  → Filter Service Point / load officer-worklist
-  → Select Waiting entry → Call
-  → Patient presents → Start Service
-  → Resolve journey (Booking/existing) or continue Walk-In anonymous
-  → Complete registration form → Established(RegId) or NotEstablished(ReasonCode)
-  → Queue becomes Done via outcome endpoints
-  → Loket free → next Call
+Open /kiosk/{stationId}
+  → packages/device-config parses stationId
+  → GET device config for stationId
+  → Obtain JWT (device auth policy — §8 / §11)
+  → Load active Service Points ∩ config offerings
+  → Ready for intake
 ```
-
-**Exception paths:** Recall; No-Show; Withdraw; Redirect (new Priority label); 409 stale claim; inactive filter empty list.
-
-### 7.2 Kiosk Client
 
 | Screen | Behavior |
 |--------|----------|
-| Boot / config error | Missing API URL, auth, or empty offerings |
-| Service Point selection | From `GET service-points?activeOnly=true` intersected with **local offering allow-list** (BR-AQO-005) |
+| Boot / config error | Unknown `stationId`, missing config, auth failure, empty offerings |
+| Service Point selection | Config allow-list ∩ `GET .../service-points?activeOnly=true` (BR-AQO-005) |
 | Pending intake | Button disabled; no second submit |
-| Success | Show committed Queue Label; print once |
-| Print failed | Show label + reprint of **same** result; never re-intake for reprint |
-| Uncertain response | Deliberate retry CTA only; warn possible duplicate (R-05B deferred) |
-| Inactive Service Point | `AQ_OPERATION_NOT_ALLOWED` / not found — remove from UI after refresh |
-| Sequence exhausted | `503 AQ_SEQUENCE_EXHAUSTED` — stop intake; show supervisor message |
+| Success | Show committed Queue Label; print once via local proxy |
+| Print failed | Reprint **same** label; never re-intake for reprint |
+| Uncertain response | Deliberate retry CTA; warn possible duplicate (R-05B deferred) |
+| Inactive / exhausted | Surface `AQ_*` / 503; no client workaround |
+| Idle | Optional return to Service Point screen; check `version.json` for soft reload |
 
-**Do not design:** Offline number minting; client Business Date; automatic retry storms.
+**Do not design:** Offline minting; client Business Date; automatic retry storms; per-device rebuilds.
 
-### 7.3 Queue Display Client
+### 7.3 Queue Display Client `[CHANGED]`
+
+**Boot / recovery sequence**
+
+```text
+Open /display/{screenId}
+  → Resolve device config (loketIds, audio, poll interval)
+  → GET snapshot (authority) filtered by configured loketIds
+  → Subscribe SignalR RefreshHint
+  → On hint or poll or reconnect → GET snapshot again
+  → If AnnouncementVersion increased → play audio once
+  → Periodically GET /display/version.json → idle soft reload if changed
+```
 
 | Screen / mode | Behavior |
 |---------------|----------|
-| Config | API base URL, auth token/device login, optional Loket filter, poll interval, audio on/off |
-| Main display | Current Queue Label(s) + LoketKey from snapshot |
-| Audio | Play only when `AnnouncementVersion` > last processed |
-| Reconnect | On SignalR disconnect, keep last snapshot; reconnect; always GET snapshot |
-| Poll fallback | Periodic `GET displays/current` even when SignalR healthy |
-| Stale recovery | On focus/visibility/reboot → snapshot first |
+| Boot / config error | Unknown `screenId` or config/auth failure |
+| Main display | Queue Label(s) + LoketKey from **snapshot only** |
+| Audio | Only when snapshot `AnnouncementVersion` > last processed |
+| Reconnect | Keep last frame; reconnect hub; **always** snapshot first |
+| Poll fallback | Even when SignalR healthy |
+| Stale recovery | Visibility/focus/reboot → snapshot first |
 
 ---
 
-## 8. Backend / API prerequisites and detected gaps
+## 8. Backend / API prerequisites and detected gaps `[CHANGED]`
 
-### 8.1 Ready for client consumption
+Compare [kiosk-queue-display-web.md](./kiosk-queue-display-web.md) §4 wish-list against Bilreg Admission Queue v1. **No new business capabilities** — only technical contracts for path-based devices.
 
-- Officer mutations + worklist + enrichment composition
-- Kiosk intake + service-points
-- Display snapshot + SignalR refresh hint
-- Journey get / candidates / resolve/select
-- Error taxonomy `AQ_*` and 409 conflict semantics
-- Rollout preflight `GET .../rollout/status`
+### 8.1 Already sufficient (use as-is)
 
-### 8.2 Gaps that block or degrade clients (owners outside pure UI)
+| Frontend need | Existing Bilreg contract |
+|---------------|--------------------------|
+| Kiosk intake | `POST /api/v1/admission-queue/intake` |
+| List Service Points | `GET /api/v1/admission-queue/service-points` |
+| Display recovery truth | `GET /api/v1/admission-queue/displays/current?loketKey=` |
+| Refresh hint | Hub `/hubs/admission-queue`, event `RefreshHint`, payload `{ loketKey }` |
+| AnnouncementVersion for audio | Field on **snapshot** items (not a separate authoritative SignalR state event) |
+| Officer worklist / mutations | Already consumed by C1 |
+| Errors | `AQ_*` taxonomy, 409 conflicts, 503 exhaustion |
+| Rollout preflight | `GET .../rollout/status` |
 
-| Gap | Impact | Suggested owner |
-|-----|--------|-----------------|
-| Empty / unprovisioned `AdmissionQueueApi:Workstations` | Officer Call/Recall/Start fail 400 | Ops + runbook |
-| Edge does not strip spoofable Loket headers | Accountability hole | Ops / infra |
-| No approved ReasonCode catalog | NotEstablished UX has free-text codes only | Ops / Admisi product |
-| No Officer/Kiosk/Display role policies (R-02) | Any JWT can call any route | Platform security (deferred) |
-| Kiosk JWT provisioning story undefined | Device login / long-lived token | Product + security |
-| Display JWT provisioning story undefined | Same | Product + security |
-| HiDok AssistanceRequired → `booking-assistance` wiring | Assistance entries may be missing | HiDok / Admisi (outside this plan) |
-| Frontend workstation config schema missing | Officer cannot send headers | C1 in `global_config` |
-| No queue-label thermal template for Kiosk | Print UX incomplete | C2 templates |
-| Pass-through ReasonCode | Interim: UI dropdown from Ops JSON until catalog API exists | C1 interim |
+**Obsolete frontend wish (do not implement as new authority):**
 
-### 8.3 Explicit non-gaps (do not reinvent)
+- Renaming hub to `/hubs/queue` — keep `/hubs/admission-queue`.
+- Emitting full display state (or authoritative `AnnouncementVersion`) **on SignalR** — violates snapshot-first; Bilreg already puts version on the snapshot. `packages/signalr-client` must treat hints as “refetch snapshot,” then compare `AnnouncementVersion`.
+- Replacing `GET .../displays/current` with a differently named business snapshot resource that changes queue semantics.
 
-- Do not add client-side sequencers or Queue Label formatters as authority (display formatting of returned `queueLabel` only).
-- Do not create an Admisi-owned queue table or cache that mutates membership.
-- Do not use legacy `POST /api/Antrian/anonymous-intake` or `POST /api/Antrian/start`.
+### 8.2 Technical contracts to add or adjust (frontend architecture)
+
+| Need from kiosk/display doc | Recommendation | Notes |
+|----------------------------|----------------|-------|
+| `GET /api/devices/{deviceId}/config` | **New technical endpoint (or equivalent)** | Returns `role` (`kiosk`\|`display`), offered `servicePointIds` / `loketIds`, print proxy hints, poll/audio flags. `deviceId` = path segment (`loket-03`, `lobby-poli-1`). **Deployment configuration**, not a Patient Tracker aggregate (consistent with BR-AQO Kiosk/Loket as config). |
+| `GET /api/displays/{screenId}/snapshot` | **Do not invent parallel queue truth** | Prefer: device config supplies `loketIds` → client calls existing `GET .../displays/current` (per loket or unfiltered + client filter). Optional thin BFF alias allowed **only** if it proxies the same snapshot rows. |
+| `POST /api/auth/token` | **Adjust / clarify device JWT bootstrap** | Reuse Bilreg JWT login if possible; document kiosk/display credential pattern. New path only if existing login UX cannot support devices. Still R-02-deferred for roles. |
+| `POST /api/devices/{deviceId}/heartbeat` | **Optional; defer past V1** | Nice for monitoring; not required for C2/C3 exit. |
+| Static `version.json` | **Not a backend API** | Generated at Vite build into `kiosk/` / `display/` dist. |
+
+### 8.3 Gaps that still block or degrade (unchanged owners)
+
+| Gap | Impact | Owner |
+|-----|--------|-------|
+| Empty `AdmissionQueueApi:Workstations` | Officer Loket mutations fail | Ops |
+| Edge header spoofing | Accountability | Ops / infra |
+| ReasonCode catalog | NotEstablished quality | Ops / Admisi |
+| Device JWT provisioning | Kiosk/Display boot | Product + security |
+| Device config store/API missing | Path-based boot cannot start | Backend/tech — §8.2 |
+| HiDok assistance wiring | Missing assistance rows | HiDok / Admisi |
+| Print proxy install package | Kiosk print | Ops / print-proxy repo |
+
+### 8.4 Explicit non-gaps
+
+- No client-side sequencer / authoritative Queue Label minting.
+- No second Admisi queue ledger.
+- No legacy `POST /api/Antrian/anonymous-intake` or `.../start` for new clients.
+- No managed Kiosk/Display aggregates in Patient Tracker V1 — device config is deployment/tech surface.
 
 ---
 
-## 9. Testing strategy
+## 9. Testing strategy `[CHANGED]` (C2/C3 focus)
 
-### 9.1 Officer (`c012`)
+### 9.1 Officer (`c012`) — baseline
 
-| Layer | Focus |
-|-------|-------|
-| Unit | Composables: action enablement by queue/claim state; 409 → reload; header attachment |
-| Component | Worklist row Priority/call state; action bar; feature-flag legacy sidebar |
-| Contract | Zod schemas match API-V1 shapes; mutation payloads include `userId` + `loketKey` |
-| Integration (manual/staging) | Call → Display announcement → Start → Reg Established → Done; Redirect; No-Show |
-| Regression | Existing RegistrasiRajal form tests still pass for preserved form paths |
+Existing unit/component tests for action rules, headers, and worklist UI remain the regression suite. Do not expand Officer scope under C2/C3 unless C1 is explicitly reopened.
 
-### 9.2 Kiosk
+### 9.2 Kiosk (monorepo `kiosk-web`)
 
 | Layer | Focus |
 |-------|-------|
-| Unit | Pending-button lock; uncertain-response does not auto-retry; reprint uses last committed label |
-| Contract | Intake success/error mapping; exhaustion 503; inactive Service Point |
-| Device | Print proxy health; reprint without second intake |
-| Negative | Double-click does not dual-submit while pending |
+| Unit | Path `stationId` parse; pending-button lock; reprint uses last committed label; no auto-retry |
+| Package | `device-config` + `api-client` intake mapping; 503 / inactive handling |
+| Device | Print proxy health; IIS SPA deep-link `/kiosk/loket-03` loads app |
+| Version | Idle reload when `version.json` changes |
 
-### 9.3 Display
+### 9.3 Display (monorepo `display-web`)
 
 | Layer | Focus |
 |-------|-------|
-| Unit | AnnouncementVersion gate; hint with null loketKey refreshes all; filter by loketKey |
-| Integration | SignalR disabled → poll-only still correct; reconnect after hub restart |
-| Audio | No replay on ordinary service-state change without version bump |
+| Unit | AnnouncementVersion gate after snapshot; hint → refetch; null `loketKey` hint refreshes configured set |
+| Package | `signalr-client` reconnect → snapshot-first; backoff |
+| Integration | SignalR disabled → poll-only correct; hub restart recovery |
+| Deploy | `/display/{screenId}` SPA rewrite; `version.json` auto-refresh |
 
 ### 9.4 Cross-client E2E (Phase C4)
 
-1. Kiosk issues `A0001` → appears on officer-worklist.  
-2. Officer Call → Display shows label + audio.  
-3. Start Service → Display stops outstanding presentation after snapshot.  
-4. Established outcome → entry leaves active worklist; Loket free.  
-5. Kill SignalR → Display still recovers via poll.  
-6. Concurrent second Call on same Loket → 409 → officer reload.
+1. Kiosk `/kiosk/{id}` issues label → Officer worklist shows it.  
+2. Officer Call → Display snapshot + audio (`AnnouncementVersion` bump).  
+3. Start Service → Display updates via hint/poll.  
+4. Established outcome → entry leaves worklist.  
+5. Kill SignalR → Display recovers via poll.  
+6. Second Call same Loket → 409 → Officer reload (baseline).  
+7. Deploy new `version.json` → idle devices soft-reload without manual visit.
 
 ---
 
-## 10. Deployment and configuration approach
+## 10. Deployment and configuration approach `[CHANGED]`
 
-### 10.1 Officer (`c012`)
+### 10.1 Officer (`c012`) — baseline
 
-Extend `public/global_config.json` (and typed `config.ts`) with something like:
+Existing `admissionQueue` block in `global_config.json`, Loket mutation headers, feature flags, IIS `/MyHospital/` — unchanged.
 
-```json
-"admissionQueue": {
-  "enabled": true,
-  "useLegacySidebarFallback": false,
-  "workstationKey": "ADM-01",
-  "loketKey": "L1",
-  "worklistPollMs": 15000,
-  "reasonCodes": []
-}
-```
+### 10.2 Kiosk + Display (monorepo → single IIS site)
 
-- ApiService attaches `X-Workstation-Key` / `X-Loket-Key` on Admission Queue **mutations** only.
-- Server `AdmissionQueueApi:Workstations` must contain the same mapping.
-- Feature flag allows temporary legacy sidebar during cutover.
-- Deploy as existing IIS app `/MyHospital/`.
+| Concern | Approach |
+|---------|----------|
+| Build | `pnpm` / turbo build per app; emit `dist/` + `version.json` + `web.config` |
+| Deploy | Copy to `wwwroot/kiosk` and `wwwroot/display` (virtual apps under one site OK) |
+| Device add | New shortcut URL + device-config row; **no** rebuild |
+| Runtime config | From device-config API (role, offerings/loketIds, poll, audio, printerProxyPort) |
+| Print | Local proxy on kiosk PC; URL from device config or well-known localhost |
+| Hub | Bilreg `/hubs/admission-queue` with `?access_token=` |
+| Cache | `no-cache` on `index.html` + `version.json` |
+| Release | Independent app tags; package Changesets when shared contracts break |
 
-### 10.2 Kiosk (new Vite app)
+### 10.3 Shared ops checklist (client-facing)
 
-Per-device config (file or env):
-
-- `api.bilregApi.baseUrl`, device credentials / JWT bootstrap
-- `offeredServicePointIds[]` (local presentation allow-list)
-- `printing.localProxy.url`, printer name / copies
-- Idle timeout back to Service Point screen
-
-Deploy as separate IIS application (e.g. `/AdmissionKiosk/`) or dedicated host; run Chrome/Edge in kiosk mode; print proxy installed on the kiosk PC.
-
-### 10.3 Display (new Vite app)
-
-Per-display config:
-
-- API base URL + JWT
-- Optional `loketKey` filter (null = all Lokets in snapshot)
-- `pollIntervalMs` (e.g. 5000–10000)
-- `signalREnabled`, hub URL `/hubs/admission-queue`
-- Audio pack path / Web Speech locale
-
-Deploy as `/AdmissionDisplay/`; fullscreen autostart on lobby PC or TV stick.
-
-### 10.4 Shared ops checklist (client-facing)
-
-Before go-live: runbook seed + workstation uniqueness + edge header protection + `rollout/status` green + one smoke Call that moves Display AnnouncementVersion.
+Before go-live: runbook seed + workstation maps + edge headers + `rollout/status` green + **device config entries** for every shortcut ID + one smoke: Kiosk intake → Officer Call → Display `AnnouncementVersion` audio.
 
 ---
 
-## 11. Major risks and unresolved decisions
+## 11. Major risks and unresolved decisions `[CHANGED]`
 
-| Risk / decision | Why it matters | Mitigation / question for owners |
-|-----------------|----------------|----------------------------------|
-| Legacy BOK/REG/IGD sidebar cutover | Operators may still depend on `Antrian/pasien` rows | Feature flag dual-mode; product date for Admission-Queue-only |
-| Non-idempotent Kiosk intake | Double tickets under uncertainty | Pending lock + deliberate retry copy; R-05B later |
-| Spoofable workstation headers | Wrong Loket accountability | Edge strip/overwrite mandatory |
-| ReasonCode catalog missing | Inconsistent NotEstablished reporting | Interim config list; block inventing codes in Tracker |
-| Device auth model | Kiosk/Display need long-lived JWT without officer UX | Decide service account vs kiosk login before C2/C3 harden |
-| Audio technology | Web Speech vs recorded clips | Spike in C3; AnnouncementVersion gate is fixed either way |
-| Print proxy repo location | Proxy “moved out of c012” | Confirm install package for kiosk PCs before C2 exit |
-| Whether Officer and Kiosk share one deployable | Different lifecycles | Keep separate (this plan) |
-| Android TV track | Some sites already on A025 | Defer; Web Display first |
-| HiDok assistance wiring | Worklist may miss Booking assistance entries | Tracked outside client plan; Officer still works for walk-in intake |
+| Risk / decision | Why it matters | Mitigation / question |
+|-----------------|----------------|------------------------|
+| Device config API shape/ownership | Blocks path-based boot | Prefer deployment/config service or Bilreg tech endpoint — not a queue aggregate |
+| Device auth model | Long-lived JWT on HTTP LAN | Decide service account vs device login before C2 harden |
+| Snapshot URL naming mismatch | Doc draft vs API-V1 | Adapter in `api-client`; keep `displays/current` as truth |
+| Non-idempotent intake | Duplicate tickets | Pending lock + deliberate retry; R-05B later |
+| Spoofable workstation headers | Officer accountability | Edge strip (unchanged) |
+| Monorepo location/name | Team ops | Decide folder under `MyHospitalWeb` vs new remote before C2.0 |
+| Print proxy package | Kiosk print exit | Confirm install before C2.1 exit |
+| Audio tech | Speech vs clips | Spike in C3.1; version gate fixed |
+| Android TV | Site-specific | Defer |
+| Reopening C1 (outcomes/journey) | Scope creep | Track separately; not required for C2/C3 |
 
 ---
 
-## 12. First implementation slice (start here)
+## 12. Implementation slices `[CHANGED]`
 
-**Slice C1.0 — Officer worklist + Call / Start Service on `RegistrasiRajal`**
+### Completed (do not reopen as “first slice”)
 
-**Goal:** Make the Admisi Rawat Jalan page operate from Patient Tracker queue truth (composed) for one configured Loket, without shipping Kiosk or Display yet.
+| Slice | Status | Summary |
+|-------|--------|---------|
+| **C0** | ✅ | Officer Zod DTOs, `AQ_*` helpers, `admissionQueue` config/headers |
+| **C1.0** | ✅ | Officer worklist + Call/Recall/Start + 409 reload + feature flag |
+| **C1.x** | ✅ / product backlog | Further Officer outcomes/journey — **not redesigned here**; track outside C2/C3 |
 
-**In scope**
+### Completed C2 (closed)
 
-1. `AdmissionQueueService.ts` + Zod types for:
-   - `GET /api/v1/admisi-rajal/officer-worklist`
-   - `GET /api/v1/admission-queue/service-points`
-   - `POST .../call`, `.../recall`, `.../start-service`
-2. `global_config` workstation keys + ApiService header injection for those mutations.
-3. Replace left rail with new Admission Queue worklist component (Queue Label, Priority, state, enrichment).
-4. Action bar: Call → Recall → Start Service; on success enable existing registration form selection path for the In Service entry.
-5. On `409`, invalidate/refetch worklist and show conflict message.
-6. Feature flag `admissionQueue.enabled` / `useLegacySidebarFallback`.
-7. Unit tests for composable action rules and header attachment.
+| Slice | Status | Summary |
+|-------|--------|---------|
+| **C2.0** | ✅ | Monorepo scaffold + kiosk path boot + intake |
+| **C2.1** | ✅ | Local print proxy + reprint-same-label + uncertain-response copy |
 
-**Out of scope for C1.0**
+Report: [`tracker-c2-kiosk-implementation-report.md`](./tracker-c2-kiosk-implementation-report.md).
 
-- Withdraw / No-Show / Redirect / Outcomes (C1.1)
-- Journey resolve UI (C1.2)
-- Kiosk / Display apps
-- SignalR on officer (polling sufficient initially)
-- ReasonCode catalog API
+### Completed C3 (closed)
 
-**Exit criteria**
+| Slice | Status | Summary |
+|-------|--------|---------|
+| **C3.0** | ✅ | `display-web` `/display/:screenId`, device config, snapshot render, poll |
+| **C3.1** | ✅ | `signalr-client` RefreshHint → snapshot; AnnouncementVersion audio; `version.json` idle reload |
 
-1. Seeded integration environment: officer sees waiting entries from intake (manual API or temporary script).
-2. Call claims Loket; second Call on same Loket returns 409 and UI recovers.
-3. Start Service moves entry to In Service; existing registration form remains usable.
-4. No second queue ledger written from the client.
-5. Legacy sidebar available only behind fallback flag.
+Report: [`tracker-c3-queue-display-implementation-report.md`](./tracker-c3-queue-display-implementation-report.md).
 
-**Immediate next slices after C1.0**
+### Immediate follow-ons
 
-- **C1.1** — Withdraw, No-Show, Redirect, Established / NotEstablished outcomes wired to form submit success/failure.
-- **C1.2** — Journey candidates + `resolve/select` before/during Booking-path registration.
-- **C2.0** — Kiosk Service Point → intake → label screen (print can follow C2.1).
-- **C3.0** — Display snapshot renderer + poll (SignalR + audio in C3.1).
+| Slice | Focus |
+|-------|--------|
+| **C4** | Cross-client E2E, IIS cutover checklist, runbook client sections |
 
 ---
 
@@ -502,14 +587,12 @@ Before go-live: runbook seed + workstation uniqueness + edge header protection +
 
 | Backend Part 1 item | Client Part 2 consumer |
 |---------------------|------------------------|
-| Phase 1 real-SQL proof | Assumed before production client cutover |
-| Phase 2 officer contracts + enrichment | Officer C1 uses `officer-worklist` |
-| Phase 3 booking-assistance API | Kiosk does not own it; HiDok caller does; Officer sees resulting entries |
-| Phase 4 SignalR hub | Display C3 |
-| Phase 5 rollout / workstations | All clients; Officer/Kiosk blocked without maps/seeds |
-| External Client section in Part 1 | Superseded for planning detail by **this** document |
-
-Update Part 1’s “External Client Deliverables” section to link here when this artifact is accepted.
+| Phase 1 real-SQL proof | Assumed before production cutover |
+| Phase 2 officer contracts + enrichment | ✅ Consumed by C1 |
+| Phase 3 booking-assistance API | HiDok caller; Officer sees resulting entries |
+| Phase 4 SignalR hub | ✅ Consumed by Display C3 (`/hubs/admission-queue`) |
+| Phase 5 rollout / workstations | Officer done; Kiosk/Display need seeds + **device config** |
+| External clients section | This document (C2+ revised) |
 
 ---
 
@@ -519,5 +602,7 @@ Update Part 1’s “External Client Deliverables” section to link here when t
 |-------|-------|
 | Artifact | `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-EXTERNAL-CLIENTS-IMPLEMENTATION-PLAN.md` |
 | Companion backend plan | `TRACKER-ADMISSION-QUEUE-IMPLEMENTATION-PLAN.md` |
+| C2/C3 architecture addendum | `kiosk-queue-display-web.md` |
 | Implementation authorization | Not granted by this document alone |
-| Preferred first code change | Slice C1.0 in `c012_myhospital_web` Admisi module |
+| Preferred next code change | **C4** cross-client E2E + IIS cutover checklist |
+| Officer codebase | `c012_myhospital_web` — baseline; do not redesign under C2/C3 |
