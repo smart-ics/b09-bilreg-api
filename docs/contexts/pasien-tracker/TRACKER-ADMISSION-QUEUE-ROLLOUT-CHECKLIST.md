@@ -71,14 +71,31 @@ No deprecation date is invented here. Product ownership supplies dates after ver
 
 ---
 
-## R5 — Explicit Go / No-Go
+## R5 — Explicit Go / No-Go (backend)
 
 | Verdict | When |
 |---------|------|
-| **GO** (integration) | All R1–R3 checked; R4 disposition recorded; no open Sev-1; rollout status green |
+| **GO** (integration backend) | All R1–R3 checked; R4 disposition recorded; no open Sev-1; rollout status green |
 | **NO-GO** | Missing schema/seed, duplicate workstation keys, failing race gate, unresolved Sev-1, or unknown critical legacy consumers without observation plan |
 
 Signed evidence (ops log + rollout status response + test filter output) should be archived with the environment name and date.
+
+---
+
+## R6 — External clients (Phase C4)
+
+Officer + Kiosk + Display constellation. Detailed gates: [TRACKER-ADMISSION-QUEUE-IIS-CLIENT-CUTOVER-CHECKLIST.md](./TRACKER-ADMISSION-QUEUE-IIS-CLIENT-CUTOVER-CHECKLIST.md). Evidence: [tracker-c4-integration-deployment-implementation-report.md](./tracker-c4-integration-deployment-implementation-report.md).
+
+| Gate | Evidence | Done |
+|------|----------|------|
+| Officer `admissionQueue` enabled; workstation headers work | `c012` smoke (runbook §8) | [ ] |
+| Kiosk + Display built and copied to `wwwroot/kiosk` / `wwwroot/display` | Dist listing + IIS paths | [ ] |
+| SPA deep links `/kiosk/{stationId}` and `/display/{screenId}` load | Browser | [ ] |
+| Device config row per shortcut ID | `devices.json` (or device API) review | [ ] |
+| Cross-client E2E runbook §11 (all 7 steps) | Ops log | [ ] |
+| IIS cutover checklist Go | Signed checklist | [ ] |
+
+**Go criteria for clients:** R5 backend GO (or equivalent green backend) **and** R6 gates checked. Client-only No-Go does not require AQ table DROP — restore previous static folders.
 
 ---
 
@@ -90,6 +107,7 @@ Signed evidence (ops log + rollout status response + test filter output) should 
 | Config only | Fix `AdmissionQueueApi` + recycle |
 | Disposable schema | `BILRG_AdmissionQueue_Rollback.sql` after backup |
 | Quiet SignalR / legacy | Feature flags only |
+| Bad kiosk/display static | Restore `wwwroot/kiosk` / `wwwroot/display` backup (see IIS client cutover checklist) |
 
 ---
 
@@ -98,5 +116,7 @@ Signed evidence (ops log + rollout status response + test filter output) should 
 | Path | Role |
 |------|------|
 | [TRACKER-ADMISSION-QUEUE-RUNBOOK.md](./TRACKER-ADMISSION-QUEUE-RUNBOOK.md) | Procedures |
+| [TRACKER-ADMISSION-QUEUE-IIS-CLIENT-CUTOVER-CHECKLIST.md](./TRACKER-ADMISSION-QUEUE-IIS-CLIENT-CUTOVER-CHECKLIST.md) | Client IIS cutover |
 | [TRACKER-ADMISSION-QUEUE-API-V1.md](./TRACKER-ADMISSION-QUEUE-API-V1.md) | Contracts |
 | [tracker-admission-queue-phase5-rollout-implementation-report.md](./tracker-admission-queue-phase5-rollout-implementation-report.md) | Phase 5 delivery evidence |
+| [tracker-c4-integration-deployment-implementation-report.md](./tracker-c4-integration-deployment-implementation-report.md) | C4 client integration closure |

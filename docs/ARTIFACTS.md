@@ -199,13 +199,18 @@ Background processing platform — job orchestration, worker plugins, operator c
 | `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-ARCHITECTURE.md` | Patient Tracker — codebase-grounded current-to-target architecture for admission queue resources, calls, projections, Kiosk, Queue Display, security, and delivery |
 | `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-ARCHITECTURE-RECONCILIATION.md` | Patient Tracker — post-R-14 architecture verdict, implementation-state matrix, remaining delivery plan, and first-slice prompt |
 | `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-IMPLEMENTATION-PLAN.md` | Patient Tracker — backend-only phased implementation plan for remaining Admission Queue work (external clients summarized out of scope) |
-| `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-EXTERNAL-CLIENTS-IMPLEMENTATION-PLAN.md` | Patient Tracker — Part 2 codebase-aware implementation plan for Officer, Kiosk, and Queue Display clients |
+| `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-EXTERNAL-CLIENTS-IMPLEMENTATION-PLAN.md` | Patient Tracker — Part 2 external clients plan (C0–C4 closed) |
+| `docs/contexts/pasien-tracker/kiosk-queue-display-web.md` | Patient Tracker — kiosk/display path-based IIS deploy + monorepo architecture decision (feeds C2/C3) |
+| `docs/contexts/pasien-tracker/tracker-c2-kiosk-implementation-report.md` | Patient Tracker — C2 kiosk monorepo path boot, intake, and local print/reprint closure |
+| `docs/contexts/pasien-tracker/tracker-c3-queue-display-implementation-report.md` | Patient Tracker — C3 queue display snapshot-first, SignalR RefreshHint, TTS, and version.json idle reload |
+| `docs/contexts/pasien-tracker/tracker-c4-integration-deployment-implementation-report.md` | Patient Tracker — C4 cross-client E2E, IIS packaging, and runbook client-section closure |
+| `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-IIS-CLIENT-CUTOVER-CHECKLIST.md` | Patient Tracker — Kiosk/Display IIS packaging and cutover Go/No-Go gates (C4) |
 | `docs/contexts/pasien-tracker/tracker-admission-queue-phase1-slice1-verification-report.md` | Patient Tracker — Phase 1 / Slice 1 disposable migrated-SQL operational gate, race matrix results, and session one-winner reload evidence |
 | `docs/contexts/pasien-tracker/tracker-admission-queue-phase2-officer-contracts-implementation-report.md` | Patient Tracker — Phase 2 officer contracts, ReasonCode catalog boundary, Admisi enriched worklist, legacy inventory |
 | `docs/contexts/pasien-tracker/tracker-admission-queue-phase3-booking-assistance-implementation-report.md` | Patient Tracker — Phase 3 booking-assistance receive-side closure and external HiDok consumer contract |
 | `docs/contexts/pasien-tracker/tracker-admission-queue-phase4-signalr-refresh-implementation-report.md` | Patient Tracker — Phase 4 SignalR refresh-hint hub/adapter behind IAdmissionQueueRefreshPublisher |
 | `docs/contexts/pasien-tracker/tracker-admission-queue-phase5-rollout-implementation-report.md` | Patient Tracker — Phase 5 backend integration rollout package, preflight status, go/no-go closure |
-| `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-RUNBOOK.md` | Patient Tracker — Admission Queue integration migrate/seed/config/smoke/rollback runbook |
+| `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-RUNBOOK.md` | Patient Tracker — Admission Queue integration migrate/seed/config/smoke/rollback runbook + Officer/Kiosk/Display client sections (C4) |
 | `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-ROLLOUT-CHECKLIST.md` | Patient Tracker — Admission Queue integration go/no-go and legacy disposition checklist |
 | `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-IMPLEMENTATION-GAP-ANALYSIS.md` | Patient Tracker — artifact/codebase alignment and implementation-readiness verdict for Admission Queue Operations |
 | `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-IMPLEMENTATION-ROADMAP.md` | Patient Tracker — prioritized, dependency-ordered roadmap for closing Admission Queue implementation gaps |
