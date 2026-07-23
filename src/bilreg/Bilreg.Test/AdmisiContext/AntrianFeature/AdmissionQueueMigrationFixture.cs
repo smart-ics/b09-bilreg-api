@@ -1,5 +1,6 @@
 using System.Data.SqlClient;
 using System.Text;
+using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;
@@ -8,6 +9,7 @@ namespace Bilreg.Test.AdmisiContext.AntrianFeature;
 
 /// <summary>
 /// Applies R-06 through R-13 Admission Queue scripts in dependency order to a disposable DB.
+/// Script order is owned by <see cref="AdmissionQueueMigrationManifest"/>.
 /// </summary>
 public sealed class AdmissionQueueMigrationFixture : IDisposable
 {
@@ -16,20 +18,6 @@ public sealed class AdmissionQueueMigrationFixture : IDisposable
     public IReadOnlyList<string> AppliedScriptOrder { get; private set; } = [];
     public string DatabaseVersion { get; private set; } = "";
     public string SqlDbRoot { get; }
-
-    private static readonly (string RelativePath, string? GuardTable)[] Scripts =
-    [
-        ("AntrianFeature/BILRG_Antrian.sql", "BILRG_Antrian"),
-        ("AntrianFeature/BILRG_AntrianEntry.sql", "BILRG_AntrianEntry"),
-        ("AntrianFeature/BILRG_Antrian_M1_ServicePointCode_Alter.sql", null),
-        ("AntrianFeature/BILRG_Antrian_M2_QueuePrefixSnapshot_Alter.sql", null),
-        ("AntrianFeature/BILRG_AntrianEntry_M2_QueueOperations_Alter.sql", null),
-        ("AntrianFeature/BILRG_AdmServicePoint.sql", "BILRG_AdmServicePoint"),
-        ("AntrianFeature/BILRG_AdmLoketCurrentCall.sql", "BILRG_AdmLoketCurrentCall"),
-        ("RegFeature/BILRG_RegOutcome.sql", "BILRG_RegOutcome"),
-        ("AntrianFeature/BILRG_AdmBookingAssistance.sql", "BILRG_AdmBookingAssistance"),
-        ("AntrianFeature/BILRG_AdmissionQueue_M3_Audit_Alter.sql", null),
-    ];
 
     public AdmissionQueueMigrationFixture()
     {
@@ -51,20 +39,20 @@ public sealed class AdmissionQueueMigrationFixture : IDisposable
     private void ApplyMigrations()
     {
         var applied = new List<string>();
-        foreach (var (relative, guard) in Scripts)
+        foreach (var script in AdmissionQueueMigrationManifest.Scripts)
         {
-            var fullPath = Path.Combine(SqlDbRoot, relative.Replace('/', Path.DirectorySeparatorChar));
+            var fullPath = Path.Combine(SqlDbRoot, script.RelativePath.Replace('/', Path.DirectorySeparatorChar));
             if (!File.Exists(fullPath))
                 throw new InvalidOperationException($"Admission Queue migration script missing: {fullPath}");
 
-            if (guard is not null && TableExists(guard))
+            if (script.GuardTable is not null && TableExists(script.GuardTable))
             {
-                applied.Add($"{relative} (skipped — {guard} exists)");
+                applied.Add($"{script.RelativePath} (skipped — {script.GuardTable} exists)");
                 continue;
             }
 
             ExecuteScriptFile(fullPath);
-            applied.Add(relative);
+            applied.Add(script.RelativePath);
         }
 
         AppliedScriptOrder = applied;
@@ -76,22 +64,21 @@ public sealed class AdmissionQueueMigrationFixture : IDisposable
         {
             using var conn = Open();
             conn.Open();
-            foreach (var table in new[]
-                     {
-                         "BILRG_Antrian", "BILRG_AntrianEntry", "BILRG_AdmServicePoint",
-                         "BILRG_AdmLoketCurrentCall", "BILRG_RegOutcome", "BILRG_AdmBookingAssistance"
-                     })
+            foreach (var table in AdmissionQueueMigrationManifest.RequiredTables)
             {
                 conn.ExecuteScalar<int>($"SELECT TOP 1 1 FROM {table} WHERE 1=0");
             }
 
-            var hasUnique = conn.ExecuteScalar<int>("""
-                SELECT COUNT(1) FROM sys.indexes
-                WHERE name = 'UX_BILRG_Antrian_SequenceTag'
-                  AND object_id = OBJECT_ID('BILRG_Antrian')
-                """);
-            if (hasUnique != 1)
-                throw new InvalidOperationException("UX_BILRG_Antrian_SequenceTag is missing after migration.");
+            foreach (var index in AdmissionQueueMigrationManifest.RequiredIndexes)
+            {
+                var hasIndex = conn.ExecuteScalar<int>("""
+                    SELECT COUNT(1) FROM sys.indexes
+                    WHERE name = @indexName
+                      AND object_id = OBJECT_ID(@tableName)
+                    """, new { indexName = index.IndexName, tableName = index.TableName });
+                if (hasIndex != 1)
+                    throw new InvalidOperationException($"{index.IndexName} is missing after migration.");
+            }
         }
         catch (Exception ex) when (ex is not InvalidOperationException)
         {

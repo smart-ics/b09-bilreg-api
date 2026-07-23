@@ -203,6 +203,9 @@ Background processing platform — job orchestration, worker plugins, operator c
 | `docs/contexts/pasien-tracker/tracker-admission-queue-phase2-officer-contracts-implementation-report.md` | Patient Tracker — Phase 2 officer contracts, ReasonCode catalog boundary, Admisi enriched worklist, legacy inventory |
 | `docs/contexts/pasien-tracker/tracker-admission-queue-phase3-booking-assistance-implementation-report.md` | Patient Tracker — Phase 3 booking-assistance receive-side closure and external HiDok consumer contract |
 | `docs/contexts/pasien-tracker/tracker-admission-queue-phase4-signalr-refresh-implementation-report.md` | Patient Tracker — Phase 4 SignalR refresh-hint hub/adapter behind IAdmissionQueueRefreshPublisher |
+| `docs/contexts/pasien-tracker/tracker-admission-queue-phase5-rollout-implementation-report.md` | Patient Tracker — Phase 5 backend integration rollout package, preflight status, go/no-go closure |
+| `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-RUNBOOK.md` | Patient Tracker — Admission Queue integration migrate/seed/config/smoke/rollback runbook |
+| `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-ROLLOUT-CHECKLIST.md` | Patient Tracker — Admission Queue integration go/no-go and legacy disposition checklist |
 | `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-IMPLEMENTATION-GAP-ANALYSIS.md` | Patient Tracker — artifact/codebase alignment and implementation-readiness verdict for Admission Queue Operations |
 | `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-IMPLEMENTATION-ROADMAP.md` | Patient Tracker — prioritized, dependency-ordered roadmap for closing Admission Queue implementation gaps |
 | `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-R04-LOKET-CLAIM-CONTRACT.md` | Patient Tracker — accepted cross-session active Loket claim state, persistence, concurrency, and test contract |

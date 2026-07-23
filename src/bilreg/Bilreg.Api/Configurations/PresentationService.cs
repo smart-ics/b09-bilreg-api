@@ -2,6 +2,7 @@
 using Bilreg.Api.Authorization;
 using Bilreg.Api.Filters;
 using Bilreg.Api.SignalR;
+using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.Shared;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -24,6 +25,7 @@ public static class PresentationService
         services.AddOptions<AdmissionQueueApiOptions>()
             .Bind(configuration.GetSection(AdmissionQueueApiOptions.SectionName))
             .ValidateOnStart();
+        services.AddSingleton<IAdmissionQueueRolloutConfig, AdmissionQueueRolloutConfig>();
         services.AddControllers()
             .ConfigureApiBehaviorOptions(options =>
             {

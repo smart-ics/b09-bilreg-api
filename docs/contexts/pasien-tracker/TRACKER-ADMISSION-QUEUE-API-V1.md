@@ -47,6 +47,7 @@ be detected without the intentionally deferred cross-node coordination capabilit
 | `POST booking-assistance` | `{bookingId,servicePointId,failureCode?,kioskId,userId}` | ensure one unresolved Booking assistance entry; returns QueueLabel and Existing |
 | `GET worklist` | businessDate, optional servicePointId/status/loketKey, offset/limit | queue-only officer projection; authenticated officer |
 | `GET displays/current` | optional loketKey | authoritative active display snapshot and AnnouncementVersion; authenticated display |
+| `GET rollout/status` | none | schema/index preflight + feature-flag/workstation uniqueness summary (no keys); authenticated ops/engineering |
 | `POST entries/{q}/{n}/call` | `{loketKey,userId}` | Outstanding; officer-selected entry only |
 | `POST entries/{q}/{n}/recall` | `{loketKey,expectedRowVersion,userId}` | retained Outstanding |
 | `POST entries/{q}/{n}/start-service` | versioned Loket payload | InService |
@@ -185,10 +186,18 @@ ownership must supply it after consumer migration is verified.
 | `POST /api/Antrian/start` | Legacy direct Waiting→InService | `LegacyEndpointsEnabled`; warning log |
 | `PATCH /api/Antrian/mulaiPeriksa/{id}/{n}` | Physician Serve (compat) | Ungated; warning log; not officer AQ v1 |
 | `PATCH /api/Antrian/selesaiPeriksa/{id}/{n}` | Physician Done (compat) | Ungated; warning log; not officer AQ v1 |
-| Registration create-on-queue paths | Legacy registration without prior intake | Compatibility; inventory for Phase 5 go/no-go |
+| Registration create-on-queue paths | Legacy registration without prior intake | Compatibility; disposition recorded on [rollout checklist](./TRACKER-ADMISSION-QUEUE-ROLLOUT-CHECKLIST.md) |
 
 Physician/compat mutators are intentionally not feature-gated in Phase 2; they remain inventoried for
-Phase 5 compatibility closure.
+Phase 5 compatibility closure. Phase 5 supplies the go/no-go checklist and runbook; it does not invent
+a deprecation date. Integration evidence and workstation/edge requirements are in
+[TRACKER-ADMISSION-QUEUE-RUNBOOK.md](./TRACKER-ADMISSION-QUEUE-RUNBOOK.md).
+
+### Rollout preflight (Phase 5)
+
+`GET /api/v1/admission-queue/rollout/status` returns `allSchemaReady`, required table/index readiness,
+`legacyEndpointsEnabled`, `signalRRefreshEnabled`, `workstationMappingsUnique`, and
+`workstationMappingCount`. It never returns workstation or Loket key values.
 
 ## Frontend migration contract
 

@@ -1,4 +1,5 @@
-﻿using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
+﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
+using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Application.AdmisiContext.JadwalPraktekFeature.UseCases;
 using Bilreg.Application.AdmisiRanapContext;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature;
@@ -22,6 +23,7 @@ using Bilreg.Application.Shared;
 using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Infrastructure;
+using Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
 using Bilreg.Infrastructure.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.Integration;
@@ -87,6 +89,7 @@ public static class InfrastructureService
             .AddScoped<IWardAccommodationGateway, WardAccommodationGateway>()
             .AddScoped<IBangsalByKelasDkDal, BangsalByKelasDkDal>()
             .AddScoped<IAdmisiRanapRolloutDal, AdmisiRanapRolloutDal>()
+            .AddScoped<IAdmissionQueueRolloutDal, AdmissionQueueRolloutDal>()
             .AddScoped<LabOwareQueueProcessor>()
             .AddScoped<ILabResultPdfRenderer, LabResultPdfRenderer>()
             .AddScoped<ILabResultScaffoldService, LabResultScaffoldService>()

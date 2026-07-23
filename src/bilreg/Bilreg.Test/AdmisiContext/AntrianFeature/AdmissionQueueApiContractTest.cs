@@ -24,7 +24,55 @@ public class AdmissionQueueApiContractTest
             .Should().Be("api/v1/admission-queue");
         var methods=type.GetMethods().Select(x=>x.Name).ToArray();
         methods.Should().Contain(["Intake","BookingAssistance","Worklist","Display","Call","Recall","Start",
-            "Withdraw","NoShow","Redirect","Established","NotEstablished","ListServicePoints","UpsertServicePoint"]);
+            "Withdraw","NoShow","Redirect","Established","NotEstablished","ListServicePoints","UpsertServicePoint",
+            "RolloutStatus"]);
+    }
+
+    [Fact]
+    public async Task RolloutStatus_DispatchesAuthenticatedPreflightQuery()
+    {
+        var mediator=new Mock<IMediator>();
+        var response=new AdmissionQueueRolloutStatusResponse(
+            true,[],[],true,true,true,0);
+        mediator.Setup(x=>x.Send(It.IsAny<AdmissionQueueGetRolloutStatusQry>(),It.IsAny<CancellationToken>()))
+            .ReturnsAsync(response);
+        var sut=new AdmissionQueueV1Controller(mediator.Object);
+        var result=await sut.RolloutStatus();
+        result.Should().BeOfType<OkObjectResult>();
+        mediator.Verify(x=>x.Send(It.IsAny<AdmissionQueueGetRolloutStatusQry>(),It.IsAny<CancellationToken>()),Times.Once);
+    }
+
+    [Fact]
+    public async Task V1LoketMutation_RejectsUnmappedWorkstation()
+    {
+        var options=Options.Create(new AdmissionQueueApiOptions
+        {
+            Workstations=[new(){WorkstationKey="ADM-01",LoketKey="L1"}]
+        });
+        var sut=new AdmissionQueueV1Controller(Mock.Of<IMediator>(),options);
+        var http=new DefaultHttpContext();
+        http.Request.Headers["X-Loket-Key"]="L1";
+        http.Request.Headers["X-Workstation-Key"]="UNKNOWN";
+        sut.ControllerContext=new ControllerContext{HttpContext=http};
+        var act=()=>sut.Call("Q",1,new ActorLoketBody("L1","u"));
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("*not configured*");
+    }
+
+    [Fact]
+    public async Task V1LoketMutation_RejectsMissingWorkstationHeader()
+    {
+        var options=Options.Create(new AdmissionQueueApiOptions
+        {
+            Workstations=[new(){WorkstationKey="ADM-01",LoketKey="L1"}]
+        });
+        var sut=new AdmissionQueueV1Controller(Mock.Of<IMediator>(),options);
+        var http=new DefaultHttpContext();
+        http.Request.Headers["X-Loket-Key"]="L1";
+        sut.ControllerContext=new ControllerContext{HttpContext=http};
+        var act=()=>sut.Call("Q",1,new ActorLoketBody("L1","u"));
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("*X-Workstation-Key*");
     }
 
     [Fact]

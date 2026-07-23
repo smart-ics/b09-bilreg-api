@@ -46,12 +46,22 @@ public sealed class AdmissionQueueRealSqlGateTest
     {
         _fx.AppliedScriptOrder.Should().NotBeEmpty();
         _fx.DatabaseVersion.Should().NotBeNullOrWhiteSpace();
+        var expected = AdmissionQueueMigrationManifest.Scripts.Select(s => s.RelativePath).ToArray();
+        var appliedRoots = _fx.AppliedScriptOrder
+            .Select(s => s.Contains(" (skipped", StringComparison.Ordinal)
+                ? s[..s.IndexOf(" (skipped", StringComparison.Ordinal)]
+                : s)
+            .ToArray();
+        appliedRoots.Should().Equal(expected);
         using var conn = new SqlConnection(_conn);
         conn.Open();
-        conn.ExecuteScalar<int>("""
-            SELECT COUNT(1) FROM sys.indexes
-            WHERE name = 'UX_BILRG_Antrian_SequenceTag' AND object_id = OBJECT_ID('BILRG_Antrian')
-            """).Should().Be(1);
+        foreach (var index in AdmissionQueueMigrationManifest.RequiredIndexes)
+        {
+            conn.ExecuteScalar<int>("""
+                SELECT COUNT(1) FROM sys.indexes
+                WHERE name = @indexName AND object_id = OBJECT_ID(@tableName)
+                """, new { indexName = index.IndexName, tableName = index.TableName }).Should().Be(1);
+        }
     }
 
     [Fact]
