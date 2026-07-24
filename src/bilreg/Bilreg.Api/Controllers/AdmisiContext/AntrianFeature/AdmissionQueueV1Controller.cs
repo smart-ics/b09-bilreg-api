@@ -1,6 +1,7 @@
 using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.AntrianFeature.UseCases;
 using Bilreg.Application.AdmisiContext.RegFeature;
+using Bilreg.Api.AdmisiContext.AntrianFeature;
 using Bilreg.Api.Configurations;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -16,14 +17,16 @@ namespace Bilreg.Api.Controllers.AdmisiContext.AntrianFeature;
 public sealed class AdmissionQueueV1Controller : ControllerBase
 {
     private readonly IMediator _mediator;
-    private readonly AdmissionQueueApiOptions _options;
+    private readonly IAdmissionQueueWorkstationResolver _workstationResolver;
 
     public AdmissionQueueV1Controller(
         IMediator mediator,
+        IAdmissionQueueWorkstationResolver workstationResolver,
         IOptions<AdmissionQueueApiOptions>? options = null)
     {
         _mediator = mediator;
-        _options = options?.Value ?? new AdmissionQueueApiOptions();
+        _workstationResolver = workstationResolver;
+        _ = options;
     }
 
     [HttpGet("service-points")]
@@ -188,38 +191,21 @@ public sealed class AdmissionQueueV1Controller : ControllerBase
         return string.IsNullOrWhiteSpace(value) ? null : Version(value);
     }
 
-    private string Loket(string payload)
-    {
-        var configured = Request.Headers["X-Loket-Key"].FirstOrDefault();
-        var workstationKey = Request.Headers["X-Workstation-Key"].FirstOrDefault();
+    private AdmissionQueueWorkstationContext ResolveWorkstation(string? payloadLoketKey) =>
+        _workstationResolver.Resolve(Request, payloadLoketKey);
 
-        if (string.IsNullOrWhiteSpace(configured))
-            throw new ArgumentException("X-Loket-Key workstation context is required.");
-        if (string.IsNullOrWhiteSpace(workstationKey))
-            throw new ArgumentException("X-Workstation-Key is required.");
-        if (!string.Equals(configured.Trim(), payload?.Trim(), StringComparison.Ordinal))
-            throw new ArgumentException("LoketKey does not match workstation context.");
-
-        var workstation = _options.Workstations.SingleOrDefault(x =>
-            string.Equals(x.WorkstationKey?.Trim(), workstationKey.Trim(), StringComparison.OrdinalIgnoreCase));
-        if (workstation is null)
-            throw new ArgumentException("Workstation is not configured for Admission Queue operations.");
-        if (!string.Equals(workstation.LoketKey?.Trim(), configured.Trim(), StringComparison.OrdinalIgnoreCase))
-            throw new ArgumentException("Workstation is not configured for the requested LoketKey.");
-
-        return configured.Trim();
-    }
+    private string Loket(string? payload) => ResolveWorkstation(payload).LoketKey;
 }
 
 public record ServicePointBody(string DisplayName, string QueuePrefix, bool Active);
 public record IntakeBody(string ServicePointId);
 public record BookingAssistanceBody(
     string BookingId, string ServicePointId, string? FailureCode, string KioskId, string UserId);
-public record ActorLoketBody(string LoketKey, string UserId);
-public record VersionedActorLoketBody(string LoketKey, string ExpectedRowVersion, string UserId);
+public record ActorLoketBody(string? LoketKey, string UserId);
+public record VersionedActorLoketBody(string? LoketKey, string ExpectedRowVersion, string UserId);
 public record WithdrawBody(string Reason, string? LoketKey, string? ExpectedRowVersion, string UserId);
 public record RedirectBody(
     string TargetServicePointId, string? LoketKey, string? ExpectedRowVersion, string UserId);
-public record EstablishedBody(string LoketKey, string ExpectedRowVersion, string RegId, string UserId);
+public record EstablishedBody(string? LoketKey, string ExpectedRowVersion, string RegId, string UserId);
 public record NotEstablishedBody(
-    string LoketKey, string ExpectedRowVersion, string ReasonCode, string UserId);
+    string? LoketKey, string ExpectedRowVersion, string ReasonCode, string UserId);

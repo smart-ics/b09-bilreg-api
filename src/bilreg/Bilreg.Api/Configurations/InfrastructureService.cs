@@ -22,6 +22,7 @@ using Bilreg.Application.Shared;
 using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Infrastructure;
 using Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
+using Bilreg.Api.AdmisiContext.AntrianFeature;
 using Bilreg.Infrastructure.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.Integration;
@@ -141,6 +142,7 @@ public static class InfrastructureService
         services.AddScoped<IAdmissionWorkstationRepo, AdmissionWorkstationRepo>();
         services.AddScoped<IAdmissionQueueDisplayDal, AdmissionQueueDisplayDal>();
         services.AddScoped<IAdmissionQueueDisplayRepo, AdmissionQueueDisplayRepo>();
+        services.AddScoped<IAdmissionQueueWorkstationResolver, AdmissionQueueWorkstationResolver>();
         services.AddScoped<
             IBookingAssistanceRepo,
             BookingAssistanceRepo>();
