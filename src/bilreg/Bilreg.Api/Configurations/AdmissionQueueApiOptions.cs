@@ -8,6 +8,10 @@ public sealed class AdmissionQueueApiOptions
     /// </summary>
     public bool SignalRRefreshEnabled{get;set;}=true;
     public List<AdmissionQueueWorkstationOptions> Workstations{get;set;}=[];
+    /// <summary>
+    /// Usman role ids that grant AdmissionQueueConfiguration management access.
+    /// </summary>
+    public List<string> ConfigurationAllowedRoles{get;set;}=["ADM-SPV"];
 }
 
 public sealed class AdmissionQueueWorkstationOptions
