@@ -59,6 +59,21 @@ public class AntrianModel: IAntrianKey
         _listEntry.Add(entry);
     }
 
+    public AntrianEntryModel AddEntryByTracker(
+        int noAntrian, RegReff reg, string pasienTrackerId, DateTime takenAt)
+    {
+        PharmacyTrackerIdentity.EnsureRealTrackerId(pasienTrackerId);
+
+        var existing = FindActiveEntryByTracker(pasienTrackerId);
+        if (existing is not null)
+            return existing;
+
+        EnsureSlotAvailable(noAntrian);
+        var entry = AntrianEntryModel.CreateIdentified(noAntrian, reg, pasienTrackerId, takenAt);
+        _listEntry.Add(entry);
+        return entry;
+    }
+
     public void RemoveEntry(int noAntrian)
     {
         var itemToRemove = ListEntry.FirstOrDefault(x => x.NoAntrian == noAntrian) 
@@ -87,6 +102,12 @@ public class AntrianModel: IAntrianKey
         entry.Deliver();
     }
 
+    public void ConfirmPharmacySale(int noAntrian, string penjualanId, DateTime servedAt)
+    {
+        var entry = GetEntry(noAntrian);
+        entry.ConfirmSale(penjualanId, servedAt);
+    }
+
     public void CancelSlot(int noAntrian)
     {
         var entry = GetEntry(noAntrian);
@@ -103,6 +124,18 @@ public class AntrianModel: IAntrianKey
         entry.SetReff(reffId, reffDesc);
     }
 
+    public AntrianEntryModel? FindActiveEntryByTracker(string pasienTrackerId)
+    {
+        if (!PharmacyTrackerIdentity.IsRealTrackerId(pasienTrackerId))
+            return null;
+
+        return _listEntry.FirstOrDefault(x => x.IsActiveForTracker(pasienTrackerId));
+    }
+
+    public AntrianEntryModel GetActiveEntryByTracker(string pasienTrackerId)
+        => FindActiveEntryByTracker(pasienTrackerId)
+           ?? throw new KeyNotFoundException(
+               $"Active pharmacy queue entry for tracker '{pasienTrackerId}' not found.");
 
     private AntrianEntryModel GetEntry(int noAntrian)
     {
@@ -132,4 +165,10 @@ public record AntrianHeaderView(
 
 public record AntrianView(string AntrianId, int NoAntrian, AntrianStatusEnum AntrianStatus, 
     string RegId, string PasienId, string PasienName, string ReffId, string ReffDesc, 
+    string PasienTrackerId,
     DateTime AntrianDate, int ServicePoint, string AntrianDescription);
+
+public record PharmacyQueueEntryResponse(
+    string AntrianId,
+    int NoAntrian,
+    string PasienTrackerId);

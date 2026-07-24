@@ -33,6 +33,7 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
     private readonly IPpaRepo _ppaRepo;
     private readonly IAddAntrianEmrByBookingService _addBookingSvc;
     private readonly IJadwalPraktekFeatureResolver _featureResolver;
+    private readonly IQueueNumberCompatibilityAdapter _queueNumberAdapter;
     private readonly ITglJamProvider _tglJamProvider;
 
     public BookingCreateFromHidokHandler(IJadwalPraktekRepo jadwalPraktekRepo,
@@ -41,6 +42,7 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
         IPasienRepo pasienRepo, IPpaRepo ppaRepo, 
         IAddAntrianEmrByBookingService addBookingSvc,
         IJadwalPraktekFeatureResolver featureResolver,
+        IQueueNumberCompatibilityAdapter queueNumberAdapter,
         ITglJamProvider tglJamProvider)
     {
         _jadwalPraktekRepo = jadwalPraktekRepo;
@@ -52,6 +54,7 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
         _ppaRepo = ppaRepo;
         _addBookingSvc = addBookingSvc;
         _featureResolver = featureResolver;
+        _queueNumberAdapter = queueNumberAdapter;
         _tglJamProvider = tglJamProvider;
     }
     public Task<BookingCreateFromHidokResponse> Handle(BookingCreateFromHidokCommand request, CancellationToken cancellationToken)
@@ -107,7 +110,8 @@ public class BookingCreateFromHidokHandler : IRequestHandler<BookingCreateFromHi
         BookingCreateFromHidokResponse response;
         using (var trans = TransHelper.NewScope())
         {
-            var antEntry = antrian.AddEntry(request.NoAntrian, tracker, booking.BookingId, "BOK", occurredAt);
+            var antEntry = _queueNumberAdapter.AcceptExternalNumber(
+                antrian, request.NoAntrian, tracker, booking.BookingId, "BOK", occurredAt);
             booking.AssignNoAntrian(antEntry.NoUrut);
 
             _bookingRepo.SaveChanges(booking);

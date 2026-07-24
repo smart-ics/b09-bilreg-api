@@ -7,13 +7,16 @@ namespace Bilreg.Domain.AdmisiContext.AntrianFeature;
 
 public class AntrianModel : IAntrianKey
 {
+    public const int AdmissionQueueNumberMin = 1;
+    public const int AdmissionQueueNumberMax = 9999;
     private readonly List<AntrianEntryModel> _listEntry;
     private readonly ISequencer _sequencer;
     
     #region CREATION
     public AntrianModel(string antrianId, DateOnly antrianDate, TimeOnly startTime, TimeOnly endTime,
-        string sequenceTag, string antrianDesc, IEnumerable<AntrianEntryModel> listEntry, 
-        ISequencer sequencer)
+        string sequenceTag, string antrianDesc, ServicePointType servicePoint,
+        IEnumerable<AntrianEntryModel> listEntry, 
+        ISequencer sequencer, string queuePrefixSnapshot = "")
     {
         AntrianId = antrianId;
         AntrianDate = antrianDate;
@@ -21,6 +24,10 @@ public class AntrianModel : IAntrianKey
         EndTime = endTime;
         SequenceTag = sequenceTag;
         AntrianDescription = antrianDesc;
+        ServicePoint = servicePoint ?? ServicePointType.Default;
+        QueuePrefixSnapshot = string.IsNullOrWhiteSpace(queuePrefixSnapshot)
+            ? string.Empty
+            : AdmissionServicePointModel.NormalizePrefix(queuePrefixSnapshot);
         _listEntry = listEntry.ToList();
 
         _sequencer = sequencer;
@@ -29,13 +36,14 @@ public class AntrianModel : IAntrianKey
     public static IAntrianKey Key(string id)
     {
         var result = new AntrianModel(id, DateOnly.MinValue,
-            TimeOnly.MinValue, TimeOnly.MinValue, "-", "-", 
+            TimeOnly.MinValue, TimeOnly.MinValue, "-", "-", ServicePointType.Default,
             new List<AntrianEntryModel>(), null!);
         return result;
     }
 
     public static AntrianModel Default => new AntrianModel("-", DateOnly.MinValue, 
-        TimeOnly.MinValue, TimeOnly.MaxValue, "-", "-", new List<AntrianEntryModel>(), null!);
+        TimeOnly.MinValue, TimeOnly.MaxValue, "-", "-", ServicePointType.Default,
+        new List<AntrianEntryModel>(), null!);
 
     #endregion
     
@@ -46,24 +54,47 @@ public class AntrianModel : IAntrianKey
     public TimeOnly EndTime { get; init; }
     public string SequenceTag { get; init; }
     public string AntrianDescription { get; init; }
+    public ServicePointType ServicePoint { get; init; }
+    public string QueuePrefixSnapshot { get; init; }
     public IEnumerable<AntrianEntryModel> ListEntry => _listEntry;
     #endregion
 
     #region METHODS BEHAVIOR    
-    public AntrianEntryModel AddEntry(PasienTrackerModel pasienTracker, DateTime createdAt = default)
+    public AntrianEntryModel AddEntry(PasienTrackerModel pasienTracker, DateTime createdAt)
     {
         var visitor = pasienTracker.Person;
-        var noUrut = _sequencer.GetNextNoUrut(SequenceTag); 
+        var noUrut = _sequencer.GetNextNoUrut(SequenceTag);
+        EnsureUniqueNoUrut(noUrut);
         
         var entry = AntrianEntryModel.Create(noUrut, visitor, pasienTracker, "-", "-", createdAt);
         _listEntry.Add(entry);
         return entry;
     }
-    public void AddEntry(DateTime createdAt = default)
+    public AntrianEntryModel AddEntry(DateTime createdAt)
     {
-        var noUrut = _sequencer.GetNextNoUrut(SequenceTag); 
+        var noUrut = _sequencer.GetNextNoUrut(SequenceTag);
+        EnsureUniqueNoUrut(noUrut);
         var entry = AntrianEntryModel.Create(noUrut, PersonType.Default, PasienTrackerModel.Key("-"), "-", "-", createdAt);
-        _listEntry.Add(entry); 
+        _listEntry.Add(entry);
+        return entry;
+    }
+
+    public AntrianEntryModel AddAdmissionEntry(DateTime createdAt)
+    {
+        var noUrut = AllocateAdmissionQueueNumber();
+        var entry = AntrianEntryModel.Create(
+            noUrut, PersonType.Default, PasienTrackerModel.Key("-"), "-", "-", createdAt);
+        _listEntry.Add(entry);
+        return entry;
+    }
+
+    public AntrianEntryModel AddAdmissionEntry(PasienTrackerModel pasienTracker, DateTime createdAt)
+    {
+        var noUrut = AllocateAdmissionQueueNumber();
+        var entry = AntrianEntryModel.Create(
+            noUrut, pasienTracker.Person, pasienTracker, "-", "-", createdAt);
+        _listEntry.Add(entry);
+        return entry;
     }
     public void RemoveEntry(int noUrut)
     {
@@ -73,13 +104,42 @@ public class AntrianModel : IAntrianKey
         _listEntry.Remove(itemRemove);
     }
 
-    public AntrianEntryModel AddEntry(int noUrut, PasienTrackerModel pasienTracker, string reffId, string reffDesc, DateTime createdAt = default)
+    public AntrianEntryModel AddEntry(int noUrut, PasienTrackerModel pasienTracker, string reffId, string reffDesc, DateTime createdAt)
     {
+        EnsureUniqueNoUrut(noUrut);
         var visitor = pasienTracker.Person;
         var entry = AntrianEntryModel.Create(noUrut, visitor, pasienTracker, reffId, reffDesc, createdAt);
         _listEntry.Add(entry);
         return entry;
     }
+
+    private void EnsureUniqueNoUrut(int noUrut)
+    {
+        if (_listEntry.Any(x => x.NoUrut == noUrut))
+            throw new InvalidOperationException(
+                $"Queue number {noUrut} is already assigned in this session.");
+    }
+
+    private int AllocateAdmissionQueueNumber()
+    {
+        var noUrut = _sequencer.GetNextNoUrut(SequenceTag, AdmissionQueueNumberMax);
+        if (noUrut is < AdmissionQueueNumberMin or > AdmissionQueueNumberMax)
+            throw new InvalidOperationException(
+                $"Admission queue number {noUrut} is outside the supported range " +
+                $"{AdmissionQueueNumberMin}-{AdmissionQueueNumberMax}.");
+
+        EnsureUniqueNoUrut(noUrut);
+        return noUrut;
+    }
+
+    public string? FormatQueueLabel(int noUrut)
+    {
+        if (noUrut is < AdmissionQueueNumberMin or > AdmissionQueueNumberMax)
+            throw new ArgumentOutOfRangeException(nameof(noUrut), noUrut,
+                $"Queue number must be {AdmissionQueueNumberMin}-{AdmissionQueueNumberMax}.");
+        return string.IsNullOrEmpty(QueuePrefixSnapshot) ? null : $"{QueuePrefixSnapshot}{noUrut:D4}";
+    }
+
     public static string GenSequenceTag(DateOnly tglAntrian, JadwalPraktekEffective effective)
     {
         Guard.Against.Null(effective, nameof(effective));
@@ -112,6 +172,18 @@ public class AntrianModel : IAntrianKey
 
         var sequenceTag = $"AN{tglAntrian:yyMMdd}{jamMulai:HHmm}_{servicePoint.ServicePointCode}";
         return sequenceTag;
+    }
+
+    public static string ServicePointCodeFromSequenceTag(string sequenceTag)
+    {
+        if (string.IsNullOrWhiteSpace(sequenceTag))
+            return "-";
+
+        var underscore = sequenceTag.LastIndexOf('_');
+        if (underscore < 0 || underscore == sequenceTag.Length - 1)
+            return "-";
+
+        return sequenceTag[(underscore + 1)..];
     }
     #endregion
 }

@@ -37,6 +37,7 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
     private readonly IDashboardEmrRemoveRegService _dashboardEmrRemoveRegService;
     private readonly IBookingRepo _bookingRepo;
     private readonly IAuditRepo _auditRepo;
+    private readonly IQueueNumberCompatibilityAdapter _queueNumberAdapter;
     private readonly ITglJamProvider _tglJamProvider;
     public RegJalanBatalHandler(IRegRepo regRepo,
         IRegAktifRepo regAktifRepo,
@@ -49,6 +50,7 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
         IDashboardEmrRemoveRegService dashboardEmrRemoveRegService,
         IBookingRepo bookingRepo,
         IAuditRepo auditRepo,
+        IQueueNumberCompatibilityAdapter queueNumberAdapter,
         ITglJamProvider tglJamProvider)
     {
         _regRepo = regRepo;
@@ -62,6 +64,7 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
         _dashboardEmrRemoveRegService = dashboardEmrRemoveRegService;
         _bookingRepo = bookingRepo;
         _auditRepo = auditRepo;
+        _queueNumberAdapter = queueNumberAdapter;
         _tglJamProvider = tglJamProvider;
     }
 
@@ -99,7 +102,7 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
             if (book.BookingId != "-")
                 _bookingRepo.SaveChanges(book);
             VoidReg(reg, request.UserId, occurredAt);
-            VoidAntrian(antrianContext);
+            VoidAntrian(antrianContext, reg.RegId, occurredAt);
             VoidAntrianMap(queMap, antrianContext.NoUrut);
             VoidTindakan(tindakanList, request.UserId, occurredAt);
             VoidBilling(billingList);
@@ -204,21 +207,35 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
         reg.BatalBerobat(userId, occurredAt);
         _regRepo.SaveChanges(reg);
     }
-    private void VoidAntrian((AntrianModel Que, int NoUrut, IPasienTrackerKey TrackerKey) ctx)
+    private void VoidAntrian(
+        (AntrianModel Que, int NoUrut, IPasienTrackerKey TrackerKey) ctx,
+        string regId,
+        DateTime occurredAt)
     {
-        if (ctx.Que.AntrianId == "-")
+        if (ctx.Que.AntrianId != "-")
+        {
+            ctx.Que.RemoveEntry(ctx.NoUrut);
+            _antrianRepo.SaveChanges(ctx.Que);
+        }
+
+        // Retain Tracker evidence; append cancellation (BR-TRK-009a/b/c).
+        if (!PasienTrackerStableIdentity.IsRealTrackerId(ctx.TrackerKey.PasienTrackerId))
             return;
 
-        ctx.Que.RemoveEntry(ctx.NoUrut);
-        _antrianRepo.SaveChanges(ctx.Que);
-        _pasienTrackerRepo.DeleteEntity(ctx.TrackerKey);
+        var trackerOpt = _pasienTrackerRepo.LoadEntity(ctx.TrackerKey);
+        if (!trackerOpt.HasValue)
+            return;
+
+        var tracker = trackerOpt.Value;
+        tracker.AddEvent("REGISTER_CANCELLED", regId, occurredAt);
+        _pasienTrackerRepo.SaveChanges(tracker);
     }
     private void VoidAntrianMap(AntrianMapModel queMap, int noUrut)
     {
         if (queMap.JadwalId == "-")
             return;
 
-        queMap.VoidSlot(noUrut);
+        _queueNumberAdapter.Release(queMap, noUrut);
         _antrianMapRepo.SaveChanges(queMap);
     }
     private void VoidTindakan(IEnumerable<TindakanModel> listTindakan, string userId, DateTime occurredAt)

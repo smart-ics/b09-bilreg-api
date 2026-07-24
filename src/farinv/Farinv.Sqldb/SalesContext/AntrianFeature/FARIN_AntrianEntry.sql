@@ -9,7 +9,10 @@
     PreparedAt      DATETIME    NOT NULL CONSTRAINT DF_FARIN_AntrianEntry_PreparedAt DEFAULT('3000-01-01'),
     DeliveredAt     DATETIME    NOT NULL CONSTRAINT DF_FARIN_AntrianEntry_DeliveredAt DEFAULT('3000-01-01'),
     CancelAt        DATETIME    NOT NULL CONSTRAINT DF_FARIN_AntrianEntry_CancelAt DEFAULT('3000-01-01'),
-    
+    ServedAt        DATETIME    NOT NULL CONSTRAINT DF_FARIN_AntrianEntry_ServedAt DEFAULT('3000-01-01'),
+
+    PasienTrackerId VARCHAR(26) NOT NULL CONSTRAINT DF_FARIN_AntrianEntry_PasienTrackerId DEFAULT('-'),
+
     RegId           VARCHAR(10) NOT NULL CONSTRAINT DF_FARIN_AntrianEntry_RegId DEFAULT(''),
     PasienId        VARCHAR(15) NOT NULL CONSTRAINT DF_FARIN_AntrianEntry_PasienId DEFAULT(''),
     PasienName      VARCHAR(60) NOT NULL CONSTRAINT DF_FARIN_AntrianEntry_PasienName DEFAULT(''),    

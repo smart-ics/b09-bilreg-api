@@ -25,14 +25,16 @@ public class PasienTrackerRepo : IPasienTrackerRepo
                 onNone: () => _pasienTrackerdal.Insert(PasienTrackerDto.FromModel(model))
             );
 
-        var listEventDb = _pasienTrackerEventDal.ListData(model)?.ToList() ?? [];
-        var listCurrent = model.ListEvent
-            .Select(x => PasienTrackerEventDto.FromModel(model.PasienTrackerId, x)).ToList();
-        var (addedItems, deletedItems, changedItems) = CompareCollections(listEventDb, listCurrent);
+        // Append-only: insert events whose NoUrut is not yet persisted (BR-TRK-017).
+        var persistedNoUrut = (_pasienTrackerEventDal.ListData(model) ?? [])
+            .Select(x => x.NoUrut)
+            .ToHashSet();
+        var addedItems = model.ListEvent
+            .Where(x => !persistedNoUrut.Contains(x.NoUrut))
+            .Select(x => PasienTrackerEventDto.FromModel(model.PasienTrackerId, x))
+            .ToList();
 
         addedItems.ForEach(x => _pasienTrackerEventDal.Insert(x));
-        deletedItems.ForEach(x => _pasienTrackerEventDal.Delete(x.PasienTrackerId, x.NoUrut));
-        changedItems.ForEach(x => _pasienTrackerEventDal.Update(x));
     }
 
     public MayBe<PasienTrackerModel> LoadEntity(IPasienTrackerKey key)
@@ -46,8 +48,10 @@ public class PasienTrackerRepo : IPasienTrackerRepo
 
     public void DeleteEntity(IPasienTrackerKey key)
     {
-        _pasienTrackerdal.Delete(key);
-        _pasienTrackerEventDal.Delete(key);
+        // Tracker evidence is append-only (BR-TRK-017). Cancellation/reschedule must
+        // append evidence via SaveChanges; physical deletion of journey history is not supported.
+        throw new NotSupportedException(
+            "PasienTracker evidence is append-only. Append cancellation or reschedule evidence instead of deleting the tracker.");
     }
 
     public IEnumerable<PasienTrackerView> ListData(Periode visitDate, DateOnly tglLahir)
@@ -59,45 +63,9 @@ public class PasienTrackerRepo : IPasienTrackerRepo
             .Select(x => new PasienTrackerView(
                 x.PasienTrackerId, 
                 new PersonType(x.PersonName, DateOnly.FromDateTime(x.TglLahir)),
-                DateOnly.FromDateTime(x.VisitDate)));
+                DateOnly.FromDateTime(x.VisitDate),
+                DateOnly.FromDateTime(x.StartPeriod),
+                DateOnly.FromDateTime(x.LastPeriod)));
         return listTglLahir;
     }
-
-    #region HELPER
-    private (List<PasienTrackerEventDto> addedItems, 
-        List<PasienTrackerEventDto> deletedItems, 
-        List<PasienTrackerEventDto> changedItems) 
-        CompareCollections(
-            List<PasienTrackerEventDto> persistedItemList, 
-            List<PasienTrackerEventDto> currentItemList)
-    {
-        // Find deleted items - items that exist in persisted but not in current
-        var deletedItems = persistedItemList
-            .Where(persisted => currentItemList.All(current => current.NoUrut != persisted.NoUrut))
-            .ToList();
-
-        // Find added items - items that exist in current but not in persisted
-        var addedItems = currentItemList
-            .Where(current => persistedItemList.All(persisted => persisted.NoUrut != current.NoUrut))
-            .ToList();
-
-        // Find changed items - items that exist in both but have different properties
-        var changedItems = currentItemList
-            .Where(current => persistedItemList.Any(persisted => 
-                persisted.NoUrut == current.NoUrut && 
-                !AreEqual(persisted, current)))
-            .ToList();
-
-        return (addedItems, deletedItems, changedItems);
-    }
-
-    private static bool AreEqual(PasienTrackerEventDto a, PasienTrackerEventDto b)
-    {
-        return a.NoUrut == b.NoUrut &&
-               a.EventName == b.EventName &&
-               a.EventDate == b.EventDate &&
-               a.ReffId == b.ReffId;
-    }
-    #endregion
 }
-

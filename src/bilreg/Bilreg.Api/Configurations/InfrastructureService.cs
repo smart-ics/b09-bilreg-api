@@ -1,5 +1,5 @@
-﻿using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
-using Bilreg.Application.AdmisiContext.JadwalPraktekFeature.UseCases;
+﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
+using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Application.AdmisiRanapContext;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Application.AdmisiRanapContext.Integration;
@@ -12,14 +12,16 @@ using Bilreg.Application.LabContext.LabOrderFeature;
 using Bilreg.Application.LabContext.LabOrderFeature.Integration;
 using Bilreg.Application.LabContext.LabOwareFeature;
 using Bilreg.Application.LabContext.LabOwareFeature.Integration;
+using Bilreg.Application.AdmisiContext.EmrAntrianOutboundFeature;
+using Bilreg.Application.AdmisiContext.EmrAntrianOutboundFeature.Integration;
+using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.LabContext.LabResultFeature;
-using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Application.PaymentContext.PasienBalanceFeature;
 using Bilreg.Application.PaymentContext.TataRekeningFeature;
 using Bilreg.Application.Shared;
-using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Infrastructure;
+using Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
 using Bilreg.Infrastructure.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.Integration;
@@ -31,6 +33,8 @@ using Bilreg.Infrastructure.ChargeContext.TarifFeature;
 using Bilreg.Infrastructure.LabContext.Integration;
 using Bilreg.Infrastructure.LabContext.LabOrderFeature;
 using Bilreg.Infrastructure.LabContext.LabOwareFeature;
+using Bilreg.Infrastructure.AdmisiContext.EmrAntrianOutboundFeature;
+using Bilreg.Infrastructure.AdmisiContext.RegFeature;
 using Bilreg.Infrastructure.LabContext.LabResultFeature;
 using Bilreg.Infrastructure.PaymentContext.PasienBalanceFeature;
 using Bilreg.Infrastructure.PaymentContext.TataRekeningFeature;
@@ -69,6 +73,10 @@ public static class InfrastructureService
             .AddScoped<ILabTestResolutionService, LabTestResolutionService>()
             .AddScoped<ILabOwareIntegration, LabOwareIntegration>()
             .AddScoped<ILabOwareQueueWorklistDal, LabOwareQueueWorklistDal>()
+            .AddScoped<IEmrAntrianOutboundIntegration, EmrAntrianOutboundIntegration>()
+            .AddScoped<IEmrAntrianOutboundWorklistDal, EmrAntrianOutboundWorklistDal>()
+            .AddScoped<EmrAntrianOutboundProcessor>()
+            .AddScoped<EmrAntrianOutboundEnqueueService>()
             .AddScoped<IWaitingListWorklistDal, WaitingListWorklistDal>()
             .AddScoped<IRegistrationCancellationEligibilityDal, RegistrationCancellationEligibilityDal>()
             .AddScoped<IRegistrationCancellationEligibilityRepo, RegistrationCancellationEligibilityRepo>()
@@ -80,6 +88,8 @@ public static class InfrastructureService
             .AddScoped<IWardAccommodationGateway, WardAccommodationGateway>()
             .AddScoped<IBangsalByKelasDkDal, BangsalByKelasDkDal>()
             .AddScoped<IAdmisiRanapRolloutDal, AdmisiRanapRolloutDal>()
+            .AddScoped<IAdmissionQueueRolloutDal, AdmissionQueueRolloutDal>()
+            .AddScoped<IAdmissionQueueRolloutRepo, AdmissionQueueRolloutRepo>()
             .AddScoped<LabOwareQueueProcessor>()
             .AddScoped<ILabResultPdfRenderer, LabResultPdfRenderer>()
             .AddScoped<ILabResultScaffoldService, LabResultScaffoldService>()
@@ -118,6 +128,21 @@ public static class InfrastructureService
             .Configure<JadwalPraktekOptions>(configuration.GetSection(JadwalPraktekOptions.SECTION_NAME))
             .Configure<AdmisiRanapOptions>(configuration.GetSection(AdmisiRanapOptions.SECTION_NAME))
             .Configure<UsmanOptions>(configuration.GetSection(UsmanOptions.SECTION_NAME));
+
+        services.AddScoped<
+            IAdmissionQueueOperationalProjection,
+            AdmissionQueueOperationalProjection>();
+        services.AddScoped<
+            IAdmissionQueueOperationRepo,
+            AdmissionQueueOperationRepo>();
+        services.AddScoped<IAdmissionServicePointDal, AdmissionServicePointDal>();
+        services.AddScoped<IAdmissionServicePointRepo, AdmissionServicePointRepo>();
+        services.AddScoped<
+            IBookingAssistanceRepo,
+            BookingAssistanceRepo>();
+        services.AddScoped<
+            IRegistrationOutcomeOperationRepo,
+            RegistrationOutcomeOperationRepo>();
 
         var infraAssemblies = new[]
         {

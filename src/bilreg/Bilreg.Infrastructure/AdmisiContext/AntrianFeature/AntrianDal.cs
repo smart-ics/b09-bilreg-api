@@ -34,10 +34,10 @@ public class AntrianDal : IAntrianDal
         const string sql = """
            INSERT INTO BILRG_Antrian(
                AntrianId, AntrianDate, StartTime, EndTime,
-               SequenceTag, AntrianDescription)
+               SequenceTag, AntrianDescription, ServicePointCode, QueuePrefixSnapshot)
            VALUES (
                @AntrianId, @AntrianDate, @StartTime, @EndTime,
-               @SequenceTag, @AntrianDescription)
+               @SequenceTag, @AntrianDescription, @ServicePointCode, @QueuePrefixSnapshot)
            """;
 
         var dp = new DynamicParameters();
@@ -47,6 +47,8 @@ public class AntrianDal : IAntrianDal
         dp.AddParam("@EndTime", dto.EndTime, SqlDbType.VarChar);	
         dp.AddParam("@SequenceTag", dto.SequenceTag, SqlDbType.VarChar);	 
         dp.AddParam("@AntrianDescription", dto.AntrianDescription, SqlDbType.VarChar);
+        dp.AddParam("@ServicePointCode", dto.ServicePointCode, SqlDbType.VarChar);
+        dp.AddParam("@QueuePrefixSnapshot", dto.QueuePrefixSnapshot, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -62,7 +64,8 @@ public class AntrianDal : IAntrianDal
                 StartTime = @StartTime, 
                 EndTime = @EndTime,
                 SequenceTag = @SequenceTag, 
-                AntrianDescription = @AntrianDescription
+                AntrianDescription = @AntrianDescription,
+                ServicePointCode = @ServicePointCode
            WHERE
                AntrianId = @AntrianId
            """;
@@ -74,6 +77,7 @@ public class AntrianDal : IAntrianDal
         dp.AddParam("@EndTime", dto.EndTime, SqlDbType.VarChar);	
         dp.AddParam("@SequenceTag", dto.SequenceTag, SqlDbType.VarChar);	 
         dp.AddParam("@AntrianDescription", dto.AntrianDescription, SqlDbType.VarChar);
+        dp.AddParam("@ServicePointCode", dto.ServicePointCode, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
@@ -100,7 +104,7 @@ public class AntrianDal : IAntrianDal
         const string sql = """
            SELECT
                AntrianId, AntrianDate, StartTime, EndTime,
-               SequenceTag, AntrianDescription
+               SequenceTag, AntrianDescription, ServicePointCode, QueuePrefixSnapshot
            FROM
                 BILRG_Antrian
            WHERE
@@ -119,7 +123,7 @@ public class AntrianDal : IAntrianDal
         const string sql = """
            SELECT
                AntrianId, AntrianDate, StartTime, EndTime,
-               SequenceTag, AntrianDescription
+               SequenceTag, AntrianDescription, ServicePointCode, QueuePrefixSnapshot
            FROM
                 BILRG_Antrian
            WHERE

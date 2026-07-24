@@ -89,16 +89,18 @@
 
 Persistent-workspace Phase 2 close-out summary (frontend docs tree): `c012_myhospital_web/docs/modules/admisi-ranap/persistent-workspace-phase-2-implementation-summary.md`
 
-### Admisi — Booking / Jadwal Praktek (`docs/contexts/admisi/`)
+### Admisi — Rawat Jalan (`docs/contexts/admisi-rajal/`)
 
 | Path | Purpose |
 |------|---------|
-| `docs/contexts/admisi/jadwal-praktek-investigation-report.md` | Codebase investigation — `JadwalPraktekType` usage, consumers, and update paths |
-| `docs/contexts/admisi/jadwal-praktek-harian-architecture-analysis.md` | Architecture analysis — daily schedule (`JadwalPraktekHarian`) design, resolver, migration roadmap |
-| `docs/contexts/admisi/jadwal-praktek-harian-deployment-manual.md` | Deployment & operations — SQL order, feature toggle rollout, validation, rollback |
-| `docs/contexts/admisi/adr/ADR-001-runtime-effective-schedule.md` | ADR — runtime `JadwalPraktekEffective` and resolver as single authority |
-| `docs/contexts/admisi/adr/ADR-002-manual-override-independence.md` | ADR — `Source = MANUAL` daily rows independent from template |
-| `docs/contexts/admisi/adr/ADR-003-booking-schedule-references.md` | ADR — dual nullable schedule IDs on booking |
+| `docs/contexts/admisi-rajal/admisi-rajal-domain.md` | Admisi Rajal — canonical business truth, boundaries, foundational capabilities, and Work List ownership |
+| `docs/contexts/admisi-rajal/admisi-rajal-domain-id.md` | Admisi Rajal — Bahasa Indonesia semantic companion |
+| `docs/contexts/admisi-rajal/jadwal-praktek-investigation-report.md` | Codebase investigation — `JadwalPraktekType` usage, consumers, and update paths |
+| `docs/contexts/admisi-rajal/jadwal-praktek-harian-architecture-analysis.md` | Architecture analysis — daily schedule (`JadwalPraktekHarian`) design, resolver, migration roadmap |
+| `docs/contexts/admisi-rajal/jadwal-praktek-harian-deployment-manual.md` | Deployment & operations — SQL order, feature toggle rollout, validation, rollback |
+| `docs/contexts/admisi-rajal/adr/ADR-001-runtime-effective-schedule.md` | ADR — runtime `JadwalPraktekEffective` and resolver as single authority |
+| `docs/contexts/admisi-rajal/adr/ADR-002-manual-override-independence.md` | ADR — `Source = MANUAL` daily rows independent from template |
+| `docs/contexts/admisi-rajal/adr/ADR-003-booking-schedule-references.md` | ADR — dual nullable schedule IDs on booking |
 
 ### Tarif (`docs/contexts/tarif/`)
 
@@ -190,6 +192,57 @@ Background processing platform — job orchestration, worker plugins, operator c
 |------|---------|
 | `docs/contexts/pasien-tracker/TRACKER-DOMAIN.md` | Patient Tracker — canonical business truth for Patient Journey continuity and Service Point queues |
 | `docs/contexts/pasien-tracker/TRACKER-DOMAIN-ID.md` | Patient Tracker — Bahasa Indonesia semantic companion |
+| `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-DOMAIN.md` | Patient Tracker — canonical Admission Queue Operations business specification for Service Points, Loket, Kiosks, Queue Labels, and Queue Calls |
+| `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-DOMAIN-ID.md` | Patient Tracker Admission Queue Operations — Bahasa Indonesia semantic companion |
+| `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-SOP.md` | Patient Tracker — canonical target operational procedure for admission queue intake, calling, service, Journey Resolution, and completion |
+| `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-SOP-ID.md` | Patient Tracker Admission Queue Operations SOP — Bahasa Indonesia operational companion |
+| `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-ARCHITECTURE.md` | Patient Tracker — codebase-grounded current-to-target architecture for admission queue resources, calls, projections, Kiosk, Queue Display, security, and delivery |
+| `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-ARCHITECTURE-RECONCILIATION.md` | Patient Tracker — post-R-14 architecture verdict, implementation-state matrix, remaining delivery plan, and first-slice prompt |
+| `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-IMPLEMENTATION-PLAN.md` | Patient Tracker — backend-only phased implementation plan for remaining Admission Queue work (external clients summarized out of scope) |
+| `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-EXTERNAL-CLIENTS-IMPLEMENTATION-PLAN.md` | Patient Tracker — Part 2 external clients plan (C0–C4 closed) |
+| `docs/contexts/pasien-tracker/kiosk-queue-display-web.md` | Patient Tracker — kiosk/display path-based IIS deploy + monorepo architecture decision (feeds C2/C3) |
+| `docs/contexts/pasien-tracker/tracker-c2-kiosk-implementation-report.md` | Patient Tracker — C2 kiosk monorepo path boot, intake, and local print/reprint closure |
+| `docs/contexts/pasien-tracker/tracker-c3-queue-display-implementation-report.md` | Patient Tracker — C3 queue display snapshot-first, SignalR RefreshHint, TTS, and version.json idle reload |
+| `docs/contexts/pasien-tracker/tracker-c4-integration-deployment-implementation-report.md` | Patient Tracker — C4 cross-client E2E, IIS packaging, and runbook client-section closure |
+| `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-IIS-CLIENT-CUTOVER-CHECKLIST.md` | Patient Tracker — Kiosk/Display IIS packaging and cutover Go/No-Go gates (C4) |
+| `docs/contexts/pasien-tracker/tracker-admission-queue-phase1-slice1-verification-report.md` | Patient Tracker — Phase 1 / Slice 1 disposable migrated-SQL operational gate, race matrix results, and session one-winner reload evidence |
+| `docs/contexts/pasien-tracker/tracker-admission-queue-phase2-officer-contracts-implementation-report.md` | Patient Tracker — Phase 2 officer contracts, ReasonCode catalog boundary, Admisi enriched worklist, legacy inventory |
+| `docs/contexts/pasien-tracker/tracker-admission-queue-phase3-booking-assistance-implementation-report.md` | Patient Tracker — Phase 3 booking-assistance receive-side closure and external HiDok consumer contract |
+| `docs/contexts/pasien-tracker/tracker-admission-queue-phase4-signalr-refresh-implementation-report.md` | Patient Tracker — Phase 4 SignalR refresh-hint hub/adapter behind IAdmissionQueueRefreshPublisher |
+| `docs/contexts/pasien-tracker/tracker-admission-queue-phase5-rollout-implementation-report.md` | Patient Tracker — Phase 5 backend integration rollout package, preflight status, go/no-go closure |
+| `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-RUNBOOK.md` | Patient Tracker — Admission Queue integration migrate/seed/config/smoke/rollback runbook + Officer/Kiosk/Display client sections (C4) |
+| `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-ROLLOUT-CHECKLIST.md` | Patient Tracker — Admission Queue integration go/no-go and legacy disposition checklist |
+| `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-IMPLEMENTATION-GAP-ANALYSIS.md` | Patient Tracker — artifact/codebase alignment and implementation-readiness verdict for Admission Queue Operations |
+| `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-IMPLEMENTATION-ROADMAP.md` | Patient Tracker — prioritized, dependency-ordered roadmap for closing Admission Queue implementation gaps |
+| `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-R04-LOKET-CLAIM-CONTRACT.md` | Patient Tracker — accepted cross-session active Loket claim state, persistence, concurrency, and test contract |
+| `docs/contexts/pasien-tracker/tracker-admission-queue-r00-baseline-implementation-report.md` | Patient Tracker — R-00 accepted baseline commit and focused verification evidence |
+| `docs/contexts/pasien-tracker/tracker-admission-queue-r01-cas-persistence-implementation-report.md` | Patient Tracker — R-01 compare-and-set admission lifecycle persistence |
+| `docs/contexts/pasien-tracker/tracker-admission-queue-r05a-sequencer-implementation-report.md` | Patient Tracker — R-05A bounded, non-cycling, concurrency-safe Admission Queue sequencer implementation |
+| `docs/contexts/pasien-tracker/tracker-admission-queue-r06-service-point-implementation-report.md` | Patient Tracker — R-06 authoritative Admission Service Points and immutable Queue Label snapshots |
+| `docs/contexts/pasien-tracker/tracker-admission-queue-r07-projections-implementation-report.md` | Patient Tracker — R-07 queue-only officer worklist and current Loket recovery projections |
+| `docs/contexts/pasien-tracker/tracker-admission-queue-r08-transitions-implementation-report.md` | Patient Tracker — R-08 explicit Queue operational transition matrix, CAS coordination, and Redirect |
+| `docs/contexts/pasien-tracker/tracker-admission-queue-r09-registration-outcome-implementation-report.md` | Patient Tracker — R-09 immutable final Registration outcomes and atomic Queue completion |
+| `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-API-V1.md` | Patient Tracker — R-10 versioned Admission Queue API, errors, security boundary, consumer inventory, and compatibility |
+| `docs/contexts/pasien-tracker/tracker-admission-queue-r11-hidok-assistance-implementation-report.md` | Patient Tracker — R-11 HiDok Booking assistance ensure API, business deduplication, and external integration boundary |
+| `docs/contexts/pasien-tracker/tracker-admission-queue-r12a-workstation-identity-implementation-report.md` | Patient Tracker — R-12A configured workstation-to-Loket identity validation and R-12B operations boundary |
+| `docs/contexts/pasien-tracker/tracker-admission-queue-r13-audit-operational-validation-report.md` | Patient Tracker — R-13 audit-schema alignment, persistence classification, and continuous operational-validation gate |
+| `docs/contexts/pasien-tracker/tracker-admission-queue-r14-deferred-operational-policies.md` | Patient Tracker — R-14 explicit-action guardrail and intentionally deferred operational policies |
+| `docs/contexts/pasien-tracker/TRACKER-COMPATIBILITY.md` | Patient Tracker — legacy AntrianMap ↔ Queue Session authority map, crosswalk, and adapter contract (F-13) |
+| `docs/contexts/pasien-tracker/tracker-codebase-gap-report.md` | Patient Tracker — implementation gap report vs canonical domain |
+| `docs/contexts/pasien-tracker/tracker-f01-implementation-report.md` | Patient Tracker — F-01 closed: explicit Tracking Period |
+| `docs/contexts/pasien-tracker/tracker-f02-implementation-report.md` | Patient Tracker — F-02 closed: stable TrackerId across visit change / cancel |
+| `docs/contexts/pasien-tracker/tracker-f03-implementation-report.md` | Patient Tracker — F-03 closed: append-only Tracker Event persistence (PK NoUrut, insert-only DAL/repo) |
+| `docs/contexts/pasien-tracker/tracker-f04-implementation-report.md` | Patient Tracker — F-04 closed: Journey Candidate Resolution (soft-duplicate Booking, candidate query, select/new) |
+| `docs/contexts/pasien-tracker/tracker-f05-implementation-report.md` | Patient Tracker — F-05 closed: anonymous admission intake & atomic identify + Queue Evidence Reference |
+| `docs/contexts/pasien-tracker/tracker-f06-implementation-report.md` | Patient Tracker — F-06 closed: Queue aggregate Service Point, number uniqueness, Serve/Done lifecycle invariants |
+| `docs/contexts/pasien-tracker/tracker-f07-implementation-report.md` | Patient Tracker — F-07 closed: registration vs consultation milestone separation (admission Done; physician Serve via MulaiPeriksa) |
+| `docs/contexts/pasien-tracker/tracker-f08-implementation-report.md` | Patient Tracker — F-08 closed: Consult-Start / Consult-Done evidence on MulaiPeriksa / SelesaiPeriksa |
+| `docs/contexts/pasien-tracker/tracker-f09-implementation-report.md` | Patient Tracker — F-09 closed: pharmacy queue same TrackerId; sale→Apotek-Start; handover→Apotek-Done (Farinv cmds completed in F-10 companion) |
+| `docs/contexts/pasien-tracker/tracker-f10-implementation-report.md` | Patient Tracker — F-10 closed: GET tracker/timeline + Mulai/Selesai/QueGet response contracts (Farinv Que* in same commit attributed to F-09) |
+| `docs/contexts/pasien-tracker/tracker-f11-implementation-report.md` | Patient Tracker — F-11 Slice 1 closed: EMR antrian outbox for BookingCreate + RegJalan (WalkIn/ByBooking); pharmacy/full §9 facts remain open |
+| `docs/contexts/pasien-tracker/tracker-f12-implementation-report.md` | Patient Tracker — F-12 closed in source: Queue Session + deterministic evidence persistence shape (cross-commit F-01/F-03/F-05/F-06; close `0256688d`) |
+| `docs/contexts/pasien-tracker/tracker-f13-implementation-report.md` | Patient Tracker — F-13 closed in source: queue-number compatibility adapter & authority map |
+| `docs/contexts/pasien-tracker/tracker-admission-queue-late-identification-gap-analysis.md` | Patient Tracker — implementation gap analysis for anonymous admission service, late Tracker association, and Registration-owned Walk-In Tracker creation |
 
 ---
 

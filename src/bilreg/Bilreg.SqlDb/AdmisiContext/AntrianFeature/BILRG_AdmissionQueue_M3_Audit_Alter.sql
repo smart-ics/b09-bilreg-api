@@ -1,0 +1,40 @@
+/* R-13: additive audit alignment for existing Admission Queue installations. */
+IF COL_LENGTH('BILRG_Antrian','CrtUser') IS NULL
+BEGIN
+    ALTER TABLE BILRG_Antrian ADD
+        CrtUser VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_Antrian_CrtUser_M3 DEFAULT(''),
+        CrtDate DATETIME NOT NULL CONSTRAINT DF_BILRG_Antrian_CrtDate_M3 DEFAULT('3000-01-01'),
+        UpdUser VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_Antrian_UpdUser_M3 DEFAULT(''),
+        UpdDate DATETIME NOT NULL CONSTRAINT DF_BILRG_Antrian_UpdDate_M3 DEFAULT('3000-01-01'),
+        VodUser VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_Antrian_VodUser_M3 DEFAULT(''),
+        VodDate DATETIME NOT NULL CONSTRAINT DF_BILRG_Antrian_VodDate_M3 DEFAULT('3000-01-01');
+END;
+
+IF COL_LENGTH('BILRG_AntrianEntry','CrtUser') IS NULL
+BEGIN
+    ALTER TABLE BILRG_AntrianEntry ADD
+        CrtUser VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_AntrianEntry_CrtUser_M3 DEFAULT(''),
+        CrtDate DATETIME NOT NULL CONSTRAINT DF_BILRG_AntrianEntry_CrtDate_M3 DEFAULT('3000-01-01'),
+        UpdUser VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_AntrianEntry_UpdUser_M3 DEFAULT(''),
+        UpdDate DATETIME NOT NULL CONSTRAINT DF_BILRG_AntrianEntry_UpdDate_M3 DEFAULT('3000-01-01'),
+        VodUser VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_AntrianEntry_VodUser_M3 DEFAULT(''),
+        VodDate DATETIME NOT NULL CONSTRAINT DF_BILRG_AntrianEntry_VodDate_M3 DEFAULT('3000-01-01');
+END;
+
+IF COL_LENGTH('BILRG_AdmServicePoint','CrtUser') IS NULL
+BEGIN
+    ALTER TABLE BILRG_AdmServicePoint ADD
+        CrtUser VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_AdmServicePoint_CrtUser_M3 DEFAULT(''),
+        CrtDate DATETIME NOT NULL CONSTRAINT DF_BILRG_AdmServicePoint_CrtDate_M3 DEFAULT('3000-01-01'),
+        UpdUser VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_AdmServicePoint_UpdUser_M3 DEFAULT(''),
+        UpdDate DATETIME NOT NULL CONSTRAINT DF_BILRG_AdmServicePoint_UpdDate_M3 DEFAULT('3000-01-01'),
+        VodUser VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_AdmServicePoint_VodUser_M3 DEFAULT(''),
+        VodDate DATETIME NOT NULL CONSTRAINT DF_BILRG_AdmServicePoint_VodDate_M3 DEFAULT('3000-01-01');
+END;
+
+IF COL_LENGTH('BILRG_AdmBookingAssistance','VodUser') IS NULL
+BEGIN
+    ALTER TABLE BILRG_AdmBookingAssistance ADD
+        VodUser VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_AdmBookingAssistance_VodUser_M3 DEFAULT(''),
+        VodDate DATETIME NOT NULL CONSTRAINT DF_BILRG_AdmBookingAssistance_VodDate_M3 DEFAULT('3000-01-01');
+END;

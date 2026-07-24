@@ -1,4 +1,5 @@
 using Bilreg.Api.Configurations;
+using Bilreg.Api.SignalR;
 using Scalar.AspNetCore;
 using Serilog;
 
@@ -28,9 +29,12 @@ app
     .UseRouting()
     .UseCors("corsapp")
     .UseAuthentication()
-    .UseAuthorization()
-    .UseEndpoints(ep => ep.MapControllers())
-    .UseSwagger(c => c.RouteTemplate = "openapi/{documentName}.json");
+    .UseAuthorization();
+
+app.MapControllers();
+app.MapHub<AdmissionQueueRefreshHub>(AdmissionQueueRefreshContracts.HubPath);
+
+app.UseSwagger(c => c.RouteTemplate = "openapi/{documentName}.json");
 
 app
     .MapScalarApiReference(opt =>

@@ -33,29 +33,15 @@ public class AntrianEntryDal : IAntrianEntryDal
         const string sql = """
        INSERT INTO FARIN_AntrianEntry(
             AntrianId, NoAntrian, AntrianStatus, 
-            TakenAt, AssignedAt, PreparedAt, DeliveredAt, CancelAt,
-            RegId, PasienId, PasienName, ReffId, ReffDesc)
+            TakenAt, AssignedAt, PreparedAt, DeliveredAt, CancelAt, ServedAt,
+            RegId, PasienId, PasienName, ReffId, ReffDesc, PasienTrackerId)
        VALUES (
             @AntrianId, @NoAntrian, @AntrianStatus, 
-            @TakenAt, @AssignedAt, @PreparedAt, @DeliveredAt, @CancelAt,
-            @RegId, @PasienId, @PasienName, @ReffId, @ReffDesc)
+            @TakenAt, @AssignedAt, @PreparedAt, @DeliveredAt, @CancelAt, @ServedAt,
+            @RegId, @PasienId, @PasienName, @ReffId, @ReffDesc, @PasienTrackerId)
        """;
 
-        var dp = new DynamicParameters();
-        dp.AddParam("@AntrianId", dto.AntrianId, SqlDbType.VarChar);
-        dp.AddParam("@NoAntrian", dto.NoAntrian, SqlDbType.Int);
-        dp.AddParam("@AntrianStatus", dto.AntrianStatus, SqlDbType.Int);
-        dp.AddParam("@TakenAt", dto.TakenAt, SqlDbType.DateTime);
-        dp.AddParam("@AssignedAt", dto.AssignedAt, SqlDbType.DateTime);
-        dp.AddParam("@PreparedAt", dto.PreparedAt, SqlDbType.DateTime);
-        dp.AddParam("@DeliveredAt", dto.DeliveredAt, SqlDbType.DateTime);
-        dp.AddParam("@CancelAt", dto.CancelAt, SqlDbType.DateTime);
-        dp.AddParam("@RegId", dto.RegId, SqlDbType.VarChar);
-        dp.AddParam("@PasienId", dto.PasienId, SqlDbType.VarChar);
-        dp.AddParam("@PasienName", dto.PasienName, SqlDbType.VarChar);
-        dp.AddParam("@ReffId", dto.ReffId, SqlDbType.VarChar);
-        dp.AddParam("@ReffDesc", dto.ReffDesc, SqlDbType.VarChar);
-
+        var dp = BuildParameters(dto);
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
@@ -73,11 +59,13 @@ public class AntrianEntryDal : IAntrianEntryDal
         bcp.AddMap("PreparedAt", "PreparedAt");
         bcp.AddMap("DeliveredAt", "DeliveredAt");
         bcp.AddMap("CancelAt", "CancelAt");
+        bcp.AddMap("ServedAt", "ServedAt");
         bcp.AddMap("RegId", "RegId");
         bcp.AddMap("PasienId", "PasienId");
         bcp.AddMap("PasienName", "PasienName");
         bcp.AddMap("ReffId", "ReffId");
         bcp.AddMap("ReffDesc", "ReffDesc");
+        bcp.AddMap("PasienTrackerId", "PasienTrackerId");
         var fetched = listDto.ToList();
         bcp.BatchSize = fetched.Count;
         bcp.DestinationTableName = "FARIN_AntrianEntry";
@@ -96,31 +84,19 @@ public class AntrianEntryDal : IAntrianEntryDal
                 PreparedAt = @PreparedAt,
                 DeliveredAt = @DeliveredAt,
                 CancelAt =@CancelAt,
+                ServedAt = @ServedAt,
                 RegId = @RegId,
                 PasienId = @PasienId,
                 PasienName = @PasienName,
                 ReffId = @ReffId,
-                ReffDesc = @ReffDesc
+                ReffDesc = @ReffDesc,
+                PasienTrackerId = @PasienTrackerId
            WHERE
                 AntrianId = @AntrianId 
                 AND NoAntrian = @NoAntrian
            """;
 
-        var dp = new DynamicParameters();
-        dp.AddParam("@AntrianId", dto.AntrianId, SqlDbType.VarChar);
-        dp.AddParam("@NoAntrian", dto.NoAntrian, SqlDbType.Int);
-        dp.AddParam("@AntrianStatus", dto.AntrianStatus, SqlDbType.Int);
-        dp.AddParam("@TakenAt", dto.TakenAt, SqlDbType.DateTime);
-        dp.AddParam("@AssignedAt", dto.AssignedAt, SqlDbType.DateTime);
-        dp.AddParam("@PreparedAt", dto.PreparedAt, SqlDbType.DateTime);
-        dp.AddParam("@DeliveredAt", dto.DeliveredAt, SqlDbType.DateTime);
-        dp.AddParam("@CancelAt", dto.CancelAt, SqlDbType.DateTime);
-        dp.AddParam("@RegId", dto.RegId, SqlDbType.VarChar);
-        dp.AddParam("@PasienId", dto.PasienId, SqlDbType.VarChar);
-        dp.AddParam("@PasienName", dto.PasienName, SqlDbType.VarChar);
-        dp.AddParam("@ReffId", dto.ReffId, SqlDbType.VarChar);
-        dp.AddParam("@ReffDesc", dto.ReffDesc, SqlDbType.VarChar);
-
+        var dp = BuildParameters(dto);
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
     }
@@ -164,8 +140,8 @@ public class AntrianEntryDal : IAntrianEntryDal
         const string sql = """
            SELECT
                 AntrianId, NoAntrian, AntrianStatus,
-                TakenAt, AssignedAt, PreparedAt, DeliveredAt, CancelAt,
-                RegId, PasienId, PasienName, ReffId, ReffDesc
+                TakenAt, AssignedAt, PreparedAt, DeliveredAt, CancelAt, ServedAt,
+                RegId, PasienId, PasienName, ReffId, ReffDesc, PasienTrackerId
            FROM
                 FARIN_AntrianEntry
            WHERE
@@ -186,8 +162,8 @@ public class AntrianEntryDal : IAntrianEntryDal
         const string sql = """
             SELECT
                  AntrianId, NoAntrian, AntrianStatus,
-                 TakenAt, AssignedAt, PreparedAt, DeliveredAt, CancelAt,
-                 RegId, PasienId, PasienName, ReffId, ReffDesc
+                 TakenAt, AssignedAt, PreparedAt, DeliveredAt, CancelAt, ServedAt,
+                 RegId, PasienId, PasienName, ReffId, ReffDesc, PasienTrackerId
             FROM
                  FARIN_AntrianEntry
             WHERE
@@ -199,5 +175,26 @@ public class AntrianEntryDal : IAntrianEntryDal
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<AntrianEntryDto>(sql, dp);
-    }    
+    }
+
+    private static DynamicParameters BuildParameters(AntrianEntryDto dto)
+    {
+        var dp = new DynamicParameters();
+        dp.AddParam("@AntrianId", dto.AntrianId, SqlDbType.VarChar);
+        dp.AddParam("@NoAntrian", dto.NoAntrian, SqlDbType.Int);
+        dp.AddParam("@AntrianStatus", dto.AntrianStatus, SqlDbType.Int);
+        dp.AddParam("@TakenAt", dto.TakenAt, SqlDbType.DateTime);
+        dp.AddParam("@AssignedAt", dto.AssignedAt, SqlDbType.DateTime);
+        dp.AddParam("@PreparedAt", dto.PreparedAt, SqlDbType.DateTime);
+        dp.AddParam("@DeliveredAt", dto.DeliveredAt, SqlDbType.DateTime);
+        dp.AddParam("@CancelAt", dto.CancelAt, SqlDbType.DateTime);
+        dp.AddParam("@ServedAt", dto.ServedAt, SqlDbType.DateTime);
+        dp.AddParam("@RegId", dto.RegId, SqlDbType.VarChar);
+        dp.AddParam("@PasienId", dto.PasienId, SqlDbType.VarChar);
+        dp.AddParam("@PasienName", dto.PasienName, SqlDbType.VarChar);
+        dp.AddParam("@ReffId", dto.ReffId, SqlDbType.VarChar);
+        dp.AddParam("@ReffDesc", dto.ReffDesc, SqlDbType.VarChar);
+        dp.AddParam("@PasienTrackerId", dto.PasienTrackerId, SqlDbType.VarChar);
+        return dp;
+    }
 }

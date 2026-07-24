@@ -1,10 +1,11 @@
-﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
+﻿using System.Data.SqlClient;
+using System.Globalization;
+using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.Shared.Helpers;
 using Nuna.Lib.DataTypeExtension;
 using Nuna.Lib.PatternHelper;
 using Nuna.Lib.ValidationHelper;
-using System.Globalization;
 
 namespace Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
 
@@ -79,6 +80,48 @@ public class AntrianRepo : IAntrianRepo
         listOutStanding.ForEach(x => _antrianEntryDal.UpdateOutStanding(x));
     }
 
+    public bool TrySaveAnonymousInServiceTransition(
+        AntrianModel queue,
+        AntrianEntryModel entry)
+    {
+        var dto = AntrianEntryDto.FromModel(queue.AntrianId, entry);
+        return _antrianEntryDal.UpdateFromAnonymousInService(dto) == 1;
+    }
+
+    public bool TrySaveWaitingToInServiceTransition(
+        AntrianModel queue,
+        AntrianEntryModel entry)
+    {
+        var dto = AntrianEntryDto.FromModel(queue.AntrianId, entry);
+        return _antrianEntryDal.UpdateWaitingToInService(dto) == 1;
+    }
+
+    public bool TrySaveInServiceToDoneTransition(
+        AntrianModel queue,
+        AntrianEntryModel entry)
+    {
+        var dto = AntrianEntryDto.FromModel(queue.AntrianId, entry);
+        return _antrianEntryDal.UpdateInServiceToDone(dto) == 1;
+    }
+
+    public void SaveNewEntry(AntrianModel queue, AntrianEntryModel entry)
+    {
+        try
+        {
+            var existingHeader = _antrianDal.GetData(queue);
+            if (existingHeader is null)
+                _antrianDal.Insert(AntrianDto.FromModel(queue));
+            else
+                _antrianDal.Update(AntrianDto.FromModel(queue));
+
+            _antrianEntryDal.Insert(AntrianEntryDto.FromModel(queue.AntrianId, entry));
+        }
+        catch (SqlException ex) when (ex.Number is 2601 or 2627)
+        {
+            throw new AdmissionQueueSessionRaceException(queue.SequenceTag, ex);
+        }
+    }
+
     #region HELPER
     private (List<AntrianEntryDto> addedItems, 
         List<AntrianEntryDto> deletedItems, 
@@ -111,6 +154,7 @@ public class AntrianRepo : IAntrianRepo
     {
         return persisted.NoUrut == current.NoUrut && 
                persisted.PersonName == current.PersonName && 
+               persisted.PasienTrackerId == current.PasienTrackerId &&
                persisted.AntrianStatus == current.AntrianStatus && 
                persisted.CreatedAt == current.CreatedAt && 
                persisted.ServedAt == current.ServedAt && 

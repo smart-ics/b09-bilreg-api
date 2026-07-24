@@ -33,6 +33,30 @@ public class AntrianApotekController : ControllerBase
         return Ok(new JSendOk("Done"));
     }
 
+    [HttpPost]
+    [Route("ByTracker")]
+    public async Task<IActionResult> CreateAntrianByTracker(QueAddAntrianByTrackerCmd cmd)
+    {
+        var response = await _mediator.Send(cmd);
+        return Ok(new JSendOk(response));
+    }
+
+    [HttpPost]
+    [Route("ConfirmSale")]
+    public async Task<IActionResult> ConfirmPharmacySale(QueConfirmPharmacySaleCmd cmd)
+    {
+        var response = await _mediator.Send(cmd);
+        return Ok(new JSendOk(response));
+    }
+
+    [HttpPost]
+    [Route("Deliver")]
+    public async Task<IActionResult> DeliverAntrian(QueDeliverAntrianCmd cmd)
+    {
+        var response = await _mediator.Send(cmd);
+        return Ok(new JSendOk(response));
+    }
+
     [HttpGet]
     [Route("{tglYmd}")]
     public async Task<IActionResult> ListAntrian(string tglYmd)
