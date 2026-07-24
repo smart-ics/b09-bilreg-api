@@ -11,6 +11,7 @@
 | [BILRG_AdmissionQueue_MigrationManifest.md](../../../src/bilreg/Bilreg.SqlDb/AdmisiContext/BILRG_AdmissionQueue_MigrationManifest.md) | Script order, guards, indexes, rollback boundary |
 | [TRACKER-ADMISSION-QUEUE-ROLLOUT-CHECKLIST.md](./TRACKER-ADMISSION-QUEUE-ROLLOUT-CHECKLIST.md) | Go / No-Go gates (backend + R6 clients) |
 | [TRACKER-ADMISSION-QUEUE-IIS-CLIENT-CUTOVER-CHECKLIST.md](./TRACKER-ADMISSION-QUEUE-IIS-CLIENT-CUTOVER-CHECKLIST.md) | Kiosk/Display IIS cutover gates |
+| [TRACKER-ADMISSION-QUEUE-KIOSK-DISPLAY-DEPLOY-ID.md](./TRACKER-ADMISSION-QUEUE-KIOSK-DISPLAY-DEPLOY-ID.md) | Panduan deploy/konfigurasi Kiosk + Display (Bahasa Indonesia; IT RS) |
 | [TRACKER-ADMISSION-QUEUE-API-V1.md](./TRACKER-ADMISSION-QUEUE-API-V1.md) | Versioned API / security boundary |
 | [kiosk-queue-display-web.md](./kiosk-queue-display-web.md) | Path-based IIS + monorepo ADR |
 | [tracker-c4-integration-deployment-implementation-report.md](./tracker-c4-integration-deployment-implementation-report.md) | C4 closure evidence |

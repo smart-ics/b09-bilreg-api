@@ -117,5 +117,6 @@ Archive: build version (`version.json`), IIS host, rollout status response, E2E 
 |------|------|
 | [tracker-c4-integration-deployment-implementation-report.md](./tracker-c4-integration-deployment-implementation-report.md) | C4 closure |
 | [TRACKER-ADMISSION-QUEUE-RUNBOOK.md](./TRACKER-ADMISSION-QUEUE-RUNBOOK.md) | Full procedures |
+| [TRACKER-ADMISSION-QUEUE-KIOSK-DISPLAY-DEPLOY-ID.md](./TRACKER-ADMISSION-QUEUE-KIOSK-DISPLAY-DEPLOY-ID.md) | Panduan deploy/konfigurasi (Bahasa Indonesia; IT RS) |
 | [TRACKER-ADMISSION-QUEUE-ROLLOUT-CHECKLIST.md](./TRACKER-ADMISSION-QUEUE-ROLLOUT-CHECKLIST.md) | Backend R1–R5 + client R6 |
 | [kiosk-queue-display-web.md](./kiosk-queue-display-web.md) | Path / IIS ADR |

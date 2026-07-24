@@ -205,6 +205,7 @@ Background processing platform — job orchestration, worker plugins, operator c
 | `docs/contexts/pasien-tracker/tracker-c3-queue-display-implementation-report.md` | Patient Tracker — C3 queue display snapshot-first, SignalR RefreshHint, TTS, and version.json idle reload |
 | `docs/contexts/pasien-tracker/tracker-c4-integration-deployment-implementation-report.md` | Patient Tracker — C4 cross-client E2E, IIS packaging, and runbook client-section closure |
 | `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-IIS-CLIENT-CUTOVER-CHECKLIST.md` | Patient Tracker — Kiosk/Display IIS packaging and cutover Go/No-Go gates (C4) |
+| `docs/contexts/pasien-tracker/TRACKER-ADMISSION-QUEUE-KIOSK-DISPLAY-DEPLOY-ID.md` | Patient Tracker — Buku panduan step-by-step deploy & konfigurasi Kiosk + Queue Display (Bahasa Indonesia; implementor / IT RS) |
 | `docs/contexts/pasien-tracker/tracker-admission-queue-phase1-slice1-verification-report.md` | Patient Tracker — Phase 1 / Slice 1 disposable migrated-SQL operational gate, race matrix results, and session one-winner reload evidence |
 | `docs/contexts/pasien-tracker/tracker-admission-queue-phase2-officer-contracts-implementation-report.md` | Patient Tracker — Phase 2 officer contracts, ReasonCode catalog boundary, Admisi enriched worklist, legacy inventory |
 | `docs/contexts/pasien-tracker/tracker-admission-queue-phase3-booking-assistance-implementation-report.md` | Patient Tracker — Phase 3 booking-assistance receive-side closure and external HiDok consumer contract |
