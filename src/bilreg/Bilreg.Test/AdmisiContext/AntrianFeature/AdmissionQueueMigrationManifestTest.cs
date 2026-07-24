@@ -20,7 +20,10 @@ public class AdmissionQueueMigrationManifestTest
             "AntrianFeature/BILRG_AdmLoketCurrentCall.sql",
             "RegFeature/BILRG_RegOutcome.sql",
             "AntrianFeature/BILRG_AdmBookingAssistance.sql",
-            "AntrianFeature/BILRG_AdmissionQueue_M3_Audit_Alter.sql");
+            "AntrianFeature/BILRG_AdmissionQueue_M3_Audit_Alter.sql",
+            "AntrianFeature/BILRG_AdmWorkstation.sql",
+            "AntrianFeature/BILRG_AdmQueueDisplay.sql",
+            "AntrianFeature/BILRG_AdmDisplayLoket.sql");
     }
 
     [Fact]
