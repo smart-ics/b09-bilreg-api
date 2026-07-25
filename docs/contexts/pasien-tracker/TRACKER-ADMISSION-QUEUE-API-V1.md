@@ -66,7 +66,7 @@ Base route: `/api/v1/admisi-rajal`. Authenticated. Same JSend success envelope.
 
 | Method and route | Request/query | Result and access context |
 |---|---|---|
-| `GET officer-worklist` | businessDate, optional servicePointId/status/loketKey, offset/limit | Composes the queue-only projection with Booking, identity, and Registration summaries for officer display |
+| `GET officer-worklist` | businessDate, optional servicePointId/queueStatus/loketKey/activeOnly/includePagingMetadata, offset/limit | Composes the queue-only projection with Booking, identity, and Registration summaries for officer display |
 
 Composition rules:
 
@@ -75,6 +75,11 @@ Composition rules:
 - Enrichment is best-effort and nullable for anonymous or unresolved entries.
 - This route does **not** persist another worklist, duplicate queue state, or become a second ledger.
 - Loket workstation headers are not required for this read (same stance as queue `GET worklist`).
+- `activeOnly=true` includes only Waiting and In Service and cannot be combined with `queueStatus`.
+- The default JSend `data` remains the legacy item array. `includePagingMetadata=true` changes
+  `data` to `{items,hasMore,nextOffset}`; `nextOffset` is null when complete.
+- Paging fetches one extra row and does not compute `totalActive`. Stable ordering is Priority
+  descending, CreatedAt ascending, NoUrut ascending, then AntrianId ascending.
 
 ### Journey association (existing officer contract)
 

@@ -1,9 +1,13 @@
+using System.Diagnostics;
+using System.Globalization;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using MediatR;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Bilreg.Application.AdmisiContext.RegFeature;
 
@@ -40,20 +44,26 @@ public sealed record AdmisiRajalOfficerWorklistItem(
     AdmisiRajalOfficerWorklistBooking? Booking,
     AdmisiRajalOfficerWorklistRegistration? Registration);
 
+public sealed record AdmisiRajalOfficerWorklistPage(
+    IReadOnlyList<AdmisiRajalOfficerWorklistItem> Items,
+    bool HasMore,
+    int? NextOffset);
+
 public record AdmisiRajalOfficerWorklistQuery(
     string BusinessDateYmd,
     string? ServicePointId = null,
     int? QueueStatus = null,
     string? LoketKey = null,
     int Offset = 0,
-    int Limit = 100) : IRequest<IReadOnlyList<AdmisiRajalOfficerWorklistItem>>;
+    int Limit = 100,
+    bool ActiveOnly = false) : IRequest<AdmisiRajalOfficerWorklistPage>;
 
 /// <summary>
 /// Admisi-owned read composition over the Patient Tracker queue-only projection.
 /// Does not persist a second worklist or mutate queue truth.
 /// </summary>
 public sealed class AdmisiRajalOfficerWorklistHandler
-    : IRequestHandler<AdmisiRajalOfficerWorklistQuery, IReadOnlyList<AdmisiRajalOfficerWorklistItem>>
+    : IRequestHandler<AdmisiRajalOfficerWorklistQuery, AdmisiRajalOfficerWorklistPage>
 {
     public const string BookingEventName = "BOOKING";
     public const string RegisterEventName = "REGISTER";
@@ -63,36 +73,80 @@ public sealed class AdmisiRajalOfficerWorklistHandler
     private readonly IBookingRepo _bookings;
     private readonly IRegRepo _regs;
     private readonly IBookingAssistanceRepo _assistance;
+    private readonly ILogger<AdmisiRajalOfficerWorklistHandler> _logger;
 
     public AdmisiRajalOfficerWorklistHandler(
         IAdmissionQueueOperationalProjection projection,
         IPasienTrackerRepo trackers,
         IBookingRepo bookings,
         IRegRepo regs,
-        IBookingAssistanceRepo assistance)
+        IBookingAssistanceRepo assistance,
+        ILogger<AdmisiRajalOfficerWorklistHandler>? logger = null)
     {
         _projection = projection;
         _trackers = trackers;
         _bookings = bookings;
         _regs = regs;
         _assistance = assistance;
+        _logger = logger ?? NullLogger<AdmisiRajalOfficerWorklistHandler>.Instance;
     }
 
-    public Task<IReadOnlyList<AdmisiRajalOfficerWorklistItem>> Handle(
+    public Task<AdmisiRajalOfficerWorklistPage> Handle(
         AdmisiRajalOfficerWorklistQuery request, CancellationToken cancellationToken)
     {
-        var date = DateOnly.ParseExact(request.BusinessDateYmd, "yyyy-MM-dd");
+        if (string.IsNullOrWhiteSpace(request.BusinessDateYmd)
+            || !DateOnly.TryParseExact(
+                request.BusinessDateYmd,
+                "yyyy-MM-dd",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out var date))
+            throw new ArgumentException(
+                "BusinessDateYmd must use yyyy-MM-dd.",
+                nameof(request.BusinessDateYmd));
         if (request.Offset < 0) throw new ArgumentOutOfRangeException(nameof(request.Offset));
         if (request.Limit is < 1 or > 500) throw new ArgumentOutOfRangeException(nameof(request.Limit));
+        if (request.Offset > int.MaxValue - request.Limit)
+            throw new ArgumentOutOfRangeException(nameof(request.Offset));
+        if (request.QueueStatus.HasValue
+            && !Enum.IsDefined(typeof(AntrianStatusEnum), request.QueueStatus.Value))
+            throw new ArgumentOutOfRangeException(nameof(request.QueueStatus));
+        if (request.ActiveOnly && request.QueueStatus.HasValue)
+            throw new ArgumentException(
+                "ActiveOnly and QueueStatus cannot be combined.",
+                nameof(request.ActiveOnly));
 
         var filter = new AdmissionQueueWorklistFilter(
-            date, request.ServicePointId?.Trim(), request.QueueStatus,
-            request.LoketKey?.Trim(), request.Offset, request.Limit);
-        var queueItems = _projection.ListWorklist(filter);
-        IReadOnlyList<AdmisiRajalOfficerWorklistItem> result = queueItems
+            date, EmptyToNull(request.ServicePointId), request.QueueStatus,
+            EmptyToNull(request.LoketKey), request.Offset, request.Limit, request.ActiveOnly);
+
+        var totalWatch = Stopwatch.StartNew();
+        var queueWatch = Stopwatch.StartNew();
+        var queuePage = _projection.ListWorklistPage(filter);
+        queueWatch.Stop();
+
+        var enrichmentWatch = Stopwatch.StartNew();
+        IReadOnlyList<AdmisiRajalOfficerWorklistItem> items = queuePage.Items
             .Select(Compose)
             .ToList();
-        return Task.FromResult(result);
+        enrichmentWatch.Stop();
+        totalWatch.Stop();
+
+        _logger.LogInformation(
+            "AdmisiRajal officer worklist activeOnly={ActiveOnly} offset={Offset} limit={Limit} returned={Returned} hasMore={HasMore} queueMs={QueueMs} enrichmentMs={EnrichmentMs} totalMs={TotalMs}",
+            request.ActiveOnly,
+            request.Offset,
+            request.Limit,
+            items.Count,
+            queuePage.HasMore,
+            queueWatch.ElapsedMilliseconds,
+            enrichmentWatch.ElapsedMilliseconds,
+            totalWatch.ElapsedMilliseconds);
+
+        return Task.FromResult(new AdmisiRajalOfficerWorklistPage(
+            items,
+            queuePage.HasMore,
+            queuePage.NextOffset));
     }
 
     private AdmisiRajalOfficerWorklistItem Compose(AdmissionQueueWorklistItem queue)

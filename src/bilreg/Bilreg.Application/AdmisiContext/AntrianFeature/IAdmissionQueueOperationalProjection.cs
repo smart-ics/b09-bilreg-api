@@ -20,7 +20,8 @@ public sealed record AdmissionQueueWorklistFilter(
     int? QueueStatus = null,
     string? LoketKey = null,
     int Offset = 0,
-    int Limit = 100);
+    int Limit = 100,
+    bool ActiveOnly = false);
 
 public sealed record AdmissionQueueWorklistItem(
     string AntrianId,
@@ -39,6 +40,28 @@ public sealed record AdmissionQueueWorklistItem(
     DateTime? DoneAt,
     string? PasienTrackerId);
 
+public sealed record AdmissionQueueWorklistPage(
+    IReadOnlyList<AdmissionQueueWorklistItem> Items,
+    bool HasMore,
+    int? NextOffset);
+
+public static class AdmissionQueueWorklistPaging
+{
+    public static AdmissionQueueWorklistPage Create(
+        IEnumerable<AdmissionQueueWorklistItem> fetchedItems,
+        int offset,
+        int limit)
+    {
+        var rows = fetchedItems.Take(limit + 1).ToList();
+        var hasMore = rows.Count > limit;
+        var items = hasMore ? rows.Take(limit).ToList() : rows;
+        return new AdmissionQueueWorklistPage(
+            items,
+            hasMore,
+            hasMore ? offset + items.Count : null);
+    }
+}
+
 public sealed record CurrentLoketDisplayItem(
     string LoketKey,
     string AntrianId,
@@ -54,6 +77,7 @@ public sealed record CurrentLoketDisplayItem(
 public interface IAdmissionQueueOperationalProjection
 {
     IReadOnlyList<AdmissionQueueWorklistItem> ListWorklist(AdmissionQueueWorklistFilter filter);
+    AdmissionQueueWorklistPage ListWorklistPage(AdmissionQueueWorklistFilter filter);
     IReadOnlyList<CurrentLoketDisplayItem> ListCurrentLoket(string? loketKey = null);
 }
 
@@ -69,5 +93,6 @@ public static class AdmissionQueueWorklistOrdering
         IEnumerable<AdmissionQueueWorklistItem> items) => items
         .OrderByDescending(x => x.Priority)
         .ThenBy(x => x.CreatedAt)
-        .ThenBy(x => x.NoUrut);
+        .ThenBy(x => x.NoUrut)
+        .ThenBy(x => x.AntrianId, StringComparer.Ordinal);
 }

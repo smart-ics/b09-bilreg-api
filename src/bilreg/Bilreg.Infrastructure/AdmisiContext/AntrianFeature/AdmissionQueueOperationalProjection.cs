@@ -13,7 +13,10 @@ public sealed class AdmissionQueueOperationalProjection : IAdmissionQueueOperati
     private readonly DatabaseOptions _opt;
     public AdmissionQueueOperationalProjection(IOptions<DatabaseOptions> opt) => _opt = opt.Value;
 
-    public IReadOnlyList<AdmissionQueueWorklistItem> ListWorklist(AdmissionQueueWorklistFilter filter)
+    public IReadOnlyList<AdmissionQueueWorklistItem> ListWorklist(
+        AdmissionQueueWorklistFilter filter) => ListWorklistPage(filter).Items;
+
+    public AdmissionQueueWorklistPage ListWorklistPage(AdmissionQueueWorklistFilter filter)
     {
         const string sql = """
             SELECT q.AntrianId, e.NoUrut,
@@ -32,15 +35,18 @@ public sealed class AdmissionQueueOperationalProjection : IAdmissionQueueOperati
             WHERE q.AntrianDate = @BusinessDate
               AND (@ServicePointId IS NULL OR q.ServicePointCode = @ServicePointId)
               AND (@QueueStatus IS NULL OR e.AntrianStatus = @QueueStatus)
+              AND (@ActiveOnly = 0 OR e.AntrianStatus IN (0, 1))
               AND (@LoketKey IS NULL OR c.LoketKey = @LoketKey)
-            ORDER BY e.Priority DESC, e.CreatedAt, e.NoUrut
-            OFFSET @Offset ROWS FETCH NEXT @Limit ROWS ONLY
+            ORDER BY e.Priority DESC, e.CreatedAt, e.NoUrut, q.AntrianId
+            OFFSET @Offset ROWS FETCH NEXT @FetchCount ROWS ONLY
             """;
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Query<WorklistRow>(sql, new {
+        var rows = conn.Query<WorklistRow>(sql, new {
             BusinessDate = filter.BusinessDate.ToDateTime(TimeOnly.MinValue), filter.ServicePointId,
-            filter.QueueStatus, filter.LoketKey, filter.Offset, filter.Limit
+            filter.QueueStatus, filter.ActiveOnly, filter.LoketKey, filter.Offset,
+            FetchCount = filter.Limit + 1
         }).Select(ToItem).ToList();
+        return AdmissionQueueWorklistPaging.Create(rows, filter.Offset, filter.Limit);
     }
 
     public IReadOnlyList<CurrentLoketDisplayItem> ListCurrentLoket(string? loketKey = null)

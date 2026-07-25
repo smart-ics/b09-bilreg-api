@@ -29,6 +29,38 @@ public class AdmissionQueueOperationalQueriesTest
         ordered.Should().HaveCount(2);
     }
 
+    [Fact]
+    public void DefaultOrdering_UsesAntrianIdAsFinalDeterministicTieBreaker()
+    {
+        var at = new DateTime(2026, 7, 23, 8, 0, 0);
+        var laterId = Item(1, false, at) with { AntrianId = "Q-B" };
+        var earlierId = Item(1, false, at) with { AntrianId = "Q-A" };
+
+        var ordered = AdmissionQueueWorklistOrdering.Apply([laterId, earlierId]).ToList();
+
+        ordered.Select(x => x.AntrianId).Should().Equal("Q-A", "Q-B");
+    }
+
+    [Theory]
+    [InlineData(0, false, null)]
+    [InlineData(2, false, null)]
+    [InlineData(3, true, 2)]
+    public void Paging_ReportsCompletenessWithoutCountQuery(
+        int fetchedCount,
+        bool expectedHasMore,
+        int? expectedNextOffset)
+    {
+        var rows = Enumerable.Range(1, fetchedCount)
+            .Select(x => Item(x, false, new DateTime(2026, 7, 23, 8, 0, 0).AddSeconds(x)))
+            .ToList();
+
+        var page = AdmissionQueueWorklistPaging.Create(rows, offset: 0, limit: 2);
+
+        page.Items.Should().HaveCount(Math.Min(fetchedCount, 2));
+        page.HasMore.Should().Be(expectedHasMore);
+        page.NextOffset.Should().Be(expectedNextOffset);
+    }
+
     [Theory]
     [InlineData(0, 1, false)]
     [InlineData(1, 1, false)]

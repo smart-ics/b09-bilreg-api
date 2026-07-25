@@ -15,6 +15,7 @@ using Bilreg.Infrastructure.Shared.Helpers;
 using Bilreg.Test.Shared;
 using Dapper;
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Nuna.Lib.PatternHelper;
 using Nuna.Lib.ValidationHelper;
@@ -285,7 +286,7 @@ public sealed class AdmissionQueueRealSqlGateTest
     }
 
     [Fact]
-    public void RepresentativeVolume_WorklistAndCurrentDisplay_UseIndexes()
+    public async Task RepresentativeVolume_WorklistAndCurrentDisplay_UseIndexes()
     {
         var clock = FixedClock();
         var businessDate = DateOnly.FromDateTime(clock.Now);
@@ -305,7 +306,8 @@ public sealed class AdmissionQueueRealSqlGateTest
                 LEFT JOIN BILRG_AdmLoketCurrentCall c
                     ON c.AntrianId = e.AntrianId AND c.NoUrut = e.NoUrut AND c.IsActive = 1
                 WHERE q.AntrianDate = @BusinessDate
-                ORDER BY e.Priority DESC, e.CreatedAt, e.NoUrut
+                  AND e.AntrianStatus IN (0, 1)
+                ORDER BY e.Priority DESC, e.CreatedAt, e.NoUrut, q.AntrianId
                 """, new { BusinessDate = businessDate.ToDateTime(TimeOnly.MinValue) }).ToList();
             conn.Query("""
                 SELECT c.LoketKey, c.AntrianId, c.NoUrut
@@ -318,13 +320,39 @@ public sealed class AdmissionQueueRealSqlGateTest
         }
 
         var sw = Stopwatch.StartNew();
-        var worklist = projection.ListWorklist(new AdmissionQueueWorklistFilter(businessDate, Limit: 100));
+        var worklist = projection.ListWorklist(new AdmissionQueueWorklistFilter(
+            businessDate,
+            Limit: 100,
+            ActiveOnly: true));
         var displays = projection.ListCurrentLoket();
         sw.Stop();
 
         worklist.Should().HaveCount(100);
         displays.Should().NotBeEmpty();
         sw.ElapsedMilliseconds.Should().BeLessThan(5000);
+
+        var composed = new AdmisiRajalOfficerWorklistHandler(
+            projection,
+            Mock.Of<IPasienTrackerRepo>(),
+            Mock.Of<IBookingRepo>(),
+            Mock.Of<IRegRepo>(),
+            new BookingAssistanceRepo(_fx.Options),
+            NullLogger<AdmisiRajalOfficerWorklistHandler>.Instance);
+        var durations = new List<long>();
+        for (var i = 0; i < 20; i++)
+        {
+            var composedWatch = Stopwatch.StartNew();
+            var page = await composed.Handle(new AdmisiRajalOfficerWorklistQuery(
+                businessDate.ToString("yyyy-MM-dd"),
+                Limit: 100,
+                ActiveOnly: true), default);
+            composedWatch.Stop();
+            page.Items.Should().HaveCount(100);
+            durations.Add(composedWatch.ElapsedMilliseconds);
+        }
+        ComposedP95EvidenceMs = durations.OrderBy(x => x).ElementAt(18);
+        ComposedP95EvidenceMs.Should().BeLessThanOrEqualTo(2000);
+
         // Evidence string for verification report (seek/scan messages from STATISTICS IO).
         io.ToString().Should().NotBeNullOrWhiteSpace();
         VolumeEvidence = io.ToString();
@@ -332,6 +360,45 @@ public sealed class AdmissionQueueRealSqlGateTest
 
     /// <summary>Captured STATISTICS IO text for the verification report.</summary>
     public static string VolumeEvidence { get; private set; } = "";
+    public static long ComposedP95EvidenceMs { get; private set; }
+
+    [Fact]
+    public void ActivePaging_ExcludesFinalStatesWithoutDuplicatesOrGaps()
+    {
+        var businessDate = new DateOnly(2040, 1, 1).AddDays(Random.Shared.Next(1, 3000));
+        var servicePointId = $"AQPG-{Guid.NewGuid():N}"[..20];
+        SeedVolumeEntries(
+            businessDate,
+            servicePointId,
+            entryCount: 130,
+            loketCount: 0,
+            mixedStatuses: true);
+        var projection = new AdmissionQueueOperationalProjection(_fx.Options);
+        var loaded = new List<AdmissionQueueWorklistItem>();
+        var offset = 0;
+
+        while (true)
+        {
+            var page = projection.ListWorklistPage(new AdmissionQueueWorklistFilter(
+                businessDate,
+                ServicePointId: servicePointId,
+                Offset: offset,
+                Limit: 25,
+                ActiveOnly: true));
+            loaded.AddRange(page.Items);
+            if (!page.HasMore)
+                break;
+            page.NextOffset.Should().Be(offset + page.Items.Count);
+            offset = page.NextOffset!.Value;
+        }
+
+        loaded.Should().HaveCount(65);
+        loaded.Should().OnlyContain(x =>
+            x.QueueStatus == (int)AntrianStatusEnum.Waiting
+            || x.QueueStatus == (int)AntrianStatusEnum.InService);
+        loaded.Select(x => (x.AntrianId, x.NoUrut)).Should().OnlyHaveUniqueItems();
+        loaded.Should().Equal(AdmissionQueueWorklistOrdering.Apply(loaded));
+    }
 
     [Fact]
     public async Task CriticalRaces_AreRepeatable()
@@ -416,7 +483,12 @@ public sealed class AdmissionQueueRealSqlGateTest
         }
     }
 
-    private void SeedVolumeEntries(DateOnly businessDate, string servicePointId, int entryCount, int loketCount)
+    private void SeedVolumeEntries(
+        DateOnly businessDate,
+        string servicePointId,
+        int entryCount,
+        int loketCount,
+        bool mixedStatuses = false)
     {
         var antrianId = Ulid.NewUlid().ToString();
         var tag = AntrianModel.GenSequenceTag(businessDate, TimeOnly.MinValue,
@@ -440,8 +512,14 @@ public sealed class AdmissionQueueRealSqlGateTest
             conn.Execute("""
                 INSERT BILRG_AntrianEntry(AntrianId, NoUrut, PersonName, PasienTrackerId, AntrianStatus,
                     CreatedAt, ServedAt, DoneAt, ReffId, ReffDesc)
-                VALUES(@antrianId, @n, '', '-', 0, @at, '3000-01-01', '3000-01-01', '', '')
-                """, new { antrianId, n = i, at = businessDate.ToDateTime(new TimeOnly(8, 0)).AddSeconds(i) });
+                VALUES(@antrianId, @n, '', '-', @status, @at, '3000-01-01', '3000-01-01', '', '')
+                """, new
+            {
+                antrianId,
+                n = i,
+                status = mixedStatuses ? i % 4 : (int)AntrianStatusEnum.Waiting,
+                at = businessDate.ToDateTime(new TimeOnly(8, 0)).AddSeconds(i)
+            });
         }
 
         for (var i = 1; i <= loketCount; i++)

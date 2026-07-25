@@ -1,8 +1,10 @@
+using System.Reflection;
 using Bilreg.Api.AdmisiContext.AntrianFeature;
 using Bilreg.Api.Configurations;
 using Bilreg.Api.Controllers.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.AntrianFeature.UseCases;
+using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -193,5 +195,54 @@ public class AdmissionQueueApiContractTest
         type.GetCustomAttributes(typeof(RouteAttribute),true).Cast<RouteAttribute>().Single().Template
             .Should().Be("api/v1/admisi-rajal");
         type.GetMethods().Select(x=>x.Name).Should().Contain("OfficerWorklist");
+    }
+
+    [Fact]
+    public async Task AdmisiRajalOfficerWorklist_DefaultResponseRemainsLegacyArray()
+    {
+        var mediator = new Mock<IMediator>();
+        mediator.Setup(x => x.Send(
+                It.Is<AdmisiRajalOfficerWorklistQuery>(q => !q.ActiveOnly),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AdmisiRajalOfficerWorklistPage([], false, null));
+        var sut = new Bilreg.Api.Controllers.AdmisiContext.RegFeature
+            .AdmisiRajalOfficerWorklistController(mediator.Object);
+
+        var result = await sut.OfficerWorklist(
+            "2026-07-23", null, null, null, 0, 100, false, false);
+
+        ResponseData(result).Should()
+            .BeAssignableTo<IReadOnlyList<AdmisiRajalOfficerWorklistItem>>();
+    }
+
+    [Fact]
+    public async Task AdmisiRajalOfficerWorklist_MetadataOptInReturnsPage()
+    {
+        var expected = new AdmisiRajalOfficerWorklistPage([], true, 100);
+        var mediator = new Mock<IMediator>();
+        mediator.Setup(x => x.Send(
+                It.Is<AdmisiRajalOfficerWorklistQuery>(q =>
+                    q.ActiveOnly && q.Offset == 0 && q.Limit == 100),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expected);
+        var sut = new Bilreg.Api.Controllers.AdmisiContext.RegFeature
+            .AdmisiRajalOfficerWorklistController(mediator.Object);
+
+        var result = await sut.OfficerWorklist(
+            "2026-07-23", null, null, null, 0, 100, true, true);
+
+        ResponseData(result).Should().BeSameAs(expected);
+    }
+
+    private static object ResponseData(IActionResult result)
+    {
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        var value = ok.Value;
+        value.Should().NotBeNull();
+        var property = value!.GetType().GetProperty(
+            "Data",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.IgnoreCase);
+        property.Should().NotBeNull();
+        return property!.GetValue(value)!;
     }
 }

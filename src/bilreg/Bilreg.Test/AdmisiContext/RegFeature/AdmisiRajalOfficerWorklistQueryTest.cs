@@ -25,8 +25,8 @@ public class AdmisiRajalOfficerWorklistQueryTest
     {
         var queue = SampleQueue(pasienTrackerId: null);
         var projection = new Mock<IAdmissionQueueOperationalProjection>(MockBehavior.Strict);
-        projection.Setup(x => x.ListWorklist(It.IsAny<AdmissionQueueWorklistFilter>()))
-            .Returns([queue]);
+        projection.Setup(x => x.ListWorklistPage(It.IsAny<AdmissionQueueWorklistFilter>()))
+            .Returns(Page([queue]));
         var trackers = new Mock<IPasienTrackerRepo>(MockBehavior.Strict);
         var bookings = new Mock<IBookingRepo>(MockBehavior.Strict);
         var regs = new Mock<IRegRepo>(MockBehavior.Strict);
@@ -39,11 +39,11 @@ public class AdmisiRajalOfficerWorklistQueryTest
 
         var result = await sut.Handle(new("2026-07-23"), default);
 
-        result.Should().HaveCount(1);
-        result[0].Queue.Should().BeEquivalentTo(queue);
-        result[0].Identity.Should().BeNull();
-        result[0].Booking.Should().BeNull();
-        result[0].Registration.Should().BeNull();
+        result.Items.Should().HaveCount(1);
+        result.Items[0].Queue.Should().BeEquivalentTo(queue);
+        result.Items[0].Identity.Should().BeNull();
+        result.Items[0].Booking.Should().BeNull();
+        result.Items[0].Registration.Should().BeNull();
         trackers.VerifyNoOtherCalls();
         bookings.VerifyNoOtherCalls();
         regs.VerifyNoOtherCalls();
@@ -54,8 +54,8 @@ public class AdmisiRajalOfficerWorklistQueryTest
     {
         var queue = SampleQueue(pasienTrackerId: "TRK1");
         var projection = new Mock<IAdmissionQueueOperationalProjection>();
-        projection.Setup(x => x.ListWorklist(It.IsAny<AdmissionQueueWorklistFilter>()))
-            .Returns([queue]);
+        projection.Setup(x => x.ListWorklistPage(It.IsAny<AdmissionQueueWorklistFilter>()))
+            .Returns(Page([queue]));
 
         var tracker = PasienTrackerModel.Create(
             new PersonType("Ani", new DateOnly(1990, 1, 2)),
@@ -84,13 +84,16 @@ public class AdmisiRajalOfficerWorklistQueryTest
 
         var result = await sut.Handle(new("2026-07-23", ServicePointId: "ADM"), default);
 
-        result.Should().HaveCount(1);
-        result[0].Queue.AntrianId.Should().Be(queue.AntrianId);
-        result[0].Identity!.PersonName.Should().Be("Ani");
-        result[0].Identity.TglLahir.Should().Be("1990-01-02");
-        result[0].Booking!.BookingId.Should().Be("B1");
-        result[0].Registration!.RegId.Should().Be("RG1");
-        result[0].Registration.PasienId.Should().Be("P1");
+        result.Items.Should().HaveCount(1);
+        var item = result.Items[0];
+        var identity = item.Identity!;
+        var registration = item.Registration!;
+        item.Queue.AntrianId.Should().Be(queue.AntrianId);
+        identity.PersonName.Should().Be("Ani");
+        identity.TglLahir.Should().Be("1990-01-02");
+        item.Booking!.BookingId.Should().Be("B1");
+        registration.RegId.Should().Be("RG1");
+        registration.PasienId.Should().Be("P1");
     }
 
     [Fact]
@@ -98,8 +101,8 @@ public class AdmisiRajalOfficerWorklistQueryTest
     {
         var queue = SampleQueue(pasienTrackerId: "-");
         var projection = new Mock<IAdmissionQueueOperationalProjection>();
-        projection.Setup(x => x.ListWorklist(It.IsAny<AdmissionQueueWorklistFilter>()))
-            .Returns([queue]);
+        projection.Setup(x => x.ListWorklistPage(It.IsAny<AdmissionQueueWorklistFilter>()))
+            .Returns(Page([queue]));
 
         var assistance = new Mock<IBookingAssistanceRepo>();
         assistance.Setup(x => x.FindActiveByEntry(queue.AntrianId, queue.NoUrut))
@@ -117,9 +120,9 @@ public class AdmisiRajalOfficerWorklistQueryTest
 
         var result = await sut.Handle(new("2026-07-23"), default);
 
-        result[0].Booking!.BookingId.Should().Be("B9");
-        result[0].Identity!.PersonName.Should().Be("Budi");
-        result[0].Registration.Should().BeNull();
+        result.Items[0].Booking!.BookingId.Should().Be("B9");
+        result.Items[0].Identity!.PersonName.Should().Be("Budi");
+        result.Items[0].Registration.Should().BeNull();
         trackers.VerifyNoOtherCalls();
         regs.VerifyNoOtherCalls();
     }
@@ -128,8 +131,8 @@ public class AdmisiRajalOfficerWorklistQueryTest
     public async Task Composition_DoesNotCallQueueWritePorts()
     {
         var projection = new Mock<IAdmissionQueueOperationalProjection>();
-        projection.Setup(x => x.ListWorklist(It.IsAny<AdmissionQueueWorklistFilter>()))
-            .Returns([]);
+        projection.Setup(x => x.ListWorklistPage(It.IsAny<AdmissionQueueWorklistFilter>()))
+            .Returns(Page([]));
         var queueWrites = new Mock<IAntrianRepo>(MockBehavior.Strict);
         var operations = new Mock<IAdmissionQueueOperationRepo>(MockBehavior.Strict);
 
@@ -144,13 +147,110 @@ public class AdmisiRajalOfficerWorklistQueryTest
 
         queueWrites.VerifyNoOtherCalls();
         operations.VerifyNoOtherCalls();
-        projection.Verify(x => x.ListWorklist(It.IsAny<AdmissionQueueWorklistFilter>()), Times.Once);
+        projection.Verify(
+            x => x.ListWorklistPage(It.IsAny<AdmissionQueueWorklistFilter>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task ActivePaging_ForwardsFilterAndReturnsMetadata()
+    {
+        var queue = SampleQueue(pasienTrackerId: null);
+        var projection = new Mock<IAdmissionQueueOperationalProjection>();
+        projection.Setup(x => x.ListWorklistPage(It.Is<AdmissionQueueWorklistFilter>(f =>
+                f.ActiveOnly
+                && f.QueueStatus == null
+                && f.Offset == 100
+                && f.Limit == 100
+                && f.ServicePointId == "ADM")))
+            .Returns(new AdmissionQueueWorklistPage([queue], true, 200));
+        var assistance = new Mock<IBookingAssistanceRepo>();
+        assistance.Setup(x => x.FindActiveByEntry(queue.AntrianId, queue.NoUrut))
+            .Returns((BookingAssistanceActive?)null);
+        var sut = new AdmisiRajalOfficerWorklistHandler(
+            projection.Object,
+            Mock.Of<IPasienTrackerRepo>(),
+            Mock.Of<IBookingRepo>(),
+            Mock.Of<IRegRepo>(),
+            assistance.Object);
+
+        var result = await sut.Handle(new(
+            "2026-07-23",
+            ServicePointId: " ADM ",
+            Offset: 100,
+            Limit: 100,
+            ActiveOnly: true), default);
+
+        result.Items.Should().ContainSingle();
+        result.HasMore.Should().BeTrue();
+        result.NextOffset.Should().Be(200);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("2026/07/23")]
+    [InlineData("2026-02-30")]
+    public async Task InvalidBusinessDate_IsRejected(string businessDate)
+    {
+        var sut = EmptyHandler();
+
+        var act = () => sut.Handle(new(businessDate), default);
+
+        await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Fact]
+    public async Task ActiveOnlyWithQueueStatus_IsRejected()
+    {
+        var sut = EmptyHandler();
+
+        var act = () => sut.Handle(new(
+            "2026-07-23",
+            QueueStatus: (int)AntrianStatusEnum.Waiting,
+            ActiveOnly: true), default);
+
+        await act.Should().ThrowAsync<ArgumentException>();
+    }
+
+    [Theory]
+    [InlineData(-1, 100, null)]
+    [InlineData(int.MaxValue, 100, null)]
+    [InlineData(0, 0, null)]
+    [InlineData(0, 501, null)]
+    [InlineData(0, 100, 99)]
+    public async Task InvalidPagingOrStatus_IsRejected(int offset, int limit, int? queueStatus)
+    {
+        var sut = EmptyHandler();
+
+        var act = () => sut.Handle(new(
+            "2026-07-23",
+            QueueStatus: queueStatus,
+            Offset: offset,
+            Limit: limit), default);
+
+        await act.Should().ThrowAsync<ArgumentException>();
     }
 
     private static AdmissionQueueWorklistItem SampleQueue(string? pasienTrackerId) => new(
         "Q1", 1, "A0001", "ADM", "Admission", 0, false,
         AdmissionQueueCreationReason.Normal, 0, null, null,
         new DateTime(2026, 7, 23, 8, 0, 0), null, null, pasienTrackerId);
+
+    private static AdmissionQueueWorklistPage Page(
+        IReadOnlyList<AdmissionQueueWorklistItem> items) => new(items, false, null);
+
+    private static AdmisiRajalOfficerWorklistHandler EmptyHandler()
+    {
+        var projection = new Mock<IAdmissionQueueOperationalProjection>();
+        projection.Setup(x => x.ListWorklistPage(It.IsAny<AdmissionQueueWorklistFilter>()))
+            .Returns(Page([]));
+        return new AdmisiRajalOfficerWorklistHandler(
+            projection.Object,
+            Mock.Of<IPasienTrackerRepo>(),
+            Mock.Of<IBookingRepo>(),
+            Mock.Of<IRegRepo>(),
+            Mock.Of<IBookingAssistanceRepo>());
+    }
 
     private static BookingModel BuildBooking(string id, string name, DateOnly dob, string pasienId)
     {

@@ -26,7 +26,13 @@ public sealed class AdmisiRajalOfficerWorklistController : ControllerBase
         [FromQuery] int? queueStatus,
         [FromQuery] string? loketKey,
         [FromQuery] int offset = 0,
-        [FromQuery] int limit = 100) =>
-        Ok(new JSendOk(await _mediator.Send(new AdmisiRajalOfficerWorklistQuery(
-            businessDate, servicePointId, queueStatus, loketKey, offset, limit))));
+        [FromQuery] int limit = 100,
+        [FromQuery] bool activeOnly = false,
+        [FromQuery] bool includePagingMetadata = false)
+    {
+        var response = await _mediator.Send(new AdmisiRajalOfficerWorklistQuery(
+            businessDate, servicePointId, queueStatus, loketKey, offset, limit, activeOnly));
+        object data = includePagingMetadata ? response : response.Items;
+        return Ok(new JSendOk(data));
+    }
 }
