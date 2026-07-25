@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Globalization;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.BookingFeature;
@@ -47,7 +48,8 @@ public sealed record AdmisiRajalOfficerWorklistItem(
 public sealed record AdmisiRajalOfficerWorklistPage(
     IReadOnlyList<AdmisiRajalOfficerWorklistItem> Items,
     bool HasMore,
-    int? NextOffset);
+    int? NextOffset,
+    int TotalCount);
 
 public record AdmisiRajalOfficerWorklistQuery(
     string BusinessDateYmd,
@@ -67,6 +69,13 @@ public sealed class AdmisiRajalOfficerWorklistHandler
 {
     public const string BookingEventName = "BOOKING";
     public const string RegisterEventName = "REGISTER";
+    private static readonly Meter Meter = new("Bilreg.AdmisiRajal", "1.0");
+    private static readonly Histogram<double> Duration = Meter.CreateHistogram<double>(
+        "bilreg.admisi_rajal.worklist.duration",
+        "ms");
+    private static readonly Histogram<long> ResultCount = Meter.CreateHistogram<long>(
+        "bilreg.admisi_rajal.worklist.result_count",
+        "{entry}");
 
     private readonly IAdmissionQueueOperationalProjection _projection;
     private readonly IPasienTrackerRepo _trackers;
@@ -131,6 +140,14 @@ public sealed class AdmisiRajalOfficerWorklistHandler
             .ToList();
         enrichmentWatch.Stop();
         totalWatch.Stop();
+        var resultBucket = Bucket(items.Count);
+        Duration.Record(
+            totalWatch.Elapsed.TotalMilliseconds,
+            new KeyValuePair<string, object?>("active", request.ActiveOnly),
+            new KeyValuePair<string, object?>("result_bucket", resultBucket));
+        ResultCount.Record(
+            items.Count,
+            new KeyValuePair<string, object?>("result_bucket", resultBucket));
 
         _logger.LogInformation(
             "AdmisiRajal officer worklist activeOnly={ActiveOnly} offset={Offset} limit={Limit} returned={Returned} hasMore={HasMore} queueMs={QueueMs} enrichmentMs={EnrichmentMs} totalMs={TotalMs}",
@@ -146,7 +163,8 @@ public sealed class AdmisiRajalOfficerWorklistHandler
         return Task.FromResult(new AdmisiRajalOfficerWorklistPage(
             items,
             queuePage.HasMore,
-            queuePage.NextOffset));
+            queuePage.NextOffset,
+            queuePage.TotalCount));
     }
 
     private AdmisiRajalOfficerWorklistItem Compose(AdmissionQueueWorklistItem queue)
@@ -243,4 +261,13 @@ public sealed class AdmisiRajalOfficerWorklistHandler
 
     private static string? EmptyToNull(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string Bucket(int count) => count switch
+    {
+        0 => "0",
+        <= 10 => "1-10",
+        <= 50 => "11-50",
+        <= 100 => "51-100",
+        _ => "101-500"
+    };
 }

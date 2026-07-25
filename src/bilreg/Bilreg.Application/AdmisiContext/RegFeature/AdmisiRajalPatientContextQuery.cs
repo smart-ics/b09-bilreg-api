@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Globalization;
 using System.Text.RegularExpressions;
 using System.Text.Json.Serialization;
@@ -96,6 +97,12 @@ public sealed class AdmisiRajalPatientContextHandler :
     IRequestHandler<AdmisiRajalPatientContextSearchQuery, AdmisiRajalPatientContextSearchResponse>,
     IRequestHandler<AdmisiRajalPatientContextGetQuery, AdmisiRajalPatientContextResult>
 {
+    private static readonly Meter Meter = new("Bilreg.AdmisiRajal", "1.0");
+    private static readonly Histogram<double> SearchDuration = Meter.CreateHistogram<double>(
+        "bilreg.admisi_rajal.patient_context_search.duration",
+        "ms");
+    private static readonly Counter<long> SearchRequests = Meter.CreateCounter<long>(
+        "bilreg.admisi_rajal.patient_context_search.requests");
     private static readonly Regex NikPattern = new(@"^\d{16}$", RegexOptions.Compiled);
     private static readonly Regex CoreIdPattern = new(
         @"^(BO|RG)[A-Z0-9-]+$|^\d{6,12}$",
@@ -152,11 +159,23 @@ public sealed class AdmisiRajalPatientContextHandler :
             && patientGroup.Total == 0;
 
         watch.Stop();
+        var exact = IsExactIdentifier(keyword);
+        var partial = request.SearchAllDates;
+        SearchDuration.Record(
+            watch.Elapsed.TotalMilliseconds,
+            new KeyValuePair<string, object?>("scope", request.Scope.ToString()),
+            new KeyValuePair<string, object?>("exact", exact),
+            new KeyValuePair<string, object?>("partial", partial));
+        SearchRequests.Add(
+            1,
+            new KeyValuePair<string, object?>("scope", request.Scope.ToString()),
+            new KeyValuePair<string, object?>("exact", exact),
+            new KeyValuePair<string, object?>("partial", partial));
         _logger.LogInformation(
             "Admisi Rajal patient-context search scope={Scope} allDates={AllDates} exact={Exact} bookingCount={BookingCount} registrationCount={RegistrationCount} patientCount={PatientCount} partial={Partial} elapsedMs={ElapsedMs}",
             request.Scope,
             request.SearchAllDates,
-            IsExactIdentifier(keyword),
+            exact,
             bookingGroup.Total,
             registrationGroup.Total,
             patientGroup.Total,

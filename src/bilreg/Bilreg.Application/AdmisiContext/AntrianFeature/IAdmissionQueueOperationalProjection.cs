@@ -43,14 +43,16 @@ public sealed record AdmissionQueueWorklistItem(
 public sealed record AdmissionQueueWorklistPage(
     IReadOnlyList<AdmissionQueueWorklistItem> Items,
     bool HasMore,
-    int? NextOffset);
+    int? NextOffset,
+    int TotalCount);
 
 public static class AdmissionQueueWorklistPaging
 {
     public static AdmissionQueueWorklistPage Create(
         IEnumerable<AdmissionQueueWorklistItem> fetchedItems,
         int offset,
-        int limit)
+        int limit,
+        int totalCount)
     {
         var rows = fetchedItems.Take(limit + 1).ToList();
         var hasMore = rows.Count > limit;
@@ -58,7 +60,8 @@ public static class AdmissionQueueWorklistPaging
         return new AdmissionQueueWorklistPage(
             items,
             hasMore,
-            hasMore ? offset + items.Count : null);
+            hasMore ? offset + items.Count : null,
+            totalCount);
     }
 }
 

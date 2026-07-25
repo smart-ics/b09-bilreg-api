@@ -1,5 +1,6 @@
 ﻿using Nuna.Lib.ActionResultHelper;
 using System.Net;
+using System.Diagnostics.Metrics;
 using System.Text.Json;
 using Bilreg.Application.Shared.Helpers;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
@@ -9,6 +10,9 @@ namespace Bilreg.Api.Configurations;
 
 public class ErrorHandlerMiddleware
 {
+    private static readonly Meter Meter = new("Bilreg.Api", "1.0");
+    private static readonly Counter<long> Errors = Meter.CreateCounter<long>(
+        "bilreg.api.errors");
     private readonly RequestDelegate _next;
 
     public ErrorHandlerMiddleware(RequestDelegate next)
@@ -84,7 +88,14 @@ public class ErrorHandlerMiddleware
             }
 
             response.StatusCode = statusCode;
-            var resultObj = new JSend(statusCode, status, error.Message);
+            Errors.Add(
+                1,
+                new KeyValuePair<string, object?>("status_code", statusCode),
+                new KeyValuePair<string, object?>("error_code", status));
+            var safeMessage = statusCode == (int)HttpStatusCode.InternalServerError
+                ? "The request could not be completed."
+                : error.Message;
+            var resultObj = new JSend(statusCode, status, safeMessage);
             var result = JsonSerializer.Serialize(resultObj);
             await response.WriteAsync(result);
         }

@@ -336,7 +336,7 @@ public class AdmissionQueueApiContractTest
         mediator.Setup(x => x.Send(
                 It.Is<AdmisiRajalOfficerWorklistQuery>(q => !q.ActiveOnly),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new AdmisiRajalOfficerWorklistPage([], false, null));
+            .ReturnsAsync(new AdmisiRajalOfficerWorklistPage([], false, null, 0));
         var sut = new Bilreg.Api.Controllers.AdmisiContext.RegFeature
             .AdmisiRajalOfficerWorklistController(mediator.Object);
 
@@ -350,7 +350,7 @@ public class AdmissionQueueApiContractTest
     [Fact]
     public async Task AdmisiRajalOfficerWorklist_MetadataOptInReturnsPage()
     {
-        var expected = new AdmisiRajalOfficerWorklistPage([], true, 100);
+        var expected = new AdmisiRajalOfficerWorklistPage([], true, 100, 250);
         var mediator = new Mock<IMediator>();
         mediator.Setup(x => x.Send(
                 It.Is<AdmisiRajalOfficerWorklistQuery>(q =>

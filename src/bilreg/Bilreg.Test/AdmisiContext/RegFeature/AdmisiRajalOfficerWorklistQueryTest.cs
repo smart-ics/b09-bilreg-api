@@ -163,7 +163,7 @@ public class AdmisiRajalOfficerWorklistQueryTest
                 && f.Offset == 100
                 && f.Limit == 100
                 && f.ServicePointId == "ADM")))
-            .Returns(new AdmissionQueueWorklistPage([queue], true, 200));
+            .Returns(new AdmissionQueueWorklistPage([queue], true, 200, 245));
         var assistance = new Mock<IBookingAssistanceRepo>();
         assistance.Setup(x => x.FindActiveByEntry(queue.AntrianId, queue.NoUrut))
             .Returns((BookingAssistanceActive?)null);
@@ -184,6 +184,7 @@ public class AdmisiRajalOfficerWorklistQueryTest
         result.Items.Should().ContainSingle();
         result.HasMore.Should().BeTrue();
         result.NextOffset.Should().Be(200);
+        result.TotalCount.Should().Be(245);
     }
 
     [Theory]
@@ -237,7 +238,7 @@ public class AdmisiRajalOfficerWorklistQueryTest
         new DateTime(2026, 7, 23, 8, 0, 0), null, null, pasienTrackerId);
 
     private static AdmissionQueueWorklistPage Page(
-        IReadOnlyList<AdmissionQueueWorklistItem> items) => new(items, false, null);
+        IReadOnlyList<AdmissionQueueWorklistItem> items) => new(items, false, null, items.Count);
 
     private static AdmisiRajalOfficerWorklistHandler EmptyHandler()
     {

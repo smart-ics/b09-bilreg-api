@@ -54,11 +54,16 @@ public class AdmissionQueueOperationalQueriesTest
             .Select(x => Item(x, false, new DateTime(2026, 7, 23, 8, 0, 0).AddSeconds(x)))
             .ToList();
 
-        var page = AdmissionQueueWorklistPaging.Create(rows, offset: 0, limit: 2);
+        var page = AdmissionQueueWorklistPaging.Create(
+            rows,
+            offset: 0,
+            limit: 2,
+            totalCount: fetchedCount);
 
         page.Items.Should().HaveCount(Math.Min(fetchedCount, 2));
         page.HasMore.Should().Be(expectedHasMore);
         page.NextOffset.Should().Be(expectedNextOffset);
+        page.TotalCount.Should().Be(fetchedCount);
     }
 
     [Theory]
