@@ -180,6 +180,9 @@ public class RegJalanByBookingHandler
         //  LOAD and GUARD
         Guard.Against.Null(request.PesertaJaminanId, nameof(request.PesertaJaminanId));
         var booking = LoadBooking(request.BookingId);
+        if (!string.IsNullOrWhiteSpace(booking.Reg.RegId) && booking.Reg.RegId != "-")
+            throw new InvalidOperationException(
+                $"Booking already registered as {booking.Reg.RegId}.");
         var antrian = LoadAntrian(booking, DateOnly.FromDateTime(occurredAt));
         var pasien = LoadPasien(booking.PasienId);
         if (IsPasienAktifReg(pasien))
