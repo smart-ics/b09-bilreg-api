@@ -44,7 +44,7 @@ public class AdmissionQueueApiContractTest
         type.GetCustomAttributes(typeof(RouteAttribute),true).Cast<RouteAttribute>().Single().Template
             .Should().Be("api/v1/admission-queue");
         var methods=type.GetMethods().Select(x=>x.Name).ToArray();
-        methods.Should().Contain(["Intake","BookingAssistance","Worklist","Display","Call","Recall","Start",
+        methods.Should().Contain(["Intake","BookingAssistance","Worklist","Display","Call","Recall","ReturnToWaiting","Start",
             "Withdraw","NoShow","Redirect","Established","NotEstablished","ListServicePoints","UpsertServicePoint",
             "RolloutStatus"]);
     }
@@ -195,6 +195,37 @@ public class AdmissionQueueApiContractTest
         type.GetCustomAttributes(typeof(RouteAttribute),true).Cast<RouteAttribute>().Single().Template
             .Should().Be("api/v1/admisi-rajal");
         type.GetMethods().Select(x=>x.Name).Should().Contain("OfficerWorklist");
+    }
+
+    [Fact]
+    public async Task ReturnToWaiting_DispatchesVersionedCommandForResolvedLoket()
+    {
+        var mediator = new Mock<IMediator>();
+        mediator.Setup(x => x.Send(
+                It.Is<AdmissionQueueReturnToWaitingCmd>(c =>
+                    c.AntrianId == "Q" &&
+                    c.NoUrut == 1 &&
+                    c.LoketKey == "L1" &&
+                    c.ExpectedRowVersion.SequenceEqual(new byte[] { 1 }) &&
+                    c.UserId == "u"),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AdmissionQueueOperationResponse("Q", 1, "Waiting"));
+        var options = new AdmissionQueueApiOptions
+        {
+            Workstations = [new() { WorkstationKey = "ADM-01", LoketKey = "L1" }]
+        };
+        var sut = CreateV1Controller(mediator.Object, options);
+        var http = new DefaultHttpContext();
+        http.Request.Headers["X-Workstation-Key"] = "ADM-01";
+        sut.ControllerContext = new ControllerContext { HttpContext = http };
+
+        var result = await sut.ReturnToWaiting(
+            "Q",
+            1,
+            new VersionedActorLoketBody(null, "AQ==", "u"));
+
+        result.Should().BeOfType<OkObjectResult>();
+        mediator.VerifyAll();
     }
 
     [Fact]

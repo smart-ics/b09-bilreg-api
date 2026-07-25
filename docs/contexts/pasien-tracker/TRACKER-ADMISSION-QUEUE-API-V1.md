@@ -50,6 +50,7 @@ be detected without the intentionally deferred cross-node coordination capabilit
 | `GET rollout/status` | none | schema/index preflight + feature-flag/workstation uniqueness summary (no keys); authenticated ops/engineering |
 | `POST entries/{q}/{n}/call` | `{loketKey,userId}` | Outstanding; officer-selected entry only |
 | `POST entries/{q}/{n}/recall` | `{loketKey,expectedRowVersion,userId}` | retained Outstanding |
+| `POST entries/{q}/{n}/return-to-waiting` | versioned Loket payload | claim Released; Queue Entry remains Waiting |
 | `POST entries/{q}/{n}/start-service` | versioned Loket payload | InService |
 | `POST entries/{q}/{n}/withdraw` | `{reason,loketKey?,expectedRowVersion?,userId}` | Withdrawn; Loket/version required when actively called |
 | `POST entries/{q}/{n}/no-show` | versioned Loket payload | Withdrawn with `NoShow` |
@@ -59,6 +60,11 @@ be detected without the intentionally deferred cross-node coordination capabilit
 
 `GET worklist` remains **queue-only**. It must not return Booking, patient identity, Registration,
 eligibility, or physician enrichment.
+
+Return to Waiting is the non-final disposition for an unanswered Outstanding call. It conditionally
+releases only the configured current Loket's matching claim, preserves Queue Entry state and call
+history, emits no announcement, and records `RETURN_TO_WAITING` / `UnansweredCall` in the shared
+append-only audit log. It is not No-Show, Withdraw, or rollback from In Service.
 
 ### Admisi Rajal composed officer worklist (read-only)
 

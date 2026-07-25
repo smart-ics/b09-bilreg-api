@@ -12,6 +12,7 @@ using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
 using Bilreg.Infrastructure.AdmisiContext.RegFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
+using Bilreg.Infrastructure.Shared.AuditLogFeature;
 using Bilreg.Test.Shared;
 using Dapper;
 using FluentAssertions;
@@ -132,7 +133,7 @@ public sealed class AdmissionQueueRealSqlGateTest
     }
 
     [Fact]
-    public async Task ReleaseVersusRecall_AfterWithdraw_RecallFails()
+    public async Task WithdrawVersusRecall_AfterFinalWithdrawal_RecallFails()
     {
         var clock = FixedClock();
         var loket = UniqueLoket("L4");
@@ -150,6 +151,153 @@ public sealed class AdmissionQueueRealSqlGateTest
         // Domain rejects non-Waiting before CAS; either way claim must not resurrect.
         await act.Should().ThrowAsync<InvalidOperationException>();
         CountActiveClaimsForLoket(loket).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task ReturnToWaiting_PreservesEntryAndAllowsLaterCalls()
+    {
+        var clock = FixedClock();
+        var loket = UniqueLoket("LRTW");
+        var (intake, call, _, _, _, _, projection) = Build(clock);
+        var release = ReturnToWaiting(clock);
+        var first = await intake.Handle(new QueAnonymousIntakeCmd(SpA), default);
+        var second = await intake.Handle(new QueAnonymousIntakeCmd(SpA), default);
+        await call.Handle(
+            new AdmissionQueueCallCmd(first.AntrianId, first.NoUrut, loket, "u1"),
+            default);
+        var before = projection.ListCurrentLoket(loket).Single();
+        var callCountBefore = EntryCallCount(first.AntrianId, first.NoUrut);
+
+        await release.Handle(
+            new AdmissionQueueReturnToWaitingCmd(
+                first.AntrianId, first.NoUrut, loket, before.RowVersion, "u1"),
+            default);
+
+        EntryStatus(first.AntrianId, first.NoUrut).Should().Be((int)AntrianStatusEnum.Waiting);
+        EntryCallCount(first.AntrianId, first.NoUrut).Should().Be(callCountBefore);
+        ClaimAnnouncementVersion(loket).Should().Be(before.AnnouncementVersion);
+        CountActiveClaimsForLoket(loket).Should().Be(0);
+        CountReturnToWaitingAudits(first.AntrianId, first.NoUrut).Should().Be(1);
+
+        await call.Handle(
+            new AdmissionQueueCallCmd(second.AntrianId, second.NoUrut, loket, "u1"),
+            default);
+        var secondClaim = projection.ListCurrentLoket(loket).Single();
+        await release.Handle(
+            new AdmissionQueueReturnToWaitingCmd(
+                second.AntrianId, second.NoUrut, loket, secondClaim.RowVersion, "u1"),
+            default);
+        await call.Handle(
+            new AdmissionQueueCallCmd(first.AntrianId, first.NoUrut, loket, "u1"),
+            default);
+
+        projection.ListCurrentLoket(loket).Single().AntrianId.Should().Be(first.AntrianId);
+        EntryCallCount(first.AntrianId, first.NoUrut).Should().Be(callCountBefore + 1);
+    }
+
+    [Fact]
+    public async Task RecallVersusReturnToWaiting_ExactlyOneWins()
+    {
+        var clock = FixedClock();
+        var loket = UniqueLoket("LRR");
+        var (intake, call, recall, _, _, _, projection) = Build(clock);
+        var release = ReturnToWaiting(clock);
+        var entry = await intake.Handle(new QueAnonymousIntakeCmd(SpA), default);
+        await call.Handle(
+            new AdmissionQueueCallCmd(entry.AntrianId, entry.NoUrut, loket, "u1"),
+            default);
+        var version = projection.ListCurrentLoket(loket).Single().RowVersion;
+
+        var results = await Task.WhenAll(
+            Wrap(recall.Handle(
+                new AdmissionQueueRecallCmd(
+                    entry.AntrianId, entry.NoUrut, loket, version, "u1"),
+                default)),
+            Wrap(release.Handle(
+                new AdmissionQueueReturnToWaitingCmd(
+                    entry.AntrianId, entry.NoUrut, loket, version, "u1"),
+                default)));
+
+        results.Count(x => x.Ok).Should().Be(1);
+        results.Count(x => !x.Ok).Should().Be(1);
+        results.Single(x => !x.Ok).Error.Should().BeOfType<AdmissionQueueConcurrencyException>();
+        EntryStatus(entry.AntrianId, entry.NoUrut).Should().Be((int)AntrianStatusEnum.Waiting);
+    }
+
+    [Fact]
+    public async Task ReturnToWaiting_RejectsWrongLoketStaleVersionAndDuplicate()
+    {
+        var clock = FixedClock();
+        var loket = UniqueLoket("LRC");
+        var (intake, call, _, _, _, _, projection) = Build(clock);
+        var release = ReturnToWaiting(clock);
+        var entry = await intake.Handle(new QueAnonymousIntakeCmd(SpA), default);
+        await call.Handle(
+            new AdmissionQueueCallCmd(entry.AntrianId, entry.NoUrut, loket, "u1"),
+            default);
+        var version = projection.ListCurrentLoket(loket).Single().RowVersion;
+        var stale = (byte[])version.Clone();
+        stale[^1] ^= 0xFF;
+
+        var wrongLoket = () => release.Handle(
+            new AdmissionQueueReturnToWaitingCmd(
+                entry.AntrianId, entry.NoUrut, UniqueLoket("OTHER"), version, "u1"),
+            default);
+        var staleVersion = () => release.Handle(
+            new AdmissionQueueReturnToWaitingCmd(
+                entry.AntrianId, entry.NoUrut, loket, stale, "u1"),
+            default);
+
+        await wrongLoket.Should().ThrowAsync<AdmissionQueueConcurrencyException>();
+        await staleVersion.Should().ThrowAsync<AdmissionQueueConcurrencyException>();
+        await release.Handle(
+            new AdmissionQueueReturnToWaitingCmd(
+                entry.AntrianId, entry.NoUrut, loket, version, "u1"),
+            default);
+
+        var duplicate = () => release.Handle(
+            new AdmissionQueueReturnToWaitingCmd(
+                entry.AntrianId, entry.NoUrut, loket, version, "u1"),
+            default);
+        await duplicate.Should().ThrowAsync<AdmissionQueueConcurrencyException>();
+        CountReturnToWaitingAudits(entry.AntrianId, entry.NoUrut).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task StartVersusReturnToWaiting_ExactlyOneWinsAndDuplicateReleaseConflicts()
+    {
+        var clock = FixedClock();
+        var loket = UniqueLoket("LSR");
+        var (intake, call, _, start, _, _, projection) = Build(clock);
+        var release = ReturnToWaiting(clock);
+        var entry = await intake.Handle(new QueAnonymousIntakeCmd(SpA), default);
+        await call.Handle(
+            new AdmissionQueueCallCmd(entry.AntrianId, entry.NoUrut, loket, "u1"),
+            default);
+        var version = projection.ListCurrentLoket(loket).Single().RowVersion;
+
+        var results = await Task.WhenAll(
+            Wrap(start.Handle(
+                new AdmissionQueueStartServiceCmd(
+                    entry.AntrianId, entry.NoUrut, loket, version, "u1"),
+                default)),
+            Wrap(release.Handle(
+                new AdmissionQueueReturnToWaitingCmd(
+                    entry.AntrianId, entry.NoUrut, loket, version, "u1"),
+                default)));
+
+        results.Count(x => x.Ok).Should().Be(1);
+        results.Count(x => !x.Ok).Should().Be(1);
+        results.Single(x => !x.Ok).Error.Should().BeOfType<AdmissionQueueConcurrencyException>();
+
+        if (EntryStatus(entry.AntrianId, entry.NoUrut) == (int)AntrianStatusEnum.Waiting)
+        {
+            var duplicate = () => release.Handle(
+                new AdmissionQueueReturnToWaitingCmd(
+                    entry.AntrianId, entry.NoUrut, loket, version, "u1"),
+                default);
+            await duplicate.Should().ThrowAsync<AdmissionQueueConcurrencyException>();
+        }
     }
 
     [Fact]
@@ -445,6 +593,17 @@ public sealed class AdmissionQueueRealSqlGateTest
     private AdmissionServicePointRepo Points() =>
         new(new AdmissionServicePointDal(_fx.Options));
 
+    private AdmissionQueueReturnToWaitingHandler ReturnToWaiting(ITglJamProvider clock)
+    {
+        var auditRepo = new AuditLogRepo(new AuditLogDal(_fx.Options));
+        return new AdmissionQueueReturnToWaitingHandler(
+            Queues(),
+            new AdmissionQueueOperationRepo(_fx.Options),
+            auditRepo,
+            clock,
+            new NullAdmissionQueueRefreshPublisher());
+    }
+
     private static async Task<(bool Ok, Exception? Error)> Wrap(Task task)
     {
         try
@@ -573,6 +732,33 @@ public sealed class AdmissionQueueRealSqlGateTest
         return conn.ExecuteScalar<int>(
             "SELECT AntrianStatus FROM BILRG_AntrianEntry WHERE AntrianId=@q AND NoUrut=@n",
             new { q, n });
+    }
+
+    private int EntryCallCount(string q, int n)
+    {
+        using var conn = new SqlConnection(_conn);
+        return conn.ExecuteScalar<int>(
+            "SELECT CallCount FROM BILRG_AntrianEntry WHERE AntrianId=@q AND NoUrut=@n",
+            new { q, n });
+    }
+
+    private long ClaimAnnouncementVersion(string loket)
+    {
+        using var conn = new SqlConnection(_conn);
+        return conn.ExecuteScalar<long>(
+            "SELECT AnnouncementVersion FROM BILRG_AdmLoketCurrentCall WHERE LoketKey=@loket",
+            new { loket });
+    }
+
+    private int CountReturnToWaitingAudits(string q, int n)
+    {
+        using var conn = new SqlConnection(_conn);
+        return conn.ExecuteScalar<int>("""
+            SELECT COUNT(1) FROM BILRG_AuditLog
+            WHERE ActionType='RETURN_TO_WAITING'
+              AND EntityName='AdmissionQueueLoketClaim'
+              AND EntityId=@entityId
+            """, new { entityId = $"{q}:{n}" });
     }
 
     private int CountRedirectReplacements(string sourceQ, int sourceN)

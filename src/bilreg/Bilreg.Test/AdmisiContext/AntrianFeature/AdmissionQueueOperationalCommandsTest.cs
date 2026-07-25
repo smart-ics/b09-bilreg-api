@@ -1,6 +1,8 @@
 using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.AntrianFeature.UseCases;
+using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
+using Bilreg.Domain.Shared.AuditLogFeature;
 using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Test.Shared;
 using FluentAssertions;
@@ -15,6 +17,7 @@ public class AdmissionQueueOperationalCommandsTest
     private readonly Mock<IAntrianRepo> _queues = new();
     private readonly Mock<IAdmissionQueueOperationRepo> _operations = new();
     private readonly Mock<IAdmissionQueueRefreshPublisher> _publisher = new();
+    private readonly Mock<IAuditRepo> _auditRepo = new();
 
     [Fact]
     public async Task Call_ExplicitEntry_IncrementsThroughCasAndPublishesAfterSuccess()
@@ -44,6 +47,92 @@ public class AdmissionQueueOperationalCommandsTest
 
         await act.Should().ThrowAsync<AdmissionQueueConcurrencyException>();
         _publisher.Verify(x => x.PublishAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ReturnToWaiting_ReleasesClaimAuditsAndPublishesAfterSuccess()
+    {
+        SetupQueue(WaitingEntry());
+        _operations.Setup(x => x.TryReturnToWaiting(
+                "Q", 1, "L1", It.IsAny<byte[]>(), "u", TestTglJamProvider.Instance.Now))
+            .Returns(true);
+        var sut = new AdmissionQueueReturnToWaitingHandler(
+            _queues.Object,
+            _operations.Object,
+            _auditRepo.Object,
+            TestTglJamProvider.Instance,
+            _publisher.Object);
+
+        var result = await sut.Handle(
+            new AdmissionQueueReturnToWaitingCmd("Q", 1, "L1", [1], "u"),
+            default);
+
+        result.Status.Should().Be("Waiting");
+        _auditRepo.Verify(x => x.SaveChanges(It.Is<AuditLog>(a =>
+            a.ActionType == "RETURN_TO_WAITING" &&
+            a.EntityName == "AdmissionQueueLoketClaim" &&
+            a.EntityId == "Q:1" &&
+            a.Reason == "UnansweredCall" &&
+            a.UserId == "u" &&
+            a.OriginalDataJson != null &&
+            a.OriginalDataJson.Contains("\"loketKey\": \"L1\""))), Times.Once);
+        _publisher.Verify(x => x.PublishAsync("L1", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ReturnToWaiting_WhenCasIsStale_DoesNotAuditOrPublish()
+    {
+        SetupQueue(WaitingEntry());
+        _operations.Setup(x => x.TryReturnToWaiting(
+                "Q", 1, "L1", It.IsAny<byte[]>(), "u", TestTglJamProvider.Instance.Now))
+            .Returns(false);
+        var sut = new AdmissionQueueReturnToWaitingHandler(
+            _queues.Object,
+            _operations.Object,
+            _auditRepo.Object,
+            TestTglJamProvider.Instance,
+            _publisher.Object);
+
+        var act = () => sut.Handle(
+            new AdmissionQueueReturnToWaitingCmd("Q", 1, "L1", [1], "u"),
+            default);
+
+        await act.Should().ThrowAsync<AdmissionQueueConcurrencyException>();
+        _auditRepo.Verify(
+            x => x.SaveChanges(It.IsAny<AuditLog>()),
+            Times.Never);
+        _publisher.Verify(
+            x => x.PublishAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task ReturnToWaiting_WhenEntryIsNotWaiting_ReturnsConflictBeforeRepository()
+    {
+        var entry = WaitingEntry();
+        entry.Serve(TestTglJamProvider.Instance.Now);
+        SetupQueue(entry);
+        var sut = new AdmissionQueueReturnToWaitingHandler(
+            _queues.Object,
+            _operations.Object,
+            _auditRepo.Object,
+            TestTglJamProvider.Instance,
+            _publisher.Object);
+
+        var act = () => sut.Handle(
+            new AdmissionQueueReturnToWaitingCmd("Q", 1, "L1", [1], "u"),
+            default);
+
+        await act.Should().ThrowAsync<AdmissionQueueConcurrencyException>();
+        _operations.Verify(
+            x => x.TryReturnToWaiting(
+                It.IsAny<string>(),
+                It.IsAny<int>(),
+                It.IsAny<string>(),
+                It.IsAny<byte[]>(),
+                It.IsAny<string>(),
+                It.IsAny<DateTime>()),
+            Times.Never);
     }
 
     [Fact]

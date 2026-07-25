@@ -1,6 +1,8 @@
 using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.Shared.Helpers;
+using Bilreg.Domain.Shared.AuditLogFeature;
+using Bilreg.Application.Shared.AuditLogFeature;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
 using Nuna.Lib.ValidationHelper;
@@ -20,6 +22,13 @@ public record AdmissionQueueCallCmd(
     string UserId) : IRequest<AdmissionQueueOperationResponse>;
 
 public record AdmissionQueueRecallCmd(
+    string AntrianId,
+    int NoUrut,
+    string LoketKey,
+    byte[] ExpectedRowVersion,
+    string UserId) : IRequest<AdmissionQueueOperationResponse>;
+
+public record AdmissionQueueReturnToWaitingCmd(
     string AntrianId,
     int NoUrut,
     string LoketKey,
@@ -178,6 +187,83 @@ public sealed class AdmissionQueueRecallHandler
 
         await _publisher.PublishAsync(request.LoketKey, cancellationToken);
         return new AdmissionQueueOperationResponse(request.AntrianId, request.NoUrut, "Outstanding");
+    }
+}
+
+public sealed class AdmissionQueueReturnToWaitingHandler
+    : IRequestHandler<AdmissionQueueReturnToWaitingCmd, AdmissionQueueOperationResponse>
+{
+    private const string AuditAction = "RETURN_TO_WAITING";
+    private const string AuditEntity = "AdmissionQueueLoketClaim";
+    private const string AuditDisposition = "UnansweredCall";
+    private readonly IAntrianRepo _queues;
+    private readonly IAdmissionQueueOperationRepo _operations;
+    private readonly IAuditRepo _auditRepo;
+    private readonly ITglJamProvider _clock;
+    private readonly IAdmissionQueueRefreshPublisher _publisher;
+
+    public AdmissionQueueReturnToWaitingHandler(
+        IAntrianRepo queues,
+        IAdmissionQueueOperationRepo operations,
+        IAuditRepo auditRepo,
+        ITglJamProvider clock,
+        IAdmissionQueueRefreshPublisher publisher)
+    {
+        _queues = queues;
+        _operations = operations;
+        _auditRepo = auditRepo;
+        _clock = clock;
+        _publisher = publisher;
+    }
+
+    public async Task<AdmissionQueueOperationResponse> Handle(
+        AdmissionQueueReturnToWaitingCmd request,
+        CancellationToken cancellationToken)
+    {
+        AdmissionQueueOperationSupport.ValidateEntryRequest(
+            request.AntrianId, request.NoUrut, request.UserId);
+        Guard.Against.NullOrWhiteSpace(request.LoketKey);
+        Guard.Against.NullOrEmpty(request.ExpectedRowVersion);
+
+        var entry = AdmissionQueueOperationSupport.RequireEntry(
+            _queues, request.AntrianId, request.NoUrut);
+        if (entry.AntrianStatus != AntrianStatusEnum.Waiting)
+            AdmissionQueueOperationSupport.ThrowConflict(request.AntrianId, request.NoUrut);
+
+        var at = _clock.Now;
+        var auditContext = AuditLogSnapshotJson.Serialize(new
+        {
+            request.LoketKey,
+            request.AntrianId,
+            request.NoUrut,
+            ClaimState = AdmissionQueueClaimState.Outstanding.ToString(),
+            ExpectedRowVersion = Convert.ToBase64String(request.ExpectedRowVersion)
+        });
+
+        using (var trans = TransHelper.NewScope())
+        {
+            if (!_operations.TryReturnToWaiting(
+                    request.AntrianId,
+                    request.NoUrut,
+                    request.LoketKey,
+                    request.ExpectedRowVersion,
+                    request.UserId,
+                    at))
+                AdmissionQueueOperationSupport.ThrowConflict(request.AntrianId, request.NoUrut);
+
+            _auditRepo.SaveChanges(AuditLog.Create(
+                request.UserId,
+                at,
+                AuditAction,
+                AuditEntity,
+                $"{request.AntrianId}:{request.NoUrut}",
+                AuditDisposition,
+                auditContext));
+            trans.Complete();
+        }
+
+        await _publisher.PublishAsync(request.LoketKey, cancellationToken);
+        return new AdmissionQueueOperationResponse(request.AntrianId, request.NoUrut, "Waiting");
     }
 }
 
