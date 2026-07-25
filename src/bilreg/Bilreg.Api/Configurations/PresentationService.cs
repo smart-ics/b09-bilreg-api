@@ -131,15 +131,25 @@ public static class PresentationService
                 },
                 OnForbidden = context =>
                 {
+                    var path = context.Request.Path.Value ?? string.Empty;
+                    var code = path.Contains("/admission-queue/configuration", StringComparison.OrdinalIgnoreCase)
+                        ? "AQ_CONFIG_FORBIDDEN"
+                        : "AQ_FORBIDDEN";
                     context.Response.StatusCode=StatusCodes.Status403Forbidden;
                     context.Response.ContentType="application/json";
                     return context.Response.WriteAsync(JsonSerializer.Serialize(new JSend(
-                        StatusCodes.Status403Forbidden,"AQ_FORBIDDEN","Access is forbidden.")));
+                        StatusCodes.Status403Forbidden,code,"Access is forbidden.")));
                 }
             };
         });
 
-        services.AddAuthorization();
+        services.AddAuthorization(options =>
+        {
+            options.AddPolicy(AdmissionQueueConfigurationPolicies.PolicyName, policy =>
+                policy.RequireAuthenticatedUser()
+                    .AddRequirements(new PermissionRequirement(AdmissionQueueConfigurationPolicies.PermissionId)));
+        });
+        services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
         services.AddSignalR();
         services.AddScoped<ICurrentUserContext, HttpCurrentUserContext>();
         services.AddScoped<AdmisiRanapEnabledFilter>();

@@ -35,6 +35,20 @@ public class ErrorHandlerMiddleware
                     statusCode = (int)HttpStatusCode.Conflict;
                     status = "AQ_CONCURRENCY_CONFLICT";
                     break;
+                case AdmissionQueueConfigurationException configEx:
+                    statusCode = configEx.Code switch
+                    {
+                        AdmissionQueueConfigurationErrorCodes.WorkstationNotFound => (int)HttpStatusCode.NotFound,
+                        AdmissionQueueConfigurationErrorCodes.DisplayNotFound => (int)HttpStatusCode.NotFound,
+                        AdmissionQueueConfigurationErrorCodes.WorkstationInactive => (int)HttpStatusCode.Conflict,
+                        AdmissionQueueConfigurationErrorCodes.WorkstationLoketConflict => (int)HttpStatusCode.Conflict,
+                        AdmissionQueueConfigurationErrorCodes.DisplayInactive => (int)HttpStatusCode.Conflict,
+                        AdmissionQueueConfigurationErrorCodes.DisplayMappingRequired => (int)HttpStatusCode.Conflict,
+                        AdmissionQueueConfigurationErrorCodes.Concurrency => (int)HttpStatusCode.Conflict,
+                        _ => (int)HttpStatusCode.BadRequest
+                    };
+                    status = configEx.Code;
+                    break;
                 case KeyNotFoundException:
                     statusCode = (int)HttpStatusCode.NotFound;
                     status = "AQ_RESOURCE_NOT_FOUND";

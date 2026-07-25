@@ -20,6 +20,9 @@ public static class AdmissionQueueMigrationManifest
         new("RegFeature/BILRG_RegOutcome.sql", "BILRG_RegOutcome"),
         new("AntrianFeature/BILRG_AdmBookingAssistance.sql", "BILRG_AdmBookingAssistance"),
         new("AntrianFeature/BILRG_AdmissionQueue_M3_Audit_Alter.sql", null),
+        new("AntrianFeature/BILRG_AdmWorkstation.sql", "BILRG_AdmWorkstation"),
+        new("AntrianFeature/BILRG_AdmQueueDisplay.sql", "BILRG_AdmQueueDisplay"),
+        new("AntrianFeature/BILRG_AdmDisplayLoket.sql", "BILRG_AdmDisplayLoket"),
     ];
 
     public static IReadOnlyList<string> RequiredTables { get; } =
@@ -30,6 +33,9 @@ public static class AdmissionQueueMigrationManifest
         "BILRG_AdmLoketCurrentCall",
         "BILRG_RegOutcome",
         "BILRG_AdmBookingAssistance",
+        "BILRG_AdmWorkstation",
+        "BILRG_AdmQueueDisplay",
+        "BILRG_AdmDisplayLoket",
     ];
 
     public static IReadOnlyList<RequiredIndex> RequiredIndexes { get; } =

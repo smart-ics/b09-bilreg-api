@@ -51,6 +51,12 @@ public class UserController : Controller
             new Claim(ClaimTypes.Name, response.UserName)
         };
 
+        foreach (var role in response.ListRole ?? [])
+        {
+            if (!string.IsNullOrWhiteSpace(role.Role))
+                claims.Add(new Claim(ClaimTypes.Role, role.Role.Trim()));
+        }
+
         //  EXECUTE
         //      - generate token
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"] ?? string.Empty));
