@@ -179,6 +179,7 @@ Officer remains in HIS Admisi. Do not move it into the kiosk/display monorepo.
 ### Config
 
 - Runtime `global_config.json` block `admissionQueue` (enable flag, workstation keys / Loket mapping as used by the Officer UI).
+- `admissionQueue.rolloutStage` is an Operations-visible global marker: `pilot`, `expansion`, or `generalAvailability`. It carries no patient data and does not replace `enabled` as the immediate kill switch or `useLegacySidebarFallback` as the frontend rollback path.
 - Loket mutations send `X-Loket-Key` + `X-Workstation-Key` (edge must strip/overwrite — §3).
 - Feature flag: `admissionQueue.enabled`; legacy sidebar fallback only when product requires it.
 
@@ -296,3 +297,45 @@ Prerequisites: §§1–5 backend green; §§8–10 Officer + Kiosk + Display dep
 Archive Queue Labels, timestamps, and `version.json` values with the environment name.
 
 Client folder rollback (no DB DROP): restore previous `wwwroot/kiosk` / `wwwroot/display` backups — see IIS cutover checklist.
+
+---
+
+## 12. Officer high-density worklist controlled rollout (Phase 9)
+
+This release uses a **global** rollout boundary. Do not infer role, workstation, service-point, or percentage targeting from the rollout-stage marker. Backend contracts deploy before the frontend is enabled.
+
+| Stage | Runtime configuration | Required evidence before advancing |
+|-------|-----------------------|-----------------------------------|
+| Pilot | `enabled: true`, `useLegacySidebarFallback: false`, `rolloutStage: "pilot"` | Backend preflight green, trained pilot officers, daily smoke evidence, support contact confirmed |
+| Expansion | Same enabled path with `rolloutStage: "expansion"` | Pilot observation complete, no critical queue or Registration defect, Operations accepts terminology and recovery workflow |
+| General Availability | Same enabled path with `rolloutStage: "generalAvailability"` | Seven consecutive calendar days of pilot evidence, Operations sign-off, rollback drill repeated, and metrics remain within the limits below |
+
+### Mandatory smoke at every stage
+
+1. Confirm the toolbar shows the expected rollout stage, workstation, and Loket; do not record patient data in rollout evidence.
+2. Run controlled Booking, Walk-In, existing Registration, Return to Waiting, Established, and NotEstablished journeys.
+3. Confirm Preview is read-only; Call/Recall do not enable editing; Start/Resume Processing is the only edit entry; and Complete Registration is the final queue-linked action.
+4. Trigger a controlled competing action and confirm `409 AQ_CONCURRENCY_CONFLICT` reloads the authoritative worklist and Loket session.
+5. Verify the global fallback: set `useLegacySidebarFallback: true`, reload the client, and confirm the legacy workspace opens without mutating Queue or Registration state. Restore the intended setting only after the check.
+
+### Support recovery
+
+| Condition | Support action |
+|-----------|----------------|
+| `409` conflict | Stop the repeated action; wait for the client refresh; select the current server item again. Escalate only if authoritative state cannot be recovered. |
+| Unresolved Booking, Patient, or Registration context | Keep the session in Preview or Processing as currently confirmed; do not create a Patient/Registration from an unconfirmed result; capture only non-PII support context and escalate to the supervisor. |
+| Worklist timeout or stale data | Use the visible retry. If it persists, enable legacy fallback for the global client population and retain backend contracts/data. |
+| Critical queue or Registration defect | Immediately set `useLegacySidebarFallback: true` (or `enabled: false`), record the rollout stage/time/workstation/Loket, and follow incident procedures. Do not roll back queue data or delete schemas. |
+
+### Seven-day observation gate
+
+For each calendar day of Pilot, archive non-PII aggregate dashboard evidence. Before General Availability, require:
+
+- worklist p95 at or below 2 seconds; exact search p95 at or below 2 seconds; broad search p95 at or below 3 seconds;
+- timeout/error rate below 1%; no unresolved critical conflict or stranded In Service entry;
+- no raw search text, patient identifier, Booking ID, Registration ID, queue label, or workstation key in telemetry dimensions;
+- Operations sign-off that staff understand Preview, Return to Waiting, Start Processing, Complete Registration, conflict recovery, and fallback.
+
+### Legacy retirement decision
+
+General Availability does **not** authorize deletion of the legacy workspace, deep-search endpoint compatibility, backend contracts, or database schema. Retire them only in a separately approved cleanup change with usage evidence, consumer inventory, rollback assessment, and a replacement support procedure.
