@@ -20,7 +20,7 @@ public class Sequencer : ISequencer
     public void CreateSequence(string sequenceTag)
     {
         sequenceTag = $"sq_{sequenceTag.ToLower()}";
-        const string sql = "CREATE SEQUENCE [{0}] START WITH 1 INCREMENT BY 1";
+        const string sql = "CREATE SEQUENCE [{0}] START WITH 1 INCREMENT BY 1 NO CACHE";
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.ExecuteAsync(string.Format(sql, sequenceTag));    
     }
@@ -39,7 +39,8 @@ public class Sequencer : ISequencer
                    EXEC ('
                        CREATE SEQUENCE [dbo].[{sequenceTag}]
                        START WITH 1
-                       INCREMENT BY 1;
+                       INCREMENT BY 1
+                       NO CACHE;
                    ')
                    EXEC ('SELECT NEXT VALUE FOR [dbo].[{sequenceTag}]')
                END
@@ -84,7 +85,7 @@ public class Sequencer : ISequencer
                 DECLARE @CreateSql NVARCHAR(MAX) =
                     N'CREATE SEQUENCE [dbo].' + QUOTENAME(@SequenceName) +
                     N' AS INT START WITH 1 INCREMENT BY 1 MINVALUE 1 MAXVALUE ' +
-                    CONVERT(NVARCHAR(20), @MaxValue) + N' NO CYCLE;';
+                    CONVERT(NVARCHAR(20), @MaxValue) + N' NO CYCLE NO CACHE;';
                 EXEC sys.sp_executesql @CreateSql;
             END
             ELSE
@@ -94,13 +95,15 @@ public class Sequencer : ISequencer
                 DECLARE @MaximumValue BIGINT;
                 DECLARE @IncrementValue BIGINT;
                 DECLARE @IsCycling BIT;
+                DECLARE @CacheSize INT; 
 
                 SELECT
                     @CurrentValue = CONVERT(BIGINT, aa.current_value),
                     @MinimumValue = CONVERT(BIGINT, aa.minimum_value),
                     @MaximumValue = CONVERT(BIGINT, aa.maximum_value),
                     @IncrementValue = CONVERT(BIGINT, aa.increment),
-                    @IsCycling = aa.is_cycling
+                    @IsCycling = aa.is_cycling,
+                    @CacheSize = aa.cache_size
                 FROM sys.sequences aa
                 INNER JOIN sys.schemas bb ON bb.schema_id = aa.schema_id
                 WHERE bb.name = 'dbo'
@@ -113,11 +116,12 @@ public class Sequencer : ISequencer
                    OR @MaximumValue <> @MaxValue
                    OR @IncrementValue <> 1
                    OR @IsCycling <> 0
+                   OR ISNULL(@CacheSize, 0) <> 0
                 BEGIN
                     DECLARE @AlterSql NVARCHAR(MAX) =
                         N'ALTER SEQUENCE [dbo].' + QUOTENAME(@SequenceName) +
                         N' INCREMENT BY 1 MINVALUE 1 MAXVALUE ' +
-                        CONVERT(NVARCHAR(20), @MaxValue) + N' NO CYCLE;';
+                        CONVERT(NVARCHAR(20), @MaxValue) + N' NO CYCLE NO CACHE;';
                     EXEC sys.sp_executesql @AlterSql;
                 END
             END

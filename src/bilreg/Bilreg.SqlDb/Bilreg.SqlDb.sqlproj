@@ -103,6 +103,11 @@
     <Folder Include="AdmisiRanapContext\ReservationFeature\" />
     <Folder Include="AdmisiRanapContext\AdmissionFeature\" />
     <Folder Include="AdmisiRanapContext\WaitingListFeature\" />
+    <Folder Include="BedUsageContext\" />
+    <Folder Include="BedUsageContext\BedOperationalFeature\" />
+    <Folder Include="BedUsageContext\RnaServiceExecutionFeature\" />
+    <Folder Include="BedUsageContext\PakaiBedFeature\" />
+    <Folder Include="AdmisiContext\BookingFeature\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OpCase.sql" />
