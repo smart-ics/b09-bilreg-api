@@ -98,6 +98,7 @@ Persistent-workspace Phase 2 close-out summary (frontend docs tree): `c012_myhos
 | `docs/contexts/admisi-rajal/redesign-ui/admisi-rajal-high-density-worklist-phase-0-implementation-summary.md` | High-density worklist Phase 0 — approved contracts, baseline evidence, and rollout safety |
 | `docs/contexts/admisi-rajal/redesign-ui/admisi-rajal-high-density-worklist-phase-1-implementation-summary.md` | High-density worklist Phase 1 — active filtering, paging metadata, compatibility, diagnostics, and verification |
 | `docs/contexts/admisi-rajal/redesign-ui/admisi-rajal-high-density-worklist-phase-2-implementation-summary.md` | High-density worklist Phase 2 — dense read-only workspace, virtual rows, compatibility, and verification |
+| `docs/contexts/admisi-rajal/redesign-ui/admisi-rajal-high-density-worklist-phase-3-implementation-summary.md` | High-density worklist Phase 3 — Registration panel extraction, safe Preview context, mutation capabilities, dirty guards, and verification |
 | `docs/contexts/admisi-rajal/jadwal-praktek-investigation-report.md` | Codebase investigation — `JadwalPraktekType` usage, consumers, and update paths |
 | `docs/contexts/admisi-rajal/jadwal-praktek-harian-architecture-analysis.md` | Architecture analysis — daily schedule (`JadwalPraktekHarian`) design, resolver, migration roadmap |
 | `docs/contexts/admisi-rajal/jadwal-praktek-harian-deployment-manual.md` | Deployment & operations — SQL order, feature toggle rollout, validation, rollback |
