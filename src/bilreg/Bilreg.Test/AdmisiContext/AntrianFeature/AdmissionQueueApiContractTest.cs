@@ -1,7 +1,9 @@
+using Bilreg.Api.AdmisiContext.AntrianFeature;
 using Bilreg.Api.Configurations;
 using Bilreg.Api.Controllers.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.AntrianFeature.UseCases;
+using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -9,6 +11,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
+using Nuna.Lib.PatternHelper;
 using Xunit;
 using FluentAssertions;
 
@@ -16,6 +19,21 @@ namespace Bilreg.Test.AdmisiContext.AntrianFeature;
 
 public class AdmissionQueueApiContractTest
 {
+    private static AdmissionQueueV1Controller CreateV1Controller(
+        IMediator mediator,
+        AdmissionQueueApiOptions? options = null)
+    {
+        options ??= new AdmissionQueueApiOptions();
+        var repo = new Mock<IAdmissionWorkstationRepo>();
+        repo.Setup(x => x.LoadEntity(It.IsAny<IAdmissionWorkstationKey>()))
+            .Returns(MayBe<AdmissionWorkstationModel>.None);
+        var resolver = new AdmissionQueueWorkstationResolver(
+            repo.Object,
+            Options.Create(options),
+            NullLogger<AdmissionQueueWorkstationResolver>.Instance);
+        return new AdmissionQueueV1Controller(mediator, resolver, Options.Create(options));
+    }
+
     [Fact]
     public void V1Controller_IsVersionedAuthenticatedAndPublishesRequiredOperations()
     {
@@ -37,7 +55,7 @@ public class AdmissionQueueApiContractTest
             true,[],[],true,true,true,0);
         mediator.Setup(x=>x.Send(It.IsAny<AdmissionQueueGetRolloutStatusQry>(),It.IsAny<CancellationToken>()))
             .ReturnsAsync(response);
-        var sut=new AdmissionQueueV1Controller(mediator.Object);
+        var sut=CreateV1Controller(mediator.Object);
         var result=await sut.RolloutStatus();
         result.Should().BeOfType<OkObjectResult>();
         mediator.Verify(x=>x.Send(It.IsAny<AdmissionQueueGetRolloutStatusQry>(),It.IsAny<CancellationToken>()),Times.Once);
@@ -46,28 +64,28 @@ public class AdmissionQueueApiContractTest
     [Fact]
     public async Task V1LoketMutation_RejectsUnmappedWorkstation()
     {
-        var options=Options.Create(new AdmissionQueueApiOptions
+        var options=new AdmissionQueueApiOptions
         {
             Workstations=[new(){WorkstationKey="ADM-01",LoketKey="L1"}]
-        });
-        var sut=new AdmissionQueueV1Controller(Mock.Of<IMediator>(),options);
+        };
+        var sut=CreateV1Controller(Mock.Of<IMediator>(),options);
         var http=new DefaultHttpContext();
         http.Request.Headers["X-Loket-Key"]="L1";
         http.Request.Headers["X-Workstation-Key"]="UNKNOWN";
         sut.ControllerContext=new ControllerContext{HttpContext=http};
         var act=()=>sut.Call("Q",1,new ActorLoketBody("L1","u"));
-        await act.Should().ThrowAsync<ArgumentException>()
-            .WithMessage("*not configured*");
+        await act.Should().ThrowAsync<AdmissionQueueConfigurationException>()
+            .WithMessage("*not found*");
     }
 
     [Fact]
     public async Task V1LoketMutation_RejectsMissingWorkstationHeader()
     {
-        var options=Options.Create(new AdmissionQueueApiOptions
+        var options=new AdmissionQueueApiOptions
         {
             Workstations=[new(){WorkstationKey="ADM-01",LoketKey="L1"}]
-        });
-        var sut=new AdmissionQueueV1Controller(Mock.Of<IMediator>(),options);
+        };
+        var sut=CreateV1Controller(Mock.Of<IMediator>(),options);
         var http=new DefaultHttpContext();
         http.Request.Headers["X-Loket-Key"]="L1";
         sut.ControllerContext=new ControllerContext{HttpContext=http};
@@ -105,8 +123,14 @@ public class AdmissionQueueApiContractTest
     [Fact]
     public async Task V1LoketMutation_RejectsPayloadThatDoesNotMatchWorkstationContext()
     {
-        var sut=new AdmissionQueueV1Controller(Mock.Of<IMediator>());
-        var http=new DefaultHttpContext(); http.Request.Headers["X-Loket-Key"]="L1";
+        var options=new AdmissionQueueApiOptions
+        {
+            Workstations=[new(){WorkstationKey="ADM-01",LoketKey="L1"}]
+        };
+        var sut=CreateV1Controller(Mock.Of<IMediator>(),options);
+        var http=new DefaultHttpContext();
+        http.Request.Headers["X-Loket-Key"]="L1";
+        http.Request.Headers["X-Workstation-Key"]="ADM-01";
         sut.ControllerContext=new ControllerContext{HttpContext=http};
         var act=()=>sut.Call("Q",1,new ActorLoketBody("L2","u"));
         await act.Should().ThrowAsync<ArgumentException>();
@@ -115,11 +139,11 @@ public class AdmissionQueueApiContractTest
     [Fact]
     public async Task V1LoketMutation_RejectsWorkstationMappedToAnotherLoket()
     {
-        var options=Options.Create(new AdmissionQueueApiOptions
+        var options=new AdmissionQueueApiOptions
         {
             Workstations=[new(){WorkstationKey="ADM-01",LoketKey="L1"}]
-        });
-        var sut=new AdmissionQueueV1Controller(Mock.Of<IMediator>(),options);
+        };
+        var sut=CreateV1Controller(Mock.Of<IMediator>(),options);
         var http=new DefaultHttpContext();
         http.Request.Headers["X-Loket-Key"]="L2";
         http.Request.Headers["X-Workstation-Key"]="ADM-01";
@@ -134,10 +158,11 @@ public class AdmissionQueueApiContractTest
         var mediator=new Mock<IMediator>();
         mediator.Setup(x=>x.Send(It.Is<AdmissionQueueCallCmd>(c=>c.LoketKey=="L1"),It.IsAny<CancellationToken>()))
             .ReturnsAsync(new AdmissionQueueOperationResponse("Q",1,"Outstanding"));
-        var sut=new AdmissionQueueV1Controller(mediator.Object,Options.Create(new AdmissionQueueApiOptions
+        var options=new AdmissionQueueApiOptions
         {
             Workstations=[new(){WorkstationKey="ADM-01",LoketKey="L1"}]
-        }));
+        };
+        var sut=CreateV1Controller(mediator.Object,options);
         var http=new DefaultHttpContext();
         http.Request.Headers["X-Loket-Key"]="L1";
         http.Request.Headers["X-Workstation-Key"]="ADM-01";
