@@ -37,28 +37,31 @@ public sealed class RegistrationOutcomeOperationRepo : IRegistrationOutcomeOpera
         catch(SqlException e) when(e.Number is 2601 or 2627){return false;}
     }
 
-    public bool TryFinalizeEstablishedCompatibility(RegistrationOutcomeModel o,AntrianEntryModel e)
+    public bool TryFinalizeEstablished(RegistrationOutcomeModel o,AntrianEntryModel e,
+        string loketKey,byte[] version,DateTime doneAt)
     {
         const string sql="""
           INSERT BILRG_RegOutcome(OutcomeId,AntrianId,NoUrut,OutcomeType,RegId,ReasonCode,
             CrtUser,CrtDate,UpdUser,UpdDate,VodUser,VodDate)
           VALUES(@OutcomeId,@AntrianId,@NoUrut,1,@RegId,'',@UserId,@CreatedAt,@UserId,@CreatedAt,'','3000-01-01');
-          UPDATE BILRG_AntrianEntry SET AntrianStatus=2,DoneAt=@CreatedAt,
+          UPDATE BILRG_AntrianEntry SET AntrianStatus=2,DoneAt=@doneAt,
             PersonName=@PersonName,PasienTrackerId=@PasienTrackerId,ReffId=@RegId,ReffDesc='REG',
-            UpdUser=@UserId,UpdDate=@CreatedAt
+            UpdUser=@UserId,UpdDate=@doneAt
           WHERE AntrianId=@AntrianId AND NoUrut=@NoUrut AND AntrianStatus=1;
           IF @@ROWCOUNT<>1 SELECT CAST(0 AS BIT); ELSE BEGIN
-            UPDATE BILRG_AdmBookingAssistance SET IsActive=0,UpdUser=@UserId,UpdDate=@CreatedAt
+            UPDATE BILRG_AdmBookingAssistance SET IsActive=0,UpdUser=@UserId,UpdDate=@doneAt
               WHERE AntrianId=@AntrianId AND NoUrut=@NoUrut AND IsActive=1;
-            UPDATE BILRG_AdmLoketCurrentCall SET ClaimState=0,IsActive=0,ReleasedAt=@CreatedAt,
-              UpdUser=@UserId,UpdDate=@CreatedAt
-            WHERE AntrianId=@AntrianId AND NoUrut=@NoUrut AND ClaimState=2;
-            SELECT CAST(1 AS BIT);
+            UPDATE BILRG_AdmLoketCurrentCall SET ClaimState=0,IsActive=0,ReleasedAt=@doneAt,
+              UpdUser=@UserId,UpdDate=@doneAt
+            WHERE LoketKey=@loketKey AND AntrianId=@AntrianId AND NoUrut=@NoUrut
+              AND ClaimState=2 AND IsActive=1 AND RowVersion=@version;
+            SELECT CAST(IIF(@@ROWCOUNT=1,1,0) AS BIT);
           END
           """;
         try { using var c=new SqlConnection(ConnStringHelper.Get(_opt));
           return c.ExecuteScalar<bool>(sql,new{o.OutcomeId,o.AntrianId,o.NoUrut,o.RegId,o.UserId,o.CreatedAt,
-            PersonName=e.Visitor.PersonName,PasienTrackerId=e.Tracker.PasienTrackerId}); }
+            PersonName=e.Visitor.PersonName,PasienTrackerId=e.Tracker.PasienTrackerId,
+            loketKey,version,doneAt}); }
         catch(SqlException x) when(x.Number is 2601 or 2627){return false;}
     }
 

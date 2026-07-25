@@ -8,6 +8,7 @@ using Bilreg.Application.AdmisiContext.BookingFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
 using Bilreg.Infrastructure.AdmisiContext.RegFeature;
@@ -19,6 +20,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Nuna.Lib.PatternHelper;
+using Nuna.Lib.TransactionHelper;
 using Nuna.Lib.ValidationHelper;
 using Xunit;
 
@@ -378,6 +380,40 @@ public sealed class AdmissionQueueRealSqlGateTest
             e.AntrianId, e.NoUrut, loket, stale, "REASON-TEST", "u1"), default);
         await act.Should().ThrowAsync<AdmissionQueueConcurrencyException>();
 
+        EntryStatus(e.AntrianId, e.NoUrut).Should().Be(1);
+        CountOutcomes(e.AntrianId, e.NoUrut).Should().Be(0);
+        CountActiveClaimsForLoket(loket).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task QueueLinkedEstablishedRollback_OnWrongLoket_LeavesRegistrationOutcomeAbsent()
+    {
+        var clock = FixedClock();
+        var loket = UniqueLoket("L6E");
+        var (intake, call, _, start, _, _, projection) = Build(clock);
+        var outcomes = new RegistrationOutcomeOperationRepo(_fx.Options);
+
+        var e = await intake.Handle(new QueAnonymousIntakeCmd(SpA), default);
+        await call.Handle(new AdmissionQueueCallCmd(e.AntrianId, e.NoUrut, loket, "u1"), default);
+        var v1 = projection.ListCurrentLoket(loket).Single().RowVersion;
+        await start.Handle(new AdmissionQueueStartServiceCmd(
+            e.AntrianId, e.NoUrut, loket, v1, "u1"), default);
+        var v2 = projection.ListCurrentLoket(loket).Single().RowVersion;
+        var queue = Queues().LoadEntity(AntrianModel.Key(e.AntrianId)).Value;
+        var entry = queue.ListEntry.Single(x => x.NoUrut == e.NoUrut);
+        var outcome = RegistrationOutcomeModel.Established(
+            e.AntrianId, e.NoUrut, $"RG-{Ulid.NewUlid()}", "u1", clock.Now);
+
+        bool saved;
+        using (var transaction = TransHelper.NewScope())
+        {
+            saved = outcomes.TryFinalizeEstablished(
+                outcome, entry, $"{loket}-OTHER", v2, clock.Now);
+            if (saved)
+                transaction.Complete();
+        }
+
+        saved.Should().BeFalse();
         EntryStatus(e.AntrianId, e.NoUrut).Should().Be(1);
         CountOutcomes(e.AntrianId, e.NoUrut).Should().Be(0);
         CountActiveClaimsForLoket(loket).Should().Be(1);

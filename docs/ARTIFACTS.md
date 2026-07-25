@@ -101,6 +101,7 @@ Persistent-workspace Phase 2 close-out summary (frontend docs tree): `c012_myhos
 | `docs/contexts/admisi-rajal/redesign-ui/admisi-rajal-high-density-worklist-phase-3-implementation-summary.md` | High-density worklist Phase 3 — Registration panel extraction, safe Preview context, mutation capabilities, dirty guards, and verification |
 | `docs/contexts/admisi-rajal/redesign-ui/admisi-rajal-high-density-worklist-phase-4-implementation-summary.md` | High-density worklist Phase 4 — non-final Return to Waiting, concurrency-safe claim release, audit evidence, and verification |
 | `docs/contexts/admisi-rajal/redesign-ui/admisi-rajal-high-density-worklist-phase-5-implementation-summary.md` | High-density worklist Phase 5 — explicit Start/Resume Processing session, dirty guards, conflict recovery, and verification |
+| `docs/contexts/admisi-rajal/redesign-ui/admisi-rajal-high-density-worklist-phase-6-implementation-summary.md` | High-density worklist Phase 6 — queue-aware Registration completion, strict claim concurrency, frontend outcomes, and verification |
 | `docs/contexts/admisi-rajal/jadwal-praktek-investigation-report.md` | Codebase investigation — `JadwalPraktekType` usage, consumers, and update paths |
 | `docs/contexts/admisi-rajal/jadwal-praktek-harian-architecture-analysis.md` | Architecture analysis — daily schedule (`JadwalPraktekHarian`) design, resolver, migration roadmap |
 | `docs/contexts/admisi-rajal/jadwal-praktek-harian-deployment-manual.md` | Deployment & operations — SQL order, feature toggle rollout, validation, rollback |
