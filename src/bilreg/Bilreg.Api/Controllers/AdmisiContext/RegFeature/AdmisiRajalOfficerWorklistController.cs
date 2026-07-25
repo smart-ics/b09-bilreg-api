@@ -29,4 +29,9 @@ public sealed class AdmisiRajalOfficerWorklistController : ControllerBase
         [FromQuery] int limit = 100) =>
         Ok(new JSendOk(await _mediator.Send(new AdmisiRajalOfficerWorklistQuery(
             businessDate, servicePointId, queueStatus, loketKey, offset, limit))));
+
+    [HttpGet("patient-context-search")]
+    public async Task<IActionResult> PatientContextSearch([FromQuery] string keyword, [FromQuery] string businessDate,
+        [FromQuery] int limitPerType = 10) =>
+        Ok(new JSendOk(await _mediator.Send(new AdmisiRajalPatientContextSearchQuery(keyword, businessDate, limitPerType))));
 }
