@@ -8,5 +8,5 @@ namespace Bilreg.Api.SignalR;
 /// <see cref="AdmissionQueueRefreshContracts.RefreshHintEvent"/> messages only;
 /// persisted current-Loket snapshots remain recovery truth.
 /// </summary>
-[Authorize]
+[AllowAnonymous]
 public sealed class AdmissionQueueRefreshHub : Hub;

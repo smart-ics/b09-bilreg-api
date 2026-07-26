@@ -162,6 +162,7 @@ public record SetDisplayActiveCmd(
 public record ListDisplaysQry : IRequest<IReadOnlyList<AdmissionQueueDisplayDtoResponse>>;
 public record GetDisplayQry(string DisplayId) : IRequest<AdmissionQueueDisplayDtoResponse>;
 public record GetDisplayBootConfigQry(string DisplayId) : IRequest<DisplayBootConfigDtoResponse>;
+public record GetPublicDisplaySnapshotQry(string DisplayId) : IRequest<IReadOnlyList<CurrentLoketDisplayItem>>;
 public record GetConfigurationSummaryQry : IRequest<ConfigurationSummaryDtoResponse>;
 public record GetSegmentationQry : IRequest<SegmentationCoverageDtoResponse>;
 public record ListConfigurationAuditQry(int Page, int PageSize) : IRequest<ConfigurationAuditPageDtoResponse>;
@@ -616,6 +617,56 @@ public sealed class GetDisplayBootConfigHandler : IRequestHandler<GetDisplayBoot
             string.IsNullOrWhiteSpace(x.LayoutKey) ? null : x.LayoutKey,
             x.UpdatedAt.ToString("O"),
             x.RowVersion.ToString()));
+    }
+}
+
+public sealed class GetPublicDisplaySnapshotHandler
+    : IRequestHandler<GetPublicDisplaySnapshotQry, IReadOnlyList<CurrentLoketDisplayItem>>
+{
+    private readonly IAdmissionQueueDisplayRepo _displays;
+    private readonly IAdmissionQueueOperationalProjection _projection;
+
+    public GetPublicDisplaySnapshotHandler(
+        IAdmissionQueueDisplayRepo displays,
+        IAdmissionQueueOperationalProjection projection)
+    {
+        _displays = displays;
+        _projection = projection;
+    }
+
+    public Task<IReadOnlyList<CurrentLoketDisplayItem>> Handle(
+        GetPublicDisplaySnapshotQry request,
+        CancellationToken cancellationToken)
+    {
+        var existing = _displays.LoadEntity(AdmissionQueueDisplayModel.Key(request.DisplayId));
+        if (!existing.HasValue)
+            throw new AdmissionQueueConfigurationException(
+                AdmissionQueueConfigurationErrorCodes.DisplayNotFound,
+                $"Display '{request.DisplayId}' was not found.");
+
+        try
+        {
+            existing.Value.EnsureCanBoot();
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("inactive", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new AdmissionQueueConfigurationException(
+                AdmissionQueueConfigurationErrorCodes.DisplayInactive, ex.Message);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("no loket", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new AdmissionQueueConfigurationException(
+                AdmissionQueueConfigurationErrorCodes.DisplayMappingRequired, ex.Message);
+        }
+
+        var displayLokets = existing.Value.Lokets
+            .Select(x => x.LoketKey)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return Task.FromResult<IReadOnlyList<CurrentLoketDisplayItem>>(
+            _projection.ListCurrentLoket()
+                .Where(x => displayLokets.Contains(x.LoketKey))
+                .ToList());
     }
 }
 
