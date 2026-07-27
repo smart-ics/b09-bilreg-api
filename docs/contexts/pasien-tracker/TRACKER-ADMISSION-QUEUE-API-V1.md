@@ -50,6 +50,7 @@ be detected without the intentionally deferred cross-node coordination capabilit
 | `GET rollout/status` | none | schema/index preflight + feature-flag/workstation uniqueness summary (no keys); authenticated ops/engineering |
 | `POST entries/{q}/{n}/call` | `{loketKey,userId}` | Outstanding; officer-selected entry only |
 | `POST entries/{q}/{n}/recall` | `{loketKey,expectedRowVersion,userId}` | retained Outstanding |
+| `POST entries/{q}/{n}/return-to-waiting` | versioned Loket payload | claim Released; Queue Entry remains Waiting |
 | `POST entries/{q}/{n}/start-service` | versioned Loket payload | InService |
 | `POST entries/{q}/{n}/withdraw` | `{reason,loketKey?,expectedRowVersion?,userId}` | Withdrawn; Loket/version required when actively called |
 | `POST entries/{q}/{n}/no-show` | versioned Loket payload | Withdrawn with `NoShow` |
@@ -60,13 +61,18 @@ be detected without the intentionally deferred cross-node coordination capabilit
 `GET worklist` remains **queue-only**. It must not return Booking, patient identity, Registration,
 eligibility, or physician enrichment.
 
+Return to Waiting is the non-final disposition for an unanswered Outstanding call. It conditionally
+releases only the configured current Loket's matching claim, preserves Queue Entry state and call
+history, emits no announcement, and records `RETURN_TO_WAITING` / `UnansweredCall` in the shared
+append-only audit log. It is not No-Show, Withdraw, or rollback from In Service.
+
 ### Admisi Rajal composed officer worklist (read-only)
 
 Base route: `/api/v1/admisi-rajal`. Authenticated. Same JSend success envelope.
 
 | Method and route | Request/query | Result and access context |
 |---|---|---|
-| `GET officer-worklist` | businessDate, optional servicePointId/status/loketKey, offset/limit | Composes the queue-only projection with Booking, identity, and Registration summaries for officer display |
+| `GET officer-worklist` | businessDate, optional servicePointId/queueStatus/loketKey/activeOnly/includePagingMetadata, offset/limit | Composes the queue-only projection with Booking, identity, and Registration summaries for officer display |
 
 Composition rules:
 
@@ -75,6 +81,11 @@ Composition rules:
 - Enrichment is best-effort and nullable for anonymous or unresolved entries.
 - This route does **not** persist another worklist, duplicate queue state, or become a second ledger.
 - Loket workstation headers are not required for this read (same stance as queue `GET worklist`).
+- `activeOnly=true` includes only Waiting and In Service and cannot be combined with `queueStatus`.
+- The default JSend `data` remains the legacy item array. `includePagingMetadata=true` changes
+  `data` to `{items,hasMore,nextOffset}`; `nextOffset` is null when complete.
+- Paging fetches one extra row and does not compute `totalActive`. Stable ordering is Priority
+  descending, CreatedAt ascending, NoUrut ascending, then AntrianId ascending.
 
 ### Journey association (existing officer contract)
 

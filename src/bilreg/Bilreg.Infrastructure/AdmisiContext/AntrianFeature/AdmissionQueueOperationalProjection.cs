@@ -10,12 +10,16 @@ namespace Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
 public sealed class AdmissionQueueOperationalProjection : IAdmissionQueueOperationalProjection
 {
     private static readonly DateTime EmptyDate = new(3000, 1, 1);
+    private const int CommandTimeoutSeconds = 30;
     private readonly DatabaseOptions _opt;
     public AdmissionQueueOperationalProjection(IOptions<DatabaseOptions> opt) => _opt = opt.Value;
 
-    public IReadOnlyList<AdmissionQueueWorklistItem> ListWorklist(AdmissionQueueWorklistFilter filter)
+    public IReadOnlyList<AdmissionQueueWorklistItem> ListWorklist(
+        AdmissionQueueWorklistFilter filter) => ListWorklistPage(filter).Items;
+
+    public AdmissionQueueWorklistPage ListWorklistPage(AdmissionQueueWorklistFilter filter)
     {
-        const string sql = """
+        const string pageSql = """
             SELECT q.AntrianId, e.NoUrut,
                 CASE WHEN q.QueuePrefixSnapshot = '' THEN NULL
                      ELSE q.QueuePrefixSnapshot + RIGHT('0000' + CONVERT(VARCHAR(4), e.NoUrut), 4) END QueueLabel,
@@ -32,15 +36,40 @@ public sealed class AdmissionQueueOperationalProjection : IAdmissionQueueOperati
             WHERE q.AntrianDate = @BusinessDate
               AND (@ServicePointId IS NULL OR q.ServicePointCode = @ServicePointId)
               AND (@QueueStatus IS NULL OR e.AntrianStatus = @QueueStatus)
+              AND (@ActiveOnly = 0 OR e.AntrianStatus IN (0, 1))
               AND (@LoketKey IS NULL OR c.LoketKey = @LoketKey)
-            ORDER BY e.Priority DESC, e.CreatedAt, e.NoUrut
-            OFFSET @Offset ROWS FETCH NEXT @Limit ROWS ONLY
+            ORDER BY e.Priority DESC, e.CreatedAt, e.NoUrut, q.AntrianId
+            OFFSET @Offset ROWS FETCH NEXT @FetchCount ROWS ONLY
+            """;
+        const string countSql = """
+            SELECT COUNT_BIG(1)
+            FROM BILRG_Antrian q
+            INNER JOIN BILRG_AntrianEntry e ON e.AntrianId = q.AntrianId
+            LEFT JOIN BILRG_AdmLoketCurrentCall c
+                ON c.AntrianId = e.AntrianId AND c.NoUrut = e.NoUrut AND c.IsActive = 1
+            WHERE q.AntrianDate = @BusinessDate
+              AND (@ServicePointId IS NULL OR q.ServicePointCode = @ServicePointId)
+              AND (@QueueStatus IS NULL OR e.AntrianStatus = @QueueStatus)
+              AND (@ActiveOnly = 0 OR e.AntrianStatus IN (0, 1))
+              AND (@LoketKey IS NULL OR c.LoketKey = @LoketKey)
             """;
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Query<WorklistRow>(sql, new {
+        var args = new {
             BusinessDate = filter.BusinessDate.ToDateTime(TimeOnly.MinValue), filter.ServicePointId,
-            filter.QueueStatus, filter.LoketKey, filter.Offset, filter.Limit
-        }).Select(ToItem).ToList();
+            filter.QueueStatus, filter.ActiveOnly, filter.LoketKey, filter.Offset,
+            FetchCount = filter.Limit + 1
+        };
+        var rows = conn.Query<WorklistRow>(
+            new CommandDefinition(pageSql, args, commandTimeout: CommandTimeoutSeconds))
+            .Select(ToItem)
+            .ToList();
+        var totalCount = checked((int)conn.ExecuteScalar<long>(
+            new CommandDefinition(countSql, args, commandTimeout: CommandTimeoutSeconds)));
+        return AdmissionQueueWorklistPaging.Create(
+            rows,
+            filter.Offset,
+            filter.Limit,
+            totalCount);
     }
 
     public IReadOnlyList<CurrentLoketDisplayItem> ListCurrentLoket(string? loketKey = null)
@@ -59,7 +88,10 @@ public sealed class AdmissionQueueOperationalProjection : IAdmissionQueueOperati
             ORDER BY c.LoketKey
             """;
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        return conn.Query<DisplayRow>(sql, new { LoketKey = loketKey })
+        return conn.Query<DisplayRow>(new CommandDefinition(
+                sql,
+                new { LoketKey = loketKey },
+                commandTimeout: CommandTimeoutSeconds))
             .Select(x => new CurrentLoketDisplayItem(x.LoketKey, x.AntrianId, x.NoUrut,
                 x.QueueLabel, x.ServicePointId, (AdmissionQueueClaimState)x.DisplayState,
                 x.AnnouncementVersion, x.CalledAt, x.ServiceStartedAt, x.RowVersion)).ToList();

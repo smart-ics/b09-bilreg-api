@@ -21,6 +21,7 @@ public class AdmissionQueueMigrationManifestTest
             "RegFeature/BILRG_RegOutcome.sql",
             "AntrianFeature/BILRG_AdmBookingAssistance.sql",
             "AntrianFeature/BILRG_AdmissionQueue_M3_Audit_Alter.sql",
+            "../Shared/AuditLogFeature/BILRG_AuditLog.sql",
             "AntrianFeature/BILRG_AdmWorkstation.sql",
             "AntrianFeature/BILRG_AdmQueueDisplay.sql",
             "AntrianFeature/BILRG_AdmDisplayLoket.sql");
@@ -30,6 +31,7 @@ public class AdmissionQueueMigrationManifestTest
     public void RequiredTablesAndIndexes_AreNonEmpty()
     {
         AdmissionQueueMigrationManifest.RequiredTables.Should().NotBeEmpty();
+        AdmissionQueueMigrationManifest.RequiredTables.Should().Contain("BILRG_AuditLog");
         AdmissionQueueMigrationManifest.RequiredIndexes.Should().Contain(i =>
             i.IndexName == "UX_BILRG_Antrian_SequenceTag");
     }

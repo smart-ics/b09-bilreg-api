@@ -1,8 +1,12 @@
+using System.Reflection;
 using Bilreg.Api.AdmisiContext.AntrianFeature;
 using Bilreg.Api.Configurations;
 using Bilreg.Api.Controllers.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.AntrianFeature.UseCases;
+using Bilreg.Application.AdmisiContext.RegFeature;
+using Bilreg.Application.AdmisiContext.RegFeature.UseCases;
+using Bilreg.Api.Controllers.AdmisiContext.RegFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -42,7 +46,7 @@ public class AdmissionQueueApiContractTest
         type.GetCustomAttributes(typeof(RouteAttribute),true).Cast<RouteAttribute>().Single().Template
             .Should().Be("api/v1/admission-queue");
         var methods=type.GetMethods().Select(x=>x.Name).ToArray();
-        methods.Should().Contain(["Intake","BookingAssistance","Worklist","Display","Call","Recall","Start",
+        methods.Should().Contain(["Intake","BookingAssistance","Worklist","Display","Call","Recall","ReturnToWaiting","Start",
             "Withdraw","NoShow","Redirect","Established","NotEstablished","ListServicePoints","UpsertServicePoint",
             "RolloutStatus"]);
     }
@@ -193,5 +197,184 @@ public class AdmissionQueueApiContractTest
         type.GetCustomAttributes(typeof(RouteAttribute),true).Cast<RouteAttribute>().Single().Template
             .Should().Be("api/v1/admisi-rajal");
         type.GetMethods().Select(x=>x.Name).Should().Contain("OfficerWorklist");
+    }
+
+    [Fact]
+    public async Task QueueLinkedWalkIn_UsesServerResolvedLoketBeforeDispatch()
+    {
+        var mediator = new Mock<IMediator>();
+        mediator.Setup(x => x.Send(
+                It.Is<RegJalanWalkInCommand>(c =>
+                    c.AdmissionAntrianId == "Q1" &&
+                    c.AdmissionNoUrut == 3 &&
+                    c.AdmissionExpectedRowVersion == "AQ==" &&
+                    c.AdmissionLoketKey == "L1"),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RegJalanCreateResponse("R1", 1));
+        var resolver = new Mock<IAdmissionQueueWorkstationResolver>();
+        resolver.Setup(x => x.Resolve(It.IsAny<HttpRequest>(), null))
+            .Returns(new AdmissionQueueWorkstationContext("WS1", "WS1", "L1", true, "test"));
+        var sut = new RegController(mediator.Object, resolver.Object)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+        };
+        var cmd = new RegJalanWalkInCommand(
+            "P1", "U1", "J1", "8", "", "D1", "SV1", "08:00", "K1", "",
+            "Q1", 3, "AQ==");
+
+        var result = await sut.Save(cmd);
+
+        result.Should().BeOfType<OkObjectResult>();
+        resolver.VerifyAll();
+        mediator.VerifyAll();
+    }
+
+    [Fact]
+    public async Task NonQueueWalkIn_DoesNotRequireWorkstationResolution()
+    {
+        var mediator = new Mock<IMediator>();
+        mediator.Setup(x => x.Send(
+                It.Is<RegJalanWalkInCommand>(c => c.AdmissionLoketKey == null),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RegJalanCreateResponse("R1", 1));
+        var resolver = new Mock<IAdmissionQueueWorkstationResolver>(MockBehavior.Strict);
+        var sut = new RegController(mediator.Object, resolver.Object);
+        var cmd = new RegJalanWalkInCommand(
+            "P1", "U1", "J1", "8", "", "D1", "SV1", "08:00", "K1", "");
+
+        var result = await sut.Save(cmd);
+
+        result.Should().BeOfType<OkObjectResult>();
+        resolver.VerifyNoOtherCalls();
+        mediator.VerifyAll();
+    }
+
+    [Fact]
+    public async Task QueueLinkedBooking_UsesServerResolvedLoketBeforeDispatch()
+    {
+        var mediator = new Mock<IMediator>();
+        mediator.Setup(x => x.Send(
+                It.Is<RegJalanByBookingCmd>(c =>
+                    c.AdmissionAntrianId == "Q1" &&
+                    c.AdmissionNoUrut == 4 &&
+                    c.AdmissionExpectedRowVersion == "AQ==" &&
+                    c.AdmissionLoketKey == "L1"),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RegJalanByBookingResponse("R1", 2));
+        var resolver = new Mock<IAdmissionQueueWorkstationResolver>();
+        resolver.Setup(x => x.Resolve(It.IsAny<HttpRequest>(), null))
+            .Returns(new AdmissionQueueWorkstationContext("WS1", "WS1", "L1", true, "test"));
+        var sut = new RegController(mediator.Object, resolver.Object)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+        };
+        var cmd = new RegJalanByBookingCmd(
+            "B1", "U1", "K1", "8", "", "J1", "",
+            "Q1", 4, "AQ==");
+
+        var result = await sut.Save(cmd);
+
+        result.Should().BeOfType<OkObjectResult>();
+        resolver.VerifyAll();
+        mediator.VerifyAll();
+    }
+
+    [Fact]
+    public async Task NonQueueBooking_DoesNotRequireWorkstationResolution()
+    {
+        var mediator = new Mock<IMediator>();
+        mediator.Setup(x => x.Send(
+                It.Is<RegJalanByBookingCmd>(c => c.AdmissionLoketKey == null),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RegJalanByBookingResponse("R1", 2));
+        var resolver = new Mock<IAdmissionQueueWorkstationResolver>(MockBehavior.Strict);
+        var sut = new RegController(mediator.Object, resolver.Object);
+        var cmd = new RegJalanByBookingCmd("B1", "U1", "K1", "8", "", "J1", "");
+
+        var result = await sut.Save(cmd);
+
+        result.Should().BeOfType<OkObjectResult>();
+        resolver.VerifyNoOtherCalls();
+        mediator.VerifyAll();
+    }
+
+    [Fact]
+    public async Task ReturnToWaiting_DispatchesVersionedCommandForResolvedLoket()
+    {
+        var mediator = new Mock<IMediator>();
+        mediator.Setup(x => x.Send(
+                It.Is<AdmissionQueueReturnToWaitingCmd>(c =>
+                    c.AntrianId == "Q" &&
+                    c.NoUrut == 1 &&
+                    c.LoketKey == "L1" &&
+                    c.ExpectedRowVersion.SequenceEqual(new byte[] { 1 }) &&
+                    c.UserId == "u"),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AdmissionQueueOperationResponse("Q", 1, "Waiting"));
+        var options = new AdmissionQueueApiOptions
+        {
+            Workstations = [new() { WorkstationKey = "ADM-01", LoketKey = "L1" }]
+        };
+        var sut = CreateV1Controller(mediator.Object, options);
+        var http = new DefaultHttpContext();
+        http.Request.Headers["X-Workstation-Key"] = "ADM-01";
+        sut.ControllerContext = new ControllerContext { HttpContext = http };
+
+        var result = await sut.ReturnToWaiting(
+            "Q",
+            1,
+            new VersionedActorLoketBody(null, "AQ==", "u"));
+
+        result.Should().BeOfType<OkObjectResult>();
+        mediator.VerifyAll();
+    }
+
+    [Fact]
+    public async Task AdmisiRajalOfficerWorklist_DefaultResponseRemainsLegacyArray()
+    {
+        var mediator = new Mock<IMediator>();
+        mediator.Setup(x => x.Send(
+                It.Is<AdmisiRajalOfficerWorklistQuery>(q => !q.ActiveOnly),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AdmisiRajalOfficerWorklistPage([], false, null, 0));
+        var sut = new Bilreg.Api.Controllers.AdmisiContext.RegFeature
+            .AdmisiRajalOfficerWorklistController(mediator.Object);
+
+        var result = await sut.OfficerWorklist(
+            "2026-07-23", null, null, null, 0, 100, false, false);
+
+        ResponseData(result).Should()
+            .BeAssignableTo<IReadOnlyList<AdmisiRajalOfficerWorklistItem>>();
+    }
+
+    [Fact]
+    public async Task AdmisiRajalOfficerWorklist_MetadataOptInReturnsPage()
+    {
+        var expected = new AdmisiRajalOfficerWorklistPage([], true, 100, 250);
+        var mediator = new Mock<IMediator>();
+        mediator.Setup(x => x.Send(
+                It.Is<AdmisiRajalOfficerWorklistQuery>(q =>
+                    q.ActiveOnly && q.Offset == 0 && q.Limit == 100),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expected);
+        var sut = new Bilreg.Api.Controllers.AdmisiContext.RegFeature
+            .AdmisiRajalOfficerWorklistController(mediator.Object);
+
+        var result = await sut.OfficerWorklist(
+            "2026-07-23", null, null, null, 0, 100, true, true);
+
+        ResponseData(result).Should().BeSameAs(expected);
+    }
+
+    private static object ResponseData(IActionResult result)
+    {
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        var value = ok.Value;
+        value.Should().NotBeNull();
+        var property = value!.GetType().GetProperty(
+            "Data",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.IgnoreCase);
+        property.Should().NotBeNull();
+        return property!.GetValue(value)!;
     }
 }

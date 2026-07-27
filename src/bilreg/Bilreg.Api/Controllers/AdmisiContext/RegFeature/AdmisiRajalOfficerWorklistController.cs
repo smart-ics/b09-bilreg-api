@@ -34,4 +34,13 @@ public sealed class AdmisiRajalOfficerWorklistController : ControllerBase
     public async Task<IActionResult> PatientContextSearch([FromQuery] string keyword, [FromQuery] string businessDate,
         [FromQuery] int limitPerType = 10) =>
         Ok(new JSendOk(await _mediator.Send(new AdmisiRajalPatientContextSearchQuery(keyword, businessDate, limitPerType))));
+        [FromQuery] int limit = 100,
+        [FromQuery] bool activeOnly = false,
+        [FromQuery] bool includePagingMetadata = false)
+    {
+        var response = await _mediator.Send(new AdmisiRajalOfficerWorklistQuery(
+            businessDate, servicePointId, queueStatus, loketKey, offset, limit, activeOnly));
+        object data = includePagingMetadata ? response : response.Items;
+        return Ok(new JSendOk(data));
+    }
 }
