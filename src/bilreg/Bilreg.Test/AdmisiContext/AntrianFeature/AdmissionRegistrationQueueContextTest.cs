@@ -14,6 +14,18 @@ public class AdmissionRegistrationQueueContextTest
     }
 
     [Theory]
+    [InlineData(null, null, null)]
+    [InlineData(" ", null, " ")]
+    public void HasAny_WhenNoMeaningfulQueueFields_AcceptsTheLegacyNoContextPath(
+        string? antrianId,
+        int? noUrut,
+        string? rowVersion)
+    {
+        AdmissionRegistrationQueueContextResolver.HasAny(antrianId, noUrut, rowVersion)
+            .Should().BeFalse();
+    }
+
+    [Theory]
     [InlineData("Q1", null, null)]
     [InlineData("Q1", 1, null)]
     [InlineData(null, 1, "AQID")]

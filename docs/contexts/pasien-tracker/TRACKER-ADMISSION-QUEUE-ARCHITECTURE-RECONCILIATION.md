@@ -103,6 +103,19 @@ owners before those delivery slices can exit.
   provenance.
 - Start, release, Redirect, and final outcome use local transactional coordination with the claim.
 
+#### Phase 0 Officer workspace authority and terminology lock
+
+The Admission Officer refactoring uses no additional backend workspace state. Queue Entry state,
+Loket Claim state, Registration state, and Registration Outcome remain authoritative. Ready,
+Calling, Queued Registration, and Direct Registration are frontend-only projections and must not
+be persisted, synchronized, or added to the Admission Queue aggregate.
+
+The operator labels are `Panggil`, `Panggil Lagi`, `Tidak Hadir`, `Hadir`, `Tidak Datang`, and
+`Registrasi Tidak Terbentuk`. `Tidak Hadir` means the existing non-terminal Return to Waiting
+operation only: it releases the matching Outstanding claim while retaining Waiting. `Tidak Datang`
+is the separate terminal No-Show disposition. Historic user-facing “No Show” wording is superseded;
+the `NoShow` reason remains an internal/backend representation.
+
 ### 3.6 Display
 
 - There is no managed Queue Display master.
