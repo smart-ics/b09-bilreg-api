@@ -299,6 +299,78 @@ public class AdmissionQueueApiContractTest
     }
 
     [Fact]
+    public async Task DirectWalkIn_DispatchesNoneBehaviorWithoutWorkstationResolution()
+    {
+        var mediator = new Mock<IMediator>();
+        mediator.Setup(x => x.Send(
+                It.Is<RegJalanWalkInCommand>(c =>
+                    c.AdmissionQueueBehavior == RegistrationAdmissionQueueBehavior.None &&
+                    c.AdmissionLoketKey == null),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RegJalanCreateResponse("R1", 1));
+        var resolver = new Mock<IAdmissionQueueWorkstationResolver>(MockBehavior.Strict);
+        var sut = new RegController(mediator.Object, resolver.Object);
+
+        var result = await sut.SaveDirect(new RegJalanWalkInCommand(
+            "P1", "U1", "J1", "8", "", "D1", "SV1", "08:00", "K1", ""));
+
+        result.Should().BeOfType<OkObjectResult>();
+        resolver.VerifyNoOtherCalls();
+        mediator.VerifyAll();
+    }
+
+    [Fact]
+    public async Task DirectBooking_DispatchesNoneBehaviorWithoutWorkstationResolution()
+    {
+        var mediator = new Mock<IMediator>();
+        mediator.Setup(x => x.Send(
+                It.Is<RegJalanByBookingCmd>(c =>
+                    c.AdmissionQueueBehavior == RegistrationAdmissionQueueBehavior.None &&
+                    c.AdmissionLoketKey == null),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RegJalanByBookingResponse("R1", 2));
+        var resolver = new Mock<IAdmissionQueueWorkstationResolver>(MockBehavior.Strict);
+        var sut = new RegController(mediator.Object, resolver.Object);
+
+        var result = await sut.SaveDirect(new RegJalanByBookingCmd("B1", "U1", "K1", "8", "", "J1", ""));
+
+        result.Should().BeOfType<OkObjectResult>();
+        resolver.VerifyNoOtherCalls();
+        mediator.VerifyAll();
+    }
+
+    [Fact]
+    public async Task DirectWalkIn_WithQueueContext_IsRejectedWithoutDispatchOrWorkstationResolution()
+    {
+        var mediator = new Mock<IMediator>(MockBehavior.Strict);
+        var resolver = new Mock<IAdmissionQueueWorkstationResolver>(MockBehavior.Strict);
+        var sut = new RegController(mediator.Object, resolver.Object);
+        var cmd = new RegJalanWalkInCommand(
+            "P1", "U1", "J1", "8", "", "D1", "SV1", "08:00", "K1", "", "Q1", 1, "AQ==");
+
+        var act = () => sut.SaveDirect(cmd);
+
+        await act.Should().ThrowAsync<ArgumentException>();
+        resolver.VerifyNoOtherCalls();
+        mediator.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task DirectBooking_WithQueueContext_IsRejectedWithoutDispatchOrWorkstationResolution()
+    {
+        var mediator = new Mock<IMediator>(MockBehavior.Strict);
+        var resolver = new Mock<IAdmissionQueueWorkstationResolver>(MockBehavior.Strict);
+        var sut = new RegController(mediator.Object, resolver.Object);
+        var cmd = new RegJalanByBookingCmd("B1", "U1", "K1", "8", "", "J1", "", "Q1", 1, "AQ==");
+
+        var act = () => sut.SaveDirect(cmd);
+
+        await act.Should().ThrowAsync<ArgumentException>();
+        resolver.VerifyNoOtherCalls();
+        mediator.VerifyNoOtherCalls();
+    }
+
+    [Fact]
     public async Task ReturnToWaiting_DispatchesVersionedCommandForResolvedLoket()
     {
         var mediator = new Mock<IMediator>();

@@ -97,6 +97,34 @@ The established Registration create routes remain unchanged during Phase 0:
 | Partial queue context | Rejected through the existing `ArgumentException` path as `400 AQ_INVALID_REQUEST`. |
 | No meaningful queue context | Preserves legacy create-on-registration compatibility, including its synthetic completed Admission Queue entry and REGISTER evidence. This is not the future queue-less Direct Registration contract. |
 
+### Direct Registration create routes (Phase 4)
+
+The following additive routes create a normal outpatient Registration without Admission Queue
+participation. They use the same request and JSend response contracts as their corresponding
+existing create routes:
+
+| Method and route | Admission Queue behavior |
+|---|---|
+| `POST /api/Reg/rajalWalkIn/direct` | Queue-less walk-in Registration |
+| `POST /api/Reg/rajalByBooking/direct` | Queue-less booking Registration |
+
+Direct requests must not include `AdmissionAntrianId`, `AdmissionNoUrut`, or
+`AdmissionExpectedRowVersion`. Supplying any of those fields is rejected as `400
+AQ_INVALID_REQUEST`. Direct routes do not resolve or require Admission Queue workstation/Loket
+headers.
+
+Registration creation internally selects one transient, JSON-ignored application instruction:
+
+| Behavior | Selected by | Result |
+|---|---|---|
+| `QueueLinked` | Existing route with complete queue context | Retains atomic Admission Queue completion, Loket claim release, and Established outcome. |
+| `LegacyAutoComplete` | Existing route without queue context | Retains legacy synthetic Admission Queue completion for compatibility. |
+| `None` | Direct route | Saves Registration and existing side effects, including exactly-once REGISTER tracker evidence, without an Admission Queue entry, Loket claim interaction, or Registration Outcome. |
+
+`None` is an application-layer instruction, not persisted domain state or a workspace mode. Direct
+behavior is prospective only: historical synthetic queue artifacts are unchanged, and no database
+migration or backfill is required.
+
 ### Admisi Rajal composed officer worklist (read-only)
 
 Base route: `/api/v1/admisi-rajal`. Authenticated. Same JSend success envelope.

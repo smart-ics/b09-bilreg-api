@@ -32,7 +32,16 @@ public class RegController : Controller
     [Route("rajalWalkIn")]
     public async Task<IActionResult> Save(RegJalanWalkInCommand cmd)
     {
-        cmd = WithResolvedAdmissionLoket(cmd);
+        cmd = WithAdmissionQueueBehavior(cmd, isDirect: false);
+        var result = await _mediator.Send(cmd);
+        return Ok(new JSendOk(result));
+    }
+
+    [HttpPost]
+    [Route("rajalWalkIn/direct")]
+    public async Task<IActionResult> SaveDirect(RegJalanWalkInCommand cmd)
+    {
+        cmd = WithAdmissionQueueBehavior(cmd, isDirect: true);
         var result = await _mediator.Send(cmd);
         return Ok(new JSendOk(result));
     }
@@ -41,7 +50,16 @@ public class RegController : Controller
     [Route("rajalByBooking")]
     public async Task<IActionResult> Save(RegJalanByBookingCmd cmd)
     {
-        cmd = WithResolvedAdmissionLoket(cmd);
+        cmd = WithAdmissionQueueBehavior(cmd, isDirect: false);
+        var result = await _mediator.Send(cmd);
+        return Ok(new JSendOk(result));
+    }
+
+    [HttpPost]
+    [Route("rajalByBooking/direct")]
+    public async Task<IActionResult> SaveDirect(RegJalanByBookingCmd cmd)
+    {
+        cmd = WithAdmissionQueueBehavior(cmd, isDirect: true);
         var result = await _mediator.Send(cmd);
         return Ok(new JSendOk(result));
     }
@@ -154,31 +172,31 @@ public class RegController : Controller
         return Ok(new JSendOk(resutl));
     }
 
-    private RegJalanWalkInCommand WithResolvedAdmissionLoket(RegJalanWalkInCommand cmd)
+    private RegJalanWalkInCommand WithAdmissionQueueBehavior(RegJalanWalkInCommand cmd, bool isDirect)
     {
-        if (!AdmissionRegistrationQueueContextResolver.HasAny(
-                cmd.AdmissionAntrianId,
-                cmd.AdmissionNoUrut,
-                cmd.AdmissionExpectedRowVersion))
-            return cmd;
+        var behavior = AdmissionRegistrationQueueContextResolver.ResolveBehavior(
+            cmd.AdmissionAntrianId, cmd.AdmissionNoUrut, cmd.AdmissionExpectedRowVersion, isDirect);
 
         return cmd with
         {
-            AdmissionLoketKey = _workstationResolver.Resolve(Request, null).LoketKey
+            AdmissionQueueBehavior = behavior,
+            AdmissionLoketKey = behavior == RegistrationAdmissionQueueBehavior.QueueLinked
+                ? _workstationResolver.Resolve(Request, null).LoketKey
+                : null
         };
     }
 
-    private RegJalanByBookingCmd WithResolvedAdmissionLoket(RegJalanByBookingCmd cmd)
+    private RegJalanByBookingCmd WithAdmissionQueueBehavior(RegJalanByBookingCmd cmd, bool isDirect)
     {
-        if (!AdmissionRegistrationQueueContextResolver.HasAny(
-                cmd.AdmissionAntrianId,
-                cmd.AdmissionNoUrut,
-                cmd.AdmissionExpectedRowVersion))
-            return cmd;
+        var behavior = AdmissionRegistrationQueueContextResolver.ResolveBehavior(
+            cmd.AdmissionAntrianId, cmd.AdmissionNoUrut, cmd.AdmissionExpectedRowVersion, isDirect);
 
         return cmd with
         {
-            AdmissionLoketKey = _workstationResolver.Resolve(Request, null).LoketKey
+            AdmissionQueueBehavior = behavior,
+            AdmissionLoketKey = behavior == RegistrationAdmissionQueueBehavior.QueueLinked
+                ? _workstationResolver.Resolve(Request, null).LoketKey
+                : null
         };
     }
 }

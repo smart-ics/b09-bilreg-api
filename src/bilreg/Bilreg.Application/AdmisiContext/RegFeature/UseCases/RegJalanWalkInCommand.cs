@@ -54,6 +54,9 @@ public record RegJalanWalkInCommand(string PasienId, string UserId,
 {
     [JsonIgnore]
     public string? AdmissionLoketKey { get; init; }
+
+    [JsonIgnore]
+    public RegistrationAdmissionQueueBehavior AdmissionQueueBehavior { get; init; }
 }
  
 public record RegJalanCreateResponse(string RegId, int NoAntrian);
@@ -191,11 +194,19 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
     public async Task<RegJalanCreateResponse> Handle(RegJalanWalkInCommand request, CancellationToken cancellationToken)
     {
         var occurredAt = _tglJamProvider.Now;
-        var admissionContext = AdmissionRegistrationQueueContextResolver.Resolve(
-            request.AdmissionAntrianId,
-            request.AdmissionNoUrut,
-            request.AdmissionExpectedRowVersion,
-            request.AdmissionLoketKey);
+        var admissionContext = request.AdmissionQueueBehavior == RegistrationAdmissionQueueBehavior.QueueLinked
+            ? AdmissionRegistrationQueueContextResolver.Resolve(
+                request.AdmissionAntrianId,
+                request.AdmissionNoUrut,
+                request.AdmissionExpectedRowVersion,
+                request.AdmissionLoketKey)
+            : null;
+        if (request.AdmissionQueueBehavior == RegistrationAdmissionQueueBehavior.None &&
+            AdmissionRegistrationQueueContextResolver.HasAnyDirectQueueField(
+                request.AdmissionAntrianId,
+                request.AdmissionNoUrut,
+                request.AdmissionExpectedRowVersion))
+            throw new ArgumentException("Direct Registration must not include Admission Queue context.");
         if (admissionContext is not null)
             EnsureAdmissionEntryInService(admissionContext);
         /*  ▐▀▀▀▀▀▀▀▀▀▀▀▌
@@ -303,7 +314,7 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
                         $"Queue entry '{admissionQueue.AntrianId}' / {resolution.Entry.NoUrut} was changed concurrently.");
                 }
             }
-            else
+            else if (request.AdmissionQueueBehavior == RegistrationAdmissionQueueBehavior.LegacyAutoComplete)
             {
                 tracker = PasienTrackerModel.Create(reg, occurredAt);
                 admissionQueue = AdmissionQueueComplete.CompleteAtRegistration(
@@ -312,6 +323,12 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
                     _admissionServicePointResolver.ServicePoint,
                     _admissionServicePointResolver);
                 admissionEntryToInsert = admissionQueue.ListEntry.MaxBy(x => x.NoUrut)!;
+            }
+            else
+            {
+                tracker = PasienTrackerModel.Create(reg, occurredAt);
+                AdmissionQueueComplete.AppendRegisterIfMissing(tracker, reg.RegId, occurredAt);
+                admissionQueue = AntrianModel.Default;
             }
 
             // Physician entry stays Waiting until MulaiPeriksa; legacy "active" = ReffDesc REG / AntrianMap (F-07).
