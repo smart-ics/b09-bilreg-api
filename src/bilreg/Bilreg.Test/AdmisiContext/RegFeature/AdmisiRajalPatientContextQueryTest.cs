@@ -59,6 +59,43 @@ public class AdmisiRajalPatientContextQueryTest
             .ContainSingle(x => x.Contains("RG1"));
     }
 
+    [Fact]
+    public async Task RegistrationSearch_ReturnsOnlyTheSelectedBusinessDate()
+    {
+        var regRepo = new Mock<IRegAktifRepo>();
+        regRepo.Setup(x => x.ListData("001234"))
+            .Returns([
+                Registration("RG-TODAY", "2026-07-25"),
+                Registration("RG-OTHER", "2026-07-24")
+            ]);
+        var sut = Handler(regRepo: regRepo);
+
+        var result = await sut.Handle(
+            new AdmisiRajalPatientContextSearchQuery("001234", "2026-07-25"),
+            default);
+
+        result.Registrations.Items.Should().ContainSingle(x => x.Id == "RG-TODAY");
+    }
+
+    [Fact]
+    public async Task RegistrationConfirmation_RejectsADifferentBusinessDate()
+    {
+        var regRepo = new Mock<IRegAktifRepo>();
+        var registration = RegAktifModel.Default;
+        regRepo.Setup(x => x.LoadEntity(It.IsAny<IRegKey>()))
+            .Returns(MayBe.From(registration));
+        var sut = Handler(regRepo: regRepo);
+
+        var act = () => sut.Handle(
+            new AdmisiRajalPatientContextGetQuery(
+                PatientContextKind.Registration,
+                "RG1",
+                "2026-07-25"),
+            default);
+
+        await act.Should().ThrowAsync<KeyNotFoundException>();
+    }
+
     [Theory]
     [InlineData("A")]
     [InlineData("")]
@@ -142,4 +179,7 @@ public class AdmisiRajalPatientContextQueryTest
             new LayananReff("LY1", "Poli"),
             new PpaReff("DR1", "Dokter"),
             1);
+
+    private static RegSearchRegView Registration(string id, string date) =>
+        new(id, date, "001234", "ANI", "Umum", "Poli", "1", "RegJalan");
 }

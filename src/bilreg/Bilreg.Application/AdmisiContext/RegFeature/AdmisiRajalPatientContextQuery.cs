@@ -37,7 +37,6 @@ public sealed record AdmisiRajalPatientContextSearchQuery(
     string Keyword,
     string BusinessDate,
     PatientContextScope Scope = PatientContextScope.All,
-    bool SearchAllDates = false,
     int LimitPerType = 10,
     string? SuggestedBookingId = null,
     string? SuggestedRegistrationId = null,
@@ -77,20 +76,12 @@ public sealed record AdmisiRajalPatientContextGroup(
     int Total,
     bool HasMore);
 
-public sealed record AdmisiRajalPatientContextCompleteness(
-    bool Booking,
-    bool Registration,
-    bool Patient,
-    bool IsPartial);
-
 public sealed record AdmisiRajalPatientContextSearchResponse(
     string BusinessDate,
-    bool SearchAllDates,
     AdmisiRajalPatientContextGroup Bookings,
     AdmisiRajalPatientContextGroup Registrations,
     AdmisiRajalPatientContextGroup Patients,
     AdmisiRajalPatientContextResult? BestMatch,
-    AdmisiRajalPatientContextCompleteness Completeness,
     bool CanCreatePatient);
 
 public sealed class AdmisiRajalPatientContextHandler :
@@ -141,7 +132,7 @@ public sealed class AdmisiRajalPatientContextHandler :
             ? SearchBookings(request, keyword, businessDate)
             : [];
         var registrations = Includes(request.Scope, PatientContextKind.Registration)
-            ? SearchRegistrations(request, keyword)
+            ? SearchRegistrations(request, keyword, businessDate)
             : [];
         var patients = Includes(request.Scope, PatientContextKind.Patient)
             ? SearchPatients(request, keyword)
@@ -160,40 +151,32 @@ public sealed class AdmisiRajalPatientContextHandler :
 
         watch.Stop();
         var exact = IsExactIdentifier(keyword);
-        var partial = request.SearchAllDates;
         SearchDuration.Record(
             watch.Elapsed.TotalMilliseconds,
             new KeyValuePair<string, object?>("scope", request.Scope.ToString()),
             new KeyValuePair<string, object?>("exact", exact),
-            new KeyValuePair<string, object?>("partial", partial));
+            new KeyValuePair<string, object?>("partial", false));
         SearchRequests.Add(
             1,
             new KeyValuePair<string, object?>("scope", request.Scope.ToString()),
             new KeyValuePair<string, object?>("exact", exact),
-            new KeyValuePair<string, object?>("partial", partial));
+            new KeyValuePair<string, object?>("partial", false));
         _logger.LogInformation(
-            "Admisi Rajal patient-context search scope={Scope} allDates={AllDates} exact={Exact} bookingCount={BookingCount} registrationCount={RegistrationCount} patientCount={PatientCount} partial={Partial} elapsedMs={ElapsedMs}",
+            "Admisi Rajal patient-context search scope={Scope} exact={Exact} bookingCount={BookingCount} registrationCount={RegistrationCount} patientCount={PatientCount} partial={Partial} elapsedMs={ElapsedMs}",
             request.Scope,
-            request.SearchAllDates,
             exact,
             bookingGroup.Total,
             registrationGroup.Total,
             patientGroup.Total,
-            request.SearchAllDates,
+            false,
             watch.ElapsedMilliseconds);
 
         return Task.FromResult(new AdmisiRajalPatientContextSearchResponse(
             request.BusinessDate,
-            request.SearchAllDates,
             bookingGroup,
             registrationGroup,
             patientGroup,
             bestMatch,
-            new AdmisiRajalPatientContextCompleteness(
-                true,
-                !request.SearchAllDates,
-                true,
-                request.SearchAllDates),
             canCreatePatient));
     }
 
@@ -206,7 +189,7 @@ public sealed class AdmisiRajalPatientContextHandler :
         var result = request.Kind switch
         {
             PatientContextKind.Booking => GetBooking(id, businessDate),
-            PatientContextKind.Registration => GetRegistration(id),
+            PatientContextKind.Registration => GetRegistration(id, businessDate),
             PatientContextKind.Patient => GetPatient(id),
             _ => null
         };
@@ -219,11 +202,7 @@ public sealed class AdmisiRajalPatientContextHandler :
         string keyword,
         DateOnly businessDate)
     {
-        var period = request.SearchAllDates
-            ? new Periode(
-                new DateTime(2000, 1, 1),
-                businessDate.AddYears(1).ToDateTime(TimeOnly.MaxValue))
-            : new Periode(businessDate.ToDateTime(TimeOnly.MinValue));
+        var period = new Periode(businessDate.ToDateTime(TimeOnly.MinValue));
         return _bookingRepo.ListDataTglBerobat(period)
             .Where(x => BookingMatches(x, keyword))
             .Select(x => ToBookingResult(
@@ -239,8 +218,10 @@ public sealed class AdmisiRajalPatientContextHandler :
 
     private List<AdmisiRajalPatientContextResult> SearchRegistrations(
         AdmisiRajalPatientContextSearchQuery request,
-        string keyword) =>
+        string keyword,
+        DateOnly businessDate) =>
         _regRepo.ListData(keyword)
+            .Where(x => string.Equals(x.RegDate, businessDate.ToString("yyyy-MM-dd"), StringComparison.Ordinal))
             .Select(x => ToRegistrationResult(
                 x,
                 keyword,
@@ -278,15 +259,14 @@ public sealed class AdmisiRajalPatientContextHandler :
     private AdmisiRajalPatientContextResult? GetBooking(string id, DateOnly businessDate)
     {
         var maybe = _bookingRepo.LoadEntity(BookingModel.Key(id));
-        return maybe.HasValue
-            ? ToBookingResult(maybe.Value.ToSearchView(), businessDate, id, false)
-            : null;
+        if (!maybe.HasValue || maybe.Value.TglBerobat != businessDate) return null;
+        return ToBookingResult(maybe.Value.ToSearchView(), businessDate, id, false);
     }
 
-    private AdmisiRajalPatientContextResult? GetRegistration(string id)
+    private AdmisiRajalPatientContextResult? GetRegistration(string id, DateOnly businessDate)
     {
         var maybe = _regRepo.LoadEntity(RegModel.Key(id));
-        if (!maybe.HasValue) return null;
+        if (!maybe.HasValue || maybe.Value.RegDate != businessDate) return null;
         var reg = maybe.Value;
         var view = new RegSearchRegView(
             reg.RegId,
