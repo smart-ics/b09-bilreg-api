@@ -6,7 +6,6 @@ using Bilreg.Test.Shared;
 using FluentAssertions;
 using Moq;
 using Nuna.Lib.PatternHelper;
-using Microsoft.Extensions.Options;
 using Xunit;
 
 namespace Bilreg.Test.AdmisiContext.AntrianFeature;
@@ -29,7 +28,7 @@ public class AdmissionQueueStartHandlerTest
                 It.IsAny<AntrianModel>(), It.IsAny<AntrianEntryModel>()))
             .Returns(true);
 
-        var resolver = new AdmissionServicePointResolver(Options.Create(new AdmisiRajalOptions()));
+        var resolver = RegisteredServicePointResolver("ADM");
         var sut = new AdmissionQueueStartHandler(
             repo.Object, TestTglJamProvider.Instance, resolver);
         var result = await sut.Handle(
@@ -60,7 +59,7 @@ public class AdmissionQueueStartHandlerTest
                 It.IsAny<AntrianModel>(), It.IsAny<AntrianEntryModel>()))
             .Returns(false);
 
-        var resolver = new AdmissionServicePointResolver(Options.Create(new AdmisiRajalOptions()));
+        var resolver = RegisteredServicePointResolver("ADM");
         var sut = new AdmissionQueueStartHandler(
             repo.Object, TestTglJamProvider.Instance, resolver);
 
@@ -83,7 +82,7 @@ public class AdmissionQueueStartHandlerTest
         queue.AddEntry(createdAt);
         var repo = new Mock<IAntrianRepo>();
         repo.Setup(x => x.LoadEntity(It.IsAny<IAntrianKey>())).Returns(MayBe.From(queue));
-        var resolver = new AdmissionServicePointResolver(Options.Create(new AdmisiRajalOptions()));
+        var resolver = RegisteredServicePointResolver();
         var sut = new AdmissionQueueStartHandler(
             repo.Object, TestTglJamProvider.Instance, resolver);
 
@@ -91,7 +90,16 @@ public class AdmissionQueueStartHandlerTest
             new AdmissionQueueStartCmd("OTHER-Q1", 1, "user1"), CancellationToken.None);
 
         await act.Should().ThrowAsync<ArgumentException>()
-            .WithMessage("*not the configured Admisi Rajal Service Point*");
+            .WithMessage("*does not belong to a registered Admission Service Point*");
         repo.Verify(x => x.SaveChanges(It.IsAny<AntrianModel>()), Times.Never);
+    }
+
+    private static AdmissionServicePointResolver RegisteredServicePointResolver(string? id = null)
+    {
+        var repo = new Mock<IAdmissionServicePointRepo>();
+        if (id is not null)
+            repo.Setup(x => x.LoadEntity(It.IsAny<IAdmissionServicePointKey>()))
+                .Returns(MayBe.From(AdmissionServicePointModel.Create(id, id, "A")));
+        return new AdmissionServicePointResolver(repo.Object);
     }
 }

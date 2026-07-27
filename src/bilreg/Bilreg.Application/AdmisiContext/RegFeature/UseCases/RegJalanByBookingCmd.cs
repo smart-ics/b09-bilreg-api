@@ -44,9 +44,7 @@ public record RegJalanByBookingCmd(
     string CaraMasukDkId, string RujukanId, string TipeJaminanId, string PesertaJaminanId,
     string? AdmissionAntrianId = null,
     int? AdmissionNoUrut = null,
-    string? AdmissionExpectedRowVersion = null,
-    string? AdmissionServicePointCode = null,
-    string? AdmissionServicePointName = null) : IRequest<RegJalanByBookingResponse>
+    string? AdmissionExpectedRowVersion = null) : IRequest<RegJalanByBookingResponse>
 {
     [JsonIgnore]
     public string? AdmissionLoketKey { get; init; }
@@ -276,14 +274,18 @@ public class RegJalanByBookingHandler
         {
             var tracker = _trackerRepo.LoadEntity(itemQueue.Tracker)
                 .GetValueOrThrow($"PasienTracker '{itemQueue.Tracker.PasienTrackerId}' not found");
-            var admissionQueue = request.AdmissionQueueBehavior == RegistrationAdmissionQueueBehavior.None
-                ? null
-                : AdmissionQueueComplete.CompleteAtRegistration(
-                    _antrianRepo, _antrianFactory, tracker, reg.RegId, occurredAt,
-                    request.AdmissionAntrianId, request.AdmissionNoUrut,
-                    _admissionServicePointResolver.ServicePoint,
-                    _admissionServicePointResolver);
-            if (request.AdmissionQueueBehavior == RegistrationAdmissionQueueBehavior.None)
+            AntrianModel? admissionQueue = null;
+            if (admissionContext is not null)
+            {
+                admissionQueue = _antrianRepo.LoadEntity(AntrianModel.Key(admissionContext.AntrianId))
+                    .GetValueOrThrow($"Admission queue '{admissionContext.AntrianId}' not found");
+                _admissionServicePointResolver.EnsureAdmissionQueue(admissionQueue);
+                var admissionEntry = AdmissionQueueComplete.RequireIdentifiedInServiceEntry(
+                    admissionQueue, admissionContext.NoUrut, tracker);
+                AdmissionQueueComplete.CompleteInServiceEntry(
+                    admissionEntry, tracker, reg.RegId, occurredAt);
+            }
+            else
                 AdmissionQueueComplete.AppendRegisterIfMissing(tracker, reg.RegId, occurredAt);
 
             var physicianMap = PhysicianAntrianMapLookup.FindForBooking(_antrianMapRepo, booking);
@@ -315,16 +317,6 @@ public class RegJalanByBookingHandler
                     throw new AdmissionQueueConcurrencyException(
                         $"Queue entry '{admissionQueue.AntrianId}' / {admissionEntry.NoUrut} was changed concurrently.");
                 }
-            }
-            else if (request.AdmissionQueueBehavior == RegistrationAdmissionQueueBehavior.LegacyAutoComplete)
-            {
-                var admissionEntry = admissionQueue!.ListEntry.MaxBy(x => x.NoUrut)!;
-                _antrianRepo.SaveNewEntry(admissionQueue, admissionEntry);
-                if (_registrationOutcomeRepo is not null &&
-                    !_registrationOutcomeRepo.TryRecordLegacyEstablished(
-                        RegistrationOutcomeModel.Established(admissionQueue.AntrianId,
-                            admissionEntry.NoUrut, reg.RegId, request.UserId, occurredAt)))
-                    throw new AdmissionQueueConcurrencyException("Registration outcome changed concurrently.");
             }
             _trackerRepo.SaveChanges(tracker);
             if (tindakan.TindakanId != "-")

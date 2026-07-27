@@ -31,7 +31,9 @@ The safest delivery sequence is:
 9. add the supervisor Queue Closing UI;
 10. complete integrated rollout and documentation reconciliation.
 
-Existing Registration create endpoints must retain their current semantics. In particular, a caller that omits Admission Queue context today must continue to receive the legacy synthetic-queue behavior. New Direct Registration endpoints will explicitly select queue-less application behavior. This preserves historical behavior and prevents an unannounced breaking change to unknown clients.
+**Superseding decision — 2026-07-27:** Registration create endpoints without Admission Queue context are queue-less. They create Registration and tracker evidence but no synthetic Queue Session, Queue Entry, claim, or Registration Outcome. Historical synthetic records remain unchanged.
+
+Service Point selection is runtime work scope. A server-resolved Loket may serve any registered Admission Service Point and may switch while Ready. Queue-linked completion validates the queue's persisted Service Point against the Admission Service Point master and validates the active Loket claim; it does not compare against one server-wide configured Service Point.
 
 No database migration is planned for the core mode refactoring, Direct Registration, or Queue Closing. Existing queue, claim, outcome, tracker, and audit persistence is sufficient. Any proposal that adds a persisted `WorkspaceMode`, synthetic Direct queue entry, Queue Session aggregate, automatic final no-show, or historical data migration violates the approved baseline.
 
@@ -237,7 +239,6 @@ Add a JSON-ignored application property to both Registration commands:
 
 ```text
 RegistrationAdmissionQueueBehavior
-  LegacyAutoComplete
   QueueLinked
   None
 ```
@@ -247,7 +248,7 @@ This is a transient application instruction, not a domain state and not a persis
 Controller mapping:
 
 - existing create endpoint + complete queue context → `QueueLinked`;
-- existing create endpoint + no queue context → `LegacyAutoComplete`;
+- existing create endpoint + no queue context → `None`;
 - new Direct endpoint → `None`;
 - partial queue context → validation error;
 - queue context on a Direct endpoint → validation error.
@@ -257,7 +258,6 @@ Direct contract/context validation must use the existing `ArgumentException` mid
 Handler behavior:
 
 - `QueueLinked`: preserve the current atomic Queue Entry completion, claim release, Established outcome, and tracker evidence;
-- `LegacyAutoComplete`: preserve current synthetic queue behavior for compatibility;
 - `None`: save Registration and all existing Registration side effects, create/reuse the Patient Tracker as required, append REGISTER evidence if missing, but create no Admission Queue entry, complete no Admission Queue entry, acquire/release no Loket claim, and write no Admission Queue Registration Outcome.
 
 The normal Registration response remains unchanged. The new endpoint is additive and prospective. Historical synthetic records are untouched.
@@ -886,7 +886,7 @@ New Direct create routes, transient application behavior, handler branch, tests,
 
 #### Slice 4E — Compatibility verification
 
-- prove existing no-context routes still create legacy synthetic queue entries;
+- prove existing no-context routes create no queue sessions, entries, claims, or outcomes;
 - prove queue-linked routes retain atomic completion;
 - prove Direct routes create no queue/outcome.
 

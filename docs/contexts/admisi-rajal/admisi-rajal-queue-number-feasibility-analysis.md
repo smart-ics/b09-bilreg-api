@@ -1,5 +1,9 @@
 # Admisi Rajal Queue Number — Codebase Feasibility Analysis
 
+> **Design decision superseded — 2026-07-27:** Admission Service Points are resolved through the
+> Admission Service Point master, not a single server-configured Admisi Rajal Service Point. A
+> server-resolved Loket may dynamically select and serve any active Service Point.
+
 **Status:** Feasibility assessment (no implementation)  
 **Date:** 2026-07-22  
 **Decision:** **High feasibility, incremental implementation**  

@@ -69,12 +69,12 @@ public class AdmissionRegistrationQueueContextTest
     }
 
     [Fact]
-    public void ResolveBehavior_NoQueueContext_UsesLegacyCompatibility()
+    public void ResolveBehavior_NoQueueContext_IsQueueLess()
     {
         var behavior = AdmissionRegistrationQueueContextResolver.ResolveBehavior(
             null, null, null, isDirect: false);
 
-        behavior.Should().Be(RegistrationAdmissionQueueBehavior.LegacyAutoComplete);
+        behavior.Should().Be(RegistrationAdmissionQueueBehavior.None);
     }
 
     [Fact]

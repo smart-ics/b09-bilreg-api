@@ -6,7 +6,6 @@ namespace Bilreg.Application.AdmisiContext.RegFeature;
 /// </summary>
 public enum RegistrationAdmissionQueueBehavior
 {
-    LegacyAutoComplete,
     QueueLinked,
     None
 }
@@ -47,7 +46,7 @@ public static class AdmissionRegistrationQueueContextResolver
 
         var hasContext = HasAny(antrianId, noUrut, expectedRowVersion);
         if (!hasContext)
-            return RegistrationAdmissionQueueBehavior.LegacyAutoComplete;
+            return RegistrationAdmissionQueueBehavior.None;
 
         ValidateCompleteContext(antrianId, noUrut, expectedRowVersion);
         return RegistrationAdmissionQueueBehavior.QueueLinked;

@@ -46,9 +46,7 @@ public record RegJalanWalkInCommand(string PasienId, string UserId,
     string LayananId, string JamPraktek, string KarcisId, string PesertaJaminanId,
     string? AdmissionAntrianId = null,
     int? AdmissionNoUrut = null,
-    string? AdmissionExpectedRowVersion = null,
-    string? AdmissionServicePointCode = null,
-    string? AdmissionServicePointName = null) 
+    string? AdmissionExpectedRowVersion = null)
     : IRequest<RegJalanCreateResponse>, ILayananKey, ICaraMasukDkKey, IPasienKey,
         ITipeJaminanKey, IKarcisKey
 {
@@ -313,16 +311,6 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
                     throw new AdmissionQueueConcurrencyException(
                         $"Queue entry '{admissionQueue.AntrianId}' / {resolution.Entry.NoUrut} was changed concurrently.");
                 }
-            }
-            else if (request.AdmissionQueueBehavior == RegistrationAdmissionQueueBehavior.LegacyAutoComplete)
-            {
-                tracker = PasienTrackerModel.Create(reg, occurredAt);
-                admissionQueue = AdmissionQueueComplete.CompleteAtRegistration(
-                    _antrianRepo, _antrianFactory, tracker, reg.RegId, occurredAt,
-                    null, null,
-                    _admissionServicePointResolver.ServicePoint,
-                    _admissionServicePointResolver);
-                admissionEntryToInsert = admissionQueue.ListEntry.MaxBy(x => x.NoUrut)!;
             }
             else
             {

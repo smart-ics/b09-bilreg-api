@@ -51,7 +51,6 @@ public static class DomainService
             .AddScoped<IAntrianMapWithBookingResolver, AntrianMapWithBookingResolver>()
             .AddScoped<IAntrianMapWithRegResolver, AntrianMapWithRegResolver>()
             .Configure<QueueNumberCompatibilityOptions>(configuration.GetSection(QueueNumberCompatibilityOptions.SectionName))
-            .Configure<AdmisiRajalOptions>(configuration.GetSection(AdmisiRajalOptions.SectionName))
             .AddScoped<IAdmissionServicePointResolver, AdmissionServicePointResolver>()
             .AddScoped<IQueueNumberCompatibilityAdapter, QueueNumberCompatibilityAdapter>()
             .AddScoped<ICreateBillDomService, CreateBillDomService>()

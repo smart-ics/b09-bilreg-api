@@ -6,7 +6,6 @@ using Bilreg.Test.Shared;
 using FluentAssertions;
 using Moq;
 using Nuna.Lib.PatternHelper;
-using Microsoft.Extensions.Options;
 using Xunit;
 
 namespace Bilreg.Test.AdmisiContext.AntrianFeature;
@@ -16,12 +15,15 @@ public class TrkJourneyResolveHandlerTest
     private readonly Mock<IPasienTrackerRepo> _trackerRepo = new();
     private readonly Mock<IAntrianRepo> _antrianRepo = new();
     private readonly Mock<ISequencer> _sequencer = new();
-    private readonly IAdmissionServicePointResolver _servicePointResolver =
-        new AdmissionServicePointResolver(Options.Create(new AdmisiRajalOptions()));
+    private readonly IAdmissionServicePointResolver _servicePointResolver;
 
     public TrkJourneyResolveHandlerTest()
     {
         _sequencer.Setup(x => x.GetNextNoUrut(It.IsAny<string>())).Returns(1);
+        var servicePoints = new Mock<IAdmissionServicePointRepo>();
+        servicePoints.Setup(x => x.LoadEntity(It.IsAny<IAdmissionServicePointKey>()))
+            .Returns(MayBe.From(AdmissionServicePointModel.Create("ADM", "Admission", "A")));
+        _servicePointResolver = new AdmissionServicePointResolver(servicePoints.Object);
     }
 
     [Fact]

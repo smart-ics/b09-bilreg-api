@@ -1,5 +1,9 @@
 # Admission Officer Workspace — Phase 4 Implementation Summary
 
+> **Historical behavior superseded — 2026-07-27:** `LegacyAutoComplete` and synthetic
+> context-free Admission Queue completion described below have been removed. All Rajal
+> registrations without queue context are now queue-less; historical records are unchanged.
+
 **Implemented:** 2026-07-27  
 **Phase:** Additive backend support for queue-less Direct Registration
 

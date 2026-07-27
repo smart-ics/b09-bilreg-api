@@ -9,40 +9,6 @@ namespace Bilreg.Application.AdmisiContext.AntrianFeature;
 internal static class AdmissionQueueComplete
 {
     public const string RegisterEventName = "REGISTER";
-    public const string DefaultServicePointCode = "ADM";
-    public const string DefaultServicePointName = "Loket Admisi";
-
-    /// <summary>
-    /// When admission keys are supplied, Done the InService entry.
-    /// Otherwise create-on-reg: identified Waiting → Serve → Done in one step (legacy callers without intake).
-    /// </summary>
-    public static AntrianModel CompleteAtRegistration(
-        IAntrianRepo antrianRepo,
-        IAntrianFactory antrianFactory,
-        PasienTrackerModel tracker,
-        string regId,
-        DateTime occurredAt,
-        string? admissionAntrianId,
-        int? admissionNoUrut,
-        ServicePointType admissionServicePoint,
-        IAdmissionServicePointResolver servicePointResolver)
-    {
-        if (!string.IsNullOrWhiteSpace(admissionAntrianId) && admissionNoUrut is > 0)
-        {
-            var queue = antrianRepo.LoadEntity(AntrianModel.Key(admissionAntrianId!))
-                .GetValueOrThrow($"Admission queue '{admissionAntrianId}' not found");
-            servicePointResolver.EnsureAdmissionQueue(queue);
-            var entry = RequireIdentifiedInServiceEntry(queue, admissionNoUrut.Value, tracker);
-            CompleteInServiceEntry(entry, tracker, regId, occurredAt);
-            return queue;
-        }
-
-        var admissionQueue = ResolveOrCreateAdmissionSession(
-            antrianRepo, antrianFactory, occurredAt, admissionServicePoint);
-        CreateServeAndComplete(admissionQueue, tracker, regId, occurredAt);
-        return admissionQueue;
-    }
-
     public static AntrianEntryModel RequireIdentifiedInServiceEntry(
         AntrianModel queue,
         int noUrut,
@@ -88,35 +54,6 @@ internal static class AdmissionQueueComplete
         entry.AssignPasien(tracker);
         CompleteInServiceEntry(entry, tracker, regId, doneAt);
         return entry;
-    }
-
-    public static AntrianEntryModel CreateServeAndComplete(
-        AntrianModel queue,
-        PasienTrackerModel tracker,
-        string regId,
-        DateTime occurredAt)
-    {
-        var entry = queue.AddAdmissionEntry(tracker, occurredAt);
-        entry.Serve(occurredAt);
-        entry.Done(occurredAt);
-        AppendRegisterIfMissing(tracker, regId, occurredAt);
-        return entry;
-    }
-
-    public static AntrianModel ResolveOrCreateAdmissionSession(
-        IAntrianRepo antrianRepo,
-        IAntrianFactory antrianFactory,
-        DateTime occurredAt,
-        ServicePointType servicePoint)
-    {
-        var businessDate = DateOnly.FromDateTime(occurredAt);
-        var sequenceTag = AntrianModel.GenSequenceTag(businessDate, TimeOnly.MinValue, servicePoint);
-
-        var listQue = antrianRepo.ListData(businessDate) ?? [];
-        var queView = listQue.FirstOrDefault(x => x.SequenceTag == sequenceTag);
-        return queView is null
-            ? antrianFactory.Create(servicePoint, businessDate)
-            : antrianRepo.LoadEntity(queView).Value;
     }
 
     public static void AppendRegisterIfMissing(

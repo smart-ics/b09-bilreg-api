@@ -6,7 +6,12 @@
 **Authoritative business definition:** `docs/contexts/pasien-tracker/TRACKER-DOMAIN.md`  
 **Related context:** `docs/contexts/admisi-rajal/admisi-rajal-domain.md`
 
-> **Close-out:** Walk-In Registration now supports both anonymous and already-identified `InService` entries; anonymous association uses an atomic compare-and-set update; admission start, selection, and completion validate the server-configured `AdmisiRajal:AdmissionServicePoint`. Concurrent association failure maps to HTTP 409. No schema migration was required.
+> **Close-out (updated 2026-07-27):** Walk-In Registration supports both anonymous and
+> already-identified `InService` entries; anonymous association uses an atomic compare-and-set
+> update. Admission start, selection, and completion validate the queue Service Point against the
+> Admission Service Point master, while completion authority comes from the server-resolved Loket
+> claim. The former `AdmisiRajal:AdmissionServicePoint` comparison has been removed. Concurrent
+> association failure maps to HTTP 409. No schema migration was required.
 
 ## 1. Executive conclusion
 

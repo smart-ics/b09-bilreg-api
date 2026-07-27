@@ -6,7 +6,6 @@ using Bilreg.Test.Shared;
 using FluentAssertions;
 using Moq;
 using Nuna.Lib.PatternHelper;
-using Microsoft.Extensions.Options;
 using Xunit;
 
 namespace Bilreg.Test.AdmisiContext.AntrianFeature;
@@ -16,45 +15,11 @@ public class AdmissionQueueCompleteTest
     private readonly Mock<IAntrianRepo> _antrianRepo = new();
     private readonly Mock<IAntrianFactory> _antrianFactory = new();
     private readonly Mock<ISequencer> _sequencer = new();
-    private readonly IAdmissionServicePointResolver _servicePointResolver =
-        new AdmissionServicePointResolver(Options.Create(new AdmisiRajalOptions()));
 
     public AdmissionQueueCompleteTest()
     {
         _sequencer.Setup(x => x.GetNextNoUrut(It.IsAny<string>())).Returns(7);
         _sequencer.Setup(x => x.GetNextNoUrut(It.IsAny<string>(), 9999)).Returns(7);
-    }
-
-    [Fact]
-    public void CreateOnReg_WhenNoAdmissionKeys_ThenCreatesIdentifiedDoneEntryAndRegisterEvidence()
-    {
-        var occurredAt = TestTglJamProvider.Instance.Now;
-        var businessDate = DateOnly.FromDateTime(occurredAt);
-        var person = new PersonType("SITI", new DateOnly(1990, 5, 1));
-        var tracker = PasienTrackerModel.Create(
-            person, businessDate, "BOOKING", "BK1",
-            occurredAt.AddDays(-1));
-        var admissionQueue = new AntrianFactory(_sequencer.Object)
-            .Create(new ServicePointType("ADM", "Loket Admisi"), businessDate);
-
-        _antrianRepo.Setup(x => x.ListData(businessDate)).Returns([]);
-        _antrianFactory
-            .Setup(x => x.Create(It.IsAny<ServicePointType>(), businessDate))
-            .Returns(admissionQueue);
-
-        var result = AdmissionQueueComplete.CompleteAtRegistration(
-            _antrianRepo.Object, _antrianFactory.Object, tracker, "RG001", occurredAt,
-            null, null, _servicePointResolver.ServicePoint, _servicePointResolver);
-
-        result.Should().BeSameAs(admissionQueue);
-        var entry = result.ListEntry.Single(e => e.NoUrut == 7);
-        entry.Tracker.PasienTrackerId.Should().Be(tracker.PasienTrackerId);
-        entry.AntrianStatus.Should().Be(AntrianStatusEnum.Done);
-        entry.CreatedAt.Should().Be(occurredAt);
-        entry.ServedAt.Should().Be(occurredAt);
-        entry.DoneAt.Should().Be(occurredAt);
-        tracker.ListEvent.Should().Contain(e =>
-            e.EventName == "REGISTER" && e.ReffId == "RG001" && e.EventDate == occurredAt);
     }
 
     [Fact]
@@ -77,10 +42,9 @@ public class AdmissionQueueCompleteTest
             .Setup(x => x.LoadEntity(It.IsAny<IAntrianKey>()))
             .Returns(MayBe.From(queue));
 
-        AdmissionQueueComplete.CompleteAtRegistration(
-            _antrianRepo.Object, _antrianFactory.Object, tracker, "RG002", doneAt,
-            "ADM-Q1", entry.NoUrut,
-            _servicePointResolver.ServicePoint, _servicePointResolver);
+        var resolved = AdmissionQueueComplete.RequireIdentifiedInServiceEntry(
+            queue, entry.NoUrut, tracker);
+        AdmissionQueueComplete.CompleteInServiceEntry(resolved, tracker, "RG002", doneAt);
 
         entry.AntrianStatus.Should().Be(AntrianStatusEnum.Done);
         entry.ServedAt.Should().Be(servedAt);

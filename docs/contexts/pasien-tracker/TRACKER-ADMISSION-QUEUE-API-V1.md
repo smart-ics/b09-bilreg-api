@@ -113,15 +113,15 @@ Queue Closing never writes a Registration Outcome or Queue Session state.
 Operations must stop intake before requesting the preview. A conflict always requires a fresh human
 review, and the close runbook must verify an empty scoped preview after a successful close.
 
-### Existing Registration compatibility fixture
+### Registration queue-context contract
 
-The established Registration create routes remain unchanged during Phase 0:
+The Registration create routes use queue context explicitly:
 
 | Request shape | Existing behavior locked by characterization tests |
 |---|---|
 | Complete `AdmissionAntrianId`, `AdmissionNoUrut`, and `AdmissionExpectedRowVersion` | The controller resolves the configured workstation/Loket; the handler requires the matching In Service claim and completes that admission entry atomically. |
 | Partial queue context | Rejected through the existing `ArgumentException` path as `400 AQ_INVALID_REQUEST`. |
-| No meaningful queue context | Preserves legacy create-on-registration compatibility, including its synthetic completed Admission Queue entry and REGISTER evidence. This is not the future queue-less Direct Registration contract. |
+| No meaningful queue context | Creates Registration and REGISTER tracker evidence without an Admission Queue Session, Queue Entry, Loket claim, or Registration Outcome. |
 
 ### Direct Registration create routes (Phase 4)
 
@@ -144,8 +144,7 @@ Registration creation internally selects one transient, JSON-ignored application
 | Behavior | Selected by | Result |
 |---|---|---|
 | `QueueLinked` | Existing route with complete queue context | Retains atomic Admission Queue completion, Loket claim release, and Established outcome. |
-| `LegacyAutoComplete` | Existing route without queue context | Retains legacy synthetic Admission Queue completion for compatibility. |
-| `None` | Direct route | Saves Registration and existing side effects, including exactly-once REGISTER tracker evidence, without an Admission Queue entry, Loket claim interaction, or Registration Outcome. |
+| `None` | Any create route without queue context | Saves Registration and existing side effects, including exactly-once REGISTER tracker evidence, without an Admission Queue entry, Loket claim interaction, or Registration Outcome. Direct routes additionally reject queue fields. |
 
 `None` is an application-layer instruction, not persisted domain state or a workspace mode. Direct
 behavior is prospective only: historical synthetic queue artifacts are unchanged, and no database

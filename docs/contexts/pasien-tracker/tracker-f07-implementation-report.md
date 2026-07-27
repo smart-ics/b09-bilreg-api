@@ -1,5 +1,11 @@
 # F-07 Implementation Report — Registration vs Consultation Milestone Separation
 
+> **Historical behavior superseded — 2026-07-27:** References below to create-on-registration,
+> the default `ADM` Service Point, and optional Service Point override fields describe the original
+> delivery only. Current Rajal registration without queue context is queue-less. Queue-linked
+> completion accepts any Service Point present in the Admission Service Point master and is
+> authorized by the server-resolved Loket claim.
+
 **Artifact status:** Implementation summary (closed)  
 **Bounded context:** Patient Tracker / Admisi Antrian + Registration orchestration  
 **Authoritative domain:** [`TRACKER-DOMAIN.md`](TRACKER-DOMAIN.md)  

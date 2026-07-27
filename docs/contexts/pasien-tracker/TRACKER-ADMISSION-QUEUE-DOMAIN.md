@@ -391,7 +391,7 @@ A final `NotEstablished` Registration Outcome may complete the service lifecycle
 |---|---|
 | Admission Service Point Established | A new category of admission queue service became recognized. |
 | Admission Service Point Retired | A Service Point ceased accepting future queue intake while retaining its history. |
-| Loket Authorized for Service Point | A physical Loket became permitted to serve one Service Point. |
+| Loket Selected Service Point | A Ready physical Loket selected one active Service Point as its current work scope. This is runtime selection, not permanent configuration. |
 | Kiosk Service Point Offered | A Service Point became available for Patient selection through one Kiosk. |
 | Admission Queue Session Established | An admission queue was established for one Service Point and operating interval. |
 | Admission Queue Entry Created | An Anonymous or Identified Queue Entry received a Queue Number and Queue Label. |

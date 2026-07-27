@@ -1,5 +1,9 @@
 # R-09 — Final Registration Outcomes and Queue Completion
 
+> **Historical behavior superseded — 2026-07-27:** The legacy synthetic
+> create-on-registration path documented below has been removed. Context-free Rajal registration
+> now writes Registration and tracker evidence without Admission Queue participation.
+
 ## Outcome
 
 Admisi Rajal now owns an immutable final Registration Outcome separate from Queue Entry completion.

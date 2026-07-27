@@ -1,5 +1,11 @@
 # Patient Tracker — Admission Queue Operations SOP
 
+> **Service Point authority update — 2026-07-27:** Service Point is selected by the officer as
+> runtime work scope. Workstation identity still resolves to a Loket on the server, but a Loket is
+> not permanently assigned to one Service Point. A Loket may switch Service Point only while Ready;
+> it must first finish or release any active claim. Completion validates the queue's persisted
+> Service Point against the Admission Service Point master and validates the matching Loket claim.
+
 **Artifact status:** Canonical target operational specification
 
 **Bounded context:** Patient Tracker
