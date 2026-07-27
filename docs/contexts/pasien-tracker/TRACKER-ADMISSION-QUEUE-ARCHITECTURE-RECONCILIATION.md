@@ -427,6 +427,10 @@ Deliver:
 5. a Slice 1 verification report recording database version, script order, commands, results, and
    remaining deployment qualifications.
 
+## Phase 9 release-ready status
+
+The approved officer workspace, prospective queue-less Direct Registration, externally supplied Not Established reasons, and explicit supervisor Queue Closing are implemented. Release readiness adds structured non-PHI backend operational events and retains the controlled rollout evidence in the runbook. Workspace Mode remains a frontend projection only; neither telemetry nor rollout adds a persisted mode or Queue Session lifecycle.
+
 Exit only when the clean-database migration is reproducible, all mandatory tests pass repeatedly,
 no double-active claim/orphan state remains, and the existing focused Admission Queue regression
 suite passes.

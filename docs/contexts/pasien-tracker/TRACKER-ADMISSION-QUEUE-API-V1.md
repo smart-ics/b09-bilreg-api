@@ -300,3 +300,7 @@ No confirmed frontend consumer exists in the available `c012_myhospital_web` tre
 frontend files were changed. Any external officer client must split Call from Start Service, reload on
 409, and use the worklist/current snapshot as recovery truth. Any display must implement the reload,
 poll, and AnnouncementVersion rules above.
+
+## Phase 9 observability contract
+
+Successful and failed officer operational commands emit `AdmissionQueueOperationalEvent`. Its stable dimensions are `Operation`, `Result`, `FailureCategory`, `DurationMs`, `BusinessDate`, `ServicePointId`, `WorkstationKey`, and `LoketKey`. This is operational telemetry, not an API response field and not a persisted Workspace Mode. No request or response contract changes in Phase 9. The event excludes patient data, queue labels, Registration IDs, Booking IDs, user identity, reasons, row versions, and request bodies.

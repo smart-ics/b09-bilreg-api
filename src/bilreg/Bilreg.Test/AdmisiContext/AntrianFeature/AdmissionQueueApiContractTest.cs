@@ -115,6 +115,21 @@ public class AdmissionQueueApiContractTest
     [Fact]
     public void SignalRRefresh_DefaultsEnabled()=>new AdmissionQueueApiOptions().SignalRRefreshEnabled.Should().BeTrue();
 
+    [Theory]
+    [InlineData("/api/v1/admission-queue/entries/Q/1/call", "Call")]
+    [InlineData("/api/v1/admission-queue/entries/Q/1/recall", "Recall")]
+    [InlineData("/api/v1/admission-queue/entries/Q/1/return-to-waiting", "ReturnToWaiting")]
+    [InlineData("/api/v1/admission-queue/entries/Q/1/start-service", "StartService")]
+    [InlineData("/api/v1/admission-queue/entries/Q/1/outcomes/established", "Established")]
+    [InlineData("/api/v1/admission-queue/entries/Q/1/outcomes/not-established", "NotEstablished")]
+    [InlineData("/api/v1/admission-queue/close", "QueueClose")]
+    [InlineData("/api/reg/rajalWalkIn/direct", "DirectWalkInRegistration")]
+    [InlineData("/api/reg/rajalByBooking/direct", "DirectBookingRegistration")]
+    public void OperationalTelemetry_MapsOnlySafeOperationNames(string path, string operation)
+    {
+        ErrorHandlerMiddleware.GetOperationName(path).Should().Be(operation);
+    }
+
     [Fact]
     public void SupervisorOperations_DefaultToConfiguredSupervisorRole()
         => new AdmissionQueueApiOptions().SupervisorOperationAllowedRoles.Should().Contain("ADM-SPV");
