@@ -136,6 +136,7 @@ public static class InfrastructureService
         services.AddScoped<
             IAdmissionQueueOperationRepo,
             AdmissionQueueOperationRepo>();
+        services.AddScoped<IAdmissionQueueClosingRepo, AdmissionQueueClosingRepo>();
         services.AddScoped<IAdmissionServicePointDal, AdmissionServicePointDal>();
         services.AddScoped<IAdmissionServicePointRepo, AdmissionServicePointRepo>();
         services.AddScoped<IAdmissionWorkstationDal, AdmissionWorkstationDal>();

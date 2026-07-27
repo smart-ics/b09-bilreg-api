@@ -64,6 +64,8 @@ be detected without the intentionally deferred cross-node coordination capabilit
 | `POST entries/{q}/{n}/redirect` | `{targetServicePointId,loketKey?,expectedRowVersion?,userId}` | new Priority Waiting entry and label |
 | `POST entries/{q}/{n}/outcomes/established` | `{loketKey,expectedRowVersion,regId,userId}` | immutable Established outcome and Done entry |
 | `POST entries/{q}/{n}/outcomes/not-established` | `{loketKey,expectedRowVersion,reasonCode,userId}` | immutable NotEstablished outcome and Done entry |
+| `GET closing-preview` | `businessDate=yyyy-MM-dd&servicePointId` | supervisor-only remaining Waiting-entry review; preview is not a reservation |
+| `POST close` | `{businessDate,servicePointId,userId,decisions[]}` | supervisor-only atomic terminal disposition of the exact remaining Waiting set |
 
 `GET worklist` remains **queue-only**. It must not return Booking, patient identity, Registration,
 eligibility, or physician enrichment.
@@ -86,6 +88,29 @@ append-only audit log. It is not No-Show, Withdraw, or rollback from In Service.
 
 “No Show” is a backend/API reason name only and is not operator-facing wording. In particular,
 `Tidak Hadir` must never invoke the terminal No-Show endpoint or create a Registration Outcome.
+
+### Supervisor Queue Closing
+
+Queue Closing is enabled by default and protected by the `AdmissionQueueSupervisorOperations`
+policy. It accepts either the `AdmissionQueue.SupervisorOperations` permission claim or a role listed
+in `AdmissionQueueApi:SupervisorOperationAllowedRoles` (default: `ADM-SPV`); an absent permission
+and absent matching role fail closed. The existing `withdraw` and `no-show` routes use the same policy.
+
+`GET closing-preview` returns every Waiting entry for the exact business date and Service Point,
+including queue/patient-reference summaries, call metadata, active claim state, active claim Loket,
+and Base64 claim RowVersion. Each result permits exactly `NoShow` or `Withdraw`.
+
+`POST close` requires a decision for exactly every previewed entry at transaction time. `Withdraw`
+requires a nonblank reason; `NoShow` is persisted as withdrawal reason `NoShow` and ignores a
+submitted reason. An Outstanding claim requires its exact preview RowVersion; an InService claim
+blocks the whole operation. Missing/extra/stale/concurrently-created or changed entries return
+`409 AQ_CONCURRENCY_CONFLICT`; malformed decisions return `400 AQ_INVALID_REQUEST`; InService
+blockers return `400 AQ_OPERATION_NOT_ALLOWED`. All entries, their applicable Outstanding-claim
+releases, per-entry audits, and one `ADMISSION_QUEUE_CLOSE` scope summary audit commit together.
+Queue Closing never writes a Registration Outcome or Queue Session state.
+
+Operations must stop intake before requesting the preview. A conflict always requires a fresh human
+review, and the close runbook must verify an empty scoped preview after a successful close.
 
 ### Existing Registration compatibility fixture
 

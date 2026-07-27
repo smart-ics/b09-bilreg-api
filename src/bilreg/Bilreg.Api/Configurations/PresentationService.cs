@@ -148,6 +148,9 @@ public static class PresentationService
             options.AddPolicy(AdmissionQueueConfigurationPolicies.PolicyName, policy =>
                 policy.RequireAuthenticatedUser()
                     .AddRequirements(new PermissionRequirement(AdmissionQueueConfigurationPolicies.PermissionId)));
+            options.AddPolicy(AdmissionQueueSupervisorOperationPolicies.PolicyName, policy =>
+                policy.RequireAuthenticatedUser()
+                    .AddRequirements(new PermissionRequirement(AdmissionQueueSupervisorOperationPolicies.PermissionId)));
         });
         services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
         services.AddSignalR();

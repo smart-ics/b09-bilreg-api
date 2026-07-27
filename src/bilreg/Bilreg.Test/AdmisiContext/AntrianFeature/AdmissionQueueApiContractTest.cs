@@ -47,7 +47,7 @@ public class AdmissionQueueApiContractTest
             .Should().Be("api/v1/admission-queue");
         var methods=type.GetMethods().Select(x=>x.Name).ToArray();
         methods.Should().Contain(["Intake","BookingAssistance","Worklist","Display","Call","Recall","ReturnToWaiting","Start",
-            "Withdraw","NoShow","Redirect","Established","NotEstablished","ListServicePoints","UpsertServicePoint",
+            "Withdraw","NoShow","ClosingPreview","Close","Redirect","Established","NotEstablished","ListServicePoints","UpsertServicePoint",
             "RolloutStatus"]);
     }
 
@@ -114,6 +114,31 @@ public class AdmissionQueueApiContractTest
 
     [Fact]
     public void SignalRRefresh_DefaultsEnabled()=>new AdmissionQueueApiOptions().SignalRRefreshEnabled.Should().BeTrue();
+
+    [Fact]
+    public void SupervisorOperations_DefaultToConfiguredSupervisorRole()
+        => new AdmissionQueueApiOptions().SupervisorOperationAllowedRoles.Should().Contain("ADM-SPV");
+
+    [Fact]
+    public void TerminalSupervisorRoutes_RequireSupervisorPolicy()
+    {
+        var methods = new[] { "Withdraw", "NoShow", "ClosingPreview", "Close" };
+        foreach (var name in methods)
+            typeof(AdmissionQueueV1Controller).GetMethod(name)!
+                .GetCustomAttributes(typeof(AuthorizeAttribute), true).Cast<AuthorizeAttribute>()
+                .Should().Contain(x => x.Policy == Bilreg.Api.Authorization.AdmissionQueueSupervisorOperationPolicies.PolicyName);
+    }
+
+    [Fact]
+    public async Task ClosingPreview_DispatchesScopedQuery()
+    {
+        var mediator = new Mock<IMediator>();
+        mediator.Setup(x => x.Send(It.Is<AdmissionQueueClosingPreviewQry>(q => q.BusinessDateYmd == "2026-07-27" && q.ServicePointId == "SP"), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AdmissionQueueClosingPreviewResponse(new DateOnly(2026, 7, 27), "SP", []));
+        var result = await CreateV1Controller(mediator.Object).ClosingPreview("2026-07-27", "SP");
+        result.Should().BeOfType<OkObjectResult>();
+        mediator.VerifyAll();
+    }
 
     [Fact]
     public void RefreshHub_IsAuthorizedAndExposesStablePath()

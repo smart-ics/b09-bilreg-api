@@ -24,20 +24,23 @@ public sealed class PermissionAuthorizationHandler : AuthorizationHandler<Permis
             return Task.CompletedTask;
         }
 
-        if (!string.Equals(
-                requirement.PermissionId,
-                AdmissionQueueConfigurationPolicies.PermissionId,
-                StringComparison.Ordinal))
+        var allowedRoles = requirement.PermissionId switch
+        {
+            AdmissionQueueConfigurationPolicies.PermissionId => _options.ConfigurationAllowedRoles,
+            AdmissionQueueSupervisorOperationPolicies.PermissionId => _options.SupervisorOperationAllowedRoles,
+            _ => null
+        };
+        if (allowedRoles is null)
         {
             return Task.CompletedTask;
         }
 
-        var allowedRoles = (_options.ConfigurationAllowedRoles ?? [])
+        var configuredRoles = (allowedRoles ?? [])
             .Where(r => !string.IsNullOrWhiteSpace(r))
             .Select(r => r.Trim())
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        if (allowedRoles.Count == 0)
+        if (configuredRoles.Count == 0)
             return Task.CompletedTask;
 
         var roles = context.User.FindAll(ClaimTypes.Role)
@@ -45,7 +48,7 @@ public sealed class PermissionAuthorizationHandler : AuthorizationHandler<Permis
             .Select(c => c.Value?.Trim() ?? string.Empty)
             .Where(v => v.Length > 0);
 
-        if (roles.Any(role => allowedRoles.Contains(role)))
+        if (roles.Any(role => configuredRoles.Contains(role)))
             context.Succeed(requirement);
 
         return Task.CompletedTask;
