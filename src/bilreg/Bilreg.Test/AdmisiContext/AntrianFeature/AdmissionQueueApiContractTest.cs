@@ -47,7 +47,7 @@ public class AdmissionQueueApiContractTest
             .Should().Be("api/v1/admission-queue");
         var methods=type.GetMethods().Select(x=>x.Name).ToArray();
         methods.Should().Contain(["Intake","BookingAssistance","Worklist","Display","Call","Recall","ReturnToWaiting","Start",
-            "Withdraw","NoShow","ClosingPreview","Close","Redirect","Established","NotEstablished","ListServicePoints","UpsertServicePoint",
+            "Withdraw","NoShow","ClosingPreview","Close","Redirect","Established","ListServicePoints","UpsertServicePoint",
             "RolloutStatus"]);
     }
 
@@ -121,7 +121,6 @@ public class AdmissionQueueApiContractTest
     [InlineData("/api/v1/admission-queue/entries/Q/1/return-to-waiting", "ReturnToWaiting")]
     [InlineData("/api/v1/admission-queue/entries/Q/1/start-service", "StartService")]
     [InlineData("/api/v1/admission-queue/entries/Q/1/outcomes/established", "Established")]
-    [InlineData("/api/v1/admission-queue/entries/Q/1/outcomes/not-established", "NotEstablished")]
     [InlineData("/api/v1/admission-queue/close", "QueueClose")]
     [InlineData("/api/reg/rajalWalkIn/direct", "DirectWalkInRegistration")]
     [InlineData("/api/reg/rajalByBooking/direct", "DirectBookingRegistration")]

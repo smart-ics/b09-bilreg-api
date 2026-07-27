@@ -142,7 +142,6 @@ public class ErrorHandlerMiddleware
         _ when path.EndsWith("/return-to-waiting", StringComparison.Ordinal) => "ReturnToWaiting",
         _ when path.EndsWith("/start-service", StringComparison.Ordinal) => "StartService",
         _ when path.EndsWith("/outcomes/established", StringComparison.Ordinal) => "Established",
-        _ when path.EndsWith("/outcomes/not-established", StringComparison.Ordinal) => "NotEstablished",
         _ => "AdmissionQueueOperation"
     };
 }

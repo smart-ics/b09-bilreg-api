@@ -358,34 +358,6 @@ public sealed class AdmissionQueueRealSqlGateTest
     }
 
     [Fact]
-    public async Task OutcomeRollback_OnStaleClaim_LeavesInService()
-    {
-        var clock = FixedClock();
-        var loket = UniqueLoket("L6");
-        var (intake, call, _, start, _, _, projection) = Build(clock);
-        var outcomes = new RegistrationOutcomeOperationRepo(_fx.Options);
-        var finalize = new FinalizeRegistrationNotEstablishedHandler(
-            Queues(), outcomes, clock, new NullAdmissionQueueRefreshPublisher(),
-            new PassThroughRegistrationOutcomeReasonCatalog());
-
-        var e = await intake.Handle(new QueAnonymousIntakeCmd(SpA), default);
-        await call.Handle(new AdmissionQueueCallCmd(e.AntrianId, e.NoUrut, loket, "u1"), default);
-        var v1 = projection.ListCurrentLoket(loket).Single().RowVersion;
-        await start.Handle(new AdmissionQueueStartServiceCmd(e.AntrianId, e.NoUrut, loket, v1, "u1"), default);
-        var v2 = projection.ListCurrentLoket(loket).Single().RowVersion;
-        var stale = (byte[])v2.Clone();
-        stale[^1] ^= 0xAA;
-
-        var act = () => finalize.Handle(new FinalizeRegistrationNotEstablishedCmd(
-            e.AntrianId, e.NoUrut, loket, stale, "REASON-TEST", "u1"), default);
-        await act.Should().ThrowAsync<AdmissionQueueConcurrencyException>();
-
-        EntryStatus(e.AntrianId, e.NoUrut).Should().Be(1);
-        CountOutcomes(e.AntrianId, e.NoUrut).Should().Be(0);
-        CountActiveClaimsForLoket(loket).Should().Be(1);
-    }
-
-    [Fact]
     public async Task QueueLinkedEstablishedRollback_OnWrongLoket_LeavesRegistrationOutcomeAbsent()
     {
         var clock = FixedClock();

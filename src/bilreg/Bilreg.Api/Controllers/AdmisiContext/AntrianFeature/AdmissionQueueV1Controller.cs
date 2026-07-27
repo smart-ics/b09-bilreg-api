@@ -200,15 +200,6 @@ public sealed class AdmissionQueueV1Controller : ControllerBase
         return Ok(new JSendOk(response));
     }
 
-    [HttpPost("entries/{q}/{n:int}/outcomes/not-established")]
-    public async Task<IActionResult> NotEstablished(string q, int n, [FromBody] NotEstablishedBody b)
-    {
-        var cmd = new FinalizeRegistrationNotEstablishedCmd(
-            q, n, Loket(b.LoketKey), Version(b.ExpectedRowVersion), b.ReasonCode, b.UserId);
-        var response = await _mediator.Send(cmd);
-        return Ok(new JSendOk(response));
-    }
-
     private static byte[] Version(string value)
     {
         try
@@ -242,8 +233,6 @@ public record WithdrawBody(string Reason, string? LoketKey, string? ExpectedRowV
 public record RedirectBody(
     string TargetServicePointId, string? LoketKey, string? ExpectedRowVersion, string UserId);
 public record EstablishedBody(string? LoketKey, string ExpectedRowVersion, string RegId, string UserId);
-public record NotEstablishedBody(
-    string? LoketKey, string ExpectedRowVersion, string ReasonCode, string UserId);
 public record AdmissionQueueCloseBody(string BusinessDate, string ServicePointId, string UserId,
     IReadOnlyList<AdmissionQueueCloseDecisionBody>? Decisions);
 public record AdmissionQueueCloseDecisionBody(string AntrianId, int NoUrut, string Disposition,

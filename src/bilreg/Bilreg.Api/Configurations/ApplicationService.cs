@@ -40,8 +40,6 @@ public static class ApplicationService
                 return new NullAdmissionQueueRefreshPublisher();
             return ActivatorUtilities.CreateInstance<SignalRAdmissionQueueRefreshPublisher>(sp);
         });
-        services.AddScoped<IRegistrationOutcomeReasonCatalog, PassThroughRegistrationOutcomeReasonCatalog>();
-
         services
             .Scan(selector => selector
                 .FromAssemblyOf<ApplicationAssemblyAnchor>()

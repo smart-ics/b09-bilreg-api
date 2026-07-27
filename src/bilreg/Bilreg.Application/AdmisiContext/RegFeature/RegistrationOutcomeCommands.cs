@@ -12,8 +12,6 @@ namespace Bilreg.Application.AdmisiContext.RegFeature;
 public record RegistrationOutcomeResponse(string OutcomeId,string AntrianId,int NoUrut,string OutcomeType,string Status);
 public record FinalizeRegistrationEstablishedCmd(string AntrianId,int NoUrut,string LoketKey,
     byte[] ExpectedClaimVersion,string RegId,string UserId):IRequest<RegistrationOutcomeResponse>;
-public record FinalizeRegistrationNotEstablishedCmd(string AntrianId,int NoUrut,string LoketKey,
-    byte[] ExpectedClaimVersion,string ReasonCode,string UserId):IRequest<RegistrationOutcomeResponse>;
 
 public abstract class RegistrationOutcomeHandlerBase
 {
@@ -53,15 +51,3 @@ public sealed class FinalizeRegistrationEstablishedHandler:RegistrationOutcomeHa
       return Finalize(RegistrationOutcomeModel.Established(r.AntrianId,r.NoUrut,r.RegId,r.UserId,Clock.Now),r.LoketKey,r.ExpectedClaimVersion,ct); }
 }
 
-public sealed class FinalizeRegistrationNotEstablishedHandler:RegistrationOutcomeHandlerBase,
-    IRequestHandler<FinalizeRegistrationNotEstablishedCmd,RegistrationOutcomeResponse>
-{
-    private readonly IRegistrationOutcomeReasonCatalog _reasons;
-    public FinalizeRegistrationNotEstablishedHandler(IAntrianRepo q,IRegistrationOutcomeOperationRepo o,
-      ITglJamProvider c,IAdmissionQueueRefreshPublisher p,IRegistrationOutcomeReasonCatalog reasons):base(q,o,c,p)
-      =>_reasons=reasons;
-    public Task<RegistrationOutcomeResponse> Handle(FinalizeRegistrationNotEstablishedCmd r,CancellationToken ct)
-    { _reasons.EnsureAccepted(r.ReasonCode); Guard.Against.NullOrWhiteSpace(r.UserId);
-      EnsureInService(r.AntrianId,r.NoUrut);
-      return Finalize(RegistrationOutcomeModel.NotEstablished(r.AntrianId,r.NoUrut,r.ReasonCode,r.UserId,Clock.Now),r.LoketKey,r.ExpectedClaimVersion,ct); }
-}
