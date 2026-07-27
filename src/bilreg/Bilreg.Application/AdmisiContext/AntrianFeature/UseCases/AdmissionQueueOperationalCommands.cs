@@ -35,6 +35,13 @@ public record AdmissionQueueReturnToWaitingCmd(
     byte[] ExpectedRowVersion,
     string UserId) : IRequest<AdmissionQueueOperationResponse>;
 
+public record AdmissionQueueCancelRegistrationCmd(
+    string AntrianId,
+    int NoUrut,
+    string LoketKey,
+    byte[] ExpectedRowVersion,
+    string UserId) : IRequest<AdmissionQueueOperationResponse>;
+
 public record AdmissionQueueStartServiceCmd(
     string AntrianId,
     int NoUrut,
@@ -314,6 +321,81 @@ public sealed class AdmissionQueueStartServiceHandler
 
         await _publisher.PublishAsync(request.LoketKey, cancellationToken);
         return new AdmissionQueueOperationResponse(request.AntrianId, request.NoUrut, "InService");
+    }
+}
+
+public sealed class AdmissionQueueCancelRegistrationHandler
+    : IRequestHandler<AdmissionQueueCancelRegistrationCmd, AdmissionQueueOperationResponse>
+{
+    private const string AuditAction = "CANCEL_REGISTRATION";
+    private const string AuditEntity = "AdmissionQueueLoketClaim";
+    private const string AuditDisposition = "ReturnedToWaiting";
+    private readonly IAntrianRepo _queues;
+    private readonly IAdmissionQueueOperationRepo _operations;
+    private readonly IAuditRepo _auditRepo;
+    private readonly ITglJamProvider _clock;
+    private readonly IAdmissionQueueRefreshPublisher _publisher;
+
+    public AdmissionQueueCancelRegistrationHandler(
+        IAntrianRepo queues,
+        IAdmissionQueueOperationRepo operations,
+        IAuditRepo auditRepo,
+        ITglJamProvider clock,
+        IAdmissionQueueRefreshPublisher publisher)
+    {
+        _queues = queues;
+        _operations = operations;
+        _auditRepo = auditRepo;
+        _clock = clock;
+        _publisher = publisher;
+    }
+
+    public async Task<AdmissionQueueOperationResponse> Handle(
+        AdmissionQueueCancelRegistrationCmd request,
+        CancellationToken cancellationToken)
+    {
+        AdmissionQueueOperationSupport.ValidateEntryRequest(
+            request.AntrianId, request.NoUrut, request.UserId);
+        Guard.Against.NullOrWhiteSpace(request.LoketKey);
+        Guard.Against.NullOrEmpty(request.ExpectedRowVersion);
+
+        AdmissionQueueOperationSupport.RequireEntry(_queues, request.AntrianId, request.NoUrut)
+            .CancelRegistration();
+
+        var at = _clock.Now;
+        var auditContext = AuditLogSnapshotJson.Serialize(new
+        {
+            request.LoketKey,
+            request.AntrianId,
+            request.NoUrut,
+            ClaimState = AdmissionQueueClaimState.InService.ToString(),
+            ExpectedRowVersion = Convert.ToBase64String(request.ExpectedRowVersion)
+        });
+
+        using (var trans = TransHelper.NewScope())
+        {
+            if (!_operations.TryCancelRegistration(
+                    request.AntrianId,
+                    request.NoUrut,
+                    request.LoketKey,
+                    request.ExpectedRowVersion,
+                    request.UserId,
+                    at))
+                AdmissionQueueOperationSupport.ThrowConflict(request.AntrianId, request.NoUrut);
+
+            _auditRepo.SaveChanges(AuditLog.Create(
+                request.UserId,
+                at,
+                AuditAction,
+                AuditEntity,
+                $"{request.AntrianId}:{request.NoUrut}",
+                AuditDisposition,
+                auditContext));
+            trans.Complete();
+        }
+
+        await _publisher.PublishAsync(request.LoketKey, cancellationToken);
+        return new AdmissionQueueOperationResponse(request.AntrianId, request.NoUrut, "Waiting");
     }
 }
 

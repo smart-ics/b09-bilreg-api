@@ -98,4 +98,28 @@ public class AntrianEntryModelTest
         var act = () => entry.Serve(default);
         act.Should().Throw<ArgumentException>().WithParameterName("servedAt");
     }
+
+    [Fact]
+    public void T11_GivenInService_WhenCancelRegistration_ThenReturnsToWaiting()
+    {
+        var entry = AntrianEntryModel.Create(
+            1, PersonType.Default, PasienTrackerModel.Key("-"), "A", "B", CreatedAt);
+        entry.Serve(ServedAt);
+
+        entry.CancelRegistration();
+
+        entry.AntrianStatus.Should().Be(AntrianStatusEnum.Waiting);
+        entry.ServedAt.Should().Be(new DateTime(3000, 1, 1));
+    }
+
+    [Fact]
+    public void T12_GivenWaiting_WhenCancelRegistration_ThenThrows()
+    {
+        var entry = AntrianEntryModel.Create(
+            1, PersonType.Default, PasienTrackerModel.Key("-"), "A", "B", CreatedAt);
+
+        var act = entry.CancelRegistration;
+
+        act.Should().Throw<InvalidOperationException>();
+    }
 }

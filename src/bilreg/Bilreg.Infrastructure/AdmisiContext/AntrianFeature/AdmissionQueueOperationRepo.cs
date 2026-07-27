@@ -81,6 +81,30 @@ public sealed class AdmissionQueueOperationRepo : IAdmissionQueueOperationRepo
         return c.ExecuteScalar<bool>(sql, new { q, n, loket, expectedRowVersion, user, at });
     }
 
+    public bool TryCancelRegistration(
+        string q,
+        int n,
+        string loket,
+        byte[] expectedRowVersion,
+        string user,
+        DateTime at)
+    {
+        const string sql = """
+            UPDATE BILRG_AntrianEntry SET AntrianStatus=0,ServedAt='3000-01-01',
+                UpdUser=@user,UpdDate=@at
+            WHERE AntrianId=@q AND NoUrut=@n AND AntrianStatus=1;
+            IF @@ROWCOUNT<>1 SELECT CAST(0 AS BIT); ELSE BEGIN
+              UPDATE BILRG_AdmLoketCurrentCall SET ClaimState=0,IsActive=0,ReleasedAt=@at,
+                UpdUser=@user,UpdDate=@at
+              WHERE LoketKey=@loket AND AntrianId=@q AND NoUrut=@n
+                AND ClaimState=2 AND IsActive=1 AND RowVersion=@expectedRowVersion;
+              SELECT CAST(IIF(@@ROWCOUNT=1,1,0) AS BIT);
+            END
+            """;
+        using var c = Open();
+        return c.ExecuteScalar<bool>(sql, new { q, n, loket, expectedRowVersion, user, at });
+    }
+
     public bool TryStartService(string q,int n,string loket,byte[] expectedRowVersion,string user,DateTime at)
     {
         const string sql="""

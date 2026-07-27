@@ -58,6 +58,7 @@ be detected without the intentionally deferred cross-node coordination capabilit
 | `POST entries/{q}/{n}/call` | `{loketKey,userId}` | Outstanding; officer-selected entry only |
 | `POST entries/{q}/{n}/recall` | `{loketKey,expectedRowVersion,userId}` | retained Outstanding |
 | `POST entries/{q}/{n}/return-to-waiting` | versioned Loket payload | claim Released; Queue Entry remains Waiting |
+| `POST entries/{q}/{n}/cancel-registration` | versioned Loket payload | In Service Queue Entry returns to Waiting; claim Released |
 | `POST entries/{q}/{n}/start-service` | versioned Loket payload | InService |
 | `POST entries/{q}/{n}/withdraw` | `{reason,loketKey?,expectedRowVersion?,userId}` | Withdrawn; Loket/version required when actively called |
 | `POST entries/{q}/{n}/no-show` | versioned Loket payload | Withdrawn with `NoShow` |

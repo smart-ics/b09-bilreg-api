@@ -132,6 +132,18 @@ public sealed class AdmissionQueueV1Controller : ControllerBase
         return Ok(new JSendOk(response));
     }
 
+    [HttpPost("entries/{q}/{n:int}/cancel-registration")]
+    public async Task<IActionResult> CancelRegistration(
+        string q,
+        int n,
+        [FromBody] VersionedActorLoketBody b)
+    {
+        var cmd = new AdmissionQueueCancelRegistrationCmd(
+            q, n, Loket(b.LoketKey), Version(b.ExpectedRowVersion), b.UserId);
+        var response = await _mediator.Send(cmd);
+        return Ok(new JSendOk(response));
+    }
+
     [HttpPost("entries/{q}/{n:int}/withdraw")]
     [Authorize(Policy = AdmissionQueueSupervisorOperationPolicies.PolicyName)]
     public async Task<IActionResult> Withdraw(string q, int n, [FromBody] WithdrawBody b)

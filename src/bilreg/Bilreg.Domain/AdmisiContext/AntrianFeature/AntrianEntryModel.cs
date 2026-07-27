@@ -132,6 +132,15 @@ public class AntrianEntryModel
         Serve(servedAt);
     }
 
+    public void CancelRegistration()
+    {
+        if (AntrianStatus != AntrianStatusEnum.InService)
+            throw new InvalidOperationException("Only an In Service queue entry may cancel Registration.");
+
+        AntrianStatus = AntrianStatusEnum.Waiting;
+        ServedAt = SentinelAt;
+    }
+
     public void Withdraw(string reason, string userId, DateTime withdrawnAt)
     {
         EnsureWaiting("withdraw");

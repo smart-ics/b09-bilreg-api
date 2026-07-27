@@ -141,6 +141,7 @@ public class ErrorHandlerMiddleware
         _ when path.EndsWith("/recall", StringComparison.Ordinal) => "Recall",
         _ when path.EndsWith("/return-to-waiting", StringComparison.Ordinal) => "ReturnToWaiting",
         _ when path.EndsWith("/start-service", StringComparison.Ordinal) => "StartService",
+        _ when path.EndsWith("/cancel-registration", StringComparison.Ordinal) => "CancelRegistration",
         _ when path.EndsWith("/outcomes/established", StringComparison.Ordinal) => "Established",
         _ => "AdmissionQueueOperation"
     };

@@ -136,6 +136,35 @@ public class AdmissionQueueOperationalCommandsTest
     }
 
     [Fact]
+    public async Task CancelRegistration_ReturnsInServiceEntryToWaitingAndReleasesClaim()
+    {
+        var entry = WaitingEntry();
+        entry.Serve(TestTglJamProvider.Instance.Now);
+        SetupQueue(entry);
+        _operations.Setup(x => x.TryCancelRegistration(
+                "Q", 1, "L1", It.IsAny<byte[]>(), "u", TestTglJamProvider.Instance.Now))
+            .Returns(true);
+        var sut = new AdmissionQueueCancelRegistrationHandler(
+            _queues.Object,
+            _operations.Object,
+            _auditRepo.Object,
+            TestTglJamProvider.Instance,
+            _publisher.Object);
+
+        var result = await sut.Handle(
+            new AdmissionQueueCancelRegistrationCmd("Q", 1, "L1", [1], "u"),
+            default);
+
+        result.Status.Should().Be("Waiting");
+        entry.AntrianStatus.Should().Be(AntrianStatusEnum.Waiting);
+        _auditRepo.Verify(x => x.SaveChanges(It.Is<AuditLog>(a =>
+            a.ActionType == "CANCEL_REGISTRATION" &&
+            a.Reason == "ReturnedToWaiting" &&
+            a.EntityId == "Q:1")), Times.Once);
+        _publisher.Verify(x => x.PublishAsync("L1", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public void TransitionMatrix_RejectsOperationalTransitionsFromInServiceAndDone()
     {
         var inService = WaitingEntry(); inService.Serve(TestTglJamProvider.Instance.Now);

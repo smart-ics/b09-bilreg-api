@@ -8,6 +8,8 @@ public interface IAdmissionQueueOperationRepo
     bool TryRecall(string antrianId, int noUrut, string loketKey, byte[] expectedRowVersion, string userId, DateTime at);
     bool TryReturnToWaiting(string antrianId, int noUrut, string loketKey,
         byte[] expectedRowVersion, string userId, DateTime at);
+    bool TryCancelRegistration(string antrianId, int noUrut, string loketKey,
+        byte[] expectedRowVersion, string userId, DateTime at);
     bool TryStartService(string antrianId, int noUrut, string loketKey, byte[] expectedRowVersion, string userId, DateTime at);
     bool TryWithdraw(string antrianId, int noUrut, string reason, string userId, DateTime at,
         string? loketKey, byte[]? expectedRowVersion);
