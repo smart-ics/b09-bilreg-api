@@ -42,6 +42,13 @@ public record AdmissionQueueStartServiceCmd(
     byte[] ExpectedRowVersion,
     string UserId) : IRequest<AdmissionQueueOperationResponse>;
 
+public record AdmissionQueueReturnToWaitingCmd(
+    string AntrianId,
+    int NoUrut,
+    string LoketKey,
+    byte[] ExpectedRowVersion,
+    string UserId) : IRequest<AdmissionQueueOperationResponse>;
+
 public record AdmissionQueueWithdrawCmd(
     string AntrianId,
     int NoUrut,
@@ -314,6 +321,38 @@ public sealed class AdmissionQueueStartServiceHandler
 
         await _publisher.PublishAsync(request.LoketKey, cancellationToken);
         return new AdmissionQueueOperationResponse(request.AntrianId, request.NoUrut, "InService");
+    }
+}
+
+public sealed class AdmissionQueueReturnToWaitingHandler
+    : IRequestHandler<AdmissionQueueReturnToWaitingCmd, AdmissionQueueOperationResponse>
+{
+    private readonly IAntrianRepo _queues;
+    private readonly IAdmissionQueueOperationRepo _operations;
+    private readonly ITglJamProvider _clock;
+    private readonly IAdmissionQueueRefreshPublisher _publisher;
+
+    public AdmissionQueueReturnToWaitingHandler(IAntrianRepo queues, IAdmissionQueueOperationRepo operations,
+        ITglJamProvider clock, IAdmissionQueueRefreshPublisher publisher)
+    { _queues=queues; _operations=operations; _clock=clock; _publisher=publisher; }
+
+    public async Task<AdmissionQueueOperationResponse> Handle(AdmissionQueueReturnToWaitingCmd request,
+        CancellationToken cancellationToken)
+    {
+        AdmissionQueueOperationSupport.ValidateEntryRequest(request.AntrianId, request.NoUrut, request.UserId);
+        Guard.Against.NullOrWhiteSpace(request.LoketKey);
+        var entry=AdmissionQueueOperationSupport.RequireEntry(_queues, request.AntrianId, request.NoUrut);
+        if (entry.AntrianStatus != AntrianStatusEnum.Waiting)
+            AdmissionQueueOperationSupport.ThrowConflict(request.AntrianId, request.NoUrut);
+        using (var trans=TransHelper.NewScope())
+        {
+            if (!_operations.TryReturnToWaiting(request.AntrianId, request.NoUrut, request.LoketKey,
+                    request.ExpectedRowVersion, request.UserId, _clock.Now))
+                AdmissionQueueOperationSupport.ThrowConflict(request.AntrianId, request.NoUrut);
+            trans.Complete();
+        }
+        await _publisher.PublishAsync(request.LoketKey, cancellationToken);
+        return new AdmissionQueueOperationResponse(request.AntrianId, request.NoUrut, "Waiting");
     }
 }
 

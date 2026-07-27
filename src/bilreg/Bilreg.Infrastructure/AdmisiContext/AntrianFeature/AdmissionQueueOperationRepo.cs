@@ -96,6 +96,20 @@ public sealed class AdmissionQueueOperationRepo : IAdmissionQueueOperationRepo
         using var c=Open(); return c.ExecuteScalar<bool>(sql,new{q,n,loket,expectedRowVersion,user,at});
     }
 
+    public bool TryReturnToWaiting(string q,int n,string loket,byte[] expectedRowVersion,string user,DateTime at)
+    {
+        const string sql="""
+            UPDATE BILRG_AdmLoketCurrentCall SET ClaimState=0,IsActive=0,ReleasedAt=@at,
+              UpdUser=@user,UpdDate=@at
+            WHERE LoketKey=@loket AND AntrianId=@q AND NoUrut=@n AND ClaimState=1 AND IsActive=1
+              AND RowVersion=@expectedRowVersion
+              AND EXISTS (SELECT 1 FROM BILRG_AntrianEntry
+                WHERE AntrianId=@q AND NoUrut=@n AND AntrianStatus=0);
+            SELECT CAST(IIF(@@ROWCOUNT=1,1,0) AS BIT);
+            """;
+        using var c=Open(); return c.ExecuteScalar<bool>(sql,new{q,n,loket,expectedRowVersion,user,at});
+    }
+
     public bool TryWithdraw(string q,int n,string reason,string user,DateTime at,string? loketKey,byte[]? expectedRowVersion)
     {
         const string sql="""

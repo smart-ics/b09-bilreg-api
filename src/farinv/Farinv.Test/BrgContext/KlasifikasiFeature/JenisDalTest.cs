@@ -1,6 +1,6 @@
 ﻿using Farinv.Domain.BrgContext.KlasifikasiFeature;
 using Farinv.Infrastructure.BrgContext.KlasifikasiFeature;
-using Farinv.Infrastructure.Helpers;
+using Bilreg.Infrastructure.Shared.Helpers;
 using FluentAssertions;
 using Nuna.Lib.TransactionHelper;
 

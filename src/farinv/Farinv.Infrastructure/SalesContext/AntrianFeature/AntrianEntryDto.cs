@@ -1,4 +1,5 @@
-﻿using Farinv.Domain.SalesContext.AntrianFeature;
+﻿using Bilreg.Domain.AdmisiContext.RegFeature;
+using Farinv.Domain.SalesContext.AntrianFeature;
 
 namespace Farinv.Infrastructure.SalesContext.AntrianFeature;
 

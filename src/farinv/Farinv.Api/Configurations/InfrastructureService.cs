@@ -1,6 +1,6 @@
-﻿using Farinv.Domain.Shared.Helpers;
-using Farinv.Infrastructure;
-using Farinv.Infrastructure.Helpers;
+﻿using Farinv.Infrastructure;
+using Bilreg.Infrastructure.Shared.Helpers;
+using Bilreg.Domain.Shared.Helpers;
 using Farinv.Infrastructure.ParamContext;
 using Nuna.Lib.AutoNumberHelper;
 using Nuna.Lib.CleanArchHelper;
@@ -24,7 +24,7 @@ public static class InfrastructureService
 
         services
             .Configure<DatabaseOptions>(configuration.GetSection(DatabaseOptions.SECTION_NAME))
-            .Configure<BillingOptions>(configuration.GetSection(BillingOptions.SECTION_NAME))
+            //.Configure<BillingOptions>(configuration.GetSection(BillingOptions.SECTION_NAME))
             .Configure<PasienContextOptions>(configuration.GetSection(PasienContextOptions.SECTION_NAME));
             
         services

@@ -131,6 +131,14 @@ public sealed class AdmissionQueueV1Controller : ControllerBase
         return Ok(new JSendOk(response));
     }
 
+    [HttpPost("entries/{q}/{n:int}/return-to-waiting")]
+    public async Task<IActionResult> ReturnToWaiting(string q, int n, [FromBody] VersionedActorLoketBody b)
+    {
+        var response = await _mediator.Send(new AdmissionQueueReturnToWaitingCmd(
+            q, n, Loket(b.LoketKey), Version(b.ExpectedRowVersion), b.UserId));
+        return Ok(new JSendOk(response));
+    }
+
     [HttpPost("entries/{q}/{n:int}/withdraw")]
     public async Task<IActionResult> Withdraw(string q, int n, [FromBody] WithdrawBody b)
     {

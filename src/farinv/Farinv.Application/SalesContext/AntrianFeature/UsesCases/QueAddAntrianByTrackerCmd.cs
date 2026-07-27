@@ -1,4 +1,6 @@
 using Ardalis.GuardClauses;
+using Bilreg.Application.AdmisiContext.RegFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Farinv.Domain.SalesContext.AntrianFeature;
 using MediatR;
 using Nuna.Lib.ValidationHelper;
@@ -15,16 +17,16 @@ public record QueAddAntrianByTrackerCmd(
 public class AddAntrianByTrackerHandler : IRequestHandler<QueAddAntrianByTrackerCmd, PharmacyQueueEntryResponse>
 {
     private readonly IAntrianRepo _antrianRepo;
-    private readonly IGetRegService _getRegService;
+    private readonly IRegRepo _regRepo;
     private readonly ITglJamProvider _tglJamProvider;
 
     public AddAntrianByTrackerHandler(
         IAntrianRepo antrianRepo,
-        IGetRegService getRegService,
+        IRegRepo regRepo,
         ITglJamProvider tglJamProvider)
     {
         _antrianRepo = antrianRepo;
-        _getRegService = getRegService;
+        _regRepo = regRepo;
         _tglJamProvider = tglJamProvider;
     }
 
@@ -55,8 +57,7 @@ public class AddAntrianByTrackerHandler : IRequestHandler<QueAddAntrianByTracker
 
     private RegReff LoadReg(QueAddAntrianByTrackerCmd request)
     {
-        var reg = _getRegService.Execute(request)
-            ?? throw new KeyNotFoundException($"Reg {request.RegId} not found");
+        var reg = _regRepo.LoadEntity(request).GetValueOrThrow($"Register {request.RegId} not found");
         return reg.ToReff();
     }
 }

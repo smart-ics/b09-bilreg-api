@@ -1,6 +1,6 @@
 ﻿using Dapper;
 using Farinv.Domain.InventoryContext.MutasiFeature;
-using Farinv.Infrastructure.Helpers;
+using Bilreg.Infrastructure.Shared.Helpers;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
 using Nuna.Lib.ValidationHelper;

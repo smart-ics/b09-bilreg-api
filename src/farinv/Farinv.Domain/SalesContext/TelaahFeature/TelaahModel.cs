@@ -1,6 +1,7 @@
-﻿using Farinv.Domain.BrgContext.BrgFeature;
+﻿using Bilreg.Domain.AdmisiContext.PpaFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
+using Farinv.Domain.BrgContext.BrgFeature;
 using Farinv.Domain.InventoryContext.StokFeature;
-using Farinv.Domain.SalesContext.AntrianFeature;
 using Farinv.Domain.Shared.Helpers.CommonValueObjects;
 
 namespace Farinv.Domain.SalesContext.TelaahFeature;
@@ -25,7 +26,7 @@ public class TelaahModel : ITelaahKey
         AuditTrail = auditTrail;
     }
 
-    public static TelaahModel Create(string resepId, RegType reg, 
+    public static TelaahModel Create(string resepId, RegModel reg, 
         LayananType layanan, PpaReff dokter,
         string diagnosa, string alergi, string userId)
     {
@@ -39,12 +40,12 @@ public class TelaahModel : ITelaahKey
     public static ITelaahKey Key(string id)
     {
         return new TelaahModel(id, new DateTime(3000, 1, 1), "-",
-            RegType.Default.ToReff(), LayananType.Default.ToReff(), new PpaReff("-", "-"),
+            RegModel.Default.ToReff(), LayananType.Default.ToReff(), new PpaReff("-", "-"),
             "-", "-", AuditTrailType.Default);
     }
 
     public static TelaahModel Default => new("-", new DateTime(3000, 1, 1), "-", 
-        RegType.Default.ToReff(), LayananType.Default.ToReff(), new PpaReff("-","-"),
+        RegModel.Default.ToReff(), LayananType.Default.ToReff(), new PpaReff("-","-"),
         "-", "-", AuditTrailType.Default);
     #endregion
 
