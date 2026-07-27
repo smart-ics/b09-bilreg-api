@@ -1,5 +1,5 @@
 ﻿using Farinv.Domain.InventoryContext.MutasiFeature;
-using Bilreg.Infrastructure.Shared.Helpers;
+using Farinv.Infrastructure.Helpers;
 using Farinv.Infrastructure.InventoryContext.MutasiFeature;
 using FluentAssertions;
 using Nuna.Lib.TransactionHelper;

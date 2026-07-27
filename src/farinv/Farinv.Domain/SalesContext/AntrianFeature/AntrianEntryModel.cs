@@ -1,5 +1,4 @@
 ﻿using Ardalis.GuardClauses;
-using Bilreg.Domain.AdmisiContext.RegFeature;
 
 namespace Farinv.Domain.SalesContext.AntrianFeature;
 
@@ -49,7 +48,7 @@ public class AntrianEntryModel
     public static AntrianEntryModel Default =>
         new(-1, AntrianStatusEnum.Open, Sentinel, Sentinel,
             Sentinel, Sentinel, Sentinel, Sentinel,
-            RegModel.Default.ToReff(), "-", "", "-");
+            RegType.Default.ToReff(), "-", "", "-");
     #endregion
 
     #region PROPERTIES

@@ -1,9 +1,9 @@
-using Bilreg.Domain.AdmisiContext.RegFeature;
 using Farinv.Application.SalesContext.AntrianFeature;
 using Farinv.Application.SalesContext.AntrianFeature.UsesCases;
 using Farinv.Domain.SalesContext.AntrianFeature;
 using FluentAssertions;
 using Nuna.Lib.PatternHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Farinv.Test.SalesContext.AntrianFeature;
 

@@ -50,6 +50,9 @@ public record RegJalanByBookingCmd(
 {
     [JsonIgnore]
     public string? AdmissionLoketKey { get; init; }
+
+    [JsonIgnore]
+    public RegistrationAdmissionQueueBehavior AdmissionQueueBehavior { get; init; }
 }
 
 public record RegJalanByBookingResponse(string RegId, int NoAntrian);
@@ -170,11 +173,19 @@ public class RegJalanByBookingHandler
     public async Task<RegJalanByBookingResponse> Handle(RegJalanByBookingCmd request, CancellationToken cancellationToken)
     {
         var occurredAt = _tglJamProvider.Now;
-        var admissionContext = AdmissionRegistrationQueueContextResolver.Resolve(
-            request.AdmissionAntrianId,
-            request.AdmissionNoUrut,
-            request.AdmissionExpectedRowVersion,
-            request.AdmissionLoketKey);
+        var admissionContext = request.AdmissionQueueBehavior == RegistrationAdmissionQueueBehavior.QueueLinked
+            ? AdmissionRegistrationQueueContextResolver.Resolve(
+                request.AdmissionAntrianId,
+                request.AdmissionNoUrut,
+                request.AdmissionExpectedRowVersion,
+                request.AdmissionLoketKey)
+            : null;
+        if (request.AdmissionQueueBehavior == RegistrationAdmissionQueueBehavior.None &&
+            AdmissionRegistrationQueueContextResolver.HasAnyDirectQueueField(
+                request.AdmissionAntrianId,
+                request.AdmissionNoUrut,
+                request.AdmissionExpectedRowVersion))
+            throw new ArgumentException("Direct Registration must not include Admission Queue context.");
         if (admissionContext is not null)
             EnsureAdmissionEntryInService(admissionContext);
         //  LOAD and GUARD
@@ -265,11 +276,15 @@ public class RegJalanByBookingHandler
         {
             var tracker = _trackerRepo.LoadEntity(itemQueue.Tracker)
                 .GetValueOrThrow($"PasienTracker '{itemQueue.Tracker.PasienTrackerId}' not found");
-            var admissionQueue = AdmissionQueueComplete.CompleteAtRegistration(
-                _antrianRepo, _antrianFactory, tracker, reg.RegId, occurredAt,
-                request.AdmissionAntrianId, request.AdmissionNoUrut,
-                _admissionServicePointResolver.ServicePoint,
-                _admissionServicePointResolver);
+            var admissionQueue = request.AdmissionQueueBehavior == RegistrationAdmissionQueueBehavior.None
+                ? null
+                : AdmissionQueueComplete.CompleteAtRegistration(
+                    _antrianRepo, _antrianFactory, tracker, reg.RegId, occurredAt,
+                    request.AdmissionAntrianId, request.AdmissionNoUrut,
+                    _admissionServicePointResolver.ServicePoint,
+                    _admissionServicePointResolver);
+            if (request.AdmissionQueueBehavior == RegistrationAdmissionQueueBehavior.None)
+                AdmissionQueueComplete.AppendRegisterIfMissing(tracker, reg.RegId, occurredAt);
 
             var physicianMap = PhysicianAntrianMapLookup.FindForBooking(_antrianMapRepo, booking);
             if (_queueNumberAdapter.ProjectSourceReffForRegistration(physicianMap, booking.NoAntrian, reg))
@@ -282,7 +297,7 @@ public class RegJalanByBookingHandler
             _antrianRepo.SaveChanges(antrian);
             if (admissionContext is not null)
             {
-                var admissionEntry = admissionQueue.ListEntry
+                var admissionEntry = admissionQueue!.ListEntry
                     .First(x => x.NoUrut == admissionContext.NoUrut);
                 var outcome = RegistrationOutcomeModel.Established(admissionQueue.AntrianId,
                     admissionEntry.NoUrut, reg.RegId, request.UserId, occurredAt);
@@ -301,9 +316,9 @@ public class RegJalanByBookingHandler
                         $"Queue entry '{admissionQueue.AntrianId}' / {admissionEntry.NoUrut} was changed concurrently.");
                 }
             }
-            else
+            else if (request.AdmissionQueueBehavior == RegistrationAdmissionQueueBehavior.LegacyAutoComplete)
             {
-                var admissionEntry = admissionQueue.ListEntry.MaxBy(x => x.NoUrut)!;
+                var admissionEntry = admissionQueue!.ListEntry.MaxBy(x => x.NoUrut)!;
                 _antrianRepo.SaveNewEntry(admissionQueue, admissionEntry);
                 if (_registrationOutcomeRepo is not null &&
                     !_registrationOutcomeRepo.TryRecordLegacyEstablished(

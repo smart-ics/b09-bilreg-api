@@ -339,3 +339,9 @@ For each calendar day of Pilot, archive non-PII aggregate dashboard evidence. Be
 ### Legacy retirement decision
 
 General Availability does **not** authorize deletion of the legacy workspace, deep-search endpoint compatibility, backend contracts, or database schema. Retire them only in a separately approved cleanup change with usage evidence, consumer inventory, rollback assessment, and a replacement support procedure.
+
+### Operational telemetry
+
+The API emits the structured `AdmissionQueueOperationalEvent` log for v1 queue commands and the two Direct Registration create routes. Search by `Operation`, `Result`, `FailureCategory`, `DurationMs`, `BusinessDate`, `ServicePointId`, `WorkstationKey`, and `LoketKey`. These fields must contain operational configuration only; logs must never include patient data, queue labels, Registration or Booking IDs, user identity, reasons, row versions, or request bodies.
+
+Example rollout checks: group `Result=Failed` by `Operation` and `FailureCategory`; calculate p95 from `DurationMs` by `Operation`; compare `DirectWalkInRegistration` and `DirectBookingRegistration` counts with queue-linked `Established` counts; and investigate any `AQ_CONCURRENCY_CONFLICT` before advancing rollout. Retain daily non-PHI aggregates as rollout evidence.

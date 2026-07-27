@@ -7,9 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\bilreg\Bilreg.Application\Bilreg.Application.csproj" />
     <ProjectReference Include="..\Farinv.Domain\Farinv.Domain.csproj" />
-	<ProjectReference Include="..\..\bilreg\Bilreg.Domain\Bilreg.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>

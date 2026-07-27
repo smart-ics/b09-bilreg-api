@@ -14,6 +14,18 @@ public class AdmissionRegistrationQueueContextTest
     }
 
     [Theory]
+    [InlineData(null, null, null)]
+    [InlineData(" ", null, " ")]
+    public void HasAny_WhenNoMeaningfulQueueFields_AcceptsTheLegacyNoContextPath(
+        string? antrianId,
+        int? noUrut,
+        string? rowVersion)
+    {
+        AdmissionRegistrationQueueContextResolver.HasAny(antrianId, noUrut, rowVersion)
+            .Should().BeFalse();
+    }
+
+    [Theory]
     [InlineData("Q1", null, null)]
     [InlineData("Q1", 1, null)]
     [InlineData(null, 1, "AQID")]
@@ -54,5 +66,53 @@ public class AdmissionRegistrationQueueContextTest
 
         act.Should().Throw<ArgumentException>()
             .WithMessage("*must be Base64*");
+    }
+
+    [Fact]
+    public void ResolveBehavior_NoQueueContext_UsesLegacyCompatibility()
+    {
+        var behavior = AdmissionRegistrationQueueContextResolver.ResolveBehavior(
+            null, null, null, isDirect: false);
+
+        behavior.Should().Be(RegistrationAdmissionQueueBehavior.LegacyAutoComplete);
+    }
+
+    [Fact]
+    public void ResolveBehavior_CompleteQueueContext_UsesQueueLinked()
+    {
+        var behavior = AdmissionRegistrationQueueContextResolver.ResolveBehavior(
+            "Q1", 1, "AQ==", isDirect: false);
+
+        behavior.Should().Be(RegistrationAdmissionQueueBehavior.QueueLinked);
+    }
+
+    [Fact]
+    public void ResolveBehavior_PartialQueueContext_IsRejectedBeforeWorkstationResolution()
+    {
+        var act = () => AdmissionRegistrationQueueContextResolver.ResolveBehavior(
+            "Q1", null, null, isDirect: false);
+
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*must be supplied together*");
+    }
+
+    [Fact]
+    public void ResolveBehavior_DirectRequestWithQueueContext_IsRejected()
+    {
+        var act = () => AdmissionRegistrationQueueContextResolver.ResolveBehavior(
+            "Q1", 1, "AQ==", isDirect: true);
+
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*must not include Admission Queue context*");
+    }
+
+    [Fact]
+    public void ResolveBehavior_DirectRequestWithEmptyQueueField_IsRejected()
+    {
+        var act = () => AdmissionRegistrationQueueContextResolver.ResolveBehavior(
+            "", null, null, isDirect: true);
+
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*must not include Admission Queue context*");
     }
 }

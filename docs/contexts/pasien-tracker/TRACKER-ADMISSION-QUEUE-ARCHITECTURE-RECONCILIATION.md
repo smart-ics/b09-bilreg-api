@@ -103,6 +103,19 @@ owners before those delivery slices can exit.
   provenance.
 - Start, release, Redirect, and final outcome use local transactional coordination with the claim.
 
+#### Phase 0 Officer workspace authority and terminology lock
+
+The Admission Officer refactoring uses no additional backend workspace state. Queue Entry state,
+Loket Claim state, Registration state, and Registration Outcome remain authoritative. Ready,
+Calling, Queued Registration, and Direct Registration are frontend-only projections and must not
+be persisted, synchronized, or added to the Admission Queue aggregate.
+
+The operator labels are `Panggil`, `Panggil Lagi`, `Tidak Hadir`, `Hadir`, `Tidak Datang`, and
+`Registrasi Tidak Terbentuk`. `Tidak Hadir` means the existing non-terminal Return to Waiting
+operation only: it releases the matching Outstanding claim while retaining Waiting. `Tidak Datang`
+is the separate terminal No-Show disposition. Historic user-facing “No Show” wording is superseded;
+the `NoShow` reason remains an internal/backend representation.
+
 ### 3.6 Display
 
 - There is no managed Queue Display master.
@@ -413,6 +426,10 @@ Deliver:
 4. any narrowly demonstrated fix with unit/regression coverage;
 5. a Slice 1 verification report recording database version, script order, commands, results, and
    remaining deployment qualifications.
+
+## Phase 9 release-ready status
+
+The approved officer workspace, prospective queue-less Direct Registration, externally supplied Not Established reasons, and explicit supervisor Queue Closing are implemented. Release readiness adds structured non-PHI backend operational events and retains the controlled rollout evidence in the runbook. Workspace Mode remains a frontend projection only; neither telemetry nor rollout adds a persisted mode or Queue Session lifecycle.
 
 Exit only when the clean-database migration is reproducible, all mandatory tests pass repeatedly,
 no double-active claim/orphan state remains, and the existing focused Admission Queue regression

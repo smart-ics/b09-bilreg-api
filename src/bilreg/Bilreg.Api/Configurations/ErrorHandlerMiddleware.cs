@@ -1,5 +1,6 @@
 ﻿using Nuna.Lib.ActionResultHelper;
 using System.Net;
+using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Text.Json;
 using Bilreg.Application.Shared.Helpers;
@@ -14,17 +15,26 @@ public class ErrorHandlerMiddleware
     private static readonly Counter<long> Errors = Meter.CreateCounter<long>(
         "bilreg.api.errors");
     private readonly RequestDelegate _next;
+    private readonly ILogger<ErrorHandlerMiddleware> _logger;
 
-    public ErrorHandlerMiddleware(RequestDelegate next)
+    public ErrorHandlerMiddleware(RequestDelegate next, ILogger<ErrorHandlerMiddleware> logger)
     {
         _next = next;
+        _logger = logger;
     }
 
     public async Task Invoke(HttpContext context)
     {
+        var stopwatch = Stopwatch.StartNew();
         try
         {
             await _next(context);
+            var succeeded = context.Response.StatusCode < StatusCodes.Status400BadRequest;
+            LogAdmissionQueueOperation(
+                context,
+                succeeded ? "Succeeded" : "Rejected",
+                succeeded ? null : $"HTTP_{context.Response.StatusCode}",
+                stopwatch.ElapsedMilliseconds);
         }
         catch (Exception error)
         {
@@ -92,6 +102,7 @@ public class ErrorHandlerMiddleware
                 1,
                 new KeyValuePair<string, object?>("status_code", statusCode),
                 new KeyValuePair<string, object?>("error_code", status));
+            LogAdmissionQueueOperation(context, "Failed", status, stopwatch.ElapsedMilliseconds);
             var safeMessage = statusCode == (int)HttpStatusCode.InternalServerError
                 ? "The request could not be completed."
                 : error.Message;
@@ -100,4 +111,38 @@ public class ErrorHandlerMiddleware
             await response.WriteAsync(result);
         }
     }
+
+    private void LogAdmissionQueueOperation(HttpContext context, string result, string? failureCategory, long durationMs)
+    {
+        var path = context.Request.Path.Value ?? string.Empty;
+        if (!path.StartsWith("/api/v1/admission-queue", StringComparison.Ordinal)
+            && !path.EndsWith("/direct", StringComparison.Ordinal))
+            return;
+
+        _logger.LogInformation(
+            "AdmissionQueueOperationalEvent {Operation} {Result} {FailureCategory} {DurationMs} {BusinessDate} {ServicePointId} {WorkstationKey} {LoketKey}",
+            GetOperationName(path),
+            result,
+            failureCategory ?? "None",
+            durationMs,
+            context.Request.Query["businessDate"].ToString() is { Length: > 0 } businessDate ? businessDate : "Unspecified",
+            context.Request.Query["servicePointId"].ToString() is { Length: > 0 } servicePointId ? servicePointId : "Unspecified",
+            context.Request.Headers["X-Workstation-Key"].ToString() is { Length: > 0 } workstationKey ? workstationKey : "Unspecified",
+            context.Request.Headers["X-Loket-Key"].ToString() is { Length: > 0 } loketKey ? loketKey : "Unspecified");
+    }
+
+    public static string GetOperationName(string path) => path switch
+    {
+        "/api/v1/admission-queue/close" => "QueueClose",
+        "/api/v1/admission-queue/closing-preview" => "QueueClosingPreview",
+        "/api/reg/rajalWalkIn/direct" => "DirectWalkInRegistration",
+        "/api/reg/rajalByBooking/direct" => "DirectBookingRegistration",
+        _ when path.EndsWith("/call", StringComparison.Ordinal) => "Call",
+        _ when path.EndsWith("/recall", StringComparison.Ordinal) => "Recall",
+        _ when path.EndsWith("/return-to-waiting", StringComparison.Ordinal) => "ReturnToWaiting",
+        _ when path.EndsWith("/start-service", StringComparison.Ordinal) => "StartService",
+        _ when path.EndsWith("/outcomes/established", StringComparison.Ordinal) => "Established",
+        _ when path.EndsWith("/outcomes/not-established", StringComparison.Ordinal) => "NotEstablished",
+        _ => "AdmissionQueueOperation"
+    };
 }

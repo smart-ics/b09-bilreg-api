@@ -29,8 +29,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\farinv\Farinv.Application\Farinv.Application.csproj" />
-    <ProjectReference Include="..\..\farinv\Farinv.Infrastructure\Farinv.Infrastructure.csproj" />
     <ProjectReference Include="..\Bilreg.Application\Bilreg.Application.csproj" />
     <ProjectReference Include="..\Bilreg.Infrastructure\Bilreg.Infrastructure.csproj" />
   </ItemGroup>

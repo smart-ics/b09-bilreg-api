@@ -3,7 +3,7 @@ using System.Data.SqlClient;
 using Dapper;
 using Farinv.Domain.BrgContext.BrgFeature;
 using Farinv.Domain.InventoryContext.StokFeature;
-using Bilreg.Infrastructure.Shared.Helpers;
+using Farinv.Infrastructure.Helpers;
 using Microsoft.Extensions.Options;
 using Nuna.Lib.DataAccessHelper;
 

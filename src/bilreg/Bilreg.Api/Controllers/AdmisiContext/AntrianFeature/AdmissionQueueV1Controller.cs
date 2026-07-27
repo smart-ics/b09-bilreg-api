@@ -2,6 +2,7 @@ using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.AntrianFeature.UseCases;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Api.AdmisiContext.AntrianFeature;
+using Bilreg.Api.Authorization;
 using Bilreg.Api.Configurations;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -131,15 +132,8 @@ public sealed class AdmissionQueueV1Controller : ControllerBase
         return Ok(new JSendOk(response));
     }
 
-    [HttpPost("entries/{q}/{n:int}/return-to-waiting")]
-    public async Task<IActionResult> ReturnToWaiting(string q, int n, [FromBody] VersionedActorLoketBody b)
-    {
-        var response = await _mediator.Send(new AdmissionQueueReturnToWaitingCmd(
-            q, n, Loket(b.LoketKey), Version(b.ExpectedRowVersion), b.UserId));
-        return Ok(new JSendOk(response));
-    }
-
     [HttpPost("entries/{q}/{n:int}/withdraw")]
+    [Authorize(Policy = AdmissionQueueSupervisorOperationPolicies.PolicyName)]
     public async Task<IActionResult> Withdraw(string q, int n, [FromBody] WithdrawBody b)
     {
         var cmd = new AdmissionQueueWithdrawCmd(
@@ -154,11 +148,32 @@ public sealed class AdmissionQueueV1Controller : ControllerBase
     }
 
     [HttpPost("entries/{q}/{n:int}/no-show")]
+    [Authorize(Policy = AdmissionQueueSupervisorOperationPolicies.PolicyName)]
     public async Task<IActionResult> NoShow(string q, int n, [FromBody] VersionedActorLoketBody b)
     {
         var cmd = new AdmissionQueueNoShowCmd(
             q, n, Loket(b.LoketKey), Version(b.ExpectedRowVersion), b.UserId);
         var response = await _mediator.Send(cmd);
+        return Ok(new JSendOk(response));
+    }
+
+    [HttpGet("closing-preview")]
+    [Authorize(Policy = AdmissionQueueSupervisorOperationPolicies.PolicyName)]
+    public async Task<IActionResult> ClosingPreview([FromQuery] string businessDate, [FromQuery] string servicePointId)
+    {
+        var response = await _mediator.Send(new AdmissionQueueClosingPreviewQry(businessDate, servicePointId));
+        return Ok(new JSendOk(response));
+    }
+
+    [HttpPost("close")]
+    [Authorize(Policy = AdmissionQueueSupervisorOperationPolicies.PolicyName)]
+    public async Task<IActionResult> Close([FromBody] AdmissionQueueCloseBody body)
+    {
+        var decisions = body.Decisions?.Select(x => new AdmissionQueueClosingDecision(
+            x.AntrianId, x.NoUrut, x.Disposition, x.Reason, OptionalVersion(x.ExpectedClaimRowVersion))).ToList()
+            ?? throw new ArgumentException("Decisions is required.");
+        var response = await _mediator.Send(new AdmissionQueueCloseCmd(
+            body.BusinessDate, body.ServicePointId, body.UserId, decisions));
         return Ok(new JSendOk(response));
     }
 
@@ -229,3 +244,7 @@ public record RedirectBody(
 public record EstablishedBody(string? LoketKey, string ExpectedRowVersion, string RegId, string UserId);
 public record NotEstablishedBody(
     string? LoketKey, string ExpectedRowVersion, string ReasonCode, string UserId);
+public record AdmissionQueueCloseBody(string BusinessDate, string ServicePointId, string UserId,
+    IReadOnlyList<AdmissionQueueCloseDecisionBody>? Decisions);
+public record AdmissionQueueCloseDecisionBody(string AntrianId, int NoUrut, string Disposition,
+    string? Reason, string? ExpectedClaimRowVersion);

@@ -1,7 +1,7 @@
 ﻿using System.Data.SqlClient;
 using Dapper;
 using Farinv.Domain.Shared.Helpers;
-using Bilreg.Infrastructure.Shared.Helpers;
+using Farinv.Infrastructure.Helpers;
 using Microsoft.Extensions.Options;
 
 namespace Farinv.Infrastructure.ParamContext;

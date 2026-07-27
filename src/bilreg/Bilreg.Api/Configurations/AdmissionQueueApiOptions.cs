@@ -12,6 +12,8 @@ public sealed class AdmissionQueueApiOptions
     /// Usman role ids that grant AdmissionQueueConfiguration management access.
     /// </summary>
     public List<string> ConfigurationAllowedRoles{get;set;}=["ADM-SPV"];
+    /// <summary>Roles allowed to perform terminal, supervisor-only queue operations.</summary>
+    public List<string> SupervisorOperationAllowedRoles{get;set;}=["ADM-SPV"];
 }
 
 public sealed class AdmissionQueueWorkstationOptions

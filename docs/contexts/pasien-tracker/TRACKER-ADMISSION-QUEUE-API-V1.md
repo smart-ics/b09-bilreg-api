@@ -11,6 +11,13 @@ production use.
 
 ## Common contract
 
+> **Admission Officer workspace Phase 0 baseline — 2026-07-27.** This contract records backend
+> authority only. Ready, Calling, Queued Registration, and Direct Registration are prospective
+> frontend workspace projections; they are not Queue Entry states and must not be persisted,
+> placed in request payloads, or sent over SignalR. The source plans are maintained at the shared
+> workspace root: `admisi-rajal-officer-workspace-mode-feasibility-analysis.md` and
+> `admisi-rajal-officer-workspace-refactoring-implementation-master-plan.md`.
+
 Base route: `/api/v1/admission-queue`. All v1 endpoints use the existing JWT authentication
 mechanism. Current platform authorization has no approved queue role policies, so v1 uses the
 existing authenticated-access boundary; Officer/Supervisor/Administrator/Kiosk/Display policy
@@ -57,6 +64,8 @@ be detected without the intentionally deferred cross-node coordination capabilit
 | `POST entries/{q}/{n}/redirect` | `{targetServicePointId,loketKey?,expectedRowVersion?,userId}` | new Priority Waiting entry and label |
 | `POST entries/{q}/{n}/outcomes/established` | `{loketKey,expectedRowVersion,regId,userId}` | immutable Established outcome and Done entry |
 | `POST entries/{q}/{n}/outcomes/not-established` | `{loketKey,expectedRowVersion,reasonCode,userId}` | immutable NotEstablished outcome and Done entry |
+| `GET closing-preview` | `businessDate=yyyy-MM-dd&servicePointId` | supervisor-only remaining Waiting-entry review; preview is not a reservation |
+| `POST close` | `{businessDate,servicePointId,userId,decisions[]}` | supervisor-only atomic terminal disposition of the exact remaining Waiting set |
 
 `GET worklist` remains **queue-only**. It must not return Booking, patient identity, Registration,
 eligibility, or physician enrichment.
@@ -65,6 +74,81 @@ Return to Waiting is the non-final disposition for an unanswered Outstanding cal
 releases only the configured current Loket's matching claim, preserves Queue Entry state and call
 history, emits no announcement, and records `RETURN_TO_WAITING` / `UnansweredCall` in the shared
 append-only audit log. It is not No-Show, Withdraw, or rollback from In Service.
+
+### Frozen officer terminology
+
+| Backend action/outcome | Operator label | Contract distinction |
+|---|---|---|
+| Call | `Panggil` | Acquires the Outstanding Loket claim. |
+| Recall | `Panggil Lagi` | Retains the same Outstanding claim. |
+| Return to Waiting | `Tidak Hadir` | Non-terminal; releases the claim and leaves the entry Waiting. |
+| Start Service | `Hadir` | Moves the claim and Queue Entry to In Service. |
+| No-Show | `Tidak Datang` | Terminal supervisor disposition; stored as `Withdrawn` with reason `NoShow`. |
+| NotEstablished outcome | `Registrasi Tidak Terbentuk` | Queue completion with an externally owned reason code. |
+
+“No Show” is a backend/API reason name only and is not operator-facing wording. In particular,
+`Tidak Hadir` must never invoke the terminal No-Show endpoint or create a Registration Outcome.
+
+### Supervisor Queue Closing
+
+Queue Closing is enabled by default and protected by the `AdmissionQueueSupervisorOperations`
+policy. It accepts either the `AdmissionQueue.SupervisorOperations` permission claim or a role listed
+in `AdmissionQueueApi:SupervisorOperationAllowedRoles` (default: `ADM-SPV`); an absent permission
+and absent matching role fail closed. The existing `withdraw` and `no-show` routes use the same policy.
+
+`GET closing-preview` returns every Waiting entry for the exact business date and Service Point,
+including queue/patient-reference summaries, call metadata, active claim state, active claim Loket,
+and Base64 claim RowVersion. Each result permits exactly `NoShow` or `Withdraw`.
+
+`POST close` requires a decision for exactly every previewed entry at transaction time. `Withdraw`
+requires a nonblank reason; `NoShow` is persisted as withdrawal reason `NoShow` and ignores a
+submitted reason. An Outstanding claim requires its exact preview RowVersion; an InService claim
+blocks the whole operation. Missing/extra/stale/concurrently-created or changed entries return
+`409 AQ_CONCURRENCY_CONFLICT`; malformed decisions return `400 AQ_INVALID_REQUEST`; InService
+blockers return `400 AQ_OPERATION_NOT_ALLOWED`. All entries, their applicable Outstanding-claim
+releases, per-entry audits, and one `ADMISSION_QUEUE_CLOSE` scope summary audit commit together.
+Queue Closing never writes a Registration Outcome or Queue Session state.
+
+Operations must stop intake before requesting the preview. A conflict always requires a fresh human
+review, and the close runbook must verify an empty scoped preview after a successful close.
+
+### Existing Registration compatibility fixture
+
+The established Registration create routes remain unchanged during Phase 0:
+
+| Request shape | Existing behavior locked by characterization tests |
+|---|---|
+| Complete `AdmissionAntrianId`, `AdmissionNoUrut`, and `AdmissionExpectedRowVersion` | The controller resolves the configured workstation/Loket; the handler requires the matching In Service claim and completes that admission entry atomically. |
+| Partial queue context | Rejected through the existing `ArgumentException` path as `400 AQ_INVALID_REQUEST`. |
+| No meaningful queue context | Preserves legacy create-on-registration compatibility, including its synthetic completed Admission Queue entry and REGISTER evidence. This is not the future queue-less Direct Registration contract. |
+
+### Direct Registration create routes (Phase 4)
+
+The following additive routes create a normal outpatient Registration without Admission Queue
+participation. They use the same request and JSend response contracts as their corresponding
+existing create routes:
+
+| Method and route | Admission Queue behavior |
+|---|---|
+| `POST /api/Reg/rajalWalkIn/direct` | Queue-less walk-in Registration |
+| `POST /api/Reg/rajalByBooking/direct` | Queue-less booking Registration |
+
+Direct requests must not include `AdmissionAntrianId`, `AdmissionNoUrut`, or
+`AdmissionExpectedRowVersion`. Supplying any of those fields is rejected as `400
+AQ_INVALID_REQUEST`. Direct routes do not resolve or require Admission Queue workstation/Loket
+headers.
+
+Registration creation internally selects one transient, JSON-ignored application instruction:
+
+| Behavior | Selected by | Result |
+|---|---|---|
+| `QueueLinked` | Existing route with complete queue context | Retains atomic Admission Queue completion, Loket claim release, and Established outcome. |
+| `LegacyAutoComplete` | Existing route without queue context | Retains legacy synthetic Admission Queue completion for compatibility. |
+| `None` | Direct route | Saves Registration and existing side effects, including exactly-once REGISTER tracker evidence, without an Admission Queue entry, Loket claim interaction, or Registration Outcome. |
+
+`None` is an application-layer instruction, not persisted domain state or a workspace mode. Direct
+behavior is prospective only: historical synthetic queue artifacts are unchanged, and no database
+migration or backfill is required.
 
 ### Admisi Rajal composed officer worklist (read-only)
 
@@ -216,3 +300,7 @@ No confirmed frontend consumer exists in the available `c012_myhospital_web` tre
 frontend files were changed. Any external officer client must split Call from Start Service, reload on
 409, and use the worklist/current snapshot as recovery truth. Any display must implement the reload,
 poll, and AnnouncementVersion rules above.
+
+## Phase 9 observability contract
+
+Successful and failed officer operational commands emit `AdmissionQueueOperationalEvent`. Its stable dimensions are `Operation`, `Result`, `FailureCategory`, `DurationMs`, `BusinessDate`, `ServicePointId`, `WorkstationKey`, and `LoketKey`. This is operational telemetry, not an API response field and not a persisted Workspace Mode. No request or response contract changes in Phase 9. The event excludes patient data, queue labels, Registration IDs, Booking IDs, user identity, reasons, row versions, and request bodies.

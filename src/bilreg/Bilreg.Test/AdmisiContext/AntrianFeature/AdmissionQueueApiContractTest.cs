@@ -47,7 +47,7 @@ public class AdmissionQueueApiContractTest
             .Should().Be("api/v1/admission-queue");
         var methods=type.GetMethods().Select(x=>x.Name).ToArray();
         methods.Should().Contain(["Intake","BookingAssistance","Worklist","Display","Call","Recall","ReturnToWaiting","Start",
-            "Withdraw","NoShow","Redirect","Established","NotEstablished","ListServicePoints","UpsertServicePoint",
+            "Withdraw","NoShow","ClosingPreview","Close","Redirect","Established","NotEstablished","ListServicePoints","UpsertServicePoint",
             "RolloutStatus"]);
     }
 
@@ -114,6 +114,46 @@ public class AdmissionQueueApiContractTest
 
     [Fact]
     public void SignalRRefresh_DefaultsEnabled()=>new AdmissionQueueApiOptions().SignalRRefreshEnabled.Should().BeTrue();
+
+    [Theory]
+    [InlineData("/api/v1/admission-queue/entries/Q/1/call", "Call")]
+    [InlineData("/api/v1/admission-queue/entries/Q/1/recall", "Recall")]
+    [InlineData("/api/v1/admission-queue/entries/Q/1/return-to-waiting", "ReturnToWaiting")]
+    [InlineData("/api/v1/admission-queue/entries/Q/1/start-service", "StartService")]
+    [InlineData("/api/v1/admission-queue/entries/Q/1/outcomes/established", "Established")]
+    [InlineData("/api/v1/admission-queue/entries/Q/1/outcomes/not-established", "NotEstablished")]
+    [InlineData("/api/v1/admission-queue/close", "QueueClose")]
+    [InlineData("/api/reg/rajalWalkIn/direct", "DirectWalkInRegistration")]
+    [InlineData("/api/reg/rajalByBooking/direct", "DirectBookingRegistration")]
+    public void OperationalTelemetry_MapsOnlySafeOperationNames(string path, string operation)
+    {
+        ErrorHandlerMiddleware.GetOperationName(path).Should().Be(operation);
+    }
+
+    [Fact]
+    public void SupervisorOperations_DefaultToConfiguredSupervisorRole()
+        => new AdmissionQueueApiOptions().SupervisorOperationAllowedRoles.Should().Contain("ADM-SPV");
+
+    [Fact]
+    public void TerminalSupervisorRoutes_RequireSupervisorPolicy()
+    {
+        var methods = new[] { "Withdraw", "NoShow", "ClosingPreview", "Close" };
+        foreach (var name in methods)
+            typeof(AdmissionQueueV1Controller).GetMethod(name)!
+                .GetCustomAttributes(typeof(AuthorizeAttribute), true).Cast<AuthorizeAttribute>()
+                .Should().Contain(x => x.Policy == Bilreg.Api.Authorization.AdmissionQueueSupervisorOperationPolicies.PolicyName);
+    }
+
+    [Fact]
+    public async Task ClosingPreview_DispatchesScopedQuery()
+    {
+        var mediator = new Mock<IMediator>();
+        mediator.Setup(x => x.Send(It.Is<AdmissionQueueClosingPreviewQry>(q => q.BusinessDateYmd == "2026-07-27" && q.ServicePointId == "SP"), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AdmissionQueueClosingPreviewResponse(new DateOnly(2026, 7, 27), "SP", []));
+        var result = await CreateV1Controller(mediator.Object).ClosingPreview("2026-07-27", "SP");
+        result.Should().BeOfType<OkObjectResult>();
+        mediator.VerifyAll();
+    }
 
     [Fact]
     public void RefreshHub_IsAuthorizedAndExposesStablePath()
@@ -296,6 +336,78 @@ public class AdmissionQueueApiContractTest
         result.Should().BeOfType<OkObjectResult>();
         resolver.VerifyNoOtherCalls();
         mediator.VerifyAll();
+    }
+
+    [Fact]
+    public async Task DirectWalkIn_DispatchesNoneBehaviorWithoutWorkstationResolution()
+    {
+        var mediator = new Mock<IMediator>();
+        mediator.Setup(x => x.Send(
+                It.Is<RegJalanWalkInCommand>(c =>
+                    c.AdmissionQueueBehavior == RegistrationAdmissionQueueBehavior.None &&
+                    c.AdmissionLoketKey == null),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RegJalanCreateResponse("R1", 1));
+        var resolver = new Mock<IAdmissionQueueWorkstationResolver>(MockBehavior.Strict);
+        var sut = new RegController(mediator.Object, resolver.Object);
+
+        var result = await sut.SaveDirect(new RegJalanWalkInCommand(
+            "P1", "U1", "J1", "8", "", "D1", "SV1", "08:00", "K1", ""));
+
+        result.Should().BeOfType<OkObjectResult>();
+        resolver.VerifyNoOtherCalls();
+        mediator.VerifyAll();
+    }
+
+    [Fact]
+    public async Task DirectBooking_DispatchesNoneBehaviorWithoutWorkstationResolution()
+    {
+        var mediator = new Mock<IMediator>();
+        mediator.Setup(x => x.Send(
+                It.Is<RegJalanByBookingCmd>(c =>
+                    c.AdmissionQueueBehavior == RegistrationAdmissionQueueBehavior.None &&
+                    c.AdmissionLoketKey == null),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RegJalanByBookingResponse("R1", 2));
+        var resolver = new Mock<IAdmissionQueueWorkstationResolver>(MockBehavior.Strict);
+        var sut = new RegController(mediator.Object, resolver.Object);
+
+        var result = await sut.SaveDirect(new RegJalanByBookingCmd("B1", "U1", "K1", "8", "", "J1", ""));
+
+        result.Should().BeOfType<OkObjectResult>();
+        resolver.VerifyNoOtherCalls();
+        mediator.VerifyAll();
+    }
+
+    [Fact]
+    public async Task DirectWalkIn_WithQueueContext_IsRejectedWithoutDispatchOrWorkstationResolution()
+    {
+        var mediator = new Mock<IMediator>(MockBehavior.Strict);
+        var resolver = new Mock<IAdmissionQueueWorkstationResolver>(MockBehavior.Strict);
+        var sut = new RegController(mediator.Object, resolver.Object);
+        var cmd = new RegJalanWalkInCommand(
+            "P1", "U1", "J1", "8", "", "D1", "SV1", "08:00", "K1", "", "Q1", 1, "AQ==");
+
+        var act = () => sut.SaveDirect(cmd);
+
+        await act.Should().ThrowAsync<ArgumentException>();
+        resolver.VerifyNoOtherCalls();
+        mediator.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task DirectBooking_WithQueueContext_IsRejectedWithoutDispatchOrWorkstationResolution()
+    {
+        var mediator = new Mock<IMediator>(MockBehavior.Strict);
+        var resolver = new Mock<IAdmissionQueueWorkstationResolver>(MockBehavior.Strict);
+        var sut = new RegController(mediator.Object, resolver.Object);
+        var cmd = new RegJalanByBookingCmd("B1", "U1", "K1", "8", "", "J1", "", "Q1", 1, "AQ==");
+
+        var act = () => sut.SaveDirect(cmd);
+
+        await act.Should().ThrowAsync<ArgumentException>();
+        resolver.VerifyNoOtherCalls();
+        mediator.VerifyNoOtherCalls();
     }
 
     [Fact]

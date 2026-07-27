@@ -1,6 +1,6 @@
 ﻿using Farinv.Domain.BrgContext.PricingPolicyFeature;
 using Farinv.Infrastructure.BrgContext.PricingPolicyFeature;
-using Bilreg.Infrastructure.Shared.Helpers;
+using Farinv.Infrastructure.Helpers;
 using FluentAssertions;
 using Nuna.Lib.TransactionHelper;
 
