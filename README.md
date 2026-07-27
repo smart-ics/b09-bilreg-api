@@ -19,7 +19,7 @@ Taksaka V2 is the operational background processing platform scaffold. Domain an
 
 ### Prerequisites
 
-- .NET 8 SDK
+- .NET 8 SDK 
 - Node.js 20+
 - SQL Server (optional for scaffold — not required to start the API)
 
