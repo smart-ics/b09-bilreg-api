@@ -375,7 +375,7 @@ Queue Entry mereferensikan Patient Tracker melalui TrackerId, tetapi tidak memil
 - **BR-TRK-035** — Queue Entry yang baru dibuat harus berada dalam state Waiting, dengan CreatedAt tercatat serta ServedAt dan DoneAt belum tersedia.
 - **BR-TRK-036** — Hanya Waiting Queue Entry yang dapat memasuki In Service, dan masuknya ke In Service harus mencatat ServedAt.
 - **BR-TRK-037** — Hanya In Service Queue Entry yang dapat menjadi Done, dan perubahan menjadi Done harus mencatat DoneAt.
-- **BR-TRK-038** — ServedAt tidak boleh mendahului CreatedAt, dan DoneAt tidak boleh mendahului ServedAt.
+- **BR-TRK-038** — Timestamp lifecycle Queue harus merupakan business time yang valid. Pada simulasi Fixed Business Date, ServedAt dapat mendahului CreatedAt dan DoneAt dapat mendahului ServedAt; consumer yang menghitung durasi harus secara eksplisit menoleransi atau mengecualikan interval negatif.
 - **BR-TRK-039** — Done Queue Entry bersifat final pada V1 dan tidak boleh kembali menjadi Waiting atau In Service.
 - **BR-TRK-039a** — Feature policy yang berlaku dapat membuat Waiting Queue Entry menjadi Withdrawn ketika keikutsertaan berakhir sebelum pelayanan dimulai; Withdrawn Queue Entry bersifat final dan tidak boleh direpresentasikan sebagai pelayanan yang selesai.
 

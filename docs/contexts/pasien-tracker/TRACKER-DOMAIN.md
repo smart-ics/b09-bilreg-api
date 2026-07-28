@@ -373,7 +373,7 @@ A Queue Entry references a Patient Tracker by TrackerId but does not own or modi
 - **BR-TRK-035** — A newly created Queue Entry shall be Waiting, with CreatedAt recorded and ServedAt and DoneAt absent.
 - **BR-TRK-036** — Only a Waiting Queue Entry may enter In Service, and entering In Service shall record ServedAt.
 - **BR-TRK-037** — Only an In Service Queue Entry may become Done, and becoming Done shall record DoneAt.
-- **BR-TRK-038** — ServedAt shall not precede CreatedAt, and DoneAt shall not precede ServedAt.
+- **BR-TRK-038** — Queue lifecycle timestamps shall be valid business times. In Fixed Business Date simulation, ServedAt may precede CreatedAt and DoneAt may precede ServedAt; consumers that calculate durations must explicitly tolerate or exclude negative intervals.
 - **BR-TRK-039** — A Done Queue Entry is final in V1 and shall not return to Waiting or In Service.
 - **BR-TRK-039a** — An applicable feature policy may make a Waiting Queue Entry Withdrawn when participation ends before service starts; a Withdrawn Queue Entry is final and shall not be represented as completed service.
 

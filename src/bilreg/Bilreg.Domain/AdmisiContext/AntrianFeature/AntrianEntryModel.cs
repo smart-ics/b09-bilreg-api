@@ -94,8 +94,6 @@ public class AntrianEntryModel
             throw new InvalidOperationException("Only a Waiting queue entry may enter In Service.");
 
         EnsureBusinessTime(servedAt, nameof(servedAt));
-        if (servedAt < CreatedAt)
-            throw new ArgumentException("ServedAt shall not precede CreatedAt.", nameof(servedAt));
 
         ServedAt = servedAt;
         AntrianStatus = AntrianStatusEnum.InService;
@@ -107,8 +105,6 @@ public class AntrianEntryModel
             throw new InvalidOperationException("Only an In Service queue entry may become Done.");
 
         EnsureBusinessTime(doneAt, nameof(doneAt));
-        if (doneAt < ServedAt)
-            throw new ArgumentException("DoneAt shall not precede ServedAt.", nameof(doneAt));
         
         DoneAt = doneAt;
         AntrianStatus = AntrianStatusEnum.Done;
