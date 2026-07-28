@@ -13,7 +13,6 @@ using Nuna.Lib.ActionResultHelper;
 namespace Bilreg.Api.Controllers.AdmisiContext.AntrianFeature;
 
 [ApiController]
-[Authorize]
 [Route("api/v1/admission-queue")]
 public sealed class AdmissionQueueV1Controller : ControllerBase
 {
