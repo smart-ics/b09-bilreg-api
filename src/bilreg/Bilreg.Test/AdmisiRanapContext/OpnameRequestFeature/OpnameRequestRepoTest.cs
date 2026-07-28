@@ -11,9 +11,10 @@ namespace Bilreg.Test.AdmisiRanapContext.OpnameRequestFeature;
 public class OpnameRequestRepoTest
 {
     private readonly Mock<IOpnameRequestDal> _dalMock = new();
+    private readonly Mock<IOpnameRequestInsuranceDal> _insuranceMock = new();
     private readonly OpnameRequestRepo _repository;
 
-    public OpnameRequestRepoTest() => _repository = new OpnameRequestRepo(_dalMock.Object);
+    public OpnameRequestRepoTest() => _repository = new OpnameRequestRepo(_dalMock.Object, _insuranceMock.Object);
 
     [Fact]
     public void UT_RP_01_GivenNewEntity_WhenSaveChanges_ThenInsertIsCalled()
@@ -74,7 +75,8 @@ public class OpnameRequestRepoTest
             new DateTime(2026, 7, 20),
             "Catatan klinis",
             "-",
-            AuditTrailType.Create("user1", new DateTime(2026, 7, 7)));
+            AuditTrailType.Create("user1", new DateTime(2026, 7, 7)),
+            OpnameRequestInsuranceModel.Default);
 
     private static OpnameRequestDto CreateTestDto()
     {

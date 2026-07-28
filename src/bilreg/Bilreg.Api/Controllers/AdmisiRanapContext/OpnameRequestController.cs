@@ -45,6 +45,16 @@ public class OpnameRequestController : ControllerBase
         var result = await _mediator.Send(new AdmListOpnameRequestQry(status));
         return Ok(new JSendOk(result));
     }
+
+    [HttpPatch("{id}/setInsurance")]
+    public async Task<IActionResult> SetInsurance(string id, [FromBody] AdmSetInsuranceRequestBody body)
+    {
+        await _mediator.Send(new AdmSetInsuranceOpnameRequestCmd(id, body.TipeJaminanId, body.ReffId, body.UserId));
+        return Ok(new JSendOk("Done"));
+    }
 }
 
 public record AdmCancelOpnameRequestBody(string UserId);
+
+public record AdmSetInsuranceRequestBody(string TipeJaminanId,
+    string ReffId, string UserId);
