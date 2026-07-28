@@ -24,7 +24,9 @@ public class AdmissionQueueMigrationManifestTest
             "../Shared/AuditLogFeature/BILRG_AuditLog.sql",
             "AntrianFeature/BILRG_AdmWorkstation.sql",
             "AntrianFeature/BILRG_AdmQueueDisplay.sql",
-            "AntrianFeature/BILRG_AdmDisplayLoket.sql");
+            "AntrianFeature/BILRG_AdmDisplayLoket.sql",
+            "AntrianFeature/BILRG_AdmQueueKiosk.sql",
+            "AntrianFeature/BILRG_AdmKioskServicePoint.sql");
     }
 
     [Fact]
@@ -32,8 +34,12 @@ public class AdmissionQueueMigrationManifestTest
     {
         AdmissionQueueMigrationManifest.RequiredTables.Should().NotBeEmpty();
         AdmissionQueueMigrationManifest.RequiredTables.Should().Contain("BILRG_AuditLog");
+        AdmissionQueueMigrationManifest.RequiredTables.Should().Contain("BILRG_AdmQueueKiosk");
+        AdmissionQueueMigrationManifest.RequiredTables.Should().Contain("BILRG_AdmKioskServicePoint");
         AdmissionQueueMigrationManifest.RequiredIndexes.Should().Contain(i =>
             i.IndexName == "UX_BILRG_Antrian_SequenceTag");
+        AdmissionQueueMigrationManifest.RequiredIndexes.Should().Contain(i =>
+            i.IndexName == "IX_BILRG_AdmKioskServicePoint_ServicePointId");
     }
 }
 

@@ -22,6 +22,8 @@
 | 12 | `AntrianFeature/BILRG_AdmWorkstation.sql` | `BILRG_AdmWorkstation` |
 | 13 | `AntrianFeature/BILRG_AdmQueueDisplay.sql` | `BILRG_AdmQueueDisplay` |
 | 14 | `AntrianFeature/BILRG_AdmDisplayLoket.sql` | `BILRG_AdmDisplayLoket` |
+| 15 | `AntrianFeature/BILRG_AdmQueueKiosk.sql` | `BILRG_AdmQueueKiosk` |
+| 16 | `AntrianFeature/BILRG_AdmKioskServicePoint.sql` | `BILRG_AdmKioskServicePoint` |
 
 Greenfield `CREATE TABLE` scripts are not wrapped `IF NOT EXISTS`. Prefer a fresh empty database for first apply. The real-SQL fixture skips a guarded script when its guard table already exists. The shared append-only `BILRG_AuditLog` table is a Phase 4 operational prerequisite, not a queue-specific replacement audit table.
 
@@ -33,6 +35,7 @@ Greenfield `CREATE TABLE` scripts are not wrapped `IF NOT EXISTS`. Prefer a fres
 | `UX_BILRG_AdmLoketCurrentCall_ActiveEntry` | `BILRG_AdmLoketCurrentCall` |
 | `IX_BILRG_AdmLoketCurrentCall_ActiveDisplay` | `BILRG_AdmLoketCurrentCall` |
 | `IX_BILRG_AntrianEntry_OperationalWorklist` | `BILRG_AntrianEntry` |
+| `IX_BILRG_AdmKioskServicePoint_ServicePointId` | `BILRG_AdmKioskServicePoint` |
 
 ## Seed
 

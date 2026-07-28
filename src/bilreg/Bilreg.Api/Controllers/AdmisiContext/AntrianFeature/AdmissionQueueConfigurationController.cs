@@ -152,6 +152,74 @@ public sealed class AdmissionQueueConfigurationController : ControllerBase
         return Ok(new JSendOk(result));
     }
 
+    [HttpGet("kiosks")]
+    public async Task<IActionResult> ListKiosks(CancellationToken ct) =>
+        Ok(new JSendOk(await _mediator.Send(new ListKiosksQry(), ct)));
+
+    [HttpGet("kiosks/{stationId}")]
+    public async Task<IActionResult> GetKiosk(string stationId, CancellationToken ct) =>
+        Ok(new JSendOk(await _mediator.Send(new GetKioskQry(stationId), ct)));
+
+    [HttpPost("kiosks")]
+    public async Task<IActionResult> CreateKiosk([FromBody] CreateKioskBody body, CancellationToken ct)
+    {
+        var servicePoints = (body.ServicePoints ?? [])
+            .Select(x => new AdmissionKioskServicePointDtoResponse(x.ServicePointId, x.SortOrder))
+            .ToList();
+        var result = await _mediator.Send(new CreateKioskCmd(
+            body.StationId, body.DisplayName, body.LocationName, body.Active,
+            body.PrinterProxyPort, body.Notes, servicePoints, Actor()), ct);
+        return Ok(new JSendOk(result));
+    }
+
+    [HttpPut("kiosks/{stationId}")]
+    public async Task<IActionResult> UpdateKiosk(
+        string stationId,
+        [FromBody] UpdateKioskBody body,
+        CancellationToken ct)
+    {
+        var result = await _mediator.Send(new UpdateKioskCmd(
+            stationId, body.DisplayName, body.LocationName, body.PrinterProxyPort,
+            body.Notes, body.RowVersion, Actor()), ct);
+        return Ok(new JSendOk(result));
+    }
+
+    [HttpPut("kiosks/{stationId}/service-points")]
+    public async Task<IActionResult> ReplaceKioskServicePoints(
+        string stationId,
+        [FromBody] ReplaceKioskServicePointsBody body,
+        CancellationToken ct)
+    {
+        var servicePoints = (body.ServicePoints ?? [])
+            .Select(x => new AdmissionKioskServicePointDtoResponse(x.ServicePointId, x.SortOrder))
+            .ToList();
+        var result = await _mediator.Send(new ReplaceKioskServicePointsCmd(
+            stationId, servicePoints, body.RowVersion, Actor()), ct);
+        return Ok(new JSendOk(result));
+    }
+
+    [HttpPost("kiosks/{stationId}/activate")]
+    public async Task<IActionResult> ActivateKiosk(
+        string stationId,
+        [FromBody] RowVersionBody? body,
+        CancellationToken ct)
+    {
+        var result = await _mediator.Send(new SetKioskActiveCmd(
+            stationId, true, body?.RowVersion, Actor()), ct);
+        return Ok(new JSendOk(result));
+    }
+
+    [HttpPost("kiosks/{stationId}/deactivate")]
+    public async Task<IActionResult> DeactivateKiosk(
+        string stationId,
+        [FromBody] RowVersionBody? body,
+        CancellationToken ct)
+    {
+        var result = await _mediator.Send(new SetKioskActiveCmd(
+            stationId, false, body?.RowVersion, Actor()), ct);
+        return Ok(new JSendOk(result));
+    }
+
     [HttpGet("segmentation")]
     public async Task<IActionResult> Segmentation(CancellationToken ct) =>
         Ok(new JSendOk(await _mediator.Send(new GetSegmentationQry(), ct)));
@@ -211,5 +279,23 @@ public sealed class AdmissionQueueConfigurationController : ControllerBase
 
     public sealed record ReplaceLoketsBody(string RowVersion, List<LoketMapBody>? Lokets);
     public sealed record LoketMapBody(string LoketKey, int SortOrder = 0);
+    public sealed record CreateKioskBody(
+        string StationId,
+        string DisplayName,
+        string? LocationName,
+        bool Active = true,
+        int PrinterProxyPort = 5050,
+        string? Notes = null,
+        List<KioskServicePointMapBody>? ServicePoints = null);
+    public sealed record UpdateKioskBody(
+        string DisplayName,
+        string? LocationName,
+        int PrinterProxyPort,
+        string RowVersion,
+        string? Notes = null);
+    public sealed record ReplaceKioskServicePointsBody(
+        string RowVersion,
+        List<KioskServicePointMapBody>? ServicePoints);
+    public sealed record KioskServicePointMapBody(string ServicePointId, int SortOrder = 0);
     public sealed record RowVersionBody(string? RowVersion);
 }

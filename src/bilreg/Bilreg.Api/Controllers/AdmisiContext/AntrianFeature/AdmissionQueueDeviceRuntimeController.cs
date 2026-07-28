@@ -28,6 +28,11 @@ public sealed class AdmissionQueueDeviceRuntimeController : ControllerBase
     public async Task<IActionResult> DisplayBootConfig(string displayId, CancellationToken ct) =>
         Ok(new JSendOk(await _mediator.Send(new GetDisplayBootConfigQry(displayId), ct)));
 
+    [HttpGet("devices/kiosks/{stationId}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> KioskBootConfig(string stationId, CancellationToken ct) =>
+        Ok(new JSendOk(await _mediator.Send(new GetKioskBootConfigQry(stationId), ct)));
+
     [HttpGet("devices/displays/{displayId}/snapshot")]
     [AllowAnonymous]
     public async Task<IActionResult> DisplaySnapshot(string displayId, CancellationToken ct) =>

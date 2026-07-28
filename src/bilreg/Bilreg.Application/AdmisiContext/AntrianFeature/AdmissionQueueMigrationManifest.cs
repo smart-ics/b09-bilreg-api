@@ -24,6 +24,8 @@ public static class AdmissionQueueMigrationManifest
         new("AntrianFeature/BILRG_AdmWorkstation.sql", "BILRG_AdmWorkstation"),
         new("AntrianFeature/BILRG_AdmQueueDisplay.sql", "BILRG_AdmQueueDisplay"),
         new("AntrianFeature/BILRG_AdmDisplayLoket.sql", "BILRG_AdmDisplayLoket"),
+        new("AntrianFeature/BILRG_AdmQueueKiosk.sql", "BILRG_AdmQueueKiosk"),
+        new("AntrianFeature/BILRG_AdmKioskServicePoint.sql", "BILRG_AdmKioskServicePoint"),
     ];
 
     public static IReadOnlyList<string> RequiredTables { get; } =
@@ -38,6 +40,8 @@ public static class AdmissionQueueMigrationManifest
         "BILRG_AdmWorkstation",
         "BILRG_AdmQueueDisplay",
         "BILRG_AdmDisplayLoket",
+        "BILRG_AdmQueueKiosk",
+        "BILRG_AdmKioskServicePoint",
     ];
 
     public static IReadOnlyList<RequiredIndex> RequiredIndexes { get; } =
@@ -46,6 +50,7 @@ public static class AdmissionQueueMigrationManifest
         new("UX_BILRG_AdmLoketCurrentCall_ActiveEntry", "BILRG_AdmLoketCurrentCall"),
         new("IX_BILRG_AdmLoketCurrentCall_ActiveDisplay", "BILRG_AdmLoketCurrentCall"),
         new("IX_BILRG_AntrianEntry_OperationalWorklist", "BILRG_AntrianEntry"),
+        new("IX_BILRG_AdmKioskServicePoint_ServicePointId", "BILRG_AdmKioskServicePoint"),
     ];
 
     public sealed record RequiredIndex(string IndexName, string TableName);

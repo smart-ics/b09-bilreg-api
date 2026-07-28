@@ -36,6 +36,14 @@ public class AdmissionQueueConfigurationAuthorizationTest : IClassFixture<JwtAut
     }
 
     [Fact]
+    public async Task ConfigurationKiosks_WithoutToken_Returns401()
+    {
+        var client = _factory.CreateClient();
+        var response = await client.GetAsync("/api/v1/admission-queue/configuration/kiosks");
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
     public async Task ConfigurationWhoAmI_WithUnauthorizedRole_Returns403()
     {
         SetupUsmanUser("VERIF-USR");

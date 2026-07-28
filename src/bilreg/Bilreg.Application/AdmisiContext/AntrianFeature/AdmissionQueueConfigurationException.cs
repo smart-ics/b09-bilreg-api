@@ -19,5 +19,8 @@ public static class AdmissionQueueConfigurationErrorCodes
     public const string DisplayNotFound = "AQ_DISPLAY_NOT_FOUND";
     public const string DisplayInactive = "AQ_DISPLAY_INACTIVE";
     public const string DisplayMappingRequired = "AQ_DISPLAY_MAPPING_REQUIRED";
+    public const string KioskNotFound = "AQ_KIOSK_NOT_FOUND";
+    public const string KioskInactive = "AQ_KIOSK_INACTIVE";
+    public const string KioskMappingRequired = "AQ_KIOSK_MAPPING_REQUIRED";
     public const string Concurrency = "AQ_CONFIG_CONCURRENCY";
 }

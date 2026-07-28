@@ -143,6 +143,9 @@ public static class InfrastructureService
         services.AddScoped<IAdmissionWorkstationRepo, AdmissionWorkstationRepo>();
         services.AddScoped<IAdmissionQueueDisplayDal, AdmissionQueueDisplayDal>();
         services.AddScoped<IAdmissionQueueDisplayRepo, AdmissionQueueDisplayRepo>();
+        services.AddScoped<IAdmissionQueueKioskDal, AdmissionQueueKioskDal>();
+        services.AddScoped<IAdmissionQueueKioskRepo, AdmissionQueueKioskRepo>();
+        services.AddScoped<IAdmissionConfigurationAuditReader, AdmissionConfigurationAuditReader>();
         services.AddScoped<IAdmissionQueueWorkstationResolver, AdmissionQueueWorkstationResolver>();
         services.AddScoped<
             IBookingAssistanceRepo,

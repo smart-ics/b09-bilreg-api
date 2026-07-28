@@ -54,10 +54,13 @@ public class ErrorHandlerMiddleware
                     {
                         AdmissionQueueConfigurationErrorCodes.WorkstationNotFound => (int)HttpStatusCode.NotFound,
                         AdmissionQueueConfigurationErrorCodes.DisplayNotFound => (int)HttpStatusCode.NotFound,
+                        AdmissionQueueConfigurationErrorCodes.KioskNotFound => (int)HttpStatusCode.NotFound,
                         AdmissionQueueConfigurationErrorCodes.WorkstationInactive => (int)HttpStatusCode.Conflict,
                         AdmissionQueueConfigurationErrorCodes.WorkstationLoketConflict => (int)HttpStatusCode.Conflict,
                         AdmissionQueueConfigurationErrorCodes.DisplayInactive => (int)HttpStatusCode.Conflict,
                         AdmissionQueueConfigurationErrorCodes.DisplayMappingRequired => (int)HttpStatusCode.Conflict,
+                        AdmissionQueueConfigurationErrorCodes.KioskInactive => (int)HttpStatusCode.Conflict,
+                        AdmissionQueueConfigurationErrorCodes.KioskMappingRequired => (int)HttpStatusCode.Conflict,
                         AdmissionQueueConfigurationErrorCodes.Concurrency => (int)HttpStatusCode.Conflict,
                         _ => (int)HttpStatusCode.BadRequest
                     };

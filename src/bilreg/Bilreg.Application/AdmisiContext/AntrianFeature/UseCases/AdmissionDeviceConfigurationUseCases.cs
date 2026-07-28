@@ -63,8 +63,11 @@ public record ConfigurationSummaryDtoResponse(
     int InactiveWorkstationCount,
     int ActiveDisplayCount,
     int InactiveDisplayCount,
+    int ActiveKioskCount,
+    int InactiveKioskCount,
     IReadOnlyList<string> ActiveLoketsWithoutDisplay,
     IReadOnlyList<string> DisplaysWithoutLoket,
+    IReadOnlyList<string> KiosksWithoutServicePoint,
     IReadOnlyList<string> InvalidReferences,
     IReadOnlyList<object> RecentChanges);
 
@@ -674,19 +677,23 @@ public sealed class GetConfigurationSummaryHandler : IRequestHandler<GetConfigur
 {
     private readonly IAdmissionWorkstationRepo _workstations;
     private readonly IAdmissionQueueDisplayRepo _displays;
+    private readonly IAdmissionQueueKioskRepo _kiosks;
 
     public GetConfigurationSummaryHandler(
         IAdmissionWorkstationRepo workstations,
-        IAdmissionQueueDisplayRepo displays)
+        IAdmissionQueueDisplayRepo displays,
+        IAdmissionQueueKioskRepo kiosks)
     {
         _workstations = workstations;
         _displays = displays;
+        _kiosks = kiosks;
     }
 
     public Task<ConfigurationSummaryDtoResponse> Handle(GetConfigurationSummaryQry request, CancellationToken cancellationToken)
     {
         var ws = _workstations.ListAll();
         var ds = _displays.ListAll();
+        var ks = _kiosks.ListAll();
         var coveredLokets = ds.Where(d => d.Active)
             .SelectMany(d => d.Lokets.Select(l => l.LoketKey))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -694,14 +701,19 @@ public sealed class GetConfigurationSummaryHandler : IRequestHandler<GetConfigur
             .Select(w => w.LoketKey).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x).ToList();
         var displaysWithoutLoket = ds.Where(d => d.Active && d.Lokets.Count == 0)
             .Select(d => d.DisplayId).ToList();
+        var kiosksWithoutServicePoint = ks.Where(k => k.Active && k.ServicePoints.Count == 0)
+            .Select(k => k.StationId).ToList();
 
         return Task.FromResult(new ConfigurationSummaryDtoResponse(
             ws.Count(x => x.Active),
             ws.Count(x => !x.Active),
             ds.Count(x => x.Active),
             ds.Count(x => !x.Active),
+            ks.Count(x => x.Active),
+            ks.Count(x => !x.Active),
             activeLoketsWithoutDisplay,
             displaysWithoutLoket,
+            kiosksWithoutServicePoint,
             Array.Empty<string>(),
             Array.Empty<object>()));
     }
@@ -738,16 +750,33 @@ public sealed class GetSegmentationHandler : IRequestHandler<GetSegmentationQry,
 public sealed class ListConfigurationAuditHandler
     : IRequestHandler<ListConfigurationAuditQry, ConfigurationAuditPageDtoResponse>
 {
+    private readonly IAdmissionConfigurationAuditReader _reader;
+
+    public ListConfigurationAuditHandler(IAdmissionConfigurationAuditReader reader) =>
+        _reader = reader;
+
     public Task<ConfigurationAuditPageDtoResponse> Handle(
         ListConfigurationAuditQry request,
         CancellationToken cancellationToken)
     {
         var page = request.Page < 1 ? 1 : request.Page;
         var pageSize = request.PageSize is < 1 or > 200 ? 50 : request.PageSize;
+        var items = _reader.List(page, pageSize, out var totalCount)
+            .Select(x => new ConfigurationAuditEntryDtoResponse(
+                x.AuditId,
+                x.EventTime.ToString("O"),
+                x.UserId,
+                x.ActionType,
+                x.EntityName,
+                x.EntityId,
+                string.IsNullOrWhiteSpace(x.Reason) ? null : x.Reason,
+                string.IsNullOrWhiteSpace(x.OriginalDataJson) ? null : x.OriginalDataJson,
+                string.IsNullOrWhiteSpace(x.CorrelationId) ? null : x.CorrelationId))
+            .ToList();
         return Task.FromResult(new ConfigurationAuditPageDtoResponse(
-            Array.Empty<ConfigurationAuditEntryDtoResponse>(),
+            items,
             page,
             pageSize,
-            0));
+            totalCount));
     }
 }

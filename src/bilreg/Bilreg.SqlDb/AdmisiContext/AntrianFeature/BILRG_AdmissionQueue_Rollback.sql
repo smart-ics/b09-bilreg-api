@@ -11,6 +11,20 @@
 
 SET NOCOUNT ON;
 
+-- BILRG_AdmKioskServicePoint / BILRG_AdmQueueKiosk
+IF EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_BILRG_AdmKioskServicePoint_ServicePointId'
+           AND object_id = OBJECT_ID('BILRG_AdmKioskServicePoint'))
+    DROP INDEX IX_BILRG_AdmKioskServicePoint_ServicePointId ON BILRG_AdmKioskServicePoint;
+GO
+
+IF OBJECT_ID('BILRG_AdmKioskServicePoint', 'U') IS NOT NULL
+    DROP TABLE BILRG_AdmKioskServicePoint;
+GO
+
+IF OBJECT_ID('BILRG_AdmQueueKiosk', 'U') IS NOT NULL
+    DROP TABLE BILRG_AdmQueueKiosk;
+GO
+
 -- BILRG_AdmBookingAssistance
 IF EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_BILRG_AdmBookingAssistance_Active'
            AND object_id = OBJECT_ID('BILRG_AdmBookingAssistance'))
