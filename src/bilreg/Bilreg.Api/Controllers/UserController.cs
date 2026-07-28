@@ -9,6 +9,8 @@ using System.Text;
 
 namespace Bilreg.Api.Controllers;
 
+[Route("api/[controller]")]
+[ApiController]
 public class UserController : Controller
 {
     private readonly IMediator _mediator;
