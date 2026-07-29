@@ -95,6 +95,7 @@ public sealed class AdmisiRajalPatientContextHandler :
     private static readonly Counter<long> SearchRequests = Meter.CreateCounter<long>(
         "bilreg.admisi_rajal.patient_context_search.requests");
     private static readonly Regex NikPattern = new(@"^\d{16}$", RegexOptions.Compiled);
+    private static readonly Regex PhonePattern = new(@"^\+?\d{8,15}$", RegexOptions.Compiled);
     private static readonly Regex FullRegistrationIdPattern = new(
         @"^RG\d{8}$",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -211,9 +212,12 @@ public sealed class AdmisiRajalPatientContextHandler :
                 request.SuggestedRegistrationId,
                 StringComparison.OrdinalIgnoreCase),
             false);
+        var registrations = request.Scope == PatientContextScope.Patient
+            ? new List<AdmisiRajalPatientContextResult>()
+            : [registrationResult];
         return (
             [],
-            [registrationResult],
+            registrations,
             LoadPatients([registration.PatientId], keyword, request.SuggestedPatientId));
     }
 
@@ -236,19 +240,34 @@ public sealed class AdmisiRajalPatientContextHandler :
             .Cast<string>()
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
-        var patientIds = bookingViews
+        var bookingPatientIds = bookingViews
             .Select(x => Real(x.Reg.PasienId))
-            .Concat(directPatients.Select(x => Real(x.PatientId)))
             .Where(x => x is not null)
             .Cast<string>()
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
+        var directPatientIds = directPatients
+            .Select(x => Real(x.PatientId))
+            .Where(x => x is not null)
+            .Cast<string>()
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        var relatedPatientIds = request.Scope switch
+        {
+            PatientContextScope.All => bookingPatientIds
+                .Concat(directPatientIds)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray(),
+            PatientContextScope.Booking => bookingPatientIds,
+            PatientContextScope.Registration => directPatientIds,
+            _ => []
+        };
         var registrationViews = SearchRegistrationViews(
             request,
             keyword,
             businessDate,
             registrationIds,
-            patientIds);
+            relatedPatientIds);
         var registrations = registrationViews
             .Select(x => ToRegistrationResult(
                 x,
@@ -322,7 +341,10 @@ public sealed class AdmisiRajalPatientContextHandler :
         var direct = Includes(request.Scope, PatientContextKind.Registration)
             ? _registrationReader.Search(keyword, businessDate) ?? []
             : [];
-        var related = _registrationReader.FindRelated(businessDate, registrationIds, patientIds) ?? [];
+        var related = request.Scope == PatientContextScope.Patient
+            || (registrationIds.Count == 0 && patientIds.Count == 0)
+            ? []
+            : _registrationReader.FindRelated(businessDate, registrationIds, patientIds) ?? [];
         return direct.Concat(related)
             .DistinctBy(x => x.RegistrationId, StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -372,21 +394,31 @@ public sealed class AdmisiRajalPatientContextHandler :
         AdmisiRajalPatientContextSearchQuery request,
         string keyword)
     {
-        IEnumerable<PasienPersonView> data;
+        IEnumerable<PasienPersonView> directData;
         if (NikPattern.IsMatch(keyword))
         {
             var patient = _pasienRepo.GetDataByNik(keyword);
-            data = patient.HasValue ? [patient.Value] : [];
+            directData = patient.HasValue ? [patient.Value] : [];
         }
         else
         {
-            data = _pasienRepo.SearchPasien(keyword);
+            directData = _pasienRepo.SearchPasien(keyword);
         }
-        return data
+        var phoneData = PhonePattern.IsMatch(keyword)
+            ? _pasienRepo.SearchPasienByPhone(keyword)
+            : [];
+        var phonePatientIds = phoneData
+            .Select(x => x.PasienId)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return directData
+            .Concat(phoneData)
+            .DistinctBy(x => x.PasienId, StringComparer.OrdinalIgnoreCase)
             .Select(x => ToPatientResult(
                 x,
                 keyword,
-                string.Equals(x.PasienId, request.SuggestedPatientId, StringComparison.OrdinalIgnoreCase)))
+                string.Equals(x.PasienId, request.SuggestedPatientId, StringComparison.OrdinalIgnoreCase),
+                null,
+                phonePatientIds.Contains(x.PasienId)))
             .OrderBy(x => x.Rank)
             .ThenBy(x => x.PatientName, StringComparer.OrdinalIgnoreCase)
             .ThenBy(x => x.Id, StringComparer.OrdinalIgnoreCase)
@@ -508,9 +540,12 @@ public sealed class AdmisiRajalPatientContextHandler :
         PasienPersonView patient,
         string keyword,
         bool suggested,
-        string? nik = null)
+        string? nik = null,
+        bool matchedByPhone = false)
     {
-        var exact = EqualsNormalized(patient.PasienId, keyword) || EqualsNormalized(nik, keyword);
+        var exactIdentifier = EqualsNormalized(patient.PasienId, keyword)
+            || EqualsNormalized(nik, keyword);
+        var exact = exactIdentifier || matchedByPhone;
         return new AdmisiRajalPatientContextResult(
             PatientContextKind.Patient,
             patient.PasienId,
@@ -528,7 +563,7 @@ public sealed class AdmisiRajalPatientContextHandler :
             patient.IsActive ? "Active" : "Inactive",
             null,
             null,
-            exact ? "ExactIdentifier" : "PatientName",
+            exactIdentifier ? "ExactIdentifier" : matchedByPhone ? "ExactPhone" : "PatientName",
             exact,
             Rank(exact, suggested, false, false, patient.Person.PersonName, keyword, !patient.IsActive),
             []);

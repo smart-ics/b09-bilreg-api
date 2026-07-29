@@ -191,6 +191,31 @@ The broad frontend/core-identifier recognition may continue to control
 debouncing. Only the canonical value produced by
 `normalizeRegistrationIdInput` is sent to the backend.
 
+### 4.3 Exact phone keywords
+
+A phone keyword is an optional `+` followed by 8–15 decimal digits:
+
+```text
+081234567890
++6281234567890
+```
+
+Phone matching is exact after trimming. The search does not convert `+62` to
+`08`, strip punctuation, or perform suffix/contains matching.
+
+Patient phone lookup must check:
+
+```text
+tc_mr.fs_tlp_pasien
+tc_mr.fs_no_hp
+tc_mr_telp.fs_no_telp
+```
+
+The child-table lookup uses `EXISTS`, all values are parameterized, and results
+are deduplicated by `tc_mr.fs_mr`. Numeric keywords may be meaningful as both a
+Patient/MR identifier and a phone, so phone matches are unioned with the
+existing Patient matches.
+
 ## 5. Date-filter rules
 
 ### 5.1 Normal searches
@@ -485,9 +510,12 @@ Recommended behavior:
 A converted Booking should resolve to Registration even in `Booking` scope.
 Hiding it would make the lifecycle appear to disappear after registration.
 
-If strict source filtering is required later, it should be introduced as a
-separate explicit UI behavior and documented as overriding lifecycle
-resolution.
+`Patient` scope is strict for transactional results: the backend may use an
+exact Registration to resolve its Patient, but it must not emit Booking or
+Registration items. In `Booking` scope, related Registrations may originate
+only from matched Bookings. In `Registration` scope, related Registrations may
+originate from matched Patients so MR, NIK, and phone searches can resolve the
+dated Registration.
 
 ## 11. Confirmation behavior
 
@@ -840,6 +868,10 @@ identity differs.
 - The backend receives only the canonical full Registration ID for simplified
   searches.
 - Noncanonical or invalid Registration-like inputs do not bypass the date.
+- Exact phone searches check `tc_mr.fs_tlp_pasien`, `tc_mr.fs_no_hp`, and
+  `tc_mr_telp.fs_no_telp`.
+- Phone searches do not normalize country/local formats or perform fuzzy
+  matching.
 
 ### Lifecycle behavior
 
@@ -899,6 +931,11 @@ identity differs.
 26. Historical Registration confirmation ignores the selected date.
 27. Booking confirmation rejects a different visit date.
 28. Booking confirmation resolves to a Registration created after search.
+29. Exact phone finds Patients from each supported phone field and deduplicates
+    repeated MR rows.
+30. Patient scope emits no Booking or Registration items.
+31. Booking scope does not resolve a Registration from a direct Patient match
+    when no Booking matched.
 
 ## 17. Implementation sequence
 

@@ -157,6 +157,32 @@ private static readonly Regex FullRegistrationIdPattern =
 Backend tidak mengubah `RG891` menjadi `RG00000891`. Normalisasi bentuk ringkas
 sepenuhnya merupakan tanggung jawab frontend.
 
+### Keyword nomor telepon
+
+Keyword telepon adalah tanda `+` opsional yang diikuti 8–15 angka:
+
+```text
+081234567890
++6281234567890
+```
+
+Pencarian dilakukan secara exact setelah `trim`. Sistem tidak mengubah `+62`
+menjadi `08`, tidak menghapus tanda baca, dan tidak memakai pencarian
+suffix/contains.
+
+Sumber nomor yang diperiksa:
+
+```text
+tc_mr.fs_tlp_pasien
+tc_mr.fs_no_hp
+tc_mr_telp.fs_no_telp
+```
+
+Gunakan SQL parameter dan `EXISTS` untuk `tc_mr_telp`, lalu deduplikasi hasil
+berdasarkan `tc_mr.fs_mr`. Keyword numerik dapat sekaligus bermakna MR dan
+telepon, sehingga hasil phone search digabung dengan hasil Patient search
+lainnya.
+
 ## 5. Aturan filter tanggal
 
 ### Pencarian biasa
@@ -409,6 +435,13 @@ konteks transaksi, bukan filter sumber yang mutlak.
 Jika Booking sudah menjadi Registration, hasil tidak boleh hilang hanya karena
 scope saat itu `Booking`.
 
+`Patient` scope bersifat ketat untuk hasil transaksi: backend boleh membaca
+Registration exact untuk menemukan Patient, tetapi tidak boleh mengirim item
+Booking atau Registration. Pada `Booking` scope, Registration terkait hanya
+boleh berasal dari Booking yang ditemukan. Pada `Registration` scope,
+Registration terkait boleh berasal dari Patient yang ditemukan agar pencarian
+MR, NIK, dan telepon dapat menemukan registrasi pada tanggal terpilih.
+
 ## 11. Konfirmasi hasil
 
 Hasil pencarian hanya preview. Saat pengguna menekan konfirmasi, backend harus
@@ -612,6 +645,10 @@ harus memenuhi `fd_tgl_masuk = 2026-07-29`.
 - [ ] Suffix lebih dari delapan digit tidak di-padding.
 - [ ] Input tanpa angka atau dengan separator tidak valid tidak di-padding.
 - [ ] Backend tidak melakukan konversi bentuk ringkas.
+- [ ] Nomor exact dicari pada `fs_tlp_pasien`, `fs_no_hp`, dan
+      `tc_mr_telp.fs_no_telp`.
+- [ ] Nomor tidak dikonversi antara format `+62` dan `08`.
+- [ ] Hasil phone search dideduplikasi berdasarkan MR.
 
 ### Lifecycle
 
@@ -624,6 +661,9 @@ harus memenuhi `fd_tgl_masuk = 2026-07-29`.
       pencarian biasa.
 - [ ] Rekonsiliasi dilakukan sebelum limit.
 - [ ] `total` dan `bestMatch` tidak menghitung Booking yang disembunyikan.
+- [ ] Patient scope tidak mengirim Booking atau Registration.
+- [ ] Booking scope tidak mengambil Registration hanya dari direct Patient
+      ketika tidak ada Booking yang cocok.
 
 ### Konfirmasi
 
@@ -661,6 +701,9 @@ Backend:
 13. konfirmasi historical Registration;
 14. konfirmasi Booking dengan tanggal berbeda ditolak;
 15. race: Registration dibuat setelah search tetapi sebelum konfirmasi Booking.
+16. exact phone pada ketiga sumber nomor;
+17. duplikasi nomor pada beberapa sumber tetap menghasilkan satu Patient;
+18. scope matrix untuk Patient, Booking, Registration, dan All.
 
 ## 17. Urutan implementasi
 
