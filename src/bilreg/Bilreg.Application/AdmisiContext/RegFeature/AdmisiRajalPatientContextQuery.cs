@@ -202,7 +202,8 @@ public sealed class AdmisiRajalPatientContextHandler :
         SearchExactRegistration(AdmisiRajalPatientContextSearchQuery request, string keyword)
     {
         var registration = _registrationReader.GetById(keyword);
-        if (registration is null) return ([], [], []);
+        if (registration is null || !IsInternalPatientId(registration.PatientId))
+            return ([], [], []);
 
         var registrationResult = ToRegistrationResult(
             registration,
@@ -247,10 +248,14 @@ public sealed class AdmisiRajalPatientContextHandler :
 
         var datedRegistrationViews = directPatientIds.Length == 0
             ? []
-            : _registrationReader.FindByPatientIds(businessDate, directPatientIds) ?? [];
+            : (_registrationReader.FindByPatientIds(businessDate, directPatientIds) ?? [])
+                .Where(x => IsInternalPatientId(x.PatientId))
+                .ToList();
         var bookingSuccessorViews = bookingRegistrationIds.Length == 0
             ? []
-            : _registrationReader.FindByRegistrationIds(bookingRegistrationIds) ?? [];
+            : (_registrationReader.FindByRegistrationIds(bookingRegistrationIds) ?? [])
+                .Where(x => IsInternalPatientId(x.PatientId))
+                .ToList();
         var bookingSuccessorIds = bookingSuccessorViews
             .Select(x => x.RegistrationId)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -308,6 +313,7 @@ public sealed class AdmisiRajalPatientContextHandler :
     {
         var period = new Periode(businessDate.ToDateTime(TimeOnly.MinValue));
         return _bookingRepo.ListDataTglBerobat(period)
+            .Where(x => IsInternalPatientId(x.Reg.PasienId))
             .Where(x => BookingMatches(x, keyword))
             .DistinctBy(x => x.BookingId, StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -318,10 +324,11 @@ public sealed class AdmisiRajalPatientContextHandler :
         string keyword,
         string? suggestedPatientId) =>
         patientIds
-            .Where(x => Real(x) is not null)
+            .Where(IsInternalPatientId)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Select(id => _pasienRepo.LoadEntity(PasienModel.Key(id)))
             .Where(x => x.HasValue)
+            .Where(x => IsInternalPatientId(x.Value.PasienId))
             .Select(x =>
             {
                 var patient = x.Value;
@@ -358,6 +365,7 @@ public sealed class AdmisiRajalPatientContextHandler :
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         return directData
             .Concat(phoneData)
+            .Where(x => IsInternalPatientId(x.PasienId))
             .DistinctBy(x => x.PasienId, StringComparer.OrdinalIgnoreCase)
             .Select(x => ToPatientResult(
                 x,
@@ -374,13 +382,18 @@ public sealed class AdmisiRajalPatientContextHandler :
     private AdmisiRajalPatientContextResult? GetBooking(string id, DateOnly businessDate)
     {
         var maybe = _bookingRepo.LoadEntity(BookingModel.Key(id));
-        if (!maybe.HasValue || maybe.Value.TglBerobat != businessDate) return null;
+        if (!maybe.HasValue
+            || maybe.Value.TglBerobat != businessDate
+            || !IsInternalPatientId(maybe.Value.Reg.PasienId))
+            return null;
         var booking = maybe.Value.ToSearchView();
         var registrationId = Real(booking.Reg.RegId);
         var successor = registrationId is null
             ? null
             : (_registrationReader.FindByRegistrationIds([registrationId]) ?? [])
-                .FirstOrDefault(x => EqualsNormalized(x.RegistrationId, registrationId));
+                .FirstOrDefault(x =>
+                    IsInternalPatientId(x.PatientId)
+                    && EqualsNormalized(x.RegistrationId, registrationId));
         return successor is null
             ? ToBookingResult(booking, businessDate, id, false)
             : ToRegistrationResult(successor, id, false, true);
@@ -389,13 +402,16 @@ public sealed class AdmisiRajalPatientContextHandler :
     private AdmisiRajalPatientContextResult? GetRegistration(string id, DateOnly businessDate)
     {
         var registration = _registrationReader.GetById(id);
-        return registration is null ? null : ToRegistrationResult(registration, id, false, false);
+        return registration is null || !IsInternalPatientId(registration.PatientId)
+            ? null
+            : ToRegistrationResult(registration, id, false, false);
     }
 
     private AdmisiRajalPatientContextResult? GetPatient(string id)
     {
+        if (!IsInternalPatientId(id)) return null;
         var maybe = _pasienRepo.LoadEntity(PasienModel.Key(id));
-        if (!maybe.HasValue) return null;
+        if (!maybe.HasValue || !IsInternalPatientId(maybe.Value.PasienId)) return null;
         var pasien = maybe.Value;
         return ToPatientResult(
             new PasienPersonView(pasien.PasienId, pasien.IsAktif, pasien.Person),
@@ -571,6 +587,10 @@ public sealed class AdmisiRajalPatientContextHandler :
 
     private static string? Real(string? value) =>
         string.IsNullOrWhiteSpace(value) || value.Trim() == "-" ? null : value.Trim();
+
+    private static bool IsInternalPatientId(string? patientId) =>
+        Real(patientId) is { } id
+        && !id.Contains('x', StringComparison.OrdinalIgnoreCase);
 
     private static string? Mask(string? value, int visibleSuffix)
     {

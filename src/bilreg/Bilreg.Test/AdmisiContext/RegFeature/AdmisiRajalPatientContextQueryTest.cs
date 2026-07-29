@@ -287,6 +287,80 @@ public class AdmisiRajalPatientContextQueryTest
     }
 
     [Fact]
+    public async Task NameSearch_ExcludesExternalPatientFromResultsAndRegistrationLookup()
+    {
+        const string externalPatientId = "3471373X0002291";
+        var pasienRepo = new Mock<IPasienRepo>();
+        pasienRepo.Setup(x => x.SearchPasien("ANI"))
+            .Returns([
+                PatientView(),
+                PatientView(externalPatientId, "ANI EXTERNAL")
+            ]);
+        var regRepo = new Mock<IRegistrationHistoryReader>();
+        regRepo.Setup(x => x.FindByPatientIds(
+                It.IsAny<DateOnly>(),
+                It.IsAny<IReadOnlyCollection<string>>()))
+            .Returns([]);
+        var sut = Handler(regRepo: regRepo, pasienRepo: pasienRepo);
+
+        var result = await sut.Handle(
+            new AdmisiRajalPatientContextSearchQuery("ANI", "2026-07-25"),
+            default);
+
+        result.Patients.Items.Should().ContainSingle(x => x.Id == "001234");
+        result.Patients.Items.Should().NotContain(x => x.Id == externalPatientId);
+        regRepo.Verify(x => x.FindByPatientIds(
+            new DateOnly(2026, 7, 25),
+            It.Is<IReadOnlyCollection<string>>(ids =>
+                ids.SequenceEqual(new[] { "001234" }))), Times.Once);
+    }
+
+    [Fact]
+    public async Task BookingSearch_ExcludesBookingForExternalPatient()
+    {
+        const string externalPatientId = "3471373X0002291";
+        var bookingRepo = new Mock<IBookingRepo>();
+        bookingRepo.Setup(x => x.ListDataTglBerobat(It.IsAny<Periode>()))
+            .Returns([Booking("BO1", "ANI", "0812") with
+            {
+                Reg = new RegReff("-", externalPatientId, "ANI")
+            }]);
+        var pasienRepo = new Mock<IPasienRepo>();
+        pasienRepo.Setup(x => x.SearchPasien("BO1")).Returns([]);
+        var sut = Handler(bookingRepo: bookingRepo, pasienRepo: pasienRepo);
+
+        var result = await sut.Handle(
+            new AdmisiRajalPatientContextSearchQuery("BO1", "2026-07-25"),
+            default);
+
+        result.Bookings.Items.Should().BeEmpty();
+        result.Patients.Items.Should().BeEmpty();
+        pasienRepo.Verify(
+            x => x.LoadEntity(It.IsAny<IPasienKey>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task PatientConfirmation_ExternalPatientId_IsNotFoundWithoutLoadingPatient()
+    {
+        const string externalPatientId = "3471373X0002291";
+        var pasienRepo = new Mock<IPasienRepo>(MockBehavior.Strict);
+        var sut = Handler(pasienRepo: pasienRepo);
+
+        var act = () => sut.Handle(
+            new AdmisiRajalPatientContextGetQuery(
+                PatientContextKind.Patient,
+                externalPatientId,
+                "2026-07-25"),
+            default);
+
+        await act.Should().ThrowAsync<KeyNotFoundException>();
+        pasienRepo.Verify(
+            x => x.LoadEntity(It.IsAny<IPasienKey>()),
+            Times.Never);
+    }
+
+    [Fact]
     public async Task SamePatientDateAndService_DoesNotSuppressBookingWithoutRegId()
     {
         var pasienRepo = new Mock<IPasienRepo>();
@@ -544,7 +618,7 @@ public class AdmisiRajalPatientContextQueryTest
                 AlamatType.Default,
                 new ContactType(JenisContactEnum.Phone, phone),
                 IdentitasType.Default),
-            RegModel.Default.ToReff(),
+            new RegReff("-", "001234", name),
             new DateOnly(2026, 7, 25),
             new TimeOnly(8, 0),
             new LayananReff("LY1", "Poli"),
