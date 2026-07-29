@@ -21,7 +21,7 @@ public sealed class RegistrationHistoryReader : IRegistrationHistoryReader
     public RegistrationSearchView? GetById(string registrationId)
     {
         var sql = SelectClause + """
-            WHERE reg.fs_kd_reg = @registrationId
+             WHERE reg.fs_kd_reg = @registrationId
               AND reg.fd_tgl_void = '3000-01-01'
             """;
         var parameters = new DynamicParameters();
