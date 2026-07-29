@@ -212,13 +212,7 @@ public sealed class AdmisiRajalPatientContextHandler :
                 request.SuggestedRegistrationId,
                 StringComparison.OrdinalIgnoreCase),
             false);
-        var registrations = request.Scope == PatientContextScope.Patient
-            ? new List<AdmisiRajalPatientContextResult>()
-            : [registrationResult];
-        return (
-            [],
-            registrations,
-            LoadPatients([registration.PatientId], keyword, request.SuggestedPatientId));
+        return ([], [registrationResult], []);
     }
 
     private (
@@ -230,11 +224,15 @@ public sealed class AdmisiRajalPatientContextHandler :
             string keyword,
             DateOnly businessDate)
     {
-        var bookingViews = Includes(request.Scope, PatientContextKind.Booking)
-            ? SearchBookingViews(keyword, businessDate)
-            : [];
+        var bookingViews = SearchBookingViews(keyword, businessDate);
         var directPatients = SearchPatients(request, keyword);
-        var registrationIds = bookingViews
+        var directPatientIds = directPatients
+            .Select(x => Real(x.PatientId))
+            .Where(x => x is not null)
+            .Cast<string>()
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        var bookingRegistrationIds = bookingViews
             .Select(x => Real(x.Reg.RegId))
             .Where(x => x is not null)
             .Cast<string>()
@@ -246,29 +244,27 @@ public sealed class AdmisiRajalPatientContextHandler :
             .Cast<string>()
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
-        var directPatientIds = directPatients
-            .Select(x => Real(x.PatientId))
-            .Where(x => x is not null)
-            .Cast<string>()
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-        var relatedPatientIds = request.Scope switch
+
+        var datedRegistrationViews = directPatientIds.Length == 0
+            ? []
+            : _registrationReader.FindByPatientIds(businessDate, directPatientIds) ?? [];
+        var bookingSuccessorViews = bookingRegistrationIds.Length == 0
+            ? []
+            : _registrationReader.FindByRegistrationIds(bookingRegistrationIds) ?? [];
+        var bookingSuccessorIds = bookingSuccessorViews
+            .Select(x => x.RegistrationId)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var allRegistrationViews = datedRegistrationViews
+            .Concat(bookingSuccessorViews)
+            .DistinctBy(x => x.RegistrationId, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var visibleRegistrationViews = request.Scope switch
         {
-            PatientContextScope.All => bookingPatientIds
-                .Concat(directPatientIds)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToArray(),
-            PatientContextScope.Booking => bookingPatientIds,
-            PatientContextScope.Registration => directPatientIds,
-            _ => []
+            PatientContextScope.Patient => [],
+            PatientContextScope.Booking => bookingSuccessorViews,
+            _ => allRegistrationViews
         };
-        var registrationViews = SearchRegistrationViews(
-            request,
-            keyword,
-            businessDate,
-            registrationIds,
-            relatedPatientIds);
-        var registrations = registrationViews
+        var registrations = visibleRegistrationViews
             .Select(x => ToRegistrationResult(
                 x,
                 keyword,
@@ -276,13 +272,18 @@ public sealed class AdmisiRajalPatientContextHandler :
                     x.RegistrationId,
                     request.SuggestedRegistrationId,
                     StringComparison.OrdinalIgnoreCase),
-                bookingViews.Any(booking => IsSuccessor(booking, x))))
+                bookingSuccessorIds.Contains(x.RegistrationId)))
+            .DistinctBy(x => x.Id, StringComparer.OrdinalIgnoreCase)
             .OrderBy(x => x.Rank)
             .ThenByDescending(x => x.VisitDate)
             .ThenBy(x => x.Id, StringComparer.OrdinalIgnoreCase)
             .ToList();
-        var bookings = bookingViews
-            .Where(x => !registrationViews.Any(registration => IsSuccessor(x, registration)))
+        var bookings = request.Scope is PatientContextScope.Patient
+                or PatientContextScope.Registration
+            ? []
+            : bookingViews
+                .Where(x => Real(x.Reg.RegId) is not { } registrationId
+                    || !bookingSuccessorIds.Contains(registrationId))
             .Select(x => ToBookingResult(
                 x,
                 businessDate,
@@ -294,10 +295,8 @@ public sealed class AdmisiRajalPatientContextHandler :
             .OrderBy(x => x.Rank)
             .ThenBy(x => x.Id, StringComparer.OrdinalIgnoreCase)
             .ToList();
-        var impliedPatientIds = bookingViews.Select(x => x.Reg.PasienId)
-            .Concat(registrationViews.Select(x => x.PatientId));
         var patients = directPatients
-            .Concat(LoadPatients(impliedPatientIds, keyword, request.SuggestedPatientId))
+            .Concat(LoadPatients(bookingPatientIds, keyword, request.SuggestedPatientId))
             .DistinctBy(x => x.Id, StringComparer.OrdinalIgnoreCase)
             .OrderBy(x => x.Rank)
             .ThenBy(x => x.Id, StringComparer.OrdinalIgnoreCase)
@@ -311,42 +310,6 @@ public sealed class AdmisiRajalPatientContextHandler :
         return _bookingRepo.ListDataTglBerobat(period)
             .Where(x => BookingMatches(x, keyword))
             .DistinctBy(x => x.BookingId, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-    }
-
-    private List<AdmisiRajalPatientContextResult> SearchBookings(
-        AdmisiRajalPatientContextSearchQuery request,
-        string keyword,
-        DateOnly businessDate)
-    {
-        return SearchBookingViews(keyword, businessDate)
-            .Select(x => ToBookingResult(
-                x,
-                businessDate,
-                keyword,
-                string.Equals(x.BookingId, request.SuggestedBookingId, StringComparison.OrdinalIgnoreCase)))
-            .OrderBy(x => x.Rank)
-            .ThenByDescending(x => x.VisitDate)
-            .ThenBy(x => x.Id, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-    }
-
-    private List<RegistrationSearchView> SearchRegistrationViews(
-        AdmisiRajalPatientContextSearchQuery request,
-        string keyword,
-        DateOnly businessDate,
-        IReadOnlyCollection<string> registrationIds,
-        IReadOnlyCollection<string> patientIds)
-    {
-        var direct = Includes(request.Scope, PatientContextKind.Registration)
-            ? _registrationReader.Search(keyword, businessDate) ?? []
-            : [];
-        var related = request.Scope == PatientContextScope.Patient
-            || (registrationIds.Count == 0 && patientIds.Count == 0)
-            ? []
-            : _registrationReader.FindRelated(businessDate, registrationIds, patientIds) ?? [];
-        return direct.Concat(related)
-            .DistinctBy(x => x.RegistrationId, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
 
@@ -372,23 +335,6 @@ public sealed class AdmisiRajalPatientContextHandler :
                     patient.Ktp.Nik);
             })
             .ToList();
-
-    private static bool IsSuccessor(BookingView booking, RegistrationSearchView registration)
-    {
-        var linkedRegistrationId = Real(booking.Reg.RegId);
-        if (linkedRegistrationId is not null)
-            return EqualsNormalized(registration.RegistrationId, linkedRegistrationId);
-
-        if (!EqualsNormalized(registration.PatientId, booking.Reg.PasienId)
-            || registration.AdmissionDate != booking.TglBerobat)
-            return false;
-
-        var bookingServiceId = Real(booking.Layanan.LayananId);
-        var registrationServiceId = Real(registration.ServiceId);
-        return bookingServiceId is null
-            || registrationServiceId is null
-            || EqualsNormalized(registrationServiceId, bookingServiceId);
-    }
 
     private List<AdmisiRajalPatientContextResult> SearchPatients(
         AdmisiRajalPatientContextSearchQuery request,
@@ -430,11 +376,11 @@ public sealed class AdmisiRajalPatientContextHandler :
         var maybe = _bookingRepo.LoadEntity(BookingModel.Key(id));
         if (!maybe.HasValue || maybe.Value.TglBerobat != businessDate) return null;
         var booking = maybe.Value.ToSearchView();
-        var related = _registrationReader.FindRelated(
-            businessDate,
-            Real(booking.Reg.RegId) is { } registrationId ? [registrationId] : [],
-            Real(booking.Reg.PasienId) is { } patientId ? [patientId] : []);
-        var successor = related.FirstOrDefault(x => IsSuccessor(booking, x));
+        var registrationId = Real(booking.Reg.RegId);
+        var successor = registrationId is null
+            ? null
+            : (_registrationReader.FindByRegistrationIds([registrationId]) ?? [])
+                .FirstOrDefault(x => EqualsNormalized(x.RegistrationId, registrationId));
         return successor is null
             ? ToBookingResult(booking, businessDate, id, false)
             : ToRegistrationResult(successor, id, false, true);
@@ -591,10 +537,6 @@ public sealed class AdmisiRajalPatientContextHandler :
         IReadOnlyList<AdmisiRajalPatientContextResult> items,
         int limit) =>
         new(items.Take(limit).ToList(), items.Count, items.Count > limit);
-
-    private static bool Includes(PatientContextScope scope, PatientContextKind kind) =>
-        scope == PatientContextScope.All
-        || string.Equals(scope.ToString(), kind.ToString(), StringComparison.OrdinalIgnoreCase);
 
     private static string NormalizeKeyword(string value) => value.Trim().ToUpperInvariant();
 

@@ -4,12 +4,12 @@ public interface IRegistrationHistoryReader
 {
     RegistrationSearchView? GetById(string registrationId);
 
-    IReadOnlyList<RegistrationSearchView> Search(string keyword, DateOnly admissionDate);
-
-    IReadOnlyList<RegistrationSearchView> FindRelated(
+    IReadOnlyList<RegistrationSearchView> FindByPatientIds(
         DateOnly admissionDate,
-        IReadOnlyCollection<string> registrationIds,
         IReadOnlyCollection<string> patientIds);
+
+    IReadOnlyList<RegistrationSearchView> FindByRegistrationIds(
+        IReadOnlyCollection<string> registrationIds);
 }
 
 public sealed record RegistrationSearchView(

@@ -30,54 +30,56 @@ public sealed class RegistrationHistoryReader : IRegistrationHistoryReader
         return Map(connection.ReadSingle<RegistrationSearchDto>(sql, parameters));
     }
 
-    public IReadOnlyList<RegistrationSearchView> Search(string keyword, DateOnly admissionDate)
-    {
-        var sql = SelectClause + """
-            WHERE reg.fd_tgl_masuk = @admissionDate
-              AND reg.fd_tgl_void = '3000-01-01'
-              AND (
-                    reg.fs_kd_reg = @keyword
-                 OR reg.fs_mr = @keyword
-                 OR pasien.fs_nm_pasien LIKE @containsKeyword
-              )
-            """;
-        var parameters = new DynamicParameters();
-        parameters.AddParam("@admissionDate", admissionDate.ToString("yyyy-MM-dd"), SqlDbType.VarChar);
-        parameters.AddParam("@keyword", keyword, SqlDbType.VarChar);
-        parameters.AddParam("@containsKeyword", $"%{EscapeLike(keyword)}%", SqlDbType.VarChar);
-        using var connection = new SqlConnection(ConnStringHelper.Get(_options));
-        return (connection.Read<RegistrationSearchDto>(sql, parameters) ?? [])
-            .Select(Map)
-            .Where(x => x is not null)
-            .Cast<RegistrationSearchView>()
-            .ToList();
-    }
-
-    public IReadOnlyList<RegistrationSearchView> FindRelated(
+    public IReadOnlyList<RegistrationSearchView> FindByPatientIds(
         DateOnly admissionDate,
-        IReadOnlyCollection<string> registrationIds,
         IReadOnlyCollection<string> patientIds)
     {
-        var normalizedRegistrationIds = registrationIds.Where(Real).Distinct().ToArray();
-        var normalizedPatientIds = patientIds.Where(Real).Distinct().ToArray();
-        if (normalizedRegistrationIds.Length == 0 && normalizedPatientIds.Length == 0) return [];
+        var normalizedPatientIds = patientIds.Where(Real)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        if (normalizedPatientIds.Length == 0) return [];
 
         var sql = SelectClause + """
             WHERE reg.fd_tgl_masuk = @admissionDate
               AND reg.fd_tgl_void = '3000-01-01'
-              AND (reg.fs_kd_reg IN @registrationIds OR reg.fs_mr IN @patientIds)
+              AND reg.fs_mr IN @patientIds
             """;
         var parameters = new
         {
             admissionDate = admissionDate.ToString("yyyy-MM-dd"),
-            registrationIds = normalizedRegistrationIds.Length == 0 ? ["\0"] : normalizedRegistrationIds,
-            patientIds = normalizedPatientIds.Length == 0 ? ["\0"] : normalizedPatientIds
+            patientIds = normalizedPatientIds
         };
         using var connection = new SqlConnection(ConnStringHelper.Get(_options));
         return (connection.Query<RegistrationSearchDto>(sql, parameters) ?? [])
             .Select(Map)
             .Where(x => x is not null)
             .Cast<RegistrationSearchView>()
+            .DistinctBy(x => x.RegistrationId, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    public IReadOnlyList<RegistrationSearchView> FindByRegistrationIds(
+        IReadOnlyCollection<string> registrationIds)
+    {
+        var normalizedRegistrationIds = registrationIds.Where(Real)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        if (normalizedRegistrationIds.Length == 0) return [];
+
+        var sql = SelectClause + """
+            WHERE reg.fd_tgl_void = '3000-01-01'
+              AND reg.fs_kd_reg IN @registrationIds
+            """;
+        var parameters = new
+        {
+            registrationIds = normalizedRegistrationIds
+        };
+        using var connection = new SqlConnection(ConnStringHelper.Get(_options));
+        return (connection.Query<RegistrationSearchDto>(sql, parameters) ?? [])
+            .Select(Map)
+            .Where(x => x is not null)
+            .Cast<RegistrationSearchView>()
+            .DistinctBy(x => x.RegistrationId, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
 
@@ -115,9 +117,6 @@ public sealed class RegistrationHistoryReader : IRegistrationHistoryReader
 
     private static bool Real(string? value) =>
         !string.IsNullOrWhiteSpace(value) && value.Trim() != "-";
-
-    private static string EscapeLike(string value) =>
-        value.Replace("[", "[[]").Replace("%", "[%]").Replace("_", "[_]");
 
     private const string SelectClause = """
         SELECT

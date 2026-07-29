@@ -63,12 +63,16 @@ public class AdmisiRajalPatientContextQueryTest
     }
 
     [Fact]
-    public async Task RegistrationSearch_ReturnsOnlyTheSelectedBusinessDate()
+    public async Task RegistrationSearch_UsesDirectPatientIdsAndSelectedBusinessDate()
     {
+        var pasienRepo = new Mock<IPasienRepo>();
+        pasienRepo.Setup(x => x.SearchPasien("001234")).Returns([PatientView()]);
         var regRepo = new Mock<IRegistrationHistoryReader>();
-        regRepo.Setup(x => x.Search("001234", new DateOnly(2026, 7, 25)))
+        regRepo.Setup(x => x.FindByPatientIds(
+                new DateOnly(2026, 7, 25),
+                It.Is<IReadOnlyCollection<string>>(ids => ids.SequenceEqual(new[] { "001234" }))))
             .Returns([Registration("RG-TODAY", "2026-07-25")]);
-        var sut = Handler(regRepo: regRepo);
+        var sut = Handler(regRepo: regRepo, pasienRepo: pasienRepo);
 
         var result = await sut.Handle(
             new AdmisiRajalPatientContextSearchQuery("001234", "2026-07-25"),
@@ -110,41 +114,56 @@ public class AdmisiRajalPatientContextQueryTest
         result.Registrations.Items.Should().ContainSingle(x => x.Id == "RG00000891");
         result.Bookings.Items.Should().BeEmpty();
         regRepo.Verify(
-            x => x.Search(It.IsAny<string>(), It.IsAny<DateOnly>()),
+            x => x.FindByPatientIds(
+                It.IsAny<DateOnly>(),
+                It.IsAny<IReadOnlyCollection<string>>()),
+            Times.Never);
+        regRepo.Verify(
+            x => x.FindByRegistrationIds(It.IsAny<IReadOnlyCollection<string>>()),
             Times.Never);
     }
 
-    [Fact]
-    public async Task ExactRegistrationId_InPatientScope_ReturnsOnlyPatient()
+    [Theory]
+    [InlineData(PatientContextScope.All)]
+    [InlineData(PatientContextScope.Patient)]
+    [InlineData(PatientContextScope.Booking)]
+    [InlineData(PatientContextScope.Registration)]
+    public async Task ExactRegistrationId_ReturnsOnlyRegistrationRegardlessOfScope(
+        PatientContextScope scope)
     {
         var regRepo = new Mock<IRegistrationHistoryReader>();
         regRepo.Setup(x => x.GetById("RG00000891"))
             .Returns(Registration("RG00000891", "2025-04-10"));
-        var pasienRepo = new Mock<IPasienRepo>();
-        pasienRepo.Setup(x => x.LoadEntity(It.IsAny<IPasienKey>()))
-            .Returns(MayBe.From(PatientModel()));
-        var sut = Handler(regRepo: regRepo, pasienRepo: pasienRepo);
+        var pasienRepo = new Mock<IPasienRepo>(MockBehavior.Strict);
+        var bookingRepo = new Mock<IBookingRepo>(MockBehavior.Strict);
+        var sut = Handler(bookingRepo, regRepo, pasienRepo);
 
         var result = await sut.Handle(
             new AdmisiRajalPatientContextSearchQuery(
                 "RG00000891",
                 "2026-07-25",
-                PatientContextScope.Patient),
+                scope),
             default);
 
-        result.Patients.Items.Should().ContainSingle(x => x.Id == "001234");
-        result.Registrations.Items.Should().BeEmpty();
+        result.Registrations.Items.Should().ContainSingle(x => x.Id == "RG00000891");
+        result.Patients.Items.Should().BeEmpty();
         result.Bookings.Items.Should().BeEmpty();
     }
 
     [Fact]
-    public async Task PatientScope_DoesNotQueryOrReturnTransactionalContexts()
+    public async Task PatientScope_DerivesAllCandidatesButReturnsOnlyPatients()
     {
         var pasienRepo = new Mock<IPasienRepo>();
         pasienRepo.Setup(x => x.SearchPasien("ANI"))
             .Returns([PatientView()]);
-        var regRepo = new Mock<IRegistrationHistoryReader>(MockBehavior.Strict);
-        var bookingRepo = new Mock<IBookingRepo>(MockBehavior.Strict);
+        var regRepo = new Mock<IRegistrationHistoryReader>();
+        regRepo.Setup(x => x.FindByPatientIds(
+                new DateOnly(2026, 7, 25),
+                It.IsAny<IReadOnlyCollection<string>>()))
+            .Returns([Registration("RG00000001", "2026-07-25")]);
+        var bookingRepo = new Mock<IBookingRepo>();
+        bookingRepo.Setup(x => x.ListDataTglBerobat(It.IsAny<Periode>()))
+            .Returns([Booking("BO1", "ANI", "0812")]);
         var sut = Handler(bookingRepo, regRepo, pasienRepo);
 
         var result = await sut.Handle(
@@ -157,10 +176,14 @@ public class AdmisiRajalPatientContextQueryTest
         result.Patients.Items.Should().ContainSingle();
         result.Bookings.Items.Should().BeEmpty();
         result.Registrations.Items.Should().BeEmpty();
+        bookingRepo.Verify(x => x.ListDataTglBerobat(It.IsAny<Periode>()), Times.Once);
+        regRepo.Verify(x => x.FindByPatientIds(
+            new DateOnly(2026, 7, 25),
+            It.IsAny<IReadOnlyCollection<string>>()), Times.Once);
     }
 
     [Fact]
-    public async Task BookingScope_DoesNotResolveRegistrationFromDirectPatientAlone()
+    public async Task BookingScope_HidesPatientDerivedRegistrationButStillDerivesIt()
     {
         var pasienRepo = new Mock<IPasienRepo>();
         pasienRepo.Setup(x => x.SearchPasien("ANI"))
@@ -180,11 +203,58 @@ public class AdmisiRajalPatientContextQueryTest
         result.Patients.Items.Should().ContainSingle();
         result.Registrations.Items.Should().BeEmpty();
         regRepo.Verify(
-            x => x.FindRelated(
-                It.IsAny<DateOnly>(),
-                It.IsAny<IReadOnlyCollection<string>>(),
-                It.IsAny<IReadOnlyCollection<string>>()),
-            Times.Never);
+            x => x.FindByPatientIds(
+                new DateOnly(2026, 7, 25),
+                It.Is<IReadOnlyCollection<string>>(ids => ids.Contains("001234"))),
+            Times.Once);
+    }
+
+    [Theory]
+    [InlineData(PatientContextScope.All, 0, 2, 1)]
+    [InlineData(PatientContextScope.Patient, 0, 0, 1)]
+    [InlineData(PatientContextScope.Booking, 0, 1, 1)]
+    [InlineData(PatientContextScope.Registration, 0, 2, 1)]
+    public async Task OrdinarySearch_AppliesScopeAfterDerivationAndReconciliation(
+        PatientContextScope scope,
+        int expectedBookings,
+        int expectedRegistrations,
+        int expectedPatients)
+    {
+        var pasienRepo = new Mock<IPasienRepo>();
+        pasienRepo.Setup(x => x.SearchPasien("ANI")).Returns([PatientView()]);
+        pasienRepo.Setup(x => x.LoadEntity(It.IsAny<IPasienKey>()))
+            .Returns(MayBe.From(PatientModel()));
+        var bookingRepo = new Mock<IBookingRepo>();
+        bookingRepo.Setup(x => x.ListDataTglBerobat(It.IsAny<Periode>()))
+            .Returns([Booking("BO1", "ANI", "0812") with
+            {
+                Reg = new RegReff("RG-SUCCESSOR", "001234", "ANI")
+            }]);
+        var regRepo = new Mock<IRegistrationHistoryReader>();
+        regRepo.Setup(x => x.FindByPatientIds(
+                new DateOnly(2026, 7, 25),
+                It.IsAny<IReadOnlyCollection<string>>()))
+            .Returns([Registration("RG-DATED", "2026-07-25")]);
+        regRepo.Setup(x => x.FindByRegistrationIds(
+                It.IsAny<IReadOnlyCollection<string>>()))
+            .Returns([Registration("RG-SUCCESSOR", "2025-01-01")]);
+        var sut = Handler(bookingRepo, regRepo, pasienRepo);
+
+        var result = await sut.Handle(
+            new AdmisiRajalPatientContextSearchQuery(
+                "ANI",
+                "2026-07-25",
+                scope),
+            default);
+
+        result.Bookings.Total.Should().Be(expectedBookings);
+        result.Registrations.Total.Should().Be(expectedRegistrations);
+        result.Patients.Total.Should().Be(expectedPatients);
+        regRepo.Verify(x => x.FindByPatientIds(
+            new DateOnly(2026, 7, 25),
+            It.IsAny<IReadOnlyCollection<string>>()), Times.Once);
+        regRepo.Verify(x => x.FindByRegistrationIds(
+            It.IsAny<IReadOnlyCollection<string>>()), Times.Once);
     }
 
     [Fact]
@@ -196,10 +266,8 @@ public class AdmisiRajalPatientContextQueryTest
         pasienRepo.Setup(x => x.SearchPasienByPhone(phone))
             .Returns([PatientView(phone: phone)]);
         var regRepo = new Mock<IRegistrationHistoryReader>();
-        regRepo.Setup(x => x.Search(phone, new DateOnly(2026, 7, 25))).Returns([]);
-        regRepo.Setup(x => x.FindRelated(
+        regRepo.Setup(x => x.FindByPatientIds(
                 new DateOnly(2026, 7, 25),
-                It.Is<IReadOnlyCollection<string>>(ids => ids.Count == 0),
                 It.Is<IReadOnlyCollection<string>>(ids => ids.Contains("001234"))))
             .Returns([Registration("RG00000001", "2026-07-25")]);
         var sut = Handler(regRepo: regRepo, pasienRepo: pasienRepo);
@@ -219,8 +287,10 @@ public class AdmisiRajalPatientContextQueryTest
     }
 
     [Fact]
-    public async Task SamePatientDateAndService_RegistrationSuppressesUnlinkedBooking()
+    public async Task SamePatientDateAndService_DoesNotSuppressBookingWithoutRegId()
     {
+        var pasienRepo = new Mock<IPasienRepo>();
+        pasienRepo.Setup(x => x.SearchPasien("ANI")).Returns([PatientView()]);
         var bookingRepo = new Mock<IBookingRepo>();
         var booking = Booking("BO1", "ANI", "0812") with
         {
@@ -229,41 +299,14 @@ public class AdmisiRajalPatientContextQueryTest
         bookingRepo.Setup(x => x.ListDataTglBerobat(It.IsAny<Periode>()))
             .Returns([booking]);
         var regRepo = new Mock<IRegistrationHistoryReader>();
-        regRepo.Setup(x => x.FindRelated(
+        regRepo.Setup(x => x.FindByPatientIds(
                 It.IsAny<DateOnly>(),
-                It.IsAny<IReadOnlyCollection<string>>(),
                 It.IsAny<IReadOnlyCollection<string>>()))
             .Returns([Registration("RG00000001", "2026-07-25")]);
-        var sut = Handler(bookingRepo, regRepo);
+        var sut = Handler(bookingRepo, regRepo, pasienRepo);
 
         var result = await sut.Handle(
-            new AdmisiRajalPatientContextSearchQuery("BO1", "2026-07-25"),
-            default);
-
-        result.Bookings.Items.Should().BeEmpty();
-        result.Registrations.Items.Should().ContainSingle();
-    }
-
-    [Fact]
-    public async Task DifferentServiceRegistration_DoesNotSuppressUnlinkedBooking()
-    {
-        var bookingRepo = new Mock<IBookingRepo>();
-        var booking = Booking("BO1", "ANI", "0812") with
-        {
-            Reg = new RegReff("-", "001234", "ANI")
-        };
-        bookingRepo.Setup(x => x.ListDataTglBerobat(It.IsAny<Periode>()))
-            .Returns([booking]);
-        var regRepo = new Mock<IRegistrationHistoryReader>();
-        regRepo.Setup(x => x.FindRelated(
-                It.IsAny<DateOnly>(),
-                It.IsAny<IReadOnlyCollection<string>>(),
-                It.IsAny<IReadOnlyCollection<string>>()))
-            .Returns([Registration("RG00000001", "2026-07-25", serviceId: "LY2")]);
-        var sut = Handler(bookingRepo, regRepo);
-
-        var result = await sut.Handle(
-            new AdmisiRajalPatientContextSearchQuery("BO1", "2026-07-25"),
+            new AdmisiRajalPatientContextSearchQuery("ANI", "2026-07-25"),
             default);
 
         result.Bookings.Items.Should().ContainSingle(x => x.Id == "BO1");
@@ -271,17 +314,93 @@ public class AdmisiRajalPatientContextQueryTest
     }
 
     [Fact]
+    public async Task BookingSearch_HydratesExistingPatient()
+    {
+        var bookingRepo = new Mock<IBookingRepo>();
+        bookingRepo.Setup(x => x.ListDataTglBerobat(It.IsAny<Periode>()))
+            .Returns([Booking("BO1", "ANI", "0812") with
+            {
+                Reg = new RegReff("-", "001234", "ANI")
+            }]);
+        var pasienRepo = new Mock<IPasienRepo>();
+        pasienRepo.Setup(x => x.SearchPasien("BO1")).Returns([]);
+        pasienRepo.Setup(x => x.LoadEntity(It.IsAny<IPasienKey>()))
+            .Returns(MayBe.From(PatientModel()));
+        var sut = Handler(bookingRepo: bookingRepo, pasienRepo: pasienRepo);
+
+        var result = await sut.Handle(
+            new AdmisiRajalPatientContextSearchQuery("BO1", "2026-07-25"),
+            default);
+
+        result.Bookings.Items.Should().ContainSingle(x => x.Id == "BO1");
+        result.Patients.Items.Should().ContainSingle(x => x.Id == "001234");
+    }
+
+    [Fact]
+    public async Task BookingSearch_RetainsTransactionWhenPatientDoesNotExist()
+    {
+        var bookingRepo = new Mock<IBookingRepo>();
+        bookingRepo.Setup(x => x.ListDataTglBerobat(It.IsAny<Periode>()))
+            .Returns([Booking("BO1", "ANI", "0812") with
+            {
+                Reg = new RegReff("-", "NOT-IN-MR", "ANI")
+            }]);
+        var pasienRepo = new Mock<IPasienRepo>();
+        pasienRepo.Setup(x => x.SearchPasien("BO1")).Returns([]);
+        pasienRepo.Setup(x => x.LoadEntity(It.IsAny<IPasienKey>()))
+            .Returns(MayBe<PasienModel>.None);
+        var sut = Handler(bookingRepo: bookingRepo, pasienRepo: pasienRepo);
+
+        var result = await sut.Handle(
+            new AdmisiRajalPatientContextSearchQuery("BO1", "2026-07-25"),
+            default);
+
+        result.Bookings.Items.Should().ContainSingle(x => x.Id == "BO1");
+        result.Patients.Items.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task BookingSuccessorLookup_IgnoresDateAndSuppressesOnlyMatchingRegId()
+    {
+        var bookingRepo = new Mock<IBookingRepo>();
+        var booking = Booking("BO1", "ANI", "0812") with
+        {
+            Reg = new RegReff("RG00000001", "001234", "ANI")
+        };
+        bookingRepo.Setup(x => x.ListDataTglBerobat(It.IsAny<Periode>()))
+            .Returns([booking]);
+        var regRepo = new Mock<IRegistrationHistoryReader>();
+        regRepo.Setup(x => x.FindByRegistrationIds(
+                It.Is<IReadOnlyCollection<string>>(ids =>
+                    ids.SequenceEqual(new[] { "RG00000001" }))))
+            .Returns([Registration("RG00000001", "2025-01-01", serviceId: "LY2")]);
+        var sut = Handler(bookingRepo, regRepo);
+
+        var result = await sut.Handle(
+            new AdmisiRajalPatientContextSearchQuery("BO1", "2026-07-25"),
+            default);
+
+        result.Bookings.Items.Should().BeEmpty();
+        result.Registrations.Items.Should().ContainSingle(x => x.Id == "RG00000001");
+        result.Registrations.Items.Single().VisitDate.Should().Be("2025-01-01");
+    }
+
+    [Fact]
     public async Task DischargedRegistration_IsReturnedWithDischargedState()
     {
+        var pasienRepo = new Mock<IPasienRepo>();
+        pasienRepo.Setup(x => x.SearchPasien("ANI")).Returns([PatientView()]);
         var regRepo = new Mock<IRegistrationHistoryReader>();
-        regRepo.Setup(x => x.Search("ANI", new DateOnly(2026, 7, 25)))
+        regRepo.Setup(x => x.FindByPatientIds(
+                new DateOnly(2026, 7, 25),
+                It.IsAny<IReadOnlyCollection<string>>()))
             .Returns([
                 Registration(
                     "RG00000001",
                     "2026-07-25",
                     exitDate: new DateOnly(2026, 7, 25))
             ]);
-        var sut = Handler(regRepo: regRepo);
+        var sut = Handler(regRepo: regRepo, pasienRepo: pasienRepo);
 
         var result = await sut.Handle(
             new AdmisiRajalPatientContextSearchQuery("ANI", "2026-07-25"),
@@ -297,10 +416,8 @@ public class AdmisiRajalPatientContextQueryTest
         bookingRepo.Setup(x => x.LoadEntity(It.IsAny<IBookingKey>()))
             .Returns(MayBe.From(BookingModelForConfirmation()));
         var regRepo = new Mock<IRegistrationHistoryReader>();
-        regRepo.Setup(x => x.FindRelated(
-                new DateOnly(2026, 7, 25),
-                It.IsAny<IReadOnlyCollection<string>>(),
-                It.IsAny<IReadOnlyCollection<string>>()))
+        regRepo.Setup(x => x.FindByRegistrationIds(
+                It.Is<IReadOnlyCollection<string>>(ids => ids.Contains("RG00000001"))))
             .Returns([Registration("RG00000001", "2026-07-25")]);
         var sut = Handler(bookingRepo, regRepo);
 
@@ -327,10 +444,8 @@ public class AdmisiRajalPatientContextQueryTest
         bookingRepo.Setup(x => x.ListDataTglBerobat(It.IsAny<Periode>()))
             .Returns([booking]);
         var regRepo = new Mock<IRegistrationHistoryReader>();
-        regRepo.Setup(x => x.FindRelated(
-                new DateOnly(2026, 7, 25),
-                It.IsAny<IReadOnlyCollection<string>>(),
-                It.IsAny<IReadOnlyCollection<string>>()))
+        regRepo.Setup(x => x.FindByRegistrationIds(
+                It.Is<IReadOnlyCollection<string>>(ids => ids.Contains("RG00000001"))))
             .Returns([Registration("RG00000001", "2026-07-25")]);
         regRepo.Setup(x => x.GetById("RG00000001"))
             .Returns(Registration("RG00000001", "2026-07-25"));
@@ -397,10 +512,11 @@ public class AdmisiRajalPatientContextQueryTest
         if (regRepo is null)
         {
             regRepo = new Mock<IRegistrationHistoryReader>();
-            regRepo.Setup(x => x.Search(It.IsAny<string>(), It.IsAny<DateOnly>())).Returns([]);
-            regRepo.Setup(x => x.FindRelated(
+            regRepo.Setup(x => x.FindByPatientIds(
                     It.IsAny<DateOnly>(),
-                    It.IsAny<IReadOnlyCollection<string>>(),
+                    It.IsAny<IReadOnlyCollection<string>>()))
+                .Returns([]);
+            regRepo.Setup(x => x.FindByRegistrationIds(
                     It.IsAny<IReadOnlyCollection<string>>()))
                 .Returns([]);
         }
@@ -498,7 +614,7 @@ public class AdmisiRajalPatientContextQueryTest
             new DateTime(2026, 7, 24),
             PatientView().Person,
             "001234",
-            new RegReff("-", "001234", "ANI"),
+            new RegReff("RG00000001", "001234", "ANI"),
             new DateOnly(2026, 7, 25),
             new TimeOnly(8, 0),
             new LayananReff("LY1", "Poli"),

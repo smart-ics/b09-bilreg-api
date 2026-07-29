@@ -24,8 +24,8 @@ The design has four primary goals:
 1. use `ta_registrasi`, rather than `BILRG_RegAktif`, as the authoritative
    Registration search source;
 2. include discharged registrations in historical search results;
-3. always show a matching Patient, while showing only the most advanced
-   Booking/Registration stage for the same visit;
+3. union the Patient, dated Booking, and dated Registration sub-searches while
+   replacing a Booking only through its explicit `RegId` successor;
 4. apply the selected visit date consistently, except when the backend receives
    a complete Registration ID; the frontend may produce that complete ID from
    either full or simplified user input.
@@ -268,14 +268,11 @@ WHERE aa.fs_kd_reg = @registrationId
   AND aa.fd_tgl_void = '3000-01-01'
 ```
 
-After finding the Registration, the handler loads its Patient by
-`ta_registrasi.fs_mr = tc_mr.fs_mr`.
-
-Because Registration is the later lifecycle stage, the response does not need
-to return its earlier Booking. The result is:
+This is a terminal fast path intended for editing a known Registration. No
+Patient or Booking search is performed. The result is exactly:
 
 ```text
-Patient + Registration
+Registration
 ```
 
 not:
@@ -285,9 +282,8 @@ Patient + Booking + Registration
 ```
 
 If an exact Registration ID does not exist in `ta_registrasi`, the normal
-response is empty. A fallback lookup of `BILRG_Booking.RegId` may be added for
-diagnostics or legacy inconsistency handling, but it is not required for the
-canonical flow.
+response is empty. The handler must not fall through to Patient or Booking
+search.
 
 ## 6. Search algorithm
 
@@ -299,19 +295,17 @@ flowchart TD
 
     B -->|"Yes"| C["Load ta_registrasi by fs_kd_reg without date filter"]
     C --> D{"Valid, non-voided Registration found?"}
-    D -->|"Yes"| E["Load tc_mr by Registration.fs_mr"]
-    E --> F["Return Patient + Registration"]
+    D -->|"Yes"| F["Return exactly one Registration"]
     D -->|"No"| G["Return empty result"]
 
-    B -->|"No"| H["Search tc_mr without date filter"]
-    B -->|"No"| I["Search BILRG_Booking by TglBerobat"]
-    B -->|"No"| J["Search ta_registrasi by fd_tgl_masuk"]
-
-    I --> K["Resolve lifecycle relationships"]
-    J --> K
-    K --> L["Suppress superseded Booking results"]
-    H --> M["Always retain matching Patient results"]
-    L --> N["Rank and limit reconciled results"]
+    B -->|"No"| H["SubSearch-1: keyword → tc_mr"]
+    B -->|"No"| I["SubSearch-2: keyword + date → BILRG_Booking"]
+    H --> J["SubSearch-3: Patient IDs + date → ta_registrasi"]
+    I --> K["SubSearch-4: non-empty Booking.RegId → ta_registrasi; no date"]
+    K --> L["Suppress SubSearch-2 rows with the same RegId"]
+    H --> M["Optionally hydrate tc_mr from Booking.PasienId"]
+    J --> N["Union, deduplicate, rank, and limit"]
+    L --> N
     M --> N
 ```
 
@@ -326,14 +320,9 @@ if (IsFullRegistrationId(keyword))
     if (registration is null || registration.IsVoided)
         return EmptyResponse(request.BusinessDate);
 
-    var patient = patientRepo.LoadEntity(
-        PasienModel.Key(registration.PatientId));
-
     return BuildResponse(
         businessDate: request.BusinessDate,
-        patients: patient.HasValue
-            ? [ToPatientResult(patient.Value, registration.PatientId)]
-            : [],
+        patients: [],
         bookings: [],
         registrations: [ToRegistrationResult(registration)]);
 }
@@ -347,34 +336,45 @@ This path intentionally returns a historical Registration even when
 Pseudocode:
 
 ```csharp
-var patients = SearchPatients(keyword);
+var patients = SearchPatients(keyword);                    // SubSearch-1
+var bookings = SearchBookings(keyword, businessDate);      // SubSearch-2
 
-var bookings = SearchBookings(
-    keyword,
-    visitDate: businessDate);
+var datedRegistrations = registrationReader.FindByPatientIds(
+    businessDate,
+    patients.Select(x => x.PatientId));                    // SubSearch-3
 
-var registrations = SearchRegistrations(
-    keyword,
-    admissionDate: businessDate,
-    relatedRegistrationIds: bookings.Select(x => x.RegistrationId),
-    relatedPatientIds: bookings.Select(x => x.PatientId)
-        .Concat(patients.Select(x => x.PatientId)));
+var bookingSuccessors = registrationReader.FindByRegistrationIds(
+    bookings
+        .Select(x => x.RegistrationId)
+        .Where(x => !string.IsNullOrWhiteSpace(x)));        // SubSearch-4
 
-var visibleBookings = bookings.Where(booking =>
-    !registrations.Any(registration =>
-        IsExplicitSuccessor(booking, registration) ||
-        IsSamePatientVisit(booking, registration)));
+var successorIds = bookingSuccessors
+    .Select(x => x.RegistrationId)
+    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+var visibleBookings = bookings.Where(x =>
+    string.IsNullOrWhiteSpace(x.RegistrationId) ||
+    !successorIds.Contains(x.RegistrationId));
+
+// Design decision: a Booking may refer to a Patient not yet present in tc_mr.
+// Hydration is best effort and must never suppress the transaction.
+patients = UnionPatients(
+    patients,
+    LoadExistingPatients(bookings.Select(x => x.PatientId)));
 
 return BuildResponse(
     businessDate: request.BusinessDate,
     patients: patients,
     bookings: visibleBookings,
-    registrations: registrations);
+    registrations: UnionRegistrations(
+        datedRegistrations,
+        bookingSuccessors));
 ```
 
-The related-ID inputs are important. For example, a Booking ID search may find
-the Booking first, after which its `RegId` must be used to retrieve the
-Registration even though the original keyword is not itself a Registration ID.
+SubSearch-3 is date-bounded because it represents visits of directly matched
+Patients on the selected date. SubSearch-4 is deliberately not date-bounded:
+an explicit `Booking.RegId` is an authoritative relationship even if the
+Booking and Registration dates are inconsistent.
 
 ## 7. Lifecycle reconciliation
 
@@ -382,7 +382,9 @@ Patient and transaction-stage results have different display rules.
 
 ### 7.1 Patient rule
 
-A matching or resolved Patient is always retained.
+Every Patient found by SubSearch-1 is retained. For each matched Booking, the
+handler should also attempt to load `tc_mr` by `Booking.PasienId` so an exact
+Booking-ID search normally displays both the Patient and transaction.
 
 Examples:
 
@@ -393,9 +395,14 @@ Examples:
 | Patient + Registration | Patient + Registration |
 | Patient + Booking + Registration | Patient + Registration |
 
-For exact Registration ID and exact Booking ID searches, the Patient may need
-to be resolved through the matched transaction rather than through a direct
-keyword match against `tc_mr`.
+This is a best-effort invariant, not a referential-integrity assumption. A
+Booking may legitimately reference a patient that has not yet been recorded in
+`tc_mr`. In that case the Booking or its Registration successor remains
+visible as a single transaction result. The missing Patient must not cause the
+transaction to be discarded or the request to fail.
+
+The exact Registration-ID fast path is the explicit exception: it returns only
+the Registration and does not load Patient.
 
 ### 7.2 Explicit Booking-to-Registration relationship
 
@@ -408,27 +415,14 @@ BILRG_Booking.RegId = ta_registrasi.fs_kd_reg
 If this relationship exists, the Booking is suppressed and the Registration is
 shown.
 
-### 7.3 Fallback relationship
+### 7.3 No inferred Booking suppression
 
-Some legacy or incomplete rows may not contain a usable `BILRG_Booking.RegId`.
-The fallback relationship is:
-
-```text
-BILRG_Booking.PasienId = ta_registrasi.fs_mr
-AND BILRG_Booking.TglBerobat = ta_registrasi.fd_tgl_masuk
-```
-
-When both records contain a meaningful service key, also require:
-
-```text
-BILRG_Booking.LayananId = ta_registrasi.fs_kd_layanan
-```
-
-This prevents an unrelated Registration from suppressing another Booking when
-one patient has multiple services on the same date.
-
-The explicit `RegId` relationship always takes precedence over fallback
-matching.
+A Booking is suppressed only when its non-empty `RegId` is found as
+`ta_registrasi.fs_kd_reg` by SubSearch-4. Patient/date/service similarity must
+not suppress a Booking. If `Booking.RegId` is empty, that Booking remains
+visible even when SubSearch-3 finds a Registration for the same Patient and
+date; they are separate union records unless the explicit key proves
+succession.
 
 ### 7.4 Deduplication order
 
@@ -495,27 +489,24 @@ resolved Registration highly even though the typed keyword differs from
 
 ## 10. Scope semantics
 
-Because Patient must always be displayed, `scope` should be treated as a
-transaction-context preference rather than a strict source exclusion.
+Scope is a presentation filter applied after the four sub-searches and
+reconciliation. It must not change how SubSearch-1 through SubSearch-4 derive
+or reconcile candidates.
 
 Recommended behavior:
 
 | Scope | Complete Registration ID | Other keyword |
 |---|---|---|
-| `All` | Patient + Registration | Patient + reconciled Booking/Registration |
-| `Patient` | Patient resolved from Registration | Patient matches |
-| `Booking` | Patient + Registration successor | Patient + unsuperseded Booking or its Registration successor |
-| `Registration` | Patient + Registration | Patient + Registration for selected date |
+| `All` | Registration only | Patient + reconciled Booking/Registration |
+| `Patient` | Registration only | Patient matches |
+| `Booking` | Registration only | Patient + unsuperseded Booking or its Registration successor |
+| `Registration` | Registration only | Patient + Registration |
 
-A converted Booking should resolve to Registration even in `Booking` scope.
-Hiding it would make the lifecycle appear to disappear after registration.
-
-`Patient` scope is strict for transactional results: the backend may use an
-exact Registration to resolve its Patient, but it must not emit Booking or
-Registration items. In `Booking` scope, related Registrations may originate
-only from matched Bookings. In `Registration` scope, related Registrations may
-originate from matched Patients so MR, NIK, and phone searches can resolve the
-dated Registration.
+The exact Registration-ID fast path overrides scope and always returns the one
+Registration when found. For ordinary searches, Patient results remain visible
+alongside the transaction type selected by scope. A Registration reached
+through SubSearch-4 remains the successor of a matched Booking in `Booking`
+scope.
 
 ## 11. Confirmation behavior
 
@@ -554,8 +545,11 @@ BILRG_Booking.TglBerobat = businessDate
 
 Before confirming the Booking, the handler rechecks:
 
-1. `Booking.RegId = ta_registrasi.fs_kd_reg`;
-2. if necessary, Patient + date + service fallback.
+```text
+Booking.RegId = ta_registrasi.fs_kd_reg
+```
+
+No Patient/date/service inference is used.
 
 If a Registration was created after the search response, confirmation returns
 the Registration context instead of confirming a stale Booking context.
@@ -576,14 +570,12 @@ public interface IRegistrationHistoryReader
 {
     RegistrationSearchView? GetById(string registrationId);
 
-    IReadOnlyList<RegistrationSearchView> Search(
-        string keyword,
-        DateOnly admissionDate);
-
-    IReadOnlyList<RegistrationSearchView> FindRelated(
+    IReadOnlyList<RegistrationSearchView> FindByPatientIds(
         DateOnly admissionDate,
-        IReadOnlyCollection<string> registrationIds,
         IReadOnlyCollection<string> patientIds);
+
+    IReadOnlyList<RegistrationSearchView> FindByRegistrationIds(
+        IReadOnlyCollection<string> registrationIds);
 }
 ```
 
@@ -638,10 +630,11 @@ keywords.
 2. classify canonical complete Registration IDs separately;
 3. implement the exact-ID fast path;
 4. use date-bounded `ta_registrasi` search for other keywords;
-5. hydrate Patients implied by Booking/Registration matches;
-6. reconcile lifecycle stages before limiting;
-7. derive Registration state from exit/void audit fields;
-8. repeat reconciliation during confirmation.
+5. execute the four sub-searches with their distinct date rules;
+6. hydrate Booking Patients on a best-effort basis;
+7. suppress a Booking only through an explicit `RegId` successor;
+8. derive Registration state from exit/void audit fields;
+9. repeat reconciliation during confirmation.
 
 ## 13. Frontend implementation
 
@@ -836,17 +829,17 @@ satisfy:
 ta_registrasi.fd_tgl_masuk = 2026-07-29
 ```
 
-### 14.7 Same patient, different service
+### 14.7 Booking without an explicit Registration ID
 
 Available on the selected date:
 
 ```text
-Booking: Patient 001234, Service POLI-A, no RegId
-Registration: Patient 001234, Service POLI-B
+Booking: Patient 001234, no RegId
+Registration: Patient 001234, same selected date
 ```
 
-The Registration does not suppress the Booking because the fallback service
-identity differs.
+Both records remain visible. The Registration does not suppress the Booking
+because no explicit `Booking.RegId` proves that it is the successor.
 
 ## 15. Acceptance criteria
 
@@ -875,13 +868,17 @@ identity differs.
 
 ### Lifecycle behavior
 
-- A found Patient remains visible.
+- Exact Registration ID returns exactly one Registration and runs no other
+  source search.
+- A found Patient remains visible in ordinary searches.
+- A matched Booking remains valid when its `PasienId` does not exist in
+  `tc_mr`; the response may contain only that transaction.
 - An unregistered Booking remains visible.
 - A Registration suppresses its related Booking.
-- Explicit `Booking.RegId` matching takes precedence.
-- Fallback matching uses Patient + date and, where available, service.
-- A Registration from another date does not suppress a Booking in a normal
-  date-bounded search.
+- Suppression requires explicit
+  `BILRG_Booking.RegId = ta_registrasi.fs_kd_reg`.
+- SubSearch-4 ignores the selected date.
+- Patient/date/service similarity alone never suppresses a Booking.
 - A voided Registration does not suppress a Booking.
 
 ### Confirmation behavior
@@ -905,9 +902,10 @@ identity differs.
 2. Patient plus unregistered Booking returns both.
 3. Patient plus linked active Registration suppresses Booking.
 4. Patient plus linked discharged Registration suppresses Booking.
-5. A Booking without `RegId` is suppressed by same Patient/date/service
+5. A Booking without `RegId` remains visible beside a same-Patient/date
    Registration.
-6. Same Patient/date but different service does not suppress Booking.
+6. A Booking with a non-empty `RegId` resolves its Registration without a date
+   filter and is suppressed.
 7. Normal Booking search excludes a different `TglBerobat`.
 8. Normal Registration search excludes a different `fd_tgl_masuk`.
 9. Full `RG00000891` input is submitted unchanged.
@@ -921,10 +919,12 @@ identity differs.
     padded.
 17. The backend does not implement simplified-ID conversion.
 18. Complete Registration ID returns a different-date Registration.
-19. Complete Registration ID also returns its Patient.
+19. Complete Registration ID returns exactly one Registration and no Patient
+    or Booking.
 20. Complete Registration ID does not return the earlier Booking.
 21. Noncanonical Registration-like input remains date-bounded.
-22. Direct Registration without Booking returns Patient + Registration.
+22. SubSearch-3 returns dated Registrations only for Patients found by
+    SubSearch-1.
 23. Voided Registration is excluded and does not suppress Booking.
 24. Reconciliation occurs before `limitPerType`.
 25. Search totals and `bestMatch` exclude suppressed Booking rows.
@@ -936,6 +936,10 @@ identity differs.
 30. Patient scope emits no Booking or Registration items.
 31. Booking scope does not resolve a Registration from a direct Patient match
     when no Booking matched.
+32. Exact Booking search hydrates Patient from `Booking.PasienId` when the
+    `tc_mr` row exists.
+33. Exact Booking search still returns the transaction when the referenced
+    `tc_mr` row does not exist.
 
 ## 17. Implementation sequence
 

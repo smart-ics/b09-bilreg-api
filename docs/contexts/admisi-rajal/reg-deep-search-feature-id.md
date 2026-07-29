@@ -21,7 +21,8 @@ Perubahan utama yang harus dicapai:
 1. sumber hasil Registration dipindahkan dari `BILRG_RegAktif` ke
    `ta_registrasi`;
 2. registrasi yang sudah discharge tetap dapat ditemukan;
-3. hasil Patient selalu ditampilkan jika pasien ditemukan;
+3. hasil Patient, Booking bertanggal, dan Registration bertanggal digabung,
+   sedangkan Booking hanya diganti melalui relasi `RegId` yang eksplisit;
 4. jika Booking sudah berubah menjadi Registration, tampilkan Registration dan
    sembunyikan Booking;
 5. Booking dan Registration mengikuti tanggal kunjungan yang dipilih;
@@ -230,13 +231,9 @@ WHERE reg.fs_kd_reg = @registrationId
   AND reg.fd_tgl_void = '3000-01-01'
 ```
 
-Setelah Registration ditemukan:
-
-1. ambil `ta_registrasi.fs_mr`;
-2. cari Patient melalui `tc_mr.fs_mr`;
-3. tampilkan Patient dan Registration;
-4. jangan tampilkan Booking karena Registration merupakan tahap yang lebih
-   akhir.
+Jalur ini khusus untuk mengedit Registration yang ID-nya sudah diketahui.
+Backend tidak menjalankan pencarian Patient maupun Booking. Jika ditemukan,
+hasilnya tepat satu record Registration.
 
 Contoh:
 
@@ -258,18 +255,17 @@ flowchart TD
 
     C -->|"Ya"| D["Cari ta_registrasi berdasarkan fs_kd_reg tanpa filter tanggal"]
     D --> E{"Registration ditemukan dan tidak void?"}
-    E -->|"Ya"| F["Cari Patient berdasarkan registration.fs_mr"]
-    F --> G["Tampilkan Patient + Registration"]
+    E -->|"Ya"| G["Tampilkan tepat satu Registration"]
     E -->|"Tidak"| H["Hasil kosong"]
 
-    C -->|"Tidak"| I["Cari Patient tanpa filter tanggal"]
-    C -->|"Tidak"| J["Cari Booking berdasarkan TglBerobat"]
-    C -->|"Tidak"| K["Cari Registration berdasarkan fd_tgl_masuk"]
-    J --> L["Rekonsiliasi Booking dan Registration"]
-    K --> L
-    L --> M["Sembunyikan Booking yang sudah menjadi Registration"]
-    I --> N["Pertahankan hasil Patient"]
-    M --> O["Ranking dan limit"]
+    C -->|"Tidak"| I["SubSearch-1: keyword ke tc_mr"]
+    C -->|"Tidak"| J["SubSearch-2: keyword + tanggal ke BILRG_Booking"]
+    I --> K["SubSearch-3: Patient ID + tanggal ke ta_registrasi"]
+    J --> L["SubSearch-4: Booking.RegId terisi ke ta_registrasi tanpa tanggal"]
+    L --> M["Sembunyikan Booking dengan RegId yang sama"]
+    J --> N["Coba lengkapi Patient dari Booking.PasienId"]
+    K --> O["Union, deduplikasi, ranking, dan limit"]
+    M --> O
     N --> O
 ```
 
@@ -283,14 +279,9 @@ if (IsFullRegistrationId(keyword))
     if (registration is null || registration.IsVoided)
         return EmptyResponse(request.BusinessDate);
 
-    var patient = patientRepo.LoadEntity(
-        PasienModel.Key(registration.PatientId));
-
     return BuildResponse(
         businessDate: request.BusinessDate,
-        patients: patient.HasValue
-            ? [ToPatientResult(patient.Value)]
-            : [],
+        patients: [],
         bookings: [],
         registrations: [ToRegistrationResult(registration)]);
 }
@@ -299,24 +290,33 @@ if (IsFullRegistrationId(keyword))
 Pseudocode jalur biasa:
 
 ```csharp
-var patients = SearchPatients(keyword);
-var bookings = SearchBookings(keyword, businessDate);
+var patients = SearchPatients(keyword);                    // SubSearch-1
+var bookings = SearchBookings(keyword, businessDate);      // SubSearch-2
 
-var registrations = SearchRegistrations(
-    keyword,
+var datedRegistrations = registrationReader.FindByPatientIds(
     businessDate,
-    relatedRegistrationIds: bookings.Select(x => x.RegistrationId),
-    relatedPatientIds: bookings.Select(x => x.PatientId)
-        .Concat(patients.Select(x => x.PatientId)));
+    patients.Select(x => x.PatientId));                    // SubSearch-3
 
-var visibleBookings = bookings.Where(booking =>
-    !registrations.Any(registration =>
-        IsExplicitSuccessor(booking, registration) ||
-        IsSamePatientVisit(booking, registration)));
+var bookingSuccessors = registrationReader.FindByRegistrationIds(
+    bookings.Select(x => x.RegistrationId)
+        .Where(x => !string.IsNullOrWhiteSpace(x)));        // SubSearch-4
+
+var successorIds = bookingSuccessors
+    .Select(x => x.RegistrationId)
+    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+var visibleBookings = bookings.Where(x =>
+    string.IsNullOrWhiteSpace(x.RegistrationId) ||
+    !successorIds.Contains(x.RegistrationId));
+
+patients = UnionPatients(
+    patients,
+    LoadExistingPatients(bookings.Select(x => x.PatientId)));
 ```
 
-Related IDs penting ketika pengguna mencari Booking ID. Keyword Booking tidak
-akan cocok langsung dengan `ta_registrasi`, sehingga backend harus:
+SubSearch-3 wajib mengikuti tanggal karena berasal dari Patient yang cocok
+langsung. SubSearch-4 sengaja tidak mengikuti tanggal karena `Booking.RegId`
+adalah relasi eksplisit. Ketika pengguna mencari Booking ID, backend harus:
 
 1. menemukan Booking;
 2. membaca `Booking.RegId`;
@@ -325,7 +325,7 @@ akan cocok langsung dengan `ta_registrasi`, sehingga backend harus:
 
 ## 7. Aturan tampilan lifecycle
 
-### Patient selalu dipertahankan
+### Patient dipertahankan bila tersedia
 
 | Data yang tersedia | Hasil yang ditampilkan |
 |---|---|
@@ -334,9 +334,15 @@ akan cocok langsung dengan `ta_registrasi`, sehingga backend harus:
 | Patient + Registration | Patient + Registration |
 | Patient + Booking + Registration | Patient + Registration |
 
-Untuk pencarian berdasarkan Booking ID atau Registration ID, Patient mungkin
-tidak cocok langsung dengan keyword. Backend harus mengambil Patient melalui
-`PasienId` atau `fs_mr` dari transaksi yang ditemukan.
+Untuk Booking yang cocok, backend sebaiknya mencoba mengambil Patient melalui
+`Booking.PasienId`. Akan tetapi, Booking dapat menunjuk pasien yang belum
+tercatat di `tc_mr`. Ini adalah kondisi data yang valid untuk deep search:
+Booking atau Registration penerusnya tetap harus tampil sebagai satu-satunya
+record transaksi. Ketiadaan Patient tidak boleh menghilangkan transaksi atau
+membuat request gagal.
+
+Jalur exact RegId adalah pengecualian yang disengaja: jalur tersebut selalu
+menghasilkan Registration saja dan tidak mengambil Patient.
 
 ### Relasi utama
 
@@ -348,23 +354,13 @@ BILRG_Booking.RegId = ta_registrasi.fs_kd_reg
 
 Relasi eksplisit ini selalu menjadi prioritas.
 
-### Relasi fallback
+### Tidak ada suppression berdasarkan dugaan
 
-Untuk data lama yang belum memiliki `Booking.RegId`, gunakan:
-
-```text
-BILRG_Booking.PasienId = ta_registrasi.fs_mr
-AND BILRG_Booking.TglBerobat = ta_registrasi.fd_tgl_masuk
-```
-
-Jika kedua data memiliki kode layanan yang valid, tambahkan:
-
-```text
-BILRG_Booking.LayananId = ta_registrasi.fs_kd_layanan
-```
-
-Pemeriksaan layanan mencegah Registration pada poli lain menyembunyikan Booking
-yang sebenarnya berbeda.
+Booking hanya disembunyikan bila `Booking.RegId` terisi dan SubSearch-4
+menemukan `ta_registrasi.fs_kd_reg` yang sama. Kemiripan pasien, tanggal, atau
+layanan tidak boleh menyembunyikan Booking. Jika `Booking.RegId` kosong,
+Booking tetap tampil walaupun SubSearch-3 menemukan Registration untuk pasien
+dan tanggal yang sama.
 
 ### Urutan pemrosesan
 
@@ -422,25 +418,24 @@ dipertahankan.
 
 ## 10. Arti scope
 
-Karena Patient harus selalu tampil, `scope` sebaiknya dianggap sebagai preferensi
-konteks transaksi, bukan filter sumber yang mutlak.
+`scope` diterapkan sebagai filter tampilan setelah empat sub-search dan
+rekonsiliasi selesai. Scope tidak boleh mengubah cara kandidat dicari atau
+direkonsiliasi.
 
 | Scope | RegId lengkap | Keyword lain |
 |---|---|---|
-| `All` | Patient + Registration | Patient + Booking/Registration hasil rekonsiliasi |
-| `Patient` | Patient dari Registration | Patient yang cocok |
-| `Booking` | Patient + Registration penerus | Patient + Booking atau Registration penerus |
-| `Registration` | Patient + Registration | Patient + Registration pada tanggal terpilih |
+| `All` | Registration saja | Patient + Booking/Registration hasil rekonsiliasi |
+| `Patient` | Registration saja | Patient yang cocok |
+| `Booking` | Registration saja | Patient + Booking atau Registration penerus |
+| `Registration` | Registration saja | Patient + Registration |
 
 Jika Booking sudah menjadi Registration, hasil tidak boleh hilang hanya karena
 scope saat itu `Booking`.
 
-`Patient` scope bersifat ketat untuk hasil transaksi: backend boleh membaca
-Registration exact untuk menemukan Patient, tetapi tidak boleh mengirim item
-Booking atau Registration. Pada `Booking` scope, Registration terkait hanya
-boleh berasal dari Booking yang ditemukan. Pada `Registration` scope,
-Registration terkait boleh berasal dari Patient yang ditemukan agar pencarian
-MR, NIK, dan telepon dapat menemukan registrasi pada tanggal terpilih.
+Jalur exact RegId mengabaikan scope dan selalu mengembalikan satu Registration
+bila ditemukan. Untuk keyword biasa, Patient tetap dapat ditampilkan bersama
+jenis transaksi yang dipilih scope. Registration dari SubSearch-4 tetap
+merupakan penerus Booking pada scope `Booking`.
 
 ## 11. Konfirmasi hasil
 
@@ -491,14 +486,12 @@ public interface IRegistrationHistoryReader
 {
     RegistrationSearchView? GetById(string registrationId);
 
-    IReadOnlyList<RegistrationSearchView> Search(
-        string keyword,
-        DateOnly admissionDate);
-
-    IReadOnlyList<RegistrationSearchView> FindRelated(
+    IReadOnlyList<RegistrationSearchView> FindByPatientIds(
         DateOnly admissionDate,
-        IReadOnlyCollection<string> registrationIds,
         IReadOnlyCollection<string> patientIds);
+
+    IReadOnlyList<RegistrationSearchView> FindByRegistrationIds(
+        IReadOnlyCollection<string> registrationIds);
 }
 ```
 
@@ -607,11 +600,11 @@ Tanggal masuk  : 2025-04-10
 Hasil:
 
 ```text
-Patient 001234
 Registration RG00000891 · Discharged · 2025-04-10
 ```
 
-Tanggal UI diabaikan karena backend menerima RegId lengkap.
+Tanggal UI diabaikan karena backend menerima RegId lengkap. Patient dan
+Booking tidak dicari ataupun ditampilkan.
 
 ### RegId tidak kanonis
 
@@ -652,13 +645,15 @@ harus memenuhi `fd_tgl_masuk = 2026-07-29`.
 
 ### Lifecycle
 
-- [ ] Patient selalu tampil jika dapat ditemukan atau diturunkan dari transaksi.
+- [ ] Exact RegId menghasilkan tepat satu Registration tanpa Patient/Booking.
+- [ ] Patient hasil SubSearch-1 selalu tampil.
+- [ ] Patient dari Booking dilengkapi bila row `tc_mr` tersedia.
+- [ ] Booking tetap tampil bila `PasienId` belum ada di `tc_mr`.
 - [ ] Booking tanpa Registration tetap tampil.
 - [ ] Registration menyembunyikan Booking terkait.
-- [ ] Relasi `Booking.RegId` menjadi prioritas.
-- [ ] Fallback memakai pasien + tanggal + layanan bila tersedia.
-- [ ] Registration dari tanggal lain tidak menyembunyikan Booking dalam
-      pencarian biasa.
+- [ ] Suppression hanya memakai relasi eksplisit `Booking.RegId`.
+- [ ] SubSearch-4 tidak memakai filter tanggal.
+- [ ] Kesamaan pasien/tanggal/layanan tidak menyembunyikan Booking.
 - [ ] Rekonsiliasi dilakukan sebelum limit.
 - [ ] `total` dan `bestMatch` tidak menghitung Booking yang disembunyikan.
 - [ ] Patient scope tidak mengirim Booking atau Registration.
@@ -690,12 +685,12 @@ Backend:
 2. Patient dengan Booking yang belum diregistrasikan;
 3. Booking dengan active Registration;
 4. Booking dengan discharged Registration;
-5. fallback pasien/tanggal/layanan;
-6. layanan berbeda tidak saling menyembunyikan;
+5. Booking tanpa RegId tetap tampil bersama Registration pasien/tanggal sama;
+6. Booking dengan RegId menemukan Registration tanpa filter tanggal;
 7. Booking pada tanggal lain tidak muncul;
 8. Registration pada tanggal lain tidak muncul dalam pencarian biasa;
 9. exact RegId menemukan registrasi pada tanggal lain;
-10. exact RegId juga mengembalikan Patient;
+10. exact RegId mengembalikan tepat satu Registration tanpa Patient/Booking;
 11. voided Registration tidak muncul dan tidak menyembunyikan Booking;
 12. rekonsiliasi sebelum limit;
 13. konfirmasi historical Registration;
@@ -704,6 +699,8 @@ Backend:
 16. exact phone pada ketiga sumber nomor;
 17. duplikasi nomor pada beberapa sumber tetap menghasilkan satu Patient;
 18. scope matrix untuk Patient, Booking, Registration, dan All.
+19. exact Booking melengkapi Patient bila `tc_mr` tersedia;
+20. exact Booking tetap mengembalikan transaksi bila `tc_mr` tidak tersedia.
 
 ## 17. Urutan implementasi
 
