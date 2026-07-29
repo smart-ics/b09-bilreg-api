@@ -10,7 +10,7 @@ using System.Security.Claims;
 namespace Bilreg.Api.Controllers.AdmisiContext.AntrianFeature;
 
 [ApiController]
-[Authorize(Policy = AdmissionQueueConfigurationPolicies.PolicyName)]
+//[Authorize(Policy = AdmissionQueueConfigurationPolicies.PolicyName)]
 [Route("api/v1/admission-queue/configuration")]
 public sealed class AdmissionQueueConfigurationController : ControllerBase
 {
