@@ -81,6 +81,7 @@ public static class InfrastructureService
             .AddScoped<IWaitingListWorklistDal, WaitingListWorklistDal>()
             .AddScoped<IRegistrationCancellationEligibilityDal, RegistrationCancellationEligibilityDal>()
             .AddScoped<IRegistrationCancellationEligibilityRepo, RegistrationCancellationEligibilityRepo>()
+            .AddScoped<IRegistrationHistoryReader, RegistrationHistoryReader>()
             .AddScoped<ICoordinatedCancellationRepo, CoordinatedCancellationRepo>()
             .AddScoped<IOperationalWorklistDal, OperationalWorklistDal>()
             .AddScoped<IJourneyDal, JourneyDal>()

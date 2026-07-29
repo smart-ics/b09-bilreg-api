@@ -62,12 +62,9 @@ public class AdmisiRajalPatientContextQueryTest
     [Fact]
     public async Task RegistrationSearch_ReturnsOnlyTheSelectedBusinessDate()
     {
-        var regRepo = new Mock<IRegAktifRepo>();
-        regRepo.Setup(x => x.ListData("001234"))
-            .Returns([
-                Registration("RG-TODAY", "2026-07-25"),
-                Registration("RG-OTHER", "2026-07-24")
-            ]);
+        var regRepo = new Mock<IRegistrationHistoryReader>();
+        regRepo.Setup(x => x.Search("001234", new DateOnly(2026, 7, 25)))
+            .Returns([Registration("RG-TODAY", "2026-07-25")]);
         var sut = Handler(regRepo: regRepo);
 
         var result = await sut.Handle(
@@ -78,22 +75,68 @@ public class AdmisiRajalPatientContextQueryTest
     }
 
     [Fact]
-    public async Task RegistrationConfirmation_RejectsADifferentBusinessDate()
+    public async Task RegistrationConfirmation_AcceptsADifferentBusinessDate()
     {
-        var regRepo = new Mock<IRegAktifRepo>();
-        var registration = RegAktifModel.Default;
-        regRepo.Setup(x => x.LoadEntity(It.IsAny<IRegKey>()))
-            .Returns(MayBe.From(registration));
+        var regRepo = new Mock<IRegistrationHistoryReader>();
+        regRepo.Setup(x => x.GetById("RG00000001"))
+            .Returns(Registration("RG00000001", "2025-01-01"));
         var sut = Handler(regRepo: regRepo);
 
-        var act = () => sut.Handle(
+        var result = await sut.Handle(
             new AdmisiRajalPatientContextGetQuery(
                 PatientContextKind.Registration,
-                "RG1",
+                "RG00000001",
                 "2026-07-25"),
             default);
 
-        await act.Should().ThrowAsync<KeyNotFoundException>();
+        result.VisitDate.Should().Be("2025-01-01");
+    }
+
+    [Fact]
+    public async Task ExactRegistrationId_ReturnsHistoricalRegistrationWithoutBooking()
+    {
+        var regRepo = new Mock<IRegistrationHistoryReader>();
+        regRepo.Setup(x => x.GetById("RG00000891"))
+            .Returns(Registration("RG00000891", "2025-04-10"));
+        var sut = Handler(regRepo: regRepo);
+
+        var result = await sut.Handle(
+            new AdmisiRajalPatientContextSearchQuery("RG00000891", "2026-07-25"),
+            default);
+
+        result.Registrations.Items.Should().ContainSingle(x => x.Id == "RG00000891");
+        result.Bookings.Items.Should().BeEmpty();
+        regRepo.Verify(
+            x => x.Search(It.IsAny<string>(), It.IsAny<DateOnly>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task LinkedRegistration_SuppressesBookingBeforeTotals()
+    {
+        var bookingRepo = new Mock<IBookingRepo>();
+        var booking = Booking("BO1", "ANI", "0812") with
+        {
+            Reg = new RegReff("RG00000001", "001234", "ANI")
+        };
+        bookingRepo.Setup(x => x.ListDataTglBerobat(It.IsAny<Periode>()))
+            .Returns([booking]);
+        var regRepo = new Mock<IRegistrationHistoryReader>();
+        regRepo.Setup(x => x.FindRelated(
+                new DateOnly(2026, 7, 25),
+                It.IsAny<IReadOnlyCollection<string>>(),
+                It.IsAny<IReadOnlyCollection<string>>()))
+            .Returns([Registration("RG00000001", "2026-07-25")]);
+        regRepo.Setup(x => x.GetById("RG00000001"))
+            .Returns(Registration("RG00000001", "2026-07-25"));
+        var sut = Handler(bookingRepo, regRepo);
+
+        var result = await sut.Handle(
+            new AdmisiRajalPatientContextSearchQuery("BO1", "2026-07-25"),
+            default);
+
+        result.Bookings.Total.Should().Be(0);
+        result.Registrations.Items.Should().ContainSingle(x => x.Id == "RG00000001");
     }
 
     [Theory]
@@ -136,7 +179,7 @@ public class AdmisiRajalPatientContextQueryTest
 
     private static AdmisiRajalPatientContextHandler Handler(
         Mock<IBookingRepo>? bookingRepo = null,
-        Mock<IRegAktifRepo>? regRepo = null,
+        Mock<IRegistrationHistoryReader>? regRepo = null,
         Mock<IPasienRepo>? pasienRepo = null,
         Mock<ILogger<AdmisiRajalPatientContextHandler>>? logger = null)
     {
@@ -147,8 +190,13 @@ public class AdmisiRajalPatientContextQueryTest
         }
         if (regRepo is null)
         {
-            regRepo = new Mock<IRegAktifRepo>();
-            regRepo.Setup(x => x.ListData(It.IsAny<string>())).Returns([]);
+            regRepo = new Mock<IRegistrationHistoryReader>();
+            regRepo.Setup(x => x.Search(It.IsAny<string>(), It.IsAny<DateOnly>())).Returns([]);
+            regRepo.Setup(x => x.FindRelated(
+                    It.IsAny<DateOnly>(),
+                    It.IsAny<IReadOnlyCollection<string>>(),
+                    It.IsAny<IReadOnlyCollection<string>>()))
+                .Returns([]);
         }
         if (pasienRepo is null)
         {
@@ -180,6 +228,20 @@ public class AdmisiRajalPatientContextQueryTest
             new PpaReff("DR1", "Dokter"),
             1);
 
-    private static RegSearchRegView Registration(string id, string date) =>
-        new(id, date, "001234", "ANI", "Umum", "Poli", "1", "RegJalan");
+    private static RegistrationSearchView Registration(string id, string date) =>
+        new(
+            id,
+            DateOnly.Parse(date),
+            new TimeOnly(8, 0),
+            "001234",
+            "ANI",
+            new DateOnly(1990, 1, 2),
+            "P",
+            "LY1",
+            "Poli",
+            "DR1",
+            "Dokter",
+            "Umum",
+            null,
+            null);
 }
