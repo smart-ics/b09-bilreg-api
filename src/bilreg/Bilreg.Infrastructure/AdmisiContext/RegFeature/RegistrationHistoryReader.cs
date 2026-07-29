@@ -34,53 +34,89 @@ public sealed class RegistrationHistoryReader : IRegistrationHistoryReader
         DateOnly admissionDate,
         IReadOnlyCollection<string> patientIds)
     {
-        var normalizedPatientIds = patientIds.Where(Real)
+        // External medical-record numbers are not stored in ta_registrasi.
+        var normalizedPatientIds = patientIds
+            .Where(Real)
+            .Select(id => id.Trim())
+            .Where(id => !id.Contains('x', StringComparison.OrdinalIgnoreCase))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
         if (normalizedPatientIds.Length == 0) return [];
 
         var sql = SelectClause + """
-            WHERE reg.fd_tgl_masuk = @admissionDate
+             WHERE reg.fd_tgl_masuk = @admissionDate
               AND reg.fd_tgl_void = '3000-01-01'
-              AND reg.fs_mr IN @patientIds
+              AND reg.fs_mr IN (
+                  SELECT LTRIM(RTRIM(value))
+                  FROM STRING_SPLIT(@patientIdsCsv, ',')
+                  WHERE LTRIM(RTRIM(value)) <> ''
+              )
             """;
-        var parameters = new
-        {
-            admissionDate = admissionDate.ToString("yyyy-MM-dd"),
-            patientIds = normalizedPatientIds
-        };
+        var parameters = CreatePatientIdParameters(admissionDate, normalizedPatientIds);
         using var connection = new SqlConnection(ConnStringHelper.Get(_options));
-        return (connection.Query<RegistrationSearchDto>(sql, parameters) ?? [])
+        var result1 = connection.Query<RegistrationSearchDto>(sql, parameters) ?? [];
+        var result = result1
             .Select(Map)
-            .Where(x => x is not null)
-            .Cast<RegistrationSearchView>()
+            .OfType<RegistrationSearchView>()
             .DistinctBy(x => x.RegistrationId, StringComparer.OrdinalIgnoreCase)
             .ToList();
+        return result;
     }
 
     public IReadOnlyList<RegistrationSearchView> FindByRegistrationIds(
         IReadOnlyCollection<string> registrationIds)
     {
         var normalizedRegistrationIds = registrationIds.Where(Real)
+            .Select(id => id.Trim())
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
         if (normalizedRegistrationIds.Length == 0) return [];
 
         var sql = SelectClause + """
-            WHERE reg.fd_tgl_void = '3000-01-01'
-              AND reg.fs_kd_reg IN @registrationIds
+             WHERE reg.fd_tgl_void = '3000-01-01'
+              AND reg.fs_kd_reg IN (
+                  SELECT LTRIM(RTRIM(value))
+                  FROM STRING_SPLIT(@registrationIdsCsv, ',')
+                  WHERE LTRIM(RTRIM(value)) <> ''
+              )
             """;
-        var parameters = new
-        {
-            registrationIds = normalizedRegistrationIds
-        };
+        var parameters = CreateRegistrationIdParameters(normalizedRegistrationIds);
         using var connection = new SqlConnection(ConnStringHelper.Get(_options));
         return (connection.Query<RegistrationSearchDto>(sql, parameters) ?? [])
             .Select(Map)
-            .Where(x => x is not null)
-            .Cast<RegistrationSearchView>()
+            .OfType<RegistrationSearchView>()
             .DistinctBy(x => x.RegistrationId, StringComparer.OrdinalIgnoreCase)
             .ToList();
+    }
+
+    internal static DynamicParameters CreatePatientIdParameters(
+        DateOnly admissionDate,
+        IReadOnlyCollection<string> patientIds)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add(
+            "@admissionDate",
+            admissionDate.ToString("yyyy-MM-dd"),
+            DbType.AnsiString,
+            size: 10);
+        parameters.Add(
+            "@patientIdsCsv",
+            string.Join(',', patientIds),
+            DbType.AnsiString,
+            size: -1);
+        return parameters;
+    }
+
+    internal static DynamicParameters CreateRegistrationIdParameters(
+        IReadOnlyCollection<string> registrationIds)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add(
+            "@registrationIdsCsv",
+            string.Join(',', registrationIds),
+            DbType.AnsiString,
+            size: -1);
+        return parameters;
     }
 
     private static RegistrationSearchView? Map(RegistrationSearchDto? row)
