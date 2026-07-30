@@ -1,4 +1,5 @@
 using Ardalis.GuardClauses;
+using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
@@ -19,7 +20,9 @@ public record OpnameRequestModel : IOpnameRequestKey
         DateTime plannedDate,
         string clinicalNotes,
         string fulfilledRegId,
-        AuditTrailType auditTrail)
+        AuditTrailType auditTrail,
+        OpnameRequestInsuranceModel insurance,
+        string emrOrderId)
     {
         OpnameRequestId = opnameRequestId;
         OpnameRequestStatus = opnameRequestStatus;
@@ -29,6 +32,8 @@ public record OpnameRequestModel : IOpnameRequestKey
         ClinicalNotes = clinicalNotes ?? "";
         FulfilledRegId = fulfilledRegId;
         AuditTrail = auditTrail;
+        Insurance = insurance;
+        EmrOrderId = emrOrderId;
     }
 
     #region CREATION
@@ -39,6 +44,7 @@ public record OpnameRequestModel : IOpnameRequestKey
         DateTime plannedDate,
         string clinicalNotes,
         string auditUserId,
+        string emrOrderId,
         DateTime createdAt = default)
     {
         Guard.Against.Null(pasien);
@@ -53,7 +59,9 @@ public record OpnameRequestModel : IOpnameRequestKey
             plannedDate,
             clinicalNotes ?? "",
             EMPTY_REG_ID,
-            AuditTrailType.Create(auditUserId, createdAt));
+            AuditTrailType.Create(auditUserId, createdAt),
+            OpnameRequestInsuranceModel.Default,
+            emrOrderId);
     }
 
     public static OpnameRequestModel Default => new(
@@ -64,7 +72,9 @@ public record OpnameRequestModel : IOpnameRequestKey
         new DateTime(3000,1,1),
         "",
         EMPTY_REG_ID,
-        AuditTrailType.Default);
+        AuditTrailType.Default,
+        OpnameRequestInsuranceModel.Default,
+        "-");
 
     public static IOpnameRequestKey Key(string id) => Default with { OpnameRequestId = id };
 
@@ -80,6 +90,8 @@ public record OpnameRequestModel : IOpnameRequestKey
     public string ClinicalNotes { get; init; }
     public string FulfilledRegId { get; init; }
     public AuditTrailType AuditTrail { get; init; }
+    public OpnameRequestInsuranceModel Insurance { get; private set; }
+    public string EmrOrderId { get; private set;  }
 
     #endregion
 
@@ -132,6 +144,13 @@ public record OpnameRequestModel : IOpnameRequestKey
         return WithState(OpnameRequestStatusEnum.Requested, EMPTY_REG_ID, audit);
     }
 
+
+    public void SetInsurace(TipeJaminanType tipeJaminan, string reffId, string auditUserId, DateTime occurredAt)
+    {
+        Insurance = new OpnameRequestInsuranceModel(
+            tipeJaminan.ToReff(), reffId);
+        AuditTrail.Modif(auditUserId, occurredAt);
+    }
     #endregion
 
     #region HELPERS
@@ -155,7 +174,26 @@ public record OpnameRequestModel : IOpnameRequestKey
             PlannedDate,
             ClinicalNotes,
             fulfilledRegId,
-            audit);
+            audit,
+            Insurance,
+            EmrOrderId);
 
     #endregion
 }
+
+
+public record OpnameRequestInsuranceModel
+{
+    public OpnameRequestInsuranceModel(TipeJaminanReff tipeJaminan, string reffId)
+    {
+        TipeJaminan = tipeJaminan;
+        ReffId = reffId;
+    }
+
+    public static OpnameRequestInsuranceModel Default => new(TipeJaminanType.Default.ToReff(), "-");
+        
+
+    public TipeJaminanReff TipeJaminan { get; private set; }
+    public string ReffId { get; private set; }
+}
+

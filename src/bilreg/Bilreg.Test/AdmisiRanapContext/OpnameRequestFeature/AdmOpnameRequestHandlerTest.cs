@@ -40,7 +40,7 @@ public class AdmOpnameRequestHandlerTest
             _auditRepoMock.Object, TestTglJamProvider.Instance);
 
         var response = await handler.Handle(
-            new AdmCreateOpnameRequestCmd("P001", "D001", "2026-07-30", "Catatan", "user1"),
+            new AdmCreateOpnameRequestCmd("P001", "D001", "2026-07-30", "Catatan", "user1", "CH0001"),
             CancellationToken.None);
 
         response.OpnameRequestId.Should().StartWith("OPN");
@@ -58,7 +58,7 @@ public class AdmOpnameRequestHandlerTest
             new PpaReff("D001", "Dr. Test"),
             new DateTime(2026, 7, 20),
             "Catatan",
-            "user1");
+            "user1", "CH0001");
 
         _opnameRepoMock
             .Setup(x => x.LoadEntity(It.Is<IOpnameRequestKey>(k => k.OpnameRequestId == requested.OpnameRequestId)))

@@ -13,9 +13,10 @@ public record AdmCreateOpnameRequestCmd(
     string DokterId,
     string PlannedDate,
     string ClinicalNotes,
+    string EmrOrderId,
     string UserId) : IRequest<AdmCreateOpnameRequestResponse>;
 
-public record AdmCreateOpnameRequestResponse(string OpnameRequestId);
+public record AdmCreateOpnameRequestResponse(string OpnameRequestId, string EmrOrderId);
 
 public class AdmCreateOpnameRequestHandler : IRequestHandler<AdmCreateOpnameRequestCmd, AdmCreateOpnameRequestResponse>
 {
@@ -47,6 +48,7 @@ public class AdmCreateOpnameRequestHandler : IRequestHandler<AdmCreateOpnameRequ
         Guard.Against.NullOrWhiteSpace(request.DokterId);
         Guard.Against.NullOrWhiteSpace(request.PlannedDate);
         Guard.Against.NullOrWhiteSpace(request.UserId);
+        Guard.Against.NullOrWhiteSpace(request.EmrOrderId);
 
         var pasien = _patientGateway.ResolvePatient(request.PasienId);
         var dokter = _doctorGateway.ResolveDoctor(request.DokterId);
@@ -58,6 +60,7 @@ public class AdmCreateOpnameRequestHandler : IRequestHandler<AdmCreateOpnameRequ
             plannedDate,
             request.ClinicalNotes ?? "",
             request.UserId,
+            request.EmrOrderId,
             occurredAt);
 
         _opnameRequestRepo.SaveChanges(opnameRequest);
@@ -68,6 +71,6 @@ public class AdmCreateOpnameRequestHandler : IRequestHandler<AdmCreateOpnameRequ
             nameof(OpnameRequestModel),
             opnameRequest.OpnameRequestId));
 
-        return Task.FromResult(new AdmCreateOpnameRequestResponse(opnameRequest.OpnameRequestId));
+        return Task.FromResult(new AdmCreateOpnameRequestResponse(opnameRequest.OpnameRequestId, opnameRequest.EmrOrderId));
     }
 }

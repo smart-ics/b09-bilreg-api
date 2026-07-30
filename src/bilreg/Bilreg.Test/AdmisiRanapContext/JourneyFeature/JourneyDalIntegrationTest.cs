@@ -472,7 +472,7 @@ public class JourneyDalIntegrationTest
         dal.Insert(new OpnameRequestDto(
             id, status, pasienId, "", "3000-01-01", "",
             "D001", "Dokter Uji", DateTime.Now, "notes", fulfilledRegId,
-            "journey-it", DateTime.Now, "journey-it", DateTime.Now, "", VoidSentinel));
+            "journey-it", DateTime.Now, "journey-it", DateTime.Now, "", VoidSentinel, "CH0001"));
     }
 
     private void SeedReservation(string id, string pasienId, int status, string realizedRegId = "-")

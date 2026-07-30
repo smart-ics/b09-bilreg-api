@@ -248,6 +248,7 @@
     <None Include="PaymentContext\RegOutFeature\t_bp_piutang_hdr.sql" />
     <None Include="PaymentContext\RegOutFeature\ta_registrasi3.sql" />
     <None Include="AdmisiContext\BookingFeature\BILRG_JadwalPraktekHarian_1.sql" />
+    <None Include="AdmisiRanapContext\OpnameRequestFeature\BILRG_AdmOpnameRequestInsurance.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="AdmisiContext\AntrianFeature\ta_no_antrian_map.sql" />
