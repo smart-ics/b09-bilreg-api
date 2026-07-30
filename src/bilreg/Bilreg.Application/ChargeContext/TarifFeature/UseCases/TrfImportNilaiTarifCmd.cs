@@ -64,7 +64,6 @@ public class TrfImportNilaiTarifHandler : IRequestHandler<TrfImportNilaiTarifCmd
         try
         {
             _nilaiTarifRepo.Import();
-            trans.Complete();
 
             var importedBy = string.IsNullOrWhiteSpace(request.ImportedBy)
                 ? "SYSTEM"
@@ -74,6 +73,8 @@ public class TrfImportNilaiTarifHandler : IRequestHandler<TrfImportNilaiTarifCmd
             _logger.LogInformation(
                 "NilaiTarif import succeeded in {ElapsedMs} ms",
                 (DateTime.UtcNow - started).TotalMilliseconds);
+            
+            trans.Complete();
 
             return Task.FromResult(new TrfImportNilaiTarifResponse(
                 "Done",

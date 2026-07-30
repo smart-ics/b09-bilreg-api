@@ -36,6 +36,7 @@ using MediatR;
 using Nuna.Lib.TransactionHelper;
 using Nuna.Lib.ValidationHelper;
 using System.Globalization;
+using System.Text.Json.Serialization;
 using Bilreg.Domain.PaymentContext.TrsBillFeature;
 
 namespace Bilreg.Application.AdmisiContext.RegFeature.UseCases;
@@ -45,10 +46,16 @@ public record RegJalanWalkInCommand(string PasienId, string UserId,
     string LayananId, string JamPraktek, string KarcisId, string PesertaJaminanId,
     string? AdmissionAntrianId = null,
     int? AdmissionNoUrut = null,
-    string? AdmissionServicePointCode = null,
-    string? AdmissionServicePointName = null) 
+    string? AdmissionExpectedRowVersion = null)
     : IRequest<RegJalanCreateResponse>, ILayananKey, ICaraMasukDkKey, IPasienKey,
-        ITipeJaminanKey, IKarcisKey; 
+        ITipeJaminanKey, IKarcisKey
+{
+    [JsonIgnore]
+    public string? AdmissionLoketKey { get; init; }
+
+    [JsonIgnore]
+    public RegistrationAdmissionQueueBehavior AdmissionQueueBehavior { get; init; }
+}
  
 public record RegJalanCreateResponse(string RegId, int NoAntrian);
 
@@ -94,6 +101,9 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
     private readonly IQueueNumberCompatibilityAdapter _queueNumberAdapter;
     private readonly IJadwalPraktekFeatureResolver _featureResolver;
     private readonly ITglJamProvider _tglJamProvider;
+    private readonly IAdmissionServicePointResolver _admissionServicePointResolver;
+    private readonly IRegistrationOutcomeOperationRepo? _registrationOutcomeRepo;
+    private readonly IAdmissionQueueRefreshPublisher? _admissionQueueRefreshPublisher;
 
     public RegJalanCreateHandler(
         //  reg support
@@ -132,7 +142,10 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         EmrAntrianOutboundEnqueueService emrOutboundEnqueue,
         IQueueNumberCompatibilityAdapter queueNumberAdapter,
         IJadwalPraktekFeatureResolver featureResolver,
-        ITglJamProvider tglJamProvider)
+        ITglJamProvider tglJamProvider,
+        IAdmissionServicePointResolver admissionServicePointResolver,
+        IRegistrationOutcomeOperationRepo? registrationOutcomeRepo = null,
+        IAdmissionQueueRefreshPublisher? admissionQueueRefreshPublisher = null)
     {
         //      reg-support
         _pasienRepo = pasienRepo;
@@ -171,11 +184,29 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         _queueNumberAdapter = queueNumberAdapter;
         _featureResolver = featureResolver;
         _tglJamProvider = tglJamProvider;
+        _admissionServicePointResolver = admissionServicePointResolver;
+        _registrationOutcomeRepo = registrationOutcomeRepo;
+        _admissionQueueRefreshPublisher = admissionQueueRefreshPublisher;
     }
 
-    public Task<RegJalanCreateResponse> Handle(RegJalanWalkInCommand request, CancellationToken cancellationToken)
+    public async Task<RegJalanCreateResponse> Handle(RegJalanWalkInCommand request, CancellationToken cancellationToken)
     {
         var occurredAt = _tglJamProvider.Now;
+        var admissionContext = request.AdmissionQueueBehavior == RegistrationAdmissionQueueBehavior.QueueLinked
+            ? AdmissionRegistrationQueueContextResolver.Resolve(
+                request.AdmissionAntrianId,
+                request.AdmissionNoUrut,
+                request.AdmissionExpectedRowVersion,
+                request.AdmissionLoketKey)
+            : null;
+        if (request.AdmissionQueueBehavior == RegistrationAdmissionQueueBehavior.None &&
+            AdmissionRegistrationQueueContextResolver.HasAnyDirectQueueField(
+                request.AdmissionAntrianId,
+                request.AdmissionNoUrut,
+                request.AdmissionExpectedRowVersion))
+            throw new ArgumentException("Direct Registration must not include Admission Queue context.");
+        if (admissionContext is not null)
+            EnsureAdmissionEntryInService(admissionContext);
         /*  ▐▀▀▀▀▀▀▀▀▀▀▀▌
             ▐   GUARD   ▌
             ▐▄▄▄▄▄▄▄▄▄▄▄▌*/
@@ -210,7 +241,6 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         var antrian = ResolveAntrian(tglBerobat, dokter, schedule);
         var reserved = _queueNumberAdapter.ReserveForRegistration(
             schedule.LegacyJadwal, tglBerobat, reg).Value;
-        var tracker = ResolveTrackerForWalkIn(reg, occurredAt, request);
 
         //      3-trs-billing-karcis
         var jaminan = LoadJaminan(tipeJaminan.Jaminan);
@@ -253,17 +283,57 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
         
         using (var trans = TransHelper.NewScope())
         {
+            PasienTrackerModel tracker;
+            AntrianModel admissionQueue;
+            AntrianEntryModel? admissionEntryToInsert = null;
+            if (admissionContext is not null)
+            {
+                admissionQueue = _antrianRepo.LoadEntity(
+                        AntrianModel.Key(admissionContext.AntrianId))
+                    .GetValueOrThrow($"Admission queue '{admissionContext.AntrianId}' not found");
+                _admissionServicePointResolver.EnsureAdmissionQueue(admissionQueue);
+                var resolution = AdmissionQueueRegistrationResolver.ResolveAndComplete(
+                    _trackerRepo, admissionQueue, admissionContext.NoUrut, reg, occurredAt);
+                tracker = resolution.Tracker;
+                var outcome = RegistrationOutcomeModel.Established(admissionQueue.AntrianId,
+                    resolution.Entry.NoUrut, reg.RegId, request.UserId, occurredAt);
+                if (_registrationOutcomeRepo is null)
+                    throw new InvalidOperationException(
+                        "Registration outcome persistence is required for queue-linked Registration.");
+                var saved = _registrationOutcomeRepo.TryFinalizeEstablished(
+                    outcome,
+                    resolution.Entry,
+                    admissionContext.LoketKey,
+                    admissionContext.ExpectedRowVersion,
+                    occurredAt);
+                if (!saved)
+                {
+                    throw new AdmissionQueueConcurrencyException(
+                        $"Queue entry '{admissionQueue.AntrianId}' / {resolution.Entry.NoUrut} was changed concurrently.");
+                }
+            }
+            else
+            {
+                tracker = PasienTrackerModel.Create(reg, occurredAt);
+                AdmissionQueueComplete.AppendRegisterIfMissing(tracker, reg.RegId, occurredAt);
+                admissionQueue = AntrianModel.Default;
+            }
+
             // Physician entry stays Waiting until MulaiPeriksa; legacy "active" = ReffDesc REG / AntrianMap (F-07).
             var antEntry = _queueNumberAdapter.ProjectIntoQueueSession(
                 antrian, reserved, tracker, reg.RegId, "REG", occurredAt);
-            var admissionQueue = AdmissionQueueComplete.CompleteAtRegistration(
-                _antrianRepo, _antrianFactory, tracker, reg.RegId, occurredAt,
-                request.AdmissionAntrianId, request.AdmissionNoUrut,
-                request.AdmissionServicePointCode, request.AdmissionServicePointName);
             _regRepo.SaveChanges(reg);
             _regAktifRepo.SaveChanges(regAktif);
             _antrianRepo.SaveChanges(antrian);
-            _antrianRepo.SaveChanges(admissionQueue);
+            if (admissionEntryToInsert is not null)
+            {
+                _antrianRepo.SaveNewEntry(admissionQueue, admissionEntryToInsert);
+                if (_registrationOutcomeRepo is not null &&
+                    !_registrationOutcomeRepo.TryRecordLegacyEstablished(
+                        RegistrationOutcomeModel.Established(admissionQueue.AntrianId,
+                            admissionEntryToInsert.NoUrut, reg.RegId, request.UserId, occurredAt)))
+                    throw new AdmissionQueueConcurrencyException("Registration outcome changed concurrently.");
+            }
             _trackerRepo.SaveChanges(tracker);
             _antrianMapRepo.SaveChanges(reserved.Map);
             _trsBillingRepo.SaveChanges(trsBillingReg);
@@ -288,38 +358,31 @@ public class RegJalanCreateHandler : IRequestHandler<RegJalanWalkInCommand, RegJ
             response = new RegJalanCreateResponse(reg.RegId, antEntry.NoUrut);
         }
 
-        return Task.FromResult(response);
+        if (admissionContext is not null && _admissionQueueRefreshPublisher is not null)
+            await _admissionQueueRefreshPublisher.PublishAsync(admissionContext.LoketKey, cancellationToken);
+
+        return response;
         
     }
 
     #region PRIVATE-HELPERS
-    private PasienTrackerModel ResolveTrackerForWalkIn(
-        RegModel reg,
-        DateTime occurredAt,
-        RegJalanWalkInCommand request)
-    {
-        if (string.IsNullOrWhiteSpace(request.AdmissionAntrianId) || request.AdmissionNoUrut is not > 0)
-            return PasienTrackerModel.Create(reg, occurredAt);
-
-        var admissionQueue = _antrianRepo.LoadEntity(AntrianModel.Key(request.AdmissionAntrianId!))
-            .GetValueOrThrow($"Admission queue '{request.AdmissionAntrianId}' not found");
-        var entry = admissionQueue.ListEntry.FirstOrDefault(x => x.NoUrut == request.AdmissionNoUrut)
-            ?? throw new KeyNotFoundException(
-                $"Queue entry '{request.AdmissionAntrianId}' / {request.AdmissionNoUrut} not found");
-
-        if (!PasienTrackerStableIdentity.IsRealTrackerId(entry.Tracker.PasienTrackerId))
-            throw new InvalidOperationException(
-                $"Admission queue entry '{request.AdmissionAntrianId}' / {request.AdmissionNoUrut} is not identified.");
-
-        return _trackerRepo.LoadEntity(entry.Tracker)
-            .GetValueOrThrow($"PasienTracker '{entry.Tracker.PasienTrackerId}' not found");
-    }
-
     private bool IsPasienAktifReg(IPasienKey pasien)
     {
         return _regAktifRepo.IsPasienAktif(pasien)
             || _regRepo.IsPasienAktifReg(pasien);
     }
+    private void EnsureAdmissionEntryInService(AdmissionRegistrationQueueContext context)
+    {
+        var queue = _antrianRepo.LoadEntity(AntrianModel.Key(context.AntrianId))
+            .GetValueOrThrow($"Admission queue '{context.AntrianId}' not found");
+        var entry = queue.ListEntry.FirstOrDefault(x => x.NoUrut == context.NoUrut)
+            ?? throw new KeyNotFoundException(
+                $"Queue entry '{context.AntrianId}' / {context.NoUrut} not found");
+        if (entry.AntrianStatus != AntrianStatusEnum.InService)
+            throw new AdmissionQueueConcurrencyException(
+                $"Queue entry '{context.AntrianId}' / {context.NoUrut} is no longer In Service.");
+    }
+
     public bool IsAdult(DateOnly TglLahir, DateOnly today)
     {
         int age = today.Year - TglLahir.Year;

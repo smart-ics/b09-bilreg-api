@@ -32,7 +32,7 @@ The codebase uses **"event"** for several different concepts. Use this glossary 
 
 **Purpose:** Operational tracking events for patient queue / antrian workflow.
 
-When adding Admisi documentation, use `docs/contexts/admisi/` with a prefixed filename (e.g. `admisi-domain.md`), not another root `DOMAIN.md`.
+When adding Admisi Rajal documentation, use `docs/contexts/admisi-rajal/` with a prefixed filename (e.g. `admisi-rajal-domain.md`), not another root `DOMAIN.md`.
 
 ---
 

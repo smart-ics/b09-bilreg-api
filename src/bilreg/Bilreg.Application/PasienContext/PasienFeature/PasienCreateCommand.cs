@@ -43,6 +43,7 @@ public class PasienCreateHandler : IRequestHandler<PasienCreateCommand, PasienCr
         Guard.Against.NullOrEmpty(request.NoTelp);
         Guard.Against.NullOrWhiteSpace(request.IbuKandung);
         GuardNoKtp(request.NoKtp);
+        GuardAgainstDuplicate(request);
 
         //  BUILD
         var tglLahir = DateOnly.Parse(request.TglLahir);
@@ -61,6 +62,31 @@ public class PasienCreateHandler : IRequestHandler<PasienCreateCommand, PasienCr
         var result = _pasienRepo.SaveChanges(pasien);
         return Task.FromResult(new PasienCreateResponse(result.Value.PasienId));
     }
+    private void GuardAgainstDuplicate(PasienCreateCommand request)
+    {
+        if (_pasienRepo.GetDataByNik(request.NoKtp).HasValue)
+            throw new InvalidOperationException("Patient with the supplied NIK already exists.");
+
+        var demographicMatches = _pasienRepo.SearchPasien(
+                $"{request.PasienName} {request.TglLahir}")
+            .Where(x =>
+                string.Equals(
+                    x.Person.PersonName.Trim(),
+                    request.PasienName.Trim(),
+                    StringComparison.OrdinalIgnoreCase)
+                && x.Person.TglLahir == DateOnly.Parse(request.TglLahir)
+                && string.Equals(
+                    NormalizePhone(x.Person.Contact.ContactDetail),
+                    NormalizePhone(request.NoTelp),
+                    StringComparison.Ordinal))
+            .Take(1);
+        if (demographicMatches.Any())
+            throw new InvalidOperationException("Patient with matching identity already exists.");
+    }
+
+    private static string NormalizePhone(string? value) =>
+        new((value ?? string.Empty).Where(char.IsDigit).ToArray());
+
     private void GuardNoKtp(string noKtp)
     {
         if (string.IsNullOrWhiteSpace(noKtp) ||

@@ -1,13 +1,17 @@
 ﻿using System.Text;
 using Bilreg.Api.Authorization;
 using Bilreg.Api.Filters;
+using Bilreg.Api.SignalR;
+using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.Shared;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Microsoft.Extensions.Options;
 using Nuna.Lib.ActionResultHelper;
+using System.Text.Json;
 
 namespace Bilreg.Api.Configurations;
 
@@ -17,6 +21,11 @@ public static class PresentationService
     public static IServiceCollection AddPresentation(this IServiceCollection services,
         IConfiguration configuration)
     {
+        services.AddSingleton<IValidateOptions<AdmissionQueueApiOptions>,AdmissionQueueApiOptionsValidator>();
+        services.AddOptions<AdmissionQueueApiOptions>()
+            .Bind(configuration.GetSection(AdmissionQueueApiOptions.SectionName))
+            .ValidateOnStart();
+        services.AddSingleton<IAdmissionQueueRolloutConfig, AdmissionQueueRolloutConfig>();
         services.AddControllers()
             .ConfigureApiBehaviorOptions(options =>
             {
@@ -27,10 +36,10 @@ public static class PresentationService
                             .SelectMany(v => v.Errors)
                             .Select(e => e.ErrorMessage));
                     var payload = new JSend(
-                        StatusCodes.Status422UnprocessableEntity,
-                        "Validation Error",
+                        StatusCodes.Status400BadRequest,
+                        "AQ_INVALID_REQUEST",
                         string.IsNullOrWhiteSpace(errors) ? "Invalid request." : errors);
-                    return new UnprocessableEntityObjectResult(payload);
+                    return new BadRequestObjectResult(payload);
                 };
             });
         services.AddEndpointsApiExplorer();
@@ -80,6 +89,17 @@ public static class PresentationService
 
             options.Events = new JwtBearerEvents
             {
+                OnMessageReceived = context =>
+                {
+                    var accessToken = context.Request.Query["access_token"];
+                    var path = context.HttpContext.Request.Path;
+                    if (!string.IsNullOrEmpty(accessToken) &&
+                        path.StartsWithSegments(AdmissionQueueRefreshContracts.HubPath))
+                    {
+                        context.Token = accessToken;
+                    }
+                    return Task.CompletedTask;
+                },
                 OnAuthenticationFailed = context =>
                 {
                     CreateAuthLogger(context.HttpContext).LogWarning(
@@ -103,12 +123,37 @@ public static class PresentationService
                         "JWT challenge issued: {Error} {ErrorDescription}",
                         context.Error,
                         context.ErrorDescription);
-                    return Task.CompletedTask;
+                    context.HandleResponse();
+                    context.Response.StatusCode=StatusCodes.Status401Unauthorized;
+                    context.Response.ContentType="application/json";
+                    return context.Response.WriteAsync(JsonSerializer.Serialize(new JSend(
+                        StatusCodes.Status401Unauthorized,"AQ_UNAUTHENTICATED","Authentication is required.")));
+                },
+                OnForbidden = context =>
+                {
+                    var path = context.Request.Path.Value ?? string.Empty;
+                    var code = path.Contains("/admission-queue/configuration", StringComparison.OrdinalIgnoreCase)
+                        ? "AQ_CONFIG_FORBIDDEN"
+                        : "AQ_FORBIDDEN";
+                    context.Response.StatusCode=StatusCodes.Status403Forbidden;
+                    context.Response.ContentType="application/json";
+                    return context.Response.WriteAsync(JsonSerializer.Serialize(new JSend(
+                        StatusCodes.Status403Forbidden,code,"Access is forbidden.")));
                 }
             };
         });
 
-        services.AddAuthorization();
+        services.AddAuthorization(options =>
+        {
+            options.AddPolicy(AdmissionQueueConfigurationPolicies.PolicyName, policy =>
+                policy.RequireAuthenticatedUser()
+                    .AddRequirements(new PermissionRequirement(AdmissionQueueConfigurationPolicies.PermissionId)));
+            options.AddPolicy(AdmissionQueueSupervisorOperationPolicies.PolicyName, policy =>
+                policy.RequireAuthenticatedUser()
+                    .AddRequirements(new PermissionRequirement(AdmissionQueueSupervisorOperationPolicies.PermissionId)));
+        });
+        services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
+        services.AddSignalR();
         services.AddScoped<ICurrentUserContext, HttpCurrentUserContext>();
         services.AddScoped<AdmisiRanapEnabledFilter>();
         services.AddScoped<JourneyEndpointsEnabledFilter>();

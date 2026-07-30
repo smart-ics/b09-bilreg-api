@@ -1,6 +1,8 @@
 ﻿ //TODO: Refactor AntrianMap Model
 
 using Bilreg.Api.Helpers;
+using Bilreg.Api.AdmisiContext.AntrianFeature;
+using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -16,15 +18,30 @@ namespace Bilreg.Api.Controllers.AdmisiContext.RegFeature;
 public class RegController : Controller
 {
     private readonly IMediator _mediator;
-    public RegController(IMediator mediator)
+    private readonly IAdmissionQueueWorkstationResolver _workstationResolver;
+
+    public RegController(
+        IMediator mediator,
+        IAdmissionQueueWorkstationResolver workstationResolver)
     {
         _mediator = mediator;
+        _workstationResolver = workstationResolver;
     }
 
     [HttpPost]
     [Route("rajalWalkIn")]
     public async Task<IActionResult> Save(RegJalanWalkInCommand cmd)
     {
+        cmd = WithAdmissionQueueBehavior(cmd, isDirect: false);
+        var result = await _mediator.Send(cmd);
+        return Ok(new JSendOk(result));
+    }
+
+    [HttpPost]
+    [Route("rajalWalkIn/direct")]
+    public async Task<IActionResult> SaveDirect(RegJalanWalkInCommand cmd)
+    {
+        cmd = WithAdmissionQueueBehavior(cmd, isDirect: true);
         var result = await _mediator.Send(cmd);
         return Ok(new JSendOk(result));
     }
@@ -33,6 +50,16 @@ public class RegController : Controller
     [Route("rajalByBooking")]
     public async Task<IActionResult> Save(RegJalanByBookingCmd cmd)
     {
+        cmd = WithAdmissionQueueBehavior(cmd, isDirect: false);
+        var result = await _mediator.Send(cmd);
+        return Ok(new JSendOk(result));
+    }
+
+    [HttpPost]
+    [Route("rajalByBooking/direct")]
+    public async Task<IActionResult> SaveDirect(RegJalanByBookingCmd cmd)
+    {
+        cmd = WithAdmissionQueueBehavior(cmd, isDirect: true);
         var result = await _mediator.Send(cmd);
         return Ok(new JSendOk(result));
     }
@@ -143,6 +170,34 @@ public class RegController : Controller
         var query = new RegRegAktifListQuery();
         var resutl = await _mediator.Send(query);
         return Ok(new JSendOk(resutl));
+    }
+
+    private RegJalanWalkInCommand WithAdmissionQueueBehavior(RegJalanWalkInCommand cmd, bool isDirect)
+    {
+        var behavior = AdmissionRegistrationQueueContextResolver.ResolveBehavior(
+            cmd.AdmissionAntrianId, cmd.AdmissionNoUrut, cmd.AdmissionExpectedRowVersion, isDirect);
+
+        return cmd with
+        {
+            AdmissionQueueBehavior = behavior,
+            AdmissionLoketKey = behavior == RegistrationAdmissionQueueBehavior.QueueLinked
+                ? _workstationResolver.Resolve(Request, null).LoketKey
+                : null
+        };
+    }
+
+    private RegJalanByBookingCmd WithAdmissionQueueBehavior(RegJalanByBookingCmd cmd, bool isDirect)
+    {
+        var behavior = AdmissionRegistrationQueueContextResolver.ResolveBehavior(
+            cmd.AdmissionAntrianId, cmd.AdmissionNoUrut, cmd.AdmissionExpectedRowVersion, isDirect);
+
+        return cmd with
+        {
+            AdmissionQueueBehavior = behavior,
+            AdmissionLoketKey = behavior == RegistrationAdmissionQueueBehavior.QueueLinked
+                ? _workstationResolver.Resolve(Request, null).LoketKey
+                : null
+        };
     }
 }
 

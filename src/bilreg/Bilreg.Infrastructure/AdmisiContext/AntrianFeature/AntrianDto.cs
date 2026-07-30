@@ -6,7 +6,7 @@ namespace Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
 
 public record AntrianDto(string AntrianId, DateTime AntrianDate,
     string StartTime, string EndTime, string SequenceTag, string AntrianDescription,
-    string ServicePointCode) : IAntrianKey
+    string ServicePointCode, string QueuePrefixSnapshot = "") : IAntrianKey
 {
     public static AntrianDto FromModel(AntrianModel model)
     {
@@ -17,7 +17,8 @@ public record AntrianDto(string AntrianId, DateTime AntrianDate,
             model.EndTime.ToString("HH:mm", CultureInfo.InvariantCulture),
             model.SequenceTag,
             model.AntrianDescription,
-            model.ServicePoint.ServicePointCode);
+            model.ServicePoint.ServicePointCode,
+            model.QueuePrefixSnapshot);
         return result;
     }
 
@@ -37,7 +38,8 @@ public record AntrianDto(string AntrianId, DateTime AntrianDate,
             AntrianDescription,
             servicePoint,
             listEntry, 
-            sequencer);
+            sequencer,
+            QueuePrefixSnapshot);
         return result;
     }
 }

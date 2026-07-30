@@ -1,13 +1,13 @@
 # F-06 Implementation Report — Queue Aggregate Identity & Lifecycle Invariants
 
-**Artifact status:** Implementation summary (closed)  
+**Artifact status:** Implementation summary (closed; amended for Fixed Business Date timestamp policy)
 **Bounded context:** Patient Tracker / Admisi Antrian  
 **Authoritative domain:** [`TRACKER-DOMAIN.md`](TRACKER-DOMAIN.md)  
 **Source gap:** F-06 in [`tracker-codebase-gap-report.md`](tracker-codebase-gap-report.md) (Severity: High)  
 **Commit:** `a3232c56` — `fix(antrian): tegakkan invariant Queue aggregate (F-06, BR-TRK-026..039)`  
 **Parent commit:** `cb07cd59` (F-05) · **Next commit in series:** `3def0ded` (F-07)  
 **Branch series:** `jude-refactor-tracker` (F-01 → F-13)  
-**Rules closed:** BR-TRK-026 (Service Point owned on session), BR-TRK-027 (in-session number uniqueness in aggregate), BR-TRK-035–039 (create/serve/done lifecycle + chronology + Done finality).  
+**Rules closed:** BR-TRK-026 (Service Point owned on session), BR-TRK-027 (in-session number uniqueness in aggregate), BR-TRK-035–039 (create/serve/done lifecycle + valid-time checks + Done finality).
 **Concurrency closed lightly:** unique `SequenceTag` index + existing entry PK `(AntrianId, NoUrut)` — **not** RowVersion / optimistic token.
 
 ---
@@ -27,8 +27,8 @@ After F-06:
 | Concern | Rule for agents |
 |---|---|
 | Create queue entry | Always pass a **real** `createdAt` (not `default` / `MinValue` / sentinel `3000-01-01`). Status = Waiting; ServedAt/DoneAt = sentinel. |
-| Start service | `entry.Serve(servedAt)` only when **Waiting**; `servedAt` real; `servedAt >= CreatedAt` (equal OK). |
-| Complete service | `entry.Done(doneAt)` only when **InService**; `doneAt` real; `doneAt >= ServedAt` (equal OK). |
+| Start service | `entry.Serve(servedAt)` only when **Waiting**; `servedAt` must be a real business time. It may precede `CreatedAt`. |
+| Complete service | `entry.Done(doneAt)` only when **InService**; `doneAt` must be a real business time. It may precede `ServedAt`. |
 | After Done | **Do not** call `Serve` again — throws `InvalidOperationException` (BR-TRK-039). |
 | Assign number | All `AddEntry` overloads call `EnsureUniqueNoUrut`; duplicate → `InvalidOperationException`. DB PK remains safety net. |
 | Session Service Point | `AntrianModel.ServicePoint` (`ServicePointType`) required on construct/factory; persist `ServicePointCode`. |
@@ -36,13 +36,13 @@ After F-06:
 | Rehydrate from DB | Public constructor stays **permissive** for historical bad rows; **behaviour methods** enforce rules. |
 | Parameterless Serve/Done | **Removed** — callers must pass explicit business time (F-05 identify already did). |
 
-**Real case (why it matters):** Two FO clerks almost simultaneously reserve physician queue number **7** → without aggregate guard, only a late PK error appears. Separately, after the doctor finishes (`Done`), a stray `Serve` could revive In Service and corrupt waiting-time / duration reports. F-06 makes both failures **domain-level** and chronological.
+**Real case (why it matters):** Two FO clerks almost simultaneously reserve physician queue number **7** → without aggregate guard, only a late PK error appears. Separately, after the doctor finishes (`Done`), a stray `Serve` could revive In Service and corrupt waiting-time / duration reports. F-06 makes both failures **domain-level**. Timestamp precedence is intentionally not enforced so a retained simulation dataset remains operable when Fixed Business Date changes.
 
 ```mermaid
 stateDiagram-v2
     [*] --> Waiting: Create(validCreatedAt)
-    Waiting --> InService: Serve(servedAt>=CreatedAt)
-    InService --> Done: Done(doneAt>=ServedAt)
+    Waiting --> InService: Serve(valid servedAt)
+    InService --> Done: Done(valid doneAt)
     Done --> [*]: final
 ```
 
@@ -57,7 +57,7 @@ stateDiagram-v2
 | BR-TRK-035 | New entry Waiting; CreatedAt recorded; Served/Done absent (sentinel) | `AntrianEntryModel.Create` + `EnsureBusinessTime(createdAt)` |
 | BR-TRK-036 | Only Waiting → In Service; records ServedAt | `Serve` status guard |
 | BR-TRK-037 | Only In Service → Done; records DoneAt | `Done` status guard |
-| BR-TRK-038 | ServedAt ≱ before CreatedAt; DoneAt ≱ before ServedAt | Chronology checks; **equal allowed** |
+| BR-TRK-038 | Lifecycle timestamps must be valid business times | Precedence checks are intentionally omitted; reverse timestamps are accepted for Fixed Business Date simulation. |
 | BR-TRK-039 | Done is final | `Serve` rejects non-Waiting (includes Done) |
 
 ### Lifecycle contract (agent-facing)
@@ -68,14 +68,16 @@ Create(noUrut, …, createdAt):
 
 Serve(servedAt):
   require AntrianStatus == Waiting
-  require business time; require servedAt >= CreatedAt
+  require business time
   → InService + ServedAt
 
 Done(doneAt):
   require AntrianStatus == InService
-  require business time; require doneAt >= ServedAt
+  require business time
   → Done + DoneAt
 ```
+
+This is a pragmatic simulation policy. `CreatedAt`, `ServedAt`, and `DoneAt` can therefore form negative waiting or service intervals. Any report, projection, integration, or tracker timeline consumer that assumes chronological timestamps must tolerate or exclude those intervals according to its own policy.
 
 Sentinel absent milestones: `DateTime(3000, 1, 1)` — same convention as other Antrian/Tracker types. Do not treat sentinel as “served”.
 
@@ -120,7 +122,7 @@ Primary paths (domain + persistence + focused tests). Call-site test compiles fo
 - [`Bilreg.SqlDb.sqlproj`](../../../src/bilreg/Bilreg.SqlDb/Bilreg.SqlDb.sqlproj) — registers M1 as `<None Include=...>`.
 
 ### Tests (representative)
-- [`AntrianEntryModelTest.cs`](../../../src/bilreg/Bilreg.Test/AdmisiContext/AntrianFeature/AntrianEntryModelTest.cs) — Waiting-only Serve, InService-only Done, Done final, chronology, reject default times.
+- [`AntrianEntryModelTest.cs`](../../../src/bilreg/Bilreg.Test/AdmisiContext/AntrianFeature/AntrianEntryModelTest.cs) — Waiting-only Serve, InService-only Done, Done final, reverse timestamps accepted, reject default times.
 - [`AntrianModelTest.cs`](../../../src/bilreg/Bilreg.Test/AdmisiContext/AntrianFeature/AntrianModelTest.cs) — fixed stale SequenceTag expectations (`AN{yyMMdd}{HHmm}_{code}`); ServicePoint assertions; duplicate NoUrut.
 - [`AntrianDalTest.cs`](../../../src/bilreg/Bilreg.Test/AdmisiContext/AntrianFeature/AntrianDalTest.cs) — DTO shape + `EnsureServicePointCodeColumn` inside ambient transaction.
 - Related compile fixes: resolve/identify, booking/reg cancel, soft-duplicate, etc. (createdAt / ServicePoint ctor).
@@ -134,7 +136,7 @@ Primary paths (domain + persistence + focused tests). Call-site test compiles fo
 | Duplicate `NoUrut` in memory | Allowed until SQL PK | `InvalidOperationException` in aggregate |
 | `Serve` from Done | Allowed (reopens InService) | Rejected |
 | `Done` without InService | Sentinel ServedAt check only | Requires `AntrianStatus == InService` |
-| Equal Served/Done times | Rejected (`>=`) | Allowed (`>=` chronology only forbids precede) |
+| Timestamp precedence | Enforced | Not enforced; valid timestamps may be earlier than the preceding lifecycle timestamp for Fixed Business Date simulation. |
 | Default / MinValue times | Accepted on Create/Serve/Done | Rejected |
 | Service Point | Encoded in SequenceTag only | Model property + `ServicePointCode` column |
 | Session create race | Duplicate SequenceTag possible | Unique index after M1 (if no existing dupes) |
@@ -171,7 +173,7 @@ Result at implementation time: **40 passed**. Related booking/reg compile tests 
 
 **Deploy prerequisite:** apply [`BILRG_Antrian_M1_ServicePointCode_Alter.sql`](../../../src/bilreg/Bilreg.SqlDb/AdmisiContext/AntrianFeature/BILRG_Antrian_M1_ServicePointCode_Alter.sql) **before** API builds that INSERT/UPDATE/SELECT `ServicePointCode`. If duplicate `SequenceTag` rows exist, M1 **THROW**s — profile and resolve before uniqueness. Deployed schema state remains **Unable to Verify** from source alone.
 
-**Downstream note:** F-07 (`3def0ded`) separates **which** queue entry gets `Serve`/`Done` (admission vs physician). F-06 only defines **legal transitions** on any entry. F-05 identify already supplies explicit `servedAt`; after F-06, `servedAt < CreatedAt` fails (tests aligned CreatedAt before `TestTglJamProvider.Now`).
+**Downstream note:** F-07 (`3def0ded`) separates **which** queue entry gets `Serve`/`Done` (admission vs physician). F-06 only defines **legal transitions** on any entry. F-05 identify already supplies explicit `servedAt`; it is accepted even when it precedes `CreatedAt`, which allows retained data to be exercised under a changed Fixed Business Date.
 
 ---
 
@@ -201,7 +203,7 @@ Git order on the tracker refactor branch (each gap ≈ one commit):
 
 ## 8. Downstream consumers & caveats
 
-- **F-05 identify** depends on F-06: `AdmissionQueueIdentify` → `Serve(servedAt)` must satisfy Waiting + chronology.
+- **F-05 identify** depends on F-06: `AdmissionQueueIdentify` → `Serve(servedAt)` must satisfy Waiting + valid business time; timestamp precedence is not required.
 - **F-07** depends on F-06: admission Done and physician Serve use the same state machine; wrong entry choice is a workflow bug, not a reason to bypass guards.
 - **F-12 / F-13:** ServicePointCode column is part of persistence shape; physician number allocation still goes through compatibility adapter — do not bypass session uniqueness when projecting legacy map numbers into `AddEntry(int,…)`.
 - **`AntrianDal.ListData(DateTime)`** view join may omit `ServicePointCode` (derivable from tag) — do not assume every list DTO carries the column.

@@ -100,6 +100,11 @@
     <Folder Include="AdmisiRanapContext\ReservationFeature\" />
     <Folder Include="AdmisiRanapContext\AdmissionFeature\" />
     <Folder Include="AdmisiRanapContext\WaitingListFeature\" />
+    <Folder Include="BedUsageContext\" />
+    <Folder Include="BedUsageContext\BedOperationalFeature\" />
+    <Folder Include="BedUsageContext\RnaServiceExecutionFeature\" />
+    <Folder Include="BedUsageContext\PakaiBedFeature\" />
+    <Folder Include="AdmisiContext\BookingFeature\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OpCase.sql" />
@@ -123,6 +128,13 @@
     <None Include="AdmisiRanapContext\BILRG_AdmisiRanap_Phase7_Rollback.sql" />
     <None Include="AdmisiContext\AntrianFeature\BILRG_Antrian.sql" />
     <None Include="AdmisiContext\AntrianFeature\BILRG_Antrian_M1_ServicePointCode_Alter.sql" />
+    <None Include="AdmisiContext\AntrianFeature\BILRG_Antrian_M2_QueuePrefixSnapshot_Alter.sql" />
+    <None Include="AdmisiContext\AntrianFeature\BILRG_AdmServicePoint.sql" />
+    <None Include="AdmisiContext\AntrianFeature\BILRG_AntrianEntry_M2_QueueOperations_Alter.sql" />
+    <None Include="AdmisiContext\AntrianFeature\BILRG_AdmissionQueue_M3_Audit_Alter.sql" />
+    <None Include="AdmisiContext\AntrianFeature\BILRG_AdmLoketCurrentCall.sql" />
+    <None Include="AdmisiContext\AntrianFeature\BILRG_AdmBookingAssistance.sql" />
+    <None Include="AdmisiContext\RegFeature\BILRG_RegOutcome.sql" />
     <None Include="AdmisiContext\AntrianFeature\BILRG_AntrianEntry.sql" />
     <None Include="AdmisiContext\AntrianFeature\BILRG_PasienTracker.sql" />
     <None Include="AdmisiContext\AntrianFeature\BILRG_PasienTracker_M1_TrackingPeriod_Alter.sql" />

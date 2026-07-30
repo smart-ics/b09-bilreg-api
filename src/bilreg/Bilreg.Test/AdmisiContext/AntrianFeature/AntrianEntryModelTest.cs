@@ -58,11 +58,12 @@ public class AntrianEntryModelTest
     }
 
     [Fact]
-    public void T06_GivenServeBeforeCreated_ThenThrows()
+    public void T06_GivenServeBeforeCreated_ThenSucceeds()
     {
         var entry = AntrianEntryModel.Create(1, PersonType.Default, PasienTrackerModel.Key("-"), "A", "B", CreatedAt);
         var act = () => entry.Serve(CreatedAt.AddMinutes(-1));
-        act.Should().Throw<ArgumentException>().WithParameterName("servedAt");
+        act.Should().NotThrow();
+        entry.ServedAt.Should().Be(CreatedAt.AddMinutes(-1));
     }
 
     [Fact]
@@ -83,12 +84,13 @@ public class AntrianEntryModelTest
     }
 
     [Fact]
-    public void T09_GivenDoneBeforeServed_ThenThrows()
+    public void T09_GivenDoneBeforeServed_ThenSucceeds()
     {
         var entry = AntrianEntryModel.Create(1, PersonType.Default, PasienTrackerModel.Key("-"), "A", "B", CreatedAt);
         entry.Serve(ServedAt);
         var act = () => entry.Done(ServedAt.AddMinutes(-1));
-        act.Should().Throw<ArgumentException>().WithParameterName("doneAt");
+        act.Should().NotThrow();
+        entry.DoneAt.Should().Be(ServedAt.AddMinutes(-1));
     }
 
     [Fact]
@@ -97,5 +99,29 @@ public class AntrianEntryModelTest
         var entry = AntrianEntryModel.Create(1, PersonType.Default, PasienTrackerModel.Key("-"), "A", "B", CreatedAt);
         var act = () => entry.Serve(default);
         act.Should().Throw<ArgumentException>().WithParameterName("servedAt");
+    }
+
+    [Fact]
+    public void T11_GivenInService_WhenCancelRegistration_ThenReturnsToWaiting()
+    {
+        var entry = AntrianEntryModel.Create(
+            1, PersonType.Default, PasienTrackerModel.Key("-"), "A", "B", CreatedAt);
+        entry.Serve(ServedAt);
+
+        entry.CancelRegistration();
+
+        entry.AntrianStatus.Should().Be(AntrianStatusEnum.Waiting);
+        entry.ServedAt.Should().Be(new DateTime(3000, 1, 1));
+    }
+
+    [Fact]
+    public void T12_GivenWaiting_WhenCancelRegistration_ThenThrows()
+    {
+        var entry = AntrianEntryModel.Create(
+            1, PersonType.Default, PasienTrackerModel.Key("-"), "A", "B", CreatedAt);
+
+        var act = entry.CancelRegistration;
+
+        act.Should().Throw<InvalidOperationException>();
     }
 }

@@ -1,5 +1,7 @@
 # F-04 Implementation Report — Journey Candidate Resolution
 
+> **Superseded for admission new-journey resolution (2026-07-22):** candidate search and selection remain valid, but `resolve/new` no longer establishes a Tracker. A new Walk-In Tracker is established only by successful Registration; see [`tracker-admission-queue-late-identification-gap-analysis.md`](tracker-admission-queue-late-identification-gap-analysis.md).
+
 **Artifact status:** Implementation summary (closed)
 **Bounded context:** Patient Tracker / Admisi Antrian
 **Authoritative domain:** [`TRACKER-DOMAIN.md`](TRACKER-DOMAIN.md)

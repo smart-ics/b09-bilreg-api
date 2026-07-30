@@ -1,5 +1,7 @@
 # Tracker Domain — Codebase Gap Report
 
+> **Superseded admission-flow findings (2026-07-22):** the late-identification remediation removes `resolve/new`, separates anonymous admission service start from identity association, and makes successful Walk-In Registration the authority that establishes and attaches a new Tracker. See [`tracker-admission-queue-late-identification-gap-analysis.md`](tracker-admission-queue-late-identification-gap-analysis.md).
+
 **Date:** 2026-07-21  
 **Authoritative business definition:** `docs/contexts/pasien-tracker/TRACKER-DOMAIN.md`  
 **Assessment type:** Static codebase investigation plus a bounded, non-database unit-test run  
@@ -198,8 +200,8 @@ The current ownership is split: Bilreg `AntrianModel` behaves like the proposed 
 | Later evidence appends and may extend period | Not Implemented | No application path appends later journey evidence; no LastPeriod behavior. |
 | Tracker has no Open/Closed/Completed state | Implemented | No Tracker status exists. Physical deletion nevertheless terminates visibility. |
 | Tracker Event becomes immutable after recording | Implemented Differently | Record type is immutable in memory, but repository/DAL update/delete it. |
-| Queue Entry: Waiting → In Service | Implemented | F-06: Waiting-only Serve + chronology (`a3232c56`). When Serve is invoked (admission vs physician) is F-07. |
-| Queue Entry: In Service → Done | Implemented | F-06: InService-only Done + chronology. |
+| Queue Entry: Waiting → In Service | Implemented | F-06: Waiting-only Serve + valid business-time check (`a3232c56`); timestamp precedence is intentionally not enforced so Fixed Business Date simulation can retain existing data. When Serve is invoked (admission vs physician) is F-07. |
+| Queue Entry: In Service → Done | Implemented | F-06: InService-only Done + valid business-time check; timestamp precedence is intentionally not enforced for the same simulation policy. |
 | Queue Entry: Done → no next state | Implemented | F-06: Serve rejects Done; physical row removal on cancel is separate. |
 | Anonymous → Identified | Implemented | F-05: `AdmissionQueueIdentify` + resolve select/new |
 | Identified entries never pass through Anonymous | Implemented | Booking/walk-in entries are constructed with a tracker. |
