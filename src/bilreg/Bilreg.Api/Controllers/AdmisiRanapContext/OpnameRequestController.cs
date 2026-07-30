@@ -11,7 +11,7 @@ namespace Bilreg.Api.Controllers.AdmisiRanapContext;
 
 [Route("api/admisi-ranap/opname-request")]
 [ApiController]
-//[Authorize]
+[Authorize]
 [ServiceFilter(typeof(AdmisiRanapEnabledFilter))]
 public class OpnameRequestController : ControllerBase
 {
