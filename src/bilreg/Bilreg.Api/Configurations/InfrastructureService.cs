@@ -154,6 +154,9 @@ public static class InfrastructureService
         services.AddScoped<
             IRegistrationOutcomeOperationRepo,
             RegistrationOutcomeOperationRepo>();
+        services.AddScoped<
+            IAdmisiRajalOfficerWorklistReferenceReader,
+            AdmisiRajalOfficerWorklistReferenceReader>();
 
 
         services

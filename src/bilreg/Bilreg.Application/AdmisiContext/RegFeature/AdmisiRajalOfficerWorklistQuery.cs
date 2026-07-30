@@ -43,7 +43,8 @@ public sealed record AdmisiRajalOfficerWorklistItem(
     AdmissionQueueWorklistItem Queue,
     AdmisiRajalOfficerWorklistIdentity? Identity,
     AdmisiRajalOfficerWorklistBooking? Booking,
-    AdmisiRajalOfficerWorklistRegistration? Registration);
+    AdmisiRajalOfficerWorklistRegistration? Registration,
+    AdmisiRajalOfficerWorklistReferences References);
 
 public sealed record AdmisiRajalOfficerWorklistPage(
     IReadOnlyList<AdmisiRajalOfficerWorklistItem> Items,
@@ -82,6 +83,7 @@ public sealed class AdmisiRajalOfficerWorklistHandler
     private readonly IBookingRepo _bookings;
     private readonly IRegRepo _regs;
     private readonly IBookingAssistanceRepo _assistance;
+    private readonly IAdmisiRajalOfficerWorklistReferenceReader? _referenceReader;
     private readonly ILogger<AdmisiRajalOfficerWorklistHandler> _logger;
 
     public AdmisiRajalOfficerWorklistHandler(
@@ -90,13 +92,15 @@ public sealed class AdmisiRajalOfficerWorklistHandler
         IBookingRepo bookings,
         IRegRepo regs,
         IBookingAssistanceRepo assistance,
-        ILogger<AdmisiRajalOfficerWorklistHandler>? logger = null)
+        ILogger<AdmisiRajalOfficerWorklistHandler>? logger = null,
+        IAdmisiRajalOfficerWorklistReferenceReader? referenceReader = null)
     {
         _projection = projection;
         _trackers = trackers;
         _bookings = bookings;
         _regs = regs;
         _assistance = assistance;
+        _referenceReader = referenceReader;
         _logger = logger ?? NullLogger<AdmisiRajalOfficerWorklistHandler>.Instance;
     }
 
@@ -135,8 +139,12 @@ public sealed class AdmisiRajalOfficerWorklistHandler
         queueWatch.Stop();
 
         var enrichmentWatch = Stopwatch.StartNew();
+        var references = LoadReferences(queuePage.Items);
         IReadOnlyList<AdmisiRajalOfficerWorklistItem> items = queuePage.Items
-            .Select(Compose)
+            .Select(queue => Compose(
+                queue,
+                references.GetValueOrDefault(
+                    new AdmisiRajalOfficerWorklistEntryKey(queue.AntrianId, queue.NoUrut))))
             .ToList();
         enrichmentWatch.Stop();
         totalWatch.Stop();
@@ -167,10 +175,34 @@ public sealed class AdmisiRajalOfficerWorklistHandler
             queuePage.TotalCount));
     }
 
-    private AdmisiRajalOfficerWorklistItem Compose(AdmissionQueueWorklistItem queue)
+    private IReadOnlyDictionary<
+        AdmisiRajalOfficerWorklistEntryKey,
+        AdmisiRajalOfficerWorklistReferences> LoadReferences(
+        IReadOnlyList<AdmissionQueueWorklistItem> queues)
     {
-        string? bookingId = null;
-        string? regId = null;
+        if (_referenceReader is null || queues.Count == 0)
+            return new Dictionary<
+                AdmisiRajalOfficerWorklistEntryKey,
+                AdmisiRajalOfficerWorklistReferences>();
+
+        var keys = queues
+            .Select(queue => new AdmisiRajalOfficerWorklistEntryKey(
+                queue.AntrianId,
+                queue.NoUrut))
+            .ToList();
+        return _referenceReader.List(keys)
+            .ToDictionary(
+                x => new AdmisiRajalOfficerWorklistEntryKey(x.AntrianId, x.NoUrut),
+                x => x.References);
+    }
+
+    private AdmisiRajalOfficerWorklistItem Compose(
+        AdmissionQueueWorklistItem queue,
+        AdmisiRajalOfficerWorklistReferences? resolvedReferences)
+    {
+        var hasReferenceSnapshot = resolvedReferences is not null;
+        var bookingId = RealOrNull(resolvedReferences?.BookingId);
+        var regId = RealOrNull(resolvedReferences?.RegistrationId);
         AdmisiRajalOfficerWorklistIdentity? identity = null;
 
         if (PasienTrackerStableIdentity.IsRealTrackerId(queue.PasienTrackerId))
@@ -183,12 +215,16 @@ public sealed class AdmisiRajalOfficerWorklistHandler
                     tracker.Person.PersonName,
                     tracker.Person.TglLahir.ToString("yyyy-MM-dd"),
                     null);
-                bookingId = LatestEventReff(tracker, BookingEventName);
-                regId = LatestEventReff(tracker, RegisterEventName);
+                if (!hasReferenceSnapshot)
+                {
+                    bookingId = LatestEventReff(tracker, BookingEventName);
+                    regId = LatestEventReff(tracker, RegisterEventName);
+                }
             }
         }
 
-        bookingId ??= _assistance.FindActiveByEntry(queue.AntrianId, queue.NoUrut)?.BookingId;
+        if (!hasReferenceSnapshot)
+            bookingId ??= _assistance.FindActiveByEntry(queue.AntrianId, queue.NoUrut)?.BookingId;
 
         AdmisiRajalOfficerWorklistBooking? booking = null;
         if (!string.IsNullOrWhiteSpace(bookingId))
@@ -224,7 +260,14 @@ public sealed class AdmisiRajalOfficerWorklistHandler
             }
         }
 
-        return new AdmisiRajalOfficerWorklistItem(queue, identity, booking, registration);
+        return new AdmisiRajalOfficerWorklistItem(
+            queue,
+            identity,
+            booking,
+            registration,
+            new AdmisiRajalOfficerWorklistReferences(
+                RealOrNull(bookingId),
+                RealOrNull(regId)));
     }
 
     private static string? LatestEventReff(PasienTrackerModel tracker, string eventName) =>

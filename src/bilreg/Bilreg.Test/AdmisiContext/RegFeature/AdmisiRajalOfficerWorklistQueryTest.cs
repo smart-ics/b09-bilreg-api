@@ -128,6 +128,45 @@ public class AdmisiRajalOfficerWorklistQueryTest
     }
 
     [Fact]
+    public async Task EstablishedOutcomeWithoutTracker_ReturnsRegistrationReferenceAndDetail()
+    {
+        var queue = SampleQueue(pasienTrackerId: null);
+        var projection = new Mock<IAdmissionQueueOperationalProjection>();
+        projection.Setup(x => x.ListWorklistPage(It.IsAny<AdmissionQueueWorklistFilter>()))
+            .Returns(Page([queue]));
+        var referenceReader = new Mock<IAdmisiRajalOfficerWorklistReferenceReader>();
+        referenceReader.Setup(x => x.List(It.IsAny<
+                IReadOnlyCollection<AdmisiRajalOfficerWorklistEntryKey>>()))
+            .Returns([
+                new AdmisiRajalOfficerWorklistReferenceView(
+                    queue.AntrianId,
+                    queue.NoUrut,
+                    new AdmisiRajalOfficerWorklistReferences(null, "RG-OUTCOME"))
+            ]);
+        var regs = new Mock<IRegRepo>();
+        regs.Setup(x => x.LoadEntity(It.IsAny<IRegKey>()))
+            .Returns(MayBe.From(BuildReg("RG-OUTCOME", "P1", "Ani")));
+        var assistance = new Mock<IBookingAssistanceRepo>();
+        assistance.Setup(x => x.FindActiveByEntry(queue.AntrianId, queue.NoUrut))
+            .Returns((BookingAssistanceActive?)null);
+
+        var sut = new AdmisiRajalOfficerWorklistHandler(
+            projection.Object,
+            Mock.Of<IPasienTrackerRepo>(),
+            Mock.Of<IBookingRepo>(),
+            regs.Object,
+            assistance.Object,
+            referenceReader: referenceReader.Object);
+
+        var result = await sut.Handle(new("2026-07-23"), default);
+
+        result.Items.Should().ContainSingle();
+        result.Items[0].References.RegistrationId.Should().Be("RG-OUTCOME");
+        result.Items[0].Registration!.RegId.Should().Be("RG-OUTCOME");
+        result.Items[0].Identity!.PasienId.Should().Be("P1");
+    }
+
+    [Fact]
     public async Task Composition_DoesNotCallQueueWritePorts()
     {
         var projection = new Mock<IAdmissionQueueOperationalProjection>();
