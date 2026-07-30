@@ -3,7 +3,7 @@ using Bilreg.Domain.AdmisiContext.AntrianFeature;
 namespace Bilreg.Application.AdmisiContext.AntrianFeature;
 
 /// <summary>
-/// Shared admission identification: AssignPasien + Serve + Check In / Reg-Start evidence (workflow 10.3).
+/// Shared admission identification and evidence behaviour (workflow 10.3).
 /// </summary>
 internal static class AdmissionQueueIdentify
 {
@@ -29,26 +29,51 @@ internal static class AdmissionQueueIdentify
         return entry;
     }
 
-    public static string IdentifyAndRecordEvidence(
+    public static AntrianEntryModel RequireAnonymousInServiceEntry(
+        AntrianModel queue,
+        int noUrut)
+    {
+        var entry = queue.ListEntry.FirstOrDefault(x => x.NoUrut == noUrut)
+            ?? throw new KeyNotFoundException(
+                $"Queue entry '{queue.AntrianId}' / {noUrut} not found");
+
+        if (PasienTrackerStableIdentity.IsRealTrackerId(entry.Tracker.PasienTrackerId))
+            throw new InvalidOperationException(
+                $"Queue entry '{queue.AntrianId}' / {noUrut} is already identified.");
+
+        if (entry.AntrianStatus != AntrianStatusEnum.InService)
+            throw new InvalidOperationException(
+                $"Queue entry '{queue.AntrianId}' / {noUrut} is not In Service.");
+
+        return entry;
+    }
+
+    public static AntrianEntryModel RequireInServiceEntry(
+        AntrianModel queue,
+        int noUrut)
+    {
+        var entry = queue.ListEntry.FirstOrDefault(x => x.NoUrut == noUrut)
+            ?? throw new KeyNotFoundException(
+                $"Queue entry '{queue.AntrianId}' / {noUrut} not found");
+
+        if (entry.AntrianStatus != AntrianStatusEnum.InService)
+            throw new InvalidOperationException(
+                $"Queue entry '{queue.AntrianId}' / {noUrut} is not In Service.");
+
+        return entry;
+    }
+
+    public static string IdentifyExistingTrackerAndRecordEvidence(
         AntrianModel queue,
         AntrianEntryModel entry,
-        PasienTrackerModel tracker,
-        DateTime servedAt)
+        PasienTrackerModel tracker)
     {
         var queueRef = QueueEvidenceReference.Create(queue.AntrianId, entry.NoUrut).Value;
         var checkInAt = entry.CreatedAt;
 
         entry.AssignPasien(tracker);
-        entry.Serve(servedAt);
-
-        // Select path: append both events. New path: Create already recorded Check In.
-        if (!tracker.ListEvent.Any(e =>
-                e.EventName == CheckInEventName && e.ReffId == queueRef))
-        {
-            tracker.AddEvent(CheckInEventName, queueRef, checkInAt);
-        }
-
-        tracker.AddEvent(RegStartEventName, queueRef, servedAt);
+        tracker.AddEvent(CheckInEventName, queueRef, checkInAt);
+        tracker.AddEvent(RegStartEventName, queueRef, entry.ServedAt);
         return queueRef;
     }
 }

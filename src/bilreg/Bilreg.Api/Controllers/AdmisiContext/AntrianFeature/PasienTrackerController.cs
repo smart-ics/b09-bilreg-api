@@ -1,4 +1,5 @@
 using Bilreg.Application.AdmisiContext.AntrianFeature;
+using Bilreg.Application.AdmisiContext.AntrianFeature.UseCases;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -42,14 +43,6 @@ public class PasienTrackerController : ControllerBase
     [HttpPost]
     [Route("resolve/select")]
     public async Task<IActionResult> ResolveSelect(TrkJourneyResolveSelectCmd cmd)
-    {
-        var response = await _mediator.Send(cmd);
-        return Ok(new JSendOk(response));
-    }
-
-    [HttpPost]
-    [Route("resolve/new")]
-    public async Task<IActionResult> ResolveNew(TrkJourneyResolveNewCmd cmd)
     {
         var response = await _mediator.Send(cmd);
         return Ok(new JSendOk(response));

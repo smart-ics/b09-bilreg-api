@@ -1,5 +1,5 @@
-﻿using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
-using Bilreg.Application.AdmisiContext.JadwalPraktekFeature.UseCases;
+﻿using Bilreg.Application.AdmisiContext.AntrianFeature;
+using Bilreg.Application.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Application.AdmisiRanapContext;
 using Bilreg.Application.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Application.AdmisiRanapContext.Integration;
@@ -14,14 +14,15 @@ using Bilreg.Application.LabContext.LabOwareFeature;
 using Bilreg.Application.LabContext.LabOwareFeature.Integration;
 using Bilreg.Application.AdmisiContext.EmrAntrianOutboundFeature;
 using Bilreg.Application.AdmisiContext.EmrAntrianOutboundFeature.Integration;
+using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.LabContext.LabResultFeature;
-using Bilreg.Application.PasienContext.PasienFeature;
 using Bilreg.Application.PaymentContext.PasienBalanceFeature;
 using Bilreg.Application.PaymentContext.TataRekeningFeature;
 using Bilreg.Application.Shared;
-using Bilreg.Domain.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Infrastructure;
+using Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
+using Bilreg.Api.AdmisiContext.AntrianFeature;
 using Bilreg.Infrastructure.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.AdmissionFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.Integration;
@@ -34,6 +35,7 @@ using Bilreg.Infrastructure.LabContext.Integration;
 using Bilreg.Infrastructure.LabContext.LabOrderFeature;
 using Bilreg.Infrastructure.LabContext.LabOwareFeature;
 using Bilreg.Infrastructure.AdmisiContext.EmrAntrianOutboundFeature;
+using Bilreg.Infrastructure.AdmisiContext.RegFeature;
 using Bilreg.Infrastructure.LabContext.LabResultFeature;
 using Bilreg.Infrastructure.PaymentContext.PasienBalanceFeature;
 using Bilreg.Infrastructure.PaymentContext.TataRekeningFeature;
@@ -79,6 +81,7 @@ public static class InfrastructureService
             .AddScoped<IWaitingListWorklistDal, WaitingListWorklistDal>()
             .AddScoped<IRegistrationCancellationEligibilityDal, RegistrationCancellationEligibilityDal>()
             .AddScoped<IRegistrationCancellationEligibilityRepo, RegistrationCancellationEligibilityRepo>()
+            .AddScoped<IRegistrationHistoryReader, RegistrationHistoryReader>()
             .AddScoped<ICoordinatedCancellationRepo, CoordinatedCancellationRepo>()
             .AddScoped<IOperationalWorklistDal, OperationalWorklistDal>()
             .AddScoped<IJourneyDal, JourneyDal>()
@@ -87,6 +90,8 @@ public static class InfrastructureService
             .AddScoped<IWardAccommodationGateway, WardAccommodationGateway>()
             .AddScoped<IBangsalByKelasDkDal, BangsalByKelasDkDal>()
             .AddScoped<IAdmisiRanapRolloutDal, AdmisiRanapRolloutDal>()
+            .AddScoped<IAdmissionQueueRolloutDal, AdmissionQueueRolloutDal>()
+            .AddScoped<IAdmissionQueueRolloutRepo, AdmissionQueueRolloutRepo>()
             .AddScoped<LabOwareQueueProcessor>()
             .AddScoped<ILabResultPdfRenderer, LabResultPdfRenderer>()
             .AddScoped<ILabResultScaffoldService, LabResultScaffoldService>()
@@ -125,6 +130,30 @@ public static class InfrastructureService
             .Configure<JadwalPraktekOptions>(configuration.GetSection(JadwalPraktekOptions.SECTION_NAME))
             .Configure<AdmisiRanapOptions>(configuration.GetSection(AdmisiRanapOptions.SECTION_NAME))
             .Configure<UsmanOptions>(configuration.GetSection(UsmanOptions.SECTION_NAME));
+
+        services.AddScoped<
+            IAdmissionQueueOperationalProjection,
+            AdmissionQueueOperationalProjection>();
+        services.AddScoped<
+            IAdmissionQueueOperationRepo,
+            AdmissionQueueOperationRepo>();
+        services.AddScoped<IAdmissionQueueClosingRepo, AdmissionQueueClosingRepo>();
+        services.AddScoped<IAdmissionServicePointDal, AdmissionServicePointDal>();
+        services.AddScoped<IAdmissionServicePointRepo, AdmissionServicePointRepo>();
+        services.AddScoped<IAdmissionWorkstationDal, AdmissionWorkstationDal>();
+        services.AddScoped<IAdmissionWorkstationRepo, AdmissionWorkstationRepo>();
+        services.AddScoped<IAdmissionQueueDisplayDal, AdmissionQueueDisplayDal>();
+        services.AddScoped<IAdmissionQueueDisplayRepo, AdmissionQueueDisplayRepo>();
+        services.AddScoped<IAdmissionQueueKioskDal, AdmissionQueueKioskDal>();
+        services.AddScoped<IAdmissionQueueKioskRepo, AdmissionQueueKioskRepo>();
+        services.AddScoped<IAdmissionConfigurationAuditReader, AdmissionConfigurationAuditReader>();
+        services.AddScoped<IAdmissionQueueWorkstationResolver, AdmissionQueueWorkstationResolver>();
+        services.AddScoped<
+            IBookingAssistanceRepo,
+            BookingAssistanceRepo>();
+        services.AddScoped<
+            IRegistrationOutcomeOperationRepo,
+            RegistrationOutcomeOperationRepo>();
 
 
         services

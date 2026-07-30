@@ -228,6 +228,29 @@ public class PasienRepo : IPasienRepo
         return result;
     }
 
+    public IEnumerable<PasienPersonView> SearchPasienByPhone(string phone)
+    {
+        var normalizedPhone = phone.Trim();
+        return (_pasienDal.ListPatientIdsByPhone(normalizedPhone) ?? [])
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Select(x => LoadEntity(PasienModel.Key(x)))
+            .Where(x => x.HasValue)
+            .Select(x =>
+            {
+                var patient = x.Value;
+                var matchedPerson = patient.Person with
+                {
+                    Contact = new ContactType(JenisContactEnum.Phone, normalizedPhone)
+                };
+                return new PasienPersonView(
+                    patient.PasienId,
+                    patient.IsAktif,
+                    matchedPerson);
+            })
+            .ToList();
+    }
+
     public MayBe<PasienPersonView> GetDataByNik(string nik)
     {
         var pasien = _pasienDal.GetDataByNik(nik);

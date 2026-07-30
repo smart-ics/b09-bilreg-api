@@ -1,4 +1,5 @@
 using Bilreg.Application.AdmisiContext.AntrianFeature;
+using Bilreg.Application.AdmisiContext.AntrianFeature.UseCases;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Test.Shared;
@@ -18,38 +19,7 @@ public class AdmissionQueueCompleteTest
     public AdmissionQueueCompleteTest()
     {
         _sequencer.Setup(x => x.GetNextNoUrut(It.IsAny<string>())).Returns(7);
-    }
-
-    [Fact]
-    public void CreateOnReg_WhenNoAdmissionKeys_ThenCreatesIdentifiedDoneEntryAndRegisterEvidence()
-    {
-        var occurredAt = TestTglJamProvider.Instance.Now;
-        var businessDate = DateOnly.FromDateTime(occurredAt);
-        var person = new PersonType("SITI", new DateOnly(1990, 5, 1));
-        var tracker = PasienTrackerModel.Create(
-            person, businessDate, "BOOKING", "BK1",
-            occurredAt.AddDays(-1));
-        var admissionQueue = new AntrianFactory(_sequencer.Object)
-            .Create(new ServicePointType("ADM", "Loket Admisi"), businessDate);
-
-        _antrianRepo.Setup(x => x.ListData(businessDate)).Returns([]);
-        _antrianFactory
-            .Setup(x => x.Create(It.IsAny<ServicePointType>(), businessDate))
-            .Returns(admissionQueue);
-
-        var result = AdmissionQueueComplete.CompleteAtRegistration(
-            _antrianRepo.Object, _antrianFactory.Object, tracker, "RG001", occurredAt,
-            null, null);
-
-        result.Should().BeSameAs(admissionQueue);
-        var entry = result.ListEntry.Single(e => e.NoUrut == 7);
-        entry.Tracker.PasienTrackerId.Should().Be(tracker.PasienTrackerId);
-        entry.AntrianStatus.Should().Be(AntrianStatusEnum.Done);
-        entry.CreatedAt.Should().Be(occurredAt);
-        entry.ServedAt.Should().Be(occurredAt);
-        entry.DoneAt.Should().Be(occurredAt);
-        tracker.ListEvent.Should().Contain(e =>
-            e.EventName == "REGISTER" && e.ReffId == "RG001" && e.EventDate == occurredAt);
+        _sequencer.Setup(x => x.GetNextNoUrut(It.IsAny<string>(), 9999)).Returns(7);
     }
 
     [Fact]
@@ -72,15 +42,40 @@ public class AdmissionQueueCompleteTest
             .Setup(x => x.LoadEntity(It.IsAny<IAntrianKey>()))
             .Returns(MayBe.From(queue));
 
-        AdmissionQueueComplete.CompleteAtRegistration(
-            _antrianRepo.Object, _antrianFactory.Object, tracker, "RG002", doneAt,
-            "ADM-Q1", entry.NoUrut);
+        var resolved = AdmissionQueueComplete.RequireIdentifiedInServiceEntry(
+            queue, entry.NoUrut, tracker);
+        AdmissionQueueComplete.CompleteInServiceEntry(resolved, tracker, "RG002", doneAt);
 
         entry.AntrianStatus.Should().Be(AntrianStatusEnum.Done);
         entry.ServedAt.Should().Be(servedAt);
         entry.DoneAt.Should().Be(doneAt);
         tracker.ListEvent.Should().Contain(e =>
             e.EventName == "REGISTER" && e.ReffId == "RG002");
+    }
+
+    [Fact]
+    public void AnonymousAdmission_WhenInService_ThenAttachesNewTrackerAndCompletes()
+    {
+        var createdAt = new DateTime(2025, 5, 3, 8, 0, 0);
+        var servedAt = new DateTime(2025, 5, 3, 8, 10, 0);
+        var doneAt = new DateTime(2025, 5, 3, 8, 25, 0);
+        var person = new PersonType("SITI", new DateOnly(1990, 5, 1));
+        var queue = new AntrianModel(
+            "ADM-Q2", DateOnly.FromDateTime(createdAt), TimeOnly.MinValue, TimeOnly.MaxValue,
+            "tag", "Loket", new ServicePointType("ADM", "Loket Admisi"), [], _sequencer.Object);
+        var entry = queue.AddEntry(createdAt);
+        entry.Serve(servedAt);
+        var queueRef = QueueEvidenceReference.Create(queue.AntrianId, entry.NoUrut).Value;
+        // Factory ordering is covered at model level; this helper only owns queue association/completion.
+        var tracker = PasienTrackerModel.Create(person, DateOnly.FromDateTime(doneAt), "CHECKIN", queueRef, createdAt);
+        tracker.AddEvent("Reg-Start", queueRef, servedAt);
+
+        AdmissionQueueComplete.AttachNewTrackerAndComplete(queue, entry.NoUrut, tracker, "RG004", doneAt);
+
+        entry.Tracker.PasienTrackerId.Should().Be(tracker.PasienTrackerId);
+        entry.AntrianStatus.Should().Be(AntrianStatusEnum.Done);
+        entry.DoneAt.Should().Be(doneAt);
+        tracker.ListEvent.Select(x => x.EventName).Should().ContainInOrder("CHECKIN", "Reg-Start", "REGISTER");
     }
 
     [Fact]

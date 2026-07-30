@@ -1,5 +1,7 @@
 # F-10 Implementation Report — Core Tracker HTTP / Application Contracts
 
+> **Superseded admission API note (2026-07-22):** `POST api/PasienTracker/resolve/new` has been removed. `POST api/Antrian/start` starts anonymous admission service, and `resolve/select` now associates only an anonymous `InService` entry. See [`tracker-admission-queue-late-identification-gap-analysis.md`](tracker-admission-queue-late-identification-gap-analysis.md).
+
 **Artifact status:** Implementation summary (closed)  
 **Bounded context:** Patient Tracker / Admisi Antrian (Bilreg HTTP + MediatR)  
 **Authoritative domain:** [`TRACKER-DOMAIN.md`](TRACKER-DOMAIN.md)  

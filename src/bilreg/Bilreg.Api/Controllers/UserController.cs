@@ -9,6 +9,8 @@ using System.Text;
 
 namespace Bilreg.Api.Controllers;
 
+[Route("api/[controller]")]
+[ApiController]
 public class UserController : Controller
 {
     private readonly IMediator _mediator;
@@ -50,6 +52,12 @@ public class UserController : Controller
             new Claim(ClaimTypes.Email, email),
             new Claim(ClaimTypes.Name, response.UserName)
         };
+
+        foreach (var role in response.ListRole ?? [])
+        {
+            if (!string.IsNullOrWhiteSpace(role.Role))
+                claims.Add(new Claim(ClaimTypes.Role, role.Role.Trim()));
+        }
 
         //  EXECUTE
         //      - generate token

@@ -12,6 +12,7 @@ public interface IPasienRepo :
     IListData<PasienPersonView, string>
 {
     IEnumerable<PasienPersonView> SearchPasien(string keyword);
+    IEnumerable<PasienPersonView> SearchPasienByPhone(string phone);
     MayBe<PasienPersonView> GetDataByNik(string nik);
 }
 

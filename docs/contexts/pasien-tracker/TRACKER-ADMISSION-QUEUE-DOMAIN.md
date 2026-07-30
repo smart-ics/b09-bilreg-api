@@ -1,0 +1,486 @@
+# Patient Tracker — Admission Queue Operations Domain
+
+**Artifact status:** Canonical feature business specification
+
+**Bounded context:** Patient Tracker
+
+**Parent domain:** [Patient Tracker Domain](./TRACKER-DOMAIN.md)
+
+**Bahasa Indonesia companion:** [Domain Operasi Antrean Admisi](./TRACKER-ADMISSION-QUEUE-DOMAIN-ID.md)
+
+**Operational specification:** [Admission Queue Operations SOP](./TRACKER-ADMISSION-QUEUE-SOP.md)
+
+**Technical specification:** [Admission Queue Operations Architecture](./TRACKER-ADMISSION-QUEUE-ARCHITECTURE.md)
+
+## 1. Business Overview
+
+### 1.1 Purpose
+
+Admission Queue Operations coordinates how Patients or Visitors obtain, wait with, are called by, and receive Registration Assistance through an outpatient admission queue.
+
+It distinguishes the queue category represented by a `Service Point` from the physical service desk represented by a `Loket`. It preserves queue identity and operational milestones without creating a Patient Journey merely because a Queue Number was issued.
+
+### 1.2 Business value
+
+Admission Queue Operations provides:
+
+- independently managed queues for BPJS, general, building-specific, or other admission services;
+- recognizable Queue Labels such as `A0001` and `B0001`;
+- controlled relationships between Kiosks, Service Points, and Loket;
+- accountable calling of a Queue Entry to a physical Loket;
+- separation between a queue call and actual service start;
+- continuity from anonymous queue intake to later Patient Journey identification; and
+- reliable waiting-time and service-duration interpretation.
+
+### 1.3 Scope
+
+This feature owns the admission specialization of these business capabilities:
+
+1. Admission Service Point Management.
+2. Admission Queue Intake.
+3. Queue Number Allocation and Labelling.
+4. Configured Loket operation.
+5. Queue Call Coordination.
+6. Admission Queue Exception Resolution.
+
+It elaborates the Patient Tracker `Queue Session Aggregate` and introduces a stable business identity for `Service Point`. In Pragmatic V1, Loket and Kiosk are deployment configuration rather than managed business resources.
+
+### 1.4 Business boundaries
+
+Patient Tracker owns Service Point identity, Queue Prefix, Queue Session, Queue Entry, Queue Number, Queue Label, current Queue Call state, CallCount, current-per-Loket display state, and queue-service milestones.
+
+Admisi Rajal owns Registration Assistance decisions and the Outpatient Registration outcome. The Patient context owns canonical Patient identity. A guarantor or its accountable integration owns external coverage eligibility truth.
+
+Admission Queue Operations does not define:
+
+- how a Patient proves BPJS, general, or other service eligibility;
+- the contents or outcome of Outpatient Registration;
+- the physical implementation of a Kiosk, Queue Display, or Admission Module;
+- screen layout, button behavior, printing technology, audio technology, or operator procedures;
+- application interfaces, message delivery, persistence schema, or concurrency mechanisms; or
+- the Patient's physical position before an accountable service interaction occurs.
+
+## 2. Ubiquitous Language
+
+| Term | Definition |
+|---|---|
+| Admission Queue Operations | The coordination of queue intake, calling, service start, and completion for outpatient Registration Assistance. |
+| Service Point | A recognized queue category representing one admission responsibility, such as BPJS Admission or General Admission. |
+| ServicePointId | The stable business identity of one Service Point. |
+| Service Point Name | The human-recognizable name of a Service Point. |
+| Queue Prefix | Exactly one uppercase ASCII letter assigned to a Service Point and used when forming a Queue Label. Input is normalized with `Trim` and `ToUpperInvariant`; spaces and separators are prohibited. |
+| Loket | A recognized physical service desk at which a Service Point Operator provides Registration Assistance. |
+| LoketId | The stable business identity of one physical Loket. |
+| Configured Loket | A deployment-configured desk identifier supplied by trusted workstation configuration. It is not a Patient Tracker master resource in Pragmatic V1. |
+| LoketKey | The stable, unique deployment identifier for one configured Loket, derived from a controlled PC name or configuration value. |
+| Kiosk | A deployment-configured self-service client through which a Patient or Visitor may request an Admission Queue Entry. It is not a Patient Tracker master resource in Pragmatic V1. |
+| Queue Display | An operational communication channel that presents current Queue Calls and their destination Loket. |
+| Current Queue Display State | The latest visible call for one LoketKey persisted in `BILRG_AdmLoketCurrentCall`. It is authoritative projection state, not call history. |
+| AnnouncementVersion | A monotonically increasing value owned by Current Queue Display State. It increments only for a Call or Recall requiring audio, not for ordinary refresh or service-state change. |
+| RowVersion | A database concurrency token for Current Queue Display State. It changes independently from AnnouncementVersion whenever the row is updated. |
+| Admission Queue Worklist Projection | The Patient Tracker-owned, queue-only read model containing Queue Label, Service Point, Queue Entry state, call state, LoketKey, queue timestamps, Priority indicator, and optional TrackerId. |
+| Business Date | The authoritative operational date resolved server-side by the shared Business Date capability. It is not supplied authoritatively by a Kiosk or another client. |
+| Queue Session | The single admission queue for one Service Point on one Business Date in Pragmatic V1, operating from `00:00:00` through `23:59:59.9999999`. |
+| Queue Entry | One Patient's or anonymous Visitor's participation in one Queue Session. |
+| Queue Number | The numeric ordinal assigned to one Queue Entry and unique within its Queue Session. |
+| Queue Label | The public-facing five-character identifier formed by concatenating the one-letter Queue Prefix Snapshot and a four-digit Queue Number with no separator, such as `A0001`, `A0032`, or `B1000`. |
+| Queue Prefix Snapshot | The Queue Prefix preserved by a Queue Session or Queue Entry so an issued Queue Label retains its original meaning after later Service Point changes. |
+| Queue Call | The accountable request for the holder of one Waiting Queue Entry to attend one Loket. A Queue Call is not proof that service started. |
+| CallCount | The number of times a Queue Entry has been called, incremented for the first call and every recall. It is not detailed call-attempt history. |
+| Recall | A later call for the same Queue Entry that increments CallCount without allocating another Queue Number. |
+| Registration Assistance | Human administrative work required to establish or resolve an Outpatient Registration. |
+| Registration Outcome Reference | The stable OutcomeId supplied by Admisi Rajal as proof that Registration Assistance reached a final `Established` or `NotEstablished` decision. |
+| No-Show | The operational conclusion that the holder of a called Queue Entry did not present for service under the applicable policy. |
+| Priority Replacement Entry | A new Priority Queue Entry created in a destination Service Point when unresolved demand is redirected, with composite source identity `(SourceAntrianId, SourceNoUrut)` referencing the origin. It is not a first-class Queue Transfer aggregate. |
+| Priority | A queue-owned visual and sorting indicator. It does not force automatic call order; the operator retains call-selection authority. |
+| CreationReason | The Queue Entry provenance classification: `Normal`, `Redirected`, or `ManualPriority`. |
+| Source Queue Entry Identity | Optional composite `(SourceAntrianId, SourceNoUrut)` referencing the originating Queue Entry; both values are required for `Redirected` and both are absent for `Normal`. |
+| Withdrawn | The terminal Queue Entry state used when service will not start, including an approved transfer to another Service Point. |
+
+## 3. Business Capabilities
+
+### 3.1 Admission Service Point Management
+
+Patient Tracker can establish and retain stable admission Service Points with recognizable names and Queue Prefixes, and can withdraw a Service Point from future use without rewriting historical Queue Labels.
+
+### 3.2 Admission Queue Intake
+
+Patient Tracker can create an Anonymous Admission Queue Entry for an active Service Point chosen through a locally configured Kiosk. Local Kiosk configuration controls presentation but is not server-side eligibility or authorization truth.
+
+Queue intake does not establish or select a Patient Tracker.
+
+### 3.3 Queue Number Allocation and Labelling
+
+Patient Tracker can allocate a numeric Queue Number within one Queue Session and combine it with the applicable Queue Prefix to produce a stable public Queue Label.
+
+### 3.4 Configured Loket Operation
+
+Patient Tracker records the deployment-configured Loket identifier supplied by the workstation. Any authenticated Admission Officer may operate any configured Loket, and every configured Loket may serve every active Service Point in Pragmatic V1.
+
+### 3.5 Queue Call Coordination
+
+Patient Tracker can record that a Waiting Queue Entry was called or recalled to one workstation-configured Loket while preserving the distinction between the call, the Patient's presentation, and actual service start.
+
+### 3.6 Admission Queue Exception Resolution
+
+Patient Tracker can preserve accountable outcomes when a Patient does not present, chooses an inapplicable Service Point, or must be redirected, without falsely recording Registration Assistance as completed.
+
+### 3.7 Admission Queue Worklist Projection
+
+Patient Tracker can expose a queue-only operational projection for authorized queue scanning. Booking, identity, Registration, and administrative context are not part of this projection; the Admission Module or an Admisi Rajal application query composes those enrichments without creating another queue ledger.
+
+## 4. Actors & Roles
+
+### 4.1 Patient or Visitor
+
+The Patient or Visitor:
+
+- chooses an applicable offered Service Point;
+- receives and retains a Queue Label;
+- waits for a Queue Call; and
+- presents available identity, booking, or coverage evidence when requested.
+
+### 4.2 Admission Officer
+
+The Admission Officer acts as the Service Point Operator and Journey Resolution Operator for Registration Assistance. The Admission Officer:
+
+- operates from a workstation-configured Loket;
+- may serve any active Service Point from the configured Loket;
+- calls or recalls a Queue Entry;
+- recognizes when Registration Assistance actually starts and completes; and
+- accountably resolves the applicable Patient Journey from available evidence.
+
+### 4.3 Queue Operations Administrator
+
+The Queue Operations Administrator:
+
+- establishes and retires Service Points;
+- assigns Queue Prefixes;
+- coordinates deployment configuration for Kiosk and Loket outside Patient Tracker; and
+- prevents operational ambiguity among concurrently used Queue Labels.
+
+### 4.4 Queue Operations Supervisor
+
+The Queue Operations Supervisor resolves authorized exceptions such as no-show disposition, service redirection, or temporary changes in which Loket serve a Service Point.
+
+## 5. Domain Objects
+
+### 5.1 Service Point
+
+Purpose: represents one recognized category of admission service demand.
+
+Responsibilities:
+
+- retain a stable ServicePointId;
+- retain its Service Point Name;
+- retain the Queue Prefix applicable to new Queue Sessions; and
+- determine whether it remains available for future queue intake.
+
+A Service Point is not a physical Loket. Examples are `ADM-BPJS` and `ADM-UMUM`.
+
+### 5.2 Configured Loket Reference
+
+Purpose: records the workstation-configured identifier of the physical desk where Registration Assistance is delivered.
+
+Responsibilities:
+
+- identify the destination shown to Patients and Admission Officers; and
+- remain a reference on current queue/display state without becoming a managed aggregate.
+
+### 5.3 Kiosk Client
+
+Purpose: represents a deployment-configured self-service client.
+
+Responsibilities:
+
+- expose Service Points from local workstation configuration; and
+- submit the chosen stable ServicePointId while the server validates that the Service Point is active.
+
+### 5.4 Queue Session
+
+Purpose: represents the single admission queue for one Service Point and server-resolved Business Date, using the Pragmatic V1 interval `00:00:00` through `23:59:59.9999999`.
+
+Responsibilities:
+
+- retain the applicable Service Point and Queue Prefix Snapshot;
+- retain the authoritative Business Date and fixed Pragmatic V1 interval;
+- allocate Queue Numbers unique within the session through the legacy `ISequencer` keyed by the session's canonical SequenceTag;
+- own Queue Entries and their CallCount; and
+- preserve queue-service milestones.
+
+### 5.5 Queue Entry
+
+Purpose: represents one anonymous Visitor's or identified Patient Journey's participation in an admission Queue Session.
+
+Responsibilities:
+
+- retain its numeric Queue Number and stable Queue Label;
+- retain its anonymous or identified condition;
+- retain CreatedAt, ServedAt, and DoneAt; and
+- retain its Waiting, In Service, Done, or Withdrawn service state.
+
+### 5.6 Queue Call
+
+Purpose: represents the current calling obligation for one Waiting Queue Entry and its CallCount without detailed attempt history.
+
+Responsibilities:
+
+- identify the Queue Entry and destination Loket;
+- retain each call or recall occurrence;
+- distinguish an outstanding call from an acknowledged or concluded call; and
+- avoid representing a call as service start.
+
+### 5.7 Queue Label
+
+Purpose: provides the public identifier used by a Patient, Admission Officer, and Queue Display.
+
+The Queue Label concatenates the one-letter Queue Prefix Snapshot and Queue Number formatted as exactly four digits without a separator. Examples: `1` → `A0001`, `32` → `A0032`, and `1000` → `A1000`. It remains unchanged after issuance.
+
+### 5.8 Current Queue Display State
+
+Purpose: stores the current queue being served by each configured Loket and an incrementing AnnouncementVersion. Passive displays reload this state after SignalR refresh or periodic polling.
+
+### 5.9 Client Request Identity
+
+Purpose: optionally correlates a client retry to an already-issued Queue Entry through ClientRequestId. Absence of ClientRequestId provides no retry deduplication guarantee.
+
+## 6. Aggregates
+
+### 6.1 Service Point Aggregate
+
+**Aggregate Root:** `Service Point`
+
+**Consistency boundary:**
+
+The aggregate keeps ServicePointId, Service Point Name, Queue Prefix, and availability for future intake mutually consistent. Historical Queue Prefix Snapshots are outside this aggregate and are not rewritten when the Service Point changes.
+
+### 6.2 Queue Session Aggregate
+
+**Aggregate Root:** `Queue Session`
+
+**Owned entities:**
+
+- zero or more `Queue Entry` entities with current-call fields, including CallCount.
+
+**Consistency boundary:**
+
+The dedicated Queue Session persistence root keeps Service Point identity, Business Date, Queue Prefix Snapshot, canonical SequenceTag, Queue Number uniqueness, Queue Entry identity association, current call state, destination configured Loket, and service milestones mutually consistent. The legacy `ISequencer` is the sole allocation authority.
+
+A Queue Entry references a Patient Tracker by TrackerId after identification but does not own or modify the Patient Tracker Aggregate.
+
+## 7. Business Rules
+
+### 7.1 Service Point and deployment configuration
+
+- **BR-AQO-001** — Every Service Point shall have one stable ServicePointId, one Service Point Name, and one Queue Prefix.
+- **BR-AQO-001a** — Queue Prefix input shall be normalized using `Trim` followed by `ToUpperInvariant` and shall contain exactly one uppercase ASCII letter (`A`–`Z`) with no spaces or separators.
+- **BR-AQO-002** — ServicePointId shall identify a queue category and shall not identify a physical Loket.
+- **BR-AQO-003** — A configured Loket identifier shall represent one physical service desk but is not a managed Patient Tracker master resource in Pragmatic V1.
+- **BR-AQO-004** — Every configured Loket may serve every active admission Service Point; the application shall not enforce a Loket-to-Service-Point authorization matrix in Pragmatic V1.
+- **BR-AQO-005** — A Kiosk's visible Service Points come from local deployment configuration; the server shall validate the submitted ServicePointId exists and is active but shall not maintain Kiosk offering records.
+- **BR-AQO-006** — A Service Point with historical queue activity shall be retired from future use rather than erased from business history.
+- **BR-AQO-006a** — Any authenticated Admission Officer may operate any configured Loket.
+- **BR-AQO-006b** — LoketKey comes from trusted workstation deployment configuration; the server shall not accept an arbitrary value entered by the operator. This is an accepted V1 deployment trust boundary, not server-managed assignment authority.
+- **BR-AQO-006c** — Queue Display clients are passive and shall reload shared current-per-Loket display state after a refresh notification or periodic polling.
+- **BR-AQO-006d** — `BILRG_AdmLoketCurrentCall` shall contain only the latest visible call for each LoketKey and shall not be used to reconstruct past queue activity.
+- **BR-AQO-006e** — LoketKey shall be unique across deployed admission workstations. Missing or duplicate configuration shall block Call and Recall.
+- **BR-AQO-006f** — Renaming a workstation shall require a controlled configuration update that preserves the intended LoketKey or accountably changes it.
+- **BR-AQO-006g** — Deployment configuration may reference only existing active ServicePointId values and shall not create or modify Service Point master data.
+
+### 7.2 Queue Number and Queue Label
+
+- **BR-AQO-007** — Every admission Queue Session shall identify exactly one Service Point, one authoritative Business Date, the interval `00:00:00` through `23:59:59.9999999`, and the Queue Prefix applicable when that session was established.
+- **BR-AQO-007a** — Pragmatic V1 shall permit at most one admission Queue Session for one Service Point on one Business Date.
+- **BR-AQO-007b** — The server shall resolve the authoritative Business Date through the shared Business Date capability. A Kiosk or another client shall not supply or override that authoritative date.
+- **BR-AQO-007c** — The applicable Queue Session shall be established lazily by the first valid intake request when no session yet exists for that Service Point and Business Date.
+- **BR-AQO-007d** — Intake shall be rejected when the submitted ServicePointId does not identify an active Service Point. Kiosk-local offering configuration is not server authority.
+- **BR-AQO-008** — Every Queue Entry shall receive exactly one numeric Queue Number from 1 through 9999, unique within its Queue Session.
+- **BR-AQO-008a** — After Queue Number 9999 has been allocated, the Queue Session shall reject further allocation. Under the one-session-per-Service-Point-per-Business-Date V1 policy, the next session is available only for the next authoritative Business Date; the system shall not create a second same-date session, wrap the counter, or silently change the Queue Label format.
+- **BR-AQO-009** — Every Queue Entry shall have one five-character Queue Label formed by concatenating its one-letter Queue Prefix Snapshot and a four-digit Queue Number without a separator: `1` → `A0001`, `32` → `A0032`, and `1000` → `A1000` for prefix `A`.
+- **BR-AQO-010** — A Queue Label shall remain unchanged after issuance even when the Service Point Name or Queue Prefix changes later.
+- **BR-AQO-011** — Queue Prefix shall be unique across all active admission Service Points.
+- **BR-AQO-012** — When ClientRequestId is supplied, retrying the same identifier shall return the existing Queue Entry rather than allocate another Queue Number. Without ClientRequestId, duplicate prevention is not guaranteed.
+
+### 7.3 Anonymous intake and Patient Journey association
+
+- **BR-AQO-013** — Obtaining an admission Queue Number shall create an Anonymous Queue Entry when no Patient Journey has been accountably resolved and shall not establish or select a Patient Tracker.
+- **BR-AQO-014** — A Walk-In Queue Entry shall remain Anonymous until Registration establishes a new Patient Tracker or accountable Journey Resolution selects an applicable existing Patient Tracker.
+- **BR-AQO-015** — A Booking Patient's admission Queue Entry shall not be associated with a Patient Tracker from Booking evidence alone; an Admission Officer shall resolve the applicable existing Booking Patient Tracker from Patient-supplied evidence.
+- **BR-AQO-016** — Association of an Anonymous Queue Entry with a Patient Tracker shall be singular, accountable, and irreversible within that Queue Entry.
+
+### 7.4 Queue calling and service
+
+- **BR-AQO-017** — Only a Waiting Queue Entry may have an outstanding Queue Call.
+- **BR-AQO-018** — Every Queue Call shall identify exactly one deployment-configured destination Loket.
+- **BR-AQO-019** — One Queue Entry shall not have more than one outstanding Queue Call at the same time.
+- **BR-AQO-020** — One LoketKey shall have at most one current Outstanding or In Service Queue Entry at a time in Pragmatic V1.
+- **BR-AQO-021** — A first call or Recall shall increment the Queue Entry's CallCount and shall not allocate another Queue Number. Detailed Call Attempt history is outside Pragmatic V1.
+- **BR-AQO-021a** — A Call or Recall requiring audio shall increment AnnouncementVersion. Ordinary screen refresh and service-state changes shall not increment it unless an audio announcement is explicitly required.
+- **BR-AQO-021b** — CallCount is informational only. It shall not automatically mark No-Show, postpone an entry, calculate a “next five patients” rule, or select the next entry.
+- **BR-AQO-022** — Current Queue Call state or CallCount shall not by itself establish ServedAt or prove that Registration Assistance started.
+- **BR-AQO-023** — A Waiting Queue Entry may enter In Service only when an Admission Officer recognizes that Registration Assistance has started at the destination Loket.
+- **BR-AQO-024** — An In Service Queue Entry may become Done only after Admisi Rajal has persisted an explicit final Registration Outcome with stable OutcomeId, the matching QueueEntryId, Result, DecidedAt, and DecidedBy.
+- **BR-AQO-024a** — Correctable validation errors are not final Registration Outcomes and shall leave the Queue Entry In Service.
+- **BR-AQO-024b** — An `Established` outcome shall carry RegId. A `NotEstablished` outcome shall carry ReasonCode and may carry Explanation; it shall be an explicit final operator decision.
+- **BR-AQO-024c** — A Queue Entry completed from a final `NotEstablished` outcome may remain Anonymous when no Patient Journey was established.
+- **BR-AQO-025** — Registration outcome remains authoritative in Admisi Rajal; Queue Entry completion shall not independently establish an Outpatient Registration.
+
+### 7.5 Exceptions and historical truth
+
+- **BR-AQO-026** — A No-Show conclusion shall not be represented as completed Registration Assistance. Pragmatic V1 retains only CallCount, so any rule requiring timing or detailed prior-call evidence remains a manual operational procedure.
+- **BR-AQO-027** — Redirecting unresolved demand creates a new Priority Queue Entry in the destination Service Point with CreationReason `Redirected` and composite `(SourceAntrianId, SourceNoUrut)` referencing the origin. The original entry must receive an explicit non-active disposition; it shall not be silently relabelled. No QueueTransfer aggregate or transfer-history table is introduced in Pragmatic V1.
+- **BR-AQO-027a** — A Priority entry shall display an indicator and may participate in sorting, but shall not automatically bypass another entry or force call order. The operator chooses which available entry to call.
+- **BR-AQO-027b** — CreationReason shall be exactly `Normal`, `Redirected`, or `ManualPriority`. `Normal` has neither source-key field; `Redirected` requires both; `ManualPriority` may retain both only when an actual source entry exists. Partial composite source identity is prohibited.
+- **BR-AQO-028** — A Queue Display shall present recorded Queue Call truth and shall not own Queue Entry selection or lifecycle decisions.
+- **BR-AQO-029** — Queue waiting and service time shall be derived from Queue Entry milestones and shall not be inferred from a Queue Call alone.
+- **BR-AQO-030** — Admission Queue Operations shall not claim Patient physical presence before an accountable service interaction recognizes it.
+
+## 8. State Machines & Lifecycles
+
+### 8.1 Service Point availability lifecycle
+
+```text
+Active
+  → Retired
+```
+
+Retired means unavailable for new queue intake. Historical Queue Labels remain valid. Loket and Kiosk have no managed lifecycle in Pragmatic V1.
+
+### 8.2 Queue Entry service lifecycle
+
+```text
+Waiting
+  → In Service
+      → Done
+
+Waiting
+  → Withdrawn
+```
+
+The Queue Entry lifecycle extends the parent Patient Tracker lifecycle with `Withdrawn` for queue participation that ends before service starts. A Queue Call occurs while the Queue Entry is Waiting and does not add a second service state.
+
+### 8.3 Queue Call lifecycle
+
+```text
+Outstanding
+  → Acknowledged
+
+Outstanding
+  → No-Show
+
+Outstanding
+  → Withdrawn
+```
+
+`Acknowledged` means the call obligation ended because service was recognized as starting. `No-Show` means the applicable no-show policy concluded without service start. `Withdrawn` means the call was ended without asserting service or no-show. Recall increments CallCount while the Queue Call remains Outstanding.
+
+### 8.4 Queue Entry identification lifecycle
+
+```text
+Anonymous Queue Entry
+  → Identified Queue Entry
+```
+
+Queue issuance and Queue Calling do not cause this transition. It occurs only through accountable association with an existing Patient Tracker or a new Patient Tracker established by an owning source activity.
+
+A final `NotEstablished` Registration Outcome may complete the service lifecycle while this identification lifecycle remains Anonymous.
+
+## 9. Domain Events
+
+| Domain Event | Business meaning |
+|---|---|
+| Admission Service Point Established | A new category of admission queue service became recognized. |
+| Admission Service Point Retired | A Service Point ceased accepting future queue intake while retaining its history. |
+| Loket Selected Service Point | A Ready physical Loket selected one active Service Point as its current work scope. This is runtime selection, not permanent configuration. |
+| Kiosk Service Point Offered | A Service Point became available for Patient selection through one Kiosk. |
+| Admission Queue Session Established | An admission queue was established for one Service Point and operating interval. |
+| Admission Queue Entry Created | An Anonymous or Identified Queue Entry received a Queue Number and Queue Label. |
+| Admission Queue Entry Called | A Waiting Queue Entry was called to one configured Loket. |
+| Admission Queue Entry Recalled | CallCount was incremented for the same Queue Entry and Loket. |
+| Admission Queue Call Acknowledged | The outstanding call ended because Registration Assistance was recognized as starting. |
+| Admission Queue Entry Marked No-Show | The outstanding call concluded without the Patient or Visitor presenting under the applicable policy. |
+| Admission Queue Entry Identified | An Anonymous Admission Queue Entry was associated with one Patient Tracker. |
+| Admission Queue Service Started | Registration Assistance for a Waiting Queue Entry started at one Loket. |
+| Admission Queue Service Completed | Registration Assistance for an In Service Queue Entry reached a persisted final Registration Outcome identified by OutcomeId. |
+| Admission Queue Entry Withdrawn | A Waiting Queue Entry ended without service start. |
+| Priority Replacement Queue Entry Issued | A new Priority Queue Entry was issued in another Service Point, optionally referencing the origin. |
+
+These events are stable business facts. Display, audio, integration, and delivery behavior belong to architecture artifacts.
+
+## 10. Business Workflows
+
+### 10.1 Obtain an admission Queue Number
+
+```text
+Patient or Visitor chooses an offered Service Point
+  → Applicable Queue Session recognized
+  → Anonymous Queue Entry created
+  → Queue Number allocated
+  → Queue Label issued
+  → Patient or Visitor waits
+```
+
+No Patient Tracker is created or selected by this workflow.
+
+### 10.2 Call and begin Registration Assistance
+
+```text
+Admission Officer operates from a workstation-configured Loket
+  → Admission Officer chooses an active Service Point
+  → Waiting Queue Entry selected
+  → Queue Entry called to the Loket
+  → Patient or Visitor presents at the Loket
+  → Queue Call acknowledged
+  → Registration Assistance starts
+  → Queue Entry enters In Service
+```
+
+Calling and service start are separate business facts.
+
+### 10.3 Resolve a Booking Patient Journey
+
+```text
+Anonymous admission Queue Entry is In Service
+  → Admission Officer asks for Patient-supplied evidence
+  → Applicable existing Booking Patient Tracker resolved
+  → Queue Entry associated with that Tracker
+  → Registration Assistance continues
+  → Registration outcome determined by Admisi Rajal
+  → Queue service completed
+```
+
+### 10.4 Resolve a Walk-In Patient Journey
+
+```text
+Anonymous admission Queue Entry is In Service
+  → Admission Officer asks for Patient-supplied evidence
+  → Applicable existing Patient Tracker selected when one exists
+     or Registration establishes a new Patient Tracker
+  → Existing Queue Entry associated with that Tracker
+  → Registration outcome determined by Admisi Rajal
+  → Queue service completed
+```
+
+### 10.5 Recall or conclude a No-Show
+
+```text
+Queue Call remains Outstanding
+  → Admission Officer recalls the same Queue Entry
+     or applicable No-Show policy is satisfied
+  → CallCount incremented when recalled
+     or Queue Call concludes as No-Show
+```
+
+No Recall allocates another Queue Number. No-Show does not mean Registration Assistance completed.
+
+### 10.6 Redirect to another Service Point
+
+```text
+Chosen Service Point found inapplicable
+  → Accountable redirection approved
+  → Original Queue Entry becomes Withdrawn and is retained as history
+  → Replacement Queue Entry established for applicable Service Point
+  → Relationship between both queue participations preserved
+```
+
+The original Queue Label is not silently changed into a label belonging to another Service Point.

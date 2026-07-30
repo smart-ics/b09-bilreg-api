@@ -16,6 +16,7 @@ public interface IPasienDal :
     IListData<PasienDto, DateTime>
 {
     IEnumerable<PasienDto> ListDataByName(Dictionary<string, string[]> listName);
+    IEnumerable<string> ListPatientIdsByPhone(string phone);
     PasienDto GetDataByNik(string nik);
 }
 
@@ -449,6 +450,28 @@ public class PasienDal : IPasienDal
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.ReadSingle<PasienDto>(sql, dp);
+    }
+
+    public IEnumerable<string> ListPatientIdsByPhone(string phone)
+    {
+        const string sql = """
+            SELECT DISTINCT
+                pasien.fs_mr
+            FROM tc_mr pasien
+            WHERE LTRIM(RTRIM(pasien.fs_tlp_pasien)) = @Phone
+               OR LTRIM(RTRIM(pasien.fs_no_hp)) = @Phone
+               OR EXISTS (
+                    SELECT 1
+                    FROM tc_mr_telp telp
+                    WHERE telp.fs_mr = pasien.fs_mr
+                      AND LTRIM(RTRIM(telp.fs_no_telp)) = @Phone
+               )
+            """;
+        var parameters = new DynamicParameters();
+        parameters.AddParam("@Phone", phone.Trim(), SqlDbType.VarChar);
+
+        using var connection = new SqlConnection(ConnStringHelper.Get(_opt));
+        return connection.Read<string>(sql, parameters) ?? [];
     }
 }
 

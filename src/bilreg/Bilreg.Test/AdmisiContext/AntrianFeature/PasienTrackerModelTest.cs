@@ -204,4 +204,23 @@ public class PasienTrackerModelTest
         tracker.LastPeriod.Should().Be(visitDate);
         tracker.ListEvent.Should().ContainSingle(e => e.EventName == "CHECKIN" && e.ReffId == "Q-1");
     }
+
+    [Fact]
+    public void UT10_GivenRegistrationAndAdmissionMilestones_WhenCreateWithAdmissionEvidence_ThenPreservesChronologicalEvidence()
+    {
+        var reg = CreateReg(new DateOnly(2025, 5, 3));
+        var checkInAt = new DateTime(2025, 5, 3, 8, 0, 0);
+        var regStartAt = new DateTime(2025, 5, 3, 8, 10, 0);
+        var registeredAt = new DateTime(2025, 5, 3, 8, 25, 0);
+
+        var tracker = PasienTrackerModel.CreateFromRegistrationWithAdmissionEvidence(
+            reg, "ADM-Q1/No.1", checkInAt, regStartAt, registeredAt);
+
+        tracker.ListEvent.Select(x => x.EventName)
+            .Should().ContainInOrder("Check In", "Reg-Start", "REGISTER");
+        tracker.ListEvent.Select(x => x.EventDate)
+            .Should().ContainInOrder(checkInAt, regStartAt, registeredAt);
+        tracker.StartPeriod.Should().Be(DateOnly.FromDateTime(checkInAt));
+        tracker.LastPeriod.Should().Be(DateOnly.FromDateTime(registeredAt));
+    }
 }
