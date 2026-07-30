@@ -274,7 +274,7 @@ public class AdmissionRegistrationOrchestratorTest
     private static OpnameHarness CreateOpnameHarness()
     {
         var opname = OpnameRequestModel.Create(PasienModel.Default.ToReff(),
-            PpaType.Default.ToReff(), DateTime.Today.AddDays(1), "test", "user1");
+            PpaType.Default.ToReff(), DateTime.Today.AddDays(1), "test", "user1", "CH0001");
         var admissionRepo = new Mock<IAdmissionRepo>();
         var opnameRepo = new Mock<IOpnameRequestRepo>();
         var reservationRepo = new Mock<IReservationRepo>();

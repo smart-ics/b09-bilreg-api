@@ -13,7 +13,7 @@ public class OpnameRequestModelTest
     private static PpaReff SampleDokter() => new("D001", "Dr. Test");
 
     private static OpnameRequestModel CreateRequested() =>
-        OpnameRequestModel.Create(SamplePasien(), SampleDokter(), new DateTime(2026, 7, 20), "Catatan klinis", "user1");
+        OpnameRequestModel.Create(SamplePasien(), SampleDokter(), new DateTime(2026, 7, 20), "Catatan klinis", "user1", "CH0001");
 
     [Fact]
     public void DT_OR_01_GivenRequested_WhenFulfillOrCancel_ThenValidTransitions()

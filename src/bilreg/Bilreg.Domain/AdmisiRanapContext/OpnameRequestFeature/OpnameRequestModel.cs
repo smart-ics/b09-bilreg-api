@@ -21,7 +21,8 @@ public record OpnameRequestModel : IOpnameRequestKey
         string clinicalNotes,
         string fulfilledRegId,
         AuditTrailType auditTrail,
-        OpnameRequestInsuranceModel insurance)
+        OpnameRequestInsuranceModel insurance,
+        string emrOrderId)
     {
         OpnameRequestId = opnameRequestId;
         OpnameRequestStatus = opnameRequestStatus;
@@ -32,6 +33,7 @@ public record OpnameRequestModel : IOpnameRequestKey
         FulfilledRegId = fulfilledRegId;
         AuditTrail = auditTrail;
         Insurance = insurance;
+        EmrOrderId = emrOrderId;
     }
 
     #region CREATION
@@ -42,6 +44,7 @@ public record OpnameRequestModel : IOpnameRequestKey
         DateTime plannedDate,
         string clinicalNotes,
         string auditUserId,
+        string emrOrderId,
         DateTime createdAt = default)
     {
         Guard.Against.Null(pasien);
@@ -57,7 +60,8 @@ public record OpnameRequestModel : IOpnameRequestKey
             clinicalNotes ?? "",
             EMPTY_REG_ID,
             AuditTrailType.Create(auditUserId, createdAt),
-            OpnameRequestInsuranceModel.Default);
+            OpnameRequestInsuranceModel.Default,
+            emrOrderId);
     }
 
     public static OpnameRequestModel Default => new(
@@ -69,7 +73,8 @@ public record OpnameRequestModel : IOpnameRequestKey
         "",
         EMPTY_REG_ID,
         AuditTrailType.Default,
-        OpnameRequestInsuranceModel.Default);
+        OpnameRequestInsuranceModel.Default,
+        "-");
 
     public static IOpnameRequestKey Key(string id) => Default with { OpnameRequestId = id };
 
@@ -86,6 +91,7 @@ public record OpnameRequestModel : IOpnameRequestKey
     public string FulfilledRegId { get; init; }
     public AuditTrailType AuditTrail { get; init; }
     public OpnameRequestInsuranceModel Insurance { get; private set; }
+    public string EmrOrderId { get; private set;  }
 
     #endregion
 
@@ -169,7 +175,8 @@ public record OpnameRequestModel : IOpnameRequestKey
             ClinicalNotes,
             fulfilledRegId,
             audit,
-            Insurance);
+            Insurance,
+            EmrOrderId);
 
     #endregion
 }
@@ -189,3 +196,4 @@ public record OpnameRequestInsuranceModel
     public TipeJaminanReff TipeJaminan { get; private set; }
     public string ReffId { get; private set; }
 }
+

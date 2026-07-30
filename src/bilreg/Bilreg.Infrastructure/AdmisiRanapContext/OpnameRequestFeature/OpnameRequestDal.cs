@@ -15,6 +15,7 @@ public interface IOpnameRequestDal :
     IGetData<OpnameRequestDto, IOpnameRequestKey>,
     IListData<OpnameRequestDto, OpnameRequestListFilter>
 {
+    OpnameRequestDto GetByEmrOrder(string emrOrderId);
 }
 
 public class OpnameRequestDal : IOpnameRequestDal
@@ -28,7 +29,7 @@ public class OpnameRequestDal : IOpnameRequestDal
         ISNULL(bb.fd_tgl_lahir, '3000-01-01') AS TglLahir,
         ISNULL(bb.fs_jns_kelamin, '') AS Gender,
         aa.DokterId, aa.DokterName, aa.PlannedDate, aa.ClinicalNotes, aa.FulfilledRegId,
-        aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate
+        aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate, aa.EmrOrderId
         """;
 
     private readonly DatabaseOptions _opt;
@@ -42,12 +43,12 @@ public class OpnameRequestDal : IOpnameRequestDal
                 OpnameRequestId, OpnameRequestStatus,
                 PasienId,
                 DokterId, DokterName, PlannedDate, ClinicalNotes, FulfilledRegId,
-                CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate)
+                CrtUser, CrtDate, UpdUser, UpdDate, VodUser, VodDate, EmrOrderId)
             VALUES (
                 @OpnameRequestId, @OpnameRequestStatus,
                 @PasienId,
                 @DokterId, @DokterName, @PlannedDate, @ClinicalNotes, @FulfilledRegId,
-                @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate)
+                @CrtUser, @CrtDate, @UpdUser, @UpdDate, @VodUser, @VodDate, @EmrOrderId)
             """;
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
@@ -69,7 +70,8 @@ public class OpnameRequestDal : IOpnameRequestDal
                 UpdUser = @UpdUser,
                 UpdDate = @UpdDate,
                 VodUser = @VodUser,
-                VodDate = @VodDate
+                VodDate = @VodDate,
+                EmrOrderId = @EmrOrderId
             WHERE
                 OpnameRequestId = @OpnameRequestId
             """;
@@ -116,6 +118,22 @@ public class OpnameRequestDal : IOpnameRequestDal
         return conn.Read<OpnameRequestDto>(sql, dp) ?? [];
     }
 
+    public OpnameRequestDto GetByEmrOrder(string emrOrderId)
+    {
+        const string sql = $"""
+                            SELECT
+                                {SELECT_COLUMNS}
+                            FROM BILRG_AdmOpnameRequest aa
+                            LEFT JOIN tc_mr bb ON aa.PasienId = bb.fs_mr
+                            WHERE aa.EmrOrderId = @EmrOrderId
+                            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@EmrOrderId", emrOrderId, SqlDbType.VarChar);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.ReadSingle<OpnameRequestDto>(sql, dp);
+    }
     private static DynamicParameters MapWriteParams(OpnameRequestDto dto)
     {
         var dp = new DynamicParameters();
@@ -133,6 +151,9 @@ public class OpnameRequestDal : IOpnameRequestDal
         dp.AddParam("@UpdDate", dto.UpdDate, SqlDbType.DateTime);
         dp.AddParam("@VodUser", dto.VodUser, SqlDbType.VarChar);
         dp.AddParam("@VodDate", dto.VodDate, SqlDbType.DateTime);
+        dp.AddParam("@EmrOrderId", dto.EmrOrderId, SqlDbType.VarChar);
         return dp;
     }
+
+    
 }

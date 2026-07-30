@@ -76,7 +76,8 @@ public class OpnameRequestRepoTest
             "Catatan klinis",
             "-",
             AuditTrailType.Create("user1", new DateTime(2026, 7, 7)),
-            OpnameRequestInsuranceModel.Default);
+            OpnameRequestInsuranceModel.Default, 
+            "CH0001");
 
     private static OpnameRequestDto CreateTestDto()
     {

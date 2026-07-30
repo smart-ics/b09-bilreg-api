@@ -12,13 +12,13 @@ namespace Bilreg.Application.AdmisiRanapContext.OpnameRequestFeature.UseCases;
 public record AdmSetInsuranceOpnameRequestCmd(string OpnameRequestId, string TipeJaminanId, 
     string ReffId, string UserId) : IRequest, IOpnameRequestKey, ITipeJaminanKey;
 
-public class AdmSetInsunraceOpnameRequestHandler : IRequestHandler<AdmSetInsuranceOpnameRequestCmd>
+public class AdmSetInsuranceOpnameRequestHandler : IRequestHandler<AdmSetInsuranceOpnameRequestCmd>
 {
     private readonly ITipeJaminanRepo _tipeJaminanRepo;
     private readonly IOpnameRequestRepo _opnameRequestRepo;
     private readonly IAuditRepo _auditRepo;
     private readonly ITglJamProvider _tglJamProvider;
-    public AdmSetInsunraceOpnameRequestHandler(ITipeJaminanRepo tipeJaminanRepo,
+    public AdmSetInsuranceOpnameRequestHandler(ITipeJaminanRepo tipeJaminanRepo,
         IOpnameRequestRepo opnameRequestRepo,
         IAuditRepo auditRepo,
         ITglJamProvider tglJamProvider)

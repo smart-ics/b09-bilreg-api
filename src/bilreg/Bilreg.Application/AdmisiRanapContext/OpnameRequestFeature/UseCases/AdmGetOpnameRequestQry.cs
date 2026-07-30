@@ -18,6 +18,7 @@ public record AdmGetOpnameRequestResponse(
     string DokterName,
     string ClinicalNotes,
     string FulfilledRegId,
+    string EmrOrderId,
     DateTime CrtDate,
     AdmGetOpnameRequestInsuranceResponse Insurance);
 
@@ -46,6 +47,7 @@ public class AdmGetOpnameRequestHandler : IRequestHandler<AdmGetOpnameRequestQry
             opname.Dokter.PpaName,
             opname.ClinicalNotes,
             opname.FulfilledRegId,
+            opname.EmrOrderId,
             opname.AuditTrail.Created.Timestamp,
             insurance));
     }

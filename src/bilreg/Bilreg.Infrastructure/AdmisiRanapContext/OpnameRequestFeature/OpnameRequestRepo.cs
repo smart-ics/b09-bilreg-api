@@ -47,4 +47,17 @@ public class OpnameRequestRepo : IOpnameRequestRepo
         var listDto = _dal.ListData(filter)?.ToList() ?? [];
         return listDto.Select(x => x.ToModel()).ToList();
     }
+
+    public MayBe<OpnameRequestModel> GetByEmrOrder(string emrOrderId)
+    {
+        var dto = _dal.GetByEmrOrder(emrOrderId);
+        if (dto is null)
+            return MayBe<OpnameRequestModel>.None;
+        var key = OpnameRequestModel.Key(dto.OpnameRequestId);
+        var insDto = _insuranceDal.GetData(key)
+            ?? new OpnameRequestInsuranceDto(key.OpnameRequestId, "-", "-", "-");
+
+        
+        return MayBe.From(dto.ToModel(insDto));
+    }
 }

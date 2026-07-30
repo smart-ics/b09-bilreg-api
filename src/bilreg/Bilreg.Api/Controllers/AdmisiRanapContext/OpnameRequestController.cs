@@ -5,12 +5,13 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
+using System.Net.WebSockets;
 
 namespace Bilreg.Api.Controllers.AdmisiRanapContext;
 
 [Route("api/admisi-ranap/opname-request")]
 [ApiController]
-[Authorize]
+//[Authorize]
 [ServiceFilter(typeof(AdmisiRanapEnabledFilter))]
 public class OpnameRequestController : ControllerBase
 {
@@ -51,6 +52,14 @@ public class OpnameRequestController : ControllerBase
     {
         await _mediator.Send(new AdmSetInsuranceOpnameRequestCmd(id, body.TipeJaminanId, body.ReffId, body.UserId));
         return Ok(new JSendOk("Done"));
+    }
+    
+    [HttpGet("emr-order/{emrOrderId}")]
+    public async Task<IActionResult> GetByEmrOrder(string emrOrderId)
+    {
+        var result = await _mediator.Send(new AdmGetOpnameRequestByEmrOrderIdQry(emrOrderId));
+        return Ok(new JSendOk(result));
+        
     }
 }
 

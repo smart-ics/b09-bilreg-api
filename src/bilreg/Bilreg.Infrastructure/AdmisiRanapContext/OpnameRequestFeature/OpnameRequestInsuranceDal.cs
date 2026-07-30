@@ -43,19 +43,11 @@ public class OpnameRequestInsuranceDal : IOpnameRequestInsuranceDal
     public void Update(OpnameRequestInsuranceDto dto)
     {
         const string sql = """
-            UPDATE BILRG_AdmOpnameRequest
+            UPDATE BILRG_AdmOpnameRequestInsurance
             SET
-                OpnameRequestStatus = @OpnameRequestStatus,
-                PasienId = @PasienId,
-                DokterId = @DokterId,
-                DokterName = @DokterName,
-                PlannedDate = @PlannedDate,
-                ClinicalNotes = @ClinicalNotes,
-                FulfilledRegId = @FulfilledRegId,
-                UpdUser = @UpdUser,
-                UpdDate = @UpdDate,
-                VodUser = @VodUser,
-                VodDate = @VodDate
+                TipeJaminanId = @TipeJaminanId, 
+                TipeJaminanName = @TipeJaminanName, 
+                ReffId = @ReffId
             WHERE
                 OpnameRequestId = @OpnameRequestId
             """;
