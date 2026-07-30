@@ -43,13 +43,14 @@ public class TindakanController : Controller
         var response = await _mediator.Send(query); 
         return Ok(new JSendOk(response));
     }
+    
     [HttpPatch]
     [Route("batal")]
     public async Task<IActionResult> Batal(TindakanVoidRequest req)
     {
         var userAgent = HttpHelper.GetUserAgent(Request);
         var remoteIpAddress = HttpHelper.GetIpAddress(Request, HttpContext);
-        var cmd = new TindakanVoidCmd(req.TindakanId, req.UserId, req.VoidReason, userAgent, remoteIpAddress);
+        var cmd = new TindakanVoidCmd(req.TindakanId, req.UserId, req.VoidReason, remoteIpAddress, userAgent);
         await _mediator.Send(cmd);
         return Ok(new JSendOk("Done"));
     }
