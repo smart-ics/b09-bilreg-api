@@ -1,3 +1,4 @@
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Farinv.Domain.SalesContext.AntrianFeature;
 using FluentAssertions;
 
