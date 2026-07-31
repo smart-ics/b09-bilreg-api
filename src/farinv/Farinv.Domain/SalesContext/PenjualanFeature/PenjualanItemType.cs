@@ -24,7 +24,7 @@ public record PenjualanItemType
         Hpp = hpp;
         ExpiredDate = expiredDate;
         Batch = batch;
-        _listItemRacik = listItemRacik.ToList();
+        _listItemRacik = [.. listItemRacik];
     }
 
     public int NoUrut { get; private set; }

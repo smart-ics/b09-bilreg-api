@@ -1,6 +1,4 @@
-﻿using Ardalis.GuardClauses;
-
-namespace Farinv.Domain.BrgContext.BrgFeature;
+﻿namespace Farinv.Domain.BrgContext.BrgFeature;
 
 public interface IBrg : IBrgKey
 {
