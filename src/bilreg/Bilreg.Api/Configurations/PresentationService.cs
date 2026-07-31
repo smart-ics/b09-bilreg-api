@@ -158,14 +158,17 @@ public static class PresentationService
         services.AddScoped<AdmisiRanapEnabledFilter>();
         services.AddScoped<JourneyEndpointsEnabledFilter>();
 
-        services.AddCors(p => p.AddPolicy("corsapp", policyBuilder =>
+        services.AddCors(options =>
         {
-            policyBuilder.WithOrigins("*")
-                .AllowAnyMethod()
-                .AllowAnyHeader()
-                .AllowAnyOrigin();
-        }));
-        
+            options.AddPolicy("corsapp", policy =>
+            {
+                policy.SetIsOriginAllowed(origin => true) 
+                      .AllowAnyHeader()
+                      .AllowAnyMethod()
+                      .AllowCredentials(); 
+            });
+        });
+
         services.AddHttpContextAccessor();
         
         return services;
