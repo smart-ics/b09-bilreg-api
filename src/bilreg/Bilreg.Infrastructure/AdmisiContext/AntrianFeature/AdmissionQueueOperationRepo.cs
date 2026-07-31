@@ -120,6 +120,12 @@ public sealed class AdmissionQueueOperationRepo : IAdmissionQueueOperationRepo
         using var c=Open(); return c.ExecuteScalar<bool>(sql,new{q,n,loket,expectedRowVersion,user,at});
     }
 
+    public bool HasInServiceClaim(string q, int n, string loket, byte[] expectedRowVersion)
+    {
+        const string sql = """SELECT CAST(IIF(EXISTS(SELECT 1 FROM BILRG_AdmLoketCurrentCall WHERE LoketKey=@loket AND AntrianId=@q AND NoUrut=@n AND ClaimState=2 AND IsActive=1 AND RowVersion=@expectedRowVersion),1,0) AS BIT);""";
+        using var c = Open(); return c.ExecuteScalar<bool>(sql, new { q, n, loket, expectedRowVersion });
+    }
+
     public bool TryWithdraw(string q,int n,string reason,string user,DateTime at,string? loketKey,byte[]? expectedRowVersion)
     {
         const string sql="""
