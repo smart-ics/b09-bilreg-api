@@ -11,6 +11,7 @@ public interface IAdmissionQueueOperationRepo
     bool TryCancelRegistration(string antrianId, int noUrut, string loketKey,
         byte[] expectedRowVersion, string userId, DateTime at);
     bool TryStartService(string antrianId, int noUrut, string loketKey, byte[] expectedRowVersion, string userId, DateTime at);
+    bool HasInServiceClaim(string antrianId, int noUrut, string loketKey, byte[] expectedRowVersion);
     bool TryWithdraw(string antrianId, int noUrut, string reason, string userId, DateTime at,
         string? loketKey, byte[]? expectedRowVersion);
     bool TryRedirect(string originAntrianId, int originNoUrut, string userId, DateTime at,
