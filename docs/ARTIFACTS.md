@@ -7,7 +7,7 @@
 ## Prompt recipe (ordered)
 
 1. [`docs/INSTRUCTION.md`](INSTRUCTION.md) — global engineering stance
-2. **Bounded context** — [`docs/contexts/{context}/`](contexts/) (see table below). IGD UI/integration: also [`docs/contexts/igd/igd-04-api-contract.md`](contexts/igd/igd-04-api-contract.md); ops/DBA: [`docs/contexts/igd/igd-05-runbook.md`](contexts/igd/igd-05-runbook.md). Tarif: [`docs/contexts/tarif/tarif-01-context.md`](contexts/tarif/tarif-01-context.md) through `tarif-07-admin-workflow.md`. Tata Rekening: [`docs/contexts/TataRekening/01-context.md`](contexts/TataRekening/01-context.md) through [`04-sop.md`](contexts/TataRekening/04-sop.md) and `SOP-TR-01` … `SOP-TR-10`.
+2. **Bounded context** — [`docs/contexts/{context}/`](contexts/) (see table below), with the Apotek domain group explicitly located at [`docs/context/apotek/`](context/apotek/). IGD UI/integration: also [`docs/contexts/igd/igd-04-api-contract.md`](contexts/igd/igd-04-api-contract.md); ops/DBA: [`docs/contexts/igd/igd-05-runbook.md`](contexts/igd/igd-05-runbook.md). Tarif: [`docs/contexts/tarif/tarif-01-context.md`](contexts/tarif/tarif-01-context.md) through `tarif-07-admin-workflow.md`. Tata Rekening: [`docs/contexts/TataRekening/01-context.md`](contexts/TataRekening/01-context.md) through [`04-sop.md`](contexts/TataRekening/04-sop.md) and `SOP-TR-01` … `SOP-TR-10`.
 3. **Global standards** (as needed):
    - [`docs/ENGINEERING.md`](ENGINEERING.md) — layers, repository, domain events philosophy
    - [`docs/DATABASE.md`](DATABASE.md) — SQL, tables, audit columns
@@ -109,6 +109,19 @@ Persistent-workspace Phase 2 close-out summary (frontend docs tree): `c012_myhos
 | `docs/contexts/admisi-rajal/adr/ADR-001-runtime-effective-schedule.md` | ADR — runtime `JadwalPraktekEffective` and resolver as single authority |
 | `docs/contexts/admisi-rajal/adr/ADR-002-manual-override-independence.md` | ADR — `Source = MANUAL` daily rows independent from template |
 | `docs/contexts/admisi-rajal/adr/ADR-003-booking-schedule-references.md` | ADR — dual nullable schedule IDs on booking |
+
+### Apotek (`docs/context/apotek/`)
+
+| Path | Purpose |
+|------|---------|
+| `docs/context/apotek/apotek-rajal-domain.md` | Apotek Rajal — outpatient-specific pharmacy workflow and policy; shared medication-order, Sales Invoice, and dispensing semantics are owned by Medication Fulfillment |
+| `docs/context/apotek/apotek-rajal-domain-id.md` | Apotek Rajal — Bahasa Indonesia semantic companion for outpatient-specific workflow and policy |
+| `docs/context/apotek/medication-fulfillment-domain.md` | Medication Fulfillment — canonical English business truth for Prescription Review, Pharmacy Sales Order, Sales Invoice, Dispense Order, and cross-setting fulfillment |
+| `docs/context/apotek/medication-fulfillment-domain-id.md` | Medication Fulfillment — Bahasa Indonesia semantic companion (`Pelayanan Obat Pasien`) for human domain review |
+
+Cross-setting patient-specific medication acceptance, Pharmacy Sales Order, Sales Invoice, dispensing, handover, and accountable fulfillment resolution. This bounded context applies to outpatient, inpatient, emergency, and Unit Dose Dispensing settings without owning Purchasing or authoritative Inventory balances.
+
+When shared medication-fulfillment semantics conflict with the earlier Apotek Rajal model, the Medication Fulfillment domain pair is authoritative; Apotek Rajal remains authoritative only for outpatient-specific policy.
 
 ### Tarif (`docs/contexts/tarif/`)
 
