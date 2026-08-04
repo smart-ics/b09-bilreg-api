@@ -1,5 +1,6 @@
 using Ardalis.GuardClauses;
 using Bilreg.Domain.AdmisiContext.RegFeature;
+using Farinv.Domain.BrgContext.BrgFeature;
 using Farinv.Domain.InventoryContext.StokFeature;
 using Farinv.Domain.SalesContext.ResepFeature;
 using Farinv.Domain.Shared.Helpers.CommonValueObjects;
@@ -45,7 +46,7 @@ public class PenjualanModel : IPenjualanKey
         AuditTrailType.Default, new List<PenjualanItemType>());
 
     public static PenjualanModel CreateFromPoliRajal(
-        RegModel reg, LayananType layanan,
+        RegModel reg, LayananType layanan, StokModel stok, SatuanType satuan,
         string userId, DateTime occurredAt = default)
     {
         Guard.Against.Null(reg);
@@ -53,6 +54,7 @@ public class PenjualanModel : IPenjualanKey
 
         var newId = NunaId.New(ID_PREFIX);
         var auditTrail = AuditTrailType.Create(userId, occurredAt);
+
         var result = new PenjualanModel(newId, occurredAt, "-", reg.ToReff(), DokterType.Default.ToReff(), layanan.ToReff(),
             0, 0, 0, 0, 0, 0, 0, auditTrail, new List<PenjualanItemType>());
 
@@ -93,7 +95,31 @@ public class PenjualanModel : IPenjualanKey
     public void Void(string userId, DateTime voidedAt = default)
         => AuditTrail.Batal(userId, voidedAt);
 
-public PenjualanReff ToReff() => new(PenjualanId, PenjualanDate, Register);
+    public void AddItem(StokModel stok, SatuanType satuan, decimal qty)
+    {
+        var brg = stok.Brg;
+        var stokLayer = stok.ListLayer
+            .OrderByDescending(x => x.TrsReffIn.ReffDate)
+            .FirstOrDefault() ?? StokLayerModel.Default;
+
+        var isBrgDuplicated = _listItem
+            .Any(x => x.Brg.BrgId == brg.BrgId);
+
+        if (isBrgDuplicated)
+            throw new ArgumentException($"Brg sudah ada, tidak bisa duplikasi.\n'{brg}");
+
+        var noUrut = ListItem
+            .Select(x => x.NoUrut)
+            .DefaultIfEmpty(0)
+            .Max() + 1;
+
+        var newItem = new PenjualanItemType(noUrut, brg, satuan, EtiketType.Default, qty, 0, 0, 0, 0, 0, stokLayer.Hpp,
+            new DateTime(3000, 1, 1), "-", new List<PenjualanItemRacikType>());
+        
+        _listItem.Add(newItem);
+    }
+
+    public PenjualanReff ToReff() => new(PenjualanId, PenjualanDate, Register);
 }
 
 public record PenjualanReff(string PenjualanId, DateTime PenjualanDate, RegReff Register);

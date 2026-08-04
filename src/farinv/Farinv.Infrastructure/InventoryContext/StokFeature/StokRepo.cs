@@ -1,6 +1,7 @@
 using Farinv.Application.InventoryContext.StokFeature;
 using Farinv.Domain.InventoryContext.StokFeature;
 using Nuna.Lib.PatternHelper;
+using Nuna.Lib.ValidationHelper;
 
 // resharper disable inconsistentnaming
 namespace Farinv.Infrastructure.InventoryContext.StokFeature;
@@ -30,14 +31,14 @@ public class StokRepo : IStokRepo
 
     public MayBe<StokModel> LoadEntity(IStokKey key)
     {
-        // var brgDto = _stokDal.GetData(key);
-        // if (brgDto is null)
-        //     RekonstruksiStok(key);
-        //
-        // brgDto = _stokDal.GetData(key);
-        // if (brgDto is null)
-        //     return MayBe<StokModel>.None;
-        //
+        var brgDto = _stokDal.GetData(key);
+        if (brgDto is null) 
+            RekonstruksiStok(key);
+        
+        brgDto = _stokDal.GetData(key);
+        if (brgDto is null) 
+            return MayBe<StokModel>.None;
+        
         // var listLayerDto = _stokLayerDal.ListData(key)?.ToList() ?? [];
         // var listStokLayerKey = listLayerDto.Select(x => StokLayerModel.Key(x.StokLayerId)).ToList();
         // var listBukuDto = _tb_buku_dal.ListData(listStokLayerKey)?.ToList() ?? [];
@@ -48,7 +49,7 @@ public class StokRepo : IStokRepo
         //
         // var listLayer = listLayerDto
         //     .Select(x => x.ToModel(listBukuByLayer.First(y => y.Key == x.StokLayerId).Value)).ToList();
-        //
+        
         // var stok = brgDto.ToModel(listLayer);
         // return MayBe<StokModel>.Some(stok);
         throw new NotImplementedException();
@@ -65,46 +66,54 @@ public class StokRepo : IStokRepo
 
     #region PRIVATE-HELPER
 
-    public void RekonstruksiStok(IStokKey key)
+    private void RekonstruksiStok(IStokKey key)
     {
         //  1. ambil tb_stok
         var listTbStok = _tb_stok_dal.ListData(key, key)?.ToList() ?? [];
         if (listTbStok.Count == 0)
             return;
+        
         //  2. list tb_buku by kode do dari listTbStok
+        var listKodeDo = listTbStok
+            .Select(x => x.fs_kd_do)
+            .ToList();
+
         var listTbBuku = _tb_buku_dal
-            .ListData(
-                key, listTbStok
-                    .Select(x => x.fs_kd_do)
-                    .ToList())?.ToList() ?? [];
+            .ListData(key, listKodeDo).ToList();
+        
         //  3. cek dan perbaiki konsistensi tb_stok dan tb_buku
-        foreach (var item in listTbStok)
+        listTbStok.ForEach(item =>
         {
             var qtyTbBuku = listTbBuku
                 .Where(x => x.fs_kd_do == item.fs_kd_do)
                 .Sum(x => x.fn_stok_in - x.fn_stok_out);
+            
             if (qtyTbBuku == 0)
             {
                 _tb_stok_dal.Delete(item.fs_kd_trs);
-                continue;
+                return;
             }
-            if (qtyTbBuku == item.fn_qty) continue;
+            
+            if (qtyTbBuku == item.fn_qty) return;
             var validTbStokItem = item with { fn_qty = qtyTbBuku };
             _tb_stok_dal.Update(validTbStokItem);
-        }
+        });
+        
         //  4. membentuk FARIN_StokLayer
         listTbStok = _tb_stok_dal.ListData(key, key)?.ToList() ?? [];
         var listStokLayerDto = new List<StokLayerDto>();
-        // foreach (var item in listTbStok)
-        // {
-        //     var newStokLayerId = Ulid.NewUlid().ToString();
-        //     var stokLayerDto = new StokLayerDto(newStokLayerId, item.fs_kd_barang, item.fs_kd_layanan,
-        //         item.fs_kd_do, item.fd_tgl_do.ToDate(DateFormatEnum.YMD),
-        //         item.fs_kd_po, item.fs_kd_do, item.fd_tgl_ed.ToDate(DateFormatEnum.YMD),
-        //         item.fs_no_batch, item.fn_qty_in, item.fn_qty, item.fn_hpp, item.fs_nm_barang, item.fs_nm_layanan);
-        //     listStokLayerDto.Add(stokLayerDto);
-        // }
+        
+        listTbStok.ForEach(item =>
+        {
+            var newStokLayerId = Ulid.NewUlid().ToString();
+            var stokLayerDto = new StokLayerDto(newStokLayerId, item.fs_kd_barang, item.fs_kd_layanan,
+                item.fs_kd_po, item.fs_kd_do, item.fd_tgl_ed.ToDate(DateFormatEnum.YMD),
+                item.fs_no_batch, (int)item.fn_qty_in, (int)item.fn_qty, item.fn_hpp, item.fs_kd_do,
+                item.fd_tgl_do.ToDate(DateFormatEnum.YMD),item.fs_nm_barang, item.fs_nm_layanan);
+            listStokLayerDto.Add(stokLayerDto);
+        });
         _stokLayerDal.Insert(listStokLayerDto);
+        
         //  5. membentuk FARIN_StokBukuMap
         // foreach (var item in listStokLayerDto)
         // {
@@ -114,7 +123,8 @@ public class StokRepo : IStokRepo
         //
         //     _stokBukuMapDal.Insert(newBukuMap);
         // }
-        // 6. membentuk FARIN_Stok
+        
+        //  6. membentuk FARIN_Stok
         var qty = listStokLayerDto.Sum(x => x.QtySisa);
         var satuan = listTbBuku.First().fs_kd_satuan;
         var brgName = listTbBuku.First().fs_nm_barang;

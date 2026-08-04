@@ -101,13 +101,13 @@ public class tb_buku_dal : Itb_buku_dal
            WHERE
                aa.fs_kd_barang = @fs_kd_barang
                AND aa.fs_kd_layanan = @fs_kd_layanan
-               AND aa.fs_kd_do = @fs_kd_do
+               AND aa.fs_kd_do IN @fs_kd_do
            """;
         
         var dp = new DynamicParameters();
         dp.AddParam("@fs_kd_barang", brgLyn.BrgId, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_layanan", brgLyn.LayananId, SqlDbType.VarChar);
-        dp.Add("@fs_kd_do", listKodeDo);
+        dp.Add("@fs_kd_do", listKodeDo.ToArray());
         
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<tb_buku_dto>(sql, dp);
