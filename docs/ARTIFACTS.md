@@ -7,7 +7,7 @@
 ## Prompt recipe (ordered)
 
 1. [`docs/INSTRUCTION.md`](INSTRUCTION.md) — global engineering stance
-2. **Bounded context** — [`docs/contexts/{context}/`](contexts/) (see table below), with the Apotek domain group explicitly located at [`docs/context/apotek/`](context/apotek/). IGD UI/integration: also [`docs/contexts/igd/igd-04-api-contract.md`](contexts/igd/igd-04-api-contract.md); ops/DBA: [`docs/contexts/igd/igd-05-runbook.md`](contexts/igd/igd-05-runbook.md). Tarif: [`docs/contexts/tarif/tarif-01-context.md`](contexts/tarif/tarif-01-context.md) through `tarif-07-admin-workflow.md`. Tata Rekening: [`docs/contexts/TataRekening/01-context.md`](contexts/TataRekening/01-context.md) through [`04-sop.md`](contexts/TataRekening/04-sop.md) and `SOP-TR-01` … `SOP-TR-10`.
+2. **Bounded context** — [`docs/contexts/{context}/`](contexts/) (see table below), including the Apotek domain group at [`docs/contexts/apotek/`](contexts/apotek/). IGD UI/integration: also [`docs/contexts/igd/igd-04-api-contract.md`](contexts/igd/igd-04-api-contract.md); ops/DBA: [`docs/contexts/igd/igd-05-runbook.md`](contexts/igd/igd-05-runbook.md). Tarif: [`docs/contexts/tarif/tarif-01-context.md`](contexts/tarif/tarif-01-context.md) through `tarif-07-admin-workflow.md`. Tata Rekening: [`docs/contexts/TataRekening/01-context.md`](contexts/TataRekening/01-context.md) through [`04-sop.md`](contexts/TataRekening/04-sop.md) and `SOP-TR-01` … `SOP-TR-10`.
 3. **Global standards** (as needed):
    - [`docs/ENGINEERING.md`](ENGINEERING.md) — layers, repository, domain events philosophy
    - [`docs/DATABASE.md`](DATABASE.md) — SQL, tables, audit columns
@@ -115,16 +115,19 @@ Persistent-workspace Phase 2 close-out summary (frontend docs tree): `c012_myhos
 | `docs/contexts/admisi-rajal/adr/ADR-002-manual-override-independence.md` | ADR — `Source = MANUAL` daily rows independent from template |
 | `docs/contexts/admisi-rajal/adr/ADR-003-booking-schedule-references.md` | ADR — dual nullable schedule IDs on booking |
 
-### Apotek (`docs/context/apotek/`)
+### Apotek (`docs/contexts/apotek/`)
 
 | Path | Purpose |
 |------|---------|
-| `docs/context/apotek/medication-fulfillment-domain.md` | Medication Fulfillment — canonical English business truth for Prescription Review, Pharmacy Sales Order, Sales Invoice, Dispense Order, and cross-setting fulfillment policy |
-| `docs/context/apotek/medication-fulfillment-domain-id.md` | Medication Fulfillment — Bahasa Indonesia semantic companion (`Pelayanan Obat Pasien`) |
-| `docs/context/apotek/outpatient-medication-fulfillment-workflow.md` | Outpatient Medication Fulfillment — canonical English workflow from Pharmacy Queue Number acquisition through accountable Medication Handover or non-fulfillment resolution |
-| `docs/context/apotek/outpatient-medication-fulfillment-workflow-id.md` | Outpatient Medication Fulfillment — Bahasa Indonesia workflow companion for Apotek Rawat Jalan |
+| `docs/contexts/apotek/medication-fulfillment-domain.md` | Medication Fulfillment — canonical English business truth for Prescription Review, Pharmacy Sales Order, Sales Invoice, Dispense Order, and cross-setting fulfillment policy |
+| `docs/contexts/apotek/medication-fulfillment-domain-id.md` | Medication Fulfillment — Bahasa Indonesia semantic companion (`Pelayanan Obat Pasien`) |
+| `docs/contexts/apotek/outpatient-medication-fulfillment-workflow.md` | Outpatient Medication Fulfillment — canonical English workflow from Pharmacy Queue Number acquisition through accountable Medication Handover or non-fulfillment resolution |
+| `docs/contexts/apotek/outpatient-medication-fulfillment-workflow-id.md` | Outpatient Medication Fulfillment — Bahasa Indonesia workflow companion for Apotek Rawat Jalan |
+| `docs/contexts/apotek/sop/SOP-MF-RJ-INDEX.md` | Outpatient Medication Fulfillment — index of seven canonical English SOPs and seven Bahasa Indonesia companions |
 
 Cross-setting patient-specific medication acceptance, Pharmacy Sales Order, Sales Invoice, dispensing, handover, and accountable fulfillment resolution. This bounded context applies to outpatient, inpatient, emergency, and Unit Dose Dispensing settings without owning Purchasing or authoritative Inventory balances. The workflow pair owns detailed Rawat Jalan queue, payer, pickup, handover, and no-show sequencing; the domain pair remains authoritative for business truth.
+
+The paired outpatient operational specifications are listed in [`docs/contexts/apotek/sop/SOP-MF-RJ-INDEX.md`](contexts/apotek/sop/SOP-MF-RJ-INDEX.md).
 
 ### Tarif (`docs/contexts/tarif/`)
 

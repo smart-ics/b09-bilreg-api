@@ -576,7 +576,7 @@ Medication Fulfillment reports Medication Preparation Started
   → Pharmacy DoneAt uses the pickup-call time
 ```
 
-The queue lifecycle describes operational pharmacy queue progress. It does not prove Final Dispense Review, Patient Education, Medication Dispense, or Medication Handover. Detailed outpatient pharmacy sequencing is owned by the [Outpatient Medication Fulfillment workflow](../../context/apotek/outpatient-medication-fulfillment-workflow.md).
+The queue lifecycle describes operational pharmacy queue progress. It does not prove Final Dispense Review, Patient Education, Medication Dispense, or Medication Handover. Detailed outpatient pharmacy sequencing is owned by the [Outpatient Medication Fulfillment workflow](../apotek/outpatient-medication-fulfillment-workflow.md).
 
 ### 10.7 Resolve multiple Journey Candidates
 

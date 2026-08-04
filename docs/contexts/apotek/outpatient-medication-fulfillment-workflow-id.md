@@ -730,4 +730,4 @@ Artifact canonical terkait:
 - [Domain CPOE](../../contexts/cpoe/CPOE-DOMAIN-ID.md)
 - [Domain Tata Rekening](../../contexts/TataRekening/02-domain.md)
 
-Belum ada SOP apotek Rawat Jalan atau artifact integration/architecture khusus yang direferensikan oleh workflow pada revisi ini.
+Tujuh pasang spesifikasi operasional Rawat Jalan tercantum dalam [Indeks SOP Outpatient Medication Fulfillment](./sop/SOP-MF-RJ-INDEX.md). Belum ada artifact integration/architecture khusus yang direferensikan oleh workflow pada revisi ini.

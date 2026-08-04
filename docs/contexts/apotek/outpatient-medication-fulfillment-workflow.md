@@ -730,4 +730,4 @@ Related canonical artifacts:
 - [CPOE Domain](../../contexts/cpoe/CPOE-DOMAIN.md)
 - [Tata Rekening Domain](../../contexts/TataRekening/02-domain.md)
 
-No outpatient pharmacy SOP or dedicated integration/architecture artifact is referenced by this workflow at this revision.
+The seven paired outpatient operational specifications are listed in the [Outpatient Medication Fulfillment SOP Index](./sop/SOP-MF-RJ-INDEX.md). No dedicated integration/architecture artifact is referenced by this workflow at this revision.

@@ -578,7 +578,7 @@ Medication Fulfillment melaporkan Medication Preparation Started
   → DoneAt apotek menggunakan waktu pickup call
 ```
 
-Lifecycle antrean menggambarkan kemajuan operasional antrean apotek. Lifecycle tersebut tidak membuktikan Final Dispense Review, Patient Education, Medication Dispense, atau Medication Handover. Urutan terperinci apotek Rawat Jalan dimiliki oleh [workflow Outpatient Medication Fulfillment](../../context/apotek/outpatient-medication-fulfillment-workflow-id.md).
+Lifecycle antrean menggambarkan kemajuan operasional antrean apotek. Lifecycle tersebut tidak membuktikan Final Dispense Review, Patient Education, Medication Dispense, atau Medication Handover. Urutan terperinci apotek Rawat Jalan dimiliki oleh [workflow Outpatient Medication Fulfillment](../apotek/outpatient-medication-fulfillment-workflow-id.md).
 
 ### 10.7 Resolve multiple Journey Candidates
 

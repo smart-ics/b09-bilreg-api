@@ -64,10 +64,11 @@ The Indonesian version is not an independent reinterpretation. It must not add, 
 
 ## Mode A — Create bilingual documents from scratch
 
-1. Discover and validate the procedure, actors, UI terminology, exceptions, and observable outcomes.
-2. Create the complete English SOP.
-3. Create the Indonesian companion from the completed English SOP.
-4. Verify structural and semantic parity between both documents.
+1. Discover the authoritative domain pair and any applicable workflow pair.
+2. Validate the procedure, actors, workflow alignment, UI terminology, exceptions, and observable outcomes.
+3. Create the complete English SOP.
+4. Create the Indonesian companion from the completed English SOP.
+5. Verify source traceability and structural and semantic parity between both documents.
 
 Define the operational procedure once. Do not independently invent two procedures.
 
@@ -82,7 +83,88 @@ When an obvious formatting defect can be corrected without changing meaning, kee
 
 ## Mode C — Synchronize an existing pair
 
-When either SOP changes, identify the operational delta and update its companion. Preserve carefully chosen Indonesian terminology and exact UI labels.
+When either SOP changes, identify the operational delta and update its companion. Re-read the applicable domain and workflow sources so that synchronization does not preserve an obsolete business sequence. Preserve carefully chosen Indonesian terminology and exact UI labels.
+
+---
+
+# SOURCE DISCOVERY AND REQUIRED INPUTS
+
+`DOMAIN.md` or its context-specific equivalent is always required. A dedicated workflow document is conditional and must not be assumed to exist.
+
+Before creating or revising an SOP, read completely:
+
+1. the canonical English domain document;
+2. its Bahasa Indonesia companion when available;
+3. the domain's `Business Workflows`, `Workflow Bisnis`, or equivalent section;
+4. every applicable canonical English workflow document that exists;
+5. the applicable Indonesian workflow companion when available;
+6. every external domain or workflow document that owns a referenced business fact or handoff;
+7. the existing English and Indonesian SOPs when translating or synchronizing; and
+8. approved application evidence for menus, screens, buttons, fields, permissions, system responses, and recovery actions.
+
+Use repository indexes, domain links, naming conventions, and nearby context files to discover workflow artifacts. Do not decide that no workflow exists merely because the file is not named exactly `WORKFLOW.md`.
+
+A dedicated workflow pair is optional input because it is created only when a domain contains two or more distinct business workflows. When a domain has only one workflow and no dedicated workflow artifact exists, derive workflow context from the domain's workflow section.
+
+Apply these cases:
+
+| Discovered state | Required SOP treatment |
+|---|---|
+| Applicable workflow document exists | Read it and use it as the canonical source for trigger-to-outcome coordination. |
+| No workflow document exists and the domain contains one workflow | Use the domain workflow section as the coordination source. Do not require or create a workflow document merely to create the SOP. |
+| Domain identifies two or more workflows but no dedicated workflow document exists | Inspect whether the domain still contains enough authoritative coordination for the requested SOP. Report the missing expected workflow artifact as a documentation gap; do not invent missing sequencing. |
+| Domain delegates detailed sequencing to a workflow link, but the target is missing or unreadable | Stop SOP creation for the affected procedure and report the broken authority chain. |
+| Workflow and domain contradict each other | Stop and report the exact contradiction. Domain remains authoritative for business truth; the workflow must be corrected before the SOP derives operational steps from it. |
+| Workflow exists but does not cover the requested procedure | Do not force-fit it. Use another applicable workflow or the domain when authoritative coverage exists; otherwise report a source gap. |
+
+The absence of a workflow document is not by itself a reason to fail SOP creation. Missing authoritative information is.
+
+Build a compact source inventory containing:
+
+- canonical domain terms, roles, Business Rule identifiers, states, and Domain Events;
+- applicable workflow identifiers, names, scope, triggers, participants, main sequence, decisions, exceptions, handoffs, and outcomes;
+- the mapping from the requested SOP to exactly one operational procedure within an applicable workflow or domain flow;
+- approved UI terminology and observable system behavior; and
+- unresolved business, workflow, or application gaps.
+
+Do not use SOP creation as permission to create a missing workflow artifact unless the request explicitly includes workflow creation.
+
+---
+
+# SOURCE AUTHORITY AND DERIVATION ORDER
+
+Use this derivation order:
+
+```text
+DOMAIN (mandatory business truth)
+  -> WORKFLOW (conditional coordination truth, when present)
+      -> SOP (operational execution)
+```
+
+The sources have different authority:
+
+| Source | Authority used by the SOP |
+|---|---|
+| DOMAIN | Ubiquitous Language, roles, Business Rules, objects, states, lifecycles, Domain Events, and generalized workflow landscape. |
+| WORKFLOW, when present | Workflow scope, trigger, preconditions, participant handoffs, detailed business sequence, decisions, alternatives, exceptions, compensations, and outcomes. |
+| Approved application evidence | Menus, screens, buttons, fields, permissions, operator actions, displayed responses, and operational recovery actions. |
+| SOP | The deterministic procedure that maps the authoritative business flow to observable application use. |
+
+An SOP must preserve the applicable workflow's business order, decision conditions, responsibility handoffs, and permitted outcomes while adding operational detail. It must not copy workflow prose merely to restate business coordination, and it must not alter the workflow to match current UI behavior.
+
+If application behavior conflicts with DOMAIN or an applicable WORKFLOW, report the conflict. Do not silently make the SOP a new source of business truth.
+
+Before writing the procedure, classify every required statement:
+
+| Required statement | Authoritative treatment |
+|---|---|
+| Defines a term, role, rule, object, state, transition, or Domain Event | Validate against DOMAIN. If missing or contradictory, report a domain gap. |
+| Defines workflow scope, order, decision, branch, handoff, compensation, or outcome | Validate against the applicable WORKFLOW when present; otherwise validate against the domain workflow section. If missing, report a coordination gap. |
+| Defines a menu, screen, button, field, permission, displayed response, or operator recovery action | Validate against approved application evidence. If missing, report an operational-evidence gap. |
+| Merely restates authoritative business or workflow content | Replace the duplication with the minimum operational instruction and a reference. |
+| Conflicts with a more authoritative source | Stop the affected procedure and report both statements and their sources. |
+
+Do not resolve a source gap by increasing detail in the SOP.
 
 ---
 
@@ -110,7 +192,7 @@ Add both paths to the documentation index when the repository maintains one. Use
 
 The paired SOP documents describe the same operational procedure.
 
-It translates business capabilities into repeatable operational steps for end users.
+It translates business capabilities and, when available, their authoritative workflows into repeatable operational steps for end users.
 
 It owns:
 
@@ -148,7 +230,7 @@ The SOP-document pair exclusively owns:
 - Completion Criteria
 - References
 
-These topics must not be duplicated in DOMAIN.md or ARCHITECT.md. Their appearance in both language versions is translation and synchronization, not duplicated artifact ownership.
+These topics must not be duplicated in DOMAIN.md, WORKFLOW.md, or ARCHITECT.md. Their appearance in both language versions is translation and synchronization, not duplicated artifact ownership.
 
 ---
 
@@ -200,6 +282,8 @@ Do not explain business rules.
 
 Those belong to DOMAIN.md.
 
+When an applicable workflow exists, keep the operational objective within that workflow's scope and outcome. Reference the workflow instead of repeating its business rationale or detailed coordination.
+
 ---
 
 # ACTORS AND RESPONSIBILITIES
@@ -245,6 +329,12 @@ Do not explain why these conditions exist.
 
 Do not redefine business rules.
 
+Separate operational preconditions from business entry conditions:
+
+- derive business preconditions from the applicable workflow when one exists, otherwise from the domain;
+- add only operational prerequisites needed to use the application, such as authentication, permission, and application availability; and
+- do not weaken, strengthen, or omit an authoritative workflow precondition.
+
 Both versions must contain the same preconditions in the same order. Translation must not turn a required condition into optional guidance.
 
 ---
@@ -282,6 +372,17 @@ Example:
 
 Focus on application usage.
 
+When an applicable workflow exists:
+
+- map the SOP to the relevant workflow identifier and specification;
+- preserve the workflow's business sequence and responsibility handoffs;
+- preserve every applicable decision, alternative path, exception outcome, and completion outcome;
+- translate each applicable business step into one or more observable operator and application steps;
+- do not expose business-only or cross-context steps as UI actions when the operator does not perform them; describe only the observable system response or required handoff; and
+- do not add a business branch, state transition, compensation, or outcome that the workflow or domain does not authorize.
+
+An SOP does not need a one-to-one step count with its source workflow. It does need complete traceability: every operational step must support an authoritative workflow step or an operational prerequisite, and every workflow step relevant to the procedure must be represented by an operator action, observable application behavior, or explicit handoff.
+
 Both versions must contain the same numbered steps, actors, actions, data, order, and observable system responses. Preserve exact menu names, button labels, field labels, status values, module names, and other visible UI text in the language presented by the application. Translate the surrounding instruction, not the UI contract.
 
 Do not describe:
@@ -313,6 +414,8 @@ Describe:
 - system response
 - operator action
 
+When a workflow exists, distinguish its business exception and compensation paths from application-level operational exceptions. Preserve the authorized business outcome, but describe only what the operator does and what the application visibly reports. Do not invent a retry, override, cancellation, refund, or other recovery path that changes the workflow outcome.
+
 Do not explain the underlying implementation.
 
 Both versions must describe the same exceptions, responsible actors, system responses, and recovery actions in the same order. Do not add a workaround only to one language version.
@@ -336,6 +439,8 @@ Do not explain internal processing.
 
 Both versions must contain the same observable completion criteria. Preserve exact displayed status values, messages, and record names when they are application terminology.
 
+When a workflow exists, every completion criterion must correspond to one of its permitted outcomes or postconditions. An application success message is not sufficient when the workflow requires an additional observable handoff, state, or accountable outcome.
+
 ---
 
 # REFERENCES
@@ -351,12 +456,16 @@ Business Rules:
 DOMAIN.md
 
 Business Workflow:
-DOMAIN.md
+WORKFLOW.md (when an applicable workflow artifact exists); otherwise DOMAIN.md
 
 Architecture:
 ARCHITECT.md
 
 Do not duplicate their content.
+
+When a workflow document exists, reference the exact workflow artifact and applicable workflow identifier or section. Also retain the domain reference because the workflow applies rather than replaces domain truth.
+
+When no workflow document exists, reference the exact domain workflow section used as the coordination source. Do not add a dead or placeholder `WORKFLOW.md` link.
 
 Both versions must reference the same authoritative artifacts. The Indonesian companion must link to its English SOP source, and the English SOP should link back when the repository convention permits it.
 
@@ -401,6 +510,8 @@ The English and Indonesian SOPs define one operational truth for different audie
 
 DOMAIN.md defines business truth.
 
+WORKFLOW.md, when present, defines detailed business coordination derived from the domain.
+
 ARCHITECT.md defines technical realization.
 
 SOP.md defines operational procedures.
@@ -408,6 +519,10 @@ SOP.md defines operational procedures.
 Never duplicate ownership across these documents.
 
 Whenever business meaning is required, reference DOMAIN.md.
+
+Whenever detailed business sequencing, decisions, handoffs, exceptions, or outcomes are required and an applicable workflow exists, reference WORKFLOW.md.
+
+When no applicable workflow artifact exists, use the domain workflow section without treating the absence as an error unless authoritative sequencing is missing.
 
 Whenever technical realization is required, reference ARCHITECT.md.
 
@@ -439,6 +554,16 @@ When established Indonesian clinical, legal, financial, or industry terminology 
 
 Before completing an SOP pair, verify the operational content:
 
+✓ The complete canonical English domain was read and its companion was read when available.
+
+✓ The domain workflow section was inspected and applicable workflow artifacts were discovered by links, index, naming convention, and context.
+
+✓ Every applicable English workflow was read completely and its Indonesian companion was read when available.
+
+✓ When no workflow artifact exists, the domain contains sufficient authoritative coordination for the requested procedure.
+
+✓ The SOP is mapped to exactly one operational procedure and, when applicable, an exact workflow identifier or section.
+
 ✓ Exactly one operational procedure.
 
 ✓ Operational objective is clear.
@@ -466,6 +591,14 @@ Before completing an SOP pair, verify the operational content:
 ✓ Completion criteria are measurable.
 
 ✓ References point to DOMAIN.md where business understanding is required.
+
+✓ References point to the applicable WORKFLOW document and workflow identifier when one exists.
+
+✓ No dead or placeholder WORKFLOW reference is added when the workflow artifact does not exist.
+
+✓ Operational steps preserve applicable workflow order, decisions, responsibility handoffs, exceptions, and permitted outcomes.
+
+✓ Every applicable workflow step is represented by an operator action, observable application behavior, or explicit handoff.
 
 ✓ References point to ARCHITECT.md where technical understanding is required.
 
@@ -531,7 +664,16 @@ Avoid:
 
 Consistency is more important than creativity.
 
-For AI-agent prompting, prefer the English version. Use the Indonesian version for operator use, training, human review, validation, and discussion. When human feedback changes operational truth, update the English canonical SOP first or in the same change, then synchronize the Indonesian companion.
+For AI-agent prompting, load authoritative artifacts in this order:
+
+```text
+1. English DOMAIN
+2. Applicable English WORKFLOW, when it exists
+3. English SOP
+4. Indonesian companions only when human terminology or review context is needed
+```
+
+Use the Indonesian SOP for operator use, training, human review, validation, and discussion. When human feedback changes operational truth, update the English canonical SOP first or in the same change, then synchronize the Indonesian companion. When feedback changes business truth or business coordination, update DOMAIN or WORKFLOW respectively before or in the same change, then revalidate the SOP pair.
 
 ---
 
