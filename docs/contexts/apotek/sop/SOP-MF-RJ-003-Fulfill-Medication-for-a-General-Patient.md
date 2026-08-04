@@ -19,10 +19,9 @@ Provide a repeatable procedure for obtaining verbal Purchase Confirmation, estab
 | Actor | Type | Operational responsibility |
 |---|---|---|
 | Patient or Caregiver | Human | Confirms or declines the calculated purchase, pays when confirmed, presents for pickup, receives education, and accepts medication when authorized. |
-| Pharmacy Staff | Human | Communicates the calculated amount, records the confirmed Sales Invoice, coordinates readiness, and performs the pickup call. |
+| Pharmacy Staff | Human | Communicates the calculated amount, records the confirmed Sales Invoice, prepares or compounds medication under a released Dispense Order, coordinates readiness, and performs the pickup call. |
 | Pharmacy Supervisor | Human | Authorizes the manual uncollected-medication resolution when the Patient does not collect prepared medication. |
 | Cashier or Payment Authority | Human or Subsystem | Receives payment and supplies Payment Clearance. |
-| Pharmacy Technician | Human | Prepares or compounds medication under a released Dispense Order. |
 | Pharmacist | Human | Verifies the recipient, completes Final Dispense Review, and provides Patient Education. |
 | Medication Fulfillment Application | Application | Displays allocations and amounts, records the invoice and clearances, tracks preparation, and records dispense and handover. |
 | Patient Tracker | Subsystem | Records `ServedAt` at preparation start and `DoneAt` at the pickup call. |
@@ -46,9 +45,9 @@ Provide a repeatable procedure for obtaining verbal Purchase Confirmation, estab
 6. **Cashier or Payment Authority** receives payment and supplies Payment Clearance for that Sales Invoice.
 7. **Medication Fulfillment Application** displays Payment Clearance and establishes Fulfillment Clearance for the applicable Dispense Order quantities.
 8. **Inventory** secures the required Stock Reservation when it is not already present; **Medication Fulfillment Application** displays the reservation outcome.
-9. **Pharmacy Technician** starts Medication Preparation only after the Dispense Order is released.
+9. **Pharmacy Staff** starts Medication Preparation only after the Dispense Order is released.
 10. **Medication Fulfillment Application** records `Medication Preparation Started`; **Patient Tracker** moves the Queue Entry to In Service and records `ServedAt`.
-11. **Pharmacy Technician** completes preparation or compounding and records completion; **Medication Fulfillment Application** displays the Dispense Order as `Prepared`.
+11. **Pharmacy Staff** completes preparation or compounding and records completion; **Medication Fulfillment Application** displays the Dispense Order as `Prepared`.
 12. **Pharmacy Staff** verifies that every Dispense Order intended for the handover is `Prepared` or has an accountable exception outcome.
 13. **Pharmacy Staff** performs one coordinated pickup call; **Patient Tracker** makes the Queue Entry `Done` and records `DoneAt`.
 14. With the Patient or caregiver present, **Pharmacist** verifies the Authorized Recipient, completes Final Dispense Review, and records applicable Patient Education.
@@ -76,7 +75,7 @@ Provide a repeatable procedure for obtaining verbal Purchase Confirmation, estab
 
 ### 5.4 Shortage or failed Final Dispense Review
 
-- **Pharmacy Technician** records Backorder or another approved source for the same medication product; no substitution is made.
+- **Pharmacy Staff** records Backorder or another approved source for the same medication product; no substitution is made.
 - **Pharmacist** records the failed review outcome and does not authorize handover.
 - **Medication Fulfillment Application** records the applicable Unfulfilled Medication Outcome and keeps required financial consequences visible.
 

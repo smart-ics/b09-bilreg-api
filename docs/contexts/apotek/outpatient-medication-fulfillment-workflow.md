@@ -100,14 +100,13 @@ The workflow ends when every medication demand mapped to the Pharmacy Queue Entr
 |---|---|---|
 | Patient or Caregiver | Obtains a Queue Number, supplies mapping evidence or a Physical Prescription, gives verbal confirmation when Patient-payable, pays when required, presents for pickup, receives education, and accepts medication when authorized. | Evidence is supplied, confirmation is given or declined, Payment Clearance is obtained, or Medication Handover completes. |
 | Patient Tracker | Owns Pharmacy Queue Entry identity, Queue Number, and queue lifecycle. | `Queue Entry Created`, `Queue Service Started`, or `Queue Service Completed`. |
-| Pharmacy Staff | Performs administrative queue calls, Manual Mapping, records Physical Prescriptions, assesses Direct Medication Requests within authority, coordinates allocations, communicates General Patient value, establishes a confirmed Sales Invoice, and performs the pickup call. | `Outpatient Queue Mapped`, `Pharmacy Sales Order Established`, `Sales Invoice Established`, or `Patient Called for Pickup`. |
+| Pharmacy Staff | Performs administrative queue calls, Manual Mapping, records Physical Prescriptions, assesses Direct Medication Requests within authority, coordinates allocations, communicates General Patient value, establishes a confirmed Sales Invoice, performs Medication Preparation and Compounding, handles Backorder or another approved stock source within authority, and performs the pickup call. | `Outpatient Queue Mapped`, `Pharmacy Sales Order Established`, `Sales Invoice Established`, `Medication Prepared`, `Dispense Order Backordered`, or `Patient Called for Pickup`. |
 | Pharmacist | Performs Prescription Review, authorizes eligible Medication Substitution before Pharmacy Sales Order establishment, approves referred Direct Medication Requests, verifies the Authorized Recipient, performs Final Dispense Review, and provides Patient Education. | `Prescription Review Completed`, `Final Dispense Review Completed`, or Medication Handover is authorized to complete. |
-| Pharmacy Technician | Performs Medication Preparation and Compounding and decides Backorder or another approved stock source for the same medication product within authority. | `Medication Prepared`, `Dispense Order Backordered`, or an exception is escalated. |
 | Cashier or Payment Authority | Receives required Patient payment and supplies Payment Clearance. | `Payment Clearance Established`. |
 | SEP and Fornas Authorities | Supply encounter-level SEP validity and item-level BPJS coverage. | `Coverage Clearance Established` for the covered quantity. |
 | Inventory | Owns Stock Availability, Stock Reservation, Inventory Issue, return eligibility, and Return to Stock. | `Stock Reserved`, authoritative Inventory Issue, or accepted return disposition. |
 | Tata Rekening | Owns Financial Responsibility and the required financial consequence when paid medication is not fulfilled or collected. | Credit Note, Refund, or another final commercial outcome is supplied. |
-| CPOE or Prescribing Clinician | Owns the original Electronic Prescription and responds to Clinical Clarification or a required replacement Prescription. | Prescription is available, clarification is supplied, or corrected intent is established. |
+| CPOE | Owns the original Electronic Prescription, which Medication Fulfillment does not modify. | The original Prescription is available. |
 | Pharmacy Supervisor | Authorizes exceptional expiry, manual uncollected-medication resolution, and decisions outside ordinary authority. | Accountable exception outcome is established. |
 
 ## 5. Entry Conditions and Triggers
@@ -129,7 +128,7 @@ These triggers may occur before or after Outpatient Queue Mapping as permitted b
 - Every Prescription retains an authoritative source and Patient association.
 - A Physical Prescription is recorded before Prescription Review.
 - A Direct Medication Request is accepted before it may establish a Pharmacy Sales Order.
-- Tracker Mapping requires valid evidence that resolves the applicable medication demand.
+- Tracker Mapping requires valid evidence that resolves one or more applicable existing Prescriptions; it does not resolve a Direct Medication Request.
 - Manual Mapping requires Pharmacy Staff to identify the Queue Number and applicable demand.
 - Medication Preparation requires an active Dispense Order and payer-appropriate Fulfillment Clearance.
 - Medication Handover requires a Prepared Medication, Authorized Recipient, successful Final Dispense Review, and applicable Patient Education.
@@ -148,7 +147,7 @@ These triggers may occur before or after Outpatient Queue Mapping as permitted b
 | ID | Workflow | Business outcome |
 |---|---|---|
 | `WF-MF-RJ-001` | Acquire and Map Outpatient Pharmacy Queue | A Pharmacy Queue Entry is accountably mapped to one or more medication demands, or its unresolved/declined outcome is handed back to the applicable queue policy. |
-| `WF-MF-RJ-002` | Accept Outpatient Medication Demand | Accepted medication demand establishes a traceable Pharmacy Sales Order and primary outpatient Dispense Order, or receives an accountable rejection or clarification outcome. |
+| `WF-MF-RJ-002` | Accept Outpatient Medication Demand | An accepted Prescription establishes a traceable Pharmacy Sales Order and primary outpatient Dispense Order, or receives a rejection outcome. |
 | `WF-MF-RJ-003` | Fulfill Medication for a General Patient | Verbally confirmed and paid medication is prepared and handed over, or receives an accountable alternative or exception outcome. |
 | `WF-MF-RJ-004` | Fulfill Medication for a BPJS Patient | Covered medication is prepared without a prior Sales Invoice and the BPJS Sales Invoice is established only with successful Medication Handover. |
 | `WF-MF-RJ-005` | Fulfill Mixed-Coverage Medication | Covered and Patient-payable quantities receive separate commercial allocation and clearance while remaining coordinated for one pickup. |
@@ -188,17 +187,17 @@ Patient or Caregiver, Patient Tracker, Pharmacy Staff.
 #### Main Flow
 
 1. Patient Tracker establishes the Pharmacy Queue Entry, assigns the Queue Number, and records `CreatedAt`.
-2. When valid tracker or registration evidence resolves the applicable medication demand, Medication Fulfillment establishes Tracker Mapping.
-3. Medication Fulfillment establishes Outpatient Queue Mapping between the Queue Entry and every resolved applicable demand.
-4. For each mapped demand, Medication Fulfillment exposes its authoritative progress as a queue-facing projection without transferring state ownership to Patient Tracker.
+2. When valid tracker or registration evidence resolves one or more applicable existing Prescriptions, Medication Fulfillment establishes Tracker Mapping.
+3. Medication Fulfillment establishes a separate Outpatient Queue Mapping between the Queue Entry and every resolved Prescription.
+4. For each mapped Prescription, Medication Fulfillment exposes its authoritative progress as a queue-facing projection without transferring state ownership to Patient Tracker.
 5. Queue coordination waits for payer-appropriate fulfillment while Prescription Review and Pharmacy Sales Order establishment may continue independently.
 
 #### Decision and Alternative Flows
 
 | Condition | Decision owner | Branch |
 |---|---|---|
-| Tracker or registration evidence resolves demand | Medication Fulfillment | Use Tracker Mapping; no initial administrative call is required. |
-| Evidence fails to resolve demand | Pharmacy Staff | Fall back to Manual Mapping. |
+| Tracker or registration evidence resolves one or more existing Prescriptions | Medication Fulfillment | Use Tracker Mapping for each Prescription; no initial administrative call is required. |
+| Evidence fails to resolve a Prescription | Pharmacy Staff | Fall back to Manual Mapping. |
 | Queue Number was obtained directly | Pharmacy Staff | Call the Queue Number for administrative identification and Manual Mapping. |
 | One Queue Entry has multiple applicable demands | Pharmacy Staff | Map every demand separately to the same Queue Entry under `BR-MF-084` and `BR-MF-085`. |
 
@@ -212,7 +211,7 @@ For Manual Mapping:
 
 - If a Direct Medication Request is declined, no Direct Medication Request record or Pharmacy Sales Order is established. Final disposition of the still-Waiting Queue Entry follows Patient Tracker's applicable withdrawal policy and remains external to Medication Fulfillment.
 - If the Queue Number cannot be matched to an accountable Patient Journey or medication demand, the Queue Entry remains unmapped and cannot receive mapping-dependent Fulfillment Clearance.
-- Mapping correction adds an accountable correcting fact and shall not rewrite Prescription Review or Pharmacy Sales Order history.
+- If a queue mapping is incorrect, Pharmacy Staff selects the correct Prescription or medication-demand source and Medication Fulfillment updates the active mapping. No mapping-change history is required. This update does not modify the Prescription, Prescription Review Outcome, or Pharmacy Sales Order.
 
 #### Outcomes and Postconditions
 
@@ -248,7 +247,7 @@ A Prescription becomes available, or a Direct Medication Request is presented fo
 
 #### Participants
 
-Pharmacist, Pharmacy Staff, Pharmacy Technician, CPOE or Prescribing Clinician.
+Pharmacist, Pharmacy Staff, CPOE or Prescribing Clinician.
 
 #### Input Business Facts
 
@@ -260,8 +259,8 @@ Pharmacist, Pharmacy Staff, Pharmacy Technician, CPOE or Prescribing Clinician.
 #### Main Flow
 
 1. For a Prescription, the Pharmacist starts Prescription Review as soon as the Prescription is available, without waiting for Patient arrival or Outpatient Queue Mapping.
-2. The Pharmacist assigns a disposition to every Prescription Line and requests Clinical Clarification when required.
-3. When an authorized Medication Substitution is needed, the Pharmacist completes it during Prescription Review and preserves the originally requested medication, accepted substitute, reason, affected quantity, and responsible Pharmacist.
+2. The Pharmacist reviews every Prescription Line. When needed, the Pharmacist clarifies with the Prescribing Clinician outside the system; the Prescription remains unchanged and the review remains `Under Review`.
+3. The Pharmacist decides each line as accepted as prescribed, accepted with a substitute, or rejected. Accepted medication is recorded on a Sales Order Line; a substitute includes its reason, affected quantity, responsible Pharmacist, and reference to the original Prescription Line.
 4. The Pharmacist completes Prescription Review as `Approved`, `Partially Approved`, or `Rejected`.
 5. For an accepted Direct Medication Request, Pharmacy Staff accepts within authority or obtains required Pharmacist approval; no Prescription is created.
 6. Medication Fulfillment establishes a Pharmacy Sales Order from exactly one completed accepted-demand source and preserves Source Traceability.
@@ -276,15 +275,14 @@ Pharmacist, Pharmacy Staff, Pharmacy Technician, CPOE or Prescribing Clinician.
 | All Prescription Lines accepted | Pharmacist | `Approved`; all accepted lines may establish the Pharmacy Sales Order. |
 | Some lines accepted | Pharmacist | `Partially Approved`; only Accepted Medication Lines enter the Pharmacy Sales Order. |
 | No line accepted | Pharmacist | `Rejected`; no Pharmacy Sales Order is established. |
-| Clarification required | Pharmacist and Prescribing Clinician | Enter `Clarification Required`; resume review only after accountable clarification. |
 | Direct request within staff authority | Pharmacy Staff | Accept and establish the Direct Medication Request source. |
 | Direct request needs professional approval | Pharmacy Staff and Pharmacist | Refer, then accept only after approval. |
 | Direct request declined | Pharmacy Staff or Pharmacist | Do not establish a request record or Pharmacy Sales Order. |
 
 #### Exception and Compensation Flows
 
-- Stock shortage does not change the Prescription Review Outcome. The Pharmacy Technician may choose Backorder or another approved stock source for the same medication product after Pharmacy Sales Order establishment.
-- Medication identity shall not be substituted after Pharmacy Sales Order establishment. A later clinical replacement requires a corrected or replacement Prescription and a new Prescription Review decision.
+- Stock shortage does not change the Prescription Review Outcome. The Pharmacy Staff may choose Backorder or another approved stock source for the same medication product after Pharmacy Sales Order establishment.
+- Medication identity on an established Sales Order Line shall not be changed. If a later replacement is needed, cancel the affected line or order, review the same original Prescription again, and establish a new Sales Order Line without requiring a corrected or replacement Prescription.
 - Any accepted quantity that cannot be fulfilled must retain an accountable Backorder, `Cancelled`, `Expired`, or other Unfulfilled Medication Outcome.
 
 #### Outcomes and Postconditions
@@ -301,7 +299,7 @@ Pharmacist, Pharmacy Staff, Pharmacy Technician, CPOE or Prescribing Clinician.
 #### Domain Events
 
 - Consumed: `Clinical Order Created` or another authoritative Prescription-availability fact.
-- Produced: `Prescription Review Started`, `Clinical Clarification Requested`, `Medication Substitution Authorized`, `Prescription Review Completed`, `Direct Medication Request Accepted`, `Pharmacy Sales Order Established`, `Billing Allocation Established`, `Fulfillment Allocation Established`, `Dispense Order Established`, `Stock Reserved` when externally supplied.
+- Produced: `Prescription Review Started`, `Medication Substitution Authorized`, `Prescription Review Completed`, `Direct Medication Request Accepted`, `Pharmacy Sales Order Established`, `Billing Allocation Established`, `Fulfillment Allocation Established`, `Dispense Order Established`, `Stock Reserved` when externally supplied.
 
 ### WF-MF-RJ-003 — Fulfill Medication for a General Patient
 
@@ -323,7 +321,7 @@ Outpatient Queue Mapping, an active Pharmacy Sales Order, applicable Billing All
 
 #### Participants
 
-Patient or Caregiver, Pharmacy Staff, Cashier or Payment Authority, Pharmacy Technician, Pharmacist, Patient Tracker, Inventory, Tata Rekening.
+Patient or Caregiver, Pharmacy Staff, Cashier or Payment Authority, Pharmacy Staff, Pharmacist, Patient Tracker, Inventory, Tata Rekening.
 
 #### Input Business Facts
 
@@ -340,9 +338,9 @@ Patient or Caregiver, Pharmacy Staff, Cashier or Payment Authority, Pharmacy Tec
 4. The Cashier receives payment and supplies Payment Clearance for the Sales Invoice.
 5. Medication Fulfillment establishes Fulfillment Clearance for the applicable Dispense Order quantities.
 6. Inventory secures the required Stock Reservation when not already reserved.
-7. The Pharmacy Technician begins Medication Preparation under the released Dispense Order.
+7. The Pharmacy Staff begins Medication Preparation under the released Dispense Order.
 8. Medication Fulfillment observes `Medication Preparation Started`; Patient Tracker enters the Pharmacy Queue Entry into In Service and records `ServedAt`.
-9. The Pharmacy Technician completes Medication Preparation; the Dispense Order reaches `Prepared` and the medication remains In-Transit Medication.
+9. The Pharmacy Staff completes Medication Preparation; the Dispense Order reaches `Prepared` and the medication remains In-Transit Medication.
 10. When every Dispense Order intended for the coordinated handover is `Prepared` or has an accountable exception outcome, Pharmacy Staff performs the pickup call.
 11. Patient Tracker makes the Pharmacy Queue Entry `Done` and records `DoneAt` at the pickup-call time.
 12. With the Patient or caregiver present, the Pharmacist verifies the Authorized Recipient, completes Final Dispense Review, and provides applicable Patient Education in the same counter interaction.
@@ -363,7 +361,7 @@ Patient or Caregiver, Pharmacy Staff, Cashier or Payment Authority, Pharmacy Tec
 
 - If payment is not completed after Sales Invoice establishment, Medication Preparation remains blocked. The Sales Invoice may be `Cancelled` only while its lifecycle permits.
 - If an issued or financially cleared Sales Invoice needs correction, use Financial Adjustment, Credit Note, or Refund under Tata Rekening authority; do not silently replace it.
-- If shortage occurs after payment, the Pharmacy Technician may select Backorder or another approved stock source for the same medication product. Substitution is prohibited because the Pharmacy Sales Order already exists.
+- If shortage occurs after payment, the Pharmacy Staff may select Backorder or another approved stock source for the same medication product. Substitution is prohibited because the Pharmacy Sales Order already exists.
 - If fulfillment cannot complete, affected quantities receive an accountable Unfulfilled Medication Outcome and Tata Rekening receives the required financial consequence.
 - A failed Final Dispense Review prevents Medication Handover and returns the affected Dispense Order to accountable exception resolution without changing the original Prescription.
 
@@ -404,7 +402,7 @@ Outpatient Queue Mapping, an applicable active Pharmacy Sales Order, a Dispense 
 
 #### Participants
 
-Patient or Caregiver, Pharmacy Staff, Pharmacy Technician, Pharmacist, Patient Tracker, SEP and Fornas Authorities, Inventory, Tata Rekening.
+Patient or Caregiver, Pharmacy Staff, Pharmacist, Patient Tracker, SEP and Fornas Authorities, Inventory, Tata Rekening.
 
 #### Input Business Facts
 
@@ -418,9 +416,9 @@ Patient or Caregiver, Pharmacy Staff, Pharmacy Technician, Pharmacist, Patient T
 1. The SEP and Fornas authorities establish Coverage Clearance for each covered quantity.
 2. Medication Fulfillment establishes Fulfillment Clearance for the applicable Dispense Order quantities without requiring an existing Sales Invoice.
 3. Inventory secures Stock Reservation when not already reserved.
-4. The Pharmacy Technician starts Medication Preparation.
+4. The Pharmacy Staff starts Medication Preparation.
 5. `Medication Preparation Started` causes Patient Tracker to record `ServedAt` and move the Pharmacy Queue Entry to In Service.
-6. The Pharmacy Technician completes Medication Preparation; the Dispense Order reaches `Prepared` and the medication remains In-Transit Medication.
+6. The Pharmacy Staff completes Medication Preparation; the Dispense Order reaches `Prepared` and the medication remains In-Transit Medication.
 7. When every Dispense Order intended for the coordinated handover is `Prepared` or has an accountable exception outcome, Pharmacy Staff performs the pickup call.
 8. Patient Tracker records `DoneAt` and makes the Queue Entry `Done` at the pickup-call time.
 9. With the Patient or caregiver present, the Pharmacist verifies the Authorized Recipient, completes Final Dispense Review, and provides applicable Patient Education in the same counter interaction.
@@ -481,7 +479,7 @@ One Pharmacy Sales Order contains quantities classified partly as BPJS-covered a
 
 #### Participants
 
-Patient or Caregiver, Pharmacy Staff, Cashier or Payment Authority, Pharmacy Technician, Pharmacist, Patient Tracker, SEP and Fornas Authorities, Inventory, Tata Rekening.
+Patient or Caregiver, Pharmacy Staff, Cashier or Payment Authority, Pharmacy Staff, Pharmacist, Patient Tracker, SEP and Fornas Authorities, Inventory, Tata Rekening.
 
 #### Input Business Facts
 
@@ -499,7 +497,7 @@ Patient or Caregiver, Pharmacy Staff, Cashier or Payment Authority, Pharmacy Tec
 5. Pharmacy Staff establishes a separate General Patient Sales Invoice from the confirmed Patient-payable Billing Allocations.
 6. The Cashier supplies Payment Clearance for the General Patient Sales Invoice.
 7. Medication Fulfillment establishes Fulfillment Clearance for covered quantities from Coverage Clearance and for Patient-payable quantities from Payment Clearance.
-8. After every quantity intended for the handover has its applicable clearance, the Pharmacy Technician begins and completes Medication Preparation.
+8. After every quantity intended for the handover has its applicable clearance, the Pharmacy Staff begins and completes Medication Preparation.
 9. The first `Medication Preparation Started` records Patient Tracker `ServedAt`; every intended Dispense Order reaches `Prepared` before pickup.
 10. Pharmacy Staff performs one coordinated pickup call; Patient Tracker records `DoneAt`.
 11. With the Patient or caregiver present, the Pharmacist verifies the Authorized Recipient, completes Final Dispense Review, and provides Patient Education.
@@ -557,7 +555,7 @@ One Pharmacy Queue Entry is mapped to two or more Prescriptions, Direct Medicati
 
 #### Participants
 
-Pharmacy Staff, Pharmacist, Pharmacy Technician, Patient or Caregiver, Patient Tracker, Cashier or Payment Authority, SEP and Fornas Authorities, Inventory.
+Pharmacy Staff, Pharmacist, Patient or Caregiver, Patient Tracker, Cashier or Payment Authority, SEP and Fornas Authorities, Inventory.
 
 #### Input Business Facts
 
@@ -714,7 +712,7 @@ Technical timeouts, polling, retries, and application performance are outside th
 | Workflow ID | Domain rules | States | Domain Events | External authority |
 |---|---|---|---|---|
 | `WF-MF-RJ-001` | `BR-MF-061`–`BR-MF-065`, `BR-MF-082`, `BR-MF-084`–`BR-MF-087` | `Unmapped`, `Mapped`, `Waiting` | `Queue Entry Created`, `Outpatient Queue Mapped`, `Queue Entry Identified` | Patient Tracker |
-| `WF-MF-RJ-002` | `BR-MF-001`–`BR-MF-019`, `BR-MF-050`, `BR-MF-061`, `BR-MF-086`, `BR-MF-089` | `Available`, `Under Review`, `Clarification Required`, `Approved`, `Partially Approved`, `Rejected`, `Established`, `Active` | `Prescription Review Started`, `Clinical Clarification Requested`, `Medication Substitution Authorized`, `Prescription Review Completed`, `Direct Medication Request Accepted`, `Pharmacy Sales Order Established`, `Dispense Order Established` | CPOE, Medication Catalog, Inventory |
+| `WF-MF-RJ-002` | `BR-MF-001`–`BR-MF-019`, `BR-MF-050`, `BR-MF-061`, `BR-MF-086`, `BR-MF-089` | `Available`, `Under Review`, `Approved`, `Partially Approved`, `Rejected`, `Established`, `Active` | `Prescription Review Started`, `Medication Substitution Authorized`, `Prescription Review Completed`, `Direct Medication Request Accepted`, `Pharmacy Sales Order Established`, `Dispense Order Established` | CPOE, Medication Catalog, Inventory |
 | `WF-MF-RJ-003` | `BR-MF-020`–`BR-MF-028`, `BR-MF-040`–`BR-MF-046`, `BR-MF-067`–`BR-MF-072`, `BR-MF-076`–`BR-MF-083`, `BR-MF-088`, `BR-MF-095` | `Established`, `Issued`, `Financially Cleared`, `Released`, `Preparing`, `Prepared`, `Reviewed`, `Completed`, `In Service`, `Done` | `Sales Invoice Established`, `Payment Clearance Established`, `Medication Preparation Started`, `Medication Prepared`, `Patient Called for Pickup`, `Final Dispense Review Completed`, `Medication Handed Over` | Patient Tracker, Payment, Inventory, Tata Rekening |
 | `WF-MF-RJ-004` | `BR-MF-066`, `BR-MF-073`–`BR-MF-079`, `BR-MF-081`–`BR-MF-083`, `BR-MF-088`, `BR-MF-090`, `BR-MF-095` | `Awaiting Clearance`, `Released`, `Preparing`, `Prepared`, `Reviewed`, `Completed`, `In Service`, `Done` | `Coverage Clearance Established`, `Medication Preparation Started`, `Patient Called for Pickup`, `Sales Invoice Established`, `Medication Handed Over` | Patient Tracker, SEP, Fornas, Inventory, Tata Rekening |
 | `WF-MF-RJ-005` | `BR-MF-015`, `BR-MF-022`, `BR-MF-044`, `BR-MF-090`–`BR-MF-095` | Payer-specific Sales Invoice and shared Dispense Order states | `Billing Allocation Established`, `Coverage Clearance Established`, `Payment Clearance Established`, `Sales Invoice Established`, `Medication Handed Over` | SEP, Fornas, Payment, Tata Rekening |

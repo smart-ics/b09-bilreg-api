@@ -1,97 +1,96 @@
-# SOP MF-RJ-005 — Memenuhi Obat dengan Coverage Campuran
+# SOP MF-RJ-005 — Melayani Obat dengan Penjaminan Campuran
 
-**Status artefak:** Spesifikasi operasional target kanonis
+**Status dokumen:** Spesifikasi operasional acuan
 
-**Bounded context:** Medication Fulfillment
+**Konteks domain:** Pelayanan Obat
 
-**Workflow:** `WF-MF-RJ-005`
+**Alur kerja:** `WF-MF-RJ-005`
 
-**Sumber kanonis bahasa Inggris:** [SOP MF-RJ-005 — Fulfill Mixed-Coverage Medication](./SOP-MF-RJ-005-Fulfill-Mixed-Coverage-Medication.md)
+**Dokumen acuan bahasa Inggris:** [SOP MF-RJ-005 — Fulfill Mixed-Coverage Medication](./SOP-MF-RJ-005-Fulfill-Mixed-Coverage-Medication.md)
 
-**Status terminologi aplikasi:** `Apotek` dan `Apotek Rajal` merupakan istilah aplikasi yang telah ditetapkan. Kontrol lain dijelaskan berdasarkan tindakan operasional karena label target-workflow yang disetujui belum tersedia.
+**Istilah pada aplikasi:** `Apotek` dan `Apotek Rajal` adalah nama menu yang telah ditetapkan. Nilai status sistem ditulis dalam tanda backtick.
 
 ## 1. Tujuan
 
-Menyediakan prosedur berulang untuk memisahkan tanggung jawab komersial BPJS-covered dan Patient-payable sambil mengoordinasikan jumlah yang telah memperoleh clearance untuk satu pickup Rawat Jalan.
+Menetapkan tata cara memisahkan obat yang ditanggung BPJS dari obat yang harus dibayar Pasien, sekaligus mengoordinasikan penyiapan dan penyerahannya dalam satu kali pengambilan.
 
-## 2. Aktor dan Tanggung Jawab
+## 2. Pelaksana dan Tanggung Jawab
 
-| Aktor | Tipe | Tanggung jawab operasional |
+| Pelaksana | Jenis | Tanggung jawab |
 |---|---|---|
-| Patient or Caregiver | Manusia | Mengonfirmasi atau menolak bagian Patient-payable, membayar bila mengonfirmasi, hadir untuk pickup, menerima edukasi, dan menerima obat ketika authorized. |
-| Pharmacy Staff | Manusia | Memisahkan Billing Allocation, menyampaikan nilai Patient-payable, mencatat invoice yang dikonfirmasi, mengoordinasikan readiness, dan melakukan pickup call. |
-| Pharmacy Supervisor | Manusia | Mengotorisasi manual uncollected-medication resolution ketika Patient tidak mengambil obat yang telah disiapkan. |
-| Cashier or Payment Authority | Manusia atau Subsistem | Menerima pembayaran dan memberikan Payment Clearance untuk Sales Invoice Pasien Umum. |
-| Pharmacy Technician | Manusia | Menyiapkan atau meracik obat yang telah memperoleh clearance berdasarkan Dispense Order. |
-| Pharmacist | Manusia | Memverifikasi penerima, menyelesaikan Final Dispense Review, dan memberikan Patient Education. |
-| SEP and Fornas Authorities | Subsistem | Menyediakan validitas SEP dan coverage item-level. |
-| Medication Fulfillment Application | Aplikasi | Mempertahankan allocation dan clearance sesuai payer serta mencatat invoice terpisah dengan coordinated handover. |
-| Patient Tracker | Subsistem | Mencatat satu `ServedAt` dan satu `DoneAt` bagi Queue Entry yang sama. |
-| Inventory | Subsistem | Menyediakan outcome reservation, issue, dan return disposition. |
-| Tata Rekening | Subsistem | Menerima dan menyelesaikan konsekuensi finansial sesuai payer. |
+| Pasien atau Keluarga Pasien | Pengguna layanan | Menyetujui atau menolak bagian yang harus dibayar sendiri, membayar bila setuju, hadir saat dipanggil, menerima edukasi, dan menerima obat setelah disetujui Apoteker. |
+| Staf Apotek | Petugas | Memisahkan alokasi tagihan, menyampaikan nilai yang harus dibayar Pasien, mencatat transaksi yang disetujui, menyiapkan atau meracik obat yang telah mendapat izin, mengoordinasikan kesiapan, dan memanggil Pasien. |
+| Penanggung Jawab Apotek | Petugas | Menyetujui penanganan obat yang tidak diambil. |
+| Kasir atau Sistem Pembayaran | Petugas atau subsistem | Menerima pembayaran dan memberikan status lunas untuk faktur pasien umum. |
+| Apoteker | Petugas | Memeriksa penerima, melakukan pemeriksaan akhir obat, dan memberikan edukasi kepada Pasien. |
+| Sistem SEP dan Fornas | Subsistem | Memberikan hasil pemeriksaan keabsahan SEP dan penjaminan setiap item obat. |
+| Aplikasi Pelayanan Obat | Aplikasi | Memisahkan alokasi dan persetujuan menurut penanggung biaya, mencatat faktur secara terpisah, dan mengoordinasikan penyerahan obat. |
+| Sistem Antrian Pasien | Subsistem | Mencatat satu `ServedAt` dan satu `DoneAt` untuk antrian yang sama. |
+| Sistem Persediaan | Subsistem | Menyediakan hasil pemesanan, pengeluaran, dan pengembalian stok. |
+| Tata Rekening | Subsistem | Menerima dan menyelesaikan akibat keuangan sesuai penanggung biaya. |
 
 ## 3. Prasyarat
 
-1. Staff yang berpartisipasi telah sign in dengan izin yang diperlukan.
-2. Satu Pharmacy Sales Order aktif memiliki BPJS-covered quantity dan Patient-payable quantity.
-3. SEP valid dan mapping Fornas authoritative mengidentifikasi covered dan non-covered quantity.
-4. Fulfillment Allocation dan Dispense Order yang berlaku telah ditampilkan.
-5. Belum ada Sales Invoice Pasien Umum atau BPJS untuk allocation yang diusulkan, kecuali prosedur dilanjutkan setelah exception accountable.
+1. Petugas yang terlibat telah masuk ke aplikasi dan memiliki hak akses yang diperlukan.
+2. Satu pesanan penjualan apotek yang aktif memuat jumlah yang ditanggung BPJS dan jumlah yang harus dibayar Pasien.
+3. SEP masih sah dan pemetaan Fornas menunjukkan jumlah yang dijamin serta tidak dijamin.
+4. Alokasi pelayanan dan perintah penyiapan obat telah ditampilkan.
+5. Belum ada faktur pasien umum maupun faktur BPJS untuk alokasi tersebut, kecuali proses dilanjutkan setelah penanganan kondisi khusus yang tercatat.
 
 ## 4. Langkah Operasional
 
-1. **Pharmacy Staff** membuka mixed-coverage demand di `Apotek Rajal` dan memverifikasi jumlah Pharmacy Sales Order serta payer classification.
-2. **Pharmacy Staff** mencatat Billing Allocation BPJS-covered dan Patient-payable secara terpisah tanpa mengubah identitas atau jumlah obat yang diterima.
-3. **SEP and Fornas Authorities** menyediakan SEP valid dan coverage item-level; **Medication Fulfillment Application** menampilkan Coverage Clearance untuk covered quantity.
-4. **Medication Fulfillment Application** menghitung dan menampilkan nilai Patient-payable dari non-covered Billing Allocation.
-5. **Pharmacy Staff** menyampaikan nilai tersebut secara lisan sebelum Sales Invoice Pasien Umum tersedia.
-6. **Patient or Caregiver** memberikan konfirmasi lisan atas bagian Patient-payable.
-7. **Pharmacy Staff** mencatat transaksi Patient-payable yang dikonfirmasi; **Medication Fulfillment Application** membentuk Sales Invoice Pasien Umum terpisah dari allocation tersebut.
-8. **Cashier or Payment Authority** menerima pembayaran dan memberikan Payment Clearance untuk Sales Invoice Pasien Umum.
-9. **Medication Fulfillment Application** membentuk Fulfillment Clearance untuk covered quantity dari Coverage Clearance dan Patient-payable quantity dari Payment Clearance.
-10. **Inventory** mengamankan Stock Reservation yang diperlukan dan menyediakan outcome-nya.
-11. Setelah setiap jumlah yang hendak diserahkan memiliki clearance yang berlaku, **Pharmacy Technician** memulai dan menyelesaikan Medication Preparation.
-12. **Medication Fulfillment Application** mencatat `Medication Preparation Started` pertama; **Patient Tracker** memindahkan Queue Entry yang sama ke In Service dan mencatat satu `ServedAt`.
-13. **Medication Fulfillment Application** menampilkan setiap Dispense Order yang hendak diserahkan sebagai `Prepared` atau dengan exception outcome accountable.
-14. **Pharmacy Staff** melakukan satu coordinated pickup call; **Patient Tracker** membuat Queue Entry yang sama `Done` dan mencatat satu `DoneAt`.
-15. Dengan Patient atau caregiver hadir, **Pharmacist** memverifikasi Authorized Recipient, menyelesaikan Final Dispense Review, dan mencatat Patient Education.
-16. **Pharmacy Staff** menyelesaikan physical handover setelah otorisasi Pharmacist.
-17. **Medication Fulfillment Application** membentuk Sales Invoice BPJS hanya bersama handover berhasil, mencatat Medication Dispense dan Medication Handover bagi seluruh jumlah yang berlaku, serta mempertahankan kedua allocation sesuai payer.
-18. **Inventory** menyediakan outcome Inventory Issue; **Medication Fulfillment Application** menampilkan progress final Dispense Order dan Pharmacy Sales Order.
+1. **Staf Apotek** membuka kebutuhan obat dengan penjaminan campuran pada `Apotek Rajal`, lalu memeriksa jumlah obat dan jenis penanggung biayanya.
+2. **Staf Apotek** mencatat alokasi tagihan BPJS dan alokasi tagihan Pasien secara terpisah tanpa mengubah identitas atau jumlah obat yang telah diterima.
+3. **Sistem SEP dan Fornas** memberikan hasil pemeriksaan SEP dan penjaminan setiap item. **Aplikasi Pelayanan Obat** menampilkan persetujuan penjaminan untuk jumlah yang ditanggung BPJS.
+4. **Aplikasi Pelayanan Obat** menghitung dan menampilkan nilai obat yang tidak dijamin dan harus dibayar Pasien.
+5. **Staf Apotek** menyampaikan nilai tersebut secara lisan sebelum faktur pasien umum dibuat.
+6. **Pasien atau Keluarga Pasien** menyampaikan persetujuan lisan atas bagian yang harus dibayar sendiri.
+7. **Staf Apotek** mencatat transaksi yang disetujui. **Aplikasi Pelayanan Obat** membuat faktur pasien umum secara terpisah untuk alokasi tersebut.
+8. **Kasir atau Sistem Pembayaran** menerima pembayaran dan memberikan status lunas untuk faktur pasien umum.
+9. **Aplikasi Pelayanan Obat** memberikan izin penyiapan: berdasarkan persetujuan penjaminan untuk bagian BPJS dan berdasarkan status lunas untuk bagian yang dibayar Pasien.
+10. **Sistem Persediaan** memesan stok yang diperlukan dan memberikan hasilnya.
+11. Setelah setiap jumlah yang akan diserahkan mendapat izin, **Staf Apotek** memulai dan menyelesaikan penyiapan obat.
+12. Saat penyiapan pertama dimulai, **Aplikasi Pelayanan Obat** mencatat `Medication Preparation Started`; **Sistem Antrian Pasien** mengubah antrian menjadi `In Service` dan mencatat satu `ServedAt`.
+13. **Aplikasi Pelayanan Obat** menampilkan setiap perintah penyiapan yang akan diserahkan sebagai `Prepared` atau dengan hasil penanganan khusus yang dapat dipertanggungjawabkan.
+14. **Staf Apotek** melakukan satu kali panggilan pengambilan obat. **Sistem Antrian Pasien** mengubah antrian yang sama menjadi `Done` dan mencatat satu `DoneAt`.
+15. Ketika Pasien atau Keluarga Pasien hadir, **Apoteker** memeriksa penerima yang berhak, melakukan pemeriksaan akhir obat, dan mencatat edukasi yang diberikan.
+16. Setelah mendapat persetujuan Apoteker, **Staf Apotek** menyerahkan obat.
+17. **Aplikasi Pelayanan Obat** membuat faktur BPJS hanya bersamaan dengan penyerahan yang berhasil, mencatat pemberian dan penyerahan seluruh jumlah obat, serta mempertahankan kedua alokasi menurut penanggung biayanya.
+18. **Sistem Persediaan** mencatat pengeluaran stok. **Aplikasi Pelayanan Obat** menampilkan perkembangan akhir perintah penyiapan dan pesanan penjualan apotek.
 
-## 5. Pengecualian Operasional
+## 5. Penanganan Kondisi Khusus
 
-### 5.1 Patient menolak bagian non-covered sebelum invoice dibentuk
+### 5.1 Pasien menolak bagian yang tidak dijamin sebelum faktur dibuat
 
-- **Pharmacy Staff** mencatat penolakan dan tidak membentuk Sales Invoice Pasien Umum.
-- **Medication Fulfillment Application** mencatat Patient-payable allocation sebagai declined atau commercially unallocated dan mengizinkan bagian covered berjalan secara independen.
+- **Staf Apotek** mencatat penolakan dan tidak membuat faktur pasien umum.
+- **Aplikasi Pelayanan Obat** menandai alokasi yang harus dibayar Pasien sebagai ditolak atau tidak dialokasikan untuk penjualan. Bagian yang dijamin tetap dapat diproses secara terpisah.
 
-### 5.2 Item tidak memiliki coverage Fornas authoritative
+### 5.2 Item obat tidak mempunyai penjaminan Fornas yang sah
 
-- **Medication Fulfillment Application** menampilkan jumlah terdampak sebagai not covered.
-- **Pharmacy Staff** mereklasifikasikannya hanya melalui Billing Allocation Patient-payable accountable, menyampaikan nilai revisi, dan memperoleh konfirmasi lisan baru.
+- **Aplikasi Pelayanan Obat** menampilkan jumlah yang terdampak sebagai tidak dijamin.
+- **Staf Apotek** hanya boleh mengubahnya menjadi alokasi tagihan Pasien melalui pencatatan yang dapat dipertanggungjawabkan, kemudian menyampaikan nilai baru dan meminta persetujuan lisan ulang.
 
-### 5.3 Tidak semua intended quantity memiliki clearance
+### 5.3 Belum semua jumlah mendapat izin penyiapan
 
-- **Medication Fulfillment Application** memblokir coordinated preparation dan pickup bagi uncleared quantity.
-- **Pharmacy Staff** menyelesaikan jalur coverage atau payment yang berlaku sebelum melanjutkan.
+- **Aplikasi Pelayanan Obat** memblokir penyiapan dan pengambilan untuk jumlah yang belum mendapat izin.
+- **Staf Apotek** menyelesaikan proses penjaminan atau pembayaran yang berlaku sebelum melanjutkan.
 
-### 5.4 Invoice existing, non-fulfillment, atau No-Show memerlukan koreksi
+### 5.4 Faktur yang sudah ada, obat yang tidak dapat dilayani, atau Pasien yang tidak datang memerlukan koreksi
 
-- **Medication Fulfillment Application** mempertahankan konsekuensi covered dan Patient-payable secara terpisah.
-- **Tata Rekening** menyediakan koreksi yang diperlukan untuk bagian paid; Sales Invoice BPJS yang belum ada tetap tidak tersedia sampai handover berhasil.
-- **Pharmacy Supervisor** menerapkan `SOP-MF-RJ-007` untuk obat yang tidak diambil.
+- **Aplikasi Pelayanan Obat** tetap memisahkan akibat pada bagian BPJS dan bagian yang dibayar Pasien.
+- **Tata Rekening** memberikan koreksi untuk bagian yang telah dibayar. Faktur BPJS tetap belum dibuat sampai penyerahan berhasil.
+- **Penanggung Jawab Apotek** menerapkan `SOP-MF-RJ-007` untuk obat yang tidak diambil.
 
 ## 6. Kriteria Penyelesaian
 
-1. Billing Allocation covered dan Patient-payable tetap terlihat terpisah.
-2. Sales Invoice Pasien Umum yang financially cleared dan Sales Invoice BPJS pada waktu handover terpisah serta traceable ke Pharmacy Sales Order yang sama.
-3. Satu coordinated Medication Handover mencatat setiap applicable quantity dan Authorized Recipient.
-4. Pharmacy Sales Order berstatus `Resolved`, atau tetap `Active` dengan konsekuensi unresolved sesuai payer yang ditampilkan secara eksplisit.
+1. Alokasi tagihan BPJS dan alokasi tagihan Pasien tetap terlihat terpisah.
+2. Faktur pasien umum yang sudah lunas dan faktur BPJS yang dibuat saat penyerahan terpisah, tetapi keduanya dapat ditelusuri ke pesanan penjualan apotek yang sama.
+3. Satu penyerahan terkoordinasi mencatat seluruh jumlah obat yang berlaku dan penerima yang berhak.
+4. Pesanan penjualan apotek berstatus `Resolved`, atau tetap `Active` dengan urusan yang belum selesai ditampilkan secara jelas menurut penanggung biayanya.
 
 ## 7. Referensi
 
-- [Domain Medication Fulfillment](../medication-fulfillment-domain-id.md), khususnya `BR-MF-015`, `BR-MF-020`–`BR-MF-028`, `BR-MF-040`–`BR-MF-046`, `BR-MF-056`–`BR-MF-060`, `BR-MF-070`–`BR-MF-078`, dan `BR-MF-090`–`BR-MF-095`.
-- [Workflow Outpatient Medication Fulfillment](../outpatient-medication-fulfillment-workflow-id.md), `WF-MF-RJ-005`.
-- [Domain Patient Tracker](../../../contexts/pasien-tracker/TRACKER-DOMAIN-ID.md).
+- [Domain Pelayanan Obat](../medication-fulfillment-domain-id.md), khususnya `BR-MF-015`, `BR-MF-020`–`BR-MF-028`, `BR-MF-040`–`BR-MF-046`, `BR-MF-056`–`BR-MF-060`, `BR-MF-070`–`BR-MF-078`, dan `BR-MF-090`–`BR-MF-095`.
+- [Alur Kerja Pelayanan Obat Rawat Jalan](../outpatient-medication-fulfillment-workflow-id.md), `WF-MF-RJ-005`.
+- [Domain Sistem Antrian Pasien](../../../contexts/pasien-tracker/TRACKER-DOMAIN-ID.md).
 - [Domain Tata Rekening](../../../contexts/TataRekening/02-domain.md).

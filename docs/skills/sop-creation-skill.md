@@ -7,7 +7,7 @@ Generate a paired English and Bahasa Indonesia operational specification for a b
 - English: `SOP.md` or a context-specific equivalent.
 - Bahasa Indonesia: `SOP-ID.md` or the matching context-specific equivalent.
 
-The English SOP is the canonical, AI-agent-facing Operational Specification. The Indonesian SOP is its human-facing semantic companion.
+The English SOP is the canonical, AI-agent-facing Operational Specification. The Indonesian SOP is its human-facing semantic companion. It must read as a clear Indonesian operational document, not as English terminology placed in Indonesian sentence structure.
 
 Its purpose is to describe how an operator performs a business capability using the application.
 
@@ -50,11 +50,14 @@ The primary audience is an operator, supervisor, product owner, analyst, domain 
 The Indonesian version must optimize for:
 
 - natural and understandable Bahasa Indonesia
+- language that an Indonesian operator can understand on the first reading
 - practical use during operation, training, and review
 - semantic parity with the English version
 - preservation of exact application and domain terminology
 
-Do not translate menu names, button labels, field labels, status values, application names, module names, role names, or other visible UI text unless the application itself provides an official Indonesian label. Preserve established English domain terms when translating them would make the procedure less recognizable or disconnect it from the application.
+Do not translate menu names, button labels, field labels, status values, application names, module names, role names, or other visible UI text unless the application itself provides an official Indonesian label.
+
+In explanatory prose, use ordinary Indonesian first. Preserve an English domain term only when it is an official visible label, an identifier, a proper name, an exact term required for traceability, or it has no clear and commonly understood Indonesian equivalent. Do not retain English merely because it appears in the English source or domain document.
 
 The Indonesian version is not an independent reinterpretation. It must not add, remove, reorder, weaken, or strengthen any operational instruction relative to the English version.
 
@@ -482,11 +485,39 @@ Both versions must reference the same authoritative artifacts. The Indonesian co
 
 ## Indonesian writing style
 
+- Write for a busy Indonesian operator, not for a bilingual technical reader.
 - Use natural, concise Bahasa Indonesia rather than literal word-for-word translation.
-- Preserve exact application terminology and established role or domain names.
+- Prefer a familiar Indonesian word over an English loanword when the meaning remains precise. For example: `resep`, `item obat`, `pesanan apotek`, `tagihan`, `penyiapan obat`, `stok`, `antrian`, `pasien`, and `staf apotek`.
+- Explain an unavoidable technical term in plain Indonesian at its first use. If the exact English term must remain for traceability, write the Indonesian meaning first followed by the exact term in parentheses; do not repeat the English term unless needed.
+- Split a long or abstract sentence into short sentences when that makes the actor, action, and result easier to understand.
+- Name the real-world result before its internal document or status. For example, write “sistem membuat tugas untuk menyiapkan obat (`Dispense Order`)”, not “sistem membentuk `Dispense Order`”.
+- Avoid literal or unnatural constructions such as “membentuk”, “mempertahankan ketertelusuran”, “disposition”, “outcome”, “eligible”, “authority”, “coverage”, or “clarification” when a clear Indonesian sentence can express the same operational meaning.
+- Do not use English grammar inside an Indonesian sentence. Do not mix English and Indonesian unnecessarily.
+- Preserve exact application terminology and official role names only where required by the rules above.
 - Prefer direct actor-action-response statements.
-- Do not mix languages unnecessarily when a common Indonesian expression is clear.
 - Do not translate identifiers, UI labels, status values, proper names, or official product terms merely for stylistic consistency.
+
+### Indonesian terminology decision order
+
+For every noun, verb, and phrase in the Indonesian SOP, choose wording in this order:
+
+1. Use an established official Indonesian label when the application displays one.
+2. Otherwise use common Indonesian that is precise in the operational context.
+3. If a technical term has no natural common equivalent, explain it in Indonesian and retain the exact term once in parentheses.
+4. Preserve the English term unchanged only for identifiers, visible UI text, proper names, or terms whose translation would change the intended meaning.
+
+Do not use a glossary-style English term as a substitute for an explanation. A reader must be able to tell what to do, what the system will show, and why the next step is allowed without translating the sentence back into English.
+
+### Indonesian readability test
+
+Before accepting an Indonesian step, ask:
+
+- Would a Staf Apotek understand the action without knowing the English source?
+- Does the sentence say what happens in the real workflow, instead of only naming an internal object?
+- Is every English word necessary under the terminology decision order?
+- If a technical term remains, is its practical meaning clear from the same sentence?
+
+Revise the step if any answer is no.
 
 ## Shared terminology rules
 

@@ -1,100 +1,99 @@
-# SOP MF-RJ-003 — Memenuhi Obat untuk Pasien Umum
+# SOP MF-RJ-003 — Melayani Obat Pasien Umum
 
-**Status artefak:** Spesifikasi operasional target kanonis
+**Status dokumen:** Spesifikasi operasional acuan
 
-**Bounded context:** Medication Fulfillment
+**Konteks domain:** Pelayanan Obat
 
-**Workflow:** `WF-MF-RJ-003`
+**Alur kerja:** `WF-MF-RJ-003`
 
-**Sumber kanonis bahasa Inggris:** [SOP MF-RJ-003 — Fulfill Medication for a General Patient](./SOP-MF-RJ-003-Fulfill-Medication-for-a-General-Patient.md)
+**Dokumen acuan bahasa Inggris:** [SOP MF-RJ-003 — Fulfill Medication for a General Patient](./SOP-MF-RJ-003-Fulfill-Medication-for-a-General-Patient.md)
 
-**Status terminologi aplikasi:** `Apotek` dan `Apotek Rajal` merupakan istilah aplikasi yang telah ditetapkan. Kontrol lain dijelaskan berdasarkan tindakan operasional karena label target-workflow yang disetujui belum tersedia.
+**Istilah pada aplikasi:** `Apotek` dan `Apotek Rajal` adalah nama menu yang telah ditetapkan. Nilai status sistem ditulis dalam tanda backtick.
 
 ## 1. Tujuan
 
-Menyediakan prosedur berulang untuk memperoleh Purchase Confirmation lisan, membentuk dan memberikan clearance pada Sales Invoice Pasien Umum, menyiapkan obat, serta menyelesaikan Medication Handover Rawat Jalan yang accountable.
+Menetapkan tata cara memperoleh persetujuan pembelian secara lisan, membuat dan melunasi faktur penjualan pasien umum, menyiapkan obat, serta menyerahkan obat rawat jalan secara aman dan dapat dipertanggungjawabkan.
 
-## 2. Aktor dan Tanggung Jawab
+## 2. Pelaksana dan Tanggung Jawab
 
-| Aktor | Tipe | Tanggung jawab operasional |
+| Pelaksana | Jenis | Tanggung jawab |
 |---|---|---|
-| Patient or Caregiver | Manusia | Mengonfirmasi atau menolak pembelian yang dihitung, membayar bila mengonfirmasi, hadir untuk pickup, menerima edukasi, dan menerima obat ketika authorized. |
-| Pharmacy Staff | Manusia | Menyampaikan nilai yang dihitung, mencatat Sales Invoice yang dikonfirmasi, mengoordinasikan readiness, dan melakukan pickup call. |
-| Pharmacy Supervisor | Manusia | Mengotorisasi manual uncollected-medication resolution ketika Patient tidak mengambil obat yang telah disiapkan. |
-| Cashier or Payment Authority | Manusia atau Subsistem | Menerima pembayaran dan memberikan Payment Clearance. |
-| Pharmacy Technician | Manusia | Menyiapkan atau meracik obat berdasarkan released Dispense Order. |
-| Pharmacist | Manusia | Memverifikasi penerima, menyelesaikan Final Dispense Review, dan memberikan Patient Education. |
-| Medication Fulfillment Application | Aplikasi | Menampilkan allocation dan nilai, mencatat invoice serta clearance, melacak preparation, dan mencatat dispense serta handover. |
-| Patient Tracker | Subsistem | Mencatat `ServedAt` saat preparation dimulai dan `DoneAt` saat pickup call. |
-| Inventory | Subsistem | Menyediakan outcome reservation, issue, dan return disposition. |
-| Tata Rekening | Subsistem | Menerima Financial Charge dan menyediakan outcome koreksi yang diperlukan. |
+| Pasien atau Keluarga Pasien | Pengguna layanan | Menyetujui atau menolak nilai pembelian, membayar bila setuju, hadir saat dipanggil, menerima edukasi, dan menerima obat setelah disetujui Apoteker. |
+| Staf Apotek | Petugas | Menyampaikan nilai pembelian, mencatat transaksi yang disetujui, menyiapkan atau meracik obat berdasarkan perintah yang telah diizinkan, mengoordinasikan kesiapan obat, dan memanggil Pasien untuk mengambil obat. |
+| Penanggung Jawab Apotek | Petugas | Menyetujui penanganan obat yang tidak diambil. |
+| Kasir atau Sistem Pembayaran | Petugas atau subsistem | Menerima pembayaran dan memberikan status lunas. |
+| Apoteker | Petugas | Memeriksa penerima, melakukan pemeriksaan akhir obat, dan memberikan edukasi kepada Pasien. |
+| Aplikasi Pelayanan Obat | Aplikasi | Menampilkan alokasi dan nilai tagihan, mencatat faktur serta status pembayaran, memantau penyiapan, dan mencatat pemberian serta penyerahan obat. |
+| Sistem Antrian Pasien | Subsistem | Mencatat `ServedAt` saat penyiapan dimulai dan `DoneAt` saat Pasien dipanggil untuk mengambil obat. |
+| Sistem Persediaan | Subsistem | Menyediakan hasil pemesanan, pengeluaran, dan pengembalian stok. |
+| Tata Rekening | Subsistem | Menerima beban keuangan dan memberikan hasil koreksi bila diperlukan. |
 
 ## 3. Prasyarat
 
-1. Staff yang berpartisipasi telah sign in dengan izin yang diperlukan.
-2. Outpatient Queue Mapping, Pharmacy Sales Order aktif, Billing Allocation Patient-payable, dan Pricing Snapshot yang dihitung telah ditampilkan.
-3. Belum ada Sales Invoice untuk penjualan Patient-payable yang diusulkan.
-4. Dispense Order yang berlaku tersedia atau dapat dibentuk dari Fulfillment Allocation.
+1. Petugas yang terlibat telah masuk ke aplikasi dan memiliki hak akses yang diperlukan.
+2. Koneksi antrian rawat jalan, pesanan penjualan apotek yang aktif, alokasi tagihan pasien, dan rincian harga telah ditampilkan.
+3. Belum ada faktur penjualan untuk transaksi pasien umum yang akan ditawarkan.
+4. Perintah penyiapan obat tersedia atau dapat dibuat dari alokasi pelayanan obat.
 
 ## 4. Langkah Operasional
 
-1. **Pharmacy Staff** membuka mapped demand di `Apotek Rajal` dan memverifikasi nilai Patient-payable serta Billing Allocation yang dihitung.
-2. **Pharmacy Staff** menerima Patient saat Manual Mapping atau melakukan administrative Queue Number call setelah Tracker Mapping; **Patient Tracker** tidak mencatat `ServedAt` atau `DoneAt` untuk interaksi ini.
-3. **Pharmacy Staff** menyampaikan nilai yang dihitung secara lisan sebelum Sales Invoice tersedia.
-4. **Patient or Caregiver** memberikan konfirmasi pembelian secara lisan.
-5. **Pharmacy Staff** mencatat transaksi yang dikonfirmasi; **Medication Fulfillment Application** membentuk Sales Invoice hanya dari Billing Allocation yang dikonfirmasi dan menampilkan identifier serta nilainya.
-6. **Cashier or Payment Authority** menerima pembayaran dan memberikan Payment Clearance bagi Sales Invoice tersebut.
-7. **Medication Fulfillment Application** menampilkan Payment Clearance dan membentuk Fulfillment Clearance bagi jumlah Dispense Order yang berlaku.
-8. **Inventory** mengamankan Stock Reservation yang diperlukan bila belum tersedia; **Medication Fulfillment Application** menampilkan reservation outcome.
-9. **Pharmacy Technician** memulai Medication Preparation hanya setelah Dispense Order berstatus released.
-10. **Medication Fulfillment Application** mencatat `Medication Preparation Started`; **Patient Tracker** memindahkan Queue Entry ke In Service dan mencatat `ServedAt`.
-11. **Pharmacy Technician** menyelesaikan preparation atau compounding dan mencatat completion; **Medication Fulfillment Application** menampilkan Dispense Order sebagai `Prepared`.
-12. **Pharmacy Staff** memverifikasi setiap Dispense Order yang hendak diserahkan telah `Prepared` atau memiliki exception outcome accountable.
-13. **Pharmacy Staff** melakukan satu coordinated pickup call; **Patient Tracker** membuat Queue Entry `Done` dan mencatat `DoneAt`.
-14. Dengan Patient atau caregiver hadir, **Pharmacist** memverifikasi Authorized Recipient, menyelesaikan Final Dispense Review, dan mencatat Patient Education yang berlaku.
-15. **Medication Fulfillment Application** memblokir handover sampai persyaratan review, recipient, dan education dicatat.
-16. **Pharmacy Staff** menyelesaikan physical handover setelah otorisasi Pharmacist; **Medication Fulfillment Application** mencatat Medication Dispense dan Medication Handover untuk setiap jumlah yang berlaku.
-17. **Inventory** menyediakan outcome Inventory Issue authoritative; **Medication Fulfillment Application** menampilkan Dispense Order sebagai `Completed` ketika seluruh outcome wajib tersedia.
-18. **Medication Fulfillment Application** menampilkan Pharmacy Sales Order sebagai `Resolved` hanya ketika setiap accepted quantity dan konsekuensi komersial final.
+1. **Staf Apotek** membuka kebutuhan obat yang telah terhubung dengan antrian pada `Apotek Rajal`, kemudian memeriksa alokasi tagihan dan nilai yang harus dibayar Pasien.
+2. **Staf Apotek** melayani Pasien saat pemetaan manual atau memanggil nomor antrian untuk keperluan administrasi setelah pemetaan otomatis. Interaksi ini tidak mencatat `ServedAt` ataupun `DoneAt`.
+3. **Staf Apotek** menyampaikan nilai pembelian secara lisan sebelum faktur penjualan dibuat.
+4. **Pasien atau Keluarga Pasien** menyampaikan persetujuan pembelian secara lisan.
+5. **Staf Apotek** mencatat transaksi yang disetujui. **Aplikasi Pelayanan Obat** membuat faktur hanya untuk alokasi tagihan yang disetujui, lalu menampilkan nomor dan nilainya.
+6. **Kasir atau Sistem Pembayaran** menerima pembayaran dan memberikan status lunas untuk faktur tersebut.
+7. Setelah status lunas tersedia, **Aplikasi Pelayanan Obat** memberikan izin penyiapan untuk jumlah obat yang bersangkutan.
+8. Bila diperlukan, **Sistem Persediaan** memesan stok dan **Aplikasi Pelayanan Obat** menampilkan hasilnya.
+9. **Staf Apotek** mulai menyiapkan obat hanya setelah perintah penyiapan berstatus `Released`.
+10. **Aplikasi Pelayanan Obat** mencatat `Medication Preparation Started`. **Sistem Antrian Pasien** mengubah antrian menjadi `In Service` dan mencatat `ServedAt`.
+11. **Staf Apotek** menyelesaikan penyiapan atau peracikan dan mencatat hasilnya. **Aplikasi Pelayanan Obat** menampilkan perintah penyiapan dengan status `Prepared`.
+12. **Staf Apotek** memastikan setiap obat yang akan diserahkan sudah berstatus `Prepared` atau mempunyai hasil penanganan khusus yang dapat dipertanggungjawabkan.
+13. **Staf Apotek** melakukan satu kali panggilan pengambilan obat. **Sistem Antrian Pasien** mengubah antrian menjadi `Done` dan mencatat `DoneAt`.
+14. Ketika Pasien atau Keluarga Pasien hadir, **Apoteker** memeriksa penerima yang berhak, melakukan pemeriksaan akhir obat, dan mencatat edukasi yang diberikan.
+15. **Aplikasi Pelayanan Obat** tidak mengizinkan penyerahan sampai pemeriksaan akhir, identitas penerima, dan edukasi telah dicatat.
+16. Setelah mendapat persetujuan Apoteker, **Staf Apotek** menyerahkan obat. **Aplikasi Pelayanan Obat** mencatat pemberian dan penyerahan setiap jumlah obat.
+17. **Sistem Persediaan** mencatat pengeluaran stok. Setelah seluruh hasil wajib tersedia, **Aplikasi Pelayanan Obat** menampilkan perintah penyiapan sebagai `Completed`.
+18. Pesanan penjualan apotek hanya berubah menjadi `Resolved` setelah seluruh jumlah yang diterima dan seluruh akibat komersialnya selesai.
 
-## 5. Pengecualian Operasional
+## 5. Penanganan Kondisi Khusus
 
-### 5.1 Patient menolak sebelum invoice dibentuk
+### 5.1 Pasien menolak sebelum faktur dibuat
 
-- **Pharmacy Staff** mencatat penolakan dan tidak membentuk Sales Invoice.
-- **Medication Fulfillment Application** mencatat allocation sebagai declined atau commercially unallocated dan meminta **Inventory** melepaskan reservation yang tidak digunakan.
+- **Staf Apotek** mencatat penolakan dan tidak membuat faktur penjualan.
+- **Aplikasi Pelayanan Obat** menandai alokasi sebagai ditolak atau tidak dialokasikan untuk penjualan, lalu meminta **Sistem Persediaan** melepaskan pemesanan stok yang tidak digunakan.
 
-### 5.2 Nilai berubah sebelum invoice dibentuk
+### 5.2 Nilai berubah sebelum faktur dibuat
 
-- **Medication Fulfillment Application** menampilkan nilai hasil perhitungan yang direvisi.
-- **Pharmacy Staff** menyampaikannya kembali dan memperoleh konfirmasi lisan baru sebelum mencatat transaksi.
+- **Aplikasi Pelayanan Obat** menampilkan nilai perhitungan terbaru.
+- **Staf Apotek** menyampaikan kembali nilai tersebut dan meminta persetujuan lisan baru sebelum mencatat transaksi.
 
-### 5.3 Pembayaran belum selesai atau invoice existing memerlukan koreksi
+### 5.3 Pembayaran belum selesai atau faktur perlu dikoreksi
 
-- **Medication Fulfillment Application** mempertahankan blokir Medication Preparation selama Payment Clearance belum tersedia.
-- **Pharmacy Staff** hanya membatalkan ketika lifecycle Sales Invoice yang ditampilkan mengizinkan; selain itu **Tata Rekening** menyediakan Financial Adjustment, Credit Note, Refund, atau outcome accountable lain.
+- **Aplikasi Pelayanan Obat** tetap memblokir penyiapan obat selama status lunas belum tersedia.
+- **Staf Apotek** hanya dapat membatalkan bila status faktur mengizinkan. Selain itu, **Tata Rekening** menerbitkan penyesuaian keuangan, nota kredit, pengembalian dana, atau hasil lain yang dapat dipertanggungjawabkan.
 
-### 5.4 Shortage atau Final Dispense Review gagal
+### 5.4 Stok kurang atau pemeriksaan akhir obat gagal
 
-- **Pharmacy Technician** mencatat Backorder atau sumber lain yang disetujui untuk produk obat yang sama; substitution tidak dilakukan.
-- **Pharmacist** mencatat failed review outcome dan tidak mengotorisasi handover.
-- **Medication Fulfillment Application** mencatat Unfulfilled Medication Outcome yang berlaku dan mempertahankan konsekuensi finansial wajib tetap terlihat.
+- **Staf Apotek** mencatat pesanan tertunda atau memilih sumber stok lain yang disetujui untuk obat yang sama. Staf Apotek tidak boleh mengganti jenis obat.
+- **Apoteker** mencatat hasil pemeriksaan yang gagal dan tidak menyetujui penyerahan.
+- **Aplikasi Pelayanan Obat** mencatat obat yang tidak dapat dilayani dan tetap menampilkan akibat keuangannya.
 
-### 5.5 Patient tidak mengambil obat
+### 5.5 Pasien tidak mengambil obat
 
-- **Pharmacy Supervisor** menerapkan `SOP-MF-RJ-007`; Queue `DoneAt` tidak dibalik.
+- **Penanggung Jawab Apotek** menerapkan `SOP-MF-RJ-007`. Catatan `DoneAt` pada antrian tidak dihapus atau dibalik.
 
 ## 6. Kriteria Penyelesaian
 
-1. Sales Invoice terlihat financially cleared.
-2. Dispense Order berstatus `Completed`, dan Medication Handover mengidentifikasi Authorized Recipient serta effective time.
-3. Inventory Issue ditampilkan sebagai outcome Inventory authoritative.
-4. Pharmacy Sales Order berstatus `Resolved`, atau tetap `Active` dengan konsekuensi fulfillment atau komersial unresolved yang ditampilkan secara eksplisit.
-5. Queue `Done` tidak digunakan sebagai bukti Medication Handover.
+1. Faktur penjualan terlihat berstatus lunas.
+2. Perintah penyiapan obat berstatus `Completed`, sedangkan catatan penyerahan mencantumkan penerima yang berhak dan waktu penyerahan.
+3. Pengeluaran stok tercatat sebagai hasil resmi dari Sistem Persediaan.
+4. Pesanan penjualan apotek berstatus `Resolved`, atau tetap `Active` dengan urusan pelayanan maupun keuangan yang belum selesai ditampilkan secara jelas.
+5. Status antrian `Done` tidak boleh dianggap sebagai bukti bahwa obat telah diserahkan.
 
 ## 7. Referensi
 
-- [Domain Medication Fulfillment](../medication-fulfillment-domain-id.md), khususnya `BR-MF-020`–`BR-MF-028`, `BR-MF-033`–`BR-MF-046`, `BR-MF-056`–`BR-MF-060`, `BR-MF-067`–`BR-MF-072`, `BR-MF-076`–`BR-MF-083`, `BR-MF-088`, dan `BR-MF-095`.
-- [Workflow Outpatient Medication Fulfillment](../outpatient-medication-fulfillment-workflow-id.md), `WF-MF-RJ-003`.
-- [Domain Patient Tracker](../../../contexts/pasien-tracker/TRACKER-DOMAIN-ID.md), `BR-TRK-045`, `BR-TRK-045a`, dan `BR-TRK-046`.
+- [Domain Pelayanan Obat](../medication-fulfillment-domain-id.md), khususnya `BR-MF-020`–`BR-MF-028`, `BR-MF-033`–`BR-MF-046`, `BR-MF-056`–`BR-MF-060`, `BR-MF-067`–`BR-MF-072`, `BR-MF-076`–`BR-MF-083`, `BR-MF-088`, dan `BR-MF-095`.
+- [Alur Kerja Pelayanan Obat Rawat Jalan](../outpatient-medication-fulfillment-workflow-id.md), `WF-MF-RJ-003`.
+- [Domain Sistem Antrian Pasien](../../../contexts/pasien-tracker/TRACKER-DOMAIN-ID.md), `BR-TRK-045`, `BR-TRK-045a`, dan `BR-TRK-046`.
 - [Domain Tata Rekening](../../../contexts/TataRekening/02-domain.md).

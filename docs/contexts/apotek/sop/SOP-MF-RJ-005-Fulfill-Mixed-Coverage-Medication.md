@@ -19,10 +19,9 @@ Provide a repeatable procedure for separating BPJS-covered and Patient-payable c
 | Actor | Type | Operational responsibility |
 |---|---|---|
 | Patient or Caregiver | Human | Confirms or declines the Patient-payable portion, pays when confirmed, presents for pickup, receives education, and accepts medication when authorized. |
-| Pharmacy Staff | Human | Separates Billing Allocations, communicates the Patient-payable amount, records its confirmed invoice, coordinates readiness, and performs the pickup call. |
+| Pharmacy Staff | Human | Separates Billing Allocations, communicates the Patient-payable amount, records its confirmed invoice, prepares or compounds cleared medication, coordinates readiness, and performs the pickup call. |
 | Pharmacy Supervisor | Human | Authorizes the manual uncollected-medication resolution when the Patient does not collect prepared medication. |
 | Cashier or Payment Authority | Human or Subsystem | Receives payment and supplies Payment Clearance for the General Patient Sales Invoice. |
-| Pharmacy Technician | Human | Prepares or compounds cleared medication under the Dispense Order. |
 | Pharmacist | Human | Verifies the recipient, completes Final Dispense Review, and provides Patient Education. |
 | SEP and Fornas Authorities | Subsystem | Supply SEP validity and item-level coverage. |
 | Medication Fulfillment Application | Application | Maintains payer-specific allocations and clearances and records separate invoices with coordinated handover. |
@@ -50,7 +49,7 @@ Provide a repeatable procedure for separating BPJS-covered and Patient-payable c
 8. **Cashier or Payment Authority** receives payment and supplies Payment Clearance for the General Patient Sales Invoice.
 9. **Medication Fulfillment Application** establishes Fulfillment Clearance for covered quantities from Coverage Clearance and for Patient-payable quantities from Payment Clearance.
 10. **Inventory** secures the required Stock Reservation and supplies its outcome.
-11. After every quantity intended for handover has applicable clearance, **Pharmacy Technician** starts and completes Medication Preparation.
+11. After every quantity intended for handover has applicable clearance, **Pharmacy Staff** starts and completes Medication Preparation.
 12. **Medication Fulfillment Application** records the first `Medication Preparation Started`; **Patient Tracker** moves the common Queue Entry to In Service and records one `ServedAt`.
 13. **Medication Fulfillment Application** displays every intended Dispense Order as `Prepared` or with an accountable exception outcome.
 14. **Pharmacy Staff** performs one coordinated pickup call; **Patient Tracker** makes the common Queue Entry `Done` and records one `DoneAt`.

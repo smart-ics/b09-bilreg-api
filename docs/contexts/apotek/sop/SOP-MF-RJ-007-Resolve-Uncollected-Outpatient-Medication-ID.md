@@ -1,85 +1,85 @@
-# SOP MF-RJ-007 — Menyelesaikan Obat Rawat Jalan yang Tidak Diambil
+# SOP MF-RJ-007 — Menangani Obat Rawat Jalan yang Tidak Diambil
 
-**Status artefak:** Spesifikasi operasional target kanonis
+**Status dokumen:** Spesifikasi operasional acuan
 
-**Bounded context:** Medication Fulfillment
+**Konteks domain:** Pelayanan Obat
 
-**Workflow:** `WF-MF-RJ-007`
+**Alur kerja:** `WF-MF-RJ-007`
 
-**Sumber kanonis bahasa Inggris:** [SOP MF-RJ-007 — Resolve Uncollected Outpatient Medication](./SOP-MF-RJ-007-Resolve-Uncollected-Outpatient-Medication.md)
+**Dokumen acuan bahasa Inggris:** [SOP MF-RJ-007 — Resolve Uncollected Outpatient Medication](./SOP-MF-RJ-007-Resolve-Uncollected-Outpatient-Medication.md)
 
-**Status terminologi aplikasi:** `Apotek` dan `Apotek Rajal` merupakan istilah aplikasi yang telah ditetapkan. Kontrol lain dijelaskan berdasarkan tindakan operasional karena label target-workflow yang disetujui belum tersedia.
+**Istilah pada aplikasi:** `Apotek` dan `Apotek Rajal` adalah nama menu yang telah ditetapkan. Nilai status sistem ditulis dalam tanda backtick.
 
 ## 1. Tujuan
 
-Menyediakan prosedur manual berulang untuk memberikan expiry terotorisasi, disposition Inventory, dan outcome komersial sesuai payer kepada obat Prepared atau In-Transit yang tidak diambil.
+Menetapkan tata cara menutup kesempatan pengambilan obat secara manual dan berwenang, menentukan penyelesaian stok, serta menyelesaikan akibat keuangan menurut penanggung biaya untuk obat yang telah disiapkan atau sedang dikirim tetapi tidak diambil Pasien.
 
-## 2. Aktor dan Tanggung Jawab
+## 2. Pelaksana dan Tanggung Jawab
 
-| Aktor | Tipe | Tanggung jawab operasional |
+| Pelaksana | Jenis | Tanggung jawab |
 |---|---|---|
-| Pharmacy Supervisor | Manusia | Mengotorisasi dan mencatat akhir manual kesempatan pengambilan. |
-| Pharmacy Staff | Manusia | Mengidentifikasi demand dan jumlah terdampak serta memverifikasi operational outcome yang dihasilkan. |
-| Medication Fulfillment Application | Aplikasi | Mencatat No-Show, `Expired`, `Collection Window Expired`, Unfulfilled Medication Outcome, dan final Sales Order progress. |
-| Inventory | Subsistem | Menentukan eligibility return dan menyediakan authoritative return atau final disposition lain. |
-| Tata Rekening | Subsistem | Menyediakan Credit Note, Refund, atau final commercial outcome lain bagi obat yang telah dibayar. |
-| Patient Tracker | Subsistem | Mempertahankan queue lifecycle existing dan tidak membalik `DoneAt`. |
+| Penanggung Jawab Apotek | Petugas | Menyetujui dan mencatat berakhirnya kesempatan pengambilan obat. |
+| Staf Apotek | Petugas | Mengidentifikasi kebutuhan dan jumlah obat yang terdampak serta memeriksa hasil akhir penanganannya. |
+| Aplikasi Pelayanan Obat | Aplikasi | Mencatat Pasien tidak datang, status `Expired`, alasan `Collection Window Expired`, obat yang tidak dapat dilayani, dan perkembangan akhir pesanan penjualan. |
+| Sistem Persediaan | Subsistem | Menentukan apakah obat dapat dikembalikan ke stok dan mencatat pengembalian atau penyelesaian stok lainnya. |
+| Tata Rekening | Subsistem | Menerbitkan nota kredit, pengembalian dana, atau penyelesaian komersial lain untuk obat yang telah dibayar. |
+| Sistem Antrian Pasien | Subsistem | Mempertahankan riwayat antrian yang sudah ada dan tidak menghapus atau membalik `DoneAt`. |
 
 ## 3. Prasyarat
 
-1. Pharmacy Supervisor dan Pharmacy Staff telah sign in dengan izin exception resolution yang diperlukan.
-2. Obat berstatus `Prepared` atau In-Transit, dan Medication Handover belum selesai.
-3. Patient tidak mengambil obat.
-4. Authorized closing role, affected quantity, reason, dan effective business time diketahui.
-5. Keberadaan Sales Invoice dan financial disposition terlihat untuk setiap payer allocation.
+1. Penanggung Jawab Apotek dan Staf Apotek telah masuk ke aplikasi dengan hak untuk menangani kondisi khusus.
+2. Obat berstatus `Prepared` atau `In-Transit`, dan belum ada catatan penyerahan obat.
+3. Pasien tidak mengambil obat.
+4. Petugas yang berwenang menutup proses, jumlah yang terdampak, alasan, dan waktu efektif kegiatan diketahui.
+5. Keberadaan faktur serta penyelesaian keuangan setiap alokasi penanggung biaya dapat dilihat.
 
 ## 4. Langkah Operasional
 
-1. **Pharmacy Staff** membuka Queue Entry yang tidak diambil dan memverifikasi Pharmacy Sales Order sumber, Dispense Order, jumlah terdampak, payer allocation, ketiadaan handover, serta current Inventory disposition.
-2. **Pharmacy Supervisor** mengonfirmasi bahwa kesempatan pengambilan yang diizinkan telah berakhir; batas waktu numerik otomatis atau rekaan tidak digunakan.
-3. **Pharmacy Supervisor** mencatat manual uncollected-medication resolution beserta responsible party, effective business time, affected quantity, dan reason `Collection Window Expired`.
-4. **Medication Fulfillment Application** mencatat Patient sebagai No-Show untuk fulfillment terdampak dan mengubah setiap Dispense Order terdampak menjadi `Expired`.
-5. **Medication Fulfillment Application** mencatat Unfulfilled Medication Outcome bagi setiap affected quantity dan mempertahankan Source Traceability.
-6. **Inventory** menilai obat reserved atau In-Transit dan hanya menyediakan Return to Stock ketika eligible, atau memberikan final Inventory disposition lain.
-7. **Medication Fulfillment Application** menampilkan authoritative Inventory disposition tanpa menyimpulkan mutasi stok.
-8. Untuk allocation BPJS uninvoiced, **Medication Fulfillment Application** mempertahankan ketiadaan Sales Invoice BPJS dan hanya menyelesaikan konsekuensi fulfillment serta Inventory.
-9. Untuk allocation Pasien Umum paid, **Medication Fulfillment Application** mengirim konsekuensi finansial yang diperlukan kepada **Tata Rekening** dan mempertahankan Pharmacy Sales Order sebagai `Active`.
-10. **Tata Rekening** menyediakan Credit Note, Refund, atau final commercial outcome accountable lain; **Medication Fulfillment Application** menampilkan hasilnya terhadap originating allocation.
-11. Untuk mixed coverage, **Medication Fulfillment Application** mencatat konsekuensi covered uninvoiced dan Patient-payable paid secara terpisah.
-12. **Patient Tracker** mempertahankan Queue Entry state dan `DoneAt` existing; No-Show resolution tidak membuka kembali antrean.
-13. **Medication Fulfillment Application** mengubah Pharmacy Sales Order menjadi `Resolved` hanya setelah setiap accepted quantity, Inventory disposition, dan konsekuensi komersial wajib final.
-14. **Pharmacy Staff** memverifikasi final state atau outstanding financial consequence yang ditampilkan secara eksplisit.
+1. **Staf Apotek** membuka antrian yang obatnya tidak diambil, lalu memeriksa pesanan penjualan sumber, perintah penyiapan, jumlah terdampak, alokasi penanggung biaya, ketiadaan penyerahan, dan kondisi stok saat ini.
+2. **Penanggung Jawab Apotek** memastikan kesempatan pengambilan yang diizinkan telah berakhir. Sistem tidak boleh memakai batas waktu otomatis atau angka rekaan.
+3. **Penanggung Jawab Apotek** mencatat penutupan kesempatan pengambilan beserta petugas penanggung jawab, waktu efektif kegiatan, jumlah terdampak, dan alasan `Collection Window Expired`.
+4. **Aplikasi Pelayanan Obat** mencatat bahwa Pasien tidak datang untuk mengambil obat dan mengubah setiap perintah penyiapan yang terdampak menjadi `Expired`.
+5. **Aplikasi Pelayanan Obat** mencatat setiap jumlah obat yang tidak dapat dilayani dan mempertahankan ketertelusuran sumbernya.
+6. **Sistem Persediaan** menilai obat yang telah dipesan atau sedang dikirim. Obat hanya dikembalikan ke stok bila memenuhi ketentuan; bila tidak, Sistem Persediaan mencatat penyelesaian stok lainnya.
+7. **Aplikasi Pelayanan Obat** menampilkan hasil resmi dari Sistem Persediaan dan tidak menyimpulkan sendiri bahwa mutasi stok telah terjadi.
+8. Untuk alokasi BPJS yang belum difakturkan, **Aplikasi Pelayanan Obat** tidak membuat faktur BPJS dan hanya menyelesaikan urusan pelayanan serta persediaan.
+9. Untuk alokasi pasien umum yang telah dibayar, **Aplikasi Pelayanan Obat** mengirimkan akibat keuangan kepada **Tata Rekening** dan mempertahankan pesanan penjualan sebagai `Active`.
+10. **Tata Rekening** menerbitkan nota kredit, pengembalian dana, atau penyelesaian komersial lain yang dapat dipertanggungjawabkan. **Aplikasi Pelayanan Obat** menampilkan hasilnya pada alokasi asal.
+11. Untuk penjaminan campuran, **Aplikasi Pelayanan Obat** mencatat akibat pada bagian BPJS yang belum difakturkan dan bagian yang telah dibayar Pasien secara terpisah.
+12. **Sistem Antrian Pasien** mempertahankan status antrian dan `DoneAt` yang sudah ada. Penanganan Pasien yang tidak datang tidak membuka kembali antrian.
+13. **Aplikasi Pelayanan Obat** baru mengubah pesanan penjualan menjadi `Resolved` setelah seluruh jumlah obat, penyelesaian stok, dan akibat komersial telah selesai.
+14. **Staf Apotek** memeriksa keadaan akhir atau memastikan sisa urusan keuangan yang belum selesai ditampilkan secara jelas.
 
-## 5. Pengecualian Operasional
+## 5. Penanganan Kondisi Khusus
 
-### 5.1 Inventory menolak Return to Stock
+### 5.1 Obat tidak dapat dikembalikan ke stok
 
-- **Inventory** menyediakan rejection dan final disposition accountable lain.
-- **Medication Fulfillment Application** mempertahankan Sales Order unresolved sampai disposition tersebut ditampilkan.
+- **Sistem Persediaan** mencatat alasan penolakan dan penyelesaian stok lainnya yang dapat dipertanggungjawabkan.
+- **Aplikasi Pelayanan Obat** mempertahankan pesanan penjualan sebagai belum selesai sampai penyelesaian stok tersebut ditampilkan.
 
-### 5.2 Konsekuensi finansial paid tetap outstanding
+### 5.2 Akibat keuangan untuk obat yang telah dibayar belum selesai
 
-- **Medication Fulfillment Application** menampilkan Dispense Order sebagai `Expired` dan Pharmacy Sales Order sebagai `Active`.
-- **Pharmacy Staff** tidak menghapus atau mereklasifikasikan paid consequence sebagai outcome BPJS uninvoiced.
-- **Tata Rekening** menyelesaikan financial resolution yang diperlukan.
+- **Aplikasi Pelayanan Obat** menampilkan perintah penyiapan sebagai `Expired` dan pesanan penjualan sebagai `Active`.
+- **Staf Apotek** tidak boleh menghapus kewajiban tersebut atau menggolongkannya sebagai transaksi BPJS yang belum difakturkan.
+- **Tata Rekening** menyelesaikan koreksi keuangan yang diperlukan.
 
-### 5.3 Queue sudah `Done`
+### 5.3 Antrian sudah berstatus `Done`
 
-- **Patient Tracker** mempertahankan `DoneAt` tanpa perubahan.
-- **Pharmacy Supervisor** melanjutkan Medication Fulfillment resolution tanpa membuka atau menyelesaikan antrean kembali.
+- **Sistem Antrian Pasien** mempertahankan `DoneAt` tanpa perubahan.
+- **Penanggung Jawab Apotek** melanjutkan penanganan obat tanpa membuka atau menyelesaikan ulang antrian.
 
 ## 6. Kriteria Penyelesaian
 
-1. Setiap Dispense Order terdampak berstatus `Expired` dengan reason `Collection Window Expired`, responsible party, effective business time, dan affected quantity.
-2. Setiap affected quantity memiliki Unfulfilled Medication Outcome dan authoritative Inventory disposition.
-3. Sales Invoice BPJS tidak tersedia ketika BPJS handover tidak terjadi.
-4. Pharmacy Sales Order Pasien Umum paid tetap `Active` sampai final Credit Note, Refund, atau commercial outcome lain terlihat.
-5. Pharmacy Sales Order menjadi `Resolved` hanya setelah seluruh konsekuensi fulfillment dan komersial final.
-6. Queue `DoneAt` tetap tidak berubah.
+1. Setiap perintah penyiapan yang terdampak berstatus `Expired` dengan alasan `Collection Window Expired`, petugas penanggung jawab, waktu efektif kegiatan, dan jumlah terdampak.
+2. Setiap jumlah yang terdampak mempunyai catatan obat yang tidak dapat dilayani dan penyelesaian stok resmi.
+3. Faktur BPJS tidak dibuat bila penyerahan obat BPJS tidak terjadi.
+4. Pesanan penjualan pasien umum yang telah dibayar tetap `Active` sampai nota kredit, pengembalian dana, atau penyelesaian komersial lainnya terlihat.
+5. Pesanan penjualan baru menjadi `Resolved` setelah seluruh urusan pelayanan dan keuangan selesai.
+6. Catatan `DoneAt` pada antrian tidak berubah.
 
 ## 7. Referensi
 
-- [Domain Medication Fulfillment](../medication-fulfillment-domain-id.md), khususnya `BR-MF-018`–`BR-MF-019`, `BR-MF-027`, `BR-MF-045`–`BR-MF-047`, `BR-MF-052`–`BR-MF-060`, `BR-MF-069`, `BR-MF-078`–`BR-MF-080`, dan `BR-MF-095`.
-- [Workflow Outpatient Medication Fulfillment](../outpatient-medication-fulfillment-workflow-id.md), `WF-MF-RJ-007`.
-- [Domain Patient Tracker](../../../contexts/pasien-tracker/TRACKER-DOMAIN-ID.md).
+- [Domain Pelayanan Obat](../medication-fulfillment-domain-id.md), khususnya `BR-MF-018`–`BR-MF-019`, `BR-MF-027`, `BR-MF-045`–`BR-MF-047`, `BR-MF-052`–`BR-MF-060`, `BR-MF-069`, `BR-MF-078`–`BR-MF-080`, dan `BR-MF-095`.
+- [Alur Kerja Pelayanan Obat Rawat Jalan](../outpatient-medication-fulfillment-workflow-id.md), `WF-MF-RJ-007`.
+- [Domain Sistem Antrian Pasien](../../../contexts/pasien-tracker/TRACKER-DOMAIN-ID.md).
 - [Domain Tata Rekening](../../../contexts/TataRekening/02-domain.md).

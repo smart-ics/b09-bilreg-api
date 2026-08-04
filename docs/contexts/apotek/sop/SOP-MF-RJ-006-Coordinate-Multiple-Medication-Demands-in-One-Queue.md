@@ -19,8 +19,7 @@ Provide a repeatable procedure for coordinating two or more independently accoun
 | Actor | Type | Operational responsibility |
 |---|---|---|
 | Patient or Caregiver | Human | Completes payer-specific interactions, presents for one coordinated pickup, receives consolidated education, and accepts applicable medication. |
-| Pharmacy Staff | Human | Verifies separate mappings and progress, coordinates payer readiness, communicates exceptions, and performs one pickup call. |
-| Pharmacy Technician | Human | Prepares each cleared Dispense Order separately. |
+| Pharmacy Staff | Human | Verifies separate mappings and progress, prepares each cleared Dispense Order separately, coordinates payer readiness, communicates exceptions, and performs one pickup call. |
 | Pharmacist | Human | Verifies the recipient, reviews every Prepared Medication, and provides consolidated education with medication-specific instructions. |
 | Medication Fulfillment Application | Application | Projects per-demand progress and records separate allocations, invoices, Dispense Orders, dispense, and handover outcomes. |
 | Patient Tracker | Subsystem | Retains one Queue Entry with one `CreatedAt`, at most one `ServedAt`, and one `DoneAt`. |
@@ -42,7 +41,7 @@ Provide a repeatable procedure for coordinating two or more independently accoun
 3. **Pharmacy Staff** verifies that no demand, Pharmacy Sales Order, Sales Invoice, or Dispense Order has been merged with another demand.
 4. **Pharmacy Staff** applies the General Patient, BPJS, or mixed-coverage SOP to each demand according to its payer classification.
 5. **Cashier or Payment Authority** supplies applicable Payment Clearance; **SEP and Fornas Authorities** supply applicable Coverage Clearance.
-6. **Pharmacy Technician** prepares each released Dispense Order separately and records completion for each one.
+6. **Pharmacy Staff** prepares each released Dispense Order separately and records completion for each one.
 7. On the first applicable preparation start, **Medication Fulfillment Application** records `Medication Preparation Started`; **Patient Tracker** records one `ServedAt` and moves the common Queue Entry to In Service.
 8. **Medication Fulfillment Application** displays every demand intended for pickup as `Prepared` or with an accountable exception outcome.
 9. **Pharmacy Staff** reviews all per-demand progress and does not declare an unresolved demand ready.

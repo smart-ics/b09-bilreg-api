@@ -1,84 +1,83 @@
-# SOP MF-RJ-006 — Mengoordinasikan Beberapa Permintaan Obat dalam Satu Antrean
+# SOP MF-RJ-006 — Mengoordinasikan Beberapa Kebutuhan Obat dalam Satu Antrian
 
-**Status artefak:** Spesifikasi operasional target kanonis
+**Status dokumen:** Spesifikasi operasional acuan
 
-**Bounded context:** Medication Fulfillment
+**Konteks domain:** Pelayanan Obat
 
-**Workflow:** `WF-MF-RJ-006`
+**Alur kerja:** `WF-MF-RJ-006`
 
-**Sumber kanonis bahasa Inggris:** [SOP MF-RJ-006 — Coordinate Multiple Medication Demands in One Queue](./SOP-MF-RJ-006-Coordinate-Multiple-Medication-Demands-in-One-Queue.md)
+**Dokumen acuan bahasa Inggris:** [SOP MF-RJ-006 — Coordinate Multiple Medication Demands in One Queue](./SOP-MF-RJ-006-Coordinate-Multiple-Medication-Demands-in-One-Queue.md)
 
-**Status terminologi aplikasi:** `Apotek` dan `Apotek Rajal` merupakan istilah aplikasi yang telah ditetapkan. Kontrol lain dijelaskan berdasarkan tindakan operasional karena label target-workflow yang disetujui belum tersedia.
+**Istilah pada aplikasi:** `Apotek` dan `Apotek Rajal` adalah nama menu yang telah ditetapkan. Nilai status sistem ditulis dalam tanda backtick.
 
 ## 1. Tujuan
 
-Menyediakan prosedur berulang untuk mengoordinasikan dua atau lebih medication demand yang accountable secara independen dalam satu antrean dan pickup session Rawat Jalan tanpa menggabungkan record-nya.
+Menetapkan tata cara mengoordinasikan dua atau lebih kebutuhan obat dalam satu antrian dan satu kali pengambilan, tanpa menggabungkan catatan maupun pertanggungjawaban setiap kebutuhan obat.
 
-## 2. Aktor dan Tanggung Jawab
+## 2. Pelaksana dan Tanggung Jawab
 
-| Aktor | Tipe | Tanggung jawab operasional |
+| Pelaksana | Jenis | Tanggung jawab |
 |---|---|---|
-| Patient or Caregiver | Manusia | Menyelesaikan interaksi sesuai payer, hadir untuk satu coordinated pickup, menerima consolidated education, dan menerima obat yang berlaku. |
-| Pharmacy Staff | Manusia | Memverifikasi mapping dan progress terpisah, mengoordinasikan payer readiness, menyampaikan exception, dan melakukan satu pickup call. |
-| Pharmacy Technician | Manusia | Menyiapkan setiap Dispense Order yang telah memperoleh clearance secara terpisah. |
-| Pharmacist | Manusia | Memverifikasi penerima, menelaah setiap Prepared Medication, dan memberikan consolidated education dengan instruksi khusus obat. |
-| Medication Fulfillment Application | Aplikasi | Memproyeksikan progress per demand serta mencatat allocation, invoice, Dispense Order, dispense, dan handover outcome secara terpisah. |
-| Patient Tracker | Subsistem | Mempertahankan satu Queue Entry dengan satu `CreatedAt`, maksimal satu `ServedAt`, dan satu `DoneAt`. |
-| Cashier or Payment Authority | Manusia atau Subsistem | Menyediakan Payment Clearance bagi Patient-payable demand yang berlaku. |
-| SEP and Fornas Authorities | Subsistem | Menyediakan bukti coverage bagi BPJS demand yang berlaku. |
-| Inventory | Subsistem | Menyediakan outcome reservation, issue, dan disposition per Dispense Order. |
+| Pasien atau Keluarga Pasien | Pengguna layanan | Menyelesaikan pembayaran atau penjaminan yang berlaku, hadir dalam satu kali pengambilan, menerima edukasi terpadu, dan menerima obat. |
+| Staf Apotek | Petugas | Memeriksa koneksi antrian dan perkembangan setiap sumber pelayanan obat, menyiapkan setiap perintah penyiapan obat yang telah mendapat izin secara terpisah, mengoordinasikan kesiapan menurut penanggung biaya, menyampaikan kendala, dan melakukan satu kali panggilan. |
+| Apoteker | Petugas | Memeriksa penerima dan setiap obat yang telah disiapkan, serta memberikan edukasi terpadu dengan aturan pakai masing-masing obat. |
+| Aplikasi Pelayanan Obat | Aplikasi | Menampilkan perkembangan setiap kebutuhan obat serta mencatat alokasi, faktur, perintah penyiapan, pemberian, dan penyerahan secara terpisah. |
+| Sistem Antrian Pasien | Subsistem | Mempertahankan satu entri antrian dengan satu `CreatedAt`, paling banyak satu `ServedAt`, dan satu `DoneAt`. |
+| Kasir atau Sistem Pembayaran | Petugas atau subsistem | Memberikan status lunas untuk kebutuhan obat yang harus dibayar Pasien. |
+| Sistem SEP dan Fornas | Subsistem | Memberikan bukti penjaminan bagi kebutuhan obat BPJS. |
+| Sistem Persediaan | Subsistem | Menyediakan hasil pemesanan, pengeluaran, dan penyelesaian stok untuk setiap perintah penyiapan obat. |
 
 ## 3. Prasyarat
 
-1. Staff yang berpartisipasi telah sign in dengan izin yang diperlukan.
-2. Satu Pharmacy Queue Entry memiliki Outpatient Queue Mapping terpisah ke setidaknya dua medication demand.
-3. Setiap Prescription memiliki Prescription Review sendiri.
-4. Setiap accepted source memiliki Pharmacy Sales Order dan active primary outpatient Dispense Order sendiri.
+1. Petugas yang terlibat telah masuk ke aplikasi dan memiliki hak akses yang diperlukan.
+2. Satu entri antrian telah dikoneksikan secara terpisah dengan sedikitnya dua sumber pelayanan obat.
+3. Setiap resep memiliki telaah resepnya sendiri.
+4. Setiap sumber yang diterima memiliki pesanan penjualan apotek dan perintah penyiapan obat rawat jalan utama yang aktif secara tersendiri.
 
 ## 4. Langkah Operasional
 
-1. **Pharmacy Staff** membuka Queue Entry yang sama di `Apotek Rajal`.
-2. **Medication Fulfillment Application** menampilkan setiap mapped demand secara terpisah beserta sumber, Pharmacy Sales Order, payer, Billing Allocation, Fulfillment Allocation, Sales Invoice, clearance, dan progress Dispense Order.
-3. **Pharmacy Staff** memverifikasi bahwa tidak ada demand, Pharmacy Sales Order, Sales Invoice, atau Dispense Order yang digabungkan dengan demand lain.
-4. **Pharmacy Staff** menerapkan SOP Pasien Umum, BPJS, atau mixed coverage kepada setiap demand sesuai payer classification.
-5. **Cashier or Payment Authority** menyediakan Payment Clearance yang berlaku; **SEP and Fornas Authorities** menyediakan Coverage Clearance yang berlaku.
-6. **Pharmacy Technician** menyiapkan setiap released Dispense Order secara terpisah dan mencatat completion masing-masing.
-7. Saat preparation pertama yang berlaku dimulai, **Medication Fulfillment Application** mencatat `Medication Preparation Started`; **Patient Tracker** mencatat satu `ServedAt` dan memindahkan Queue Entry yang sama ke In Service.
-8. **Medication Fulfillment Application** menampilkan setiap demand yang hendak diambil sebagai `Prepared` atau dengan exception outcome accountable.
-9. **Pharmacy Staff** meninjau seluruh progress per demand dan tidak menyatakan demand unresolved sebagai siap.
-10. Ketika seluruh included demand siap atau selesai secara accountable untuk pickup yang dimaksud, **Pharmacy Staff** melakukan satu coordinated pickup call.
-11. **Patient Tracker** mencatat satu `DoneAt` dan membuat Queue Entry yang sama `Done`.
-12. **Pharmacy Staff** menyampaikan setiap exception outcome accountable bersama informasi ready demand.
-13. Dengan Patient atau caregiver hadir, **Pharmacist** memverifikasi Authorized Recipient, menyelesaikan Final Dispense Review untuk setiap Prepared Medication, dan mencatat consolidated Patient Education dengan instruksi khusus obat.
-14. **Pharmacy Staff** menyelesaikan physical handover setelah otorisasi Pharmacist.
-15. **Medication Fulfillment Application** mencatat Medication Dispense dan Medication Handover terhadap setiap Dispense Order dan Pharmacy Sales Order yang berlaku secara terpisah.
-16. **Inventory** menyediakan Inventory Issue atau disposition outcome terpisah bagi setiap Dispense Order sumber.
+1. **Staf Apotek** membuka entri antrian pada `Apotek Rajal`.
+2. **Aplikasi Pelayanan Obat** menampilkan setiap kebutuhan obat secara terpisah beserta sumber, pesanan penjualan apotek, penanggung biaya, alokasi tagihan, alokasi pelayanan, faktur, izin penyiapan, dan perkembangan penyiapan obat.
+3. **Staf Apotek** memastikan tidak ada kebutuhan obat, pesanan penjualan, faktur, atau perintah penyiapan yang digabungkan dengan kebutuhan obat lain.
+4. **Staf Apotek** menerapkan SOP Pasien Umum, BPJS, atau penjaminan campuran pada masing-masing kebutuhan sesuai penanggung biayanya.
+5. **Kasir atau Sistem Pembayaran** memberikan status lunas yang diperlukan. **Sistem SEP dan Fornas** memberikan persetujuan penjaminan yang diperlukan.
+6. **Staf Apotek** menyiapkan setiap perintah penyiapan berstatus `Released` secara terpisah dan mencatat penyelesaian masing-masing.
+7. Saat penyiapan pertama dimulai, **Aplikasi Pelayanan Obat** mencatat `Medication Preparation Started`. **Sistem Antrian Pasien** mencatat satu `ServedAt` dan mengubah antrian menjadi `In Service`.
+8. **Aplikasi Pelayanan Obat** menampilkan setiap kebutuhan obat yang akan diambil sebagai `Prepared` atau dengan hasil penanganan khusus yang dapat dipertanggungjawabkan.
+9. **Staf Apotek** meninjau perkembangan seluruh kebutuhan dan tidak menyatakan kebutuhan yang belum selesai sebagai siap.
+10. Setelah seluruh kebutuhan yang akan diserahkan siap atau telah mendapat penyelesaian yang dapat dipertanggungjawabkan, **Staf Apotek** melakukan satu kali panggilan pengambilan obat.
+11. **Sistem Antrian Pasien** mencatat satu `DoneAt` dan mengubah antrian menjadi `Done`.
+12. **Staf Apotek** menyampaikan setiap kendala atau hasil penanganan khusus bersama informasi obat yang sudah siap.
+13. Ketika Pasien atau Keluarga Pasien hadir, **Apoteker** memeriksa penerima yang berhak, melakukan pemeriksaan akhir setiap obat yang disiapkan, dan mencatat edukasi terpadu beserta aturan pakai khusus masing-masing obat.
+14. Setelah mendapat persetujuan Apoteker, **Staf Apotek** menyerahkan obat.
+15. **Aplikasi Pelayanan Obat** mencatat pemberian dan penyerahan terhadap setiap perintah penyiapan dan pesanan penjualan secara terpisah.
+16. **Sistem Persediaan** mencatat pengeluaran atau penyelesaian stok secara terpisah untuk setiap perintah penyiapan sumber.
 
-## 5. Pengecualian Operasional
+## 5. Penanganan Kondisi Khusus
 
-### 5.1 Satu demand tetap unresolved
+### 5.1 Satu kebutuhan obat belum selesai
 
-- **Medication Fulfillment Application** menampilkan demand tersebut sebagai belum siap.
-- **Pharmacy Staff** menunda coordinated call kecuali SOP payer yang berlaku mengizinkan dan mencatat accountable partial path yang diterima Patient.
+- **Aplikasi Pelayanan Obat** menampilkan kebutuhan tersebut sebagai belum siap.
+- **Staf Apotek** menunda panggilan bersama, kecuali SOP penanggung biaya mengizinkan penyerahan sebagian dan persetujuan Pasien atas penyerahan sebagian telah dicatat.
 
-### 5.2 Satu demand memiliki exception outcome accountable
+### 5.2 Satu kebutuhan obat mempunyai hasil penanganan khusus
 
-- **Pharmacy Staff** menyertakan resolved exception dalam coordinated communication dan melanjutkan ready demand hanya ketika prosedur payer mengizinkan.
-- **Medication Fulfillment Application** mempertahankan exception di bawah Sales Order dan Dispense Order sumbernya.
+- **Staf Apotek** menyampaikan hasil tersebut saat memberikan informasi pengambilan. Kebutuhan lain yang sudah siap hanya boleh dilanjutkan bila SOP penanggung biaya mengizinkannya.
+- **Aplikasi Pelayanan Obat** menyimpan hasil penanganan khusus di bawah pesanan penjualan dan perintah penyiapan sumbernya.
 
-### 5.3 Satu mapping atau demand memerlukan koreksi
+### 5.3 Koneksi antrian atau sumber pelayanan obat perlu dikoreksi
 
-- **Pharmacy Staff** hanya mengoreksi mapping atau demand terdampak.
-- **Medication Fulfillment Application** mempertahankan riwayat setiap demand lain dan tidak menyimpulkan bahwa satu handover memenuhi demand lain.
+- **Staf Apotek** hanya mengoreksi koneksi atau sumber pelayanan obat yang terdampak.
+- **Aplikasi Pelayanan Obat** mempertahankan riwayat kebutuhan lainnya. Satu catatan penyerahan tidak boleh dianggap menyelesaikan kebutuhan obat lain.
 
 ## 6. Kriteria Penyelesaian
 
-1. Queue Entry yang sama menampilkan satu `CreatedAt`, maksimal satu `ServedAt`, dan satu `DoneAt`.
-2. Setiap Prescription, Pharmacy Sales Order, Sales Invoice, dan Dispense Order mempertahankan identitas serta progress independen.
-3. Satu pickup call tercatat, sedangkan setiap applicable demand memiliki fakta Medication Handover sendiri atau exception outcome accountable.
+1. Entri antrian yang sama menampilkan satu `CreatedAt`, paling banyak satu `ServedAt`, dan satu `DoneAt`.
+2. Setiap resep, pesanan penjualan apotek, faktur, dan perintah penyiapan obat mempertahankan identitas serta perkembangannya masing-masing.
+3. Hanya ada satu panggilan pengambilan, sedangkan setiap kebutuhan obat mempunyai catatan penyerahan sendiri atau hasil penanganan khusus yang dapat dipertanggungjawabkan.
 
 ## 7. Referensi
 
-- [Domain Medication Fulfillment](../medication-fulfillment-domain-id.md), khususnya `BR-MF-011`, `BR-MF-015`, `BR-MF-022`, `BR-MF-030`, `BR-MF-056`–`BR-MF-060`, `BR-MF-084`–`BR-MF-088`, dan `BR-MF-095`.
-- [Workflow Outpatient Medication Fulfillment](../outpatient-medication-fulfillment-workflow-id.md), `WF-MF-RJ-006`.
-- [Domain Patient Tracker](../../../contexts/pasien-tracker/TRACKER-DOMAIN-ID.md), khususnya `BR-TRK-032`, `BR-TRK-035`–`BR-TRK-039`, `BR-TRK-045`, dan `BR-TRK-045a`.
+- [Domain Pelayanan Obat](../medication-fulfillment-domain-id.md), khususnya `BR-MF-011`, `BR-MF-015`, `BR-MF-022`, `BR-MF-030`, `BR-MF-056`–`BR-MF-060`, `BR-MF-084`–`BR-MF-088`, dan `BR-MF-095`.
+- [Alur Kerja Pelayanan Obat Rawat Jalan](../outpatient-medication-fulfillment-workflow-id.md), `WF-MF-RJ-006`.
+- [Domain Sistem Antrian Pasien](../../../contexts/pasien-tracker/TRACKER-DOMAIN-ID.md), khususnya `BR-TRK-032`, `BR-TRK-035`–`BR-TRK-039`, `BR-TRK-045`, dan `BR-TRK-045a`.

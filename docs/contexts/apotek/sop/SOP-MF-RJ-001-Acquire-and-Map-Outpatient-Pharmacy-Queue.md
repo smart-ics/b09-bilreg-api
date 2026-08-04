@@ -20,7 +20,7 @@ Provide a repeatable procedure for associating one outpatient Pharmacy Queue Ent
 |---|---|---|
 | Patient or Caregiver | Human | Obtains the Queue Number and presents available tracker, registration, Prescription, or direct-request evidence. |
 | Pharmacy Staff | Human | Identifies an unresolved Queue Entry, verifies evidence, records a presented Physical Prescription when applicable, and establishes Manual Mapping. |
-| Medication Fulfillment Application | Application | Attempts Tracker Mapping, records Outpatient Queue Mapping, and displays per-demand progress. |
+| Medication Fulfillment Application | Application | Attempts Tracker Mapping to existing Prescriptions, records Outpatient Queue Mapping, and displays per-source progress. |
 | Patient Tracker | Subsystem | Establishes the Pharmacy Queue Entry, assigns the Queue Number, records `CreatedAt`, and retains queue lifecycle authority. |
 
 ## 3. Preconditions
@@ -34,8 +34,8 @@ Provide a repeatable procedure for associating one outpatient Pharmacy Queue Ent
 
 1. **Patient or Caregiver** requests an outpatient pharmacy Queue Number or presents valid tracker or registration evidence.
 2. **Patient Tracker** establishes the Pharmacy Queue Entry, assigns the Queue Number, records `CreatedAt`, and displays or supplies the Queue Number.
-3. **Medication Fulfillment Application** attempts Tracker Mapping when the supplied evidence resolves one or more applicable medication demands.
-4. **Medication Fulfillment Application** records a separate Outpatient Queue Mapping for every resolved demand and displays each mapped demand with its authoritative progress.
+3. **Medication Fulfillment Application** attempts Tracker Mapping when the supplied evidence resolves one or more applicable existing Prescriptions.
+4. **Medication Fulfillment Application** records a separate Outpatient Queue Mapping for every resolved Prescription and displays each mapped Prescription with its authoritative progress.
 5. If the Queue Entry remains unresolved, **Pharmacy Staff** performs an administrative Queue Number call without recording `ServedAt` or `DoneAt`.
 6. **Patient or Caregiver** presents the Queue Number and available Prescription, registration, or direct-request evidence.
 7. **Pharmacy Staff** selects the unresolved Queue Entry and identifies every applicable existing Prescription or Pharmacy Sales Order.
@@ -46,7 +46,7 @@ Provide a repeatable procedure for associating one outpatient Pharmacy Queue Ent
 
 ## 5. Operational Exceptions
 
-### 5.1 Evidence does not resolve a medication demand
+### 5.1 Evidence does not resolve a Prescription
 
 - **Medication Fulfillment Application** leaves the Queue Entry `Unmapped` and blocks mapping-dependent clearance.
 - **Pharmacy Staff** obtains additional evidence and retries Manual Mapping; staff does not create an Electronic Prescription.
@@ -58,8 +58,9 @@ Provide a repeatable procedure for associating one outpatient Pharmacy Queue Ent
 
 ### 5.3 Existing mapping is incorrect
 
-- **Pharmacy Staff** records an accountable mapping correction.
-- **Medication Fulfillment Application** preserves the prior mapping, Prescription Review, and Pharmacy Sales Order history.
+- **Pharmacy Staff** selects the correct Prescription or medication-demand source.
+- **Medication Fulfillment Application** updates the active Outpatient Queue Mapping to the correct source. No mapping-change history is required.
+- Updating the queue mapping does not modify the Prescription, Prescription Review Outcome, or Pharmacy Sales Order because those records remain independently owned.
 
 ## 6. Completion Criteria
 

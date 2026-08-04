@@ -1,74 +1,75 @@
-# SOP MF-RJ-001 — Mengambil dan Memetakan Antrean Apotek Rawat Jalan
+# SOP MF-RJ-001 — Menerbitkan Nomor Antrian dan Mengkoneksikannya dengan Resep atau Permintaan Obat Langsung
 
-**Status artefak:** Spesifikasi operasional target kanonis
+**Status dokumen:** Spesifikasi operasional acuan
 
-**Bounded context:** Medication Fulfillment
+**Konteks domain:** Pelayanan Obat
 
-**Workflow:** `WF-MF-RJ-001`
+**Alur kerja:** `WF-MF-RJ-001`
 
-**Sumber kanonis bahasa Inggris:** [SOP MF-RJ-001 — Acquire and Map Outpatient Pharmacy Queue](./SOP-MF-RJ-001-Acquire-and-Map-Outpatient-Pharmacy-Queue.md)
+**Dokumen acuan bahasa Inggris:** [SOP MF-RJ-001 — Acquire and Map Outpatient Pharmacy Queue](./SOP-MF-RJ-001-Acquire-and-Map-Outpatient-Pharmacy-Queue.md)
 
-**Status terminologi aplikasi:** `Apotek` dan `Apotek Rajal` merupakan istilah aplikasi yang telah ditetapkan. Kontrol lain dijelaskan berdasarkan tindakan operasional karena label target-workflow yang disetujui belum tersedia.
+**Istilah pada aplikasi:** `Apotek` dan `Apotek Rajal` adalah nama menu yang telah ditetapkan. Nilai status sistem ditulis dalam tanda backtick.
 
 ## 1. Tujuan
 
-Menyediakan prosedur berulang untuk mengaitkan satu Pharmacy Queue Entry Rawat Jalan dengan setiap medication demand yang berlaku melalui Tracker Mapping atau Manual Mapping.
+Menetapkan tata cara penerbitan nomor antrian apotek rawat jalan dan mengkoneksikannya dengan Resep atau Permintaan Obat Langsung yang sesuai, baik secara otomatis melalui sistem maupun secara manual oleh petugas.
 
-## 2. Aktor dan Tanggung Jawab
+## 2. Pelaksana dan Tanggung Jawab
 
-| Aktor | Tipe | Tanggung jawab operasional |
+| Pelaksana | Jenis | Tanggung jawab |
 |---|---|---|
-| Patient or Caregiver | Manusia | Mengambil Queue Number dan menunjukkan bukti tracker, registrasi, Prescription, atau direct request yang tersedia. |
-| Pharmacy Staff | Manusia | Mengidentifikasi Queue Entry yang belum terselesaikan, memverifikasi bukti, mencatat Physical Prescription yang ditunjukkan bila berlaku, dan membentuk Manual Mapping. |
-| Medication Fulfillment Application | Aplikasi | Mencoba Tracker Mapping, mencatat Outpatient Queue Mapping, dan menampilkan progress per demand. |
-| Patient Tracker | Subsistem | Membentuk Pharmacy Queue Entry, menetapkan Queue Number, mencatat `CreatedAt`, dan mempertahankan authority lifecycle antrean. |
+| Pasien atau Keluarga Pasien | Pengguna layanan | Mengambil nomor antrian serta menunjukkan bukti pelacakan pasien, registrasi, resep, atau permintaan obat langsung yang tersedia. |
+| Staf Apotek | Petugas | Menemukan antrian yang belum terkoneksi, memeriksa bukti, mencatat resep kertas bila ada, dan melakukan pemetaan manual. |
+| Aplikasi Pelayanan Obat | Aplikasi | Mencoba mengkoneksikan antrian secara otomatis dengan Resep yang sudah ada, mencatat koneksinya, dan menampilkan perkembangan setiap sumber pelayanan obat. |
+| Sistem Antrian Pasien | Subsistem | Membuat entri antrian apotek, menerbitkan nomor antrian, mencatat `CreatedAt`, dan mengelola siklus antrian. |
 
 ## 3. Prasyarat
 
-1. Pharmacy Staff telah sign in ke workspace `Apotek Rajal` dengan izin queue mapping.
-2. Queue Session apotek Rawat Jalan tersedia.
-3. Patient meminta Queue Number secara langsung atau menunjukkan bukti tracker atau registrasi yang valid.
-4. Setiap medication demand yang dipilih untuk mapping telah memiliki sumber accountable atau dicatat selama Manual Mapping.
+1. Staf Apotek telah masuk ke ruang kerja `Apotek Rajal` dan memiliki hak untuk memetakan antrian.
+2. Sesi antrian apotek rawat jalan tersedia.
+3. Pasien meminta nomor antrian secara langsung atau menunjukkan bukti pelacakan pasien maupun registrasi yang sah.
+4. Setiap Resep atau Permintaan Obat Langsung yang akan dikoneksikan mempunyai sumber yang dapat dipertanggungjawabkan atau sumber tersebut dicatat saat koneksi manual.
 
 ## 4. Langkah Operasional
 
-1. **Patient or Caregiver** meminta Queue Number apotek Rawat Jalan atau menunjukkan bukti tracker atau registrasi yang valid.
-2. **Patient Tracker** membentuk Pharmacy Queue Entry, menetapkan Queue Number, mencatat `CreatedAt`, serta menampilkan atau menyediakan Queue Number.
-3. **Medication Fulfillment Application** mencoba Tracker Mapping ketika bukti yang diberikan menemukan satu atau beberapa medication demand yang berlaku.
-4. **Medication Fulfillment Application** mencatat Outpatient Queue Mapping terpisah untuk setiap demand yang ditemukan dan menampilkan masing-masing demand beserta progress authoritative-nya.
-5. Jika Queue Entry tetap unresolved, **Pharmacy Staff** melakukan administrative Queue Number call tanpa mencatat `ServedAt` atau `DoneAt`.
-6. **Patient or Caregiver** menunjukkan Queue Number dan bukti Prescription, registrasi, atau direct request yang tersedia.
-7. **Pharmacy Staff** memilih unresolved Queue Entry dan mengidentifikasi setiap Prescription atau Pharmacy Sales Order existing yang berlaku.
-8. Ketika Physical Prescription ditunjukkan, **Pharmacy Staff** mencatatnya sebelum meminta Prescription Review; ketika Direct Medication Request ditunjukkan, **Pharmacy Staff** menilainya berdasarkan prosedur penerimaan.
-9. **Pharmacy Staff** mencatat Manual Mapping antara Queue Entry dan setiap applicable demand yang teridentifikasi.
-10. **Medication Fulfillment Application** menampilkan setiap mapping yang berhasil sebagai `Mapped` dan mempertahankan setiap demand sebagai record terpisah.
-11. **Pharmacy Staff** memverifikasi bahwa seluruh applicable demand terlihat di bawah Queue Entry yang sama dan menyerahkan proses profesional serta payer kepada SOP yang berlaku.
+1. **Pasien atau Keluarga Pasien** meminta nomor antrian apotek rawat jalan atau menunjukkan bukti pelacakan pasien maupun registrasi yang sah.
+2. **Sistem Antrian Pasien** membuat entri antrian, menerbitkan nomor antrian, mencatat `CreatedAt`, lalu menampilkan atau mengirimkan nomor tersebut.
+3. **Aplikasi Pelayanan Obat** mencoba mengkoneksikan antrian secara otomatis dengan satu atau beberapa Resep yang sudah ada berdasarkan bukti tracker atau registrasi yang diberikan. Proses ini tidak membuat Resep baru dan tidak berlaku untuk Permintaan Obat Langsung.
+4. Untuk setiap Resep yang ditemukan, **Aplikasi Pelayanan Obat** membuat catatan koneksi antrian secara terpisah dan menampilkan perkembangan masing-masing Resep.
+5. Jika antrian masih berstatus `Unmapped`, **Staf Apotek** dapat memanggil nomor antrian untuk keperluan administrasi. Pemanggilan ini tidak boleh mencatat `ServedAt` ataupun `DoneAt`.
+6. **Pasien atau Keluarga Pasien** menunjukkan nomor antrian beserta resep, bukti registrasi, atau permintaan obat langsung yang tersedia.
+7. **Staf Apotek** memilih antrian yang belum terkoneksi dan mencari resep atau pesanan penjualan apotek yang sesuai.
+8. Jika pasien membawa resep kertas, **Staf Apotek** mencatat resep tersebut sebelum meminta telaah resep. Jika pasien mengajukan permintaan obat langsung, **Staf Apotek** menilainya menurut prosedur penerimaan kebutuhan obat.
+9. **Staf Apotek** mengkoneksikan antrian secara manual dengan setiap Resep atau Permintaan Obat Langsung yang berhasil diidentifikasi.
+10. **Aplikasi Pelayanan Obat** menampilkan koneksi yang berhasil dengan status `Mapped` dan tetap menyimpan setiap sumber pelayanan obat sebagai catatan tersendiri.
+11. **Staf Apotek** memastikan seluruh sumber pelayanan obat tampil di bawah nomor antrian yang sama, kemudian melanjutkan pelayanan sesuai SOP profesi dan jenis penanggung biaya yang berlaku.
 
-## 5. Pengecualian Operasional
+## 5. Penanganan Kondisi Khusus
 
-### 5.1 Bukti tidak menemukan medication demand
+### 5.1 Bukti tidak menemukan Resep
 
-- **Medication Fulfillment Application** mempertahankan Queue Entry sebagai `Unmapped` dan memblokir clearance yang bergantung pada mapping.
-- **Pharmacy Staff** memperoleh bukti tambahan dan mengulangi Manual Mapping; staff tidak membuat Electronic Prescription.
+- **Aplikasi Pelayanan Obat** mempertahankan antrian dengan status `Unmapped` dan tidak mengizinkan proses yang mensyaratkan koneksi antrian.
+- **Staf Apotek** meminta bukti tambahan dan mengulangi koneksi manual. Staf Apotek tidak boleh membuat resep elektronik sebagai pengganti bukti yang tidak ada.
 
-### 5.2 Direct Medication Request ditolak
+### 5.2 Permintaan obat langsung ditolak
 
-- **Pharmacy Staff** tidak mencatat Direct Medication Request maupun Pharmacy Sales Order.
-- **Patient Tracker** mempertahankan Queue Entry yang masih Waiting sampai withdrawal policy eksternal diterapkan.
+- **Staf Apotek** tidak mencatat permintaan obat langsung ataupun membuat pesanan penjualan apotek.
+- **Sistem Antrian Pasien** mempertahankan antrian dengan status menunggu sampai kebijakan pembatalan antrian diterapkan.
 
-### 5.3 Mapping existing tidak benar
+### 5.3 Koneksi antrian yang sudah tercatat ternyata salah
 
-- **Pharmacy Staff** mencatat koreksi mapping yang accountable.
-- **Medication Fulfillment Application** mempertahankan riwayat mapping, Prescription Review, dan Pharmacy Sales Order sebelumnya.
+- **Staf Apotek** memilih Resep atau sumber pelayanan obat yang benar.
+- **Aplikasi Pelayanan Obat** memperbarui koneksi antrian yang aktif ke sumber yang benar. Sistem tidak perlu menyimpan riwayat perubahan koneksi antrian.
+- Perubahan koneksi antrian tidak mengubah isi Resep, hasil telaah resep, atau pesanan penjualan apotek karena data tersebut berdiri sendiri.
 
 ## 6. Kriteria Penyelesaian
 
-1. Setiap applicable demand memiliki outcome `Outpatient Queue Mapped` terpisah yang terhubung ke Queue Number yang sama; atau Queue Entry tetap terlihat `Unmapped` menunggu bukti.
-2. Mapping tidak mencatat `ServedAt` atau `DoneAt`.
-3. Setiap mapped demand mempertahankan identitas Prescription, Pharmacy Sales Order, Sales Invoice, dan Dispense Order sendiri bila berlaku.
+1. Setiap Resep atau Permintaan Obat Langsung telah mempunyai catatan koneksi tersendiri dengan nomor antrian yang sama, atau antrian tetap terlihat berstatus `Unmapped` sambil menunggu bukti tambahan.
+2. Proses mengkoneksikan antrian tidak mencatat `ServedAt` ataupun `DoneAt`.
+3. Setiap sumber pelayanan obat tetap memiliki identitas resep bila ada, pesanan penjualan apotek, faktur penjualan, dan perintah penyiapan obat masing-masing.
 
 ## 7. Referensi
 
-- [Domain Medication Fulfillment](../medication-fulfillment-domain-id.md), khususnya `BR-MF-061`–`BR-MF-065`, `BR-MF-082`, dan `BR-MF-084`–`BR-MF-087`.
-- [Workflow Outpatient Medication Fulfillment](../outpatient-medication-fulfillment-workflow-id.md), `WF-MF-RJ-001`.
-- [Domain Patient Tracker](../../../contexts/pasien-tracker/TRACKER-DOMAIN-ID.md), khususnya `BR-TRK-026`–`BR-TRK-035`.
+- [Domain Pelayanan Obat](../medication-fulfillment-domain-id.md), khususnya `BR-MF-061`–`BR-MF-065`, `BR-MF-082`, dan `BR-MF-084`–`BR-MF-087`.
+- [Alur Kerja Pelayanan Obat Rawat Jalan](../outpatient-medication-fulfillment-workflow-id.md), `WF-MF-RJ-001`.
+- [Domain Sistem Antrian Pasien](../../../contexts/pasien-tracker/TRACKER-DOMAIN-ID.md), khususnya `BR-TRK-026`–`BR-TRK-035`.

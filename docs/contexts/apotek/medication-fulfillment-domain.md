@@ -77,7 +77,6 @@ Prescription or Direct Medication Request
 A Prescription does not become a Pharmacy Sales Order. A completed professional decision authorizes a new Pharmacy Sales Order while preserving the Prescription as its clinical source.
 
 ## 2. Ubiquitous Language
-
 | Term | Definition |
 |---|---|
 | Medication Fulfillment | The bounded context that coordinates patient-specific medication demand from Pharmacy acceptance through commercial allocation and physical fulfillment resolution. |
@@ -89,8 +88,7 @@ A Prescription does not become a Pharmacy Sales Order. A completed professional 
 | Prescription Line | One requested medication, dosage instruction, and quantity within a Prescription. |
 | Source Traceability | The accountable relationship from Medication Sale and dispensing outcomes back to their Sales Order, accepted demand, and original source. |
 | Prescription Review | The Pharmacist's administrative, pharmaceutical, and clinical assessment of a Prescription. |
-| Prescription Review Outcome | The professional disposition of a Prescription or Prescription Line as approved, partially approved, rejected, or requiring clarification. |
-| Clinical Clarification | An accountable request to resolve an ambiguity or concern with the responsible clinician before final acceptance. |
+| Prescription Review Outcome | The professional decision on a Prescription: approved, partially approved, or rejected. Accepted medication is materialized as a Pharmacy Sales Order Line. |
 | Accepted Medication Line | A medication line professionally accepted for inclusion in a Pharmacy Sales Order, independently of current stock availability. |
 | Pharmacy Sales Order | The accepted medication demand owned by Pharmacy and used as the common source of commercial and fulfillment allocations. |
 | Sales Order Line | One accepted medication, quantity, instructions, and applicable commercial basis within a Pharmacy Sales Order. |
@@ -148,7 +146,7 @@ A Prescription does not become a Pharmacy Sales Order. A completed professional 
 | No-Show | An outpatient outcome in which the Patient does not collect medication within the applicable service limit. |
 | Pharmacy Queue Entry | A Patient's participation in an outpatient pharmacy queue whose identity and lifecycle are owned by Patient Tracker. |
 | Outpatient Queue Mapping | The accountable association of a Pharmacy Queue Entry with the applicable Prescription, Direct Medication Request, Pharmacy Sales Order, or another traceable medication-demand source. |
-| Tracker Mapping | Outpatient Queue Mapping established automatically from valid Patient Tracker or registration evidence. |
+| Tracker Mapping | Outpatient Queue Mapping established automatically when valid Patient Tracker or registration evidence resolves one or more existing Prescriptions. It does not create a Prescription and does not apply to a Direct Medication Request. |
 | Manual Mapping | Outpatient Queue Mapping established by Pharmacy Staff after the Queue Number and applicable medication demand are identified. |
 | Pharmacy Service Start Evidence | The `Medication Preparation Started` fact that causes the outpatient Pharmacy Queue Entry to record `ServedAt`. |
 | Care Setting | The operational setting whose policy applies to fulfillment, such as outpatient, inpatient, or emergency care. |
@@ -166,7 +164,7 @@ Accept reviewed Prescription demand or an authorized Direct Medication Request w
 
 ### 3.2 Prescription Review
 
-Establish the professional disposition of each Prescription and its lines, including clarification and partial acceptance.
+Establish the professional disposition of each Prescription and its lines, including partial acceptance and accepted substitutes.
 
 ### 3.3 Pharmacy Sales Order Management
 
@@ -212,7 +210,7 @@ Apply General Patient and BPJS clearance, invoice-timing, pickup, handover, and 
 
 ### 4.1 Prescribing Clinician
 
-Owns the original Prescription and responds to Clinical Clarification. The Prescribing Clinician does not own Pharmacy acceptance, Sales Invoice formation, or dispensing execution.
+Owns the original Prescription. Any clarification with the Pharmacist occurs outside the system and does not alter that original Prescription. The Prescribing Clinician does not own Pharmacy acceptance, Sales Invoice formation, or dispensing execution.
 
 ### 4.2 Pharmacist
 
@@ -220,25 +218,21 @@ Owns Prescription Review Outcome, Medication Substitution authorized during Pres
 
 ### 4.3 Pharmacy Staff
 
-Coordinates accepted demand, Sales Order allocation, outpatient administrative interaction, preparation workflow, and accountable handover within assigned authority. For outpatient fulfillment, Pharmacy Staff calls Queue Numbers, establishes Manual Mapping, communicates the calculated General Patient amount before Sales Invoice establishment, saves the confirmed Sales Invoice, and performs the pickup call. For a Direct Medication Request, Pharmacy Staff accepts within assigned authority, seeks Pharmacist approval when required, or declines without establishing the request or a Pharmacy Sales Order.
+Coordinates accepted demand, Sales Order allocation, outpatient administrative interaction, Medication Preparation, Compounding, and accountable handover within assigned authority. For outpatient fulfillment, Pharmacy Staff calls Queue Numbers, establishes Manual Mapping, communicates the calculated General Patient amount before Sales Invoice establishment, saves the confirmed Sales Invoice, prepares medication according to the Dispense Order, and performs the pickup call. For a Direct Medication Request, Pharmacy Staff accepts within assigned authority, seeks Pharmacist approval when required, or declines without establishing the request or a Pharmacy Sales Order. When stock cannot support fulfillment after Pharmacy Sales Order establishment, Pharmacy Staff decides between Backorder and fulfillment from another approved stock source for the same medication product within assigned authority. Pharmacy Staff shall not substitute the medication.
 
-### 4.4 Pharmacy Technician
-
-Performs Medication Preparation and Compounding according to the Dispense Order. When stock cannot support fulfillment after Pharmacy Sales Order establishment, the Pharmacy Technician decides between Backorder and fulfillment from another approved stock source for the same medication product within assigned authority. The Pharmacy Technician shall not substitute the medication.
-
-### 4.5 Patient or Caregiver
+### 4.4 Patient or Caregiver
 
 Provides applicable confirmation and payment, receives education, and accepts medication when acting as an Authorized Recipient.
 
-### 4.6 Cashier
+### 4.5 Cashier
 
 Receives payment and supplies Payment Clearance evidence. The Cashier does not establish medication eligibility or fulfillment quantity.
 
-### 4.7 Inpatient Authorized Recipient
+### 4.6 Inpatient Authorized Recipient
 
 Receives Ward Delivery for the Patient and remains identifiable in the Medication Handover outcome. Receipt does not represent Medication Administration.
 
-### 4.8 Pharmacy Supervisor
+### 4.7 Pharmacy Supervisor
 
 Owns exceptional decisions beyond ordinary authority, including approved expiry, return, shortage resolution, and accountable correction.
 
@@ -246,7 +240,7 @@ Owns exceptional decisions beyond ordinary authority, including approved expiry,
 
 ### 5.1 Prescription Review
 
-Represents Pharmacy's professional assessment of one Prescription. It retains per-line decisions, clarification, responsible Pharmacist, and source traceability without rewriting the Prescription.
+Represents Pharmacy's professional assessment process for one Prescription. It retains per-line decisions, the responsible Pharmacist, and source traceability without rewriting the Prescription. Accepted medication is materialized in the Pharmacy Sales Order.
 
 ### 5.2 Pharmacy Sales Order
 
@@ -282,7 +276,7 @@ Represents transfer to an Authorized Recipient, including recipient verification
 
 ### 5.10 Outpatient Queue Mapping
 
-Represents the accountable association between an externally owned Pharmacy Queue Entry and applicable medication demand. It records whether association occurred through Tracker Mapping or Manual Mapping without owning Queue Number or queue lifecycle.
+Represents the active association between an externally owned Pharmacy Queue Entry and the applicable medication-demand source. If the selected source is incorrect, the association is updated in place and no mapping-change history is required. It records the current mapping method without owning Queue Number or queue lifecycle.
 
 ### 5.11 Unfulfilled Medication Outcome
 
@@ -294,7 +288,7 @@ Represents the final reason an accepted quantity was not fulfilled and identifie
 
 **Aggregate Root:** `Prescription Review`
 
-The aggregate keeps the Prescription source reference, per-line professional disposition, Clinical Clarification, responsible Pharmacist, and completion outcome mutually consistent. It cannot modify the clinician's original Prescription.
+The aggregate keeps the Prescription source reference, per-line professional disposition, responsible Pharmacist, and completion outcome mutually consistent. It stores no clarification communication and cannot modify the clinician's original Prescription.
 
 ### 6.2 Pharmacy Sales Order Aggregate
 
@@ -317,16 +311,14 @@ A Sales Invoice references exactly one Pharmacy Sales Order but may cover one or
 **Aggregate Root:** `Dispense Order`
 
 The aggregate keeps Fulfillment Allocations, physical preparation, Final Dispense Review, Medication Dispense, Medication Handover, cancellation, expiry, return, and non-fulfillment outcomes mutually consistent.
-
 A Dispense Order references exactly one Pharmacy Sales Order but may fulfill one or more of its Sales Order Lines.
 
 ### 6.5 Cross-aggregate relationship
-
 A Pharmacy Sales Order may have zero or more Sales Invoices and zero or more Dispense Orders. Sales Invoices and Dispense Orders are not required to have equal counts or formation times.
 
 Their business correlation is expressed through Billing Allocations, Fulfillment Allocations, and Fulfillment Clearance at Sales Order Line and quantity level. Sharing a Pharmacy Sales Order does not by itself establish that every Sales Invoice clears every Dispense Order.
 
-Outpatient Queue Mapping is a traceable relationship to an externally owned Pharmacy Queue Entry, not an Aggregate Root of Medication Fulfillment. Patient Tracker remains authoritative for Queue Session, Queue Number, and queue lifecycle.
+Outpatient Queue Mapping is an active relationship to an externally owned Pharmacy Queue Entry, not an Aggregate Root of Medication Fulfillment or a transaction log of mapping changes. Patient Tracker remains authoritative for Queue Session, Queue Number, and queue lifecycle.
 
 ## 7. Business Rules
 
@@ -335,8 +327,8 @@ Outpatient Queue Mapping is a traceable relationship to an externally owned Phar
 - **BR-MF-001** — Patient Medication Demand shall originate from exactly one Prescription or Direct Medication Request.
 - **BR-MF-002** — The original Prescription and clinician intent shall remain owned by its clinical-order authority.
 - **BR-MF-003** — Every Prescription shall complete Prescription Review before any of its lines enter a Pharmacy Sales Order.
-- **BR-MF-004** — Only a Pharmacist shall establish Prescription Review Outcome and authorize Medication Substitution, and Medication Substitution shall occur only during Prescription Review before Pharmacy Sales Order establishment.
-- **BR-MF-005** — A Prescription Review Outcome shall record a disposition for every reviewed Prescription Line.
+- **BR-MF-004** — Only a Pharmacist shall establish each Prescription Line's final decision as accepted as prescribed, accepted with a substitute, or rejected. The original Prescription shall not be modified; accepted medication is recorded on a Sales Order Line.
+- **BR-MF-005** — A Prescription Review Outcome shall record a final decision for every reviewed Prescription Line. Clarification with the Prescribing Clinician occurs outside the system, is not recorded as a state or transaction, and the review remains `Under Review` until a decision is made.
 - **BR-MF-006** — A rejected Prescription shall not establish a Pharmacy Sales Order.
 - **BR-MF-007** — A partially approved Prescription may establish a Pharmacy Sales Order containing only Accepted Medication Lines.
 - **BR-MF-008** — Clinical acceptance shall be independent of current Stock Availability; stock facts shall not rewrite professional eligibility.
@@ -347,7 +339,7 @@ Outpatient Queue Mapping is a traceable relationship to an externally owned Phar
 - **BR-MF-010** — A Pharmacy Sales Order shall originate from exactly one completed accepted-demand source.
 - **BR-MF-011** — One Prescription shall establish at most one active Pharmacy Sales Order within one fulfillment episode.
 - **BR-MF-012** — A Pharmacy Sales Order shall contain at least one Sales Order Line with a positive Accepted Quantity.
-- **BR-MF-013** — Every Sales Order Line shall retain Source Traceability to its Prescription Line or Direct Medication Request line.
+- **BR-MF-013** — Every Sales Order Line shall retain Source Traceability to its Prescription Line or Direct Medication Request line; for an accepted substitute, the Sales Order Line contains the substitute while its source reference remains the original Prescription Line.
 - **BR-MF-014** — A Pharmacy Sales Order shall not be a Sales Invoice, payment record, Stock Reservation, Dispense Order, or Medication Dispense evidence.
 - **BR-MF-015** — Billing Allocation and Fulfillment Allocation may occur independently and at different business times.
 - **BR-MF-016** — The active Fulfillment Allocations of a Sales Order Line shall not exceed its unresolved Accepted Quantity.
@@ -396,7 +388,7 @@ Outpatient Queue Mapping is a traceable relationship to an externally owned Phar
 - **BR-MF-047** — Partial Fulfillment shall preserve the fulfilled, unresolved, and unfulfilled quantities separately.
 - **BR-MF-048** — Unit Dose Dispensing may divide one Sales Order Line into multiple Dispense Cycles and Dispense Orders.
 - **BR-MF-049** — A Dose Window shall guide fulfillment planning and shall not assert Medication Administration.
-- **BR-MF-050** — Medication Substitution during Prescription Review shall preserve the originally requested medication, accepted substitute, responsible Pharmacist, reason, and affected quantity. Once the Pharmacy Sales Order is established, medication identity on its Sales Order Lines shall not be substituted; a later clinical replacement requires a corrected or replacement Prescription and a new Prescription Review decision.
+- **BR-MF-050** — For an accepted substitute, the Sales Order Line shall record the substitute, responsible Pharmacist, reason, and affected quantity while retaining its reference to the original Prescription Line. Medication identity on an established Sales Order Line shall not be changed; a later replacement is handled by cancelling the affected line or order, reviewing the same original Prescription again, and establishing a new Sales Order Line without requiring a corrected or replacement Prescription.
 - **BR-MF-051** — A Medication Shortage or Stock Discrepancy shall not alter the original Prescription or erase an existing Sales Invoice.
 - **BR-MF-052** — A Medication Return shall identify its source Dispense Order, quantity, reason, and final Inventory disposition.
 - **BR-MF-053** — Return to Stock shall occur only when Inventory accepts the returned medication under its own policy.
@@ -409,13 +401,13 @@ Outpatient Queue Mapping is a traceable relationship to an externally owned Phar
 - **BR-MF-057** — Commercial resolution shall not by itself complete physical fulfillment, and physical fulfillment shall not by itself prove financial resolution.
 - **BR-MF-058** — Material review, allocation, invoice, clearance, dispensing, handover, exception, and correction decisions shall retain responsible party and effective business time.
 - **BR-MF-059** — Source Traceability shall be preserved from Prescription or Direct Medication Request through Pharmacy Sales Order, Sales Invoice, Dispense Order, and final outcomes.
-- **BR-MF-060** — A completed or cancelled business outcome shall not be erased; a later correction shall add an accountable correcting fact.
+- **BR-MF-060** — A completed or cancelled business outcome shall not be erased; a later correction shall add an accountable correcting fact. This rule does not apply to correcting an active Outpatient Queue Mapping, which is updated in place under `BR-MF-062`.
 
 ### 7.8 Outpatient workflow policy
 
 - **BR-MF-061** — A Pharmacist may perform Prescription Review as soon as a Prescription is available; Patient arrival and Outpatient Queue Mapping shall not be prerequisites.
-- **BR-MF-062** — Outpatient Queue Mapping shall associate existing business records and shall not create or modify a Prescription, Prescription Review Outcome, or Pharmacy Sales Order.
-- **BR-MF-063** — Tracker Mapping shall be used when valid tracker or registration evidence resolves the applicable medication demand; a failed Tracker Mapping shall fall back to Manual Mapping.
+- **BR-MF-062** — Outpatient Queue Mapping shall associate existing business records and shall not create or modify a Prescription, Prescription Review Outcome, or Pharmacy Sales Order. An incorrect mapping shall be updated in place to the correct source without requiring mapping-change history.
+- **BR-MF-063** — Tracker Mapping shall be used when valid tracker or registration evidence resolves one or more applicable existing Prescriptions. Tracker Mapping shall not create a Prescription or resolve a Direct Medication Request; a failed Tracker Mapping shall fall back to Manual Mapping.
 - **BR-MF-064** — A directly issued or otherwise unresolved Pharmacy Queue Entry shall remain unmapped until Pharmacy Staff identifies and associates its applicable medication demand.
 - **BR-MF-065** — Pharmacy Staff shall own administrative queue and pickup calling; those responsibilities shall not be transferred to the Pharmacist.
 - **BR-MF-066** — In the normal BPJS Electronic Prescription flow with successful Tracker Mapping, the Patient shall require one outpatient pharmacy call: the pickup call after every applicable Dispense Order reaches `Prepared`.
@@ -456,14 +448,12 @@ Outpatient Queue Mapping is a traceable relationship to an externally owned Phar
 ```text
 Available
   -> Under Review
-       -> Clarification Required
-            -> Under Review
        -> Approved
        -> Partially Approved
        -> Rejected
 ```
 
-`Approved`, `Partially Approved`, and `Rejected` are final review outcomes. A corrected or replaced Prescription requires a separately traceable review decision.
+`Approved`, `Partially Approved`, and `Rejected` are final review outcomes. Any out-of-system clarification leaves the review `Under Review`; it creates no separate state or domain event.
 
 ### 8.2 Pharmacy Sales Order lifecycle
 
@@ -564,7 +554,6 @@ The pickup call ends the Patient Tracker queue but does not complete Medication 
 | Domain Event | Business meaning |
 |---|---|
 | Prescription Review Started | A Pharmacist began professional assessment of a Prescription. |
-| Clinical Clarification Requested | A concern requires clarification before review completion. |
 | Prescription Review Completed | Every reviewed line received a final professional disposition. |
 | Outpatient Queue Mapped | A Pharmacy Queue Entry was accountably associated with applicable medication demand. |
 | Direct Medication Request Accepted | A permitted non-prescription demand was accepted by Pharmacy. |

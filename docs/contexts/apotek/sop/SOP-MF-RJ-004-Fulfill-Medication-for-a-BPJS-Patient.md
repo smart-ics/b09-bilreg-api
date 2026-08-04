@@ -19,9 +19,8 @@ Provide a repeatable procedure for clearing and preparing BPJS-covered outpatien
 | Actor | Type | Operational responsibility |
 |---|---|---|
 | Patient or Caregiver | Human | Presents for pickup, receives education, and accepts medication when authorized. |
-| Pharmacy Staff | Human | Verifies the covered work projection, coordinates readiness, and performs the pickup call. |
+| Pharmacy Staff | Human | Verifies the covered work projection, prepares or compounds medication under a released Dispense Order, coordinates readiness, and performs the pickup call. |
 | Pharmacy Supervisor | Human | Authorizes the manual uncollected-medication resolution when the Patient does not collect prepared medication. |
-| Pharmacy Technician | Human | Prepares or compounds medication under a released Dispense Order. |
 | Pharmacist | Human | Verifies the recipient, completes Final Dispense Review, and provides Patient Education. |
 | SEP and Fornas Authorities | Subsystem | Supply encounter-level SEP validity and item-level Fornas coverage. |
 | Medication Fulfillment Application | Application | Records Coverage and Fulfillment Clearance, tracks preparation, and atomically records the BPJS Sales Invoice and successful handover outcome. |
@@ -42,9 +41,9 @@ Provide a repeatable procedure for clearing and preparing BPJS-covered outpatien
 2. **SEP and Fornas Authorities** supply valid SEP and item-level coverage outcomes.
 3. **Medication Fulfillment Application** displays Coverage Clearance for each covered quantity and establishes the corresponding Fulfillment Clearance without requiring a Sales Invoice.
 4. **Inventory** secures Stock Reservation when not already present; **Medication Fulfillment Application** displays the reservation outcome.
-5. **Pharmacy Technician** starts Medication Preparation only after the Dispense Order is released.
+5. **Pharmacy Staff** starts Medication Preparation only after the Dispense Order is released.
 6. **Medication Fulfillment Application** records `Medication Preparation Started`; **Patient Tracker** moves the Queue Entry to In Service and records `ServedAt`.
-7. **Pharmacy Technician** completes preparation or compounding and records completion; **Medication Fulfillment Application** displays the Dispense Order as `Prepared`.
+7. **Pharmacy Staff** completes preparation or compounding and records completion; **Medication Fulfillment Application** displays the Dispense Order as `Prepared`.
 8. **Pharmacy Staff** verifies that every Dispense Order intended for handover is `Prepared` or has an accountable exception outcome.
 9. **Pharmacy Staff** performs one coordinated pickup call; **Patient Tracker** makes the Queue Entry `Done` and records `DoneAt`.
 10. With the Patient or caregiver present, **Pharmacist** verifies the Authorized Recipient, completes Final Dispense Review, and records applicable Patient Education.
@@ -64,7 +63,7 @@ Provide a repeatable procedure for clearing and preparing BPJS-covered outpatien
 
 ### 5.2 Shortage occurs after Sales Order establishment
 
-- **Pharmacy Technician** records Backorder or another approved stock source for the same medication product.
+- **Pharmacy Staff** records Backorder or another approved stock source for the same medication product.
 - **Medication Fulfillment Application** preserves the accepted medication identity and displays the unresolved outcome.
 
 ### 5.3 Final Dispense Review fails

@@ -18,10 +18,9 @@ Provide a repeatable procedure for accepting a reviewed Prescription or authoriz
 
 | Actor | Type | Operational responsibility |
 |---|---|---|
-| Pharmacist | Human | Reviews every Prescription Line, requests clarification, authorizes eligible substitution before Sales Order establishment, and completes the review. |
-| Pharmacy Staff | Human | Records Physical Prescriptions and accepts, refers, or declines Direct Medication Requests within assigned authority. |
-| Pharmacy Technician | Human | Reviews external stock outcomes and chooses Backorder or another approved source for the same product after acceptance when authorized. |
-| CPOE or Prescribing Clinician | Subsystem or Human | Supplies the authoritative Prescription and responds to Clinical Clarification or provides corrected intent. |
+| Pharmacist | Human | Reviews every Prescription Line, performs any needed clarification with the Prescribing Clinician outside the system, establishes the accepted medication, and completes the review. |
+| Pharmacy Staff | Human | Records Physical Prescriptions; accepts, refers, or declines Direct Medication Requests within assigned authority; and reviews stock outcomes to choose Backorder or another approved source for the same product when authorized. |
+| CPOE | Subsystem | Supplies the authoritative original Prescription, which Medication Fulfillment does not modify. |
 | Medication Catalog | Subsystem | Supplies medication identity and formulary information used during review. |
 | Medication Fulfillment Application | Application | Records review outcomes and establishes traceable allocations, Pharmacy Sales Order, and primary Dispense Order. |
 | Inventory | Subsystem | Supplies Stock Availability and Stock Reservation outcomes without deciding professional acceptance. |
@@ -38,9 +37,9 @@ Provide a repeatable procedure for accepting a reviewed Prescription or authoriz
 1. **Medication Fulfillment Application** displays the available Electronic Prescription, recorded Physical Prescription, or Direct Medication Request without requiring Patient arrival or queue mapping.
 2. For a Prescription, **Pharmacist** starts Prescription Review and verifies Patient, source, medication, dosage instruction, quantity, and available clinical information.
 3. **Pharmacist** records one disposition for every Prescription Line.
-4. When clarification is required, **Pharmacist** records `Clarification Required` and sends the accountable clarification request to **CPOE or Prescribing Clinician**.
-5. **CPOE or Prescribing Clinician** supplies clarification or a corrected or replacement Prescription; **Pharmacist** resumes the review against that authoritative information.
-6. When substitution is professionally authorized, **Pharmacist** records the original medication, accepted substitute, reason, affected quantity, and responsible Pharmacist before Pharmacy Sales Order establishment.
+4. When clarification is needed, **Pharmacist** contacts the Prescribing Clinician outside the system. The application records neither the request, the response, nor a special clarification state; the review remains `Under Review` until the Pharmacist decides.
+5. **Pharmacist** establishes each line's final disposition as accepted as prescribed, accepted with a substitute, or rejected. The original Prescription and Prescription Line remain unchanged.
+6. For an accepted substitute, **Pharmacist** records the substitute medication, reason, affected quantity, and responsible Pharmacist on the Pharmacy Sales Order Line, which retains its reference to the original Prescription Line.
 7. **Pharmacist** completes the Prescription Review as `Approved`, `Partially Approved`, or `Rejected`.
 8. For a Direct Medication Request, **Pharmacy Staff** records the request details and either accepts it within authority, refers it to **Pharmacist**, or declines it.
 9. When referred, **Pharmacist** records approval or decline; **Medication Fulfillment Application** permits acceptance only after approval.
@@ -60,17 +59,17 @@ Provide a repeatable procedure for accepting a reviewed Prescription or authoriz
 ### 5.2 Stock is insufficient after acceptance
 
 - **Inventory** displays the shortage or discrepancy outcome without altering the Prescription Review Outcome.
-- **Pharmacy Technician** records Backorder or selects another approved stock source for the same medication product within authority.
-- **Pharmacy Technician** does not substitute the medication.
+- **Pharmacy Staff** records Backorder or selects another approved stock source for the same medication product within authority.
+- **Pharmacy Staff** does not substitute the medication.
 
 ### 5.3 Medication replacement is required after Sales Order establishment
 
-- **Medication Fulfillment Application** blocks substitution on the existing Sales Order Line.
-- **Pharmacist** requests a corrected or replacement Prescription and performs a new Prescription Review.
+- **Medication Fulfillment Application** blocks medication-identity changes on the existing Sales Order Line.
+- **Pharmacist** cancels the affected line or order under the applicable rules, reviews the same original Prescription again, and establishes a new Sales Order Line. The original Prescription remains unchanged and no corrected or replacement Prescription is required.
 
 ## 6. Completion Criteria
 
-1. Every reviewed Prescription Line has a final disposition, or the review visibly remains `Clarification Required`.
+1. Every reviewed Prescription Line has a final disposition. An incomplete review remains `Under Review`.
 2. An accepted source displays a traceable Pharmacy Sales Order, Billing Allocation, Fulfillment Allocation, and primary Dispense Order.
 3. A rejected Prescription or declined Direct Medication Request has no Pharmacy Sales Order.
 4. Stock evidence has not changed the professional acceptance outcome.
