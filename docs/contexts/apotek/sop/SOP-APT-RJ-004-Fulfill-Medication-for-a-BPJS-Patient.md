@@ -1,14 +1,14 @@
-# SOP MF-RJ-004 — Fulfill Medication for a BPJS Patient
+# SOP APT-RJ-004 — Fulfill Medication for a BPJS Patient
 
 **Artifact status:** Canonical target operational specification
 
-**Bounded context:** Medication Fulfillment
+**Bounded context:** Apotek
 
-**Workflow:** `WF-MF-RJ-004`
+**Workflow:** `WF-APT-RJ-004`
 
-**Bahasa Indonesia companion:** [SOP MF-RJ-004 — Memenuhi Obat untuk Pasien BPJS](./SOP-MF-RJ-004-Fulfill-Medication-for-a-BPJS-Patient-ID.md)
+**Bahasa Indonesia companion:** [SOP APT-RJ-004 — Memenuhi Obat untuk Pasien BPJS](./SOP-APT-RJ-004-Fulfill-Medication-for-a-BPJS-Patient-ID.md)
 
-**Application terminology status:** `Apotek` and `Apotek Rajal` are established application terms. Other controls are described by operational action because approved target-workflow labels are not available.
+**Subsystem terminology status:** `Pharmacy System` and `Outpatient Pharmacy` are established subsystem terms. Other controls are described by operational action because approved target-workflow labels are not available.
 
 ## 1. Purpose
 
@@ -23,7 +23,7 @@ Provide a repeatable procedure for clearing and preparing BPJS-covered outpatien
 | Pharmacy Supervisor | Human | Authorizes the manual uncollected-medication resolution when the Patient does not collect prepared medication. |
 | Pharmacist | Human | Verifies the recipient, completes Final Dispense Review, and provides Patient Education. |
 | SEP and Fornas Authorities | Subsystem | Supply encounter-level SEP validity and item-level Fornas coverage. |
-| Medication Fulfillment Application | Application | Records Coverage and Fulfillment Clearance, tracks preparation, and atomically records the BPJS Sales Invoice and successful handover outcome. |
+| Pharmacy System | Subsystem | Records Coverage and Fulfillment Clearance, tracks preparation, and atomically records the BPJS Sales Invoice and successful handover outcome. |
 | Patient Tracker | Subsystem | Records `ServedAt` at preparation start and `DoneAt` at the pickup call. |
 | Inventory | Subsystem | Supplies reservation, issue, and return-disposition outcomes. |
 | Tata Rekening | Subsystem | Receives the BPJS Financial Charge outcome. |
@@ -39,42 +39,42 @@ Provide a repeatable procedure for clearing and preparing BPJS-covered outpatien
 
 1. **Pharmacy Staff** opens the mapped BPJS demand in `Apotek Rajal` and verifies the Patient, SEP reference, covered Billing Allocations, and Dispense Order quantities.
 2. **SEP and Fornas Authorities** supply valid SEP and item-level coverage outcomes.
-3. **Medication Fulfillment Application** displays Coverage Clearance for each covered quantity and establishes the corresponding Fulfillment Clearance without requiring a Sales Invoice.
-4. **Inventory** secures Stock Reservation when not already present; **Medication Fulfillment Application** displays the reservation outcome.
+3. **Pharmacy System** displays Coverage Clearance for each covered quantity and establishes the corresponding Fulfillment Clearance without requiring a Sales Invoice.
+4. **Inventory** secures Stock Reservation when not already present; **Pharmacy System** displays the reservation outcome.
 5. **Pharmacy Staff** starts Medication Preparation only after the Dispense Order is released.
-6. **Medication Fulfillment Application** records `Medication Preparation Started`; **Patient Tracker** moves the Queue Entry to In Service and records `ServedAt`.
-7. **Pharmacy Staff** completes preparation or compounding and records completion; **Medication Fulfillment Application** displays the Dispense Order as `Prepared`.
+6. **Pharmacy System** records `Medication Preparation Started`; **Patient Tracker** moves the Queue Entry to In Service and records `ServedAt`.
+7. **Pharmacy Staff** completes preparation or compounding and records completion; **Pharmacy System** displays the Dispense Order as `Prepared`.
 8. **Pharmacy Staff** verifies that every Dispense Order intended for handover is `Prepared` or has an accountable exception outcome.
 9. **Pharmacy Staff** performs one coordinated pickup call; **Patient Tracker** makes the Queue Entry `Done` and records `DoneAt`.
 10. With the Patient or caregiver present, **Pharmacist** verifies the Authorized Recipient, completes Final Dispense Review, and records applicable Patient Education.
-11. **Medication Fulfillment Application** blocks completion when recipient verification or final review is incomplete.
+11. **Pharmacy System** blocks completion when recipient verification or final review is incomplete.
 12. **Pharmacy Staff** completes the physical handover after Pharmacist authorization.
-13. As one accountable outcome, **Medication Fulfillment Application** establishes the BPJS Sales Invoice from covered Billing Allocations, records Medication Dispense, and records Medication Handover.
-14. **Inventory** supplies the authoritative Inventory Issue outcome; **Medication Fulfillment Application** displays the Dispense Order as `Completed`.
-15. **Medication Fulfillment Application** displays the Pharmacy Sales Order as `Resolved` only when every accepted quantity and commercial consequence is final.
+13. As one accountable outcome, **Pharmacy System** establishes the BPJS Sales Invoice from covered Billing Allocations, records Medication Dispense, and records Medication Handover.
+14. **Inventory** supplies the authoritative Inventory Issue outcome; **Pharmacy System** displays the Dispense Order as `Completed`.
+15. **Pharmacy System** displays the Pharmacy Sales Order as `Resolved` only when every accepted quantity and commercial consequence is final.
 
 ## 5. Operational Exceptions
 
 ### 5.1 SEP is invalid or coverage is absent
 
 - **SEP and Fornas Authorities** supply no Coverage Clearance for the affected quantity.
-- **Medication Fulfillment Application** keeps preparation blocked.
-- **Pharmacy Staff** routes non-covered quantities through `SOP-MF-RJ-005` when applicable.
+- **Pharmacy System** keeps preparation blocked.
+- **Pharmacy Staff** routes non-covered quantities through `SOP-APT-RJ-005` when applicable.
 
 ### 5.2 Shortage occurs after Sales Order establishment
 
 - **Pharmacy Staff** records Backorder or another approved stock source for the same medication product.
-- **Medication Fulfillment Application** preserves the accepted medication identity and displays the unresolved outcome.
+- **Pharmacy System** preserves the accepted medication identity and displays the unresolved outcome.
 
 ### 5.3 Final Dispense Review fails
 
 - **Pharmacist** records the failed review and does not authorize handover.
-- **Medication Fulfillment Application** establishes neither the BPJS Sales Invoice nor Medication Handover.
+- **Pharmacy System** establishes neither the BPJS Sales Invoice nor Medication Handover.
 
 ### 5.4 Patient does not collect medication
 
-- **Pharmacy Supervisor** applies `SOP-MF-RJ-007`.
-- **Medication Fulfillment Application** does not establish or cancel a BPJS Sales Invoice for the No-Show.
+- **Pharmacy Supervisor** applies `SOP-APT-RJ-007`.
+- **Pharmacy System** does not establish or cancel a BPJS Sales Invoice for the No-Show.
 
 ## 6. Completion Criteria
 
@@ -86,7 +86,7 @@ Provide a repeatable procedure for clearing and preparing BPJS-covered outpatien
 
 ## 7. References
 
-- [Medication Fulfillment Domain](../medication-fulfillment-domain.md), especially `BR-MF-020`–`BR-MF-026`, `BR-MF-029`–`BR-MF-045`, `BR-MF-066`, `BR-MF-068`–`BR-MF-069`, `BR-MF-073`–`BR-MF-079`, `BR-MF-081`–`BR-MF-083`, `BR-MF-088`, `BR-MF-090`, and `BR-MF-095`.
-- [Outpatient Medication Fulfillment Workflow](../outpatient-medication-fulfillment-workflow.md), `WF-MF-RJ-004`.
+- [Apotek Domain](../apotek-domain.md), especially `BR-APT-020`–`BR-APT-026`, `BR-APT-029`–`BR-APT-045`, `BR-APT-066`, `BR-APT-068`–`BR-APT-069`, `BR-APT-073`–`BR-APT-079`, `BR-APT-081`–`BR-APT-083`, `BR-APT-088`, `BR-APT-090`, and `BR-APT-095`.
+- [Outpatient Apotek Workflow](../outpatient-apotek-workflow.md), `WF-APT-RJ-004`.
 - [Patient Tracker Domain](../../../contexts/pasien-tracker/TRACKER-DOMAIN.md), `BR-TRK-045`, `BR-TRK-045a`, and `BR-TRK-046`.
 - [Tata Rekening Domain](../../../contexts/TataRekening/02-domain.md).

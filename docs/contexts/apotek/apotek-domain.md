@@ -1,12 +1,12 @@
-# Medication Fulfillment Domain
+# Apotek Domain
 
 **Artifact status:** Canonical business specification
 
-**Bounded context:** Medication Fulfillment (`Pelayanan Obat Pasien`)
+**Bounded context:** Apotek (`Pelayanan Obat Pasien`)
 
 **Version scope:** Target business model across outpatient, inpatient, emergency, and unit-dose settings
 
-**Bahasa Indonesia companion:** [medication-fulfillment-domain-id.md](./medication-fulfillment-domain-id.md)
+**Bahasa Indonesia companion:** [apotek-domain-id.md](./apotek-domain-id.md)
 
 **Related business contexts:** [CPOE](../../contexts/cpoe/CPOE-DOMAIN.md), [Patient Tracker](../../contexts/pasien-tracker/TRACKER-DOMAIN.md), [Tata Rekening](../../contexts/TataRekening/02-domain.md)
 
@@ -14,7 +14,7 @@
 
 ### 1.1 Purpose and value
 
-Medication Fulfillment turns patient-specific medication demand accepted by Pharmacy into accountable commercial allocation and physical medication fulfillment. It separates the legacy `Trs.DU (DO-Bill)` combination of stock delivery and billing into independent `Sales Invoice` and `Dispense Order` lifecycles, coordinated by a `Pharmacy Sales Order`.
+Apotek turns patient-specific medication demand accepted by Pharmacy into accountable commercial allocation and physical Apotek. It separates the legacy `Trs.DU (DO-Bill)` combination of stock delivery and billing into independent `Sales Invoice` and `Dispense Order` lifecycles, coordinated by a `Pharmacy Sales Order`.
 
 The business must ensure that:
 
@@ -42,7 +42,7 @@ It applies across outpatient, inpatient, emergency, and Unit Dose Dispensing set
 
 ### 1.3 Business boundaries
 
-Medication Fulfillment owns Prescription Review Outcome, Pharmacy Sales Order, Billing Allocation, Fulfillment Allocation, Medication Sale represented by Sales Invoice, Dispense Order, Medication Dispense, Medication Handover, and fulfillment resolution.
+Apotek owns Prescription Review Outcome, Pharmacy Sales Order, Billing Allocation, Fulfillment Allocation, Medication Sale represented by Sales Invoice, Dispense Order, Medication Dispense, Medication Handover, and fulfillment resolution.
 
 It relies on related contexts without taking over their authority:
 
@@ -56,7 +56,7 @@ It relies on related contexts without taking over their authority:
 
 Purchasing, supplier management, replenishment, warehouse transfer, enterprise accounting, and Medication Administration are outside this context.
 
-Outpatient queue identity and lifecycle remain externally owned by Patient Tracker. Medication Fulfillment owns the outpatient business decision that associates a Pharmacy Queue Entry with the applicable medication demand and owns the payer, pickup, handover, and no-show policy applied after that association.
+Outpatient queue identity and lifecycle remain externally owned by Patient Tracker. Apotek owns the outpatient business decision that associates a Pharmacy Queue Entry with the applicable medication demand and owns the payer, pickup, handover, and no-show policy applied after that association.
 
 For outpatient pharmacy queues, Patient Tracker records `CreatedAt` when the Queue Number is issued, `ServedAt` when the first applicable Dispense Order enters `Preparing`, and `DoneAt` when Pharmacy Staff performs the pickup call. Those queue milestones describe operational queue progress and do not prove Medication Handover.
 
@@ -79,7 +79,7 @@ A Prescription does not become a Pharmacy Sales Order. A completed professional 
 ## 2. Ubiquitous Language
 | Term | Definition |
 |---|---|
-| Medication Fulfillment | The bounded context that coordinates patient-specific medication demand from Pharmacy acceptance through commercial allocation and physical fulfillment resolution. |
+| Apotek | The bounded context that coordinates patient-specific medication demand from Pharmacy acceptance through commercial allocation and physical fulfillment resolution. |
 | Patient Medication Demand | A patient-specific need for medication originating from a Prescription or Direct Medication Request. |
 | Prescription | The clinician's authoritative intent for medication to be supplied or administered to a Patient. |
 | Electronic Prescription | A Prescription created and transmitted through an electronic clinical-order authority. |
@@ -150,9 +150,9 @@ A Prescription does not become a Pharmacy Sales Order. A completed professional 
 | Manual Mapping | Outpatient Queue Mapping established by Pharmacy Staff after the Queue Number and applicable medication demand are identified. |
 | Pharmacy Service Start Evidence | The `Medication Preparation Started` fact that causes the outpatient Pharmacy Queue Entry to record `ServedAt`. |
 | Care Setting | The operational setting whose policy applies to fulfillment, such as outpatient, inpatient, or emergency care. |
-| Outpatient Fulfillment | Medication Fulfillment under outpatient arrival, queue, payment, pickup, and no-show policies. |
-| Inpatient Fulfillment | Medication Fulfillment under inpatient ward, scheduled supply, and return policies. |
-| Emergency Fulfillment | Medication Fulfillment under the applicable urgent-care policy. |
+| Outpatient Fulfillment | Apotek under outpatient arrival, queue, payment, pickup, and no-show policies. |
+| Inpatient Fulfillment | Apotek under inpatient ward, scheduled supply, and return policies. |
+| Emergency Fulfillment | Apotek under the applicable urgent-care policy. |
 | Dose Window | A defined administration period used to plan a Dispense Cycle without representing Medication Administration itself. |
 | Ward Delivery | Medication Handover from Pharmacy to an Authorized Recipient in an inpatient ward. |
 
@@ -318,128 +318,128 @@ A Pharmacy Sales Order may have zero or more Sales Invoices and zero or more Dis
 
 Their business correlation is expressed through Billing Allocations, Fulfillment Allocations, and Fulfillment Clearance at Sales Order Line and quantity level. Sharing a Pharmacy Sales Order does not by itself establish that every Sales Invoice clears every Dispense Order.
 
-Outpatient Queue Mapping is an active relationship to an externally owned Pharmacy Queue Entry, not an Aggregate Root of Medication Fulfillment or a transaction log of mapping changes. Patient Tracker remains authoritative for Queue Session, Queue Number, and queue lifecycle.
+Outpatient Queue Mapping is an active relationship to an externally owned Pharmacy Queue Entry, not an Aggregate Root of Apotek or a transaction log of mapping changes. Patient Tracker remains authoritative for Queue Session, Queue Number, and queue lifecycle.
 
 ## 7. Business Rules
 
 ### 7.1 Sources and professional acceptance
 
-- **BR-MF-001** — Patient Medication Demand shall originate from exactly one Prescription or Direct Medication Request.
-- **BR-MF-002** — The original Prescription and clinician intent shall remain owned by its clinical-order authority.
-- **BR-MF-003** — Every Prescription shall complete Prescription Review before any of its lines enter a Pharmacy Sales Order.
-- **BR-MF-004** — Only a Pharmacist shall establish each Prescription Line's final decision as accepted as prescribed, accepted with a substitute, or rejected. The original Prescription shall not be modified; accepted medication is recorded on a Sales Order Line.
-- **BR-MF-005** — A Prescription Review Outcome shall record a final decision for every reviewed Prescription Line. Clarification with the Prescribing Clinician occurs outside the system, is not recorded as a state or transaction, and the review remains `Under Review` until a decision is made.
-- **BR-MF-006** — A rejected Prescription shall not establish a Pharmacy Sales Order.
-- **BR-MF-007** — A partially approved Prescription may establish a Pharmacy Sales Order containing only Accepted Medication Lines.
-- **BR-MF-008** — Clinical acceptance shall be independent of current Stock Availability; stock facts shall not rewrite professional eligibility.
-- **BR-MF-009** — A Direct Medication Request shall follow its applicable professional and organizational acceptance policy without creating a Prescription.
+- **BR-APT-001** — Patient Medication Demand shall originate from exactly one Prescription or Direct Medication Request.
+- **BR-APT-002** — The original Prescription and clinician intent shall remain owned by its clinical-order authority.
+- **BR-APT-003** — Every Prescription shall complete Prescription Review before any of its lines enter a Pharmacy Sales Order.
+- **BR-APT-004** — Only a Pharmacist shall establish each Prescription Line's final decision as accepted as prescribed, accepted with a substitute, or rejected. The original Prescription shall not be modified; accepted medication is recorded on a Sales Order Line.
+- **BR-APT-005** — A Prescription Review Outcome shall record a final decision for every reviewed Prescription Line. Clarification with the Prescribing Clinician occurs outside the system, is not recorded as a state or transaction, and the review remains `Under Review` until a decision is made.
+- **BR-APT-006** — A rejected Prescription shall not establish a Pharmacy Sales Order.
+- **BR-APT-007** — A partially approved Prescription may establish a Pharmacy Sales Order containing only Accepted Medication Lines.
+- **BR-APT-008** — Clinical acceptance shall be independent of current Stock Availability; stock facts shall not rewrite professional eligibility.
+- **BR-APT-009** — A Direct Medication Request shall follow its applicable professional and organizational acceptance policy without creating a Prescription.
 
 ### 7.2 Pharmacy Sales Order
 
-- **BR-MF-010** — A Pharmacy Sales Order shall originate from exactly one completed accepted-demand source.
-- **BR-MF-011** — One Prescription shall establish at most one active Pharmacy Sales Order within one fulfillment episode.
-- **BR-MF-012** — A Pharmacy Sales Order shall contain at least one Sales Order Line with a positive Accepted Quantity.
-- **BR-MF-013** — Every Sales Order Line shall retain Source Traceability to its Prescription Line or Direct Medication Request line; for an accepted substitute, the Sales Order Line contains the substitute while its source reference remains the original Prescription Line.
-- **BR-MF-014** — A Pharmacy Sales Order shall not be a Sales Invoice, payment record, Stock Reservation, Dispense Order, or Medication Dispense evidence.
-- **BR-MF-015** — Billing Allocation and Fulfillment Allocation may occur independently and at different business times.
-- **BR-MF-016** — The active Fulfillment Allocations of a Sales Order Line shall not exceed its unresolved Accepted Quantity.
-- **BR-MF-017** — Fulfilled Quantity shall not exceed the quantity allocated for fulfillment.
-- **BR-MF-018** — Every Accepted Quantity shall eventually be fulfilled, cancelled, expired, backordered, or assigned another accountable Unfulfilled Medication Outcome.
-- **BR-MF-019** — A Pharmacy Sales Order shall reach Fulfillment Completion only when every Accepted Quantity has a final accountable outcome.
+- **BR-APT-010** — A Pharmacy Sales Order shall originate from exactly one completed accepted-demand source.
+- **BR-APT-011** — One Prescription shall establish at most one active Pharmacy Sales Order within one fulfillment episode.
+- **BR-APT-012** — A Pharmacy Sales Order shall contain at least one Sales Order Line with a positive Accepted Quantity.
+- **BR-APT-013** — Every Sales Order Line shall retain Source Traceability to its Prescription Line or Direct Medication Request line; for an accepted substitute, the Sales Order Line contains the substitute while its source reference remains the original Prescription Line.
+- **BR-APT-014** — A Pharmacy Sales Order shall not be a Sales Invoice, payment record, Stock Reservation, Dispense Order, or Medication Dispense evidence.
+- **BR-APT-015** — Billing Allocation and Fulfillment Allocation may occur independently and at different business times.
+- **BR-APT-016** — The active Fulfillment Allocations of a Sales Order Line shall not exceed its unresolved Accepted Quantity.
+- **BR-APT-017** — Fulfilled Quantity shall not exceed the quantity allocated for fulfillment.
+- **BR-APT-018** — Every Accepted Quantity shall eventually be fulfilled, cancelled, expired, backordered, or assigned another accountable Unfulfilled Medication Outcome.
+- **BR-APT-019** — A Pharmacy Sales Order shall reach Fulfillment Completion only when every Accepted Quantity has a final accountable outcome.
 
 ### 7.3 Medication Sale and Sales Invoice
 
-- **BR-MF-020** — Every Medication Sale shall be represented by exactly one Sales Invoice.
-- **BR-MF-021** — Every Sales Invoice shall derive from Billing Allocations of exactly one Pharmacy Sales Order.
-- **BR-MF-022** — A Pharmacy Sales Order may produce zero, one, or multiple Sales Invoices.
-- **BR-MF-023** — A Sales Invoice may cover one or more Sales Order Lines and shall preserve each source allocation.
-- **BR-MF-024** — A Billing Line shall not introduce a medication line absent from its source Pharmacy Sales Order, except an explicitly authorized non-medication commercial component.
-- **BR-MF-025** — A Sales Invoice shall retain the Pricing Snapshot and Payer applicable when it is established.
-- **BR-MF-026** — Sales Invoice formation shall not prove that stock is available, reserved, prepared, dispensed, or handed over.
-- **BR-MF-027** — An issued or financially settled Sales Invoice shall be corrected through an accountable Financial Adjustment, Credit Note, or Refund outcome rather than silent replacement.
-- **BR-MF-028** — Every Financial Charge sent to Tata Rekening shall retain Source Traceability to its Sales Invoice and Pharmacy Sales Order.
+- **BR-APT-020** — Every Medication Sale shall be represented by exactly one Sales Invoice.
+- **BR-APT-021** — Every Sales Invoice shall derive from Billing Allocations of exactly one Pharmacy Sales Order.
+- **BR-APT-022** — A Pharmacy Sales Order may produce zero, one, or multiple Sales Invoices.
+- **BR-APT-023** — A Sales Invoice may cover one or more Sales Order Lines and shall preserve each source allocation.
+- **BR-APT-024** — A Billing Line shall not introduce a medication line absent from its source Pharmacy Sales Order, except an explicitly authorized non-medication commercial component.
+- **BR-APT-025** — A Sales Invoice shall retain the Pricing Snapshot and Payer applicable when it is established.
+- **BR-APT-026** — Sales Invoice formation shall not prove that stock is available, reserved, prepared, dispensed, or handed over.
+- **BR-APT-027** — An issued or financially settled Sales Invoice shall be corrected through an accountable Financial Adjustment, Credit Note, or Refund outcome rather than silent replacement.
+- **BR-APT-028** — Every Financial Charge sent to Tata Rekening shall retain Source Traceability to its Sales Invoice and Pharmacy Sales Order.
 
 ### 7.4 Dispense Order and dispensing
 
-- **BR-MF-029** — Every Dispense Order shall derive from Fulfillment Allocations of exactly one Pharmacy Sales Order.
-- **BR-MF-030** — A Pharmacy Sales Order may produce zero, one, or multiple Dispense Orders.
-- **BR-MF-031** — A Dispense Order may cover one or more Sales Order Lines and shall preserve each source allocation.
-- **BR-MF-032** — Dispense Order count, quantity split, and timing may differ from Sales Invoice count, value split, and timing.
-- **BR-MF-033** — Stock Reservation and Inventory Issue shall remain authoritative Inventory outcomes requested for a Dispense Order.
-- **BR-MF-034** — Medication Preparation and Compounding shall use an active Dispense Order as their authority.
-- **BR-MF-035** — Prepared Medication shall complete Final Dispense Review before Medication Handover.
-- **BR-MF-036** — A Medication Dispense shall not exceed the unresolved quantity of its Dispense Order Line.
-- **BR-MF-037** — Medication Handover shall identify an Authorized Recipient and its effective business time.
-- **BR-MF-038** — Ward Delivery shall not be treated as Medication Administration.
-- **BR-MF-039** — Medication Administration shall not be inferred from Sales Invoice, Inventory Issue, Medication Dispense, or Ward Delivery.
+- **BR-APT-029** — Every Dispense Order shall derive from Fulfillment Allocations of exactly one Pharmacy Sales Order.
+- **BR-APT-030** — A Pharmacy Sales Order may produce zero, one, or multiple Dispense Orders.
+- **BR-APT-031** — A Dispense Order may cover one or more Sales Order Lines and shall preserve each source allocation.
+- **BR-APT-032** — Dispense Order count, quantity split, and timing may differ from Sales Invoice count, value split, and timing.
+- **BR-APT-033** — Stock Reservation and Inventory Issue shall remain authoritative Inventory outcomes requested for a Dispense Order.
+- **BR-APT-034** — Medication Preparation and Compounding shall use an active Dispense Order as their authority.
+- **BR-APT-035** — Prepared Medication shall complete Final Dispense Review before Medication Handover.
+- **BR-APT-036** — A Medication Dispense shall not exceed the unresolved quantity of its Dispense Order Line.
+- **BR-APT-037** — Medication Handover shall identify an Authorized Recipient and its effective business time.
+- **BR-APT-038** — Ward Delivery shall not be treated as Medication Administration.
+- **BR-APT-039** — Medication Administration shall not be inferred from Sales Invoice, Inventory Issue, Medication Dispense, or Ward Delivery.
 
 ### 7.5 Clearance and cross-aggregate coordination
 
-- **BR-MF-040** — A Dispense Order shall proceed only when the Fulfillment Clearance required by its care-setting and payer policy is present.
-- **BR-MF-041** — Payment Clearance shall come from the responsible payment authority and shall not be inferred solely from Sales Invoice existence.
-- **BR-MF-042** — Coverage Clearance shall identify the applicable Payer and covered fulfillment authority.
-- **BR-MF-043** — Fulfillment Clearance shall identify the Dispense Order quantity it authorizes and its supporting commercial evidence.
-- **BR-MF-044** — One Sales Invoice may support clearance for multiple Dispense Orders, and one Dispense Order may rely on multiple commercial allocations when policy requires.
-- **BR-MF-045** — A paid or financially cleared Sales Invoice shall not guarantee successful fulfillment when shortage, discrepancy, expiry, or another valid exception occurs.
-- **BR-MF-046** — A financial clearance followed by non-fulfillment shall produce an accountable Backorder, fulfillment from another approved stock source for the same medication product, Credit Note, Refund, or other approved resolution. It shall not substitute a Sales Order Line after Pharmacy Sales Order establishment.
+- **BR-APT-040** — A Dispense Order shall proceed only when the Fulfillment Clearance required by its care-setting and payer policy is present.
+- **BR-APT-041** — Payment Clearance shall come from the responsible payment authority and shall not be inferred solely from Sales Invoice existence.
+- **BR-APT-042** — Coverage Clearance shall identify the applicable Payer and covered fulfillment authority.
+- **BR-APT-043** — Fulfillment Clearance shall identify the Dispense Order quantity it authorizes and its supporting commercial evidence.
+- **BR-APT-044** — One Sales Invoice may support clearance for multiple Dispense Orders, and one Dispense Order may rely on multiple commercial allocations when policy requires.
+- **BR-APT-045** — A paid or financially cleared Sales Invoice shall not guarantee successful fulfillment when shortage, discrepancy, expiry, or another valid exception occurs.
+- **BR-APT-046** — A financial clearance followed by non-fulfillment shall produce an accountable Backorder, fulfillment from another approved stock source for the same medication product, Credit Note, Refund, or other approved resolution. It shall not substitute a Sales Order Line after Pharmacy Sales Order establishment.
 
 ### 7.6 Partial fulfillment, UDD, and exceptions
 
-- **BR-MF-047** — Partial Fulfillment shall preserve the fulfilled, unresolved, and unfulfilled quantities separately.
-- **BR-MF-048** — Unit Dose Dispensing may divide one Sales Order Line into multiple Dispense Cycles and Dispense Orders.
-- **BR-MF-049** — A Dose Window shall guide fulfillment planning and shall not assert Medication Administration.
-- **BR-MF-050** — For an accepted substitute, the Sales Order Line shall record the substitute, responsible Pharmacist, reason, and affected quantity while retaining its reference to the original Prescription Line. Medication identity on an established Sales Order Line shall not be changed; a later replacement is handled by cancelling the affected line or order, reviewing the same original Prescription again, and establishing a new Sales Order Line without requiring a corrected or replacement Prescription.
-- **BR-MF-051** — A Medication Shortage or Stock Discrepancy shall not alter the original Prescription or erase an existing Sales Invoice.
-- **BR-MF-052** — A Medication Return shall identify its source Dispense Order, quantity, reason, and final Inventory disposition.
-- **BR-MF-053** — Return to Stock shall occur only when Inventory accepts the returned medication under its own policy.
-- **BR-MF-054** — A Copy Prescription shall identify the prescribed medication or quantity that remained unfulfilled.
-- **BR-MF-055** — A No-Show shall be an outpatient policy outcome and shall not be imposed on inpatient Ward Delivery.
+- **BR-APT-047** — Partial Fulfillment shall preserve the fulfilled, unresolved, and unfulfilled quantities separately.
+- **BR-APT-048** — Unit Dose Dispensing may divide one Sales Order Line into multiple Dispense Cycles and Dispense Orders.
+- **BR-APT-049** — A Dose Window shall guide fulfillment planning and shall not assert Medication Administration.
+- **BR-APT-050** — For an accepted substitute, the Sales Order Line shall record the substitute, responsible Pharmacist, reason, and affected quantity while retaining its reference to the original Prescription Line. Medication identity on an established Sales Order Line shall not be changed; a later replacement is handled by cancelling the affected line or order, reviewing the same original Prescription again, and establishing a new Sales Order Line without requiring a corrected or replacement Prescription.
+- **BR-APT-051** — A Medication Shortage or Stock Discrepancy shall not alter the original Prescription or erase an existing Sales Invoice.
+- **BR-APT-052** — A Medication Return shall identify its source Dispense Order, quantity, reason, and final Inventory disposition.
+- **BR-APT-053** — Return to Stock shall occur only when Inventory accepts the returned medication under its own policy.
+- **BR-APT-054** — A Copy Prescription shall identify the prescribed medication or quantity that remained unfulfilled.
+- **BR-APT-055** — A No-Show shall be an outpatient policy outcome and shall not be imposed on inpatient Ward Delivery.
 
 ### 7.7 Completion and history
 
-- **BR-MF-056** — Pharmacy Sales Order commercial progress and fulfillment progress shall be tracked independently.
-- **BR-MF-057** — Commercial resolution shall not by itself complete physical fulfillment, and physical fulfillment shall not by itself prove financial resolution.
-- **BR-MF-058** — Material review, allocation, invoice, clearance, dispensing, handover, exception, and correction decisions shall retain responsible party and effective business time.
-- **BR-MF-059** — Source Traceability shall be preserved from Prescription or Direct Medication Request through Pharmacy Sales Order, Sales Invoice, Dispense Order, and final outcomes.
-- **BR-MF-060** — A completed or cancelled business outcome shall not be erased; a later correction shall add an accountable correcting fact. This rule does not apply to correcting an active Outpatient Queue Mapping, which is updated in place under `BR-MF-062`.
+- **BR-APT-056** — Pharmacy Sales Order commercial progress and fulfillment progress shall be tracked independently.
+- **BR-APT-057** — Commercial resolution shall not by itself complete physical fulfillment, and physical fulfillment shall not by itself prove financial resolution.
+- **BR-APT-058** — Material review, allocation, invoice, clearance, dispensing, handover, exception, and correction decisions shall retain responsible party and effective business time.
+- **BR-APT-059** — Source Traceability shall be preserved from Prescription or Direct Medication Request through Pharmacy Sales Order, Sales Invoice, Dispense Order, and final outcomes.
+- **BR-APT-060** — A completed or cancelled business outcome shall not be erased; a later correction shall add an accountable correcting fact. This rule does not apply to correcting an active Outpatient Queue Mapping, which is updated in place under `BR-APT-062`.
 
 ### 7.8 Outpatient workflow policy
 
-- **BR-MF-061** — A Pharmacist may perform Prescription Review as soon as a Prescription is available; Patient arrival and Outpatient Queue Mapping shall not be prerequisites.
-- **BR-MF-062** — Outpatient Queue Mapping shall associate existing business records and shall not create or modify a Prescription, Prescription Review Outcome, or Pharmacy Sales Order. An incorrect mapping shall be updated in place to the correct source without requiring mapping-change history.
-- **BR-MF-063** — Tracker Mapping shall be used when valid tracker or registration evidence resolves one or more applicable existing Prescriptions. Tracker Mapping shall not create a Prescription or resolve a Direct Medication Request; a failed Tracker Mapping shall fall back to Manual Mapping.
-- **BR-MF-064** — A directly issued or otherwise unresolved Pharmacy Queue Entry shall remain unmapped until Pharmacy Staff identifies and associates its applicable medication demand.
-- **BR-MF-065** — Pharmacy Staff shall own administrative queue and pickup calling; those responsibilities shall not be transferred to the Pharmacist.
-- **BR-MF-066** — In the normal BPJS Electronic Prescription flow with successful Tracker Mapping, the Patient shall require one outpatient pharmacy call: the pickup call after every applicable Dispense Order reaches `Prepared`.
-- **BR-MF-067** — Outpatient Queue Mapping and General Patient Purchase Confirmation may be completed in one counter interaction when the applicable Billing Allocations and calculated amount are available. When Tracker Mapping completes without the Patient at the counter, Pharmacy Staff shall call the Queue Number for the Purchase Confirmation interaction before Sales Invoice establishment; this administrative call shall not establish `ServedAt` or `DoneAt`.
-- **BR-MF-068** — An outpatient Dispense Order and its Stock Reservation may be established before Patient arrival or Outpatient Queue Mapping, but Medication Preparation shall still obey the applicable Fulfillment Clearance policy.
-- **BR-MF-069** — Medication prepared for outpatient pickup shall remain In-Transit Medication until accountable Medication Handover or return disposition.
-- **BR-MF-070** — Before a General Patient Sales Invoice exists, Pharmacy Staff shall communicate the amount calculated from the applicable Billing Allocations and Pricing Snapshot and obtain verbal Purchase Confirmation. Saving the confirmed transaction shall establish the Sales Invoice from those Billing Allocations; no separate Purchase Confirmation object or transaction shall be retained.
-- **BR-MF-071** — When a General Patient declines Purchase Confirmation before the transaction is saved, no Sales Invoice shall be established and unused Stock Reservation shall be released through Inventory. A Sales Invoice established after confirmation may be cancelled only while its lifecycle permits; an issued or financially cleared consequence shall follow `BR-MF-027`.
-- **BR-MF-072** — General Patient Medication Preparation shall not begin before Payment Clearance establishes the required Fulfillment Clearance.
-- **BR-MF-073** — A BPJS Patient shall not be asked for Purchase Confirmation or Patient payment; the Patient-payable amount shall be zero and payment disposition shall be `Not Required`, while gross or covered value may remain non-zero.
-- **BR-MF-074** — BPJS Medication Preparation may begin when Outpatient Queue Mapping, an applicable Dispense Order, Coverage Clearance, and Fulfillment Clearance are present; an existing Sales Invoice shall not be a prerequisite.
-- **BR-MF-075** — For the current outpatient BPJS policy, the Sales Invoice shall be established only as part of successfully confirmed Medication Handover; Sales Invoice establishment and handover completion shall form one accountable business outcome.
-- **BR-MF-076** — Pharmacy Staff shall call the Patient for outpatient pickup after every applicable Dispense Order in the coordinated pickup reaches `Prepared`. The Pharmacist shall then perform Final Dispense Review with the Patient or caregiver present before Medication Handover.
-- **BR-MF-077** — During the same counter interaction after the pickup call, the Pharmacist shall verify the Authorized Recipient, complete Final Dispense Review, provide applicable Patient Education, and only then complete outpatient Medication Handover.
-- **BR-MF-078** — Successful outpatient Medication Handover shall complete the applicable Dispense Order quantity and request the corresponding authoritative Inventory Issue outcome.
-- **BR-MF-079** — A BPJS No-Show before Medication Handover shall not establish or cancel a Sales Invoice. An authorized manual uncollected-medication resolution shall make the affected Dispense Order `Expired`, request accountable Inventory return disposition, and allow the Pharmacy Sales Order to become `Resolved` with reason `Collection Window Expired` only after every accepted quantity and commercial consequence has a final outcome.
-- **BR-MF-080** — A General Patient No-Show after payment shall use the same authorized manual uncollected-medication resolution for the fulfillment consequence, but its Pharmacy Sales Order shall remain `Active` until Tata Rekening or the responsible financial authority supplies the required final Credit Note, Refund, or other accountable commercial outcome.
-- **BR-MF-081** — `Medication Preparation Started` shall be Pharmacy Service Start Evidence for every outpatient payer path and shall cause Patient Tracker to record `ServedAt`. Sales Invoice formation and Purchase Confirmation shall not establish outpatient pharmacy `ServedAt`.
-- **BR-MF-082** — Patient Tracker shall remain authoritative for Pharmacy Queue Entry identity, Queue Number, and queue lifecycle even when Medication Fulfillment owns Outpatient Queue Mapping and call purpose.
-- **BR-MF-083** — No user shall enter a Legacy DU or independent medication Sales Invoice lines manually; a user action may trigger Sales Invoice formation only from accountable Billing Allocations.
-- **BR-MF-084** — One Pharmacy Queue Entry may be mapped to one or more Prescriptions or Direct Medication Requests. Each mapped demand shall retain its own Prescription Review when applicable, Pharmacy Sales Order, Sales Invoice allocations, Dispense Order, and accountable lifecycle.
-- **BR-MF-085** — Mapping multiple medication demands to one Pharmacy Queue Entry shall coordinate one outpatient service and shall not merge their Pharmacy Sales Orders, Sales Invoices, or Dispense Orders.
-- **BR-MF-086** — Within one normal outpatient fulfillment episode, one active Pharmacy Sales Order shall coordinate through one active Dispense Order. The common Pharmacy Queue Entry may coordinate multiple such Sales Order and Dispense Order pairs.
-- **BR-MF-087** — A queue-facing per-demand progress view shall be a projection of Medication Fulfillment facts for each mapped demand; Patient Tracker shall not become authoritative for Prescription Review, Sales Invoice, or Dispense Order state.
-- **BR-MF-088** — One coordinated pickup call shall occur only after every Dispense Order intended for that handover has reached `Prepared` or received an accountable exception outcome.
-- **BR-MF-089** — A Direct Medication Request shall be accepted by Pharmacy Staff within assigned authority, referred for Pharmacist approval when required, or declined. A declined request shall not establish a Direct Medication Request record or Pharmacy Sales Order.
-- **BR-MF-090** — Outpatient BPJS Coverage Clearance shall require both a valid SEP for the applicable encounter and authoritative item-level Fornas coverage for the quantity being cleared.
-- **BR-MF-091** — When one Pharmacy Sales Order contains BPJS-covered and Patient-payable quantities, Pharmacy Staff shall establish separate Billing Allocations for those payer responsibilities. The covered allocations shall form a BPJS Sales Invoice and the Patient-payable allocations shall form a separate General Patient Sales Invoice.
-- **BR-MF-092** — In mixed-coverage fulfillment, the General Patient Sales Invoice shall be established only after verbal Purchase Confirmation, while the BPJS Sales Invoice shall be established only with successful Medication Handover under `BR-MF-075`.
-- **BR-MF-093** — A coordinated mixed-coverage pickup call shall wait until every quantity intended for the handover has its applicable Coverage Clearance or Payment Clearance and its Dispense Order has reached `Prepared`.
-- **BR-MF-094** — If the Patient declines the non-covered portion before its Sales Invoice is established, the General Patient allocation shall receive an accountable declined or commercially unallocated outcome, while the BPJS-covered portion may continue independently.
-- **BR-MF-095** — Patient Tracker shall record outpatient pharmacy `DoneAt` when Pharmacy Staff performs the coordinated pickup call. Queue completion shall not prove Final Dispense Review, Patient Education, Medication Dispense, or Medication Handover.
+- **BR-APT-061** — A Pharmacist may perform Prescription Review as soon as a Prescription is available; Patient arrival and Outpatient Queue Mapping shall not be prerequisites.
+- **BR-APT-062** — Outpatient Queue Mapping shall associate existing business records and shall not create or modify a Prescription, Prescription Review Outcome, or Pharmacy Sales Order. An incorrect mapping shall be updated in place to the correct source without requiring mapping-change history.
+- **BR-APT-063** — Tracker Mapping shall be used when valid tracker or registration evidence resolves one or more applicable existing Prescriptions. Tracker Mapping shall not create a Prescription or resolve a Direct Medication Request; a failed Tracker Mapping shall fall back to Manual Mapping.
+- **BR-APT-064** — A directly issued or otherwise unresolved Pharmacy Queue Entry shall remain unmapped until Pharmacy Staff identifies and associates its applicable medication demand.
+- **BR-APT-065** — Pharmacy Staff shall own administrative queue and pickup calling; those responsibilities shall not be transferred to the Pharmacist.
+- **BR-APT-066** — In the normal BPJS Electronic Prescription flow with successful Tracker Mapping, the Patient shall require one outpatient pharmacy call: the pickup call after every applicable Dispense Order reaches `Prepared`.
+- **BR-APT-067** — Outpatient Queue Mapping and General Patient Purchase Confirmation may be completed in one counter interaction when the applicable Billing Allocations and calculated amount are available. When Tracker Mapping completes without the Patient at the counter, Pharmacy Staff shall call the Queue Number for the Purchase Confirmation interaction before Sales Invoice establishment; this administrative call shall not establish `ServedAt` or `DoneAt`.
+- **BR-APT-068** — An outpatient Dispense Order and its Stock Reservation may be established before Patient arrival or Outpatient Queue Mapping, but Medication Preparation shall still obey the applicable Fulfillment Clearance policy.
+- **BR-APT-069** — Medication prepared for outpatient pickup shall remain In-Transit Medication until accountable Medication Handover or return disposition.
+- **BR-APT-070** — Before a General Patient Sales Invoice exists, Pharmacy Staff shall communicate the amount calculated from the applicable Billing Allocations and Pricing Snapshot and obtain verbal Purchase Confirmation. Saving the confirmed transaction shall establish the Sales Invoice from those Billing Allocations; no separate Purchase Confirmation object or transaction shall be retained.
+- **BR-APT-071** — When a General Patient declines Purchase Confirmation before the transaction is saved, no Sales Invoice shall be established and unused Stock Reservation shall be released through Inventory. A Sales Invoice established after confirmation may be cancelled only while its lifecycle permits; an issued or financially cleared consequence shall follow `BR-APT-027`.
+- **BR-APT-072** — General Patient Medication Preparation shall not begin before Payment Clearance establishes the required Fulfillment Clearance.
+- **BR-APT-073** — A BPJS Patient shall not be asked for Purchase Confirmation or Patient payment; the Patient-payable amount shall be zero and payment disposition shall be `Not Required`, while gross or covered value may remain non-zero.
+- **BR-APT-074** — BPJS Medication Preparation may begin when Outpatient Queue Mapping, an applicable Dispense Order, Coverage Clearance, and Fulfillment Clearance are present; an existing Sales Invoice shall not be a prerequisite.
+- **BR-APT-075** — For the current outpatient BPJS policy, the Sales Invoice shall be established only as part of successfully confirmed Medication Handover; Sales Invoice establishment and handover completion shall form one accountable business outcome.
+- **BR-APT-076** — Pharmacy Staff shall call the Patient for outpatient pickup after every applicable Dispense Order in the coordinated pickup reaches `Prepared`. The Pharmacist shall then perform Final Dispense Review with the Patient or caregiver present before Medication Handover.
+- **BR-APT-077** — During the same counter interaction after the pickup call, the Pharmacist shall verify the Authorized Recipient, complete Final Dispense Review, provide applicable Patient Education, and only then complete outpatient Medication Handover.
+- **BR-APT-078** — Successful outpatient Medication Handover shall complete the applicable Dispense Order quantity and request the corresponding authoritative Inventory Issue outcome.
+- **BR-APT-079** — A BPJS No-Show before Medication Handover shall not establish or cancel a Sales Invoice. An authorized manual uncollected-medication resolution shall make the affected Dispense Order `Expired`, request accountable Inventory return disposition, and allow the Pharmacy Sales Order to become `Resolved` with reason `Collection Window Expired` only after every accepted quantity and commercial consequence has a final outcome.
+- **BR-APT-080** — A General Patient No-Show after payment shall use the same authorized manual uncollected-medication resolution for the fulfillment consequence, but its Pharmacy Sales Order shall remain `Active` until Tata Rekening or the responsible financial authority supplies the required final Credit Note, Refund, or other accountable commercial outcome.
+- **BR-APT-081** — `Medication Preparation Started` shall be Pharmacy Service Start Evidence for every outpatient payer path and shall cause Patient Tracker to record `ServedAt`. Sales Invoice formation and Purchase Confirmation shall not establish outpatient pharmacy `ServedAt`.
+- **BR-APT-082** — Patient Tracker shall remain authoritative for Pharmacy Queue Entry identity, Queue Number, and queue lifecycle even when Apotek owns Outpatient Queue Mapping and call purpose.
+- **BR-APT-083** — No user shall enter a Legacy DU or independent medication Sales Invoice lines manually; a user action may trigger Sales Invoice formation only from accountable Billing Allocations.
+- **BR-APT-084** — One Pharmacy Queue Entry may be mapped to one or more Prescriptions or Direct Medication Requests. Each mapped demand shall retain its own Prescription Review when applicable, Pharmacy Sales Order, Sales Invoice allocations, Dispense Order, and accountable lifecycle.
+- **BR-APT-085** — Mapping multiple medication demands to one Pharmacy Queue Entry shall coordinate one outpatient service and shall not merge their Pharmacy Sales Orders, Sales Invoices, or Dispense Orders.
+- **BR-APT-086** — Within one normal outpatient fulfillment episode, one active Pharmacy Sales Order shall coordinate through one active Dispense Order. The common Pharmacy Queue Entry may coordinate multiple such Sales Order and Dispense Order pairs.
+- **BR-APT-087** — A queue-facing per-demand progress view shall be a projection of Apotek facts for each mapped demand; Patient Tracker shall not become authoritative for Prescription Review, Sales Invoice, or Dispense Order state.
+- **BR-APT-088** — One coordinated pickup call shall occur only after every Dispense Order intended for that handover has reached `Prepared` or received an accountable exception outcome.
+- **BR-APT-089** — A Direct Medication Request shall be accepted by Pharmacy Staff within assigned authority, referred for Pharmacist approval when required, or declined. A declined request shall not establish a Direct Medication Request record or Pharmacy Sales Order.
+- **BR-APT-090** — Outpatient BPJS Coverage Clearance shall require both a valid SEP for the applicable encounter and authoritative item-level Fornas coverage for the quantity being cleared.
+- **BR-APT-091** — When one Pharmacy Sales Order contains BPJS-covered and Patient-payable quantities, Pharmacy Staff shall establish separate Billing Allocations for those payer responsibilities. The covered allocations shall form a BPJS Sales Invoice and the Patient-payable allocations shall form a separate General Patient Sales Invoice.
+- **BR-APT-092** — In mixed-coverage fulfillment, the General Patient Sales Invoice shall be established only after verbal Purchase Confirmation, while the BPJS Sales Invoice shall be established only with successful Medication Handover under `BR-APT-075`.
+- **BR-APT-093** — A coordinated mixed-coverage pickup call shall wait until every quantity intended for the handover has its applicable Coverage Clearance or Payment Clearance and its Dispense Order has reached `Prepared`.
+- **BR-APT-094** — If the Patient declines the non-covered portion before its Sales Invoice is established, the General Patient allocation shall receive an accountable declined or commercially unallocated outcome, while the BPJS-covered portion may continue independently.
+- **BR-APT-095** — Patient Tracker shall record outpatient pharmacy `DoneAt` when Pharmacy Staff performs the coordinated pickup call. Queue completion shall not prove Final Dispense Review, Patient Education, Medication Dispense, or Medication Handover.
 
 ## 8. State Machines & Lifecycles
 
@@ -508,7 +508,7 @@ Established, Awaiting Clearance, Released, Preparing, Prepared, or Reviewed
 
 `Completed` requires accountable Medication Dispense and the applicable Medication Handover. `Unfulfilled` requires a reason and resolution of allocated stock and financial consequences.
 
-### 8.5 Medication fulfillment quantity lifecycle
+### 8.5 Apotek quantity lifecycle
 
 ```text
 Accepted Quantity
@@ -592,6 +592,6 @@ This domain is applied through care-setting-specific workflow specifications. Th
 
 | Workflow | General business outcome | Canonical workflow artifact |
 |---|---|---|
-| Outpatient Medication Fulfillment | Coordinate outpatient queue intake, medication-demand acceptance, payer clearance, dispensing, pickup, handover, and accountable non-fulfillment resolution. | [English](./outpatient-medication-fulfillment-workflow.md) · [Bahasa Indonesia](./outpatient-medication-fulfillment-workflow-id.md) |
+| Outpatient Apotek | Coordinate outpatient queue intake, medication-demand acceptance, payer clearance, dispensing, pickup, handover, and accountable non-fulfillment resolution. | [English](./outpatient-apotek-workflow.md) · [Bahasa Indonesia](./outpatient-apotek-workflow-id.md) |
 
 Detailed triggers, sequencing, decisions, alternatives, exceptions, compensations, handoffs, and postconditions for outpatient fulfillment are owned by the referenced workflow specification. Detailed workflows for other Care Settings require their own future workflow artifacts.

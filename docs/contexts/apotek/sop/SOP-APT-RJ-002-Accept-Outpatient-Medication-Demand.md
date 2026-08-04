@@ -1,14 +1,14 @@
-# SOP MF-RJ-002 — Accept Outpatient Medication Demand
+# SOP APT-RJ-002 — Accept Outpatient Medication Demand
 
 **Artifact status:** Canonical target operational specification
 
-**Bounded context:** Medication Fulfillment
+**Bounded context:** Apotek
 
-**Workflow:** `WF-MF-RJ-002`
+**Workflow:** `WF-APT-RJ-002`
 
-**Bahasa Indonesia companion:** [SOP MF-RJ-002 — Menerima Permintaan Obat Rawat Jalan](./SOP-MF-RJ-002-Accept-Outpatient-Medication-Demand-ID.md)
+**Bahasa Indonesia companion:** [SOP APT-RJ-002 — Menerima Permintaan Obat Rawat Jalan](./SOP-APT-RJ-002-Accept-Outpatient-Medication-Demand-ID.md)
 
-**Application terminology status:** `Apotek` and `Apotek Rajal` are established application terms. Other controls are described by operational action because approved target-workflow labels are not available.
+**Subsystem terminology status:** `Pharmacy System` and `Outpatient Pharmacy` are established subsystem terms. Other controls are described by operational action because approved target-workflow labels are not available.
 
 ## 1. Purpose
 
@@ -20,9 +20,9 @@ Provide a repeatable procedure for accepting a reviewed Prescription or authoriz
 |---|---|---|
 | Pharmacist | Human | Reviews every Prescription Line, performs any needed clarification with the Prescribing Clinician outside the system, establishes the accepted medication, and completes the review. |
 | Pharmacy Staff | Human | Records Physical Prescriptions; accepts, refers, or declines Direct Medication Requests within assigned authority; and reviews stock outcomes to choose Backorder or another approved source for the same product when authorized. |
-| CPOE | Subsystem | Supplies the authoritative original Prescription, which Medication Fulfillment does not modify. |
+| CPOE | Subsystem | Supplies the authoritative original Prescription, which Apotek does not modify. |
 | Medication Catalog | Subsystem | Supplies medication identity and formulary information used during review. |
-| Medication Fulfillment Application | Application | Records review outcomes and establishes traceable allocations, Pharmacy Sales Order, and primary Dispense Order. |
+| Pharmacy System | Subsystem | Records review outcomes and establishes traceable allocations, Pharmacy Sales Order, and primary Dispense Order. |
 | Inventory | Subsystem | Supplies Stock Availability and Stock Reservation outcomes without deciding professional acceptance. |
 
 ## 3. Preconditions
@@ -34,7 +34,7 @@ Provide a repeatable procedure for accepting a reviewed Prescription or authoriz
 
 ## 4. Operational Steps
 
-1. **Medication Fulfillment Application** displays the available Electronic Prescription, recorded Physical Prescription, or Direct Medication Request without requiring Patient arrival or queue mapping.
+1. **Pharmacy System** displays the available Electronic Prescription, recorded Physical Prescription, or Direct Medication Request without requiring Patient arrival or queue mapping.
 2. For a Prescription, **Pharmacist** starts Prescription Review and verifies Patient, source, medication, dosage instruction, quantity, and available clinical information.
 3. **Pharmacist** records one disposition for every Prescription Line.
 4. When clarification is needed, **Pharmacist** contacts the Prescribing Clinician outside the system. The application records neither the request, the response, nor a special clarification state; the review remains `Under Review` until the Pharmacist decides.
@@ -42,19 +42,19 @@ Provide a repeatable procedure for accepting a reviewed Prescription or authoriz
 6. For an accepted substitute, **Pharmacist** records the substitute medication, reason, affected quantity, and responsible Pharmacist on the Pharmacy Sales Order Line, which retains its reference to the original Prescription Line.
 7. **Pharmacist** completes the Prescription Review as `Approved`, `Partially Approved`, or `Rejected`.
 8. For a Direct Medication Request, **Pharmacy Staff** records the request details and either accepts it within authority, refers it to **Pharmacist**, or declines it.
-9. When referred, **Pharmacist** records approval or decline; **Medication Fulfillment Application** permits acceptance only after approval.
-10. For an approved or partially approved Prescription, or an accepted Direct Medication Request, **Medication Fulfillment Application** establishes one Pharmacy Sales Order from that source and preserves Source Traceability.
-11. **Medication Fulfillment Application** establishes applicable Billing Allocations and Fulfillment Allocations independently and displays their quantities.
-12. **Medication Fulfillment Application** establishes one active primary outpatient Dispense Order for the normal episode and displays its initial state.
-13. **Inventory** may return Stock Reservation evidence; **Medication Fulfillment Application** displays it without treating it as Fulfillment Clearance.
+9. When referred, **Pharmacist** records approval or decline; **Pharmacy System** permits acceptance only after approval.
+10. For an approved or partially approved Prescription, or an accepted Direct Medication Request, **Pharmacy System** establishes one Pharmacy Sales Order from that source and preserves Source Traceability.
+11. **Pharmacy System** establishes applicable Billing Allocations and Fulfillment Allocations independently and displays their quantities.
+12. **Pharmacy System** establishes one active primary outpatient Dispense Order for the normal episode and displays its initial state.
+13. **Inventory** may return Stock Reservation evidence; **Pharmacy System** displays it without treating it as Fulfillment Clearance.
 14. **Pharmacist** or **Pharmacy Staff**, according to the source path, verifies the final review outcome, Pharmacy Sales Order identifier, accepted lines, and Dispense Order identifier.
 
 ## 5. Operational Exceptions
 
 ### 5.1 No line is accepted or a direct request is declined
 
-- **Medication Fulfillment Application** records `Rejected` for the reviewed Prescription or records no Direct Medication Request for a declined direct request.
-- **Medication Fulfillment Application** establishes no Pharmacy Sales Order.
+- **Pharmacy System** records `Rejected` for the reviewed Prescription or records no Direct Medication Request for a declined direct request.
+- **Pharmacy System** establishes no Pharmacy Sales Order.
 
 ### 5.2 Stock is insufficient after acceptance
 
@@ -64,7 +64,7 @@ Provide a repeatable procedure for accepting a reviewed Prescription or authoriz
 
 ### 5.3 Medication replacement is required after Sales Order establishment
 
-- **Medication Fulfillment Application** blocks medication-identity changes on the existing Sales Order Line.
+- **Pharmacy System** blocks medication-identity changes on the existing Sales Order Line.
 - **Pharmacist** cancels the affected line or order under the applicable rules, reviews the same original Prescription again, and establishes a new Sales Order Line. The original Prescription remains unchanged and no corrected or replacement Prescription is required.
 
 ## 6. Completion Criteria
@@ -76,6 +76,6 @@ Provide a repeatable procedure for accepting a reviewed Prescription or authoriz
 
 ## 7. References
 
-- [Medication Fulfillment Domain](../medication-fulfillment-domain.md), especially `BR-MF-001`–`BR-MF-019`, `BR-MF-029`–`BR-MF-034`, `BR-MF-050`, `BR-MF-061`, `BR-MF-068`, `BR-MF-083`, `BR-MF-086`, and `BR-MF-089`.
-- [Outpatient Medication Fulfillment Workflow](../outpatient-medication-fulfillment-workflow.md), `WF-MF-RJ-002`.
+- [Apotek Domain](../apotek-domain.md), especially `BR-APT-001`–`BR-APT-019`, `BR-APT-029`–`BR-APT-034`, `BR-APT-050`, `BR-APT-061`, `BR-APT-068`, `BR-APT-083`, `BR-APT-086`, and `BR-APT-089`.
+- [Outpatient Apotek Workflow](../outpatient-apotek-workflow.md), `WF-APT-RJ-002`.
 - [CPOE Domain](../../../contexts/cpoe/CPOE-DOMAIN.md).

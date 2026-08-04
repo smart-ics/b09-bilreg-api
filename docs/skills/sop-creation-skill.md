@@ -570,7 +570,7 @@ When creating or updating the Indonesian version:
 5. Preserve every precondition, numbered step, exception, completion criterion, and reference.
 6. Preserve step order, modality, conditions, alternatives, and responsibility.
 7. Preserve exact UI labels and other application-visible terminology.
-8. Translate explanatory prose by meaning, not word for word.
+8. Translate explanatory prose by meaning, not word for word. Apply the Indonesian terminology decision order and readability test to every heading, actor responsibility, step, exception, and completion criterion.
 9. Verify that no operational instruction exists in only one version.
 
 Do not silently resolve ambiguity by making the Indonesian version more specific than the English source. Record or correct the ambiguity in the English source first when authorized, then synchronize both versions.
@@ -664,6 +664,14 @@ Then verify bilingual quality:
 ✓ Menu names, button labels, field labels, status values, and other exact application terminology match.
 
 ✓ The Indonesian prose is natural and understandable to humans.
+
+✓ The Indonesian document can be understood by the intended operator without consulting the English version.
+
+✓ Common Indonesian wording is used wherever it remains precise; English is retained only for an exact UI term, identifier, proper name, or genuinely necessary technical term.
+
+✓ Each retained technical English term is either self-explanatory in context or explained in plain Indonesian at first use.
+
+✓ No Indonesian sentence is a literal English construction or uses English terminology where a common Indonesian expression is clearer.
 
 ✓ No instruction, condition, responsibility, or normative strength changed during translation.
 

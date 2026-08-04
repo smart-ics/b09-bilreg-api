@@ -1,14 +1,14 @@
-# Workflow Outpatient Medication Fulfillment
+# Workflow Outpatient Apotek
 
 **Status artifact:** Pendamping semantik workflow bisnis Bahasa Indonesia
 
-**Bounded context:** Medication Fulfillment (`Pelayanan Obat Pasien`)
+**Bounded context:** Apotek (`Pelayanan Obat Pasien`)
 
 **Care setting:** Apotek Rawat Jalan
 
-**Sumber canonical English:** [outpatient-medication-fulfillment-workflow.md](./outpatient-medication-fulfillment-workflow.md)
+**Sumber canonical English:** [outpatient-apotek-workflow.md](./outpatient-apotek-workflow.md)
 
-**Domain authoritative:** [Domain Medication Fulfillment](./medication-fulfillment-domain-id.md)
+**Domain authoritative:** [Domain Apotek](./apotek-domain-id.md)
 
 ## 1. Gambaran Umum Workflow
 
@@ -38,8 +38,8 @@ Workflow ini menerapkan spesifikasi domain yang direferensikan. Workflow ini tid
 
 | Authority | Tanggung jawab yang digunakan workflow ini |
 |---|---|
-| [Domain Medication Fulfillment](./medication-fulfillment-domain.md) | Prescription Review, Pharmacy Sales Order, allocation, timing Sales Invoice, Dispense Order, clearance, dispensing, handover, dan kebijakan non-fulfillment. |
-| [Domain Medication Fulfillment — Bahasa Indonesia](./medication-fulfillment-domain-id.md) | Pendamping semantik yang mudah dibaca manusia untuk domain Medication Fulfillment canonical. |
+| [Domain Apotek](./apotek-domain.md) | Prescription Review, Pharmacy Sales Order, allocation, timing Sales Invoice, Dispense Order, clearance, dispensing, handover, dan kebijakan non-fulfillment. |
+| [Domain Apotek — Bahasa Indonesia](./apotek-domain-id.md) | Pendamping semantik yang mudah dibaca manusia untuk domain Apotek canonical. |
 | [Domain Patient Tracker](../../contexts/pasien-tracker/TRACKER-DOMAIN-ID.md) | Identitas Pharmacy Queue Entry, Queue Number, Queue Session, `CreatedAt`, `ServedAt`, `DoneAt`, dan lifecycle antrean. |
 | [Domain CPOE](../../contexts/cpoe/CPOE-DOMAIN-ID.md) | Electronic Prescription asli dan intent klinisi; CPOE tetap authoritative atas Clinical Order miliknya. |
 | [Domain Tata Rekening](../../contexts/TataRekening/02-domain.md) | Financial Charge, Financial Responsibility, koreksi finansial, dan tanggung jawab settlement. |
@@ -100,13 +100,13 @@ Workflow berakhir ketika setiap medication demand yang dimappingkan ke Pharmacy 
 |---|---|---|
 | Patient or Caregiver | Mengambil Queue Number, memberikan mapping evidence atau Physical Prescription, memberi konfirmasi lisan ketika Patient-payable, membayar ketika diwajibkan, hadir untuk pickup, menerima edukasi, dan menerima obat ketika authorized. | Evidence diberikan, konfirmasi diberikan atau ditolak, Payment Clearance diperoleh, atau Medication Handover selesai. |
 | Patient Tracker | Memiliki identitas Pharmacy Queue Entry, Queue Number, dan lifecycle antrean. | `Queue Entry Created`, `Queue Service Started`, atau `Queue Service Completed`. |
-| Staf Apotek | Melakukan panggilan antrian, Koneksi Manual, mencatat Resep Kertas, menilai Permintaan Obat Langsung sesuai kewenangan, mengoordinasikan alokasi, menyampaikan nilai Pasien Umum, membentuk faktur terkonfirmasi, menyiapkan atau meracik obat, menangani pesanan tertunda atau sumber stok lain yang disetujui, dan melakukan panggilan pengambilan. | `Outpatient Queue Mapped`, `Pharmacy Sales Order Established`, `Sales Invoice Established`, `Medication Prepared`, `Dispense Order Backordered`, atau `Patient Called for Pickup`. |
+| Staf Apotek | Melakukan panggilan antrian, Manual Mapping, mencatat Resep Kertas, menilai Permintaan Obat Langsung sesuai kewenangan, mengoordinasikan alokasi, menyampaikan nilai Pasien Umum, membentuk faktur terkonfirmasi, menyiapkan atau meracik obat, menangani pesanan tertunda atau sumber stok lain yang disetujui, dan melakukan panggilan pengambilan. | `Outpatient Queue Mapped`, `Pharmacy Sales Order Established`, `Sales Invoice Established`, `Medication Prepared`, `Dispense Order Backordered`, atau `Patient Called for Pickup`. |
 | Pharmacist | Melakukan Prescription Review, mengotorisasi Medication Substitution yang eligible sebelum Pharmacy Sales Order dibentuk, menyetujui Direct Medication Request yang dirujuk, memverifikasi Authorized Recipient, melakukan Final Dispense Review, dan memberikan Patient Education. | `Prescription Review Completed`, `Final Dispense Review Completed`, atau Medication Handover diizinkan selesai. |
 | Cashier or Payment Authority | Menerima pembayaran Pasien yang diwajibkan dan memberikan Payment Clearance. | `Payment Clearance Established`. |
 | SEP and Fornas Authorities | Memberikan validitas SEP tingkat encounter dan coverage BPJS item-level. | `Coverage Clearance Established` untuk jumlah covered. |
 | Inventory | Memiliki Stock Availability, Stock Reservation, Inventory Issue, eligibility return, dan Return to Stock. | `Stock Reserved`, Inventory Issue authoritative, atau disposition return yang diterima. |
 | Tata Rekening | Memiliki Financial Responsibility dan konsekuensi finansial yang diperlukan ketika obat yang telah dibayar tidak dipenuhi atau diambil. | Credit Note, Refund, atau outcome komersial final lain diberikan. |
-| CPOE | Memiliki Electronic Prescription asli yang tidak diubah oleh Medication Fulfillment. | Prescription asli tersedia. |
+| CPOE | Memiliki Electronic Prescription asli yang tidak diubah oleh Apotek. | Prescription asli tersedia. |
 | Pharmacy Supervisor | Mengotorisasi expiry exceptional, penyelesaian manual obat tidak diambil, dan keputusan di luar authority biasa. | Outcome exception accountable dibentuk. |
 
 ## 5. Kondisi Awal dan Trigger
@@ -121,14 +121,14 @@ Workflow berakhir ketika setiap medication demand yang dimappingkan ke Pharmacy 
 - Staf Apotek mencatat Physical Prescription yang ditunjukkan.
 - Staf Apotek menerima Direct Medication Request sesuai authority atau setelah persetujuan Pharmacist yang diwajibkan.
 
-Trigger tersebut dapat terjadi sebelum atau setelah Outpatient Queue Mapping berdasarkan `BR-MF-061` dan `BR-MF-062`.
+Trigger tersebut dapat terjadi sebelum atau setelah Outpatient Queue Mapping berdasarkan `BR-APT-061` dan `BR-APT-062`.
 
 ### 5.3 Preconditions
 
 - Setiap Prescription mempertahankan sumber authoritative dan association Pasien.
 - Physical Prescription dicatat sebelum Prescription Review.
 - Direct Medication Request diterima sebelum dapat membentuk Pharmacy Sales Order.
-- Koneksi otomatis melalui tracker memerlukan bukti sah yang menemukan satu atau beberapa Resep yang sudah ada; proses ini tidak berlaku untuk Permintaan Obat Langsung.
+- Tracker Mapping memerlukan bukti sah yang menemukan satu atau beberapa Resep yang sudah ada; proses ini tidak berlaku untuk Permintaan Obat Langsung.
 - Manual Mapping mengharuskan Staf Apotek mengidentifikasi Queue Number dan demand yang berlaku.
 - Medication Preparation memerlukan Dispense Order aktif dan Fulfillment Clearance sesuai payer.
 - Medication Handover memerlukan Prepared Medication, Authorized Recipient, Final Dispense Review berhasil, dan Patient Education yang berlaku.
@@ -146,23 +146,23 @@ Trigger tersebut dapat terjadi sebelum atau setelah Outpatient Queue Mapping ber
 
 | ID | Workflow canonical | Deskripsi outcome Indonesia |
 |---|---|---|
-| `WF-MF-RJ-001` | Acquire and Map Outpatient Pharmacy Queue | Pharmacy Queue Entry dimappingkan secara accountable ke satu atau beberapa medication demand, atau outcome unresolved/declined dikembalikan kepada queue policy yang berlaku. |
-| `WF-MF-RJ-002` | Accept Outpatient Medication Demand | Resep yang diterima membentuk Pharmacy Sales Order dan primary outpatient Dispense Order yang traceable, atau memperoleh outcome rejection. |
-| `WF-MF-RJ-003` | Fulfill Medication for a General Patient | Obat yang dikonfirmasi lisan dan dibayar disiapkan serta diserahkan, atau memperoleh alternative atau exception outcome yang accountable. |
-| `WF-MF-RJ-004` | Fulfill Medication for a BPJS Patient | Obat covered disiapkan tanpa Sales Invoice sebelumnya dan Sales Invoice BPJS hanya dibentuk bersama Medication Handover yang berhasil. |
-| `WF-MF-RJ-005` | Fulfill Mixed-Coverage Medication | Jumlah covered dan Patient-payable memperoleh commercial allocation dan clearance terpisah dengan tetap dikoordinasikan untuk satu pickup. |
-| `WF-MF-RJ-006` | Coordinate Multiple Medication Demands in One Queue | Beberapa lifecycle demand, Sales Order, invoice, dan Dispense Order independen dikoordinasikan menjadi satu pelayanan antrean dan pickup tanpa digabungkan. |
-| `WF-MF-RJ-007` | Resolve Uncollected Outpatient Medication | Obat siap yang tidak diambil memperoleh expiry terotorisasi, disposition Inventory, dan resolusi komersial sesuai payer. |
+| `WF-APT-RJ-001` | Acquire and Map Outpatient Pharmacy Queue | Pharmacy Queue Entry dimappingkan secara accountable ke satu atau beberapa medication demand, atau outcome unresolved/declined dikembalikan kepada queue policy yang berlaku. |
+| `WF-APT-RJ-002` | Accept Outpatient Medication Demand | Resep yang diterima membentuk Pharmacy Sales Order dan primary outpatient Dispense Order yang traceable, atau memperoleh outcome rejection. |
+| `WF-APT-RJ-003` | Fulfill Medication for a General Patient | Obat yang dikonfirmasi lisan dan dibayar disiapkan serta diserahkan, atau memperoleh alternative atau exception outcome yang accountable. |
+| `WF-APT-RJ-004` | Fulfill Medication for a BPJS Patient | Obat covered disiapkan tanpa Sales Invoice sebelumnya dan Sales Invoice BPJS hanya dibentuk bersama Medication Handover yang berhasil. |
+| `WF-APT-RJ-005` | Fulfill Mixed-Coverage Medication | Jumlah covered dan Patient-payable memperoleh commercial allocation dan clearance terpisah dengan tetap dikoordinasikan untuk satu pickup. |
+| `WF-APT-RJ-006` | Coordinate Multiple Medication Demands in One Queue | Beberapa lifecycle demand, Sales Order, invoice, dan Dispense Order independen dikoordinasikan menjadi satu pelayanan antrean dan pickup tanpa digabungkan. |
+| `WF-APT-RJ-007` | Resolve Uncollected Outpatient Medication | Obat siap yang tidak diambil memperoleh expiry terotorisasi, disposition Inventory, dan resolusi komersial sesuai payer. |
 
 ## 7. Spesifikasi Workflow
 
-### WF-MF-RJ-001 — Acquire and Map Outpatient Pharmacy Queue
+### WF-APT-RJ-001 — Acquire and Map Outpatient Pharmacy Queue
 
 **Indonesia:** Mengambil dan Memapping Antrean Apotek Rawat Jalan
 
 #### Purpose
 
-Mengkoneksikan satu Pharmacy Queue Entry dengan seluruh sumber pelayanan obat rawat jalan yang sesuai tanpa menjadikan kedatangan antrean sebagai prasyarat Prescription Review.
+melakukan mapping satu Pharmacy Queue Entry dengan seluruh sumber pelayanan obat rawat jalan yang sesuai tanpa menjadikan kedatangan antrean sebagai prasyarat Prescription Review.
 
 #### Trigger
 
@@ -187,9 +187,9 @@ Patient or Caregiver, Patient Tracker, Staf Apotek.
 #### Main Flow
 
 1. Patient Tracker membentuk Pharmacy Queue Entry, menetapkan Queue Number, dan mencatat `CreatedAt`.
-2. Ketika bukti tracker atau registrasi yang sah menemukan satu atau beberapa Resep yang sudah ada dan berlaku, Aplikasi Pelayanan Obat membuat koneksi otomatis melalui tracker.
-3. Aplikasi Pelayanan Obat membuat catatan koneksi tersendiri antara entri antrian dan setiap Resep yang ditemukan.
-4. Untuk setiap Resep yang telah dikoneksikan, Aplikasi Pelayanan Obat menampilkan perkembangannya tanpa memindahkan kepemilikan status kepada Sistem Antrian Pasien.
+2. Ketika bukti tracker atau registrasi yang sah menemukan satu atau beberapa Resep yang sudah ada dan berlaku, Aplikasi Pelayanan Obat membuat Tracker Mapping.
+3. Aplikasi Pelayanan Obat membuat catatan mapping tersendiri antara entri antrian dan setiap Resep yang ditemukan.
+4. Untuk setiap Resep yang telah di-mapping, Aplikasi Pelayanan Obat menampilkan perkembangannya tanpa memindahkan kepemilikan status kepada Sistem Antrian Pasien.
 5. Koordinasi antrean menunggu fulfillment sesuai payer sementara Prescription Review dan pembentukan Pharmacy Sales Order dapat berlanjut secara independen.
 
 #### Decision and Alternative Flows
@@ -197,21 +197,21 @@ Patient or Caregiver, Patient Tracker, Staf Apotek.
 | Kondisi | Pemilik keputusan | Cabang |
 |---|---|---|
 | Bukti tracker atau registrasi menemukan satu atau beberapa Resep yang sudah ada | Aplikasi Pelayanan Obat | Hubungkan setiap Resep secara otomatis; panggilan administrasi awal tidak diperlukan. |
-| Bukti gagal menemukan Resep | Staf Apotek | Beralih ke Koneksi Manual. |
+| Bukti gagal menemukan Resep | Staf Apotek | Beralih ke Manual Mapping. |
 | Queue Number diperoleh langsung | Staf Apotek | Panggil Queue Number untuk identifikasi administratif dan Manual Mapping. |
-| Satu Queue Entry mempunyai beberapa applicable demand | Staf Apotek | Mapping setiap demand secara terpisah ke Queue Entry yang sama berdasarkan `BR-MF-084` dan `BR-MF-085`. |
+| Satu Queue Entry mempunyai beberapa applicable demand | Staf Apotek | Mapping setiap demand secara terpisah ke Queue Entry yang sama berdasarkan `BR-APT-084` dan `BR-APT-085`. |
 
 Untuk Manual Mapping:
 
 1. Staf Apotek memanggil unresolved Queue Number tanpa memulai pelayanan Patient Tracker.
 2. Staf Apotek mengidentifikasi Prescription atau Pharmacy Sales Order existing, mencatat Physical Prescription yang ditunjukkan, atau menilai Direct Medication Request.
-3. Medication Fulfillment membentuk Manual Mapping untuk setiap applicable demand yang teridentifikasi.
+3. Apotek membentuk Manual Mapping untuk setiap applicable demand yang teridentifikasi.
 
 #### Exception and Compensation Flows
 
-- Jika Direct Medication Request ditolak, record Direct Medication Request dan Pharmacy Sales Order tidak dibentuk. Disposition final Queue Entry yang masih `Waiting` mengikuti withdrawal policy Patient Tracker yang berlaku dan tetap eksternal terhadap Medication Fulfillment.
+- Jika Direct Medication Request ditolak, record Direct Medication Request dan Pharmacy Sales Order tidak dibentuk. Disposition final Queue Entry yang masih `Waiting` mengikuti withdrawal policy Patient Tracker yang berlaku dan tetap eksternal terhadap Apotek.
 - Jika Queue Number tidak dapat dicocokkan dengan Patient Journey atau medication demand yang accountable, Queue Entry tetap unmapped dan tidak dapat memperoleh Fulfillment Clearance yang bergantung pada mapping.
-- Jika koneksi antrian salah, Staf Apotek memilih Resep atau sumber pelayanan obat yang benar dan Aplikasi Pelayanan Obat memperbarui koneksi aktif. Riwayat perubahan koneksi antrian tidak perlu disimpan. Pembaruan ini tidak mengubah Resep, hasil telaah resep, atau pesanan penjualan apotek.
+- Jika mapping antrean salah, Staf Apotek memilih Resep atau sumber pelayanan obat yang benar dan Aplikasi Pelayanan Obat memperbarui mapping aktif. Riwayat perubahan mapping antrean tidak perlu disimpan. Pembaruan ini tidak mengubah Resep, hasil telaah resep, atau pesanan penjualan apotek.
 
 #### Outcomes and Postconditions
 
@@ -221,14 +221,14 @@ Untuk Manual Mapping:
 
 #### Domain References
 
-`BR-MF-061`–`BR-MF-065`, `BR-MF-082`, `BR-MF-084`–`BR-MF-087`; `BR-TRK-026`–`BR-TRK-035`.
+`BR-APT-061`–`BR-APT-065`, `BR-APT-082`, `BR-APT-084`–`BR-APT-087`; `BR-TRK-026`–`BR-TRK-035`.
 
 #### Domain Events
 
 - Dikonsumsi: `Queue Entry Created`.
 - Dihasilkan atau diamati: `Outpatient Queue Mapped`, `Queue Entry Identified` ketika berlaku secara eksternal.
 
-### WF-MF-RJ-002 — Accept Outpatient Medication Demand
+### WF-APT-RJ-002 — Accept Outpatient Medication Demand
 
 **Indonesia:** Menerima Permintaan Obat Rawat Jalan
 
@@ -263,9 +263,9 @@ Pharmacist, Staf Apotek, CPOE or Prescribing Clinician.
 3. Pharmacist menetapkan setiap line sebagai diterima sesuai resep, diterima dengan obat pengganti, atau ditolak. Obat yang diterima dicatat pada Sales Order Line; obat pengganti disertai alasan, jumlah terdampak, Pharmacist penanggung jawab, dan referensi ke Prescription Line asli.
 4. Pharmacist menyelesaikan Prescription Review sebagai `Approved`, `Partially Approved`, atau `Rejected`.
 5. Untuk Direct Medication Request yang diterima, Staf Apotek menerima sesuai authority atau memperoleh persetujuan Pharmacist yang diwajibkan; Prescription tidak dibentuk.
-6. Medication Fulfillment membentuk Pharmacy Sales Order dari tepat satu completed accepted-demand source dan mempertahankan Source Traceability.
-7. Medication Fulfillment membentuk Billing Allocation dan Fulfillment Allocation yang berlaku secara independen.
-8. Untuk episode Rawat Jalan normal, Medication Fulfillment membentuk satu active primary Dispense Order bagi Pharmacy Sales Order aktif.
+6. Apotek membentuk Pharmacy Sales Order dari tepat satu completed accepted-demand source dan mempertahankan Source Traceability.
+7. Apotek membentuk Billing Allocation dan Fulfillment Allocation yang berlaku secara independen.
+8. Untuk episode Rawat Jalan normal, Apotek membentuk satu active primary Dispense Order bagi Pharmacy Sales Order aktif.
 9. Inventory dapat membentuk Stock Reservation sebelum Pasien datang atau queue mapping, sedangkan Medication Preparation menunggu Fulfillment Clearance yang berlaku.
 
 #### Decision and Alternative Flows
@@ -294,14 +294,14 @@ Pharmacist, Staf Apotek, CPOE or Prescribing Clinician.
 
 #### Domain References
 
-`BR-MF-001`–`BR-MF-019`, `BR-MF-029`–`BR-MF-034`, `BR-MF-050`, `BR-MF-061`, `BR-MF-068`, `BR-MF-083`, `BR-MF-086`, `BR-MF-089`; lifecycle Prescription Review dan Pharmacy Sales Order.
+`BR-APT-001`–`BR-APT-019`, `BR-APT-029`–`BR-APT-034`, `BR-APT-050`, `BR-APT-061`, `BR-APT-068`, `BR-APT-083`, `BR-APT-086`, `BR-APT-089`; lifecycle Prescription Review dan Pharmacy Sales Order.
 
 #### Domain Events
 
 - Dikonsumsi: `Clinical Order Created` atau fakta Prescription availability authoritative lain.
 - Dihasilkan: `Prescription Review Started`, `Medication Substitution Authorized`, `Prescription Review Completed`, `Direct Medication Request Accepted`, `Pharmacy Sales Order Established`, `Billing Allocation Established`, `Fulfillment Allocation Established`, `Dispense Order Established`, `Stock Reserved` ketika diberikan secara eksternal.
 
-### WF-MF-RJ-003 — Fulfill Medication for a General Patient
+### WF-APT-RJ-003 — Fulfill Medication for a General Patient
 
 **Indonesia:** Memenuhi Obat untuk Pasien Umum
 
@@ -336,15 +336,15 @@ Patient or Caregiver, Staf Apotek, Cashier or Payment Authority, Staf Apotek, Ph
 2. Pasien memberikan Purchase Confirmation lisan.
 3. Staf Apotek membentuk Sales Invoice dari Billing Allocation yang dikonfirmasi; pembentukan Sales Invoice menjadi evidence accountable bahwa konfirmasi diperoleh dan tidak ada object atau transaksi konfirmasi terpisah.
 4. Cashier menerima pembayaran dan memberikan Payment Clearance bagi Sales Invoice.
-5. Medication Fulfillment membentuk Fulfillment Clearance untuk jumlah Dispense Order yang berlaku.
+5. Apotek membentuk Fulfillment Clearance untuk jumlah Dispense Order yang berlaku.
 6. Inventory mengamankan Stock Reservation yang diperlukan bila belum direservasi.
 7. Staf Apotek memulai Medication Preparation berdasarkan released Dispense Order.
-8. Medication Fulfillment mengamati `Medication Preparation Started`; Patient Tracker memasukkan Pharmacy Queue Entry ke In Service dan mencatat `ServedAt`.
+8. Apotek mengamati `Medication Preparation Started`; Patient Tracker memasukkan Pharmacy Queue Entry ke In Service dan mencatat `ServedAt`.
 9. Staf Apotek menyelesaikan Medication Preparation; Dispense Order mencapai `Prepared` dan obat tetap In-Transit Medication.
 10. Ketika setiap Dispense Order yang dimaksud dalam coordinated handover berstatus `Prepared` atau memiliki exception outcome accountable, Staf Apotek melakukan pickup call.
 11. Patient Tracker membuat Pharmacy Queue Entry `Done` dan mencatat `DoneAt` pada waktu pickup call.
 12. Dengan Pasien atau caregiver hadir, Pharmacist memverifikasi Authorized Recipient, menyelesaikan Final Dispense Review, dan memberikan Patient Education yang berlaku dalam interaksi loket yang sama.
-13. Medication Fulfillment mencatat Medication Dispense dan menyelesaikan Medication Handover untuk setiap jumlah Dispense Order yang berlaku.
+13. Apotek mencatat Medication Dispense dan menyelesaikan Medication Handover untuk setiap jumlah Dispense Order yang berlaku.
 14. Medication Handover menyelesaikan jumlah Dispense Order dan meminta outcome Inventory Issue authoritative dari Inventory.
 15. Pharmacy Sales Order hanya menjadi `Resolved` ketika seluruh Accepted Quantity dan konsekuensi komersial memiliki outcome final accountable.
 
@@ -354,8 +354,8 @@ Patient or Caregiver, Staf Apotek, Cashier or Payment Authority, Staf Apotek, Ph
 |---|---|---|
 | Pasien menolak sebelum Sales Invoice dibentuk | Patient | Sales Invoice tidak dibentuk; Stock Reservation yang tidak digunakan dilepas; alokasi Patient-payable memperoleh outcome declined atau commercially unallocated yang accountable. |
 | Nilai yang dihitung berubah sebelum pembentukan | Staf Apotek | Sampaikan nilai revisi dan dapatkan kembali konfirmasi lisan sebelum membentuk Sales Invoice. |
-| Beberapa demand memakai satu Queue Entry | Staf Apotek | Terapkan `WF-MF-RJ-006`; pertahankan Sales Order, invoice, dan Dispense Order terpisah. |
-| Pasien tidak mengambil setelah pickup call | Pharmacy Supervisor | Terapkan `WF-MF-RJ-007`. |
+| Beberapa demand memakai satu Queue Entry | Staf Apotek | Terapkan `WF-APT-RJ-006`; pertahankan Sales Order, invoice, dan Dispense Order terpisah. |
+| Pasien tidak mengambil setelah pickup call | Pharmacy Supervisor | Terapkan `WF-APT-RJ-007`. |
 
 #### Exception and Compensation Flows
 
@@ -374,14 +374,14 @@ Patient or Caregiver, Staf Apotek, Cashier or Payment Authority, Staf Apotek, Ph
 
 #### Domain References
 
-`BR-MF-020`–`BR-MF-028`, `BR-MF-033`–`BR-MF-046`, `BR-MF-056`–`BR-MF-060`, `BR-MF-067`–`BR-MF-072`, `BR-MF-076`–`BR-MF-083`, `BR-MF-088`, `BR-MF-095`; lifecycle Sales Invoice dan Dispense Order; `BR-TRK-045`, `BR-TRK-045a`, `BR-TRK-046`.
+`BR-APT-020`–`BR-APT-028`, `BR-APT-033`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-067`–`BR-APT-072`, `BR-APT-076`–`BR-APT-083`, `BR-APT-088`, `BR-APT-095`; lifecycle Sales Invoice dan Dispense Order; `BR-TRK-045`, `BR-TRK-045a`, `BR-TRK-046`.
 
 #### Domain Events
 
 - Dikonsumsi: `Outpatient Queue Mapped`, `Billing Allocation Established`, `Payment Clearance Established`, `Stock Reserved`.
 - Dihasilkan atau diamati: `Sales Invoice Established`, `Sales Invoice Issued`, `Fulfillment Clearance Established`, `Medication Preparation Started`, `Pharmacy Service Started`, `Medication Prepared`, `Patient Called for Pickup`, `Queue Service Started`, `Queue Service Completed`, `Final Dispense Review Completed`, `Medication Dispensed`, `Medication Handed Over`, `Pharmacy Sales Order Resolved`.
 
-### WF-MF-RJ-004 — Fulfill Medication for a BPJS Patient
+### WF-APT-RJ-004 — Fulfill Medication for a BPJS Patient
 
 **Indonesia:** Memenuhi Obat untuk Pasien BPJS
 
@@ -414,7 +414,7 @@ Patient or Caregiver, Staf Apotek, Pharmacist, Patient Tracker, SEP and Fornas A
 #### Main Flow
 
 1. Authority SEP dan Fornas membentuk Coverage Clearance bagi setiap covered quantity.
-2. Medication Fulfillment membentuk Fulfillment Clearance bagi jumlah Dispense Order terkait tanpa mewajibkan Sales Invoice existing.
+2. Apotek membentuk Fulfillment Clearance bagi jumlah Dispense Order terkait tanpa mewajibkan Sales Invoice existing.
 3. Inventory mengamankan Stock Reservation bila belum direservasi.
 4. Staf Apotek memulai Medication Preparation.
 5. `Medication Preparation Started` menyebabkan Patient Tracker mencatat `ServedAt` dan memindahkan Pharmacy Queue Entry ke In Service.
@@ -422,7 +422,7 @@ Patient or Caregiver, Staf Apotek, Pharmacist, Patient Tracker, SEP and Fornas A
 7. Ketika setiap Dispense Order yang dimaksud dalam coordinated handover berstatus `Prepared` atau memiliki exception outcome accountable, Staf Apotek melakukan pickup call.
 8. Patient Tracker mencatat `DoneAt` dan membuat Queue Entry `Done` pada waktu pickup call.
 9. Dengan Pasien atau caregiver hadir, Pharmacist memverifikasi Authorized Recipient, menyelesaikan Final Dispense Review, dan memberikan Patient Education yang berlaku dalam interaksi loket yang sama.
-10. Sebagai satu outcome bisnis accountable, Medication Fulfillment membentuk Sales Invoice BPJS dari covered Billing Allocation, mencatat Medication Dispense, dan menyelesaikan Medication Handover.
+10. Sebagai satu outcome bisnis accountable, Apotek membentuk Sales Invoice BPJS dari covered Billing Allocation, mencatat Medication Dispense, dan menyelesaikan Medication Handover.
 11. Medication Handover menyelesaikan setiap jumlah Dispense Order yang berlaku dan meminta outcome Inventory Issue authoritative.
 12. Pharmacy Sales Order hanya menjadi `Resolved` ketika setiap Accepted Quantity dan konsekuensi komersial yang diperlukan memiliki outcome final.
 
@@ -430,11 +430,11 @@ Patient or Caregiver, Staf Apotek, Pharmacist, Patient Tracker, SEP and Fornas A
 
 | Kondisi | Pemilik keputusan | Cabang |
 |---|---|---|
-| Electronic Prescription dan Tracker Mapping berhasil pada jalur normal | Medication Fulfillment | Satu pemanggilan Rawat Jalan terjadi: pickup call setelah `Prepared`. |
+| Electronic Prescription dan Tracker Mapping berhasil pada jalur normal | Apotek | Satu pemanggilan Rawat Jalan terjadi: pickup call setelah `Prepared`. |
 | SEP tidak valid | SEP authority | Coverage Clearance tidak tersedia; Medication Preparation tetap terblokir. |
-| Item tidak covered Fornas | Staf Apotek | Arahkan non-covered quantity melalui `WF-MF-RJ-005`. |
-| Beberapa demand dimappingkan | Staf Apotek | Terapkan `WF-MF-RJ-006`; pertahankan record terpisah dan satu coordinated pickup. |
-| Pasien tidak mengambil | Pharmacy Supervisor | Terapkan `WF-MF-RJ-007`; Sales Invoice BPJS tidak dibentuk. |
+| Item tidak covered Fornas | Staf Apotek | Arahkan non-covered quantity melalui `WF-APT-RJ-005`. |
+| Beberapa demand dimappingkan | Staf Apotek | Terapkan `WF-APT-RJ-006`; pertahankan record terpisah dan satu coordinated pickup. |
+| Pasien tidak mengambil | Pharmacy Supervisor | Terapkan `WF-APT-RJ-007`; Sales Invoice BPJS tidak dibentuk. |
 
 #### Exception and Compensation Flows
 
@@ -447,19 +447,19 @@ Patient or Caregiver, Staf Apotek, Pharmacist, Patient Tracker, SEP and Fornas A
 
 - Selesai berhasil: pembentukan Sales Invoice BPJS dan Medication Handover menjadi satu outcome accountable; Patient-payable amount nol dan payment disposition `Not Required`.
 - Coverage blocked: preparation tidak terjadi bagi uncleared quantity.
-- No-Show: Sales Invoice BPJS tidak tersedia; Dispense Order dan stok mengikuti `WF-MF-RJ-007`.
+- No-Show: Sales Invoice BPJS tidak tersedia; Dispense Order dan stok mengikuti `WF-APT-RJ-007`.
 - Queue `Done` tetap independen dari selesainya Medication Handover.
 
 #### Domain References
 
-`BR-MF-020`–`BR-MF-026`, `BR-MF-029`–`BR-MF-045`, `BR-MF-066`, `BR-MF-068`–`BR-MF-069`, `BR-MF-073`–`BR-MF-079`, `BR-MF-081`–`BR-MF-083`, `BR-MF-088`, `BR-MF-090`, `BR-MF-095`; `BR-TRK-045`, `BR-TRK-045a`, `BR-TRK-046`.
+`BR-APT-020`–`BR-APT-026`, `BR-APT-029`–`BR-APT-045`, `BR-APT-066`, `BR-APT-068`–`BR-APT-069`, `BR-APT-073`–`BR-APT-079`, `BR-APT-081`–`BR-APT-083`, `BR-APT-088`, `BR-APT-090`, `BR-APT-095`; `BR-TRK-045`, `BR-TRK-045a`, `BR-TRK-046`.
 
 #### Domain Events
 
 - Dikonsumsi: `Outpatient Queue Mapped`, `Coverage Clearance Established`, `Fulfillment Allocation Established`, `Stock Reserved`.
 - Dihasilkan atau diamati: `Fulfillment Clearance Established`, `Medication Preparation Started`, `Pharmacy Service Started`, `Medication Prepared`, `Patient Called for Pickup`, `Queue Service Started`, `Queue Service Completed`, `Final Dispense Review Completed`, `Sales Invoice Established`, `Sales Invoice Issued`, `Medication Dispensed`, `Medication Handed Over`, `Pharmacy Sales Order Resolved`.
 
-### WF-MF-RJ-005 — Fulfill Mixed-Coverage Medication
+### WF-APT-RJ-005 — Fulfill Mixed-Coverage Medication
 
 **Indonesia:** Memenuhi Obat dengan Coverage Campuran
 
@@ -492,17 +492,17 @@ Patient or Caregiver, Staf Apotek, Cashier or Payment Authority, Staf Apotek, Ph
 
 1. Staf Apotek memisahkan Billing Allocation menjadi jumlah BPJS-covered dan Patient-payable.
 2. Validitas SEP dan mapping Fornas membentuk Coverage Clearance bagi covered quantity.
-3. Sebelum Sales Invoice Pasien Umum tersedia, Staf Apotek melakukan interaksi Purchase Confirmation yang didefinisikan `WF-MF-RJ-003` dan menyampaikan nilai Patient-payable yang dihitung secara lisan.
+3. Sebelum Sales Invoice Pasien Umum tersedia, Staf Apotek melakukan interaksi Purchase Confirmation yang didefinisikan `WF-APT-RJ-003` dan menyampaikan nilai Patient-payable yang dihitung secara lisan.
 4. Pasien memberikan Purchase Confirmation lisan bagi non-covered quantity.
 5. Staf Apotek membentuk Sales Invoice Pasien Umum terpisah dari Billing Allocation Patient-payable yang dikonfirmasi.
 6. Cashier memberikan Payment Clearance bagi Sales Invoice Pasien Umum.
-7. Medication Fulfillment membentuk Fulfillment Clearance bagi covered quantity dari Coverage Clearance dan bagi Patient-payable quantity dari Payment Clearance.
+7. Apotek membentuk Fulfillment Clearance bagi covered quantity dari Coverage Clearance dan bagi Patient-payable quantity dari Payment Clearance.
 8. Setelah setiap jumlah yang dimaksud untuk handover memperoleh clearance yang berlaku, Staf Apotek memulai dan menyelesaikan Medication Preparation.
 9. `Medication Preparation Started` pertama mencatat `ServedAt` Patient Tracker; setiap intended Dispense Order mencapai `Prepared` sebelum pickup.
 10. Staf Apotek melakukan satu coordinated pickup call; Patient Tracker mencatat `DoneAt`.
 11. Dengan Pasien atau caregiver hadir, Pharmacist memverifikasi Authorized Recipient, menyelesaikan Final Dispense Review, dan memberikan Patient Education.
-12. Medication Fulfillment membentuk Sales Invoice BPJS dari covered Billing Allocation hanya ketika Medication Handover berhasil; Sales Invoice Pasien Umum sudah tersedia dan financially cleared.
-13. Medication Fulfillment mencatat Medication Dispense dan Medication Handover bagi seluruh jumlah yang berlaku serta meminta outcome Inventory Issue.
+12. Apotek membentuk Sales Invoice BPJS dari covered Billing Allocation hanya ketika Medication Handover berhasil; Sales Invoice Pasien Umum sudah tersedia dan financially cleared.
+13. Apotek mencatat Medication Dispense dan Medication Handover bagi seluruh jumlah yang berlaku serta meminta outcome Inventory Issue.
 
 #### Decision and Alternative Flows
 
@@ -511,7 +511,7 @@ Patient or Caregiver, Staf Apotek, Cashier or Payment Authority, Staf Apotek, Ph
 | Pasien mengonfirmasi bagian non-covered | Patient | Bentuk dan terima pembayaran Sales Invoice Pasien Umum; koordinasikan kedua bagian payer. |
 | Pasien menolak bagian non-covered sebelum invoice dibentuk | Patient | Jangan membentuk Sales Invoice Pasien Umum; berikan outcome declined atau commercially unallocated yang accountable kepada allocation; lanjutkan bagian BPJS secara independen. |
 | Covered item tidak mempunyai coverage Fornas | Staf Apotek | Reklasifikasi menjadi Patient-payable hanya melalui Billing Allocation accountable; sampaikan nilai revisi dan minta konfirmasi lisan. |
-| Tidak semua intended quantity memperoleh clearance | Medication Fulfillment | Jangan memulai coordinated preparation bagi quantity tersebut dan jangan melakukan pickup call. |
+| Tidak semua intended quantity memperoleh clearance | Apotek | Jangan memulai coordinated preparation bagi quantity tersebut dan jangan melakukan pickup call. |
 
 #### Exception and Compensation Flows
 
@@ -528,14 +528,14 @@ Patient or Caregiver, Staf Apotek, Cashier or Payment Authority, Staf Apotek, Ph
 
 #### Domain References
 
-`BR-MF-015`, `BR-MF-020`–`BR-MF-028`, `BR-MF-040`–`BR-MF-046`, `BR-MF-056`–`BR-MF-060`, `BR-MF-070`–`BR-MF-078`, `BR-MF-090`–`BR-MF-095`.
+`BR-APT-015`, `BR-APT-020`–`BR-APT-028`, `BR-APT-040`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-070`–`BR-APT-078`, `BR-APT-090`–`BR-APT-095`.
 
 #### Domain Events
 
 - Dikonsumsi: `Billing Allocation Established`, `Coverage Clearance Established`, `Payment Clearance Established`, `Outpatient Queue Mapped`.
 - Dihasilkan atau diamati: `Sales Invoice Established`, `Sales Invoice Issued`, `Fulfillment Clearance Established`, `Medication Preparation Started`, `Medication Prepared`, `Patient Called for Pickup`, `Final Dispense Review Completed`, `Medication Dispensed`, `Medication Handed Over`, `Pharmacy Sales Order Resolved` ketika seluruhnya direkonsiliasi.
 
-### WF-MF-RJ-006 — Coordinate Multiple Medication Demands in One Queue
+### WF-APT-RJ-006 — Coordinate Multiple Medication Demands in One Queue
 
 **Indonesia:** Mengoordinasikan Beberapa Permintaan Obat dalam Satu Antrean
 
@@ -565,14 +565,14 @@ Staf Apotek, Pharmacist, Patient or Caregiver, Patient Tracker, Cashier or Payme
 
 #### Main Flow
 
-1. Medication Fulfillment mempertahankan Koneksi Antrian Rawat Jalan terpisah bagi setiap sumber pelayanan obat yang dikoneksikan dengan Pharmacy Queue Entry yang sama.
+1. Apotek mempertahankan Outpatient Queue Mapping terpisah bagi setiap sumber pelayanan obat yang di-mapping dengan Pharmacy Queue Entry yang sama.
 2. Setiap demand bergerak independen melalui Prescription Review atau direct acceptance, pembentukan Pharmacy Sales Order, commercial allocation, fulfillment allocation, dan payer clearance.
 3. Queue-facing view memproyeksikan progress authoritative setiap mapped demand tanpa memiliki state tersebut.
 4. `Medication Preparation Started` pertama yang berlaku menyebabkan Patient Tracker mencatat satu `ServedAt` bagi Queue Entry yang sama.
 5. Staf Apotek menunggu sampai setiap Dispense Order yang dimaksud untuk pickup berstatus `Prepared` atau memiliki exception outcome accountable.
 6. Staf Apotek melakukan satu coordinated pickup call; Patient Tracker mencatat satu `DoneAt` bagi Queue Entry yang sama.
 7. Dengan Pasien atau caregiver hadir, Pharmacist memverifikasi Authorized Recipient, menyelesaikan Final Dispense Review bagi setiap Prepared Medication, dan memberikan Patient Education gabungan dengan tetap mempertahankan instruksi khusus obat.
-8. Medication Fulfillment mencatat Medication Dispense dan Medication Handover terhadap setiap Dispense Order dan Pharmacy Sales Order yang berlaku secara terpisah.
+8. Apotek mencatat Medication Dispense dan Medication Handover terhadap setiap Dispense Order dan Pharmacy Sales Order yang berlaku secara terpisah.
 
 #### Decision and Alternative Flows
 
@@ -597,14 +597,14 @@ Staf Apotek, Pharmacist, Patient or Caregiver, Patient Tracker, Cashier or Payme
 
 #### Domain References
 
-`BR-MF-011`, `BR-MF-015`, `BR-MF-022`, `BR-MF-030`, `BR-MF-056`–`BR-MF-060`, `BR-MF-084`–`BR-MF-088`, `BR-MF-095`; `BR-TRK-032`, `BR-TRK-035`–`BR-TRK-039`, `BR-TRK-045`, `BR-TRK-045a`.
+`BR-APT-011`, `BR-APT-015`, `BR-APT-022`, `BR-APT-030`, `BR-APT-056`–`BR-APT-060`, `BR-APT-084`–`BR-APT-088`, `BR-APT-095`; `BR-TRK-032`, `BR-TRK-035`–`BR-TRK-039`, `BR-TRK-045`, `BR-TRK-045a`.
 
 #### Domain Events
 
 - Dikonsumsi: `Outpatient Queue Mapped`, `Medication Preparation Started`, `Medication Prepared`.
 - Dihasilkan atau diamati: `Queue Service Started`, `Patient Called for Pickup`, `Queue Service Completed`, `Final Dispense Review Completed`, `Medication Dispensed`, `Medication Handed Over` bagi setiap demand yang berlaku.
 
-### WF-MF-RJ-007 — Resolve Uncollected Outpatient Medication
+### WF-APT-RJ-007 — Resolve Uncollected Outpatient Medication
 
 **Indonesia:** Menyelesaikan Obat Rawat Jalan yang Tidak Diambil
 
@@ -636,11 +636,11 @@ Pharmacy Supervisor, Staf Apotek, Inventory, Tata Rekening, Patient Tracker.
 #### Main Flow
 
 1. Peran authorized melakukan penyelesaian manual obat tidak diambil dan mencatat Pasien sebagai No-Show untuk fulfillment terkait.
-2. Medication Fulfillment memberikan terminal state `Expired` kepada setiap Dispense Order terdampak.
+2. Apotek memberikan terminal state `Expired` kepada setiap Dispense Order terdampak.
 3. Resolution mempertahankan reason `Collection Window Expired`, responsible party, effective business time, affected quantity, dan Source Traceability.
 4. Inventory menentukan disposition authoritative bagi reserved atau In-Transit Medication dan hanya menerima Return to Stock ketika eligible.
-5. Medication Fulfillment mencatat Unfulfilled Medication Outcome yang dihasilkan bagi setiap affected quantity.
-6. Medication Fulfillment menyelesaikan konsekuensi komersial sesuai payer.
+5. Apotek mencatat Unfulfilled Medication Outcome yang dihasilkan bagi setiap affected quantity.
+6. Apotek menyelesaikan konsekuensi komersial sesuai payer.
 7. Pharmacy Sales Order hanya menjadi `Resolved` setelah setiap Accepted Quantity dan konsekuensi komersial yang diperlukan memiliki outcome final accountable.
 
 #### Decision and Alternative Flows
@@ -655,7 +655,7 @@ Pharmacy Supervisor, Staf Apotek, Inventory, Tata Rekening, Patient Tracker.
 #### Exception and Compensation Flows
 
 - Batas pengambilan numerik tidak dibuat. Sampai kebijakan authoritative menyediakannya, hanya aktivitas manual authorized yang menetapkan akhir kesempatan pengambilan.
-- Queue `DoneAt` tidak dibalik; penyelesaian No-Show dimiliki Medication Fulfillment setelah antrean selesai.
+- Queue `DoneAt` tidak dibalik; penyelesaian No-Show dimiliki Apotek setelah antrean selesai.
 - Inventory dapat menolak Return to Stock berdasarkan kebijakannya; return yang ditolak tetap memerlukan disposition Inventory final accountable.
 - Konsekuensi paid tidak boleh dihapus diam-diam atau diperlakukan sebagai jalur BPJS uninvoiced.
 
@@ -667,7 +667,7 @@ Pharmacy Supervisor, Staf Apotek, Inventory, Tata Rekening, Patient Tracker.
 
 #### Domain References
 
-`BR-MF-018`–`BR-MF-019`, `BR-MF-027`, `BR-MF-045`–`BR-MF-047`, `BR-MF-052`–`BR-MF-060`, `BR-MF-069`, `BR-MF-078`–`BR-MF-080`, `BR-MF-095`; lifecycle Dispense Order, quantity, pickup, dan Pharmacy Sales Order.
+`BR-APT-018`–`BR-APT-019`, `BR-APT-027`, `BR-APT-045`–`BR-APT-047`, `BR-APT-052`–`BR-APT-060`, `BR-APT-069`, `BR-APT-078`–`BR-APT-080`, `BR-APT-095`; lifecycle Dispense Order, quantity, pickup, dan Pharmacy Sales Order.
 
 #### Domain Events
 
@@ -678,17 +678,17 @@ Pharmacy Supervisor, Staf Apotek, Inventory, Tata Rekening, Patient Tracker.
 
 | Dari | Fakta bisnis authoritative | Kepada | Tanggung jawab hasil handoff |
 |---|---|---|---|
-| Patient Tracker | `Queue Entry Created`, Queue Number, `CreatedAt` | Medication Fulfillment | Membentuk Tracker Mapping atau Manual Mapping tanpa mengambil ownership identitas antrean. |
-| Medication Fulfillment | `Medication Preparation Started` | Patient Tracker | Memindahkan Pharmacy Queue Entry ke In Service dan mencatat `ServedAt`; Patient Tracker tidak boleh menyimpulkan Medication Handover. |
-| Medication Fulfillment | `Patient Called for Pickup` | Patient Tracker | Membuat Pharmacy Queue Entry `Done` dan mencatat `DoneAt`; telaah profesional dan handover berikutnya tetap menjadi fakta Medication Fulfillment. |
-| CPOE atau clinical-order authority | Prescription availability dan clinician intent | Medication Fulfillment | Melakukan Prescription Review tanpa mengubah Prescription asli. |
-| Medication Fulfillment | Fulfillment projection per Prescription dan realisasi Medication Handover | Pelaporan EMR | Menampilkan informasi Prescription-to-realization tanpa mengubah Clinical Order CPOE pada scope awal. |
-| SEP authority | SEP valid | Medication Fulfillment | Menilai coverage BPJS tingkat encounter; SEP saja tidak mengidentifikasi covered medication quantity. |
-| Fornas authority | Mapping coverage item-level | Medication Fulfillment | Membentuk Coverage Clearance hanya bagi covered quantity yang berlaku bersama SEP valid. |
-| Cashier atau Payment authority | `Payment Clearance Established` | Medication Fulfillment | Membentuk Fulfillment Clearance yang berlaku; payment tidak membuktikan stok atau handover. |
-| Inventory | Stock Availability dan `Stock Reserved` | Medication Fulfillment | Menyiapkan hanya jumlah Dispense Order yang diotorisasi; fakta stok tidak menulis ulang Prescription Review. |
-| Medication Fulfillment | Permintaan handover, expiry, shortage, atau return | Inventory | Memberikan Inventory Issue atau disposition return authoritative; Medication Fulfillment tidak boleh menyimpulkan mutasi inventory. |
-| Medication Fulfillment | Kebutuhan Financial Charge, Credit Note, atau Refund | Tata Rekening | Menyelesaikan Financial Responsibility dan konsekuensi settlement tanpa mengubah riwayat fulfillment. |
+| Patient Tracker | `Queue Entry Created`, Queue Number, `CreatedAt` | Apotek | Membentuk Tracker Mapping atau Manual Mapping tanpa mengambil ownership identitas antrean. |
+| Apotek | `Medication Preparation Started` | Patient Tracker | Memindahkan Pharmacy Queue Entry ke In Service dan mencatat `ServedAt`; Patient Tracker tidak boleh menyimpulkan Medication Handover. |
+| Apotek | `Patient Called for Pickup` | Patient Tracker | Membuat Pharmacy Queue Entry `Done` dan mencatat `DoneAt`; telaah profesional dan handover berikutnya tetap menjadi fakta Apotek. |
+| CPOE atau clinical-order authority | Prescription availability dan clinician intent | Apotek | Melakukan Prescription Review tanpa mengubah Prescription asli. |
+| Apotek | Fulfillment projection per Prescription dan realisasi Medication Handover | Pelaporan EMR | Menampilkan informasi Prescription-to-realization tanpa mengubah Clinical Order CPOE pada scope awal. |
+| SEP authority | SEP valid | Apotek | Menilai coverage BPJS tingkat encounter; SEP saja tidak mengidentifikasi covered medication quantity. |
+| Fornas authority | Mapping coverage item-level | Apotek | Membentuk Coverage Clearance hanya bagi covered quantity yang berlaku bersama SEP valid. |
+| Cashier atau Payment authority | `Payment Clearance Established` | Apotek | Membentuk Fulfillment Clearance yang berlaku; payment tidak membuktikan stok atau handover. |
+| Inventory | Stock Availability dan `Stock Reserved` | Apotek | Menyiapkan hanya jumlah Dispense Order yang diotorisasi; fakta stok tidak menulis ulang Prescription Review. |
+| Apotek | Permintaan handover, expiry, shortage, atau return | Inventory | Memberikan Inventory Issue atau disposition return authoritative; Apotek tidak boleh menyimpulkan mutasi inventory. |
+| Apotek | Kebutuhan Financial Charge, Credit Note, atau Refund | Tata Rekening | Menyelesaikan Financial Responsibility dan konsekuensi settlement tanpa mengubah riwayat fulfillment. |
 
 ## 9. Waktu Bisnis dan Batas Layanan
 
@@ -711,21 +711,21 @@ Technical timeout, polling, retry, dan performa aplikasi berada di luar workflow
 
 | Workflow ID | Domain rules | States | Domain Events | External authority |
 |---|---|---|---|---|
-| `WF-MF-RJ-001` | `BR-MF-061`–`BR-MF-065`, `BR-MF-082`, `BR-MF-084`–`BR-MF-087` | `Unmapped`, `Mapped`, `Waiting` | `Queue Entry Created`, `Outpatient Queue Mapped`, `Queue Entry Identified` | Patient Tracker |
-| `WF-MF-RJ-002` | `BR-MF-001`–`BR-MF-019`, `BR-MF-050`, `BR-MF-061`, `BR-MF-086`, `BR-MF-089` | `Available`, `Under Review`, `Approved`, `Partially Approved`, `Rejected`, `Established`, `Active` | `Prescription Review Started`, `Medication Substitution Authorized`, `Prescription Review Completed`, `Direct Medication Request Accepted`, `Pharmacy Sales Order Established`, `Dispense Order Established` | CPOE, Medication Catalog, Inventory |
-| `WF-MF-RJ-003` | `BR-MF-020`–`BR-MF-028`, `BR-MF-040`–`BR-MF-046`, `BR-MF-067`–`BR-MF-072`, `BR-MF-076`–`BR-MF-083`, `BR-MF-088`, `BR-MF-095` | `Established`, `Issued`, `Financially Cleared`, `Released`, `Preparing`, `Prepared`, `Reviewed`, `Completed`, `In Service`, `Done` | `Sales Invoice Established`, `Payment Clearance Established`, `Medication Preparation Started`, `Medication Prepared`, `Patient Called for Pickup`, `Final Dispense Review Completed`, `Medication Handed Over` | Patient Tracker, Payment, Inventory, Tata Rekening |
-| `WF-MF-RJ-004` | `BR-MF-066`, `BR-MF-073`–`BR-MF-079`, `BR-MF-081`–`BR-MF-083`, `BR-MF-088`, `BR-MF-090`, `BR-MF-095` | `Awaiting Clearance`, `Released`, `Preparing`, `Prepared`, `Reviewed`, `Completed`, `In Service`, `Done` | `Coverage Clearance Established`, `Medication Preparation Started`, `Patient Called for Pickup`, `Sales Invoice Established`, `Medication Handed Over` | Patient Tracker, SEP, Fornas, Inventory, Tata Rekening |
-| `WF-MF-RJ-005` | `BR-MF-015`, `BR-MF-022`, `BR-MF-044`, `BR-MF-090`–`BR-MF-095` | State Sales Invoice sesuai payer dan state Dispense Order bersama | `Billing Allocation Established`, `Coverage Clearance Established`, `Payment Clearance Established`, `Sales Invoice Established`, `Medication Handed Over` | SEP, Fornas, Payment, Tata Rekening |
-| `WF-MF-RJ-006` | `BR-MF-084`–`BR-MF-088`, `BR-MF-095` | State authoritative per demand; satu antrean `Waiting` → `In Service` → `Done` | `Outpatient Queue Mapped`, `Medication Preparation Started`, `Patient Called for Pickup`, `Medication Handed Over` | Patient Tracker |
-| `WF-MF-RJ-007` | `BR-MF-018`–`BR-MF-019`, `BR-MF-027`, `BR-MF-045`–`BR-MF-047`, `BR-MF-052`–`BR-MF-060`, `BR-MF-079`–`BR-MF-080` | `Expired`, `Active`, `Resolved` | `Outpatient No-Show Recorded`, `Dispense Order Expired`, `Unfulfilled Medication Recorded`, `Medication Returned`, `Sales Invoice Credited`, `Refund Required`, `Pharmacy Sales Order Resolved` | Inventory, Tata Rekening |
+| `WF-APT-RJ-001` | `BR-APT-061`–`BR-APT-065`, `BR-APT-082`, `BR-APT-084`–`BR-APT-087` | `Unmapped`, `Mapped`, `Waiting` | `Queue Entry Created`, `Outpatient Queue Mapped`, `Queue Entry Identified` | Patient Tracker |
+| `WF-APT-RJ-002` | `BR-APT-001`–`BR-APT-019`, `BR-APT-050`, `BR-APT-061`, `BR-APT-086`, `BR-APT-089` | `Available`, `Under Review`, `Approved`, `Partially Approved`, `Rejected`, `Established`, `Active` | `Prescription Review Started`, `Medication Substitution Authorized`, `Prescription Review Completed`, `Direct Medication Request Accepted`, `Pharmacy Sales Order Established`, `Dispense Order Established` | CPOE, Medication Catalog, Inventory |
+| `WF-APT-RJ-003` | `BR-APT-020`–`BR-APT-028`, `BR-APT-040`–`BR-APT-046`, `BR-APT-067`–`BR-APT-072`, `BR-APT-076`–`BR-APT-083`, `BR-APT-088`, `BR-APT-095` | `Established`, `Issued`, `Financially Cleared`, `Released`, `Preparing`, `Prepared`, `Reviewed`, `Completed`, `In Service`, `Done` | `Sales Invoice Established`, `Payment Clearance Established`, `Medication Preparation Started`, `Medication Prepared`, `Patient Called for Pickup`, `Final Dispense Review Completed`, `Medication Handed Over` | Patient Tracker, Payment, Inventory, Tata Rekening |
+| `WF-APT-RJ-004` | `BR-APT-066`, `BR-APT-073`–`BR-APT-079`, `BR-APT-081`–`BR-APT-083`, `BR-APT-088`, `BR-APT-090`, `BR-APT-095` | `Awaiting Clearance`, `Released`, `Preparing`, `Prepared`, `Reviewed`, `Completed`, `In Service`, `Done` | `Coverage Clearance Established`, `Medication Preparation Started`, `Patient Called for Pickup`, `Sales Invoice Established`, `Medication Handed Over` | Patient Tracker, SEP, Fornas, Inventory, Tata Rekening |
+| `WF-APT-RJ-005` | `BR-APT-015`, `BR-APT-022`, `BR-APT-044`, `BR-APT-090`–`BR-APT-095` | State Sales Invoice sesuai payer dan state Dispense Order bersama | `Billing Allocation Established`, `Coverage Clearance Established`, `Payment Clearance Established`, `Sales Invoice Established`, `Medication Handed Over` | SEP, Fornas, Payment, Tata Rekening |
+| `WF-APT-RJ-006` | `BR-APT-084`–`BR-APT-088`, `BR-APT-095` | State authoritative per demand; satu antrean `Waiting` → `In Service` → `Done` | `Outpatient Queue Mapped`, `Medication Preparation Started`, `Patient Called for Pickup`, `Medication Handed Over` | Patient Tracker |
+| `WF-APT-RJ-007` | `BR-APT-018`–`BR-APT-019`, `BR-APT-027`, `BR-APT-045`–`BR-APT-047`, `BR-APT-052`–`BR-APT-060`, `BR-APT-079`–`BR-APT-080` | `Expired`, `Active`, `Resolved` | `Outpatient No-Show Recorded`, `Dispense Order Expired`, `Unfulfilled Medication Recorded`, `Medication Returned`, `Sales Invoice Credited`, `Refund Required`, `Pharmacy Sales Order Resolved` | Inventory, Tata Rekening |
 
 Artifact canonical terkait:
 
-- [Domain Medication Fulfillment](./medication-fulfillment-domain.md)
-- [Domain Medication Fulfillment — Bahasa Indonesia](./medication-fulfillment-domain-id.md)
-- [Outpatient Medication Fulfillment Workflow — English](./outpatient-medication-fulfillment-workflow.md)
+- [Domain Apotek](./apotek-domain.md)
+- [Domain Apotek — Bahasa Indonesia](./apotek-domain-id.md)
+- [Outpatient Apotek Workflow — English](./outpatient-apotek-workflow.md)
 - [Domain Patient Tracker](../../contexts/pasien-tracker/TRACKER-DOMAIN-ID.md)
 - [Domain CPOE](../../contexts/cpoe/CPOE-DOMAIN-ID.md)
 - [Domain Tata Rekening](../../contexts/TataRekening/02-domain.md)
 
-Tujuh pasang spesifikasi operasional Rawat Jalan tercantum dalam [Indeks SOP Outpatient Medication Fulfillment](./sop/SOP-MF-RJ-INDEX.md). Belum ada artifact integration/architecture khusus yang direferensikan oleh workflow pada revisi ini.
+Tujuh pasang spesifikasi operasional Rawat Jalan tercantum dalam [Indeks SOP Outpatient Apotek](./sop/SOP-APT-RJ-INDEX.md). Belum ada artifact integration/architecture khusus yang direferensikan oleh workflow pada revisi ini.

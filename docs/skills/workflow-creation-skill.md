@@ -314,7 +314,7 @@ This domain is applied through the following business workflows:
 
 | Workflow | General business outcome | Canonical workflow artifact |
 |---|---|---|
-| Outpatient Medication Fulfillment | Resolve outpatient medication demand through handover or an accountable non-fulfillment outcome. | [Workflow](./apotek-rajal-workflow.md) |
+| Outpatient Apotek | Resolve outpatient medication demand through handover or an accountable non-fulfillment outcome. | [Workflow](./apotek-rajal-workflow.md) |
 
 Detailed triggers, sequencing, decisions, exceptions, and handoffs are
 owned by the referenced workflow specification. Domain rules, states,
@@ -330,7 +330,7 @@ Domain ini diterapkan melalui workflow bisnis berikut:
 
 | Workflow | Outcome bisnis umum | Artifact workflow canonical |
 |---|---|---|
-| Outpatient Medication Fulfillment | Menyelesaikan permintaan obat Rawat Jalan melalui handover atau outcome non-fulfillment yang accountable. | [Workflow](./apotek-rajal-workflow-id.md) |
+| Outpatient Apotek | Menyelesaikan permintaan obat Rawat Jalan melalui handover atau outcome non-fulfillment yang accountable. | [Workflow](./apotek-rajal-workflow-id.md) |
 
 Trigger, urutan, keputusan, exception, dan handoff terperinci dimiliki
 oleh spesifikasi workflow yang direferensikan. Business Rules, state,
@@ -480,7 +480,7 @@ List the workflows or cohesive workflow scenarios covered by the document.
 
 | ID | Workflow | Business outcome |
 |---|---|---|
-| `WF-MF-RJ-001` | General Patient Fulfillment | Paid medication is handed over or receives an accountable non-fulfillment outcome. |
+| `WF-APT-RJ-001` | General Patient Fulfillment | Paid medication is handed over or receives an accountable non-fulfillment outcome. |
 
 Workflow identifiers must:
 
@@ -562,7 +562,7 @@ Good:
 
 ```text
 1. Cashier establishes Payment Clearance for the applicable Sales Invoice.
-2. Medication Fulfillment establishes Fulfillment Clearance for the allocated Dispense Order quantity.
+2. Apotek establishes Fulfillment Clearance for the allocated Dispense Order quantity.
 ```
 
 Bad:
@@ -630,7 +630,7 @@ Describe business-responsibility transfers involving another bounded context.
 
 | From | Authoritative business fact | To | Resulting responsibility |
 |---|---|---|---|
-| Payment | Payment Clearance Established | Medication Fulfillment | Evaluate applicable Fulfillment Clearance. |
+| Payment | Payment Clearance Established | Apotek | Evaluate applicable Fulfillment Clearance. |
 
 For every handoff:
 
@@ -664,7 +664,7 @@ Provide a compact matrix mapping each workflow to authoritative sources.
 
 | Workflow ID | Domain rules | States | Domain Events | External authority |
 |---|---|---|---|---|
-| `WF-MF-RJ-001` | `BR-MF-020`, `BR-MF-040` | `Issued`, `Financially Cleared` | `Payment Clearance Established` | Payment |
+| `WF-APT-RJ-001` | `BR-APT-020`, `BR-APT-040` | `Issued`, `Financially Cleared` | `Payment Clearance Established` | Payment |
 
 Also reference:
 

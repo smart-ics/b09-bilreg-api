@@ -386,7 +386,7 @@ Queue Entry mereferensikan Patient Tracker melalui TrackerId, tetapi tidak memil
 - **BR-TRK-042** — Post-Registration Consultation Waiting Time harus diukur dari DoneAt registrasi sampai ServedAt dokter dan tidak boleh menggunakan CreatedAt Queue Entry dokter yang dibuat dari booking.
 - **BR-TRK-043** — Consultation Service Duration harus diukur dari ServedAt Queue Entry dokter sampai DoneAt-nya.
 - **BR-TRK-044** — Pembuatan Pharmacy Queue Entry dari resep atau konsultasi yang selesai tidak boleh diperlakukan sebagai bukti bahwa Patient telah tiba secara fisik di apotek.
-- **BR-TRK-045** — Untuk setiap jalur payer apotek Rawat Jalan V1, `Medication Preparation Started` yang diberikan Medication Fulfillment harus membuat Pharmacy Queue Entry memasuki In Service, mencatat ServedAt, dan menetapkan bukti mulai pelayanan apotek.
+- **BR-TRK-045** — Untuk setiap jalur payer apotek Rawat Jalan V1, `Medication Preparation Started` yang diberikan Apotek harus membuat Pharmacy Queue Entry memasuki In Service, mencatat ServedAt, dan menetapkan bukti mulai pelayanan apotek.
 - **BR-TRK-045a** — Coordinated pickup call apotek Rawat Jalan harus membuat Pharmacy Queue Entry menjadi Done dan mencatat DoneAt. Selesainya antrean tidak boleh menyatakan bahwa Medication Handover telah terjadi.
 - **BR-TRK-046** — Pharmacy Service Duration harus diukur dari ServedAt apotek sampai DoneAt apotek.
 - **BR-TRK-047** — Patient Tracker tidak boleh menyimpulkan posisi fisik, dimulainya perjalanan, selesainya perjalanan, atau kedatangan di ruang tunggu ketika tidak ada interaksi bisnis yang bertanggung jawab.
@@ -570,15 +570,15 @@ Konsultasi selesai dan pekerjaan resep dihasilkan
 ### 10.6 Perform and complete pharmacy service
 
 ```text
-Medication Fulfillment melaporkan Medication Preparation Started
+Apotek melaporkan Medication Preparation Started
   → Pharmacy Queue Entry memasuki In Service
   → ServedAt apotek menggunakan waktu mulai penyiapan
-  → Medication Fulfillment kemudian melaporkan coordinated pickup call
+  → Apotek kemudian melaporkan coordinated pickup call
   → Pharmacy Queue Entry menjadi Done
   → DoneAt apotek menggunakan waktu pickup call
 ```
 
-Lifecycle antrean menggambarkan kemajuan operasional antrean apotek. Lifecycle tersebut tidak membuktikan Final Dispense Review, Patient Education, Medication Dispense, atau Medication Handover. Urutan terperinci apotek Rawat Jalan dimiliki oleh [workflow Outpatient Medication Fulfillment](../apotek/outpatient-medication-fulfillment-workflow-id.md).
+Lifecycle antrean menggambarkan kemajuan operasional antrean apotek. Lifecycle tersebut tidak membuktikan Final Dispense Review, Patient Education, Medication Dispense, atau Medication Handover. Urutan terperinci apotek Rawat Jalan dimiliki oleh [workflow Outpatient Apotek](../apotek/outpatient-apotek-workflow-id.md).
 
 ### 10.7 Resolve multiple Journey Candidates
 
