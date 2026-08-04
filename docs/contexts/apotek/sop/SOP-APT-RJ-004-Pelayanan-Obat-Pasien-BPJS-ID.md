@@ -1,12 +1,14 @@
 # SOP APT-RJ-004 — Melayani Obat untuk Pasien BPJS
 
-**Status dokumen:** Spesifikasi operasional acuan
+**Status dokumen:** Pendamping operasional Bahasa Indonesia
 
 **Konteks domain:** Pelayanan Obat
 
 **Alur kerja:** `WF-APT-RJ-004`
 
-**Dokumen acuan bahasa Inggris:** [SOP APT-RJ-004 — Fulfill Medication for a BPJS Patient](./SOP-APT-RJ-004-Fulfill-Medication-for-a-BPJS-Patient.md)
+**Dokumen acuan bahasa Inggris:** [SOP APT-RJ-004 — Fulfill Medication for a BPJS Patient](./SOP-APT-RJ-004-Pelayanan-Obat-Pasien-BPJS-EN.md)
+
+**Aturan precedence:** Jika terdapat perbedaan semantik, dokumen acuan bahasa Inggris berlaku setelah diverifikasi terhadap WORKFLOW dan DOMAIN yang lebih tinggi; pasangan dokumen harus segera disinkronkan.
 
 **Istilah pada aplikasi:** `Apotek` dan `Apotek Rajal` adalah nama menu yang telah ditetapkan. Nilai status sistem ditulis dalam tanda backtick.
 
@@ -46,7 +48,7 @@ Memberikan langkah yang sama bagi petugas untuk memastikan obat rawat jalan dita
 7. **Staf Apotek** menyelesaikan penyiapan atau peracikan obat dan mencatatnya. **Sistem Apotek** menampilkan tugas penyiapan obat dengan status `Prepared`.
 8. **Staf Apotek** memastikan setiap tugas penyiapan obat yang akan diserahkan sudah berstatus `Prepared` atau sudah memiliki catatan alasan yang jelas bila obat tidak dapat diserahkan.
 9. **Staf Apotek** melakukan satu kali panggilan agar Pasien mengambil obat. **Sistem Antrian Pasien** mengubah antrian menjadi `Done` dan mencatat `DoneAt`.
-10. Saat Pasien atau Keluarga Pasien hadir, **Apoteker** memeriksa penerima yang berhak, melakukan pemeriksaan akhir obat, dan mencatat edukasi yang perlu diberikan.
+10. Saat Pasien atau Keluarga Pasien hadir, **Apoteker** memeriksa penerima yang berhak, melakukan pemeriksaan akhir obat, dan mencatat edukasi yang perlu diberikan. Bila pemeriksaan lulus, **Sistem Apotek** menambahkan catatan pemeriksaan dan menampilkan tugas penyiapan obat berstatus `Reviewed`.
 11. **Sistem Apotek** tidak mengizinkan proses diselesaikan bila pemeriksaan penerima atau pemeriksaan akhir obat belum lengkap.
 12. Setelah mendapat persetujuan **Apoteker**, **Staf Apotek** menyerahkan obat secara fisik.
 13. Dalam satu hasil transaksi, **Sistem Apotek** membuat faktur BPJS dari bagian obat yang dijamin, mencatat obat yang diberikan, dan mencatat penyerahan obat.
@@ -68,8 +70,9 @@ Memberikan langkah yang sama bagi petugas untuk memastikan obat rawat jalan dita
 
 ### 5.3 Pemeriksaan akhir obat tidak lulus
 
-- **Apoteker** mencatat hasil pemeriksaan akhir yang tidak lulus dan tidak menyetujui penyerahan obat.
-- **Sistem Apotek** tidak membuat faktur BPJS maupun catatan penyerahan obat.
+- **Apoteker** mencatat alasan kegagalan dan jumlah obat yang terdampak serta tidak menyetujui penyerahan.
+- **Sistem Apotek** menambahkan catatan pemeriksaan yang tidak dapat diubah, lengkap dengan Apoteker dan waktu keputusan, mengembalikan tugas penyiapan obat dari `Prepared` ke `Preparing`, serta tidak membuat faktur BPJS maupun catatan penyerahan obat.
+- **Staf Apotek** memperbaiki dan menyiapkan kembali obat yang terdampak. **Sistem Apotek** mengembalikan tugas tersebut ke `Prepared`, lalu **Apoteker** melakukan pemeriksaan akhir obat yang baru. Catatan pemeriksaan sebelumnya tetap terlihat dan tidak berubah.
 
 ### 5.4 Pasien tidak mengambil obat
 
@@ -86,7 +89,7 @@ Memberikan langkah yang sama bagi petugas untuk memastikan obat rawat jalan dita
 
 ## 7. Referensi
 
-- [Domain Pelayanan Obat](../apotek-domain-id.md), khususnya `BR-APT-020`–`BR-APT-026`, `BR-APT-029`–`BR-APT-045`, `BR-APT-066`, `BR-APT-068`–`BR-APT-069`, `BR-APT-073`–`BR-APT-079`, `BR-APT-081`–`BR-APT-083`, `BR-APT-088`, `BR-APT-090`, dan `BR-APT-095`.
+- [Domain Pelayanan Obat](../apotek-domain-id.md), khususnya `BR-APT-020`–`BR-APT-026`, `BR-APT-029`–`BR-APT-045`, `BR-APT-066`, `BR-APT-068`–`BR-APT-069`, `BR-APT-073`–`BR-APT-079`, `BR-APT-081`–`BR-APT-083`, `BR-APT-088`, `BR-APT-090`, dan `BR-APT-095`–`BR-APT-096`.
 - [Alur Kerja Pelayanan Obat Rawat Jalan](../outpatient-apotek-workflow-id.md), `WF-APT-RJ-004`.
 - [Domain Sistem Antrian Pasien](../../../contexts/pasien-tracker/TRACKER-DOMAIN-ID.md), `BR-TRK-045`, `BR-TRK-045a`, dan `BR-TRK-046`.
 - [Domain Tata Rekening](../../../contexts/TataRekening/02-domain.md).

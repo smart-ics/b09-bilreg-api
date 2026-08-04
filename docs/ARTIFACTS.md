@@ -119,15 +119,15 @@ Persistent-workspace Phase 2 close-out summary (frontend docs tree): `c012_myhos
 
 | Path | Purpose |
 |------|---------|
-| `docs/contexts/apotek/apotek-domain.md` | Apotek — canonical English business truth for Prescription Review, Pharmacy Sales Order, Sales Invoice, Dispense Order, and cross-setting fulfillment policy |
+| `docs/contexts/apotek/apotek-domain.md` | Apotek — canonical English business truth for Telaah Resep, Sales Order, Sales Invoice, Dispense Order, and cross-setting fulfillment policy |
 | `docs/contexts/apotek/apotek-domain-id.md` | Apotek — Bahasa Indonesia semantic companion (`Pelayanan Obat Pasien`) |
 | `docs/contexts/apotek/outpatient-apotek-workflow.md` | Outpatient Apotek — canonical English workflow from Pharmacy Queue Number acquisition through accountable Medication Handover or non-fulfillment resolution |
 | `docs/contexts/apotek/outpatient-apotek-workflow-id.md` | Outpatient Apotek — Bahasa Indonesia workflow companion for Apotek Rawat Jalan |
-| `docs/contexts/apotek/sop/SOP-APT-RJ-INDEX.md` | Outpatient Apotek — index of seven canonical English SOPs and seven Bahasa Indonesia companions |
+| `docs/contexts/apotek/sop/DAFTAR-SOP-APT-RJ.md` | Outpatient Apotek — index of seven canonical English SOPs and seven Bahasa Indonesia companions |
 
-Cross-setting patient-specific medication acceptance, Pharmacy Sales Order, Sales Invoice, dispensing, handover, and accountable fulfillment resolution. This bounded context applies to outpatient, inpatient, emergency, and Unit Dose Dispensing settings without owning Purchasing or authoritative Inventory balances. The workflow pair owns detailed Rawat Jalan queue, payer, pickup, handover, and no-show sequencing; the domain pair remains authoritative for business truth.
+Cross-setting patient-specific medication acceptance, Sales Order, Sales Invoice, dispensing, handover, and accountable fulfillment resolution. This bounded context applies to outpatient, inpatient, emergency, and Unit Dose Dispensing settings without owning Purchasing or authoritative Inventory balances. The workflow pair owns detailed Rawat Jalan queue, payer, pickup, handover, and no-show sequencing; the domain pair remains authoritative for business truth.
 
-The paired outpatient operational specifications are listed in [`docs/contexts/apotek/sop/SOP-APT-RJ-INDEX.md`](contexts/apotek/sop/SOP-APT-RJ-INDEX.md).
+The paired outpatient operational specifications are listed in [`docs/contexts/apotek/sop/DAFTAR-SOP-APT-RJ.md`](contexts/apotek/sop/DAFTAR-SOP-APT-RJ.md).
 
 ### Tarif (`docs/contexts/tarif/`)
 

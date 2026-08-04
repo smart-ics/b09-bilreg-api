@@ -1,12 +1,14 @@
 # SOP APT-RJ-003 — Melayani Obat untuk Pasien Umum
 
-**Status dokumen:** Spesifikasi operasional acuan
+**Status dokumen:** Pendamping operasional Bahasa Indonesia
 
 **Konteks domain:** Pelayanan Obat
 
 **Alur kerja:** `WF-APT-RJ-003`
 
-**Dokumen acuan bahasa Inggris:** [SOP APT-RJ-003 — Fulfill Medication for a General Patient](./SOP-APT-RJ-003-Fulfill-Medication-for-a-General-Patient.md)
+**Dokumen acuan bahasa Inggris:** [SOP APT-RJ-003 — Fulfill Medication for a General Patient](./SOP-APT-RJ-003-Pelayanan-Obat-Pasien-Umum-EN.md)
+
+**Aturan precedence:** Jika terdapat perbedaan semantik, dokumen acuan bahasa Inggris berlaku setelah diverifikasi terhadap WORKFLOW dan DOMAIN yang lebih tinggi; pasangan dokumen harus segera disinkronkan.
 
 **Istilah pada aplikasi:** `Apotek` dan `Apotek Rajal` adalah nama menu yang telah ditetapkan. Nilai status sistem ditulis dalam tanda backtick.
 
@@ -18,7 +20,7 @@ Memberikan langkah yang sama bagi petugas untuk memperoleh persetujuan pembelian
 
 | Aktor | Jenis | Tanggung jawab |
 |---|---|---|
-| Pasien atau Keluarga Pasien | Petugas | Menyetujui atau menolak pembelian, membayar setelah menyetujui, datang untuk mengambil obat, menerima edukasi, dan menerima obat bila berhak. |
+| Pasien atau Keluarga Pasien | Pengguna layanan | Menyetujui atau menolak pembelian, membayar setelah menyetujui, datang untuk mengambil obat, menerima edukasi, dan menerima obat bila berhak. |
 | Staf Apotek | Petugas | Menyampaikan nilai yang harus dibayar, mencatat transaksi yang disetujui, menyiapkan atau meracik obat setelah tugas penyiapan obat diizinkan, mengoordinasikan kesiapan obat, dan memanggil Pasien untuk mengambil obat. |
 | Kepala Apotek | Petugas | Menyetujui penanganan manual untuk obat yang sudah disiapkan tetapi tidak diambil Pasien. |
 | Kasir atau Sistem Pembayaran | Petugas atau subsistem | Menerima pembayaran dan mengirimkan informasi bahwa tagihan telah lunas. |
@@ -50,7 +52,7 @@ Memberikan langkah yang sama bagi petugas untuk memperoleh persetujuan pembelian
 11. **Staf Apotek** menyelesaikan penyiapan atau peracikan obat dan mencatatnya. **Sistem Apotek** menampilkan tugas penyiapan obat dengan status `Prepared`.
 12. **Staf Apotek** memastikan setiap tugas penyiapan obat yang akan diserahkan sudah berstatus `Prepared` atau sudah memiliki catatan alasan yang jelas bila obat tidak dapat diserahkan.
 13. **Staf Apotek** melakukan satu kali panggilan agar Pasien mengambil obat. **Sistem Antrian Pasien** mengubah antrian menjadi `Done` dan mencatat `DoneAt`.
-14. Saat Pasien atau Keluarga Pasien hadir, **Apoteker** memeriksa penerima yang berhak, melakukan pemeriksaan akhir obat, dan mencatat edukasi yang perlu diberikan.
+14. Saat Pasien atau Keluarga Pasien hadir, **Apoteker** memeriksa penerima yang berhak, melakukan pemeriksaan akhir obat, dan mencatat edukasi yang perlu diberikan. Bila pemeriksaan lulus, **Sistem Apotek** menambahkan catatan pemeriksaan dan menampilkan tugas penyiapan obat berstatus `Reviewed`.
 15. **Sistem Apotek** tidak mengizinkan obat diserahkan sampai pemeriksaan akhir, identitas penerima, dan edukasi yang diperlukan telah dicatat.
 16. Setelah mendapat persetujuan **Apoteker**, **Staf Apotek** menyerahkan obat secara fisik. **Sistem Apotek** mencatat obat yang diberikan dan diserahkan untuk setiap jumlah obat yang berlaku.
 17. **Sistem Persediaan** memberikan catatan resmi bahwa stok telah dikeluarkan. Bila seluruh catatan yang diperlukan sudah tersedia, **Sistem Apotek** menampilkan tugas penyiapan obat berstatus `Completed`.
@@ -73,13 +75,18 @@ Memberikan langkah yang sama bagi petugas untuk memperoleh persetujuan pembelian
 - **Sistem Apotek** tetap mencegah penyiapan obat dimulai selama informasi pelunasan belum tersedia.
 - **Staf Apotek** hanya dapat membatalkan faktur bila status faktur yang ditampilkan mengizinkan. Bila tidak, **Tata Rekening** memberikan penyesuaian keuangan, nota kredit, pengembalian dana, atau hasil koreksi lain yang dapat dipertanggungjawabkan.
 
-### 5.4 Stok kurang atau pemeriksaan akhir obat tidak lulus
+### 5.4 Stok kurang
 
 - **Staf Apotek** mencatat pesanan tertunda atau memilih sumber stok lain yang disetujui untuk obat yang sama. **Staf Apotek** tidak mengganti obat.
-- **Apoteker** mencatat hasil pemeriksaan akhir yang tidak lulus dan tidak menyetujui penyerahan obat.
-- **Sistem Apotek** mencatat obat yang tidak dapat dilayani dan tetap menampilkan urusan keuangan yang harus diselesaikan.
+- **Sistem Apotek** mencatat obat yang tidak dapat dilayani bila pelayanan tidak dapat dilanjutkan dan tetap menampilkan urusan keuangan yang harus diselesaikan.
 
-### 5.5 Pasien tidak mengambil obat
+### 5.5 Pemeriksaan akhir obat tidak lulus
+
+- Bila pemeriksaan akhir obat tidak lulus, **Apoteker** mencatat alasan dan jumlah obat yang terdampak serta tidak menyetujui penyerahan.
+- **Sistem Apotek** menambahkan catatan pemeriksaan yang tidak dapat diubah, lengkap dengan Apoteker dan waktu keputusan, mengembalikan tugas penyiapan obat dari `Prepared` ke `Preparing`, dan tetap mencegah penyerahan.
+- **Staf Apotek** memperbaiki dan menyiapkan kembali obat yang terdampak. **Sistem Apotek** mengembalikan tugas tersebut ke `Prepared`, lalu **Apoteker** melakukan pemeriksaan akhir obat yang baru. Catatan pemeriksaan sebelumnya tetap terlihat dan tidak berubah.
+
+### 5.6 Pasien tidak mengambil obat
 
 - **Kepala Apotek** menerapkan `SOP-APT-RJ-007`. Catatan `DoneAt` pada antrian tidak dihapus atau diubah kembali.
 
@@ -93,7 +100,7 @@ Memberikan langkah yang sama bagi petugas untuk memperoleh persetujuan pembelian
 
 ## 7. Referensi
 
-- [Domain Pelayanan Obat](../apotek-domain-id.md), khususnya `BR-APT-020`–`BR-APT-028`, `BR-APT-033`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-067`–`BR-APT-072`, `BR-APT-076`–`BR-APT-083`, `BR-APT-088`, dan `BR-APT-095`.
+- [Domain Pelayanan Obat](../apotek-domain-id.md), khususnya `BR-APT-020`–`BR-APT-028`, `BR-APT-033`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-067`–`BR-APT-072`, `BR-APT-076`–`BR-APT-083`, `BR-APT-088`, dan `BR-APT-095`–`BR-APT-096`.
 - [Alur Kerja Pelayanan Obat Rawat Jalan](../outpatient-apotek-workflow-id.md), `WF-APT-RJ-003`.
 - [Domain Sistem Antrian Pasien](../../../contexts/pasien-tracker/TRACKER-DOMAIN-ID.md), `BR-TRK-045`, `BR-TRK-045a`, dan `BR-TRK-046`.
 - [Domain Tata Rekening](../../../contexts/TataRekening/02-domain.md).

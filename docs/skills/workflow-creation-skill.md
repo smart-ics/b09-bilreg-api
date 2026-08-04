@@ -7,7 +7,7 @@ Generate a paired English and Bahasa Indonesia business-workflow specification d
 - English: `WORKFLOW.md` or a context-specific equivalent such as `apotek-rajal-workflow.md`.
 - Bahasa Indonesia: `WORKFLOW-ID.md` or the matching context-specific equivalent such as `apotek-rajal-workflow-id.md`.
 
-The English workflow document is the canonical, AI-agent-facing Business Workflow Specification. The Indonesian document is its human-facing semantic companion.
+The English workflow document is the canonical, AI-agent-facing Business Workflow Specification. The Indonesian document is its human-facing semantic companion. It must read as a clear Indonesian business-workflow document, not as English terminology placed in Indonesian sentence structure.
 
 Both documents describe how established domain responsibilities, rules, states, and events coordinate to produce a business outcome.
 
@@ -101,11 +101,12 @@ The primary audience is a domain expert, product owner, trainer, analyst, develo
 The Indonesian version must optimize for:
 
 - natural and understandable Bahasa Indonesia;
+- language that an Indonesian business reader can understand on the first reading;
 - readability during business review and training preparation;
 - semantic parity with the English version; and
 - preservation of established English domain terminology, identifiers, states, and events.
 
-Do not force every English term into Bahasa Indonesia. Preserve canonical English terms when translation would disconnect the workflow from DOMAIN.md, code, events, states, or other artifacts.
+In explanatory prose, use ordinary Indonesian first. Preserve a canonical English term when translation would disconnect the workflow from DOMAIN.md, code, events, states, or other artifacts, but explain its business meaning naturally. Do not retain English merely because it appears in the English source or domain document.
 
 The Indonesian version is not an independent reinterpretation. It must not add, remove, reorder, weaken, or strengthen any trigger, precondition, step, decision, exception, handoff, or outcome relative to the English source.
 
@@ -454,7 +455,7 @@ For each participant, describe its workflow-specific responsibility and the fact
 
 | Participant | Responsibility in this workflow | Handoff condition |
 |---|---|---|
-| Pharmacist | Completes Prescription Review. | Prescription Review Completed. |
+| Pharmacist | Completes Telaah Resep. | Telaah Resep Completed. |
 | Cashier | Establishes payment evidence. | Payment Clearance Established. |
 
 Do not redefine the participant's general business authority. Reference DOMAIN.md for that definition.
@@ -710,12 +711,41 @@ Avoid:
 
 ## Indonesian writing style
 
-- Optimize for human comprehension and business review.
+- Write for an Indonesian domain expert, product owner, or trainer, not for a bilingual technical reader.
 - Use natural Bahasa Indonesia rather than literal word-for-word translation.
+- Prefer a familiar Indonesian word over an English loanword when the meaning remains precise.
+- Explain an unavoidable technical or canonical term in plain Indonesian at its first use. If the exact English term must remain for traceability, write the Indonesian meaning first followed by the exact term in parentheses, except where a required heading or table preserves the canonical identity first.
+- Split long or abstract sentences when that makes the participant, action, condition, handoff, and result easier to understand.
+- Describe the real-world business result before relying on an internal object, state, event, or workflow name.
+- Avoid literal or unnatural constructions such as `membentuk`, `mempertahankan keterlacakan`, `outcome`, `eligible`, `authority`, `coverage`, `disposition`, or `clarification` when a clear Indonesian sentence expresses the same meaning.
+- Do not use English grammar inside an Indonesian sentence.
 - Preserve canonical English workflow names, identifiers, domain terms, states, events, and rule identifiers.
 - Provide `**Indonesia:**` beneath every canonical workflow heading.
 - Translate the explanation, not the identity of authoritative domain facts.
 - Do not mix languages unnecessarily when a common Indonesian expression is clear.
+
+### Indonesian terminology decision order
+
+For every noun, verb, and phrase in Indonesian explanatory prose, choose wording in this order:
+
+1. Use an established official Indonesian business, clinical, legal, financial, or industry term when one exists.
+2. Otherwise use common Indonesian that is precise in the workflow context.
+3. If a technical term has no natural common equivalent, explain it in Indonesian and retain the exact English term once in parentheses.
+4. Preserve the English term unchanged only for identifiers, canonical workflow or domain identities, rule codes, state names, event names, proper names, or terms whose translation would change the intended meaning.
+
+Canonical names and identifiers must remain stable, but they must not replace an understandable explanation of what participants do and what business result follows.
+
+### Indonesian readability test
+
+Before accepting Indonesian workflow prose, ask:
+
+- Would the intended Indonesian stakeholder understand the flow without consulting the English document?
+- Does each step state who acts, what happens in the business, and what result or handoff follows?
+- Is every retained English word necessary under the terminology decision order?
+- If a technical term remains, is its practical business meaning clear from the same sentence or its first-use explanation?
+- Does the sentence sound natural when read aloud in Indonesian?
+
+Revise the prose if any answer is no.
 
 ---
 
@@ -758,7 +788,7 @@ When creating or updating the Indonesian version:
 7. Preserve step order and responsibility ownership.
 8. Preserve Business Rule identifiers, state names, and Domain Event names exactly.
 9. Preserve handoff direction, timing conditions, and traceability references.
-10. Translate explanatory prose by meaning, not word for word.
+10. Translate explanatory prose by meaning, not word for word. Apply the Indonesian terminology decision order and readability test to every overview, responsibility, trigger, precondition, input fact, step, decision, exception, compensation, outcome, handoff, timing statement, and traceability explanation.
 11. Verify that no workflow behavior exists in only one language version.
 12. When the domain workflow section is generalized, preserve the same workflow inventory, general outcome summaries, authority statement, and language-appropriate links in both domain versions.
 
@@ -851,6 +881,14 @@ Then verify bilingual parity:
 ✓ Every Indonesian workflow heading contains an `**Indonesia:**` description.
 
 ✓ Indonesian prose is natural and understandable to humans.
+
+✓ The Indonesian workflow can be understood by its intended stakeholder without consulting the English version.
+
+✓ Common Indonesian wording is used wherever it remains precise; English is retained only for a canonical identity, identifier, proper name, or genuinely necessary technical term.
+
+✓ Each retained technical English term is either clear from context or explained in plain Indonesian at first use.
+
+✓ No Indonesian sentence is a literal English construction or uses English terminology where a common Indonesian expression is clearer.
 
 ✓ No condition, responsibility, sequence, or normative strength changed during translation.
 

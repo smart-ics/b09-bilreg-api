@@ -1,12 +1,14 @@
 # SOP APT-RJ-007 — Menangani Obat Rawat Jalan yang Tidak Diambil
 
-**Status dokumen:** Spesifikasi operasional acuan
+**Status dokumen:** Pendamping operasional Bahasa Indonesia
 
 **Konteks domain:** Pelayanan Obat
 
 **Alur kerja:** `WF-APT-RJ-007`
 
-**Dokumen acuan bahasa Inggris:** [SOP APT-RJ-007 — Resolve Uncollected Outpatient Medication](./SOP-APT-RJ-007-Resolve-Uncollected-Outpatient-Medication.md)
+**Dokumen acuan bahasa Inggris:** [SOP APT-RJ-007 — Resolve Uncollected Outpatient Medication](./SOP-APT-RJ-007-Penanganan-Obat-Tidak-Diambil-EN.md)
+
+**Aturan precedence:** Jika terdapat perbedaan semantik, dokumen acuan bahasa Inggris berlaku setelah diverifikasi terhadap WORKFLOW dan DOMAIN yang lebih tinggi; pasangan dokumen harus segera disinkronkan.
 
 **Istilah pada aplikasi:** `Apotek` dan `Apotek Rajal` adalah nama menu yang telah ditetapkan. Nilai status sistem ditulis dalam tanda backtick.
 

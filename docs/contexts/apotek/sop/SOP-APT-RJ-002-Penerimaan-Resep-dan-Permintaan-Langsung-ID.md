@@ -1,18 +1,41 @@
-# SOP APT-RJ-002 — Menerima Permintaan Obat Rawat Jalan
+# SOP APT-RJ-002 — Menerima Permintaan Obat Pasien Rawat Jalan
 
-**Status dokumen:** Spesifikasi operasional acuan
+**Status dokumen:** Pendamping operasional Bahasa Indonesia
 
 **Konteks domain:** Pelayanan Obat
 
 **Alur kerja:** `WF-APT-RJ-002`
 
-**Dokumen acuan bahasa Inggris:** [SOP APT-RJ-002 — Accept Outpatient Medication Demand](./SOP-APT-RJ-002-Accept-Outpatient-Medication-Demand.md)
+**Dokumen acuan bahasa Inggris:** [SOP APT-RJ-002 — Accept Outpatient Medication Demand](./SOP-APT-RJ-002-Penerimaan-Resep-dan-Permintaan-Langsung-EN.md)
+
+**Aturan precedence:** Jika terdapat perbedaan semantik, dokumen acuan bahasa Inggris berlaku setelah diverifikasi terhadap WORKFLOW dan DOMAIN yang lebih tinggi; pasangan dokumen harus segera disinkronkan.
 
 **Istilah pada aplikasi:** `Apotek` dan `Apotek Rajal` adalah nama menu yang telah ditetapkan. Nilai status sistem ditulis dalam tanda backtick.
 
 ## 1. Tujuan
 
-Memberikan langkah yang sama bagi petugas untuk menerima resep yang telah ditelaah atau permintaan obat langsung yang disetujui. Sistem kemudian membuat pesanan apotek dan tugas utama untuk menyiapkan obat rawat jalan, dengan hubungan yang jelas ke resep atau permintaan asalnya.
+Memberikan langkah yang sama bagi petugas untuk menerima Resep yang telah ditelaah atau Direct Medication Request yang disetujui. Sistem kemudian membentuk Sales Order dan Dispense Order utama untuk pelayanan rawat jalan, dengan keterlacakan yang jelas ke Resep atau permintaan asalnya.
+
+### 1.1 Posisi Patient Medication Demand dalam alur data
+
+`Patient Medication Demand` atau Permintaan Obat Pasien adalah konsep bisnis payung untuk permintaan obat seorang Pasien. Patient Medication Demand bukan transaksi tambahan setelah Resep. Setiap Patient Medication Demand berasal dari tepat satu sumber berikut:
+
+- `Resep`, baik Resep Elektronik maupun Resep Fisik yang telah dicatat; atau
+- `Direct Medication Request`, ketika permintaan obat tanpa Resep diperbolehkan.
+
+Hanya Patient Medication Demand yang diterima yang membentuk `Sales Order`. Sales Order kemudian mengoordinasikan dua jalur turunan yang independen: jalur komersial melalui Billing Allocation menuju Medication Sale yang direpresentasikan oleh `Sales Invoice`, serta jalur pemenuhan fisik melalui Fulfillment Allocation menuju `Dispense Order`.
+
+```text
+Resep ───────────────────┐
+                         ├─ Patient Medication Demand
+Direct Medication Request┘        │
+                                  ├─ ditolak  → tidak ada Sales Order
+                                  └─ diterima → Sales Order
+                                                   ├─ Billing Allocation → Sales Invoice
+                                                   └─ Fulfillment Allocation → Dispense Order
+```
+
+Resep atau Direct Medication Request sumber tetap dipertahankan dan tidak berubah menjadi Sales Order. Sales Invoice dan Dispense Order dapat dibentuk serta berjalan secara independen sesuai kebijakan payer dan fulfillment yang berlaku.
 
 ## 2. Aktor dan Tanggung Jawab
 

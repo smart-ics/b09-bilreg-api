@@ -1,12 +1,14 @@
-# SOP APT-RJ-001 — Menerbitkan Nomor Antrian dan melakukan mappingnya dengan Resep atau Permintaan Obat Langsung
+# SOP APT-RJ-001 — Menerbitkan Nomor Antrian dan Melakukan Mapping dengan Resep atau Permintaan Obat Langsung
 
-**Status dokumen:** Spesifikasi operasional acuan
+**Status dokumen:** Pendamping operasional Bahasa Indonesia
 
 **Konteks domain:** Pelayanan Obat
 
 **Alur kerja:** `WF-APT-RJ-001`
 
-**Dokumen acuan bahasa Inggris:** [SOP APT-RJ-001 — Acquire and Map Outpatient Pharmacy Queue](./SOP-APT-RJ-001-Acquire-and-Map-Outpatient-Pharmacy-Queue.md)
+**Dokumen acuan bahasa Inggris:** [SOP APT-RJ-001 — Acquire and Map Outpatient Pharmacy Queue](./SOP-APT-RJ-001-Antrian-dan-Mapping-EN.md)
+
+**Aturan precedence:** Jika terdapat perbedaan semantik, dokumen acuan bahasa Inggris berlaku setelah diverifikasi terhadap WORKFLOW dan DOMAIN yang lebih tinggi; pasangan dokumen harus segera disinkronkan.
 
 **Istilah pada aplikasi:** `Apotek` dan `Apotek Rajal` adalah nama menu yang telah ditetapkan. Nilai status sistem ditulis dalam tanda backtick.
 
@@ -39,7 +41,7 @@ Menetapkan tata cara penerbitan nomor antrian apotek rawat jalan dan melakukan m
 5. Jika antrian masih berstatus `Unmapped`, **Staf Apotek** dapat memanggil nomor antrian untuk keperluan administrasi. Pemanggilan ini tidak boleh mencatat `ServedAt` ataupun `DoneAt`.
 6. **Pasien atau Keluarga Pasien** menunjukkan nomor antrian beserta resep, bukti registrasi, atau permintaan obat langsung yang tersedia.
 7. **Staf Apotek** memilih antrian yang belum termapping dan mencari resep atau pesanan penjualan apotek yang sesuai.
-8. Jika pasien membawa resep kertas, **Staf Apotek** mencatat resep tersebut sebelum meminta telaah resep. Jika pasien mengajukan permintaan obat langsung, **Staf Apotek** menilainya menurut prosedur penerimaan kebutuhan obat.
+8. Jika pasien membawa resep kertas, **Staf Apotek** mencatat resep tersebut sebelum meminta telaah resep. Jika pasien mengajukan permintaan obat langsung, **Staf Apotek** menilainya menurut prosedur penerimaan permintaan obat.
 9. **Staf Apotek** melakukan mapping antrean secara manual dengan setiap Resep atau Permintaan Obat Langsung yang berhasil diidentifikasi.
 10. **Sistem Apotek** menampilkan mapping yang berhasil dengan status `Mapped` dan tetap menyimpan setiap sumber pelayanan obat sebagai catatan tersendiri.
 11. **Staf Apotek** memastikan seluruh sumber pelayanan obat tampil di bawah nomor antrian yang sama, kemudian melanjutkan pelayanan sesuai SOP profesi dan jenis penanggung biaya yang berlaku.

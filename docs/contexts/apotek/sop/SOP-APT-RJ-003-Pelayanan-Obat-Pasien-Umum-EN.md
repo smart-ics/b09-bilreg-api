@@ -6,7 +6,7 @@
 
 **Workflow:** `WF-APT-RJ-003`
 
-**Bahasa Indonesia companion:** [SOP APT-RJ-003 — Memenuhi Obat untuk Pasien Umum](./SOP-APT-RJ-003-Fulfill-Medication-for-a-General-Patient-ID.md)
+**Bahasa Indonesia companion:** [SOP APT-RJ-003 — Memenuhi Obat untuk Pasien Umum](./SOP-APT-RJ-003-Pelayanan-Obat-Pasien-Umum-ID.md)
 
 **Subsystem terminology status:** `Pharmacy System` and `Outpatient Pharmacy` are established subsystem terms. Other controls are described by operational action because approved target-workflow labels are not available.
 
@@ -31,7 +31,7 @@ Provide a repeatable procedure for obtaining verbal Purchase Confirmation, estab
 ## 3. Preconditions
 
 1. Participating staff are signed in with their required permissions.
-2. Outpatient Queue Mapping, an active Pharmacy Sales Order, Patient-payable Billing Allocations, and a calculated Pricing Snapshot are displayed.
+2. Outpatient Queue Mapping, an active Sales Order, Patient-payable Billing Allocations, and a calculated Pricing Snapshot are displayed.
 3. No Sales Invoice exists for the proposed Patient-payable sale.
 4. An applicable Dispense Order exists or can be established from Fulfillment Allocations.
 
@@ -50,11 +50,11 @@ Provide a repeatable procedure for obtaining verbal Purchase Confirmation, estab
 11. **Pharmacy Staff** completes preparation or compounding and records completion; **Pharmacy System** displays the Dispense Order as `Prepared`.
 12. **Pharmacy Staff** verifies that every Dispense Order intended for the handover is `Prepared` or has an accountable exception outcome.
 13. **Pharmacy Staff** performs one coordinated pickup call; **Patient Tracker** makes the Queue Entry `Done` and records `DoneAt`.
-14. With the Patient or caregiver present, **Pharmacist** verifies the Authorized Recipient, completes Final Dispense Review, and records applicable Patient Education.
+14. With the Patient or caregiver present, **Pharmacist** verifies the Authorized Recipient, completes Final Dispense Review, and records applicable Patient Education. When the review passes, **Pharmacy System** appends the review record and displays the Dispense Order as `Reviewed`.
 15. **Pharmacy System** blocks handover until the review, recipient, and education requirements are recorded.
 16. **Pharmacy Staff** completes the physical handover after Pharmacist authorization; **Pharmacy System** records Medication Dispense and Medication Handover for each applicable quantity.
 17. **Inventory** supplies the authoritative Inventory Issue outcome; **Pharmacy System** displays the Dispense Order as `Completed` when all required outcomes are present.
-18. **Pharmacy System** displays the Pharmacy Sales Order as `Resolved` only when every accepted quantity and commercial consequence is final.
+18. **Pharmacy System** displays the Sales Order as `Resolved` only when every accepted quantity and commercial consequence is final.
 
 ## 5. Operational Exceptions
 
@@ -73,13 +73,18 @@ Provide a repeatable procedure for obtaining verbal Purchase Confirmation, estab
 - **Pharmacy System** keeps Medication Preparation blocked while Payment Clearance is absent.
 - **Pharmacy Staff** cancels only when the displayed Sales Invoice lifecycle permits; otherwise **Tata Rekening** supplies Financial Adjustment, Credit Note, Refund, or another accountable outcome.
 
-### 5.4 Shortage or failed Final Dispense Review
+### 5.4 Shortage
 
 - **Pharmacy Staff** records Backorder or another approved source for the same medication product; no substitution is made.
-- **Pharmacist** records the failed review outcome and does not authorize handover.
-- **Pharmacy System** records the applicable Unfulfilled Medication Outcome and keeps required financial consequences visible.
+- **Pharmacy System** records the applicable Unfulfilled Medication Outcome when fulfillment cannot continue and keeps required financial consequences visible.
 
-### 5.5 Patient does not collect medication
+### 5.5 Final Dispense Review fails
+
+- When Final Dispense Review fails, **Pharmacist** records the reason and affected quantity and does not authorize handover.
+- **Pharmacy System** appends an immutable review record with the Pharmacist and effective business time, returns the Dispense Order from `Prepared` to `Preparing`, and keeps handover blocked.
+- **Pharmacy Staff** corrects and prepares the affected medication again; **Pharmacy System** returns the Dispense Order to `Prepared`, and **Pharmacist** performs a new Final Dispense Review. Previous review records remain visible and unchanged.
+
+### 5.6 Patient does not collect medication
 
 - **Pharmacy Supervisor** applies `SOP-APT-RJ-007`; Queue `DoneAt` is not reversed.
 
@@ -88,12 +93,12 @@ Provide a repeatable procedure for obtaining verbal Purchase Confirmation, estab
 1. The Sales Invoice is visibly financially cleared.
 2. The Dispense Order is `Completed`, and Medication Handover identifies the Authorized Recipient and effective time.
 3. Inventory Issue is displayed as an authoritative Inventory outcome.
-4. The Pharmacy Sales Order is `Resolved`, or remains `Active` with an explicitly displayed unresolved fulfillment or commercial consequence.
+4. The Sales Order is `Resolved`, or remains `Active` with an explicitly displayed unresolved fulfillment or commercial consequence.
 5. Queue `Done` is not used as proof of Medication Handover.
 
 ## 7. References
 
-- [Apotek Domain](../apotek-domain.md), especially `BR-APT-020`–`BR-APT-028`, `BR-APT-033`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-067`–`BR-APT-072`, `BR-APT-076`–`BR-APT-083`, `BR-APT-088`, and `BR-APT-095`.
+- [Apotek Domain](../apotek-domain.md), especially `BR-APT-020`–`BR-APT-028`, `BR-APT-033`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-067`–`BR-APT-072`, `BR-APT-076`–`BR-APT-083`, `BR-APT-088`, and `BR-APT-095`–`BR-APT-096`.
 - [Outpatient Apotek Workflow](../outpatient-apotek-workflow.md), `WF-APT-RJ-003`.
 - [Patient Tracker Domain](../../../contexts/pasien-tracker/TRACKER-DOMAIN.md), `BR-TRK-045`, `BR-TRK-045a`, and `BR-TRK-046`.
 - [Tata Rekening Domain](../../../contexts/TataRekening/02-domain.md).

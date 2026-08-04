@@ -7,7 +7,7 @@ Generate a paired English and Bahasa Indonesia domain specification for a busine
 - English: `DOMAIN.md` or a context-specific equivalent such as `CPOE-DOMAIN.md`.
 - Bahasa Indonesia: `DOMAIN-ID.md` or the matching context-specific equivalent such as `CPOE-DOMAIN-ID.md`.
 
-The English domain document is the canonical, AI-agent-facing Business Specification. The Indonesian document is its human-facing semantic companion.
+The English domain document is the canonical, AI-agent-facing Business Specification. The Indonesian document is its human-facing semantic companion. It must read as a clear Indonesian business document, not as English terminology placed in Indonesian sentence structure.
 
 Both documents describe the business itself, independent of software implementation and operational procedures.
 
@@ -51,16 +51,19 @@ The primary audience is a human stakeholder, domain expert, product owner, analy
 The Indonesian version must optimize for:
 
 - natural and understandable Bahasa Indonesia
+- language that an Indonesian business reader can understand on the first reading
 - readability during domain review and discussion
 - semantic parity with the English version
 - preservation of established English business and technical terminology
 
-Do not force every English term into Bahasa Indonesia. Keep the English term when:
+In explanatory prose, use ordinary Indonesian first. Keep an English term only when:
 
 - it is standard terminology in the business, clinical, DDD, or software domain
 - the Indonesian translation is uncommon or harder to understand
 - translating it would obscure its relationship with code, events, states, policies, or integrations
 - the project already uses the English term as part of its Ubiquitous Language
+
+Do not retain English merely because it appears in the canonical source. A canonical identity may remain in English while its meaning and business effect are explained in natural Indonesian.
 
 Examples of terms that may remain in English include `Clinical Order`, `Order Type`, `Aggregate Root`, `Fulfilment`, `workflow`, `lifecycle`, `domain event`, and state or event names. The applicable terms depend on the bounded context; do not preserve English mechanically when a clear and commonly used Indonesian term exists.
 
@@ -489,12 +492,17 @@ Avoid implementation details.
 
 ## Indonesian writing style
 
-- Optimize for human comprehension and domain review.
+- Write for an Indonesian domain expert or business stakeholder, not for a bilingual technical reader.
 - Use natural Bahasa Indonesia rather than literal word-for-word translation.
-- Preserve English terminology when it is standard, project-established, or more recognizable.
+- Prefer a familiar Indonesian word over an English loanword when the meaning remains precise.
+- Explain an unavoidable technical or canonical term in plain Indonesian at its first use. When the exact English term must remain for traceability, write the Indonesian meaning first followed by the exact term in parentheses, except where a required format already places the canonical English identity first.
+- Split long or abstract sentences when that makes the business actor, condition, rule, and result easier to understand.
+- Describe the real-world business meaning before relying on an internal object, state, or event name.
+- Avoid literal or unnatural constructions such as `membentuk`, `mempertahankan keterlacakan`, `outcome`, `eligible`, `authority`, `coverage`, or `clarification` when a clear Indonesian sentence expresses the same meaning.
+- Do not use English grammar inside an Indonesian sentence.
 - Do not mix languages unnecessarily when a common Indonesian expression is clear.
 - Do not translate identifiers, rule codes, state names, event names, or proper names merely for stylistic consistency.
-- On first use, an optional form such as `Instruksi Klinis (Clinical Order)` may be used when it improves comprehension; subsequent use should prefer the canonical English term.
+- Preserve canonical English identities where required, but do not use them as a substitute for explaining their business meaning.
 
 Forced translation is limited to designated aids in the Indonesian document:
 
@@ -502,6 +510,29 @@ Forced translation is limited to designated aids in the Indonesian document:
 2. The `**Indonesia:**` description beneath every Business Capability heading.
 
 Outside those locations, clarity and common usage take precedence over translation completeness.
+
+### Indonesian terminology decision order
+
+For every noun, verb, and phrase in Indonesian explanatory prose, choose wording in this order:
+
+1. Use an established official Indonesian business, clinical, legal, financial, or industry term when one exists.
+2. Otherwise use common Indonesian that is precise in the bounded context.
+3. If a technical term has no natural common equivalent, explain it in Indonesian and retain the exact English term once in parentheses.
+4. Preserve the English term unchanged only for identifiers, canonical Ubiquitous Language identities, rule codes, state names, event names, proper names, or terms whose translation would change the intended meaning.
+
+The required English identity in a UL row, capability heading, state, or event does not authorize English-heavy prose around it.
+
+### Indonesian readability test
+
+Before accepting Indonesian prose, ask:
+
+- Would the intended Indonesian stakeholder understand it without consulting the English document?
+- Does the sentence explain the business meaning, condition, responsibility, or result instead of only naming a canonical object?
+- Is every retained English word necessary under the terminology decision order?
+- If a technical term remains, is its practical business meaning clear from the same sentence or its first-use explanation?
+- Does the sentence sound natural when read aloud in Indonesian?
+
+Revise the prose if any answer is no.
 
 ---
 
@@ -534,7 +565,7 @@ When creating or updating the Indonesian version:
 5. Preserve Aggregate, Domain Object, state, Domain Event, capability, actor, and workflow identity.
 6. Preserve modality, conditions, exceptions, scope, and ownership.
 7. Preserve tables, diagrams, transition order, and cross-references.
-8. Translate explanatory prose by meaning, not word for word.
+8. Translate explanatory prose by meaning, not word for word. Apply the Indonesian terminology decision order and readability test to every definition, capability description, role description, object explanation, rule, lifecycle explanation, event description, and workflow summary.
 9. Apply forced Indonesian translations only in the designated UL and capability fields.
 10. Verify that no business fact exists in only one version.
 
@@ -595,6 +626,14 @@ Then verify bilingual quality:
 ✓ Standard or commonly used English terms remain intact outside the forced-translation fields.
 
 ✓ The Indonesian prose is natural and understandable to humans.
+
+✓ The Indonesian document can be understood by its intended stakeholder without consulting the English version.
+
+✓ Common Indonesian wording is used wherever it remains precise; English is retained only for a canonical identity, identifier, proper name, or genuinely necessary technical term.
+
+✓ Each retained technical English term is either clear from context or explained in plain Indonesian at first use.
+
+✓ No Indonesian sentence is a literal English construction or uses English terminology where a common Indonesian expression is clearer.
 
 ✓ No rule, exception, boundary, or normative strength changed during translation.
 

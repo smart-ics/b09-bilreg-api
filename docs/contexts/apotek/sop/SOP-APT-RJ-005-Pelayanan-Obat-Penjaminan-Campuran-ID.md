@@ -1,12 +1,14 @@
 # SOP APT-RJ-005 — Melayani Obat dengan Penjaminan Campuran
 
-**Status dokumen:** Spesifikasi operasional acuan
+**Status dokumen:** Pendamping operasional Bahasa Indonesia
 
 **Konteks domain:** Pelayanan Obat
 
 **Alur kerja:** `WF-APT-RJ-005`
 
-**Dokumen acuan bahasa Inggris:** [SOP APT-RJ-005 — Fulfill Mixed-Coverage Medication](./SOP-APT-RJ-005-Fulfill-Mixed-Coverage-Medication.md)
+**Dokumen acuan bahasa Inggris:** [SOP APT-RJ-005 — Fulfill Mixed-Coverage Medication](./SOP-APT-RJ-005-Pelayanan-Obat-Penjaminan-Campuran-EN.md)
+
+**Aturan precedence:** Jika terdapat perbedaan semantik, dokumen acuan bahasa Inggris berlaku setelah diverifikasi terhadap WORKFLOW dan DOMAIN yang lebih tinggi; pasangan dokumen harus segera disinkronkan.
 
 **Istilah pada aplikasi:** `Apotek` dan `Apotek Rajal` adalah nama menu yang telah ditetapkan. Nilai status sistem ditulis dalam tanda backtick.
 
@@ -53,7 +55,7 @@ Memberikan langkah yang sama bagi petugas ketika satu pesanan obat berisi obat y
 12. Saat penyiapan obat pertama dimulai, **Sistem Apotek** mencatat `Medication Preparation Started`. **Sistem Antrian Pasien** mengubah antrian menjadi `In Service` dan mencatat satu `ServedAt`.
 13. **Sistem Apotek** menampilkan setiap tugas penyiapan obat yang akan diserahkan sebagai `Prepared` atau dengan catatan alasan yang jelas bila obat tidak dapat diserahkan.
 14. **Staf Apotek** melakukan satu kali panggilan agar Pasien mengambil obat. **Sistem Antrian Pasien** mengubah antrian yang sama menjadi `Done` dan mencatat satu `DoneAt`.
-15. Saat Pasien atau Keluarga Pasien hadir, **Apoteker** memeriksa penerima yang berhak, melakukan pemeriksaan akhir obat, dan mencatat edukasi yang perlu diberikan.
+15. Saat Pasien atau Keluarga Pasien hadir, **Apoteker** memeriksa penerima yang berhak, melakukan pemeriksaan akhir obat, dan mencatat edukasi yang perlu diberikan. Bila pemeriksaan lulus, **Sistem Apotek** menambahkan catatan pemeriksaan dan menampilkan tugas penyiapan obat berstatus `Reviewed`.
 16. Setelah mendapat persetujuan **Apoteker**, **Staf Apotek** menyerahkan obat secara fisik.
 17. Ketika obat berhasil diserahkan, **Sistem Apotek** membuat faktur BPJS untuk bagian obat yang dijamin. Aplikasi juga mencatat obat yang diberikan dan diserahkan untuk seluruh jumlah obat, serta tetap menyimpan pemisahan menurut penanggung biayanya.
 18. **Sistem Persediaan** mengirimkan catatan pengeluaran stok. **Sistem Apotek** menampilkan perkembangan akhir tugas penyiapan obat dan pesanan apotek.
@@ -75,7 +77,13 @@ Memberikan langkah yang sama bagi petugas ketika satu pesanan obat berisi obat y
 - **Sistem Apotek** mencegah penyiapan dan pengambilan bersama untuk jumlah obat yang belum mendapat persetujuan jaminan atau belum lunas.
 - **Staf Apotek** menyelesaikan proses penjaminan atau pembayaran yang berlaku sebelum melanjutkan.
 
-### 5.4 Faktur yang sudah ada, obat yang tidak dapat dilayani, atau Pasien yang tidak datang memerlukan koreksi
+### 5.4 Pemeriksaan akhir obat tidak lulus
+
+- **Apoteker** mencatat alasan kegagalan dan jumlah obat yang terdampak serta tidak menyetujui penyerahan.
+- **Sistem Apotek** menambahkan catatan pemeriksaan yang tidak dapat diubah, lengkap dengan Apoteker dan waktu keputusan, mengembalikan tugas penyiapan obat terdampak dari `Prepared` ke `Preparing`, mencegah penyerahan bersama, dan tetap tidak membuat faktur BPJS.
+- **Staf Apotek** memperbaiki dan menyiapkan kembali obat yang terdampak. **Sistem Apotek** mengembalikan tugas tersebut ke `Prepared`, lalu **Apoteker** melakukan pemeriksaan akhir obat yang baru. Catatan pemeriksaan sebelumnya tetap terlihat dan tidak berubah.
+
+### 5.5 Faktur yang sudah ada, obat yang tidak dapat dilayani, atau Pasien yang tidak datang memerlukan koreksi
 
 - **Sistem Apotek** tetap memisahkan urusan BPJS dan urusan bagian yang dibayar Pasien.
 - **Tata Rekening** memberikan koreksi yang diperlukan untuk bagian yang telah dibayar. Faktur BPJS tetap belum dibuat sampai obat berhasil diserahkan.
@@ -90,7 +98,7 @@ Memberikan langkah yang sama bagi petugas ketika satu pesanan obat berisi obat y
 
 ## 7. Referensi
 
-- [Domain Pelayanan Obat](../apotek-domain-id.md), khususnya `BR-APT-015`, `BR-APT-020`–`BR-APT-028`, `BR-APT-040`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-070`–`BR-APT-078`, dan `BR-APT-090`–`BR-APT-095`.
+- [Domain Pelayanan Obat](../apotek-domain-id.md), khususnya `BR-APT-015`, `BR-APT-020`–`BR-APT-028`, `BR-APT-040`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-070`–`BR-APT-078`, dan `BR-APT-090`–`BR-APT-096`.
 - [Alur Kerja Pelayanan Obat Rawat Jalan](../outpatient-apotek-workflow-id.md), `WF-APT-RJ-005`.
 - [Domain Sistem Antrian Pasien](../../../contexts/pasien-tracker/TRACKER-DOMAIN-ID.md).
 - [Domain Tata Rekening](../../../contexts/TataRekening/02-domain.md).
