@@ -384,7 +384,8 @@ A Queue Entry references a Patient Tracker by TrackerId but does not own or modi
 - **BR-TRK-042** — Post-Registration Consultation Waiting Time shall be measured from registration DoneAt to physician ServedAt and shall not use a booking-created physician Queue Entry's CreatedAt.
 - **BR-TRK-043** — Consultation Service Duration shall be measured from the physician Queue Entry's ServedAt to its DoneAt.
 - **BR-TRK-044** — Pharmacy Queue Entry creation from a prescription or completed consultation shall not be treated as proof that the Patient physically arrived at the pharmacy.
-- **BR-TRK-045** — For the V1 outpatient pharmacy flow, saving the confirmed drug-sale transaction shall establish ServedAt and the pharmacy service-start evidence.
+- **BR-TRK-045** — For every V1 outpatient pharmacy payer path, `Medication Preparation Started` supplied by Medication Fulfillment shall cause the Pharmacy Queue Entry to enter In Service, record ServedAt, and establish pharmacy service-start evidence.
+- **BR-TRK-045a** — The coordinated outpatient pharmacy pickup call shall cause the Pharmacy Queue Entry to become Done and record DoneAt. Queue completion shall not assert that Medication Handover has occurred.
 - **BR-TRK-046** — Pharmacy Service Duration shall be measured from pharmacy ServedAt to pharmacy DoneAt.
 - **BR-TRK-047** — Patient Tracker shall not infer physical position, travel start, travel completion, or waiting-room arrival when no accountable business interaction occurred.
 
@@ -567,17 +568,15 @@ Consultation completes and prescription work is generated
 ### 10.6 Perform and complete pharmacy service
 
 ```text
-Pharmacy confirms the Patient's drug purchase
-  → Drug-sale transaction established
+Medication Fulfillment reports Medication Preparation Started
   → Pharmacy Queue Entry enters In Service
-  → Pharmacy ServedAt and service-start evidence use the confirmation time
-  → Dispensing and Patient payment may proceed independently
-  → Medicine handed to the Patient
+  → Pharmacy ServedAt uses the preparation-start time
+  → Medication Fulfillment later reports the coordinated pickup call
   → Pharmacy Queue Entry becomes Done
-  → Pharmacy completion evidence recorded
+  → Pharmacy DoneAt uses the pickup-call time
 ```
 
-The service-start Evidence Reference may identify the drug-sale transaction, while completion may use Queue Evidence Reference when no stronger completion transaction exists.
+The queue lifecycle describes operational pharmacy queue progress. It does not prove Final Dispense Review, Patient Education, Medication Dispense, or Medication Handover. Detailed outpatient pharmacy sequencing is owned by the [Outpatient Medication Fulfillment workflow](../../context/apotek/outpatient-medication-fulfillment-workflow.md).
 
 ### 10.7 Resolve multiple Journey Candidates
 

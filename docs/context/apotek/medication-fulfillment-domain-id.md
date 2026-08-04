@@ -8,7 +8,7 @@
 
 **Sumber canonical English:** [medication-fulfillment-domain.md](./medication-fulfillment-domain.md)
 
-**Context bisnis terkait:** [CPOE](../../contexts/cpoe/CPOE-DOMAIN-ID.md), [Policy Apotek Rawat Jalan](./apotek-rajal-domain-id.md), [Tata Rekening](../../contexts/TataRekening/02-domain.md)
+**Context bisnis terkait:** [CPOE](../../contexts/cpoe/CPOE-DOMAIN-ID.md), [Patient Tracker](../../contexts/pasien-tracker/TRACKER-DOMAIN-ID.md), [Tata Rekening](../../contexts/TataRekening/02-domain.md)
 
 ## 1. Gambaran Umum Bisnis
 
@@ -35,7 +35,8 @@ Context ini mencakup:
 4. pembentukan Dispense Order dan physical dispensing;
 5. commercial atau coverage clearance untuk fulfillment;
 6. Medication Dispense dan Medication Handover; dan
-7. shortage, substitution, backorder, cancellation, return, dan outcome non-fulfillment lainnya.
+7. shortage, substitution, backorder, cancellation, return, dan outcome non-fulfillment lainnya; dan
+8. kebijakan workflow Rawat Jalan yang saat ini telah didefinisikan untuk antrean, payer, pickup, dan no-show.
 
 Context ini berlaku lintas Rawat Jalan, Rawat Inap, IGD, dan Unit Dose Dispensing.
 
@@ -55,7 +56,9 @@ Context ini bergantung pada context terkait tanpa mengambil alih authority merek
 
 Purchasing, supplier management, replenishment, transfer gudang, enterprise accounting, dan Medication Administration berada di luar context ini.
 
-**Kebutuhan alignment yang diketahui:** spesifikasi Apotek Rawat Jalan yang ada dibuat sebelum pemisahan lintas setting ini dan menurunkan `Sale` secara langsung dari `Order Dispensing`. Relasi lama tersebut tidak mengatur shared target model dan harus diselaraskan sebelum perubahan implementasi terkait dianggap selesai. Kebijakan khusus Rawat Jalan mengenai antrean, pickup, dan no-show tetap dimiliki spesifikasi Apotek Rawat Jalan.
+Identitas dan lifecycle antrean Rawat Jalan tetap dimiliki secara eksternal oleh Patient Tracker. Medication Fulfillment memiliki keputusan bisnis Rawat Jalan yang mengaitkan Pharmacy Queue Entry dengan permintaan obat yang berlaku serta memiliki kebijakan payer, pickup, handover, dan no-show setelah pengaitan tersebut.
+
+Untuk antrean apotek Rawat Jalan, Patient Tracker mencatat `CreatedAt` ketika Queue Number diterbitkan, `ServedAt` ketika Dispense Order pertama yang berlaku memasuki `Preparing`, dan `DoneAt` ketika Pharmacy Staff melakukan pickup call. Milestone antrean tersebut menggambarkan kemajuan operasional antrean dan tidak membuktikan Medication Handover.
 
 ### 1.4 Pemisahan bisnis utama
 
@@ -97,13 +100,16 @@ Prescription tidak berubah menjadi Pharmacy Sales Order. Keputusan profesional y
 | Fulfillment Allocation | Alokasi Pemenuhan | Penetapan jumlah dari Sales Order Line kepada Dispense Order. |
 | Medication Sale | Penjualan Obat | Transaksi komersial yang dibentuk dari satu atau lebih Billing Allocation milik satu Pharmacy Sales Order. |
 | Sales Invoice | Faktur Jual | Dokumen komersial authoritative dan Aggregate Root yang merepresentasikan satu Medication Sale. |
+| Legacy DU | DU Legacy | Transaksi legacy `Trs.DU (DO-Bill)` yang menggabungkan concern billing obat dan delivery stok; pada target model, faktanya direpresentasikan melalui satu Sales Invoice dan satu atau lebih Dispense Order yang dikorelasikan oleh alokasi Pharmacy Sales Order. |
 | Billing Line | Baris Tagihan | Satu obat atau layanan yang berlaku beserta jumlah, harga, diskon, dan nilai di dalam Sales Invoice. |
 | Pricing Snapshot | Rekaman Harga Transaksi | Dasar komersial immutable yang digunakan ketika Billing Allocation dan Sales Invoice dibentuk. |
 | Payer | Penjamin | Pasien, BPJS, asuransi, perusahaan, atau pihak lain yang diharapkan menanggung charge obat. |
 | Financial Charge | Tagihan Finansial | Konsekuensi finansial yang diberikan kepada Tata Rekening dari Medication Sale. |
-| Purchase Confirmation | Konfirmasi Pembelian | Keputusan Pasien Umum untuk melanjutkan setelah nilai komersial yang berlaku disampaikan. |
+| Purchase Confirmation | Konfirmasi Pembelian | Keputusan lisan Pasien Umum untuk melanjutkan setelah Pharmacy Staff menyampaikan nilai yang dihitung sebelum Sales Invoice dibentuk. Aktivitas workflow ini tidak disimpan sebagai business object atau transaksi terpisah. |
+| General Patient | Pasien Umum | Pasien yang Medication Sale-nya mewajibkan Purchase Confirmation dan pembayaran Pasien sebelum Medication Preparation. |
+| BPJS Patient | Pasien BPJS | Pasien yang Medication Sale-nya ditanggung berdasarkan kebijakan BPJS tanpa Purchase Confirmation atau pembayaran Pasien. |
 | Payment Clearance | Izin Pembayaran | Evidence bahwa persyaratan pembayaran yang diperlukan telah terpenuhi. |
-| Coverage Clearance | Izin Penjamin | Evidence bahwa payer yang berlaku mengotorisasi fulfillment tanpa pembayaran langsung Pasien. |
+| Coverage Clearance | Izin Penjamin | Evidence bahwa payer yang berlaku mengotorisasi fulfillment tanpa pembayaran langsung Pasien. Untuk fulfillment BPJS Rawat Jalan, evidence ini menggabungkan SEP yang valid bagi encounter dengan coverage item-level berdasarkan mapping Fornas authoritative. |
 | Fulfillment Clearance | Izin Pemenuhan | Otorisasi bisnis yang mengizinkan Dispense Order berjalan berdasarkan kebijakan payment atau coverage yang berlaku. |
 | Financial Adjustment | Penyesuaian Finansial | Koreksi accountable terhadap Medication Sale atau konsekuensi finansialnya. |
 | Credit Note | Nota Kredit | Dokumen komersial yang mengurangi atau membalik nilai Sales Invoice yang telah diterbitkan. |
@@ -118,7 +124,7 @@ Prescription tidak berubah menjadi Pharmacy Sales Order. Keputusan profesional y
 | Inventory Issue | Pengeluaran Stok | Pengakuan authoritative Inventory bahwa obat telah keluar dari lokasi persediaan. |
 | Medication Preparation | Penyiapan Obat | Pengambilan, penghitungan, pelabelan, pengemasan, dan penyiapan obat lainnya untuk fulfillment. |
 | Compounding | Peracikan Obat | Penyiapan produk obat dari bahan atau komponen untuk kebutuhan fulfillment tertentu. |
-| Final Dispense Review | Telaah Akhir Obat | Pemeriksaan profesional final bahwa obat yang disiapkan sesuai Dispense Order dan dapat dilanjutkan ke handover. |
+| Final Dispense Review | Telaah Obat | Telaah profesional final oleh Pharmacist dengan Pasien atau caregiver hadir setelah pickup call dan sebelum Medication Handover. |
 | Prepared Medication | Obat Siap Diserahkan | Obat yang penyiapan fisiknya selesai dan menunggu telaah akhir atau handover. |
 | In-Transit Medication | Obat Dalam Proses Penyerahan | Obat yang telah disiapkan dan dikeluarkan dari ketersediaan umum tetapi belum diserahkan kepada Authorized Recipient. |
 | Medication Dispense | Realisasi Dispensing | Fakta accountable bahwa sejumlah obat benar-benar disediakan untuk Pasien. |
@@ -140,6 +146,11 @@ Prescription tidak berubah menjadi Pharmacy Sales Order. Keputusan profesional y
 | Medication Return | Retur Obat | Pengembalian accountable atas obat yang sebelumnya disiapkan, dipindahkan, atau diserahkan. |
 | Return to Stock | Pengembalian ke Stok | Penerimaan authoritative oleh Inventory atas obat retur yang eligible menjadi stok tersedia. |
 | No-Show | Pasien Tidak Hadir | Outcome Rawat Jalan ketika Pasien tidak mengambil obat dalam batas layanan yang berlaku. |
+| Pharmacy Queue Entry | Entri Antrean Apotek | Partisipasi Pasien dalam antrean apotek Rawat Jalan yang identitas dan lifecycle-nya dimiliki Patient Tracker. |
+| Outpatient Queue Mapping | Pengaitan Antrean Rawat Jalan | Pengaitan accountable antara Pharmacy Queue Entry dengan Prescription, Direct Medication Request, Pharmacy Sales Order, atau sumber permintaan obat traceable lain yang berlaku. |
+| Tracker Mapping | Pengaitan melalui Tracker | Outpatient Queue Mapping yang dibentuk secara otomatis dari evidence Patient Tracker atau registrasi yang valid. |
+| Manual Mapping | Pengaitan Manual | Outpatient Queue Mapping yang dibentuk Pharmacy Staff setelah Queue Number dan permintaan obat yang berlaku diidentifikasi. |
+| Pharmacy Service Start Evidence | Bukti Mulai Layanan Apotek | Fakta `Medication Preparation Started` yang menyebabkan Pharmacy Queue Entry Rawat Jalan mencatat `ServedAt`. |
 | Care Setting | Setting Pelayanan | Setting operasional yang menentukan kebijakan fulfillment, seperti Rawat Jalan, Rawat Inap, atau IGD. |
 | Outpatient Fulfillment | Pelayanan Obat Rawat Jalan | Medication Fulfillment berdasarkan kebijakan kedatangan, antrean, pembayaran, pickup, dan no-show Rawat Jalan. |
 | Inpatient Fulfillment | Pelayanan Obat Rawat Inap | Medication Fulfillment berdasarkan kebijakan bangsal, supply terjadwal, dan retur Rawat Inap. |
@@ -209,6 +220,18 @@ Menyelesaikan shortage, discrepancy, substitution, backorder, cancellation, expi
 
 Mempertahankan keterlacakan kuantitatif dan sumber lintas outcome Rawat Jalan, Rawat Inap, IGD, billing, dispensing, dan handover.
 
+### 3.11 Outpatient Queue Coordination
+
+**Indonesia:** Koordinasi Antrean Rawat Jalan
+
+Mengaitkan Pharmacy Queue Entry yang dimiliki context eksternal dengan permintaan obat yang berlaku melalui Tracker Mapping atau Manual Mapping tanpa menjadikan kedatangan dalam antrean sebagai prasyarat Prescription Review.
+
+### 3.12 Outpatient Payer, Pickup, and No-Show Resolution
+
+**Indonesia:** Penyelesaian Payer, Pengambilan, dan No-Show Rawat Jalan
+
+Menerapkan kebijakan clearance, timing invoice, pickup, handover, dan no-show untuk Pasien Umum dan BPJS dengan tetap memisahkan outcome komersial dan fulfillment.
+
 ## 4. Aktor & Peran
 
 ### 4.1 Prescribing Clinician
@@ -217,15 +240,15 @@ Memiliki Prescription asli dan merespons Clinical Clarification. Prescribing Cli
 
 ### 4.2 Pharmacist
 
-Memiliki Prescription Review Outcome, Medication Substitution yang diotorisasi secara profesional, Final Dispense Review, dan Patient Education yang berlaku.
+Memiliki Prescription Review Outcome, Medication Substitution yang diotorisasi selama Prescription Review, Final Dispense Review, verifikasi Authorized Recipient, dan Patient Education yang berlaku. Pharmacist tidak memiliki pemanggilan administratif antrean Rawat Jalan. Authority Medication Substitution berakhir ketika Pharmacy Sales Order dibentuk.
 
 ### 4.3 Pharmacy Staff
 
-Mengoordinasikan permintaan yang diterima, alokasi Sales Order, interaksi administratif Rawat Jalan, workflow penyiapan, dan handover accountable sesuai authority yang diberikan.
+Mengoordinasikan permintaan yang diterima, alokasi Sales Order, interaksi administratif Rawat Jalan, workflow penyiapan, dan handover accountable sesuai authority yang diberikan. Untuk fulfillment Rawat Jalan, Pharmacy Staff memanggil Queue Number, membentuk Manual Mapping, menyampaikan nilai Pasien Umum yang dihitung sebelum Sales Invoice dibentuk, menyimpan Sales Invoice yang telah dikonfirmasi, dan melakukan pickup call. Untuk Direct Medication Request, Pharmacy Staff menerima sesuai authority, meminta persetujuan Pharmacist ketika diperlukan, atau menolak tanpa membentuk request maupun Pharmacy Sales Order.
 
 ### 4.4 Pharmacy Technician
 
-Melakukan Medication Preparation dan Compounding sesuai Dispense Order serta menyelesaikan discrepancy penyiapan di bawah supervisi profesional.
+Melakukan Medication Preparation dan Compounding sesuai Dispense Order. Ketika stok tidak mendukung fulfillment setelah Pharmacy Sales Order dibentuk, Pharmacy Technician menentukan Backorder atau fulfillment dari sumber stok lain yang disetujui untuk produk obat yang sama sesuai authority. Pharmacy Technician tidak boleh melakukan substitusi obat.
 
 ### 4.5 Patient or Caregiver
 
@@ -281,7 +304,11 @@ Merepresentasikan obat dan jumlah aktual yang disediakan untuk Pasien, termasuk 
 
 Merepresentasikan pemindahan kepada Authorized Recipient, termasuk verifikasi penerima, handover time, destination bila berlaku, dan tanggung jawab Patient Education.
 
-### 5.10 Unfulfilled Medication Outcome
+### 5.10 Outpatient Queue Mapping
+
+Merepresentasikan pengaitan accountable antara Pharmacy Queue Entry yang dimiliki context eksternal dan permintaan obat yang berlaku. Object ini mencatat apakah pengaitan terjadi melalui Tracker Mapping atau Manual Mapping tanpa memiliki Queue Number atau lifecycle antrean.
+
+### 5.11 Unfulfilled Medication Outcome
 
 Merepresentasikan alasan final suatu Accepted Quantity tidak dipenuhi dan mengidentifikasi Copy Prescription, penutupan backorder, return, atau financial correction yang diperlukan.
 
@@ -305,7 +332,7 @@ Aggregate memastikan alokasi komersial dan fulfillment tetap dapat ditelusuri se
 
 **Aggregate Root:** `Sales Invoice`
 
-Aggregate merepresentasikan satu Medication Sale. Aggregate menjaga Billing Line, Pricing Snapshot, Payer, Purchase Confirmation bila berlaku, financial disposition, Credit Note, refund, dan outcome Financial Charge tetap konsisten.
+Aggregate merepresentasikan satu Medication Sale. Aggregate menjaga Billing Line, Pricing Snapshot, Payer, financial disposition, Credit Note, refund, dan outcome Financial Charge tetap konsisten. Purchase Confirmation lisan Pasien Umum dibuktikan oleh pembentukan Sales Invoice yang accountable dan tidak disimpan sebagai object terpisah.
 
 Sales Invoice mereferensikan tepat satu Pharmacy Sales Order tetapi dapat mencakup satu atau lebih Sales Order Line miliknya.
 
@@ -323,6 +350,8 @@ Satu Pharmacy Sales Order dapat memiliki nol atau lebih Sales Invoice dan nol at
 
 Korelasi bisnisnya dinyatakan melalui Billing Allocation, Fulfillment Allocation, dan Fulfillment Clearance pada tingkat Sales Order Line dan jumlah. Penggunaan Pharmacy Sales Order yang sama tidak dengan sendirinya menetapkan bahwa setiap Sales Invoice memberikan clearance kepada setiap Dispense Order.
 
+Outpatient Queue Mapping merupakan relasi traceable kepada Pharmacy Queue Entry yang dimiliki context eksternal, bukan Aggregate Root Medication Fulfillment. Patient Tracker tetap authoritative atas Queue Session, Queue Number, dan lifecycle antrean.
+
 ## 7. Aturan Bisnis
 
 ### 7.1 Sumber dan penerimaan profesional
@@ -330,7 +359,7 @@ Korelasi bisnisnya dinyatakan melalui Billing Allocation, Fulfillment Allocation
 - **BR-MF-001** — Patient Medication Demand harus berasal dari tepat satu Prescription atau Direct Medication Request.
 - **BR-MF-002** — Prescription asli dan intent klinisi harus tetap dimiliki oleh authority clinical order terkait.
 - **BR-MF-003** — Setiap Prescription harus menyelesaikan Prescription Review sebelum barisnya masuk ke Pharmacy Sales Order.
-- **BR-MF-004** — Hanya Pharmacist yang boleh menetapkan Prescription Review Outcome dan Medication Substitution yang diotorisasi secara profesional.
+- **BR-MF-004** — Hanya Pharmacist yang boleh menetapkan Prescription Review Outcome dan mengotorisasi Medication Substitution, serta Medication Substitution hanya boleh terjadi selama Prescription Review sebelum Pharmacy Sales Order dibentuk.
 - **BR-MF-005** — Prescription Review Outcome harus mencatat disposition untuk setiap Prescription Line yang ditelaah.
 - **BR-MF-006** — Prescription yang rejected tidak boleh membentuk Pharmacy Sales Order.
 - **BR-MF-007** — Prescription yang partially approved dapat membentuk Pharmacy Sales Order yang hanya berisi Accepted Medication Line.
@@ -384,14 +413,14 @@ Korelasi bisnisnya dinyatakan melalui Billing Allocation, Fulfillment Allocation
 - **BR-MF-043** — Fulfillment Clearance harus mengidentifikasi jumlah Dispense Order yang diotorisasi dan supporting commercial evidence.
 - **BR-MF-044** — Satu Sales Invoice dapat mendukung clearance beberapa Dispense Order, dan satu Dispense Order dapat bergantung pada beberapa commercial allocation ketika diwajibkan kebijakan.
 - **BR-MF-045** — Sales Invoice yang paid atau financially cleared tidak menjamin fulfillment berhasil ketika terjadi shortage, discrepancy, expiry, atau exception sah lainnya.
-- **BR-MF-046** — Financial clearance yang diikuti non-fulfillment harus menghasilkan backorder, substitution, Credit Note, Refund, atau resolution lain yang disetujui dan accountable.
+- **BR-MF-046** — Financial clearance yang diikuti non-fulfillment harus menghasilkan Backorder, fulfillment dari sumber stok lain yang disetujui untuk produk obat yang sama, Credit Note, Refund, atau resolution lain yang disetujui dan accountable. Kondisi tersebut tidak boleh mensubstitusi Sales Order Line setelah Pharmacy Sales Order dibentuk.
 
 ### 7.6 Partial fulfillment, UDD, dan exception
 
 - **BR-MF-047** — Partial Fulfillment harus mempertahankan jumlah fulfilled, unresolved, dan unfulfilled secara terpisah.
 - **BR-MF-048** — Unit Dose Dispensing dapat membagi satu Sales Order Line menjadi beberapa Dispense Cycle dan Dispense Order.
 - **BR-MF-049** — Dose Window harus memandu perencanaan fulfillment dan tidak boleh menyatakan Medication Administration.
-- **BR-MF-050** — Medication Substitution harus mempertahankan obat yang diminta, obat yang disediakan, responsible authority, alasan, dan jumlah yang terpengaruh.
+- **BR-MF-050** — Medication Substitution selama Prescription Review harus mempertahankan obat yang semula diminta, substitusi yang diterima, Pharmacist yang bertanggung jawab, alasan, dan jumlah yang terpengaruh. Setelah Pharmacy Sales Order dibentuk, identitas obat pada Sales Order Line tidak boleh disubstitusi; penggantian klinis kemudian memerlukan Prescription yang dikoreksi atau diganti dan keputusan Prescription Review baru.
 - **BR-MF-051** — Medication Shortage atau Stock Discrepancy tidak boleh mengubah Prescription asli atau menghapus Sales Invoice yang sudah ada.
 - **BR-MF-052** — Medication Return harus mengidentifikasi Dispense Order sumber, jumlah, alasan, dan disposition Inventory finalnya.
 - **BR-MF-053** — Return to Stock hanya boleh terjadi ketika Inventory menerima obat retur berdasarkan kebijakannya sendiri.
@@ -405,6 +434,44 @@ Korelasi bisnisnya dinyatakan melalui Billing Allocation, Fulfillment Allocation
 - **BR-MF-058** — Keputusan material mengenai review, allocation, invoice, clearance, dispensing, handover, exception, dan correction harus mempertahankan responsible party dan effective business time.
 - **BR-MF-059** — Source Traceability harus dipertahankan dari Prescription atau Direct Medication Request melalui Pharmacy Sales Order, Sales Invoice, Dispense Order, dan final outcome.
 - **BR-MF-060** — Outcome bisnis yang completed atau cancelled tidak boleh dihapus; koreksi kemudian harus menambahkan correcting fact yang accountable.
+
+### 7.8 Kebijakan workflow Rawat Jalan
+
+- **BR-MF-061** — Pharmacist dapat melakukan Prescription Review segera setelah Prescription tersedia; kedatangan Pasien dan Outpatient Queue Mapping tidak boleh menjadi prasyarat.
+- **BR-MF-062** — Outpatient Queue Mapping harus mengaitkan record bisnis yang sudah ada dan tidak boleh membentuk atau mengubah Prescription, Prescription Review Outcome, atau Pharmacy Sales Order.
+- **BR-MF-063** — Tracker Mapping harus digunakan ketika evidence tracker atau registrasi yang valid menemukan permintaan obat yang berlaku; Tracker Mapping yang gagal harus beralih ke Manual Mapping.
+- **BR-MF-064** — Pharmacy Queue Entry yang diterbitkan langsung atau belum teridentifikasi harus tetap unmapped sampai Pharmacy Staff mengidentifikasi dan mengaitkan permintaan obat yang berlaku.
+- **BR-MF-065** — Pharmacy Staff harus memiliki pemanggilan administratif antrean dan pickup; tanggung jawab tersebut tidak boleh dipindahkan kepada Pharmacist.
+- **BR-MF-066** — Dalam alur normal Electronic Prescription BPJS dengan Tracker Mapping berhasil, Pasien hanya memerlukan satu pemanggilan apotek Rawat Jalan, yaitu pickup call setelah setiap Dispense Order yang berlaku mencapai `Prepared`.
+- **BR-MF-067** — Outpatient Queue Mapping dan Purchase Confirmation Pasien Umum dapat diselesaikan dalam satu interaksi loket ketika Billing Allocation dan nilai yang dihitung telah tersedia. Ketika Tracker Mapping selesai tanpa Pasien hadir di loket, Pharmacy Staff harus memanggil Queue Number untuk interaksi Purchase Confirmation sebelum Sales Invoice dibentuk; administrative call ini tidak menetapkan `ServedAt` atau `DoneAt`.
+- **BR-MF-068** — Dispense Order Rawat Jalan dan Stock Reservation-nya dapat dibentuk sebelum kedatangan Pasien atau Outpatient Queue Mapping, tetapi Medication Preparation tetap harus mengikuti kebijakan Fulfillment Clearance yang berlaku.
+- **BR-MF-069** — Obat yang disiapkan untuk pickup Rawat Jalan harus tetap menjadi In-Transit Medication sampai Medication Handover yang accountable atau disposition return.
+- **BR-MF-070** — Sebelum Sales Invoice Pasien Umum tersedia, Pharmacy Staff harus menyampaikan nilai yang dihitung dari Billing Allocation dan Pricing Snapshot yang berlaku serta memperoleh Purchase Confirmation lisan. Penyimpanan transaksi yang telah dikonfirmasi membentuk Sales Invoice dari Billing Allocation tersebut; object atau transaksi Purchase Confirmation terpisah tidak disimpan.
+- **BR-MF-071** — Ketika Pasien Umum menolak Purchase Confirmation sebelum transaksi disimpan, Sales Invoice tidak boleh dibentuk dan Stock Reservation yang tidak digunakan harus dilepas melalui Inventory. Sales Invoice yang dibentuk setelah konfirmasi hanya dapat dibatalkan selama lifecycle-nya mengizinkan; konsekuensi issued atau financially cleared harus mengikuti `BR-MF-027`.
+- **BR-MF-072** — Medication Preparation Pasien Umum tidak boleh dimulai sebelum Payment Clearance membentuk Fulfillment Clearance yang diwajibkan.
+- **BR-MF-073** — Pasien BPJS tidak boleh diminta melakukan Purchase Confirmation atau pembayaran Pasien; jumlah Patient-payable harus nol dan payment disposition harus `Not Required`, sedangkan nilai gross atau covered dapat tetap bukan nol.
+- **BR-MF-074** — Medication Preparation BPJS dapat dimulai ketika Outpatient Queue Mapping, Dispense Order yang berlaku, Coverage Clearance, dan Fulfillment Clearance tersedia; keberadaan Sales Invoice tidak boleh menjadi prasyarat.
+- **BR-MF-075** — Untuk kebijakan BPJS Rawat Jalan saat ini, Sales Invoice hanya boleh dibentuk sebagai bagian dari Medication Handover yang berhasil dikonfirmasi; pembentukan Sales Invoice dan penyelesaian handover harus menjadi satu outcome bisnis accountable.
+- **BR-MF-076** — Pharmacy Staff harus memanggil Pasien untuk pickup Rawat Jalan setelah setiap Dispense Order dalam coordinated pickup mencapai `Prepared`. Pharmacist kemudian melakukan Final Dispense Review dengan Pasien atau caregiver hadir sebelum Medication Handover.
+- **BR-MF-077** — Dalam interaksi loket yang sama setelah pickup call, Pharmacist harus memverifikasi Authorized Recipient, menyelesaikan Final Dispense Review, memberikan Patient Education yang berlaku, dan baru kemudian menyelesaikan Medication Handover Rawat Jalan.
+- **BR-MF-078** — Medication Handover Rawat Jalan yang berhasil harus menyelesaikan jumlah Dispense Order yang berlaku dan meminta outcome Inventory Issue authoritative terkait.
+- **BR-MF-079** — No-Show BPJS sebelum Medication Handover tidak boleh membentuk atau membatalkan Sales Invoice. Penyelesaian manual obat tidak diambil yang diotorisasi harus membuat Dispense Order terkait `Expired`, meminta disposition return Inventory yang accountable, dan hanya mengizinkan Pharmacy Sales Order menjadi `Resolved` dengan alasan `Collection Window Expired` setelah setiap Accepted Quantity dan konsekuensi komersial memiliki outcome final.
+- **BR-MF-080** — No-Show Pasien Umum setelah pembayaran harus menggunakan penyelesaian manual obat tidak diambil yang sama untuk konsekuensi fulfillment, tetapi Pharmacy Sales Order harus tetap `Active` sampai Tata Rekening atau financial authority yang bertanggung jawab memberikan Credit Note, Refund, atau outcome komersial final lain yang accountable.
+- **BR-MF-081** — `Medication Preparation Started` harus menjadi Pharmacy Service Start Evidence bagi setiap jalur payer Rawat Jalan dan menyebabkan Patient Tracker mencatat `ServedAt`. Pembentukan Sales Invoice dan Purchase Confirmation tidak boleh menetapkan `ServedAt` apotek Rawat Jalan.
+- **BR-MF-082** — Patient Tracker harus tetap authoritative atas identitas Pharmacy Queue Entry, Queue Number, dan lifecycle antrean meskipun Medication Fulfillment memiliki Outpatient Queue Mapping dan tujuan pemanggilan.
+- **BR-MF-083** — User tidak boleh menginput Legacy DU atau baris Sales Invoice obat independen secara manual; tindakan user hanya dapat memicu pembentukan Sales Invoice dari Billing Allocation yang accountable.
+- **BR-MF-084** — Satu Pharmacy Queue Entry dapat dimappingkan ke satu atau beberapa Prescription atau Direct Medication Request. Setiap demand yang dimappingkan harus mempertahankan Prescription Review bila berlaku, Pharmacy Sales Order, alokasi Sales Invoice, Dispense Order, dan lifecycle accountable masing-masing.
+- **BR-MF-085** — Mapping beberapa medication demand ke satu Pharmacy Queue Entry harus mengoordinasikan satu pelayanan Rawat Jalan dan tidak boleh menggabungkan Pharmacy Sales Order, Sales Invoice, atau Dispense Order masing-masing.
+- **BR-MF-086** — Dalam satu normal outpatient fulfillment episode, satu Pharmacy Sales Order aktif harus dikoordinasikan melalui satu Dispense Order aktif. Pharmacy Queue Entry yang sama dapat mengoordinasikan beberapa pasangan Sales Order dan Dispense Order tersebut.
+- **BR-MF-087** — Tampilan progress per demand pada antrean harus berupa projection fakta Medication Fulfillment untuk setiap demand yang dimappingkan; Patient Tracker tidak boleh menjadi authoritative atas state Prescription Review, Sales Invoice, atau Dispense Order.
+- **BR-MF-088** — Satu coordinated pickup call hanya boleh dilakukan setelah setiap Dispense Order yang hendak diserahkan mencapai `Prepared` atau memperoleh outcome exception yang accountable.
+- **BR-MF-089** — Direct Medication Request harus diterima Pharmacy Staff sesuai authority, dirujuk untuk persetujuan Pharmacist ketika diwajibkan, atau ditolak. Request yang ditolak tidak boleh membentuk record Direct Medication Request maupun Pharmacy Sales Order.
+- **BR-MF-090** — Coverage Clearance BPJS Rawat Jalan harus memerlukan SEP yang valid untuk encounter terkait dan coverage Fornas item-level authoritative untuk jumlah yang diberi clearance.
+- **BR-MF-091** — Ketika satu Pharmacy Sales Order memiliki jumlah yang ditanggung BPJS dan dibayar Pasien, Pharmacy Staff harus membentuk Billing Allocation terpisah untuk tanggung jawab payer tersebut. Alokasi covered membentuk Sales Invoice BPJS dan alokasi Patient-payable membentuk Sales Invoice Pasien Umum terpisah.
+- **BR-MF-092** — Dalam mixed-coverage fulfillment, Sales Invoice Pasien Umum hanya boleh dibentuk setelah Purchase Confirmation lisan, sedangkan Sales Invoice BPJS hanya boleh dibentuk bersama Medication Handover yang berhasil berdasarkan `BR-MF-075`.
+- **BR-MF-093** — Coordinated pickup call mixed coverage harus menunggu sampai setiap jumlah yang hendak diserahkan memperoleh Coverage Clearance atau Payment Clearance yang berlaku dan Dispense Order-nya mencapai `Prepared`.
+- **BR-MF-094** — Jika Pasien menolak bagian non-covered sebelum Sales Invoice-nya dibentuk, alokasi Pasien Umum harus memperoleh outcome declined atau commercially unallocated yang accountable, sedangkan bagian BPJS dapat dilanjutkan secara independen.
+- **BR-MF-095** — Patient Tracker harus mencatat `DoneAt` apotek Rawat Jalan ketika Pharmacy Staff melakukan coordinated pickup call. Selesainya antrean tidak membuktikan Final Dispense Review, Patient Education, Medication Dispense, atau Medication Handover.
 
 ## 8. State Machines & Lifecycles
 
@@ -486,6 +553,36 @@ Accepted Quantity
 
 Cabang billing dan fulfillment berkembang secara independen. Resolution Sales Order final memerlukan rekonsiliasi kedua cabang, bukan jumlah dokumen yang identik.
 
+### 8.6 Relasi Outpatient Queue Mapping
+
+```text
+Unmapped
+  -> Mapped
+       method: Tracker Mapping | Manual Mapping
+```
+
+Relasi ini mengaitkan permintaan obat dengan Pharmacy Queue Entry yang dimiliki context eksternal. Relasi ini tidak menggantikan lifecycle antrean Patient Tracker dan tidak mengubah state Prescription Review.
+
+### 8.7 Lifecycle pickup dan handover Rawat Jalan
+
+```text
+Prepared
+  -> Ready for Pickup
+       -> Patient Called
+            -> Recipient Verified
+                 -> Final Review Completed
+                      -> Education Provided
+                           -> Handed Over
+
+Prepared, Ready for Pickup, or Patient Called
+  -> No-Show
+       -> penyelesaian manual obat tidak diambil
+            -> Dispense Order Expired
+            -> alasan resolution Collection Window Expired
+```
+
+Pickup call menyelesaikan antrean Patient Tracker, tetapi tidak menyelesaikan Medication Handover. Final Dispense Review, verifikasi Authorized Recipient, dan Patient Education dilakukan dengan Pasien atau caregiver hadir setelah panggilan tersebut. Konsekuensi komersial yang berlaku bergantung pada payer. Pasien Umum dapat telah memiliki Sales Invoice yang financially cleared, sedangkan kebijakan BPJS saat ini baru membentuk Sales Invoice bersama Medication Handover yang berhasil.
+
 ## 9. Domain Events
 
 | Domain Event | Makna bisnis |
@@ -493,6 +590,7 @@ Cabang billing dan fulfillment berkembang secara independen. Resolution Sales Or
 | Prescription Review Started | Pharmacist memulai penilaian profesional atas Prescription. |
 | Clinical Clarification Requested | Suatu masalah memerlukan clarification sebelum review dapat diselesaikan. |
 | Prescription Review Completed | Setiap baris yang ditelaah memperoleh professional disposition final. |
+| Outpatient Queue Mapped | Pharmacy Queue Entry telah dikaitkan secara accountable dengan permintaan obat yang berlaku. |
 | Direct Medication Request Accepted | Permintaan non-resep yang diizinkan telah diterima Farmasi. |
 | Pharmacy Sales Order Established | Permintaan obat yang diterima tersedia untuk alokasi komersial dan fulfillment. |
 | Billing Allocation Established | Jumlah atau nilai Sales Order dialokasikan kepada Medication Sale. |
@@ -506,9 +604,11 @@ Cabang billing dan fulfillment berkembang secara independen. Resolution Sales Or
 | Stock Reserved | Inventory mengamankan stok untuk Dispense Order. |
 | Medication Preparation Started | Penyiapan fisik dimulai berdasarkan Dispense Order yang telah released. |
 | Medication Prepared | Obat yang dialokasikan menyelesaikan penyiapan fisik. |
-| Final Dispense Review Completed | Prepared Medication lulus pemeriksaan profesional akhir yang diperlukan. |
+| Final Dispense Review Completed | Dengan Pasien atau caregiver hadir setelah pickup call, Prepared Medication lulus pemeriksaan profesional akhir yang diperlukan. |
+| Patient Called for Pickup | Pharmacy Staff memanggil Pasien untuk Medication Handover Rawat Jalan. |
 | Medication Dispensed | Sejumlah obat disediakan secara accountable untuk Pasien. |
 | Medication Handed Over | Obat dipindahkan kepada Authorized Recipient. |
+| Outpatient No-Show Recorded | Pasien tidak mengambil obat dalam batas layanan Rawat Jalan yang berlaku. |
 | Medication Shortage Identified | Stok tersedia tidak dapat mendukung jumlah fulfillment yang dimaksud. |
 | Medication Substitution Authorized | Authority yang accountable menyetujui penggantian obat yang diminta. |
 | Dispense Order Backordered | Jumlah unresolved dipertahankan untuk fulfillment kemudian. |
@@ -518,137 +618,15 @@ Cabang billing dan fulfillment berkembang secara independen. Resolution Sales Or
 | Medication Returned | Obat yang sebelumnya disiapkan atau disediakan telah dikembalikan. |
 | Sales Invoice Credited | Credit Note mengurangi atau membalik konsekuensi Sales Invoice. |
 | Refund Required | Financial resolution memerlukan pengembalian dana yang telah diselesaikan. |
+| Pharmacy Service Started | `Medication Preparation Started` menetapkan evidence `ServedAt` apotek Rawat Jalan. |
 | Pharmacy Sales Order Resolved | Setiap Accepted Quantity dan konsekuensi komersial yang diperlukan memperoleh outcome final yang accountable. |
 
 ## 10. Workflow Bisnis
 
-### 10.1 Accept a Prescription and establish a Pharmacy Sales Order
+Domain ini diterapkan melalui spesifikasi workflow sesuai Care Setting. Aturan domain, Aggregate boundary, state, lifecycle, dan Domain Events dalam dokumen ini tetap authoritative.
 
-**Indonesia:** Menerima Prescription dan membentuk Pharmacy Sales Order
+| Workflow | Outcome bisnis umum | Artifact workflow canonical |
+|---|---|---|
+| Outpatient Medication Fulfillment | Mengoordinasikan pengambilan antrean, penerimaan permintaan obat, clearance payer, dispensing, pickup, handover, dan penyelesaian non-fulfillment Rawat Jalan yang accountable. | [Bahasa Indonesia](./outpatient-medication-fulfillment-workflow-id.md) · [English](./outpatient-medication-fulfillment-workflow.md) |
 
-```text
-Prescription tersedia
-  -> Pharmacist melakukan Prescription Review
-  -> setiap Prescription Line memperoleh disposition
-  -> Accepted Medication Line diidentifikasi
-  -> Pharmacy Sales Order dibentuk
-  -> Source Traceability ke Prescription asli dipertahankan
-```
-
-Jika tidak ada baris yang diterima, Pharmacy Sales Order tidak dibentuk.
-
-### 10.2 Accept a Direct Medication Request
-
-**Indonesia:** Menerima Direct Medication Request
-
-```text
-Direct Medication Request diterima
-  -> kebijakan penerimaan yang berlaku diselesaikan
-  -> baris obat yang diterima diidentifikasi
-  -> Pharmacy Sales Order dibentuk
-```
-
-Prescription tidak dibentuk hanya untuk mendukung direct request.
-
-### 10.3 Allocate one Sales Order into multiple Sales Invoices
-
-**Indonesia:** Mengalokasikan satu Sales Order ke beberapa Sales Invoice
-
-```text
-Pharmacy Sales Order aktif
-  -> Billing Allocation membagi Sales Order Line yang berlaku
-  -> satu atau lebih Medication Sale dibentuk
-  -> setiap Medication Sale direpresentasikan oleh satu Sales Invoice
-  -> setiap Billing Line mempertahankan sumber Sales Order
-```
-
-Pembagian dapat mengikuti payer, periode komersial, covered quantity, atau dasar bisnis lain yang disetujui.
-
-### 10.4 Allocate one Sales Order into multiple Dispense Orders
-
-**Indonesia:** Mengalokasikan satu Sales Order ke beberapa Dispense Order
-
-```text
-Pharmacy Sales Order aktif
-  -> Fulfillment Allocation membagi Sales Order Line yang berlaku
-  -> satu atau lebih Dispense Order dibentuk
-  -> setiap Dispense Order mengikuti kebijakan Care Setting dan Dispense Cycle
-```
-
-Pembagian Dispense Order independen dari pembagian Sales Invoice.
-
-### 10.5 Clear and fulfill medication
-
-**Indonesia:** Memberikan clearance dan memenuhi obat
-
-```text
-Sales Invoice atau dasar coverage yang disetujui tersedia
-  -> Payment Clearance atau Coverage Clearance dibentuk
-  -> Fulfillment Clearance mengotorisasi jumlah Dispense Order yang berlaku
-  -> stok direservasi
-  -> obat disiapkan
-  -> Final Dispense Review selesai
-  -> Medication Dispense dicatat
-  -> Medication Handover selesai
-```
-
-Urutan persis pembentukan invoice, reservasi stok, dan penyiapan mengikuti kebijakan payer dan Care Setting, tetapi clearance yang diwajibkan harus tersedia sebelum controlled fulfillment point menurut kebijakan tersebut.
-
-### 10.6 Unit Dose Dispensing
-
-**Indonesia:** Unit Dose Dispensing
-
-```text
-Pharmacy Sales Order Rawat Inap aktif
-  -> Accepted Quantity direncanakan lintas Dose Window
-  -> setiap Dispense Cycle memperoleh Fulfillment Allocation
-  -> satu atau lebih Dispense Order dibentuk
-  -> obat disiapkan dan ditelaah per cycle
-  -> Ward Delivery mencatat Medication Handover
-  -> cycle masa depan tetap dapat diubah secara independen selama belum fulfilled
-```
-
-Ward Delivery tidak mencatat Medication Administration.
-
-### 10.7 Resolve paid medication that cannot be fulfilled
-
-**Indonesia:** Menyelesaikan obat yang telah dibayar tetapi tidak dapat dipenuhi
-
-```text
-Sales Invoice financially cleared
-  -> Dispense Order mengalami shortage atau discrepancy
-  -> pihak bertanggung jawab menilai resolution yang tersedia
-       -> fulfillment kemudian melalui Backorder
-       -> Medication Substitution yang diotorisasi
-       -> fulfillment dari sumber stok lain yang disetujui
-       -> cancellation dengan Credit Note atau Refund
-       -> Unfulfilled Medication Outcome lain yang accountable
-  -> jumlah Sales Order dan konsekuensi komersial direkonsiliasi
-```
-
-Prescription dan fakta finansial sebelumnya tetap dapat ditelusuri.
-
-### 10.8 Resolve outpatient No-Show
-
-**Indonesia:** Menyelesaikan No-Show Rawat Jalan
-
-```text
-Prepared Medication siap untuk handover Rawat Jalan
-  -> Pasien tidak mengambil dalam batas layanan yang berlaku
-  -> No-Show ditetapkan
-  -> Dispense Order mengikuti kebijakan expiry atau cancellation
-  -> obat dikembalikan ketika eligible
-  -> konsekuensi komersial paid, covered, atau uninvoiced diselesaikan
-```
-
-### 10.9 Complete a Pharmacy Sales Order
-
-**Indonesia:** Menyelesaikan Pharmacy Sales Order
-
-```text
-Seluruh Billing Allocation mencapai final commercial disposition
-  + seluruh Accepted Quantity mencapai outcome fulfilled atau accountable unfulfilled
-  -> Pharmacy Sales Order menjadi Resolved
-```
-
-Resolution tidak mengharuskan jumlah Sales Invoice dan Dispense Order sama.
+Trigger, urutan, keputusan, alternative, exception, compensation, handoff, dan postcondition terperinci untuk fulfillment Rawat Jalan dimiliki oleh spesifikasi workflow yang direferensikan. Workflow terperinci untuk Care Setting lain memerlukan artifact workflow tersendiri di masa depan.

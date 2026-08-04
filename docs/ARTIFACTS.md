@@ -13,7 +13,12 @@
    - [`docs/DATABASE.md`](DATABASE.md) — SQL, tables, audit columns
    - [`docs/NAMING.md`](NAMING.md) — naming conventions
    - [`docs/WORKFLOW.md`](WORKFLOW.md) — operational UX / queue / workspace (global only)
-4. **Skills** (implementation generation):
+4. **Skills** (artifact and implementation generation):
+   - [`docs/skills/domain-creation-skill.md`](skills/domain-creation-skill.md) — create the canonical bilingual domain pair first
+   - [`docs/skills/workflow-creation-skill.md`](skills/workflow-creation-skill.md) — derive the canonical bilingual workflow pair from an established domain
+   - [`docs/skills/sop-creation-skill.md`](skills/sop-creation-skill.md) — derive bilingual operator procedures from approved business artifacts
+   - [`docs/skills/architecture-creation-skill.md`](skills/architecture-creation-skill.md) — define codebase-grounded technical realization
+   - [`docs/skills/integration-document-creation-skill.md`](skills/integration-document-creation-skill.md) — define bounded-context collaboration contracts
    - [`docs/skills/feature-model-generation.md`](skills/feature-model-generation.md)
    - [`docs/skills/feature-persistence-generation.md`](skills/feature-persistence-generation.md)
    - [`docs/skills/use-case-generation.md`](skills/use-case-generation.md)
@@ -114,14 +119,12 @@ Persistent-workspace Phase 2 close-out summary (frontend docs tree): `c012_myhos
 
 | Path | Purpose |
 |------|---------|
-| `docs/context/apotek/apotek-rajal-domain.md` | Apotek Rajal — outpatient-specific pharmacy workflow and policy; shared medication-order, Sales Invoice, and dispensing semantics are owned by Medication Fulfillment |
-| `docs/context/apotek/apotek-rajal-domain-id.md` | Apotek Rajal — Bahasa Indonesia semantic companion for outpatient-specific workflow and policy |
-| `docs/context/apotek/medication-fulfillment-domain.md` | Medication Fulfillment — canonical English business truth for Prescription Review, Pharmacy Sales Order, Sales Invoice, Dispense Order, and cross-setting fulfillment |
-| `docs/context/apotek/medication-fulfillment-domain-id.md` | Medication Fulfillment — Bahasa Indonesia semantic companion (`Pelayanan Obat Pasien`) for human domain review |
+| `docs/context/apotek/medication-fulfillment-domain.md` | Medication Fulfillment — canonical English business truth for Prescription Review, Pharmacy Sales Order, Sales Invoice, Dispense Order, and cross-setting fulfillment policy |
+| `docs/context/apotek/medication-fulfillment-domain-id.md` | Medication Fulfillment — Bahasa Indonesia semantic companion (`Pelayanan Obat Pasien`) |
+| `docs/context/apotek/outpatient-medication-fulfillment-workflow.md` | Outpatient Medication Fulfillment — canonical English workflow from Pharmacy Queue Number acquisition through accountable Medication Handover or non-fulfillment resolution |
+| `docs/context/apotek/outpatient-medication-fulfillment-workflow-id.md` | Outpatient Medication Fulfillment — Bahasa Indonesia workflow companion for Apotek Rawat Jalan |
 
-Cross-setting patient-specific medication acceptance, Pharmacy Sales Order, Sales Invoice, dispensing, handover, and accountable fulfillment resolution. This bounded context applies to outpatient, inpatient, emergency, and Unit Dose Dispensing settings without owning Purchasing or authoritative Inventory balances.
-
-When shared medication-fulfillment semantics conflict with the earlier Apotek Rajal model, the Medication Fulfillment domain pair is authoritative; Apotek Rajal remains authoritative only for outpatient-specific policy.
+Cross-setting patient-specific medication acceptance, Pharmacy Sales Order, Sales Invoice, dispensing, handover, and accountable fulfillment resolution. This bounded context applies to outpatient, inpatient, emergency, and Unit Dose Dispensing settings without owning Purchasing or authoritative Inventory balances. The workflow pair owns detailed Rawat Jalan queue, payer, pickup, handover, and no-show sequencing; the domain pair remains authoritative for business truth.
 
 ### Tarif (`docs/contexts/tarif/`)
 
