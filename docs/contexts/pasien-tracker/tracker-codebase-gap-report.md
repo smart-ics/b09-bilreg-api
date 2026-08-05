@@ -5,7 +5,7 @@
 **Date:** 2026-07-21  
 **Authoritative business definition:** `docs/contexts/pasien-tracker/TRACKER-DOMAIN.md`  
 **Assessment type:** Static codebase investigation plus a bounded, non-database unit-test run  
-**Implementation scope:** `src/bilreg`, `src/farinv`, and the relevant Taksaka maintenance worker
+**Implementation scope:** `src/bilreg` (including Bilreg and Farinv projects) and the relevant Taksaka maintenance worker
 
 ## 1. Executive Summary
 

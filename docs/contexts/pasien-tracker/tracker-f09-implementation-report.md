@@ -117,11 +117,11 @@ Farinv Delivered (+ DeliveredAt)   → Tracker DoneAt      | Apotek-Done (queue 
 
 | Path | Change |
 |---|---|
-| [`AntrianEntryModel.cs`](../../../src/farinv/Farinv.Domain/SalesContext/AntrianFeature/AntrianEntryModel.cs) | **M** — `PasienTrackerId`, `ServedAt`, `CreateIdentified`, `ConfirmSale` |
-| [`AntrianModel.cs`](../../../src/farinv/Farinv.Domain/SalesContext/AntrianFeature/AntrianModel.cs) | **M** — `AddEntryByTracker`, `ConfirmPharmacySale`, find-by-tracker |
-| [`FARIN_AntrianEntry.sql`](../../../src/farinv/Farinv.Sqldb/SalesContext/AntrianFeature/FARIN_AntrianEntry.sql) | **M** — additive columns in CREATE |
+| [`AntrianEntryModel.cs`](../../../src/bilreg/Farinv.Domain/SalesContext/AntrianFeature/AntrianEntryModel.cs) | **M** — `PasienTrackerId`, `ServedAt`, `CreateIdentified`, `ConfirmSale` |
+| [`AntrianModel.cs`](../../../src/bilreg/Farinv.Domain/SalesContext/AntrianFeature/AntrianModel.cs) | **M** — `AddEntryByTracker`, `ConfirmPharmacySale`, find-by-tracker |
+| [`FARIN_AntrianEntry.sql`](../../../src/bilreg/Farinv.Sqldb/SalesContext/AntrianFeature/FARIN_AntrianEntry.sql) | **M** — additive columns in CREATE |
 | DTO/DAL/Repo/ViewDto/`AntrianDal` list projection | **M** — map new columns |
-| [`AntrianController.cs`](../../../src/farinv/Farinv.Api/Controllers/SalesContext/AntrianFeature/AntrianController.cs) | **M** — routes `ByTracker` / `ConfirmSale` / `Deliver` (refs cmds landed in F-10) |
+| [`AntrianController.cs`](../../../src/bilreg/Farinv.Api/Controllers/SalesContext/AntrianFeature/AntrianController.cs) | **M** — routes `ByTracker` / `ConfirmSale` / `Deliver` (refs cmds landed in F-10) |
 | `Farinv.Sqldb.sqlproj` / `Farinv.Test.csproj` | **M** |
 
 **Note:** At `be331b42` alone, controller/domain reference types (`Que*Cmd`, `PharmacyTrackerIdentity`) that are **missing from that tree**. Treat `be331b42` as incomplete without `5b7627df`.
@@ -186,13 +186,13 @@ Response shape: `PharmacyQueueEntryResponse` (`AntrianId`, `NoAntrian`, `PasienT
 ## 6. Verification
 
 ```text
-dotnet test src/farinv/Farinv.Test/Farinv.Test.csproj --filter "FullyQualifiedName~Pharmacy|FullyQualifiedName~AntrianEntryModelPharmacy|FullyQualifiedName~AntrianModelPharmacy"
+dotnet test src/bilreg/Farinv.Test/Farinv.Test.csproj --filter "FullyQualifiedName~Pharmacy|FullyQualifiedName~AntrianEntryModelPharmacy|FullyQualifiedName~AntrianModelPharmacy"
 dotnet test src/bilreg/Bilreg.Test/Bilreg.Test.csproj --filter "FullyQualifiedName~PharmacyQueueEvidence"
 ```
 
 Result at implementation time: **8 passed** (Farinv) + **3 passed** (Bilreg).
 
-**DB migration (ops):** run [`FARIN_AntrianEntry_M1_TrackerServed_Alter.sql`](../../../src/farinv/Farinv.Sqldb/SalesContext/AntrianFeature/FARIN_AntrianEntry_M1_TrackerServed_Alter.sql) on Farinv database before deploying ConfirmSale/`ServedAt` persistence.
+**DB migration (ops):** run [`FARIN_AntrianEntry_M1_TrackerServed_Alter.sql`](../../../src/bilreg/Farinv.Sqldb/SalesContext/AntrianFeature/FARIN_AntrianEntry_M1_TrackerServed_Alter.sql) on Farinv database before deploying ConfirmSale/`ServedAt` persistence.
 
 ---
 

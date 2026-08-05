@@ -185,7 +185,7 @@ Result at implementation time: **15 passed**.
 Farinv companion tests (same commit; F-09 operational):
 
 ```text
-dotnet test src/farinv/Farinv.Test/Farinv.Test.csproj --filter "FullyQualifiedName~Pharmacy|FullyQualifiedName~AntrianEntryModelPharmacy"
+dotnet test src/bilreg/Farinv.Test/Farinv.Test.csproj --filter "FullyQualifiedName~Pharmacy|FullyQualifiedName~AntrianEntryModelPharmacy"
 ```
 
 ---
