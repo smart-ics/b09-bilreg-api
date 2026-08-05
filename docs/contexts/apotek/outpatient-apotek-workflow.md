@@ -23,8 +23,10 @@ Pharmacy Queue Entry and medication demand
   -> Outpatient Queue Mapping
   -> Telaah Resep or direct-request acceptance
   -> Sales Order
-       -> Billing Allocation -> Sales Invoice according to payer timing
-       -> Fulfillment Allocation -> Dispense Order
+       -> Sales Invoice according to payer timing
+            -> Sales Invoice Items reference Sales Order Lines
+       -> Dispense Order
+            -> Dispense Order Lines reference Sales Order Lines
   -> required clearance
   -> Medication Preparation
   -> pickup call
@@ -38,7 +40,7 @@ This workflow applies the referenced domain specifications. It does not redefine
 
 | Authority | Responsibility used by this workflow |
 |---|---|
-| [Apotek Domain](./apotek-domain.md) | Telaah Resep, Sales Order, allocations, Sales Invoice timing, Dispense Order, clearance, dispensing, handover, and non-fulfillment policy. |
+| [Apotek Domain](./apotek-domain.md) | Telaah Resep, Sales Order, Sales Invoice timing, Dispense Order, clearance, dispensing, handover, and non-fulfillment policy. |
 | [Apotek Domain — Bahasa Indonesia](./apotek-domain-id.md) | Human-readable semantic companion to the canonical Apotek domain. |
 | [Patient Tracker Domain](../../contexts/pasien-tracker/TRACKER-DOMAIN.md) | Pharmacy Queue Entry identity, Queue Number, Queue Session, `CreatedAt`, `ServedAt`, `DoneAt`, and queue lifecycle. |
 | [CPOE Domain](../../contexts/cpoe/CPOE-DOMAIN.md) | Original Resep Elektronik and clinician intent; CPOE remains authoritative for its Clinical Order. |
@@ -100,7 +102,7 @@ The workflow ends when every medication demand mapped to the Pharmacy Queue Entr
 |---|---|---|
 | Patient or Caregiver | Obtains a Queue Number, supplies mapping evidence or a Resep Fisik, gives verbal confirmation when Patient-payable, pays when required, presents for pickup, receives education, and accepts medication when authorized. | Evidence is supplied, confirmation is given or declined, Payment Clearance is obtained, or Medication Handover completes. |
 | Patient Tracker | Owns Pharmacy Queue Entry identity, Queue Number, and queue lifecycle. | `Queue Entry Created`, `Queue Service Started`, or `Queue Service Completed`. |
-| Pharmacy Staff | Performs administrative queue calls, Manual Mapping, records Resep Fisik, assesses Direct Medication Requests within authority, coordinates allocations, communicates General Patient value, establishes a confirmed Sales Invoice, performs Medication Preparation and Compounding, handles Backorder or another approved stock source within authority, and performs the pickup call. | `Outpatient Queue Mapped`, `Sales Order Established`, `Sales Invoice Established`, `Medication Prepared`, `Dispense Order Backordered`, or `Patient Called for Pickup`. |
+| Pharmacy Staff | Performs administrative queue calls, Manual Mapping, records Resep Fisik, assesses Direct Medication Requests within authority, coordinates Sales Order progression, communicates General Patient value, establishes a confirmed Sales Invoice, performs Medication Preparation and Compounding, handles Backorder or another approved stock source within authority, and performs the pickup call. | `Outpatient Queue Mapped`, `Sales Order Established`, `Sales Invoice Established`, `Medication Prepared`, `Dispense Order Backordered`, or `Patient Called for Pickup`. |
 | Pharmacist | Performs Telaah Resep, authorizes eligible Medication Substitution before Sales Order establishment, approves referred Direct Medication Requests, verifies the Authorized Recipient, performs Final Dispense Review, and provides Patient Education. | `Telaah Resep Completed`, `Final Dispense Review Completed`, or Medication Handover is authorized to complete. |
 | Cashier or Payment Authority | Receives required Patient payment and supplies Payment Clearance. | `Payment Clearance Established`. |
 | SEP and Fornas Authorities | Supply encounter-level SEP validity and item-level BPJS coverage. | `Coverage Clearance Established` for the covered quantity. |
@@ -150,7 +152,7 @@ These triggers may occur before or after Outpatient Queue Mapping as permitted b
 | `WF-APT-RJ-002` | Accept Outpatient Medication Demand | An accepted Resep establishes a traceable Sales Order and primary outpatient Dispense Order, or receives a rejection outcome. |
 | `WF-APT-RJ-003` | Fulfill Medication for a General Patient | Verbally confirmed and paid medication is prepared and handed over, or receives an accountable alternative or exception outcome. |
 | `WF-APT-RJ-004` | Fulfill Medication for a BPJS Patient | Covered medication is prepared without a prior Sales Invoice and the BPJS Sales Invoice is established only with successful Medication Handover. |
-| `WF-APT-RJ-005` | Fulfill Mixed-Coverage Medication | Covered and Patient-payable quantities receive separate commercial allocation and clearance while remaining coordinated for one pickup. |
+| `WF-APT-RJ-005` | Fulfill Mixed-Coverage Medication | Covered and Patient-payable quantities are represented by separate Sales Invoice Items and receive separate clearance while remaining coordinated for one pickup. |
 | `WF-APT-RJ-006` | Coordinate Multiple Medication Demands in One Queue | Multiple independent demand, Sales Order, invoice, and Dispense Order lifecycles are coordinated into one queue service and pickup session without being merged. |
 | `WF-APT-RJ-007` | Resolve Uncollected Outpatient Medication | Prepared but uncollected medication receives an authorized expiry, Inventory return disposition, and payer-specific commercial resolution. |
 
@@ -264,7 +266,7 @@ Pharmacist, Pharmacy Staff, CPOE or Dokter Penulis Resep.
 4. The Pharmacist completes Telaah Resep as `Approved`, `Partially Approved`, or `Rejected`.
 5. For an accepted Direct Medication Request, Pharmacy Staff accepts within authority or obtains required Pharmacist approval; no Resep is created.
 6. Apotek establishes a Sales Order from exactly one completed accepted-demand source and preserves Source Traceability.
-7. Apotek establishes applicable Billing Allocations and Fulfillment Allocations independently.
+7. Apotek may form Sales Invoices with their Sales Invoice Items and Dispense Orders with their Dispense Order Lines independently and at different business times. Every medication Sales Invoice Item and every Dispense Order Line references exactly one applicable Sales Order Line.
 8. For the normal outpatient episode, Apotek establishes one active primary Dispense Order for the active Sales Order.
 9. Inventory may establish Stock Reservation before Patient arrival or queue mapping, while Medication Preparation waits for applicable Fulfillment Clearance.
 
@@ -287,7 +289,7 @@ Pharmacist, Pharmacy Staff, CPOE or Dokter Penulis Resep.
 
 #### Outcomes and Postconditions
 
-- Success: `Telaah Resep Completed`, `Sales Order Established`, `Fulfillment Allocation Established`, and `Dispense Order Established` are observed as applicable.
+- Success: `Telaah Resep Completed`, `Sales Order Established`, and `Dispense Order Established` are observed as applicable.
 - Partial success: only Accepted Medication Lines enter the Sales Order.
 - Rejection: no Sales Order exists for the rejected source.
 - The Sales Order is not a Sales Invoice, Dispense Order, reservation, or dispense evidence.
@@ -299,7 +301,7 @@ Pharmacist, Pharmacy Staff, CPOE or Dokter Penulis Resep.
 #### Domain Events
 
 - Consumed: `Clinical Order Created` or another authoritative Resep-availability fact.
-- Produced: `Telaah Resep Started`, `Medication Substitution Authorized`, `Telaah Resep Completed`, `Direct Medication Request Accepted`, `Sales Order Established`, `Billing Allocation Established`, `Fulfillment Allocation Established`, `Dispense Order Established`, `Stock Reserved` when externally supplied.
+- Produced: `Telaah Resep Started`, `Medication Substitution Authorized`, `Telaah Resep Completed`, `Direct Medication Request Accepted`, `Sales Order Established`, `Dispense Order Established`, `Stock Reserved` when externally supplied.
 
 ### WF-APT-RJ-003 — Fulfill Medication for a General Patient
 
@@ -311,13 +313,13 @@ Obtain verbal Purchase Confirmation before Sales Invoice establishment, obtain P
 
 #### Trigger
 
-Outpatient Queue Mapping, an active Sales Order, applicable Billing Allocations, and a calculated Patient-payable amount are available.
+Outpatient Queue Mapping, an active Sales Order, applicable Sales Order Lines, and a calculated Patient-payable amount are available.
 
 #### Preconditions
 
-- The General Patient amount is calculated from accountable Billing Allocations and the applicable Pricing Snapshot.
+- The General Patient amount is calculated from the applicable Sales Order Lines and Pricing Snapshot.
 - No Sales Invoice has yet been established for the proposed Patient-payable sale.
-- An applicable Dispense Order exists or can be established from Fulfillment Allocations.
+- An applicable Dispense Order exists or can be established from Sales Order Lines through its Dispense Order Lines.
 
 #### Participants
 
@@ -326,7 +328,7 @@ Patient or Caregiver, Pharmacy Staff, Cashier or Payment Authority, Pharmacy Sta
 #### Input Business Facts
 
 - Outpatient Queue Mapping.
-- Sales Order and Patient-payable Billing Allocations.
+- Sales Order and applicable Patient-payable Sales Order Line quantities.
 - Pricing Snapshot and calculated amount.
 - Dispense Order and Stock Reservation when already available.
 
@@ -334,7 +336,7 @@ Patient or Caregiver, Pharmacy Staff, Cashier or Payment Authority, Pharmacy Sta
 
 1. Pharmacy Staff receives the Patient in the Purchase Confirmation interaction—within the Manual Mapping counter interaction when possible, or through a separate administrative Queue Number call after Tracker Mapping—and communicates the calculated total verbally before a Sales Invoice exists. This interaction does not establish `ServedAt` or `DoneAt`.
 2. The Patient gives verbal Purchase Confirmation.
-3. Pharmacy Staff establishes the Sales Invoice from the confirmed Billing Allocations; Sales Invoice establishment is the accountable evidence that confirmation was obtained, and no separate confirmation object or transaction exists.
+3. Pharmacy Staff establishes the Sales Invoice and its Sales Invoice Items from the confirmed Sales Order Line quantities; Sales Invoice establishment is the accountable evidence that confirmation was obtained, and no separate confirmation object or transaction exists.
 4. The Cashier receives payment and supplies Payment Clearance for the Sales Invoice.
 5. Apotek establishes Fulfillment Clearance for the applicable Dispense Order quantities.
 6. Inventory secures the required Stock Reservation when not already reserved.
@@ -352,7 +354,7 @@ Patient or Caregiver, Pharmacy Staff, Cashier or Payment Authority, Pharmacy Sta
 
 | Condition | Decision owner | Branch |
 |---|---|---|
-| Patient declines before Sales Invoice establishment | Patient | No Sales Invoice is established; unused Stock Reservation is released; Patient-payable allocation receives an accountable declined or commercially unallocated outcome. |
+| Patient declines before Sales Invoice establishment | Patient | No Sales Invoice is established; unused Stock Reservation is released; the affected Patient-payable Sales Order Line quantity receives an accountable declined or commercially unallocated outcome. |
 | Calculated amount changes before establishment | Pharmacy Staff | Communicate the revised amount and obtain verbal confirmation again before establishing the Sales Invoice. |
 | Multiple demands share one Queue Entry | Pharmacy Staff | Apply `WF-APT-RJ-006`; retain separate Sales Orders, invoices, and Dispense Orders. |
 | Patient does not collect after pickup call | Pharmacy Supervisor | Apply `WF-APT-RJ-007`. |
@@ -378,7 +380,7 @@ Patient or Caregiver, Pharmacy Staff, Cashier or Payment Authority, Pharmacy Sta
 
 #### Domain Events
 
-- Consumed: `Outpatient Queue Mapped`, `Billing Allocation Established`, `Payment Clearance Established`, `Stock Reserved`.
+- Consumed: `Outpatient Queue Mapped`, `Payment Clearance Established`, `Stock Reserved`.
 - Produced or observed: `Sales Invoice Established`, `Sales Invoice Issued`, `Fulfillment Clearance Established`, `Medication Preparation Started`, `Pharmacy Service Started`, `Medication Prepared`, `Patient Called for Pickup`, `Queue Service Started`, `Queue Service Completed`, `Final Dispense Review Completed`, `Final Dispense Review Failed`, `Medication Dispensed`, `Medication Handed Over`, `Sales Order Resolved`.
 
 ### WF-APT-RJ-004 — Fulfill Medication for a BPJS Patient
@@ -407,7 +409,7 @@ Patient or Caregiver, Pharmacy Staff, Pharmacist, Patient Tracker, SEP and Forna
 #### Input Business Facts
 
 - Outpatient Queue Mapping.
-- Sales Order, covered Billing Allocations, and Dispense Order.
+- Sales Order, covered Sales Order Line quantities, and Dispense Order.
 - Valid SEP and item-level Fornas coverage.
 - Stock Availability and Stock Reservation outcomes.
 
@@ -422,7 +424,7 @@ Patient or Caregiver, Pharmacy Staff, Pharmacist, Patient Tracker, SEP and Forna
 7. When every Dispense Order intended for the coordinated handover is `Prepared` or has an accountable exception outcome, Pharmacy Staff performs the pickup call.
 8. Patient Tracker records `DoneAt` and makes the Queue Entry `Done` at the pickup-call time.
 9. With the Patient or caregiver present, the Pharmacist verifies the Authorized Recipient, completes Final Dispense Review, and provides applicable Patient Education in the same counter interaction. A passed review appends its immutable review record and moves the Dispense Order to `Reviewed`.
-10. As one accountable business outcome, Apotek establishes the BPJS Sales Invoice from the covered Billing Allocations, records Medication Dispense, and completes Medication Handover.
+10. As one accountable business outcome, Apotek establishes the BPJS Sales Invoice and its Sales Invoice Items from the covered Sales Order Line quantities, records Medication Dispense, and completes Medication Handover.
 11. Medication Handover completes each applicable Dispense Order quantity and requests Inventory's authoritative Inventory Issue outcome.
 12. The Sales Order becomes `Resolved` only when every accepted quantity and required commercial consequence has a final outcome.
 
@@ -456,7 +458,7 @@ Patient or Caregiver, Pharmacy Staff, Pharmacist, Patient Tracker, SEP and Forna
 
 #### Domain Events
 
-- Consumed: `Outpatient Queue Mapped`, `Coverage Clearance Established`, `Fulfillment Allocation Established`, `Stock Reserved`.
+- Consumed: `Outpatient Queue Mapped`, `Coverage Clearance Established`, `Stock Reserved`.
 - Produced or observed: `Fulfillment Clearance Established`, `Medication Preparation Started`, `Pharmacy Service Started`, `Medication Prepared`, `Patient Called for Pickup`, `Queue Service Started`, `Queue Service Completed`, `Final Dispense Review Completed`, `Final Dispense Review Failed`, `Sales Invoice Established`, `Sales Invoice Issued`, `Medication Dispensed`, `Medication Handed Over`, `Sales Order Resolved`.
 
 ### WF-APT-RJ-005 — Fulfill Mixed-Coverage Medication
@@ -475,7 +477,7 @@ One Sales Order contains quantities classified partly as BPJS-covered and partly
 
 - A valid SEP exists for the encounter.
 - Authoritative Fornas mapping identifies covered and non-covered quantities.
-- Pharmacy Staff can establish separate Billing Allocations without changing the accepted medication identity or quantity.
+- Pharmacy Staff can distinguish covered and Patient-payable Sales Order Line quantities without changing the accepted medication identity or quantity.
 
 #### Participants
 
@@ -485,23 +487,23 @@ Patient or Caregiver, Pharmacy Staff, Cashier or Payment Authority, Pharmacy Sta
 
 - One Sales Order and its Sales Order Lines.
 - Valid SEP and authoritative item-level Fornas coverage.
-- Covered and Patient-payable Billing Allocations.
-- Applicable Dispense Order and Fulfillment Allocations.
+- Covered and Patient-payable Sales Order Line quantities.
+- Applicable Dispense Order and its Dispense Order Lines.
 
 #### Main Flow
 
-1. Pharmacy Staff separates Billing Allocations into BPJS-covered and Patient-payable quantities.
+1. Pharmacy Staff distinguishes BPJS-covered and Patient-payable quantities from the applicable Sales Order Lines.
 2. SEP validity and Fornas mapping establish Coverage Clearance for covered quantities.
 3. Before any General Patient Sales Invoice exists, Pharmacy Staff conducts the Purchase Confirmation interaction defined by `WF-APT-RJ-003` and communicates the calculated Patient-payable amount verbally.
 4. The Patient gives verbal Purchase Confirmation for the non-covered quantities.
-5. Pharmacy Staff establishes a separate General Patient Sales Invoice from the confirmed Patient-payable Billing Allocations.
+5. Pharmacy Staff establishes a separate General Patient Sales Invoice whose Sales Invoice Items represent the confirmed Patient-payable Sales Order Line quantities.
 6. The Cashier supplies Payment Clearance for the General Patient Sales Invoice.
 7. Apotek establishes Fulfillment Clearance for covered quantities from Coverage Clearance and for Patient-payable quantities from Payment Clearance.
 8. After every quantity intended for the handover has its applicable clearance, the Pharmacy Staff begins and completes Medication Preparation.
 9. The first `Medication Preparation Started` records Patient Tracker `ServedAt`; every intended Dispense Order reaches `Prepared` before pickup.
 10. Pharmacy Staff performs one coordinated pickup call; Patient Tracker records `DoneAt`.
 11. With the Patient or caregiver present, the Pharmacist verifies the Authorized Recipient, completes Final Dispense Review, and provides Patient Education. A passed review appends its immutable review record and moves the Dispense Order to `Reviewed`.
-12. Apotek establishes the BPJS Sales Invoice from covered Billing Allocations only as Medication Handover succeeds; the General Patient Sales Invoice already exists and is financially cleared.
+12. Apotek establishes the BPJS Sales Invoice whose Sales Invoice Items represent the covered Sales Order Line quantities only as Medication Handover succeeds; the General Patient Sales Invoice already exists and is financially cleared.
 13. Apotek records Medication Dispense and Medication Handover for all applicable quantities and requests Inventory Issue outcomes.
 
 #### Decision and Alternative Flows
@@ -509,21 +511,21 @@ Patient or Caregiver, Pharmacy Staff, Cashier or Payment Authority, Pharmacy Sta
 | Condition | Decision owner | Branch |
 |---|---|---|
 | Patient confirms the non-covered portion | Patient | Establish and collect the General Patient Sales Invoice; coordinate both payer portions. |
-| Patient declines the non-covered portion before invoice establishment | Patient | Establish no General Patient Sales Invoice; give the allocation an accountable declined or commercially unallocated outcome; continue the BPJS portion independently. |
-| A covered item lacks Fornas coverage | Pharmacy Staff | Reclassify it as Patient-payable only through accountable Billing Allocation; communicate the revised amount and request verbal confirmation. |
+| Patient declines the non-covered portion before invoice establishment | Patient | Establish no General Patient Sales Invoice; give the affected Sales Order Line quantity an accountable declined or commercially unallocated outcome; continue the BPJS portion independently. |
+| A covered item lacks Fornas coverage | Pharmacy Staff | Reclassify the affected Sales Order Line quantity as Patient-payable accountably; communicate the revised amount and request verbal confirmation. |
 | Not all intended quantities have clearance | Apotek | Do not start coordinated preparation for those quantities and do not perform the pickup call. |
 
 #### Exception and Compensation Flows
 
 - An established General Patient Sales Invoice follows General Patient cancellation and correction rules; the BPJS Sales Invoice remains absent until handover.
 - No-Show after payment follows the paid General Patient commercial path while the absent BPJS Sales Invoice follows the uninvoiced BPJS path.
-- Partial non-fulfillment preserves payer-specific Billing Allocations and requires separate commercial consequences.
+- Partial non-fulfillment preserves payer-specific Sales Order Line and Sales Invoice Item traceability and requires separate commercial consequences.
 - Substitution is prohibited after Sales Order establishment.
 - A failed Final Dispense Review appends its immutable review record, returns the affected Dispense Order from `Prepared` to `Preparing`, blocks the coordinated handover and BPJS invoice, and requires correction followed by another review after the order returns to `Prepared`.
 
 #### Outcomes and Postconditions
 
-- Success: separate Sales Invoices represent covered and Patient-payable Medication Sales, and one coordinated Medication Handover preserves allocation-level traceability.
+- Success: separate Sales Invoices represent covered and Patient-payable Medication Sales, and one coordinated Medication Handover preserves line-and-quantity-level traceability.
 - Patient declines non-covered quantities: covered quantities may complete independently with no General Patient Sales Invoice for the declined portion.
 - Any unresolved commercial consequence keeps the Sales Order `Active`.
 
@@ -533,7 +535,7 @@ Patient or Caregiver, Pharmacy Staff, Cashier or Payment Authority, Pharmacy Sta
 
 #### Domain Events
 
-- Consumed: `Billing Allocation Established`, `Coverage Clearance Established`, `Payment Clearance Established`, `Outpatient Queue Mapped`.
+- Consumed: `Coverage Clearance Established`, `Payment Clearance Established`, `Outpatient Queue Mapped`.
 - Produced or observed: `Sales Invoice Established`, `Sales Invoice Issued`, `Fulfillment Clearance Established`, `Medication Preparation Started`, `Medication Prepared`, `Patient Called for Pickup`, `Final Dispense Review Completed`, `Final Dispense Review Failed`, `Medication Dispensed`, `Medication Handed Over`, `Sales Order Resolved` when fully reconciled.
 
 ### WF-APT-RJ-006 — Coordinate Multiple Medication Demands in One Queue
@@ -562,12 +564,12 @@ Pharmacy Staff, Pharmacist, Patient or Caregiver, Patient Tracker, Cashier or Pa
 
 - One Pharmacy Queue Entry.
 - Two or more mapped medication demands.
-- Per-demand Sales Order, Billing Allocation, Fulfillment Allocation, Sales Invoice, clearance, and Dispense Order progress.
+- Per-demand Sales Order, Sales Invoice, clearance, and Dispense Order progress, including their line-level relationships.
 
 #### Main Flow
 
 1. Apotek retains a separate Outpatient Queue Mapping for every demand associated with the common Pharmacy Queue Entry.
-2. Each demand progresses independently through Telaah Resep or direct acceptance, Sales Order establishment, commercial allocation, fulfillment allocation, and payer clearance.
+2. Each demand progresses independently through Telaah Resep or direct acceptance, Sales Order establishment, commercial invoicing, fulfillment planning, and payer clearance.
 3. The queue-facing view projects the authoritative progress of each mapped demand without owning those states.
 4. The first applicable `Medication Preparation Started` causes Patient Tracker to record one `ServedAt` for the common Queue Entry.
 5. Pharmacy Staff waits until every Dispense Order intended for the pickup is `Prepared` or has an accountable exception outcome.
@@ -652,7 +654,7 @@ Pharmacy Supervisor, Pharmacy Staff, Inventory, Tata Rekening, Patient Tracker.
 | BPJS Sales Invoice was not established because handover failed | No invoice is established or cancelled; resolve fulfillment and Inventory only, then resolve the Sales Order when all outcomes are final. |
 | General Patient Sales Invoice is paid | Tata Rekening or the responsible financial authority supplies Credit Note, Refund, or another final outcome; the Sales Order remains `Active` until then. |
 | General Patient proposal was declined before invoice establishment | No Sales Invoice exists; resolve any unused reservation and commercially unallocated quantity. |
-| Mixed coverage | Resolve covered uninvoiced and paid Patient-payable consequences separately using their Billing Allocations. |
+| Mixed coverage | Resolve covered uninvoiced and paid Patient-payable consequences separately using their Sales Order Line and Sales Invoice Item relationships. |
 
 #### Exception and Compensation Flows
 
@@ -719,7 +721,7 @@ The `Domain References` section of each workflow specification is the source of 
 | `WF-APT-RJ-002` | `BR-APT-001`–`BR-APT-019`, `BR-APT-029`–`BR-APT-034`, `BR-APT-050`, `BR-APT-061`, `BR-APT-068`, `BR-APT-083`, `BR-APT-086`, `BR-APT-089` | `Available`, `Under Review`, `Approved`, `Partially Approved`, `Rejected`, `Established`, `Active` | `Telaah Resep Started`, `Medication Substitution Authorized`, `Telaah Resep Completed`, `Direct Medication Request Accepted`, `Sales Order Established`, `Dispense Order Established` | CPOE, Medication Catalog, Inventory |
 | `WF-APT-RJ-003` | `BR-APT-020`–`BR-APT-028`, `BR-APT-033`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-067`–`BR-APT-072`, `BR-APT-076`–`BR-APT-083`, `BR-APT-088`, `BR-APT-095`–`BR-APT-096`; `BR-TRK-045`, `BR-TRK-045a`, `BR-TRK-046` | `Established`, `Issued`, `Financially Cleared`, `Released`, `Preparing`, `Prepared`, `Reviewed`, `Completed`, `In Service`, `Done` | `Sales Invoice Established`, `Payment Clearance Established`, `Medication Preparation Started`, `Medication Prepared`, `Patient Called for Pickup`, `Final Dispense Review Completed`, `Final Dispense Review Failed`, `Medication Handed Over` | Patient Tracker, Payment, Inventory, Tata Rekening |
 | `WF-APT-RJ-004` | `BR-APT-020`–`BR-APT-026`, `BR-APT-029`–`BR-APT-045`, `BR-APT-066`, `BR-APT-068`–`BR-APT-069`, `BR-APT-073`–`BR-APT-079`, `BR-APT-081`–`BR-APT-083`, `BR-APT-088`, `BR-APT-090`, `BR-APT-095`–`BR-APT-096`; `BR-TRK-045`, `BR-TRK-045a`, `BR-TRK-046` | `Awaiting Clearance`, `Released`, `Preparing`, `Prepared`, `Reviewed`, `Completed`, `In Service`, `Done` | `Coverage Clearance Established`, `Medication Preparation Started`, `Patient Called for Pickup`, `Final Dispense Review Failed`, `Sales Invoice Established`, `Medication Handed Over` | Patient Tracker, SEP, Fornas, Inventory, Tata Rekening |
-| `WF-APT-RJ-005` | `BR-APT-015`, `BR-APT-020`–`BR-APT-028`, `BR-APT-040`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-070`–`BR-APT-078`, `BR-APT-090`–`BR-APT-096` | Payer-specific Sales Invoice and shared Dispense Order states | `Billing Allocation Established`, `Coverage Clearance Established`, `Payment Clearance Established`, `Final Dispense Review Failed`, `Sales Invoice Established`, `Medication Handed Over` | SEP, Fornas, Payment, Tata Rekening |
+| `WF-APT-RJ-005` | `BR-APT-015`, `BR-APT-020`–`BR-APT-028`, `BR-APT-040`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-070`–`BR-APT-078`, `BR-APT-090`–`BR-APT-096` | Payer-specific Sales Invoice and shared Dispense Order states | `Coverage Clearance Established`, `Payment Clearance Established`, `Final Dispense Review Failed`, `Sales Invoice Established`, `Medication Handed Over` | SEP, Fornas, Payment, Tata Rekening |
 | `WF-APT-RJ-006` | `BR-APT-011`, `BR-APT-015`, `BR-APT-022`, `BR-APT-030`, `BR-APT-056`–`BR-APT-060`, `BR-APT-084`–`BR-APT-088`, `BR-APT-095`–`BR-APT-096`; `BR-TRK-032`, `BR-TRK-035`–`BR-TRK-039`, `BR-TRK-045`, `BR-TRK-045a` | Per-demand authoritative states; one queue `Waiting` → `In Service` → `Done` | `Outpatient Queue Mapped`, `Medication Preparation Started`, `Patient Called for Pickup`, `Final Dispense Review Failed`, `Medication Handed Over` | Patient Tracker |
 | `WF-APT-RJ-007` | `BR-APT-018`–`BR-APT-019`, `BR-APT-027`, `BR-APT-045`–`BR-APT-047`, `BR-APT-052`–`BR-APT-060`, `BR-APT-069`, `BR-APT-078`–`BR-APT-080`, `BR-APT-095` | `Expired`, `Active`, `Resolved` | `Outpatient No-Show Recorded`, `Dispense Order Expired`, `Unfulfilled Medication Recorded`, `Medication Returned`, `Sales Invoice Credited`, `Refund Required`, `Sales Order Resolved` | Inventory, Tata Rekening |
 
