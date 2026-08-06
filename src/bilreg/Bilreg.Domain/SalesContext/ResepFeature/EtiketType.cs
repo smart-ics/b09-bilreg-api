@@ -26,6 +26,14 @@ public record EtiketType
         var etiket = new EtiketType(signa, instruction, parseEtiket.DailyDose, parseEtiket.ConsumeAmount, note);
         return etiket;
     }
+
+    public static EtiketType Load(string signa, string instruction, int frequency, decimal unitDose, string note)
+    {
+        var safeSigna = string.IsNullOrWhiteSpace(signa) ? AppConst.DASH : signa;
+        var safeInstruction = string.IsNullOrWhiteSpace(instruction) ? AppConst.DASH : instruction;
+        var safeNote = string.IsNullOrWhiteSpace(note) ? AppConst.DASH : note;
+        return new EtiketType(safeSigna, safeInstruction, frequency, unitDose, safeNote);
+    }
     
     public static EtiketType Default => new (AppConst.DASH, AppConst.DASH, 0, 0, AppConst.DASH);
     

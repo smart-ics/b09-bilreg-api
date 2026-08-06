@@ -3,6 +3,7 @@ using Bilreg.Domain.BrgContext.PricingPolicyFeature;
 using Bilreg.Domain.InventoryContext.StokFeature;
 using Bilreg.Domain.SalesContext.Shared;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
+using Nuna.Lib.AutoNumberHelper;
 
 namespace Bilreg.Domain.SalesContext.ResepFeature;
 
@@ -34,7 +35,7 @@ public class ResepModel : IResepKey
     public static ResepModel Create(RegType reg, BodyMetricType bodyMetric, DokterType dokter, LayananType layanan, 
         UrgenitasType urgenitasType, TipeBrgType tipeBrg, int iter, string description, string userId)
     {
-        var newId = Ulid.NewUlid().ToString();
+        var newId = NunaId.NewLegacy("KP",'A');
         var model = new ResepModel(newId, reg.ToReff(), bodyMetric, dokter.ToReff(), layanan.ToReff(),
             urgenitasType, tipeBrg.ToReff(), iter, description, AuditTrailType.Create(userId, DateTime.Now),
             new List<ResepObatType>());

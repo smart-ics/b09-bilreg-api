@@ -300,6 +300,9 @@
     <Build Include="IgdContext\IgdVisitFeature\BILRG_IgdVisitTriage.sql" />
     <Build Include="IgdContext\RedirectRajalFeature\BILRG_RedirectRajal.sql" />
     <Build Include="IgdContext\TindakanIgdFeature\BILRG_TindakanIgd.sql" />
+    <Build Include="SalesContext\ta_trs_kartu_periksa.sql" />
+    <Build Include="SalesContext\ta_trs_kartu_periksa_resep.sql" />
+    <Build Include="SalesContext\ta_trs_kartu_periksa3.sql" />
     <Build Include="Shared\AuditLogFeature\BILRG_AuditLog.sql" />
     <Build Include="ChargeContext\TarifFeature\BILRG_TarifPolicy.sql" />
     <Build Include="ChargeContext\TarifFeature\BILRG_TarifVariant.sql" />

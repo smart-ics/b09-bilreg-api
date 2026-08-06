@@ -17,4 +17,7 @@ public record UrgenitasType
     public string UrgenitasName { get; init; }
     
     public static UrgenitasType Default => new (AppConst.DASH,AppConst.DASH);
+
+    public static UrgenitasType Load(string id, string name)
+        => new(id, string.IsNullOrWhiteSpace(name) ? AppConst.DASH : name);
 }
