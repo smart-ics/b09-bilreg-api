@@ -1,7 +1,5 @@
-using Bilreg.Application.InventoryContext.StokFeature.UseCases;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
-using Nuna.Lib.ActionResultHelper;
 
 namespace Bilreg.Api.Controllers.InventoryContext.StokFeature;
 [Route("api/[controller]")]
@@ -15,12 +13,12 @@ public class StokController : ControllerBase
         _mediator = mediator;
     }
     
-    [HttpGet]
-    [Route("{brgId}/{layananId}")]
-    public async Task<IActionResult> ListData(string brgId, string layananId)
-    {
-        var query = new StokGetKartuStokQuery(brgId, layananId);
-        var response = await _mediator.Send(query);
-        return Ok(new JSendOk(response));
-    }
+    // [HttpGet]
+    // [Route("{brgId}/{layananId}")]
+    // public async Task<IActionResult> ListData(string brgId, string layananId)
+    // {
+    //     var query = new StokGetKartuStokQuery(brgId, layananId);
+    //     var response = await _mediator.Send(query);
+    //     return Ok(new JSendOk(response));
+    // }
 }
