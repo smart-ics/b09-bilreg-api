@@ -5,7 +5,7 @@
 **Date:** 2026-07-21  
 **Authoritative business definition:** `docs/contexts/pasien-tracker/TRACKER-DOMAIN.md`  
 **Assessment type:** Static codebase investigation plus a bounded, non-database unit-test run  
-**Implementation scope:** `src/bilreg`, `src/farinv`, and the relevant Taksaka maintenance worker
+**Implementation scope:** `src/bilreg` (including Bilreg and Farinv projects) and the relevant Taksaka maintenance worker
 
 ## 1. Executive Summary
 
@@ -244,7 +244,7 @@ Section 9 does not mandate an event bus, and `docs/ENGINEERING.md` prefers direc
 | Admission queue → Tracker evidence | Partially Implemented | F-05 Check In + Reg-Start on identify; F-07 Registration Done / REGISTER on admission complete |
 | Registration → existing journey | Implemented Differently | Booking registration retains the queue TrackerId but appends no evidence; walk-in creates a new Tracker and starts the physician queue; change-of-visit replaces identity. |
 | Medical Chart/consultation → Tracker | Implemented Differently | No Medical Chart ReffId in Bilreg; F-08 records Consult-* with Queue Evidence Reference at Mulai/Selesai (BR-TRK-013). Chart-primary reference deferred. |
-| Prescription/completed consultation → pharmacy queue | Not Implemented | No Bilreg-to-Farinv queue contract or same-Tracker entry creation exists. |
+| Resep/completed consultation → pharmacy queue | Not Implemented | No Bilreg-to-Farinv queue contract or same-Tracker entry creation exists. |
 | Drug sale confirmation → pharmacy service start | Not Implemented | Farinv Penjualan does not call queue transitions and no Tracker service-start evidence is written. |
 | Medicine handover → pharmacy completion | Not Implemented | Farinv `DeliverSlot` exists only as an unused domain method; no Tracker completion evidence. |
 | Queue milestones → Patient Tracker | Not Implemented | `Serve`/`Done` update only `BILRG_AntrianEntry`; they do not append Tracker Events or extend a period. |

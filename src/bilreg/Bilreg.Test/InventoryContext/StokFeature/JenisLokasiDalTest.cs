@@ -1,0 +1,57 @@
+using Bilreg.Domain.InventoryContext.StokFeature;
+using Bilreg.Infrastructure.Shared.Helpers;
+using Bilreg.Infrastructure.InventoryContext.StokFeature;
+using FluentAssertions;
+using Nuna.Lib.TransactionHelper;
+
+namespace Bilreg.Test.InventoryContext.StokFeature;
+
+public class JenisLokasiDalTest
+{
+    private readonly JenisLokasiDal _sut = new(ConnStringHelper.GetTestEnv());
+
+    private static JenisLokasiType Faker()
+        => new JenisLokasiType("A", "B");
+
+    private static IJenisLokasiKey FakerKey()
+        => JenisLokasiType.Default with { JenisLokasiId = "A" };
+
+    [Fact]
+    public void InsertTest()
+    {
+        using var trans = TransHelper.NewScope();
+        _sut.Insert(Faker());
+    }
+    
+    [Fact]
+    public void UpdateTest()
+    {
+        using var trans = TransHelper.NewScope();
+        _sut.Update(Faker());
+    }
+
+    [Fact]
+    public void DeleteTest()
+    {
+        using var trans = TransHelper.NewScope();
+        _sut.Delete(FakerKey());
+    }
+
+    [Fact]
+    public void GetDataTest()
+    {
+        using var trans = TransHelper.NewScope();
+        _sut.Insert(Faker());
+        var actual = _sut.GetData(FakerKey());
+        actual.Should().BeEquivalentTo(Faker());
+    }
+    
+    [Fact]
+    public void ListDataTest()
+    {
+        using var trans = TransHelper.NewScope();
+        _sut.Insert(Faker());
+        var actual = _sut.ListData();
+        actual.Should().ContainEquivalentOf(Faker());
+    }
+}

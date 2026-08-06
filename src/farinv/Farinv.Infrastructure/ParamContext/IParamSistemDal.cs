@@ -1,2 +1,0 @@
-﻿namespace Farinv.Infrastructure.ParamContext;
-

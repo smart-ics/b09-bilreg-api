@@ -220,7 +220,7 @@ public class JourneyDalVolumeTest
         new OpnameRequestDal(_opt).Insert(new OpnameRequestDto(
             id, status, pasienId, "", "3000-01-01", "",
             "D001", "Dokter Uji", DateTime.Now, "notes", fulfilledRegId,
-            "journey-vol", DateTime.Now, "journey-vol", DateTime.Now, "", VoidSentinel));
+            "journey-vol", DateTime.Now, "journey-vol", DateTime.Now, "", VoidSentinel, "CH0001"));
     }
 
     private void SeedReservation(string id, string pasienId, int status, string realizedRegId = "-")

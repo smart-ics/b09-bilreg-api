@@ -1,0 +1,57 @@
+using Bilreg.Domain.BrgContext.StandardFeature;
+using Bilreg.Infrastructure.BrgContext.StandardFeature;
+using Bilreg.Infrastructure.Shared.Helpers;
+using FluentAssertions;
+using Nuna.Lib.TransactionHelper;
+
+namespace Bilreg.Test.BrgContext.StandardFeature;
+
+public class FormulariumDalTest
+{
+    private readonly FormulariumDal _sut = new(ConnStringHelper.GetTestEnv());
+
+    private static FormulariumDto Faker()
+        => new("A","B");
+
+    private static IFormulariumKey FakerKey()
+        => FormulariumType.Default with { FormulariumId = "A" };
+
+    [Fact]
+    public void InsertTest()
+    {
+        using var trans = TransHelper.NewScope();
+        _sut.Insert(Faker());
+    }
+
+    [Fact]
+    public void UpdateTest()
+    {
+        using var trans = TransHelper.NewScope();
+        _sut.Update(Faker());
+    }
+
+    [Fact]
+    public void DeleteTest()
+    {
+        using var trans = TransHelper.NewScope();
+        _sut.Delete(FakerKey());
+    }
+
+    [Fact]
+    public void GetDataTest()
+    {
+        using var trans = TransHelper.NewScope();
+        _sut.Insert(Faker());
+        var actual = _sut.GetData(FakerKey());
+        actual.Should().BeEquivalentTo(Faker());
+    }
+
+    [Fact]
+    public void ListDataTest()
+    {
+        using var trans = TransHelper.NewScope();
+        _sut.Insert(Faker());
+        var actual = _sut.ListData();
+        actual.Should().ContainEquivalentOf(Faker());
+    }
+}

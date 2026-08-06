@@ -1,4 +1,4 @@
-﻿using Farinv.Application.BrgContext.BrgFeature.UseCases;
+using Bilreg.Application.BrgContext.BrgFeature.UseCases;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

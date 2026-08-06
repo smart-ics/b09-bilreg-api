@@ -131,6 +131,14 @@ public sealed class AdmissionQueueV1Controller : ControllerBase
         return Ok(new JSendOk(response));
     }
 
+    [HttpPost("entries/{q}/{n:int}/associate-booking")]
+    public async Task<IActionResult> AssociateBooking(string q, int n, [FromBody] AssociateBookingBody b)
+    {
+        var response = await _mediator.Send(new AdmissionQueueAssociateBookingCmd(
+            q, n, Loket(b.LoketKey), Version(b.ExpectedRowVersion), b.BookingId, b.UserId));
+        return Ok(new JSendOk(response));
+    }
+
     [HttpPost("entries/{q}/{n:int}/cancel-registration")]
     public async Task<IActionResult> CancelRegistration(
         string q,
@@ -240,6 +248,7 @@ public record BookingAssistanceBody(
     string BookingId, string ServicePointId, string? FailureCode, string KioskId, string UserId);
 public record ActorLoketBody(string? LoketKey, string UserId);
 public record VersionedActorLoketBody(string? LoketKey, string ExpectedRowVersion, string UserId);
+public record AssociateBookingBody(string? LoketKey, string ExpectedRowVersion, string BookingId, string UserId);
 public record WithdrawBody(string Reason, string? LoketKey, string? ExpectedRowVersion, string UserId);
 public record RedirectBody(
     string TargetServicePointId, string? LoketKey, string? ExpectedRowVersion, string UserId);

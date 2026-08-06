@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -248,6 +248,7 @@
     <None Include="PaymentContext\RegOutFeature\t_bp_piutang_hdr.sql" />
     <None Include="PaymentContext\RegOutFeature\ta_registrasi3.sql" />
     <None Include="AdmisiContext\BookingFeature\BILRG_JadwalPraktekHarian_1.sql" />
+    <None Include="AdmisiRanapContext\OpnameRequestFeature\BILRG_AdmOpnameRequestInsurance.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="AdmisiContext\AntrianFeature\ta_no_antrian_map.sql" />
@@ -310,5 +311,48 @@
     <Build Include="ChargeContext\TarifFeature\BILRG_NilaiTarif_Phase0_SourcePolicyId_Alter.sql" />
     <Build Include="ChargeContext\TarifFeature\BILRG_NilaiTarif_Phase0_UX_Variant_Index.sql" />
     <Build Include="ChargeContext\TarifFeature\BILRG_TarifOperationalState.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <Build Include="BrgContext\BrgFeature\tb_barang_satuan.sql" />
+    <Build Include="BrgContext\BrgFeature\tb_barang.sql" />
+    <Build Include="BrgContext\BrgFeature\tb_grup_rek_dk.dataseed.sql" />
+    <Build Include="BrgContext\BrgFeature\tb_grup_rek_dk.sql" />
+    <Build Include="BrgContext\BrgFeature\tb_grup_rek.sql" />
+    <Build Include="BrgContext\BrgFeature\tb_satuan.sql" />
+    <Build Include="BrgContext\KlasifikasiFeature\tb_bentuk.sql" />
+    <Build Include="BrgContext\KlasifikasiFeature\tb_generik.sql" />
+    <Build Include="BrgContext\KlasifikasiFeature\tb_gol_obat_dk.sql" />
+    <Build Include="BrgContext\KlasifikasiFeature\tb_golongan.sql" />
+    <Build Include="BrgContext\KlasifikasiFeature\tb_jenis_barang.sql" />
+    <Build Include="BrgContext\KlasifikasiFeature\tb_kelompok.sql" />
+    <Build Include="BrgContext\KlasifikasiFeature\tb_pabrik.sql" />
+    <Build Include="BrgContext\KlasifikasiFeature\tb_sifat.sql" />
+    <Build Include="BrgContext\PricingPolicyFeature\ta_tipe_barang.sql" />
+    <Build Include="BrgContext\StandardFeature\FARPU_Fornas.dataseed.sql" />
+    <Build Include="BrgContext\StandardFeature\FARPU_Fornas.sql" />
+    <Build Include="BrgContext\StandardFeature\tb_formularium.sql" />
+    <Build Include="BrgContext\StandardFeature\tb_gol_terapi.sql" />
+    <Build Include="BrgContext\StandardFeature\tb_kelas_terapi.sql" />
+    <Build Include="BrgContext\StandardFeature\tb_original.sql" />
+    <Build Include="BrgContext\StandardFeature\Kfa\FARPU_Kfa.dataseed.sql" />
+    <Build Include="BrgContext\StandardFeature\Kfa\FARPU_Kfa.sql" />
+    <Build Include="BrgContext\StandardFeature\Kfa\FARPU_KfaDosageUsage.dataseed.sql" />
+    <Build Include="BrgContext\StandardFeature\Kfa\FARPU_KfaDosageUsage.sql" />
+    <Build Include="BrgContext\StandardFeature\Kfa\FARPU_KfaIngredient.dataseed.sql" />
+    <Build Include="BrgContext\StandardFeature\Kfa\FARPU_KfaIngredient.sql" />
+    <Build Include="BrgContext\StandardFeature\Kfa\FARPU_KfaPackaging.dataseed.sql" />
+    <Build Include="BrgContext\StandardFeature\Kfa\FARPU_KfaPackaging.sql" />
+    <Build Include="BrgContext\StandardFeature\Kfa\FARPU_KfaReplacement.dataseed.sql" />
+    <Build Include="BrgContext\StandardFeature\Kfa\FARPU_KfaReplacement.sql" />
+    <Build Include="InventoryContext\MutasiFeature\FARIN_OrderMutasi.sql" />
+    <Build Include="InventoryContext\MutasiFeature\FARIN_OrderMutasiItem.sql" />
+    <Build Include="InventoryContext\StokFeature\FARIN_JenisLokasi.dataseed.sql" />
+    <Build Include="InventoryContext\StokFeature\FARIN_JenisLokasi.sql" />
+    <Build Include="InventoryContext\StokFeature\FARIN_Stok.sql" />
+    <Build Include="InventoryContext\StokFeature\FARIN_StokBuku.sql" />
+    <Build Include="InventoryContext\StokFeature\FARIN_StokLayer.sql" />
+    <Build Include="InventoryContext\StokFeature\ta_layanan_AddJenisLokasi.sql" />
+    <Build Include="InventoryContext\StokFeature\tb_buku.sql" />
+    <Build Include="InventoryContext\StokFeature\tb_stok.sql" />
   </ItemGroup>
 </Project>

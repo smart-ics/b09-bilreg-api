@@ -5,6 +5,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
+using System.Net.WebSockets;
 
 namespace Bilreg.Api.Controllers.AdmisiRanapContext;
 
@@ -45,6 +46,24 @@ public class OpnameRequestController : ControllerBase
         var result = await _mediator.Send(new AdmListOpnameRequestQry(status));
         return Ok(new JSendOk(result));
     }
+
+    [HttpPatch("{id}/setInsurance")]
+    public async Task<IActionResult> SetInsurance(string id, [FromBody] AdmSetInsuranceRequestBody body)
+    {
+        await _mediator.Send(new AdmSetInsuranceOpnameRequestCmd(id, body.TipeJaminanId, body.ReffId, body.UserId));
+        return Ok(new JSendOk("Done"));
+    }
+    
+    [HttpGet("emr-order/{emrOrderId}")]
+    public async Task<IActionResult> GetByEmrOrder(string emrOrderId)
+    {
+        var result = await _mediator.Send(new AdmGetOpnameRequestByEmrOrderIdQry(emrOrderId));
+        return Ok(new JSendOk(result));
+        
+    }
 }
 
 public record AdmCancelOpnameRequestBody(string UserId);
+
+public record AdmSetInsuranceRequestBody(string TipeJaminanId,
+    string ReffId, string UserId);
