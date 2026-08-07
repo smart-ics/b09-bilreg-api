@@ -13,6 +13,11 @@ public interface IStockLedgerScopeDal :
     IUpdate<StockLedgerScopeDto>,
     IGetData<StockLedgerScopeDto, IStockLedgerScopeKey>
 {
+    /// <summary>
+    /// P2-S5 — claim-safe update: writes only when durable ReconstructionStatus
+    /// equals <paramref name="expectedReconstructionStatus"/>. Returns affected row count.
+    /// </summary>
+    int UpdateWhenReconstructionStatus(StockLedgerScopeDto dto, int expectedReconstructionStatus);
 }
 
 public class StockLedgerScopeDal : IStockLedgerScopeDal
@@ -61,6 +66,31 @@ public class StockLedgerScopeDal : IStockLedgerScopeDal
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, MapParams(dto));
+    }
+
+    public int UpdateWhenReconstructionStatus(StockLedgerScopeDto dto, int expectedReconstructionStatus)
+    {
+        const string sql = """
+            UPDATE BILRG_StokLedgerScope SET
+                ReconstructionStatus = @ReconstructionStatus,
+                SynchronizationState = @SynchronizationState,
+                SynchronizationPositionOpaque = @SynchronizationPositionOpaque,
+                AlgorithmVersion = @AlgorithmVersion,
+                ReconstructionBasisVersion = @ReconstructionBasisVersion,
+                InconsistencyReason = @InconsistencyReason,
+                UpdUser = @UpdUser,
+                UpdDate = @UpdDate
+            WHERE
+                BrgId = @BrgId
+                AND ReceiptSourceId = @ReceiptSourceId
+                AND ReconstructionStatus = @ExpectedReconstructionStatus
+            """;
+
+        var dp = MapParams(dto);
+        dp.AddParam("@ExpectedReconstructionStatus", expectedReconstructionStatus, SqlDbType.Int);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Execute(sql, dp);
     }
 
     public StockLedgerScopeDto GetData(IStockLedgerScopeKey key)

@@ -11,4 +11,17 @@ public interface IStockLedgerScopeStateRepo :
     ISaveChange<StockLedgerScopeStateModel>,
     ILoadEntity<StockLedgerScopeStateModel, IStockLedgerScopeKey>
 {
+    /// <summary>
+    /// P2-S5 — insert a new Scope row. Returns <c>false</c> when a concurrent insert
+    /// already owns the primary key (fail closed; caller reloads).
+    /// </summary>
+    bool TryInsertNew(StockLedgerScopeStateModel model);
+
+    /// <summary>
+    /// P2-S5 — conditional update for reconstruction claim. Succeeds only when the
+    /// durable ReconstructionStatus still equals <paramref name="expectedPriorStatus"/>.
+    /// </summary>
+    bool TryUpdateWhenReconstructionStatus(
+        StockLedgerScopeStateModel model,
+        ReconstructionStatusEnum expectedPriorStatus);
 }
