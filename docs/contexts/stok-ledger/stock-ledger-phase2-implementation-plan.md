@@ -19,7 +19,7 @@
 | P2-S4 | **COMPLETE** | [`stock-ledger-phase2-s4-implementation-summary.md`](./stock-ledger-phase2-s4-implementation-summary.md) |
 | P2-S5 | **COMPLETE** | [`stock-ledger-phase2-s5-implementation-summary.md`](./stock-ledger-phase2-s5-implementation-summary.md) |
 | P2-S6 | **COMPLETE** | [`stock-ledger-phase2-s6-implementation-summary.md`](./stock-ledger-phase2-s6-implementation-summary.md) |
-| P2-S7 | Pending | — |
+| P2-S7 | **COMPLETE** | [`stock-ledger-phase2-s7-implementation-summary.md`](./stock-ledger-phase2-s7-implementation-summary.md) |
 | P2-S8 | Pending | — |
 
 ---

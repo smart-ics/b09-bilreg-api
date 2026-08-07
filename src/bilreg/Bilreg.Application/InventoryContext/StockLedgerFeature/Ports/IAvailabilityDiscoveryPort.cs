@@ -14,7 +14,9 @@ namespace Bilreg.Application.InventoryContext.StockLedgerFeature.Ports;
 /// layers may enrich candidates later but must not be treated as authority merely because
 /// reconstruction once completed.
 /// </para>
-/// Phase ownership: behavior in Phase 2/5. Phase 1 defines the contract only.
+/// Live adapter: Phase 2 (<c>AvailabilityDiscoveryPort</c>). Phase 1 defined the contract only.
+/// Freshness Gate outcome <see cref="AvailabilityDiscoveryOutcomeEnum.StaleOrNotCurrent"/>
+/// belongs to Phase 3/5 callers — the live adapter does not implement G-12.
 /// </summary>
 public interface IAvailabilityDiscoveryPort
 {
