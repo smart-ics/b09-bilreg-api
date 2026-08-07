@@ -208,6 +208,7 @@ Cutover akhir di masa depan boleh mengubah kewenangan runtime, tetapi cutover te
 | Reconciliation Scope | Lingkup Rekonsiliasi | Kumpulan terbatas fakta persediaan yang dinilai bersama. Lingkup utama adalah satu Item dan satu Receipt Source di seluruh Stock Location. |
 | Reconciliation Difference | Selisih Rekonsiliasi | Perbedaan jumlah atau nilai yang ditemukan selama Stock Reconciliation. |
 | Native Stock Fact | Fakta Stok Native | Stock Layer atau Stock Movement yang dicatat langsung menurut aturan Stock Ledger baru. |
+| Legacy-Synchronized Stock Fact | Fakta Stok Hasil Penyelarasan Legacy | Stock Movement, atau Stock Layer yang dibentuk oleh mutasi itu, yang dicatat di Stock Ledger dari transaksi yang berasal dari legacy setelah baseline Stock Ledger yang berlaku ditetapkan. |
 | Legacy Stock Fact | Fakta Stok Legacy | Fakta stok yang berasal dari model persediaan legacy. |
 | Legacy Stock Reconstruction | Rekonstruksi Stok Legacy | Rekonstruksi yang dapat dipertanggungjawabkan atas Stock Layer yang hilang dari riwayat mutasi legacy yang tersedia. |
 | Reconstructed Stock Layer | Lapisan Stok Hasil Rekonstruksi | Stock Layer yang dibentuk dari Legacy Stock Reconstruction, bukan dari Stock Receipt native. |
@@ -389,7 +390,7 @@ Stock Layer mempertahankan:
 * Effective Receipt Time;
 * identitas Stock Layer yang dipakai sebagai kunci urutan deterministik terakhir;
 * informasi urutan lapisan yang dibutuhkan FIFO;
-* klasifikasi asal sebagai native atau reconstructed; dan
+* klasifikasi asal sebagai native, reconstructed, atau legacy-synchronized; dan
 * status depletion.
 
 Stock Layer tetap dipertahankan di Stock Ledger Representation ketika Remaining Quantity-nya mencapai nol.
@@ -546,7 +547,7 @@ Aggregate ini memiliki Stock Layer untuk asal-usul tersebut di seluruh Stock Loc
 * Effective Receipt Time;
 * urutan Stock Layer yang deterministik;
 * urutan FIFO;
-* asal native atau reconstructed;
+* asal native, reconstructed, atau legacy-synchronized;
 * keadaan depletion; dan
 * total Remaining Quantity.
 
@@ -717,12 +718,12 @@ Transfer internal dikecualikan dari kedua sisi persamaan ini karena mempertahank
 * **BR-STL-066** — Identitas Stock Layer legacy yang sudah tidak ada tidak boleh dibuat ulang seolah identitas aslinya diketahui.
 * **BR-STL-067** — Reconstructed Stock Layer wajib menerima identitas baru yang dapat dipertanggungjawabkan sambil mempertahankan Item, Receipt Source, Stock Location, Unit Valuation, dan asal-usul mutasi yang tersedia.
 * **BR-STL-068** — Reconstructed Stock Layer dengan Remaining Quantity nol wajib dipertahankan.
-* **BR-STL-069** — Fakta hasil rekonstruksi wajib tetap dapat dibedakan dari Native Stock Fact.
+* **BR-STL-069** — Reconstructed Stock Fact wajib tetap dapat dibedakan dari Native Stock Fact dan Legacy-Synchronized Stock Fact.
 * **BR-STL-070** — Satu Item dan Receipt Source wajib memiliki paling banyak satu hasil rekonstruksi baseline yang selesai untuk dasar rekonstruksi yang sama.
 * **BR-STL-071** — Pemrosesan rekonstruksi berulang tidak boleh menduplikasi Stock Layer atau jumlah.
 * **BR-STL-072** — Stock Movement native tidak boleh dilanjutkan terhadap Item dan Receipt Source yang belum direkonstruksi bila hal itu menciptakan asal-usul atau rekonsiliasi yang tidak lengkap.
 * **BR-STL-073** — Inkonsistensi rekonstruksi wajib dicatat dan diangkat untuk penyelesaian yang dapat dipertanggungjawabkan, bukan diseimbangkan diam-diam.
-* **BR-STL-074** — Penyelesaian rekonstruksi wajib menetapkan baseline dari mana mutasi native berikutnya berlanjut.
+* **BR-STL-074** — Penyelesaian rekonstruksi wajib menetapkan baseline dari mana pemrosesan Stock Ledger native berikutnya dan Legacy Synchronization berlanjut.
 * **BR-STL-075** — Rekonstruksi legacy tidak boleh mensyaratkan migrasi seluruh riwayat persediaan sebelum Stock Ledger baru boleh beroperasi.
 
 ### 7.10 Koeksistensi legacy
@@ -782,7 +783,7 @@ Transfer internal dikecualikan dari kedua sisi persamaan ini karena mempertahank
 * **BR-STL-110** — Legacy Stock Record boleh menghilangkan detail yang tidak dapat direpresentasikan modelnya, tetapi penghilangan itu tidak boleh menghapus fakta Stock Ledger yang lebih kaya atau ditafsirkan sebagai selisih jumlah ketika konsekuensi jumlah legacy tetap benar.
 * **BR-STL-111** — Selama Coexistence Period, rekonsiliasi antara Legacy Stock Record dan Stock Ledger Representation wajib memperlakukan Legacy Stock Record sebagai sumber kebenaran yang tersimpan sambil mempertahankan detail asal-usul yang hanya ada di Stock Ledger dan tidak dapat diungkapkan representasi legacy.
 * **BR-STL-112** — Legacy Stock Reconstruction menetapkan baseline awal Stock Ledger; perubahan stok legacy berikutnya wajib dimasukkan melalui Legacy Synchronization, bukan mensyaratkan rekonstruksi penuh ulang ketika baseline sebelumnya masih valid.
-* **BR-STL-113** — Native Stock Fact dan Reconstructed Stock Fact menjelaskan asal fakta Stock Ledger dan tidak boleh ditafsirkan sebagai keadaan kewenangan selama Coexistence Period.
+* **BR-STL-113** — Native Stock Fact, Reconstructed Stock Fact, dan Legacy-Synchronized Stock Fact menjelaskan asal fakta Stock Ledger dan tidak boleh ditafsirkan sebagai keadaan kewenangan selama Coexistence Period.
 * **BR-STL-114** — Ketika Legacy Stock Record dan Stock Ledger Representation berbeda dalam jumlah atau fakta material lain di luar keterlambatan penyelarasan yang dapat dijelaskan atau keterbatasan representasi, lingkup yang terdampak wajib berstatus `Inconsistent` sampai direkonsiliasi.
 * **BR-STL-115** — Transaksi stok yang berasal dari sistem baru boleh memakai aturan Stock Ledger untuk menentukan konsekuensinya, tetapi selama koeksistensi fakta stok yang dihasilkannya wajib tetap kompatibel dengan Legacy Stock Record yang berwenang.
 
@@ -1141,7 +1142,7 @@ Reservation Release Confirmed
 ### 10.11 Synchronize Continued Legacy Stock Activity
 
 ```text
-Reconstructed or Native Stock Ledger Representation
+Reconstructed, Native, or Legacy-Synchronized Stock Ledger Representation
   -> legacy stock transaction occurs
   -> applicable legacy facts move beyond Synchronization Position
   -> Legacy Synchronization Required

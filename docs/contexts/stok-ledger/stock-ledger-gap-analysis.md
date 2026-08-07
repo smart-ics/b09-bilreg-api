@@ -24,7 +24,7 @@ Every gap records current evidence, why it matters, required capability, depende
 * Reconstruction and reconciliation scope = Item + Receipt Source across all Stock Locations.
 * Candidate write consistency boundary = Item + Receipt Source + Stock Location, subject to concurrency proof.
 * Source-of-truth authority = `tb_stok + tb_buku` globally during coexistence.
-* `Native` and `Reconstructed` = Stock Ledger fact/layer origin only.
+* `Native`, `Reconstructed`, and `LegacySynchronized` = Stock Ledger fact/layer origin only.
 * Initial Reconstruction != Incremental Legacy Synchronization.
 * Legacy Freshness Gate replaces the rejected Authority Gate.
 * New-system consequences write legacy-compatible authoritative records plus the richer Stock Ledger Representation.
@@ -80,7 +80,7 @@ Target coexistence
 | Previous concept | Disposition | Replacement |
 |---|---|---|
 | `Authority Gate` (former pre-coexistence gap ID G-22) | **Removed** | G-12 Legacy Freshness / Synchronization Gate |
-| `IsAuthoritative = Native OR Reconstructed` | **Removed** | G-04 separate Reconstruction Status, Synchronization State/Position, and Fact Origin |
+| `IsAuthoritative = Native OR Reconstructed` | **Removed** | G-04 separate Reconstruction Status, Synchronization State/Position, and Fact Origin (`Native`, `Reconstructed`, `LegacySynchronized`) |
 | `Legacy Projection Writer` | **Reworked** | G-11 Legacy Compatibility Writer for Stage B |
 | Scope-aware feature flags that block VB6 | **Removed** | Capability/FO-type flags plus synchronization readiness |
 | “No VB6-only writer after reconstruction” exit criteria | **Removed** | Mixed-writer synchronization and reconciliation acceptance criteria |
@@ -131,10 +131,10 @@ Target coexistence
 |---|---|
 | Current evidence | No implemented state store. Previous plan proposed `LegacyOnly`, `Native`, `Reconstructed`, and derived `IsAuthoritative`. |
 | Why it matters | Reconstruction readiness, synchronization freshness, origin, and authority are different dimensions. Conflating them reintroduces the rejected cutover. |
-| Required capability | Persist Reconstruction Status; Synchronization State and Position; inconsistency reason; reconstruction basis/version. Persist `Native` / `Reconstructed` as fact/layer origin only. Do not persist `IsAuthoritative`. |
+| Required capability | Persist Reconstruction Status; Synchronization State and Position; inconsistency reason; reconstruction basis/version. Persist `Native`, `Reconstructed`, or `LegacySynchronized` as fact/layer origin only. Do not persist `IsAuthoritative`. |
 | Priority | P0 |
 | Dependencies | G-01 |
-| Acceptance criteria | Native receipt and reconstructed baseline have distinct origins; both remain under Legacy Stock Authority; later legacy activity transitions synchronization state without changing origin or authority. |
+| Acceptance criteria | Native receipt, reconstructed baseline facts, and post-baseline legacy-synchronized facts have distinct origins; all remain under Legacy Stock Authority. A synchronization movement that only changes an existing layer does not rewrite that layer's establishment origin. |
 
 ### G-05 — Legacy reconstruction read adapter
 
@@ -252,7 +252,7 @@ Target coexistence
 |---|---|
 | Current evidence | No synchronization use case or processed-legacy identity store exists. |
 | Why it matters | Duplicate polling/retry can inflate or reduce quantity twice; voids require correction semantics. |
-| Required capability | Convert discovered legacy deltas into accountable Stock Ledger movements/corrections that retain the legacy Source Transaction Reference, update affected layers without changing their existing `Native` / `Reconstructed` origin classification, deduplicate, retry, reconcile, and advance position atomically for the batch. |
+| Required capability | Convert discovered legacy deltas into accountable Stock Ledger movements/corrections with `LegacySynchronized` origin and the legacy Source Transaction Reference; establish any new layer created by that movement as `LegacySynchronized`; update existing layers without rewriting their establishment origin; deduplicate, retry, reconcile, and advance position atomically for the batch. |
 | Priority | P0 |
 | Dependencies | G-02, G-07, G-13, G-14 |
 | Acceptance criteria | Same legacy movement/batch processed twice is quantity-neutral; legacy void becomes accountable correction/reversal; failed batch retries; success returns state to `Current`. |
@@ -309,7 +309,7 @@ Target coexistence
 | Why it matters | Domain coverage must grow transaction by transaction while remaining compatible with active VB6 paths. |
 | Required capability | Capability handlers using Availability or Provenance Discovery, Freshness Gate, FIFO, Legacy Compatibility Writer, Movement/Layer updates, and idempotency. |
 | Priority | P1 for the first enabled outbound/return capability; P2 for later transaction-family expansion |
-| Dependencies | G-03, G-08, G-09, G-12, G-18 |
+| Dependencies | G-03, G-08, G-12, G-18 for ordinary outbound/transfer; G-09 is additionally required for provenance-sensitive return, correction, and reversal families. |
 | Acceptance criteria | Each enabled type has post/void tests, documented legacy coexistence path, synchronization implication, rollback behavior, and quantity conservation. |
 
 ### G-21 — Virtual Stock Locations and reservation
@@ -463,7 +463,7 @@ Minimum production readiness is global capability evidence, not an `IsAuthoritat
 15. Alternating legacy/new writers conserve quantity through repeated synchronization.
 16. Reconstruction and synchronization failures surface explicit `Inconsistent` outcomes.
 17. Failure injection proves atomic new-system consequence persistence.
-18. No operator procedure treats `Native` / `Reconstructed` as authority.
+18. No operator procedure treats `Native` / `Reconstructed` / `LegacySynchronized` as authority.
 
 Full FO migration, prevention of legacy writes, per-DO ownership, and final cutover are explicitly not prerequisites.
 

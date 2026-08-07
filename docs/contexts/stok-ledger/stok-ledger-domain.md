@@ -208,6 +208,7 @@ A future final cutover may change runtime authority, but such a cutover is outsi
 | Reconciliation Scope         | The bounded set of inventory facts evaluated together. The primary scope is one Item and one Receipt Source across all Stock Locations.                                      |
 | Reconciliation Difference    | A quantity or valuation difference found during Stock Reconciliation.                                                                                                        |
 | Native Stock Fact            | A Stock Layer or Stock Movement recorded directly under the new Stock Ledger rules.                                                                                          |
+| Legacy-Synchronized Stock Fact | A Stock Movement, or a Stock Layer established by that movement, recorded in Stock Ledger from a legacy-originated transaction that occurred after the applicable Stock Ledger baseline was established. |
 | Legacy Stock Fact            | A stock fact originating from the legacy inventory model.                                                                                                                    |
 | Legacy Stock Reconstruction  | The accountable reconstruction of missing Stock Layers from available legacy movement history.                                                                               |
 | Reconstructed Stock Layer    | A Stock Layer established from Legacy Stock Reconstruction rather than from a native Stock Receipt.                                                                          |
@@ -364,7 +365,7 @@ A Stock Layer retains:
 * Effective Receipt Time;
 * Stock Layer identity used as the final deterministic ordering key;
 * layer ordering information required by FIFO;
-* origin classification as native or reconstructed; and
+* origin classification as native, reconstructed, or legacy-synchronized; and
 * depletion status.
 
 A Stock Layer remains retained in the Stock Ledger Representation when its Remaining Quantity reaches zero.
@@ -521,7 +522,7 @@ It owns the Stock Layers for that provenance across Stock Locations and keeps mu
 * Effective Receipt Time;
 * deterministic Stock Layer ordering;
 * FIFO ordering;
-* native or reconstructed origin;
+* native, reconstructed, or legacy-synchronized origin;
 * depletion state; and
 * total remaining quantity.
 
@@ -692,12 +693,12 @@ Internal transfers are excluded from both sides of this equation because they pr
 * **BR-STL-066** — A legacy Stock Layer identity that no longer exists shall not be recreated as though its original identifier were known.
 * **BR-STL-067** — Reconstructed Stock Layers shall receive new accountable identities while retaining the available Item, Receipt Source, Stock Location, Unit Valuation, and movement provenance.
 * **BR-STL-068** — Reconstructed Stock Layers with zero Remaining Quantity shall be retained.
-* **BR-STL-069** — Reconstructed facts shall remain distinguishable from Native Stock Facts.
+* **BR-STL-069** — Reconstructed Stock Facts shall remain distinguishable from Native Stock Facts and Legacy-Synchronized Stock Facts.
 * **BR-STL-070** — One Item and Receipt Source shall have at most one completed baseline reconstruction outcome for the same reconstruction basis.
 * **BR-STL-071** — Repeated reconstruction processing shall not duplicate Stock Layers or quantities.
 * **BR-STL-072** — Native Stock Movements shall not proceed against an unreconstructed Item and Receipt Source when doing so would create incomplete provenance or reconciliation.
 * **BR-STL-073** — A reconstruction inconsistency shall be recorded and surfaced for accountable resolution rather than silently balanced.
-* **BR-STL-074** — Reconstruction completion shall establish the baseline from which subsequent native movements continue.
+* **BR-STL-074** — Reconstruction completion shall establish the baseline from which subsequent native Stock Ledger processing and Legacy Synchronization continue.
 * **BR-STL-075** — Legacy reconstruction shall not require migration of all historical inventory before the new Stock Ledger may operate.
 
 ### 7.10 Legacy coexistence
@@ -757,7 +758,7 @@ Internal transfers are excluded from both sides of this equation because they pr
 * **BR-STL-110** — A Legacy Stock Record may omit detail that its model cannot represent, but such omission shall not erase the richer Stock Ledger fact or be interpreted as a quantity difference when the legacy quantity consequence remains correct.
 * **BR-STL-111** — During the Coexistence Period, reconciliation between Legacy Stock Record and Stock Ledger Representation shall treat the Legacy Stock Record as the persisted source of truth while preserving Stock Ledger-only provenance detail that the legacy representation cannot express.
 * **BR-STL-112** — Legacy Stock Reconstruction establishes the initial Stock Ledger baseline; subsequent legacy stock changes shall be incorporated through Legacy Synchronization rather than requiring full reconstruction again when the prior baseline remains valid.
-* **BR-STL-113** — Native Stock Facts and Reconstructed Stock Facts describe the origin of Stock Ledger facts and shall not be interpreted as authority states during the Coexistence Period.
+* **BR-STL-113** — Native Stock Facts, Reconstructed Stock Facts, and Legacy-Synchronized Stock Facts describe the origin of Stock Ledger facts and shall not be interpreted as authority states during the Coexistence Period.
 * **BR-STL-114** — When a Legacy Stock Record and Stock Ledger Representation differ in quantity or other material facts beyond an explainable synchronization delay or representational limitation, the affected scope shall be `Inconsistent` until reconciled.
 * **BR-STL-115** — A stock transaction originating from the new system may use Stock Ledger rules to determine its consequence, but during coexistence its resulting stock facts shall remain compatible with the authoritative Legacy Stock Record.
 
@@ -815,13 +816,13 @@ Uninitialized
 
 | State          | Business meaning                                                                          |
 | -------------- | ----------------------------------------------------------------------------------------- |
-| Uninitialized  | No native or reconstructed Stock Ledger position exists for the Item and Receipt Source. |
+| Uninitialized  | No Stock Ledger position has yet been established for the Item and Receipt Source. |
 | Established    | The provenance position has been recognized.                                              |
 | Active         | At least one Stock Layer has positive Remaining Quantity.                                 |
 | Fully Depleted | Every Stock Layer has zero Remaining Quantity, but the Stock Position remains retained.   |
 | Inconsistent   | A reconciliation or reconstruction difference requires accountable resolution.            |
 
-A later receipt under the same Receipt Source is permitted only when the source authority confirms that it belongs to the same accountable receipt responsibility.
+A completed Receipt Source shall not receive additional quantity through an ordinary receipt. Any later quantity change related to that Receipt Source shall be represented through an accountable correction, adjustment, return, or other permitted stock consequence.
 
 ### 8.4 Stock Reconciliation lifecycle
 
@@ -1117,7 +1118,7 @@ Reservation Release Confirmed
 ### 10.11 Synchronize Continued Legacy Stock Activity
 
 ```text
-Reconstructed or Native Stock Ledger Representation
+Reconstructed, Native, or Legacy-Synchronized Stock Ledger Representation
   -> legacy stock transaction occurs
   -> applicable legacy facts move beyond Synchronization Position
   -> Legacy Synchronization Required

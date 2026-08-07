@@ -14,7 +14,7 @@
 
 1. Do not port `clbGenStokX1` control flow into Domain/Application.
 2. Do not introduce `IsAuthoritative`, scope authority transition, or per-DO ownership.
-3. Use `Native` / `Reconstructed` only as Stock Ledger fact/layer origin.
+3. Use `Native` / `Reconstructed` / `LegacySynchronized` only as Stock Ledger fact/layer origin.
 4. Keep Item + Receipt Source across all Stock Locations as reconstruction and reconciliation scope.
 5. Evaluate Item + Receipt Source + Stock Location as the write consistency boundary; keep database locking boundary explicit and evidence-based.
 6. Preserve legacy `tb_stok` zero-row deletion and required void/writeback behavior while Stock Ledger retains depleted layers and accountable corrections/reversals.
@@ -65,7 +65,7 @@ Per Item + Receipt Source:
         opaque validated cursor/change token/scoped basis
 
 Per Stock Ledger fact/layer:
-    Origin = Native | Reconstructed
+    Origin = Native | Reconstructed | LegacySynchronized
 
 Global during coexistence:
     Runtime source of truth = tb_stok + tb_buku
@@ -113,7 +113,7 @@ The final storage shape is decided in Phase 0/1. A proposed column name must not
 | Synchronization impact | Persist a mechanism-neutral Synchronization Position shape and state transitions; do not implement a guessed cursor. |
 | Database impact | Add/revise Stock Ledger tables and indexes; include optimistic concurrency for positions and uniqueness for source consequences. Keep depleted layers. No legacy FK constraints or hidden trigger business logic. |
 | Testing | Domain invariants; Movement immutability; ED+FIFO; multi-layer allocation; zero-layer retention; idempotency; state transitions; repository round trips; UoW rollback skeleton. |
-| Validation | Domain has no SQL; Application owns orchestration; Infrastructure owns adapters; `Native` / `Reconstructed` are origin only; no `IsAuthoritative` field exists. |
+| Validation | Domain has no SQL; Application owns orchestration; Infrastructure owns adapters; `Native` / `Reconstructed` / `LegacySynchronized` are origin only; no `IsAuthoritative` field exists. |
 | Exit criteria | G-01–G-07 foundation accepted; additive migration applies to disposable DB; all new persistence can be disabled without affecting legacy stock. |
 | Rollback/containment | Disable Stock Ledger feature flags and leave additive tables unused; legacy operations continue. |
 | Dependencies | Phase 0 boundary and synchronization decisions. |
@@ -142,7 +142,7 @@ The final storage shape is decided in Phase 0/1. A proposed column name must not
 |---|---|
 | Objective | Keep reconstructed or Native-origin Stock Ledger scopes current when VB6 continues to change authoritative legacy records. |
 | Scope | G-12–G-17, synchronization part of G-23, initial G-24 observability. |
-| Implementation work | Implement deletion-aware Legacy Change Discovery, durable Synchronization Position, idempotent catch-up, void-to-correction/reversal interpretation, synchronization reconciliation, stale/inconsistent states, and Freshness Gate. Serialize synchronization with native writes at the chosen boundary. |
+| Implementation work | Implement deletion-aware Legacy Change Discovery, durable Synchronization Position, idempotent catch-up, `LegacySynchronized` Stock Movement origin for post-baseline legacy facts, `LegacySynchronized` origin for any new layer established by those movements, preservation of an existing layer's establishment origin when only its quantity changes, void-to-correction/reversal interpretation, synchronization reconciliation, stale/inconsistent states, and Freshness Gate. Serialize synchronization with native writes at the chosen boundary. |
 | Legacy compatibility impact | VB6 remains writable for every scope. Synchronization consumes legacy facts but does not rewrite them except through an explicitly authorized recovery/correction path. |
 | Synchronization impact | First complete implementation. Position advances only with a committed catch-up batch and successful material reconciliation. |
 | Database impact | Implement the Phase 0-selected change evidence mechanism and indexes. If an additive change log is chosen, all active writer paths must populate it transactionally before rollout. CDC/Change Tracking is used only if approved and operationally supported. |
@@ -425,7 +425,7 @@ Before Phase 9 enables a transaction capability:
 - [ ] Capability flags can disable new processing without disabling VB6 or corrupting legacy stock.
 - [ ] Required FO post/void/writeback behavior has characterization and regression tests.
 - [ ] Synchronization SLO, retention, retry, and recovery runbook are accepted.
-- [ ] No implementation or operator procedure treats `Native` / `Reconstructed` as authority.
+- [ ] No implementation or operator procedure treats `Native` / `Reconstructed` / `LegacySynchronized` as authority.
 
 Minimum production readiness supports a limited enabled transaction set safely. It does not require every stock transaction to migrate.
 
@@ -454,7 +454,7 @@ Minimum production readiness supports a limited enabled transaction set safely. 
 - [ ] `tb_stok + tb_buku` remain the declared Stage B source of truth.
 - [ ] No `IsAuthoritative`, per-DO ownership, or VB6 prohibition was added.
 - [ ] Reconstruction scope, write boundary, lock boundary, and authority are distinct.
-- [ ] `Native` / `Reconstructed` are origin only.
+- [ ] `Native` / `Reconstructed` / `LegacySynchronized` are origin only.
 - [ ] Availability Discovery and Provenance Discovery are not conflated.
 - [ ] Freshness Gate precedes trusted Ledger allocation.
 - [ ] Legacy-originated changes have deletion-aware, idempotent synchronization.

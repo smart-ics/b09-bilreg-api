@@ -6,7 +6,7 @@
 **Legacy behavior reference:** [`clbGenStokX1.cls`](./clbGenStokX1.cls) (VB6 Transaction Script — extract behavior only; do not port)
 **Companion artifacts:** [`stock-ledger-gap-analysis.md`](./stock-ledger-gap-analysis.md), [`stock-ledger-implementation-roadmap.md`](./stock-ledger-implementation-roadmap.md)
 
-**Revision note:** This revision supersedes the rejected per-Item + Receipt Source authority-cutover model. During coexistence, `tb_stok + tb_buku` remain the authoritative persisted stock truth for every scope. `Native` and `Reconstructed` classify how Stock Ledger facts were established; they do not transfer authority or prohibit later VB6 activity.
+**Revision note:** This revision supersedes the rejected per-Item + Receipt Source authority-cutover model. During coexistence, `tb_stok + tb_buku` remain the authoritative persisted stock truth for every scope. `Native`, `Reconstructed`, and `LegacySynchronized` classify how Stock Ledger facts were established; they do not transfer authority or prohibit later VB6 activity.
 
 ---
 
@@ -31,7 +31,7 @@ The target is feasible as an incremental modernization, but production feasibili
 | ID | Decision |
 |---|---|
 | D1 | **Runtime authority is global during coexistence.** `tb_stok + tb_buku` remain the persisted source of truth. There is no per-Item + Receipt Source authority transfer. |
-| D2 | **Origin is not authority.** `Native` means recorded directly under Stock Ledger rules; `Reconstructed` means derived from legacy history. Both labels are provenance/readiness classifications only. |
+| D2 | **Origin is not authority.** `Native` means recorded directly under Stock Ledger rules; `Reconstructed` means established during initial Legacy Stock Reconstruction; `LegacySynchronized` means recorded in Stock Ledger from a legacy-originated transaction that occurred after the baseline. These labels are provenance classifications only. |
 | D3 | **Separate four boundaries.** Reconstruction and reconciliation use Item + Receipt Source across all Stock Locations. A write consistency boundary may be Item + Receipt Source + Stock Location. Database locking may be narrower still. None is an authority boundary. |
 | D4 | **Separate discovery responsibilities.** Availability Discovery finds currently available Receipt Sources; Provenance Discovery finds the original Receipt Source/layer for returns, reversals, or corrections. |
 | D5 | **Freshness replaces authority gating.** Before Stock Ledger relies on layers, it must establish that applicable legacy changes through a known Synchronization Position are incorporated, or treat the scope as not current. |
@@ -95,12 +95,12 @@ Do not create `IsAuthoritative`, `Stock Ledger Authority Established`, or an own
 |---|---|---|
 | Reconstruction Status | `NotReconstructed`, `ReconstructionRequired`, `Reconstructing`, `Reconstructed`, `Inconsistent` | Whether an initial Item + Receipt Source baseline exists across all locations |
 | Synchronization State | `Current`, `LegacyChangePending`, `SynchronizationRequired`, `Inconsistent` | Whether the Stock Ledger Representation reflects applicable legacy facts through its Synchronization Position |
-| Fact/Layer Origin | `Native`, `Reconstructed` | How an individual Stock Ledger fact was established |
+| Fact/Layer Origin | `Native`, `Reconstructed`, `LegacySynchronized` | How an individual Stock Ledger fact was established. For an existing layer, its establishment origin remains unchanged when later synchronization movements modify its quantity. |
 | Runtime Authority | `LegacyStockRecord` during Stage B | Global coexistence decision, not scope state |
 
 Domain lifecycle labels use spaces (for example, `Not Reconstructed` and `Legacy Change Pending`). PascalCase forms in this review denote candidate persisted/code values only; final names must follow repository conventions without changing the domain meaning.
 
-`Native` does not mean “created after cutover.” A Native fact may coexist with later legacy-originated changes to the same Receipt Source.
+`Native` does not mean “created after cutover.” A Native fact may coexist with later legacy-originated changes to the same Receipt Source. A later legacy-originated movement is recorded with `LegacySynchronized` origin; if it only changes an existing layer, that layer retains the origin with which it was originally established.
 
 ---
 
@@ -441,7 +441,7 @@ Disabling VB6 for reconstructed scopes is not an accepted mitigation.
 
 | ID | Risk | Severity | Required control |
 |---|---|---|---|
-| R1 | Treating Native/Reconstructed as authority | Critical | State model in §0.3; no `IsAuthoritative` |
+| R1 | Treating Native/Reconstructed/LegacySynchronized origin as authority | Critical | State model in §0.3; no `IsAuthoritative` |
 | R2 | Stock Ledger allocation from stale layers after VB6 activity | Critical | Freshness Gate + synchronization |
 | R3 | Append-only cursor misses legacy void deletion | Critical | Deletion-aware discovery, bounded diff, change log, or validated CDC/CT |
 | R4 | Two applications consume overlapping quantity | Critical | Shared database concurrency protocol and stress tests |
@@ -489,7 +489,7 @@ The corrected coexistence design is **feasible in architecture and domain shape,
 * retain the candidate Item + Receipt Source + Location write boundary pending concurrency proof;
 * preserve phased reconstruction and initialize a synchronization basis at completion;
 * add Legacy Synchronization and a Legacy Freshness Gate before trusted allocation;
-* use `Native` / `Reconstructed` only as fact origin;
+* use `Native` / `Reconstructed` / `LegacySynchronized` only as fact origin;
 * write legacy-compatible authoritative records for every new-system consequence;
 * preserve legacy delete/void/writeback behavior while enriching Stock Ledger history;
 * prove deletion-aware change discovery and a mixed-writer concurrency protocol before rollout;
