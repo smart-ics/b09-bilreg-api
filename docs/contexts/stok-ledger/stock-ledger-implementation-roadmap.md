@@ -1,8 +1,10 @@
 # Stock Ledger — Phased Implementation Roadmap
 
-**Artifact status:** Executable coexistence implementation roadmap
+**Artifact status:** Executable coexistence implementation roadmap — Phase 0 baseline **frozen** (2026-08-07)
 **Basis:** Actual codebase state + [`stok-ledger-domain.md`](./stok-ledger-domain.md) + [`stock-ledger-feasibility-review.md`](./stock-ledger-feasibility-review.md)
 **Gap backlog:** [`stock-ledger-gap-analysis.md`](./stock-ledger-gap-analysis.md)
+**Phase 0 exit:** [`stock-ledger-phase-0-exit-review.md`](./stock-ledger-phase-0-exit-review.md)
+**Phase 1 plan:** [`stock-ledger-phase1-implementation-plan.md`](./stock-ledger-phase1-implementation-plan.md)
 **Legacy behavior reference:** [`clbGenStokX1.cls`](./clbGenStokX1.cls)
 **Standards:** [`docs/ENGINEERING.md`](../../ENGINEERING.md), [`docs/DATABASE.md`](../../DATABASE.md), [`docs/NAMING.md`](../../NAMING.md)
 
@@ -87,7 +89,7 @@ The final storage shape is decided in Phase 0/1. A proposed column name must not
 
 ### Phase 0 — Revalidate legacy behavior and coexistence baseline
 
-**Progress:** Complete (2026-08-07) — evidence pack + ADRs. Report: [`stock-ledger-phase-0-implementation-report.md`](./stock-ledger-phase-0-implementation-report.md).
+**Progress:** COMPLETE — Phase-0 baseline frozen (2026-08-07). Report: [`stock-ledger-phase-0-implementation-report.md`](./stock-ledger-phase-0-implementation-report.md). Exit review: [`stock-ledger-phase-0-exit-review.md`](./stock-ledger-phase-0-exit-review.md) (**PASS WITH RISKS**). Phase 1 execution plan: [`stock-ledger-phase1-implementation-plan.md`](./stock-ledger-phase1-implementation-plan.md).
 
 | Area | Plan |
 |---|---|
@@ -106,14 +108,21 @@ The final storage shape is decided in Phase 0/1. A proposed column name must not
 
 **Phase 0 exit checklist**
 
-- [x] FQ-01–FQ-07 resolved or assigned safe interim ([phase-0 report](./stock-ledger-phase-0-implementation-report.md))
-- [x] Synchronization ADR approved ([ADR-stock-ledger-legacy-change-discovery.md](./adr/ADR-stock-ledger-legacy-change-discovery.md)) — fingerprint + bounded replay; reject id/watermark-alone
+- [x] FQ-01–FQ-07 resolved or assigned safe interim ([phase-0 report](./stock-ledger-phase-0-implementation-report.md)); FQ-02 = partial/deferred
+- [x] Synchronization ADR approved ([ADR-stock-ledger-legacy-change-discovery.md](./adr/ADR-stock-ledger-legacy-change-discovery.md)) — fingerprint + bounded replay; reject id/watermark-alone; mismatch ⇒ set-diff and/or scoped re-derive
 - [x] Concurrency ADR approved interim ([ADR-stock-ledger-mixed-writer-concurrency.md](./adr/ADR-stock-ledger-mixed-writer-concurrency.md)) — FQ-06 live VB6 proof still open
 - [x] FO coverage matrix characterization-approved ([phase-0-writer-inventory.md](./evidence/phase-0-writer-inventory.md))
 - [x] No authority-cutover language introduced
-- [ ] Controlled concurrent VB6 sessions (deferred; blocks Phase 9, not Phase 1)
+- [x] Exit Review **PASS WITH RISKS** — Phase 1 GO under scaffolding conditions
+- [ ] Change-kind detection experiment (insert/update/stok-delete/buku-void-delete/backdate/repost) — **residual**; carries to **G-13** / Phase 3 (does not block Phase 1 scaffolding)
+- [ ] Controlled concurrent VB6 sessions — **residual**; carries to **G-17** / Phase 9 (does not block Phase 1 scaffolding)
+
+**Phase 1 readiness (Exit Review):** GO for additive foundation only. NO-GO for claiming G-13/G-17 done, production catch-up, or FO capability enablement.
 
 ### Phase 1 — Additive Stock Ledger foundation
+
+**Progress:** IN PROGRESS — P1-S1 complete ([summary](./stock-ledger-phase1-s1-implementation-summary.md)).  
+**Execution plan:** [`stock-ledger-phase1-implementation-plan.md`](./stock-ledger-phase1-implementation-plan.md) (slices P1-S1 … P1-S8). Do not expand this roadmap section into slice detail.
 
 | Area | Plan |
 |---|---|
@@ -446,7 +455,7 @@ Minimum production readiness supports a limited enabled transaction set safely. 
 
 | Phase | Outcome | Primary gaps | Explicit non-goal |
 |---|---|---|---|
-| 0 | Proven legacy/sync/concurrency baseline (**done** 2026-08-07; FQ-06 live VB6 proof deferred) | Evidence for G-13/G-17/G-25 | Code implementation |
+| 0 | Proven legacy/sync/concurrency baseline (**frozen** 2026-08-07; PASS WITH RISKS; FQ-06 + detection experiment residual) | G-13 empirical proof; G-17; G-25 SLO/index approval; G-28 | Code implementation |
 | 1 | Additive domain and persistence foundation | G-01–G-07, G-18 | Legacy authority change |
 | 2 | Initial bounded reconstruction | G-05, G-10 | Per-scope cutover |
 | 3 | Incremental synchronization + Freshness Gate | G-12–G-17 | Blocking VB6 |
@@ -484,7 +493,7 @@ Minimum production readiness supports a limited enabled transaction set safely. 
 | Unknown | Required resolution |
 |---|---|
 | Live population/order of `fd_tgl_jam_mutasi` | **Resolved (Phase 0):** 100% populated; ties + deletes preclude watermark-alone cursor |
-| Completeness/transactionality of legacy ID counters | **Partial (Phase 0):** ID patterns profiled; multi-instance atomicity still needs live concurrency test |
+| Completeness/transactionality of legacy ID counters | **Partial / deferred (Phase 0):** ID patterns profiled; multi-instance atomicity still needs live concurrency test |
 | Every deployed `xVoidDelete` caller and hidden stock writer | **Partial:** script + snapshot; ops signoff + `AJX_*` owner still needed |
 | Production indexes/triggers and row volumes | **Resolved (Phase 0 snapshot):** see evidence pack; proposed indexes pending DBA |
 | VB6 transaction/isolation/lock behavior | **Open:** controlled mixed-writer test (blocks Phase 9) |

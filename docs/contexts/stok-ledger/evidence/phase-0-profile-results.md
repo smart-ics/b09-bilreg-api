@@ -1,9 +1,11 @@
 # Stock Ledger Phase 0 — Profile Results (sanitized)
 
+**Artifact status:** Phase-0 evidence — frozen baseline (2026-08-07)  
 **Source:** `HOSPITAL_HPL` on `dev.smart-ics.com` (production snapshot)  
 **Captured:** 2026-08-07  
 **Mode:** Read-only `SELECT` / metadata only  
 **Query pack:** [`phase-0-profile-queries.sql`](./phase-0-profile-queries.sql)
+**Governing exit:** [`../stock-ledger-phase-0-exit-review.md`](../stock-ledger-phase-0-exit-review.md)
 
 No credentials, patient identifiers, or full row dumps are included.
 

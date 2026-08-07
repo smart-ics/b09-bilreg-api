@@ -1,9 +1,11 @@
 # ADR — Mixed-Writer Concurrency and Conflict Policy
 
-**Status:** Accepted interim (Phase 0) — **not** mixed-writer production proof  
+**Status:** Accepted interim — Phase-0 baseline (frozen 2026-08-07) — **not** mixed-writer production proof  
 **Date:** 2026-08-07  
 **Context:** Stock Ledger Stage B coexistence with VB6  
-**Related:** [`stock-ledger-implementation-roadmap.md`](../stock-ledger-implementation-roadmap.md) §7, FQ-06, [`phase-0-writer-inventory.md`](../evidence/phase-0-writer-inventory.md)
+**Related:** [`stock-ledger-implementation-roadmap.md`](../stock-ledger-implementation-roadmap.md) §7, FQ-06, [`phase-0-writer-inventory.md`](../evidence/phase-0-writer-inventory.md), [`stock-ledger-phase-0-exit-review.md`](../stock-ledger-phase-0-exit-review.md)
+
+**Freeze note:** Interim lock order and conflict outcomes below are the approved design baseline for Phase 1+. Live VB6 proof (FQ-06 / G-17) remains an open **production** gate; do not reopen the interim policy without ADR amendment.
 
 ---
 

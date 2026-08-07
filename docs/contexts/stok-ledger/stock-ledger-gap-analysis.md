@@ -1,10 +1,14 @@
 # Stock Ledger — Gap Analysis
 
-**Artifact status:** Dependency-ordered implementation gap backlog
+**Artifact status:** Dependency-ordered implementation gap backlog — Phase 0 baseline **frozen** (2026-08-07)
 **Basis:** Current codebase vs [`stok-ledger-domain.md`](./stok-ledger-domain.md) and [`stock-ledger-feasibility-review.md`](./stock-ledger-feasibility-review.md)
 **Execution plan:** [`stock-ledger-implementation-roadmap.md`](./stock-ledger-implementation-roadmap.md)
+**Phase 0 exit:** [`stock-ledger-phase-0-exit-review.md`](./stock-ledger-phase-0-exit-review.md)
+**Phase 1 plan:** [`stock-ledger-phase1-implementation-plan.md`](./stock-ledger-phase1-implementation-plan.md)
 
 **Authority rule:** During coexistence, `tb_stok + tb_buku` remain the authoritative persisted stock truth. No gap in this backlog establishes per-Item + Receipt Source authority, prevents later VB6 activity, or treats `Native` / `Reconstructed` as authority states.
+
+**Phase 0 freeze note (2026-08-07):** Evidence fields for G-13/G-14/G-17/G-22/G-25 updated from snapshot profiling. G-19 dependencies aligned with roadmap Phase 4. G-28 added for hidden writer vocabulary. Do not reopen Stage B authority or origin semantics via gap edits.
 
 ---
 
@@ -228,20 +232,20 @@ Target coexistence
 
 | Field | Detail |
 |---|---|
-| Current evidence | `tb_buku` has string IDs and date/time columns, but legacy voids delete journal rows; `tb_stok` updates/deletes in place; visible VB6 code does not prove `fd_tgl_jam_mutasi` population. |
+| Current evidence | Phase 0 (`HOSPITAL_HPL`): `fd_tgl_jam_mutasi` 100% populated but unsafe as sole cursor (ties, ID≠time, void deletes). ADR selects **fingerprint + bounded replay**; mismatch must set-diff Ledger-known identities and/or scoped re-derive. Empirical detection experiment **not yet run** (Phase 0 residual → this gap). |
 | Why it matters | Incremental synchronization needs complete detection of inserts, quantity updates, depletion deletes, and void deletes. |
-| Required capability | Select and validate a deletion-aware mechanism: proven composite cursor plus diff/tombstones, bounded per-scope fingerprint/diff, additive change log, or supported SQL Server change feature. |
+| Required capability | Implement and validate the Phase-0-selected deletion-aware mechanism (fingerprint + bounded delta/replay; optional non-authoritative time hint). Do not hard-code watermark-alone or `fs_kd_trs`-alone cursors. |
 | Priority | P0 |
-| Dependencies | G-05; live DB/operations evidence |
+| Dependencies | G-05; Phase 0 ADRs; live DB/operations evidence |
 | Acceptance criteria | Production-like tests detect insert, update, `tb_stok` delete, `tb_buku` void delete, backdated/tied movement, and repost; selected mechanism has retention/recovery and performance evidence. |
 
 ### G-14 — Synchronization Position
 
 | Field | Detail |
 |---|---|
-| Current evidence | No durable position exists. Prior roadmap proposed `(fd_tgl_jam_mutasi, fs_kd_trs)` without proof. |
+| Current evidence | Phase 0 ADR: persist **mechanism-neutral** opaque Synchronization Position + algorithm version; first concrete payload is scoped fingerprint (not a watermark). |
 | Why it matters | Freshness and retry need a committed boundary between reflected and pending legacy facts. |
-| Required capability | Persist a validated cursor, change token, or deterministic scoped basis; advance only after the synchronization batch and reconciliation commit. |
+| Required capability | Persist opaque position + algorithm version; advance only after the synchronization batch and reconciliation commit; hash drift alone does not list deletes — pair with G-13 set-diff/re-derive. |
 | Priority | P0 |
 | Dependencies | G-04, G-13 |
 | Acceptance criteria | Crash before commit leaves prior position; retry is safe; position cannot advance past an unapplied/delete-undetected change; operational tooling can explain the current position. |
@@ -272,11 +276,11 @@ Target coexistence
 
 | Field | Detail |
 |---|---|
-| Current evidence | VB6 uses read/update/delete stock behavior; no shared lock protocol is proven. SQL Server transaction helpers and `UPDLOCK, HOLDLOCK` patterns exist elsewhere in the repository. |
+| Current evidence | Phase 0 concurrency ADR: interim policy (short TX; Item→Receipt Source→Location→legacy row order; revalidate; conditional update; Ledger OCC; `UPDLOCK/HOLDLOCK` as .NET candidate only). FQ-06 **unresolved** — no controlled VB6 session proof yet. |
 | Why it matters | VB6 and .NET can consume overlapping quantity or create stale FIFO decisions. |
-| Required capability | Characterize deployed VB6 transactions; define deterministic lock order and a shared row/range/conditional-update protocol; revalidate legacy quantity and synchronization basis before commit; retry deadlocks/conflicts. |
+| Required capability | Characterize deployed VB6 transactions; prove shared protocol under load; revalidate legacy quantity and synchronization basis before commit; retry deadlocks/conflicts. |
 | Priority | P0 |
-| Dependencies | G-01, G-11; operational evidence |
+| Dependencies | G-01, G-11; operational evidence (FQ-06) |
 | Acceptance criteria | Concurrent legacy/new outbound stress test yields one valid winner or non-overlapping allocations, never negative stock/lost update; reconstruction/synchronization/native overlap tests are deterministic. |
 
 ### G-18 — Consequence Unit of Work
@@ -294,11 +298,11 @@ Target coexistence
 
 | Field | Detail |
 |---|---|
-| Current evidence | No C# write use case exists; VB6 `DM` receipt writes inbound `tb_stok`/`tb_buku`. |
+| Current evidence | No C# write use case exists; VB6 `DM` receipt writes inbound `tb_stok`/`tb_buku`. Phase 0 FO matrix characterizes DM strongly. |
 | Why it matters | Receipt is the smallest path proving new domain behavior and coexistence persistence. |
 | Required capability | Idempotent DO Receipt producing Native-origin layer/movement and legacy-compatible authoritative records in one transaction; initialize scope synchronization basis/state. |
 | Priority | P1 |
-| Dependencies | G-02, G-04, G-06, G-07, G-11, G-18 |
+| Dependencies | G-02, G-04, G-06, G-07, G-11, G-12, G-13, G-15, G-18 (production enable additionally requires G-17) |
 | Acceptance criteria | New receipt is visible to VB6; later VB6 transfer/consume is detected and synchronized before next new-system touch; no authority flag/cutover is created. |
 
 ### G-20 — Outbound, transfer, return, adjustment, and reversal behavior
@@ -327,7 +331,7 @@ Target coexistence
 
 | Field | Detail |
 |---|---|
-| Current evidence | VB6 dispatcher routes 13 FO families; no maintained new-system coverage matrix exists. |
+| Current evidence | Phase 0 writer inventory / FO matrix characterization-approved for planning. Snapshot: DR/DS/DT/RT unused locally; DB/RJ unrouted; `AJX_*` present (see G-28). |
 | Why it matters | A transaction is not migrated merely because Stock Ledger can represent it; legacy may still perform the same/related operation. |
 | Required capability | Maintain per-FO post/void writer, new support, authoritative legacy records, discovery, synchronization, compatibility, feature flag, and rollback status. |
 | Priority | P1 |
@@ -360,9 +364,9 @@ Target coexistence
 
 | Field | Detail |
 |---|---|
-| Current evidence | Repository SQL shows only primary-key coverage for legacy stock tables; live indexes and row volumes are unknown. |
+| Current evidence | Phase 0 profile: ~4.7M `tb_buku`, ~11k `tb_stok`; live indexes listed (no `(barang, do)` or `fd_tgl_jam_mutasi` index); proposed additive indexes recorded; DBA approval and SLOs still open. |
 | Why it matters | Reconstruction, discovery, change detection, and diffing must be bounded on production histories. |
-| Required capability | Audit live indexes/volumes; add measured query indexes; define p95 SLOs for Availability Discovery, reconstruction, freshness check, and synchronization. |
+| Required capability | Apply measured query indexes after DBA approval; define p95 SLOs for Availability Discovery, reconstruction, freshness check, and synchronization. |
 | Priority | P1 |
 | Dependencies | G-05, G-13 |
 | Acceptance criteria | Production-scale test meets approved SLO without organization-wide replay or long stock locks. |
@@ -388,6 +392,17 @@ Target coexistence
 | Priority | P3 |
 | Dependencies | Core behavior complete |
 | Acceptance criteria | No event infrastructure or cleanup is on the production critical path; any refactor preserves behavior. |
+
+### G-28 — Hidden / alternate legacy writer vocabulary
+
+| Field | Detail |
+|---|---|
+| Current evidence | Phase 0 snapshot contains `AJX_MIN` / `AJX_PLUS` jenis not in current `clbGenStokX1` constants; synthetic `SYS` / `SYS-01` buku rows with blank jenis; deployed `xVoidDelete` callers not fully enumerated. |
+| Why it matters | Synchronization and FO matrix completeness fail closed if unknown writers mutate authority without discovery vocabulary. |
+| Required capability | Inventory and classify non-script jenis and synthetic rows; map or explicitly defer each before claiming sync completeness for adjustments or related families; feed G-13 discovery filters and G-22 matrix. |
+| Priority | P1 (before AJ enablement / sync-completeness claims) |
+| Dependencies | Phase 0 writer inventory; G-13, G-22 |
+| Acceptance criteria | Every observed stock `fs_kd_jenis_mutasi` in the target environment is either mapped, intentionally ignored with rationale, or blocks the related capability flag; `AJX_*` owner confirmed or deferred with ops signoff. |
 
 ---
 
@@ -416,12 +431,12 @@ Native receipt and first outbound
     G-19 G-20 G-09
         |
 Coverage + operations
-    G-21 G-22 G-24 G-25 G-26
+    G-21 G-22 G-24 G-25 G-26 G-28
 
 Deferred: G-27 and future global final cutover
 ```
 
-G-13 through G-17 must be proven before coexistence production rollout. They may be prototyped in parallel with the additive domain/persistence foundation, but they cannot be deferred behind transaction expansion.
+G-13 through G-17 must be proven before coexistence production rollout. They may be prototyped in parallel with the additive domain/persistence foundation, but they cannot be deferred behind transaction expansion. G-28 must be addressed before claiming adjustment/sync vocabulary completeness.
 
 ---
 

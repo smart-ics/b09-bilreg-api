@@ -1,12 +1,14 @@
 # Stock Ledger — Implementation Feasibility Review
 
-**Artifact status:** Implementation-oriented feasibility review
-**Date basis:** Working-tree inspection of `b09-bilreg-api` (August 2026)
+**Artifact status:** Implementation-oriented feasibility review — Phase 0 baseline **frozen** (2026-08-07)
+**Date basis:** Working-tree inspection of `b09-bilreg-api` (August 2026) + Phase 0 snapshot evidence
 **Canonical business truth:** [`stok-ledger-domain.md`](./stok-ledger-domain.md)
 **Legacy behavior reference:** [`clbGenStokX1.cls`](./clbGenStokX1.cls) (VB6 Transaction Script — extract behavior only; do not port)
-**Companion artifacts:** [`stock-ledger-gap-analysis.md`](./stock-ledger-gap-analysis.md), [`stock-ledger-implementation-roadmap.md`](./stock-ledger-implementation-roadmap.md)
+**Companion artifacts:** [`stock-ledger-gap-analysis.md`](./stock-ledger-gap-analysis.md), [`stock-ledger-implementation-roadmap.md`](./stock-ledger-implementation-roadmap.md), [`stock-ledger-phase-0-exit-review.md`](./stock-ledger-phase-0-exit-review.md)
 
 **Revision note:** This revision supersedes the rejected per-Item + Receipt Source authority-cutover model. During coexistence, `tb_stok + tb_buku` remain the authoritative persisted stock truth for every scope. `Native`, `Reconstructed`, and `LegacySynchronized` classify how Stock Ledger facts were established; they do not transfer authority or prohibit later VB6 activity.
+
+**Phase 0 freeze:** Accepted decisions D1–D12 and Stage B coexistence strategy are LOCKED. FQ resolutions live in the Phase 0 report / Exit Review; do not reopen authority or origin semantics without an explicit change request.
 
 ---
 
@@ -303,19 +305,19 @@ Reconciliation compares material quantity/provenance outcomes while recognizing 
 | Legacy cannot identify original layer but quantity and Receipt Source can be reconstructed deterministically | Reconstructed provenance limitation, explicitly classified |
 | Quantity by Receipt Source cannot be derived consistently | `Inconsistent`; block Stock Ledger-dependent allocation for the scope |
 
-### 3.4 Unresolved feasibility questions
+### 3.4 Feasibility questions (Phase 0 outcomes)
 
-**Phase 0 update (2026-08-07):** Resolutions and interims are recorded in [`stock-ledger-phase-0-implementation-report.md`](./stock-ledger-phase-0-implementation-report.md). Summary: FQ-01/04/05 resolved; FQ-02 limited; FQ-03/07 interim; FQ-06 unresolved with concurrency ADR interim. Sync ADR selects fingerprint + bounded replay.
+**Phase 0 update (2026-08-07):** Resolutions and interims are recorded in [`stock-ledger-phase-0-implementation-report.md`](./stock-ledger-phase-0-implementation-report.md) and confirmed by [`stock-ledger-phase-0-exit-review.md`](./stock-ledger-phase-0-exit-review.md) (**PASS WITH RISKS**). Summary: FQ-01/04/05 resolved; **FQ-02 partial/deferred**; FQ-03/07 interim; FQ-06 unresolved with concurrency ADR interim. Sync ADR selects fingerprint + bounded replay (mismatch ⇒ set-diff and/or scoped re-derive).
 
-| ID | Question | Why it blocks production proof |
+| ID | Question | Phase 0 outcome |
 |---|---|---|
-| FQ-01 | Is `fd_tgl_jam_mutasi` populated and ordered consistently in the live database? | Determines whether a composite watermark is usable. |
-| FQ-02 | Are legacy IDs monotonic and transactionally allocated across all VB6 instances? | Determines whether IDs can assist ordering/deduplication. |
-| FQ-03 | Which callers use `xVoidDelete`, and do deployed writers update/delete `tb_buku` differently from repository evidence? | Determines deletion/tombstone requirements. |
-| FQ-04 | What indexes and triggers exist in production beyond repository SQL? | Determines query cost and hidden write behavior. |
-| FQ-05 | What are the row volumes and hottest Item + Receipt Source histories? | Determines whether bounded diff/replay meets latency targets. |
-| FQ-06 | Are VB6 read-modify-write stock operations enclosed in SQL transactions, and which isolation/lock behavior do they use? | Determines the minimum shared mixed-writer lock protocol. |
-| FQ-07 | Can all active legacy writer entry points emit an additive change record if no safe existing cursor exists? | Determines whether a change-log option is operationally possible. |
+| FQ-01 | Is `fd_tgl_jam_mutasi` populated and ordered consistently in the live database? | **Resolved** — populated; not a sole append cursor |
+| FQ-02 | Are legacy IDs monotonic and transactionally allocated across all VB6 instances? | **Partial / deferred** — identity patterns known; multi-instance allocation unproven |
+| FQ-03 | Which callers use `xVoidDelete`, and do deployed writers update/delete `tb_buku` differently from repository evidence? | **Interim** — script proves deletes; callers/`AJX_*` incomplete |
+| FQ-04 | What indexes and triggers exist in production beyond repository SQL? | **Resolved** — see Phase 0 profile results |
+| FQ-05 | What are the row volumes and hottest Item + Receipt Source histories? | **Resolved** — bounded replay feasible |
+| FQ-06 | Are VB6 read-modify-write stock operations enclosed in SQL transactions, and which isolation/lock behavior do they use? | **Unresolved** + concurrency ADR interim (blocks Phase 9) |
+| FQ-07 | Can all active legacy writer entry points emit an additive change record if no safe existing cursor exists? | **Interim deferred** — CT/CDC absent; fingerprint primary |
 
 ---
 

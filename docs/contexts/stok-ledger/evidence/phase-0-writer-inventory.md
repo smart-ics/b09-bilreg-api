@@ -1,8 +1,10 @@
 # Stock Ledger Phase 0 — Writer Inventory and FO Coverage Matrix
 
+**Artifact status:** Phase-0 evidence — frozen baseline (2026-08-07)  
 **Basis:** [`clbGenStokX1.cls`](../clbGenStokX1.cls) + [`phase-0-profile-results.md`](./phase-0-profile-results.md)  
 **Date:** 2026-08-07  
 **Authority during coexistence:** `tb_stok` + `tb_buku` remain Stage B source of truth.
+**Governing exit:** [`../stock-ledger-phase-0-exit-review.md`](../stock-ledger-phase-0-exit-review.md)
 
 ---
 

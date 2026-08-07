@@ -1,12 +1,14 @@
 # Domain Stock Ledger
 
-**Status artefak:** Pendamping semantik Bahasa Indonesia
+**Status artefak:** Pendamping semantik Bahasa Indonesia — baseline arsitektur Phase 0 **dibekukan** (2026-08-07)
 
 **Bounded context:** Stock Ledger
 
 **Cakupan versi:** Modernisasi bertahap pencatatan persediaan legacy sambil menjaga kompatibilitas dengan transaksi stok yang ada
 
 **Sumber canonical English:** [stok-ledger-domain.md](./stok-ledger-domain.md)
+
+**Pembekuan Phase 0:** Keputusan domain pada dokumen English (otoritas Stage B, lingkup rekonstruksi, Freshness Gate, label origin ≠ otoritas) bersifat LOCKED. Lihat [stock-ledger-phase-0-exit-review.md](./stock-ledger-phase-0-exit-review.md).
 
 ---
 

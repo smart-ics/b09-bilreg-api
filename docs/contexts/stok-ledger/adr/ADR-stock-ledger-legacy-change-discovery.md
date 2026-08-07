@@ -1,9 +1,9 @@
 # ADR — Legacy Change Discovery and Synchronization Position
 
-**Status:** Accepted (Phase 0 interim; revisit if ops enables CT/CDC or a universal change log)  
+**Status:** Accepted — Phase-0 baseline (frozen 2026-08-07); revisit mechanism only if ops enables CT/CDC or a universal change log with explicit ADR amendment  
 **Date:** 2026-08-07  
 **Context:** Stock Ledger Stage B coexistence  
-**Related:** [`stock-ledger-feasibility-review.md`](../stock-ledger-feasibility-review.md) §3, [`phase-0-profile-results.md`](../evidence/phase-0-profile-results.md), FQ-01 / FQ-02 / FQ-03 / FQ-07
+**Related:** [`stock-ledger-feasibility-review.md`](../stock-ledger-feasibility-review.md) §3, [`phase-0-profile-results.md`](../evidence/phase-0-profile-results.md), [`stock-ledger-phase-0-exit-review.md`](../stock-ledger-phase-0-exit-review.md), FQ-01 / FQ-02 / FQ-03 / FQ-07
 
 ---
 
@@ -21,6 +21,17 @@
 **Deferred:** Additive change log written by all stock writers; SQL Server Change Tracking / CDC (not enabled on this snapshot; would require ops ownership and VB6 participation for FQ-07).
 
 **Phase 1 persistence:** Store a **mechanism-neutral Synchronization Position** opaque value + algorithm version, so the concrete fingerprint format can evolve without authority semantics.
+
+### Normative rule on fingerprint mismatch (Phase 3)
+
+A stored fingerprint/hash alone is a **freshness trigger**, not a delete event stream. When the current authority fingerprint disagrees with the stored Synchronization Position, Legacy Change Discovery **MUST**:
+
+1. **Set-diff** Ledger-known legacy journal identities for the scope against surviving `tb_buku` rows (detect void-deletes and other absences), and/or  
+2. Perform **scoped re-derive / bounded replay** from the Stock Ledger baseline plus the current authoritative `tb_buku` / `tb_stok` snapshot,
+
+then apply accountable Ledger correction/reversal movements — **never** by erasing Stock Ledger history.
+
+Do not advance Synchronization Position until the chosen path and material reconciliation succeed.
 
 ---
 
@@ -48,7 +59,7 @@ For scope `Item + Receipt Source` across all locations, a candidate fingerprint 
 
 Any mismatch vs stored Synchronization Position ⇒ `SynchronizationRequired` (or `LegacyChangePending`) before Ledger-dependent allocation.
 
-Deleted journal facts are detected as **missing identities / fingerprint drift**, then interpreted as accountable Ledger correction/reversal — never by erasing Ledger history.
+Deleted journal facts are detected via the normative mismatch rule above (set-diff and/or scoped re-derive after fingerprint drift), then interpreted as accountable Ledger correction/reversal — never by erasing Ledger history. Hash-only drift without set-diff/re-derive is insufficient for G-13 acceptance.
 
 ---
 

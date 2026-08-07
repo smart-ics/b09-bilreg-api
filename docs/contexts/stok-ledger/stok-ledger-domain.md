@@ -1,12 +1,14 @@
 # Stock Ledger Domain
 
-**Artifact status:** Canonical business specification
+**Artifact status:** Canonical business specification — Phase 0 architectural baseline **frozen** (2026-08-07)
 
 **Bounded context:** Stock Ledger
 
 **Version scope:** Incremental modernization of legacy inventory recording while preserving compatibility with existing stock transactions
 
 **Bahasa Indonesia companion:** [stok-ledger-domain-id.md](./stok-ledger-domain-id.md)
+
+**Phase 0 freeze:** Coexistence authority (`tb_stok` + `tb_buku`), reconstruction scope (Item + Receipt Source across locations), Freshness Gate, origin labels (`Native` / `Reconstructed` / `LegacySynchronized` ≠ authority), and Stage B coexistence strategy are LOCKED. Implementation ADRs and the Phase 0 Exit Review govern technical realization; do not redesign these domain decisions without an explicit change request. See [`stock-ledger-phase-0-exit-review.md`](./stock-ledger-phase-0-exit-review.md).
 
 ---
 
