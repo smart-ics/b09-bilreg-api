@@ -6,9 +6,8 @@ using Bilreg.Domain.SalesContext.PenjualanFeature;
 using Bilreg.Domain.SalesContext.ResepFeature;
 using Bilreg.Domain.SalesContext.Shared;
 using MediatR;
-using Nuna.Lib.PatternHelper;
 
-namespace Bilreg.Application.SalesContext.PenjualanFeature;
+namespace Bilreg.Application.SalesContext.PenjualanFeature.UseCases;
 
 public record PenjualanGetQry(string PenjualanId)
     : IRequest<PenjualanGetResponse>, IPenjualanKey;

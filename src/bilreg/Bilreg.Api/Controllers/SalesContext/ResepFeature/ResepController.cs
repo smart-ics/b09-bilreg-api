@@ -20,7 +20,7 @@ public class ResepController : ControllerBase
     
     [HttpGet]
     [Route("list/{regId}")]
-    public async Task<IActionResult> ListResepByRegId(string regId)
+    public async Task<IActionResult> ListDataByRegId(string regId)
     {
         var query = new ResepListByRegQuery(regId);
         var response = await _mediator.Send(query); 
@@ -28,10 +28,10 @@ public class ResepController : ControllerBase
     }
     
     [HttpGet]
-    [Route("/{resepId}")]
-    public async Task<IActionResult> GetResep(string resepId)
+    [Route("{id}")]
+    public async Task<IActionResult> GetData(string id)
     {
-        var query = new ResepGetQuery(resepId);
+        var query = new ResepGetQuery(id);
         var response = await _mediator.Send(query); 
         return Ok(new JSendOk(response));
     }

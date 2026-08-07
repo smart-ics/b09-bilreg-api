@@ -6,10 +6,9 @@ using Bilreg.Domain.InventoryContext.StokFeature;
 using Bilreg.Domain.SalesContext.PenjualanFeature;
 using Bilreg.Domain.SalesContext.ResepFeature;
 using MediatR;
-using Nuna.Lib.PatternHelper;
 using SalesTipeJaminanReff = Bilreg.Domain.SalesContext.Shared.TipeJaminanReff;
 
-namespace Bilreg.Application.SalesContext.PenjualanFeature;
+namespace Bilreg.Application.SalesContext.PenjualanFeature.UseCases;
 
 public record PenjualanCreateCmd(
     string ResepId,
