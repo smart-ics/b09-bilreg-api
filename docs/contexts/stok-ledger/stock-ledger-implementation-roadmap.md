@@ -121,7 +121,7 @@ The final storage shape is decided in Phase 0/1. A proposed column name must not
 
 ### Phase 1 — Additive Stock Ledger foundation
 
-**Progress:** IN PROGRESS — P1-S1 complete ([summary](./stock-ledger-phase1-s1-implementation-summary.md)).  
+**Progress:** IN PROGRESS — P1-S1…P1-S7 complete; P1-S8 remaining ([execution plan](./stock-ledger-phase1-implementation-plan.md), latest [P1-S7 summary](./stock-ledger-phase1-s7-implementation-summary.md)).  
 **Execution plan:** [`stock-ledger-phase1-implementation-plan.md`](./stock-ledger-phase1-implementation-plan.md) (slices P1-S1 … P1-S8). Do not expand this roadmap section into slice detail.
 
 | Area | Plan |

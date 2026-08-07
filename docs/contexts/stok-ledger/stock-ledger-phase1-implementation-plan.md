@@ -18,7 +18,7 @@
 | P1-S4 | **COMPLETE** | [`stock-ledger-phase1-s4-implementation-summary.md`](./stock-ledger-phase1-s4-implementation-summary.md) |
 | P1-S5 | **COMPLETE** | [`stock-ledger-phase1-s5-implementation-summary.md`](./stock-ledger-phase1-s5-implementation-summary.md) |
 | P1-S6 | **COMPLETE** | [`stock-ledger-phase1-s6-implementation-summary.md`](./stock-ledger-phase1-s6-implementation-summary.md) |
-| P1-S7 | Not started | |
+| P1-S7 | **COMPLETE** | [`stock-ledger-phase1-s7-implementation-summary.md`](./stock-ledger-phase1-s7-implementation-summary.md) |
 | P1-S8 | Not started | |
 
 ---
@@ -254,6 +254,8 @@ Each slice must leave the solution **compiling**. Prefer disposable/test DB (`DE
 ---
 
 ### P1-S7 — Application ports (contracts only)
+
+**Progress:** COMPLETE (2026-08-07) — see [`stock-ledger-phase1-s7-implementation-summary.md`](./stock-ledger-phase1-s7-implementation-summary.md).
 
 | Field | Detail |
 |---|---|
