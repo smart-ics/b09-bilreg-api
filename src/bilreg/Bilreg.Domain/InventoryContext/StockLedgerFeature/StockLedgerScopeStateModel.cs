@@ -58,6 +58,27 @@ public record StockLedgerScopeStateModel : IStockLedgerScopeKey
         Guard.Against.Null(receiptSource, nameof(receiptSource));
         return CreateNotReconstructed(StockLedgerScopeKeyType.Create(item, receiptSource));
     }
+
+    /// <summary>
+    /// Rehydrates coexistence state from durable storage without executing transitions.
+    /// Does not compute fingerprints or discover legacy changes.
+    /// </summary>
+    public static StockLedgerScopeStateModel Rehydrate(
+        string brgId,
+        string receiptSourceId,
+        ReconstructionStatusEnum reconstructionStatus,
+        SynchronizationStateEnum synchronizationState,
+        SynchronizationPositionType? synchronizationPosition,
+        string? reconstructionBasisVersion,
+        string? inconsistencyReason)
+        => new(
+            brgId,
+            receiptSourceId,
+            reconstructionStatus,
+            synchronizationState,
+            synchronizationPosition,
+            NormalizeOptional(reconstructionBasisVersion),
+            NormalizeOptional(inconsistencyReason));
     #endregion
 
     #region PROPERTIES

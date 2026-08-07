@@ -97,6 +97,37 @@ public record StockLayerModel : IStockLayerKey
 
     public static IStockLayerKey Key(string stockLayerId)
         => new StockLayerKey(stockLayerId);
+
+    /// <summary>
+    /// Rehydrates a Stock Layer from durable storage, including depleted layers
+    /// (Remaining Quantity = 0). Does not invent identity or mutate existing facts.
+    /// </summary>
+    public static StockLayerModel Rehydrate(
+        string stockLayerId,
+        string brgId,
+        string receiptSourceId,
+        string layananId,
+        string layerFormingMovementId,
+        decimal initialQuantity,
+        decimal remainingQuantity,
+        UnitValuationType unitValuation,
+        DateTime effectiveReceiptTime,
+        StockFactOriginEnum origin,
+        DateOnly? expirationDate = null,
+        string? batch = null)
+        => new(
+            stockLayerId,
+            brgId,
+            receiptSourceId,
+            layananId,
+            layerFormingMovementId,
+            initialQuantity,
+            remainingQuantity,
+            unitValuation,
+            expirationDate,
+            effectiveReceiptTime,
+            origin,
+            batch);
     #endregion
 
     #region PROPERTIES

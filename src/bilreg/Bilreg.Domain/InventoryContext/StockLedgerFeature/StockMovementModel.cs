@@ -98,6 +98,41 @@ public record StockMovementModel : IStockMovementKey
     public static IStockMovementKey Key(string stockMovementId)
         => new StockMovementKey(stockMovementId);
 
+    /// <summary>
+    /// Rehydrates a completed Stock Movement from durable storage.
+    /// Transfer conservation is re-checked; completed facts remain immutable after load.
+    /// </summary>
+    public static StockMovementModel Rehydrate(
+        string stockMovementId,
+        ISourceTransactionReferenceKey sourceTransaction,
+        StockMovementKindEnum movementKind,
+        DateTime effectiveBusinessTime,
+        StockFactOriginEnum origin,
+        IEnumerable<StockMovementLineType> lines,
+        string? reversedMovementId = null,
+        string? correctedMovementId = null)
+    {
+        Guard.Against.NullOrWhiteSpace(stockMovementId, nameof(stockMovementId));
+        Guard.Against.Null(sourceTransaction, nameof(sourceTransaction));
+        Guard.Against.EnumOutOfRange(movementKind, nameof(movementKind));
+        Guard.Against.Default(effectiveBusinessTime, nameof(effectiveBusinessTime));
+        Guard.Against.EnumOutOfRange(origin, nameof(origin));
+
+        var frozen = FreezeLines(lines);
+        if (movementKind == StockMovementKindEnum.Transfer)
+            EnsureTransferInvariants(frozen);
+
+        return new StockMovementModel(
+            stockMovementId,
+            SourceTransactionReferenceType.Create(sourceTransaction.SourceTransactionId),
+            movementKind,
+            effectiveBusinessTime,
+            origin,
+            frozen,
+            string.IsNullOrWhiteSpace(reversedMovementId) ? null : reversedMovementId,
+            string.IsNullOrWhiteSpace(correctedMovementId) ? null : correctedMovementId);
+    }
+
     private static StockMovementModel CreateCompleted(
         StockMovementKindEnum movementKind,
         ISourceTransactionReferenceKey sourceTransaction,
