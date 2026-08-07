@@ -6,7 +6,7 @@
 
 **Version scope:** Incremental modernization of legacy inventory recording while preserving compatibility with existing stock transactions
 
-**Bahasa Indonesia companion:** `stock-ledger-domain-id.md` — not yet created
+**Bahasa Indonesia companion:** [stok-ledger-domain-id.md](./stok-ledger-domain-id.md)
 
 ---
 

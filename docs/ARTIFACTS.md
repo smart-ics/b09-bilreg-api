@@ -274,6 +274,21 @@ Background processing platform — job orchestration, worker plugins, operator c
 
 ---
 
+### Stock Ledger (`docs/contexts/stok-ledger/`)
+
+Authoritative inventory movement, provenance, Remaining Quantity, FIFO, reservation via Virtual Stock Location, reconciliation, and incremental legacy reconstruction. Supporting bounded context — records stock consequences owned by other contexts without taking over their transaction authority.
+
+| Path | Purpose |
+|------|---------|
+| `docs/contexts/stok-ledger/stok-ledger-domain.md` | Stock Ledger — canonical English business truth (movements, layers, FIFO, reconciliation, legacy reconstruction) |
+| `docs/contexts/stok-ledger/stok-ledger-domain-id.md` | Stock Ledger — Bahasa Indonesia semantic companion |
+| `docs/contexts/stok-ledger/stock-ledger-feasibility-review.md` | Stock Ledger — codebase-grounded feasibility review (domain vs implementation, legacy VB6 classification, risks) |
+| `docs/contexts/stok-ledger/stock-ledger-gap-analysis.md` | Stock Ledger — dependency-ordered gap backlog (current code → target domain) |
+| `docs/contexts/stok-ledger/stock-ledger-implementation-roadmap.md` | Stock Ledger — phased implementation roadmap from actual repo state |
+| `docs/contexts/stok-ledger/clbGenStokX1.cls` | Legacy VB6 stock Transaction Script — behavior reference only (do not port) |
+
+---
+
 ## Shared (`docs/shared/`)
 
 | Path | Purpose |
