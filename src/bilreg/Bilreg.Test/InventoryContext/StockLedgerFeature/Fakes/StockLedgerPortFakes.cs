@@ -1,13 +1,16 @@
 using Bilreg.Application.InventoryContext.StockLedgerFeature.Ports;
+using Bilreg.Application.Shared;
 using Bilreg.Domain.BrgContext.BrgFeature;
 using Bilreg.Domain.InventoryContext.StockLedgerFeature;
 using Bilreg.Domain.InventoryContext.StokFeature;
+using Bilreg.Infrastructure.Shared;
 
 namespace Bilreg.Test.InventoryContext.StockLedgerFeature.Fakes;
 
 /// <summary>
 /// Test-only doubles for P1-S7 ports. Not for production DI.
 /// Compatible with P1-S8 UoW wiring (especially throw-on-Apply for rollback proof).
+/// P2-S6: supports call-indexed snapshots and read-side callbacks for Phase B/C tests.
 /// </summary>
 public sealed class FakeLegacyStockReadPort : ILegacyStockReadPort
 {
@@ -17,19 +20,38 @@ public sealed class FakeLegacyStockReadPort : ILegacyStockReadPort
     public IReadOnlyList<LegacyStockJournalEntryType> JournalEntries { get; set; } =
         Array.Empty<LegacyStockJournalEntryType>();
 
+    /// <summary>
+    /// When set, invoked with 1-based call index for balances (Phase B = 1, Phase C revalidate = 2, …).
+    /// </summary>
+    public Func<int, IReadOnlyList<LegacyStockBalanceType>>? BalancesByCall { get; set; }
+
+    /// <summary>
+    /// When set, invoked with 1-based call index for journals.
+    /// </summary>
+    public Func<int, IReadOnlyList<LegacyStockJournalEntryType>>? JournalsByCall { get; set; }
+
+    public Action? OnListBalances { get; set; }
+    public Action? OnListJournals { get; set; }
+
     public List<IStockLedgerScopeKey> BalanceRequests { get; } = [];
     public List<IStockLedgerScopeKey> JournalRequests { get; } = [];
+    public int BalanceCallCount { get; private set; }
+    public int JournalCallCount { get; private set; }
 
     public IReadOnlyList<LegacyStockBalanceType> ListCurrentBalances(IStockLedgerScopeKey scope)
     {
+        BalanceCallCount++;
         BalanceRequests.Add(scope);
-        return Balances;
+        OnListBalances?.Invoke();
+        return BalancesByCall?.Invoke(BalanceCallCount) ?? Balances;
     }
 
     public IReadOnlyList<LegacyStockJournalEntryType> ListJournalEntries(IStockLedgerScopeKey scope)
     {
+        JournalCallCount++;
         JournalRequests.Add(scope);
-        return JournalEntries;
+        OnListJournals?.Invoke();
+        return JournalsByCall?.Invoke(JournalCallCount) ?? JournalEntries;
     }
 }
 
@@ -134,5 +156,51 @@ public sealed class FakeStockReconciliationPort : IStockReconciliationPort
     {
         ArgumentNullException.ThrowIfNull(scope);
         return Result;
+    }
+}
+
+/// <summary>
+/// Spy UoW for asserting Phase B runs outside any write transaction (P2-S6).
+/// </summary>
+public sealed class SpyUnitOfWork : IUnitOfWork
+{
+    private readonly IUnitOfWork _inner;
+
+    public SpyUnitOfWork(IUnitOfWork? inner = null)
+        => _inner = inner ?? new TransHelperUnitOfWork();
+
+    public int BeginCount { get; private set; }
+    public int ActiveScopeCount { get; private set; }
+
+    public IUnitOfWorkScope Begin()
+    {
+        BeginCount++;
+        ActiveScopeCount++;
+        var scope = _inner.Begin();
+        return new TrackingScope(scope, () => ActiveScopeCount--);
+    }
+
+    private sealed class TrackingScope : IUnitOfWorkScope
+    {
+        private readonly IUnitOfWorkScope _inner;
+        private readonly Action _onDispose;
+        private bool _disposed;
+
+        public TrackingScope(IUnitOfWorkScope inner, Action onDispose)
+        {
+            _inner = inner;
+            _onDispose = onDispose;
+        }
+
+        public void Complete() => _inner.Complete();
+
+        public void Dispose()
+        {
+            if (_disposed)
+                return;
+            _disposed = true;
+            _inner.Dispose();
+            _onDispose();
+        }
     }
 }

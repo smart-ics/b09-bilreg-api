@@ -42,6 +42,7 @@ public sealed class StockConsequenceUnitOfWork : IStockConsequenceUnitOfWork
         Guard.Against.Default(draft.ProcessedAt, nameof(draft.ProcessedAt));
         Guard.Against.Null(draft.Movement, nameof(draft.Movement));
         Guard.Against.Null(draft.Positions, nameof(draft.Positions));
+        Guard.Against.EnumOutOfRange(draft.IdempotencyKind, nameof(draft.IdempotencyKind));
 
         using var tx = _unitOfWork.Begin();
 
@@ -64,7 +65,7 @@ public sealed class StockConsequenceUnitOfWork : IStockConsequenceUnitOfWork
             _positionRepo.SaveChanges(position);
 
         if (draft.ScopeState is not null)
-            _scopeStateRepo.SaveChanges(draft.ScopeState);
+            PersistScope(draft.ScopeState, draft.ExpectedPriorReconstructionStatus);
 
         if (draft.LegacyWrite is not null)
             _legacyCompatibilityWriter.Apply(draft.LegacyWrite);
@@ -78,6 +79,26 @@ public sealed class StockConsequenceUnitOfWork : IStockConsequenceUnitOfWork
             insert.Record.IdempotencyId);
     }
 
+    private void PersistScope(
+        StockLedgerScopeStateModel scopeState,
+        ReconstructionStatusEnum? expectedPriorReconstructionStatus)
+    {
+        if (expectedPriorReconstructionStatus is null)
+        {
+            _scopeStateRepo.SaveChanges(scopeState);
+            return;
+        }
+
+        if (!_scopeStateRepo.TryUpdateWhenReconstructionStatus(
+                scopeState,
+                expectedPriorReconstructionStatus.Value))
+        {
+            throw StockLedgerPersistenceException.Concurrency(
+                $"Scope ({scopeState.BrgId}/{scopeState.ReceiptSourceId}) reconstruction " +
+                $"status was no longer '{expectedPriorReconstructionStatus.Value}' at Phase C persist.");
+        }
+    }
+
     private static StockSourceIdempotencyModel BuildIdempotency(StockConsequenceDraft draft)
     {
         var primaryLine = draft.Movement.Lines[0];
@@ -85,7 +106,7 @@ public sealed class StockConsequenceUnitOfWork : IStockConsequenceUnitOfWork
         var receiptSourceId = draft.ScopeState?.ReceiptSourceId ?? primaryLine.ReceiptSourceId;
 
         return StockSourceIdempotencyModel.Create(
-            StockSourceIdempotencyKindEnum.SourceConsequence,
+            draft.IdempotencyKind,
             draft.IdempotencyKey.Trim(),
             draft.ProcessedAt,
             sourceTransactionId: draft.Movement.SourceTransactionId,

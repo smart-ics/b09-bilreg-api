@@ -294,6 +294,7 @@ Authoritative inventory movement, provenance, Remaining Quantity, FIFO, reservat
 | `docs/contexts/stok-ledger/stock-ledger-phase2-s3-implementation-summary.md` | Stock Ledger — Phase 2 / P2-S3 Domain readiness for reconstructed baseline facts (depleted create; ReconstructionBaseline idempotency kind) |
 | `docs/contexts/stok-ledger/stock-ledger-phase2-s4-implementation-summary.md` | Stock Ledger — Phase 2 / P2-S4 baseline calculation + ambiguity classification (balance-anchored; Balanced vs Inconsistent) |
 | `docs/contexts/stok-ledger/stock-ledger-phase2-s5-implementation-summary.md` | Stock Ledger — Phase 2 / P2-S5 Phase A reconstruction claim (short TX; conditional status update; concurrent claim safety) |
+| `docs/contexts/stok-ledger/stock-ledger-phase2-s6-implementation-summary.md` | Stock Ledger — Phase 2 / P2-S6 Phase B/C orchestration + persist (G-10 core; claim → read/calc → revalidate/persist) |
 | `docs/contexts/stok-ledger/stock-ledger-phase1-s1-implementation-summary.md` | Stock Ledger — Phase 1 / P1-S1 scaffolding + boundary types (WHAT/WHY/reuse/deviations/handoff to P1-S2) |
 | `docs/contexts/stok-ledger/stock-ledger-phase1-s2-implementation-summary.md` | Stock Ledger — Phase 1 / P1-S2 immutable Stock Movement domain (aggregate, lines, reversal/correction, transfer conservation) |
 | `docs/contexts/stok-ledger/stock-ledger-phase1-s3-implementation-summary.md` | Stock Ledger — Phase 1 / P1-S3 Layer/Position + ED-constrained FIFO allocation |

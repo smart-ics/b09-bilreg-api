@@ -207,8 +207,11 @@ public class LegacyReconstructionBaselineCalculatorTest
         layer.RemainingQuantity.Should().Be(3m);
         layer.Origin.Should().Be(StockFactOriginEnum.Reconstructed);
         // New accountable identity — not a legacy row id (BR-STL-066/067).
+        // Persistable VARCHAR(26) deterministic id (not the legacy row id).
         layer.StockLayerId.Should().NotBe("STK001");
-        layer.StockLayerId.Should().StartWith("RBL|BRG01|DO001|LY01|");
+        layer.StockLayerId.Should().HaveLength(26);
+        layer.StockLayerId.Should().Be(
+            LegacyReconstructionBaselineCalculator.BuildLayerId(Scope, "LY01", 1));
     }
 
     [Fact]
@@ -261,9 +264,13 @@ public class LegacyReconstructionBaselineCalculatorTest
 
         result.IsBalanced.Should().BeTrue();
         var layer = result.ProposedPositions.Single().Layers.Single();
-        layer.StockLayerId.Should().Be("RBL|BRG01|DO001|LY01|0001");
+        layer.StockLayerId.Should().Be(
+            LegacyReconstructionBaselineCalculator.BuildLayerId(Scope, "LY01", 1));
+        layer.StockLayerId.Should().HaveLength(26);
         layer.StockLayerId.Should().NotBe("LEGACY-LAYER-99");
-        result.EstablishingMovement!.StockMovementId.Should().Be("RBL|BRG01|DO001|MOV");
+        result.EstablishingMovement!.StockMovementId.Should().Be(
+            LegacyReconstructionBaselineCalculator.BuildMovementId(Scope));
+        result.EstablishingMovement.StockMovementId.Should().HaveLength(26);
     }
 
     private static LegacyStockBalanceType Balance(

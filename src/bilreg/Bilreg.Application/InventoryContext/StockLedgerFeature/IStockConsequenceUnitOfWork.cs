@@ -12,6 +12,11 @@ namespace Bilreg.Application.InventoryContext.StockLedgerFeature;
 /// Phase 1: Ledger-side atomicity only. Live legacy writer is Phase 4+;
 /// tests inject a throw-capable fake. No production stock write endpoint.
 /// </para>
+/// <para>
+/// P2-S6: Reconstruction baseline commits reuse this UoW with
+/// <see cref="StockSourceIdempotencyKindEnum.ReconstructionBaseline"/> and optional
+/// conditional Scope status update (Phase C claim revalidation).
+/// </para>
 /// </summary>
 public interface IStockConsequenceUnitOfWork
 {
@@ -33,7 +38,9 @@ public sealed record StockConsequenceDraft(
     StockMovementModel Movement,
     IReadOnlyList<StockPositionModel> Positions,
     StockLedgerScopeStateModel? ScopeState,
-    LegacyCompatibilityWriteRequest? LegacyWrite);
+    LegacyCompatibilityWriteRequest? LegacyWrite,
+    StockSourceIdempotencyKindEnum IdempotencyKind = StockSourceIdempotencyKindEnum.SourceConsequence,
+    ReconstructionStatusEnum? ExpectedPriorReconstructionStatus = null);
 
 public sealed record StockConsequenceCommitResult(
     StockConsequenceCommitOutcomeEnum Outcome,

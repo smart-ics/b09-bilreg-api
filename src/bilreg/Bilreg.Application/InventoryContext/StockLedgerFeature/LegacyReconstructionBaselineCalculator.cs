@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using Bilreg.Application.InventoryContext.StockLedgerFeature.Ports;
 using Bilreg.Domain.BrgContext.BrgFeature;
 using Bilreg.Domain.InventoryContext.StockLedgerFeature;
@@ -354,11 +356,29 @@ public static class LegacyReconstructionBaselineCalculator
             .ThenBy(j => j.LayananId, StringComparer.Ordinal)
             .ToList();
 
-    private static string BuildMovementId(StockLedgerScopeKeyType scope)
-        => $"RBL|{scope.BrgId}|{scope.ReceiptSourceId}|MOV";
+    /// <summary>
+    /// Deterministic Movement id fitting <c>BILRG_StokMovement.StockMovementId VARCHAR(26)</c>.
+    /// </summary>
+    public static string BuildMovementId(IStockLedgerScopeKey scope)
+        => DeterministicAccountableId($"RBL|{scope.BrgId}|{scope.ReceiptSourceId}|MOV");
 
-    private static string BuildLayerId(StockLedgerScopeKeyType scope, string layananId, int sequence)
-        => $"RBL|{scope.BrgId}|{scope.ReceiptSourceId}|{layananId}|{sequence:D4}";
+    /// <summary>
+    /// Deterministic Layer id fitting <c>BILRG_StokLayer.StockLayerId VARCHAR(26)</c>.
+    /// </summary>
+    public static string BuildLayerId(IStockLedgerScopeKey scope, string layananId, int sequence)
+        => DeterministicAccountableId(
+            $"RBL|{scope.BrgId}|{scope.ReceiptSourceId}|{layananId}|{sequence:D4}");
+
+    /// <summary>
+    /// SHA-256 truncated hex (26 chars) — durable identity seed that fits ULID-width columns
+    /// while remaining deterministic for equivalent reconstruction inputs (BR-STL-070/071).
+    /// </summary>
+    public static string DeterministicAccountableId(string seed)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(seed);
+        var digest = SHA256.HashData(Encoding.UTF8.GetBytes(seed));
+        return Convert.ToHexString(digest.AsSpan(0, 13));
+    }
 
     private static string FormatEd(DateOnly? expirationDate)
         => expirationDate?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) ?? "(none)";
