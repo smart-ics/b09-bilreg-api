@@ -1,322 +1,486 @@
 # Stock Ledger — Gap Analysis
 
-**Artifact status:** Implementation gap backlog  
-**Basis:** Current codebase vs [`stok-ledger-domain.md`](./stok-ledger-domain.md)  
-**Feasibility overview:** [`stock-ledger-feasibility-review.md`](./stock-ledger-feasibility-review.md)  
+**Artifact status:** Dependency-ordered implementation gap backlog
+**Basis:** Current codebase vs [`stok-ledger-domain.md`](./stok-ledger-domain.md) and [`stock-ledger-feasibility-review.md`](./stock-ledger-feasibility-review.md)
 **Execution plan:** [`stock-ledger-implementation-roadmap.md`](./stock-ledger-implementation-roadmap.md)
 
----
-
-## 1. How to read this document
-
-Each gap has:
-
-* **ID** — stable reference for roadmap/tasks
-* **Target** — domain requirement
-* **Current evidence** — what exists in repo now
-* **Dependency rank** — lower number = implement earlier
-* **Priority** — P0 blocking / P1 required for first production slice / P2 full domain / P3 deferrable polish
+**Authority rule:** During coexistence, `tb_stok + tb_buku` remain the authoritative persisted stock truth. No gap in this backlog establishes per-Item + Receipt Source authority, prevents later VB6 activity, or treats `Native` / `Reconstructed` as authority states.
 
 ---
 
-## 2. Current → Target map
+## 1. Priority and acceptance model
+
+| Priority | Meaning |
+|---|---|
+| P0 | Blocks safe coexistence or every first production stock consequence |
+| P1 | Required for the first production rollout |
+| P2 | Expands transaction/domain coverage after minimum rollout |
+| P3 | Deferred improvement; not a coexistence gate |
+
+Every gap records current evidence, why it matters, required capability, dependency, and acceptance criteria. Proposed type/table/port names are planning concepts, not claims that implementation already exists.
+
+### Steering rules
+
+* Reconstruction and reconciliation scope = Item + Receipt Source across all Stock Locations.
+* Candidate write consistency boundary = Item + Receipt Source + Stock Location, subject to concurrency proof.
+* Source-of-truth authority = `tb_stok + tb_buku` globally during coexistence.
+* `Native` and `Reconstructed` = Stock Ledger fact/layer origin only.
+* Initial Reconstruction != Incremental Legacy Synchronization.
+* Legacy Freshness Gate replaces the rejected Authority Gate.
+* New-system consequences write legacy-compatible authoritative records plus the richer Stock Ledger Representation.
+* Availability Discovery and Provenance Discovery remain separate.
+* Full/final cutover is deferred and is not a P0/P1 gap.
+
+---
+
+## 2. Current-to-target map
+
+The backlog uses the same migration stages as the canonical domain:
+
+| Stage | Meaning | Backlog treatment |
+|---|---|---|
+| Stage A — Legacy Authority | VB6 and `tb_stok + tb_buku` operate; Stock Ledger representation may be absent | Current baseline |
+| Stage B — Coexistence | Both applications may process stock; legacy records remain authoritative; Stock Ledger reconstructs and synchronizes | Target of every P0/P1 coexistence gap |
+| Stage C — Future Final Cutover | Stock Ledger could become source of truth and legacy records a compatibility projection | Deferred; not a gap in this backlog |
 
 ```text
-Current (kartu-stok spike)
-  StokModel(Brg, Layanan) + Layer + nested Buku
-  FEFO by ExpDate
-  Legacy tb_* DALs
-  FARIN SQL unwired / C# DAL deleted in working tree
-  VB6 Generate still authoritative writer (outside this API)
+Current
+    VB6 clbGenStokX1 = evidenced stock transaction writer
+    tb_stok          = mutable current stock (insert/update/delete)
+    tb_buku          = legacy journal (insert; void may delete)
+    C# StokModel     = unwired location-scoped FEFO/kartu-stok spike
+    FARIN schema     = incomplete/unwired
 
-Target (Stock Ledger)
-  Stock Position(Item, Receipt Source) across locations
-  Stock Movement aggregate (immutable)
-  ED-constrained FIFO by Effective Receipt Time
-  Legacy Reconstruction + Migration status
-  Dual-write Legacy Projection
-  Reconciliation per Item+DO
-  Virtual Stock Location reservation
-  Consequence use cases from other BCs
+Target coexistence
+    Legacy Stock Authority
+        = tb_stok + tb_buku
+
+    Stock Ledger Representation
+        = immutable movements
+        + retained Stock Layers, including depleted layers
+        + provenance and deterministic FIFO allocation
+
+    Initial Reconstruction
+        = Item + Receipt Source across all locations
+
+    Legacy Synchronization
+        = deletion-aware, idempotent incorporation of later legacy changes
+
+    New-system consequence
+        = Freshness Gate
+        + Stock Ledger behavior
+        + Legacy-Compatible Stock Consequence
+        + one short transaction
 ```
 
 ---
 
-## 3. Gap catalog (dependency-ordered)
+## 3. Superseded gaps and concepts
 
-### G-01 — Aggregate boundary realignment
+| Previous concept | Disposition | Replacement |
+|---|---|---|
+| `Authority Gate` (former pre-coexistence gap ID G-22) | **Removed** | G-12 Legacy Freshness / Synchronization Gate |
+| `IsAuthoritative = Native OR Reconstructed` | **Removed** | G-04 separate Reconstruction Status, Synchronization State/Position, and Fact Origin |
+| `Legacy Projection Writer` | **Reworked** | G-11 Legacy Compatibility Writer for Stage B |
+| Scope-aware feature flags that block VB6 | **Removed** | Capability/FO-type flags plus synchronization readiness |
+| “No VB6-only writer after reconstruction” exit criteria | **Removed** | Mixed-writer synchronization and reconciliation acceptance criteria |
+| First DO Receipt requires all later outbound flows to migrate | **Removed** | First DO Receipt requires safe later legacy synchronization and mixed-writer protection |
 
-| | |
-|---|---|
-| **Target** | Stock Position AR = Item + Receipt Source across all Stock Locations (domain §6.2) |
-| **Current** | `StokModel` AR = `BrgId + LayananId` |
-| **Rank** | 1 |
-| **Priority** | P0 |
-| **Work** | Introduce Position / Layer models matching domain; demote or replace `StokModel` as location read model only |
-| **Exit** | Domain tests prove layers for one DO span multiple layanan; qty conservation across transfer |
-
-### G-02 — Stock Movement aggregate
-
-| | |
-|---|---|
-| **Target** | Immutable Stock Movement + Lines; correction/reversal via new movements (BR-STL-022–028, 055–057) |
-| **Current** | `StokBukuType` nested under layer; no movement header; no reverse/correct |
-| **Rank** | 1 |
-| **Priority** | P0 |
-| **Work** | Domain types + factories for Receipt / Transfer / Consumption / Return / Adjustment / Reversal |
-| **Exit** | Movement recorded once; reverse creates counter-movement; original unchanged |
-
-### G-03 — Allocation policy (ED + FIFO)
-
-| | |
-|---|---|
-| **Target** | Explicit Expiry Selection then FIFO by Effective Receipt Time + LayerId (BR-STL-029–038); optional batch rule decided explicitly |
-| **Current** | FEFO `OrderBy(ExpDate)` in `StokModel.RemoveStok`; tests assert FEFO (`UT04`) |
-| **Rank** | 2 |
-| **Priority** | P0 |
-| **Work** | Domain allocation service; inputs: location, qty, optional ED, optional batch; outputs: FIFO Allocation lines |
-| **Exit** | Unit tests cover: no ED → FIFO by receipt time; with ED → filter then FIFO; insufficient stock → reject; multi-layer split |
-
-### G-04 — Reconstruction / migration status store
-
-| | |
-|---|---|
-| **Target** | Legacy Stock Reconstruction lifecycle + authority per Item+DO (BR-STL-062–075, 102–107) |
-| **Current** | No domain type; commented repo sketch scoped by Brg+Layanan; no table |
-| **Rank** | 2 |
-| **Priority** | P0 |
-| **Work** | `LegacyStockReconstruction` aggregate + `StockLedgerMigration` persistence (`KodeBarang`, `KodeDO`, status, version, timestamps, watermark, validation flags) |
-| **Exit** | Same Barang+DO cannot complete reconstruction twice; concurrent trigger serializes |
-
-### G-05 — Legacy read adapter (cross-location by DO)
-
-| | |
-|---|---|
-| **Target** | Reconstruction reads all layanan for Item+Receipt Source |
-| **Current** | `tb_buku_dal.ListData` filters Brg+Layanan+DO; DO parameter binding buggy for list; no cross-location API |
-| **Rank** | 3 |
-| **Priority** | P0 |
-| **Work** | New queries: list `tb_buku` by Barang+DO (all layanan); list surviving `tb_stok` by Barang+DO; fix `IN` binding; indexes |
-| **Exit** | Integration test on sample DO reconstructs Gudang/Apotek/IGD zero and non-zero layers |
-
-### G-06 — FARIN / Stock Ledger persistence for Position + Layer
-
-| | |
-|---|---|
-| **Target** | Persist layers including QtySisa=0; load Position by Item+DO |
-| **Current** | SQL exists for location-keyed `FARIN_Stok*`; C# DAL/Repo deleted/unwired; schema missing receipt-time / reconstructed flags / version |
-| **Rank** | 3 |
-| **Priority** | P0 |
-| **Work** | Revise schema to Position+Layer needs; implement repos; **do not** delete depleted layers |
-| **Exit** | Save/load round-trip keeps zero layers; optimistic concurrency on Remaining Qty |
-
-### G-07 — Stock Movement persistence + idempotency
-
-| | |
-|---|---|
-| **Target** | Append-only movements; one active consequence per source responsibility (BR-STL-004/005) |
-| **Current** | None |
-| **Rank** | 4 |
-| **Priority** | P0 |
-| **Work** | Movement tables + unique key on (SourceTransactionId, ConsequenceType) or equivalent |
-| **Exit** | Replaying same source command does not double qty |
-
-### G-08 — Reconstruction use case (lazy bootstrap)
-
-| | |
-|---|---|
-| **Target** | On first touch of unreconstructed Item+DO, reconstruct all locations; validate; establish authority |
-| **Current** | None (wrong-scope commented sketch) |
-| **Rank** | 4 |
-| **Priority** | P0 |
-| **Work** | Application orchestrator: lock migration → read legacy → build layers (new ids) → validate equation → mark Reconstructed/Inconsistent |
-| **Exit** | Bootstrap once; depleted locations retained at 0; inconsistent blocks native writes |
-
-### G-09 — Dual-write Legacy Projection
-
-| | |
-|---|---|
-| **Target** | BR-STL-076–080: project legacy `tb_buku`/`tb_stok` without overriding Stock Ledger authority |
-| **Current** | No writer from new model; VB6 still sole writer |
-| **Rank** | 5 |
-| **Priority** | P1 |
-| **Work** | Projection service: append `tb_buku`; upsert/delete `tb_stok` with **legacy** delete-on-zero; map IDs |
-| **Exit** | After native movement, legacy tables match projection rules; Ledger still has zero layers |
-
-### G-10 — Consequence application pipeline (first FO type)
-
-| | |
-|---|---|
-| **Target** | Source fact → Consequence Request → Movement → Position update (domain §1.5) |
-| **Current** | Only read query `StokGetKartuStokQuery` |
-| **Rank** | 5 |
-| **Priority** | P1 |
-| **Work** | Pick one type (recommend **Mutasi/Transfer** or **DO receipt**); implement command handler with UoW covering Ledger + Projection |
-| **Exit** | End-to-end test: bootstrap if needed → apply → reconcile balanced → legacy projection correct |
-
-### G-11 — Transfer / return / reverse behaviors in domain
-
-| | |
-|---|---|
-| **Target** | BR-STL-039–045, 089–091, 055–061 |
-| **Current** | Add always new layer; no transfer; no restore-to-layer |
-| **Rank** | 5 |
-| **Priority** | P1 |
-| **Work** | Domain methods/services for transfer pairing, return-to-layer, reversal |
-| **Exit** | Tests for mutasi conservation; retur restores original layer when known |
-
-### G-12 — Reconciliation aggregate + use case
-
-| | |
-|---|---|
-| **Target** | BR-STL-046–054 equation per Item+DO |
-| **Current** | None |
-| **Rank** | 6 |
-| **Priority** | P1 |
-| **Work** | Compute Recognized In = Remaining + Final Out (+ adjustments); persist outcome |
-| **Exit** | Fast recon without global `tb_buku` replay for bootstrapped DO |
-
-### G-13 — Expand FO consequence coverage
-
-| | |
-|---|---|
-| **Target** | Parity with VB6 catalog needed by hospital ops |
-| **Current** | VB6 handles DO, MT, DU/DR/DS/DT, PK, MN, RB, RU/RT, AJ, RP |
-| **Rank** | 7 |
-| **Priority** | P1/P2 |
-| **Work** | Map each prefix to consequence; implement incrementally; keep VB6 for unmapped types |
-| **Exit** | Documented coverage matrix; dual path only where intentional |
-
-### G-14 — Virtual Stock Location + reservation
-
-| | |
-|---|---|
-| **Target** | BR-STL-092–096; reserved/serah flows |
-| **Current** | `JenisLokasi` lacks Virtual; no reservation API |
-| **Rank** | 8 |
-| **Priority** | P2 |
-| **Work** | Virtual location identity strategy; transfer-based reserve/release/consume |
-| **Exit** | Reserved stock not selectable from ordinary location |
-
-### G-15 — Domain events
-
-| | |
-|---|---|
-| **Target** | Domain §9 catalog |
-| **Current** | None |
-| **Rank** | 8 |
-| **Priority** | P2 |
-| **Work** | Raise on record/deplete/reconstruct/reconcile; integrate with project event approach ([`docs/concepts/operational-events.md`](../../concepts/operational-events.md)) |
-| **Exit** | At least movement-recorded + reconstruction-completed published for consumers |
-
-### G-16 — Kartu stok / API read models
-
-| | |
-|---|---|
-| **Target** | Useful reads without wrong AR |
-| **Current** | Controller loads `StokModel` by Brg+Layanan via broken repo |
-| **Rank** | 6 |
-| **Priority** | P1 |
-| **Work** | Read models: balance by location; layers by DO; kartu from Movement/Layer |
-| **Exit** | GET endpoints work against Stock Ledger data |
-
-### G-17 — Test harness
-
-| | |
-|---|---|
-| **Target** | Production confidence |
-| **Current** | Domain FEFO tests; legacy DAL tests; reconstruction tests commented; FARIN DAL tests deleted |
-| **Rank** | 3 (build alongside) |
-| **Priority** | P0/P1 |
-| **Work** | Domain policy tests; reconstruction fixtures from VB6 narrative; concurrency tests; dual-write integration |
-| **Exit** | CI covers P0 gaps |
-
-### G-18 — Remove / quarantine persistence dirty state from domain
-
-| | |
-|---|---|
-| **Target** | Clean domain model |
-| **Current** | `ModelStateEnum` on layer/buku |
-| **Rank** | 2 |
-| **Priority** | P1 |
-| **Work** | Persistence models in Infra |
-| **Exit** | Domain assemblies free of save-tracking enums |
-
-### G-19 — ChargeContext `IStokRepo` rename + restore list if needed
-
-| | |
-|---|---|
-| **Target** | Clear bounded-context naming; tarif still lists stock |
-| **Current** | Charge StokRepo deleted in working tree; name collision with Inventory |
-| **Rank** | 9 |
-| **Priority** | P2 |
-| **Work** | Restore as `ITarifStokList` (or similar) reading legacy or Ledger projection |
-| **Exit** | No ambiguous `IStokRepo` |
-
-### G-20 — Performance indexes & bootstrap SLO
-
-| | |
-|---|---|
-| **Target** | Bounded bootstrap cost |
-| **Current** | No guaranteed index strategy for Barang+DO on `tb_buku` |
-| **Rank** | 4 |
-| **Priority** | P1 |
-| **Work** | DBA indexes; measure p95 bootstrap; optional background bootstrap later |
-| **Exit** | Documented SLO; alert on timeout/Inconsistent rate |
+`Legacy Projection` is reserved for a possible future post-cutover Stage C and is not a current implementation responsibility.
 
 ---
 
-## 4. Intentionally deferred (not gaps for first production slice)
+## 4. Gap catalog
 
-| Item | Reason to defer |
+### G-01 — Boundary separation
+
+| Field | Detail |
 |---|---|
-| Mass historical migration of all DO | Contradicts BR-STL-075 and cost model |
-| Porting VB6 `Generate` structure into C# services | Architecture violation |
-| Perfect financial GL posting from Stock Ledger | Owned by Finance BC |
-| UI/workflow for Inventory Officer beyond API reads | Separate workflow artifacts |
-| Fixing all historical legacy data quality | Handle via Inconsistent + ops process |
+| Current evidence | `StokModel` is keyed effectively by Item + Location; older planning conflated reconstruction, write, locking, and authority scopes. |
+| Why it matters | Over-wide locks reduce throughput; under-wide boundaries allow overlapping quantity updates; neither changes runtime authority. |
+| Required capability | Explicitly model reconstruction/reconciliation at Item + Receipt Source across locations; evaluate Item + Receipt Source + Location for writes; document database lock order separately. |
+| Priority | P0 |
+| Dependencies | None |
+| Acceptance criteria | Tests cover multiple Receipt Sources at one location, one Receipt Source across locations, and transfer across two write boundaries; no code/status derives authority from any boundary. |
+
+### G-02 — Immutable Stock Movement model
+
+| Field | Detail |
+|---|---|
+| Current evidence | Only nested `StokBukuType` lines exist; no complete Movement header, pairing, correction, or reversal model. |
+| Why it matters | Rich traceability, idempotency, transfer pairing, synchronization correction, and retained history need immutable movement identity. |
+| Required capability | Movement and Movement Lines for receipt, outbound, transfer, return, adjustment, correction, reversal, reconstruction, and synchronized legacy consequences. |
+| Priority | P0 |
+| Dependencies | G-01 |
+| Acceptance criteria | A completed movement cannot be edited/deleted; a reversal references and counteracts the original; transfer lines conserve quantity. |
+
+### G-03 — ED-constrained FIFO allocation
+
+| Field | Detail |
+|---|---|
+| Current evidence | `StokModel.RemoveStok` orders by Expiration Date (FEFO); domain requires optional explicit ED filtering followed by FIFO. |
+| Why it matters | Wrong ordering can select the wrong Receipt Source, valuation, and provenance. |
+| Required capability | Filter by requested Item, Stock Location, and optional Expiration Date; then FIFO by Effective Receipt Time and deterministic Layer ID; support multi-layer allocation. |
+| Priority | P0 |
+| Dependencies | G-01 |
+| Acceptance criteria | Tests cover no ED, explicit ED, equal receipt time tie-break, multi-layer split, insufficient stock, and absence of Batch from the initial request. |
+
+### G-04 — Coexistence state and origin persistence
+
+| Field | Detail |
+|---|---|
+| Current evidence | No implemented state store. Previous plan proposed `LegacyOnly`, `Native`, `Reconstructed`, and derived `IsAuthoritative`. |
+| Why it matters | Reconstruction readiness, synchronization freshness, origin, and authority are different dimensions. Conflating them reintroduces the rejected cutover. |
+| Required capability | Persist Reconstruction Status; Synchronization State and Position; inconsistency reason; reconstruction basis/version. Persist `Native` / `Reconstructed` as fact/layer origin only. Do not persist `IsAuthoritative`. |
+| Priority | P0 |
+| Dependencies | G-01 |
+| Acceptance criteria | Native receipt and reconstructed baseline have distinct origins; both remain under Legacy Stock Authority; later legacy activity transitions synchronization state without changing origin or authority. |
+
+### G-05 — Legacy reconstruction read adapter
+
+| Field | Detail |
+|---|---|
+| Current evidence | `tb_buku_dal` reads by Item + Location + DO and has an enumerable binding defect; `tb_stok_dal` lacks Item + DO across-locations access. |
+| Why it matters | Baseline reconstruction must include every location for the Receipt Source. |
+| Required capability | Parameterized reads for `tb_buku` and `tb_stok` by Item + Receipt Source across all Stock Locations, with measured indexes and deterministic input ordering. |
+| Priority | P0 |
+| Dependencies | G-01 |
+| Acceptance criteria | Multi-location fixture reconstructs from a bounded query; query plan/SLO is recorded; input includes surviving current rows and historical rows required for provenance. |
+
+### G-06 — Stock Layer/Position persistence and concurrency
+
+| Field | Detail |
+|---|---|
+| Current evidence | FARIN schemas exist but C# DAL/repository stack is absent/unwired; no `rowversion` is evidenced. |
+| Why it matters | Remaining Quantity and retained zero layers require durable state and conflict detection. |
+| Required capability | Additive persistence for layers/positions, zero-quantity retention, origin, Effective Receipt Time, deterministic order, and optimistic concurrency. |
+| Priority | P0 |
+| Dependencies | G-01, G-04 |
+| Acceptance criteria | Round-trip preserves depleted layers; concurrent updates conflict instead of losing quantity; retries do not create duplicate layers. |
+
+### G-07 — Movement persistence and source idempotency
+
+| Field | Detail |
+|---|---|
+| Current evidence | `FARIN_StokBuku` is line-shaped and unwired; no complete Movement store or source uniqueness constraint exists. |
+| Why it matters | New requests and synchronization retries must apply one accountable consequence at most once. |
+| Required capability | Append-only movement persistence, source responsibility key, correction/reversal link, origin, and unique duplicate protection. |
+| Priority | P0 |
+| Dependencies | G-02 |
+| Acceptance criteria | Replaying the same new-system request or legacy synchronization fact does not change quantity twice; duplicate result is deterministic. |
+
+### G-08 — Availability Discovery
+
+| Field | Detail |
+|---|---|
+| Current evidence | Ordinary FO lines often omit `KodeDO`; no dedicated discovery service exists. `tb_stok` contains authoritative available stock during coexistence. |
+| Why it matters | Outbound transactions cannot allocate layers until candidate Receipt Sources are known. |
+| Required capability | Discover authoritative available quantity by Item + Stock Location (+ optional ED) from legacy records, using synchronized Stock Ledger layers only as enriched allocation input. Return provisional candidates, not final FIFO. |
+| Priority | P0 |
+| Dependencies | G-05 |
+| Acceptance criteria | Outbound without DO finds candidate Receipt Sources; depleted/missing legacy rows are treated correctly; final allocation is recalculated only after freshness/reconstruction checks. |
+
+### G-09 — Provenance Discovery
+
+| Field | Detail |
+|---|---|
+| Current evidence | Legacy general returns use original sale details; typed return may synthesize return ID as DO; no dedicated C# capability exists. |
+| Why it matters | Returns, reversals, and corrections must preserve original Receipt Source when determinable. |
+| Required capability | Resolve original Receipt Source/layer from source transaction lines, legacy writeback fields, `tb_buku`, and Stock Ledger movements; return explicit unknown/ambiguous result. |
+| Priority | P1 |
+| Dependencies | G-02, G-05, G-07 |
+| Acceptance criteria | Known provenance restores the original/depleted layer; return transaction ID remains Source Transaction Reference; unknown provenance does not invent a historical DO. |
+
+### G-10 — Initial Reconstruction use case
+
+| Field | Detail |
+|---|---|
+| Current evidence | Only a fully commented, wrong-scope reconstruction sketch exists. |
+| Why it matters | Stock Ledger cannot allocate or reconcile legacy-origin stock without a baseline. |
+| Required capability | Phased reconstruction: short claim transaction; bounded read/calculation; short revalidation/persist transaction; initialize Synchronization Position; classify `Reconstructed` or `Inconsistent`. |
+| Priority | P0 |
+| Dependencies | G-04, G-05, G-06, G-07 |
+| Acceptance criteria | Concurrent reconstruction has one committed baseline; legacy basis change during calculation triggers retry/not-current; repeated request is idempotent; success does not change authority or block VB6. |
+
+### G-11 — Legacy Compatibility Writer
+
+| Field | Detail |
+|---|---|
+| Current evidence | Legacy DAL primitives exist; no new-system stock consequence orchestrates `tb_stok`, `tb_buku`, and required FO writebacks. |
+| Why it matters | During Stage B, new-system transactions must produce authoritative legacy-compatible persisted consequences. |
+| Required capability | Explicit adapter for `tb_stok` insert/update/delete, `tb_buku` movement/void shapes, and required PO/DO/HPP source writebacks, enlisted in the new-system consequence transaction. |
+| Priority | P0 |
+| Dependencies | G-05, G-07 |
+| Acceptance criteria | New receipt/outbound results are consumable by existing legacy readers; delete-on-zero remains compatible; compatibility failure rolls back the complete new-system consequence. |
+
+### G-12 — Legacy Freshness / Synchronization Gate
+
+| Field | Detail |
+|---|---|
+| Current evidence | No freshness check exists. The previous `Authority Gate` incorrectly blocked VB6 after reconstruction. |
+| Why it matters | Stock Ledger layers can become stale whenever VB6 changes legacy stock. |
+| Required capability | Before trusted allocation or mutation, determine whether applicable legacy facts exceed the Synchronization Position; synchronize or fail closed/mark not current. The gate must never reject a legacy write merely because the scope is Native/Reconstructed. |
+| Priority | P0 |
+| Dependencies | G-04, G-10, G-13, G-14 |
+| Acceptance criteria | Legacy change after reconstruction is detected; new processing waits for successful synchronization; unchanged scope proceeds; undeterminable freshness produces explicit `Inconsistent`/not-current outcome. |
+
+### G-13 — Incremental Legacy Movement Discovery
+
+| Field | Detail |
+|---|---|
+| Current evidence | `tb_buku` has string IDs and date/time columns, but legacy voids delete journal rows; `tb_stok` updates/deletes in place; visible VB6 code does not prove `fd_tgl_jam_mutasi` population. |
+| Why it matters | Incremental synchronization needs complete detection of inserts, quantity updates, depletion deletes, and void deletes. |
+| Required capability | Select and validate a deletion-aware mechanism: proven composite cursor plus diff/tombstones, bounded per-scope fingerprint/diff, additive change log, or supported SQL Server change feature. |
+| Priority | P0 |
+| Dependencies | G-05; live DB/operations evidence |
+| Acceptance criteria | Production-like tests detect insert, update, `tb_stok` delete, `tb_buku` void delete, backdated/tied movement, and repost; selected mechanism has retention/recovery and performance evidence. |
+
+### G-14 — Synchronization Position
+
+| Field | Detail |
+|---|---|
+| Current evidence | No durable position exists. Prior roadmap proposed `(fd_tgl_jam_mutasi, fs_kd_trs)` without proof. |
+| Why it matters | Freshness and retry need a committed boundary between reflected and pending legacy facts. |
+| Required capability | Persist a validated cursor, change token, or deterministic scoped basis; advance only after the synchronization batch and reconciliation commit. |
+| Priority | P0 |
+| Dependencies | G-04, G-13 |
+| Acceptance criteria | Crash before commit leaves prior position; retry is safe; position cannot advance past an unapplied/delete-undetected change; operational tooling can explain the current position. |
+
+### G-15 — Catch-up idempotency and Legacy Synchronization
+
+| Field | Detail |
+|---|---|
+| Current evidence | No synchronization use case or processed-legacy identity store exists. |
+| Why it matters | Duplicate polling/retry can inflate or reduce quantity twice; voids require correction semantics. |
+| Required capability | Convert discovered legacy deltas into accountable Stock Ledger movements/corrections that retain the legacy Source Transaction Reference, update affected layers without changing their existing `Native` / `Reconstructed` origin classification, deduplicate, retry, reconcile, and advance position atomically for the batch. |
+| Priority | P0 |
+| Dependencies | G-02, G-07, G-13, G-14 |
+| Acceptance criteria | Same legacy movement/batch processed twice is quantity-neutral; legacy void becomes accountable correction/reversal; failed batch retries; success returns state to `Current`. |
+
+### G-16 — Synchronization reconciliation and drift classification
+
+| Field | Detail |
+|---|---|
+| Current evidence | No reconciliation behavior exists. Legacy and Stock Ledger intentionally represent zero rows and void history differently. |
+| Why it matters | Raw row equality creates false positives; ignoring differences hides real stock drift. |
+| Required capability | Reconcile Item + Receipt Source across locations; classify intentional representational differences, pending synchronization, provenance limitation, and material inconsistency. |
+| Priority | P0 for material drift classification that gates allocation; P1 for operational reporting views |
+| Dependencies | G-06, G-07, G-15 |
+| Acceptance criteria | Deleted zero `tb_stok` row vs retained depleted layer is balanced; real quantity mismatch is explicit; unresolved material difference leaves scope `Inconsistent`. |
+
+### G-17 — Mixed-writer concurrency
+
+| Field | Detail |
+|---|---|
+| Current evidence | VB6 uses read/update/delete stock behavior; no shared lock protocol is proven. SQL Server transaction helpers and `UPDLOCK, HOLDLOCK` patterns exist elsewhere in the repository. |
+| Why it matters | VB6 and .NET can consume overlapping quantity or create stale FIFO decisions. |
+| Required capability | Characterize deployed VB6 transactions; define deterministic lock order and a shared row/range/conditional-update protocol; revalidate legacy quantity and synchronization basis before commit; retry deadlocks/conflicts. |
+| Priority | P0 |
+| Dependencies | G-01, G-11; operational evidence |
+| Acceptance criteria | Concurrent legacy/new outbound stress test yields one valid winner or non-overlapping allocations, never negative stock/lost update; reconstruction/synchronization/native overlap tests are deterministic. |
+
+### G-18 — Consequence Unit of Work
+
+| Field | Detail |
+|---|---|
+| Current evidence | Generic transaction helpers exist; no stock UoW spans legacy authority and Stock Ledger stores. |
+| Why it matters | A new-system transaction cannot claim success with only one representation committed. |
+| Required capability | Explicit short transaction for Movement, Layer/Position, idempotency, relevant coexistence state, Legacy Compatibility Writer, and required FO writeback. Reconstruction remains phased; legacy-originated synchronization uses its own idempotent batch transaction. |
+| Priority | P0 |
+| Dependencies | G-06, G-07, G-11 |
+| Acceptance criteria | Failure injection at every persistence step causes full rollback of the consequence; retry commits once. |
+
+### G-19 — First native consequence: DO Receipt
+
+| Field | Detail |
+|---|---|
+| Current evidence | No C# write use case exists; VB6 `DM` receipt writes inbound `tb_stok`/`tb_buku`. |
+| Why it matters | Receipt is the smallest path proving new domain behavior and coexistence persistence. |
+| Required capability | Idempotent DO Receipt producing Native-origin layer/movement and legacy-compatible authoritative records in one transaction; initialize scope synchronization basis/state. |
+| Priority | P1 |
+| Dependencies | G-02, G-04, G-06, G-07, G-11, G-18 |
+| Acceptance criteria | New receipt is visible to VB6; later VB6 transfer/consume is detected and synchronized before next new-system touch; no authority flag/cutover is created. |
+
+### G-20 — Outbound, transfer, return, adjustment, and reversal behavior
+
+| Field | Detail |
+|---|---|
+| Current evidence | Legacy handlers exist for MT, DU/DT, PK/MN, RB, RU/RT, AJ, DR/DS, RP; target handlers do not. |
+| Why it matters | Domain coverage must grow transaction by transaction while remaining compatible with active VB6 paths. |
+| Required capability | Capability handlers using Availability or Provenance Discovery, Freshness Gate, FIFO, Legacy Compatibility Writer, Movement/Layer updates, and idempotency. |
+| Priority | P1 for the first enabled outbound/return capability; P2 for later transaction-family expansion |
+| Dependencies | G-03, G-08, G-09, G-12, G-18 |
+| Acceptance criteria | Each enabled type has post/void tests, documented legacy coexistence path, synchronization implication, rollback behavior, and quantity conservation. |
+
+### G-21 — Virtual Stock Locations and reservation
+
+| Field | Detail |
+|---|---|
+| Current evidence | DR/DS are represented through legacy transfer/sale mutation types; no target virtual-location representation is selected. |
+| Why it matters | Reservation must remove quantity from ordinary availability without losing provenance. |
+| Required capability | Choose a legacy-compatible virtual-location representation; implement reserve, release, consume, reversal, and synchronization mapping. |
+| Priority | P2 |
+| Dependencies | G-20 |
+| Acceptance criteria | Reserved quantity is excluded from ordinary allocation; legacy DR/DS remain operational; transfer conservation and sync ordering hold. |
+
+### G-22 — Transaction coverage matrix and capability routing
+
+| Field | Detail |
+|---|---|
+| Current evidence | VB6 dispatcher routes 13 FO families; no maintained new-system coverage matrix exists. |
+| Why it matters | A transaction is not migrated merely because Stock Ledger can represent it; legacy may still perform the same/related operation. |
+| Required capability | Maintain per-FO post/void writer, new support, authoritative legacy records, discovery, synchronization, compatibility, feature flag, and rollback status. |
+| Priority | P1 |
+| Dependencies | G-19, G-20 |
+| Acceptance criteria | Every enabled path has a defined new-writer or legacy-writer-plus-sync route; no route assumes per-DO ownership; unknown DB/RJ legacy prefixes are explicitly investigated/deferred. |
+
+### G-23 — Coexistence test harness
+
+| Field | Detail |
+|---|---|
+| Current evidence | Existing tests cover FEFO/in-memory behavior and limited legacy DALs; no mixed-writer or synchronization suite exists. |
+| Why it matters | Coexistence correctness emerges from writer ordering, retry, void/delete, and intentional model differences. |
+| Required capability | Domain, orchestration, SQL integration, failure-injection, and concurrency fixtures based on real VB6 behavior. |
+| Priority | P0 for coexistence correctness scenarios; P1 for expanded operational, volume, and recovery suites |
+| Dependencies | Ongoing across G-02–G-22 |
+| Acceptance criteria | CI covers Legacy→New, New→Legacy, alternating writers, depleted-layer difference, real mismatch, duplicate sync, concurrent outbound, basis changes during reconstruction, and partial-failure rollback. |
+
+### G-24 — Operational recovery and observability
+
+| Field | Detail |
+|---|---|
+| Current evidence | No synchronization queue/state visibility, drift dashboard, or recovery procedure exists. |
+| Why it matters | Operators need to distinguish pending catch-up, retryable failure, intentional difference, and material inconsistency. |
+| Required capability | Metrics/logs by scope and source reference; retry/containment action; reconciliation explanation; feature flags by capability; rollback that leaves legacy stock usable. |
+| Priority | P1 |
+| Dependencies | G-12, G-15, G-16, G-22 |
+| Acceptance criteria | Operators can identify stale/inconsistent scopes, retry safely, disable new paths without disabling VB6, and explain last synchronization/reconciliation outcome. |
+
+### G-25 — Performance and indexing
+
+| Field | Detail |
+|---|---|
+| Current evidence | Repository SQL shows only primary-key coverage for legacy stock tables; live indexes and row volumes are unknown. |
+| Why it matters | Reconstruction, discovery, change detection, and diffing must be bounded on production histories. |
+| Required capability | Audit live indexes/volumes; add measured query indexes; define p95 SLOs for Availability Discovery, reconstruction, freshness check, and synchronization. |
+| Priority | P1 |
+| Dependencies | G-05, G-13 |
+| Acceptance criteria | Production-scale test meets approved SLO without organization-wide replay or long stock locks. |
+
+### G-26 — Read models
+
+| Field | Detail |
+|---|---|
+| Current evidence | Kartu-stok GET depends on an unwired repository; current read model does not expose freshness/origin. |
+| Why it matters | Operational users and diagnostics need both legacy authority and richer Ledger detail without confusing source-of-truth status. |
+| Required capability | Reads by Item/location/Receipt Source, movement history, origin, synchronization state, and reconciliation explanation. |
+| Priority | P1 |
+| Dependencies | G-06, G-07, G-16 |
+| Acceptance criteria | Reads clearly label legacy authority and representation freshness; query path does not mutate or establish authority. |
+
+### G-27 — Optional internal events and technical cleanup
+
+| Field | Detail |
+|---|---|
+| Current evidence | No events are required; `ModelStateEnum` persistence tracking leaks into domain types. |
+| Why it matters | Cleanup can improve architecture but must not block coexistence correctness. |
+| Required capability | Internal domain signals only when useful; remove dirty-state leakage when types are already changed; no required broker/outbox. |
+| Priority | P3 |
+| Dependencies | Core behavior complete |
+| Acceptance criteria | No event infrastructure or cleanup is on the production critical path; any refactor preserves behavior. |
 
 ---
 
-## 5. Dependency graph (simplified)
+## 5. Dependency order
 
 ```text
-G-01 Aggregate realignment
-G-02 Movement aggregate
-G-03 Allocation policy
-G-18 Domain purity
-        │
-        ▼
-G-04 Migration status ──► G-05 Legacy read adapter ──► G-08 Bootstrap use case
-G-06 Position/Layer persistence ─────────────────────►┘
-G-07 Movement persistence + idempotency ─────────────► G-10 First consequence pipeline
-        │
-        ▼
-G-09 Dual-write projection
-G-11 Transfer/return/reverse
-G-12 Reconciliation
-G-16 Read models
-        │
-        ▼
-G-13 Expand FO coverage
-G-14 Virtual locations
-G-15 Domain events
-G-19 Charge rename
-G-20 Perf SLO
+Boundary + domain foundation
+    G-01 G-02 G-03 G-04
+        |
+Persistence + legacy reads
+    G-05 G-06 G-07 G-08 G-23
+        |
+Initial baseline
+    G-10
+        |
+Change evidence + synchronization
+    G-13 -> G-14 -> G-15 -> G-16
+        |                    |
+Mixed-writer safety         |
+    G-11 G-17 G-18 ---------+
+        |
+Freshness gate
+    G-12
+        |
+Native receipt and first outbound
+    G-19 G-20 G-09
+        |
+Coverage + operations
+    G-21 G-22 G-24 G-25 G-26
+
+Deferred: G-27 and future global final cutover
 ```
+
+G-13 through G-17 must be proven before coexistence production rollout. They may be prototyped in parallel with the additive domain/persistence foundation, but they cannot be deferred behind transaction expansion.
 
 ---
 
-## 6. Definition of “production-ready Stock Ledger” (minimum)
+## 6. Required coexistence tests
 
-A DO is production-ready under Stock Ledger when:
+| Scenario | Required assertion |
+|---|---|
+| Legacy then New | VB6 changes legacy records; new touch detects and synchronizes; Stock Ledger outcome matches authoritative quantity/provenance. |
+| New then Legacy | New consequence writes legacy + Ledger; VB6 later changes same Item + DO; Ledger catches up without authority transfer. |
+| Alternating writers | `New -> Legacy -> Legacy -> New -> New` conserves quantity and advances synchronization position only after successful batches. |
+| Depleted layer difference | Legacy deletes zero stock row; Ledger retains depleted layer; reconciliation remains balanced. |
+| Real mismatch | Legacy quantity cannot be reconciled to movement/layer facts; scope becomes explicitly `Inconsistent`. |
+| Duplicate synchronization | Same legacy movement/batch twice does not duplicate inbound/outbound quantity. |
+| Concurrent outbound | VB6 and .NET attempt overlapping consumption; no negative stock or lost update; conflict/retry result is explicit. |
+| Reconstruction race | Legacy movement during reconstruction invalidates Phase C basis and causes retry/not-current. |
+| Synchronization/native race | Native consequence cannot allocate from pre-sync state; lock/version conflict retries safely. |
+| Partial failure | Legacy-compatible write or Ledger persistence failure rolls back the new-system consequence. |
 
-1. Migration status is `Reconstructed` (or native-new DO marked authoritative without legacy replay).
-2. Layers for all touched locations exist, including Qty=0.
-3. New consequences for that DO go through Movement + Position with idempotency.
-4. Legacy projection remains correct for consumers still on `tb_stok`/`tb_buku`.
-5. Reconciliation for that DO runs without full-history global scan.
-6. Concurrent writers cannot double-bootstrap or double-apply the same source transaction.
+---
 
-Hospital-wide readiness is **gradual**: many DO remain legacy-only until first touch (lazy bootstrap).
-)
+## 7. Definition of production-ready coexistence
+
+Minimum production readiness is global capability evidence, not an `IsAuthoritative` scope flag:
+
+1. VB6 continues to process stock.
+2. New application processes enabled transaction types.
+3. `tb_stok + tb_buku` remain authoritative and usable by existing consumers.
+4. New transactions produce required legacy-compatible authoritative records.
+5. Stock Ledger retains richer provenance, FIFO allocation, Movement, and depleted layers.
+6. Later legacy-originated changes are detected and incorporated.
+7. Freshness can be established before Stock Ledger-dependent decisions.
+8. Synchronization and request retries do not duplicate quantity.
+9. Reconciliation distinguishes intentional representation differences from real drift.
+10. Negative stock remains impossible under mixed writers.
+11. Legacy compatibility and FO writeback behavior are characterized and protected.
+12. Disabling new Stock Ledger paths leaves legacy stock operational.
+13. Operational recovery exists for stale and inconsistent scopes.
+14. DO Receipt can be followed by VB6 outbound and later new-system processing of the same DO.
+15. Alternating legacy/new writers conserve quantity through repeated synchronization.
+16. Reconstruction and synchronization failures surface explicit `Inconsistent` outcomes.
+17. Failure injection proves atomic new-system consequence persistence.
+18. No operator procedure treats `Native` / `Reconstructed` as authority.
+
+Full FO migration, prevention of legacy writes, per-DO ownership, and final cutover are explicitly not prerequisites.
+
+---
+
+## 8. Deferred and out of scope
+
+| Item | Reason |
+|---|---|
+| Global/final authority cutover | Separate future business and operational decision |
+| Per-Item or per-Receipt-Source cutover | Rejected coexistence model |
+| `IsAuthoritative` state | Incorrectly derives authority from origin/readiness |
+| Legacy-as-projection architecture | Stage C possibility only |
+| Mass historical migration | Lazy bounded reconstruction is sufficient |
+| Porting `clbGenStokX1` | Anti-corruption adapters and direct orchestration are safer |
+| Event sourcing / mandatory broker | Not required by domain or repository architecture |
+| Mandatory CDC | Candidate only if evidence supports it |
+| Batch-constrained selection | Business policy unresolved; store compatibility only |
+| Dedicated Reconciliation Aggregate persistence | Lightweight behavior/outcome storage is enough for minimum rollout |
+| ModelState cleanup and optional events | P3 technical improvement |

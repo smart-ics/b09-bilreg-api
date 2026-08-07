@@ -14,11 +14,13 @@
 
 ### 1.1 Tujuan dan nilai
 
-Stock Ledger menyediakan catatan authoritative untuk pergerakan jumlah persediaan, asal-usul stok, jumlah sisa, dan nilai satuan di seluruh lokasi stok.
+Stock Ledger menetapkan model bisnis target untuk pergerakan jumlah persediaan, asal-usul stok, Stock Layer, jumlah sisa, dan nilai satuan di seluruh Stock Location.
 
 Domain ini memastikan setiap jumlah persediaan yang dapat dipertanggungjawabkan dapat ditelusuri ke Receipt Source asalnya sepanjang penerimaan, transfer, pemakaian, retur, koreksi, dan konsekuensi persediaan lainnya.
 
 Stock Ledger bekerja di belakang transaksi bisnis yang dimiliki bounded context lain. Konteks tersebut menentukan mengapa persediaan harus bergerak. Stock Ledger menentukan dan mencatat konsekuensi persediaan yang dapat dipertanggungjawabkan.
+
+Selama Coexistence Period, Legacy Stock Record tetap menjadi kebenaran stok yang tersimpan dan berwenang. Stock Ledger memelihara Stock Ledger Representation yang lebih kaya, yang harus tetap dapat direkonsiliasi dengan dan diselaraskan ke kewenangan legacy itu selama kedua sistem terus memproses transaksi stok.
 
 Domain ini harus memastikan bahwa:
 
@@ -26,13 +28,14 @@ Domain ini harus memastikan bahwa:
 * pergerakan antar lokasi mempertahankan Receipt Source asli;
 * pemakaian stok mengikuti FIFO di dalam Stock Location yang diminta transaksi sumber, kecuali transaksi itu secara eksplisit mengidentifikasi Expiration Date;
 * pemakaian FIFO tetap dapat ditelusuri ke Stock Layer yang dipakai;
-* Stock Layer yang habis tetap menjadi bagian dari posisi stok authoritative;
+* Stock Layer yang habis tetap menjadi bagian dari Stock Ledger Representation meskipun Legacy Stock Record tidak dapat mempertahankannya;
 * ledger mutasi dan posisi stok saat ini dapat direkonsiliasi dalam lingkup terbatas;
 * satu transaksi bisnis sumber tidak menghasilkan konsekuensi stok ganda;
 * koreksi dan pembalikan mempertahankan fakta yang sudah tercatat;
 * reservasi stok direpresentasikan sebagai transfer yang dapat dipertanggungjawabkan ke Virtual Stock Location;
 * asal-usul stok legacy dapat direkonstruksi secara bertahap tanpa migrasi historis penuh; dan
 * fakta hasil rekonstruksi tetap dapat dibedakan dari fakta yang dicatat secara native oleh Stock Ledger baru;
+* perubahan stok yang berasal dari legacy boleh terus terjadi setelah rekonstruksi dan wajib dimasukkan melalui Legacy Synchronization;
 * Remaining Quantity negatif dilarang tanpa pengecualian; dan
 * Stock Ledger tidak menambah persetujuan di luar otoritas yang sudah ditetapkan oleh transaksi sumber.
 
@@ -52,7 +55,8 @@ Konteks ini mencakup:
 10. rekonsiliasi per Item dan Receipt Source;
 11. Legacy Stock Reconstruction bertahap;
 12. deteksi konsekuensi stok ganda atau tidak konsisten; dan
-13. penerbitan hasil mutasi stok dan posisi stok yang authoritative.
+13. koeksistensi dengan pemrosesan stok legacy yang berlanjut serta Legacy Synchronization; dan
+14. penerbitan hasil mutasi stok dan posisi stok yang dapat dipertanggungjawabkan.
 
 ### 1.3 Batas bisnis
 
@@ -83,9 +87,11 @@ Stock Ledger mengandalkan bounded context lain tanpa mengambil alih kewenanganny
 
 Stock Ledger tidak menentukan apakah penjualan, penerimaan, transfer, reservasi, pembuangan, retur, atau penyesuaian harus terjadi. Domain ini hanya mencatat konsekuensi stok setelah menerima fakta bisnis sumber yang dapat dipertanggungjawabkan atau permintaan yang diotorisasi. Setiap persetujuan yang diperlukan untuk aktivitas tersebut milik transaksi asal dan sudah selesai sebelum pemrosesan Stock Ledger dimulai.
 
+Selama Coexistence Period, Stock Ledger tidak memperoleh kepemilikan eksklusif atas suatu Item + Receipt Source hanya karena lingkup itu diproses secara native atau berhasil direkonstruksi. Transaksi stok yang berasal dari legacy boleh terus memengaruhi lingkup yang sama.
+
 ### 1.4 Kewenangan informasi
 
-| Fakta bisnis | Pemilik authoritative |
+| Fakta bisnis | Pemilik yang berwenang |
 | --- | --- |
 | Identitas Item | Product Catalog |
 | Identitas Stock Location | Otoritas Facility atau Organizational |
@@ -98,16 +104,25 @@ Stock Ledger tidak menentukan apakah penjualan, penerimaan, transfer, reservasi,
 | Pemenuhan penjualan atau penyediaan | Konteks fulfillment asal |
 | Hasil penghitungan fisik | Stock Opname |
 | Penyesuaian stok yang diotorisasi | Otoritas persediaan yang bertanggung jawab |
-| Stock Movement | Stock Ledger |
-| Asal-usul Stock Layer | Stock Ledger |
-| Remaining Quantity per Stock Layer | Stock Ledger |
-| Alokasi FIFO dan yang dibatasi kedaluwarsa | Stock Ledger |
-| Posisi stok reservasi | Stock Ledger |
-| Stock Position | Stock Ledger |
-| Hasil rekonsiliasi | Stock Ledger |
+| Fakta jumlah dan mutasi stok yang tersimpan selama Coexistence Period | Legacy Stock Authority |
+| Asal-usul Stock Layer dan representasi lapisan habis yang dipertahankan | Stock Ledger |
+| Alokasi FIFO dan yang dibatasi kedaluwarsa yang dilakukan Stock Ledger | Stock Ledger |
+| Hasil rekonsiliasi Stock Ledger | Stock Ledger |
 | Entri akuntansi keuangan | Finance atau Accounting |
 
 Stock Ledger tidak boleh menyimpulkan bahwa suatu transaksi bisnis valid hanya karena pergerakan persediaan secara teknis memungkinkan.
+
+Pembedaan kewenangan dinyatakan secara eksplisit:
+
+```text
+Target business model
+= Stock Ledger
+
+Persisted stock source of truth during coexistence
+= Legacy Stock Record
+```
+
+Rekonstruksi yang berhasil tidak mengubah hubungan kewenangan ini.
 
 ### 1.5 Model bisnis utama
 
@@ -136,7 +151,22 @@ Stock Layer boleh mencapai Remaining Quantity nol, tetapi tetap menjadi bagian y
 
 Stock Ledger adalah supporting bounded context. Domain ini mungkin tidak memiliki workflow langsung yang dihadapi pengguna untuk transaksi biasa.
 
-Perilaku bisnisnya terutama dipicu oleh fakta dan permintaan dari bounded context lain. Tidak adanya interaksi pengguna langsung tidak mengurangi kewenangannya atas mutasi persediaan, asal-usul, saldo, dan rekonsiliasi.
+Perilaku bisnisnya terutama dipicu oleh fakta dan permintaan dari bounded context lain. Tidak adanya interaksi pengguna langsung tidak mengurangi tanggung jawabnya atas mutasi persediaan, asal-usul, saldo, dan rekonsiliasi.
+
+### 1.7 Kewenangan koeksistensi
+
+Coexistence Period adalah kondisi bisnis peralihan di mana kemampuan pemrosesan stok legacy dan yang baru beroperasi secara bersamaan.
+
+Selama periode ini:
+
+- Legacy Stock Record tetap menjadi sumber kebenaran untuk fakta jumlah dan mutasi stok yang tersimpan;
+- Stock Ledger boleh memproses transaksi baru dengan aturan domainnya sambil mempertahankan konsekuensi stok yang kompatibel dengan legacy;
+- transaksi yang berasal dari legacy boleh terus terjadi setelah suatu Item + Receipt Source direkonstruksi;
+- Legacy Stock Reconstruction menetapkan baseline awal Stock Ledger, bukan pemindahan kewenangan;
+- Legacy Synchronization memasukkan perubahan legacy berikutnya ke dalam Stock Ledger Representation; dan
+- perbedaan yang tidak dapat dijelaskan antara Legacy Stock Record dan Stock Ledger Representation membuat lingkup yang terdampak tidak konsisten sampai direkonsiliasi.
+
+Cutover akhir di masa depan boleh mengubah kewenangan runtime, tetapi cutover tersebut berada di luar keputusan domain saat ini.
 
 ---
 
@@ -144,7 +174,7 @@ Perilaku bisnisnya terutama dipicu oleh fakta dan permintaan dari bounded contex
 
 | Inggris | Indonesia | Definisi |
 | --- | --- | --- |
-| Stock Ledger | Buku Besar Stok | Bounded context yang secara authoritative mencatat mutasi persediaan, asal-usul, Remaining Quantity, dan hasil rekonsiliasi. |
+| Stock Ledger | Buku Besar Stok | Bounded context yang menetapkan model target untuk mutasi persediaan, asal-usul, Stock Layer, alokasi, dan rekonsiliasi. Selama Coexistence Period, representasinya tetap diselaraskan ke Legacy Stock Authority. |
 | Item | Item | Produk yang dikelola sebagai persediaan dan memiliki identitas unik. |
 | Stock Location | Lokasi Stok | Lokasi bisnis tempat persediaan disimpan, misalnya gudang, apotek, bangsal, klinik, atau unit gawat darurat. |
 | Virtual Stock Location | Lokasi Stok Virtual | Stock Location logis yang memisahkan persediaan menurut ketersediaan bisnis, misalnya stok cadangan, tanpa mengubah fasilitas fisik atau asal-usulnya. |
@@ -154,16 +184,16 @@ Perilaku bisnisnya terutama dipicu oleh fakta dan permintaan dari bounded contex
 | Layer-Forming Movement | Mutasi Pembentuk Lapisan | Stock Movement yang membentuk Stock Layer di suatu Stock Location. |
 | Initial Quantity | Jumlah Awal | Jumlah yang dipegang Stock Layer ketika lapisan itu dibentuk. |
 | Remaining Quantity | Jumlah Sisa | Jumlah yang saat ini tersedia atau dapat dipertanggungjawabkan di dalam suatu Stock Layer. |
-| Depleted Stock Layer | Lapisan Stok Habis | Stock Layer yang Remaining Quantity-nya nol. Lapisan ini tetap bagian dari Stock Position authoritative dan tidak dibuang. |
+| Depleted Stock Layer | Lapisan Stok Habis | Stock Layer yang Remaining Quantity-nya nol. Lapisan ini tetap bagian dari Stock Ledger Representation dan tidak dibuang. |
 | Unit Valuation | Nilai Satuan | Nilai persediaan per unit yang dipertahankan oleh Stock Layer. |
 | Expiration Date | Tanggal Kedaluwarsa | Tanggal setelahnya Stock Layer tidak lagi layak untuk pemakaian biasa. Tanggal ini dipertahankan sepanjang transfer, reservasi, retur, dan pemakaian. |
 | Explicit Expiry Selection | Pemilihan Kedaluwarsa Eksplisit | Instruksi dari transaksi sumber yang membatasi Stock Layer yang layak ke Expiration Date tertentu sebelum urutan FIFO diterapkan. |
-| Stock Position | Posisi Stok | Representasi jumlah terkini yang authoritative dari Stock Layer untuk lingkup Item, Receipt Source, dan Stock Location yang ditentukan. |
+| Stock Position | Posisi Stok | Representasi Stock Ledger terkini atas Stock Layer untuk lingkup Item, Receipt Source, dan Stock Location yang ditentukan. |
 | Stock Movement | Mutasi Stok | Fakta bisnis yang tidak dapat diubah bahwa jumlah persediaan masuk, keluar, pindah antar lokasi, dikembalikan, atau disesuaikan. |
 | Stock Movement Line | Baris Mutasi Stok | Satu konsekuensi jumlah di dalam Stock Movement, terkait dengan Item, Receipt Source, Stock Location, arah, jumlah, dan Unit Valuation. |
-| Source Business Fact | Fakta Bisnis Sumber | Fakta authoritative dari bounded context lain yang memberi alasan bisnis bagi konsekuensi stok. |
+| Source Business Fact | Fakta Bisnis Sumber | Fakta yang berwenang dari bounded context lain yang memberi alasan bisnis bagi konsekuensi stok. |
 | Source Transaction Reference | Referensi Transaksi Sumber | Identitas stabil yang menghubungkan Stock Movement dengan transaksi bisnis yang menyebabkannya. |
-| Stock Receipt | Penerimaan Stok | Stock Movement yang mengakui persediaan masuk ke kewenangan Stock Ledger dari sumber eksternal. |
+| Stock Receipt | Penerimaan Stok | Stock Movement yang mengakui persediaan masuk ke pengendalian stok yang dapat dipertanggungjawabkan dari sumber eksternal. |
 | Stock Transfer | Transfer Stok | Pergerakan persediaan keluar dan masuk yang terkoordinasi antara dua Stock Location dengan tetap mempertahankan Item, Receipt Source, dan Unit Valuation. |
 | Stock Consumption | Pemakaian Stok | Stock Movement keluar yang disebabkan oleh penjualan, dispensing, penggunaan, kerusakan, kedaluwarsa, atau disposisi akhir lain yang dapat dipertanggungjawabkan. |
 | FIFO | FIFO | Kebijakan yang memakai Stock Layer yang layak menurut urutan yang berlaku dari yang tertua ke yang terbaru. |
@@ -184,12 +214,16 @@ Perilaku bisnisnya terutama dipicu oleh fakta dan permintaan dari bounded contex
 | Reconstruction Scope | Lingkup Rekonstruksi | Item dan Receipt Source yang seluruh asal-usul legacy-nya direkonstruksi di semua Stock Location. |
 | Reconstruction Trigger | Pemicu Rekonstruksi | Aktivitas pemrosesan stok pertama yang memenuhi syarat dan membutuhkan Item serta Receipt Source yang belum direkonstruksi. |
 | Reconstruction Status | Status Rekonstruksi | Keadaan yang dapat dipertanggungjawabkan yang menunjukkan apakah Reconstruction Scope belum direkonstruksi, sedang direkonstruksi, sudah direkonstruksi, atau ditemukan tidak konsisten. |
-| Stock Ledger Authority Established | Kewenangan Stock Ledger Ditetapkan | Hasil internal yang menjadikan Stock Ledger authoritative untuk satu Item dan Receipt Source setelah Legacy Stock Reconstruction berhasil. |
 | Provenance Continuity | Kontinuitas Asal-usul | Aturan bahwa Receipt Source dan Unit Valuation tetap dapat ditelusuri sepanjang transfer dan pemakaian. |
 | Inventory Conservation | Konservasi Persediaan | Aturan bahwa jumlah yang masuk ke suatu lingkup asal-usul sama dengan jumlah yang tersisa ditambah hasil keluar dan penyesuaian yang dapat dipertanggungjawabkan. |
 | Stock Consequence | Konsekuensi Stok | Efek jumlah persediaan yang dihasilkan dari Source Business Fact yang diotorisasi. |
-| Duplicate Stock Consequence | Konsekuensi Stok Ganda | Lebih dari satu Stock Movement authoritative yang dibuat untuk tanggung jawab transaksi sumber yang sama. |
-| Legacy Stock Projection | Proyeksi Stok Legacy | Representasi kompatibilitas yang disediakan bagi konsumen legacy tanpa menggantikan kewenangan Stock Ledger. |
+| Duplicate Stock Consequence | Konsekuensi Stok Ganda | Lebih dari satu Stock Movement yang dapat dipertanggungjawabkan yang dibuat untuk tanggung jawab transaksi sumber yang sama. |
+| Coexistence Period | Periode Koeksistensi | Periode peralihan di mana kemampuan pemrosesan stok legacy dan yang baru beroperasi secara bersamaan sementara Legacy Stock Record tetap menjadi kebenaran stok tersimpan yang berwenang. |
+| Legacy Stock Authority | Kewenangan Stok Legacy | Kewenangan bisnis Legacy Stock Record selama Coexistence Period. |
+| Legacy Stock Record | Catatan Stok Legacy | Representasi stok terkini dan riwayat mutasi legacy yang tetap berwenang selama koeksistensi. Pada sistem legacy saat ini, ini direpresentasikan oleh `tb_stok` dan `tb_buku`. |
+| Stock Ledger Representation | Representasi Stock Ledger | Pandangan Stock Ledger yang lebih kaya atas mutasi stok, asal-usul, Stock Layer, lapisan habis, dan fakta rekonsiliasi. |
+| Legacy Synchronization | Penyelarasan Legacy | Pemasukan yang dapat dipertanggungjawabkan atas perubahan stok legacy yang tercatat setelah rekonstruksi awal ke dalam Stock Ledger Representation. |
+| Synchronization Position | Posisi Penyelarasan | Titik yang diketahui sampai di mana fakta stok legacy yang berlaku sudah tercermin di Stock Ledger Representation. Ini menyatakan kesegaran data, bukan mekanisme penyimpanan teknis. |
 
 ---
 
@@ -241,7 +275,7 @@ Mengoordinasikan pergerakan keluar dan masuk antar Stock Location sambil mempert
 
 **Indonesia:** Pengelolaan Posisi Stok
 
-Memelihara Remaining Quantity yang authoritative menurut Item, Receipt Source, Stock Location, dan Stock Layer.
+Memelihara Stock Ledger Representation atas Remaining Quantity menurut Item, Receipt Source, Stock Location, dan Stock Layer.
 
 ### 3.9 Stock Reconciliation
 
@@ -265,13 +299,13 @@ Merekonstruksi secara bertahap Stock Layer yang sebelumnya dihapus atau tidak te
 
 **Indonesia:** Koordinasi Konsekuensi Stok Lintas Konteks
 
-Menerima fakta sumber yang dapat dipertanggungjawabkan dari bounded context lain dan menerbitkan hasil stok yang authoritative tanpa mengambil kepemilikan atas transaksi bisnis asal.
+Menerima fakta sumber yang dapat dipertanggungjawabkan dari bounded context lain dan menerbitkan hasil stok yang dapat dipertanggungjawabkan tanpa mengambil kepemilikan atas transaksi bisnis asal.
 
-### 3.13 Legacy Compatibility
+### 3.13 Legacy Coexistence and Synchronization
 
-**Indonesia:** Kompatibilitas Legacy
+**Indonesia:** Koeksistensi dan Penyelarasan Legacy
 
-Mendukung kelanjutan operasi konsumen stok legacy selama kewenangan Stock Ledger diadopsi secara bertahap.
+Mendukung kelanjutan pemrosesan stok legacy sambil memelihara Stock Ledger Representation yang lebih kaya dan diselaraskan ke Legacy Stock Authority selama Coexistence Period.
 
 ---
 
@@ -309,7 +343,7 @@ Boleh mendukung operasi teknis tetapi tidak memiliki keputusan jumlah stok, asal
 
 ### 5.1 Stock Movement
 
-Merepresentasikan konsekuensi jumlah persediaan yang authoritative.
+Merepresentasikan konsekuensi jumlah persediaan yang dapat dipertanggungjawabkan di dalam model Stock Ledger.
 
 Stock Movement mengidentifikasi:
 
@@ -358,7 +392,7 @@ Stock Layer mempertahankan:
 * klasifikasi asal sebagai native atau reconstructed; dan
 * status depletion.
 
-Stock Layer tetap authoritative ketika Remaining Quantity-nya mencapai nol.
+Stock Layer tetap dipertahankan di Stock Ledger Representation ketika Remaining Quantity-nya mencapai nol.
 
 ### 5.4 Stock Position
 
@@ -437,7 +471,7 @@ Legacy Stock Reconstruction tidak menciptakan fakta sumber yang tidak tersedia.
 
 Merepresentasikan hubungan antara Stock Movement yang salah atau tidak lengkap dengan mutasi kemudian yang mengoreksinya.
 
-Mutasi asli tetap terlihat dan authoritative sebagai fakta historis.
+Mutasi asli tetap terlihat sebagai fakta historis yang dapat dipertanggungjawabkan.
 
 ### 5.10 Stock Consequence Request
 
@@ -456,6 +490,20 @@ Objek ini mengidentifikasi:
 * waktu bisnis efektif.
 
 Penerimaan Stock Consequence Request tidak memindahkan kepemilikan transaksi bisnis sumber ke Stock Ledger.
+
+### 5.11 Legacy Stock Synchronization
+
+Merepresentasikan hubungan bisnis yang menjaga lingkup Stock Ledger yang sebelumnya direkonstruksi atau dicatat secara native tetap mutakhir terhadap fakta stok kemudian yang dicatat di bawah Legacy Stock Authority.
+
+Objek ini mengidentifikasi:
+
+* Item dan Receipt Source yang terdampak;
+* Synchronization Position;
+* fakta stok legacy yang belum tercermin di Stock Ledger;
+* perubahan Stock Ledger yang dihasilkan; dan
+* inkonsistensi apa pun yang mencegah representasi dianggap mutakhir.
+
+Legacy Stock Synchronization memperbarui Stock Ledger Representation tanpa memindahkan kewenangan runtime dari Legacy Stock Record selama Coexistence Period.
 
 ---
 
@@ -546,13 +594,13 @@ Hanya satu rekonstruksi aktif yang boleh ada untuk Item dan Receipt Source yang 
 
 Stock Movement boleh membentuk, menambah, mengurangi, mentransfer, menghabiskan, atau mengoreksi Stock Layer di dalam satu atau lebih Stock Position.
 
-Stock Reconciliation membaca Stock Movement yang authoritative dan Stock Position yang berlaku, tetapi tidak memiliki keduanya.
+Stock Reconciliation membaca Stock Movement dan Stock Position yang berlaku, tetapi tidak memiliki keduanya.
 
-Legacy Stock Reconstruction membentuk Stock Layer yang sebelumnya hilang dan menandainya sebagai reconstructed. Stock Movement native berikutnya berlanjut dari Stock Position hasil rekonstruksi.
+Legacy Stock Reconstruction membentuk Stock Layer yang sebelumnya hilang dan menandainya sebagai reconstructed. Selama Coexistence Period, Stock Movement native berikutnya boleh berlanjut dari baseline itu hanya setelah perubahan legacy yang berlaku diselaraskan. Stock Movement yang berasal dari legacy juga boleh terus terjadi dan wajib tercermin melalui Legacy Synchronization.
 
 Koordinasi lintas aggregate harus mempertahankan:
 
-* satu konsekuensi authoritative per tanggung jawab sumber;
+* satu konsekuensi yang dapat dipertanggungjawabkan per tanggung jawab sumber;
 * konsistensi Item dan Receipt Source;
 * konservasi jumlah;
 * kontinuitas Unit Valuation; dan
@@ -567,9 +615,9 @@ Koordinasi lintas aggregate harus mempertahankan:
 * **BR-STL-001** — Setiap Stock Movement wajib berasal dari tepat satu Source Business Fact yang dapat dipertanggungjawabkan, penyesuaian yang diotorisasi, hasil rekonstruksi, koreksi, atau pembalikan.
 * **BR-STL-002** — Stock Ledger tidak boleh menciptakan alasan bisnis untuk penerimaan, penjualan, dispensing, transfer, retur, atau Stock Opname.
 * **BR-STL-003** — Setiap Stock Movement wajib mempertahankan Source Transaction Reference yang cukup untuk menelusurinya ke tanggung jawab bisnis asalnya.
-* **BR-STL-004** — Satu tanggung jawab transaksi sumber wajib menghasilkan paling banyak satu Stock Consequence authoritative aktif dari tipe yang sama.
+* **BR-STL-004** — Satu tanggung jawab transaksi sumber wajib menghasilkan paling banyak satu Stock Consequence aktif yang dapat dipertanggungjawabkan dari tipe yang sama.
 * **BR-STL-005** — Pengulangan tanggung jawab sumber yang sama tidak boleh menduplikasi jumlah persediaan.
-* **BR-STL-006** — Stock Ledger wajib menolak atau mengidentifikasi konsekuensi yang diminta bila Item, jumlah, lokasi, atau asal-usulnya bertentangan dengan fakta sumber yang authoritative.
+* **BR-STL-006** — Stock Ledger wajib menolak atau mengidentifikasi konsekuensi yang diminta bila Item, jumlah, lokasi, atau asal-usulnya bertentangan dengan fakta sumber yang berwenang dari konteks sumber yang bertanggung jawab atau, selama koeksistensi, dengan Legacy Stock Record.
 
 ### 7.2 Receipt Source dan asal-usul
 
@@ -586,7 +634,7 @@ Koordinasi lintas aggregate harus mempertahankan:
 * **BR-STL-014** — Initial Quantity wajib positif ketika Stock Layer dibentuk.
 * **BR-STL-015** — Remaining Quantity tidak boleh melebihi Initial Quantity kecuali melalui retur atau koreksi jumlah yang dapat dipertanggungjawabkan dan diproses dari transaksi sumber yang sudah diotorisasi.
 * **BR-STL-016** — Remaining Quantity tidak boleh menjadi negatif pada transaksi atau setting pelayanan apa pun.
-* **BR-STL-017** — Stock Layer yang Remaining Quantity-nya menjadi nol wajib tetap menjadi bagian dari Stock Position authoritative.
+* **BR-STL-017** — Stock Layer yang Remaining Quantity-nya menjadi nol wajib tetap menjadi bagian dari Stock Ledger Representation.
 * **BR-STL-018** — Depleted Stock Layer tidak boleh dihapus diam-diam atau dipakai ulang sebagai lapisan yang berbeda.
 * **BR-STL-019** — Unit Valuation wajib merepresentasikan nilai per unit persediaan, bukan nilai total lapisan.
 * **BR-STL-020** — Unit Valuation wajib tetap tidak berubah untuk jumlah yang mempertahankan asal-usul yang sama dan tidak boleh dikoreksi secara terpisah dari konsekuensi jumlah serta transaksi sumber.
@@ -632,7 +680,7 @@ Koordinasi lintas aggregate harus mempertahankan:
 * **BR-STL-048** — Rekonsiliasi wajib mengikutsertakan setiap mutasi yang dapat dipertanggungjawabkan yang terkait dengan Item dan Receipt Source yang berlaku.
 * **BR-STL-049** — Total jumlah yang diakui untuk satu Item dan Receipt Source wajib sama dengan total Remaining Quantity ditambah semua jumlah keluar final yang dapat dipertanggungjawabkan dan konsekuensi penyesuaian neto.
 * **BR-STL-050** — Pergerakan antar Stock Location tidak boleh mengubah total jumlah dalam lingkup Item dan Receipt Source yang sama.
-* **BR-STL-051** — Jumlah Remaining Quantity di semua Stock Layer dalam Reconciliation Scope wajib sama dengan Stock Position terkini yang authoritative untuk lingkup itu.
+* **BR-STL-051** — Jumlah Remaining Quantity di semua Stock Layer dalam Reconciliation Scope wajib sama dengan posisi Stock Ledger terkini untuk lingkup itu; selama koeksistensi posisi itu harus cocok dengan Legacy Stock Record yang berlaku.
 * **BR-STL-052** — Reconciliation Difference wajib dicatat secara eksplisit dan tidak boleh diselesaikan dengan menulis ulang diam-diam mutasi yang sudah selesai.
 * **BR-STL-053** — Hasil rekonsiliasi wajib mengidentifikasi lingkup, waktu efektif, total yang dibandingkan, dan hasilnya.
 * **BR-STL-054** — Rekonsiliasi yang berhasil tidak boleh membuktikan bahwa transaksi komersial atau operasional asal sudah benar secara keseluruhan.
@@ -670,20 +718,20 @@ Transfer internal dikecualikan dari kedua sisi persamaan ini karena mempertahank
 * **BR-STL-067** — Reconstructed Stock Layer wajib menerima identitas baru yang dapat dipertanggungjawabkan sambil mempertahankan Item, Receipt Source, Stock Location, Unit Valuation, dan asal-usul mutasi yang tersedia.
 * **BR-STL-068** — Reconstructed Stock Layer dengan Remaining Quantity nol wajib dipertahankan.
 * **BR-STL-069** — Fakta hasil rekonstruksi wajib tetap dapat dibedakan dari Native Stock Fact.
-* **BR-STL-070** — Satu Item dan Receipt Source wajib memiliki paling banyak satu hasil rekonstruksi authoritative yang selesai.
+* **BR-STL-070** — Satu Item dan Receipt Source wajib memiliki paling banyak satu hasil rekonstruksi baseline yang selesai untuk dasar rekonstruksi yang sama.
 * **BR-STL-071** — Pemrosesan rekonstruksi berulang tidak boleh menduplikasi Stock Layer atau jumlah.
 * **BR-STL-072** — Stock Movement native tidak boleh dilanjutkan terhadap Item dan Receipt Source yang belum direkonstruksi bila hal itu menciptakan asal-usul atau rekonsiliasi yang tidak lengkap.
 * **BR-STL-073** — Inkonsistensi rekonstruksi wajib dicatat dan diangkat untuk penyelesaian yang dapat dipertanggungjawabkan, bukan diseimbangkan diam-diam.
 * **BR-STL-074** — Penyelesaian rekonstruksi wajib menetapkan baseline dari mana mutasi native berikutnya berlanjut.
 * **BR-STL-075** — Rekonstruksi legacy tidak boleh mensyaratkan migrasi seluruh riwayat persediaan sebelum Stock Ledger baru boleh beroperasi.
 
-### 7.10 Kompatibilitas legacy
+### 7.10 Koeksistensi legacy
 
-* **BR-STL-076** — Representasi stok legacy boleh terus disediakan selama masih dibutuhkan konsumen yang ada.
-* **BR-STL-077** — Legacy Stock Projection tidak boleh menimpa fakta Stock Ledger yang authoritative.
-* **BR-STL-078** — Perbedaan antara Stock Ledger dan Legacy Stock Projection wajib dapat dideteksi dan diselesaikan secara dapat dipertanggungjawabkan.
-* **BR-STL-079** — Persyaratan kompatibilitas tidak boleh mensyaratkan penghapusan Depleted Stock Layer dari Stock Ledger.
-* **BR-STL-080** — Ketidakmampuan representasi legacy untuk mempertahankan suatu fakta tidak boleh menghapus fakta itu dari kewenangan Stock Ledger.
+* **BR-STL-076** — Selama Coexistence Period, Legacy Stock Record wajib tetap menjadi sumber tersimpan yang berwenang untuk kebenaran jumlah dan mutasi stok.
+* **BR-STL-077** — Rekonstruksi yang berhasil atau pemrosesan Stock Ledger native tidak dengan sendirinya memindahkan kewenangan runtime untuk suatu Item dan Receipt Source dari Legacy Stock Record.
+* **BR-STL-078** — Transaksi stok yang berasal dari legacy boleh terus terjadi setelah suatu Item dan Receipt Source direkonstruksi atau diproses secara native.
+* **BR-STL-079** — Sebelum Stock Ledger mengandalkan representasinya untuk keputusan stok berikutnya selama koeksistensi, perubahan stok legacy yang berlaku setelah Synchronization Position wajib dimasukkan, atau lingkup itu wajib dianggap belum mutakhir.
+* **BR-STL-080** — Perbedaan representasi yang semata-mata disebabkan oleh ketidakmampuan Legacy Stock Record mempertahankan detail Stock Ledger, misalnya lapisan yang habis, tidak dengan sendirinya boleh diperlakukan sebagai inkonsistensi jumlah.
 
 ### 7.11 Penyelesaian dan keterlacakan
 
@@ -718,21 +766,25 @@ Transfer internal dikecualikan dari kedua sisi persamaan ini karena mempertahank
 * **BR-STL-100** — Satu Stock Consequence Request boleh menghasilkan beberapa Stock Movement Line karena alokasi FIFO, pemilihan Expiration Date eksplisit, pasangan transfer, atau beberapa Stock Layer yang terdampak.
 * **BR-STL-101** — Beberapa Stock Movement Line yang dihasilkan dari satu Stock Consequence Request wajib tetap dapat ditelusuri ke baris transaksi sumber yang sama.
 
-### 7.15 Kewenangan rekonstruksi dan ambiguitas
+### 7.15 Kelengkapan rekonstruksi dan ambiguitas
 
 * **BR-STL-102** — Rekonstruksi boleh selesai ketika Remaining Quantity dapat ditentukan untuk setiap Item dan Receipt Source meskipun identitas Stock Layer legacy asli sudah tidak diketahui.
 * **BR-STL-103** — Ketika hanya total jumlah Item yang dapat ditentukan tetapi distribusinya menurut Receipt Source tidak dapat ditentukan, rekonstruksi wajib berstatus `Inconsistent` dan pemrosesan native tidak boleh dilanjutkan untuk lingkup yang terdampak.
 * **BR-STL-104** — Ketika urutan mutasi legacy ambigu tetapi tidak mengubah hasil jumlah, Receipt Source, Expiration Date, atau Unit Valuation, rekonstruksi boleh memakai urutan fallback deterministik dan wajib menandai pengurutan itu sebagai hasil rekonstruksi, bukan fakta historis yang terbukti.
 * **BR-STL-105** — Ketika urutan legacy yang ambigu mengubah hasil jumlah, Receipt Source, Expiration Date, atau Unit Valuation, rekonstruksi wajib berstatus `Inconsistent`.
-* **BR-STL-106** — Legacy Stock Reconstruction yang berhasil wajib menetapkan kewenangan Stock Ledger untuk Item dan Receipt Source yang berlaku.
-* **BR-STL-107** — `Legacy Stock Reconstruction Completed` adalah hasil domain internal yang dipicu selama permintaan mutasi stok pertama untuk Item dan Receipt Source yang belum direkonstruksi; transaksi transisi yang dihadapi pengguna tidak diperlukan.
+* **BR-STL-106** — Legacy Stock Reconstruction yang berhasil wajib menetapkan baseline Stock Ledger yang seimbang untuk Item dan Receipt Source yang berlaku. Hal itu tidak memindahkan kewenangan runtime dari Legacy Stock Record selama Coexistence Period.
+* **BR-STL-107** — `Legacy Stock Reconstruction Completed` adalah hasil domain internal yang dipicu selama permintaan mutasi stok pertama untuk Item dan Receipt Source yang belum direkonstruksi; transaksi transisi yang dihadapi pengguna tidak diperlukan, dan hasil itu tidak menyiratkan pemindahan kewenangan.
 
-### 7.16 Stock Opname dan proyeksi legacy
+### 7.16 Stock Opname dan penyelarasan koeksistensi
 
 * **BR-STL-108** — Stock Opname hanya menyediakan jumlah fisik yang diamati dan tidak menentukan Receipt Source atau Unit Valuation.
 * **BR-STL-109** — Setiap selisih jumlah yang diidentifikasi dari Stock Opname wajib diselesaikan melalui transaksi penyesuaian sumber yang sudah diotorisasi sebelum Stock Ledger mencatat konsekuensinya.
-* **BR-STL-110** — Legacy Stock Projection boleh menghilangkan detail yang tidak dapat direpresentasikan modelnya, tetapi penghilangan itu tidak boleh mengubah kewenangan Stock Ledger atau ditafsirkan sebagai ketiadaan fakta authoritative.
-* **BR-STL-111** — Rekonsiliasi setelah kewenangan Stock Ledger ditetapkan wajib memakai fakta Stock Ledger yang authoritative, bukan memperlakukan Legacy Stock Projection yang kurang detail sebagai sumber kebenaran.
+* **BR-STL-110** — Legacy Stock Record boleh menghilangkan detail yang tidak dapat direpresentasikan modelnya, tetapi penghilangan itu tidak boleh menghapus fakta Stock Ledger yang lebih kaya atau ditafsirkan sebagai selisih jumlah ketika konsekuensi jumlah legacy tetap benar.
+* **BR-STL-111** — Selama Coexistence Period, rekonsiliasi antara Legacy Stock Record dan Stock Ledger Representation wajib memperlakukan Legacy Stock Record sebagai sumber kebenaran yang tersimpan sambil mempertahankan detail asal-usul yang hanya ada di Stock Ledger dan tidak dapat diungkapkan representasi legacy.
+* **BR-STL-112** — Legacy Stock Reconstruction menetapkan baseline awal Stock Ledger; perubahan stok legacy berikutnya wajib dimasukkan melalui Legacy Synchronization, bukan mensyaratkan rekonstruksi penuh ulang ketika baseline sebelumnya masih valid.
+* **BR-STL-113** — Native Stock Fact dan Reconstructed Stock Fact menjelaskan asal fakta Stock Ledger dan tidak boleh ditafsirkan sebagai keadaan kewenangan selama Coexistence Period.
+* **BR-STL-114** — Ketika Legacy Stock Record dan Stock Ledger Representation berbeda dalam jumlah atau fakta material lain di luar keterlambatan penyelarasan yang dapat dijelaskan atau keterbatasan representasi, lingkup yang terdampak wajib berstatus `Inconsistent` sampai direkonsiliasi.
+* **BR-STL-115** — Transaksi stok yang berasal dari sistem baru boleh memakai aturan Stock Ledger untuk menentukan konsekuensinya, tetapi selama koeksistensi fakta stok yang dihasilkannya wajib tetap kompatibel dengan Legacy Stock Record yang berwenang.
 
 ---
 
@@ -749,8 +801,8 @@ Proposed
 
 | State | Makna bisnis |
 | --- | --- |
-| Proposed | Sumber yang dapat dipertanggungjawabkan telah meminta konsekuensi stok, tetapi belum ada mutasi authoritative yang dicatat. |
-| Recorded | Stock Movement bersifat authoritative dan immutable. |
+| Proposed | Sumber yang dapat dipertanggungjawabkan telah meminta konsekuensi stok, tetapi belum ada mutasi Stock Ledger yang dicatat. |
+| Recorded | Stock Movement tercatat di Stock Ledger dan bersifat immutable di dalam ledger itu. |
 | Reversed | Stock Reversal kemudian menetralkan mutasi sambil tetap mempertahankannya. |
 | Corrected | Stock Correction kemudian mengubah konsekuensi bisnisnya sambil mempertahankan mutasi asli. |
 
@@ -771,7 +823,7 @@ Active or Depleted
 | --- | --- |
 | Established | Stock Layer dibentuk dengan Initial Quantity dan asal-usul. |
 | Active | Remaining Quantity lebih besar dari nol. |
-| Depleted | Remaining Quantity nol. Lapisan tetap authoritative. |
+| Depleted | Remaining Quantity nol. Lapisan tetap dipertahankan di Stock Ledger. |
 | Corrected | Koreksi kemudian yang dapat dipertanggungjawabkan mengubah konsekuensi jumlah, asal-usul, atau valuasi. |
 
 Depleted Stock Layer tidak dihapus. Retur yang dapat ditelusuri boleh mengembalikan Remaining Quantity positif ke Stock Layer asli sambil mempertahankan Receipt Source, Expiration Date, dan Unit Valuation aslinya.
@@ -788,7 +840,7 @@ Uninitialized
 
 | State | Makna bisnis |
 | --- | --- |
-| Uninitialized | Belum ada posisi native atau hasil rekonstruksi yang authoritative untuk Item dan Receipt Source. |
+| Uninitialized | Belum ada posisi Stock Ledger native atau hasil rekonstruksi untuk Item dan Receipt Source. |
 | Established | Posisi asal-usul telah diakui. |
 | Active | Setidaknya satu Stock Layer memiliki Remaining Quantity positif. |
 | Fully Depleted | Setiap Stock Layer memiliki Remaining Quantity nol, tetapi Stock Position tetap dipertahankan. |
@@ -829,12 +881,31 @@ Not Reconstructed
 | State | Makna bisnis |
 | --- | --- |
 | Not Reconstructed | Item dan Receipt Source masih mengandalkan semata-mata representasi legacy. |
-| Reconstruction Required | Aktivitas Stock Ledger baru membutuhkan asal-usul authoritative untuk ditetapkan. |
+| Reconstruction Required | Aktivitas Stock Ledger baru membutuhkan baseline asal-usul yang dapat dipakai untuk ditetapkan. |
 | Reconstructing | Fakta legacy yang tersedia sedang ditafsirkan dalam Reconstruction Scope lengkap. |
-| Reconstructed | Baseline hasil rekonstruksi yang authoritative tersedia dan kewenangan Stock Ledger ditetapkan untuk Item dan Receipt Source. |
+| Reconstructed | Baseline Stock Ledger hasil rekonstruksi yang seimbang tersedia untuk Item dan Receipt Source. Selama koeksistensi, kewenangan legacy tetap tidak berubah dan aktivitas legacy kemudian mungkin membutuhkan penyelarasan. |
 | Inconsistent | Fakta legacy yang tersedia tidak dapat menghasilkan rekonstruksi yang lengkap dan seimbang tanpa penyelesaian yang dapat dipertanggungjawabkan. |
 
-### 8.6 Lifecycle FIFO allocation
+### 8.6 Lifecycle Legacy Synchronization
+
+```text
+Current
+  -> Legacy Change Pending
+       -> Synchronization Required
+            -> Current
+            -> Inconsistent
+```
+
+| State | Makna bisnis |
+| --- | --- |
+| Current | Stock Ledger Representation mencerminkan fakta stok legacy yang berlaku sampai Synchronization Position-nya. |
+| Legacy Change Pending | Terdapat fakta stok legacy baru di luar Synchronization Position yang diketahui. |
+| Synchronization Required | Stock Ledger harus memasukkan fakta itu sebelum mengandalkan representasinya untuk keputusan stok berikutnya. |
+| Inconsistent | Representasi legacy dan Stock Ledger tidak dapat direkonsiliasi dari fakta yang tersedia. |
+
+Rekonstruksi menetapkan baseline awal. Legacy Synchronization menjaga baseline itu tetap mutakhir selama koeksistensi berlanjut.
+
+### 8.7 Lifecycle FIFO allocation
 
 ```text
 Requested Quantity
@@ -852,7 +923,7 @@ Requested Quantity
 | Partially Allocated | Hanya sebagian jumlah yang diminta terdukung. |
 | Not Allocated | Tidak ada jumlah yang layak tersedia. |
 
-### 8.7 Lifecycle Stock Reservation
+### 8.8 Lifecycle Stock Reservation
 
 ```text
 Available at Ordinary Location
@@ -880,8 +951,8 @@ Reservasi tidak mengubah Receipt Source, Expiration Date, Unit Valuation, atau k
 | Stock Receipt Recorded | Persediaan yang masuk ke organisasi diakui oleh Stock Ledger. |
 | Stock Layer Established | Stock Layer baru dibentuk dengan asal-usul yang dapat dipertanggungjawabkan. |
 | Stock Layer Depleted | Stock Layer mencapai Remaining Quantity nol. |
-| Stock Position Established | Posisi Item dan Receipt Source yang authoritative menjadi tersedia. |
-| Stock Movement Recorded | Konsekuensi persediaan masuk atau keluar menjadi authoritative. |
+| Stock Position Established | Posisi Stock Ledger untuk suatu Item dan Receipt Source menjadi tersedia. |
+| Stock Movement Recorded | Konsekuensi persediaan masuk atau keluar dicatat di Stock Ledger. |
 | FIFO Allocation Completed | Jumlah keluar dialokasikan ke satu atau lebih Stock Layer. |
 | FIFO Allocation Partially Completed | Hanya sebagian jumlah yang diminta terdukung oleh lapisan yang layak. |
 | Stock Consumption Recorded | Jumlah persediaan dikeluarkan dari satu atau lebih Stock Layer. |
@@ -892,18 +963,19 @@ Reservasi tidak mengubah Receipt Source, Expiration Date, Unit Valuation, atau k
 | Stock Movement Corrected | Fakta baru yang dapat dipertanggungjawabkan mengoreksi konsekuensi mutasi sebelumnya. |
 | Stock Reconciliation Requested | Lingkup Item dan Receipt Source yang ditentukan dipilih untuk validasi. |
 | Stock Reconciliation Balanced | Total mutasi dan Stock Position cocok dalam lingkup. |
-| Stock Reconciliation Difference Identified | Ditemukan selisih antara fakta mutasi dan posisi yang authoritative. |
+| Stock Reconciliation Difference Identified | Ditemukan selisih antara fakta mutasi dan posisi yang berlaku. |
 | Stock Reconciliation Difference Resolved | Selisih yang diidentifikasi menerima penyelesaian yang dapat dipertanggungjawabkan. |
 | Legacy Stock Reconstruction Required | Item dan Receipt Source yang belum direkonstruksi dibutuhkan untuk pemrosesan native. |
 | Legacy Stock Reconstruction Started | Rekonstruksi dimulai di seluruh lingkup Item dan Receipt Source. |
 | Legacy Stock Layer Reconstructed | Stock Layer dibentuk dari riwayat legacy yang tersedia. |
-| Legacy Stock Reconstruction Completed | Baseline hasil rekonstruksi yang seimbang menjadi authoritative. |
+| Legacy Stock Reconstruction Completed | Baseline Stock Ledger hasil rekonstruksi yang seimbang menjadi tersedia tanpa mengubah kewenangan koeksistensi. |
+| Legacy Stock Synchronization Required | Terdapat fakta stok legacy yang berlaku di luar Synchronization Position Stock Ledger. |
+| Legacy Stock Synchronization Completed | Fakta stok legacy yang berlaku dimasukkan dan Stock Ledger Representation kembali mutakhir. |
 | Legacy Stock Reconstruction Failed | Fakta legacy yang tersedia tidak dapat menghasilkan rekonstruksi yang dapat dipertanggungjawabkan. |
 | Duplicate Stock Consequence Detected | Lebih dari satu konsekuensi diminta atau ditemukan untuk tanggung jawab sumber yang sama. |
-| Legacy Projection Difference Detected | Representasi kompatibilitas berbeda dari fakta Stock Ledger yang authoritative. |
+| Legacy Stock Difference Identified | Ditemukan perbedaan material antara Legacy Stock Record dan Stock Ledger Representation di luar keterbatasan representasi atau keterlambatan penyelarasan yang dapat dijelaskan. |
 | Stock Reserved | Jumlah persediaan ditransfer ke Virtual Stock Location yang ditentukan. |
 | Stock Reservation Released | Jumlah yang direservasi ditransfer kembali ke Stock Location biasa yang berlaku. |
-| Stock Ledger Authority Established | Rekonstruksi yang berhasil menjadikan Stock Ledger authoritative untuk satu Item dan Receipt Source. |
 | Stock Disposal Recorded | Transaksi pembuangan atau pemusnahan yang sudah diotorisasi menghasilkan konsekuensi keluar final. |
 
 ---
@@ -1018,19 +1090,20 @@ Reconciliation Requested
 ### 10.8 Reconstruct Legacy Stock on First Use
 
 ```text
-Native Stock Processing Requested
+Stock Processing Requested
   -> detect unreconstructed Item and Receipt Source
   -> establish Reconstruction Required
   -> collect available legacy movement facts
   -> reconstruct provenance across all Stock Locations
   -> establish active and depleted Reconstructed Stock Layers
   -> reconcile Remaining Quantity per Item and Receipt Source
-       -> Reconstructed and Stock Ledger Authority Established
+       -> Reconstructed baseline available
        -> Inconsistent
-  -> continue native processing only after authority is established
+  -> during coexistence, preserve Legacy Stock Authority
+  -> synchronize later legacy activity before relying on the Stock Ledger Representation
 ```
 
-**Hasil:** Asal-usul legacy menjadi tersedia secara bertahap untuk Item dan Receipt Source yang sedang diproses, tanpa mensyaratkan migrasi lengkap riwayat persediaan bertahun-tahun.
+**Hasil:** Asal-usul legacy menjadi tersedia secara bertahap untuk Item dan Receipt Source yang sedang diproses, tanpa mensyaratkan migrasi lengkap riwayat persediaan bertahun-tahun dan tanpa memindahkan kewenangan runtime dari Legacy Stock Record selama koeksistensi.
 
 ### 10.9 Coordinate Cross-Context Stock Consequence
 
@@ -1039,12 +1112,12 @@ Source Business Fact Published
   -> validate source responsibility and reference
   -> detect duplicate consequence
   -> determine applicable stock behavior
-  -> record authoritative Stock Movement
+  -> record Stock Movement
   -> update Stock Position
   -> publish stock outcome to the source context
 ```
 
-**Hasil:** Bounded context lain menerima konsekuensi persediaan yang authoritative sambil tetap memiliki transaksi bisnis asalnya.
+**Hasil:** Bounded context lain menerima konsekuensi persediaan yang dapat dipertanggungjawabkan sambil tetap memiliki transaksi bisnis asalnya.
 
 ### 10.10 Reserve and Release Stock
 
@@ -1065,18 +1138,42 @@ Reservation Release Confirmed
 
 **Hasil:** Jumlah yang direservasi secara logis tidak tersedia bagi transaksi lokasi biasa tanpa memperkenalkan model saldo reservasi terpisah.
 
-### 10.11 Maintain Legacy Compatibility
+### 10.11 Synchronize Continued Legacy Stock Activity
 
 ```text
-Authoritative Stock Ledger Outcome
-  -> derive required Legacy Stock Projection
-  -> supply compatibility representation
-  -> compare legacy and authoritative positions
-       -> Consistent
-       -> Difference Detected
-  -> retain Stock Ledger as business authority
+Reconstructed or Native Stock Ledger Representation
+  -> legacy stock transaction occurs
+  -> applicable legacy facts move beyond Synchronization Position
+  -> Legacy Synchronization Required
+  -> incorporate legacy stock consequence
+  -> reconcile Legacy Stock Record and Stock Ledger Representation
+       -> Current
+       -> Inconsistent
 ```
 
-**Hasil:** Konsumen legacy yang ada boleh terus beroperasi selama migrasi. Detail apa pun yang dihilangkan representasi legacy tidak mengurangi atau menggantikan kewenangan Stock Ledger.
+**Hasil:** Stock Ledger tetap dapat dipakai sebagai representasi domain yang lebih kaya sementara transaksi stok legacy terus terjadi selama koeksistensi.
+
+### 10.12 Maintain Legacy Coexistence
+
+```text
+During Coexistence
+
+Legacy Stock Record
+  = authoritative persisted stock truth
+
+Stock Ledger Representation
+  = richer provenance and Stock Layer representation
+
+New-system stock transaction
+  -> apply Stock Ledger business rules
+  -> preserve legacy-compatible stock consequence
+  -> keep Stock Ledger Representation synchronized
+
+Legacy-system stock transaction
+  -> update Legacy Stock Record
+  -> require later Legacy Synchronization
+```
+
+**Hasil:** Kemampuan pemrosesan stok legacy dan yang baru boleh beroperasi secara bersamaan tanpa cutover kewenangan per Item atau per Receipt Source. Legacy Stock Record tetap menjadi sumber kebenaran untuk fakta jumlah dan mutasi stok yang tersimpan sampai ada keputusan cutover terpisah di masa depan.
 
 ---
