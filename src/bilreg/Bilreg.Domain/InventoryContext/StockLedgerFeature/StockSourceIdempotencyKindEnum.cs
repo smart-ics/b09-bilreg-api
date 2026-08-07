@@ -7,5 +7,10 @@ namespace Bilreg.Domain.InventoryContext.StockLedgerFeature;
 public enum StockSourceIdempotencyKindEnum
 {
     SourceConsequence = 1,
-    SyncBatch = 2
+    SyncBatch = 2,
+    /// <summary>
+    /// Idempotency for a completed Initial Reconstruction baseline of one Item + Receipt Source.
+    /// Distinct from FO <see cref="SourceConsequence"/> keys so reconstruction cannot collide with later native writes.
+    /// </summary>
+    ReconstructionBaseline = 3
 }

@@ -57,7 +57,10 @@ public record StockLayerModel : IStockLayerKey
 
     /// <summary>
     /// Establishes a Stock Layer with positive Initial Quantity (BR-STL-014).
-    /// Remaining Quantity starts equal to Initial Quantity.
+    /// When <paramref name="remainingQuantity"/> is omitted, Remaining Quantity starts equal to Initial Quantity.
+    /// Callers may supply Remaining Quantity ≤ Initial (including zero) to establish depleted or
+    /// partially consumed reconstructed layers without inventing unavailable historical identities
+    /// (BR-STL-065–068).
     /// </summary>
     public static StockLayerModel Create(
         IBrgKey item,
@@ -70,13 +73,16 @@ public record StockLayerModel : IStockLayerKey
         StockFactOriginEnum origin,
         DateOnly? expirationDate = null,
         string? batch = null,
-        string? stockLayerId = null)
+        string? stockLayerId = null,
+        decimal? remainingQuantity = null)
     {
         Guard.Against.Null(item, nameof(item));
         Guard.Against.Null(receiptSource, nameof(receiptSource));
         Guard.Against.Null(stockLocation, nameof(stockLocation));
         Guard.Against.Null(layerFormingMovement, nameof(layerFormingMovement));
         Guard.Against.NegativeOrZero(initialQuantity, nameof(initialQuantity));
+
+        var remaining = remainingQuantity ?? initialQuantity;
 
         return new StockLayerModel(
             string.IsNullOrWhiteSpace(stockLayerId)
@@ -87,7 +93,7 @@ public record StockLayerModel : IStockLayerKey
             stockLocation.LayananId,
             layerFormingMovement.StockMovementId,
             initialQuantity,
-            remainingQuantity: initialQuantity,
+            remaining,
             unitValuation,
             expirationDate,
             effectiveReceiptTime,

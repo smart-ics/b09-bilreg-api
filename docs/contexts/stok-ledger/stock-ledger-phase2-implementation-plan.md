@@ -13,10 +13,10 @@
 
 | Slice | Status | Summary |
 |---|---|---|
-| P2-S1 | Pending | — |
-| P2-S2 | Pending | — |
-| P2-S3 | Pending | — |
-| P2-S4 | Pending | — |
+| P2-S1 | **COMPLETE** | [`stock-ledger-phase2-s1-implementation-summary.md`](./stock-ledger-phase2-s1-implementation-summary.md) |
+| P2-S2 | **COMPLETE** | [`stock-ledger-phase2-s2-implementation-summary.md`](./stock-ledger-phase2-s2-implementation-summary.md) |
+| P2-S3 | **COMPLETE** | [`stock-ledger-phase2-s3-implementation-summary.md`](./stock-ledger-phase2-s3-implementation-summary.md) |
+| P2-S4 | **COMPLETE** | [`stock-ledger-phase2-s4-implementation-summary.md`](./stock-ledger-phase2-s4-implementation-summary.md) |
 | P2-S5 | Pending | — |
 | P2-S6 | Pending | — |
 | P2-S7 | Pending | — |
