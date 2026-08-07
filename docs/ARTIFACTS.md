@@ -290,6 +290,8 @@ Authoritative inventory movement, provenance, Remaining Quantity, FIFO, reservat
 | `docs/contexts/stok-ledger/stock-ledger-phase1-implementation-plan.md` | Stock Ledger — Phase 1 executable implementation slices (additive foundation; slice progress tracked in-doc) |
 | `docs/contexts/stok-ledger/stock-ledger-phase1-s1-implementation-summary.md` | Stock Ledger — Phase 1 / P1-S1 scaffolding + boundary types (WHAT/WHY/reuse/deviations/handoff to P1-S2) |
 | `docs/contexts/stok-ledger/stock-ledger-phase1-s2-implementation-summary.md` | Stock Ledger — Phase 1 / P1-S2 immutable Stock Movement domain (aggregate, lines, reversal/correction, transfer conservation) |
+| `docs/contexts/stok-ledger/stock-ledger-phase1-s3-implementation-summary.md` | Stock Ledger — Phase 1 / P1-S3 Layer/Position + ED-constrained FIFO allocation |
+| `docs/contexts/stok-ledger/stock-ledger-phase1-s4-implementation-summary.md` | Stock Ledger — Phase 1 / P1-S4 scope coexistence state + opaque Synchronization Position |
 | `docs/contexts/stok-ledger/adr/ADR-stock-ledger-legacy-change-discovery.md` | ADR — deletion-aware Legacy Change Discovery / Synchronization Position |
 | `docs/contexts/stok-ledger/adr/ADR-stock-ledger-mixed-writer-concurrency.md` | ADR — mixed-writer lock order and conflict policy (interim until FQ-06 proven) |
 | `docs/contexts/stok-ledger/evidence/phase-0-profile-queries.sql` | Phase 0 read-only SQL profiling pack |
