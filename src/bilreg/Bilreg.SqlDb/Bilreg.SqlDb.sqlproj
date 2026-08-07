@@ -108,8 +108,16 @@
     <Folder Include="BedUsageContext\RnaServiceExecutionFeature\" />
     <Folder Include="BedUsageContext\PakaiBedFeature\" />
     <Folder Include="AdmisiContext\BookingFeature\" />
+    <Folder Include="InventoryContext\StockLedgerFeature\" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="InventoryContext\StockLedgerFeature\BILRG_StokMovement.sql" />
+    <None Include="InventoryContext\StockLedgerFeature\BILRG_StokMovementLine.sql" />
+    <None Include="InventoryContext\StockLedgerFeature\BILRG_StokLayer.sql" />
+    <None Include="InventoryContext\StockLedgerFeature\BILRG_StokPosition.sql" />
+    <None Include="InventoryContext\StockLedgerFeature\BILRG_StokLedgerScope.sql" />
+    <None Include="InventoryContext\StockLedgerFeature\BILRG_StokSourceIdempotency.sql" />
+    <None Include="InventoryContext\StockLedgerFeature\BILRG_StokLedger_Rollback.sql" />
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OpCase.sql" />
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OpCaseAktif.sql" />
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OpCasePpa.sql" />
