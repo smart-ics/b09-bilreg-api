@@ -46,7 +46,6 @@ public class BookingDeleteHandler : IRequestHandler<BookingDeleteCmd>
         
 
         _deleteBookingWorkflow.Execute(request);
-
         _emrAntrianOutboundQueueRepo.DeleteBySource(booking.BookingId);
 
         var removeBooking = new RemoveBookingCmd(request.BookingId);

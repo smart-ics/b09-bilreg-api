@@ -17,6 +17,7 @@ public interface IIgdVisitDal :
     IListData<IgdVisitDto, Periode>
 {
     IEnumerable<IgdVisitDto> ListAktif();
+    IgdVisitDto GetByRegId(string regId);
 }
 
 public class IgdVisitDal : IIgdVisitDal
@@ -202,5 +203,18 @@ public class IgdVisitDal : IIgdVisitDal
         dp.AddParam("@VodUser", dto.VodUser, SqlDbType.VarChar);
         dp.AddParam("@VodDate", dto.VodDate, SqlDbType.DateTime);
         return dp;
+    }
+
+    public IgdVisitDto GetByRegId(string regId)
+    {
+        var sql = SelectFromClause() + """
+             WHERE aa.RegId = @RegId 
+             AND aa.VodDate = @VodDate
+            """;
+        var dp = new DynamicParameters();
+        dp.AddParam("@RegId", regId, SqlDbType.VarChar);
+        dp.AddParam("@VodDate", new DateTime(3000, 1, 1), SqlDbType.DateTime);
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.ReadSingle<IgdVisitDto>(sql, dp);
     }
 }
