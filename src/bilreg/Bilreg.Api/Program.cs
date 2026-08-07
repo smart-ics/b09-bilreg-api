@@ -39,7 +39,7 @@ app.UseSwagger(c => c.RouteTemplate = "openapi/{documentName}.json");
 app
     .MapScalarApiReference(opt =>
     {
-        opt.Title = "BilReg API - Documentation By Scalar";
+        opt.Title = "BilReg + Pharmacy-Inventory API - Documentation By Scalar";
         opt.Theme = ScalarTheme.Kepler;
         opt.DarkMode = true;
     });

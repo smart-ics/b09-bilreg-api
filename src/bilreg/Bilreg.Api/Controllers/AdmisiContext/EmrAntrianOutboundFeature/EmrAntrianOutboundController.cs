@@ -8,7 +8,6 @@ namespace Bilreg.Api.Controllers.AdmisiContext.EmrAntrianOutboundFeature;
 
 [Route("api/AdmisiContext/EmrAntrianOutboundFeature")]
 [ApiController]
-[Authorize]
 public class EmrAntrianOutboundController : ControllerBase
 {
     private readonly IMediator _mediator;
