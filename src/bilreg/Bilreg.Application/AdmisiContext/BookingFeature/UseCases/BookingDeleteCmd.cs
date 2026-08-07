@@ -1,4 +1,5 @@
  using Ardalis.GuardClauses;
+using Bilreg.Application.AdmisiContext.EmrAntrianOutboundFeature;
 using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
 using Bilreg.Domain.Shared.AuditLogFeature;
@@ -17,17 +18,20 @@ public class BookingDeleteHandler : IRequestHandler<BookingDeleteCmd>
     private readonly IAuditRepo _auditRepo;
     public readonly IBookingRepo _bookingRepo;
     private readonly ITglJamProvider _tglJamProvider;
+    private readonly IEmrAntrianOutboundQueueRepo _emrAntrianOutboundQueueRepo;
     public BookingDeleteHandler(IDeleteBookingWorkflow deleteBookingWorkflow,
         IDashboardEmrRemoveBookingService dashboardEmrRemoveSvc,
         IAuditRepo auditRepo,
         IBookingRepo bookingRepo,
-        ITglJamProvider tglJamProvider)
+        ITglJamProvider tglJamProvider,
+        IEmrAntrianOutboundQueueRepo emrAntrianOutboundQueueRepo)
     {
         _deleteBookingWorkflow = deleteBookingWorkflow;
         _dashboardEmrRemoveSvc = dashboardEmrRemoveSvc;
         _auditRepo = auditRepo;
         _bookingRepo = bookingRepo;
         _tglJamProvider = tglJamProvider;
+        _emrAntrianOutboundQueueRepo = emrAntrianOutboundQueueRepo;
     }
 
     public Task Handle(BookingDeleteCmd request, CancellationToken cancellationToken)
@@ -40,7 +44,10 @@ public class BookingDeleteHandler : IRequestHandler<BookingDeleteCmd>
             .GetValueOrDefault(BookingModel.Default);
         var snapshotJson = AuditLogSnapshotJson.Serialize(booking);
         
+
         _deleteBookingWorkflow.Execute(request);
+
+        _emrAntrianOutboundQueueRepo.DeleteBySource(booking.BookingId);
 
         var removeBooking = new RemoveBookingCmd(request.BookingId);
         _dashboardEmrRemoveSvc.Execute(removeBooking);

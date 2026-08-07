@@ -36,4 +36,9 @@ public class EmrAntrianOutboundQueueRepo : IEmrAntrianOutboundQueueRepo
         var dto = _dal.FindActiveBySource(sourceId, messageType);
         return dto is null ? MayBe<EmrAntrianOutboundQueueModel>.None : MayBe.From(dto.ToModel());
     }
+
+    public void DeleteBySource(string sourceId)
+    {
+        _dal.DeleteBySourceId(sourceId);
+    }
 }
