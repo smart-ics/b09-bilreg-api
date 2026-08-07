@@ -14,7 +14,7 @@
 |---|---|---|
 | P1-S1 | **COMPLETE** | [`stock-ledger-phase1-s1-implementation-summary.md`](./stock-ledger-phase1-s1-implementation-summary.md) |
 | P1-S2 | **COMPLETE** | [`stock-ledger-phase1-s2-implementation-summary.md`](./stock-ledger-phase1-s2-implementation-summary.md) |
-| P1-S3 | Not started | |
+| P1-S3 | **COMPLETE** | [`stock-ledger-phase1-s3-implementation-summary.md`](./stock-ledger-phase1-s3-implementation-summary.md) |
 | P1-S4 | Not started | |
 | P1-S5 | Not started | |
 | P1-S6 | Not started | |
@@ -170,6 +170,8 @@ Each slice must leave the solution **compiling**. Prefer disposable/test DB (`DE
 ---
 
 ### P1-S3 — Stock Layer / Position + ED-constrained FIFO
+
+**Progress:** COMPLETE (2026-08-07) — see [`stock-ledger-phase1-s3-implementation-summary.md`](./stock-ledger-phase1-s3-implementation-summary.md).
 
 | Field | Detail |
 |---|---|

@@ -19,7 +19,8 @@ public record StockMovementLineType
         StockMovementDirectionEnum direction,
         decimal quantity,
         UnitValuationType unitValuation,
-        StockFactOriginEnum origin)
+        StockFactOriginEnum origin,
+        string? stockLayerId = null)
     {
         Guard.Against.NegativeOrZero(lineNo, nameof(lineNo));
         Guard.Against.NullOrWhiteSpace(brgId, nameof(brgId));
@@ -38,6 +39,7 @@ public record StockMovementLineType
         Quantity = quantity;
         UnitValuation = unitValuation;
         Origin = origin;
+        StockLayerId = string.IsNullOrWhiteSpace(stockLayerId) ? null : stockLayerId;
     }
 
     public static StockMovementLineType Create(
@@ -48,7 +50,8 @@ public record StockMovementLineType
         StockMovementDirectionEnum direction,
         decimal quantity,
         UnitValuationType unitValuation,
-        StockFactOriginEnum origin)
+        StockFactOriginEnum origin,
+        IStockLayerKey? stockLayer = null)
     {
         Guard.Against.Null(item, nameof(item));
         Guard.Against.Null(receiptSource, nameof(receiptSource));
@@ -62,7 +65,8 @@ public record StockMovementLineType
             direction,
             quantity,
             unitValuation,
-            origin);
+            origin,
+            stockLayer?.StockLayerId);
     }
     #endregion
 
@@ -76,6 +80,11 @@ public record StockMovementLineType
     public UnitValuationType UnitValuation { get; init; }
     /// <summary>Origin only — never authority.</summary>
     public StockFactOriginEnum Origin { get; init; }
+    /// <summary>
+    /// Consumed/established Stock Layer when known (BR-STL-024/025). Optional for inbound
+    /// lines that establish a layer only after persistence assigns identity.
+    /// </summary>
+    public string? StockLayerId { get; init; }
     #endregion
 
     #region BEHAVIOR
@@ -87,5 +96,12 @@ public record StockMovementLineType
                 ? StockMovementDirectionEnum.Outbound
                 : StockMovementDirectionEnum.Inbound
         };
+
+    public StockMovementLineType WithStockLayer(IStockLayerKey stockLayer)
+    {
+        Guard.Against.Null(stockLayer, nameof(stockLayer));
+        Guard.Against.NullOrWhiteSpace(stockLayer.StockLayerId, nameof(stockLayer));
+        return this with { StockLayerId = stockLayer.StockLayerId };
+    }
     #endregion
 }
