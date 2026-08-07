@@ -288,6 +288,7 @@ Authoritative inventory movement, provenance, Remaining Quantity, FIFO, reservat
 | `docs/contexts/stok-ledger/stock-ledger-phase-0-implementation-report.md` | Stock Ledger — Phase 0 evidence gate report (FQ resolutions, ADRs, handoff to Phase 1) |
 | `docs/contexts/stok-ledger/stock-ledger-phase-0-exit-review.md` | Stock Ledger — Phase 0 critical exit review (PASS WITH RISKS; Phase 1 Go/No-Go) — **governing Phase-0 conclusion (frozen)** |
 | `docs/contexts/stok-ledger/stock-ledger-phase1-implementation-plan.md` | Stock Ledger — Phase 1 executable implementation slices (additive foundation; slice progress tracked in-doc) |
+| `docs/contexts/stok-ledger/stock-ledger-phase2-implementation-plan.md` | Stock Ledger — Phase 2 executable implementation slices (initial reconstruction baseline; slice progress tracked in-doc) |
 | `docs/contexts/stok-ledger/stock-ledger-phase1-s1-implementation-summary.md` | Stock Ledger — Phase 1 / P1-S1 scaffolding + boundary types (WHAT/WHY/reuse/deviations/handoff to P1-S2) |
 | `docs/contexts/stok-ledger/stock-ledger-phase1-s2-implementation-summary.md` | Stock Ledger — Phase 1 / P1-S2 immutable Stock Movement domain (aggregate, lines, reversal/correction, transfer conservation) |
 | `docs/contexts/stok-ledger/stock-ledger-phase1-s3-implementation-summary.md` | Stock Ledger — Phase 1 / P1-S3 Layer/Position + ED-constrained FIFO allocation |

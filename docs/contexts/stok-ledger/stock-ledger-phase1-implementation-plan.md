@@ -325,11 +325,11 @@ When Phase 1 exits:
 
 | Next | Uses from Phase 1 |
 |---|---|
-| Phase 2 Reconstruction | Scope state transitions, legacy read **port implementation**, Layer/Movement persistence |
+| Phase 2 Reconstruction | Scope state transitions, legacy read **port implementation**, Layer/Movement persistence — execute via [`stock-ledger-phase2-implementation-plan.md`](./stock-ledger-phase2-implementation-plan.md) |
 | Phase 3 Sync / Freshness | `ILegacyChangeDiscoveryPort` implementation (fingerprint + set-diff/re-derive), opaque position advancement, G-13 residual detection experiments |
 | Phase 4 DO Receipt | UoW + real `ILegacyCompatibilityWriterPort`, Native origin movements |
 
-Do not start Phase 2 inside a Phase 1 slice.
+Do not start Phase 2 inside a Phase 1 slice. Phase 2 coding follows the Phase 2 plan slices (P2-S1…P2-S8), not ad-hoc roadmap interpretation.
 
 ---
 

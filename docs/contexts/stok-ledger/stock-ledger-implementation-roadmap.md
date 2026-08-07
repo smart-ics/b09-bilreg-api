@@ -141,6 +141,9 @@ The final storage shape is decided in Phase 0/1. A proposed column name must not
 
 ### Phase 2 — Initial Reconstruction baseline
 
+**Progress:** PLAN READY — executable slices P2-S1…P2-S8 in [`stock-ledger-phase2-implementation-plan.md`](./stock-ledger-phase2-implementation-plan.md). Do not expand this roadmap section into slice detail.  
+**Execution plan:** [`stock-ledger-phase2-implementation-plan.md`](./stock-ledger-phase2-implementation-plan.md).
+
 | Area | Plan |
 |---|---|
 | Objective | Establish an idempotent Stock Ledger baseline for one Item + Receipt Source across all Stock Locations without long write transactions or authority transfer. |

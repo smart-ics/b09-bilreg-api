@@ -6,13 +6,14 @@ using Dapper;
 namespace Bilreg.Test.InventoryContext.StockLedgerFeature;
 
 /// <summary>
-/// Ensures P1-S5 Stock Ledger tables exist on the disposable/dev test database.
+/// Ensures Stock Ledger tables (and P2-S1 legacy read tables) exist on the disposable/dev test database.
 /// Never targets HOSPITAL_HPL.
 /// </summary>
 internal static class StockLedgerSchemaFixture
 {
     private static readonly object Gate = new();
     private static bool _ensured;
+    private static bool _legacyEnsured;
 
     private static readonly string[] Scripts =
     [
@@ -61,6 +62,60 @@ internal static class StockLedgerSchemaFixture
 
             _ensured = true;
         }
+    }
+
+    /// <summary>
+    /// P2-S1 — ensure authoritative legacy stock/journal tables exist on disposable DB
+    /// so live read-adapter fixtures can seed without targeting HOSPITAL_HPL.
+    /// </summary>
+    public static void EnsureLegacyStockTables()
+    {
+        if (_legacyEnsured)
+            return;
+
+        lock (Gate)
+        {
+            if (_legacyEnsured)
+                return;
+
+            var options = ConnStringHelper.GetTestEnv().Value;
+            RejectHospitalAuthorityDb(options.DbName);
+
+            using var conn = new SqlConnection(ConnStringHelper.Get(options));
+            conn.Open();
+
+            var stokFeaturePath = Path.Combine(
+                FindRepositoryRoot(),
+                "src",
+                "bilreg",
+                "Bilreg.SqlDb",
+                "InventoryContext",
+                "StokFeature");
+
+            EnsureTableIfMissing(conn, "tb_stok", Path.Combine(stokFeaturePath, "tb_stok.sql"));
+            EnsureTableIfMissing(conn, "tb_buku", Path.Combine(stokFeaturePath, "tb_buku.sql"));
+
+            _legacyEnsured = true;
+        }
+    }
+
+    private static void EnsureTableIfMissing(SqlConnection conn, string tableName, string scriptPath)
+    {
+        var exists = conn.ExecuteScalar<int>(
+            $"SELECT CASE WHEN OBJECT_ID(N'dbo.{tableName}', 'U') IS NULL THEN 0 ELSE 1 END");
+        if (exists == 1)
+            return;
+
+        if (!File.Exists(scriptPath))
+            throw new FileNotFoundException($"Legacy stock schema script not found: {scriptPath}");
+
+        var script = File.ReadAllText(scriptPath);
+        var batches = Regex.Split(
+            script,
+            @"^\s*GO\s*$",
+            RegexOptions.Multiline | RegexOptions.IgnoreCase);
+        foreach (var batch in batches.Where(x => !string.IsNullOrWhiteSpace(x)))
+            conn.Execute(batch);
     }
 
     private static void RejectHospitalAuthorityDb(string dbName)

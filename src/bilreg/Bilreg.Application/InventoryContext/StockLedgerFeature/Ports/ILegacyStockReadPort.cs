@@ -7,8 +7,8 @@ namespace Bilreg.Application.InventoryContext.StockLedgerFeature.Ports;
 /// Parameterized reads of authoritative legacy stock (<c>tb_stok</c>) and journal
 /// (<c>tb_buku</c>) facts by Item + Receipt Source across all Stock Locations.
 /// <para>
-/// Phase ownership: live adapter is Phase 2. Phase 1 defines the contract only —
-/// no production Infrastructure implementation may query legacy stock for sync/reconstruction yet.
+/// Live adapter: Phase 2 (<c>LegacyStockReadPort</c>). Phase 1 defined the contract only.
+/// Does not implement reconstruction orchestration, fingerprint, or Freshness Gate.
 /// </para>
 /// Does not mutate legacy tables and does not encode runtime authority transfer.
 /// </summary>
