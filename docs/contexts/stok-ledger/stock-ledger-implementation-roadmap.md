@@ -87,6 +87,8 @@ The final storage shape is decided in Phase 0/1. A proposed column name must not
 
 ### Phase 0 — Revalidate legacy behavior and coexistence baseline
 
+**Progress:** Complete (2026-08-07) — evidence pack + ADRs. Report: [`stock-ledger-phase-0-implementation-report.md`](./stock-ledger-phase-0-implementation-report.md).
+
 | Area | Plan |
 |---|---|
 | Objective | Establish production evidence for legacy writers, change detection, transaction behavior, indexes, and mixed-writer locking before schema/design choices become commitments. |
@@ -101,6 +103,15 @@ The final storage shape is decided in Phase 0/1. A proposed column name must not
 | Rollback/containment | Read-only phase. Any experiment uses disposable/test data and transactions that are rolled back. |
 | Dependencies | Operations/DBA access and deployed VB6 confirmation. |
 | Risks | Production schema may differ from repository; hidden writer/trigger may invalidate assumptions; no safe cursor may exist, requiring an additive change log or supported SQL Server change feature. |
+
+**Phase 0 exit checklist**
+
+- [x] FQ-01–FQ-07 resolved or assigned safe interim ([phase-0 report](./stock-ledger-phase-0-implementation-report.md))
+- [x] Synchronization ADR approved ([ADR-stock-ledger-legacy-change-discovery.md](./adr/ADR-stock-ledger-legacy-change-discovery.md)) — fingerprint + bounded replay; reject id/watermark-alone
+- [x] Concurrency ADR approved interim ([ADR-stock-ledger-mixed-writer-concurrency.md](./adr/ADR-stock-ledger-mixed-writer-concurrency.md)) — FQ-06 live VB6 proof still open
+- [x] FO coverage matrix characterization-approved ([phase-0-writer-inventory.md](./evidence/phase-0-writer-inventory.md))
+- [x] No authority-cutover language introduced
+- [ ] Controlled concurrent VB6 sessions (deferred; blocks Phase 9, not Phase 1)
 
 ### Phase 1 — Additive Stock Ledger foundation
 
@@ -435,7 +446,7 @@ Minimum production readiness supports a limited enabled transaction set safely. 
 
 | Phase | Outcome | Primary gaps | Explicit non-goal |
 |---|---|---|---|
-| 0 | Proven legacy/sync/concurrency baseline | Evidence for G-13/G-17/G-25 | Code implementation |
+| 0 | Proven legacy/sync/concurrency baseline (**done** 2026-08-07; FQ-06 live VB6 proof deferred) | Evidence for G-13/G-17/G-25 | Code implementation |
 | 1 | Additive domain and persistence foundation | G-01–G-07, G-18 | Legacy authority change |
 | 2 | Initial bounded reconstruction | G-05, G-10 | Per-scope cutover |
 | 3 | Incremental synchronization + Freshness Gate | G-12–G-17 | Blocking VB6 |
@@ -472,14 +483,14 @@ Minimum production readiness supports a limited enabled transaction set safely. 
 
 | Unknown | Required resolution |
 |---|---|
-| Live population/order of `fd_tgl_jam_mutasi` | Phase 0 production data profile |
-| Completeness/transactionality of legacy ID counters | Phase 0 concurrency test |
-| Every deployed `xVoidDelete` caller and hidden stock writer | Writer inventory and operational signoff |
-| Production indexes/triggers and row volumes | DBA metadata audit |
-| VB6 transaction/isolation/lock behavior | Controlled mixed-writer test |
-| Best deletion-aware change mechanism | ADR after evidence; no default CDC requirement |
-| Active meaning of unrouted `DB` / `RJ` constants | Legacy owner confirmation |
-| `GenStokMutasi` and typed-sale void anomalies in deployed binary/data | Characterization before handler mapping |
+| Live population/order of `fd_tgl_jam_mutasi` | **Resolved (Phase 0):** 100% populated; ties + deletes preclude watermark-alone cursor |
+| Completeness/transactionality of legacy ID counters | **Partial (Phase 0):** ID patterns profiled; multi-instance atomicity still needs live concurrency test |
+| Every deployed `xVoidDelete` caller and hidden stock writer | **Partial:** script + snapshot; ops signoff + `AJX_*` owner still needed |
+| Production indexes/triggers and row volumes | **Resolved (Phase 0 snapshot):** see evidence pack; proposed indexes pending DBA |
+| VB6 transaction/isolation/lock behavior | **Open:** controlled mixed-writer test (blocks Phase 9) |
+| Best deletion-aware change mechanism | **Resolved (Phase 0 ADR):** fingerprint + bounded replay; CT/CDC deferred |
+| Active meaning of unrouted `DB` / `RJ` constants | Legacy owner confirmation (absent in snapshot) |
+| `GenStokMutasi` and typed-sale void anomalies in deployed binary/data | **Characterized:** MT void-leg imbalance in data; DT→`DU_V` in script; DT unused locally |
 | Virtual Stock Location representation | Phase 6 ADR |
 | Batch-constrained selection policy | Deferred business decision |
 

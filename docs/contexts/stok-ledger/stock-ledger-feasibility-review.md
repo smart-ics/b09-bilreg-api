@@ -305,6 +305,8 @@ Reconciliation compares material quantity/provenance outcomes while recognizing 
 
 ### 3.4 Unresolved feasibility questions
 
+**Phase 0 update (2026-08-07):** Resolutions and interims are recorded in [`stock-ledger-phase-0-implementation-report.md`](./stock-ledger-phase-0-implementation-report.md). Summary: FQ-01/04/05 resolved; FQ-02 limited; FQ-03/07 interim; FQ-06 unresolved with concurrency ADR interim. Sync ADR selects fingerprint + bounded replay.
+
 | ID | Question | Why it blocks production proof |
 |---|---|---|
 | FQ-01 | Is `fd_tgl_jam_mutasi` populated and ordered consistently in the live database? | Determines whether a composite watermark is usable. |

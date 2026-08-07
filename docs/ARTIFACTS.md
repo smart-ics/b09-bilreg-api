@@ -285,6 +285,12 @@ Authoritative inventory movement, provenance, Remaining Quantity, FIFO, reservat
 | `docs/contexts/stok-ledger/stock-ledger-feasibility-review.md` | Stock Ledger — codebase-grounded feasibility review (domain vs implementation, legacy VB6 classification, risks) |
 | `docs/contexts/stok-ledger/stock-ledger-gap-analysis.md` | Stock Ledger — dependency-ordered gap backlog (current code → target domain) |
 | `docs/contexts/stok-ledger/stock-ledger-implementation-roadmap.md` | Stock Ledger — phased implementation roadmap from actual repo state |
+| `docs/contexts/stok-ledger/stock-ledger-phase-0-implementation-report.md` | Stock Ledger — Phase 0 evidence gate report (FQ resolutions, ADRs, handoff to Phase 1) |
+| `docs/contexts/stok-ledger/adr/ADR-stock-ledger-legacy-change-discovery.md` | ADR — deletion-aware Legacy Change Discovery / Synchronization Position |
+| `docs/contexts/stok-ledger/adr/ADR-stock-ledger-mixed-writer-concurrency.md` | ADR — mixed-writer lock order and conflict policy (interim until FQ-06 proven) |
+| `docs/contexts/stok-ledger/evidence/phase-0-profile-queries.sql` | Phase 0 read-only SQL profiling pack |
+| `docs/contexts/stok-ledger/evidence/phase-0-profile-results.md` | Phase 0 sanitized snapshot profile results |
+| `docs/contexts/stok-ledger/evidence/phase-0-writer-inventory.md` | Phase 0 FO writer inventory and characterization matrix |
 | `docs/contexts/stok-ledger/clbGenStokX1.cls` | Legacy VB6 stock Transaction Script — behavior reference only (do not port) |
 
 ---
