@@ -20,7 +20,7 @@
 | P2-S5 | **COMPLETE** | [`stock-ledger-phase2-s5-implementation-summary.md`](./stock-ledger-phase2-s5-implementation-summary.md) |
 | P2-S6 | **COMPLETE** | [`stock-ledger-phase2-s6-implementation-summary.md`](./stock-ledger-phase2-s6-implementation-summary.md) |
 | P2-S7 | **COMPLETE** | [`stock-ledger-phase2-s7-implementation-summary.md`](./stock-ledger-phase2-s7-implementation-summary.md) |
-| P2-S8 | Pending | — |
+| P2-S8 | **COMPLETE** | [`stock-ledger-phase2-s8-implementation-summary.md`](./stock-ledger-phase2-s8-implementation-summary.md) |
 
 ---
 
@@ -323,18 +323,20 @@ TX-C: revalidate legacy basis, persist baseline, initialize sync position, commi
 
 Phase 2 is complete only when all of the following hold:
 
-- [ ] G-05 live adapter accepted: Item + Receipt Source reads across all locations with deterministic ordering and bounded queries.  
-- [ ] G-10 accepted: phased A/B/C reconstruction; concurrent claim safe; basis change during calculation does not persist stale baseline; repeated request idempotent.  
-- [ ] Successful reconstruction initializes opaque Synchronization Position + algorithm version and sets Scope to `Reconstructed` **or** surfaces `Inconsistent` with reason.  
-- [ ] Depleted reconstructed layers are retained in Ledger even when corresponding zero `tb_stok` rows are absent.  
-- [ ] G-08 live provisional Availability Discovery exists (candidates from legacy authority; not final FIFO).  
-- [ ] Reconstruction portion of G-16/G-23 covered for intentional depleted-layer difference and reconstruction races; later-phase G-23 markers remain skipped.  
-- [ ] No long write transaction spans history calculation.  
-- [ ] No `IsAuthoritative`; no legacy row rewrites for reconstruction convenience; VB6 remains conceptually unblocked.  
-- [ ] Solution builds; StockLedgerFeature tests for Phase 2 slices pass; Phase 1 tests remain green.  
-- [ ] Controlled recovery path for incomplete additive reconstruction is documented/available on disposable DB.  
-- [ ] Phase 2 implementation report published; this plan’s slice progress table updated to COMPLETE.  
-- [ ] Explicit handoff notes list Phase 3 residuals (Freshness Gate, discovery catch-up, G-13 experiments, production indexes).
+Evaluated after P2-S8 — see [`stock-ledger-phase2-implementation-report.md`](./stock-ledger-phase2-implementation-report.md). Residual G-25 index/SLO debt is deferred and does not block Phase 3 start.
+
+- [x] G-05 live adapter accepted: Item + Receipt Source reads across all locations with deterministic ordering and bounded queries.  
+- [x] G-10 accepted: phased A/B/C reconstruction; concurrent claim safe; basis change during calculation does not persist stale baseline; repeated request idempotent.  
+- [x] Successful reconstruction initializes opaque Synchronization Position + algorithm version and sets Scope to `Reconstructed` **or** surfaces `Inconsistent` with reason.  
+- [x] Depleted reconstructed layers are retained in Ledger even when corresponding zero `tb_stok` rows are absent.  
+- [x] G-08 live provisional Availability Discovery exists (candidates from legacy authority; not final FIFO).  
+- [x] Reconstruction portion of G-16/G-23 covered for intentional depleted-layer difference and reconstruction races; later-phase G-23 markers remain skipped.  
+- [x] No long write transaction spans history calculation.  
+- [x] No `IsAuthoritative`; no legacy row rewrites for reconstruction convenience; VB6 remains conceptually unblocked.  
+- [x] Solution builds; StockLedgerFeature tests for Phase 2 slices pass; Phase 1 tests remain green.  
+- [x] Controlled recovery path for incomplete additive reconstruction is documented/available on disposable DB.  
+- [x] Phase 2 implementation report published; this plan’s slice progress table updated to COMPLETE.  
+- [x] Explicit handoff notes list Phase 3 residuals (Freshness Gate, discovery catch-up, G-13 experiments, production indexes).
 
 ---
 

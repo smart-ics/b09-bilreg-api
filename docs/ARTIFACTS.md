@@ -296,6 +296,8 @@ Authoritative inventory movement, provenance, Remaining Quantity, FIFO, reservat
 | `docs/contexts/stok-ledger/stock-ledger-phase2-s5-implementation-summary.md` | Stock Ledger — Phase 2 / P2-S5 Phase A reconstruction claim (short TX; conditional status update; concurrent claim safety) |
 | `docs/contexts/stok-ledger/stock-ledger-phase2-s6-implementation-summary.md` | Stock Ledger — Phase 2 / P2-S6 Phase B/C orchestration + persist (G-10 core; claim → read/calc → revalidate/persist) |
 | `docs/contexts/stok-ledger/stock-ledger-phase2-s7-implementation-summary.md` | Stock Ledger — Phase 2 / P2-S7 Availability Discovery live adapter (G-08; provisional Receipt Source candidates from `tb_stok`) |
+| `docs/contexts/stok-ledger/stock-ledger-phase2-s8-implementation-summary.md` | Stock Ledger — Phase 2 / P2-S8 reconstruction harness, recovery, Phase 2 exit hardening |
+| `docs/contexts/stok-ledger/stock-ledger-phase2-implementation-report.md` | Stock Ledger — Phase 2 implementation report (exit checklist, handoff to Phase 3) |
 | `docs/contexts/stok-ledger/stock-ledger-phase1-s1-implementation-summary.md` | Stock Ledger — Phase 1 / P1-S1 scaffolding + boundary types (WHAT/WHY/reuse/deviations/handoff to P1-S2) |
 | `docs/contexts/stok-ledger/stock-ledger-phase1-s2-implementation-summary.md` | Stock Ledger — Phase 1 / P1-S2 immutable Stock Movement domain (aggregate, lines, reversal/correction, transfer conservation) |
 | `docs/contexts/stok-ledger/stock-ledger-phase1-s3-implementation-summary.md` | Stock Ledger — Phase 1 / P1-S3 Layer/Position + ED-constrained FIFO allocation |
@@ -303,6 +305,7 @@ Authoritative inventory movement, provenance, Remaining Quantity, FIFO, reservat
 | `docs/contexts/stok-ledger/stock-ledger-phase1-s5-implementation-summary.md` | Stock Ledger — Phase 1 / P1-S5 additive BILRG_* schema (Movement/Line/Layer/Position/Scope/Idempotency) |
 | `docs/contexts/stok-ledger/stock-ledger-phase1-s6-implementation-summary.md` | Stock Ledger — Phase 1 / P1-S6 DAL/DTO/Repo round-trips + Position OCC + source idempotency |
 | `docs/contexts/stok-ledger/stock-ledger-phase1-s7-implementation-summary.md` | Stock Ledger — Phase 1 / P1-S7 Application ports only (legacy read/writer/discovery/availability/provenance/reconciliation) |
+| `docs/contexts/stok-ledger/stock-ledger-phase1-s8-implementation-summary.md` | Stock Ledger — Phase 1 / P1-S8 consequence UoW + coexistence harness scaffolding (G-18 Ledger atomicity; G-23 placeholders) |
 | `docs/contexts/stok-ledger/adr/ADR-stock-ledger-legacy-change-discovery.md` | ADR — deletion-aware Legacy Change Discovery / Synchronization Position |
 | `docs/contexts/stok-ledger/adr/ADR-stock-ledger-mixed-writer-concurrency.md` | ADR — mixed-writer lock order and conflict policy (interim until FQ-06 proven) |
 | `docs/contexts/stok-ledger/evidence/phase-0-profile-queries.sql` | Phase 0 read-only SQL profiling pack |

@@ -33,6 +33,11 @@ public sealed class FakeLegacyStockReadPort : ILegacyStockReadPort
     public Action? OnListBalances { get; set; }
     public Action? OnListJournals { get; set; }
 
+    /// <summary>
+    /// P2-S8 — when set, thrown from the next balance/journal read (timeout / bounded-query failure stand-in).
+    /// </summary>
+    public Exception? ThrowOnNextRead { get; set; }
+
     public List<IStockLedgerScopeKey> BalanceRequests { get; } = [];
     public List<IStockLedgerScopeKey> JournalRequests { get; } = [];
     public int BalanceCallCount { get; private set; }
@@ -43,6 +48,8 @@ public sealed class FakeLegacyStockReadPort : ILegacyStockReadPort
         BalanceCallCount++;
         BalanceRequests.Add(scope);
         OnListBalances?.Invoke();
+        if (ThrowOnNextRead is not null)
+            throw ThrowOnNextRead;
         return BalancesByCall?.Invoke(BalanceCallCount) ?? Balances;
     }
 
@@ -51,6 +58,8 @@ public sealed class FakeLegacyStockReadPort : ILegacyStockReadPort
         JournalCallCount++;
         JournalRequests.Add(scope);
         OnListJournals?.Invoke();
+        if (ThrowOnNextRead is not null)
+            throw ThrowOnNextRead;
         return JournalsByCall?.Invoke(JournalCallCount) ?? JournalEntries;
     }
 }

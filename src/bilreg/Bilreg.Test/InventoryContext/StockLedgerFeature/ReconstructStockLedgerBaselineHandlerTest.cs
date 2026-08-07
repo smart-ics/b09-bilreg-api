@@ -422,6 +422,170 @@ public class ReconstructStockLedgerBaselineHandlerTest
         }
     }
 
+    [Fact]
+    public async Task BasisChangeDuringPhaseB_SettlesOnRetry_WhenLegacyStabilizes()
+    {
+        StockLedgerSchemaFixture.EnsureSchema();
+        var key = NewScopeKey("RTY");
+        Cleanup(key);
+
+        try
+        {
+            var stable = MultiLocationBalancedSnapshot(key);
+            var transient = stable with
+            {
+                Balances =
+                [
+                    Balance(key, "LY01", 9m, 1000m, ExpA, "STK001", T1, "B1"),
+                    Balance(key, "LY02", 7m, 1500m, ExpB, "STK002", T2, "B2")
+                ]
+            };
+
+            // Attempt 1: Phase B = stable, Phase C revalidate = transient → BasisChanged.
+            // Attempt 2+: both Phase B and Phase C see stable → Reconstructed.
+            var fakeRead = new FakeLegacyStockReadPort
+            {
+                BalancesByCall = call => call switch
+                {
+                    1 => stable.Balances,
+                    2 => transient.Balances,
+                    _ => stable.Balances
+                },
+                JournalsByCall = call => call switch
+                {
+                    1 => stable.Journals,
+                    2 => transient.Journals,
+                    _ => stable.Journals
+                }
+            };
+
+            var (sut, _, _, repos) = CreateSut(fakeRead);
+
+            var result = await sut.Handle(
+                new ReconstructStockLedgerBaselineCommand(key.BrgId, key.ReceiptSourceId),
+                default);
+
+            result.Outcome.Should().Be(ReconstructStockLedgerBaselineOutcomeEnum.Reconstructed);
+            repos.Scope.LoadEntity(key).Value.ReconstructionStatus
+                .Should().Be(ReconstructionStatusEnum.Reconstructed);
+            CountLayers(key).Should().Be(2);
+            CountMovements(key).Should().Be(1);
+            fakeRead.BalanceCallCount.Should().BeGreaterThanOrEqualTo(4);
+        }
+        finally
+        {
+            Cleanup(key);
+        }
+    }
+
+    [Fact]
+    public async Task ConcurrentReconstructors_SingleCommittedBaseline()
+    {
+        StockLedgerSchemaFixture.EnsureSchema();
+        var key = NewScopeKey("CON");
+        Cleanup(key);
+
+        try
+        {
+            var snapshot = MultiLocationBalancedSnapshot(key);
+            var (sut1, _, _, repos) = CreateSut(snapshot);
+            var (sut2, _, _, _) = CreateSut(snapshot);
+            var command = new ReconstructStockLedgerBaselineCommand(key.BrgId, key.ReceiptSourceId);
+
+            var outcomes = await Task.WhenAll(
+                RunReconstructionToleratingDeadlock(sut1, command),
+                RunReconstructionToleratingDeadlock(sut2, command));
+
+            // At least one attempt must commit or observe the committed baseline.
+            // The other may lose a SQL deadlock on overlapping Phase C writers — durable
+            // state below is the coexistence invariant (no duplicate quantities/layers).
+            outcomes.Should().Contain(o =>
+                o == ReconstructStockLedgerBaselineOutcomeEnum.Reconstructed
+                || o == ReconstructStockLedgerBaselineOutcomeEnum.AlreadyReconstructed);
+
+            // After the race, a follow-up request must leave exactly one durable baseline
+            // (AlreadyReconstructed if a winner committed; Reconstructed if both deadlocked
+            // before Phase C commit and Scope remained Reconstructing).
+            var followUp = await sut2.Handle(command, default);
+            followUp.Outcome.Should().BeOneOf(
+                ReconstructStockLedgerBaselineOutcomeEnum.Reconstructed,
+                ReconstructStockLedgerBaselineOutcomeEnum.AlreadyReconstructed);
+
+            repos.Scope.LoadEntity(key).Value.ReconstructionStatus
+                .Should().Be(ReconstructionStatusEnum.Reconstructed);
+            CountLayers(key).Should().Be(2);
+            CountPositions(key).Should().Be(2);
+            CountMovements(key).Should().Be(1);
+            repos.Idempotency.LoadByBusinessKey(
+                    StockSourceIdempotencyModel.BusinessKey(
+                        StockSourceIdempotencyKindEnum.ReconstructionBaseline,
+                        BuildIdempotencyKey(key)))
+                .HasValue.Should().BeTrue();
+        }
+        finally
+        {
+            Cleanup(key);
+        }
+    }
+
+    /// <summary>
+    /// Concurrent Phase C writers may deadlock on disposable SQL Server (FQ-06 interim).
+    /// Capture the outcome when possible; null means this attempt was deadlock-victimized.
+    /// </summary>
+    private static async Task<ReconstructStockLedgerBaselineOutcomeEnum?> RunReconstructionToleratingDeadlock(
+        ReconstructStockLedgerBaselineHandler sut,
+        ReconstructStockLedgerBaselineCommand command)
+    {
+        try
+        {
+            var result = await sut.Handle(command, default);
+            return result.Outcome;
+        }
+        catch (SqlException ex) when (ex.Number == 1205)
+        {
+            return null;
+        }
+    }
+
+    [Fact]
+    public async Task PhaseBReadFailure_DoesNotPersistStaleBaseline_LeavesRecoverableClaim()
+    {
+        StockLedgerSchemaFixture.EnsureSchema();
+        var key = NewScopeKey("TMO");
+        Cleanup(key);
+
+        try
+        {
+            var fakeRead = new FakeLegacyStockReadPort
+            {
+                ThrowOnNextRead = new TimeoutException(
+                    "P2-S8 stand-in: bounded-query / large-history read timeout.")
+            };
+            var (sut, _, _, repos) = CreateSut(fakeRead);
+
+            var act = () => sut.Handle(
+                new ReconstructStockLedgerBaselineCommand(key.BrgId, key.ReceiptSourceId),
+                default);
+
+            await act.Should().ThrowAsync<TimeoutException>();
+
+            repos.Scope.LoadEntity(key).Value.ReconstructionStatus
+                .Should().Be(ReconstructionStatusEnum.Reconstructing);
+            CountLayers(key).Should().Be(0);
+            CountPositions(key).Should().Be(0);
+            CountMovements(key).Should().Be(0);
+            repos.Idempotency.LoadByBusinessKey(
+                    StockSourceIdempotencyModel.BusinessKey(
+                        StockSourceIdempotencyKindEnum.ReconstructionBaseline,
+                        BuildIdempotencyKey(key)))
+                .HasValue.Should().BeFalse();
+        }
+        finally
+        {
+            Cleanup(key);
+        }
+    }
+
     private static (
         ReconstructStockLedgerBaselineHandler Sut,
         SpyUnitOfWork Spy,
