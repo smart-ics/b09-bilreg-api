@@ -19,7 +19,7 @@
 | P1-S5 | **COMPLETE** | [`stock-ledger-phase1-s5-implementation-summary.md`](./stock-ledger-phase1-s5-implementation-summary.md) |
 | P1-S6 | **COMPLETE** | [`stock-ledger-phase1-s6-implementation-summary.md`](./stock-ledger-phase1-s6-implementation-summary.md) |
 | P1-S7 | **COMPLETE** | [`stock-ledger-phase1-s7-implementation-summary.md`](./stock-ledger-phase1-s7-implementation-summary.md) |
-| P1-S8 | Not started | |
+| P1-S8 | **COMPLETE** | [`stock-ledger-phase1-s8-implementation-summary.md`](./stock-ledger-phase1-s8-implementation-summary.md) |
 
 ---
 
@@ -275,6 +275,8 @@ Each slice must leave the solution **compiling**. Prefer disposable/test DB (`DE
 
 ### P1-S8 — Consequence Unit of Work skeleton
 
+**Progress:** COMPLETE (2026-08-07) — see [`stock-ledger-phase1-s8-implementation-summary.md`](./stock-ledger-phase1-s8-implementation-summary.md).
+
 | Field | Detail |
 |---|---|
 | **Objective** | Explicit short UoW that can persist Ledger Movement/Layer/Position/Scope/Idempotency in one SQL transaction and roll back on failure — **without** calling real Legacy Compatibility Writer. |
@@ -306,14 +308,14 @@ Each slice must leave the solution **compiling**. Prefer disposable/test DB (`DE
 
 ## 8. Phase 1 exit criteria (definition of done)
 
-- [ ] G-01–G-07 foundation accepted at domain + persistence level (ports for G-05/08/09 present as contracts).  
-- [ ] G-18 skeleton proves Ledger-side transactional rollback with fake legacy writer.  
-- [ ] Additive migration applies on disposable DB; unused tables do not affect legacy stock.  
-- [ ] No `IsAuthoritative`; origin enums are origin-only.  
-- [ ] Synchronization Position is opaque + algorithm version.  
-- [ ] FIFO (not FEFO) covered by unit tests.  
-- [ ] Solution builds; Phase 1 feature not enabled for production traffic.  
-- [ ] Implementation notes updated (short Phase 1 report) when coding completes — **out of scope for this planning document**.
+- [x] G-01–G-07 foundation accepted at domain + persistence level (ports for G-05/08/09 present as contracts).  
+- [x] G-18 skeleton proves Ledger-side transactional rollback with fake legacy writer.  
+- [x] Additive migration applies on disposable DB; unused tables do not affect legacy stock.  
+- [x] No `IsAuthoritative`; origin enums are origin-only.  
+- [x] Synchronization Position is opaque + algorithm version.  
+- [x] FIFO (not FEFO) covered by unit tests.  
+- [x] Solution builds; Phase 1 feature not enabled for production traffic.  
+- [x] Implementation notes updated (short Phase 1 report) when coding completes — see [`stock-ledger-phase1-s8-implementation-summary.md`](./stock-ledger-phase1-s8-implementation-summary.md).
 
 ---
 
