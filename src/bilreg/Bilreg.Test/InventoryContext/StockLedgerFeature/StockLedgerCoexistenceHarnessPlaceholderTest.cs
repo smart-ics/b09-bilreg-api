@@ -10,24 +10,24 @@ using Bilreg.Infrastructure.Shared.Helpers;
 using Bilreg.Test.InventoryContext.StockLedgerFeature.Fakes;
 using Dapper;
 using FluentAssertions;
+using Microsoft.Extensions.Options;
 using Nuna.Lib.PatternHelper;
 
 namespace Bilreg.Test.InventoryContext.StockLedgerFeature;
 
 /// <summary>
-/// G-23 coexistence harness — Phase 3 sync portion (P3-S7).
+/// G-23 coexistence harness — Phase 3 sync portion (P3-S7) + Phase 4 New→Legacy / partial-failure (P4-S3).
 /// <para>
 /// Active: Legacy→New (discovery + catch-up + Freshness Gate), duplicate sync batch,
 /// real material mismatch, .NET sync/native-serialization race (in-process doubles),
-/// and P2-S8 depleted-layer intentional difference.
+/// P2-S8 depleted-layer intentional difference, New→Legacy receipt visibility,
+/// and live legacy+Ledger partial-failure rollback.
 /// </para>
 /// <para>
 /// Remaining skipped placeholders (later-phase ownership):
 /// <list type="bullet">
-/// <item><description><c>NewToLegacy</c> — Phase 4 (live Legacy Compatibility Writer)</description></item>
-/// <item><description><c>AlternatingWriters</c> — Phase 4+ (native FO writer + live mixed-writer)</description></item>
+/// <item><description><c>AlternatingWriters</c> — Phase 4+ / P4-S5 (native FO + fixture-simulated VB6)</description></item>
 /// <item><description><c>ConcurrentOutbound</c> — Phase 5 (outbound allocation + OCC hardening)</description></item>
-/// <item><description><c>PartialFailure_LegacyAndLedger</c> — Phase 4/8 (live legacy+Ledger rollback)</description></item>
 /// </list>
 /// Does not claim full G-23 matrix or production coexistence (FQ-06 / G-17 remains Phase 9).
 /// </para>
@@ -98,10 +98,49 @@ public class StockLedgerCoexistenceHarnessPlaceholderTest
         }
     }
 
-    [Fact(Skip = "G-23 — Phase 4: New→Legacy visibility requires live Legacy Compatibility Writer.")]
-    public void NewToLegacy_ReceiptVisibleInLegacyAuthority()
+    /// <summary>
+    /// G-23 New→Legacy (P4-S3) — Native DO Receipt posts authoritative legacy rows visible to
+    /// <see cref="LegacyStockReadPort"/>; Ledger movement Origin remains Native (not authority).
+    /// </summary>
+    [Fact]
+    public async Task NewToLegacy_ReceiptVisibleInLegacyAuthority()
     {
-        Assert.Fail("Not implemented: New→Legacy coexistence scenario (Phase 4).");
+        StockLedgerSchemaFixture.EnsureSchema();
+        StockLedgerSchemaFixture.EnsureLegacyStockTables();
+        var caseIds = CreateDoReceiptCaseIds("N2L");
+        CleanupDoReceipt(caseIds);
+
+        try
+        {
+            var harness = CreateLiveDoReceiptHarness(enabled: true);
+            var result = await harness.Handler.Handle(BuildDoReceiptCommand(caseIds), default);
+
+            result.Outcome.Should().Be(PostDoReceiptStockConsequenceOutcomeEnum.Committed);
+            result.StockMovementId.Should().NotBeNullOrWhiteSpace();
+
+            var balances = harness.LegacyRead.ListCurrentBalances(caseIds.Scope);
+            var journals = harness.LegacyRead.ListJournalEntries(caseIds.Scope);
+
+            balances.Should().ContainSingle();
+            balances[0].Quantity.Should().Be(10m);
+            balances[0].UnitCost.Should().Be(1500.50m);
+            balances[0].ReceiptSourceId.Should().Be(caseIds.DoId);
+            balances[0].LayananId.Should().Be(caseIds.LocationId);
+
+            journals.Should().ContainSingle();
+            journals[0].MutationKindId.Should().Be("DO");
+            journals[0].QuantityIn.Should().Be(10m);
+            journals[0].QuantityOut.Should().Be(0m);
+
+            var movement = harness.Repos.Movement
+                .LoadEntity(StockMovementModel.Key(result.StockMovementId!));
+            movement.HasValue.Should().BeTrue();
+            movement.Value.Origin.Should().Be(StockFactOriginEnum.Native);
+        }
+        finally
+        {
+            CleanupDoReceipt(caseIds);
+        }
     }
 
     [Fact(Skip = "G-23 — Phase 4+: alternating writers requires native FO writer + live mixed-writer enablement.")]
@@ -272,10 +311,51 @@ public class StockLedgerCoexistenceHarnessPlaceholderTest
         Assert.Fail("Not implemented: concurrent outbound scenario (Phase 5).");
     }
 
-    [Fact(Skip = "G-23 — Phase 4/8: partial-failure rollback across live legacy+Ledger (Ledger-only proven in P1-S8).")]
+    /// <summary>
+    /// G-23 PartialFailure (P4-S3) — live legacy Apply failure inside the consequence UoW rolls back
+    /// both Ledger and <c>tb_stok</c>/<c>tb_buku</c>. Full injection matrix lives in
+    /// <see cref="StockConsequenceUnitOfWorkLiveAtomicityTest"/>.
+    /// </summary>
+    [Fact]
     public void PartialFailure_LegacyAndLedger_RollBackTogether()
     {
-        Assert.Fail("Not implemented: live legacy+Ledger partial-failure scenario (Phase 4/8).");
+        StockLedgerSchemaFixture.EnsureSchema();
+        StockLedgerSchemaFixture.EnsureLegacyStockTables();
+        var ids = StockConsequenceUnitOfWorkLiveAtomicityTest.CreateCaseIds("PF");
+        StockConsequenceUnitOfWorkLiveAtomicityTest.Cleanup(ids);
+
+        try
+        {
+            var options = ConnStringHelper.GetTestEnv();
+            var movementRepo = new StockMovementRepo(
+                new StockMovementDal(options),
+                new StockMovementLineDal(options));
+            var positionRepo = new StockPositionRepo(
+                new StockPositionDal(options),
+                new StockLayerDal(options));
+            var scopeRepo = new StockLedgerScopeStateRepo(new StockLedgerScopeDal(options));
+            var idempotencyRepo = new StockSourceIdempotencyRepo(new StockSourceIdempotencyDal(options));
+            var liveWriter = new LegacyCompatibilityWriterPort(options);
+            var throwingWriter = new ThrowingLegacyCompatibilityWriterPort(liveWriter);
+            var sut = new StockConsequenceUnitOfWork(
+                new TransHelperUnitOfWork(),
+                idempotencyRepo,
+                movementRepo,
+                positionRepo,
+                scopeRepo,
+                throwingWriter);
+
+            var draft = StockConsequenceUnitOfWorkLiveAtomicityTest.BuildReceiptDraft(ids, lineCount: 1);
+            var act = () => sut.Commit(draft);
+            act.Should().Throw<InvalidOperationException>()
+                .WithMessage("*Forced legacy Apply failure*");
+
+            StockConsequenceUnitOfWorkLiveAtomicityTest.AssertZeroResidue(ids);
+        }
+        finally
+        {
+            StockConsequenceUnitOfWorkLiveAtomicityTest.Cleanup(ids);
+        }
     }
 
     /// <summary>
@@ -674,6 +754,150 @@ public class StockLedgerCoexistenceHarnessPlaceholderTest
             .ToList();
     }
 
+    private static readonly DateTime DoReceiptBusinessTime = new(2026, 8, 8, 15, 0, 0);
+    private static readonly DateTime DoReceiptProcessedAt = new(2026, 8, 8, 15, 5, 0);
+
+    private static PostDoReceiptStockConsequenceCommand BuildDoReceiptCommand(DoReceiptCaseIds ids)
+        => new(
+            ids.BrgId,
+            ids.DoId,
+            ids.SourceTxId,
+            DoReceiptBusinessTime,
+            [
+                new DoReceiptLineFact(
+                    LineNumber: 1,
+                    LayananId: ids.LocationId,
+                    Quantity: 10m,
+                    UnitCost: 1500.50m,
+                    ExpirationDate: new DateOnly(2027, 6, 30),
+                    Batch: "P4S3-N2L",
+                    PurchaseOrderId: ids.PoId,
+                    SmallestUnitId: "TAB")
+            ],
+            DoReceiptProcessedAt);
+
+    private static LiveDoReceiptHarness CreateLiveDoReceiptHarness(bool enabled)
+    {
+        var dbOptions = ConnStringHelper.GetTestEnv();
+        var movementRepo = new StockMovementRepo(
+            new StockMovementDal(dbOptions),
+            new StockMovementLineDal(dbOptions));
+        var positionRepo = new StockPositionRepo(
+            new StockPositionDal(dbOptions),
+            new StockLayerDal(dbOptions));
+        var scopeRepo = new StockLedgerScopeStateRepo(new StockLedgerScopeDal(dbOptions));
+        var idempotencyRepo = new StockSourceIdempotencyRepo(new StockSourceIdempotencyDal(dbOptions));
+        var unitOfWork = new TransHelperUnitOfWork();
+        var legacyWriter = new LegacyCompatibilityWriterPort(dbOptions);
+        var legacyRead = new LegacyStockReadPort(dbOptions);
+
+        var consequenceUow = new StockConsequenceUnitOfWork(
+            unitOfWork,
+            idempotencyRepo,
+            movementRepo,
+            positionRepo,
+            scopeRepo,
+            legacyWriter);
+
+        var bootstrapper = new LegacySyncIdentityBootstrapper(
+            consequenceUow,
+            idempotencyRepo,
+            movementRepo);
+
+        var discovery = new FakeLegacyChangeDiscoveryPort
+        {
+            DiscoveryResult = new LegacyChangeDiscoveryResult(
+                LegacyChangeDiscoveryOutcomeEnum.Unchanged,
+                CurrentFingerprint: SynchronizationPositionType.CreateFromUtf8Token(
+                    "unused",
+                    LegacyReconstructionBasisCalculator.AlgorithmVersion),
+                Deltas: Array.Empty<LegacyDiscoveredDeltaType>(),
+                Explanation: "Fake default Unchanged.")
+        };
+
+        var gate = new LegacyStockFreshnessGate(
+            scopeRepo,
+            discovery,
+            legacyRead,
+            idempotencyRepo,
+            (_, _) => Task.FromResult(
+                SynchronizeStockLedgerScopeResult.AlreadyCurrent(
+                    StockLedgerScopeStateModel.CreateNotReconstructed(
+                        StockLedgerScopeKeyType.Create("X", "Y")))));
+
+        var handler = new PostDoReceiptStockConsequenceHandler(
+            Options.Create(new StockLedgerDoReceiptOptions { Enabled = enabled }),
+            scopeRepo,
+            idempotencyRepo,
+            positionRepo,
+            consequenceUow,
+            gate,
+            legacyRead,
+            bootstrapper);
+
+        return new LiveDoReceiptHarness(
+            handler,
+            legacyRead,
+            new Repos(scopeRepo, movementRepo, positionRepo, idempotencyRepo));
+    }
+
+    private static DoReceiptCaseIds CreateDoReceiptCaseIds(string tag)
+    {
+        var ulid = Ulid.NewUlid().ToString();
+        var shortTag = tag.Length <= 3 ? tag : tag[..3];
+        var brgId = $"BRG{shortTag}{ulid}"[..13];
+        var doId = $"DO{shortTag}{ulid}"[..10];
+        return new DoReceiptCaseIds(
+            SourceTxId: $"P4S3-{tag}-{ulid}",
+            BrgId: brgId,
+            DoId: doId,
+            PoId: $"PO{shortTag}{ulid}"[..10],
+            LocationId: $"G{shortTag}{ulid}"[..5],
+            Scope: StockLedgerScopeKeyType.Create(brgId, doId));
+    }
+
+    private static void CleanupDoReceipt(DoReceiptCaseIds ids)
+    {
+        using var conn = new SqlConnection(ConnStringHelper.Get(ConnStringHelper.GetTestEnv().Value));
+        conn.Open();
+        conn.Execute(
+            """
+            DELETE FROM BILRG_StokMovementLine
+            WHERE StockMovementId IN (
+                SELECT StockMovementId FROM BILRG_StokSourceIdempotency
+                WHERE BrgId = @BrgId AND ReceiptSourceId = @DoId AND StockMovementId <> ''
+                UNION
+                SELECT LayerFormingMovementId FROM BILRG_StokLayer
+                WHERE BrgId = @BrgId AND ReceiptSourceId = @DoId
+                UNION
+                SELECT StockMovementId FROM BILRG_StokMovement
+                WHERE SourceTransactionId = @SourceTxId);
+            DELETE FROM BILRG_StokMovement
+            WHERE StockMovementId IN (
+                SELECT StockMovementId FROM BILRG_StokSourceIdempotency
+                WHERE BrgId = @BrgId AND ReceiptSourceId = @DoId AND StockMovementId <> ''
+                UNION
+                SELECT LayerFormingMovementId FROM BILRG_StokLayer
+                WHERE BrgId = @BrgId AND ReceiptSourceId = @DoId
+                UNION
+                SELECT StockMovementId FROM BILRG_StokMovement
+                WHERE SourceTransactionId = @SourceTxId);
+            DELETE FROM BILRG_StokLayer WHERE BrgId = @BrgId AND ReceiptSourceId = @DoId;
+            DELETE FROM BILRG_StokPosition WHERE BrgId = @BrgId AND ReceiptSourceId = @DoId;
+            DELETE FROM BILRG_StokLedgerScope WHERE BrgId = @BrgId AND ReceiptSourceId = @DoId;
+            DELETE FROM BILRG_StokSourceIdempotency
+            WHERE BrgId = @BrgId AND ReceiptSourceId = @DoId;
+            DELETE FROM tb_stok WHERE fs_kd_barang = @BrgId AND fs_kd_do = @DoId;
+            DELETE FROM tb_buku WHERE fs_kd_barang = @BrgId AND fs_kd_do = @DoId;
+            """,
+            new
+            {
+                ids.BrgId,
+                ids.DoId,
+                ids.SourceTxId
+            });
+    }
+
     private sealed record Snapshot(
         IReadOnlyList<LegacyStockBalanceType> Balances,
         IReadOnlyList<LegacyStockJournalEntryType> Journals);
@@ -690,5 +914,18 @@ public class StockLedgerCoexistenceHarnessPlaceholderTest
         ILegacyChangeDiscoveryPort Discovery,
         FakeLegacyStockReadPort LegacyRead,
         FakeLegacyCompatibilityWriterPort LegacyWriter,
+        Repos Repos);
+
+    private sealed record DoReceiptCaseIds(
+        string SourceTxId,
+        string BrgId,
+        string DoId,
+        string PoId,
+        string LocationId,
+        IStockLedgerScopeKey Scope);
+
+    private sealed record LiveDoReceiptHarness(
+        PostDoReceiptStockConsequenceHandler Handler,
+        LegacyStockReadPort LegacyRead,
         Repos Repos);
 }

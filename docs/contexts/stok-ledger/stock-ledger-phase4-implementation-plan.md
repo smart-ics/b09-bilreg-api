@@ -17,7 +17,7 @@
 |---|---|---|
 | P4-S1 | COMPLETE | [`stock-ledger-P4-S1-implementation-summary.md`](./stock-ledger-P4-S1-implementation-summary.md) — gate **PASS**; live DM post writer |
 | P4-S2 | COMPLETE | [`stock-ledger-P4-S2-implementation-summary.md`](./stock-ledger-P4-S2-implementation-summary.md) — Native DO Receipt UseCase + Scope baseline + capability flag + greenfield prior-history fail-closed guard (NO-GO remediated) |
-| P4-S3 | PLANNED | Live legacy+Ledger atomicity / failure injection + New→Legacy harness |
+| P4-S3 | COMPLETE | [`stock-ledger-P4-S3-implementation-summary.md`](./stock-ledger-P4-S3-implementation-summary.md) — G-18 live-writer atomicity + G-23 New→Legacy / PartialFailure harness |
 | P4-S4 | PLANNED | Receipt void/correction (accountable Ledger + legacy-compatible void; fail closed when unsafe) |
 | P4-S5 | PLANNED | Phase 3 catch-up coexistence proof + capability-disable + Phase 4 exit report |
 
@@ -422,7 +422,7 @@ At Phase 4 completion, publish `stock-ledger-phase4-implementation-report.md` co
 
 - [x] **P4-S1 gate passed:** live DM post compatibility writer accepted before Native UseCase enablement work proceeds.  
 - [ ] **G-11 accepted for DM post (and void if P4-S4 delivers):** legacy readers can consume new-system receipt/void consequences; delete-on-zero remains compatible; compatibility failure rolls back the complete consequence.  
-- [ ] **G-18 accepted with live writer:** failure injection at persistence boundaries rolls back Ledger + legacy together; retry commits once.  
+- [x] **G-18 accepted with live writer:** failure injection at persistence boundaries rolls back Ledger + legacy together; retry commits once.  
 - [ ] **G-19 accepted as technical capability:** idempotent Native DO Receipt; Scope baseline + `fingerprint-v1` position; no authority/cutover fields.  
 - [ ] **Void:** accountable Ledger reversal/correction retained **or** explicitly deferred with fail-closed rationale in the exit report.  
 - [ ] **Phase 3 integration:** Native → later legacy change → Freshness Gate / sync catch-up → continue; Native-origin is not treated as VB6 prohibition.  

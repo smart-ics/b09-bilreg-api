@@ -269,7 +269,9 @@ public class ReconstructStockLedgerBaselineHandlerTest
             var realPositionRepo = new StockPositionRepo(
                 new StockPositionDal(options),
                 new StockLayerDal(options));
-            var positionRepo = new ThrowingStockPositionRepo(realPositionRepo);
+            var positionRepo = new Fakes.ThrowingStockPositionRepo(
+                realPositionRepo,
+                "Forced position persist failure for P2-S6 rollback test.");
             var idempotencyRepo = new StockSourceIdempotencyRepo(new StockSourceIdempotencyDal(options));
             var legacyWriter = new FakeLegacyCompatibilityWriterPort();
             var fakeRead = new FakeLegacyStockReadPort
@@ -781,19 +783,4 @@ public class ReconstructStockLedgerBaselineHandlerTest
         IStockPositionRepo Position,
         IStockSourceIdempotencyRepo Idempotency);
 
-    private sealed class ThrowingStockPositionRepo : IStockPositionRepo
-    {
-        private readonly IStockPositionRepo _inner;
-
-        public ThrowingStockPositionRepo(IStockPositionRepo inner) => _inner = inner;
-
-        public void SaveChanges(StockPositionModel model)
-            => throw new InvalidOperationException("Forced position persist failure for P2-S6 rollback test.");
-
-        public MayBe<StockPositionModel> LoadEntity(IStockWriteScopeKey key)
-            => _inner.LoadEntity(key);
-
-        public IReadOnlyList<StockPositionModel> ListByLedgerScope(IStockLedgerScopeKey scope)
-            => _inner.ListByLedgerScope(scope);
-    }
 }
