@@ -11,12 +11,16 @@ using Nuna.Lib.TransactionHelper;
 namespace Bilreg.Test.InventoryContext.StockLedgerFeature;
 
 /// <summary>
-/// P4-S1 — Live DM receipt post compatibility writer against disposable <c>devTest</c>.
-/// Never writes <c>HOSPITAL_HPL</c>.
+/// P4-S1 / P4-S4 / P5-S2 — Live DM receipt/void and MT transfer post compatibility writer
+/// against disposable <c>devTest</c>. Never writes <c>HOSPITAL_HPL</c>.
 /// </summary>
 public class LegacyCompatibilityWriterPortTest
 {
     private static readonly DateTime MutationTime = new(2026, 8, 8, 10, 30, 0);
+    private static readonly DateTime TransferTime = new(2026, 8, 8, 14, 0, 0);
+    private static readonly DateOnly Expiration = new(2027, 6, 30);
+    private const string Batch = "P4S1-BATCH";
+    private const decimal UnitCost = 1500.50m;
 
     private readonly LegacyCompatibilityWriterPort _sut = new(ConnStringHelper.GetTestEnv());
     private readonly LegacyStockReadPort _readPort = new(ConnStringHelper.GetTestEnv());
@@ -163,7 +167,215 @@ public class LegacyCompatibilityWriterPortTest
 
         var act = () => _sut.Apply(request);
         act.Should().Throw<NotSupportedException>()
-            .WithMessage("*Receipt post and Reversal void only*");
+            .WithMessage("*Receipt post, Reversal void, and Transfer post only*");
+    }
+
+    [Fact]
+    public void Apply_TransferPost_ReadBack_ConservesQtyDoHppEdAtBothLocations()
+    {
+        StockLedgerSchemaFixture.EnsureLegacyStockTables();
+        var ids = CreateCaseIds("TC");
+        Cleanup(ids);
+
+        try
+        {
+            SeedSourceStock(ids, qty: 10m);
+            var sourceStokId = _readPort.ListCurrentBalances(ids.Scope)
+                .Single(b => b.LayananId == ids.LocationId).LegacyRowId!;
+            var mtId = $"MT{ids.DoId}"[..10];
+
+            using (var trans = TransHelper.NewScope())
+            {
+                _sut.Apply(BuildTransferPostRequest(
+                    ids, sourceStokId, ids.LocationId, ids.LocationId2, mtId, qty: 10m));
+                trans.Complete();
+            }
+
+            var balances = _readPort.ListCurrentBalances(ids.Scope);
+            balances.Should().ContainSingle(b => b.LayananId == ids.LocationId2);
+            balances.Should().NotContain(b => b.LayananId == ids.LocationId);
+
+            var dest = balances.Single(b => b.LayananId == ids.LocationId2);
+            dest.Quantity.Should().Be(10m);
+            dest.ReceiptSourceId.Should().Be(ids.DoId);
+            dest.UnitCost.Should().Be(UnitCost);
+            dest.ExpirationDate.Should().Be(Expiration);
+            dest.Batch.Should().Be(Batch);
+            dest.PurchaseOrderId.Should().Be(ids.PoId);
+
+            var journals = _readPort.ListJournalEntries(ids.Scope);
+            journals.Should().Contain(j =>
+                j.MutationKindId == "MT_OUT"
+                && j.LayananId == ids.LocationId
+                && j.QuantityOut == 10m
+                && j.QuantityIn == 0m
+                && j.MutationTransactionId == mtId
+                && j.UnitCost == UnitCost
+                && j.ExpirationDate == Expiration
+                && j.Batch == Batch
+                && j.PurchaseOrderId == ids.PoId);
+            journals.Should().Contain(j =>
+                j.MutationKindId == "MT_IN"
+                && j.LayananId == ids.LocationId2
+                && j.QuantityIn == 10m
+                && j.QuantityOut == 0m
+                && j.MutationTransactionId == mtId
+                && j.UnitCost == UnitCost
+                && j.ExpirationDate == Expiration
+                && j.Batch == Batch
+                && j.PurchaseOrderId == ids.PoId);
+        }
+        finally
+        {
+            Cleanup(ids);
+        }
+    }
+
+    [Fact]
+    public void Apply_TransferPost_FullDepletion_DeletesSourceStokRow()
+    {
+        StockLedgerSchemaFixture.EnsureLegacyStockTables();
+        var ids = CreateCaseIds("TF");
+        Cleanup(ids);
+
+        try
+        {
+            SeedSourceStock(ids, qty: 10m);
+            var sourceStokId = _readPort.ListCurrentBalances(ids.Scope)
+                .Single(b => b.LayananId == ids.LocationId).LegacyRowId!;
+            var mtId = $"MT{ids.DoId}"[..10];
+
+            using (var trans = TransHelper.NewScope())
+            {
+                _sut.Apply(BuildTransferPostRequest(
+                    ids, sourceStokId, ids.LocationId, ids.LocationId2, mtId, qty: 10m));
+                trans.Complete();
+            }
+
+            _readPort.ListCurrentBalances(ids.Scope)
+                .Should().NotContain(b => b.LayananId == ids.LocationId);
+            _readPort.ListCurrentBalances(ids.Scope)
+                .Should().ContainSingle(b => b.LayananId == ids.LocationId2 && b.Quantity == 10m);
+            CountLegacyRows(ids).Should().Be((1, 3)); // DO + MT_OUT + MT_IN journals; 1 dest stok
+        }
+        finally
+        {
+            Cleanup(ids);
+        }
+    }
+
+    [Fact]
+    public void Apply_TransferPost_PartialDepletion_ReducesSourceQty()
+    {
+        StockLedgerSchemaFixture.EnsureLegacyStockTables();
+        var ids = CreateCaseIds("TP");
+        Cleanup(ids);
+
+        try
+        {
+            SeedSourceStock(ids, qty: 10m);
+            var sourceStokId = _readPort.ListCurrentBalances(ids.Scope)
+                .Single(b => b.LayananId == ids.LocationId).LegacyRowId!;
+            var mtId = $"MT{ids.DoId}"[..10];
+
+            using (var trans = TransHelper.NewScope())
+            {
+                _sut.Apply(BuildTransferPostRequest(
+                    ids, sourceStokId, ids.LocationId, ids.LocationId2, mtId, qty: 4m,
+                    action: LegacyBalanceMutationActionEnum.Upsert));
+                trans.Complete();
+            }
+
+            var balances = _readPort.ListCurrentBalances(ids.Scope);
+            balances.Should().ContainSingle(b => b.LayananId == ids.LocationId && b.Quantity == 6m)
+                .Which.LegacyRowId.Should().Be(sourceStokId);
+            balances.Should().ContainSingle(b => b.LayananId == ids.LocationId2 && b.Quantity == 4m);
+        }
+        finally
+        {
+            Cleanup(ids);
+        }
+    }
+
+    [Fact]
+    public void Apply_TransferPost_WithoutComplete_RollsBackBothLegs()
+    {
+        StockLedgerSchemaFixture.EnsureLegacyStockTables();
+        var ids = CreateCaseIds("TR");
+        Cleanup(ids);
+
+        try
+        {
+            SeedSourceStock(ids, qty: 10m);
+            var sourceStokId = _readPort.ListCurrentBalances(ids.Scope)
+                .Single(b => b.LayananId == ids.LocationId).LegacyRowId!;
+            var mtId = $"MT{ids.DoId}"[..10];
+
+            using (TransHelper.NewScope())
+            {
+                _sut.Apply(BuildTransferPostRequest(
+                    ids, sourceStokId, ids.LocationId, ids.LocationId2, mtId, qty: 10m));
+                // dispose without Complete → rollback both OUT and IN
+            }
+
+            var balances = _readPort.ListCurrentBalances(ids.Scope);
+            balances.Should().ContainSingle(b => b.LayananId == ids.LocationId && b.Quantity == 10m);
+            balances.Should().NotContain(b => b.LayananId == ids.LocationId2);
+            _readPort.ListJournalEntries(ids.Scope)
+                .Should().ContainSingle(j => j.MutationKindId == "DO");
+            _readPort.ListJournalEntries(ids.Scope)
+                .Should().NotContain(j => j.MutationKindId == "MT_OUT" || j.MutationKindId == "MT_IN");
+        }
+        finally
+        {
+            Cleanup(ids);
+        }
+    }
+
+    [Fact]
+    public void Apply_TransferPost_MultiSlice_TwoOutInPairs()
+    {
+        StockLedgerSchemaFixture.EnsureLegacyStockTables();
+        var ids = CreateCaseIds("TM");
+        Cleanup(ids);
+
+        try
+        {
+            // Two source rows at same location (two DO receipts → two ST rows for same DO via two posts).
+            // Use one DO with two distinct ST rows by seeding twice is not possible for same DO+location
+            // without merge; instead seed full qty then transfer two partial slices from same ST.
+            SeedSourceStock(ids, qty: 10m);
+            var sourceStokId = _readPort.ListCurrentBalances(ids.Scope)
+                .Single(b => b.LayananId == ids.LocationId).LegacyRowId!;
+            var mtId = $"MT{ids.DoId}"[..10];
+
+            using (var trans = TransHelper.NewScope())
+            {
+                _sut.Apply(BuildMultiSliceTransferRequest(
+                    ids,
+                    sourceStokId,
+                    ids.LocationId,
+                    ids.LocationId2,
+                    mtId,
+                    sliceQtys: [3m, 7m]));
+                trans.Complete();
+            }
+
+            var balances = _readPort.ListCurrentBalances(ids.Scope);
+            balances.Should().NotContain(b => b.LayananId == ids.LocationId);
+            balances.Where(b => b.LayananId == ids.LocationId2).Sum(b => b.Quantity).Should().Be(10m);
+            balances.Where(b => b.LayananId == ids.LocationId2).Should().HaveCount(2);
+
+            var journals = _readPort.ListJournalEntries(ids.Scope);
+            journals.Count(j => j.MutationKindId == "MT_OUT").Should().Be(2);
+            journals.Count(j => j.MutationKindId == "MT_IN").Should().Be(2);
+            journals.Where(j => j.MutationKindId == "MT_OUT").Sum(j => j.QuantityOut).Should().Be(10m);
+            journals.Where(j => j.MutationKindId == "MT_IN").Sum(j => j.QuantityIn).Should().Be(10m);
+        }
+        finally
+        {
+            Cleanup(ids);
+        }
     }
 
     [Fact]
@@ -340,6 +552,130 @@ public class LegacyCompatibilityWriterPortTest
             .WithMessage("*paired 1:1*");
     }
 
+    private void SeedSourceStock(CaseIds ids, decimal qty)
+    {
+        using var trans = TransHelper.NewScope();
+        _sut.Apply(BuildReceiptRequest(ids, lineCount: 1, quantity: qty));
+        trans.Complete();
+    }
+
+    private static LegacyCompatibilityWriteRequest BuildTransferPostRequest(
+        CaseIds ids,
+        string sourceStokId,
+        string sourceLocationId,
+        string destLocationId,
+        string mtId,
+        decimal qty,
+        LegacyBalanceMutationActionEnum action = LegacyBalanceMutationActionEnum.Delete)
+    {
+        return BuildMultiSliceTransferRequest(
+            ids,
+            sourceStokId,
+            sourceLocationId,
+            destLocationId,
+            mtId,
+            [qty],
+            singleSliceOutAction: action);
+    }
+
+    private static LegacyCompatibilityWriteRequest BuildMultiSliceTransferRequest(
+        CaseIds ids,
+        string sourceStokId,
+        string sourceLocationId,
+        string destLocationId,
+        string mtId,
+        IReadOnlyList<decimal> sliceQtys,
+        LegacyBalanceMutationActionEnum? singleSliceOutAction = null)
+    {
+        var balances = new List<LegacyCompatibilityBalanceMutationType>();
+        var journals = new List<LegacyCompatibilityJournalEntryType>();
+
+        // Interleaved OUT/IN pairs; writer processes all OUT first, then all IN.
+        for (var i = 0; i < sliceQtys.Count; i++)
+        {
+            var qty = sliceQtys[i];
+            LegacyBalanceMutationActionEnum outAction;
+            if (sliceQtys.Count == 1)
+            {
+                outAction = singleSliceOutAction ?? LegacyBalanceMutationActionEnum.Delete;
+            }
+            else
+            {
+                // Multi-slice from one ST row: Upsert until last slice, then Delete.
+                outAction = i == sliceQtys.Count - 1
+                    ? LegacyBalanceMutationActionEnum.Delete
+                    : LegacyBalanceMutationActionEnum.Upsert;
+            }
+
+            var outBukuId = Nuna.Lib.AutoNumberHelper.NunaId.NewLegacyCompact("BK");
+            var inBukuId = Nuna.Lib.AutoNumberHelper.NunaId.NewLegacyCompact("BK");
+            var inStokId = Nuna.Lib.AutoNumberHelper.NunaId.NewLegacyCompact("ST");
+
+            balances.Add(new LegacyCompatibilityBalanceMutationType(
+                outAction,
+                ids.BrgId,
+                ids.DoId,
+                sourceLocationId,
+                Quantity: qty,
+                UnitCost: UnitCost,
+                ExpirationDate: Expiration,
+                Batch: Batch,
+                PurchaseOrderId: ids.PoId,
+                LegacyRowId: sourceStokId,
+                SmallestUnitId: "TAB"));
+            journals.Add(new LegacyCompatibilityJournalEntryType(
+                LegacyJournalId: outBukuId,
+                BrgId: ids.BrgId,
+                ReceiptSourceId: ids.DoId,
+                LayananId: sourceLocationId,
+                QuantityIn: 0m,
+                QuantityOut: qty,
+                UnitCost: UnitCost,
+                ExpirationDate: Expiration,
+                Batch: Batch,
+                MutationKindId: "MT_OUT",
+                MutationTransactionId: mtId,
+                MutationTime: TransferTime,
+                IsVoid: false,
+                SmallestUnitId: "TAB"));
+
+            balances.Add(new LegacyCompatibilityBalanceMutationType(
+                LegacyBalanceMutationActionEnum.Upsert,
+                ids.BrgId,
+                ids.DoId,
+                destLocationId,
+                Quantity: qty,
+                UnitCost: UnitCost,
+                ExpirationDate: Expiration,
+                Batch: Batch,
+                PurchaseOrderId: ids.PoId,
+                LegacyRowId: inStokId,
+                SmallestUnitId: "TAB"));
+            journals.Add(new LegacyCompatibilityJournalEntryType(
+                LegacyJournalId: inBukuId,
+                BrgId: ids.BrgId,
+                ReceiptSourceId: ids.DoId,
+                LayananId: destLocationId,
+                QuantityIn: qty,
+                QuantityOut: 0m,
+                UnitCost: UnitCost,
+                ExpirationDate: Expiration,
+                Batch: Batch,
+                MutationKindId: "MT_IN",
+                MutationTransactionId: mtId,
+                MutationTime: TransferTime,
+                IsVoid: false,
+                SmallestUnitId: "TAB"));
+        }
+
+        return new LegacyCompatibilityWriteRequest(
+            SourceTransactionReferenceType.Key($"MT-{ids.SourceTxId}"),
+            StockMovementKindEnum.Transfer,
+            ids.Scope,
+            balances,
+            journals);
+    }
+
     private static LegacyCompatibilityWriteRequest BuildVoidRequest(
         CaseIds ids,
         string stokId,
@@ -358,9 +694,9 @@ public class LegacyCompatibilityWriterPortTest
                     ids.DoId,
                     ids.LocationId,
                     Quantity: quantity,
-                    UnitCost: 1500.50m,
-                    ExpirationDate: new DateOnly(2027, 6, 30),
-                    Batch: "P4S1-BATCH",
+                    UnitCost: UnitCost,
+                    ExpirationDate: Expiration,
+                    Batch: Batch,
                     PurchaseOrderId: ids.PoId,
                     LegacyRowId: stokId,
                     SmallestUnitId: "TAB")
@@ -373,9 +709,9 @@ public class LegacyCompatibilityWriterPortTest
                     LayananId: ids.LocationId,
                     QuantityIn: 0m,
                     QuantityOut: quantity,
-                    UnitCost: 1500.50m,
-                    ExpirationDate: new DateOnly(2027, 6, 30),
-                    Batch: "P4S1-BATCH",
+                    UnitCost: UnitCost,
+                    ExpirationDate: Expiration,
+                    Batch: Batch,
                     MutationKindId: "DO_V",
                     MutationTransactionId: ids.DoId,
                     MutationTime: voidTime,
@@ -384,7 +720,10 @@ public class LegacyCompatibilityWriterPortTest
             ]);
     }
 
-    private static LegacyCompatibilityWriteRequest BuildReceiptRequest(CaseIds ids, int lineCount)
+    private static LegacyCompatibilityWriteRequest BuildReceiptRequest(
+        CaseIds ids,
+        int lineCount,
+        decimal? quantity = null)
     {
         var balances = new List<LegacyCompatibilityBalanceMutationType>();
         var journals = new List<LegacyCompatibilityJournalEntryType>();
@@ -392,16 +731,16 @@ public class LegacyCompatibilityWriterPortTest
         for (var i = 0; i < lineCount; i++)
         {
             var location = i == 0 ? ids.LocationId : ids.LocationId2;
-            var qty = 10m + i;
+            var qty = quantity ?? (10m + i);
             balances.Add(new LegacyCompatibilityBalanceMutationType(
                 LegacyBalanceMutationActionEnum.Upsert,
                 ids.BrgId,
                 ids.DoId,
                 location,
                 Quantity: qty,
-                UnitCost: 1500.50m,
-                ExpirationDate: new DateOnly(2027, 6, 30),
-                Batch: "P4S1-BATCH",
+                UnitCost: UnitCost,
+                ExpirationDate: Expiration,
+                Batch: Batch,
                 PurchaseOrderId: ids.PoId,
                 LegacyRowId: null,
                 SmallestUnitId: "TAB"));
@@ -413,9 +752,9 @@ public class LegacyCompatibilityWriterPortTest
                 LayananId: location,
                 QuantityIn: qty,
                 QuantityOut: 0m,
-                UnitCost: 1500.50m,
-                ExpirationDate: new DateOnly(2027, 6, 30),
-                Batch: "P4S1-BATCH",
+                UnitCost: UnitCost,
+                ExpirationDate: Expiration,
+                Batch: Batch,
                 MutationKindId: "DO",
                 MutationTransactionId: ids.DoId,
                 MutationTime: MutationTime,
@@ -439,7 +778,7 @@ public class LegacyCompatibilityWriterPortTest
         var brgId = $"BRG{shortTag}{ulid}"[..13];
         var doId = $"DO{shortTag}{ulid}"[..10];
         return new CaseIds(
-            SourceTxId: $"P4S1-{tag}-{ulid}",
+            SourceTxId: $"P5S2-{tag}-{ulid}",
             BrgId: brgId,
             DoId: doId,
             PoId: $"PO{shortTag}{ulid}"[..10],

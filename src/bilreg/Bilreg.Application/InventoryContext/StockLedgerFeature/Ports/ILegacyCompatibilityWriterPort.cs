@@ -8,10 +8,12 @@ namespace Bilreg.Application.InventoryContext.StockLedgerFeature.Ports;
 /// (<c>tb_stok</c> insert/update/delete, <c>tb_buku</c> movement/void shapes, and required FO writebacks)
 /// enlisted in the Stock Ledger consequence transaction.
 /// <para>
-/// Phase ownership: live DM receipt post writer is P4-S1
-/// (<c>LegacyCompatibilityWriterPort</c> in Infrastructure). P1-S8 / non-legacy tests
-/// continue to inject <c>FakeLegacyCompatibilityWriterPort</c>. Do not register a
-/// production adapter that mutates legacy stock until capability enablement is explicit.
+/// Phase ownership: live adapter is <c>LegacyCompatibilityWriterPort</c> in Infrastructure.
+/// Supported live shapes: DM receipt post (P4-S1), DM receipt void/Reversal (P4-S4),
+/// and MT transfer post OUT/IN (P5-S2). Transfer void (<c>MT_IN_V</c>/<c>MT_OUT_V</c>) is P5-S4.
+/// P1-S8 / non-legacy tests continue to inject <c>FakeLegacyCompatibilityWriterPort</c>.
+/// Do not register a production adapter that mutates legacy stock until capability
+/// enablement is explicit.
 /// </para>
 /// Does not transfer runtime authority; Stage B authority remains <c>tb_stok</c> + <c>tb_buku</c>.
 /// </summary>
