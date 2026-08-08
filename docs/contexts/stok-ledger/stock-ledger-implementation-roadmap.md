@@ -7,6 +7,7 @@
 **Phase 1 plan:** [`stock-ledger-phase1-implementation-plan.md`](./stock-ledger-phase1-implementation-plan.md)
 **Phase 2 plan:** [`stock-ledger-phase2-implementation-plan.md`](./stock-ledger-phase2-implementation-plan.md)
 **Phase 3 plan:** [`stock-ledger-phase3-implementation-plan.md`](./stock-ledger-phase3-implementation-plan.md)
+**Phase 4 plan:** [`stock-ledger-phase4-implementation-plan.md`](./stock-ledger-phase4-implementation-plan.md)
 **Legacy behavior reference:** [`clbGenStokX1.cls`](./clbGenStokX1.cls)
 **Standards:** [`docs/ENGINEERING.md`](../../ENGINEERING.md), [`docs/DATABASE.md`](../../DATABASE.md), [`docs/NAMING.md`](../../NAMING.md)
 
@@ -163,9 +164,8 @@ The final storage shape is decided in Phase 0/1. A proposed column name must not
 
 ### Phase 3 — Incremental Legacy Synchronization and Freshness Gate
 
-**Progress:** PLAN READY — executable slices P3-S1…P3-S8 in [`stock-ledger-phase3-implementation-plan.md`](./stock-ledger-phase3-implementation-plan.md). Do not expand this roadmap section into slice detail.  
-**Execution plan:** [`stock-ledger-phase3-implementation-plan.md`](./stock-ledger-phase3-implementation-plan.md).  
-**Code-base note (post–Phase 2):** Synchronization Position storage, Domain sync transitions, `fingerprint-v1`, discovery/reconciliation **port contracts**, and `SyncBatch` / `LegacySynchronized` shapes already exist. Phase 3 implements live discovery, catch-up, Freshness Gate, and harness activation — not a parallel foundation.
+**Progress:** COMPLETE — P3-S1…P3-S8 done ([execution plan](./stock-ledger-phase3-implementation-plan.md), [implementation report](./stock-ledger-phase3-implementation-report.md), latest [P3-S8 summary](./stock-ledger-P3-S8-implementation-summary.md)).  
+**Execution plan:** [`stock-ledger-phase3-implementation-plan.md`](./stock-ledger-phase3-implementation-plan.md). Do not expand this roadmap section into slice detail.
 
 | Area | Plan |
 |---|---|
@@ -183,6 +183,10 @@ The final storage shape is decided in Phase 0/1. A proposed column name must not
 | Risks | Missed deletions, cursor retention gap, stale VB6 overwrite, duplicate correction, deadlock, unsupported live SQL feature. |
 
 ### Phase 4 — First native stock consequence: DO Receipt
+
+**Progress:** PLAN READY — executable slices P4-S1…P4-S5 in [`stock-ledger-phase4-implementation-plan.md`](./stock-ledger-phase4-implementation-plan.md). Do not expand this roadmap section into slice detail.  
+**Execution plan:** [`stock-ledger-phase4-implementation-plan.md`](./stock-ledger-phase4-implementation-plan.md).  
+**Code-base note (post–Phase 3):** Consequence UoW, Native receipt Domain factories, Phase 3 Freshness Gate/sync, and `ILegacyCompatibilityWriterPort` (fake only) already exist. Phase 4 implements the live DM compatibility writer, Native DO Receipt UseCase, void, and New→Legacy coexistence proof — not a parallel foundation.
 
 | Area | Plan |
 |---|---|
@@ -467,8 +471,8 @@ Minimum production readiness supports a limited enabled transaction set safely. 
 | 0 | Proven legacy/sync/concurrency baseline (**frozen** 2026-08-07; PASS WITH RISKS; FQ-06 + detection experiment residual) | G-13 empirical proof; G-17; G-25 SLO/index approval; G-28 | Code implementation |
 | 1 | Additive domain and persistence foundation | G-01–G-07, G-18 | Legacy authority change |
 | 2 | Initial bounded reconstruction (**COMPLETE**) | G-05, G-10 | Per-scope cutover |
-| 3 | Incremental synchronization + Freshness Gate (**PLAN READY** — [P3-S1…P3-S8](./stock-ledger-phase3-implementation-plan.md)) | G-12–G-16, sync G-23, initial G-24; G-17 interim only | Blocking VB6; FQ-06 production proof |
-| 4 | DO Receipt native consequence | G-11, G-19 | Requiring all outbound migration |
+| 3 | Incremental synchronization + Freshness Gate (**COMPLETE**) | G-12–G-16, sync G-23, initial G-24; G-17 interim only | Blocking VB6; FQ-06 production proof |
+| 4 | DO Receipt native consequence (**PLAN READY** — [P4-S1…P4-S5](./stock-ledger-phase4-implementation-plan.md)) | G-11, G-18 live, G-19 | Requiring all outbound migration |
 | 5 | Availability/FIFO/transfer/first outbound | G-08, part of G-20 | Exclusive DO ownership |
 | 6 | Virtual reservation/handover | G-21 | Forced legacy schema parity |
 | 7 | Transaction-by-transaction expansion | G-09, G-20, G-22 | Big-bang migration |
