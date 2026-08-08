@@ -13,6 +13,11 @@ public interface IStockSourceIdempotencyDal :
     IGetData<StockSourceIdempotencyDto, IStockSourceIdempotencyKey>
 {
     StockSourceIdempotencyDto GetDataByBusinessKey(IStockSourceIdempotencyBusinessKey key);
+
+    /// <summary>
+    /// P3-S1 — Ledger-known legacy identity keys for one Reconstruction Scope (SyncBatch + SourceConsequence).
+    /// </summary>
+    IReadOnlyList<string> ListSyncIdentityKeysForScope(string brgId, string receiptSourceId);
 }
 
 public class StockSourceIdempotencyDal : IStockSourceIdempotencyDal
@@ -80,6 +85,32 @@ public class StockSourceIdempotencyDal : IStockSourceIdempotencyDal
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.ReadSingle<StockSourceIdempotencyDto>(sql, dp);
     }
+
+    public IReadOnlyList<string> ListSyncIdentityKeysForScope(string brgId, string receiptSourceId)
+    {
+        const string sql = """
+            SELECT aa.IdempotencyKey
+            FROM BILRG_StokSourceIdempotency aa
+            WHERE
+                aa.BrgId = @BrgId
+                AND aa.ReceiptSourceId = @ReceiptSourceId
+                AND aa.IdempotencyKind IN (@SourceConsequence, @SyncBatch)
+                AND aa.IdempotencyKey LIKE 'SYNC|%'
+            ORDER BY aa.IdempotencyKey
+            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@BrgId", brgId, SqlDbType.VarChar);
+        dp.AddParam("@ReceiptSourceId", receiptSourceId, SqlDbType.VarChar);
+        dp.AddParam("@SourceConsequence", (int)StockSourceIdempotencyKindEnum.SourceConsequence, SqlDbType.Int);
+        dp.AddParam("@SyncBatch", (int)StockSourceIdempotencyKindEnum.SyncBatch, SqlDbType.Int);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        var rows = conn.Read<SyncIdentityKeyRow>(sql, dp) ?? [];
+        return rows.Select(x => x.IdempotencyKey).ToList();
+    }
+
+    private sealed record SyncIdentityKeyRow(string IdempotencyKey);
 
     private static DynamicParameters MapParams(StockSourceIdempotencyDto dto)
     {
