@@ -145,12 +145,17 @@ public sealed class LegacyCompatibilityWriterPort : ILegacyCompatibilityWriterPo
         var hpp = balance.UnitCost;
 
         // VB6 AddStok order: tb_buku INSERT then tb_stok INSERT. Always INSERT (never merge).
-        var bukuId = NunaId.NewLegacyCompact(PrefixBuku);
+        // P4-S2: honor pre-assigned ids when present so fingerprint can be computed before Apply.
+        var bukuId = string.IsNullOrWhiteSpace(journal.LegacyJournalId)
+            ? NunaId.NewLegacyCompact(PrefixBuku)
+            : journal.LegacyJournalId.Trim();
         InsertBuku(conn, new BukuInsert(
             bukuId, brgId, layananId, po, doId, expiration, batch,
             qty, 0m, hpp, mutasiId, mutasiDate, mutasiTime, mutasiCombined, MutationKindDo, satuan));
 
-        var stokId = NunaId.NewLegacyCompact(PrefixStok);
+        var stokId = string.IsNullOrWhiteSpace(balance.LegacyRowId)
+            ? NunaId.NewLegacyCompact(PrefixStok)
+            : balance.LegacyRowId.Trim();
         InsertStok(conn, new StokInsert(
             stokId, brgId, layananId, po, doId, expiration, batch,
             qty, qty, hpp, mutasiId, mutasiDate, mutasiTime, satuan));

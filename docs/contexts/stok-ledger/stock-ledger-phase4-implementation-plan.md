@@ -16,7 +16,7 @@
 | Slice | Status | Summary |
 |---|---|---|
 | P4-S1 | COMPLETE | [`stock-ledger-P4-S1-implementation-summary.md`](./stock-ledger-P4-S1-implementation-summary.md) — gate **PASS**; live DM post writer |
-| P4-S2 | PLANNED | Native DO Receipt consequence UseCase + Scope baseline + capability gate |
+| P4-S2 | COMPLETE | [`stock-ledger-P4-S2-implementation-summary.md`](./stock-ledger-P4-S2-implementation-summary.md) — Native DO Receipt UseCase + Scope baseline + capability flag + greenfield prior-history fail-closed guard (NO-GO remediated) |
 | P4-S3 | PLANNED | Live legacy+Ledger atomicity / failure injection + New→Legacy harness |
 | P4-S4 | PLANNED | Receipt void/correction (accountable Ledger + legacy-compatible void; fail closed when unsafe) |
 | P4-S5 | PLANNED | Phase 3 catch-up coexistence proof + capability-disable + Phase 4 exit report |

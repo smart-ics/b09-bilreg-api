@@ -184,9 +184,9 @@ The final storage shape is decided in Phase 0/1. A proposed column name must not
 
 ### Phase 4 — First native stock consequence: DO Receipt
 
-**Progress:** PLAN READY — executable slices P4-S1…P4-S5 in [`stock-ledger-phase4-implementation-plan.md`](./stock-ledger-phase4-implementation-plan.md). Do not expand this roadmap section into slice detail.  
+**Progress:** IN PROGRESS — P4-S1 and P4-S2 COMPLETE behind disabled-by-default capability; P4-S3…P4-S5 remaining. Executable slices in [`stock-ledger-phase4-implementation-plan.md`](./stock-ledger-phase4-implementation-plan.md). Do not expand this roadmap section into slice detail.  
 **Execution plan:** [`stock-ledger-phase4-implementation-plan.md`](./stock-ledger-phase4-implementation-plan.md).  
-**Code-base note (post–Phase 3):** Consequence UoW, Native receipt Domain factories, Phase 3 Freshness Gate/sync, and `ILegacyCompatibilityWriterPort` (fake only) already exist. Phase 4 implements the live DM compatibility writer, Native DO Receipt UseCase, void, and New→Legacy coexistence proof — not a parallel foundation.
+**Code-base note:** Live DM `LegacyCompatibilityWriterPort` (P4-S1) and Native DO Receipt UseCase + greenfield Scope baseline + prior-history fail-closed guard (P4-S2) exist behind `StockLedgerDoReceipt:Enabled` default false. Phase 4 still owns void, live atomicity / New→Legacy harness, and coexistence exit — not a parallel foundation.
 
 | Area | Plan |
 |---|---|
@@ -472,7 +472,7 @@ Minimum production readiness supports a limited enabled transaction set safely. 
 | 1 | Additive domain and persistence foundation | G-01–G-07, G-18 | Legacy authority change |
 | 2 | Initial bounded reconstruction (**COMPLETE**) | G-05, G-10 | Per-scope cutover |
 | 3 | Incremental synchronization + Freshness Gate (**COMPLETE**) | G-12–G-16, sync G-23, initial G-24; G-17 interim only | Blocking VB6; FQ-06 production proof |
-| 4 | DO Receipt native consequence (**PLAN READY** — [P4-S1…P4-S5](./stock-ledger-phase4-implementation-plan.md)) | G-11, G-18 live, G-19 | Requiring all outbound migration |
+| 4 | DO Receipt native consequence (**IN PROGRESS** — P4-S1/S2 complete; [P4-S1…P4-S5](./stock-ledger-phase4-implementation-plan.md)) | G-11, G-18 live, G-19 | Requiring all outbound migration |
 | 5 | Availability/FIFO/transfer/first outbound | G-08, part of G-20 | Exclusive DO ownership |
 | 6 | Virtual reservation/handover | G-21 | Forced legacy schema parity |
 | 7 | Transaction-by-transaction expansion | G-09, G-20, G-22 | Big-bang migration |

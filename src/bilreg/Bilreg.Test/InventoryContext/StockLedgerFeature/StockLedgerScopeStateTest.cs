@@ -265,4 +265,42 @@ public class StockLedgerScopeStateTest
         required.ReconstructionStatus.Should().Be(ReconstructionStatusEnum.ReconstructionRequired);
         ReferenceEquals(original, required).Should().BeFalse();
     }
+
+    [Fact]
+    public void UT15_EstablishFromNativeReceipt_FromNotReconstructed_Succeeds()
+    {
+        var position = Position("native-fp-1", "fingerprint-v1");
+        var state = NewScope().EstablishFromNativeReceipt(position, "fingerprint-v1");
+
+        state.ReconstructionStatus.Should().Be(ReconstructionStatusEnum.Reconstructed);
+        state.SynchronizationState.Should().Be(SynchronizationStateEnum.Current);
+        state.SynchronizationPosition.Should().Be(position);
+        state.ReconstructionBasisVersion.Should().Be("fingerprint-v1");
+        state.InconsistencyReason.Should().BeNull();
+    }
+
+    [Fact]
+    public void UT16_EstablishFromNativeReceipt_IllegalSources_AreRejected()
+    {
+        var notReconstructed = NewScope();
+        var required = notReconstructed.RequireReconstruction();
+        var reconstructing = required.BeginReconstruction();
+        var reconstructed = reconstructing.CompleteReconstruction(Position("fp-1"));
+        var inconsistent = NewScope()
+            .RequireReconstruction()
+            .BeginReconstruction()
+            .MarkReconstructionInconsistent("ambiguous");
+
+        Action fromRequired = () => required.EstablishFromNativeReceipt(Position("fp-x"));
+        Action fromReconstructing = () => reconstructing.EstablishFromNativeReceipt(Position("fp-x"));
+        Action fromReconstructed = () => reconstructed.EstablishFromNativeReceipt(Position("fp-x"));
+        Action fromInconsistent = () => inconsistent.EstablishFromNativeReceipt(Position("fp-x"));
+        Action nullPosition = () => notReconstructed.EstablishFromNativeReceipt(null!);
+
+        fromRequired.Should().Throw<InvalidOperationException>();
+        fromReconstructing.Should().Throw<InvalidOperationException>();
+        fromReconstructed.Should().Throw<InvalidOperationException>();
+        fromInconsistent.Should().Throw<InvalidOperationException>();
+        nullPosition.Should().Throw<ArgumentNullException>();
+    }
 }

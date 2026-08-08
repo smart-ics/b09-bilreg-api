@@ -170,6 +170,32 @@ public record StockLedgerScopeStateModel : IStockLedgerScopeKey
     }
     #endregion
 
+    #region NATIVE BASELINE
+    /// <summary>
+    /// NotReconstructed → Reconstructed for a greenfield Native DO Receipt baseline.
+    /// Initializes opaque Synchronization Position without faking Phase A–C reconstruction claim.
+    /// Caller supplies the position after external fingerprint calculation; this method does not
+    /// transfer Stage B authority or encode ownership.
+    /// </summary>
+    public StockLedgerScopeStateModel EstablishFromNativeReceipt(
+        SynchronizationPositionType synchronizationPosition,
+        string? reconstructionBasisVersion = null)
+    {
+        EnsureReconstructionStatus(
+            ReconstructionStatusEnum.NotReconstructed,
+            nameof(EstablishFromNativeReceipt));
+        Guard.Against.Null(synchronizationPosition, nameof(synchronizationPosition));
+
+        return WithState(
+            reconstructionStatus: ReconstructionStatusEnum.Reconstructed,
+            synchronizationState: SynchronizationStateEnum.Current,
+            synchronizationPosition: synchronizationPosition,
+            reconstructionBasisVersion: NormalizeOptional(reconstructionBasisVersion),
+            setReconstructionBasisVersion: true,
+            inconsistencyReason: null);
+    }
+    #endregion
+
     #region SYNCHRONIZATION TRANSITIONS
     /// <summary>
     /// Current → LegacyChangePending. Requires a reconstructed baseline.

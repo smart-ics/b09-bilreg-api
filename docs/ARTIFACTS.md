@@ -292,6 +292,7 @@ Authoritative inventory movement, provenance, Remaining Quantity, FIFO, reservat
 | `docs/contexts/stok-ledger/stock-ledger-phase3-implementation-plan.md` | Stock Ledger — Phase 3 executable implementation slices (incremental sync + Freshness Gate; slice progress tracked in-doc) |
 | `docs/contexts/stok-ledger/stock-ledger-phase4-implementation-plan.md` | Stock Ledger — Phase 4 executable implementation slices (first native DO Receipt consequence; slice progress tracked in-doc) |
 | `docs/contexts/stok-ledger/stock-ledger-P4-S1-implementation-summary.md` | Stock Ledger — Phase 4 / P4-S1 live DM Legacy Compatibility Writer (receipt post; gate PASS) |
+| `docs/contexts/stok-ledger/stock-ledger-P4-S2-implementation-summary.md` | Stock Ledger — Phase 4 / P4-S2 Native DO Receipt UseCase + Scope baseline + capability gate + greenfield prior-history fail-closed guard (NO-GO remediated) |
 | `docs/contexts/stok-ledger/stock-ledger-P3-S1-implementation-summary.md` | Stock Ledger — Phase 3 / P3-S1 live Legacy Change Discovery (G-13; gate PASS) |
 | `docs/contexts/stok-ledger/stock-ledger-P3-S2-implementation-summary.md` | Stock Ledger — Phase 3 / P3-S2 sync delta interpretation (pure intents; void/update → accountable correction/reversal) |
 | `docs/contexts/stok-ledger/stock-ledger-P3-S3-implementation-summary.md` | Stock Ledger — Phase 3 / P3-S3 material reconciliation adapter (G-16 P0; classify only; safe-to-advance) |
