@@ -163,7 +163,131 @@ public class LegacyCompatibilityWriterPortTest
 
         var act = () => _sut.Apply(request);
         act.Should().Throw<NotSupportedException>()
-            .WithMessage("*Receipt post only*");
+            .WithMessage("*Receipt post and Reversal void only*");
+    }
+
+    [Fact]
+    public void Apply_ReceiptVoid_ProjectedFingerprint_MatchesReadBack()
+    {
+        StockLedgerSchemaFixture.EnsureLegacyStockTables();
+        var ids = CreateCaseIds("PF");
+        Cleanup(ids);
+
+        try
+        {
+            using (var trans = TransHelper.NewScope())
+            {
+                _sut.Apply(BuildReceiptRequest(ids, lineCount: 1));
+                trans.Complete();
+            }
+
+            var balances = _readPort.ListCurrentBalances(ids.Scope);
+            var journals = _readPort.ListJournalEntries(ids.Scope);
+            var stokId = balances.Single().LegacyRowId!;
+            var voidTime = MutationTime.AddHours(1);
+            var voidWrite = BuildVoidRequest(ids, stokId, quantity: 10m, voidTime);
+
+            var (projectedBalances, projectedJournals) =
+                DoReceiptVoidLegacyCompatibilityMapper.ProjectPostVoidFingerprintSnapshot(
+                    balances, journals, voidWrite);
+            var projected = LegacyReconstructionBasisCalculator.Compute(
+                projectedBalances, projectedJournals);
+
+            using (var trans = TransHelper.NewScope())
+            {
+                _sut.Apply(voidWrite);
+                trans.Complete();
+            }
+
+            var actualBalances = _readPort.ListCurrentBalances(ids.Scope);
+            var actualJournals = _readPort.ListJournalEntries(ids.Scope);
+            var actual = LegacyReconstructionBasisCalculator.Compute(actualBalances, actualJournals);
+
+            actualBalances.Should().BeEmpty();
+            actualJournals.Should().HaveCount(2);
+            projected.Should().Be(actual);
+        }
+        finally
+        {
+            Cleanup(ids);
+        }
+    }
+
+    [Fact]
+    public void Apply_ReceiptVoid_DeletesBalance_AndInsertsDoVJournal()
+    {
+        StockLedgerSchemaFixture.EnsureLegacyStockTables();
+        var ids = CreateCaseIds("VV");
+        Cleanup(ids);
+
+        try
+        {
+            using (var trans = TransHelper.NewScope())
+            {
+                _sut.Apply(BuildReceiptRequest(ids, lineCount: 1));
+                trans.Complete();
+            }
+
+            var balances = _readPort.ListCurrentBalances(ids.Scope);
+            balances.Should().ContainSingle();
+            var stokId = balances[0].LegacyRowId!;
+            var voidTime = MutationTime.AddHours(1);
+
+            using (var trans = TransHelper.NewScope())
+            {
+                _sut.Apply(BuildVoidRequest(ids, stokId, quantity: 10m, voidTime));
+                trans.Complete();
+            }
+
+            _readPort.ListCurrentBalances(ids.Scope).Should().BeEmpty();
+            var journals = _readPort.ListJournalEntries(ids.Scope);
+            journals.Should().HaveCount(2);
+            journals.Should().Contain(j => j.MutationKindId == "DO" && j.QuantityIn == 10m);
+            journals.Should().Contain(j =>
+                j.MutationKindId == "DO_V"
+                && j.QuantityOut == 10m
+                && j.QuantityIn == 0m
+                && j.MutationTime == voidTime);
+            CountLegacyRows(ids).Should().Be((0, 2));
+        }
+        finally
+        {
+            Cleanup(ids);
+        }
+    }
+
+    [Fact]
+    public void Apply_ReceiptVoid_WithoutComplete_RollsBackVoid()
+    {
+        StockLedgerSchemaFixture.EnsureLegacyStockTables();
+        var ids = CreateCaseIds("VR");
+        Cleanup(ids);
+
+        try
+        {
+            using (var trans = TransHelper.NewScope())
+            {
+                _sut.Apply(BuildReceiptRequest(ids, lineCount: 1));
+                trans.Complete();
+            }
+
+            var stokId = _readPort.ListCurrentBalances(ids.Scope).Single().LegacyRowId!;
+
+            using (TransHelper.NewScope())
+            {
+                _sut.Apply(BuildVoidRequest(ids, stokId, quantity: 10m, MutationTime.AddHours(1)));
+                // dispose without Complete → rollback void
+            }
+
+            _readPort.ListCurrentBalances(ids.Scope).Should().ContainSingle()
+                .Which.Quantity.Should().Be(10m);
+            _readPort.ListJournalEntries(ids.Scope).Should().ContainSingle()
+                .Which.MutationKindId.Should().Be("DO");
+        }
+        finally
+        {
+            Cleanup(ids);
+        }
     }
 
     [Fact]
@@ -214,6 +338,50 @@ public class LegacyCompatibilityWriterPortTest
         var act = () => _sut.Apply(request);
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*paired 1:1*");
+    }
+
+    private static LegacyCompatibilityWriteRequest BuildVoidRequest(
+        CaseIds ids,
+        string stokId,
+        decimal quantity,
+        DateTime voidTime)
+    {
+        var bukuId = Nuna.Lib.AutoNumberHelper.NunaId.NewLegacyCompact("BK");
+        return new LegacyCompatibilityWriteRequest(
+            SourceTransactionReferenceType.Key($"VOID-{ids.SourceTxId}"),
+            StockMovementKindEnum.Reversal,
+            ids.Scope,
+            [
+                new LegacyCompatibilityBalanceMutationType(
+                    LegacyBalanceMutationActionEnum.Delete,
+                    ids.BrgId,
+                    ids.DoId,
+                    ids.LocationId,
+                    Quantity: quantity,
+                    UnitCost: 1500.50m,
+                    ExpirationDate: new DateOnly(2027, 6, 30),
+                    Batch: "P4S1-BATCH",
+                    PurchaseOrderId: ids.PoId,
+                    LegacyRowId: stokId,
+                    SmallestUnitId: "TAB")
+            ],
+            [
+                new LegacyCompatibilityJournalEntryType(
+                    LegacyJournalId: bukuId,
+                    BrgId: ids.BrgId,
+                    ReceiptSourceId: ids.DoId,
+                    LayananId: ids.LocationId,
+                    QuantityIn: 0m,
+                    QuantityOut: quantity,
+                    UnitCost: 1500.50m,
+                    ExpirationDate: new DateOnly(2027, 6, 30),
+                    Batch: "P4S1-BATCH",
+                    MutationKindId: "DO_V",
+                    MutationTransactionId: ids.DoId,
+                    MutationTime: voidTime,
+                    IsVoid: true,
+                    SmallestUnitId: "TAB")
+            ]);
     }
 
     private static LegacyCompatibilityWriteRequest BuildReceiptRequest(CaseIds ids, int lineCount)

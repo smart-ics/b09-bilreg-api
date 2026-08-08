@@ -12,14 +12,16 @@ using Nuna.Lib.DataAccessHelper;
 namespace Bilreg.Infrastructure.InventoryContext.StockLedgerFeature;
 
 /// <summary>
-/// P4-S1 / G-11 — Live DM receipt post compatibility writer.
-/// Inserts authoritative <c>tb_buku</c> then <c>tb_stok</c> rows enlisted in the caller's ambient transaction.
-/// Receipt post only; void / other FO families remain fail-closed until later Phase 4 slices.
+/// P4-S1 / P4-S4 / G-11 — Live DM receipt post + void compatibility writer.
+/// Post: inserts authoritative <c>tb_buku</c> then <c>tb_stok</c>.
+/// Void (Reversal): deletes/reduces <c>tb_stok</c> and inserts compensating <c>DO_V</c> journal
+/// (<c>xVoidDelete=False</c> mode). Enlisted in the caller's ambient transaction.
 /// Does not transfer Stage B authority. Not registered in production DI.
 /// </summary>
 public sealed class LegacyCompatibilityWriterPort : ILegacyCompatibilityWriterPort
 {
     private const string MutationKindDo = "DO";
+    private const string MutationKindDoVoid = "DO_V";
     private const string PrefixBuku = "BK";
     private const string PrefixStok = "ST";
     private const string SentinelDate = "3000-01-01";
@@ -33,30 +35,45 @@ public sealed class LegacyCompatibilityWriterPort : ILegacyCompatibilityWriterPo
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (request.MovementKind != StockMovementKindEnum.Receipt)
-        {
-            throw new NotSupportedException(
-                $"P4-S1 LegacyCompatibilityWriterPort supports Receipt post only; " +
-                $"movement kind '{request.MovementKind}' is not supported.");
-        }
-
         if (request.JournalEntries.Count != request.BalanceMutations.Count)
         {
             throw new InvalidOperationException(
-                "DM receipt post requires JournalEntries and BalanceMutations to be paired 1:1 " +
+                "DM compatibility write requires JournalEntries and BalanceMutations to be paired 1:1 " +
                 $"(journals={request.JournalEntries.Count}, balances={request.BalanceMutations.Count}).");
         }
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Open();
 
-        for (var i = 0; i < request.BalanceMutations.Count; i++)
+        if (request.MovementKind == StockMovementKindEnum.Receipt)
         {
-            var balance = request.BalanceMutations[i];
-            var journal = request.JournalEntries[i];
-            ValidateReceiptLine(balance, journal, i);
-            InsertBukuThenStok(conn, balance, journal);
+            for (var i = 0; i < request.BalanceMutations.Count; i++)
+            {
+                var balance = request.BalanceMutations[i];
+                var journal = request.JournalEntries[i];
+                ValidateReceiptLine(balance, journal, i);
+                InsertBukuThenStok(conn, balance, journal);
+            }
+
+            return;
         }
+
+        if (request.MovementKind == StockMovementKindEnum.Reversal)
+        {
+            for (var i = 0; i < request.BalanceMutations.Count; i++)
+            {
+                var balance = request.BalanceMutations[i];
+                var journal = request.JournalEntries[i];
+                ValidateVoidLine(balance, journal, i);
+                ApplyVoidLine(conn, balance, journal);
+            }
+
+            return;
+        }
+
+        throw new NotSupportedException(
+            $"LegacyCompatibilityWriterPort supports Receipt post and Reversal void only; " +
+            $"movement kind '{request.MovementKind}' is not supported.");
     }
 
     private static void ValidateReceiptLine(
@@ -67,30 +84,17 @@ public sealed class LegacyCompatibilityWriterPort : ILegacyCompatibilityWriterPo
         if (balance.Action != LegacyBalanceMutationActionEnum.Upsert)
         {
             throw new NotSupportedException(
-                $"P4-S1 DM receipt post supports Upsert balance action only (line {index}); " +
-                $"Delete/void is deferred to P4-S4.");
+                $"DM receipt post supports Upsert balance action only (line {index}); " +
+                $"got '{balance.Action}'.");
         }
 
         if (journal.IsVoid)
         {
             throw new NotSupportedException(
-                $"P4-S1 DM receipt post does not support void journal entries (line {index}); " +
-                $"void is deferred to P4-S4.");
+                $"DM receipt post does not support void journal entries (line {index}).");
         }
 
-        if (string.IsNullOrWhiteSpace(balance.BrgId) || string.IsNullOrWhiteSpace(balance.ReceiptSourceId))
-            throw new InvalidOperationException($"DM receipt balance line {index} requires BrgId and ReceiptSourceId.");
-
-        if (string.IsNullOrWhiteSpace(journal.BrgId) || string.IsNullOrWhiteSpace(journal.ReceiptSourceId))
-            throw new InvalidOperationException($"DM receipt journal line {index} requires BrgId and ReceiptSourceId.");
-
-        if (!string.Equals(balance.BrgId.Trim(), journal.BrgId.Trim(), StringComparison.Ordinal) ||
-            !string.Equals(balance.ReceiptSourceId.Trim(), journal.ReceiptSourceId.Trim(), StringComparison.Ordinal) ||
-            !string.Equals(balance.LayananId.Trim(), journal.LayananId.Trim(), StringComparison.Ordinal))
-        {
-            throw new InvalidOperationException(
-                $"DM receipt line {index} balance/journal identity mismatch (BrgId/ReceiptSourceId/LayananId).");
-        }
+        ValidateSharedIdentity(balance, journal, index);
 
         var mutationKind = string.IsNullOrWhiteSpace(journal.MutationKindId)
             ? MutationKindDo
@@ -98,7 +102,7 @@ public sealed class LegacyCompatibilityWriterPort : ILegacyCompatibilityWriterPo
         if (!string.Equals(mutationKind, MutationKindDo, StringComparison.Ordinal))
         {
             throw new NotSupportedException(
-                $"P4-S1 DM receipt post requires MutationKindId '{MutationKindDo}' (line {index}); " +
+                $"DM receipt post requires MutationKindId '{MutationKindDo}' (line {index}); " +
                 $"got '{mutationKind}'.");
         }
 
@@ -119,6 +123,84 @@ public sealed class LegacyCompatibilityWriterPort : ILegacyCompatibilityWriterPo
             throw new InvalidOperationException(
                 $"DM receipt line {index} journal QuantityIn ({journal.QuantityIn}) " +
                 $"must equal balance Quantity ({balance.Quantity}).");
+        }
+    }
+
+    private static void ValidateVoidLine(
+        LegacyCompatibilityBalanceMutationType balance,
+        LegacyCompatibilityJournalEntryType journal,
+        int index)
+    {
+        if (balance.Action is not (
+                LegacyBalanceMutationActionEnum.Delete
+                or LegacyBalanceMutationActionEnum.Upsert))
+        {
+            throw new NotSupportedException(
+                $"DM receipt void supports Delete or Upsert balance action only (line {index}); " +
+                $"got '{balance.Action}'.");
+        }
+
+        if (!journal.IsVoid)
+        {
+            throw new InvalidOperationException(
+                $"DM receipt void journal line {index} requires IsVoid = true.");
+        }
+
+        ValidateSharedIdentity(balance, journal, index);
+
+        if (string.IsNullOrWhiteSpace(balance.LegacyRowId))
+        {
+            throw new InvalidOperationException(
+                $"DM receipt void balance line {index} requires LegacyRowId (targeted ST* row).");
+        }
+
+        var mutationKind = string.IsNullOrWhiteSpace(journal.MutationKindId)
+            ? string.Empty
+            : journal.MutationKindId.Trim();
+        if (!string.Equals(mutationKind, MutationKindDoVoid, StringComparison.Ordinal))
+        {
+            throw new NotSupportedException(
+                $"DM receipt void requires MutationKindId '{MutationKindDoVoid}' (line {index}); " +
+                $"got '{mutationKind}'.");
+        }
+
+        if (journal.QuantityIn != 0m)
+        {
+            throw new InvalidOperationException(
+                $"DM receipt void journal line {index} must have QuantityIn = 0 (got {journal.QuantityIn}).");
+        }
+
+        if (journal.QuantityOut <= 0m || balance.Quantity <= 0m)
+        {
+            throw new InvalidOperationException(
+                $"DM receipt void line {index} requires positive outbound quantity.");
+        }
+
+        if (journal.QuantityOut != balance.Quantity)
+        {
+            throw new InvalidOperationException(
+                $"DM receipt void line {index} journal QuantityOut ({journal.QuantityOut}) " +
+                $"must equal balance Quantity ({balance.Quantity}).");
+        }
+    }
+
+    private static void ValidateSharedIdentity(
+        LegacyCompatibilityBalanceMutationType balance,
+        LegacyCompatibilityJournalEntryType journal,
+        int index)
+    {
+        if (string.IsNullOrWhiteSpace(balance.BrgId) || string.IsNullOrWhiteSpace(balance.ReceiptSourceId))
+            throw new InvalidOperationException($"DM balance line {index} requires BrgId and ReceiptSourceId.");
+
+        if (string.IsNullOrWhiteSpace(journal.BrgId) || string.IsNullOrWhiteSpace(journal.ReceiptSourceId))
+            throw new InvalidOperationException($"DM journal line {index} requires BrgId and ReceiptSourceId.");
+
+        if (!string.Equals(balance.BrgId.Trim(), journal.BrgId.Trim(), StringComparison.Ordinal) ||
+            !string.Equals(balance.ReceiptSourceId.Trim(), journal.ReceiptSourceId.Trim(), StringComparison.Ordinal) ||
+            !string.Equals(balance.LayananId.Trim(), journal.LayananId.Trim(), StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                $"DM line {index} balance/journal identity mismatch (BrgId/ReceiptSourceId/LayananId).");
         }
     }
 
@@ -159,6 +241,100 @@ public sealed class LegacyCompatibilityWriterPort : ILegacyCompatibilityWriterPo
         InsertStok(conn, new StokInsert(
             stokId, brgId, layananId, po, doId, expiration, batch,
             qty, qty, hpp, mutasiId, mutasiDate, mutasiTime, satuan));
+    }
+
+    /// <summary>
+    /// VB6 RemoveStok (xVoidDelete=False): reduce/delete targeted tb_stok, then INSERT DO_V journal.
+    /// Application supplies the ST* target; no silent FIFO re-selection.
+    /// </summary>
+    private static void ApplyVoidLine(
+        SqlConnection conn,
+        LegacyCompatibilityBalanceMutationType balance,
+        LegacyCompatibilityJournalEntryType journal)
+    {
+        var stokId = balance.LegacyRowId!.Trim();
+        var qtyOut = balance.Quantity;
+
+        var currentQty = conn.ExecuteScalar<decimal?>(
+            """
+            SELECT fn_qty FROM tb_stok WITH (UPDLOCK, ROWLOCK)
+            WHERE fs_kd_trs = @fs_kd_trs
+            """,
+            new { fs_kd_trs = stokId });
+
+        if (currentQty is null)
+        {
+            throw new InvalidOperationException(
+                $"DM receipt void cannot find tb_stok row '{stokId}'.");
+        }
+
+        if (currentQty.Value < qtyOut)
+        {
+            throw new InvalidOperationException(
+                $"DM receipt void insufficient tb_stok qty on '{stokId}' " +
+                $"(available {currentQty.Value}, required {qtyOut}).");
+        }
+
+        if (balance.Action == LegacyBalanceMutationActionEnum.Delete
+            || currentQty.Value == qtyOut)
+        {
+            var deleted = conn.Execute(
+                """
+                DELETE FROM tb_stok
+                WHERE fs_kd_trs = @fs_kd_trs AND fn_qty = @fn_qty
+                """,
+                new { fs_kd_trs = stokId, fn_qty = currentQty.Value });
+            if (deleted != 1)
+            {
+                throw new InvalidOperationException(
+                    $"DM receipt void failed to DELETE tb_stok '{stokId}' (rows={deleted}).");
+            }
+        }
+        else
+        {
+            var remaining = currentQty.Value - qtyOut;
+            var updated = conn.Execute(
+                """
+                UPDATE tb_stok
+                SET fn_qty = @fn_qty
+                WHERE fs_kd_trs = @fs_kd_trs AND fn_qty = @expected_qty
+                """,
+                new
+                {
+                    fs_kd_trs = stokId,
+                    fn_qty = remaining,
+                    expected_qty = currentQty.Value
+                });
+            if (updated != 1)
+            {
+                throw new InvalidOperationException(
+                    $"DM receipt void failed to UPDATE tb_stok '{stokId}' (rows={updated}).");
+            }
+        }
+
+        var mutationTime = journal.MutationTime;
+        var mutasiDate = FormatDate(mutationTime);
+        var mutasiTime = FormatTime(mutationTime);
+        var mutasiCombined = FormatDateTime(mutationTime);
+        var expiration = FormatExpiration(balance.ExpirationDate ?? journal.ExpirationDate);
+        var batch = NullToEmpty(balance.Batch ?? journal.Batch);
+        var po = NullToEmpty(balance.PurchaseOrderId);
+        var satuan = NullToEmpty(balance.SmallestUnitId ?? journal.SmallestUnitId);
+        var mutasiId = string.IsNullOrWhiteSpace(journal.MutationTransactionId)
+            ? balance.ReceiptSourceId.Trim()
+            : journal.MutationTransactionId.Trim();
+        var doId = balance.ReceiptSourceId.Trim();
+        var brgId = balance.BrgId.Trim();
+        var layananId = balance.LayananId.Trim();
+        var hpp = balance.UnitCost;
+
+        var bukuId = string.IsNullOrWhiteSpace(journal.LegacyJournalId)
+            ? NunaId.NewLegacyCompact(PrefixBuku)
+            : journal.LegacyJournalId.Trim();
+
+        InsertBuku(conn, new BukuInsert(
+            bukuId, brgId, layananId, po, doId, expiration, batch,
+            0m, qtyOut, hpp, mutasiId, mutasiDate, mutasiTime, mutasiCombined, MutationKindDoVoid, satuan));
     }
 
     private static void InsertBuku(SqlConnection conn, BukuInsert row)

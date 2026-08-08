@@ -184,9 +184,9 @@ The final storage shape is decided in Phase 0/1. A proposed column name must not
 
 ### Phase 4 — First native stock consequence: DO Receipt
 
-**Progress:** IN PROGRESS — P4-S1…P4-S3 COMPLETE behind disabled-by-default capability; P4-S4…P4-S5 remaining. Executable slices in [`stock-ledger-phase4-implementation-plan.md`](./stock-ledger-phase4-implementation-plan.md). Do not expand this roadmap section into slice detail.  
+**Progress:** IN PROGRESS — P4-S1…P4-S4 COMPLETE behind disabled-by-default capability; P4-S5 remaining. Executable slices in [`stock-ledger-phase4-implementation-plan.md`](./stock-ledger-phase4-implementation-plan.md). Do not expand this roadmap section into slice detail.  
 **Execution plan:** [`stock-ledger-phase4-implementation-plan.md`](./stock-ledger-phase4-implementation-plan.md).  
-**Code-base note:** Live DM writer (P4-S1), Native DO Receipt UseCase + greenfield Scope baseline (P4-S2), and live G-18 atomicity + New→Legacy / PartialFailure harness (P4-S3) exist behind `StockLedgerDoReceipt:Enabled` default false. Phase 4 still owns void and coexistence exit — not a parallel foundation.
+**Code-base note:** Live DM writer (P4-S1), Native DO Receipt UseCase + greenfield Scope baseline (P4-S2), live G-18 atomicity + New→Legacy / PartialFailure harness (P4-S3), and Native receipt void/`DO_V` (P4-S4) exist behind `StockLedgerDoReceipt:Enabled` default false. Phase 4 still owns coexistence exit — not a parallel foundation.
 
 | Area | Plan |
 |---|---|

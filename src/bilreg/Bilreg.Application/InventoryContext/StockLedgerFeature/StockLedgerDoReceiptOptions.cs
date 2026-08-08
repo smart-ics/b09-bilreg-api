@@ -10,7 +10,8 @@ public class StockLedgerDoReceiptOptions
     public const string SECTION_NAME = "StockLedgerDoReceipt";
 
     /// <summary>
-    /// When false, <c>PostDoReceiptStockConsequenceHandler</c> returns Disabled without writes.
+    /// When false, <c>PostDoReceiptStockConsequenceHandler</c> and
+    /// <c>VoidDoReceiptStockConsequenceHandler</c> return Disabled without writes.
     /// </summary>
     public bool Enabled { get; set; }
 }

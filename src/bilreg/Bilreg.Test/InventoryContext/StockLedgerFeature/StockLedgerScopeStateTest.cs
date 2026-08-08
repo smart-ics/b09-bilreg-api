@@ -303,4 +303,42 @@ public class StockLedgerScopeStateTest
         fromInconsistent.Should().Throw<InvalidOperationException>();
         nullPosition.Should().Throw<ArgumentNullException>();
     }
+
+    [Fact]
+    public void UT17_RefreshSynchronizationPosition_FromCurrent_Succeeds()
+    {
+        var prior = Position("native-fp-1", "fingerprint-v1");
+        var next = Position("native-fp-void-1", "fingerprint-v1");
+        var state = NewScope()
+            .EstablishFromNativeReceipt(prior, "fingerprint-v1")
+            .RefreshSynchronizationPosition(next);
+
+        state.ReconstructionStatus.Should().Be(ReconstructionStatusEnum.Reconstructed);
+        state.SynchronizationState.Should().Be(SynchronizationStateEnum.Current);
+        state.SynchronizationPosition.Should().Be(next);
+        state.SynchronizationPosition.Should().NotBe(prior);
+        state.InconsistencyReason.Should().BeNull();
+    }
+
+    [Fact]
+    public void UT18_RefreshSynchronizationPosition_IllegalSources_AreRejected()
+    {
+        var notReconstructed = NewScope();
+        var reconstructed = notReconstructed
+            .RequireReconstruction()
+            .BeginReconstruction()
+            .CompleteReconstruction(Position("fp-1"));
+        var pending = reconstructed.MarkLegacyChangePending();
+        var required = pending.RequireSynchronization();
+
+        Action fromNotReconstructed = () => notReconstructed.RefreshSynchronizationPosition(Position("fp-x"));
+        Action fromPending = () => pending.RefreshSynchronizationPosition(Position("fp-x"));
+        Action fromRequired = () => required.RefreshSynchronizationPosition(Position("fp-x"));
+        Action nullPosition = () => reconstructed.RefreshSynchronizationPosition(null!);
+
+        fromNotReconstructed.Should().Throw<InvalidOperationException>();
+        fromPending.Should().Throw<InvalidOperationException>();
+        fromRequired.Should().Throw<InvalidOperationException>();
+        nullPosition.Should().Throw<ArgumentNullException>();
+    }
 }

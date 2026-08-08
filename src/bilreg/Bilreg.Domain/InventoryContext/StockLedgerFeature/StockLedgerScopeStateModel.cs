@@ -252,6 +252,27 @@ public record StockLedgerScopeStateModel : IStockLedgerScopeKey
     }
 
     /// <summary>
+    /// P4-S4 — Reconstructed + Current → same states with a refreshed opaque Synchronization Position
+    /// after a Native consequence that mutates legacy authority (e.g. DO Receipt void).
+    /// Does not enter SynchronizationRequired; caller supplies the new fingerprint-v1 position.
+    /// Does not transfer Stage B authority.
+    /// </summary>
+    public StockLedgerScopeStateModel RefreshSynchronizationPosition(
+        SynchronizationPositionType synchronizationPosition)
+    {
+        EnsureReconstructedBaseline(nameof(RefreshSynchronizationPosition));
+        EnsureSynchronizationState(
+            SynchronizationStateEnum.Current,
+            nameof(RefreshSynchronizationPosition));
+        Guard.Against.Null(synchronizationPosition, nameof(synchronizationPosition));
+
+        return WithState(
+            synchronizationState: SynchronizationStateEnum.Current,
+            synchronizationPosition: synchronizationPosition,
+            inconsistencyReason: null);
+    }
+
+    /// <summary>
     /// LegacyChangePending or SynchronizationRequired → Inconsistent.
     /// Reconstruction Status remains Reconstructed; origin of facts is unaffected.
     /// </summary>
