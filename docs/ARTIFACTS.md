@@ -296,6 +296,7 @@ Authoritative inventory movement, provenance, Remaining Quantity, FIFO, reservat
 | `docs/contexts/stok-ledger/stock-ledger-phase3-s4-implementation-summary.md` | Stock Ledger — Phase 3 / P3-S4 incremental catch-up + Synchronization Position advancement (G-14/G-15; R-001–R-004) |
 | `docs/contexts/stok-ledger/stock-ledger-P3-S5-implementation-summary.md` | Stock Ledger — Phase 3 / P3-S5 Legacy Freshness Gate (G-12; discovery fast-path + at-most-once catch-up) |
 | `docs/contexts/stok-ledger/stock-ledger-P3-S6-implementation-summary.md` | Stock Ledger — Phase 3 / P3-S6 sync retry, crash safety, duplicate protection, .NET serialization |
+| `docs/contexts/stok-ledger/stock-ledger-P3-S7-implementation-summary.md` | Stock Ledger — Phase 3 / P3-S7 coexistence sync harness (G-23 sync portion) |
 | `docs/contexts/stok-ledger/stock-ledger-phase2-s1-implementation-summary.md` | Stock Ledger — Phase 2 / P2-S1 live legacy reconstruction read adapter (G-05; `tb_stok` / `tb_buku` by Item + Receipt Source) |
 | `docs/contexts/stok-ledger/stock-ledger-phase2-s2-implementation-summary.md` | Stock Ledger — Phase 2 / P2-S2 reconstruction basis / fingerprint capture (init-only; opaque Synchronization Position) |
 | `docs/contexts/stok-ledger/stock-ledger-phase2-s3-implementation-summary.md` | Stock Ledger — Phase 2 / P2-S3 Domain readiness for reconstructed baseline facts (depleted create; ReconstructionBaseline idempotency kind) |

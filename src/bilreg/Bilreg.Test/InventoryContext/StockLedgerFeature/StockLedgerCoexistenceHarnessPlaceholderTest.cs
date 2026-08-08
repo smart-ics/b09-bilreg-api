@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Data.SqlClient;
 using Bilreg.Application.InventoryContext.StockLedgerFeature;
 using Bilreg.Application.InventoryContext.StockLedgerFeature.Ports;
@@ -14,10 +15,24 @@ using Nuna.Lib.PatternHelper;
 namespace Bilreg.Test.InventoryContext.StockLedgerFeature;
 
 /// <summary>
-/// G-23 coexistence harness scaffolding.
-/// Phase 2 activates only the reconstruction-relevant depleted-layer intentional difference.
-/// Phase 3/4/5/8 scenarios remain skipped placeholders.
+/// G-23 coexistence harness — Phase 3 sync portion (P3-S7).
+/// <para>
+/// Active: Legacy→New (discovery + catch-up + Freshness Gate), duplicate sync batch,
+/// real material mismatch, .NET sync/native-serialization race (in-process doubles),
+/// and P2-S8 depleted-layer intentional difference.
+/// </para>
+/// <para>
+/// Remaining skipped placeholders (later-phase ownership):
+/// <list type="bullet">
+/// <item><description><c>NewToLegacy</c> — Phase 4 (live Legacy Compatibility Writer)</description></item>
+/// <item><description><c>AlternatingWriters</c> — Phase 4+ (native FO writer + live mixed-writer)</description></item>
+/// <item><description><c>ConcurrentOutbound</c> — Phase 5 (outbound allocation + OCC hardening)</description></item>
+/// <item><description><c>PartialFailure_LegacyAndLedger</c> — Phase 4/8 (live legacy+Ledger rollback)</description></item>
+/// </list>
+/// Does not claim full G-23 matrix or production coexistence (FQ-06 / G-17 remains Phase 9).
+/// </para>
 /// </summary>
+[Collection("StockLedgerP3S4")]
 public class StockLedgerCoexistenceHarnessPlaceholderTest
 {
     private static readonly DateTime T1 = new(2024, 1, 15, 10, 30, 0, DateTimeKind.Unspecified);
@@ -26,22 +41,73 @@ public class StockLedgerCoexistenceHarnessPlaceholderTest
     private static readonly DateOnly ExpA = new(2025, 12, 31);
     private static readonly DateOnly ExpB = new(2025, 6, 1);
 
-    [Fact(Skip = "G-23 scaffolding — Legacy→New synchronization scenario requires Phase 3 discovery + sync.")]
-    public void LegacyToNew_SynchronizesLegacyOriginatedChange()
+    /// <summary>
+    /// G-23 Legacy→New — VB6-side change is consumed by discovery, catch-up, and Freshness Gate;
+    /// Ledger reflects <see cref="StockFactOriginEnum.LegacySynchronized"/> facts; legacy authority is never blocked.
+    /// </summary>
+    [Fact]
+    public async Task LegacyToNew_SynchronizesLegacyOriginatedChange()
     {
-        Assert.Fail("Not implemented: Legacy→New coexistence scenario.");
+        StockLedgerSchemaFixture.EnsureSchema();
+        var key = NewScopeKey("L2N");
+        Cleanup(key);
+
+        try
+        {
+            var baseline = SingleLocationSnapshot(key);
+            var harness = CreateSyncHarness(baseline);
+            await ReconstructAsync(harness, key);
+            await harness.Sync.Handle(
+                new SynchronizeStockLedgerScopeCommand(key.BrgId, key.ReceiptSourceId), default);
+
+            var priorPosition = harness.Repos.Scope.LoadEntity(key).Value.SynchronizationPosition!;
+            var changed = ChangedWithJournalInsert(key, baseline, qtyIn: 5m);
+            harness.LegacyRead.Balances = changed.Balances;
+            harness.LegacyRead.JournalEntries = changed.Journals;
+
+            var syncCalls = 0;
+            var gate = CreateGate(harness, async (cmd, ct) =>
+            {
+                syncCalls++;
+                return await harness.Sync.Handle(cmd, ct);
+            });
+
+            var result = await gate.EnsureFreshAsync(key, "LegacyToNewHarness");
+
+            result.Outcome.Should().Be(LegacyStockFreshnessGateOutcomeEnum.SynchronizedNow);
+            result.IsSafeToTrustLedgerLayers.Should().BeTrue();
+            result.ScopeState.SynchronizationState.Should().Be(SynchronizationStateEnum.Current);
+            result.SynchronizationPosition.Should().NotBe(priorPosition);
+
+            var expectedPosition = LegacyReconstructionBasisCalculator.Compute(
+                changed.Balances, changed.Journals);
+            result.SynchronizationPosition.Should().Be(expectedPosition);
+            result.SynchronizationPosition!.AlgorithmVersion
+                .Should().Be(LegacyReconstructionBasisCalculator.AlgorithmVersion);
+
+            syncCalls.Should().Be(1, "Freshness Gate must invoke catch-up at most once per call.");
+            TotalRemaining(key).Should().Be(changed.Balances.Sum(b => b.Quantity));
+
+            var syncOrigins = ListSyncMovementOrigins(key);
+            syncOrigins.Should().Contain(StockFactOriginEnum.LegacySynchronized);
+            harness.LegacyWriter.Applied.Should().BeEmpty("sync must not block or rewrite legacy authority.");
+        }
+        finally
+        {
+            Cleanup(key);
+        }
     }
 
-    [Fact(Skip = "G-23 scaffolding — New→Legacy visibility requires Phase 4 live Legacy Compatibility Writer.")]
+    [Fact(Skip = "G-23 — Phase 4: New→Legacy visibility requires live Legacy Compatibility Writer.")]
     public void NewToLegacy_ReceiptVisibleInLegacyAuthority()
     {
-        Assert.Fail("Not implemented: New→Legacy coexistence scenario.");
+        Assert.Fail("Not implemented: New→Legacy coexistence scenario (Phase 4).");
     }
 
-    [Fact(Skip = "G-23 scaffolding — alternating writers requires Phase 3/4 mixed-writer enablement.")]
+    [Fact(Skip = "G-23 — Phase 4+: alternating writers requires native FO writer + live mixed-writer enablement.")]
     public void AlternatingWriters_RemainReconcileable()
     {
-        Assert.Fail("Not implemented: alternating writers scenario.");
+        Assert.Fail("Not implemented: alternating writers scenario (Phase 4+).");
     }
 
     /// <summary>
@@ -57,8 +123,6 @@ public class StockLedgerCoexistenceHarnessPlaceholderTest
 
         try
         {
-            // Surviving legacy balances omit LY02 (fully consumed / deleted zero row).
-            // Journals still prove the depleted provenance at LY02.
             var legacyBalances = new List<LegacyStockBalanceType>
             {
                 Balance(key, "LY01", 5m, 1000m, ExpA, "STK001", T1, "B1")
@@ -73,7 +137,7 @@ public class StockLedgerCoexistenceHarnessPlaceholderTest
             legacyBalances.Should().NotContain(b => b.LayananId == "LY02",
                 "intentional difference: depleted zero row absent from legacy balances");
 
-            var (sut, _, _, repos) = CreateSut(legacyBalances, journals);
+            var (sut, _, _, repos) = CreateReconstructionSut(legacyBalances, journals);
             var result = await sut.Handle(
                 new ReconstructStockLedgerBaselineCommand(key.BrgId, key.ReceiptSourceId),
                 default);
@@ -95,7 +159,6 @@ public class StockLedgerCoexistenceHarnessPlaceholderTest
             ly02.Layers[0].InitialQuantity.Should().Be(8m);
             ly02.Layers[0].Origin.Should().Be(StockFactOriginEnum.Reconstructed);
 
-            // Representational: Ledger retains depleted layer; legacy balance list still has no LY02.
             legacyBalances.Should().HaveCount(1);
             CountLayers(key).Should().Be(2);
         }
@@ -105,28 +168,276 @@ public class StockLedgerCoexistenceHarnessPlaceholderTest
         }
     }
 
-    [Fact(Skip = "G-23 scaffolding — real mismatch classification requires Phase 3/8 reconciliation behavior.")]
-    public void RealMismatch_IsClassifiedAndSurfaced()
+    /// <summary>
+    /// G-23 real mismatch — material quantity drift surfaces Inconsistent via catch-up + Freshness Gate;
+    /// prior Synchronization Position is retained.
+    /// </summary>
+    [Fact]
+    public async Task RealMismatch_IsClassifiedAndSurfaced()
     {
-        Assert.Fail("Not implemented: real mismatch scenario.");
+        StockLedgerSchemaFixture.EnsureSchema();
+        var key = NewScopeKey("MIS");
+        Cleanup(key);
+
+        try
+        {
+            var baseline = SingleLocationSnapshot(key);
+            var harness = CreateSyncHarness(baseline);
+            await ReconstructAsync(harness, key);
+            await harness.Sync.Handle(
+                new SynchronizeStockLedgerScopeCommand(key.BrgId, key.ReceiptSourceId), default);
+
+            var priorPosition = harness.Repos.Scope.LoadEntity(key).Value.SynchronizationPosition!;
+
+            // Simulate undetected Ledger drift (not mirrored in legacy authority).
+            TamperLayerRemainingQuantity(key, "LY01", newRemaining: 1m);
+
+            var changed = ChangedWithJournalInsert(key, baseline, qtyIn: 5m);
+            harness.LegacyRead.Balances = changed.Balances;
+            harness.LegacyRead.JournalEntries = changed.Journals;
+
+            var gate = CreateGate(harness, harness.Sync.Handle);
+            var result = await gate.EnsureFreshAsync(key, "RealMismatchHarness");
+
+            result.Outcome.Should().Be(LegacyStockFreshnessGateOutcomeEnum.Inconsistent);
+            result.IsSafeToTrustLedgerLayers.Should().BeFalse();
+
+            var scope = harness.Repos.Scope.LoadEntity(key).Value;
+            scope.SynchronizationState.Should().Be(SynchronizationStateEnum.Inconsistent);
+            scope.SynchronizationPosition.Should().Be(priorPosition);
+
+            var reconcile = new StockReconciliationPort(
+                harness.LegacyRead,
+                new StockLayerDal(ConnStringHelper.GetTestEnv()),
+                harness.Repos.Scope);
+            var classification = reconcile.Reconcile(key);
+            classification.Outcome.Should().Be(StockReconciliationOutcomeEnum.MaterialInconsistency);
+            StockReconciliationClassifier.AllowsMaterialSynchronizationAdvance(classification)
+                .Should().BeFalse();
+        }
+        finally
+        {
+            Cleanup(key);
+        }
     }
 
-    [Fact(Skip = "G-23 scaffolding — duplicate sync batch covered when Phase 3 sync UoW exists.")]
-    public void DuplicateSyncBatch_IsIdempotent()
+    /// <summary>
+    /// G-23 duplicate sync batch — repeated catch-up against the same legacy snapshot is quantity-neutral.
+    /// </summary>
+    [Fact]
+    public async Task DuplicateSyncBatch_IsIdempotent()
     {
-        Assert.Fail("Not implemented: duplicate sync batch scenario.");
+        StockLedgerSchemaFixture.EnsureSchema();
+        var key = NewScopeKey("DUP");
+        Cleanup(key);
+
+        try
+        {
+            var baseline = SingleLocationSnapshot(key);
+            var harness = CreateSyncHarness(baseline);
+            await ReconstructAsync(harness, key);
+            await harness.Sync.Handle(
+                new SynchronizeStockLedgerScopeCommand(key.BrgId, key.ReceiptSourceId), default);
+
+            var changed = ChangedWithJournalInsert(key, baseline, qtyIn: 3m);
+            harness.LegacyRead.Balances = changed.Balances;
+            harness.LegacyRead.JournalEntries = changed.Journals;
+
+            var first = await harness.Sync.Handle(
+                new SynchronizeStockLedgerScopeCommand(key.BrgId, key.ReceiptSourceId), default);
+            first.Outcome.Should().Be(SynchronizeStockLedgerScopeOutcomeEnum.Synchronized);
+
+            var layersAfterFirst = CountLayers(key);
+            var qtyAfterFirst = TotalRemaining(key);
+            var positionAfterFirst = harness.Repos.Scope.LoadEntity(key).Value.SynchronizationPosition;
+
+            var second = await harness.Sync.Handle(
+                new SynchronizeStockLedgerScopeCommand(key.BrgId, key.ReceiptSourceId), default);
+            second.Outcome.Should().Be(SynchronizeStockLedgerScopeOutcomeEnum.AlreadyCurrent);
+
+            CountLayers(key).Should().Be(layersAfterFirst);
+            TotalRemaining(key).Should().Be(qtyAfterFirst);
+            harness.Repos.Scope.LoadEntity(key).Value.SynchronizationPosition.Should().Be(positionAfterFirst);
+            harness.LegacyWriter.Applied.Should().BeEmpty();
+        }
+        finally
+        {
+            Cleanup(key);
+        }
     }
 
-    [Fact(Skip = "G-23 scaffolding — concurrent outbound requires Phase 5 capability + OCC hardening.")]
+    [Fact(Skip = "G-23 — Phase 5: concurrent outbound requires Phase 5 allocation + OCC hardening.")]
     public void ConcurrentOutbound_RespectsWriteConsistencyScope()
     {
-        Assert.Fail("Not implemented: concurrent outbound scenario.");
+        Assert.Fail("Not implemented: concurrent outbound scenario (Phase 5).");
     }
 
-    [Fact(Skip = "G-23 scaffolding — partial-failure rollback across live legacy+Ledger is Phase 4+ (Ledger-only proven in P1-S8).")]
+    [Fact(Skip = "G-23 — Phase 4/8: partial-failure rollback across live legacy+Ledger (Ledger-only proven in P1-S8).")]
     public void PartialFailure_LegacyAndLedger_RollBackTogether()
     {
-        Assert.Fail("Not implemented: live legacy+Ledger partial-failure scenario.");
+        Assert.Fail("Not implemented: live legacy+Ledger partial-failure scenario (Phase 4/8).");
+    }
+
+    /// <summary>
+    /// G-23 / G-17 interim (.NET-side only) — in-process native-write doubles honor Freshness Gate
+    /// serialization while concurrent catch-up runs; quantity remains correct; FQ-06 not claimed.
+    /// </summary>
+    [Fact]
+    public async Task SyncNativeSerializationRace_InProcessDoubles_OneWinnerQuantityNeutral()
+    {
+        StockLedgerSchemaFixture.EnsureSchema();
+        var key = NewScopeKey("RCE");
+        Cleanup(key);
+
+        try
+        {
+            var baseline = SingleLocationSnapshot(key);
+            var harness = CreateSyncHarness(baseline);
+            await ReconstructAsync(harness, key);
+            await harness.Sync.Handle(
+                new SynchronizeStockLedgerScopeCommand(key.BrgId, key.ReceiptSourceId), default);
+
+            var changed = ChangedWithJournalInsert(key, baseline, qtyIn: 4m);
+            harness.LegacyRead.Balances = changed.Balances;
+            harness.LegacyRead.JournalEntries = changed.Journals;
+            var expectedQty = changed.Balances.Sum(b => b.Quantity);
+
+            var gateOutcomes = new ConcurrentBag<LegacyStockFreshnessGateOutcomeEnum>();
+            var syncOutcomes = new ConcurrentBag<SynchronizeStockLedgerScopeOutcomeEnum>();
+            var errors = new ConcurrentBag<Exception>();
+
+            await Task.WhenAll(Enumerable.Range(0, 8).Select(async i =>
+            {
+                try
+                {
+                    if (i % 2 == 0)
+                    {
+                        var racerHarness = CreateSyncHarness(harness.LegacyRead);
+                        var gate = CreateGate(racerHarness, racerHarness.Sync.Handle);
+                        var gateResult = await gate.EnsureFreshAsync(key, "NativeWriteDouble");
+                        gateOutcomes.Add(gateResult.Outcome);
+                    }
+                    else
+                    {
+                        var racer = CreateSyncHarness(harness.LegacyRead).Sync;
+                        var syncResult = await racer.Handle(
+                            new SynchronizeStockLedgerScopeCommand(key.BrgId, key.ReceiptSourceId),
+                            default);
+                        syncOutcomes.Add(syncResult.Outcome);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    errors.Add(ex);
+                }
+            }));
+
+            errors.Should().BeEmpty();
+            gateOutcomes.Should().NotBeEmpty();
+            syncOutcomes.Should().NotBeEmpty();
+
+            gateOutcomes.Should().OnlyContain(o =>
+                o == LegacyStockFreshnessGateOutcomeEnum.SynchronizedNow
+                || o == LegacyStockFreshnessGateOutcomeEnum.Current
+                || o == LegacyStockFreshnessGateOutcomeEnum.StaleOrNotCurrent);
+
+            syncOutcomes.Should().OnlyContain(o =>
+                o == SynchronizeStockLedgerScopeOutcomeEnum.Synchronized
+                || o == SynchronizeStockLedgerScopeOutcomeEnum.AlreadyCurrent
+                || o == SynchronizeStockLedgerScopeOutcomeEnum.ClaimConflict);
+
+            (gateOutcomes.Count(o => o == LegacyStockFreshnessGateOutcomeEnum.SynchronizedNow)
+             + syncOutcomes.Count(o => o == SynchronizeStockLedgerScopeOutcomeEnum.Synchronized))
+                .Should().BeGreaterThanOrEqualTo(1);
+
+            var scope = harness.Repos.Scope.LoadEntity(key).Value;
+            scope.SynchronizationState.Should().Be(SynchronizationStateEnum.Current);
+            TotalRemaining(key).Should().Be(expectedQty);
+
+            var expectedPosition = LegacyReconstructionBasisCalculator.Compute(
+                changed.Balances, changed.Journals);
+            scope.SynchronizationPosition.Should().Be(expectedPosition);
+            harness.LegacyWriter.Applied.Should().BeEmpty();
+        }
+        finally
+        {
+            Cleanup(key);
+        }
+    }
+
+    private static async Task ReconstructAsync(SyncHarness harness, IStockLedgerScopeKey key)
+    {
+        var result = await harness.Reconstruct.Handle(
+            new ReconstructStockLedgerBaselineCommand(key.BrgId, key.ReceiptSourceId), default);
+        result.Outcome.Should().Be(ReconstructStockLedgerBaselineOutcomeEnum.Reconstructed);
+    }
+
+    private static LegacyStockFreshnessGate CreateGate(
+        SyncHarness harness,
+        Func<SynchronizeStockLedgerScopeCommand, CancellationToken, Task<SynchronizeStockLedgerScopeResult>> sync)
+        => new(
+            harness.Repos.Scope,
+            harness.Discovery,
+            harness.LegacyRead,
+            harness.Repos.Idempotency,
+            sync);
+
+    private static SyncHarness CreateSyncHarness(Snapshot snapshot)
+        => CreateSyncHarness(new FakeLegacyStockReadPort
+        {
+            Balances = snapshot.Balances,
+            JournalEntries = snapshot.Journals
+        });
+
+    private static SyncHarness CreateSyncHarness(FakeLegacyStockReadPort fakeRead)
+    {
+        var options = ConnStringHelper.GetTestEnv();
+        var spy = new SpyUnitOfWork();
+        var scopeRepo = new StockLedgerScopeStateRepo(new StockLedgerScopeDal(options));
+        var movementRepo = new StockMovementRepo(
+            new StockMovementDal(options),
+            new StockMovementLineDal(options));
+        var positionRepo = new StockPositionRepo(
+            new StockPositionDal(options),
+            new StockLayerDal(options));
+        var idempotencyDal = new StockSourceIdempotencyDal(options);
+        var idempotencyRepo = new StockSourceIdempotencyRepo(idempotencyDal);
+        var legacyWriter = new FakeLegacyCompatibilityWriterPort();
+        var uow = new StockConsequenceUnitOfWork(
+            spy, idempotencyRepo, movementRepo, positionRepo, scopeRepo, legacyWriter);
+
+        var claim = new ReconstructionClaimService(spy, scopeRepo);
+        var reconstruct = new ReconstructStockLedgerBaselineHandler(
+            claim, fakeRead, uow, spy, scopeRepo, idempotencyRepo);
+
+        var discovery = new LegacyChangeDiscoveryPort(fakeRead, idempotencyDal);
+        var reconcile = new StockReconciliationPort(fakeRead, new StockLayerDal(options), scopeRepo);
+        var snapshotLoader = new LegacySyncLedgerSnapshotLoader(
+            idempotencyRepo, positionRepo, movementRepo);
+        var bootstrapper = new LegacySyncIdentityBootstrapper(
+            uow, idempotencyRepo, movementRepo);
+        var syncClaim = new SynchronizationClaimService(spy, scopeRepo);
+
+        var sync = new SynchronizeStockLedgerScopeHandler(
+            scopeRepo,
+            discovery,
+            fakeRead,
+            reconcile,
+            uow,
+            spy,
+            syncClaim,
+            snapshotLoader,
+            bootstrapper,
+            positionRepo,
+            idempotencyRepo);
+
+        return new SyncHarness(
+            reconstruct,
+            sync,
+            discovery,
+            fakeRead,
+            legacyWriter,
+            new Repos(scopeRepo, movementRepo, positionRepo, idempotencyRepo));
     }
 
     private static (
@@ -134,7 +445,7 @@ public class StockLedgerCoexistenceHarnessPlaceholderTest
         SpyUnitOfWork Spy,
         FakeLegacyCompatibilityWriterPort Legacy,
         Repos Repos)
-        CreateSut(
+        CreateReconstructionSut(
             IReadOnlyList<LegacyStockBalanceType> balances,
             IReadOnlyList<LegacyStockJournalEntryType> journals)
     {
@@ -172,6 +483,51 @@ public class StockLedgerCoexistenceHarnessPlaceholderTest
             idempotencyRepo);
 
         return (sut, spy, legacyWriter, new Repos(scopeRepo, movementRepo, positionRepo, idempotencyRepo));
+    }
+
+    private static Snapshot SingleLocationSnapshot(IStockLedgerScopeKey key)
+        => new(
+            [Balance(key, "LY01", 10m, 1000m, ExpA, "STK001", T1, "B1")],
+            [Journal(key, "TRS001", "LY01", 10m, 0m, 1000m, ExpA, T1, "B1")]);
+
+    private static Snapshot ChangedWithJournalInsert(
+        IStockLedgerScopeKey key,
+        Snapshot baseline,
+        decimal qtyIn)
+    {
+        var balances = baseline.Balances
+            .Select(b => b.LayananId == "LY01"
+                ? b with { Quantity = b.Quantity + qtyIn }
+                : b)
+            .ToArray();
+        var journals = baseline.Journals
+            .Concat([Journal(key, "TRS-NEW", "LY01", qtyIn, 0m, 1000m, ExpA, T3, "B1")])
+            .ToArray();
+        return new Snapshot(balances, journals);
+    }
+
+    private static void TamperLayerRemainingQuantity(
+        IStockLedgerScopeKey key,
+        string layananId,
+        decimal newRemaining)
+    {
+        using var conn = new SqlConnection(ConnStringHelper.Get(ConnStringHelper.GetTestEnv().Value));
+        conn.Open();
+        conn.Execute(
+            """
+            UPDATE BILRG_StokLayer
+            SET RemainingQuantity = @RemainingQuantity
+            WHERE BrgId = @BrgId
+              AND ReceiptSourceId = @ReceiptSourceId
+              AND LayananId = @LayananId
+            """,
+            new
+            {
+                RemainingQuantity = newRemaining,
+                key.BrgId,
+                key.ReceiptSourceId,
+                LayananId = layananId
+            }).Should().BeGreaterThan(0);
     }
 
     private static LegacyStockBalanceType Balance(
@@ -234,25 +590,38 @@ public class StockLedgerCoexistenceHarnessPlaceholderTest
     {
         using var conn = new SqlConnection(ConnStringHelper.Get(ConnStringHelper.GetTestEnv().Value));
         conn.Open();
-        var movementId = LegacyReconstructionBaselineCalculator.BuildMovementId(key);
-        var idempotencyKey = $"RECON|{key.BrgId}|{key.ReceiptSourceId}|baseline";
+        var reconMovementId = LegacyReconstructionBaselineCalculator.BuildMovementId(key);
         conn.Execute(
             """
-            DELETE FROM BILRG_StokMovementLine WHERE StockMovementId = @MovementId;
-            DELETE FROM BILRG_StokMovement WHERE StockMovementId = @MovementId;
+            DELETE FROM BILRG_StokMovementLine
+            WHERE StockMovementId IN (
+                SELECT StockMovementId FROM BILRG_StokSourceIdempotency
+                WHERE BrgId = @BrgId AND ReceiptSourceId = @ReceiptSourceId AND StockMovementId <> ''
+                UNION
+                SELECT LayerFormingMovementId FROM BILRG_StokLayer
+                WHERE BrgId = @BrgId AND ReceiptSourceId = @ReceiptSourceId
+                UNION
+                SELECT @ReconMovementId);
+            DELETE FROM BILRG_StokMovement
+            WHERE StockMovementId IN (
+                SELECT StockMovementId FROM BILRG_StokSourceIdempotency
+                WHERE BrgId = @BrgId AND ReceiptSourceId = @ReceiptSourceId AND StockMovementId <> ''
+                UNION
+                SELECT LayerFormingMovementId FROM BILRG_StokLayer
+                WHERE BrgId = @BrgId AND ReceiptSourceId = @ReceiptSourceId
+                UNION
+                SELECT @ReconMovementId);
             DELETE FROM BILRG_StokLayer WHERE BrgId = @BrgId AND ReceiptSourceId = @ReceiptSourceId;
             DELETE FROM BILRG_StokPosition WHERE BrgId = @BrgId AND ReceiptSourceId = @ReceiptSourceId;
             DELETE FROM BILRG_StokLedgerScope WHERE BrgId = @BrgId AND ReceiptSourceId = @ReceiptSourceId;
             DELETE FROM BILRG_StokSourceIdempotency
-            WHERE IdempotencyKind = @Kind AND IdempotencyKey = @IdempotencyKey;
+            WHERE BrgId = @BrgId AND ReceiptSourceId = @ReceiptSourceId;
             """,
             new
             {
-                MovementId = movementId,
                 key.BrgId,
                 key.ReceiptSourceId,
-                Kind = (int)StockSourceIdempotencyKindEnum.ReconstructionBaseline,
-                IdempotencyKey = idempotencyKey
+                ReconMovementId = reconMovementId
             });
     }
 
@@ -268,9 +637,58 @@ public class StockLedgerCoexistenceHarnessPlaceholderTest
             new { key.BrgId, key.ReceiptSourceId });
     }
 
+    private static decimal TotalRemaining(IStockLedgerScopeKey key)
+    {
+        using var conn = new SqlConnection(ConnStringHelper.Get(ConnStringHelper.GetTestEnv().Value));
+        conn.Open();
+        return conn.ExecuteScalar<decimal>(
+            """
+            SELECT ISNULL(SUM(RemainingQuantity), 0)
+            FROM BILRG_StokLayer
+            WHERE BrgId = @BrgId AND ReceiptSourceId = @ReceiptSourceId
+            """,
+            new { key.BrgId, key.ReceiptSourceId });
+    }
+
+    private static IReadOnlyList<StockFactOriginEnum> ListSyncMovementOrigins(IStockLedgerScopeKey key)
+    {
+        using var conn = new SqlConnection(ConnStringHelper.Get(ConnStringHelper.GetTestEnv().Value));
+        conn.Open();
+        return conn.Query<int>(
+            """
+            SELECT DISTINCT m.Origin
+            FROM BILRG_StokMovement m
+            INNER JOIN BILRG_StokSourceIdempotency i
+              ON i.StockMovementId = m.StockMovementId
+            WHERE i.BrgId = @BrgId
+              AND i.ReceiptSourceId = @ReceiptSourceId
+              AND i.IdempotencyKind = @SyncKind
+            """,
+            new
+            {
+                key.BrgId,
+                key.ReceiptSourceId,
+                SyncKind = (int)StockSourceIdempotencyKindEnum.SyncBatch
+            })
+            .Select(o => (StockFactOriginEnum)o)
+            .ToList();
+    }
+
+    private sealed record Snapshot(
+        IReadOnlyList<LegacyStockBalanceType> Balances,
+        IReadOnlyList<LegacyStockJournalEntryType> Journals);
+
     private sealed record Repos(
         IStockLedgerScopeStateRepo Scope,
         IStockMovementRepo Movement,
         IStockPositionRepo Position,
         IStockSourceIdempotencyRepo Idempotency);
+
+    private sealed record SyncHarness(
+        ReconstructStockLedgerBaselineHandler Reconstruct,
+        SynchronizeStockLedgerScopeHandler Sync,
+        ILegacyChangeDiscoveryPort Discovery,
+        FakeLegacyStockReadPort LegacyRead,
+        FakeLegacyCompatibilityWriterPort LegacyWriter,
+        Repos Repos);
 }
