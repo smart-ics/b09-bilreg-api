@@ -25,6 +25,7 @@ It contains only implementation-review findings that affect future slices.
 | 2026-08-08 | P3-S4 | **REQUIRES CHANGES** | Thin orchestration + G-14/G-15 happy path accepted; R-001–R-004 verified Resolved for stated actions. **Major:** R-001 bootstrap anchors every journal identity to the aggregate reconstruction movement, so `JournalVoidDelete` → `Reverse` can over-apply across multi-line / multi-location baselines and commit incorrect layer depletions in short TXs before reconcile fails closed (R-007). Do not start P3-S5 until R-007 is fixed. |
 | 2026-08-08 | P3-S4 R-007 remediation | **Implemented — awaiting review** | Option A fail-closed void target guard coded and tested (`TryResolveSafeVoidTarget`); multi-location sibling Remaining Quantity unchanged; single-location void happy path hardened. Status remains awaiting re-review; not marked Resolved. |
 | 2026-08-08 | P3-S4 R-007 remediation re-review | **APPROVED** | R-007 verified Resolved. `TryResolveSafeVoidTarget` fail-closes unsafe aggregate voids before PersistIntents; multi-location sibling qty unchanged; 1:1 void Synchronized + Reversal hardened. P3-S4 complete; P3-S5 may begin. No new backlog items. |
+| 2026-08-08 | P3-S5 | **APPROVED** | Legacy Freshness Gate (G-12) accepted: discovery fast-path + at-most-once catch-up; fail-closed `StaleOrNotCurrent` / `Inconsistent`; no Authority Gate / no legacy mutation; no P3-S6+ scope. No backlog items targeted P3-S5. P3-S6 may begin. No new backlog items. |
 
 ---
 
