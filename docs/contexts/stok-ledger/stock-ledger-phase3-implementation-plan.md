@@ -15,7 +15,7 @@
 | Slice | Status | Summary |
 |---|---|---|
 | P3-S1 | **COMPLETE** | Live G-13 discovery adapter + set-diff classifier + detection tests; **gate PASS** |
-| P3-S2 | **PENDING** | — |
+| P3-S2 | **COMPLETE** | Pure sync delta interpreter + intent model + unit tests; **no I/O** |
 | P3-S3 | **PENDING** | — |
 | P3-S4 | **PENDING** | — |
 | P3-S5 | **PENDING** | — |
