@@ -1,6 +1,6 @@
 # Stock Ledger Phase 3 / P3-S2 — Implementation Summary
 
-**Status:** COMPLETE  
+**Status:** COMPLETE (R-005 Resolved)  
 **Date:** 2026-08-08  
 **Slice:** P3-S2 — Sync delta interpretation (void/update → accountable intents)  
 **Plan:** [`stock-ledger-phase3-implementation-plan.md`](./stock-ledger-phase3-implementation-plan.md)
@@ -30,9 +30,9 @@ Produce a **deterministic, side-effect-free, SQL-free, persistence-free** Applic
 
 | Item | Target | Priority | Disposition |
 |---|---|---|---|
-| *(none)* | — | — | Review backlog R-001 / R-002 target **P3-S4** only |
-
-No Required or Recommended backlog items target P3-S2.
+| R-005 | P3-S2 | Required | **Resolved** (compensatory JournalUpdate re-reviewed) |
+| R-001 | P3-S4 | Required | Deferred |
+| R-002 | P3-S4 | Required | Deferred |
 
 ---
 
@@ -52,7 +52,7 @@ No Required or Recommended backlog items target P3-S2.
 | Delta | Intent |
 |---|---|
 | `JournalVoidDelete` | `ReversePriorMovement` via `movement.Reverse(..., LegacySynchronized)` |
-| `JournalUpdate` | `CorrectPriorMovement` via `movement.Correct(..., LegacySynchronized)` |
+| `JournalUpdate` | `CorrectPriorMovement` via `movement.Correct(..., LegacySynchronized)` with **compensatory delta lines** (R-005; not absolute restatement) |
 | `JournalInsert` inbound | `ApplyLegacySynchronizedReceipt` |
 | `JournalInsert` outbound | `ApplyLegacySynchronizedOutbound` |
 | `BalanceUpdate` qty change | `AdjustLayerRemainingQuantity` (new movement; layer Origin preserved) |
@@ -90,21 +90,60 @@ No architectural reopen. Locked decisions preserved.
 
 | Item | Status |
 |---|---|
+| R-005 (P3-S2) | **Resolved** |
 | R-001 (P3-S4) | **Not resolved** — correctly deferred; first sync must establish identity-key set |
 | R-002 (P3-S4) | **Not resolved** — correctly deferred; idempotency key width before catch-up writes |
 
 ---
 
-## Test results
+## Remediation — R-005 (2026-08-08)
+
+### Problem
+
+`InterpretJournalUpdate` passed absolute current-journal lines into Domain `StockMovementModel.Correct`. Because `Correct` records those lines as a **new** correction consequence, absolute restatement would double-apply quantity on catch-up persist.
+
+### Fix
+
+| Area | Change |
+|---|---|
+| `LegacySyncDeltaInterpreter.InterpretJournalUpdate` | Build inventory-signed **compensatory** Correct lines (new qty − previously represented qty) |
+| Fail-closed | Direction / Receipt Source / Stock Location / unit-valuation (and non-uniform prior lines) ⇒ `Ambiguous` |
+| Quantity-neutral | Same material qty + preserved attributes ⇒ no quantity consequence (skip intent) |
+| History | Prior movement never edited/deleted |
+
+### Tests added/changed
+
+- OUT 10 → OUT 7 ⇒ compensating Inbound 3
+- IN 100 → IN 90 ⇒ compensating Outbound 10
+- Quantity increase ⇒ same-direction compensatory delta
+- No quantity difference ⇒ empty intents (no duplicate quantity consequence)
+- Unit-cost / direction change ⇒ Ambiguous
+- Existing void/reversal + determinism / history-retention tests remain green
+
+### Repository decision
+
+Compensatory delta is computed as inventory-signed net (`inbound increase` / `outbound decrease` → Inbound compensation). Absolute journal restatement is forbidden for JournalUpdate. Non-quantity material changes fail closed rather than inventing provenance rewrite.
+
+### Test results (post-remediation)
 
 | Check | Result |
 |---|---|
-| `dotnet test --filter FullyQualifiedName~LegacySyncDeltaInterpreter` | **15 passed**, 0 failed |
+| `dotnet test --filter FullyQualifiedName~LegacySyncDeltaInterpreter` | **20 passed**, 0 failed |
+| `StockLedgerFeature` (single-threaded) | **197 passed**, 7 skipped, 0 failed |
+| Solution build | Succeeded |
+
+---
+
+## Test results (original slice delivery)
+
+| Check | Result |
+|---|---|
+| `dotnet test --filter FullyQualifiedName~LegacySyncDeltaInterpreter` | **15 passed**, 0 failed (pre-R-005) |
 | Pure / non-integration StockLedgerFeature filter | **125 passed**, 7 skipped, 0 failed |
 | Solution build (`Bilreg.Application` / `Bilreg.Test`) | Succeeded |
 | Full `StockLedgerFeature` filter (incl. live DB fixtures) | Pre-existing `devTest` deadlocks under parallel/shared DB load (same note as P3-S1); **not caused by P3-S2** (pure tests only) |
 
-Covered scenarios: unchanged empty intents; `RequiresScopedReDerive` fail-closed; Undeterminable → Ambiguous; void → reversal; void without anchor → Ambiguous; update → correction; inbound/outbound insert; repost void-then-insert order; duplicate delta dedup; balance decrease preserves layer Origin; depleted BalanceDelete omission; active BalanceDelete depletion; determinism; history retention.
+Covered scenarios: unchanged empty intents; `RequiresScopedReDerive` fail-closed; Undeterminable → Ambiguous; void → reversal; void without anchor → Ambiguous; update → compensatory correction (R-005); inbound/outbound insert; repost void-then-insert order; duplicate delta dedup; balance decrease preserves layer Origin; depleted BalanceDelete omission; active BalanceDelete depletion; determinism; history retention.
 
 ---
 
@@ -139,8 +178,8 @@ Covered scenarios: unchanged empty intents; `RequiresScopedReDerive` fail-closed
 |---|---|
 | `src/bilreg/Bilreg.Application/InventoryContext/StockLedgerFeature/LegacySyncLedgerSnapshot.cs` | Added |
 | `src/bilreg/Bilreg.Application/InventoryContext/StockLedgerFeature/LegacySyncIntentType.cs` | Added |
-| `src/bilreg/Bilreg.Application/InventoryContext/StockLedgerFeature/LegacySyncDeltaInterpreter.cs` | Added |
-| `src/bilreg/Bilreg.Test/InventoryContext/StockLedgerFeature/LegacySyncDeltaInterpreterTest.cs` | Added |
+| `src/bilreg/Bilreg.Application/InventoryContext/StockLedgerFeature/LegacySyncDeltaInterpreter.cs` | Added; R-005 compensatory JournalUpdate |
+| `src/bilreg/Bilreg.Test/InventoryContext/StockLedgerFeature/LegacySyncDeltaInterpreterTest.cs` | Added; R-005 compensatory / Ambiguous cases |
 | `docs/contexts/stok-ledger/stock-ledger-phase3-implementation-plan.md` | Slice progress |
 | `docs/ARTIFACTS.md` | Registry entry |
 | `docs/contexts/stok-ledger/stock-ledger-P3-S2-implementation-summary.md` | Added |
@@ -149,4 +188,4 @@ Covered scenarios: unchanged empty intents; `RequiresScopedReDerive` fail-closed
 
 ## Next slice readiness
 
-**P3-S3 can proceed.** Material reconciliation (classify only) can be implemented independently of this interpreter. P3-S4 catch-up will compose discovery → `LegacySyncDeltaInterpreter.Interpret` → short TX persist using intent `SyncIdempotencyKey` / `ProposedMovement`, and must resolve review backlog R-001 / R-002 before relying on set-diff post-reconstruction.
+**Ready for P3-S4** (R-005 Resolved). P3-S4 catch-up will compose discovery → `LegacySyncDeltaInterpreter.Interpret` → short TX persist using intent `SyncIdempotencyKey` / `ProposedMovement`, and must still resolve R-001 / R-002 before relying on set-diff post-reconstruction.

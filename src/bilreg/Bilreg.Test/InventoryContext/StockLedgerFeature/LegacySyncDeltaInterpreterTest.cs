@@ -128,18 +128,19 @@ public class LegacySyncDeltaInterpreterTest
     }
 
     [Fact]
-    public void JournalUpdate_ProducesCorrectionIntent()
+    public void JournalUpdate_OutboundDecrease_ProducesCompensatingInbound()
     {
-        var prior = CreatePriorReceipt("MOV-PRIOR-1", "LY01", 10m);
+        // Previously represented OUT 10 → legacy now OUT 7 ⇒ compensatory +3 (Inbound).
+        var prior = CreatePriorOutbound("MOV-PRIOR-OUT", "LY01", 10m);
         var snapshot = SnapshotWithJournal("BK001", "LY01", prior);
-        var updated = Journal("BK001", "LY01", 9m, 0m, T2);
+        var updated = Journal("BK001", "LY01", 0m, 7m, T2);
         var discovery = ChangesDetected(
             new LegacyDiscoveredDeltaType(
                 LegacyDiscoveredDeltaKindEnum.JournalUpdate,
                 "BK001",
                 "LY01",
-                9m,
                 0m,
+                7m,
                 T2));
 
         var result = Interpret(discovery, snapshot, [updated], []);
@@ -147,11 +148,143 @@ public class LegacySyncDeltaInterpreterTest
         result.Outcome.Should().Be(LegacySyncInterpretationOutcomeEnum.Succeeded);
         var intent = result.Intents.Should().ContainSingle().Subject;
         intent.Kind.Should().Be(LegacySyncIntentKindEnum.CorrectPriorMovement);
-        intent.TargetMovementId.Should().Be("MOV-PRIOR-1");
+        intent.TargetMovementId.Should().Be("MOV-PRIOR-OUT");
         intent.ProposedMovement!.MovementKind.Should().Be(StockMovementKindEnum.Correction);
-        intent.ProposedMovement.CorrectedMovementId.Should().Be("MOV-PRIOR-1");
+        intent.ProposedMovement.CorrectedMovementId.Should().Be("MOV-PRIOR-OUT");
         intent.ProposedMovement.Origin.Should().Be(StockFactOriginEnum.LegacySynchronized);
-        intent.ProposedMovement.Lines.Single().Quantity.Should().Be(9m);
+        var line = intent.ProposedMovement.Lines.Should().ContainSingle().Subject;
+        line.Direction.Should().Be(StockMovementDirectionEnum.Inbound);
+        line.Quantity.Should().Be(3m);
+        prior.Lines.Single().Quantity.Should().Be(10m);
+    }
+
+    [Fact]
+    public void JournalUpdate_InboundDecrease_ProducesCompensatingOutbound()
+    {
+        // Previously represented IN 100 → legacy now IN 90 ⇒ compensatory -10 (Outbound).
+        var prior = CreatePriorReceipt("MOV-PRIOR-IN", "LY01", 100m);
+        var snapshot = SnapshotWithJournal("BK001", "LY01", prior);
+        var updated = Journal("BK001", "LY01", 90m, 0m, T2);
+        var discovery = ChangesDetected(
+            new LegacyDiscoveredDeltaType(
+                LegacyDiscoveredDeltaKindEnum.JournalUpdate,
+                "BK001",
+                "LY01",
+                90m,
+                0m,
+                T2));
+
+        var result = Interpret(discovery, snapshot, [updated], []);
+
+        result.Outcome.Should().Be(LegacySyncInterpretationOutcomeEnum.Succeeded);
+        var line = result.Intents.Should().ContainSingle().Subject.ProposedMovement!.Lines
+            .Should().ContainSingle().Subject;
+        line.Direction.Should().Be(StockMovementDirectionEnum.Outbound);
+        line.Quantity.Should().Be(10m);
+    }
+
+    [Fact]
+    public void JournalUpdate_QuantityIncrease_ProducesCompensatingSameDirectionDelta()
+    {
+        // Previously represented IN 10 → legacy now IN 15 ⇒ compensatory +5 (Inbound).
+        var prior = CreatePriorReceipt("MOV-PRIOR-1", "LY01", 10m);
+        var snapshot = SnapshotWithJournal("BK001", "LY01", prior);
+        var updated = Journal("BK001", "LY01", 15m, 0m, T2);
+        var discovery = ChangesDetected(
+            new LegacyDiscoveredDeltaType(
+                LegacyDiscoveredDeltaKindEnum.JournalUpdate,
+                "BK001",
+                "LY01",
+                15m,
+                0m,
+                T2));
+
+        var result = Interpret(discovery, snapshot, [updated], []);
+
+        result.Outcome.Should().Be(LegacySyncInterpretationOutcomeEnum.Succeeded);
+        var line = result.Intents.Should().ContainSingle().Subject.ProposedMovement!.Lines
+            .Should().ContainSingle().Subject;
+        line.Direction.Should().Be(StockMovementDirectionEnum.Inbound);
+        line.Quantity.Should().Be(5m);
+    }
+
+    [Fact]
+    public void JournalUpdate_NoQuantityDifference_ProducesNoQuantityConsequence()
+    {
+        var prior = CreatePriorReceipt("MOV-PRIOR-1", "LY01", 10m);
+        var snapshot = SnapshotWithJournal("BK001", "LY01", prior);
+        var updated = Journal("BK001", "LY01", 10m, 0m, T2);
+        var discovery = ChangesDetected(
+            new LegacyDiscoveredDeltaType(
+                LegacyDiscoveredDeltaKindEnum.JournalUpdate,
+                "BK001",
+                "LY01",
+                10m,
+                0m,
+                T2));
+
+        var result = Interpret(discovery, snapshot, [updated], []);
+
+        result.Outcome.Should().Be(LegacySyncInterpretationOutcomeEnum.Succeeded);
+        result.Intents.Should().BeEmpty();
+        prior.Lines.Single().Quantity.Should().Be(10m);
+    }
+
+    [Fact]
+    public void JournalUpdate_UnitCostChange_ReturnsAmbiguous()
+    {
+        var prior = CreatePriorReceipt("MOV-PRIOR-1", "LY01", 10m);
+        var snapshot = SnapshotWithJournal("BK001", "LY01", prior);
+        var updated = new LegacyStockJournalEntryType(
+            "BK001",
+            Scope.BrgId,
+            Scope.ReceiptSourceId,
+            "LY01",
+            QuantityIn: 10m,
+            QuantityOut: 0m,
+            UnitCost: 2000m,
+            ExpA,
+            "B1",
+            MutationKindId: "DO",
+            MutationTransactionId: "BK001",
+            T2,
+            PurchaseOrderId: null);
+        var discovery = ChangesDetected(
+            new LegacyDiscoveredDeltaType(
+                LegacyDiscoveredDeltaKindEnum.JournalUpdate,
+                "BK001",
+                "LY01",
+                10m,
+                0m,
+                T2));
+
+        var result = Interpret(discovery, snapshot, [updated], []);
+
+        result.Outcome.Should().Be(LegacySyncInterpretationOutcomeEnum.Ambiguous);
+        result.Intents.Should().BeEmpty();
+        result.Explanation.Should().Contain("valuation");
+    }
+
+    [Fact]
+    public void JournalUpdate_DirectionChange_ReturnsAmbiguous()
+    {
+        var prior = CreatePriorReceipt("MOV-PRIOR-1", "LY01", 10m);
+        var snapshot = SnapshotWithJournal("BK001", "LY01", prior);
+        var updated = Journal("BK001", "LY01", 0m, 10m, T2);
+        var discovery = ChangesDetected(
+            new LegacyDiscoveredDeltaType(
+                LegacyDiscoveredDeltaKindEnum.JournalUpdate,
+                "BK001",
+                "LY01",
+                0m,
+                10m,
+                T2));
+
+        var result = Interpret(discovery, snapshot, [updated], []);
+
+        result.Outcome.Should().Be(LegacySyncInterpretationOutcomeEnum.Ambiguous);
+        result.Intents.Should().BeEmpty();
+        result.Explanation.Should().Contain("direction");
     }
 
     [Fact]
@@ -446,6 +579,29 @@ public class LegacySyncDeltaInterpreterTest
             StockFactOriginEnum.Reconstructed);
 
         return StockMovementModel.CreateReceipt(
+            SourceTransactionReferenceType.Create($"PRIOR|{movementId}"),
+            T1,
+            [line],
+            StockFactOriginEnum.Reconstructed,
+            movementId);
+    }
+
+    private static StockMovementModel CreatePriorOutbound(
+        string movementId,
+        string layananId,
+        decimal quantity)
+    {
+        var line = StockMovementLineType.Create(
+            1,
+            BrgObatType.Key(Scope.BrgId),
+            ReceiptSourceType.Create(Scope.ReceiptSourceId),
+            LayananType.Key(layananId),
+            StockMovementDirectionEnum.Outbound,
+            quantity,
+            UnitValuationType.Create(1000m),
+            StockFactOriginEnum.Reconstructed);
+
+        return StockMovementModel.CreateOutbound(
             SourceTransactionReferenceType.Create($"PRIOR|{movementId}"),
             T1,
             [line],

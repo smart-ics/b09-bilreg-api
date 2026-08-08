@@ -203,9 +203,22 @@ public static class LegacySyncDeltaInterpreter
                 $"JournalUpdate for '{identity.LegacyJournalId}' has no matching current tb_buku row."));
         }
 
-        if (!TryBuildJournalLine(scope, currentJournal, out var line, out var lineAmbiguity))
+        if (!TryBuildCompensatoryCorrectionLine(
+                scope,
+                prior,
+                currentJournal,
+                out var compensationLine,
+                out var skipQuantityConsequence,
+                out var ambiguity))
         {
-            return InterpretStep.Fail(LegacySyncInterpretationResult.Ambiguous(lineAmbiguity!));
+            return InterpretStep.Fail(LegacySyncInterpretationResult.Ambiguous(ambiguity!));
+        }
+
+        if (skipQuantityConsequence)
+        {
+            // Quantity-neutral journal update with preserved material attributes —
+            // do not emit a Correct that restates absolute quantity.
+            return InterpretStep.Skip();
         }
 
         var sourceRef = SourceTransactionReferenceType.Create(
@@ -216,7 +229,7 @@ public static class LegacySyncDeltaInterpreter
         var correction = prior.Correct(
             sourceRef,
             currentJournal.MutationTime,
-            [line],
+            [compensationLine!],
             StockFactOriginEnum.LegacySynchronized,
             movementId);
 
@@ -230,7 +243,7 @@ public static class LegacySyncDeltaInterpreter
             ProposedMovement: correction,
             SyncIdempotencyKey: LegacyChangeDiscoveryIdentityKeys.BuildJournalKey(scope, currentJournal),
             Explanation: delta.Explanation
-                ?? "Legacy journal material update → accountable correction (history retained)."));
+                ?? "Legacy journal quantity update → compensatory correction delta (history retained)."));
     }
 
     private static InterpretStep InterpretJournalInsert(
@@ -507,6 +520,143 @@ public static class LegacySyncDeltaInterpreter
         line = null!;
         ambiguity = null;
 
+        if (!TryResolveJournalDirection(journal, out var direction, out var quantity, out ambiguity))
+            return false;
+
+        line = StockMovementLineType.Create(
+            1,
+            BrgObatType.Key(scope.BrgId),
+            ReceiptSourceType.Create(scope.ReceiptSourceId),
+            LayananType.Key(journal.LayananId),
+            direction,
+            quantity,
+            UnitValuationType.Create(journal.UnitCost),
+            StockFactOriginEnum.LegacySynchronized);
+        return true;
+    }
+
+    /// <summary>
+    /// Builds a Domain <see cref="StockMovementModel.Correct"/> line as a compensatory delta
+    /// (new legacy quantity − previously represented quantity), not an absolute restatement.
+    /// </summary>
+    private static bool TryBuildCompensatoryCorrectionLine(
+        IStockLedgerScopeKey scope,
+        StockMovementModel prior,
+        LegacyStockJournalEntryType currentJournal,
+        out StockMovementLineType? compensationLine,
+        out bool skipQuantityConsequence,
+        out string? ambiguity)
+    {
+        compensationLine = null;
+        skipQuantityConsequence = false;
+        ambiguity = null;
+
+        if (!TryResolveJournalDirection(
+                currentJournal,
+                out var journalDirection,
+                out var journalQuantity,
+                out ambiguity))
+        {
+            return false;
+        }
+
+        if (!TryResolvePriorSingleDirection(
+                prior,
+                out var priorDirection,
+                out var priorQuantity,
+                out var templateLine,
+                out ambiguity))
+        {
+            return false;
+        }
+
+        if (priorDirection != journalDirection)
+        {
+            ambiguity =
+                $"JournalUpdate '{currentJournal.LegacyJournalId}' changes movement direction " +
+                $"from '{priorDirection}' to '{journalDirection}'; cannot build a deterministic " +
+                "compensatory correction without inventing business meaning.";
+            return false;
+        }
+
+        if (!string.Equals(templateLine.BrgId, scope.BrgId, StringComparison.Ordinal)
+            || !string.Equals(currentJournal.BrgId.Trim(), scope.BrgId, StringComparison.Ordinal))
+        {
+            ambiguity =
+                $"JournalUpdate '{currentJournal.LegacyJournalId}' has Item mismatch with sync scope; fail closed.";
+            return false;
+        }
+
+        if (!string.Equals(templateLine.ReceiptSourceId, scope.ReceiptSourceId, StringComparison.Ordinal)
+            || !string.Equals(
+                currentJournal.ReceiptSourceId.Trim(),
+                scope.ReceiptSourceId,
+                StringComparison.Ordinal))
+        {
+            ambiguity =
+                $"JournalUpdate '{currentJournal.LegacyJournalId}' changes Receipt Source; " +
+                "cannot safely compensate without inventing provenance rewrite.";
+            return false;
+        }
+
+        if (!string.Equals(
+                templateLine.LayananId,
+                currentJournal.LayananId.Trim(),
+                StringComparison.Ordinal))
+        {
+            ambiguity =
+                $"JournalUpdate '{currentJournal.LegacyJournalId}' changes Stock Location; " +
+                "cannot safely compensate without inventing transfer semantics.";
+            return false;
+        }
+
+        if (templateLine.UnitValuation.AmountPerUnit != currentJournal.UnitCost)
+        {
+            ambiguity =
+                $"JournalUpdate '{currentJournal.LegacyJournalId}' changes unit valuation/cost; " +
+                "quantity-only compensatory correction cannot preserve material valuation semantics.";
+            return false;
+        }
+
+        var quantityDelta = journalQuantity - priorQuantity;
+        if (quantityDelta == 0m)
+        {
+            // No material quantity difference → no duplicate quantity consequence.
+            skipQuantityConsequence = true;
+            return true;
+        }
+
+        // Inventory-signed compensation: inbound increase / outbound decrease → +Inventory.
+        var inventoryDelta = journalDirection == StockMovementDirectionEnum.Inbound
+            ? quantityDelta
+            : -quantityDelta;
+
+        var compensationDirection = inventoryDelta > 0m
+            ? StockMovementDirectionEnum.Inbound
+            : StockMovementDirectionEnum.Outbound;
+
+        compensationLine = StockMovementLineType.Create(
+            1,
+            BrgObatType.Key(scope.BrgId),
+            ReceiptSourceType.Create(scope.ReceiptSourceId),
+            LayananType.Key(currentJournal.LayananId),
+            compensationDirection,
+            Math.Abs(inventoryDelta),
+            UnitValuationType.Create(currentJournal.UnitCost),
+            StockFactOriginEnum.LegacySynchronized);
+        return true;
+    }
+
+    private static bool TryResolveJournalDirection(
+        LegacyStockJournalEntryType journal,
+        out StockMovementDirectionEnum direction,
+        out decimal quantity,
+        out string? ambiguity)
+    {
+        direction = default;
+        quantity = 0m;
+        ambiguity = null;
+
         var inbound = journal.QuantityIn > 0m;
         var outbound = journal.QuantityOut > 0m;
         if (inbound == outbound)
@@ -517,22 +667,72 @@ public static class LegacySyncDeltaInterpreter
             return false;
         }
 
-        var quantity = inbound ? journal.QuantityIn : journal.QuantityOut;
+        direction = inbound
+            ? StockMovementDirectionEnum.Inbound
+            : StockMovementDirectionEnum.Outbound;
+        quantity = inbound ? journal.QuantityIn : journal.QuantityOut;
         if (quantity <= 0m)
         {
             ambiguity = $"Journal '{journal.LegacyJournalId}' has non-positive quantity.";
             return false;
         }
 
-        line = StockMovementLineType.Create(
-            1,
-            BrgObatType.Key(scope.BrgId),
-            ReceiptSourceType.Create(scope.ReceiptSourceId),
-            LayananType.Key(journal.LayananId),
-            inbound ? StockMovementDirectionEnum.Inbound : StockMovementDirectionEnum.Outbound,
-            quantity,
-            UnitValuationType.Create(journal.UnitCost),
-            StockFactOriginEnum.LegacySynchronized);
+        return true;
+    }
+
+    private static bool TryResolvePriorSingleDirection(
+        StockMovementModel prior,
+        out StockMovementDirectionEnum direction,
+        out decimal quantity,
+        out StockMovementLineType templateLine,
+        out string? ambiguity)
+    {
+        direction = default;
+        quantity = 0m;
+        templateLine = null!;
+        ambiguity = null;
+
+        if (prior.Lines.Count == 0)
+        {
+            ambiguity = $"Prior movement '{prior.StockMovementId}' has no lines to compensate.";
+            return false;
+        }
+
+        var inboundQty = prior.TotalQuantity(StockMovementDirectionEnum.Inbound);
+        var outboundQty = prior.TotalQuantity(StockMovementDirectionEnum.Outbound);
+        var hasInbound = inboundQty > 0m;
+        var hasOutbound = outboundQty > 0m;
+        if (hasInbound == hasOutbound)
+        {
+            ambiguity =
+                $"Prior movement '{prior.StockMovementId}' is not a single-direction quantity fact " +
+                $"(in={inboundQty}, out={outboundQty}); JournalUpdate compensation fails closed.";
+            return false;
+        }
+
+        var resolvedDirection = hasInbound
+            ? StockMovementDirectionEnum.Inbound
+            : StockMovementDirectionEnum.Outbound;
+        var resolvedQuantity = hasInbound ? inboundQty : outboundQty;
+        var resolvedTemplate = prior.Lines[0];
+
+        // Multi-line same-direction is only safe when material attributes are uniform.
+        if (prior.Lines.Any(l =>
+                l.Direction != resolvedDirection
+                || !string.Equals(l.LayananId, resolvedTemplate.LayananId, StringComparison.Ordinal)
+                || !string.Equals(l.ReceiptSourceId, resolvedTemplate.ReceiptSourceId, StringComparison.Ordinal)
+                || l.UnitValuation.AmountPerUnit != resolvedTemplate.UnitValuation.AmountPerUnit
+                || !string.Equals(l.BrgId, resolvedTemplate.BrgId, StringComparison.Ordinal)))
+        {
+            ambiguity =
+                $"Prior movement '{prior.StockMovementId}' has non-uniform material line attributes; " +
+                "cannot build a deterministic compensatory JournalUpdate.";
+            return false;
+        }
+
+        direction = resolvedDirection;
+        quantity = resolvedQuantity;
+        templateLine = resolvedTemplate;
         return true;
     }
 
@@ -625,5 +825,6 @@ public static class LegacySyncDeltaInterpreter
 
         public static InterpretStep Ok(LegacySyncIntentType intent) => new(intent, null);
         public static InterpretStep Fail(LegacySyncInterpretationResult result) => new(null, result);
+        public static InterpretStep Skip() => new(null, null);
     }
 }

@@ -14,6 +14,11 @@ public interface IStockLayerDal :
     IGetData<StockLayerDto, IStockLayerKey>,
     IListData<StockLayerDto, IStockWriteScopeKey>
 {
+    /// <summary>
+    /// P3-S3 — Read-only list of all Stock Layers for one Reconstruction / reconciliation scope
+    /// (Item + Receipt Source across all Stock Locations).
+    /// </summary>
+    IReadOnlyList<StockLayerDto> ListByLedgerScope(IStockLedgerScopeKey scope);
 }
 
 public class StockLayerDal : IStockLayerDal
@@ -110,6 +115,35 @@ public class StockLayerDal : IStockLayerDal
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<StockLayerDto>(sql, dp) ?? [];
+    }
+
+    public IReadOnlyList<StockLayerDto> ListByLedgerScope(IStockLedgerScopeKey scope)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+
+        const string sql = """
+            SELECT
+                aa.StockLayerId, aa.BrgId, aa.ReceiptSourceId, aa.LayananId,
+                aa.LayerFormingMovementId, aa.InitialQuantity, aa.RemainingQuantity,
+                aa.AmountPerUnit, aa.ExpirationDate, aa.EffectiveReceiptTime,
+                aa.Origin, aa.Batch,
+                aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate
+            FROM BILRG_StokLayer aa
+            WHERE
+                aa.BrgId = @BrgId
+                AND aa.ReceiptSourceId = @ReceiptSourceId
+            ORDER BY
+                aa.LayananId ASC,
+                aa.EffectiveReceiptTime ASC,
+                aa.StockLayerId ASC
+            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@BrgId", scope.BrgId, SqlDbType.VarChar);
+        dp.AddParam("@ReceiptSourceId", scope.ReceiptSourceId, SqlDbType.VarChar);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return (conn.Read<StockLayerDto>(sql, dp) ?? []).ToList();
     }
 
     private static DynamicParameters MapParams(StockLayerDto dto)
