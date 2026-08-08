@@ -346,11 +346,11 @@ When Phase 2 exits:
 
 | Next | Uses from Phase 2 |
 |---|---|
-| Phase 3 Sync / Freshness | Initialized Synchronization Position; basis fingerprint helper; reconstructed baseline; G-05 reads; Scope `SynchronizationRequired` transitions |
+| Phase 3 Sync / Freshness | Initialized Synchronization Position; basis fingerprint helper; reconstructed baseline; G-05 reads; Scope `SynchronizationRequired` transitions — see [`stock-ledger-phase3-implementation-plan.md`](./stock-ledger-phase3-implementation-plan.md) (P3-S1…P3-S8) |
 | Phase 4 DO Receipt | Reconstructed-or-native scope readiness patterns; UoW; still needs live Legacy Compatibility Writer |
 | Phase 5 Outbound / transfer | G-08 provisional discovery + FIFO domain already in Phase 1; still needs freshness before allocation |
 
-Do **not** start Phase 3 inside a Phase 2 slice.
+Phase 2 is COMPLETE. Execute Phase 3 from the Phase 3 plan — do **not** start Phase 3 inside a Phase 2 slice.
 
 ---
 

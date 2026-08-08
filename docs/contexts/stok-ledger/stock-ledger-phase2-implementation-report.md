@@ -109,24 +109,27 @@ Evaluated against repository evidence after P2-S8:
 
 ## Readiness / handoff for Phase 3
 
+**Phase 3 execution plan:** [`stock-ledger-phase3-implementation-plan.md`](./stock-ledger-phase3-implementation-plan.md) (slices P3-S1…P3-S8).
+
 Phase 3 may consume:
 
 | From Phase 2 | Use |
 |---|---|
 | Initialized Synchronization Position + algorithm version | Catch-up / Freshness starting point |
-| `LegacyReconstructionBasisCalculator` | Fingerprint continuity |
+| `LegacyReconstructionBasisCalculator` | Fingerprint continuity (`fingerprint-v1`) |
 | Reconstructed baseline (Movement/Layers/Positions/Scope) | Sync target representation |
 | G-05 `ILegacyStockReadPort` live adapter | Re-read / replay inputs |
 | Scope transitions toward `SynchronizationRequired` (Domain already has sync transitions) | Orchestration once discovery exists |
 | G-08 provisional discovery | Later allocation callers (still need Freshness Gate first) |
-| Recovery helper | Containment if reconstruction/sync leaves incomplete additive rows |
+| Recovery helper | Containment if reconstruction leaves incomplete additive rows (not routine sync void handling) |
 
-Phase 3 must still implement (not started here):
+Phase 3 must still implement (planned in P3-S1…P3-S8; not started in Phase 2):
 
-1. Legacy Change Discovery / G-13 detection experiments  
-2. Incremental Legacy Synchronization catch-up (G-14/G-15)  
-3. Freshness Gate orchestration (G-12)  
-4. Sync portion of G-23 harness  
-5. Production index apply + SLO definition (G-25) as ops allow  
+1. Live Legacy Change Discovery / G-13 detection experiments (P3-S1)  
+2. Sync delta interpretation + catch-up + position advancement (P3-S2…P3-S4 / G-14–G-15)  
+3. Material reconciliation adapter + Freshness Gate (P3-S3, P3-S5 / G-16 P0, G-12)  
+4. Sync retry / in-process sync-native serialization + G-23 sync harness (P3-S6…P3-S7)  
+5. Exit hardening / initial G-24 explainability (P3-S8)  
+6. Production index apply + SLO definition (G-25) remains ops/Phase 8 — non-blocking to start Phase 3  
 
 **Do not** treat Availability Discovery results as authoritative Ledger-enriched FIFO input until Freshness Gate exists.

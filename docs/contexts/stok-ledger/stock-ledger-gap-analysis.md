@@ -5,6 +5,8 @@
 **Execution plan:** [`stock-ledger-implementation-roadmap.md`](./stock-ledger-implementation-roadmap.md)
 **Phase 0 exit:** [`stock-ledger-phase-0-exit-review.md`](./stock-ledger-phase-0-exit-review.md)
 **Phase 1 plan:** [`stock-ledger-phase1-implementation-plan.md`](./stock-ledger-phase1-implementation-plan.md)
+**Phase 2 report:** [`stock-ledger-phase2-implementation-report.md`](./stock-ledger-phase2-implementation-report.md)
+**Phase 3 plan:** [`stock-ledger-phase3-implementation-plan.md`](./stock-ledger-phase3-implementation-plan.md)
 
 **Authority rule:** During coexistence, `tb_stok + tb_buku` remain the authoritative persisted stock truth. No gap in this backlog establishes per-Item + Receipt Source authority, prevents later VB6 activity, or treats `Native` / `Reconstructed` as authority states.
 
@@ -221,7 +223,7 @@ Target coexistence
 
 | Field | Detail |
 |---|---|
-| Current evidence | No freshness check exists. The previous `Authority Gate` incorrectly blocked VB6 after reconstruction. |
+| Current evidence | No freshness check exists (post–Phase 2). Availability Discovery exposes reserved `StaleOrNotCurrent` but never returns it. The previous `Authority Gate` incorrectly blocked VB6 after reconstruction. Phase 3 **P3-S5** owns the gate. |
 | Why it matters | Stock Ledger layers can become stale whenever VB6 changes legacy stock. |
 | Required capability | Before trusted allocation or mutation, determine whether applicable legacy facts exceed the Synchronization Position; synchronize or fail closed/mark not current. The gate must never reject a legacy write merely because the scope is Native/Reconstructed. |
 | Priority | P0 |
@@ -232,7 +234,7 @@ Target coexistence
 
 | Field | Detail |
 |---|---|
-| Current evidence | Phase 0 (`HOSPITAL_HPL`): `fd_tgl_jam_mutasi` 100% populated but unsafe as sole cursor (ties, ID≠time, void deletes). ADR selects **fingerprint + bounded replay**; mismatch must set-diff Ledger-known identities and/or scoped re-derive. Empirical detection experiment **not yet run** (Phase 0 residual → this gap). |
+| Current evidence | Phase 0 (`HOSPITAL_HPL`): `fd_tgl_jam_mutasi` 100% populated but unsafe as sole cursor (ties, ID≠time, void deletes). ADR selects **fingerprint + bounded replay**; mismatch must set-diff Ledger-known identities and/or scoped re-derive. Phase 2 delivered `fingerprint-v1` init + G-05 reads + `ILegacyChangeDiscoveryPort` contract/fake only. Empirical detection experiment **not yet run** (→ Phase 3 **P3-S1**). |
 | Why it matters | Incremental synchronization needs complete detection of inserts, quantity updates, depletion deletes, and void deletes. |
 | Required capability | Implement and validate the Phase-0-selected deletion-aware mechanism (fingerprint + bounded delta/replay; optional non-authoritative time hint). Do not hard-code watermark-alone or `fs_kd_trs`-alone cursors. |
 | Priority | P0 |
@@ -243,7 +245,7 @@ Target coexistence
 
 | Field | Detail |
 |---|---|
-| Current evidence | Phase 0 ADR: persist **mechanism-neutral** opaque Synchronization Position + algorithm version; first concrete payload is scoped fingerprint (not a watermark). |
+| Current evidence | Phase 0 ADR: persist **mechanism-neutral** opaque Synchronization Position + algorithm version; first concrete payload is scoped fingerprint (not a watermark). Phase 1/2 persist and **initialize** position at reconstruction; Phase 3 must **advance** it only after catch-up + reconcile (**P3-S4**). |
 | Why it matters | Freshness and retry need a committed boundary between reflected and pending legacy facts. |
 | Required capability | Persist opaque position + algorithm version; advance only after the synchronization batch and reconciliation commit; hash drift alone does not list deletes — pair with G-13 set-diff/re-derive. |
 | Priority | P0 |
@@ -254,7 +256,7 @@ Target coexistence
 
 | Field | Detail |
 |---|---|
-| Current evidence | No synchronization use case or processed-legacy identity store exists. |
+| Current evidence | No synchronization use case exists. `SyncBatch` idempotency kind and `LegacySynchronized` origin are reserved in Domain/DB but unused. Phase 3 **P3-S2…P3-S4** own interpretation + catch-up. |
 | Why it matters | Duplicate polling/retry can inflate or reduce quantity twice; voids require correction semantics. |
 | Required capability | Convert discovered legacy deltas into accountable Stock Ledger movements/corrections with `LegacySynchronized` origin and the legacy Source Transaction Reference; establish any new layer created by that movement as `LegacySynchronized`; update existing layers without rewriting their establishment origin; deduplicate, retry, reconcile, and advance position atomically for the batch. |
 | Priority | P0 |

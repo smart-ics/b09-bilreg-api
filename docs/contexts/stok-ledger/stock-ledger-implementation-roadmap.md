@@ -5,6 +5,8 @@
 **Gap backlog:** [`stock-ledger-gap-analysis.md`](./stock-ledger-gap-analysis.md)
 **Phase 0 exit:** [`stock-ledger-phase-0-exit-review.md`](./stock-ledger-phase-0-exit-review.md)
 **Phase 1 plan:** [`stock-ledger-phase1-implementation-plan.md`](./stock-ledger-phase1-implementation-plan.md)
+**Phase 2 plan:** [`stock-ledger-phase2-implementation-plan.md`](./stock-ledger-phase2-implementation-plan.md)
+**Phase 3 plan:** [`stock-ledger-phase3-implementation-plan.md`](./stock-ledger-phase3-implementation-plan.md)
 **Legacy behavior reference:** [`clbGenStokX1.cls`](./clbGenStokX1.cls)
 **Standards:** [`docs/ENGINEERING.md`](../../ENGINEERING.md), [`docs/DATABASE.md`](../../DATABASE.md), [`docs/NAMING.md`](../../NAMING.md)
 
@@ -114,7 +116,7 @@ The final storage shape is decided in Phase 0/1. A proposed column name must not
 - [x] FO coverage matrix characterization-approved ([phase-0-writer-inventory.md](./evidence/phase-0-writer-inventory.md))
 - [x] No authority-cutover language introduced
 - [x] Exit Review **PASS WITH RISKS** — Phase 1 GO under scaffolding conditions
-- [ ] Change-kind detection experiment (insert/update/stok-delete/buku-void-delete/backdate/repost) — **residual**; carries to **G-13** / Phase 3 (does not block Phase 1 scaffolding)
+- [ ] Change-kind detection experiment (insert/update/stok-delete/buku-void-delete/backdate/repost) — **residual**; carries to **G-13** / Phase 3 slice **P3-S1** (does not block Phase 1 scaffolding)
 - [ ] Controlled concurrent VB6 sessions — **residual**; carries to **G-17** / Phase 9 (does not block Phase 1 scaffolding)
 
 **Phase 1 readiness (Exit Review):** GO for additive foundation only. NO-GO for claiming G-13/G-17 done, production catch-up, or FO capability enablement.
@@ -141,8 +143,8 @@ The final storage shape is decided in Phase 0/1. A proposed column name must not
 
 ### Phase 2 — Initial Reconstruction baseline
 
-**Progress:** PLAN READY — executable slices P2-S1…P2-S8 in [`stock-ledger-phase2-implementation-plan.md`](./stock-ledger-phase2-implementation-plan.md). Do not expand this roadmap section into slice detail.  
-**Execution plan:** [`stock-ledger-phase2-implementation-plan.md`](./stock-ledger-phase2-implementation-plan.md).
+**Progress:** COMPLETE — P2-S1…P2-S8 done ([execution plan](./stock-ledger-phase2-implementation-plan.md), [implementation report](./stock-ledger-phase2-implementation-report.md), latest [P2-S8 summary](./stock-ledger-phase2-s8-implementation-summary.md)).  
+**Execution plan:** [`stock-ledger-phase2-implementation-plan.md`](./stock-ledger-phase2-implementation-plan.md). Do not expand this roadmap section into slice detail.
 
 | Area | Plan |
 |---|---|
@@ -161,11 +163,15 @@ The final storage shape is decided in Phase 0/1. A proposed column name must not
 
 ### Phase 3 — Incremental Legacy Synchronization and Freshness Gate
 
+**Progress:** PLAN READY — executable slices P3-S1…P3-S8 in [`stock-ledger-phase3-implementation-plan.md`](./stock-ledger-phase3-implementation-plan.md). Do not expand this roadmap section into slice detail.  
+**Execution plan:** [`stock-ledger-phase3-implementation-plan.md`](./stock-ledger-phase3-implementation-plan.md).  
+**Code-base note (post–Phase 2):** Synchronization Position storage, Domain sync transitions, `fingerprint-v1`, discovery/reconciliation **port contracts**, and `SyncBatch` / `LegacySynchronized` shapes already exist. Phase 3 implements live discovery, catch-up, Freshness Gate, and harness activation — not a parallel foundation.
+
 | Area | Plan |
 |---|---|
 | Objective | Keep reconstructed or Native-origin Stock Ledger scopes current when VB6 continues to change authoritative legacy records. |
-| Scope | G-12–G-17, synchronization part of G-23, initial G-24 observability. |
-| Implementation work | Implement deletion-aware Legacy Change Discovery, durable Synchronization Position, idempotent catch-up, `LegacySynchronized` Stock Movement origin for post-baseline legacy facts, `LegacySynchronized` origin for any new layer established by those movements, preservation of an existing layer's establishment origin when only its quantity changes, void-to-correction/reversal interpretation, synchronization reconciliation, stale/inconsistent states, and Freshness Gate. Serialize synchronization with native writes at the chosen boundary. |
+| Scope | G-12–G-16 (material/sync portion), synchronization part of G-23, initial G-24 observability, sync/native serialization interim of G-17 (not FQ-06 production proof). |
+| Implementation work | Implement live deletion-aware Legacy Change Discovery (reuse fingerprint calculator), advance durable Synchronization Position only after committed catch-up + material reconciliation, idempotent catch-up with `LegacySynchronized` origin, void-to-correction/reversal interpretation, synchronization reconciliation, stale/inconsistent states, and Freshness Gate. Serialize synchronization with in-process native write boundaries at the chosen interim boundary. |
 | Legacy compatibility impact | VB6 remains writable for every scope. Synchronization consumes legacy facts but does not rewrite them except through an explicitly authorized recovery/correction path. |
 | Synchronization impact | First complete implementation. Position advances only with a committed catch-up batch and successful material reconciliation. |
 | Database impact | Implement the Phase 0-selected change evidence mechanism and indexes. If an additive change log is chosen, all active writer paths must populate it transactionally before rollout. CDC/Change Tracking is used only if approved and operationally supported. |
@@ -460,8 +466,8 @@ Minimum production readiness supports a limited enabled transaction set safely. 
 |---|---|---|---|
 | 0 | Proven legacy/sync/concurrency baseline (**frozen** 2026-08-07; PASS WITH RISKS; FQ-06 + detection experiment residual) | G-13 empirical proof; G-17; G-25 SLO/index approval; G-28 | Code implementation |
 | 1 | Additive domain and persistence foundation | G-01–G-07, G-18 | Legacy authority change |
-| 2 | Initial bounded reconstruction | G-05, G-10 | Per-scope cutover |
-| 3 | Incremental synchronization + Freshness Gate | G-12–G-17 | Blocking VB6 |
+| 2 | Initial bounded reconstruction (**COMPLETE**) | G-05, G-10 | Per-scope cutover |
+| 3 | Incremental synchronization + Freshness Gate (**PLAN READY** — [P3-S1…P3-S8](./stock-ledger-phase3-implementation-plan.md)) | G-12–G-16, sync G-23, initial G-24; G-17 interim only | Blocking VB6; FQ-06 production proof |
 | 4 | DO Receipt native consequence | G-11, G-19 | Requiring all outbound migration |
 | 5 | Availability/FIFO/transfer/first outbound | G-08, part of G-20 | Exclusive DO ownership |
 | 6 | Virtual reservation/handover | G-21 | Forced legacy schema parity |

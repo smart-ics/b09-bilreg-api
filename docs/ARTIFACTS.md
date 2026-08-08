@@ -289,6 +289,7 @@ Authoritative inventory movement, provenance, Remaining Quantity, FIFO, reservat
 | `docs/contexts/stok-ledger/stock-ledger-phase-0-exit-review.md` | Stock Ledger — Phase 0 critical exit review (PASS WITH RISKS; Phase 1 Go/No-Go) — **governing Phase-0 conclusion (frozen)** |
 | `docs/contexts/stok-ledger/stock-ledger-phase1-implementation-plan.md` | Stock Ledger — Phase 1 executable implementation slices (additive foundation; slice progress tracked in-doc) |
 | `docs/contexts/stok-ledger/stock-ledger-phase2-implementation-plan.md` | Stock Ledger — Phase 2 executable implementation slices (initial reconstruction baseline; slice progress tracked in-doc) |
+| `docs/contexts/stok-ledger/stock-ledger-phase3-implementation-plan.md` | Stock Ledger — Phase 3 executable implementation slices (incremental sync + Freshness Gate; slice progress tracked in-doc) |
 | `docs/contexts/stok-ledger/stock-ledger-phase2-s1-implementation-summary.md` | Stock Ledger — Phase 2 / P2-S1 live legacy reconstruction read adapter (G-05; `tb_stok` / `tb_buku` by Item + Receipt Source) |
 | `docs/contexts/stok-ledger/stock-ledger-phase2-s2-implementation-summary.md` | Stock Ledger — Phase 2 / P2-S2 reconstruction basis / fingerprint capture (init-only; opaque Synchronization Position) |
 | `docs/contexts/stok-ledger/stock-ledger-phase2-s3-implementation-summary.md` | Stock Ledger — Phase 2 / P2-S3 Domain readiness for reconstructed baseline facts (depleted create; ReconstructionBaseline idempotency kind) |
