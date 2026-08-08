@@ -274,6 +274,64 @@ Background processing platform — job orchestration, worker plugins, operator c
 
 ---
 
+### Stock Ledger (`docs/contexts/stok-ledger/`)
+
+Authoritative inventory movement, provenance, Remaining Quantity, FIFO, reservation via Virtual Stock Location, reconciliation, and incremental legacy reconstruction. Supporting bounded context — records stock consequences owned by other contexts without taking over their transaction authority.
+
+| Path | Purpose |
+|------|---------|
+| `docs/contexts/stok-ledger/stok-ledger-domain.md` | Stock Ledger — canonical English business truth (movements, layers, FIFO, reconciliation, legacy reconstruction) |
+| `docs/contexts/stok-ledger/stok-ledger-domain-id.md` | Stock Ledger — Bahasa Indonesia semantic companion |
+| `docs/contexts/stok-ledger/stock-ledger-feasibility-review.md` | Stock Ledger — codebase-grounded feasibility review (domain vs implementation, legacy VB6 classification, risks) |
+| `docs/contexts/stok-ledger/stock-ledger-gap-analysis.md` | Stock Ledger — dependency-ordered gap backlog (current code → target domain) |
+| `docs/contexts/stok-ledger/stock-ledger-implementation-roadmap.md` | Stock Ledger — phased implementation roadmap from actual repo state |
+| `docs/contexts/stok-ledger/stock-ledger-phase-0-implementation-report.md` | Stock Ledger — Phase 0 evidence gate report (FQ resolutions, ADRs, handoff to Phase 1) |
+| `docs/contexts/stok-ledger/stock-ledger-phase-0-exit-review.md` | Stock Ledger — Phase 0 critical exit review (PASS WITH RISKS; Phase 1 Go/No-Go) — **governing Phase-0 conclusion (frozen)** |
+| `docs/contexts/stok-ledger/stock-ledger-phase1-implementation-plan.md` | Stock Ledger — Phase 1 executable implementation slices (additive foundation; slice progress tracked in-doc) |
+| `docs/contexts/stok-ledger/stock-ledger-phase2-implementation-plan.md` | Stock Ledger — Phase 2 executable implementation slices (initial reconstruction baseline; slice progress tracked in-doc) |
+| `docs/contexts/stok-ledger/stock-ledger-phase3-implementation-plan.md` | Stock Ledger — Phase 3 executable implementation slices (incremental sync + Freshness Gate; slice progress tracked in-doc) |
+| `docs/contexts/stok-ledger/stock-ledger-phase4-implementation-plan.md` | Stock Ledger — Phase 4 executable implementation slices (first native DO Receipt consequence; slice progress tracked in-doc) |
+| `docs/contexts/stok-ledger/stock-ledger-P4-S1-implementation-summary.md` | Stock Ledger — Phase 4 / P4-S1 live DM Legacy Compatibility Writer (receipt post; gate PASS) |
+| `docs/contexts/stok-ledger/stock-ledger-P4-S2-implementation-summary.md` | Stock Ledger — Phase 4 / P4-S2 Native DO Receipt UseCase + Scope baseline + capability gate + greenfield prior-history fail-closed guard (NO-GO remediated) |
+| `docs/contexts/stok-ledger/stock-ledger-P4-S3-implementation-summary.md` | Stock Ledger — Phase 4 / P4-S3 live legacy+Ledger atomicity (G-18) + G-23 New→Legacy / PartialFailure harness |
+| `docs/contexts/stok-ledger/stock-ledger-P4-S4-implementation-summary.md` | Stock Ledger — Phase 4 / P4-S4 Native DO Receipt void/correction (accountable Reversal + DO_V; fail-closed unsafe cases) |
+| `docs/contexts/stok-ledger/stock-ledger-P4-S5-implementation-summary.md` | Stock Ledger — Phase 4 / P4-S5 Native→VB6→sync coexistence proof + AlternatingWriters + capability-off continuity |
+| `docs/contexts/stok-ledger/stock-ledger-phase4-implementation-report.md` | Stock Ledger — Phase 4 implementation report (exit checklist, handoff to Phase 5 / Phase 9) |
+| `docs/contexts/stok-ledger/stock-ledger-P3-S1-implementation-summary.md` | Stock Ledger — Phase 3 / P3-S1 live Legacy Change Discovery (G-13; gate PASS) |
+| `docs/contexts/stok-ledger/stock-ledger-P3-S2-implementation-summary.md` | Stock Ledger — Phase 3 / P3-S2 sync delta interpretation (pure intents; void/update → accountable correction/reversal) |
+| `docs/contexts/stok-ledger/stock-ledger-P3-S3-implementation-summary.md` | Stock Ledger — Phase 3 / P3-S3 material reconciliation adapter (G-16 P0; classify only; safe-to-advance) |
+| `docs/contexts/stok-ledger/stock-ledger-phase3-s4-implementation-summary.md` | Stock Ledger — Phase 3 / P3-S4 incremental catch-up + Synchronization Position advancement (G-14/G-15; R-001–R-004) |
+| `docs/contexts/stok-ledger/stock-ledger-P3-S5-implementation-summary.md` | Stock Ledger — Phase 3 / P3-S5 Legacy Freshness Gate (G-12; discovery fast-path + at-most-once catch-up) |
+| `docs/contexts/stok-ledger/stock-ledger-P3-S6-implementation-summary.md` | Stock Ledger — Phase 3 / P3-S6 sync retry, crash safety, duplicate protection, .NET serialization |
+| `docs/contexts/stok-ledger/stock-ledger-P3-S7-implementation-summary.md` | Stock Ledger — Phase 3 / P3-S7 coexistence sync harness (G-23 sync portion) |
+| `docs/contexts/stok-ledger/stock-ledger-P3-S8-implementation-summary.md` | Stock Ledger — Phase 3 / P3-S8 exit hardening + initial G-24 explainability + Phase 3 report |
+| `docs/contexts/stok-ledger/stock-ledger-phase3-implementation-report.md` | Stock Ledger — Phase 3 implementation report (exit checklist, handoff to Phase 4) |
+| `docs/contexts/stok-ledger/stock-ledger-phase2-s1-implementation-summary.md` | Stock Ledger — Phase 2 / P2-S1 live legacy reconstruction read adapter (G-05; `tb_stok` / `tb_buku` by Item + Receipt Source) |
+| `docs/contexts/stok-ledger/stock-ledger-phase2-s2-implementation-summary.md` | Stock Ledger — Phase 2 / P2-S2 reconstruction basis / fingerprint capture (init-only; opaque Synchronization Position) |
+| `docs/contexts/stok-ledger/stock-ledger-phase2-s3-implementation-summary.md` | Stock Ledger — Phase 2 / P2-S3 Domain readiness for reconstructed baseline facts (depleted create; ReconstructionBaseline idempotency kind) |
+| `docs/contexts/stok-ledger/stock-ledger-phase2-s4-implementation-summary.md` | Stock Ledger — Phase 2 / P2-S4 baseline calculation + ambiguity classification (balance-anchored; Balanced vs Inconsistent) |
+| `docs/contexts/stok-ledger/stock-ledger-phase2-s5-implementation-summary.md` | Stock Ledger — Phase 2 / P2-S5 Phase A reconstruction claim (short TX; conditional status update; concurrent claim safety) |
+| `docs/contexts/stok-ledger/stock-ledger-phase2-s6-implementation-summary.md` | Stock Ledger — Phase 2 / P2-S6 Phase B/C orchestration + persist (G-10 core; claim → read/calc → revalidate/persist) |
+| `docs/contexts/stok-ledger/stock-ledger-phase2-s7-implementation-summary.md` | Stock Ledger — Phase 2 / P2-S7 Availability Discovery live adapter (G-08; provisional Receipt Source candidates from `tb_stok`) |
+| `docs/contexts/stok-ledger/stock-ledger-phase2-s8-implementation-summary.md` | Stock Ledger — Phase 2 / P2-S8 reconstruction harness, recovery, Phase 2 exit hardening |
+| `docs/contexts/stok-ledger/stock-ledger-phase2-implementation-report.md` | Stock Ledger — Phase 2 implementation report (exit checklist, handoff to Phase 3) |
+| `docs/contexts/stok-ledger/stock-ledger-phase1-s1-implementation-summary.md` | Stock Ledger — Phase 1 / P1-S1 scaffolding + boundary types (WHAT/WHY/reuse/deviations/handoff to P1-S2) |
+| `docs/contexts/stok-ledger/stock-ledger-phase1-s2-implementation-summary.md` | Stock Ledger — Phase 1 / P1-S2 immutable Stock Movement domain (aggregate, lines, reversal/correction, transfer conservation) |
+| `docs/contexts/stok-ledger/stock-ledger-phase1-s3-implementation-summary.md` | Stock Ledger — Phase 1 / P1-S3 Layer/Position + ED-constrained FIFO allocation |
+| `docs/contexts/stok-ledger/stock-ledger-phase1-s4-implementation-summary.md` | Stock Ledger — Phase 1 / P1-S4 scope coexistence state + opaque Synchronization Position |
+| `docs/contexts/stok-ledger/stock-ledger-phase1-s5-implementation-summary.md` | Stock Ledger — Phase 1 / P1-S5 additive BILRG_* schema (Movement/Line/Layer/Position/Scope/Idempotency) |
+| `docs/contexts/stok-ledger/stock-ledger-phase1-s6-implementation-summary.md` | Stock Ledger — Phase 1 / P1-S6 DAL/DTO/Repo round-trips + Position OCC + source idempotency |
+| `docs/contexts/stok-ledger/stock-ledger-phase1-s7-implementation-summary.md` | Stock Ledger — Phase 1 / P1-S7 Application ports only (legacy read/writer/discovery/availability/provenance/reconciliation) |
+| `docs/contexts/stok-ledger/stock-ledger-phase1-s8-implementation-summary.md` | Stock Ledger — Phase 1 / P1-S8 consequence UoW + coexistence harness scaffolding (G-18 Ledger atomicity; G-23 placeholders) |
+| `docs/contexts/stok-ledger/adr/ADR-stock-ledger-legacy-change-discovery.md` | ADR — deletion-aware Legacy Change Discovery / Synchronization Position |
+| `docs/contexts/stok-ledger/adr/ADR-stock-ledger-mixed-writer-concurrency.md` | ADR — mixed-writer lock order and conflict policy (interim until FQ-06 proven) |
+| `docs/contexts/stok-ledger/evidence/phase-0-profile-queries.sql` | Phase 0 read-only SQL profiling pack |
+| `docs/contexts/stok-ledger/evidence/phase-0-profile-results.md` | Phase 0 sanitized snapshot profile results |
+| `docs/contexts/stok-ledger/evidence/phase-0-writer-inventory.md` | Phase 0 FO writer inventory and characterization matrix |
+| `docs/contexts/stok-ledger/clbGenStokX1.cls` | Legacy VB6 stock Transaction Script — behavior reference only (do not port) |
+
+---
+
 ## Shared (`docs/shared/`)
 
 | Path | Purpose |
