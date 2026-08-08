@@ -55,6 +55,19 @@ public class SynchronizeStockLedgerScopeHandlerTest
             result.Outcome.Should().Be(SynchronizeStockLedgerScopeOutcomeEnum.Synchronized);
             result.ScopeState.SynchronizationState.Should().Be(SynchronizationStateEnum.Current);
 
+            // P3-S8 — initial G-24 explainability on happy-path catch-up.
+            result.Explainability.Should().NotBeNull();
+            result.Explainability!.AlgorithmVersion.Should().Be(
+                LegacyReconstructionBasisCalculator.AlgorithmVersion);
+            result.Explainability.DiscoveryOutcome.Should().Be(
+                LegacyChangeDiscoveryOutcomeEnum.ChangesDetected);
+            result.Explainability.ReconcileOutcome.Should().BeOneOf(
+                StockReconciliationOutcomeEnum.Balanced,
+                StockReconciliationOutcomeEnum.IntentionalDifference,
+                StockReconciliationOutcomeEnum.PendingSynchronization);
+            result.Explainability.SynchronizationState.Should().Be(SynchronizationStateEnum.Current);
+            result.Explainability.InconsistencyReason.Should().BeNull();
+
             var expected = LegacyReconstructionBasisCalculator.Compute(changed.Balances, changed.Journals);
             result.SynchronizationPosition.Should().Be(expected);
             result.SynchronizationPosition.Should().NotBe(priorPosition);
@@ -435,6 +448,18 @@ public class SynchronizeStockLedgerScopeHandlerTest
 
             result.Outcome.Should().Be(SynchronizeStockLedgerScopeOutcomeEnum.Inconsistent);
             harness.Repos.Scope.LoadEntity(key).Value.SynchronizationPosition.Should().Be(prior);
+
+            // P3-S8 — initial G-24 explainability on Inconsistent path.
+            result.Explainability.Should().NotBeNull();
+            result.Explainability!.AlgorithmVersion.Should().Be(
+                LegacyReconstructionBasisCalculator.AlgorithmVersion);
+            result.Explainability.DiscoveryOutcome.Should().Be(
+                LegacyChangeDiscoveryOutcomeEnum.ChangesDetected);
+            result.Explainability.ReconcileOutcome.Should().Be(
+                StockReconciliationOutcomeEnum.MaterialInconsistency);
+            result.Explainability.SynchronizationState.Should().Be(SynchronizationStateEnum.Inconsistent);
+            result.Explainability.InconsistencyReason.Should().NotBeNullOrWhiteSpace();
+            result.ScopeState.InconsistencyReason.Should().NotBeNullOrWhiteSpace();
         }
         finally
         {

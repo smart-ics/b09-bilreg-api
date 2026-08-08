@@ -6,7 +6,7 @@ using Bilreg.Domain.InventoryContext.StockLedgerFeature;
 namespace Bilreg.Application.InventoryContext.StockLedgerFeature;
 
 /// <summary>
-/// P3-S5 / G-12 — Legacy Freshness Gate.
+/// P3-S5 / G-12 / P3-S8 — Legacy Freshness Gate.
 /// Before a Ledger-dependent stock decision, proves the reconstructed scope is current
 /// with Legacy Stock Authority (or fails closed / marks not current).
 /// <para>
@@ -14,6 +14,7 @@ namespace Bilreg.Application.InventoryContext.StockLedgerFeature;
 /// because the scope origin is Native/Reconstructed. Invokes catch-up
 /// (<see cref="SynchronizeStockLedgerScopeHandler"/>) at most once per gate call;
 /// bounded sync-specific retries are internal to that single catch-up boundary (P3-S6).
+/// P3-S8 surfaces initial G-24 explainability on gate results.
 /// </para>
 /// Future Availability callers should honor <see cref="LegacyStockFreshnessGateOutcomeEnum.StaleOrNotCurrent"/>
 /// (maps to <c>AvailabilityDiscoveryOutcomeEnum.StaleOrNotCurrent</c>) without treating provisional
@@ -93,7 +94,8 @@ public sealed class LegacyStockFreshnessGate
                 AppendContext(
                     discovery.Explanation
                     ?? "Discovery outcome is Undeterminable; freshness cannot be proven.",
-                    decisionContext));
+                    decisionContext),
+                StockLedgerSyncExplainability.FromExecution(scope, discovery, reconcile: null));
         }
 
         var balances = _legacyStockReadPort.ListCurrentBalances(key);
@@ -113,7 +115,8 @@ public sealed class LegacyStockFreshnessGate
             return Pass(
                 LegacyStockFreshnessGateOutcomeEnum.Current,
                 scope,
-                AppendContext(null, decisionContext));
+                AppendContext(null, decisionContext),
+                StockLedgerSyncExplainability.FromExecution(scope, discovery, reconcile: null));
         }
 
         // At most one catch-up boundary for this gate call (no nested rediscovery→sync loop).
@@ -128,17 +131,22 @@ public sealed class LegacyStockFreshnessGate
         SynchronizeStockLedgerScopeResult syncResult,
         string? decisionContext)
     {
+        // Catch-up path: sync result explainability is authoritative (gate may have rediscovered).
+        var explainability = syncResult.Explainability;
+
         return syncResult.Outcome switch
         {
             SynchronizeStockLedgerScopeOutcomeEnum.AlreadyCurrent => Pass(
                 LegacyStockFreshnessGateOutcomeEnum.Current,
                 syncResult.ScopeState,
-                AppendContext(syncResult.Explanation, decisionContext)),
+                AppendContext(syncResult.Explanation, decisionContext),
+                explainability),
 
             SynchronizeStockLedgerScopeOutcomeEnum.Synchronized => Pass(
                 LegacyStockFreshnessGateOutcomeEnum.SynchronizedNow,
                 syncResult.ScopeState,
-                AppendContext(syncResult.Explanation, decisionContext)),
+                AppendContext(syncResult.Explanation, decisionContext),
+                explainability),
 
             SynchronizeStockLedgerScopeOutcomeEnum.Inconsistent => FailClosed(
                 LegacyStockFreshnessGateOutcomeEnum.Inconsistent,
@@ -147,7 +155,8 @@ public sealed class LegacyStockFreshnessGate
                     syncResult.Explanation
                     ?? syncResult.ScopeState.InconsistencyReason
                     ?? "Synchronization marked scope Inconsistent.",
-                    decisionContext)),
+                    decisionContext),
+                explainability),
 
             SynchronizeStockLedgerScopeOutcomeEnum.RequiresScopedReDerive => FailClosed(
                 LegacyStockFreshnessGateOutcomeEnum.StaleOrNotCurrent,
@@ -155,7 +164,8 @@ public sealed class LegacyStockFreshnessGate
                 AppendContext(
                     syncResult.Explanation
                     ?? "Scoped re-derive required; Ledger layers are not safe to trust.",
-                    decisionContext)),
+                    decisionContext),
+                explainability),
 
             SynchronizeStockLedgerScopeOutcomeEnum.ClaimConflict => FailClosed(
                 LegacyStockFreshnessGateOutcomeEnum.StaleOrNotCurrent,
@@ -164,14 +174,16 @@ public sealed class LegacyStockFreshnessGate
                     syncResult.Explanation
                     ?? "Concurrent synchronization claim conflict after bounded sync retries; "
                     + "retry on a later Freshness Gate call.",
-                    decisionContext)),
+                    decisionContext),
+                explainability),
 
             _ => FailClosed(
                 LegacyStockFreshnessGateOutcomeEnum.StaleOrNotCurrent,
                 syncResult.ScopeState,
                 AppendContext(
                     $"Unexpected synchronization outcome '{syncResult.Outcome}'.",
-                    decisionContext))
+                    decisionContext),
+                explainability)
         };
     }
 
@@ -179,6 +191,12 @@ public sealed class LegacyStockFreshnessGate
         StockLedgerScopeStateModel scope,
         string? decisionContext)
     {
+        // Precondition failures: scope fields only; discovery/reconcile not evaluated.
+        var scopeOnly = StockLedgerSyncExplainability.FromExecution(
+            scope,
+            discovery: null,
+            reconcile: null);
+
         if (scope.ReconstructionStatus != ReconstructionStatusEnum.Reconstructed)
         {
             return FailClosed(
@@ -186,7 +204,8 @@ public sealed class LegacyStockFreshnessGate
                 scope,
                 AppendContext(
                     $"Scope must be Reconstructed before Freshness Gate (status '{scope.ReconstructionStatus}').",
-                    decisionContext));
+                    decisionContext),
+                scopeOnly);
         }
 
         if (scope.SynchronizationPosition is null)
@@ -196,7 +215,8 @@ public sealed class LegacyStockFreshnessGate
                 scope,
                 AppendContext(
                     "Scope has no Synchronization Position; reconstruct baseline before Freshness Gate.",
-                    decisionContext));
+                    decisionContext),
+                scopeOnly);
         }
 
         if (!string.Equals(
@@ -210,7 +230,8 @@ public sealed class LegacyStockFreshnessGate
                 AppendContext(
                     $"Stored algorithm version '{scope.SynchronizationPosition.AlgorithmVersion}' does not match "
                     + $"'{LegacyReconstructionBasisCalculator.AlgorithmVersion}'.",
-                    decisionContext));
+                    decisionContext),
+                scopeOnly);
         }
 
         if (scope.SynchronizationState == SynchronizationStateEnum.Inconsistent)
@@ -221,7 +242,8 @@ public sealed class LegacyStockFreshnessGate
                 AppendContext(
                     scope.InconsistencyReason
                     ?? "Scope Synchronization State is already Inconsistent.",
-                    decisionContext));
+                    decisionContext),
+                scopeOnly);
         }
 
         return null;
@@ -242,24 +264,28 @@ public sealed class LegacyStockFreshnessGate
     private static LegacyStockFreshnessGateResult Pass(
         LegacyStockFreshnessGateOutcomeEnum outcome,
         StockLedgerScopeStateModel scope,
-        string? explanation)
+        string? explanation,
+        StockLedgerSyncExplainability? explainability)
         => new(
             outcome,
             scope,
             explanation,
             scope.SynchronizationPosition,
-            IsSafeToTrustLedgerLayers: true);
+            IsSafeToTrustLedgerLayers: true,
+            Explainability: explainability);
 
     private static LegacyStockFreshnessGateResult FailClosed(
         LegacyStockFreshnessGateOutcomeEnum outcome,
         StockLedgerScopeStateModel scope,
-        string? explanation)
+        string? explanation,
+        StockLedgerSyncExplainability? explainability)
         => new(
             outcome,
             scope,
             explanation,
             scope.SynchronizationPosition,
-            IsSafeToTrustLedgerLayers: false);
+            IsSafeToTrustLedgerLayers: false,
+            Explainability: explainability);
 
     private static string? AppendContext(string? explanation, string? decisionContext)
     {
@@ -296,4 +322,5 @@ public sealed record LegacyStockFreshnessGateResult(
     StockLedgerScopeStateModel ScopeState,
     string? Explanation,
     SynchronizationPositionType? SynchronizationPosition,
-    bool IsSafeToTrustLedgerLayers);
+    bool IsSafeToTrustLedgerLayers,
+    StockLedgerSyncExplainability? Explainability);

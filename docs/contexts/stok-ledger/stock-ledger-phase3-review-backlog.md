@@ -2,13 +2,13 @@
 
 ## Purpose
 
-This document tracks cross-slice engineering findings that must be remembered during the remaining Phase 3 implementation.
+This document tracks cross-slice engineering findings remembered during Phase 3 implementation.
 
 It is **not** a bug list.
 
 It is **not** a TODO list.
 
-It contains only implementation-review findings that affect future slices.
+It contains only implementation-review findings that affected later Phase 3 slices. Phase 3 is **complete** (P3-S8 APPROVED); R-001–R-007 remain Resolved historical memory. Residual Phase 4+ debt is listed in [`stock-ledger-phase3-implementation-report.md`](./stock-ledger-phase3-implementation-report.md), not as new backlog IDs here.
 
 ---
 
@@ -28,6 +28,7 @@ It contains only implementation-review findings that affect future slices.
 | 2026-08-08 | P3-S5 | **APPROVED** | Legacy Freshness Gate (G-12) accepted: discovery fast-path + at-most-once catch-up; fail-closed `StaleOrNotCurrent` / `Inconsistent`; no Authority Gate / no legacy mutation; no P3-S6+ scope. No backlog items targeted P3-S5. P3-S6 may begin. No new backlog items. |
 | 2026-08-08 | P3-S6 | **APPROVED** | Sync-specific bounded retry (`MaxSyncConflictRetries = 3`) + `SynchronizationClaimService` claim/resume; crash-before-finalize retains prior position until resume completes; concurrent catch-up quantity-neutral via SyncBatch + CompleteSynchronization OCC; Freshness Gate still one catch-up call with internal retries; FQ-06 / G-17 production non-claim documented; Phase-4 caller contract documented only. No backlog items targeted P3-S6. No new backlog items. Known allowResume co-apply window is SyncBatch/OCC-safe and deferred (no durable claim-token columns). P3-S7 may begin. |
 | 2026-08-08 | P3-S7 | **APPROVED** | G-23 sync harness activated in place: Legacy→New (gate + catch-up + `LegacySynchronized` + fingerprint-v1), duplicate sync idempotency, real material mismatch (`Inconsistent` + position retained), .NET sync/native-serialization race (in-process doubles, quantity-neutral). Four later-phase placeholders remain skipped with Phase 4/5/8 owners. Depleted-layer P2-S8 scenario still green. No production code. No backlog items targeted P3-S7. No new backlog items. FQ-06 / full G-23 / production coexistence not claimed. P3-S8 may begin. |
+| 2026-08-08 | P3-S8 | **APPROVED** | Initial G-24 explainability accepted: `StockLedgerSyncExplainability` on sync/gate results (algorithm version, discovery, reconcile, Scope state/reason); optional nullable `ILogger` on sync terminal outcomes only; zero new SqlDb columns; call-boundary explainability + `FromPersistedScopeEvaluation` for post-hoc (no durable last-outcome columns — Phase 8 productization). Phase 3 exit report + §9 checklist + fingerprint-v1 continuity + FQ-06/G-17 non-claim verified. No FO/production DI/metrics. StockLedgerFeature **241 passed**, 4 skipped. No backlog items targeted P3-S8. No new backlog items. Phase 3 complete; Phase 4 coding may begin. |
 
 ---
 

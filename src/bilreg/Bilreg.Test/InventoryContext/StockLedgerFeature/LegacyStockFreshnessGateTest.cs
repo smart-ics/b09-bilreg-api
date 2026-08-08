@@ -52,6 +52,15 @@ public class LegacyStockFreshnessGateTest
             result.ScopeState.SynchronizationState.Should().Be(SynchronizationStateEnum.Current);
             syncCalls.Should().Be(0, "Unchanged + coverage complete must not invoke catch-up.");
             harness.LegacyWriter.Applied.Should().BeEmpty();
+
+            // P3-S8 — fast-path explainability: discovery Unchanged, reconcile not invoked.
+            result.Explainability.Should().NotBeNull();
+            result.Explainability!.AlgorithmVersion.Should().Be(
+                LegacyReconstructionBasisCalculator.AlgorithmVersion);
+            result.Explainability.DiscoveryOutcome.Should().Be(
+                LegacyChangeDiscoveryOutcomeEnum.Unchanged);
+            result.Explainability.ReconcileOutcome.Should().BeNull();
+            result.Explainability.SynchronizationState.Should().Be(SynchronizationStateEnum.Current);
         }
         finally
         {
@@ -94,6 +103,19 @@ public class LegacyStockFreshnessGateTest
             result.SynchronizationPosition.Should().NotBe(priorPosition);
             syncCalls.Should().Be(1, "Gate must invoke catch-up at most once per call.");
             harness.LegacyWriter.Applied.Should().BeEmpty();
+
+            // P3-S8 — SynchronizedNow propagates sync explainability (discovery + reconcile).
+            result.Explainability.Should().NotBeNull();
+            result.Explainability!.AlgorithmVersion.Should().Be(
+                LegacyReconstructionBasisCalculator.AlgorithmVersion);
+            result.Explainability.DiscoveryOutcome.Should().Be(
+                LegacyChangeDiscoveryOutcomeEnum.ChangesDetected);
+            result.Explainability.ReconcileOutcome.Should().BeOneOf(
+                StockReconciliationOutcomeEnum.Balanced,
+                StockReconciliationOutcomeEnum.IntentionalDifference,
+                StockReconciliationOutcomeEnum.PendingSynchronization);
+            result.Explainability.SynchronizationState.Should().Be(SynchronizationStateEnum.Current);
+            result.Explainability.InconsistencyReason.Should().BeNull();
         }
         finally
         {

@@ -21,7 +21,7 @@
 | P3-S5 | **COMPLETE** | Legacy Freshness Gate (G-12); discovery fast-path + at-most-once catch-up; fail-closed StaleOrNotCurrent / Inconsistent |
 | P3-S6 | **COMPLETE** | Sync-specific bounded retry + claim serialization; crash resume; concurrent catch-up quantity-neutral; FQ-06 non-claim |
 | P3-S7 | **COMPLETE** | Coexistence sync harness (G-23 sync portion): Legacy→New, duplicate batch, real mismatch, .NET sync/native race; 4 later-phase skips documented |
-| P3-S8 | **PENDING** | — |
+| P3-S8 | **COMPLETE** | Initial G-24 explainability + Phase 3 exit report; fingerprint-v1 continuity restated; FQ-06/G-17 non-claim |
 
 ---
 
