@@ -67,6 +67,12 @@ public sealed class StockConsequenceUnitOfWork : IStockConsequenceUnitOfWork
         if (draft.ScopeState is not null)
             PersistScope(draft.ScopeState, draft.ExpectedPriorReconstructionStatus, expectedSync: null);
 
+        if (draft.AdditionalScopeStates is { Count: > 0 })
+        {
+            foreach (var additionalScope in draft.AdditionalScopeStates)
+                PersistScope(additionalScope, expectedReconstruction: null, expectedSync: null);
+        }
+
         if (draft.LegacyWrite is not null)
             _legacyCompatibilityWriter.Apply(draft.LegacyWrite);
 

@@ -294,6 +294,8 @@ Authoritative inventory movement, provenance, Remaining Quantity, FIFO, reservat
 | `docs/contexts/stok-ledger/stock-ledger-phase5-implementation-plan.md` | Stock Ledger — Phase 5 executable implementation slices (trusted availability/FIFO, MT transfer, concurrency; slice progress tracked in-doc) |
 | `docs/contexts/stok-ledger/stock-ledger-phase5-s1-implementation-summary.md` | Stock Ledger — Phase 5 / P5-S1 trusted Availability → Freshness → FIFO orchestration (allocation gate PASS) |
 | `docs/contexts/stok-ledger/stock-ledger-phase5-s2-implementation-summary.md` | Stock Ledger — Phase 5 / P5-S2 live MT Legacy Compatibility Writer OUT/IN post (writer gate PASS) |
+| `docs/contexts/stok-ledger/stock-ledger-phase5-s3-implementation-summary.md` | Stock Ledger — Phase 5 / P5-S3 Native Stock Transfer UseCase + capability flag (default disabled); OCC increase cleared; gate **NO-GO** on LegacyRowId exact-qty wrong-row — see review |
+| `docs/contexts/stok-ledger/stock-ledger-phase5-s3-review.md` | Stock Ledger — Phase 5 / P5-S3 gate re-review **NO-GO** (LegacyRowId exact-qty can OUT wrong `tb_stok` row); prior OCC increase NO-GO cleared |
 | `docs/contexts/stok-ledger/stock-ledger-P4-S1-implementation-summary.md` | Stock Ledger — Phase 4 / P4-S1 live DM Legacy Compatibility Writer (receipt post; gate PASS) |
 | `docs/contexts/stok-ledger/stock-ledger-P4-S2-implementation-summary.md` | Stock Ledger — Phase 4 / P4-S2 Native DO Receipt UseCase + Scope baseline + capability gate + greenfield prior-history fail-closed guard (NO-GO remediated) |
 | `docs/contexts/stok-ledger/stock-ledger-P4-S3-implementation-summary.md` | Stock Ledger — Phase 4 / P4-S3 live legacy+Ledger atomicity (G-18) + G-23 New→Legacy / PartialFailure harness |

@@ -18,7 +18,7 @@
 |---|---|---|
 | P5-S1 | COMPLETE | Trusted Availability → Freshness → FIFO orchestration (**gate PASS**). See [`stock-ledger-phase5-s1-implementation-summary.md`](./stock-ledger-phase5-s1-implementation-summary.md). |
 | P5-S2 | COMPLETE | Live MT Legacy Compatibility Writer OUT/IN post (**gate PASS**). See [`stock-ledger-phase5-s2-implementation-summary.md`](./stock-ledger-phase5-s2-implementation-summary.md). |
-| P5-S3 | PENDING | — |
+| P5-S3 | Gate **NO-GO** (LegacyRowId) | OCC increase cleared; re-review **NO-GO** on exact-qty LegacyRowId wrong-row. See [`stock-ledger-phase5-s3-review.md`](./stock-ledger-phase5-s3-review.md) and [`stock-ledger-phase5-s3-implementation-summary.md`](./stock-ledger-phase5-s3-implementation-summary.md). |
 | P5-S4 | PENDING | — |
 | P5-S5 | PENDING | — |
 | P5-S6 | PENDING | — |
