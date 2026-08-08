@@ -295,6 +295,8 @@ Authoritative inventory movement, provenance, Remaining Quantity, FIFO, reservat
 | `docs/contexts/stok-ledger/stock-ledger-P4-S2-implementation-summary.md` | Stock Ledger — Phase 4 / P4-S2 Native DO Receipt UseCase + Scope baseline + capability gate + greenfield prior-history fail-closed guard (NO-GO remediated) |
 | `docs/contexts/stok-ledger/stock-ledger-P4-S3-implementation-summary.md` | Stock Ledger — Phase 4 / P4-S3 live legacy+Ledger atomicity (G-18) + G-23 New→Legacy / PartialFailure harness |
 | `docs/contexts/stok-ledger/stock-ledger-P4-S4-implementation-summary.md` | Stock Ledger — Phase 4 / P4-S4 Native DO Receipt void/correction (accountable Reversal + DO_V; fail-closed unsafe cases) |
+| `docs/contexts/stok-ledger/stock-ledger-P4-S5-implementation-summary.md` | Stock Ledger — Phase 4 / P4-S5 Native→VB6→sync coexistence proof + AlternatingWriters + capability-off continuity |
+| `docs/contexts/stok-ledger/stock-ledger-phase4-implementation-report.md` | Stock Ledger — Phase 4 implementation report (exit checklist, handoff to Phase 5 / Phase 9) |
 | `docs/contexts/stok-ledger/stock-ledger-P3-S1-implementation-summary.md` | Stock Ledger — Phase 3 / P3-S1 live Legacy Change Discovery (G-13; gate PASS) |
 | `docs/contexts/stok-ledger/stock-ledger-P3-S2-implementation-summary.md` | Stock Ledger — Phase 3 / P3-S2 sync delta interpretation (pure intents; void/update → accountable correction/reversal) |
 | `docs/contexts/stok-ledger/stock-ledger-P3-S3-implementation-summary.md` | Stock Ledger — Phase 3 / P3-S3 material reconciliation adapter (G-16 P0; classify only; safe-to-advance) |

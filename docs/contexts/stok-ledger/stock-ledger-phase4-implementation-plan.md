@@ -19,7 +19,7 @@
 | P4-S2 | COMPLETE | [`stock-ledger-P4-S2-implementation-summary.md`](./stock-ledger-P4-S2-implementation-summary.md) — Native DO Receipt UseCase + Scope baseline + capability flag + greenfield prior-history fail-closed guard (NO-GO remediated) |
 | P4-S3 | COMPLETE | [`stock-ledger-P4-S3-implementation-summary.md`](./stock-ledger-P4-S3-implementation-summary.md) — G-18 live-writer atomicity + G-23 New→Legacy / PartialFailure harness |
 | P4-S4 | COMPLETE | [`stock-ledger-P4-S4-implementation-summary.md`](./stock-ledger-P4-S4-implementation-summary.md) — Receipt void/correction (accountable Reversal + DO_V; fail closed when unsafe) |
-| P4-S5 | PLANNED | Phase 3 catch-up coexistence proof + capability-disable + Phase 4 exit report |
+| P4-S5 | COMPLETE | [`stock-ledger-P4-S5-implementation-summary.md`](./stock-ledger-P4-S5-implementation-summary.md) — Native→VB6→sync coexistence + AlternatingWriters + exit report [`stock-ledger-phase4-implementation-report.md`](./stock-ledger-phase4-implementation-report.md) |
 
 ---
 
@@ -423,15 +423,15 @@ At Phase 4 completion, publish `stock-ledger-phase4-implementation-report.md` co
 - [x] **P4-S1 gate passed:** live DM post compatibility writer accepted before Native UseCase enablement work proceeds.  
 - [x] **G-11 accepted for DM post (and void if P4-S4 delivers):** legacy readers can consume new-system receipt/void consequences; delete-on-zero remains compatible; compatibility failure rolls back the complete consequence.  
 - [x] **G-18 accepted with live writer:** failure injection at persistence boundaries rolls back Ledger + legacy together; retry commits once.  
-- [ ] **G-19 accepted as technical capability:** idempotent Native DO Receipt; Scope baseline + `fingerprint-v1` position; no authority/cutover fields.  
+- [x] **G-19 accepted as technical capability:** idempotent Native DO Receipt; Scope baseline + `fingerprint-v1` position; no authority/cutover fields.  
 - [x] **Void:** accountable Ledger reversal/correction retained **or** explicitly deferred with fail-closed rationale in the exit report.  
-- [ ] **Phase 3 integration:** Native → later legacy change → Freshness Gate / sync catch-up → continue; Native-origin is not treated as VB6 prohibition.  
-- [ ] **G-23 Phase-4 markers:** New→Legacy activated; PartialFailure covered; AlternatingWriters activated to fixture-simulated extent or explicitly deferred with owner.  
-- [ ] **Capability flag default false;** no public production write endpoint required.  
-- [ ] **Explicit non-claim:** FQ-06 / production G-17 **not** done.  
-- [ ] **No** `IsAuthoritative`, Stage C, generic stock framework, or `clbGenStokX1` port.  
-- [ ] Solution builds; StockLedgerFeature tests green for Phase 4 slices; Phase 1–3 tests remain green.  
-- [ ] Phase 4 implementation report published; ARTIFACTS updated.
+- [x] **Phase 3 integration:** Native → later legacy change → Freshness Gate / sync catch-up → continue; Native-origin is not treated as VB6 prohibition.  
+- [x] **G-23 Phase-4 markers:** New→Legacy activated; PartialFailure covered; AlternatingWriters activated to fixture-simulated extent or explicitly deferred with owner.  
+- [x] **Capability flag default false;** no public production write endpoint required.  
+- [x] **Explicit non-claim:** FQ-06 / production G-17 **not** done.  
+- [x] **No** `IsAuthoritative`, Stage C, generic stock framework, or `clbGenStokX1` port.  
+- [x] Solution builds; StockLedgerFeature tests green for Phase 4 slices; Phase 1–3 tests remain green.  
+- [x] Phase 4 implementation report published; ARTIFACTS updated.
 
 ---
 
