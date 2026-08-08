@@ -366,6 +366,26 @@ public class IgdVisitModel : IIgdVisitKey
         Emit(IgdEventEnum.AssignRegister, audit, $"RegId {reg.RegId} dilinkkan");
     }
 
+    public void ReplaceRegister(RegModel newReg, AuditInfoType audit)
+    {
+        Guard.Against.Null(newReg);
+        if (IsTerminal)
+            throw new InvalidOperationException(
+                $"Visit {IgdVisitId} sudah {AdministrativeState}; tidak dapat replace register.");
+        if(!HasReg)
+            throw new InvalidOperationException(
+                $"Visit {IgdVisitId} belum Assign Register; Gunakan Assign Register.");
+        if (Reg.RegId == newReg.RegId)
+            throw new InvalidOperationException(
+                $"Visit {IgdVisitId} Register lama {Reg.RegId} sama dengan Register baru {newReg.RegId}; Akses ditolak.");
+        var oldReg = Reg;
+        Reg = newReg.ToReff();
+        AdministrativeState = AdministrativeStateEnum.Registered;
+        AuditTrail.Modif(audit.UserId, audit.Timestamp);
+        Emit(IgdEventEnum.ReplaceRegister, audit, $"RegId {oldReg.RegId} diganti dengan {newReg.RegId}");
+
+    }
+
     public void RedirectToRawatJalan(string redirectRajalId, string reason, AuditInfoType audit)
     {
         Guard.Against.NullOrWhiteSpace(redirectRajalId, nameof(redirectRajalId));
