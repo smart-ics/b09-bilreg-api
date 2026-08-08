@@ -50,6 +50,15 @@ public class StockSourceIdempotencyRepo : IStockSourceIdempotencyRepo
         }
     }
 
+    public IReadOnlyList<StockSourceIdempotencyModel> ListSyncIdentityRecordsForScope(
+        IStockLedgerScopeKey scope)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+        return _dal.ListSyncIdentityRecordsForScope(scope.BrgId, scope.ReceiptSourceId)
+            .Select(x => x.ToModel())
+            .ToList();
+    }
+
     private static bool IsUniqueViolation(SqlException ex)
         => ex.Number is 2601 or 2627;
 }

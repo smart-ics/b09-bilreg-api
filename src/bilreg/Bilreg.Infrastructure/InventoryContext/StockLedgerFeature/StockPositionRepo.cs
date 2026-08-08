@@ -63,6 +63,35 @@ public class StockPositionRepo : IStockPositionRepo
         return MayBe.From(header.ToModel(layers));
     }
 
+    public IReadOnlyList<StockPositionModel> ListByLedgerScope(IStockLedgerScopeKey scope)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+
+        var layers = _layerDal.ListByLedgerScope(scope);
+        if (layers.Count == 0)
+            return Array.Empty<StockPositionModel>();
+
+        var byLocation = layers
+            .GroupBy(l => l.LayananId, StringComparer.Ordinal)
+            .OrderBy(g => g.Key, StringComparer.Ordinal);
+
+        var result = new List<StockPositionModel>();
+        foreach (var group in byLocation)
+        {
+            var writeScope = StockWriteScopeKeyType.Create(
+                scope.BrgId,
+                scope.ReceiptSourceId,
+                group.Key);
+            var header = _positionDal.GetData(writeScope);
+            if (header is null)
+                continue;
+
+            result.Add(header.ToModel(group.Select(x => x.ToModel())));
+        }
+
+        return result;
+    }
+
     private void PersistLayers(StockPositionModel model, HashSet<string> existingIds)
     {
         foreach (var layer in model.Layers)

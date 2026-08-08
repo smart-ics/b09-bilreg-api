@@ -60,6 +60,9 @@ internal static class StockLedgerSchemaFixture
                     conn.Execute(batch);
             }
 
+            // P3-S4 / R-002 — widen IdempotencyKey on already-created test DBs.
+            ApplyAlterScript(conn, Path.Combine(featurePath, "BILRG_StokSourceIdempotency.AlterIdempotencyKey.sql"));
+
             _ensured = true;
         }
     }
@@ -108,6 +111,14 @@ internal static class StockLedgerSchemaFixture
 
         if (!File.Exists(scriptPath))
             throw new FileNotFoundException($"Legacy stock schema script not found: {scriptPath}");
+
+        ApplyAlterScript(conn, scriptPath);
+    }
+
+    private static void ApplyAlterScript(SqlConnection conn, string scriptPath)
+    {
+        if (!File.Exists(scriptPath))
+            throw new FileNotFoundException($"Schema script not found: {scriptPath}");
 
         var script = File.ReadAllText(scriptPath);
         var batches = Regex.Split(

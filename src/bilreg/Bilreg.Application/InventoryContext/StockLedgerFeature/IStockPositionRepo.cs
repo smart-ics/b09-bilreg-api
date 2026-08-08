@@ -12,4 +12,9 @@ public interface IStockPositionRepo :
     ISaveChange<StockPositionModel>,
     ILoadEntity<StockPositionModel, IStockWriteScopeKey>
 {
+    /// <summary>
+    /// P3-S4 — all Stock Positions (with layers) for one Reconstruction Scope
+    /// (Item + Receipt Source across all Stock Locations).
+    /// </summary>
+    IReadOnlyList<StockPositionModel> ListByLedgerScope(IStockLedgerScopeKey scope);
 }

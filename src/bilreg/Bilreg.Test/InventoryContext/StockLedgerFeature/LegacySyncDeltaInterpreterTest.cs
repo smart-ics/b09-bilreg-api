@@ -128,6 +128,35 @@ public class LegacySyncDeltaInterpreterTest
     }
 
     [Fact]
+    public void JournalVoidDelete_MultiLinePrior_ReturnsAmbiguous_R007()
+    {
+        // Aggregate reconstruction movement: two locations. Voiding one journal must not
+        // propose a full Reverse that would deplete the sibling location (R-007).
+        var prior = CreatePriorReceiptMultiLocation(
+            "MOV-AGG-1",
+            ("LY01", 10m),
+            ("LY02", 20m));
+        var snapshot = SnapshotWithJournal("BK001", "LY01", prior);
+        var discovery = ChangesDetected(
+            new LegacyDiscoveredDeltaType(
+                LegacyDiscoveredDeltaKindEnum.JournalVoidDelete,
+                "BK001",
+                "LY01",
+                null,
+                null,
+                T2,
+                "voided only LY01 journal"));
+
+        var result = Interpret(discovery, snapshot, [], []);
+
+        result.Outcome.Should().Be(LegacySyncInterpretationOutcomeEnum.Ambiguous);
+        result.Intents.Should().BeEmpty();
+        result.Explanation.Should().Contain("R-007");
+        prior.Lines.Should().HaveCount(2);
+        prior.MovementKind.Should().Be(StockMovementKindEnum.Receipt);
+    }
+
+    [Fact]
     public void JournalUpdate_OutboundDecrease_ProducesCompensatingInbound()
     {
         // Previously represented OUT 10 → legacy now OUT 7 ⇒ compensatory +3 (Inbound).
@@ -582,6 +611,30 @@ public class LegacySyncDeltaInterpreterTest
             SourceTransactionReferenceType.Create($"PRIOR|{movementId}"),
             T1,
             [line],
+            StockFactOriginEnum.Reconstructed,
+            movementId);
+    }
+
+    private static StockMovementModel CreatePriorReceiptMultiLocation(
+        string movementId,
+        params (string LayananId, decimal Quantity)[] lines)
+    {
+        var movementLines = lines
+            .Select((x, index) => StockMovementLineType.Create(
+                index + 1,
+                BrgObatType.Key(Scope.BrgId),
+                ReceiptSourceType.Create(Scope.ReceiptSourceId),
+                LayananType.Key(x.LayananId),
+                StockMovementDirectionEnum.Inbound,
+                x.Quantity,
+                UnitValuationType.Create(1000m),
+                StockFactOriginEnum.Reconstructed))
+            .ToArray();
+
+        return StockMovementModel.CreateReceipt(
+            SourceTransactionReferenceType.Create($"PRIOR|{movementId}"),
+            T1,
+            movementLines,
             StockFactOriginEnum.Reconstructed,
             movementId);
     }

@@ -24,4 +24,12 @@ public interface IStockLedgerScopeStateRepo :
     bool TryUpdateWhenReconstructionStatus(
         StockLedgerScopeStateModel model,
         ReconstructionStatusEnum expectedPriorStatus);
+
+    /// <summary>
+    /// P3-S4 — conditional update for synchronization claim / finalize. Succeeds only when
+    /// the durable SynchronizationState still equals <paramref name="expectedPriorState"/>.
+    /// </summary>
+    bool TryUpdateWhenSynchronizationState(
+        StockLedgerScopeStateModel model,
+        SynchronizationStateEnum expectedPriorState);
 }

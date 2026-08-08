@@ -18,6 +18,11 @@ public interface IStockSourceIdempotencyDal :
     /// P3-S1 — Ledger-known legacy identity keys for one Reconstruction Scope (SyncBatch + SourceConsequence).
     /// </summary>
     IReadOnlyList<string> ListSyncIdentityKeysForScope(string brgId, string receiptSourceId);
+
+    /// <summary>
+    /// P3-S4 — Full SyncBatch / SourceConsequence identity rows for one Reconstruction Scope.
+    /// </summary>
+    IReadOnlyList<StockSourceIdempotencyDto> ListSyncIdentityRecordsForScope(string brgId, string receiptSourceId);
 }
 
 public class StockSourceIdempotencyDal : IStockSourceIdempotencyDal
@@ -108,6 +113,35 @@ public class StockSourceIdempotencyDal : IStockSourceIdempotencyDal
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         var rows = conn.Read<SyncIdentityKeyRow>(sql, dp) ?? [];
         return rows.Select(x => x.IdempotencyKey).ToList();
+    }
+
+    public IReadOnlyList<StockSourceIdempotencyDto> ListSyncIdentityRecordsForScope(
+        string brgId,
+        string receiptSourceId)
+    {
+        const string sql = """
+            SELECT
+                aa.IdempotencyId, aa.IdempotencyKind, aa.IdempotencyKey,
+                aa.SourceTransactionId, aa.StockMovementId,
+                aa.BrgId, aa.ReceiptSourceId, aa.ProcessedAt,
+                aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate, aa.VodUser, aa.VodDate
+            FROM BILRG_StokSourceIdempotency aa
+            WHERE
+                aa.BrgId = @BrgId
+                AND aa.ReceiptSourceId = @ReceiptSourceId
+                AND aa.IdempotencyKind IN (@SourceConsequence, @SyncBatch)
+                AND aa.IdempotencyKey LIKE 'SYNC|%'
+            ORDER BY aa.IdempotencyKey
+            """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@BrgId", brgId, SqlDbType.VarChar);
+        dp.AddParam("@ReceiptSourceId", receiptSourceId, SqlDbType.VarChar);
+        dp.AddParam("@SourceConsequence", (int)StockSourceIdempotencyKindEnum.SourceConsequence, SqlDbType.Int);
+        dp.AddParam("@SyncBatch", (int)StockSourceIdempotencyKindEnum.SyncBatch, SqlDbType.Int);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return (conn.Read<StockSourceIdempotencyDto>(sql, dp) ?? []).ToList();
     }
 
     private sealed record SyncIdentityKeyRow(string IdempotencyKey);

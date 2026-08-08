@@ -48,6 +48,14 @@ public class StockLedgerScopeStateRepo : IStockLedgerScopeStateRepo
                (int)expectedPriorStatus)
            == 1;
 
+    public bool TryUpdateWhenSynchronizationState(
+        StockLedgerScopeStateModel model,
+        SynchronizationStateEnum expectedPriorState)
+        => _dal.UpdateWhenSynchronizationState(
+               StockLedgerScopeDto.FromModel(model),
+               (int)expectedPriorState)
+           == 1;
+
     private static bool IsUniqueViolation(SqlException ex)
         => ex.Number is 2601 or 2627;
 }

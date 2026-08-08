@@ -17,7 +17,7 @@
 | P3-S1 | **COMPLETE** | Live G-13 discovery adapter + set-diff classifier + detection tests; **gate PASS** |
 | P3-S2 | **COMPLETE** | Pure sync delta interpreter; R-005 compensatory JournalUpdate verified Resolved |
 | P3-S3 | **COMPLETE** | Live G-16 P0 reconcile adapter; R-006 `AllowsMaterialSynchronizationAdvance` verified Resolved |
-| P3-S4 | **PENDING** | — |
+| P3-S4 | **COMPLETE** | Incremental catch-up + position advancement; R-001–R-004 / R-007 Resolved (Option A fail-closed void guard verified) |
 | P3-S5 | **PENDING** | — |
 | P3-S6 | **PENDING** | — |
 | P3-S7 | **PENDING** | — |

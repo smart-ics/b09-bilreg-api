@@ -18,6 +18,12 @@ public interface IStockLedgerScopeDal :
     /// equals <paramref name="expectedReconstructionStatus"/>. Returns affected row count.
     /// </summary>
     int UpdateWhenReconstructionStatus(StockLedgerScopeDto dto, int expectedReconstructionStatus);
+
+    /// <summary>
+    /// P3-S4 — sync-claim-safe update: writes only when durable SynchronizationState
+    /// equals <paramref name="expectedSynchronizationState"/>. Returns affected row count.
+    /// </summary>
+    int UpdateWhenSynchronizationState(StockLedgerScopeDto dto, int expectedSynchronizationState);
 }
 
 public class StockLedgerScopeDal : IStockLedgerScopeDal
@@ -88,6 +94,31 @@ public class StockLedgerScopeDal : IStockLedgerScopeDal
 
         var dp = MapParams(dto);
         dp.AddParam("@ExpectedReconstructionStatus", expectedReconstructionStatus, SqlDbType.Int);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Execute(sql, dp);
+    }
+
+    public int UpdateWhenSynchronizationState(StockLedgerScopeDto dto, int expectedSynchronizationState)
+    {
+        const string sql = """
+            UPDATE BILRG_StokLedgerScope SET
+                ReconstructionStatus = @ReconstructionStatus,
+                SynchronizationState = @SynchronizationState,
+                SynchronizationPositionOpaque = @SynchronizationPositionOpaque,
+                AlgorithmVersion = @AlgorithmVersion,
+                ReconstructionBasisVersion = @ReconstructionBasisVersion,
+                InconsistencyReason = @InconsistencyReason,
+                UpdUser = @UpdUser,
+                UpdDate = @UpdDate
+            WHERE
+                BrgId = @BrgId
+                AND ReceiptSourceId = @ReceiptSourceId
+                AND SynchronizationState = @ExpectedSynchronizationState
+            """;
+
+        var dp = MapParams(dto);
+        dp.AddParam("@ExpectedSynchronizationState", expectedSynchronizationState, SqlDbType.Int);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Execute(sql, dp);

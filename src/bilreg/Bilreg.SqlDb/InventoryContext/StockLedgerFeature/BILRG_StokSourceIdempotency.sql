@@ -12,7 +12,9 @@ BEGIN
     (
         IdempotencyId       VARCHAR(26)  NOT NULL CONSTRAINT DF_BILRG_StokSourceIdempotency_IdempotencyId DEFAULT(''),
         IdempotencyKind     INT          NOT NULL CONSTRAINT DF_BILRG_StokSourceIdempotency_IdempotencyKind DEFAULT(0),
-        IdempotencyKey      VARCHAR(200) NOT NULL CONSTRAINT DF_BILRG_StokSourceIdempotency_IdempotencyKey DEFAULT(''),
+        -- P3-S4 / R-002: VARCHAR(400) holds schema-max P3-S1 discovery identity keys
+        -- (SYNC|BUKU|… / SYNC|STOK|…) including synthetic VOID/OMISSION forms.
+        IdempotencyKey      VARCHAR(400) NOT NULL CONSTRAINT DF_BILRG_StokSourceIdempotency_IdempotencyKey DEFAULT(''),
         SourceTransactionId VARCHAR(50)  NOT NULL CONSTRAINT DF_BILRG_StokSourceIdempotency_SourceTransactionId DEFAULT(''),
         StockMovementId     VARCHAR(26)  NOT NULL CONSTRAINT DF_BILRG_StokSourceIdempotency_StockMovementId DEFAULT(''),
         BrgId               VARCHAR(13)  NOT NULL CONSTRAINT DF_BILRG_StokSourceIdempotency_BrgId DEFAULT(''),

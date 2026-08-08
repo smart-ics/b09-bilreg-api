@@ -144,6 +144,16 @@ public static class LegacySyncDeltaInterpreter
                 $"'{anchor.StockMovementId}' but the movement was not supplied in the Ledger snapshot."));
         }
 
+        // R-007: Reverse applies to every prior line. Fail closed unless the prior Movement is a
+        // safe 1:1 void target for this journal identity (single line at the voided LayananId).
+        if (!TryResolveSafeVoidTarget(prior, identity.LayananId, out var voidAmbiguity))
+        {
+            return InterpretStep.Fail(LegacySyncInterpretationResult.Ambiguous(
+                voidAmbiguity
+                ?? $"JournalVoidDelete for '{identity.LegacyJournalId}' at '{identity.LayananId}' " +
+                   "cannot safely reverse prior movement without affecting sibling lines/locations."));
+        }
+
         var effectiveTime = delta.MutationTime ?? prior.EffectiveBusinessTime;
         var sourceRef = SourceTransactionReferenceType.Create(
             $"SYNC-VOID|{identity.LegacyJournalId}|{identity.LayananId}");
@@ -674,6 +684,52 @@ public static class LegacySyncDeltaInterpreter
         if (quantity <= 0m)
         {
             ambiguity = $"Journal '{journal.LegacyJournalId}' has non-positive quantity.";
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// R-007 — A void may call <see cref="StockMovementModel.Reverse"/> only when the prior
+    /// Movement is a precise 1:1 target for the voided journal (exactly one line at the voided
+    /// Stock Location). Multi-line / multi-location priors fail closed before any quantity write.
+    /// </summary>
+    private static bool TryResolveSafeVoidTarget(
+        StockMovementModel prior,
+        string voidedLayananId,
+        out string? ambiguity)
+    {
+        ambiguity = null;
+
+        if (prior.Lines.Count == 0)
+        {
+            ambiguity =
+                $"JournalVoidDelete prior movement '{prior.StockMovementId}' has no lines; " +
+                "cannot propose an accountable reversal.";
+            return false;
+        }
+
+        if (prior.Lines.Count != 1)
+        {
+            var locations = prior.Lines
+                .Select(l => l.LayananId)
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+            ambiguity =
+                $"JournalVoidDelete prior movement '{prior.StockMovementId}' has {prior.Lines.Count} lines " +
+                $"across {locations.Length} Stock Location(s); full Reverse would over-apply relative to " +
+                $"the voided journal at '{voidedLayananId}'. Fail closed (R-007).";
+            return false;
+        }
+
+        var line = prior.Lines[0];
+        if (!string.Equals(line.LayananId, voidedLayananId, StringComparison.Ordinal))
+        {
+            ambiguity =
+                $"JournalVoidDelete at '{voidedLayananId}' is anchored to prior movement " +
+                $"'{prior.StockMovementId}' whose sole line is at '{line.LayananId}'; " +
+                "location mismatch cannot be reversed safely without inventing transfer semantics.";
             return false;
         }
 

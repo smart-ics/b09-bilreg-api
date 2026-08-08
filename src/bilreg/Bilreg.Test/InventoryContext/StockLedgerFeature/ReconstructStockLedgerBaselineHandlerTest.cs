@@ -792,5 +792,8 @@ public class ReconstructStockLedgerBaselineHandlerTest
 
         public MayBe<StockPositionModel> LoadEntity(IStockWriteScopeKey key)
             => _inner.LoadEntity(key);
+
+        public IReadOnlyList<StockPositionModel> ListByLedgerScope(IStockLedgerScopeKey scope)
+            => _inner.ListByLedgerScope(scope);
     }
 }

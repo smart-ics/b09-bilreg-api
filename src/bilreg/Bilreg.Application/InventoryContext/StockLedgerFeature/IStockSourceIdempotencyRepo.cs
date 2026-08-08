@@ -18,6 +18,12 @@ public interface IStockSourceIdempotencyRepo :
     /// stored row and <see cref="StockSourceIdempotencyInsertResult.WasInserted"/> = false.
     /// </summary>
     StockSourceIdempotencyInsertResult InsertOrGetExisting(StockSourceIdempotencyModel model);
+
+    /// <summary>
+    /// P3-S4 — Ledger-known SyncBatch / SourceConsequence identity records for one
+    /// Reconstruction Scope (keys starting with <c>SYNC|</c>).
+    /// </summary>
+    IReadOnlyList<StockSourceIdempotencyModel> ListSyncIdentityRecordsForScope(IStockLedgerScopeKey scope);
 }
 
 public sealed record StockSourceIdempotencyInsertResult(
