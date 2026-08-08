@@ -15,7 +15,7 @@
 
 | Slice | Status | Summary |
 |---|---|---|
-| P4-S1 | PLANNED | Live DM Legacy Compatibility Writer (receipt post shape) + compatibility contract |
+| P4-S1 | COMPLETE | [`stock-ledger-P4-S1-implementation-summary.md`](./stock-ledger-P4-S1-implementation-summary.md) — gate **PASS**; live DM post writer |
 | P4-S2 | PLANNED | Native DO Receipt consequence UseCase + Scope baseline + capability gate |
 | P4-S3 | PLANNED | Live legacy+Ledger atomicity / failure injection + New→Legacy harness |
 | P4-S4 | PLANNED | Receipt void/correction (accountable Ledger + legacy-compatible void; fail closed when unsafe) |
@@ -420,7 +420,7 @@ At Phase 4 completion, publish `stock-ledger-phase4-implementation-report.md` co
 
 ## 12. Phase 4 exit checklist
 
-- [ ] **P4-S1 gate passed:** live DM post compatibility writer accepted before Native UseCase enablement work proceeds.  
+- [x] **P4-S1 gate passed:** live DM post compatibility writer accepted before Native UseCase enablement work proceeds.  
 - [ ] **G-11 accepted for DM post (and void if P4-S4 delivers):** legacy readers can consume new-system receipt/void consequences; delete-on-zero remains compatible; compatibility failure rolls back the complete consequence.  
 - [ ] **G-18 accepted with live writer:** failure injection at persistence boundaries rolls back Ledger + legacy together; retry commits once.  
 - [ ] **G-19 accepted as technical capability:** idempotent Native DO Receipt; Scope baseline + `fingerprint-v1` position; no authority/cutover fields.  
