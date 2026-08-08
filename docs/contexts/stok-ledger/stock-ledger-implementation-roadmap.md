@@ -8,6 +8,7 @@
 **Phase 2 plan:** [`stock-ledger-phase2-implementation-plan.md`](./stock-ledger-phase2-implementation-plan.md)
 **Phase 3 plan:** [`stock-ledger-phase3-implementation-plan.md`](./stock-ledger-phase3-implementation-plan.md)
 **Phase 4 plan:** [`stock-ledger-phase4-implementation-plan.md`](./stock-ledger-phase4-implementation-plan.md)
+**Phase 5 plan:** [`stock-ledger-phase5-implementation-plan.md`](./stock-ledger-phase5-implementation-plan.md)
 **Legacy behavior reference:** [`clbGenStokX1.cls`](./clbGenStokX1.cls)
 **Standards:** [`docs/ENGINEERING.md`](../../ENGINEERING.md), [`docs/DATABASE.md`](../../DATABASE.md), [`docs/NAMING.md`](../../NAMING.md)
 
@@ -204,6 +205,10 @@ The final storage shape is decided in Phase 0/1. A proposed column name must not
 | Risks | Treating Native as authority, omitting source writeback, partial transaction, assuming later VB6 outbound is an error rather than a synchronization input. |
 
 ### Phase 5 — Availability, FIFO, transfer, and first outbound
+
+**Progress:** PLANNED — executable slices P5-S1…P5-S6 in [`stock-ledger-phase5-implementation-plan.md`](./stock-ledger-phase5-implementation-plan.md). Do not expand this roadmap section into slice detail.  
+**Execution plan:** [`stock-ledger-phase5-implementation-plan.md`](./stock-ledger-phase5-implementation-plan.md).  
+**Code-base note:** Provisional Availability (P2-S7), Domain ED+FIFO (P1-S3), Freshness Gate (P3-S5), consequence UoW, and DM writer already exist. Phase 5 owns trusted allocation orchestration, MT compatibility writer, Native Transfer post/void, .NET concurrency hardening, and ConcurrentOutbound — not rebuilds of those foundations.
 
 | Area | Plan |
 |---|---|

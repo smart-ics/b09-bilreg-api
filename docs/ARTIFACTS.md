@@ -291,6 +291,8 @@ Authoritative inventory movement, provenance, Remaining Quantity, FIFO, reservat
 | `docs/contexts/stok-ledger/stock-ledger-phase2-implementation-plan.md` | Stock Ledger — Phase 2 executable implementation slices (initial reconstruction baseline; slice progress tracked in-doc) |
 | `docs/contexts/stok-ledger/stock-ledger-phase3-implementation-plan.md` | Stock Ledger — Phase 3 executable implementation slices (incremental sync + Freshness Gate; slice progress tracked in-doc) |
 | `docs/contexts/stok-ledger/stock-ledger-phase4-implementation-plan.md` | Stock Ledger — Phase 4 executable implementation slices (first native DO Receipt consequence; slice progress tracked in-doc) |
+| `docs/contexts/stok-ledger/stock-ledger-phase5-implementation-plan.md` | Stock Ledger — Phase 5 executable implementation slices (trusted availability/FIFO, MT transfer, concurrency; slice progress tracked in-doc) |
+| `docs/contexts/stok-ledger/stock-ledger-phase5-s1-implementation-summary.md` | Stock Ledger — Phase 5 / P5-S1 trusted Availability → Freshness → FIFO orchestration (allocation gate PASS) |
 | `docs/contexts/stok-ledger/stock-ledger-P4-S1-implementation-summary.md` | Stock Ledger — Phase 4 / P4-S1 live DM Legacy Compatibility Writer (receipt post; gate PASS) |
 | `docs/contexts/stok-ledger/stock-ledger-P4-S2-implementation-summary.md` | Stock Ledger — Phase 4 / P4-S2 Native DO Receipt UseCase + Scope baseline + capability gate + greenfield prior-history fail-closed guard (NO-GO remediated) |
 | `docs/contexts/stok-ledger/stock-ledger-P4-S3-implementation-summary.md` | Stock Ledger — Phase 4 / P4-S3 live legacy+Ledger atomicity (G-18) + G-23 New→Legacy / PartialFailure harness |
