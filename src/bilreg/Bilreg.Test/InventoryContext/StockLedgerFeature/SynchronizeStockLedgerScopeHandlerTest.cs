@@ -650,6 +650,7 @@ public class SynchronizeStockLedgerScopeHandlerTest
             idempotencyRepo, positionRepo, movementRepo);
         var bootstrapper = new LegacySyncIdentityBootstrapper(
             uow, idempotencyRepo, movementRepo);
+        var syncClaim = new SynchronizationClaimService(spy, scopeRepo);
 
         var sync = new SynchronizeStockLedgerScopeHandler(
             scopeRepo,
@@ -658,6 +659,7 @@ public class SynchronizeStockLedgerScopeHandlerTest
             reconcile,
             uow,
             spy,
+            syncClaim,
             snapshotLoader,
             bootstrapper,
             positionRepo,

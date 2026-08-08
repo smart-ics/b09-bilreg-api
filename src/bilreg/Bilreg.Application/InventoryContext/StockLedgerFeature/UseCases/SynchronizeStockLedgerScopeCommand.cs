@@ -7,9 +7,10 @@ using MediatR;
 namespace Bilreg.Application.InventoryContext.StockLedgerFeature.UseCases;
 
 /// <summary>
-/// P3-S4 — Incremental Legacy catch-up for one reconstructed Item + Receipt Source scope.
+/// P3-S4 / P3-S6 — Incremental Legacy catch-up for one reconstructed Item + Receipt Source scope.
 /// Thin orchestration: discover → interpret → short TX apply → reconcile → advance position
-/// only when material reconciliation permits. Does not rewrite <c>tb_stok</c> / <c>tb_buku</c>.
+/// only when material reconciliation permits. P3-S6 adds sync-specific bounded retry for
+/// claim/OCC conflicts. Does not rewrite <c>tb_stok</c> / <c>tb_buku</c>.
 /// </summary>
 public sealed record SynchronizeStockLedgerScopeCommand(
     string BrgId,
@@ -29,7 +30,9 @@ public enum SynchronizeStockLedgerScopeOutcomeEnum
     /// <summary>Bounded re-derive cannot run safely — fail closed without erasing history.</summary>
     RequiresScopedReDerive = 4,
 
-    /// <summary>Concurrent sync claim lost (minimum P3-S4 concurrency).</summary>
+    /// <summary>
+    /// Concurrent sync claim lost or OCC conflict after bounded sync-specific retries exhausted.
+    /// </summary>
     ClaimConflict = 5
 }
 
@@ -75,19 +78,27 @@ public sealed record SynchronizeStockLedgerScopeResult(
         => new(
             SynchronizeStockLedgerScopeOutcomeEnum.ClaimConflict,
             scope,
-            "Another process holds SynchronizationRequired or Scope sync state changed concurrently.",
+            "Another process holds SynchronizationRequired or Scope sync state changed concurrently "
+            + $"(exhausted {SynchronizeStockLedgerScopeHandler.MaxSyncConflictRetries} sync-specific retries).",
             SynchronizationPosition: scope.SynchronizationPosition);
 }
 
 public sealed class SynchronizeStockLedgerScopeHandler
     : IRequestHandler<SynchronizeStockLedgerScopeCommand, SynchronizeStockLedgerScopeResult>
 {
+    /// <summary>
+    /// P3-S6 — Bounded sync-specific retries for claim/OCC conflicts.
+    /// Mirrors reconstruction <c>MaxBasisChangeRetries</c>; not a generic retry framework.
+    /// </summary>
+    public const int MaxSyncConflictRetries = 3;
+
     private readonly IStockLedgerScopeStateRepo _scopeStateRepo;
     private readonly ILegacyChangeDiscoveryPort _discoveryPort;
     private readonly ILegacyStockReadPort _legacyStockReadPort;
     private readonly IStockReconciliationPort _reconciliationPort;
     private readonly IStockConsequenceUnitOfWork _consequenceUnitOfWork;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly SynchronizationClaimService _claimService;
     private readonly LegacySyncLedgerSnapshotLoader _snapshotLoader;
     private readonly LegacySyncIdentityBootstrapper _identityBootstrapper;
     private readonly IStockPositionRepo _positionRepo;
@@ -100,6 +111,7 @@ public sealed class SynchronizeStockLedgerScopeHandler
         IStockReconciliationPort reconciliationPort,
         IStockConsequenceUnitOfWork consequenceUnitOfWork,
         IUnitOfWork unitOfWork,
+        SynchronizationClaimService claimService,
         LegacySyncLedgerSnapshotLoader snapshotLoader,
         LegacySyncIdentityBootstrapper identityBootstrapper,
         IStockPositionRepo positionRepo,
@@ -111,6 +123,7 @@ public sealed class SynchronizeStockLedgerScopeHandler
         _reconciliationPort = reconciliationPort;
         _consequenceUnitOfWork = consequenceUnitOfWork;
         _unitOfWork = unitOfWork;
+        _claimService = claimService;
         _snapshotLoader = snapshotLoader;
         _identityBootstrapper = identityBootstrapper;
         _positionRepo = positionRepo;
@@ -126,12 +139,38 @@ public sealed class SynchronizeStockLedgerScopeHandler
         Guard.Against.NullOrWhiteSpace(request.ReceiptSourceId, nameof(request.ReceiptSourceId));
 
         var scopeKey = StockLedgerScopeKeyType.Create(request.BrgId, request.ReceiptSourceId);
+
+        SynchronizeStockLedgerScopeResult? lastConflict = null;
+        for (var attempt = 1; attempt <= MaxSyncConflictRetries; attempt++)
+        {
+            // Attempt 1: strict claim (no resume). Attempt 2+: allow crash-resume of
+            // SynchronizationRequired left by a prior failed TX within this request boundary.
+            var allowResume = attempt > 1;
+            var result = ExecuteOnce(scopeKey, allowResume);
+
+            if (result.Outcome != SynchronizeStockLedgerScopeOutcomeEnum.ClaimConflict)
+                return Task.FromResult(result);
+
+            lastConflict = result;
+        }
+
+        return Task.FromResult(lastConflict!);
+    }
+
+    /// <summary>
+    /// One synchronization boundary attempt: reload persisted Scope + rediscover via fingerprint-v1.
+    /// Does not recurse into a second catch-up cycle.
+    /// </summary>
+    private SynchronizeStockLedgerScopeResult ExecuteOnce(
+        StockLedgerScopeKeyType scopeKey,
+        bool allowResume)
+    {
         var scope = LoadRequiredScope(scopeKey);
         var precondition = ValidatePreconditions(scope);
         if (precondition is not null)
-            return Task.FromResult(precondition);
+            return precondition;
 
-        // Outside TX — discovery + legacy snapshot.
+        // Outside TX — discovery + legacy snapshot (re-read every attempt; no in-memory sync cache).
         var discovery = _discoveryPort.DiscoverChanges(scopeKey, scope.SynchronizationPosition);
         var balances = _legacyStockReadPort.ListCurrentBalances(scopeKey);
         var journals = _legacyStockReadPort.ListJournalEntries(scopeKey);
@@ -146,25 +185,22 @@ public sealed class SynchronizeStockLedgerScopeHandler
 
         if (discovery.Outcome == LegacyChangeDiscoveryOutcomeEnum.Undeterminable)
         {
-            return Task.FromResult(FailClosedInconsistent(
+            return FailClosedInconsistent(
                 scope,
                 discovery.Explanation
-                ?? "Discovery outcome is Undeterminable; Synchronization Position not advanced."));
+                ?? "Discovery outcome is Undeterminable; Synchronization Position not advanced.");
         }
 
         // Fast path: unchanged + keys complete — no claim needed.
         if (discovery.Outcome == LegacyChangeDiscoveryOutcomeEnum.Unchanged && coverageComplete)
-            return Task.FromResult(SynchronizeStockLedgerScopeResult.AlreadyCurrent(scope));
+            return SynchronizeStockLedgerScopeResult.AlreadyCurrent(scope);
 
         // Short TX — claim SynchronizationRequired when work is needed.
-        var claimed = TryClaimSynchronization(scope);
-        if (claimed is null)
-        {
-            var afterRace = LoadRequiredScope(scopeKey);
-            return Task.FromResult(SynchronizeStockLedgerScopeResult.ClaimConflict(afterRace));
-        }
+        var claim = _claimService.Claim(scopeKey, allowResume);
+        if (claim.Outcome != SynchronizationClaimOutcomeEnum.Claimed)
+            return SynchronizeStockLedgerScopeResult.ClaimConflict(claim.ScopeState);
 
-        scope = claimed;
+        scope = claim.ScopeState;
         var processedAt = DateTime.Now;
 
         try
@@ -179,16 +215,16 @@ public sealed class SynchronizeStockLedgerScopeHandler
                 processedAt);
 
             if (applyOutcome.Terminal is not null)
-                return Task.FromResult(applyOutcome.Terminal);
+                return applyOutcome.Terminal;
 
             // Outside TX — material reconcile (may overlay PendingSynchronization).
             var reconcile = _reconciliationPort.Reconcile(scopeKey);
             if (!StockReconciliationClassifier.AllowsMaterialSynchronizationAdvance(reconcile))
             {
-                return Task.FromResult(FailClosedInconsistent(
+                return FailClosedInconsistent(
                     LoadRequiredScope(scopeKey),
                     reconcile.Explanation
-                    ?? $"Material reconciliation outcome '{reconcile.Outcome}' does not permit Synchronization Position advance."));
+                    ?? $"Material reconciliation outcome '{reconcile.Outcome}' does not permit Synchronization Position advance.");
             }
 
             // Fresh authority snapshot for fingerprint-v1 position advancement.
@@ -196,12 +232,11 @@ public sealed class SynchronizeStockLedgerScopeHandler
             var postJournals = _legacyStockReadPort.ListJournalEntries(scopeKey);
             var newPosition = LegacyReconstructionBasisCalculator.Compute(postBalances, postJournals);
 
-            return Task.FromResult(CompleteSynchronization(scopeKey, newPosition));
+            return CompleteSynchronization(scopeKey, newPosition);
         }
         catch (StockLedgerPersistenceException ex) when (ex.Code == "CONCURRENCY_CONFLICT")
         {
-            return Task.FromResult(
-                SynchronizeStockLedgerScopeResult.ClaimConflict(LoadRequiredScope(scopeKey)));
+            return SynchronizeStockLedgerScopeResult.ClaimConflict(LoadRequiredScope(scopeKey));
         }
     }
 
@@ -335,27 +370,6 @@ public sealed class SynchronizeStockLedgerScopeHandler
                 LegacyWrite: null,
                 IdempotencyKind: StockSourceIdempotencyKindEnum.SyncBatch));
         }
-    }
-
-    private StockLedgerScopeStateModel? TryClaimSynchronization(StockLedgerScopeStateModel scope)
-    {
-        if (scope.SynchronizationState == SynchronizationStateEnum.SynchronizationRequired)
-            return scope;
-
-        if (scope.SynchronizationState is not (
-                SynchronizationStateEnum.Current
-                or SynchronizationStateEnum.LegacyChangePending))
-            return null;
-
-        var prior = scope.SynchronizationState;
-        var next = scope.RequireSynchronization();
-
-        using var tx = _unitOfWork.Begin();
-        if (!_scopeStateRepo.TryUpdateWhenSynchronizationState(next, prior))
-            return null;
-
-        tx.Complete();
-        return next;
     }
 
     private SynchronizeStockLedgerScopeResult CompleteSynchronization(

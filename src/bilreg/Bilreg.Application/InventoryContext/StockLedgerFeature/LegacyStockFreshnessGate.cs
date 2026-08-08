@@ -12,7 +12,8 @@ namespace Bilreg.Application.InventoryContext.StockLedgerFeature;
 /// <para>
 /// Replaces the rejected Authority Gate: never blocks VB6 and never rejects a legacy write
 /// because the scope origin is Native/Reconstructed. Invokes catch-up
-/// (<see cref="SynchronizeStockLedgerScopeHandler"/>) at most once per gate call.
+/// (<see cref="SynchronizeStockLedgerScopeHandler"/>) at most once per gate call;
+/// bounded sync-specific retries are internal to that single catch-up boundary (P3-S6).
 /// </para>
 /// Future Availability callers should honor <see cref="LegacyStockFreshnessGateOutcomeEnum.StaleOrNotCurrent"/>
 /// (maps to <c>AvailabilityDiscoveryOutcomeEnum.StaleOrNotCurrent</c>) without treating provisional
@@ -161,7 +162,8 @@ public sealed class LegacyStockFreshnessGate
                 syncResult.ScopeState,
                 AppendContext(
                     syncResult.Explanation
-                    ?? "Concurrent synchronization claim conflict; retry on a later Freshness Gate call.",
+                    ?? "Concurrent synchronization claim conflict after bounded sync retries; "
+                    + "retry on a later Freshness Gate call.",
                     decisionContext)),
 
             _ => FailClosed(
