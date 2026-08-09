@@ -115,6 +115,17 @@ Persistent-workspace Phase 2 close-out summary (frontend docs tree): `c012_myhos
 | `docs/contexts/admisi-rajal/adr/ADR-002-manual-override-independence.md` | ADR — `Source = MANUAL` daily rows independent from template |
 | `docs/contexts/admisi-rajal/adr/ADR-003-booking-schedule-references.md` | ADR — dual nullable schedule IDs on booking |
 
+### Stock Ledger (`docs/contexts/stok-ledger/`)
+
+Inventory-consequence bounded context behind Purchasing, Apotek, transfer, consumption, and related source transactions. No direct end-user workflow; data-consequence flows only. During coexistence, Legacy Stock Record (`tb_stok` + `tb_buku`) remains persisted data authority.
+
+| Path | Purpose |
+|------|---------|
+| `docs/contexts/stok-ledger/stok-ledger-domain.md` | Stock Ledger — canonical English business truth (Stock Batch, Location Stock Balance, movements, FIFO, reverse-journal void, coexistence authority) |
+| `docs/contexts/stok-ledger/stok-ledger-domain-id.md` | Stock Ledger — Bahasa Indonesia semantic companion |
+
+Non-normative legacy reference (VB6 stock generation): `docs/stok-ledger/clbGenStokX1.cls`.
+
 ### Apotek (`docs/contexts/apotek/`)
 
 | Path | Purpose |
