@@ -31,6 +31,7 @@ public class LocationStockBalanceModel : IStokLokasiKey
         TglMasuk = tglMasuk;
         QtySisa = qtySisa;
         Version = version;
+        PersistedVersion = version;
     }
 
     public static LocationStockBalanceModel Create(
@@ -86,12 +87,19 @@ public class LocationStockBalanceModel : IStokLokasiKey
     public DateTime TglMasuk { get; init; }
     public decimal QtySisa { get; private set; }
     public long Version { get; private set; }
+    /// <summary>Version last accepted by persistence (load or successful SaveChanges).</summary>
+    public long PersistedVersion { get; private set; }
 
     #endregion
 
     #region BEHAVIOUR
 
-    public void IncreaseQty(decimal qty)
+    public void AcceptPersisted() => PersistedVersion = Version;
+
+    /// <summary>
+    /// Mutates lokasi qty. Public entry point is <see cref="StockBatchModel.IncreaseLokasi"/>.
+    /// </summary>
+    internal void IncreaseQty(decimal qty)
     {
         if (qty <= 0)
             throw new ArgumentOutOfRangeException(nameof(qty), "Increase quantity must be positive.");
@@ -100,7 +108,10 @@ public class LocationStockBalanceModel : IStokLokasiKey
         Version++;
     }
 
-    public void DecreaseQty(decimal qty)
+    /// <summary>
+    /// Mutates lokasi qty. Public entry point is <see cref="StockBatchModel.DecreaseLokasi"/>.
+    /// </summary>
+    internal void DecreaseQty(decimal qty)
     {
         if (qty <= 0)
             throw new ArgumentOutOfRangeException(nameof(qty), "Decrease quantity must be positive.");

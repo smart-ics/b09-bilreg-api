@@ -1,0 +1,26 @@
+using Bilreg.Application.InventoryContext.StockLedgerFeature;
+using Bilreg.Domain.InventoryContext.StockLedgerFeature;
+
+namespace Bilreg.Infrastructure.InventoryContext.StockLedgerFeature;
+
+public class StockMutasiRepo : IStockMutasiRepo
+{
+    private readonly IStokMutasiDal _dal;
+
+    public StockMutasiRepo(IStokMutasiDal dal) => _dal = dal;
+
+    public void Insert(StockMovementModel model)
+    {
+        var at = DateTime.Now;
+        _dal.Insert(StokMutasiDto.FromModel(model, crtUser: "STL", crtDate: at, updUser: "STL", updDate: at));
+    }
+
+    public bool Exists(string trsReffId, MovementKindEnum kind, string stokLokasiId) =>
+        _dal.Exists(trsReffId, (int)kind, stokLokasiId);
+
+    public IEnumerable<StockMovementModel> ListByTrsReffId(string trsReffId)
+    {
+        var list = _dal.ListByTrsReffId(trsReffId) ?? [];
+        return list.Select(x => x.ToModel());
+    }
+}

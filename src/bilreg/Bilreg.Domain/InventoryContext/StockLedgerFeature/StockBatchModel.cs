@@ -29,6 +29,7 @@ public class StockBatchModel : IStockBatchKey
         TglMasuk = tglMasuk;
         PoReffId = poReffId;
         Version = version;
+        PersistedVersion = version;
         _listLokasi = listLokasi?.ToList() ?? [];
     }
 
@@ -74,6 +75,8 @@ public class StockBatchModel : IStockBatchKey
     public DateTime TglMasuk { get; init; }
     public string PoReffId { get; init; }
     public long Version { get; private set; }
+    /// <summary>Version last accepted by persistence (load or successful SaveChanges).</summary>
+    public long PersistedVersion { get; private set; }
 
     public IEnumerable<LocationStockBalanceModel> ListLokasi => _listLokasi;
 
@@ -136,6 +139,8 @@ public class StockBatchModel : IStockBatchKey
         QtySisa = LokasiQtyTotal;
         Version++;
     }
+
+    public void AcceptPersisted() => PersistedVersion = Version;
 
     #endregion
 }
