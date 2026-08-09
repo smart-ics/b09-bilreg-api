@@ -18,7 +18,7 @@
 |---|---|---|
 | P5-S1 | COMPLETE | Trusted Availability → Freshness → FIFO orchestration (**gate PASS**). See [`stock-ledger-phase5-s1-implementation-summary.md`](./stock-ledger-phase5-s1-implementation-summary.md). |
 | P5-S2 | COMPLETE | Live MT Legacy Compatibility Writer OUT/IN post (**gate PASS**). See [`stock-ledger-phase5-s2-implementation-summary.md`](./stock-ledger-phase5-s2-implementation-summary.md). |
-| P5-S3 | Gate **NO-GO** (LegacyRowId) | OCC increase cleared; re-review **NO-GO** on exact-qty LegacyRowId wrong-row. See [`stock-ledger-phase5-s3-review.md`](./stock-ledger-phase5-s3-review.md) and [`stock-ledger-phase5-s3-implementation-summary.md`](./stock-ledger-phase5-s3-implementation-summary.md). |
+| P5-S3 | COMPLETE | Native Stock Transfer UseCase + capability flag + coexistence StockLayerId↔LegacyRowId binding (**gate PASS WITH MINOR FINDINGS**). See [`stock-ledger-phase5-s3-review.md`](./stock-ledger-phase5-s3-review.md) and [`stock-ledger-phase5-s3-implementation-summary.md`](./stock-ledger-phase5-s3-implementation-summary.md). |
 | P5-S4 | PENDING | — |
 | P5-S5 | PENDING | — |
 | P5-S6 | PENDING | — |
@@ -543,9 +543,9 @@ At Phase 5 completion, publish `stock-ledger-phase5-implementation-report.md` co
 
 - [x] **P5-S1 gate passed:** trusted Availability → Freshness → FIFO orchestration accepted before FO write work proceeds.  
 - [x] **P5-S2 gate passed:** live MT OUT/IN compatibility writer accepted before Native Transfer UseCase proceeds.  
-- [ ] **G-08 trusted caller path accepted:** provisional Availability is never final FIFO; Freshness/reconstruction precede layer trust.  
-- [ ] **G-03 application orchestration accepted:** optional ED + FIFO multi-layer / multi-DO allocation used by Native Transfer.  
-- [ ] **G-20 transfer portion accepted as technical capability:** Native Stock Transfer post + void behind disabled-by-default flag; conservation holds; legacy readers can consume results.  
+- [x] **G-08 trusted caller path accepted:** provisional Availability is never final FIFO; Freshness/reconstruction precede layer trust.  
+- [x] **G-03 application orchestration accepted:** optional ED + FIFO multi-layer / multi-DO allocation used by Native Transfer.  
+- [ ] **G-20 transfer portion accepted as technical capability:** Native Stock Transfer post accepted (P5-S3); void still P5-S4; capability remains disabled-by-default.  
 - [ ] **G-18 hardened for transfer:** failure injection proves no partial Ledger/legacy and no OUT-without-IN commit.  
 - [ ] **G-17 interim (.NET-side) outbound hardening accepted:** lock order, revalidate, OCC, bounded retry; ConcurrentOutbound activated.  
 - [ ] **Explicit non-claim:** FQ-06 / production G-17 / live VB6 concurrent sessions **not** done.  

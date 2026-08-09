@@ -279,7 +279,10 @@ public sealed class ReconstructStockLedgerBaselineHandler
                 ScopeState: completedScope,
                 LegacyWrite: null,
                 IdempotencyKind: StockSourceIdempotencyKindEnum.ReconstructionBaseline,
-                ExpectedPriorReconstructionStatus: ReconstructionStatusEnum.Reconstructing);
+                ExpectedPriorReconstructionStatus: ReconstructionStatusEnum.Reconstructing,
+                LayerLegacyBindings: calculation.ProposedBindings.Count == 0
+                    ? null
+                    : calculation.ProposedBindings);
 
             var commit = _consequenceUnitOfWork.Commit(draft);
             if (commit.Outcome == StockConsequenceCommitOutcomeEnum.AlreadyCommitted)

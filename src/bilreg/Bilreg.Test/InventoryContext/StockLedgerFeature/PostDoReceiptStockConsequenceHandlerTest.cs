@@ -502,13 +502,8 @@ public class PostDoReceiptStockConsequenceHandlerTest
         var legacyWriter = new LegacyCompatibilityWriterPort(dbOptions);
         var legacyRead = new LegacyStockReadPort(dbOptions);
 
-        var consequenceUow = new StockConsequenceUnitOfWork(
-            unitOfWork,
-            idempotencyRepo,
-            movementRepo,
-            positionRepo,
-            scopeRepo,
-            legacyWriter);
+        var bindingRepo = new StockLayerLegacyBindingRepo(new StockLayerLegacyBindingDal(dbOptions));
+        var consequenceUow = new StockConsequenceUnitOfWork(unitOfWork, idempotencyRepo, movementRepo, positionRepo, scopeRepo, legacyWriter, bindingRepo);
 
         var bootstrapper = new LegacySyncIdentityBootstrapper(
             consequenceUow,
@@ -700,6 +695,7 @@ public class PostDoReceiptStockConsequenceHandlerTest
                 UNION
                 SELECT StockMovementId FROM BILRG_StokMovement
                 WHERE SourceTransactionId = @SourceTxId);
+            DELETE FROM BILRG_StokLayerLegacyBinding WHERE BrgId = @BrgId AND ReceiptSourceId = @DoId;
             DELETE FROM BILRG_StokLayer WHERE BrgId = @BrgId AND ReceiptSourceId = @DoId;
             DELETE FROM BILRG_StokPosition WHERE BrgId = @BrgId AND ReceiptSourceId = @DoId;
             DELETE FROM BILRG_StokLedgerScope WHERE BrgId = @BrgId AND ReceiptSourceId = @DoId;

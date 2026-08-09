@@ -248,6 +248,7 @@ public sealed class PostDoReceiptStockConsequenceHandler
         var receiptSource = ReceiptSourceType.Key(request.ReceiptSourceId);
 
         var lines = new List<StockMovementLineType>(request.Lines.Count);
+        var layersInLineOrder = new List<StockLayerModel>(request.Lines.Count);
         var layersByLocation = new Dictionary<string, List<StockLayerModel>>(StringComparer.Ordinal);
 
         foreach (var lineFact in request.Lines.OrderBy(l => l.LineNumber))
@@ -279,6 +280,7 @@ public sealed class PostDoReceiptStockConsequenceHandler
                 StockFactOriginEnum.Native,
                 layer));
 
+            layersInLineOrder.Add(layer);
             if (!layersByLocation.TryGetValue(location.LayananId, out var list))
             {
                 list = [];
@@ -308,11 +310,26 @@ public sealed class PostDoReceiptStockConsequenceHandler
             })
             .ToList();
 
-        var legacyWrite = DoReceiptLegacyCompatibilityMapper.Map(
+        var (legacyWrite, assignedLegacyRowIds) = DoReceiptLegacyCompatibilityMapper.MapWithAssignedRowIds(
             sourceTx,
             scopeKey,
             request.EffectiveBusinessTime,
             request.Lines);
+
+        if (assignedLegacyRowIds.Count != layersInLineOrder.Count)
+        {
+            throw new InvalidOperationException(
+                "DO Receipt mapper assigned LegacyRowId count does not match created Stock Layers.");
+        }
+
+        var layerBindings = new List<StockLayerLegacyBindingType>(layersInLineOrder.Count);
+        for (var i = 0; i < layersInLineOrder.Count; i++)
+        {
+            layerBindings.Add(StockLayerLegacyBindingType.FromLayer(
+                layersInLineOrder[i],
+                assignedLegacyRowIds[i],
+                request.ProcessedAt));
+        }
 
         var snapshot = DoReceiptLegacyCompatibilityMapper.ToFingerprintSnapshot(legacyWrite);
         var position = LegacyReconstructionBasisCalculator.Compute(
@@ -330,7 +347,8 @@ public sealed class PostDoReceiptStockConsequenceHandler
             Positions: positions,
             ScopeState: established,
             LegacyWrite: legacyWrite,
-            IdempotencyKind: StockSourceIdempotencyKindEnum.SourceConsequence));
+            IdempotencyKind: StockSourceIdempotencyKindEnum.SourceConsequence,
+            LayerLegacyBindings: layerBindings));
 
         if (commit.Outcome == StockConsequenceCommitOutcomeEnum.AlreadyCommitted)
         {

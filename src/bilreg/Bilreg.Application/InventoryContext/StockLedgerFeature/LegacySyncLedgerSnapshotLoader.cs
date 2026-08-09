@@ -11,15 +11,18 @@ public sealed class LegacySyncLedgerSnapshotLoader
     private readonly IStockSourceIdempotencyRepo _idempotencyRepo;
     private readonly IStockPositionRepo _positionRepo;
     private readonly IStockMovementRepo _movementRepo;
+    private readonly IStockLayerLegacyBindingRepo? _bindingRepo;
 
     public LegacySyncLedgerSnapshotLoader(
         IStockSourceIdempotencyRepo idempotencyRepo,
         IStockPositionRepo positionRepo,
-        IStockMovementRepo movementRepo)
+        IStockMovementRepo movementRepo,
+        IStockLayerLegacyBindingRepo? bindingRepo = null)
     {
         _idempotencyRepo = idempotencyRepo;
         _positionRepo = positionRepo;
         _movementRepo = movementRepo;
+        _bindingRepo = bindingRepo;
     }
 
     public LegacySyncLedgerSnapshot Load(IStockLedgerScopeKey scope)
@@ -29,6 +32,10 @@ public sealed class LegacySyncLedgerSnapshotLoader
         var records = _idempotencyRepo.ListSyncIdentityRecordsForScope(scope);
         var positions = _positionRepo.ListByLedgerScope(scope);
         var layers = positions.SelectMany(p => p.Layers).ToList();
+        var layersById = layers.ToDictionary(l => l.StockLayerId, StringComparer.Ordinal);
+        var bindingsByLegacyRow = (_bindingRepo?.ListByLedgerScope(scope) ?? [])
+            .GroupBy(b => $"{b.LayananId}|{b.LegacyRowId}", StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
 
         var reconstructionMovementId = LegacyReconstructionBaselineCalculator.BuildMovementId(scope);
         var reconstructionMovement = _movementRepo.LoadEntity(
@@ -76,7 +83,19 @@ public sealed class LegacySyncLedgerSnapshotLoader
                     out var balanceIdentity,
                     out var balanceMaterial))
             {
-                var layer = MatchLayer(layers, balanceIdentity, balanceMaterial);
+                StockLayerModel? layer = null;
+                if (bindingsByLegacyRow.TryGetValue(
+                        $"{balanceIdentity.LayananId}|{balanceIdentity.LegacyRowId}",
+                        out var binding)
+                    && layersById.TryGetValue(binding.StockLayerId, out var boundLayer))
+                {
+                    layer = boundLayer;
+                }
+                else
+                {
+                    layer = MatchLayer(layers, balanceIdentity, balanceMaterial);
+                }
+
                 if (layer is null)
                     continue;
 

@@ -1,16 +1,17 @@
 # Stock Ledger Phase 5 / P5-S3 — Implementation Summary
 
-**Status:** OCC remediation complete — gate re-review **NO-GO** (LegacyRowId exact-qty); do not start P5-S4 until review is PASS / PASS WITH MINOR FINDINGS  
-**Date:** 2026-08-08 (OCC remediation); gate re-review 2026-08-09  
+**Status:** COMPLETE — gate **PASS WITH MINOR FINDINGS**  
+**Date:** 2026-08-08 (initial); OCC remediation 2026-08-08; coexistence binding remediation 2026-08-09  
 **Slice:** P5-S3 — Native Stock Transfer UseCase + capability flag  
 **Plan:** [`stock-ledger-phase5-implementation-plan.md`](./stock-ledger-phase5-implementation-plan.md)  
-**Gate review:** [`stock-ledger-phase5-s3-review.md`](./stock-ledger-phase5-s3-review.md) — **NO-GO** (LegacyRowId exact-qty wrong-row); prior OCC increase NO-GO cleared
+**Gate review:** [`stock-ledger-phase5-s3-review.md`](./stock-ledger-phase5-s3-review.md) — **PASS WITH MINOR FINDINGS**  
+**Architecture ADR:** [`adr/ADR-stock-ledger-coexistence-layer-legacy-binding.md`](./adr/ADR-stock-ledger-coexistence-layer-legacy-binding.md)
 
 ---
 
 ## Objective
 
-Deliver a thin MediatR/Inventory-style UseCase that posts one authorized Stock Transfer as a Native conserved Transfer movement, updates source/destination Positions/Layers, refreshes coexistence Synchronization Position(s) with `fingerprint-v1`, and commits paired MT OUT/IN legacy consequences through the existing UoW — behind a disabled-by-default capability flag independent from DO Receipt.
+Deliver a thin MediatR/Inventory-style UseCase that posts one authorized Stock Transfer as a Native conserved Transfer movement, updates source/destination Positions/Layers, refreshes coexistence Synchronization Position(s) with `fingerprint-v1`, and commits paired MT OUT/IN legacy consequences through the existing UoW — behind a disabled-by-default capability flag independent from DO Receipt — with **allocation-explicit LegacyRowId** preserved via an Application coexistence binding.
 
 ---
 
@@ -25,31 +26,47 @@ Deliver a thin MediatR/Inventory-style UseCase that posts one authorized Stock T
 | Reordered lines (same MT id) | `AlreadyCommitted` — quantity-neutral |
 | Partial retry / subset of lines (same MT id) | `AlreadyCommitted` — quantity-neutral; does **not** open a second consequence |
 | Blank MT id | Fail closed (`ArgumentException`) |
-| Ambiguous LegacyRowId match | `Inconsistent` (fail closed) |
-| No matching LegacyRowId / insufficient qty at mapper | `InsufficientStock` (fail closed) |
+| Ambiguous LegacyRowId / missing unique binding | `Inconsistent` (fail closed) |
+| No matching LegacyRowId / insufficient qty at bound row | `InsufficientStock` (fail closed) |
 
 Callers must post the **complete** authorized mutasi in one request. An incomplete first commit under the same MT id permanently owns that SourceConsequence responsibility.
 
-**P5-S4 handoff (idempotency):** Transfer void / original-consequence lookup **must** use the same whole-mutasi key `MT|{SourceTransactionId}`. One void SourceConsequence responsibility per MT document (not per Item / not first-line BrgId).
+**P5-S4 handoff (idempotency):** Transfer void / original-consequence lookup **must** use the same whole-mutasi key `MT|{SourceTransactionId}`.
 
-**P5-S4 handoff (Position OCC):** Both source consume and destination establish/increase already use **one** `Version + 1` per write-scope per consequence commit (merged layers then `StockPositionModel.Create(..., baseVersion + 1)`). Void/reverse helpers **must** follow the same single-bump discipline — do not loop `AddLayer` / per-layer rebuilds that overshoot `stored.Version + 1`. Source and destination Positions are both mutable under transfer; reversal must update both sides with that contract.
+**P5-S4 handoff (Position OCC):** Both source consume and destination establish/increase use **one** `Version + 1` per write-scope per consequence commit.
+
+**P5-S4 handoff (coexistence binding):** Void/reverse **must** use `BILRG_StokLayerLegacyBinding` / `IStockLayerLegacyBindingRepo` to target physical rows. Do not re-infer LegacyRowId by attribute/qty.
 
 ---
 
-## Destination OCC remediation (2026-08-08)
+## Coexistence binding remediation (2026-08-09)
 
 ### Root cause
 
-`StockPositionRepo.SaveChanges` requires exactly `stored.Version + 1` on update. `ApplySourceConsumption` already did one bump after all layer consumes. `BuildDestinationPositions` looped `AddLayer` (each bump), so existing destination + N>1 inbound layers became `stored + N` → concurrency throw. Empty destinations used Insert (any Version OK), so establish-only tests hid the defect.
+Ledger FIFO selects `StockLayerId`. The transfer mapper previously rebuilt `LegacyRowId` from live balances using DO/location/HPP/ED/batch and an exact-qty escape hatch. Under repeated `MT_IN` accumulation with shared attributes, that could OUT a different `tb_stok` row than the FIFO-selected layer while still committing both authorities.
 
-### Chosen remediation
+### Chosen remediation (architectural, bounded)
 
-Rewrite `BuildDestinationPositions` to mirror source: merge existing layers + new inbound layers, then `StockPositionModel.Create(writeScope, merged, baseVersion + 1)`. No Domain/repo redesign; OCC fail-closed semantics unchanged.
+1. ADR: Application owns StockLayerId ↔ LegacyRowId coexistence binding.
+2. Additive table `BILRG_StokLayerLegacyBinding` (compatibility projection; no Domain identity change).
+3. Commit-ready `TransferAllocationSlice` carries `StockLayerId`, `SourceLegacyRowId`, `DestinationLegacyRowId`.
+4. `StockLayerLegacyBindingResolver` resolves durable bindings; unique lazy establish only when material attributes identify exactly one surviving row; never quantity tie-break.
+5. Destination ST ids pre-assigned with destination layers in the same consequence; bindings persisted via `StockConsequenceDraft.LayerLegacyBindings`.
+6. Reconstruction and Native DO Receipt establish bindings when both identities are known.
+7. Mapper becomes a deterministic formatter — no candidate selection.
 
-### Related low-risk hygiene in this slice
+### Tests added for the Major
 
-- Test seeds auto-pre-assign BK/ST via Ulid random tail (FQ-02 compact-id residue).
-- `TransferLegacyCompatibilityMapper` MT OUT/IN compact ids use Ulid random tail instead of `NunaId.NewLegacyCompact` (same collision class under rapid multi-leg generation).
+| Test | Result |
+|---|---|
+| `SameAttributeMultiBalance_OutboundUsesBoundFifoLayerRow` | PASS — FIFO-first bound row depleted; exact-qty peer untouched |
+| `AmbiguousUnboundSameAttributeBalances_FailClosedInconsistent` | PASS — no wrong-row commit |
+
+---
+
+## Destination OCC remediation (2026-08-08) — retained
+
+`BuildDestinationPositions` mirrors source: merge existing + inbound layers, then `StockPositionModel.Create(..., baseVersion + 1)`. Covered by `ExistingDestination_MultiLayerIncrease_PreservesOcc`.
 
 ---
 
@@ -57,15 +74,19 @@ Rewrite `BuildDestinationPositions` to mirror source: merge existing layers + ne
 
 | Area | Deliverable |
 |---|---|
-| Application options | `StockLedgerStockTransferOptions` (`SECTION_NAME = "StockLedgerStockTransfer"`, `Enabled` default **false**) |
-| Idempotency | `TransferConsequenceIdempotency.BuildSourceConsequenceKey(sourceTransactionId)` → `MT\|{mutasiId}` |
-| Legacy mapper | `TransferLegacyCompatibilityMapper` — allocation-explicit LegacyRowId resolve; typed `TransferLegacyRowResolutionException` (Ambiguous vs NoMatch); OUT/IN pairs; Ulid-tail compact BK/ST; post-transfer fingerprint projection |
-| UoW | `StockConsequenceDraft.AdditionalScopeStates` + persist loop for multi-DO Scope refresh in one TX |
-| UseCase | `PostStockTransferStockConsequenceCommand` / `Handler` — trusted allocation → `CreateTransfer` → UoW → bootstrap + live fingerprint reconcile; source **and** destination single OCC bump |
-| Tests | `PostStockTransferStockConsequenceHandlerTest` (12 scenarios on disposable `devTest`, including increase OCC + multi-item reorder/partial-retry) |
-| Docs | This summary + plan Slice Progress + ARTIFACTS |
+| ADR | `ADR-stock-ledger-coexistence-layer-legacy-binding.md` |
+| SQL | `BILRG_StokLayerLegacyBinding.sql` |
+| Application | `StockLayerLegacyBindingType`, repo port, resolver; UoW `LayerLegacyBindings` |
+| Infrastructure | Binding DTO/DAL/Repo |
+| Legacy mapper | Explicit row ids only; no attribute/qty selection |
+| UseCase | Binding-aware transfer artifact build + destination ST pre-assign |
+| Establishment | Reconstruction + Native DO Receipt write bindings |
+| Sync loader | Prefer binding anchors over material/qty match |
+| Options / idempotency | Unchanged contracts (`StockLedgerStockTransferOptions`, whole-mutasi key) |
+| Tests | 14 transfer scenarios on disposable `devTest` |
+| Docs | This summary + review + plan progress + ARTIFACTS |
 
-**Explicitly not implemented:** transfer void (P5-S4); lock order / revalidate / ConcurrentOutbound (P5-S5); coexistence proof (P5-S6); production DI/HTTP; enabling flag in appsettings.
+**Explicitly not implemented:** transfer void (P5-S4); lock order / ConcurrentOutbound (P5-S5); coexistence proof (P5-S6); production DI/HTTP; enabling flag in appsettings.
 
 ---
 
@@ -73,58 +94,22 @@ Rewrite `BuildDestinationPositions` to mirror source: merge existing layers + ne
 
 | Decision | Rationale |
 |---|---|
-| MediatR handler mirrors `PostDoReceiptStockConsequenceHandler` | Inventory UseCase convention; orchestrator stays a plain service |
-| Separate `StockLedgerStockTransferOptions` | Plan §9 independence from `StockLedgerDoReceipt` |
-| Mutasi-scoped key `MT\|{SourceTransactionId}` (no BrgId) | MT responsibility is `fs_kd_mutasi`; multi-line surface already allowed; DO-style `…\|{BrgId}\|…` is unsafe when first-line BrgId can change |
-| Call P5-S1 orchestrator per line; no second Freshness Gate | Freshness already proven inside trusted allocation |
-| Resolve `LegacyRowId` in Application mapper from live balances | Ledger `StockLayerId` ≠ `fs_kd_trs`; fail closed on ambiguous match |
-| Ambiguous mapper match → `Inconsistent` | Ambiguity is identity inconsistency, not insufficient quantity |
-| Preserve destination layer Receipt Source + Effective Receipt Time + Batch from source layer | No new Receipt Source; conservation of provenance |
-| One OCC version bump per **source** write-scope after all layer consumes | Multi-layer same position must not overshoot `stored.Version + 1` |
-| One OCC version bump per **destination** write-scope after merging all inbound layers | Same OCC contract for establish **and** increase; mirrors source |
-| `AdditionalScopeStates` on draft | Multi-DO transfer refreshes each Item+DO Scope in the same short TX |
-| Pre-commit fingerprint projection + post-commit live reconcile | Same pattern as P4 void; keeps Scope refresh inside UoW |
-| Discovery/freshness/reconstruction stay outside consequence TX | Plan §8 boundary |
-| Ulid-tail compact BK/ST for MT mapper legs | Avoid `NewLegacyCompact` timestamp collisions under multi-leg generation |
+| Separate coexistence binding projection | Keep Domain free of `fs_kd_trs`; keep writer free of discovery |
+| Application consequence boundary owns resolution | Matches Stage B Trusted Allocation → Ledger → Legacy-follows-plan |
+| Fail closed on multi-candidate unbound scopes | Prevents silent wrong-row commits |
+| Pre-assign destination LegacyRowId with dest layer | Later hops (void/outbound) retain identity without re-guessing |
+| Capability default false | Plan §9 |
 
 ---
 
-## Deviations from plan
-
-| Plan expectation | Actual | Impact |
-|---|---|---|
-| Summary filename `stock-ledger-P5-S3-implementation-summary.md` (§12) | `stock-ledger-phase5-s3-implementation-summary.md` (task request; matches S1/S2) | Naming only; ARTIFACTS links the chosen path |
-| Optional Domain transfer helper | None needed — Application composition of existing Domain factories sufficient | Cleaner reuse |
-| Initial slice used `MT\|{firstBrgId}\|{mutasiId}` | Remediated to `MT\|{mutasiId}` after NO-GO review | Contract now matches multi-line surface |
-| Destination build used `AddLayer` loop | Remediated to single-bump `Create` after merge | Establish + increase both satisfy Position OCC |
-
-No locked domain/ADR decisions were reopened.
-
----
-
-## Tests added/updated
-
-Focused run (disposable `devTest`), twice:
+## Tests
 
 ```text
 dotnet test Bilreg.Test/Bilreg.Test.csproj --filter FullyQualifiedName~PostStockTransferStockConsequenceHandlerTest
-Passed!  - Failed: 0, Passed: 12, Skipped: 0
+Passed!  - Failed: 0, Passed: 14, Skipped: 0
 ```
 
-| Test | Result |
-|---|---|
-| `HappyPath_CapabilityEnabled_NativeOriginAndConservedLegacyOutIn` | PASS — Native origin; conserved Ledger + legacy OUT/IN; `fingerprint-v1`; destination ERT preserved; key `MT\|{mtId}` |
-| `CapabilityDisabled_ReturnsWithoutWrites` | PASS |
-| `DuplicateSourceResponsibility_IsQuantityNeutral` | PASS — `AlreadyCommitted` |
-| `MultiItem_ReorderedLines_SameMutasi_IsQuantityNeutral` | PASS — NO-GO scenario; reorder does not open second consequence |
-| `MultiItem_PartialRetry_SameMutasi_IsQuantityNeutral` | PASS — NO-GO scenario; subset retry stays quantity-neutral |
-| `MultiLayerSingleDo_TransferConserved` | PASS — establish path; multi OUT/IN pairs |
-| `ExistingDestination_MultiLayerIncrease_PreservesOcc` | PASS — **OCC NO-GO scenario**; pre-existing dest + ≥2 inbound layers; `Version == prior + 1` |
-| `MultiDoLine_TransferConserved` | PASS — both scopes refreshed Current |
-| `ExplicitExpirationDateFilter_Path` | PASS — ED-constrained destination only |
-| `InsufficientStock_FailClosed` | PASS — no partial MT journals |
-| `StaleScope_FailClosed` | PASS — SynchronizationRequired → fail closed |
-| `NoIsAuthoritative_OnScopeOrMovement` | PASS |
+Prior happy-path / idempotency / OCC / multi-DO / ED / stale / insufficient scenarios remain green.
 
 ---
 
@@ -133,9 +118,10 @@ Passed!  - Failed: 0, Passed: 12, Skipped: 0
 - Transfer void / unsafe reverse (`MT_IN_V` / `MT_OUT_V`) — P5-S4
 - Lock order, quantity revalidation inside consequence TX, ConcurrentOutbound — P5-S5
 - Native transfer → VB6-shaped change → Phase 3 sync coexistence proof — P5-S6
-- Full multi-position failure-injection matrix (happy-path atomicity only here)
+- Full multi-position failure-injection matrix
 - Production enablement / public HTTP / DI registration
-- Payload content comparison under a reused MT id (duplicate identity wins; no deep equality)
+- Same-`BrgId` multi-line reservation / typed insufficient
+- `SmallestUnitId` continuity on MT legs
 
 ---
 
@@ -143,30 +129,24 @@ Passed!  - Failed: 0, Passed: 12, Skipped: 0
 
 | Risk | Mitigation in P5-S3 | Residual |
 |---|---|---|
-| Ambiguous `LegacyRowId` match | Fail closed as `Inconsistent` | Concurrent writers may still race until P5-S5 |
-| Creating new Receipt Source at destination | Destination layers copy source Receipt Source + valuation + ERT | Reviewer check |
-| Partial OUT without IN | Single ambient UoW TX with live writer | P5-S5 failure injection |
-| Multi-DO Scope refresh missed | `AdditionalScopeStates` + per-DO bootstrap/reconcile | Coexistence identity coverage → P5-S6 |
-| Accidental capability enablement | Default `Enabled = false`; independent section name | Production config hygiene |
-| Incomplete first commit under MT id | Whole-mutasi key permanently owns responsibility | Caller must post complete mutasi; P5-S4 void assumes whole document |
-| Same-`BrgId` multi-line overlapping plans | Fail-closed at `Consume` today | Enforce unique BrgId per request or accumulate reserved qty across lines |
-| `SmallestUnitId` null on MT legs | Qty/DO/HPP/ED/batch conserved | Compatibility gap (read-port / mapper); empty `fs_kd_satuan` |
+| Ambiguous unbound historical scopes | Fail closed as `Inconsistent` | Operator/sync may need unique evidence before transfer |
+| Binding stale after legacy-side mutation | Freshness Gate + writer UPDLOCK revalidation | P5-S5 concurrency hardening |
+| Partial OUT without IN | Single ambient UoW TX | P5-S5 failure injection |
+| Accidental capability enablement | Default `Enabled = false` | Production config hygiene |
 
 ---
 
-## Reviewer notes (before authorizing P5-S4)
+## Reviewer notes (P5-S4 authorization)
 
 Confirm:
 
 1. Capability default **false** and independent from DO Receipt options.
-2. `CreateTransfer` conservation holds; destination does **not** invent a new Receipt Source.
-3. Trusted allocation (Freshness + reload + FIFO) runs before any write; stale/insufficient fail closed.
-4. Legacy OUT/IN follows the Ledger allocation plan (no writer re-FEFO); `fingerprint-v1` refresh per affected DO.
-5. SourceConsequence key is `MT\|{SourceTransactionId}`; multi-item reorder and partial retry under the same MT id are quantity-neutral (original idempotency NO-GO covered by tests).
-6. Ambiguous LegacyRowId → `Inconsistent`; no-match → `InsufficientStock`.
-7. No void path, concurrency locks, ConcurrentOutbound, production HTTP, or FQ-06 claim landed in this slice.
-8. Destination establish **and** increase: one OCC bump per write-scope; `ExistingDestination_MultiLayerIncrease_PreservesOcc` covers the review Major finding.
+2. `CreateTransfer` conservation; destination does **not** invent a new Receipt Source.
+3. Trusted allocation before writes; stale/insufficient fail closed.
+4. Legacy OUT/IN follows Ledger plan via durable/unique binding; no mapper re-FEFO / exact-qty guess.
+5. Whole-mutasi key quantity-neutral under reorder/partial retry.
+6. Ambiguous unbound multi-candidate → `Inconsistent`.
+7. Destination OCC increase single bump.
+8. Wrong-row and Ambiguous regression tests green.
 
-**Prior re-review (2026-08-08):** Whole-mutasi idempotency accepted; gate **NO-GO** on destination OCC increase.
-
-**OCC remediation accepted (2026-08-09 re-review):** Destination OCC + increase test cleared. Gate remains **NO-GO** on LegacyRowId exact-qty wrong-row — see [`stock-ledger-phase5-s3-review.md`](./stock-ledger-phase5-s3-review.md). Do not authorize P5-S4 until that Major is fixed and re-reviewed.
+**Gate accepted:** P5-S4 is authorized.

@@ -225,7 +225,8 @@ public class StockConsequenceUnitOfWorkLiveAtomicityTest
             movementRepo ?? repos.Movement,
             positionRepo ?? repos.Position,
             scopeRepo ?? repos.Scope,
-            legacy ?? new LegacyCompatibilityWriterPort(ConnStringHelper.GetTestEnv()));
+            legacy ?? new LegacyCompatibilityWriterPort(ConnStringHelper.GetTestEnv()),
+            repos.Binding);
     }
 
     private static Repos CreateRealRepos()
@@ -239,7 +240,8 @@ public class StockConsequenceUnitOfWorkLiveAtomicityTest
                 new StockPositionDal(options),
                 new StockLayerDal(options)),
             new StockLedgerScopeStateRepo(new StockLedgerScopeDal(options)),
-            new StockSourceIdempotencyRepo(new StockSourceIdempotencyDal(options)));
+            new StockSourceIdempotencyRepo(new StockSourceIdempotencyDal(options)),
+            new StockLayerLegacyBindingRepo(new StockLayerLegacyBindingDal(options)));
     }
 
     internal static StockConsequenceDraft BuildReceiptDraft(
@@ -489,6 +491,7 @@ public class StockConsequenceUnitOfWorkLiveAtomicityTest
                 WHERE SourceTransactionId = @SourceTxId
                 UNION
                 SELECT @MovementId);
+            DELETE FROM BILRG_StokLayerLegacyBinding WHERE BrgId = @BrgId AND ReceiptSourceId = @DoId;
             DELETE FROM BILRG_StokLayer WHERE BrgId = @BrgId AND ReceiptSourceId = @DoId;
             DELETE FROM BILRG_StokPosition WHERE BrgId = @BrgId AND ReceiptSourceId = @DoId;
             DELETE FROM BILRG_StokLedgerScope WHERE BrgId = @BrgId AND ReceiptSourceId = @DoId;
@@ -524,5 +527,6 @@ public class StockConsequenceUnitOfWorkLiveAtomicityTest
         IStockMovementRepo Movement,
         IStockPositionRepo Position,
         IStockLedgerScopeStateRepo Scope,
-        IStockSourceIdempotencyRepo Idempotency);
+        IStockSourceIdempotencyRepo Idempotency,
+        IStockLayerLegacyBindingRepo Binding);
 }

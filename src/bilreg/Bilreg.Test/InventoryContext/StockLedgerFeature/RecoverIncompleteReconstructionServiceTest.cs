@@ -260,13 +260,8 @@ public class RecoverIncompleteReconstructionServiceTest
         var legacyWriter = new FakeLegacyCompatibilityWriterPort();
 
         var claim = new ReconstructionClaimService(spy, scopeRepo);
-        var uow = new StockConsequenceUnitOfWork(
-            spy,
-            idempotencyRepo,
-            movementRepo,
-            positionRepo,
-            scopeRepo,
-            legacyWriter);
+        var bindingRepo = new StockLayerLegacyBindingRepo(new StockLayerLegacyBindingDal(options));
+        var uow = new StockConsequenceUnitOfWork(spy, idempotencyRepo, movementRepo, positionRepo, scopeRepo, legacyWriter, bindingRepo);
         var sut = new ReconstructStockLedgerBaselineHandler(
             claim,
             fakeRead,
@@ -355,6 +350,7 @@ public class RecoverIncompleteReconstructionServiceTest
             """
             DELETE FROM BILRG_StokMovementLine WHERE StockMovementId = @MovementId;
             DELETE FROM BILRG_StokMovement WHERE StockMovementId = @MovementId;
+            DELETE FROM BILRG_StokLayerLegacyBinding WHERE BrgId = @BrgId AND ReceiptSourceId = @ReceiptSourceId;
             DELETE FROM BILRG_StokLayer WHERE BrgId = @BrgId AND ReceiptSourceId = @ReceiptSourceId;
             DELETE FROM BILRG_StokPosition WHERE BrgId = @BrgId AND ReceiptSourceId = @ReceiptSourceId;
             DELETE FROM BILRG_StokLedgerScope WHERE BrgId = @BrgId AND ReceiptSourceId = @ReceiptSourceId;

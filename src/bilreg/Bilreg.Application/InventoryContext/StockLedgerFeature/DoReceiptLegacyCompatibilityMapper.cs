@@ -21,6 +21,19 @@ public static class DoReceiptLegacyCompatibilityMapper
         IStockLedgerScopeKey scope,
         DateTime mutationTime,
         IReadOnlyList<DoReceiptLineFact> lines)
+        => MapWithAssignedRowIds(sourceTransaction, scope, mutationTime, lines).Request;
+
+    /// <summary>
+    /// P5-S3 — Same as <see cref="Map"/> but also returns the pre-assigned ST ids in line order
+    /// so the UseCase can persist StockLayerId ↔ LegacyRowId coexistence bindings.
+    /// </summary>
+    public static (
+        LegacyCompatibilityWriteRequest Request,
+        IReadOnlyList<string> AssignedLegacyRowIds) MapWithAssignedRowIds(
+        ISourceTransactionReferenceKey sourceTransaction,
+        IStockLedgerScopeKey scope,
+        DateTime mutationTime,
+        IReadOnlyList<DoReceiptLineFact> lines)
     {
         ArgumentNullException.ThrowIfNull(sourceTransaction);
         ArgumentNullException.ThrowIfNull(scope);
@@ -32,6 +45,7 @@ public static class DoReceiptLegacyCompatibilityMapper
 
         var balances = new List<LegacyCompatibilityBalanceMutationType>(lines.Count);
         var journals = new List<LegacyCompatibilityJournalEntryType>(lines.Count);
+        var assignedLegacyRowIds = new List<string>(lines.Count);
 
         foreach (var line in lines.OrderBy(l => l.LineNumber))
         {
@@ -46,6 +60,7 @@ public static class DoReceiptLegacyCompatibilityMapper
             var doId = scope.ReceiptSourceId.Trim();
             var layananId = line.LayananId.Trim();
 
+            assignedLegacyRowIds.Add(stokId);
             balances.Add(new LegacyCompatibilityBalanceMutationType(
                 LegacyBalanceMutationActionEnum.Upsert,
                 brgId,
@@ -76,12 +91,14 @@ public static class DoReceiptLegacyCompatibilityMapper
                 SmallestUnitId: line.SmallestUnitId));
         }
 
-        return new LegacyCompatibilityWriteRequest(
-            sourceTransaction,
-            StockMovementKindEnum.Receipt,
-            scope,
-            balances,
-            journals);
+        return (
+            new LegacyCompatibilityWriteRequest(
+                sourceTransaction,
+                StockMovementKindEnum.Receipt,
+                scope,
+                balances,
+                journals),
+            assignedLegacyRowIds);
     }
 
     /// <summary>

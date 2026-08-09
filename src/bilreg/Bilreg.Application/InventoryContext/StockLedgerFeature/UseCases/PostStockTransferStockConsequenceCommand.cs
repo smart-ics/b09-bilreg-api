@@ -116,6 +116,7 @@ public sealed class PostStockTransferStockConsequenceHandler
     private readonly IStockConsequenceUnitOfWork _consequenceUnitOfWork;
     private readonly ILegacyStockReadPort _legacyStockReadPort;
     private readonly LegacySyncIdentityBootstrapper _identityBootstrapper;
+    private readonly StockLayerLegacyBindingResolver _bindingResolver;
 
     public PostStockTransferStockConsequenceHandler(
         IOptions<StockLedgerStockTransferOptions> options,
@@ -125,7 +126,8 @@ public sealed class PostStockTransferStockConsequenceHandler
         IStockPositionRepo positionRepo,
         IStockConsequenceUnitOfWork consequenceUnitOfWork,
         ILegacyStockReadPort legacyStockReadPort,
-        LegacySyncIdentityBootstrapper identityBootstrapper)
+        LegacySyncIdentityBootstrapper identityBootstrapper,
+        StockLayerLegacyBindingResolver bindingResolver)
     {
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         _allocationOrchestrator = allocationOrchestrator
@@ -139,6 +141,8 @@ public sealed class PostStockTransferStockConsequenceHandler
             ?? throw new ArgumentNullException(nameof(legacyStockReadPort));
         _identityBootstrapper = identityBootstrapper
             ?? throw new ArgumentNullException(nameof(identityBootstrapper));
+        _bindingResolver = bindingResolver
+            ?? throw new ArgumentNullException(nameof(bindingResolver));
     }
 
     public async Task<PostStockTransferStockConsequenceResult> Handle(
@@ -244,12 +248,22 @@ public sealed class PostStockTransferStockConsequenceHandler
         var sourceTx = SourceTransactionReferenceType.Key(request.SourceTransactionId);
 
         var layersById = LoadSourceLayersById(allAllocations, request.SourceLocationId);
-        var (movementLines, destinationLayersByWriteScope, transferSlices) =
-            BuildTransferArtifacts(
-                allAllocations,
-                layersById,
-                destinationLocation,
-                movementKey);
+        var balancesForResolver = CollectSourceBalances(allAllocations);
+        var buildResult = BuildTransferArtifacts(
+            allAllocations,
+            layersById,
+            destinationLocation,
+            movementKey,
+            balancesForResolver,
+            request.ProcessedAt);
+
+        if (buildResult.Failure is { } failure)
+            return failure;
+
+        var movementLines = buildResult.MovementLines!;
+        var destinationLayersByWriteScope = buildResult.DestinationLayersByWriteScope!;
+        var transferSlices = buildResult.TransferSlices!;
+        var layerBindings = buildResult.LayerBindings!;
 
         var movement = StockMovementModel.CreateTransfer(
             sourceTx,
@@ -262,26 +276,11 @@ public sealed class PostStockTransferStockConsequenceHandler
         var destinationPositions = BuildDestinationPositions(destinationLayersByWriteScope);
         var allPositions = sourcePositions.Concat(destinationPositions).ToList();
 
-        var balancesForMapper = CollectSourceBalances(allAllocations);
-        LegacyCompatibilityWriteRequest legacyWrite;
-        try
-        {
-            legacyWrite = TransferLegacyCompatibilityMapper.Map(
-                sourceTx,
-                request.SourceTransactionId,
-                request.EffectiveBusinessTime,
-                transferSlices,
-                balancesForMapper);
-        }
-        catch (TransferLegacyCompatibilityMapper.TransferLegacyRowResolutionException ex)
-            when (ex.Kind == TransferLegacyCompatibilityMapper.TransferLegacyRowResolutionFailureKind.Ambiguous)
-        {
-            return PostStockTransferStockConsequenceResult.Inconsistent(ex.Message);
-        }
-        catch (TransferLegacyCompatibilityMapper.TransferLegacyRowResolutionException ex)
-        {
-            return PostStockTransferStockConsequenceResult.InsufficientStock(ex.Message);
-        }
+        var legacyWrite = TransferLegacyCompatibilityMapper.Map(
+            sourceTx,
+            request.SourceTransactionId,
+            request.EffectiveBusinessTime,
+            transferSlices);
 
         var affectedScopes = allAllocations
             .Select(a => StockLedgerScopeKeyType.Create(a.BrgId, a.ReceiptSourceId))
@@ -333,7 +332,8 @@ public sealed class PostStockTransferStockConsequenceHandler
             ScopeState: primaryScope,
             LegacyWrite: legacyWrite,
             IdempotencyKind: StockSourceIdempotencyKindEnum.SourceConsequence,
-            AdditionalScopeStates: additionalScopes.Count == 0 ? null : additionalScopes));
+            AdditionalScopeStates: additionalScopes.Count == 0 ? null : additionalScopes,
+            LayerLegacyBindings: layerBindings.Count == 0 ? null : layerBindings));
 
         if (commit.Outcome == StockConsequenceCommitOutcomeEnum.AlreadyCommitted)
         {
@@ -384,19 +384,37 @@ public sealed class PostStockTransferStockConsequenceHandler
         return result;
     }
 
-    private static (
-        List<StockMovementLineType> MovementLines,
-        Dictionary<string, List<StockLayerModel>> DestinationLayersByWriteScope,
-        List<TransferLegacyCompatibilityMapper.TransferAllocationSlice> TransferSlices)
-        BuildTransferArtifacts(
-            IReadOnlyList<StockLayerAllocationType> allocations,
-            IReadOnlyDictionary<string, StockLayerModel> layersById,
-            ILayananKey destinationLocation,
-            IStockMovementKey movementKey)
+    private sealed record TransferArtifactBuildResult(
+        PostStockTransferStockConsequenceResult? Failure,
+        List<StockMovementLineType>? MovementLines,
+        Dictionary<string, List<StockLayerModel>>? DestinationLayersByWriteScope,
+        List<TransferLegacyCompatibilityMapper.TransferAllocationSlice>? TransferSlices,
+        List<StockLayerLegacyBindingType>? LayerBindings)
+    {
+        public static TransferArtifactBuildResult Ok(
+            List<StockMovementLineType> movementLines,
+            Dictionary<string, List<StockLayerModel>> destinationLayers,
+            List<TransferLegacyCompatibilityMapper.TransferAllocationSlice> slices,
+            List<StockLayerLegacyBindingType> bindings)
+            => new(null, movementLines, destinationLayers, slices, bindings);
+
+        public static TransferArtifactBuildResult Fail(PostStockTransferStockConsequenceResult failure)
+            => new(failure, null, null, null, null);
+    }
+
+    private TransferArtifactBuildResult BuildTransferArtifacts(
+        IReadOnlyList<StockLayerAllocationType> allocations,
+        IReadOnlyDictionary<string, StockLayerModel> layersById,
+        ILayananKey destinationLocation,
+        IStockMovementKey movementKey,
+        IReadOnlyList<LegacyStockBalanceType> sourceBalances,
+        DateTime boundAt)
     {
         var movementLines = new List<StockMovementLineType>(allocations.Count * 2);
         var destinationLayers = new Dictionary<string, List<StockLayerModel>>(StringComparer.Ordinal);
         var slices = new List<TransferLegacyCompatibilityMapper.TransferAllocationSlice>(allocations.Count);
+        var bindings = new List<StockLayerLegacyBindingType>(allocations.Count * 2);
+        var claimedSourceRows = new HashSet<string>(StringComparer.Ordinal);
         var lineNo = 1;
 
         foreach (var allocation in allocations)
@@ -407,9 +425,33 @@ public sealed class PostStockTransferStockConsequenceHandler
                     $"Allocated Stock Layer '{allocation.StockLayerId}' was not found in source positions.");
             }
 
+            var resolution = _bindingResolver.ResolveSourceRow(
+                sourceLayer,
+                allocation.Quantity,
+                sourceBalances,
+                claimedSourceRows,
+                boundAt);
+
+            if (resolution.Kind == StockLayerLegacyBindingResolver.OutcomeKind.Ambiguous)
+            {
+                return TransferArtifactBuildResult.Fail(
+                    PostStockTransferStockConsequenceResult.Inconsistent(resolution.Explanation));
+            }
+
+            if (resolution.Kind != StockLayerLegacyBindingResolver.OutcomeKind.Resolved
+                || string.IsNullOrWhiteSpace(resolution.LegacyRowId))
+            {
+                return TransferArtifactBuildResult.Fail(
+                    PostStockTransferStockConsequenceResult.InsufficientStock(resolution.Explanation));
+            }
+
+            if (resolution.BindingToPersist is not null)
+                bindings.Add(resolution.BindingToPersist);
+
             var item = BrgObatType.Key(allocation.BrgId);
             var receiptSource = ReceiptSourceType.Key(allocation.ReceiptSourceId);
             var sourceLocation = LayananType.Key(allocation.LayananId);
+            var destinationLegacyRowId = TransferLegacyCompatibilityMapper.NewCompactLegacyId("ST");
 
             movementLines.Add(StockMovementLineType.Create(
                 lineNo++,
@@ -454,8 +496,15 @@ public sealed class PostStockTransferStockConsequenceHandler
             }
 
             list.Add(destLayer);
+            bindings.Add(StockLayerLegacyBindingType.FromLayer(
+                destLayer,
+                destinationLegacyRowId,
+                boundAt));
 
             slices.Add(new TransferLegacyCompatibilityMapper.TransferAllocationSlice(
+                allocation.StockLayerId,
+                resolution.LegacyRowId!,
+                destinationLegacyRowId,
                 allocation.BrgId,
                 allocation.ReceiptSourceId,
                 allocation.LayananId,
@@ -468,7 +517,7 @@ public sealed class PostStockTransferStockConsequenceHandler
                 SmallestUnitId: null));
         }
 
-        return (movementLines, destinationLayers, slices);
+        return TransferArtifactBuildResult.Ok(movementLines, destinationLayers, slices, bindings);
     }
 
     private List<StockPositionModel> ApplySourceConsumption(

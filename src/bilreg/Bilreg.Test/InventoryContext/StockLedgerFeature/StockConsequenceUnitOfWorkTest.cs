@@ -258,6 +258,7 @@ public class StockConsequenceUnitOfWorkTest
             """
             DELETE FROM BILRG_StokMovementLine WHERE StockMovementId = @MovementId;
             DELETE FROM BILRG_StokMovement WHERE StockMovementId = @MovementId;
+            DELETE FROM BILRG_StokLayerLegacyBinding WHERE BrgId = @BrgId AND ReceiptSourceId = @DoId;
             DELETE FROM BILRG_StokLayer WHERE BrgId = @BrgId AND ReceiptSourceId = @DoId;
             DELETE FROM BILRG_StokPosition WHERE BrgId = @BrgId AND ReceiptSourceId = @DoId;
             DELETE FROM BILRG_StokLedgerScope WHERE BrgId = @BrgId AND ReceiptSourceId = @DoId;

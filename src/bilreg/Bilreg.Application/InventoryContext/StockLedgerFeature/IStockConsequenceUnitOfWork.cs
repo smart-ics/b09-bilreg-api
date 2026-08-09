@@ -52,7 +52,8 @@ public sealed record StockConsequenceDraft(
     LegacyCompatibilityWriteRequest? LegacyWrite,
     StockSourceIdempotencyKindEnum IdempotencyKind = StockSourceIdempotencyKindEnum.SourceConsequence,
     ReconstructionStatusEnum? ExpectedPriorReconstructionStatus = null,
-    IReadOnlyList<StockLedgerScopeStateModel>? AdditionalScopeStates = null);
+    IReadOnlyList<StockLedgerScopeStateModel>? AdditionalScopeStates = null,
+    IReadOnlyList<StockLayerLegacyBindingType>? LayerLegacyBindings = null);
 
 /// <summary>
 /// P3-S4 — movement-less SyncBatch evidence (bootstrap identity keys / omission).

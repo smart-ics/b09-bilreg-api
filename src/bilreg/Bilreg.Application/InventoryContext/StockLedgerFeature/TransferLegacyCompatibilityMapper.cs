@@ -4,30 +4,33 @@ using Bilreg.Domain.InventoryContext.StockLedgerFeature;
 namespace Bilreg.Application.InventoryContext.StockLedgerFeature;
 
 /// <summary>
-/// P5-S3 — Maps trusted FIFO allocation slices to allocation-explicit MT transfer
-/// legacy write DTOs and post-transfer fingerprint projections.
-/// Resolves <c>LegacyRowId</c> from live authority balances; does not re-FIFO.
+/// P5-S3 — Maps commit-ready transfer slices (already bound to LegacyRowId) to
+/// allocation-explicit MT transfer legacy write DTOs and post-transfer fingerprint projections.
+/// Does not select or rediscover <c>tb_stok</c> rows.
 /// </summary>
 public static class TransferLegacyCompatibilityMapper
 {
     private const string MutationKindMtOut = "MT_OUT";
     private const string MutationKindMtIn = "MT_IN";
     private const string PrefixBuku = "BK";
-    private const string PrefixStok = "ST";
 
     /// <summary>
     /// Compact legacy BK/ST id (10 chars). Uses Ulid random tail — <c>NunaId.NewLegacyCompact</c>
     /// is timestamp-heavy and collides under rapid multi-leg generation in disposable DBs.
     /// </summary>
-    private static string NewCompactLegacyId(string prefix)
+    public static string NewCompactLegacyId(string prefix)
     {
         var ulid = Ulid.NewUlid().ToString();
         return $"{prefix}{ulid[^8..]}";
     }
+
     /// <summary>
-    /// One allocation-explicit transfer slice (Ledger plan → legacy OUT/IN pair).
+    /// One commit-ready transfer slice: Ledger layer identity + exact source/destination LegacyRowIds.
     /// </summary>
     public sealed record TransferAllocationSlice(
+        string StockLayerId,
+        string SourceLegacyRowId,
+        string DestinationLegacyRowId,
         string BrgId,
         string ReceiptSourceId,
         string SourceLayananId,
@@ -65,20 +68,16 @@ public static class TransferLegacyCompatibilityMapper
     }
 
     /// <summary>
-    /// Builds interleaved OUT/IN DTO pairs from allocation slices.
-    /// Resolves targeted source <c>tb_stok</c> rows from <paramref name="sourceBalances"/>;
-    /// fails closed when matching is ambiguous or insufficient.
+    /// Builds interleaved OUT/IN DTO pairs from already-bound allocation slices.
     /// </summary>
     public static LegacyCompatibilityWriteRequest Map(
         ISourceTransactionReferenceKey sourceTransaction,
         string mtTransactionId,
         DateTime mutationTime,
-        IReadOnlyList<TransferAllocationSlice> slices,
-        IReadOnlyList<LegacyStockBalanceType> sourceBalances)
+        IReadOnlyList<TransferAllocationSlice> slices)
     {
         ArgumentNullException.ThrowIfNull(sourceTransaction);
         ArgumentNullException.ThrowIfNull(slices);
-        ArgumentNullException.ThrowIfNull(sourceBalances);
         if (slices.Count == 0)
             throw new ArgumentException("At least one transfer slice is required.", nameof(slices));
         if (string.IsNullOrWhiteSpace(mtTransactionId))
@@ -87,11 +86,6 @@ public static class TransferLegacyCompatibilityMapper
             throw new ArgumentException("MutationTime is required.", nameof(mutationTime));
 
         var mtId = mtTransactionId.Trim();
-        var remaining = sourceBalances
-            .Where(b => !string.IsNullOrWhiteSpace(b.LegacyRowId) && b.Quantity > 0m)
-            .Select(b => b with { })
-            .ToList();
-
         var balances = new List<LegacyCompatibilityBalanceMutationType>(slices.Count * 2);
         var journals = new List<LegacyCompatibilityJournalEntryType>(slices.Count * 2);
 
@@ -100,35 +94,20 @@ public static class TransferLegacyCompatibilityMapper
             var slice = slices[i];
             ValidateSlice(slice, i);
 
-            if (!TryResolveSourceRow(remaining, slice, out var matchIndex, out var failureKind, out var error))
-                throw new TransferLegacyRowResolutionException(failureKind, error);
-
-            var sourceRow = remaining[matchIndex];
-            var sourceStokId = sourceRow.LegacyRowId!.Trim();
-            var remainingAfter = sourceRow.Quantity - slice.Quantity;
-            var outAction = remainingAfter <= 0m
-                ? LegacyBalanceMutationActionEnum.Delete
-                : LegacyBalanceMutationActionEnum.Upsert;
-
-            if (remainingAfter <= 0m)
-                remaining.RemoveAt(matchIndex);
-            else
-                remaining[matchIndex] = sourceRow with { Quantity = remainingAfter };
-
             var outBukuId = NewCompactLegacyId(PrefixBuku);
             var inBukuId = NewCompactLegacyId(PrefixBuku);
-            var inStokId = NewCompactLegacyId(PrefixStok);
             var brgId = slice.BrgId.Trim();
             var doId = slice.ReceiptSourceId.Trim();
             var sourceLoc = slice.SourceLayananId.Trim();
             var destLoc = slice.DestinationLayananId.Trim();
-            var batch = NormalizeOptional(slice.Batch) ?? NormalizeOptional(sourceRow.Batch);
-            var po = NormalizeOptional(slice.PurchaseOrderId)
-                ?? NormalizeOptional(sourceRow.PurchaseOrderId);
+            var batch = NormalizeOptional(slice.Batch);
+            var po = NormalizeOptional(slice.PurchaseOrderId);
             var satuan = NormalizeOptional(slice.SmallestUnitId);
+            var sourceStokId = slice.SourceLegacyRowId.Trim();
+            var inStokId = slice.DestinationLegacyRowId.Trim();
 
             balances.Add(new LegacyCompatibilityBalanceMutationType(
-                outAction,
+                LegacyBalanceMutationActionEnum.Upsert,
                 brgId,
                 doId,
                 sourceLoc,
@@ -184,6 +163,8 @@ public static class TransferLegacyCompatibilityMapper
                 SmallestUnitId: satuan));
         }
 
+        // OUT action Delete-vs-Upsert is decided by the live writer after UPDLOCK revalidation.
+        // Compatibility DTOs carry the targeted LegacyRowId and quantity; writer depletes/deletes.
         var primaryScope = StockLedgerScopeKeyType.Create(
             slices[0].BrgId,
             slices[0].ReceiptSourceId);
@@ -237,17 +218,8 @@ public static class TransferLegacyCompatibilityMapper
             scopedPairs.Add((b, j));
         }
 
-        var deletedIds = scopedPairs
-            .Where(p =>
-                string.Equals(p.Journal.MutationKindId, MutationKindMtOut, StringComparison.Ordinal)
-                && p.Balance.Action == LegacyBalanceMutationActionEnum.Delete)
-            .Select(p => p.Balance.LegacyRowId!.Trim())
-            .ToHashSet(StringComparer.Ordinal);
-
-        var reducedById = scopedPairs
-            .Where(p =>
-                string.Equals(p.Journal.MutationKindId, MutationKindMtOut, StringComparison.Ordinal)
-                && p.Balance.Action == LegacyBalanceMutationActionEnum.Upsert)
+        var outTakenById = scopedPairs
+            .Where(p => string.Equals(p.Journal.MutationKindId, MutationKindMtOut, StringComparison.Ordinal))
             .GroupBy(p => p.Balance.LegacyRowId!.Trim(), StringComparer.Ordinal)
             .ToDictionary(
                 g => g.Key,
@@ -260,10 +232,8 @@ public static class TransferLegacyCompatibilityMapper
             var id = prior.LegacyRowId?.Trim();
             if (string.IsNullOrWhiteSpace(id))
                 continue;
-            if (deletedIds.Contains(id))
-                continue;
 
-            if (reducedById.TryGetValue(id, out var taken))
+            if (outTakenById.TryGetValue(id, out var taken))
             {
                 var remainingQty = prior.Quantity - taken;
                 if (remainingQty <= 0m)
@@ -324,6 +294,12 @@ public static class TransferLegacyCompatibilityMapper
 
     private static void ValidateSlice(TransferAllocationSlice slice, int index)
     {
+        if (string.IsNullOrWhiteSpace(slice.StockLayerId))
+            throw new ArgumentException($"Transfer slice {index} requires StockLayerId.");
+        if (string.IsNullOrWhiteSpace(slice.SourceLegacyRowId))
+            throw new ArgumentException($"Transfer slice {index} requires SourceLegacyRowId.");
+        if (string.IsNullOrWhiteSpace(slice.DestinationLegacyRowId))
+            throw new ArgumentException($"Transfer slice {index} requires DestinationLegacyRowId.");
         if (string.IsNullOrWhiteSpace(slice.BrgId))
             throw new ArgumentException($"Transfer slice {index} requires BrgId.");
         if (string.IsNullOrWhiteSpace(slice.ReceiptSourceId))
@@ -345,76 +321,6 @@ public static class TransferLegacyCompatibilityMapper
             throw new ArgumentException($"Transfer slice {index} requires positive Quantity.");
     }
 
-    private static bool TryResolveSourceRow(
-        List<LegacyStockBalanceType> remaining,
-        TransferAllocationSlice slice,
-        out int matchIndex,
-        out TransferLegacyRowResolutionFailureKind failureKind,
-        out string error)
-    {
-        matchIndex = -1;
-        failureKind = TransferLegacyRowResolutionFailureKind.NoMatch;
-        error = string.Empty;
-
-        var candidates = remaining
-            .Select((b, i) => (Balance: b, Index: i))
-            .Where(x =>
-                string.Equals(x.Balance.BrgId, slice.BrgId.Trim(), StringComparison.Ordinal)
-                && string.Equals(
-                    x.Balance.ReceiptSourceId,
-                    slice.ReceiptSourceId.Trim(),
-                    StringComparison.Ordinal)
-                && string.Equals(
-                    x.Balance.LayananId,
-                    slice.SourceLayananId.Trim(),
-                    StringComparison.Ordinal)
-                && x.Balance.UnitCost == slice.UnitCost
-                && Nullable.Equals(x.Balance.ExpirationDate, slice.ExpirationDate)
-                && string.Equals(
-                    NormalizeOptional(x.Balance.Batch) ?? string.Empty,
-                    NormalizeOptional(slice.Batch) ?? string.Empty,
-                    StringComparison.Ordinal)
-                && x.Balance.Quantity >= slice.Quantity)
-            .ToList();
-
-        if (candidates.Count == 0)
-        {
-            failureKind = TransferLegacyRowResolutionFailureKind.NoMatch;
-            error =
-                $"No legacy source balance for Item '{slice.BrgId}' DO '{slice.ReceiptSourceId}' "
-                + $"at '{slice.SourceLayananId}' with qty ≥ {slice.Quantity}, "
-                + $"HPP={slice.UnitCost}, ED={FormatEd(slice.ExpirationDate)}, "
-                + $"Batch='{NormalizeOptional(slice.Batch) ?? "(none)"}'; "
-                + "transfer mapper fails closed.";
-            return false;
-        }
-
-        if (candidates.Count > 1)
-        {
-            // Prefer unique exact-qty match when present; otherwise fail closed.
-            var exact = candidates.Where(c => c.Balance.Quantity == slice.Quantity).ToList();
-            if (exact.Count == 1)
-            {
-                matchIndex = exact[0].Index;
-                return true;
-            }
-
-            failureKind = TransferLegacyRowResolutionFailureKind.Ambiguous;
-            error =
-                $"Ambiguous legacy source balance match for Item '{slice.BrgId}' "
-                + $"DO '{slice.ReceiptSourceId}' at '{slice.SourceLayananId}' "
-                + $"({candidates.Count} candidates); transfer mapper fails closed.";
-            return false;
-        }
-
-        matchIndex = candidates[0].Index;
-        return true;
-    }
-
     private static string? NormalizeOptional(string? value)
         => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-
-    private static string FormatEd(DateOnly? expirationDate)
-        => expirationDate?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)
-           ?? "(none)";
 }

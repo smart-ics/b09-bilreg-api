@@ -18,6 +18,7 @@ public sealed class StockConsequenceUnitOfWork : IStockConsequenceUnitOfWork
     private readonly IStockPositionRepo _positionRepo;
     private readonly IStockLedgerScopeStateRepo _scopeStateRepo;
     private readonly ILegacyCompatibilityWriterPort _legacyCompatibilityWriter;
+    private readonly IStockLayerLegacyBindingRepo? _layerLegacyBindingRepo;
 
     public StockConsequenceUnitOfWork(
         IUnitOfWork unitOfWork,
@@ -25,7 +26,8 @@ public sealed class StockConsequenceUnitOfWork : IStockConsequenceUnitOfWork
         IStockMovementRepo movementRepo,
         IStockPositionRepo positionRepo,
         IStockLedgerScopeStateRepo scopeStateRepo,
-        ILegacyCompatibilityWriterPort legacyCompatibilityWriter)
+        ILegacyCompatibilityWriterPort legacyCompatibilityWriter,
+        IStockLayerLegacyBindingRepo? layerLegacyBindingRepo = null)
     {
         _unitOfWork = unitOfWork;
         _idempotencyRepo = idempotencyRepo;
@@ -33,6 +35,7 @@ public sealed class StockConsequenceUnitOfWork : IStockConsequenceUnitOfWork
         _positionRepo = positionRepo;
         _scopeStateRepo = scopeStateRepo;
         _legacyCompatibilityWriter = legacyCompatibilityWriter;
+        _layerLegacyBindingRepo = layerLegacyBindingRepo;
     }
 
     public StockConsequenceCommitResult Commit(StockConsequenceDraft draft)
@@ -63,6 +66,19 @@ public sealed class StockConsequenceUnitOfWork : IStockConsequenceUnitOfWork
 
         foreach (var position in draft.Positions)
             _positionRepo.SaveChanges(position);
+
+        if (draft.LayerLegacyBindings is { Count: > 0 })
+        {
+            if (_layerLegacyBindingRepo is null)
+            {
+                throw new InvalidOperationException(
+                    "StockConsequenceDraft carries LayerLegacyBindings but no "
+                    + "IStockLayerLegacyBindingRepo was composed into the UnitOfWork.");
+            }
+
+            foreach (var binding in draft.LayerLegacyBindings)
+                _layerLegacyBindingRepo.SaveChanges(binding);
+        }
 
         if (draft.ScopeState is not null)
             PersistScope(draft.ScopeState, draft.ExpectedPriorReconstructionStatus, expectedSync: null);

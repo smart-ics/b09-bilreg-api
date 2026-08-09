@@ -22,7 +22,8 @@ internal static class StockLedgerSchemaFixture
         "BILRG_StokLayer.sql",
         "BILRG_StokPosition.sql",
         "BILRG_StokLedgerScope.sql",
-        "BILRG_StokSourceIdempotency.sql"
+        "BILRG_StokSourceIdempotency.sql",
+        "BILRG_StokLayerLegacyBinding.sql"
     ];
 
     public static void EnsureSchema()
@@ -62,6 +63,9 @@ internal static class StockLedgerSchemaFixture
 
             // P3-S4 / R-002 — widen IdempotencyKey on already-created test DBs.
             ApplyAlterScript(conn, Path.Combine(featurePath, "BILRG_StokSourceIdempotency.AlterIdempotencyKey.sql"));
+
+            // P5-S3 — ensure coexistence binding table even when prior process created older schema.
+            ApplyAlterScript(conn, Path.Combine(featurePath, "BILRG_StokLayerLegacyBinding.sql"));
 
             _ensured = true;
         }

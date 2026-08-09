@@ -519,13 +519,8 @@ public class StockLedgerCoexistenceHarnessPlaceholderTest
             var idempotencyRepo = new StockSourceIdempotencyRepo(new StockSourceIdempotencyDal(options));
             var liveWriter = new LegacyCompatibilityWriterPort(options);
             var throwingWriter = new ThrowingLegacyCompatibilityWriterPort(liveWriter);
-            var sut = new StockConsequenceUnitOfWork(
-                new TransHelperUnitOfWork(),
-                idempotencyRepo,
-                movementRepo,
-                positionRepo,
-                scopeRepo,
-                throwingWriter);
+            var bindingRepo = new StockLayerLegacyBindingRepo(new StockLayerLegacyBindingDal(options));
+            var sut = new StockConsequenceUnitOfWork(new TransHelperUnitOfWork(), idempotencyRepo, movementRepo, positionRepo, scopeRepo, throwingWriter, bindingRepo);
 
             var draft = StockConsequenceUnitOfWorkLiveAtomicityTest.BuildReceiptDraft(ids, lineCount: 1);
             var act = () => sut.Commit(draft);
@@ -665,8 +660,8 @@ public class StockLedgerCoexistenceHarnessPlaceholderTest
         var idempotencyDal = new StockSourceIdempotencyDal(options);
         var idempotencyRepo = new StockSourceIdempotencyRepo(idempotencyDal);
         var legacyWriter = new FakeLegacyCompatibilityWriterPort();
-        var uow = new StockConsequenceUnitOfWork(
-            spy, idempotencyRepo, movementRepo, positionRepo, scopeRepo, legacyWriter);
+        var bindingRepo = new StockLayerLegacyBindingRepo(new StockLayerLegacyBindingDal(options));
+        var uow = new StockConsequenceUnitOfWork(spy, idempotencyRepo, movementRepo, positionRepo, scopeRepo, legacyWriter, bindingRepo);
 
         var claim = new ReconstructionClaimService(spy, scopeRepo);
         var reconstruct = new ReconstructStockLedgerBaselineHandler(
@@ -729,13 +724,8 @@ public class StockLedgerCoexistenceHarnessPlaceholderTest
         };
 
         var claim = new ReconstructionClaimService(spy, scopeRepo);
-        var uow = new StockConsequenceUnitOfWork(
-            spy,
-            idempotencyRepo,
-            movementRepo,
-            positionRepo,
-            scopeRepo,
-            legacyWriter);
+        var bindingRepo = new StockLayerLegacyBindingRepo(new StockLayerLegacyBindingDal(options));
+        var uow = new StockConsequenceUnitOfWork(spy, idempotencyRepo, movementRepo, positionRepo, scopeRepo, legacyWriter, bindingRepo);
         var sut = new ReconstructStockLedgerBaselineHandler(
             claim,
             fakeRead,
@@ -873,6 +863,7 @@ public class StockLedgerCoexistenceHarnessPlaceholderTest
                 WHERE BrgId = @BrgId AND ReceiptSourceId = @ReceiptSourceId
                 UNION
                 SELECT @ReconMovementId);
+            DELETE FROM BILRG_StokLayerLegacyBinding WHERE BrgId = @BrgId AND ReceiptSourceId = @ReceiptSourceId;
             DELETE FROM BILRG_StokLayer WHERE BrgId = @BrgId AND ReceiptSourceId = @ReceiptSourceId;
             DELETE FROM BILRG_StokPosition WHERE BrgId = @BrgId AND ReceiptSourceId = @ReceiptSourceId;
             DELETE FROM BILRG_StokLedgerScope WHERE BrgId = @BrgId AND ReceiptSourceId = @ReceiptSourceId;
@@ -973,13 +964,8 @@ public class StockLedgerCoexistenceHarnessPlaceholderTest
         var legacyWriter = new LegacyCompatibilityWriterPort(dbOptions);
         var legacyRead = new LegacyStockReadPort(dbOptions);
 
-        var consequenceUow = new StockConsequenceUnitOfWork(
-            unitOfWork,
-            idempotencyRepo,
-            movementRepo,
-            positionRepo,
-            scopeRepo,
-            legacyWriter);
+        var bindingRepo = new StockLayerLegacyBindingRepo(new StockLayerLegacyBindingDal(dbOptions));
+        var consequenceUow = new StockConsequenceUnitOfWork(unitOfWork, idempotencyRepo, movementRepo, positionRepo, scopeRepo, legacyWriter, bindingRepo);
 
         var bootstrapper = new LegacySyncIdentityBootstrapper(
             consequenceUow,
@@ -1044,10 +1030,9 @@ public class StockLedgerCoexistenceHarnessPlaceholderTest
         var liveWriter = new LegacyCompatibilityWriterPort(dbOptions);
         var syncWriter = new FakeLegacyCompatibilityWriterPort();
 
-        var postUow = new StockConsequenceUnitOfWork(
-            spy, idempotencyRepo, movementRepo, positionRepo, scopeRepo, liveWriter);
-        var syncUow = new StockConsequenceUnitOfWork(
-            spy, idempotencyRepo, movementRepo, positionRepo, scopeRepo, syncWriter);
+        var bindingRepo = new StockLayerLegacyBindingRepo(new StockLayerLegacyBindingDal(dbOptions));
+        var postUow = new StockConsequenceUnitOfWork(spy, idempotencyRepo, movementRepo, positionRepo, scopeRepo, liveWriter, bindingRepo);
+        var syncUow = new StockConsequenceUnitOfWork(spy, idempotencyRepo, movementRepo, positionRepo, scopeRepo, syncWriter, bindingRepo);
 
         var bootstrapper = new LegacySyncIdentityBootstrapper(
             postUow, idempotencyRepo, movementRepo);
@@ -1328,6 +1313,7 @@ public class StockLedgerCoexistenceHarnessPlaceholderTest
                 UNION
                 SELECT StockMovementId FROM BILRG_StokMovement
                 WHERE SourceTransactionId = @SourceTxId);
+            DELETE FROM BILRG_StokLayerLegacyBinding WHERE BrgId = @BrgId AND ReceiptSourceId = @DoId;
             DELETE FROM BILRG_StokLayer WHERE BrgId = @BrgId AND ReceiptSourceId = @DoId;
             DELETE FROM BILRG_StokPosition WHERE BrgId = @BrgId AND ReceiptSourceId = @DoId;
             DELETE FROM BILRG_StokLedgerScope WHERE BrgId = @BrgId AND ReceiptSourceId = @DoId;

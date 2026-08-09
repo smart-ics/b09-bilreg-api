@@ -133,7 +133,8 @@ public static class LegacyReconstructionBaselineCalculator
                         ExpirationDate: balance.ExpirationDate,
                         Batch: balance.Batch,
                         EffectiveReceiptTime: receiptTime,
-                        IsDepleted: false));
+                        IsDepleted: false,
+                        LegacyRowId: balance.LegacyRowId));
                 }
             }
             else if (hasJournal)
@@ -165,7 +166,8 @@ public static class LegacyReconstructionBaselineCalculator
                     ExpirationDate: key.ExpirationDate,
                     Batch: journalAgg!.Batch,
                     EffectiveReceiptTime: journalAgg.EarliestMutationTime,
-                    IsDepleted: true));
+                    IsDepleted: true,
+                    LegacyRowId: null));
             }
         }
 
@@ -197,6 +199,8 @@ public static class LegacyReconstructionBaselineCalculator
         var lines = new List<StockMovementLineType>();
         var lineNo = 0;
         var layersByLocation = new SortedDictionary<string, List<StockLayerModel>>(StringComparer.Ordinal);
+        var bindings = new List<StockLayerLegacyBindingType>();
+        var boundAt = DateTime.Now;
 
         foreach (var draft in proposedLayers
                      .OrderBy(l => l.LayananId, StringComparer.Ordinal)
@@ -229,6 +233,14 @@ public static class LegacyReconstructionBaselineCalculator
 
             list.Add(layer);
 
+            if (!string.IsNullOrWhiteSpace(draft.LegacyRowId))
+            {
+                bindings.Add(StockLayerLegacyBindingType.FromLayer(
+                    layer,
+                    draft.LegacyRowId!,
+                    boundAt));
+            }
+
             lines.Add(StockMovementLineType.Create(
                 lineNo,
                 item,
@@ -260,7 +272,8 @@ public static class LegacyReconstructionBaselineCalculator
             scopeKey,
             movement,
             positions,
-            usedFallbackOrdering);
+            usedFallbackOrdering,
+            bindings);
     }
 
     private static ReconstructionBaselineCalculationResult Inconsistent(
@@ -425,7 +438,8 @@ public static class LegacyReconstructionBaselineCalculator
         DateOnly? ExpirationDate,
         string? Batch,
         DateTime EffectiveReceiptTime,
-        bool IsDepleted);
+        bool IsDepleted,
+        string? LegacyRowId);
 }
 
 /// <summary>
@@ -450,7 +464,8 @@ public sealed record ReconstructionBaselineCalculationResult
         string? inconsistencyReason,
         StockMovementModel? establishingMovement,
         IReadOnlyList<StockPositionModel> proposedPositions,
-        bool usedDeterministicOrderingFallback)
+        bool usedDeterministicOrderingFallback,
+        IReadOnlyList<StockLayerLegacyBindingType> proposedBindings)
     {
         Outcome = outcome;
         ScopeKey = scopeKey;
@@ -458,6 +473,7 @@ public sealed record ReconstructionBaselineCalculationResult
         EstablishingMovement = establishingMovement;
         ProposedPositions = proposedPositions;
         UsedDeterministicOrderingFallback = usedDeterministicOrderingFallback;
+        ProposedBindings = proposedBindings;
     }
 
     public ReconstructionBaselineOutcomeEnum Outcome { get; }
@@ -474,6 +490,10 @@ public sealed record ReconstructionBaselineCalculationResult
     /// balance-only Initial) that does not change material quantity/provenance outcomes (BR-STL-104).
     /// </summary>
     public bool UsedDeterministicOrderingFallback { get; }
+    /// <summary>
+    /// P5-S3 — coexistence bindings for layers established from surviving <c>tb_stok</c> rows.
+    /// </summary>
+    public IReadOnlyList<StockLayerLegacyBindingType> ProposedBindings { get; }
 
     public bool IsBalanced => Outcome == ReconstructionBaselineOutcomeEnum.Balanced;
     public bool IsInconsistent => Outcome == ReconstructionBaselineOutcomeEnum.Inconsistent;
@@ -485,14 +505,16 @@ public sealed record ReconstructionBaselineCalculationResult
         StockLedgerScopeKeyType scopeKey,
         StockMovementModel? establishingMovement,
         IReadOnlyList<StockPositionModel> proposedPositions,
-        bool usedDeterministicOrderingFallback)
+        bool usedDeterministicOrderingFallback,
+        IReadOnlyList<StockLayerLegacyBindingType>? proposedBindings = null)
         => new(
             ReconstructionBaselineOutcomeEnum.Balanced,
             scopeKey,
             inconsistencyReason: null,
             establishingMovement,
             proposedPositions,
-            usedDeterministicOrderingFallback);
+            usedDeterministicOrderingFallback,
+            proposedBindings ?? Array.Empty<StockLayerLegacyBindingType>());
 
     public static ReconstructionBaselineCalculationResult Inconsistent(
         StockLedgerScopeKeyType scopeKey,
@@ -503,5 +525,6 @@ public sealed record ReconstructionBaselineCalculationResult
             reason,
             establishingMovement: null,
             proposedPositions: Array.Empty<StockPositionModel>(),
-            usedDeterministicOrderingFallback: false);
+            usedDeterministicOrderingFallback: false,
+            proposedBindings: Array.Empty<StockLayerLegacyBindingType>());
 }

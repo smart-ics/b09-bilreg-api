@@ -548,8 +548,8 @@ public class TrustedStockAllocationOrchestratorTest
         var idempotencyDal = new StockSourceIdempotencyDal(options);
         var idempotencyRepo = new StockSourceIdempotencyRepo(idempotencyDal);
         var legacyWriter = new FakeLegacyCompatibilityWriterPort();
-        var uow = new StockConsequenceUnitOfWork(
-            spy, idempotencyRepo, movementRepo, positionRepo, scopeRepo, legacyWriter);
+        var bindingRepo = new StockLayerLegacyBindingRepo(new StockLayerLegacyBindingDal(options));
+        var uow = new StockConsequenceUnitOfWork(spy, idempotencyRepo, movementRepo, positionRepo, scopeRepo, legacyWriter, bindingRepo);
 
         var claim = new ReconstructionClaimService(spy, scopeRepo);
         var reconstruct = new ReconstructStockLedgerBaselineHandler(
@@ -721,6 +721,7 @@ public class TrustedStockAllocationOrchestratorTest
                 WHERE BrgId = @BrgId AND ReceiptSourceId = @ReceiptSourceId
                 UNION
                 SELECT @ReconMovementId);
+            DELETE FROM BILRG_StokLayerLegacyBinding WHERE BrgId = @BrgId AND ReceiptSourceId = @ReceiptSourceId;
             DELETE FROM BILRG_StokLayer WHERE BrgId = @BrgId AND ReceiptSourceId = @ReceiptSourceId;
             DELETE FROM BILRG_StokPosition WHERE BrgId = @BrgId AND ReceiptSourceId = @ReceiptSourceId;
             DELETE FROM BILRG_StokLedgerScope WHERE BrgId = @BrgId AND ReceiptSourceId = @ReceiptSourceId;

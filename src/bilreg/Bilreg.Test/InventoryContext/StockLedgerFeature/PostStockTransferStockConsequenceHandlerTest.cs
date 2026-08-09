@@ -534,6 +534,157 @@ public class PostStockTransferStockConsequenceHandlerTest
         }
     }
 
+    [Fact]
+    public async Task SameAttributeMultiBalance_OutboundUsesBoundFifoLayerRow()
+    {
+        // Review Major: repeated MT_IN with shared DO/HPP/ED/batch creates multiple ST rows.
+        // Outbound qty equal to the non-FIFO-first row must deplete the FIFO-selected layer's
+        // bound LegacyRowId — not the exact-qty peer.
+        StockLedgerSchemaFixture.EnsureSchema();
+        StockLedgerSchemaFixture.EnsureLegacyStockTables();
+        var source = CreateCaseIds("WR");
+        var hop = CreateCaseIds("WH");
+        Cleanup(source);
+        Cleanup(hop);
+
+        try
+        {
+            var harness = CreateLiveHarness(enabled: true);
+            await SeedSourceAndBaselineAsync(harness, source, qty: 8m);
+
+            var firstIn = await harness.Handler.Handle(BuildCommand(source, quantity: 5m), default);
+            firstIn.Outcome.Should().Be(PostStockTransferStockConsequenceOutcomeEnum.Committed);
+            var secondMtId = $"MT2{Ulid.NewUlid()}"[..10];
+            var secondIn = await harness.Handler.Handle(
+                new PostStockTransferStockConsequenceCommand(
+                    SourceTransactionId: secondMtId,
+                    SourceLocationId: source.SourceLocationId,
+                    DestinationLocationId: source.DestLocationId,
+                    EffectiveBusinessTime: BusinessTime.AddMinutes(1),
+                    Lines: [new StockTransferLineFact(1, source.BrgId, 3m)],
+                    ProcessedAt: ProcessedAt.AddMinutes(1)),
+                default);
+            secondIn.Outcome.Should().Be(PostStockTransferStockConsequenceOutcomeEnum.Committed);
+
+            var destWriteScope = StockWriteScopeKeyType.Create(
+                source.BrgId, source.DoId, source.DestLocationId);
+            var destPos = harness.Repos.Position.LoadEntity(destWriteScope).Value;
+            destPos.Layers.Should().HaveCount(2);
+            var fifoFirst = destPos.Layers
+                .OrderBy(l => l.EffectiveReceiptTime)
+                .ThenBy(l => l.StockLayerId, StringComparer.Ordinal)
+                .First();
+            var fifoFirstBinding = harness.Repos.Binding.LoadByStockLayerId(fifoFirst.StockLayerId);
+            fifoFirstBinding.HasValue.Should().BeTrue();
+            var expectedLegacyRowId = fifoFirstBinding.Value.LegacyRowId;
+
+            var balancesBefore = harness.LegacyRead.ListCurrentBalances(source.Scope)
+                .Where(b => b.LayananId == source.DestLocationId)
+                .ToList();
+            balancesBefore.Should().HaveCount(2);
+            balancesBefore.Select(b => b.Quantity).Should().BeEquivalentTo([5m, 3m]);
+            var exactQtyPeerId = balancesBefore.Single(b => b.Quantity == 3m).LegacyRowId!;
+            exactQtyPeerId.Should().NotBe(expectedLegacyRowId);
+
+            var outbound = await harness.Handler.Handle(
+                new PostStockTransferStockConsequenceCommand(
+                    SourceTransactionId: hop.MtId,
+                    SourceLocationId: source.DestLocationId,
+                    DestinationLocationId: hop.DestLocationId,
+                    EffectiveBusinessTime: BusinessTime.AddMinutes(2),
+                    Lines: [new StockTransferLineFact(1, source.BrgId, 3m)],
+                    ProcessedAt: ProcessedAt.AddMinutes(2)),
+                default);
+            outbound.Outcome.Should().Be(PostStockTransferStockConsequenceOutcomeEnum.Committed);
+
+            var balancesAfter = harness.LegacyRead.ListCurrentBalances(source.Scope)
+                .Where(b => b.LayananId == source.DestLocationId)
+                .ToList();
+            // Correct path: FIFO-first row (qty 5) reduced to 2; exact-qty peer (qty 3) untouched.
+            balancesAfter.Should().HaveCount(2);
+            balancesAfter.Should().Contain(b =>
+                b.LegacyRowId == expectedLegacyRowId && b.Quantity == 2m);
+            balancesAfter.Should().Contain(b =>
+                b.LegacyRowId == exactQtyPeerId && b.Quantity == 3m);
+        }
+        finally
+        {
+            Cleanup(source);
+            Cleanup(hop);
+        }
+    }
+
+    [Fact]
+    public async Task AmbiguousUnboundSameAttributeBalances_FailClosedInconsistent()
+    {
+        StockLedgerSchemaFixture.EnsureSchema();
+        StockLedgerSchemaFixture.EnsureLegacyStockTables();
+        var source = CreateCaseIds("AM");
+        var hop = CreateCaseIds("AH");
+        Cleanup(source);
+        Cleanup(hop);
+
+        try
+        {
+            var harness = CreateLiveHarness(enabled: true);
+            await SeedSourceAndBaselineAsync(harness, source, qty: 8m);
+
+            (await harness.Handler.Handle(BuildCommand(source, quantity: 5m), default))
+                .Outcome.Should().Be(PostStockTransferStockConsequenceOutcomeEnum.Committed);
+            var secondMtId = $"MT2{Ulid.NewUlid()}"[..10];
+            (await harness.Handler.Handle(
+                    new PostStockTransferStockConsequenceCommand(
+                        SourceTransactionId: secondMtId,
+                        SourceLocationId: source.SourceLocationId,
+                        DestinationLocationId: source.DestLocationId,
+                        EffectiveBusinessTime: BusinessTime.AddMinutes(1),
+                        Lines: [new StockTransferLineFact(1, source.BrgId, 3m)],
+                        ProcessedAt: ProcessedAt.AddMinutes(1)),
+                    default))
+                .Outcome.Should().Be(PostStockTransferStockConsequenceOutcomeEnum.Committed);
+
+            // Remove durable bindings so resolver must face same-attribute multi-candidate ambiguity.
+            using (var conn = new SqlConnection(ConnStringHelper.Get(ConnStringHelper.GetTestEnv().Value)))
+            {
+                conn.Open();
+                conn.Execute(
+                    """
+                    DELETE FROM BILRG_StokLayerLegacyBinding
+                    WHERE BrgId = @BrgId AND ReceiptSourceId = @DoId AND LayananId = @LayananId
+                    """,
+                    new
+                    {
+                        source.BrgId,
+                        source.DoId,
+                        LayananId = source.DestLocationId
+                    });
+            }
+
+            var outbound = await harness.Handler.Handle(
+                new PostStockTransferStockConsequenceCommand(
+                    SourceTransactionId: hop.MtId,
+                    SourceLocationId: source.DestLocationId,
+                    DestinationLocationId: hop.DestLocationId,
+                    EffectiveBusinessTime: BusinessTime.AddMinutes(2),
+                    Lines: [new StockTransferLineFact(1, source.BrgId, 3m)],
+                    ProcessedAt: ProcessedAt.AddMinutes(2)),
+                default);
+
+            outbound.Outcome.Should().Be(PostStockTransferStockConsequenceOutcomeEnum.Inconsistent);
+            outbound.StockMovementId.Should().BeNull();
+            CountLedgerTransferMovements(hop).Should().Be(0);
+            harness.LegacyRead.ListCurrentBalances(source.Scope)
+                .Where(b => b.LayananId == source.DestLocationId)
+                .Sum(b => b.Quantity)
+                .Should().Be(8m);
+        }
+        finally
+        {
+            Cleanup(source);
+            Cleanup(hop);
+        }
+    }
+
     #region Helpers
 
     private static PostStockTransferStockConsequenceCommand BuildCommand(
@@ -685,13 +836,16 @@ public class PostStockTransferStockConsequenceHandlerTest
         var positionRepo = new StockPositionRepo(
             new StockPositionDal(dbOptions),
             new StockLayerDal(dbOptions));
+        var bindingDal = new StockLayerLegacyBindingDal(dbOptions);
+        var bindingRepo = new StockLayerLegacyBindingRepo(bindingDal);
+        var bindingResolver = new StockLayerLegacyBindingResolver(bindingRepo);
         var idempotencyDal = new StockSourceIdempotencyDal(dbOptions);
         var idempotencyRepo = new StockSourceIdempotencyRepo(idempotencyDal);
         var legacyRead = new LegacyStockReadPort(dbOptions);
         var liveWriter = new LegacyCompatibilityWriterPort(dbOptions);
 
         var consequenceUow = new StockConsequenceUnitOfWork(
-            spy, idempotencyRepo, movementRepo, positionRepo, scopeRepo, liveWriter);
+            spy, idempotencyRepo, movementRepo, positionRepo, scopeRepo, liveWriter, bindingRepo);
 
         var bootstrapper = new LegacySyncIdentityBootstrapper(
             consequenceUow, idempotencyRepo, movementRepo);
@@ -704,7 +858,7 @@ public class PostStockTransferStockConsequenceHandlerTest
         var reconcile = new StockReconciliationPort(
             legacyRead, new StockLayerDal(dbOptions), scopeRepo);
         var snapshotLoader = new LegacySyncLedgerSnapshotLoader(
-            idempotencyRepo, positionRepo, movementRepo);
+            idempotencyRepo, positionRepo, movementRepo, bindingRepo);
         var syncClaim = new SynchronizationClaimService(spy, scopeRepo);
 
         var sync = new SynchronizeStockLedgerScopeHandler(
@@ -743,14 +897,15 @@ public class PostStockTransferStockConsequenceHandlerTest
             positionRepo,
             consequenceUow,
             legacyRead,
-            bootstrapper);
+            bootstrapper,
+            bindingResolver);
 
         return new Harness(
             handler,
             reconstruct,
             sync,
             legacyRead,
-            new Repos(movementRepo, positionRepo, scopeRepo, idempotencyRepo));
+            new Repos(movementRepo, positionRepo, scopeRepo, idempotencyRepo, bindingRepo));
     }
 
     private static CaseIds CreateCaseIds(string tag)
@@ -852,6 +1007,7 @@ public class PostStockTransferStockConsequenceHandlerTest
                 SELECT StockMovementId FROM BILRG_StokMovement
                 WHERE SourceTransactionId IN (@MtId, @SourceTxId)
                    OR SourceTransactionId LIKE @SeedLike);
+            DELETE FROM BILRG_StokLayerLegacyBinding WHERE BrgId = @BrgId AND ReceiptSourceId = @DoId;
             DELETE FROM BILRG_StokLayer WHERE BrgId = @BrgId AND ReceiptSourceId = @DoId;
             DELETE FROM BILRG_StokPosition WHERE BrgId = @BrgId AND ReceiptSourceId = @DoId;
             DELETE FROM BILRG_StokLedgerScope WHERE BrgId = @BrgId AND ReceiptSourceId = @DoId;
@@ -889,7 +1045,8 @@ public class PostStockTransferStockConsequenceHandlerTest
         IStockMovementRepo Movement,
         IStockPositionRepo Position,
         IStockLedgerScopeStateRepo Scope,
-        IStockSourceIdempotencyRepo Idempotency);
+        IStockSourceIdempotencyRepo Idempotency,
+        IStockLayerLegacyBindingRepo Binding);
 
     private sealed record Harness(
         PostStockTransferStockConsequenceHandler Handler,
