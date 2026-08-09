@@ -4,7 +4,7 @@
 
 **Bounded context:** Stock Ledger
 
-**Version scope:** Target inventory-consequence business model for hospital stock provenance, location balances, movements, FIFO issue, and accountable reversal; coexistence with Legacy Stock Record during parallel operation
+**Version scope:** Target inventory-consequence business model for hospital stock provenance, location balances, movements, FEFO/FIFO outbound issue, and accountable reversal; coexistence with Legacy Stock Record during parallel operation
 
 **Bahasa Indonesia companion:** [stok-ledger-domain-id.md](./stok-ledger-domain-id.md)
 
@@ -20,7 +20,7 @@ The business must ensure that:
 
 - every accountable stock quantity remains traceable to its Receipt Source;
 - Remaining Quantity never becomes negative;
-- outbound issue within a Stock Location follows FIFO by Receipt Source order unless an authorized exception applies;
+- outbound issue within a Stock Location follows FEFO when Expiration Dates are present, FIFO by receipt order when Expiration Dates are absent, and may be overridden by an explicit Expiration Date on the Source Stock Consequence;
 - a Stock Balance that reaches zero remains part of the accountable representation;
 - completed Stock Movements are not erased; voids are recorded as reverse journals;
 - movement history and current balances can be reconciled for one Item and one Receipt Source; and
@@ -34,7 +34,7 @@ This context covers:
 2. establishment and maintenance of Stock Batch and Location Stock Balance;
 3. recording of Stock Movements;
 4. Stock Transfer between Stock Locations with preserved Receipt Source;
-5. FIFO outbound issue for sales and other authorized consumption;
+5. FEFO/FIFO outbound issue for sales and other authorized consumption, including explicit Expiration Date selection;
 6. Purchase Return and Sales Return stock consequences;
 7. Internal Consumption and Destruction stock consequences;
 8. Stock Adjustment increases and decreases;
@@ -53,7 +53,7 @@ Those capabilities may exist in the future target system but are not defined her
 
 ### 1.3 Business boundaries
 
-Stock Ledger owns Stock Batch, Location Stock Balance, Stock Movement, FIFO Allocation outcomes, Unit Valuation continuity within a Receipt Source, reconciliation results for its representation, and Stock Reversal consequences.
+Stock Ledger owns Stock Batch, Location Stock Balance, Stock Movement, Outbound Allocation outcomes (FEFO/FIFO and explicit Expiration Date selection), Unit Valuation continuity within a Receipt Source, reconciliation results for its representation, and Stock Reversal consequences.
 
 It relies on other contexts without taking over their authority:
 
@@ -79,7 +79,7 @@ Stock Ledger does not decide whether a receipt, sale, transfer, return, consumpt
 | Receipt Source identity | Originating goods-receipt authority |
 | Persisted stock quantity and journal during Coexistence Period | Legacy Stock Record (`tb_stok` and `tb_buku`) |
 | Target Stock Ledger Representation (including depleted balances) | Stock Ledger |
-| FIFO allocation performed by Stock Ledger | Stock Ledger |
+| Outbound allocation (FEFO/FIFO / explicit Expiration Date) performed by Stock Ledger | Stock Ledger |
 | Reconciliation of Stock Ledger Representation | Stock Ledger |
 
 ```text
@@ -120,16 +120,20 @@ Item + Receipt Source
 | Stock Location | A physical or logical place where stock is held (for example warehouse, pharmacy, or clinical unit). |
 | Receipt Source | The durable identity of one goods entry into the hospital stock system, typically the goods-receipt document identity. |
 | Stock Batch | The accountable stock originating from one Item and one Receipt Source across all Stock Locations. |
-| Location Stock Balance | The remaining quantity of one Stock Batch at one Stock Location. |
+| Location Stock Balance | The remaining quantity of one Stock Batch at one Stock Location for one Expiration Date (including absent Expiration Date). |
 | Depleted Balance | A Location Stock Balance whose Remaining Quantity is zero and that remains retained for accountability. |
 | Remaining Quantity | The quantity still available within a Stock Batch or Location Stock Balance. |
 | Initial Quantity | The quantity recognized when a Location Stock Balance is first established by an inbound movement at that location. |
+| Expiration Date | The expiry date associated with a Location Stock Balance. It may be absent when the client hospital does not record expiry. |
 | Unit Valuation | The stock value per inventory unit for quantities sharing the same Receipt Source. |
 | Stock Movement | An immutable inbound or outbound quantity fact for one Location Stock Balance arising from one Source Stock Consequence. |
 | Source Stock Consequence | The authorized inventory effect requested after a source business transaction is completed. |
 | Source Transaction Reference | The identity of the originating business transaction responsible for a Stock Movement. |
 | Movement Kind | The business classification of a Stock Movement (receipt, transfer out/in, sale issue, return, consumption, destruction, adjustment, repack, or reversal). |
-| FIFO Allocation | Selection of Location Stock Balances at one Stock Location in Receipt Source order to satisfy an outbound quantity. |
+| Outbound Allocation | Selection of Location Stock Balances at one Stock Location to satisfy an outbound quantity under Explicit Expiry Selection, FEFO, or FIFO. |
+| Explicit Expiry Selection | An outbound rule in which the Source Stock Consequence names a specific Expiration Date; only balances with that Expiration Date are eligible. |
+| FEFO Allocation | First-Expire-First-Out selection: among eligible balances that have an Expiration Date, earlier (nearest) Expiration Dates are consumed first; ties are broken by receipt order. |
+| FIFO Allocation | First-In-First-Out selection by receipt order (Receipt Source / entry time), used when eligible balances have no Expiration Date. |
 | Stock Transfer | Coordinated outbound and inbound Stock Movements that move quantity between Stock Locations without changing Receipt Source. |
 | Goods Receipt Consequence | Inbound recognition of purchased or otherwise received goods into a Stock Location. |
 | Purchase Return Consequence | Outbound return of previously received goods to a supplier or equivalent authority. |
@@ -164,9 +168,9 @@ Record immutable inbound and outbound Stock Movements linked to a Source Transac
 
 Move quantity between Stock Locations while preserving Item, Receipt Source, and Unit Valuation, with equal outbound and inbound quantities.
 
-### 3.5 FIFO Outbound Allocation
+### 3.5 Outbound Allocation
 
-Satisfy an outbound requirement at one requested Stock Location by consuming Location Stock Balances in Receipt Source order, possibly across multiple Stock Batches.
+Satisfy an outbound requirement at one requested Stock Location by consuming Location Stock Balances under Explicit Expiry Selection, FEFO, or FIFO, possibly across multiple Stock Batches and Expiration Dates.
 
 ### 3.6 Sale and Return Consequences
 
@@ -228,9 +232,9 @@ It preserves Remaining Quantity hospital-wide, Unit Valuation, and the set of Lo
 
 ### 5.2 Location Stock Balance
 
-Represents Remaining Quantity of one Stock Batch at one Stock Location.
+Represents Remaining Quantity of one Stock Batch at one Stock Location for one Expiration Date (including absent Expiration Date).
 
-It may be depleted to zero and must remain retained. Multiple historical inbound events at the same location for the same batch are reflected in movement history; the balance itself is the current remaining quantity at that location for the batch.
+The same Item, Receipt Source, and Stock Location may therefore hold more than one Location Stock Balance when Expiration Dates differ. Each balance may be depleted to zero and must remain retained. Movement history explains how the balance was formed and consumed.
 
 ### 5.3 Stock Movement
 
@@ -242,11 +246,11 @@ It preserves Movement Kind, Source Transaction Reference, quantity direction, Un
 
 Represents the authorized inventory instruction supplied by an originating context after its business transaction is complete.
 
-It identifies Item, quantity, Stock Location(s), Receipt Source when already known, Movement Kind, Source Transaction Reference, and effective business time.
+It identifies Item, quantity, Stock Location(s), Receipt Source when already known, Expiration Date when explicitly selected or supplied on inbound recognition, Movement Kind, Source Transaction Reference, and effective business time.
 
-### 5.5 FIFO Allocation
+### 5.5 Outbound Allocation
 
-Represents how one outbound requirement at one Stock Location is satisfied from one or more Location Stock Balances ordered by Receipt Source.
+Represents how one outbound requirement at one Stock Location is satisfied from one or more Location Stock Balances under Explicit Expiry Selection, FEFO, or FIFO.
 
 ### 5.6 Stock Transfer
 
@@ -275,7 +279,7 @@ Consistency boundary: one Item and one Receipt Source.
 The aggregate owns:
 
 - hospital-wide Remaining Quantity for the batch;
-- Location Stock Balances for that batch across Stock Locations;
+- Location Stock Balances for that batch across Stock Locations and Expiration Dates;
 - Stock Movements that affect those balances for that batch; and
 - depletion state of each Location Stock Balance.
 
@@ -286,7 +290,7 @@ It keeps mutually consistent:
 - non-negative Remaining Quantity; and
 - retention of Depleted Balances.
 
-A single Source Stock Consequence that requires FIFO across multiple Receipt Sources coordinates multiple Stock Batch aggregates. Each aggregate remains consistent for its own Receipt Source.
+A single Source Stock Consequence that requires Outbound Allocation across multiple Receipt Sources coordinates multiple Stock Batch aggregates. Each aggregate remains consistent for its own Receipt Source.
 
 Technical write partitioning of a large batch aggregate is an architecture concern and does not change this business consistency boundary.
 
@@ -330,26 +334,29 @@ It owns calculated totals, differences, outcome, and effective assessment time. 
 - **BR-STL-020** — A Stock Reversal shall reference the movement or Source Transaction Reference being reversed and shall restore conserved quantities only when the reversal remains business-valid.
 - **BR-STL-021** — A Stock Transfer shall record equal outbound and inbound quantities for the transferred provenance.
 
-### FIFO
+### Outbound allocation (FEFO / FIFO / explicit expiry)
 
-- **BR-STL-022** — Outbound consumption shall use FIFO within the Stock Location requested by the source transaction.
-- **BR-STL-023** — Eligible balances shall be limited to the requested Item and Stock Location.
-- **BR-STL-024** — FIFO order shall follow Receipt Source entry order (Receipt Source identity ascending where that identity is the operational proxy for receipt time).
-- **BR-STL-025** — One outbound requirement may consume multiple Location Stock Balances and multiple Stock Batches.
-- **BR-STL-026** — Insufficient eligible quantity shall produce rejection or an explicit unfulfilled quantity; it shall not create negative stock.
+- **BR-STL-022** — Outbound consumption shall occur only within the Item and Stock Location requested by the source transaction.
+- **BR-STL-023** — When the Source Stock Consequence supplies an Explicit Expiry Selection, only Location Stock Balances with that Expiration Date shall be eligible.
+- **BR-STL-024** — When there is no Explicit Expiry Selection and eligible balances have Expiration Dates, allocation shall use FEFO: earlier (nearest) Expiration Dates first; equal Expiration Dates shall then follow receipt order (entry time / Receipt Source order).
+- **BR-STL-025** — When there is no Explicit Expiry Selection and eligible balances have no Expiration Date, allocation shall use FIFO by receipt order (entry time / Receipt Source order).
+- **BR-STL-026** — One outbound requirement may consume multiple Location Stock Balances across Expiration Dates and Stock Batches.
+- **BR-STL-027** — Insufficient eligible quantity shall produce rejection or an explicit unfulfilled quantity; it shall not create negative stock.
+- **BR-STL-028** — A Location Stock Balance shall be distinct for each combination of Stock Batch, Stock Location, and Expiration Date (including absent Expiration Date).
+- **BR-STL-029** — Transfer and inbound recognition shall preserve the Expiration Date of the moved or received quantity on the resulting Location Stock Balance.
 
 ### Reconciliation and coexistence
 
-- **BR-STL-027** — Primary Reconciliation Scope shall be one Item and one Receipt Source across all Stock Locations.
-- **BR-STL-028** — Reconciliation shall also be possible per Item, Receipt Source, and Stock Location.
-- **BR-STL-029** — Reconciliation shall include Depleted Balances and all accountable movements for the scope.
-- **BR-STL-030** — During the Coexistence Period, the Legacy Stock Record shall remain the persisted data authority for stock quantity.
-- **BR-STL-031** — During coexistence, the Stock Ledger Representation shall remain reconcilable with the applicable Legacy Stock Record for scopes that have been aligned.
-- **BR-STL-032** — A reconciliation difference shall be recorded explicitly and shall not be resolved by silently rewriting completed movements.
+- **BR-STL-030** — Primary Reconciliation Scope shall be one Item and one Receipt Source across all Stock Locations.
+- **BR-STL-031** — Reconciliation shall also be possible per Item, Receipt Source, and Stock Location.
+- **BR-STL-032** — Reconciliation shall include Depleted Balances and all accountable movements for the scope.
+- **BR-STL-033** — During the Coexistence Period, the Legacy Stock Record shall remain the persisted data authority for stock quantity.
+- **BR-STL-034** — During coexistence, the Stock Ledger Representation shall remain reconcilable with the applicable Legacy Stock Record for scopes that have been aligned.
+- **BR-STL-035** — A reconciliation difference shall be recorded explicitly and shall not be resolved by silently rewriting completed movements.
 
 ### Deferred capabilities
 
-- **BR-STL-033** — Reserved Order and Medication Handover / Serah Obat stock consequences are outside this version's defined capabilities.
+- **BR-STL-036** — Reserved Order and Medication Handover / Serah Obat stock consequences are outside this version's defined capabilities.
 
 ## 8. State Machines & Lifecycles
 
@@ -403,7 +410,7 @@ Not Aligned
 | Location Stock Balance Depleted | Remaining Quantity at a location reached zero and was retained. |
 | Stock Movement Recorded | An immutable inbound or outbound movement was recorded. |
 | Stock Transferred | Paired transfer movements completed for a provenance. |
-| Stock Issued By FIFO | An outbound requirement was satisfied through FIFO Allocation. |
+| Stock Issued | An outbound requirement was satisfied through Outbound Allocation (FEFO, FIFO, or Explicit Expiry Selection). |
 | Stock Reversed | A Stock Reversal reverse journal counteracted a prior movement. |
 | Stock Reconciliation Completed | A reconciliation assessment finished with an outcome. |
 | Stock Scope Aligned | A Reconciliation Scope became aligned with the Legacy Stock Record. |
@@ -428,18 +435,19 @@ Originating Goods Receipt completed
 ```text
 Originating transfer authorized
   -> Source Stock Consequence accepted
-  -> FIFO or explicit provenance selection at source location (as applicable)
+  -> Outbound Allocation or explicit provenance selection at source location (as applicable)
   -> Stock Movement outbound at source location
   -> Stock Movement inbound at destination location
   -> Location balances updated; hospital-wide batch quantity unchanged
 ```
 
-### 10.3 FIFO Sale Issue Consequence
+### 10.3 Outbound Sale Issue Consequence
 
 ```text
 Originating sale authorized
   -> Source Stock Consequence accepted for Item + Stock Location + quantity
-  -> FIFO Allocation across Receipt Sources at that location
+       (+ optional Explicit Expiry Selection)
+  -> Outbound Allocation (Explicit Expiry Selection, else FEFO, else FIFO)
   -> one or more outbound Stock Movements (one per consumed Location Stock Balance)
   -> affected Stock Batches and balances decreased
 ```

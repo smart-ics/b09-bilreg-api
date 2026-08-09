@@ -121,8 +121,10 @@ Inventory-consequence bounded context behind Purchasing, Apotek, transfer, consu
 
 | Path | Purpose |
 |------|---------|
-| `docs/contexts/stok-ledger/stok-ledger-domain.md` | Stock Ledger — canonical English business truth (Stock Batch, Location Stock Balance, movements, FIFO, reverse-journal void, coexistence authority) |
+| `docs/contexts/stok-ledger/stok-ledger-domain.md` | Stock Ledger — canonical English business truth (Stock Batch, Location Stock Balance, movements, FEFO/FIFO, reverse-journal void, coexistence authority) |
 | `docs/contexts/stok-ledger/stok-ledger-domain-id.md` | Stock Ledger — Bahasa Indonesia semantic companion |
+| `docs/contexts/stok-ledger/stok-ledger-architecture.md` | Stock Ledger — Clean Architecture realization (use cases, persistence contract, coexistence, ADRs, S1 increments) |
+| `docs/contexts/stok-ledger/stok-ledger-implementation-plan.md` | Stock Ledger v2 — mid-tier-executable Slice 1 plan (S1-A…S1-H cards, tests, coexistence, non-goals) |
 
 Non-normative legacy reference (VB6 stock generation): `docs/stok-ledger/clbGenStokX1.cls`.
 
