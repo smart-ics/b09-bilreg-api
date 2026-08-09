@@ -18,10 +18,13 @@ using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.LabContext.LabResultFeature;
 using Bilreg.Application.PaymentContext.PasienBalanceFeature;
 using Bilreg.Application.PaymentContext.TataRekeningFeature;
+using Bilreg.Application.InventoryContext.StockLedgerFeature;
+using Bilreg.Application.InventoryContext.StockLedgerFeature.Ports;
 using Bilreg.Application.Shared;
 using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Infrastructure;
 using Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
+using Bilreg.Infrastructure.InventoryContext.StockLedgerFeature;
 using Bilreg.Api.AdmisiContext.AntrianFeature;
 using Bilreg.Infrastructure.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.AdmissionFeature;
@@ -158,6 +161,10 @@ public static class InfrastructureService
             IAdmisiRajalOfficerWorklistReferenceReader,
             AdmisiRajalOfficerWorklistReferenceReader>();
 
+        // Stock Ledger v2 — ports/repos not covered by Scrutor Nuna markers (S1-C1)
+        services.AddScoped<ILegacyStockReadPort, LegacyStockReadPort>();
+        services.AddScoped<IStockMutasiRepo, StockMutasiRepo>();
+        services.AddScoped<IStockLegacyBindingRepo, StockLegacyBindingRepo>();
 
         services
             .Scan(selector => selector
