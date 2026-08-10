@@ -132,7 +132,7 @@ public class IgdVisitModel : IIgdVisitKey
     #region PROPERTIES
     public string IgdVisitId { get; init; }
     public DateTime DaftarDateTime { get; init; }
-    public VisitorType Visitor { get; init; }
+    public VisitorType Visitor { get; private set; }
     public PpaReff Dokter { get; private set; }
     public bool HasTriage { get; private set; }
     public IgdVisitTriageType Triage { get; private set; }
@@ -378,8 +378,12 @@ public class IgdVisitModel : IIgdVisitKey
         if (Reg.RegId == newReg.RegId)
             throw new InvalidOperationException(
                 $"Visit {IgdVisitId} Register lama {Reg.RegId} sama dengan Register baru {newReg.RegId}; Akses ditolak.");
+        
         var oldReg = Reg;
+        var visitor = new VisitorType(newReg.Pasien.PasienName, newReg.Pasien.Gender, newReg.Pasien.TglLahir, "-");
+        
         Reg = newReg.ToReff();
+        Visitor = visitor;
         AdministrativeState = AdministrativeStateEnum.Registered;
         AuditTrail.Modif(audit.UserId, audit.Timestamp);
         Emit(IgdEventEnum.ReplaceRegister, audit, $"RegId {oldReg.RegId} diganti dengan {newReg.RegId}");
