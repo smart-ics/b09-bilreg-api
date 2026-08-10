@@ -84,6 +84,9 @@ public class StockConsequenceUnitOfWork : IStockConsequenceUnitOfWork
             case LegacyReverseBukuWriteOperation reverse:
                 _legacyWriter.InsertReverseBuku(reverse.Request);
                 break;
+            case LegacyStokRestoreWriteOperation restore:
+                _legacyWriter.RestoreStok(restore.Request);
+                break;
             default:
                 throw new InvalidOperationException(
                     $"Unsupported legacy write operation: {op.GetType().Name}.");

@@ -13,6 +13,12 @@ public interface ILegacyStockWriterPort
     void DepleteStok(LegacyStokDepleteRequest request);
 
     LegacyReverseWriteResult InsertReverseBuku(LegacyReverseBukuWriteRequest request);
+
+    /// <summary>
+    /// Restore qty on existing <c>tb_stok</c>, or INSERT a new row when the depleted row was deleted.
+    /// Never touches <c>tb_buku</c>.
+    /// </summary>
+    LegacyStokRestoreResult RestoreStok(LegacyStokRestoreRequest request);
 }
 
 /// <summary>
@@ -30,6 +36,9 @@ public sealed record LegacyStokDepleteWriteOperation(LegacyStokDepleteRequest Re
     : LegacyStockWriteOperation;
 
 public sealed record LegacyReverseBukuWriteOperation(LegacyReverseBukuWriteRequest Request)
+    : LegacyStockWriteOperation;
+
+public sealed record LegacyStokRestoreWriteOperation(LegacyStokRestoreRequest Request)
     : LegacyStockWriteOperation;
 
 /// <summary>
@@ -99,3 +108,25 @@ public sealed record LegacyReverseBukuWriteRequest(
     string? LegacyBukuId = null);
 
 public sealed record LegacyReverseWriteResult(string LegacyBukuId);
+
+/// <summary>
+/// Restore qty to legacy <c>tb_stok</c> after a void. Prefer updating <paramref name="PreferredLegacyStokId"/>;
+/// if that row is gone (deplete-to-zero deleted it), INSERT a new stok row with provenance.
+/// </summary>
+public sealed record LegacyStokRestoreRequest(
+    string PreferredLegacyStokId,
+    decimal QtyIn,
+    string BrgId,
+    string BrgMasukReffId,
+    string LayananId,
+    decimal Hpp,
+    DateTime TglEd,
+    DateTime TglMasuk,
+    DateTime TglMutasi,
+    string TrsReffId,
+    string? PoReffId = null,
+    string? NoBatch = null,
+    string? SatuanId = null,
+    string? LegacyStokIdIfRecreate = null);
+
+public sealed record LegacyStokRestoreResult(string LegacyStokId, bool WasRecreated);

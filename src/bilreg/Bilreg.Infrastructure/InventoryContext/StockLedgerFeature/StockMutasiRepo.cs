@@ -21,6 +21,9 @@ public class StockMutasiRepo : IStockMutasiRepo
     public bool Exists(string trsReffId, MovementKindEnum kind, string stokLokasiId) =>
         _dal.Exists(trsReffId, (int)kind, stokLokasiId);
 
+    public bool ExistsReversalFor(string originalStokMutasiId) =>
+        _dal.ExistsReversalFor(originalStokMutasiId);
+
     public IEnumerable<StockMovementModel> ListByTrsReffId(string trsReffId)
     {
         var list = _dal.ListByTrsReffId(trsReffId) ?? [];

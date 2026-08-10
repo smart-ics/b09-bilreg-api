@@ -232,6 +232,87 @@ public class LegacyStockWriterPort : ILegacyStockWriterPort
         return new LegacyReverseWriteResult(bukuId);
     }
 
+    public LegacyStokRestoreResult RestoreStok(LegacyStokRestoreRequest request)
+    {
+        Guard.Against.Null(request);
+        Guard.Against.NullOrWhiteSpace(request.PreferredLegacyStokId);
+        Guard.Against.NullOrWhiteSpace(request.BrgId);
+        Guard.Against.NullOrWhiteSpace(request.BrgMasukReffId);
+        Guard.Against.NullOrWhiteSpace(request.LayananId);
+        Guard.Against.NullOrWhiteSpace(request.TrsReffId);
+        if (request.QtyIn <= 0)
+            throw new ArgumentOutOfRangeException(nameof(request.QtyIn), "Restore qty must be positive.");
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        conn.Open();
+
+        // Atomic increment: avoids SELECT-then-UPDATE race where deplete deletes the row between check and update.
+        const string updateSql = """
+            UPDATE tb_stok
+            SET fn_qty = fn_qty + @fn_qty_in
+            WHERE fs_kd_trs = @fs_kd_trs
+            """;
+        var updateDp = new DynamicParameters();
+        updateDp.AddParam("@fs_kd_trs", request.PreferredLegacyStokId, SqlDbType.VarChar);
+        updateDp.AddParam("@fn_qty_in", request.QtyIn, SqlDbType.Decimal);
+        var rowsAffected = conn.Execute(updateSql, updateDp);
+
+        if (rowsAffected == 1)
+            return new LegacyStokRestoreResult(request.PreferredLegacyStokId, WasRecreated: false);
+
+        // rowsAffected == 0: preferred row gone (deplete-to-zero or concurrent delete) → recreate.
+        // Prefer Binding-chosen id (IfRecreate), else Preferred — never mint anonymous when Binding already chose.
+        var stokId = ResolveLegacyId(
+            request.LegacyStokIdIfRecreate ?? request.PreferredLegacyStokId,
+            "ST");
+        var po = request.PoReffId ?? string.Empty;
+        var noBatch = request.NoBatch ?? string.Empty;
+        var satuan = string.IsNullOrWhiteSpace(request.SatuanId) ? string.Empty : request.SatuanId;
+        var tglEd = LegacyStockDateHelper.ToLegacyEdString(request.TglEd);
+        var tglMutasi = LegacyStockDateHelper.FormatDate(request.TglMutasi);
+        var jamMutasi = LegacyStockDateHelper.FormatTime(request.TglMutasi);
+        var tglDo = LegacyStockDateHelper.FormatDate(request.TglMasuk);
+        var jamDo = LegacyStockDateHelper.FormatTime(request.TglMasuk);
+
+        const string insertStok = """
+            INSERT INTO tb_stok(
+                fs_kd_trs, fs_kd_barang, fs_kd_layanan,
+                fs_kd_po, fs_kd_do, fd_tgl_ed, fs_no_batch,
+                fn_qty, fn_qty_in, fn_hpp,
+                fd_tgl_do, fs_jam_do,
+                fs_kd_mutasi, fd_tgl_mutasi, fs_jam_mutasi,
+                fs_kd_satuan)
+            VALUES(
+                @fs_kd_trs, @fs_kd_barang, @fs_kd_layanan,
+                @fs_kd_po, @fs_kd_do, @fd_tgl_ed, @fs_no_batch,
+                @fn_qty, @fn_qty_in, @fn_hpp,
+                @fd_tgl_do, @fs_jam_do,
+                @fs_kd_mutasi, @fd_tgl_mutasi, @fs_jam_mutasi,
+                @fs_kd_satuan)
+            """;
+
+        var stokDp = new DynamicParameters();
+        stokDp.AddParam("@fs_kd_trs", stokId, SqlDbType.VarChar);
+        stokDp.AddParam("@fs_kd_barang", request.BrgId, SqlDbType.VarChar);
+        stokDp.AddParam("@fs_kd_layanan", request.LayananId, SqlDbType.VarChar);
+        stokDp.AddParam("@fs_kd_po", po, SqlDbType.VarChar);
+        stokDp.AddParam("@fs_kd_do", request.BrgMasukReffId, SqlDbType.VarChar);
+        stokDp.AddParam("@fd_tgl_ed", tglEd, SqlDbType.VarChar);
+        stokDp.AddParam("@fs_no_batch", noBatch, SqlDbType.VarChar);
+        stokDp.AddParam("@fn_qty", request.QtyIn, SqlDbType.Decimal);
+        stokDp.AddParam("@fn_qty_in", request.QtyIn, SqlDbType.Decimal);
+        stokDp.AddParam("@fn_hpp", request.Hpp, SqlDbType.Decimal);
+        stokDp.AddParam("@fd_tgl_do", tglDo, SqlDbType.VarChar);
+        stokDp.AddParam("@fs_jam_do", jamDo, SqlDbType.VarChar);
+        stokDp.AddParam("@fs_kd_mutasi", request.TrsReffId, SqlDbType.VarChar);
+        stokDp.AddParam("@fd_tgl_mutasi", tglMutasi, SqlDbType.VarChar);
+        stokDp.AddParam("@fs_jam_mutasi", jamMutasi, SqlDbType.VarChar);
+        stokDp.AddParam("@fs_kd_satuan", satuan, SqlDbType.VarChar);
+        conn.Execute(insertStok, stokDp);
+
+        return new LegacyStokRestoreResult(stokId, WasRecreated: true);
+    }
+
     private void InsertBukuRow(
         string bukuId,
         string brgId,

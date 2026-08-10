@@ -10,5 +10,6 @@ public interface IStockMutasiRepo
     void Insert(StockMovementModel model);
     void Insert(StockMovementModel model, string userId);
     bool Exists(string trsReffId, MovementKindEnum kind, string stokLokasiId);
+    bool ExistsReversalFor(string originalStokMutasiId);
     IEnumerable<StockMovementModel> ListByTrsReffId(string trsReffId);
 }

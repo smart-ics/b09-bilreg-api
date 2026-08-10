@@ -11,6 +11,7 @@ public interface IStokMutasiDal :
     IInsert<StokMutasiDto>
 {
     bool Exists(string trsReffId, int movementKind, string stokLokasiId);
+    bool ExistsReversalFor(string originalStokMutasiId);
     IEnumerable<StokMutasiDto> ListByTrsReffId(string trsReffId);
 }
 
@@ -53,6 +54,19 @@ public class StokMutasiDal : IStokMutasiDal
         dp.AddParam("@TrsReffId", trsReffId, SqlDbType.VarChar);
         dp.AddParam("@MovementKind", movementKind, SqlDbType.Int);
         dp.AddParam("@StokLokasiId", stokLokasiId, SqlDbType.VarChar);
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.ExecuteScalar<int>(sql, dp) > 0;
+    }
+
+    public bool ExistsReversalFor(string originalStokMutasiId)
+    {
+        const string sql = """
+            SELECT COUNT(1)
+            FROM BILRG_StokMutasi
+            WHERE ReversesMutasiId = @ReversesMutasiId
+            """;
+        var dp = new DynamicParameters();
+        dp.AddParam("@ReversesMutasiId", originalStokMutasiId, SqlDbType.VarChar);
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.ExecuteScalar<int>(sql, dp) > 0;
     }
