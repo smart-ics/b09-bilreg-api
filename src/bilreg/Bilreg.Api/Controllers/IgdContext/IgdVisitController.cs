@@ -19,7 +19,7 @@ public class IgdVisitController : Controller
     {
         _mediator = mediator;
     }
-
+     
     [HttpPost]
     public async Task<IActionResult> Daftar(IgdVisitDaftarCmd cmd)
     {
