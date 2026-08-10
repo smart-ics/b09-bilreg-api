@@ -1,3 +1,5 @@
+using Bilreg.Domain.AccountingContext.UnitFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.BrgContext.BrgFeature;
 using Bilreg.Domain.BrgContext.PricingPolicyFeature;
 using Bilreg.Domain.InventoryContext.StokFeature;
@@ -21,7 +23,9 @@ public class PenjualanModelTest
         EtiketType.Create("3x1", "3x1 tablet", AppConst.DASH);
 
     private static LayananType LayananJual() =>
-        LayananType.Create("LYJ01", "Apotek RJ", JenisLokasiType.Default);
+        LayananType.Create("LYJ01", InstalasiType.Default, LayananDkType.Default.ToReff(),  
+            TipeLayananDkType.Default, new UnitReff("-","-"), 
+            new PoliBpjsReff("-","-"));
 
     private static TipeJaminanReff TipeJaminan() =>
         new("00000", "Umum");

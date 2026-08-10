@@ -1,7 +1,9 @@
 using Ardalis.GuardClauses;
 using Bilreg.Application.AdmisiContext.JaminanFeature;
+using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.SalesContext.ResepFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.InventoryContext.StokFeature;
 using Bilreg.Domain.SalesContext.PenjualanFeature;
 using Bilreg.Domain.SalesContext.ResepFeature;
@@ -24,13 +26,13 @@ public class PenjualanCreateHandler : IRequestHandler<PenjualanCreateCmd, Penjua
 {
     private readonly IPenjualanRepo _penjualanRepo;
     private readonly IResepRepo _resepRepo;
-    private readonly InventoryContext.StokFeature.ILayananRepo _layananRepo;
+    private readonly ILayananRepo _layananRepo;
     private readonly ITipeJaminanRepo _tipeJaminanRepo;
 
     public PenjualanCreateHandler(
         IPenjualanRepo penjualanRepo,
         IResepRepo resepRepo,
-        InventoryContext.StokFeature.ILayananRepo layananRepo,
+        ILayananRepo layananRepo,
         ITipeJaminanRepo tipeJaminanRepo)
     {
         _penjualanRepo = penjualanRepo;
