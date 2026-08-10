@@ -163,10 +163,12 @@ public static class InfrastructureService
             IAdmisiRajalOfficerWorklistReferenceReader,
             AdmisiRajalOfficerWorklistReferenceReader>();
 
-        // Stock Ledger v2 — ports/repos not covered by Scrutor Nuna markers (S1-C1/C2)
+        // Stock Ledger v2 — ports/repos not covered by Scrutor Nuna markers (S1-C1/C2/D1)
         services.AddScoped<ILegacyStockReadPort, LegacyStockReadPort>();
+        services.AddScoped<ILegacyStockWriterPort, LegacyStockWriterPort>();
         services.AddScoped<IStockMutasiRepo, StockMutasiRepo>();
         services.AddScoped<IStockLegacyBindingRepo, StockLegacyBindingRepo>();
+        services.AddScoped<IStockConsequenceUnitOfWork, StockConsequenceUnitOfWork>();
         services.AddScoped<LegacyScopeJournalReplayer>();
         services.AddScoped<LegacyFreshnessGate>();
 

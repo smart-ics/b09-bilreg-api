@@ -1,19 +1,21 @@
+using Bilreg.Application.InventoryContext.StockLedgerFeature.Ports;
 using Bilreg.Domain.InventoryContext.StockLedgerFeature;
 
 namespace Bilreg.Application.InventoryContext.StockLedgerFeature;
 
 /// <summary>
-/// Draft payload for atomic ledger + legacy + binding commit (implemented in S1-D1).
+/// Draft payload for atomic ledger + legacy + binding commit (S1-D1).
 /// </summary>
 public record StockConsequenceDraft(
     IReadOnlyList<StockBatchModel> BatchUpserts,
     IReadOnlyList<StockMovementModel> MutasiInserts,
     IReadOnlyList<StockLegacyBindingModel> BindingInserts,
     StockLegacyScopeModel? ScopeUpdate,
+    IReadOnlyList<LegacyStockWriteOperation> LegacyOperations,
     string UserId);
 
 /// <summary>
-/// Contract shell for dual-write UoW. Body lands in S1-D1.
+/// Single SQL transaction spanning ledger + legacy + scope/binding (architecture §13).
 /// </summary>
 public interface IStockConsequenceUnitOfWork
 {

@@ -10,10 +10,13 @@ public class StockLegacyBindingRepo : IStockLegacyBindingRepo
 
     public StockLegacyBindingRepo(IStokLegacyBindingDal dal) => _dal = dal;
 
-    public void Insert(StockLegacyBindingModel model)
+    public void Insert(StockLegacyBindingModel model) => Insert(model, userId: "STL");
+
+    public void Insert(StockLegacyBindingModel model, string userId)
     {
         var at = DateTime.Now;
-        _dal.Insert(StokLegacyBindingDto.FromModel(model, crtUser: "STL", crtDate: at, updUser: "STL", updDate: at));
+        var auditUser = string.IsNullOrWhiteSpace(userId) ? "STL" : userId;
+        _dal.Insert(StokLegacyBindingDto.FromModel(model, crtUser: auditUser, crtDate: at, updUser: auditUser, updDate: at));
     }
 
     public MayBe<StockLegacyBindingModel> FindByLegacyBukuId(string legacyBukuId)

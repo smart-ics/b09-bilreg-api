@@ -9,10 +9,13 @@ public class StockMutasiRepo : IStockMutasiRepo
 
     public StockMutasiRepo(IStokMutasiDal dal) => _dal = dal;
 
-    public void Insert(StockMovementModel model)
+    public void Insert(StockMovementModel model) => Insert(model, userId: "STL");
+
+    public void Insert(StockMovementModel model, string userId)
     {
         var at = DateTime.Now;
-        _dal.Insert(StokMutasiDto.FromModel(model, crtUser: "STL", crtDate: at, updUser: "STL", updDate: at));
+        var auditUser = string.IsNullOrWhiteSpace(userId) ? "STL" : userId;
+        _dal.Insert(StokMutasiDto.FromModel(model, crtUser: auditUser, crtDate: at, updUser: auditUser, updDate: at));
     }
 
     public bool Exists(string trsReffId, MovementKindEnum kind, string stokLokasiId) =>

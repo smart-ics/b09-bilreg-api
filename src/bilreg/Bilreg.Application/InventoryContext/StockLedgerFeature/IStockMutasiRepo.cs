@@ -8,6 +8,7 @@ namespace Bilreg.Application.InventoryContext.StockLedgerFeature;
 public interface IStockMutasiRepo
 {
     void Insert(StockMovementModel model);
+    void Insert(StockMovementModel model, string userId);
     bool Exists(string trsReffId, MovementKindEnum kind, string stokLokasiId);
     IEnumerable<StockMovementModel> ListByTrsReffId(string trsReffId);
 }

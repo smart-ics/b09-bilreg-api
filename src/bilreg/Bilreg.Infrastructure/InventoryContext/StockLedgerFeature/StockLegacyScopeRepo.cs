@@ -18,10 +18,13 @@ public class StockLegacyScopeRepo : IStockLegacyScopeRepo
             : MayBe.From(dto.ToModel());
     }
 
-    public void SaveChanges(StockLegacyScopeModel model)
+    public void SaveChanges(StockLegacyScopeModel model) => SaveChanges(model, userId: "STL");
+
+    public void SaveChanges(StockLegacyScopeModel model, string userId)
     {
         var at = DateTime.Now;
-        var dto = StokLegacyScopeDto.FromModel(model, crtUser: "STL", crtDate: at, updUser: "STL", updDate: at);
+        var auditUser = string.IsNullOrWhiteSpace(userId) ? "STL" : userId;
+        var dto = StokLegacyScopeDto.FromModel(model, crtUser: auditUser, crtDate: at, updUser: auditUser, updDate: at);
         LoadEntity(model)
             .Match(
                 onSome: _ => _dal.Update(dto),

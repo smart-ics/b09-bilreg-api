@@ -1,8 +1,6 @@
 using System.Data;
 using System.Data.SqlClient;
-using System.Globalization;
 using Bilreg.Application.InventoryContext.StockLedgerFeature.Ports;
-using Bilreg.Domain.InventoryContext.StockLedgerFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;
@@ -16,9 +14,6 @@ namespace Bilreg.Infrastructure.InventoryContext.StockLedgerFeature;
 /// </summary>
 public class LegacyStockReadPort : ILegacyStockReadPort
 {
-    private static readonly string SentinelDate = StockLedgerSentinel.EmptyDate.ToString("yyyy-MM-dd");
-    private static readonly string SentinelDateTime = StockLedgerSentinel.EmptyDate.ToString("yyyy-MM-dd HH:mm:ss");
-
     private readonly DatabaseOptions _opt;
 
     public LegacyStockReadPort(IOptions<DatabaseOptions> opt) => _opt = opt.Value;
@@ -104,8 +99,8 @@ public class LegacyStockReadPort : ILegacyStockReadPort
             Hpp: row.fn_hpp,
             MovementKindString: row.fs_kd_jenis_mutasi ?? string.Empty,
             TrsReffId: string.IsNullOrWhiteSpace(row.fs_kd_mutasi) ? row.fs_kd_trs ?? string.Empty : row.fs_kd_mutasi,
-            TglMutasi: ComposeMutasiDateTime(row.fd_tgl_jam_mutasi, row.fd_tgl_mutasi, row.fs_jam_mutasi),
-            TglEd: ParseLegacyDate(row.fd_tgl_ed));
+            TglMutasi: LegacyStockDateHelper.ComposeMutasiDateTime(row.fd_tgl_jam_mutasi, row.fd_tgl_mutasi, row.fs_jam_mutasi),
+            TglEd: LegacyStockDateHelper.ParseLegacyDate(row.fd_tgl_ed));
 
     private static LegacyStockBalanceReadModel MapBalance(LegacyStokRow row) =>
         new(
@@ -113,74 +108,20 @@ public class LegacyStockReadPort : ILegacyStockReadPort
             BrgId: row.fs_kd_barang ?? string.Empty,
             BrgMasukReffId: row.fs_kd_do ?? string.Empty,
             LayananId: row.fs_kd_layanan ?? string.Empty,
-            TglEd: ParseLegacyDate(row.fd_tgl_ed),
+            TglEd: LegacyStockDateHelper.ParseLegacyDate(row.fd_tgl_ed),
             NoBatch: row.fs_no_batch ?? string.Empty,
             QtySisa: row.fn_qty,
             Hpp: row.fn_hpp,
-            TglMasuk: ComposeDateAndTime(row.fd_tgl_do, row.fs_jam_do));
+            TglMasuk: LegacyStockDateHelper.ComposeDateAndTime(row.fd_tgl_do, row.fs_jam_do));
 
-    internal static DateTime ParseLegacyDate(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return StockLedgerSentinel.EmptyDate;
+    // Test-facing wrappers (LegacyStockReadPortTest asserts these helpers).
+    internal static DateTime ParseLegacyDate(string? value) => LegacyStockDateHelper.ParseLegacyDate(value);
 
-        var trimmed = value.Trim();
-        if (trimmed.StartsWith(SentinelDate, StringComparison.Ordinal))
-            return StockLedgerSentinel.EmptyDate;
+    internal static DateTime ComposeMutasiDateTime(string? tglJam, string? tgl, string? jam) =>
+        LegacyStockDateHelper.ComposeMutasiDateTime(tglJam, tgl, jam);
 
-        if (DateTime.TryParseExact(
-                trimmed.Length >= 10 ? trimmed[..10] : trimmed,
-                "yyyy-MM-dd",
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.None,
-                out var date))
-            return date.Date;
-
-        if (DateTime.TryParse(trimmed, CultureInfo.InvariantCulture, DateTimeStyles.None, out var fallback))
-            return fallback.Date;
-
-        return StockLedgerSentinel.EmptyDate;
-    }
-
-    internal static DateTime ComposeMutasiDateTime(string? tglJam, string? tgl, string? jam)
-    {
-        if (!string.IsNullOrWhiteSpace(tglJam))
-        {
-            var trimmed = tglJam.Trim();
-            if (!trimmed.StartsWith(SentinelDate, StringComparison.Ordinal) &&
-                trimmed != SentinelDateTime &&
-                DateTime.TryParseExact(
-                    trimmed,
-                    ["yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd HH:mm"],
-                    CultureInfo.InvariantCulture,
-                    DateTimeStyles.None,
-                    out var fromCombo))
-                return fromCombo;
-        }
-
-        return ComposeDateAndTime(tgl, jam);
-    }
-
-    internal static DateTime ComposeDateAndTime(string? tgl, string? jam)
-    {
-        if (string.IsNullOrWhiteSpace(tgl) || tgl.Trim().StartsWith(SentinelDate, StringComparison.Ordinal))
-            return StockLedgerSentinel.EmptyDate;
-
-        var datePart = tgl.Trim().Length >= 10 ? tgl.Trim()[..10] : tgl.Trim();
-        var timePart = string.IsNullOrWhiteSpace(jam) ? "00:00:00" : jam.Trim();
-        if (timePart.Length == 5)
-            timePart += ":00";
-
-        if (DateTime.TryParseExact(
-                $"{datePart} {timePart}",
-                ["yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd HH:mm"],
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.None,
-                out var composed))
-            return composed;
-
-        return ParseLegacyDate(datePart);
-    }
+    internal static DateTime ComposeDateAndTime(string? tgl, string? jam) =>
+        LegacyStockDateHelper.ComposeDateAndTime(tgl, jam);
 
     // ReSharper disable InconsistentNaming
     private sealed class LegacyBukuRow

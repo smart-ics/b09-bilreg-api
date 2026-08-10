@@ -45,11 +45,14 @@ public class StockBatchRepo : IStockBatchRepo
         return list.Select(x => x.ToModel());
     }
 
-    public void SaveChanges(StockBatchModel model)
+    public void SaveChanges(StockBatchModel model) => SaveChanges(model, userId: "STL");
+
+    public void SaveChanges(StockBatchModel model, string userId)
     {
         var at = DateTime.Now;
+        var auditUser = string.IsNullOrWhiteSpace(userId) ? "STL" : userId;
         var stored = _batchDal.GetData(model);
-        var batchDto = StockBatchDto.FromModel(model, crtUser: "STL", crtDate: at, updUser: "STL", updDate: at);
+        var batchDto = StockBatchDto.FromModel(model, crtUser: auditUser, crtDate: at, updUser: auditUser, updDate: at);
 
         if (stored is null)
         {
@@ -68,7 +71,7 @@ public class StockBatchRepo : IStockBatchRepo
         foreach (var lokasi in model.ListLokasi)
         {
             var storedLokasi = _lokasiDal.GetData(lokasi);
-            var lokasiDto = StokLokasiDto.FromModel(lokasi, crtUser: "STL", crtDate: at, updUser: "STL", updDate: at);
+            var lokasiDto = StokLokasiDto.FromModel(lokasi, crtUser: auditUser, crtDate: at, updUser: auditUser, updDate: at);
 
             if (storedLokasi is null)
             {
