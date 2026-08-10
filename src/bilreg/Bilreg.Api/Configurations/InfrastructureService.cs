@@ -132,7 +132,9 @@ public static class InfrastructureService
             .Configure<JknOptions>(configuration.GetSection(JknOptions.SECTION_NAME))
             .Configure<JadwalPraktekOptions>(configuration.GetSection(JadwalPraktekOptions.SECTION_NAME))
             .Configure<AdmisiRanapOptions>(configuration.GetSection(AdmisiRanapOptions.SECTION_NAME))
-            .Configure<UsmanOptions>(configuration.GetSection(UsmanOptions.SECTION_NAME));
+            .Configure<UsmanOptions>(configuration.GetSection(UsmanOptions.SECTION_NAME))
+            .Configure<StockLedgerCoexistenceOptions>(
+                configuration.GetSection(StockLedgerCoexistenceOptions.SectionName));
 
         services.AddScoped<
             IAdmissionQueueOperationalProjection,
@@ -161,10 +163,12 @@ public static class InfrastructureService
             IAdmisiRajalOfficerWorklistReferenceReader,
             AdmisiRajalOfficerWorklistReferenceReader>();
 
-        // Stock Ledger v2 — ports/repos not covered by Scrutor Nuna markers (S1-C1)
+        // Stock Ledger v2 — ports/repos not covered by Scrutor Nuna markers (S1-C1/C2)
         services.AddScoped<ILegacyStockReadPort, LegacyStockReadPort>();
         services.AddScoped<IStockMutasiRepo, StockMutasiRepo>();
         services.AddScoped<IStockLegacyBindingRepo, StockLegacyBindingRepo>();
+        services.AddScoped<LegacyScopeJournalReplayer>();
+        services.AddScoped<LegacyFreshnessGate>();
 
         services
             .Scan(selector => selector

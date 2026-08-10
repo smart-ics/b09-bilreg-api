@@ -29,22 +29,19 @@ public class HydrateScopeFromLegacyHandler
 {
     private readonly ILegacyStockReadPort _legacyRead;
     private readonly IStockBatchRepo _batchRepo;
-    private readonly IStockMutasiRepo _mutasiRepo;
     private readonly IStockLegacyScopeRepo _scopeRepo;
-    private readonly IStockLegacyBindingRepo _bindingRepo;
+    private readonly LegacyScopeJournalReplayer _replayer;
 
     public HydrateScopeFromLegacyHandler(
         ILegacyStockReadPort legacyRead,
         IStockBatchRepo batchRepo,
-        IStockMutasiRepo mutasiRepo,
         IStockLegacyScopeRepo scopeRepo,
-        IStockLegacyBindingRepo bindingRepo)
+        LegacyScopeJournalReplayer replayer)
     {
         _legacyRead = legacyRead;
         _batchRepo = batchRepo;
-        _mutasiRepo = mutasiRepo;
         _scopeRepo = scopeRepo;
-        _bindingRepo = bindingRepo;
+        _replayer = replayer;
     }
 
     public Task<HydrateScopeFromLegacyResult> Handle(
@@ -92,137 +89,26 @@ public class HydrateScopeFromLegacyHandler
         var journals = _legacyRead.ListJournals(request.BrgId, request.BrgMasukReffId);
         var batchMaybe = _batchRepo.LoadByNaturalKey(request.BrgId, request.BrgMasukReffId);
         StockBatchModel? batch = batchMaybe.HasValue ? batchMaybe.Value : null;
-        var batchDirty = false;
-        var applied = 0;
 
-        foreach (var journal in journals)
+        var replay = _replayer.Apply(
+            journals,
+            request.BrgId,
+            request.BrgMasukReffId,
+            batch,
+            allowCreateBatch: true);
+
+        if (replay.IsInconsistent)
         {
-            if (!LegacyMovementKindMapper.TryMap(journal.MovementKindString, out var kind))
-            {
-                return FailInconsistent(
-                    scope,
-                    batch,
-                    batchDirty,
-                    applied,
-                    $"Unsupported legacy MovementKind '{journal.MovementKindString}' " +
-                    $"on buku {journal.LegacyBukuId} (GAP-STL-003).");
-            }
-
-            if (_bindingRepo.FindByLegacyBukuId(journal.LegacyBukuId).HasValue)
-            {
-                // Binding without a batch baseline must not invent a replacement from later journals.
-                if (batch is null)
-                {
-                    var reloaded = _batchRepo.LoadByNaturalKey(request.BrgId, request.BrgMasukReffId);
-                    batch = reloaded.HasValue ? reloaded.Value : null;
-                }
-
-                if (batch is null)
-                {
-                    return FailInconsistent(
-                        scope,
-                        batch: null,
-                        batchDirty: false,
-                        applied,
-                        $"Legacy journals exist for scope ({request.BrgId}, {request.BrgMasukReffId}) " +
-                        "but no StokBatch baseline is present (bindings without batch).");
-                }
-
-                continue;
-            }
-
-            if (journal.QtyIn <= 0 && journal.QtyOut <= 0)
-            {
-                return FailInconsistent(
-                    scope,
-                    batch,
-                    batchDirty,
-                    applied,
-                    $"Legacy buku {journal.LegacyBukuId} has neither QtyIn nor QtyOut > 0.");
-            }
-
-            if (journal.QtyIn > 0 && journal.QtyOut > 0)
-            {
-                return FailInconsistent(
-                    scope,
-                    batch,
-                    batchDirty,
-                    applied,
-                    $"Legacy buku {journal.LegacyBukuId} has both QtyIn and QtyOut > 0.");
-            }
-
-            batch ??= StockBatchModel.Create(
-                request.BrgId,
-                request.BrgMasukReffId,
-                journal.Hpp,
-                journal.TglMutasi,
-                string.IsNullOrWhiteSpace(journal.PoReffId) ? null : journal.PoReffId);
-
-            var trsReffId = string.IsNullOrWhiteSpace(journal.TrsReffId)
-                ? journal.LegacyBukuId
-                : journal.TrsReffId;
-
-            LocationStockBalanceModel lokasi;
-            StockMovementModel mutasi;
-            try
-            {
-                if (journal.QtyIn > 0)
-                {
-                    lokasi = batch.IncreaseLokasi(
-                        journal.LayananId, journal.TglEd, journal.QtyIn, journal.NoBatch);
-                    mutasi = StockMovementModel.CreateInbound(
-                        lokasi.StokLokasiId,
-                        batch.StokBatchId,
-                        batch.BrgId,
-                        batch.BrgMasukReffId,
-                        journal.LayananId,
-                        journal.TglEd,
-                        trsReffId,
-                        kind,
-                        journal.QtyIn,
-                        journal.Hpp,
-                        journal.TglMutasi,
-                        journal.PoReffId);
-                }
-                else
-                {
-                    lokasi = batch.DecreaseLokasi(journal.LayananId, journal.TglEd, journal.QtyOut);
-                    mutasi = StockMovementModel.CreateOutbound(
-                        lokasi.StokLokasiId,
-                        batch.StokBatchId,
-                        batch.BrgId,
-                        batch.BrgMasukReffId,
-                        journal.LayananId,
-                        journal.TglEd,
-                        trsReffId,
-                        kind,
-                        journal.QtyOut,
-                        journal.Hpp,
-                        journal.TglMutasi,
-                        journal.PoReffId);
-                }
-            }
-            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
-            {
-                return FailInconsistent(
-                    scope,
-                    batch,
-                    batchDirty,
-                    applied,
-                    $"Failed to apply legacy buku {journal.LegacyBukuId}: {ex.Message}");
-            }
-
-            _mutasiRepo.Insert(mutasi);
-            _bindingRepo.Insert(StockLegacyBindingModel.CreateMutasiBuku(
-                mutasi.StokMutasiId,
-                journal.LegacyBukuId,
-                trsReffId,
-                lokasi.StokLokasiId));
-            batchDirty = true;
-            applied++;
+            _replayer.PersistInconsistent(scope, replay.Batch, replay.BatchDirty, replay.InconsistencyReason);
+            return Task.FromResult(new HydrateScopeFromLegacyResult(
+                HydrateScopeOutcomeEnum.Inconsistent,
+                AlignmentStatusEnum.Inconsistent,
+                replay.InconsistencyReason,
+                replay.AppliedCount));
         }
 
-        if (batchDirty && batch is not null)
+        batch = replay.Batch;
+        if (replay.BatchDirty && batch is not null)
             _batchRepo.SaveChanges(batch);
 
         var lastSyncedAt = DateTime.Now;
@@ -244,13 +130,15 @@ public class HydrateScopeFromLegacyHandler
 
             if (batch is null)
             {
-                return FailInconsistent(
-                    scope,
-                    batch: null,
-                    batchDirty: false,
-                    applied,
+                var reason =
                     $"Legacy journals exist for scope ({request.BrgId}, {request.BrgMasukReffId}) " +
-                    "but no StokBatch baseline is present (bindings without batch).");
+                    "but no StokBatch baseline is present (bindings without batch).";
+                _replayer.PersistInconsistent(scope, batch: null, batchDirty: false, reason);
+                return Task.FromResult(new HydrateScopeFromLegacyResult(
+                    HydrateScopeOutcomeEnum.Inconsistent,
+                    AlignmentStatusEnum.Inconsistent,
+                    reason,
+                    replay.AppliedCount));
             }
 
             var last = journals[^1];
@@ -263,25 +151,6 @@ public class HydrateScopeFromLegacyHandler
             HydrateScopeOutcomeEnum.Success,
             AlignmentStatusEnum.Aligned,
             string.Empty,
-            applied));
-    }
-
-    private Task<HydrateScopeFromLegacyResult> FailInconsistent(
-        StockLegacyScopeModel scope,
-        StockBatchModel? batch,
-        bool batchDirty,
-        int applied,
-        string reason)
-    {
-        scope.MarkInconsistent(reason);
-        _scopeRepo.SaveChanges(scope);
-        if (batchDirty && batch is not null)
-            _batchRepo.SaveChanges(batch);
-
-        return Task.FromResult(new HydrateScopeFromLegacyResult(
-            HydrateScopeOutcomeEnum.Inconsistent,
-            AlignmentStatusEnum.Inconsistent,
-            reason,
-            applied));
+            replay.AppliedCount));
     }
 }

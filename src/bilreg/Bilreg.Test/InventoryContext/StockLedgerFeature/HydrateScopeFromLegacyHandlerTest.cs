@@ -23,12 +23,17 @@ public class HydrateScopeFromLegacyHandlerTest
 
     public HydrateScopeFromLegacyHandlerTest()
     {
+        var replayer = new LegacyScopeJournalReplayer(
+            _batchRepo.Object,
+            _mutasiRepo.Object,
+            _bindingRepo.Object,
+            _scopeRepo.Object);
+
         _sut = new HydrateScopeFromLegacyHandler(
             _legacyRead.Object,
             _batchRepo.Object,
-            _mutasiRepo.Object,
             _scopeRepo.Object,
-            _bindingRepo.Object);
+            replayer);
 
         _scopeRepo
             .Setup(x => x.LoadEntity(It.IsAny<IStockLegacyScopeKey>()))
