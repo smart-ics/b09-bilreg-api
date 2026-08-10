@@ -109,6 +109,16 @@
     <Folder Include="BedUsageContext\PakaiBedFeature\" />
     <Folder Include="AdmisiContext\BookingFeature\" />
     <Folder Include="InventoryContext\StockLedgerFeature\" />
+    <Folder Include="InventoryContext\" />
+    <Folder Include="SalesContext\" />
+    <Folder Include="BrgContext\" />
+    <Folder Include="BrgContext\BrgFeature\" />
+    <Folder Include="BrgContext\KlasifikasiFeature\" />
+    <Folder Include="BrgContext\PricingPolicyFeature\" />
+    <Folder Include="BrgContext\StandardFeature\" />
+    <Folder Include="BrgContext\StandardFeature\Kfa\" />
+    <Folder Include="InventoryContext\MutasiFeature\" />
+    <Folder Include="InventoryContext\StokFeature\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OpCase.sql" />
