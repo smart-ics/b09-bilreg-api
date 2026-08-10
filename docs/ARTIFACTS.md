@@ -121,6 +121,7 @@ Inventory-consequence bounded context behind Purchasing, Apotek, transfer, consu
 
 | Path | Purpose |
 |------|---------|
+| `docs/contexts/stok-ledger/stok-ledger-maintainer-brief.md` | Stock Ledger — onboarding brief for maintenance programmers (high-level → end-to-end table mutations; transaction-script framing) |
 | `docs/contexts/stok-ledger/stok-ledger-domain.md` | Stock Ledger — canonical English business truth (Stock Batch, Location Stock Balance, movements, FEFO/FIFO, reverse-journal void, coexistence authority) |
 | `docs/contexts/stok-ledger/stok-ledger-domain-id.md` | Stock Ledger — Bahasa Indonesia semantic companion |
 | `docs/contexts/stok-ledger/stok-ledger-architecture.md` | Stock Ledger — Clean Architecture realization (use cases, persistence contract, coexistence, ADRs, S1 increments) |
