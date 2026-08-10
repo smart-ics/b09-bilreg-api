@@ -29,4 +29,10 @@ public class StockMutasiRepo : IStockMutasiRepo
         var list = _dal.ListByTrsReffId(trsReffId) ?? [];
         return list.Select(x => x.ToModel());
     }
+
+    public IEnumerable<StockMovementModel> ListByScope(string brgId, string brgMasukReffId, string? layananId = null)
+    {
+        var list = _dal.ListByScope(brgId, brgMasukReffId, layananId) ?? [];
+        return list.Select(x => x.ToModel());
+    }
 }

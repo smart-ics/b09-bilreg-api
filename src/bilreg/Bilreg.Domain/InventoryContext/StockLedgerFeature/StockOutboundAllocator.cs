@@ -29,32 +29,7 @@ public static class StockOutboundAllocator
                 && c.QtySisa > 0)
             .ToList();
 
-        IEnumerable<StockAllocationCandidateType> ordered;
-
-        if (explicitTglEd.HasValue)
-        {
-            // BR-STL-023: Explicit Expiry Selection — equal TglEd only.
-            ordered = eligible
-                .Where(c => c.TglEd == explicitTglEd.Value)
-                .OrderBy(c => c.TglMasuk)
-                .ThenBy(c => c.BrgMasukReffId, StringComparer.Ordinal);
-        }
-        else if (eligible.Any(c => c.TglEd != StockLedgerSentinel.EmptyDate))
-        {
-            // BR-STL-024: FEFO — earliest ED first; tie-break by receipt order.
-            // Sentinel ED (absent) sorts last under ascending DateTime compare.
-            ordered = eligible
-                .OrderBy(c => c.TglEd)
-                .ThenBy(c => c.TglMasuk)
-                .ThenBy(c => c.BrgMasukReffId, StringComparer.Ordinal);
-        }
-        else
-        {
-            // BR-STL-025: FIFO by receipt order when no eligible balance has ED.
-            ordered = eligible
-                .OrderBy(c => c.TglMasuk)
-                .ThenBy(c => c.BrgMasukReffId, StringComparer.Ordinal);
-        }
+        var ordered = OrderForPreview(eligible, explicitTglEd);
 
         // BR-STL-026 / BR-STL-027: split across balances; never negative; explicit shortfall.
         var lines = new List<StockAllocationLineType>();
@@ -83,5 +58,44 @@ public static class StockOutboundAllocator
             return StockAllocationResult.Insufficient(requestedQty, lines);
 
         return StockAllocationResult.Success(requestedQty, lines);
+    }
+
+    /// <summary>
+    /// Preview ordering for availability (UC-STL-021): Explicit ED → FEFO → FIFO.
+    /// Does not authorize sale; does not allocate quantity.
+    /// </summary>
+    public static IReadOnlyList<StockAllocationCandidateType> OrderForPreview(
+        IEnumerable<StockAllocationCandidateType> candidates,
+        DateTime? explicitTglEd = null)
+    {
+        Guard.Against.Null(candidates);
+        var list = candidates.ToList();
+
+        if (explicitTglEd.HasValue)
+        {
+            // BR-STL-023: Explicit Expiry Selection — equal TglEd only.
+            return list
+                .Where(c => c.TglEd == explicitTglEd.Value)
+                .OrderBy(c => c.TglMasuk)
+                .ThenBy(c => c.BrgMasukReffId, StringComparer.Ordinal)
+                .ToList();
+        }
+
+        if (list.Any(c => c.TglEd != StockLedgerSentinel.EmptyDate))
+        {
+            // BR-STL-024: FEFO — earliest ED first; tie-break by receipt order.
+            // Sentinel ED (absent) sorts last under ascending DateTime compare.
+            return list
+                .OrderBy(c => c.TglEd)
+                .ThenBy(c => c.TglMasuk)
+                .ThenBy(c => c.BrgMasukReffId, StringComparer.Ordinal)
+                .ToList();
+        }
+
+        // BR-STL-025: FIFO by receipt order when no eligible balance has ED.
+        return list
+            .OrderBy(c => c.TglMasuk)
+            .ThenBy(c => c.BrgMasukReffId, StringComparer.Ordinal)
+            .ToList();
     }
 }

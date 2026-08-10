@@ -12,4 +12,9 @@ public interface IStockMutasiRepo
     bool Exists(string trsReffId, MovementKindEnum kind, string stokLokasiId);
     bool ExistsReversalFor(string originalStokMutasiId);
     IEnumerable<StockMovementModel> ListByTrsReffId(string trsReffId);
+
+    /// <summary>
+    /// All movements for Item + Receipt Source (± optional Stock Location). Used by UC-STL-020.
+    /// </summary>
+    IEnumerable<StockMovementModel> ListByScope(string brgId, string brgMasukReffId, string? layananId = null);
 }

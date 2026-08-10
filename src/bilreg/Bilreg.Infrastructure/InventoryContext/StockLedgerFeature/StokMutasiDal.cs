@@ -13,6 +13,7 @@ public interface IStokMutasiDal :
     bool Exists(string trsReffId, int movementKind, string stokLokasiId);
     bool ExistsReversalFor(string originalStokMutasiId);
     IEnumerable<StokMutasiDto> ListByTrsReffId(string trsReffId);
+    IEnumerable<StokMutasiDto> ListByScope(string brgId, string brgMasukReffId, string? layananId);
 }
 
 public class StokMutasiDal : IStokMutasiDal
@@ -86,6 +87,33 @@ public class StokMutasiDal : IStokMutasiDal
             """;
         var dp = new DynamicParameters();
         dp.AddParam("@TrsReffId", trsReffId, SqlDbType.VarChar);
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        return conn.Read<StokMutasiDto>(sql, dp);
+    }
+
+    public IEnumerable<StokMutasiDto> ListByScope(string brgId, string brgMasukReffId, string? layananId)
+    {
+        var sql = """
+            SELECT
+                aa.StokMutasiId, aa.StokLokasiId, aa.StokBatchId,
+                aa.BrgId, aa.BrgMasukReffId, aa.LayananId, aa.TglEd,
+                aa.TrsReffId, aa.MovementKind, aa.QtyIn, aa.QtyOut, aa.Hpp,
+                aa.PoReffId, aa.TglMutasi, aa.ReversesMutasiId,
+                aa.CrtUser, aa.CrtDate, aa.UpdUser, aa.UpdDate
+            FROM BILRG_StokMutasi aa
+            WHERE aa.BrgId = @BrgId
+              AND aa.BrgMasukReffId = @BrgMasukReffId
+            """;
+        if (!string.IsNullOrWhiteSpace(layananId))
+            sql += "\n              AND aa.LayananId = @LayananId";
+        sql += "\n            ORDER BY aa.TglMutasi, aa.StokMutasiId";
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@BrgId", brgId, SqlDbType.VarChar);
+        dp.AddParam("@BrgMasukReffId", brgMasukReffId, SqlDbType.VarChar);
+        if (!string.IsNullOrWhiteSpace(layananId))
+            dp.AddParam("@LayananId", layananId, SqlDbType.VarChar);
+
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<StokMutasiDto>(sql, dp);
     }
