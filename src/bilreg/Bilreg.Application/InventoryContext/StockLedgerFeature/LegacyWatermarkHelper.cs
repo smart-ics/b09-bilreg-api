@@ -11,26 +11,33 @@ namespace Bilreg.Application.InventoryContext.StockLedgerFeature;
 public static class LegacyWatermarkHelper
 {
     public static bool IsAfterWatermark(
-        LegacyStockJournalReadModel journal,
+        DateTime tglMutasi,
+        string legacyBukuId,
         DateTime tglMutasiLast,
         string lastLegacyBukuId)
     {
         // C1 empty hydrate uses EmptyDate + empty buku id as "nothing synced yet"
         // (ADR-STL-003 sentinel). Real journal datetimes are never > 3000-01-01, so
-        // treat absent watermark as every journal being after-watermark.
+        // treat absent watermark as every candidate being after-watermark.
         if (tglMutasiLast == StockLedgerSentinel.EmptyDate &&
             string.IsNullOrEmpty(lastLegacyBukuId))
             return true;
 
-        if (journal.TglMutasi > tglMutasiLast)
+        if (tglMutasi > tglMutasiLast)
             return true;
 
-        if (journal.TglMutasi == tglMutasiLast &&
-            string.Compare(journal.LegacyBukuId, lastLegacyBukuId ?? string.Empty, StringComparison.Ordinal) > 0)
+        if (tglMutasi == tglMutasiLast &&
+            string.Compare(legacyBukuId, lastLegacyBukuId ?? string.Empty, StringComparison.Ordinal) > 0)
             return true;
 
         return false;
     }
+
+    public static bool IsAfterWatermark(
+        LegacyStockJournalReadModel journal,
+        DateTime tglMutasiLast,
+        string lastLegacyBukuId) =>
+        IsAfterWatermark(journal.TglMutasi, journal.LegacyBukuId, tglMutasiLast, lastLegacyBukuId);
 
     public static bool IsAfterWatermark(
         LegacyStockJournalReadModel journal,

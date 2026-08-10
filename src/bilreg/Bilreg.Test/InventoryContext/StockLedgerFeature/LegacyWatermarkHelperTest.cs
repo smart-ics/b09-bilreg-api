@@ -64,6 +64,27 @@ public class LegacyWatermarkHelperTest
     }
 
     [Fact]
+    public void IsAfterWatermark_RawPair_MatchesJournalOrdering()
+    {
+        LegacyWatermarkHelper.IsAfterWatermark(
+                RealWatermark.AddHours(-1), "BK00000099", RealWatermark, "BK00000001")
+            .Should().BeFalse();
+        LegacyWatermarkHelper.IsAfterWatermark(
+                RealWatermark, "BK00000001", RealWatermark, "BK00000001")
+            .Should().BeFalse();
+        LegacyWatermarkHelper.IsAfterWatermark(
+                RealWatermark, "BK00000002", RealWatermark, "BK00000001")
+            .Should().BeTrue();
+        LegacyWatermarkHelper.IsAfterWatermark(
+                RealWatermark.AddHours(1), "BK00000000", RealWatermark, "BK00000001")
+            .Should().BeTrue();
+        LegacyWatermarkHelper.IsAfterWatermark(
+                RealWatermark, "BK00000001",
+                StockLedgerSentinel.EmptyDate, lastLegacyBukuId: string.Empty)
+            .Should().BeTrue();
+    }
+
+    [Fact]
     public void HasLegacyRowsBeyondWatermark_EmptyAlignedScope_DetectsLaterJournals()
     {
         var scope = StockLegacyScopeModel.CreateNotAligned(BrgId, DoId);
