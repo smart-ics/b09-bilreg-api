@@ -212,7 +212,7 @@ public class PostGoodsReceiptConsequenceHandler
             BatchUpserts: [batch],
             MutasiInserts: [mutasi],
             BindingInserts: [binding],
-            ScopeUpdate: scope,
+            ScopeUpdates: [scope],
             LegacyOperations:
             [
                 new LegacyInboundWriteOperation(new LegacyInboundWriteRequest(

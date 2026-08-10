@@ -99,7 +99,7 @@ public class StockConsequenceUnitOfWorkTest
                     mutasi.StokMutasiId, "BKOCC00001", "TRSUOWOCC1",
                     lokasi.StokLokasiId, "STOCC00001")
             ],
-            ScopeUpdate: null,
+            ScopeUpdates: [],
             LegacyOperations: [
                 new LegacyInboundWriteOperation(new LegacyInboundWriteRequest(
                     BrgId, "DOSTLUOW02", LayananId,
@@ -171,7 +171,7 @@ public class StockConsequenceUnitOfWorkTest
                     mutasi.StokMutasiId, legacyBukuId, trsReffId,
                     lokasi.StokLokasiId, legacyStokId)
             ],
-            ScopeUpdate: scope,
+            ScopeUpdates: [scope],
             LegacyOperations: [
                 new LegacyInboundWriteOperation(new LegacyInboundWriteRequest(
                     brgId, doId, LayananId,

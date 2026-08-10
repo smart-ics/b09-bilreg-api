@@ -90,7 +90,7 @@ public class StockConsequenceUnitOfWorkLiveAtomicityTest
                     mutasi.StokMutasiId, legacyBukuId, trsReffId,
                     lokasi.StokLokasiId, legacyStokId)
             ],
-            ScopeUpdate: null,
+            ScopeUpdates: [],
             LegacyOperations: [
                 new LegacyInboundWriteOperation(new LegacyInboundWriteRequest(
                     brgId, doId, LayananId,

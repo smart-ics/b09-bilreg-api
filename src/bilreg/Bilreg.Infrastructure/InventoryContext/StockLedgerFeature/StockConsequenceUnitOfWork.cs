@@ -62,8 +62,8 @@ public class StockConsequenceUnitOfWork : IStockConsequenceUnitOfWork
         foreach (var binding in draft.BindingInserts ?? [])
             _bindingRepo.Insert(binding, draft.UserId);
 
-        if (draft.ScopeUpdate is not null)
-            _scopeRepo.SaveChanges(draft.ScopeUpdate, draft.UserId);
+        foreach (var scopeUpdate in draft.ScopeUpdates ?? [])
+            _scopeRepo.SaveChanges(scopeUpdate, draft.UserId);
 
         scope.Complete();
     }

@@ -10,7 +10,7 @@ public record StockConsequenceDraft(
     IReadOnlyList<StockBatchModel> BatchUpserts,
     IReadOnlyList<StockMovementModel> MutasiInserts,
     IReadOnlyList<StockLegacyBindingModel> BindingInserts,
-    StockLegacyScopeModel? ScopeUpdate,
+    IReadOnlyList<StockLegacyScopeModel> ScopeUpdates,
     IReadOnlyList<LegacyStockWriteOperation> LegacyOperations,
     string UserId);
 
