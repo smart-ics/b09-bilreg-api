@@ -115,6 +115,20 @@ Persistent-workspace Phase 2 close-out summary (frontend docs tree): `c012_myhos
 | `docs/contexts/admisi-rajal/adr/ADR-002-manual-override-independence.md` | ADR — `Source = MANUAL` daily rows independent from template |
 | `docs/contexts/admisi-rajal/adr/ADR-003-booking-schedule-references.md` | ADR — dual nullable schedule IDs on booking |
 
+### Stock Ledger (`docs/contexts/stok-ledger/`)
+
+Inventory-consequence bounded context behind Purchasing, Apotek, transfer, consumption, and related source transactions. No direct end-user workflow; data-consequence flows only. During coexistence, Legacy Stock Record (`tb_stok` + `tb_buku`) remains persisted data authority.
+
+| Path | Purpose |
+|------|---------|
+| `docs/contexts/stok-ledger/stok-ledger-maintainer-brief.md` | Stock Ledger — onboarding brief for maintenance programmers (high-level → end-to-end table mutations; transaction-script framing) |
+| `docs/contexts/stok-ledger/stok-ledger-domain.md` | Stock Ledger — canonical English business truth (Stock Batch, Location Stock Balance, movements, FEFO/FIFO, reverse-journal void, coexistence authority) |
+| `docs/contexts/stok-ledger/stok-ledger-domain-id.md` | Stock Ledger — Bahasa Indonesia semantic companion |
+| `docs/contexts/stok-ledger/stok-ledger-architecture.md` | Stock Ledger — Clean Architecture realization (use cases, persistence contract, coexistence, ADRs, S1 increments) |
+| `docs/contexts/stok-ledger/stok-ledger-implementation-plan.md` | Stock Ledger v2 — mid-tier-executable Slice 1 plan (S1-A…S1-H cards, tests, coexistence, non-goals) |
+
+Non-normative legacy reference (VB6 stock generation): `docs/stok-ledger/clbGenStokX1.cls`.
+
 ### Apotek (`docs/contexts/apotek/`)
 
 | Path | Purpose |
