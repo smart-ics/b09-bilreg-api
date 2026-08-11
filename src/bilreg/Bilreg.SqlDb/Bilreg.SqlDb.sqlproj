@@ -108,6 +108,7 @@
     <Folder Include="BedUsageContext\RnaServiceExecutionFeature\" />
     <Folder Include="BedUsageContext\PakaiBedFeature\" />
     <Folder Include="AdmisiContext\BookingFeature\" />
+    <Folder Include="InventoryContext\StockLedgerFeature\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OpCase.sql" />
@@ -249,6 +250,12 @@
     <None Include="PaymentContext\RegOutFeature\ta_registrasi3.sql" />
     <None Include="AdmisiContext\BookingFeature\BILRG_JadwalPraktekHarian_1.sql" />
     <None Include="AdmisiRanapContext\OpnameRequestFeature\BILRG_AdmOpnameRequestInsurance.sql" />
+    <None Include="InventoryContext\StockLedgerFeature\BILRG_StokBatch.sql" />
+    <None Include="InventoryContext\StockLedgerFeature\BILRG_StokLokasi.sql" />
+    <None Include="InventoryContext\StockLedgerFeature\BILRG_StokMutasi.sql" />
+    <None Include="InventoryContext\StockLedgerFeature\BILRG_StokLegacyScope.sql" />
+    <None Include="InventoryContext\StockLedgerFeature\BILRG_StokLegacyBinding.sql" />
+    <None Include="InventoryContext\StockLedgerFeature\BILRG_StockLedgerV2_Rollback.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="AdmisiContext\AntrianFeature\ta_no_antrian_map.sql" />
