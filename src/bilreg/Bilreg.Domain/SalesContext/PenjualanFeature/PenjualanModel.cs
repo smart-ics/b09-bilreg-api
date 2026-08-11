@@ -1,11 +1,12 @@
+using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BrgContext.BrgFeature;
 using Bilreg.Domain.BrgContext.PricingPolicyFeature;
-using Bilreg.Domain.InventoryContext.StokFeature;
 using Bilreg.Domain.SalesContext.ResepFeature;
-using Bilreg.Domain.SalesContext.Shared;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using Nuna.Lib.AutoNumberHelper;
+using TipeBrgType = Bilreg.Domain.BrgContext.PricingPolicyFeature.TipeBrgType;
 
 namespace Bilreg.Domain.SalesContext.PenjualanFeature;
 
@@ -42,7 +43,7 @@ public class PenjualanModel : IPenjualanKey
     public static PenjualanModel Key(string id) => new(
         id,
         AppConst.DASH,
-        RegType.Default.ToReff(),
+        RegModel.Default.ToReff(),
         DokterType.Default.ToReff(),
         LayananType.Default.ToReff(),
         LayananType.Default.ToReff(),

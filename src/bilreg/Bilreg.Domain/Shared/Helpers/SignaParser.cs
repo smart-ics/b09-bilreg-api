@@ -5,18 +5,6 @@ namespace Bilreg.Domain.Shared.Helpers;
 
 public class SignaParser
 {
-    public class SignaType
-    {
-        public int DailyDose { get; set; }
-        public decimal ConsumeAmount { get; set; }
-        public string FormattedSigna => $"{DailyDose} dd {ConsumeAmount}";
-
-        public override string ToString()
-        {
-            return $"Signa Result = {FormattedSigna}\nDailyDose = {DailyDose}\nConsumeAmount = {ConsumeAmount}";
-        }
-    }
-
     public static SignaType Parse(string prescriptionText)
     {
         /*
@@ -180,5 +168,17 @@ public class SignaParser
         var fraction = part.Split('/');
         return decimal.Parse(fraction[0], CultureInfo.InvariantCulture) 
                / decimal.Parse(fraction[1], CultureInfo.InvariantCulture);
+    }
+}
+
+public class SignaType
+{
+    public int DailyDose { get; set; }
+    public decimal ConsumeAmount { get; set; }
+    public string FormattedSigna => $"{DailyDose} dd {ConsumeAmount}";
+
+    public override string ToString()
+    {
+        return $"Signa Result = {FormattedSigna}\nDailyDose = {DailyDose}\nConsumeAmount = {ConsumeAmount}";
     }
 }

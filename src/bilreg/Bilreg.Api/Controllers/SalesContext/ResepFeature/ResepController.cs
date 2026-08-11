@@ -35,4 +35,12 @@ public class ResepController : ControllerBase
         var response = await _mediator.Send(query); 
         return Ok(new JSendOk(response));
     }
+    
+    [HttpPost]
+    [Route("create")]
+    public async Task<IActionResult> Create(ResepCreateCommand cmd)
+    {
+        var response = await _mediator.Send(cmd); 
+        return Ok(new JSendOk(response));
+    }
 }

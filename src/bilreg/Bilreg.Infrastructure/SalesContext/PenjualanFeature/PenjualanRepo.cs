@@ -1,6 +1,6 @@
 using Bilreg.Application.SalesContext.PenjualanFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.SalesContext.PenjualanFeature;
-using Bilreg.Domain.SalesContext.Shared;
 using Nuna.Lib.PatternHelper;
 
 namespace Bilreg.Infrastructure.SalesContext.PenjualanFeature;

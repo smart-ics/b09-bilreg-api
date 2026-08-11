@@ -1,14 +1,15 @@
+using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BrgContext.BrgFeature;
-using Bilreg.Domain.BrgContext.PricingPolicyFeature;
 using Bilreg.Domain.InventoryContext.StokFeature;
 using Bilreg.Domain.SalesContext.PenjualanFeature;
 using Bilreg.Domain.SalesContext.ResepFeature;
-using Bilreg.Domain.SalesContext.Shared;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using Bilreg.Infrastructure.SalesContext.PenjualanFeature;
 using FluentAssertions;
 using Moq;
+using TipeBrgType = Bilreg.Domain.BrgContext.PricingPolicyFeature.TipeBrgType;
 
 namespace Bilreg.Test.SalesContext.PenjualanFeature;
 
