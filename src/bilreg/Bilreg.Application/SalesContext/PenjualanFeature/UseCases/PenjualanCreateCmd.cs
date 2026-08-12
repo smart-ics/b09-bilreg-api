@@ -4,14 +4,11 @@ using Bilreg.Application.AdmisiContext.LayananFeature;
 using Bilreg.Application.SalesContext.ResepFeature;
 using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
-using Bilreg.Domain.InventoryContext.StokFeature;
 using Bilreg.Domain.SalesContext.PenjualanFeature;
 using Bilreg.Domain.SalesContext.ResepFeature;
 using MediatR;
-using Nuna.Lib.PatternHelper;
-using SalesTipeJaminanReff = Bilreg.Domain.SalesContext.Shared.TipeJaminanReff;
 
-namespace Bilreg.Application.SalesContext.PenjualanFeature;
+namespace Bilreg.Application.SalesContext.PenjualanFeature.UseCases;
 
 public record PenjualanCreateCmd(
     string ResepId,
@@ -65,7 +62,7 @@ public class PenjualanCreateHandler : IRequestHandler<PenjualanCreateCmd, Penjua
         var tipeJaminan = _tipeJaminanRepo.LoadEntity(request)
             .GetValueOrThrow($"Tipe Jaminan '{request.TipeJaminanId}' tidak ditemukan.");
 
-        var tipeJaminanReff = new SalesTipeJaminanReff(
+        var tipeJaminanReff = new TipeJaminanReff(
             tipeJaminan.TipeJaminanId,
             tipeJaminan.TipeJaminanName);
 

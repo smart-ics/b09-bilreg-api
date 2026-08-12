@@ -1,6 +1,6 @@
 using Bilreg.Application.SalesContext.ResepFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.SalesContext.ResepFeature;
-using Bilreg.Domain.SalesContext.Shared;
 using Nuna.Lib.PatternHelper;
 
 namespace Bilreg.Infrastructure.SalesContext.ResepFeature;

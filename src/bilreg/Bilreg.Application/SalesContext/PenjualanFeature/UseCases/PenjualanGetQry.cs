@@ -1,15 +1,14 @@
 using Ardalis.GuardClauses;
+using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BrgContext.BrgFeature;
 using Bilreg.Domain.BrgContext.PricingPolicyFeature;
-using Bilreg.Domain.InventoryContext.StokFeature;
 using Bilreg.Domain.SalesContext.PenjualanFeature;
 using Bilreg.Domain.SalesContext.ResepFeature;
-using Bilreg.Domain.SalesContext.Shared;
 using MediatR;
-using Nuna.Lib.PatternHelper;
 
-namespace Bilreg.Application.SalesContext.PenjualanFeature;
+namespace Bilreg.Application.SalesContext.PenjualanFeature.UseCases;
 
 public record PenjualanGetQry(string PenjualanId)
     : IRequest<PenjualanGetResponse>, IPenjualanKey;

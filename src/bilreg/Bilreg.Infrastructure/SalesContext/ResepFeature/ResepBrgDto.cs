@@ -6,13 +6,12 @@ namespace Bilreg.Infrastructure.SalesContext.ResepFeature;
 
 public record ResepBrgDto(
     string ResepId,
-    int NoUrut,
+    decimal NoUrut,
     string BrgId,
     string BrgName,
     decimal Qty,
     string SatuanId,
-    string SatuanName,
-    int Iter,
+    decimal Iter,
     bool IsRacik,
     bool IsKomponen,
     string RacikId,
@@ -20,8 +19,9 @@ public record ResepBrgDto(
     string DosisTxt,
     string Signa,
     string Etiket,
-    int Frequency,
-    decimal UnitDose)
+    decimal Frequency,
+    decimal UnitDose,
+    string SatuanName)
 {
     public static IEnumerable<ResepBrgDto> FlattenFromModel(ResepModel model)
     {
@@ -38,7 +38,6 @@ public record ResepBrgDto(
                 item.Brg.BrgName,
                 item.Qty,
                 item.Satuan.SatuanId,
-                item.Satuan.SatuanName,
                 item.Iter,
                 item.ListItemRacik.Any(),
                 false,
@@ -48,7 +47,8 @@ public record ResepBrgDto(
                 item.Etiket.Signa,
                 item.Etiket.Instruction,
                 item.Etiket.Frequency,
-                item.Etiket.UnitDose));
+                item.Etiket.UnitDose,
+                item.Satuan.SatuanName));
 
             foreach (var itemRacik in item.ListItemRacik)
             {
@@ -60,7 +60,6 @@ public record ResepBrgDto(
                     $"   {itemRacik.Brg.BrgName}",
                     itemRacik.Qty,
                     itemRacik.Satuan.SatuanId,
-                    itemRacik.Satuan.SatuanName,
                     0,
                     false,
                     true,
@@ -70,7 +69,8 @@ public record ResepBrgDto(
                     string.Empty,
                     string.Empty,
                     0,
-                    0));
+                    0,
+                    itemRacik.Satuan.SatuanName));
             }
         }
 
@@ -81,7 +81,7 @@ public record ResepBrgDto(
     {
         var brg = new BrgReff(BrgId, BrgName.Trim());
         var satuan = SatuanType.Create(SatuanId, SatuanName);
-        var etiket = EtiketType.Load(Signa, Etiket, Frequency, UnitDose, AppConst.DASH);
-        return new ResepObatType(NoUrut, brg, satuan, Qty, Iter, etiket);
+        var etiket = EtiketType.Load(Signa, Etiket, (int)Frequency, UnitDose, AppConst.DASH);
+        return new ResepObatType((int)NoUrut, brg, satuan, Qty, (int)Iter, etiket);
     }
 }

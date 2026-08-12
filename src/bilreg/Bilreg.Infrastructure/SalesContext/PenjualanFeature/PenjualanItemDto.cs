@@ -20,7 +20,6 @@ public record PenjualanItemDto(
     string DosisTxt,
     decimal Qty,
     string SatuanId,
-    string SatuanName,
     decimal Harga,
     decimal Diskon,
     decimal Embalase,
@@ -35,7 +34,8 @@ public record PenjualanItemDto(
     string Etiket,
     int Frequency,
     decimal UnitDose,
-    string Note)
+    string Note,
+    string SatuanName)
 {
     public static IEnumerable<PenjualanItemDto> FlattenFromModel(PenjualanModel model)
     {
@@ -60,7 +60,6 @@ public record PenjualanItemDto(
                 string.Empty,
                 item.Qty,
                 item.Satuan.SatuanId,
-                item.Satuan.SatuanName,
                 item.Nilai.Harga,
                 item.Nilai.Diskon,
                 item.Nilai.Embalase,
@@ -75,7 +74,8 @@ public record PenjualanItemDto(
                 item.Etiket.Instruction,
                 item.Etiket.Frequency,
                 item.Etiket.UnitDose,
-                item.Etiket.Note));
+                item.Etiket.Note,
+                item.Satuan.SatuanName));
 
             foreach (var racik in item.ListItemRacik)
             {
@@ -96,13 +96,13 @@ public record PenjualanItemDto(
                     racik.DosisTxt,
                     racik.Qty,
                     racik.Satuan.SatuanId,
-                    racik.Satuan.SatuanName,
                     0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                     model.TipeJaminan.TipeJaminanId,
                     string.Empty,
                     0,
                     0,
-                    AppConst.DASH));
+                    AppConst.DASH, 
+                    racik.Satuan.SatuanName));
             }
         }
 

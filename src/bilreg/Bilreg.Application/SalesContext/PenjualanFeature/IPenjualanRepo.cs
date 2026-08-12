@@ -1,5 +1,5 @@
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.SalesContext.PenjualanFeature;
-using Bilreg.Domain.SalesContext.Shared;
 using Nuna.Lib.DataAccessHelper;
 
 namespace Bilreg.Application.SalesContext.PenjualanFeature;
