@@ -1,9 +1,11 @@
 using Bilreg.Application.AccountingContext.JurnalFeature;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.BookingFeature;
+using Bilreg.Application.AdmisiContext.EmrAntrianOutboundFeature;
 using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.AdmisiContext.RegFeature.UseCases;
 using Bilreg.Application.ChargeContext.TindakanFeature;
+using Bilreg.Application.IgdContext.IgdVisitFeature;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
@@ -20,6 +22,7 @@ using Bilreg.Domain.ChargeContext.TindakanFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using Bilreg.Domain.Shared.AuditLogFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
+using Bilreg.Infrastructure.IgdContext.IgdVisitFeature;
 using Bilreg.Test.Shared;
 using FluentAssertions;
 using Moq;
@@ -43,6 +46,8 @@ public class RegJalanBatalHandlerTest
     private readonly Mock<IBookingRepo> _bookingRepo = new();
     private readonly Mock<IAuditRepo> _auditRepo = new();
     private readonly Mock<IQueueNumberCompatibilityAdapter> _queueAdapter = new();
+    private readonly Mock<IEmrAntrianOutboundQueueRepo> _EmrAntrianOutboundQueueRepo = new();
+    private readonly Mock<IIgdVisitRepo> _igdVisitRepo = new();
     private readonly RegJalanBatalHandler _sut;
 
     public RegJalanBatalHandlerTest()
@@ -60,7 +65,9 @@ public class RegJalanBatalHandlerTest
             _bookingRepo.Object,
             _auditRepo.Object,
             _queueAdapter.Object,
-            TestTglJamProvider.Instance);
+            TestTglJamProvider.Instance,
+            _EmrAntrianOutboundQueueRepo.Object,
+            _igdVisitRepo.Object);
     }
 
     [Fact]

@@ -16,6 +16,7 @@ public enum IgdEventEnum
     AddBhp = 11,
     TransferBed = 12,
     VoidTindakan = 13,
+    ReplaceRegister = 14,
 }
 
 public static class IgdEventEnumExtensions
@@ -36,6 +37,7 @@ public static class IgdEventEnumExtensions
         IgdEventEnum.AddBhp => "ADD_BHP",
         IgdEventEnum.TransferBed => "TRANSFER_BED",
         IgdEventEnum.VoidTindakan => "VOID_TINDAKAN",
+        IgdEventEnum.ReplaceRegister => "REPLACE_REGISTER",
         _ => "DAFTAR",
     };
 
@@ -55,6 +57,7 @@ public static class IgdEventEnumExtensions
         "ADD_BHP" => IgdEventEnum.AddBhp,
         "TRANSFER_BED" => IgdEventEnum.TransferBed,
         "VOID_TINDAKAN" => IgdEventEnum.VoidTindakan,
+        "REPLACE_REGISTER" => IgdEventEnum.ReplaceRegister,
         _ => IgdEventEnum.Daftar,
     };
 }

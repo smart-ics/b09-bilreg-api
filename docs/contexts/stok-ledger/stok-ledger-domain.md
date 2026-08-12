@@ -26,6 +26,22 @@ The business must ensure that:
 - movement history and current balances can be reconciled for one Item and one Receipt Source; and
 - during the Coexistence Period, the Legacy Stock Record remains the persisted data authority while Stock Ledger maintains a richer Stock Ledger Representation that must stay reconcilable with it.
 
+The domain must ensure that:
+
+* every stock quantity retains its Item, Receipt Source, Stock Location, Expiration Date when applicable, and Unit Valuation;
+* movement between locations preserves the original Receipt Source;
+* stock consumption follows FIFO within the Stock Location requested by the source transaction, unless that transaction explicitly identifies an Expiration Date;
+* FIFO consumption remains traceable to the Stock Layers consumed;
+* depleted Stock Layers remain part of the authoritative stock position;
+* the movement ledger and current stock position can be reconciled within a bounded scope;
+* one source business transaction does not produce duplicate stock consequences;
+* corrections and reversals preserve the original recorded facts;
+* stock reservation is represented as accountable transfer to a Virtual Stock Location;
+* legacy stock provenance may be reconstructed incrementally without requiring full historical migration; and
+* reconstructed facts remain distinguishable from facts recorded natively by the new Stock Ledger;
+* negative Remaining Quantity is prohibited without exception; and
+* Stock Ledger performs no additional approval beyond the authority already established by the source transaction.
+
 ### 1.2 Scope
 
 This context covers:
@@ -111,6 +127,16 @@ Item + Receipt Source
             -> Stock Movements that conserve or finally consume batch quantity
 ```
 
+A Stock Layer may reach zero Remaining Quantity, but it remains an accountable part of the Stock Position history.
+
+### 1.6 Supporting-domain character
+
+Stock Ledger is a supporting bounded context. It may have no direct user-facing workflow for ordinary transactions.
+
+Its business behavior is primarily triggered by facts and requests from other bounded contexts. Lack of direct user interaction does not reduce its authority over inventory movement, provenance, balance, and reconciliation.
+
+---
+
 ## 2. Ubiquitous Language
 
 | Term | Definition |
@@ -149,6 +175,8 @@ Item + Receipt Source
 | Legacy Stock Record | The currently operating persisted stock journals and balances (`tb_buku` and `tb_stok`) that remain data authority during coexistence. |
 | Coexistence Period | The period when Legacy Stock Record and Stock Ledger Representation operate in parallel. |
 | Inventory Conservation | Within one Item and Receipt Source, recognized inbound quantity equals remaining quantity plus accountable final outbound and net adjustment outcomes; location transfers do not change hospital-wide batch quantity. |
+
+---
 
 ## 3. Business Capabilities
 
@@ -302,6 +330,18 @@ Consistency boundary: one Reconciliation Scope evaluation.
 
 It owns calculated totals, differences, outcome, and effective assessment time. It does not silently rewrite completed Stock Movements or balances.
 
+Legacy Stock Reconstruction establishes previously missing Stock Layers and marks them as reconstructed. Subsequent native Stock Movements continue from the reconstructed Stock Position.
+
+Cross-aggregate coordination must preserve:
+
+* one authoritative consequence per source responsibility;
+* Item and Receipt Source consistency;
+* quantity conservation;
+* Unit Valuation continuity; and
+* correction traceability.
+
+---
+
 ## 7. Business Rules
 
 ### Provenance and conservation
@@ -399,6 +439,17 @@ Not Aligned
   -> Inconsistent (unresolved difference; native stock consequences blocked for the scope until resolved)
 ```
 
+| State | Business meaning |
+|---|---|
+| Available at Ordinary Location | Quantity may be selected by transactions requesting the ordinary Stock Location. |
+| Reserved at Virtual Location | Quantity is logically separated and unavailable to transactions requesting the ordinary Stock Location. |
+| Released to Ordinary Location | Reserved quantity was transferred back and is eligible again at the ordinary Stock Location. |
+| Consumed from Virtual Location | A source transaction explicitly requested and consumed quantity from the Virtual Stock Location. |
+
+Reservation does not change Receipt Source, Expiration Date, Unit Valuation, or physical ownership.
+
+---
+
 ## 9. Domain Events
 
 | Event | Meaning |
@@ -422,6 +473,8 @@ These workflows describe data and consequence flow, not operator UI procedures.
 
 ### 10.1 Inbound Goods Receipt Consequence
 
+### 10.4 Record Stock Return
+
 ```text
 Originating Goods Receipt completed
   -> Source Stock Consequence accepted
@@ -431,6 +484,8 @@ Originating Goods Receipt completed
 ```
 
 ### 10.2 Stock Transfer Consequence
+
+### 10.5 Record Stock Adjustment
 
 ```text
 Originating transfer authorized
@@ -443,6 +498,8 @@ Originating transfer authorized
 
 ### 10.3 Outbound Sale Issue Consequence
 
+### 10.6 Correct or Reverse Stock Movement
+
 ```text
 Originating sale authorized
   -> Source Stock Consequence accepted for Item + Stock Location + quantity
@@ -453,6 +510,8 @@ Originating sale authorized
 ```
 
 ### 10.4 Return, Consumption, Destruction, Adjustment, Repack
+
+### 10.7 Reconcile Item and Receipt Source
 
 ```text
 Originating transaction authorized
@@ -496,3 +555,7 @@ Choose Reconciliation Scope (Item + Receipt Source, optionally + Stock Location)
   -> during coexistence, compare with Legacy Stock Record
   -> emit reconciliation outcome
 ```
+
+**Outcome:** Existing legacy consumers may continue operating during migration. Any detail omitted by the legacy representation does not reduce or replace Stock Ledger authority.
+
+---

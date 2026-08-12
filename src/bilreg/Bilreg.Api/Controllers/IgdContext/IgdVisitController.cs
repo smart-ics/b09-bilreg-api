@@ -19,7 +19,7 @@ public class IgdVisitController : Controller
     {
         _mediator = mediator;
     }
-
+     
     [HttpPost]
     public async Task<IActionResult> Daftar(IgdVisitDaftarCmd cmd)
     {
@@ -113,6 +113,14 @@ public class IgdVisitController : Controller
         return Ok(new JSendOk("Done"));
     }
 
+    [HttpPatch("{id}/replaceRegister")]
+    public async Task<IActionResult> ReplaceRegister(string id, [FromBody] IgdReplaceRegisterBody body)
+    {
+        var cmd = new IgdVisitReplaceRegisterCmd(id, body.NewRegId, body.UserId);
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
     [HttpPost("{id}/discharge")]
     public async Task<IActionResult> Discharge(string id, [FromBody] IgdDischargeBody body)
     {
@@ -178,5 +186,6 @@ public record IgdTransferBedBody(string TargetBedIgdId, string Reason, string? N
 public record IgdCheckOutBedBody(string UserId);
 public record IgdRedirectRawatJalanBody(string Reason, string UserId);
 public record IgdAssignRegisterBody(string RegId, string UserId);
+public record IgdReplaceRegisterBody(string NewRegId, string UserId);
 public record IgdDischargeBody(string UserId);
 public record IgdVoidBody(string UserId, string VoidReason);
