@@ -21,7 +21,8 @@ public sealed record AdmissionQueueWorklistFilter(
     string? LoketKey = null,
     int Offset = 0,
     int Limit = 100,
-    bool ActiveOnly = false);
+    bool ActiveOnly = false,
+    IReadOnlyCollection<string>? ServicePointIds = null);
 
 public sealed record AdmissionQueueWorklistItem(
     string AntrianId,

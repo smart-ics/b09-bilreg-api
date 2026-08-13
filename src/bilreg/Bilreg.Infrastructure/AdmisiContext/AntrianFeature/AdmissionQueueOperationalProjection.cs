@@ -38,6 +38,8 @@ public sealed class AdmissionQueueOperationalProjection : IAdmissionQueueOperati
               AND (@QueueStatus IS NULL OR e.AntrianStatus = @QueueStatus)
               AND (@ActiveOnly = 0 OR e.AntrianStatus IN (0, 1))
               AND (@LoketKey IS NULL OR c.LoketKey = @LoketKey)
+              AND (@ServicePointIds IS NULL OR q.ServicePointCode IN (
+                  SELECT value FROM STRING_SPLIT(@ServicePointIds, ',')))
             ORDER BY e.Priority DESC, e.CreatedAt, e.NoUrut, q.AntrianId
             OFFSET @Offset ROWS FETCH NEXT @FetchCount ROWS ONLY
             """;
@@ -52,12 +54,15 @@ public sealed class AdmissionQueueOperationalProjection : IAdmissionQueueOperati
               AND (@QueueStatus IS NULL OR e.AntrianStatus = @QueueStatus)
               AND (@ActiveOnly = 0 OR e.AntrianStatus IN (0, 1))
               AND (@LoketKey IS NULL OR c.LoketKey = @LoketKey)
+              AND (@ServicePointIds IS NULL OR q.ServicePointCode IN (
+                  SELECT value FROM STRING_SPLIT(@ServicePointIds, ',')))
             """;
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         var args = new {
             BusinessDate = filter.BusinessDate.ToDateTime(TimeOnly.MinValue), filter.ServicePointId,
             filter.QueueStatus, filter.ActiveOnly, filter.LoketKey, filter.Offset,
-            FetchCount = filter.Limit + 1
+            FetchCount = filter.Limit + 1,
+            ServicePointIds = filter.ServicePointIds is null ? null : string.Join(',', filter.ServicePointIds)
         };
         var rows = conn.Query<WorklistRow>(
             new CommandDefinition(pageSql, args, commandTimeout: CommandTimeoutSeconds))
