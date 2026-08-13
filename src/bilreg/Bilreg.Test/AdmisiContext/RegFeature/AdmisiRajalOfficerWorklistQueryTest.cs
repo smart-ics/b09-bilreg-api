@@ -33,9 +33,12 @@ public class AdmisiRajalOfficerWorklistQueryTest
         var assistance = new Mock<IBookingAssistanceRepo>(MockBehavior.Strict);
         assistance.Setup(x => x.FindActiveByEntry(queue.AntrianId, queue.NoUrut))
             .Returns((BookingAssistanceActive?)null);
-
+        var admServicePoint = new Mock<IAdmissionServicePointRepo>(MockBehavior.Strict);
+        admServicePoint.Setup(x => x.ListAll()).Returns([]);
+        
         var sut = new AdmisiRajalOfficerWorklistHandler(
-            projection.Object, trackers.Object, bookings.Object, regs.Object, assistance.Object);
+            projection.Object, trackers.Object, bookings.Object, regs.Object, assistance.Object,
+            admServicePoint.Object);
 
         var result = await sut.Handle(new("2026-07-23"), default);
 
@@ -79,8 +82,12 @@ public class AdmisiRajalOfficerWorklistQueryTest
         assistance.Setup(x => x.FindActiveByEntry(It.IsAny<string>(), It.IsAny<int>()))
             .Returns((BookingAssistanceActive?)null);
 
+        var admServicePoint = new Mock<IAdmissionServicePointRepo>(MockBehavior.Strict);
+        admServicePoint.Setup(x => x.ListAll()).Returns([]);
+
         var sut = new AdmisiRajalOfficerWorklistHandler(
-            projection.Object, trackers.Object, bookings.Object, regs.Object, assistance.Object);
+            projection.Object, trackers.Object, bookings.Object, regs.Object, assistance.Object,
+            admServicePoint.Object);
 
         var result = await sut.Handle(new("2026-07-23", ServicePointId: "ADM"), default);
 
@@ -114,9 +121,12 @@ public class AdmisiRajalOfficerWorklistQueryTest
 
         var trackers = new Mock<IPasienTrackerRepo>(MockBehavior.Strict);
         var regs = new Mock<IRegRepo>(MockBehavior.Strict);
+        var admServicePoint = new Mock<IAdmissionServicePointRepo>(MockBehavior.Strict);
+        admServicePoint.Setup(x => x.ListAll()).Returns([]);
 
         var sut = new AdmisiRajalOfficerWorklistHandler(
-            projection.Object, trackers.Object, bookings.Object, regs.Object, assistance.Object);
+            projection.Object, trackers.Object, bookings.Object, regs.Object, assistance.Object,
+            admServicePoint.Object);
 
         var result = await sut.Handle(new("2026-07-23"), default);
 
@@ -150,12 +160,16 @@ public class AdmisiRajalOfficerWorklistQueryTest
         assistance.Setup(x => x.FindActiveByEntry(queue.AntrianId, queue.NoUrut))
             .Returns((BookingAssistanceActive?)null);
 
+        var admServicePoint = new Mock<IAdmissionServicePointRepo>(MockBehavior.Strict);
+        admServicePoint.Setup(x => x.ListAll()).Returns([]);
+
         var sut = new AdmisiRajalOfficerWorklistHandler(
             projection.Object,
             Mock.Of<IPasienTrackerRepo>(),
             Mock.Of<IBookingRepo>(),
             regs.Object,
             assistance.Object,
+            admServicePoint.Object,
             referenceReader: referenceReader.Object);
 
         var result = await sut.Handle(new("2026-07-23"), default);
@@ -180,7 +194,8 @@ public class AdmisiRajalOfficerWorklistQueryTest
             Mock.Of<IPasienTrackerRepo>(),
             Mock.Of<IBookingRepo>(),
             Mock.Of<IRegRepo>(),
-            Mock.Of<IBookingAssistanceRepo>());
+            Mock.Of<IBookingAssistanceRepo>(),
+            Mock.Of<IAdmissionServicePointRepo>());
 
         await sut.Handle(new("2026-07-23"), default);
 
@@ -211,7 +226,8 @@ public class AdmisiRajalOfficerWorklistQueryTest
             Mock.Of<IPasienTrackerRepo>(),
             Mock.Of<IBookingRepo>(),
             Mock.Of<IRegRepo>(),
-            assistance.Object);
+            assistance.Object,
+            Mock.Of<IAdmissionServicePointRepo>());
 
         var result = await sut.Handle(new(
             "2026-07-23",
@@ -289,7 +305,8 @@ public class AdmisiRajalOfficerWorklistQueryTest
             Mock.Of<IPasienTrackerRepo>(),
             Mock.Of<IBookingRepo>(),
             Mock.Of<IRegRepo>(),
-            Mock.Of<IBookingAssistanceRepo>());
+            Mock.Of<IBookingAssistanceRepo>(),
+            Mock.Of<IAdmissionServicePointRepo>());
     }
 
     private static BookingModel BuildBooking(string id, string name, DateOnly dob, string pasienId)

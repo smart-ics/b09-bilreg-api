@@ -83,8 +83,10 @@ public sealed class AdmisiRajalOfficerWorklistHandler
     private readonly IBookingRepo _bookings;
     private readonly IRegRepo _regs;
     private readonly IBookingAssistanceRepo _assistance;
+    private readonly IAdmissionServicePointRepo _admissionServicePointRepo;
     private readonly IAdmisiRajalOfficerWorklistReferenceReader? _referenceReader;
     private readonly ILogger<AdmisiRajalOfficerWorklistHandler> _logger;
+
 
     public AdmisiRajalOfficerWorklistHandler(
         IAdmissionQueueOperationalProjection projection,
@@ -92,6 +94,7 @@ public sealed class AdmisiRajalOfficerWorklistHandler
         IBookingRepo bookings,
         IRegRepo regs,
         IBookingAssistanceRepo assistance,
+        IAdmissionServicePointRepo admissionServicePointRepo,
         ILogger<AdmisiRajalOfficerWorklistHandler>? logger = null,
         IAdmisiRajalOfficerWorklistReferenceReader? referenceReader = null)
     {
@@ -100,6 +103,7 @@ public sealed class AdmisiRajalOfficerWorklistHandler
         _bookings = bookings;
         _regs = regs;
         _assistance = assistance;
+        _admissionServicePointRepo = admissionServicePointRepo;
         _referenceReader = referenceReader;
         _logger = logger ?? NullLogger<AdmisiRajalOfficerWorklistHandler>.Instance;
     }
@@ -129,9 +133,17 @@ public sealed class AdmisiRajalOfficerWorklistHandler
                 "ActiveOnly and QueueStatus cannot be combined.",
                 nameof(request.ActiveOnly));
 
+        var listAdmServicePoint = _admissionServicePointRepo.ListAll()?.ToList() ?? [];
+        var servicePointIds = listAdmServicePoint
+            .Select(sp => sp.ServicePointId)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
         var filter = new AdmissionQueueWorklistFilter(
             date, EmptyToNull(request.ServicePointId), request.QueueStatus,
-            EmptyToNull(request.LoketKey), request.Offset, request.Limit, request.ActiveOnly);
+            EmptyToNull(request.LoketKey), request.Offset, request.Limit, request.ActiveOnly,
+            ServicePointIds: servicePointIds.Count == 0 ? null : servicePointIds);
+
 
         var totalWatch = Stopwatch.StartNew();
         var queueWatch = Stopwatch.StartNew();
