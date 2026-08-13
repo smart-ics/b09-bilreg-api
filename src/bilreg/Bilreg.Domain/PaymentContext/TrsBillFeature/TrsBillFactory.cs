@@ -16,7 +16,7 @@ internal class TrsBillFactory
         DateTime createdAt = default)
     {
         var audit = AuditTrailType.Create(reg.RegMasukAudit.UserId, createdAt);
-        var ketBilling = new TrsBillKetType($"REG : {karcis.KarcisName}", "", karcis.KarcisId, 1, "");
+        var ketBilling = new TrsBillKetType($"REG : {karcis.KarcisName}", "", karcis.KarcisId, 1, reg.RegId);
 
         var rekPpdp = reg.JenisReg == JenisRegEnum.RegInap
             ? jaminan.Rekening.PpdpJasaRanap.CoaId
@@ -75,7 +75,7 @@ internal class TrsBillFactory
             throw new ArgumentException("Jaminan tidak sesuai registrasi");
 
         var audit = AuditTrailType.Create(tindakan.AuditTrail.Created.UserId, createdAt);
-        var ketBilling = new TrsBillKetType(tarif.TarifName, "", tarif.TarifId, 1, "");
+        var ketBilling = new TrsBillKetType(tarif.TarifName, "", tarif.TarifId, 1, tindakan.TindakanId);
 
         var rekPpdp = reg.JenisReg == JenisRegEnum.RegInap
             ? jaminan.Rekening.PpdpJasaRanap.CoaId
