@@ -157,6 +157,7 @@ public static class PresentationService
         services.AddScoped<ICurrentUserContext, HttpCurrentUserContext>();
         services.AddScoped<AdmisiRanapEnabledFilter>();
         services.AddScoped<JourneyEndpointsEnabledFilter>();
+        services.AddScoped<StockLedgerDevSmokeEnabledFilter>();
 
         services.AddCors(options =>
         {
