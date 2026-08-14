@@ -105,6 +105,12 @@
     <Folder Include="BedUsageContext\RnaServiceExecutionFeature\" />
     <Folder Include="BedUsageContext\PakaiBedFeature\" />
     <Folder Include="AdmisiContext\BookingFeature\" />
+    <Folder Include="LabContext\" />
+    <Folder Include="LabContext\LabOrderFeature\" />
+    <Folder Include="LabContext\LabResultFeature\" />
+    <Folder Include="LabContext\LabComponentMasterFeature\" />
+    <Folder Include="LabContext\LabComponentMasterFeature\Data\" />
+    <Folder Include="LabContext\LabTestDefinitionFeature\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OpCase.sql" />
