@@ -7,13 +7,18 @@
 ## Prompt recipe (ordered)
 
 1. [`docs/INSTRUCTION.md`](INSTRUCTION.md) — global engineering stance
-2. **Bounded context** — [`docs/contexts/{context}/`](contexts/) (see table below). IGD UI/integration: also [`docs/contexts/igd/igd-04-api-contract.md`](contexts/igd/igd-04-api-contract.md); ops/DBA: [`docs/contexts/igd/igd-05-runbook.md`](contexts/igd/igd-05-runbook.md). Tarif: [`docs/contexts/tarif/tarif-01-context.md`](contexts/tarif/tarif-01-context.md) through `tarif-07-admin-workflow.md`. Tata Rekening: [`docs/contexts/TataRekening/01-context.md`](contexts/TataRekening/01-context.md) through [`04-sop.md`](contexts/TataRekening/04-sop.md) and `SOP-TR-01` … `SOP-TR-10`.
+2. **Bounded context** — [`docs/contexts/{context}/`](contexts/) (see table below), including the Apotek domain group at [`docs/contexts/apotek/`](contexts/apotek/). IGD UI/integration: also [`docs/contexts/igd/igd-04-api-contract.md`](contexts/igd/igd-04-api-contract.md); ops/DBA: [`docs/contexts/igd/igd-05-runbook.md`](contexts/igd/igd-05-runbook.md). Tarif: [`docs/contexts/tarif/tarif-01-context.md`](contexts/tarif/tarif-01-context.md) through `tarif-07-admin-workflow.md`. Tata Rekening: [`docs/contexts/TataRekening/01-context.md`](contexts/TataRekening/01-context.md) through [`04-sop.md`](contexts/TataRekening/04-sop.md) and `SOP-TR-01` … `SOP-TR-10`.
 3. **Global standards** (as needed):
    - [`docs/ENGINEERING.md`](ENGINEERING.md) — layers, repository, domain events philosophy
    - [`docs/DATABASE.md`](DATABASE.md) — SQL, tables, audit columns
    - [`docs/NAMING.md`](NAMING.md) — naming conventions
    - [`docs/WORKFLOW.md`](WORKFLOW.md) — operational UX / queue / workspace (global only)
-4. **Skills** (implementation generation):
+4. **Skills** (artifact and implementation generation):
+   - [`docs/skills/domain-creation-skill.md`](skills/domain-creation-skill.md) — create the canonical bilingual domain pair first
+   - [`docs/skills/workflow-creation-skill.md`](skills/workflow-creation-skill.md) — derive the canonical bilingual workflow pair from an established domain
+   - [`docs/skills/sop-creation-skill.md`](skills/sop-creation-skill.md) — derive bilingual operator procedures from approved business artifacts
+   - [`docs/skills/architecture-creation-skill.md`](skills/architecture-creation-skill.md) — define codebase-grounded technical realization
+   - [`docs/skills/integration-document-creation-skill.md`](skills/integration-document-creation-skill.md) — define bounded-context collaboration contracts
    - [`docs/skills/feature-model-generation.md`](skills/feature-model-generation.md)
    - [`docs/skills/feature-persistence-generation.md`](skills/feature-persistence-generation.md)
    - [`docs/skills/use-case-generation.md`](skills/use-case-generation.md)
@@ -109,6 +114,34 @@ Persistent-workspace Phase 2 close-out summary (frontend docs tree): `c012_myhos
 | `docs/contexts/admisi-rajal/adr/ADR-001-runtime-effective-schedule.md` | ADR — runtime `JadwalPraktekEffective` and resolver as single authority |
 | `docs/contexts/admisi-rajal/adr/ADR-002-manual-override-independence.md` | ADR — `Source = MANUAL` daily rows independent from template |
 | `docs/contexts/admisi-rajal/adr/ADR-003-booking-schedule-references.md` | ADR — dual nullable schedule IDs on booking |
+
+### Stock Ledger (`docs/contexts/stok-ledger/`)
+
+Inventory-consequence bounded context behind Purchasing, Apotek, transfer, consumption, and related source transactions. No direct end-user workflow; data-consequence flows only. During coexistence, Legacy Stock Record (`tb_stok` + `tb_buku`) remains persisted data authority.
+
+| Path | Purpose |
+|------|---------|
+| `docs/contexts/stok-ledger/stok-ledger-maintainer-brief.md` | Stock Ledger — onboarding brief for maintenance programmers (high-level → end-to-end table mutations; transaction-script framing) |
+| `docs/contexts/stok-ledger/stok-ledger-domain.md` | Stock Ledger — canonical English business truth (Stock Batch, Location Stock Balance, movements, FEFO/FIFO, reverse-journal void, coexistence authority) |
+| `docs/contexts/stok-ledger/stok-ledger-domain-id.md` | Stock Ledger — Bahasa Indonesia semantic companion |
+| `docs/contexts/stok-ledger/stok-ledger-architecture.md` | Stock Ledger — Clean Architecture realization (use cases, persistence contract, coexistence, ADRs, S1 increments) |
+| `docs/contexts/stok-ledger/stok-ledger-implementation-plan.md` | Stock Ledger v2 — mid-tier-executable Slice 1 plan (S1-A…S1-H cards, tests, coexistence, non-goals) |
+
+Non-normative legacy reference (VB6 stock generation): `docs/stok-ledger/clbGenStokX1.cls`.
+
+### Apotek (`docs/contexts/apotek/`)
+
+| Path | Purpose |
+|------|---------|
+| `docs/contexts/apotek/apotek-domain.md` | Apotek — canonical English business truth for Telaah Resep, Sales Order, Sales Invoice, Dispense Order, and cross-setting fulfillment policy |
+| `docs/contexts/apotek/apotek-domain-id.md` | Apotek — Bahasa Indonesia semantic companion (`Pelayanan Obat Pasien`) |
+| `docs/contexts/apotek/outpatient-apotek-workflow.md` | Outpatient Apotek — canonical English workflow from Pharmacy Queue Number acquisition through accountable Medication Handover or non-fulfillment resolution |
+| `docs/contexts/apotek/outpatient-apotek-workflow-id.md` | Outpatient Apotek — Bahasa Indonesia workflow companion for Apotek Rawat Jalan |
+| `docs/contexts/apotek/sop/DAFTAR-SOP-APT-RJ.md` | Outpatient Apotek — index of seven canonical English SOPs and seven Bahasa Indonesia companions |
+
+Cross-setting patient-specific medication acceptance, Sales Order, Sales Invoice, dispensing, handover, and accountable fulfillment resolution. This bounded context applies to outpatient, inpatient, emergency, and Unit Dose Dispensing settings without owning Purchasing or authoritative Inventory balances. The workflow pair owns detailed Rawat Jalan queue, payer, pickup, handover, and no-show sequencing; the domain pair remains authoritative for business truth.
+
+The paired outpatient operational specifications are listed in [`docs/contexts/apotek/sop/DAFTAR-SOP-APT-RJ.md`](contexts/apotek/sop/DAFTAR-SOP-APT-RJ.md).
 
 ### Tarif (`docs/contexts/tarif/`)
 

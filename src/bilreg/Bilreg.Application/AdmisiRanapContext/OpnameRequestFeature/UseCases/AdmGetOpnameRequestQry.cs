@@ -1,7 +1,9 @@
+using Bilreg.Domain.AdmisiContext.JaminanFeature;
 using Bilreg.Domain.AdmisiRanapContext.OpnameRequestFeature;
 using Bilreg.Domain.PasienContext.PasienFeature;
 using MediatR;
 using Nuna.Lib.PatternHelper;
+using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.AdmisiRanapContext.OpnameRequestFeature.UseCases;
 
@@ -16,8 +18,12 @@ public record AdmGetOpnameRequestResponse(
     string DokterName,
     string ClinicalNotes,
     string FulfilledRegId,
-    DateTime CrtDate);
+    string EmrOrderId,
+    DateTime CrtDate,
+    AdmGetOpnameRequestInsuranceResponse Insurance);
 
+public record AdmGetOpnameRequestInsuranceResponse(
+    TipeJaminanReff TipeJaminan, string ReffId);
 public class AdmGetOpnameRequestHandler : IRequestHandler<AdmGetOpnameRequestQry, AdmGetOpnameRequestResponse>
 {
     private readonly IOpnameRequestRepo _opnameRequestRepo;
@@ -32,6 +38,7 @@ public class AdmGetOpnameRequestHandler : IRequestHandler<AdmGetOpnameRequestQry
         var opname = _opnameRequestRepo.LoadEntity(request)
             .GetValueOrThrow($"Opname Request '{request.OpnameRequestId}' tidak ditemukan.");
 
+        var insurance = new AdmGetOpnameRequestInsuranceResponse(opname.Insurance.TipeJaminan, opname.Insurance.ReffId);
         return Task.FromResult(new AdmGetOpnameRequestResponse(
             opname.OpnameRequestId,
             opname.OpnameRequestStatus,
@@ -40,6 +47,8 @@ public class AdmGetOpnameRequestHandler : IRequestHandler<AdmGetOpnameRequestQry
             opname.Dokter.PpaName,
             opname.ClinicalNotes,
             opname.FulfilledRegId,
-            opname.AuditTrail.Created.Timestamp));
+            opname.EmrOrderId,
+            opname.AuditTrail.Created.Timestamp,
+            insurance));
     }
 }

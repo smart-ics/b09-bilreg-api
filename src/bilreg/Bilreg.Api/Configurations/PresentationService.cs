@@ -162,10 +162,10 @@ public static class PresentationService
         {
             options.AddPolicy("corsapp", policy =>
             {
-                policy.SetIsOriginAllowed(origin => true) 
+                policy.SetIsOriginAllowed(origin => true)
                       .AllowAnyHeader()
                       .AllowAnyMethod()
-                      .AllowCredentials(); 
+                      .AllowCredentials();
             });
         });
 

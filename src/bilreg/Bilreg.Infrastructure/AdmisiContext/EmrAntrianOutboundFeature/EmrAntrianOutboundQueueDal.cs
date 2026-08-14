@@ -11,11 +11,13 @@ namespace Bilreg.Infrastructure.AdmisiContext.EmrAntrianOutboundFeature;
 public interface IEmrAntrianOutboundQueueDal :
     IInsert<EmrAntrianOutboundQueueDto>,
     IUpdate<EmrAntrianOutboundQueueDto>,
-    IGetData<EmrAntrianOutboundQueueDto, IEmrAntrianOutboundQueueKey>
+    IGetData<EmrAntrianOutboundQueueDto, IEmrAntrianOutboundQueueKey>,
+    IDelete<IEmrAntrianOutboundQueueKey>
 {
     IEnumerable<EmrAntrianOutboundQueueDto> ListProcessable(int batchSize);
 
     EmrAntrianOutboundQueueDto? FindActiveBySource(string sourceId, string messageType);
+    void DeleteBySourceId(string sourceId);
 }
 
 public class EmrAntrianOutboundQueueDal : IEmrAntrianOutboundQueueDal
@@ -136,5 +138,33 @@ public class EmrAntrianOutboundQueueDal : IEmrAntrianOutboundQueueDal
         dp.AddParam("@LastError", dto.LastError, SqlDbType.VarChar);
         dp.AddParam("@CrtDate", dto.CrtDate, SqlDbType.DateTime);
         return dp;
+    }
+
+    public void Delete(IEmrAntrianOutboundQueueKey key)
+    {
+        const string sql = """
+           DELETE BILRG_EmrAntrianOutboundQueue 
+           WHERE QueueId = @QueueId
+           """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@QueueId", key.QueueId, SqlDbType.VarChar);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        conn.Execute(sql, dp);
+    }
+
+    public void DeleteBySourceId(string sourceId)
+    {
+        const string sql = """
+           DELETE BILRG_EmrAntrianOutboundQueue 
+           WHERE SourceId = @SourceId
+           """;
+
+        var dp = new DynamicParameters();
+        dp.AddParam("@SourceId", sourceId, SqlDbType.VarChar);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        conn.Execute(sql, dp);
     }
 }

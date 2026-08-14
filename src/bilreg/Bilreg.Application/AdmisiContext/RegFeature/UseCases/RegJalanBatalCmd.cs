@@ -2,18 +2,23 @@ using Ardalis.GuardClauses;
 using Bilreg.Application.AccountingContext.JurnalFeature;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
 using Bilreg.Application.AdmisiContext.BookingFeature;
+using Bilreg.Application.AdmisiContext.EmrAntrianOutboundFeature;
 using Bilreg.Application.ChargeContext.TindakanFeature;
+using Bilreg.Application.IgdContext.IgdVisitFeature;
 using Bilreg.Application.PaymentContext.TrsBillingFeature;
 using Bilreg.Application.Shared.AuditLogFeature;
 using Bilreg.Domain.AccountingContext.JurnalFeature;
 using Bilreg.Domain.AdmisiContext.AntrianFeature;
 using Bilreg.Domain.AdmisiContext.BookingFeature;
+using Bilreg.Domain.AdmisiContext.EmrAntrianOutboundFeature;
 using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.PpaFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.ChargeContext.TindakanFeature;
+using Bilreg.Domain.IgdContext.IgdVisitFeature;
 using Bilreg.Domain.PaymentContext.TrsBillFeature;
 using Bilreg.Domain.PaymentContext.TrsBillingFeature;
+using Bilreg.Domain.SalesContext.PenjualanFeature;
 using Bilreg.Domain.Shared.AuditLogFeature;
 using MediatR;
 using Nuna.Lib.TransactionHelper;
@@ -39,6 +44,8 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
     private readonly IAuditRepo _auditRepo;
     private readonly IQueueNumberCompatibilityAdapter _queueNumberAdapter;
     private readonly ITglJamProvider _tglJamProvider;
+    private readonly IEmrAntrianOutboundQueueRepo _emrAntrianOutboundQueueRepo;
+    private readonly IIgdVisitRepo _igdVisitRepo;
     public RegJalanBatalHandler(IRegRepo regRepo,
         IRegAktifRepo regAktifRepo,
         IAntrianRepo antrianRepo,
@@ -51,7 +58,9 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
         IBookingRepo bookingRepo,
         IAuditRepo auditRepo,
         IQueueNumberCompatibilityAdapter queueNumberAdapter,
-        ITglJamProvider tglJamProvider)
+        ITglJamProvider tglJamProvider,
+        IEmrAntrianOutboundQueueRepo emrAntrianOutboundQueueRepo,
+        IIgdVisitRepo igdVisitRepo)
     {
         _regRepo = regRepo;
         _regAktifRepo = regAktifRepo;
@@ -66,6 +75,8 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
         _auditRepo = auditRepo;
         _queueNumberAdapter = queueNumberAdapter;
         _tglJamProvider = tglJamProvider;
+        _emrAntrianOutboundQueueRepo = emrAntrianOutboundQueueRepo;
+        _igdVisitRepo = igdVisitRepo;
     }
 
     public Task Handle(RegJalanBatalCmd request, CancellationToken cancellationToken)
@@ -80,6 +91,13 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
         if (reg.IsAktif == false)
             throw new KeyNotFoundException($"Register {request.RegId} sudah tidak aktif");
         var snapshotJson = AuditLogSnapshotJson.Serialize(reg);
+
+        var igdVisit = _igdVisitRepo.GetByRegId(request.RegId);
+        if (igdVisit.HasValue)
+        {
+            throw new InvalidOperationException(
+                $"Registrasi {request.RegId} terhubung dengan IGD Visit '{igdVisit.Value.IgdVisitId}'. Batalkan IGD Visit terlebih dahulu.");
+        }
 
         var book = BookingModel.Default;
         var periode = new Periode(reg.RegDate.ToDateTime(TimeOnly.MinValue));
@@ -96,7 +114,7 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
         var antrianContext = LoadAntrianContext(reg);
         var queMap = LoadAntrianMap(reg, antrianContext.Que);
         var billingList = LoadAndValidateBilling(request)?.ToList() ?? [];
-
+        
         using (var trans = TransHelper.NewScope())
         {
             if (book.BookingId != "-")
@@ -107,6 +125,8 @@ public class RegJalanBatalHandler : IRequestHandler<RegJalanBatalCmd>
             VoidTindakan(tindakanList, request.UserId, occurredAt);
             VoidBilling(billingList);
             _regAktifRepo.Delete(reg);
+            
+            _emrAntrianOutboundQueueRepo.DeleteBySource(reg.RegId);
 
             trans.Complete();
         }

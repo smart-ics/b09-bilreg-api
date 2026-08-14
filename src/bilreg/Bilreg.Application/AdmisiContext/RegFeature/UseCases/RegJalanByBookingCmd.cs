@@ -192,7 +192,9 @@ public class RegJalanByBookingHandler
         if (!string.IsNullOrWhiteSpace(booking.Reg.RegId) && booking.Reg.RegId != "-")
             throw new InvalidOperationException(
                 $"Booking already registered as {booking.Reg.RegId}.");
-        var antrian = LoadAntrian(booking, DateOnly.FromDateTime(occurredAt));
+        var bookingJourney = BookingTrackerResolver.Resolve(
+            _antrianRepo, _dokterRepo, _trackerRepo, booking);
+        var antrian = bookingJourney.Queue;
         var pasien = LoadPasien(booking.PasienId);
         if (IsPasienAktifReg(pasien))
             throw new KeyNotFoundException($"Pasien sudah aktif registrasi");
@@ -272,8 +274,7 @@ public class RegJalanByBookingHandler
         RegJalanByBookingResponse response;
         using (var trans = TransHelper.NewScope())
         {
-            var tracker = _trackerRepo.LoadEntity(itemQueue.Tracker)
-                .GetValueOrThrow($"PasienTracker '{itemQueue.Tracker.PasienTrackerId}' not found");
+            var tracker = bookingJourney.Tracker;
             AntrianModel? admissionQueue = null;
             if (admissionContext is not null)
             {

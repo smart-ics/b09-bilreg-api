@@ -18,10 +18,13 @@ using Bilreg.Application.AdmisiContext.RegFeature;
 using Bilreg.Application.LabContext.LabResultFeature;
 using Bilreg.Application.PaymentContext.PasienBalanceFeature;
 using Bilreg.Application.PaymentContext.TataRekeningFeature;
+using Bilreg.Application.InventoryContext.StockLedgerFeature;
+using Bilreg.Application.InventoryContext.StockLedgerFeature.Ports;
 using Bilreg.Application.Shared;
 using Bilreg.Domain.Shared.Helpers;
 using Bilreg.Infrastructure;
 using Bilreg.Infrastructure.AdmisiContext.AntrianFeature;
+using Bilreg.Infrastructure.InventoryContext.StockLedgerFeature;
 using Bilreg.Api.AdmisiContext.AntrianFeature;
 using Bilreg.Infrastructure.AdmisiContext.JadwalPraktekFeature;
 using Bilreg.Infrastructure.AdmisiRanapContext.AdmissionFeature;
@@ -129,7 +132,9 @@ public static class InfrastructureService
             .Configure<JknOptions>(configuration.GetSection(JknOptions.SECTION_NAME))
             .Configure<JadwalPraktekOptions>(configuration.GetSection(JadwalPraktekOptions.SECTION_NAME))
             .Configure<AdmisiRanapOptions>(configuration.GetSection(AdmisiRanapOptions.SECTION_NAME))
-            .Configure<UsmanOptions>(configuration.GetSection(UsmanOptions.SECTION_NAME));
+            .Configure<UsmanOptions>(configuration.GetSection(UsmanOptions.SECTION_NAME))
+            .Configure<StockLedgerCoexistenceOptions>(
+                configuration.GetSection(StockLedgerCoexistenceOptions.SectionName));
 
         services.AddScoped<
             IAdmissionQueueOperationalProjection,
@@ -154,7 +159,18 @@ public static class InfrastructureService
         services.AddScoped<
             IRegistrationOutcomeOperationRepo,
             RegistrationOutcomeOperationRepo>();
+        services.AddScoped<
+            IAdmisiRajalOfficerWorklistReferenceReader,
+            AdmisiRajalOfficerWorklistReferenceReader>();
 
+        // Stock Ledger v2 — ports/repos not covered by Scrutor Nuna markers (S1-C1/C2/D1)
+        services.AddScoped<ILegacyStockReadPort, LegacyStockReadPort>();
+        services.AddScoped<ILegacyStockWriterPort, LegacyStockWriterPort>();
+        services.AddScoped<IStockMutasiRepo, StockMutasiRepo>();
+        services.AddScoped<IStockLegacyBindingRepo, StockLegacyBindingRepo>();
+        services.AddScoped<IStockConsequenceUnitOfWork, StockConsequenceUnitOfWork>();
+        services.AddScoped<LegacyScopeJournalReplayer>();
+        services.AddScoped<LegacyFreshnessGate>();
 
         services
             .Scan(selector => selector

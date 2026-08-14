@@ -1,5 +1,6 @@
 using Bilreg.Domain.IgdContext.IgdVisitFeature;
 using Nuna.Lib.DataAccessHelper;
+using Nuna.Lib.PatternHelper;
 using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Application.IgdContext.IgdVisitFeature;
@@ -11,6 +12,7 @@ public interface IIgdVisitRepo :
     IListData<IgdVisitView, Periode>
 {
     IEnumerable<IgdVisitView> ListAktif();
+    MayBe<IgdVisitView> GetByRegId(string regId);
 }
 
 public record IgdVisitView(

@@ -493,6 +493,7 @@ public sealed class AdmissionQueueRealSqlGateTest
             Mock.Of<IBookingRepo>(),
             Mock.Of<IRegRepo>(),
             new BookingAssistanceRepo(_fx.Options),
+            Mock.Of<IAdmissionServicePointRepo>(),
             NullLogger<AdmisiRajalOfficerWorklistHandler>.Instance);
         var durations = new List<long>();
         for (var i = 0; i < 20; i++)
