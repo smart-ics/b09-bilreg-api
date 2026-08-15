@@ -21,7 +21,7 @@
 **Schema fix applied during preflight (blocking for live process):**
 
 - `BILRG_AdmAdmission.AdmissionSource` was missing on `HOSPITAL_HPL`.
-- Applied idempotent alter from [`BILRG_AdmAdmission.sql`](../../src/bilreg/Bilreg.SqlDb/AdmisiRanapContext/AdmissionFeature/BILRG_AdmAdmission.sql).
+- Applied idempotent alter from [`BILRG_AdmAdmission.sql`](../../../src/bilreg/Bilreg.SqlDb/AdmisiRanapContext/AdmissionFeature/BILRG_AdmAdmission.sql).
 - Without this column, admission lookup/process fails with `Invalid column name 'AdmissionSource'`.
 
 ---

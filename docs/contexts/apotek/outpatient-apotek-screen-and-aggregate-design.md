@@ -25,7 +25,7 @@ Supporting operational decisions that do **not** add screens or aggregates:
 - Serah Obat **operational worklist categories** for pickup prioritization; and
 - a read-only **Patient Medication Journey** projection for consolidated visibility.
 
-This decision assumes that queue-number issuance is owned by [c013-kiosk-queue-display-web](../../../c013-kiosk-queue-display-web/) and that the queue infrastructure is shared with Outpatient Admission.
+This decision assumes that queue-number issuance is owned by c013-kiosk-queue-display-web and that the queue infrastructure is shared with Outpatient Admission.
 
 ## 2. Governing Principles
 

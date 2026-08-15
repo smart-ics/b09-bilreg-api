@@ -62,7 +62,7 @@ Billing berhasil diserahkan kepada Kasir dan siap diproses pada tahap Payment Se
 - Settlement Initiation tidak mengubah Financial Projection.
 - Settlement Initiation tidak melakukan proses pembayaran.
 - Setelah Settlement Initiation, seluruh proses pembayaran menjadi tanggung jawab Kasir sesuai SOP Kasir.
-- Apabila sebelum Payment Settlement diperlukan perubahan Financial Responsibility, proses harus diawali dengan **[SOP-TR-08 — Cancel Finalization](<SOP-TR-08 — Cancel Finalization.md>)**.
+- Apabila sebelum Payment Settlement diperlukan perubahan Financial Responsibility, proses harus diawali dengan **[SOP-TR-08 — Cancel Finalization](SOP-TR-08 — Cancel Finalization.md)**.
 
 ---
 

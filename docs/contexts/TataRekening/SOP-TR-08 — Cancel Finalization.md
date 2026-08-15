@@ -33,7 +33,7 @@ Cancel Finalization digunakan apabila setelah Finalization ditemukan kebutuhan u
 6. Sistem membuka kembali Financial Responsibility Allocation.
 7. Sistem mempertahankan Billing Set dan Financial Charge tanpa perubahan.
 8. Sistem mencatat Audit Trail yang berisi alasan pembatalan, waktu, dan identitas Verifikator.
-9. Proses dilanjutkan ke **[SOP-TR-06 — Financial Responsibility Allocation](<SOP-TR-06 — Financial Responsibility Allocation.md>)**.
+9. Proses dilanjutkan ke **[SOP-TR-06 — Financial Responsibility Allocation](SOP-TR-06 — Financial Responsibility Allocation.md)**.
 
 ---
 
@@ -66,7 +66,7 @@ Status Finalization berhasil dibatalkan dan Billing kembali ke status **CLOSED**
   - Waktu pembatalan
   - Verifikator
   - Alasan pembatalan
-- Setelah Allocation selesai diperbarui, Billing harus melalui **[SOP-TR-07 — Finalize Financial Responsibility](<SOP-TR-07 — Finalize Financial Responsibility.md>)** kembali sebelum dapat memasuki Settlement.
+- Setelah Allocation selesai diperbarui, Billing harus melalui **[SOP-TR-07 — Finalize Financial Responsibility](SOP-TR-07 — Finalize Financial Responsibility.md)** kembali sebelum dapat memasuki Settlement.
 
 ---
 

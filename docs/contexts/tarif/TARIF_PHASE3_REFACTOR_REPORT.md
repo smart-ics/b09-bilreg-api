@@ -36,7 +36,7 @@ Aggregate separation, projection store (`BILRG_NilaiTarif*`), and Billing consum
 
 ## Target structure
 
-All publish orchestration lives in [`TrfPublishTarifPolicyCmd.cs`](../../../Bilreg.Application/ChargeContext/TarifFeature/UseCases/TrfPublishTarifPolicyCmd.cs):
+All publish orchestration lives in [`TrfPublishTarifPolicyCmd.cs`](../../../src/bilreg/Bilreg.Application/ChargeContext/TarifFeature/UseCases/TrfPublishTarifPolicyCmd.cs):
 
 - `Handle` — linear flow
 - `EnsurePublishable` / `EnsureMasterReferences` — pre-transaction validation
