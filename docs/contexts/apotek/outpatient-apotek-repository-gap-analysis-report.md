@@ -29,14 +29,14 @@ The architecture is not ready for implementation review until the blocking decis
 
 | Classification | Count | Review meaning |
 |---|---:|---|
-| Blocking Architecture Gap | 8 | A structural or ownership decision is unresolved; implementing around it would create incompatible sources of truth or unsafe cross-context behavior. |
+| Blocking Architecture Gap | 7 | A structural or ownership decision is unresolved; implementing around it would create incompatible sources of truth or unsafe cross-context behavior. |
 | Business Clarification Gap | 13 | A policy, authority, threshold, or accountable outcome is not sufficiently defined. |
 | Resolved (Business Clarification) | 1 | BC-02 ratified; artifacts updated. |
 | Existing Capability Extension | 9 | A relevant capability exists but its present contract or semantics do not satisfy Apotek. |
 | Missing Implementation | 15 | The design is sufficiently clear, but no conforming implementation exists. |
 | Technical Debt | 11 | Existing code or documentation embodies legacy, misleading, coupled, or unverified behavior. |
-| Resolved (Blocking Architecture) | 1 | BA-01 ratified; artifacts updated. |
-| **Total open** | **56** | Each open finding has one primary classification. |
+| Resolved (Blocking Architecture) | 2 | BA-01 and BA-02 ratified; artifacts updated. |
+| **Total open** | **55** | Each open finding has one primary classification. |
 
 ## 3. Baseline and evidence
 
@@ -82,18 +82,17 @@ The architecture is not ready for implementation review until the blocking decis
 
 ### BA-02 — Pharmacy-to-Tracker milestone command contract
 
+**Status:** Resolved (2026-08-15)
+
 **Gap.** The platform has Admission-shaped `start-service` and completion paths. The target requires first preparation to start service without depending on a current Loket claim, and a coordinated pickup action to announce and complete the queue atomically or idempotently.
 
 **Evidence.** `outpatient-apotek-screen-and-aggregate-design.md:228-240`; `outpatient-apotek-workflow.md:681-710`; `AntrianEntryModel.cs:91-138`; queue gap analysis `:50-60`.
 
-**Recommended decision.** Define constrained platform commands invoked only by Apotek orchestration:
+**Decision.** BA-02 is considered resolved by ADR-APT-001 and the current Outpatient Apotek domain and workflow decisions. The ownership boundary is already defined: Patient Tracker owns queue lifecycle; Pharmacy owns pharmacy workflow. Queue milestone causation is already defined: first Medication Preparation Started causes Queue `ServedAt` / `InService`; coordinated Pickup Call causes Queue `DoneAt` / `Done`. No further architecture decision is required. Remaining work, if any, is implementation-level integration contract definition (commands, events, API) and must not be treated as a blocking architecture gap.
 
-- `StartQueueServiceFromPreparation(queueEntryId, dispenseOrderId, eventId, occurredAt)`
-- `CallAndCompletePickup(queueEntryId, pickupId, announcement, occurredAt)`
+**Rationale.** ADR-APT-001 and the ratified domain/workflow artifacts already separate queue lifecycle from pharmacy progress and bind Tracker milestones to Apotek-orchestrated facts. Naming concrete commands remains useful implementation guidance but does not block architecture approval.
 
-Both must be idempotent, concurrency-protected, and independent of Admission registration outcomes. Call/recall for mapping remains display-only.
-
-**Rationale.** Exposing generic queue buttons as business transitions allows the UI to write false `ServedAt` or `DoneAt` evidence and couples correctness to screen navigation.
+**Ratified in.** `adr/ADR-APT-001-queu-boundary-and-pharmacy-workflow-state-ownership.md`; `apotek-domain.md`; `outpatient-apotek-workflow.md`; `outpatient-apotek-screen-and-aggregate-design.md` §4.1.
 
 ### BA-03 — `OutpatientQueueMapping` consistency boundary
 
@@ -366,6 +365,7 @@ Both must be idempotent, concurrency-protected, and independent of Admission reg
 ### 9.1 Decisions already settled
 
 - Patient Tracker `QueueEntry` is the sole canonical outpatient-pharmacy queue identity; legacy Farinv queue is read-only and must not create active records (BA-01).
+- Patient Tracker owns queue lifecycle; Pharmacy owns pharmacy workflow. First Medication Preparation Started causes Queue `ServedAt` / `InService`; coordinated Pickup Call causes Queue `DoneAt` / `Done`. No further architecture decision is required for the Pharmacy-to-Tracker milestone contract (BA-02).
 - Keep queue lifecycle generic: `Waiting`, `InService`, `Done`, `Withdrawn`.
 - Keep pharmacy operational state out of Patient Tracker.
 - Treat `ServedAt` as first preparation-start evidence.
@@ -379,7 +379,7 @@ Both must be idempotent, concurrency-protected, and independent of Admission reg
 
 ### 9.2 Decisions still required before architecture approval
 
-Architecture approval requires explicit disposition of BA-02 through BA-09 and business ratification of BC-01 and BC-03 through BC-14. BA-01 and BC-02 are resolved. These are decision gates, not delivery steps. The remaining Existing Capability Extension, Missing Implementation, and Technical Debt findings can then be evaluated against those ratified boundaries without inventing new sources of truth.
+Architecture approval requires explicit disposition of BA-03 through BA-09 and business ratification of BC-01 and BC-03 through BC-14. BA-01, BA-02, and BC-02 are resolved. These are decision gates, not delivery steps. The remaining Existing Capability Extension, Missing Implementation, and Technical Debt findings can then be evaluated against those ratified boundaries without inventing new sources of truth.
 
 ### 9.3 Overall classification
 
