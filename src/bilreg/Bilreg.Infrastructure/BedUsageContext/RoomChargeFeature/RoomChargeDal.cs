@@ -1,6 +1,6 @@
 ﻿using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.PakaiBedFeature;
-using Bilreg.Domain.BedUsageContext.RoomChargeFeatue;
+using Bilreg.Domain.BedUsageContext.RoomChargeFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;
@@ -37,12 +37,12 @@ public class RoomChargeDal : IRoomChargeDal
             	fn_tarif, fn_diskon,
             	fn_total, fn_qty)
             VALUES (
-                @fs_kd_trs, fs_kd_pakai_bed,
-            	fd_tgl_trs, fs_jam_trs,
-            	fs_kd_petugas, fs_kd_reg, 
-            	fs_kd_layanan, fs_kd_bed,
-            	fn_tarif, fn_diskon,
-            	fn_total, fn_qty)
+                @fs_kd_trs, @fs_kd_pakai_bed,
+            	@fd_tgl_trs, @fs_jam_trs,
+            	@fs_kd_petugas, @fs_kd_reg, 
+            	@fs_kd_layanan, @fs_kd_bed,
+            	@fn_tarif, @fn_diskon,
+            	@fn_total, @fn_qty)
             """;
 
         var dp = BuildParams(dto);
@@ -57,7 +57,7 @@ public class RoomChargeDal : IRoomChargeDal
             SET fs_kd_pakai_bed = @fs_kd_pakai_bed,
             	fd_tgl_trs = @fd_tgl_trs, 
                 fs_jam_trs = @fs_jam_trs,
-            	fs_kd_petugas = @, 
+            	fs_kd_petugas = @fs_kd_petugas, 
                 fs_kd_reg = @fs_kd_reg, 
             	fs_kd_layanan = @fs_kd_layanan, 
                 fs_kd_bed = @fs_kd_bed,
@@ -98,7 +98,7 @@ public class RoomChargeDal : IRoomChargeDal
     {
         var sql = SelectFromClause() + " WHERE aa.fs_kd_reg = @RegId";
         var dp = new DynamicParameters();
-        dp.AddParam("@ReId", regKey.RegId, SqlDbType.VarChar);
+        dp.AddParam("@RegId", regKey.RegId, SqlDbType.VarChar);
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         return conn.Read<RoomChargeDto>(sql, dp);
     }
@@ -143,17 +143,13 @@ public class RoomChargeDal : IRoomChargeDal
 
         dp.AddParam("@fd_tgl_trs", dto.fd_tgl_trs, SqlDbType.VarChar);
         dp.AddParam("@fs_jam_trs", dto.fs_jam_trs, SqlDbType.VarChar);
-        dp.AddParam("@fs_kd_petugas", dto.fs_kd_petugas, SqlDbType.DateTime);
+        dp.AddParam("@fs_kd_petugas", dto.fs_kd_petugas, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_bed", dto.fs_kd_bed, SqlDbType.VarChar);
 
         dp.AddParam("@fn_tarif", dto.fn_tarif, SqlDbType.Decimal);
         dp.AddParam("@fn_diskon", dto.fn_diskon, SqlDbType.Decimal);
         dp.AddParam("@fn_total", dto.fn_total, SqlDbType.Decimal);
         dp.AddParam("@fn_qty", dto.fn_qty, SqlDbType.Decimal);
-        
-        dp.AddParam("@fs_ket", "-", SqlDbType.VarChar);
-        dp.AddParam("@fn_nilai_klaim", 0, SqlDbType.Decimal);
-        dp.AddParam("@fs_kd_trs_dx", "-", SqlDbType.VarChar);
         return dp;
     }
 }

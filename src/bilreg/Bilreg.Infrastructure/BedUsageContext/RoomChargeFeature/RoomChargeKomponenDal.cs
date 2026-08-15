@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.BedUsageContext.RoomChargeFeatue;
+﻿using Bilreg.Domain.BedUsageContext.RoomChargeFeature;
 using Bilreg.Infrastructure.Shared.Helpers;
 using Dapper;
 using Microsoft.Extensions.Options;

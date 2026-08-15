@@ -1,6 +1,6 @@
 ﻿using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.PakaiBedFeature;
-using Bilreg.Domain.BedUsageContext.RoomChargeFeatue;
+using Bilreg.Domain.BedUsageContext.RoomChargeFeature;
 using Nuna.Lib.DataAccessHelper;
 
 namespace Bilreg.Application.BedUsageContext.RoomChargeFeature;

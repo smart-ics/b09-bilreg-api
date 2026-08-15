@@ -1,9 +1,7 @@
 ﻿using Bilreg.Application.BedUsageContext.RoomChargeFeature;
-using Bilreg.Application.Shared.BusinessDateFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.PakaiBedFeature;
-using Bilreg.Domain.BedUsageContext.RoomChargeFeatue;
-using Bilreg.Infrastructure.ChargeContext.TindakanFeature;
+using Bilreg.Domain.BedUsageContext.RoomChargeFeature;
 using Nuna.Lib.PatternHelper;
 
 namespace Bilreg.Infrastructure.BedUsageContext.RoomChargeFeature;
@@ -29,7 +27,7 @@ public class RoomChargeRepo : IRoomChargeRepo
 
         var listKomponenDto = model.ListKomponen
             .Select(x => RoomChargeKomponenDto.FromModel(x, model.RoomChargeId));
-        _roomChargeDal.Delete(model);
+        _roomChargeKomponenDal.Delete(model);
         _roomChargeKomponenDal.Insert(listKomponenDto);
     }
     public MayBe<RoomChargeModel> LoadEntity(IRoomChargeKey key)
@@ -44,7 +42,6 @@ public class RoomChargeRepo : IRoomChargeRepo
         return MayBe.From(result);
     }
 
-
     public void Delete(IRoomChargeKey key)
     {
         _roomChargeDal.Delete(key);
@@ -56,8 +53,6 @@ public class RoomChargeRepo : IRoomChargeRepo
         var listDto = _roomChargeDal.ListData(regKey)?.ToList() ?? [];
         var result = listDto.Select(x => x.ToView());
         return result;
-
-        throw new NotImplementedException();
     }
 
     public IEnumerable<RoomChargeView> ListData(IPakaiBed pakaiBedKey)

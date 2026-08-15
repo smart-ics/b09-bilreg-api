@@ -1,4 +1,4 @@
-﻿using Bilreg.Domain.BedUsageContext.RoomChargeFeatue;
+﻿using Bilreg.Domain.BedUsageContext.RoomChargeFeature;
 
 namespace Bilreg.Infrastructure.BedUsageContext.RoomChargeFeature;
 
