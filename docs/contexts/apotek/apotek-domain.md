@@ -56,9 +56,11 @@ It relies on related contexts without taking over their authority:
 
 Purchasing, supplier management, replenishment, warehouse transfer, enterprise accounting, and Medication Administration are outside this context.
 
-Outpatient queue identity and lifecycle remain externally owned by Patient Tracker. Apotek owns the outpatient business decision that associates a Pharmacy Queue Entry with the applicable medication demand and owns the payer, pickup, handover, and no-show policy applied after that association.
+Outpatient queue identity and lifecycle remain externally owned by Patient Tracker. The Patient Tracker `QueueEntry` is the sole canonical outpatient-pharmacy queue identity. Legacy Farinv queue identity is deprecated, shall not create active queue records for new outpatient-pharmacy interactions, and historical Farinv queue data is read-only. No dual-active queue model is permitted.
 
-For outpatient pharmacy queues, Patient Tracker records `CreatedAt` when the Queue Number is issued, `ServedAt` when the first applicable Dispense Order enters `Preparing`, and `DoneAt` when Pharmacy Staff performs the pickup call. Those queue milestones describe operational queue progress and do not prove Medication Handover.
+Apotek owns the outpatient business decision that associates a Pharmacy Queue Entry with the applicable medication demand and owns the payer, pickup, handover, and no-show policy applied after that association.
+
+For outpatient pharmacy queues, Patient Tracker records `CreatedAt` when the Queue Number is issued, `ServedAt` when the first applicable Dispense Order enters `Preparing`, and `DoneAt` when Pharmacy Staff performs the pickup call. Those queue milestones describe operational queue progress and do not prove Medication Handover. Patient Tracker `Apotek-Start` and `Apotek-Done` evidence remain reusable but shall reference the canonical `QueueEntryId`, not Farinv queue identity.
 
 ### 1.4 Central business separation
 
@@ -142,7 +144,8 @@ A Resep does not become a Sales Order. A completed professional decision authori
 | Medication Return | The accountable return of medication previously prepared, transferred, or handed over. |
 | Return to Stock | Inventory's authoritative acceptance of eligible returned medication into available stock. |
 | No-Show | An outpatient outcome in which the Patient does not collect medication within the applicable service limit. |
-| Pharmacy Queue Entry | A Patient's participation in an outpatient pharmacy queue whose identity and lifecycle are owned by Patient Tracker. |
+| Pharmacy Queue Entry | A Patient's participation in an outpatient pharmacy queue represented by one Patient Tracker `QueueEntry` whose identity and lifecycle are owned by Patient Tracker. |
+| Legacy Farinv Queue Entry | A deprecated historical pharmacy queue record from the Farinv subsystem. It is read-only and shall not be created for new outpatient-pharmacy interactions. |
 | Outpatient Queue Mapping | The accountable association of a Pharmacy Queue Entry with the applicable Resep, Direct Medication Request, Sales Order, or another traceable medication-demand source. |
 | Tracker Mapping | Outpatient Queue Mapping established automatically when valid Patient Tracker or registration evidence resolves one or more existing Resep. It does not create a Resep and does not apply to a Direct Medication Request. |
 | Manual Mapping | Outpatient Queue Mapping established by Pharmacy Staff after the Queue Number and applicable medication demand are identified. |
@@ -445,6 +448,7 @@ Outpatient Queue Mapping is an active relationship to an externally owned Pharma
 - **BR-APT-093** — A coordinated mixed-coverage pickup call shall wait until every quantity intended for the handover has its applicable Coverage Clearance or Payment Clearance and its Dispense Order has reached `Prepared`.
 - **BR-APT-094** — If the Patient declines the non-covered portion before its Sales Invoice is established, the affected Sales Order Line quantity shall receive an accountable declined or commercially unallocated outcome, while the BPJS-covered portion may continue independently.
 - **BR-APT-095** — Patient Tracker shall record outpatient pharmacy `DoneAt` when Pharmacy Staff performs the coordinated pickup call. Queue completion shall not prove Final Dispense Review, Patient Education, Medication Dispense, or Medication Handover.
+- **BR-APT-097** — Patient Tracker `QueueEntry` shall be the sole canonical outpatient-pharmacy queue identity. Legacy Farinv queue identity is deprecated and shall not create active queue records. Historical Farinv queue data is read-only. No dual-active queue model is permitted. Patient Tracker `Apotek-Start` and `Apotek-Done` evidence shall reference the canonical `QueueEntryId`.
 
 ## 8. State Machines & Lifecycles
 

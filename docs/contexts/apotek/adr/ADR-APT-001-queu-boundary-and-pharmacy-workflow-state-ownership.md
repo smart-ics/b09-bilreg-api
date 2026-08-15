@@ -1,7 +1,3 @@
-Saya menyarankan membuat artifact sebagai **Architecture Decision Record (ADR)** supaya agent masa depan menganggap ini sebagai keputusan yang sudah dikunci, bukan sekadar diskusi.
-
----
-
 # ADR-APT-001 Queue Boundary and Pharmacy Workflow State Ownership
 
 **Status:** Accepted
@@ -76,7 +72,16 @@ Done
 Withdrawn
 ```
 
-No Pharmacy-specific state may be introduced into the queue aggregate. 
+No Pharmacy-specific state may be introduced into the queue aggregate.
+
+### Canonical outpatient-pharmacy queue identity (BA-01)
+
+Patient Tracker `QueueEntry` is the sole canonical outpatient-pharmacy queue identity.
+
+- F-09 `Apotek-Start` and `Apotek-Done` evidence remain reusable but must reference `QueueEntryId` from Patient Tracker.
+- Legacy Farinv queue identity is deprecated and must not create active queue records.
+- Historical Farinv queue data is read-only.
+- No dual-active queue model is allowed.
 
 ---
 
@@ -261,11 +266,5 @@ This decision is considered architectural and should not be revisited unless the
 * Patient Tracker Queue Excavation Report 
 * `AntrianEntryModel.cs` 
 * `AntrianStatusEnum.cs` 
-
-Saya juga menyarankan menaruh file ini di:
-
-```text
-docs/architecture/adr/ADR-APT-001-queue-boundary-and-pharmacy-workflow-state-ownership.md
-```
-
-agar agent implementasi dan reviewer dapat menemukannya sebagai keputusan arsitektur yang sudah final.
+* [Apotek Domain](../apotek-domain.md) — `BR-APT-097`
+* [Outpatient Apotek Screen and Aggregate Design](../outpatient-apotek-screen-and-aggregate-design.md) — §4.1

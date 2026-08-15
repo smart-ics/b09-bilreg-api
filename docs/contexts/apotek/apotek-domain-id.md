@@ -56,9 +56,11 @@ Konteks ini bergantung pada konteks terkait tanpa mengambil alih kewenangannya:
 
 Pengadaan, pengelolaan pemasok, pengisian ulang stok, transfer gudang, akuntansi perusahaan, dan Medication Administration berada di luar konteks ini.
 
-Identitas dan lifecycle antrean Rawat Jalan tetap dimiliki oleh Patient Tracker. Apotek memiliki keputusan bisnis Rawat Jalan untuk mengaitkan Pharmacy Queue Entry dengan sumber pelayanan obat yang sesuai, serta kebijakan penjamin, pengambilan, penyerahan, dan no-show setelah pengaitan tersebut.
+Identitas dan lifecycle antrean Rawat Jalan tetap dimiliki oleh Patient Tracker. `QueueEntry` Patient Tracker adalah satu-satunya identitas antrean apotek Rawat Jalan yang canonical. Identitas antrean Farinv legacy didepresiasi, tidak boleh membuat record antrean aktif untuk interaksi apotek Rawat Jalan baru, dan data antrean Farinv historis bersifat read-only. Model antrean dual-active tidak diizinkan.
 
-Untuk antrean Apotek Rawat Jalan, Patient Tracker mencatat `CreatedAt` ketika Queue Number diterbitkan, `ServedAt` ketika Dispense Order pertama yang berlaku memasuki `Preparing`, dan `DoneAt` ketika Staf Apotek memanggil pasien untuk pengambilan obat. Penanda tersebut hanya menunjukkan kemajuan antrean dan tidak membuktikan Medication Handover.
+Apotek memiliki keputusan bisnis Rawat Jalan untuk mengaitkan Pharmacy Queue Entry dengan sumber pelayanan obat yang sesuai, serta kebijakan penjamin, pengambilan, penyerahan, dan no-show setelah pengaitan tersebut.
+
+Untuk antrean Apotek Rawat Jalan, Patient Tracker mencatat `CreatedAt` ketika Queue Number diterbitkan, `ServedAt` ketika Dispense Order pertama yang berlaku memasuki `Preparing`, dan `DoneAt` ketika Staf Apotek memanggil pasien untuk pengambilan obat. Penanda tersebut hanya menunjukkan kemajuan antrean dan tidak membuktikan Medication Handover. Evidence `Apotek-Start` dan `Apotek-Done` Patient Tracker tetap dapat digunakan kembali tetapi harus mereferensikan `QueueEntryId` canonical, bukan identitas antrean Farinv.
 
 ### 1.4 Pemisahan bisnis utama
 
@@ -467,6 +469,7 @@ Outpatient Queue Mapping merupakan mapping aktif kepada Pharmacy Queue Entry yan
 - **BR-APT-093** — Coordinated pickup call mixed coverage harus menunggu sampai setiap jumlah yang hendak diserahkan memperoleh Coverage Clearance atau Payment Clearance yang berlaku dan Dispense Order-nya mencapai `Prepared`.
 - **BR-APT-094** — Jika Pasien menolak bagian non-covered sebelum Sales Invoice-nya dibentuk, jumlah Sales Order Line yang terdampak harus memperoleh outcome declined atau commercially unallocated yang accountable, sedangkan bagian BPJS dapat dilanjutkan secara independen.
 - **BR-APT-095** — Patient Tracker harus mencatat `DoneAt` apotek Rawat Jalan ketika Staf Apotek melakukan coordinated pickup call. Selesainya antrean tidak membuktikan Final Dispense Review, Patient Education, Medication Dispense, atau Medication Handover.
+- **BR-APT-097** — `QueueEntry` Patient Tracker harus menjadi satu-satunya identitas antrean apotek Rawat Jalan yang canonical. Identitas antrean Farinv legacy didepresiasi dan tidak boleh membuat record antrean aktif. Data antrean Farinv historis bersifat read-only. Model antrean dual-active tidak diizinkan. Evidence `Apotek-Start` dan `Apotek-Done` Patient Tracker harus mereferensikan `QueueEntryId` canonical.
 
 ## 8. State Machines & Lifecycles
 

@@ -61,17 +61,23 @@ The current `OfficerWorklistItem` is also admission-shaped: its enrichment is Pa
 
 ## Existing Pharmacy Baseline That Must Be Reconciled
 
-The Patient Tracker F-09 implementation report documents an existing, separate Farinv pharmacy queue. It uses `Taken → Assigned → Prepared → Delivered`, has `PasienTrackerId` and `ServedAt`, and emits `Apotek-Start` on sale confirmation and `Apotek-Done` on delivery. That baseline conflicts with the newer screen/aggregate decision in several material ways:
+**Status (BA-01):** Resolved 2026-08-15.
 
-| Existing F-09 behavior | New design requirement | Reconciliation required |
+Patient Tracker `QueueEntry` is the sole canonical outpatient-pharmacy queue identity. Legacy Farinv queue identity is deprecated, must not create active queue records, and historical Farinv data is read-only. F-09 `Apotek-Start` and `Apotek-Done` evidence remain reusable but must reference `QueueEntryId` from Patient Tracker. No dual-active queue model is allowed.
+
+Ratified in [Apotek Domain](./apotek-domain.md) (`BR-APT-097`), [ADR-APT-001](./adr/ADR-APT-001-queu-boundary-and-pharmacy-workflow-state-ownership.md), and [Screen and Aggregate Design](./outpatient-apotek-screen-and-aggregate-design.md) §4.1.
+
+The Patient Tracker F-09 implementation report documents a legacy, separate Farinv pharmacy queue. It uses `Taken → Assigned → Prepared → Delivered`, has `PasienTrackerId` and `ServedAt`, and emits `Apotek-Start` on sale confirmation and `Apotek-Done` on delivery. That baseline conflicts with the newer screen/aggregate decision in several material ways:
+
+| Existing F-09 behavior | New design requirement | Reconciliation |
 |---|---|---|
-| Separate Farinv queue session/entry, not the Admission queue platform. | Patient Tracker queue infrastructure is shared with Outpatient Admission. | Choose the canonical queue entry identity. Migrate/adapt rather than run two active queue identities for the same pharmacy interaction. |
+| Separate Farinv queue session/entry, not the Admission queue platform. | Patient Tracker queue infrastructure is shared with Outpatient Admission. | **Resolved (BA-01):** Patient Tracker `QueueEntry` is canonical; Farinv is read-only legacy only. |
 | `ConfirmSale` causes `ServedAt` / `Apotek-Start`. | The first Medication Preparation Started causes `ServedAt`. | Move the trigger from sale confirmation to the first qualifying Dispense Order preparation event. |
 | `Deliver` causes `DoneAt` / `Apotek-Done`. | Coordinated pickup call causes `DoneAt`; handover follows and is an independent fact. | Move completion evidence to pickup coordination; retain handover only in Apotek. Rename/redefine evidence if `Apotek-Done` would otherwise falsely mean handover. |
-| Entry lifecycle includes `Prepared` and `Delivered`. | Tracker lifecycle remains only `Waiting`, `In Service`, `Done`; Dispense Order owns preparation/review/handover states. | Stop treating pharmacy fulfilment states as queue states. Preserve legacy data/history through an adapter or migration. |
+| Entry lifecycle includes `Prepared` and `Delivered`. | Tracker lifecycle remains only `Waiting`, `In Service`, `Done`; Dispense Order owns preparation/review/handover states. | Stop treating pharmacy fulfilment states as queue states. Preserve legacy data/history through read-only access only. |
 | Active-entry deduplication is by TrackerId/session. | A common queue may map to multiple independent demands, and mapping may be manual/unresolved. | Use Queue Entry identity as the coordination key; define appropriate deduplication for entry issuance and mapping, not only TrackerId. |
 
-This reconciliation is a prerequisite, not a cosmetic refactor. Leaving both models active would produce duplicate numbers, inconsistent `ServedAt`/`DoneAt`, and ambiguous queue display ownership.
+Remaining F-09 milestone semantics and integration reliability are tracked separately (BA-02, BA-07, EC-04, TD-07).
 
 ## Target Boundary and Command Ownership
 
@@ -97,7 +103,7 @@ flowchart LR
 
 ## Delivery Plan
 
-1. **Resolve the canonical identity and event semantics.** Decide the migration/adapter path from the F-09 Farinv queue to the shared Patient Tracker queue. Confirm that `ServedAt` is preparation-start and `DoneAt` is pickup-call, not sale/handover.
+1. **Canonical identity resolved (BA-01).** Patient Tracker `QueueEntry` is canonical; Farinv is read-only legacy. Confirm that `ServedAt` is preparation-start and `DoneAt` is pickup-call, not sale/handover (remaining F-09 milestone work).
 2. **Make the queue platform pharmacy-capable.** Add pharmacy service-point/workstation configuration, pharmacy intake, and constrained service-start/complete operations with row-version/idempotency behavior. Keep admission endpoints and registration outcomes unchanged.
 3. **Build the Apotek queue read model.** Implement `OutpatientQueueMapping` and queue-facing projections for Sales, Dispensing, Serah Obat, attention counters, exceptions, and Patient Medication Journey.
 4. **Implement Apotek-owned orchestration.** Connect first preparation and coordinated pickup to the platform transitions, with retry/reconciliation and audit references. Do not wire UI buttons directly to generic Admission start/completion actions.

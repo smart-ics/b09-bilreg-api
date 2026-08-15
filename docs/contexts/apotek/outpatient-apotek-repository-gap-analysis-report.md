@@ -29,12 +29,13 @@ The architecture is not ready for implementation review until the blocking decis
 
 | Classification | Count | Review meaning |
 |---|---:|---|
-| Blocking Architecture Gap | 9 | A structural or ownership decision is unresolved; implementing around it would create incompatible sources of truth or unsafe cross-context behavior. |
+| Blocking Architecture Gap | 8 | A structural or ownership decision is unresolved; implementing around it would create incompatible sources of truth or unsafe cross-context behavior. |
 | Business Clarification Gap | 14 | A policy, authority, threshold, or accountable outcome is not sufficiently defined. |
 | Existing Capability Extension | 9 | A relevant capability exists but its present contract or semantics do not satisfy Apotek. |
 | Missing Implementation | 15 | The design is sufficiently clear, but no conforming implementation exists. |
 | Technical Debt | 11 | Existing code or documentation embodies legacy, misleading, coupled, or unverified behavior. |
-| **Total** | **58** | Each finding has one primary classification. |
+| Resolved (Blocking Architecture) | 1 | BA-01 ratified; artifacts updated. |
+| **Total open** | **57** | Each open finding has one primary classification. |
 
 ## 3. Baseline and evidence
 
@@ -68,13 +69,15 @@ The architecture is not ready for implementation review until the blocking decis
 
 ### BA-01 — Canonical pharmacy queue identity and F-09 coexistence
 
+**Status:** Resolved (2026-08-15)
+
 **Gap.** The accepted design assumes the shared Patient Tracker queue platform, while the closed F-09 implementation uses a separate Farinv queue with its own `Taken → Assigned → Prepared → Delivered` lifecycle and Tracker evidence. Running both creates duplicate queue identities, numbers, displays, and milestone facts.
 
 **Evidence.** Screen design `:28`, `:228-240`; F-09 report `:22-41`, `:85-100`; queue gap analysis `:62-74`.
 
-**Recommended decision.** Declare the Patient Tracker queue entry as the sole canonical outpatient-pharmacy queue identity. Treat Farinv queue identity as a legacy source behind a migration/compatibility adapter; prohibit creation of two active entries for the same pharmacy interaction. Define identity mapping, active-entry deduplication, historical read behavior, and cutover ownership explicitly.
+**Decision.** Patient Tracker `QueueEntry` is the sole canonical outpatient-pharmacy queue identity. F-09 evidence remains reusable but must reference `QueueEntryId` from Patient Tracker. Legacy Farinv queue identity is deprecated and must not create active queue records. Historical Farinv queue data is read-only. No dual-active queue model is allowed.
 
-**Rationale.** ADR-APT-001 locks generic queue ownership. A dual-active model cannot preserve one `CreatedAt`, one `ServedAt`, one `DoneAt`, or unambiguous display ownership.
+**Ratified in.** `apotek-domain.md` (`BR-APT-097`); `outpatient-apotek-screen-and-aggregate-design.md` §4.1; `ADR-APT-001`; `TRACKER-DOMAIN.md` (`BR-TRK-051`); `outpatient-apotek-queue-gap-analysis.md`.
 
 ### BA-02 — Pharmacy-to-Tracker milestone command contract
 
@@ -357,6 +360,7 @@ Both must be idempotent, concurrency-protected, and independent of Admission reg
 
 ### 9.1 Decisions already settled
 
+- Patient Tracker `QueueEntry` is the sole canonical outpatient-pharmacy queue identity; legacy Farinv queue is read-only and must not create active records (BA-01).
 - Keep queue lifecycle generic: `Waiting`, `InService`, `Done`, `Withdrawn`.
 - Keep pharmacy operational state out of Patient Tracker.
 - Treat `ServedAt` as first preparation-start evidence.
@@ -369,7 +373,7 @@ Both must be idempotent, concurrency-protected, and independent of Admission reg
 
 ### 9.2 Decisions still required before architecture approval
 
-Architecture approval requires explicit disposition of BA-01 through BA-09 and business ratification of BC-01 through BC-14. These are decision gates, not delivery steps. The remaining Existing Capability Extension, Missing Implementation, and Technical Debt findings can then be evaluated against those ratified boundaries without inventing new sources of truth.
+Architecture approval requires explicit disposition of BA-02 through BA-09 and business ratification of BC-01 through BC-14. BA-01 is resolved. These are decision gates, not delivery steps. The remaining Existing Capability Extension, Missing Implementation, and Technical Debt findings can then be evaluated against those ratified boundaries without inventing new sources of truth.
 
 ### 9.3 Overall classification
 

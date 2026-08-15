@@ -387,6 +387,7 @@ A Queue Entry references a Patient Tracker by TrackerId but does not own or modi
 - **BR-TRK-045** — For every V1 outpatient pharmacy payer path, `Medication Preparation Started` supplied by Apotek shall cause the Pharmacy Queue Entry to enter In Service, record ServedAt, and establish pharmacy service-start evidence.
 - **BR-TRK-045a** — The coordinated outpatient pharmacy pickup call shall cause the Pharmacy Queue Entry to become Done and record DoneAt. Queue completion shall not assert that Medication Handover has occurred.
 - **BR-TRK-046** — Pharmacy Service Duration shall be measured from pharmacy ServedAt to pharmacy DoneAt.
+- **BR-TRK-051** — Patient Tracker `QueueEntry` is the sole canonical outpatient-pharmacy queue identity. Legacy Farinv queue identity is deprecated and shall not create active queue records. Historical Farinv queue data is read-only. No dual-active queue model is permitted. `Apotek-Start` and `Apotek-Done` evidence shall reference the canonical `QueueEntryId`.
 - **BR-TRK-047** — Patient Tracker shall not infer physical position, travel start, travel completion, or waiting-room arrival when no accountable business interaction occurred.
 
 ### 7.7 Ownership and historical truth
@@ -559,10 +560,11 @@ Post-Registration Consultation Waiting Time is registration DoneAt to physician 
 
 ```text
 Consultation completes and prescription work is generated
-  → Pharmacy Queue Session found or established
-  → Identified Pharmacy Queue Entry created for the same TrackerId
+  → Pharmacy Queue Session found or established on the Patient Tracker queue platform
+  → Canonical Pharmacy Queue Entry (`QueueEntry`) created for the outpatient pharmacy Service Point
   → Pharmacy CreatedAt records queue creation
   → No physical pharmacy-arrival event is inferred
+  → Legacy Farinv queue records are not created for new interactions
 ```
 
 ### 10.6 Perform and complete pharmacy service

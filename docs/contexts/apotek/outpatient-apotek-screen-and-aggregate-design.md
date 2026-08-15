@@ -229,6 +229,22 @@ The projection has no command responsibilities. All mutations continue through t
 
 Apotek will reuse the Patient Tracker queue infrastructure also used by Outpatient Admission. This reuse is limited to queue identity, numbering, display, calling, and lifecycle.
 
+### 4.1 Canonical queue identity (BA-01)
+
+**Decision:** Patient Tracker `QueueEntry` is the sole canonical outpatient-pharmacy queue identity.
+
+| Rule | Requirement |
+|---|---|
+| Canonical identity | One Patient Tracker `QueueEntry` per outpatient-pharmacy interaction |
+| F-09 evidence | `Apotek-Start` and `Apotek-Done` remain reusable but must reference `QueueEntryId` from Patient Tracker |
+| Legacy Farinv | Deprecated; must not create active queue records |
+| Historical Farinv data | Read-only |
+| Dual-active model | Prohibited |
+
+Legacy Farinv queue records may be consulted for historical reporting only. New outpatient-pharmacy intake, display, mapping, and milestone updates must use the shared Patient Tracker queue platform.
+
+### 4.2 Queue milestones
+
 | Queue milestone | Apotek action | Meaning |
 |---|---|---|
 | `CreatedAt` / `Waiting` | Queue number issued by kiosk or tracker | Patient has a pharmacy queue entry; medication demand may still be unmapped or unreviewed |
