@@ -73,7 +73,7 @@ Workflow berakhir ketika setiap medication demand yang dimappingkan ke Pharmacy 
 
 - Resep Elektronik yang tersedia sebelum atau setelah Queue Entry dibuat.
 - Pencatatan Resep Fisik oleh Staf Apotek.
-- Penerimaan Direct Medication Request, rujukan kepada Pharmacist, atau penolakan.
+- Penerimaan atau penolakan Direct Medication Request oleh Staf Apotek.
 - Tracker Mapping dan Manual Mapping.
 - Satu Queue Entry yang dimappingkan ke satu atau beberapa medication demand.
 - Telaah Resep dan Medication Substitution sebelum Sales Order.
@@ -102,8 +102,8 @@ Workflow berakhir ketika setiap medication demand yang dimappingkan ke Pharmacy 
 |---|---|---|
 | Patient or Caregiver | Mengambil Queue Number, memberikan mapping evidence atau Resep Fisik, memberi konfirmasi lisan ketika Patient-payable, membayar ketika diwajibkan, hadir untuk pickup, menerima edukasi, dan menerima obat ketika authorized. | Evidence diberikan, konfirmasi diberikan atau ditolak, Payment Clearance diperoleh, atau Medication Handover selesai. |
 | Patient Tracker | Memiliki identitas Pharmacy Queue Entry, Queue Number, dan lifecycle antrean. | `Queue Entry Created`, `Queue Service Started`, atau `Queue Service Completed`. |
-| Staf Apotek | Melakukan panggilan antrian, Manual Mapping, mencatat Resep Fisik, menilai Permintaan Obat Langsung sesuai kewenangan, mengoordinasikan alokasi, menyampaikan nilai Pasien Umum, membentuk faktur terkonfirmasi, menyiapkan atau meracik obat, menangani pesanan tertunda atau sumber stok lain yang disetujui, dan melakukan panggilan pengambilan. | `Outpatient Queue Mapped`, `Sales Order Established`, `Sales Invoice Established`, `Medication Prepared`, `Dispense Order Backordered`, atau `Patient Called for Pickup`. |
-| Pharmacist | Melakukan Telaah Resep, mengotorisasi Medication Substitution yang eligible sebelum Sales Order dibentuk, menyetujui Direct Medication Request yang dirujuk, memverifikasi Authorized Recipient, melakukan Final Dispense Review, dan memberikan Patient Education. | `Telaah Resep Completed`, `Final Dispense Review Completed`, atau Medication Handover diizinkan selesai. |
+| Staf Apotek | Melakukan panggilan antrian, Manual Mapping, mencatat Resep Fisik, menerima atau menolak Permintaan Obat Langsung, mengoordinasikan alokasi, menyampaikan nilai Pasien Umum, membentuk faktur terkonfirmasi, menyiapkan atau meracik obat, menangani pesanan tertunda atau sumber stok lain yang disetujui, dan melakukan panggilan pengambilan. | `Outpatient Queue Mapped`, `Sales Order Established`, `Sales Invoice Established`, `Medication Prepared`, `Dispense Order Backordered`, atau `Patient Called for Pickup`. |
+| Pharmacist | Melakukan Telaah Resep, mengotorisasi Medication Substitution yang eligible sebelum Sales Order dibentuk, memverifikasi Authorized Recipient, melakukan Final Dispense Review, dan memberikan Patient Education. | `Telaah Resep Completed`, `Final Dispense Review Completed`, atau Medication Handover diizinkan selesai. |
 | Cashier or Payment Authority | Menerima pembayaran Pasien yang diwajibkan dan memberikan Payment Clearance. | `Payment Clearance Established`. |
 | SEP and Fornas Authorities | Memberikan validitas SEP tingkat encounter dan coverage BPJS item-level. | `Coverage Clearance Established` untuk jumlah covered. |
 | Inventory | Memiliki Stock Availability, Stock Reservation, Inventory Issue, eligibility return, dan Return to Stock. | `Stock Reserved`, Inventory Issue authoritative, atau disposition return yang diterima. |
@@ -121,7 +121,7 @@ Workflow berakhir ketika setiap medication demand yang dimappingkan ke Pharmacy 
 
 - Resep Elektronik tersedia dari CPOE atau authority clinical order lain.
 - Staf Apotek mencatat Resep Fisik yang ditunjukkan.
-- Staf Apotek menerima Direct Medication Request sesuai authority atau setelah persetujuan Pharmacist yang diwajibkan.
+- Staf Apotek menerima atau menolak Direct Medication Request.
 
 Trigger tersebut dapat terjadi sebelum atau setelah Outpatient Queue Mapping berdasarkan `BR-APT-061` dan `BR-APT-062`.
 
@@ -264,7 +264,7 @@ Pharmacist, Staf Apotek, CPOE or Dokter Penulis Resep.
 2. Pharmacist menelaah setiap Baris Resep. Jika diperlukan, Pharmacist melakukan klarifikasi kepada Dokter Penulis Resep di luar sistem; Resep tetap utuh dan review tetap `Under Review`.
 3. Pharmacist menetapkan setiap line sebagai diterima sesuai resep, diterima dengan obat pengganti, atau ditolak. Obat yang diterima dicatat pada Sales Order Line; obat pengganti disertai alasan, jumlah terdampak, Pharmacist penanggung jawab, dan referensi ke Baris Resep asli.
 4. Pharmacist menyelesaikan Telaah Resep sebagai `Approved`, `Partially Approved`, atau `Rejected`.
-5. Untuk Direct Medication Request yang diterima, Staf Apotek menerima sesuai authority atau memperoleh persetujuan Pharmacist yang diwajibkan; Resep tidak dibentuk.
+5. Untuk Direct Medication Request, Staf Apotek menerima atau menolaknya; Resep tidak dibentuk. Konsultasi Pharmacist secara opsional hanya panduan SOP dan tidak dimodelkan sebagai approval.
 6. Apotek membentuk Sales Order dari tepat satu completed accepted-demand source dan mempertahankan Source Traceability.
 7. Apotek dapat membentuk Sales Invoice beserta Sales Invoice Item-nya dan Dispense Order beserta Dispense Order Line-nya secara independen dan pada waktu bisnis yang berbeda. Setiap Sales Invoice Item obat dan setiap Dispense Order Line mereferensikan tepat satu Sales Order Line yang berlaku.
 8. Untuk episode Rawat Jalan normal, Apotek membentuk satu active primary Dispense Order bagi Sales Order aktif.
@@ -277,9 +277,8 @@ Pharmacist, Staf Apotek, CPOE or Dokter Penulis Resep.
 | Semua Baris Resep diterima | Pharmacist | `Approved`; seluruh accepted line dapat membentuk Sales Order. |
 | Sebagian line diterima | Pharmacist | `Partially Approved`; hanya Accepted Medication Line masuk Sales Order. |
 | Tidak ada line diterima | Pharmacist | `Rejected`; Sales Order tidak dibentuk. |
-| Direct request dalam authority staf | Staf Apotek | Terima dan bentuk sumber Direct Medication Request. |
-| Direct request memerlukan persetujuan profesional | Staf Apotek dan Pharmacist | Rujuk, lalu terima hanya setelah persetujuan. |
-| Direct request ditolak | Staf Apotek atau Pharmacist | Jangan membentuk request record atau Sales Order. |
+| Direct request diterima | Staf Apotek | Terima dan bentuk sumber Direct Medication Request. |
+| Direct request ditolak | Staf Apotek | Jangan membentuk request record atau Sales Order. |
 
 #### Exception and Compensation Flows
 

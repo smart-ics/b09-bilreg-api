@@ -106,8 +106,8 @@ The workbench contains four activities.
    - Route it to Telaah Resep; it is not sold directly.
 
 3. **Record direct medication request**
-   - Record an authorized request without a prescription.
-   - Accept it within Pharmacy Staff authority, route it for Pharmacist approval when required, or decline it.
+   - Record a retail-style request without a prescription, originating outside the hospital care workflow.
+   - Accept or decline it. Optional Pharmacist consultation is SOP guidance only and is not an approval gate.
    - Establish a Sales Order only after the request is accepted.
 
 4. **Manage sale and return/correction request**
@@ -340,6 +340,6 @@ This artifact intentionally does not define:
 - exact attention-badge thresholds, colors, or placement;
 - detailed Patient Medication Journey drawer or panel layout;
 - inpatient, emergency, or unit-dose fulfillment worklists; or
-- approval thresholds for direct medication requests, returns, and exceptional resolutions.
+- approval thresholds for returns and exceptional resolutions.
 
 Those decisions should follow the aggregate boundaries established here.

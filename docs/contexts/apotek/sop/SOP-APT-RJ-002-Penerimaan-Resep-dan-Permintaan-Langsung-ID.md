@@ -42,7 +42,7 @@ Resep atau Direct Medication Request sumber tetap dipertahankan dan tidak beruba
 | Aktor | Jenis | Tanggung jawab |
 |---|---|---|
 | Apoteker | Petugas | Menelaah setiap item obat, menghubungi Dokter Penulis Resep di luar sistem bila perlu, menetapkan obat yang dapat dilayani, lalu menyelesaikan telaah resep. |
-| Staf Apotek | Petugas | Mencatat resep kertas; menerima, meneruskan, atau menolak permintaan obat langsung sesuai kewenangan; serta menindaklanjuti kekurangan stok dengan mencatat pesanan tertunda atau memilih sumber stok lain yang disetujui untuk obat yang sama. |
+| Staf Apotek | Petugas | Mencatat resep kertas; menerima atau menolak permintaan obat langsung; serta menindaklanjuti kekurangan stok dengan mencatat pesanan tertunda atau memilih sumber stok lain yang disetujui untuk obat yang sama. |
 | CPOE | Subsistem | Menyediakan resep asli yang sah. Sistem Apotek tidak mengubah resep tersebut. |
 | Katalog Obat | Subsistem | Menyediakan identitas obat dan informasi formularium yang diperlukan saat telaah resep. |
 | Sistem Apotek | Subsistem | Mencatat hasil telaah, membuat pesanan apotek, serta mencatat tagihan dan kesiapan pelayanan obat secara terpisah. Aplikasi juga membuat tugas utama untuk menyiapkan obat. |
@@ -64,13 +64,12 @@ Resep atau Direct Medication Request sumber tetap dipertahankan dan tidak beruba
 5. **Apoteker** menetapkan keputusan akhir setiap item obat: diterima sesuai resep, diterima dengan obat pengganti, atau ditolak. Resep asli dan item obat pada resep tidak diubah.
 6. Bila memilih obat pengganti, **Apoteker** mencatat obat pengganti, alasan, jumlah yang terdampak, dan Apoteker yang bertanggung jawab pada item pesanan apotek. Item pesanan itu tetap terhubung ke item obat pada resep asli.
 7. **Apoteker** menyelesaikan telaah resep dengan status `Approved`, `Partially Approved`, atau `Rejected`.
-8. Untuk permintaan obat langsung, **Staf Apotek** mencatat rincian permintaan. **Staf Apotek** kemudian menerima permintaan sesuai kewenangannya, meneruskannya kepada **Apoteker**, atau menolaknya.
-9. Bila permintaan diteruskan, **Apoteker** mencatat persetujuan atau penolakan. **Sistem Apotek** hanya dapat menerima permintaan tersebut setelah **Apoteker** menyetujuinya.
-10. Untuk resep yang disetujui seluruhnya atau sebagian, atau untuk permintaan obat langsung yang diterima, **Sistem Apotek** membuat satu pesanan apotek dari sumber tersebut. Sistem menyimpan hubungan pesanan itu dengan resep atau permintaan asalnya.
-11. **Sistem Apotek** mencatat dan menampilkan dua hal secara terpisah: bagian obat yang menjadi tagihan dan bagian obat yang sudah memenuhi syarat untuk dilayani. Jumlah pada masing-masing bagian ditampilkan agar petugas dapat melihatnya dengan jelas.
-12. Untuk pelayanan rawat jalan biasa, **Sistem Apotek** membuat satu tugas utama untuk menyiapkan obat dan menampilkan status awal tugas tersebut.
-13. **Sistem Persediaan** dapat mengirimkan informasi bahwa stok telah dipesan. **Sistem Apotek** menampilkan informasi itu, tetapi informasi tersebut belum berarti petugas boleh mulai menyiapkan obat.
-14. Sesuai asal permintaannya, **Apoteker** atau **Staf Apotek** memeriksa hasil akhir telaah, nomor pesanan apotek, item obat yang diterima, dan nomor tugas penyiapan obat.
+8. Untuk permintaan obat langsung, **Staf Apotek** mencatat rincian permintaan. **Staf Apotek** kemudian menerima atau menolak permintaan tersebut.
+9. Untuk resep yang disetujui seluruhnya atau sebagian, atau untuk permintaan obat langsung yang diterima, **Sistem Apotek** membuat satu pesanan apotek dari sumber tersebut. Sistem menyimpan hubungan pesanan itu dengan resep atau permintaan asalnya.
+10. **Sistem Apotek** mencatat dan menampilkan dua hal secara terpisah: bagian obat yang menjadi tagihan dan bagian obat yang sudah memenuhi syarat untuk dilayani. Jumlah pada masing-masing bagian ditampilkan agar petugas dapat melihatnya dengan jelas.
+11. Untuk pelayanan rawat jalan biasa, **Sistem Apotek** membuat satu tugas utama untuk menyiapkan obat dan menampilkan status awal tugas tersebut.
+12. **Sistem Persediaan** dapat mengirimkan informasi bahwa stok telah dipesan. **Sistem Apotek** menampilkan informasi itu, tetapi informasi tersebut belum berarti petugas boleh mulai menyiapkan obat.
+13. Sesuai asal permintaannya, **Apoteker** atau **Staf Apotek** memeriksa hasil akhir telaah, nomor pesanan apotek, item obat yang diterima, dan nomor tugas penyiapan obat.
 
 ## 5. Pengecualian Operasional
 

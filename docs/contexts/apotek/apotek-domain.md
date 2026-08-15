@@ -86,7 +86,7 @@ A Resep does not become a Sales Order. A completed professional decision authori
 | Resep | The clinician's authoritative intent for medication to be supplied or administered to a Patient. |
 | Resep Elektronik | A Resep created and transmitted through an electronic clinical-order authority. |
 | Resep Fisik | A nonelectronic Resep that must be recorded before Pharmacy can review it. |
-| Direct Medication Request | An authorized request for medication without a Resep. |
+| Direct Medication Request | A retail-style medication request without a Resep, originating outside the hospital care workflow, that Pharmacy Staff may accept or decline. |
 | Baris Resep | One requested medication, dosage instruction, and quantity within a Resep. |
 | Source Traceability | The accountable relationship from Medication Sale and dispensing outcomes back to their Sales Order, accepted demand, and original source. |
 | Telaah Resep | The Pharmacist's administrative, pharmaceutical, and clinical assessment of a Resep. |
@@ -219,7 +219,7 @@ Owns Hasil Telaah Resep, Medication Substitution authorized during Telaah Resep,
 
 ### 4.3 Pharmacy Staff
 
-Coordinates accepted demand, Sales Order progression, outpatient administrative interaction, Medication Preparation, Compounding, and accountable handover within assigned authority. For outpatient fulfillment, Pharmacy Staff calls Queue Numbers, establishes Manual Mapping, communicates the calculated General Patient amount before Sales Invoice establishment, saves the confirmed Sales Invoice, prepares medication according to the Dispense Order, and performs the pickup call. For a Direct Medication Request, Pharmacy Staff accepts within assigned authority, seeks Pharmacist approval when required, or declines without establishing the request or a Sales Order. When stock cannot support fulfillment after Sales Order establishment, Pharmacy Staff decides between Backorder and fulfillment from another approved stock source for the same medication product within assigned authority. Pharmacy Staff shall not substitute the medication.
+Coordinates accepted demand, Sales Order progression, outpatient administrative interaction, Medication Preparation, Compounding, and accountable handover within assigned authority. For outpatient fulfillment, Pharmacy Staff calls Queue Numbers, establishes Manual Mapping, communicates the calculated General Patient amount before Sales Invoice establishment, saves the confirmed Sales Invoice, prepares medication according to the Dispense Order, and performs the pickup call. For a Direct Medication Request, Pharmacy Staff accepts or declines without creating a Resep. Optional Pharmacist consultation is operational SOP guidance only and is not modeled as an approval gate. When stock cannot support fulfillment after Sales Order establishment, Pharmacy Staff decides between Backorder and fulfillment from another approved stock source for the same medication product within assigned authority. Pharmacy Staff shall not substitute the medication.
 
 ### 4.4 Patient or Caregiver
 
@@ -339,7 +339,7 @@ Outpatient Queue Mapping is an active relationship to an externally owned Pharma
 - **BR-APT-006** — A rejected Resep shall not establish a Sales Order.
 - **BR-APT-007** — A partially approved Resep may establish a Sales Order containing only Accepted Medication Lines.
 - **BR-APT-008** — Clinical acceptance shall be independent of current Stock Availability; stock facts shall not rewrite professional eligibility.
-- **BR-APT-009** — A Direct Medication Request shall follow its applicable professional and organizational acceptance policy without creating a Resep.
+- **BR-APT-009** — A Direct Medication Request is a retail-style medication request originating outside the hospital care workflow. Pharmacy Staff shall accept or decline it without creating a Resep. Pharmacist consultation may occur operationally but is optional SOP guidance only and shall not be modeled as approval workflow, authority threshold, escalation, risk classification, domain state, or business-rule gate.
 
 ### 7.2 Sales Order
 
@@ -441,7 +441,7 @@ Outpatient Queue Mapping is an active relationship to an externally owned Pharma
 - **BR-APT-086** — Within one normal outpatient fulfillment episode, one active Sales Order shall coordinate through one active Dispense Order. The common Pharmacy Queue Entry may coordinate multiple such Sales Order and Dispense Order pairs.
 - **BR-APT-087** — A queue-facing per-demand progress view shall be a projection of Apotek facts for each mapped demand; Patient Tracker shall not become authoritative for Telaah Resep, Sales Invoice, or Dispense Order state.
 - **BR-APT-088** — One coordinated pickup call shall occur only after every Dispense Order intended for that handover has reached `Prepared` or received an accountable exception outcome.
-- **BR-APT-089** — A Direct Medication Request shall be accepted by Pharmacy Staff within assigned authority, referred for Pharmacist approval when required, or declined. A declined request shall not establish a Direct Medication Request record or Sales Order.
+- **BR-APT-089** — Pharmacy Staff shall accept or decline a Direct Medication Request. Acceptance establishes the Direct Medication Request record; decline shall not establish a Direct Medication Request record or Sales Order. No Pharmacist approval, referral, escalation, or approval threshold applies.
 - **BR-APT-090** — Outpatient BPJS Coverage Clearance shall require both a valid SEP for the applicable encounter and authoritative item-level Fornas coverage for the quantity being cleared.
 - **BR-APT-091** — When one Sales Order contains BPJS-covered and Patient-payable quantities, its Sales Invoice Items shall distinguish those payer responsibilities. The covered Sales Invoice Items shall form a BPJS Sales Invoice and the Patient-payable Sales Invoice Items shall form a separate General Patient Sales Invoice.
 - **BR-APT-092** — In mixed-coverage fulfillment, the General Patient Sales Invoice shall be established only after verbal Purchase Confirmation, while the BPJS Sales Invoice shall be established only with successful Medication Handover under `BR-APT-075`.

@@ -73,7 +73,7 @@ The workflow ends when every medication demand mapped to the Pharmacy Queue Entr
 
 - Resep Elektronik availability before or after Queue Entry creation.
 - Resep Fisik recording by Pharmacy Staff.
-- Direct Medication Request acceptance, Pharmacist referral, or decline.
+- Direct Medication Request acceptance or decline by Pharmacy Staff.
 - Tracker Mapping and Manual Mapping.
 - One Queue Entry mapped to one or more medication demands.
 - Telaah Resep and pre-Sales-Order Medication Substitution.
@@ -102,8 +102,8 @@ The workflow ends when every medication demand mapped to the Pharmacy Queue Entr
 |---|---|---|
 | Patient or Caregiver | Obtains a Queue Number, supplies mapping evidence or a Resep Fisik, gives verbal confirmation when Patient-payable, pays when required, presents for pickup, receives education, and accepts medication when authorized. | Evidence is supplied, confirmation is given or declined, Payment Clearance is obtained, or Medication Handover completes. |
 | Patient Tracker | Owns Pharmacy Queue Entry identity, Queue Number, and queue lifecycle. | `Queue Entry Created`, `Queue Service Started`, or `Queue Service Completed`. |
-| Pharmacy Staff | Performs administrative queue calls, Manual Mapping, records Resep Fisik, assesses Direct Medication Requests within authority, coordinates Sales Order progression, communicates General Patient value, establishes a confirmed Sales Invoice, performs Medication Preparation and Compounding, handles Backorder or another approved stock source within authority, and performs the pickup call. | `Outpatient Queue Mapped`, `Sales Order Established`, `Sales Invoice Established`, `Medication Prepared`, `Dispense Order Backordered`, or `Patient Called for Pickup`. |
-| Pharmacist | Performs Telaah Resep, authorizes eligible Medication Substitution before Sales Order establishment, approves referred Direct Medication Requests, verifies the Authorized Recipient, performs Final Dispense Review, and provides Patient Education. | `Telaah Resep Completed`, `Final Dispense Review Completed`, or Medication Handover is authorized to complete. |
+| Pharmacy Staff | Performs administrative queue calls, Manual Mapping, records Resep Fisik, accepts or declines Direct Medication Requests, coordinates Sales Order progression, communicates General Patient value, establishes a confirmed Sales Invoice, performs Medication Preparation and Compounding, handles Backorder or another approved stock source within authority, and performs the pickup call. | `Outpatient Queue Mapped`, `Sales Order Established`, `Sales Invoice Established`, `Medication Prepared`, `Dispense Order Backordered`, or `Patient Called for Pickup`. |
+| Pharmacist | Performs Telaah Resep, authorizes eligible Medication Substitution before Sales Order establishment, verifies the Authorized Recipient, performs Final Dispense Review, and provides Patient Education. | `Telaah Resep Completed`, `Final Dispense Review Completed`, or Medication Handover is authorized to complete. |
 | Cashier or Payment Authority | Receives required Patient payment and supplies Payment Clearance. | `Payment Clearance Established`. |
 | SEP and Fornas Authorities | Supply encounter-level SEP validity and item-level BPJS coverage. | `Coverage Clearance Established` for the covered quantity. |
 | Inventory | Owns Stock Availability, Stock Reservation, Inventory Issue, return eligibility, and Return to Stock. | `Stock Reserved`, authoritative Inventory Issue, or accepted return disposition. |
@@ -121,7 +121,7 @@ The workflow ends when every medication demand mapped to the Pharmacy Queue Entr
 
 - A Resep Elektronik becomes available from CPOE or another clinical-order authority.
 - Pharmacy Staff records a presented Resep Fisik.
-- Pharmacy Staff accepts a Direct Medication Request within authority or after required Pharmacist approval.
+- Pharmacy Staff accepts or declines a Direct Medication Request.
 
 These triggers may occur before or after Outpatient Queue Mapping as permitted by `BR-APT-061` and `BR-APT-062`.
 
@@ -264,7 +264,7 @@ Pharmacist, Pharmacy Staff, CPOE or Dokter Penulis Resep.
 2. The Pharmacist reviews every Baris Resep. When needed, the Pharmacist clarifies with the Dokter Penulis Resep outside the system; the Resep remains unchanged and the review remains `Under Review`.
 3. The Pharmacist decides each line as accepted as prescribed, accepted with a substitute, or rejected. Accepted medication is recorded on a Sales Order Line; a substitute includes its reason, affected quantity, responsible Pharmacist, and reference to the original Baris Resep.
 4. The Pharmacist completes Telaah Resep as `Approved`, `Partially Approved`, or `Rejected`.
-5. For an accepted Direct Medication Request, Pharmacy Staff accepts within authority or obtains required Pharmacist approval; no Resep is created.
+5. For a Direct Medication Request, Pharmacy Staff accepts or declines it; no Resep is created. Optional Pharmacist consultation is operational SOP guidance only and is not modeled as approval.
 6. Apotek establishes a Sales Order from exactly one completed accepted-demand source and preserves Source Traceability.
 7. Apotek may form Sales Invoices with their Sales Invoice Items and Dispense Orders with their Dispense Order Lines independently and at different business times. Every medication Sales Invoice Item and every Dispense Order Line references exactly one applicable Sales Order Line.
 8. For the normal outpatient episode, Apotek establishes one active primary Dispense Order for the active Sales Order.
@@ -277,9 +277,8 @@ Pharmacist, Pharmacy Staff, CPOE or Dokter Penulis Resep.
 | All Baris Resep accepted | Pharmacist | `Approved`; all accepted lines may establish the Sales Order. |
 | Some lines accepted | Pharmacist | `Partially Approved`; only Accepted Medication Lines enter the Sales Order. |
 | No line accepted | Pharmacist | `Rejected`; no Sales Order is established. |
-| Direct request within staff authority | Pharmacy Staff | Accept and establish the Direct Medication Request source. |
-| Direct request needs professional approval | Pharmacy Staff and Pharmacist | Refer, then accept only after approval. |
-| Direct request declined | Pharmacy Staff or Pharmacist | Do not establish a request record or Sales Order. |
+| Direct request accepted | Pharmacy Staff | Accept and establish the Direct Medication Request source. |
+| Direct request declined | Pharmacy Staff | Do not establish a request record or Sales Order. |
 
 #### Exception and Compensation Flows
 

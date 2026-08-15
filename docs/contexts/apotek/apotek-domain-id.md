@@ -86,7 +86,7 @@ Resep tidak berubah menjadi Sales Order. Keputusan profesional yang selesai meng
 | Resep | Resep | Maksud klinisi yang menjadi rujukan agar obat disediakan atau diberikan kepada Pasien. |
 | Resep Elektronik | Resep Elektronik | Resep yang dibuat dan dikirim melalui authority clinical order elektronik. |
 | Resep Fisik | Resep Fisik | Resep non-elektronik yang harus dicatat sebelum ditelaah Farmasi. |
-| Direct Medication Request | Permintaan Obat Langsung | Permintaan obat tanpa Resep yang diizinkan. |
+| Direct Medication Request | Permintaan Obat Langsung | Permintaan obat gaya ritel tanpa Resep yang berasal di luar alur perawatan rumah sakit dan dapat diterima atau ditolak Staf Apotek. |
 | Baris Resep | Baris Resep | Satu obat, instruksi dosis, dan jumlah yang diminta dalam Resep. |
 | Source Traceability | Keterlacakan Sumber | Hubungan yang dapat dipertanggungjawabkan dari Medication Sale dan hasil dispensing kembali ke Sales Order, permintaan yang diterima, dan sumber aslinya. |
 | Telaah Resep | Telaah Resep | Penilaian administratif, farmasetik, dan klinis oleh Pharmacist terhadap Resep. |
@@ -242,7 +242,7 @@ Memiliki Hasil Telaah Resep, Medication Substitution yang diotorisasi selama Tel
 
 ### 4.3 Staf Apotek
 
-Mengoordinasikan permintaan yang diterima, perkembangan Sales Order, interaksi administratif Rawat Jalan, penyiapan atau peracikan obat, dan penyerahan sesuai kewenangan. Untuk pelayanan Rawat Jalan, Staf Apotek memanggil Nomor Antrean, membuat Manual Mapping, menyampaikan nilai Pasien Umum sebelum Sales Invoice dibentuk, menyimpan Sales Invoice yang telah dikonfirmasi, menyiapkan obat sesuai Dispense Order, dan melakukan panggilan pengambilan. Untuk Permintaan Obat Langsung, Staf Apotek menerima sesuai kewenangan, meminta persetujuan Pharmacist ketika diperlukan, atau menolak tanpa membentuk permintaan maupun Sales Order. Jika stok tidak mendukung pemenuhan setelah Sales Order dibentuk, Staf Apotek memilih Backorder atau sumber stok lain yang disetujui untuk produk obat yang sama sesuai kewenangan. Staf Apotek tidak boleh mengganti jenis obat.
+Mengoordinasikan permintaan yang diterima, perkembangan Sales Order, interaksi administratif Rawat Jalan, penyiapan atau peracikan obat, dan penyerahan sesuai kewenangan. Untuk pelayanan Rawat Jalan, Staf Apotek memanggil Nomor Antrean, membuat Manual Mapping, menyampaikan nilai Pasien Umum sebelum Sales Invoice dibentuk, menyimpan Sales Invoice yang telah dikonfirmasi, menyiapkan obat sesuai Dispense Order, dan melakukan panggilan pengambilan. Untuk Permintaan Obat Langsung, Staf Apotek menerima atau menolak tanpa membentuk Resep. Konsultasi Pharmacist secara operasional bersifat opsional sebagai panduan SOP saja dan tidak dimodelkan sebagai approval gate. Jika stok tidak mendukung pemenuhan setelah Sales Order dibentuk, Staf Apotek memilih Backorder atau sumber stok lain yang disetujui untuk produk obat yang sama sesuai kewenangan. Staf Apotek tidak boleh mengganti jenis obat.
 
 ### 4.4 Patient or Caregiver
 
@@ -360,7 +360,7 @@ Outpatient Queue Mapping merupakan mapping aktif kepada Pharmacy Queue Entry yan
 - **BR-APT-006** — Resep yang rejected tidak boleh membentuk Sales Order.
 - **BR-APT-007** — Resep yang partially approved dapat membentuk Sales Order yang hanya berisi Accepted Medication Line.
 - **BR-APT-008** — Penerimaan klinis harus independen dari Stock Availability saat itu; fakta stok tidak boleh menulis ulang professional eligibility.
-- **BR-APT-009** — Direct Medication Request harus mengikuti kebijakan penerimaan profesional dan organisasi yang berlaku tanpa membentuk Resep.
+- **BR-APT-009** — Direct Medication Request adalah permintaan obat gaya ritel yang berasal di luar alur perawatan rumah sakit. Staf Apotek harus menerima atau menolaknya tanpa membentuk Resep. Konsultasi Pharmacist dapat terjadi secara operasional tetapi hanya panduan SOP opsional dan tidak boleh dimodelkan sebagai approval workflow, authority threshold, escalation, risk classification, domain state, atau business-rule gate.
 
 ### 7.2 Sales Order
 
@@ -462,7 +462,7 @@ Outpatient Queue Mapping merupakan mapping aktif kepada Pharmacy Queue Entry yan
 - **BR-APT-086** — Dalam satu normal outpatient fulfillment episode, satu Sales Order aktif harus dikoordinasikan melalui satu Dispense Order aktif. Pharmacy Queue Entry yang sama dapat mengoordinasikan beberapa pasangan Sales Order dan Dispense Order tersebut.
 - **BR-APT-087** — Tampilan progress per demand pada antrean harus berupa projection fakta Apotek untuk setiap demand yang dimappingkan; Patient Tracker tidak boleh menjadi authoritative atas state Telaah Resep, Sales Invoice, atau Dispense Order.
 - **BR-APT-088** — Satu coordinated pickup call hanya boleh dilakukan setelah setiap Dispense Order yang hendak diserahkan mencapai `Prepared` atau memperoleh outcome exception yang accountable.
-- **BR-APT-089** — Direct Medication Request harus diterima Staf Apotek sesuai authority, dirujuk untuk persetujuan Pharmacist ketika diwajibkan, atau ditolak. Request yang ditolak tidak boleh membentuk record Direct Medication Request maupun Sales Order.
+- **BR-APT-089** — Staf Apotek harus menerima atau menolak Direct Medication Request. Penerimaan membentuk record Direct Medication Request; penolakan tidak boleh membentuk record Direct Medication Request maupun Sales Order. Tidak ada persetujuan Pharmacist, rujukan, escalation, atau approval threshold.
 - **BR-APT-090** — Coverage Clearance BPJS Rawat Jalan harus memerlukan SEP yang valid untuk encounter terkait dan coverage Fornas item-level authoritative untuk jumlah yang diberi clearance.
 - **BR-APT-091** — Ketika satu Sales Order memiliki jumlah yang ditanggung BPJS dan dibayar Pasien, Sales Invoice Item harus membedakan tanggung jawab payer tersebut. Sales Invoice Item yang ditanggung membentuk Sales Invoice BPJS dan Sales Invoice Item yang dibayar Pasien membentuk Sales Invoice Pasien Umum yang terpisah.
 - **BR-APT-092** — Dalam mixed-coverage fulfillment, Sales Invoice Pasien Umum hanya boleh dibentuk setelah Purchase Confirmation lisan, sedangkan Sales Invoice BPJS hanya boleh dibentuk bersama Medication Handover yang berhasil berdasarkan `BR-APT-075`.

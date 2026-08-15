@@ -40,7 +40,7 @@ The source Resep or Direct Medication Request remains traceable and does not bec
 | Actor | Type | Operational responsibility |
 |---|---|---|
 | Pharmacist | Human | Reviews every Baris Resep, performs any needed clarification with the Dokter Penulis Resep outside the system, establishes the accepted medication, and completes the review. |
-| Pharmacy Staff | Human | Records Resep Fisik; accepts, refers, or declines Direct Medication Requests within assigned authority; and reviews stock outcomes to choose Backorder or another approved source for the same product when authorized. |
+| Pharmacy Staff | Human | Records Resep Fisik; accepts or declines Direct Medication Requests; and reviews stock outcomes to choose Backorder or another approved source for the same product when authorized. |
 | CPOE | Subsystem | Supplies the authoritative original Resep, which Apotek does not modify. |
 | Medication Catalog | Subsystem | Supplies medication identity and formulary information used during review. |
 | Pharmacy System | Subsystem | Records review outcomes and establishes traceable allocations, Sales Order, and primary Dispense Order. |
@@ -62,13 +62,12 @@ The source Resep or Direct Medication Request remains traceable and does not bec
 5. **Pharmacist** establishes each line's final disposition as accepted as prescribed, accepted with a substitute, or rejected. The original Resep and Baris Resep remain unchanged.
 6. For an accepted substitute, **Pharmacist** records the substitute medication, reason, affected quantity, and responsible Pharmacist on the Sales Order Line, which retains its reference to the original Baris Resep.
 7. **Pharmacist** completes the Telaah Resep as `Approved`, `Partially Approved`, or `Rejected`.
-8. For a Direct Medication Request, **Pharmacy Staff** records the request details and either accepts it within authority, refers it to **Pharmacist**, or declines it.
-9. When referred, **Pharmacist** records approval or decline; **Pharmacy System** permits acceptance only after approval.
-10. For an approved or partially approved Resep, or an accepted Direct Medication Request, **Pharmacy System** establishes one Sales Order from that source and preserves Source Traceability.
-11. **Pharmacy System** establishes applicable Billing Allocations and Fulfillment Allocations independently and displays their quantities.
-12. **Pharmacy System** establishes one active primary outpatient Dispense Order for the normal episode and displays its initial state.
-13. **Inventory** may return Stock Reservation evidence; **Pharmacy System** displays it without treating it as Fulfillment Clearance.
-14. **Pharmacist** or **Pharmacy Staff**, according to the source path, verifies the final review outcome, Sales Order identifier, accepted lines, and Dispense Order identifier.
+8. For a Direct Medication Request, **Pharmacy Staff** records the request details and either accepts or declines it.
+9. For an approved or partially approved Resep, or an accepted Direct Medication Request, **Pharmacy System** establishes one Sales Order from that source and preserves Source Traceability.
+10. **Pharmacy System** establishes applicable Billing Allocations and Fulfillment Allocations independently and displays their quantities.
+11. **Pharmacy System** establishes one active primary outpatient Dispense Order for the normal episode and displays its initial state.
+12. **Inventory** may return Stock Reservation evidence; **Pharmacy System** displays it without treating it as Fulfillment Clearance.
+13. **Pharmacist** or **Pharmacy Staff**, according to the source path, verifies the final review outcome, Sales Order identifier, accepted lines, and Dispense Order identifier.
 
 ## 5. Operational Exceptions
 

@@ -30,12 +30,13 @@ The architecture is not ready for implementation review until the blocking decis
 | Classification | Count | Review meaning |
 |---|---:|---|
 | Blocking Architecture Gap | 8 | A structural or ownership decision is unresolved; implementing around it would create incompatible sources of truth or unsafe cross-context behavior. |
-| Business Clarification Gap | 14 | A policy, authority, threshold, or accountable outcome is not sufficiently defined. |
+| Business Clarification Gap | 13 | A policy, authority, threshold, or accountable outcome is not sufficiently defined. |
+| Resolved (Business Clarification) | 1 | BC-02 ratified; artifacts updated. |
 | Existing Capability Extension | 9 | A relevant capability exists but its present contract or semantics do not satisfy Apotek. |
 | Missing Implementation | 15 | The design is sufficiently clear, but no conforming implementation exists. |
 | Technical Debt | 11 | Existing code or documentation embodies legacy, misleading, coupled, or unverified behavior. |
 | Resolved (Blocking Architecture) | 1 | BA-01 ratified; artifacts updated. |
-| **Total open** | **57** | Each open finding has one primary classification. |
+| **Total open** | **56** | Each open finding has one primary classification. |
 
 ## 3. Baseline and evidence
 
@@ -178,13 +179,17 @@ Both must be idempotent, concurrency-protected, and independent of Admission reg
 
 ### BC-02 — Direct Medication Request authority thresholds
 
+**Status:** Resolved (2026-08-15)
+
 **Gap.** Staff may accept, refer, or decline, but the threshold for Pharmacist approval is undefined.
 
-**Recommended decision.** Publish a rule matrix by medication class, quantity, patient/encounter context, and staff role; default unknown cases to Pharmacist approval.
-
-**Rationale.** This is a professional-governance rule and cannot be inferred from UI role or catalog data.
-
 **Evidence.** `apotek-domain.md:217-219`, `441`; screen design `:108-111`, `:317-327`.
+
+**Decision.** Direct Medication Request does not require Pharmacist approval. Pharmacy Staff accepts or declines it directly. It is treated as a retail-style medication request originating outside the hospital care workflow. Pharmacist consultation may occur operationally but is optional SOP guidance only. The model shall not include pharmacist consultation as approval workflow, authority threshold, escalation process, risk classification, domain state, or business-rule gate.
+
+**Rationale.** Direct Medication Request is intentionally outside prescription review and hospital care workflow governance. Modeling optional consultation as a system gate would conflate retail demand intake with Telaah Resep authority and create unnecessary workflow states.
+
+**Ratified in.** `apotek-domain.md` (`BR-APT-009`, `BR-APT-089`); `outpatient-apotek-workflow.md`; `outpatient-apotek-screen-and-aggregate-design.md` §3.2; `sop/SOP-APT-RJ-002-*`.
 
 ### BC-03 — Return, correction, expiry, and exception approval thresholds
 
@@ -370,10 +375,11 @@ Both must be idempotent, concurrency-protected, and independent of Admission reg
 - Establish the current BPJS Sales Invoice only with successful handover.
 - Keep Final Dispense Review attempts immutable; failure returns only the affected Dispense Order to `Preparing`.
 - Preserve separate records for multiple medication demands sharing one queue.
+- Direct Medication Request is accepted or declined by Pharmacy Staff without Pharmacist approval; optional consultation is SOP-only and not a domain gate (BC-02).
 
 ### 9.2 Decisions still required before architecture approval
 
-Architecture approval requires explicit disposition of BA-02 through BA-09 and business ratification of BC-01 through BC-14. BA-01 is resolved. These are decision gates, not delivery steps. The remaining Existing Capability Extension, Missing Implementation, and Technical Debt findings can then be evaluated against those ratified boundaries without inventing new sources of truth.
+Architecture approval requires explicit disposition of BA-02 through BA-09 and business ratification of BC-01 and BC-03 through BC-14. BA-01 and BC-02 are resolved. These are decision gates, not delivery steps. The remaining Existing Capability Extension, Missing Implementation, and Technical Debt findings can then be evaluated against those ratified boundaries without inventing new sources of truth.
 
 ### 9.3 Overall classification
 
