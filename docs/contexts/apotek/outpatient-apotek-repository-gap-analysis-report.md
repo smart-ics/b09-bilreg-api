@@ -29,14 +29,14 @@ The architecture is not ready for implementation review until the blocking decis
 
 | Classification | Count | Review meaning |
 |---|---:|---|
-| Blocking Architecture Gap | 7 | A structural or ownership decision is unresolved; implementing around it would create incompatible sources of truth or unsafe cross-context behavior. |
+| Blocking Architecture Gap | 3 | A structural or ownership decision is unresolved; implementing around it would create incompatible sources of truth or unsafe cross-context behavior. |
 | Business Clarification Gap | 13 | A policy, authority, threshold, or accountable outcome is not sufficiently defined. |
 | Resolved (Business Clarification) | 1 | BC-02 ratified; artifacts updated. |
 | Existing Capability Extension | 9 | A relevant capability exists but its present contract or semantics do not satisfy Apotek. |
 | Missing Implementation | 15 | The design is sufficiently clear, but no conforming implementation exists. |
 | Technical Debt | 11 | Existing code or documentation embodies legacy, misleading, coupled, or unverified behavior. |
-| Resolved (Blocking Architecture) | 2 | BA-01 and BA-02 ratified; artifacts updated. |
-| **Total open** | **55** | Each open finding has one primary classification. |
+| Resolved (Blocking Architecture) | 6 | BA-01 through BA-06 ratified; artifacts updated. |
+| **Total open** | **51** | Each open finding has one primary classification. |
 
 ## 3. Baseline and evidence
 
@@ -96,43 +96,65 @@ The architecture is not ready for implementation review until the blocking decis
 
 ### BA-03 — `OutpatientQueueMapping` consistency boundary
 
+**Status:** Resolved (2026-08-15)
+
 **Gap.** The canonical domain says mapping is an active relationship and not an aggregate root, while the proposed screen design lists `OutpatientQueueMapping` as an aggregate root. ADR-APT-001 permits several implementation structures.
 
 **Evidence.** `apotek-domain.md:277-279`, `289-325`; screen design `:261-277`; ADR `:115-145`.
 
-**Recommended decision.** Ratify the canonical domain: model mapping as a uniquely constrained Apotek-owned relationship/entity and projection input, not an aggregate root. Commands must update the active association in place, enforce queue-entry/source uniqueness and cardinality, and remain transactionally independent from Tracker.
+**Decision.** `OutpatientQueueMapping` is not an aggregate root. It is a navigation/association mechanism only. It does not own business lifecycle, workflow state, approval state, operational progress, or transactional consistency. It does not maintain active/inactive relationship state. It does not establish an independent consistency boundary. Queue identity and lifecycle remain owned by Patient Tracker. Medication demand lifecycle remains owned by the corresponding Pharmacy aggregates (`Sales Order`, `Dispense Order`, and related roots). The association exists only to answer operational navigation and worklist questions such as: which queue entry is serving this medication demand, and which medication demands are associated with this queue entry.
 
-**Rationale.** Mapping has no independent lifecycle or history requirement under `BR-APT-062`; promoting it to an aggregate introduces an unnecessary consistency boundary and contradicts the source of authority.
+**Rationale.** Mapping is a read/navigation aid across externally owned queue identity and Pharmacy-owned demand lifecycles. Promoting it to an aggregate or lifecycle-bearing relationship would create a competing consistency boundary without independent business outcomes.
+
+**Ratified in.** `apotek-domain.md`; `outpatient-apotek-screen-and-aggregate-design.md` §5; `adr/ADR-APT-001-queu-boundary-and-pharmacy-workflow-state-ownership.md`.
 
 ### BA-04 — Pickup/handover lifecycle versus projection categories
+
+**Status:** Resolved (2026-08-16)
 
 **Gap.** The domain shows `Ready for Pickup`, `Patient Called`, `Recipient Verified`, `Final Review Completed`, `Education Provided`, and `Handed Over` as a lifecycle, while the screen design says similar names are projection-only categories and Dispense Order states remain authoritative.
 
 **Evidence.** `apotek-domain.md:541-559`; screen design `:151-179`.
 
-**Recommended decision.** Persist only aggregate facts and canonical Dispense Order state. Derive Serah Obat categories from preparation, pickup-call, recipient-verification, review, education, dispense, and handover facts. Amend the domain diagram to label it a process/fact sequence rather than an additional state machine.
+**Decision.** Pickup/handover categories are not aggregate lifecycle states. They are projection/worklist categories only. `DispenseOrder` remains the authoritative aggregate lifecycle. Operational milestones such as Patient Called, Recipient Verified, Final Review Completed, Education Provided, and Medication Handed Over are process facts/events, not aggregate states. Worklist categories (`Ready for Pickup`, `Ready for Review`, `Ready for Handover`, `Completed`) are derived projections used for operational organization and prioritization.
 
-**Rationale.** Persisting both lifecycles creates contradictory state transitions and makes review failure, multi-order pickup, and post-`Done` handover ambiguous.
+**Rationale.** A single authoritative lifecycle in `DispenseOrder` avoids contradictory transitions and keeps review failure, multi-order pickup, and post-`Done` handover unambiguous. Serah Obat organization is served by projections derived from aggregate facts and events, not a parallel state machine.
+
+**Ratified in.** `apotek-domain.md`; `outpatient-apotek-screen-and-aggregate-design.md` §3.4; `outpatient-apotek-workflow.md`.
 
 ### BA-05 — Legacy DU authority and coexistence with target sales/dispensing
+
+**Status:** Resolved (2026-08-16)
 
 **Gap.** Current `PenjualanModel` remains a mutable monolithic DU-Bill. The target requires independent `SalesOrder`, `SalesInvoice`, and `DispenseOrder` lifecycles with line-level traceability. No source-of-truth or coexistence rule is defined.
 
 **Evidence.** `apotek-domain.md:17-26`, `93-113`; `PenjualanModel.cs:56-130`, `185-190`; `PenjualanCreateCmd.cs:41-77`.
 
-**Recommended decision.** Make target Apotek aggregates authoritative for all new outpatient flows. Define legacy DU as a compatibility representation generated from target facts or as read-only historical data; do not allow target and DU commands to mutate the same episode independently. Define stable lineage from legacy DU IDs to Sales Invoice and Dispense Order facts.
+**Decision.** Legacy DU and new Sales Invoice are independent features. Both may operate concurrently during the transition period. No dual-write strategy is permitted. Sales Invoice must not generate, synchronize, transform into, or mirror a Legacy DU. Legacy DU remains owned by the legacy workflow. Sales Invoice remains owned by the new outpatient pharmacy workflow.
 
-**Rationale.** Dual write authority would violate quantity reconciliation, invoice timing, no-manual-item rules, and correction history.
+**Coexistence strategy.** Legacy DU generates Billing and Stock movements through existing legacy mechanisms. Sales Invoice generates Billing and Stock movements through the new architecture. Stock coexistence is handled by the existing stock-ledger coexistence architecture. Both transaction sources may generate bills into the Tata Rekening bounded context.
+
+**Reporting strategy.** Unified sales reporting shall be provided by a read-only reporting adapter/projection in the new system. The adapter aggregates Legacy DU and Sales Invoice transactions into a unified reporting view without modifying the legacy system. Reporting must remain valid when only Legacy DU transactions exist.
+
+**Rationale.** Independent feature ownership with parallel billing/stock paths avoids dual-write corruption while allowing phased rollout. Unified reporting is a read-side concern and must not couple the transactional models.
+
+**Ratified in.** `apotek-domain.md`; `outpatient-apotek-workflow.md`; coexistence and reporting adapter design (to be specified at implementation).
 
 ### BA-06 — Authoritative prescription identity and CPOE/legacy `Resep` bridge
+
+**Status:** Resolved (2026-08-16)
 
 **Gap.** The domain assigns original prescription authority to CPOE or another clinical source, but current sales code loads a legacy `ResepModel`; no canonical prescription identity, version, source-line reference, or external-prescription ownership contract exists.
 
 **Evidence.** `apotek-domain.md:43-55`, `331-339`; workflow `:120-145`, `233-304`; `PenjualanCreateCmd.cs:50-73`.
 
-**Recommended decision.** Define an immutable `PrescriptionSourceRef` contract containing authority, source ID/version, patient/encounter, source-line IDs, and source type. Apotek stores references and snapshots required for review but never mutates the source. Legacy `Resep` must be adapted to the same contract; physical prescriptions require an accountable Apotek intake record before review.
+**Decision.** A canonical Prescription Contract shall be defined and respected by both Legacy Resep and CPOE. The new Outpatient Pharmacy system shall consume the Prescription Contract instead of directly depending on Legacy Resep or CPOE-specific models. Pharmacy operations shall be based on a Prescription Snapshot created from the Prescription Contract at intake time. The snapshot is authoritative for pharmacy operational workflows and lifecycle processing.
 
-**Rationale.** Without a stable source contract, line-level traceability, one-active-order enforcement, re-review, and substitute provenance cannot be guaranteed.
+**Prescription revision handling.** Source prescription revisions must be detected. Source prescription revisions must not automatically modify existing pharmacy snapshots. No silent synchronization or automatic rewriting of pharmacy operational data is allowed. When a revision is detected, the system shall create an operational review task for pharmacy staff to evaluate and handle the change.
+
+**Rationale.** A shared contract decouples pharmacy from source-specific models while preserving traceability. Snapshot-at-intake makes pharmacy workflows deterministic; explicit revision detection with staff review prevents silent drift from clinical source changes.
+
+**Ratified in.** `apotek-domain.md`; `outpatient-apotek-workflow.md`; Prescription Contract and snapshot design (to be specified at implementation).
 
 ### BA-07 — Cross-context delivery, idempotency, and reconciliation
 
@@ -366,6 +388,10 @@ The architecture is not ready for implementation review until the blocking decis
 
 - Patient Tracker `QueueEntry` is the sole canonical outpatient-pharmacy queue identity; legacy Farinv queue is read-only and must not create active records (BA-01).
 - Patient Tracker owns queue lifecycle; Pharmacy owns pharmacy workflow. First Medication Preparation Started causes Queue `ServedAt` / `InService`; coordinated Pickup Call causes Queue `DoneAt` / `Done`. No further architecture decision is required for the Pharmacy-to-Tracker milestone contract (BA-02).
+- `OutpatientQueueMapping` is a navigation/association mechanism only, not an aggregate root. It does not own lifecycle, workflow state, or transactional consistency. Queue identity remains in Patient Tracker; medication demand lifecycle remains in Pharmacy aggregates (BA-03).
+- Pickup/handover categories are projection/worklist categories only, not aggregate lifecycle states. `DispenseOrder` remains authoritative; operational milestones are process facts/events; worklist categories (`Ready for Pickup`, `Ready for Review`, `Ready for Handover`, `Completed`) are derived projections (BA-04).
+- Legacy DU and Sales Invoice are independent features that may coexist during transition with no dual-write. Each owns its own workflow and billing/stock paths; unified sales reporting is a read-only adapter aggregating both sources (BA-05).
+- A canonical Prescription Contract is shared by Legacy Resep and CPOE; pharmacy consumes the contract via a Prescription Snapshot at intake. Source revisions are detected but do not auto-modify snapshots; staff review tasks handle changes (BA-06).
 - Keep queue lifecycle generic: `Waiting`, `InService`, `Done`, `Withdrawn`.
 - Keep pharmacy operational state out of Patient Tracker.
 - Treat `ServedAt` as first preparation-start evidence.
@@ -379,7 +405,7 @@ The architecture is not ready for implementation review until the blocking decis
 
 ### 9.2 Decisions still required before architecture approval
 
-Architecture approval requires explicit disposition of BA-03 through BA-09 and business ratification of BC-01 and BC-03 through BC-14. BA-01, BA-02, and BC-02 are resolved. These are decision gates, not delivery steps. The remaining Existing Capability Extension, Missing Implementation, and Technical Debt findings can then be evaluated against those ratified boundaries without inventing new sources of truth.
+Architecture approval requires explicit disposition of BA-07 through BA-09 and business ratification of BC-01 and BC-03 through BC-14. BA-01 through BA-06 and BC-02 are resolved. These are decision gates, not delivery steps. The remaining Existing Capability Extension, Missing Implementation, and Technical Debt findings can then be evaluated against those ratified boundaries without inventing new sources of truth.
 
 ### 9.3 Overall classification
 
