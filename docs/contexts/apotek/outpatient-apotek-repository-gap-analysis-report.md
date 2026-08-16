@@ -23,20 +23,20 @@ Current repository state:
 - The generic queue enum already complies with ADR-APT-001, but current F-09 event triggers and the frontend's queue states conflict with the canonical workflow.
 - Existing Patient Tracker, Tata Rekening, Stock Ledger, CPOE, Fornas, medication catalog, query, and UI-shell capabilities are reusable only through explicit extensions and adapters.
 
-The architecture is not ready for implementation review until the blocking decisions in section 4 are resolved. The most material are canonical queue identity, legacy DU coexistence, aggregate ownership for queue mapping, cross-context transaction semantics, and the contracts for Tracker, Inventory, Payment, SEP/Fornas, and Tata Rekening.
+The architecture is not ready for implementation review until the blocking decisions in section 4 are resolved. All blocking architecture gaps (BA-01 through BA-09) are now resolved; remaining gates are business clarification (BC-01, BC-03 through BC-14).
 
 ## 2. Classification summary
 
 | Classification | Count | Review meaning |
 |---|---:|---|
-| Blocking Architecture Gap | 1 | A structural or ownership decision is unresolved; implementing around it would create incompatible sources of truth or unsafe cross-context behavior. |
+| Blocking Architecture Gap | 0 | A structural or ownership decision is unresolved; implementing around it would create incompatible sources of truth or unsafe cross-context behavior. |
 | Business Clarification Gap | 13 | A policy, authority, threshold, or accountable outcome is not sufficiently defined. |
 | Resolved (Business Clarification) | 1 | BC-02 ratified; artifacts updated. |
 | Existing Capability Extension | 9 | A relevant capability exists but its present contract or semantics do not satisfy Apotek. |
 | Missing Implementation | 15 | The design is sufficiently clear, but no conforming implementation exists. |
 | Technical Debt | 11 | Existing code or documentation embodies legacy, misleading, coupled, or unverified behavior. |
-| Resolved (Blocking Architecture) | 8 | BA-01 through BA-08 ratified; artifacts updated. |
-| **Total open** | **49** | Each open finding has one primary classification. |
+| Resolved (Blocking Architecture) | 9 | BA-01 through BA-09 ratified; artifacts updated. |
+| **Total open** | **48** | Each open finding has one primary classification. |
 
 ## 3. Baseline and evidence
 
@@ -202,13 +202,28 @@ The architecture is not ready for implementation review until the blocking decis
 
 ### BA-09 — Inventory fulfillment contract
 
+**Status:** Resolved (2026-08-16)
+
 **Gap.** Inventory owns reservation, issue, return eligibility, and final disposition, but the current repository has stock-ledger capabilities rather than a defined Dispense Order contract. Reservation timing, partial quantities, in-transit custody, issue-on-handover, and rejected returns are not architecturally connected.
 
 **Evidence.** `apotek-domain.md:116-125`, `366-400`; workflow `:681-695`; screen design `:292-303`.
 
-**Recommended decision.** Define quantity- and lot-aware inventory commands/results keyed by Dispense Order Line: reserve, release, issue, request return disposition, and record final disposition. Inventory remains authoritative; Apotek stores references and blocks/advances its lifecycle only from acknowledged outcomes. Every command must be idempotent and support partial results.
+**Decision.** Stock Ledger remains a pure stock authority and does not own Pharmacy workflow concepts. Pharmacy owns Sales Order, Dispense Order, dispensing lifecycle, `Prepared`, `Handed Over`, and No Show resolution. Stock Ledger owns stock quantity, Mutasi, Remove Stock, and stock movement history only.
 
-**Rationale.** A generic stock movement without fulfillment lineage cannot prove that the correct accepted quantity was reserved, handed over, returned, or left unresolved.
+**Lifecycle mapping.**
+
+| Pharmacy event | Inventory action |
+|---|---|
+| Dispensing Started | Mutasi from Pharmacy Unit to Dispensing Temporary Unit |
+| Dispensing Completed / `Prepared` | No inventory action |
+| Medication Handed Over | Remove Stock from Dispensing Temporary Unit |
+| No Show resolution | Mutasi from Dispensing Temporary Unit back to Pharmacy Unit |
+
+**Additional rules.** Reserve equals Mutasi; no separate `ReserveStock` contract. `Prepared` is a Dispense Order state only, reached when required dispensing movements complete; it is not an Inventory state. Partial fulfillment is represented at Sales Order level; a Sales Order may be fulfilled by multiple Dispense Orders. No Show is Pharmacy-owned; Inventory applies only the return movement directed by Pharmacy and never stores No Show status.
+
+**Rationale.** Separating workflow ownership from stock movement prevents duplicate lifecycle truth. Reusing Mutasi avoids a parallel reservation model and aligns with existing stock-ledger coexistence.
+
+**Ratified in.** `apotek-domain.md` (`BR-APT-098`–`BR-APT-104`); `stok-ledger-domain.md` §1.7; `outpatient-apotek-workflow.md`; `adr/ADR-APT-002-pharmacy-stock-ledger-boundary.md`.
 
 ## 5. Business Clarification Gaps
 
@@ -366,7 +381,7 @@ The architecture is not ready for implementation review until the blocking decis
 | EC-04 | Idempotent F-09 `Apotek-*` evidence append | Retarget evidence to preparation-start and pickup-call causation; add durable delivery and canonical queue-entry references. | `PharmacyQueueEvidence.cs:9-69`; F-09 report `:217-225` |
 | EC-05 | CPOE, legacy `Resep`, medication catalog, and goods references | Supply immutable prescription-source and catalog contracts suitable for Telaah and Sales Order line traceability. | Domain `:43-55`; backend legacy sales files |
 | EC-06 | Fornas master-data access and existing patient/registration data | Add valid-SEP plus item/quantity coverage evidence; master-data presence alone is not Coverage Clearance. | Domain `:106-108`, `442-446`; workflow `:386-539` |
-| EC-07 | Stock Ledger movement and return consequence capabilities | Add reservation, release, dispense issue, partial fulfillment, and return-disposition contracts keyed to Dispense Order Lines. | Domain `:366-400`; workflow `:681-695` |
+| EC-07 | Stock Ledger movement and return consequence capabilities | Add Mutasi to/from Dispensing Temporary Unit and Remove Stock on handover keyed to Dispense Order Lines; no separate reservation contract. | Domain `:366-400`; workflow `:681-695`; ADR-APT-002 |
 | EC-08 | Tata Rekening, payment, tariff, and financial-adjustment capabilities | Add medication Financial Charge lineage, Payment Clearance consumption, BPJS/general invoice timing, credit/refund correlation, and pricing snapshots. | Domain `:247-267`, `354-389`; workflow `:306-539` |
 | EC-09 | Vue module shell, TanStack Query/Zod patterns, Admission queue client patterns, shared UI blocks | Reuse visual/query primitives behind Apotek-owned DTOs and role-specific workbenches; do not reuse Admission commands or current mock state model. | Frontend tabs `:5-22`; `obatQueries.ts:1-38`; queue gap analysis `:26-41` |
 
@@ -418,6 +433,7 @@ The architecture is not ready for implementation review until the blocking decis
 - A canonical Prescription Contract is shared by Legacy Resep and CPOE; pharmacy consumes the contract via a Prescription Snapshot at intake. Source revisions are detected but do not auto-modify snapshots; staff review tasks handle changes (BA-06).
 - Cross-context integration uses an Integration Task Table: transactional, retryable, idempotent, and reconcile-able. Business transaction and task creation commit atomically; workers process asynchronously. No distributed transaction, message broker, or transactional outbox is required (BA-07).
 - There is no Financial Clearance or Fulfillment Clearance domain object. Pharmacy policy evaluates financial/coverage evidence to determine Dispense Authorized before preparation and dispensing; handover uses separate gates. BPJS invoice and handover coordination uses the Integration Task Table without a distributed transaction (BA-08).
+- Stock Ledger owns stock quantity and movements only; Pharmacy owns dispensing lifecycle. Reserve is Mutasi to Dispensing Temporary Unit; handover removes stock; No Show return is Mutasi back to Pharmacy Unit. `Prepared` and partial fulfillment semantics belong to Pharmacy aggregates (BA-09).
 - Keep queue lifecycle generic: `Waiting`, `InService`, `Done`, `Withdrawn`.
 - Keep pharmacy operational state out of Patient Tracker.
 - Treat `ServedAt` as first preparation-start evidence.
@@ -431,7 +447,7 @@ The architecture is not ready for implementation review until the blocking decis
 
 ### 9.2 Decisions still required before architecture approval
 
-Architecture approval requires explicit disposition of BA-09 and business ratification of BC-01 and BC-03 through BC-14. BA-01 through BA-08 and BC-02 are resolved. These are decision gates, not delivery steps. The remaining Existing Capability Extension, Missing Implementation, and Technical Debt findings can then be evaluated against those ratified boundaries without inventing new sources of truth.
+Architecture approval requires business ratification of BC-01 and BC-03 through BC-14. BA-01 through BA-09 and BC-02 are resolved. These are decision gates, not delivery steps. The remaining Existing Capability Extension, Missing Implementation, and Technical Debt findings can then be evaluated against those ratified boundaries without inventing new sources of truth.
 
 ### 9.3 Overall classification
 
@@ -439,5 +455,5 @@ The repository is **architecture-partially-aligned but implementation-absent**:
 
 - aligned: queue enum boundary and several reusable platform capabilities;
 - conflicting: legacy DU, F-09 milestone semantics, and current frontend queue/payment model;
-- unresolved: identity, aggregate relationship, integration reliability, financial and inventory boundaries, and operational policy thresholds;
+- unresolved: operational policy thresholds and remaining implementation against ratified boundaries;
 - missing: all target Apotek aggregates, workflows, screens, projections, integrations, and verification.

@@ -107,7 +107,7 @@ A Resep does not become a Sales Order. A completed professional decision authori
 | BPJS Patient | A Patient whose applicable Medication Sale is covered through BPJS policy without Patient Purchase Confirmation or Patient payment. |
 | Payment Clearance | Evidence that the required payment condition has been satisfied. |
 | Coverage Clearance | Evidence that the applicable payer authorizes fulfillment without immediate Patient payment. For outpatient BPJS fulfillment, it combines a valid SEP for the encounter with item-level coverage determined from the authoritative Fornas mapping. |
-| Fulfillment Clearance | The business authorization allowing a Dispense Order to proceed under the applicable payment or coverage policy. |
+| Dispense Authorized | A policy evaluation result indicating medication preparation and dispensing may start, derived from financial and coverage evidence. It is not an aggregate, entity, source of truth, or transaction boundary. |
 | Financial Adjustment | An accountable correction to a Medication Sale or its financial consequences. |
 | Credit Note | A commercial document reducing or reversing an issued Sales Invoice amount. |
 | Refund | The accountable return of previously settled funds. |
@@ -116,15 +116,17 @@ A Resep does not become a Sales Order. A completed professional decision authori
 | Dispense Cycle | A defined fulfillment period or batch, especially for inpatient and Unit Dose Dispensing. |
 | Unit Dose Dispensing | Fulfillment in patient-specific unit doses or defined administration periods. |
 | Stock Availability | Inventory's representation of quantity currently available to support fulfillment. |
-| Stock Allocation | Inventory's association of stock with a fulfillment need before final issue. |
-| Stock Reservation | Stock secured for a Dispense Order so it is not promised to another demand. |
-| Inventory Issue | Inventory's authoritative recognition that medication left an inventory location. |
+| Pharmacy Unit | The ordinary pharmacy Stock Location from which outpatient medication is issued into dispensing custody. |
+| Dispensing Temporary Unit | The pharmacy Stock Location that holds medication under active dispensing custody after Dispensing Started and before handover or No Show return. |
+| Pharmacy Reserve | Pharmacy-directed placement of stock for a Dispense Order, implemented only as Stock Mutasi from Pharmacy Unit to Dispensing Temporary Unit. |
+| Stock Mutasi | Stock Ledger's accountable transfer of quantity between Stock Locations without changing Receipt Source. |
+| Remove Stock | Stock Ledger's accountable outbound removal of quantity from a Stock Location, including from Dispensing Temporary Unit on Medication Handover. |
 | Medication Preparation | Picking, counting, labelling, packaging, and otherwise preparing medication for fulfillment. |
 | Compounding | Preparing a medication product from ingredients or components for a specific fulfillment need. |
 | Final Dispense Review | The final professional Medication Review performed by the Pharmacist with the Patient or caregiver present after the pickup call and before Medication Handover. |
 | Final Dispense Review Record | An immutable record of one Final Dispense Review attempt for a Dispense Order, including its passed or failed outcome, reason when failed, responsible Pharmacist, effective business time, and affected quantity. One Dispense Order may have multiple review records. |
 | Prepared Medication | Medication whose physical preparation is complete and awaits final review or handover. |
-| In-Transit Medication | Prepared medication removed from general availability but not yet handed to its authorized recipient. |
+| Dispensing Temporary Custody | Medication quantity held in Dispensing Temporary Unit after Dispensing Started and before Medication Handover or No Show return. |
 | Medication Dispense | The accountable fact that a quantity of medication was actually supplied for a Patient. |
 | Medication Handover | The accountable transfer of medication to an Authorized Recipient. |
 | Authorized Recipient | A verified Patient, caregiver, practitioner, ward, or other party permitted to receive medication for the Patient. |
@@ -179,13 +181,13 @@ Form one or more Medication Sales and Sales Invoices from Sales Order Lines with
 
 Form one or more Dispense Orders from Sales Order Lines based on care setting, quantity, location, cycle, and fulfillment policy.
 
-### 3.6 Commercial and Coverage Clearance
+### 3.6 Dispense Authorization
 
-Determine when a Dispense Order may proceed from Payment Clearance, Coverage Clearance, or another approved payer policy.
+Evaluate financial and coverage evidence to determine when medication preparation and dispensing may start (`Dispense Authorized`).
 
 ### 3.7 Physical Dispensing
 
-Coordinate stock reservation, Medication Preparation, Compounding, Final Dispense Review, Medication Dispense, and Medication Handover.
+Coordinate Pharmacy Reserve through Stock Mutasi, Medication Preparation, Compounding, Final Dispense Review, Medication Dispense, Medication Handover, and No Show stock return.
 
 ### 3.8 Partial and Unit-Dose Fulfillment
 
@@ -265,29 +267,45 @@ One Sales Order Line may be represented by Sales Invoice Items in one or more Sa
 
 Represents one physical fulfillment instruction from one Sales Order. It owns Dispense Order Lines, each of which references exactly one Sales Order Line from that Sales Order, together with preparation and review progress, Medication Dispense outcomes, and final fulfillment disposition.
 
-### 5.5 Fulfillment Clearance
-
-Relates one Dispense Order's permitted quantity to Payment Clearance, Coverage Clearance, or another approved commercial evidence. It may reference multiple Sales Invoices when required by payer policy.
-
-### 5.6 Medication Dispense
+### 5.5 Medication Dispense
 
 Represents the actual medication and quantity supplied for a Patient, including responsible party, effective time, and source Dispense Order.
 
-### 5.7 Medication Handover
+### 5.6 Medication Handover
 
 Represents transfer to an Authorized Recipient, including recipient verification, handover time, destination when applicable, and Patient Education responsibility.
 
-### 5.8 Outpatient Queue Mapping
+### 5.7 Outpatient Queue Mapping
 
 Represents the active association between an externally owned Pharmacy Queue Entry and the applicable medication-demand source. If the selected source is incorrect, the association is updated in place and no mapping-change history is required. It records the current mapping method without owning Queue Number or queue lifecycle.
 
-### 5.9 Unfulfilled Medication Outcome
+### 5.8 Unfulfilled Medication Outcome
 
 Represents the final reason an accepted quantity was not fulfilled and identifies any Salinan Resep, backorder closure, return, or financial correction required.
 
-### 5.10 Final Dispense Review Record
+### 5.9 Final Dispense Review Record
 
 Represents one immutable Final Dispense Review attempt owned as a detail of one Dispense Order. Review records are appended rather than replaced so repeated failed and successful reviews remain accountable in their original order.
+
+### 5.10 Pharmacy and Stock Ledger boundary
+
+Pharmacy owns Sales Order, Dispense Order, dispensing lifecycle, `Prepared`, `Handed Over`, and No Show resolution. Stock Ledger owns stock quantity, Mutasi, Remove Stock, and movement history only.
+
+Pharmacy Reserve is implemented only as Stock Mutasi from Pharmacy Unit to Dispensing Temporary Unit. Medication Handover requests Remove Stock from Dispensing Temporary Unit. No Show resolution requests Stock Mutasi from Dispensing Temporary Unit back to Pharmacy Unit. `Prepared` is a Dispense Order state only and is not an Inventory state. Partial fulfillment semantics belong to Sales Order; one Sales Order may be fulfilled through multiple Dispense Orders.
+
+```text
+Dispensing Started
+  -> Stock Mutasi: Pharmacy Unit -> Dispensing Temporary Unit
+
+Dispensing Completed / Prepared
+  -> no Stock Ledger action
+
+Medication Handed Over
+  -> Remove Stock from Dispensing Temporary Unit
+
+No Show resolution
+  -> Stock Mutasi: Dispensing Temporary Unit -> Pharmacy Unit
+```
 
 ## 6. Aggregates
 
@@ -323,7 +341,7 @@ A Dispense Order references exactly one Sales Order and may fulfill one or more 
 ### 6.5 Cross-aggregate relationship
 A Sales Order may have zero or more Sales Invoices and zero or more Dispense Orders. Sales Invoices and Dispense Orders are not required to have equal counts or formation times.
 
-Their business correlation is expressed through Sales Invoice Item and Dispense Order Line references to Sales Order Lines, and Fulfillment Clearance at line and quantity level. Sharing a Sales Order does not by itself establish that every Sales Invoice clears every Dispense Order.
+Their business correlation is expressed through Sales Invoice Item and Dispense Order Line references to Sales Order Lines and Dispense Authorized policy evaluation over financial and coverage evidence. Sharing a Sales Order does not by itself establish that every Sales Invoice clears every Dispense Order.
 
 Outpatient Queue Mapping is an active relationship to an externally owned Pharmacy Queue Entry, not an Aggregate Root of Apotek or a transaction log of mapping changes. Patient Tracker remains authoritative for Queue Session, Queue Number, and queue lifecycle.
 
@@ -347,7 +365,7 @@ Outpatient Queue Mapping is an active relationship to an externally owned Pharma
 - **BR-APT-011** — One Resep shall establish at most one active Sales Order within one fulfillment episode.
 - **BR-APT-012** — A Sales Order shall contain at least one Sales Order Line with a positive Accepted Quantity.
 - **BR-APT-013** — Every Sales Order Line shall retain Source Traceability to its Baris Resep or Direct Medication Request line; for an accepted substitute, the Sales Order Line contains the substitute while its source reference remains the original Baris Resep.
-- **BR-APT-014** — A Sales Order shall not be a Sales Invoice, payment record, Stock Reservation, Dispense Order, or Medication Dispense evidence.
+- **BR-APT-014** — A Sales Order shall not be a Sales Invoice, payment record, Pharmacy Reserve movement, Dispense Order, or Medication Dispense evidence.
 - **BR-APT-015** — Sales Invoice and Dispense Order formation may occur independently and at different business times.
 - **BR-APT-016** — The total active quantity of Dispense Order Lines referencing a Sales Order Line shall not exceed its unresolved Accepted Quantity.
 - **BR-APT-017** — Fulfilled Quantity shall not exceed its Dispense Order Line quantity.
@@ -362,7 +380,7 @@ Outpatient Queue Mapping is an active relationship to an externally owned Pharma
 - **BR-APT-023** — A Sales Invoice may cover one or more Sales Order Lines through its Sales Invoice Items and shall preserve each item's source line, billed quantity, and value.
 - **BR-APT-024** — A Sales Invoice Item shall not introduce a medication line absent from its source Sales Order, except an explicitly authorized non-medication commercial component.
 - **BR-APT-025** — A Sales Invoice shall retain the Pricing Snapshot and Payer applicable when it is established.
-- **BR-APT-026** — Sales Invoice formation shall not prove that stock is available, reserved, prepared, dispensed, or handed over.
+- **BR-APT-026** — Sales Invoice formation shall not prove that stock is available, transferred to Dispensing Temporary Unit, prepared, dispensed, or handed over.
 - **BR-APT-027** — An issued or financially settled Sales Invoice shall be corrected through an accountable Financial Adjustment, Credit Note, or Refund outcome rather than silent replacement.
 - **BR-APT-028** — Every Financial Charge sent to Tata Rekening shall retain Source Traceability to its Sales Invoice and Sales Order.
 
@@ -372,28 +390,28 @@ Outpatient Queue Mapping is an active relationship to an externally owned Pharma
 - **BR-APT-030** — A Sales Order may produce zero, one, or multiple Dispense Orders.
 - **BR-APT-031** — A Dispense Order may cover one or more Sales Order Lines and shall preserve each direct line reference and quantity. One Sales Order Line may be split across multiple Dispense Order Lines.
 - **BR-APT-032** — Dispense Order count, quantity split, and timing may differ from Sales Invoice count, value split, and timing.
-- **BR-APT-033** — Stock Reservation and Inventory Issue shall remain authoritative Inventory outcomes requested for a Dispense Order.
+- **BR-APT-033** — Stock Mutasi and Remove Stock shall remain authoritative Stock Ledger outcomes requested by Pharmacy for a Dispense Order Line.
 - **BR-APT-034** — Medication Preparation and Compounding shall use an active Dispense Order as their authority.
 - **BR-APT-035** — Prepared Medication shall complete Final Dispense Review before Medication Handover.
 - **BR-APT-036** — A Medication Dispense shall not exceed the unresolved quantity of its Dispense Order Line.
 - **BR-APT-037** — Medication Handover shall identify an Authorized Recipient and its effective business time.
 - **BR-APT-038** — Ward Delivery shall not be treated as Medication Administration.
-- **BR-APT-039** — Medication Administration shall not be inferred from Sales Invoice, Inventory Issue, Medication Dispense, or Ward Delivery.
+- **BR-APT-039** — Medication Administration shall not be inferred from Sales Invoice, Remove Stock, Medication Dispense, or Ward Delivery.
 - **BR-APT-096** — Each Final Dispense Review attempt shall append an immutable Final Dispense Review Record to its Dispense Order. A failed review shall record its reason, responsible Pharmacist, effective business time, and affected quantity, shall return the Dispense Order from `Prepared` to `Preparing`, and shall prohibit Medication Handover. After correction, the Dispense Order shall return to `Prepared` and undergo a new Final Dispense Review; only the latest review record with a passed outcome may transition it to `Reviewed` and authorize Medication Handover.
 
-### 7.5 Clearance and cross-aggregate coordination
+### 7.5 Dispense Authorization and cross-aggregate coordination
 
-- **BR-APT-040** — A Dispense Order shall proceed only when the Fulfillment Clearance required by its care-setting and payer policy is present.
+- **BR-APT-040** — Medication Preparation and Dispensing shall proceed only when Pharmacy policy evaluates the applicable financial and coverage evidence as Dispense Authorized.
 - **BR-APT-041** — Payment Clearance shall come from the responsible payment authority and shall not be inferred solely from Sales Invoice existence.
 - **BR-APT-042** — Coverage Clearance shall identify the applicable Payer and covered fulfillment authority.
-- **BR-APT-043** — Fulfillment Clearance shall identify the Dispense Order quantity it authorizes and its supporting commercial evidence.
-- **BR-APT-044** — One Sales Invoice may support clearance for multiple Dispense Orders, and one Dispense Order may rely on multiple Sales Invoice Items or Sales Invoices when policy requires.
+- **BR-APT-043** — Dispense Authorized shall be a policy evaluation result only. It shall not be persisted as an aggregate, entity, source of truth, or transaction boundary.
+- **BR-APT-044** — One Sales Invoice may support Dispense Authorized evaluation for multiple Dispense Orders, and one Dispense Order may rely on multiple Sales Invoice Items or Sales Invoices when policy requires.
 - **BR-APT-045** — A paid or financially cleared Sales Invoice shall not guarantee successful fulfillment when shortage, discrepancy, expiry, or another valid exception occurs.
 - **BR-APT-046** — A financial clearance followed by non-fulfillment shall produce an accountable Backorder, fulfillment from another approved stock source for the same medication product, Credit Note, Refund, or other approved resolution. It shall not substitute a Sales Order Line after Sales Order establishment.
 
 ### 7.6 Partial fulfillment, UDD, and exceptions
 
-- **BR-APT-047** — Partial Fulfillment shall preserve the fulfilled, unresolved, and unfulfilled quantities separately.
+- **BR-APT-047** — Partial Fulfillment shall be represented at Sales Order level. A Sales Order may be fulfilled through multiple Dispense Orders. Dispense Order shall not own partial-fulfillment policy semantics.
 - **BR-APT-048** — Unit Dose Dispensing may divide one Sales Order Line into multiple Dispense Cycles and Dispense Orders.
 - **BR-APT-049** — A Dose Window shall guide fulfillment planning and shall not assert Medication Administration.
 - **BR-APT-050** — For an accepted substitute, the Sales Order Line shall record the substitute, responsible Pharmacist, reason, and affected quantity while retaining its reference to the original Baris Resep. Medication identity on an established Sales Order Line shall not be changed; a later replacement is handled by cancelling the affected line or order, reviewing the same original Resep again, and establishing a new Sales Order Line without requiring a corrected or replacement Resep.
@@ -401,7 +419,7 @@ Outpatient Queue Mapping is an active relationship to an externally owned Pharma
 - **BR-APT-052** — A Medication Return shall identify its source Dispense Order, quantity, reason, and final Inventory disposition.
 - **BR-APT-053** — Return to Stock shall occur only when Inventory accepts the returned medication under its own policy.
 - **BR-APT-054** — A Salinan Resep shall identify the prescribed medication or quantity that remained unfulfilled.
-- **BR-APT-055** — A No-Show shall be an outpatient policy outcome and shall not be imposed on inpatient Ward Delivery.
+- **BR-APT-055** — A No-Show shall be a Pharmacy-owned outpatient policy outcome, shall not be stored as an Inventory status, and shall not be imposed on inpatient Ward Delivery.
 
 ### 7.7 Completion and history
 
@@ -420,18 +438,18 @@ Outpatient Queue Mapping is an active relationship to an externally owned Pharma
 - **BR-APT-065** — Pharmacy Staff shall own administrative queue and pickup calling; those responsibilities shall not be transferred to the Pharmacist.
 - **BR-APT-066** — In the normal BPJS Resep Elektronik flow with successful Tracker Mapping, the Patient shall require one outpatient pharmacy call: the pickup call after every applicable Dispense Order reaches `Prepared`.
 - **BR-APT-067** — Outpatient Queue Mapping and General Patient Purchase Confirmation may be completed in one counter interaction when the applicable Sales Order Lines and calculated amount are available. When Tracker Mapping completes without the Patient at the counter, Pharmacy Staff shall call the Queue Number for the Purchase Confirmation interaction before Sales Invoice establishment; this administrative call shall not establish `ServedAt` or `DoneAt`.
-- **BR-APT-068** — An outpatient Dispense Order and its Stock Reservation may be established before Patient arrival or Outpatient Queue Mapping, but Medication Preparation shall still obey the applicable Fulfillment Clearance policy.
-- **BR-APT-069** — Medication prepared for outpatient pickup shall remain In-Transit Medication until accountable Medication Handover or return disposition.
+- **BR-APT-068** — An outpatient Dispense Order and its Pharmacy Reserve through Stock Mutasi may occur before Patient arrival or Outpatient Queue Mapping, but Medication Preparation shall still require Dispense Authorized.
+- **BR-APT-069** — Medication prepared for outpatient pickup shall remain in Dispensing Temporary Custody until accountable Medication Handover or No Show return movement.
 - **BR-APT-070** — Before a General Patient Sales Invoice exists, Pharmacy Staff shall communicate the amount calculated from the applicable Sales Order Lines and Pricing Snapshot and obtain verbal Purchase Confirmation. Saving the confirmed transaction shall establish the Sales Invoice and its Sales Invoice Items from those lines; no separate Purchase Confirmation object or transaction shall be retained.
-- **BR-APT-071** — When a General Patient declines Purchase Confirmation before the transaction is saved, no Sales Invoice shall be established and unused Stock Reservation shall be released through Inventory. A Sales Invoice established after confirmation may be cancelled only while its lifecycle permits; an issued or financially cleared consequence shall follow `BR-APT-027`.
-- **BR-APT-072** — General Patient Medication Preparation shall not begin before Payment Clearance establishes the required Fulfillment Clearance.
+- **BR-APT-071** — When a General Patient declines Purchase Confirmation before the transaction is saved, no Sales Invoice shall be established and unused Pharmacy Reserve quantity shall return to Pharmacy Unit through Stock Mutasi. A Sales Invoice established after confirmation may be cancelled only while its lifecycle permits; an issued or financially cleared consequence shall follow `BR-APT-027`.
+- **BR-APT-072** — General Patient Medication Preparation shall not begin before Dispense Authorized is satisfied from Payment Clearance and applicable Sales Invoice evidence.
 - **BR-APT-073** — A BPJS Patient shall not be asked for Purchase Confirmation or Patient payment; the Patient-payable amount shall be zero and payment disposition shall be `Not Required`, while gross or covered value may remain non-zero.
-- **BR-APT-074** — BPJS Medication Preparation may begin when Outpatient Queue Mapping, an applicable Dispense Order, Coverage Clearance, and Fulfillment Clearance are present; an existing Sales Invoice shall not be a prerequisite.
+- **BR-APT-074** — BPJS Medication Preparation may begin when Outpatient Queue Mapping, an applicable Dispense Order, Coverage Clearance, and Dispense Authorized are satisfied; an existing Sales Invoice shall not be a prerequisite.
 - **BR-APT-075** — For the current outpatient BPJS policy, the Sales Invoice shall be established only as part of successfully confirmed Medication Handover; Sales Invoice establishment and handover completion shall form one accountable business outcome.
 - **BR-APT-076** — Pharmacy Staff shall call the Patient for outpatient pickup after every applicable Dispense Order in the coordinated pickup reaches `Prepared`. The Pharmacist shall then perform Final Dispense Review with the Patient or caregiver present before Medication Handover.
 - **BR-APT-077** — During the same counter interaction after the pickup call, the Pharmacist shall verify the Authorized Recipient, complete Final Dispense Review, provide applicable Patient Education, and only then complete outpatient Medication Handover.
-- **BR-APT-078** — Successful outpatient Medication Handover shall complete the applicable Dispense Order quantity and request the corresponding authoritative Inventory Issue outcome.
-- **BR-APT-079** — A BPJS No-Show before Medication Handover shall not establish or cancel a Sales Invoice. An authorized manual uncollected-medication resolution shall make the affected Dispense Order `Expired`, request accountable Inventory return disposition, and allow the Sales Order to become `Resolved` with reason `Collection Window Expired` only after every accepted quantity and commercial consequence has a final outcome.
+- **BR-APT-078** — Successful outpatient Medication Handover shall complete the applicable Dispense Order quantity and request Remove Stock from Dispensing Temporary Unit through Stock Ledger.
+- **BR-APT-079** — A BPJS No-Show before Medication Handover shall not establish or cancel a Sales Invoice. An authorized manual uncollected-medication resolution shall make the affected Dispense Order `Expired`, request Stock Mutasi from Dispensing Temporary Unit back to Pharmacy Unit when applicable, and allow the Sales Order to become `Resolved` with reason `Collection Window Expired` only after every accepted quantity and commercial consequence has a final outcome.
 - **BR-APT-080** — A General Patient No-Show after payment shall use the same authorized manual uncollected-medication resolution for the fulfillment consequence, but its Sales Order shall remain `Active` until Tata Rekening or the responsible financial authority supplies the required final Credit Note, Refund, or other accountable commercial outcome.
 - **BR-APT-081** — `Medication Preparation Started` shall be Pharmacy Service Start Evidence for every outpatient payer path and shall cause Patient Tracker to record `ServedAt`. Sales Invoice formation and Purchase Confirmation shall not establish outpatient pharmacy `ServedAt`.
 - **BR-APT-082** — Patient Tracker shall remain authoritative for Pharmacy Queue Entry identity, Queue Number, and queue lifecycle even when Apotek owns Outpatient Queue Mapping and call purpose.
@@ -449,6 +467,16 @@ Outpatient Queue Mapping is an active relationship to an externally owned Pharma
 - **BR-APT-094** — If the Patient declines the non-covered portion before its Sales Invoice is established, the affected Sales Order Line quantity shall receive an accountable declined or commercially unallocated outcome, while the BPJS-covered portion may continue independently.
 - **BR-APT-095** — Patient Tracker shall record outpatient pharmacy `DoneAt` when Pharmacy Staff performs the coordinated pickup call. Queue completion shall not prove Final Dispense Review, Patient Education, Medication Dispense, or Medication Handover.
 - **BR-APT-097** — Patient Tracker `QueueEntry` shall be the sole canonical outpatient-pharmacy queue identity. Legacy Farinv queue identity is deprecated and shall not create active queue records. Historical Farinv queue data is read-only. No dual-active queue model is permitted. Patient Tracker `Apotek-Start` and `Apotek-Done` evidence shall reference the canonical `QueueEntryId`.
+
+### 7.9 Pharmacy and Stock Ledger boundary
+
+- **BR-APT-098** — Pharmacy Reserve shall be implemented only as Stock Mutasi from Pharmacy Unit to Dispensing Temporary Unit. No separate `ReserveStock` contract shall exist.
+- **BR-APT-099** — `Prepared` shall be a Dispense Order state only. A Dispense Order reaches `Prepared` when all required dispensing movements for that preparation have completed. `Prepared` shall not be an Inventory state.
+- **BR-APT-100** — Dispensing Started shall cause Stock Mutasi from Pharmacy Unit to Dispensing Temporary Unit. Dispensing Completed or `Prepared` shall cause no Inventory action.
+- **BR-APT-101** — Medication Handed Over shall cause Remove Stock from Dispensing Temporary Unit through Stock Ledger.
+- **BR-APT-102** — No Show resolution shall be owned by Pharmacy. Inventory shall apply only the Stock Mutasi from Dispensing Temporary Unit back to Pharmacy Unit directed by Pharmacy and shall not store No Show status.
+- **BR-APT-103** — Stock Ledger shall not own dispensing, `Prepared`, `Handed Over`, No Show, or fulfillment lifecycle states.
+- **BR-APT-104** — Partial fulfillment semantics shall belong to Sales Order. A Sales Order may be fulfilled through multiple Dispense Orders.
 
 ## 8. State Machines & Lifecycles
 
@@ -575,7 +603,7 @@ The pickup call ends the Patient Tracker queue but does not complete Medication 
 | Sales Invoice Issued | The Sales Invoice became an authoritative commercial document. |
 | Payment Clearance Established | The responsible payment authority confirmed the applicable payment condition. |
 | Coverage Clearance Established | The applicable Payer authorized covered fulfillment. |
-| Fulfillment Clearance Established | A Dispense Order quantity was authorized to proceed. |
+| Dispense Authorized Evaluated | Pharmacy policy determined that preparation and dispensing may proceed for the applicable quantity. |
 | Dispense Order Established | A physical fulfillment instruction and its Dispense Order Lines were formed directly from Sales Order Lines. |
 | Stock Reserved | Inventory secured stock for a Dispense Order. |
 | Medication Preparation Started | Physical preparation began under a released Dispense Order. |

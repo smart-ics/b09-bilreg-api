@@ -175,6 +175,7 @@
 | Path | Purpose |
 |------|---------|
 | `docs/contexts/apotek/adr/ADR-APT-001-queu-boundary-and-pharmacy-workflow-state-ownership.md` | ADR-APT-001 Queue Boundary and Pharmacy Workflow State Ownership |
+| `docs/contexts/apotek/adr/ADR-APT-002-pharmacy-stock-ledger-boundary.md` | ADR-APT-002 Pharmacy and Stock Ledger Boundary |
 | `docs/contexts/apotek/apotek-domain-id.md` | Domain Apotek — Pelayanan Obat Pasien |
 | `docs/contexts/apotek/apotek-domain.md` | Apotek Domain |
 | `docs/contexts/apotek/outpatient-apotek-queue-gap-analysis-codex.md` | Outpatient Apotek Queue Gap Analysis |

@@ -80,8 +80,8 @@ The workflow ends when every medication demand mapped to the Pharmacy Queue Entr
 - General Patient verbal Purchase Confirmation before Sales Invoice establishment.
 - BPJS coverage from valid SEP and authoritative Fornas mapping.
 - Mixed BPJS-covered and Patient-payable quantities.
-- Payment Clearance, Coverage Clearance, and Fulfillment Clearance.
-- Stock Reservation, Medication Preparation, pickup calling, Final Dispense Review, Authorized Recipient verification, Patient Education, Medication Dispense, and Medication Handover.
+- Payment Clearance, Coverage Clearance, and Dispense Authorized.
+- Pharmacy Reserve (Stock Mutasi to Dispensing Temporary Unit), Medication Preparation, pickup calling, Final Dispense Review, Authorized Recipient verification, Patient Education, Medication Dispense, and Medication Handover.
 - Backorder or another approved stock source for the same medication product.
 - No-Show and manual uncollected-medication resolution.
 
@@ -106,7 +106,7 @@ The workflow ends when every medication demand mapped to the Pharmacy Queue Entr
 | Pharmacist | Performs Telaah Resep, authorizes eligible Medication Substitution before Sales Order establishment, verifies the Authorized Recipient, performs Final Dispense Review, and provides Patient Education. | `Telaah Resep Completed`, `Final Dispense Review Completed`, or Medication Handover is authorized to complete. |
 | Cashier or Payment Authority | Receives required Patient payment and supplies Payment Clearance. | `Payment Clearance Established`. |
 | SEP and Fornas Authorities | Supply encounter-level SEP validity and item-level BPJS coverage. | `Coverage Clearance Established` for the covered quantity. |
-| Inventory | Owns Stock Availability, Stock Reservation, Inventory Issue, return eligibility, and Return to Stock. | `Stock Reserved`, authoritative Inventory Issue, or accepted return disposition. |
+| Stock Ledger | Owns Stock Availability, Stock Mutasi, Remove Stock, and movement history. | `Stock Transferred to Dispensing Temporary Unit`, `Stock Removed from Dispensing Temporary Unit`, or `Stock Returned to Pharmacy Unit`. |
 | Tata Rekening | Owns Financial Responsibility and the required financial consequence when paid medication is not fulfilled or collected. | Credit Note, Refund, or another final commercial outcome is supplied. |
 | CPOE | Owns the original Resep Elektronik, which Apotek does not modify. | The original Resep is available. |
 | Pharmacy Supervisor | Authorizes exceptional expiry, manual uncollected-medication resolution, and decisions outside ordinary authority. | Accountable exception outcome is established. |
@@ -132,7 +132,7 @@ These triggers may occur before or after Outpatient Queue Mapping as permitted b
 - A Direct Medication Request is accepted before it may establish a Sales Order.
 - Tracker Mapping requires valid evidence that resolves one or more applicable existing Resep; it does not resolve a Direct Medication Request.
 - Manual Mapping requires Pharmacy Staff to identify the Queue Number and applicable demand.
-- Medication Preparation requires an active Dispense Order and payer-appropriate Fulfillment Clearance.
+- Medication Preparation requires an active Dispense Order and payer-appropriate Dispense Authorized.
 - Medication Handover requires a Prepared Medication, Authorized Recipient, successful Final Dispense Review, and applicable Patient Education.
 
 ### 5.4 Blocking conditions
@@ -141,7 +141,7 @@ These triggers may occur before or after Outpatient Queue Mapping as permitted b
 - A Resep with an incomplete Telaah Resep cannot establish a Sales Order.
 - A rejected Resep or declined Direct Medication Request cannot establish a Sales Order.
 - A General Patient quantity cannot begin Medication Preparation without Payment Clearance.
-- A BPJS-covered quantity cannot begin Medication Preparation without valid SEP, authoritative Fornas coverage, and Fulfillment Clearance.
+- A BPJS-covered quantity cannot begin Medication Preparation without valid SEP, authoritative Fornas coverage, and Dispense Authorized.
 - A medication identity cannot be substituted after Sales Order establishment.
 
 ## 6. Workflow Inventory
@@ -212,7 +212,7 @@ For Manual Mapping:
 #### Exception and Compensation Flows
 
 - If a Direct Medication Request is declined, no Direct Medication Request record or Sales Order is established. Final disposition of the still-Waiting Queue Entry follows Patient Tracker's applicable withdrawal policy and remains external to Apotek.
-- If the Queue Number cannot be matched to an accountable Patient Journey or medication demand, the Queue Entry remains unmapped and cannot receive mapping-dependent Fulfillment Clearance.
+- If the Queue Number cannot be matched to an accountable Patient Journey or medication demand, the Queue Entry remains unmapped and cannot receive mapping-dependent Dispense Authorized.
 - If a queue mapping is incorrect, Pharmacy Staff selects the correct Resep or medication-demand source and Apotek updates the active mapping. No mapping-change history is required. This update does not modify the Resep, Hasil Telaah Resep, or Sales Order.
 
 #### Outcomes and Postconditions
@@ -268,7 +268,7 @@ Pharmacist, Pharmacy Staff, CPOE or Dokter Penulis Resep.
 6. Apotek establishes a Sales Order from exactly one completed accepted-demand source and preserves Source Traceability.
 7. Apotek may form Sales Invoices with their Sales Invoice Items and Dispense Orders with their Dispense Order Lines independently and at different business times. Every medication Sales Invoice Item and every Dispense Order Line references exactly one applicable Sales Order Line.
 8. For the normal outpatient episode, Apotek establishes one active primary Dispense Order for the active Sales Order.
-9. Inventory may establish Stock Reservation before Patient arrival or queue mapping, while Medication Preparation waits for applicable Fulfillment Clearance.
+9. Inventory may record Pharmacy Reserve through Stock Mutasi before Patient arrival or queue mapping, while Medication Preparation waits for applicable Dispense Authorized.
 
 #### Decision and Alternative Flows
 
@@ -300,7 +300,7 @@ Pharmacist, Pharmacy Staff, CPOE or Dokter Penulis Resep.
 #### Domain Events
 
 - Consumed: `Clinical Order Created` or another authoritative Resep-availability fact.
-- Produced: `Telaah Resep Started`, `Medication Substitution Authorized`, `Telaah Resep Completed`, `Direct Medication Request Accepted`, `Sales Order Established`, `Dispense Order Established`, `Stock Reserved` when externally supplied.
+- Produced: `Telaah Resep Started`, `Medication Substitution Authorized`, `Telaah Resep Completed`, `Direct Medication Request Accepted`, `Sales Order Established`, `Dispense Order Established`, `Stock Transferred to Dispensing Temporary Unit` when externally supplied.
 
 ### WF-APT-RJ-003 — Fulfill Medication for a General Patient
 
@@ -329,7 +329,7 @@ Patient or Caregiver, Pharmacy Staff, Cashier or Payment Authority, Pharmacy Sta
 - Outpatient Queue Mapping.
 - Sales Order and applicable Patient-payable Sales Order Line quantities.
 - Pricing Snapshot and calculated amount.
-- Dispense Order and Stock Reservation when already available.
+- Dispense Order and Pharmacy Reserve (Stock Mutasi to Dispensing Temporary Unit) when already available.
 
 #### Main Flow
 
@@ -337,23 +337,23 @@ Patient or Caregiver, Pharmacy Staff, Cashier or Payment Authority, Pharmacy Sta
 2. The Patient gives verbal Purchase Confirmation.
 3. Pharmacy Staff establishes the Sales Invoice and its Sales Invoice Items from the confirmed Sales Order Line quantities; Sales Invoice establishment is the accountable evidence that confirmation was obtained, and no separate confirmation object or transaction exists.
 4. The Cashier receives payment and supplies Payment Clearance for the Sales Invoice.
-5. Apotek establishes Fulfillment Clearance for the applicable Dispense Order quantities.
-6. Inventory secures the required Stock Reservation when not already reserved.
+5. Apotek evaluates financial and coverage evidence as Dispense Authorized for the applicable Dispense Order quantities.
+6. Stock Ledger records Stock Mutasi from Pharmacy Unit to Dispensing Temporary Unit when Pharmacy Reserve is required and not already in Dispensing Temporary Unit.
 7. The Pharmacy Staff begins Medication Preparation under the released Dispense Order.
 8. Apotek observes `Medication Preparation Started`; Patient Tracker enters the Pharmacy Queue Entry into In Service and records `ServedAt`.
-9. The Pharmacy Staff completes Medication Preparation; the Dispense Order reaches `Prepared` and the medication remains In-Transit Medication.
+9. The Pharmacy Staff completes Medication Preparation; the Dispense Order reaches `Prepared` when required dispensing movements are complete. Stock Ledger takes no action at `Prepared`; medication remains in Dispensing Temporary Custody.
 10. When every Dispense Order intended for the coordinated handover is `Prepared` or has an accountable exception outcome, Pharmacy Staff performs the pickup call.
 11. Patient Tracker makes the Pharmacy Queue Entry `Done` and records `DoneAt` at the pickup-call time.
 12. With the Patient or caregiver present, the Pharmacist verifies the Authorized Recipient, completes Final Dispense Review, and provides applicable Patient Education in the same counter interaction. A passed review appends its immutable review record and moves the Dispense Order to `Reviewed`.
 13. Apotek records Medication Dispense and completes Medication Handover for each applicable Dispense Order quantity.
-14. Medication Handover completes the Dispense Order quantity and requests Inventory's authoritative Inventory Issue outcome.
+14. Medication Handover completes the Dispense Order quantity and requests Remove Stock from Dispensing Temporary Unit through Stock Ledger.
 15. The Sales Order becomes `Resolved` only when all accepted quantities and commercial consequences have final accountable outcomes.
 
 #### Decision and Alternative Flows
 
 | Condition | Decision owner | Branch |
 |---|---|---|
-| Patient declines before Sales Invoice establishment | Patient | No Sales Invoice is established; unused Stock Reservation is released; the affected Patient-payable Sales Order Line quantity receives an accountable declined or commercially unallocated outcome. |
+| Patient declines before Sales Invoice establishment | Patient | No Sales Invoice is established; unused quantity in Dispensing Temporary Unit returns to Pharmacy Unit through Stock Mutasi; the affected Patient-payable Sales Order Line quantity receives an accountable declined or commercially unallocated outcome. |
 | Calculated amount changes before establishment | Pharmacy Staff | Communicate the revised amount and obtain verbal confirmation again before establishing the Sales Invoice. |
 | Multiple demands share one Queue Entry | Pharmacy Staff | Apply `WF-APT-RJ-006`; retain separate Sales Orders, invoices, and Dispense Orders. |
 | Patient does not collect after pickup call | Pharmacy Supervisor | Apply `WF-APT-RJ-007`. |
@@ -379,8 +379,8 @@ Patient or Caregiver, Pharmacy Staff, Cashier or Payment Authority, Pharmacy Sta
 
 #### Domain Events
 
-- Consumed: `Outpatient Queue Mapped`, `Payment Clearance Established`, `Stock Reserved`.
-- Produced or observed: `Sales Invoice Established`, `Sales Invoice Issued`, `Fulfillment Clearance Established`, `Medication Preparation Started`, `Pharmacy Service Started`, `Medication Prepared`, `Patient Called for Pickup`, `Queue Service Started`, `Queue Service Completed`, `Final Dispense Review Completed`, `Final Dispense Review Failed`, `Medication Dispensed`, `Medication Handed Over`, `Sales Order Resolved`.
+- Consumed: `Outpatient Queue Mapped`, `Payment Clearance Established`, `Stock Transferred to Dispensing Temporary Unit`.
+- Produced or observed: `Sales Invoice Established`, `Sales Invoice Issued`, `Dispense Authorized Evaluated`, `Medication Preparation Started`, `Pharmacy Service Started`, `Medication Prepared`, `Patient Called for Pickup`, `Queue Service Started`, `Queue Service Completed`, `Final Dispense Review Completed`, `Final Dispense Review Failed`, `Medication Dispensed`, `Medication Handed Over`, `Sales Order Resolved`.
 
 ### WF-APT-RJ-004 — Fulfill Medication for a BPJS Patient
 
@@ -410,21 +410,21 @@ Patient or Caregiver, Pharmacy Staff, Pharmacist, Patient Tracker, SEP and Forna
 - Outpatient Queue Mapping.
 - Sales Order, covered Sales Order Line quantities, and Dispense Order.
 - Valid SEP and item-level Fornas coverage.
-- Stock Availability and Stock Reservation outcomes.
+- Stock Availability and Pharmacy Reserve (Stock Mutasi to Dispensing Temporary Unit) outcomes.
 
 #### Main Flow
 
 1. The SEP and Fornas authorities establish Coverage Clearance for each covered quantity.
-2. Apotek establishes Fulfillment Clearance for the applicable Dispense Order quantities without requiring an existing Sales Invoice.
-3. Inventory secures Stock Reservation when not already reserved.
+2. Apotek evaluates financial and coverage evidence as Dispense Authorized for the applicable Dispense Order quantities without requiring an existing Sales Invoice.
+3. Stock Ledger records Stock Mutasi from Pharmacy Unit to Dispensing Temporary Unit when Pharmacy Reserve is required and not already in Dispensing Temporary Unit.
 4. The Pharmacy Staff starts Medication Preparation.
 5. `Medication Preparation Started` causes Patient Tracker to record `ServedAt` and move the Pharmacy Queue Entry to In Service.
-6. The Pharmacy Staff completes Medication Preparation; the Dispense Order reaches `Prepared` and the medication remains In-Transit Medication.
+6. The Pharmacy Staff completes Medication Preparation; the Dispense Order reaches `Prepared` when required dispensing movements are complete. Stock Ledger takes no action at `Prepared`; medication remains in Dispensing Temporary Custody.
 7. When every Dispense Order intended for the coordinated handover is `Prepared` or has an accountable exception outcome, Pharmacy Staff performs the pickup call.
 8. Patient Tracker records `DoneAt` and makes the Queue Entry `Done` at the pickup-call time.
 9. With the Patient or caregiver present, the Pharmacist verifies the Authorized Recipient, completes Final Dispense Review, and provides applicable Patient Education in the same counter interaction. A passed review appends its immutable review record and moves the Dispense Order to `Reviewed`.
 10. As one accountable business outcome, Apotek establishes the BPJS Sales Invoice and its Sales Invoice Items from the covered Sales Order Line quantities, records Medication Dispense, and completes Medication Handover.
-11. Medication Handover completes each applicable Dispense Order quantity and requests Inventory's authoritative Inventory Issue outcome.
+11. Medication Handover completes each applicable Dispense Order quantity and requests Remove Stock from Dispensing Temporary Unit through Stock Ledger.
 12. The Sales Order becomes `Resolved` only when every accepted quantity and required commercial consequence has a final outcome.
 
 #### Decision and Alternative Flows
@@ -442,7 +442,7 @@ Patient or Caregiver, Pharmacy Staff, Pharmacist, Patient Tracker, SEP and Forna
 - A BPJS No-Show before Medication Handover establishes no Sales Invoice and requires no Sales Invoice cancellation.
 - Shortage after Sales Order establishment permits Backorder or another approved stock source for the same medication product; it does not permit substitution.
 - Failed Final Dispense Review appends its immutable review record, returns the Dispense Order from `Prepared` to `Preparing`, and prevents both BPJS Sales Invoice establishment and Medication Handover. Correction returns the order to `Prepared` and requires a new review.
-- Inventory determines whether reserved or In-Transit Medication is eligible for return.
+- Inventory may reject a return Mutasi when eligible quantity is not available; Pharmacy still records the accountable No Show outcome and any required commercial consequence.
 
 #### Outcomes and Postconditions
 
@@ -457,8 +457,8 @@ Patient or Caregiver, Pharmacy Staff, Pharmacist, Patient Tracker, SEP and Forna
 
 #### Domain Events
 
-- Consumed: `Outpatient Queue Mapped`, `Coverage Clearance Established`, `Stock Reserved`.
-- Produced or observed: `Fulfillment Clearance Established`, `Medication Preparation Started`, `Pharmacy Service Started`, `Medication Prepared`, `Patient Called for Pickup`, `Queue Service Started`, `Queue Service Completed`, `Final Dispense Review Completed`, `Final Dispense Review Failed`, `Sales Invoice Established`, `Sales Invoice Issued`, `Medication Dispensed`, `Medication Handed Over`, `Sales Order Resolved`.
+- Consumed: `Outpatient Queue Mapped`, `Coverage Clearance Established`, `Stock Transferred to Dispensing Temporary Unit`.
+- Produced or observed: `Dispense Authorized Evaluated`, `Medication Preparation Started`, `Pharmacy Service Started`, `Medication Prepared`, `Patient Called for Pickup`, `Queue Service Started`, `Queue Service Completed`, `Final Dispense Review Completed`, `Final Dispense Review Failed`, `Sales Invoice Established`, `Sales Invoice Issued`, `Medication Dispensed`, `Medication Handed Over`, `Sales Order Resolved`.
 
 ### WF-APT-RJ-005 — Fulfill Mixed-Coverage Medication
 
@@ -497,13 +497,13 @@ Patient or Caregiver, Pharmacy Staff, Cashier or Payment Authority, Pharmacy Sta
 4. The Patient gives verbal Purchase Confirmation for the non-covered quantities.
 5. Pharmacy Staff establishes a separate General Patient Sales Invoice whose Sales Invoice Items represent the confirmed Patient-payable Sales Order Line quantities.
 6. The Cashier supplies Payment Clearance for the General Patient Sales Invoice.
-7. Apotek establishes Fulfillment Clearance for covered quantities from Coverage Clearance and for Patient-payable quantities from Payment Clearance.
+7. Apotek evaluates financial and coverage evidence as Dispense Authorized for covered quantities from Coverage Clearance and for Patient-payable quantities from Payment Clearance.
 8. After every quantity intended for the handover has its applicable clearance, the Pharmacy Staff begins and completes Medication Preparation.
 9. The first `Medication Preparation Started` records Patient Tracker `ServedAt`; every intended Dispense Order reaches `Prepared` before pickup.
 10. Pharmacy Staff performs one coordinated pickup call; Patient Tracker records `DoneAt`.
 11. With the Patient or caregiver present, the Pharmacist verifies the Authorized Recipient, completes Final Dispense Review, and provides Patient Education. A passed review appends its immutable review record and moves the Dispense Order to `Reviewed`.
 12. Apotek establishes the BPJS Sales Invoice whose Sales Invoice Items represent the covered Sales Order Line quantities only as Medication Handover succeeds; the General Patient Sales Invoice already exists and is financially cleared.
-13. Apotek records Medication Dispense and Medication Handover for all applicable quantities and requests Inventory Issue outcomes.
+13. Apotek records Medication Dispense and Medication Handover for all applicable quantities and requests Remove Stock from Dispensing Temporary Unit outcomes.
 
 #### Decision and Alternative Flows
 
@@ -535,7 +535,7 @@ Patient or Caregiver, Pharmacy Staff, Cashier or Payment Authority, Pharmacy Sta
 #### Domain Events
 
 - Consumed: `Coverage Clearance Established`, `Payment Clearance Established`, `Outpatient Queue Mapped`.
-- Produced or observed: `Sales Invoice Established`, `Sales Invoice Issued`, `Fulfillment Clearance Established`, `Medication Preparation Started`, `Medication Prepared`, `Patient Called for Pickup`, `Final Dispense Review Completed`, `Final Dispense Review Failed`, `Medication Dispensed`, `Medication Handed Over`, `Sales Order Resolved` when fully reconciled.
+- Produced or observed: `Sales Invoice Established`, `Sales Invoice Issued`, `Dispense Authorized Evaluated`, `Medication Preparation Started`, `Medication Prepared`, `Patient Called for Pickup`, `Final Dispense Review Completed`, `Final Dispense Review Failed`, `Medication Dispensed`, `Medication Handed Over`, `Sales Order Resolved` when fully reconciled.
 
 ### WF-APT-RJ-006 — Coordinate Multiple Medication Demands in One Queue
 
@@ -621,7 +621,7 @@ The Pharmacy Supervisor or another authorized role manually determines that the 
 
 #### Preconditions
 
-- Medication remains Prepared or In-Transit and Medication Handover has not completed.
+- Medication remains `Prepared` in Dispensing Temporary Custody and Medication Handover has not completed.
 - The Patient did not collect the medication.
 - The accountable manual closing authority and effective business time are known.
 
@@ -634,14 +634,14 @@ Pharmacy Supervisor, Pharmacy Staff, Inventory, Tata Rekening, Patient Tracker.
 - Pharmacy Queue Entry, which may already be `Done` after the pickup call.
 - Sales Order, Dispense Order, and unresolved quantities.
 - Sales Invoice presence and financial disposition by payer.
-- Prepared or In-Transit Medication and Inventory disposition eligibility.
+- `Prepared` Dispense Order state and quantity held in Dispensing Temporary Unit.
 
 #### Main Flow
 
 1. The authorized role performs the manual uncollected-medication resolution and records the Patient as No-Show for the affected fulfillment.
 2. Apotek gives each affected Dispense Order the terminal state `Expired`.
 3. The resolution retains reason `Collection Window Expired`, responsible party, effective business time, affected quantity, and Source Traceability.
-4. Inventory determines the authoritative disposition of reserved or In-Transit Medication and accepts Return to Stock only when eligible.
+4. Apotek records No Show resolution and requests Stock Mutasi from Dispensing Temporary Unit back to Pharmacy Unit for eligible quantity.
 5. Apotek records the resulting Unfulfilled Medication Outcome for each affected quantity.
 6. Apotek resolves the payer-specific commercial consequence.
 7. The Sales Order becomes `Resolved` only after every accepted quantity and required commercial consequence has a final accountable outcome.
@@ -688,9 +688,9 @@ Pharmacy Supervisor, Pharmacy Staff, Inventory, Tata Rekening, Patient Tracker.
 | Apotek | Fulfillment projection by Resep and realized Medication Handover | EMR reporting | Display Resep-to-realization information without changing the CPOE Clinical Order in the initial scope. |
 | SEP authority | Valid SEP | Apotek | Evaluate encounter-level BPJS coverage; SEP alone does not identify covered medication quantities. |
 | Fornas authority | Item-level coverage mapping | Apotek | Establish Coverage Clearance only for applicable covered quantities together with valid SEP. |
-| Cashier or Payment authority | `Payment Clearance Established` | Apotek | Establish applicable Fulfillment Clearance; payment does not prove stock or handover. |
-| Inventory | Stock Availability and `Stock Reserved` | Apotek | Prepare only authorized Dispense Order quantities; stock facts do not rewrite Telaah Resep. |
-| Apotek | Handover, expiry, shortage, or return request | Inventory | Supply authoritative Inventory Issue or return disposition; Apotek shall not infer inventory movement. |
+| Cashier or Payment authority | `Payment Clearance Established` | Apotek | Evaluate Dispense Authorized from payment evidence; payment does not prove stock or handover. |
+| Stock Ledger | Stock Availability and `Stock Transferred to Dispensing Temporary Unit` | Apotek | Record Mutasi and Remove Stock only from Pharmacy-authorized requests; stock facts do not rewrite Telaah Resep. |
+| Apotek | Handover, expiry, shortage, or No Show return request | Stock Ledger | Record Remove Stock or return Mutasi; Apotek shall not infer inventory movement without acknowledged Stock Ledger outcomes. |
 | Apotek | Financial Charge, Credit Note, or Refund requirement | Tata Rekening | Resolve Financial Responsibility and settlement consequences without changing fulfillment history. |
 
 ## 9. Business Timing and Service Limits
@@ -701,8 +701,8 @@ Pharmacy Supervisor, Pharmacy Staff, Inventory, Tata Rekening, Patient Tracker.
 | Pharmacy `ServedAt` | Recorded when the first applicable Dispense Order produces `Medication Preparation Started`. |
 | Pharmacy `DoneAt` | Recorded when Pharmacy Staff performs the coordinated pickup call. |
 | Telaah Resep | May begin as soon as the Resep is available; it does not wait for Patient arrival or mapping. |
-| General Patient preparation | Cannot begin before Payment Clearance establishes Fulfillment Clearance. |
-| BPJS preparation | Cannot begin before valid SEP, covered Fornas mapping, and Fulfillment Clearance. A Sales Invoice is not required. |
+| General Patient preparation | Cannot begin before Payment Clearance and applicable Sales Invoice evidence satisfy Dispense Authorized. |
+| BPJS preparation | Cannot begin before valid SEP, covered Fornas mapping, and Dispense Authorized. A Sales Invoice is not required. |
 | Pickup call | Occurs only after every Dispense Order intended for that handover is `Prepared` or has an accountable exception outcome. |
 | Final Dispense Review and education | Occur with the Patient or caregiver present after the pickup call and before Medication Handover. |
 | BPJS Sales Invoice | Established only with successful Medication Handover. |
@@ -726,6 +726,7 @@ The `Domain References` section of each workflow specification is the source of 
 
 Related canonical artifacts:
 
+- [ADR-APT-002 Pharmacy and Stock Ledger Boundary](./adr/ADR-APT-002-pharmacy-stock-ledger-boundary.md)
 - [Apotek Domain](./apotek-domain.md)
 - [Apotek Domain — Bahasa Indonesia](./apotek-domain-id.md)
 - [Outpatient Apotek Workflow — Bahasa Indonesia](./outpatient-apotek-workflow-id.md)
@@ -733,4 +734,4 @@ Related canonical artifacts:
 - [CPOE Domain](../../contexts/cpoe/CPOE-DOMAIN.md)
 - [Tata Rekening Domain](../../contexts/TataRekening/02-domain.md)
 
-The seven paired outpatient operational specifications are listed in the [Outpatient Apotek SOP Index](./sop/DAFTAR-SOP-APT-RJ.md). No dedicated integration/architecture artifact is referenced by this workflow at this revision.
+The seven paired outpatient operational specifications are listed in the [Outpatient Apotek SOP Index](./sop/DAFTAR-SOP-APT-RJ.md). Pharmacy stock integration is defined in [ADR-APT-002](./adr/ADR-APT-002-pharmacy-stock-ledger-boundary.md).
