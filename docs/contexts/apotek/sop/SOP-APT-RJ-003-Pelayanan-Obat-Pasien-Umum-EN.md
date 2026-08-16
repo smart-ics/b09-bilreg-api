@@ -20,7 +20,7 @@ Provide a repeatable procedure for obtaining verbal Purchase Confirmation, estab
 |---|---|---|
 | Patient or Caregiver | Human | Confirms or declines the calculated purchase, pays when confirmed, presents for pickup, receives education, and accepts medication when authorized. |
 | Pharmacy Staff | Human | Communicates the calculated amount, records the confirmed Sales Invoice, prepares or compounds medication under a released Dispense Order, coordinates readiness, and performs the pickup call. |
-| Pharmacy Supervisor | Human | Authorizes the manual uncollected-medication resolution when the Patient does not collect prepared medication. |
+| Pharmacy Supervisor | Human | Authorizes the manual uncollected-medication resolution when the Patient does not collect prepared medication. Authorization is by an authorized pharmacist according to operational policy; no monetary approval threshold applies. |
 | Cashier or Payment Authority | Human or Subsystem | Receives payment and supplies Payment Clearance. |
 | Pharmacist | Human | Operationally verifies the recipient, completes Final Dispense Review, and records Patient Education Acknowledgement. Recipient verification is not system-enforced. Detailed counseling notes are optional. |
 | Pharmacy System | Subsystem | Displays allocations and amounts, records the invoice and clearances, tracks preparation, and records dispense and handover. |

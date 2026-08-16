@@ -22,7 +22,7 @@ Memberikan langkah yang sama bagi petugas ketika Fornas mengklasifikasikan sebag
 |---|---|---|
 | Pasien atau Keluarga Pasien | Pengguna layanan | Menyetujui atau menolak Patient-Pay Sales Order, membayar setelah menyetujui, datang untuk mengambil obat, menerima edukasi, dan menerima obat bila berhak. |
 | Staf Apotek | Petugas | Membentuk Sales Order BPJS untuk baris Covered dan Patient-Pay Sales Order independen untuk baris Not Covered, menyampaikan jumlah yang harus dibayar Pasien, mencatat transaksi yang disetujui, menyiapkan obat yang sudah boleh diproses, dan memanggil Pasien. |
-| Kepala Apotek | Petugas | Menyetujui penanganan manual untuk obat yang sudah disiapkan tetapi tidak diambil Pasien. |
+| Kepala Apotek | Petugas | Menyetujui penanganan manual untuk obat yang sudah disiapkan tetapi tidak diambil Pasien. Otorisasi oleh Apoteker yang berwenang menurut kebijakan operasional; tidak ada ambang persetujuan berdasarkan nilai uang. |
 | Kasir atau Sistem Pembayaran | Petugas atau subsistem | Menerima pembayaran dan mengirimkan informasi bahwa faktur Patient-Pay telah lunas. |
 | Apoteker | Petugas | Memeriksa penerima secara operasional, melakukan pemeriksaan akhir obat, dan mencatat Patient Education Acknowledgement. Pemeriksaan penerima tidak ditegakkan sistem. Catatan konseling rinci bersifat opsional. |
 | Sistem SEP dan Fornas | Subsistem | Mengklasifikasikan setiap baris resep sebagai Covered atau Not Covered dan menyediakan keabsahan SEP. |

@@ -110,7 +110,7 @@ The workflow ends when every medication demand mapped to the Pharmacy Queue Entr
 | Stock Ledger | Owns Stock Availability, Stock Mutasi, Remove Stock, and movement history. | `Stock Transferred to Dispensing Temporary Unit`, `Stock Removed from Dispensing Temporary Unit`, or `Stock Returned to Pharmacy Unit`. |
 | Tata Rekening | Owns Financial Responsibility and the required financial consequence when paid medication is not fulfilled or collected. | Credit Note, Refund, or another final commercial outcome is supplied. |
 | CPOE | Owns the original Resep Elektronik, which Apotek does not modify. | The original Resep is available. |
-| Pharmacy Supervisor | Authorizes exceptional expiry, manual uncollected-medication resolution, and decisions outside ordinary authority. | Accountable exception outcome is established. |
+| Pharmacy Supervisor | An authorized pharmacist under operational policy. Authorizes returns, corrections, expired collection overrides, and other dispensing exceptions. Exception handling is authority-based; no monetary approval threshold applies. | Accountable exception outcome is established. |
 
 ## 5. Entry Conditions and Triggers
 
@@ -625,7 +625,7 @@ Give Prepared Medication that is not collected an authorized expiry, stock dispo
 
 #### Trigger
 
-The Pharmacy Supervisor or another authorized role manually determines that the permitted collection opportunity has ended for Prepared Medication that was not handed over.
+The Pharmacy Supervisor or another authorized pharmacist according to operational policy manually determines that the permitted collection opportunity has ended for Prepared Medication that was not handed over. Authorization is authority-based; no monetary approval threshold applies.
 
 #### Preconditions
 
@@ -665,7 +665,7 @@ Pharmacy Supervisor, Pharmacy Staff, Inventory, Tata Rekening, Patient Tracker.
 
 #### Exception and Compensation Flows
 
-- No numerical collection limit is invented. Until an authoritative policy supplies one, only the authorized manual activity establishes the end of the collection opportunity.
+- No numerical collection limit is invented. Until an authoritative policy supplies one, only the authorized manual activity establishes the end of the collection opportunity. No monetary approval threshold applies.
 - Queue `DoneAt` is not reversed; No-Show resolution belongs to Apotek after queue completion.
 - Inventory may reject Return to Stock under its own policy; the rejected return still requires an accountable final Inventory disposition.
 - A paid commercial consequence shall not be silently erased or treated as the uninvoiced BPJS path.
@@ -678,7 +678,7 @@ Pharmacy Supervisor, Pharmacy Staff, Inventory, Tata Rekening, Patient Tracker.
 
 #### Domain References
 
-`BR-APT-018`–`BR-APT-019`, `BR-APT-027`, `BR-APT-045`–`BR-APT-047`, `BR-APT-052`–`BR-APT-060`, `BR-APT-069`, `BR-APT-078`–`BR-APT-080`, `BR-APT-095`; Dispense Order, quantity, pickup, and Sales Order lifecycles.
+`BR-APT-018`–`BR-APT-019`, `BR-APT-027`, `BR-APT-045`–`BR-APT-047`, `BR-APT-052`–`BR-APT-060`, `BR-APT-069`, `BR-APT-078`–`BR-APT-080`, `BR-APT-095`, `BR-APT-135`–`BR-APT-137`; Dispense Order, quantity, pickup, and Sales Order lifecycles.
 
 #### Domain Events
 
@@ -730,7 +730,7 @@ The `Domain References` section of each workflow specification is the source of 
 | `WF-APT-RJ-004` | `BR-APT-020`–`BR-APT-026`, `BR-APT-029`–`BR-APT-045`, `BR-APT-066`, `BR-APT-068`–`BR-APT-069`, `BR-APT-073`–`BR-APT-079`, `BR-APT-081`–`BR-APT-083`, `BR-APT-088`, `BR-APT-090`, `BR-APT-095`–`BR-APT-096`, `BR-APT-114`–`BR-APT-118`, `BR-APT-129`–`BR-APT-134`; `BR-TRK-045`, `BR-TRK-045a`, `BR-TRK-046` | `Awaiting Clearance`, `Released`, `Preparing`, `Prepared`, `Reviewed`, `Completed`, `In Service`, `Done` | `Coverage Clearance Established`, `Medication Preparation Started`, `Patient Called for Pickup`, `Final Dispense Review Failed`, `Sales Invoice Established`, `Medication Handed Over` | Patient Tracker, SEP, Fornas, Inventory, Tata Rekening |
 | `WF-APT-RJ-005` | `BR-APT-011`, `BR-APT-015`, `BR-APT-020`–`BR-APT-028`, `BR-APT-040`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-070`–`BR-APT-078`, `BR-APT-090`–`BR-APT-096`, `BR-APT-108`, `BR-APT-119`–`BR-APT-124`, `BR-APT-129`–`BR-APT-134` | Independent BPJS-covered and Patient-Pay Sales Order states | `Coverage Clearance Established`, `Payment Clearance Established`, `Sales Order Established`, `Final Dispense Review Failed`, `Sales Invoice Established`, `Medication Handed Over` | SEP, Fornas, Payment, Tata Rekening |
 | `WF-APT-RJ-006` | `BR-APT-011`, `BR-APT-015`, `BR-APT-022`, `BR-APT-030`, `BR-APT-056`–`BR-APT-060`, `BR-APT-084`–`BR-APT-088`, `BR-APT-095`–`BR-APT-096`, `BR-APT-129`–`BR-APT-134`; `BR-TRK-032`, `BR-TRK-035`–`BR-TRK-039`, `BR-TRK-045`, `BR-TRK-045a` | Per-demand authoritative states; one queue `Waiting` → `In Service` → `Done` | `Outpatient Queue Mapped`, `Medication Preparation Started`, `Patient Called for Pickup`, `Final Dispense Review Failed`, `Medication Handed Over` | Patient Tracker |
-| `WF-APT-RJ-007` | `BR-APT-018`–`BR-APT-019`, `BR-APT-027`, `BR-APT-045`–`BR-APT-047`, `BR-APT-052`–`BR-APT-060`, `BR-APT-069`, `BR-APT-078`–`BR-APT-080`, `BR-APT-095` | `Expired`, `Active`, `Resolved` | `Outpatient No-Show Recorded`, `Dispense Order Expired`, `Unfulfilled Medication Recorded`, `Medication Returned`, `Sales Invoice Credited`, `Refund Required`, `Sales Order Resolved` | Inventory, Tata Rekening |
+| `WF-APT-RJ-007` | `BR-APT-018`–`BR-APT-019`, `BR-APT-027`, `BR-APT-045`–`BR-APT-047`, `BR-APT-052`–`BR-APT-060`, `BR-APT-069`, `BR-APT-078`–`BR-APT-080`, `BR-APT-095`, `BR-APT-135`–`BR-APT-137` | `Expired`, `Active`, `Resolved` | `Outpatient No-Show Recorded`, `Dispense Order Expired`, `Unfulfilled Medication Recorded`, `Medication Returned`, `Sales Invoice Credited`, `Refund Required`, `Sales Order Resolved` | Inventory, Tata Rekening |
 
 Related canonical artifacts:
 

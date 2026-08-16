@@ -20,7 +20,7 @@ Provide a repeatable procedure for clearing and preparing BPJS-covered outpatien
 |---|---|---|
 | Patient or Caregiver | Human | Presents for pickup, receives education, and accepts medication when authorized. |
 | Pharmacy Staff | Human | Verifies the covered work projection, prepares or compounds medication under a released Dispense Order, coordinates readiness, and performs the pickup call. |
-| Pharmacy Supervisor | Human | Authorizes the manual uncollected-medication resolution when the Patient does not collect prepared medication. |
+| Pharmacy Supervisor | Human | Authorizes the manual uncollected-medication resolution when the Patient does not collect prepared medication. Authorization is by an authorized pharmacist according to operational policy; no monetary approval threshold applies. |
 | Pharmacist | Human | Operationally verifies the recipient, completes Final Dispense Review, and records Patient Education Acknowledgement. Recipient verification is not system-enforced. Detailed counseling notes are optional. |
 | SEP and Fornas Authorities | Subsystem | Supply encounter-level SEP validity and item-level Fornas coverage. |
 | Pharmacy System | Subsystem | Records Coverage and Fulfillment Clearance, tracks preparation, and atomically records the BPJS Sales Invoice and successful handover outcome. |

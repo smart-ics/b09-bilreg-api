@@ -20,7 +20,7 @@ Provide a repeatable procedure for splitting Fornas Covered and Not Covered pres
 |---|---|---|
 | Patient or Caregiver | Human | Confirms or declines the Patient-Pay Sales Order, pays when confirmed, presents for pickup, receives education, and accepts medication when authorized. |
 | Pharmacy Staff | Human | Establishes the BPJS-covered Sales Order for Covered lines and the independent Patient-Pay Sales Order for Not Covered lines, communicates the Patient-payable amount, records its confirmed invoice, prepares cleared medication, and performs the pickup call. |
-| Pharmacy Supervisor | Human | Authorizes the manual uncollected-medication resolution when the Patient does not collect prepared medication. |
+| Pharmacy Supervisor | Human | Authorizes the manual uncollected-medication resolution when the Patient does not collect prepared medication. Authorization is by an authorized pharmacist according to operational policy; no monetary approval threshold applies. |
 | Cashier or Payment Authority | Human or Subsystem | Receives payment and supplies Payment Clearance for the Patient-Pay Sales Invoice. |
 | Pharmacist | Human | Operationally verifies the recipient, completes Final Dispense Review, and records Patient Education Acknowledgement. Recipient verification is not system-enforced. Detailed counseling notes are optional. |
 | SEP and Fornas Authorities | Subsystem | Classify each prescription line as Covered or Not Covered and supply SEP validity. |

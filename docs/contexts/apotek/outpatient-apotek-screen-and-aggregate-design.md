@@ -116,8 +116,8 @@ The workbench contains four activities.
    - For BPJS quantities, show SEP and Fornas coverage outcomes; do not request Patient payment or establish the BPJS Sales Invoice early.
    - For mixed coverage, Fornas Not Covered lines form an independent Patient-Pay Sales Order. Covered lines remain on the BPJS-covered Sales Order. Do not keep uncovered lines on the BPJS fulfillment path.
    - For Partial Prescription Fulfillment, establish a Sales Order from selected or fulfillable prescription lines only when Patient Request or Stock Shortage applies. Excluded lines remain on the originating prescription. Issue Salinan Resep for unfulfilled lines when external fulfillment is required. Pharmacist approves when professional review is required.
-   - Submit a return or correction request rather than freely reversing a sale. A post-payment or post-handover return requires the applicable supervisor, Inventory, and Tata Rekening outcomes.
-   - Resolve Exception Worklist items through the same accountable paths: No-Show / expiry under SOP APT-RJ-007, return and correction through supervisor-authorized outcomes, and display of pending financial or inventory consequences without inventing stock or settlement facts.
+   - Submit a return or correction request rather than freely reversing a sale. A post-payment or post-handover return requires authorization by an authorized pharmacist according to operational policy, plus Inventory and Tata Rekening outcomes. No monetary approval threshold applies.
+   - Resolve Exception Worklist items through the same accountable paths: No-Show / expiry under SOP APT-RJ-007, return and correction through authorized-pharmacist outcomes, and display of pending financial or inventory consequences without inventing stock or settlement facts.
 
 Queue mapping and General Patient purchase confirmation can occur in the same counter interaction. Neither action records pharmacy `ServedAt` or `DoneAt`.
 
@@ -340,7 +340,8 @@ This artifact intentionally does not define:
 - detailed screen layout, component design, or navigation;
 - exact attention-badge thresholds, colors, or placement;
 - detailed Patient Medication Journey drawer or panel layout;
-- inpatient, emergency, or unit-dose fulfillment worklists; or
-- approval thresholds for returns and exceptional resolutions.
+- inpatient, emergency, or unit-dose fulfillment worklists.
 
-Those decisions should follow the aggregate boundaries established here.
+Exception authorization for returns, corrections, expired collection overrides, and other dispensing exceptions is authority-based and is owned by the domain (`BR-APT-135`–`BR-APT-137`). This artifact does not introduce a monetary approval threshold.
+
+Those remaining decisions should follow the aggregate boundaries established here.

@@ -110,7 +110,7 @@ Workflow berakhir ketika setiap medication demand yang dimappingkan ke Pharmacy 
 | Inventory | Memiliki Stock Availability, Stock Reservation, Inventory Issue, eligibility return, dan Return to Stock. | `Stock Reserved`, Inventory Issue authoritative, atau disposition return yang diterima. |
 | Tata Rekening | Memiliki Financial Responsibility dan konsekuensi finansial yang diperlukan ketika obat yang telah dibayar tidak dipenuhi atau diambil. | Credit Note, Refund, atau outcome komersial final lain diberikan. |
 | CPOE | Memiliki Resep Elektronik asli yang tidak diubah oleh Apotek. | Resep asli tersedia. |
-| Pharmacy Supervisor | Mengotorisasi expiry exceptional, penyelesaian manual obat tidak diambil, dan keputusan di luar authority biasa. | Outcome exception accountable dibentuk. |
+| Pharmacy Supervisor | Pharmacist yang berwenang menurut kebijakan operasional. Mengotorisasi retur, koreksi, override koleksi kedaluwarsa, dan exception dispensing lain. Penanganan exception berbasis authority; tidak ada ambang persetujuan moneter. | Outcome exception accountable dibentuk. |
 
 ## 5. Kondisi Awal dan Trigger
 
@@ -625,7 +625,7 @@ Memberikan expiry terotorisasi, disposition stok, dan outcome komersial sesuai p
 
 #### Trigger
 
-Pharmacy Supervisor atau peran authorized lain secara manual menetapkan bahwa kesempatan pengambilan telah berakhir bagi Prepared Medication yang belum diserahkan.
+Pharmacy Supervisor atau Pharmacist berwenang lain menurut kebijakan operasional secara manual menetapkan bahwa kesempatan pengambilan telah berakhir bagi Prepared Medication yang belum diserahkan. Otorisasi berbasis authority; tidak ada ambang persetujuan moneter.
 
 #### Preconditions
 
@@ -678,7 +678,7 @@ Pharmacy Supervisor, Staf Apotek, Inventory, Tata Rekening, Patient Tracker.
 
 #### Domain References
 
-`BR-APT-018`–`BR-APT-019`, `BR-APT-027`, `BR-APT-045`–`BR-APT-047`, `BR-APT-052`–`BR-APT-060`, `BR-APT-069`, `BR-APT-078`–`BR-APT-080`, `BR-APT-095`; lifecycle Dispense Order, quantity, pickup, dan Sales Order.
+`BR-APT-018`–`BR-APT-019`, `BR-APT-027`, `BR-APT-045`–`BR-APT-047`, `BR-APT-052`–`BR-APT-060`, `BR-APT-069`, `BR-APT-078`–`BR-APT-080`, `BR-APT-095`, `BR-APT-135`–`BR-APT-137`; lifecycle Dispense Order, quantity, pickup, dan Sales Order.
 
 #### Domain Events
 
@@ -730,7 +730,7 @@ Technical timeout, polling, retry, dan performa aplikasi berada di luar workflow
 | `WF-APT-RJ-004` | `BR-APT-020`–`BR-APT-026`, `BR-APT-029`–`BR-APT-045`, `BR-APT-066`, `BR-APT-068`–`BR-APT-069`, `BR-APT-073`–`BR-APT-079`, `BR-APT-081`–`BR-APT-083`, `BR-APT-088`, `BR-APT-090`, `BR-APT-095`–`BR-APT-096`, `BR-APT-114`–`BR-APT-118`, `BR-APT-129`–`BR-APT-134`; `BR-TRK-045`, `BR-TRK-045a`, `BR-TRK-046` | `Awaiting Clearance`, `Released`, `Preparing`, `Prepared`, `Reviewed`, `Completed`, `In Service`, `Done` | `Coverage Clearance Established`, `Medication Preparation Started`, `Patient Called for Pickup`, `Final Dispense Review Failed`, `Sales Invoice Established`, `Medication Handed Over` | Patient Tracker, SEP, Fornas, Inventory, Tata Rekening |
 | `WF-APT-RJ-005` | `BR-APT-011`, `BR-APT-015`, `BR-APT-020`–`BR-APT-028`, `BR-APT-040`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-070`–`BR-APT-078`, `BR-APT-090`–`BR-APT-096`, `BR-APT-108`, `BR-APT-119`–`BR-APT-124`, `BR-APT-129`–`BR-APT-134` | State Sales Order BPJS dan Patient-Pay independen | `Coverage Clearance Established`, `Payment Clearance Established`, `Sales Order Established`, `Final Dispense Review Failed`, `Sales Invoice Established`, `Medication Handed Over` | SEP, Fornas, Payment, Tata Rekening |
 | `WF-APT-RJ-006` | `BR-APT-011`, `BR-APT-015`, `BR-APT-022`, `BR-APT-030`, `BR-APT-056`–`BR-APT-060`, `BR-APT-084`–`BR-APT-088`, `BR-APT-095`–`BR-APT-096`, `BR-APT-129`–`BR-APT-134`; `BR-TRK-032`, `BR-TRK-035`–`BR-TRK-039`, `BR-TRK-045`, `BR-TRK-045a` | State authoritative per demand; satu antrean `Waiting` → `In Service` → `Done` | `Outpatient Queue Mapped`, `Medication Preparation Started`, `Patient Called for Pickup`, `Final Dispense Review Failed`, `Medication Handed Over` | Patient Tracker |
-| `WF-APT-RJ-007` | `BR-APT-018`–`BR-APT-019`, `BR-APT-027`, `BR-APT-045`–`BR-APT-047`, `BR-APT-052`–`BR-APT-060`, `BR-APT-069`, `BR-APT-078`–`BR-APT-080`, `BR-APT-095` | `Expired`, `Active`, `Resolved` | `Outpatient No-Show Recorded`, `Dispense Order Expired`, `Unfulfilled Medication Recorded`, `Medication Returned`, `Sales Invoice Credited`, `Refund Required`, `Sales Order Resolved` | Inventory, Tata Rekening |
+| `WF-APT-RJ-007` | `BR-APT-018`–`BR-APT-019`, `BR-APT-027`, `BR-APT-045`–`BR-APT-047`, `BR-APT-052`–`BR-APT-060`, `BR-APT-069`, `BR-APT-078`–`BR-APT-080`, `BR-APT-095`, `BR-APT-135`–`BR-APT-137` | `Expired`, `Active`, `Resolved` | `Outpatient No-Show Recorded`, `Dispense Order Expired`, `Unfulfilled Medication Recorded`, `Medication Returned`, `Sales Invoice Credited`, `Refund Required`, `Sales Order Resolved` | Inventory, Tata Rekening |
 
 Artifact canonical terkait:
 

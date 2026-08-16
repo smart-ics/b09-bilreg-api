@@ -265,7 +265,7 @@ Menerima Ward Delivery untuk Pasien dan tetap teridentifikasi dalam outcome Medi
 
 ### 4.7 Pharmacy Supervisor
 
-Memiliki keputusan exceptional di luar authority biasa, termasuk expiry, return, shortage resolution, dan koreksi accountable yang disetujui.
+Pharmacist yang berwenang menurut kebijakan operasional. Mengotorisasi retur, koreksi, override koleksi kedaluwarsa, dan exception dispensing lain. Penanganan exception berbasis authority; tidak ada model ambang persetujuan moneter. Pharmacist mana yang berwenang ditentukan kebijakan operasional. Pharmacy Supervisor adalah sebutan operasional untuk authority tersebut ketika diperlukan peran pengotorisasi yang bernama.
 
 ## 5. Domain Objects
 
@@ -464,6 +464,9 @@ Outpatient Queue Mapping merupakan mapping aktif kepada Pharmacy Queue Entry yan
 - **BR-APT-132** — Patient Education harus dicatat sebagai Patient Education Acknowledgement yang ringan sebelum Medication Handover. Pharmacist harus mengonfirmasi bahwa konseling obat telah diberikan. Pengakuan tersebut adalah handover gate.
 - **BR-APT-133** — Patient Education Acknowledgement harus mencatat waktu edukasi dan Pharmacist penanggung jawab. Tidak mensyaratkan isi konseling terstruktur, template khusus obat, tanda tangan Pasien, atau identitas orang yang diedukasi.
 - **BR-APT-134** — Catatan konseling rinci bersifat opsional dan hanya dicatat ketika Pharmacist menilai dokumentasi tambahan diperlukan. Tidak adanya catatan rinci tidak boleh menghalangi Medication Handover setelah pengakuan dicatat.
+- **BR-APT-135** — Penanganan exception harus berbasis authority. Retur, koreksi, override koleksi kedaluwarsa, dan exception dispensing lain harus memerlukan otorisasi Pharmacist yang berwenang menurut kebijakan operasional.
+- **BR-APT-136** — Sistem tidak boleh memperkenalkan model ambang persetujuan moneter. Otorisasi exception tidak boleh ditentukan oleh amount, nilai kuantitas, atau pita persetujuan numerik serupa.
+- **BR-APT-137** — Otorisasi exception harus mencatat Pharmacist yang mengotorisasi, effective business time, dan alasan. Kebijakan operasional menentukan Pharmacist mana yang berwenang. Pharmacy Supervisor adalah sebutan operasional untuk authority tersebut ketika diperlukan peran pengotorisasi yang bernama.
 
 ### 7.7 Completion dan history
 

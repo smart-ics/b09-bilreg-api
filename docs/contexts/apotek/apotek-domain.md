@@ -244,7 +244,7 @@ Receives Ward Delivery for the Patient and remains identifiable in the Medicatio
 
 ### 4.7 Pharmacy Supervisor
 
-Owns exceptional decisions beyond ordinary authority, including approved expiry, return, shortage resolution, and accountable correction.
+An authorized pharmacist under operational policy. Authorizes returns, corrections, expired collection overrides, and other dispensing exceptions. Exception handling is authority-based; no monetary approval threshold model exists. Which pharmacist is authorized is operational policy. Pharmacy Supervisor is the named operational designation used where a distinct authorizing pharmacist is required.
 
 ## 5. Domain Objects
 
@@ -461,6 +461,9 @@ Outpatient Queue Mapping is an active relationship to an externally owned Pharma
 - **BR-APT-132** — Patient Education shall be recorded as a lightweight Patient Education Acknowledgement before Medication Handover. The Pharmacist shall confirm that medication counseling has been provided. The acknowledgement is a handover gate.
 - **BR-APT-133** — Patient Education Acknowledgement shall record education timestamp and responsible Pharmacist. It shall not require structured counseling content, medication-specific templates, patient signature, or identity of the person educated.
 - **BR-APT-134** — Detailed counseling notes are optional and shall be recorded only when the Pharmacist considers additional documentation necessary. Absence of notes shall not block Medication Handover after acknowledgement is recorded.
+- **BR-APT-135** — Exception handling shall be authority-based. Returns, corrections, expired collection overrides, and other dispensing exceptions shall require authorization by an authorized pharmacist according to operational policy.
+- **BR-APT-136** — The system shall not introduce a monetary approval threshold model. Exception authorization shall not be determined by amount, quantity value, or similar numeric approval bands.
+- **BR-APT-137** — Exception authorization shall record the authorizing pharmacist, effective business time, and reason. Operational policy determines which pharmacist is authorized. Pharmacy Supervisor is an operational designation of that authority where a named authorizing pharmacist is required.
 
 ### 7.7 Completion and history
 

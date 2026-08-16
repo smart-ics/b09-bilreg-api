@@ -18,7 +18,7 @@ Provide a repeatable manual procedure for giving Prepared or In-Transit medicati
 
 | Actor | Type | Operational responsibility |
 |---|---|---|
-| Pharmacy Supervisor | Human | Authorizes and records the manual end of the collection opportunity. |
+| Pharmacy Supervisor | Human | Authorizes and records the manual end of the collection opportunity. This is an authorized pharmacist according to operational policy. No monetary approval threshold applies. |
 | Pharmacy Staff | Human | Identifies the affected demand and quantities and verifies the resulting operational outcomes. |
 | Pharmacy System | Subsystem | Records No-Show, `Expired`, `Collection Window Expired`, Unfulfilled Medication Outcome, and final Sales Order progress. |
 | Inventory | Subsystem | Determines return eligibility and supplies the authoritative return or other final disposition. |
@@ -36,7 +36,7 @@ Provide a repeatable manual procedure for giving Prepared or In-Transit medicati
 ## 4. Operational Steps
 
 1. **Pharmacy Staff** opens the uncollected Queue Entry and verifies the originating Sales Order, Dispense Order, affected quantities, payer allocations, handover absence, and current Inventory disposition.
-2. **Pharmacy Supervisor** confirms that the permitted collection opportunity has ended; no automatic or invented numerical time limit is used.
+2. **Pharmacy Supervisor** confirms that the permitted collection opportunity has ended; no automatic or invented numerical time limit is used, and no monetary approval threshold applies.
 3. **Pharmacy Supervisor** records the manual uncollected-medication resolution with responsible party, effective business time, affected quantity, and reason `Collection Window Expired`.
 4. **Pharmacy System** records the Patient as No-Show for the affected fulfillment and changes each affected Dispense Order to `Expired`.
 5. **Pharmacy System** records an Unfulfilled Medication Outcome for every affected quantity and preserves Source Traceability.
@@ -79,7 +79,7 @@ Provide a repeatable manual procedure for giving Prepared or In-Transit medicati
 
 ## 7. References
 
-- [Apotek Domain](../apotek-domain.md), especially `BR-APT-018`–`BR-APT-019`, `BR-APT-027`, `BR-APT-045`–`BR-APT-047`, `BR-APT-052`–`BR-APT-060`, `BR-APT-069`, `BR-APT-078`–`BR-APT-080`, and `BR-APT-095`.
+- [Apotek Domain](../apotek-domain.md), especially `BR-APT-018`–`BR-APT-019`, `BR-APT-027`, `BR-APT-045`–`BR-APT-047`, `BR-APT-052`–`BR-APT-060`, `BR-APT-069`, `BR-APT-078`–`BR-APT-080`, `BR-APT-095`, and `BR-APT-135`–`BR-APT-137`.
 - [Outpatient Apotek Workflow](../outpatient-apotek-workflow.md), `WF-APT-RJ-007`.
 - [Patient Tracker Domain](../../../contexts/pasien-tracker/TRACKER-DOMAIN.md).
 - [Tata Rekening Domain](../../../contexts/TataRekening/02-domain.md).
