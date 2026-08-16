@@ -65,7 +65,7 @@ The source Resep or Direct Medication Request remains traceable and does not bec
 8. For a Direct Medication Request, **Pharmacy Staff** records the request details and either accepts or declines it.
 9. For an approved or partially approved Resep, or an accepted Direct Medication Request, **Pharmacy System** establishes one Sales Order from that source and preserves Source Traceability.
 10. **Pharmacy System** establishes applicable Billing Allocations and Fulfillment Allocations independently and displays their quantities.
-11. **Pharmacy System** establishes one active primary outpatient Dispense Order for the normal episode and displays its initial state.
+11. **Pharmacy System** establishes one active primary outpatient Dispense Order for the normal path within the active Registration and displays its initial state.
 12. **Inventory** may return Stock Reservation evidence; **Pharmacy System** displays it without treating it as Fulfillment Clearance.
 13. **Pharmacist** or **Pharmacy Staff**, according to the source path, verifies the final review outcome, Sales Order identifier, accepted lines, and Dispense Order identifier.
 

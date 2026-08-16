@@ -60,6 +60,8 @@ Outpatient queue identity and lifecycle remain externally owned by Patient Track
 
 Apotek owns the outpatient business decision that associates a Pharmacy Queue Entry with the applicable medication demand and owns the payer, pickup, handover, and no-show policy applied after that association.
 
+For Outpatient Pharmacy, the fulfillment boundary is the active Registration Period. A Resep may be reviewed, re-reviewed, and fulfilled while its originating Registration remains active. No separate Fulfillment Episode concept exists.
+
 For outpatient pharmacy queues, Patient Tracker records `CreatedAt` when the Queue Number is issued, `ServedAt` when the first applicable Dispense Order enters `Preparing`, and `DoneAt` when Pharmacy Staff performs the pickup call. Those queue milestones describe operational queue progress and do not prove Medication Handover. Patient Tracker `Apotek-Start` and `Apotek-Done` evidence remain reusable but shall reference the canonical `QueueEntryId`, not Farinv queue identity.
 
 ### 1.4 Central business separation
@@ -362,7 +364,7 @@ Outpatient Queue Mapping is an active relationship to an externally owned Pharma
 ### 7.2 Sales Order
 
 - **BR-APT-010** — A Sales Order shall originate from exactly one completed accepted-demand source.
-- **BR-APT-011** — One Resep shall establish at most one active Sales Order within one fulfillment episode.
+- **BR-APT-011** — One Resep shall establish at most one active Sales Order per Registration while that Registration remains active.
 - **BR-APT-012** — A Sales Order shall contain at least one Sales Order Line with a positive Accepted Quantity.
 - **BR-APT-013** — Every Sales Order Line shall retain Source Traceability to its Baris Resep or Direct Medication Request line; for an accepted substitute, the Sales Order Line contains the substitute while its source reference remains the original Baris Resep.
 - **BR-APT-014** — A Sales Order shall not be a Sales Invoice, payment record, Pharmacy Reserve movement, Dispense Order, or Medication Dispense evidence.
@@ -371,6 +373,9 @@ Outpatient Queue Mapping is an active relationship to an externally owned Pharma
 - **BR-APT-017** — Fulfilled Quantity shall not exceed its Dispense Order Line quantity.
 - **BR-APT-018** — Every Accepted Quantity shall eventually be fulfilled, cancelled, expired, backordered, or assigned another accountable Unfulfilled Medication Outcome.
 - **BR-APT-019** — A Sales Order shall reach Fulfillment Completion only when every Accepted Quantity has a final accountable outcome.
+- **BR-APT-105** — Outpatient Pharmacy fulfillment boundary shall be the active Registration Period. A Resep may be reviewed, re-reviewed, and fulfilled while its originating Registration remains active. No separate Fulfillment Episode concept shall exist.
+- **BR-APT-106** — Prescription repeat entitlement shall be owned by the Resep through the Legacy Resep `Iter` mechanism. The system shall allocate Iter, track Iter consumption, and calculate remaining Iter.
+- **BR-APT-107** — The system shall not determine whether an unused Iter remains valid for fulfillment. The Pharmacist shall decide whether an unused Iter may still be honored at fulfillment time and may decline fulfillment even when remaining Iter exists.
 
 ### 7.3 Medication Sale and Sales Invoice
 
@@ -456,7 +461,7 @@ Outpatient Queue Mapping is an active relationship to an externally owned Pharma
 - **BR-APT-083** — No user shall enter a Legacy DU or independent medication Sales Invoice Items manually; a user action may trigger Sales Invoice formation only from accountable Sales Order Lines.
 - **BR-APT-084** — One Pharmacy Queue Entry may be mapped to one or more Resep or Direct Medication Requests. Each mapped demand shall retain its own Telaah Resep when applicable, Sales Order, Sales Invoices, Dispense Order, and accountable lifecycle.
 - **BR-APT-085** — Mapping multiple medication demands to one Pharmacy Queue Entry shall coordinate one outpatient service and shall not merge their Sales Orders, Sales Invoices, or Dispense Orders.
-- **BR-APT-086** — Within one normal outpatient fulfillment episode, one active Sales Order shall coordinate through one active Dispense Order. The common Pharmacy Queue Entry may coordinate multiple such Sales Order and Dispense Order pairs.
+- **BR-APT-086** — Within one active Registration, one active Sales Order shall coordinate through one active Dispense Order for the normal outpatient path. The common Pharmacy Queue Entry may coordinate multiple such Sales Order and Dispense Order pairs.
 - **BR-APT-087** — A queue-facing per-demand progress view shall be a projection of Apotek facts for each mapped demand; Patient Tracker shall not become authoritative for Telaah Resep, Sales Invoice, or Dispense Order state.
 - **BR-APT-088** — One coordinated pickup call shall occur only after every Dispense Order intended for that handover has reached `Prepared` or received an accountable exception outcome.
 - **BR-APT-089** — Pharmacy Staff shall accept or decline a Direct Medication Request. Acceptance establishes the Direct Medication Request record; decline shall not establish a Direct Medication Request record or Sales Order. No Pharmacist approval, referral, escalation, or approval threshold applies.

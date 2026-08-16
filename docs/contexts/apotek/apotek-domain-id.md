@@ -60,6 +60,8 @@ Identitas dan lifecycle antrean Rawat Jalan tetap dimiliki oleh Patient Tracker.
 
 Apotek memiliki keputusan bisnis Rawat Jalan untuk mengaitkan Pharmacy Queue Entry dengan sumber pelayanan obat yang sesuai, serta kebijakan penjamin, pengambilan, penyerahan, dan no-show setelah pengaitan tersebut.
 
+Untuk Apotek Rawat Jalan, batas fulfillment adalah Registration Period yang aktif. Resep dapat ditelaah, ditelaah ulang, dan dipenuhi selama Registration asal tetap aktif. Tidak ada konsep Fulfillment Episode terpisah.
+
 Untuk antrean Apotek Rawat Jalan, Patient Tracker mencatat `CreatedAt` ketika Queue Number diterbitkan, `ServedAt` ketika Dispense Order pertama yang berlaku memasuki `Preparing`, dan `DoneAt` ketika Staf Apotek memanggil pasien untuk pengambilan obat. Penanda tersebut hanya menunjukkan kemajuan antrean dan tidak membuktikan Medication Handover. Evidence `Apotek-Start` dan `Apotek-Done` Patient Tracker tetap dapat digunakan kembali tetapi harus mereferensikan `QueueEntryId` canonical, bukan identitas antrean Farinv.
 
 ### 1.4 Pemisahan bisnis utama
@@ -365,7 +367,7 @@ Outpatient Queue Mapping merupakan mapping aktif kepada Pharmacy Queue Entry yan
 ### 7.2 Sales Order
 
 - **BR-APT-010** — Sales Order harus berasal dari tepat satu sumber accepted demand yang telah selesai.
-- **BR-APT-011** — Satu Resep harus membentuk maksimal satu Sales Order aktif dalam satu fulfillment episode.
+- **BR-APT-011** — Satu Resep harus membentuk maksimal satu Sales Order aktif per Registration selama Registration tersebut tetap aktif.
 - **BR-APT-012** — Sales Order harus memiliki minimal satu Sales Order Line dengan Accepted Quantity positif.
 - **BR-APT-013** — Setiap Sales Order Line harus mempertahankan Source Traceability ke Baris Resep atau baris Direct Medication Request sumbernya; untuk obat pengganti, Sales Order Line memuat obat pengganti sementara referensi sumber tetap menunjuk Baris Resep asli.
 - **BR-APT-014** — Sales Order bukan Sales Invoice, catatan pembayaran, Stock Reservation, Dispense Order, atau evidence Medication Dispense.
@@ -374,6 +376,9 @@ Outpatient Queue Mapping merupakan mapping aktif kepada Pharmacy Queue Entry yan
 - **BR-APT-017** — Fulfilled Quantity tidak boleh melebihi jumlah Dispense Order Line-nya.
 - **BR-APT-018** — Setiap Accepted Quantity pada akhirnya harus fulfilled, cancelled, expired, backordered, atau memperoleh Unfulfilled Medication Outcome lain yang accountable.
 - **BR-APT-019** — Sales Order hanya boleh mencapai Fulfillment Completion ketika setiap Accepted Quantity memiliki outcome final yang accountable.
+- **BR-APT-105** — Batas fulfillment Apotek Rawat Jalan harus berupa Registration Period yang aktif. Resep dapat ditelaah, ditelaah ulang, dan dipenuhi selama Registration asal tetap aktif. Tidak boleh ada konsep Fulfillment Episode terpisah.
+- **BR-APT-106** — Hak ulang resep harus dimiliki Resep melalui mekanisme `Iter` Legacy Resep. Sistem harus mengalokasikan Iter, melacak konsumsi Iter, dan menghitung sisa Iter.
+- **BR-APT-107** — Sistem tidak menentukan apakah Iter yang belum terpakai tetap valid untuk fulfillment. Pharmacist harus menentukan apakah Iter yang belum terpakai masih dapat dihormati pada waktu fulfillment dan dapat menolak fulfillment meskipun sisa Iter masih ada.
 
 ### 7.3 Medication Sale dan Sales Invoice
 
@@ -459,7 +464,7 @@ Outpatient Queue Mapping merupakan mapping aktif kepada Pharmacy Queue Entry yan
 - **BR-APT-083** — User tidak boleh menginput Legacy DU atau Sales Invoice Item obat yang berdiri sendiri secara manual; tindakan user hanya dapat memicu pembentukan Sales Invoice dari Sales Order Line yang accountable.
 - **BR-APT-084** — Satu Pharmacy Queue Entry dapat dimappingkan ke satu atau beberapa Resep atau Direct Medication Request. Setiap demand yang dimappingkan harus mempertahankan Telaah Resep bila berlaku, Sales Order, Sales Invoice, Dispense Order, dan lifecycle accountable masing-masing.
 - **BR-APT-085** — Mapping beberapa medication demand ke satu Pharmacy Queue Entry harus mengoordinasikan satu pelayanan Rawat Jalan dan tidak boleh menggabungkan Sales Order, Sales Invoice, atau Dispense Order masing-masing.
-- **BR-APT-086** — Dalam satu normal outpatient fulfillment episode, satu Sales Order aktif harus dikoordinasikan melalui satu Dispense Order aktif. Pharmacy Queue Entry yang sama dapat mengoordinasikan beberapa pasangan Sales Order dan Dispense Order tersebut.
+- **BR-APT-086** — Dalam satu Registration aktif, satu Sales Order aktif harus dikoordinasikan melalui satu Dispense Order aktif untuk jalur Rawat Jalan normal. Pharmacy Queue Entry yang sama dapat mengoordinasikan beberapa pasangan Sales Order dan Dispense Order tersebut.
 - **BR-APT-087** — Tampilan progress per demand pada antrean harus berupa projection fakta Apotek untuk setiap demand yang dimappingkan; Patient Tracker tidak boleh menjadi authoritative atas state Telaah Resep, Sales Invoice, atau Dispense Order.
 - **BR-APT-088** — Satu coordinated pickup call hanya boleh dilakukan setelah setiap Dispense Order yang hendak diserahkan mencapai `Prepared` atau memperoleh outcome exception yang accountable.
 - **BR-APT-089** — Staf Apotek harus menerima atau menolak Direct Medication Request. Penerimaan membentuk record Direct Medication Request; penolakan tidak boleh membentuk record Direct Medication Request maupun Sales Order. Tidak ada persetujuan Pharmacist, rujukan, escalation, atau approval threshold.

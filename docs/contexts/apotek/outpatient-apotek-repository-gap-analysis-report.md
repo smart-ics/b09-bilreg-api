@@ -23,20 +23,20 @@ Current repository state:
 - The generic queue enum already complies with ADR-APT-001, but current F-09 event triggers and the frontend's queue states conflict with the canonical workflow.
 - Existing Patient Tracker, Tata Rekening, Stock Ledger, CPOE, Fornas, medication catalog, query, and UI-shell capabilities are reusable only through explicit extensions and adapters.
 
-The architecture is not ready for implementation review until the blocking decisions in section 4 are resolved. All blocking architecture gaps (BA-01 through BA-09) are now resolved; remaining gates are business clarification (BC-01, BC-03 through BC-14).
+The architecture is not ready for implementation review until the blocking decisions in section 4 are resolved. All blocking architecture gaps (BA-01 through BA-09) are now resolved; remaining gates are business clarification (BC-01, BC-03 through BC-08, BC-10 through BC-14).
 
 ## 2. Classification summary
 
 | Classification | Count | Review meaning |
 |---|---:|---|
 | Blocking Architecture Gap | 0 | A structural or ownership decision is unresolved; implementing around it would create incompatible sources of truth or unsafe cross-context behavior. |
-| Business Clarification Gap | 13 | A policy, authority, threshold, or accountable outcome is not sufficiently defined. |
-| Resolved (Business Clarification) | 1 | BC-02 ratified; artifacts updated. |
+| Business Clarification Gap | 12 | A policy, authority, threshold, or accountable outcome is not sufficiently defined. |
+| Resolved (Business Clarification) | 2 | BC-02 and BC-09 ratified; artifacts updated. |
 | Existing Capability Extension | 9 | A relevant capability exists but its present contract or semantics do not satisfy Apotek. |
 | Missing Implementation | 15 | The design is sufficiently clear, but no conforming implementation exists. |
 | Technical Debt | 11 | Existing code or documentation embodies legacy, misleading, coupled, or unverified behavior. |
 | Resolved (Blocking Architecture) | 9 | BA-01 through BA-09 ratified; artifacts updated. |
-| **Total open** | **48** | Each open finding has one primary classification. |
+| **Total open** | **47** | Each open finding has one primary classification. |
 
 ## 3. Baseline and evidence
 
@@ -311,15 +311,25 @@ The architecture is not ready for implementation review until the blocking decis
 
 **Evidence.** `apotek-domain.md:354-364`, `435`.
 
-### BC-09 — Fulfillment episode identity
+### BC-09 — Fulfillment boundary and prescription repeat (Iter) policy
 
-**Gap.** The rule “at most one active Sales Order per Resep per episode” does not define episode boundaries, reopening, or same-day repeat handling.
+**Status:** Resolved (2026-08-16)
 
-**Recommended decision.** Define episode identity from patient, encounter/registration, prescription source/version, care setting, and an explicit reopen/re-review relation.
+**Gap.** The rule “at most one active Sales Order per Resep per episode” did not define episode boundaries, reopening, or same-day repeat handling. Iter entitlement and Iter validity at fulfillment time were not distinguished.
 
-**Rationale.** This invariant cannot be enforced without a deterministic business key.
+**Evidence.** `apotek-domain.md:365`, `459`; workflow `:270`; `apotek-domain.md:341-352`.
 
-**Evidence.** `apotek-domain.md:341-352`.
+**Decision.** The system does not introduce a separate Fulfillment Episode concept. For Outpatient Pharmacy, the fulfillment boundary is the Registration Period. A prescription may be reviewed, re-reviewed, and fulfilled while the originating Registration remains active. The Registration acts as the fulfillment boundary.
+
+**Repeat policy (Iter).** Prescription repeat entitlement is owned by the prescription through the existing Legacy Resep `Iter` mechanism. The system remains responsible for Iter allocation, Iter consumption tracking, and remaining Iter calculation.
+
+**Repeat validity authority.** The system does not determine whether an unused Iter remains valid for fulfillment. The Pharmacist is responsible for deciding whether an unused Iter may still be honored at fulfillment time — for example, old prescription, delayed patient return, clinical appropriateness concerns, or operational policy considerations. The Pharmacist may decline fulfillment even when remaining Iter exists.
+
+**Invariant update.** Replace “one active Sales Order per Prescription per Episode” with “one active Sales Order per Prescription per Registration” or equivalent Registration-based terminology.
+
+**Rationale.** Registration is an existing, externally owned boundary with deterministic identity. Separating system-managed Iter entitlement from pharmacist-judged Iter validity preserves clinical accountability without inventing a parallel episode aggregate.
+
+**Ratified in.** `apotek-domain.md` (`BR-APT-011`, `BR-APT-086`, `BR-APT-105`–`BR-APT-107`); `outpatient-apotek-workflow.md`; `sop/SOP-APT-RJ-002-*`.
 
 ### BC-10 — Shortage, Backorder, and alternate-stock authority
 
@@ -444,10 +454,11 @@ The architecture is not ready for implementation review until the blocking decis
 - Keep Final Dispense Review attempts immutable; failure returns only the affected Dispense Order to `Preparing`.
 - Preserve separate records for multiple medication demands sharing one queue.
 - Direct Medication Request is accepted or declined by Pharmacy Staff without Pharmacist approval; optional consultation is SOP-only and not a domain gate (BC-02).
+- Outpatient Pharmacy fulfillment boundary is the active Registration Period; no separate Fulfillment Episode concept. One active Sales Order per Prescription per Registration while that Registration remains active. Iter entitlement is system-managed through Legacy Resep `Iter`; Pharmacist decides whether unused Iter may be honored at fulfillment time and may decline even when remaining Iter exists (BC-09).
 
 ### 9.2 Decisions still required before architecture approval
 
-Architecture approval requires business ratification of BC-01 and BC-03 through BC-14. BA-01 through BA-09 and BC-02 are resolved. These are decision gates, not delivery steps. The remaining Existing Capability Extension, Missing Implementation, and Technical Debt findings can then be evaluated against those ratified boundaries without inventing new sources of truth.
+Architecture approval requires business ratification of BC-01 and BC-03 through BC-08 and BC-10 through BC-14. BA-01 through BA-09, BC-02, and BC-09 are resolved. These are decision gates, not delivery steps. The remaining Existing Capability Extension, Missing Implementation, and Technical Debt findings can then be evaluated against those ratified boundaries without inventing new sources of truth.
 
 ### 9.3 Overall classification
 
