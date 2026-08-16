@@ -23,7 +23,7 @@ Memberikan langkah yang sama bagi petugas untuk menerima Resep yang telah ditela
 - `Resep`, baik Resep Elektronik maupun Resep Fisik yang telah dicatat; atau
 - `Direct Medication Request`, ketika permintaan obat tanpa Resep diperbolehkan.
 
-Hanya Patient Medication Demand yang diterima yang membentuk `Sales Order`. Sales Order kemudian mengoordinasikan dua jalur turunan yang independen: jalur komersial melalui Billing Allocation menuju Medication Sale yang direpresentasikan oleh `Sales Invoice`, serta jalur pemenuhan fisik melalui Fulfillment Allocation menuju `Dispense Order`.
+Hanya Patient Medication Demand yang diterima yang membentuk `Sales Order`. Sales Order kemudian mengoordinasikan dua jalur turunan yang independen: jalur komersial menuju Medication Sale yang direpresentasikan oleh `Sales Invoice`, serta jalur pemenuhan fisik menuju `Dispense Order`. Keterlacakan melalui Sales Order Line: setiap Sales Invoice Item dan setiap Dispense Order Line mereferensikan tepat satu Sales Order Line.
 
 ```text
 Resep ───────────────────┐
@@ -31,8 +31,10 @@ Resep ───────────────────┐
 Direct Medication Request┘        │
                                   ├─ ditolak  → tidak ada Sales Order
                                   └─ diterima → Sales Order
-                                                   ├─ Billing Allocation → Sales Invoice
-                                                   └─ Fulfillment Allocation → Dispense Order
+                                                   ├─ Sales Invoice
+                                                   │     └── Sales Invoice Item ← Sales Order Line
+                                                   └─ Dispense Order
+                                                         └── Dispense Order Line ← Sales Order Line
 ```
 
 Resep atau Direct Medication Request sumber tetap dipertahankan dan tidak berubah menjadi Sales Order. Sales Invoice dan Dispense Order dapat dibentuk serta berjalan secara independen sesuai kebijakan payer dan fulfillment yang berlaku.
@@ -46,7 +48,7 @@ Resep atau Direct Medication Request sumber tetap dipertahankan dan tidak beruba
 | CPOE | Subsistem | Menyediakan resep asli yang sah. Sistem Apotek tidak mengubah resep tersebut. |
 | Katalog Obat | Subsistem | Menyediakan identitas obat dan informasi formularium yang diperlukan saat telaah resep. |
 | Sistem Apotek | Subsistem | Mencatat hasil telaah, membuat pesanan apotek, serta mencatat tagihan dan kesiapan pelayanan obat secara terpisah. Aplikasi juga membuat tugas utama untuk menyiapkan obat. |
-| Sistem Persediaan | Subsistem | Menyediakan informasi ketersediaan dan pemesanan stok, tanpa menentukan apakah obat dapat diterima secara profesional. |
+| Sistem Persediaan | Subsistem | Menyediakan ketersediaan stok dan Pharmacy Reserve melalui Stock Mutasi, tanpa menentukan apakah obat dapat diterima secara profesional. |
 
 ## 3. Prasyarat
 
@@ -66,9 +68,9 @@ Resep atau Direct Medication Request sumber tetap dipertahankan dan tidak beruba
 7. **Apoteker** menyelesaikan telaah resep dengan status `Approved`, `Partially Approved`, atau `Rejected`.
 8. Untuk permintaan obat langsung, **Staf Apotek** mencatat rincian permintaan. **Staf Apotek** kemudian menerima atau menolak permintaan tersebut.
 9. Untuk resep yang disetujui seluruhnya atau sebagian, atau untuk permintaan obat langsung yang diterima, **Sistem Apotek** membuat satu pesanan apotek dari sumber tersebut. Sistem menyimpan hubungan pesanan itu dengan resep atau permintaan asalnya.
-10. **Sistem Apotek** mencatat dan menampilkan dua hal secara terpisah: bagian obat yang menjadi tagihan dan bagian obat yang sudah memenuhi syarat untuk dilayani. Jumlah pada masing-masing bagian ditampilkan agar petugas dapat melihatnya dengan jelas.
+10. **Sistem Apotek** dapat membentuk Sales Invoice beserta Sales Invoice Item-nya dan Dispense Order beserta Dispense Order Line-nya secara independen pada waktu bisnis yang berbeda. Setiap Sales Invoice Item obat dan setiap Dispense Order Line mereferensikan tepat satu Sales Order Line yang berlaku.
 11. Untuk pelayanan rawat jalan biasa, **Sistem Apotek** membuat satu tugas utama untuk menyiapkan obat dan menampilkan status awal tugas tersebut.
-12. **Sistem Persediaan** dapat mengirimkan informasi bahwa stok telah dipesan. **Sistem Apotek** menampilkan informasi itu, tetapi informasi tersebut belum berarti petugas boleh mulai menyiapkan obat.
+12. **Stock Ledger** dapat mencatat Pharmacy Reserve melalui Stock Mutasi dari Pharmacy Unit ke Dispensing Temporary Unit. **Sistem Apotek** menampilkan Mutasi itu, tetapi Mutasi tersebut belum berarti petugas boleh mulai menyiapkan obat (Dispense Authorized tetap evaluasi kebijakan terpisah).
 13. Sesuai asal permintaannya, **Apoteker** atau **Staf Apotek** memeriksa hasil akhir telaah, nomor pesanan apotek, item obat yang diterima, dan nomor tugas penyiapan obat.
 
 ## 5. Pengecualian Operasional
@@ -93,9 +95,9 @@ Resep atau Direct Medication Request sumber tetap dipertahankan dan tidak beruba
 ## 6. Kriteria Penyelesaian
 
 1. Setiap item obat yang ditelaah sudah memiliki keputusan akhir. Telaah yang belum selesai tetap berstatus `Under Review`.
-2. Untuk resep atau permintaan yang diterima, petugas dapat melihat pesanan apotek, catatan tagihan, catatan kesiapan pelayanan obat, dan tugas utama untuk menyiapkan obat. Semuanya tetap terhubung ke sumbernya.
+2. Untuk resep atau permintaan yang diterima, petugas dapat melihat Sales Order, Sales Order Line, dan Dispense Order utama beserta Dispense Order Line yang mereferensikan baris Sales Order tersebut. Semuanya tetap terhubung ke sumbernya.
 3. Resep berstatus `Rejected` atau permintaan obat langsung yang ditolak tidak memiliki pesanan apotek.
-4. Informasi pemesanan stok tidak mengubah keputusan profesional untuk menerima obat.
+4. Informasi Mutasi stok tidak mengubah keputusan profesional untuk menerima obat.
 
 ## 7. Referensi
 

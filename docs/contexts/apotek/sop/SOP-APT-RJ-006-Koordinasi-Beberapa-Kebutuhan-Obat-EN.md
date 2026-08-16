@@ -21,11 +21,11 @@ Provide a repeatable procedure for coordinating two or more independently accoun
 | Patient or Caregiver | Human | Completes payer-specific interactions, presents for one coordinated pickup, receives consolidated education, and accepts applicable medication. |
 | Pharmacy Staff | Human | Verifies separate mappings and progress, prepares each cleared Dispense Order separately, coordinates payer readiness, communicates exceptions, and performs one pickup call. |
 | Pharmacist | Human | Operationally verifies the recipient, reviews every Prepared Medication, and records Patient Education Acknowledgement for the coordinated session. Recipient verification is not system-enforced. Detailed counseling notes are optional. |
-| Pharmacy System | Subsystem | Projects per-demand progress and records separate allocations, invoices, Dispense Orders, dispense, and handover outcomes. |
+| Pharmacy System | Subsystem | Projects per-demand progress and records separate Sales Invoices, Dispense Orders, dispense, and handover outcomes. |
 | Patient Tracker | Subsystem | Retains one Queue Entry with one `CreatedAt`, at most one `ServedAt`, and one `DoneAt`. |
 | Cashier or Payment Authority | Human or Subsystem | Supplies Payment Clearance for applicable Patient-payable demands. |
 | SEP and Fornas Authorities | Subsystem | Supply coverage evidence for applicable BPJS demands. |
-| Inventory | Subsystem | Supplies per-Dispense-Order reservation, issue, and disposition outcomes. |
+| Inventory | Subsystem | Supplies per-Dispense-Order Mutasi, Remove Stock, and disposition outcomes. |
 
 ## 3. Preconditions
 
@@ -37,7 +37,7 @@ Provide a repeatable procedure for coordinating two or more independently accoun
 ## 4. Operational Steps
 
 1. **Pharmacy Staff** opens the common Queue Entry in `Apotek Rajal`.
-2. **Pharmacy System** displays every mapped demand separately with its source, Sales Order, payer, Billing Allocation, Fulfillment Allocation, Sales Invoice, clearance, and Dispense Order progress.
+2. **Pharmacy System** displays every mapped demand separately with its source, Sales Order, payer, Sales Order Lines, Sales Invoice, Dispense Authorized evaluation, and Dispense Order progress.
 3. **Pharmacy Staff** verifies that no demand, Sales Order, Sales Invoice, or Dispense Order has been merged with another demand.
 4. **Pharmacy Staff** applies the General Patient, BPJS, or mixed-coverage SOP to each demand according to its payer classification.
 5. **Cashier or Payment Authority** supplies applicable Payment Clearance; **SEP and Fornas Authorities** supply applicable Coverage Clearance.
@@ -51,7 +51,7 @@ Provide a repeatable procedure for coordinating two or more independently accoun
 13. With the Patient or caregiver present, **Pharmacist** operationally verifies the recipient, completes Final Dispense Review for each Prepared Medication, and records Patient Education Acknowledgement. For each passed review, **Pharmacy System** appends the review record and displays its Dispense Order as `Reviewed`. **Pharmacy System** records education timestamp and responsible Pharmacist. Detailed counseling notes are optional. The Pharmacist may optionally record recipient phone number and relationship for reference.
 14. **Pharmacy Staff** completes the physical handover after Pharmacist authorization. If Pickup Expired, an authorized pharmacist must first record Collection Window Override with reason.
 15. **Pharmacy System** records Medication Dispense and Medication Handover against every applicable Dispense Order and Sales Order separately.
-16. **Inventory** supplies separate Inventory Issue or disposition outcomes for each originating Dispense Order.
+16. **Inventory** records separate Remove Stock or return Mutasi outcomes for each originating Dispense Order.
 
 ## 5. Operational Exceptions
 

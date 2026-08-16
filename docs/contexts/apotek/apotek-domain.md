@@ -62,7 +62,7 @@ Apotek owns the outpatient business decision that associates a Pharmacy Queue En
 
 For Outpatient Pharmacy, the fulfillment boundary is the active Registration Period. A Resep may be reviewed, re-reviewed, and fulfilled while its originating Registration remains active. No separate Fulfillment Episode concept exists.
 
-For outpatient pharmacy queues, Patient Tracker records `CreatedAt` when the Queue Number is issued, `ServedAt` when the first applicable Dispense Order enters `Preparing`, and `DoneAt` when Pharmacy Staff performs the pickup call. Those queue milestones describe operational queue progress and do not prove Medication Handover. Patient Tracker `Apotek-Start` and `Apotek-Done` evidence remain reusable but shall reference the canonical `QueueEntryId`, not Farinv queue identity.
+For outpatient pharmacy queues, Patient Tracker records `CreatedAt` when the Queue Number is issued, `ServedAt` when the first applicable Dispense Order enters `Preparing`, and `DoneAt` when queue completion occurs. Queue completion may be triggered by the coordinated pickup call or by No Show Resolution (`WF-APT-RJ-007`) when the Queue Entry is still `In Service` because the pickup call has not occurred. The queue lifecycle remains `Waiting` → `In Service` → `Done`. No new queue status is introduced, and no pharmacy workflow state is added to the Queue Entry. Those queue milestones describe operational queue progress and do not prove Medication Handover. Queue `Done` only means the queue service lifecycle has been completed. Patient Tracker `Apotek-Start` and `Apotek-Done` evidence remain reusable but shall reference the canonical `QueueEntryId`, not Farinv queue identity.
 
 ### 1.4 Central business separation
 
@@ -529,7 +529,7 @@ Outpatient Queue Mapping is an active relationship to an externally owned Pharma
 - **BR-APT-092** — For a Patient-Pay Sales Order, the General Patient Sales Invoice shall be established only after verbal Purchase Confirmation and shall follow the self-pay workflow. The BPJS Sales Invoice of the independent BPJS-covered Sales Order shall be established only with successful Medication Handover under `BR-APT-075`.
 - **BR-APT-093** — A coordinated mixed-coverage pickup call shall wait until every Dispense Order intended for the handover has Dispense Authorized from its own path and has reached `Prepared`.
 - **BR-APT-094** — If the Patient declines the Patient-Pay Sales Order before its Sales Invoice is established, that Patient-Pay Sales Order shall receive an accountable declined outcome, while the independent BPJS-covered Sales Order may continue.
-- **BR-APT-095** — Patient Tracker shall record outpatient pharmacy `DoneAt` when Pharmacy Staff performs the coordinated pickup call. Queue completion shall not prove Final Dispense Review, Patient Education Acknowledgement, Medication Dispense, or Medication Handover.
+- **BR-APT-095** — Patient Tracker shall record outpatient pharmacy `DoneAt` when queue completion occurs. Queue completion may be triggered by (1) Pharmacy Staff performing the coordinated pickup call, or (2) authorized No Show Resolution under `WF-APT-RJ-007` when the Queue Entry is still `In Service` because the pickup call has not occurred. If the Queue Entry is already `Done` when No Show Resolution is executed, `DoneAt` shall not be recorded again. `DoneAt` shall never be reversed. Queue `Done` shall not prove Final Dispense Review, Patient Education Acknowledgement, Medication Dispense, or Medication Handover; it only means the queue service lifecycle has been completed. No new queue status shall be introduced, and no pharmacy workflow state shall be added to the Queue Entry. This completion path is not Pharmacy Queue Close (`BR-APT-143`–`BR-APT-145`).
 - **BR-APT-097** — Patient Tracker `QueueEntry` shall be the sole canonical outpatient-pharmacy queue identity. Legacy Farinv queue identity is deprecated and shall not create active queue records. Historical Farinv queue data is read-only. No dual-active queue model is permitted. Patient Tracker `Apotek-Start` and `Apotek-Done` evidence shall reference the canonical `QueueEntryId`.
 
 ### 7.9 Pharmacy and Stock Ledger boundary
@@ -664,7 +664,7 @@ Prepared, Ready for Pickup, or Patient Called
 
 Ready for Pickup and Pickup Expired are projection categories. The Collection Window (default 7 days) starts when the Dispense Order first becomes Ready for Pickup. Pickup Expired does not change Dispense Order state. Ordinary handover is blocked until a Collection Window Override is recorded. Terminal uncollected close remains a separate authorized act.
 
-The pickup call ends the Patient Tracker queue but does not complete Medication Handover. Final Dispense Review and Patient Education Acknowledgement occur with the Patient or caregiver present after that call. The Pharmacist operationally verifies the recipient during that counter interaction; verification is not a system-enforced lifecycle step. The system may optionally record recipient phone number and relationship for reference. Patient Education Acknowledgement records timestamp and responsible Pharmacist; detailed counseling notes are optional. The applicable commercial consequence is payer-specific. A General Patient may already have a financially cleared Sales Invoice, while the current BPJS policy establishes its Sales Invoice only with successful Medication Handover.
+The pickup call is one trigger that completes the Patient Tracker queue (`In Service` → `Done`) and records `DoneAt`. When No Show Resolution runs before the pickup call, Apotek may complete the associated Queue Entry on the same lifecycle; Patient Tracker records `DoneAt` at that completion. When No Show Resolution runs after the pickup call, the Queue Entry may already be `Done`; `DoneAt` is retained and never reversed. Queue `Done` does not complete Medication Handover and does not add a pharmacy workflow state to the Queue Entry. Final Dispense Review and Patient Education Acknowledgement occur with the Patient or caregiver present after a pickup call. The Pharmacist operationally verifies the recipient during that counter interaction; verification is not a system-enforced lifecycle step. The system may optionally record recipient phone number and relationship for reference. Patient Education Acknowledgement records timestamp and responsible Pharmacist; detailed counseling notes are optional. The applicable commercial consequence is payer-specific. A General Patient may already have a financially cleared Sales Invoice, while the current BPJS policy establishes its Sales Invoice only with successful Medication Handover.
 
 ## 9. Domain Events
 
@@ -682,7 +682,9 @@ The pickup call ends the Patient Tracker queue but does not complete Medication 
 | Coverage Clearance Established | The applicable Payer authorized covered fulfillment. |
 | Dispense Authorized Evaluated | Pharmacy policy determined that preparation and dispensing may proceed for the applicable quantity. |
 | Dispense Order Established | A physical fulfillment instruction and its Dispense Order Lines were formed directly from Sales Order Lines. |
-| Stock Reserved | Inventory secured stock for a Dispense Order. |
+| Stock Transferred to Dispensing Temporary Unit | Stock Ledger recorded Pharmacy Reserve as Stock Mutasi from Pharmacy Unit to Dispensing Temporary Unit. |
+| Stock Removed from Dispensing Temporary Unit | Stock Ledger recorded Remove Stock from Dispensing Temporary Unit after Medication Handover. |
+| Stock Returned to Pharmacy Unit | Stock Ledger recorded Stock Mutasi from Dispensing Temporary Unit back to Pharmacy Unit after No Show resolution or unused Pharmacy Reserve return. |
 | Medication Preparation Started | Physical preparation began under a released Dispense Order. |
 | Medication Prepared | The medication quantity on a Dispense Order Line completed physical preparation. |
 | Final Dispense Review Completed | With the Patient or caregiver present after the pickup call, Prepared Medication passed the required final professional check. |
@@ -693,7 +695,7 @@ The pickup call ends the Patient Tracker queue but does not complete Medication 
 | Patient Called for Pickup | Pharmacy Staff called the Patient for outpatient Medication Handover. |
 | Medication Dispensed | An accountable medication quantity was supplied for the Patient. |
 | Medication Handed Over | Medication was transferred to the Patient or other recipient as determined operationally by the Pharmacist. |
-| Outpatient No-Show Recorded | A Patient did not collect medication within the applicable outpatient service limit. |
+| Outpatient No-Show Recorded | A Patient did not collect medication within the applicable outpatient service limit. When the associated Queue Entry is still `In Service`, this resolution may complete the queue to `Done` and record `DoneAt`; when the Queue Entry is already `Done`, `DoneAt` is not reversed. |
 | Medication Shortage Identified | Available stock could not support the intended fulfillment quantity. |
 | Medication Substitution Authorized | An accountable authority approved replacement of the requested medication. |
 | Dispense Order Backordered | An unresolved quantity was retained for later fulfillment. Not used in Outpatient Pharmacy. |

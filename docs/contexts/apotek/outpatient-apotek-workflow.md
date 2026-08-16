@@ -365,7 +365,8 @@ Patient or Caregiver, Pharmacy Staff, Cashier or Payment Authority, Pharmacy Sta
 | Patient declines before Sales Invoice establishment | Patient | No Sales Invoice is established; unused quantity in Dispensing Temporary Unit returns to Pharmacy Unit through Stock Mutasi; the affected Patient-payable Sales Order Line quantity receives an accountable declined or commercially unallocated outcome. |
 | Calculated amount changes before establishment | Pharmacy Staff | Communicate the revised amount and obtain verbal confirmation again before establishing the Sales Invoice. |
 | Multiple demands share one Queue Entry | Pharmacy Staff | Apply `WF-APT-RJ-006`; retain separate Sales Orders, invoices, and Dispense Orders. |
-| Patient does not collect after pickup call | Pharmacy Supervisor | Apply `WF-APT-RJ-007`. |
+| Patient does not collect after pickup call | Pharmacy Supervisor | Apply `WF-APT-RJ-007`. Queue `DoneAt` is not reversed. |
+| Patient does not collect before pickup call | Pharmacy Supervisor | Apply `WF-APT-RJ-007`. The Queue Entry may still be `In Service`; that resolution may complete it to `Done` and record `DoneAt`. |
 | Pickup Expired | Authorized pharmacist | Record Collection Window Override with reason and continue handover, or apply `WF-APT-RJ-007`. |
 
 #### Exception and Compensation Flows
@@ -445,7 +446,8 @@ Patient or Caregiver, Pharmacy Staff, Pharmacist, Patient Tracker, SEP and Forna
 | SEP invalid | SEP authority | Coverage Clearance is absent; Medication Preparation remains blocked. |
 | Item not covered by Fornas | Pharmacy Staff | Route the non-covered quantity through `WF-APT-RJ-005`. |
 | Multiple mapped demands | Pharmacy Staff | Apply `WF-APT-RJ-006`; maintain separate records and one coordinated pickup. |
-| Patient does not collect | Pharmacy Supervisor | Apply `WF-APT-RJ-007`; no BPJS Sales Invoice is established. |
+| Patient does not collect after pickup call | Pharmacy Supervisor | Apply `WF-APT-RJ-007`; no BPJS Sales Invoice is established. Queue `DoneAt` is not reversed. |
+| Patient does not collect before pickup call | Pharmacy Supervisor | Apply `WF-APT-RJ-007`; no BPJS Sales Invoice is established. The Queue Entry may still be `In Service`; that resolution may complete it to `Done` and record `DoneAt`. |
 | Pickup Expired | Authorized pharmacist | Record Collection Window Override with reason and continue handover, or apply `WF-APT-RJ-007`. |
 
 #### Exception and Compensation Flows
@@ -641,7 +643,7 @@ Pharmacy Supervisor, Pharmacy Staff, Inventory, Tata Rekening, Patient Tracker.
 
 #### Input Business Facts
 
-- Pharmacy Queue Entry, which may already be `Done` after the pickup call.
+- Pharmacy Queue Entry, which may already be `Done` after the pickup call, or still `In Service` if the pickup call has not occurred.
 - Sales Order, Dispense Order, and unresolved quantities.
 - Sales Invoice presence and financial disposition by payer.
 - `Prepared` Dispense Order state and quantity held in Dispensing Temporary Unit.
@@ -649,12 +651,13 @@ Pharmacy Supervisor, Pharmacy Staff, Inventory, Tata Rekening, Patient Tracker.
 #### Main Flow
 
 1. The authorized role performs the manual uncollected-medication resolution and records the Patient as No-Show for the affected fulfillment.
-2. Apotek gives each affected Dispense Order the terminal state `Expired`.
-3. The resolution retains reason `Collection Window Expired`, responsible party, effective business time, affected quantity, and Source Traceability.
-4. Apotek records No Show resolution and requests Stock Mutasi from Dispensing Temporary Unit back to Pharmacy Unit for eligible quantity.
-5. Apotek records the resulting Unfulfilled Medication Outcome for each affected quantity.
-6. Apotek resolves the payer-specific commercial consequence.
-7. The Sales Order becomes `Resolved` only after every accepted quantity and required commercial consequence has a final accountable outcome.
+2. If the associated Queue Entry is still `In Service` because the pickup call has not occurred, Apotek may complete that Queue Entry. Patient Tracker moves it to `Done` and records `DoneAt`. If the Queue Entry is already `Done`, Patient Tracker retains `DoneAt`. `DoneAt` is never reversed. Queue `Done` does not imply Medication Handover and does not add a pharmacy workflow state to the Queue Entry. This is not Pharmacy Queue Close.
+3. Apotek gives each affected Dispense Order the terminal state `Expired`.
+4. The resolution retains reason `Collection Window Expired`, responsible party, effective business time, affected quantity, and Source Traceability.
+5. Apotek records No Show resolution and requests Stock Mutasi from Dispensing Temporary Unit back to Pharmacy Unit for eligible quantity.
+6. Apotek records the resulting Unfulfilled Medication Outcome for each affected quantity.
+7. Apotek resolves the payer-specific commercial consequence.
+8. The Sales Order becomes `Resolved` only after every accepted quantity and required commercial consequence has a final accountable outcome.
 
 #### Decision and Alternative Flows
 
@@ -668,7 +671,7 @@ Pharmacy Supervisor, Pharmacy Staff, Inventory, Tata Rekening, Patient Tracker.
 #### Exception and Compensation Flows
 
 - The Collection Window (default 7 days) classifies Ready for Pickup as Pickup Expired when elapsed. That classification does not expire the Dispense Order. Terminal uncollected close remains the authorized manual activity. No monetary approval threshold applies.
-- Queue `DoneAt` is not reversed; No-Show resolution belongs to Apotek after queue completion.
+- Queue `DoneAt` is never reversed. The Queue Entry may already be `Done` before this workflow, or this workflow may complete an `In Service` Queue Entry to `Done` and record `DoneAt`. No new queue status is introduced. Pharmacy Queue Close (`Withdrawn` from `Waiting`) does not apply after `Medication Preparation Started`.
 - Inventory may reject Return to Stock under its own policy; the rejected return still requires an accountable final Inventory disposition.
 - A paid commercial consequence shall not be silently erased or treated as the uninvoiced BPJS path.
 
@@ -676,6 +679,7 @@ Pharmacy Supervisor, Pharmacy Staff, Inventory, Tata Rekening, Patient Tracker.
 
 - BPJS No-Show: Dispense Order is `Expired`, no BPJS Sales Invoice exists, and stock has an accountable disposition.
 - Paid General Patient No-Show: Dispense Order is `Expired`; the Sales Order remains `Active` until the financial outcome is final.
+- Queue: the associated Queue Entry is `Done`. `DoneAt` was recorded at the pickup call or at this resolution and is not reversed. Queue `Done` does not prove Medication Handover.
 - Final resolution: Sales Order is `Resolved` with reason `Collection Window Expired` after all fulfillment and commercial consequences are final.
 
 #### Domain References
@@ -684,8 +688,8 @@ Pharmacy Supervisor, Pharmacy Staff, Inventory, Tata Rekening, Patient Tracker.
 
 #### Domain Events
 
-- Consumed: `Patient Called for Pickup`, `Medication Prepared`.
-- Produced or observed: `Outpatient No-Show Recorded`, `Dispense Order Expired`, `Unfulfilled Medication Recorded`, `Medication Returned`, `Sales Invoice Credited`, `Refund Required`, `Sales Order Resolved` when fully reconciled.
+- Consumed: `Patient Called for Pickup` when the pickup call already occurred, `Medication Prepared`.
+- Produced or observed: `Outpatient No-Show Recorded`, `Queue Service Completed` when this workflow completes an `In Service` Queue Entry, `Dispense Order Expired`, `Unfulfilled Medication Recorded`, `Medication Returned`, `Sales Invoice Credited`, `Refund Required`, `Sales Order Resolved` when fully reconciled.
 
 ## 8. Cross-Context Handoffs
 
@@ -693,7 +697,8 @@ Pharmacy Supervisor, Pharmacy Staff, Inventory, Tata Rekening, Patient Tracker.
 |---|---|---|---|
 | Patient Tracker | `Queue Entry Created`, Queue Number, `CreatedAt` | Apotek | Establish Tracker Mapping or Manual Mapping without taking ownership of queue identity. |
 | Apotek | `Medication Preparation Started` | Patient Tracker | Move the Pharmacy Queue Entry to In Service and record `ServedAt`; Patient Tracker shall not infer Medication Handover. |
-| Apotek | `Patient Called for Pickup` | Patient Tracker | Make the Pharmacy Queue Entry `Done` and record `DoneAt`; later professional review and handover remain Apotek facts. |
+| Apotek | `Patient Called for Pickup` | Patient Tracker | Make the Pharmacy Queue Entry `Done` and record `DoneAt` if not already recorded; later professional review and handover remain Apotek facts. Queue `Done` does not imply Medication Handover. |
+| Apotek | `Outpatient No-Show Recorded` while the Queue Entry is still `In Service` | Patient Tracker | Make the Pharmacy Queue Entry `Done` and record `DoneAt` if not already recorded; do not reverse `DoneAt`; do not infer Medication Handover. This is queue completion, not Pharmacy Queue Close, and does not add a pharmacy state to the queue. |
 | Apotek | `Pharmacy Queue Close Recorded` | Patient Tracker | Make the Waiting Pharmacy Queue Entry `Withdrawn`; do not record `ServedAt` or `DoneAt`. |
 | CPOE or clinical-order authority | Resep availability and clinician intent | Apotek | Perform Telaah Resep without modifying the original Resep. |
 | Apotek | Fulfillment projection by Resep and realized Medication Handover | EMR reporting | Display Resep-to-realization information without changing the CPOE Clinical Order in the initial scope. |
@@ -710,7 +715,7 @@ Pharmacy Supervisor, Pharmacy Staff, Inventory, Tata Rekening, Patient Tracker.
 |---|---|
 | Pharmacy `CreatedAt` | Recorded when Patient Tracker issues the Queue Number. |
 | Pharmacy `ServedAt` | Recorded when the first applicable Dispense Order produces `Medication Preparation Started`. |
-| Pharmacy `DoneAt` | Recorded when Pharmacy Staff performs the coordinated pickup call. |
+| Pharmacy `DoneAt` | Recorded when queue completion occurs: Pharmacy Staff performs the coordinated pickup call, or No Show Resolution completes an `In Service` Queue Entry. `DoneAt` is never reversed. Queue `Done` does not prove Medication Handover. |
 | Telaah Resep | May begin as soon as the Resep is available; it does not wait for Patient arrival or mapping. |
 | General Patient preparation | Cannot begin before Payment Clearance and applicable Sales Invoice evidence satisfy Dispense Authorized. |
 | BPJS preparation | Cannot begin before valid SEP, covered Fornas mapping, and Dispense Authorized. A Sales Invoice is not required. |
@@ -733,7 +738,7 @@ The `Domain References` section of each workflow specification is the source of 
 | `WF-APT-RJ-004` | `BR-APT-020`–`BR-APT-026`, `BR-APT-029`–`BR-APT-045`, `BR-APT-066`, `BR-APT-068`–`BR-APT-069`, `BR-APT-073`–`BR-APT-079`, `BR-APT-081`–`BR-APT-083`, `BR-APT-088`, `BR-APT-090`, `BR-APT-095`–`BR-APT-096`, `BR-APT-114`–`BR-APT-118`, `BR-APT-129`–`BR-APT-134`, `BR-APT-138`–`BR-APT-142`; `BR-TRK-045`, `BR-TRK-045a`, `BR-TRK-046` | `Awaiting Clearance`, `Released`, `Preparing`, `Prepared`, `Reviewed`, `Completed`, `In Service`, `Done` | `Coverage Clearance Established`, `Medication Preparation Started`, `Patient Called for Pickup`, `Final Dispense Review Failed`, `Sales Invoice Established`, `Medication Handed Over` | Patient Tracker, SEP, Fornas, Inventory, Tata Rekening |
 | `WF-APT-RJ-005` | `BR-APT-011`, `BR-APT-015`, `BR-APT-020`–`BR-APT-028`, `BR-APT-040`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-070`–`BR-APT-078`, `BR-APT-090`–`BR-APT-096`, `BR-APT-108`, `BR-APT-119`–`BR-APT-124`, `BR-APT-129`–`BR-APT-134` | Independent BPJS-covered and Patient-Pay Sales Order states | `Coverage Clearance Established`, `Payment Clearance Established`, `Sales Order Established`, `Final Dispense Review Failed`, `Sales Invoice Established`, `Medication Handed Over` | SEP, Fornas, Payment, Tata Rekening |
 | `WF-APT-RJ-006` | `BR-APT-011`, `BR-APT-015`, `BR-APT-022`, `BR-APT-030`, `BR-APT-056`–`BR-APT-060`, `BR-APT-084`–`BR-APT-088`, `BR-APT-095`–`BR-APT-096`, `BR-APT-129`–`BR-APT-134`; `BR-TRK-032`, `BR-TRK-035`–`BR-TRK-039`, `BR-TRK-045`, `BR-TRK-045a` | Per-demand authoritative states; one queue `Waiting` → `In Service` → `Done` | `Outpatient Queue Mapped`, `Medication Preparation Started`, `Patient Called for Pickup`, `Final Dispense Review Failed`, `Medication Handed Over` | Patient Tracker |
-| `WF-APT-RJ-007` | `BR-APT-018`–`BR-APT-019`, `BR-APT-027`, `BR-APT-045`–`BR-APT-047`, `BR-APT-052`–`BR-APT-060`, `BR-APT-069`, `BR-APT-078`–`BR-APT-080`, `BR-APT-095`, `BR-APT-135`–`BR-APT-142` | `Expired`, `Active`, `Resolved` | `Outpatient No-Show Recorded`, `Dispense Order Expired`, `Unfulfilled Medication Recorded`, `Medication Returned`, `Sales Invoice Credited`, `Refund Required`, `Sales Order Resolved` | Inventory, Tata Rekening |
+| `WF-APT-RJ-007` | `BR-APT-018`–`BR-APT-019`, `BR-APT-027`, `BR-APT-045`–`BR-APT-047`, `BR-APT-052`–`BR-APT-060`, `BR-APT-069`, `BR-APT-078`–`BR-APT-080`, `BR-APT-095`, `BR-APT-135`–`BR-APT-142` | `Expired`, `Active`, `Resolved`; queue `In Service` or `Done` | `Outpatient No-Show Recorded`, `Queue Service Completed`, `Dispense Order Expired`, `Unfulfilled Medication Recorded`, `Medication Returned`, `Sales Invoice Credited`, `Refund Required`, `Sales Order Resolved` | Inventory, Tata Rekening, Patient Tracker |
 
 Related canonical artifacts:
 

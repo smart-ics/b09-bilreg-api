@@ -74,6 +74,8 @@ Withdrawn
 
 No Pharmacy-specific state may be introduced into the queue aggregate.
 
+Queue completion (`InService` → `Done`) may be triggered by Pickup Call or by No Show Resolution when that resolution runs before Pickup Call. Queue `Done` does not imply medication handover. Queue `Done` only means the queue service lifecycle has been completed. `DoneAt` is recorded when that completion occurs and is never reversed. This does not change ownership: Patient Tracker still owns queue identity and lifecycle; Pharmacy still owns No Show handling and fulfillment outcomes. Pharmacy Queue Close remains the separate `Waiting` → `Withdrawn` path and shall not be used after the queue is `InService`.
+
 ### Canonical outpatient-pharmacy queue identity (BA-01)
 
 Patient Tracker `QueueEntry` is the sole canonical outpatient-pharmacy queue identity.
@@ -225,6 +227,12 @@ Pharmacy Status = WaitingPayment
 Queue Status = Done
 
 Pharmacy Status = HandedOver
+```
+
+```text
+Queue Status = Done
+
+Pharmacy Status = No Show / Expired
 ```
 
 ---

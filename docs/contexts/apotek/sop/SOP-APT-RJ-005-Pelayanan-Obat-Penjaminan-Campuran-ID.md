@@ -86,7 +86,7 @@ Memberikan langkah yang sama bagi petugas ketika Fornas mengklasifikasikan sebag
 
 - **Sistem Apotek** tetap memisahkan konsekuensi Sales Order BPJS dan Patient-Pay.
 - **Tata Rekening** memberikan koreksi yang diperlukan untuk bagian Patient-Pay yang telah dibayar. Faktur BPJS tetap belum dibuat sampai obat Sales Order BPJS berhasil diserahkan.
-- **Kepala Apotek** menerapkan `SOP-APT-RJ-007` untuk obat yang tidak diambil.
+- **Kepala Apotek** menerapkan `SOP-APT-RJ-007` untuk obat yang tidak diambil. Jika Queue Entry bersama sudah `Done`, `DoneAt` tidak dibalik. Jika masih `In Service` karena pickup call belum terjadi, resolusi itu boleh menyelesaikannya menjadi `Done` dan mencatat `DoneAt`.
 
 ## 6. Kriteria Penyelesaian
 

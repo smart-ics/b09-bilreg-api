@@ -21,7 +21,7 @@ Provide a repeatable procedure for accepting a reviewed Resep or authorized Dire
 - a `Resep`, either a Resep Elektronik or a recorded Resep Fisik; or
 - a `Direct Medication Request`, when a medication request without a Resep is permitted.
 
-Only an accepted Patient Medication Demand establishes a `Sales Order`. The Sales Order then coordinates two independent downstream paths: the commercial path through Billing Allocation to a Medication Sale represented by a `Sales Invoice`, and the physical-fulfillment path through Fulfillment Allocation to a `Dispense Order`.
+Only an accepted Patient Medication Demand establishes a `Sales Order`. The Sales Order then coordinates two independent downstream paths: the commercial path to a Medication Sale represented by a `Sales Invoice`, and the physical-fulfillment path to a `Dispense Order`. Traceability is through Sales Order Lines: each Sales Invoice Item and each Dispense Order Line references exactly one Sales Order Line.
 
 ```text
 Resep ───────────────────┐
@@ -29,8 +29,10 @@ Resep ───────────────────┐
 Direct Medication Request┘        │
                                   ├─ rejected → no Sales Order
                                   └─ accepted → Sales Order
-                                                   ├─ Billing Allocation → Sales Invoice
-                                                   └─ Fulfillment Allocation → Dispense Order
+                                                   ├─ Sales Invoice
+                                                   │     └── Sales Invoice Item ← Sales Order Line
+                                                   └─ Dispense Order
+                                                         └── Dispense Order Line ← Sales Order Line
 ```
 
 The source Resep or Direct Medication Request remains traceable and does not become the Sales Order. Sales Invoice and Dispense Order may be established and progress independently according to the applicable payer and fulfillment policies.
@@ -43,8 +45,8 @@ The source Resep or Direct Medication Request remains traceable and does not bec
 | Pharmacy Staff | Human | Records Resep Fisik; accepts or declines Direct Medication Requests; and applies Stock Shortage Handling through a Partial Sales Order and Salinan Resep. |
 | CPOE | Subsystem | Supplies the authoritative original Resep, which Apotek does not modify. |
 | Medication Catalog | Subsystem | Supplies medication identity and formulary information used during review. |
-| Pharmacy System | Subsystem | Records review outcomes and establishes traceable allocations, Sales Order, and primary Dispense Order. |
-| Inventory | Subsystem | Supplies Stock Availability and Stock Reservation outcomes without deciding professional acceptance. |
+| Pharmacy System | Subsystem | Records review outcomes and establishes a traceable Sales Order and primary Dispense Order. |
+| Inventory | Subsystem | Supplies Stock Availability and Pharmacy Reserve through Stock Mutasi without deciding professional acceptance. |
 
 ## 3. Preconditions
 
@@ -64,9 +66,9 @@ The source Resep or Direct Medication Request remains traceable and does not bec
 7. **Pharmacist** completes the Telaah Resep as `Approved`, `Partially Approved`, or `Rejected`.
 8. For a Direct Medication Request, **Pharmacy Staff** records the request details and either accepts or declines it.
 9. For an approved or partially approved Resep, or an accepted Direct Medication Request, **Pharmacy System** establishes one Sales Order from that source and preserves Source Traceability.
-10. **Pharmacy System** establishes applicable Billing Allocations and Fulfillment Allocations independently and displays their quantities.
+10. **Pharmacy System** may form Sales Invoices with their Sales Invoice Items and Dispense Orders with their Dispense Order Lines independently and at different business times. Every medication Sales Invoice Item and every Dispense Order Line references exactly one applicable Sales Order Line.
 11. **Pharmacy System** establishes one active primary outpatient Dispense Order for the normal path within the active Registration and displays its initial state.
-12. **Inventory** may return Stock Reservation evidence; **Pharmacy System** displays it without treating it as Fulfillment Clearance.
+12. **Inventory** may record Pharmacy Reserve through Stock Mutasi from Pharmacy Unit to Dispensing Temporary Unit; **Pharmacy System** displays that Mutasi without treating it as Dispense Authorized. Dispense Authorized is a separate policy evaluation over financial and/or coverage evidence.
 13. **Pharmacist** or **Pharmacy Staff**, according to the source path, verifies the final review outcome, Sales Order identifier, accepted lines, and Dispense Order identifier.
 
 ## 5. Operational Exceptions
@@ -91,7 +93,7 @@ The source Resep or Direct Medication Request remains traceable and does not bec
 ## 6. Completion Criteria
 
 1. Every reviewed Baris Resep has a final disposition. An incomplete review remains `Under Review`.
-2. An accepted source displays a traceable Sales Order, Billing Allocation, Fulfillment Allocation, and primary Dispense Order.
+2. An accepted source displays a traceable Sales Order, Sales Order Lines, and primary Dispense Order whose Dispense Order Lines reference those Sales Order Lines.
 3. A rejected Resep or declined Direct Medication Request has no Sales Order.
 4. Stock evidence has not changed the professional acceptance outcome.
 

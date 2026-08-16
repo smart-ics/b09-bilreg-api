@@ -37,7 +37,7 @@ Jika SOP bahasa Inggris dan Bahasa Indonesia berbeda secara semantik, SOP bahasa
 | Coverage | Penjaminan |
 | Payment Clearance | Status Lunas |
 | Coverage Clearance | Persetujuan Penjaminan |
-| Fulfillment Clearance | Izin Penyiapan Obat |
+| Dispense Authorized | Dispense Authorized |
 | Dispense Order | Perintah Penyiapan Obat |
 | Medication Handover | Penyerahan Obat |
 | Outpatient Queue Mapping | Outpatient Queue Mapping |

@@ -3,7 +3,7 @@
 **Artifact status:** Proposed design decision  
 **Bounded context:** Apotek (`Pelayanan Obat Pasien`)  
 **Scope:** Outpatient pharmacy  
-**Related artifacts:** [Apotek Domain](./apotek-domain.md), [Outpatient Apotek Workflow](./outpatient-apotek-workflow.md), [Outpatient Apotek SOP](./sop/DAFTAR-SOP-APT-RJ.md)
+**Related artifacts:** [Apotek Domain](./apotek-domain.md), [Outpatient Apotek Workflow](./outpatient-apotek-workflow.md), [Outpatient Apotek SOP](./sop/DAFTAR-SOP-APT-RJ.md), [Outpatient Apotek Repository Gap Analysis](./outpatient-apotek-repository-gap-analysis-report.md) (BA-03)
 
 ## 1. Decision Summary
 
@@ -22,8 +22,10 @@ Supporting operational decisions that do **not** add screens or aggregates:
 
 - an **Exception Worklist** inside Pelayanan Penjualan for No-Show, expiry, return, correction, and pending financial or inventory consequences;
 - optional **attention counters / filters** on each screen for prioritization;
-- Serah Obat **operational worklist categories** for pickup prioritization; and
-- a read-only **Patient Medication Journey** projection for consolidated visibility.
+- Serah Obat **operational worklist categories** for pickup prioritization;
+- a read-only **Patient Medication Journey** projection for consolidated visibility;
+- **Outpatient Queue Mapping** as a navigation/association mechanism only (BA-03); and
+- **Pharmacy Queue Close** as an operational fact/event, not an aggregate.
 
 This decision assumes that queue-number issuance is owned by c013-kiosk-queue-display-web and that the queue infrastructure is shared with Outpatient Admission.
 
@@ -33,10 +35,10 @@ This decision assumes that queue-number issuance is owned by c013-kiosk-queue-di
 2. Sales, physical preparation, and handover are separate accountable facts. A completed payment or queue does not prove medication handover.
 3. A Sales Invoice must be derived from accountable Sales Order Lines. Users must not manually create independent medication invoice items or free-form non-medication invoice items. BHP appears as a catalog sales line. Packaging and compounding fees are line-level charges. Rounding and other transaction-wide adjustments are invoice-level charges.
 4. Dispensing is not a status update on a Sales Order. It is executed through a separate Dispense Order aggregate.
-5. The existing Patient Tracker owns pharmacy queue identity, queue number, and queue lifecycle. Apotek owns its mapping from a queue entry to medication demand, as well as its own operational and fulfillment facts.
+5. The existing Patient Tracker owns pharmacy queue identity, queue number, and queue lifecycle. Outpatient Queue Mapping is a navigation/association mechanism only; it is not an aggregate root and does not own queue or medication-demand lifecycle. Apotek owns its operational and fulfillment facts on the Pharmacy aggregates (`TelaahResep`, `SalesOrder`, `SalesInvoice`, `DispenseOrder`). Pharmacy Queue Close is an operational fact/event that requests Patient Tracker `Withdrawn`; it is not an aggregate.
 6. The four-screen model is an outpatient scope decision. It does not preclude inpatient, emergency, unit-dose, or future exception-focused worklists.
 7. Operational worklists, attention indicators, and patient-journey views are projections and UX aids. They do not introduce workflow states, aggregate roots, or alternate lifecycles.
-8. Fulfillment Clearance is a derived policy outcome from authoritative commercial or coverage evidence. It authorizes preparation; it is not an aggregate root.
+8. Dispense Authorized is a policy evaluation result derived from financial and/or coverage evidence. It authorizes Medication Preparation and Dispensing. It is not an aggregate, entity, persisted business object, source of truth, or transaction boundary.
 
 ## 3. Screen Design
 
@@ -83,7 +85,7 @@ The Exception Worklist surfaces cases that need accountable resolution under exi
 
 | Exception category | Typical operational concern |
 |---|---|
-| No Show | Prepared or in-transit medication was not collected; aligns with SOP APT-RJ-007 / `WF-APT-RJ-007` |
+| No Show | `Prepared` medication in Dispensing Temporary Custody was not collected; aligns with SOP APT-RJ-007 / `WF-APT-RJ-007` |
 | Pickup Expired | Collection Window elapsed; awaiting override for handover or `WF-APT-RJ-007` close |
 | Expired Medication | Authorized fulfillment expiry / `Collection Window Expired` and related Dispense Order terminal outcomes |
 | Return Request | Return of prepared, transferred, or handed-over medication awaiting Inventory disposition |
@@ -113,7 +115,7 @@ The workbench contains four activities.
    - Establish a Sales Order only after the request is accepted.
 
 4. **Manage sale and return/correction request**
-   - Determine payer allocations and show the calculated Patient-payable amount.
+   - Determine payer classification of Sales Order Lines and show the calculated Patient-payable amount.
    - For General Patient quantities, capture verbal purchase confirmation and establish a Sales Invoice from the applicable Sales Order Lines.
    - For BPJS quantities, show SEP and Fornas coverage outcomes; do not request Patient payment or establish the BPJS Sales Invoice early.
    - For mixed coverage, Fornas Not Covered lines form an independent Patient-Pay Sales Order. Covered lines remain on the BPJS-covered Sales Order. Do not keep uncovered lines on the BPJS fulfillment path.
@@ -136,12 +138,12 @@ Queue mapping and General Patient purchase confirmation can occur in the same co
 
 The workbench lets Pharmacy Staff:
 
-1. view applicable Fulfillment Clearance and stock reservation outcomes;
+1. view applicable Dispense Authorized evaluation and Pharmacy Reserve (Stock Mutasi to Dispensing Temporary Unit) outcomes;
 2. begin preparation only for authorized quantities;
 3. perform picking, counting, labelling, packaging, and compounding when required;
 4. record preparation completion and move the Dispense Order to `Prepared`;
 5. record or display shortage, Salinan Resep for unfulfilled lines, cancellation, and other accountable exceptions; and
-6. show prepared medication as in-transit until accountable handover or final inventory disposition.
+6. show prepared medication in Dispensing Temporary Custody until accountable handover or No Show return Mutasi.
 
 The first `Medication Preparation Started` event is Pharmacy Service Start Evidence. It causes Patient Tracker to record `ServedAt` and move the pharmacy queue entry to `In Service`.
 
@@ -178,9 +180,11 @@ The workbench supports the following sequence:
 4. The Pharmacist completes a Final Dispense Review for every prepared Dispense Order and records Patient Education Acknowledgement (timestamp and responsible Pharmacist). Detailed counseling notes are optional.
 5. A passed review moves the Dispense Order to `Reviewed`; a failed review returns only that order to `Preparing` and appends an immutable review record.
 6. After Pharmacist authorization, Pharmacy Staff completes the physical handover. If the worklist category is Pickup Expired, an authorized pharmacist must first record Collection Window Override with reason; ordinary handover is blocked until then.
-7. The system records Medication Dispense and Medication Handover for every applicable quantity, requests the Inventory Issue outcome, and applies payer-specific sales consequences.
+7. The system records Medication Dispense and Medication Handover for every applicable quantity, requests Remove Stock from Dispensing Temporary Unit, and applies payer-specific sales consequences.
 
 For current outpatient BPJS policy, successful handover establishes the BPJS Sales Invoice. For a General Patient, the invoice may already be financially cleared before preparation. In both cases, queue completion is not evidence of handover.
+
+If No Show Resolution (`WF-APT-RJ-007`) occurs before the pickup call, Patient Tracker may record `DoneAt` and move the still-`In Service` Queue Entry to `Done` without a pickup call. If the Queue Entry is already `Done`, `DoneAt` is retained. `DoneAt` is never reversed. No new queue status is introduced.
 
 ### 3.5 Shared operational projections
 
@@ -227,7 +231,7 @@ It may be surfaced through a side drawer, detail panel, or contextual patient dr
 
 together with visible payment/coverage, exception, and external disposition outcomes when already known.
 
-The projection has no command responsibilities. All mutations continue through the screen workbenches and existing aggregates.
+The projection has no command responsibilities. All mutations continue through the screen workbenches and existing aggregates. Queue Mapping in this projection is the same navigation/association used by worklists; it is not an aggregate.
 
 ## 4. Shared Queue Integration Decision
 
@@ -254,7 +258,7 @@ Legacy Farinv queue records may be consulted for historical reporting only. New 
 | `CreatedAt` / `Waiting` | Queue number issued by kiosk or tracker | Patient has a pharmacy queue entry; medication demand may still be unmapped or unreviewed |
 | `Withdrawn` | Pharmacy Staff records Pharmacy Queue Close with mandatory reason | Pre-service participation ended; not `In Service` or `Done`. TAKEN is not a Tracker state |
 | `ServedAt` / `In Service` | First applicable Dispense Order records `Medication Preparation Started` | Physical pharmacy preparation has started |
-| `DoneAt` / `Done` | Pharmacy Staff performs coordinated pickup call | Patient has been called for pickup; it does not prove final review or handover |
+| `DoneAt` / `Done` | Pharmacy Staff performs coordinated pickup call, or authorized No Show Resolution completes an `In Service` Queue Entry | Queue service lifecycle completed; it does not prove final review or handover. `DoneAt` is never reversed. No new queue status. |
 
 Apotek must expose its own queue-facing progress projection. Patient Tracker must not become authoritative for Telaah Resep, Sales Invoice, payment/coverage clearance, Dispense Order, review, or handover status.
 
@@ -269,17 +273,25 @@ flowchart TD
   RX["Resep / Resep Luar"] --> TR["Telaah Resep"]
   DR["Direct Medication Request"] --> SO["Sales Order"]
   TR --> SO
-  Q["Patient Tracker: Queue Entry"] --> MAP["Outpatient Queue Mapping"]
-  MAP --> SO
+  Q["Patient Tracker: Queue Entry"] -.-> MAP["Outpatient Queue Mapping\n(navigation/association;\nnot an aggregate)"]
+  MAP -.-> SO
   SO --> INV["Sales Invoice"]
   SO --> DO["Dispense Order"]
-  PAY["Payment Clearance / Coverage Clearance"] --> CLR["Fulfillment Clearance\n(derived policy outcome;\nnot an aggregate)"]
+  PAY["Payment Clearance / Coverage Clearance"] -.-> AUTH["Dispense Authorized\n(policy evaluation result;\nnot an aggregate, entity,\npersisted object, or\ntransaction boundary)"]
   INV -.-> PAY
-  CLR -.->|"authorizes preparation"| DO
+  AUTH -.->|"authorizes preparation"| DO
   DO --> HO["Medication Dispense and Handover"]
+  CLOSE["Pharmacy Queue Close\n(operational fact/event;\nnot an aggregate)"] -.->|"requests Withdrawn"| Q
 ```
 
 ### 5.2 Aggregate roots and responsibilities
+
+The Apotek aggregate-root list is exactly:
+
+- `TelaahResep`
+- `SalesOrder`
+- `SalesInvoice`
+- `DispenseOrder`
 
 | Aggregate root | Responsibility | Does not own |
 |---|---|---|
@@ -287,16 +299,31 @@ flowchart TD
 | `SalesOrder` | Owns accepted demand, Sales Order Lines, accepted quantity, fulfillment/unfulfilled progress, and overall resolution; reconciles commercial and fulfillment quantities | Payment settlement, inventory balance, physical preparation, or handover execution |
 | `SalesInvoice` | Owns one medication sale, catalog sales lines including BHP, line-level charges, invoice-level charges, pricing snapshot, payer, financial disposition, and commercial adjustments | Sales Order quantity authority, payment evidence, stock, physical dispensing, or a separate invoice-component model |
 | `DispenseOrder` | Owns preparation, lines, immutable final review attempts, Patient Education Acknowledgement, Collection Window Override when applicable, Medication Dispense, Medication Handover, expiry, cancellation, return, and non-fulfillment outcomes | Sales Invoice payment settlement and authoritative stock balance |
-| `OutpatientQueueMapping` | Associates one externally owned queue entry with one medication-demand source; identifies Tracker or Manual Mapping | Queue identity/lifecycle and the lifecycle of the mapped prescription or Sales Order |
-| Pharmacy Queue Close | Pharmacy Staff close of a Queue Entry not progressed into pharmacy workflow; mandatory reason | Patient Tracker `Withdrawn` state itself |
 
-### 5.3 Fulfillment Clearance (not an aggregate)
+`OutpatientQueueMapping` and Pharmacy Queue Close are **not** aggregate roots. They do not appear in the catalog above.
 
-**Design decision:** Fulfillment Clearance is a **derived policy outcome**, not an aggregate root.
+| Object | Classification | Responsibility | Does not own |
+|---|---|---|---|
+| `OutpatientQueueMapping` | Navigation/association mechanism only (BA-03) | Answers operational navigation and worklist questions: which queue entry is serving this medication demand, and which medication demands are associated with this queue entry. Identifies Tracker Mapping or Manual Mapping. | Business lifecycle, workflow state, approval state, operational progress, transactional consistency, or active/inactive relationship state. Queue identity and lifecycle remain owned by Patient Tracker. Medication demand lifecycle remains owned by the Pharmacy aggregates (`SalesOrder`, `DispenseOrder`, and related roots). No independent consistency boundary. |
+| Pharmacy Queue Close | Operational fact/event | Pharmacy Staff fact that ends a Pharmacy Queue Entry not progressed into the pharmacy workflow. Records a mandatory close reason, responsible Pharmacy Staff, and effective business time. Requests Patient Tracker `Withdrawn` from `Waiting`. | Patient Tracker queue state itself (`Withdrawn` is set by Patient Tracker). Not an aggregate, not a queue state, and not a path that establishes a Sales Order, Dispense Order, or Medication Handover. |
 
-It is derived from authoritative commercial and/or coverage outcomes—typically Payment Clearance and/or Coverage Clearance—and acts as the business rule that determines whether fulfillment (Medication Preparation) may proceed for the applicable Dispense Order quantity.
+### 5.3 Dispense Authorized (not an aggregate)
 
-This matches the domain treatment of Fulfillment Clearance as business authorization (`BR-APT-040`–`BR-APT-044`, `BR-APT-072`, `BR-APT-074`) rather than as a separately owned consistency boundary. No Fulfillment Clearance aggregate is introduced unless a later domain need shows that clearance itself requires independent transactional consistency beyond the Sales Invoice, Dispense Order, and external clearance evidence already modeled.
+**Design decision (BA-08):** Preparation authorization is **Dispense Authorized**.
+
+Dispense Authorized is a **policy evaluation result** derived from financial and/or coverage evidence. It is not an aggregate, not an entity, not a persisted business object, not a source of truth, and not a transaction boundary.
+
+It is required before Medication Preparation Started and Dispensing. It is not required for Medication Handover. Handover remains governed by Prepared medication, passed Final Dispense Review, and Patient Education Acknowledgement.
+
+Typical evidence used by the evaluation (`BR-APT-040`–`BR-APT-044`, `BR-APT-072`, `BR-APT-074`):
+
+| Payer path | Evidence |
+|---|---|
+| General Patient | Sales Invoice created; Payment Clearance |
+| BPJS | Valid SEP; authoritative Fornas coverage (Coverage Clearance) |
+| Other insurance | Valid coverage approval |
+
+No parallel clearance object is introduced. The evaluation does not own Dispense Order lifecycle, stock, or handover facts.
 
 ### 5.4 Relationships and invariants
 
@@ -305,11 +332,12 @@ This matches the domain treatment of Fulfillment Clearance as business authoriza
 3. A `SalesInvoice` references exactly one Sales Order and may invoice one or more of its lines. Each invoice item references exactly one Sales Order Line.
 4. A `DispenseOrder` references exactly one Sales Order and may fulfill one or more of its lines. Each dispense line references exactly one Sales Order Line.
 5. Invoice quantity and dispense quantity may progress independently, but neither may exceed the applicable Sales Order Line authority.
-6. A common queue entry may map to multiple medication demands. Each demand retains independent Telaah Resep, Sales Order, Sales Invoice, and Dispense Order identity and lifecycle.
+6. A common queue entry may be associated with multiple medication demands through `OutpatientQueueMapping`. Mapping is a navigation/association mechanism only; it does not own lifecycle or transactional consistency. Each demand retains independent Telaah Resep, Sales Order, Sales Invoice, and Dispense Order identity and lifecycle.
 7. A Sales Order becomes `Resolved` only after every accepted quantity and required commercial consequence reaches a final accountable outcome.
 8. A Dispense Order becomes `Completed` only after accountable Medication Dispense and applicable Medication Handover are recorded.
 9. A failed Final Dispense Review never overwrites history; it appends a review record and returns only the affected Dispense Order from `Prepared` to `Preparing`.
-10. Fulfillment Clearance authorizes preparation quantity; it does not own Dispense Order lifecycle, stock, or handover facts.
+10. Dispense Authorized is a policy evaluation over financial and/or coverage evidence; it authorizes preparation quantity and does not own Dispense Order lifecycle, stock, or handover facts.
+11. Pharmacy Queue Close is an operational fact/event, not an aggregate and not a queue state. It requests Patient Tracker `Withdrawn` from `Waiting` and does not add a pharmacy state to the queue.
 
 ### 5.5 External authorities
 
@@ -319,7 +347,7 @@ The following are required collaborators, not Apotek aggregates:
 |---|---|
 | CPOE / clinical order authority | Original electronic prescription and clinician intent |
 | Patient Tracker | Pharmacy queue entry identity, queue number, `CreatedAt`, `ServedAt`, `DoneAt`, and `Withdrawn` |
-| Inventory | Stock availability, reservation, issue, return eligibility, and final stock disposition |
+| Inventory / Stock Ledger | Stock availability, Stock Mutasi, Remove Stock, and movement history only. Does not own reservation, issue, `Prepared`, handover, or No Show status. |
 | Payment / Cashier | Payment Clearance evidence |
 | SEP and Fornas authorities | BPJS eligibility and item-level Coverage Clearance evidence |
 | Tata Rekening | Financial charge, credit note, refund, and final settlement consequences |
@@ -331,10 +359,12 @@ The following are required collaborators, not Apotek aggregates:
 | Exception Worklist in Pelayanan Penjualan | None. Projection / worklist over existing Sales Order, Dispense Order, Sales Invoice, Inventory, and Tata Rekening outcomes |
 | Attention counters / filters | None. UI prioritization only |
 | Serah Obat operational categories | None. Worklist filters; Dispense Order states remain authoritative |
-| Fulfillment Clearance clarification | None added. Explicitly **not** promoted to an aggregate root |
+| Dispense Authorized (BA-08) | None added. Policy evaluation result; **not** an aggregate, entity, persisted object, or transaction boundary |
 | Patient Medication Journey | None. Read-only consolidation projection |
+| Outpatient Queue Mapping (BA-03) | None added. Navigation/association mechanism only; **not** an aggregate root |
+| Pharmacy Queue Close | None added. Operational fact/event; **not** an aggregate root |
 
-**Conclusion:** The aggregate map in §5.1–§5.2 is preserved. The five operational decisions are incorporated as screen/worklist behavior, projections, read models, and UX aids.
+**Conclusion:** The aggregate map in §5.1–§5.2 contains only `TelaahResep`, `SalesOrder`, `SalesInvoice`, and `DispenseOrder` as aggregate roots. The operational decisions above are incorporated as screen/worklist behavior, projections, read models, UX aids, associations, or operational facts.
 
 ## 6. Explicit Non-Decisions
 

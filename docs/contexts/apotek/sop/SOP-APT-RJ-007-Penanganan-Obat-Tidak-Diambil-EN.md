@@ -12,7 +12,7 @@
 
 ## 1. Purpose
 
-Provide a repeatable manual procedure for giving Prepared or In-Transit medication that was not collected an authorized expiry, Inventory disposition, and payer-specific commercial outcome.
+Provide a repeatable manual procedure for giving `Prepared` medication in Dispensing Temporary Custody that was not collected an authorized expiry, Stock Ledger return Mutasi, and payer-specific commercial outcome.
 
 ## 2. Actors and Responsibilities
 
@@ -21,14 +21,14 @@ Provide a repeatable manual procedure for giving Prepared or In-Transit medicati
 | Pharmacy Supervisor | Human | Authorizes and records the manual end of the collection opportunity. This is an authorized pharmacist according to operational policy. No monetary approval threshold applies. |
 | Pharmacy Staff | Human | Identifies the affected demand and quantities and verifies the resulting operational outcomes. |
 | Pharmacy System | Subsystem | Records No-Show, `Expired`, `Collection Window Expired`, Unfulfilled Medication Outcome, and final Sales Order progress. |
-| Inventory | Subsystem | Determines return eligibility and supplies the authoritative return or other final disposition. |
+| Inventory | Subsystem | Applies Stock Mutasi from Dispensing Temporary Unit back to Pharmacy Unit when directed by Pharmacy. Does not store No Show status. |
 | Tata Rekening | Subsystem | Supplies Credit Note, Refund, or another final commercial outcome for paid medication. |
-| Patient Tracker | Subsystem | Retains the existing queue lifecycle and does not reverse `DoneAt`. |
+| Patient Tracker | Subsystem | Records `DoneAt` and `Done` when No Show Resolution completes an `In Service` Queue Entry. Retains existing `DoneAt` when the Queue Entry is already `Done`. Never reverses `DoneAt`. |
 
 ## 3. Preconditions
 
 1. Pharmacy Supervisor and Pharmacy Staff are signed in with the required exception-resolution permission.
-2. The medication is `Prepared` or In-Transit, and Medication Handover has not completed.
+2. The medication is `Prepared` in Dispensing Temporary Custody, and Medication Handover has not completed.
 3. The Patient did not collect the medication.
 4. The authorized closing role, affected quantity, reason, and effective business time are known.
 5. Sales Invoice presence and financial disposition are visible for each payer allocation.
@@ -40,13 +40,16 @@ Provide a repeatable manual procedure for giving Prepared or In-Transit medicati
 3. **Pharmacy Supervisor** records the manual uncollected-medication resolution with responsible party, effective business time, affected quantity, and reason `Collection Window Expired`.
 4. **Pharmacy System** records the Patient as No-Show for the affected fulfillment and changes each affected Dispense Order to `Expired`.
 5. **Pharmacy System** records an Unfulfilled Medication Outcome for every affected quantity and preserves Source Traceability.
-6. **Inventory** evaluates the reserved or In-Transit medication and supplies Return to Stock only when eligible, or supplies another final Inventory disposition.
+6. **Pharmacy System** requests Stock Mutasi from Dispensing Temporary Unit back to Pharmacy Unit for eligible quantity; **Inventory** applies only that return movement directed by Pharmacy and does not store No Show status.
 7. **Pharmacy System** displays the authoritative Inventory disposition without inferring stock movement.
 8. For an uninvoiced BPJS allocation, **Pharmacy System** keeps the BPJS Sales Invoice absent and resolves only the fulfillment and Inventory consequences.
 9. For a paid General Patient allocation, **Pharmacy System** sends the required financial consequence to **Tata Rekening** and keeps the Sales Order `Active`.
 10. **Tata Rekening** supplies Credit Note, Refund, or another accountable final commercial outcome; **Pharmacy System** displays the result against the originating allocation.
 11. For mixed coverage, **Pharmacy System** records the uninvoiced covered consequence and paid Patient-payable consequence separately.
-12. **Patient Tracker** retains the existing Queue Entry state and `DoneAt`; the No-Show resolution does not reopen the queue.
+12. **Patient Tracker** completes or retains the Queue Entry as follows:
+    - If the Queue Entry is still `In Service` because the pickup call has not occurred, **Patient Tracker** moves it to `Done` and records `DoneAt`. This is queue completion, not Pharmacy Queue Close, and does not imply Medication Handover.
+    - If the Queue Entry is already `Done`, **Patient Tracker** retains `DoneAt`.
+    - `DoneAt` is never reversed. No new queue status is introduced. No pharmacy workflow state is added to the Queue Entry.
 13. **Pharmacy System** changes the Sales Order to `Resolved` only after every accepted quantity, Inventory disposition, and required commercial consequence is final.
 14. **Pharmacy Staff** verifies the final state or the explicitly displayed outstanding financial consequence.
 
@@ -66,7 +69,13 @@ Provide a repeatable manual procedure for giving Prepared or In-Transit medicati
 ### 5.3 Queue is already `Done`
 
 - **Patient Tracker** retains `DoneAt` unchanged.
-- **Pharmacy Supervisor** continues the Apotek resolution without reopening or completing the queue again.
+- **Pharmacy Supervisor** continues the Apotek resolution without reopening the queue.
+
+### 5.4 Queue is still `In Service` because the pickup call did not occur
+
+- **Patient Tracker** may complete the Queue Entry: `In Service` → `Done`, and records `DoneAt`.
+- This completion is not Pharmacy Queue Close and does not prove Medication Handover.
+- **Pharmacy Supervisor** continues the Apotek resolution on the same `Waiting` → `In Service` → `Done` lifecycle. No new queue status is introduced.
 
 ## 6. Completion Criteria
 
@@ -75,7 +84,7 @@ Provide a repeatable manual procedure for giving Prepared or In-Transit medicati
 3. No BPJS Sales Invoice exists when BPJS handover did not occur.
 4. A paid General Patient Sales Order remains `Active` until the final Credit Note, Refund, or other commercial outcome is visible.
 5. The Sales Order is `Resolved` only after all fulfillment and commercial consequences are final.
-6. Queue `DoneAt` remains unchanged.
+6. The associated Queue Entry is `Done`. `DoneAt` was recorded at the pickup call or at this No Show Resolution and is not reversed.
 
 ## 7. References
 

@@ -23,28 +23,28 @@ Provide a repeatable procedure for obtaining verbal Purchase Confirmation, estab
 | Pharmacy Supervisor | Human | Authorizes the manual uncollected-medication resolution when the Patient does not collect prepared medication. Authorization is by an authorized pharmacist according to operational policy; no monetary approval threshold applies. |
 | Cashier or Payment Authority | Human or Subsystem | Receives payment and supplies Payment Clearance. |
 | Pharmacist | Human | Operationally verifies the recipient, completes Final Dispense Review, and records Patient Education Acknowledgement. Recipient verification is not system-enforced. Detailed counseling notes are optional. |
-| Pharmacy System | Subsystem | Displays allocations and amounts, records the invoice and clearances, tracks preparation, and records dispense and handover. |
-| Patient Tracker | Subsystem | Records `ServedAt` at preparation start and `DoneAt` at the pickup call. |
-| Inventory | Subsystem | Supplies reservation, issue, and return-disposition outcomes. |
+| Pharmacy System | Subsystem | Displays Sales Order Line amounts, records the Sales Invoice and its Sales Invoice Items, displays Payment Clearance, evaluates Dispense Authorized, tracks preparation, and records dispense and handover. |
+| Patient Tracker | Subsystem | Records `ServedAt` at preparation start and `DoneAt` when queue completion occurs (pickup call, or No Show Resolution if the Queue Entry is still `In Service`). `DoneAt` is never reversed. |
+| Inventory | Subsystem | Supplies Mutasi, Remove Stock, and return-disposition outcomes. |
 | Tata Rekening | Subsystem | Receives Financial Charge and supplies required correction outcomes. |
 
 ## 3. Preconditions
 
 1. Participating staff are signed in with their required permissions.
-2. Outpatient Queue Mapping, an active Sales Order, Patient-payable Billing Allocations, and a calculated Pricing Snapshot are displayed.
+2. Outpatient Queue Mapping, an active Sales Order, Patient-payable Sales Order Lines, and a calculated Pricing Snapshot are displayed.
 3. No Sales Invoice exists for the proposed Patient-payable sale.
-4. An applicable Dispense Order exists or can be established from Fulfillment Allocations.
+4. An applicable Dispense Order exists or can be established from Sales Order Lines through its Dispense Order Lines.
 
 ## 4. Operational Steps
 
-1. **Pharmacy Staff** opens the mapped demand in `Apotek Rajal` and verifies the calculated Patient-payable amount and Billing Allocations.
+1. **Pharmacy Staff** opens the mapped demand in `Apotek Rajal` and verifies the calculated Patient-payable amount from the applicable Sales Order Lines.
 2. **Pharmacy Staff** receives the Patient during Manual Mapping or performs an administrative Queue Number call after Tracker Mapping; **Patient Tracker** does not record `ServedAt` or `DoneAt` for this interaction.
 3. **Pharmacy Staff** verbally communicates the calculated amount before a Sales Invoice exists.
 4. **Patient or Caregiver** verbally confirms the purchase.
-5. **Pharmacy Staff** records the confirmed transaction; **Pharmacy System** establishes the Sales Invoice only from the confirmed Billing Allocations and displays its identifier and amount.
+5. **Pharmacy Staff** records the confirmed transaction; **Pharmacy System** establishes the Sales Invoice and its Sales Invoice Items only from the confirmed Sales Order Line quantities and displays its identifier and amount.
 6. **Cashier or Payment Authority** receives payment and supplies Payment Clearance for that Sales Invoice.
-7. **Pharmacy System** displays Payment Clearance and establishes Fulfillment Clearance for the applicable Dispense Order quantities.
-8. **Inventory** secures the required Stock Reservation when it is not already present; **Pharmacy System** displays the reservation outcome.
+7. **Pharmacy System** displays Payment Clearance and evaluates financial and coverage evidence as Dispense Authorized for the applicable Dispense Order quantities. Dispense Authorized is a policy evaluation result; it is not established as a persisted business object.
+8. **Stock Ledger** records Stock Mutasi from Pharmacy Unit to Dispensing Temporary Unit when Pharmacy Reserve is required and not already in Dispensing Temporary Unit; **Pharmacy System** displays the Mutasi outcome.
 9. **Pharmacy Staff** starts Medication Preparation only after the Dispense Order is released.
 10. **Pharmacy System** records `Medication Preparation Started`; **Patient Tracker** moves the Queue Entry to In Service and records `ServedAt`.
 11. **Pharmacy Staff** completes preparation or compounding and records completion; **Pharmacy System** displays the Dispense Order as `Prepared`.
@@ -53,7 +53,7 @@ Provide a repeatable procedure for obtaining verbal Purchase Confirmation, estab
 14. With the Patient or caregiver present, **Pharmacist** operationally verifies the recipient, completes Final Dispense Review, and records Patient Education Acknowledgement. When the review passes, **Pharmacy System** appends the review record and displays the Dispense Order as `Reviewed`. **Pharmacy System** records education timestamp and responsible Pharmacist. Detailed counseling notes are optional. The Pharmacist may optionally record recipient phone number and relationship for reference.
 15. **Pharmacy System** blocks handover until Final Dispense Review has passed and Patient Education Acknowledgement is recorded. Recipient identity is not a system gate. Detailed counseling notes are not required. If Pickup Expired, **Pharmacy System** also blocks handover until an authorized pharmacist records Collection Window Override with reason.
 16. **Pharmacy Staff** completes the physical handover after Pharmacist authorization; **Pharmacy System** records Medication Dispense and Medication Handover for each applicable quantity.
-17. **Inventory** supplies the authoritative Inventory Issue outcome; **Pharmacy System** displays the Dispense Order as `Completed` when all required outcomes are present.
+17. **Inventory** records Remove Stock from Dispensing Temporary Unit; **Pharmacy System** displays the Dispense Order as `Completed` when all required outcomes are present.
 18. **Pharmacy System** displays the Sales Order as `Resolved` only when every accepted quantity and commercial consequence is final.
 
 ## 5. Operational Exceptions
@@ -61,7 +61,7 @@ Provide a repeatable procedure for obtaining verbal Purchase Confirmation, estab
 ### 5.1 Patient declines before invoice establishment
 
 - **Pharmacy Staff** records the decline and does not establish a Sales Invoice.
-- **Pharmacy System** records the allocation as declined or commercially unallocated and requests release of unused reservation from **Inventory**.
+- **Pharmacy System** records the affected Patient-payable Sales Order Line quantity as declined or commercially unallocated and requests Stock Mutasi of unused quantity from Dispensing Temporary Unit back to Pharmacy Unit.
 
 ### 5.2 Amount changes before invoice establishment
 
@@ -86,13 +86,13 @@ Provide a repeatable procedure for obtaining verbal Purchase Confirmation, estab
 
 ### 5.6 Patient does not collect medication
 
-- **Pharmacy Supervisor** applies `SOP-APT-RJ-007`; Queue `DoneAt` is not reversed.
+- **Pharmacy Supervisor** applies `SOP-APT-RJ-007`. If the Queue Entry is already `Done`, `DoneAt` is not reversed. If the Queue Entry is still `In Service` because the pickup call did not occur, that resolution may complete it to `Done` and record `DoneAt`.
 
 ## 6. Completion Criteria
 
 1. The Sales Invoice is visibly financially cleared.
 2. The Dispense Order is `Completed`, and Medication Handover records effective time. Recipient phone number and relationship may be recorded optionally for reference.
-3. Inventory Issue is displayed as an authoritative Inventory outcome.
+3. Remove Stock from Dispensing Temporary Unit is displayed as the Stock Ledger outcome.
 4. The Sales Order is `Resolved`, or remains `Active` with an explicitly displayed unresolved fulfillment or commercial consequence.
 5. Queue `Done` is not used as proof of Medication Handover.
 

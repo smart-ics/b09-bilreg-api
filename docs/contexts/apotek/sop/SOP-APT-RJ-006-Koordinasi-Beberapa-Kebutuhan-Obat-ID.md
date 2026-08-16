@@ -23,11 +23,11 @@ Memberikan langkah yang sama bagi petugas untuk melayani dua atau lebih resep at
 | Pasien atau Keluarga Pasien | Pengguna layanan | Menyelesaikan urusan pembayaran atau penjaminan yang berlaku, datang untuk satu kali pengambilan, menerima edukasi gabungan, dan menerima obat yang dapat diserahkan. |
 | Staf Apotek | Petugas | Memeriksa mapping dan keadaan setiap resep atau permintaan obat, menyiapkan setiap tugas penyiapan obat secara terpisah, mengoordinasikan kesiapan menurut penanggung biaya, menjelaskan masalah yang terjadi, dan melakukan satu kali panggilan pengambilan obat. |
 | Apoteker | Petugas | Memeriksa penerima secara operasional, memeriksa setiap obat yang sudah disiapkan, dan mencatat Patient Education Acknowledgement untuk sesi terkoordinasi. Pemeriksaan penerima tidak ditegakkan sistem. Catatan konseling rinci bersifat opsional. |
-| Sistem Apotek | Subsistem | Menampilkan keadaan setiap resep atau permintaan obat serta mencatat tagihan, faktur, tugas penyiapan, obat yang diberikan, dan penyerahan obat secara terpisah. |
+| Sistem Apotek | Subsistem | Menampilkan keadaan setiap resep atau permintaan obat serta mencatat Sales Invoice, Dispense Order, obat yang diberikan, dan penyerahan obat secara terpisah. |
 | Sistem Antrian Pasien | Subsistem | Menyimpan satu entri antrian dengan satu `CreatedAt`, paling banyak satu `ServedAt`, dan satu `DoneAt`. |
 | Kasir atau Sistem Pembayaran | Petugas atau subsistem | Mengirimkan informasi pelunasan untuk obat yang harus dibayar Pasien. |
 | Sistem SEP dan Fornas | Subsistem | Mengirimkan bukti jaminan untuk obat BPJS yang berlaku. |
-| Sistem Persediaan | Subsistem | Menyediakan hasil pemesanan, pengeluaran, dan keputusan stok untuk setiap tugas penyiapan obat. |
+| Sistem Persediaan | Subsistem | Menyediakan hasil Mutasi, Remove Stock, dan keputusan stok untuk setiap Dispense Order. |
 
 ## 3. Prasyarat
 
@@ -39,7 +39,7 @@ Memberikan langkah yang sama bagi petugas untuk melayani dua atau lebih resep at
 ## 4. Langkah Operasional
 
 1. **Staf Apotek** membuka entri antrian bersama pada `Apotek Rajal`.
-2. **Sistem Apotek** menampilkan setiap resep atau permintaan obat secara terpisah, termasuk sumbernya, pesanan apotek, penanggung biaya, bagian obat yang menjadi tagihan, bagian obat yang sudah boleh diproses, faktur, status persetujuan atau pelunasan, dan keadaan tugas penyiapan obat.
+2. **Sistem Apotek** menampilkan setiap resep atau permintaan obat secara terpisah, termasuk sumbernya, Sales Order, penanggung biaya, Sales Order Line, Sales Invoice, evaluasi Dispense Authorized, dan keadaan Dispense Order.
 3. **Staf Apotek** memastikan setiap resep atau permintaan obat tetap memiliki pesanan apotek, faktur, dan tugas penyiapan obatnya sendiri. Tidak ada catatan yang digabungkan dengan catatan sumber lain.
 4. **Staf Apotek** menerapkan SOP Pasien Umum, SOP BPJS, atau SOP penjaminan campuran untuk setiap resep atau permintaan obat sesuai penanggung biayanya.
 5. **Kasir atau Sistem Pembayaran** mengirimkan informasi pelunasan yang diperlukan. **Sistem SEP dan Fornas** mengirimkan persetujuan jaminan yang diperlukan.
@@ -53,7 +53,7 @@ Memberikan langkah yang sama bagi petugas untuk melayani dua atau lebih resep at
 13. Saat Pasien atau Keluarga Pasien hadir, **Apoteker** memeriksa penerima secara operasional, melakukan pemeriksaan akhir pada setiap obat yang sudah disiapkan, dan mencatat Patient Education Acknowledgement. Untuk setiap pemeriksaan yang lulus, **Sistem Apotek** menambahkan catatan pemeriksaan dan menampilkan tugas penyiapan obat terkait berstatus `Reviewed`. **Sistem Apotek** mencatat waktu edukasi dan Apoteker penanggung jawab. Catatan konseling rinci bersifat opsional. Apoteker boleh secara opsional mencatat nomor telepon penerima dan hubungan dengan Pasien sebagai referensi.
 14. Setelah mendapat persetujuan **Apoteker**, **Staf Apotek** menyerahkan obat secara fisik. Jika Pickup Expired, Apoteker berwenang harus terlebih dahulu mencatat Collection Window Override beserta alasannya.
 15. **Sistem Apotek** mencatat obat yang diberikan dan diserahkan pada setiap tugas penyiapan obat dan pesanan apotek secara terpisah.
-16. **Sistem Persediaan** mengirimkan catatan pengeluaran stok atau keputusan stok lain secara terpisah untuk setiap tugas penyiapan obat asalnya.
+16. **Sistem Persediaan** mencatat Remove Stock atau Mutasi pengembalian secara terpisah untuk setiap Dispense Order asal.
 
 ## 5. Pengecualian Operasional
 

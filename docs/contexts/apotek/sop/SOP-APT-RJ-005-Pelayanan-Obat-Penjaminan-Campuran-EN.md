@@ -84,7 +84,7 @@ Provide a repeatable procedure for splitting Fornas Covered and Not Covered pres
 
 - **Pharmacy System** keeps BPJS-covered and Patient-Pay consequences on their own Sales Orders.
 - **Tata Rekening** supplies the required correction for the paid Patient-Pay portion; the absent BPJS invoice remains absent until successful handover.
-- **Pharmacy Supervisor** applies `SOP-APT-RJ-007` for uncollected medication.
+- **Pharmacy Supervisor** applies `SOP-APT-RJ-007` for uncollected medication. If the common Queue Entry is already `Done`, `DoneAt` is not reversed. If it is still `In Service` because the pickup call did not occur, that resolution may complete it to `Done` and record `DoneAt`.
 
 ## 6. Completion Criteria
 
