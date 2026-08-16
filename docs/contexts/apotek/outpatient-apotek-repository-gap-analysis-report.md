@@ -29,14 +29,14 @@ The architecture is not ready for implementation review until the blocking decis
 
 | Classification | Count | Review meaning |
 |---|---:|---|
-| Blocking Architecture Gap | 3 | A structural or ownership decision is unresolved; implementing around it would create incompatible sources of truth or unsafe cross-context behavior. |
+| Blocking Architecture Gap | 2 | A structural or ownership decision is unresolved; implementing around it would create incompatible sources of truth or unsafe cross-context behavior. |
 | Business Clarification Gap | 13 | A policy, authority, threshold, or accountable outcome is not sufficiently defined. |
 | Resolved (Business Clarification) | 1 | BC-02 ratified; artifacts updated. |
 | Existing Capability Extension | 9 | A relevant capability exists but its present contract or semantics do not satisfy Apotek. |
 | Missing Implementation | 15 | The design is sufficiently clear, but no conforming implementation exists. |
 | Technical Debt | 11 | Existing code or documentation embodies legacy, misleading, coupled, or unverified behavior. |
-| Resolved (Blocking Architecture) | 6 | BA-01 through BA-06 ratified; artifacts updated. |
-| **Total open** | **51** | Each open finding has one primary classification. |
+| Resolved (Blocking Architecture) | 7 | BA-01 through BA-07 ratified; artifacts updated. |
+| **Total open** | **50** | Each open finding has one primary classification. |
 
 ## 3. Baseline and evidence
 
@@ -158,13 +158,19 @@ The architecture is not ready for implementation review until the blocking decis
 
 ### BA-07 — Cross-context delivery, idempotency, and reconciliation
 
+**Status:** Resolved (2026-08-16)
+
 **Gap.** API, command, and event contracts are explicit non-decisions. Existing F-09 evidence is synchronous HTTP without an outbox. The target creates causal chains across Apotek, Tracker, Inventory, Payment, SEP/Fornas, and Tata Rekening.
 
 **Evidence.** Screen design `:317-329`; workflow `:681-712`, `:737`; F-09 report `:217-225`.
 
-**Recommended decision.** Adopt durable at-least-once integration with stable event IDs, causation/correlation IDs, aggregate versions, idempotent consumers, retry policy, and reconciliation queries. Local aggregate commit and outbound event publication must be atomic through an outbox or equivalent durable mechanism. External facts are referenced, not copied as authority.
+**Decision.** The system shall use an Integration Task Table mechanism for cross-context integration. The mechanism must be transactional, retryable, idempotent, and reconcile-able. The goal is reliable cross-context delivery between Pharmacy and dependent bounded contexts such as Billing, Stock, Reporting, and Queue-related integrations. A distributed transaction is not required. A message broker is not required. A transactional outbox is not required.
 
-**Rationale.** Partial failures otherwise produce queue, financial, stock, and handover histories that disagree while each local transaction appears successful.
+**Integration approach.** Business transaction and Integration Task creation must be committed atomically. Integration workers process pending tasks asynchronously. Failed tasks must be visible, retryable, and auditable. Processing must be idempotent to prevent duplicate side effects. Reconciliation capability must exist to identify and recover missed or failed integrations.
+
+**Rationale.** An Integration Task Table provides durable at-least-once delivery without mandating distributed transactions, message brokers, or a separate outbox pattern. Atomic task creation with the business transaction preserves consistency; async workers, idempotency, and reconciliation address partial failures.
+
+**Ratified in.** `apotek-domain.md`; `outpatient-apotek-workflow.md`; Integration Task Table design (to be specified at implementation).
 
 ### BA-08 — Financial clearance and BPJS handover transaction boundary
 
@@ -392,6 +398,7 @@ The architecture is not ready for implementation review until the blocking decis
 - Pickup/handover categories are projection/worklist categories only, not aggregate lifecycle states. `DispenseOrder` remains authoritative; operational milestones are process facts/events; worklist categories (`Ready for Pickup`, `Ready for Review`, `Ready for Handover`, `Completed`) are derived projections (BA-04).
 - Legacy DU and Sales Invoice are independent features that may coexist during transition with no dual-write. Each owns its own workflow and billing/stock paths; unified sales reporting is a read-only adapter aggregating both sources (BA-05).
 - A canonical Prescription Contract is shared by Legacy Resep and CPOE; pharmacy consumes the contract via a Prescription Snapshot at intake. Source revisions are detected but do not auto-modify snapshots; staff review tasks handle changes (BA-06).
+- Cross-context integration uses an Integration Task Table: transactional, retryable, idempotent, and reconcile-able. Business transaction and task creation commit atomically; workers process asynchronously. No distributed transaction, message broker, or transactional outbox is required (BA-07).
 - Keep queue lifecycle generic: `Waiting`, `InService`, `Done`, `Withdrawn`.
 - Keep pharmacy operational state out of Patient Tracker.
 - Treat `ServedAt` as first preparation-start evidence.
@@ -405,7 +412,7 @@ The architecture is not ready for implementation review until the blocking decis
 
 ### 9.2 Decisions still required before architecture approval
 
-Architecture approval requires explicit disposition of BA-07 through BA-09 and business ratification of BC-01 and BC-03 through BC-14. BA-01 through BA-06 and BC-02 are resolved. These are decision gates, not delivery steps. The remaining Existing Capability Extension, Missing Implementation, and Technical Debt findings can then be evaluated against those ratified boundaries without inventing new sources of truth.
+Architecture approval requires explicit disposition of BA-08 and BA-09 and business ratification of BC-01 and BC-03 through BC-14. BA-01 through BA-07 and BC-02 are resolved. These are decision gates, not delivery steps. The remaining Existing Capability Extension, Missing Implementation, and Technical Debt findings can then be evaluated against those ratified boundaries without inventing new sources of truth.
 
 ### 9.3 Overall classification
 
