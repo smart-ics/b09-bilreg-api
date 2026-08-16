@@ -12,91 +12,90 @@
 
 ## 1. Purpose
 
-Provide a repeatable procedure for separating BPJS-covered and Patient-payable commercial responsibility while coordinating the cleared quantities for one outpatient pickup.
+Provide a repeatable procedure for splitting Fornas Covered and Not Covered prescription lines into independent Sales Orders while coordinating cleared quantities for one outpatient pickup.
 
 ## 2. Actors and Responsibilities
 
 | Actor | Type | Operational responsibility |
 |---|---|---|
-| Patient or Caregiver | Human | Confirms or declines the Patient-payable portion, pays when confirmed, presents for pickup, receives education, and accepts medication when authorized. |
-| Pharmacy Staff | Human | Separates Billing Allocations, communicates the Patient-payable amount, records its confirmed invoice, prepares or compounds cleared medication, coordinates readiness, and performs the pickup call. |
+| Patient or Caregiver | Human | Confirms or declines the Patient-Pay Sales Order, pays when confirmed, presents for pickup, receives education, and accepts medication when authorized. |
+| Pharmacy Staff | Human | Establishes the BPJS-covered Sales Order for Covered lines and the independent Patient-Pay Sales Order for Not Covered lines, communicates the Patient-payable amount, records its confirmed invoice, prepares cleared medication, and performs the pickup call. |
 | Pharmacy Supervisor | Human | Authorizes the manual uncollected-medication resolution when the Patient does not collect prepared medication. |
-| Cashier or Payment Authority | Human or Subsystem | Receives payment and supplies Payment Clearance for the General Patient Sales Invoice. |
+| Cashier or Payment Authority | Human or Subsystem | Receives payment and supplies Payment Clearance for the Patient-Pay Sales Invoice. |
 | Pharmacist | Human | Verifies the recipient, completes Final Dispense Review, and provides Patient Education. |
-| SEP and Fornas Authorities | Subsystem | Supply SEP validity and item-level coverage. |
-| Pharmacy System | Subsystem | Maintains payer-specific allocations and clearances and records separate invoices with coordinated handover. |
+| SEP and Fornas Authorities | Subsystem | Classify each prescription line as Covered or Not Covered and supply SEP validity. |
+| Pharmacy System | Subsystem | Maintains independent Sales Orders, payer-specific invoices, and Dispense Authorized evaluation per line. |
 | Patient Tracker | Subsystem | Records one `ServedAt` and one `DoneAt` for the common Queue Entry. |
-| Inventory | Subsystem | Supplies reservation, issue, and return-disposition outcomes. |
+| Inventory | Subsystem | Supplies Mutasi, Remove Stock, and return-disposition outcomes. |
 | Tata Rekening | Subsystem | Receives and resolves payer-specific financial consequences. |
 
 ## 3. Preconditions
 
 1. Participating staff are signed in with their required permissions.
-2. One active Sales Order contains both BPJS-covered and Patient-payable quantities.
-3. A valid SEP and authoritative Fornas mapping identify the covered and non-covered quantities.
-4. Applicable Fulfillment Allocations and a Dispense Order are displayed.
-5. No General Patient or BPJS Sales Invoice has been established for the proposed allocations unless the procedure is resuming after an accountable exception.
+2. Fornas has classified prescription lines as Covered or Not Covered.
+3. A valid SEP exists for Covered lines.
+4. Not Covered lines have not been automatically cancelled.
+5. No Patient-Pay or BPJS Sales Invoice has been established for the proposed lines unless the procedure is resuming after an accountable exception.
 
 ## 4. Operational Steps
 
-1. **Pharmacy Staff** opens the mixed-coverage demand in `Apotek Rajal` and verifies the Sales Order quantities and payer classifications.
-2. **Pharmacy Staff** records separate BPJS-covered and Patient-payable Billing Allocations without changing accepted medication identity or quantity.
-3. **SEP and Fornas Authorities** supply valid SEP and item-level coverage; **Pharmacy System** displays Coverage Clearance for the covered quantities.
-4. **Pharmacy System** calculates and displays the Patient-payable amount from the non-covered Billing Allocations.
+1. **SEP and Fornas Authorities** classify each prescription line as Covered or Not Covered. **Pharmacy System** displays that classification.
+2. **Pharmacy Staff** establishes the BPJS-covered Sales Order from Covered lines only. Uncovered lines do not remain on the BPJS path.
+3. **Pharmacy Staff** may establish a separate Patient-Pay Sales Order for Not Covered lines.
+4. **Pharmacy System** calculates and displays the Patient-payable amount from the Patient-Pay Sales Order.
 5. **Pharmacy Staff** verbally communicates that amount before a General Patient Sales Invoice exists.
-6. **Patient or Caregiver** verbally confirms the Patient-payable portion.
-7. **Pharmacy Staff** records the confirmed Patient-payable transaction; **Pharmacy System** establishes a separate General Patient Sales Invoice from those allocations.
-8. **Cashier or Payment Authority** receives payment and supplies Payment Clearance for the General Patient Sales Invoice.
-9. **Pharmacy System** establishes Fulfillment Clearance for covered quantities from Coverage Clearance and for Patient-payable quantities from Payment Clearance.
-10. **Inventory** secures the required Stock Reservation and supplies its outcome.
-11. After every quantity intended for handover has applicable clearance, **Pharmacy Staff** starts and completes Medication Preparation.
-12. **Pharmacy System** records the first `Medication Preparation Started`; **Patient Tracker** moves the common Queue Entry to In Service and records one `ServedAt`.
-13. **Pharmacy System** displays every intended Dispense Order as `Prepared` or with an accountable exception outcome.
-14. **Pharmacy Staff** performs one coordinated pickup call; **Patient Tracker** makes the common Queue Entry `Done` and records one `DoneAt`.
-15. With the Patient or caregiver present, **Pharmacist** verifies the Authorized Recipient, completes Final Dispense Review, and records Patient Education. When the review passes, **Pharmacy System** appends the review record and displays the Dispense Order as `Reviewed`.
-16. **Pharmacy Staff** completes the physical handover after Pharmacist authorization.
-17. **Pharmacy System** establishes the BPJS Sales Invoice only with successful handover, records Medication Dispense and Medication Handover for all applicable quantities, and preserves both payer-specific allocations.
-18. **Inventory** supplies the Inventory Issue outcomes; **Pharmacy System** displays final Dispense Order and Sales Order progress.
+6. **Patient or Caregiver** verbally confirms the Patient-Pay Sales Order.
+7. **Pharmacy Staff** records the confirmed Patient-Pay transaction; **Pharmacy System** establishes a General Patient Sales Invoice from that Sales Order.
+8. **Cashier or Payment Authority** receives payment and supplies Payment Clearance for the Patient-Pay Sales Invoice.
+9. **Pharmacy System** evaluates Dispense Authorized independently: Covered lines from coverage evidence; Patient-Pay lines from Payment Clearance.
+10. After every quantity intended for handover has Dispense Authorized, **Pharmacy Staff** starts and completes Medication Preparation on each applicable Dispense Order.
+11. **Pharmacy System** records the first `Medication Preparation Started`; **Patient Tracker** moves the common Queue Entry to In Service and records one `ServedAt`.
+12. **Pharmacy System** displays every intended Dispense Order as `Prepared` or with an accountable exception outcome.
+13. **Pharmacy Staff** performs one coordinated pickup call; **Patient Tracker** makes the common Queue Entry `Done` and records one `DoneAt`.
+14. With the Patient or caregiver present, **Pharmacist** verifies the Authorized Recipient, completes Final Dispense Review, and records Patient Education.
+15. **Pharmacy Staff** completes the physical handover after Pharmacist authorization.
+16. **Pharmacy System** establishes the BPJS Sales Invoice only with successful handover of the BPJS-covered Sales Order, records Medication Dispense and Medication Handover for all applicable quantities, and preserves both Sales Orders.
+17. **Inventory** supplies Remove Stock outcomes; **Pharmacy System** displays final Dispense Order and Sales Order progress.
 
 ## 5. Operational Exceptions
 
-### 5.1 Patient declines the non-covered portion before invoice establishment
+### 5.1 Patient declines the Patient-Pay Sales Order before invoice establishment
 
 - **Pharmacy Staff** records the decline and establishes no General Patient Sales Invoice.
-- **Pharmacy System** records the Patient-payable allocation as declined or commercially unallocated and permits the covered portion to continue independently.
+- **Pharmacy System** records an accountable declined outcome on the Patient-Pay Sales Order and permits the BPJS-covered Sales Order to continue independently.
 
-### 5.2 An item has no authoritative Fornas coverage
+### 5.2 An item is classified Not Covered
 
-- **Pharmacy System** displays the affected quantity as not covered.
-- **Pharmacy Staff** reclassifies it only through accountable Patient-payable Billing Allocation, communicates the revised amount, and obtains a new verbal confirmation.
+- **Pharmacy System** displays the affected line as Not Covered and keeps it off the BPJS-covered Sales Order.
+- **Pharmacy Staff** may establish the independent Patient-Pay Sales Order, communicates the amount, and obtains verbal confirmation.
 
-### 5.3 Not all intended quantities have clearance
+### 5.3 Not all intended quantities have Dispense Authorized
 
-- **Pharmacy System** blocks coordinated preparation and pickup for the uncleared quantities.
+- **Pharmacy System** blocks coordinated preparation and pickup for unauthorized quantities.
 - **Pharmacy Staff** resolves the applicable coverage or payment path before continuing.
 
 ### 5.4 Final Dispense Review fails
 
 - **Pharmacist** records the failure reason and affected quantity and does not authorize handover.
-- **Pharmacy System** appends an immutable review record with the Pharmacist and effective business time, returns the affected Dispense Order from `Prepared` to `Preparing`, blocks coordinated handover, and keeps the BPJS Sales Invoice absent.
-- **Pharmacy Staff** corrects and prepares the affected medication again; **Pharmacy System** returns the Dispense Order to `Prepared`, and **Pharmacist** performs a new Final Dispense Review. Previous review records remain visible and unchanged.
+- **Pharmacy System** appends an immutable review record, returns only the affected Dispense Order from `Prepared` to `Preparing`, and does not rewrite the other Sales Order.
+- **Pharmacy Staff** corrects and prepares the affected medication again; **Pharmacist** performs a new Final Dispense Review.
 
 ### 5.5 Established invoice, non-fulfillment, or No-Show requires correction
 
-- **Pharmacy System** keeps covered and Patient-payable consequences separate.
-- **Tata Rekening** supplies the required correction for the paid portion; the absent BPJS invoice remains absent until successful handover.
+- **Pharmacy System** keeps BPJS-covered and Patient-Pay consequences on their own Sales Orders.
+- **Tata Rekening** supplies the required correction for the paid Patient-Pay portion; the absent BPJS invoice remains absent until successful handover.
 - **Pharmacy Supervisor** applies `SOP-APT-RJ-007` for uncollected medication.
 
 ## 6. Completion Criteria
 
-1. Covered and Patient-payable Billing Allocations remain separately visible.
-2. The financially cleared General Patient Sales Invoice and the handover-time BPJS Sales Invoice are separate and traceable to the same Sales Order.
-3. One coordinated Medication Handover records every applicable quantity and Authorized Recipient.
-4. The Sales Order is `Resolved`, or remains `Active` with an explicitly displayed payer-specific unresolved consequence.
+1. Covered and Not Covered lines remain on independent Sales Orders.
+2. The financially cleared General Patient Sales Invoice and the handover-time BPJS Sales Invoice are separate and traceable to their own Sales Orders.
+3. One coordinated Medication Handover may record every applicable quantity and Authorized Recipient.
+4. Each Sales Order is `Resolved`, or remains `Active` with an explicitly displayed unresolved consequence.
 
 ## 7. References
 
-- [Apotek Domain](../apotek-domain.md), especially `BR-APT-015`, `BR-APT-020`–`BR-APT-028`, `BR-APT-040`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-070`–`BR-APT-078`, and `BR-APT-090`–`BR-APT-096`.
+- [Apotek Domain](../apotek-domain.md), especially `BR-APT-011`, `BR-APT-015`, `BR-APT-020`–`BR-APT-028`, `BR-APT-040`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-070`–`BR-APT-078`, `BR-APT-090`–`BR-APT-096`, `BR-APT-108`, and `BR-APT-119`–`BR-APT-124`.
 - [Outpatient Apotek Workflow](../outpatient-apotek-workflow.md), `WF-APT-RJ-005`.
 - [Patient Tracker Domain](../../../contexts/pasien-tracker/TRACKER-DOMAIN.md).
 - [Tata Rekening Domain](../../../contexts/TataRekening/02-domain.md).

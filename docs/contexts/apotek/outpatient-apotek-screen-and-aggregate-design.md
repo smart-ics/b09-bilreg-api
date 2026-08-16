@@ -114,7 +114,7 @@ The workbench contains four activities.
    - Determine payer allocations and show the calculated Patient-payable amount.
    - For General Patient quantities, capture verbal purchase confirmation and establish a Sales Invoice from the applicable Sales Order Lines.
    - For BPJS quantities, show SEP and Fornas coverage outcomes; do not request Patient payment or establish the BPJS Sales Invoice early.
-   - For mixed coverage, keep BPJS-covered and Patient-payable allocations distinct.
+   - For mixed coverage, Fornas Not Covered lines form an independent Patient-Pay Sales Order. Covered lines remain on the BPJS-covered Sales Order. Do not keep uncovered lines on the BPJS fulfillment path.
    - For Partial Prescription Fulfillment, establish a Sales Order from selected or fulfillable prescription lines only when Patient Request or Stock Shortage applies. Excluded lines remain on the originating prescription. Issue Salinan Resep for unfulfilled lines when external fulfillment is required. Pharmacist approves when professional review is required.
    - Submit a return or correction request rather than freely reversing a sale. A post-payment or post-handover return requires the applicable supervisor, Inventory, and Tata Rekening outcomes.
    - Resolve Exception Worklist items through the same accountable paths: No-Show / expiry under SOP APT-RJ-007, return and correction through supervisor-authorized outcomes, and display of pending financial or inventory consequences without inventing stock or settlement facts.

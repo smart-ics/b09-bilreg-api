@@ -79,7 +79,7 @@ The workflow ends when every medication demand mapped to the Pharmacy Queue Entr
 - Telaah Resep and pre-Sales-Order Medication Substitution.
 - General Patient verbal Purchase Confirmation before Sales Invoice establishment.
 - BPJS coverage from valid SEP and authoritative Fornas mapping.
-- Mixed BPJS-covered and Patient-payable quantities.
+- Mixed BPJS-covered and Patient-payable quantities, represented as a BPJS-covered Sales Order and an independent Patient-Pay Sales Order when Fornas classifies some lines as Not Covered.
 - Payment Clearance, Coverage Clearance, and Dispense Authorized.
 - Pharmacy Reserve (Stock Mutasi to Dispensing Temporary Unit), Medication Preparation, pickup calling, Final Dispense Review, Authorized Recipient verification, Patient Education, Medication Dispense, and Medication Handover.
 - Stock Shortage Handling through a Partial Sales Order of fulfillable lines and Salinan Resep for unfulfilled prescription lines.
@@ -153,7 +153,7 @@ These triggers may occur before or after Outpatient Queue Mapping as permitted b
 | `WF-APT-RJ-002` | Accept Outpatient Medication Demand | An accepted Resep establishes a traceable Sales Order and primary outpatient Dispense Order, or receives a rejection outcome. |
 | `WF-APT-RJ-003` | Fulfill Medication for a General Patient | Verbally confirmed and paid medication is prepared and handed over, or receives an accountable alternative or exception outcome. |
 | `WF-APT-RJ-004` | Fulfill Medication for a BPJS Patient | Covered medication is prepared without a prior Sales Invoice and the BPJS Sales Invoice is established only with successful Medication Handover. |
-| `WF-APT-RJ-005` | Fulfill Mixed-Coverage Medication | Covered and Patient-payable quantities are represented by separate Sales Invoice Items and receive separate clearance while remaining coordinated for one pickup. |
+| `WF-APT-RJ-005` | Fulfill Mixed-Coverage Medication | Fornas Not Covered lines form an independent Patient-Pay Sales Order; Covered lines remain on the BPJS path; both may be coordinated for one pickup. |
 | `WF-APT-RJ-006` | Coordinate Multiple Medication Demands in One Queue | Multiple independent demand, Sales Order, invoice, and Dispense Order lifecycles are coordinated into one queue service and pickup session without being merged. |
 | `WF-APT-RJ-007` | Resolve Uncollected Outpatient Medication | Prepared but uncollected medication receives an authorized expiry, Inventory return disposition, and payer-specific commercial resolution. |
 
@@ -286,11 +286,12 @@ Pharmacist, Pharmacy Staff, CPOE or Dokter Penulis Resep.
 | Patient Request partial prescription | Pharmacy Staff | Establish Sales Order with selected lines only; excluded lines remain on Prescription; issue Salinan Resep when required. |
 | Stock Shortage partial prescription | Pharmacy Staff | Establish Sales Order with fulfillable lines only; unavailable lines remain on Prescription; issue Salinan Resep when required. |
 | Professional review required for partial path | Pharmacist | Approve or reject the resulting fulfillment decision; system does not auto-substitute or route externally. |
+| Fornas Not Covered lines | Pharmacy Staff | Establish an independent Patient-Pay Sales Order for uncovered lines; Covered lines form the BPJS-covered Sales Order. |
 
 #### Exception and Compensation Flows
 
 - Stock shortage after Sales Order establishment does not change Hasil Telaah Resep. Pharmacy Staff shall not create Backorder or select an alternate stock source. Unfulfillable quantity receives an Unfulfilled Medication Outcome and Salinan Resep when applicable.
-- Partial Prescription Fulfillment before Sales Order establishment is permitted only for Patient Request or Stock Shortage. No other partiality reason is recognized.
+- Partial Prescription Fulfillment before Sales Order establishment is permitted only for Patient Request, Stock Shortage, or Fornas Not Covered lines. No other partiality reason is recognized.
 - Medication identity on an established Sales Order Line shall not be changed. If a later replacement is needed, cancel the affected line or order, review the same original Resep again, and establish a new Sales Order Line without requiring a corrected or replacement Resep.
 - Any accepted quantity that cannot be fulfilled must retain an accountable `Cancelled`, `Expired`, or other Unfulfilled Medication Outcome. Outpatient Pharmacy shall not retain Backorder.
 
@@ -303,7 +304,7 @@ Pharmacist, Pharmacy Staff, CPOE or Dokter Penulis Resep.
 
 #### Domain References
 
-`BR-APT-001`–`BR-APT-019`, `BR-APT-029`–`BR-APT-034`, `BR-APT-050`, `BR-APT-054`, `BR-APT-061`, `BR-APT-068`, `BR-APT-083`, `BR-APT-086`, `BR-APT-089`, `BR-APT-105`–`BR-APT-118`; Telaah Resep and Sales Order lifecycles.
+`BR-APT-001`–`BR-APT-019`, `BR-APT-029`–`BR-APT-034`, `BR-APT-050`, `BR-APT-054`, `BR-APT-061`, `BR-APT-068`, `BR-APT-083`, `BR-APT-086`, `BR-APT-089`, `BR-APT-105`–`BR-APT-124`; Telaah Resep and Sales Order lifecycles.
 
 #### Domain Events
 
@@ -474,76 +475,75 @@ Patient or Caregiver, Pharmacy Staff, Pharmacist, Patient Tracker, SEP and Forna
 
 #### Purpose
 
-Separate BPJS-covered and Patient-payable commercial responsibility while coordinating all quantities intended for one outpatient pickup.
+Separate BPJS-covered and Patient-Pay commercial responsibility into independent Sales Orders while coordinating all quantities intended for one outpatient pickup.
 
 #### Trigger
 
-One Sales Order contains quantities classified partly as BPJS-covered and partly as Patient-payable.
+Fornas validation classifies some prescription lines as Covered and some as Not Covered.
 
 #### Preconditions
 
 - A valid SEP exists for the encounter.
-- Authoritative Fornas mapping identifies covered and non-covered quantities.
-- Pharmacy Staff can distinguish covered and Patient-payable Sales Order Line quantities without changing the accepted medication identity or quantity.
+- Authoritative Fornas mapping classifies each prescription line as Covered or Not Covered.
+- Not Covered lines have not been automatically cancelled.
 
 #### Participants
 
-Patient or Caregiver, Pharmacy Staff, Cashier or Payment Authority, Pharmacy Staff, Pharmacist, Patient Tracker, SEP and Fornas Authorities, Inventory, Tata Rekening.
+Patient or Caregiver, Pharmacy Staff, Cashier or Payment Authority, Pharmacist, Patient Tracker, SEP and Fornas Authorities, Inventory, Tata Rekening.
 
 #### Input Business Facts
 
-- One Sales Order and its Sales Order Lines.
+- Originating Prescription and Fornas line classifications.
+- BPJS-covered Sales Order for Covered lines, when established.
+- Independent Patient-Pay Sales Order for Not Covered lines, when established.
 - Valid SEP and authoritative item-level Fornas coverage.
-- Covered and Patient-payable Sales Order Line quantities.
-- Applicable Dispense Order and its Dispense Order Lines.
+- Applicable Dispense Orders for each Sales Order.
 
 #### Main Flow
 
-1. Pharmacy Staff distinguishes BPJS-covered and Patient-payable quantities from the applicable Sales Order Lines.
-2. SEP validity and Fornas mapping establish Coverage Clearance for covered quantities.
-3. Before any General Patient Sales Invoice exists, Pharmacy Staff conducts the Purchase Confirmation interaction defined by `WF-APT-RJ-003` and communicates the calculated Patient-payable amount verbally.
-4. The Patient gives verbal Purchase Confirmation for the non-covered quantities.
-5. Pharmacy Staff establishes a separate General Patient Sales Invoice whose Sales Invoice Items represent the confirmed Patient-payable Sales Order Line quantities.
-6. The Cashier supplies Payment Clearance for the General Patient Sales Invoice.
-7. Apotek evaluates financial and coverage evidence as Dispense Authorized for covered quantities from Coverage Clearance and for Patient-payable quantities from Payment Clearance.
-8. After every quantity intended for the handover has its applicable clearance, the Pharmacy Staff begins and completes Medication Preparation.
-9. The first `Medication Preparation Started` records Patient Tracker `ServedAt`; every intended Dispense Order reaches `Prepared` before pickup.
-10. Pharmacy Staff performs one coordinated pickup call; Patient Tracker records `DoneAt`.
-11. With the Patient or caregiver present, the Pharmacist verifies the Authorized Recipient, completes Final Dispense Review, and provides Patient Education. A passed review appends its immutable review record and moves the Dispense Order to `Reviewed`.
-12. Apotek establishes the BPJS Sales Invoice whose Sales Invoice Items represent the covered Sales Order Line quantities only as Medication Handover succeeds; the General Patient Sales Invoice already exists and is financially cleared.
-13. Apotek records Medication Dispense and Medication Handover for all applicable quantities and requests Remove Stock from Dispensing Temporary Unit outcomes.
+1. Fornas validation classifies each prescription line as Covered or Not Covered.
+2. Covered lines enter the BPJS-covered Sales Order and follow `WF-APT-RJ-004`. Coverage evidence is sufficient for Dispense Authorized on those lines.
+3. Not Covered lines do not remain on the BPJS path. Pharmacy Staff may establish a separate Patient-Pay Sales Order for those lines as Partial Prescription Fulfillment.
+4. The Patient-Pay Sales Order follows `WF-APT-RJ-003`: verbal Purchase Confirmation, General Patient Sales Invoice, and Payment Clearance. Payment Clearance is required before Dispense Authorized on Patient-Pay lines.
+5. Each line is authorized independently: Covered Line → Coverage Evidence → Dispense Authorized; Patient-Pay Line → Payment Clearance → Dispense Authorized.
+6. After every quantity intended for the handover has Dispense Authorized from its own path, Pharmacy Staff begins and completes Medication Preparation on each applicable Dispense Order.
+7. The first `Medication Preparation Started` records Patient Tracker `ServedAt`; every intended Dispense Order reaches `Prepared` before pickup.
+8. Pharmacy Staff performs one coordinated pickup call; Patient Tracker records `DoneAt`.
+9. With the Patient or caregiver present, the Pharmacist verifies the Authorized Recipient, completes Final Dispense Review for each Prepared Dispense Order, and provides Patient Education.
+10. Apotek establishes the BPJS Sales Invoice only as Medication Handover of the BPJS-covered Sales Order succeeds. The Patient-Pay Sales Invoice already exists and is financially cleared.
+11. Apotek records Medication Dispense and Medication Handover for all applicable quantities and requests Remove Stock from Dispensing Temporary Unit.
 
 #### Decision and Alternative Flows
 
 | Condition | Decision owner | Branch |
 |---|---|---|
-| Patient confirms the non-covered portion | Patient | Establish and collect the General Patient Sales Invoice; coordinate both payer portions. |
-| Patient declines the non-covered portion before invoice establishment | Patient | Establish no General Patient Sales Invoice; give the affected Sales Order Line quantity an accountable declined or commercially unallocated outcome; continue the BPJS portion independently. |
-| A covered item lacks Fornas coverage | Pharmacy Staff | Reclassify the affected Sales Order Line quantity as Patient-payable accountably; communicate the revised amount and request verbal confirmation. |
-| Not all intended quantities have clearance | Apotek | Do not start coordinated preparation for those quantities and do not perform the pickup call. |
+| Patient confirms the Patient-Pay Sales Order | Patient | Establish and collect the General Patient Sales Invoice; coordinate both Sales Orders for pickup. |
+| Patient declines the Patient-Pay Sales Order before invoice establishment | Patient | Establish no General Patient Sales Invoice; give the Patient-Pay Sales Order an accountable declined outcome; continue the BPJS-covered Sales Order independently. |
+| All lines are Covered | Apotek | Remain on `WF-APT-RJ-004`; do not create a Patient-Pay Sales Order. |
+| Not all intended quantities have Dispense Authorized | Apotek | Do not start coordinated preparation for unauthorized quantities and do not perform the pickup call. |
 
 #### Exception and Compensation Flows
 
-- An established General Patient Sales Invoice follows General Patient cancellation and correction rules; the BPJS Sales Invoice remains absent until handover.
+- An established General Patient Sales Invoice follows General Patient cancellation and correction rules; the BPJS Sales Invoice remains absent until handover of the BPJS-covered Sales Order.
 - No-Show after payment follows the paid General Patient commercial path while the absent BPJS Sales Invoice follows the uninvoiced BPJS path.
-- Partial non-fulfillment preserves payer-specific Sales Order Line and Sales Invoice Item traceability and requires separate commercial consequences.
+- Each Sales Order retains independent commercial and fulfillment consequences.
 - Substitution is prohibited after Sales Order establishment.
-- A failed Final Dispense Review appends its immutable review record, returns the affected Dispense Order from `Prepared` to `Preparing`, blocks the coordinated handover and BPJS invoice, and requires correction followed by another review after the order returns to `Prepared`.
+- A failed Final Dispense Review appends its immutable review record, returns only the affected Dispense Order from `Prepared` to `Preparing`, and does not rewrite the other Sales Order.
 
 #### Outcomes and Postconditions
 
-- Success: separate Sales Invoices represent covered and Patient-payable Medication Sales, and one coordinated Medication Handover preserves line-and-quantity-level traceability.
-- Patient declines non-covered quantities: covered quantities may complete independently with no General Patient Sales Invoice for the declined portion.
-- Any unresolved commercial consequence keeps the Sales Order `Active`.
+- Success: a BPJS-covered Sales Order and a Patient-Pay Sales Order exist for different lines of the same Prescription; separate Sales Invoices represent each payer path; one coordinated Medication Handover may complete both.
+- Patient declines Patient-Pay quantities: the BPJS-covered Sales Order may complete independently.
+- Any unresolved commercial consequence keeps its own Sales Order `Active`.
 
 #### Domain References
 
-`BR-APT-015`, `BR-APT-020`–`BR-APT-028`, `BR-APT-040`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-070`–`BR-APT-078`, `BR-APT-090`–`BR-APT-096`.
+`BR-APT-011`, `BR-APT-015`, `BR-APT-020`–`BR-APT-028`, `BR-APT-040`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-070`–`BR-APT-078`, `BR-APT-090`–`BR-APT-096`, `BR-APT-108`, `BR-APT-119`–`BR-APT-124`.
 
 #### Domain Events
 
 - Consumed: `Coverage Clearance Established`, `Payment Clearance Established`, `Outpatient Queue Mapped`.
-- Produced or observed: `Sales Invoice Established`, `Sales Invoice Issued`, `Dispense Authorized Evaluated`, `Medication Preparation Started`, `Medication Prepared`, `Patient Called for Pickup`, `Final Dispense Review Completed`, `Final Dispense Review Failed`, `Medication Dispensed`, `Medication Handed Over`, `Sales Order Resolved` when fully reconciled.
+- Produced or observed: `Sales Order Established`, `Sales Invoice Established`, `Sales Invoice Issued`, `Dispense Authorized Evaluated`, `Medication Preparation Started`, `Medication Prepared`, `Patient Called for Pickup`, `Final Dispense Review Completed`, `Final Dispense Review Failed`, `Medication Dispensed`, `Medication Handed Over`, `Sales Order Resolved` when fully reconciled.
 
 ### WF-APT-RJ-006 — Coordinate Multiple Medication Demands in One Queue
 
@@ -725,10 +725,10 @@ The `Domain References` section of each workflow specification is the source of 
 | Workflow ID | Domain rules | States | Domain Events | External authority |
 |---|---|---|---|---|
 | `WF-APT-RJ-001` | `BR-APT-061`–`BR-APT-065`, `BR-APT-082`, `BR-APT-084`–`BR-APT-087`, `BR-APT-097`; `BR-TRK-026`–`BR-TRK-035`, `BR-TRK-051` | `Unmapped`, `Mapped`, `Waiting` | `Queue Entry Created`, `Outpatient Queue Mapped`, `Queue Entry Identified` | Patient Tracker |
-| `WF-APT-RJ-002` | `BR-APT-001`–`BR-APT-019`, `BR-APT-029`–`BR-APT-034`, `BR-APT-050`, `BR-APT-054`, `BR-APT-061`, `BR-APT-068`, `BR-APT-083`, `BR-APT-086`, `BR-APT-089`, `BR-APT-105`–`BR-APT-118` | `Available`, `Under Review`, `Approved`, `Partially Approved`, `Rejected`, `Established`, `Active` | `Telaah Resep Started`, `Medication Substitution Authorized`, `Telaah Resep Completed`, `Direct Medication Request Accepted`, `Sales Order Established`, `Dispense Order Established` | CPOE, Medication Catalog, Inventory |
+| `WF-APT-RJ-002` | `BR-APT-001`–`BR-APT-019`, `BR-APT-029`–`BR-APT-034`, `BR-APT-050`, `BR-APT-054`, `BR-APT-061`, `BR-APT-068`, `BR-APT-083`, `BR-APT-086`, `BR-APT-089`, `BR-APT-105`–`BR-APT-124` | `Available`, `Under Review`, `Approved`, `Partially Approved`, `Rejected`, `Established`, `Active` | `Telaah Resep Started`, `Medication Substitution Authorized`, `Telaah Resep Completed`, `Direct Medication Request Accepted`, `Sales Order Established`, `Dispense Order Established` | CPOE, Medication Catalog, Inventory |
 | `WF-APT-RJ-003` | `BR-APT-020`–`BR-APT-028`, `BR-APT-033`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-067`–`BR-APT-072`, `BR-APT-076`–`BR-APT-083`, `BR-APT-088`, `BR-APT-095`–`BR-APT-096`, `BR-APT-114`–`BR-APT-118`; `BR-TRK-045`, `BR-TRK-045a`, `BR-TRK-046` | `Established`, `Issued`, `Financially Cleared`, `Released`, `Preparing`, `Prepared`, `Reviewed`, `Completed`, `In Service`, `Done` | `Sales Invoice Established`, `Payment Clearance Established`, `Medication Preparation Started`, `Medication Prepared`, `Patient Called for Pickup`, `Final Dispense Review Completed`, `Final Dispense Review Failed`, `Medication Handed Over` | Patient Tracker, Payment, Inventory, Tata Rekening |
 | `WF-APT-RJ-004` | `BR-APT-020`–`BR-APT-026`, `BR-APT-029`–`BR-APT-045`, `BR-APT-066`, `BR-APT-068`–`BR-APT-069`, `BR-APT-073`–`BR-APT-079`, `BR-APT-081`–`BR-APT-083`, `BR-APT-088`, `BR-APT-090`, `BR-APT-095`–`BR-APT-096`, `BR-APT-114`–`BR-APT-118`; `BR-TRK-045`, `BR-TRK-045a`, `BR-TRK-046` | `Awaiting Clearance`, `Released`, `Preparing`, `Prepared`, `Reviewed`, `Completed`, `In Service`, `Done` | `Coverage Clearance Established`, `Medication Preparation Started`, `Patient Called for Pickup`, `Final Dispense Review Failed`, `Sales Invoice Established`, `Medication Handed Over` | Patient Tracker, SEP, Fornas, Inventory, Tata Rekening |
-| `WF-APT-RJ-005` | `BR-APT-015`, `BR-APT-020`–`BR-APT-028`, `BR-APT-040`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-070`–`BR-APT-078`, `BR-APT-090`–`BR-APT-096` | Payer-specific Sales Invoice and shared Dispense Order states | `Coverage Clearance Established`, `Payment Clearance Established`, `Final Dispense Review Failed`, `Sales Invoice Established`, `Medication Handed Over` | SEP, Fornas, Payment, Tata Rekening |
+| `WF-APT-RJ-005` | `BR-APT-011`, `BR-APT-015`, `BR-APT-020`–`BR-APT-028`, `BR-APT-040`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-070`–`BR-APT-078`, `BR-APT-090`–`BR-APT-096`, `BR-APT-108`, `BR-APT-119`–`BR-APT-124` | Independent BPJS-covered and Patient-Pay Sales Order states | `Coverage Clearance Established`, `Payment Clearance Established`, `Sales Order Established`, `Final Dispense Review Failed`, `Sales Invoice Established`, `Medication Handed Over` | SEP, Fornas, Payment, Tata Rekening |
 | `WF-APT-RJ-006` | `BR-APT-011`, `BR-APT-015`, `BR-APT-022`, `BR-APT-030`, `BR-APT-056`–`BR-APT-060`, `BR-APT-084`–`BR-APT-088`, `BR-APT-095`–`BR-APT-096`; `BR-TRK-032`, `BR-TRK-035`–`BR-TRK-039`, `BR-TRK-045`, `BR-TRK-045a` | Per-demand authoritative states; one queue `Waiting` → `In Service` → `Done` | `Outpatient Queue Mapped`, `Medication Preparation Started`, `Patient Called for Pickup`, `Final Dispense Review Failed`, `Medication Handed Over` | Patient Tracker |
 | `WF-APT-RJ-007` | `BR-APT-018`–`BR-APT-019`, `BR-APT-027`, `BR-APT-045`–`BR-APT-047`, `BR-APT-052`–`BR-APT-060`, `BR-APT-069`, `BR-APT-078`–`BR-APT-080`, `BR-APT-095` | `Expired`, `Active`, `Resolved` | `Outpatient No-Show Recorded`, `Dispense Order Expired`, `Unfulfilled Medication Recorded`, `Medication Returned`, `Sales Invoice Credited`, `Refund Required`, `Sales Order Resolved` | Inventory, Tata Rekening |
 

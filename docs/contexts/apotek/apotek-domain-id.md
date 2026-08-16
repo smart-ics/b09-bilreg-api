@@ -132,7 +132,7 @@ Resep tidak berubah menjadi Sales Order. Keputusan profesional yang selesai meng
 | Authorized Recipient | Penerima Berwenang | Pasien, caregiver, practitioner, bangsal, atau pihak lain yang terverifikasi dan diizinkan menerima obat untuk Pasien. |
 | Patient Education | Edukasi Pasien | Penjelasan accountable tentang penggunaan, penyimpanan, perhatian khusus, dan informasi obat relevan lainnya kepada Pasien atau caregiver. |
 | Fulfilled Quantity | Jumlah Terpenuhi | Jumlah Sales Order Line yang mencapai outcome Medication Dispense berhasil. |
-| Partial Prescription Fulfillment | Pemenuhan Resep Sebagian | Membentuk Sales Order dari subset baris resep ketika Patient Request atau Stock Shortage berlaku; baris yang dikecualikan tetap pada Resep asal. |
+| Partial Prescription Fulfillment | Pemenuhan Resep Sebagian | Membentuk Sales Order dari subset baris resep ketika Patient Request, Stock Shortage, atau Fornas Not Covered berlaku. |
 | Partial Fulfillment | Pemenuhan Sebagian | Eksekusi fulfillment ketika satu Sales Order dipenuhi melalui beberapa Dispense Order, atau kurang dari total Accepted Quantity Sales Order Line dipenuhi sementara jumlah lain unresolved atau memperoleh outcome berbeda. Ini bukan kebijakan Partial Prescription Fulfillment. |
 | Fulfillment Completion | Penyelesaian Pemenuhan | Kondisi ketika setiap Accepted Quantity telah memiliki outcome final yang accountable. |
 | Medication Administration | Pemberian Obat kepada Pasien | Fakta klinis bahwa obat benar-benar diberikan kepada atau dikonsumsi Pasien; dimiliki context eksternal. |
@@ -368,7 +368,7 @@ Outpatient Queue Mapping merupakan mapping aktif kepada Pharmacy Queue Entry yan
 ### 7.2 Sales Order
 
 - **BR-APT-010** — Sales Order harus berasal dari tepat satu sumber accepted demand yang telah selesai.
-- **BR-APT-011** — Satu Resep harus membentuk maksimal satu Sales Order aktif per Registration selama Registration tersebut tetap aktif.
+- **BR-APT-011** — Satu Resep harus membentuk maksimal satu Sales Order aktif per Registration selama Registration tersebut tetap aktif, kecuali baris Fornas Not Covered boleh membentuk Patient-Pay Sales Order terpisah yang independen dari Sales Order BPJS berdasarkan `BR-APT-119`–`BR-APT-124`.
 - **BR-APT-012** — Sales Order harus memiliki minimal satu Sales Order Line dengan Accepted Quantity positif.
 - **BR-APT-013** — Setiap Sales Order Line harus mempertahankan Source Traceability ke Baris Resep atau baris Direct Medication Request sumbernya; untuk obat pengganti, Sales Order Line memuat obat pengganti sementara referensi sumber tetap menunjuk Baris Resep asli.
 - **BR-APT-014** — Sales Order bukan Sales Invoice, catatan pembayaran, Stock Reservation, Dispense Order, atau evidence Medication Dispense.
@@ -429,7 +429,7 @@ Outpatient Queue Mapping merupakan mapping aktif kepada Pharmacy Queue Entry yan
 - **BR-APT-053** — Return to Stock hanya boleh terjadi ketika Inventory menerima obat retur berdasarkan kebijakannya sendiri.
 - **BR-APT-054** — Salinan Resep harus mengidentifikasi obat atau jumlah resep yang tidak dipenuhi atau dikecualikan dari Sales Order, termasuk baris yang eligible untuk fulfillment eksternal.
 - **BR-APT-055** — No-Show harus menjadi outcome kebijakan Rawat Jalan dan tidak boleh diterapkan pada Ward Delivery Rawat Inap.
-- **BR-APT-108** — Partial Prescription Fulfillment hanya diizinkan untuk Patient Request dan Stock Shortage. Tidak ada alasan lain yang diakui sistem.
+- **BR-APT-108** — Partial Prescription Fulfillment hanya diizinkan untuk Patient Request, Stock Shortage, dan baris Fornas Not Covered. Tidak ada alasan lain yang diakui sistem.
 - **BR-APT-109** — Untuk Patient Request, Staf Apotek dapat membentuk Sales Order yang hanya berisi baris resep yang dipilih. Baris resep yang dikecualikan tetap unfulfilled pada Resep asal. Sistem harus mendukung Salinan Resep untuk baris yang tidak dipenuhi.
 - **BR-APT-110** — Untuk Stock Shortage sebelum Sales Order dibentuk, Staf Apotek dapat membentuk Sales Order yang hanya berisi baris resep yang dapat dipenuhi. Baris yang tidak tersedia tetap unfulfilled pada Resep asal. Sistem harus mendukung Salinan Resep untuk baris yang tidak dipenuhi. Tidak boleh dibentuk outstanding fulfillment obligation, waiting demand, atau backorder record.
 - **BR-APT-111** — Pharmacist tetap bertanggung jawab menyetujui keputusan fulfillment yang dihasilkan ketika review profesional diperlukan. Sistem tidak menentukan substitusi alternatif atau tindakan fulfillment eksternal secara otomatis.
@@ -440,6 +440,12 @@ Outpatient Queue Mapping merupakan mapping aktif kepada Pharmacy Queue Entry yan
 - **BR-APT-116** — Ketika persediaan Rawat Jalan tidak cukup, hanya baris resep yang dapat dipenuhi yang boleh masuk Sales Order. Baris yang tidak dapat dipenuhi tetap di luar Sales Order pada Resep asal.
 - **BR-APT-117** — Apotek Rawat Jalan tidak mengimplementasikan pemilihan sumber stok alternatif, fulfillment routing, inter-pharmacy sourcing, atau backorder management. Ketersediaan stok dievaluasi terhadap otoritas stok yang sedang tersedia.
 - **BR-APT-118** — Ketika kekurangan stok Rawat Jalan teridentifikasi setelah Sales Order dibentuk atau financial clearance, jumlah yang tidak dapat dipenuhi harus memperoleh Unfulfilled Medication Outcome yang accountable dan Salinan Resep bila berlaku, plus Credit Note atau Refund ketika ada konsekuensi komersial. Jumlah tersebut tidak boleh di-backorder atau diarahkan ke sumber stok alternatif.
+- **BR-APT-119** — Validasi Fornas harus mengklasifikasikan baris resep sebagai Covered atau Not Covered.
+- **BR-APT-120** — Baris Covered harus mengikuti workflow fulfillment BPJS normal. Evidence coverage cukup untuk Dispense Authorized pada baris tersebut.
+- **BR-APT-121** — Baris Not Covered tidak boleh dibatalkan secara otomatis. Farmasi boleh membentuk Patient-Pay Sales Order terpisah untuk baris yang tidak dijamin. Patient-Pay Sales Order itu independen dari Sales Order yang ditanggung BPJS. Baris tidak dijamin tidak boleh tetap pada jalur fulfillment BPJS.
+- **BR-APT-122** — Patient-Pay Sales Order harus memerlukan Payment Clearance menurut workflow self-pay normal sebelum Dispense Authorized diberikan. Ini adalah evaluasi evidence keuangan, bukan aggregate Financial Clearance.
+- **BR-APT-123** — Setiap baris resep mengikuti jalur otorisasi sendiri: baris BPJS Covered menggunakan Coverage Evidence untuk menjadi Dispense Authorized; baris Patient-Pay menggunakan Payment Clearance untuk menjadi Dispense Authorized.
+- **BR-APT-124** — Membentuk Patient-Pay Sales Order terpisah untuk baris Fornas Not Covered adalah Partial Prescription Fulfillment. Satu Resep asal dapat menghasilkan Sales Order yang ditanggung BPJS dan Patient-Pay Sales Order untuk baris resep yang berbeda.
 
 ### 7.7 Completion dan history
 
@@ -481,10 +487,10 @@ Outpatient Queue Mapping merupakan mapping aktif kepada Pharmacy Queue Entry yan
 - **BR-APT-088** — Satu coordinated pickup call hanya boleh dilakukan setelah setiap Dispense Order yang hendak diserahkan mencapai `Prepared` atau memperoleh outcome exception yang accountable.
 - **BR-APT-089** — Staf Apotek harus menerima atau menolak Direct Medication Request. Penerimaan membentuk record Direct Medication Request; penolakan tidak boleh membentuk record Direct Medication Request maupun Sales Order. Tidak ada persetujuan Pharmacist, rujukan, escalation, atau approval threshold.
 - **BR-APT-090** — Coverage Clearance BPJS Rawat Jalan harus memerlukan SEP yang valid untuk encounter terkait dan coverage Fornas item-level authoritative untuk jumlah yang diberi clearance.
-- **BR-APT-091** — Ketika satu Sales Order memiliki jumlah yang ditanggung BPJS dan dibayar Pasien, Sales Invoice Item harus membedakan tanggung jawab payer tersebut. Sales Invoice Item yang ditanggung membentuk Sales Invoice BPJS dan Sales Invoice Item yang dibayar Pasien membentuk Sales Invoice Pasien Umum yang terpisah.
-- **BR-APT-092** — Dalam mixed-coverage fulfillment, Sales Invoice Pasien Umum hanya boleh dibentuk setelah Purchase Confirmation lisan, sedangkan Sales Invoice BPJS hanya boleh dibentuk bersama Medication Handover yang berhasil berdasarkan `BR-APT-075`.
-- **BR-APT-093** — Coordinated pickup call mixed coverage harus menunggu sampai setiap jumlah yang hendak diserahkan memperoleh Coverage Clearance atau Payment Clearance yang berlaku dan Dispense Order-nya mencapai `Prepared`.
-- **BR-APT-094** — Jika Pasien menolak bagian non-covered sebelum Sales Invoice-nya dibentuk, jumlah Sales Order Line yang terdampak harus memperoleh outcome declined atau commercially unallocated yang accountable, sedangkan bagian BPJS dapat dilanjutkan secara independen.
+- **BR-APT-091** — Baris resep Fornas Not Covered tidak boleh tetap pada Sales Order yang ditanggung BPJS. Baris Covered membentuk Sales Order yang ditanggung BPJS. Baris Not Covered boleh membentuk Patient-Pay Sales Order terpisah. Setiap Sales Order hanya menghasilkan Sales Invoice dari jalur payer-nya sendiri.
+- **BR-APT-092** — Untuk Patient-Pay Sales Order, Sales Invoice Pasien Umum hanya boleh dibentuk setelah Purchase Confirmation lisan dan mengikuti workflow self-pay. Sales Invoice BPJS dari Sales Order BPJS yang independen hanya boleh dibentuk bersama Medication Handover yang berhasil berdasarkan `BR-APT-075`.
+- **BR-APT-093** — Coordinated pickup call mixed coverage harus menunggu sampai setiap Dispense Order yang hendak diserahkan memperoleh Dispense Authorized dari jalurnya sendiri dan mencapai `Prepared`.
+- **BR-APT-094** — Jika Pasien menolak Patient-Pay Sales Order sebelum Sales Invoice-nya dibentuk, Patient-Pay Sales Order tersebut harus memperoleh outcome declined yang accountable, sedangkan Sales Order BPJS yang independen dapat dilanjutkan.
 - **BR-APT-095** — Patient Tracker harus mencatat `DoneAt` apotek Rawat Jalan ketika Staf Apotek melakukan coordinated pickup call. Selesainya antrean tidak membuktikan Final Dispense Review, Patient Education, Medication Dispense, atau Medication Handover.
 - **BR-APT-097** — `QueueEntry` Patient Tracker harus menjadi satu-satunya identitas antrean apotek Rawat Jalan yang canonical. Identitas antrean Farinv legacy didepresiasi dan tidak boleh membuat record antrean aktif. Data antrean Farinv historis bersifat read-only. Model antrean dual-active tidak diizinkan. Evidence `Apotek-Start` dan `Apotek-Done` Patient Tracker harus mereferensikan `QueueEntryId` canonical.
 

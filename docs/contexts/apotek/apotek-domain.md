@@ -134,7 +134,7 @@ A Resep does not become a Sales Order. A completed professional decision authori
 | Authorized Recipient | A verified Patient, caregiver, practitioner, ward, or other party permitted to receive medication for the Patient. |
 | Patient Education | The accountable explanation of medication use, storage, precautions, and other relevant information to the Patient or caregiver. |
 | Fulfilled Quantity | The quantity of a Sales Order Line that reached a successful Medication Dispense outcome. |
-| Partial Prescription Fulfillment | Establishing a Sales Order from a subset of prescription lines when Patient Request or Stock Shortage applies; excluded lines remain on the originating Prescription. |
+| Partial Prescription Fulfillment | Establishing Sales Order(s) from a subset of prescription lines when Patient Request, Stock Shortage, or Fornas Not Covered applies. |
 | Partial Fulfillment | Fulfillment execution in which one Sales Order is fulfilled through multiple Dispense Orders, or less than the total Accepted Quantity of a Sales Order Line is fulfilled while another quantity remains unresolved or receives a different outcome. This is not Partial Prescription Fulfillment policy. |
 | Fulfillment Completion | The condition in which every Accepted Quantity has an accountable final outcome. |
 | Medication Administration | The clinical fact that medication was actually given to or consumed by the Patient; it is externally owned. |
@@ -365,7 +365,7 @@ Outpatient Queue Mapping is an active relationship to an externally owned Pharma
 ### 7.2 Sales Order
 
 - **BR-APT-010** — A Sales Order shall originate from exactly one completed accepted-demand source.
-- **BR-APT-011** — One Resep shall establish at most one active Sales Order per Registration while that Registration remains active.
+- **BR-APT-011** — One Resep shall establish at most one active Sales Order per Registration while that Registration remains active, except that Fornas Not Covered lines may establish a separate Patient-Pay Sales Order independent of the BPJS-covered Sales Order under `BR-APT-119`–`BR-APT-124`.
 - **BR-APT-012** — A Sales Order shall contain at least one Sales Order Line with a positive Accepted Quantity.
 - **BR-APT-013** — Every Sales Order Line shall retain Source Traceability to its Baris Resep or Direct Medication Request line; for an accepted substitute, the Sales Order Line contains the substitute while its source reference remains the original Baris Resep.
 - **BR-APT-014** — A Sales Order shall not be a Sales Invoice, payment record, Pharmacy Reserve movement, Dispense Order, or Medication Dispense evidence.
@@ -426,7 +426,7 @@ Outpatient Queue Mapping is an active relationship to an externally owned Pharma
 - **BR-APT-053** — Return to Stock shall occur only when Inventory accepts the returned medication under its own policy.
 - **BR-APT-054** — A Salinan Resep shall identify prescribed medication or quantity that remained unfulfilled or was excluded from the Sales Order, including lines eligible for external fulfillment.
 - **BR-APT-055** — A No-Show shall be a Pharmacy-owned outpatient policy outcome, shall not be stored as an Inventory status, and shall not be imposed on inpatient Ward Delivery.
-- **BR-APT-108** — Partial Prescription Fulfillment is permitted only for Patient Request and Stock Shortage. No other reason is recognized by the system.
+- **BR-APT-108** — Partial Prescription Fulfillment is permitted only for Patient Request, Stock Shortage, and Fornas Not Covered lines. No other reason is recognized by the system.
 - **BR-APT-109** — For Patient Request, Pharmacy Staff may establish a Sales Order containing only selected prescription lines. Excluded prescription lines remain unfulfilled on the originating Prescription. The system shall support Salinan Resep for unfulfilled lines.
 - **BR-APT-110** — For Stock Shortage before Sales Order establishment, Pharmacy Staff may establish a Sales Order containing only fulfillable prescription lines. Unavailable prescription lines remain unfulfilled on the originating Prescription. The system shall support Salinan Resep for unfulfilled lines. No outstanding fulfillment obligation, waiting demand, or backorder record shall be created.
 - **BR-APT-111** — The Pharmacist remains responsible for approving the resulting fulfillment decision when professional review is required. The system shall not automatically determine alternative substitutions or external fulfillment actions.
@@ -437,6 +437,12 @@ Outpatient Queue Mapping is an active relationship to an externally owned Pharma
 - **BR-APT-116** — When outpatient inventory is insufficient, only fulfillable prescription lines may be included in the Sales Order. Unfulfillable lines remain outside the Sales Order on the originating Prescription.
 - **BR-APT-117** — Outpatient Pharmacy shall not implement alternate stock source selection, fulfillment routing, inter-pharmacy sourcing, or backorder management. Inventory availability shall be evaluated against the currently available stock authority.
 - **BR-APT-118** — When an outpatient shortage is identified after Sales Order establishment or financial clearance, the unfulfillable quantity shall receive an accountable Unfulfilled Medication Outcome and Salinan Resep when applicable, plus Credit Note or Refund when commercial consequences exist. It shall not be backordered or routed to an alternate stock source.
+- **BR-APT-119** — Fornas validation shall classify prescription lines as Covered or Not Covered.
+- **BR-APT-120** — Covered lines shall follow the normal BPJS fulfillment workflow. Coverage evidence shall be sufficient for Dispense Authorized on those lines.
+- **BR-APT-121** — Not Covered lines shall not be automatically cancelled. Pharmacy may establish a separate Patient-Pay Sales Order for uncovered prescription lines. That Patient-Pay Sales Order shall be independent of the BPJS-covered Sales Order. Uncovered lines shall not remain in the BPJS fulfillment path.
+- **BR-APT-122** — A Patient-Pay Sales Order shall require Payment Clearance under the normal self-pay workflow before Dispense Authorized is granted. This is financial evidence evaluation, not a Financial Clearance aggregate.
+- **BR-APT-123** — Each prescription line shall follow its own authorization path: a BPJS Covered Line uses Coverage Evidence to become Dispense Authorized; a Patient-Pay Line uses Payment Clearance to become Dispense Authorized.
+- **BR-APT-124** — Establishing a separate Patient-Pay Sales Order for Fornas Not Covered lines is Partial Prescription Fulfillment. One originating Prescription may result in a BPJS-covered Sales Order and a Patient-Pay Sales Order for different prescription lines.
 
 ### 7.7 Completion and history
 
@@ -478,10 +484,10 @@ Outpatient Queue Mapping is an active relationship to an externally owned Pharma
 - **BR-APT-088** — One coordinated pickup call shall occur only after every Dispense Order intended for that handover has reached `Prepared` or received an accountable exception outcome.
 - **BR-APT-089** — Pharmacy Staff shall accept or decline a Direct Medication Request. Acceptance establishes the Direct Medication Request record; decline shall not establish a Direct Medication Request record or Sales Order. No Pharmacist approval, referral, escalation, or approval threshold applies.
 - **BR-APT-090** — Outpatient BPJS Coverage Clearance shall require both a valid SEP for the applicable encounter and authoritative item-level Fornas coverage for the quantity being cleared.
-- **BR-APT-091** — When one Sales Order contains BPJS-covered and Patient-payable quantities, its Sales Invoice Items shall distinguish those payer responsibilities. The covered Sales Invoice Items shall form a BPJS Sales Invoice and the Patient-payable Sales Invoice Items shall form a separate General Patient Sales Invoice.
-- **BR-APT-092** — In mixed-coverage fulfillment, the General Patient Sales Invoice shall be established only after verbal Purchase Confirmation, while the BPJS Sales Invoice shall be established only with successful Medication Handover under `BR-APT-075`.
-- **BR-APT-093** — A coordinated mixed-coverage pickup call shall wait until every quantity intended for the handover has its applicable Coverage Clearance or Payment Clearance and its Dispense Order has reached `Prepared`.
-- **BR-APT-094** — If the Patient declines the non-covered portion before its Sales Invoice is established, the affected Sales Order Line quantity shall receive an accountable declined or commercially unallocated outcome, while the BPJS-covered portion may continue independently.
+- **BR-APT-091** — Fornas Not Covered prescription lines shall not remain on a BPJS-covered Sales Order. Covered lines shall form a BPJS-covered Sales Order. Not Covered lines may form a separate Patient-Pay Sales Order. Each Sales Order shall produce only the Sales Invoice of its own payer path.
+- **BR-APT-092** — For a Patient-Pay Sales Order, the General Patient Sales Invoice shall be established only after verbal Purchase Confirmation and shall follow the self-pay workflow. The BPJS Sales Invoice of the independent BPJS-covered Sales Order shall be established only with successful Medication Handover under `BR-APT-075`.
+- **BR-APT-093** — A coordinated mixed-coverage pickup call shall wait until every Dispense Order intended for the handover has Dispense Authorized from its own path and has reached `Prepared`.
+- **BR-APT-094** — If the Patient declines the Patient-Pay Sales Order before its Sales Invoice is established, that Patient-Pay Sales Order shall receive an accountable declined outcome, while the independent BPJS-covered Sales Order may continue.
 - **BR-APT-095** — Patient Tracker shall record outpatient pharmacy `DoneAt` when Pharmacy Staff performs the coordinated pickup call. Queue completion shall not prove Final Dispense Review, Patient Education, Medication Dispense, or Medication Handover.
 - **BR-APT-097** — Patient Tracker `QueueEntry` shall be the sole canonical outpatient-pharmacy queue identity. Legacy Farinv queue identity is deprecated and shall not create active queue records. Historical Farinv queue data is read-only. No dual-active queue model is permitted. Patient Tracker `Apotek-Start` and `Apotek-Done` evidence shall reference the canonical `QueueEntryId`.
 

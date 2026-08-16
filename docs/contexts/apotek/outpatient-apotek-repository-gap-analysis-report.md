@@ -23,20 +23,20 @@ Current repository state:
 - The generic queue enum already complies with ADR-APT-001, but current F-09 event triggers and the frontend's queue states conflict with the canonical workflow.
 - Existing Patient Tracker, Tata Rekening, Stock Ledger, CPOE, Fornas, medication catalog, query, and UI-shell capabilities are reusable only through explicit extensions and adapters.
 
-The architecture is not ready for implementation review until the blocking decisions in section 4 are resolved. All blocking architecture gaps (BA-01 through BA-09) are now resolved; remaining gates are business clarification (BC-01, BC-03, BC-05 through BC-08, BC-11 through BC-14).
+The architecture is not ready for implementation review until the blocking decisions in section 4 are resolved. All blocking architecture gaps (BA-01 through BA-09) are now resolved; remaining gates are business clarification (BC-01, BC-03, BC-05 through BC-08, BC-11 through BC-13).
 
 ## 2. Classification summary
 
 | Classification | Count | Review meaning |
 |---|---:|---|
 | Blocking Architecture Gap | 0 | A structural or ownership decision is unresolved; implementing around it would create incompatible sources of truth or unsafe cross-context behavior. |
-| Business Clarification Gap | 10 | A policy, authority, threshold, or accountable outcome is not sufficiently defined. |
-| Resolved (Business Clarification) | 4 | BC-02, BC-04, BC-09, and BC-10 ratified; artifacts updated. |
+| Business Clarification Gap | 9 | A policy, authority, threshold, or accountable outcome is not sufficiently defined. |
+| Resolved (Business Clarification) | 5 | BC-02, BC-04, BC-09, BC-10, and BC-14 ratified; artifacts updated. |
 | Existing Capability Extension | 9 | A relevant capability exists but its present contract or semantics do not satisfy Apotek. |
 | Missing Implementation | 15 | The design is sufficiently clear, but no conforming implementation exists. |
 | Technical Debt | 11 | Existing code or documentation embodies legacy, misleading, coupled, or unverified behavior. |
 | Resolved (Blocking Architecture) | 9 | BA-01 through BA-09 ratified; artifacts updated. |
-| **Total open** | **45** | Each open finding has one primary classification. |
+| **Total open** | **44** | Each open finding has one primary classification. |
 
 ## 3. Baseline and evidence
 
@@ -405,13 +405,30 @@ Only fulfillable prescription lines may be included in the Sales Order. Unfulfil
 
 ### BC-14 — Fornas non-coverage reclassification and return eligibility
 
-**Gap.** The workflow allows uncovered BPJS quantities to become Patient-payable and delegates return eligibility to Inventory, but the authoritative decision, consent, and rejection outcomes are not fully specified.
+**Status:** Resolved (2026-08-16)
 
-**Recommended decision.** Require versioned Fornas evidence, explicit Patient confirmation before Patient-payable reclassification, and a finite set of Inventory dispositions when Return to Stock is rejected.
+**Gap.** Fornas non-coverage outcomes were ambiguous: whether uncovered BPJS lines stayed on the BPJS path, were cancelled, or became Patient-payable, and how that related to Dispense Authorization, was not ratified.
 
-**Rationale.** Coverage and return decisions change financial and fulfillment outcomes and cannot be represented as free text.
+**Evidence.** Workflow `:464-539`; `apotek-domain.md:480-494`; screen design `:114-117`.
 
-**Evidence.** Workflow `:464-539`, `:640-664`; `apotek-domain.md:398-400`, `442-446`.
+**Decision.** Fornas validation classifies prescription lines as Covered or Not Covered.
+
+**Covered lines.** Covered lines follow the normal BPJS fulfillment workflow. Coverage evidence is sufficient for Dispense Authorized.
+
+**Not Covered lines.** Not Covered lines are not automatically cancelled. The system may establish a separate Patient-Pay Sales Order for the uncovered prescription lines. That Patient-Pay Sales Order is independent from the BPJS-covered Sales Order. Uncovered BPJS lines do not remain in the BPJS fulfillment path.
+
+**Financial clearance.** Patient-Pay Sales Orders require financial clearance before Dispense Authorized is granted. Financial clearance follows the normal self-pay workflow (Payment Clearance and Sales Invoice evidence). It is not a separate Financial Clearance aggregate (BA-08).
+
+**Dispense Authorization.** Each prescription line follows its own authorization path:
+
+- BPJS Covered Line → Coverage Evidence → Dispense Authorized
+- Patient-Pay Line → Financial Clearance (self-pay Payment Clearance) → Dispense Authorized
+
+**Partial Prescription Fulfillment.** Creating a separate Patient-Pay Sales Order for uncovered lines is a valid form of Partial Prescription Fulfillment. One originating Prescription may therefore result in a BPJS-covered Sales Order and a Patient-Pay Sales Order for different prescription lines.
+
+**Rationale.** Line-level Fornas classification with independent Sales Orders keeps BPJS and self-pay commercial paths from sharing one mixed Sales Order, while still allowing coordinated pickup of separately authorized quantities.
+
+**Ratified in.** `apotek-domain.md` (`BR-APT-011`, `BR-APT-091`–`BR-APT-094`, `BR-APT-108`, `BR-APT-119`–`BR-APT-124`); `outpatient-apotek-workflow.md` (`WF-APT-RJ-005`); `outpatient-apotek-screen-and-aggregate-design.md` §3.2; `sop/SOP-APT-RJ-005-*`.
 
 ## 6. Existing Capability Extensions
 
@@ -486,13 +503,14 @@ Only fulfillable prescription lines may be included in the Sales Order. Unfulfil
 - Keep Final Dispense Review attempts immutable; failure returns only the affected Dispense Order to `Preparing`.
 - Preserve separate records for multiple medication demands sharing one queue.
 - Direct Medication Request is accepted or declined by Pharmacy Staff without Pharmacist approval; optional consultation is SOP-only and not a domain gate (BC-02).
-- Outpatient Pharmacy fulfillment boundary is the active Registration Period; no separate Fulfillment Episode concept. One active Sales Order per Prescription per Registration while that Registration remains active. Iter entitlement is system-managed through Legacy Resep `Iter`; Pharmacist decides whether unused Iter may be honored at fulfillment time and may decline even when remaining Iter exists (BC-09).
-- Partial Prescription Fulfillment is permitted only for Patient Request and Stock Shortage at the Prescription-to-Sales Order boundary. Excluded lines remain on the originating Prescription; Salinan Resep supports external fulfillment. Pharmacist approves when professional review is required. Multiple Dispense Orders per Sales Order is execution only, not this policy (BC-04).
+- Outpatient Pharmacy fulfillment boundary is the active Registration Period; no separate Fulfillment Episode concept. At most one active Sales Order per Prescription per Registration, except that Fornas Not Covered lines may establish a separate Patient-Pay Sales Order independent of the BPJS-covered Sales Order. Iter entitlement is system-managed through Legacy Resep `Iter`; Pharmacist decides whether unused Iter may be honored at fulfillment time and may decline even when remaining Iter exists (BC-09, BC-14).
+- Partial Prescription Fulfillment is permitted for Patient Request, Stock Shortage, and Fornas Not Covered lines at the Prescription-to-Sales Order boundary. Excluded or uncovered lines remain on the originating Prescription or move to a separate Patient-Pay Sales Order; Salinan Resep supports external fulfillment when lines stay unfulfilled. Pharmacist approves when professional review is required. Multiple Dispense Orders per Sales Order is execution only, not this policy (BC-04, BC-14).
 - Outpatient Pharmacy does not support Backorder, alternate stock source selection, fulfillment routing, or inter-pharmacy sourcing. Shortage is resolved immediately by placing only fulfillable lines on the Sales Order and issuing Salinan Resep for unfulfilled lines; no outstanding fulfillment obligation is retained (BC-10).
+- Fornas classifies lines as Covered or Not Covered. Covered lines follow BPJS fulfillment with coverage evidence sufficient for Dispense Authorized. Not Covered lines are not auto-cancelled; they may form an independent Patient-Pay Sales Order requiring self-pay financial clearance before Dispense Authorized. One Prescription may yield both a BPJS-covered Sales Order and a Patient-Pay Sales Order (BC-14).
 
 ### 9.2 Decisions still required before architecture approval
 
-Architecture approval requires business ratification of BC-01, BC-03, BC-05 through BC-08, and BC-11 through BC-14. BA-01 through BA-09, BC-02, BC-04, BC-09, and BC-10 are resolved. These are decision gates, not delivery steps. The remaining Existing Capability Extension, Missing Implementation, and Technical Debt findings can then be evaluated against those ratified boundaries without inventing new sources of truth.
+Architecture approval requires business ratification of BC-01, BC-03, BC-05 through BC-08, and BC-11 through BC-13. BA-01 through BA-09, BC-02, BC-04, BC-09, BC-10, and BC-14 are resolved. These are decision gates, not delivery steps. The remaining Existing Capability Extension, Missing Implementation, and Technical Debt findings can then be evaluated against those ratified boundaries without inventing new sources of truth.
 
 ### 9.3 Overall classification
 
