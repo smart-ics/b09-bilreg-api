@@ -42,7 +42,7 @@ The source Resep or Direct Medication Request remains traceable and does not bec
 | Actor | Type | Operational responsibility |
 |---|---|---|
 | Pharmacist | Human | Reviews every Baris Resep, performs any needed clarification with the Dokter Penulis Resep outside the system, establishes the accepted medication, and completes the review. |
-| Pharmacy Staff | Human | Records Resep Fisik; accepts or declines Direct Medication Requests; and applies Stock Shortage Handling through a Partial Sales Order and Salinan Resep. |
+| Pharmacy Staff | Human | Records Resep Fisik; accepts or declines Direct Medication Requests; and, before Sales Order establishment, applies Stock Shortage Handling through a Partial Sales Order of fulfillable lines and Salinan Resep. Shortage after Sales Order establishment follows `SOP-APT-RJ-003` exception 5.4 (or the equivalent payer SOP). |
 | CPOE | Subsystem | Supplies the authoritative original Resep, which Apotek does not modify. |
 | Medication Catalog | Subsystem | Supplies medication identity and formulary information used during review. |
 | Pharmacy System | Subsystem | Records review outcomes and establishes a traceable Sales Order and primary Dispense Order. |
@@ -78,12 +78,16 @@ The source Resep or Direct Medication Request remains traceable and does not bec
 - **Pharmacy System** records `Rejected` for the reviewed Resep or records no Direct Medication Request for a declined direct request.
 - **Pharmacy System** establishes no Sales Order.
 
-### 5.2 Stock is insufficient after acceptance
+### 5.2 Stock is insufficient before Sales Order establishment
+
+This exception applies only when the shortage is identified **before** the Sales Order is established (`BR-APT-110`, `WF-APT-RJ-002` alternative flow). It does not apply after a Sales Order exists.
 
 - **Inventory** displays the shortage or discrepancy outcome without altering the Hasil Telaah Resep.
-- **Pharmacy Staff** includes only fulfillable prescription lines in the Sales Order. Unfulfillable lines remain on the originating Prescription.
+- **Pharmacy Staff** establishes the Sales Order with fulfillable prescription lines only. Unfulfillable lines remain on the originating Prescription. Those lines are not placed on the Sales Order and are not later removed from a Sales Order, because no Sales Order yet contains them.
 - **Pharmacy System** supports Salinan Resep for unfulfilled lines. The Patient may use the Prescription Copy to obtain medication from another pharmacy.
 - **Pharmacy Staff** does not create Backorder, select an alternate stock source, or substitute the medication.
+
+If the Sales Order is already established, do not use this exception. Do not remove items from that Sales Order. Apply `SOP-APT-RJ-003` exception 5.4 (General Patient) or `SOP-APT-RJ-004` exception 5.2 (BPJS): keep the Sales Order, record an Unfulfilled Medication Outcome, and apply financial correction when required (`BR-APT-118`).
 
 ### 5.3 Medication replacement is required after Sales Order establishment
 
@@ -96,6 +100,7 @@ The source Resep or Direct Medication Request remains traceable and does not bec
 2. An accepted source displays a traceable Sales Order, Sales Order Lines, and primary Dispense Order whose Dispense Order Lines reference those Sales Order Lines.
 3. A rejected Resep or declined Direct Medication Request has no Sales Order.
 4. Stock evidence has not changed the professional acceptance outcome.
+5. A shortage identified before Sales Order establishment produced a Sales Order of fulfillable lines only, with unfulfillable lines remaining on the Prescription and Salinan Resep supported. A shortage identified after Sales Order establishment was not handled by dropping lines from that Sales Order; it follows `SOP-APT-RJ-003` exception 5.4 or the equivalent payer SOP.
 
 ## 7. References
 

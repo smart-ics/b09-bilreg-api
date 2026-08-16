@@ -182,7 +182,10 @@
 | `docs/contexts/apotek/ALN-001-RESOLUTION-REPORT.md` | ALN-001 Resolution Report — OutpatientQueueMapping ownership alignment |
 | `docs/contexts/apotek/ALN-002-RESOLUTION-REPORT.md` | ALN-002 Resolution Report — Fulfillment Clearance to Dispense Authorized alignment |
 | `docs/contexts/apotek/ALN-003-RESOLUTION-REPORT.md` | ALN-003 Resolution Report — Remove Billing/Fulfillment Allocation |
+| `docs/contexts/apotek/ALN-004-RESOLUTION-REPORT.md` | ALN-004 Resolution Report — Inventory contract alignment to BA-09 |
 | `docs/contexts/apotek/ALN-005-RESOLUTION-REPORT.md` | ALN-005 Resolution Report — Queue completion during No Show Resolution |
+| `docs/contexts/apotek/ALN-006-RESOLUTION-REPORT.md` | ALN-006 Resolution Report — Stock shortage timing alignment to BC-10 |
+| `docs/contexts/apotek/ALN-007-RESOLUTION-REPORT.md` | ALN-007 Resolution Report — Terminology cleanup and Dispense Order naming alignment |
 | `docs/contexts/apotek/outpatient-apotek-queue-gap-analysis-codex.md` | Outpatient Apotek Queue Gap Analysis |
 | `docs/contexts/apotek/outpatient-apotek-queue-gap-analysis.md` | Outpatient Apotek Queue Gap Analysis |
 | `docs/contexts/apotek/outpatient-apotek-screen-and-aggregate-design.md` | Outpatient Apotek Screen and Aggregate Design |

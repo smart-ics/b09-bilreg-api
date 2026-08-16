@@ -63,8 +63,12 @@ Provide a repeatable procedure for clearing and preparing BPJS-covered outpatien
 
 ### 5.2 Shortage occurs after Sales Order establishment
 
-- **Pharmacy Staff** does not create Backorder or select an alternate stock source.
+This exception applies when the shortage is identified **after** the Sales Order is established (`BR-APT-118`). Shortage **before** Sales Order establishment is `SOP-APT-RJ-002` exception 5.2.
+
+- **Pharmacy Staff** does not create Backorder, select an alternate stock source, or substitute the medication.
+- **Pharmacy Staff** does not remove items from the established Sales Order and does not rebuild it as a partial order.
 - **Pharmacy System** records an Unfulfilled Medication Outcome, supports Salinan Resep for unfulfilled lines, and preserves the accepted medication identity.
+- **Tata Rekening** supplies Credit Note, Refund, or another accountable commercial correction only when commercial consequences exist.
 
 ### 5.3 Final Dispense Review fails
 
@@ -84,6 +88,7 @@ Provide a repeatable procedure for clearing and preparing BPJS-covered outpatien
 3. The Dispense Order is `Completed`, Medication Handover records effective time, and Remove Stock from Dispensing Temporary Unit is displayed. Recipient phone number and relationship may be recorded optionally for reference.
 4. The Sales Order is `Resolved`, or remains `Active` with an explicitly displayed unresolved outcome.
 5. Queue `Done` is not used as proof of Medication Handover.
+6. A shortage after Sales Order establishment left that Sales Order unmodified; unfulfillable quantity has an Unfulfilled Medication Outcome and any required financial correction, not dropped Sales Order lines.
 
 ## 7. References
 

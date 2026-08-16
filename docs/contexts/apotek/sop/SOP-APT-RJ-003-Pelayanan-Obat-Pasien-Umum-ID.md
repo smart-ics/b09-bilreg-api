@@ -75,10 +75,14 @@ Memberikan langkah yang sama bagi petugas untuk memperoleh persetujuan pembelian
 - **Sistem Apotek** tetap mencegah penyiapan obat dimulai selama informasi pelunasan belum tersedia.
 - **Staf Apotek** hanya dapat membatalkan faktur bila status faktur yang ditampilkan mengizinkan. Bila tidak, **Tata Rekening** memberikan penyesuaian keuangan, nota kredit, pengembalian dana, atau hasil koreksi lain yang dapat dipertanggungjawabkan.
 
-### 5.4 Stok kurang
+### 5.4 Stok kurang setelah Sales Order dibentuk
 
-- **Staf Apotek** tidak membuat pesanan tertunda dan tidak memilih sumber stok alternatif. **Staf Apotek** tidak mengganti obat.
-- **Sistem Apotek** mencatat obat yang tidak dapat dilayani, mendukung Salinan Resep untuk item yang tidak dipenuhi, dan tetap menampilkan urusan keuangan yang harus diselesaikan.
+Pengecualian ini berlaku ketika kekurangan stok diketahui **setelah** Sales Order dibentuk, termasuk setelah pembayaran atau financial clearance (`BR-APT-118`). Kekurangan stok **sebelum** Sales Order dibentuk adalah `SOP-APT-RJ-002` pengecualian 5.2.
+
+- **Staf Apotek** tidak membuat pesanan tertunda, tidak memilih sumber stok alternatif, dan tidak mengganti obat.
+- **Staf Apotek** tidak menghapus item dari Sales Order yang sudah dibentuk dan tidak menyusun ulang Sales Order menjadi pesanan parsial.
+- **Sistem Apotek** mencatat Unfulfilled Medication Outcome yang berlaku, mendukung Salinan Resep untuk item yang tidak dipenuhi, dan tetap menampilkan urusan keuangan yang harus diselesaikan.
+- **Tata Rekening** memberikan nota kredit, pengembalian dana, atau koreksi komersial lain yang dapat dipertanggungjawabkan bila ada konsekuensi komersial.
 
 ### 5.5 Pemeriksaan akhir obat tidak lulus
 
@@ -97,6 +101,7 @@ Memberikan langkah yang sama bagi petugas untuk memperoleh persetujuan pembelian
 3. Remove Stock dari Dispensing Temporary Unit terlihat sebagai catatan Stock Ledger.
 4. Pesanan apotek berstatus `Resolved`, atau tetap `Active` dengan masalah pelayanan obat atau urusan keuangan yang belum selesai ditampilkan dengan jelas.
 5. Status antrian `Done` bukan bukti bahwa obat sudah diserahkan.
+6. Kekurangan stok setelah Sales Order dibentuk tidak mengubah Sales Order itu; jumlah yang tidak dapat dipenuhi memiliki Unfulfilled Medication Outcome dan koreksi keuangan bila diperlukan, bukan baris yang dihapus dari Sales Order.
 
 ## 7. Referensi
 

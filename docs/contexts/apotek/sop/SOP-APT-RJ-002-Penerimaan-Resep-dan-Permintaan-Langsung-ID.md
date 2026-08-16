@@ -44,7 +44,7 @@ Resep atau Direct Medication Request sumber tetap dipertahankan dan tidak beruba
 | Aktor | Jenis | Tanggung jawab |
 |---|---|---|
 | Apoteker | Petugas | Menelaah setiap item obat, menghubungi Dokter Penulis Resep di luar sistem bila perlu, menetapkan obat yang dapat dilayani, lalu menyelesaikan telaah resep. |
-| Staf Apotek | Petugas | Mencatat resep kertas; menerima atau menolak permintaan obat langsung; serta menangani kekurangan stok melalui Partial Sales Order dan Salinan Resep. |
+| Staf Apotek | Petugas | Mencatat resep kertas; menerima atau menolak permintaan obat langsung; serta, sebelum Sales Order dibentuk, menangani kekurangan stok melalui Partial Sales Order berisi baris yang dapat dipenuhi dan Salinan Resep. Kekurangan stok setelah Sales Order dibentuk mengikuti `SOP-APT-RJ-003` pengecualian 5.4 (atau SOP payer yang setara). |
 | CPOE | Subsistem | Menyediakan resep asli yang sah. Sistem Apotek tidak mengubah resep tersebut. |
 | Katalog Obat | Subsistem | Menyediakan identitas obat dan informasi formularium yang diperlukan saat telaah resep. |
 | Sistem Apotek | Subsistem | Mencatat hasil telaah, membuat pesanan apotek, serta mencatat tagihan dan kesiapan pelayanan obat secara terpisah. Aplikasi juga membuat tugas utama untuk menyiapkan obat. |
@@ -80,12 +80,16 @@ Resep atau Direct Medication Request sumber tetap dipertahankan dan tidak beruba
 - **Sistem Apotek** mencatat status `Rejected` untuk resep yang telah ditelaah. Permintaan obat langsung yang ditolak tidak dicatat sebagai permintaan yang diterima.
 - **Sistem Apotek** tidak membuat pesanan apotek.
 
-### 5.2 Stok tidak cukup setelah obat diterima untuk dilayani
+### 5.2 Stok tidak cukup sebelum Sales Order dibentuk
+
+Pengecualian ini berlaku hanya ketika kekurangan stok diketahui **sebelum** Sales Order dibentuk (`BR-APT-110`, alur alternatif `WF-APT-RJ-002`). Pengecualian ini tidak berlaku setelah Sales Order tersedia.
 
 - **Sistem Persediaan** menampilkan informasi kekurangan atau selisih stok. Informasi ini tidak mengubah hasil telaah resep.
-- **Staf Apotek** hanya memasukkan item resep yang dapat dipenuhi ke pesanan apotek. Item yang tidak dapat dipenuhi tetap pada resep asal.
+- **Staf Apotek** membentuk Sales Order hanya dari item resep yang dapat dipenuhi. Item yang tidak dapat dipenuhi tetap pada resep asal. Item tersebut tidak dimasukkan ke Sales Order dan tidak dihapus dari Sales Order, karena belum ada Sales Order yang memuatnya.
 - **Sistem Apotek** mendukung Salinan Resep untuk item yang tidak dipenuhi. Pasien dapat menggunakan salinan tersebut untuk memperoleh obat dari apotek lain.
 - **Staf Apotek** tidak membuat pesanan tertunda, tidak memilih sumber stok alternatif, dan tidak mengganti obat.
+
+Jika Sales Order sudah dibentuk, jangan gunakan pengecualian ini. Jangan menghapus item dari Sales Order yang sudah ada. Terapkan `SOP-APT-RJ-003` pengecualian 5.4 (Pasien Umum) atau `SOP-APT-RJ-004` pengecualian 5.2 (BPJS): pertahankan Sales Order, catat Unfulfilled Medication Outcome, dan terapkan koreksi keuangan bila diperlukan (`BR-APT-118`).
 
 ### 5.3 Obat perlu diganti setelah pesanan apotek dibuat
 
@@ -98,6 +102,7 @@ Resep atau Direct Medication Request sumber tetap dipertahankan dan tidak beruba
 2. Untuk resep atau permintaan yang diterima, petugas dapat melihat Sales Order, Sales Order Line, dan Dispense Order utama beserta Dispense Order Line yang mereferensikan baris Sales Order tersebut. Semuanya tetap terhubung ke sumbernya.
 3. Resep berstatus `Rejected` atau permintaan obat langsung yang ditolak tidak memiliki pesanan apotek.
 4. Informasi Mutasi stok tidak mengubah keputusan profesional untuk menerima obat.
+5. Kekurangan stok yang diketahui sebelum Sales Order dibentuk menghasilkan Sales Order berisi hanya baris yang dapat dipenuhi, dengan baris yang tidak dapat dipenuhi tetap pada resep dan Salinan Resep didukung. Kekurangan stok setelah Sales Order dibentuk tidak ditangani dengan menghapus baris dari Sales Order itu; penanganannya mengikuti `SOP-APT-RJ-003` pengecualian 5.4 atau SOP payer yang setara.
 
 ## 7. Referensi
 

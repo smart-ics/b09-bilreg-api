@@ -8,16 +8,22 @@
 
 Outpatient Pharmacy (Apotek Rawat Jalan) requires operational progress tracking beyond the generic Patient Tracker queue lifecycle.
 
-Examples of Pharmacy workflow states include:
+Pharmacy operational progress is owned by Pharmacy aggregates, not by the queue. Canonical Dispense Order states (`apotek-domain.md` §8.4) are:
 
-* Telaah Resep
-* Sales Confirmation
-* Payment Confirmation
-* Dispensing
-* Dispensed
-* Medication Handover
-* No Show
-* Expired
+```text
+Established
+Awaiting Clearance
+Released
+Preparing
+Prepared
+Reviewed
+Completed
+Cancelled
+Expired
+Unfulfilled
+```
+
+Related Pharmacy-owned facts include Telaah Resep, Sales Order, Sales Invoice, Dispense Authorized, Dispensing Temporary Custody, Medication Handover, Pickup Expired, and No Show. These labels are not queue statuses and must not be added to `AntrianStatusEnum`.
 
 The existing Patient Tracker queue implementation only supports the following queue lifecycle:
 
@@ -106,16 +112,20 @@ Display Workflow
 ### Pharmacy Owns
 
 ```text
-Prescription Review
-Sales Confirmation
-Payment Confirmation
-Dispensing
+Telaah Resep
+Sales Order
+Sales Invoice
+Dispense Authorized (policy evaluation; not an aggregate)
+Dispense Order lifecycle
 Medication Preparation
+Dispensing Temporary Custody
 Medication Handover
-Pickup Expiration
+Pickup Expired (projection category)
 No Show Handling
 Pharmacy Operational Progress
 ```
+
+Pharmacy ownership of these facts is unchanged. The labels above replace informal example names (`Sales Confirmation`, `Payment Confirmation`, `WaitingPayment`, `Paid`, `Dispensing`, `Dispensed`, `HandedOver`) with the canonical domain vocabulary. They remain Pharmacy-owned and are still not queue statuses.
 
 ---
 
@@ -172,24 +182,29 @@ Embedding Pharmacy states into queue statuses would couple the queue subsystem t
 
 ### Prevent State Explosion
 
-The following are Pharmacy workflow states:
+The following are Pharmacy-owned Dispense Order states and related Pharmacy facts. They are not queue statuses:
 
 ```text
+Established
+Awaiting Clearance
+Released
+Preparing
+Prepared
 Reviewed
-WaitingPayment
-Paid
-Dispensing
-Dispensed
-HandedOver
+Completed
+Cancelled
 Expired
-NoShow
+Unfulfilled
+Medication Handover
+No Show
+Dispensing Temporary Custody
 ```
 
-These states do not describe queue movement.
+These labels do not describe queue movement.
 
 They describe Pharmacy operations.
 
-Therefore they belong to Pharmacy.
+Therefore they belong to Pharmacy. They must not be added to `AntrianStatusEnum`.
 
 ---
 
@@ -211,47 +226,56 @@ These are different concerns and must remain separated.
 
 ### Allowed
 
+The pairings below illustrate separated ownership. Pharmacy labels are Dispense Order states or Pharmacy-owned facts from `apotek-domain.md`. They are not queue statuses.
+
 ```text
 Queue Status = InService
 
-Pharmacy Status = Dispensing
+Dispense Order = Preparing
 ```
 
 ```text
 Queue Status = InService
 
-Pharmacy Status = WaitingPayment
+Dispense Order = Awaiting Clearance
 ```
 
 ```text
 Queue Status = Done
 
-Pharmacy Status = HandedOver
+Dispense Order = Completed
 ```
 
 ```text
 Queue Status = Done
 
-Pharmacy Status = No Show / Expired
+Dispense Order = Expired
+Pharmacy fact = No Show
 ```
+
+Queue `Done` does not imply Medication Handover. Medication may remain in Dispensing Temporary Custody after the queue is `Done`.
 
 ---
 
 ### Not Allowed
 
 ```text
-Queue Status = Dispensing
+Queue Status = Preparing
 ```
 
 ```text
-Queue Status = WaitingPayment
+Queue Status = Awaiting Clearance
 ```
 
 ```text
-Queue Status = HandedOver
+Queue Status = Completed
 ```
 
-These statuses must never be added to `AntrianStatusEnum`.
+```text
+Queue Status = Expired
+```
+
+These Dispense Order states must never be added to `AntrianStatusEnum`.
 
 ---
 
@@ -274,5 +298,5 @@ This decision is considered architectural and should not be revisited unless the
 * Patient Tracker Queue Excavation Report 
 * `AntrianEntryModel.cs` 
 * `AntrianStatusEnum.cs` 
-* [Apotek Domain](../apotek-domain.md) — `BR-APT-097`
+* [Apotek Domain](../apotek-domain.md) — `BR-APT-097`; Dispense Order lifecycle §8.4; Dispensing Temporary Custody
 * [Outpatient Apotek Screen and Aggregate Design](../outpatient-apotek-screen-and-aggregate-design.md) — §4.1

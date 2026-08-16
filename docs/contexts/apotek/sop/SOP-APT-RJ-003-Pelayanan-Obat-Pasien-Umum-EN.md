@@ -73,10 +73,14 @@ Provide a repeatable procedure for obtaining verbal Purchase Confirmation, estab
 - **Pharmacy System** keeps Medication Preparation blocked while Payment Clearance is absent.
 - **Pharmacy Staff** cancels only when the displayed Sales Invoice lifecycle permits; otherwise **Tata Rekening** supplies Financial Adjustment, Credit Note, Refund, or another accountable outcome.
 
-### 5.4 Shortage
+### 5.4 Shortage after Sales Order establishment
 
-- **Pharmacy Staff** does not create Backorder or select an alternate stock source; no substitution is made.
+This exception applies when the shortage is identified **after** the Sales Order is established, including after payment or financial clearance (`BR-APT-118`). Shortage **before** Sales Order establishment is `SOP-APT-RJ-002` exception 5.2.
+
+- **Pharmacy Staff** does not create Backorder, select an alternate stock source, or substitute the medication.
+- **Pharmacy Staff** does not remove items from the established Sales Order and does not rebuild it as a partial order.
 - **Pharmacy System** records the applicable Unfulfilled Medication Outcome, supports Salinan Resep for unfulfilled lines, and keeps required financial consequences visible.
+- **Tata Rekening** supplies Credit Note, Refund, or another accountable commercial correction when commercial consequences exist.
 
 ### 5.5 Final Dispense Review fails
 
@@ -95,6 +99,7 @@ Provide a repeatable procedure for obtaining verbal Purchase Confirmation, estab
 3. Remove Stock from Dispensing Temporary Unit is displayed as the Stock Ledger outcome.
 4. The Sales Order is `Resolved`, or remains `Active` with an explicitly displayed unresolved fulfillment or commercial consequence.
 5. Queue `Done` is not used as proof of Medication Handover.
+6. A shortage after Sales Order establishment left that Sales Order unmodified; unfulfillable quantity has an Unfulfilled Medication Outcome and any required financial correction, not dropped Sales Order lines.
 
 ## 7. References
 

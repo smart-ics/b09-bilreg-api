@@ -30,17 +30,17 @@ No new business rules were created. No architecture redesign is proposed. Missin
 
 The outpatient Apotek artifacts describe one business reality for payer timing, queue ownership, handover gates, mixed coverage, and uncollected-medication resolution. Those sequences are consistent across the canonical domain, the English workflow, ADR-APT-001, and the English SOPs that were updated after the Gap Analysis.
 
-The remaining defects are operational wording leftovers (ALN-006) and informal ADR pharmacy example names (ALN-007). ALN-001 through ALN-005 are closed. BA-09 stock ownership is aligned: Pharmacy Reserve is Stock Mutasi; handover is Remove Stock; No Show is return Mutasi; `Prepared` is a Dispense Order state. Pre-pickup-call No Show Resolution may complete the Queue Entry to `Done` without adding a queue status.
+The remaining alignment leftovers are closed. ALN-001 through ALN-007 are resolved. BA-09 stock ownership is aligned: Pharmacy Reserve is Stock Mutasi; handover is Remove Stock; No Show is return Mutasi; `Prepared` is a Dispense Order state. Pre-pickup-call No Show Resolution may complete the Queue Entry to `Done` without adding a queue status. Shortage timing matches BC-10: Partial Sales Order only before Sales Order establishment; Unfulfilled Medication Outcome after. ADR-APT-001 examples use Dispense Order states and Dispensing Temporary Custody.
 
 Open Gap Analysis items BC-11, BC-12, and BC-13 are unspecified operational detail (call-display wording, permission matrix, physical-prescription capture fields). They do not contradict other artifacts and are therefore not listed as alignment issues.
 
 * Total Issues Found: 7
-* Resolved in this follow-up: 5 (ALN-001, ALN-002, ALN-003, ALN-004, ALN-005)
-* Remaining open: 2
+* Resolved in this follow-up: 7 (ALN-001 through ALN-007)
+* Remaining open: 0
 * Critical remaining: 0
 * High: 0
-* Medium: 1
-* Low: 1
+* Medium: 0
+* Low: 0
 
 ---
 
@@ -48,12 +48,12 @@ Open Gap Analysis items BC-11, BC-12, and BC-13 are unspecified operational deta
 
 | Area                 | Status      |
 | -------------------- | ----------- |
-| Business Terminology | Not Aligned |
+| Business Terminology | Aligned     |
 | Workflow             | Aligned     |
 | Aggregate Boundaries | Aligned     |
 | Queue Ownership      | Aligned     |
 | Payer Flows          | Aligned     |
-| SOPs                 | Not Aligned |
+| SOPs                 | Aligned     |
 | Screen Design        | Aligned     |
 
 **Aligned areas, in brief:**
@@ -61,10 +61,12 @@ Open Gap Analysis items BC-11, BC-12, and BC-13 are unspecified operational deta
 - **Workflow.** Triggers, preconditions, payer sequencing, pickup-call timing, `ServedAt` / `DoneAt` causation (pickup call or No Show Resolution), Final Dispense Review failure, and terminal No-Show commercial outcomes match between the domain and `WF-APT-RJ-001`–`007`.
 - **Queue ownership.** Patient Tracker remains the only owner of queue identity and of `Waiting` / `In Service` / `Done` / `Withdrawn`. Pharmacy workflow states are not added to the queue lifecycle. ADR-APT-001 is respected. Queue completion may be triggered by Pickup Call or by No Show Resolution; Queue `Done` does not imply Medication Handover.
 - **Payer flows.** General Patient invoice-before-preparation, BPJS invoice-only-at-handover, and mixed coverage as two independent Sales Orders with coordinated pickup are consistent across domain, workflow, SOP-003, SOP-004, SOP-005, and the screen workbenches.
+- **SOPs.** Shortage before Sales Order establishment is SOP-002 5.2 (`BR-APT-110`). Shortage after Sales Order establishment is SOP-003 5.4 / SOP-004 5.2 (`BR-APT-118`). Lines are not dropped from an established Sales Order.
+- **Business terminology.** ADR-APT-001 examples use Dispense Order states from domain §8.4. Custody is Dispensing Temporary Custody. Informal labels `WaitingPayment`, `Paid`, `Dispensing`, `Dispensed`, `HandedOver`, and In-Transit are not current vocabulary.
 
 **Not aligned areas, in brief:**
 
-- SOP-002 exception 5.2 still blurs shortage timing (ALN-006). ADR-APT-001 still uses informal pharmacy example state names (ALN-007).
+- None remaining in this review. Open Gap Analysis items BC-11, BC-12, and BC-13 are unspecified operational detail, not alignment contradictions.
 
 ---
 
@@ -273,12 +275,17 @@ Completed. State, in the domain, workflow, SOP-007, and related queue explanatio
 
 Medium
 
+### Resolution status
+
+Resolved (2026-08-16) — SOP shortage timing aligned to BC-10 / `BR-APT-110` / `BR-APT-118`. See `ALN-006-RESOLUTION-REPORT.md`. BC-10 was not reopened.
+
 ### Artifacts Involved
 
 - `apotek-domain.md` `BR-APT-110`, `BR-APT-118`
 - `outpatient-apotek-workflow.md` `WF-APT-RJ-002` alternative flow versus exception flow
 - `SOP-APT-RJ-002-Penerimaan-Resep-dan-Permintaan-Langsung-EN.md` exception 5.2
 - `SOP-APT-RJ-003-Pelayanan-Obat-Pasien-Umum-EN.md` exception 5.4
+- `SOP-APT-RJ-004-Pelayanan-Obat-Pasien-BPJS-EN.md` exception 5.2
 
 ### Description
 
@@ -287,21 +294,19 @@ The domain and English workflow distinguish two shortage timings:
 - Before Sales Order establishment: include only fulfillable lines in the Sales Order; leave the rest on the Prescription; issue Salinan Resep (`BR-APT-110`).
 - After Sales Order establishment or financial clearance: keep the Sales Order; assign an Unfulfilled Medication Outcome and commercial correction when required (`BR-APT-118`). Do not rebuild the Sales Order as a partial order.
 
-`WF-APT-RJ-002` keeps that split.
-
-SOP-002 exception 5.2 is titled “Stock is insufficient after acceptance” and then applies the before-Sales-Order treatment (include only fulfillable lines; unfulfillable lines remain on the Prescription). “After acceptance” is not the same cut as “after Sales Order establishment”. SOP-003 5.4 correctly describes shortage after payment as Unfulfilled Medication Outcome plus financial consequence.
+`WF-APT-RJ-002` already kept that split. SOP-002 exception 5.2 previously titled the before-Sales-Order treatment “after acceptance”. That leftover cutover is removed. SOP-002 5.2 now applies only before Sales Order establishment and points post-establishment shortage to SOP-003 5.4 / SOP-004 5.2.
 
 ### Why It Is A Problem
 
-An operator using only SOP-002 5.2 after a Sales Order already exists would try to drop lines from that Sales Order. The domain forbids that path and requires an Unfulfilled Medication Outcome instead. The two shortage timings remain defined; SOP-002 blurs the cutover.
+This was leftover SOP wording. An operator using the previous SOP-002 5.2 after a Sales Order already existed would try to drop lines from that Sales Order. The domain forbids that path.
 
 ### Recommended Resolution
 
-Reword SOP-002 5.2 so it applies only before Sales Order establishment, matching `BR-APT-110` and the `WF-APT-RJ-002` alternative flow. Point post-establishment shortage to SOP-003 5.4 / `BR-APT-118`. Do not add a new shortage reason.
+Completed. Reword SOP-002 5.2 so it applies only before Sales Order establishment, matching `BR-APT-110` and the `WF-APT-RJ-002` alternative flow. Point post-establishment shortage to SOP-003 5.4 / SOP-004 5.2 / `BR-APT-118`. Do not add a new shortage reason. Do not change BC-10.
 
 ### Related Gap Analysis Item
 
-* Existing Gap But Not Resolved — BC-10 is marked resolved in the domain and workflow; SOP-002 5.2 still collapses the two timings.
+* Existing Gap — Resolved by artifact alignment. BC-10 remains the locked business decision.
 
 ---
 
@@ -311,6 +316,10 @@ Reword SOP-002 5.2 so it applies only before Sales Order establishment, matching
 
 Low
 
+### Resolution status
+
+Resolved (2026-08-16) — ADR-APT-001 examples aligned to Dispense Order lifecycle and Dispensing Temporary Custody. See `ALN-007-RESOLUTION-REPORT.md`. ADR-APT-001 ownership was not changed.
+
 ### Artifacts Involved
 
 - `adr/ADR-APT-001-queu-boundary-and-pharmacy-workflow-state-ownership.md` example pharmacy states
@@ -318,32 +327,30 @@ Low
 
 ### Description
 
-ADR-APT-001 is authoritative for queue ownership and is consistent with the domain on that point. Its illustrative pharmacy labels (`Sales Confirmation`, `Payment Confirmation`, `WaitingPayment`, `Paid`, `Dispensing`, `Dispensed`, `HandedOver`) are not the domain Dispense Order states (`Established`, `Awaiting Clearance`, `Released`, `Preparing`, `Prepared`, `Reviewed`, `Completed`, `Cancelled`, `Expired`, `Unfulfilled`) and are not the Serah Obat projection categories.
+ADR-APT-001 is authoritative for queue ownership and is consistent with the domain on that point. Its illustrative pharmacy labels previously used informal names (`Sales Confirmation`, `Payment Confirmation`, `WaitingPayment`, `Paid`, `Dispensing`, `Dispensed`, `HandedOver`) instead of Dispense Order states (`Established`, `Awaiting Clearance`, `Released`, `Preparing`, `Prepared`, `Reviewed`, `Completed`, `Cancelled`, `Expired`, `Unfulfilled`).
 
-SOP-007 and the Dispensing screen now use Dispensing Temporary Custody (ALN-004). The remaining leftover is the ADR example labels.
+SOP-007 and the Dispensing screen already used Dispensing Temporary Custody (ALN-004). ADR examples now use the same Dispense Order states and Dispensing Temporary Custody. Informal labels are retired as current vocabulary.
 
-These are naming leftovers. They do not assign pharmacy states to `AntrianStatusEnum` and do not change payer or handover rules.
+These were naming leftovers. They did not assign pharmacy states to `AntrianStatusEnum` and did not change payer or handover rules.
 
 ### Why It Is A Problem
 
-Readers may treat ADR examples or “In-Transit” as a second pharmacy lifecycle. That is documentation noise, not a second business outcome, as long as implementers follow the domain state machine and ADR-APT-001’s ownership rule.
+Readers could treat ADR examples or “In-Transit” as a second pharmacy lifecycle. That leftover naming is removed. Implementers follow the domain state machine and ADR-APT-001’s unchanged ownership rule.
 
 ### Recommended Resolution
 
-In ADR-APT-001, label the pharmacy examples as non-canonical illustrations of ownership, or replace them with domain Dispense Order states. Do not change queue ownership.
+Completed. Replace ADR-APT-001 pharmacy examples with domain Dispense Order states. Use Dispensing Temporary Custody for custody. Do not change queue ownership.
 
 ### Related Gap Analysis Item
 
-* Existing Gap But Not Resolved — Gap Analysis TD-10 already noted informal ADR pharmacy state names; the ADR examples and In-Transit wording remain.
+* Existing Gap — Resolved by artifact alignment. TD-10 informal ADR pharmacy state names are replaced with domain vocabulary. Queue ownership is unchanged.
 
 ---
 
 # Final Assessment
 
-**Partially Aligned (Requires Clarification)**
+**Aligned (for implementation planning from a business-consistency standpoint)**
 
-The canonical English domain, English workflow, ADR-APT-001, and the payer SOPs that were fully updated (especially SOP-001 and SOP-005) already describe one outpatient pharmacy business: Tracker-owned queue lifecycle, Apotek-owned fulfillment, General / BPJS / mixed invoice timing, `Dispense Authorized` as evaluation rather than an aggregate, mapping as association rather than an aggregate, Mutasi/Remove Stock as the stock boundary, and manual uncollected resolution after Pickup Expired.
+The canonical English domain, English workflow, ADR-APT-001, and the payer SOPs describe one outpatient pharmacy business: Tracker-owned queue lifecycle, Apotek-owned fulfillment, General / BPJS / mixed invoice timing, `Dispense Authorized` as evaluation rather than an aggregate, mapping as association rather than an aggregate, Mutasi/Remove Stock as the stock boundary, Dispense Order states as Pharmacy vocabulary, Dispensing Temporary Custody as custody, and manual uncollected resolution after Pickup Expired.
 
-The artifacts are not yet internally consistent enough for implementation planning only because ALN-006 (SOP-002 shortage timing wording) remains, plus informal ADR example names in ALN-007. ALN-001 through ALN-005 are closed. The remaining leftovers are documentation-sync failures against decisions the Gap Analysis already ratified.
-
-This assessment does not reopen BA-01 through BA-09, BC-01 through BC-10, or BC-14. It does not treat open items BC-11, BC-12, or BC-13 as alignment contradictions. After ALN-006 is removed by applying those existing decisions to the stale artifacts, the outpatient Apotek set would be ready to proceed to implementation planning from a business-consistency standpoint.
+ALN-001 through ALN-007 are closed. This assessment does not reopen BA-01 through BA-09, BC-01 through BC-10, or BC-14. It does not treat open items BC-11, BC-12, or BC-13 as alignment contradictions. Remaining Gap Analysis work is unspecified operational detail, not a second business model.

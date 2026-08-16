@@ -204,7 +204,7 @@ The architecture is not ready for implementation review until the blocking decis
 
 **Status:** Resolved (2026-08-16)
 
-**Gap.** Inventory owns reservation, issue, return eligibility, and final disposition, but the current repository has stock-ledger capabilities rather than a defined Dispense Order contract. Reservation timing, partial quantities, in-transit custody, issue-on-handover, and rejected returns are not architecturally connected.
+**Gap.** Inventory owns reservation, issue, return eligibility, and final disposition, but the current repository has stock-ledger capabilities rather than a defined Dispense Order contract. Reservation timing, partial quantities, Dispensing Temporary Custody, issue-on-handover, and rejected returns are not architecturally connected.
 
 **Evidence.** `apotek-domain.md:116-125`, `366-400`; workflow `:681-695`; screen design `:292-303`.
 
