@@ -29,14 +29,14 @@ The architecture is not ready for implementation review until the blocking decis
 
 | Classification | Count | Review meaning |
 |---|---:|---|
-| Blocking Architecture Gap | 2 | A structural or ownership decision is unresolved; implementing around it would create incompatible sources of truth or unsafe cross-context behavior. |
+| Blocking Architecture Gap | 1 | A structural or ownership decision is unresolved; implementing around it would create incompatible sources of truth or unsafe cross-context behavior. |
 | Business Clarification Gap | 13 | A policy, authority, threshold, or accountable outcome is not sufficiently defined. |
 | Resolved (Business Clarification) | 1 | BC-02 ratified; artifacts updated. |
 | Existing Capability Extension | 9 | A relevant capability exists but its present contract or semantics do not satisfy Apotek. |
 | Missing Implementation | 15 | The design is sufficiently clear, but no conforming implementation exists. |
 | Technical Debt | 11 | Existing code or documentation embodies legacy, misleading, coupled, or unverified behavior. |
-| Resolved (Blocking Architecture) | 7 | BA-01 through BA-07 ratified; artifacts updated. |
-| **Total open** | **50** | Each open finding has one primary classification. |
+| Resolved (Blocking Architecture) | 8 | BA-01 through BA-08 ratified; artifacts updated. |
+| **Total open** | **49** | Each open finding has one primary classification. |
 
 ## 3. Baseline and evidence
 
@@ -172,15 +172,33 @@ The architecture is not ready for implementation review until the blocking decis
 
 **Ratified in.** `apotek-domain.md`; `outpatient-apotek-workflow.md`; Integration Task Table design (to be specified at implementation).
 
-### BA-08 — Financial clearance and BPJS handover transaction boundary
+### BA-08 — Dispense Authorization and financial/coverage evidence boundary
 
-**Gap.** `Fulfillment Clearance` is a domain object but not an aggregate; the screen design calls it a derived policy outcome. The target also requires BPJS Sales Invoice establishment and handover to form one accountable outcome across Apotek and external financial authority, but no consistency or compensation boundary is defined.
+**Status:** Resolved (2026-08-16)
+
+**Gap.** Prior artifacts mixed `Financial Clearance` and `Fulfillment Clearance` terminology and implied a domain object or transaction boundary for preparation authorization. The target also required BPJS Sales Invoice establishment and Medication Handover to be coordinated without a defined consistency model.
 
 **Evidence.** `apotek-domain.md:265-267`, `320-325`, `381-389`, `425-447`; workflow `:386-539`; screen design `:271-277`.
 
-**Recommended decision.** Keep `FulfillmentClearance` as an immutable, quantity-scoped decision record owned within Dispense Order orchestration, derived from versioned Payment/Coverage evidence. Keep Sales Invoice and Dispense Order as separate aggregates. Model BPJS “one accountable outcome” as an Apotek process transaction with idempotent steps and explicit compensation/reconciliation, not a distributed ACID transaction.
+**Decision.** There is no separate business concept called Financial Clearance or Fulfillment Clearance. What exists is financial and coverage evidence evaluated by Pharmacy policy to determine **Dispense Authorized** — whether medication preparation and dispensing may start.
 
-**Rationale.** Clearance needs auditable evidence without becoming a competing source of payment or coverage truth; cross-context atomicity cannot be assumed.
+**Financial and coverage evidence.**
+
+| Payer path | Evidence |
+|---|---|
+| General Patient | Sales Invoice created; payment completed |
+| BPJS | Prescription exists; SEP valid; Fornas coverage valid |
+| Other insurance | Coverage approval valid |
+
+**Dispense Authorized.** Dispense Authorized is not an aggregate, entity, source of truth, or transaction boundary. It is a policy evaluation result derived from financial and coverage evidence. It is required before Medication Preparation Started and Dispensing. It is not required for Medication Handover.
+
+**Medication Handover gates.** Medication Handover is governed separately by: Medication Prepared; Recipient Verified; Final Dispense Review passed; Patient Education completed when applicable.
+
+**BPJS invoice and handover.** BPJS Sales Invoice creation and Medication Handover do not require a distributed transaction or special transaction boundary. The BA-07 Integration Task Table architecture remains sufficient for cross-context coordination.
+
+**Rationale.** Preparation authorization is a derived policy outcome over external financial and coverage facts, not a persisted clearance domain object. Separating Dispense Authorized from handover gates avoids conflating payer readiness with physical handover accountability. Cross-context steps remain asynchronously reliable without distributed ACID.
+
+**Ratified in.** `apotek-domain.md`; `outpatient-apotek-workflow.md`; `adr/ADR-APT-001-queu-boundary-and-pharmacy-workflow-state-ownership.md`.
 
 ### BA-09 — Inventory fulfillment contract
 
@@ -361,7 +379,7 @@ The architecture is not ready for implementation review until the blocking decis
 | MI-03 | `SalesInvoice` aggregate and payer-specific invoicing | Only legacy DU exists; no target invoice timing, pricing snapshot, mixed payer, credit-note, or financial-charge lineage. | Domain `:247-259`, `305-311`, `354-364`, `481-497` |
 | MI-04 | `DispenseOrder` aggregate and immutable final-review records | No target type, state machine, preparation, review, dispense, handover, expiry, or return implementation. | Domain `:261-287`, `313-318`, `366-379`, `499-518` |
 | MI-05 | Outpatient queue mapping and per-demand progress projection | No mapping relation/table/API; current queue entry has one `ReffId`/`ReffDesc`, and frontend has one transaction per queue card. | Domain `:145-149`, `277-279`, `531-539`; workflow `:161-231` |
-| MI-06 | Quantity-scoped Fulfillment Clearance decision record | No Payment/Coverage evidence correlation or preparation authorization exists. | Domain `:265-267`, `381-389`; screen design `:271-290` |
+| MI-06 | Dispense Authorized policy evaluation over financial/coverage evidence | No payer-path evidence correlation or preparation authorization policy exists in implementation. | Domain `:265-267`, `381-389`; screen design `:271-290`; BA-08 |
 | MI-07 | Outpatient pharmacy service-point intake and configuration | Shared infrastructure exists, but no demonstrated pharmacy intake contract, seed/configuration, or kiosk path. | Workflow `:114-118`; screen design `:28`, `228-240` |
 | MI-08 | Four operational outpatient screens | Only one mock `Apotek Rajal` tab exists; Telaah Resep, Pelayanan Penjualan, Dispensing, and Serah Obat workbenches are absent. | Screen design `:8-19`, `41-179`; frontend tabs `:5-22` |
 | MI-09 | Exception Worklist, attention projections, and Patient Medication Journey | No read models or UI exist. | Screen design `:21-26`, `78-93`, `181-226` |
@@ -399,6 +417,7 @@ The architecture is not ready for implementation review until the blocking decis
 - Legacy DU and Sales Invoice are independent features that may coexist during transition with no dual-write. Each owns its own workflow and billing/stock paths; unified sales reporting is a read-only adapter aggregating both sources (BA-05).
 - A canonical Prescription Contract is shared by Legacy Resep and CPOE; pharmacy consumes the contract via a Prescription Snapshot at intake. Source revisions are detected but do not auto-modify snapshots; staff review tasks handle changes (BA-06).
 - Cross-context integration uses an Integration Task Table: transactional, retryable, idempotent, and reconcile-able. Business transaction and task creation commit atomically; workers process asynchronously. No distributed transaction, message broker, or transactional outbox is required (BA-07).
+- There is no Financial Clearance or Fulfillment Clearance domain object. Pharmacy policy evaluates financial/coverage evidence to determine Dispense Authorized before preparation and dispensing; handover uses separate gates. BPJS invoice and handover coordination uses the Integration Task Table without a distributed transaction (BA-08).
 - Keep queue lifecycle generic: `Waiting`, `InService`, `Done`, `Withdrawn`.
 - Keep pharmacy operational state out of Patient Tracker.
 - Treat `ServedAt` as first preparation-start evidence.
@@ -412,7 +431,7 @@ The architecture is not ready for implementation review until the blocking decis
 
 ### 9.2 Decisions still required before architecture approval
 
-Architecture approval requires explicit disposition of BA-08 and BA-09 and business ratification of BC-01 and BC-03 through BC-14. BA-01 through BA-07 and BC-02 are resolved. These are decision gates, not delivery steps. The remaining Existing Capability Extension, Missing Implementation, and Technical Debt findings can then be evaluated against those ratified boundaries without inventing new sources of truth.
+Architecture approval requires explicit disposition of BA-09 and business ratification of BC-01 and BC-03 through BC-14. BA-01 through BA-08 and BC-02 are resolved. These are decision gates, not delivery steps. The remaining Existing Capability Extension, Missing Implementation, and Technical Debt findings can then be evaluated against those ratified boundaries without inventing new sources of truth.
 
 ### 9.3 Overall classification
 
