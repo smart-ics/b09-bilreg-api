@@ -172,7 +172,7 @@ The workbench supports the following sequence:
 1. Pharmacy Staff performs one coordinated pickup call after all intended orders are ready or accountably resolved.
 2. Patient Tracker records `DoneAt` and moves the queue entry to `Done`.
 3. With the Patient or caregiver present, the Pharmacist operationally verifies the recipient. The system may optionally record phone number and relationship for reference; it does not validate identity, legal relationship, documents, or authorization.
-4. The Pharmacist completes a Final Dispense Review for every prepared Dispense Order and records Patient Education.
+4. The Pharmacist completes a Final Dispense Review for every prepared Dispense Order and records Patient Education Acknowledgement (timestamp and responsible Pharmacist). Detailed counseling notes are optional.
 5. A passed review moves the Dispense Order to `Reviewed`; a failed review returns only that order to `Preparing` and appends an immutable review record.
 6. After Pharmacist authorization, Pharmacy Staff completes the physical handover.
 7. The system records Medication Dispense and Medication Handover for every applicable quantity, requests the Inventory Issue outcome, and applies payer-specific sales consequences.
@@ -282,7 +282,7 @@ flowchart TD
 | `TelaahResep` | Keeps the prescription source, per-line professional disposition, responsible Pharmacist, and final review outcome consistent | Original clinical prescription and prescriber clarification communications |
 | `SalesOrder` | Owns accepted demand, Sales Order Lines, accepted quantity, fulfillment/unfulfilled progress, and overall resolution; reconciles commercial and fulfillment quantities | Payment settlement, inventory balance, physical preparation, or handover execution |
 | `SalesInvoice` | Owns one medication sale, catalog sales lines including BHP, line-level charges, invoice-level charges, pricing snapshot, payer, financial disposition, and commercial adjustments | Sales Order quantity authority, payment evidence, stock, physical dispensing, or a separate invoice-component model |
-| `DispenseOrder` | Owns preparation, lines, immutable final review attempts, Medication Dispense, Medication Handover, expiry, cancellation, return, and non-fulfillment outcomes | Sales Invoice payment settlement and authoritative stock balance |
+| `DispenseOrder` | Owns preparation, lines, immutable final review attempts, Patient Education Acknowledgement, Medication Dispense, Medication Handover, expiry, cancellation, return, and non-fulfillment outcomes | Sales Invoice payment settlement and authoritative stock balance |
 | `OutpatientQueueMapping` | Associates one externally owned queue entry with one medication-demand source; identifies Tracker or Manual Mapping | Queue identity/lifecycle and the lifecycle of the mapped prescription or Sales Order |
 
 ### 5.3 Fulfillment Clearance (not an aggregate)

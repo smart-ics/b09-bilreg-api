@@ -22,7 +22,7 @@ Memberikan langkah yang sama bagi petugas untuk melayani dua atau lebih resep at
 |---|---|---|
 | Pasien atau Keluarga Pasien | Pengguna layanan | Menyelesaikan urusan pembayaran atau penjaminan yang berlaku, datang untuk satu kali pengambilan, menerima edukasi gabungan, dan menerima obat yang dapat diserahkan. |
 | Staf Apotek | Petugas | Memeriksa mapping dan keadaan setiap resep atau permintaan obat, menyiapkan setiap tugas penyiapan obat secara terpisah, mengoordinasikan kesiapan menurut penanggung biaya, menjelaskan masalah yang terjadi, dan melakukan satu kali panggilan pengambilan obat. |
-| Apoteker | Petugas | Memeriksa penerima secara operasional, memeriksa setiap obat yang sudah disiapkan, dan memberikan edukasi gabungan dengan aturan pakai masing-masing obat. Pemeriksaan penerima tidak ditegakkan sistem. |
+| Apoteker | Petugas | Memeriksa penerima secara operasional, memeriksa setiap obat yang sudah disiapkan, dan mencatat Patient Education Acknowledgement untuk sesi terkoordinasi. Pemeriksaan penerima tidak ditegakkan sistem. Catatan konseling rinci bersifat opsional. |
 | Sistem Apotek | Subsistem | Menampilkan keadaan setiap resep atau permintaan obat serta mencatat tagihan, faktur, tugas penyiapan, obat yang diberikan, dan penyerahan obat secara terpisah. |
 | Sistem Antrian Pasien | Subsistem | Menyimpan satu entri antrian dengan satu `CreatedAt`, paling banyak satu `ServedAt`, dan satu `DoneAt`. |
 | Kasir atau Sistem Pembayaran | Petugas atau subsistem | Mengirimkan informasi pelunasan untuk obat yang harus dibayar Pasien. |
@@ -50,7 +50,7 @@ Memberikan langkah yang sama bagi petugas untuk melayani dua atau lebih resep at
 10. Setelah seluruh obat yang akan diambil sudah siap atau masalahnya sudah ditangani dengan jelas, **Staf Apotek** melakukan satu kali panggilan agar Pasien mengambil obat.
 11. **Sistem Antrian Pasien** mencatat satu `DoneAt` dan mengubah antrian bersama menjadi `Done`.
 12. **Staf Apotek** menjelaskan kepada Pasien obat yang sudah siap sekaligus masalah atau tindak lanjut yang berlaku untuk obat yang belum dapat diserahkan.
-13. Saat Pasien atau Keluarga Pasien hadir, **Apoteker** memeriksa penerima secara operasional, melakukan pemeriksaan akhir pada setiap obat yang sudah disiapkan, dan mencatat edukasi gabungan beserta aturan pakai untuk masing-masing obat. Untuk setiap pemeriksaan yang lulus, **Sistem Apotek** menambahkan catatan pemeriksaan dan menampilkan tugas penyiapan obat terkait berstatus `Reviewed`. Apoteker boleh secara opsional mencatat nomor telepon penerima dan hubungan dengan Pasien sebagai referensi.
+13. Saat Pasien atau Keluarga Pasien hadir, **Apoteker** memeriksa penerima secara operasional, melakukan pemeriksaan akhir pada setiap obat yang sudah disiapkan, dan mencatat Patient Education Acknowledgement. Untuk setiap pemeriksaan yang lulus, **Sistem Apotek** menambahkan catatan pemeriksaan dan menampilkan tugas penyiapan obat terkait berstatus `Reviewed`. **Sistem Apotek** mencatat waktu edukasi dan Apoteker penanggung jawab. Catatan konseling rinci bersifat opsional. Apoteker boleh secara opsional mencatat nomor telepon penerima dan hubungan dengan Pasien sebagai referensi.
 14. Setelah mendapat persetujuan **Apoteker**, **Staf Apotek** menyerahkan obat secara fisik.
 15. **Sistem Apotek** mencatat obat yang diberikan dan diserahkan pada setiap tugas penyiapan obat dan pesanan apotek secara terpisah.
 16. **Sistem Persediaan** mengirimkan catatan pengeluaran stok atau keputusan stok lain secara terpisah untuk setiap tugas penyiapan obat asalnya.
@@ -86,6 +86,6 @@ Memberikan langkah yang sama bagi petugas untuk melayani dua atau lebih resep at
 
 ## 7. Referensi
 
-- [Domain Pelayanan Obat](../apotek-domain-id.md), khususnya `BR-APT-011`, `BR-APT-015`, `BR-APT-022`, `BR-APT-030`, `BR-APT-056`–`BR-APT-060`, `BR-APT-084`–`BR-APT-088`, `BR-APT-095`–`BR-APT-096`, dan `BR-APT-129`–`BR-APT-131`.
+- [Domain Pelayanan Obat](../apotek-domain-id.md), khususnya `BR-APT-011`, `BR-APT-015`, `BR-APT-022`, `BR-APT-030`, `BR-APT-056`–`BR-APT-060`, `BR-APT-084`–`BR-APT-088`, `BR-APT-095`–`BR-APT-096`, dan `BR-APT-129`–`BR-APT-134`.
 - [Alur Kerja Pelayanan Obat Rawat Jalan](../outpatient-apotek-workflow-id.md), `WF-APT-RJ-006`.
 - [Domain Sistem Antrian Pasien](../../../contexts/pasien-tracker/TRACKER-DOMAIN-ID.md), khususnya `BR-TRK-032`, `BR-TRK-035`–`BR-TRK-039`, `BR-TRK-045`, dan `BR-TRK-045a`.

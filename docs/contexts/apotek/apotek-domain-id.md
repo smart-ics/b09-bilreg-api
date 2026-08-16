@@ -133,7 +133,8 @@ Resep tidak berubah menjadi Sales Order. Keputusan profesional yang selesai meng
 | Medication Dispense | Realisasi Dispensing | Fakta accountable bahwa sejumlah obat benar-benar disediakan untuk Pasien. |
 | Medication Handover | Penyerahan Obat | Pemindahan obat yang accountable kepada Authorized Recipient. |
 | Authorized Recipient | Penerima Berwenang | Pasien, caregiver, practitioner, bangsal, atau pihak lain yang menerima obat pada Medication Handover. Verifikasi penerima adalah tanggung jawab operasional Pharmacist dan tidak ditegakkan oleh sistem. |
-| Patient Education | Edukasi Pasien | Penjelasan accountable tentang penggunaan, penyimpanan, perhatian khusus, dan informasi obat relevan lainnya kepada Pasien atau caregiver. |
+| Patient Education | Edukasi Pasien | Konseling obat yang diberikan kepada Pasien atau caregiver sebelum Medication Handover. |
+| Patient Education Acknowledgement | Pengakuan Edukasi Pasien | Catatan ringan bahwa Pharmacist mengonfirmasi konseling telah diberikan. Mencatat waktu edukasi dan Pharmacist penanggung jawab. Catatan konseling rinci bersifat opsional. |
 | Fulfilled Quantity | Jumlah Terpenuhi | Jumlah Sales Order Line yang mencapai outcome Medication Dispense berhasil. |
 | Partial Prescription Fulfillment | Pemenuhan Resep Sebagian | Membentuk Sales Order dari subset baris resep ketika Patient Request, Stock Shortage, atau Fornas Not Covered berlaku. |
 | Partial Fulfillment | Pemenuhan Sebagian | Eksekusi fulfillment ketika satu Sales Order dipenuhi melalui beberapa Dispense Order, atau kurang dari total Accepted Quantity Sales Order Line dipenuhi sementara jumlah lain unresolved atau memperoleh outcome berbeda. Ini bukan kebijakan Partial Prescription Fulfillment. |
@@ -244,7 +245,7 @@ Memiliki Resep asli. Klarifikasi dengan Pharmacist berlangsung di luar sistem da
 
 ### 4.2 Pharmacist
 
-Memiliki Hasil Telaah Resep, Medication Substitution yang diotorisasi selama Telaah Resep, Final Dispense Review, verifikasi operasional Authorized Recipient, dan Patient Education yang berlaku. Verifikasi Authorized Recipient bukan gate yang ditegakkan sistem. Pharmacist tidak memiliki pemanggilan administratif antrean Rawat Jalan. Authority Medication Substitution berakhir ketika Sales Order dibentuk.
+Memiliki Hasil Telaah Resep, Medication Substitution yang diotorisasi selama Telaah Resep, Final Dispense Review, verifikasi operasional Authorized Recipient, dan Patient Education Acknowledgement. Verifikasi Authorized Recipient bukan gate yang ditegakkan sistem. Pharmacist tidak memiliki pemanggilan administratif antrean Rawat Jalan. Authority Medication Substitution berakhir ketika Sales Order dibentuk.
 
 ### 4.3 Staf Apotek
 
@@ -304,7 +305,7 @@ Merepresentasikan obat dan jumlah aktual yang disediakan untuk Pasien, termasuk 
 
 ### 5.7 Medication Handover
 
-Merepresentasikan pemindahan obat pada waktu handover, termasuk destination bila berlaku dan tanggung jawab Patient Education. Nomor telepon penerima dan hubungan dengan Pasien boleh dicatat secara opsional hanya sebagai referensi dan tidak membuktikan identitas atau otorisasi hukum.
+Merepresentasikan pemindahan obat pada waktu handover, termasuk destination bila berlaku dan Patient Education Acknowledgement. Nomor telepon penerima dan hubungan dengan Pasien boleh dicatat secara opsional hanya sebagai referensi dan tidak membuktikan identitas atau otorisasi hukum.
 
 ### 5.8 Outpatient Queue Mapping
 
@@ -317,6 +318,10 @@ Merepresentasikan alasan final suatu Accepted Quantity tidak dipenuhi dan mengid
 ### 5.10 Final Dispense Review Record
 
 Merepresentasikan satu percobaan Final Dispense Review yang immutable dan dimiliki sebagai detail dari satu Dispense Order. Catatan review ditambahkan dan tidak diganti agar setiap kegagalan dan kelulusan review tetap accountable sesuai urutannya.
+
+### 5.11 Patient Education Acknowledgement
+
+Merepresentasikan konfirmasi Pharmacist bahwa konseling obat telah diberikan sebelum Medication Handover. Mencatat waktu edukasi dan Pharmacist penanggung jawab. Bukan catatan isi konseling terstruktur. Catatan konseling rinci boleh dilampirkan hanya ketika Pharmacist menilai dokumentasi tambahan diperlukan.
 
 ## 6. Aggregates
 
@@ -344,7 +349,7 @@ Sales Invoice mereferensikan tepat satu Sales Order tetapi dapat mencakup satu a
 
 **Aggregate Root:** `Dispense Order`
 
-Aggregate memiliki Dispense Order Line dan menjaga penyiapan fisik, kumpulan Final Dispense Review Record yang immutable, Medication Dispense, Medication Handover, cancellation, expiry, return, dan non-fulfillment outcome tetap konsisten. Dispense Order mereferensikan tepat satu Sales Order dan dapat memenuhi satu atau lebih Sales Order Line. Setiap Dispense Order Line mereferensikan tepat satu Sales Order Line dari Sales Order tersebut; satu Sales Order Line dapat dipenuhi melalui beberapa Dispense Order Line pada beberapa Dispense Order.
+Aggregate memiliki Dispense Order Line dan menjaga penyiapan fisik, kumpulan Final Dispense Review Record yang immutable, Patient Education Acknowledgement, Medication Dispense, Medication Handover, cancellation, expiry, return, dan non-fulfillment outcome tetap konsisten. Dispense Order mereferensikan tepat satu Sales Order dan dapat memenuhi satu atau lebih Sales Order Line. Setiap Dispense Order Line mereferensikan tepat satu Sales Order Line dari Sales Order tersebut; satu Sales Order Line dapat dipenuhi melalui beberapa Dispense Order Line pada beberapa Dispense Order.
 
 ### 6.5 Relasi lintas aggregate
 
@@ -456,6 +461,9 @@ Outpatient Queue Mapping merupakan mapping aktif kepada Pharmacy Queue Entry yan
 - **BR-APT-129** — Verifikasi Authorized Recipient tetap menjadi tanggung jawab operasional Pharmacist yang menyerahkan obat dan tidak boleh ditegakkan oleh sistem.
 - **BR-APT-130** — Selama Medication Handover, sistem boleh secara opsional mencatat nomor telepon penerima dan hubungan dengan Pasien hanya sebagai referensi. Informasi penerima yang dicatat tidak merupakan bukti identitas, otorisasi hukum, atau workflow gate.
 - **BR-APT-131** — Sistem tidak boleh mensyaratkan validasi identitas, verifikasi hubungan hukum, penangkapan dokumen, atau authorization workflow sebagai evidence penerima Medication Handover.
+- **BR-APT-132** — Patient Education harus dicatat sebagai Patient Education Acknowledgement yang ringan sebelum Medication Handover. Pharmacist harus mengonfirmasi bahwa konseling obat telah diberikan. Pengakuan tersebut adalah handover gate.
+- **BR-APT-133** — Patient Education Acknowledgement harus mencatat waktu edukasi dan Pharmacist penanggung jawab. Tidak mensyaratkan isi konseling terstruktur, template khusus obat, tanda tangan Pasien, atau identitas orang yang diedukasi.
+- **BR-APT-134** — Catatan konseling rinci bersifat opsional dan hanya dicatat ketika Pharmacist menilai dokumentasi tambahan diperlukan. Tidak adanya catatan rinci tidak boleh menghalangi Medication Handover setelah pengakuan dicatat.
 
 ### 7.7 Completion dan history
 
@@ -483,7 +491,7 @@ Outpatient Queue Mapping merupakan mapping aktif kepada Pharmacy Queue Entry yan
 - **BR-APT-074** — Medication Preparation BPJS dapat dimulai ketika Outpatient Queue Mapping, Dispense Order yang berlaku, Coverage Clearance, dan Fulfillment Clearance tersedia; keberadaan Sales Invoice tidak boleh menjadi prasyarat.
 - **BR-APT-075** — Untuk kebijakan BPJS Rawat Jalan saat ini, Sales Invoice hanya boleh dibentuk sebagai bagian dari Medication Handover yang berhasil dikonfirmasi; pembentukan Sales Invoice dan penyelesaian handover harus menjadi satu outcome bisnis accountable.
 - **BR-APT-076** — Staf Apotek harus memanggil Pasien untuk pickup Rawat Jalan setelah setiap Dispense Order dalam coordinated pickup mencapai `Prepared`. Pharmacist kemudian melakukan Final Dispense Review dengan Pasien atau caregiver hadir sebelum Medication Handover.
-- **BR-APT-077** — Dalam interaksi loket yang sama setelah pickup call, Pharmacist harus memverifikasi penerima secara operasional, menyelesaikan Final Dispense Review, memberikan Patient Education yang berlaku, dan baru kemudian menyelesaikan Medication Handover Rawat Jalan. Verifikasi penerima tidak boleh menjadi gate yang ditegakkan sistem.
+- **BR-APT-077** — Dalam interaksi loket yang sama setelah pickup call, Pharmacist harus memverifikasi penerima secara operasional, menyelesaikan Final Dispense Review, mencatat Patient Education Acknowledgement, dan baru kemudian menyelesaikan Medication Handover Rawat Jalan. Verifikasi penerima tidak boleh menjadi gate yang ditegakkan sistem.
 - **BR-APT-078** — Medication Handover Rawat Jalan yang berhasil harus menyelesaikan jumlah Dispense Order yang berlaku dan meminta outcome Inventory Issue authoritative terkait.
 - **BR-APT-079** — No-Show BPJS sebelum Medication Handover tidak boleh membentuk atau membatalkan Sales Invoice. Penyelesaian manual obat tidak diambil yang diotorisasi harus membuat Dispense Order terkait `Expired`, meminta disposition return Inventory yang accountable, dan hanya mengizinkan Sales Order menjadi `Resolved` dengan alasan `Collection Window Expired` setelah setiap Accepted Quantity dan konsekuensi komersial memiliki outcome final.
 - **BR-APT-080** — No-Show Pasien Umum setelah pembayaran harus menggunakan penyelesaian manual obat tidak diambil yang sama untuk konsekuensi fulfillment, tetapi Sales Order harus tetap `Active` sampai Tata Rekening atau financial authority yang bertanggung jawab memberikan Credit Note, Refund, atau outcome komersial final lain yang accountable.
@@ -501,7 +509,7 @@ Outpatient Queue Mapping merupakan mapping aktif kepada Pharmacy Queue Entry yan
 - **BR-APT-092** — Untuk Patient-Pay Sales Order, Sales Invoice Pasien Umum hanya boleh dibentuk setelah Purchase Confirmation lisan dan mengikuti workflow self-pay. Sales Invoice BPJS dari Sales Order BPJS yang independen hanya boleh dibentuk bersama Medication Handover yang berhasil berdasarkan `BR-APT-075`.
 - **BR-APT-093** — Coordinated pickup call mixed coverage harus menunggu sampai setiap Dispense Order yang hendak diserahkan memperoleh Dispense Authorized dari jalurnya sendiri dan mencapai `Prepared`.
 - **BR-APT-094** — Jika Pasien menolak Patient-Pay Sales Order sebelum Sales Invoice-nya dibentuk, Patient-Pay Sales Order tersebut harus memperoleh outcome declined yang accountable, sedangkan Sales Order BPJS yang independen dapat dilanjutkan.
-- **BR-APT-095** — Patient Tracker harus mencatat `DoneAt` apotek Rawat Jalan ketika Staf Apotek melakukan coordinated pickup call. Selesainya antrean tidak membuktikan Final Dispense Review, Patient Education, Medication Dispense, atau Medication Handover.
+- **BR-APT-095** — Patient Tracker harus mencatat `DoneAt` apotek Rawat Jalan ketika Staf Apotek melakukan coordinated pickup call. Selesainya antrean tidak membuktikan Final Dispense Review, Patient Education Acknowledgement, Medication Dispense, atau Medication Handover.
 - **BR-APT-097** — `QueueEntry` Patient Tracker harus menjadi satu-satunya identitas antrean apotek Rawat Jalan yang canonical. Identitas antrean Farinv legacy didepresiasi dan tidak boleh membuat record antrean aktif. Data antrean Farinv historis bersifat read-only. Model antrean dual-active tidak diizinkan. Evidence `Apotek-Start` dan `Apotek-Done` Patient Tracker harus mereferensikan `QueueEntryId` canonical.
 
 ## 8. State Machines & Lifecycles
@@ -613,7 +621,7 @@ Prepared, Ready for Pickup, or Patient Called
             -> alasan resolution Collection Window Expired
 ```
 
-Pickup call menyelesaikan antrean Patient Tracker, tetapi tidak menyelesaikan Medication Handover. Final Dispense Review dan Patient Education dilakukan dengan Pasien atau caregiver hadir setelah panggilan tersebut. Pharmacist memverifikasi penerima secara operasional selama interaksi loket itu; verifikasi bukan langkah lifecycle yang ditegakkan sistem. Sistem boleh secara opsional mencatat nomor telepon penerima dan hubungan sebagai referensi. Konsekuensi komersial yang berlaku bergantung pada payer. Pasien Umum dapat telah memiliki Sales Invoice yang financially cleared, sedangkan kebijakan BPJS saat ini baru membentuk Sales Invoice bersama Medication Handover yang berhasil.
+Pickup call menyelesaikan antrean Patient Tracker, tetapi tidak menyelesaikan Medication Handover. Final Dispense Review dan Patient Education Acknowledgement dilakukan dengan Pasien atau caregiver hadir setelah panggilan tersebut. Pharmacist memverifikasi penerima secara operasional selama interaksi loket itu; verifikasi bukan langkah lifecycle yang ditegakkan sistem. Sistem boleh secara opsional mencatat nomor telepon penerima dan hubungan sebagai referensi. Patient Education Acknowledgement mencatat waktu edukasi dan Pharmacist penanggung jawab; catatan konseling rinci bersifat opsional. Konsekuensi komersial yang berlaku bergantung pada payer. Pasien Umum dapat telah memiliki Sales Invoice yang financially cleared, sedangkan kebijakan BPJS saat ini baru membentuk Sales Invoice bersama Medication Handover yang berhasil.
 
 ## 9. Domain Events
 
@@ -635,6 +643,7 @@ Pickup call menyelesaikan antrean Patient Tracker, tetapi tidak menyelesaikan Me
 | Medication Prepared | Jumlah obat pada Dispense Order Line menyelesaikan penyiapan fisik. |
 | Final Dispense Review Completed | Dengan Pasien atau caregiver hadir setelah pickup call, Prepared Medication lulus pemeriksaan profesional akhir yang diperlukan. |
 | Final Dispense Review Failed | Prepared Medication gagal dalam pemeriksaan profesional akhir; catatan review immutable ditambahkan dan Dispense Order kembali dari `Prepared` ke `Preparing` untuk dikoreksi. |
+| Patient Education Acknowledged | Pharmacist mengonfirmasi bahwa konseling obat telah diberikan; waktu edukasi dan Pharmacist penanggung jawab dicatat. |
 | Patient Called for Pickup | Staf Apotek memanggil Pasien untuk Medication Handover Rawat Jalan. |
 | Medication Dispensed | Sejumlah obat disediakan secara accountable untuk Pasien. |
 | Medication Handed Over | Obat dipindahkan kepada Pasien atau penerima lain sebagaimana ditentukan secara operasional oleh Pharmacist. |
