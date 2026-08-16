@@ -134,7 +134,7 @@ A Resep does not become a Sales Order. A completed professional decision authori
 | Dispensing Temporary Custody | Medication quantity held in Dispensing Temporary Unit after Dispensing Started and before Medication Handover or No Show return. |
 | Medication Dispense | The accountable fact that a quantity of medication was actually supplied for a Patient. |
 | Medication Handover | The accountable transfer of medication to an Authorized Recipient. |
-| Authorized Recipient | A verified Patient, caregiver, practitioner, ward, or other party permitted to receive medication for the Patient. |
+| Authorized Recipient | The Patient, caregiver, practitioner, ward, or other party to whom medication is handed over. Recipient verification is an operational Pharmacist responsibility and is not system-enforced. |
 | Patient Education | The accountable explanation of medication use, storage, precautions, and other relevant information to the Patient or caregiver. |
 | Fulfilled Quantity | The quantity of a Sales Order Line that reached a successful Medication Dispense outcome. |
 | Partial Prescription Fulfillment | Establishing Sales Order(s) from a subset of prescription lines when Patient Request, Stock Shortage, or Fornas Not Covered applies. |
@@ -223,7 +223,7 @@ Owns the original Resep. Any clarification with the Pharmacist occurs outside th
 
 ### 4.2 Pharmacist
 
-Owns Hasil Telaah Resep, Medication Substitution authorized during Telaah Resep, Final Dispense Review, Authorized Recipient verification, and applicable Patient Education. The Pharmacist does not own administrative outpatient queue calling. Medication Substitution authority ends when the Sales Order is established.
+Owns Hasil Telaah Resep, Medication Substitution authorized during Telaah Resep, Final Dispense Review, operational Authorized Recipient verification, and applicable Patient Education. Authorized Recipient verification is not a system-enforced gate. The Pharmacist does not own administrative outpatient queue calling. Medication Substitution authority ends when the Sales Order is established.
 
 ### 4.3 Pharmacy Staff
 
@@ -279,7 +279,7 @@ Represents the actual medication and quantity supplied for a Patient, including 
 
 ### 5.6 Medication Handover
 
-Represents transfer to an Authorized Recipient, including recipient verification, handover time, destination when applicable, and Patient Education responsibility.
+Represents transfer of medication at handover time, including destination when applicable and Patient Education responsibility. Optional recipient phone number and relationship to the Patient may be recorded for reference only and do not prove identity or legal authorization.
 
 ### 5.7 Outpatient Queue Mapping
 
@@ -403,7 +403,7 @@ Outpatient Queue Mapping is an active relationship to an externally owned Pharma
 - **BR-APT-034** — Medication Preparation and Compounding shall use an active Dispense Order as their authority.
 - **BR-APT-035** — Prepared Medication shall complete Final Dispense Review before Medication Handover.
 - **BR-APT-036** — A Medication Dispense shall not exceed the unresolved quantity of its Dispense Order Line.
-- **BR-APT-037** — Medication Handover shall identify an Authorized Recipient and its effective business time.
+- **BR-APT-037** — Medication Handover shall record its effective business time. Authorized Recipient verification is an operational responsibility of the dispensing Pharmacist and shall not be system-enforced. The system may optionally record recipient phone number and relationship to the Patient for reference only.
 - **BR-APT-038** — Ward Delivery shall not be treated as Medication Administration.
 - **BR-APT-039** — Medication Administration shall not be inferred from Sales Invoice, Remove Stock, Medication Dispense, or Ward Delivery.
 - **BR-APT-096** — Each Final Dispense Review attempt shall append an immutable Final Dispense Review Record to its Dispense Order. A failed review shall record its reason, responsible Pharmacist, effective business time, and affected quantity, shall return the Dispense Order from `Prepared` to `Preparing`, and shall prohibit Medication Handover. After correction, the Dispense Order shall return to `Prepared` and undergo a new Final Dispense Review; only the latest review record with a passed outcome may transition it to `Reviewed` and authorize Medication Handover.
@@ -450,6 +450,9 @@ Outpatient Queue Mapping is an active relationship to an externally owned Pharma
 - **BR-APT-126** — BHP shall be treated as a standard catalog item and may appear as a sales line. BHP shall not be represented as a free-form invoice item.
 - **BR-APT-127** — Item-specific charges, including packaging and compounding fees, shall be recorded as line-level charges on the applicable sales line.
 - **BR-APT-128** — Transaction-wide adjustments, including rounding, shall be recorded as invoice-level charges on the Sales Invoice.
+- **BR-APT-129** — Authorized Recipient verification shall remain an operational responsibility of the dispensing Pharmacist and shall not be system-enforced.
+- **BR-APT-130** — During Medication Handover, the system may optionally record recipient phone number and relationship to the Patient for reference only. Recorded recipient information shall not constitute identity proof, legal authorization, or a workflow gate.
+- **BR-APT-131** — The system shall not require identity validation, legal relationship verification, document capture, or an authorization workflow as Medication Handover recipient evidence.
 
 ### 7.7 Completion and history
 
@@ -477,7 +480,7 @@ Outpatient Queue Mapping is an active relationship to an externally owned Pharma
 - **BR-APT-074** — BPJS Medication Preparation may begin when Outpatient Queue Mapping, an applicable Dispense Order, Coverage Clearance, and Dispense Authorized are satisfied; an existing Sales Invoice shall not be a prerequisite.
 - **BR-APT-075** — For the current outpatient BPJS policy, the Sales Invoice shall be established only as part of successfully confirmed Medication Handover; Sales Invoice establishment and handover completion shall form one accountable business outcome.
 - **BR-APT-076** — Pharmacy Staff shall call the Patient for outpatient pickup after every applicable Dispense Order in the coordinated pickup reaches `Prepared`. The Pharmacist shall then perform Final Dispense Review with the Patient or caregiver present before Medication Handover.
-- **BR-APT-077** — During the same counter interaction after the pickup call, the Pharmacist shall verify the Authorized Recipient, complete Final Dispense Review, provide applicable Patient Education, and only then complete outpatient Medication Handover.
+- **BR-APT-077** — During the same counter interaction after the pickup call, the Pharmacist shall operationally verify the recipient, complete Final Dispense Review, provide applicable Patient Education, and only then complete outpatient Medication Handover. Recipient verification shall not be a system-enforced gate.
 - **BR-APT-078** — Successful outpatient Medication Handover shall complete the applicable Dispense Order quantity and request Remove Stock from Dispensing Temporary Unit through Stock Ledger.
 - **BR-APT-079** — A BPJS No-Show before Medication Handover shall not establish or cancel a Sales Invoice. An authorized manual uncollected-medication resolution shall make the affected Dispense Order `Expired`, request Stock Mutasi from Dispensing Temporary Unit back to Pharmacy Unit when applicable, and allow the Sales Order to become `Resolved` with reason `Collection Window Expired` only after every accepted quantity and commercial consequence has a final outcome.
 - **BR-APT-080** — A General Patient No-Show after payment shall use the same authorized manual uncollected-medication resolution for the fulfillment consequence, but its Sales Order shall remain `Active` until Tata Rekening or the responsible financial authority supplies the required final Credit Note, Refund, or other accountable commercial outcome.
@@ -606,10 +609,9 @@ This relationship associates pharmacy demand with an externally owned Pharmacy Q
 Prepared
   -> Ready for Pickup
        -> Patient Called
-            -> Recipient Verified
-                 -> Final Review Completed
-                      -> Education Provided
-                           -> Handed Over
+            -> Final Review Completed
+                 -> Education Provided
+                      -> Handed Over
 
 Prepared, Ready for Pickup, or Patient Called
   -> No-Show
@@ -618,7 +620,7 @@ Prepared, Ready for Pickup, or Patient Called
             -> Collection Window Expired resolution reason
 ```
 
-The pickup call ends the Patient Tracker queue but does not complete Medication Handover. Final Dispense Review, Authorized Recipient verification, and Patient Education occur with the Patient or caregiver present after that call. The applicable commercial consequence is payer-specific. A General Patient may already have a financially cleared Sales Invoice, while the current BPJS policy establishes its Sales Invoice only with successful Medication Handover.
+The pickup call ends the Patient Tracker queue but does not complete Medication Handover. Final Dispense Review and Patient Education occur with the Patient or caregiver present after that call. The Pharmacist operationally verifies the recipient during that counter interaction; verification is not a system-enforced lifecycle step. The system may optionally record recipient phone number and relationship for reference. The applicable commercial consequence is payer-specific. A General Patient may already have a financially cleared Sales Invoice, while the current BPJS policy establishes its Sales Invoice only with successful Medication Handover.
 
 ## 9. Domain Events
 
@@ -642,7 +644,7 @@ The pickup call ends the Patient Tracker queue but does not complete Medication 
 | Final Dispense Review Failed | Prepared Medication failed its final professional review; an immutable review record was appended and the Dispense Order returned from `Prepared` to `Preparing` for correction. |
 | Patient Called for Pickup | Pharmacy Staff called the Patient for outpatient Medication Handover. |
 | Medication Dispensed | An accountable medication quantity was supplied for the Patient. |
-| Medication Handed Over | Medication was transferred to an Authorized Recipient. |
+| Medication Handed Over | Medication was transferred to the Patient or other recipient as determined operationally by the Pharmacist. |
 | Outpatient No-Show Recorded | A Patient did not collect medication within the applicable outpatient service limit. |
 | Medication Shortage Identified | Available stock could not support the intended fulfillment quantity. |
 | Medication Substitution Authorized | An accountable authority approved replacement of the requested medication. |

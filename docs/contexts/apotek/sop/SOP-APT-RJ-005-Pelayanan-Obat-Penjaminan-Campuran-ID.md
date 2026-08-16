@@ -24,7 +24,7 @@ Memberikan langkah yang sama bagi petugas ketika Fornas mengklasifikasikan sebag
 | Staf Apotek | Petugas | Membentuk Sales Order BPJS untuk baris Covered dan Patient-Pay Sales Order independen untuk baris Not Covered, menyampaikan jumlah yang harus dibayar Pasien, mencatat transaksi yang disetujui, menyiapkan obat yang sudah boleh diproses, dan memanggil Pasien. |
 | Kepala Apotek | Petugas | Menyetujui penanganan manual untuk obat yang sudah disiapkan tetapi tidak diambil Pasien. |
 | Kasir atau Sistem Pembayaran | Petugas atau subsistem | Menerima pembayaran dan mengirimkan informasi bahwa faktur Patient-Pay telah lunas. |
-| Apoteker | Petugas | Memeriksa penerima yang berhak, melakukan pemeriksaan akhir obat, dan memberikan edukasi kepada Pasien. |
+| Apoteker | Petugas | Memeriksa penerima secara operasional, melakukan pemeriksaan akhir obat, dan memberikan edukasi kepada Pasien. Pemeriksaan penerima tidak ditegakkan sistem. |
 | Sistem SEP dan Fornas | Subsistem | Mengklasifikasikan setiap baris resep sebagai Covered atau Not Covered dan menyediakan keabsahan SEP. |
 | Sistem Apotek | Subsistem | Menyimpan Sales Order independen, faktur sesuai jalur payer, dan evaluasi Dispense Authorized per baris. |
 | Sistem Antrian Pasien | Subsistem | Mencatat satu `ServedAt` dan satu `DoneAt` untuk antrian yang sama. |
@@ -54,7 +54,7 @@ Memberikan langkah yang sama bagi petugas ketika Fornas mengklasifikasikan sebag
 11. Saat penyiapan obat pertama dimulai, **Sistem Apotek** mencatat `Medication Preparation Started`. **Sistem Antrian Pasien** mengubah antrian menjadi `In Service` dan mencatat satu `ServedAt`.
 12. **Sistem Apotek** menampilkan setiap tugas penyiapan obat yang akan diserahkan sebagai `Prepared` atau dengan catatan alasan yang jelas bila obat tidak dapat diserahkan.
 13. **Staf Apotek** melakukan satu kali panggilan agar Pasien mengambil obat. **Sistem Antrian Pasien** mengubah antrian yang sama menjadi `Done` dan mencatat satu `DoneAt`.
-14. Saat Pasien atau Keluarga Pasien hadir, **Apoteker** memeriksa penerima yang berhak, melakukan pemeriksaan akhir obat, dan mencatat edukasi yang perlu diberikan.
+14. Saat Pasien atau Keluarga Pasien hadir, **Apoteker** memeriksa penerima secara operasional, melakukan pemeriksaan akhir obat, dan mencatat edukasi yang perlu diberikan. Apoteker boleh secara opsional mencatat nomor telepon penerima dan hubungan dengan Pasien sebagai referensi.
 15. Setelah mendapat persetujuan **Apoteker**, **Staf Apotek** menyerahkan obat secara fisik.
 16. Ketika obat Sales Order BPJS berhasil diserahkan, **Sistem Apotek** membuat faktur BPJS. Aplikasi juga mencatat obat yang diberikan dan diserahkan untuk seluruh jumlah obat, serta tetap memisahkan kedua Sales Order.
 17. **Sistem Persediaan** mengirimkan catatan Remove Stock. **Sistem Apotek** menampilkan perkembangan akhir tugas penyiapan obat dan masing-masing Sales Order.
@@ -92,12 +92,12 @@ Memberikan langkah yang sama bagi petugas ketika Fornas mengklasifikasikan sebag
 
 1. Baris Covered dan Not Covered tetap pada Sales Order yang independen.
 2. Faktur Pasien Umum yang sudah lunas dan faktur BPJS yang dibuat saat obat diserahkan tampil terpisah dan terhubung ke Sales Order masing-masing.
-3. Satu kali penyerahan obat dapat mencatat seluruh jumlah obat yang berlaku dan penerima yang berhak.
+3. Satu kali penyerahan obat dapat mencatat seluruh jumlah obat yang berlaku. Nomor telepon penerima dan hubungan dengan Pasien boleh dicatat secara opsional sebagai referensi.
 4. Setiap Sales Order berstatus `Resolved`, atau tetap `Active` dengan masalah yang belum selesai ditampilkan secara jelas.
 
 ## 7. Referensi
 
-- [Domain Pelayanan Obat](../apotek-domain-id.md), khususnya `BR-APT-011`, `BR-APT-015`, `BR-APT-020`–`BR-APT-028`, `BR-APT-040`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-070`–`BR-APT-078`, `BR-APT-090`–`BR-APT-096`, `BR-APT-108`, dan `BR-APT-119`–`BR-APT-124`.
+- [Domain Pelayanan Obat](../apotek-domain-id.md), khususnya `BR-APT-011`, `BR-APT-015`, `BR-APT-020`–`BR-APT-028`, `BR-APT-040`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-070`–`BR-APT-078`, `BR-APT-090`–`BR-APT-096`, `BR-APT-108`, `BR-APT-119`–`BR-APT-124`, dan `BR-APT-129`–`BR-APT-131`.
 - [Alur Kerja Pelayanan Obat Rawat Jalan](../outpatient-apotek-workflow-id.md), `WF-APT-RJ-005`.
 - [Domain Sistem Antrian Pasien](../../../contexts/pasien-tracker/TRACKER-DOMAIN-ID.md).
 - [Domain Tata Rekening](../../../contexts/TataRekening/02-domain.md).

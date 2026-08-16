@@ -24,7 +24,7 @@ Memberikan langkah yang sama bagi petugas untuk memperoleh persetujuan pembelian
 | Staf Apotek | Petugas | Menyampaikan nilai yang harus dibayar, mencatat transaksi yang disetujui, menyiapkan atau meracik obat setelah tugas penyiapan obat diizinkan, mengoordinasikan kesiapan obat, dan memanggil Pasien untuk mengambil obat. |
 | Kepala Apotek | Petugas | Menyetujui penanganan manual untuk obat yang sudah disiapkan tetapi tidak diambil Pasien. |
 | Kasir atau Sistem Pembayaran | Petugas atau subsistem | Menerima pembayaran dan mengirimkan informasi bahwa tagihan telah lunas. |
-| Apoteker | Petugas | Memeriksa penerima yang berhak, melakukan pemeriksaan akhir obat, dan memberikan edukasi kepada Pasien. |
+| Apoteker | Petugas | Memeriksa penerima secara operasional, melakukan pemeriksaan akhir obat, dan memberikan edukasi kepada Pasien. Pemeriksaan penerima tidak ditegakkan sistem. |
 | Sistem Apotek | Subsistem | Menampilkan tagihan dan nilai yang harus dibayar, mencatat faktur serta status pembayaran, memantau penyiapan obat, dan mencatat obat yang diberikan serta diserahkan. |
 | Sistem Antrian Pasien | Subsistem | Mencatat `ServedAt` saat penyiapan obat dimulai dan `DoneAt` saat Pasien dipanggil untuk mengambil obat. |
 | Sistem Persediaan | Subsistem | Menyediakan hasil pemesanan, pengeluaran, dan keputusan pengembalian stok. |
@@ -52,8 +52,8 @@ Memberikan langkah yang sama bagi petugas untuk memperoleh persetujuan pembelian
 11. **Staf Apotek** menyelesaikan penyiapan atau peracikan obat dan mencatatnya. **Sistem Apotek** menampilkan tugas penyiapan obat dengan status `Prepared`.
 12. **Staf Apotek** memastikan setiap tugas penyiapan obat yang akan diserahkan sudah berstatus `Prepared` atau sudah memiliki catatan alasan yang jelas bila obat tidak dapat diserahkan.
 13. **Staf Apotek** melakukan satu kali panggilan agar Pasien mengambil obat. **Sistem Antrian Pasien** mengubah antrian menjadi `Done` dan mencatat `DoneAt`.
-14. Saat Pasien atau Keluarga Pasien hadir, **Apoteker** memeriksa penerima yang berhak, melakukan pemeriksaan akhir obat, dan mencatat edukasi yang perlu diberikan. Bila pemeriksaan lulus, **Sistem Apotek** menambahkan catatan pemeriksaan dan menampilkan tugas penyiapan obat berstatus `Reviewed`.
-15. **Sistem Apotek** tidak mengizinkan obat diserahkan sampai pemeriksaan akhir, identitas penerima, dan edukasi yang diperlukan telah dicatat.
+14. Saat Pasien atau Keluarga Pasien hadir, **Apoteker** memeriksa penerima secara operasional, melakukan pemeriksaan akhir obat, dan mencatat edukasi yang perlu diberikan. Bila pemeriksaan lulus, **Sistem Apotek** menambahkan catatan pemeriksaan dan menampilkan tugas penyiapan obat berstatus `Reviewed`. Apoteker boleh secara opsional mencatat nomor telepon penerima dan hubungan dengan Pasien sebagai referensi.
+15. **Sistem Apotek** tidak mengizinkan obat diserahkan sampai pemeriksaan akhir dan edukasi yang diperlukan telah dicatat. Identitas penerima bukan gate sistem.
 16. Setelah mendapat persetujuan **Apoteker**, **Staf Apotek** menyerahkan obat secara fisik. **Sistem Apotek** mencatat obat yang diberikan dan diserahkan untuk setiap jumlah obat yang berlaku.
 17. **Sistem Persediaan** memberikan catatan resmi bahwa stok telah dikeluarkan. Bila seluruh catatan yang diperlukan sudah tersedia, **Sistem Apotek** menampilkan tugas penyiapan obat berstatus `Completed`.
 18. **Sistem Apotek** menampilkan pesanan apotek berstatus `Resolved` hanya setelah seluruh obat yang diterima dan seluruh urusan keuangannya selesai.
@@ -93,14 +93,14 @@ Memberikan langkah yang sama bagi petugas untuk memperoleh persetujuan pembelian
 ## 6. Kriteria Penyelesaian
 
 1. Faktur penjualan terlihat sudah lunas.
-2. Tugas penyiapan obat berstatus `Completed`, dan catatan penyerahan obat mencantumkan penerima yang berhak serta waktu penyerahan.
+2. Tugas penyiapan obat berstatus `Completed`, dan catatan penyerahan obat mencantumkan waktu penyerahan. Nomor telepon penerima dan hubungan dengan Pasien boleh dicatat secara opsional sebagai referensi.
 3. Pengeluaran stok terlihat sebagai catatan resmi dari Sistem Persediaan.
 4. Pesanan apotek berstatus `Resolved`, atau tetap `Active` dengan masalah pelayanan obat atau urusan keuangan yang belum selesai ditampilkan dengan jelas.
 5. Status antrian `Done` bukan bukti bahwa obat sudah diserahkan.
 
 ## 7. Referensi
 
-- [Domain Pelayanan Obat](../apotek-domain-id.md), khususnya `BR-APT-020`–`BR-APT-028`, `BR-APT-033`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-067`–`BR-APT-072`, `BR-APT-076`–`BR-APT-083`, `BR-APT-088`, `BR-APT-095`–`BR-APT-096`, `BR-APT-114`–`BR-APT-118`, dan `BR-APT-125`–`BR-APT-128`.
+- [Domain Pelayanan Obat](../apotek-domain-id.md), khususnya `BR-APT-020`–`BR-APT-028`, `BR-APT-033`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-067`–`BR-APT-072`, `BR-APT-076`–`BR-APT-083`, `BR-APT-088`, `BR-APT-095`–`BR-APT-096`, `BR-APT-114`–`BR-APT-118`, dan `BR-APT-125`–`BR-APT-131`.
 - [Alur Kerja Pelayanan Obat Rawat Jalan](../outpatient-apotek-workflow-id.md), `WF-APT-RJ-003`.
 - [Domain Sistem Antrian Pasien](../../../contexts/pasien-tracker/TRACKER-DOMAIN-ID.md), `BR-TRK-045`, `BR-TRK-045a`, dan `BR-TRK-046`.
 - [Domain Tata Rekening](../../../contexts/TataRekening/02-domain.md).

@@ -16,7 +16,7 @@ The screens are organized by operational role and business responsibility, rathe
 | Telaah Resep | Pharmacist | Outpatient electronic prescriptions and recorded external prescriptions | Professional review result and Sales Order establishment |
 | Pelayanan Penjualan | Pharmacy Staff | Waiting outpatient pharmacy queue entries, with direct lookup for external demand; Exception Worklist for operational resolution | Queue mapping, direct-demand acceptance, payer handling, applicable sale establishment, and exception resolution |
 | Dispensing | Pharmacy Staff | Released or in-progress Dispense Orders, grouped by pharmacy queue entry | Prepared medication and accountable preparation outcome |
-| Serah Obat | Pharmacist, supported by Pharmacy Staff | Queue entries whose intended medication is ready for pickup, filtered by operational pickup categories | Final review, recipient verification, education, dispense, and handover |
+| Serah Obat | Pharmacist, supported by Pharmacy Staff | Queue entries whose intended medication is ready for pickup, filtered by operational pickup categories | Final review, optional recipient reference, education, dispense, and handover |
 
 Supporting operational decisions that do **not** add screens or aggregates:
 
@@ -171,7 +171,7 @@ The workbench supports the following sequence:
 
 1. Pharmacy Staff performs one coordinated pickup call after all intended orders are ready or accountably resolved.
 2. Patient Tracker records `DoneAt` and moves the queue entry to `Done`.
-3. With the Patient or caregiver present, the Pharmacist verifies the Authorized Recipient.
+3. With the Patient or caregiver present, the Pharmacist operationally verifies the recipient. The system may optionally record phone number and relationship for reference; it does not validate identity, legal relationship, documents, or authorization.
 4. The Pharmacist completes a Final Dispense Review for every prepared Dispense Order and records Patient Education.
 5. A passed review moves the Dispense Order to `Reviewed`; a failed review returns only that order to `Preparing` and appends an immutable review record.
 6. After Pharmacist authorization, Pharmacy Staff completes the physical handover.

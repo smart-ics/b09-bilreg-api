@@ -30,7 +30,7 @@ Pharmacy Queue Entry and medication demand
   -> required clearance
   -> Medication Preparation
   -> pickup call
-  -> Pharmacist review, recipient verification, and education
+  -> Pharmacist review, operational recipient check, and education
   -> Medication Handover or accountable non-fulfillment resolution
 ```
 
@@ -81,7 +81,7 @@ The workflow ends when every medication demand mapped to the Pharmacy Queue Entr
 - BPJS coverage from valid SEP and authoritative Fornas mapping.
 - Mixed BPJS-covered and Patient-payable quantities, represented as a BPJS-covered Sales Order and an independent Patient-Pay Sales Order when Fornas classifies some lines as Not Covered.
 - Payment Clearance, Coverage Clearance, and Dispense Authorized.
-- Pharmacy Reserve (Stock Mutasi to Dispensing Temporary Unit), Medication Preparation, pickup calling, Final Dispense Review, Authorized Recipient verification, Patient Education, Medication Dispense, and Medication Handover.
+- Pharmacy Reserve (Stock Mutasi to Dispensing Temporary Unit), Medication Preparation, pickup calling, Final Dispense Review, operational Authorized Recipient verification, Patient Education, Medication Dispense, and Medication Handover.
 - Stock Shortage Handling through a Partial Sales Order of fulfillable lines and Salinan Resep for unfulfilled prescription lines.
 - No-Show and manual uncollected-medication resolution.
 
@@ -104,7 +104,7 @@ The workflow ends when every medication demand mapped to the Pharmacy Queue Entr
 | Patient or Caregiver | Obtains a Queue Number, supplies mapping evidence or a Resep Fisik, gives verbal confirmation when Patient-payable, pays when required, presents for pickup, receives education, and accepts medication when authorized. | Evidence is supplied, confirmation is given or declined, Payment Clearance is obtained, or Medication Handover completes. |
 | Patient Tracker | Owns Pharmacy Queue Entry identity, Queue Number, and queue lifecycle. | `Queue Entry Created`, `Queue Service Started`, or `Queue Service Completed`. |
 | Pharmacy Staff | Performs administrative queue calls, Manual Mapping, records Resep Fisik, accepts or declines Direct Medication Requests, coordinates Sales Order progression, communicates General Patient value, establishes a confirmed Sales Invoice, performs Medication Preparation and Compounding, applies Stock Shortage Handling through a Partial Sales Order and Salinan Resep, and performs the pickup call. | `Outpatient Queue Mapped`, `Sales Order Established`, `Sales Invoice Established`, `Medication Prepared`, or `Patient Called for Pickup`. |
-| Pharmacist | Performs Telaah Resep, authorizes eligible Medication Substitution before Sales Order establishment, verifies the Authorized Recipient, performs Final Dispense Review, and provides Patient Education. | `Telaah Resep Completed`, `Final Dispense Review Completed`, or Medication Handover is authorized to complete. |
+| Pharmacist | Performs Telaah Resep, authorizes eligible Medication Substitution before Sales Order establishment, operationally verifies the recipient, performs Final Dispense Review, and provides Patient Education. Recipient verification is not system-enforced. | `Telaah Resep Completed`, `Final Dispense Review Completed`, or Medication Handover is authorized to complete. |
 | Cashier or Payment Authority | Receives required Patient payment and supplies Payment Clearance. | `Payment Clearance Established`. |
 | SEP and Fornas Authorities | Supply encounter-level SEP validity and item-level BPJS coverage. | `Coverage Clearance Established` for the covered quantity. |
 | Stock Ledger | Owns Stock Availability, Stock Mutasi, Remove Stock, and movement history. | `Stock Transferred to Dispensing Temporary Unit`, `Stock Removed from Dispensing Temporary Unit`, or `Stock Returned to Pharmacy Unit`. |
@@ -134,7 +134,7 @@ These triggers may occur before or after Outpatient Queue Mapping as permitted b
 - Tracker Mapping requires valid evidence that resolves one or more applicable existing Resep; it does not resolve a Direct Medication Request.
 - Manual Mapping requires Pharmacy Staff to identify the Queue Number and applicable demand.
 - Medication Preparation requires an active Dispense Order and payer-appropriate Dispense Authorized.
-- Medication Handover requires a Prepared Medication, Authorized Recipient, successful Final Dispense Review, and applicable Patient Education.
+- Medication Handover requires a Prepared Medication, successful Final Dispense Review, and applicable Patient Education. Recipient verification is the Pharmacist's operational responsibility and is not a system precondition. Optional recipient phone number and relationship may be recorded for reference.
 
 ### 5.4 Blocking conditions
 
@@ -353,7 +353,7 @@ Patient or Caregiver, Pharmacy Staff, Cashier or Payment Authority, Pharmacy Sta
 9. The Pharmacy Staff completes Medication Preparation; the Dispense Order reaches `Prepared` when required dispensing movements are complete. Stock Ledger takes no action at `Prepared`; medication remains in Dispensing Temporary Custody.
 10. When every Dispense Order intended for the coordinated handover is `Prepared` or has an accountable exception outcome, Pharmacy Staff performs the pickup call.
 11. Patient Tracker makes the Pharmacy Queue Entry `Done` and records `DoneAt` at the pickup-call time.
-12. With the Patient or caregiver present, the Pharmacist verifies the Authorized Recipient, completes Final Dispense Review, and provides applicable Patient Education in the same counter interaction. A passed review appends its immutable review record and moves the Dispense Order to `Reviewed`.
+12. With the Patient or caregiver present, the Pharmacist operationally verifies the recipient, completes Final Dispense Review, and provides applicable Patient Education in the same counter interaction. A passed review appends its immutable review record and moves the Dispense Order to `Reviewed`. The system may optionally record recipient phone number and relationship for reference and shall not enforce identity validation.
 13. Apotek records Medication Dispense and completes Medication Handover for each applicable Dispense Order quantity.
 14. Medication Handover completes the Dispense Order quantity and requests Remove Stock from Dispensing Temporary Unit through Stock Ledger.
 15. The Sales Order becomes `Resolved` only when all accepted quantities and commercial consequences have final accountable outcomes.
@@ -377,14 +377,14 @@ Patient or Caregiver, Pharmacy Staff, Cashier or Payment Authority, Pharmacy Sta
 
 #### Outcomes and Postconditions
 
-- Successful completion: Sales Invoice is financially cleared, Dispense Order is `Completed`, Medication Handover identifies the Authorized Recipient, and all quantities remain traceable.
+- Successful completion: Sales Invoice is financially cleared, Dispense Order is `Completed`, Medication Handover records effective time with optional recipient reference, and all quantities remain traceable.
 - Declined purchase: no Sales Invoice exists for the declined proposal.
 - Paid non-fulfillment or No-Show: fulfillment and commercial consequences remain separately accountable; the Sales Order remains `Active` until both are final.
 - Queue `Done` does not prove Medication Handover.
 
 #### Domain References
 
-`BR-APT-020`–`BR-APT-028`, `BR-APT-033`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-067`–`BR-APT-072`, `BR-APT-076`–`BR-APT-083`, `BR-APT-088`, `BR-APT-095`–`BR-APT-096`, `BR-APT-114`–`BR-APT-118`, `BR-APT-125`–`BR-APT-128`; Sales Invoice and Dispense Order lifecycles; `BR-TRK-045`, `BR-TRK-045a`, `BR-TRK-046`.
+`BR-APT-020`–`BR-APT-028`, `BR-APT-033`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-067`–`BR-APT-072`, `BR-APT-076`–`BR-APT-083`, `BR-APT-088`, `BR-APT-095`–`BR-APT-096`, `BR-APT-114`–`BR-APT-118`, `BR-APT-125`–`BR-APT-131`; Sales Invoice and Dispense Order lifecycles; `BR-TRK-045`, `BR-TRK-045a`, `BR-TRK-046`.
 
 #### Domain Events
 
@@ -431,7 +431,7 @@ Patient or Caregiver, Pharmacy Staff, Pharmacist, Patient Tracker, SEP and Forna
 6. The Pharmacy Staff completes Medication Preparation; the Dispense Order reaches `Prepared` when required dispensing movements are complete. Stock Ledger takes no action at `Prepared`; medication remains in Dispensing Temporary Custody.
 7. When every Dispense Order intended for the coordinated handover is `Prepared` or has an accountable exception outcome, Pharmacy Staff performs the pickup call.
 8. Patient Tracker records `DoneAt` and makes the Queue Entry `Done` at the pickup-call time.
-9. With the Patient or caregiver present, the Pharmacist verifies the Authorized Recipient, completes Final Dispense Review, and provides applicable Patient Education in the same counter interaction. A passed review appends its immutable review record and moves the Dispense Order to `Reviewed`.
+9. With the Patient or caregiver present, the Pharmacist operationally verifies the recipient, completes Final Dispense Review, and provides applicable Patient Education in the same counter interaction. A passed review appends its immutable review record and moves the Dispense Order to `Reviewed`. The system may optionally record recipient phone number and relationship for reference and shall not enforce identity validation.
 10. As one accountable business outcome, Apotek establishes the BPJS Sales Invoice and its Sales Invoice Items from the covered Sales Order Line quantities, records Medication Dispense, and completes Medication Handover.
 11. Medication Handover completes each applicable Dispense Order quantity and requests Remove Stock from Dispensing Temporary Unit through Stock Ledger.
 12. The Sales Order becomes `Resolved` only when every accepted quantity and required commercial consequence has a final outcome.
@@ -462,7 +462,7 @@ Patient or Caregiver, Pharmacy Staff, Pharmacist, Patient Tracker, SEP and Forna
 
 #### Domain References
 
-`BR-APT-020`–`BR-APT-026`, `BR-APT-029`–`BR-APT-045`, `BR-APT-066`, `BR-APT-068`–`BR-APT-069`, `BR-APT-073`–`BR-APT-079`, `BR-APT-081`–`BR-APT-083`, `BR-APT-088`, `BR-APT-090`, `BR-APT-095`–`BR-APT-096`, `BR-APT-114`–`BR-APT-118`; `BR-TRK-045`, `BR-TRK-045a`, `BR-TRK-046`.
+`BR-APT-020`–`BR-APT-026`, `BR-APT-029`–`BR-APT-045`, `BR-APT-066`, `BR-APT-068`–`BR-APT-069`, `BR-APT-073`–`BR-APT-079`, `BR-APT-081`–`BR-APT-083`, `BR-APT-088`, `BR-APT-090`, `BR-APT-095`–`BR-APT-096`, `BR-APT-114`–`BR-APT-118`, `BR-APT-129`–`BR-APT-131`; `BR-TRK-045`, `BR-TRK-045a`, `BR-TRK-046`.
 
 #### Domain Events
 
@@ -509,7 +509,7 @@ Patient or Caregiver, Pharmacy Staff, Cashier or Payment Authority, Pharmacist, 
 6. After every quantity intended for the handover has Dispense Authorized from its own path, Pharmacy Staff begins and completes Medication Preparation on each applicable Dispense Order.
 7. The first `Medication Preparation Started` records Patient Tracker `ServedAt`; every intended Dispense Order reaches `Prepared` before pickup.
 8. Pharmacy Staff performs one coordinated pickup call; Patient Tracker records `DoneAt`.
-9. With the Patient or caregiver present, the Pharmacist verifies the Authorized Recipient, completes Final Dispense Review for each Prepared Dispense Order, and provides Patient Education.
+9. With the Patient or caregiver present, the Pharmacist operationally verifies the recipient, completes Final Dispense Review for each Prepared Dispense Order, and provides Patient Education. The system may optionally record recipient phone number and relationship for reference and shall not enforce identity validation.
 10. Apotek establishes the BPJS Sales Invoice only as Medication Handover of the BPJS-covered Sales Order succeeds. The Patient-Pay Sales Invoice already exists and is financially cleared.
 11. Apotek records Medication Dispense and Medication Handover for all applicable quantities and requests Remove Stock from Dispensing Temporary Unit.
 
@@ -538,7 +538,7 @@ Patient or Caregiver, Pharmacy Staff, Cashier or Payment Authority, Pharmacist, 
 
 #### Domain References
 
-`BR-APT-011`, `BR-APT-015`, `BR-APT-020`–`BR-APT-028`, `BR-APT-040`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-070`–`BR-APT-078`, `BR-APT-090`–`BR-APT-096`, `BR-APT-108`, `BR-APT-119`–`BR-APT-124`.
+`BR-APT-011`, `BR-APT-015`, `BR-APT-020`–`BR-APT-028`, `BR-APT-040`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-070`–`BR-APT-078`, `BR-APT-090`–`BR-APT-096`, `BR-APT-108`, `BR-APT-119`–`BR-APT-124`, `BR-APT-129`–`BR-APT-131`.
 
 #### Domain Events
 
@@ -581,7 +581,7 @@ Pharmacy Staff, Pharmacist, Patient or Caregiver, Patient Tracker, Cashier or Pa
 4. The first applicable `Medication Preparation Started` causes Patient Tracker to record one `ServedAt` for the common Queue Entry.
 5. Pharmacy Staff waits until every Dispense Order intended for the pickup is `Prepared` or has an accountable exception outcome.
 6. Pharmacy Staff performs one coordinated pickup call; Patient Tracker records one `DoneAt` for the common Queue Entry.
-7. With the Patient or caregiver present, the Pharmacist verifies the Authorized Recipient, completes Final Dispense Review for each Prepared Medication, and provides consolidated Patient Education while preserving medication-specific instructions. Each passed review appends its immutable review record and moves its Dispense Order to `Reviewed`.
+7. With the Patient or caregiver present, the Pharmacist operationally verifies the recipient, completes Final Dispense Review for each Prepared Medication, and provides consolidated Patient Education while preserving medication-specific instructions. Each passed review appends its immutable review record and moves its Dispense Order to `Reviewed`. The system may optionally record recipient phone number and relationship for reference and shall not enforce identity validation.
 8. Apotek records Medication Dispense and Medication Handover against every applicable Dispense Order and Sales Order separately.
 
 #### Decision and Alternative Flows
@@ -608,7 +608,7 @@ Pharmacy Staff, Pharmacist, Patient or Caregiver, Patient Tracker, Cashier or Pa
 
 #### Domain References
 
-`BR-APT-011`, `BR-APT-015`, `BR-APT-022`, `BR-APT-030`, `BR-APT-056`–`BR-APT-060`, `BR-APT-084`–`BR-APT-088`, `BR-APT-095`–`BR-APT-096`; `BR-TRK-032`, `BR-TRK-035`–`BR-TRK-039`, `BR-TRK-045`, `BR-TRK-045a`.
+`BR-APT-011`, `BR-APT-015`, `BR-APT-022`, `BR-APT-030`, `BR-APT-056`–`BR-APT-060`, `BR-APT-084`–`BR-APT-088`, `BR-APT-095`–`BR-APT-096`, `BR-APT-129`–`BR-APT-131`; `BR-TRK-032`, `BR-TRK-035`–`BR-TRK-039`, `BR-TRK-045`, `BR-TRK-045a`.
 
 #### Domain Events
 
@@ -712,7 +712,7 @@ Pharmacy Supervisor, Pharmacy Staff, Inventory, Tata Rekening, Patient Tracker.
 | General Patient preparation | Cannot begin before Payment Clearance and applicable Sales Invoice evidence satisfy Dispense Authorized. |
 | BPJS preparation | Cannot begin before valid SEP, covered Fornas mapping, and Dispense Authorized. A Sales Invoice is not required. |
 | Pickup call | Occurs only after every Dispense Order intended for that handover is `Prepared` or has an accountable exception outcome. |
-| Final Dispense Review and education | Occur with the Patient or caregiver present after the pickup call and before Medication Handover. |
+| Final Dispense Review and education | Occur with the Patient or caregiver present after the pickup call and before Medication Handover. Recipient verification is operational and not a system timing gate. |
 | BPJS Sales Invoice | Established only with successful Medication Handover. |
 | Collection limit | No numerical value is currently authoritative. An authorized manual uncollected-medication resolution establishes `Collection Window Expired`. |
 
@@ -726,10 +726,10 @@ The `Domain References` section of each workflow specification is the source of 
 |---|---|---|---|---|
 | `WF-APT-RJ-001` | `BR-APT-061`–`BR-APT-065`, `BR-APT-082`, `BR-APT-084`–`BR-APT-087`, `BR-APT-097`; `BR-TRK-026`–`BR-TRK-035`, `BR-TRK-051` | `Unmapped`, `Mapped`, `Waiting` | `Queue Entry Created`, `Outpatient Queue Mapped`, `Queue Entry Identified` | Patient Tracker |
 | `WF-APT-RJ-002` | `BR-APT-001`–`BR-APT-019`, `BR-APT-029`–`BR-APT-034`, `BR-APT-050`, `BR-APT-054`, `BR-APT-061`, `BR-APT-068`, `BR-APT-083`, `BR-APT-086`, `BR-APT-089`, `BR-APT-105`–`BR-APT-124` | `Available`, `Under Review`, `Approved`, `Partially Approved`, `Rejected`, `Established`, `Active` | `Telaah Resep Started`, `Medication Substitution Authorized`, `Telaah Resep Completed`, `Direct Medication Request Accepted`, `Sales Order Established`, `Dispense Order Established` | CPOE, Medication Catalog, Inventory |
-| `WF-APT-RJ-003` | `BR-APT-020`–`BR-APT-028`, `BR-APT-033`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-067`–`BR-APT-072`, `BR-APT-076`–`BR-APT-083`, `BR-APT-088`, `BR-APT-095`–`BR-APT-096`, `BR-APT-114`–`BR-APT-118`, `BR-APT-125`–`BR-APT-128`; `BR-TRK-045`, `BR-TRK-045a`, `BR-TRK-046` | `Established`, `Issued`, `Financially Cleared`, `Released`, `Preparing`, `Prepared`, `Reviewed`, `Completed`, `In Service`, `Done` | `Sales Invoice Established`, `Payment Clearance Established`, `Medication Preparation Started`, `Medication Prepared`, `Patient Called for Pickup`, `Final Dispense Review Completed`, `Final Dispense Review Failed`, `Medication Handed Over` | Patient Tracker, Payment, Inventory, Tata Rekening |
-| `WF-APT-RJ-004` | `BR-APT-020`–`BR-APT-026`, `BR-APT-029`–`BR-APT-045`, `BR-APT-066`, `BR-APT-068`–`BR-APT-069`, `BR-APT-073`–`BR-APT-079`, `BR-APT-081`–`BR-APT-083`, `BR-APT-088`, `BR-APT-090`, `BR-APT-095`–`BR-APT-096`, `BR-APT-114`–`BR-APT-118`; `BR-TRK-045`, `BR-TRK-045a`, `BR-TRK-046` | `Awaiting Clearance`, `Released`, `Preparing`, `Prepared`, `Reviewed`, `Completed`, `In Service`, `Done` | `Coverage Clearance Established`, `Medication Preparation Started`, `Patient Called for Pickup`, `Final Dispense Review Failed`, `Sales Invoice Established`, `Medication Handed Over` | Patient Tracker, SEP, Fornas, Inventory, Tata Rekening |
-| `WF-APT-RJ-005` | `BR-APT-011`, `BR-APT-015`, `BR-APT-020`–`BR-APT-028`, `BR-APT-040`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-070`–`BR-APT-078`, `BR-APT-090`–`BR-APT-096`, `BR-APT-108`, `BR-APT-119`–`BR-APT-124` | Independent BPJS-covered and Patient-Pay Sales Order states | `Coverage Clearance Established`, `Payment Clearance Established`, `Sales Order Established`, `Final Dispense Review Failed`, `Sales Invoice Established`, `Medication Handed Over` | SEP, Fornas, Payment, Tata Rekening |
-| `WF-APT-RJ-006` | `BR-APT-011`, `BR-APT-015`, `BR-APT-022`, `BR-APT-030`, `BR-APT-056`–`BR-APT-060`, `BR-APT-084`–`BR-APT-088`, `BR-APT-095`–`BR-APT-096`; `BR-TRK-032`, `BR-TRK-035`–`BR-TRK-039`, `BR-TRK-045`, `BR-TRK-045a` | Per-demand authoritative states; one queue `Waiting` → `In Service` → `Done` | `Outpatient Queue Mapped`, `Medication Preparation Started`, `Patient Called for Pickup`, `Final Dispense Review Failed`, `Medication Handed Over` | Patient Tracker |
+| `WF-APT-RJ-003` | `BR-APT-020`–`BR-APT-028`, `BR-APT-033`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-067`–`BR-APT-072`, `BR-APT-076`–`BR-APT-083`, `BR-APT-088`, `BR-APT-095`–`BR-APT-096`, `BR-APT-114`–`BR-APT-118`, `BR-APT-125`–`BR-APT-131`; `BR-TRK-045`, `BR-TRK-045a`, `BR-TRK-046` | `Established`, `Issued`, `Financially Cleared`, `Released`, `Preparing`, `Prepared`, `Reviewed`, `Completed`, `In Service`, `Done` | `Sales Invoice Established`, `Payment Clearance Established`, `Medication Preparation Started`, `Medication Prepared`, `Patient Called for Pickup`, `Final Dispense Review Completed`, `Final Dispense Review Failed`, `Medication Handed Over` | Patient Tracker, Payment, Inventory, Tata Rekening |
+| `WF-APT-RJ-004` | `BR-APT-020`–`BR-APT-026`, `BR-APT-029`–`BR-APT-045`, `BR-APT-066`, `BR-APT-068`–`BR-APT-069`, `BR-APT-073`–`BR-APT-079`, `BR-APT-081`–`BR-APT-083`, `BR-APT-088`, `BR-APT-090`, `BR-APT-095`–`BR-APT-096`, `BR-APT-114`–`BR-APT-118`, `BR-APT-129`–`BR-APT-131`; `BR-TRK-045`, `BR-TRK-045a`, `BR-TRK-046` | `Awaiting Clearance`, `Released`, `Preparing`, `Prepared`, `Reviewed`, `Completed`, `In Service`, `Done` | `Coverage Clearance Established`, `Medication Preparation Started`, `Patient Called for Pickup`, `Final Dispense Review Failed`, `Sales Invoice Established`, `Medication Handed Over` | Patient Tracker, SEP, Fornas, Inventory, Tata Rekening |
+| `WF-APT-RJ-005` | `BR-APT-011`, `BR-APT-015`, `BR-APT-020`–`BR-APT-028`, `BR-APT-040`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-070`–`BR-APT-078`, `BR-APT-090`–`BR-APT-096`, `BR-APT-108`, `BR-APT-119`–`BR-APT-124`, `BR-APT-129`–`BR-APT-131` | Independent BPJS-covered and Patient-Pay Sales Order states | `Coverage Clearance Established`, `Payment Clearance Established`, `Sales Order Established`, `Final Dispense Review Failed`, `Sales Invoice Established`, `Medication Handed Over` | SEP, Fornas, Payment, Tata Rekening |
+| `WF-APT-RJ-006` | `BR-APT-011`, `BR-APT-015`, `BR-APT-022`, `BR-APT-030`, `BR-APT-056`–`BR-APT-060`, `BR-APT-084`–`BR-APT-088`, `BR-APT-095`–`BR-APT-096`, `BR-APT-129`–`BR-APT-131`; `BR-TRK-032`, `BR-TRK-035`–`BR-TRK-039`, `BR-TRK-045`, `BR-TRK-045a` | Per-demand authoritative states; one queue `Waiting` → `In Service` → `Done` | `Outpatient Queue Mapped`, `Medication Preparation Started`, `Patient Called for Pickup`, `Final Dispense Review Failed`, `Medication Handed Over` | Patient Tracker |
 | `WF-APT-RJ-007` | `BR-APT-018`–`BR-APT-019`, `BR-APT-027`, `BR-APT-045`–`BR-APT-047`, `BR-APT-052`–`BR-APT-060`, `BR-APT-069`, `BR-APT-078`–`BR-APT-080`, `BR-APT-095` | `Expired`, `Active`, `Resolved` | `Outpatient No-Show Recorded`, `Dispense Order Expired`, `Unfulfilled Medication Recorded`, `Medication Returned`, `Sales Invoice Credited`, `Refund Required`, `Sales Order Resolved` | Inventory, Tata Rekening |
 
 Related canonical artifacts:

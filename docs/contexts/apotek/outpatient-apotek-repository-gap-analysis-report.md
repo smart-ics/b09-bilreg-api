@@ -23,20 +23,20 @@ Current repository state:
 - The generic queue enum already complies with ADR-APT-001, but current F-09 event triggers and the frontend's queue states conflict with the canonical workflow.
 - Existing Patient Tracker, Tata Rekening, Stock Ledger, CPOE, Fornas, medication catalog, query, and UI-shell capabilities are reusable only through explicit extensions and adapters.
 
-The architecture is not ready for implementation review until the blocking decisions in section 4 are resolved. All blocking architecture gaps (BA-01 through BA-09) are now resolved; remaining gates are business clarification (BC-01, BC-03, BC-05 through BC-07, BC-11 through BC-13).
+The architecture is not ready for implementation review until the blocking decisions in section 4 are resolved. All blocking architecture gaps (BA-01 through BA-09) are now resolved; remaining gates are business clarification (BC-01, BC-03, BC-05, BC-07, BC-11 through BC-13).
 
 ## 2. Classification summary
 
 | Classification | Count | Review meaning |
 |---|---:|---|
 | Blocking Architecture Gap | 0 | A structural or ownership decision is unresolved; implementing around it would create incompatible sources of truth or unsafe cross-context behavior. |
-| Business Clarification Gap | 8 | A policy, authority, threshold, or accountable outcome is not sufficiently defined. |
-| Resolved (Business Clarification) | 6 | BC-02, BC-04, BC-08, BC-09, BC-10, and BC-14 ratified; artifacts updated. |
+| Business Clarification Gap | 7 | A policy, authority, threshold, or accountable outcome is not sufficiently defined. |
+| Resolved (Business Clarification) | 7 | BC-02, BC-04, BC-06, BC-08, BC-09, BC-10, and BC-14 ratified; artifacts updated. |
 | Existing Capability Extension | 9 | A relevant capability exists but its present contract or semantics do not satisfy Apotek. |
 | Missing Implementation | 15 | The design is sufficiently clear, but no conforming implementation exists. |
 | Technical Debt | 11 | Existing code or documentation embodies legacy, misleading, coupled, or unverified behavior. |
 | Resolved (Blocking Architecture) | 9 | BA-01 through BA-09 ratified; artifacts updated. |
-| **Total open** | **43** | Each open finding has one primary classification. |
+| **Total open** | **42** | Each open finding has one primary classification. |
 
 ## 3. Baseline and evidence
 
@@ -116,7 +116,7 @@ The architecture is not ready for implementation review until the blocking decis
 
 **Evidence.** `apotek-domain.md:541-559`; screen design `:151-179`.
 
-**Decision.** Pickup/handover categories are not aggregate lifecycle states. They are projection/worklist categories only. `DispenseOrder` remains the authoritative aggregate lifecycle. Operational milestones such as Patient Called, Recipient Verified, Final Review Completed, Education Provided, and Medication Handed Over are process facts/events, not aggregate states. Worklist categories (`Ready for Pickup`, `Ready for Review`, `Ready for Handover`, `Completed`) are derived projections used for operational organization and prioritization.
+**Decision.** Pickup/handover categories are not aggregate lifecycle states. They are projection/worklist categories only. `DispenseOrder` remains the authoritative aggregate lifecycle. Operational milestones such as Patient Called, Final Review Completed, Education Provided, and Medication Handed Over are process facts/events, not aggregate states. Recipient verification is a Pharmacist operational check and is not a process fact, aggregate state, or worklist category (BC-06). Worklist categories (`Ready for Pickup`, `Ready for Review`, `Ready for Handover`, `Completed`) are derived projections used for operational organization and prioritization.
 
 **Rationale.** A single authoritative lifecycle in `DispenseOrder` avoids contradictory transitions and keeps review failure, multi-order pickup, and post-`Done` handover unambiguous. Serah Obat organization is served by projections derived from aggregate facts and events, not a parallel state machine.
 
@@ -192,7 +192,7 @@ The architecture is not ready for implementation review until the blocking decis
 
 **Dispense Authorized.** Dispense Authorized is not an aggregate, entity, source of truth, or transaction boundary. It is a policy evaluation result derived from financial and coverage evidence. It is required before Medication Preparation Started and Dispensing. It is not required for Medication Handover.
 
-**Medication Handover gates.** Medication Handover is governed separately by: Medication Prepared; Recipient Verified; Final Dispense Review passed; Patient Education completed when applicable.
+**Medication Handover gates.** Medication Handover is governed separately by: Medication Prepared; Final Dispense Review passed; Patient Education completed when applicable. Authorized Recipient verification is a Pharmacist operational responsibility and is not a system-enforced gate (BC-06).
 
 **BPJS invoice and handover.** BPJS Sales Invoice creation and Medication Handover do not require a distributed transaction or special transaction boundary. The BA-07 Integration Task Table architecture remains sufficient for cross-context coordination.
 
@@ -297,13 +297,17 @@ The architecture is not ready for implementation review until the blocking decis
 
 ### BC-06 — Authorized Recipient verification evidence
 
+**Status:** Resolved (2026-08-16)
+
 **Gap.** Recipient verification is mandatory, but acceptable recipient types, identifiers, proxy authority, and failure handling are not defined.
 
-**Recommended decision.** Define required fields and validation by recipient type, including relationship/authority evidence and refusal/failure outcomes.
-
-**Rationale.** A handover timestamp alone does not prove accountable transfer.
-
 **Evidence.** `apotek-domain.md:122-129`, `374-379`; workflow `:128-136`.
+
+**Decision.** Authorized recipient verification remains an operational responsibility of the dispensing Pharmacist and is not system-enforced. During Medication Handover, the system may optionally record recipient information (phone number and relationship to the Patient) for reference purposes only. No identity validation, legal relationship verification, document capture, or authorization workflow is required.
+
+**Rationale.** Professional handover accountability stays with the Pharmacist at the counter. Modeling identity proof, proxy authority, or document capture as system gates would invent an authorization workflow the organization does not operate. Optional phone number and relationship are reference notes only and do not prove legal entitlement.
+
+**Ratified in.** `apotek-domain.md` (`BR-APT-037`, `BR-APT-077`, `BR-APT-129`–`BR-APT-131`); `outpatient-apotek-workflow.md`; `outpatient-apotek-screen-and-aggregate-design.md` §3.4; `sop/SOP-APT-RJ-003-*`, `sop/SOP-APT-RJ-004-*`, `sop/SOP-APT-RJ-005-*`, `sop/SOP-APT-RJ-006-*`.
 
 ### BC-07 — Minimum Patient Education record
 
@@ -497,7 +501,7 @@ Only fulfillable prescription lines may be included in the Sales Order. Unfulfil
 - Patient Tracker `QueueEntry` is the sole canonical outpatient-pharmacy queue identity; legacy Farinv queue is read-only and must not create active records (BA-01).
 - Patient Tracker owns queue lifecycle; Pharmacy owns pharmacy workflow. First Medication Preparation Started causes Queue `ServedAt` / `InService`; coordinated Pickup Call causes Queue `DoneAt` / `Done`. No further architecture decision is required for the Pharmacy-to-Tracker milestone contract (BA-02).
 - `OutpatientQueueMapping` is a navigation/association mechanism only, not an aggregate root. It does not own lifecycle, workflow state, or transactional consistency. Queue identity remains in Patient Tracker; medication demand lifecycle remains in Pharmacy aggregates (BA-03).
-- Pickup/handover categories are projection/worklist categories only, not aggregate lifecycle states. `DispenseOrder` remains authoritative; operational milestones are process facts/events; worklist categories (`Ready for Pickup`, `Ready for Review`, `Ready for Handover`, `Completed`) are derived projections (BA-04).
+- Pickup/handover categories are projection/worklist categories only, not aggregate lifecycle states. `DispenseOrder` remains authoritative; operational milestones are process facts/events; worklist categories (`Ready for Pickup`, `Ready for Review`, `Ready for Handover`, `Completed`) are derived projections. Recipient verification is a Pharmacist operational check, not a process fact or worklist category (BA-04, BC-06).
 - Legacy DU and Sales Invoice are independent features that may coexist during transition with no dual-write. Each owns its own workflow and billing/stock paths; unified sales reporting is a read-only adapter aggregating both sources (BA-05).
 - A canonical Prescription Contract is shared by Legacy Resep and CPOE; pharmacy consumes the contract via a Prescription Snapshot at intake. Source revisions are detected but do not auto-modify snapshots; staff review tasks handle changes (BA-06).
 - Cross-context integration uses an Integration Task Table: transactional, retryable, idempotent, and reconcile-able. Business transaction and task creation commit atomically; workers process asynchronously. No distributed transaction, message broker, or transactional outbox is required (BA-07).
@@ -518,10 +522,11 @@ Only fulfillable prescription lines may be included in the Sales Order. Unfulfil
 - Outpatient Pharmacy does not support Backorder, alternate stock source selection, fulfillment routing, or inter-pharmacy sourcing. Shortage is resolved immediately by placing only fulfillable lines on the Sales Order and issuing Salinan Resep for unfulfilled lines; no outstanding fulfillment obligation is retained (BC-10).
 - Fornas classifies lines as Covered or Not Covered. Covered lines follow BPJS fulfillment with coverage evidence sufficient for Dispense Authorized. Not Covered lines are not auto-cancelled; they may form an independent Patient-Pay Sales Order requiring self-pay financial clearance before Dispense Authorized. One Prescription may yield both a BPJS-covered Sales Order and a Patient-Pay Sales Order (BC-14).
 - Invoice commercial structure follows the legacy sales model. Non-medication components are not free-form invoice items. BHP is a catalog sales line. Item-specific charges (packaging, compounding) are line-level charges; transaction-wide adjustments (rounding) are invoice-level charges. No additional invoice component model is introduced (BC-08).
+- Authorized Recipient verification is an operational Pharmacist responsibility and is not system-enforced. Medication Handover may optionally record recipient phone number and relationship for reference only. The system shall not require identity validation, legal relationship verification, document capture, or an authorization workflow (BC-06).
 
 ### 9.2 Decisions still required before architecture approval
 
-Architecture approval requires business ratification of BC-01, BC-03, BC-05 through BC-07, and BC-11 through BC-13. BA-01 through BA-09, BC-02, BC-04, BC-08, BC-09, BC-10, and BC-14 are resolved. These are decision gates, not delivery steps. The remaining Existing Capability Extension, Missing Implementation, and Technical Debt findings can then be evaluated against those ratified boundaries without inventing new sources of truth.
+Architecture approval requires business ratification of BC-01, BC-03, BC-05, BC-07, and BC-11 through BC-13. BA-01 through BA-09, BC-02, BC-04, BC-06, BC-08, BC-09, BC-10, and BC-14 are resolved. These are decision gates, not delivery steps. The remaining Existing Capability Extension, Missing Implementation, and Technical Debt findings can then be evaluated against those ratified boundaries without inventing new sources of truth.
 
 ### 9.3 Overall classification
 

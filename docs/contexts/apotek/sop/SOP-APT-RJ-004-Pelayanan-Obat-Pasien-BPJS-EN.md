@@ -21,7 +21,7 @@ Provide a repeatable procedure for clearing and preparing BPJS-covered outpatien
 | Patient or Caregiver | Human | Presents for pickup, receives education, and accepts medication when authorized. |
 | Pharmacy Staff | Human | Verifies the covered work projection, prepares or compounds medication under a released Dispense Order, coordinates readiness, and performs the pickup call. |
 | Pharmacy Supervisor | Human | Authorizes the manual uncollected-medication resolution when the Patient does not collect prepared medication. |
-| Pharmacist | Human | Verifies the recipient, completes Final Dispense Review, and provides Patient Education. |
+| Pharmacist | Human | Operationally verifies the recipient, completes Final Dispense Review, and provides Patient Education. Recipient verification is not system-enforced. |
 | SEP and Fornas Authorities | Subsystem | Supply encounter-level SEP validity and item-level Fornas coverage. |
 | Pharmacy System | Subsystem | Records Coverage and Fulfillment Clearance, tracks preparation, and atomically records the BPJS Sales Invoice and successful handover outcome. |
 | Patient Tracker | Subsystem | Records `ServedAt` at preparation start and `DoneAt` at the pickup call. |
@@ -46,8 +46,8 @@ Provide a repeatable procedure for clearing and preparing BPJS-covered outpatien
 7. **Pharmacy Staff** completes preparation or compounding and records completion; **Pharmacy System** displays the Dispense Order as `Prepared`.
 8. **Pharmacy Staff** verifies that every Dispense Order intended for handover is `Prepared` or has an accountable exception outcome.
 9. **Pharmacy Staff** performs one coordinated pickup call; **Patient Tracker** makes the Queue Entry `Done` and records `DoneAt`.
-10. With the Patient or caregiver present, **Pharmacist** verifies the Authorized Recipient, completes Final Dispense Review, and records applicable Patient Education. When the review passes, **Pharmacy System** appends the review record and displays the Dispense Order as `Reviewed`.
-11. **Pharmacy System** blocks completion when recipient verification or final review is incomplete.
+10. With the Patient or caregiver present, **Pharmacist** operationally verifies the recipient, completes Final Dispense Review, and records applicable Patient Education. When the review passes, **Pharmacy System** appends the review record and displays the Dispense Order as `Reviewed`. The Pharmacist may optionally record recipient phone number and relationship for reference.
+11. **Pharmacy System** blocks completion when Final Dispense Review is incomplete. Recipient verification is not a system gate.
 12. **Pharmacy Staff** completes the physical handover after Pharmacist authorization.
 13. As one accountable outcome, **Pharmacy System** establishes the BPJS Sales Invoice from covered Billing Allocations, records Medication Dispense, and records Medication Handover.
 14. **Inventory** supplies the authoritative Inventory Issue outcome; **Pharmacy System** displays the Dispense Order as `Completed`.
@@ -81,13 +81,13 @@ Provide a repeatable procedure for clearing and preparing BPJS-covered outpatien
 
 1. Patient-payable amount is zero and payment disposition is `Not Required`.
 2. The BPJS Sales Invoice and Medication Handover are displayed as one successful accountable outcome.
-3. The Dispense Order is `Completed`, the Authorized Recipient is identified, and Inventory Issue is displayed.
+3. The Dispense Order is `Completed`, Medication Handover records effective time, and Inventory Issue is displayed. Recipient phone number and relationship may be recorded optionally for reference.
 4. The Sales Order is `Resolved`, or remains `Active` with an explicitly displayed unresolved outcome.
 5. Queue `Done` is not used as proof of Medication Handover.
 
 ## 7. References
 
-- [Apotek Domain](../apotek-domain.md), especially `BR-APT-020`–`BR-APT-026`, `BR-APT-029`–`BR-APT-045`, `BR-APT-066`, `BR-APT-068`–`BR-APT-069`, `BR-APT-073`–`BR-APT-079`, `BR-APT-081`–`BR-APT-083`, `BR-APT-088`, `BR-APT-090`, `BR-APT-095`–`BR-APT-096`, and `BR-APT-114`–`BR-APT-118`.
+- [Apotek Domain](../apotek-domain.md), especially `BR-APT-020`–`BR-APT-026`, `BR-APT-029`–`BR-APT-045`, `BR-APT-066`, `BR-APT-068`–`BR-APT-069`, `BR-APT-073`–`BR-APT-079`, `BR-APT-081`–`BR-APT-083`, `BR-APT-088`, `BR-APT-090`, `BR-APT-095`–`BR-APT-096`, `BR-APT-114`–`BR-APT-118`, and `BR-APT-129`–`BR-APT-131`.
 - [Outpatient Apotek Workflow](../outpatient-apotek-workflow.md), `WF-APT-RJ-004`.
 - [Patient Tracker Domain](../../../contexts/pasien-tracker/TRACKER-DOMAIN.md), `BR-TRK-045`, `BR-TRK-045a`, and `BR-TRK-046`.
 - [Tata Rekening Domain](../../../contexts/TataRekening/02-domain.md).
