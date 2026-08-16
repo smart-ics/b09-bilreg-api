@@ -51,7 +51,7 @@ Provide a repeatable procedure for obtaining verbal Purchase Confirmation, estab
 12. **Pharmacy Staff** verifies that every Dispense Order intended for the handover is `Prepared` or has an accountable exception outcome.
 13. **Pharmacy Staff** performs one coordinated pickup call; **Patient Tracker** makes the Queue Entry `Done` and records `DoneAt`.
 14. With the Patient or caregiver present, **Pharmacist** operationally verifies the recipient, completes Final Dispense Review, and records Patient Education Acknowledgement. When the review passes, **Pharmacy System** appends the review record and displays the Dispense Order as `Reviewed`. **Pharmacy System** records education timestamp and responsible Pharmacist. Detailed counseling notes are optional. The Pharmacist may optionally record recipient phone number and relationship for reference.
-15. **Pharmacy System** blocks handover until Final Dispense Review has passed and Patient Education Acknowledgement is recorded. Recipient identity is not a system gate. Detailed counseling notes are not required.
+15. **Pharmacy System** blocks handover until Final Dispense Review has passed and Patient Education Acknowledgement is recorded. Recipient identity is not a system gate. Detailed counseling notes are not required. If Pickup Expired, **Pharmacy System** also blocks handover until an authorized pharmacist records Collection Window Override with reason.
 16. **Pharmacy Staff** completes the physical handover after Pharmacist authorization; **Pharmacy System** records Medication Dispense and Medication Handover for each applicable quantity.
 17. **Inventory** supplies the authoritative Inventory Issue outcome; **Pharmacy System** displays the Dispense Order as `Completed` when all required outcomes are present.
 18. **Pharmacy System** displays the Sales Order as `Resolved` only when every accepted quantity and commercial consequence is final.
@@ -98,7 +98,7 @@ Provide a repeatable procedure for obtaining verbal Purchase Confirmation, estab
 
 ## 7. References
 
-- [Apotek Domain](../apotek-domain.md), especially `BR-APT-020`–`BR-APT-028`, `BR-APT-033`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-067`–`BR-APT-072`, `BR-APT-076`–`BR-APT-083`, `BR-APT-088`, `BR-APT-095`–`BR-APT-096`, `BR-APT-114`–`BR-APT-118`, and `BR-APT-125`–`BR-APT-134`.
+- [Apotek Domain](../apotek-domain.md), especially `BR-APT-020`–`BR-APT-028`, `BR-APT-033`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-067`–`BR-APT-072`, `BR-APT-076`–`BR-APT-083`, `BR-APT-088`, `BR-APT-095`–`BR-APT-096`, `BR-APT-114`–`BR-APT-118`, and `BR-APT-125`–`BR-APT-134`, `BR-APT-138`–`BR-APT-142`.
 - [Outpatient Apotek Workflow](../outpatient-apotek-workflow.md), `WF-APT-RJ-003`.
 - [Patient Tracker Domain](../../../contexts/pasien-tracker/TRACKER-DOMAIN.md), `BR-TRK-045`, `BR-TRK-045a`, and `BR-TRK-046`.
 - [Tata Rekening Domain](../../../contexts/TataRekening/02-domain.md).

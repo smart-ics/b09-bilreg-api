@@ -53,7 +53,7 @@ Provide a repeatable procedure for splitting Fornas Covered and Not Covered pres
 12. **Pharmacy System** displays every intended Dispense Order as `Prepared` or with an accountable exception outcome.
 13. **Pharmacy Staff** performs one coordinated pickup call; **Patient Tracker** makes the common Queue Entry `Done` and records one `DoneAt`.
 14. With the Patient or caregiver present, **Pharmacist** operationally verifies the recipient, completes Final Dispense Review, and records Patient Education Acknowledgement. **Pharmacy System** records education timestamp and responsible Pharmacist. Detailed counseling notes are optional. The Pharmacist may optionally record recipient phone number and relationship for reference.
-15. **Pharmacy Staff** completes the physical handover after Pharmacist authorization.
+15. **Pharmacy Staff** completes the physical handover after Pharmacist authorization. If Pickup Expired, an authorized pharmacist must first record Collection Window Override with reason.
 16. **Pharmacy System** establishes the BPJS Sales Invoice only with successful handover of the BPJS-covered Sales Order, records Medication Dispense and Medication Handover for all applicable quantities, and preserves both Sales Orders.
 17. **Inventory** supplies Remove Stock outcomes; **Pharmacy System** displays final Dispense Order and Sales Order progress.
 
@@ -95,7 +95,7 @@ Provide a repeatable procedure for splitting Fornas Covered and Not Covered pres
 
 ## 7. References
 
-- [Apotek Domain](../apotek-domain.md), especially `BR-APT-011`, `BR-APT-015`, `BR-APT-020`–`BR-APT-028`, `BR-APT-040`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-070`–`BR-APT-078`, `BR-APT-090`–`BR-APT-096`, `BR-APT-108`, `BR-APT-119`–`BR-APT-124`, and `BR-APT-129`–`BR-APT-134`.
+- [Apotek Domain](../apotek-domain.md), especially `BR-APT-011`, `BR-APT-015`, `BR-APT-020`–`BR-APT-028`, `BR-APT-040`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-070`–`BR-APT-078`, `BR-APT-090`–`BR-APT-096`, `BR-APT-108`, `BR-APT-119`–`BR-APT-124`, and `BR-APT-129`–`BR-APT-134`, and `BR-APT-138`–`BR-APT-142`.
 - [Outpatient Apotek Workflow](../outpatient-apotek-workflow.md), `WF-APT-RJ-005`.
 - [Patient Tracker Domain](../../../contexts/pasien-tracker/TRACKER-DOMAIN.md).
 - [Tata Rekening Domain](../../../contexts/TataRekening/02-domain.md).

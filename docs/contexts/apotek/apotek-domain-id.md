@@ -150,8 +150,12 @@ Resep tidak berubah menjadi Sales Order. Keputusan profesional yang selesai meng
 | Fulfillment Expiry | Berakhirnya Pemenuhan | Berakhirnya kesempatan fulfillment karena periode layanan yang diizinkan telah lewat. |
 | Medication Return | Retur Obat | Pengembalian accountable atas obat yang sebelumnya disiapkan, dipindahkan, atau diserahkan. |
 | Return to Stock | Pengembalian ke Stok | Penerimaan authoritative oleh Inventory atas obat retur yang eligible menjadi stok tersedia. |
-| No-Show | Pasien Tidak Hadir | Outcome Rawat Jalan ketika Pasien tidak mengambil obat dalam batas layanan yang berlaku. |
+| No-Show | Pasien Tidak Hadir | Outcome Rawat Jalan ketika Pasien tidak mengambil obat dan penyelesaian obat tidak diambil yang diotorisasi dicatat. |
+| Collection Window | Jendela Pengambilan | Jumlah hari maksimum yang dapat dikonfigurasi bagi obat siap ambil. Default 7 hari. Jendela dimulai ketika Dispense Order pertama kali menjadi Ready for Pickup. |
+| Pickup Expired | Pengambilan Kedaluwarsa | Kategori worklist Serah Obat setelah Collection Window habis tanpa Medication Handover. Ini kategori projection, bukan state Dispense Order. |
+| Collection Window Override | Override Jendela Pengambilan | Fakta Pharmacist berwenang yang mengizinkan Medication Handover setelah Pickup Expired. Mencatat alasan override, Pharmacist yang mengotorisasi, dan effective business time. |
 | Pharmacy Queue Entry | Entri Antrean Apotek | Partisipasi Pasien dalam antrean apotek Rawat Jalan yang identitas dan lifecycle-nya dimiliki Patient Tracker. |
+| Pharmacy Queue Close | Penutupan Antrean Apotek | Fakta Staf Apotek yang mengakhiri Pharmacy Queue Entry yang belum masuk alur pelayanan obat. Mencatat alasan penutupan wajib, Staf Apotek penanggung jawab, dan effective business time. Patient Tracker kemudian menetapkan entri `Withdrawn` dari `Waiting`. |
 | Outpatient Queue Mapping | Outpatient Queue Mapping | Mapping antara Entri Antrian Apotek dengan Resep, Permintaan Obat Langsung, Sales Order, atau sumber pelayanan obat lain yang sesuai. |
 | Tracker Mapping | Tracker Mapping | Outpatient Queue Mapping yang dibuat otomatis ketika bukti dari Sistem Antrian Pasien atau registrasi menemukan satu atau beberapa Resep yang sudah ada. Proses ini tidak membuat Resep dan tidak berlaku untuk Permintaan Obat Langsung. |
 | Manual Mapping | Manual Mapping | Outpatient Queue Mapping yang dibuat oleh Staf Apotek setelah Nomor Antrian dan sumber pelayanan obat yang sesuai diidentifikasi. |
@@ -265,7 +269,7 @@ Menerima Ward Delivery untuk Pasien dan tetap teridentifikasi dalam outcome Medi
 
 ### 4.7 Pharmacy Supervisor
 
-Pharmacist yang berwenang menurut kebijakan operasional. Mengotorisasi retur, koreksi, override koleksi kedaluwarsa, dan exception dispensing lain. Penanganan exception berbasis authority; tidak ada model ambang persetujuan moneter. Pharmacist mana yang berwenang ditentukan kebijakan operasional. Pharmacy Supervisor adalah sebutan operasional untuk authority tersebut ketika diperlukan peran pengotorisasi yang bernama.
+Pharmacist yang berwenang menurut kebijakan operasional. Mengotorisasi retur, koreksi, Collection Window Override, penutupan koleksi kedaluwarsa, dan exception dispensing lain. Penanganan exception berbasis authority; tidak ada model ambang persetujuan moneter. Pharmacist mana yang berwenang ditentukan kebijakan operasional. Pharmacy Supervisor adalah sebutan operasional untuk authority tersebut ketika diperlukan peran pengotorisasi yang bernama.
 
 ## 5. Domain Objects
 
@@ -323,6 +327,14 @@ Merepresentasikan satu percobaan Final Dispense Review yang immutable dan dimili
 
 Merepresentasikan konfirmasi Pharmacist bahwa konseling obat telah diberikan sebelum Medication Handover. Mencatat waktu edukasi dan Pharmacist penanggung jawab. Bukan catatan isi konseling terstruktur. Catatan konseling rinci boleh dilampirkan hanya ketika Pharmacist menilai dokumentasi tambahan diperlukan.
 
+### 5.12 Collection Window Override
+
+Merepresentasikan izin Pharmacist berwenang untuk menyelesaikan Medication Handover setelah Pickup Expired. Mencatat alasan override, Pharmacist yang mengotorisasi, dan effective business time. Tidak meng-expire Dispense Order dan tidak mengembalikan stok.
+
+### 5.13 Pharmacy Queue Close
+
+Merepresentasikan Staf Apotek mengakhiri Pharmacy Queue Entry yang belum masuk alur pelayanan obat. Mencatat alasan penutupan wajib, Staf Apotek penanggung jawab, dan effective business time. Meminta Patient Tracker `Withdrawn` dari `Waiting` dan tidak menambah state antrean.
+
 ## 6. Aggregates
 
 ### 6.1 Telaah Resep Aggregate
@@ -349,7 +361,7 @@ Sales Invoice mereferensikan tepat satu Sales Order tetapi dapat mencakup satu a
 
 **Aggregate Root:** `Dispense Order`
 
-Aggregate memiliki Dispense Order Line dan menjaga penyiapan fisik, kumpulan Final Dispense Review Record yang immutable, Patient Education Acknowledgement, Medication Dispense, Medication Handover, cancellation, expiry, return, dan non-fulfillment outcome tetap konsisten. Dispense Order mereferensikan tepat satu Sales Order dan dapat memenuhi satu atau lebih Sales Order Line. Setiap Dispense Order Line mereferensikan tepat satu Sales Order Line dari Sales Order tersebut; satu Sales Order Line dapat dipenuhi melalui beberapa Dispense Order Line pada beberapa Dispense Order.
+Aggregate memiliki Dispense Order Line dan menjaga penyiapan fisik, kumpulan Final Dispense Review Record yang immutable, Patient Education Acknowledgement, Collection Window Override bila berlaku, Medication Dispense, Medication Handover, cancellation, expiry, return, dan non-fulfillment outcome tetap konsisten. Dispense Order mereferensikan tepat satu Sales Order dan dapat memenuhi satu atau lebih Sales Order Line. Setiap Dispense Order Line mereferensikan tepat satu Sales Order Line dari Sales Order tersebut; satu Sales Order Line dapat dipenuhi melalui beberapa Dispense Order Line pada beberapa Dispense Order.
 
 ### 6.5 Relasi lintas aggregate
 
@@ -357,7 +369,7 @@ Satu Sales Order dapat memiliki nol atau lebih Sales Invoice dan nol atau lebih 
 
 Korelasi bisnisnya dinyatakan melalui referensi Sales Invoice Item dan Dispense Order Line kepada Sales Order Line, serta Fulfillment Clearance pada tingkat baris dan jumlah. Penggunaan Sales Order yang sama tidak dengan sendirinya menetapkan bahwa setiap Sales Invoice memberikan clearance kepada setiap Dispense Order.
 
-Outpatient Queue Mapping merupakan mapping aktif kepada Pharmacy Queue Entry yang dimiliki context eksternal, bukan Aggregate Root Apotek dan bukan catatan transaksi Perubahan mapping. Patient Tracker tetap authoritative atas Queue Session, Queue Number, dan lifecycle antrean.
+Outpatient Queue Mapping merupakan mapping aktif kepada Pharmacy Queue Entry yang dimiliki context eksternal, bukan Aggregate Root Apotek dan bukan catatan transaksi Perubahan mapping. Patient Tracker tetap authoritative atas Queue Session, Queue Number, dan lifecycle antrean. Pharmacy Queue Close adalah fakta operasional Apotek yang meminta Patient Tracker `Withdrawn`; bukan Aggregate Root dan bukan state antrean.
 
 ## 7. Aturan Bisnis
 
@@ -467,6 +479,14 @@ Outpatient Queue Mapping merupakan mapping aktif kepada Pharmacy Queue Entry yan
 - **BR-APT-135** — Penanganan exception harus berbasis authority. Retur, koreksi, override koleksi kedaluwarsa, dan exception dispensing lain harus memerlukan otorisasi Pharmacist yang berwenang menurut kebijakan operasional.
 - **BR-APT-136** — Sistem tidak boleh memperkenalkan model ambang persetujuan moneter. Otorisasi exception tidak boleh ditentukan oleh amount, nilai kuantitas, atau pita persetujuan numerik serupa.
 - **BR-APT-137** — Otorisasi exception harus mencatat Pharmacist yang mengotorisasi, effective business time, dan alasan. Kebijakan operasional menentukan Pharmacist mana yang berwenang. Pharmacy Supervisor adalah sebutan operasional untuk authority tersebut ketika diperlukan peran pengotorisasi yang bernama.
+- **BR-APT-138** — Obat Rawat Jalan yang menunggu pengambilan boleh tetap Ready for Pickup selama Collection Window yang dapat dikonfigurasi. Default Collection Window adalah 7 hari. Jendela dimulai ketika Dispense Order pertama kali menjadi Ready for Pickup: `Prepared`, dimaksudkan untuk pickup Rawat Jalan, dan Medication Handover belum selesai.
+- **BR-APT-139** — Ketika Collection Window habis tanpa Medication Handover, kategori worklist Serah Obat menjadi Pickup Expired. Pickup Expired adalah kategori projection dan bukan state Dispense Order.
+- **BR-APT-140** — Medication Handover biasa tidak boleh dilanjutkan selama Pickup Expired. Hanya Pharmacist berwenang yang boleh mencatat Collection Window Override lalu melanjutkan handover.
+- **BR-APT-141** — Collection Window Override harus mencatat Pharmacist yang mengotorisasi, effective business time, dan alasan override. Medication Handover setelah Pickup Expired dilarang tanpa override tersebut.
+- **BR-APT-142** — Pickup Expired tidak dengan sendirinya meng-expire Dispense Order, membalik `DoneAt` antrean, menetapkan No-Show, atau mengembalikan stok. Penyelesaian terminal obat tidak diambil tetap kegiatan manual yang diotorisasi berdasarkan `BR-APT-079`, `BR-APT-080`, dan `WF-APT-RJ-007`.
+- **BR-APT-143** — Pharmacy Queue Entry yang belum masuk alur pelayanan obat boleh ditutup dari status antrean pra-layanan. Status itu adalah Patient Tracker `Waiting`. TAKEN dalam keputusan ini menamai partisipasi pra-layanan yang sama dan tidak boleh ditambahkan sebagai state Patient Tracker.
+- **BR-APT-144** — Pharmacy Queue Close harus mencatat alasan penutupan wajib, Staf Apotek penanggung jawab, dan effective business time. Patient Tracker harus menetapkan Queue Entry `Withdrawn`. State antrean tambahan tidak boleh diperkenalkan.
+- **BR-APT-145** — Pharmacy Queue Close tidak boleh mencatat `ServedAt` atau `DoneAt`, tidak boleh menyatakan `In Service` atau `Done`, dan tidak boleh membentuk Sales Order, Dispense Order, atau Medication Handover. Setelah `Medication Preparation Started`, jalur penutupan ini tidak berlaku.
 
 ### 7.7 Completion dan history
 
@@ -481,7 +501,7 @@ Outpatient Queue Mapping merupakan mapping aktif kepada Pharmacy Queue Entry yan
 - **BR-APT-061** — Pharmacist dapat melakukan Telaah Resep segera setelah Resep tersedia; kedatangan Pasien dan Outpatient Queue Mapping tidak boleh menjadi prasyarat.
 - **BR-APT-062** — Outpatient Queue Mapping harus merepresentasikan mapping catatan bisnis yang sudah ada dan tidak boleh membentuk atau mengubah Resep, Hasil Telaah Resep, atau Sales Order. Jika mapping salah, sistem harus memperbarui mapping aktif ke sumber yang benar tanpa mewajibkan riwayat perubahan mapping.
 - **BR-APT-063** — Tracker Mapping harus digunakan ketika bukti tracker atau registrasi yang sah menemukan satu atau beberapa Resep yang sudah ada dan berlaku. Proses ini tidak boleh membuat Resep atau menemukan Permintaan Obat Langsung; jika gagal, proses harus beralih ke Manual Mapping.
-- **BR-APT-064** — Pharmacy Queue Entry yang diterbitkan langsung atau belum teridentifikasi harus tetap unmapped sampai Staf Apotek mengidentifikasi dan melakukan mapping sumber pelayanan obat yang sesuai.
+- **BR-APT-064** — Pharmacy Queue Entry yang diterbitkan langsung atau belum teridentifikasi harus tetap unmapped sampai Staf Apotek mengidentifikasi dan melakukan mapping sumber pelayanan obat yang sesuai, atau sampai Staf Apotek mencatat Pharmacy Queue Close berdasarkan `BR-APT-143`–`BR-APT-145`.
 - **BR-APT-065** — Staf Apotek harus memiliki pemanggilan administratif antrean dan pickup; tanggung jawab tersebut tidak boleh dipindahkan kepada Pharmacist.
 - **BR-APT-066** — Dalam alur normal Resep Elektronik BPJS dengan Tracker Mapping berhasil, Pasien hanya memerlukan satu pemanggilan apotek Rawat Jalan, yaitu pickup call setelah setiap Dispense Order yang berlaku mencapai `Prepared`.
 - **BR-APT-067** — Outpatient Queue Mapping dan Purchase Confirmation Pasien Umum dapat diselesaikan dalam satu interaksi loket ketika Sales Order Line yang berlaku dan nilai yang dihitung telah tersedia. Ketika Tracker Mapping selesai tanpa Pasien hadir di loket, Staf Apotek harus memanggil Queue Number untuk interaksi Purchase Confirmation sebelum Sales Invoice dibentuk; panggilan administratif ini tidak menetapkan `ServedAt` atau `DoneAt`.
@@ -603,9 +623,11 @@ Cabang billing dan fulfillment berjalan independen. Resolusi Sales Order final m
 Unmapped
   -> Mapped
        method: Tracker Mapping | Manual Mapping
+  -> Pharmacy Queue Close
+       -> Patient Tracker Withdrawn
 ```
 
-Relasi ini melakukan mapping sumber pelayanan obat dengan Pharmacy Queue Entry yang dimiliki context eksternal. Relasi ini tidak menggantikan lifecycle antrean Patient Tracker dan tidak mengubah state Telaah Resep.
+Relasi ini melakukan mapping sumber pelayanan obat dengan Pharmacy Queue Entry yang dimiliki context eksternal. Relasi ini tidak menggantikan lifecycle antrean Patient Tracker dan tidak mengubah state Telaah Resep. Pharmacy Queue Close mengakhiri partisipasi unmapped atau declined dari `Waiting` tanpa menambah state antrean.
 
 ### 8.7 Lifecycle pickup dan handover Rawat Jalan
 
@@ -617,12 +639,23 @@ Prepared
                  -> Education Provided
                       -> Handed Over
 
+Ready for Pickup or Patient Called
+  -> Pickup Expired
+       -> Collection Window Override
+            -> Patient Called / Final Review / Education / Handed Over
+       -> No-Show
+            -> penyelesaian manual obat tidak diambil
+                 -> Dispense Order Expired
+                 -> alasan resolution Collection Window Expired
+
 Prepared, Ready for Pickup, or Patient Called
   -> No-Show
        -> penyelesaian manual obat tidak diambil
             -> Dispense Order Expired
             -> alasan resolution Collection Window Expired
 ```
+
+Ready for Pickup dan Pickup Expired adalah kategori projection. Collection Window (default 7 hari) dimulai ketika Dispense Order pertama kali menjadi Ready for Pickup. Pickup Expired tidak mengubah state Dispense Order. Handover biasa diblokir sampai Collection Window Override dicatat. Penutupan terminal obat tidak diambil tetap tindakan terpisah yang diotorisasi.
 
 Pickup call menyelesaikan antrean Patient Tracker, tetapi tidak menyelesaikan Medication Handover. Final Dispense Review dan Patient Education Acknowledgement dilakukan dengan Pasien atau caregiver hadir setelah panggilan tersebut. Pharmacist memverifikasi penerima secara operasional selama interaksi loket itu; verifikasi bukan langkah lifecycle yang ditegakkan sistem. Sistem boleh secara opsional mencatat nomor telepon penerima dan hubungan sebagai referensi. Patient Education Acknowledgement mencatat waktu edukasi dan Pharmacist penanggung jawab; catatan konseling rinci bersifat opsional. Konsekuensi komersial yang berlaku bergantung pada payer. Pasien Umum dapat telah memiliki Sales Invoice yang financially cleared, sedangkan kebijakan BPJS saat ini baru membentuk Sales Invoice bersama Medication Handover yang berhasil.
 
@@ -633,6 +666,7 @@ Pickup call menyelesaikan antrean Patient Tracker, tetapi tidak menyelesaikan Me
 | Telaah Resep Started | Pharmacist memulai penilaian profesional atas Resep. |
 | Telaah Resep Completed | Setiap baris yang ditelaah memperoleh professional disposition final. |
 | Outpatient Queue Mapped | Pharmacy Queue Entry telah di-mapping dengan sumber pelayanan obat yang sesuai. |
+| Pharmacy Queue Close Recorded | Staf Apotek menutup Queue Entry yang belum masuk alur pelayanan obat, dengan alasan wajib. |
 | Direct Medication Request Accepted | Permintaan non-resep yang diizinkan telah diterima Farmasi. |
 | Sales Order Established | Permintaan obat yang diterima tersedia untuk penagihan komersial dan perencanaan fulfillment. |
 | Sales Invoice Established | Medication Sale beserta Sales Invoice Item-nya dibentuk dari Sales Order Line. |
@@ -647,6 +681,8 @@ Pickup call menyelesaikan antrean Patient Tracker, tetapi tidak menyelesaikan Me
 | Final Dispense Review Completed | Dengan Pasien atau caregiver hadir setelah pickup call, Prepared Medication lulus pemeriksaan profesional akhir yang diperlukan. |
 | Final Dispense Review Failed | Prepared Medication gagal dalam pemeriksaan profesional akhir; catatan review immutable ditambahkan dan Dispense Order kembali dari `Prepared` ke `Preparing` untuk dikoreksi. |
 | Patient Education Acknowledged | Pharmacist mengonfirmasi bahwa konseling obat telah diberikan; waktu edukasi dan Pharmacist penanggung jawab dicatat. |
+| Pickup Expired Classified | Collection Window habis tanpa Medication Handover; kategori worklist menjadi Pickup Expired. |
+| Collection Window Override Recorded | Pharmacist berwenang mencatat alasan yang mengizinkan handover setelah Pickup Expired. |
 | Patient Called for Pickup | Staf Apotek memanggil Pasien untuk Medication Handover Rawat Jalan. |
 | Medication Dispensed | Sejumlah obat disediakan secara accountable untuk Pasien. |
 | Medication Handed Over | Obat dipindahkan kepada Pasien atau penerima lain sebagaimana ditentukan secara operasional oleh Pharmacist. |

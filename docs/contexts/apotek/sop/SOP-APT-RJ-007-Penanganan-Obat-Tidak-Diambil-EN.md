@@ -36,7 +36,7 @@ Provide a repeatable manual procedure for giving Prepared or In-Transit medicati
 ## 4. Operational Steps
 
 1. **Pharmacy Staff** opens the uncollected Queue Entry and verifies the originating Sales Order, Dispense Order, affected quantities, payer allocations, handover absence, and current Inventory disposition.
-2. **Pharmacy Supervisor** confirms that the permitted collection opportunity has ended; no automatic or invented numerical time limit is used, and no monetary approval threshold applies.
+2. **Pharmacy Supervisor** confirms that the permitted collection opportunity has ended. The Collection Window (default 7 days) classifies Ready for Pickup as Pickup Expired when elapsed; that classification does not expire the Dispense Order. No monetary approval threshold applies.
 3. **Pharmacy Supervisor** records the manual uncollected-medication resolution with responsible party, effective business time, affected quantity, and reason `Collection Window Expired`.
 4. **Pharmacy System** records the Patient as No-Show for the affected fulfillment and changes each affected Dispense Order to `Expired`.
 5. **Pharmacy System** records an Unfulfilled Medication Outcome for every affected quantity and preserves Source Traceability.
@@ -79,7 +79,7 @@ Provide a repeatable manual procedure for giving Prepared or In-Transit medicati
 
 ## 7. References
 
-- [Apotek Domain](../apotek-domain.md), especially `BR-APT-018`–`BR-APT-019`, `BR-APT-027`, `BR-APT-045`–`BR-APT-047`, `BR-APT-052`–`BR-APT-060`, `BR-APT-069`, `BR-APT-078`–`BR-APT-080`, `BR-APT-095`, and `BR-APT-135`–`BR-APT-137`.
+- [Apotek Domain](../apotek-domain.md), especially `BR-APT-018`–`BR-APT-019`, `BR-APT-027`, `BR-APT-045`–`BR-APT-047`, `BR-APT-052`–`BR-APT-060`, `BR-APT-069`, `BR-APT-078`–`BR-APT-080`, `BR-APT-095`, and `BR-APT-135`–`BR-APT-142`.
 - [Outpatient Apotek Workflow](../outpatient-apotek-workflow.md), `WF-APT-RJ-007`.
 - [Patient Tracker Domain](../../../contexts/pasien-tracker/TRACKER-DOMAIN.md).
 - [Tata Rekening Domain](../../../contexts/TataRekening/02-domain.md).

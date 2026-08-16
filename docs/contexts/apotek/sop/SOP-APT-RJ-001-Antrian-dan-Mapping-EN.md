@@ -50,11 +50,12 @@ Provide a repeatable procedure for associating one outpatient Pharmacy Queue Ent
 
 - **Pharmacy System** leaves the Queue Entry `Unmapped` and blocks mapping-dependent clearance.
 - **Pharmacy Staff** obtains additional evidence and retries Manual Mapping; staff does not create an Resep Elektronik.
+- **Pharmacy Staff** may instead record Pharmacy Queue Close with a mandatory reason. **Patient Tracker** sets the still-Waiting Queue Entry `Withdrawn`. Close does not record `ServedAt` or `DoneAt`.
 
 ### 5.2 Direct Medication Request is declined
 
 - **Pharmacy Staff** records no Direct Medication Request and no Sales Order.
-- **Patient Tracker** retains the still-Waiting Queue Entry until its external withdrawal policy is applied.
+- **Pharmacy Staff** may record Pharmacy Queue Close with a mandatory reason. **Patient Tracker** sets the still-Waiting Queue Entry `Withdrawn`. No additional queue state is used.
 
 ### 5.3 Existing mapping is incorrect
 
@@ -64,12 +65,12 @@ Provide a repeatable procedure for associating one outpatient Pharmacy Queue Ent
 
 ## 6. Completion Criteria
 
-1. Each applicable demand has a separate `Outpatient Queue Mapped` outcome linked to the same Queue Number; or the Queue Entry visibly remains `Unmapped` pending evidence.
+1. Each applicable demand has a separate `Outpatient Queue Mapped` outcome linked to the same Queue Number; or the Queue Entry visibly remains `Unmapped` pending evidence; or Pharmacy Queue Close is recorded and the Queue Entry is `Withdrawn`.
 2. Mapping has not recorded `ServedAt` or `DoneAt`.
 3. Each mapped demand retains its own Resep, Sales Order, Sales Invoice, and Dispense Order identity when applicable.
 
 ## 7. References
 
-- [Apotek Domain](../apotek-domain.md), especially `BR-APT-061`–`BR-APT-065`, `BR-APT-082`, and `BR-APT-084`–`BR-APT-087`.
+- [Apotek Domain](../apotek-domain.md), especially `BR-APT-061`–`BR-APT-065`, `BR-APT-082`, `BR-APT-084`–`BR-APT-087`, and `BR-APT-143`–`BR-APT-145`.
 - [Outpatient Apotek Workflow](../outpatient-apotek-workflow.md), `WF-APT-RJ-001`.
-- [Patient Tracker Domain](../../../contexts/pasien-tracker/TRACKER-DOMAIN.md), especially `BR-TRK-026`–`BR-TRK-035`.
+- [Patient Tracker Domain](../../../contexts/pasien-tracker/TRACKER-DOMAIN.md), especially `BR-TRK-026`–`BR-TRK-035`, `BR-TRK-039a`, and `BR-TRK-052`.

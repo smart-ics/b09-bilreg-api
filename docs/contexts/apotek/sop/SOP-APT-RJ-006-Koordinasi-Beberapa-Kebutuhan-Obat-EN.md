@@ -49,7 +49,7 @@ Provide a repeatable procedure for coordinating two or more independently accoun
 11. **Patient Tracker** records one `DoneAt` and makes the common Queue Entry `Done`.
 12. **Pharmacy Staff** communicates any accountable exception outcome together with the ready-demand information.
 13. With the Patient or caregiver present, **Pharmacist** operationally verifies the recipient, completes Final Dispense Review for each Prepared Medication, and records Patient Education Acknowledgement. For each passed review, **Pharmacy System** appends the review record and displays its Dispense Order as `Reviewed`. **Pharmacy System** records education timestamp and responsible Pharmacist. Detailed counseling notes are optional. The Pharmacist may optionally record recipient phone number and relationship for reference.
-14. **Pharmacy Staff** completes the physical handover after Pharmacist authorization.
+14. **Pharmacy Staff** completes the physical handover after Pharmacist authorization. If Pickup Expired, an authorized pharmacist must first record Collection Window Override with reason.
 15. **Pharmacy System** records Medication Dispense and Medication Handover against every applicable Dispense Order and Sales Order separately.
 16. **Inventory** supplies separate Inventory Issue or disposition outcomes for each originating Dispense Order.
 
@@ -84,6 +84,6 @@ Provide a repeatable procedure for coordinating two or more independently accoun
 
 ## 7. References
 
-- [Apotek Domain](../apotek-domain.md), especially `BR-APT-011`, `BR-APT-015`, `BR-APT-022`, `BR-APT-030`, `BR-APT-056`–`BR-APT-060`, `BR-APT-084`–`BR-APT-088`, `BR-APT-095`–`BR-APT-096`, and `BR-APT-129`–`BR-APT-134`.
+- [Apotek Domain](../apotek-domain.md), especially `BR-APT-011`, `BR-APT-015`, `BR-APT-022`, `BR-APT-030`, `BR-APT-056`–`BR-APT-060`, `BR-APT-084`–`BR-APT-088`, `BR-APT-095`–`BR-APT-096`, and `BR-APT-129`–`BR-APT-134`, and `BR-APT-138`–`BR-APT-142`.
 - [Outpatient Apotek Workflow](../outpatient-apotek-workflow.md), `WF-APT-RJ-006`.
 - [Patient Tracker Domain](../../../contexts/pasien-tracker/TRACKER-DOMAIN.md), especially `BR-TRK-032`, `BR-TRK-035`–`BR-TRK-039`, `BR-TRK-045`, and `BR-TRK-045a`.

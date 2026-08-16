@@ -152,8 +152,12 @@ A Resep does not become a Sales Order. A completed professional decision authori
 | Fulfillment Expiry | The ending of a fulfillment opportunity because its permitted service period elapsed. |
 | Medication Return | The accountable return of medication previously prepared, transferred, or handed over. |
 | Return to Stock | Inventory's authoritative acceptance of eligible returned medication into available stock. |
-| No-Show | An outpatient outcome in which the Patient does not collect medication within the applicable service limit. |
+| No-Show | An outpatient outcome in which the Patient does not collect medication and an authorized uncollected-medication resolution is recorded. |
+| Collection Window | The configurable maximum days that prepared outpatient medication may remain awaiting pickup. Default is 7 days. The window starts when the Dispense Order first becomes Ready for Pickup. |
+| Pickup Expired | The Serah Obat worklist category after the Collection Window elapses without Medication Handover. It is a projection category, not a Dispense Order state. |
+| Collection Window Override | The authorized-pharmacist fact that permits Medication Handover after Pickup Expired. It records override reason, authorizing pharmacist, and effective business time. |
 | Pharmacy Queue Entry | A Patient's participation in an outpatient pharmacy queue represented by one Patient Tracker `QueueEntry` whose identity and lifecycle are owned by Patient Tracker. |
+| Pharmacy Queue Close | The Pharmacy Staff fact that ends a Pharmacy Queue Entry that was not progressed into the pharmacy workflow. It records a mandatory close reason, responsible Pharmacy Staff, and effective business time. Patient Tracker then sets the entry `Withdrawn` from `Waiting`. |
 | Legacy Farinv Queue Entry | A deprecated historical pharmacy queue record from the Farinv subsystem. It is read-only and shall not be created for new outpatient-pharmacy interactions. |
 | Outpatient Queue Mapping | The accountable association of a Pharmacy Queue Entry with the applicable Resep, Direct Medication Request, Sales Order, or another traceable medication-demand source. |
 | Tracker Mapping | Outpatient Queue Mapping established automatically when valid Patient Tracker or registration evidence resolves one or more existing Resep. It does not create a Resep and does not apply to a Direct Medication Request. |
@@ -244,7 +248,7 @@ Receives Ward Delivery for the Patient and remains identifiable in the Medicatio
 
 ### 4.7 Pharmacy Supervisor
 
-An authorized pharmacist under operational policy. Authorizes returns, corrections, expired collection overrides, and other dispensing exceptions. Exception handling is authority-based; no monetary approval threshold model exists. Which pharmacist is authorized is operational policy. Pharmacy Supervisor is the named operational designation used where a distinct authorizing pharmacist is required.
+An authorized pharmacist under operational policy. Authorizes returns, corrections, Collection Window Override, expired collection close, and other dispensing exceptions. Exception handling is authority-based; no monetary approval threshold model exists. Which pharmacist is authorized is operational policy. Pharmacy Supervisor is the named operational designation used where a distinct authorizing pharmacist is required.
 
 ## 5. Domain Objects
 
@@ -298,7 +302,15 @@ Represents one immutable Final Dispense Review attempt owned as a detail of one 
 
 Represents the Pharmacist's confirmation that medication counseling was provided before Medication Handover. It records education timestamp and responsible Pharmacist. It is not a structured counseling-content record. Detailed counseling notes may be attached only when the Pharmacist considers additional documentation necessary.
 
-### 5.11 Pharmacy and Stock Ledger boundary
+### 5.11 Collection Window Override
+
+Represents an authorized pharmacist's permission to complete Medication Handover after Pickup Expired. It records override reason, authorizing pharmacist, and effective business time. It does not expire the Dispense Order or return stock.
+
+### 5.12 Pharmacy Queue Close
+
+Represents Pharmacy Staff ending a Pharmacy Queue Entry that was not progressed into the pharmacy workflow. It records a mandatory close reason, responsible Pharmacy Staff, and effective business time. It requests Patient Tracker `Withdrawn` from `Waiting` and does not add a queue state.
+
+### 5.13 Pharmacy and Stock Ledger boundary
 
 Pharmacy owns Sales Order, Dispense Order, dispensing lifecycle, `Prepared`, `Handed Over`, and No Show resolution. Stock Ledger owns stock quantity, Mutasi, Remove Stock, and movement history only.
 
@@ -346,7 +358,7 @@ A Sales Invoice references exactly one Sales Order but may cover one or more of 
 
 **Aggregate Root:** `Dispense Order`
 
-The aggregate owns Dispense Order Lines and keeps their physical preparation, its one-to-many immutable Final Dispense Review Records, Patient Education Acknowledgement, Medication Dispense, Medication Handover, cancellation, expiry, return, and non-fulfillment outcomes mutually consistent.
+The aggregate owns Dispense Order Lines and keeps their physical preparation, its one-to-many immutable Final Dispense Review Records, Patient Education Acknowledgement, Collection Window Override when applicable, Medication Dispense, Medication Handover, cancellation, expiry, return, and non-fulfillment outcomes mutually consistent.
 A Dispense Order references exactly one Sales Order and may fulfill one or more of its Sales Order Lines. Every Dispense Order Line references exactly one Sales Order Line from that Sales Order; one Sales Order Line may be fulfilled through multiple Dispense Order Lines across multiple Dispense Orders.
 
 ### 6.5 Cross-aggregate relationship
@@ -354,7 +366,7 @@ A Sales Order may have zero or more Sales Invoices and zero or more Dispense Ord
 
 Their business correlation is expressed through Sales Invoice Item and Dispense Order Line references to Sales Order Lines and Dispense Authorized policy evaluation over financial and coverage evidence. Sharing a Sales Order does not by itself establish that every Sales Invoice clears every Dispense Order.
 
-Outpatient Queue Mapping is an active relationship to an externally owned Pharmacy Queue Entry, not an Aggregate Root of Apotek or a transaction log of mapping changes. Patient Tracker remains authoritative for Queue Session, Queue Number, and queue lifecycle.
+Outpatient Queue Mapping is an active relationship to an externally owned Pharmacy Queue Entry, not an Aggregate Root of Apotek or a transaction log of mapping changes. Patient Tracker remains authoritative for Queue Session, Queue Number, and queue lifecycle. Pharmacy Queue Close is an Apotek operational fact that requests Patient Tracker `Withdrawn`; it is not an Aggregate Root and not a queue state.
 
 ## 7. Business Rules
 
@@ -464,6 +476,14 @@ Outpatient Queue Mapping is an active relationship to an externally owned Pharma
 - **BR-APT-135** — Exception handling shall be authority-based. Returns, corrections, expired collection overrides, and other dispensing exceptions shall require authorization by an authorized pharmacist according to operational policy.
 - **BR-APT-136** — The system shall not introduce a monetary approval threshold model. Exception authorization shall not be determined by amount, quantity value, or similar numeric approval bands.
 - **BR-APT-137** — Exception authorization shall record the authorizing pharmacist, effective business time, and reason. Operational policy determines which pharmacist is authorized. Pharmacy Supervisor is an operational designation of that authority where a named authorizing pharmacist is required.
+- **BR-APT-138** — Outpatient medication awaiting pickup may remain Ready for Pickup for a configurable Collection Window. The default Collection Window is 7 days. The window starts when the Dispense Order first becomes Ready for Pickup: `Prepared`, intended for outpatient pickup, and Medication Handover not completed.
+- **BR-APT-139** — When the Collection Window elapses without Medication Handover, the Serah Obat worklist category shall become Pickup Expired. Pickup Expired is a projection category and shall not be a Dispense Order state.
+- **BR-APT-140** — Ordinary Medication Handover shall not proceed while Pickup Expired. Only an authorized pharmacist may record a Collection Window Override and then proceed with handover.
+- **BR-APT-141** — Collection Window Override shall record the authorizing pharmacist, effective business time, and override reason. Medication Handover after Pickup Expired is prohibited without that override.
+- **BR-APT-142** — Pickup Expired shall not by itself expire the Dispense Order, reverse queue `DoneAt`, establish No-Show, or return stock. Terminal uncollected resolution remains the authorized manual activity under `BR-APT-079`, `BR-APT-080`, and `WF-APT-RJ-007`.
+- **BR-APT-143** — A Pharmacy Queue Entry that has not progressed into the pharmacy workflow may be closed from the pre-service queue status. That status is Patient Tracker `Waiting`. TAKEN in this decision names that same pre-service participation and shall not be added as a Patient Tracker state.
+- **BR-APT-144** — Pharmacy Queue Close shall record a mandatory close reason, responsible Pharmacy Staff, and effective business time. Patient Tracker shall set the Queue Entry `Withdrawn`. No additional queue state shall be introduced.
+- **BR-APT-145** — Pharmacy Queue Close shall not record `ServedAt` or `DoneAt`, shall not assert `In Service` or `Done`, and shall not establish a Sales Order, Dispense Order, or Medication Handover. After `Medication Preparation Started`, this close path shall not apply.
 
 ### 7.7 Completion and history
 
@@ -478,7 +498,7 @@ Outpatient Queue Mapping is an active relationship to an externally owned Pharma
 - **BR-APT-061** — A Pharmacist may perform Telaah Resep as soon as a Resep is available; Patient arrival and Outpatient Queue Mapping shall not be prerequisites.
 - **BR-APT-062** — Outpatient Queue Mapping shall associate existing business records and shall not create or modify a Resep, Hasil Telaah Resep, or Sales Order. An incorrect mapping shall be updated in place to the correct source without requiring mapping-change history.
 - **BR-APT-063** — Tracker Mapping shall be used when valid tracker or registration evidence resolves one or more applicable existing Resep. Tracker Mapping shall not create a Resep or resolve a Direct Medication Request; a failed Tracker Mapping shall fall back to Manual Mapping.
-- **BR-APT-064** — A directly issued or otherwise unresolved Pharmacy Queue Entry shall remain unmapped until Pharmacy Staff identifies and associates its applicable medication demand.
+- **BR-APT-064** — A directly issued or otherwise unresolved Pharmacy Queue Entry shall remain unmapped until Pharmacy Staff identifies and associates its applicable medication demand, or until Pharmacy Staff records a Pharmacy Queue Close under `BR-APT-143`–`BR-APT-145`.
 - **BR-APT-065** — Pharmacy Staff shall own administrative queue and pickup calling; those responsibilities shall not be transferred to the Pharmacist.
 - **BR-APT-066** — In the normal BPJS Resep Elektronik flow with successful Tracker Mapping, the Patient shall require one outpatient pharmacy call: the pickup call after every applicable Dispense Order reaches `Prepared`.
 - **BR-APT-067** — Outpatient Queue Mapping and General Patient Purchase Confirmation may be completed in one counter interaction when the applicable Sales Order Lines and calculated amount are available. When Tracker Mapping completes without the Patient at the counter, Pharmacy Staff shall call the Queue Number for the Purchase Confirmation interaction before Sales Invoice establishment; this administrative call shall not establish `ServedAt` or `DoneAt`.
@@ -610,9 +630,11 @@ Billing and fulfillment branches progress independently. Final Sales Order resol
 Unmapped
   -> Mapped
        method: Tracker Mapping | Manual Mapping
+  -> Pharmacy Queue Close
+       -> Patient Tracker Withdrawn
 ```
 
-This relationship associates pharmacy demand with an externally owned Pharmacy Queue Entry. It does not replace the Patient Tracker queue lifecycle and does not transition Telaah Resep.
+This relationship associates pharmacy demand with an externally owned Pharmacy Queue Entry. It does not replace the Patient Tracker queue lifecycle and does not transition Telaah Resep. Pharmacy Queue Close ends unmapped or declined participation from `Waiting` without adding a queue state.
 
 ### 8.7 Outpatient pickup and handover lifecycle
 
@@ -624,12 +646,23 @@ Prepared
                  -> Education Provided
                       -> Handed Over
 
+Ready for Pickup or Patient Called
+  -> Pickup Expired
+       -> Collection Window Override
+            -> Patient Called / Final Review / Education / Handed Over
+       -> No-Show
+            -> manual uncollected-medication resolution
+                 -> Dispense Order Expired
+                 -> Collection Window Expired resolution reason
+
 Prepared, Ready for Pickup, or Patient Called
   -> No-Show
        -> manual uncollected-medication resolution
             -> Dispense Order Expired
             -> Collection Window Expired resolution reason
 ```
+
+Ready for Pickup and Pickup Expired are projection categories. The Collection Window (default 7 days) starts when the Dispense Order first becomes Ready for Pickup. Pickup Expired does not change Dispense Order state. Ordinary handover is blocked until a Collection Window Override is recorded. Terminal uncollected close remains a separate authorized act.
 
 The pickup call ends the Patient Tracker queue but does not complete Medication Handover. Final Dispense Review and Patient Education Acknowledgement occur with the Patient or caregiver present after that call. The Pharmacist operationally verifies the recipient during that counter interaction; verification is not a system-enforced lifecycle step. The system may optionally record recipient phone number and relationship for reference. Patient Education Acknowledgement records timestamp and responsible Pharmacist; detailed counseling notes are optional. The applicable commercial consequence is payer-specific. A General Patient may already have a financially cleared Sales Invoice, while the current BPJS policy establishes its Sales Invoice only with successful Medication Handover.
 
@@ -640,6 +673,7 @@ The pickup call ends the Patient Tracker queue but does not complete Medication 
 | Telaah Resep Started | A Pharmacist began professional assessment of a Resep. |
 | Telaah Resep Completed | Every reviewed line received a final professional disposition. |
 | Outpatient Queue Mapped | A Pharmacy Queue Entry was accountably associated with applicable medication demand. |
+| Pharmacy Queue Close Recorded | Pharmacy Staff closed a Queue Entry that had not progressed into the pharmacy workflow, with a mandatory reason. |
 | Direct Medication Request Accepted | A permitted demand without a Resep was accepted by Pharmacy. |
 | Sales Order Established | Accepted medication demand became available for commercial invoicing and fulfillment planning. |
 | Sales Invoice Established | A Medication Sale and its Sales Invoice Items were formed from Sales Order Lines. |
@@ -654,6 +688,8 @@ The pickup call ends the Patient Tracker queue but does not complete Medication 
 | Final Dispense Review Completed | With the Patient or caregiver present after the pickup call, Prepared Medication passed the required final professional check. |
 | Final Dispense Review Failed | Prepared Medication failed its final professional review; an immutable review record was appended and the Dispense Order returned from `Prepared` to `Preparing` for correction. |
 | Patient Education Acknowledged | The Pharmacist confirmed that medication counseling was provided; education timestamp and responsible Pharmacist were recorded. |
+| Pickup Expired Classified | The Collection Window elapsed without Medication Handover; the worklist category became Pickup Expired. |
+| Collection Window Override Recorded | An authorized pharmacist recorded a reason permitting handover after Pickup Expired. |
 | Patient Called for Pickup | Pharmacy Staff called the Patient for outpatient Medication Handover. |
 | Medication Dispensed | An accountable medication quantity was supplied for the Patient. |
 | Medication Handed Over | Medication was transferred to the Patient or other recipient as determined operationally by the Pharmacist. |

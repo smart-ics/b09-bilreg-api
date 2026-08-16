@@ -23,20 +23,20 @@ Current repository state:
 - The generic queue enum already complies with ADR-APT-001, but current F-09 event triggers and the frontend's queue states conflict with the canonical workflow.
 - Existing Patient Tracker, Tata Rekening, Stock Ledger, CPOE, Fornas, medication catalog, query, and UI-shell capabilities are reusable only through explicit extensions and adapters.
 
-The architecture is not ready for implementation review until the blocking decisions in section 4 are resolved. All blocking architecture gaps (BA-01 through BA-09) are now resolved; remaining gates are business clarification (BC-01, BC-05, BC-11 through BC-13).
+The architecture is not ready for implementation review until the blocking decisions in section 4 are resolved. All blocking architecture gaps (BA-01 through BA-09) are now resolved; remaining gates are business clarification (BC-11 through BC-13).
 
 ## 2. Classification summary
 
 | Classification | Count | Review meaning |
 |---|---:|---|
 | Blocking Architecture Gap | 0 | A structural or ownership decision is unresolved; implementing around it would create incompatible sources of truth or unsafe cross-context behavior. |
-| Business Clarification Gap | 5 | A policy, authority, threshold, or accountable outcome is not sufficiently defined. |
-| Resolved (Business Clarification) | 9 | BC-02, BC-03, BC-04, BC-06, BC-07, BC-08, BC-09, BC-10, and BC-14 ratified; artifacts updated. |
+| Business Clarification Gap | 3 | A policy, authority, threshold, or accountable outcome is not sufficiently defined. |
+| Resolved (Business Clarification) | 11 | BC-01, BC-02, BC-03, BC-04, BC-05, BC-06, BC-07, BC-08, BC-09, BC-10, and BC-14 ratified; artifacts updated. |
 | Existing Capability Extension | 9 | A relevant capability exists but its present contract or semantics do not satisfy Apotek. |
 | Missing Implementation | 15 | The design is sufficiently clear, but no conforming implementation exists. |
 | Technical Debt | 11 | Existing code or documentation embodies legacy, misleading, coupled, or unverified behavior. |
 | Resolved (Blocking Architecture) | 9 | BA-01 through BA-09 ratified; artifacts updated. |
-| **Total open** | **40** | Each open finding has one primary classification. |
+| **Total open** | **38** | Each open finding has one primary classification. |
 
 ## 3. Baseline and evidence
 
@@ -116,7 +116,7 @@ The architecture is not ready for implementation review until the blocking decis
 
 **Evidence.** `apotek-domain.md:541-559`; screen design `:151-179`.
 
-**Decision.** Pickup/handover categories are not aggregate lifecycle states. They are projection/worklist categories only. `DispenseOrder` remains the authoritative aggregate lifecycle. Operational milestones such as Patient Called, Final Review Completed, Education Provided, and Medication Handed Over are process facts/events, not aggregate states. Recipient verification is a Pharmacist operational check and is not a process fact, aggregate state, or worklist category (BC-06). Worklist categories (`Ready for Pickup`, `Ready for Review`, `Ready for Handover`, `Completed`) are derived projections used for operational organization and prioritization.
+**Decision.** Pickup/handover categories are not aggregate lifecycle states. They are projection/worklist categories only. `DispenseOrder` remains the authoritative aggregate lifecycle. Operational milestones such as Patient Called, Final Review Completed, Education Provided, and Medication Handed Over are process facts/events, not aggregate states. Recipient verification is a Pharmacist operational check and is not a process fact, aggregate state, or worklist category (BC-06). Worklist categories (`Ready for Pickup`, `Pickup Expired`, `Ready for Review`, `Ready for Handover`, `Completed`) are derived projections used for operational organization and prioritization.
 
 **Rationale.** A single authoritative lifecycle in `DispenseOrder` avoids contradictory transitions and keeps review failure, multi-order pickup, and post-`Done` handover unambiguous. Serah Obat organization is served by projections derived from aggregate facts and events, not a parallel state machine.
 
@@ -229,13 +229,17 @@ The architecture is not ready for implementation review until the blocking decis
 
 ### BC-01 — Collection window and manual expiry authority
 
+**Status:** Resolved (2026-08-16)
+
 **Gap.** No numeric collection limit is authoritative; manual closure is allowed, but eligibility criteria and escalation are undefined.
 
-**Recommended decision.** Preserve manual closure for the current scope. Define who may close, required reason/evidence, minimum warnings or contact attempts if any, effective-time rules, and whether the policy varies by payer or medication class.
-
-**Rationale.** The system can remain policy-neutral on duration while still requiring a reproducible, auditable supervisor decision.
-
 **Evidence.** Workflow `:611-679`, `:697-710`; screen design `:82-93`.
+
+**Decision.** Medication awaiting pickup may remain in Ready for Pickup for a configurable Collection Window (default 7 days). After that period the worklist category becomes Pickup Expired. Ordinary handover shall not proceed while Pickup Expired. Only an authorized pharmacist may record a Collection Window Override and proceed with handover. The override reason must be recorded. Pickup Expired does not by itself expire the Dispense Order or return stock; terminal uncollected resolution remains `WF-APT-RJ-007`.
+
+**Rationale.** A configurable window gives operators a deterministic Ready for Pickup vs Pickup Expired projection without auto-closing fulfillment. Override preserves late handover under pharmacist authority. Terminal No-Show close stays a separate authorized act so collection-window elapsed is not confused with Dispense Order `Expired`.
+
+**Ratified in.** `apotek-domain.md` (`BR-APT-138`–`BR-APT-142`); `outpatient-apotek-workflow.md`; `outpatient-apotek-screen-and-aggregate-design.md` §3.4; `sop/SOP-APT-RJ-003-*` through `sop/SOP-APT-RJ-007-*`.
 
 ### BC-02 — Direct Medication Request authority thresholds
 
@@ -291,13 +295,17 @@ The architecture is not ready for implementation review until the blocking decis
 
 ### BC-05 — Unmapped or declined queue disposition
 
+**Status:** Resolved (2026-08-16)
+
 **Gap.** A queue may remain unmapped or a direct request may be declined, but the external withdrawal/closure policy and responsible actor are not defined.
 
-**Recommended decision.** Define explicit outcomes for unresolved identity, no eligible demand, duplicate entry, patient abandonment, and declined direct request. Keep the medication decision in Apotek and queue withdrawal in Tracker.
-
-**Rationale.** Leaving entries indefinitely `Waiting` damages queue operations; silently completing them would assert false service.
-
 **Evidence.** Workflow `:197-231`; `apotek-domain.md:413-417`.
+
+**Decision.** Queue entries that are not progressed into the pharmacy workflow may be closed directly from the pre-service queue status (decision name TAKEN; canonical Patient Tracker state `Waiting`). A mandatory close reason shall be recorded. Patient Tracker shall set the entry `Withdrawn`. No additional queue state is introduced.
+
+**Rationale.** Closing from pre-service participation ends idle unmapped or declined entries without asserting `In Service` or `Done`. `Withdrawn` already exists for participation that ends before service starts. TAKEN is not added to the Tracker lifecycle. Medication decline remains an Apotek fact; queue identity and terminal queue state remain Tracker-owned.
+
+**Ratified in.** `apotek-domain.md` (`BR-APT-064`, `BR-APT-143`–`BR-APT-145`); `TRACKER-DOMAIN.md` (`BR-TRK-039a`, `BR-TRK-052`); `outpatient-apotek-workflow.md` `WF-APT-RJ-001`; `outpatient-apotek-screen-and-aggregate-design.md` §3.2; `sop/SOP-APT-RJ-001-*`.
 
 ### BC-06 — Authorized Recipient verification evidence
 
@@ -509,7 +517,7 @@ Only fulfillable prescription lines may be included in the Sales Order. Unfulfil
 - Patient Tracker `QueueEntry` is the sole canonical outpatient-pharmacy queue identity; legacy Farinv queue is read-only and must not create active records (BA-01).
 - Patient Tracker owns queue lifecycle; Pharmacy owns pharmacy workflow. First Medication Preparation Started causes Queue `ServedAt` / `InService`; coordinated Pickup Call causes Queue `DoneAt` / `Done`. No further architecture decision is required for the Pharmacy-to-Tracker milestone contract (BA-02).
 - `OutpatientQueueMapping` is a navigation/association mechanism only, not an aggregate root. It does not own lifecycle, workflow state, or transactional consistency. Queue identity remains in Patient Tracker; medication demand lifecycle remains in Pharmacy aggregates (BA-03).
-- Pickup/handover categories are projection/worklist categories only, not aggregate lifecycle states. `DispenseOrder` remains authoritative; operational milestones are process facts/events; worklist categories (`Ready for Pickup`, `Ready for Review`, `Ready for Handover`, `Completed`) are derived projections. Recipient verification is a Pharmacist operational check, not a process fact or worklist category (BA-04, BC-06).
+- Pickup/handover categories are projection/worklist categories only, not aggregate lifecycle states. `DispenseOrder` remains authoritative; operational milestones are process facts/events; worklist categories (`Ready for Pickup`, `Pickup Expired`, `Ready for Review`, `Ready for Handover`, `Completed`) are derived projections. Recipient verification is a Pharmacist operational check, not a process fact or worklist category (BA-04, BC-06).
 - Legacy DU and Sales Invoice are independent features that may coexist during transition with no dual-write. Each owns its own workflow and billing/stock paths; unified sales reporting is a read-only adapter aggregating both sources (BA-05).
 - A canonical Prescription Contract is shared by Legacy Resep and CPOE; pharmacy consumes the contract via a Prescription Snapshot at intake. Source revisions are detected but do not auto-modify snapshots; staff review tasks handle changes (BA-06).
 - Cross-context integration uses an Integration Task Table: transactional, retryable, idempotent, and reconcile-able. Business transaction and task creation commit atomically; workers process asynchronously. No distributed transaction, message broker, or transactional outbox is required (BA-07).
@@ -533,10 +541,12 @@ Only fulfillable prescription lines may be included in the Sales Order. Unfulfil
 - Authorized Recipient verification is an operational Pharmacist responsibility and is not system-enforced. Medication Handover may optionally record recipient phone number and relationship for reference only. The system shall not require identity validation, legal relationship verification, document capture, or an authorization workflow (BC-06).
 - Patient Education is a lightweight acknowledgement that medication counseling was provided before handover. The system records education timestamp and responsible Pharmacist. Detailed counseling notes are optional and recorded only when the Pharmacist considers additional documentation necessary (BC-07).
 - Exception handling is authority-based. Returns, corrections, expired collection overrides, and other dispensing exceptions require authorization by an authorized pharmacist according to operational policy. No monetary approval threshold model is introduced (BC-03).
+- Medication awaiting pickup may remain Ready for Pickup for a configurable Collection Window (default 7 days), then becomes Pickup Expired. Ordinary handover is blocked until an authorized pharmacist records a Collection Window Override with reason. Pickup Expired does not expire the Dispense Order; terminal uncollected close remains `WF-APT-RJ-007` (BC-01).
+- Queue entries not progressed into the pharmacy workflow may be closed from Waiting (decision TAKEN) with a mandatory close reason. Tracker sets Withdrawn. No additional queue state is introduced. Close is not available after In Service (BC-05).
 
 ### 9.2 Decisions still required before architecture approval
 
-Architecture approval requires business ratification of BC-01, BC-05, and BC-11 through BC-13. BA-01 through BA-09, BC-02, BC-03, BC-04, BC-06, BC-07, BC-08, BC-09, BC-10, and BC-14 are resolved. These are decision gates, not delivery steps. The remaining Existing Capability Extension, Missing Implementation, and Technical Debt findings can then be evaluated against those ratified boundaries without inventing new sources of truth.
+Architecture approval requires business ratification of BC-11 through BC-13. BA-01 through BA-09, BC-01 through BC-10, and BC-14 are resolved. These are decision gates, not delivery steps. The remaining Existing Capability Extension, Missing Implementation, and Technical Debt findings can then be evaluated against those ratified boundaries without inventing new sources of truth.
 
 ### 9.3 Overall classification
 

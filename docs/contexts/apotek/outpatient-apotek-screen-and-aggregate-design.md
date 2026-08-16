@@ -84,6 +84,7 @@ The Exception Worklist surfaces cases that need accountable resolution under exi
 | Exception category | Typical operational concern |
 |---|---|
 | No Show | Prepared or in-transit medication was not collected; aligns with SOP APT-RJ-007 / `WF-APT-RJ-007` |
+| Pickup Expired | Collection Window elapsed; awaiting override for handover or `WF-APT-RJ-007` close |
 | Expired Medication | Authorized fulfillment expiry / `Collection Window Expired` and related Dispense Order terminal outcomes |
 | Return Request | Return of prepared, transferred, or handed-over medication awaiting Inventory disposition |
 | Correction Request | Post-payment or post-handover commercial or fulfillment correction that must not silently replace history |
@@ -100,6 +101,7 @@ The workbench contains four activities.
    - Associate one queue entry with one or more existing prescriptions, Direct Medication Requests, or resulting Sales Orders.
    - Support both Tracker Mapping and Manual Mapping.
    - Correct an incorrect mapping without rewriting unrelated demand.
+   - Close a Queue Entry that is not progressed into the pharmacy workflow from `Waiting` with a mandatory close reason. Patient Tracker sets `Withdrawn`. This close is not available after `In Service`.
 
 2. **Record external prescription**
    - Record the external or physical prescription as a source document.
@@ -158,12 +160,13 @@ The first `Medication Preparation Started` event is Pharmacy Service Start Evide
 
 | Category | Operational meaning |
 |---|---|
-| Ready for Pickup | Intended medication is prepared or accountably resolved and awaiting the coordinated pickup call |
+| Ready for Pickup | Intended medication is prepared or accountably resolved and awaiting the coordinated pickup call, within the Collection Window |
+| Pickup Expired | Collection Window elapsed without Medication Handover; ordinary handover is blocked until Collection Window Override |
 | Ready for Review | Patient or caregiver is present after the pickup call; Final Dispense Review is due |
 | Ready for Handover | Final Dispense Review has passed and physical handover may proceed |
 | Completed | Medication Dispense and Medication Handover are recorded for the intended quantities |
 
-These categories do not change Dispense Order lifecycle semantics (`Preparing`, `Prepared`, `Reviewed`, `Completed`, `Expired`, and related exception outcomes remain authoritative). The workbench structure is unchanged; categories only organize the worklist.
+These categories do not change Dispense Order lifecycle semantics (`Preparing`, `Prepared`, `Reviewed`, `Completed`, `Expired`, and related exception outcomes remain authoritative). The Collection Window (default 7 days) starts when the Dispense Order first becomes Ready for Pickup. Pickup Expired is a projection only. The workbench structure is unchanged; categories only organize the worklist.
 
 #### Workbench
 
@@ -174,7 +177,7 @@ The workbench supports the following sequence:
 3. With the Patient or caregiver present, the Pharmacist operationally verifies the recipient. The system may optionally record phone number and relationship for reference; it does not validate identity, legal relationship, documents, or authorization.
 4. The Pharmacist completes a Final Dispense Review for every prepared Dispense Order and records Patient Education Acknowledgement (timestamp and responsible Pharmacist). Detailed counseling notes are optional.
 5. A passed review moves the Dispense Order to `Reviewed`; a failed review returns only that order to `Preparing` and appends an immutable review record.
-6. After Pharmacist authorization, Pharmacy Staff completes the physical handover.
+6. After Pharmacist authorization, Pharmacy Staff completes the physical handover. If the worklist category is Pickup Expired, an authorized pharmacist must first record Collection Window Override with reason; ordinary handover is blocked until then.
 7. The system records Medication Dispense and Medication Handover for every applicable quantity, requests the Inventory Issue outcome, and applies payer-specific sales consequences.
 
 For current outpatient BPJS policy, successful handover establishes the BPJS Sales Invoice. For a General Patient, the invoice may already be financially cleared before preparation. In both cases, queue completion is not evidence of handover.
@@ -249,6 +252,7 @@ Legacy Farinv queue records may be consulted for historical reporting only. New 
 | Queue milestone | Apotek action | Meaning |
 |---|---|---|
 | `CreatedAt` / `Waiting` | Queue number issued by kiosk or tracker | Patient has a pharmacy queue entry; medication demand may still be unmapped or unreviewed |
+| `Withdrawn` | Pharmacy Staff records Pharmacy Queue Close with mandatory reason | Pre-service participation ended; not `In Service` or `Done`. TAKEN is not a Tracker state |
 | `ServedAt` / `In Service` | First applicable Dispense Order records `Medication Preparation Started` | Physical pharmacy preparation has started |
 | `DoneAt` / `Done` | Pharmacy Staff performs coordinated pickup call | Patient has been called for pickup; it does not prove final review or handover |
 
@@ -282,8 +286,9 @@ flowchart TD
 | `TelaahResep` | Keeps the prescription source, per-line professional disposition, responsible Pharmacist, and final review outcome consistent | Original clinical prescription and prescriber clarification communications |
 | `SalesOrder` | Owns accepted demand, Sales Order Lines, accepted quantity, fulfillment/unfulfilled progress, and overall resolution; reconciles commercial and fulfillment quantities | Payment settlement, inventory balance, physical preparation, or handover execution |
 | `SalesInvoice` | Owns one medication sale, catalog sales lines including BHP, line-level charges, invoice-level charges, pricing snapshot, payer, financial disposition, and commercial adjustments | Sales Order quantity authority, payment evidence, stock, physical dispensing, or a separate invoice-component model |
-| `DispenseOrder` | Owns preparation, lines, immutable final review attempts, Patient Education Acknowledgement, Medication Dispense, Medication Handover, expiry, cancellation, return, and non-fulfillment outcomes | Sales Invoice payment settlement and authoritative stock balance |
+| `DispenseOrder` | Owns preparation, lines, immutable final review attempts, Patient Education Acknowledgement, Collection Window Override when applicable, Medication Dispense, Medication Handover, expiry, cancellation, return, and non-fulfillment outcomes | Sales Invoice payment settlement and authoritative stock balance |
 | `OutpatientQueueMapping` | Associates one externally owned queue entry with one medication-demand source; identifies Tracker or Manual Mapping | Queue identity/lifecycle and the lifecycle of the mapped prescription or Sales Order |
+| Pharmacy Queue Close | Pharmacy Staff close of a Queue Entry not progressed into pharmacy workflow; mandatory reason | Patient Tracker `Withdrawn` state itself |
 
 ### 5.3 Fulfillment Clearance (not an aggregate)
 
@@ -313,7 +318,7 @@ The following are required collaborators, not Apotek aggregates:
 | External authority | Apotek dependency |
 |---|---|
 | CPOE / clinical order authority | Original electronic prescription and clinician intent |
-| Patient Tracker | Pharmacy queue entry identity, queue number, `CreatedAt`, `ServedAt`, and `DoneAt` |
+| Patient Tracker | Pharmacy queue entry identity, queue number, `CreatedAt`, `ServedAt`, `DoneAt`, and `Withdrawn` |
 | Inventory | Stock availability, reservation, issue, return eligibility, and final stock disposition |
 | Payment / Cashier | Payment Clearance evidence |
 | SEP and Fornas authorities | BPJS eligibility and item-level Coverage Clearance evidence |

@@ -52,11 +52,12 @@ Menetapkan tata cara penerbitan nomor antrian apotek rawat jalan dan melakukan m
 
 - **Sistem Apotek** mempertahankan antrian dengan status `Unmapped` dan tidak mengizinkan proses yang mensyaratkan mapping antrean.
 - **Staf Apotek** meminta bukti tambahan dan mengulangi Manual Mapping. Staf Apotek tidak boleh membuat resep elektronik sebagai pengganti bukti yang tidak ada.
+- **Staf Apotek** boleh sebaliknya mencatat Pharmacy Queue Close beserta alasan wajib. **Sistem Antrian Pasien** menetapkan Queue Entry yang masih Waiting menjadi `Withdrawn`. Penutupan tidak mencatat `ServedAt` atau `DoneAt`.
 
 ### 5.2 Permintaan obat langsung ditolak
 
 - **Staf Apotek** tidak mencatat permintaan obat langsung ataupun membuat pesanan penjualan apotek.
-- **Sistem Antrian Pasien** mempertahankan antrian dengan status menunggu sampai kebijakan pembatalan antrian diterapkan.
+- **Staf Apotek** boleh mencatat Pharmacy Queue Close beserta alasan wajib. **Sistem Antrian Pasien** menetapkan Queue Entry yang masih Waiting menjadi `Withdrawn`. State antrean tambahan tidak digunakan.
 
 ### 5.3 mapping antrean yang sudah tercatat ternyata salah
 
@@ -66,12 +67,12 @@ Menetapkan tata cara penerbitan nomor antrian apotek rawat jalan dan melakukan m
 
 ## 6. Kriteria Penyelesaian
 
-1. Setiap Resep atau Permintaan Obat Langsung telah mempunyai catatan mapping tersendiri dengan nomor antrian yang sama, atau antrian tetap terlihat berstatus `Unmapped` sambil menunggu bukti tambahan.
+1. Setiap Resep atau Permintaan Obat Langsung telah mempunyai catatan mapping tersendiri dengan nomor antrian yang sama, atau antrian tetap terlihat berstatus `Unmapped` sambil menunggu bukti tambahan, atau Pharmacy Queue Close dicatat dan Queue Entry berstatus `Withdrawn`.
 2. Proses melakukan mapping antrean tidak mencatat `ServedAt` ataupun `DoneAt`.
 3. Setiap sumber pelayanan obat tetap memiliki identitas resep bila ada, pesanan penjualan apotek, faktur penjualan, dan perintah penyiapan obat masing-masing.
 
 ## 7. Referensi
 
-- [Domain Pelayanan Obat](../apotek-domain-id.md), khususnya `BR-APT-061`–`BR-APT-065`, `BR-APT-082`, dan `BR-APT-084`–`BR-APT-087`.
+- [Domain Pelayanan Obat](../apotek-domain-id.md), khususnya `BR-APT-061`–`BR-APT-065`, `BR-APT-082`, `BR-APT-084`–`BR-APT-087`, dan `BR-APT-143`–`BR-APT-145`.
 - [Alur Kerja Pelayanan Obat Rawat Jalan](../outpatient-apotek-workflow-id.md), `WF-APT-RJ-001`.
-- [Domain Sistem Antrian Pasien](../../../contexts/pasien-tracker/TRACKER-DOMAIN-ID.md), khususnya `BR-TRK-026`–`BR-TRK-035`.
+- [Domain Sistem Antrian Pasien](../../../contexts/pasien-tracker/TRACKER-DOMAIN-ID.md), khususnya `BR-TRK-026`–`BR-TRK-035`, `BR-TRK-039a`, dan `BR-TRK-052`.

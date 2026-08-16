@@ -376,6 +376,7 @@ A Queue Entry references a Patient Tracker by TrackerId but does not own or modi
 - **BR-TRK-038** — Queue lifecycle timestamps shall be valid business times. In Fixed Business Date simulation, ServedAt may precede CreatedAt and DoneAt may precede ServedAt; consumers that calculate durations must explicitly tolerate or exclude negative intervals.
 - **BR-TRK-039** — A Done Queue Entry is final in V1 and shall not return to Waiting or In Service.
 - **BR-TRK-039a** — An applicable feature policy may make a Waiting Queue Entry Withdrawn when participation ends before service starts; a Withdrawn Queue Entry is final and shall not be represented as completed service.
+- **BR-TRK-052** — Outpatient pharmacy is an applicable feature policy under `BR-TRK-039a`. When Apotek records a Pharmacy Queue Close with a mandatory reason for a Waiting Pharmacy Queue Entry that has not entered In Service, Patient Tracker shall make that Queue Entry Withdrawn. TAKEN shall not be added as a Patient Tracker state. No additional queue state shall be introduced.
 
 ### 7.6 Operational time interpretation
 
@@ -576,6 +577,10 @@ Apotek reports Medication Preparation Started
   → Apotek later reports the coordinated pickup call
   → Pharmacy Queue Entry becomes Done
   → Pharmacy DoneAt uses the pickup-call time
+
+Apotek records Pharmacy Queue Close with mandatory reason while Waiting
+  → Pharmacy Queue Entry becomes Withdrawn
+  → ServedAt and DoneAt remain absent
 ```
 
 The queue lifecycle describes operational pharmacy queue progress. It does not prove Final Dispense Review, Patient Education, Medication Dispense, or Medication Handover. Detailed outpatient pharmacy sequencing is owned by the [Outpatient Apotek workflow](../apotek/outpatient-apotek-workflow.md).

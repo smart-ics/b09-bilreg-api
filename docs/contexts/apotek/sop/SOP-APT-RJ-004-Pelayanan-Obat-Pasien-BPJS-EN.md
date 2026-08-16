@@ -47,7 +47,7 @@ Provide a repeatable procedure for clearing and preparing BPJS-covered outpatien
 8. **Pharmacy Staff** verifies that every Dispense Order intended for handover is `Prepared` or has an accountable exception outcome.
 9. **Pharmacy Staff** performs one coordinated pickup call; **Patient Tracker** makes the Queue Entry `Done` and records `DoneAt`.
 10. With the Patient or caregiver present, **Pharmacist** operationally verifies the recipient, completes Final Dispense Review, and records Patient Education Acknowledgement. When the review passes, **Pharmacy System** appends the review record and displays the Dispense Order as `Reviewed`. **Pharmacy System** records education timestamp and responsible Pharmacist. Detailed counseling notes are optional. The Pharmacist may optionally record recipient phone number and relationship for reference.
-11. **Pharmacy System** blocks completion when Final Dispense Review is incomplete or Patient Education Acknowledgement is absent. Recipient verification is not a system gate. Detailed counseling notes are not required.
+11. **Pharmacy System** blocks completion when Final Dispense Review is incomplete or Patient Education Acknowledgement is absent. Recipient verification is not a system gate. Detailed counseling notes are not required. If Pickup Expired, **Pharmacy System** also blocks completion until Collection Window Override with reason is recorded.
 12. **Pharmacy Staff** completes the physical handover after Pharmacist authorization.
 13. As one accountable outcome, **Pharmacy System** establishes the BPJS Sales Invoice from covered Billing Allocations, records Medication Dispense, and records Medication Handover.
 14. **Inventory** supplies the authoritative Inventory Issue outcome; **Pharmacy System** displays the Dispense Order as `Completed`.
@@ -87,7 +87,7 @@ Provide a repeatable procedure for clearing and preparing BPJS-covered outpatien
 
 ## 7. References
 
-- [Apotek Domain](../apotek-domain.md), especially `BR-APT-020`–`BR-APT-026`, `BR-APT-029`–`BR-APT-045`, `BR-APT-066`, `BR-APT-068`–`BR-APT-069`, `BR-APT-073`–`BR-APT-079`, `BR-APT-081`–`BR-APT-083`, `BR-APT-088`, `BR-APT-090`, `BR-APT-095`–`BR-APT-096`, `BR-APT-114`–`BR-APT-118`, and `BR-APT-129`–`BR-APT-134`.
+- [Apotek Domain](../apotek-domain.md), especially `BR-APT-020`–`BR-APT-026`, `BR-APT-029`–`BR-APT-045`, `BR-APT-066`, `BR-APT-068`–`BR-APT-069`, `BR-APT-073`–`BR-APT-079`, `BR-APT-081`–`BR-APT-083`, `BR-APT-088`, `BR-APT-090`, `BR-APT-095`–`BR-APT-096`, `BR-APT-114`–`BR-APT-118`, and `BR-APT-129`–`BR-APT-134`, and `BR-APT-138`–`BR-APT-142`.
 - [Outpatient Apotek Workflow](../outpatient-apotek-workflow.md), `WF-APT-RJ-004`.
 - [Patient Tracker Domain](../../../contexts/pasien-tracker/TRACKER-DOMAIN.md), `BR-TRK-045`, `BR-TRK-045a`, and `BR-TRK-046`.
 - [Tata Rekening Domain](../../../contexts/TataRekening/02-domain.md).
