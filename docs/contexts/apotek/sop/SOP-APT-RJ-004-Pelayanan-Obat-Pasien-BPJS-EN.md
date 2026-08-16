@@ -63,8 +63,8 @@ Provide a repeatable procedure for clearing and preparing BPJS-covered outpatien
 
 ### 5.2 Shortage occurs after Sales Order establishment
 
-- **Pharmacy Staff** records Backorder or another approved stock source for the same medication product.
-- **Pharmacy System** preserves the accepted medication identity and displays the unresolved outcome.
+- **Pharmacy Staff** does not create Backorder or select an alternate stock source.
+- **Pharmacy System** records an Unfulfilled Medication Outcome, supports Salinan Resep for unfulfilled lines, and preserves the accepted medication identity.
 
 ### 5.3 Final Dispense Review fails
 
@@ -87,7 +87,7 @@ Provide a repeatable procedure for clearing and preparing BPJS-covered outpatien
 
 ## 7. References
 
-- [Apotek Domain](../apotek-domain.md), especially `BR-APT-020`–`BR-APT-026`, `BR-APT-029`–`BR-APT-045`, `BR-APT-066`, `BR-APT-068`–`BR-APT-069`, `BR-APT-073`–`BR-APT-079`, `BR-APT-081`–`BR-APT-083`, `BR-APT-088`, `BR-APT-090`, and `BR-APT-095`–`BR-APT-096`.
+- [Apotek Domain](../apotek-domain.md), especially `BR-APT-020`–`BR-APT-026`, `BR-APT-029`–`BR-APT-045`, `BR-APT-066`, `BR-APT-068`–`BR-APT-069`, `BR-APT-073`–`BR-APT-079`, `BR-APT-081`–`BR-APT-083`, `BR-APT-088`, `BR-APT-090`, `BR-APT-095`–`BR-APT-096`, and `BR-APT-114`–`BR-APT-118`.
 - [Outpatient Apotek Workflow](../outpatient-apotek-workflow.md), `WF-APT-RJ-004`.
 - [Patient Tracker Domain](../../../contexts/pasien-tracker/TRACKER-DOMAIN.md), `BR-TRK-045`, `BR-TRK-045a`, and `BR-TRK-046`.
 - [Tata Rekening Domain](../../../contexts/TataRekening/02-domain.md).

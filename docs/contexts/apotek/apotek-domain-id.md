@@ -35,7 +35,7 @@ Konteks ini mencakup:
 4. pembentukan Dispense Order dan dispensing fisik;
 5. clearance komersial atau penjaminan untuk pemenuhan;
 6. Medication Dispense dan Medication Handover; dan
-7. kekurangan stok, substitusi, backorder, pembatalan, retur, dan hasil ketidakpemenuhan lainnya; serta
+7. kekurangan stok, substitusi, pembatalan, retur, dan hasil ketidakpemenuhan lainnya; Apotek Rawat Jalan tidak mendukung Backorder; serta
 8. kebijakan workflow Rawat Jalan yang saat ini ditetapkan untuk antrean, penjamin, pengambilan, dan no-show.
 
 Konteks ini berlaku untuk Rawat Jalan, Rawat Inap, IGD, dan Unit Dose Dispensing.
@@ -138,7 +138,7 @@ Resep tidak berubah menjadi Sales Order. Keputusan profesional yang selesai meng
 | Medication Administration | Pemberian Obat kepada Pasien | Fakta klinis bahwa obat benar-benar diberikan kepada atau dikonsumsi Pasien; dimiliki context eksternal. |
 | Medication Shortage | Kekurangan Stok Obat | Stok tidak cukup untuk memenuhi jumlah obat yang dialokasikan. |
 | Stock Discrepancy | Selisih Stok | Perbedaan antara stok tercatat dan stok fisik yang memengaruhi fulfillment. |
-| Backorder | Pemenuhan Tertunda | Jumlah unresolved yang dipertahankan untuk dipenuhi kemudian saat supply tersedia. |
+| Backorder | Pemenuhan Tertunda | Jumlah unresolved yang dipertahankan untuk dipenuhi kemudian saat supply tersedia. Apotek Rawat Jalan tidak mendukung Backorder. |
 | Medication Substitution | Substitusi Obat | Penggantian accountable atas produk obat yang diminta berdasarkan authority profesional yang berlaku. |
 | Unfulfilled Medication Outcome | Outcome Obat Tidak Terpenuhi | Alasan final dan accountable bahwa jumlah obat yang diterima tidak dipenuhi. |
 | Salinan Resep | Salinan Resep | Salinan Resep (Prescription Copy) accountable untuk obat atau jumlah resep yang tidak dimasukkan ke Sales Order atau tidak dipenuhi, bila berlaku. |
@@ -213,7 +213,7 @@ Mendukung Partial Prescription Fulfillment pada batas Prescription ke Sales Orde
 
 **Indonesia:** Penyelesaian Exception dan Retur
 
-Menyelesaikan kekurangan stok, selisih stok, substitusi, backorder, pembatalan, kedaluwarsa, retur, no-show, dan konsekuensi finansial yang diperlukan.
+Menyelesaikan kekurangan stok, selisih stok, substitusi, pembatalan, kedaluwarsa, retur, no-show, dan konsekuensi finansial yang diperlukan. Apotek Rawat Jalan tidak menahan Backorder atau mengarahkan fulfillment ke sumber stok alternatif.
 
 ### 3.10 Cross-Setting Traceability
 
@@ -245,7 +245,7 @@ Memiliki Hasil Telaah Resep, Medication Substitution yang diotorisasi selama Tel
 
 ### 4.3 Staf Apotek
 
-Mengoordinasikan permintaan yang diterima, perkembangan Sales Order, interaksi administratif Rawat Jalan, penyiapan atau peracikan obat, dan penyerahan sesuai kewenangan. Untuk pelayanan Rawat Jalan, Staf Apotek memanggil Nomor Antrean, membuat Manual Mapping, menyampaikan nilai Pasien Umum sebelum Sales Invoice dibentuk, menyimpan Sales Invoice yang telah dikonfirmasi, menyiapkan obat sesuai Dispense Order, dan melakukan panggilan pengambilan. Untuk Permintaan Obat Langsung, Staf Apotek menerima atau menolak tanpa membentuk Resep. Konsultasi Pharmacist secara operasional bersifat opsional sebagai panduan SOP saja dan tidak dimodelkan sebagai approval gate. Jika stok tidak mendukung pemenuhan setelah Sales Order dibentuk, Staf Apotek memilih Backorder atau sumber stok lain yang disetujui untuk produk obat yang sama sesuai kewenangan. Staf Apotek tidak boleh mengganti jenis obat.
+Mengoordinasikan permintaan yang diterima, perkembangan Sales Order, interaksi administratif Rawat Jalan, penyiapan atau peracikan obat, dan penyerahan sesuai kewenangan. Untuk pelayanan Rawat Jalan, Staf Apotek memanggil Nomor Antrean, membuat Manual Mapping, menyampaikan nilai Pasien Umum sebelum Sales Invoice dibentuk, menyimpan Sales Invoice yang telah dikonfirmasi, menyiapkan obat sesuai Dispense Order, dan melakukan panggilan pengambilan. Untuk Permintaan Obat Langsung, Staf Apotek menerima atau menolak tanpa membentuk Resep. Konsultasi Pharmacist secara operasional bersifat opsional sebagai panduan SOP saja dan tidak dimodelkan sebagai approval gate. Ketika stok Rawat Jalan tidak mendukung pemenuhan penuh, Staf Apotek hanya memasukkan baris yang dapat dipenuhi ke Sales Order dan menerbitkan Salinan Resep untuk baris yang tidak dipenuhi. Staf Apotek tidak boleh membuat Backorder, memilih sumber stok alternatif, atau mengganti jenis obat.
 
 ### 4.4 Patient or Caregiver
 
@@ -309,7 +309,7 @@ Merepresentasikan mapping aktif antara Pharmacy Queue Entry yang dimiliki contex
 
 ### 5.9 Unfulfilled Medication Outcome
 
-Merepresentasikan alasan final suatu Accepted Quantity tidak dipenuhi dan mengidentifikasi Salinan Resep, penutupan backorder, return, atau financial correction yang diperlukan.
+Merepresentasikan alasan final suatu Accepted Quantity tidak dipenuhi dan mengidentifikasi Salinan Resep, return, atau financial correction yang diperlukan. Apotek Rawat Jalan tidak menggunakan penutupan backorder.
 
 ### 5.10 Final Dispense Review Record
 
@@ -375,7 +375,7 @@ Outpatient Queue Mapping merupakan mapping aktif kepada Pharmacy Queue Entry yan
 - **BR-APT-015** — Pembentukan Sales Invoice dan Dispense Order dapat terjadi secara independen pada waktu bisnis yang berbeda.
 - **BR-APT-016** — Jumlah aktif Dispense Order Line yang mereferensikan suatu Sales Order Line tidak boleh melebihi Accepted Quantity yang belum terselesaikan.
 - **BR-APT-017** — Fulfilled Quantity tidak boleh melebihi jumlah Dispense Order Line-nya.
-- **BR-APT-018** — Setiap Accepted Quantity pada akhirnya harus fulfilled, cancelled, expired, backordered, atau memperoleh Unfulfilled Medication Outcome lain yang accountable.
+- **BR-APT-018** — Setiap Accepted Quantity pada akhirnya harus fulfilled, cancelled, expired, atau memperoleh Unfulfilled Medication Outcome lain yang accountable. Apotek Rawat Jalan tidak boleh menetapkan Backorder.
 - **BR-APT-019** — Sales Order hanya boleh mencapai Fulfillment Completion ketika setiap Accepted Quantity memiliki outcome final yang accountable.
 - **BR-APT-105** — Batas fulfillment Apotek Rawat Jalan harus berupa Registration Period yang aktif. Resep dapat ditelaah, ditelaah ulang, dan dipenuhi selama Registration asal tetap aktif. Tidak boleh ada konsep Fulfillment Episode terpisah.
 - **BR-APT-106** — Hak ulang resep harus dimiliki Resep melalui mekanisme `Iter` Legacy Resep. Sistem harus mengalokasikan Iter, melacak konsumsi Iter, dan menghitung sisa Iter.
@@ -416,7 +416,7 @@ Outpatient Queue Mapping merupakan mapping aktif kepada Pharmacy Queue Entry yan
 - **BR-APT-043** — Fulfillment Clearance harus mengidentifikasi jumlah Dispense Order yang diotorisasi dan supporting commercial evidence.
 - **BR-APT-044** — Satu Sales Invoice dapat mendukung clearance beberapa Dispense Order, dan satu Dispense Order dapat bergantung pada beberapa Sales Invoice Item atau Sales Invoice ketika diwajibkan kebijakan.
 - **BR-APT-045** — Sales Invoice yang paid atau financially cleared tidak menjamin fulfillment berhasil ketika terjadi shortage, discrepancy, expiry, atau exception sah lainnya.
-- **BR-APT-046** — Financial clearance yang diikuti non-fulfillment harus menghasilkan Backorder, fulfillment dari sumber stok lain yang disetujui untuk produk obat yang sama, Credit Note, Refund, atau resolution lain yang disetujui dan accountable. Kondisi tersebut tidak boleh mensubstitusi Sales Order Line setelah Sales Order dibentuk.
+- **BR-APT-046** — Financial clearance yang diikuti non-fulfillment harus menghasilkan Unfulfilled Medication Outcome yang accountable serta Credit Note, Refund, atau resolution komersial lain yang disetujui. Kondisi tersebut tidak boleh mensubstitusi Sales Order Line setelah Sales Order dibentuk. Apotek Rawat Jalan tidak menyelesaikan kondisi itu melalui Backorder atau sumber stok alternatif.
 
 ### 7.6 Partial fulfillment, UDD, dan exception
 
@@ -431,10 +431,15 @@ Outpatient Queue Mapping merupakan mapping aktif kepada Pharmacy Queue Entry yan
 - **BR-APT-055** — No-Show harus menjadi outcome kebijakan Rawat Jalan dan tidak boleh diterapkan pada Ward Delivery Rawat Inap.
 - **BR-APT-108** — Partial Prescription Fulfillment hanya diizinkan untuk Patient Request dan Stock Shortage. Tidak ada alasan lain yang diakui sistem.
 - **BR-APT-109** — Untuk Patient Request, Staf Apotek dapat membentuk Sales Order yang hanya berisi baris resep yang dipilih. Baris resep yang dikecualikan tetap unfulfilled pada Resep asal. Sistem harus mendukung Salinan Resep untuk baris yang tidak dipenuhi.
-- **BR-APT-110** — Untuk Stock Shortage sebelum Sales Order dibentuk, Staf Apotek dapat membentuk Sales Order yang hanya berisi baris resep yang dapat dipenuhi. Baris yang tidak tersedia tetap unfulfilled pada Resep asal. Sistem harus mendukung Salinan Resep untuk baris yang tidak dipenuhi.
+- **BR-APT-110** — Untuk Stock Shortage sebelum Sales Order dibentuk, Staf Apotek dapat membentuk Sales Order yang hanya berisi baris resep yang dapat dipenuhi. Baris yang tidak tersedia tetap unfulfilled pada Resep asal. Sistem harus mendukung Salinan Resep untuk baris yang tidak dipenuhi. Tidak boleh dibentuk outstanding fulfillment obligation, waiting demand, atau backorder record.
 - **BR-APT-111** — Pharmacist tetap bertanggung jawab menyetujui keputusan fulfillment yang dihasilkan ketika review profesional diperlukan. Sistem tidak menentukan substitusi alternatif atau tindakan fulfillment eksternal secara otomatis.
 - **BR-APT-112** — Partialitas Partial Prescription Fulfillment hanya ada antara Prescription dan Sales Order. Partialitas tidak ada antara Sales Order dan Dispense Order.
 - **BR-APT-113** — Sales Order yang dipenuhi melalui satu atau lebih Dispense Order adalah eksekusi fulfillment dan bukan kebijakan Partial Prescription Fulfillment.
+- **BR-APT-114** — Apotek Rawat Jalan tidak mendukung Backorder. Kekurangan stok tidak boleh membentuk outstanding fulfillment obligation, waiting demand, atau backorder record.
+- **BR-APT-115** — Kekurangan stok Rawat Jalan harus diselesaikan segera melalui Partial Sales Order atas baris yang dapat dipenuhi dan Salinan Resep untuk baris resep yang tidak dipenuhi. Salinan Resep dapat digunakan Pasien untuk memperoleh obat dari apotek lain.
+- **BR-APT-116** — Ketika persediaan Rawat Jalan tidak cukup, hanya baris resep yang dapat dipenuhi yang boleh masuk Sales Order. Baris yang tidak dapat dipenuhi tetap di luar Sales Order pada Resep asal.
+- **BR-APT-117** — Apotek Rawat Jalan tidak mengimplementasikan pemilihan sumber stok alternatif, fulfillment routing, inter-pharmacy sourcing, atau backorder management. Ketersediaan stok dievaluasi terhadap otoritas stok yang sedang tersedia.
+- **BR-APT-118** — Ketika kekurangan stok Rawat Jalan teridentifikasi setelah Sales Order dibentuk atau financial clearance, jumlah yang tidak dapat dipenuhi harus memperoleh Unfulfilled Medication Outcome yang accountable dan Salinan Resep bila berlaku, plus Credit Note atau Refund ketika ada konsekuensi komersial. Jumlah tersebut tidak boleh di-backorder atau diarahkan ke sumber stok alternatif.
 
 ### 7.7 Completion dan history
 
@@ -560,10 +565,10 @@ Established, Awaiting Clearance, Released, Preparing, Prepared, or Reviewed
 Accepted Quantity
   -> Invoiced through Sales Invoice Item or Commercially Unallocated
   -> Referenced by Dispense Order Line or Not Yet Planned for Fulfillment
-  -> Fulfilled | Backordered | Cancelled | Expired | Other Unfulfilled Outcome
+  -> Fulfilled | Cancelled | Expired | Other Unfulfilled Outcome
 ```
 
-Cabang billing dan fulfillment berkembang secara independen. Resolution Sales Order final memerlukan rekonsiliasi kedua cabang, bukan jumlah dokumen yang identik.
+Cabang billing dan fulfillment berjalan independen. Resolusi Sales Order final mensyaratkan rekonsiliasi kedua cabang, bukan jumlah dokumen yang sama. Apotek Rawat Jalan tidak menggunakan `Backordered`.
 
 ### 8.6 Relasi Outpatient Queue Mapping
 
@@ -621,7 +626,7 @@ Pickup call menyelesaikan antrean Patient Tracker, tetapi tidak menyelesaikan Me
 | Outpatient No-Show Recorded | Pasien tidak mengambil obat dalam batas layanan Rawat Jalan yang berlaku. |
 | Medication Shortage Identified | Stok tersedia tidak dapat mendukung jumlah fulfillment yang dimaksud. |
 | Medication Substitution Authorized | Authority yang accountable menyetujui penggantian obat yang diminta. |
-| Dispense Order Backordered | Jumlah unresolved dipertahankan untuk fulfillment kemudian. |
+| Dispense Order Backordered | Jumlah unresolved dipertahankan untuk fulfillment kemudian. Tidak digunakan di Apotek Rawat Jalan. |
 | Dispense Order Cancelled | Keputusan berwenang mengakhiri Dispense Order sebelum completion. |
 | Dispense Order Expired | Periode fulfillment yang diizinkan berakhir tanpa completion. |
 | Unfulfilled Medication Recorded | Accepted Quantity memperoleh outcome non-fulfillment final. |

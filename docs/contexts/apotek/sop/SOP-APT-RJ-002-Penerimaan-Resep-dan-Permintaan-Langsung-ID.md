@@ -42,7 +42,7 @@ Resep atau Direct Medication Request sumber tetap dipertahankan dan tidak beruba
 | Aktor | Jenis | Tanggung jawab |
 |---|---|---|
 | Apoteker | Petugas | Menelaah setiap item obat, menghubungi Dokter Penulis Resep di luar sistem bila perlu, menetapkan obat yang dapat dilayani, lalu menyelesaikan telaah resep. |
-| Staf Apotek | Petugas | Mencatat resep kertas; menerima atau menolak permintaan obat langsung; serta menindaklanjuti kekurangan stok dengan mencatat pesanan tertunda atau memilih sumber stok lain yang disetujui untuk obat yang sama. |
+| Staf Apotek | Petugas | Mencatat resep kertas; menerima atau menolak permintaan obat langsung; serta menangani kekurangan stok melalui Partial Sales Order dan Salinan Resep. |
 | CPOE | Subsistem | Menyediakan resep asli yang sah. Sistem Apotek tidak mengubah resep tersebut. |
 | Katalog Obat | Subsistem | Menyediakan identitas obat dan informasi formularium yang diperlukan saat telaah resep. |
 | Sistem Apotek | Subsistem | Mencatat hasil telaah, membuat pesanan apotek, serta mencatat tagihan dan kesiapan pelayanan obat secara terpisah. Aplikasi juga membuat tugas utama untuk menyiapkan obat. |
@@ -81,8 +81,9 @@ Resep atau Direct Medication Request sumber tetap dipertahankan dan tidak beruba
 ### 5.2 Stok tidak cukup setelah obat diterima untuk dilayani
 
 - **Sistem Persediaan** menampilkan informasi kekurangan atau selisih stok. Informasi ini tidak mengubah hasil telaah resep.
-- **Staf Apotek** mencatat pesanan tertunda atau memilih sumber stok lain yang disetujui untuk obat yang sama, sesuai kewenangannya.
-- **Staf Apotek** tidak mengganti obat.
+- **Staf Apotek** hanya memasukkan item resep yang dapat dipenuhi ke pesanan apotek. Item yang tidak dapat dipenuhi tetap pada resep asal.
+- **Sistem Apotek** mendukung Salinan Resep untuk item yang tidak dipenuhi. Pasien dapat menggunakan salinan tersebut untuk memperoleh obat dari apotek lain.
+- **Staf Apotek** tidak membuat pesanan tertunda, tidak memilih sumber stok alternatif, dan tidak mengganti obat.
 
 ### 5.3 Obat perlu diganti setelah pesanan apotek dibuat
 
@@ -98,6 +99,6 @@ Resep atau Direct Medication Request sumber tetap dipertahankan dan tidak beruba
 
 ## 7. Referensi
 
-- [Domain Pelayanan Obat](../apotek-domain-id.md), khususnya `BR-APT-001`–`BR-APT-019`, `BR-APT-029`–`BR-APT-034`, `BR-APT-050`, `BR-APT-061`, `BR-APT-068`, `BR-APT-083`, `BR-APT-086`, dan `BR-APT-089`.
+- [Domain Pelayanan Obat](../apotek-domain-id.md), khususnya `BR-APT-001`–`BR-APT-019`, `BR-APT-029`–`BR-APT-034`, `BR-APT-050`, `BR-APT-054`, `BR-APT-061`, `BR-APT-068`, `BR-APT-083`, `BR-APT-086`, `BR-APT-089`, dan `BR-APT-105`–`BR-APT-118`.
 - [Alur Kerja Pelayanan Obat Rawat Jalan](../outpatient-apotek-workflow-id.md), `WF-APT-RJ-002`.
 - [Domain CPOE](../../../contexts/cpoe/CPOE-DOMAIN-ID.md).

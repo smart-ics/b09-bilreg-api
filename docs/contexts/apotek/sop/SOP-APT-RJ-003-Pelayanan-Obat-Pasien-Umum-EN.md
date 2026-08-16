@@ -75,8 +75,8 @@ Provide a repeatable procedure for obtaining verbal Purchase Confirmation, estab
 
 ### 5.4 Shortage
 
-- **Pharmacy Staff** records Backorder or another approved source for the same medication product; no substitution is made.
-- **Pharmacy System** records the applicable Unfulfilled Medication Outcome when fulfillment cannot continue and keeps required financial consequences visible.
+- **Pharmacy Staff** does not create Backorder or select an alternate stock source; no substitution is made.
+- **Pharmacy System** records the applicable Unfulfilled Medication Outcome, supports Salinan Resep for unfulfilled lines, and keeps required financial consequences visible.
 
 ### 5.5 Final Dispense Review fails
 
@@ -98,7 +98,7 @@ Provide a repeatable procedure for obtaining verbal Purchase Confirmation, estab
 
 ## 7. References
 
-- [Apotek Domain](../apotek-domain.md), especially `BR-APT-020`–`BR-APT-028`, `BR-APT-033`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-067`–`BR-APT-072`, `BR-APT-076`–`BR-APT-083`, `BR-APT-088`, and `BR-APT-095`–`BR-APT-096`.
+- [Apotek Domain](../apotek-domain.md), especially `BR-APT-020`–`BR-APT-028`, `BR-APT-033`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-067`–`BR-APT-072`, `BR-APT-076`–`BR-APT-083`, `BR-APT-088`, `BR-APT-095`–`BR-APT-096`, and `BR-APT-114`–`BR-APT-118`.
 - [Outpatient Apotek Workflow](../outpatient-apotek-workflow.md), `WF-APT-RJ-003`.
 - [Patient Tracker Domain](../../../contexts/pasien-tracker/TRACKER-DOMAIN.md), `BR-TRK-045`, `BR-TRK-045a`, and `BR-TRK-046`.
 - [Tata Rekening Domain](../../../contexts/TataRekening/02-domain.md).

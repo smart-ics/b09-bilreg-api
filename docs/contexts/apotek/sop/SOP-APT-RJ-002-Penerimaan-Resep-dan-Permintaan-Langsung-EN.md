@@ -40,7 +40,7 @@ The source Resep or Direct Medication Request remains traceable and does not bec
 | Actor | Type | Operational responsibility |
 |---|---|---|
 | Pharmacist | Human | Reviews every Baris Resep, performs any needed clarification with the Dokter Penulis Resep outside the system, establishes the accepted medication, and completes the review. |
-| Pharmacy Staff | Human | Records Resep Fisik; accepts or declines Direct Medication Requests; and reviews stock outcomes to choose Backorder or another approved source for the same product when authorized. |
+| Pharmacy Staff | Human | Records Resep Fisik; accepts or declines Direct Medication Requests; and applies Stock Shortage Handling through a Partial Sales Order and Salinan Resep. |
 | CPOE | Subsystem | Supplies the authoritative original Resep, which Apotek does not modify. |
 | Medication Catalog | Subsystem | Supplies medication identity and formulary information used during review. |
 | Pharmacy System | Subsystem | Records review outcomes and establishes traceable allocations, Sales Order, and primary Dispense Order. |
@@ -79,8 +79,9 @@ The source Resep or Direct Medication Request remains traceable and does not bec
 ### 5.2 Stock is insufficient after acceptance
 
 - **Inventory** displays the shortage or discrepancy outcome without altering the Hasil Telaah Resep.
-- **Pharmacy Staff** records Backorder or selects another approved stock source for the same medication product within authority.
-- **Pharmacy Staff** does not substitute the medication.
+- **Pharmacy Staff** includes only fulfillable prescription lines in the Sales Order. Unfulfillable lines remain on the originating Prescription.
+- **Pharmacy System** supports Salinan Resep for unfulfilled lines. The Patient may use the Prescription Copy to obtain medication from another pharmacy.
+- **Pharmacy Staff** does not create Backorder, select an alternate stock source, or substitute the medication.
 
 ### 5.3 Medication replacement is required after Sales Order establishment
 
@@ -96,6 +97,6 @@ The source Resep or Direct Medication Request remains traceable and does not bec
 
 ## 7. References
 
-- [Apotek Domain](../apotek-domain.md), especially `BR-APT-001`–`BR-APT-019`, `BR-APT-029`–`BR-APT-034`, `BR-APT-050`, `BR-APT-061`, `BR-APT-068`, `BR-APT-083`, `BR-APT-086`, and `BR-APT-089`.
+- [Apotek Domain](../apotek-domain.md), especially `BR-APT-001`–`BR-APT-019`, `BR-APT-029`–`BR-APT-034`, `BR-APT-050`, `BR-APT-054`, `BR-APT-061`, `BR-APT-068`, `BR-APT-083`, `BR-APT-086`, `BR-APT-089`, and `BR-APT-105`–`BR-APT-118`.
 - [Outpatient Apotek Workflow](../outpatient-apotek-workflow.md), `WF-APT-RJ-002`.
 - [CPOE Domain](../../../contexts/cpoe/CPOE-DOMAIN.md).

@@ -82,7 +82,7 @@ The workflow ends when every medication demand mapped to the Pharmacy Queue Entr
 - Mixed BPJS-covered and Patient-payable quantities.
 - Payment Clearance, Coverage Clearance, and Dispense Authorized.
 - Pharmacy Reserve (Stock Mutasi to Dispensing Temporary Unit), Medication Preparation, pickup calling, Final Dispense Review, Authorized Recipient verification, Patient Education, Medication Dispense, and Medication Handover.
-- Backorder or another approved stock source for the same medication product.
+- Stock Shortage Handling through a Partial Sales Order of fulfillable lines and Salinan Resep for unfulfilled prescription lines.
 - No-Show and manual uncollected-medication resolution.
 
 ### 3.4 Excluded
@@ -95,6 +95,7 @@ The workflow ends when every medication demand mapped to the Pharmacy Queue Entr
 - Clinical Order modification and CPOE lifecycle changes.
 - Medication Administration.
 - Numerical collection limits; the closing decision is manual until a separate policy supplies a value.
+- Backorder, alternate stock source selection, fulfillment routing, and inter-pharmacy sourcing.
 
 ## 4. Participants and Responsibility Handoffs
 
@@ -102,7 +103,7 @@ The workflow ends when every medication demand mapped to the Pharmacy Queue Entr
 |---|---|---|
 | Patient or Caregiver | Obtains a Queue Number, supplies mapping evidence or a Resep Fisik, gives verbal confirmation when Patient-payable, pays when required, presents for pickup, receives education, and accepts medication when authorized. | Evidence is supplied, confirmation is given or declined, Payment Clearance is obtained, or Medication Handover completes. |
 | Patient Tracker | Owns Pharmacy Queue Entry identity, Queue Number, and queue lifecycle. | `Queue Entry Created`, `Queue Service Started`, or `Queue Service Completed`. |
-| Pharmacy Staff | Performs administrative queue calls, Manual Mapping, records Resep Fisik, accepts or declines Direct Medication Requests, coordinates Sales Order progression, communicates General Patient value, establishes a confirmed Sales Invoice, performs Medication Preparation and Compounding, handles Backorder or another approved stock source within authority, and performs the pickup call. | `Outpatient Queue Mapped`, `Sales Order Established`, `Sales Invoice Established`, `Medication Prepared`, `Dispense Order Backordered`, or `Patient Called for Pickup`. |
+| Pharmacy Staff | Performs administrative queue calls, Manual Mapping, records Resep Fisik, accepts or declines Direct Medication Requests, coordinates Sales Order progression, communicates General Patient value, establishes a confirmed Sales Invoice, performs Medication Preparation and Compounding, applies Stock Shortage Handling through a Partial Sales Order and Salinan Resep, and performs the pickup call. | `Outpatient Queue Mapped`, `Sales Order Established`, `Sales Invoice Established`, `Medication Prepared`, or `Patient Called for Pickup`. |
 | Pharmacist | Performs Telaah Resep, authorizes eligible Medication Substitution before Sales Order establishment, verifies the Authorized Recipient, performs Final Dispense Review, and provides Patient Education. | `Telaah Resep Completed`, `Final Dispense Review Completed`, or Medication Handover is authorized to complete. |
 | Cashier or Payment Authority | Receives required Patient payment and supplies Payment Clearance. | `Payment Clearance Established`. |
 | SEP and Fornas Authorities | Supply encounter-level SEP validity and item-level BPJS coverage. | `Coverage Clearance Established` for the covered quantity. |
@@ -288,10 +289,10 @@ Pharmacist, Pharmacy Staff, CPOE or Dokter Penulis Resep.
 
 #### Exception and Compensation Flows
 
-- Stock shortage after Sales Order establishment does not change Hasil Telaah Resep. Pharmacy Staff may choose Backorder or another approved stock source for the same medication product.
+- Stock shortage after Sales Order establishment does not change Hasil Telaah Resep. Pharmacy Staff shall not create Backorder or select an alternate stock source. Unfulfillable quantity receives an Unfulfilled Medication Outcome and Salinan Resep when applicable.
 - Partial Prescription Fulfillment before Sales Order establishment is permitted only for Patient Request or Stock Shortage. No other partiality reason is recognized.
 - Medication identity on an established Sales Order Line shall not be changed. If a later replacement is needed, cancel the affected line or order, review the same original Resep again, and establish a new Sales Order Line without requiring a corrected or replacement Resep.
-- Any accepted quantity that cannot be fulfilled must retain an accountable Backorder, `Cancelled`, `Expired`, or other Unfulfilled Medication Outcome.
+- Any accepted quantity that cannot be fulfilled must retain an accountable `Cancelled`, `Expired`, or other Unfulfilled Medication Outcome. Outpatient Pharmacy shall not retain Backorder.
 
 #### Outcomes and Postconditions
 
@@ -302,7 +303,7 @@ Pharmacist, Pharmacy Staff, CPOE or Dokter Penulis Resep.
 
 #### Domain References
 
-`BR-APT-001`–`BR-APT-019`, `BR-APT-029`–`BR-APT-034`, `BR-APT-050`, `BR-APT-054`, `BR-APT-061`, `BR-APT-068`, `BR-APT-083`, `BR-APT-086`, `BR-APT-089`, `BR-APT-105`–`BR-APT-113`; Telaah Resep and Sales Order lifecycles.
+`BR-APT-001`–`BR-APT-019`, `BR-APT-029`–`BR-APT-034`, `BR-APT-050`, `BR-APT-054`, `BR-APT-061`, `BR-APT-068`, `BR-APT-083`, `BR-APT-086`, `BR-APT-089`, `BR-APT-105`–`BR-APT-118`; Telaah Resep and Sales Order lifecycles.
 
 #### Domain Events
 
@@ -369,7 +370,7 @@ Patient or Caregiver, Pharmacy Staff, Cashier or Payment Authority, Pharmacy Sta
 
 - If payment is not completed after Sales Invoice establishment, Medication Preparation remains blocked. The Sales Invoice may be `Cancelled` only while its lifecycle permits.
 - If an issued or financially cleared Sales Invoice needs correction, use Financial Adjustment, Credit Note, or Refund under Tata Rekening authority; do not silently replace it.
-- If shortage occurs after payment, the Pharmacy Staff may select Backorder or another approved stock source for the same medication product. Substitution is prohibited because the Sales Order already exists.
+- If shortage occurs after payment, Pharmacy Staff shall not create Backorder or select an alternate stock source. Unfulfillable quantity receives an Unfulfilled Medication Outcome and Salinan Resep when applicable, plus Credit Note or Refund under Tata Rekening authority. Substitution is prohibited because the Sales Order already exists.
 - If fulfillment cannot complete, affected quantities receive an accountable Unfulfilled Medication Outcome and Tata Rekening receives the required financial consequence.
 - A failed Final Dispense Review appends an immutable review record containing the reason, responsible Pharmacist, effective business time, and affected quantity; returns the affected Dispense Order from `Prepared` to `Preparing`; and prevents Medication Handover. After correction, the Dispense Order returns to `Prepared` and requires another Final Dispense Review.
 
@@ -382,7 +383,7 @@ Patient or Caregiver, Pharmacy Staff, Cashier or Payment Authority, Pharmacy Sta
 
 #### Domain References
 
-`BR-APT-020`–`BR-APT-028`, `BR-APT-033`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-067`–`BR-APT-072`, `BR-APT-076`–`BR-APT-083`, `BR-APT-088`, `BR-APT-095`–`BR-APT-096`; Sales Invoice and Dispense Order lifecycles; `BR-TRK-045`, `BR-TRK-045a`, `BR-TRK-046`.
+`BR-APT-020`–`BR-APT-028`, `BR-APT-033`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-067`–`BR-APT-072`, `BR-APT-076`–`BR-APT-083`, `BR-APT-088`, `BR-APT-095`–`BR-APT-096`, `BR-APT-114`–`BR-APT-118`; Sales Invoice and Dispense Order lifecycles; `BR-TRK-045`, `BR-TRK-045a`, `BR-TRK-046`.
 
 #### Domain Events
 
@@ -447,7 +448,7 @@ Patient or Caregiver, Pharmacy Staff, Pharmacist, Patient Tracker, SEP and Forna
 #### Exception and Compensation Flows
 
 - A BPJS No-Show before Medication Handover establishes no Sales Invoice and requires no Sales Invoice cancellation.
-- Shortage after Sales Order establishment permits Backorder or another approved stock source for the same medication product; it does not permit substitution.
+- Shortage after Sales Order establishment does not permit Backorder, alternate stock source, or substitution. Unfulfillable quantity receives an Unfulfilled Medication Outcome and Salinan Resep when applicable.
 - Failed Final Dispense Review appends its immutable review record, returns the Dispense Order from `Prepared` to `Preparing`, and prevents both BPJS Sales Invoice establishment and Medication Handover. Correction returns the order to `Prepared` and requires a new review.
 - Inventory may reject a return Mutasi when eligible quantity is not available; Pharmacy still records the accountable No Show outcome and any required commercial consequence.
 
@@ -460,7 +461,7 @@ Patient or Caregiver, Pharmacy Staff, Pharmacist, Patient Tracker, SEP and Forna
 
 #### Domain References
 
-`BR-APT-020`–`BR-APT-026`, `BR-APT-029`–`BR-APT-045`, `BR-APT-066`, `BR-APT-068`–`BR-APT-069`, `BR-APT-073`–`BR-APT-079`, `BR-APT-081`–`BR-APT-083`, `BR-APT-088`, `BR-APT-090`, `BR-APT-095`–`BR-APT-096`; `BR-TRK-045`, `BR-TRK-045a`, `BR-TRK-046`.
+`BR-APT-020`–`BR-APT-026`, `BR-APT-029`–`BR-APT-045`, `BR-APT-066`, `BR-APT-068`–`BR-APT-069`, `BR-APT-073`–`BR-APT-079`, `BR-APT-081`–`BR-APT-083`, `BR-APT-088`, `BR-APT-090`, `BR-APT-095`–`BR-APT-096`, `BR-APT-114`–`BR-APT-118`; `BR-TRK-045`, `BR-TRK-045a`, `BR-TRK-046`.
 
 #### Domain Events
 
@@ -595,7 +596,7 @@ Pharmacy Staff, Pharmacist, Patient or Caregiver, Patient Tracker, Cashier or Pa
 #### Exception and Compensation Flows
 
 - Correcting one mapping shall not rewrite another demand's history.
-- Cancellation, expiry, Backorder, financial correction, and return remain attached to their originating Sales Order and Dispense Order.
+- Cancellation, expiry, unfulfilled shortage, financial correction, and return remain attached to their originating Sales Order and Dispense Order.
 - One successful Medication Handover shall not be inferred to fulfill another mapped demand without its own handover fact.
 - A failed Final Dispense Review appends its immutable review record and returns only its originating Dispense Order from `Prepared` to `Preparing`. That demand is excluded from handover until correction returns it to `Prepared` and a new review passes; other demands remain independently accountable under their payer workflow.
 
@@ -724,9 +725,9 @@ The `Domain References` section of each workflow specification is the source of 
 | Workflow ID | Domain rules | States | Domain Events | External authority |
 |---|---|---|---|---|
 | `WF-APT-RJ-001` | `BR-APT-061`–`BR-APT-065`, `BR-APT-082`, `BR-APT-084`–`BR-APT-087`, `BR-APT-097`; `BR-TRK-026`–`BR-TRK-035`, `BR-TRK-051` | `Unmapped`, `Mapped`, `Waiting` | `Queue Entry Created`, `Outpatient Queue Mapped`, `Queue Entry Identified` | Patient Tracker |
-| `WF-APT-RJ-002` | `BR-APT-001`–`BR-APT-019`, `BR-APT-029`–`BR-APT-034`, `BR-APT-050`, `BR-APT-054`, `BR-APT-061`, `BR-APT-068`, `BR-APT-083`, `BR-APT-086`, `BR-APT-089`, `BR-APT-105`–`BR-APT-113` | `Available`, `Under Review`, `Approved`, `Partially Approved`, `Rejected`, `Established`, `Active` | `Telaah Resep Started`, `Medication Substitution Authorized`, `Telaah Resep Completed`, `Direct Medication Request Accepted`, `Sales Order Established`, `Dispense Order Established` | CPOE, Medication Catalog, Inventory |
-| `WF-APT-RJ-003` | `BR-APT-020`–`BR-APT-028`, `BR-APT-033`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-067`–`BR-APT-072`, `BR-APT-076`–`BR-APT-083`, `BR-APT-088`, `BR-APT-095`–`BR-APT-096`; `BR-TRK-045`, `BR-TRK-045a`, `BR-TRK-046` | `Established`, `Issued`, `Financially Cleared`, `Released`, `Preparing`, `Prepared`, `Reviewed`, `Completed`, `In Service`, `Done` | `Sales Invoice Established`, `Payment Clearance Established`, `Medication Preparation Started`, `Medication Prepared`, `Patient Called for Pickup`, `Final Dispense Review Completed`, `Final Dispense Review Failed`, `Medication Handed Over` | Patient Tracker, Payment, Inventory, Tata Rekening |
-| `WF-APT-RJ-004` | `BR-APT-020`–`BR-APT-026`, `BR-APT-029`–`BR-APT-045`, `BR-APT-066`, `BR-APT-068`–`BR-APT-069`, `BR-APT-073`–`BR-APT-079`, `BR-APT-081`–`BR-APT-083`, `BR-APT-088`, `BR-APT-090`, `BR-APT-095`–`BR-APT-096`; `BR-TRK-045`, `BR-TRK-045a`, `BR-TRK-046` | `Awaiting Clearance`, `Released`, `Preparing`, `Prepared`, `Reviewed`, `Completed`, `In Service`, `Done` | `Coverage Clearance Established`, `Medication Preparation Started`, `Patient Called for Pickup`, `Final Dispense Review Failed`, `Sales Invoice Established`, `Medication Handed Over` | Patient Tracker, SEP, Fornas, Inventory, Tata Rekening |
+| `WF-APT-RJ-002` | `BR-APT-001`–`BR-APT-019`, `BR-APT-029`–`BR-APT-034`, `BR-APT-050`, `BR-APT-054`, `BR-APT-061`, `BR-APT-068`, `BR-APT-083`, `BR-APT-086`, `BR-APT-089`, `BR-APT-105`–`BR-APT-118` | `Available`, `Under Review`, `Approved`, `Partially Approved`, `Rejected`, `Established`, `Active` | `Telaah Resep Started`, `Medication Substitution Authorized`, `Telaah Resep Completed`, `Direct Medication Request Accepted`, `Sales Order Established`, `Dispense Order Established` | CPOE, Medication Catalog, Inventory |
+| `WF-APT-RJ-003` | `BR-APT-020`–`BR-APT-028`, `BR-APT-033`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-067`–`BR-APT-072`, `BR-APT-076`–`BR-APT-083`, `BR-APT-088`, `BR-APT-095`–`BR-APT-096`, `BR-APT-114`–`BR-APT-118`; `BR-TRK-045`, `BR-TRK-045a`, `BR-TRK-046` | `Established`, `Issued`, `Financially Cleared`, `Released`, `Preparing`, `Prepared`, `Reviewed`, `Completed`, `In Service`, `Done` | `Sales Invoice Established`, `Payment Clearance Established`, `Medication Preparation Started`, `Medication Prepared`, `Patient Called for Pickup`, `Final Dispense Review Completed`, `Final Dispense Review Failed`, `Medication Handed Over` | Patient Tracker, Payment, Inventory, Tata Rekening |
+| `WF-APT-RJ-004` | `BR-APT-020`–`BR-APT-026`, `BR-APT-029`–`BR-APT-045`, `BR-APT-066`, `BR-APT-068`–`BR-APT-069`, `BR-APT-073`–`BR-APT-079`, `BR-APT-081`–`BR-APT-083`, `BR-APT-088`, `BR-APT-090`, `BR-APT-095`–`BR-APT-096`, `BR-APT-114`–`BR-APT-118`; `BR-TRK-045`, `BR-TRK-045a`, `BR-TRK-046` | `Awaiting Clearance`, `Released`, `Preparing`, `Prepared`, `Reviewed`, `Completed`, `In Service`, `Done` | `Coverage Clearance Established`, `Medication Preparation Started`, `Patient Called for Pickup`, `Final Dispense Review Failed`, `Sales Invoice Established`, `Medication Handed Over` | Patient Tracker, SEP, Fornas, Inventory, Tata Rekening |
 | `WF-APT-RJ-005` | `BR-APT-015`, `BR-APT-020`–`BR-APT-028`, `BR-APT-040`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-070`–`BR-APT-078`, `BR-APT-090`–`BR-APT-096` | Payer-specific Sales Invoice and shared Dispense Order states | `Coverage Clearance Established`, `Payment Clearance Established`, `Final Dispense Review Failed`, `Sales Invoice Established`, `Medication Handed Over` | SEP, Fornas, Payment, Tata Rekening |
 | `WF-APT-RJ-006` | `BR-APT-011`, `BR-APT-015`, `BR-APT-022`, `BR-APT-030`, `BR-APT-056`–`BR-APT-060`, `BR-APT-084`–`BR-APT-088`, `BR-APT-095`–`BR-APT-096`; `BR-TRK-032`, `BR-TRK-035`–`BR-TRK-039`, `BR-TRK-045`, `BR-TRK-045a` | Per-demand authoritative states; one queue `Waiting` → `In Service` → `Done` | `Outpatient Queue Mapped`, `Medication Preparation Started`, `Patient Called for Pickup`, `Final Dispense Review Failed`, `Medication Handed Over` | Patient Tracker |
 | `WF-APT-RJ-007` | `BR-APT-018`–`BR-APT-019`, `BR-APT-027`, `BR-APT-045`–`BR-APT-047`, `BR-APT-052`–`BR-APT-060`, `BR-APT-069`, `BR-APT-078`–`BR-APT-080`, `BR-APT-095` | `Expired`, `Active`, `Resolved` | `Outpatient No-Show Recorded`, `Dispense Order Expired`, `Unfulfilled Medication Recorded`, `Medication Returned`, `Sales Invoice Credited`, `Refund Required`, `Sales Order Resolved` | Inventory, Tata Rekening |

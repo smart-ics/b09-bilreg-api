@@ -65,8 +65,8 @@ Memberikan langkah yang sama bagi petugas untuk memastikan obat rawat jalan dita
 
 ### 5.2 Stok kurang setelah pesanan apotek dibuat
 
-- **Staf Apotek** mencatat pesanan tertunda atau memilih sumber stok lain yang disetujui untuk obat yang sama.
-- **Sistem Apotek** tetap menggunakan identitas obat yang sudah diterima dan menampilkan masalah yang belum selesai.
+- **Staf Apotek** tidak membuat pesanan tertunda dan tidak memilih sumber stok alternatif.
+- **Sistem Apotek** mencatat obat yang tidak dapat dilayani, mendukung Salinan Resep untuk item yang tidak dipenuhi, dan tetap menggunakan identitas obat yang sudah diterima.
 
 ### 5.3 Pemeriksaan akhir obat tidak lulus
 
@@ -89,7 +89,7 @@ Memberikan langkah yang sama bagi petugas untuk memastikan obat rawat jalan dita
 
 ## 7. Referensi
 
-- [Domain Pelayanan Obat](../apotek-domain-id.md), khususnya `BR-APT-020`–`BR-APT-026`, `BR-APT-029`–`BR-APT-045`, `BR-APT-066`, `BR-APT-068`–`BR-APT-069`, `BR-APT-073`–`BR-APT-079`, `BR-APT-081`–`BR-APT-083`, `BR-APT-088`, `BR-APT-090`, dan `BR-APT-095`–`BR-APT-096`.
+- [Domain Pelayanan Obat](../apotek-domain-id.md), khususnya `BR-APT-020`–`BR-APT-026`, `BR-APT-029`–`BR-APT-045`, `BR-APT-066`, `BR-APT-068`–`BR-APT-069`, `BR-APT-073`–`BR-APT-079`, `BR-APT-081`–`BR-APT-083`, `BR-APT-088`, `BR-APT-090`, `BR-APT-095`–`BR-APT-096`, dan `BR-APT-114`–`BR-APT-118`.
 - [Alur Kerja Pelayanan Obat Rawat Jalan](../outpatient-apotek-workflow-id.md), `WF-APT-RJ-004`.
 - [Domain Sistem Antrian Pasien](../../../contexts/pasien-tracker/TRACKER-DOMAIN-ID.md), `BR-TRK-045`, `BR-TRK-045a`, dan `BR-TRK-046`.
 - [Domain Tata Rekening](../../../contexts/TataRekening/02-domain.md).

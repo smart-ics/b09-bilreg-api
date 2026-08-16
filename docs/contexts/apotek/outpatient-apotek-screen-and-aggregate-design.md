@@ -138,7 +138,7 @@ The workbench lets Pharmacy Staff:
 2. begin preparation only for authorized quantities;
 3. perform picking, counting, labelling, packaging, and compounding when required;
 4. record preparation completion and move the Dispense Order to `Prepared`;
-5. record or display shortage, backorder, cancellation, and other accountable exceptions; and
+5. record or display shortage, Salinan Resep for unfulfilled lines, cancellation, and other accountable exceptions; and
 6. show prepared medication as in-transit until accountable handover or final inventory disposition.
 
 The first `Medication Preparation Started` event is Pharmacy Service Start Evidence. It causes Patient Tracker to record `ServedAt` and move the pharmacy queue entry to `In Service`.

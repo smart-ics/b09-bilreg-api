@@ -23,20 +23,20 @@ Current repository state:
 - The generic queue enum already complies with ADR-APT-001, but current F-09 event triggers and the frontend's queue states conflict with the canonical workflow.
 - Existing Patient Tracker, Tata Rekening, Stock Ledger, CPOE, Fornas, medication catalog, query, and UI-shell capabilities are reusable only through explicit extensions and adapters.
 
-The architecture is not ready for implementation review until the blocking decisions in section 4 are resolved. All blocking architecture gaps (BA-01 through BA-09) are now resolved; remaining gates are business clarification (BC-01, BC-03, BC-05 through BC-08, BC-10 through BC-14).
+The architecture is not ready for implementation review until the blocking decisions in section 4 are resolved. All blocking architecture gaps (BA-01 through BA-09) are now resolved; remaining gates are business clarification (BC-01, BC-03, BC-05 through BC-08, BC-11 through BC-14).
 
 ## 2. Classification summary
 
 | Classification | Count | Review meaning |
 |---|---:|---|
 | Blocking Architecture Gap | 0 | A structural or ownership decision is unresolved; implementing around it would create incompatible sources of truth or unsafe cross-context behavior. |
-| Business Clarification Gap | 11 | A policy, authority, threshold, or accountable outcome is not sufficiently defined. |
-| Resolved (Business Clarification) | 3 | BC-02, BC-04, and BC-09 ratified; artifacts updated. |
+| Business Clarification Gap | 10 | A policy, authority, threshold, or accountable outcome is not sufficiently defined. |
+| Resolved (Business Clarification) | 4 | BC-02, BC-04, BC-09, and BC-10 ratified; artifacts updated. |
 | Existing Capability Extension | 9 | A relevant capability exists but its present contract or semantics do not satisfy Apotek. |
 | Missing Implementation | 15 | The design is sufficiently clear, but no conforming implementation exists. |
 | Technical Debt | 11 | Existing code or documentation embodies legacy, misleading, coupled, or unverified behavior. |
 | Resolved (Blocking Architecture) | 9 | BA-01 through BA-09 ratified; artifacts updated. |
-| **Total open** | **46** | Each open finding has one primary classification. |
+| **Total open** | **45** | Each open finding has one primary classification. |
 
 ## 3. Baseline and evidence
 
@@ -347,13 +347,31 @@ The architecture is not ready for implementation review until the blocking decis
 
 ### BC-10 — Shortage, Backorder, and alternate-stock authority
 
-**Gap.** Staff may choose Backorder or another approved stock source within authority, but approval limits, patient communication, and terminal timing are undefined.
+**Status:** Resolved (2026-08-16)
 
-**Recommended decision.** Define eligible stock sources, authority by medication/quantity, when Backorder becomes terminal, and required patient/payer communication.
+**Gap.** Staff could choose Backorder or another approved stock source within authority, but approval limits, patient communication, terminal timing, and whether outpatient Pharmacy retained outstanding demand were undefined.
 
-**Rationale.** These choices affect fulfillment completion, stock custody, and financial consequences.
+**Evidence.** `apotek-domain.md:227`, `375`, `416`; workflow `:85`, `:105`, `:291-294`, `:372`, `:450`.
 
-**Evidence.** `apotek-domain.md:217-219`, `388-400`; workflow `:284-288`, `:362-368`.
+**Decision.** Outpatient Pharmacy does not support Backorder. When a stock shortage occurs, the system does not create an outstanding fulfillment obligation, waiting demand, or backorder record.
+
+**Stock Shortage Handling.** Stock shortage is resolved immediately through a Partial Sales Order and Salinan Resep (Prescription Copy) for unfulfilled prescription lines:
+
+```text
+Prescription
+  -> Available Lines
+       -> Sales Order
+```
+
+Only fulfillable prescription lines may be included in the Sales Order. Unfulfillable lines remain outside the Sales Order on the originating Prescription.
+
+**Prescription Copy.** The system shall support Salinan Resep generation containing the unfulfilled prescription lines. The Prescription Copy may be used by the Patient to obtain medication from another pharmacy.
+
+**Alternate stock source.** Outpatient Pharmacy does not implement alternate stock source selection, fulfillment routing, inter-pharmacy sourcing, or backorder management. Inventory availability is evaluated against the currently available stock authority.
+
+**Rationale.** The organization does not operationally retain outstanding outpatient medication demand when stock is unavailable. Shortage is resolved immediately through partial fulfillment and Prescription Copy issuance rather than deferred fulfillment.
+
+**Ratified in.** `apotek-domain.md` (`BR-APT-018`, `BR-APT-046`, `BR-APT-110`, `BR-APT-114`–`BR-APT-118`); `outpatient-apotek-workflow.md`; `outpatient-apotek-screen-and-aggregate-design.md` §3.3; `sop/SOP-APT-RJ-002-*`, `sop/SOP-APT-RJ-003-*`, `sop/SOP-APT-RJ-004-*`.
 
 ### BC-11 — Pharmacy call purpose and display wording
 
@@ -470,10 +488,11 @@ The architecture is not ready for implementation review until the blocking decis
 - Direct Medication Request is accepted or declined by Pharmacy Staff without Pharmacist approval; optional consultation is SOP-only and not a domain gate (BC-02).
 - Outpatient Pharmacy fulfillment boundary is the active Registration Period; no separate Fulfillment Episode concept. One active Sales Order per Prescription per Registration while that Registration remains active. Iter entitlement is system-managed through Legacy Resep `Iter`; Pharmacist decides whether unused Iter may be honored at fulfillment time and may decline even when remaining Iter exists (BC-09).
 - Partial Prescription Fulfillment is permitted only for Patient Request and Stock Shortage at the Prescription-to-Sales Order boundary. Excluded lines remain on the originating Prescription; Salinan Resep supports external fulfillment. Pharmacist approves when professional review is required. Multiple Dispense Orders per Sales Order is execution only, not this policy (BC-04).
+- Outpatient Pharmacy does not support Backorder, alternate stock source selection, fulfillment routing, or inter-pharmacy sourcing. Shortage is resolved immediately by placing only fulfillable lines on the Sales Order and issuing Salinan Resep for unfulfilled lines; no outstanding fulfillment obligation is retained (BC-10).
 
 ### 9.2 Decisions still required before architecture approval
 
-Architecture approval requires business ratification of BC-01, BC-03, BC-05 through BC-08, and BC-10 through BC-14. BA-01 through BA-09, BC-02, BC-04, and BC-09 are resolved. These are decision gates, not delivery steps. The remaining Existing Capability Extension, Missing Implementation, and Technical Debt findings can then be evaluated against those ratified boundaries without inventing new sources of truth.
+Architecture approval requires business ratification of BC-01, BC-03, BC-05 through BC-08, and BC-11 through BC-14. BA-01 through BA-09, BC-02, BC-04, BC-09, and BC-10 are resolved. These are decision gates, not delivery steps. The remaining Existing Capability Extension, Missing Implementation, and Technical Debt findings can then be evaluated against those ratified boundaries without inventing new sources of truth.
 
 ### 9.3 Overall classification
 
