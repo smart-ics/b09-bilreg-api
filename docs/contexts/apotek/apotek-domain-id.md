@@ -100,7 +100,10 @@ Resep tidak berubah menjadi Sales Order. Keputusan profesional yang selesai meng
 | Medication Sale | Penjualan Obat | Transaksi komersial yang direpresentasikan oleh satu Sales Invoice dari satu Sales Order. |
 | Sales Invoice | Faktur Jual | Dokumen komersial authoritative dan Aggregate Root yang merepresentasikan satu Medication Sale. |
 | Legacy DU | DU Legacy | Transaksi legacy `Trs.DU (DO-Bill)` yang menggabungkan penagihan obat dan pengiriman stok; pada target model, faktanya direpresentasikan melalui Sales Invoice dan satu atau lebih Dispense Order yang dikoordinasikan oleh Sales Order serta dapat ditelusuri pada tingkat baris. |
-| Sales Invoice Item | Item Faktur Jual | Satu obat atau layanan yang berlaku beserta jumlah, harga, diskon, dan nilai di dalam Sales Invoice. Setiap Sales Invoice Item obat berasal dari tepat satu Sales Order Line dan menunjukkan bagian dari baris tersebut yang ditagihkan dalam faktur. |
+| Sales Invoice Item | Item Faktur Jual | Satu obat, BHP, atau baris katalog lain beserta jumlah, harga, diskon, line-level charge, dan nilai di dalam Sales Invoice. Setiap Sales Invoice Item obat atau BHP berasal dari tepat satu Sales Order Line dan menunjukkan bagian dari baris tersebut yang ditagihkan dalam faktur. |
+| BHP | BHP | Item katalog standar yang dapat tampil sebagai baris penjualan. BHP bukan komponen faktur free-form. |
+| Line-level Charge | Charge Tingkat Baris | Charge komersial khusus item yang melekat pada baris penjualan, misalnya biaya kemasan atau racikan. |
+| Invoice-level Charge | Charge Tingkat Faktur | Penyesuaian komersial seluruh transaksi yang melekat pada Sales Invoice, misalnya pembulatan. |
 | Pricing Snapshot | Rekaman Harga Transaksi | Dasar komersial yang tidak dapat diubah dan digunakan ketika Sales Invoice dibentuk. |
 | Payer | Penjamin | Pasien, BPJS, asuransi, perusahaan, atau pihak lain yang diharapkan menanggung charge obat. |
 | Financial Charge | Tagihan Finansial | Konsekuensi finansial yang diberikan kepada Tata Rekening dari Medication Sale. |
@@ -333,7 +336,7 @@ Aggregate memastikan jumlah yang ditagihkan dan pemenuhan fisik tetap dapat dite
 
 **Aggregate Root:** `Sales Invoice`
 
-Aggregate merepresentasikan satu Medication Sale. Aggregate menjaga Sales Invoice Item, Pricing Snapshot, Payer, financial disposition, Credit Note, refund, dan outcome Financial Charge tetap konsisten. Purchase Confirmation lisan Pasien Umum dibuktikan oleh pembentukan Sales Invoice yang accountable dan tidak disimpan sebagai object terpisah.
+Aggregate merepresentasikan satu Medication Sale. Aggregate menjaga Sales Invoice Item, Pricing Snapshot, Payer, line-level charge, invoice-level charge, financial disposition, Credit Note, refund, dan outcome Financial Charge tetap konsisten. Purchase Confirmation lisan Pasien Umum dibuktikan oleh pembentukan Sales Invoice yang accountable dan tidak disimpan sebagai object terpisah. Fakta komersial non-obat menggunakan model penjualan legacy: BHP sebagai baris katalog, charge khusus item pada baris, dan penyesuaian seluruh transaksi pada faktur. Tidak ada model komponen faktur tambahan.
 
 Sales Invoice mereferensikan tepat satu Sales Order tetapi dapat mencakup satu atau lebih Sales Order Line miliknya.
 
@@ -387,7 +390,7 @@ Outpatient Queue Mapping merupakan mapping aktif kepada Pharmacy Queue Entry yan
 - **BR-APT-021** — Setiap Sales Invoice harus berasal dari tepat satu Sales Order. Setiap Sales Invoice Item obat harus berasal dari tepat satu Sales Order Line dari Sales Order tersebut.
 - **BR-APT-022** — Satu Sales Order dapat menghasilkan nol, satu, atau beberapa Sales Invoice.
 - **BR-APT-023** — Sales Invoice dapat mencakup satu atau lebih Sales Order Line melalui Sales Invoice Item-nya dan harus mempertahankan baris sumber, jumlah yang ditagihkan, serta nilai setiap item.
-- **BR-APT-024** — Sales Invoice Item tidak boleh memperkenalkan baris obat yang tidak ada pada Sales Order sumbernya, kecuali komponen komersial non-obat yang diotorisasi secara eksplisit.
+- **BR-APT-024** — Sales Invoice Item tidak boleh memperkenalkan komponen faktur non-obat free-form. BHP hanya boleh tampil sebagai baris katalog. Charge khusus item harus berupa line-level charge. Penyesuaian seluruh transaksi harus berupa invoice-level charge.
 - **BR-APT-025** — Sales Invoice harus mempertahankan Pricing Snapshot dan Payer yang berlaku saat dibentuk.
 - **BR-APT-026** — Pembentukan Sales Invoice tidak membuktikan bahwa stok tersedia, direservasi, disiapkan, didispensing, atau diserahkan.
 - **BR-APT-027** — Sales Invoice yang issued atau financially settled harus dikoreksi melalui Financial Adjustment, Credit Note, atau outcome Refund yang accountable, bukan penggantian diam-diam.
@@ -446,6 +449,10 @@ Outpatient Queue Mapping merupakan mapping aktif kepada Pharmacy Queue Entry yan
 - **BR-APT-122** — Patient-Pay Sales Order harus memerlukan Payment Clearance menurut workflow self-pay normal sebelum Dispense Authorized diberikan. Ini adalah evaluasi evidence keuangan, bukan aggregate Financial Clearance.
 - **BR-APT-123** — Setiap baris resep mengikuti jalur otorisasi sendiri: baris BPJS Covered menggunakan Coverage Evidence untuk menjadi Dispense Authorized; baris Patient-Pay menggunakan Payment Clearance untuk menjadi Dispense Authorized.
 - **BR-APT-124** — Membentuk Patient-Pay Sales Order terpisah untuk baris Fornas Not Covered adalah Partial Prescription Fulfillment. Satu Resep asal dapat menghasilkan Sales Order yang ditanggung BPJS dan Patient-Pay Sales Order untuk baris resep yang berbeda.
+- **BR-APT-125** — Apotek Rawat Jalan harus mengadopsi model penjualan legacy yang ada untuk fakta komersial non-obat. Tidak boleh diperkenalkan model komponen faktur tambahan.
+- **BR-APT-126** — BHP harus diperlakukan sebagai item katalog standar dan boleh tampil sebagai baris penjualan. BHP tidak boleh direpresentasikan sebagai item faktur free-form.
+- **BR-APT-127** — Charge khusus item, termasuk biaya kemasan dan racikan, harus dicatat sebagai line-level charge pada baris penjualan yang berlaku.
+- **BR-APT-128** — Penyesuaian seluruh transaksi, termasuk pembulatan, harus dicatat sebagai invoice-level charge pada Sales Invoice.
 
 ### 7.7 Completion dan history
 
@@ -479,7 +486,7 @@ Outpatient Queue Mapping merupakan mapping aktif kepada Pharmacy Queue Entry yan
 - **BR-APT-080** — No-Show Pasien Umum setelah pembayaran harus menggunakan penyelesaian manual obat tidak diambil yang sama untuk konsekuensi fulfillment, tetapi Sales Order harus tetap `Active` sampai Tata Rekening atau financial authority yang bertanggung jawab memberikan Credit Note, Refund, atau outcome komersial final lain yang accountable.
 - **BR-APT-081** — `Medication Preparation Started` harus menjadi Pharmacy Service Start Evidence bagi setiap jalur payer Rawat Jalan dan menyebabkan Patient Tracker mencatat `ServedAt`. Pembentukan Sales Invoice dan Purchase Confirmation tidak boleh menetapkan `ServedAt` apotek Rawat Jalan.
 - **BR-APT-082** — Patient Tracker harus tetap authoritative atas identitas Pharmacy Queue Entry, Queue Number, dan lifecycle antrean meskipun Apotek memiliki Outpatient Queue Mapping dan tujuan pemanggilan.
-- **BR-APT-083** — User tidak boleh menginput Legacy DU atau Sales Invoice Item obat yang berdiri sendiri secara manual; tindakan user hanya dapat memicu pembentukan Sales Invoice dari Sales Order Line yang accountable.
+- **BR-APT-083** — User tidak boleh menginput Legacy DU atau Sales Invoice Item obat yang berdiri sendiri secara manual; tindakan user hanya dapat memicu pembentukan Sales Invoice dari Sales Order Line yang accountable. User tidak boleh menginput item faktur non-obat free-form.
 - **BR-APT-084** — Satu Pharmacy Queue Entry dapat dimappingkan ke satu atau beberapa Resep atau Direct Medication Request. Setiap demand yang dimappingkan harus mempertahankan Telaah Resep bila berlaku, Sales Order, Sales Invoice, Dispense Order, dan lifecycle accountable masing-masing.
 - **BR-APT-085** — Mapping beberapa medication demand ke satu Pharmacy Queue Entry harus mengoordinasikan satu pelayanan Rawat Jalan dan tidak boleh menggabungkan Sales Order, Sales Invoice, atau Dispense Order masing-masing.
 - **BR-APT-086** — Dalam satu Registration aktif, satu Sales Order aktif harus dikoordinasikan melalui satu Dispense Order aktif untuk jalur Rawat Jalan normal. Pharmacy Queue Entry yang sama dapat mengoordinasikan beberapa pasangan Sales Order dan Dispense Order tersebut.

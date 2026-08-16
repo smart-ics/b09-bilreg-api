@@ -23,20 +23,20 @@ Current repository state:
 - The generic queue enum already complies with ADR-APT-001, but current F-09 event triggers and the frontend's queue states conflict with the canonical workflow.
 - Existing Patient Tracker, Tata Rekening, Stock Ledger, CPOE, Fornas, medication catalog, query, and UI-shell capabilities are reusable only through explicit extensions and adapters.
 
-The architecture is not ready for implementation review until the blocking decisions in section 4 are resolved. All blocking architecture gaps (BA-01 through BA-09) are now resolved; remaining gates are business clarification (BC-01, BC-03, BC-05 through BC-08, BC-11 through BC-13).
+The architecture is not ready for implementation review until the blocking decisions in section 4 are resolved. All blocking architecture gaps (BA-01 through BA-09) are now resolved; remaining gates are business clarification (BC-01, BC-03, BC-05 through BC-07, BC-11 through BC-13).
 
 ## 2. Classification summary
 
 | Classification | Count | Review meaning |
 |---|---:|---|
 | Blocking Architecture Gap | 0 | A structural or ownership decision is unresolved; implementing around it would create incompatible sources of truth or unsafe cross-context behavior. |
-| Business Clarification Gap | 9 | A policy, authority, threshold, or accountable outcome is not sufficiently defined. |
-| Resolved (Business Clarification) | 5 | BC-02, BC-04, BC-09, BC-10, and BC-14 ratified; artifacts updated. |
+| Business Clarification Gap | 8 | A policy, authority, threshold, or accountable outcome is not sufficiently defined. |
+| Resolved (Business Clarification) | 6 | BC-02, BC-04, BC-08, BC-09, BC-10, and BC-14 ratified; artifacts updated. |
 | Existing Capability Extension | 9 | A relevant capability exists but its present contract or semantics do not satisfy Apotek. |
 | Missing Implementation | 15 | The design is sufficiently clear, but no conforming implementation exists. |
 | Technical Debt | 11 | Existing code or documentation embodies legacy, misleading, coupled, or unverified behavior. |
 | Resolved (Blocking Architecture) | 9 | BA-01 through BA-09 ratified; artifacts updated. |
-| **Total open** | **44** | Each open finding has one primary classification. |
+| **Total open** | **43** | Each open finding has one primary classification. |
 
 ## 3. Baseline and evidence
 
@@ -317,13 +317,23 @@ The architecture is not ready for implementation review until the blocking decis
 
 ### BC-08 — Authorized non-medication invoice components
 
-**Gap.** Sales Invoice Items may include an explicitly authorized non-medication component, but the allowed component types and pricing authority are undefined.
+**Status:** Resolved (2026-08-16)
 
-**Recommended decision.** Enumerate allowed service/packaging components and their pricing source; reject all others by default.
+**Gap.** Sales Invoice Items could include an explicitly authorized non-medication component, but allowed types and pricing authority were undefined. An open exception would recreate manual invoice-item entry prohibited by `BR-APT-083`.
 
-**Rationale.** An open exception recreates manual invoice-item entry prohibited by `BR-APT-083`.
+**Evidence.** `apotek-domain.md:387`, `479`; screen design `:34`, `:284-300`.
 
-**Evidence.** `apotek-domain.md:354-364`, `435`.
+**Decision.** Adopt the existing legacy sales model. Non-medication components are not represented as free-form invoice items.
+
+**BHP.** BHP is treated as a standard catalog item and may appear as a sales line.
+
+**Charges.** Item-specific charges (for example packaging or compounding fees) are recorded as line-level charges. Transaction-wide adjustments (for example rounding) are recorded as invoice-level charges.
+
+**Model boundary.** No additional invoice component model is introduced.
+
+**Rationale.** Reusing the legacy sales charge structure keeps BHP and fees inside catalog lines and existing charge attachments, so `BR-APT-083` remains intact without a new commercial-component aggregate.
+
+**Ratified in.** `apotek-domain.md` (`BR-APT-024`, `BR-APT-083`, `BR-APT-125`–`BR-APT-128`); `outpatient-apotek-screen-and-aggregate-design.md` §5.2.
 
 ### BC-09 — Fulfillment boundary and prescription repeat (Iter) policy
 
@@ -507,10 +517,11 @@ Only fulfillable prescription lines may be included in the Sales Order. Unfulfil
 - Partial Prescription Fulfillment is permitted for Patient Request, Stock Shortage, and Fornas Not Covered lines at the Prescription-to-Sales Order boundary. Excluded or uncovered lines remain on the originating Prescription or move to a separate Patient-Pay Sales Order; Salinan Resep supports external fulfillment when lines stay unfulfilled. Pharmacist approves when professional review is required. Multiple Dispense Orders per Sales Order is execution only, not this policy (BC-04, BC-14).
 - Outpatient Pharmacy does not support Backorder, alternate stock source selection, fulfillment routing, or inter-pharmacy sourcing. Shortage is resolved immediately by placing only fulfillable lines on the Sales Order and issuing Salinan Resep for unfulfilled lines; no outstanding fulfillment obligation is retained (BC-10).
 - Fornas classifies lines as Covered or Not Covered. Covered lines follow BPJS fulfillment with coverage evidence sufficient for Dispense Authorized. Not Covered lines are not auto-cancelled; they may form an independent Patient-Pay Sales Order requiring self-pay financial clearance before Dispense Authorized. One Prescription may yield both a BPJS-covered Sales Order and a Patient-Pay Sales Order (BC-14).
+- Invoice commercial structure follows the legacy sales model. Non-medication components are not free-form invoice items. BHP is a catalog sales line. Item-specific charges (packaging, compounding) are line-level charges; transaction-wide adjustments (rounding) are invoice-level charges. No additional invoice component model is introduced (BC-08).
 
 ### 9.2 Decisions still required before architecture approval
 
-Architecture approval requires business ratification of BC-01, BC-03, BC-05 through BC-08, and BC-11 through BC-13. BA-01 through BA-09, BC-02, BC-04, BC-09, BC-10, and BC-14 are resolved. These are decision gates, not delivery steps. The remaining Existing Capability Extension, Missing Implementation, and Technical Debt findings can then be evaluated against those ratified boundaries without inventing new sources of truth.
+Architecture approval requires business ratification of BC-01, BC-03, BC-05 through BC-07, and BC-11 through BC-13. BA-01 through BA-09, BC-02, BC-04, BC-08, BC-09, BC-10, and BC-14 are resolved. These are decision gates, not delivery steps. The remaining Existing Capability Extension, Missing Implementation, and Technical Debt findings can then be evaluated against those ratified boundaries without inventing new sources of truth.
 
 ### 9.3 Overall classification
 

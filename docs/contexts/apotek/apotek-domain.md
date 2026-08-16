@@ -100,7 +100,10 @@ A Resep does not become a Sales Order. A completed professional decision authori
 | Medication Sale | The commercial transaction represented by one Sales Invoice from one Sales Order. |
 | Sales Invoice | The authoritative commercial document and Aggregate Root representing one Medication Sale. |
 | Legacy DU | The legacy `Trs.DU (DO-Bill)` transaction that combined medication billing and stock-delivery concerns; in the target model its facts are represented through a Sales Invoice and one or more Dispense Orders coordinated by the same Sales Order and traced at line level. |
-| Sales Invoice Item | One medication or applicable service, quantity, price, discount, and value within a Sales Invoice. Every medication Sales Invoice Item originates from exactly one Sales Order Line and represents the portion of that line billed by the invoice. |
+| Sales Invoice Item | One medication, BHP, or other catalog sales line, quantity, price, discount, line-level charges, and value within a Sales Invoice. Every medication or BHP Sales Invoice Item originates from exactly one Sales Order Line and represents the portion of that line billed by the invoice. |
+| BHP | A standard catalog item that may appear as a sales line. It is not a free-form invoice component. |
+| Line-level Charge | An item-specific commercial charge attached to a sales line, such as packaging or compounding fees. |
+| Invoice-level Charge | A transaction-wide commercial adjustment attached to a Sales Invoice, such as rounding. |
 | Pricing Snapshot | The immutable commercial basis used when a Sales Invoice is established. |
 | Payer | The Patient, BPJS, insurer, company, or other party expected to bear a medication charge. |
 | Financial Charge | The financial consequence supplied to Tata Rekening from a Medication Sale. |
@@ -330,7 +333,7 @@ It ensures that invoiced quantities and physical fulfillment remain traceable an
 
 **Aggregate Root:** `Sales Invoice`
 
-The aggregate represents one Medication Sale. It keeps Sales Invoice Items, Pricing Snapshot, Payer, financial disposition, Credit Notes, refunds, and Financial Charge outcome mutually consistent. General Patient verbal Purchase Confirmation is evidenced by the accountable establishment of the Sales Invoice and is not retained as a separate object.
+The aggregate represents one Medication Sale. It keeps Sales Invoice Items, Pricing Snapshot, Payer, line-level charges, invoice-level charges, financial disposition, Credit Notes, refunds, and Financial Charge outcome mutually consistent. General Patient verbal Purchase Confirmation is evidenced by the accountable establishment of the Sales Invoice and is not retained as a separate object. Non-medication commercial facts use the legacy sales model: BHP as a catalog sales line, item-specific charges on the line, and transaction-wide adjustments on the invoice. No additional invoice component model exists.
 
 A Sales Invoice references exactly one Sales Order but may cover one or more of its Sales Order Lines.
 
@@ -384,7 +387,7 @@ Outpatient Queue Mapping is an active relationship to an externally owned Pharma
 - **BR-APT-021** — Every Sales Invoice shall derive from exactly one Sales Order. Every medication Sales Invoice Item shall originate from exactly one Sales Order Line of that Sales Order.
 - **BR-APT-022** — A Sales Order may produce zero, one, or multiple Sales Invoices.
 - **BR-APT-023** — A Sales Invoice may cover one or more Sales Order Lines through its Sales Invoice Items and shall preserve each item's source line, billed quantity, and value.
-- **BR-APT-024** — A Sales Invoice Item shall not introduce a medication line absent from its source Sales Order, except an explicitly authorized non-medication commercial component.
+- **BR-APT-024** — A Sales Invoice Item shall not introduce a free-form non-medication invoice component. BHP shall appear only as a catalog sales line. Item-specific charges shall be line-level charges. Transaction-wide adjustments shall be invoice-level charges.
 - **BR-APT-025** — A Sales Invoice shall retain the Pricing Snapshot and Payer applicable when it is established.
 - **BR-APT-026** — Sales Invoice formation shall not prove that stock is available, transferred to Dispensing Temporary Unit, prepared, dispensed, or handed over.
 - **BR-APT-027** — An issued or financially settled Sales Invoice shall be corrected through an accountable Financial Adjustment, Credit Note, or Refund outcome rather than silent replacement.
@@ -443,6 +446,10 @@ Outpatient Queue Mapping is an active relationship to an externally owned Pharma
 - **BR-APT-122** — A Patient-Pay Sales Order shall require Payment Clearance under the normal self-pay workflow before Dispense Authorized is granted. This is financial evidence evaluation, not a Financial Clearance aggregate.
 - **BR-APT-123** — Each prescription line shall follow its own authorization path: a BPJS Covered Line uses Coverage Evidence to become Dispense Authorized; a Patient-Pay Line uses Payment Clearance to become Dispense Authorized.
 - **BR-APT-124** — Establishing a separate Patient-Pay Sales Order for Fornas Not Covered lines is Partial Prescription Fulfillment. One originating Prescription may result in a BPJS-covered Sales Order and a Patient-Pay Sales Order for different prescription lines.
+- **BR-APT-125** — Outpatient Pharmacy shall adopt the existing legacy sales model for non-medication commercial facts. No additional invoice component model shall be introduced.
+- **BR-APT-126** — BHP shall be treated as a standard catalog item and may appear as a sales line. BHP shall not be represented as a free-form invoice item.
+- **BR-APT-127** — Item-specific charges, including packaging and compounding fees, shall be recorded as line-level charges on the applicable sales line.
+- **BR-APT-128** — Transaction-wide adjustments, including rounding, shall be recorded as invoice-level charges on the Sales Invoice.
 
 ### 7.7 Completion and history
 
@@ -476,7 +483,7 @@ Outpatient Queue Mapping is an active relationship to an externally owned Pharma
 - **BR-APT-080** — A General Patient No-Show after payment shall use the same authorized manual uncollected-medication resolution for the fulfillment consequence, but its Sales Order shall remain `Active` until Tata Rekening or the responsible financial authority supplies the required final Credit Note, Refund, or other accountable commercial outcome.
 - **BR-APT-081** — `Medication Preparation Started` shall be Pharmacy Service Start Evidence for every outpatient payer path and shall cause Patient Tracker to record `ServedAt`. Sales Invoice formation and Purchase Confirmation shall not establish outpatient pharmacy `ServedAt`.
 - **BR-APT-082** — Patient Tracker shall remain authoritative for Pharmacy Queue Entry identity, Queue Number, and queue lifecycle even when Apotek owns Outpatient Queue Mapping and call purpose.
-- **BR-APT-083** — No user shall enter a Legacy DU or independent medication Sales Invoice Items manually; a user action may trigger Sales Invoice formation only from accountable Sales Order Lines.
+- **BR-APT-083** — No user shall enter a Legacy DU or independent medication Sales Invoice Items manually; a user action may trigger Sales Invoice formation only from accountable Sales Order Lines. Users shall not enter free-form non-medication invoice items.
 - **BR-APT-084** — One Pharmacy Queue Entry may be mapped to one or more Resep or Direct Medication Requests. Each mapped demand shall retain its own Telaah Resep when applicable, Sales Order, Sales Invoices, Dispense Order, and accountable lifecycle.
 - **BR-APT-085** — Mapping multiple medication demands to one Pharmacy Queue Entry shall coordinate one outpatient service and shall not merge their Sales Orders, Sales Invoices, or Dispense Orders.
 - **BR-APT-086** — Within one active Registration, one active Sales Order shall coordinate through one active Dispense Order for the normal outpatient path. The common Pharmacy Queue Entry may coordinate multiple such Sales Order and Dispense Order pairs.

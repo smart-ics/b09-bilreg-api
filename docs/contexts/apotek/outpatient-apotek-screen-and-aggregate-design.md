@@ -31,7 +31,7 @@ This decision assumes that queue-number issuance is owned by c013-kiosk-queue-di
 
 1. A pharmacy queue entry groups a Patient's counter interaction; it does not merge prescriptions, Sales Orders, Sales Invoices, or Dispense Orders.
 2. Sales, physical preparation, and handover are separate accountable facts. A completed payment or queue does not prove medication handover.
-3. A Sales Invoice must be derived from accountable Sales Order Lines. Users must not manually create independent medication invoice items.
+3. A Sales Invoice must be derived from accountable Sales Order Lines. Users must not manually create independent medication invoice items or free-form non-medication invoice items. BHP appears as a catalog sales line. Packaging and compounding fees are line-level charges. Rounding and other transaction-wide adjustments are invoice-level charges.
 4. Dispensing is not a status update on a Sales Order. It is executed through a separate Dispense Order aggregate.
 5. The existing Patient Tracker owns pharmacy queue identity, queue number, and queue lifecycle. Apotek owns its mapping from a queue entry to medication demand, as well as its own operational and fulfillment facts.
 6. The four-screen model is an outpatient scope decision. It does not preclude inpatient, emergency, unit-dose, or future exception-focused worklists.
@@ -281,7 +281,7 @@ flowchart TD
 |---|---|---|
 | `TelaahResep` | Keeps the prescription source, per-line professional disposition, responsible Pharmacist, and final review outcome consistent | Original clinical prescription and prescriber clarification communications |
 | `SalesOrder` | Owns accepted demand, Sales Order Lines, accepted quantity, fulfillment/unfulfilled progress, and overall resolution; reconciles commercial and fulfillment quantities | Payment settlement, inventory balance, physical preparation, or handover execution |
-| `SalesInvoice` | Owns one medication sale, invoice items, pricing snapshot, payer, financial disposition, and commercial adjustments | Sales Order quantity authority, payment evidence, stock, or physical dispensing |
+| `SalesInvoice` | Owns one medication sale, catalog sales lines including BHP, line-level charges, invoice-level charges, pricing snapshot, payer, financial disposition, and commercial adjustments | Sales Order quantity authority, payment evidence, stock, physical dispensing, or a separate invoice-component model |
 | `DispenseOrder` | Owns preparation, lines, immutable final review attempts, Medication Dispense, Medication Handover, expiry, cancellation, return, and non-fulfillment outcomes | Sales Invoice payment settlement and authoritative stock balance |
 | `OutpatientQueueMapping` | Associates one externally owned queue entry with one medication-demand source; identifies Tracker or Manual Mapping | Queue identity/lifecycle and the lifecycle of the mapped prescription or Sales Order |
 
