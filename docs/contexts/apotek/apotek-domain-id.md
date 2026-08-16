@@ -132,7 +132,8 @@ Resep tidak berubah menjadi Sales Order. Keputusan profesional yang selesai meng
 | Authorized Recipient | Penerima Berwenang | Pasien, caregiver, practitioner, bangsal, atau pihak lain yang terverifikasi dan diizinkan menerima obat untuk Pasien. |
 | Patient Education | Edukasi Pasien | Penjelasan accountable tentang penggunaan, penyimpanan, perhatian khusus, dan informasi obat relevan lainnya kepada Pasien atau caregiver. |
 | Fulfilled Quantity | Jumlah Terpenuhi | Jumlah Sales Order Line yang mencapai outcome Medication Dispense berhasil. |
-| Partial Fulfillment | Pemenuhan Sebagian | Pemenuhan kurang dari total Accepted Quantity ketika jumlah lain masih unresolved atau memperoleh outcome berbeda. |
+| Partial Prescription Fulfillment | Pemenuhan Resep Sebagian | Membentuk Sales Order dari subset baris resep ketika Patient Request atau Stock Shortage berlaku; baris yang dikecualikan tetap pada Resep asal. |
+| Partial Fulfillment | Pemenuhan Sebagian | Eksekusi fulfillment ketika satu Sales Order dipenuhi melalui beberapa Dispense Order, atau kurang dari total Accepted Quantity Sales Order Line dipenuhi sementara jumlah lain unresolved atau memperoleh outcome berbeda. Ini bukan kebijakan Partial Prescription Fulfillment. |
 | Fulfillment Completion | Penyelesaian Pemenuhan | Kondisi ketika setiap Accepted Quantity telah memiliki outcome final yang accountable. |
 | Medication Administration | Pemberian Obat kepada Pasien | Fakta klinis bahwa obat benar-benar diberikan kepada atau dikonsumsi Pasien; dimiliki context eksternal. |
 | Medication Shortage | Kekurangan Stok Obat | Stok tidak cukup untuk memenuhi jumlah obat yang dialokasikan. |
@@ -140,7 +141,7 @@ Resep tidak berubah menjadi Sales Order. Keputusan profesional yang selesai meng
 | Backorder | Pemenuhan Tertunda | Jumlah unresolved yang dipertahankan untuk dipenuhi kemudian saat supply tersedia. |
 | Medication Substitution | Substitusi Obat | Penggantian accountable atas produk obat yang diminta berdasarkan authority profesional yang berlaku. |
 | Unfulfilled Medication Outcome | Outcome Obat Tidak Terpenuhi | Alasan final dan accountable bahwa jumlah obat yang diterima tidak dipenuhi. |
-| Salinan Resep | Salinan Resep | Catatan accountable mengenai obat atau jumlah dalam Resep yang tidak dipenuhi, bila berlaku. |
+| Salinan Resep | Salinan Resep | Salinan Resep (Prescription Copy) accountable untuk obat atau jumlah resep yang tidak dimasukkan ke Sales Order atau tidak dipenuhi, bila berlaku. |
 | Dispense Cancellation | Pembatalan Dispensing | Pengakhiran accountable suatu Dispense Order sebelum fulfillment berhasil. |
 | Fulfillment Expiry | Berakhirnya Pemenuhan | Berakhirnya kesempatan fulfillment karena periode layanan yang diizinkan telah lewat. |
 | Medication Return | Retur Obat | Pengembalian accountable atas obat yang sebelumnya disiapkan, dipindahkan, atau diserahkan. |
@@ -206,7 +207,7 @@ Mengoordinasikan Stock Reservation, Medication Preparation, Compounding, Final D
 
 **Indonesia:** Pemenuhan Sebagian dan Dosis Unit
 
-Mendukung bagian penagihan dan pemenuhan yang dihitung secara terpisah, termasuk Unit Dose Dispensing dan Dose Window.
+Mendukung Partial Prescription Fulfillment pada batas Prescription ke Sales Order, bagian penagihan dan pemenuhan yang dihitung terpisah melalui beberapa Dispense Order per Sales Order, Unit Dose Dispensing, dan Dose Window.
 
 ### 3.9 Exception and Return Resolution
 
@@ -419,15 +420,21 @@ Outpatient Queue Mapping merupakan mapping aktif kepada Pharmacy Queue Entry yan
 
 ### 7.6 Partial fulfillment, UDD, dan exception
 
-- **BR-APT-047** — Partial Fulfillment harus mempertahankan jumlah fulfilled, unresolved, dan unfulfilled secara terpisah.
+- **BR-APT-047** — Partial Fulfillment pada tingkat eksekusi Sales Order diwakili oleh satu Sales Order yang dipenuhi melalui beberapa Dispense Order, atau oleh jumlah fulfilled dan unresolved pada Sales Order Line. Ini adalah eksekusi fulfillment dan bukan kebijakan Partial Prescription Fulfillment. Dispense Order tidak memiliki semantics kebijakan Partial Prescription Fulfillment.
 - **BR-APT-048** — Unit Dose Dispensing dapat membagi satu Sales Order Line menjadi beberapa Dispense Cycle dan Dispense Order.
 - **BR-APT-049** — Dose Window harus memandu perencanaan fulfillment dan tidak boleh menyatakan Medication Administration.
 - **BR-APT-050** — Untuk obat pengganti yang diterima, Sales Order Line harus mencatat obat pengganti, Pharmacist yang bertanggung jawab, alasan, dan jumlah yang terpengaruh serta tetap mereferensikan Baris Resep asli. Identitas obat pada Sales Order Line yang sudah dibentuk tidak boleh diubah; kebutuhan penggantian berikutnya ditangani dengan membatalkan item atau pesanan yang terdampak, menelaah kembali Resep asli, dan membentuk Sales Order Line baru tanpa mensyaratkan Resep perbaikan atau pengganti.
 - **BR-APT-051** — Medication Shortage atau Stock Discrepancy tidak boleh mengubah Resep asli atau menghapus Sales Invoice yang sudah ada.
 - **BR-APT-052** — Medication Return harus mengidentifikasi Dispense Order sumber, jumlah, alasan, dan disposition Inventory finalnya.
 - **BR-APT-053** — Return to Stock hanya boleh terjadi ketika Inventory menerima obat retur berdasarkan kebijakannya sendiri.
-- **BR-APT-054** — Salinan Resep harus mengidentifikasi obat atau jumlah dalam Resep yang tetap tidak terpenuhi.
+- **BR-APT-054** — Salinan Resep harus mengidentifikasi obat atau jumlah resep yang tidak dipenuhi atau dikecualikan dari Sales Order, termasuk baris yang eligible untuk fulfillment eksternal.
 - **BR-APT-055** — No-Show harus menjadi outcome kebijakan Rawat Jalan dan tidak boleh diterapkan pada Ward Delivery Rawat Inap.
+- **BR-APT-108** — Partial Prescription Fulfillment hanya diizinkan untuk Patient Request dan Stock Shortage. Tidak ada alasan lain yang diakui sistem.
+- **BR-APT-109** — Untuk Patient Request, Staf Apotek dapat membentuk Sales Order yang hanya berisi baris resep yang dipilih. Baris resep yang dikecualikan tetap unfulfilled pada Resep asal. Sistem harus mendukung Salinan Resep untuk baris yang tidak dipenuhi.
+- **BR-APT-110** — Untuk Stock Shortage sebelum Sales Order dibentuk, Staf Apotek dapat membentuk Sales Order yang hanya berisi baris resep yang dapat dipenuhi. Baris yang tidak tersedia tetap unfulfilled pada Resep asal. Sistem harus mendukung Salinan Resep untuk baris yang tidak dipenuhi.
+- **BR-APT-111** — Pharmacist tetap bertanggung jawab menyetujui keputusan fulfillment yang dihasilkan ketika review profesional diperlukan. Sistem tidak menentukan substitusi alternatif atau tindakan fulfillment eksternal secara otomatis.
+- **BR-APT-112** — Partialitas Partial Prescription Fulfillment hanya ada antara Prescription dan Sales Order. Partialitas tidak ada antara Sales Order dan Dispense Order.
+- **BR-APT-113** — Sales Order yang dipenuhi melalui satu atau lebih Dispense Order adalah eksekusi fulfillment dan bukan kebijakan Partial Prescription Fulfillment.
 
 ### 7.7 Completion dan history
 

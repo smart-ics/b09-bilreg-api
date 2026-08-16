@@ -282,23 +282,27 @@ Pharmacist, Staf Apotek, CPOE or Dokter Penulis Resep.
 | Direct request ditolak | Staf Apotek | Jangan membentuk request record atau Sales Order. |
 | Iter belum terpakai tetapi Pharmacist menolak honor | Pharmacist | Tolak fulfillment; catat outcome accountable tanpa mengonsumsi Iter. |
 | Iter belum terpakai dihormati pada fulfillment | Pharmacist | Lanjutkan fulfillment; sistem mencatat konsumsi Iter. |
+| Partial resep atas permintaan Pasien | Staf Apotek | Bentuk Sales Order hanya dengan baris terpilih; baris dikecualikan tetap pada Resep; terbitkan Salinan Resep bila diperlukan. |
+| Partial resep karena Stock Shortage | Staf Apotek | Bentuk Sales Order hanya dengan baris yang dapat dipenuhi; baris tidak tersedia tetap pada Resep; terbitkan Salinan Resep bila diperlukan. |
+| Review profesional diperlukan untuk partial path | Pharmacist | Setujui atau tolak keputusan fulfillment; sistem tidak mensubstitusi atau mengarahkan eksternal secara otomatis. |
 
 #### Exception and Compensation Flows
 
-- Stock shortage tidak mengubah Hasil Telaah Resep. Staf Apotek dapat memilih Backorder atau sumber stok lain yang disetujui untuk produk obat yang sama setelah Sales Order dibentuk.
+- Stock shortage setelah Sales Order dibentuk tidak mengubah Hasil Telaah Resep. Staf Apotek dapat memilih Backorder atau sumber stok lain yang disetujui untuk produk obat yang sama.
+- Partial Prescription Fulfillment sebelum Sales Order dibentuk hanya diizinkan untuk Patient Request atau Stock Shortage. Tidak ada alasan partialitas lain yang diakui.
 - Identitas obat pada Sales Order Line yang sudah dibentuk tidak boleh diubah. Jika penggantian diperlukan kemudian, batalkan item atau pesanan yang terdampak, telaah kembali Resep asli, lalu bentuk Sales Order Line baru tanpa mensyaratkan Resep perbaikan atau pengganti.
 - Accepted Quantity yang tidak dapat dipenuhi harus mempertahankan Backorder, `Cancelled`, `Expired`, atau Unfulfilled Medication Outcome lain yang accountable.
 
 #### Outcomes and Postconditions
 
 - Berhasil: `Telaah Resep Completed`, `Sales Order Established`, dan `Dispense Order Established` diamati bila berlaku.
-- Berhasil sebagian: hanya Accepted Medication Line masuk Sales Order.
+- Berhasil sebagian: hanya baris resep terpilih atau yang dapat dipenuhi masuk Sales Order atas Patient Request atau Stock Shortage; baris dikecualikan tetap pada Resep asal dan dapat memperoleh Salinan Resep.
 - Rejection: Sales Order tidak tersedia bagi source yang rejected.
 - Sales Order bukan Sales Invoice, Dispense Order, reservation, atau dispense evidence.
 
 #### Domain References
 
-`BR-APT-001`–`BR-APT-019`, `BR-APT-029`–`BR-APT-034`, `BR-APT-050`, `BR-APT-061`, `BR-APT-068`, `BR-APT-083`, `BR-APT-086`, `BR-APT-089`; lifecycle Telaah Resep dan Sales Order.
+`BR-APT-001`–`BR-APT-019`, `BR-APT-029`–`BR-APT-034`, `BR-APT-050`, `BR-APT-054`, `BR-APT-061`, `BR-APT-068`, `BR-APT-083`, `BR-APT-086`, `BR-APT-089`, `BR-APT-105`–`BR-APT-113`; lifecycle Telaah Resep dan Sales Order.
 
 #### Domain Events
 
@@ -720,7 +724,7 @@ Technical timeout, polling, retry, dan performa aplikasi berada di luar workflow
 | Workflow ID | Domain rules | States | Domain Events | External authority |
 |---|---|---|---|---|
 | `WF-APT-RJ-001` | `BR-APT-061`–`BR-APT-065`, `BR-APT-082`, `BR-APT-084`–`BR-APT-087`, `BR-APT-097`; `BR-TRK-026`–`BR-TRK-035`, `BR-TRK-051` | `Unmapped`, `Mapped`, `Waiting` | `Queue Entry Created`, `Outpatient Queue Mapped`, `Queue Entry Identified` | Patient Tracker |
-| `WF-APT-RJ-002` | `BR-APT-001`–`BR-APT-019`, `BR-APT-029`–`BR-APT-034`, `BR-APT-050`, `BR-APT-061`, `BR-APT-068`, `BR-APT-083`, `BR-APT-086`, `BR-APT-089`, `BR-APT-105`–`BR-APT-107` | `Available`, `Under Review`, `Approved`, `Partially Approved`, `Rejected`, `Established`, `Active` | `Telaah Resep Started`, `Medication Substitution Authorized`, `Telaah Resep Completed`, `Direct Medication Request Accepted`, `Sales Order Established`, `Dispense Order Established` | CPOE, Medication Catalog, Inventory |
+| `WF-APT-RJ-002` | `BR-APT-001`–`BR-APT-019`, `BR-APT-029`–`BR-APT-034`, `BR-APT-050`, `BR-APT-054`, `BR-APT-061`, `BR-APT-068`, `BR-APT-083`, `BR-APT-086`, `BR-APT-089`, `BR-APT-105`–`BR-APT-113` | `Available`, `Under Review`, `Approved`, `Partially Approved`, `Rejected`, `Established`, `Active` | `Telaah Resep Started`, `Medication Substitution Authorized`, `Telaah Resep Completed`, `Direct Medication Request Accepted`, `Sales Order Established`, `Dispense Order Established` | CPOE, Medication Catalog, Inventory |
 | `WF-APT-RJ-003` | `BR-APT-020`–`BR-APT-028`, `BR-APT-033`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-067`–`BR-APT-072`, `BR-APT-076`–`BR-APT-083`, `BR-APT-088`, `BR-APT-095`–`BR-APT-096`; `BR-TRK-045`, `BR-TRK-045a`, `BR-TRK-046` | `Established`, `Issued`, `Financially Cleared`, `Released`, `Preparing`, `Prepared`, `Reviewed`, `Completed`, `In Service`, `Done` | `Sales Invoice Established`, `Payment Clearance Established`, `Medication Preparation Started`, `Medication Prepared`, `Patient Called for Pickup`, `Final Dispense Review Completed`, `Final Dispense Review Failed`, `Medication Handed Over` | Patient Tracker, Payment, Inventory, Tata Rekening |
 | `WF-APT-RJ-004` | `BR-APT-020`–`BR-APT-026`, `BR-APT-029`–`BR-APT-045`, `BR-APT-066`, `BR-APT-068`–`BR-APT-069`, `BR-APT-073`–`BR-APT-079`, `BR-APT-081`–`BR-APT-083`, `BR-APT-088`, `BR-APT-090`, `BR-APT-095`–`BR-APT-096`; `BR-TRK-045`, `BR-TRK-045a`, `BR-TRK-046` | `Awaiting Clearance`, `Released`, `Preparing`, `Prepared`, `Reviewed`, `Completed`, `In Service`, `Done` | `Coverage Clearance Established`, `Medication Preparation Started`, `Patient Called for Pickup`, `Final Dispense Review Failed`, `Sales Invoice Established`, `Medication Handed Over` | Patient Tracker, SEP, Fornas, Inventory, Tata Rekening |
 | `WF-APT-RJ-005` | `BR-APT-015`, `BR-APT-020`–`BR-APT-028`, `BR-APT-040`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-070`–`BR-APT-078`, `BR-APT-090`–`BR-APT-096` | State Sales Invoice sesuai payer dan state Dispense Order bersama | `Coverage Clearance Established`, `Payment Clearance Established`, `Final Dispense Review Failed`, `Sales Invoice Established`, `Medication Handed Over` | SEP, Fornas, Payment, Tata Rekening |

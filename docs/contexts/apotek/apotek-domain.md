@@ -134,7 +134,8 @@ A Resep does not become a Sales Order. A completed professional decision authori
 | Authorized Recipient | A verified Patient, caregiver, practitioner, ward, or other party permitted to receive medication for the Patient. |
 | Patient Education | The accountable explanation of medication use, storage, precautions, and other relevant information to the Patient or caregiver. |
 | Fulfilled Quantity | The quantity of a Sales Order Line that reached a successful Medication Dispense outcome. |
-| Partial Fulfillment | Fulfillment of less than the total Accepted Quantity while another quantity remains unresolved or receives a different outcome. |
+| Partial Prescription Fulfillment | Establishing a Sales Order from a subset of prescription lines when Patient Request or Stock Shortage applies; excluded lines remain on the originating Prescription. |
+| Partial Fulfillment | Fulfillment execution in which one Sales Order is fulfilled through multiple Dispense Orders, or less than the total Accepted Quantity of a Sales Order Line is fulfilled while another quantity remains unresolved or receives a different outcome. This is not Partial Prescription Fulfillment policy. |
 | Fulfillment Completion | The condition in which every Accepted Quantity has an accountable final outcome. |
 | Medication Administration | The clinical fact that medication was actually given to or consumed by the Patient; it is externally owned. |
 | Medication Shortage | Insufficient stock to fulfill an allocated medication quantity. |
@@ -142,7 +143,7 @@ A Resep does not become a Sales Order. A completed professional decision authori
 | Backorder | An unresolved quantity retained for later fulfillment when supply becomes available. |
 | Medication Substitution | The accountable replacement of a requested medication product under applicable professional authority. |
 | Unfulfilled Medication Outcome | A final, accountable reason that an accepted medication quantity was not fulfilled. |
-| Salinan Resep | An accountable record of prescribed medication or quantity not fulfilled, when applicable. |
+| Salinan Resep | An accountable Prescription Copy record of prescribed medication or quantity not included in the Sales Order or not fulfilled, when applicable. |
 | Dispense Cancellation | The accountable ending of a Dispense Order before successful fulfillment. |
 | Fulfillment Expiry | The ending of a fulfillment opportunity because its permitted service period elapsed. |
 | Medication Return | The accountable return of medication previously prepared, transferred, or handed over. |
@@ -193,7 +194,7 @@ Coordinate Pharmacy Reserve through Stock Mutasi, Medication Preparation, Compou
 
 ### 3.8 Partial and Unit-Dose Fulfillment
 
-Support independently counted billing and fulfillment tranches, including Unit Dose Dispensing and Dose Windows.
+Support Partial Prescription Fulfillment at the Prescription-to-Sales Order boundary, independently counted billing and fulfillment tranches through multiple Dispense Orders per Sales Order, Unit Dose Dispensing, and Dose Windows.
 
 ### 3.9 Exception and Return Resolution
 
@@ -416,15 +417,21 @@ Outpatient Queue Mapping is an active relationship to an externally owned Pharma
 
 ### 7.6 Partial fulfillment, UDD, and exceptions
 
-- **BR-APT-047** — Partial Fulfillment shall be represented at Sales Order level. A Sales Order may be fulfilled through multiple Dispense Orders. Dispense Order shall not own partial-fulfillment policy semantics.
+- **BR-APT-047** — Partial Fulfillment at Sales Order execution level shall be represented by one Sales Order fulfilled through multiple Dispense Orders, or by fulfilled and unresolved quantities on Sales Order Lines. This is fulfillment execution and is not Partial Prescription Fulfillment policy. Dispense Order shall not own Partial Prescription Fulfillment policy semantics.
 - **BR-APT-048** — Unit Dose Dispensing may divide one Sales Order Line into multiple Dispense Cycles and Dispense Orders.
 - **BR-APT-049** — A Dose Window shall guide fulfillment planning and shall not assert Medication Administration.
 - **BR-APT-050** — For an accepted substitute, the Sales Order Line shall record the substitute, responsible Pharmacist, reason, and affected quantity while retaining its reference to the original Baris Resep. Medication identity on an established Sales Order Line shall not be changed; a later replacement is handled by cancelling the affected line or order, reviewing the same original Resep again, and establishing a new Sales Order Line without requiring a corrected or replacement Resep.
 - **BR-APT-051** — A Medication Shortage or Stock Discrepancy shall not alter the original Resep or erase an existing Sales Invoice.
 - **BR-APT-052** — A Medication Return shall identify its source Dispense Order, quantity, reason, and final Inventory disposition.
 - **BR-APT-053** — Return to Stock shall occur only when Inventory accepts the returned medication under its own policy.
-- **BR-APT-054** — A Salinan Resep shall identify the prescribed medication or quantity that remained unfulfilled.
+- **BR-APT-054** — A Salinan Resep shall identify prescribed medication or quantity that remained unfulfilled or was excluded from the Sales Order, including lines eligible for external fulfillment.
 - **BR-APT-055** — A No-Show shall be a Pharmacy-owned outpatient policy outcome, shall not be stored as an Inventory status, and shall not be imposed on inpatient Ward Delivery.
+- **BR-APT-108** — Partial Prescription Fulfillment is permitted only for Patient Request and Stock Shortage. No other reason is recognized by the system.
+- **BR-APT-109** — For Patient Request, Pharmacy Staff may establish a Sales Order containing only selected prescription lines. Excluded prescription lines remain unfulfilled on the originating Prescription. The system shall support Salinan Resep for unfulfilled lines.
+- **BR-APT-110** — For Stock Shortage before Sales Order establishment, Pharmacy Staff may establish a Sales Order containing only fulfillable prescription lines. Unavailable prescription lines remain unfulfilled on the originating Prescription. The system shall support Salinan Resep for unfulfilled lines.
+- **BR-APT-111** — The Pharmacist remains responsible for approving the resulting fulfillment decision when professional review is required. The system shall not automatically determine alternative substitutions or external fulfillment actions.
+- **BR-APT-112** — Partial Prescription Fulfillment partiality exists only between Prescription and Sales Order. Partiality does not exist between Sales Order and Dispense Order.
+- **BR-APT-113** — A Sales Order fulfilled through one or more Dispense Orders is fulfillment execution and is not Partial Prescription Fulfillment policy.
 
 ### 7.7 Completion and history
 

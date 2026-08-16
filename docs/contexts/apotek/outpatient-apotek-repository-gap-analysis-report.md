@@ -23,20 +23,20 @@ Current repository state:
 - The generic queue enum already complies with ADR-APT-001, but current F-09 event triggers and the frontend's queue states conflict with the canonical workflow.
 - Existing Patient Tracker, Tata Rekening, Stock Ledger, CPOE, Fornas, medication catalog, query, and UI-shell capabilities are reusable only through explicit extensions and adapters.
 
-The architecture is not ready for implementation review until the blocking decisions in section 4 are resolved. All blocking architecture gaps (BA-01 through BA-09) are now resolved; remaining gates are business clarification (BC-01, BC-03 through BC-08, BC-10 through BC-14).
+The architecture is not ready for implementation review until the blocking decisions in section 4 are resolved. All blocking architecture gaps (BA-01 through BA-09) are now resolved; remaining gates are business clarification (BC-01, BC-03, BC-05 through BC-08, BC-10 through BC-14).
 
 ## 2. Classification summary
 
 | Classification | Count | Review meaning |
 |---|---:|---|
 | Blocking Architecture Gap | 0 | A structural or ownership decision is unresolved; implementing around it would create incompatible sources of truth or unsafe cross-context behavior. |
-| Business Clarification Gap | 12 | A policy, authority, threshold, or accountable outcome is not sufficiently defined. |
-| Resolved (Business Clarification) | 2 | BC-02 and BC-09 ratified; artifacts updated. |
+| Business Clarification Gap | 11 | A policy, authority, threshold, or accountable outcome is not sufficiently defined. |
+| Resolved (Business Clarification) | 3 | BC-02, BC-04, and BC-09 ratified; artifacts updated. |
 | Existing Capability Extension | 9 | A relevant capability exists but its present contract or semantics do not satisfy Apotek. |
 | Missing Implementation | 15 | The design is sufficiently clear, but no conforming implementation exists. |
 | Technical Debt | 11 | Existing code or documentation embodies legacy, misleading, coupled, or unverified behavior. |
 | Resolved (Blocking Architecture) | 9 | BA-01 through BA-09 ratified; artifacts updated. |
-| **Total open** | **47** | Each open finding has one primary classification. |
+| **Total open** | **46** | Each open finding has one primary classification. |
 
 ## 3. Baseline and evidence
 
@@ -261,15 +261,29 @@ The architecture is not ready for implementation review until the blocking decis
 
 **Evidence.** `apotek-domain.md:233-235`, `391-409`; screen design `:78-119`, `:317-327`.
 
-### BC-04 — Partial pickup when one demand remains unresolved
+### BC-04 — Partial Prescription Fulfillment
 
-**Gap.** The workflow permits a partial path only when accepted by the Patient and permitted by payer workflow, but it does not state which payer paths permit it or how consent is evidenced.
+**Status:** Resolved (2026-08-16)
 
-**Recommended decision.** Define partial-pickup eligibility separately for General, BPJS, and mixed coverage, including consent evidence, communication obligations, and effect on later pickup calls.
+**Gap.** Partial fulfillment policy between Prescription and Sales Order was undefined: permitted reasons, responsible actors, unfulfilled-line handling, and the boundary versus Sales Order-to-Dispense Order execution splits were not ratified.
 
-**Rationale.** Without this policy, coordinated pickup readiness and `DoneAt` are indeterminate for multi-demand queues.
+**Evidence.** `apotek-domain.md:137`, `417-427`; workflow `:291-296`, `:541-609`; `apotek-domain.md:341-352`.
 
-**Evidence.** Workflow `:541-609`, especially `:580-587`.
+**Decision.** Partial Prescription Fulfillment is permitted only for Patient Request and Stock Shortage. No other reason is recognized by the system.
+
+**Patient Request.** When a Patient cannot or does not wish to purchase the entire prescription, Pharmacy Staff may establish a Sales Order containing only the selected prescription lines. Excluded prescription lines remain unfulfilled. The system shall support Salinan Resep (Prescription Copy) generation for unfulfilled lines.
+
+**Stock Shortage.** When inventory availability prevents full fulfillment, Pharmacy Staff may establish a Sales Order containing only fulfillable prescription lines. Unavailable prescription lines remain unfulfilled. The system shall support Salinan Resep for unfulfilled lines.
+
+**Ownership.** The Pharmacist remains responsible for approving the resulting fulfillment decision when professional review is required. The system does not automatically determine alternative substitutions or external fulfillment actions.
+
+**Partiality boundary.** Partiality exists only between Prescription and Sales Order. Partiality does not exist between Sales Order and Dispense Order. A Sales Order may be fulfilled by one or more Dispense Orders; that is fulfillment execution, not Partial Prescription Fulfillment policy.
+
+**Unfulfilled lines.** Prescription lines not included in the Sales Order remain part of the originating Prescription. The system shall support issuing Salinan Resep containing unfulfilled lines for external fulfillment when required.
+
+**Rationale.** Two explicit, auditable reasons at the Prescription-to-Sales Order boundary prevent ad hoc line exclusion while separating professional review ownership from staff-operational intake. Salinan Resep preserves traceability for lines fulfilled elsewhere.
+
+**Ratified in.** `apotek-domain.md` (`BR-APT-047`, `BR-APT-054`, `BR-APT-108`–`BR-APT-113`); `outpatient-apotek-workflow.md`; `outpatient-apotek-screen-and-aggregate-design.md` §3.2.
 
 ### BC-05 — Unmapped or declined queue disposition
 
@@ -455,10 +469,11 @@ The architecture is not ready for implementation review until the blocking decis
 - Preserve separate records for multiple medication demands sharing one queue.
 - Direct Medication Request is accepted or declined by Pharmacy Staff without Pharmacist approval; optional consultation is SOP-only and not a domain gate (BC-02).
 - Outpatient Pharmacy fulfillment boundary is the active Registration Period; no separate Fulfillment Episode concept. One active Sales Order per Prescription per Registration while that Registration remains active. Iter entitlement is system-managed through Legacy Resep `Iter`; Pharmacist decides whether unused Iter may be honored at fulfillment time and may decline even when remaining Iter exists (BC-09).
+- Partial Prescription Fulfillment is permitted only for Patient Request and Stock Shortage at the Prescription-to-Sales Order boundary. Excluded lines remain on the originating Prescription; Salinan Resep supports external fulfillment. Pharmacist approves when professional review is required. Multiple Dispense Orders per Sales Order is execution only, not this policy (BC-04).
 
 ### 9.2 Decisions still required before architecture approval
 
-Architecture approval requires business ratification of BC-01 and BC-03 through BC-08 and BC-10 through BC-14. BA-01 through BA-09, BC-02, and BC-09 are resolved. These are decision gates, not delivery steps. The remaining Existing Capability Extension, Missing Implementation, and Technical Debt findings can then be evaluated against those ratified boundaries without inventing new sources of truth.
+Architecture approval requires business ratification of BC-01, BC-03, BC-05 through BC-08, and BC-10 through BC-14. BA-01 through BA-09, BC-02, BC-04, and BC-09 are resolved. These are decision gates, not delivery steps. The remaining Existing Capability Extension, Missing Implementation, and Technical Debt findings can then be evaluated against those ratified boundaries without inventing new sources of truth.
 
 ### 9.3 Overall classification
 
