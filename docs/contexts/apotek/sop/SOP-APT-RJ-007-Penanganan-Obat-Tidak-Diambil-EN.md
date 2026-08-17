@@ -31,18 +31,18 @@ Provide a repeatable manual procedure for giving `Prepared` medication in Dispen
 2. The medication is `Prepared` in Dispensing Temporary Custody, and Medication Handover has not completed.
 3. The Patient did not collect the medication.
 4. The authorized closing role, affected quantity, reason, and effective business time are known.
-5. Sales Invoice presence and financial disposition are visible for each payer allocation.
+5. Invoice presence and financial disposition are visible for each payer allocation.
 
 ## 4. Operational Steps
 
-1. **Pharmacy Staff** opens the uncollected Queue Entry and verifies the originating Sales Order, Dispense Order, affected quantities, payer allocations, handover absence, and current Inventory disposition.
-2. **Pharmacy Supervisor** confirms that the permitted collection opportunity has ended. The Collection Window (default 7 days) classifies Ready for Pickup as Pickup Expired when elapsed; that classification does not expire the Dispense Order. No monetary approval threshold applies.
+1. **Pharmacy Staff** opens the uncollected Queue Entry and verifies the originating Sales Order, Dispensing, affected quantities, payer allocations, handover absence, and current Inventory disposition.
+2. **Pharmacy Supervisor** confirms that the permitted collection opportunity has ended. The Collection Window (default 7 days) classifies Ready for Pickup as Pickup Expired when elapsed; that classification does not expire the Dispensing. No monetary approval threshold applies.
 3. **Pharmacy Supervisor** records the manual uncollected-medication resolution with responsible party, effective business time, affected quantity, and reason `Collection Window Expired`.
-4. **Pharmacy System** records the Patient as No-Show for the affected fulfillment and changes each affected Dispense Order to `Expired`.
+4. **Pharmacy System** records the Patient as No-Show for the affected fulfillment and changes each affected Dispensing to `Expired`.
 5. **Pharmacy System** records an Unfulfilled Medication Outcome for every affected quantity and preserves Source Traceability.
 6. **Pharmacy System** requests Stock Mutasi from Dispensing Temporary Unit back to Pharmacy Unit for eligible quantity; **Inventory** applies only that return movement directed by Pharmacy and does not store No Show status.
 7. **Pharmacy System** displays the authoritative Inventory disposition without inferring stock movement.
-8. For an uninvoiced BPJS allocation, **Pharmacy System** keeps the BPJS Sales Invoice absent and resolves only the fulfillment and Inventory consequences.
+8. For an uninvoiced BPJS allocation, **Pharmacy System** keeps the BPJS Invoice absent and resolves only the fulfillment and Inventory consequences.
 9. For a paid General Patient allocation, **Pharmacy System** sends the required financial consequence to **Tata Rekening** and keeps the Sales Order `Active`.
 10. **Tata Rekening** supplies Credit Note, Refund, or another accountable final commercial outcome; **Pharmacy System** displays the result against the originating allocation.
 11. For mixed coverage, **Pharmacy System** records the uninvoiced covered consequence and paid Patient-payable consequence separately.
@@ -62,7 +62,7 @@ Provide a repeatable manual procedure for giving `Prepared` medication in Dispen
 
 ### 5.2 Paid financial consequence remains outstanding
 
-- **Pharmacy System** displays the Dispense Order as `Expired` and the Sales Order as `Active`.
+- **Pharmacy System** displays the Dispensing as `Expired` and the Sales Order as `Active`.
 - **Pharmacy Staff** does not erase or reclassify the paid consequence as an uninvoiced BPJS outcome.
 - **Tata Rekening** completes the required financial resolution.
 
@@ -79,9 +79,9 @@ Provide a repeatable manual procedure for giving `Prepared` medication in Dispen
 
 ## 6. Completion Criteria
 
-1. Every affected Dispense Order is `Expired` with reason `Collection Window Expired`, responsible party, effective business time, and affected quantity.
+1. Every affected Dispensing is `Expired` with reason `Collection Window Expired`, responsible party, effective business time, and affected quantity.
 2. Every affected quantity has an Unfulfilled Medication Outcome and an authoritative Inventory disposition.
-3. No BPJS Sales Invoice exists when BPJS handover did not occur.
+3. No BPJS Invoice exists when BPJS handover did not occur.
 4. A paid General Patient Sales Order remains `Active` until the final Credit Note, Refund, or other commercial outcome is visible.
 5. The Sales Order is `Resolved` only after all fulfillment and commercial consequences are final.
 6. The associated Queue Entry is `Done`. `DoneAt` was recorded at the pickup call or at this No Show Resolution and is not reversed.

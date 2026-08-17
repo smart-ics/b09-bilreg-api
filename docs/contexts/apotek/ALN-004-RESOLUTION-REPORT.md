@@ -16,12 +16,12 @@ BA-09 was not re-analyzed, reinterpreted, replaced, or redesigned.
 
 ## Locked decision applied (BA-09)
 
-Stock Ledger remains a pure stock authority. Pharmacy owns Sales Order, Dispense Order, dispensing lifecycle, `Prepared`, `Handed Over`, and No Show resolution. Stock Ledger owns stock quantity, Mutasi, Remove Stock, and movement history only.
+Stock Ledger remains a pure stock authority. Pharmacy owns Sales Order, Dispensing, dispensing lifecycle, `Prepared`, `Handed Over`, and No Show resolution. Stock Ledger owns stock quantity, Mutasi, Remove Stock, and movement history only.
 
 | Pharmacy event | Inventory / Stock Ledger action |
 |---|---|
 | Dispensing Started / Pharmacy Reserve | Stock Mutasi: Pharmacy Unit → Dispensing Temporary Unit |
-| Dispensing Completed / `Prepared` | No inventory action (`Prepared` is a Dispense Order state) |
+| Dispensing Completed / `Prepared` | No inventory action (`Prepared` is a Dispensing state) |
 | Medication Handed Over | Remove Stock from Dispensing Temporary Unit |
 | No Show resolution | Stock Mutasi: Dispensing Temporary Unit → Pharmacy Unit |
 
@@ -70,7 +70,7 @@ Unchanged (already BA-09-aligned): English `outpatient-apotek-workflow.md`; SOP-
 | Stock Reservation / reserved stock / reservation outcome | Pharmacy Reserve = Stock Mutasi Pharmacy Unit → Dispensing Temporary Unit |
 | Inventory Issue | Remove Stock from Dispensing Temporary Unit |
 | `Stock Reserved` (domain event) | `Stock Transferred to Dispensing Temporary Unit` (plus `Stock Removed from Dispensing Temporary Unit`, `Stock Returned to Pharmacy Unit`) |
-| In-Transit / in-transit medication | Dispensing Temporary Custody (`Prepared` remains a Dispense Order state) |
+| In-Transit / in-transit medication | Dispensing Temporary Custody (`Prepared` remains a Dispensing state) |
 | Inventory owns reservation, issue, Prepared, No Show | Stock Ledger owns quantity and movement history only |
 | Inventory evaluates reserved/In-Transit for Return to Stock as if it owned fulfillment | Pharmacy requests return Mutasi; Inventory applies that movement and does not store No Show |
 
@@ -83,7 +83,7 @@ Unchanged (already BA-09-aligned): English `outpatient-apotek-workflow.md`; SOP-
 | BA-09 rule | Evidence |
 |---|---|
 | Reserve = Mutasi; no `ReserveStock` | Domain `BR-APT-098`; SOP-003/004 Mutasi steps; screen Dispensing item 1 |
-| `Prepared` is Dispense Order only; no inventory action | Domain `BR-APT-099`/`100`; workflow already stated this; SOP-003/004 still move Dispense Order to `Prepared` without an Inventory status |
+| `Prepared` is Dispensing only; no inventory action | Domain `BR-APT-099`/`100`; workflow already stated this; SOP-003/004 still move Dispensing to `Prepared` without an Inventory status |
 | Handover = Remove Stock | Domain `BR-APT-101`; SOP-003/004/005/006; screen Serah Obat step 7 |
 | No Show = return Mutasi; Pharmacy-owned | Domain `BR-APT-102`; SOP-007 step 6; workflow `WF-APT-RJ-007` |
 | Stock Ledger owns quantity and history only | Screen §5.5; workflow participant table (EN already); domain §5.13 |
@@ -93,7 +93,7 @@ Unchanged (already BA-09-aligned): English `outpatient-apotek-workflow.md`; SOP-
 
 ## Ownership confirmation
 
-**Pharmacy owns:** Sales Order, Dispense Order, dispensing lifecycle, `Prepared`, Medication Handover, No Show resolution, Dispense Authorized evaluation.
+**Pharmacy owns:** Sales Order, Dispensing, dispensing lifecycle, `Prepared`, Medication Handover, No Show resolution, Dispense Authorized evaluation.
 
 **Stock Ledger owns:** Stock quantity, Stock Mutasi, Remove Stock, movement history.
 

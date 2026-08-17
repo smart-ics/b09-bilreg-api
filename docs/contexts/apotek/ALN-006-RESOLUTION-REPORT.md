@@ -46,7 +46,7 @@ Unchanged (already BC-10-aligned): `apotek-domain.md` `BR-APT-110` / `BR-APT-118
 | Artifact | Section | Modification |
 |---|---|---|
 | SOP-002 | Actors — Pharmacy Staff | Partial Sales Order / Salinan Resep applies **before** Sales Order establishment; after establishment follows SOP-003 5.4 or equivalent payer SOP |
-| SOP-002 | Exception 5.2 | Retitled from “after acceptance” to “before Sales Order establishment”. Partial Sales Order of fulfillable lines only. Explicit: do not use this path to drop lines from an existing Sales Order. Pointer to SOP-003 5.4 / SOP-004 5.2 / `BR-APT-118` |
+| SOP-002 | Exception 5.2 | Retitled from “after acceptance” to “before Sales Order establishment”. Partial Sales Order of fulfillable items only. Explicit: do not use this path to drop lines from an existing Sales Order. Pointer to SOP-003 5.4 / SOP-004 5.2 / `BR-APT-118` |
 | SOP-002 | Completion criterion 5 | Records the before/after cut |
 | SOP-003 | Exception 5.4 | Retitled “Shortage after Sales Order establishment”. Keep Sales Order; Unfulfilled Medication Outcome; financial correction when required; pointer to SOP-002 5.2 |
 | SOP-003 | Completion criterion 6 | Established Sales Order is not stripped of lines |
@@ -61,7 +61,7 @@ Unchanged (already BC-10-aligned): `apotek-domain.md` `BR-APT-110` / `BR-APT-118
 |---|---|
 | SOP-002 5.2 titled “Stock is insufficient after acceptance” | Titled and scoped “before Sales Order establishment” |
 | Operator could read 5.2 as dropping lines from an existing Sales Order | 5.2 forbids that reading and sends post-establishment shortage to SOP-003 5.4 / SOP-004 5.2 |
-| SOP-003 5.4 titled only “Shortage” | Titled and scoped after Sales Order establishment; does not remove Sales Order lines |
+| SOP-003 5.4 titled only “Shortage” | Titled and scoped after Sales Order establishment; does not remove Sales Order items |
 | SOP-004 5.2 already said “after Sales Order establishment” but did not forbid line removal | Explicit: do not remove items; do not rebuild as a partial order |
 
 No new shortage reason was added. Patient Request partial prescription and Fornas Not Covered remain separate `WF-APT-RJ-002` alternative flows.
@@ -73,15 +73,15 @@ No new shortage reason was added. Patient Request partial prescription and Forna
 | BC-10 / domain statement | SOP evidence after alignment |
 |---|---|
 | No Backorder; no outstanding outpatient demand | SOP-002 5.2, SOP-003 5.4, SOP-004 5.2: no Backorder, no alternate stock source |
-| Before Sales Order: only fulfillable lines on the Sales Order; unfulfillable lines remain on the Prescription; Salinan Resep | SOP-002 5.2; `BR-APT-110`; `WF-APT-RJ-002` alternative “Stock Shortage partial prescription” (unchanged) |
+| Before Sales Order: only fulfillable items on the Sales Order; unfulfillable items remain on the Prescription; Salinan Resep | SOP-002 5.2; `BR-APT-110`; `WF-APT-RJ-002` alternative “Stock Shortage partial prescription” (unchanged) |
 | After Sales Order: do not modify / do not remove items; Unfulfilled Medication Outcome; financial correction when required | SOP-003 5.4; SOP-004 5.2; `BR-APT-118`; `WF-APT-RJ-002` exception “Stock shortage after Sales Order establishment” (unchanged) |
 | Cut is Sales Order establishment, not “acceptance” | SOP-002 5.2 title and opening sentence; SOP-003 5.4 / SOP-004 5.2 opening sentences |
 
 Worked path before Sales Order establishment:
 
 1. Shortage identified.
-2. Sales Order is established with fulfillable lines only.
-3. Unfulfillable lines remain on the Prescription.
+2. Sales Order is established with fulfillable items only.
+3. Unfulfillable items remain on the Prescription.
 4. Salinan Resep may be issued.
 5. SOP-002 5.2 applies. SOP-003 5.4 does not.
 
@@ -89,7 +89,7 @@ Worked path after Sales Order establishment:
 
 1. Sales Order already exists.
 2. Shortage identified (including after payment or financial clearance).
-3. Sales Order lines are not removed.
+3. Sales Order items are not removed.
 4. Unfulfilled Medication Outcome is recorded; Salinan Resep when applicable.
 5. Credit Note / Refund when commercial consequences exist.
 6. SOP-003 5.4 or SOP-004 5.2 applies. SOP-002 5.2 does not.

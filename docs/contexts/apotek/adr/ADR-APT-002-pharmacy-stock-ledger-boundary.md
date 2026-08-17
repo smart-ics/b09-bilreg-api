@@ -34,7 +34,7 @@ Stock Ledger remains a pure stock authority. Pharmacy owns dispensing lifecycle 
 **Pharmacy owns:**
 
 - Sales Order
-- Dispense Order
+- Dispensing
 - Dispensing lifecycle
 - `Prepared`
 - `Handed Over`
@@ -57,8 +57,8 @@ There is no separate inventory reservation operation. Pharmacy **Reserve** is im
 
 ### Additional rules
 
-- **`Prepared` is a Dispense Order state only.** A Dispense Order reaches `Prepared` when all required dispensing movements for that preparation have completed. `Prepared` is not an Inventory state.
-- **Partial fulfillment belongs to Sales Order.** A Sales Order may be fulfilled through multiple Dispense Orders. Dispense Order does not own partial-fulfillment semantics.
+- **`Prepared` is a Dispensing state only.** A Dispensing reaches `Prepared` when all required dispensing movements for that preparation have completed. `Prepared` is not an Inventory state.
+- **Partial fulfillment belongs to Sales Order.** A Sales Order may be fulfilled through multiple Dispensings. Dispensing does not own partial-fulfillment semantics.
 - **No Show is Pharmacy-owned.** Inventory applies only the return Mutasi directed by Pharmacy. Inventory never stores No Show status.
 
 ## Rationale
@@ -74,7 +74,7 @@ There is no separate inventory reservation operation. Pharmacy **Reserve** is im
 
 - One clear stock integration model for outpatient dispensing.
 - `Prepared`, handover, and No Show remain Pharmacy-authoritative facts.
-- Implementation can use Stock Ledger transfer and remove-stock commands with Dispense Order lineage.
+- Implementation can use Stock Ledger transfer and remove-stock commands with Dispensing lineage.
 
 ### Negative / trade-offs
 
@@ -84,7 +84,7 @@ There is no separate inventory reservation operation. Pharmacy **Reserve** is im
 ### Implementation guidance
 
 - Request stock effects only after Pharmacy business facts are authorized.
-- Use idempotent Integration Tasks keyed to Dispense Order Line and movement purpose.
+- Use idempotent Integration Tasks keyed to Dispensing Item and movement purpose.
 - Do not persist `Prepared`, `Handed Over`, or No Show in Stock Ledger.
 - Evaluate Dispense Authorized from financial/coverage evidence (BA-08) before Dispensing Started; handover gates remain separate.
 - Reference `apotek-domain.md` (`BR-APT-098`–`BR-APT-104`) and `stok-ledger-domain.md` §1.7.

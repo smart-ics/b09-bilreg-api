@@ -35,7 +35,7 @@ This artifact defines physical persistence. It does not define API contracts, sc
 
 The current pharmacy write model is **not a valid persistence design for outpatient Apotek**.
 
-Existing `SalesContext` persistence (`ta_trs_kartu_periksa*`, `tb_trs_dobill_umum*`) stores a monolithic prescription-to-DU sale. That shape cannot represent independent `TelaahResep`, `SalesOrder`, `SalesInvoice`, and `DispenseOrder` consistency boundaries, line-level commercial/fulfillment split, immutable Final Dispense Review, queue mapping, or Stock Ledger / Tata Rekening integration under BA-05 through BA-09.
+Existing `SalesContext` persistence (`ta_trs_kartu_periksa*`, `tb_trs_dobill_umum*`) stores a monolithic prescription-to-DU sale. That shape cannot represent independent `TelaahResep`, `SalesOrder`, `Invoice`, and `Dispensing` consistency boundaries, item-level commercial/fulfillment split, immutable Final Dispense Review, queue mapping, or Stock Ledger / Tata Rekening integration under BA-05 through BA-09.
 
 **Target:** introduce a new `BILRG_Apt*` write schema owned by Apotek. Reuse neighboring tables by identity and command, never by writing their rows from Apotek DALs. Keep legacy DU and legacy Resep running as independent features. Do not dual-write.
 
@@ -49,15 +49,15 @@ No Apotek bounded-context project, aggregate, DTO, DAL, repository, or SQL scrip
 
 | Requirement | Domain authority | Persistence consequence |
 |---|---|---|
-| Professional review of one Resep, per-line disposition, responsible Pharmacist, final outcome | `TelaahResep` aggregate; `BR-APT-003`–`007` | Header + rewriteable lines while `Under Review`; header status becomes terminal |
-| Accepted demand, quantities, source traceability, unfulfilled outcomes, resolution | `SalesOrder` aggregate; `BR-APT-010`–`019` | Header + established lines; unfulfilled outcomes append-only |
-| One medication sale, items, charges, pricing snapshot, payer, credit notes | `SalesInvoice` aggregate; `BR-APT-020`–`028`, `BR-APT-125`–`128` | Header + items + line charges + invoice charges + credit notes |
-| Physical fulfillment, preparation, immutable reviews, education, override, dispense, handover, expiry, return | `DispenseOrder` aggregate; `BR-APT-029`–`039`, `BR-APT-096`, `BR-APT-132`–`142` | Header + lines + append-only review records; handover/education/override as header facts |
-| Pharmacy operational copy of clinical intent | BA-06 Prescription Snapshot | Supporting document tables, created at intake, never silently rewritten from source |
-| Accepted Direct Medication Request | `BR-APT-009`, `BR-APT-089` | Supporting document tables; decline creates no row |
+| Professional review of one Resep, per-item disposition, responsible Pharmacist, final outcome | `TelaahResep` aggregate; `BR-APT-003`–`007` | Header + rewriteable items while `Under Review`; header status becomes terminal |
+| Accepted demand, quantities, source traceability, unfulfilled outcomes, resolution | `SalesOrder` aggregate; `BR-APT-010`–`019` | Header + established items; unfulfilled outcomes append-only |
+| One medication sale, items, charges, pricing snapshot, payer, credit notes | `Invoice` aggregate; `BR-APT-020`–`028`, `BR-APT-125`–`128` | Header + items + item charges + invoice charges + credit notes |
+| Physical fulfillment, preparation, immutable reviews, education, override, dispense, handover, expiry, return | `Dispensing` aggregate; `BR-APT-029`–`039`, `BR-APT-096`, `BR-APT-132`–`142` | Header + items + append-only review records; handover/education/override as header facts |
+| Pharmacy operational copy of clinical intent | BA-06 Resep Kerja | Supporting document tables, created at intake, never silently rewritten from source |
+| Accepted Jual Bebas | `BR-APT-009`, `BR-APT-089` | Supporting document tables; decline creates no row |
 | Current queue-to-demand association | BA-03; `BR-APT-062` | Association table, update in place, no history, not an aggregate |
 | Pharmacy Queue Close fact | `BR-APT-143`–`145` | Append-only fact table; Tracker `Withdrawn` is requested, not owned |
-| Salinan Resep | `BR-APT-054`, `BR-APT-109`–`115` | Supporting document from unfulfilled / excluded prescription lines |
+| Salinan Resep | `BR-APT-054`, `BR-APT-109`–`115` | Supporting document from unfulfilled / excluded prescription items |
 | Cross-context delivery | BA-07 | Integration Task table committed atomically with the originating aggregate |
 | Stock, queue, payment, SEP, Fornas, billing settlement | ADR-APT-001, ADR-APT-002, Tata Rekening | Neighbor tables remain neighbor-owned; Apotek stores correlation identities only |
 | Operational worklists, attention badges, Patient Medication Journey, Pickup Expired | Screen design §3.4–§3.5 | Query projections; no write tables and no workflow states |
@@ -66,17 +66,17 @@ No Apotek bounded-context project, aggregate, DTO, DAL, repository, or SQL scrip
 
 | Object | Why | Allowed persistence |
 |---|---|---|
-| `DispenseAuthorized` | `BR-APT-043`; BA-08 | None as entity or status-of-record. Policy is evaluated at command time from evidence. Dispense Order `Released` is the resulting lifecycle state. |
+| `DispenseAuthorized` | `BR-APT-043`; BA-08 | None as entity or status-of-record. Policy is evaluated at command time from evidence. Dispensing `Released` is the resulting lifecycle state. |
 | Queue lifecycle (`Waiting` / `In Service` / `Done` / `Withdrawn`) | ADR-APT-001 | Patient Tracker `BILRG_AntrianEntry` only |
 | `Pickup Expired`, Serah Obat worklist categories | BA-04 | Derived from `PreparedAt` + Collection Window + handover facts |
-| Purchase Confirmation | Domain §5.3 | Evidenced by Sales Invoice establishment |
+| Purchase Confirmation | Domain §5.3 | Evidenced by Invoice establishment |
 | Backorder | `BR-APT-114` | No table |
 | Financial Clearance / Fulfillment Clearance objects | BA-08 | No table |
 | Mapping-change history | `BR-APT-062` | No table |
-| Declined Direct Medication Request | `BR-APT-089` | No row |
+| Declined Jual Bebas | `BR-APT-089` | No row |
 | Stock quantity, Mutasi, Remove Stock | ADR-APT-002 | Stock Ledger only |
 | Payment settlement, Tata Rekening lifecycle | Tata Rekening design | `ta_trs_billing` / `BILRG_TataRekening` only |
-| Original CPOE / legacy Resep intent | `BR-APT-002` | Source remains in its authority; Apotek stores a snapshot copy |
+| Original CPOE / legacy Resep intent | `BR-APT-002` | Source remains in its authority; Apotek stores a Resep Kerja copy |
 
 ### 2.3 Non-functional persistence rules
 
@@ -108,9 +108,9 @@ Follow [DATABASE.md](../../DATABASE.md) and [feature-persistence-generation.md](
 | F-09 tracker evidence | `PharmacyQueueEvidence.cs`; `BILRG_PasienTrackerEvent` | Reusable append of `Apotek-Start` / `Apotek-Done`; must reference Tracker queue identity |
 | Queue entry has one `ReffId` | `BILRG_AntrianEntry.ReffId`; `AntrianEntryModel.SetReff` | Cannot store multiple mapped demands; mapping must be an Apotek table |
 | Stock movements | `BILRG_StokMutasi`, `BILRG_StokLokasi`; `PostStockTransferConsequenceCommand`; `PostSaleIssueConsequenceCommand` | Reuse commands; do not insert Mutasi from Apotek DAL |
-| Tata Rekening charge ledger | `ta_trs_billing` (`fn_modul` 0 = Jasa, 1 = Obat); `BILRG_TataRekening` | Sales Invoice becomes a Charge Source into Obat |
+| Tata Rekening charge ledger | `ta_trs_billing` (`fn_modul` 0 = Jasa, 1 = Obat); `BILRG_TataRekening` | Invoice becomes a Charge Source into Obat |
 | Fornas master | `FARPU_Fornas` | Coverage catalog only; not Coverage Clearance |
-| CPOE model, no SQL | `ClinicalOrderModel.cs`; no CPOE `.sql` | Pharmacy must not wait for CPOE tables; consume Prescription Contract into a snapshot |
+| CPOE model, no SQL | `ClinicalOrderModel.cs`; no CPOE `.sql` | Pharmacy must not wait for CPOE tables; consume Prescription Contract into Resep Kerja |
 | Integration-task analogue | `BILRG_EmrAntrianOutboundQueue`; `BILRG_LabOwareOutboundQueue` | Pattern for BA-07: pending row, retry, unique source+type |
 | Modern aggregate pattern | `BILRG_LabOrder` / `LabOrderRepo` | Header upsert + detail delete/insert; `NunaId` prefix `LBO` |
 
@@ -118,10 +118,10 @@ Follow [DATABASE.md](../../DATABASE.md) and [feature-persistence-generation.md](
 
 | Claim sometimes assumed | Validation |
 |---|---|
-| Extend `tb_trs_dobill_umum` into Sales Invoice | **Invalid.** BA-05 forbids dual-write. The table has no Sales Order, Dispense Order, review, or handover lifecycle. |
+| Extend `tb_trs_dobill_umum` into Invoice | **Invalid.** BA-05 forbids dual-write. The table has no Sales Order, Dispensing, review, or handover lifecycle. |
 | Store pharmacy progress on `BILRG_AntrianEntry.AntrianStatus` | **Invalid.** ADR-APT-001. Enum is only `Waiting`, `InService`, `Done`, `Withdrawn`. |
 | Use `AntrianEntry.ReffId` as queue mapping | **Invalid.** One column cannot associate multiple independent demands (`BR-APT-084`). |
-| Persist `TelaahModel` as `TelaahResep` | **Invalid.** Checklist semantics; no per-line accept/substitute/reject; no persistence. |
+| Persist `TelaahModel` as `TelaahResep` | **Invalid.** Checklist semantics; no per-item accept/substitute/reject; no persistence. |
 | Treat Stock Ledger `Prepared` / No Show columns as required | **Invalid.** Those facts are Pharmacy-owned. Stock has quantity and movement only. |
 | Reuse `SaleIssueDu` for Outpatient Pharmacy handover | **Invalid (PD-02).** Use `DispenseIssue` for Medication Handover. `SaleIssueDu` remains the legacy DU path only. |
 
@@ -134,12 +134,12 @@ Follow [DATABASE.md](../../DATABASE.md) and [feature-persistence-generation.md](
 ```mermaid
 flowchart TB
   subgraph apotekWrite ["Apotek-owned write schema"]
-    RX["BILRG_AptPrescriptionSnapshot"]
-    DR["BILRG_AptDirectRequest"]
+    RK["BILRG_AptResepKerja"]
+    JB["BILRG_AptJualBebas"]
     TR["BILRG_AptTelaahResep"]
     SO["BILRG_AptSalesOrder"]
-    INV["BILRG_AptSalesInvoice"]
-    DO["BILRG_AptDispenseOrder"]
+    INV["BILRG_AptInvoice"]
+    DSP["BILRG_AptDispensing"]
     MAP["BILRG_AptQueueMapping"]
     CLOSE["BILRG_AptQueueClose"]
     COPY["BILRG_AptSalinanResep"]
@@ -158,37 +158,37 @@ flowchart TB
     REG["ta_registrasi"]
   end
 
-  RX --> TR
+  RK --> TR
   TR --> SO
-  DR --> SO
+  JB --> SO
   SO --> INV
-  SO --> DO
+  SO --> DSP
   MAP -.-> Q
-  MAP -.-> RX
-  MAP -.-> DR
+  MAP -.-> RK
+  MAP -.-> JB
   CLOSE -.-> Q
-  COPY --> RX
+  COPY --> RK
   TASK --> ST
   TASK --> BILL
   TASK --> Q
   TASK --> TE
   INV -.-> BILL
-  DO -.-> ST
+  DSP -.-> ST
 ```
 
 ### 4.2 Consistency boundary catalog
 
 | Persistence unit | Kind | Consistency boundary | Repository | Child persistence |
 |---|---|---|---|---|
-| `TelaahResep` | Aggregate root | One review of one Prescription Snapshot | `ITelaahResepRepo` | Lines rewriteable until terminal |
-| `SalesOrder` | Aggregate root | One accepted demand and quantity reconciliation | `ISalesOrderRepo` | Lines established then statused; unfulfilled outcomes append-only |
-| `SalesInvoice` | Aggregate root | One medication sale | `ISalesInvoiceRepo` | Items + charges rewriteable until Issued; credit notes append-only |
-| `DispenseOrder` | Aggregate root | One physical fulfillment instruction | `IDispenseOrderRepo` | Lines established; reviews append-only; handover facts on header |
-| Prescription Snapshot | Supporting document | Intake copy of one Resep | `IPrescriptionSnapshotRepo` | Lines + components rewriteable only before first Telaah terminal outcome |
-| Direct Medication Request | Supporting document | One accepted retail request | `IDirectMedicationRequestRepo` | Lines rewriteable only before Sales Order establishment |
-| Outpatient Queue Mapping | Association | Current queue ↔ demand source | `IOutpatientQueueMappingRepo` | Single row per demand source; update in place |
+| `TelaahResep` | Aggregate root | One review of one Resep Kerja | `ITelaahResepRepo` | Items rewriteable until terminal |
+| `SalesOrder` | Aggregate root | One accepted demand and quantity reconciliation | `ISalesOrderRepo` | Items established then statused; unfulfilled outcomes append-only |
+| `Invoice` | Aggregate root | One medication sale | `IInvoiceRepo` | Items + charges rewriteable until Issued; credit notes append-only |
+| `Dispensing` | Aggregate root | One physical fulfillment instruction | `IDispensingRepo` | Items established; reviews append-only; handover facts on header |
+| Resep Kerja | Supporting document | Intake copy of one Resep | `IResepKerjaRepo` | Items + components rewriteable only before first Telaah terminal outcome |
+| Jual Bebas | Supporting document | One accepted retail request | `IJualBebasRepo` | Items rewriteable only before Sales Order establishment |
+| Outpatient Queue Mapping | Association | Current queue ↔ Resep Kerja or Jual Bebas | `IOutpatientQueueMappingRepo` | Single row per demand source; update in place |
 | Pharmacy Queue Close | Operational fact | One close per queue entry | DAL + fact writer used by use case | Append-only |
-| Salinan Resep | Supporting document | One copy of excluded/unfulfilled lines | `ISalinanResepRepo` or child of snapshot use case | Header + lines |
+| Salinan Resep | Supporting document | One copy of excluded/unfulfilled items | `ISalinanResepRepo` or child of Resep Kerja use case | Header + items |
 | Integration Task | Infrastructure | One durable outbound obligation | `IAptIntegrationTaskDal` coordinated by Application | Append-only; status updates in place |
 
 One repository per aggregate root. Supporting documents have repositories because they are written before the related aggregate exists. Mapping is not an aggregate; its repository only loads/saves the current association.
@@ -198,21 +198,21 @@ Application orchestration may touch several repositories in one `TransHelper` sc
 ### 4.3 Quantity and document cardinality
 
 ```text
-Prescription Snapshot 1 ──< TelaahResep 1
-Prescription Snapshot 1 ──< SalesOrder 0..2     (BPJS-covered + Patient-Pay)
-Direct Request        1 ──< SalesOrder 1
-SalesOrder            1 ──< SalesInvoice 0..n
-SalesOrder            1 ──< DispenseOrder 0..n
-SalesOrderLine        1 ──< SalesInvoiceItem 0..n
-SalesOrderLine        1 ──< DispenseOrderLine 0..n
+Resep Kerja 1 ──< TelaahResep 1
+Resep Kerja 1 ──< SalesOrder 0..2     (BPJS-covered + Patient-Pay)
+Jual Bebas            1 ──< SalesOrder 1
+SalesOrder            1 ──< Invoice 0..n
+SalesOrder            1 ──< Dispensing 0..n
+SalesOrderItem        1 ──< InvoiceItem 0..n
+SalesOrderItem        1 ──< DispensingItem 0..n
 QueueEntry            1 ──< QueueMapping 0..n
-Demand source         1 ──  QueueMapping 0..1   (current only)
+Demand source (Resep Kerja | Jual Bebas)  1 ──  QueueMapping 0..1   (current only)
 ```
 
 Unique business indexes (application-enforced and SQL unique where listed in §7):
 
-- At most one active Sales Order per Prescription Snapshot per Registration per payer path (`BR-APT-011`, `BR-APT-119`).
-- Invoice item and dispense line quantities must not exceed Sales Order Line authority. Enforced in domain, not by database trigger.
+- At most one active Sales Order per Resep Kerja per Registration per payer path (`BR-APT-011`, `BR-APT-119`).
+- Invoice item and Dispensing item quantities must not exceed Sales Order Item authority. Enforced in domain, not by database trigger.
 
 ---
 
@@ -226,12 +226,12 @@ Unique business indexes (application-enforced and SQL unique where listed in §7
 | `BILRG_PasienTracker` / `BILRG_PasienTrackerEvent` | Journey evidence | Append `Apotek-Start` / `Apotek-Done` with queue identity as `ReffId` via Tracker port | Invent a second queue identity |
 | `BILRG_AdmServicePoint` and related kiosk/display tables | Shared queue platform | Seed a pharmacy service point | Copy Admission start-service/registration-complete semantics |
 | `BILRG_StokLokasi` / `BILRG_StokMutasi` | Stock quantity and journal | Call Stock Ledger transfer / remove-stock commands; store returned `StokMutasiId` as correlation | Insert/update Mutasi; store `Prepared` / No Show in stock tables |
-| `tb_barang` / satuan / tipe barang | Medication catalog | Snapshot `BrgId`, name, satuan onto lines | Treat catalog mutation as pharmacy history |
-| `FARPU_Fornas` | Item-level coverage catalog | Classify Covered / Not Covered at evaluation time; snapshot the outcome onto the Sales Order Line | Treat master presence as Coverage Clearance |
+| `tb_barang` / satuan / tipe barang | Medication catalog | Snapshot `BrgId`, name, satuan onto items | Treat catalog mutation as pharmacy history |
+| `FARPU_Fornas` | Item-level coverage catalog | Classify Covered / Not Covered at evaluation time; snapshot the outcome onto the Sales Order Item | Treat master presence as Coverage Clearance |
 | `ta_registrasi` | Fulfillment boundary | Store `RegId`; enforce one active SO per registration/payer path | Extend registration schema |
 | `ta_trs_kartu_periksa*` | Legacy Resep + Iter | Read through Prescription Contract adapter; Iter consume/update through that adapter | Make Kartu Periksa the Telaah or Sales Order table |
-| `tb_trs_dobill_umum*` | Legacy DU | Read-only reporting union | Dual-write from new Sales Invoice |
-| `ta_trs_billing` | Financial Charge ledger | Create Obat charges (`fn_modul = 1`) via Tata Rekening / billing port, with `fs_kd_trs` or source ref = Sales Invoice id | Bypass Tata Rekening lifecycle; write `BILRG_TataRekening` |
+| `tb_trs_dobill_umum*` | Legacy DU | Read-only reporting union | Dual-write from new Invoice |
+| `ta_trs_billing` | Financial Charge ledger | Create Obat charges (`fn_modul = 1`) via Tata Rekening / billing port, with `fs_kd_trs` or source ref = Invoice id | Bypass Tata Rekening lifecycle; write `BILRG_TataRekening` |
 | `tz_parameter_sistem` | Operational parameter | Add `APT_COLLECTION_WINDOW_DAYS` (default `7`) | Hard-code Collection Window only |
 
 ### 5.2 Existing tables that need adjustment
@@ -246,7 +246,7 @@ These are neighbor or platform changes, not Apotek table rewrites.
 | `tz_parameter_sistem` | Insert Collection Window parameter | Apotek config | `BR-APT-138` |
 | Prescription Contract / Iter adapter | Consume and update Iter on legacy Resep without pharmacy writing Kartu Periksa SQL | Apotek Application + Resep port | `BR-APT-106`; Iter remains owned by Resep |
 | F-09 evidence `ReffId` | Must be Tracker queue identity, not Farinv / DU id | Patient Tracker + Apotek orchestration | BA-01; `BILRG_PasienTrackerEvent.ReffId` is already `VARCHAR(40)` |
-| Stock `UX_BILRG_StokMutasi_TrsReffId_MovementKind_StokLokasiId` | Apotek Integration Task must use a stable `TrsReffId` per Dispense Order Line + purpose | Apotek task key design | Existing uniqueness is the idempotency mechanism |
+| Stock `UX_BILRG_StokMutasi_TrsReffId_MovementKind_StokLokasiId` | Apotek Integration Task must use a stable `TrsReffId` per Dispensing Item + purpose | Apotek task key design | Existing uniqueness is the idempotency mechanism |
 
 No alteration of `BILRG_AntrianEntry` is required or permitted for pharmacy workflow columns.
 
@@ -254,7 +254,7 @@ No alteration of `BILRG_AntrianEntry` is required or permitted for pharmacy work
 
 | Table | Forbidden use |
 |---|---|
-| `tb_trs_dobill_umum` / `tb_trs_dobill_umum2` | New Sales Invoice / Dispense Order |
+| `tb_trs_dobill_umum` / `tb_trs_dobill_umum2` | New Invoice / Dispensing |
 | `ta_trs_kartu_periksa*` | New Telaah Resep or Sales Order |
 | `BILRG_AntrianEntry` | Pharmacy progress or multi-demand mapping |
 | Any Farinv queue table | Active outpatient queue identity |
@@ -272,30 +272,30 @@ Module prefix: `BILRG_Apt`. New-system PK: `VARCHAR(12)` unless the row is a det
 
 | Table | Kind | PK | Owned by |
 |---|---|---|---|
-| `BILRG_AptPrescriptionSnapshot` | Supporting header | `PrescriptionSnapshotId` | Apotek |
-| `BILRG_AptPrescriptionSnapshotLine` | Detail | `(PrescriptionSnapshotId, ItemNo)` | Snapshot |
-| `BILRG_AptPrescriptionSnapshotComponent` | Detail | `(PrescriptionSnapshotId, ItemNo, ComponentNo)` | Snapshot |
-| `BILRG_AptPrescriptionRevisionTask` | Operational task | `RevisionTaskId` | Apotek |
-| `BILRG_AptDirectRequest` | Supporting header | `DirectRequestId` | Apotek |
-| `BILRG_AptDirectRequestLine` | Detail | `(DirectRequestId, ItemNo)` | Direct request |
+| `BILRG_AptResepKerja` | Supporting header | `ResepKerjaId` | Apotek |
+| `BILRG_AptResepKerjaItem` | Detail | `(ResepKerjaId, ItemNo)` | Resep Kerja |
+| `BILRG_AptResepKerjaComponent` | Detail | `(ResepKerjaId, ItemNo, ComponentNo)` | Resep Kerja |
+| `BILRG_AptResepRevisionTask` | Operational task | `RevisionTaskId` | Apotek |
+| `BILRG_AptJualBebas` | Supporting header | `JualBebasId` | Apotek |
+| `BILRG_AptJualBebasItem` | Detail | `(JualBebasId, ItemNo)` | Jual Bebas |
 | `BILRG_AptTelaahResep` | Aggregate header | `TelaahResepId` | `TelaahResep` |
-| `BILRG_AptTelaahResepLine` | Detail | `(TelaahResepId, ItemNo)` | `TelaahResep` |
+| `BILRG_AptTelaahResepItem` | Detail | `(TelaahResepId, ItemNo)` | `TelaahResep` |
 | `BILRG_AptSalesOrder` | Aggregate header | `SalesOrderId` | `SalesOrder` |
-| `BILRG_AptSalesOrderLine` | Detail | `(SalesOrderId, ItemNo)` | `SalesOrder` |
-| `BILRG_AptSalesOrderLineComponent` | Detail | `(SalesOrderId, ItemNo, ComponentNo)` | `SalesOrder` |
+| `BILRG_AptSalesOrderItem` | Detail | `(SalesOrderId, ItemNo)` | `SalesOrder` |
+| `BILRG_AptSalesOrderItemComponent` | Detail | `(SalesOrderId, ItemNo, ComponentNo)` | `SalesOrder` |
 | `BILRG_AptUnfulfilledOutcome` | Append-only detail | `(SalesOrderId, OutcomeNo)` | `SalesOrder` |
-| `BILRG_AptSalesInvoice` | Aggregate header | `SalesInvoiceId` | `SalesInvoice` |
-| `BILRG_AptSalesInvoiceItem` | Detail | `(SalesInvoiceId, ItemNo)` | `SalesInvoice` |
-| `BILRG_AptSalesInvoiceItemCharge` | Detail | `(SalesInvoiceId, ItemNo, ChargeNo)` | `SalesInvoice` |
-| `BILRG_AptSalesInvoiceCharge` | Detail | `(SalesInvoiceId, ChargeNo)` | `SalesInvoice` |
-| `BILRG_AptCreditNote` | Append-only detail | `(SalesInvoiceId, CreditNoteNo)` | `SalesInvoice` |
-| `BILRG_AptDispenseOrder` | Aggregate header | `DispenseOrderId` | `DispenseOrder` |
-| `BILRG_AptDispenseOrderLine` | Detail | `(DispenseOrderId, ItemNo)` | `DispenseOrder` |
-| `BILRG_AptFinalReview` | Append-only detail | `(DispenseOrderId, ReviewNo)` | `DispenseOrder` |
+| `BILRG_AptInvoice` | Aggregate header | `InvoiceId` | `Invoice` |
+| `BILRG_AptInvoiceItem` | Detail | `(InvoiceId, ItemNo)` | `Invoice` |
+| `BILRG_AptInvoiceItemCharge` | Detail | `(InvoiceId, ItemNo, ChargeNo)` | `Invoice` |
+| `BILRG_AptInvoiceCharge` | Detail | `(InvoiceId, ChargeNo)` | `Invoice` |
+| `BILRG_AptCreditNote` | Append-only detail | `(InvoiceId, CreditNoteNo)` | `Invoice` |
+| `BILRG_AptDispensing` | Aggregate header | `DispensingId` | `Dispensing` |
+| `BILRG_AptDispensingItem` | Detail | `(DispensingId, ItemNo)` | `Dispensing` |
+| `BILRG_AptFinalReview` | Append-only detail | `(DispensingId, ReviewNo)` | `Dispensing` |
 | `BILRG_AptQueueMapping` | Association | `(DemandKind, DemandId)` | Apotek (not an aggregate) |
 | `BILRG_AptQueueClose` | Append-only fact | `QueueCloseId` | Apotek (not an aggregate) |
 | `BILRG_AptSalinanResep` | Supporting header | `SalinanResepId` | Apotek |
-| `BILRG_AptSalinanResepLine` | Detail | `(SalinanResepId, ItemNo)` | Salinan Resep |
+| `BILRG_AptSalinanResepItem` | Detail | `(SalinanResepId, ItemNo)` | Salinan Resep |
 | `BILRG_AptIntegrationTask` | Infrastructure | `IntegrationTaskId` | Apotek Application / worker |
 
 ### 6.2 New tables that are intentionally omitted
@@ -308,23 +308,23 @@ Module prefix: `BILRG_Apt`. New-system PK: `VARCHAR(12)` unless the row is a det
 | `BILRG_AptWorklist*` materialized tables | Not in first persistence; query existing write tables + Tracker |
 | `BILRG_AptPatientJourney` | Projection only |
 | `BILRG_AptBackorder` | Forbidden |
-| Unified sales reporting table / view | Forbidden (PD-06). Use Query DAL / Reporting Query Adapter over `BILRG_AptSalesInvoice` ∪ `tb_trs_dobill_umum` |
+| Unified sales reporting table / view | Forbidden (PD-06). Use Query DAL / Reporting Query Adapter over `BILRG_AptInvoice` ∪ `tb_trs_dobill_umum` |
 
 ### 6.3 Identifier prefixes
 
 | Entity | `NunaId` prefix | Notes |
 |---|---|---|
-| Prescription Snapshot | `ARX` | Apt Resep snapshot |
-| Direct Request | `ADQ` | Avoid `ADM` (Admission) |
+| Resep Kerja | `ARX` | Apt Resep Kerja |
+| Jual Bebas | `ADQ` | Avoid `ADM` (Admission) |
 | Telaah Resep | `ATR` | |
 | Sales Order | `ASO` | |
-| Sales Invoice | `ASI` | |
-| Dispense Order | `ADP` | Do not use `DO` (Stock Ledger Goods Receipt) |
+| Invoice | `ASI` | |
+| Dispensing | `ADP` | Do not use `DO` (Stock Ledger Goods Receipt) |
 | Salinan Resep | `ASR` | |
 | Queue Close | `AQC` | |
 | Integration Task | `AIT` | |
 | Revision Task | `ARV` | |
-| Credit Note | uses parent `SalesInvoiceId` + `CreditNoteNo` | |
+| Credit Note | uses parent `InvoiceId` + `CreditNoteNo` | |
 
 ---
 
@@ -332,32 +332,32 @@ Module prefix: `BILRG_Apt`. New-system PK: `VARCHAR(12)` unless the row is a det
 
 ```mermaid
 erDiagram
-  BILRG_AptPrescriptionSnapshot ||--|{ BILRG_AptPrescriptionSnapshotLine : contains
-  BILRG_AptPrescriptionSnapshotLine ||--o{ BILRG_AptPrescriptionSnapshotComponent : racik
-  BILRG_AptPrescriptionSnapshot ||--o| BILRG_AptTelaahResep : reviewed_by
-  BILRG_AptPrescriptionSnapshot ||--o{ BILRG_AptSalesOrder : may_establish
-  BILRG_AptPrescriptionSnapshot ||--o{ BILRG_AptPrescriptionRevisionTask : revision_detected
-  BILRG_AptDirectRequest ||--|{ BILRG_AptDirectRequestLine : contains
-  BILRG_AptDirectRequest ||--o| BILRG_AptSalesOrder : establishes
-  BILRG_AptTelaahResep ||--|{ BILRG_AptTelaahResepLine : dispositions
-  BILRG_AptSalesOrder ||--|{ BILRG_AptSalesOrderLine : contains
-  BILRG_AptSalesOrderLine ||--o{ BILRG_AptSalesOrderLineComponent : racik
+  BILRG_AptResepKerja ||--|{ BILRG_AptResepKerjaItem : contains
+  BILRG_AptResepKerjaItem ||--o{ BILRG_AptResepKerjaComponent : racik
+  BILRG_AptResepKerja ||--o| BILRG_AptTelaahResep : reviewed_by
+  BILRG_AptResepKerja ||--o{ BILRG_AptSalesOrder : may_establish
+  BILRG_AptResepKerja ||--o{ BILRG_AptResepRevisionTask : revision_detected
+  BILRG_AptJualBebas ||--|{ BILRG_AptJualBebasItem : contains
+  BILRG_AptJualBebas ||--o| BILRG_AptSalesOrder : establishes
+  BILRG_AptTelaahResep ||--|{ BILRG_AptTelaahResepItem : dispositions
+  BILRG_AptSalesOrder ||--|{ BILRG_AptSalesOrderItem : contains
+  BILRG_AptSalesOrderItem ||--o{ BILRG_AptSalesOrderItemComponent : racik
   BILRG_AptSalesOrder ||--o{ BILRG_AptUnfulfilledOutcome : outcomes
-  BILRG_AptSalesOrder ||--o{ BILRG_AptSalesInvoice : invoices
-  BILRG_AptSalesOrder ||--o{ BILRG_AptDispenseOrder : fulfills
-  BILRG_AptSalesOrderLine ||--o{ BILRG_AptSalesInvoiceItem : billed_as
-  BILRG_AptSalesOrderLine ||--o{ BILRG_AptDispenseOrderLine : dispensed_as
-  BILRG_AptSalesInvoice ||--|{ BILRG_AptSalesInvoiceItem : items
-  BILRG_AptSalesInvoiceItem ||--o{ BILRG_AptSalesInvoiceItemCharge : line_charges
-  BILRG_AptSalesInvoice ||--o{ BILRG_AptSalesInvoiceCharge : invoice_charges
-  BILRG_AptSalesInvoice ||--o{ BILRG_AptCreditNote : credits
-  BILRG_AptDispenseOrder ||--|{ BILRG_AptDispenseOrderLine : lines
-  BILRG_AptDispenseOrder ||--o{ BILRG_AptFinalReview : reviews
+  BILRG_AptSalesOrder ||--o{ BILRG_AptInvoice : invoices
+  BILRG_AptSalesOrder ||--o{ BILRG_AptDispensing : fulfills
+  BILRG_AptSalesOrderItem ||--o{ BILRG_AptInvoiceItem : billed_as
+  BILRG_AptSalesOrderItem ||--o{ BILRG_AptDispensingItem : dispensed_as
+  BILRG_AptInvoice ||--|{ BILRG_AptInvoiceItem : items
+  BILRG_AptInvoiceItem ||--o{ BILRG_AptInvoiceItemCharge : item_charges
+  BILRG_AptInvoice ||--o{ BILRG_AptInvoiceCharge : invoice_charges
+  BILRG_AptInvoice ||--o{ BILRG_AptCreditNote : credits
+  BILRG_AptDispensing ||--|{ BILRG_AptDispensingItem : items
+  BILRG_AptDispensing ||--o{ BILRG_AptFinalReview : reviews
   BILRG_AptQueueMapping }o--|| BILRG_AntrianEntry : associates
-  BILRG_AptSalinanResep ||--|{ BILRG_AptSalinanResepLine : lines
+  BILRG_AptSalinanResep ||--|{ BILRG_AptSalinanResepItem : items
   BILRG_AptSalesOrder ||--o{ BILRG_AptIntegrationTask : outbound
-  BILRG_AptDispenseOrder ||--o{ BILRG_AptIntegrationTask : outbound
-  BILRG_AptSalesInvoice ||--o{ BILRG_AptIntegrationTask : outbound
+  BILRG_AptDispensing ||--o{ BILRG_AptIntegrationTask : outbound
+  BILRG_AptInvoice ||--o{ BILRG_AptIntegrationTask : outbound
 ```
 
 Logical relationships only. No `FOREIGN KEY` constraints.
@@ -370,47 +370,47 @@ Conventions for every header: `CrtUser VARCHAR(50)`, `CrtDate DATETIME`, `UpdUse
 
 Column lists below are the operational shape for review. They are not a substitute for the later SQL script review.
 
-### 8.1 Prescription Snapshot (BA-06)
+### 8.1 Resep Kerja (BA-06)
 
 Intake document. Authoritative for pharmacy processing. Source revisions never overwrite it.
 
-`BILRG_AptPrescriptionSnapshot`
+`BILRG_AptResepKerja`
 
 | Column | Type | Notes |
 |---|---|---|
-| `PrescriptionSnapshotId` | VARCHAR(12) | PK |
+| `ResepKerjaId` | VARCHAR(12) | PK |
 | `SourceKind` | INT | `0` Legacy Resep, `1` CPOE, `2` Physical/external |
-| `SourcePrescriptionId` | VARCHAR(50) | Legacy `fs_kd_trs` or CPOE id; empty for physical until assigned |
+| `SourceResepId` | VARCHAR(50) | Legacy `fs_kd_trs` or CPOE id; empty for physical until assigned |
 | `SourceVersionToken` | VARCHAR(50) | Revision detection token; empty if unknown |
 | `RegId` | VARCHAR(10) | Fulfillment boundary |
-| `PasienId` | VARCHAR(15) | Snapshot |
-| `PasienName` | VARCHAR(60) | Snapshot |
-| `DokterId` | VARCHAR(10) | Snapshot |
-| `DokterName` | VARCHAR(40) | Snapshot |
-| `LayananId` | VARCHAR(5) | Originating unit snapshot |
+| `PasienId` | VARCHAR(15) | Copied at intake |
+| `PasienName` | VARCHAR(60) | Copied at intake |
+| `DokterId` | VARCHAR(10) | Copied at intake |
+| `DokterName` | VARCHAR(40) | Copied at intake |
+| `LayananId` | VARCHAR(5) | Originating unit copied at intake |
 | `Urgenitas` | INT | |
 | `IterEntitled` | INT | Copied from source at intake |
 | `IterConsumed` | INT | Pharmacy-visible copy; source Iter still owned by Resep |
 | `CareSetting` | INT | Outpatient = 0 |
-| `CaptureNote` | VARCHAR(512) | For Resep Luar: prescription origin, prescriber, facility, and other capture notes (PD-01). Empty for electronic/internal snapshots when not applicable |
+| `CaptureNote` | VARCHAR(512) | For Resep Luar: prescription origin, prescriber, facility, and other capture notes (PD-01). Empty for electronic/internal Resep Kerja when not applicable |
 | `DocumentRef` | VARCHAR(200) | Reference to the captured prescription document (PD-01). Empty when no document is stored |
-| `SnapshotStatus` | INT | `0` Active, `1` SupersededForReview, `2` Voided |
+| `ResepKerjaStatus` | INT | `0` Active, `1` SupersededForReview, `2` Voided |
 
-`BILRG_AptPrescriptionSnapshotLine`: `ItemNo`, `SourceLineNo`, `BrgId`, `BrgName`, `SatuanId`, `SatuanName`, `Qty`, `Iter`, `Signa`, `Instruction`, `Note`, `IsRacik`.
+`BILRG_AptResepKerjaItem`: `ItemNo`, `SourceItemNo`, `BrgId`, `BrgName`, `SatuanId`, `SatuanName`, `Qty`, `Iter`, `Signa`, `Instruction`, `Note`, `IsRacik`.
 
-`BILRG_AptPrescriptionSnapshotComponent`: racik components for a line.
+`BILRG_AptResepKerjaComponent`: racik components for an item.
 
-`BILRG_AptPrescriptionRevisionTask`: `RevisionTaskId`, `PrescriptionSnapshotId`, `DetectedAt`, `SourceVersionToken`, `TaskStatus`, `ResolvedBy`, `ResolvedAt`, `ResolutionNote`. Source change creates a task; it does not mutate the snapshot.
+`BILRG_AptResepRevisionTask`: `RevisionTaskId`, `ResepKerjaId`, `DetectedAt`, `SourceVersionToken`, `TaskStatus`, `ResolvedBy`, `ResolvedAt`, `ResolutionNote`. Source change creates a task; it does not mutate the Resep Kerja.
 
-**Save semantics:** insert at intake. Lines rewriteable only while no terminal Telaah exists. After Telaah completion, snapshot lines are frozen.
+**Save semantics:** insert at intake. Items rewriteable only while no terminal Telaah exists. After Telaah completion, Resep Kerja items are frozen.
 
-### 8.2 Direct Medication Request
+### 8.2 Jual Bebas
 
 Created only on accept (`BR-APT-089`).
 
-`BILRG_AptDirectRequest`: `DirectRequestId`, `RegId`, `PasienId`, `PasienName`, `AcceptedBy`, `AcceptedAt`, `RequestStatus` (`0` Accepted, `1` ConvertedToSalesOrder`, `2` DeclinedAfterAccept — only if a later authorized cancel is needed; ordinary decline never inserts).
+`BILRG_AptJualBebas`: `JualBebasId`, `RegId`, `PasienId`, `PasienName`, `AcceptedBy`, `AcceptedAt`, `RequestStatus` (`0` Accepted, `1` ConvertedToSalesOrder`, `2` DeclinedAfterAccept — only if a later authorized cancel is needed; ordinary decline never inserts).
 
-`BILRG_AptDirectRequestLine`: catalog line qty/signa.
+`BILRG_AptJualBebasItem`: catalog item qty/signa.
 
 ### 8.3 TelaahResep aggregate
 
@@ -419,7 +419,7 @@ Created only on accept (`BR-APT-089`).
 | Column | Type | Notes |
 |---|---|---|
 | `TelaahResepId` | VARCHAR(12) | PK |
-| `PrescriptionSnapshotId` | VARCHAR(12) | Source; one active review per snapshot recommended |
+| `ResepKerjaId` | VARCHAR(12) | Source; one active review per Resep Kerja recommended |
 | `RegId` | VARCHAR(10) | |
 | `TelaahStatus` | INT | `0` Available, `1` UnderReview, `2` Approved, `3` PartiallyApproved, `4` Rejected |
 | `PharmacistId` | VARCHAR(50) | Responsible Pharmacist |
@@ -427,19 +427,19 @@ Created only on accept (`BR-APT-089`).
 | `CompletedAt` | DATETIME | Sentinel until complete |
 | `Version` | INT | |
 
-`BILRG_AptTelaahResepLine`
+`BILRG_AptTelaahResepItem`
 
 | Column | Type | Notes |
 |---|---|---|
-| `TelaahResepId`, `ItemNo` | PK | Align `ItemNo` with snapshot line |
-| `SnapshotItemNo` | INT | Source traceability |
+| `TelaahResepId`, `ItemNo` | PK | Align `ItemNo` with Resep Kerja item |
+| `ResepKerjaItemNo` | INT | Source traceability |
 | `Disposition` | INT | `0` Pending, `1` AcceptedAsPrescribed, `2` AcceptedSubstitute, `3` Rejected |
 | `AcceptedBrgId` / `AcceptedBrgName` | | Substitute identity when disposition = 2 |
 | `AcceptedQty` | DECIMAL(18,2) | |
 | `Reason` | VARCHAR(200) | Required for substitute/reject |
-| `PharmacistId` | VARCHAR(50) | Line decision owner |
+| `PharmacistId` | VARCHAR(50) | Item decision owner |
 
-**Save semantics:** header upsert. Lines delete+insert while `Under Review`. After terminal status, lines are frozen (update header only).
+**Save semantics:** header upsert. Items delete+insert while `Under Review`. After terminal status, items are frozen (update header only).
 
 **Do not persist** clarification communications (`BR-APT-005`).
 
@@ -450,11 +450,11 @@ Created only on accept (`BR-APT-089`).
 | Column | Type | Notes |
 |---|---|---|
 | `SalesOrderId` | VARCHAR(12) | PK |
-| `SourceKind` | INT | `0` Prescription, `1` DirectRequest |
-| `SourceId` | VARCHAR(12) | Snapshot or DirectRequest id |
-| `TelaahResepId` | VARCHAR(12) | Empty for Direct Request |
+| `SourceKind` | INT | `0` ResepKerja, `1` JualBebas |
+| `SourceId` | VARCHAR(12) | Resep Kerja or JualBebas id |
+| `TelaahResepId` | VARCHAR(12) | Empty for Jual Bebas |
 | `RegId` | VARCHAR(10) | Unique active key part |
-| `PasienId` / `PasienName` | | Snapshot |
+| `PasienId` / `PasienName` | | Copied at intake |
 | `PayerPath` | INT | `0` General/PatientPay, `1` BPJS, `2` OtherInsurance |
 | `PartialReason` | INT | `0` None, `1` PatientRequest, `2` StockShortage, `3` FornasNotCovered |
 | `SalesOrderStatus` | INT | `0` Established, `1` Active, `2` Resolved, `3` Cancelled |
@@ -469,35 +469,35 @@ UX_BILRG_AptSalesOrder_ActiveSourceRegPayer
   WHERE SalesOrderStatus IN (0, 1) AND VodDate = '3000-01-01'
 ```
 
-`BILRG_AptSalesOrderLine`
+`BILRG_AptSalesOrderItem`
 
 | Column | Type | Notes |
 |---|---|---|
 | `SalesOrderId`, `ItemNo` | PK | |
-| `SourceLineNo` | INT | Snapshot or DMR line |
+| `SourceItemNo` | INT | Resep Kerja or Jual Bebas item |
 | `BrgId` / `BrgName` / `SatuanId` | | Fixed after establishment (`BR-APT-050`) |
 | `AcceptedQty` | DECIMAL(18,2) | Authority |
 | `InvoicedQty` | DECIMAL(18,2) | Reconciled projection maintained by SalesOrder behavior |
 | `DispensedQty` | DECIMAL(18,2) | Same |
 | `UnfulfilledQty` | DECIMAL(18,2) | Same |
-| `LineStatus` | INT | Active / FullyInvoiced / FullyFulfilled / Cancelled / Unfulfilled |
+| `ItemStatus` | INT | Active / FullyInvoiced / FullyFulfilled / Cancelled / Unfulfilled |
 | `FornasCoverage` | INT | `0` Unknown, `1` Covered, `2` NotCovered — evidence snapshot, not Fornas master |
 | `SepNo` | VARCHAR(50) | Encounter SEP snapshot when evaluated; empty otherwise |
 | `IsRacik` | BIT | |
 
-`BILRG_AptSalesOrderLineComponent`: compounding composition copied from snapshot/DMR at establishment.
+`BILRG_AptSalesOrderItemComponent`: compounding composition copied from Resep Kerja/Jual Bebas at establishment.
 
-`BILRG_AptUnfulfilledOutcome`: `OutcomeNo`, `SalesOrderLineItemNo`, `Qty`, `Reason` (shortage after SO, patient decline of Patient-Pay SO, expiry, cancellation, etc.), `SalinanResepId`, `ActorId`, `EffectiveAt`. Append-only. Delete+insert is forbidden.
+`BILRG_AptUnfulfilledOutcome`: `OutcomeNo`, `SalesOrderItemNo`, `Qty`, `Reason` (shortage after SO, patient decline of Patient-Pay SO, expiry, cancellation, etc.), `SalinanResepId`, `ActorId`, `EffectiveAt`. Append-only. Delete+insert is forbidden.
 
-**Save semantics:** header upsert. Lines rewriteable only in the same transaction that establishes the order. Afterwards update quantities/status in place; never replace medication identity. Unfulfilled rows insert only.
+**Save semantics:** header upsert. Items rewriteable only in the same transaction that establishes the order. Afterwards update quantities/status in place; never replace medication identity. Unfulfilled rows insert only.
 
-### 8.5 SalesInvoice aggregate
+### 8.5 Invoice aggregate
 
-`BILRG_AptSalesInvoice`
+`BILRG_AptInvoice`
 
 | Column | Type | Notes |
 |---|---|---|
-| `SalesInvoiceId` | VARCHAR(12) | PK |
+| `InvoiceId` | VARCHAR(12) | PK |
 | `SalesOrderId` | VARCHAR(12) | Exactly one |
 | `PayerPath` | INT | Must match the Sales Order path |
 | `InvoiceStatus` | INT | Established / Issued / FinanciallyCleared / AdjustedOrCredited / Resolved / Cancelled |
@@ -510,28 +510,28 @@ UX_BILRG_AptSalesOrder_ActiveSourceRegPayer
 | `EstablishedAt`, `IssuedAt`, `ClearedAt` | DATETIME | |
 | `Version` | INT | |
 
-`BILRG_AptSalesInvoiceItem`: `ItemNo`, `SalesOrderItemNo`, `BrgId`, `BrgName`, `ItemKind` (`0` Medication, `1` BHP), `Qty`, `HargaSatuan`, `Diskon`, `Biaya`, `Tax`, `Total`, plus etiket snapshot fields needed for reprint. Every medication/BHP item references exactly one Sales Order Line.
+`BILRG_AptInvoiceItem`: `ItemNo`, `SalesOrderItemNo`, `BrgId`, `BrgName`, `ItemKind` (`0` Medication, `1` BHP), `Qty`, `HargaSatuan`, `Diskon`, `Biaya`, `Tax`, `Total`, plus etiket snapshot fields needed for reprint. Every medication/BHP item references exactly one Sales Order Item.
 
-`BILRG_AptSalesInvoiceItemCharge`: packaging / compounding fees (`BR-APT-127`).
+`BILRG_AptInvoiceItemCharge`: packaging / compounding fees (`BR-APT-127`).
 
-`BILRG_AptSalesInvoiceCharge`: rounding and other invoice-level adjustments (`BR-APT-128`).
+`BILRG_AptInvoiceCharge`: rounding and other invoice-level adjustments (`BR-APT-128`).
 
 `BILRG_AptCreditNote`: `CreditNoteNo`, `Amount`, `Reason`, `AuthorizedPharmacistId`, `EffectiveAt`, `TataRekeningChargeId`. Append-only (`BR-APT-027`).
 
-**Save semantics (PD-05):** while `InvoiceStatus = Established`, items and charges may rewrite (delete+insert). After the invoice leaves `Established`, header commercial fields and line content are immutable. Corrections use Credit Note plus Integration Task, or other accountable financial resolution (`BR-APT-027`); they do not modify the original invoice rows.
+**Save semantics (PD-05):** while `InvoiceStatus = Established`, items and charges may rewrite (delete+insert). After the invoice leaves `Established`, header commercial fields and item content are immutable. Corrections use Credit Note plus Integration Task, or other accountable financial resolution (`BR-APT-027`); they do not modify the original invoice rows.
 
 General Patient Purchase Confirmation is not a row. Inserting the invoice **is** the confirmation evidence (`BR-APT-070`).
 
-### 8.6 DispenseOrder aggregate
+### 8.6 Dispensing aggregate
 
-`BILRG_AptDispenseOrder`
+`BILRG_AptDispensing`
 
 | Column | Type | Notes |
 |---|---|---|
-| `DispenseOrderId` | VARCHAR(12) | PK |
+| `DispensingId` | VARCHAR(12) | PK |
 | `SalesOrderId` | VARCHAR(12) | Exactly one |
 | `CareSetting` | INT | Outpatient = 0 |
-| `DispenseStatus` | INT | Domain §8.4: Established … Completed / Cancelled / Expired / Unfulfilled |
+| `DispensingStatus` | INT | Domain §8.4: Established … Completed / Cancelled / Expired / Unfulfilled |
 | `PharmacyUnitLayananId` | VARCHAR(5) | |
 | `TemporaryUnitLayananId` | VARCHAR(5) | Dispensing Temporary Unit |
 | `ReleasedAt` | DATETIME | Set when policy evaluation allows preparation |
@@ -552,23 +552,23 @@ General Patient Purchase Confirmation is not a row. Inserting the invoice **is**
 
 Pickup Expired is **not** a column. Worklists compute `PreparedAt + CollectionWindow` against clock when `HandoverAt` is sentinel.
 
-`BILRG_AptDispenseOrderLine`
+`BILRG_AptDispensingItem`
 
 | Column | Type | Notes |
 |---|---|---|
-| `DispenseOrderId`, `ItemNo` | PK | |
+| `DispensingId`, `ItemNo` | PK | |
 | `SalesOrderItemNo` | INT | Required |
 | `BrgId`, `Qty` | | Must not exceed unresolved Accepted Qty |
 | `ReserveMutasiReff` | VARCHAR(12) | Correlation to Stock Mutasi after task success |
 | `RemoveStockMutasiReff` | VARCHAR(12) | `DispenseIssue` correlation after handover (PD-02) |
 | `ReturnMutasiReff` | VARCHAR(12) | No Show / unused reserve return |
-| `LineOutcome` | INT | Open / Dispensed / Returned / Unfulfilled |
+| `ItemOutcome` | INT | Open / Dispensed / Returned / Unfulfilled |
 
 `BILRG_AptFinalReview`: `ReviewNo`, `Outcome` (pass/fail), `Reason`, `PharmacistId`, `EffectiveAt`, `AffectedQty`. **Append-only. Never delete+insert.** Failed review does not erase earlier rows (`BR-APT-096`).
 
-Medication Dispense is recorded by line outcome + header `HandoverAt` / `Preparation` facts. A separate dispense-event table is unnecessary for outpatient one-handover-per-order. If inpatient UDD later needs multiple dispense events per order, add an append-only table then; do not generalize it now.
+Medication Dispense is recorded by item outcome + header `HandoverAt` / `Preparation` facts. A separate dispense-event table is unnecessary for outpatient one-handover-per-order. If inpatient UDD later needs multiple dispense events per order, add an append-only table then; do not generalize it now.
 
-**Save semantics:** header upsert. Lines rewriteable only at establishment. After release, update line correlation ids and header timestamps in place. Reviews insert only.
+**Save semantics:** header upsert. Items rewriteable only at establishment. After release, update item correlation ids and header timestamps in place. Reviews insert only.
 
 ### 8.7 Outpatient Queue Mapping (not an aggregate)
 
@@ -576,7 +576,7 @@ Medication Dispense is recorded by line outcome + header `HandoverAt` / `Prepara
 
 | Column | Type | Notes |
 |---|---|---|
-| `DemandKind` | INT | PK part: `0` PrescriptionSnapshot, `1` DirectRequest |
+| `DemandKind` | INT | PK part: `0` ResepKerja, `1` JualBebas |
 | `DemandId` | VARCHAR(12) | PK part |
 | `AntrianId` | VARCHAR(26) | Tracker identity |
 | `NoUrut` | INT | Tracker identity |
@@ -591,7 +591,7 @@ Indexes:
 - `IX_BILRG_AptQueueMapping_Queue (AntrianId, NoUrut)`
 - Current association uniqueness is the PK `(DemandKind, DemandId)` — one queue per demand source.
 
-Do not map to `SalesOrderId`. After SO establishment, worklists join `DemandId` → Sales Order `SourceId`. One snapshot may produce two Sales Orders (BPJS + Patient-Pay); both remain coordinated by the same mapping row (`BR-APT-084`, `BR-APT-124`).
+Do not map to `SalesOrderId`. After SO establishment, worklists join `DemandId` → Sales Order `SourceId`. One Resep Kerja may produce two Sales Orders (BPJS + Patient-Pay); both remain coordinated by the same mapping row (`BR-APT-084`, `BR-APT-124`).
 
 Do not write `BILRG_AntrianEntry.ReffId` as the mapping store.
 
@@ -603,9 +603,9 @@ Tracker `Withdrawn` is a separate Integration Task. This table is the Pharmacy f
 
 ### 8.9 Salinan Resep
 
-`BILRG_AptSalinanResep`: `SalinanResepId`, `PrescriptionSnapshotId`, `SalesOrderId` (empty if issued before SO), `Reason` (PatientRequest / StockShortage / post-SO unfulfilled), `IssuedBy`, `IssuedAt`.
+`BILRG_AptSalinanResep`: `SalinanResepId`, `ResepKerjaId`, `SalesOrderId` (empty if issued before SO), `Reason` (PatientRequest / StockShortage / post-SO unfulfilled), `IssuedBy`, `IssuedAt`.
 
-`BILRG_AptSalinanResepLine`: snapshot `ItemNo`, `BrgId`, `Qty`, `Note`.
+`BILRG_AptSalinanResepItem`: Resep Kerja `ItemNo`, `BrgId`, `Qty`, `Note`.
 
 ### 8.10 Integration Task (BA-07)
 
@@ -617,9 +617,9 @@ Pattern taken from **Existing** `BILRG_EmrAntrianOutboundQueue` and `BILRG_LabOw
 |---|---|---|
 | `IntegrationTaskId` | VARCHAR(12) | PK |
 | `TaskType` | INT | See §11 |
-| `SourceKind` | INT | SalesOrder / SalesInvoice / DispenseOrder / QueueClose / Mapping |
+| `SourceKind` | INT | SalesOrder / Invoice / Dispensing / QueueClose / Mapping |
 | `SourceId` | VARCHAR(12) | Originating document |
-| `IdempotencyKey` | VARCHAR(80) | Unique; e.g. `ADP{id}:L{n}:RESERVE` |
+| `IdempotencyKey` | VARCHAR(80) | Unique; e.g. `ADP{id}:I{n}:RESERVE` |
 | `Destination` | INT | Tracker / StockLedger / TataRekening / ResepIter / Reporting |
 | `PayloadJson` | NVARCHAR(MAX) | Command payload |
 | `TaskStatus` | INT | `0` Pending, `1` Processing, `2` Succeeded, `3` Failed, `4` Dead |
@@ -644,8 +644,8 @@ Not a message broker. Not a distributed transaction. Not a generic domain-event 
 
 ```text
 Application
-  ITelaahResepRepo / ISalesOrderRepo / ISalesInvoiceRepo / IDispenseOrderRepo
-  IPrescriptionSnapshotRepo / IDirectMedicationRequestRepo
+  ITelaahResepRepo / ISalesOrderRepo / IInvoiceRepo / IDispensingRepo
+  IResepKerjaRepo / IJualBebasRepo
   IOutpatientQueueMappingRepo
   IAptIntegrationTaskDal          (port; infrastructure implements)
   IStockLedgerPort / ITrackerPharmacyPort / ITataRekeningChargePort / IPrescriptionContractPort
@@ -671,9 +671,9 @@ Exceptions to delete+insert:
 
 | Detail | Persistence |
 |---|---|
-| Telaah lines while Under Review | Delete + insert |
-| Sales Invoice items/charges while `InvoiceStatus = Established` | Delete + insert (PD-05) |
-| Snapshot / DMR / SO / DO lines at first insert | Insert; later rewrite forbidden except Telaah-under-review and Sales Invoice while `Established` |
+| Telaah items while Under Review | Delete + insert |
+| Invoice items/charges while `InvoiceStatus = Established` | Delete + insert (PD-05) |
+| Resep Kerja / Jual Bebas / SO / Dispensing items at first insert | Insert; later rewrite forbidden except Telaah-under-review and Invoice while `Established` |
 | `BILRG_AptFinalReview` | Insert only |
 | `BILRG_AptUnfulfilledOutcome` | Insert only |
 | `BILRG_AptCreditNote` | Insert only |
@@ -695,13 +695,13 @@ public interface ISalesOrderRepo :
     MayBe<SalesOrderModel> LoadActiveBySource(int sourceKind, string sourceId, string regId, int payerPath);
 }
 
-public interface ISalesInvoiceRepo :
-    ISaveChange<SalesInvoiceModel>,
-    ILoadEntity<SalesInvoiceModel, ISalesInvoiceKey> { }
+public interface IInvoiceRepo :
+    ISaveChange<InvoiceModel>,
+    ILoadEntity<InvoiceModel, IInvoiceKey> { }
 
-public interface IDispenseOrderRepo :
-    ISaveChange<DispenseOrderModel>,
-    ILoadEntity<DispenseOrderModel, IDispenseOrderKey> { }
+public interface IDispensingRepo :
+    ISaveChange<DispensingModel>,
+    ILoadEntity<DispensingModel, IDispensingKey> { }
 ```
 
 Worklist queries are dedicated projection DALs returning DTO/view types. They must not load full aggregates to paint a queue card (`ENGINEERING.md` §8).
@@ -732,7 +732,7 @@ Do not wrap Apotek + Stock Ledger + Tracker + Tata Rekening writes in one distri
 ### 9.6 Namespace / folder target
 
 ```text
-Bilreg.Domain/ApotekContext/{TelaahResep|SalesOrder|SalesInvoice|DispenseOrder}Feature/
+Bilreg.Domain/ApotekContext/{TelaahResep|SalesOrder|Invoice|Dispensing}Feature/
 Bilreg.Application/ApotekContext/...
 Bilreg.Infrastructure/ApotekContext/...
 Bilreg.SqlDb/ApotekContext/...
@@ -748,19 +748,19 @@ No projection table is required for architect approval of the write model. First
 
 | Projection | Consumer | Source | Must not decide |
 |---|---|---|---|
-| Telaah worklist | Screen Telaah Resep | Snapshot + Telaah header | Sales / dispense |
+| Telaah worklist | Screen Telaah Resep | Resep Kerja + Telaah header | Sales / Dispensing |
 | Pelayanan Penjualan waiting queue | Screen Pelayanan Penjualan | `BILRG_AntrianEntry` (pharmacy service point) left join mapping + SO/invoice progress | Queue lifecycle |
-| Exception worklist | Same screen | SO / DO / SI terminal and pending-task joins | Inventory or settlement facts |
-| Dispensing worklist | Screen Dispensing | Dispense Order status in Released/Preparing | Payment |
-| Serah Obat categories | Screen Serah Obat | DO `PreparedAt`, education, review, handover, parameter window, Tracker `DoneAt` | Dispense Order state |
-| Patient Medication Journey | Read-only panel | Union of mapping, Telaah, SO, SI, DO facts | Commands |
-| Unified sales reporting | Finance/reporting | Query DAL / Reporting Query Adapter over `BILRG_AptSalesInvoice` ∪ `tb_trs_dobill_umum` (PD-06; no table or view) | Transactional truth |
+| Exception worklist | Same screen | SO / Dispensing / Invoice terminal and pending-task joins | Inventory or settlement facts |
+| Dispensing worklist | Screen Dispensing | Dispensing status in Released/Preparing | Payment |
+| Serah Obat categories | Screen Serah Obat | Dispensing `PreparedAt`, education, review, handover, parameter window, Tracker `DoneAt` | Dispensing state |
+| Patient Medication Journey | Read-only panel | Union of mapping, Telaah, SO, Invoice, Dispensing facts | Commands |
+| Unified sales reporting | Finance/reporting | Query DAL / Reporting Query Adapter over `BILRG_AptInvoice` ∪ `tb_trs_dobill_umum` (PD-06; no table or view) | Transactional truth |
 | Integration failure list | Operations | `BILRG_AptIntegrationTask` Failed/Dead | Business lifecycle |
 
 Pickup Expired SQL sketch (not a state):
 
 ```text
-DispenseStatus = Prepared or Reviewed
+DispensingStatus = Prepared or Reviewed
 AND HandoverAt = '3000-01-01'
 AND DATEADD(day, @CollectionWindowDays, PreparedAt) < @AsOf
 AND OverrideAt = '3000-01-01'
@@ -793,19 +793,19 @@ sequenceDiagram
 
 | TaskType | Triggering Apotek fact | Destination | Idempotency key | Neighbor effect |
 |---|---|---|---|---|
-| `TrackerServedAt` | First `PreparationStartedAt` | Patient Tracker | `{DispenseOrderId}:START` | `Serve` + `Apotek-Start` event |
+| `TrackerServedAt` | First `PreparationStartedAt` | Patient Tracker | `{DispensingId}:START` | `Serve` + `Apotek-Start` event |
 | `TrackerDoneAtPickup` | Coordinated pickup call | Patient Tracker | `{AntrianId}:{NoUrut}:DONE` | `Done` + `Apotek-Done` if not already Done |
 | `TrackerDoneAtNoShow` | No Show while `In Service` | Patient Tracker | `{AntrianId}:{NoUrut}:DONE` | Same Done path; never reverse |
 | `TrackerWithdrawn` | Pharmacy Queue Close | Patient Tracker | `{QueueCloseId}:WITHDRAW` | `Withdraw` from Waiting |
-| `StockReserve` | Dispensing Started | Stock Ledger transfer | `{DispenseOrderId}:L{n}:RESERVE` | Mutasi Pharmacy Unit → DTU; `TrsReffId` = key |
-| `StockRemoveOnHandover` | Medication Handover | Stock Ledger `DispenseIssue` | `{DispenseOrderId}:L{n}:DISPENSE_ISSUE` | Permanent removal from DTU (PD-02); not `SaleIssueDu` |
-| `StockReturnNoShow` | No Show / unused reserve | Stock Ledger transfer | `{DispenseOrderId}:L{n}:RETURN` | DTU → Pharmacy Unit |
-| `BillingCharge` | Sales Invoice Issued / BPJS invoice at handover | Tata Rekening / `ta_trs_billing` | `{SalesInvoiceId}:CHARGE` | Obat Financial Charge; `fn_modul = 1` |
-| `BillingCredit` | Credit Note recorded | Tata Rekening | `{SalesInvoiceId}:CN{n}` | Compensating charge |
+| `StockReserve` | Dispensing Started | Stock Ledger transfer | `{DispensingId}:I{n}:RESERVE` | Mutasi Pharmacy Unit → DTU; `TrsReffId` = key |
+| `StockRemoveOnHandover` | Medication Handover | Stock Ledger `DispenseIssue` | `{DispensingId}:I{n}:DISPENSE_ISSUE` | Permanent removal from DTU (PD-02); not `SaleIssueDu` |
+| `StockReturnNoShow` | No Show / unused reserve | Stock Ledger transfer | `{DispensingId}:I{n}:RETURN` | DTU → Pharmacy Unit |
+| `BillingCharge` | Invoice Issued / BPJS invoice at handover | Tata Rekening / `ta_trs_billing` | `{InvoiceId}:CHARGE` | Obat Financial Charge; `fn_modul = 1` |
+| `BillingCredit` | Credit Note recorded | Tata Rekening | `{InvoiceId}:CN{n}` | Compensating charge |
 | `IterConsume` | Sales Order established from Resep | Prescription Contract | `{SalesOrderId}:ITER` | Iter on legacy Resep |
-| `EmrRealization` | Handover (later) | EMR reporting | `{DispenseOrderId}:EMR` | Out of initial write scope if EMR contract absent |
+| `EmrRealization` | Handover (later) | EMR reporting | `{DispensingId}:EMR` | Out of initial write scope if EMR contract absent |
 
-Payment Clearance and SEP/Fornas are **inbound evidence**. Apotek does not emit them. Snapshot `PaymentClearanceReff`, `SepNo`, and `FornasCoverage` onto Sales Order / Invoice lines when evaluated. Re-evaluate Dispense Authorized at `Release` / `PreparationStarted`; do not persist an authorization row.
+Payment Clearance and SEP/Fornas are **inbound evidence**. Apotek does not emit them. Snapshot `PaymentClearanceReff`, `SepNo`, and `FornasCoverage` onto Sales Order / Invoice items when evaluated. Re-evaluate Dispense Authorized at `Release` / `PreparationStarted`; do not persist an authorization row.
 
 ---
 
@@ -818,7 +818,7 @@ Payment Clearance and SEP/Fornas are **inbound evidence**. Apotek does not emit 
 | Pharmacy row in `BILRG_AdmServicePoint` | **Yes** | Shared kiosk/queue |
 | `tz_parameter_sistem` Collection Window | **Yes** | Default 7 |
 | Tracker pharmacy start/complete commands | **Yes** (application, not a new queue column) | BA-02 is decided; contract still to be implemented |
-| CPOE prescription tables in this database | **No** | Snapshot + adapter; CPOE SQL is absent |
+| CPOE prescription tables in this database | **No** | Resep Kerja + adapter; CPOE SQL is absent |
 | `BILRG_AntrianEntry` new columns | **No — forbidden** | |
 | Dual-write trigger from ASI → `tb_trs_dobill_umum` | **Forbidden** | |
 
@@ -829,13 +829,13 @@ Payment Clearance and SEP/Fornas are **inbound evidence**. Apotek does not emit 
 | Index | Purpose |
 |---|---|
 | `IX_AptTelaah_Status` `(TelaahStatus, CrtDate)` | Telaah worklist |
-| `IX_AptTelaah_Snapshot` `(PrescriptionSnapshotId)` | Intake → review |
+| `IX_AptTelaah_ResepKerja` `(ResepKerjaId)` | Intake → review |
 | `IX_AptSO_RegStatus` `(RegId, SalesOrderStatus)` | Registration boundary |
 | `UX_AptSO_ActiveSourceRegPayer` | `BR-APT-011` |
 | `IX_AptSO_Source` `(SourceKind, SourceId)` | Join from mapping |
-| `IX_AptSI_SalesOrder` `(SalesOrderId, InvoiceStatus)` | Commercial progress |
-| `IX_AptDO_StatusPrepared` `(DispenseStatus, PreparedAt)` | Dispensing + Serah Obat |
-| `IX_AptDO_SalesOrder` `(SalesOrderId)` | Fulfillment progress |
+| `IX_AptInvoice_SalesOrder` `(SalesOrderId, InvoiceStatus)` | Commercial progress |
+| `IX_AptDispensing_StatusPrepared` `(DispensingStatus, PreparedAt)` | Dispensing + Serah Obat |
+| `IX_AptDispensing_SalesOrder` `(SalesOrderId)` | Fulfillment progress |
 | `IX_AptMap_Queue` `(AntrianId, NoUrut)` | Queue worklist |
 | `UX_AptQueueClose_Entry` `(AntrianId, NoUrut)` | One close |
 | `UX_AptIntegration_Idempotency` `(IdempotencyKey)` | BA-07 |
@@ -853,9 +853,9 @@ Fillfactor: default for insert-mostly journals (reviews, tasks, credit notes). D
 
 **Status:** Closed
 
-**Decision:** For Physical Prescription (Resep Luar), the system shall not introduce additional structured metadata fields, entities, aggregates, or tables. Prescription origin details, prescriber information, facility information, and other capture-related notes shall be recorded in `CaptureNote`. The captured prescription document shall be referenced through `DocumentRef`. Both `CaptureNote` and `DocumentRef` are part of `PrescriptionSnapshot` (`BILRG_AptPrescriptionSnapshot`).
+**Decision:** For Physical Prescription (Resep Luar), the system shall not introduce additional structured metadata fields, entities, aggregates, or tables. Prescription origin details, prescriber information, facility information, and other capture-related notes shall be recorded in `CaptureNote`. The captured prescription document shall be referenced through `DocumentRef`. Both `CaptureNote` and `DocumentRef` are part of `ResepKerja` (`BILRG_AptResepKerja`).
 
-**Rationale:** The outpatient pharmacy workflow operates on `PrescriptionSnapshot` regardless of prescription source. Resep Internal and Resep Luar share the same persistence structure. The distinction is the source of the snapshot (`SourceKind`), not the schema.
+**Rationale:** The outpatient pharmacy workflow operates on `ResepKerja` regardless of prescription source. Resep Internal and Resep Luar share the same persistence structure. The distinction is the source of the Resep Kerja (`SourceKind`), not the schema.
 
 **Result:**
 
@@ -895,7 +895,7 @@ Fillfactor: default for insert-mostly journals (reviews, tasks, credit notes). D
 
 **Decision:** The system shall not persist Call Purpose, Call Type, Call Category, or Pharmacy Call History. Mapping Call and Pickup Call are operational actions only and do not establish a business record, lifecycle state, audit entity, reporting fact, or persistence requirement.
 
-No persistence structure is required for call purpose. No field shall be added to `QueueEntry`, `OutpatientQueueMapping`, `SalesOrder`, `SalesInvoice`, `DispenseOrder`, `IntegrationTask`, or any other persistence model to record call purpose.
+No persistence structure is required for call purpose. No field shall be added to `QueueEntry`, `OutpatientQueueMapping`, `SalesOrder`, `Invoice`, `Dispensing`, `IntegrationTask`, or any other persistence model to record call purpose.
 
 **Rationale:** Call actions have no independent business outcome, approval process, reporting requirement, audit requirement, or lifecycle ownership. Persisting call purpose would introduce unnecessary complexity without business value and would risk violating ADR-APT-001 ownership boundaries.
 
@@ -913,7 +913,7 @@ No persistence structure is required for call purpose. No field shall be added t
 
 **Decision:** Invoice rewrite shall be allowed only while `InvoiceStatus = Established`.
 
-During the `Established` state, the persistence layer may replace and rewrite invoice-line data as needed by the save operation. Once the invoice leaves the `Established` state (including `Issued`, `Paid`, `Cancelled`, `Closed`, or any later lifecycle state), invoice content becomes immutable.
+During the `Established` state, the persistence layer may replace and rewrite invoice-item data as needed by the save operation. Once the invoice leaves the `Established` state (including `Issued`, `Paid`, `Cancelled`, `Closed`, or any later lifecycle state), invoice content becomes immutable.
 
 Any correction after the invoice has left `Established` shall be handled through the approved business correction process (Credit Note, Refund, Financial Adjustment, or other accountable financial resolution) and shall not modify the original invoice contents.
 
@@ -930,9 +930,9 @@ Any correction after the invoice has left `Established` shall be handled through
 
 **Decision:** Unified reporting shall be implemented using Query DAL / Reporting Query Adapter. No dedicated reporting table and no SQL View are required.
 
-The adapter queries `BILRG_AptSalesInvoice` (and related Apotek line tables) together with legacy `tb_trs_dobill_umum` / `tb_trs_dobill_umum2` as read-only sources. It does not write, materialize, or synchronize a unified sales table.
+The adapter queries `BILRG_AptInvoice` (and related Apotek item tables) together with legacy `tb_trs_dobill_umum` / `tb_trs_dobill_umum2` as read-only sources. It does not write, materialize, or synchronize a unified sales table.
 
-**Rationale:** Unified sales reporting is a read-side coexistence concern (BA-05). A query adapter preserves independent legacy DU and Sales Invoice transactional models while avoiding extra schema and refresh logic.
+**Rationale:** Unified sales reporting is a read-side coexistence concern (BA-05). A query adapter preserves independent legacy DU and Invoice transactional models while avoiding extra schema and refresh logic.
 
 **Result:**
 
@@ -956,12 +956,12 @@ BC-12 (permission matrix) does not change tables.
 
 Approve this persistence design only if all of the following are accepted:
 
-1. **Aggregate ownership.** Write aggregates are exactly `TelaahResep`, `SalesOrder`, `SalesInvoice`, `DispenseOrder`. Mapping, Queue Close, Snapshot, Direct Request, Salinan Resep, and Integration Task are not aggregate roots.
+1. **Aggregate ownership.** Write aggregates are exactly `TelaahResep`, `SalesOrder`, `Invoice`, `Dispensing`. Mapping, Queue Close, Resep Kerja, Jual Bebas, Salinan Resep, and Integration Task are not aggregate roots.
 2. **Table ownership.** Apotek writes only `BILRG_Apt*`. Neighbors remain authoritative for queue, stock, billing settlement, catalog, Fornas master, and legacy Resep Iter.
 3. **Reuse.** Legacy DU and Kartu Periksa are not the new write model. Tracker `ReffId` is not the mapping store. Dispense Authorized is not a table.
 4. **Coexistence.** No dual-write to `tb_trs_dobill_umum`. Unified reporting is read-side.
-5. **Snapshot.** Pharmacy processes `BILRG_AptPrescriptionSnapshot`, not live CPOE/Resep rows. Revisions create tasks.
-6. **Stock.** Reserve (Mutasi Pharmacy Unit → DTU), handover (`DispenseIssue` from DTU), and No Show return (Mutasi DTU → Pharmacy Unit) are Integration Tasks to Stock Ledger. `Prepared` stays on Dispense Order. `SaleIssueDu` is not used.
+5. **Resep Kerja.** Pharmacy processes `BILRG_AptResepKerja`, not live CPOE/Resep rows. Revisions create tasks.
+6. **Stock.** Reserve (Mutasi Pharmacy Unit → DTU), handover (`DispenseIssue` from DTU), and No Show return (Mutasi DTU → Pharmacy Unit) are Integration Tasks to Stock Ledger. `Prepared` stays on Dispensing. `SaleIssueDu` is not used.
 7. **Delivery.** BA-07 Integration Task table is the cross-context mechanism. Pattern matches existing outbound queues, with a stronger idempotency key.
 8. **Schema changes elsewhere** are limited to Stock Ledger `DispenseIssue` (PD-02), DTU location master, pharmacy service-point seed, and Collection Window parameter — not queue-status expansion.
 9. **Repository direction.** One repo per aggregate; Lab-style DTO/DAL/Repo; projections are queries; concurrency via `Version` on headers.

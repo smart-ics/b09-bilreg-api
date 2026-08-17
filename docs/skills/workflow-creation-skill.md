@@ -562,8 +562,8 @@ Use exact canonical terms. Keep each step at business level.
 Good:
 
 ```text
-1. Cashier establishes Payment Clearance for the applicable Sales Invoice.
-2. Apotek establishes Fulfillment Clearance for the allocated Dispense Order quantity.
+1. Cashier establishes Payment Clearance for the applicable Invoice.
+2. Apotek evaluates Dispense Authorized for the allocated Dispensing quantity.
 ```
 
 Bad:

@@ -97,7 +97,7 @@ Stock Ledger remains a pure stock authority. It does not own Pharmacy workflow c
 | Owner | Responsibility |
 |---|---|
 | Stock Ledger | Stock Quantity, Mutasi, Remove Stock, Stock Movement History |
-| Pharmacy (Apotek) | Sales Order, Dispense Order, dispensing lifecycle, `Prepared`, `Handed Over`, No Show resolution |
+| Pharmacy (Apotek) | Sales Order, Dispensing, dispensing lifecycle, `Prepared`, `Handed Over`, No Show resolution |
 
 **Dispensing Temporary Unit** is a pharmacy Stock Location that holds medication under active dispensing custody after Dispensing Started and before handover or No Show return.
 
@@ -110,7 +110,7 @@ There is no separate inventory reservation operation. Pharmacy Reserve is implem
 | Medication Handed Over | Remove Stock from Dispensing Temporary Unit |
 | No Show resolution | Mutasi: Dispensing Temporary Unit → Pharmacy Unit |
 
-Stock Ledger never stores `Prepared`, `Handed Over`, or No Show status. Partial fulfillment semantics belong to Sales Order, not Dispense Order.
+Stock Ledger never stores `Prepared`, `Handed Over`, or No Show status. Partial fulfillment semantics belong to Sales Order, not Dispensing.
 
 ### 1.4 Information authority during coexistence
 

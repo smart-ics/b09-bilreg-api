@@ -8,7 +8,7 @@
 
 Outpatient Pharmacy (Apotek Rawat Jalan) requires operational progress tracking beyond the generic Patient Tracker queue lifecycle.
 
-Pharmacy operational progress is owned by Pharmacy aggregates, not by the queue. Canonical Dispense Order states (`apotek-domain.md` §8.4) are:
+Pharmacy operational progress is owned by Pharmacy aggregates, not by the queue. Canonical Dispensing states (`apotek-domain.md` §8.4) are:
 
 ```text
 Established
@@ -23,7 +23,7 @@ Expired
 Unfulfilled
 ```
 
-Related Pharmacy-owned facts include Telaah Resep, Sales Order, Sales Invoice, Dispense Authorized, Dispensing Temporary Custody, Medication Handover, Pickup Expired, and No Show. These labels are not queue statuses and must not be added to `AntrianStatusEnum`.
+Related Pharmacy-owned facts include Telaah Resep, Sales Order, Invoice, Dispense Authorized, Dispensing Temporary Custody, Medication Handover, Pickup Expired, and No Show. These labels are not queue statuses and must not be added to `AntrianStatusEnum`.
 
 The existing Patient Tracker queue implementation only supports the following queue lifecycle:
 
@@ -114,9 +114,9 @@ Display Workflow
 ```text
 Telaah Resep
 Sales Order
-Sales Invoice
+Invoice
 Dispense Authorized (policy evaluation; not an aggregate)
-Dispense Order lifecycle
+Dispensing lifecycle
 Medication Preparation
 Dispensing Temporary Custody
 Medication Handover
@@ -182,7 +182,7 @@ Embedding Pharmacy states into queue statuses would couple the queue subsystem t
 
 ### Prevent State Explosion
 
-The following are Pharmacy-owned Dispense Order states and related Pharmacy facts. They are not queue statuses:
+The following are Pharmacy-owned Dispensing states and related Pharmacy facts. They are not queue statuses:
 
 ```text
 Established
@@ -226,30 +226,30 @@ These are different concerns and must remain separated.
 
 ### Allowed
 
-The pairings below illustrate separated ownership. Pharmacy labels are Dispense Order states or Pharmacy-owned facts from `apotek-domain.md`. They are not queue statuses.
+The pairings below illustrate separated ownership. Pharmacy labels are Dispensing states or Pharmacy-owned facts from `apotek-domain.md`. They are not queue statuses.
 
 ```text
 Queue Status = InService
 
-Dispense Order = Preparing
+Dispensing = Preparing
 ```
 
 ```text
 Queue Status = InService
 
-Dispense Order = Awaiting Clearance
+Dispensing = Awaiting Clearance
 ```
 
 ```text
 Queue Status = Done
 
-Dispense Order = Completed
+Dispensing = Completed
 ```
 
 ```text
 Queue Status = Done
 
-Dispense Order = Expired
+Dispensing = Expired
 Pharmacy fact = No Show
 ```
 
@@ -275,7 +275,7 @@ Queue Status = Completed
 Queue Status = Expired
 ```
 
-These Dispense Order states must never be added to `AntrianStatusEnum`.
+These Dispensing states must never be added to `AntrianStatusEnum`.
 
 ---
 
@@ -298,5 +298,5 @@ This decision is considered architectural and should not be revisited unless the
 * Patient Tracker Queue Excavation Report 
 * `AntrianEntryModel.cs` 
 * `AntrianStatusEnum.cs` 
-* [Apotek Domain](../apotek-domain.md) — `BR-APT-097`; Dispense Order lifecycle §8.4; Dispensing Temporary Custody
+* [Apotek Domain](../apotek-domain.md) — `BR-APT-097`; Dispensing lifecycle §8.4; Dispensing Temporary Custody
 * [Outpatient Apotek Screen and Aggregate Design](../outpatient-apotek-screen-and-aggregate-design.md) — §4.1

@@ -29,7 +29,7 @@ Dispense Authorized:
 - is required before Medication Preparation Started and Dispensing;
 - is not required for Medication Handover.
 
-Typical evidence (unchanged from BA-08): General Patient — Sales Invoice created and payment completed; BPJS — prescription exists, SEP valid, Fornas coverage valid; other insurance — coverage approval valid.
+Typical evidence (unchanged from BA-08): General Patient — Invoice created and payment completed; BPJS — prescription exists, SEP valid, Fornas coverage valid; other insurance — coverage approval valid.
 
 ---
 
@@ -83,7 +83,7 @@ Operational artifacts no longer use the retired name except as Gap Analysis / th
 | SOP-003 “records the invoice and clearances” | displays Payment Clearance and evaluates Dispense Authorized |
 | SOP-003 step 7 “establishes Fulfillment Clearance” | evaluates financial and coverage evidence as Dispense Authorized; not a persisted object |
 | SOP-004 “Records Coverage and Fulfillment Clearance” / “atomically records” | displays Coverage Clearance, evaluates Dispense Authorized, records BPJS invoice and handover (same accountable outcome already in step 13; no distributed-transaction wording) |
-| SOP-004 step 3 “establishes the corresponding Fulfillment Clearance” | evaluates Dispense Authorized without requiring a Sales Invoice; not a persisted object |
+| SOP-004 step 3 “establishes the corresponding Fulfillment Clearance” | evaluates Dispense Authorized without requiring an Invoice; not a persisted object |
 | Domain ID glossary, §3.6, §5.5 object, §6.5, BR-APT-040/043/044/068/072/074, event `Fulfillment Clearance Established` | Dispense Authorized / `Dispense Authorized Evaluated`, matching English domain |
 | Workflow ID scope, preconditions, exceptions, WF-003/004 “membentuk Fulfillment Clearance”, events, payment integration, timing table | evaluate Dispense Authorized, matching English workflow |
 | DAFTAR-SOP “Fulfillment Clearance \| Izin Penyiapan Obat” | Dispense Authorized \| Dispense Authorized |
@@ -98,7 +98,7 @@ Operational artifacts no longer use the retired name except as Gap Analysis / th
 | Dispense Authorized is policy evaluation from financial/coverage evidence | Screen §2.8, §5.3; SOP-003 step 7; SOP-004 step 3; SOP-005 pattern unchanged; workflow EN already used “evaluates … as Dispense Authorized”. |
 | Not an aggregate, entity, source of truth, or transaction boundary | Screen §2.8, §5.1, §5.3, §5.6; SOP-003/004 “not established as a persisted business object”; domain EN `BR-APT-043`; domain ID `BR-APT-043`. |
 | Required before preparation; not required for handover | Screen §5.3; handover gates unchanged (Prepared, Final Dispense Review, Patient Education Acknowledgement). |
-| General / BPJS evidence paths | Screen §5.3 table copies BA-08 payer evidence. SOP-003 still uses Payment Clearance then evaluation. SOP-004 still uses Coverage Clearance then evaluation without a prior Sales Invoice. |
+| General / BPJS evidence paths | Screen §5.3 table copies BA-08 payer evidence. SOP-003 still uses Payment Clearance then evaluation. SOP-004 still uses Coverage Clearance then evaluation without a prior Invoice. |
 | SOP-005 as pattern | SOP-003/004 now use “evaluates Dispense Authorized” like SOP-005 step 9. |
 
 English domain and English workflow were already BA-08-aligned and were not rewritten.
@@ -112,11 +112,11 @@ This resolution did **not**:
 - change BA-08 or payer evidence rules;
 - add a Dispense Authorized aggregate, table, or transaction;
 - change when General Patient preparation may start (Payment Clearance and invoice evidence);
-- change when BPJS preparation may start (SEP, Fornas coverage, no prior Sales Invoice);
+- change when BPJS preparation may start (SEP, Fornas coverage, no prior Invoice);
 - change mixed-coverage independent authorization (`WF-APT-RJ-005` / SOP-005);
 - change handover gates or BPJS invoice-at-handover sequencing;
 - resolve ALN-003 (Billing/Fulfillment Allocation) or ALN-004 (Stock Reservation / Inventory Issue).
 
-SOP-004 actor text no longer says the system “atomically” records invoice and handover. That wording implied a special transaction boundary BA-08 already rejected. Step 13 still records BPJS Sales Invoice, Medication Dispense, and Medication Handover as one accountable business outcome. Sequence and gates are unchanged.
+SOP-004 actor text no longer says the system “atomically” records invoice and handover. That wording implied a special transaction boundary BA-08 already rejected. Step 13 still records BPJS Invoice, Medication Dispense, and Medication Handover as one accountable business outcome. Sequence and gates are unchanged.
 
 ALN-003 through ALN-007 remain open.

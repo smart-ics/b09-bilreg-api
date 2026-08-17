@@ -38,7 +38,7 @@ Memberikan langkah manual bagi petugas untuk menangani obat `Prepared` dalam Dis
 ## 4. Langkah Operasional
 
 1. **Staf Apotek** membuka entri antrian untuk obat yang tidak diambil. **Staf Apotek** memeriksa pesanan apotek asal, tugas penyiapan obat, jumlah obat yang terdampak, penanggung biaya, ketiadaan catatan penyerahan, dan keadaan stok saat ini.
-2. **Kepala Apotek** memastikan kesempatan pengambilan obat yang diizinkan memang sudah berakhir. Collection Window (default 7 hari) mengklasifikasikan Ready for Pickup menjadi Pickup Expired bila habis; klasifikasi itu tidak meng-expire Dispense Order. Tidak ada ambang persetujuan berdasarkan nilai uang.
+2. **Kepala Apotek** memastikan kesempatan pengambilan obat yang diizinkan memang sudah berakhir. Collection Window (default 7 hari) mengklasifikasikan Ready for Pickup menjadi Pickup Expired bila habis; klasifikasi itu tidak meng-expire Dispensing. Tidak ada ambang persetujuan berdasarkan nilai uang.
 3. **Kepala Apotek** mencatat keputusan penanganan obat yang tidak diambil, termasuk petugas penanggung jawab, waktu keputusan mulai berlaku, jumlah obat yang terdampak, dan alasan `Collection Window Expired`.
 4. **Sistem Apotek** mencatat bahwa Pasien tidak datang mengambil obat dan mengubah setiap tugas penyiapan obat yang terdampak menjadi `Expired`.
 5. **Sistem Apotek** mencatat setiap jumlah obat yang tidak dapat diserahkan dan menyimpan hubungannya dengan resep atau permintaan obat asal.

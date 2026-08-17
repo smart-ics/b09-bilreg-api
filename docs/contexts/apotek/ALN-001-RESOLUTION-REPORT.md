@@ -14,7 +14,7 @@ BA-03 was not re-analyzed, reinterpreted, challenged, replaced, or redesigned.
 
 ## Locked decision applied (BA-03)
 
-`OutpatientQueueMapping` is not an aggregate root. It is a navigation/association mechanism only. It does not own business lifecycle, workflow state, approval state, operational progress, or transactional consistency. It does not maintain active/inactive relationship state. It does not establish an independent consistency boundary. Queue identity and lifecycle remain owned by Patient Tracker. Medication demand lifecycle remains owned by the corresponding Pharmacy aggregates (`Sales Order`, `Dispense Order`, and related roots). The association exists only to answer operational navigation and worklist questions.
+`OutpatientQueueMapping` is not an aggregate root. It is a navigation/association mechanism only. It does not own business lifecycle, workflow state, approval state, operational progress, or transactional consistency. It does not maintain active/inactive relationship state. It does not establish an independent consistency boundary. Queue identity and lifecycle remain owned by Patient Tracker. Medication demand lifecycle remains owned by the corresponding Pharmacy aggregates (`Sales Order`, `Dispensing`, and related roots). The association exists only to answer operational navigation and worklist questions.
 
 The canonical domain (`apotek-domain.md` §5.7, §6.5) already matches that decision: Outpatient Queue Mapping is not an Aggregate Root; Pharmacy Queue Close is an operational fact, not an Aggregate Root and not a queue state.
 
@@ -22,8 +22,8 @@ The Apotek aggregate-root list remains:
 
 - `TelaahResep`
 - `SalesOrder`
-- `SalesInvoice`
-- `DispenseOrder`
+- `Invoice`
+- `Dispensing`
 
 ---
 
@@ -49,7 +49,7 @@ No code, API, workflow SOP steps, queue milestone causation, payer rules, or dom
 | §3.5 Patient Medication Journey | Clarified that Queue Mapping in the projection is the same association, not an aggregate. |
 | §4.2 Queue milestones | Unchanged. `Withdrawn` remains caused by Pharmacy Queue Close as an Apotek action against Tracker-owned lifecycle. |
 | §5.1 Aggregate map | Mapping and Close are drawn as non-aggregate nodes (dotted association / fact), not ownership edges between aggregate roots. |
-| §5.2 Aggregate roots and responsibilities | Aggregate-root table now contains only `TelaahResep`, `SalesOrder`, `SalesInvoice`, and `DispenseOrder`. Mapping and Close moved to a separate classification table. |
+| §5.2 Aggregate roots and responsibilities | Aggregate-root table now contains only `TelaahResep`, `SalesOrder`, `Invoice`, and `Dispensing`. Mapping and Close moved to a separate classification table. |
 | §5.4 Relationships and invariants | Item 6 restates mapping as association only. Item 11 states Close is a fact/event, not an aggregate or queue state. |
 | §5.6 Aggregate review matrix | Added BA-03 mapping and Pharmacy Queue Close rows: none added as aggregates. Conclusion lists the four roots only. |
 
@@ -67,7 +67,7 @@ Screen workbench behavior in §3.2 (map demand; close from `Waiting` with mandat
 | It does not maintain active/inactive relationship state. | §5.2 “Does not own” column. |
 | It does not establish an independent consistency boundary. | §5.2 “Does not own” column. |
 | Queue identity and lifecycle remain owned by Patient Tracker. | §2 principle 5; §4.1; §5.2; §5.5 Patient Tracker row (unchanged). |
-| Medication demand lifecycle remains owned by Pharmacy aggregates (`Sales Order`, `Dispense Order`, and related roots). | §2 principle 5; §5.2 four-root list matching domain §6.1–§6.4. |
+| Medication demand lifecycle remains owned by Pharmacy aggregates (`Sales Order`, `Dispensing`, and related roots). | §2 principle 5; §5.2 four-root list matching domain §6.1–§6.4. |
 | Association answers which queue serves which demand, and which demands are associated with a queue entry. | §5.2 mapping responsibility text. |
 | Domain: Pharmacy Queue Close is an operational fact, not an Aggregate Root and not a queue state. | §2 principle 5; §5.1; §5.2; §5.4 item 11; §5.6. Tracker still sets `Withdrawn` (§4.2). |
 
@@ -83,7 +83,7 @@ This resolution did **not**:
 - add, remove, or rename a Pharmacy aggregate root other than removing the incorrect labels;
 - change queue milestone causation (`ServedAt` / `In Service` from first `Medication Preparation Started`; `DoneAt` / `Done` from coordinated pickup call; `Withdrawn` from Pharmacy Queue Close);
 - change mapping cardinality (one queue entry may associate to multiple independent medication demands);
-- change Close eligibility (from `Waiting` only; not after `In Service`; no `ServedAt` / `DoneAt`; no Sales Order / Dispense Order / handover establishment);
+- change Close eligibility (from `Waiting` only; not after `In Service`; no `ServedAt` / `DoneAt`; no Sales Order / Dispensing / handover establishment);
 - change Pelayanan Penjualan, Dispensing, or Serah Obat workbench sequences;
 - change payer, invoice, dispense, stock, or handover rules;
 - invent a new queue status or a mapping consistency boundary.

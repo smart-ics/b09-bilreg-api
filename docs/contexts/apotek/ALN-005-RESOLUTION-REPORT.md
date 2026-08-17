@@ -92,7 +92,7 @@ Unchanged ownership and close path: `BR-APT-081` (`ServedAt` at `Medication Prep
 | Queue `Done` read as if it implied service/handover end | Queue `Done` only means queue service lifecycle completed |
 | Risk of inventing a new status or reversing `DoneAt` | No new status; `DoneAt` never reversed |
 
-Pharmacy terminal outcomes (`Dispense Order` `Expired`, payer-specific Sales Order / invoice consequences) were already aligned and were not changed.
+Pharmacy terminal outcomes (`Dispensing` `Expired`, payer-specific Sales Order / invoice consequences) were already aligned and were not changed.
 
 ---
 
@@ -112,10 +112,10 @@ Pharmacy terminal outcomes (`Dispense Order` `Expired`, payer-specific Sales Ord
 Worked path:
 
 1. `Medication Preparation Started` → queue `In Service`, `ServedAt` recorded (`BR-APT-081`).
-2. Dispense Order reaches `Prepared`; pickup call has not occurred.
+2. Dispensing reaches `Prepared`; pickup call has not occurred.
 3. Authorized No Show Resolution (`WF-APT-RJ-007`) runs.
 4. Patient Tracker may move the Queue Entry `In Service` → `Done` and record `DoneAt`.
-5. Dispense Order becomes `Expired`; stock return Mutasi and payer commercial outcomes proceed as before.
+5. Dispensing becomes `Expired`; stock return Mutasi and payer commercial outcomes proceed as before.
 6. Queue `Done` does not record handover.
 
 Worked path after pickup call:
@@ -148,5 +148,5 @@ This resolution did **not**:
 - add a pharmacy state to QueueEntry;
 - change Pharmacy Queue Close (`Withdrawn` from `Waiting`);
 - change `ServedAt` causation (`Medication Preparation Started`);
-- change Dispense Order, Sales Order, or stock outcomes for No Show;
+- change Dispensing, Sales Order, or stock outcomes for No Show;
 - reopen BA-01 through BA-09 or redesign queue architecture.

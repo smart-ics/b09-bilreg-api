@@ -33,17 +33,17 @@ Memberikan langkah yang sama bagi petugas untuk memperoleh persetujuan pembelian
 ## 3. Prasyarat
 
 1. Semua petugas yang terlibat telah masuk ke aplikasi dan memiliki hak akses yang diperlukan.
-2. Outpatient Queue Mapping, pesanan apotek yang aktif, Sales Order Line yang dibayar Pasien, dan rincian harga telah ditampilkan.
+2. Outpatient Queue Mapping, pesanan apotek yang aktif, Sales Order Item yang dibayar Pasien, dan rincian harga telah ditampilkan.
 3. Belum ada faktur penjualan untuk obat Pasien Umum yang akan ditawarkan.
-4. Tugas untuk menyiapkan obat sudah tersedia atau dapat dibuat dari Sales Order Line melalui Dispense Order Line.
+4. Tugas untuk menyiapkan obat sudah tersedia atau dapat dibuat dari Sales Order Item melalui Dispensing Item.
 
 ## 4. Langkah Operasional
 
-1. **Staf Apotek** membuka permintaan obat yang sudah terkonek dengan antrian pada `Apotek Rajal`. **Staf Apotek** memeriksa jumlah yang harus dibayar Pasien dari Sales Order Line yang berlaku.
+1. **Staf Apotek** membuka permintaan obat yang sudah terkonek dengan antrian pada `Apotek Rajal`. **Staf Apotek** memeriksa jumlah yang harus dibayar Pasien dari Sales Order Item yang berlaku.
 2. Saat Manual Mapping dilakukan, **Staf Apotek** menerima Pasien. Setelah Tracker Mapping, **Staf Apotek** dapat memanggil nomor antrian untuk keperluan administrasi. **Sistem Antrian Pasien** tidak mencatat `ServedAt` atau `DoneAt` pada tahap ini.
 3. **Staf Apotek** menyampaikan secara lisan jumlah yang harus dibayar sebelum faktur penjualan dibuat.
 4. **Pasien atau Keluarga Pasien** menyatakan persetujuan pembelian secara lisan.
-5. **Staf Apotek** mencatat transaksi yang disetujui. **Sistem Apotek** membuat faktur penjualan beserta Sales Invoice Item-nya hanya dari jumlah Sales Order Line yang telah disetujui, lalu menampilkan nomor faktur dan jumlahnya.
+5. **Staf Apotek** mencatat transaksi yang disetujui. **Sistem Apotek** membuat faktur penjualan beserta Invoice Item-nya hanya dari jumlah Sales Order Item yang telah disetujui, lalu menampilkan nomor faktur dan jumlahnya.
 6. **Kasir atau Sistem Pembayaran** menerima pembayaran dan mengirimkan informasi pelunasan untuk faktur tersebut.
 7. **Sistem Apotek** menampilkan informasi bahwa faktur telah lunas. Untuk jumlah obat yang terkait, aplikasi menetapkan bahwa obat sudah boleh masuk ke proses penyiapan.
 8. Bila Pharmacy Reserve belum ada di Dispensing Temporary Unit, **Stock Ledger** mencatat Stock Mutasi dari Pharmacy Unit ke Dispensing Temporary Unit. **Sistem Apotek** menampilkan hasil Mutasi tersebut.
@@ -63,7 +63,7 @@ Memberikan langkah yang sama bagi petugas untuk memperoleh persetujuan pembelian
 ### 5.1 Pasien menolak sebelum faktur dibuat
 
 - **Staf Apotek** mencatat penolakan dan tidak membuat faktur penjualan.
-- **Sistem Apotek** menandai jumlah Sales Order Line Pasien yang terdampak sebagai ditolak atau commercially unallocated, lalu meminta Stock Mutasi jumlah yang tidak digunakan dari Dispensing Temporary Unit kembali ke Pharmacy Unit.
+- **Sistem Apotek** menandai jumlah Sales Order Item Pasien yang terdampak sebagai ditolak atau commercially unallocated, lalu meminta Stock Mutasi jumlah yang tidak digunakan dari Dispensing Temporary Unit kembali ke Pharmacy Unit.
 
 ### 5.2 Jumlah tagihan berubah sebelum faktur dibuat
 
@@ -101,7 +101,7 @@ Pengecualian ini berlaku ketika kekurangan stok diketahui **setelah** Sales Orde
 3. Remove Stock dari Dispensing Temporary Unit terlihat sebagai catatan Stock Ledger.
 4. Pesanan apotek berstatus `Resolved`, atau tetap `Active` dengan masalah pelayanan obat atau urusan keuangan yang belum selesai ditampilkan dengan jelas.
 5. Status antrian `Done` bukan bukti bahwa obat sudah diserahkan.
-6. Kekurangan stok setelah Sales Order dibentuk tidak mengubah Sales Order itu; jumlah yang tidak dapat dipenuhi memiliki Unfulfilled Medication Outcome dan koreksi keuangan bila diperlukan, bukan baris yang dihapus dari Sales Order.
+6. Kekurangan stok setelah Sales Order dibentuk tidak mengubah Sales Order itu; jumlah yang tidak dapat dipenuhi memiliki Unfulfilled Medication Outcome dan koreksi keuangan bila diperlukan, bukan item yang dihapus dari Sales Order.
 
 ## 7. Referensi
 

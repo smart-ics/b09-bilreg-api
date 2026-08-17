@@ -14,19 +14,19 @@
 
 ## 1. Tujuan
 
-Memberikan langkah yang sama bagi petugas ketika Fornas mengklasifikasikan sebagian baris resep sebagai Covered dan sebagian sebagai Not Covered. Baris Covered membentuk Sales Order BPJS. Baris Not Covered boleh membentuk Patient-Pay Sales Order independen. Kedua pesanan dapat diserahkan bersama dalam satu kali pengambilan.
+Memberikan langkah yang sama bagi petugas ketika Fornas mengklasifikasikan sebagian item resep sebagai Covered dan sebagian sebagai Not Covered. Item Covered membentuk Sales Order BPJS. Item Not Covered boleh membentuk Patient-Pay Sales Order independen. Kedua pesanan dapat diserahkan bersama dalam satu kali pengambilan.
 
 ## 2. Aktor dan Tanggung Jawab
 
 | Aktor | Jenis | Tanggung jawab |
 |---|---|---|
 | Pasien atau Keluarga Pasien | Pengguna layanan | Menyetujui atau menolak Patient-Pay Sales Order, membayar setelah menyetujui, datang untuk mengambil obat, menerima edukasi, dan menerima obat bila berhak. |
-| Staf Apotek | Petugas | Membentuk Sales Order BPJS untuk baris Covered dan Patient-Pay Sales Order independen untuk baris Not Covered, menyampaikan jumlah yang harus dibayar Pasien, mencatat transaksi yang disetujui, menyiapkan obat yang sudah boleh diproses, dan memanggil Pasien. |
+| Staf Apotek | Petugas | Membentuk Sales Order BPJS untuk item Covered dan Patient-Pay Sales Order independen untuk item Not Covered, menyampaikan jumlah yang harus dibayar Pasien, mencatat transaksi yang disetujui, menyiapkan obat yang sudah boleh diproses, dan memanggil Pasien. |
 | Kepala Apotek | Petugas | Menyetujui penanganan manual untuk obat yang sudah disiapkan tetapi tidak diambil Pasien. Otorisasi oleh Apoteker yang berwenang menurut kebijakan operasional; tidak ada ambang persetujuan berdasarkan nilai uang. |
 | Kasir atau Sistem Pembayaran | Petugas atau subsistem | Menerima pembayaran dan mengirimkan informasi bahwa faktur Patient-Pay telah lunas. |
 | Apoteker | Petugas | Memeriksa penerima secara operasional, melakukan pemeriksaan akhir obat, dan mencatat Patient Education Acknowledgement. Pemeriksaan penerima tidak ditegakkan sistem. Catatan konseling rinci bersifat opsional. |
-| Sistem SEP dan Fornas | Subsistem | Mengklasifikasikan setiap baris resep sebagai Covered atau Not Covered dan menyediakan keabsahan SEP. |
-| Sistem Apotek | Subsistem | Menyimpan Sales Order independen, faktur sesuai jalur payer, dan evaluasi Dispense Authorized per baris. |
+| Sistem SEP dan Fornas | Subsistem | Mengklasifikasikan setiap item resep sebagai Covered atau Not Covered dan menyediakan keabsahan SEP. |
+| Sistem Apotek | Subsistem | Menyimpan Sales Order independen, faktur sesuai jalur payer, dan evaluasi Dispense Authorized per item. |
 | Sistem Antrian Pasien | Subsistem | Mencatat satu `ServedAt` dan satu `DoneAt` untuk antrian yang sama. |
 | Sistem Persediaan | Subsistem | Menyediakan hasil Mutasi, Remove Stock, dan keputusan pengembalian stok. |
 | Tata Rekening | Subsistem | Menerima dan menyelesaikan urusan keuangan sesuai jalur payer. |
@@ -34,23 +34,23 @@ Memberikan langkah yang sama bagi petugas ketika Fornas mengklasifikasikan sebag
 ## 3. Prasyarat
 
 1. Semua petugas yang terlibat telah masuk ke aplikasi dan memiliki hak akses yang diperlukan.
-2. Fornas telah mengklasifikasikan baris resep sebagai Covered atau Not Covered.
-3. SEP masih sah untuk baris Covered.
-4. Baris Not Covered tidak dibatalkan secara otomatis.
-5. Belum ada faktur Patient-Pay maupun faktur BPJS untuk baris tersebut, kecuali proses dilanjutkan setelah kondisi khusus yang sudah tercatat.
+2. Fornas telah mengklasifikasikan item resep sebagai Covered atau Not Covered.
+3. SEP masih sah untuk item Covered.
+4. Item Not Covered tidak dibatalkan secara otomatis.
+5. Belum ada faktur Patient-Pay maupun faktur BPJS untuk item tersebut, kecuali proses dilanjutkan setelah kondisi khusus yang sudah tercatat.
 
 ## 4. Langkah Operasional
 
-1. **Sistem SEP dan Fornas** mengklasifikasikan setiap baris resep sebagai Covered atau Not Covered. **Sistem Apotek** menampilkan klasifikasi tersebut.
-2. **Staf Apotek** membentuk Sales Order BPJS hanya dari baris Covered. Baris yang tidak dijamin tidak tetap pada jalur BPJS.
-3. **Staf Apotek** boleh membentuk Patient-Pay Sales Order terpisah untuk baris Not Covered.
+1. **Sistem SEP dan Fornas** mengklasifikasikan setiap item resep sebagai Covered atau Not Covered. **Sistem Apotek** menampilkan klasifikasi tersebut.
+2. **Staf Apotek** membentuk Sales Order BPJS hanya dari item Covered. Item yang tidak dijamin tidak tetap pada jalur BPJS.
+3. **Staf Apotek** boleh membentuk Patient-Pay Sales Order terpisah untuk item Not Covered.
 4. **Sistem Apotek** menghitung dan menampilkan jumlah yang harus dibayar Pasien dari Patient-Pay Sales Order.
 5. **Staf Apotek** menyampaikan jumlah tersebut secara lisan sebelum faktur Pasien Umum dibuat.
 6. **Pasien atau Keluarga Pasien** menyatakan persetujuan lisan atas Patient-Pay Sales Order.
 7. **Staf Apotek** mencatat transaksi yang disetujui. **Sistem Apotek** membuat faktur Pasien Umum dari Patient-Pay Sales Order tersebut.
 8. **Kasir atau Sistem Pembayaran** menerima pembayaran dan mengirimkan informasi pelunasan untuk faktur Patient-Pay.
-9. **Sistem Apotek** mengevaluasi Dispense Authorized secara independen: baris Covered dari evidence coverage; baris Patient-Pay dari Payment Clearance.
-10. Setelah setiap jumlah obat yang akan diserahkan memperoleh Dispense Authorized, **Staf Apotek** memulai dan menyelesaikan penyiapan obat pada setiap Dispense Order yang berlaku.
+9. **Sistem Apotek** mengevaluasi Dispense Authorized secara independen: item Covered dari evidence coverage; item Patient-Pay dari Payment Clearance.
+10. Setelah setiap jumlah obat yang akan diserahkan memperoleh Dispense Authorized, **Staf Apotek** memulai dan menyelesaikan penyiapan obat pada setiap Dispensing yang berlaku.
 11. Saat penyiapan obat pertama dimulai, **Sistem Apotek** mencatat `Medication Preparation Started`. **Sistem Antrian Pasien** mengubah antrian menjadi `In Service` dan mencatat satu `ServedAt`.
 12. **Sistem Apotek** menampilkan setiap tugas penyiapan obat yang akan diserahkan sebagai `Prepared` atau dengan catatan alasan yang jelas bila obat tidak dapat diserahkan.
 13. **Staf Apotek** melakukan satu kali panggilan agar Pasien mengambil obat. **Sistem Antrian Pasien** mengubah antrian yang sama menjadi `Done` dan mencatat satu `DoneAt`.
@@ -66,9 +66,9 @@ Memberikan langkah yang sama bagi petugas ketika Fornas mengklasifikasikan sebag
 - **Staf Apotek** mencatat penolakan dan tidak membuat faktur Pasien Umum.
 - **Sistem Apotek** mencatat outcome declined pada Patient-Pay Sales Order. Sales Order BPJS tetap dapat diproses secara independen.
 
-### 5.2 Baris diklasifikasikan Not Covered
+### 5.2 Item diklasifikasikan Not Covered
 
-- **Sistem Apotek** menampilkan baris terdampak sebagai Not Covered dan tidak memasukkannya ke Sales Order BPJS.
+- **Sistem Apotek** menampilkan item terdampak sebagai Not Covered dan tidak memasukkannya ke Sales Order BPJS.
 - **Staf Apotek** boleh membentuk Patient-Pay Sales Order independen, menyampaikan jumlah, dan meminta persetujuan lisan.
 
 ### 5.3 Belum semua jumlah obat memperoleh Dispense Authorized
@@ -90,7 +90,7 @@ Memberikan langkah yang sama bagi petugas ketika Fornas mengklasifikasikan sebag
 
 ## 6. Kriteria Penyelesaian
 
-1. Baris Covered dan Not Covered tetap pada Sales Order yang independen.
+1. Item Covered dan Not Covered tetap pada Sales Order yang independen.
 2. Faktur Pasien Umum yang sudah lunas dan faktur BPJS yang dibuat saat obat diserahkan tampil terpisah dan terhubung ke Sales Order masing-masing.
 3. Satu kali penyerahan obat dapat mencatat seluruh jumlah obat yang berlaku. Nomor telepon penerima dan hubungan dengan Pasien boleh dicatat secara opsional sebagai referensi.
 4. Setiap Sales Order berstatus `Resolved`, atau tetap `Active` dengan masalah yang belum selesai ditampilkan secara jelas.

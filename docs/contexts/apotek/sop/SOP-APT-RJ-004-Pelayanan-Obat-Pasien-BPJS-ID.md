@@ -33,13 +33,13 @@ Memberikan langkah yang sama bagi petugas untuk memastikan obat rawat jalan dita
 ## 3. Prasyarat
 
 1. Semua petugas yang terlibat telah masuk ke aplikasi dan memiliki hak akses yang diperlukan.
-2. Outpatient Queue Mapping, pesanan apotek yang aktif, Sales Order Line yang ditanggung BPJS, dan tugas untuk menyiapkan obat telah ditampilkan.
+2. Outpatient Queue Mapping, pesanan apotek yang aktif, Sales Order Item yang ditanggung BPJS, dan tugas untuk menyiapkan obat telah ditampilkan.
 3. SEP untuk kunjungan Pasien masih sah, dan pemetaan Fornas menyatakan setiap jumlah obat yang ditanggung dapat dilayani.
 4. Jumlah yang harus dibayar Pasien adalah nol, status pembayaran `Not Required`, dan faktur BPJS belum dibuat.
 
 ## 4. Langkah Operasional
 
-1. **Staf Apotek** membuka permintaan obat BPJS yang sudah terkonek dengan antrian pada `Apotek Rajal`. **Staf Apotek** memeriksa Pasien, nomor rujukan SEP, jumlah Sales Order Line yang ditanggung BPJS, dan jumlah obat pada tugas penyiapan.
+1. **Staf Apotek** membuka permintaan obat BPJS yang sudah terkonek dengan antrian pada `Apotek Rajal`. **Staf Apotek** memeriksa Pasien, nomor rujukan SEP, jumlah Sales Order Item yang ditanggung BPJS, dan jumlah obat pada tugas penyiapan.
 2. **Sistem SEP dan Fornas** mengirimkan hasil pemeriksaan keabsahan SEP dan jaminan untuk setiap item obat.
 3. **Sistem Apotek** menampilkan bahwa setiap jumlah obat yang dijamin sudah disetujui BPJS. Untuk jumlah tersebut, aplikasi menetapkan bahwa obat boleh masuk ke proses penyiapan tanpa menunggu faktur penjualan dibuat.
 4. Bila Pharmacy Reserve belum ada di Dispensing Temporary Unit, **Stock Ledger** mencatat Stock Mutasi dari Pharmacy Unit ke Dispensing Temporary Unit. **Sistem Apotek** menampilkan hasil Mutasi tersebut.
@@ -51,7 +51,7 @@ Memberikan langkah yang sama bagi petugas untuk memastikan obat rawat jalan dita
 10. Saat Pasien atau Keluarga Pasien hadir, **Apoteker** memeriksa penerima secara operasional, melakukan pemeriksaan akhir obat, dan mencatat Patient Education Acknowledgement. Bila pemeriksaan lulus, **Sistem Apotek** menambahkan catatan pemeriksaan dan menampilkan tugas penyiapan obat berstatus `Reviewed`. **Sistem Apotek** mencatat waktu edukasi dan Apoteker penanggung jawab. Catatan konseling rinci bersifat opsional. Apoteker boleh secara opsional mencatat nomor telepon penerima dan hubungan dengan Pasien sebagai referensi.
 11. **Sistem Apotek** tidak mengizinkan proses diselesaikan bila pemeriksaan akhir obat belum lengkap atau Patient Education Acknowledgement belum dicatat. Pemeriksaan penerima bukan gate sistem. Catatan konseling rinci tidak diwajibkan. Jika Pickup Expired, **Sistem Apotek** juga tidak mengizinkan penyelesaian sampai Collection Window Override beserta alasan dicatat.
 12. Setelah mendapat persetujuan **Apoteker**, **Staf Apotek** menyerahkan obat secara fisik.
-13. Dalam satu hasil transaksi, **Sistem Apotek** membuat faktur BPJS beserta Sales Invoice Item-nya dari jumlah Sales Order Line yang dijamin, mencatat obat yang diberikan, dan mencatat penyerahan obat.
+13. Dalam satu hasil transaksi, **Sistem Apotek** membuat faktur BPJS beserta Invoice Item-nya dari jumlah Sales Order Item yang dijamin, mencatat obat yang diberikan, dan mencatat penyerahan obat.
 14. **Sistem Persediaan** mencatat Remove Stock dari Dispensing Temporary Unit. **Sistem Apotek** menampilkan tugas penyiapan obat berstatus `Completed` setelah catatan tersebut tersedia.
 15. **Sistem Apotek** menampilkan pesanan apotek berstatus `Resolved` hanya setelah seluruh obat yang diterima dan seluruh urusan keuangannya selesai.
 
@@ -90,7 +90,7 @@ Pengecualian ini berlaku ketika kekurangan stok diketahui **setelah** Sales Orde
 3. Tugas penyiapan obat berstatus `Completed`, catatan penyerahan mencantumkan waktu penyerahan, dan Remove Stock dari Dispensing Temporary Unit ditampilkan. Nomor telepon penerima dan hubungan dengan Pasien boleh dicatat secara opsional sebagai referensi.
 4. Pesanan apotek berstatus `Resolved`, atau tetap `Active` dengan masalah yang belum selesai ditampilkan dengan jelas.
 5. Status antrian `Done` bukan bukti bahwa obat sudah diserahkan.
-6. Kekurangan stok setelah Sales Order dibentuk tidak mengubah Sales Order itu; jumlah yang tidak dapat dipenuhi memiliki Unfulfilled Medication Outcome dan koreksi keuangan bila diperlukan, bukan baris yang dihapus dari Sales Order.
+6. Kekurangan stok setelah Sales Order dibentuk tidak mengubah Sales Order itu; jumlah yang tidak dapat dipenuhi memiliki Unfulfilled Medication Outcome dan koreksi keuangan bila diperlukan, bukan item yang dihapus dari Sales Order.
 
 ## 7. Referensi
 

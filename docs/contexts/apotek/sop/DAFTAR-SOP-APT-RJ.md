@@ -2,7 +2,7 @@
 
 | Alur kerja | SOP bahasa Inggris | SOP bahasa Indonesia |
 |---|---|---|
-| `WF-APT-RJ-001` | [Acquire and Map Outpatient Pharmacy Queue](./SOP-APT-RJ-001-Antrian-dan-Mapping-EN.md) | [Menerbitkan Nomor Antrian dan Melakukan Mapping dengan Resep atau Permintaan Obat Langsung](./SOP-APT-RJ-001-Antrian-dan-Mapping-ID.md) |
+| `WF-APT-RJ-001` | [Acquire and Map Outpatient Pharmacy Queue](./SOP-APT-RJ-001-Antrian-dan-Mapping-EN.md) | [Menerbitkan Nomor Antrian dan Melakukan Mapping dengan Resep Kerja atau Jual Bebas](./SOP-APT-RJ-001-Antrian-dan-Mapping-ID.md) |
 | `WF-APT-RJ-002` | [Accept Outpatient Medication Demand](./SOP-APT-RJ-002-Penerimaan-Resep-dan-Permintaan-Langsung-EN.md) | [Menerima Permintaan Obat Pasien Rawat Jalan](./SOP-APT-RJ-002-Penerimaan-Resep-dan-Permintaan-Langsung-ID.md) |
 | `WF-APT-RJ-003` | [Fulfill Medication for a General Patient](./SOP-APT-RJ-003-Pelayanan-Obat-Pasien-Umum-EN.md) | [Melayani Obat Pasien Umum](./SOP-APT-RJ-003-Pelayanan-Obat-Pasien-Umum-ID.md) |
 | `WF-APT-RJ-004` | [Fulfill Medication for a BPJS Patient](./SOP-APT-RJ-004-Pelayanan-Obat-Pasien-BPJS-EN.md) | [Melayani Obat Pasien BPJS](./SOP-APT-RJ-004-Pelayanan-Obat-Pasien-BPJS-ID.md) |
@@ -29,16 +29,28 @@ Jika SOP bahasa Inggris dan Bahasa Indonesia berbeda secara semantik, SOP bahasa
 | Pharmacist | Apoteker |
 | Queue / Outpatient Queue | Antrian / Antrian Pasien Rawat Jalan |
 | Medication Demand | Permintaan Obat |
+| Jual Bebas | Jual Bebas |
+| Resep Kerja | Resep Kerja |
+| Invoice | Invoice |
+| Sales Order Item | Item Sales Order |
+| Invoice Item | Item Invoice |
+| Dispensing Item | Item Dispensing |
 | Medication Catalog | Katalog Obat |
 | Resep Elektronik | Resep Elektronik |
 | Dokter Penulis Resep | Dokter Penulis Resep |
 | Baris Resep | Baris Resep |
+| Resep Kerja | Resep Kerja |
+| Jual Bebas | Jual Bebas |
 | Source Traceability | Ketertelusuran Sumber |
 | Coverage | Penjaminan |
 | Payment Clearance | Status Lunas |
 | Coverage Clearance | Persetujuan Penjaminan |
 | Dispense Authorized | Dispense Authorized |
-| Dispense Order | Perintah Penyiapan Obat |
+| Invoice | Faktur |
+| Sales Order Item | Item Sales Order |
+| Invoice Item | Item Invoice |
+| Dispensing | Dispensing |
+| Dispensing Item | Item Dispensing |
 | Medication Handover | Penyerahan Obat |
 | Outpatient Queue Mapping | Outpatient Queue Mapping |
 | Tracker Mapping / Manual Mapping | Tracker Mapping / Manual Mapping |
