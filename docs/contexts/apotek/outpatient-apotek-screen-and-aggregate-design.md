@@ -3,7 +3,7 @@
 **Artifact status:** Proposed design decision  
 **Bounded context:** Apotek (`Pelayanan Obat Pasien`)  
 **Scope:** Outpatient pharmacy  
-**Related artifacts:** [Apotek Domain](./apotek-domain.md), [Outpatient Apotek Workflow](./outpatient-apotek-workflow.md), [Outpatient Apotek SOP](./sop/DAFTAR-SOP-APT-RJ.md), [Outpatient Apotek Repository Gap Analysis](./outpatient-apotek-repository-gap-analysis-report.md) (BA-03)
+**Related artifacts:** [Apotek Domain](./apotek-domain.md), [Outpatient Apotek Workflow](./outpatient-apotek-workflow.md), [Outpatient Apotek SOP](./sop/DAFTAR-SOP-APT-RJ.md), [Outpatient Apotek Repository Gap Analysis](./outpatient-apotek-repository-gap-analysis-report.md) (BA-03), [Outpatient Apotek Persistence Design](./outpatient-apotek-persistence-design.md)
 
 ## 1. Decision Summary
 
@@ -370,7 +370,7 @@ The following are required collaborators, not Apotek aggregates:
 
 This artifact intentionally does not define:
 
-- physical database table design;
+- physical database table design (see [Outpatient Apotek Persistence Design](./outpatient-apotek-persistence-design.md));
 - API, event, or command contracts;
 - detailed screen layout, component design, or navigation;
 - exact attention-badge thresholds, colors, or placement;

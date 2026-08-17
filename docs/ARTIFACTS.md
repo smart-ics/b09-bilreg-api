@@ -187,7 +187,9 @@
 | `docs/contexts/apotek/ALN-006-RESOLUTION-REPORT.md` | ALN-006 Resolution Report — Stock shortage timing alignment to BC-10 |
 | `docs/contexts/apotek/ALN-007-RESOLUTION-REPORT.md` | ALN-007 Resolution Report — Terminology cleanup and Dispense Order naming alignment |
 | `docs/contexts/apotek/outpatient-apotek-queue-gap-analysis-codex.md` | Outpatient Apotek Queue Gap Analysis |
+| `docs/contexts/apotek/outpatient-apotek-persistence-design.md` | Outpatient Apotek Persistence Design |
 | `docs/contexts/apotek/outpatient-apotek-queue-gap-analysis.md` | Outpatient Apotek Queue Gap Analysis |
+| `docs/contexts/apotek/outpatient-apotek-repository-gap-analysis-report.md` | Outpatient Apotek Repository Gap Analysis |
 | `docs/contexts/apotek/outpatient-apotek-screen-and-aggregate-design.md` | Outpatient Apotek Screen and Aggregate Design |
 | `docs/contexts/apotek/outpatient-apotek-workflow-id.md` | Workflow Outpatient Apotek |
 | `docs/contexts/apotek/outpatient-apotek-workflow.md` | Outpatient Apotek Workflow |
