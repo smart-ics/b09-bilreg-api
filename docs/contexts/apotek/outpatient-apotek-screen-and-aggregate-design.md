@@ -39,6 +39,7 @@ This decision assumes that queue-number issuance is owned by c013-kiosk-queue-di
 6. The four-screen model is an outpatient scope decision. It does not preclude inpatient, emergency, unit-dose, or future exception-focused worklists.
 7. Operational worklists, attention indicators, and patient-journey views are projections and UX aids. They do not introduce workflow states, aggregate roots, or alternate lifecycles.
 8. Dispense Authorized is a policy evaluation result derived from financial and/or coverage evidence. It authorizes Medication Preparation and Dispensing. It is not an aggregate, entity, persisted business object, source of truth, or transaction boundary.
+9. Available Stock and Current Stock serve different purposes. Current Stock answers how much inventory physically exists. Available Stock answers how much inventory can still be promised to a new Sales Order. Screens that support Sales Order establishment and shortage evaluation use Available Stock. Neither concept is an Apotek aggregate. Available Stock SHALL NOT be displayed or treated as equivalent to Current Stock.
 
 ## 3. Screen Design
 
@@ -62,9 +63,9 @@ The workbench lets the Pharmacist:
 2. decide each Baris Resep as accepted as prescribed, accepted with an authorized substitute, or rejected;
 3. record the substitute, reason, quantity, and responsible Pharmacist when applicable;
 4. complete the review as `Approved`, `Partially Approved`, or `Rejected`; and
-5. establish one Sales Order for an approved or partially approved prescription.
+5. establish one Sales Order for an approved or partially approved prescription. When Stock Shortage applies before Sales Order establishment, include only fulfillable items as determined from Available Stock, not from Current Stock.
 
-The original prescription remains unchanged. Clarification with the prescriber remains outside the system and does not create a special workflow state.
+The original prescription remains unchanged. Clarification with the prescriber remains outside the system and does not create a special workflow state. Clinical acceptance remains independent of Current Stock and Available Stock.
 
 ### 3.2 Screen Pelayanan Penjualan
 
@@ -119,7 +120,7 @@ The workbench contains four activities.
    - For General Patient quantities, capture verbal purchase confirmation and establish an Invoice from the applicable Sales Order Items.
    - For BPJS quantities, show SEP and Fornas coverage outcomes; do not request Patient payment or establish the BPJS Invoice early.
    - For mixed coverage, Fornas Not Covered items form an independent Patient-Pay Sales Order. Covered items remain on the BPJS-covered Sales Order. Do not keep uncovered lines on the BPJS fulfillment path.
-   - For Partial Prescription Fulfillment, establish a Sales Order from selected or fulfillable prescription items only when Patient Request or Stock Shortage applies. Excluded lines remain on the originating prescription. Issue Salinan Resep for unfulfilled items when external fulfillment is required. Pharmacist approves when professional review is required.
+   - For Partial Prescription Fulfillment, establish a Sales Order from selected or fulfillable prescription items only when Patient Request or Stock Shortage applies. For Stock Shortage, fulfillable quantity is Available Stock, not Current Stock. Excluded lines remain on the originating prescription. Issue Salinan Resep for unfulfilled items when external fulfillment is required. Pharmacist approves when professional review is required.
    - Submit a return or correction request rather than freely reversing a sale. A post-payment or post-handover return requires authorization by an authorized pharmacist according to operational policy, plus Inventory and Tata Rekening outcomes. No monetary approval threshold applies.
    - Resolve Exception Worklist items through the same accountable paths: No-Show / expiry under SOP APT-RJ-007, return and correction through authorized-pharmacist outcomes, and display of pending financial or inventory consequences without inventing stock or settlement facts.
 
@@ -342,6 +343,7 @@ No parallel clearance object is introduced. The evaluation does not own Dispensi
 9. A failed Final Dispense Review never overwrites history; it appends a review record and returns only the affected Dispensing from `Prepared` to `Preparing`.
 10. Dispense Authorized is a policy evaluation over financial and/or coverage evidence; it authorizes preparation quantity and does not own Dispensing lifecycle, stock, or handover facts.
 11. Pharmacy Queue Close is an operational fact/event, not an aggregate and not a queue state. It requests Patient Tracker `Withdrawn` from `Waiting` and does not add a pharmacy state to the queue.
+12. Available Stock is a fulfillment-planning concept used at Sales Order establishment and shortage evaluation. It is not an aggregate, not a persisted Apotek quantity, and not equivalent to Current Stock. Current Stock remains Inventory-owned physical inventory.
 
 ### 5.5 External authorities
 
@@ -351,7 +353,7 @@ The following are required collaborators, not Apotek aggregates:
 |---|---|
 | CPOE / clinical order authority | Original electronic prescription and clinician intent |
 | Patient Tracker | Pharmacy queue entry identity, queue number, `CreatedAt`, `ServedAt`, `DoneAt`, and `Withdrawn` |
-| Inventory / Stock Ledger | Stock availability, Stock Mutasi, Remove Stock, and movement history only. Does not own reservation, issue, `Prepared`, handover, or No Show status. |
+| Inventory / Stock Ledger | Current Stock, Stock Mutasi, Remove Stock, and movement history only. Does not own Available Stock, reservation, issue, `Prepared`, handover, or No Show status. |
 | Payment / Cashier | Payment Clearance evidence |
 | SEP and Fornas authorities | BPJS eligibility and item-level Coverage Clearance evidence |
 | Tata Rekening | Financial charge, credit note, refund, and final settlement consequences |
@@ -367,6 +369,7 @@ The following are required collaborators, not Apotek aggregates:
 | Patient Medication Journey | None. Read-only consolidation projection |
 | Outpatient Queue Mapping (BA-03) | None added. Navigation/association mechanism only; **not** an aggregate root |
 | Pharmacy Queue Close | None added. Operational fact/event; **not** an aggregate root |
+| Available Stock vs Current Stock | None added. Available Stock is a planning concept at Sales Order establishment; Current Stock remains Inventory-owned. Neither is an Apotek aggregate |
 
 **Conclusion:** The aggregate map in §5.1–§5.2 contains only `TelaahResep`, `SalesOrder`, `Invoice`, and `Dispensing` as aggregate roots. The operational decisions above are incorporated as screen/worklist behavior, projections, read models, UX aids, associations, or operational facts.
 
@@ -379,7 +382,8 @@ This artifact intentionally does not define:
 - detailed screen layout, component design, or navigation;
 - exact attention-badge thresholds, colors, or placement;
 - detailed Patient Medication Journey drawer or panel layout;
-- inpatient, emergency, or unit-dose fulfillment worklists.
+- inpatient, emergency, or unit-dose fulfillment worklists;
+- the Available Stock calculation formula (reserved for a future inventory-planning design activity).
 
 Exception authorization for returns, corrections, expired collection overrides, and other dispensing exceptions is authority-based and is owned by the domain (`BR-APT-135`–`BR-APT-137`). This artifact does not introduce a monetary approval threshold.
 

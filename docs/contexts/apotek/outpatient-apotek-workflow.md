@@ -16,7 +16,7 @@ This workflow coordinates outpatient medication service from acquisition of a Ph
 
 It covers Resep Elektronik, recorded Resep Fisik, and Jual Bebas; Tracker Mapping and Manual Mapping; General Patient, BPJS, and mixed-coverage commercial paths; one Pharmacy Queue Entry mapped to multiple Resep Kerja or Jual Bebas; dispensing; pickup; Final Dispense Review; Patient Education; and No-Show resolution.
 
-Telaah Resep may run before Patient arrival and independently of queue mapping. Commercial and physical fulfillment progress remain independent and are coordinated through the Sales Order.
+Telaah Resep may run before Patient arrival and independently of queue mapping. Commercial and physical fulfillment progress remain independent and are coordinated through the Sales Order. Shortage evaluation at Sales Order establishment uses Available Stock, which is not Current Stock.
 
 ```text
 Pharmacy Queue Entry and Resep Kerja or Jual Bebas
@@ -82,13 +82,14 @@ The workflow ends when every medication demand mapped to the Pharmacy Queue Entr
 - Mixed BPJS-covered and Patient-payable quantities, represented as a BPJS-covered Sales Order and an independent Patient-Pay Sales Order when Fornas classifies some items as Not Covered.
 - Payment Clearance, Coverage Clearance, and Dispense Authorized.
 - Pharmacy Reserve (Stock Mutasi to Dispensing Temporary Unit), Medication Preparation, pickup calling, Final Dispense Review, operational Authorized Recipient verification, Patient Education, Medication Dispense, and Medication Handover.
-- Stock Shortage Handling through a Partial Sales Order of fulfillable items and Salinan Resep for unfulfilled prescription items.
+- Stock Shortage Handling through a Partial Sales Order of fulfillable items, evaluated against Available Stock (not Current Stock), and Salinan Resep for unfulfilled prescription items.
 - No-Show and manual uncollected-medication resolution.
 
 ### 3.4 Excluded
 
 - Application screens, fields, save actions, and operator navigation; those belong to SOP.
-- Inventory balance and movement rules, including return eligibility.
+- Inventory balance and movement rules, including return eligibility. Current Stock remains Inventory-owned.
+- The Available Stock calculation formula; that formula is reserved for a future inventory-planning design activity.
 - Payment receipt and settlement execution.
 - SEP creation and BPJS eligibility administration.
 - Fornas master-data governance.
@@ -106,7 +107,7 @@ The workflow ends when every medication demand mapped to the Pharmacy Queue Entr
 | Pharmacist | Performs Telaah Resep, authorizes eligible Medication Substitution before Sales Order establishment, operationally verifies the recipient, performs Final Dispense Review, records Patient Education Acknowledgement, and records Collection Window Override when Pickup Expired. Recipient verification is not system-enforced. | `Telaah Resep Completed`, `Final Dispense Review Completed`, `Patient Education Acknowledged`, `Collection Window Override Recorded`, or Medication Handover is authorized to complete. |
 | Cashier or Payment Authority | Receives required Patient payment and supplies Payment Clearance. | `Payment Clearance Established`. |
 | SEP and Fornas Authorities | Supply encounter-level SEP validity and item-level BPJS coverage. | `Coverage Clearance Established` for the covered quantity. |
-| Stock Ledger | Owns Stock Availability, Stock Mutasi, Remove Stock, and movement history. | `Stock Transferred to Dispensing Temporary Unit`, `Stock Removed from Dispensing Temporary Unit`, or `Stock Returned to Pharmacy Unit`. |
+| Stock Ledger | Owns Current Stock, Stock Mutasi, Remove Stock, and movement history. Does not own Available Stock. | `Stock Transferred to Dispensing Temporary Unit`, `Stock Removed from Dispensing Temporary Unit`, or `Stock Returned to Pharmacy Unit`. |
 | Tata Rekening | Owns Financial Responsibility and the required financial consequence when paid medication is not fulfilled or collected. | Credit Note, Refund, or another final commercial outcome is supplied. |
 | CPOE | Owns the original Resep Elektronik, which Apotek does not modify. | The original Resep is available. |
 | Pharmacy Supervisor | An authorized pharmacist under operational policy. Authorizes returns, corrections, expired collection overrides, and other dispensing exceptions. Exception handling is authority-based; no monetary approval threshold applies. | Accountable exception outcome is established. |
@@ -258,7 +259,8 @@ Pharmacist, Pharmacy Staff, CPOE or Dokter Penulis Resep.
 - Resep Elektronik or recorded Resep Fisik.
 - Jual Bebas details when applicable.
 - Medication Catalog and professional acceptance policy.
-- Stock Availability as an external fulfillment fact that does not determine clinical acceptance.
+- Current Stock as an Inventory physical-inventory fact that does not determine clinical acceptance.
+- Available Stock as the fulfillment-planning quantity that can still be committed to a new Sales Order. Available Stock SHALL NOT be treated as equivalent to Current Stock.
 
 #### Main Flow
 
@@ -284,13 +286,13 @@ Pharmacist, Pharmacy Staff, CPOE or Dokter Penulis Resep.
 | Unused Iter remains but Pharmacist declines honor | Pharmacist | Decline fulfillment; record accountable outcome without consuming Iter. |
 | Unused Iter honored at fulfillment | Pharmacist | Proceed with fulfillment; system records Iter consumption. |
 | Patient Request partial prescription | Pharmacy Staff | Establish Sales Order with selected items only; excluded items remain on Prescription; issue Salinan Resep when required. |
-| Stock Shortage partial prescription | Pharmacy Staff | Establish Sales Order with fulfillable items only; unavailable items remain on Prescription; issue Salinan Resep when required. |
+| Stock Shortage partial prescription | Pharmacy Staff | Establish Sales Order with fulfillable items only, using Available Stock (not Current Stock) to decide what can still be committed; unavailable items remain on Prescription; issue Salinan Resep when required. |
 | Professional review required for partial path | Pharmacist | Approve or reject the resulting fulfillment decision; system does not auto-substitute or route externally. |
 | Fornas Not Covered items | Pharmacy Staff | Establish an independent Patient-Pay Sales Order for uncovered items; Covered items form the BPJS-covered Sales Order. |
 
 #### Exception and Compensation Flows
 
-- Stock shortage after Sales Order establishment does not change Hasil Telaah Resep. Pharmacy Staff shall not create Backorder or select an alternate stock source. Unfulfillable quantity receives an Unfulfilled Medication Outcome and Salinan Resep when applicable.
+- Stock shortage after Sales Order establishment does not change Hasil Telaah Resep. Pharmacy Staff shall not create Backorder or select an alternate stock source. Unfulfillable quantity receives an Unfulfilled Medication Outcome and Salinan Resep when applicable. Post-establishment shortage is not resolved by equating Available Stock with Current Stock.
 - Partial Prescription Fulfillment before Sales Order establishment is permitted only for Patient Request, Stock Shortage, or Fornas Not Covered items. No other partiality reason is recognized.
 - Medication identity on an established Sales Order Item shall not be changed. If a later replacement is needed, cancel the affected line or order, review the same original Resep again, and establish a new Sales Order Item without requiring a corrected or replacement Resep.
 - Any accepted quantity that cannot be fulfilled must retain an accountable `Cancelled`, `Expired`, or other Unfulfilled Medication Outcome. Outpatient Pharmacy shall not retain Backorder.
@@ -304,7 +306,7 @@ Pharmacist, Pharmacy Staff, CPOE or Dokter Penulis Resep.
 
 #### Domain References
 
-`BR-APT-001`–`BR-APT-019`, `BR-APT-029`–`BR-APT-034`, `BR-APT-050`, `BR-APT-054`, `BR-APT-061`, `BR-APT-068`, `BR-APT-083`, `BR-APT-086`, `BR-APT-089`, `BR-APT-105`–`BR-APT-124`; Telaah Resep and Sales Order lifecycles.
+`BR-APT-001`–`BR-APT-019`, `BR-APT-029`–`BR-APT-034`, `BR-APT-050`, `BR-APT-054`, `BR-APT-061`, `BR-APT-068`, `BR-APT-083`, `BR-APT-086`, `BR-APT-089`, `BR-APT-105`–`BR-APT-124`, `BR-APT-146`; Telaah Resep and Sales Order lifecycles.
 
 #### Domain Events
 
@@ -421,7 +423,7 @@ Patient or Caregiver, Pharmacy Staff, Pharmacist, Patient Tracker, SEP and Forna
 - Outpatient Queue Mapping.
 - Sales Order, covered Sales Order Item quantities, and Dispensing.
 - Valid SEP and item-level Fornas coverage.
-- Stock Availability and Pharmacy Reserve (Stock Mutasi to Dispensing Temporary Unit) outcomes.
+- Current Stock and Pharmacy Reserve (Stock Mutasi to Dispensing Temporary Unit) outcomes. Current Stock is physical inventory; it is not Available Stock.
 
 #### Main Flow
 
@@ -705,7 +707,7 @@ Pharmacy Supervisor, Pharmacy Staff, Inventory, Tata Rekening, Patient Tracker.
 | SEP authority | Valid SEP | Apotek | Evaluate encounter-level BPJS coverage; SEP alone does not identify covered medication quantities. |
 | Fornas authority | Item-level coverage mapping | Apotek | Establish Coverage Clearance only for applicable covered quantities together with valid SEP. |
 | Cashier or Payment authority | `Payment Clearance Established` | Apotek | Evaluate Dispense Authorized from payment evidence; payment does not prove stock or handover. |
-| Stock Ledger | Stock Availability and `Stock Transferred to Dispensing Temporary Unit` | Apotek | Record Mutasi and Remove Stock only from Pharmacy-authorized requests; stock facts do not rewrite Telaah Resep. |
+| Stock Ledger | Current Stock and `Stock Transferred to Dispensing Temporary Unit` | Apotek | Record Mutasi and Remove Stock only from Pharmacy-authorized requests; Current Stock facts do not rewrite Telaah Resep and are not Available Stock. |
 | Apotek | Handover, expiry, shortage, or No Show return request | Stock Ledger | Record Remove Stock or return Mutasi; Apotek shall not infer inventory movement without acknowledged Stock Ledger outcomes. |
 | Apotek | Financial Charge, Credit Note, or Refund requirement | Tata Rekening | Resolve Financial Responsibility and settlement consequences without changing fulfillment history. |
 

@@ -16,7 +16,7 @@ Workflow ini mengoordinasikan pelayanan obat Rawat Jalan sejak Pasien memperoleh
 
 Cakupannya meliputi Resep Elektronik, Resep Fisik yang dicatat, dan Jual Bebas; Tracker Mapping dan Manual Mapping; jalur komersial Pasien Umum, BPJS, dan mixed coverage; satu Pharmacy Queue Entry yang dimappingkan ke beberapa Resep Kerja atau Jual Bebas; dispensing; pickup; Final Dispense Review; Patient Education; serta penyelesaian No-Show.
 
-Telaah Resep dapat berjalan sebelum Pasien datang dan secara independen dari queue mapping. Progress komersial dan physical fulfillment tetap independen serta dikoordinasikan melalui Sales Order.
+Telaah Resep dapat berjalan sebelum Pasien datang dan secara independen dari queue mapping. Progress komersial dan physical fulfillment tetap independen serta dikoordinasikan melalui Sales Order. Evaluasi kekurangan saat pembentukan Sales Order menggunakan Available Stock, yang bukan Current Stock.
 
 ```text
 Pharmacy Queue Entry dan Resep Kerja atau Jual Bebas
@@ -82,13 +82,14 @@ Workflow berakhir ketika setiap medication demand yang dimappingkan ke Pharmacy 
 - Jumlah yang ditanggung BPJS dan dibayar Pasien secara campuran.
 - Payment Clearance, Coverage Clearance, dan Dispense Authorized.
 - Pharmacy Reserve (Stock Mutasi ke Dispensing Temporary Unit), Medication Preparation, pickup call, Final Dispense Review, verifikasi operasional Authorized Recipient, Patient Education, Medication Dispense, dan Medication Handover.
-- Penanganan kekurangan stok melalui Partial Sales Order atas item yang dapat dipenuhi dan Salinan Resep untuk item resep yang tidak dipenuhi.
+- Penanganan kekurangan stok melalui Partial Sales Order atas item yang dapat dipenuhi, dievaluasi terhadap Available Stock (bukan Current Stock), dan Salinan Resep untuk item resep yang tidak dipenuhi.
 - No-Show dan penyelesaian manual obat tidak diambil.
 
 ### 3.4 Tidak termasuk
 
 - Screen, field, tindakan save, dan navigasi operator; semuanya milik SOP.
-- Aturan saldo dan mutasi Inventory, termasuk eligibility return.
+- Aturan saldo dan mutasi Inventory, termasuk eligibility return. Current Stock tetap dimiliki Inventory.
+- Rumus perhitungan Available Stock; rumus itu dicadangkan untuk kegiatan desain inventory-planning di masa depan.
 - Pelaksanaan receipt dan settlement pembayaran.
 - Pembuatan SEP dan administrasi eligibility BPJS.
 - Tata kelola master data Fornas.
@@ -106,7 +107,7 @@ Workflow berakhir ketika setiap medication demand yang dimappingkan ke Pharmacy 
 | Pharmacist | Melakukan Telaah Resep, mengotorisasi Medication Substitution yang eligible sebelum Sales Order dibentuk, memverifikasi penerima secara operasional, melakukan Final Dispense Review, mencatat Patient Education Acknowledgement, dan mencatat Collection Window Override ketika Pickup Expired. Verifikasi penerima tidak ditegakkan sistem. | `Telaah Resep Completed`, `Final Dispense Review Completed`, `Patient Education Acknowledged`, `Collection Window Override Recorded`, atau Medication Handover diizinkan selesai. |
 | Cashier or Payment Authority | Menerima pembayaran Pasien yang diwajibkan dan memberikan Payment Clearance. | `Payment Clearance Established`. |
 | SEP and Fornas Authorities | Memberikan validitas SEP tingkat encounter dan coverage BPJS item-level. | `Coverage Clearance Established` untuk jumlah covered. |
-| Stock Ledger | Memiliki Stock Availability, Stock Mutasi, Remove Stock, dan riwayat pergerakan. | `Stock Transferred to Dispensing Temporary Unit`, `Stock Removed from Dispensing Temporary Unit`, atau `Stock Returned to Pharmacy Unit`. |
+| Stock Ledger | Memiliki Current Stock, Stock Mutasi, Remove Stock, dan riwayat pergerakan. Tidak memiliki Available Stock. | `Stock Transferred to Dispensing Temporary Unit`, `Stock Removed from Dispensing Temporary Unit`, atau `Stock Returned to Pharmacy Unit`. |
 | Tata Rekening | Memiliki Financial Responsibility dan konsekuensi finansial yang diperlukan ketika obat yang telah dibayar tidak dipenuhi atau diambil. | Credit Note, Refund, atau outcome komersial final lain diberikan. |
 | CPOE | Memiliki Resep Elektronik asli yang tidak diubah oleh Apotek. | Resep asli tersedia. |
 | Pharmacy Supervisor | Pharmacist yang berwenang menurut kebijakan operasional. Mengotorisasi retur, koreksi, override koleksi kedaluwarsa, dan exception dispensing lain. Penanganan exception berbasis authority; tidak ada ambang persetujuan moneter. | Outcome exception accountable dibentuk. |
@@ -258,7 +259,8 @@ Pharmacist, Staf Apotek, CPOE or Dokter Penulis Resep.
 - Resep Elektronik atau Resep Fisik yang dicatat.
 - Detail Jual Bebas bila berlaku.
 - Medication Catalog dan professional acceptance policy.
-- Stock Availability sebagai fakta fulfillment eksternal yang tidak menentukan clinical acceptance.
+- Current Stock sebagai fakta persediaan fisik Inventory yang tidak menentukan clinical acceptance.
+- Available Stock sebagai kuantitas perencanaan pemenuhan yang masih dapat dikomitmenkan ke Sales Order baru. Available Stock TIDAK BOLEH dianggap setara dengan Current Stock.
 
 #### Main Flow
 
@@ -284,13 +286,13 @@ Pharmacist, Staf Apotek, CPOE or Dokter Penulis Resep.
 | Iter belum terpakai tetapi Pharmacist menolak honor | Pharmacist | Tolak fulfillment; catat outcome accountable tanpa mengonsumsi Iter. |
 | Iter belum terpakai dihormati pada fulfillment | Pharmacist | Lanjutkan fulfillment; sistem mencatat konsumsi Iter. |
 | Partial resep atas permintaan Pasien | Staf Apotek | Bentuk Sales Order hanya dengan item terpilih; item dikecualikan tetap pada Resep; terbitkan Salinan Resep bila diperlukan. |
-| Partial resep karena Stock Shortage | Staf Apotek | Bentuk Sales Order hanya dengan item yang dapat dipenuhi; item tidak tersedia tetap pada Resep; terbitkan Salinan Resep bila diperlukan. |
+| Partial resep karena Stock Shortage | Staf Apotek | Bentuk Sales Order hanya dengan item yang dapat dipenuhi, menggunakan Available Stock (bukan Current Stock) untuk memutuskan apa yang masih dapat dikomitmenkan; item tidak tersedia tetap pada Resep; terbitkan Salinan Resep bila diperlukan. |
 | Review profesional diperlukan untuk partial path | Pharmacist | Setujui atau tolak keputusan fulfillment; sistem tidak mensubstitusi atau mengarahkan eksternal secara otomatis. |
 | Item Fornas Not Covered | Staf Apotek | Bentuk Patient-Pay Sales Order independen untuk item yang tidak dijamin; item Covered membentuk Sales Order BPJS. |
 
 #### Exception and Compensation Flows
 
-- Stock shortage setelah Sales Order dibentuk tidak mengubah Hasil Telaah Resep. Staf Apotek tidak boleh membuat Backorder atau memilih sumber stok alternatif. Jumlah yang tidak dapat dipenuhi memperoleh Unfulfilled Medication Outcome dan Salinan Resep bila berlaku.
+- Stock shortage setelah Sales Order dibentuk tidak mengubah Hasil Telaah Resep. Staf Apotek tidak boleh membuat Backorder atau memilih sumber stok alternatif. Jumlah yang tidak dapat dipenuhi memperoleh Unfulfilled Medication Outcome dan Salinan Resep bila berlaku. Kekurangan setelah pembentukan tidak diselesaikan dengan menyamakan Available Stock dengan Current Stock.
 - Partial Prescription Fulfillment sebelum Sales Order dibentuk hanya diizinkan untuk Patient Request, Stock Shortage, atau item Fornas Not Covered. Tidak ada alasan partialitas lain yang diakui.
 - Identitas obat pada Sales Order Item yang sudah dibentuk tidak boleh diubah. Jika penggantian diperlukan kemudian, batalkan item atau pesanan yang terdampak, telaah kembali Resep asli, lalu bentuk Sales Order Item baru tanpa mensyaratkan Resep perbaikan atau pengganti.
 - Accepted Quantity yang tidak dapat dipenuhi harus mempertahankan `Cancelled`, `Expired`, atau Unfulfilled Medication Outcome lain yang accountable. Apotek Rawat Jalan tidak menahan Backorder.
@@ -304,7 +306,7 @@ Pharmacist, Staf Apotek, CPOE or Dokter Penulis Resep.
 
 #### Domain References
 
-`BR-APT-001`–`BR-APT-019`, `BR-APT-029`–`BR-APT-034`, `BR-APT-050`, `BR-APT-054`, `BR-APT-061`, `BR-APT-068`, `BR-APT-083`, `BR-APT-086`, `BR-APT-089`, `BR-APT-105`–`BR-APT-124`; lifecycle Telaah Resep dan Sales Order.
+`BR-APT-001`–`BR-APT-019`, `BR-APT-029`–`BR-APT-034`, `BR-APT-050`, `BR-APT-054`, `BR-APT-061`, `BR-APT-068`, `BR-APT-083`, `BR-APT-086`, `BR-APT-089`, `BR-APT-105`–`BR-APT-124`, `BR-APT-146`; lifecycle Telaah Resep dan Sales Order.
 
 #### Domain Events
 
@@ -421,7 +423,7 @@ Patient or Caregiver, Staf Apotek, Pharmacist, Patient Tracker, SEP and Fornas A
 - Outpatient Queue Mapping.
 - Sales Order, jumlah Sales Order Item yang ditanggung, dan Dispensing.
 - SEP valid dan coverage Fornas item-level.
-- Outcome Stock Availability dan Pharmacy Reserve (Stock Mutasi ke Dispensing Temporary Unit).
+- Current Stock dan outcome Pharmacy Reserve (Stock Mutasi ke Dispensing Temporary Unit). Current Stock adalah persediaan fisik; bukan Available Stock.
 
 #### Main Flow
 
@@ -705,7 +707,7 @@ Pharmacy Supervisor, Staf Apotek, Inventory, Tata Rekening, Patient Tracker.
 | SEP authority | SEP valid | Apotek | Menilai coverage BPJS tingkat encounter; SEP saja tidak mengidentifikasi covered medication quantity. |
 | Fornas authority | Mapping coverage item-level | Apotek | Membentuk Coverage Clearance hanya bagi covered quantity yang berlaku bersama SEP valid. |
 | Cashier atau Payment authority | `Payment Clearance Established` | Apotek | Mengevaluasi Dispense Authorized dari evidence pembayaran; payment tidak membuktikan stok atau handover. |
-| Stock Ledger | Stock Availability dan `Stock Transferred to Dispensing Temporary Unit` | Apotek | Mencatat Mutasi dan Remove Stock hanya dari permintaan yang diotorisasi Pharmacy; fakta stok tidak menulis ulang Telaah Resep. |
+| Stock Ledger | Current Stock dan `Stock Transferred to Dispensing Temporary Unit` | Apotek | Mencatat Mutasi dan Remove Stock hanya dari permintaan yang diotorisasi Pharmacy; fakta Current Stock tidak menulis ulang Telaah Resep dan bukan Available Stock. |
 | Apotek | Permintaan handover, expiry, shortage, atau pengembalian No Show | Stock Ledger | Mencatat Remove Stock atau Mutasi pengembalian; Apotek tidak boleh menyimpulkan pergerakan stok tanpa outcome Stock Ledger. |
 | Apotek | Kebutuhan Financial Charge, Credit Note, atau Refund | Tata Rekening | Menyelesaikan Financial Responsibility dan konsekuensi settlement tanpa mengubah riwayat fulfillment. |
 

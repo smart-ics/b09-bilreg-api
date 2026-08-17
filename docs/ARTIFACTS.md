@@ -179,6 +179,7 @@
 | `docs/contexts/apotek/apotek-domain-id.md` | Domain Apotek — Pelayanan Obat Pasien |
 | `docs/contexts/apotek/apotek-domain.md` | Apotek Domain |
 | `docs/contexts/apotek/APOTEK-ARTIFACT-ALIGNMENT-REVIEW.md` | Apotek Artifact Alignment Review — Outpatient Pharmacy |
+| `docs/contexts/apotek/APOTEK-AVAILABLE-STOCK-CONCEPT-INTRODUCTION.md` | Apotek Available Stock concept introduction — Available Stock ≠ Current Stock |
 | `docs/contexts/apotek/APOTEK-TERMINOLOGY-ALIGNMENT-REPORT.md` | Apotek Terminology Alignment Report — Persistence-design vocabulary |
 | `docs/contexts/apotek/APOTEK-QUEUE-MAPPING-ALIGNMENT-REPORT.md` | Apotek Queue Mapping Alignment Report — Demand-source mapping target |
 | `docs/contexts/apotek/ALN-001-RESOLUTION-REPORT.md` | ALN-001 Resolution Report — OutpatientQueueMapping ownership alignment |
@@ -189,6 +190,7 @@
 | `docs/contexts/apotek/ALN-006-RESOLUTION-REPORT.md` | ALN-006 Resolution Report — Stock shortage timing alignment to BC-10 |
 | `docs/contexts/apotek/ALN-007-RESOLUTION-REPORT.md` | ALN-007 Resolution Report — Terminology cleanup and Dispensing naming alignment |
 | `docs/contexts/apotek/outpatient-apotek-persistence-design.md` | Outpatient Apotek Persistence Design |
+| `docs/contexts/apotek/outpatient-apotek-stock-shortage-sales-order-impact-analysis.md` | Impact analysis — moving Business Stock Shortage to Sales Order (investigation only) |
 | `docs/contexts/apotek/outpatient-apotek-repository-gap-analysis-report.md` | Outpatient Apotek Repository Gap Analysis |
 | `docs/contexts/apotek/outpatient-apotek-screen-and-aggregate-design.md` | Outpatient Apotek Screen and Aggregate Design |
 | `docs/contexts/apotek/outpatient-apotek-workflow-id.md` | Workflow Outpatient Apotek |

@@ -74,7 +74,8 @@ No Apotek bounded-context project, aggregate, DTO, DAL, repository, or SQL scrip
 | Financial Clearance / Fulfillment Clearance objects | BA-08 | No table |
 | Mapping-change history | `BR-APT-062` | No table |
 | Declined Jual Bebas | `BR-APT-089` | No row |
-| Stock quantity, Mutasi, Remove Stock | ADR-APT-002 | Stock Ledger only |
+| Stock quantity (Current Stock), Mutasi, Remove Stock | ADR-APT-002 | Stock Ledger only. Current Stock is physical inventory quantity. |
+| Available Stock | `BR-APT-146` | None. Fulfillment-planning concept; not an Apotek table or Stock Ledger stored balance. Formula undefined. |
 | Payment settlement, Tata Rekening lifecycle | Tata Rekening design | `ta_trs_billing` / `BILRG_TataRekening` only |
 | Original CPOE / legacy Resep intent | `BR-APT-002` | Source remains in its authority; Apotek stores a Resep Kerja copy |
 
@@ -122,7 +123,8 @@ Follow [DATABASE.md](../../DATABASE.md) and [feature-persistence-generation.md](
 | Store pharmacy progress on `BILRG_AntrianEntry.AntrianStatus` | **Invalid.** ADR-APT-001. Enum is only `Waiting`, `InService`, `Done`, `Withdrawn`. |
 | Use `AntrianEntry.ReffId` as queue mapping | **Invalid.** One column cannot associate multiple independent demands (`BR-APT-084`). |
 | Persist `TelaahModel` as `TelaahResep` | **Invalid.** Checklist semantics; no per-item accept/substitute/reject; no persistence. |
-| Treat Stock Ledger `Prepared` / No Show columns as required | **Invalid.** Those facts are Pharmacy-owned. Stock has quantity and movement only. |
+| Treat Stock Ledger `Prepared` / No Show columns as required | **Invalid.** Those facts are Pharmacy-owned. Stock has Current Stock quantity and movement only. |
+| Persist Available Stock as an Apotek or Stock Ledger quantity | **Invalid.** Available Stock is a fulfillment-planning concept, not a stored balance, and is not equivalent to Current Stock. Formula is undefined. |
 | Reuse `SaleIssueDu` for Outpatient Pharmacy handover | **Invalid (PD-02).** Use `DispenseIssue` for Medication Handover. `SaleIssueDu` remains the legacy DU path only. |
 
 ---
@@ -225,7 +227,7 @@ Unique business indexes (application-enforced and SQL unique where listed in §7
 | `BILRG_AntrianEntry` | Canonical queue identity `(AntrianId, NoUrut)` | Read status/timestamps; request `Serve` / `Done` / `Withdraw` through Tracker commands | Add pharmacy columns; store mapping in `ReffId`; write the table from Apotek DAL |
 | `BILRG_PasienTracker` / `BILRG_PasienTrackerEvent` | Journey evidence | Append `Apotek-Start` / `Apotek-Done` with queue identity as `ReffId` via Tracker port | Invent a second queue identity |
 | `BILRG_AdmServicePoint` and related kiosk/display tables | Shared queue platform | Seed a pharmacy service point | Copy Admission start-service/registration-complete semantics |
-| `BILRG_StokLokasi` / `BILRG_StokMutasi` | Stock quantity and journal | Call Stock Ledger transfer / remove-stock commands; store returned `StokMutasiId` as correlation | Insert/update Mutasi; store `Prepared` / No Show in stock tables |
+| `BILRG_StokLokasi` / `BILRG_StokMutasi` | Current Stock quantity and journal | Call Stock Ledger transfer / remove-stock commands; store returned `StokMutasiId` as correlation | Insert/update Mutasi; store `Prepared` / No Show / Available Stock in stock tables |
 | `tb_barang` / satuan / tipe barang | Medication catalog | Snapshot `BrgId`, name, satuan onto items | Treat catalog mutation as pharmacy history |
 | `FARPU_Fornas` | Item-level coverage catalog | Classify Covered / Not Covered at evaluation time; snapshot the outcome onto the Sales Order Item | Treat master presence as Coverage Clearance |
 | `ta_registrasi` | Fulfillment boundary | Store `RegId`; enforce one active SO per registration/payer path | Extend registration schema |
@@ -947,6 +949,7 @@ These items still constrain schema freeze. They are not permission to invent bus
 | ID | Item | Why it matters | Safe interim |
 |---|---|---|---|
 | PD-03 | Payment and SEP evidence identity formats | Column width decision for PaymentClearanceReff dan SepNo | `VARCHAR(26)` payment ref, `VARCHAR(50)` SEP; adapters parse |
+| PD-04 | Available Stock calculation formula | Must not be stored as a column while the formula is undefined | Evaluate at Sales Order establishment as a planning concept; do not persist Available Stock; do not equate to Current Stock |
 
 BC-12 (permission matrix) does not change tables.
 
@@ -961,7 +964,7 @@ Approve this persistence design only if all of the following are accepted:
 3. **Reuse.** Legacy DU and Kartu Periksa are not the new write model. Tracker `ReffId` is not the mapping store. Dispense Authorized is not a table.
 4. **Coexistence.** No dual-write to `tb_trs_dobill_umum`. Unified reporting is read-side.
 5. **Resep Kerja.** Pharmacy processes `BILRG_AptResepKerja`, not live CPOE/Resep rows. Revisions create tasks.
-6. **Stock.** Reserve (Mutasi Pharmacy Unit → DTU), handover (`DispenseIssue` from DTU), and No Show return (Mutasi DTU → Pharmacy Unit) are Integration Tasks to Stock Ledger. `Prepared` stays on Dispensing. `SaleIssueDu` is not used.
+6. **Stock.** Reserve (Mutasi Pharmacy Unit → DTU), handover (`DispenseIssue` from DTU), and No Show return (Mutasi DTU → Pharmacy Unit) are Integration Tasks to Stock Ledger. `Prepared` stays on Dispensing. `SaleIssueDu` is not used. Current Stock remains Stock Ledger quantity. Available Stock is not persisted.
 7. **Delivery.** BA-07 Integration Task table is the cross-context mechanism. Pattern matches existing outbound queues, with a stronger idempotency key.
 8. **Schema changes elsewhere** are limited to Stock Ledger `DispenseIssue` (PD-02), DTU location master, pharmacy service-point seed, and Collection Window parameter — not queue-status expansion.
 9. **Repository direction.** One repo per aggregate; Lab-style DTO/DAL/Repo; projections are queries; concurrency via `Version` on headers.

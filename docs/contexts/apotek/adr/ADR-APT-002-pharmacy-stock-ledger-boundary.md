@@ -18,13 +18,14 @@ Stock Ledger remains a pure stock authority. Pharmacy owns dispensing lifecycle 
 
 **Stock Ledger owns:**
 
-- Stock Quantity
+- Current Stock (physical inventory quantity)
 - Mutasi (Transfer)
 - Remove Stock
 - Stock Movement History
 
 **Stock Ledger does not own:**
 
+- Available Stock
 - Dispensing
 - `Prepared`
 - `Handed Over`
@@ -39,6 +40,8 @@ Stock Ledger remains a pure stock authority. Pharmacy owns dispensing lifecycle 
 - `Prepared`
 - `Handed Over`
 - No Show resolution
+
+Available Stock is a Pharmacy fulfillment-planning concept used during Sales Order establishment and shortage evaluation. It is not a stored Stock Ledger quantity and SHALL NOT be treated as equivalent to Current Stock. The calculation formula is reserved for a future inventory-planning design activity.
 
 ### Dispensing Temporary Unit
 
@@ -63,7 +66,8 @@ There is no separate inventory reservation operation. Pharmacy **Reserve** is im
 
 ## Rationale
 
-- Keeps Stock Ledger accountable for quantity and movement only.
+- Keeps Stock Ledger accountable for Current Stock quantity and movement only.
+- Distinguishes Current Stock (physical inventory) from Available Stock (quantity that can still be promised to a new Sales Order).
 - Avoids duplicate lifecycle state between Pharmacy and Inventory.
 - Reuses existing Stock Transfer (Mutasi) instead of inventing a separate reservation contract.
 - Aligns with stock-ledger coexistence architecture and BA-07 integration delivery.

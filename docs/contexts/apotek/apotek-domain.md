@@ -21,7 +21,7 @@ The business must ensure that:
 - the clinician's original Resep remains authoritative and traceable;
 - only professionally accepted medication demand enters a Sales Order;
 - Invoices may be formed from Sales Order Items independently of Dispensings formed from those same Sales Order Items;
-- billing, payment or coverage, stock availability, preparation, and handover remain distinct business facts;
+- billing, payment or coverage, Current Stock, Available Stock, preparation, and handover remain distinct business facts;
 - partial billing and partial fulfillment remain quantitatively accountable; and
 - every accepted quantity reaches an accountable fulfilled or unfulfilled outcome.
 
@@ -48,7 +48,7 @@ It relies on related contexts without taking over their authority:
 
 - CPOE or another clinical-order authority owns the original Resep and clinician intent;
 - Medication Catalog or formulary authority owns medication identity and formulary policy;
-- Inventory owns authoritative stock balances and stock movements;
+- Inventory owns Current Stock (authoritative physical inventory quantity) and stock movements. Available Stock is a Pharmacy fulfillment-planning concept and is not an Inventory stored balance;
 - Payment owns receipts and settlement evidence;
 - Tata Rekening owns registration-level Financial Responsibility, payer allocation, finalization, and settlement initiation;
 - Patient Tracker owns outpatient queue identity and lifecycle; and
@@ -94,7 +94,7 @@ A Resep does not become a Sales Order. A completed professional decision authori
 | Source Traceability | The accountable relationship from Medication Sale and dispensing outcomes back to their Sales Order, accepted demand, and original source. |
 | Telaah Resep | The Pharmacist's administrative, pharmaceutical, and clinical assessment of a Resep Kerja. |
 | Hasil Telaah Resep | The professional decision on a Resep: approved, partially approved, or rejected. Accepted medication is materialized as a Sales Order Item. |
-| Accepted Medication Item | A medication item professionally accepted for inclusion in a Sales Order, independently of current stock availability. |
+| Accepted Medication Item | A medication item professionally accepted for inclusion in a Sales Order, independently of Current Stock and Available Stock. |
 | Sales Order | The accepted medication demand owned by Pharmacy and used as the common source of Medication Sales and Dispensings. |
 | Sales Order Item | One accepted medication, quantity, instructions, and applicable commercial basis within a Sales Order. |
 | Accepted Quantity | The maximum quantity of a Sales Order Item available for accountable invoicing, physical fulfillment, and resolution. |
@@ -121,7 +121,9 @@ A Resep does not become a Sales Order. A completed professional decision authori
 | Dispensing Item | One medication quantity to be physically fulfilled within a Dispensing. It references exactly one Sales Order Item and carries the applicable care setting and Dispense Cycle. |
 | Dispense Cycle | A defined fulfillment period or batch, especially for inpatient and Unit Dose Dispensing. |
 | Unit Dose Dispensing | Fulfillment in patient-specific unit doses or defined administration periods. |
-| Stock Availability | Inventory's representation of quantity currently available to support fulfillment. |
+| Current Stock | The current physical inventory recorded by the inventory subsystem. Current Stock reflects physical inventory state and inventory movements. It answers: "How much inventory physically exists?" |
+| Available Stock | The quantity that can still be committed to a new Sales Order. Available Stock is a fulfillment-planning concept used during Sales Order establishment and shortage evaluation. It answers: "How much inventory can still be promised to a new order?" Available Stock SHALL NOT be considered equivalent to Current Stock. The calculation formula is intentionally undefined in this domain and is reserved for a future inventory-planning design activity. |
+| Stock Availability | Retired as a standalone quantity concept. Prefer Current Stock for physical inventory owned by the inventory subsystem, and Available Stock for fulfillment-planning quantity that can still be committed to a new Sales Order. Do not treat this phrase as equivalent to either term. |
 | Pharmacy Unit | The ordinary pharmacy Stock Location from which outpatient medication is issued into dispensing custody. |
 | Dispensing Temporary Unit | The pharmacy Stock Location that holds medication under active dispensing custody after Dispensing Started and before handover or No Show return. |
 | Pharmacy Reserve | Pharmacy-directed placement of stock for a Dispensing, implemented only as Stock Mutasi from Pharmacy Unit to Dispensing Temporary Unit. |
@@ -143,7 +145,7 @@ A Resep does not become a Sales Order. A completed professional decision authori
 | Partial Fulfillment | Fulfillment execution in which one Sales Order is fulfilled through multiple Dispensings, or less than the total Accepted Quantity of a Sales Order Item is fulfilled while another quantity remains unresolved or receives a different outcome. This is not Partial Prescription Fulfillment policy. |
 | Fulfillment Completion | The condition in which every Accepted Quantity has an accountable final outcome. |
 | Medication Administration | The clinical fact that medication was actually given to or consumed by the Patient; it is externally owned. |
-| Medication Shortage | Insufficient stock to fulfill an allocated medication quantity. |
+| Medication Shortage | Insufficient Available Stock to commit the intended quantity to a new Sales Order, or insufficient physical inventory to fulfill an already accepted quantity. Pre-establishment shortage evaluation uses Available Stock, not Current Stock. |
 | Stock Discrepancy | A difference between recorded and physical stock that affects fulfillment. |
 | Backorder | An unresolved quantity retained for later fulfillment when supply becomes available. Outpatient Pharmacy does not support Backorder. |
 | Medication Substitution | The accountable replacement of a requested medication product under applicable professional authority. |
@@ -152,7 +154,7 @@ A Resep does not become a Sales Order. A completed professional decision authori
 | Dispense Cancellation | The accountable ending of a Dispensing before successful fulfillment. |
 | Fulfillment Expiry | The ending of a fulfillment opportunity because its permitted service period elapsed. |
 | Medication Return | The accountable return of medication previously prepared, transferred, or handed over. |
-| Return to Stock | Inventory's authoritative acceptance of eligible returned medication into available stock. |
+| Return to Stock | Inventory's authoritative acceptance of eligible returned medication into Current Stock. |
 | No-Show | An outpatient outcome in which the Patient does not collect medication and an authorized uncollected-medication resolution is recorded. |
 | Collection Window | The configurable maximum days that prepared outpatient medication may remain awaiting pickup. Default is 7 days. The window starts when the Dispensing first becomes Ready for Pickup. |
 | Pickup Expired | The Serah Obat worklist category after the Collection Window elapses without Medication Handover. It is a projection category, not a Dispensing state. |
@@ -313,7 +315,9 @@ Represents Pharmacy Staff ending a Pharmacy Queue Entry that was not progressed 
 
 ### 5.13 Pharmacy and Stock Ledger boundary
 
-Pharmacy owns Sales Order, Dispensing, dispensing lifecycle, `Prepared`, `Handed Over`, and No Show resolution. Stock Ledger owns stock quantity, Mutasi, Remove Stock, and movement history only.
+Pharmacy owns Sales Order, Dispensing, dispensing lifecycle, `Prepared`, `Handed Over`, and No Show resolution. Stock Ledger owns Current Stock, Mutasi, Remove Stock, and movement history only.
+
+Available Stock is not Current Stock. Current Stock is the inventory subsystem's physical inventory quantity. Available Stock is Pharmacy's fulfillment-planning concept for the quantity that can still be committed to a new Sales Order. It is used during Sales Order establishment and shortage evaluation. Available Stock is not a Stock Ledger stored balance and SHALL NOT be treated as equivalent to Current Stock. The Available Stock calculation formula is not specified here and is reserved for a future inventory-planning design activity.
 
 Pharmacy Reserve is implemented only as Stock Mutasi from Pharmacy Unit to Dispensing Temporary Unit. Medication Handover requests Remove Stock from Dispensing Temporary Unit. No Show resolution requests Stock Mutasi from Dispensing Temporary Unit back to Pharmacy Unit. `Prepared` is a Dispensing state only and is not an Inventory state. Partial fulfillment semantics belong to Sales Order; one Sales Order may be fulfilled through multiple Dispensings.
 
@@ -353,7 +357,7 @@ The aggregate keeps the Resep Kerja source reference, per-item professional disp
 
 The aggregate owns Sales Order Items, accepted quantities, fulfilled quantities, unfulfilled outcomes, and overall resolution. It coordinates the commercial and fulfillment lifecycles and reconciles quantities recorded by Invoice Items and Dispensing Items that reference each Sales Order Item.
 
-It ensures that invoiced quantities and physical fulfillment remain traceable and do not exceed their applicable Sales Order Item authority. It does not own Invoice payment settlement, inventory balances, or physical dispensing execution.
+It ensures that invoiced quantities and physical fulfillment remain traceable and do not exceed their applicable Sales Order Item authority. It does not own Invoice payment settlement, Current Stock, Available Stock, or physical dispensing execution. During Sales Order establishment, fulfillable quantity is evaluated against Available Stock; that evaluation does not store Available Stock on the Sales Order and does not treat Current Stock as the promised quantity.
 
 ### 6.3 Medication Sale Aggregate
 
@@ -388,7 +392,7 @@ Outpatient Queue Mapping is an active relationship between an externally owned P
 - **BR-APT-005** — A Hasil Telaah Resep shall record a final decision for every reviewed Baris Resep. Clarification with the Dokter Penulis Resep occurs outside the system, is not recorded as a state or transaction, and the review remains `Under Review` until a decision is made.
 - **BR-APT-006** — A rejected Resep shall not establish a Sales Order.
 - **BR-APT-007** — A partially approved Resep may establish a Sales Order containing only Accepted Medication Items.
-- **BR-APT-008** — Clinical acceptance shall be independent of current Stock Availability; stock facts shall not rewrite professional eligibility.
+- **BR-APT-008** — Clinical acceptance shall be independent of Current Stock and Available Stock; stock facts shall not rewrite professional eligibility.
 - **BR-APT-009** — A Jual Bebas is a retail-style medication request originating outside the hospital care workflow. Pharmacy Staff shall accept or decline it without creating a Resep. Pharmacist consultation may occur operationally but is optional SOP guidance only and shall not be modeled as approval workflow, authority threshold, escalation, risk classification, domain state, or business-rule gate.
 
 ### 7.2 Sales Order
@@ -457,14 +461,14 @@ Outpatient Queue Mapping is an active relationship between an externally owned P
 - **BR-APT-055** — A No-Show shall be a Pharmacy-owned outpatient policy outcome, shall not be stored as an Inventory status, and shall not be imposed on inpatient Ward Delivery.
 - **BR-APT-108** — Partial Prescription Fulfillment is permitted only for Patient Request, Stock Shortage, and Fornas Not Covered items. No other reason is recognized by the system.
 - **BR-APT-109** — For Patient Request, Pharmacy Staff may establish a Sales Order containing only selected prescription items. Excluded prescription items remain unfulfilled on the originating Prescription. The system shall support Salinan Resep for unfulfilled items.
-- **BR-APT-110** — For Stock Shortage before Sales Order establishment, Pharmacy Staff may establish a Sales Order containing only fulfillable prescription items. Unavailable prescription items remain unfulfilled on the originating Prescription. The system shall support Salinan Resep for unfulfilled items. No outstanding fulfillment obligation, waiting demand, or backorder record shall be created.
+- **BR-APT-110** — For Stock Shortage before Sales Order establishment, Pharmacy Staff may establish a Sales Order containing only fulfillable prescription items. Fulfillable quantity is determined from Available Stock, not from Current Stock. Unavailable prescription items remain unfulfilled on the originating Prescription. The system shall support Salinan Resep for unfulfilled items. No outstanding fulfillment obligation, waiting demand, or backorder record shall be created.
 - **BR-APT-111** — The Pharmacist remains responsible for approving the resulting fulfillment decision when professional review is required. The system shall not automatically determine alternative substitutions or external fulfillment actions.
 - **BR-APT-112** — Partial Prescription Fulfillment partiality exists only between Prescription and Sales Order. Partiality does not exist between Sales Order and Dispensing.
 - **BR-APT-113** — A Sales Order fulfilled through one or more Dispensings is fulfillment execution and is not Partial Prescription Fulfillment policy.
 - **BR-APT-114** — Outpatient Pharmacy shall not support Backorder. A stock shortage shall not create an outstanding fulfillment obligation, waiting demand, or backorder record.
 - **BR-APT-115** — Outpatient stock shortage shall be resolved immediately through a Partial Sales Order of fulfillable items and Salinan Resep for unfulfilled prescription items. The Prescription Copy may be used by the Patient to obtain medication from another pharmacy.
 - **BR-APT-116** — When outpatient inventory is insufficient, only fulfillable prescription items may be included in the Sales Order. Unfulfillable items remain outside the Sales Order on the originating Prescription.
-- **BR-APT-117** — Outpatient Pharmacy shall not implement alternate stock source selection, fulfillment routing, inter-pharmacy sourcing, or backorder management. Inventory availability shall be evaluated against the currently available stock authority.
+- **BR-APT-117** — Outpatient Pharmacy shall not implement alternate stock source selection, fulfillment routing, inter-pharmacy sourcing, or backorder management. Quantity that may still be promised to a new Sales Order shall be evaluated as Available Stock. Available Stock SHALL NOT be treated as equivalent to Current Stock.
 - **BR-APT-118** — When an outpatient shortage is identified after Sales Order establishment or financial clearance, the unfulfillable quantity shall receive an accountable Unfulfilled Medication Outcome and Salinan Resep when applicable, plus Credit Note or Refund when commercial consequences exist. It shall not be backordered or routed to an alternate stock source.
 - **BR-APT-119** — Fornas validation shall classify prescription items as Covered or Not Covered.
 - **BR-APT-120** — Covered items shall follow the normal BPJS fulfillment workflow. Coverage evidence shall be sufficient for Dispense Authorized on those items.
@@ -493,6 +497,7 @@ Outpatient Queue Mapping is an active relationship between an externally owned P
 - **BR-APT-143** — A Pharmacy Queue Entry that has not progressed into the pharmacy workflow may be closed from the pre-service queue status. That status is Patient Tracker `Waiting`. TAKEN in this decision names that same pre-service participation and shall not be added as a Patient Tracker state.
 - **BR-APT-144** — Pharmacy Queue Close shall record a mandatory close reason, responsible Pharmacy Staff, and effective business time. Patient Tracker shall set the Queue Entry `Withdrawn`. No additional queue state shall be introduced.
 - **BR-APT-145** — Pharmacy Queue Close shall not record `ServedAt` or `DoneAt`, shall not assert `In Service` or `Done`, and shall not establish a Sales Order, Dispensing, or Medication Handover. After `Medication Preparation Started`, this close path shall not apply.
+- **BR-APT-146** — Available Stock represents the quantity that can still be committed to a new Sales Order. It is a fulfillment-planning concept used during Sales Order establishment and shortage evaluation. Current Stock represents the current physical inventory recorded by the inventory subsystem and reflects physical inventory state and inventory movements. Available Stock ≠ Current Stock. The Available Stock calculation formula is intentionally undefined in this domain and is reserved for a future inventory-planning design activity.
 
 ### 7.7 Completion and history
 
@@ -705,7 +710,7 @@ The pickup call is one trigger that completes the Patient Tracker queue (`In Ser
 | Medication Dispensed | An accountable medication quantity was supplied for the Patient. |
 | Medication Handed Over | Medication was transferred to the Patient or other recipient as determined operationally by the Pharmacist. |
 | Outpatient No-Show Recorded | A Patient did not collect medication within the applicable outpatient service limit. When the associated Queue Entry is still `In Service`, this resolution may complete the queue to `Done` and record `DoneAt`; when the Queue Entry is already `Done`, `DoneAt` is not reversed. |
-| Medication Shortage Identified | Available stock could not support the intended fulfillment quantity. |
+| Medication Shortage Identified | Available Stock could not support committing the intended quantity to a new Sales Order, or physical inventory could not support an already accepted fulfillment quantity. This event does not assert that Available Stock equals Current Stock. |
 | Medication Substitution Authorized | An accountable authority approved replacement of the requested medication. |
 | Dispensing Backordered | An unresolved quantity was retained for later fulfillment. Not used in Outpatient Pharmacy. |
 | Dispensing Cancelled | An authorized decision ended the Dispensing before completion. |

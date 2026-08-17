@@ -21,7 +21,7 @@ Bisnis harus memastikan bahwa:
 - Resep asli dari klinisi tetap menjadi rujukan utama dan dapat ditelusuri;
 - hanya permintaan obat yang telah diterima secara profesional yang masuk ke Sales Order;
 - Invoice dapat dibentuk dari Sales Order Item secara independen dari Dispensing yang juga dibentuk dari Sales Order Item tersebut;
-- penagihan, pembayaran atau penjaminan, ketersediaan stok, penyiapan, dan penyerahan tetap merupakan fakta bisnis yang berbeda;
+- penagihan, pembayaran atau penjaminan, Current Stock, Available Stock, penyiapan, dan penyerahan tetap merupakan fakta bisnis yang berbeda;
 - penagihan maupun pemenuhan sebagian tetap dapat dipertanggungjawabkan menurut jumlahnya; dan
 - setiap Accepted Quantity memiliki hasil pemenuhan atau ketidakpemenuhan yang dapat dipertanggungjawabkan.
 
@@ -48,7 +48,7 @@ Konteks ini bergantung pada konteks terkait tanpa mengambil alih kewenangannya:
 
 - CPOE atau otoritas instruksi klinis lain memiliki Resep asli dan maksud klinisi;
 - Medication Catalog atau otoritas formularium memiliki identitas obat dan kebijakan formularium;
-- Inventory memiliki saldo dan mutasi stok yang menjadi rujukan;
+- Inventory memiliki Current Stock (jumlah persediaan fisik yang menjadi rujukan) dan mutasi stok. Available Stock adalah konsep perencanaan pemenuhan milik Pharmacy dan bukan saldo tersimpan Inventory;
 - Payment memiliki bukti penerimaan dan penyelesaian pembayaran;
 - Tata Rekening memiliki Financial Responsibility tingkat registrasi, alokasi payer, finalization, dan settlement initiation;
 - Patient Tracker memiliki identitas dan lifecycle antrean Rawat Jalan; dan
@@ -94,7 +94,7 @@ Resep tidak berubah menjadi Sales Order. Keputusan profesional yang selesai meng
 | Source Traceability | Keterlacakan Sumber | Hubungan yang dapat dipertanggungjawabkan dari Medication Sale dan hasil dispensing kembali ke Sales Order, permintaan yang diterima, dan sumber aslinya. |
 | Telaah Resep | Telaah Resep | Penilaian administratif, farmasetik, dan klinis oleh Pharmacist terhadap Resep Kerja. |
 | Hasil Telaah Resep | Hasil Telaah Resep | Keputusan profesional atas resep: disetujui, disetujui sebagian, atau ditolak. Obat yang diterima diwujudkan sebagai Sales Order Item. |
-| Accepted Medication Item | Item Obat Diterima | Item obat yang diterima secara profesional untuk dimasukkan ke Sales Order, terlepas dari ketersediaan stok saat itu. |
+| Accepted Medication Item | Item Obat Diterima | Item obat yang diterima secara profesional untuk dimasukkan ke Sales Order, terlepas dari Current Stock dan Available Stock saat itu. |
 | Sales Order | Sales Order | Permintaan obat yang telah diterima dan dimiliki Farmasi sebagai sumber bersama Medication Sale dan Dispensing. |
 | Sales Order Item | Sales Order Item | Satu obat, jumlah, instruksi, dan dasar komersial yang berlaku dalam Sales Order. |
 | Accepted Quantity | Jumlah Diterima | Jumlah maksimum Sales Order Item yang tersedia untuk ditagihkan, dipenuhi secara fisik, dan diselesaikan secara accountable. |
@@ -121,7 +121,9 @@ Resep tidak berubah menjadi Sales Order. Keputusan profesional yang selesai meng
 | Dispensing Item | Item Dispensing | Satu jumlah obat yang harus dipenuhi secara fisik dalam Dispensing. Item ini mereferensikan tepat satu Sales Order Item serta memuat Care Setting dan Dispense Cycle yang berlaku. |
 | Dispense Cycle | Siklus Dispensing | Periode atau batch fulfillment yang ditentukan, terutama untuk Rawat Inap dan Unit Dose Dispensing. |
 | Unit Dose Dispensing | Dispensing Dosis Unit | Pemenuhan dalam dosis unit patient-specific atau periode pemberian yang ditentukan. |
-| Stock Availability | Ketersediaan Stok | Representasi Stock Ledger mengenai jumlah yang tersedia saat ini untuk mendukung fulfillment. |
+| Current Stock | Stok Saat Ini | Jumlah persediaan fisik saat ini yang dicatat oleh subsistem inventory. Current Stock mencerminkan keadaan persediaan fisik dan mutasi stok. Menjawab: "Berapa banyak persediaan yang secara fisik ada?" |
+| Available Stock | Stok Dapat Dijanjikan | Jumlah yang masih dapat dikomitmenkan ke Sales Order baru. Available Stock adalah konsep perencanaan pemenuhan yang digunakan saat pembentukan Sales Order dan evaluasi kekurangan. Menjawab: "Berapa banyak persediaan yang masih dapat dijanjikan ke pesanan baru?" Available Stock TIDAK BOLEH dianggap setara dengan Current Stock. Rumus perhitungan sengaja tidak ditetapkan dalam domain ini dan dicadangkan untuk kegiatan desain inventory-planning di masa depan. |
+| Stock Availability | Ketersediaan Stok | Istilah payung yang tidak lagi dipakai sebagai konsep kuantitas mandiri. Gunakan Current Stock untuk persediaan fisik milik subsistem inventory, dan Available Stock untuk kuantitas perencanaan pemenuhan yang masih dapat dikomitmenkan ke Sales Order baru. Jangan memperlakukan frasa ini sebagai setara dengan salah satu istilah tersebut. |
 | Pharmacy Unit | Unit Farmasi | Lokasi stok farmasi biasa dari mana obat Rawat Jalan dipindahkan ke Dispensing Temporary Unit. |
 | Dispensing Temporary Unit | Unit Sementara Dispensing | Lokasi stok farmasi yang menahan obat dalam custody dispensing aktif setelah Dispensing Started dan sebelum handover atau pengembalian No Show. |
 | Pharmacy Reserve | Cadangan Farmasi | Penempatan stok atas arahan Pharmacy untuk Dispensing, diimplementasikan hanya sebagai Stock Mutasi dari Pharmacy Unit ke Dispensing Temporary Unit. Tidak ada kontrak `ReserveStock` terpisah. |
@@ -143,7 +145,7 @@ Resep tidak berubah menjadi Sales Order. Keputusan profesional yang selesai meng
 | Partial Fulfillment | Pemenuhan Sebagian | Eksekusi fulfillment ketika satu Sales Order dipenuhi melalui beberapa Dispensing, atau kurang dari total Accepted Quantity Sales Order Item dipenuhi sementara jumlah lain unresolved atau memperoleh outcome berbeda. Ini bukan kebijakan Partial Prescription Fulfillment. |
 | Fulfillment Completion | Penyelesaian Pemenuhan | Kondisi ketika setiap Accepted Quantity telah memiliki outcome final yang accountable. |
 | Medication Administration | Pemberian Obat kepada Pasien | Fakta klinis bahwa obat benar-benar diberikan kepada atau dikonsumsi Pasien; dimiliki context eksternal. |
-| Medication Shortage | Kekurangan Stok Obat | Stok tidak cukup untuk memenuhi jumlah obat yang dialokasikan. |
+| Medication Shortage | Kekurangan Stok Obat | Available Stock tidak cukup untuk mengomitmenkan jumlah yang dimaksud ke Sales Order baru, atau persediaan fisik tidak cukup untuk memenuhi jumlah yang sudah diterima. Evaluasi kekurangan sebelum pembentukan Sales Order menggunakan Available Stock, bukan Current Stock. |
 | Stock Discrepancy | Selisih Stok | Perbedaan antara stok tercatat dan stok fisik yang memengaruhi fulfillment. |
 | Backorder | Pemenuhan Tertunda | Jumlah unresolved yang dipertahankan untuk dipenuhi kemudian saat supply tersedia. Apotek Rawat Jalan tidak mendukung Backorder. |
 | Medication Substitution | Substitusi Obat | Penggantian accountable atas produk obat yang diminta berdasarkan authority profesional yang berlaku. |
@@ -152,7 +154,7 @@ Resep tidak berubah menjadi Sales Order. Keputusan profesional yang selesai meng
 | Dispense Cancellation | Pembatalan Dispensing | Pengakhiran accountable suatu Dispensing sebelum fulfillment berhasil. |
 | Fulfillment Expiry | Berakhirnya Pemenuhan | Berakhirnya kesempatan fulfillment karena periode layanan yang diizinkan telah lewat. |
 | Medication Return | Retur Obat | Pengembalian accountable atas obat yang sebelumnya disiapkan, dipindahkan, atau diserahkan. |
-| Return to Stock | Pengembalian ke Stok | Penerimaan authoritative oleh Inventory atas obat retur yang eligible menjadi stok tersedia. |
+| Return to Stock | Pengembalian ke Stok | Penerimaan authoritative oleh Inventory atas obat retur yang eligible menjadi Current Stock. |
 | No-Show | Pasien Tidak Hadir | Outcome Rawat Jalan ketika Pasien tidak mengambil obat dan penyelesaian obat tidak diambil yang diotorisasi dicatat. |
 | Collection Window | Jendela Pengambilan | Jumlah hari maksimum yang dapat dikonfigurasi bagi obat siap ambil. Default 7 hari. Jendela dimulai ketika Dispensing pertama kali menjadi Ready for Pickup. |
 | Pickup Expired | Pengambilan Kedaluwarsa | Kategori worklist Serah Obat setelah Collection Window habis tanpa Medication Handover. Ini kategori projection, bukan state Dispensing. |
@@ -340,7 +342,9 @@ Merepresentasikan Staf Apotek mengakhiri Pharmacy Queue Entry yang belum masuk a
 
 ### 5.14 Batas Pharmacy dan Stock Ledger
 
-Pharmacy memiliki Sales Order, Dispensing, lifecycle dispensing, `Prepared`, `Handed Over`, dan penyelesaian No Show. Stock Ledger memiliki jumlah stok, Mutasi, Remove Stock, dan riwayat pergerakan saja.
+Pharmacy memiliki Sales Order, Dispensing, lifecycle dispensing, `Prepared`, `Handed Over`, dan penyelesaian No Show. Stock Ledger memiliki Current Stock, Mutasi, Remove Stock, dan riwayat pergerakan saja.
+
+Available Stock bukan Current Stock. Current Stock adalah jumlah persediaan fisik milik subsistem inventory. Available Stock adalah konsep perencanaan pemenuhan Pharmacy untuk jumlah yang masih dapat dikomitmenkan ke Sales Order baru. Konsep ini digunakan saat pembentukan Sales Order dan evaluasi kekurangan. Available Stock bukan saldo tersimpan Stock Ledger dan TIDAK BOLEH dianggap setara dengan Current Stock. Rumus perhitungan Available Stock tidak ditetapkan di sini dan dicadangkan untuk kegiatan desain inventory-planning di masa depan.
 
 Pharmacy Reserve diimplementasikan hanya sebagai Stock Mutasi dari Pharmacy Unit ke Dispensing Temporary Unit. Medication Handover meminta Remove Stock dari Dispensing Temporary Unit. Penyelesaian No Show meminta Stock Mutasi dari Dispensing Temporary Unit kembali ke Pharmacy Unit. `Prepared` adalah state Dispensing saja dan bukan state Inventory.
 
@@ -378,7 +382,7 @@ Aggregate menjaga referensi sumber Resep Kerja, professional disposition per ite
 
 Aggregate memiliki Sales Order Item, Accepted Quantity, Fulfilled Quantity, unfulfilled outcome, dan overall resolution. Aggregate mengoordinasikan lifecycle komersial dan pemenuhan serta merekonsiliasi jumlah dalam Invoice Item dan Dispensing Item yang mereferensikan setiap Sales Order Item.
 
-Aggregate memastikan jumlah yang ditagihkan dan pemenuhan fisik tetap dapat ditelusuri serta tidak melebihi kewenangan Sales Order Item yang berlaku. Aggregate tidak memiliki payment settlement Invoice, saldo Inventory, atau pelaksanaan physical dispensing.
+Aggregate memastikan jumlah yang ditagihkan dan pemenuhan fisik tetap dapat ditelusuri serta tidak melebihi kewenangan Sales Order Item yang berlaku. Aggregate tidak memiliki payment settlement Invoice, Current Stock, Available Stock, atau pelaksanaan physical dispensing. Saat pembentukan Sales Order, jumlah yang dapat dipenuhi dievaluasi terhadap Available Stock; evaluasi itu tidak menyimpan Available Stock pada Sales Order dan tidak memperlakukan Current Stock sebagai jumlah yang dijanjikan.
 
 ### 6.3 Medication Sale Aggregate
 
@@ -413,7 +417,7 @@ Outpatient Queue Mapping merupakan mapping aktif antara Pharmacy Queue Entry yan
 - **BR-APT-005** — Hasil Telaah Resep harus mencatat keputusan akhir untuk setiap Baris Resep yang ditelaah. Klarifikasi kepada Dokter Penulis Resep berlangsung di luar sistem, tidak dicatat sebagai status atau transaksi, dan telaah tetap `Under Review` sampai keputusan dibuat.
 - **BR-APT-006** — Resep yang rejected tidak boleh membentuk Sales Order.
 - **BR-APT-007** — Resep yang partially approved dapat membentuk Sales Order yang hanya berisi Accepted Medication Item.
-- **BR-APT-008** — Penerimaan klinis harus independen dari Stock Availability saat itu; fakta stok tidak boleh menulis ulang professional eligibility.
+- **BR-APT-008** — Penerimaan klinis harus independen dari Current Stock dan Available Stock saat itu; fakta stok tidak boleh menulis ulang professional eligibility.
 - **BR-APT-009** — Jual Bebas adalah permintaan obat gaya ritel yang berasal di luar alur perawatan rumah sakit. Staf Apotek harus menerima atau menolaknya tanpa membentuk Resep. Konsultasi Pharmacist dapat terjadi secara operasional tetapi hanya panduan SOP opsional dan tidak boleh dimodelkan sebagai approval workflow, authority threshold, escalation, risk classification, domain state, atau business-rule gate.
 
 ### 7.2 Sales Order
@@ -482,14 +486,14 @@ Outpatient Queue Mapping merupakan mapping aktif antara Pharmacy Queue Entry yan
 - **BR-APT-055** — No-Show harus menjadi outcome kebijakan Rawat Jalan dan tidak boleh diterapkan pada Ward Delivery Rawat Inap.
 - **BR-APT-108** — Partial Prescription Fulfillment hanya diizinkan untuk Patient Request, Stock Shortage, dan item Fornas Not Covered. Tidak ada alasan lain yang diakui sistem.
 - **BR-APT-109** — Untuk Patient Request, Staf Apotek dapat membentuk Sales Order yang hanya berisi item resep yang dipilih. Item resep yang dikecualikan tetap unfulfilled pada Resep asal. Sistem harus mendukung Salinan Resep untuk item yang tidak dipenuhi.
-- **BR-APT-110** — Untuk Stock Shortage sebelum Sales Order dibentuk, Staf Apotek dapat membentuk Sales Order yang hanya berisi item resep yang dapat dipenuhi. Item yang tidak tersedia tetap unfulfilled pada Resep asal. Sistem harus mendukung Salinan Resep untuk item yang tidak dipenuhi. Tidak boleh dibentuk outstanding fulfillment obligation, waiting demand, atau backorder record.
+- **BR-APT-110** — Untuk Stock Shortage sebelum Sales Order dibentuk, Staf Apotek dapat membentuk Sales Order yang hanya berisi item resep yang dapat dipenuhi. Jumlah yang dapat dipenuhi ditentukan dari Available Stock, bukan dari Current Stock. Item yang tidak tersedia tetap unfulfilled pada Resep asal. Sistem harus mendukung Salinan Resep untuk item yang tidak dipenuhi. Tidak boleh dibentuk outstanding fulfillment obligation, waiting demand, atau backorder record.
 - **BR-APT-111** — Pharmacist tetap bertanggung jawab menyetujui keputusan fulfillment yang dihasilkan ketika review profesional diperlukan. Sistem tidak menentukan substitusi alternatif atau tindakan fulfillment eksternal secara otomatis.
 - **BR-APT-112** — Partialitas Partial Prescription Fulfillment hanya ada antara Prescription dan Sales Order. Partialitas tidak ada antara Sales Order dan Dispensing.
 - **BR-APT-113** — Sales Order yang dipenuhi melalui satu atau lebih Dispensing adalah eksekusi fulfillment dan bukan kebijakan Partial Prescription Fulfillment.
 - **BR-APT-114** — Apotek Rawat Jalan tidak mendukung Backorder. Kekurangan stok tidak boleh membentuk outstanding fulfillment obligation, waiting demand, atau backorder record.
 - **BR-APT-115** — Kekurangan stok Rawat Jalan harus diselesaikan segera melalui Partial Sales Order atas item yang dapat dipenuhi dan Salinan Resep untuk item resep yang tidak dipenuhi. Salinan Resep dapat digunakan Pasien untuk memperoleh obat dari apotek lain.
 - **BR-APT-116** — Ketika persediaan Rawat Jalan tidak cukup, hanya item resep yang dapat dipenuhi yang boleh masuk Sales Order. Baris yang tidak dapat dipenuhi tetap di luar Sales Order pada Resep asal.
-- **BR-APT-117** — Apotek Rawat Jalan tidak mengimplementasikan pemilihan sumber stok alternatif, fulfillment routing, inter-pharmacy sourcing, atau backorder management. Ketersediaan stok dievaluasi terhadap otoritas stok yang sedang tersedia.
+- **BR-APT-117** — Apotek Rawat Jalan tidak mengimplementasikan pemilihan sumber stok alternatif, fulfillment routing, inter-pharmacy sourcing, atau backorder management. Jumlah yang masih dapat dijanjikan ke Sales Order baru dievaluasi sebagai Available Stock. Available Stock TIDAK BOLEH dianggap setara dengan Current Stock.
 - **BR-APT-118** — Ketika kekurangan stok Rawat Jalan teridentifikasi setelah Sales Order dibentuk atau financial clearance, jumlah yang tidak dapat dipenuhi harus memperoleh Unfulfilled Medication Outcome yang accountable dan Salinan Resep bila berlaku, plus Credit Note atau Refund ketika ada konsekuensi komersial. Jumlah tersebut tidak boleh di-backorder atau diarahkan ke sumber stok alternatif.
 - **BR-APT-119** — Validasi Fornas harus mengklasifikasikan item resep sebagai Covered atau Not Covered.
 - **BR-APT-120** — Item Covered harus mengikuti workflow fulfillment BPJS normal. Evidence coverage cukup untuk Dispense Authorized pada item tersebut.
@@ -518,6 +522,7 @@ Outpatient Queue Mapping merupakan mapping aktif antara Pharmacy Queue Entry yan
 - **BR-APT-143** — Pharmacy Queue Entry yang belum masuk alur pelayanan obat boleh ditutup dari status antrean pra-layanan. Status itu adalah Patient Tracker `Waiting`. TAKEN dalam keputusan ini menamai partisipasi pra-layanan yang sama dan tidak boleh ditambahkan sebagai state Patient Tracker.
 - **BR-APT-144** — Pharmacy Queue Close harus mencatat alasan penutupan wajib, Staf Apotek penanggung jawab, dan effective business time. Patient Tracker harus menetapkan Queue Entry `Withdrawn`. State antrean tambahan tidak boleh diperkenalkan.
 - **BR-APT-145** — Pharmacy Queue Close tidak boleh mencatat `ServedAt` atau `DoneAt`, tidak boleh menyatakan `In Service` atau `Done`, dan tidak boleh membentuk Sales Order, Dispensing, atau Medication Handover. Setelah `Medication Preparation Started`, jalur penutupan ini tidak berlaku.
+- **BR-APT-146** — Available Stock merepresentasikan jumlah yang masih dapat dikomitmenkan ke Sales Order baru. Ini adalah konsep perencanaan pemenuhan yang digunakan saat pembentukan Sales Order dan evaluasi kekurangan. Current Stock merepresentasikan persediaan fisik saat ini yang dicatat oleh subsistem inventory dan mencerminkan keadaan persediaan fisik serta mutasi stok. Available Stock ≠ Current Stock. Rumus perhitungan Available Stock sengaja tidak ditetapkan dalam domain ini dan dicadangkan untuk kegiatan desain inventory-planning di masa depan.
 
 ### 7.7 Completion dan history
 
@@ -727,7 +732,7 @@ Pickup call adalah salah satu pemicu yang menyelesaikan antrean Patient Tracker 
 | Medication Dispensed | Sejumlah obat disediakan secara accountable untuk Pasien. |
 | Medication Handed Over | Obat dipindahkan kepada Pasien atau penerima lain sebagaimana ditentukan secara operasional oleh Pharmacist. |
 | Outpatient No-Show Recorded | Pasien tidak mengambil obat dalam batas layanan Rawat Jalan yang berlaku. Ketika Queue Entry terkait masih `In Service`, resolusi ini boleh menyelesaikan antrean menjadi `Done` dan mencatat `DoneAt`; ketika Queue Entry sudah `Done`, `DoneAt` tidak dibalik. |
-| Medication Shortage Identified | Stok tersedia tidak dapat mendukung jumlah fulfillment yang dimaksud. |
+| Medication Shortage Identified | Available Stock tidak dapat mendukung komitmen jumlah yang dimaksud ke Sales Order baru, atau persediaan fisik tidak dapat mendukung jumlah fulfillment yang sudah diterima. Event ini tidak menyatakan bahwa Available Stock sama dengan Current Stock. |
 | Medication Substitution Authorized | Authority yang accountable menyetujui penggantian obat yang diminta. |
 | Dispensing Backordered | Jumlah unresolved dipertahankan untuk fulfillment kemudian. Tidak digunakan di Apotek Rawat Jalan. |
 | Dispensing Cancelled | Keputusan berwenang mengakhiri Dispensing sebelum completion. |
