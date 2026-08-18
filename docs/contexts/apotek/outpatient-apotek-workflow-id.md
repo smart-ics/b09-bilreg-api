@@ -108,7 +108,7 @@ Workflow berakhir ketika setiap medication demand yang dimappingkan ke Pharmacy 
 | Cashier or Payment Authority | Menerima pembayaran Pasien yang diwajibkan dan memberikan Payment Clearance. | `Payment Clearance Established`. |
 | SEP and Fornas Authorities | Memberikan validitas SEP tingkat encounter dan coverage BPJS item-level. | `Coverage Clearance Established` untuk jumlah covered. |
 | Stock Ledger | Memiliki Current Stock, Stock Mutasi, Remove Stock, dan riwayat pergerakan. Tidak memiliki Available Stock. | `Stock Transferred to Dispensing Temporary Unit`, `Stock Removed from Dispensing Temporary Unit`, atau `Stock Returned to Pharmacy Unit`. |
-| Tata Rekening | Memiliki Financial Responsibility dan konsekuensi finansial yang diperlukan ketika obat yang telah dibayar tidak dipenuhi atau diambil. | Credit Note, Refund, atau outcome komersial final lain diberikan. |
+| Tata Rekening | Memiliki Financial Responsibility dan izin finansial yang menentukan apakah Apotek masih boleh merevisi Invoice. Ketika perubahan tidak lagi diizinkan, memberikan Credit Note, Refund, Financial Adjustment, atau outcome pengecualian lain. | Revisi Invoice diizinkan, atau outcome komersial pengecualian diberikan. |
 | CPOE | Memiliki Resep Elektronik asli yang tidak diubah oleh Apotek. | Resep asli tersedia. |
 | Pharmacy Supervisor | Pharmacist yang berwenang menurut kebijakan operasional. Mengotorisasi retur, koreksi, override koleksi kedaluwarsa, dan exception dispensing lain. Penanganan exception berbasis authority; tidak ada ambang persetujuan moneter. | Outcome exception accountable dibentuk. |
 
@@ -373,10 +373,10 @@ Patient or Caregiver, Staf Apotek, Cashier or Payment Authority, Staf Apotek, Ph
 
 #### Exception and Compensation Flows
 
-- Jika pembayaran tidak selesai setelah Invoice dibentuk, Medication Preparation tetap terblokir. Invoice hanya dapat `Cancelled` selama lifecycle mengizinkan.
-- Jika Invoice issued atau financially cleared memerlukan koreksi, gunakan Financial Adjustment, Credit Note, atau Refund berdasarkan authority Tata Rekening; jangan menggantinya diam-diam.
-- Jika shortage terjadi setelah pembayaran, Staf Apotek tidak boleh membuat Backorder atau memilih sumber stok alternatif. Jumlah yang tidak dapat dipenuhi memperoleh Unfulfilled Medication Outcome dan Salinan Resep bila berlaku, plus Credit Note atau Refund berdasarkan authority Tata Rekening. Substitution dilarang karena Sales Order telah tersedia.
-- Jika fulfillment tidak dapat selesai, jumlah terdampak memperoleh Unfulfilled Medication Outcome yang accountable dan Tata Rekening menerima konsekuensi finansial yang diperlukan.
+- Jika pembayaran tidak selesai setelah Invoice dibentuk, Medication Preparation tetap terblokir. Invoice hanya dapat `Cancelled` selama lifecycle dan izin Tata Rekening keduanya mengizinkan.
+- Jika Invoice memerlukan koreksi, revisi Invoice yang sama selama Tata Rekening masih mengizinkan perubahan. Ketika Tata Rekening tidak lagi mengizinkan revisi, gunakan Financial Adjustment, Credit Note, atau Refund berdasarkan authority Tata Rekening. Jangan mengganti riwayat Invoice diam-diam tanpa izin dan akuntabilitas tersebut.
+- Jika shortage terjadi setelah pembayaran, Staf Apotek tidak boleh membuat Backorder atau memilih sumber stok alternatif. Jumlah yang tidak dapat dipenuhi memperoleh Unfulfilled Medication Outcome dan Salinan Resep bila berlaku. Konsekuensi komersial mengikuti `BR-APT-027`. Substitution dilarang karena Sales Order telah tersedia.
+- Jika fulfillment tidak dapat selesai, jumlah terdampak memperoleh Unfulfilled Medication Outcome yang accountable dan konsekuensi komersial mengikuti `BR-APT-027`.
 - Final Dispense Review yang gagal menambahkan catatan review immutable berisi alasan, Pharmacist penanggung jawab, waktu bisnis efektif, dan jumlah terdampak; mengembalikan Dispensing dari `Prepared` ke `Preparing`; serta mencegah Medication Handover. Setelah koreksi selesai, Dispensing kembali ke `Prepared` dan harus menjalani Final Dispense Review baru.
 
 #### Outcomes and Postconditions
@@ -393,7 +393,7 @@ Patient or Caregiver, Staf Apotek, Cashier or Payment Authority, Staf Apotek, Ph
 #### Domain Events
 
 - Dikonsumsi: `Outpatient Queue Mapped`, `Payment Clearance Established`, `Stock Transferred to Dispensing Temporary Unit`.
-- Dihasilkan atau diamati: `Invoice Established`, `Invoice Issued`, `Dispense Authorized Evaluated`, `Medication Preparation Started`, `Pharmacy Service Started`, `Medication Prepared`, `Patient Called for Pickup`, `Queue Service Started`, `Queue Service Completed`, `Final Dispense Review Completed`, `Final Dispense Review Failed`, `Medication Dispensed`, `Medication Handed Over`, `Sales Order Resolved`.
+- Dihasilkan atau diamati: `Invoice Established`, `Invoice Issued`, `Invoice Revised`, `Dispense Authorized Evaluated`, `Medication Preparation Started`, `Pharmacy Service Started`, `Medication Prepared`, `Patient Called for Pickup`, `Queue Service Started`, `Queue Service Completed`, `Final Dispense Review Completed`, `Final Dispense Review Failed`, `Medication Dispensed`, `Medication Handed Over`, `Sales Order Resolved`.
 
 ### WF-APT-RJ-004 — Fulfill Medication for a BPJS Patient
 
@@ -455,7 +455,7 @@ Patient or Caregiver, Staf Apotek, Pharmacist, Patient Tracker, SEP and Fornas A
 #### Exception and Compensation Flows
 
 - No-Show BPJS sebelum Medication Handover tidak membentuk Invoice dan tidak memerlukan pembatalan Invoice.
-- Shortage setelah Sales Order dibentuk tidak mengizinkan Backorder, sumber stok alternatif, atau substitution. Jumlah yang tidak dapat dipenuhi memperoleh Unfulfilled Medication Outcome dan Salinan Resep bila berlaku.
+- Shortage setelah Sales Order dibentuk tidak mengizinkan Backorder, sumber stok alternatif, atau substitution. Jumlah yang tidak dapat dipenuhi memperoleh Unfulfilled Medication Outcome dan Salinan Resep bila berlaku. Jika Invoice BPJS sudah ada, konsekuensi komersial mengikuti `BR-APT-027`.
 - Final Dispense Review yang gagal menambahkan catatan review immutable, mengembalikan Dispensing dari `Prepared` ke `Preparing`, serta mencegah pembentukan Invoice BPJS dan Medication Handover. Koreksi mengembalikan order ke `Prepared` dan mewajibkan review baru.
 - Pharmacy meminta Stock Mutasi dari Dispensing Temporary Unit kembali ke Pharmacy Unit untuk jumlah yang eligible.
 
@@ -530,7 +530,7 @@ Patient or Caregiver, Staf Apotek, Cashier or Payment Authority, Pharmacist, Pat
 
 #### Exception and Compensation Flows
 
-- Invoice Pasien Umum yang telah dibentuk mengikuti aturan cancellation dan correction Pasien Umum; Invoice BPJS tetap belum ada sampai handover Sales Order BPJS.
+- Invoice Pasien Umum yang telah dibentuk mengikuti `BR-APT-027`; Invoice BPJS tetap belum ada sampai handover Sales Order BPJS.
 - No-Show setelah pembayaran mengikuti jalur komersial paid General Patient sedangkan Invoice BPJS yang belum ada mengikuti jalur BPJS uninvoiced.
 - Setiap Sales Order mempertahankan konsekuensi komersial dan fulfillment independen.
 - Substitution dilarang setelah Sales Order dibentuk.
@@ -666,7 +666,7 @@ Pharmacy Supervisor, Staf Apotek, Inventory, Tata Rekening, Patient Tracker.
 | Kondisi payer | Outcome komersial |
 |---|---|
 | Invoice BPJS belum dibentuk karena handover gagal | Jangan membentuk atau membatalkan invoice; selesaikan fulfillment dan Inventory saja, lalu resolve Sales Order ketika seluruh outcome final. |
-| Invoice Pasien Umum telah dibayar | Tata Rekening atau financial authority yang bertanggung jawab memberikan Credit Note, Refund, atau outcome final lain; Sales Order tetap `Active` sampai saat itu. |
+| Invoice Pasien Umum telah dibayar | Konsekuensi komersial mengikuti `BR-APT-027`: revisi Invoice selama Tata Rekening masih mengizinkan perubahan; bila tidak, Credit Note, Refund, atau outcome pengecualian lain. Sales Order tetap `Active` sampai konsekuensi komersial itu diselesaikan. |
 | Usulan Pasien Umum ditolak sebelum invoice dibentuk | Invoice tidak tersedia; selesaikan jumlah Pharmacy Reserve yang tidak digunakan melalui Stock Mutasi dan commercially unallocated quantity. |
 | Mixed coverage | Selesaikan konsekuensi jumlah yang ditanggung tetapi belum ditagihkan dan jumlah yang dibayar Pasien secara terpisah melalui hubungan Sales Order Item dan Invoice Item masing-masing. |
 
@@ -691,7 +691,7 @@ Pharmacy Supervisor, Staf Apotek, Inventory, Tata Rekening, Patient Tracker.
 #### Domain Events
 
 - Dikonsumsi: `Patient Called for Pickup` jika pickup call sudah terjadi, `Medication Prepared`.
-- Dihasilkan atau diamati: `Outpatient No-Show Recorded`, `Queue Service Completed` ketika workflow ini menyelesaikan Queue Entry yang masih `In Service`, `Dispensing Expired`, `Unfulfilled Medication Recorded`, `Medication Returned`, `Invoice Credited`, `Refund Required`, `Sales Order Resolved` ketika seluruhnya direkonsiliasi.
+- Dihasilkan atau diamati: `Outpatient No-Show Recorded`, `Queue Service Completed` ketika workflow ini menyelesaikan Queue Entry yang masih `In Service`, `Dispensing Expired`, `Unfulfilled Medication Recorded`, `Medication Returned`, `Invoice Revised`, `Invoice Credited`, `Refund Required`, `Sales Order Resolved` ketika seluruhnya direkonsiliasi.
 
 ## 8. Handoff Lintas Context
 
@@ -709,7 +709,7 @@ Pharmacy Supervisor, Staf Apotek, Inventory, Tata Rekening, Patient Tracker.
 | Cashier atau Payment authority | `Payment Clearance Established` | Apotek | Mengevaluasi Dispense Authorized dari evidence pembayaran; payment tidak membuktikan stok atau handover. |
 | Stock Ledger | Current Stock dan `Stock Transferred to Dispensing Temporary Unit` | Apotek | Mencatat Mutasi dan Remove Stock hanya dari permintaan yang diotorisasi Pharmacy; fakta Current Stock tidak menulis ulang Telaah Resep dan bukan Available Stock. |
 | Apotek | Permintaan handover, expiry, shortage, atau pengembalian No Show | Stock Ledger | Mencatat Remove Stock atau Mutasi pengembalian; Apotek tidak boleh menyimpulkan pergerakan stok tanpa outcome Stock Ledger. |
-| Apotek | Kebutuhan Financial Charge, Credit Note, atau Refund | Tata Rekening | Menyelesaikan Financial Responsibility dan konsekuensi settlement tanpa mengubah riwayat fulfillment. |
+| Apotek | Kebutuhan Financial Charge, revisi Invoice yang diizinkan, atau Credit Note / Refund | Tata Rekening | Mengonsumsi izin finansial dan menyelesaikan Financial Responsibility tanpa mengubah riwayat fulfillment. |
 
 ## 9. Waktu Bisnis dan Batas Layanan
 

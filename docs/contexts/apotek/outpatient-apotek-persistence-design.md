@@ -13,6 +13,7 @@ Related artifacts:
 - [Outpatient Apotek Repository Gap Analysis](./outpatient-apotek-repository-gap-analysis-report.md)
 - [ADR-APT-001 Queue Boundary](./adr/ADR-APT-001-queu-boundary-and-pharmacy-workflow-state-ownership.md)
 - [ADR-APT-002 Pharmacy and Stock Ledger Boundary](./adr/ADR-APT-002-pharmacy-stock-ledger-boundary.md)
+- [ADR-APT-003 Invoice Mutability](./adr/ADR-APT-003-invoice-mutability-owned-by-tata-rekening.md)
 - [DATABASE.md](../../DATABASE.md)
 - [ENGINEERING.md](../../ENGINEERING.md)
 - [Feature Persistence Generation Skill](../../skills/feature-persistence-generation.md)
@@ -184,7 +185,7 @@ flowchart TB
 |---|---|---|---|---|
 | `TelaahResep` | Aggregate root | One review of one Resep Kerja | `ITelaahResepRepo` | Items rewriteable until terminal |
 | `SalesOrder` | Aggregate root | One accepted demand and quantity reconciliation | `ISalesOrderRepo` | Items established then statused; unfulfilled outcomes append-only |
-| `Invoice` | Aggregate root | One medication sale | `IInvoiceRepo` | Items + charges rewriteable until Issued; credit notes append-only |
+| `Invoice` | Aggregate root | One medication sale | `IInvoiceRepo` | Items + charges rewriteable while `Established`, and after Issue while Tata Rekening still permits modification; credit notes append-only when revision is not permitted |
 | `Dispensing` | Aggregate root | One physical fulfillment instruction | `IDispensingRepo` | Items established; reviews append-only; handover facts on header |
 | Resep Kerja | Supporting document | Intake copy of one Resep | `IResepKerjaRepo` | Items + components rewriteable only before first Telaah terminal outcome |
 | Jual Bebas | Supporting document | One accepted retail request | `IJualBebasRepo` | Items rewriteable only before Sales Order establishment |
@@ -518,9 +519,9 @@ UX_BILRG_AptSalesOrder_ActiveSourceRegPayer
 
 `BILRG_AptInvoiceCharge`: rounding and other invoice-level adjustments (`BR-APT-128`).
 
-`BILRG_AptCreditNote`: `CreditNoteNo`, `Amount`, `Reason`, `AuthorizedPharmacistId`, `EffectiveAt`, `TataRekeningChargeId`. Append-only (`BR-APT-027`).
+`BILRG_AptCreditNote`: `CreditNoteNo`, `Amount`, `Reason`, `AuthorizedPharmacistId`, `EffectiveAt`, `TataRekeningChargeId`. Append-only when direct Invoice revision is no longer permitted (`BR-APT-027`).
 
-**Save semantics (PD-05):** while `InvoiceStatus = Established`, items and charges may rewrite (delete+insert). After the invoice leaves `Established`, header commercial fields and item content are immutable. Corrections use Credit Note plus Integration Task, or other accountable financial resolution (`BR-APT-027`); they do not modify the original invoice rows.
+**Save semantics (PD-05):** while `InvoiceStatus = Established`, items and charges may rewrite (delete+insert). After Issue, items and charges may rewrite while Tata Rekening still permits modification of the related Financial Charge. When Tata Rekening no longer permits modification, header commercial fields and item content are immutable; corrections use Credit Note plus Integration Task, or another exception mechanism (`BR-APT-027`), and do not modify the original invoice rows. Apotek does not persist a Financial Clearance object. Any last-consumed Tata Rekening permission stored on the Invoice is audit trace only.
 
 General Patient Purchase Confirmation is not a row. Inserting the invoice **is** the confirmation evidence (`BR-APT-070`).
 
@@ -674,8 +675,8 @@ Exceptions to delete+insert:
 | Detail | Persistence |
 |---|---|
 | Telaah items while Under Review | Delete + insert |
-| Invoice items/charges while `InvoiceStatus = Established` | Delete + insert (PD-05) |
-| Resep Kerja / Jual Bebas / SO / Dispensing items at first insert | Insert; later rewrite forbidden except Telaah-under-review and Invoice while `Established` |
+| Invoice items/charges while `InvoiceStatus = Established`, or after Issue while Tata Rekening still permits modification | Delete + insert (PD-05) |
+| Resep Kerja / Jual Bebas / SO / Dispensing items at first insert | Insert; later rewrite forbidden except Telaah-under-review and Invoice under PD-05 |
 | `BILRG_AptFinalReview` | Insert only |
 | `BILRG_AptUnfulfilledOutcome` | Insert only |
 | `BILRG_AptCreditNote` | Insert only |
@@ -803,7 +804,7 @@ sequenceDiagram
 | `StockRemoveOnHandover` | Medication Handover | Stock Ledger `DispenseIssue` | `{DispensingId}:I{n}:DISPENSE_ISSUE` | Permanent removal from DTU (PD-02); not `SaleIssueDu` |
 | `StockReturnNoShow` | No Show / unused reserve | Stock Ledger transfer | `{DispensingId}:I{n}:RETURN` | DTU → Pharmacy Unit |
 | `BillingCharge` | Invoice Issued / BPJS invoice at handover | Tata Rekening / `ta_trs_billing` | `{InvoiceId}:CHARGE` | Obat Financial Charge; `fn_modul = 1` |
-| `BillingCredit` | Credit Note recorded | Tata Rekening | `{InvoiceId}:CN{n}` | Compensating charge |
+| `BillingCredit` | Credit Note recorded | Tata Rekening | `{InvoiceId}:CN{n}` | Compensating charge when Invoice revision is no longer permitted |
 | `IterConsume` | Sales Order established from Resep | Prescription Contract | `{SalesOrderId}:ITER` | Iter on legacy Resep |
 | `EmrRealization` | Handover (later) | EMR reporting | `{DispensingId}:EMR` | Out of initial write scope if EMR contract absent |
 
@@ -909,22 +910,28 @@ No persistence structure is required for call purpose. No field shall be added t
 - No Integration Task payload extension required.
 - No Pharmacy Call Fact required.
 
-#### PD-05 — Invoice Rewrite While `Established`
+#### PD-05 — Invoice Rewrite Policy
 
-**Status:** Closed
+**Status:** Updated 2026-08-18 (supersedes Established-only freeze)
 
-**Decision:** Invoice rewrite shall be allowed only while `InvoiceStatus = Established`.
+**Decision:** Invoice rewrite shall be allowed:
 
-During the `Established` state, the persistence layer may replace and rewrite invoice-item data as needed by the save operation. Once the invoice leaves the `Established` state (including `Issued`, `Paid`, `Cancelled`, `Closed`, or any later lifecycle state), invoice content becomes immutable.
+1. while `InvoiceStatus = Established`; and
+2. after Issue, while Tata Rekening still permits modification of the related Financial Charge.
 
-Any correction after the invoice has left `Established` shall be handled through the approved business correction process (Credit Note, Refund, Financial Adjustment, or other accountable financial resolution) and shall not modify the original invoice contents.
+During `Established`, the persistence layer may replace and rewrite invoice-item data as needed by the save operation. After Issue, the same rewrite of items and charges remains allowed only while Tata Rekening permission is granted at command time. When Tata Rekening no longer permits modification, invoice content becomes immutable.
 
-**Rationale:** The `Established` state represents a draft-like commercial transaction that has not yet become a finalized financial document. Allowing rewrite during this state simplifies persistence implementation while preserving auditability after issuance.
+Any correction after permission is withheld shall be handled through the exception mechanism (Credit Note, Refund, Financial Adjustment, or other accountable financial resolution under `BR-APT-027`) and shall not modify the original invoice contents.
+
+Apotek does not persist a Financial Clearance object and does not encode Tata Rekening permission rules. Permission is consumed as an external business fact. Invoice `Issued` and `Financially Cleared` are not freeze flags. Domain Invoice states remain `Established`, `Issued`, `FinanciallyCleared`, `AdjustedOrCredited`, `Resolved`, and `Cancelled` — not `Paid` or `Closed`.
+
+**Rationale:** The `Established` state remains the local formation window before Issue. Issue publishes the Invoice as Charge Source information for Tata Rekening; it does not freeze rows. Mutability after Issue follows Tata Rekening financial processes, not an Apotek-owned immutability rule.
 
 **Result:**
 
-- Invoice rewrite policy is final.
-- No additional persistence decision required.
+- Invoice rewrite policy follows `BR-APT-027` and ADR-APT-003.
+- Charge-change after a permitted Invoice revision must remain traceable to the same Invoice (`BR-APT-028`). Specific Tata Rekening task types and APIs are not defined here.
+- No Financial Clearance table is introduced.
 
 #### PD-06 — Unified Reporting Adapter Form
 

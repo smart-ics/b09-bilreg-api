@@ -29,7 +29,7 @@ Memberikan langkah yang sama bagi petugas ketika Fornas mengklasifikasikan sebag
 | Sistem Apotek | Subsistem | Menyimpan Sales Order independen, faktur sesuai jalur payer, dan evaluasi Dispense Authorized per item. |
 | Sistem Antrian Pasien | Subsistem | Mencatat satu `ServedAt` dan satu `DoneAt` untuk antrian yang sama. |
 | Sistem Persediaan | Subsistem | Menyediakan hasil Mutasi, Remove Stock, dan keputusan pengembalian stok. |
-| Tata Rekening | Subsistem | Menerima dan menyelesaikan urusan keuangan sesuai jalur payer. |
+| Tata Rekening | Subsistem | Menerima Financial Charge dan memberikan izin finansial untuk merevisi faktur, atau outcome pengecualian sesuai jalur payer ketika revisi tidak lagi diizinkan. |
 
 ## 3. Prasyarat
 
@@ -85,7 +85,7 @@ Memberikan langkah yang sama bagi petugas ketika Fornas mengklasifikasikan sebag
 ### 5.5 Faktur yang sudah ada, obat yang tidak dapat dilayani, atau Pasien yang tidak datang memerlukan koreksi
 
 - **Sistem Apotek** tetap memisahkan konsekuensi Sales Order BPJS dan Patient-Pay.
-- **Tata Rekening** memberikan koreksi yang diperlukan untuk bagian Patient-Pay yang telah dibayar. Faktur BPJS tetap belum dibuat sampai obat Sales Order BPJS berhasil diserahkan.
+- Faktur Patient-Pay yang sudah dibayar mengikuti `BR-APT-027`: merevisi faktur yang sama selama Tata Rekening masih mengizinkan perubahan; bila tidak, **Tata Rekening** memberikan nota kredit, pengembalian dana, atau penyesuaian keuangan. Faktur BPJS tetap belum dibuat sampai obat Sales Order BPJS berhasil diserahkan.
 - **Kepala Apotek** menerapkan `SOP-APT-RJ-007` untuk obat yang tidak diambil. Jika Queue Entry bersama sudah `Done`, `DoneAt` tidak dibalik. Jika masih `In Service` karena pickup call belum terjadi, resolusi itu boleh menyelesaikannya menjadi `Done` dan mencatat `DoneAt`.
 
 ## 6. Kriteria Penyelesaian

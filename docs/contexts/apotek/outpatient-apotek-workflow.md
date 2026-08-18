@@ -108,7 +108,7 @@ The workflow ends when every medication demand mapped to the Pharmacy Queue Entr
 | Cashier or Payment Authority | Receives required Patient payment and supplies Payment Clearance. | `Payment Clearance Established`. |
 | SEP and Fornas Authorities | Supply encounter-level SEP validity and item-level BPJS coverage. | `Coverage Clearance Established` for the covered quantity. |
 | Stock Ledger | Owns Current Stock, Stock Mutasi, Remove Stock, and movement history. Does not own Available Stock. | `Stock Transferred to Dispensing Temporary Unit`, `Stock Removed from Dispensing Temporary Unit`, or `Stock Returned to Pharmacy Unit`. |
-| Tata Rekening | Owns Financial Responsibility and the required financial consequence when paid medication is not fulfilled or collected. | Credit Note, Refund, or another final commercial outcome is supplied. |
+| Tata Rekening | Owns Financial Responsibility and the financial permission that determines whether Apotek may still revise an Invoice. When modification is no longer permitted, supplies Credit Note, Refund, Financial Adjustment, or another exception outcome. | Invoice revision is permitted, or an exception commercial outcome is supplied. |
 | CPOE | Owns the original Resep Elektronik, which Apotek does not modify. | The original Resep is available. |
 | Pharmacy Supervisor | An authorized pharmacist under operational policy. Authorizes returns, corrections, expired collection overrides, and other dispensing exceptions. Exception handling is authority-based; no monetary approval threshold applies. | Accountable exception outcome is established. |
 
@@ -373,10 +373,10 @@ Patient or Caregiver, Pharmacy Staff, Cashier or Payment Authority, Pharmacy Sta
 
 #### Exception and Compensation Flows
 
-- If payment is not completed after Invoice establishment, Medication Preparation remains blocked. The Invoice may be `Cancelled` only while its lifecycle permits.
-- If an issued or financially cleared Invoice needs correction, use Financial Adjustment, Credit Note, or Refund under Tata Rekening authority; do not silently replace it.
-- If shortage occurs after payment, Pharmacy Staff shall not create Backorder or select an alternate stock source. Unfulfillable quantity receives an Unfulfilled Medication Outcome and Salinan Resep when applicable, plus Credit Note or Refund under Tata Rekening authority. Substitution is prohibited because the Sales Order already exists.
-- If fulfillment cannot complete, affected quantities receive an accountable Unfulfilled Medication Outcome and Tata Rekening receives the required financial consequence.
+- If payment is not completed after Invoice establishment, Medication Preparation remains blocked. The Invoice may be `Cancelled` only while its lifecycle and Tata Rekening permission both permit.
+- If an Invoice needs correction, revise the same Invoice while Tata Rekening still permits modification. When Tata Rekening no longer permits revision, use Financial Adjustment, Credit Note, or Refund under Tata Rekening authority. Do not silently replace Invoice history without that permission and accountability.
+- If shortage occurs after payment, Pharmacy Staff shall not create Backorder or select an alternate stock source. Unfulfillable quantity receives an Unfulfilled Medication Outcome and Salinan Resep when applicable. Commercial consequences follow `BR-APT-027`. Substitution is prohibited because the Sales Order already exists.
+- If fulfillment cannot complete, affected quantities receive an accountable Unfulfilled Medication Outcome and commercial consequences follow `BR-APT-027`.
 - A failed Final Dispense Review appends an immutable review record containing the reason, responsible Pharmacist, effective business time, and affected quantity; returns the affected Dispensing from `Prepared` to `Preparing`; and prevents Medication Handover. After correction, the Dispensing returns to `Prepared` and requires another Final Dispense Review.
 
 #### Outcomes and Postconditions
@@ -393,7 +393,7 @@ Patient or Caregiver, Pharmacy Staff, Cashier or Payment Authority, Pharmacy Sta
 #### Domain Events
 
 - Consumed: `Outpatient Queue Mapped`, `Payment Clearance Established`, `Stock Transferred to Dispensing Temporary Unit`.
-- Produced or observed: `Invoice Established`, `Invoice Issued`, `Dispense Authorized Evaluated`, `Medication Preparation Started`, `Pharmacy Service Started`, `Medication Prepared`, `Patient Called for Pickup`, `Queue Service Started`, `Queue Service Completed`, `Final Dispense Review Completed`, `Final Dispense Review Failed`, `Medication Dispensed`, `Medication Handed Over`, `Sales Order Resolved`.
+- Produced or observed: `Invoice Established`, `Invoice Issued`, `Invoice Revised`, `Dispense Authorized Evaluated`, `Medication Preparation Started`, `Pharmacy Service Started`, `Medication Prepared`, `Patient Called for Pickup`, `Queue Service Started`, `Queue Service Completed`, `Final Dispense Review Completed`, `Final Dispense Review Failed`, `Medication Dispensed`, `Medication Handed Over`, `Sales Order Resolved`.
 
 ### WF-APT-RJ-004 — Fulfill Medication for a BPJS Patient
 
@@ -455,7 +455,7 @@ Patient or Caregiver, Pharmacy Staff, Pharmacist, Patient Tracker, SEP and Forna
 #### Exception and Compensation Flows
 
 - A BPJS No-Show before Medication Handover establishes no Invoice and requires no Invoice cancellation.
-- Shortage after Sales Order establishment does not permit Backorder, alternate stock source, or substitution. Unfulfillable quantity receives an Unfulfilled Medication Outcome and Salinan Resep when applicable.
+- Shortage after Sales Order establishment does not permit Backorder, alternate stock source, or substitution. Unfulfillable quantity receives an Unfulfilled Medication Outcome and Salinan Resep when applicable. If a BPJS Invoice already exists, commercial consequences follow `BR-APT-027`.
 - Failed Final Dispense Review appends its immutable review record, returns the Dispensing from `Prepared` to `Preparing`, and prevents both BPJS Invoice establishment and Medication Handover. Correction returns the order to `Prepared` and requires a new review.
 - Inventory may reject a return Mutasi when eligible quantity is not available; Pharmacy still records the accountable No Show outcome and any required commercial consequence.
 
@@ -530,7 +530,7 @@ Patient or Caregiver, Pharmacy Staff, Cashier or Payment Authority, Pharmacist, 
 
 #### Exception and Compensation Flows
 
-- An established General Patient Invoice follows General Patient cancellation and correction rules; the BPJS Invoice remains absent until handover of the BPJS-covered Sales Order.
+- An established General Patient Invoice follows `BR-APT-027`; the BPJS Invoice remains absent until handover of the BPJS-covered Sales Order.
 - No-Show after payment follows the paid General Patient commercial path while the absent BPJS Invoice follows the uninvoiced BPJS path.
 - Each Sales Order retains independent commercial and fulfillment consequences.
 - Substitution is prohibited after Sales Order establishment.
@@ -666,7 +666,7 @@ Pharmacy Supervisor, Pharmacy Staff, Inventory, Tata Rekening, Patient Tracker.
 | Payer condition | Commercial outcome |
 |---|---|
 | BPJS Invoice was not established because handover failed | No invoice is established or cancelled; resolve fulfillment and Inventory only, then resolve the Sales Order when all outcomes are final. |
-| General Patient Invoice is paid | Tata Rekening or the responsible financial authority supplies Credit Note, Refund, or another final outcome; the Sales Order remains `Active` until then. |
+| General Patient Invoice is paid | Commercial consequences follow `BR-APT-027`: revise the Invoice while Tata Rekening still permits modification; otherwise Credit Note, Refund, or another exception outcome. The Sales Order remains `Active` until that commercial consequence is resolved. |
 | General Patient proposal was declined before invoice establishment | No Invoice exists; resolve any unused reservation and commercially unallocated quantity. |
 | Mixed coverage | Resolve covered uninvoiced and paid Patient-payable consequences separately using their Sales Order Item and Invoice Item relationships. |
 
@@ -691,7 +691,7 @@ Pharmacy Supervisor, Pharmacy Staff, Inventory, Tata Rekening, Patient Tracker.
 #### Domain Events
 
 - Consumed: `Patient Called for Pickup` when the pickup call already occurred, `Medication Prepared`.
-- Produced or observed: `Outpatient No-Show Recorded`, `Queue Service Completed` when this workflow completes an `In Service` Queue Entry, `Dispensing Expired`, `Unfulfilled Medication Recorded`, `Medication Returned`, `Invoice Credited`, `Refund Required`, `Sales Order Resolved` when fully reconciled.
+- Produced or observed: `Outpatient No-Show Recorded`, `Queue Service Completed` when this workflow completes an `In Service` Queue Entry, `Dispensing Expired`, `Unfulfilled Medication Recorded`, `Medication Returned`, `Invoice Revised`, `Invoice Credited`, `Refund Required`, `Sales Order Resolved` when fully reconciled.
 
 ## 8. Cross-Context Handoffs
 
@@ -709,7 +709,7 @@ Pharmacy Supervisor, Pharmacy Staff, Inventory, Tata Rekening, Patient Tracker.
 | Cashier or Payment authority | `Payment Clearance Established` | Apotek | Evaluate Dispense Authorized from payment evidence; payment does not prove stock or handover. |
 | Stock Ledger | Current Stock and `Stock Transferred to Dispensing Temporary Unit` | Apotek | Record Mutasi and Remove Stock only from Pharmacy-authorized requests; Current Stock facts do not rewrite Telaah Resep and are not Available Stock. |
 | Apotek | Handover, expiry, shortage, or No Show return request | Stock Ledger | Record Remove Stock or return Mutasi; Apotek shall not infer inventory movement without acknowledged Stock Ledger outcomes. |
-| Apotek | Financial Charge, Credit Note, or Refund requirement | Tata Rekening | Resolve Financial Responsibility and settlement consequences without changing fulfillment history. |
+| Apotek | Financial Charge, permitted Invoice revision, or Credit Note / Refund requirement | Tata Rekening | Consume financial permission and resolve Financial Responsibility without changing fulfillment history. |
 
 ## 9. Business Timing and Service Limits
 

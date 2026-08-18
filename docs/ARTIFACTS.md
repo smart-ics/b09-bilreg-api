@@ -176,12 +176,17 @@
 |------|---------|
 | `docs/contexts/apotek/adr/ADR-APT-001-queu-boundary-and-pharmacy-workflow-state-ownership.md` | ADR-APT-001 Queue Boundary and Pharmacy Workflow State Ownership |
 | `docs/contexts/apotek/adr/ADR-APT-002-pharmacy-stock-ledger-boundary.md` | ADR-APT-002 Pharmacy and Stock Ledger Boundary |
+| `docs/contexts/apotek/adr/ADR-APT-003-invoice-mutability-owned-by-tata-rekening.md` | ADR-APT-003 Invoice Mutability Owned by Tata Rekening Permission |
 | `docs/contexts/apotek/apotek-domain-id.md` | Domain Apotek — Pelayanan Obat Pasien |
 | `docs/contexts/apotek/apotek-domain.md` | Apotek Domain |
 | `docs/contexts/apotek/APOTEK-ARTIFACT-ALIGNMENT-REVIEW.md` | Apotek Artifact Alignment Review — Outpatient Pharmacy |
 | `docs/contexts/apotek/APOTEK-AVAILABLE-STOCK-CONCEPT-INTRODUCTION.md` | Apotek Available Stock concept introduction — Available Stock ≠ Current Stock |
 | `docs/contexts/apotek/APOTEK-TERMINOLOGY-ALIGNMENT-REPORT.md` | Apotek Terminology Alignment Report — Persistence-design vocabulary |
 | `docs/contexts/apotek/APOTEK-QUEUE-MAPPING-ALIGNMENT-REPORT.md` | Apotek Queue Mapping Alignment Report — Demand-source mapping target |
+| `docs/contexts/apotek/APOTEK-UNFULFILLED-OUTCOME-SIMPLIFICATION-ANALYSIS.md` | Unfulfilled Medication Outcome — whether `BILRG_AptUnfulfilledOutcome` can be derived from existing aggregates |
+| `docs/contexts/apotek/APOTEK-INVOICE-MUTABILITY-IMPACT-ANALYSIS.md` | Invoice mutability — impact of TR-gated Charge Source mutation vs freeze after Issue |
+| `docs/contexts/apotek/APOTEK-INVOICE-MUTABILITY-ARTIFACT-UPDATE-REPORT.md` | Invoice mutability — canonical artifact update after ADR-APT-003 |
+| `docs/contexts/apotek/APOTEK-FINANCIAL-CLEARANCE-ANALYSIS.md` | Financial Clearance terminology and ownership (BA-08); Invoice mutability section superseded 2026-08-18 |
 | `docs/contexts/apotek/ALN-001-RESOLUTION-REPORT.md` | ALN-001 Resolution Report — OutpatientQueueMapping ownership alignment |
 | `docs/contexts/apotek/ALN-002-RESOLUTION-REPORT.md` | ALN-002 Resolution Report — Fulfillment Clearance to Dispense Authorized alignment |
 | `docs/contexts/apotek/ALN-003-RESOLUTION-REPORT.md` | ALN-003 Resolution Report — Remove Billing/Fulfillment Allocation |

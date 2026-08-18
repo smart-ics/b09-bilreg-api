@@ -28,7 +28,7 @@ Memberikan langkah yang sama bagi petugas untuk memperoleh persetujuan pembelian
 | Sistem Apotek | Subsistem | Menampilkan tagihan dan nilai yang harus dibayar, mencatat faktur serta status pembayaran, memantau penyiapan obat, dan mencatat obat yang diberikan serta diserahkan. |
 | Sistem Antrian Pasien | Subsistem | Mencatat `ServedAt` saat penyiapan obat dimulai dan `DoneAt` ketika penyelesaian antrean terjadi (panggilan pengambilan, atau penyelesaian No Show jika Queue Entry masih `In Service`). `DoneAt` tidak pernah dibalik. |
 | Sistem Persediaan | Subsistem | Menyediakan hasil Mutasi, Remove Stock, dan keputusan pengembalian stok. |
-| Tata Rekening | Subsistem | Menerima beban keuangan dan memberikan hasil koreksi yang diperlukan. |
+| Tata Rekening | Subsistem | Menerima beban keuangan dan memberikan izin finansial untuk merevisi faktur, atau nota kredit / pengembalian dana / penyesuaian keuangan ketika revisi tidak lagi diizinkan. |
 
 ## 3. Prasyarat
 
@@ -73,7 +73,9 @@ Memberikan langkah yang sama bagi petugas untuk memperoleh persetujuan pembelian
 ### 5.3 Pembayaran belum lunas atau faktur yang sudah dibuat perlu dikoreksi
 
 - **Sistem Apotek** tetap mencegah penyiapan obat dimulai selama informasi pelunasan belum tersedia.
-- **Staf Apotek** hanya dapat membatalkan faktur bila status faktur yang ditampilkan mengizinkan. Bila tidak, **Tata Rekening** memberikan penyesuaian keuangan, nota kredit, pengembalian dana, atau hasil koreksi lain yang dapat dipertanggungjawabkan.
+- **Staf Apotek** hanya dapat membatalkan faktur bila status faktur yang ditampilkan dan izin Tata Rekening keduanya mengizinkan.
+- Ketika Tata Rekening masih mengizinkan perubahan, **Sistem Apotek** merevisi faktur yang sama dengan pihak penanggung jawab dan waktu bisnis efektif yang accountable.
+- Ketika Tata Rekening tidak lagi mengizinkan perubahan, **Tata Rekening** memberikan penyesuaian keuangan, nota kredit, pengembalian dana, atau hasil pengecualian lain.
 
 ### 5.4 Stok kurang setelah Sales Order dibentuk
 
@@ -82,7 +84,7 @@ Pengecualian ini berlaku ketika kekurangan stok diketahui **setelah** Sales Orde
 - **Staf Apotek** tidak membuat pesanan tertunda, tidak memilih sumber stok alternatif, dan tidak mengganti obat.
 - **Staf Apotek** tidak menghapus item dari Sales Order yang sudah dibentuk dan tidak menyusun ulang Sales Order menjadi pesanan parsial.
 - **Sistem Apotek** mencatat Unfulfilled Medication Outcome yang berlaku, mendukung Salinan Resep untuk item yang tidak dipenuhi, dan tetap menampilkan urusan keuangan yang harus diselesaikan.
-- **Tata Rekening** memberikan nota kredit, pengembalian dana, atau koreksi komersial lain yang dapat dipertanggungjawabkan bila ada konsekuensi komersial.
+- Konsekuensi komersial faktur yang sudah ada mengikuti `BR-APT-027`: **Sistem Apotek** merevisi faktur ketika Tata Rekening masih mengizinkan perubahan; bila tidak, **Tata Rekening** memberikan nota kredit, pengembalian dana, atau koreksi komersial pengecualian.
 
 ### 5.5 Pemeriksaan akhir obat tidak lulus
 

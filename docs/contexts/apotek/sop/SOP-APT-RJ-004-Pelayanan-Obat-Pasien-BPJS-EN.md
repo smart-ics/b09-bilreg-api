@@ -68,7 +68,7 @@ This exception applies when the shortage is identified **after** the Sales Order
 - **Pharmacy Staff** does not create Backorder, select an alternate stock source, or substitute the medication.
 - **Pharmacy Staff** does not remove items from the established Sales Order and does not rebuild it as a partial order.
 - **Pharmacy System** records an Unfulfilled Medication Outcome, supports Salinan Resep for unfulfilled items, and preserves the accepted medication identity.
-- **Tata Rekening** supplies Credit Note, Refund, or another accountable commercial correction only when commercial consequences exist.
+- If a BPJS Invoice already exists, commercial consequences follow `BR-APT-027`: **Pharmacy System** revises the Invoice when Tata Rekening still permits modification; otherwise **Tata Rekening** supplies Credit Note, Refund, or another exception commercial correction.
 
 ### 5.3 Final Dispense Review fails
 

@@ -22,7 +22,7 @@ Provide a repeatable manual procedure for giving `Prepared` medication in Dispen
 | Pharmacy Staff | Human | Identifies the affected demand and quantities and verifies the resulting operational outcomes. |
 | Pharmacy System | Subsystem | Records No-Show, `Expired`, `Collection Window Expired`, Unfulfilled Medication Outcome, and final Sales Order progress. |
 | Inventory | Subsystem | Applies Stock Mutasi from Dispensing Temporary Unit back to Pharmacy Unit when directed by Pharmacy. Does not store No Show status. |
-| Tata Rekening | Subsystem | Supplies Credit Note, Refund, or another final commercial outcome for paid medication. |
+| Tata Rekening | Subsystem | Supplies financial permission for Invoice revision, or Credit Note, Refund, or another exception commercial outcome when revision is no longer permitted. |
 | Patient Tracker | Subsystem | Records `DoneAt` and `Done` when No Show Resolution completes an `In Service` Queue Entry. Retains existing `DoneAt` when the Queue Entry is already `Done`. Never reverses `DoneAt`. |
 
 ## 3. Preconditions
@@ -43,8 +43,8 @@ Provide a repeatable manual procedure for giving `Prepared` medication in Dispen
 6. **Pharmacy System** requests Stock Mutasi from Dispensing Temporary Unit back to Pharmacy Unit for eligible quantity; **Inventory** applies only that return movement directed by Pharmacy and does not store No Show status.
 7. **Pharmacy System** displays the authoritative Inventory disposition without inferring stock movement.
 8. For an uninvoiced BPJS allocation, **Pharmacy System** keeps the BPJS Invoice absent and resolves only the fulfillment and Inventory consequences.
-9. For a paid General Patient allocation, **Pharmacy System** sends the required financial consequence to **Tata Rekening** and keeps the Sales Order `Active`.
-10. **Tata Rekening** supplies Credit Note, Refund, or another accountable final commercial outcome; **Pharmacy System** displays the result against the originating allocation.
+9. For a paid General Patient allocation, **Pharmacy System** keeps the Sales Order `Active` and applies `BR-APT-027`: revises the Invoice when Tata Rekening still permits modification; otherwise sends the required financial consequence to **Tata Rekening**.
+10. When Invoice revision is no longer permitted, **Tata Rekening** supplies Credit Note, Refund, or another exception commercial outcome; **Pharmacy System** displays the result against the originating allocation.
 11. For mixed coverage, **Pharmacy System** records the uninvoiced covered consequence and paid Patient-payable consequence separately.
 12. **Patient Tracker** completes or retains the Queue Entry as follows:
     - If the Queue Entry is still `In Service` because the pickup call has not occurred, **Patient Tracker** moves it to `Done` and records `DoneAt`. This is queue completion, not Pharmacy Queue Close, and does not imply Medication Handover.
@@ -64,7 +64,7 @@ Provide a repeatable manual procedure for giving `Prepared` medication in Dispen
 
 - **Pharmacy System** displays the Dispensing as `Expired` and the Sales Order as `Active`.
 - **Pharmacy Staff** does not erase or reclassify the paid consequence as an uninvoiced BPJS outcome.
-- **Tata Rekening** completes the required financial resolution.
+- Commercial resolution follows `BR-APT-027`. **Tata Rekening** completes the required financial resolution when Invoice revision is no longer permitted.
 
 ### 5.3 Queue is already `Done`
 
@@ -82,7 +82,7 @@ Provide a repeatable manual procedure for giving `Prepared` medication in Dispen
 1. Every affected Dispensing is `Expired` with reason `Collection Window Expired`, responsible party, effective business time, and affected quantity.
 2. Every affected quantity has an Unfulfilled Medication Outcome and an authoritative Inventory disposition.
 3. No BPJS Invoice exists when BPJS handover did not occur.
-4. A paid General Patient Sales Order remains `Active` until the final Credit Note, Refund, or other commercial outcome is visible.
+4. A paid General Patient Sales Order remains `Active` until the commercial consequence is resolved under `BR-APT-027`.
 5. The Sales Order is `Resolved` only after all fulfillment and commercial consequences are final.
 6. The associated Queue Entry is `Done`. `DoneAt` was recorded at the pickup call or at this No Show Resolution and is not reversed.
 

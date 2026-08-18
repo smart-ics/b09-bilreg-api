@@ -27,7 +27,7 @@ Provide a repeatable procedure for splitting Fornas Covered and Not Covered pres
 | Pharmacy System | Subsystem | Maintains independent Sales Orders, payer-specific invoices, and Dispense Authorized evaluation per item. |
 | Patient Tracker | Subsystem | Records one `ServedAt` and one `DoneAt` for the common Queue Entry. |
 | Inventory | Subsystem | Supplies Mutasi, Remove Stock, and return-disposition outcomes. |
-| Tata Rekening | Subsystem | Receives and resolves payer-specific financial consequences. |
+| Tata Rekening | Subsystem | Receives Financial Charge and supplies financial permission for Invoice revision, or payer-specific exception outcomes when revision is no longer permitted. |
 
 ## 3. Preconditions
 
@@ -83,7 +83,7 @@ Provide a repeatable procedure for splitting Fornas Covered and Not Covered pres
 ### 5.5 Established invoice, non-fulfillment, or No-Show requires correction
 
 - **Pharmacy System** keeps BPJS-covered and Patient-Pay consequences on their own Sales Orders.
-- **Tata Rekening** supplies the required correction for the paid Patient-Pay portion; the absent BPJS invoice remains absent until successful handover.
+- The paid Patient-Pay Invoice follows `BR-APT-027`: revise the same Invoice while Tata Rekening still permits modification; otherwise **Tata Rekening** supplies Credit Note, Refund, or Financial Adjustment. The absent BPJS invoice remains absent until successful handover.
 - **Pharmacy Supervisor** applies `SOP-APT-RJ-007` for uncollected medication. If the common Queue Entry is already `Done`, `DoneAt` is not reversed. If it is still `In Service` because the pickup call did not occur, that resolution may complete it to `Done` and record `DoneAt`.
 
 ## 6. Completion Criteria

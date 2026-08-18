@@ -90,8 +90,8 @@ The Exception Worklist surfaces cases that need accountable resolution under exi
 | Pickup Expired | Collection Window elapsed; awaiting override for handover or `WF-APT-RJ-007` close |
 | Expired Medication | Authorized fulfillment expiry / `Collection Window Expired` and related Dispensing terminal outcomes |
 | Return Request | Return of prepared, transferred, or handed-over medication awaiting Inventory disposition |
-| Correction Request | Post-payment or post-handover commercial or fulfillment correction that must not silently replace history |
-| Financial Consequence Pending | Credit Note, Refund, or other Tata Rekening outcome still outstanding after expiry or return |
+| Correction Request | Post-payment or post-handover commercial or fulfillment correction that must remain accountable. Direct Invoice revision is used when Tata Rekening still permits modification; Credit Note, Refund, or Financial Adjustment is used when it does not. Silent replacement without that permission or accountability is forbidden. |
+| Financial Consequence Pending | Credit Note, Refund, or other Tata Rekening exception outcome still outstanding after expiry or return, when Invoice revision is no longer permitted |
 | Inventory Disposition Pending | Return to Stock or other final Inventory disposition still outstanding |
 
 Commands remain on the existing aggregates and external authorities. The worklist only selects and prioritizes work already governed by return/correction handling in this screen and by SOP APT-RJ-007 for uncollected medication.
@@ -121,7 +121,7 @@ The workbench contains four activities.
    - For BPJS quantities, show SEP and Fornas coverage outcomes; do not request Patient payment or establish the BPJS Invoice early.
    - For mixed coverage, Fornas Not Covered items form an independent Patient-Pay Sales Order. Covered items remain on the BPJS-covered Sales Order. Do not keep uncovered lines on the BPJS fulfillment path.
    - For Partial Prescription Fulfillment, establish a Sales Order from selected or fulfillable prescription items only when Patient Request or Stock Shortage applies. For Stock Shortage, fulfillable quantity is Available Stock, not Current Stock. Excluded lines remain on the originating prescription. Issue Salinan Resep for unfulfilled items when external fulfillment is required. Pharmacist approves when professional review is required.
-   - Submit a return or correction request rather than freely reversing a sale. A post-payment or post-handover return requires authorization by an authorized pharmacist according to operational policy, plus Inventory and Tata Rekening outcomes. No monetary approval threshold applies.
+   - Submit a return or correction request rather than freely reversing a sale. When Tata Rekening still permits modification, the workbench may revise the same Invoice. When it does not, display the Credit Note, Refund, or Financial Adjustment exception path. A post-payment or post-handover return requires authorization by an authorized pharmacist according to operational policy, plus Inventory and Tata Rekening outcomes. No monetary approval threshold applies.
    - Resolve Exception Worklist items through the same accountable paths: No-Show / expiry under SOP APT-RJ-007, return and correction through authorized-pharmacist outcomes, and display of pending financial or inventory consequences without inventing stock or settlement facts.
 
 Queue mapping and General Patient purchase confirmation can occur in the same counter interaction. Neither action records pharmacy `ServedAt` or `DoneAt`.
@@ -300,7 +300,7 @@ The Apotek aggregate-root list is exactly:
 |---|---|---|
 | `TelaahResep` | Keeps the Resep Kerja source, per-item professional disposition, responsible Pharmacist, and final review outcome consistent | Original clinical prescription and prescriber clarification communications |
 | `SalesOrder` | Owns accepted demand, Sales Order Items, accepted quantity, fulfillment/unfulfilled progress, and overall resolution; reconciles commercial and fulfillment quantities | Payment settlement, inventory balance, physical preparation, or handover execution |
-| `Invoice` | Owns one medication sale, catalog sales items including BHP, item-level charges, invoice-level charges, pricing snapshot, payer, financial disposition, and commercial adjustments | Sales Order quantity authority, payment evidence, stock, physical dispensing, or a separate invoice-component model |
+| `Invoice` | Owns one medication sale, catalog sales items including BHP, item-level charges, invoice-level charges, pricing snapshot, payer, financial disposition, and commercial adjustments. Content remains mutable while Tata Rekening still permits modification. | Sales Order quantity authority, payment evidence, stock, physical dispensing, Tata Rekening permission rules, Financial Clearance, or a separate invoice-component model |
 | `Dispensing` | Owns preparation, items, immutable final review attempts, Patient Education Acknowledgement, Collection Window Override when applicable, Medication Dispense, Medication Handover, expiry, cancellation, return, and non-fulfillment outcomes | Invoice payment settlement and authoritative stock balance |
 
 `OutpatientQueueMapping` and Pharmacy Queue Close are **not** aggregate roots. They do not appear in the catalog above.
@@ -356,7 +356,7 @@ The following are required collaborators, not Apotek aggregates:
 | Inventory / Stock Ledger | Current Stock, Stock Mutasi, Remove Stock, and movement history only. Does not own Available Stock, reservation, issue, `Prepared`, handover, or No Show status. |
 | Payment / Cashier | Payment Clearance evidence |
 | SEP and Fornas authorities | BPJS eligibility and item-level Coverage Clearance evidence |
-| Tata Rekening | Financial charge, credit note, refund, and final settlement consequences |
+| Tata Rekening | Financial permission for Invoice revision, Financial Charge, and Credit Note / Refund / Financial Adjustment exception outcomes |
 
 ### 5.6 Aggregate review of the operational decisions in this artifact
 

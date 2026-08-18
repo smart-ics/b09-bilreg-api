@@ -24,7 +24,7 @@ Memberikan langkah manual bagi petugas untuk menangani obat `Prepared` dalam Dis
 | Staf Apotek | Petugas | Menentukan resep atau permintaan obat serta jumlah obat yang terdampak, lalu memeriksa hasil akhir penanganannya. |
 | Sistem Apotek | Subsistem | Mencatat Pasien tidak datang mengambil obat, status `Expired`, alasan `Collection Window Expired`, obat yang tidak dapat diserahkan, dan keadaan akhir pesanan apotek. |
 | Sistem Persediaan | Subsistem | Menerapkan Stock Mutasi dari Dispensing Temporary Unit kembali ke Pharmacy Unit atas arahan Pharmacy. Tidak menyimpan status No Show. |
-| Tata Rekening | Subsistem | Memberikan nota kredit, pengembalian dana, atau penyelesaian keuangan lain untuk obat yang telah dibayar. |
+| Tata Rekening | Subsistem | Memberikan izin finansial untuk merevisi faktur, atau nota kredit, pengembalian dana, atau penyelesaian keuangan pengecualian ketika revisi tidak lagi diizinkan. |
 | Sistem Antrian Pasien | Subsistem | Mencatat `DoneAt` dan `Done` ketika penyelesaian No Show menyelesaikan Queue Entry yang masih `In Service`. Mempertahankan `DoneAt` yang sudah ada ketika Queue Entry sudah `Done`. Tidak pernah membalik `DoneAt`. |
 
 ## 3. Prasyarat
@@ -45,8 +45,8 @@ Memberikan langkah manual bagi petugas untuk menangani obat `Prepared` dalam Dis
 6. **Sistem Apotek** meminta Stock Mutasi dari Dispensing Temporary Unit kembali ke Pharmacy Unit untuk jumlah yang eligible. **Sistem Persediaan** hanya menerapkan pergerakan pengembalian yang diarahkan Pharmacy dan tidak menyimpan status No Show.
 7. **Sistem Apotek** menampilkan catatan resmi dari Sistem Persediaan. Aplikasi tidak menyimpulkan sendiri bahwa stok sudah berpindah.
 8. Untuk obat BPJS yang belum difakturkan, **Sistem Apotek** tetap tidak membuat faktur BPJS dan hanya menyelesaikan penyiapan obat serta urusan stoknya.
-9. Untuk obat Pasien Umum yang sudah dibayar, **Sistem Apotek** mengirimkan urusan keuangan yang harus diselesaikan kepada **Tata Rekening** dan mempertahankan pesanan apotek berstatus `Active`.
-10. **Tata Rekening** memberikan nota kredit, pengembalian dana, atau hasil akhir keuangan lain yang dapat dipertanggungjawabkan. **Sistem Apotek** menampilkan hasil tersebut pada bagian obat asalnya.
+9. Untuk obat Pasien Umum yang sudah dibayar, **Sistem Apotek** mempertahankan pesanan apotek berstatus `Active` dan menerapkan `BR-APT-027`: merevisi faktur ketika Tata Rekening masih mengizinkan perubahan; bila tidak, mengirimkan urusan keuangan yang harus diselesaikan kepada **Tata Rekening**.
+10. Ketika revisi faktur tidak lagi diizinkan, **Tata Rekening** memberikan nota kredit, pengembalian dana, atau hasil keuangan pengecualian. **Sistem Apotek** menampilkan hasil tersebut pada bagian obat asalnya.
 11. Bila penjaminannya campuran, **Sistem Apotek** mencatat secara terpisah bagian BPJS yang belum difakturkan dan bagian Pasien yang sudah dibayar.
 12. **Sistem Antrian Pasien** menyelesaikan atau mempertahankan Queue Entry sebagai berikut:
     - Jika Queue Entry masih `In Service` karena pickup call belum terjadi, **Sistem Antrian Pasien** memindahkannya ke `Done` dan mencatat `DoneAt`. Ini penyelesaian antrean, bukan Pharmacy Queue Close, dan tidak berarti Medication Handover.
@@ -66,7 +66,7 @@ Memberikan langkah manual bagi petugas untuk menangani obat `Prepared` dalam Dis
 
 - **Sistem Apotek** menampilkan tugas penyiapan obat sebagai `Expired` dan pesanan apotek sebagai `Active`.
 - **Staf Apotek** tidak menghapus atau mengubah urusan keuangan tersebut menjadi obat BPJS yang belum difakturkan.
-- **Tata Rekening** menyelesaikan koreksi keuangan yang diperlukan.
+- Penyelesaian komersial mengikuti `BR-APT-027`. **Tata Rekening** menyelesaikan koreksi keuangan yang diperlukan ketika revisi faktur tidak lagi diizinkan.
 
 ### 5.3 Antrian sudah berstatus `Done`
 
@@ -84,7 +84,7 @@ Memberikan langkah manual bagi petugas untuk menangani obat `Prepared` dalam Dis
 1. Setiap tugas penyiapan obat yang terdampak berstatus `Expired` dengan alasan `Collection Window Expired`, petugas penanggung jawab, waktu keputusan mulai berlaku, dan jumlah obat yang terdampak.
 2. Setiap jumlah obat yang terdampak memiliki catatan bahwa obat tidak dapat diserahkan dan catatan resmi keputusan stok.
 3. Faktur BPJS tidak dibuat bila penyerahan obat BPJS tidak terjadi.
-4. Pesanan apotek Pasien Umum yang sudah dibayar tetap `Active` sampai nota kredit, pengembalian dana, atau hasil akhir keuangan lain terlihat.
+4. Pesanan apotek Pasien Umum yang sudah dibayar tetap `Active` sampai konsekuensi komersial diselesaikan menurut `BR-APT-027`.
 5. Pesanan apotek baru menjadi `Resolved` setelah seluruh urusan obat dan keuangan selesai.
 6. Queue Entry terkait berstatus `Done`. `DoneAt` dicatat pada pickup call atau pada penyelesaian No Show ini dan tidak dibalik.
 
