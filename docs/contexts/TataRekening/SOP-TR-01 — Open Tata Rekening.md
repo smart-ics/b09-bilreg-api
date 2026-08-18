@@ -33,7 +33,7 @@ Membuka Tata Rekening untuk suatu Registrasi sebagai awal proses Financial Contr
    - **TargetReg = Registrasi yang sedang dibuka**, atau
    - **TargetReg masih kosong**, tetapi **PatientId** sama dengan Registrasi yang sedang dibuka.
 7. Sistem menampilkan Ringkasan Tata Rekening beserta daftar Merge Request yang ditemukan (apabila ada).
-8. Proses dilanjutkan ke **[SOP-TR-02 — Close Bill](<SOP-TR-02 — Close Bill.md>)**.
+8. Proses dilanjutkan ke **[SOP-TR-02 — Close Bill](SOP-TR-02 — Close Bill.md)**.
 
 ---
 

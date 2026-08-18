@@ -69,4 +69,13 @@ public class IgdVisitRepo : IIgdVisitRepo
         var listDto = _visitDal.ListAktif()?.ToList() ?? [];
         return listDto.Select(x => x.ToView());
     }
+
+    public MayBe<IgdVisitView> GetByRegId(string regId)
+    {
+        var dto = _visitDal.GetByRegId(regId);
+        if (dto is null)
+            return MayBe<IgdVisitView>.None;
+        var data = dto.ToView();
+        return MayBe.From(data);
+    }
 }

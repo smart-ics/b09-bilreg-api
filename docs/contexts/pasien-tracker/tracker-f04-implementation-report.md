@@ -88,9 +88,9 @@ Else (no candidates, or force)
 ### Application
 - [`IJourneyCandidateFinder.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/AntrianFeature/IJourneyCandidateFinder.cs) — **new** interface + `JourneyCandidateFinder` (period ListData → EYD filter → LoadEntity for events).
 - [`TrkJourneyCandidateDto.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/AntrianFeature/TrkJourneyCandidateDto.cs) — **new** shared projection DTOs.
-- [`TrkJourneyCandidateListQry.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/AntrianFeature/TrkJourneyCandidateListQry.cs) — **new** MediatR query.
-- [`TrkJourneyResolveSelectCmd.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/AntrianFeature/TrkJourneyResolveSelectCmd.cs) — **new** (shape at `ab93e77f`: validate tracker exists + `UserId`; **no** queue association yet).
-- [`TrkJourneyResolveNewCmd.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/AntrianFeature/TrkJourneyResolveNewCmd.cs) — **new** (shape at `ab93e77f`: identity + `EventName`/`ReffId` + `UserId`; persist via new factory).
+- [`TrkJourneyCandidateListQry.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/AntrianFeature/UseCases/TrkJourneyCandidateListQry.cs) — **new** MediatR query.
+- [`TrkJourneyResolveSelectCmd.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/AntrianFeature/UseCases/TrkJourneyResolveSelectCmd.cs) — **new** (shape at `ab93e77f`: validate tracker exists + `UserId`; **no** queue association yet).
+- `TrkJourneyResolveNewCmd.cs` — **new** (shape at `ab93e77f`: identity + `EventName`/`ReffId` + `UserId`; persist via new factory).
 - [`BookingCreateCmd.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/BookingFeature/UseCases/BookingCreateCmd.cs) — remove throw gate; soft-duplicate; `SelectedTrackerId`; extended response.
 
 ### Domain

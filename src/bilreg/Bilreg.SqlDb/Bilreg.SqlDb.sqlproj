@@ -108,6 +108,17 @@
     <Folder Include="BedUsageContext\RnaServiceExecutionFeature\" />
     <Folder Include="BedUsageContext\PakaiBedFeature\" />
     <Folder Include="AdmisiContext\BookingFeature\" />
+    <Folder Include="InventoryContext\StockLedgerFeature\" />
+    <Folder Include="InventoryContext\" />
+    <Folder Include="SalesContext\" />
+    <Folder Include="BrgContext\" />
+    <Folder Include="BrgContext\BrgFeature\" />
+    <Folder Include="BrgContext\KlasifikasiFeature\" />
+    <Folder Include="BrgContext\PricingPolicyFeature\" />
+    <Folder Include="BrgContext\StandardFeature\" />
+    <Folder Include="BrgContext\StandardFeature\Kfa\" />
+    <Folder Include="InventoryContext\MutasiFeature\" />
+    <Folder Include="InventoryContext\StokFeature\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OpCase.sql" />
@@ -249,6 +260,12 @@
     <None Include="PaymentContext\RegOutFeature\ta_registrasi3.sql" />
     <None Include="AdmisiContext\BookingFeature\BILRG_JadwalPraktekHarian_1.sql" />
     <None Include="AdmisiRanapContext\OpnameRequestFeature\BILRG_AdmOpnameRequestInsurance.sql" />
+    <None Include="InventoryContext\StockLedgerFeature\BILRG_StokBatch.sql" />
+    <None Include="InventoryContext\StockLedgerFeature\BILRG_StokLokasi.sql" />
+    <None Include="InventoryContext\StockLedgerFeature\BILRG_StokMutasi.sql" />
+    <None Include="InventoryContext\StockLedgerFeature\BILRG_StokLegacyScope.sql" />
+    <None Include="InventoryContext\StockLedgerFeature\BILRG_StokLegacyBinding.sql" />
+    <None Include="InventoryContext\StockLedgerFeature\BILRG_StockLedgerV2_Rollback.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="AdmisiContext\AntrianFeature\ta_no_antrian_map.sql" />
@@ -300,6 +317,11 @@
     <Build Include="IgdContext\IgdVisitFeature\BILRG_IgdVisitTriage.sql" />
     <Build Include="IgdContext\RedirectRajalFeature\BILRG_RedirectRajal.sql" />
     <Build Include="IgdContext\TindakanIgdFeature\BILRG_TindakanIgd.sql" />
+    <Build Include="SalesContext\ta_trs_kartu_periksa.sql" />
+    <Build Include="SalesContext\ta_trs_kartu_periksa_resep.sql" />
+    <Build Include="SalesContext\ta_trs_kartu_periksa3.sql" />
+    <Build Include="SalesContext\tb_trs_dobill_umum.sql" />
+    <Build Include="SalesContext\tb_trs_dobill_umum2.sql" />
     <Build Include="Shared\AuditLogFeature\BILRG_AuditLog.sql" />
     <Build Include="ChargeContext\TarifFeature\BILRG_TarifPolicy.sql" />
     <Build Include="ChargeContext\TarifFeature\BILRG_TarifVariant.sql" />

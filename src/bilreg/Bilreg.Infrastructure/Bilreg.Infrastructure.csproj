@@ -40,6 +40,7 @@
     <Folder Include="AdmisiRanapContext\JourneyFeature\" />
     <Folder Include="AdmisiRanapContext\Integration\" />
     <Folder Include="BedUsageContext\BedOperationalFeature\" />
+    <Folder Include="SalesContext\ResepFeature\" />
   </ItemGroup>
 
   <ItemGroup>

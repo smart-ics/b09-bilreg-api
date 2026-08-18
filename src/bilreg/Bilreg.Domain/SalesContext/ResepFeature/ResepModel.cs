@@ -1,8 +1,9 @@
+using Bilreg.Domain.AdmisiContext.LayananFeature;
+using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BrgContext.BrgFeature;
 using Bilreg.Domain.BrgContext.PricingPolicyFeature;
-using Bilreg.Domain.InventoryContext.StokFeature;
-using Bilreg.Domain.SalesContext.Shared;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
+using Nuna.Lib.AutoNumberHelper;
 
 namespace Bilreg.Domain.SalesContext.ResepFeature;
 
@@ -27,14 +28,14 @@ public class ResepModel : IResepKey
         _listObat = listObat.ToList();
     }
 
-    public static ResepModel Key(string id) => new ResepModel(id, RegType.Default.ToReff(), BodyMetricType.Default(),
+    public static ResepModel Key(string id) => new ResepModel(id, RegModel.Default.ToReff(), BodyMetricType.Default(),
         DokterType.Default.ToReff(), LayananType.Default.ToReff(), UrgenitasType.Default, TipeBrgType.Default.ToReff(), 
         0, AppConst.DASH, AuditTrailType.Default, new List<ResepObatType>());
 
-    public static ResepModel Create(RegType reg, BodyMetricType bodyMetric, DokterType dokter, LayananType layanan, 
+    public static ResepModel Create(RegModel reg, BodyMetricType bodyMetric, DokterType dokter, LayananType layanan, 
         UrgenitasType urgenitasType, TipeBrgType tipeBrg, int iter, string description, string userId)
     {
-        var newId = Ulid.NewUlid().ToString();
+        var newId = NunaId.NewLegacy("KP",'A');
         var model = new ResepModel(newId, reg.ToReff(), bodyMetric, dokter.ToReff(), layanan.ToReff(),
             urgenitasType, tipeBrg.ToReff(), iter, description, AuditTrailType.Create(userId, DateTime.Now),
             new List<ResepObatType>());

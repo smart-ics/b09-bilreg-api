@@ -274,7 +274,7 @@ sequenceDiagram
 
 ### 7.1 What happens today
 
-`LabResultAmendHandler` ([`LabResultAmendCmd.cs`](Bilreg.Application/LabContext/LabResultFeature/UseCases/LabResultAmendCmd.cs)):
+`LabResultAmendHandler` ([`LabResultAmendCmd.cs`](../../../src/bilreg/Bilreg.Application/LabContext/LabResultFeature/UseCases/LabResultAmendCmd.cs)):
 
 - Allowed when order is **Verified** or **Released**
 - Calls `order.ReturnToRecordedAfterResultAmendment` → sets `LabOrderStatus = Recorded`

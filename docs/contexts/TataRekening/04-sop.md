@@ -526,12 +526,12 @@ Fase ini terdiri dari dua SOP.
 
 | Kode       | SOP                | Mandatory |
 |------------|--------------------|-----------|
-| SOP-TR-01  | [Open Tata Rekening](<SOP-TR-01 — Open Tata Rekening.md>) | Yes       |
-| SOP-TR-02  | [Close Bill](<SOP-TR-02 — Close Bill.md>)         | Yes       |
+| SOP-TR-01  | [Open Tata Rekening](SOP-TR-01 — Open Tata Rekening.md) | Yes       |
+| SOP-TR-02  | [Close Bill](SOP-TR-02 — Close Bill.md)         | Yes       |
 
 ---
 
-#### [SOP-TR-01 — Open Tata Rekening](<SOP-TR-01 — Open Tata Rekening.md>)
+#### [SOP-TR-01 — Open Tata Rekening](SOP-TR-01 — Open Tata Rekening.md)
 
 Membuka Tata Rekening pada Registrasi yang akan diproses.
 
@@ -549,7 +549,7 @@ Output utama:
 
 ---
 
-#### [SOP-TR-02 — Close Bill](<SOP-TR-02 — Close Bill.md>)
+#### [SOP-TR-02 — Close Bill](SOP-TR-02 — Close Bill.md)
 
 Menutup Billing sehingga seluruh Charge Source tidak lagi dapat membentuk Financial Charge baru.
 
@@ -573,17 +573,17 @@ Fase ini terdiri dari lima aktivitas utama dan dua aktivitas opsional.
 
 |Kode|SOP|Mandatory|
 |-----|-----|-----------|
-|SOP-TR-03|[Merge Billing](<SOP-TR-03 — Merge Billing.md>)|Optional|
-|SOP-TR-04|[Financial Verification](<SOP-TR-04 — Financial Verification.md>)|Yes|
-|SOP-TR-05|[Financial Adjustment](<SOP-TR-05 — Financial Adjustment.md>)|Optional|
-|SOP-TR-06|[Financial Responsibility Allocation](<SOP-TR-06 — Financial Responsibility Allocation.md>)|Yes|
-|SOP-TR-07|[Finalize Financial Responsibility](<SOP-TR-07 — Finalize Financial Responsibility.md>)|Yes|
-|SOP-TR-08|[Cancel Finalization](<SOP-TR-08 — Cancel Finalization.md>)|Optional|
-|SOP-TR-09|[Reopen Billing](<SOP-TR-09 — Reopen Billing.md>)|Optional|
+|SOP-TR-03|[Merge Billing](SOP-TR-03 — Merge Billing.md)|Optional|
+|SOP-TR-04|[Financial Verification](SOP-TR-04 — Financial Verification.md)|Yes|
+|SOP-TR-05|[Financial Adjustment](SOP-TR-05 — Financial Adjustment.md)|Optional|
+|SOP-TR-06|[Financial Responsibility Allocation](SOP-TR-06 — Financial Responsibility Allocation.md)|Yes|
+|SOP-TR-07|[Finalize Financial Responsibility](SOP-TR-07 — Finalize Financial Responsibility.md)|Yes|
+|SOP-TR-08|[Cancel Finalization](SOP-TR-08 — Cancel Finalization.md)|Optional|
+|SOP-TR-09|[Reopen Billing](SOP-TR-09 — Reopen Billing.md)|Optional|
 
 ---
 
-#### [SOP-TR-03 — Merge Billing (Optional)](<SOP-TR-03 — Merge Billing.md>)
+#### [SOP-TR-03 — Merge Billing (Optional)](SOP-TR-03 — Merge Billing.md)
 
 Menggabungkan Billing Set dari satu atau lebih Registrasi sumber ke Registrasi tujuan berdasarkan Merge Request yang masih Pending.
 
@@ -603,7 +603,7 @@ Output utama:
 
 ---
 
-#### [SOP-TR-04 — Financial Verification](<SOP-TR-04 — Financial Verification.md>)
+#### [SOP-TR-04 — Financial Verification](SOP-TR-04 — Financial Verification.md)
 
 Melakukan verifikasi terhadap Billing Set yang telah selesai dikonsolidasikan.
 
@@ -618,7 +618,7 @@ Apabila ditemukan ketidaksesuaian, proses dilanjutkan ke Financial Adjustment.
 
 ---
 
-#### [SOP-TR-05 — Financial Adjustment (Optional)](<SOP-TR-05 — Financial Adjustment.md>)
+#### [SOP-TR-05 — Financial Adjustment (Optional)](SOP-TR-05 — Financial Adjustment.md)
 
 Melakukan koreksi terhadap Financial Truth tanpa mengubah riwayat operasional Charge Source.
 
@@ -634,7 +634,7 @@ Apabila koreksi memerlukan perubahan Financial Charge oleh Charge Source, Billin
 
 ---
 
-#### [SOP-TR-06 — Financial Responsibility Allocation](<SOP-TR-06 — Financial Responsibility Allocation.md>)
+#### [SOP-TR-06 — Financial Responsibility Allocation](SOP-TR-06 — Financial Responsibility Allocation.md)
 
 Menetapkan tanggung jawab pembayaran kepada setiap Payer.
 
@@ -647,7 +647,7 @@ Output utama:
 
 ---
 
-#### [SOP-TR-07 — Finalize Financial Responsibility](<SOP-TR-07 — Finalize Financial Responsibility.md>)
+#### [SOP-TR-07 — Finalize Financial Responsibility](SOP-TR-07 — Finalize Financial Responsibility.md)
 
 Mengunci hasil Financial Responsibility Allocation sehingga Billing siap memasuki proses Settlement.
 
@@ -659,23 +659,23 @@ Setelah Finalization:
 
 ---
 
-#### [SOP-TR-08 — Cancel Finalization (Optional)](<SOP-TR-08 — Cancel Finalization.md>)
+#### [SOP-TR-08 — Cancel Finalization (Optional)](SOP-TR-08 — Cancel Finalization.md)
 
 Membatalkan status **FINALIZED** sehingga Financial Responsibility Allocation dapat diperbaiki kembali.
 
 Cancel Finalization hanya diperbolehkan sebelum terdapat Payment Settlement.
 
-Setelah pembatalan, proses kembali ke: **[SOP-TR-06 — Financial Responsibility Allocation](<SOP-TR-06 — Financial Responsibility Allocation.md>)**
+Setelah pembatalan, proses kembali ke: **[SOP-TR-06 — Financial Responsibility Allocation](SOP-TR-06 — Financial Responsibility Allocation.md)**
 
 ---
 
-#### [SOP-TR-09 — Reopen Billing (Optional)](<SOP-TR-09 — Reopen Billing.md>)
+#### [SOP-TR-09 — Reopen Billing (Optional)](SOP-TR-09 — Reopen Billing.md)
 
 Membuka kembali Billing agar Charge Source dapat melakukan perubahan terhadap Financial Charge.
 
 Reopen Billing hanya dilakukan apabila Financial Adjustment memerlukan perubahan operasional pada Charge Source.
 
-Setelah seluruh perubahan selesai dilakukan, proses Financial Control diulang mulai dari: **[SOP-TR-02 — Close Bill](<SOP-TR-02 — Close Bill.md>)**
+Setelah seluruh perubahan selesai dilakukan, proses Financial Control diulang mulai dari: **[SOP-TR-02 — Close Bill](SOP-TR-02 — Close Bill.md)**
 
 ---
 
@@ -687,11 +687,11 @@ Pada fase ini tanggung jawab proses berpindah dari Verifikator kepada Kasir.
 
 | Kode | SOP | Mandatory |
 |------|-----|-----------|
-| SOP-TR-10 | [Settlement Initiation](<SOP-TR-10 — Settlement Initiation.md>) | Yes |
+| SOP-TR-10 | [Settlement Initiation](SOP-TR-10 — Settlement Initiation.md) | Yes |
 
 ---
 
-#### [SOP-TR-10 — Settlement Initiation](<SOP-TR-10 — Settlement Initiation.md>)
+#### [SOP-TR-10 — Settlement Initiation](SOP-TR-10 — Settlement Initiation.md)
 
 Menyerahkan Billing yang telah berstatus **FINALIZED** kepada Kasir untuk memulai proses Payment Settlement.
 
@@ -776,7 +776,7 @@ Merge Billing (Optional)
 Financial Verification
 ```
 
-Dokumen [SOP-TR-01 — Open Tata Rekening](<SOP-TR-01 — Open Tata Rekening.md>) sampai [SOP-TR-10 — Settlement Initiation](<SOP-TR-10 — Settlement Initiation.md>) menjadi referensi utama untuk setiap aktivitas pada workflow Tata Rekening.
+Dokumen [SOP-TR-01 — Open Tata Rekening](SOP-TR-01 — Open Tata Rekening.md) sampai [SOP-TR-10 — Settlement Initiation](SOP-TR-10 — Settlement Initiation.md) menjadi referensi utama untuk setiap aktivitas pada workflow Tata Rekening.
 
 ---
 

@@ -116,7 +116,7 @@ Full hash: `3def0dedc74dd99ac86003f3bd5af577d7193663` (2026-07-21).
 
 ### Application
 - [`AdmissionQueueComplete.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/AntrianFeature/AdmissionQueueComplete.cs) — **new**; CompleteAtRegistration / create-on-reg / REGISTER append.
-- [`QueMulaiPeriksaCmd.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/AntrianFeature/QueMulaiPeriksaCmd.cs) — **new** at F-07 (Serve only); later commits extend behavior (see §7).
+- [`QueMulaiPeriksaCmd.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/AntrianFeature/UseCases/QueMulaiPeriksaCmd.cs) — **new** at F-07 (Serve only); later commits extend behavior (see §7).
 - [`RegJalanByBookingCmd.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/RegFeature/UseCases/RegJalanByBookingCmd.cs) — remove physician Serve; admission complete; inject tracker/factory; optional Admission*.
 - [`RegJalanWalkInCommand.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/RegFeature/UseCases/RegJalanWalkInCommand.cs) — same; ResolveTrackerForWalkIn when admission keys present.
 - [`RegJalanUbahKunjunganCmd.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/RegFeature/UseCases/RegJalanUbahKunjunganCmd.cs) — new physician entry Waiting (no Serve).

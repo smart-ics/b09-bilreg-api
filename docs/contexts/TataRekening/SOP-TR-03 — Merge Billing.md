@@ -46,7 +46,7 @@ Contoh penggunaan:
 10. Sistem mengirim permintaan **Transfer Receivable** kepada Accounting untuk memindahkan kepemilikan Accounts Receivable dari Registrasi sumber ke Registrasi tujuan.
 11. Sistem mengubah status Merge Request menjadi **Executed**.
 12. Sistem mencatat Audit Trail Merge Billing.
-13. Proses dilanjutkan ke **[SOP-TR-04 — Financial Verification](<SOP-TR-04 — Financial Verification.md>)**.
+13. Proses dilanjutkan ke **[SOP-TR-04 — Financial Verification](SOP-TR-04 — Financial Verification.md)**.
 
 ---
 
