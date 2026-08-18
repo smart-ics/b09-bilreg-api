@@ -6,7 +6,7 @@
 **Bounded context:** Apotek (`Pelayanan Obat Pasien`) — Outpatient Pharmacy  
 **Scope:** Artifact alignment only. No stock-shortage workflow redesign. No new shortage reason.
 
-**Authoritative source (locked):** `docs/contexts/apotek/outpatient-apotek-repository-gap-analysis-report.md` — BC-10, applied through `BR-APT-110` and `BR-APT-118`.
+**Authoritative source (locked):** `../working/outpatient-apotek-repository-gap-analysis-report.md` — BC-10, applied through `BR-APT-110` and `BR-APT-118`.
 
 BC-10 was not re-analyzed, reinterpreted, replaced, or redesigned.
 

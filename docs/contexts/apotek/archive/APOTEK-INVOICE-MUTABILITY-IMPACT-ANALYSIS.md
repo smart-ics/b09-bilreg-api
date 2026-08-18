@@ -1,8 +1,8 @@
 # Apotek Invoice Mutability — Impact Analysis
 
-**PD-07 supersession (2026-08-18):** Canonical artifacts no longer persist `BILRG_AptCreditNote`. Credit Note, Refund, and Financial Adjustment are Tata Rekening-owned. This report remains the pre-ADR-APT-003 impact map. Recommendations that keep an Apotek Credit Note table or Integration Task `BillingCredit` `{InvoiceId}:CN{n}` are superseded by [`outpatient-apotek-persistence-design.md`](outpatient-apotek-persistence-design.md) **PD-07**. Current rules are in [`apotek-domain.md`](apotek-domain.md) **BR-APT-027**, PD-05, PD-07, and [`APOTEK-CREDIT-NOTE-OWNERSHIP-RESOLUTION.md`](APOTEK-CREDIT-NOTE-OWNERSHIP-RESOLUTION.md).
+**PD-07 supersession (2026-08-18):** Canonical artifacts no longer persist `BILRG_AptCreditNote`. Credit Note, Refund, and Financial Adjustment are Tata Rekening-owned. This report remains the pre-ADR-APT-003 impact map. Recommendations that keep an Apotek Credit Note table or Integration Task `BillingCredit` `{InvoiceId}:CN{n}` are superseded by [`outpatient-apotek-persistence-design.md`](../outpatient-apotek-persistence-design.md) **PD-07**. Current rules are in [`apotek-domain.md`](../apotek-domain.md) **BR-APT-027**, PD-05, PD-07, and [`APOTEK-CREDIT-NOTE-OWNERSHIP-RESOLUTION.md`](APOTEK-CREDIT-NOTE-OWNERSHIP-RESOLUTION.md).
 
-**Status:** Decision accepted 2026-08-18. Canonical artifacts were updated under [`ADR-APT-003`](adr/ADR-APT-003-invoice-mutability-owned-by-tata-rekening.md). This report remains the pre-decision impact map.
+**Status:** Decision accepted 2026-08-18. Canonical artifacts were updated under [`ADR-APT-003`](../adr/ADR-APT-003-invoice-mutability-owned-by-tata-rekening.md). This report remains the pre-decision impact map.
 
 **Scope:** Outpatient Apotek (`Pelayanan Obat Pasien`) — impact of changing Invoice mutability from **immutable after leaving `Established` (Issued / financially settled)** to **mutable while Tata Rekening financial status permits**.
 
@@ -12,7 +12,7 @@
 
 **Repository state:** Analyzed from canonical Apotek artifacts. Target `ApotekContext` implementation is absent; legacy `PenjualanModel` / DU-Bill remains.
 
-**Related reports:** [`APOTEK-FINANCIAL-CLEARANCE-ANALYSIS.md`](APOTEK-FINANCIAL-CLEARANCE-ANALYSIS.md) (terminology and Invoice vs registration financial state); [`APOTEK-UNFULFILLED-OUTCOME-SIMPLIFICATION-ANALYSIS.md`](APOTEK-UNFULFILLED-OUTCOME-SIMPLIFICATION-ANALYSIS.md) (Credit Note is collaborator, not fulfillment ledger); [`docs/contexts/TataRekening/04-sop.md`](../TataRekening/04-sop.md) (Charge Source mutability while Billing is `OPEN`).
+**Related reports:** [`APOTEK-FINANCIAL-CLEARANCE-ANALYSIS.md`](APOTEK-FINANCIAL-CLEARANCE-ANALYSIS.md) (terminology and Invoice vs registration financial state); [`APOTEK-UNFULFILLED-OUTCOME-SIMPLIFICATION-ANALYSIS.md`](APOTEK-UNFULFILLED-OUTCOME-SIMPLIFICATION-ANALYSIS.md) (Credit Note is collaborator, not fulfillment ledger); [`docs/contexts/TataRekening/04-sop.md`](../../TataRekening/04-sop.md) (Charge Source mutability while Billing is `OPEN`).
 
 ---
 
@@ -36,8 +36,8 @@ Credit Note does **not** disappear. Payment Clearance (Cashier) and Tata Rekenin
 
 | Source | Assumption |
 |--------|------------|
-| **BR-APT-027** — [`apotek-domain.md`](apotek-domain.md) §7.3 | An **issued or financially settled** Invoice shall be corrected through accountable **Financial Adjustment, Credit Note, or Refund**, **not silent replacement**. |
-| **PD-05** — [`outpatient-apotek-persistence-design.md`](outpatient-apotek-persistence-design.md) §14.1 | Rewrite (delete+insert of items/charges) **only while `InvoiceStatus = Established`**. After leaving `Established` (wording includes `Issued`, `Paid`, `Cancelled`, `Closed`, or any later state), **content is immutable**. Post-Established correction shall **not modify original invoice rows**. |
+| **BR-APT-027** — [`apotek-domain.md`](../apotek-domain.md) §7.3 | An **issued or financially settled** Invoice shall be corrected through accountable **Financial Adjustment, Credit Note, or Refund**, **not silent replacement**. |
+| **PD-05** — [`outpatient-apotek-persistence-design.md`](../outpatient-apotek-persistence-design.md) §14.1 | Rewrite (delete+insert of items/charges) **only while `InvoiceStatus = Established`**. After leaving `Established` (wording includes `Issued`, `Paid`, `Cancelled`, `Closed`, or any later state), **content is immutable**. Post-Established correction shall **not modify original invoice rows**. |
 | Persistence §8.5 / §4.2 / §9.2 | Same: rewrite while `Established`; after that, header commercial fields and item content immutable; `BILRG_AptCreditNote` insert-only. §4.2 also says “rewriteable **until Issued**,” which is consistent with freeze at Issue, not at Financially Cleared. |
 | Invoice lifecycle §8.3 | `Established` → `Issued` → `Financially Cleared` → `Resolved`; `Established` or `Issued` → `Cancelled`; `Issued` or `Financially Cleared` → `Adjusted or Credited` → `Resolved`. **Adjusted or Credited is a lifecycle branch, not an in-place edit.** |
 | Glossary **Pricing Snapshot** | **Immutable** commercial basis **when the Invoice is established**. **BR-APT-025** requires retaining Pricing Snapshot and Payer at establishment. |
@@ -57,10 +57,10 @@ Those rules still **couple non-fulfillment to Credit Note/Refund**. They do **no
 
 | Artifact | Assumption |
 |----------|------------|
-| [`outpatient-apotek-workflow.md`](outpatient-apotek-workflow.md) WF-003 | If an **issued or financially cleared** Invoice needs correction: Financial Adjustment, Credit Note, or Refund **under Tata Rekening authority**; **do not silently replace**. Incomplete payment: preparation blocked; **cancel only while lifecycle permits**. |
+| [`outpatient-apotek-workflow.md`](../outpatient-apotek-workflow.md) WF-003 | If an **issued or financially cleared** Invoice needs correction: Financial Adjustment, Credit Note, or Refund **under Tata Rekening authority**; **do not silently replace**. Incomplete payment: preparation blocked; **cancel only while lifecycle permits**. |
 | WF-003 / WF-007 | Paid shortage / paid No-Show: Credit Note or Refund; **do not silently erase** a paid commercial consequence or treat it as the uninvoiced BPJS path. |
 | WF-007 | General Patient Invoice **paid** → Tata Rekening supplies Credit Note/Refund; Sales Order stays `Active` until then. BPJS No-Show: **no Invoice** to cancel. |
-| [`SOP-APT-RJ-003`](sop/SOP-APT-RJ-003-Pelayanan-Obat-Pasien-Umum-EN.md) §5.3 | Cancel only when displayed Invoice lifecycle permits; otherwise Tata Rekening supplies Adjustment / Credit Note / Refund. |
+| [`SOP-APT-RJ-003`](../sop/SOP-APT-RJ-003-Pelayanan-Obat-Pasien-Umum-EN.md) §5.3 | Cancel only when displayed Invoice lifecycle permits; otherwise Tata Rekening supplies Adjustment / Credit Note / Refund. |
 | SOP-003 §5.4, SOP-004 shortage, SOP-007 | Commercial correction is **supplied by Tata Rekening**, displayed by Pharmacy System; Pharmacy does not rebuild the Sales Order. |
 | Screen design §3.2 | **Correction Request:** post-payment / post-handover correction **must not silently replace history**. **Financial Consequence Pending:** Credit Note, Refund, or other Tata Rekening outcome outstanding. Return/correction is a **request**, not a free reverse. |
 
@@ -316,7 +316,7 @@ Issue and Financially Cleared should remain **commercial/payment facts**. **Muta
 
 ### 9.1 What Tata Rekening already allows (Charge Source)
 
-From [`04-sop.md`](../TataRekening/04-sop.md) §3.3 and [`SOP-TR-09`](../TataRekening/SOP-TR-09%20—%20Reopen%20Billing.md):
+From [`04-sop.md`](../../TataRekening/04-sop.md) §3.3 and [`SOP-TR-09`](../../TataRekening/SOP-TR-09%20—%20Reopen%20Billing.md):
 
 - **`OPEN`:** Charge Sources (including Farmasi) may **form, change, or cancel** Financial Charge.
 - **`CLOSED`:** no **new** Financial Charge; Financial Control (verify/adjust/allocate/finalize).
@@ -370,14 +370,14 @@ Canonical documents to change **if** the proposal is accepted (not done in this 
 
 | Artifact | Update |
 |----------|--------|
-| [`apotek-domain.md`](apotek-domain.md) / [`apotek-domain-id.md`](apotek-domain-id.md) | Glossary (Credit Note, Pricing Snapshot, Invoice Issued); **BR-APT-027** and dependent rules (§4); §5.3 / §6 Invoice aggregate; §8.3 lifecycle notes; events (`Invoice Revised` or equivalent); §1.3 ownership: **consume TR mutation permission**, do not own it |
-| [`outpatient-apotek-workflow.md`](outpatient-apotek-workflow.md) / `-id.md` | WF-003 / 004 / 005 / 007 exceptions and compensations; cross-context table (Apotek ↔ Tata Rekening); event lists |
-| [`outpatient-apotek-persistence-design.md`](outpatient-apotek-persistence-design.md) | §4.2, §8.5, §9.2, §11 task catalog, **PD-05 supersession** |
-| [`outpatient-apotek-screen-and-aggregate-design.md`](outpatient-apotek-screen-and-aggregate-design.md) | Pelayanan Penjualan workbench (edit Issued invoice only when permission displayed); Exception Worklist Correction Request / Financial Consequence Pending; §5 Invoice ownership row |
+| [`apotek-domain.md`](../apotek-domain.md) / [`apotek-domain-id.md`](../apotek-domain-id.md) | Glossary (Credit Note, Pricing Snapshot, Invoice Issued); **BR-APT-027** and dependent rules (§4); §5.3 / §6 Invoice aggregate; §8.3 lifecycle notes; events (`Invoice Revised` or equivalent); §1.3 ownership: **consume TR mutation permission**, do not own it |
+| [`outpatient-apotek-workflow.md`](../outpatient-apotek-workflow.md) / `-id.md` | WF-003 / 004 / 005 / 007 exceptions and compensations; cross-context table (Apotek ↔ Tata Rekening); event lists |
+| [`outpatient-apotek-persistence-design.md`](../outpatient-apotek-persistence-design.md) | §4.2, §8.5, §9.2, §11 task catalog, **PD-05 supersession** |
+| [`outpatient-apotek-screen-and-aggregate-design.md`](../outpatient-apotek-screen-and-aggregate-design.md) | Pelayanan Penjualan workbench (edit Issued invoice only when permission displayed); Exception Worklist Correction Request / Financial Consequence Pending; §5 Invoice ownership row |
 | SOP-003, SOP-004, SOP-005, SOP-007 (EN+ID) | Correction/shortage/No-Show: Charge Source rewrite vs wait-for-Reopen vs Credit Note/Refund |
-| [`DAFTAR-SOP-APT-RJ.md`](sop/DAFTAR-SOP-APT-RJ.md) | Glossary if Credit Note role changes |
+| [`DAFTAR-SOP-APT-RJ.md`](../sop/DAFTAR-SOP-APT-RJ.md) | Glossary if Credit Note role changes |
 | **New ADR** (recommended `ADR-APT-003`) | Invoice mutability gated by **consumed** Tata Rekening Charge Source permission; BA-08 Financial Clearance stays retired; PD-05 replaced; Credit Note retained for blocked/settled paths |
-| [`outpatient-apotek-repository-gap-analysis-report.md`](outpatient-apotek-repository-gap-analysis-report.md) | Note on MI-03 / BA-07: inbound permission query; new billing task types — **as a follow-on decision**, not a silent edit of ratified BA-07 delivery style |
+| [`../working/outpatient-apotek-repository-gap-analysis-report.md`](../working/outpatient-apotek-repository-gap-analysis-report.md) | Note on MI-03 / BA-07: inbound permission query; new billing task types — **as a follow-on decision**, not a silent edit of ratified BA-07 delivery style |
 | [`APOTEK-FINANCIAL-CLEARANCE-ANALYSIS.md`](APOTEK-FINANCIAL-CLEARANCE-ANALYSIS.md) | §6 Invoice mutability implications become stale |
 | [`APOTEK-UNFULFILLED-OUTCOME-SIMPLIFICATION-ANALYSIS.md`](APOTEK-UNFULFILLED-OUTCOME-SIMPLIFICATION-ANALYSIS.md) | Credit Note still collaborator; add rewrite-vs-credit distinction |
 | [`APOTEK-ARTIFACT-ALIGNMENT-REVIEW.md`](APOTEK-ARTIFACT-ALIGNMENT-REVIEW.md) | Would need a new ALN if documents diverge during rollout |
@@ -449,7 +449,7 @@ Whether the hospital **should** allow pharmacy operators to edit Issued invoices
 | `outpatient-apotek-persistence-design.md` | PD-05; §4.2; §8.5 Credit Note; §9.2; §11 BillingCharge/Credit |
 | `outpatient-apotek-screen-and-aggregate-design.md` | Correction Request; Financial Consequence Pending; Invoice aggregate row |
 | SOP-003 / 004 / 005 / 007 EN+ID | Correction, shortage, No-Show, Credit Note supplied by TR |
-| `outpatient-apotek-repository-gap-analysis-report.md` | BA-07, BA-08, MI-03 Invoice/credit-note gap |
+| `../working/outpatient-apotek-repository-gap-analysis-report.md` | BA-07, BA-08, MI-03 Invoice/credit-note gap |
 | `APOTEK-FINANCIAL-CLEARANCE-ANALYSIS.md` | §6 mutability |
 | `APOTEK-UNFULFILLED-OUTCOME-SIMPLIFICATION-ANALYSIS.md` | Credit Note as collaborator |
 | `ALN-003-RESOLUTION-REPORT.md` | Invoice Item from Sales Order Item (timing, not freeze) |

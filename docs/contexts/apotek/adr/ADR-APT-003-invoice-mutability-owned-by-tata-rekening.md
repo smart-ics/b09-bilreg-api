@@ -14,7 +14,7 @@ That freeze was owned by the Apotek Invoice lifecycle. It was stricter than the 
 
 The project now adopts a different principle: Invoice mutability follows external financial permission owned by Tata Rekening, not automatic immutability after Issue.
 
-Related analysis: [`APOTEK-INVOICE-MUTABILITY-IMPACT-ANALYSIS.md`](../APOTEK-INVOICE-MUTABILITY-IMPACT-ANALYSIS.md), [`APOTEK-FINANCIAL-CLEARANCE-ANALYSIS.md`](../APOTEK-FINANCIAL-CLEARANCE-ANALYSIS.md).
+Related analysis (archived, not normative): [`APOTEK-INVOICE-MUTABILITY-IMPACT-ANALYSIS.md`](../archive/APOTEK-INVOICE-MUTABILITY-IMPACT-ANALYSIS.md), [`APOTEK-FINANCIAL-CLEARANCE-ANALYSIS.md`](../archive/APOTEK-FINANCIAL-CLEARANCE-ANALYSIS.md).
 
 ## Decision
 

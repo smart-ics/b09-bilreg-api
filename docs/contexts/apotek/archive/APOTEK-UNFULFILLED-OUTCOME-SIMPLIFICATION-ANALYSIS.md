@@ -5,15 +5,15 @@
 **Date:** 2026-08-18  
 **Question:** Can Unfulfilled Medication Outcome be fully represented from existing Dispensing, Salinan Resep, Invoice / Tata Rekening financial correction, and related aggregate facts, without the dedicated table `BILRG_AptUnfulfilledOutcome`?
 
-**Invoice mutability note (2026-08-18):** Tata Rekening financial correction remains a **collaborator**, not the Unfulfilled quantity ledger. After [`ADR-APT-003`](adr/ADR-APT-003-invoice-mutability-owned-by-tata-rekening.md) and **PD-07**, Credit Note is Tata Rekening-owned. There is no `BILRG_AptCreditNote`. Invoice revision under **BR-APT-027** still does not replace `BILRG_AptUnfulfilledOutcome`. The KEEP conclusion below is unchanged.
+**Invoice mutability note (2026-08-18):** Tata Rekening financial correction remains a **collaborator**, not the Unfulfilled quantity ledger. After [`ADR-APT-003`](../adr/ADR-APT-003-invoice-mutability-owned-by-tata-rekening.md) and **PD-07**, Credit Note is Tata Rekening-owned. There is no `BILRG_AptCreditNote`. Invoice revision under **BR-APT-027** still does not replace `BILRG_AptUnfulfilledOutcome`. The KEEP conclusion below is unchanged.
 
 **Authoritative sources (not re-opened):**
 
-- [`apotek-domain.md`](./apotek-domain.md) — especially §5.8, §6.2–§6.5, `BR-APT-018`–`019`, `BR-APT-046`, `BR-APT-054`, `BR-APT-056`–`060`, `BR-APT-071`, `BR-APT-079`–`080`, `BR-APT-094`, `BR-APT-104`, `BR-APT-108`–`118`
-- [`outpatient-apotek-persistence-design.md`](./outpatient-apotek-persistence-design.md) — §2.1, §6.1, §8.4–§8.9, §9.2
-- [`outpatient-apotek-screen-and-aggregate-design.md`](./outpatient-apotek-screen-and-aggregate-design.md) — §5.1 Sales Order ownership
-- [`outpatient-apotek-workflow.md`](./outpatient-apotek-workflow.md) — `WF-APT-RJ-002` / `003` / `004` / `007`
-- [`sop/SOP-APT-RJ-007-Penanganan-Obat-Tidak-Diambil-EN.md`](./sop/SOP-APT-RJ-007-Penanganan-Obat-Tidak-Diambil-EN.md)
+- [`apotek-domain.md`](../apotek-domain.md) — especially §5.8, §6.2–§6.5, `BR-APT-018`–`019`, `BR-APT-046`, `BR-APT-054`, `BR-APT-056`–`060`, `BR-APT-071`, `BR-APT-079`–`080`, `BR-APT-094`, `BR-APT-104`, `BR-APT-108`–`118`
+- [`outpatient-apotek-persistence-design.md`](../outpatient-apotek-persistence-design.md) — §2.1, §6.1, §8.4–§8.9, §9.2
+- [`outpatient-apotek-screen-and-aggregate-design.md`](../outpatient-apotek-screen-and-aggregate-design.md) — §5.1 Sales Order ownership
+- [`outpatient-apotek-workflow.md`](../outpatient-apotek-workflow.md) — `WF-APT-RJ-002` / `003` / `004` / `007`
+- [`sop/SOP-APT-RJ-007-Penanganan-Obat-Tidak-Diambil-EN.md`](../sop/SOP-APT-RJ-007-Penanganan-Obat-Tidak-Diambil-EN.md)
 - [`ALN-006-RESOLUTION-REPORT.md`](./ALN-006-RESOLUTION-REPORT.md) — shortage timing cut at Sales Order establishment (BC-10)
 
 **Codebase evidence:** No Apotek write model, DTO, DAL, or SQL script exists in `b09-bilreg-api` at analysis time. The table exists only as a proposed persistence shape. This report evaluates the design, not a live schema.
@@ -168,10 +168,10 @@ This section is the impact list **if** architects overrode the recommendation. I
 
 | Artifact | Change required |
 |---|---|
-| [`outpatient-apotek-persistence-design.md`](./outpatient-apotek-persistence-design.md) | Drop table from §6.1, ERD, §8.4, §9.2 insert-only list. Redefine how `UnfulfilledQty` is maintained. Likely force Dispensing creation for every post-SO closure (conflicts with `BR-APT-030` / §5.4). |
-| [`apotek-domain.md`](./apotek-domain.md) / [`apotek-domain-id.md`](./apotek-domain-id.md) | Rewrite §5.8 from a Sales Order–owned fact to a derived projection — **or** keep §5.8 and admit persistence no longer matches the domain. Touch `BR-APT-018`, `BR-APT-046`, `BR-APT-118`. Clarify Dispensing `Unfulfilled` vs Accepted Quantity closure (`BR-APT-104`). |
-| [`outpatient-apotek-screen-and-aggregate-design.md`](./outpatient-apotek-screen-and-aggregate-design.md) | Sales Order would no longer “own unfulfilled progress” as a write fact; Exception Worklist would join Dispensing + Salinan + Tata Rekening correction with gap cases. |
-| [`outpatient-apotek-workflow.md`](./outpatient-apotek-workflow.md) / `-id.md` | Remove or redefine `Unfulfilled Medication Recorded`; rewrite `WF-APT-RJ-007` step 6; rewrite post-SO shortage exceptions in `WF-APT-RJ-003` / `004`. |
+| [`outpatient-apotek-persistence-design.md`](../outpatient-apotek-persistence-design.md) | Drop table from §6.1, ERD, §8.4, §9.2 insert-only list. Redefine how `UnfulfilledQty` is maintained. Likely force Dispensing creation for every post-SO closure (conflicts with `BR-APT-030` / §5.4). |
+| [`apotek-domain.md`](../apotek-domain.md) / [`apotek-domain-id.md`](../apotek-domain-id.md) | Rewrite §5.8 from a Sales Order–owned fact to a derived projection — **or** keep §5.8 and admit persistence no longer matches the domain. Touch `BR-APT-018`, `BR-APT-046`, `BR-APT-118`. Clarify Dispensing `Unfulfilled` vs Accepted Quantity closure (`BR-APT-104`). |
+| [`outpatient-apotek-screen-and-aggregate-design.md`](../outpatient-apotek-screen-and-aggregate-design.md) | Sales Order would no longer “own unfulfilled progress” as a write fact; Exception Worklist would join Dispensing + Salinan + Tata Rekening correction with gap cases. |
+| [`outpatient-apotek-workflow.md`](../outpatient-apotek-workflow.md) / `-id.md` | Remove or redefine `Unfulfilled Medication Recorded`; rewrite `WF-APT-RJ-007` step 6; rewrite post-SO shortage exceptions in `WF-APT-RJ-003` / `004`. |
 | SOP-003, SOP-004, SOP-007 (EN/ID) | Stop requiring a recorded Unfulfilled Medication Outcome as a completion criterion; substitute neighbor documents (incomplete for unpaid / unplanned qty). |
 | ALN-006 / BC-10 narrative | Post-SO branch currently “record Unfulfilled Medication Outcome”; would need a replacement fact that still forbids stripping Sales Order lines. |
 | Future domain model / repo | `SalesOrder` reconstruction would load no outcome details; Fulfillment Completion rules would move into application-level joins. |

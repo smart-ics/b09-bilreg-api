@@ -39,7 +39,7 @@ Custody vocabulary remains **Dispensing Temporary Custody**. Informal example na
 | File | Change |
 |---|---|
 | `adr/ADR-APT-001-queu-boundary-and-pharmacy-workflow-state-ownership.md` | Context, Pharmacy Owns list, Prevent State Explosion, Allowed/Not Allowed examples, references |
-| `outpatient-apotek-repository-gap-analysis-report.md` | BA-09 gap sentence: `in-transit custody` → Dispensing Temporary Custody |
+| `../working/outpatient-apotek-repository-gap-analysis-report.md` | BA-09 gap sentence: `in-transit custody` → Dispensing Temporary Custody |
 | `APOTEK-ARTIFACT-ALIGNMENT-REVIEW.md` | ALN-007 marked resolved; Business Terminology Aligned; remaining-defect counts updated |
 | `docs/ARTIFACTS.md` | Indexed this report |
 

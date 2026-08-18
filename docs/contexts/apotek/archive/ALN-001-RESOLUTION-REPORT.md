@@ -6,7 +6,7 @@
 **Bounded context:** Apotek (`Pelayanan Obat Pasien`) — Outpatient Pharmacy  
 **Scope:** Document alignment only. No architecture redesign. No business-behavior, workflow, or ownership-rule change beyond applying the locked BA-03 decision to stale wording.
 
-**Authoritative source (locked):** `docs/contexts/apotek/outpatient-apotek-repository-gap-analysis-report.md` — BA-03
+**Authoritative source (locked):** `../working/outpatient-apotek-repository-gap-analysis-report.md` — BA-03
 
 BA-03 was not re-analyzed, reinterpreted, challenged, replaced, or redesigned.
 

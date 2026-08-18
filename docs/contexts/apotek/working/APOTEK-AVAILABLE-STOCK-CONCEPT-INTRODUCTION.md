@@ -1,5 +1,12 @@
 # Apotek Available Stock Concept Introduction
 
+```yaml
+Artifact-Type: ConceptIntroduction
+Status: Working
+Normative-Level: Non-authoritative
+Archive-Eligible: No
+```
+
 **Artifact status:** Concept introduction record  
 **Bounded context:** Apotek (`Pelayanan Obat Pasien`) — Outpatient Pharmacy  
 **Date:** 2026-08-17  
@@ -86,14 +93,14 @@ No aggregate, table, or class was renamed. `Sales Order`, `Dispensing`, `Invoice
 | `outpatient-apotek-workflow.md` | Overview, included/excluded, Stock Ledger handoff, `WF-APT-RJ-002` inputs and Stock Shortage branch, post-establishment exception, `BR-APT-146` reference |
 | `outpatient-apotek-workflow-id.md` | Indonesian companion of the same workflow clarifications |
 | `outpatient-apotek-screen-and-aggregate-design.md` | Governing principle 9; Telaah Resep and Pelayanan Penjualan workbenches; invariant 12; aggregate-impact row; formula as a non-decision |
-| `outpatient-apotek-persistence-design.md` | Do-not-persist Current Stock vs Available Stock; invalid to persist Available Stock; neighbor reuse; checklist item 6; open decision **PD-04** |
+| `outpatient-apotek-persistence-design.md` | Do-not-persist Current Stock vs Available Stock; invalid to persist Available Stock; neighbor reuse; checklist item 6; open decision **PD-09** |
 | `outpatient-apotek-repository-gap-analysis-report.md` | BC-04 Stock Shortage wording; BC-10 Available Stock ≠ Current Stock; architecture-approval summary |
 | `adr/ADR-APT-002-pharmacy-stock-ledger-boundary.md` | Stock Ledger owns Current Stock and does not own Available Stock |
 | `docs/ARTIFACTS.md` | Index row for this report |
 
 ### Impact analysis
 
-`docs/ARTIFACTS.md` still indexes `outpatient-apotek-stock-shortage-sales-order-impact-analysis.md`. That file is **not in the repository**. The living shortage impact record is BC-10 (and BC-04) in `outpatient-apotek-repository-gap-analysis-report.md`, which was updated instead of inventing a missing investigation document.
+The living shortage impact record is BC-10 (and BC-04) in `outpatient-apotek-repository-gap-analysis-report.md`. The former `outpatient-apotek-stock-shortage-sales-order-impact-analysis.md` index row was removed from `docs/ARTIFACTS.md` during artifact cleanup (2026-08-18).
 
 ALN-006 remains a historical timing-alignment record. Its BC-10 before/after Sales Order cut is unchanged and was not rewritten.
 
@@ -119,13 +126,12 @@ ALN-006 remains a historical timing-alignment record. Its BC-10 before/after Sal
 
 ## Open questions and future design work
 
-1. **Available Stock formula (required later).** Specify inputs, location scope (Pharmacy Unit vs Dispensing Temporary Unit vs other), whether committed Sales Order / Dispensing quantities reduce Available Stock, batch/expiry rules, and unit of measure. Tracked as persistence open item **PD-04**.
+1. **Available Stock formula (required later).** Specify inputs, location scope (Pharmacy Unit vs Dispensing Temporary Unit vs other), whether committed Sales Order / Dispensing quantities reduce Available Stock, batch/expiry rules, and unit of measure. Tracked as persistence open item **PD-09**.
 2. **Owning design activity.** Confirm whether the formula is authored in an inventory-planning artifact, a Stock Ledger extension, or a Pharmacy application service that reads Current Stock plus commitments. This introduction does not choose an owner beyond “future inventory-planning design activity.”
 3. **Runtime evaluation vs snapshot.** Decide whether Available Stock is evaluated only at Sales Order establishment, also at later shortage detection, and whether any evaluation result is recorded as evidence (still not as Current Stock).
 4. **Screen presentation.** If operators see both quantities, the screen design must keep labels distinct. Layout, fields, and badges are not specified here.
 5. **SOP operator language.** SOP-002 still says Inventory supplies “Stock Availability.” Decide whether SOP actor tables should say Current Stock, Available Stock, or both.
-6. **Missing impact-analysis file.** Either restore `outpatient-apotek-stock-shortage-sales-order-impact-analysis.md` or remove it from `docs/ARTIFACTS.md` so the index matches the repository.
-7. **Post-establishment shortage vs Current Stock.** After a Sales Order exists, unfulfillable quantity follows `BR-APT-118`. Whether that later shortage is detected from Current Stock, from execution failure, or from a later Available Stock evaluation is not specified here.
+6. **Post-establishment shortage vs Current Stock.** After a Sales Order exists, unfulfillable quantity follows `BR-APT-118`. Whether that later shortage is detected from Current Stock, from execution failure, or from a later Available Stock evaluation is not specified here.
 
 ---
 

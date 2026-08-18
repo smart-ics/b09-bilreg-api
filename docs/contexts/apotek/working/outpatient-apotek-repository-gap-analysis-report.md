@@ -1,13 +1,20 @@
 # Outpatient Apotek Repository Gap Analysis Report
 
+```yaml
+Artifact-Type: GapAnalysis
+Status: Working
+Normative-Level: Non-authoritative
+Archive-Eligible: No
+```
+
 **Artifact status:** Architecture review input  
 **Review date:** 2026-08-15  
 **Scope:** Current `b09-bilreg-api` backend and `c012_myhospital_web` frontend compared with:
 
-- `apotek-domain.md`
-- `outpatient-apotek-workflow.md`
-- `outpatient-apotek-screen-and-aggregate-design.md`
-- `adr/ADR-APT-001-queu-boundary-and-pharmacy-workflow-state-ownership.md`
+- `../apotek-domain.md`
+- `../outpatient-apotek-workflow.md`
+- `../outpatient-apotek-screen-and-aggregate-design.md`
+- `../adr/ADR-APT-001-queu-boundary-and-pharmacy-workflow-state-ownership.md`
 
 This report identifies and classifies gaps and unresolved decisions only. It intentionally contains no implementation roadmap, sequencing, milestone, or delivery estimate.
 

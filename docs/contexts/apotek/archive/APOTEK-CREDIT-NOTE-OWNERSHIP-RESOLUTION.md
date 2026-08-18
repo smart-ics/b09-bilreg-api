@@ -2,8 +2,8 @@
 
 **Date:** 2026-08-18  
 **Task type:** Artifact refactoring. No source code, schema, or API contract was changed.  
-**Canonical decision:** [`outpatient-apotek-persistence-design.md`](outpatient-apotek-persistence-design.md) **PD-07**  
-**Related:** [`ADR-APT-003`](adr/ADR-APT-003-invoice-mutability-owned-by-tata-rekening.md)
+**Canonical decision:** [`outpatient-apotek-persistence-design.md`](../outpatient-apotek-persistence-design.md) **PD-07**  
+**Related:** [`ADR-APT-003`](../adr/ADR-APT-003-invoice-mutability-owned-by-tata-rekening.md)
 
 ---
 
@@ -35,14 +35,14 @@ No new Apotek aggregate was added. Invoice, Sales Order, TelaahResep, and Dispen
 
 | Artifact | Change |
 |---|---|
-| [`outpatient-apotek-persistence-design.md`](outpatient-apotek-persistence-design.md) | PD-07 closed. Table catalog, ERD, identifiers, Invoice shape, reconstruction, Integration Task catalog, PD-05, indexing notes, architect checklist. Open **PD-08**. |
-| [`apotek-domain.md`](apotek-domain.md) / [`apotek-domain-id.md`](apotek-domain-id.md) | Glossary, Invoice aggregate, **BR-APT-027**, **BR-APT-060**, Invoice lifecycle, `Invoice Credited` |
-| [`adr/ADR-APT-003-invoice-mutability-owned-by-tata-rekening.md`](adr/ADR-APT-003-invoice-mutability-owned-by-tata-rekening.md) | Exception mechanisms are Tata Rekening-owned; PD-07 consequence |
-| [`outpatient-apotek-workflow.md`](outpatient-apotek-workflow.md) / [`outpatient-apotek-workflow-id.md`](outpatient-apotek-workflow-id.md) | Participants, WF-003 correction, WF-007 paid path, Tata Rekening handoff |
-| [`outpatient-apotek-screen-and-aggregate-design.md`](outpatient-apotek-screen-and-aggregate-design.md) | Exception worklist, Invoice ownership, Tata Rekening collaborator |
-| [`outpatient-apotek-repository-gap-analysis-report.md`](outpatient-apotek-repository-gap-analysis-report.md) | MI-03: financial-correction correlation, not credit-note ownership |
-| [`sop/SOP-APT-RJ-003-*`](sop/SOP-APT-RJ-003-Pelayanan-Obat-Pasien-Umum-EN.md) EN/ID | Pharmacy does not persist Credit Note |
-| [`sop/SOP-APT-RJ-007-*`](sop/SOP-APT-RJ-007-Penanganan-Obat-Tidak-Diambil-EN.md) EN/ID | Display TR outcome; do not persist Credit Note |
+| [`outpatient-apotek-persistence-design.md`](../outpatient-apotek-persistence-design.md) | PD-07 closed. Table catalog, ERD, identifiers, Invoice shape, reconstruction, Integration Task catalog, PD-05, indexing notes, architect checklist. Open **PD-08**. |
+| [`apotek-domain.md`](../apotek-domain.md) / [`apotek-domain-id.md`](../apotek-domain-id.md) | Glossary, Invoice aggregate, **BR-APT-027**, **BR-APT-060**, Invoice lifecycle, `Invoice Credited` |
+| [`adr/ADR-APT-003-invoice-mutability-owned-by-tata-rekening.md`](../adr/ADR-APT-003-invoice-mutability-owned-by-tata-rekening.md) | Exception mechanisms are Tata Rekening-owned; PD-07 consequence |
+| [`outpatient-apotek-workflow.md`](../outpatient-apotek-workflow.md) / [`outpatient-apotek-workflow-id.md`](../outpatient-apotek-workflow-id.md) | Participants, WF-003 correction, WF-007 paid path, Tata Rekening handoff |
+| [`outpatient-apotek-screen-and-aggregate-design.md`](../outpatient-apotek-screen-and-aggregate-design.md) | Exception worklist, Invoice ownership, Tata Rekening collaborator |
+| [`../working/outpatient-apotek-repository-gap-analysis-report.md`](../working/outpatient-apotek-repository-gap-analysis-report.md) | MI-03: financial-correction correlation, not credit-note ownership |
+| [`sop/SOP-APT-RJ-003-*`](../sop/SOP-APT-RJ-003-Pelayanan-Obat-Pasien-Umum-EN.md) EN/ID | Pharmacy does not persist Credit Note |
+| [`sop/SOP-APT-RJ-007-*`](../sop/SOP-APT-RJ-007-Penanganan-Obat-Tidak-Diambil-EN.md) EN/ID | Display TR outcome; do not persist Credit Note |
 | [`ALN-006-RESOLUTION-REPORT.md`](ALN-006-RESOLUTION-REPORT.md) | Post-SO commercial path follows BR-APT-027 / TR ownership |
 | [`APOTEK-UNFULFILLED-OUTCOME-SIMPLIFICATION-ANALYSIS.md`](APOTEK-UNFULFILLED-OUTCOME-SIMPLIFICATION-ANALYSIS.md) | Collaborator is Tata Rekening correction, not `BILRG_AptCreditNote`. KEEP unchanged |
 | [`APOTEK-INVOICE-MUTABILITY-IMPACT-ANALYSIS.md`](APOTEK-INVOICE-MUTABILITY-IMPACT-ANALYSIS.md) | Historical map; PD-07 supersession banner |

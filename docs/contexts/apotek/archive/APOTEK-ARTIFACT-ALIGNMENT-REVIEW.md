@@ -8,8 +8,8 @@
 **Artifacts reviewed:**
 
 1. `docs/contexts/apotek/apotek-domain.md`
-2. `docs/contexts/apotek/outpatient-apotek-workflow.md`
-3. `docs/contexts/apotek/outpatient-apotek-screen-and-aggregate-design.md`
+2. `../outpatient-apotek-workflow.md`
+3. `../outpatient-apotek-screen-and-aggregate-design.md`
 4. `docs/contexts/apotek/adr/ADR-APT-001-queu-boundary-and-pharmacy-workflow-state-ownership.md`
 5. `docs/contexts/apotek/sop/SOP-APT-RJ-001-Antrian-dan-Mapping-EN.md`
 6. `docs/contexts/apotek/sop/SOP-APT-RJ-002-Penerimaan-Resep-dan-Permintaan-Langsung-EN.md`
@@ -18,7 +18,7 @@
 9. `docs/contexts/apotek/sop/SOP-APT-RJ-005-Pelayanan-Obat-Penjaminan-Campuran-EN.md`
 10. `docs/contexts/apotek/sop/SOP-APT-RJ-006-Koordinasi-Beberapa-Kebutuhan-Obat-EN.md`
 11. `docs/contexts/apotek/sop/SOP-APT-RJ-007-Penanganan-Obat-Tidak-Diambil-EN.md`
-12. `docs/contexts/apotek/outpatient-apotek-repository-gap-analysis-report.md`
+12. `../working/outpatient-apotek-repository-gap-analysis-report.md`
 
 **Review rule applied:** Previously discussed items marked `Resolved`, `Resolved (Business Clarification)`, or `Resolved (Blocking Architecture)` are not re-opened when the current artifacts already match the ratified decision. An issue is reported only when a contradiction, inconsistent object, or unresolved ambiguity still appears in the current artifacts.
 
@@ -86,7 +86,7 @@ Resolved (2026-08-16) — screen-and-aggregate design aligned to BA-03. See `ALN
 
 - `apotek-domain.md` §5.7, §6.5
 - `outpatient-apotek-screen-and-aggregate-design.md` §5.2
-- `outpatient-apotek-repository-gap-analysis-report.md` BA-03
+- `../working/outpatient-apotek-repository-gap-analysis-report.md` BA-03
 
 ### Description
 
@@ -128,7 +128,7 @@ Resolved (2026-08-16) — screen design, SOP-002 / SOP-003 / SOP-004, Indonesian
 - `SOP-APT-RJ-002-Penerimaan-Resep-dan-Permintaan-Langsung-EN.md` steps 10 and 12
 - `SOP-APT-RJ-003-Pelayanan-Obat-Pasien-Umum-EN.md` step 7
 - `SOP-APT-RJ-004-Pelayanan-Obat-Pasien-BPJS-EN.md` actors table and step 3
-- `outpatient-apotek-repository-gap-analysis-report.md` BA-08
+- `../working/outpatient-apotek-repository-gap-analysis-report.md` BA-08
 
 ### Description
 
@@ -207,7 +207,7 @@ Resolved (2026-08-16) — leftover Stock Reservation / Inventory Issue / `Stock 
 - `outpatient-apotek-workflow.md` (`Pharmacy Reserve` as Stock Mutasi; events `Stock Transferred to Dispensing Temporary Unit`)
 - `outpatient-apotek-screen-and-aggregate-design.md` §3.3, §3.4, §5.5
 - `SOP-APT-RJ-002` through `SOP-APT-RJ-007` (EN and ID companions)
-- `outpatient-apotek-repository-gap-analysis-report.md` BA-09
+- `../working/outpatient-apotek-repository-gap-analysis-report.md` BA-09
 
 ### Description
 

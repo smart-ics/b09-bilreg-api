@@ -3,7 +3,7 @@
 **Artifact status:** Proposed design decision  
 **Bounded context:** Apotek (`Pelayanan Obat Pasien`)  
 **Scope:** Outpatient pharmacy  
-**Related artifacts:** [Apotek Domain](./apotek-domain.md), [Outpatient Apotek Workflow](./outpatient-apotek-workflow.md), [Outpatient Apotek SOP](./sop/DAFTAR-SOP-APT-RJ.md), [Outpatient Apotek Repository Gap Analysis](./outpatient-apotek-repository-gap-analysis-report.md) (BA-03), [Outpatient Apotek Persistence Design](./outpatient-apotek-persistence-design.md)
+**Related artifacts:** [Apotek Domain](./apotek-domain.md), [Outpatient Apotek Workflow](./outpatient-apotek-workflow.md), [Outpatient Apotek SOP](./sop/DAFTAR-SOP-APT-RJ.md), [Outpatient Apotek Repository Gap Analysis](./working/outpatient-apotek-repository-gap-analysis-report.md) (BA-03), [Outpatient Apotek Persistence Design](./outpatient-apotek-persistence-design.md)
 
 ## 1. Decision Summary
 

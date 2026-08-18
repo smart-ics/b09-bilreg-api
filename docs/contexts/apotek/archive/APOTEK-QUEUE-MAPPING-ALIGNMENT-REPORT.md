@@ -46,7 +46,7 @@ This alignment only names the pharmacy-side mapping endpoint. It does not reopen
 | `sop/SOP-APT-RJ-006-Koordinasi-Beberapa-Kebutuhan-Obat-EN.md` | Precondition: mappings to at least two Resep Kerja and/or Jual Bebas |
 | `sop/SOP-APT-RJ-006-Koordinasi-Beberapa-Kebutuhan-Obat-ID.md` | Same precondition |
 | `sop/DAFTAR-SOP-APT-RJ.md` | SOP-001 ID title |
-| `outpatient-apotek-repository-gap-analysis-report.md` | BA-03 decision and §9.1: pharmacy-side endpoint is Resep Kerja or Jual Bebas only |
+| `../working/outpatient-apotek-repository-gap-analysis-report.md` | BA-03 decision and §9.1: pharmacy-side endpoint is Resep Kerja or Jual Bebas only |
 | `outpatient-apotek-persistence-design.md` | §4.2 association wording; §4.3 cardinality labels `Demand source (Resep Kerja \| Jual Bebas)`. Mermaid and `DemandKind` were already canonical |
 | `APOTEK-TERMINOLOGY-ALIGNMENT-REPORT.md` | Remaining item 2 marked resolved by this report |
 | `docs/ARTIFACTS.md` | Index row for this report; SOP-001 ID title |

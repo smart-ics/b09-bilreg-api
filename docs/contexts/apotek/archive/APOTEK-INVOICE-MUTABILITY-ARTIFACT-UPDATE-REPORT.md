@@ -4,7 +4,7 @@
 
 **Date:** 2026-08-18  
 **Task type:** Artifact refactoring. No source code, schema, or API contract was changed.  
-**Decision recorded in:** [`ADR-APT-003`](adr/ADR-APT-003-invoice-mutability-owned-by-tata-rekening.md)  
+**Decision recorded in:** [`ADR-APT-003`](../adr/ADR-APT-003-invoice-mutability-owned-by-tata-rekening.md)  
 **Pre-decision impact map:** [`APOTEK-INVOICE-MUTABILITY-IMPACT-ANALYSIS.md`](APOTEK-INVOICE-MUTABILITY-IMPACT-ANALYSIS.md)
 
 ---
@@ -34,21 +34,21 @@ No new Apotek business capability was added beyond what this decision requires f
 
 | Artifact | Role | Outcome |
 |----------|------|---------|
-| [`apotek-domain.md`](apotek-domain.md) / [`apotek-domain-id.md`](apotek-domain-id.md) | Canonical domain | Updated |
-| [`outpatient-apotek-workflow.md`](outpatient-apotek-workflow.md) / [`outpatient-apotek-workflow-id.md`](outpatient-apotek-workflow-id.md) | Canonical workflow | Updated |
-| [`outpatient-apotek-screen-and-aggregate-design.md`](outpatient-apotek-screen-and-aggregate-design.md) | Screens and aggregates | Updated |
-| [`outpatient-apotek-persistence-design.md`](outpatient-apotek-persistence-design.md) | Persistence / PD-05 | Updated |
-| [`adr/ADR-APT-001-queu-boundary-and-pharmacy-workflow-state-ownership.md`](adr/ADR-APT-001-queu-boundary-and-pharmacy-workflow-state-ownership.md) | Queue vs pharmacy state | No change required |
-| [`adr/ADR-APT-002-pharmacy-stock-ledger-boundary.md`](adr/ADR-APT-002-pharmacy-stock-ledger-boundary.md) | Stock Ledger boundary | No change required |
-| [`adr/ADR-APT-003-invoice-mutability-owned-by-tata-rekening.md`](adr/ADR-APT-003-invoice-mutability-owned-by-tata-rekening.md) | Invoice mutability | **Created and accepted** |
+| [`apotek-domain.md`](../apotek-domain.md) / [`apotek-domain-id.md`](../apotek-domain-id.md) | Canonical domain | Updated |
+| [`outpatient-apotek-workflow.md`](../outpatient-apotek-workflow.md) / [`outpatient-apotek-workflow-id.md`](../outpatient-apotek-workflow-id.md) | Canonical workflow | Updated |
+| [`outpatient-apotek-screen-and-aggregate-design.md`](../outpatient-apotek-screen-and-aggregate-design.md) | Screens and aggregates | Updated |
+| [`outpatient-apotek-persistence-design.md`](../outpatient-apotek-persistence-design.md) | Persistence / PD-05 | Updated |
+| [`adr/ADR-APT-001-queu-boundary-and-pharmacy-workflow-state-ownership.md`](../adr/ADR-APT-001-queu-boundary-and-pharmacy-workflow-state-ownership.md) | Queue vs pharmacy state | No change required |
+| [`adr/ADR-APT-002-pharmacy-stock-ledger-boundary.md`](../adr/ADR-APT-002-pharmacy-stock-ledger-boundary.md) | Stock Ledger boundary | No change required |
+| [`adr/ADR-APT-003-invoice-mutability-owned-by-tata-rekening.md`](../adr/ADR-APT-003-invoice-mutability-owned-by-tata-rekening.md) | Invoice mutability | **Created and accepted** |
 | SOP-003 / 004 / 005 / 007 EN+ID | Operator procedures | Updated |
-| [`sop/DAFTAR-SOP-APT-RJ.md`](sop/DAFTAR-SOP-APT-RJ.md) | SOP index / glossary | No Credit Note definition to change |
+| [`sop/DAFTAR-SOP-APT-RJ.md`](../sop/DAFTAR-SOP-APT-RJ.md) | SOP index / glossary | No Credit Note definition to change |
 | SOP-001 / 002 / 006 EN+ID | Queue, intake, coordination | No Invoice freeze language |
 | [`APOTEK-INVOICE-MUTABILITY-IMPACT-ANALYSIS.md`](APOTEK-INVOICE-MUTABILITY-IMPACT-ANALYSIS.md) | Pre-decision analysis | Status banner: decision accepted |
 | [`APOTEK-FINANCIAL-CLEARANCE-ANALYSIS.md`](APOTEK-FINANCIAL-CLEARANCE-ANALYSIS.md) | Clearance ownership | Banner; §6 marked historical freeze |
 | [`APOTEK-UNFULFILLED-OUTCOME-SIMPLIFICATION-ANALYSIS.md`](APOTEK-UNFULFILLED-OUTCOME-SIMPLIFICATION-ANALYSIS.md) | Unfulfilled vs Credit Note | Note added; KEEP conclusion unchanged |
 | ALN-001–007 resolution reports | Historical alignment | Left as historical; no freeze decision to reopen |
-| [`outpatient-apotek-repository-gap-analysis-report.md`](outpatient-apotek-repository-gap-analysis-report.md) | BA-07 / BA-08 | No PD-05 freeze text; BA-08 remains |
+| [`../working/outpatient-apotek-repository-gap-analysis-report.md`](../working/outpatient-apotek-repository-gap-analysis-report.md) | BA-07 / BA-08 | No PD-05 freeze text; BA-08 remains |
 | [`docs/ARTIFACTS.md`](../../ARTIFACTS.md) | Documentation index | ADR-APT-003, this report, and financial-clearance analysis indexed |
 
 Assumptions searched for and found in canonical artifacts before this update:

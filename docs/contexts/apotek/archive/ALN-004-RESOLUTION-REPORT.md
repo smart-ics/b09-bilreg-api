@@ -6,7 +6,7 @@
 **Bounded context:** Apotek (`Pelayanan Obat Pasien`) — Outpatient Pharmacy  
 **Scope:** Artifact alignment only. No inventory architecture redesign. No business-behavior change beyond applying locked BA-09 terminology and ownership.
 
-**Authoritative source (locked):** `docs/contexts/apotek/outpatient-apotek-repository-gap-analysis-report.md` — BA-09
+**Authoritative source (locked):** `../working/outpatient-apotek-repository-gap-analysis-report.md` — BA-09
 
 BA-09 was not re-analyzed, reinterpreted, replaced, or redesigned.
 

@@ -40,7 +40,7 @@ Approved `Dispensing` vocabulary split (architect decision, Issue #1):
 | `outpatient-apotek-workflow-id.md` | Indonesian workflow companion |
 | `outpatient-apotek-screen-and-aggregate-design.md` | Screen and aggregate design |
 | `outpatient-apotek-persistence-design.md` | Persistence design (already canonical; no edit) |
-| `outpatient-apotek-repository-gap-analysis-report.md` | Gap analysis |
+| `../working/outpatient-apotek-repository-gap-analysis-report.md` | Gap analysis |
 | `adr/ADR-APT-001-queu-boundary-and-pharmacy-workflow-state-ownership.md` | Queue ownership ADR |
 | `adr/ADR-APT-002-pharmacy-stock-ledger-boundary.md` | Stock Ledger boundary ADR |
 | `sop/DAFTAR-SOP-APT-RJ.md` | SOP index and term guide |
@@ -81,7 +81,7 @@ Queue-gap paths `outpatient-apotek-queue-gap-analysis.md` and `outpatient-apotek
 7. **Repositories / tables / classes** in narratives now match persistence: `IInvoiceRepo`, `IDispensingRepo`, `IJualBebasRepo`, `IResepKerjaRepo`, `BILRG_AptInvoice`, `BILRG_AptDispensing`.
 8. **ALN-007.** Current-state names updated. A supersession note records that ALN-007 originally aligned informal labels to Dispense Order, and persistence later named the aggregate Dispensing.
 9. **Indonesian companions.** Remaining ordinary “baris” wording in SOP-003/004/005 ID and domain-id business rules was replaced with item / Sales Order Item / Covered item where it named pharmacy entities. Baris Resep remains the clinical source term.
-10. **Queue-gap index.** Removed the non-existent `outpatient-apotek-queue-gap-analysis.md` and `outpatient-apotek-queue-gap-analysis-codex.md` rows from `docs/ARTIFACTS.md`. The BA-01 “Ratified in” list in `outpatient-apotek-repository-gap-analysis-report.md` no longer cites the missing file; historical evidence footnotes that name the former queue-gap analysis remain as provenance.
+10. **Queue-gap index.** Removed the non-existent `outpatient-apotek-queue-gap-analysis.md` and `outpatient-apotek-queue-gap-analysis-codex.md` rows from `docs/ARTIFACTS.md`. The BA-01 “Ratified in” list in `../working/outpatient-apotek-repository-gap-analysis-report.md` no longer cites the missing file; historical evidence footnotes that name the former queue-gap analysis remain as provenance.
 11. **Generated SOP pack.** Recompiled `output/markdown/SOP-Apotek-Rawat-Jalan-ID.md` and `output/pdf/SOP-Apotek-Rawat-Jalan-ID.pdf` from the aligned `sop/*-ID.md` sources.
 
 Business rules, lifecycle definitions, ownership boundaries, cardinalities, and previously ratified BA/BC decisions were not rewritten. Only names were synchronized.

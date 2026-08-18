@@ -10,11 +10,11 @@ Related artifacts:
 - [Apotek Domain](./apotek-domain.md)
 - [Outpatient Apotek Workflow](./outpatient-apotek-workflow.md)
 - [Outpatient Apotek Screen and Aggregate Design](./outpatient-apotek-screen-and-aggregate-design.md)
-- [Outpatient Apotek Repository Gap Analysis](./outpatient-apotek-repository-gap-analysis-report.md)
+- [Outpatient Apotek Repository Gap Analysis](./working/outpatient-apotek-repository-gap-analysis-report.md)
 - [ADR-APT-001 Queue Boundary](./adr/ADR-APT-001-queu-boundary-and-pharmacy-workflow-state-ownership.md)
 - [ADR-APT-002 Pharmacy and Stock Ledger Boundary](./adr/ADR-APT-002-pharmacy-stock-ledger-boundary.md)
 - [ADR-APT-003 Invoice Mutability](./adr/ADR-APT-003-invoice-mutability-owned-by-tata-rekening.md)
-- [Credit Note ownership resolution (PD-07)](./APOTEK-CREDIT-NOTE-OWNERSHIP-RESOLUTION.md)
+- [Credit Note ownership resolution (PD-07)](./archive/APOTEK-CREDIT-NOTE-OWNERSHIP-RESOLUTION.md) (historical)
 - [DATABASE.md](../../DATABASE.md)
 - [ENGINEERING.md](../../ENGINEERING.md)
 - [Feature Persistence Generation Skill](../../skills/feature-persistence-generation.md)
@@ -978,7 +978,7 @@ These items still constrain schema freeze. They are not permission to invent bus
 | ID | Item | Why it matters | Safe interim |
 |---|---|---|---|
 | PD-03 | Payment and SEP evidence identity formats | Column width decision for PaymentClearanceReff dan SepNo | `VARCHAR(26)` payment ref, `VARCHAR(50)` SEP; adapters parse |
-| PD-04 | Available Stock calculation formula | Must not be stored as a column while the formula is undefined | Evaluate at Sales Order establishment as a planning concept; do not persist Available Stock; do not equate to Current Stock |
+| PD-09 | Available Stock calculation formula | Must not be stored as a column while the formula is undefined | Evaluate at Sales Order establishment as a planning concept; do not persist Available Stock; do not equate to Current Stock |
 | PD-08 | Tata Rekening exception-correction request contract | Whether Apotek emits an Integration Task to *request* Credit Note / Refund / Financial Adjustment, or operators work in Tata Rekening and Apotek only stores returned `TataRekeningCorrectionReff` | Optional correlation on Invoice; do not persist Credit Note; do not emit `{InvoiceId}:CN{n}` |
 
 BC-12 (permission matrix) does not change tables.
