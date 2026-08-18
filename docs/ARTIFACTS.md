@@ -187,6 +187,7 @@
 | `docs/contexts/apotek/APOTEK-INVOICE-MUTABILITY-IMPACT-ANALYSIS.md` | Invoice mutability — impact of TR-gated Charge Source mutation vs freeze after Issue |
 | `docs/contexts/apotek/APOTEK-INVOICE-MUTABILITY-ARTIFACT-UPDATE-REPORT.md` | Invoice mutability — canonical artifact update after ADR-APT-003 |
 | `docs/contexts/apotek/APOTEK-FINANCIAL-CLEARANCE-ANALYSIS.md` | Financial Clearance terminology and ownership (BA-08); Invoice mutability section superseded 2026-08-18 |
+| `docs/contexts/apotek/APOTEK-CREDIT-NOTE-OWNERSHIP-RESOLUTION.md` | PD-07 — Credit Note owned by Tata Rekening; `BILRG_AptCreditNote` removed |
 | `docs/contexts/apotek/ALN-001-RESOLUTION-REPORT.md` | ALN-001 Resolution Report — OutpatientQueueMapping ownership alignment |
 | `docs/contexts/apotek/ALN-002-RESOLUTION-REPORT.md` | ALN-002 Resolution Report — Fulfillment Clearance to Dispense Authorized alignment |
 | `docs/contexts/apotek/ALN-003-RESOLUTION-REPORT.md` | ALN-003 Resolution Report — Remove Billing/Fulfillment Allocation |

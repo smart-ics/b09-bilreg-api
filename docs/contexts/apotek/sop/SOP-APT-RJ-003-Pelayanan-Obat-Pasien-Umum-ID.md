@@ -28,7 +28,7 @@ Memberikan langkah yang sama bagi petugas untuk memperoleh persetujuan pembelian
 | Sistem Apotek | Subsistem | Menampilkan tagihan dan nilai yang harus dibayar, mencatat faktur serta status pembayaran, memantau penyiapan obat, dan mencatat obat yang diberikan serta diserahkan. |
 | Sistem Antrian Pasien | Subsistem | Mencatat `ServedAt` saat penyiapan obat dimulai dan `DoneAt` ketika penyelesaian antrean terjadi (panggilan pengambilan, atau penyelesaian No Show jika Queue Entry masih `In Service`). `DoneAt` tidak pernah dibalik. |
 | Sistem Persediaan | Subsistem | Menyediakan hasil Mutasi, Remove Stock, dan keputusan pengembalian stok. |
-| Tata Rekening | Subsistem | Menerima beban keuangan dan memberikan izin finansial untuk merevisi faktur, atau nota kredit / pengembalian dana / penyesuaian keuangan ketika revisi tidak lagi diizinkan. |
+| Tata Rekening | Subsistem | Menerima beban keuangan dan memberikan izin finansial untuk merevisi faktur, atau nota kredit / pengembalian dana / penyesuaian keuangan ketika revisi tidak lagi diizinkan. Sistem Apotek tidak mempersist dokumen pengecualian itu. |
 
 ## 3. Prasyarat
 
@@ -75,7 +75,7 @@ Memberikan langkah yang sama bagi petugas untuk memperoleh persetujuan pembelian
 - **Sistem Apotek** tetap mencegah penyiapan obat dimulai selama informasi pelunasan belum tersedia.
 - **Staf Apotek** hanya dapat membatalkan faktur bila status faktur yang ditampilkan dan izin Tata Rekening keduanya mengizinkan.
 - Ketika Tata Rekening masih mengizinkan perubahan, **Sistem Apotek** merevisi faktur yang sama dengan pihak penanggung jawab dan waktu bisnis efektif yang accountable.
-- Ketika Tata Rekening tidak lagi mengizinkan perubahan, **Tata Rekening** memberikan penyesuaian keuangan, nota kredit, pengembalian dana, atau hasil pengecualian lain.
+- Ketika Tata Rekening tidak lagi mengizinkan perubahan, **Tata Rekening** memberikan penyesuaian keuangan, nota kredit, pengembalian dana, atau hasil pengecualian lain. **Sistem Apotek** tidak membuat atau mempersist entity Nota Kredit.
 
 ### 5.4 Stok kurang setelah Sales Order dibentuk
 

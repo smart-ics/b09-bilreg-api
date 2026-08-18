@@ -114,9 +114,9 @@ Resep tidak berubah menjadi Sales Order. Keputusan profesional yang selesai meng
 | Payment Clearance | Izin Pembayaran | Bukti bahwa persyaratan pembayaran yang diperlukan telah terpenuhi. |
 | Coverage Clearance | Izin Penjamin | Bukti bahwa penjamin yang berlaku mengizinkan pemenuhan tanpa pembayaran langsung dari Pasien. Untuk pemenuhan BPJS Rawat Jalan, bukti ini menggabungkan SEP yang valid untuk encounter dengan penjaminan per item berdasarkan mapping Fornas yang menjadi rujukan. |
 | Dispense Authorized | Dispense Authorized | Hasil evaluasi kebijakan yang menunjukkan Medication Preparation dan dispensing boleh dimulai, diturunkan dari evidence keuangan dan/atau coverage. Bukan aggregate, entity, business object yang dipersist, sumber kebenaran, atau transaction boundary. |
-| Financial Adjustment | Penyesuaian Finansial | Koreksi accountable terhadap Medication Sale atau konsekuensi finansialnya. |
-| Credit Note | Nota Kredit | Dokumen komersial pengecualian yang mengurangi atau membalik nilai Invoice ketika Tata Rekening tidak lagi mengizinkan revisi Invoice secara langsung. |
-| Refund | Pengembalian Dana | Pengembalian dana yang sebelumnya telah diselesaikan secara accountable. |
+| Financial Adjustment | Penyesuaian Finansial | Koreksi accountable terhadap Medication Sale atau konsekuensi finansialnya. Dimiliki dan dipersist oleh Tata Rekening. Bukan aggregate Apotek. |
+| Credit Note | Nota Kredit | Dokumen komersial pengecualian yang mengurangi atau membalik nilai Invoice ketika Tata Rekening tidak lagi mengizinkan revisi Invoice secara langsung. Dimiliki dan dipersist oleh Tata Rekening. Bukan aggregate, entity, atau tabel Apotek. Apotek boleh menyimpan identitas korelasi ketika Tata Rekening mengembalikannya. |
+| Refund | Pengembalian Dana | Pengembalian dana yang sebelumnya telah diselesaikan secara accountable. Dimiliki Tata Rekening, dengan eksekusi Kasir bila settlement memerlukannya. Bukan aggregate Apotek. |
 | Dispensing | Dispensing | Instruksi authoritative untuk memenuhi secara fisik satu atau lebih Sales Order Item dari satu Sales Order. |
 | Dispensing Item | Item Dispensing | Satu jumlah obat yang harus dipenuhi secara fisik dalam Dispensing. Item ini mereferensikan tepat satu Sales Order Item serta memuat Care Setting dan Dispense Cycle yang berlaku. |
 | Dispense Cycle | Siklus Dispensing | Periode atau batch fulfillment yang ditentukan, terutama untuk Rawat Inap dan Unit Dose Dispensing. |
@@ -388,11 +388,11 @@ Aggregate memastikan jumlah yang ditagihkan dan pemenuhan fisik tetap dapat dite
 
 **Aggregate Root:** `Invoice`
 
-Aggregate merepresentasikan satu Medication Sale. Aggregate menjaga Invoice Item, Pricing Snapshot, Payer, item-level charge, invoice-level charge, financial disposition, Credit Note, refund, dan outcome Financial Charge tetap konsisten. Purchase Confirmation lisan Pasien Umum dibuktikan oleh pembentukan Invoice yang accountable dan tidak disimpan sebagai object terpisah. Fakta komersial non-obat menggunakan model penjualan legacy: BHP sebagai item katalog, charge khusus item pada item, dan penyesuaian seluruh transaksi pada faktur. Tidak ada model komponen faktur tambahan.
+Aggregate merepresentasikan satu Medication Sale. Aggregate menjaga Invoice Item, Pricing Snapshot, Payer, item-level charge, invoice-level charge, financial disposition, dan outcome Financial Charge tetap konsisten. Aggregate tidak memiliki dokumen Credit Note, Refund, atau Financial Adjustment; dokumen itu tetap milik Tata Rekening. Invoice boleh menyimpan identitas korelasi ke koreksi finansial Tata Rekening. Purchase Confirmation lisan Pasien Umum dibuktikan oleh pembentukan Invoice yang accountable dan tidak disimpan sebagai object terpisah. Fakta komersial non-obat menggunakan model penjualan legacy: BHP sebagai item katalog, charge khusus item pada item, dan penyesuaian seluruh transaksi pada faktur. Tidak ada model komponen faktur tambahan.
 
 Invoice mereferensikan tepat satu Sales Order tetapi dapat mencakup satu atau lebih Sales Order Item miliknya.
 
-Invoice tetap dapat diubah selama Tata Rekening masih mengizinkan perubahan. Mutabilitas bukan InvoiceStatus. Setelah Issue, koreksi normal merevisi Invoice yang sama selama izin itu berlaku. Credit Note dicatat ketika revisi langsung tidak lagi diizinkan. Apotek mengonsumsi izin finansial Tata Rekening sebagai fakta bisnis eksternal dan tidak memiliki, menghitung, atau mempersist aturan Financial Clearance.
+Invoice tetap dapat diubah selama Tata Rekening masih mengizinkan perubahan. Mutabilitas bukan InvoiceStatus. Setelah Issue, koreksi normal merevisi Invoice yang sama selama izin itu berlaku. Ketika revisi langsung tidak lagi diizinkan, koreksi finansial didelegasikan kepada Tata Rekening. Apotek tidak mencatat Nota Kredit milik Apotek. Apotek mengonsumsi izin finansial Tata Rekening sebagai fakta bisnis eksternal dan tidak memiliki, menghitung, atau mempersist aturan Financial Clearance.
 
 ### 6.4 Dispensing Aggregate
 
@@ -447,7 +447,7 @@ Outpatient Queue Mapping merupakan mapping aktif antara Pharmacy Queue Entry yan
 - **BR-APT-024** — Invoice Item tidak boleh memperkenalkan komponen faktur non-obat free-form. BHP hanya boleh tampil sebagai item katalog. Charge khusus item harus berupa item-level charge. Penyesuaian seluruh transaksi harus berupa invoice-level charge.
 - **BR-APT-025** — Invoice harus mempertahankan Pricing Snapshot dan Payer yang berlaku saat dibentuk.
 - **BR-APT-026** — Pembentukan Invoice tidak membuktikan bahwa stok tersedia, direservasi, disiapkan, didispensing, atau diserahkan.
-- **BR-APT-027** — Mutabilitas Invoice diatur oleh izin finansial yang dikonsumsi dari Tata Rekening, bukan oleh Issue Invoice atau status Invoice `Financially Cleared`. Selama Tata Rekening masih mengizinkan perubahan, koreksi Invoice harus menggunakan revisi Invoice yang sama, dengan pihak penanggung jawab dan waktu bisnis efektif yang accountable. Credit Note, Refund, dan Financial Adjustment tetap mekanisme pengecualian ketika Tata Rekening tidak lagi mengizinkan revisi Invoice secara langsung. Penggantian diam-diam tanpa izin dan akuntabilitas tersebut dilarang. Apotek tidak boleh mendefinisikan, menghitung, atau memiliki aturan bisnis internal yang dipakai Tata Rekening untuk menentukan izin itu, dan tidak boleh memperlakukan Financial Clearance sebagai objek atau kumpulan aturan milik Apotek.
+- **BR-APT-027** — Mutabilitas Invoice diatur oleh izin finansial yang dikonsumsi dari Tata Rekening, bukan oleh Issue Invoice atau status Invoice `Financially Cleared`. Selama Tata Rekening masih mengizinkan perubahan, koreksi Invoice harus menggunakan revisi Invoice yang sama, dengan pihak penanggung jawab dan waktu bisnis efektif yang accountable. Ketika Tata Rekening tidak lagi mengizinkan revisi Invoice secara langsung, Credit Note, Refund, dan Financial Adjustment tetap mekanisme pengecualian **yang dimiliki dan dipersist oleh Tata Rekening**. Apotek tidak boleh mempersist entity Credit Note, Refund, atau Financial Adjustment dan tidak boleh memperkenalkan aggregate koreksi finansial pengganti. Penggantian diam-diam tanpa izin dan akuntabilitas tersebut dilarang. Apotek tidak boleh mendefinisikan, menghitung, atau memiliki aturan bisnis internal yang dipakai Tata Rekening untuk menentukan izin itu, dan tidak boleh memperlakukan Financial Clearance sebagai objek atau kumpulan aturan milik Apotek.
 - **BR-APT-028** — Setiap Financial Charge yang dikirim ke Tata Rekening harus mempertahankan Source Traceability ke Invoice dan Sales Order sumbernya.
 
 ### 7.4 Dispensing dan dispensing
@@ -532,7 +532,7 @@ Outpatient Queue Mapping merupakan mapping aktif antara Pharmacy Queue Entry yan
 - **BR-APT-057** — Commercial resolution tidak dengan sendirinya menyelesaikan physical fulfillment, dan physical fulfillment tidak dengan sendirinya membuktikan financial resolution.
 - **BR-APT-058** — Keputusan material mengenai review, pembentukan Invoice, pembentukan Dispensing, clearance, dispensing, handover, exception, dan correction harus mempertahankan responsible party dan effective business time.
 - **BR-APT-059** — Source Traceability harus dipertahankan dari Resep atau Jual Bebas melalui Sales Order, Invoice, Dispensing, dan final outcome.
-- **BR-APT-060** — Hasil bisnis yang sudah selesai atau dibatalkan tidak boleh dihapus; koreksi setelahnya harus menambahkan fakta koreksi yang dapat dipertanggungjawabkan. Revisi Invoice yang sama menurut `BR-APT-027` adalah koreksi accountable dan bukan penghapusan identitas Invoice. Ketika Tata Rekening tidak lagi mengizinkan revisi Invoice, fakta koreksinya adalah Credit Note, Refund, atau Financial Adjustment. Aturan ini tidak berlaku untuk koreksi Outpatient Queue Mapping yang masih aktif; mapping tersebut diperbarui langsung sesuai `BR-APT-062`.
+- **BR-APT-060** — Hasil bisnis yang sudah selesai atau dibatalkan tidak boleh dihapus; koreksi setelahnya harus menambahkan fakta koreksi yang dapat dipertanggungjawabkan. Revisi Invoice yang sama menurut `BR-APT-027` adalah koreksi accountable dan bukan penghapusan identitas Invoice. Ketika Tata Rekening tidak lagi mengizinkan revisi Invoice, fakta koreksinya adalah Credit Note, Refund, atau Financial Adjustment milik Tata Rekening. Apotek boleh mengorelasikan fakta itu dan tidak boleh mempersistnya sebagai dokumen Apotek. Aturan ini tidak berlaku untuk koreksi Outpatient Queue Mapping yang masih aktif; mapping tersebut diperbarui langsung sesuai `BR-APT-062`.
 
 ### 7.8 Kebijakan workflow Rawat Jalan
 
@@ -630,7 +630,7 @@ Issued or Financially Cleared
 
 Payment dan settlement evidence tetap dimiliki context eksternal. `Financially Cleared` dapat didukung oleh Payment Clearance atau Coverage Clearance sesuai kebijakan payer.
 
-State lifecycle Invoice mencatat fakta komersial dan pembayaran/coverage. State itu tidak merepresentasikan mutabilitas. `Issued` berarti Invoice adalah dokumen komersial/charge yang sudah diposting untuk penagihan dan Financial Charge; Issue tidak membekukan isi Invoice. `Financially Cleared` bukan Close, Finalize, atau Lunas Tata Rekening, dan bukan kunci mutasi. Selama Tata Rekening masih mengizinkan perubahan, revisi Invoice tetap pada Invoice yang sama dan tidak mensyaratkan transisi ke `Adjusted or Credited`. `Adjusted or Credited` adalah jalur dokumen kompensasi ketika revisi Invoice secara langsung tidak lagi diizinkan (`BR-APT-027`).
+State lifecycle Invoice mencatat fakta komersial dan pembayaran/coverage. State itu tidak merepresentasikan mutabilitas. `Issued` berarti Invoice adalah dokumen komersial/charge yang sudah diposting untuk penagihan dan Financial Charge; Issue tidak membekukan isi Invoice. `Financially Cleared` bukan Close, Finalize, atau Lunas Tata Rekening, dan bukan kunci mutasi. Selama Tata Rekening masih mengizinkan perubahan, revisi Invoice tetap pada Invoice yang sama dan tidak mensyaratkan transisi ke `Adjusted or Credited`. `Adjusted or Credited` adalah disposisi Invoice yang diamati setelah Tata Rekening menerapkan koreksi finansial pengecualian ketika revisi Invoice secara langsung tidak lagi diizinkan (`BR-APT-027`). Itu bukan lifecycle Nota Kredit milik Apotek.
 
 ### 8.4 Lifecycle Dispensing
 
@@ -744,7 +744,7 @@ Pickup call adalah salah satu pemicu yang menyelesaikan antrean Patient Tracker 
 | Dispensing Expired | Periode fulfillment yang diizinkan berakhir tanpa completion. |
 | Unfulfilled Medication Recorded | Accepted Quantity memperoleh outcome non-fulfillment final. |
 | Medication Returned | Obat yang sebelumnya disiapkan atau disediakan telah dikembalikan. |
-| Invoice Credited | Credit Note mengurangi atau membalik konsekuensi Invoice karena revisi Invoice secara langsung tidak lagi diizinkan. |
+| Invoice Credited | Tata Rekening menerapkan Credit Note yang mengurangi atau membalik konsekuensi Invoice karena revisi Invoice secara langsung tidak lagi diizinkan. Diamati oleh Apotek; tidak dicatat sebagai dokumen Credit Note milik Apotek. |
 | Refund Required | Financial resolution memerlukan pengembalian dana yang telah diselesaikan. |
 | Pharmacy Service Started | `Medication Preparation Started` menetapkan evidence `ServedAt` apotek Rawat Jalan. |
 | Sales Order Resolved | Setiap Accepted Quantity dan konsekuensi komersial yang diperlukan memperoleh outcome final yang accountable. |

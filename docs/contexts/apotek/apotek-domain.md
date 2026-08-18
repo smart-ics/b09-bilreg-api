@@ -114,9 +114,9 @@ A Resep does not become a Sales Order. A completed professional decision authori
 | Payment Clearance | Evidence that the required payment condition has been satisfied. |
 | Coverage Clearance | Evidence that the applicable payer authorizes fulfillment without immediate Patient payment. For outpatient BPJS fulfillment, it combines a valid SEP for the encounter with item-level coverage determined from the authoritative Fornas mapping. |
 | Dispense Authorized | A policy evaluation result indicating medication preparation and dispensing may start, derived from financial and coverage evidence. It is not an aggregate, entity, source of truth, or transaction boundary. |
-| Financial Adjustment | An accountable correction to a Medication Sale or its financial consequences. |
-| Credit Note | An exception commercial document that reduces or reverses an Invoice amount when Tata Rekening no longer permits direct Invoice revision. |
-| Refund | The accountable return of previously settled funds. |
+| Financial Adjustment | An accountable correction to a Medication Sale or its financial consequences. Owned and persisted by Tata Rekening. Not an Apotek aggregate. |
+| Credit Note | An exception commercial document that reduces or reverses an Invoice amount when Tata Rekening no longer permits direct Invoice revision. Owned and persisted by Tata Rekening. Not an Apotek aggregate, entity, or table. Apotek may retain a correlation identity when Tata Rekening returns one. |
+| Refund | The accountable return of previously settled funds. Owned by Tata Rekening, with Cashier execution where settlement requires it. Not an Apotek aggregate. |
 | Dispensing | The authoritative instruction to physically fulfill one or more Sales Order Items from one Sales Order. |
 | Dispensing Item | One medication quantity to be physically fulfilled within a Dispensing. It references exactly one Sales Order Item and carries the applicable care setting and Dispense Cycle. |
 | Dispense Cycle | A defined fulfillment period or batch, especially for inpatient and Unit Dose Dispensing. |
@@ -363,11 +363,11 @@ It ensures that invoiced quantities and physical fulfillment remain traceable an
 
 **Aggregate Root:** `Invoice`
 
-The aggregate represents one Medication Sale. It keeps Invoice Items, Pricing Snapshot, Payer, item-level charges, invoice-level charges, financial disposition, Credit Notes, refunds, and Financial Charge outcome mutually consistent. General Patient verbal Purchase Confirmation is evidenced by the accountable establishment of the Invoice and is not retained as a separate object. Non-medication commercial facts use the legacy sales model: BHP as a catalog sales item, item-specific charges on the item, and transaction-wide adjustments on the invoice. No additional invoice component model exists.
+The aggregate represents one Medication Sale. It keeps Invoice Items, Pricing Snapshot, Payer, item-level charges, invoice-level charges, financial disposition, and Financial Charge outcome mutually consistent. It does not own Credit Notes, Refunds, or Financial Adjustment documents; those remain Tata Rekening-owned. The Invoice may retain a correlation identity to a Tata Rekening financial correction. General Patient verbal Purchase Confirmation is evidenced by the accountable establishment of the Invoice and is not retained as a separate object. Non-medication commercial facts use the legacy sales model: BHP as a catalog sales item, item-specific charges on the item, and transaction-wide adjustments on the invoice. No additional invoice component model exists.
 
 An Invoice references exactly one Sales Order but may cover one or more of its Sales Order Items.
 
-The Invoice remains mutable while Tata Rekening still permits modification. Mutability is not an InvoiceStatus. After Issue, normal correction revises the same Invoice while that permission remains. Credit Notes are recorded when direct revision is no longer permitted. Apotek consumes Tata Rekening financial permission as an external business fact and does not own, calculate, or persist Financial Clearance rules.
+The Invoice remains mutable while Tata Rekening still permits modification. Mutability is not an InvoiceStatus. After Issue, normal correction revises the same Invoice while that permission remains. When direct revision is no longer permitted, financial correction is delegated to Tata Rekening. Apotek does not record an Apotek Credit Note. Apotek consumes Tata Rekening financial permission as an external business fact and does not own, calculate, or persist Financial Clearance rules.
 
 ### 6.4 Dispensing Aggregate
 
@@ -422,7 +422,7 @@ Outpatient Queue Mapping is an active relationship between an externally owned P
 - **BR-APT-024** — An Invoice Item shall not introduce a free-form non-medication invoice component. BHP shall appear only as a catalog sales item. Item-specific charges shall be item-level charges. Transaction-wide adjustments shall be invoice-level charges.
 - **BR-APT-025** — An Invoice shall retain the Pricing Snapshot and Payer applicable when it is established.
 - **BR-APT-026** — Invoice formation shall not prove that stock is available, transferred to Dispensing Temporary Unit, prepared, dispensed, or handed over.
-- **BR-APT-027** — Invoice mutability is governed by financial permission consumed from Tata Rekening, not by Invoice Issue or Invoice `Financially Cleared`. While Tata Rekening still permits modification, Invoice correction shall use normal Invoice revision of that same Invoice, with accountable actor and effective business time. Credit Note, Refund, and Financial Adjustment remain exception mechanisms used when Tata Rekening no longer permits direct Invoice revision. Silent replacement without that permission and accountability is forbidden. Apotek shall not define, calculate, or own the internal business rules Tata Rekening uses to determine such permission, and shall not treat Financial Clearance as an Apotek-owned object or rule set.
+- **BR-APT-027** — Invoice mutability is governed by financial permission consumed from Tata Rekening, not by Invoice Issue or Invoice `Financially Cleared`. While Tata Rekening still permits modification, Invoice correction shall use normal Invoice revision of that same Invoice, with accountable actor and effective business time. When Tata Rekening no longer permits direct Invoice revision, Credit Note, Refund, and Financial Adjustment remain exception mechanisms **owned and persisted by Tata Rekening**. Apotek shall not persist a Credit Note, Refund, or Financial Adjustment entity and shall not introduce a replacement financial-correction aggregate. Silent replacement without that permission and accountability is forbidden. Apotek shall not define, calculate, or own the internal business rules Tata Rekening uses to determine such permission, and shall not treat Financial Clearance as an Apotek-owned object or rule set.
 - **BR-APT-028** — Every Financial Charge sent to Tata Rekening shall retain Source Traceability to its Invoice and Sales Order.
 
 ### 7.4 Dispensing and dispensing
@@ -507,7 +507,7 @@ Outpatient Queue Mapping is an active relationship between an externally owned P
 - **BR-APT-057** — Commercial resolution shall not by itself complete physical fulfillment, and physical fulfillment shall not by itself prove financial resolution.
 - **BR-APT-058** — Material review, Invoice formation, Dispensing formation, clearance, dispensing, handover, exception, and correction decisions shall retain responsible party and effective business time.
 - **BR-APT-059** — Source Traceability shall be preserved from Resep or Jual Bebas through Sales Order, Invoice, Dispensing, and final outcomes.
-- **BR-APT-060** — A completed or cancelled business outcome shall not be erased; a later correction shall add an accountable correcting fact. Invoice revision of the same Invoice under `BR-APT-027` is an accountable correction and is not erasure of Invoice identity. When Tata Rekening no longer permits Invoice revision, the correcting fact is Credit Note, Refund, or Financial Adjustment. This rule does not apply to correcting an active Outpatient Queue Mapping, which is updated in place under `BR-APT-062`.
+- **BR-APT-060** — A completed or cancelled business outcome shall not be erased; a later correction shall add an accountable correcting fact. Invoice revision of the same Invoice under `BR-APT-027` is an accountable correction and is not erasure of Invoice identity. When Tata Rekening no longer permits Invoice revision, the correcting fact is a Tata Rekening-owned Credit Note, Refund, or Financial Adjustment. Apotek may correlate to that fact and shall not persist it as an Apotek document. This rule does not apply to correcting an active Outpatient Queue Mapping, which is updated in place under `BR-APT-062`.
 
 ### 7.8 Outpatient workflow policy
 
@@ -608,7 +608,7 @@ Issued or Financially Cleared
 
 Payment and settlement evidence remains externally owned. `Financially Cleared` may be supported by Payment Clearance or Coverage Clearance according to payer policy.
 
-Invoice lifecycle states record commercial and payment/coverage facts. They do not encode mutability. `Issued` means the Invoice is the posted commercial/charge document for collection and Financial Charge; it does not freeze Invoice content. `Financially Cleared` is not Tata Rekening Close, Finalize, or Lunas, and is not a mutation lock. While Tata Rekening still permits modification, Invoice revision remains on the same Invoice and does not require a transition to `Adjusted or Credited`. `Adjusted or Credited` is the compensating-document path used when direct Invoice revision is no longer permitted (`BR-APT-027`).
+Invoice lifecycle states record commercial and payment/coverage facts. They do not encode mutability. `Issued` means the Invoice is the posted commercial/charge document for collection and Financial Charge; it does not freeze Invoice content. `Financially Cleared` is not Tata Rekening Close, Finalize, or Lunas, and is not a mutation lock. While Tata Rekening still permits modification, Invoice revision remains on the same Invoice and does not require a transition to `Adjusted or Credited`. `Adjusted or Credited` is an Invoice disposition observed after Tata Rekening applies an exception financial correction when direct Invoice revision is no longer permitted (`BR-APT-027`). It is not an Apotek-owned Credit Note lifecycle.
 
 ### 8.4 Dispensing lifecycle
 
@@ -722,7 +722,7 @@ The pickup call is one trigger that completes the Patient Tracker queue (`In Ser
 | Dispensing Expired | The permitted fulfillment period ended without completion. |
 | Unfulfilled Medication Recorded | An accepted quantity received a final non-fulfillment outcome. |
 | Medication Returned | Medication previously prepared or supplied was returned. |
-| Invoice Credited | A Credit Note reduced or reversed an Invoice consequence because direct Invoice revision was no longer permitted. |
+| Invoice Credited | Tata Rekening applied a Credit Note that reduced or reversed an Invoice consequence because direct Invoice revision was no longer permitted. Observed by Apotek; not recorded as an Apotek Credit Note document. |
 | Refund Required | A financial resolution requires return of settled funds. |
 | Pharmacy Service Started | `Medication Preparation Started` established outpatient pharmacy `ServedAt` evidence. |
 | Sales Order Resolved | Every accepted quantity and required commercial consequence received an accountable final outcome. |

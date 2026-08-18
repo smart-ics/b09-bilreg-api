@@ -22,7 +22,7 @@ Provide a repeatable manual procedure for giving `Prepared` medication in Dispen
 | Pharmacy Staff | Human | Identifies the affected demand and quantities and verifies the resulting operational outcomes. |
 | Pharmacy System | Subsystem | Records No-Show, `Expired`, `Collection Window Expired`, Unfulfilled Medication Outcome, and final Sales Order progress. |
 | Inventory | Subsystem | Applies Stock Mutasi from Dispensing Temporary Unit back to Pharmacy Unit when directed by Pharmacy. Does not store No Show status. |
-| Tata Rekening | Subsystem | Supplies financial permission for Invoice revision, or Credit Note, Refund, or another exception commercial outcome when revision is no longer permitted. |
+| Tata Rekening | Subsystem | Supplies financial permission for Invoice revision, or Credit Note, Refund, or another exception commercial outcome when revision is no longer permitted. Pharmacy System does not persist those documents. |
 | Patient Tracker | Subsystem | Records `DoneAt` and `Done` when No Show Resolution completes an `In Service` Queue Entry. Retains existing `DoneAt` when the Queue Entry is already `Done`. Never reverses `DoneAt`. |
 
 ## 3. Preconditions
@@ -44,7 +44,7 @@ Provide a repeatable manual procedure for giving `Prepared` medication in Dispen
 7. **Pharmacy System** displays the authoritative Inventory disposition without inferring stock movement.
 8. For an uninvoiced BPJS allocation, **Pharmacy System** keeps the BPJS Invoice absent and resolves only the fulfillment and Inventory consequences.
 9. For a paid General Patient allocation, **Pharmacy System** keeps the Sales Order `Active` and applies `BR-APT-027`: revises the Invoice when Tata Rekening still permits modification; otherwise sends the required financial consequence to **Tata Rekening**.
-10. When Invoice revision is no longer permitted, **Tata Rekening** supplies Credit Note, Refund, or another exception commercial outcome; **Pharmacy System** displays the result against the originating allocation.
+10. When Invoice revision is no longer permitted, **Tata Rekening** supplies Credit Note, Refund, or another exception commercial outcome; **Pharmacy System** displays the result against the originating allocation and does not persist a Credit Note entity.
 11. For mixed coverage, **Pharmacy System** records the uninvoiced covered consequence and paid Patient-payable consequence separately.
 12. **Patient Tracker** completes or retains the Queue Entry as follows:
     - If the Queue Entry is still `In Service` because the pickup call has not occurred, **Patient Tracker** moves it to `Done` and records `DoneAt`. This is queue completion, not Pharmacy Queue Close, and does not imply Medication Handover.

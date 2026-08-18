@@ -108,7 +108,7 @@ The workflow ends when every medication demand mapped to the Pharmacy Queue Entr
 | Cashier or Payment Authority | Receives required Patient payment and supplies Payment Clearance. | `Payment Clearance Established`. |
 | SEP and Fornas Authorities | Supply encounter-level SEP validity and item-level BPJS coverage. | `Coverage Clearance Established` for the covered quantity. |
 | Stock Ledger | Owns Current Stock, Stock Mutasi, Remove Stock, and movement history. Does not own Available Stock. | `Stock Transferred to Dispensing Temporary Unit`, `Stock Removed from Dispensing Temporary Unit`, or `Stock Returned to Pharmacy Unit`. |
-| Tata Rekening | Owns Financial Responsibility and the financial permission that determines whether Apotek may still revise an Invoice. When modification is no longer permitted, supplies Credit Note, Refund, Financial Adjustment, or another exception outcome. | Invoice revision is permitted, or an exception commercial outcome is supplied. |
+| Tata Rekening | Owns Financial Responsibility and the financial permission that determines whether Apotek may still revise an Invoice. When modification is no longer permitted, Tata Rekening owns and supplies Credit Note, Refund, Financial Adjustment, or another exception outcome. Apotek does not persist those documents. | Invoice revision is permitted, or an exception commercial outcome is supplied by Tata Rekening. |
 | CPOE | Owns the original Resep Elektronik, which Apotek does not modify. | The original Resep is available. |
 | Pharmacy Supervisor | An authorized pharmacist under operational policy. Authorizes returns, corrections, expired collection overrides, and other dispensing exceptions. Exception handling is authority-based; no monetary approval threshold applies. | Accountable exception outcome is established. |
 
@@ -374,7 +374,7 @@ Patient or Caregiver, Pharmacy Staff, Cashier or Payment Authority, Pharmacy Sta
 #### Exception and Compensation Flows
 
 - If payment is not completed after Invoice establishment, Medication Preparation remains blocked. The Invoice may be `Cancelled` only while its lifecycle and Tata Rekening permission both permit.
-- If an Invoice needs correction, revise the same Invoice while Tata Rekening still permits modification. When Tata Rekening no longer permits revision, use Financial Adjustment, Credit Note, or Refund under Tata Rekening authority. Do not silently replace Invoice history without that permission and accountability.
+- If an Invoice needs correction, revise the same Invoice while Tata Rekening still permits modification. When Tata Rekening no longer permits revision, Tata Rekening owns Financial Adjustment, Credit Note, or Refund. Apotek does not persist those documents. Do not silently replace Invoice history without that permission and accountability.
 - If shortage occurs after payment, Pharmacy Staff shall not create Backorder or select an alternate stock source. Unfulfillable quantity receives an Unfulfilled Medication Outcome and Salinan Resep when applicable. Commercial consequences follow `BR-APT-027`. Substitution is prohibited because the Sales Order already exists.
 - If fulfillment cannot complete, affected quantities receive an accountable Unfulfilled Medication Outcome and commercial consequences follow `BR-APT-027`.
 - A failed Final Dispense Review appends an immutable review record containing the reason, responsible Pharmacist, effective business time, and affected quantity; returns the affected Dispensing from `Prepared` to `Preparing`; and prevents Medication Handover. After correction, the Dispensing returns to `Prepared` and requires another Final Dispense Review.
@@ -666,7 +666,7 @@ Pharmacy Supervisor, Pharmacy Staff, Inventory, Tata Rekening, Patient Tracker.
 | Payer condition | Commercial outcome |
 |---|---|
 | BPJS Invoice was not established because handover failed | No invoice is established or cancelled; resolve fulfillment and Inventory only, then resolve the Sales Order when all outcomes are final. |
-| General Patient Invoice is paid | Commercial consequences follow `BR-APT-027`: revise the Invoice while Tata Rekening still permits modification; otherwise Credit Note, Refund, or another exception outcome. The Sales Order remains `Active` until that commercial consequence is resolved. |
+| General Patient Invoice is paid | Commercial consequences follow `BR-APT-027`: revise the Invoice while Tata Rekening still permits modification; otherwise Tata Rekening supplies Credit Note, Refund, or another exception outcome. Apotek does not persist a Credit Note. The Sales Order remains `Active` until that commercial consequence is resolved. |
 | General Patient proposal was declined before invoice establishment | No Invoice exists; resolve any unused reservation and commercially unallocated quantity. |
 | Mixed coverage | Resolve covered uninvoiced and paid Patient-payable consequences separately using their Sales Order Item and Invoice Item relationships. |
 
@@ -709,7 +709,7 @@ Pharmacy Supervisor, Pharmacy Staff, Inventory, Tata Rekening, Patient Tracker.
 | Cashier or Payment authority | `Payment Clearance Established` | Apotek | Evaluate Dispense Authorized from payment evidence; payment does not prove stock or handover. |
 | Stock Ledger | Current Stock and `Stock Transferred to Dispensing Temporary Unit` | Apotek | Record Mutasi and Remove Stock only from Pharmacy-authorized requests; Current Stock facts do not rewrite Telaah Resep and are not Available Stock. |
 | Apotek | Handover, expiry, shortage, or No Show return request | Stock Ledger | Record Remove Stock or return Mutasi; Apotek shall not infer inventory movement without acknowledged Stock Ledger outcomes. |
-| Apotek | Financial Charge, permitted Invoice revision, or Credit Note / Refund requirement | Tata Rekening | Consume financial permission and resolve Financial Responsibility without changing fulfillment history. |
+| Apotek | Financial Charge, permitted Invoice revision, or a request/await for Tata Rekening Credit Note / Refund / Financial Adjustment | Tata Rekening | Consume financial permission and resolve Financial Responsibility without changing fulfillment history. Apotek does not persist Credit Note. |
 
 ## 9. Business Timing and Service Limits
 

@@ -1,6 +1,8 @@
 # Apotek Invoice Mutability — Impact Analysis
 
-**Status:** Decision accepted 2026-08-18. Canonical artifacts were updated under [`ADR-APT-003`](adr/ADR-APT-003-invoice-mutability-owned-by-tata-rekening.md). This report remains the pre-decision impact map. Current rules are in [`apotek-domain.md`](apotek-domain.md) **BR-APT-027**, persistence **PD-05**, and [`APOTEK-INVOICE-MUTABILITY-ARTIFACT-UPDATE-REPORT.md`](APOTEK-INVOICE-MUTABILITY-ARTIFACT-UPDATE-REPORT.md).
+**PD-07 supersession (2026-08-18):** Canonical artifacts no longer persist `BILRG_AptCreditNote`. Credit Note, Refund, and Financial Adjustment are Tata Rekening-owned. This report remains the pre-ADR-APT-003 impact map. Recommendations that keep an Apotek Credit Note table or Integration Task `BillingCredit` `{InvoiceId}:CN{n}` are superseded by [`outpatient-apotek-persistence-design.md`](outpatient-apotek-persistence-design.md) **PD-07**. Current rules are in [`apotek-domain.md`](apotek-domain.md) **BR-APT-027**, PD-05, PD-07, and [`APOTEK-CREDIT-NOTE-OWNERSHIP-RESOLUTION.md`](APOTEK-CREDIT-NOTE-OWNERSHIP-RESOLUTION.md).
+
+**Status:** Decision accepted 2026-08-18. Canonical artifacts were updated under [`ADR-APT-003`](adr/ADR-APT-003-invoice-mutability-owned-by-tata-rekening.md). This report remains the pre-decision impact map.
 
 **Scope:** Outpatient Apotek (`Pelayanan Obat Pasien`) — impact of changing Invoice mutability from **immutable after leaving `Established` (Issued / financially settled)** to **mutable while Tata Rekening financial status permits**.
 

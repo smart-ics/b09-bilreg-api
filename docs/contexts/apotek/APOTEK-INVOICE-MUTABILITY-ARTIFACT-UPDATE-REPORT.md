@@ -1,5 +1,7 @@
 # Apotek Invoice Mutability — Artifact Update Report
 
+**PD-07 supersession (2026-08-18):** Section 8 below recorded Credit Note as an Apotek append-only document and `BillingCredit` as its Integration Task. That is **no longer canonical**. See [`APOTEK-CREDIT-NOTE-OWNERSHIP-RESOLUTION.md`](APOTEK-CREDIT-NOTE-OWNERSHIP-RESOLUTION.md) and persistence **PD-07**. Credit Note is Tata Rekening-owned. `BILRG_AptCreditNote` does not exist.
+
 **Date:** 2026-08-18  
 **Task type:** Artifact refactoring. No source code, schema, or API contract was changed.  
 **Decision recorded in:** [`ADR-APT-003`](adr/ADR-APT-003-invoice-mutability-owned-by-tata-rekening.md)  

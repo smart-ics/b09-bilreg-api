@@ -24,7 +24,7 @@ Memberikan langkah manual bagi petugas untuk menangani obat `Prepared` dalam Dis
 | Staf Apotek | Petugas | Menentukan resep atau permintaan obat serta jumlah obat yang terdampak, lalu memeriksa hasil akhir penanganannya. |
 | Sistem Apotek | Subsistem | Mencatat Pasien tidak datang mengambil obat, status `Expired`, alasan `Collection Window Expired`, obat yang tidak dapat diserahkan, dan keadaan akhir pesanan apotek. |
 | Sistem Persediaan | Subsistem | Menerapkan Stock Mutasi dari Dispensing Temporary Unit kembali ke Pharmacy Unit atas arahan Pharmacy. Tidak menyimpan status No Show. |
-| Tata Rekening | Subsistem | Memberikan izin finansial untuk merevisi faktur, atau nota kredit, pengembalian dana, atau penyelesaian keuangan pengecualian ketika revisi tidak lagi diizinkan. |
+| Tata Rekening | Subsistem | Memberikan izin finansial untuk merevisi faktur, atau nota kredit, pengembalian dana, atau penyelesaian keuangan pengecualian ketika revisi tidak lagi diizinkan. Sistem Apotek tidak mempersist dokumen itu. |
 | Sistem Antrian Pasien | Subsistem | Mencatat `DoneAt` dan `Done` ketika penyelesaian No Show menyelesaikan Queue Entry yang masih `In Service`. Mempertahankan `DoneAt` yang sudah ada ketika Queue Entry sudah `Done`. Tidak pernah membalik `DoneAt`. |
 
 ## 3. Prasyarat
@@ -46,7 +46,7 @@ Memberikan langkah manual bagi petugas untuk menangani obat `Prepared` dalam Dis
 7. **Sistem Apotek** menampilkan catatan resmi dari Sistem Persediaan. Aplikasi tidak menyimpulkan sendiri bahwa stok sudah berpindah.
 8. Untuk obat BPJS yang belum difakturkan, **Sistem Apotek** tetap tidak membuat faktur BPJS dan hanya menyelesaikan penyiapan obat serta urusan stoknya.
 9. Untuk obat Pasien Umum yang sudah dibayar, **Sistem Apotek** mempertahankan pesanan apotek berstatus `Active` dan menerapkan `BR-APT-027`: merevisi faktur ketika Tata Rekening masih mengizinkan perubahan; bila tidak, mengirimkan urusan keuangan yang harus diselesaikan kepada **Tata Rekening**.
-10. Ketika revisi faktur tidak lagi diizinkan, **Tata Rekening** memberikan nota kredit, pengembalian dana, atau hasil keuangan pengecualian. **Sistem Apotek** menampilkan hasil tersebut pada bagian obat asalnya.
+10. Ketika revisi faktur tidak lagi diizinkan, **Tata Rekening** memberikan nota kredit, pengembalian dana, atau hasil keuangan pengecualian. **Sistem Apotek** menampilkan hasil tersebut pada bagian obat asalnya dan tidak mempersist entity Nota Kredit.
 11. Bila penjaminannya campuran, **Sistem Apotek** mencatat secara terpisah bagian BPJS yang belum difakturkan dan bagian Pasien yang sudah dibayar.
 12. **Sistem Antrian Pasien** menyelesaikan atau mempertahankan Queue Entry sebagai berikut:
     - Jika Queue Entry masih `In Service` karena pickup call belum terjadi, **Sistem Antrian Pasien** memindahkannya ke `Done` dan mencatat `DoneAt`. Ini penyelesaian antrean, bukan Pharmacy Queue Close, dan tidak berarti Medication Handover.

@@ -1,6 +1,6 @@
 # Apotek Financial Clearance — Architecture / Domain Analysis Report
 
-**Canonical mutability update (2026-08-18):** Section 6 below described the pre-decision Invoice freeze. That freeze is withdrawn. Invoice mutability is now governed by Tata Rekening permission (`ADR-APT-003`, **BR-APT-027**, **PD-05**). Financial Clearance remains **not** an Apotek object (BA-08). See [`APOTEK-INVOICE-MUTABILITY-ARTIFACT-UPDATE-REPORT.md`](APOTEK-INVOICE-MUTABILITY-ARTIFACT-UPDATE-REPORT.md).
+**Canonical mutability update (2026-08-18):** Section 6 below described the pre-decision Invoice freeze. That freeze is withdrawn. Invoice mutability is now governed by Tata Rekening permission (`ADR-APT-003`, **BR-APT-027**, **PD-05**). Financial Clearance remains **not** an Apotek object (BA-08). **PD-07:** Apotek does not persist Credit Note; Credit Note / Refund / Financial Adjustment are Tata Rekening-owned. See [`APOTEK-CREDIT-NOTE-OWNERSHIP-RESOLUTION.md`](APOTEK-CREDIT-NOTE-OWNERSHIP-RESOLUTION.md).
 
 **Scope:** Outpatient Apotek (`Pelayanan Obat Pasien`) — financial clearance terminology, ownership, lifecycle, and cross-context alignment with Tata Rekening, Payment, and related bounded contexts.
 
@@ -324,7 +324,7 @@ From [`outpatient-apotek-persistence-design.md`](outpatient-apotek-persistence-d
 | Tata Rekening `FINALIZED` | Finalize Financial Responsibility | Changes require SOP-TR-08 Cancel Finalization or SOP-TR-09 Reopen |
 | `LUNAS` | Payment Settlement | Cancel Finalization blocked (SOP-TR-08) |
 
-**Gap:** Artifacts do not fully specify how an Apotek Credit Note interacts with Tata Rekening state when registration is already `FINALIZED` or `LUNAS` (Integration Task `BillingCredit` is defined; reconciliation policy is registration-scoped but not pharmacy-specific).
+**Gap (updated PD-07):** Artifacts previously asked how an Apotek Credit Note interacts with Tata Rekening when registration is `FINALIZED` or `LUNAS`. That gap is now Tata Rekening-owned. Apotek does not persist Credit Note and does not emit `BillingCredit` `{InvoiceId}:CN{n}`. Remaining work is how Tata Rekening applies Credit Note / Financial Adjustment in those registration states, and whether Apotek only stores `TataRekeningCorrectionReff` (PD-08).
 
 ### 6.4 Payment Clearance ≠ Invoice existence
 
@@ -446,7 +446,7 @@ Do **not** implement a `FinancialClearance` table, enum, or API command in Apote
 These are **not** new business rules; they reduce drift already identified:
 
 1. Replace informal *financial clearance* in **BR-APT-046**, **BR-APT-118**, and SOP-003 §5.2 with *after Payment Clearance / Coverage Clearance sufficient for Dispense Authorized* (terminology-only).
-2. Clarify in Tata Rekening integration notes how `BillingCredit` tasks behave when registration is `FINALIZED` or `LUNAS`.
+2. Clarify in Tata Rekening how Credit Note / Financial Adjustment behave when registration is `FINALIZED` or `LUNAS`. Do not restore Apotek `BillingCredit` `{InvoiceId}:CN{n}`.
 3. Add `APOTEK-FINANCIAL-CLEARANCE-ANALYSIS.md` to [`docs/ARTIFACTS.md`](../../ARTIFACTS.md) Apotek table when stewards next touch the index.
 
 ---

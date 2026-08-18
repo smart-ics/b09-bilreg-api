@@ -91,7 +91,7 @@ Worked path after Sales Order establishment:
 2. Shortage identified (including after payment or financial clearance).
 3. Sales Order items are not removed.
 4. Unfulfilled Medication Outcome is recorded; Salinan Resep when applicable.
-5. Credit Note / Refund when commercial consequences exist.
+5. Commercial consequences follow `BR-APT-027` (Invoice revision while Tata Rekening still permits modification; otherwise Tata Rekening Credit Note / Refund / Financial Adjustment). Apotek does not persist Credit Note.
 6. SOP-003 5.4 or SOP-004 5.2 applies. SOP-002 5.2 does not.
 
 ---
