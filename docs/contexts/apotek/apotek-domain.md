@@ -104,7 +104,7 @@ A Resep does not become a Sales Order. A completed professional decision authori
 | Invoice Item | One medication, BHP, or other catalog sales item, quantity, price, discount, item-level charges, and value within an Invoice. Every medication or BHP Invoice Item originates from exactly one Sales Order Item and represents the portion of that item billed by the invoice. |
 | BHP | A standard catalog item that may appear as a sales item. It is not a free-form invoice component. |
 | Item-level Charge | An item-specific commercial charge attached to a sales item, such as packaging or compounding fees. |
-| Invoice-level Charge | A transaction-wide commercial adjustment attached to an Invoice, such as rounding. |
+| Invoice-level Charge | A transaction-wide commercial adjustment stored as an Invoice header attribute (for example `Pembulatan`), not as a child entity. |
 | Pricing Snapshot | The immutable commercial basis used when an Invoice is established. |
 | Payer | The Patient, BPJS, insurer, company, or other party expected to bear a medication charge. |
 | Financial Charge | The financial consequence supplied to Tata Rekening from a Medication Sale. |
@@ -337,7 +337,7 @@ No Show resolution
 
 ### 5.14 Resep Kerja
 
-Supporting document. Pharmacy's operational copy of one Resep, created at intake from the Prescription Contract (BA-06). Telaah Resep and Sales Order establishment operate on this copy. Source revisions create a review task and do not silently rewrite the Resep Kerja. Identifier form: `ResepKerja`. Not an aggregate root.
+Supporting document. Pharmacy's operational copy of one Resep, created at intake from the Prescription Contract (BA-06). Telaah Resep and Sales Order establishment operate on this copy. The intake copy is not silently rewritten from the clinical source. Identifier form: `ResepKerja`. Not an aggregate root.
 
 ### 5.15 Jual Bebas
 
@@ -363,7 +363,7 @@ It ensures that invoiced quantities and physical fulfillment remain traceable an
 
 **Aggregate Root:** `Invoice`
 
-The aggregate represents one Medication Sale. It keeps Invoice Items, Pricing Snapshot, Payer, item-level charges, invoice-level charges, financial disposition, and Financial Charge outcome mutually consistent. It does not own Credit Notes, Refunds, or Financial Adjustment documents; those remain Tata Rekening-owned. The Invoice may retain a correlation identity to a Tata Rekening financial correction. General Patient verbal Purchase Confirmation is evidenced by the accountable establishment of the Invoice and is not retained as a separate object. Non-medication commercial facts use the legacy sales model: BHP as a catalog sales item, item-specific charges on the item, and transaction-wide adjustments on the invoice. No additional invoice component model exists.
+The aggregate represents one Medication Sale. It keeps Invoice Items, Pricing Snapshot, Payer, item-level charges on Invoice Items, transaction-wide commercial totals on the Invoice header, financial disposition, and Financial Charge outcome mutually consistent. It does not own Credit Notes, Refunds, or Financial Adjustment documents; those remain Tata Rekening-owned. The Invoice may retain a correlation identity to a Tata Rekening financial correction. General Patient verbal Purchase Confirmation is evidenced by the accountable establishment of the Invoice and is not retained as a separate object. Non-medication commercial facts use the legacy sales model: BHP as a catalog sales item, item-specific charges on the item, and transaction-wide adjustments as Invoice header totals. No additional invoice component model exists.
 
 An Invoice references exactly one Sales Order but may cover one or more of its Sales Order Items.
 
@@ -419,7 +419,7 @@ Outpatient Queue Mapping is an active relationship between an externally owned P
 - **BR-APT-021** — Every Invoice shall derive from exactly one Sales Order. Every medication Invoice Item shall originate from exactly one Sales Order Item of that Sales Order.
 - **BR-APT-022** — A Sales Order may produce zero, one, or multiple Invoices.
 - **BR-APT-023** — An Invoice may cover one or more Sales Order Items through its Invoice Items and shall preserve each Invoice Item's source Sales Order Item, billed quantity, and value.
-- **BR-APT-024** — An Invoice Item shall not introduce a free-form non-medication invoice component. BHP shall appear only as a catalog sales item. Item-specific charges shall be item-level charges. Transaction-wide adjustments shall be invoice-level charges.
+- **BR-APT-024** — An Invoice Item shall not introduce a free-form non-medication invoice component. BHP shall appear only as a catalog sales item. Item-specific charges shall be item-level charges. Transaction-wide adjustments shall be Invoice header attributes.
 - **BR-APT-025** — An Invoice shall retain the Pricing Snapshot and Payer applicable when it is established.
 - **BR-APT-026** — Invoice formation shall not prove that stock is available, transferred to Dispensing Temporary Unit, prepared, dispensed, or handed over.
 - **BR-APT-027** — Invoice mutability is governed by financial permission consumed from Tata Rekening, not by Invoice Issue or Invoice `Financially Cleared`. While Tata Rekening still permits modification, Invoice correction shall use normal Invoice revision of that same Invoice, with accountable actor and effective business time. When Tata Rekening no longer permits direct Invoice revision, Credit Note, Refund, and Financial Adjustment remain exception mechanisms **owned and persisted by Tata Rekening**. Apotek shall not persist a Credit Note, Refund, or Financial Adjustment entity and shall not introduce a replacement financial-correction aggregate. Silent replacement without that permission and accountability is forbidden. Apotek shall not define, calculate, or own the internal business rules Tata Rekening uses to determine such permission, and shall not treat Financial Clearance as an Apotek-owned object or rule set.
@@ -481,7 +481,7 @@ Outpatient Queue Mapping is an active relationship between an externally owned P
 - **BR-APT-125** — Outpatient Pharmacy shall adopt the existing legacy sales model for non-medication commercial facts. No additional invoice component model shall be introduced.
 - **BR-APT-126** — BHP shall be treated as a standard catalog item and may appear as a sales item. BHP shall not be represented as a free-form invoice item.
 - **BR-APT-127** — Item-specific charges, including packaging and compounding fees, shall be recorded as item-level charges on the applicable sales item.
-- **BR-APT-128** — Transaction-wide adjustments, including rounding, shall be recorded as invoice-level charges on the Invoice.
+- **BR-APT-128** — Transaction-wide adjustments, including rounding, shall be recorded as Invoice header commercial totals (for example `Pembulatan`, `BiayaLain`, `DiskonLain`). They shall not be persisted as child charge records.
 - **BR-APT-129** — Authorized Recipient verification shall remain an operational responsibility of the dispensing Pharmacist and shall not be system-enforced.
 - **BR-APT-130** — During Medication Handover, the system may optionally record recipient phone number and relationship to the Patient for reference only. Recorded recipient information shall not constitute identity proof, legal authorization, or a workflow gate.
 - **BR-APT-131** — The system shall not require identity validation, legal relationship verification, document capture, or an authorization workflow as Medication Handover recipient evidence.

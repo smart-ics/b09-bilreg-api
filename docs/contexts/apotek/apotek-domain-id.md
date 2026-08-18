@@ -104,7 +104,7 @@ Resep tidak berubah menjadi Sales Order. Keputusan profesional yang selesai meng
 | Invoice Item | Item Invoice | Satu obat, BHP, atau item katalog lain beserta jumlah, harga, diskon, item-level charge, dan nilai di dalam Invoice. Setiap Invoice Item obat atau BHP berasal dari tepat satu Sales Order Item dan menunjukkan bagian dari item tersebut yang ditagihkan dalam faktur. |
 | BHP | BHP | Item katalog standar yang dapat tampil sebagai item penjualan. BHP bukan komponen faktur free-form. |
 | Item-level Charge | Charge Tingkat Item | Charge komersial khusus item yang melekat pada item penjualan, misalnya biaya kemasan atau racikan. |
-| Invoice-level Charge | Charge Tingkat Faktur | Penyesuaian komersial seluruh transaksi yang melekat pada Invoice, misalnya pembulatan. |
+| Invoice-level Charge | Charge Tingkat Faktur | Penyesuaian komersial seluruh transaksi yang disimpan sebagai atribut header Invoice (misalnya `Pembulatan`), bukan sebagai entitas anak. |
 | Pricing Snapshot | Rekaman Harga Transaksi | Dasar komersial yang tidak dapat diubah dan digunakan ketika Invoice dibentuk. |
 | Payer | Penjamin | Pasien, BPJS, asuransi, perusahaan, atau pihak lain yang diharapkan menanggung charge obat. |
 | Financial Charge | Tagihan Finansial | Konsekuensi finansial yang diberikan kepada Tata Rekening dari Medication Sale. |
@@ -364,7 +364,7 @@ No Show resolution
 
 ### 5.15 Resep Kerja
 
-Dokumen pendukung. Salinan operasional Farmasi atas satu Resep, dibuat saat intake dari Prescription Contract (BA-06). Telaah Resep dan pembentukan Sales Order beroperasi pada salinan ini. Revisi sumber membuat tugas telaah dan tidak menulis ulang Resep Kerja secara diam-diam. Bentuk identifier: `ResepKerja`. Bukan aggregate root.
+Dokumen pendukung. Salinan operasional Farmasi atas satu Resep, dibuat saat intake dari Prescription Contract (BA-06). Telaah Resep dan pembentukan Sales Order beroperasi pada salinan ini. Salinan intake tidak ditulis ulang secara diam-diam dari sumber klinis. Bentuk identifier: `ResepKerja`. Bukan aggregate root.
 
 ### 5.16 Jual Bebas
 
@@ -388,7 +388,7 @@ Aggregate memastikan jumlah yang ditagihkan dan pemenuhan fisik tetap dapat dite
 
 **Aggregate Root:** `Invoice`
 
-Aggregate merepresentasikan satu Medication Sale. Aggregate menjaga Invoice Item, Pricing Snapshot, Payer, item-level charge, invoice-level charge, financial disposition, dan outcome Financial Charge tetap konsisten. Aggregate tidak memiliki dokumen Credit Note, Refund, atau Financial Adjustment; dokumen itu tetap milik Tata Rekening. Invoice boleh menyimpan identitas korelasi ke koreksi finansial Tata Rekening. Purchase Confirmation lisan Pasien Umum dibuktikan oleh pembentukan Invoice yang accountable dan tidak disimpan sebagai object terpisah. Fakta komersial non-obat menggunakan model penjualan legacy: BHP sebagai item katalog, charge khusus item pada item, dan penyesuaian seluruh transaksi pada faktur. Tidak ada model komponen faktur tambahan.
+Aggregate merepresentasikan satu Medication Sale. Aggregate menjaga Invoice Item, Pricing Snapshot, Payer, item-level charge pada Invoice Item, total komersial seluruh transaksi pada header Invoice, financial disposition, dan outcome Financial Charge tetap konsisten. Aggregate tidak memiliki dokumen Credit Note, Refund, atau Financial Adjustment; dokumen itu tetap milik Tata Rekening. Invoice boleh menyimpan identitas korelasi ke koreksi finansial Tata Rekening. Purchase Confirmation lisan Pasien Umum dibuktikan oleh pembentukan Invoice yang accountable dan tidak disimpan sebagai object terpisah. Fakta komersial non-obat menggunakan model penjualan legacy: BHP sebagai item katalog, charge khusus item pada item, dan penyesuaian seluruh transaksi sebagai total header Invoice. Tidak ada model komponen faktur tambahan.
 
 Invoice mereferensikan tepat satu Sales Order tetapi dapat mencakup satu atau lebih Sales Order Item miliknya.
 
@@ -444,7 +444,7 @@ Outpatient Queue Mapping merupakan mapping aktif antara Pharmacy Queue Entry yan
 - **BR-APT-021** — Setiap Invoice harus berasal dari tepat satu Sales Order. Setiap Invoice Item obat harus berasal dari tepat satu Sales Order Item dari Sales Order tersebut.
 - **BR-APT-022** — Satu Sales Order dapat menghasilkan nol, satu, atau beberapa Invoice.
 - **BR-APT-023** — Invoice dapat mencakup satu atau lebih Sales Order Item melalui Invoice Item-nya dan harus mempertahankan item sumber, jumlah yang ditagihkan, serta nilai setiap item.
-- **BR-APT-024** — Invoice Item tidak boleh memperkenalkan komponen faktur non-obat free-form. BHP hanya boleh tampil sebagai item katalog. Charge khusus item harus berupa item-level charge. Penyesuaian seluruh transaksi harus berupa invoice-level charge.
+- **BR-APT-024** — Invoice Item tidak boleh memperkenalkan komponen faktur non-obat free-form. BHP hanya boleh tampil sebagai item katalog. Charge khusus item harus berupa item-level charge. Penyesuaian seluruh transaksi harus berupa atribut header Invoice.
 - **BR-APT-025** — Invoice harus mempertahankan Pricing Snapshot dan Payer yang berlaku saat dibentuk.
 - **BR-APT-026** — Pembentukan Invoice tidak membuktikan bahwa stok tersedia, direservasi, disiapkan, didispensing, atau diserahkan.
 - **BR-APT-027** — Mutabilitas Invoice diatur oleh izin finansial yang dikonsumsi dari Tata Rekening, bukan oleh Issue Invoice atau status Invoice `Financially Cleared`. Selama Tata Rekening masih mengizinkan perubahan, koreksi Invoice harus menggunakan revisi Invoice yang sama, dengan pihak penanggung jawab dan waktu bisnis efektif yang accountable. Ketika Tata Rekening tidak lagi mengizinkan revisi Invoice secara langsung, Credit Note, Refund, dan Financial Adjustment tetap mekanisme pengecualian **yang dimiliki dan dipersist oleh Tata Rekening**. Apotek tidak boleh mempersist entity Credit Note, Refund, atau Financial Adjustment dan tidak boleh memperkenalkan aggregate koreksi finansial pengganti. Penggantian diam-diam tanpa izin dan akuntabilitas tersebut dilarang. Apotek tidak boleh mendefinisikan, menghitung, atau memiliki aturan bisnis internal yang dipakai Tata Rekening untuk menentukan izin itu, dan tidak boleh memperlakukan Financial Clearance sebagai objek atau kumpulan aturan milik Apotek.
@@ -506,7 +506,7 @@ Outpatient Queue Mapping merupakan mapping aktif antara Pharmacy Queue Entry yan
 - **BR-APT-125** — Apotek Rawat Jalan harus mengadopsi model penjualan legacy yang ada untuk fakta komersial non-obat. Tidak boleh diperkenalkan model komponen faktur tambahan.
 - **BR-APT-126** — BHP harus diperlakukan sebagai item katalog standar dan boleh tampil sebagai item penjualan. BHP tidak boleh direpresentasikan sebagai item faktur free-form.
 - **BR-APT-127** — Charge khusus item, termasuk biaya kemasan dan racikan, harus dicatat sebagai item-level charge pada item penjualan yang berlaku.
-- **BR-APT-128** — Penyesuaian seluruh transaksi, termasuk pembulatan, harus dicatat sebagai invoice-level charge pada Invoice.
+- **BR-APT-128** — Penyesuaian seluruh transaksi, termasuk pembulatan, harus dicatat sebagai total komersial header Invoice (misalnya `Pembulatan`, `BiayaLain`, `DiskonLain`). Penyesuaian tersebut tidak boleh disimpan sebagai record charge anak.
 - **BR-APT-129** — Verifikasi Authorized Recipient tetap menjadi tanggung jawab operasional Pharmacist yang menyerahkan obat dan tidak boleh ditegakkan oleh sistem.
 - **BR-APT-130** — Selama Medication Handover, sistem boleh secara opsional mencatat nomor telepon penerima dan hubungan dengan Pasien hanya sebagai referensi. Informasi penerima yang dicatat tidak merupakan bukti identitas, otorisasi hukum, atau workflow gate.
 - **BR-APT-131** — Sistem tidak boleh mensyaratkan validasi identitas, verifikasi hubungan hukum, penangkapan dokumen, atau authorization workflow sebagai evidence penerima Medication Handover.

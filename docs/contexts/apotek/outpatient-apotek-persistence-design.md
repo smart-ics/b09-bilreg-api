@@ -2,7 +2,7 @@
 
 **Artifact status:** Proposed design for architect review  
 **Bounded context:** Apotek (`Pelayanan Obat Pasien`) — Outpatient Pharmacy  
-**Date:** 2026-08-16; Credit Note ownership updated 2026-08-18 (PD-07)  
+**Date:** 2026-08-16; Credit Note ownership updated 2026-08-18 (PD-07); Invoice-level charge table removed 2026-08-18 (PD-10); Resep revision task removed 2026-08-18 (PD-11)  
 **Audience:** Architects approving aggregate ownership, table ownership, schema reuse, database changes, and persistence implementation direction
 
 Related artifacts:
@@ -11,6 +11,7 @@ Related artifacts:
 - [Outpatient Apotek Workflow](./outpatient-apotek-workflow.md)
 - [Outpatient Apotek Screen and Aggregate Design](./outpatient-apotek-screen-and-aggregate-design.md)
 - [Outpatient Apotek Repository Gap Analysis](./working/outpatient-apotek-repository-gap-analysis-report.md)
+- [Resep revision task removal (PD-11)](./working/APOTEK-RESEP-REVISION-TASK-CONSISTENCY-REPORT.md)
 - [ADR-APT-001 Queue Boundary](./adr/ADR-APT-001-queu-boundary-and-pharmacy-workflow-state-ownership.md)
 - [ADR-APT-002 Pharmacy and Stock Ledger Boundary](./adr/ADR-APT-002-pharmacy-stock-ledger-boundary.md)
 - [ADR-APT-003 Invoice Mutability](./adr/ADR-APT-003-invoice-mutability-owned-by-tata-rekening.md)
@@ -53,9 +54,9 @@ No Apotek bounded-context project, aggregate, DTO, DAL, repository, or SQL scrip
 |---|---|---|
 | Professional review of one Resep, per-item disposition, responsible Pharmacist, final outcome | `TelaahResep` aggregate; `BR-APT-003`–`007` | Header + rewriteable items while `Under Review`; header status becomes terminal |
 | Accepted demand, quantities, source traceability, unfulfilled outcomes, resolution | `SalesOrder` aggregate; `BR-APT-010`–`019` | Header + established items; unfulfilled outcomes append-only |
-| One medication sale, items, charges, pricing snapshot, payer | `Invoice` aggregate; `BR-APT-020`–`028`, `BR-APT-125`–`128` | Header + items + item charges + invoice charges. Credit Note is not an Apotek persistence object (PD-07) |
+| One medication sale, items, charges, pricing snapshot, payer | `Invoice` aggregate; `BR-APT-020`–`028`, `BR-APT-125`–`128` | Header (including invoice-level commercial totals) + items + item charges. Credit Note is not an Apotek persistence object (PD-07). Invoice-level adjustments are header fields, not child records (PD-10) |
 | Physical fulfillment, preparation, immutable reviews, education, override, dispense, handover, expiry, return | `Dispensing` aggregate; `BR-APT-029`–`039`, `BR-APT-096`, `BR-APT-132`–`142` | Header + items + append-only review records; handover/education/override as header facts |
-| Pharmacy operational copy of clinical intent | BA-06 Resep Kerja | Supporting document tables, created at intake, never silently rewritten from source |
+| Pharmacy operational copy of clinical intent | BA-06 Resep Kerja | Supporting document tables, created at intake, never silently rewritten from source. No source-revision task table (PD-11) |
 | Accepted Jual Bebas | `BR-APT-009`, `BR-APT-089` | Supporting document tables; decline creates no row |
 | Current queue-to-demand association | BA-03; `BR-APT-062` | Association table, update in place, no history, not an aggregate |
 | Pharmacy Queue Close fact | `BR-APT-143`–`145` | Append-only fact table; Tracker `Withdrawn` is requested, not owned |
@@ -187,7 +188,7 @@ flowchart TB
 |---|---|---|---|---|
 | `TelaahResep` | Aggregate root | One review of one Resep Kerja | `ITelaahResepRepo` | Items rewriteable until terminal |
 | `SalesOrder` | Aggregate root | One accepted demand and quantity reconciliation | `ISalesOrderRepo` | Items established then statused; unfulfilled outcomes append-only |
-| `Invoice` | Aggregate root | One medication sale | `IInvoiceRepo` | Items + charges rewriteable while `Established`, and after Issue while Tata Rekening still permits modification. When revision is not permitted, Invoice rows are immutable; financial correction is owned by Tata Rekening. Optional `TataRekeningCorrectionReff` is correlation only |
+| `Invoice` | Aggregate root | One medication sale | `IInvoiceRepo` | Items and item charges rewriteable while `Established`, and after Issue while Tata Rekening still permits modification. Invoice-level commercial totals (`Pembulatan`, `BiayaLain`, `DiskonLain`, and related header fields) update on the header. When revision is not permitted, Invoice rows are immutable; financial correction is owned by Tata Rekening. Optional `TataRekeningCorrectionReff` is correlation only |
 | `Dispensing` | Aggregate root | One physical fulfillment instruction | `IDispensingRepo` | Items established; reviews append-only; handover facts on header |
 | Resep Kerja | Supporting document | Intake copy of one Resep | `IResepKerjaRepo` | Items + components rewriteable only before first Telaah terminal outcome |
 | Jual Bebas | Supporting document | One accepted retail request | `IJualBebasRepo` | Items rewriteable only before Sales Order establishment |
@@ -280,7 +281,6 @@ Module prefix: `BILRG_Apt`. New-system PK: `VARCHAR(12)` unless the row is a det
 | `BILRG_AptResepKerja` | Supporting header | `ResepKerjaId` | Apotek |
 | `BILRG_AptResepKerjaItem` | Detail | `(ResepKerjaId, ItemNo)` | Resep Kerja |
 | `BILRG_AptResepKerjaComponent` | Detail | `(ResepKerjaId, ItemNo, ComponentNo)` | Resep Kerja |
-| `BILRG_AptResepRevisionTask` | Operational task | `RevisionTaskId` | Apotek |
 | `BILRG_AptJualBebas` | Supporting header | `JualBebasId` | Apotek |
 | `BILRG_AptJualBebasItem` | Detail | `(JualBebasId, ItemNo)` | Jual Bebas |
 | `BILRG_AptTelaahResep` | Aggregate header | `TelaahResepId` | `TelaahResep` |
@@ -292,7 +292,6 @@ Module prefix: `BILRG_Apt`. New-system PK: `VARCHAR(12)` unless the row is a det
 | `BILRG_AptInvoice` | Aggregate header | `InvoiceId` | `Invoice` |
 | `BILRG_AptInvoiceItem` | Detail | `(InvoiceId, ItemNo)` | `Invoice` |
 | `BILRG_AptInvoiceItemCharge` | Detail | `(InvoiceId, ItemNo, ChargeNo)` | `Invoice` |
-| `BILRG_AptInvoiceCharge` | Detail | `(InvoiceId, ChargeNo)` | `Invoice` |
 | `BILRG_AptDispensing` | Aggregate header | `DispensingId` | `Dispensing` |
 | `BILRG_AptDispensingItem` | Detail | `(DispensingId, ItemNo)` | `Dispensing` |
 | `BILRG_AptFinalReview` | Append-only detail | `(DispensingId, ReviewNo)` | `Dispensing` |
@@ -314,6 +313,8 @@ Module prefix: `BILRG_Apt`. New-system PK: `VARCHAR(12)` unless the row is a det
 | `BILRG_AptBackorder` | Forbidden |
 | Unified sales reporting table / view | Forbidden (PD-06). Use Query DAL / Reporting Query Adapter over `BILRG_AptInvoice` ∪ `tb_trs_dobill_umum` |
 | `BILRG_AptCreditNote` | Forbidden (PD-07). Credit Note, Refund, and Financial Adjustment are owned by Tata Rekening. Apotek must not persist a Credit Note entity or a replacement financial-correction aggregate |
+| `BILRG_AptInvoiceCharge` | Forbidden (PD-10). Transaction-wide adjustments (`BR-APT-128`) are Invoice header commercial totals (`Pembulatan`, `BiayaLain`, `DiskonLain`, and related fields on `BILRG_AptInvoice`), not child records |
+| `BILRG_AptResepRevisionTask` | Forbidden (PD-11). No documented Apotek business workflow, SOP, or numbered rule requires detecting or task-managing source-prescription change after Resep Kerja intake |
 
 ### 6.3 Identifier prefixes
 
@@ -328,7 +329,6 @@ Module prefix: `BILRG_Apt`. New-system PK: `VARCHAR(12)` unless the row is a det
 | Salinan Resep | `ASR` | |
 | Queue Close | `AQC` | |
 | Integration Task | `AIT` | |
-| Revision Task | `ARV` | |
 
 ---
 
@@ -340,7 +340,6 @@ erDiagram
   BILRG_AptResepKerjaItem ||--o{ BILRG_AptResepKerjaComponent : racik
   BILRG_AptResepKerja ||--o| BILRG_AptTelaahResep : reviewed_by
   BILRG_AptResepKerja ||--o{ BILRG_AptSalesOrder : may_establish
-  BILRG_AptResepKerja ||--o{ BILRG_AptResepRevisionTask : revision_detected
   BILRG_AptJualBebas ||--|{ BILRG_AptJualBebasItem : contains
   BILRG_AptJualBebas ||--o| BILRG_AptSalesOrder : establishes
   BILRG_AptTelaahResep ||--|{ BILRG_AptTelaahResepItem : dispositions
@@ -353,7 +352,6 @@ erDiagram
   BILRG_AptSalesOrderItem ||--o{ BILRG_AptDispensingItem : dispensed_as
   BILRG_AptInvoice ||--|{ BILRG_AptInvoiceItem : items
   BILRG_AptInvoiceItem ||--o{ BILRG_AptInvoiceItemCharge : item_charges
-  BILRG_AptInvoice ||--o{ BILRG_AptInvoiceCharge : invoice_charges
   BILRG_AptDispensing ||--|{ BILRG_AptDispensingItem : items
   BILRG_AptDispensing ||--o{ BILRG_AptFinalReview : reviews
   BILRG_AptQueueMapping }o--|| BILRG_AntrianEntry : associates
@@ -375,7 +373,7 @@ Column lists below are the operational shape for review. They are not a substitu
 
 ### 8.1 Resep Kerja (BA-06)
 
-Intake document. Authoritative for pharmacy processing. Source revisions never overwrite it.
+Intake document. Authoritative for pharmacy processing. The clinical source does not overwrite it after intake.
 
 `BILRG_AptResepKerja`
 
@@ -384,7 +382,6 @@ Intake document. Authoritative for pharmacy processing. Source revisions never o
 | `ResepKerjaId` | VARCHAR(12) | PK |
 | `SourceKind` | INT | `0` Legacy Resep, `1` CPOE, `2` Physical/external |
 | `SourceResepId` | VARCHAR(50) | Legacy `fs_kd_trs` or CPOE id; empty for physical until assigned |
-| `SourceVersionToken` | VARCHAR(50) | Revision detection token; empty if unknown |
 | `RegId` | VARCHAR(10) | Fulfillment boundary |
 | `PasienId` | VARCHAR(15) | Copied at intake |
 | `PasienName` | VARCHAR(60) | Copied at intake |
@@ -397,13 +394,13 @@ Intake document. Authoritative for pharmacy processing. Source revisions never o
 | `CareSetting` | INT | Outpatient = 0 |
 | `CaptureNote` | VARCHAR(512) | For Resep Luar: prescription origin, prescriber, facility, and other capture notes (PD-01). Empty for electronic/internal Resep Kerja when not applicable |
 | `DocumentRef` | VARCHAR(200) | Reference to the captured prescription document (PD-01). Empty when no document is stored |
-| `ResepKerjaStatus` | INT | `0` Active, `1` SupersededForReview, `2` Voided |
+| `ResepKerjaStatus` | INT | `0` Active, `1` Voided |
 
 `BILRG_AptResepKerjaItem`: `ItemNo`, `SourceItemNo`, `BrgId`, `BrgName`, `SatuanId`, `SatuanName`, `Qty`, `Iter`, `Signa`, `Instruction`, `Note`, `IsRacik`.
 
 `BILRG_AptResepKerjaComponent`: racik components for an item.
 
-`BILRG_AptResepRevisionTask`: `RevisionTaskId`, `ResepKerjaId`, `DetectedAt`, `SourceVersionToken`, `TaskStatus`, `ResolvedBy`, `ResolvedAt`, `ResolutionNote`. Source change creates a task; it does not mutate the Resep Kerja.
+There is no `BILRG_AptResepRevisionTask` table (PD-11). Source-prescription version change is not persisted as an Apotek operational task.
 
 **Save semantics:** insert at intake. Items rewriteable only while no terminal Telaah exists. After Telaah completion, Resep Kerja items are frozen.
 
@@ -518,11 +515,11 @@ UX_BILRG_AptSalesOrder_ActiveSourceRegPayer
 
 `BILRG_AptInvoiceItemCharge`: packaging / compounding fees (`BR-APT-127`).
 
-`BILRG_AptInvoiceCharge`: rounding and other invoice-level adjustments (`BR-APT-128`).
+Transaction-wide adjustments (`BR-APT-128`), including rounding, are stored on the Invoice header as commercial totals (`Pembulatan`, `BiayaLain`, `DiskonLain`, `SubTotal`, `SumBiaya`, `SumTax`, `GrandTotal`, and related fields). They are not child charge records.
 
-There is no `BILRG_AptCreditNote` table. Credit Note, Refund, and Financial Adjustment are Tata Rekening-owned documents (PD-07). Apotek may store `TataRekeningCorrectionReff` when Tata Rekening returns a correction identity. That field is correlation only and is not a Credit Note lifecycle, amount ledger, or financial-correction aggregate.
+There is no `BILRG_AptInvoiceCharge` table. There is no `BILRG_AptCreditNote` table. Credit Note, Refund, and Financial Adjustment are Tata Rekening-owned documents (PD-07). Apotek may store `TataRekeningCorrectionReff` when Tata Rekening returns a correction identity. That field is correlation only and is not a Credit Note lifecycle, amount ledger, or financial-correction aggregate.
 
-**Save semantics (PD-05):** while `InvoiceStatus = Established`, items and charges may rewrite (delete+insert). After Issue, items and charges may rewrite while Tata Rekening still permits modification of the related Financial Charge. When Tata Rekening no longer permits modification, header commercial fields and item content are immutable; corrections are delegated to Tata Rekening (`BR-APT-027`) and do not modify the original invoice rows. Apotek does not persist a Financial Clearance object and does not persist a Credit Note entity. Any last-consumed Tata Rekening permission stored on the Invoice is audit trace only.
+**Save semantics (PD-05):** while `InvoiceStatus = Established`, items and item charges may rewrite (delete+insert). Invoice-level commercial totals on the header update in place. After Issue, items and item charges may rewrite while Tata Rekening still permits modification of the related Financial Charge; header commercial totals may update in place under the same permission. When Tata Rekening no longer permits modification, header commercial fields and item content are immutable; corrections are delegated to Tata Rekening (`BR-APT-027`) and do not modify the original invoice rows. Apotek does not persist a Financial Clearance object and does not persist a Credit Note entity. Any last-consumed Tata Rekening permission stored on the Invoice is audit trace only.
 
 General Patient Purchase Confirmation is not a row. Inserting the invoice **is** the confirmation evidence (`BR-APT-070`).
 
@@ -676,7 +673,8 @@ Exceptions to delete+insert:
 | Detail | Persistence |
 |---|---|
 | Telaah items while Under Review | Delete + insert |
-| Invoice items/charges while `InvoiceStatus = Established`, or after Issue while Tata Rekening still permits modification | Delete + insert (PD-05) |
+| Invoice items and item charges while `InvoiceStatus = Established`, or after Issue while Tata Rekening still permits modification | Delete + insert (PD-05) |
+| Invoice header commercial totals (`Pembulatan`, `BiayaLain`, `DiskonLain`, etc.) while PD-05 rewrite is permitted | Header upsert in place |
 | Resep Kerja / Jual Bebas / SO / Dispensing items at first insert | Insert; later rewrite forbidden except Telaah-under-review and Invoice under PD-05 |
 | `BILRG_AptFinalReview` | Insert only |
 | `BILRG_AptUnfulfilledOutcome` | Insert only |
@@ -920,7 +918,7 @@ No persistence structure is required for call purpose. No field shall be added t
 1. while `InvoiceStatus = Established`; and
 2. after Issue, while Tata Rekening still permits modification of the related Financial Charge.
 
-During `Established`, the persistence layer may replace and rewrite invoice-item data as needed by the save operation. After Issue, the same rewrite of items and charges remains allowed only while Tata Rekening permission is granted at command time. When Tata Rekening no longer permits modification, invoice content becomes immutable.
+During `Established`, the persistence layer may replace and rewrite invoice-item and item-charge data as needed by the save operation. Invoice-level commercial totals on the header may update in place. After Issue, the same rewrite of items and item charges remains allowed only while Tata Rekening permission is granted at command time; header commercial totals may update in place under the same permission. When Tata Rekening no longer permits modification, invoice content becomes immutable.
 
 Any correction after permission is withheld shall be delegated to Tata Rekening (Credit Note, Refund, Financial Adjustment, or other accountable financial resolution under `BR-APT-027`) and shall not modify the original invoice contents. Apotek shall not persist that correcting financial document.
 
@@ -941,7 +939,7 @@ Apotek does not persist a Financial Clearance object, a Credit Note entity, or T
 
 **Decision:** Unified reporting shall be implemented using Query DAL / Reporting Query Adapter. No dedicated reporting table and no SQL View are required.
 
-The adapter queries `BILRG_AptInvoice` (and related Apotek item tables) together with legacy `tb_trs_dobill_umum` / `tb_trs_dobill_umum2` as read-only sources. It does not write, materialize, or synchronize a unified sales table.
+The adapter queries `BILRG_AptInvoice` (header commercial totals), `BILRG_AptInvoiceItem`, and `BILRG_AptInvoiceItemCharge` together with legacy `tb_trs_dobill_umum` / `tb_trs_dobill_umum2` as read-only sources. It does not write, materialize, or synchronize a unified sales table. There is no `BILRG_AptInvoiceCharge` table (PD-10).
 
 **Rationale:** Unified sales reporting is a read-side coexistence concern (BA-05). A query adapter preserves independent legacy DU and Invoice transactional models while avoiding extra schema and refresh logic.
 
@@ -971,6 +969,43 @@ Apotek shall not persist a Credit Note entity, shall not own Credit Note lifecyc
 - No Integration Task that requires Apotek Credit Note existence.
 - Reporting adapter reads Invoice and legacy DU; it does not require an Apotek Credit Note table.
 
+#### PD-10 — Invoice-level charges are header attributes, not child records
+
+**Status:** Closed 2026-08-18
+
+**Decision:** Remove `BILRG_AptInvoiceCharge` from the Outpatient Apotek persistence design. Charges that apply to the entire invoice are attributes of the Invoice header, not child entities.
+
+Invoice-level commercial amounts — including `Pembulatan`, `BiayaLain`, `DiskonLain`, and other header-level commercial totals on `BILRG_AptInvoice` — remain stored on the Invoice header. Only item-specific charges remain as child records through `BILRG_AptInvoiceItemCharge`.
+
+**Rationale:** The legacy sales model stores transaction-wide adjustments as header totals on the invoice document. A separate invoice-level charge detail table duplicates header fields without adding persistence value and would complicate repository reconstruction and PD-05 rewrite semantics.
+
+**Result:**
+
+- No `BILRG_AptInvoiceCharge` table.
+- No Invoice child reconstruction of invoice-level charge rows.
+- `BR-APT-128` is satisfied by `BILRG_AptInvoice` header commercial fields.
+- Reporting and Integration Task `BillingCharge` read Invoice header totals; they do not join an invoice-level charge detail table.
+
+#### PD-11 — Source-prescription revision is not an Apotek persistence object
+
+**Status:** Closed 2026-08-18
+
+**Decision:** Remove `BILRG_AptResepRevisionTask` from the Outpatient Apotek persistence design. Do not persist source-prescription version detection, revision worklists, or `SupersededForReview` Resep Kerja status. Do not store a `SourceVersionToken` for revision detection.
+
+Resep Kerja remains an intake snapshot. Pharmacy processes `BILRG_AptResepKerja`, not live CPOE or legacy Resep rows. The snapshot is not silently rewritten from the clinical source. Clinical Order modification remains owned by CPOE and is excluded from outpatient pharmacy workflow.
+
+Pharmacist re-review of the same original Resep while the Registration remains active (`BR-APT-105`) and out-of-system clarification (`BR-APT-005`) do not require a revision-task table.
+
+**Rationale:** No SOP, numbered Apotek business rule, domain event, worklist, or accountable operational consequence documents a pharmacy requirement to detect and manage doctor revision of a source prescription after Resep Kerja intake. A technical possibility that source data may change is not a persistence requirement.
+
+**Result:**
+
+- No `BILRG_AptResepRevisionTask` table.
+- No `ARV` identifier prefix.
+- No `IResepRevisionTask` repository.
+- No ERD relation `revision_detected`.
+- Resep Kerja status is `Active` or `Voided` only.
+
 ### 14.2 Open persistence decisions
 
 These items still constrain schema freeze. They are not permission to invent business behavior.
@@ -993,12 +1028,13 @@ Approve this persistence design only if all of the following are accepted:
 2. **Table ownership.** Apotek writes only `BILRG_Apt*`. Neighbors remain authoritative for queue, stock, billing settlement, catalog, Fornas master, and legacy Resep Iter.
 3. **Reuse.** Legacy DU and Kartu Periksa are not the new write model. Tracker `ReffId` is not the mapping store. Dispense Authorized is not a table.
 4. **Coexistence.** No dual-write to `tb_trs_dobill_umum`. Unified reporting is read-side.
-5. **Resep Kerja.** Pharmacy processes `BILRG_AptResepKerja`, not live CPOE/Resep rows. Revisions create tasks.
+5. **Resep Kerja.** Pharmacy processes `BILRG_AptResepKerja`, not live CPOE/Resep rows. The intake copy is not silently rewritten from the clinical source. There is no source-revision task table (PD-11).
 6. **Stock.** Reserve (Mutasi Pharmacy Unit → DTU), handover (`DispenseIssue` from DTU), and No Show return (Mutasi DTU → Pharmacy Unit) are Integration Tasks to Stock Ledger. `Prepared` stays on Dispensing. `SaleIssueDu` is not used. Current Stock remains Stock Ledger quantity. Available Stock is not persisted.
 7. **Delivery.** BA-07 Integration Task table is the cross-context mechanism. Pattern matches existing outbound queues, with a stronger idempotency key.
 8. **Schema changes elsewhere** are limited to Stock Ledger `DispenseIssue` (PD-02), DTU location master, pharmacy service-point seed, and Collection Window parameter — not queue-status expansion.
 9. **Repository direction.** One repo per aggregate; Lab-style DTO/DAL/Repo; projections are queries; concurrency via `Version` on headers.
 10. **Financial correction.** No `BILRG_AptCreditNote`. Credit Note, Refund, and Financial Adjustment remain Tata Rekening-owned. Invoice may correlate; it must not own those documents. `BillingCredit` `{InvoiceId}:CN{n}` is not part of the catalog.
+11. **Invoice-level commercial totals.** No `BILRG_AptInvoiceCharge`. Transaction-wide adjustments (`BR-APT-128`) are `BILRG_AptInvoice` header fields only. Item-specific charges remain `BILRG_AptInvoiceItemCharge` child records (`BR-APT-127`).
 
 ---
 
