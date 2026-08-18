@@ -27,22 +27,20 @@ public class PakaiBedController : ControllerBase
         return Ok(new JSendOk(response));
     }
     [HttpGet]
-    [Route("{id}")]
-    public async Task<IActionResult> GetData(string id)
+    [Route("{pakaiBedId}")]
+    public async Task<IActionResult> GetData(string pakaiBedId)
     {
-        //var query = new PakaiBedGetQuery(id); 
-        //var response = await _mediator.Send(query);
-        //return Ok(new JSendOk(response));
-        throw new NotImplementedException("GetData method is not implemented yet.");
+        var query = new PakaiBedGetQuery(pakaiBedId);
+        var response = await _mediator.Send(query);
+        return Ok(new JSendOk(response));
     }
     [HttpGet]
-    [Route("list")]
-    public async Task<IActionResult> ListData(string regId)
+    [Route("{regId}/list")]
+    public async Task<IActionResult> ListDataByReg(string regId)
     {
-        //var query = new PakaiBedListQuery(); 
-        //var response = await _mediator.Send(query);
-        //return Ok(new JSendOk(response));
-        throw new NotImplementedException("ListData method is not implemented yet.");
+        var query = new PakaiBedListByRegQuery(regId);
+        var response = await _mediator.Send(query);
+        return Ok(new JSendOk(response));
     }
 
 }
