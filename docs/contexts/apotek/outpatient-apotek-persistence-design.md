@@ -60,7 +60,7 @@ No Apotek bounded-context project, aggregate, DTO, DAL, repository, or SQL scrip
 | Accepted Jual Bebas | `BR-APT-009`, `BR-APT-089` | Supporting document tables; decline creates no row |
 | Current queue-to-demand association | BA-03; `BR-APT-062` | Association table, update in place, no history, not an aggregate |
 | Pharmacy Queue Close fact | `BR-APT-143`–`145` | Append-only fact table; Tracker `Withdrawn` is requested, not owned |
-| Salinan Resep | `BR-APT-054`, `BR-APT-109`–`115` | Supporting document from unfulfilled / excluded prescription items |
+| Copy Resep | `BR-APT-054`, `BR-APT-109`–`115` | Supporting document from unfulfilled / excluded prescription items |
 | Cross-context delivery | BA-07 | Integration Task table committed atomically with the originating aggregate |
 | Stock, queue, payment, SEP, Fornas, billing settlement | ADR-APT-001, ADR-APT-002, Tata Rekening | Neighbor tables remain neighbor-owned; Apotek stores correlation identities only |
 | Operational worklists, attention badges, Patient Medication Journey, Pickup Expired | Screen design §3.4–§3.5 | Query projections; no write tables and no workflow states |
@@ -148,7 +148,7 @@ flowchart TB
     DSP["BILRG_AptDispensing"]
     MAP["BILRG_AptQueueMapping"]
     CLOSE["BILRG_AptQueueClose"]
-    COPY["BILRG_AptSalinanResep"]
+    COPY["BILRG_AptCopyResep"]
     TASK["BILRG_AptIntegrationTask"]
   end
 
@@ -194,7 +194,7 @@ flowchart TB
 | Jual Bebas | Supporting document | One accepted retail request | `IJualBebasRepo` | Items rewriteable only before Sales Order establishment |
 | Outpatient Queue Mapping | Association | Current queue ↔ Resep Kerja or Jual Bebas | `IOutpatientQueueMappingRepo` | Single row per demand source; update in place |
 | Pharmacy Queue Close | Operational fact | One close per queue entry | DAL + fact writer used by use case | Append-only |
-| Salinan Resep | Supporting document | One copy of excluded/unfulfilled items | `ISalinanResepRepo` or child of Resep Kerja use case | Header + items |
+| Copy Resep | Supporting document | One Copy Resep of excluded/unfulfilled items | `ICopyResepRepo` or child of Resep Kerja use case | Header + items |
 | Integration Task | Infrastructure | One durable outbound obligation | `IAptIntegrationTaskDal` coordinated by Application | Append-only; status updates in place |
 
 One repository per aggregate root. Supporting documents have repositories because they are written before the related aggregate exists. Mapping is not an aggregate; its repository only loads/saves the current association.
@@ -297,8 +297,8 @@ Module prefix: `BILRG_Apt`. New-system PK: `VARCHAR(12)` unless the row is a det
 | `BILRG_AptFinalReview` | Append-only detail | `(DispensingId, ReviewNo)` | `Dispensing` |
 | `BILRG_AptQueueMapping` | Association | `(DemandKind, DemandId)` | Apotek (not an aggregate) |
 | `BILRG_AptQueueClose` | Append-only fact | `QueueCloseId` | Apotek (not an aggregate) |
-| `BILRG_AptSalinanResep` | Supporting header | `SalinanResepId` | Apotek |
-| `BILRG_AptSalinanResepItem` | Detail | `(SalinanResepId, ItemNo)` | Salinan Resep |
+| `BILRG_AptCopyResep` | Supporting header | `CopyResepId` | Apotek |
+| `BILRG_AptCopyResepItem` | Detail | `(CopyResepId, ItemNo)` | Copy Resep |
 | `BILRG_AptIntegrationTask` | Infrastructure | `IntegrationTaskId` | Apotek Application / worker |
 
 ### 6.2 New tables that are intentionally omitted
@@ -326,7 +326,7 @@ Module prefix: `BILRG_Apt`. New-system PK: `VARCHAR(12)` unless the row is a det
 | Sales Order | `ASO` | |
 | Invoice | `ASI` | |
 | Dispensing | `ADP` | Do not use `DO` (Stock Ledger Goods Receipt) |
-| Salinan Resep | `ASR` | |
+| Copy Resep | `ACR` | Apt Copy Resep |
 | Queue Close | `AQC` | |
 | Integration Task | `AIT` | |
 
@@ -355,7 +355,7 @@ erDiagram
   BILRG_AptDispensing ||--|{ BILRG_AptDispensingItem : items
   BILRG_AptDispensing ||--o{ BILRG_AptFinalReview : reviews
   BILRG_AptQueueMapping }o--|| BILRG_AntrianEntry : associates
-  BILRG_AptSalinanResep ||--|{ BILRG_AptSalinanResepItem : items
+  BILRG_AptCopyResep ||--|{ BILRG_AptCopyResepItem : items
   BILRG_AptSalesOrder ||--o{ BILRG_AptIntegrationTask : outbound
   BILRG_AptDispensing ||--o{ BILRG_AptIntegrationTask : outbound
   BILRG_AptInvoice ||--o{ BILRG_AptIntegrationTask : outbound
@@ -487,7 +487,7 @@ UX_BILRG_AptSalesOrder_ActiveSourceRegPayer
 
 `BILRG_AptSalesOrderItemComponent`: compounding composition copied from Resep Kerja/Jual Bebas at establishment.
 
-`BILRG_AptUnfulfilledOutcome`: `OutcomeNo`, `SalesOrderItemNo`, `Qty`, `Reason` (shortage after SO, patient decline of Patient-Pay SO, expiry, cancellation, etc.), `SalinanResepId`, `ActorId`, `EffectiveAt`. Append-only. Delete+insert is forbidden.
+`BILRG_AptUnfulfilledOutcome`: `OutcomeNo`, `SalesOrderItemNo`, `Qty`, `Reason` (shortage after SO, patient decline of Patient-Pay SO, expiry, cancellation, etc.), `CopyResepId`, `ActorId`, `EffectiveAt`. Append-only. Delete+insert is forbidden.
 
 **Save semantics:** header upsert. Items rewriteable only in the same transaction that establishes the order. Afterwards update quantities/status in place; never replace medication identity. Unfulfilled rows insert only.
 
@@ -602,11 +602,11 @@ Do not write `BILRG_AntrianEntry.ReffId` as the mapping store.
 
 Tracker `Withdrawn` is a separate Integration Task. This table is the Pharmacy fact (`BR-APT-144`). Tracker `WithdrawalReason` may copy the same reason through the Tracker command; Apotek still keeps its own fact.
 
-### 8.9 Salinan Resep
+### 8.9 Copy Resep
 
-`BILRG_AptSalinanResep`: `SalinanResepId`, `ResepKerjaId`, `SalesOrderId` (empty if issued before SO), `Reason` (PatientRequest / StockShortage / post-SO unfulfilled), `IssuedBy`, `IssuedAt`.
+`BILRG_AptCopyResep`: `CopyResepId`, `ResepKerjaId`, `SalesOrderId` (empty if issued before SO), `Reason` (PatientRequest / StockShortage / post-SO unfulfilled), `IssuedBy`, `IssuedAt`.
 
-`BILRG_AptSalinanResepItem`: Resep Kerja `ItemNo`, `BrgId`, `Qty`, `Note`.
+`BILRG_AptCopyResepItem`: Resep Kerja `ItemNo`, `BrgId`, `Qty`, `Note`.
 
 ### 8.10 Integration Task (BA-07)
 
@@ -1024,7 +1024,7 @@ BC-12 (permission matrix) does not change tables.
 
 Approve this persistence design only if all of the following are accepted:
 
-1. **Aggregate ownership.** Write aggregates are exactly `TelaahResep`, `SalesOrder`, `Invoice`, `Dispensing`. Mapping, Queue Close, Resep Kerja, Jual Bebas, Salinan Resep, and Integration Task are not aggregate roots.
+1. **Aggregate ownership.** Write aggregates are exactly `TelaahResep`, `SalesOrder`, `Invoice`, `Dispensing`. Mapping, Queue Close, Resep Kerja, Jual Bebas, Copy Resep, and Integration Task are not aggregate roots.
 2. **Table ownership.** Apotek writes only `BILRG_Apt*`. Neighbors remain authoritative for queue, stock, billing settlement, catalog, Fornas master, and legacy Resep Iter.
 3. **Reuse.** Legacy DU and Kartu Periksa are not the new write model. Tracker `ReffId` is not the mapping store. Dispense Authorized is not a table.
 4. **Coexistence.** No dual-write to `tb_trs_dobill_umum`. Unified reporting is read-side.

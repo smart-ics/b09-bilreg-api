@@ -284,17 +284,17 @@ The architecture is not ready for implementation review until the blocking decis
 
 **Decision.** Partial Prescription Fulfillment is permitted only for Patient Request and Stock Shortage. No other reason is recognized by the system.
 
-**Patient Request.** When a Patient cannot or does not wish to purchase the entire prescription, Pharmacy Staff may establish a Sales Order containing only the selected prescription items. Excluded prescription items remain unfulfilled. The system shall support Salinan Resep (Prescription Copy) generation for unfulfilled items.
+**Patient Request.** When a Patient cannot or does not wish to purchase the entire prescription, Pharmacy Staff may establish a Sales Order containing only the selected prescription items. Excluded prescription items remain unfulfilled. The system shall support Copy Resep generation for unfulfilled items.
 
-**Stock Shortage.** When Available Stock prevents committing the full prescription to a new Sales Order, Pharmacy Staff may establish a Sales Order containing only fulfillable prescription items. Fulfillable quantity is Available Stock, not Current Stock. Unavailable prescription items remain unfulfilled. The system shall support Salinan Resep for unfulfilled items.
+**Stock Shortage.** When Available Stock prevents committing the full prescription to a new Sales Order, Pharmacy Staff may establish a Sales Order containing only fulfillable prescription items. Fulfillable quantity is Available Stock, not Current Stock. Unavailable prescription items remain unfulfilled. The system shall support Copy Resep for unfulfilled items.
 
 **Ownership.** The Pharmacist remains responsible for approving the resulting fulfillment decision when professional review is required. The system does not automatically determine alternative substitutions or external fulfillment actions.
 
 **Partiality boundary.** Partiality exists only between Prescription and Sales Order. Partiality does not exist between Sales Order and Dispensing. A Sales Order may be fulfilled by one or more Dispensings; that is fulfillment execution, not Partial Prescription Fulfillment policy.
 
-**Unfulfilled lines.** Prescription lines not included in the Sales Order remain part of the originating Prescription. The system shall support issuing Salinan Resep containing unfulfilled items for external fulfillment when required.
+**Unfulfilled lines.** Prescription lines not included in the Sales Order remain part of the originating Prescription. The system shall support issuing Copy Resep containing unfulfilled items for external fulfillment when required.
 
-**Rationale.** Two explicit, auditable reasons at the Prescription-to-Sales Order boundary prevent ad hoc line exclusion while separating professional review ownership from staff-operational intake. Salinan Resep preserves traceability for lines fulfilled elsewhere.
+**Rationale.** Two explicit, auditable reasons at the Prescription-to-Sales Order boundary prevent ad hoc line exclusion while separating professional review ownership from staff-operational intake. Copy Resep preserves traceability for lines fulfilled elsewhere.
 
 **Ratified in.** `apotek-domain.md` (`BR-APT-047`, `BR-APT-054`, `BR-APT-108`–`BR-APT-113`); `outpatient-apotek-workflow.md`; `outpatient-apotek-screen-and-aggregate-design.md` §3.2.
 
@@ -390,7 +390,7 @@ The architecture is not ready for implementation review until the blocking decis
 
 **Decision.** Outpatient Pharmacy does not support Backorder. When a stock shortage occurs, the system does not create an outstanding fulfillment obligation, waiting demand, or backorder record.
 
-**Stock Shortage Handling.** Stock shortage before Sales Order establishment is evaluated against **Available Stock**, not Current Stock. It is resolved immediately through a Partial Sales Order and Salinan Resep (Prescription Copy) for unfulfilled prescription items:
+**Stock Shortage Handling.** Stock shortage before Sales Order establishment is evaluated against **Available Stock**, not Current Stock. It is resolved immediately through a Partial Sales Order and Copy Resep for unfulfilled prescription items:
 
 ```text
 Prescription
@@ -402,11 +402,11 @@ Only fulfillable prescription items may be included in the Sales Order. Fulfilla
 
 Available Stock is the quantity that can still be promised to a new Sales Order. Current Stock is the physical inventory recorded by the inventory subsystem. Available Stock ≠ Current Stock. The Available Stock formula is not specified in this decision and is reserved for a future inventory-planning design activity.
 
-**Prescription Copy.** The system shall support Salinan Resep generation containing the unfulfilled prescription items. The Prescription Copy may be used by the Patient to obtain medication from another pharmacy.
+**Copy Resep.** The system shall support Copy Resep generation containing the unfulfilled prescription items. Copy Resep may be used by the Patient to obtain medication from another pharmacy.
 
 **Alternate stock source.** Outpatient Pharmacy does not implement alternate stock source selection, fulfillment routing, inter-pharmacy sourcing, or backorder management. Quantity that may still be promised to a new Sales Order is evaluated as Available Stock, not as Current Stock.
 
-**Rationale.** The organization does not operationally retain outstanding outpatient medication demand when stock is unavailable. Shortage is resolved immediately through partial fulfillment and Prescription Copy issuance rather than deferred fulfillment.
+**Rationale.** The organization does not operationally retain outstanding outpatient medication demand when stock is unavailable. Shortage is resolved immediately through partial fulfillment and Copy Resep issuance rather than deferred fulfillment.
 
 **Ratified in.** `apotek-domain.md` (`BR-APT-018`, `BR-APT-046`, `BR-APT-110`, `BR-APT-114`–`BR-APT-118`, `BR-APT-146`); `outpatient-apotek-workflow.md`; `outpatient-apotek-screen-and-aggregate-design.md` §3.1–§3.2; `sop/SOP-APT-RJ-002-*`, `sop/SOP-APT-RJ-003-*`, `sop/SOP-APT-RJ-004-*`. Clarification of Available Stock vs Current Stock recorded in `APOTEK-AVAILABLE-STOCK-CONCEPT-INTRODUCTION.md`.
 
@@ -541,8 +541,8 @@ Available Stock is the quantity that can still be promised to a new Sales Order.
 - Preserve separate records for multiple medication demands sharing one queue.
 - Jual Bebas is accepted or declined by Pharmacy Staff without Pharmacist approval; optional consultation is SOP-only and not a domain gate (BC-02).
 - Outpatient Pharmacy fulfillment boundary is the active Registration Period; no separate Fulfillment Episode concept. At most one active Sales Order per Prescription per Registration, except that Fornas Not Covered items may establish a separate Patient-Pay Sales Order independent of the BPJS-covered Sales Order. Iter entitlement is system-managed through Legacy Resep `Iter`; Pharmacist decides whether unused Iter may be honored at fulfillment time and may decline even when remaining Iter exists (BC-09, BC-14).
-- Partial Prescription Fulfillment is permitted for Patient Request, Stock Shortage, and Fornas Not Covered items at the Prescription-to-Sales Order boundary. Excluded or uncovered lines remain on the originating Prescription or move to a separate Patient-Pay Sales Order; Salinan Resep supports external fulfillment when lines stay unfulfilled. Pharmacist approves when professional review is required. Multiple Dispensings per Sales Order is execution only, not this policy (BC-04, BC-14).
-- Outpatient Pharmacy does not support Backorder, alternate stock source selection, fulfillment routing, or inter-pharmacy sourcing. Shortage before Sales Order establishment is resolved immediately by placing only items still committable from Available Stock on the Sales Order and issuing Salinan Resep for unfulfilled items; no outstanding fulfillment obligation is retained. Available Stock is not Current Stock (BC-10, `BR-APT-146`).
+- Partial Prescription Fulfillment is permitted for Patient Request, Stock Shortage, and Fornas Not Covered items at the Prescription-to-Sales Order boundary. Excluded or uncovered lines remain on the originating Prescription or move to a separate Patient-Pay Sales Order; Copy Resep supports external fulfillment when lines stay unfulfilled. Pharmacist approves when professional review is required. Multiple Dispensings per Sales Order is execution only, not this policy (BC-04, BC-14).
+- Outpatient Pharmacy does not support Backorder, alternate stock source selection, fulfillment routing, or inter-pharmacy sourcing. Shortage before Sales Order establishment is resolved immediately by placing only items still committable from Available Stock on the Sales Order and issuing Copy Resep for unfulfilled items; no outstanding fulfillment obligation is retained. Available Stock is not Current Stock (BC-10, `BR-APT-146`).
 - Fornas classifies lines as Covered or Not Covered. Covered items follow BPJS fulfillment with coverage evidence sufficient for Dispense Authorized. Not Covered items are not auto-cancelled; they may form an independent Patient-Pay Sales Order requiring self-pay financial clearance before Dispense Authorized. One Prescription may yield both a BPJS-covered Sales Order and a Patient-Pay Sales Order (BC-14).
 - Invoice commercial structure follows the legacy sales model. Non-medication components are not free-form invoice items. BHP is a catalog sales item. Item-specific charges (packaging, compounding) are item-level charges through `BILRG_AptInvoiceItemCharge`; transaction-wide adjustments (rounding) are Invoice header commercial totals on `BILRG_AptInvoice`. No `BILRG_AptInvoiceCharge` table (PD-10). No additional invoice component model is introduced (BC-08).
 - Authorized Recipient verification is an operational Pharmacist responsibility and is not system-enforced. Medication Handover may optionally record recipient phone number and relationship for reference only. The system shall not require identity validation, legal relationship verification, document capture, or an authorization workflow (BC-06).

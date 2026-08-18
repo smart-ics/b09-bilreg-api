@@ -82,7 +82,7 @@ The workflow ends when every medication demand mapped to the Pharmacy Queue Entr
 - Mixed BPJS-covered and Patient-payable quantities, represented as a BPJS-covered Sales Order and an independent Patient-Pay Sales Order when Fornas classifies some items as Not Covered.
 - Payment Clearance, Coverage Clearance, and Dispense Authorized.
 - Pharmacy Reserve (Stock Mutasi to Dispensing Temporary Unit), Medication Preparation, pickup calling, Final Dispense Review, operational Authorized Recipient verification, Patient Education, Medication Dispense, and Medication Handover.
-- Stock Shortage Handling through a Partial Sales Order of fulfillable items, evaluated against Available Stock (not Current Stock), and Salinan Resep for unfulfilled prescription items.
+- Stock Shortage Handling through a Partial Sales Order of fulfillable items, evaluated against Available Stock (not Current Stock), and Copy Resep for unfulfilled prescription items.
 - No-Show and manual uncollected-medication resolution.
 
 ### 3.4 Excluded
@@ -103,7 +103,7 @@ The workflow ends when every medication demand mapped to the Pharmacy Queue Entr
 |---|---|---|
 | Patient or Caregiver | Obtains a Queue Number, supplies mapping evidence or a Resep Fisik, gives verbal confirmation when Patient-payable, pays when required, presents for pickup, receives education, and accepts medication when authorized. | Evidence is supplied, confirmation is given or declined, Payment Clearance is obtained, or Medication Handover completes. |
 | Patient Tracker | Owns Pharmacy Queue Entry identity, Queue Number, and queue lifecycle. | `Queue Entry Created`, `Queue Service Started`, `Queue Service Completed`, or `Queue Entry Withdrawn`. |
-| Pharmacy Staff | Performs administrative queue calls, Manual Mapping, records Resep Fisik, accepts or declines Jual Bebas, records Pharmacy Queue Close when the entry is not progressed into the pharmacy workflow, coordinates Sales Order progression, communicates General Patient value, establishes a confirmed Invoice, performs Medication Preparation and Compounding, applies Stock Shortage Handling through a Partial Sales Order and Salinan Resep, and performs the pickup call. | `Outpatient Queue Mapped`, `Sales Order Established`, `Invoice Established`, `Medication Prepared`, `Patient Called for Pickup`, or `Pharmacy Queue Close Recorded`. |
+| Pharmacy Staff | Performs administrative queue calls, Manual Mapping, records Resep Fisik, accepts or declines Jual Bebas, records Pharmacy Queue Close when the entry is not progressed into the pharmacy workflow, coordinates Sales Order progression, communicates General Patient value, establishes a confirmed Invoice, performs Medication Preparation and Compounding, applies Stock Shortage Handling through a Partial Sales Order and Copy Resep, and performs the pickup call. | `Outpatient Queue Mapped`, `Sales Order Established`, `Invoice Established`, `Medication Prepared`, `Patient Called for Pickup`, or `Pharmacy Queue Close Recorded`. |
 | Pharmacist | Performs Telaah Resep, authorizes eligible Medication Substitution before Sales Order establishment, operationally verifies the recipient, performs Final Dispense Review, records Patient Education Acknowledgement, and records Collection Window Override when Pickup Expired. Recipient verification is not system-enforced. | `Telaah Resep Completed`, `Final Dispense Review Completed`, `Patient Education Acknowledged`, `Collection Window Override Recorded`, or Medication Handover is authorized to complete. |
 | Cashier or Payment Authority | Receives required Patient payment and supplies Payment Clearance. | `Payment Clearance Established`. |
 | SEP and Fornas Authorities | Supply encounter-level SEP validity and item-level BPJS coverage. | `Coverage Clearance Established` for the covered quantity. |
@@ -285,14 +285,14 @@ Pharmacist, Pharmacy Staff, CPOE or Dokter Penulis Resep.
 | Jual Bebas declined | Pharmacy Staff | Do not establish a request record or Sales Order. |
 | Unused Iter remains but Pharmacist declines honor | Pharmacist | Decline fulfillment; record accountable outcome without consuming Iter. |
 | Unused Iter honored at fulfillment | Pharmacist | Proceed with fulfillment; system records Iter consumption. |
-| Patient Request partial prescription | Pharmacy Staff | Establish Sales Order with selected items only; excluded items remain on Prescription; issue Salinan Resep when required. |
-| Stock Shortage partial prescription | Pharmacy Staff | Establish Sales Order with fulfillable items only, using Available Stock (not Current Stock) to decide what can still be committed; unavailable items remain on Prescription; issue Salinan Resep when required. |
+| Patient Request partial prescription | Pharmacy Staff | Establish Sales Order with selected items only; excluded items remain on Prescription; issue Copy Resep when required. |
+| Stock Shortage partial prescription | Pharmacy Staff | Establish Sales Order with fulfillable items only, using Available Stock (not Current Stock) to decide what can still be committed; unavailable items remain on Prescription; issue Copy Resep when required. |
 | Professional review required for partial path | Pharmacist | Approve or reject the resulting fulfillment decision; system does not auto-substitute or route externally. |
 | Fornas Not Covered items | Pharmacy Staff | Establish an independent Patient-Pay Sales Order for uncovered items; Covered items form the BPJS-covered Sales Order. |
 
 #### Exception and Compensation Flows
 
-- Stock shortage after Sales Order establishment does not change Hasil Telaah Resep. Pharmacy Staff shall not create Backorder or select an alternate stock source. Unfulfillable quantity receives an Unfulfilled Medication Outcome and Salinan Resep when applicable. Post-establishment shortage is not resolved by equating Available Stock with Current Stock.
+- Stock shortage after Sales Order establishment does not change Hasil Telaah Resep. Pharmacy Staff shall not create Backorder or select an alternate stock source. Unfulfillable quantity receives an Unfulfilled Medication Outcome and Copy Resep when applicable. Post-establishment shortage is not resolved by equating Available Stock with Current Stock.
 - Partial Prescription Fulfillment before Sales Order establishment is permitted only for Patient Request, Stock Shortage, or Fornas Not Covered items. No other partiality reason is recognized.
 - Medication identity on an established Sales Order Item shall not be changed. If a later replacement is needed, cancel the affected line or order, review the same original Resep again, and establish a new Sales Order Item without requiring a corrected or replacement Resep.
 - Any accepted quantity that cannot be fulfilled must retain an accountable `Cancelled`, `Expired`, or other Unfulfilled Medication Outcome. Outpatient Pharmacy shall not retain Backorder.
@@ -300,7 +300,7 @@ Pharmacist, Pharmacy Staff, CPOE or Dokter Penulis Resep.
 #### Outcomes and Postconditions
 
 - Success: `Telaah Resep Completed`, `Sales Order Established`, and `Dispensing Established` are observed as applicable.
-- Partial success: only selected or fulfillable prescription items enter the Sales Order under Patient Request or Stock Shortage; excluded items remain on the originating Prescription and may receive Salinan Resep.
+- Partial success: only selected or fulfillable prescription items enter the Sales Order under Patient Request or Stock Shortage; excluded items remain on the originating Prescription and may receive Copy Resep.
 - Rejection: no Sales Order exists for the rejected source.
 - The Sales Order is not an Invoice, Dispensing, reservation, or dispense evidence.
 
@@ -375,7 +375,7 @@ Patient or Caregiver, Pharmacy Staff, Cashier or Payment Authority, Pharmacy Sta
 
 - If payment is not completed after Invoice establishment, Medication Preparation remains blocked. The Invoice may be `Cancelled` only while its lifecycle and Tata Rekening permission both permit.
 - If an Invoice needs correction, revise the same Invoice while Tata Rekening still permits modification. When Tata Rekening no longer permits revision, Tata Rekening owns Financial Adjustment, Credit Note, or Refund. Apotek does not persist those documents. Do not silently replace Invoice history without that permission and accountability.
-- If shortage occurs after payment, Pharmacy Staff shall not create Backorder or select an alternate stock source. Unfulfillable quantity receives an Unfulfilled Medication Outcome and Salinan Resep when applicable. Commercial consequences follow `BR-APT-027`. Substitution is prohibited because the Sales Order already exists.
+- If shortage occurs after payment, Pharmacy Staff shall not create Backorder or select an alternate stock source. Unfulfillable quantity receives an Unfulfilled Medication Outcome and Copy Resep when applicable. Commercial consequences follow `BR-APT-027`. Substitution is prohibited because the Sales Order already exists.
 - If fulfillment cannot complete, affected quantities receive an accountable Unfulfilled Medication Outcome and commercial consequences follow `BR-APT-027`.
 - A failed Final Dispense Review appends an immutable review record containing the reason, responsible Pharmacist, effective business time, and affected quantity; returns the affected Dispensing from `Prepared` to `Preparing`; and prevents Medication Handover. After correction, the Dispensing returns to `Prepared` and requires another Final Dispense Review.
 
@@ -455,7 +455,7 @@ Patient or Caregiver, Pharmacy Staff, Pharmacist, Patient Tracker, SEP and Forna
 #### Exception and Compensation Flows
 
 - A BPJS No-Show before Medication Handover establishes no Invoice and requires no Invoice cancellation.
-- Shortage after Sales Order establishment does not permit Backorder, alternate stock source, or substitution. Unfulfillable quantity receives an Unfulfilled Medication Outcome and Salinan Resep when applicable. If a BPJS Invoice already exists, commercial consequences follow `BR-APT-027`.
+- Shortage after Sales Order establishment does not permit Backorder, alternate stock source, or substitution. Unfulfillable quantity receives an Unfulfilled Medication Outcome and Copy Resep when applicable. If a BPJS Invoice already exists, commercial consequences follow `BR-APT-027`.
 - Failed Final Dispense Review appends its immutable review record, returns the Dispensing from `Prepared` to `Preparing`, and prevents both BPJS Invoice establishment and Medication Handover. Correction returns the order to `Prepared` and requires a new review.
 - Inventory may reject a return Mutasi when eligible quantity is not available; Pharmacy still records the accountable No Show outcome and any required commercial consequence.
 

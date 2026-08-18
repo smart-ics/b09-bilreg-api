@@ -150,7 +150,7 @@ Resep tidak berubah menjadi Sales Order. Keputusan profesional yang selesai meng
 | Backorder | Pemenuhan Tertunda | Jumlah unresolved yang dipertahankan untuk dipenuhi kemudian saat supply tersedia. Apotek Rawat Jalan tidak mendukung Backorder. |
 | Medication Substitution | Substitusi Obat | Penggantian accountable atas produk obat yang diminta berdasarkan authority profesional yang berlaku. |
 | Unfulfilled Medication Outcome | Outcome Obat Tidak Terpenuhi | Alasan final dan accountable bahwa jumlah obat yang diterima tidak dipenuhi. |
-| Salinan Resep | Salinan Resep | Salinan Resep (Prescription Copy) accountable untuk obat atau jumlah resep yang tidak dimasukkan ke Sales Order atau tidak dipenuhi, bila berlaku. |
+| Copy Resep | Copy Resep | Copy Resep accountable untuk obat atau jumlah resep yang tidak dimasukkan ke Sales Order atau tidak dipenuhi, bila berlaku. |
 | Dispense Cancellation | Pembatalan Dispensing | Pengakhiran accountable suatu Dispensing sebelum fulfillment berhasil. |
 | Fulfillment Expiry | Berakhirnya Pemenuhan | Berakhirnya kesempatan fulfillment karena periode layanan yang diizinkan telah lewat. |
 | Medication Return | Retur Obat | Pengembalian accountable atas obat yang sebelumnya disiapkan, dipindahkan, atau diserahkan. |
@@ -258,7 +258,7 @@ Memiliki Hasil Telaah Resep, Medication Substitution yang diotorisasi selama Tel
 
 ### 4.3 Staf Apotek
 
-Mengoordinasikan permintaan yang diterima, perkembangan Sales Order, interaksi administratif Rawat Jalan, penyiapan atau peracikan obat, dan penyerahan sesuai kewenangan. Untuk pelayanan Rawat Jalan, Staf Apotek memanggil Nomor Antrean, membuat Manual Mapping, menyampaikan nilai Pasien Umum sebelum Invoice dibentuk, menyimpan Invoice yang telah dikonfirmasi, menyiapkan obat sesuai Dispensing, dan melakukan panggilan pengambilan. Untuk Jual Bebas, Staf Apotek menerima atau menolak tanpa membentuk Resep. Konsultasi Pharmacist secara operasional bersifat opsional sebagai panduan SOP saja dan tidak dimodelkan sebagai approval gate. Ketika stok Rawat Jalan tidak mendukung pemenuhan penuh, Staf Apotek hanya memasukkan item yang dapat dipenuhi ke Sales Order dan menerbitkan Salinan Resep untuk item yang tidak dipenuhi. Staf Apotek tidak boleh membuat Backorder, memilih sumber stok alternatif, atau mengganti jenis obat.
+Mengoordinasikan permintaan yang diterima, perkembangan Sales Order, interaksi administratif Rawat Jalan, penyiapan atau peracikan obat, dan penyerahan sesuai kewenangan. Untuk pelayanan Rawat Jalan, Staf Apotek memanggil Nomor Antrean, membuat Manual Mapping, menyampaikan nilai Pasien Umum sebelum Invoice dibentuk, menyimpan Invoice yang telah dikonfirmasi, menyiapkan obat sesuai Dispensing, dan melakukan panggilan pengambilan. Untuk Jual Bebas, Staf Apotek menerima atau menolak tanpa membentuk Resep. Konsultasi Pharmacist secara operasional bersifat opsional sebagai panduan SOP saja dan tidak dimodelkan sebagai approval gate. Ketika stok Rawat Jalan tidak mendukung pemenuhan penuh, Staf Apotek hanya memasukkan item yang dapat dipenuhi ke Sales Order dan menerbitkan Copy Resep untuk item yang tidak dipenuhi. Staf Apotek tidak boleh membuat Backorder, memilih sumber stok alternatif, atau mengganti jenis obat.
 
 ### 4.4 Patient or Caregiver
 
@@ -322,7 +322,7 @@ Merepresentasikan mapping aktif antara Pharmacy Queue Entry yang dimiliki contex
 
 ### 5.9 Unfulfilled Medication Outcome
 
-Merepresentasikan alasan final suatu Accepted Quantity tidak dipenuhi dan mengidentifikasi Salinan Resep, return, atau financial correction yang diperlukan. Apotek Rawat Jalan tidak menggunakan penutupan backorder.
+Merepresentasikan alasan final suatu Accepted Quantity tidak dipenuhi dan mengidentifikasi Copy Resep, return, atau financial correction yang diperlukan. Apotek Rawat Jalan tidak menggunakan penutupan backorder.
 
 ### 5.10 Final Dispense Review Record
 
@@ -369,6 +369,10 @@ Dokumen pendukung. Salinan operasional Farmasi atas satu Resep, dibuat saat inta
 ### 5.16 Jual Bebas
 
 Dokumen pendukung. Satu permintaan obat gaya ritel tanpa Resep yang diterima. Staf Apotek menerima atau menolaknya. Penolakan tidak membentuk record (`BR-APT-089`). Bentuk identifier: `JualBebas`. Bukan aggregate root.
+
+### 5.17 Copy Resep
+
+Dokumen pendukung. Record accountable atas obat atau jumlah resep yang dikecualikan dari Sales Order atau tidak dipenuhi, bila berlaku (`BR-APT-054`, `BR-APT-109`–`115`, `BR-APT-118`). Dapat diterbitkan sebelum atau setelah pembentukan Sales Order. Bentuk identifier: `CopyResep`. Bukan aggregate root.
 
 ## 6. Aggregates
 
@@ -484,19 +488,19 @@ Outpatient Queue Mapping merupakan mapping aktif antara Pharmacy Queue Entry yan
 - **BR-APT-051** — Medication Shortage atau Stock Discrepancy tidak boleh mengubah Resep asli atau menghapus Invoice yang sudah ada. Identitas Invoice tetap. Merevisi isi Invoice menurut `BR-APT-027` bukan penghapusan.
 - **BR-APT-052** — Medication Return harus mengidentifikasi Dispensing sumber, jumlah, alasan, dan disposition Inventory finalnya.
 - **BR-APT-053** — Return to Stock hanya boleh terjadi ketika Inventory menerima obat retur berdasarkan kebijakannya sendiri.
-- **BR-APT-054** — Salinan Resep harus mengidentifikasi obat atau jumlah resep yang tidak dipenuhi atau dikecualikan dari Sales Order, termasuk item yang eligible untuk fulfillment eksternal.
+- **BR-APT-054** — Copy Resep harus mengidentifikasi obat atau jumlah resep yang tidak dipenuhi atau dikecualikan dari Sales Order, termasuk item yang eligible untuk fulfillment eksternal.
 - **BR-APT-055** — No-Show harus menjadi outcome kebijakan Rawat Jalan dan tidak boleh diterapkan pada Ward Delivery Rawat Inap.
 - **BR-APT-108** — Partial Prescription Fulfillment hanya diizinkan untuk Patient Request, Stock Shortage, dan item Fornas Not Covered. Tidak ada alasan lain yang diakui sistem.
-- **BR-APT-109** — Untuk Patient Request, Staf Apotek dapat membentuk Sales Order yang hanya berisi item resep yang dipilih. Item resep yang dikecualikan tetap unfulfilled pada Resep asal. Sistem harus mendukung Salinan Resep untuk item yang tidak dipenuhi.
-- **BR-APT-110** — Untuk Stock Shortage sebelum Sales Order dibentuk, Staf Apotek dapat membentuk Sales Order yang hanya berisi item resep yang dapat dipenuhi. Jumlah yang dapat dipenuhi ditentukan dari Available Stock, bukan dari Current Stock. Item yang tidak tersedia tetap unfulfilled pada Resep asal. Sistem harus mendukung Salinan Resep untuk item yang tidak dipenuhi. Tidak boleh dibentuk outstanding fulfillment obligation, waiting demand, atau backorder record.
+- **BR-APT-109** — Untuk Patient Request, Staf Apotek dapat membentuk Sales Order yang hanya berisi item resep yang dipilih. Item resep yang dikecualikan tetap unfulfilled pada Resep asal. Sistem harus mendukung Copy Resep untuk item yang tidak dipenuhi.
+- **BR-APT-110** — Untuk Stock Shortage sebelum Sales Order dibentuk, Staf Apotek dapat membentuk Sales Order yang hanya berisi item resep yang dapat dipenuhi. Jumlah yang dapat dipenuhi ditentukan dari Available Stock, bukan dari Current Stock. Item yang tidak tersedia tetap unfulfilled pada Resep asal. Sistem harus mendukung Copy Resep untuk item yang tidak dipenuhi. Tidak boleh dibentuk outstanding fulfillment obligation, waiting demand, atau backorder record.
 - **BR-APT-111** — Pharmacist tetap bertanggung jawab menyetujui keputusan fulfillment yang dihasilkan ketika review profesional diperlukan. Sistem tidak menentukan substitusi alternatif atau tindakan fulfillment eksternal secara otomatis.
 - **BR-APT-112** — Partialitas Partial Prescription Fulfillment hanya ada antara Prescription dan Sales Order. Partialitas tidak ada antara Sales Order dan Dispensing.
 - **BR-APT-113** — Sales Order yang dipenuhi melalui satu atau lebih Dispensing adalah eksekusi fulfillment dan bukan kebijakan Partial Prescription Fulfillment.
 - **BR-APT-114** — Apotek Rawat Jalan tidak mendukung Backorder. Kekurangan stok tidak boleh membentuk outstanding fulfillment obligation, waiting demand, atau backorder record.
-- **BR-APT-115** — Kekurangan stok Rawat Jalan harus diselesaikan segera melalui Partial Sales Order atas item yang dapat dipenuhi dan Salinan Resep untuk item resep yang tidak dipenuhi. Salinan Resep dapat digunakan Pasien untuk memperoleh obat dari apotek lain.
+- **BR-APT-115** — Kekurangan stok Rawat Jalan harus diselesaikan segera melalui Partial Sales Order atas item yang dapat dipenuhi dan Copy Resep untuk item resep yang tidak dipenuhi. Copy Resep dapat digunakan Pasien untuk memperoleh obat dari apotek lain.
 - **BR-APT-116** — Ketika persediaan Rawat Jalan tidak cukup, hanya item resep yang dapat dipenuhi yang boleh masuk Sales Order. Baris yang tidak dapat dipenuhi tetap di luar Sales Order pada Resep asal.
 - **BR-APT-117** — Apotek Rawat Jalan tidak mengimplementasikan pemilihan sumber stok alternatif, fulfillment routing, inter-pharmacy sourcing, atau backorder management. Jumlah yang masih dapat dijanjikan ke Sales Order baru dievaluasi sebagai Available Stock. Available Stock TIDAK BOLEH dianggap setara dengan Current Stock.
-- **BR-APT-118** — Ketika kekurangan stok Rawat Jalan teridentifikasi setelah Sales Order dibentuk atau setelah Payment Clearance atau Coverage Clearance yang cukup untuk Dispense Authorized, jumlah yang tidak dapat dipenuhi harus memperoleh Unfulfilled Medication Outcome yang accountable dan Salinan Resep bila berlaku. Ketika ada konsekuensi komersial, konsekuensi itu harus dikoreksi menurut `BR-APT-027`. Jumlah tersebut tidak boleh di-backorder atau diarahkan ke sumber stok alternatif.
+- **BR-APT-118** — Ketika kekurangan stok Rawat Jalan teridentifikasi setelah Sales Order dibentuk atau setelah Payment Clearance atau Coverage Clearance yang cukup untuk Dispense Authorized, jumlah yang tidak dapat dipenuhi harus memperoleh Unfulfilled Medication Outcome yang accountable dan Copy Resep bila berlaku. Ketika ada konsekuensi komersial, konsekuensi itu harus dikoreksi menurut `BR-APT-027`. Jumlah tersebut tidak boleh di-backorder atau diarahkan ke sumber stok alternatif.
 - **BR-APT-119** — Validasi Fornas harus mengklasifikasikan item resep sebagai Covered atau Not Covered.
 - **BR-APT-120** — Item Covered harus mengikuti workflow fulfillment BPJS normal. Evidence coverage cukup untuk Dispense Authorized pada item tersebut.
 - **BR-APT-121** — Item Not Covered tidak boleh dibatalkan secara otomatis. Farmasi boleh membentuk Patient-Pay Sales Order terpisah untuk item yang tidak dijamin. Patient-Pay Sales Order itu independen dari Sales Order yang ditanggung BPJS. Item tidak dijamin tidak boleh tetap pada jalur fulfillment BPJS.

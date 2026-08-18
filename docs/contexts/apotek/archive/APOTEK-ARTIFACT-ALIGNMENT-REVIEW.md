@@ -291,7 +291,7 @@ Resolved (2026-08-16) — SOP shortage timing aligned to BC-10 / `BR-APT-110` / 
 
 The domain and English workflow distinguish two shortage timings:
 
-- Before Sales Order establishment: include only fulfillable items in the Sales Order; leave the rest on the Prescription; issue Salinan Resep (`BR-APT-110`).
+- Before Sales Order establishment: include only fulfillable items in the Sales Order; leave the rest on the Prescription; issue Copy Resep (`BR-APT-110`).
 - After Sales Order establishment or financial clearance: keep the Sales Order; assign an Unfulfilled Medication Outcome and commercial correction when required (`BR-APT-118`). Do not rebuild the Sales Order as a partial order.
 
 `WF-APT-RJ-002` already kept that split. SOP-002 exception 5.2 previously titled the before-Sales-Order treatment “after acceptance”. That leftover cutover is removed. SOP-002 5.2 now applies only before Sales Order establishment and points post-establishment shortage to SOP-003 5.4 / SOP-004 5.2.

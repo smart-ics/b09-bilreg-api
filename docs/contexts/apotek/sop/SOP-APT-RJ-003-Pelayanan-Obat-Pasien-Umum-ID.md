@@ -83,7 +83,7 @@ Pengecualian ini berlaku ketika kekurangan stok diketahui **setelah** Sales Orde
 
 - **Staf Apotek** tidak membuat pesanan tertunda, tidak memilih sumber stok alternatif, dan tidak mengganti obat.
 - **Staf Apotek** tidak menghapus item dari Sales Order yang sudah dibentuk dan tidak menyusun ulang Sales Order menjadi pesanan parsial.
-- **Sistem Apotek** mencatat Unfulfilled Medication Outcome yang berlaku, mendukung Salinan Resep untuk item yang tidak dipenuhi, dan tetap menampilkan urusan keuangan yang harus diselesaikan.
+- **Sistem Apotek** mencatat Unfulfilled Medication Outcome yang berlaku, mendukung Copy Resep untuk item yang tidak dipenuhi, dan tetap menampilkan urusan keuangan yang harus diselesaikan.
 - Konsekuensi komersial faktur yang sudah ada mengikuti `BR-APT-027`: **Sistem Apotek** merevisi faktur ketika Tata Rekening masih mengizinkan perubahan; bila tidak, **Tata Rekening** memberikan nota kredit, pengembalian dana, atau koreksi komersial pengecualian.
 
 ### 5.5 Pemeriksaan akhir obat tidak lulus

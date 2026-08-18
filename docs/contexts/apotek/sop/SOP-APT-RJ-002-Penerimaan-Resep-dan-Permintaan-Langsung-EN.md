@@ -42,7 +42,7 @@ The source Resep or Jual Bebas remains traceable and does not become the Sales O
 | Actor | Type | Operational responsibility |
 |---|---|---|
 | Pharmacist | Human | Reviews every Baris Resep, performs any needed clarification with the Dokter Penulis Resep outside the system, establishes the accepted medication, and completes the review. |
-| Pharmacy Staff | Human | Records Resep Fisik; accepts or declines Jual Bebas; and, before Sales Order establishment, applies Stock Shortage Handling through a Partial Sales Order of fulfillable items and Salinan Resep. Shortage after Sales Order establishment follows `SOP-APT-RJ-003` exception 5.4 (or the equivalent payer SOP). |
+| Pharmacy Staff | Human | Records Resep Fisik; accepts or declines Jual Bebas; and, before Sales Order establishment, applies Stock Shortage Handling through a Partial Sales Order of fulfillable items and Copy Resep. Shortage after Sales Order establishment follows `SOP-APT-RJ-003` exception 5.4 (or the equivalent payer SOP). |
 | CPOE | Subsystem | Supplies the authoritative original Resep, which Apotek does not modify. |
 | Medication Catalog | Subsystem | Supplies medication identity and formulary information used during review. |
 | Pharmacy System | Subsystem | Records review outcomes and establishes a traceable Sales Order and primary Dispensing. |
@@ -84,7 +84,7 @@ This exception applies only when the shortage is identified **before** the Sales
 
 - **Inventory** displays the shortage or discrepancy outcome without altering the Hasil Telaah Resep.
 - **Pharmacy Staff** establishes the Sales Order with fulfillable prescription items only. Unfulfillable items remain on the originating Prescription. Those items are not placed on the Sales Order and are not later removed from a Sales Order, because no Sales Order yet contains them.
-- **Pharmacy System** supports Salinan Resep for unfulfilled items. The Patient may use the Prescription Copy to obtain medication from another pharmacy.
+- **Pharmacy System** supports Copy Resep for unfulfilled items. The Patient may use Copy Resep to obtain medication from another pharmacy.
 - **Pharmacy Staff** does not create Backorder, select an alternate stock source, or substitute the medication.
 
 If the Sales Order is already established, do not use this exception. Do not remove items from that Sales Order. Apply `SOP-APT-RJ-003` exception 5.4 (General Patient) or `SOP-APT-RJ-004` exception 5.2 (BPJS): keep the Sales Order, record an Unfulfilled Medication Outcome, and apply financial correction when required (`BR-APT-118`).
@@ -100,7 +100,7 @@ If the Sales Order is already established, do not use this exception. Do not rem
 2. An accepted source displays a traceable Sales Order, Sales Order Items, and primary Dispensing whose Dispensing Items reference those Sales Order Items.
 3. A rejected Resep or declined Jual Bebas has no Sales Order.
 4. Stock evidence has not changed the professional acceptance outcome.
-5. A shortage identified before Sales Order establishment produced a Sales Order of fulfillable items only, with unfulfillable items remaining on the Prescription and Salinan Resep supported. A shortage identified after Sales Order establishment was not handled by dropping items from that Sales Order; it follows `SOP-APT-RJ-003` exception 5.4 or the equivalent payer SOP.
+5. A shortage identified before Sales Order establishment produced a Sales Order of fulfillable items only, with unfulfillable items remaining on the Prescription and Copy Resep supported. A shortage identified after Sales Order establishment was not handled by dropping items from that Sales Order; it follows `SOP-APT-RJ-003` exception 5.4 or the equivalent payer SOP.
 
 ## 7. References
 

@@ -120,7 +120,7 @@ The workbench contains four activities.
    - For General Patient quantities, capture verbal purchase confirmation and establish an Invoice from the applicable Sales Order Items.
    - For BPJS quantities, show SEP and Fornas coverage outcomes; do not request Patient payment or establish the BPJS Invoice early.
    - For mixed coverage, Fornas Not Covered items form an independent Patient-Pay Sales Order. Covered items remain on the BPJS-covered Sales Order. Do not keep uncovered lines on the BPJS fulfillment path.
-   - For Partial Prescription Fulfillment, establish a Sales Order from selected or fulfillable prescription items only when Patient Request or Stock Shortage applies. For Stock Shortage, fulfillable quantity is Available Stock, not Current Stock. Excluded lines remain on the originating prescription. Issue Salinan Resep for unfulfilled items when external fulfillment is required. Pharmacist approves when professional review is required.
+   - For Partial Prescription Fulfillment, establish a Sales Order from selected or fulfillable prescription items only when Patient Request or Stock Shortage applies. For Stock Shortage, fulfillable quantity is Available Stock, not Current Stock. Excluded lines remain on the originating prescription. Issue Copy Resep for unfulfilled items when external fulfillment is required. Pharmacist approves when professional review is required.
    - Submit a return or correction request rather than freely reversing a sale. When Tata Rekening still permits modification, the workbench may revise the same Invoice. When it does not, display the Tata Rekening Credit Note, Refund, or Financial Adjustment exception path; do not create an Apotek Credit Note. A post-payment or post-handover return requires authorization by an authorized pharmacist according to operational policy, plus Inventory and Tata Rekening outcomes. No monetary approval threshold applies.
    - Resolve Exception Worklist items through the same accountable paths: No-Show / expiry under SOP APT-RJ-007, return and correction through authorized-pharmacist outcomes, and display of pending financial or inventory consequences without inventing stock or settlement facts.
 
@@ -143,7 +143,7 @@ The workbench lets Pharmacy Staff:
 2. begin preparation only for authorized quantities;
 3. perform picking, counting, labelling, packaging, and compounding when required;
 4. record preparation completion and move the Dispensing to `Prepared`;
-5. record or display shortage, Salinan Resep for unfulfilled items, cancellation, and other accountable exceptions; and
+5. record or display shortage, Copy Resep for unfulfilled items, cancellation, and other accountable exceptions; and
 6. show prepared medication in Dispensing Temporary Custody until accountable handover or No Show return Mutasi.
 
 The first `Medication Preparation Started` event is Pharmacy Service Start Evidence. It causes Patient Tracker to record `ServedAt` and move the pharmacy queue entry to `In Service`.
@@ -311,6 +311,7 @@ The Apotek aggregate-root list is exactly:
 | Pharmacy Queue Close | Operational fact/event | Pharmacy Staff fact that ends a Pharmacy Queue Entry not progressed into the pharmacy workflow. Records a mandatory close reason, responsible Pharmacy Staff, and effective business time. Requests Patient Tracker `Withdrawn` from `Waiting`. | Patient Tracker queue state itself (`Withdrawn` is set by Patient Tracker). Not an aggregate, not a queue state, and not a path that establishes a Sales Order, Dispensing, or Medication Handover. |
 | Resep Kerja | Supporting document (BA-06) | Pharmacy operational copy of one Resep created at intake from the Prescription Contract. Telaah Resep and Sales Order establishment operate on this copy. | Original CPOE or legacy Resep authority. The intake copy is not silently rewritten from the clinical source. Not an aggregate root. |
 | Jual Bebas (`JualBebas`) | Supporting document | One accepted retail-style medication request without a Resep. Decline creates no row. | Prescription review, Telaah Resep, or Pharmacist approval. Not an aggregate root. |
+| Copy Resep (`CopyResep`) | Supporting document | Accountable record of prescribed medication or quantity excluded from a Sales Order or not fulfilled, when applicable. May be issued before or after Sales Order establishment. | Sales Order quantity authority, fulfillment execution, or payment settlement. Not an aggregate root. |
 
 ### 5.3 Dispense Authorized (not an aggregate)
 

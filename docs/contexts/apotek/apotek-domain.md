@@ -150,7 +150,7 @@ A Resep does not become a Sales Order. A completed professional decision authori
 | Backorder | An unresolved quantity retained for later fulfillment when supply becomes available. Outpatient Pharmacy does not support Backorder. |
 | Medication Substitution | The accountable replacement of a requested medication product under applicable professional authority. |
 | Unfulfilled Medication Outcome | A final, accountable reason that an accepted medication quantity was not fulfilled. |
-| Salinan Resep | An accountable Prescription Copy record of prescribed medication or quantity not included in the Sales Order or not fulfilled, when applicable. |
+| Copy Resep | An accountable Copy Resep record of prescribed medication or quantity not included in the Sales Order or not fulfilled, when applicable. |
 | Dispense Cancellation | The accountable ending of a Dispensing before successful fulfillment. |
 | Fulfillment Expiry | The ending of a fulfillment opportunity because its permitted service period elapsed. |
 | Medication Return | The accountable return of medication previously prepared, transferred, or handed over. |
@@ -235,7 +235,7 @@ Owns Hasil Telaah Resep, Medication Substitution authorized during Telaah Resep,
 
 ### 4.3 Pharmacy Staff
 
-Coordinates accepted demand, Sales Order progression, outpatient administrative interaction, Medication Preparation, Compounding, and accountable handover within assigned authority. For outpatient fulfillment, Pharmacy Staff calls Queue Numbers, establishes Manual Mapping, communicates the calculated General Patient amount before Invoice establishment, saves the confirmed Invoice, prepares medication according to the Dispensing, and performs the pickup call. For a Jual Bebas, Pharmacy Staff accepts or declines without creating a Resep. Optional Pharmacist consultation is operational SOP guidance only and is not modeled as an approval gate. When outpatient stock cannot support full fulfillment, Pharmacy Staff includes only fulfillable items in the Sales Order and issues Salinan Resep for unfulfilled items. Pharmacy Staff shall not create Backorder, select an alternate stock source, or substitute the medication.
+Coordinates accepted demand, Sales Order progression, outpatient administrative interaction, Medication Preparation, Compounding, and accountable handover within assigned authority. For outpatient fulfillment, Pharmacy Staff calls Queue Numbers, establishes Manual Mapping, communicates the calculated General Patient amount before Invoice establishment, saves the confirmed Invoice, prepares medication according to the Dispensing, and performs the pickup call. For a Jual Bebas, Pharmacy Staff accepts or declines without creating a Resep. Optional Pharmacist consultation is operational SOP guidance only and is not modeled as an approval gate. When outpatient stock cannot support full fulfillment, Pharmacy Staff includes only fulfillable items in the Sales Order and issues Copy Resep for unfulfilled items. Pharmacy Staff shall not create Backorder, select an alternate stock source, or substitute the medication.
 
 ### 4.4 Patient or Caregiver
 
@@ -295,7 +295,7 @@ Represents the active association between an externally owned Pharmacy Queue Ent
 
 ### 5.8 Unfulfilled Medication Outcome
 
-Represents the final reason an accepted quantity was not fulfilled and identifies any Salinan Resep, return, or financial correction required. Outpatient Pharmacy does not use backorder closure.
+Represents the final reason an accepted quantity was not fulfilled and identifies any Copy Resep, return, or financial correction required. Outpatient Pharmacy does not use backorder closure.
 
 ### 5.9 Final Dispense Review Record
 
@@ -342,6 +342,10 @@ Supporting document. Pharmacy's operational copy of one Resep, created at intake
 ### 5.15 Jual Bebas
 
 Supporting document. One accepted retail-style medication request without a Resep. Pharmacy Staff accepts or declines it. Decline creates no record (`BR-APT-089`). Identifier form: `JualBebas`. Not an aggregate root.
+
+### 5.16 Copy Resep
+
+Supporting document. Accountable record of prescribed medication or quantity excluded from a Sales Order or not fulfilled, when applicable (`BR-APT-054`, `BR-APT-109`–`115`, `BR-APT-118`). May be issued before or after Sales Order establishment. Identifier form: `CopyResep`. Not an aggregate root.
 
 ## 6. Aggregates
 
@@ -459,19 +463,19 @@ Outpatient Queue Mapping is an active relationship between an externally owned P
 - **BR-APT-051** — A Medication Shortage or Stock Discrepancy shall not alter the original Resep or erase an existing Invoice. Invoice identity remains. Revising Invoice content under `BR-APT-027` is not erasure.
 - **BR-APT-052** — A Medication Return shall identify its source Dispensing, quantity, reason, and final Inventory disposition.
 - **BR-APT-053** — Return to Stock shall occur only when Inventory accepts the returned medication under its own policy.
-- **BR-APT-054** — A Salinan Resep shall identify prescribed medication or quantity that remained unfulfilled or was excluded from the Sales Order, including items eligible for external fulfillment.
+- **BR-APT-054** — A Copy Resep shall identify prescribed medication or quantity that remained unfulfilled or was excluded from the Sales Order, including items eligible for external fulfillment.
 - **BR-APT-055** — A No-Show shall be a Pharmacy-owned outpatient policy outcome, shall not be stored as an Inventory status, and shall not be imposed on inpatient Ward Delivery.
 - **BR-APT-108** — Partial Prescription Fulfillment is permitted only for Patient Request, Stock Shortage, and Fornas Not Covered items. No other reason is recognized by the system.
-- **BR-APT-109** — For Patient Request, Pharmacy Staff may establish a Sales Order containing only selected prescription items. Excluded prescription items remain unfulfilled on the originating Prescription. The system shall support Salinan Resep for unfulfilled items.
-- **BR-APT-110** — For Stock Shortage before Sales Order establishment, Pharmacy Staff may establish a Sales Order containing only fulfillable prescription items. Fulfillable quantity is determined from Available Stock, not from Current Stock. Unavailable prescription items remain unfulfilled on the originating Prescription. The system shall support Salinan Resep for unfulfilled items. No outstanding fulfillment obligation, waiting demand, or backorder record shall be created.
+- **BR-APT-109** — For Patient Request, Pharmacy Staff may establish a Sales Order containing only selected prescription items. Excluded prescription items remain unfulfilled on the originating Prescription. The system shall support Copy Resep for unfulfilled items.
+- **BR-APT-110** — For Stock Shortage before Sales Order establishment, Pharmacy Staff may establish a Sales Order containing only fulfillable prescription items. Fulfillable quantity is determined from Available Stock, not from Current Stock. Unavailable prescription items remain unfulfilled on the originating Prescription. The system shall support Copy Resep for unfulfilled items. No outstanding fulfillment obligation, waiting demand, or backorder record shall be created.
 - **BR-APT-111** — The Pharmacist remains responsible for approving the resulting fulfillment decision when professional review is required. The system shall not automatically determine alternative substitutions or external fulfillment actions.
 - **BR-APT-112** — Partial Prescription Fulfillment partiality exists only between Prescription and Sales Order. Partiality does not exist between Sales Order and Dispensing.
 - **BR-APT-113** — A Sales Order fulfilled through one or more Dispensings is fulfillment execution and is not Partial Prescription Fulfillment policy.
 - **BR-APT-114** — Outpatient Pharmacy shall not support Backorder. A stock shortage shall not create an outstanding fulfillment obligation, waiting demand, or backorder record.
-- **BR-APT-115** — Outpatient stock shortage shall be resolved immediately through a Partial Sales Order of fulfillable items and Salinan Resep for unfulfilled prescription items. The Prescription Copy may be used by the Patient to obtain medication from another pharmacy.
+- **BR-APT-115** — Outpatient stock shortage shall be resolved immediately through a Partial Sales Order of fulfillable items and Copy Resep for unfulfilled prescription items. Copy Resep may be used by the Patient to obtain medication from another pharmacy.
 - **BR-APT-116** — When outpatient inventory is insufficient, only fulfillable prescription items may be included in the Sales Order. Unfulfillable items remain outside the Sales Order on the originating Prescription.
 - **BR-APT-117** — Outpatient Pharmacy shall not implement alternate stock source selection, fulfillment routing, inter-pharmacy sourcing, or backorder management. Quantity that may still be promised to a new Sales Order shall be evaluated as Available Stock. Available Stock SHALL NOT be treated as equivalent to Current Stock.
-- **BR-APT-118** — When an outpatient shortage is identified after Sales Order establishment or after Payment Clearance or Coverage Clearance sufficient for Dispense Authorized, the unfulfillable quantity shall receive an accountable Unfulfilled Medication Outcome and Salinan Resep when applicable. When commercial consequences exist, they shall be corrected under `BR-APT-027`. It shall not be backordered or routed to an alternate stock source.
+- **BR-APT-118** — When an outpatient shortage is identified after Sales Order establishment or after Payment Clearance or Coverage Clearance sufficient for Dispense Authorized, the unfulfillable quantity shall receive an accountable Unfulfilled Medication Outcome and Copy Resep when applicable. When commercial consequences exist, they shall be corrected under `BR-APT-027`. It shall not be backordered or routed to an alternate stock source.
 - **BR-APT-119** — Fornas validation shall classify prescription items as Covered or Not Covered.
 - **BR-APT-120** — Covered items shall follow the normal BPJS fulfillment workflow. Coverage evidence shall be sufficient for Dispense Authorized on those items.
 - **BR-APT-121** — Not Covered items shall not be automatically cancelled. Pharmacy may establish a separate Patient-Pay Sales Order for uncovered prescription items. That Patient-Pay Sales Order shall be independent of the BPJS-covered Sales Order. Uncovered items shall not remain in the BPJS fulfillment path.

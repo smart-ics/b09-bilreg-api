@@ -141,7 +141,7 @@ Resep atau Jual Bebas sumber tetap dipertahankan dan tidak berubah menjadi Sales
 | Aktor | Jenis | Tanggung jawab |
 |---|---|---|
 | Apoteker | Petugas | Menelaah setiap item obat, menghubungi Dokter Penulis Resep di luar sistem bila perlu, menetapkan obat yang dapat dilayani, lalu menyelesaikan telaah resep. |
-| Staf Apotek | Petugas | Mencatat resep kertas; menerima atau menolak Jual Bebas; serta, sebelum Sales Order dibentuk, menangani kekurangan stok melalui Partial Sales Order berisi item yang dapat dipenuhi dan Salinan Resep. Kekurangan stok setelah Sales Order dibentuk mengikuti `SOP-APT-RJ-003` pengecualian 5.4 (atau SOP payer yang setara). |
+| Staf Apotek | Petugas | Mencatat resep kertas; menerima atau menolak Jual Bebas; serta, sebelum Sales Order dibentuk, menangani kekurangan stok melalui Partial Sales Order berisi item yang dapat dipenuhi dan Copy Resep. Kekurangan stok setelah Sales Order dibentuk mengikuti `SOP-APT-RJ-003` pengecualian 5.4 (atau SOP payer yang setara). |
 | CPOE | Subsistem | Menyediakan resep asli yang sah. Sistem Apotek tidak mengubah resep tersebut. |
 | Katalog Obat | Subsistem | Menyediakan identitas obat dan informasi formularium yang diperlukan saat telaah resep. |
 | Sistem Apotek | Subsistem | Mencatat hasil telaah, membuat pesanan apotek, serta mencatat tagihan dan kesiapan pelayanan obat secara terpisah. Aplikasi juga membuat tugas utama untuk menyiapkan obat. |
@@ -183,7 +183,7 @@ Pengecualian ini berlaku hanya ketika kekurangan stok diketahui **sebelum** Sale
 
 - **Sistem Persediaan** menampilkan informasi kekurangan atau selisih stok. Informasi ini tidak mengubah hasil telaah resep.
 - **Staf Apotek** membentuk Sales Order hanya dari item resep yang dapat dipenuhi. Item yang tidak dapat dipenuhi tetap pada resep asal. Item tersebut tidak dimasukkan ke Sales Order dan tidak dihapus dari Sales Order, karena belum ada Sales Order yang memuatnya.
-- **Sistem Apotek** mendukung Salinan Resep untuk item yang tidak dipenuhi. Pasien dapat menggunakan salinan tersebut untuk memperoleh obat dari apotek lain.
+- **Sistem Apotek** mendukung Copy Resep untuk item yang tidak dipenuhi. Pasien dapat menggunakan Copy Resep tersebut untuk memperoleh obat dari apotek lain.
 - **Staf Apotek** tidak membuat pesanan tertunda, tidak memilih sumber stok alternatif, dan tidak mengganti obat.
 
 Jika Sales Order sudah dibentuk, jangan gunakan pengecualian ini. Jangan menghapus item dari Sales Order yang sudah ada. Terapkan `SOP-APT-RJ-003` pengecualian 5.4 (Pasien Umum) atau `SOP-APT-RJ-004` pengecualian 5.2 (BPJS): pertahankan Sales Order, catat Unfulfilled Medication Outcome, dan terapkan koreksi keuangan bila diperlukan (`BR-APT-118`).
@@ -199,7 +199,7 @@ Jika Sales Order sudah dibentuk, jangan gunakan pengecualian ini. Jangan menghap
 2. Untuk resep atau permintaan yang diterima, petugas dapat melihat Sales Order, Sales Order Item, dan Dispensing utama beserta Dispensing Item yang mereferensikan item Sales Order tersebut. Semuanya tetap terhubung ke sumbernya.
 3. Resep berstatus `Rejected` atau Jual Bebas yang ditolak tidak memiliki pesanan apotek.
 4. Informasi Mutasi stok tidak mengubah keputusan profesional untuk menerima obat.
-5. Kekurangan stok yang diketahui sebelum Sales Order dibentuk menghasilkan Sales Order berisi hanya item yang dapat dipenuhi, dengan item yang tidak dapat dipenuhi tetap pada resep dan Salinan Resep didukung. Kekurangan stok setelah Sales Order dibentuk tidak ditangani dengan menghapus item dari Sales Order itu; penanganannya mengikuti `SOP-APT-RJ-003` pengecualian 5.4 atau SOP payer yang setara.
+5. Kekurangan stok yang diketahui sebelum Sales Order dibentuk menghasilkan Sales Order berisi hanya item yang dapat dipenuhi, dengan item yang tidak dapat dipenuhi tetap pada resep dan Copy Resep didukung. Kekurangan stok setelah Sales Order dibentuk tidak ditangani dengan menghapus item dari Sales Order itu; penanganannya mengikuti `SOP-APT-RJ-003` pengecualian 5.4 atau SOP payer yang setara.
 
 ## 7. Referensi
 
@@ -292,7 +292,7 @@ Pengecualian ini berlaku ketika kekurangan stok diketahui **setelah** Sales Orde
 
 - **Staf Apotek** tidak membuat pesanan tertunda, tidak memilih sumber stok alternatif, dan tidak mengganti obat.
 - **Staf Apotek** tidak menghapus item dari Sales Order yang sudah dibentuk dan tidak menyusun ulang Sales Order menjadi pesanan parsial.
-- **Sistem Apotek** mencatat Unfulfilled Medication Outcome yang berlaku, mendukung Salinan Resep untuk item yang tidak dipenuhi, dan tetap menampilkan urusan keuangan yang harus diselesaikan.
+- **Sistem Apotek** mencatat Unfulfilled Medication Outcome yang berlaku, mendukung Copy Resep untuk item yang tidak dipenuhi, dan tetap menampilkan urusan keuangan yang harus diselesaikan.
 - **Tata Rekening** memberikan nota kredit, pengembalian dana, atau koreksi komersial lain yang dapat dipertanggungjawabkan bila ada konsekuensi komersial.
 
 ### 5.5 Pemeriksaan akhir obat tidak lulus
@@ -394,7 +394,7 @@ Pengecualian ini berlaku ketika kekurangan stok diketahui **setelah** Sales Orde
 
 - **Staf Apotek** tidak membuat pesanan tertunda, tidak memilih sumber stok alternatif, dan tidak mengganti obat.
 - **Staf Apotek** tidak menghapus item dari Sales Order yang sudah dibentuk dan tidak menyusun ulang Sales Order menjadi pesanan parsial.
-- **Sistem Apotek** mencatat Unfulfilled Medication Outcome, mendukung Salinan Resep untuk item yang tidak dipenuhi, dan tetap menggunakan identitas obat yang sudah diterima.
+- **Sistem Apotek** mencatat Unfulfilled Medication Outcome, mendukung Copy Resep untuk item yang tidak dipenuhi, dan tetap menggunakan identitas obat yang sudah diterima.
 - **Tata Rekening** memberikan nota kredit, pengembalian dana, atau koreksi komersial lain yang dapat dipertanggungjawabkan hanya bila ada konsekuensi komersial.
 
 ### 5.3 Pemeriksaan akhir obat tidak lulus

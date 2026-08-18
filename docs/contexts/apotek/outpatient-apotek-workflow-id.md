@@ -82,7 +82,7 @@ Workflow berakhir ketika setiap medication demand yang dimappingkan ke Pharmacy 
 - Jumlah yang ditanggung BPJS dan dibayar Pasien secara campuran.
 - Payment Clearance, Coverage Clearance, dan Dispense Authorized.
 - Pharmacy Reserve (Stock Mutasi ke Dispensing Temporary Unit), Medication Preparation, pickup call, Final Dispense Review, verifikasi operasional Authorized Recipient, Patient Education, Medication Dispense, dan Medication Handover.
-- Penanganan kekurangan stok melalui Partial Sales Order atas item yang dapat dipenuhi, dievaluasi terhadap Available Stock (bukan Current Stock), dan Salinan Resep untuk item resep yang tidak dipenuhi.
+- Penanganan kekurangan stok melalui Partial Sales Order atas item yang dapat dipenuhi, dievaluasi terhadap Available Stock (bukan Current Stock), dan Copy Resep untuk item resep yang tidak dipenuhi.
 - No-Show dan penyelesaian manual obat tidak diambil.
 
 ### 3.4 Tidak termasuk
@@ -103,7 +103,7 @@ Workflow berakhir ketika setiap medication demand yang dimappingkan ke Pharmacy 
 |---|---|---|
 | Patient or Caregiver | Mengambil Queue Number, memberikan mapping evidence atau Resep Fisik, memberi konfirmasi lisan ketika Patient-payable, membayar ketika diwajibkan, hadir untuk pickup, menerima edukasi, dan menerima obat ketika authorized. | Evidence diberikan, konfirmasi diberikan atau ditolak, Payment Clearance diperoleh, atau Medication Handover selesai. |
 | Patient Tracker | Memiliki identitas Pharmacy Queue Entry, Queue Number, dan lifecycle antrean. | `Queue Entry Created`, `Queue Service Started`, `Queue Service Completed`, atau `Queue Entry Withdrawn`. |
-| Staf Apotek | Melakukan panggilan antrian, Manual Mapping, mencatat Resep Fisik, menerima atau menolak Jual Bebas, mencatat Pharmacy Queue Close bila entri tidak dilanjutkan ke alur pelayanan obat, mengoordinasikan alokasi, menyampaikan nilai Pasien Umum, membentuk faktur terkonfirmasi, menyiapkan atau meracik obat, menangani kekurangan stok melalui Partial Sales Order dan Salinan Resep, dan melakukan panggilan pengambilan. | `Outpatient Queue Mapped`, `Sales Order Established`, `Invoice Established`, `Medication Prepared`, `Patient Called for Pickup`, atau `Pharmacy Queue Close Recorded`. |
+| Staf Apotek | Melakukan panggilan antrian, Manual Mapping, mencatat Resep Fisik, menerima atau menolak Jual Bebas, mencatat Pharmacy Queue Close bila entri tidak dilanjutkan ke alur pelayanan obat, mengoordinasikan alokasi, menyampaikan nilai Pasien Umum, membentuk faktur terkonfirmasi, menyiapkan atau meracik obat, menangani kekurangan stok melalui Partial Sales Order dan Copy Resep, dan melakukan panggilan pengambilan. | `Outpatient Queue Mapped`, `Sales Order Established`, `Invoice Established`, `Medication Prepared`, `Patient Called for Pickup`, atau `Pharmacy Queue Close Recorded`. |
 | Pharmacist | Melakukan Telaah Resep, mengotorisasi Medication Substitution yang eligible sebelum Sales Order dibentuk, memverifikasi penerima secara operasional, melakukan Final Dispense Review, mencatat Patient Education Acknowledgement, dan mencatat Collection Window Override ketika Pickup Expired. Verifikasi penerima tidak ditegakkan sistem. | `Telaah Resep Completed`, `Final Dispense Review Completed`, `Patient Education Acknowledged`, `Collection Window Override Recorded`, atau Medication Handover diizinkan selesai. |
 | Cashier or Payment Authority | Menerima pembayaran Pasien yang diwajibkan dan memberikan Payment Clearance. | `Payment Clearance Established`. |
 | SEP and Fornas Authorities | Memberikan validitas SEP tingkat encounter dan coverage BPJS item-level. | `Coverage Clearance Established` untuk jumlah covered. |
@@ -285,14 +285,14 @@ Pharmacist, Staf Apotek, CPOE or Dokter Penulis Resep.
 | Jual Bebas ditolak | Staf Apotek | Jangan membentuk request record atau Sales Order. |
 | Iter belum terpakai tetapi Pharmacist menolak honor | Pharmacist | Tolak fulfillment; catat outcome accountable tanpa mengonsumsi Iter. |
 | Iter belum terpakai dihormati pada fulfillment | Pharmacist | Lanjutkan fulfillment; sistem mencatat konsumsi Iter. |
-| Partial resep atas permintaan Pasien | Staf Apotek | Bentuk Sales Order hanya dengan item terpilih; item dikecualikan tetap pada Resep; terbitkan Salinan Resep bila diperlukan. |
-| Partial resep karena Stock Shortage | Staf Apotek | Bentuk Sales Order hanya dengan item yang dapat dipenuhi, menggunakan Available Stock (bukan Current Stock) untuk memutuskan apa yang masih dapat dikomitmenkan; item tidak tersedia tetap pada Resep; terbitkan Salinan Resep bila diperlukan. |
+| Partial resep atas permintaan Pasien | Staf Apotek | Bentuk Sales Order hanya dengan item terpilih; item dikecualikan tetap pada Resep; terbitkan Copy Resep bila diperlukan. |
+| Partial resep karena Stock Shortage | Staf Apotek | Bentuk Sales Order hanya dengan item yang dapat dipenuhi, menggunakan Available Stock (bukan Current Stock) untuk memutuskan apa yang masih dapat dikomitmenkan; item tidak tersedia tetap pada Resep; terbitkan Copy Resep bila diperlukan. |
 | Review profesional diperlukan untuk partial path | Pharmacist | Setujui atau tolak keputusan fulfillment; sistem tidak mensubstitusi atau mengarahkan eksternal secara otomatis. |
 | Item Fornas Not Covered | Staf Apotek | Bentuk Patient-Pay Sales Order independen untuk item yang tidak dijamin; item Covered membentuk Sales Order BPJS. |
 
 #### Exception and Compensation Flows
 
-- Stock shortage setelah Sales Order dibentuk tidak mengubah Hasil Telaah Resep. Staf Apotek tidak boleh membuat Backorder atau memilih sumber stok alternatif. Jumlah yang tidak dapat dipenuhi memperoleh Unfulfilled Medication Outcome dan Salinan Resep bila berlaku. Kekurangan setelah pembentukan tidak diselesaikan dengan menyamakan Available Stock dengan Current Stock.
+- Stock shortage setelah Sales Order dibentuk tidak mengubah Hasil Telaah Resep. Staf Apotek tidak boleh membuat Backorder atau memilih sumber stok alternatif. Jumlah yang tidak dapat dipenuhi memperoleh Unfulfilled Medication Outcome dan Copy Resep bila berlaku. Kekurangan setelah pembentukan tidak diselesaikan dengan menyamakan Available Stock dengan Current Stock.
 - Partial Prescription Fulfillment sebelum Sales Order dibentuk hanya diizinkan untuk Patient Request, Stock Shortage, atau item Fornas Not Covered. Tidak ada alasan partialitas lain yang diakui.
 - Identitas obat pada Sales Order Item yang sudah dibentuk tidak boleh diubah. Jika penggantian diperlukan kemudian, batalkan item atau pesanan yang terdampak, telaah kembali Resep asli, lalu bentuk Sales Order Item baru tanpa mensyaratkan Resep perbaikan atau pengganti.
 - Accepted Quantity yang tidak dapat dipenuhi harus mempertahankan `Cancelled`, `Expired`, atau Unfulfilled Medication Outcome lain yang accountable. Apotek Rawat Jalan tidak menahan Backorder.
@@ -300,7 +300,7 @@ Pharmacist, Staf Apotek, CPOE or Dokter Penulis Resep.
 #### Outcomes and Postconditions
 
 - Berhasil: `Telaah Resep Completed`, `Sales Order Established`, dan `Dispensing Established` diamati bila berlaku.
-- Berhasil sebagian: hanya item resep terpilih atau yang dapat dipenuhi masuk Sales Order atas Patient Request atau Stock Shortage; item dikecualikan tetap pada Resep asal dan dapat memperoleh Salinan Resep.
+- Berhasil sebagian: hanya item resep terpilih atau yang dapat dipenuhi masuk Sales Order atas Patient Request atau Stock Shortage; item dikecualikan tetap pada Resep asal dan dapat memperoleh Copy Resep.
 - Rejection: Sales Order tidak tersedia bagi source yang rejected.
 - Sales Order bukan Invoice, Dispensing, reservation, atau dispense evidence.
 
@@ -375,7 +375,7 @@ Patient or Caregiver, Staf Apotek, Cashier or Payment Authority, Staf Apotek, Ph
 
 - Jika pembayaran tidak selesai setelah Invoice dibentuk, Medication Preparation tetap terblokir. Invoice hanya dapat `Cancelled` selama lifecycle dan izin Tata Rekening keduanya mengizinkan.
 - Jika Invoice memerlukan koreksi, revisi Invoice yang sama selama Tata Rekening masih mengizinkan perubahan. Ketika Tata Rekening tidak lagi mengizinkan revisi, Tata Rekening memiliki Financial Adjustment, Credit Note, atau Refund. Apotek tidak mempersist dokumen itu. Jangan mengganti riwayat Invoice diam-diam tanpa izin dan akuntabilitas tersebut.
-- Jika shortage terjadi setelah pembayaran, Staf Apotek tidak boleh membuat Backorder atau memilih sumber stok alternatif. Jumlah yang tidak dapat dipenuhi memperoleh Unfulfilled Medication Outcome dan Salinan Resep bila berlaku. Konsekuensi komersial mengikuti `BR-APT-027`. Substitution dilarang karena Sales Order telah tersedia.
+- Jika shortage terjadi setelah pembayaran, Staf Apotek tidak boleh membuat Backorder atau memilih sumber stok alternatif. Jumlah yang tidak dapat dipenuhi memperoleh Unfulfilled Medication Outcome dan Copy Resep bila berlaku. Konsekuensi komersial mengikuti `BR-APT-027`. Substitution dilarang karena Sales Order telah tersedia.
 - Jika fulfillment tidak dapat selesai, jumlah terdampak memperoleh Unfulfilled Medication Outcome yang accountable dan konsekuensi komersial mengikuti `BR-APT-027`.
 - Final Dispense Review yang gagal menambahkan catatan review immutable berisi alasan, Pharmacist penanggung jawab, waktu bisnis efektif, dan jumlah terdampak; mengembalikan Dispensing dari `Prepared` ke `Preparing`; serta mencegah Medication Handover. Setelah koreksi selesai, Dispensing kembali ke `Prepared` dan harus menjalani Final Dispense Review baru.
 
@@ -455,7 +455,7 @@ Patient or Caregiver, Staf Apotek, Pharmacist, Patient Tracker, SEP and Fornas A
 #### Exception and Compensation Flows
 
 - No-Show BPJS sebelum Medication Handover tidak membentuk Invoice dan tidak memerlukan pembatalan Invoice.
-- Shortage setelah Sales Order dibentuk tidak mengizinkan Backorder, sumber stok alternatif, atau substitution. Jumlah yang tidak dapat dipenuhi memperoleh Unfulfilled Medication Outcome dan Salinan Resep bila berlaku. Jika Invoice BPJS sudah ada, konsekuensi komersial mengikuti `BR-APT-027`.
+- Shortage setelah Sales Order dibentuk tidak mengizinkan Backorder, sumber stok alternatif, atau substitution. Jumlah yang tidak dapat dipenuhi memperoleh Unfulfilled Medication Outcome dan Copy Resep bila berlaku. Jika Invoice BPJS sudah ada, konsekuensi komersial mengikuti `BR-APT-027`.
 - Final Dispense Review yang gagal menambahkan catatan review immutable, mengembalikan Dispensing dari `Prepared` ke `Preparing`, serta mencegah pembentukan Invoice BPJS dan Medication Handover. Koreksi mengembalikan order ke `Prepared` dan mewajibkan review baru.
 - Pharmacy meminta Stock Mutasi dari Dispensing Temporary Unit kembali ke Pharmacy Unit untuk jumlah yang eligible.
 

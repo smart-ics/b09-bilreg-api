@@ -20,7 +20,7 @@ Two shortage timings exist. The cut is **Sales Order establishment**, not “acc
 
 | Timing | Action |
 |---|---|
-| **Before Sales Order establishment** (`BR-APT-110`) | Establish a Sales Order only for fulfillable items. Unfulfillable items remain on the Prescription. Salinan Resep may be issued. |
+| **Before Sales Order establishment** (`BR-APT-110`) | Establish a Sales Order only for fulfillable items. Unfulfillable items remain on the Prescription. Copy Resep may be issued. |
 | **After Sales Order establishment** (`BR-APT-118`) | Do not modify the Sales Order. Do not remove items from that Sales Order. Record an Unfulfilled Medication Outcome. Apply financial correction or refund when commercial consequences exist. |
 
 The canonical domain and English `WF-APT-RJ-002` already matched this split. SOP-002 exception 5.2 did not.
@@ -45,7 +45,7 @@ Unchanged (already BC-10-aligned): `apotek-domain.md` `BR-APT-110` / `BR-APT-118
 
 | Artifact | Section | Modification |
 |---|---|---|
-| SOP-002 | Actors — Pharmacy Staff | Partial Sales Order / Salinan Resep applies **before** Sales Order establishment; after establishment follows SOP-003 5.4 or equivalent payer SOP |
+| SOP-002 | Actors — Pharmacy Staff | Partial Sales Order / Copy Resep applies **before** Sales Order establishment; after establishment follows SOP-003 5.4 or equivalent payer SOP |
 | SOP-002 | Exception 5.2 | Retitled from “after acceptance” to “before Sales Order establishment”. Partial Sales Order of fulfillable items only. Explicit: do not use this path to drop lines from an existing Sales Order. Pointer to SOP-003 5.4 / SOP-004 5.2 / `BR-APT-118` |
 | SOP-002 | Completion criterion 5 | Records the before/after cut |
 | SOP-003 | Exception 5.4 | Retitled “Shortage after Sales Order establishment”. Keep Sales Order; Unfulfilled Medication Outcome; financial correction when required; pointer to SOP-002 5.2 |
@@ -73,7 +73,7 @@ No new shortage reason was added. Patient Request partial prescription and Forna
 | BC-10 / domain statement | SOP evidence after alignment |
 |---|---|
 | No Backorder; no outstanding outpatient demand | SOP-002 5.2, SOP-003 5.4, SOP-004 5.2: no Backorder, no alternate stock source |
-| Before Sales Order: only fulfillable items on the Sales Order; unfulfillable items remain on the Prescription; Salinan Resep | SOP-002 5.2; `BR-APT-110`; `WF-APT-RJ-002` alternative “Stock Shortage partial prescription” (unchanged) |
+| Before Sales Order: only fulfillable items on the Sales Order; unfulfillable items remain on the Prescription; Copy Resep | SOP-002 5.2; `BR-APT-110`; `WF-APT-RJ-002` alternative “Stock Shortage partial prescription” (unchanged) |
 | After Sales Order: do not modify / do not remove items; Unfulfilled Medication Outcome; financial correction when required | SOP-003 5.4; SOP-004 5.2; `BR-APT-118`; `WF-APT-RJ-002` exception “Stock shortage after Sales Order establishment” (unchanged) |
 | Cut is Sales Order establishment, not “acceptance” | SOP-002 5.2 title and opening sentence; SOP-003 5.4 / SOP-004 5.2 opening sentences |
 
@@ -82,7 +82,7 @@ Worked path before Sales Order establishment:
 1. Shortage identified.
 2. Sales Order is established with fulfillable items only.
 3. Unfulfillable items remain on the Prescription.
-4. Salinan Resep may be issued.
+4. Copy Resep may be issued.
 5. SOP-002 5.2 applies. SOP-003 5.4 does not.
 
 Worked path after Sales Order establishment:
@@ -90,7 +90,7 @@ Worked path after Sales Order establishment:
 1. Sales Order already exists.
 2. Shortage identified (including after payment or financial clearance).
 3. Sales Order items are not removed.
-4. Unfulfilled Medication Outcome is recorded; Salinan Resep when applicable.
+4. Unfulfilled Medication Outcome is recorded; Copy Resep when applicable.
 5. Commercial consequences follow `BR-APT-027` (Invoice revision while Tata Rekening still permits modification; otherwise Tata Rekening Credit Note / Refund / Financial Adjustment). Apotek does not persist Credit Note.
 6. SOP-003 5.4 or SOP-004 5.2 applies. SOP-002 5.2 does not.
 

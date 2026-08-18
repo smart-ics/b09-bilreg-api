@@ -3,7 +3,7 @@
 **Artifact status:** Investigation only. No schema, domain, or SOP change in this document.  
 **Bounded context:** Apotek (`Pelayanan Obat Pasien`) — Outpatient Pharmacy  
 **Date:** 2026-08-18  
-**Question:** Can Unfulfilled Medication Outcome be fully represented from existing Dispensing, Salinan Resep, Invoice / Tata Rekening financial correction, and related aggregate facts, without the dedicated table `BILRG_AptUnfulfilledOutcome`?
+**Question:** Can Unfulfilled Medication Outcome be fully represented from existing Dispensing, Copy Resep, Invoice / Tata Rekening financial correction, and related aggregate facts, without the dedicated table `BILRG_AptUnfulfilledOutcome`?
 
 **Invoice mutability note (2026-08-18):** Tata Rekening financial correction remains a **collaborator**, not the Unfulfilled quantity ledger. After [`ADR-APT-003`](../adr/ADR-APT-003-invoice-mutability-owned-by-tata-rekening.md) and **PD-07**, Credit Note is Tata Rekening-owned. There is no `BILRG_AptCreditNote`. Invoice revision under **BR-APT-027** still does not replace `BILRG_AptUnfulfilledOutcome`. The KEEP conclusion below is unchanged.
 
@@ -24,7 +24,7 @@
 
 **KEEP** `BILRG_AptUnfulfilledOutcome`.
 
-The table is the Sales Order aggregate’s append-only ledger that an **Accepted Quantity** received a final non-fulfillment outcome. Dispensing, Salinan Resep, Invoice, and Tata Rekening financial correction already store related but **different** facts. Reconstructing Unfulfilled Medication Outcome from those neighbors is lossy: several required closures have no Dispensing, no Invoice, and no Salinan Resep, and one Sales Order Item may close under more than one reason and quantity.
+The table is the Sales Order aggregate’s append-only ledger that an **Accepted Quantity** received a final non-fulfillment outcome. Dispensing, Copy Resep, Invoice, and Tata Rekening financial correction already store related but **different** facts. Reconstructing Unfulfilled Medication Outcome from those neighbors is lossy: several required closures have no Dispensing, no Invoice, and no Copy Resep, and one Sales Order Item may close under more than one reason and quantity.
 
 **REMOVE is not viable.** It would leave `BR-APT-018` / `BR-APT-019` without a durable, item-and-quantity fact, and would collapse independent commercial, physical, and accepted-demand dimensions that the domain keeps separate (`BR-APT-056`–`057`, `BR-APT-104`).
 
@@ -34,12 +34,12 @@ The table is the Sales Order aggregate’s append-only ledger that an **Accepted
 
 ## 2. Current responsibilities of `BILRG_AptUnfulfilledOutcome`
 
-Persistence design (§6.1, §8.4) places the table as an **append-only detail of `SalesOrder`**, PK `(SalesOrderId, OutcomeNo)`. Proposed columns: `OutcomeNo`, `SalesOrderItemNo`, `Qty`, `Reason`, `SalinanResepId`, `ActorId`, `EffectiveAt`. Delete+insert is forbidden.
+Persistence design (§6.1, §8.4) places the table as an **append-only detail of `SalesOrder`**, PK `(SalesOrderId, OutcomeNo)`. Proposed columns: `OutcomeNo`, `SalesOrderItemNo`, `Qty`, `Reason`, `CopyResepId`, `ActorId`, `EffectiveAt`. Delete+insert is forbidden.
 
 Domain ownership is explicit:
 
 - Terminology: Unfulfilled Medication Outcome is “a final, accountable reason that an accepted medication quantity was not fulfilled” (`apotek-domain.md` §2).
-- Object: it “identifies any Salinan Resep, return, or financial correction required” and does not use backorder closure (§5.8).
+- Object: it “identifies any Copy Resep, return, or financial correction required” and does not use backorder closure (§5.8).
 - Aggregate: `SalesOrder` “owns Sales Order Items, accepted quantities, fulfilled quantities, **unfulfilled outcomes**, and overall resolution” (§6.2).
 - Event: `Unfulfilled Medication Recorded` — “an accepted quantity received a final non-fulfillment outcome” (§9).
 
@@ -54,7 +54,7 @@ Those statements define **quantity closure on accepted demand**, not a document 
 | R3 | Support **split quantity and split reason** on one established Sales Order Item | Item identity is frozen after establishment (`BR-APT-050`). One line may be partly handed over and partly closed for shortage, expiry, or decline. `OutcomeNo` is the only proposed append-only split. |
 | R4 | Remain valid when **no Dispensing** exists for that quantity (`BR-APT-030`, §8.5 “Not Yet Planned for Fulfillment”) | Dispensing is a physical fulfillment instruction (§5.4), not a mandatory wrapper for every accepted qty. |
 | R5 | Remain valid when **no Invoice / Tata Rekening correction** exists (`BR-APT-022`, `BR-APT-079`, `BR-APT-094`) | Commercial resolution is a separate dimension (`BR-APT-056`–`057`). |
-| R6 | Optionally correlate **Salinan Resep** issued for post-establishment unfulfillment (`BR-APT-054`, `BR-APT-118`) without making Salinan the outcome | Salinan is a supporting document; it is not required, and it also covers pre-SO exclusions that never became Accepted Quantity. |
+| R6 | Optionally correlate **Copy Resep** issued for post-establishment unfulfillment (`BR-APT-054`, `BR-APT-118`) without making Copy Resep the outcome | Copy Resep is a supporting document; it is not required, and it also covers pre-SO exclusions that never became Accepted Quantity. |
 | R7 | Feed **reconciled projections** `UnfulfilledQty` / `ItemStatus` on `SalesOrderItem` | Persistence §8.4: those columns are maintained by Sales Order behavior. They are summaries, not the audit ledger. |
 | R8 | Obey **append-only correction** (`BR-APT-060`) | Same persistence class as `BILRG_AptFinalReview`. Not the same class as Tata Rekening Credit Note. |
 | R9 | Distinguish **Dispensing cancelled** (instruction ended; accepted qty may still be open) from **accepted qty closed** (`BR-APT-104`) | Multiple Dispensings per Sales Order are execution. Cancelling one Dispensing does not by itself fulfill `BR-APT-018`. |
@@ -66,7 +66,7 @@ These are often named “unfulfilled” in SOP language but are **out of this ta
 | Fact | Where it already lives |
 |---|---|
 | Prescription items **never accepted** (Telaah `Rejected`) | `BILRG_AptTelaahResepItem` |
-| Prescription items **excluded before Sales Order** (Patient Request, pre-SO Stock Shortage, Fornas split) | Resep Kerja items minus Sales Order items; SO header `PartialReason`; Salinan Resep when issued (`BR-APT-108`–`116`, ALN-006) |
+| Prescription items **excluded before Sales Order** (Patient Request, pre-SO Stock Shortage, Fornas split) | Resep Kerja items minus Sales Order items; SO header `PartialReason`; Copy Resep when issued (`BR-APT-108`–`116`, ALN-006) |
 | Physical instruction terminal state | `BILRG_AptDispensing.DispensingStatus` (`Cancelled` / `Expired` / `Unfulfilled`) |
 | Stock return / Remove Stock | Dispensing item mutasi correlation ids + Stock Ledger |
 | Commercial reversal | Tata Rekening Credit Note / Refund / Financial Adjustment (+ optional Invoice `TataRekeningCorrectionReff`) |
@@ -97,14 +97,14 @@ Coverage below means “this neighbor already stores a **related** operational f
 
 Dispensing §8.4 allows `Unfulfilled` as a Dispensing lifecycle state with “a reason and resolution of allocated stock and financial consequences.” That is the **instruction’s** terminal label. Domain §6.4 even says the Dispensing keeps “non-fulfillment outcomes” consistent **for its items**. That overlap is real, and it is the main reason the dedicated table looks redundant on the No-Show path. It is still a different grain: one Sales Order may have zero or many Dispensings (`BR-APT-030`), and partial-fulfillment semantics belong to Sales Order (`BR-APT-104`).
 
-### 3.3 Salinan Resep
+### 3.3 Copy Resep
 
 | Existing fact | Covers | Does not cover |
 |---|---|---|
-| Header `Reason` (PatientRequest / StockShortage / post-SO unfulfilled), `SalesOrderId` (empty if issued before SO) | Accountable **Prescription Copy** document (`BR-APT-054`) | Closures that do **not** issue a copy (typical No-Show; Patient-Pay decline with no copy; cancellation without external fill) |
+| Header `Reason` (PatientRequest / StockShortage / post-SO unfulfilled), `SalesOrderId` (empty if issued before SO) | Accountable **Copy Resep** document (`BR-APT-054`) | Closures that do **not** issue a copy (typical No-Show; Patient-Pay decline with no copy; cancellation without external fill) |
 | Items (`ResepKerja` `ItemNo`, `BrgId`, `Qty`) | What was copied for external fulfillment | Binding to `SalesOrderItemNo` when the copy is issued before SO; guarantee that copy qty equals closed Accepted Quantity |
 
-Salinan Resep is issued “when applicable.” Using it as the Unfulfilled Outcome store would force a document for every accepted-qty closure, or would silently drop closures that have no copy. It would also mix **pre-SO exclusions** (never Accepted Quantity) with **post-SO closures** (Accepted Quantity).
+Copy Resep is issued “when applicable.” Using it as the Unfulfilled Outcome store would force a document for every accepted-qty closure, or would silently drop closures that have no copy. It would also mix **pre-SO exclusions** (never Accepted Quantity) with **post-SO closures** (Accepted Quantity).
 
 ### 3.4 Invoice and Tata Rekening financial correction
 
@@ -129,7 +129,7 @@ Salinan Resep is issued “when applicable.” Using it as the Unfulfilled Outco
 
 ## 4. Scenario matrix — can neighbors reconstruct the outcome?
 
-| Scenario | Domain / SOP | Dispensing | Salinan | Credit Note / Invoice | Reconstruct without outcome table? |
+| Scenario | Domain / SOP | Dispensing | Copy Resep | Credit Note / Invoice | Reconstruct without outcome table? |
 |---|---|---|---|---|---|
 | Pre-SO Partial Prescription (Patient Request / Available Stock shortage) | `BR-APT-108`–`116`, ALN-006 | Often none for excluded lines | Yes, when issued | No commercial line on this SO | **N/A — not this table.** Excluded lines never have `SalesOrderItemNo`. |
 | Post-SO shortage, qty never planned on a Dispensing | `BR-APT-118` | None for that qty | Optional | Only if already invoiced | **No.** Neighbors can all be empty. |
@@ -150,10 +150,10 @@ Salinan Resep is issued “when applicable.” Using it as the Unfulfilled Outco
 If `BILRG_AptUnfulfilledOutcome` is omitted and only existing columns/documents remain:
 
 1. **Authoritative per-item, per-quantity closure** independent of whether a Dispensing or Invoice exists.
-2. **Reason at Accepted Quantity grain**, distinct from Dispensing `CancelReason`, Invoice Credit Note `Reason`, Salinan header `Reason`, and SO `ResolvedReason`.
-3. **Actor and `EffectiveAt` of the quantity closure**, distinct from Dispensing `ExpiredAt` / Invoice credit time / Salinan `IssuedAt` / generic `UpdDate`.
+2. **Reason at Accepted Quantity grain**, distinct from Dispensing `CancelReason`, Invoice Credit Note `Reason`, Copy Resep header `Reason`, and SO `ResolvedReason`.
+3. **Actor and `EffectiveAt` of the quantity closure**, distinct from Dispensing `ExpiredAt` / Invoice credit time / Copy Resep `IssuedAt` / generic `UpdDate`.
 4. **Split-reason history** on one frozen Sales Order Item (`OutcomeNo`).
-5. **Optional Salinan correlation from the closed SO quantity** (`SalinanResepId`) without requiring a copy for every closure.
+5. **Optional Copy Resep correlation from the closed SO quantity** (`CopyResepId`) without requiring a copy for every closure.
 6. **Deterministic input to `UnfulfilledQty` / Fulfillment Completion** (`BR-APT-018`–`019`). `UnfulfilledQty` would become an unaudited counter, or a brittle join across optional neighbors.
 7. **Ability to cancel a Dispensing without closing the Sales Order item** without extra inferred flags.
 8. **First-class evidence for domain event `Unfulfilled Medication Recorded`**, which SOPs and `WF-APT-RJ-007` treat as a produced fact, not a query.
@@ -170,7 +170,7 @@ This section is the impact list **if** architects overrode the recommendation. I
 |---|---|
 | [`outpatient-apotek-persistence-design.md`](../outpatient-apotek-persistence-design.md) | Drop table from §6.1, ERD, §8.4, §9.2 insert-only list. Redefine how `UnfulfilledQty` is maintained. Likely force Dispensing creation for every post-SO closure (conflicts with `BR-APT-030` / §5.4). |
 | [`apotek-domain.md`](../apotek-domain.md) / [`apotek-domain-id.md`](../apotek-domain-id.md) | Rewrite §5.8 from a Sales Order–owned fact to a derived projection — **or** keep §5.8 and admit persistence no longer matches the domain. Touch `BR-APT-018`, `BR-APT-046`, `BR-APT-118`. Clarify Dispensing `Unfulfilled` vs Accepted Quantity closure (`BR-APT-104`). |
-| [`outpatient-apotek-screen-and-aggregate-design.md`](../outpatient-apotek-screen-and-aggregate-design.md) | Sales Order would no longer “own unfulfilled progress” as a write fact; Exception Worklist would join Dispensing + Salinan + Tata Rekening correction with gap cases. |
+| [`outpatient-apotek-screen-and-aggregate-design.md`](../outpatient-apotek-screen-and-aggregate-design.md) | Sales Order would no longer “own unfulfilled progress” as a write fact; Exception Worklist would join Dispensing + Copy Resep + Tata Rekening correction with gap cases. |
 | [`outpatient-apotek-workflow.md`](../outpatient-apotek-workflow.md) / `-id.md` | Remove or redefine `Unfulfilled Medication Recorded`; rewrite `WF-APT-RJ-007` step 6; rewrite post-SO shortage exceptions in `WF-APT-RJ-003` / `004`. |
 | SOP-003, SOP-004, SOP-007 (EN/ID) | Stop requiring a recorded Unfulfilled Medication Outcome as a completion criterion; substitute neighbor documents (incomplete for unpaid / unplanned qty). |
 | ALN-006 / BC-10 narrative | Post-SO branch currently “record Unfulfilled Medication Outcome”; would need a replacement fact that still forbids stripping Sales Order lines. |
@@ -188,9 +188,9 @@ Domain and SOP would have to **change meaning**, not merely drop a table name. T
 |---|---|
 | Ambiguous Fulfillment Completion | `BR-APT-019` cannot be evaluated without a closed-world sum of Accepted Qty = Fulfilled + Unfulfilled (by reason) + still open. |
 | False closure | Treating every `Dispensing Cancelled` as Unfulfilled Outcome blocks later Dispensings (`BR-APT-030`). |
-| False openness | Post-SO shortage with no Dispensing and no Salinan leaves Accepted Qty “Active” forever, or operators strip SO lines (forbidden by ALN-006 / `BR-APT-118`). |
+| False openness | Post-SO shortage with no Dispensing and no Copy Resep leaves Accepted Qty “Active” forever, or operators strip SO lines (forbidden by ALN-006 / `BR-APT-118`). |
 | Commercial/fulfillment collapse | Using Credit Note as the fulfillment outcome violates `BR-APT-056`–`057` and fails BPJS No-Show (no invoice). |
-| Salinan over-use | Forcing a Prescription Copy for No-Show or cancellation creates documents the Patient does not need; skipping Salinan loses the only remaining neighbor. |
+| Copy Resep over-use | Forcing a Copy Resep for No-Show or cancellation creates documents the Patient does not need; skipping Copy Resep loses the only remaining neighbor. |
 | Query complexity | Exception worklist and Patient Medication Journey would encode policy in SQL joins instead of an explicit fact (against persistence clarity in `DATABASE.md` / `ENGINEERING.md`). |
 
 ### 7.2 Gaps that remain even if the table is KEPT
@@ -222,7 +222,7 @@ No-Show (`WF-APT-RJ-007`) **intentionally dual-writes**: Dispensing `Expired` (p
 |---|---|
 | Store reason/actor/time only on `SalesOrderItem` | One mutable slot; cannot split qty/reason; corrections overwrite (`BR-APT-060`). |
 | Require a Dispensing for every unfulfillment and use Dispensing `Unfulfilled` | Turns Dispensing into a quantity-closure document; contradicts “physical fulfillment instruction” and “zero Dispensings allowed”. Confuses Dispensing cancel with SO close. |
-| Use Salinan Resep as the ledger | Optional document; wrong grain (Resep Kerja items, including pre-SO exclusions). |
+| Use Copy Resep as the ledger | Optional document; wrong grain (Resep Kerja items, including pre-SO exclusions). |
 | Use Credit Note as the ledger | Commercial only; missing when uninvoiced; `BR-APT-046` requires outcome **plus** commercial correction. Credit Note is Tata Rekening-owned (PD-07). |
 | Derive at read time from “whatever neighbor exists” | Non-deterministic when neighbors conflict or are absent; Exception Worklist becomes a rule engine in SQL. |
 
@@ -236,6 +236,6 @@ No-Show (`WF-APT-RJ-007`) **intentionally dual-writes**: Dispensing `Expired` (p
 |---|---|
 | **KEEP** | **Recommended.** `BILRG_AptUnfulfilledOutcome` is the Sales Order–owned, append-only Accepted Quantity closure required by `BR-APT-018`–`019`, `BR-APT-046`, `BR-APT-118`, and `WF-APT-RJ-007`. Neighbors cover overlapping symptoms on some paths only. |
 | **REMOVE** | **Rejected.** Information loss on unplanned qty, split reasons, decline-without-invoice, and cancel-vs-close. Audit and Fulfillment Completion become inferred. Domain/SOP would have to change, not just schema. |
-| **REWORK** | **Not as a substitute.** Additive correlation and a written Dispensing-vs-SO invariant may be done later. Collapsing into Dispensing, Salinan Resep, Invoice, or item scalars is rejected. |
+| **REWORK** | **Not as a substitute.** Additive correlation and a written Dispensing-vs-SO invariant may be done later. Collapsing into Dispensing, Copy Resep, Invoice, or item scalars is rejected. |
 
-Unfulfilled Medication Outcome **cannot** be fully represented from existing Dispensing, Salinan Resep, Invoice / Tata Rekening financial correction, and related aggregate facts without a dedicated persistence table.
+Unfulfilled Medication Outcome **cannot** be fully represented from existing Dispensing, Copy Resep, Invoice / Tata Rekening financial correction, and related aggregate facts without a dedicated persistence table.
