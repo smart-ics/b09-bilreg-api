@@ -490,7 +490,7 @@ Both versions must reference the same authoritative artifacts. The Indonesian co
 - Prefer a familiar Indonesian word over an English loanword when the meaning remains precise. For example: `resep`, `item obat`, `pesanan apotek`, `tagihan`, `penyiapan obat`, `stok`, `antrian`, `pasien`, and `staf apotek`.
 - Explain an unavoidable technical term in plain Indonesian at its first use. If the exact English term must remain for traceability, write the Indonesian meaning first followed by the exact term in parentheses; do not repeat the English term unless needed.
 - Split a long or abstract sentence into short sentences when that makes the actor, action, and result easier to understand.
-- Name the real-world result before its internal document or status. For example, write “sistem membuat tugas untuk menyiapkan obat (`Dispense Order`)”, not “sistem membentuk `Dispense Order`”.
+- Name the real-world result before its internal document or status. For example, write “sistem membuat tugas untuk menyiapkan obat (`Dispensing`)”, not “sistem membentuk `Dispensing`”.
 - Avoid literal or unnatural constructions such as “membentuk”, “mempertahankan ketertelusuran”, “disposition”, “outcome”, “eligible”, “authority”, “coverage”, or “clarification” when a clear Indonesian sentence can express the same operational meaning.
 - Do not use English grammar inside an Indonesian sentence. Do not mix English and Indonesian unnecessarily.
 - Preserve exact application terminology and official role names only where required by the rules above.

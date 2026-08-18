@@ -36,7 +36,7 @@ The domain must ensure that:
 * the movement ledger and current stock position can be reconciled within a bounded scope;
 * one source business transaction does not produce duplicate stock consequences;
 * corrections and reversals preserve the original recorded facts;
-* stock reservation is represented as accountable transfer to a Virtual Stock Location;
+* stock custody transfer to a Dispensing Temporary Unit is represented as accountable Stock Mutasi, not a separate reservation domain object;
 * legacy stock provenance may be reconstructed incrementally without requiring full historical migration; and
 * reconstructed facts remain distinguishable from facts recorded natively by the new Stock Ledger;
 * negative Remaining Quantity is prohibited without exception; and
@@ -62,10 +62,15 @@ This context covers:
 
 **Out of scope for this version (deferred):**
 
-- Reserved Order stock consequence; and
-- Medication Handover / Serah Obat (`DS`) stock consequence.
+- Reserved Order stock consequence unrelated to Pharmacy Dispensing Temporary Unit custody.
 
-Those capabilities may exist in the future target system but are not defined here.
+**In scope for Pharmacy outpatient dispensing (ADR-APT-002):**
+
+- Stock Mutasi between Pharmacy Unit and Dispensing Temporary Unit on Pharmacy authorization;
+- Remove Stock from Dispensing Temporary Unit on Medication Handover; and
+- Stock Mutasi return from Dispensing Temporary Unit to Pharmacy Unit on No Show resolution.
+
+Stock Ledger does not own `Prepared`, `Handed Over`, No Show, or fulfillment lifecycle states.
 
 ### 1.3 Business boundaries
 
@@ -74,7 +79,7 @@ Stock Ledger owns Stock Batch, Location Stock Balance, Stock Movement, Outbound 
 It relies on other contexts without taking over their authority:
 
 - Purchasing or Goods Receipt owns commercial receipt of goods;
-- Apotek or other fulfillment contexts own sale and dispense business facts;
+- Apotek or other fulfillment contexts own sale, dispense, handover, and No Show business facts;
 - Stock Transfer owns the operational intent to move stock between locations;
 - Internal use / ward supply owns consumption authorization;
 - Destruction or write-off authority owns disposal authorization;
@@ -83,7 +88,29 @@ It relies on other contexts without taking over their authority:
 - Product Catalog owns Item identity and unit definition; and
 - Facility or organizational authority owns Stock Location identity.
 
-Stock Ledger does not decide whether a receipt, sale, transfer, return, consumption, destruction, adjustment, or repack should occur. It accepts an authorized Source Stock Consequence and records the inventory effect.
+Stock Ledger does not decide whether a receipt, sale, transfer, return, consumption, destruction, adjustment, repack, pharmacy handover, or No Show return should occur. It accepts an authorized Source Stock Consequence and records the inventory effect.
+
+### 1.7 Pharmacy outpatient dispensing boundary (ADR-APT-002)
+
+Stock Ledger remains a pure stock authority. It does not own Pharmacy workflow concepts.
+
+| Owner | Responsibility |
+|---|---|
+| Stock Ledger | Stock Quantity, Mutasi, Remove Stock, Stock Movement History |
+| Pharmacy (Apotek) | Sales Order, Dispensing, dispensing lifecycle, `Prepared`, `Handed Over`, No Show resolution |
+
+**Dispensing Temporary Unit** is a pharmacy Stock Location that holds medication under active dispensing custody after Dispensing Started and before handover or No Show return.
+
+There is no separate inventory reservation operation. Pharmacy Reserve is implemented only as Stock Mutasi from **Pharmacy Unit** to **Dispensing Temporary Unit**.
+
+| Pharmacy event | Inventory action |
+|---|---|
+| Dispensing Started | Mutasi: Pharmacy Unit → Dispensing Temporary Unit |
+| Dispensing Completed / `Prepared` | No inventory action |
+| Medication Handed Over | Remove Stock from Dispensing Temporary Unit |
+| No Show resolution | Mutasi: Dispensing Temporary Unit → Pharmacy Unit |
+
+Stock Ledger never stores `Prepared`, `Handed Over`, or No Show status. Partial fulfillment semantics belong to Sales Order, not Dispensing.
 
 ### 1.4 Information authority during coexistence
 
@@ -143,7 +170,9 @@ Its business behavior is primarily triggered by facts and requests from other bo
 |---|---|
 | Stock Ledger | The bounded context that records accountable inventory consequences with Receipt Source provenance across Stock Locations. |
 | Item | A catalogued goods identity whose stock quantities are tracked. |
-| Stock Location | A physical or logical place where stock is held (for example warehouse, pharmacy, or clinical unit). |
+| Stock Location | A physical or logical place where stock is held (for example warehouse, pharmacy unit, or dispensing temporary unit). |
+| Pharmacy Unit | The ordinary pharmacy Stock Location from which outpatient medication enters dispensing custody. |
+| Dispensing Temporary Unit | The pharmacy Stock Location that holds medication under active dispensing custody before handover or No Show return. |
 | Receipt Source | The durable identity of one goods entry into the hospital stock system, typically the goods-receipt document identity. |
 | Stock Batch | The accountable stock originating from one Item and one Receipt Source across all Stock Locations. |
 | Location Stock Balance | The remaining quantity of one Stock Batch at one Stock Location for one Expiration Date (including absent Expiration Date). |
@@ -394,9 +423,16 @@ Cross-aggregate coordination must preserve:
 - **BR-STL-034** — During coexistence, the Stock Ledger Representation shall remain reconcilable with the applicable Legacy Stock Record for scopes that have been aligned.
 - **BR-STL-035** — A reconciliation difference shall be recorded explicitly and shall not be resolved by silently rewriting completed movements.
 
+### Pharmacy dispensing
+
+- **BR-STL-037** — Pharmacy Reserve shall be recorded only as Stock Mutasi from Pharmacy Unit to Dispensing Temporary Unit.
+- **BR-STL-038** — Medication Handover shall be recorded only as Remove Stock from Dispensing Temporary Unit.
+- **BR-STL-039** — Pharmacy No Show return shall be recorded only as Stock Mutasi from Dispensing Temporary Unit back to Pharmacy Unit.
+- **BR-STL-040** — Stock Ledger shall not store `Prepared`, `Handed Over`, No Show, or fulfillment lifecycle states.
+
 ### Deferred capabilities
 
-- **BR-STL-036** — Reserved Order and Medication Handover / Serah Obat stock consequences are outside this version's defined capabilities.
+- **BR-STL-036** — Reserved Order stock consequences unrelated to Pharmacy Dispensing Temporary Unit custody are outside this version's defined capabilities.
 
 ## 8. State Machines & Lifecycles
 
@@ -442,11 +478,11 @@ Not Aligned
 | State | Business meaning |
 |---|---|
 | Available at Ordinary Location | Quantity may be selected by transactions requesting the ordinary Stock Location. |
-| Reserved at Virtual Location | Quantity is logically separated and unavailable to transactions requesting the ordinary Stock Location. |
-| Released to Ordinary Location | Reserved quantity was transferred back and is eligible again at the ordinary Stock Location. |
-| Consumed from Virtual Location | A source transaction explicitly requested and consumed quantity from the Virtual Stock Location. |
+| Reserved at Dispensing Temporary Unit | Quantity is held at Dispensing Temporary Unit and unavailable to transactions requesting Pharmacy Unit. |
+| Returned to Pharmacy Unit | Quantity was transferred back from Dispensing Temporary Unit to Pharmacy Unit. |
+| Removed from Dispensing Temporary Unit | Quantity was removed from Dispensing Temporary Unit on authorized handover. |
 
-Reservation does not change Receipt Source, Expiration Date, Unit Valuation, or physical ownership.
+Pharmacy custody transfer does not change Receipt Source, Expiration Date, Unit Valuation, or physical ownership of the hospital stock system.
 
 ---
 

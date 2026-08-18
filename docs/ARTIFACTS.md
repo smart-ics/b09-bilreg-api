@@ -175,16 +175,34 @@
 | Path | Purpose |
 |------|---------|
 | `docs/contexts/apotek/adr/ADR-APT-001-queu-boundary-and-pharmacy-workflow-state-ownership.md` | ADR-APT-001 Queue Boundary and Pharmacy Workflow State Ownership |
+| `docs/contexts/apotek/adr/ADR-APT-002-pharmacy-stock-ledger-boundary.md` | ADR-APT-002 Pharmacy and Stock Ledger Boundary |
+| `docs/contexts/apotek/adr/ADR-APT-003-invoice-mutability-owned-by-tata-rekening.md` | ADR-APT-003 Invoice Mutability Owned by Tata Rekening Permission |
 | `docs/contexts/apotek/apotek-domain-id.md` | Domain Apotek — Pelayanan Obat Pasien |
 | `docs/contexts/apotek/apotek-domain.md` | Apotek Domain |
-| `docs/contexts/apotek/outpatient-apotek-queue-gap-analysis-codex.md` | Outpatient Apotek Queue Gap Analysis |
-| `docs/contexts/apotek/outpatient-apotek-queue-gap-analysis.md` | Outpatient Apotek Queue Gap Analysis |
+| `docs/contexts/apotek/APOTEK-ARTIFACT-ALIGNMENT-REVIEW.md` | Apotek Artifact Alignment Review — Outpatient Pharmacy |
+| `docs/contexts/apotek/APOTEK-AVAILABLE-STOCK-CONCEPT-INTRODUCTION.md` | Apotek Available Stock concept introduction — Available Stock ≠ Current Stock |
+| `docs/contexts/apotek/APOTEK-TERMINOLOGY-ALIGNMENT-REPORT.md` | Apotek Terminology Alignment Report — Persistence-design vocabulary |
+| `docs/contexts/apotek/APOTEK-QUEUE-MAPPING-ALIGNMENT-REPORT.md` | Apotek Queue Mapping Alignment Report — Demand-source mapping target |
+| `docs/contexts/apotek/APOTEK-UNFULFILLED-OUTCOME-SIMPLIFICATION-ANALYSIS.md` | Unfulfilled Medication Outcome — whether `BILRG_AptUnfulfilledOutcome` can be derived from existing aggregates |
+| `docs/contexts/apotek/APOTEK-INVOICE-MUTABILITY-IMPACT-ANALYSIS.md` | Invoice mutability — impact of TR-gated Charge Source mutation vs freeze after Issue |
+| `docs/contexts/apotek/APOTEK-INVOICE-MUTABILITY-ARTIFACT-UPDATE-REPORT.md` | Invoice mutability — canonical artifact update after ADR-APT-003 |
+| `docs/contexts/apotek/APOTEK-FINANCIAL-CLEARANCE-ANALYSIS.md` | Financial Clearance terminology and ownership (BA-08); Invoice mutability section superseded 2026-08-18 |
+| `docs/contexts/apotek/ALN-001-RESOLUTION-REPORT.md` | ALN-001 Resolution Report — OutpatientQueueMapping ownership alignment |
+| `docs/contexts/apotek/ALN-002-RESOLUTION-REPORT.md` | ALN-002 Resolution Report — Fulfillment Clearance to Dispense Authorized alignment |
+| `docs/contexts/apotek/ALN-003-RESOLUTION-REPORT.md` | ALN-003 Resolution Report — Remove Billing/Fulfillment Allocation |
+| `docs/contexts/apotek/ALN-004-RESOLUTION-REPORT.md` | ALN-004 Resolution Report — Inventory contract alignment to BA-09 |
+| `docs/contexts/apotek/ALN-005-RESOLUTION-REPORT.md` | ALN-005 Resolution Report — Queue completion during No Show Resolution |
+| `docs/contexts/apotek/ALN-006-RESOLUTION-REPORT.md` | ALN-006 Resolution Report — Stock shortage timing alignment to BC-10 |
+| `docs/contexts/apotek/ALN-007-RESOLUTION-REPORT.md` | ALN-007 Resolution Report — Terminology cleanup and Dispensing naming alignment |
+| `docs/contexts/apotek/outpatient-apotek-persistence-design.md` | Outpatient Apotek Persistence Design |
+| `docs/contexts/apotek/outpatient-apotek-stock-shortage-sales-order-impact-analysis.md` | Impact analysis — moving Business Stock Shortage to Sales Order (investigation only) |
+| `docs/contexts/apotek/outpatient-apotek-repository-gap-analysis-report.md` | Outpatient Apotek Repository Gap Analysis |
 | `docs/contexts/apotek/outpatient-apotek-screen-and-aggregate-design.md` | Outpatient Apotek Screen and Aggregate Design |
 | `docs/contexts/apotek/outpatient-apotek-workflow-id.md` | Workflow Outpatient Apotek |
 | `docs/contexts/apotek/outpatient-apotek-workflow.md` | Outpatient Apotek Workflow |
 | `docs/contexts/apotek/sop/DAFTAR-SOP-APT-RJ.md` | Daftar SOP Pelayanan Obat Pasien Rawat Jalan |
 | `docs/contexts/apotek/sop/SOP-APT-RJ-001-Antrian-dan-Mapping-EN.md` | SOP APT-RJ-001 — Acquire and Map Outpatient Pharmacy Queue |
-| `docs/contexts/apotek/sop/SOP-APT-RJ-001-Antrian-dan-Mapping-ID.md` | SOP APT-RJ-001 — Menerbitkan Nomor Antrian dan Melakukan Mapping dengan Resep atau Permintaan Obat Langsung |
+| `docs/contexts/apotek/sop/SOP-APT-RJ-001-Antrian-dan-Mapping-ID.md` | SOP APT-RJ-001 — Menerbitkan Nomor Antrian dan Melakukan Mapping dengan Resep Kerja atau Jual Bebas |
 | `docs/contexts/apotek/sop/SOP-APT-RJ-002-Penerimaan-Resep-dan-Permintaan-Langsung-EN.md` | SOP APT-RJ-002 — Accept Outpatient Medication Demand |
 | `docs/contexts/apotek/sop/SOP-APT-RJ-002-Penerimaan-Resep-dan-Permintaan-Langsung-ID.md` | SOP APT-RJ-002 — Menerima Permintaan Obat Pasien Rawat Jalan |
 | `docs/contexts/apotek/sop/SOP-APT-RJ-003-Pelayanan-Obat-Pasien-Umum-EN.md` | SOP APT-RJ-003 — Fulfill Medication for a General Patient |

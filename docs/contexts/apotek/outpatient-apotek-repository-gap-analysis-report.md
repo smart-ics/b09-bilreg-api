@@ -13,7 +13,7 @@ This report identifies and classifies gaps and unresolved decisions only. It int
 
 ## 1. Executive assessment
 
-The target outpatient Apotek model is not an incremental completion of the current implementation. It is a new bounded-context model that separates the legacy `Trs.DU (DO-Bill)` into `SalesOrder`, `SalesInvoice`, and `DispenseOrder`, while reusing selected queue, inventory, financial, catalog, and frontend infrastructure.
+The target outpatient Apotek model is not an incremental completion of the current implementation. It is a new bounded-context model that separates the legacy `Trs.DU (DO-Bill)` into `SalesOrder`, `Invoice`, and `Dispensing`, while reusing selected queue, inventory, financial, catalog, and frontend infrastructure.
 
 Current repository state:
 
@@ -23,18 +23,20 @@ Current repository state:
 - The generic queue enum already complies with ADR-APT-001, but current F-09 event triggers and the frontend's queue states conflict with the canonical workflow.
 - Existing Patient Tracker, Tata Rekening, Stock Ledger, CPOE, Fornas, medication catalog, query, and UI-shell capabilities are reusable only through explicit extensions and adapters.
 
-The architecture is not ready for implementation review until the blocking decisions in section 4 are resolved. The most material are canonical queue identity, legacy DU coexistence, aggregate ownership for queue mapping, cross-context transaction semantics, and the contracts for Tracker, Inventory, Payment, SEP/Fornas, and Tata Rekening.
+The architecture is not ready for implementation review until the blocking decisions in section 4 are resolved. All blocking architecture gaps (BA-01 through BA-09) are now resolved; remaining gates are business clarification (BC-11 through BC-13).
 
 ## 2. Classification summary
 
 | Classification | Count | Review meaning |
 |---|---:|---|
-| Blocking Architecture Gap | 9 | A structural or ownership decision is unresolved; implementing around it would create incompatible sources of truth or unsafe cross-context behavior. |
-| Business Clarification Gap | 14 | A policy, authority, threshold, or accountable outcome is not sufficiently defined. |
+| Blocking Architecture Gap | 0 | A structural or ownership decision is unresolved; implementing around it would create incompatible sources of truth or unsafe cross-context behavior. |
+| Business Clarification Gap | 3 | A policy, authority, threshold, or accountable outcome is not sufficiently defined. |
+| Resolved (Business Clarification) | 11 | BC-01, BC-02, BC-03, BC-04, BC-05, BC-06, BC-07, BC-08, BC-09, BC-10, and BC-14 ratified; artifacts updated. |
 | Existing Capability Extension | 9 | A relevant capability exists but its present contract or semantics do not satisfy Apotek. |
 | Missing Implementation | 15 | The design is sufficiently clear, but no conforming implementation exists. |
 | Technical Debt | 11 | Existing code or documentation embodies legacy, misleading, coupled, or unverified behavior. |
-| **Total** | **58** | Each finding has one primary classification. |
+| Resolved (Blocking Architecture) | 9 | BA-01 through BA-09 ratified; artifacts updated. |
+| **Total open** | **38** | Each open finding has one primary classification. |
 
 ## 3. Baseline and evidence
 
@@ -44,16 +46,16 @@ The architecture is not ready for implementation review until the blocking decis
 - Patient Tracker owns queue identity and lifecycle; Apotek owns mapping and pharmacy progress (`apotek-domain.md:43-61`; ADR-APT-001:55-79, 83-145).
 - `ServedAt` is caused by the first `Medication Preparation Started`; `DoneAt` is caused by the coordinated pickup call and does not prove handover (`apotek-domain.md:61`, `433-447`; `outpatient-apotek-workflow.md:681-710`).
 - The target has four operational screens and payer-specific paths within those workbenches (`outpatient-apotek-screen-and-aggregate-design.md:8-26`).
-- The domain defines four aggregate roots: `TelaahResep`, `SalesOrder`, `SalesInvoice`, and `DispenseOrder`; it explicitly says `Outpatient Queue Mapping` is not an Apotek aggregate root (`apotek-domain.md:289-325`).
+- The domain defines four aggregate roots: `TelaahResep`, `SalesOrder`, `Invoice`, and `Dispensing`; it explicitly says `Outpatient Queue Mapping` is not an Apotek aggregate root (`apotek-domain.md:289-325`).
 
 ### 3.2 Backend baseline
 
 - `AntrianStatusEnum` contains only `Waiting`, `InService`, `Done`, and `Withdrawn`, satisfying the ADR enum boundary (`src/bilreg/Bilreg.Domain/AdmisiContext/AntrianFeature/AntrianStatusEnum.cs:3-8`).
 - `AntrianEntryModel` owns queue timestamps and transitions, but its service-start and cancellation methods carry Admission semantics (`.../AntrianEntryModel.cs:91-138`).
 - F-09 appends idempotent `Apotek-Start` and `Apotek-Done` evidence (`src/bilreg/Bilreg.Application/AdmisiContext/AntrianFeature/PharmacyQueueEvidence.cs:9-69`), while the implementation report ties them to sale confirmation and delivery (`docs/contexts/pasien-tracker/tracker-f09-implementation-report.md:22-41`, `85-100`).
-- `PenjualanModel` creates a legacy `DU` directly from `Resep`, permits item addition/removal, and has no independent Sales Order or Dispense Order lifecycle (`src/bilreg/Bilreg.Domain/SalesContext/PenjualanFeature/PenjualanModel.cs:56-130`, `185-190`).
+- `PenjualanModel` creates a legacy `DU` directly from `Resep`, permits item addition/removal, and has no independent Sales Order or Dispensing lifecycle (`src/bilreg/Bilreg.Domain/SalesContext/PenjualanFeature/PenjualanModel.cs:56-130`, `185-190`).
 - `PenjualanCreateHandler` creates that transaction without a completed target Telaah gate (`src/bilreg/Bilreg.Application/SalesContext/PenjualanFeature/UseCases/PenjualanCreateCmd.cs:41-77`).
-- The existing `TelaahModel` is a checklist model without target per-line disposition or lifecycle (`src/bilreg/Bilreg.Domain/SalesContext/TelaahFeature/TelaahModel.cs:9-116`).
+- The existing `TelaahModel` is a checklist model without target per-item disposition or lifecycle (`src/bilreg/Bilreg.Domain/SalesContext/TelaahFeature/TelaahModel.cs:9-116`).
 
 ### 3.3 Frontend baseline
 
@@ -68,200 +70,340 @@ The architecture is not ready for implementation review until the blocking decis
 
 ### BA-01 — Canonical pharmacy queue identity and F-09 coexistence
 
+**Status:** Resolved (2026-08-15)
+
 **Gap.** The accepted design assumes the shared Patient Tracker queue platform, while the closed F-09 implementation uses a separate Farinv queue with its own `Taken → Assigned → Prepared → Delivered` lifecycle and Tracker evidence. Running both creates duplicate queue identities, numbers, displays, and milestone facts.
 
 **Evidence.** Screen design `:28`, `:228-240`; F-09 report `:22-41`, `:85-100`; queue gap analysis `:62-74`.
 
-**Recommended decision.** Declare the Patient Tracker queue entry as the sole canonical outpatient-pharmacy queue identity. Treat Farinv queue identity as a legacy source behind a migration/compatibility adapter; prohibit creation of two active entries for the same pharmacy interaction. Define identity mapping, active-entry deduplication, historical read behavior, and cutover ownership explicitly.
+**Decision.** Patient Tracker `QueueEntry` is the sole canonical outpatient-pharmacy queue identity. F-09 evidence remains reusable but must reference `QueueEntryId` from Patient Tracker. Legacy Farinv queue identity is deprecated and must not create active queue records. Historical Farinv queue data is read-only. No dual-active queue model is allowed.
 
-**Rationale.** ADR-APT-001 locks generic queue ownership. A dual-active model cannot preserve one `CreatedAt`, one `ServedAt`, one `DoneAt`, or unambiguous display ownership.
+**Ratified in.** `apotek-domain.md` (`BR-APT-097`); `outpatient-apotek-screen-and-aggregate-design.md` §4.1; `ADR-APT-001`; `TRACKER-DOMAIN.md` (`BR-TRK-051`).
 
 ### BA-02 — Pharmacy-to-Tracker milestone command contract
+
+**Status:** Resolved (2026-08-15)
 
 **Gap.** The platform has Admission-shaped `start-service` and completion paths. The target requires first preparation to start service without depending on a current Loket claim, and a coordinated pickup action to announce and complete the queue atomically or idempotently.
 
 **Evidence.** `outpatient-apotek-screen-and-aggregate-design.md:228-240`; `outpatient-apotek-workflow.md:681-710`; `AntrianEntryModel.cs:91-138`; queue gap analysis `:50-60`.
 
-**Recommended decision.** Define constrained platform commands invoked only by Apotek orchestration:
+**Decision.** BA-02 is considered resolved by ADR-APT-001 and the current Outpatient Apotek domain and workflow decisions. The ownership boundary is already defined: Patient Tracker owns queue lifecycle; Pharmacy owns pharmacy workflow. Queue milestone causation is already defined: first Medication Preparation Started causes Queue `ServedAt` / `InService`; coordinated Pickup Call causes Queue `DoneAt` / `Done`. No further architecture decision is required. Remaining work, if any, is implementation-level integration contract definition (commands, events, API) and must not be treated as a blocking architecture gap.
 
-- `StartQueueServiceFromPreparation(queueEntryId, dispenseOrderId, eventId, occurredAt)`
-- `CallAndCompletePickup(queueEntryId, pickupId, announcement, occurredAt)`
+**Rationale.** ADR-APT-001 and the ratified domain/workflow artifacts already separate queue lifecycle from pharmacy progress and bind Tracker milestones to Apotek-orchestrated facts. Naming concrete commands remains useful implementation guidance but does not block architecture approval.
 
-Both must be idempotent, concurrency-protected, and independent of Admission registration outcomes. Call/recall for mapping remains display-only.
-
-**Rationale.** Exposing generic queue buttons as business transitions allows the UI to write false `ServedAt` or `DoneAt` evidence and couples correctness to screen navigation.
+**Ratified in.** `adr/ADR-APT-001-queu-boundary-and-pharmacy-workflow-state-ownership.md`; `apotek-domain.md`; `outpatient-apotek-workflow.md`; `outpatient-apotek-screen-and-aggregate-design.md` §4.1.
 
 ### BA-03 — `OutpatientQueueMapping` consistency boundary
+
+**Status:** Resolved (2026-08-15)
 
 **Gap.** The canonical domain says mapping is an active relationship and not an aggregate root, while the proposed screen design lists `OutpatientQueueMapping` as an aggregate root. ADR-APT-001 permits several implementation structures.
 
 **Evidence.** `apotek-domain.md:277-279`, `289-325`; screen design `:261-277`; ADR `:115-145`.
 
-**Recommended decision.** Ratify the canonical domain: model mapping as a uniquely constrained Apotek-owned relationship/entity and projection input, not an aggregate root. Commands must update the active association in place, enforce queue-entry/source uniqueness and cardinality, and remain transactionally independent from Tracker.
+**Decision.** `OutpatientQueueMapping` is not an aggregate root. It is a navigation/association mechanism only. It does not own business lifecycle, workflow state, approval state, operational progress, or transactional consistency. It does not maintain active/inactive relationship state. It does not establish an independent consistency boundary. Queue identity and lifecycle remain owned by Patient Tracker. Medication demand lifecycle remains owned by the corresponding Pharmacy aggregates (`Sales Order`, `Dispensing`, and related roots). The association exists only to answer operational navigation and worklist questions such as: which queue entry is serving this medication demand, and which medication demands are associated with this queue entry. The pharmacy-side mapping endpoint is a Resep Kerja or a Jual Bebas only. Mapping shall not target a Sales Order, Invoice, or Dispensing.
 
-**Rationale.** Mapping has no independent lifecycle or history requirement under `BR-APT-062`; promoting it to an aggregate introduces an unnecessary consistency boundary and contradicts the source of authority.
+**Rationale.** Mapping is a read/navigation aid across externally owned queue identity and Pharmacy-owned demand lifecycles. Promoting it to an aggregate or lifecycle-bearing relationship would create a competing consistency boundary without independent business outcomes.
+
+**Ratified in.** `apotek-domain.md`; `outpatient-apotek-screen-and-aggregate-design.md` §5; `adr/ADR-APT-001-queu-boundary-and-pharmacy-workflow-state-ownership.md`.
 
 ### BA-04 — Pickup/handover lifecycle versus projection categories
 
-**Gap.** The domain shows `Ready for Pickup`, `Patient Called`, `Recipient Verified`, `Final Review Completed`, `Education Provided`, and `Handed Over` as a lifecycle, while the screen design says similar names are projection-only categories and Dispense Order states remain authoritative.
+**Status:** Resolved (2026-08-16)
+
+**Gap.** The domain shows `Ready for Pickup`, `Patient Called`, `Recipient Verified`, `Final Review Completed`, `Education Provided`, and `Handed Over` as a lifecycle, while the screen design says similar names are projection-only categories and Dispensing states remain authoritative.
 
 **Evidence.** `apotek-domain.md:541-559`; screen design `:151-179`.
 
-**Recommended decision.** Persist only aggregate facts and canonical Dispense Order state. Derive Serah Obat categories from preparation, pickup-call, recipient-verification, review, education, dispense, and handover facts. Amend the domain diagram to label it a process/fact sequence rather than an additional state machine.
+**Decision.** Pickup/handover categories are not aggregate lifecycle states. They are projection/worklist categories only. `Dispensing` remains the authoritative aggregate lifecycle. Operational milestones such as Patient Called, Final Review Completed, Education Provided, and Medication Handed Over are process facts/events, not aggregate states. Recipient verification is a Pharmacist operational check and is not a process fact, aggregate state, or worklist category (BC-06). Worklist categories (`Ready for Pickup`, `Pickup Expired`, `Ready for Review`, `Ready for Handover`, `Completed`) are derived projections used for operational organization and prioritization.
 
-**Rationale.** Persisting both lifecycles creates contradictory state transitions and makes review failure, multi-order pickup, and post-`Done` handover ambiguous.
+**Rationale.** A single authoritative lifecycle in `Dispensing` avoids contradictory transitions and keeps review failure, multi-order pickup, and post-`Done` handover unambiguous. Serah Obat organization is served by projections derived from aggregate facts and events, not a parallel state machine.
+
+**Ratified in.** `apotek-domain.md`; `outpatient-apotek-screen-and-aggregate-design.md` §3.4; `outpatient-apotek-workflow.md`.
 
 ### BA-05 — Legacy DU authority and coexistence with target sales/dispensing
 
-**Gap.** Current `PenjualanModel` remains a mutable monolithic DU-Bill. The target requires independent `SalesOrder`, `SalesInvoice`, and `DispenseOrder` lifecycles with line-level traceability. No source-of-truth or coexistence rule is defined.
+**Status:** Resolved (2026-08-16)
+
+**Gap.** Current `PenjualanModel` remains a mutable monolithic DU-Bill. The target requires independent `SalesOrder`, `Invoice`, and `Dispensing` lifecycles with item-level traceability. No source-of-truth or coexistence rule is defined.
 
 **Evidence.** `apotek-domain.md:17-26`, `93-113`; `PenjualanModel.cs:56-130`, `185-190`; `PenjualanCreateCmd.cs:41-77`.
 
-**Recommended decision.** Make target Apotek aggregates authoritative for all new outpatient flows. Define legacy DU as a compatibility representation generated from target facts or as read-only historical data; do not allow target and DU commands to mutate the same episode independently. Define stable lineage from legacy DU IDs to Sales Invoice and Dispense Order facts.
+**Decision.** Legacy DU and new Invoice are independent features. Both may operate concurrently during the transition period. No dual-write strategy is permitted. Invoice must not generate, synchronize, transform into, or mirror a Legacy DU. Legacy DU remains owned by the legacy workflow. Invoice remains owned by the new outpatient pharmacy workflow.
 
-**Rationale.** Dual write authority would violate quantity reconciliation, invoice timing, no-manual-item rules, and correction history.
+**Coexistence strategy.** Legacy DU generates Billing and Stock movements through existing legacy mechanisms. Invoice generates Billing and Stock movements through the new architecture. Stock coexistence is handled by the existing stock-ledger coexistence architecture. Both transaction sources may generate bills into the Tata Rekening bounded context.
+
+**Reporting strategy.** Unified sales reporting shall be provided by a read-only reporting adapter/projection in the new system. The adapter aggregates Legacy DU and Invoice transactions into a unified reporting view without modifying the legacy system. Reporting must remain valid when only Legacy DU transactions exist.
+
+**Rationale.** Independent feature ownership with parallel billing/stock paths avoids dual-write corruption while allowing phased rollout. Unified reporting is a read-side concern and must not couple the transactional models.
+
+**Ratified in.** `apotek-domain.md`; `outpatient-apotek-workflow.md`; coexistence and reporting adapter design (to be specified at implementation).
 
 ### BA-06 — Authoritative prescription identity and CPOE/legacy `Resep` bridge
+
+**Status:** Resolved (2026-08-16)
 
 **Gap.** The domain assigns original prescription authority to CPOE or another clinical source, but current sales code loads a legacy `ResepModel`; no canonical prescription identity, version, source-line reference, or external-prescription ownership contract exists.
 
 **Evidence.** `apotek-domain.md:43-55`, `331-339`; workflow `:120-145`, `233-304`; `PenjualanCreateCmd.cs:50-73`.
 
-**Recommended decision.** Define an immutable `PrescriptionSourceRef` contract containing authority, source ID/version, patient/encounter, source-line IDs, and source type. Apotek stores references and snapshots required for review but never mutates the source. Legacy `Resep` must be adapted to the same contract; physical prescriptions require an accountable Apotek intake record before review.
+**Decision.** A canonical Prescription Contract shall be defined and respected by both Legacy Resep and CPOE. The new Outpatient Pharmacy system shall consume the Prescription Contract instead of directly depending on Legacy Resep or CPOE-specific models. Pharmacy operations shall be based on a Resep Kerja created from the Prescription Contract at intake time. Resep Kerja is authoritative for pharmacy operational workflows and lifecycle processing.
 
-**Rationale.** Without a stable source contract, line-level traceability, one-active-order enforcement, re-review, and substitute provenance cannot be guaranteed.
+**Prescription revision handling.** Source prescription revisions must be detected. Source prescription revisions must not automatically modify existing Resep Kerja. No silent synchronization or automatic rewriting of pharmacy operational data is allowed. When a revision is detected, the system shall create an operational review task for pharmacy staff to evaluate and handle the change.
+
+**Rationale.** A shared contract decouples pharmacy from source-specific models while preserving traceability. Resep Kerja at intake makes pharmacy workflows deterministic; explicit revision detection with staff review prevents silent drift from clinical source changes.
+
+**Ratified in.** `apotek-domain.md`; `outpatient-apotek-workflow.md`; Prescription Contract and Resep Kerja design (to be specified at implementation).
 
 ### BA-07 — Cross-context delivery, idempotency, and reconciliation
+
+**Status:** Resolved (2026-08-16)
 
 **Gap.** API, command, and event contracts are explicit non-decisions. Existing F-09 evidence is synchronous HTTP without an outbox. The target creates causal chains across Apotek, Tracker, Inventory, Payment, SEP/Fornas, and Tata Rekening.
 
 **Evidence.** Screen design `:317-329`; workflow `:681-712`, `:737`; F-09 report `:217-225`.
 
-**Recommended decision.** Adopt durable at-least-once integration with stable event IDs, causation/correlation IDs, aggregate versions, idempotent consumers, retry policy, and reconciliation queries. Local aggregate commit and outbound event publication must be atomic through an outbox or equivalent durable mechanism. External facts are referenced, not copied as authority.
+**Decision.** The system shall use an Integration Task Table mechanism for cross-context integration. The mechanism must be transactional, retryable, idempotent, and reconcile-able. The goal is reliable cross-context delivery between Pharmacy and dependent bounded contexts such as Billing, Stock, Reporting, and Queue-related integrations. A distributed transaction is not required. A message broker is not required. A transactional outbox is not required.
 
-**Rationale.** Partial failures otherwise produce queue, financial, stock, and handover histories that disagree while each local transaction appears successful.
+**Integration approach.** Business transaction and Integration Task creation must be committed atomically. Integration workers process pending tasks asynchronously. Failed tasks must be visible, retryable, and auditable. Processing must be idempotent to prevent duplicate side effects. Reconciliation capability must exist to identify and recover missed or failed integrations.
 
-### BA-08 — Financial clearance and BPJS handover transaction boundary
+**Rationale.** An Integration Task Table provides durable at-least-once delivery without mandating distributed transactions, message brokers, or a separate outbox pattern. Atomic task creation with the business transaction preserves consistency; async workers, idempotency, and reconciliation address partial failures.
 
-**Gap.** `Fulfillment Clearance` is a domain object but not an aggregate; the screen design calls it a derived policy outcome. The target also requires BPJS Sales Invoice establishment and handover to form one accountable outcome across Apotek and external financial authority, but no consistency or compensation boundary is defined.
+**Ratified in.** `apotek-domain.md`; `outpatient-apotek-workflow.md`; Integration Task Table design (to be specified at implementation).
+
+### BA-08 — Dispense Authorization and financial/coverage evidence boundary
+
+**Status:** Resolved (2026-08-16)
+
+**Gap.** Prior artifacts mixed `Financial Clearance` and `Fulfillment Clearance` terminology and implied a domain object or transaction boundary for preparation authorization. The target also required BPJS Invoice establishment and Medication Handover to be coordinated without a defined consistency model.
 
 **Evidence.** `apotek-domain.md:265-267`, `320-325`, `381-389`, `425-447`; workflow `:386-539`; screen design `:271-277`.
 
-**Recommended decision.** Keep `FulfillmentClearance` as an immutable, quantity-scoped decision record owned within Dispense Order orchestration, derived from versioned Payment/Coverage evidence. Keep Sales Invoice and Dispense Order as separate aggregates. Model BPJS “one accountable outcome” as an Apotek process transaction with idempotent steps and explicit compensation/reconciliation, not a distributed ACID transaction.
+**Decision.** There is no separate business concept called Financial Clearance or Fulfillment Clearance. What exists is financial and coverage evidence evaluated by Pharmacy policy to determine **Dispense Authorized** — whether medication preparation and dispensing may start.
 
-**Rationale.** Clearance needs auditable evidence without becoming a competing source of payment or coverage truth; cross-context atomicity cannot be assumed.
+**Financial and coverage evidence.**
+
+| Payer path | Evidence |
+|---|---|
+| General Patient | Invoice created; payment completed |
+| BPJS | Prescription exists; SEP valid; Fornas coverage valid |
+| Other insurance | Coverage approval valid |
+
+**Dispense Authorized.** Dispense Authorized is not an aggregate, entity, source of truth, or transaction boundary. It is a policy evaluation result derived from financial and coverage evidence. It is required before Medication Preparation Started and Dispensing. It is not required for Medication Handover.
+
+**Medication Handover gates.** Medication Handover is governed separately by: Medication Prepared; Final Dispense Review passed; Patient Education Acknowledgement recorded. Authorized Recipient verification is a Pharmacist operational responsibility and is not a system-enforced gate (BC-06). Patient Education is a lightweight acknowledgement of counseling, not a structured counseling-content record (BC-07).
+
+**BPJS invoice and handover.** BPJS Invoice creation and Medication Handover do not require a distributed transaction or special transaction boundary. The BA-07 Integration Task Table architecture remains sufficient for cross-context coordination.
+
+**Rationale.** Preparation authorization is a derived policy outcome over external financial and coverage facts, not a persisted clearance domain object. Separating Dispense Authorized from handover gates avoids conflating payer readiness with physical handover accountability. Cross-context steps remain asynchronously reliable without distributed ACID.
+
+**Ratified in.** `apotek-domain.md`; `outpatient-apotek-workflow.md`; `adr/ADR-APT-001-queu-boundary-and-pharmacy-workflow-state-ownership.md`.
 
 ### BA-09 — Inventory fulfillment contract
 
-**Gap.** Inventory owns reservation, issue, return eligibility, and final disposition, but the current repository has stock-ledger capabilities rather than a defined Dispense Order contract. Reservation timing, partial quantities, in-transit custody, issue-on-handover, and rejected returns are not architecturally connected.
+**Status:** Resolved (2026-08-16)
+
+**Gap.** Inventory owns reservation, issue, return eligibility, and final disposition, but the current repository has stock-ledger capabilities rather than a defined Dispensing contract. Reservation timing, partial quantities, Dispensing Temporary Custody, issue-on-handover, and rejected returns are not architecturally connected.
 
 **Evidence.** `apotek-domain.md:116-125`, `366-400`; workflow `:681-695`; screen design `:292-303`.
 
-**Recommended decision.** Define quantity- and lot-aware inventory commands/results keyed by Dispense Order Line: reserve, release, issue, request return disposition, and record final disposition. Inventory remains authoritative; Apotek stores references and blocks/advances its lifecycle only from acknowledged outcomes. Every command must be idempotent and support partial results.
+**Decision.** Stock Ledger remains a pure stock authority and does not own Pharmacy workflow concepts. Pharmacy owns Sales Order, Dispensing, dispensing lifecycle, `Prepared`, `Handed Over`, and No Show resolution. Stock Ledger owns stock quantity, Mutasi, Remove Stock, and stock movement history only.
 
-**Rationale.** A generic stock movement without fulfillment lineage cannot prove that the correct accepted quantity was reserved, handed over, returned, or left unresolved.
+**Lifecycle mapping.**
+
+| Pharmacy event | Inventory action |
+|---|---|
+| Dispensing Started | Mutasi from Pharmacy Unit to Dispensing Temporary Unit |
+| Dispensing Completed / `Prepared` | No inventory action |
+| Medication Handed Over | Remove Stock from Dispensing Temporary Unit |
+| No Show resolution | Mutasi from Dispensing Temporary Unit back to Pharmacy Unit |
+
+**Additional rules.** Reserve equals Mutasi; no separate `ReserveStock` contract. `Prepared` is a Dispensing state only, reached when required dispensing movements complete; it is not an Inventory state. Partial fulfillment is represented at Sales Order level; a Sales Order may be fulfilled by multiple Dispensings. No Show is Pharmacy-owned; Inventory applies only the return movement directed by Pharmacy and never stores No Show status.
+
+**Rationale.** Separating workflow ownership from stock movement prevents duplicate lifecycle truth. Reusing Mutasi avoids a parallel reservation model and aligns with existing stock-ledger coexistence.
+
+**Ratified in.** `apotek-domain.md` (`BR-APT-098`–`BR-APT-104`); `stok-ledger-domain.md` §1.7; `outpatient-apotek-workflow.md`; `adr/ADR-APT-002-pharmacy-stock-ledger-boundary.md`.
 
 ## 5. Business Clarification Gaps
 
 ### BC-01 — Collection window and manual expiry authority
 
+**Status:** Resolved (2026-08-16)
+
 **Gap.** No numeric collection limit is authoritative; manual closure is allowed, but eligibility criteria and escalation are undefined.
-
-**Recommended decision.** Preserve manual closure for the current scope. Define who may close, required reason/evidence, minimum warnings or contact attempts if any, effective-time rules, and whether the policy varies by payer or medication class.
-
-**Rationale.** The system can remain policy-neutral on duration while still requiring a reproducible, auditable supervisor decision.
 
 **Evidence.** Workflow `:611-679`, `:697-710`; screen design `:82-93`.
 
-### BC-02 — Direct Medication Request authority thresholds
+**Decision.** Medication awaiting pickup may remain in Ready for Pickup for a configurable Collection Window (default 7 days). After that period the worklist category becomes Pickup Expired. Ordinary handover shall not proceed while Pickup Expired. Only an authorized pharmacist may record a Collection Window Override and proceed with handover. The override reason must be recorded. Pickup Expired does not by itself expire the Dispensing or return stock; terminal uncollected resolution remains `WF-APT-RJ-007`.
+
+**Rationale.** A configurable window gives operators a deterministic Ready for Pickup vs Pickup Expired projection without auto-closing fulfillment. Override preserves late handover under pharmacist authority. Terminal No-Show close stays a separate authorized act so collection-window elapsed is not confused with Dispensing `Expired`.
+
+**Ratified in.** `apotek-domain.md` (`BR-APT-138`–`BR-APT-142`); `outpatient-apotek-workflow.md`; `outpatient-apotek-screen-and-aggregate-design.md` §3.4; `sop/SOP-APT-RJ-003-*` through `sop/SOP-APT-RJ-007-*`.
+
+### BC-02 — Jual Bebas authority thresholds
+
+**Status:** Resolved (2026-08-15)
 
 **Gap.** Staff may accept, refer, or decline, but the threshold for Pharmacist approval is undefined.
 
-**Recommended decision.** Publish a rule matrix by medication class, quantity, patient/encounter context, and staff role; default unknown cases to Pharmacist approval.
-
-**Rationale.** This is a professional-governance rule and cannot be inferred from UI role or catalog data.
-
 **Evidence.** `apotek-domain.md:217-219`, `441`; screen design `:108-111`, `:317-327`.
+
+**Decision.** Jual Bebas does not require Pharmacist approval. Pharmacy Staff accepts or declines it directly. It is treated as a retail-style medication request originating outside the hospital care workflow. Pharmacist consultation may occur operationally but is optional SOP guidance only. The model shall not include pharmacist consultation as approval workflow, authority threshold, escalation process, risk classification, domain state, or business-rule gate.
+
+**Rationale.** Jual Bebas is intentionally outside prescription review and hospital care workflow governance. Modeling optional consultation as a system gate would conflate retail demand intake with Telaah Resep authority and create unnecessary workflow states.
+
+**Ratified in.** `apotek-domain.md` (`BR-APT-009`, `BR-APT-089`); `outpatient-apotek-workflow.md`; `outpatient-apotek-screen-and-aggregate-design.md` §3.2; `sop/SOP-APT-RJ-002-*`.
 
 ### BC-03 — Return, correction, expiry, and exception approval thresholds
 
+**Status:** Resolved (2026-08-16)
+
 **Gap.** Supervisor authority is referenced, but ordinary versus exceptional decisions and required approvals are unspecified.
-
-**Recommended decision.** Define a decision matrix by lifecycle stage, payment state, handover state, medication/lot eligibility, quantity/value, and requested outcome.
-
-**Rationale.** The same “return” label can imply inventory disposition, financial adjustment, dispense cancellation, or post-handover correction with different authorities.
 
 **Evidence.** `apotek-domain.md:233-235`, `391-409`; screen design `:78-119`, `:317-327`.
 
-### BC-04 — Partial pickup when one demand remains unresolved
+**Decision.** Exception handling is authority-based rather than amount-threshold-based. Returns, corrections, expired collection overrides, and other dispensing exceptions require authorization by an authorized pharmacist according to operational policy. No monetary approval threshold model is introduced.
 
-**Gap.** The workflow permits a partial path only when accepted by the Patient and permitted by payer workflow, but it does not state which payer paths permit it or how consent is evidenced.
+**Rationale.** Exception accountability is professional authorization, not a value band. Amount-based escalation would invent an approval model the organization does not operate. Operational policy names which pharmacist is authorized; the system records that authorizing pharmacist, reason, and effective business time.
 
-**Recommended decision.** Define partial-pickup eligibility separately for General, BPJS, and mixed coverage, including consent evidence, communication obligations, and effect on later pickup calls.
+**Ratified in.** `apotek-domain.md` (`BR-APT-135`–`BR-APT-137`); `outpatient-apotek-workflow.md`; `outpatient-apotek-screen-and-aggregate-design.md` §3.2; `sop/SOP-APT-RJ-003-*`, `sop/SOP-APT-RJ-007-*`.
 
-**Rationale.** Without this policy, coordinated pickup readiness and `DoneAt` are indeterminate for multi-demand queues.
+### BC-04 — Partial Prescription Fulfillment
 
-**Evidence.** Workflow `:541-609`, especially `:580-587`.
+**Status:** Resolved (2026-08-16)
+
+**Gap.** Partial fulfillment policy between Prescription and Sales Order was undefined: permitted reasons, responsible actors, unfulfilled-line handling, and the boundary versus Sales Order-to-Dispensing execution splits were not ratified.
+
+**Evidence.** `apotek-domain.md:137`, `417-427`; workflow `:291-296`, `:541-609`; `apotek-domain.md:341-352`.
+
+**Decision.** Partial Prescription Fulfillment is permitted only for Patient Request and Stock Shortage. No other reason is recognized by the system.
+
+**Patient Request.** When a Patient cannot or does not wish to purchase the entire prescription, Pharmacy Staff may establish a Sales Order containing only the selected prescription items. Excluded prescription items remain unfulfilled. The system shall support Salinan Resep (Prescription Copy) generation for unfulfilled items.
+
+**Stock Shortage.** When Available Stock prevents committing the full prescription to a new Sales Order, Pharmacy Staff may establish a Sales Order containing only fulfillable prescription items. Fulfillable quantity is Available Stock, not Current Stock. Unavailable prescription items remain unfulfilled. The system shall support Salinan Resep for unfulfilled items.
+
+**Ownership.** The Pharmacist remains responsible for approving the resulting fulfillment decision when professional review is required. The system does not automatically determine alternative substitutions or external fulfillment actions.
+
+**Partiality boundary.** Partiality exists only between Prescription and Sales Order. Partiality does not exist between Sales Order and Dispensing. A Sales Order may be fulfilled by one or more Dispensings; that is fulfillment execution, not Partial Prescription Fulfillment policy.
+
+**Unfulfilled lines.** Prescription lines not included in the Sales Order remain part of the originating Prescription. The system shall support issuing Salinan Resep containing unfulfilled items for external fulfillment when required.
+
+**Rationale.** Two explicit, auditable reasons at the Prescription-to-Sales Order boundary prevent ad hoc line exclusion while separating professional review ownership from staff-operational intake. Salinan Resep preserves traceability for lines fulfilled elsewhere.
+
+**Ratified in.** `apotek-domain.md` (`BR-APT-047`, `BR-APT-054`, `BR-APT-108`–`BR-APT-113`); `outpatient-apotek-workflow.md`; `outpatient-apotek-screen-and-aggregate-design.md` §3.2.
 
 ### BC-05 — Unmapped or declined queue disposition
 
-**Gap.** A queue may remain unmapped or a direct request may be declined, but the external withdrawal/closure policy and responsible actor are not defined.
+**Status:** Resolved (2026-08-16)
 
-**Recommended decision.** Define explicit outcomes for unresolved identity, no eligible demand, duplicate entry, patient abandonment, and declined direct request. Keep the medication decision in Apotek and queue withdrawal in Tracker.
-
-**Rationale.** Leaving entries indefinitely `Waiting` damages queue operations; silently completing them would assert false service.
+**Gap.** A queue may remain unmapped or a Jual Bebas may be declined, but the external withdrawal/closure policy and responsible actor are not defined.
 
 **Evidence.** Workflow `:197-231`; `apotek-domain.md:413-417`.
 
+**Decision.** Queue entries that are not progressed into the pharmacy workflow may be closed directly from the pre-service queue status (decision name TAKEN; canonical Patient Tracker state `Waiting`). A mandatory close reason shall be recorded. Patient Tracker shall set the entry `Withdrawn`. No additional queue state is introduced.
+
+**Rationale.** Closing from pre-service participation ends idle unmapped or declined entries without asserting `In Service` or `Done`. `Withdrawn` already exists for participation that ends before service starts. TAKEN is not added to the Tracker lifecycle. Medication decline remains an Apotek fact; queue identity and terminal queue state remain Tracker-owned.
+
+**Ratified in.** `apotek-domain.md` (`BR-APT-064`, `BR-APT-143`–`BR-APT-145`); `TRACKER-DOMAIN.md` (`BR-TRK-039a`, `BR-TRK-052`); `outpatient-apotek-workflow.md` `WF-APT-RJ-001`; `outpatient-apotek-screen-and-aggregate-design.md` §3.2; `sop/SOP-APT-RJ-001-*`.
+
 ### BC-06 — Authorized Recipient verification evidence
+
+**Status:** Resolved (2026-08-16)
 
 **Gap.** Recipient verification is mandatory, but acceptable recipient types, identifiers, proxy authority, and failure handling are not defined.
 
-**Recommended decision.** Define required fields and validation by recipient type, including relationship/authority evidence and refusal/failure outcomes.
-
-**Rationale.** A handover timestamp alone does not prove accountable transfer.
-
 **Evidence.** `apotek-domain.md:122-129`, `374-379`; workflow `:128-136`.
+
+**Decision.** Authorized recipient verification remains an operational responsibility of the dispensing Pharmacist and is not system-enforced. During Medication Handover, the system may optionally record recipient information (phone number and relationship to the Patient) for reference purposes only. No identity validation, legal relationship verification, document capture, or authorization workflow is required.
+
+**Rationale.** Professional handover accountability stays with the Pharmacist at the counter. Modeling identity proof, proxy authority, or document capture as system gates would invent an authorization workflow the organization does not operate. Optional phone number and relationship are reference notes only and do not prove legal entitlement.
+
+**Ratified in.** `apotek-domain.md` (`BR-APT-037`, `BR-APT-077`, `BR-APT-129`–`BR-APT-131`); `outpatient-apotek-workflow.md`; `outpatient-apotek-screen-and-aggregate-design.md` §3.4; `sop/SOP-APT-RJ-003-*`, `sop/SOP-APT-RJ-004-*`, `sop/SOP-APT-RJ-005-*`, `sop/SOP-APT-RJ-006-*`.
 
 ### BC-07 — Minimum Patient Education record
 
+**Status:** Resolved (2026-08-16)
+
 **Gap.** Education is mandatory where applicable, but content, acknowledgement, exceptions, and responsible role are unspecified.
-
-**Recommended decision.** Define a minimum structured acknowledgement plus optional notes, with explicit exceptions and responsible Pharmacist identity.
-
-**Rationale.** A generic boolean cannot support medication-specific accountability or explain why education was omitted.
 
 **Evidence.** `apotek-domain.md:122-129`, `428-430`; screen design `:167-179`.
 
+**Decision.** Patient Education is recorded using a lightweight education acknowledgement model. The Pharmacist confirms that medication counseling has been provided before handover. The system records education timestamp and responsible Pharmacist. Detailed counseling notes are optional and only required when the Pharmacist considers additional documentation necessary.
+
+**Rationale.** Acknowledgement with timestamp and responsible Pharmacist is sufficient handover accountability. A structured counseling-content model, medication-specific templates, or mandatory notes would over-specify documentation the organization does not operate. Optional notes remain available when professional judgment requires extra record.
+
+**Ratified in.** `apotek-domain.md` (`BR-APT-077`, `BR-APT-132`–`BR-APT-134`); `outpatient-apotek-workflow.md`; `outpatient-apotek-screen-and-aggregate-design.md` §3.4; `sop/SOP-APT-RJ-003-*`, `sop/SOP-APT-RJ-004-*`, `sop/SOP-APT-RJ-005-*`, `sop/SOP-APT-RJ-006-*`.
+
 ### BC-08 — Authorized non-medication invoice components
 
-**Gap.** Sales Invoice Items may include an explicitly authorized non-medication component, but the allowed component types and pricing authority are undefined.
+**Status:** Resolved (2026-08-16)
 
-**Recommended decision.** Enumerate allowed service/packaging components and their pricing source; reject all others by default.
+**Gap.** Invoice Items could include an explicitly authorized non-medication component, but allowed types and pricing authority were undefined. An open exception would recreate manual invoice-item entry prohibited by `BR-APT-083`.
 
-**Rationale.** An open exception recreates manual invoice-item entry prohibited by `BR-APT-083`.
+**Evidence.** `apotek-domain.md:387`, `479`; screen design `:34`, `:284-300`.
 
-**Evidence.** `apotek-domain.md:354-364`, `435`.
+**Decision.** Adopt the existing legacy sales model. Non-medication components are not represented as free-form invoice items.
 
-### BC-09 — Fulfillment episode identity
+**BHP.** BHP is treated as a standard catalog item and may appear as a sales item.
 
-**Gap.** The rule “at most one active Sales Order per Resep per episode” does not define episode boundaries, reopening, or same-day repeat handling.
+**Charges.** Item-specific charges (for example packaging or compounding fees) are recorded as item-level charges. Transaction-wide adjustments (for example rounding) are recorded as invoice-level charges.
 
-**Recommended decision.** Define episode identity from patient, encounter/registration, prescription source/version, care setting, and an explicit reopen/re-review relation.
+**Model boundary.** No additional invoice component model is introduced.
 
-**Rationale.** This invariant cannot be enforced without a deterministic business key.
+**Rationale.** Reusing the legacy sales charge structure keeps BHP and fees inside catalog items and existing charge attachments, so `BR-APT-083` remains intact without a new commercial-component aggregate.
 
-**Evidence.** `apotek-domain.md:341-352`.
+**Ratified in.** `apotek-domain.md` (`BR-APT-024`, `BR-APT-083`, `BR-APT-125`–`BR-APT-128`); `outpatient-apotek-screen-and-aggregate-design.md` §5.2.
+
+### BC-09 — Fulfillment boundary and prescription repeat (Iter) policy
+
+**Status:** Resolved (2026-08-16)
+
+**Gap.** The rule “at most one active Sales Order per Resep per episode” did not define episode boundaries, reopening, or same-day repeat handling. Iter entitlement and Iter validity at fulfillment time were not distinguished.
+
+**Evidence.** `apotek-domain.md:365`, `459`; workflow `:270`; `apotek-domain.md:341-352`.
+
+**Decision.** The system does not introduce a separate Fulfillment Episode concept. For Outpatient Pharmacy, the fulfillment boundary is the Registration Period. A prescription may be reviewed, re-reviewed, and fulfilled while the originating Registration remains active. The Registration acts as the fulfillment boundary.
+
+**Repeat policy (Iter).** Prescription repeat entitlement is owned by the prescription through the existing Legacy Resep `Iter` mechanism. The system remains responsible for Iter allocation, Iter consumption tracking, and remaining Iter calculation.
+
+**Repeat validity authority.** The system does not determine whether an unused Iter remains valid for fulfillment. The Pharmacist is responsible for deciding whether an unused Iter may still be honored at fulfillment time — for example, old prescription, delayed patient return, clinical appropriateness concerns, or operational policy considerations. The Pharmacist may decline fulfillment even when remaining Iter exists.
+
+**Invariant update.** Replace “one active Sales Order per Prescription per Episode” with “one active Sales Order per Prescription per Registration” or equivalent Registration-based terminology.
+
+**Rationale.** Registration is an existing, externally owned boundary with deterministic identity. Separating system-managed Iter entitlement from pharmacist-judged Iter validity preserves clinical accountability without inventing a parallel episode aggregate.
+
+**Ratified in.** `apotek-domain.md` (`BR-APT-011`, `BR-APT-086`, `BR-APT-105`–`BR-APT-107`); `outpatient-apotek-workflow.md`; `sop/SOP-APT-RJ-002-*`.
 
 ### BC-10 — Shortage, Backorder, and alternate-stock authority
 
-**Gap.** Staff may choose Backorder or another approved stock source within authority, but approval limits, patient communication, and terminal timing are undefined.
+**Status:** Resolved (2026-08-16)
 
-**Recommended decision.** Define eligible stock sources, authority by medication/quantity, when Backorder becomes terminal, and required patient/payer communication.
+**Gap.** Staff could choose Backorder or another approved stock source within authority, but approval limits, patient communication, terminal timing, and whether outpatient Pharmacy retained outstanding demand were undefined.
 
-**Rationale.** These choices affect fulfillment completion, stock custody, and financial consequences.
+**Evidence.** `apotek-domain.md:227`, `375`, `416`; workflow `:85`, `:105`, `:291-294`, `:372`, `:450`.
 
-**Evidence.** `apotek-domain.md:217-219`, `388-400`; workflow `:284-288`, `:362-368`.
+**Decision.** Outpatient Pharmacy does not support Backorder. When a stock shortage occurs, the system does not create an outstanding fulfillment obligation, waiting demand, or backorder record.
+
+**Stock Shortage Handling.** Stock shortage before Sales Order establishment is evaluated against **Available Stock**, not Current Stock. It is resolved immediately through a Partial Sales Order and Salinan Resep (Prescription Copy) for unfulfilled prescription items:
+
+```text
+Prescription
+  -> Available Lines (from Available Stock)
+       -> Sales Order
+```
+
+Only fulfillable prescription items may be included in the Sales Order. Fulfillable means the quantity can still be committed according to Available Stock. Unfulfillable items remain outside the Sales Order on the originating Prescription.
+
+Available Stock is the quantity that can still be promised to a new Sales Order. Current Stock is the physical inventory recorded by the inventory subsystem. Available Stock ≠ Current Stock. The Available Stock formula is not specified in this decision and is reserved for a future inventory-planning design activity.
+
+**Prescription Copy.** The system shall support Salinan Resep generation containing the unfulfilled prescription items. The Prescription Copy may be used by the Patient to obtain medication from another pharmacy.
+
+**Alternate stock source.** Outpatient Pharmacy does not implement alternate stock source selection, fulfillment routing, inter-pharmacy sourcing, or backorder management. Quantity that may still be promised to a new Sales Order is evaluated as Available Stock, not as Current Stock.
+
+**Rationale.** The organization does not operationally retain outstanding outpatient medication demand when stock is unavailable. Shortage is resolved immediately through partial fulfillment and Prescription Copy issuance rather than deferred fulfillment.
+
+**Ratified in.** `apotek-domain.md` (`BR-APT-018`, `BR-APT-046`, `BR-APT-110`, `BR-APT-114`–`BR-APT-118`, `BR-APT-146`); `outpatient-apotek-workflow.md`; `outpatient-apotek-screen-and-aggregate-design.md` §3.1–§3.2; `sop/SOP-APT-RJ-002-*`, `sop/SOP-APT-RJ-003-*`, `sop/SOP-APT-RJ-004-*`. Clarification of Available Stock vs Current Stock recorded in `APOTEK-AVAILABLE-STOCK-CONCEPT-INTRODUCTION.md`.
 
 ### BC-11 — Pharmacy call purpose and display wording
 
@@ -295,13 +437,30 @@ Both must be idempotent, concurrency-protected, and independent of Admission reg
 
 ### BC-14 — Fornas non-coverage reclassification and return eligibility
 
-**Gap.** The workflow allows uncovered BPJS quantities to become Patient-payable and delegates return eligibility to Inventory, but the authoritative decision, consent, and rejection outcomes are not fully specified.
+**Status:** Resolved (2026-08-16)
 
-**Recommended decision.** Require versioned Fornas evidence, explicit Patient confirmation before Patient-payable reclassification, and a finite set of Inventory dispositions when Return to Stock is rejected.
+**Gap.** Fornas non-coverage outcomes were ambiguous: whether uncovered BPJS lines stayed on the BPJS path, were cancelled, or became Patient-payable, and how that related to Dispense Authorization, was not ratified.
 
-**Rationale.** Coverage and return decisions change financial and fulfillment outcomes and cannot be represented as free text.
+**Evidence.** Workflow `:464-539`; `apotek-domain.md:480-494`; screen design `:114-117`.
 
-**Evidence.** Workflow `:464-539`, `:640-664`; `apotek-domain.md:398-400`, `442-446`.
+**Decision.** Fornas validation classifies prescription items as Covered or Not Covered.
+
+**Covered items.** Covered items follow the normal BPJS fulfillment workflow. Coverage evidence is sufficient for Dispense Authorized.
+
+**Not Covered items.** Not Covered items are not automatically cancelled. The system may establish a separate Patient-Pay Sales Order for the uncovered prescription items. That Patient-Pay Sales Order is independent from the BPJS-covered Sales Order. Uncovered BPJS items do not remain in the BPJS fulfillment path.
+
+**Financial clearance.** Patient-Pay Sales Orders require financial clearance before Dispense Authorized is granted. Financial clearance follows the normal self-pay workflow (Payment Clearance and Invoice evidence). It is not a separate Financial Clearance aggregate (BA-08).
+
+**Dispense Authorization.** Each prescription item follows its own authorization path:
+
+- BPJS Covered item → Coverage Evidence → Dispense Authorized
+- Patient-Pay item → Financial Clearance (self-pay Payment Clearance) → Dispense Authorized
+
+**Partial Prescription Fulfillment.** Creating a separate Patient-Pay Sales Order for uncovered items is a valid form of Partial Prescription Fulfillment. One originating Prescription may therefore result in a BPJS-covered Sales Order and a Patient-Pay Sales Order for different prescription items.
+
+**Rationale.** Item-level Fornas classification with independent Sales Orders keeps BPJS and self-pay commercial paths from sharing one mixed Sales Order, while still allowing coordinated pickup of separately authorized quantities.
+
+**Ratified in.** `apotek-domain.md` (`BR-APT-011`, `BR-APT-091`–`BR-APT-094`, `BR-APT-108`, `BR-APT-119`–`BR-APT-124`); `outpatient-apotek-workflow.md` (`WF-APT-RJ-005`); `outpatient-apotek-screen-and-aggregate-design.md` §3.2; `sop/SOP-APT-RJ-005-*`.
 
 ## 6. Existing Capability Extensions
 
@@ -313,7 +472,7 @@ Both must be idempotent, concurrency-protected, and independent of Admission reg
 | EC-04 | Idempotent F-09 `Apotek-*` evidence append | Retarget evidence to preparation-start and pickup-call causation; add durable delivery and canonical queue-entry references. | `PharmacyQueueEvidence.cs:9-69`; F-09 report `:217-225` |
 | EC-05 | CPOE, legacy `Resep`, medication catalog, and goods references | Supply immutable prescription-source and catalog contracts suitable for Telaah and Sales Order line traceability. | Domain `:43-55`; backend legacy sales files |
 | EC-06 | Fornas master-data access and existing patient/registration data | Add valid-SEP plus item/quantity coverage evidence; master-data presence alone is not Coverage Clearance. | Domain `:106-108`, `442-446`; workflow `:386-539` |
-| EC-07 | Stock Ledger movement and return consequence capabilities | Add reservation, release, dispense issue, partial fulfillment, and return-disposition contracts keyed to Dispense Order Lines. | Domain `:366-400`; workflow `:681-695` |
+| EC-07 | Stock Ledger movement and return consequence capabilities | Add Mutasi to/from Dispensing Temporary Unit and Remove Stock on handover keyed to Dispensing Items; no separate reservation contract. | Domain `:366-400`; workflow `:681-695`; ADR-APT-002 |
 | EC-08 | Tata Rekening, payment, tariff, and financial-adjustment capabilities | Add medication Financial Charge lineage, Payment Clearance consumption, BPJS/general invoice timing, credit/refund correlation, and pricing snapshots. | Domain `:247-267`, `354-389`; workflow `:306-539` |
 | EC-09 | Vue module shell, TanStack Query/Zod patterns, Admission queue client patterns, shared UI blocks | Reuse visual/query primitives behind Apotek-owned DTOs and role-specific workbenches; do not reuse Admission commands or current mock state model. | Frontend tabs `:5-22`; `obatQueries.ts:1-38`; queue gap analysis `:26-41` |
 
@@ -323,10 +482,10 @@ Both must be idempotent, concurrency-protected, and independent of Admission reg
 |---|---|---|---|
 | MI-01 | Target `TelaahResep` aggregate, persistence, API, and tests | Existing checklist model has no target line dispositions, lifecycle, completion outcome, or application/persistence surface. | Domain `:239-241`, `291-295`, `329-339`, `451-461` |
 | MI-02 | `SalesOrder` aggregate and quantitative reconciliation | No target type, table, handler, API, or tests. | Domain `:243-245`, `297-303`, `341-352`, `463-479` |
-| MI-03 | `SalesInvoice` aggregate and payer-specific invoicing | Only legacy DU exists; no target invoice timing, pricing snapshot, mixed payer, credit-note, or financial-charge lineage. | Domain `:247-259`, `305-311`, `354-364`, `481-497` |
-| MI-04 | `DispenseOrder` aggregate and immutable final-review records | No target type, state machine, preparation, review, dispense, handover, expiry, or return implementation. | Domain `:261-287`, `313-318`, `366-379`, `499-518` |
+| MI-03 | `Invoice` aggregate and payer-specific invoicing | Only legacy DU exists; no target invoice timing, pricing snapshot, mixed payer, credit-note, or financial-charge lineage. | Domain `:247-259`, `305-311`, `354-364`, `481-497` |
+| MI-04 | `Dispensing` aggregate and immutable final-review records | No target type, state machine, preparation, review, dispense, handover, expiry, or return implementation. | Domain `:261-287`, `313-318`, `366-379`, `499-518` |
 | MI-05 | Outpatient queue mapping and per-demand progress projection | No mapping relation/table/API; current queue entry has one `ReffId`/`ReffDesc`, and frontend has one transaction per queue card. | Domain `:145-149`, `277-279`, `531-539`; workflow `:161-231` |
-| MI-06 | Quantity-scoped Fulfillment Clearance decision record | No Payment/Coverage evidence correlation or preparation authorization exists. | Domain `:265-267`, `381-389`; screen design `:271-290` |
+| MI-06 | Dispense Authorized policy evaluation over financial/coverage evidence | No payer-path evidence correlation or preparation authorization policy exists in implementation. | Domain `:265-267`, `381-389`; screen design `:271-290`; BA-08 |
 | MI-07 | Outpatient pharmacy service-point intake and configuration | Shared infrastructure exists, but no demonstrated pharmacy intake contract, seed/configuration, or kiosk path. | Workflow `:114-118`; screen design `:28`, `228-240` |
 | MI-08 | Four operational outpatient screens | Only one mock `Apotek Rajal` tab exists; Telaah Resep, Pelayanan Penjualan, Dispensing, and Serah Obat workbenches are absent. | Screen design `:8-19`, `41-179`; frontend tabs `:5-22` |
 | MI-09 | Exception Worklist, attention projections, and Patient Medication Journey | No read models or UI exist. | Screen design `:21-26`, `78-93`, `181-226` |
@@ -343,7 +502,7 @@ Both must be idempotent, concurrency-protected, and independent of Admission reg
 |---|---|---|---|
 | TD-01 | Monolithic mock `Apotek Rajal` frontend | Suggests one queue transaction owns sale, preparation, and handover; obscures the required four responsibility boundaries. | `ApotekRajal.vue:110-421` |
 | TD-02 | Legacy pharmacy states stored as queue status | Directly violates ADR-APT-001 and can make Tracker authoritative for pharmacy progress. | `types/apotek.ts:1-30`; ADR `:55-79` |
-| TD-03 | Order Deposit model used as payment/fulfillment gate | Cannot represent Sales Invoice, Payment Clearance, BPJS no-payment policy, or mixed coverage. | `types/apotek.ts:3-30`; `RajalTransactionDetail.vue:348-360` |
+| TD-03 | Order Deposit model used as payment/fulfillment gate | Cannot represent Invoice, Payment Clearance, BPJS no-payment policy, or mixed coverage. | `types/apotek.ts:3-30`; `RajalTransactionDetail.vue:348-360` |
 | TD-04 | Inert action controls, random mock values, and local item deletion | Creates false UI completeness and permits behavior prohibited by source-line-only invoicing. | `ApotekRajal.vue:40-110`, `377-393`; queue/detail components |
 | TD-05 | Mutable monolithic legacy `PenjualanModel` / DU | Combines commercial and fulfillment concerns and permits independent item mutation. | `PenjualanModel.cs:56-130`, `185-190` |
 | TD-06 | Dead-end checklist `TelaahModel` | Name overlaps the canonical aggregate but semantics and persistence are incomplete, increasing accidental reuse risk. | `TelaahModel.cs:9-116` |
@@ -357,19 +516,39 @@ Both must be idempotent, concurrency-protected, and independent of Admission reg
 
 ### 9.1 Decisions already settled
 
+- Patient Tracker `QueueEntry` is the sole canonical outpatient-pharmacy queue identity; legacy Farinv queue is read-only and must not create active records (BA-01).
+- Patient Tracker owns queue lifecycle; Pharmacy owns pharmacy workflow. First Medication Preparation Started causes Queue `ServedAt` / `InService`; coordinated Pickup Call causes Queue `DoneAt` / `Done`. No further architecture decision is required for the Pharmacy-to-Tracker milestone contract (BA-02).
+- `OutpatientQueueMapping` is a navigation/association mechanism only, not an aggregate root. It does not own lifecycle, workflow state, or transactional consistency. Queue identity remains in Patient Tracker; medication demand lifecycle remains in Pharmacy aggregates. The pharmacy-side mapping endpoint is a Resep Kerja or a Jual Bebas only; mapping shall not target a Sales Order, Invoice, or Dispensing (BA-03).
+- Pickup/handover categories are projection/worklist categories only, not aggregate lifecycle states. `Dispensing` remains authoritative; operational milestones are process facts/events; worklist categories (`Ready for Pickup`, `Pickup Expired`, `Ready for Review`, `Ready for Handover`, `Completed`) are derived projections. Recipient verification is a Pharmacist operational check, not a process fact or worklist category (BA-04, BC-06).
+- Legacy DU and Invoice are independent features that may coexist during transition with no dual-write. Each owns its own workflow and billing/stock paths; unified sales reporting is a read-only adapter aggregating both sources (BA-05).
+- A canonical Prescription Contract is shared by Legacy Resep and CPOE; pharmacy consumes the contract via a Resep Kerja at intake. Source revisions are detected but do not auto-modify the Resep Kerja; staff review tasks handle changes (BA-06).
+- Cross-context integration uses an Integration Task Table: transactional, retryable, idempotent, and reconcile-able. Business transaction and task creation commit atomically; workers process asynchronously. No distributed transaction, message broker, or transactional outbox is required (BA-07).
+- There is no Financial Clearance or Fulfillment Clearance domain object. Pharmacy policy evaluates financial/coverage evidence to determine Dispense Authorized before preparation and dispensing; handover uses separate gates. BPJS invoice and handover coordination uses the Integration Task Table without a distributed transaction (BA-08).
+- Stock Ledger owns Current Stock and movements only; Pharmacy owns dispensing lifecycle and Available Stock as a fulfillment-planning concept. Reserve is Mutasi to Dispensing Temporary Unit; handover removes stock; No Show return is Mutasi back to Pharmacy Unit. `Prepared` and partial fulfillment semantics belong to Pharmacy aggregates (BA-09). Available Stock ≠ Current Stock.
 - Keep queue lifecycle generic: `Waiting`, `InService`, `Done`, `Withdrawn`.
 - Keep pharmacy operational state out of Patient Tracker.
 - Treat `ServedAt` as first preparation-start evidence.
 - Treat `DoneAt` as coordinated pickup-call evidence, not handover.
-- Keep Sales Invoice and Dispense Order independent and coordinated through Sales Order Lines.
+- Keep Invoice and Dispensing independent and coordinated through Sales Order Items.
 - Do not create manual medication invoice items.
-- Establish the current BPJS Sales Invoice only with successful handover.
-- Keep Final Dispense Review attempts immutable; failure returns only the affected Dispense Order to `Preparing`.
+- Establish the current BPJS Invoice only with successful handover.
+- Keep Final Dispense Review attempts immutable; failure returns only the affected Dispensing to `Preparing`.
 - Preserve separate records for multiple medication demands sharing one queue.
+- Jual Bebas is accepted or declined by Pharmacy Staff without Pharmacist approval; optional consultation is SOP-only and not a domain gate (BC-02).
+- Outpatient Pharmacy fulfillment boundary is the active Registration Period; no separate Fulfillment Episode concept. At most one active Sales Order per Prescription per Registration, except that Fornas Not Covered items may establish a separate Patient-Pay Sales Order independent of the BPJS-covered Sales Order. Iter entitlement is system-managed through Legacy Resep `Iter`; Pharmacist decides whether unused Iter may be honored at fulfillment time and may decline even when remaining Iter exists (BC-09, BC-14).
+- Partial Prescription Fulfillment is permitted for Patient Request, Stock Shortage, and Fornas Not Covered items at the Prescription-to-Sales Order boundary. Excluded or uncovered lines remain on the originating Prescription or move to a separate Patient-Pay Sales Order; Salinan Resep supports external fulfillment when lines stay unfulfilled. Pharmacist approves when professional review is required. Multiple Dispensings per Sales Order is execution only, not this policy (BC-04, BC-14).
+- Outpatient Pharmacy does not support Backorder, alternate stock source selection, fulfillment routing, or inter-pharmacy sourcing. Shortage before Sales Order establishment is resolved immediately by placing only items still committable from Available Stock on the Sales Order and issuing Salinan Resep for unfulfilled items; no outstanding fulfillment obligation is retained. Available Stock is not Current Stock (BC-10, `BR-APT-146`).
+- Fornas classifies lines as Covered or Not Covered. Covered items follow BPJS fulfillment with coverage evidence sufficient for Dispense Authorized. Not Covered items are not auto-cancelled; they may form an independent Patient-Pay Sales Order requiring self-pay financial clearance before Dispense Authorized. One Prescription may yield both a BPJS-covered Sales Order and a Patient-Pay Sales Order (BC-14).
+- Invoice commercial structure follows the legacy sales model. Non-medication components are not free-form invoice items. BHP is a catalog sales item. Item-specific charges (packaging, compounding) are item-level charges; transaction-wide adjustments (rounding) are invoice-level charges. No additional invoice component model is introduced (BC-08).
+- Authorized Recipient verification is an operational Pharmacist responsibility and is not system-enforced. Medication Handover may optionally record recipient phone number and relationship for reference only. The system shall not require identity validation, legal relationship verification, document capture, or an authorization workflow (BC-06).
+- Patient Education is a lightweight acknowledgement that medication counseling was provided before handover. The system records education timestamp and responsible Pharmacist. Detailed counseling notes are optional and recorded only when the Pharmacist considers additional documentation necessary (BC-07).
+- Exception handling is authority-based. Returns, corrections, expired collection overrides, and other dispensing exceptions require authorization by an authorized pharmacist according to operational policy. No monetary approval threshold model is introduced (BC-03).
+- Medication awaiting pickup may remain Ready for Pickup for a configurable Collection Window (default 7 days), then becomes Pickup Expired. Ordinary handover is blocked until an authorized pharmacist records a Collection Window Override with reason. Pickup Expired does not expire the Dispensing; terminal uncollected close remains `WF-APT-RJ-007` (BC-01).
+- Queue entries not progressed into the pharmacy workflow may be closed from Waiting (decision TAKEN) with a mandatory close reason. Tracker sets Withdrawn. No additional queue state is introduced. Close is not available after In Service (BC-05).
 
 ### 9.2 Decisions still required before architecture approval
 
-Architecture approval requires explicit disposition of BA-01 through BA-09 and business ratification of BC-01 through BC-14. These are decision gates, not delivery steps. The remaining Existing Capability Extension, Missing Implementation, and Technical Debt findings can then be evaluated against those ratified boundaries without inventing new sources of truth.
+Architecture approval requires business ratification of BC-11 through BC-13. BA-01 through BA-09, BC-01 through BC-10, and BC-14 are resolved. These are decision gates, not delivery steps. The remaining Existing Capability Extension, Missing Implementation, and Technical Debt findings can then be evaluated against those ratified boundaries without inventing new sources of truth.
 
 ### 9.3 Overall classification
 
@@ -377,5 +556,5 @@ The repository is **architecture-partially-aligned but implementation-absent**:
 
 - aligned: queue enum boundary and several reusable platform capabilities;
 - conflicting: legacy DU, F-09 milestone semantics, and current frontend queue/payment model;
-- unresolved: identity, aggregate relationship, integration reliability, financial and inventory boundaries, and operational policy thresholds;
+- unresolved: operational policy thresholds and remaining implementation against ratified boundaries;
 - missing: all target Apotek aggregates, workflows, screens, projections, integrations, and verification.
