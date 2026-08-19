@@ -41,6 +41,11 @@ public class PakaiBedModel : IPakaiBed
             kelas.ToReff(), tarif, auditTrail);
     }
 
+    public void Void(string userId, DateTime voidDateTime)
+    {
+        AuditTrail.Batal(userId, voidDateTime);
+    }
+
 public string PakaiBedId { get; init; }
     public PeriodePakaiBedType Periode { get; private set; }
     public RegReff Reg { get; init; }

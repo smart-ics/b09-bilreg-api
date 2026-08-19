@@ -1,5 +1,7 @@
+using Bilreg.Api.Controllers.ChargeContext;
+using Bilreg.Api.Helpers;
 using Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases;
-using Bilreg.Application.BedUsageContext.RoomRateFeature.UseCases;
+using Bilreg.Application.ChargeContext.TindakanFeature.UseCases;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -26,6 +28,18 @@ public class PakaiBedController : ControllerBase
         var response = await _mediator.Send(cmd);
         return Ok(new JSendOk(response));
     }
+
+    [HttpPatch]
+    [Route("batal")]
+    public async Task<IActionResult> Batal(PakaiBedVoidRequest req)
+    {
+        var userAgent = HttpHelper.GetUserAgent(Request);
+        var remoteIpAddress = HttpHelper.GetIpAddress(Request, HttpContext);
+        var cmd = new PakaiBedVoidCommand(req.PakaiBedId, req.UserId, req.VoidReason, userAgent, remoteIpAddress);
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+    }
+
     [HttpGet]
     [Route("{pakaiBedId}")]
     public async Task<IActionResult> GetData(string pakaiBedId)
@@ -34,6 +48,7 @@ public class PakaiBedController : ControllerBase
         var response = await _mediator.Send(query);
         return Ok(new JSendOk(response));
     }
+
     [HttpGet]
     [Route("{regId}/list")]
     public async Task<IActionResult> ListDataByReg(string regId)
@@ -43,4 +58,5 @@ public class PakaiBedController : ControllerBase
         return Ok(new JSendOk(response));
     }
 
+    public record PakaiBedVoidRequest(string PakaiBedId, string UserId, string VoidReason);
 }
