@@ -94,11 +94,11 @@ F-10 is primarily a **contract/operability** gap, not new aggregate invariants. 
 
 | Path | Change |
 |---|---|
-| [`TrkGetQuery.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/AntrianFeature/TrkGetQuery.cs) | **A** — `TrkGetQuery` / `TrkGetResponse` / `TrkGetHandler` |
-| [`QueAntrianEntryActionResponse.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/AntrianFeature/QueAntrianEntryActionResponse.cs) | **A** — shared Mulai/Selesai response |
-| [`QueMulaiPeriksaCmd.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/AntrianFeature/QueMulaiPeriksaCmd.cs) | **M** — `IRequest<QueAntrianEntryActionResponse>` |
-| [`QueSelesaiPeriksaCmd.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/AntrianFeature/QueSelesaiPeriksaCmd.cs) | **M** — same |
-| [`QueGetAntrianQuery.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/AntrianFeature/QueGetAntrianQuery.cs) | **M** — `PasienTrackerId`, `ServedAt?`, `DoneAt?` |
+| [`TrkGetQuery.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/AntrianFeature/UseCases/TrkGetQuery.cs) | **A** — `TrkGetQuery` / `TrkGetResponse` / `TrkGetHandler` |
+| [`QueAntrianEntryActionResponse.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/AntrianFeature/UseCases/QueAntrianEntryActionResponse.cs) | **A** — shared Mulai/Selesai response |
+| [`QueMulaiPeriksaCmd.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/AntrianFeature/UseCases/QueMulaiPeriksaCmd.cs) | **M** — `IRequest<QueAntrianEntryActionResponse>` |
+| [`QueSelesaiPeriksaCmd.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/AntrianFeature/UseCases/QueSelesaiPeriksaCmd.cs) | **M** — same |
+| [`QueGetAntrianQuery.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/AntrianFeature/UseCases/QueGetAntrianQuery.cs) | **M** — `PasienTrackerId`, `ServedAt?`, `DoneAt?` |
 | [`PasienTrackerController.cs`](../../../src/bilreg/Bilreg.Api/Controllers/AdmisiContext/AntrianFeature/PasienTrackerController.cs) | **M** — `GET {pasienTrackerId}` |
 | [`AntrianController.cs`](../../../src/bilreg/Bilreg.Api/Controllers/AdmisiContext/AntrianFeature/AntrianController.cs) | **M** — Mulai/Selesai return response object |
 | [`TrkGetHandlerTest.cs`](../../../src/bilreg/Bilreg.Test/AdmisiContext/AntrianFeature/TrkGetHandlerTest.cs) | **A** |

@@ -31,8 +31,8 @@ Financial Adjustment digunakan untuk menyelesaikan ketidaksesuaian yang ditemuka
 3. Sistem memvalidasi bahwa Financial Adjustment diperbolehkan.
 4. Sistem menerapkan Financial Adjustment pada Billing Set.
 5. Sistem meregenerasi Financial Projection apabila diperlukan.
-6. Apabila Financial Adjustment memerlukan pembentukan atau perubahan Financial Charge oleh Charge Source, proses dilanjutkan ke **[SOP-TR-09 — Reopen Billing](<SOP-TR-09 — Reopen Billing.md>)**.
-7. Apabila Financial Adjustment telah selesai dan tidak memerlukan perubahan dari Charge Source, proses dilanjutkan ke **[SOP-TR-06 — Financial Responsibility Allocation](<SOP-TR-06 — Financial Responsibility Allocation.md>)**.
+6. Apabila Financial Adjustment memerlukan pembentukan atau perubahan Financial Charge oleh Charge Source, proses dilanjutkan ke **[SOP-TR-09 — Reopen Billing](SOP-TR-09 — Reopen Billing.md)**.
+7. Apabila Financial Adjustment telah selesai dan tidak memerlukan perubahan dari Charge Source, proses dilanjutkan ke **[SOP-TR-06 — Financial Responsibility Allocation](SOP-TR-06 — Financial Responsibility Allocation.md)**.
 
 ---
 
@@ -63,8 +63,8 @@ Financial Adjustment berhasil diterapkan pada Billing Set Registrasi.
   - Subsidy.
   - Merge Billing Correction.
 - Financial Adjustment dapat meregenerasi Financial Projection.
-- Billing hanya boleh dibuka kembali melalui **[SOP-TR-09 — Reopen Billing](<SOP-TR-09 — Reopen Billing.md>)** apabila Financial Adjustment memerlukan pembentukan atau perubahan Financial Charge oleh Charge Source.
-- Setelah Reopen Billing selesai, proses Financial Control harus diulang mulai dari **[SOP-TR-02 — Close Bill](<SOP-TR-02 — Close Bill.md>)**.
+- Billing hanya boleh dibuka kembali melalui **[SOP-TR-09 — Reopen Billing](SOP-TR-09 — Reopen Billing.md)** apabila Financial Adjustment memerlukan pembentukan atau perubahan Financial Charge oleh Charge Source.
+- Setelah Reopen Billing selesai, proses Financial Control harus diulang mulai dari **[SOP-TR-02 — Close Bill](SOP-TR-02 — Close Bill.md)**.
 
 ---
 

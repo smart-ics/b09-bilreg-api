@@ -33,7 +33,7 @@ Reopen Billing digunakan apabila koreksi tidak dapat diselesaikan hanya melalui 
 5. Sistem mengubah status Billing dari **CLOSED** menjadi **OPEN**.
 6. Sistem kembali mengizinkan seluruh Charge Source membentuk, mengubah, atau membatalkan Financial Charge sesuai kewenangannya.
 7. Sistem mencatat Audit Trail Reopen Billing.
-8. Setelah seluruh perubahan Financial Charge selesai dilakukan oleh Charge Source, proses dilanjutkan ke **[SOP-TR-02 — Close Bill](<SOP-TR-02 — Close Bill.md>)**.
+8. Setelah seluruh perubahan Financial Charge selesai dilakukan oleh Charge Source, proses dilanjutkan ke **[SOP-TR-02 — Close Bill](SOP-TR-02 — Close Bill.md)**.
 
 ---
 
@@ -60,9 +60,9 @@ Billing berhasil dibuka kembali sehingga Charge Source dapat melakukan perubahan
 - Reopen Billing tidak mengubah Pricing Snapshot dari Financial Charge yang sudah ada.
 - Financial Charge baru yang dihasilkan setelah Reopen Billing mengikuti mekanisme pembentukan Financial Charge yang berlaku pada Charge Source.
 - Setelah Reopen Billing, seluruh proses Financial Control wajib diulang mulai dari:
-  - **[SOP-TR-02 — Close Bill](<SOP-TR-02 — Close Bill.md>)**
-  - **[SOP-TR-03 — Merge Billing](<SOP-TR-03 — Merge Billing.md>)** (apabila terdapat Merge Request baru atau perubahan Billing Set hasil Merge)
-  - **[SOP-TR-04 — Financial Verification](<SOP-TR-04 — Financial Verification.md>)**
+  - **[SOP-TR-02 — Close Bill](SOP-TR-02 — Close Bill.md)**
+  - **[SOP-TR-03 — Merge Billing](SOP-TR-03 — Merge Billing.md)** (apabila terdapat Merge Request baru atau perubahan Billing Set hasil Merge)
+  - **[SOP-TR-04 — Financial Verification](SOP-TR-04 — Financial Verification.md)**
   - dan tahapan berikutnya hingga Finalization.
 - Setiap Reopen Billing wajib menghasilkan Audit Trail yang mencatat:
   - Registrasi

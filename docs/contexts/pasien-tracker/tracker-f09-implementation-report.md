@@ -1,6 +1,8 @@
 # F-09 Implementation Report — Pharmacy Queue Integrated into Patient Journey
 
-**Artifact status:** Implementation summary (closed)  
+> **Supersession (BA-01, 2026-08-15):** This report documents the legacy Farinv-integrated implementation. The canonical outpatient-pharmacy queue identity is now Patient Tracker `QueueEntry`. Farinv queue identity is deprecated for new interactions; historical Farinv data is read-only. F-09 `Apotek-Start` / `Apotek-Done` evidence remains reusable but must reference `QueueEntryId` from Patient Tracker. See [Apotek Domain](../apotek/apotek-domain.md) (`BR-APT-097`) and [ADR-APT-001](../apotek/adr/ADR-APT-001-queu-boundary-and-pharmacy-workflow-state-ownership.md).
+
+**Artifact status:** Implementation summary (closed; queue identity superseded by BA-01)  
 **Bounded context:** Patient Tracker (Bilreg) + Farinv Sales Antrian (pharmacy Queue Session)  
 **Authoritative domain:** [`TRACKER-DOMAIN.md`](TRACKER-DOMAIN.md)  
 **Source gap:** F-09 in [`tracker-codebase-gap-report.md`](tracker-codebase-gap-report.md) (Severity: High)  
@@ -109,7 +111,7 @@ Farinv Delivered (+ DeliveredAt)   → Tracker DoneAt      | Apotek-Done (queue 
 | Path | Change |
 |---|---|
 | [`PharmacyQueueEvidence.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/AntrianFeature/PharmacyQueueEvidence.cs) | **A** — `Apotek-Start`/`Apotek-Done`; `RequireTracker`; idempotent append |
-| [`TrkAppendPharmacyEvidenceCmd.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/AntrianFeature/TrkAppendPharmacyEvidenceCmd.cs) | **A** — MediatR command + handler |
+| [`TrkAppendPharmacyEvidenceCmd.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/AntrianFeature/UseCases/TrkAppendPharmacyEvidenceCmd.cs) | **A** — MediatR command + handler |
 | [`PasienTrackerController.cs`](../../../src/bilreg/Bilreg.Api/Controllers/AdmisiContext/AntrianFeature/PasienTrackerController.cs) | **M** — `POST pharmacy/evidence` |
 | [`PharmacyQueueEvidenceTest.cs`](../../../src/bilreg/Bilreg.Test/AdmisiContext/AntrianFeature/PharmacyQueueEvidenceTest.cs) | **A** |
 
@@ -117,11 +119,11 @@ Farinv Delivered (+ DeliveredAt)   → Tracker DoneAt      | Apotek-Done (queue 
 
 | Path | Change |
 |---|---|
-| [`AntrianEntryModel.cs`](../../../src/bilreg/Farinv.Domain/SalesContext/AntrianFeature/AntrianEntryModel.cs) | **M** — `PasienTrackerId`, `ServedAt`, `CreateIdentified`, `ConfirmSale` |
-| [`AntrianModel.cs`](../../../src/bilreg/Farinv.Domain/SalesContext/AntrianFeature/AntrianModel.cs) | **M** — `AddEntryByTracker`, `ConfirmPharmacySale`, find-by-tracker |
-| [`FARIN_AntrianEntry.sql`](../../../src/bilreg/Farinv.Sqldb/SalesContext/AntrianFeature/FARIN_AntrianEntry.sql) | **M** — additive columns in CREATE |
+| `AntrianEntryModel.cs` | **M** — `PasienTrackerId`, `ServedAt`, `CreateIdentified`, `ConfirmSale` |
+| `AntrianModel.cs` | **M** — `AddEntryByTracker`, `ConfirmPharmacySale`, find-by-tracker |
+| `FARIN_AntrianEntry.sql` | **M** — additive columns in CREATE |
 | DTO/DAL/Repo/ViewDto/`AntrianDal` list projection | **M** — map new columns |
-| [`AntrianController.cs`](../../../src/bilreg/Farinv.Api/Controllers/SalesContext/AntrianFeature/AntrianController.cs) | **M** — routes `ByTracker` / `ConfirmSale` / `Deliver` (refs cmds landed in F-10) |
+| `AntrianController.cs` | **M** — routes `ByTracker` / `ConfirmSale` / `Deliver` (refs cmds landed in F-10) |
 | `Farinv.Sqldb.sqlproj` / `Farinv.Test.csproj` | **M** |
 
 **Note:** At `be331b42` alone, controller/domain reference types (`Que*Cmd`, `PharmacyTrackerIdentity`) that are **missing from that tree**. Treat `be331b42` as incomplete without `5b7627df`.
@@ -192,7 +194,7 @@ dotnet test src/bilreg/Bilreg.Test/Bilreg.Test.csproj --filter "FullyQualifiedNa
 
 Result at implementation time: **8 passed** (Farinv) + **3 passed** (Bilreg).
 
-**DB migration (ops):** run [`FARIN_AntrianEntry_M1_TrackerServed_Alter.sql`](../../../src/bilreg/Farinv.Sqldb/SalesContext/AntrianFeature/FARIN_AntrianEntry_M1_TrackerServed_Alter.sql) on Farinv database before deploying ConfirmSale/`ServedAt` persistence.
+**DB migration (ops):** run `FARIN_AntrianEntry_M1_TrackerServed_Alter.sql` on Farinv database before deploying ConfirmSale/`ServedAt` persistence.
 
 ---
 

@@ -33,7 +33,7 @@ Financial Responsibility Allocation memastikan seluruh Financial Charge telah me
 5. Sistem membentuk atau meregenerasi Financial Projection berdasarkan hasil Allocation.
 6. Sistem menampilkan hasil Financial Responsibility Allocation.
 7. Verifikator memverifikasi hasil Allocation.
-8. Apabila Allocation telah sesuai, proses dilanjutkan ke **[SOP-TR-07 — Finalize Financial Responsibility](<SOP-TR-07 — Finalize Financial Responsibility.md>)**.
+8. Apabila Allocation telah sesuai, proses dilanjutkan ke **[SOP-TR-07 — Finalize Financial Responsibility](SOP-TR-07 — Finalize Financial Responsibility.md)**.
 9. Apabila Allocation belum sesuai, Verifikator melakukan perbaikan Allocation hingga seluruh Financial Responsibility tervalidasi.
 
 ---

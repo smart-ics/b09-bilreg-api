@@ -315,7 +315,7 @@ This domain is applied through the following business workflows:
 
 | Workflow | General business outcome | Canonical workflow artifact |
 |---|---|---|
-| Outpatient Apotek | Resolve outpatient medication demand through handover or an accountable non-fulfillment outcome. | [Workflow](./apotek-rajal-workflow.md) |
+| Outpatient Apotek | Resolve outpatient medication demand through handover or an accountable non-fulfillment outcome. | [Workflow](../contexts/apotek/outpatient-apotek-workflow.md) |
 
 Detailed triggers, sequencing, decisions, exceptions, and handoffs are
 owned by the referenced workflow specification. Domain rules, states,
@@ -331,7 +331,7 @@ Domain ini diterapkan melalui workflow bisnis berikut:
 
 | Workflow | Outcome bisnis umum | Artifact workflow canonical |
 |---|---|---|
-| Outpatient Apotek | Menyelesaikan permintaan obat Rawat Jalan melalui handover atau outcome non-fulfillment yang accountable. | [Workflow](./apotek-rajal-workflow-id.md) |
+| Outpatient Apotek | Menyelesaikan permintaan obat Rawat Jalan melalui handover atau outcome non-fulfillment yang accountable. | [Workflow](../contexts/apotek/outpatient-apotek-workflow-id.md) |
 
 Trigger, urutan, keputusan, exception, dan handoff terperinci dimiliki
 oleh spesifikasi workflow yang direferensikan. Business Rules, state,
@@ -562,8 +562,8 @@ Use exact canonical terms. Keep each step at business level.
 Good:
 
 ```text
-1. Cashier establishes Payment Clearance for the applicable Sales Invoice.
-2. Apotek establishes Fulfillment Clearance for the allocated Dispense Order quantity.
+1. Cashier establishes Payment Clearance for the applicable Invoice.
+2. Apotek evaluates Dispense Authorized for the allocated Dispensing quantity.
 ```
 
 Bad:

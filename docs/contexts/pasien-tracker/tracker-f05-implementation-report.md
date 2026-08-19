@@ -105,11 +105,11 @@ Event description strings are free text (BR-TRK-016) but **this slice standardiz
 - [`QueueEvidenceReference.cs`](../../../src/bilreg/Bilreg.Domain/AdmisiContext/AntrianFeature/QueueEvidenceReference.cs) — **new** VO.
 
 ### Application
-- [`QueAnonymousIntakeCmd.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/AntrianFeature/QueAnonymousIntakeCmd.cs) — **new** intake command/handler.
+- [`QueAnonymousIntakeCmd.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/AntrianFeature/UseCases/QueAnonymousIntakeCmd.cs) — **new** intake command/handler.
 - [`AdmissionQueueIdentify.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/AntrianFeature/AdmissionQueueIdentify.cs) — **new** shared identify + evidence helper (`internal`).
-- [`TrkJourneyResolveSelectCmd.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/AntrianFeature/TrkJourneyResolveSelectCmd.cs) — **breaking shape:** requires `AntrianId`, `NoUrut`; loads queue; atomic identify.
-- [`TrkJourneyResolveNewCmd.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/AntrianFeature/TrkJourneyResolveNewCmd.cs) — **breaking shape:** requires `AntrianId`, `NoUrut`; drops client `EventName`/`ReffId` (derived from queue).
-- [`QueGetNoAntrianByServicePointCmd.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/AntrianFeature/QueGetNoAntrianByServicePointCmd.cs) — **deleted** (was fully commented dormant code).
+- [`TrkJourneyResolveSelectCmd.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/AntrianFeature/UseCases/TrkJourneyResolveSelectCmd.cs) — **breaking shape:** requires `AntrianId`, `NoUrut`; loads queue; atomic identify.
+- `TrkJourneyResolveNewCmd.cs` — **breaking shape:** requires `AntrianId`, `NoUrut`; drops client `EventName`/`ReffId` (derived from queue).
+- `QueGetNoAntrianByServicePointCmd.cs` — **deleted** (was fully commented dormant code).
 
 ### Infrastructure / SQL
 - [`AntrianRepo.cs`](../../../src/bilreg/Bilreg.Infrastructure/AdmisiContext/AntrianFeature/AntrianRepo.cs) — `AreEqual` includes `PasienTrackerId`.

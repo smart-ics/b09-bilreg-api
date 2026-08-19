@@ -6,7 +6,7 @@ namespace Bilreg.Application.AdmisiContext.AntrianFeature;
 /// <summary>
 /// Appends pharmacy service evidence to Patient Tracker (workflow 10.6 / F-09).
 /// </summary>
-internal static class PharmacyQueueEvidence
+public static class PharmacyQueueEvidence
 {
     public const string ApotekStartEventName = "Apotek-Start";
     public const string ApotekDoneEventName = "Apotek-Done";
