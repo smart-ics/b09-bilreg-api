@@ -185,6 +185,7 @@ Index lists **Active** and **Working** only. Historical reports live under [`doc
 | `docs/contexts/apotek/outpatient-apotek-screen-and-aggregate-design.md` | Outpatient Apotek Screen and Aggregate Design |
 | `docs/contexts/apotek/outpatient-apotek-workflow-id.md` | Workflow Outpatient Apotek |
 | `docs/contexts/apotek/outpatient-apotek-workflow.md` | Outpatient Apotek Workflow |
+| `docs/contexts/apotek/outpatient-apotek-progress-tracker.md` | Outpatient Apotek Implementation Progress Tracker |
 | `docs/contexts/apotek/working/APOTEK-AVAILABLE-STOCK-CONCEPT-INTRODUCTION.md` | Available Stock ≠ Current Stock (formula still open: PD-09) |
 | `docs/contexts/apotek/working/outpatient-apotek-repository-gap-analysis-report.md` | Repository Gap Analysis — remaining BC-11–BC-13 |
 | `docs/contexts/apotek/working/APOTEK-RESEP-REVISION-TASK-CONSISTENCY-REPORT.md` | PD-11 — Remove `BILRG_AptResepRevisionTask` |

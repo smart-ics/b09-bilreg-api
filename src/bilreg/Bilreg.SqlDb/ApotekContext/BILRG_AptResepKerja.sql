@@ -1,0 +1,29 @@
+CREATE TABLE BILRG_AptResepKerja (
+    ResepKerjaId VARCHAR(12) NOT NULL CONSTRAINT DF_BILRG_AptResepKerja_ResepKerjaId DEFAULT(''),
+    SourceKind INT NOT NULL CONSTRAINT DF_BILRG_AptResepKerja_SourceKind DEFAULT(0),
+    SourceResepId VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_AptResepKerja_SourceResepId DEFAULT(''),
+    RegId VARCHAR(10) NOT NULL CONSTRAINT DF_BILRG_AptResepKerja_RegId DEFAULT(''),
+    PasienId VARCHAR(15) NOT NULL CONSTRAINT DF_BILRG_AptResepKerja_PasienId DEFAULT(''),
+    PasienName VARCHAR(60) NOT NULL CONSTRAINT DF_BILRG_AptResepKerja_PasienName DEFAULT(''),
+    DokterId VARCHAR(10) NOT NULL CONSTRAINT DF_BILRG_AptResepKerja_DokterId DEFAULT(''),
+    DokterName VARCHAR(40) NOT NULL CONSTRAINT DF_BILRG_AptResepKerja_DokterName DEFAULT(''),
+    LayananId VARCHAR(5) NOT NULL CONSTRAINT DF_BILRG_AptResepKerja_LayananId DEFAULT(''),
+    Urgenitas INT NOT NULL CONSTRAINT DF_BILRG_AptResepKerja_Urgenitas DEFAULT(0),
+    IterEntitled INT NOT NULL CONSTRAINT DF_BILRG_AptResepKerja_IterEntitled DEFAULT(0),
+    IterConsumed INT NOT NULL CONSTRAINT DF_BILRG_AptResepKerja_IterConsumed DEFAULT(0),
+    CareSetting INT NOT NULL CONSTRAINT DF_BILRG_AptResepKerja_CareSetting DEFAULT(0),
+    CaptureNote VARCHAR(512) NOT NULL CONSTRAINT DF_BILRG_AptResepKerja_CaptureNote DEFAULT(''),
+    DocumentRef VARCHAR(200) NOT NULL CONSTRAINT DF_BILRG_AptResepKerja_DocumentRef DEFAULT(''),
+    ResepKerjaStatus INT NOT NULL CONSTRAINT DF_BILRG_AptResepKerja_ResepKerjaStatus DEFAULT(0),
+    ItemsFrozen BIT NOT NULL CONSTRAINT DF_BILRG_AptResepKerja_ItemsFrozen DEFAULT(0),
+    CrtUser VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_AptResepKerja_CrtUser DEFAULT(''),
+    CrtDate DATETIME NOT NULL CONSTRAINT DF_BILRG_AptResepKerja_CrtDate DEFAULT('3000-01-01'),
+    UpdUser VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_AptResepKerja_UpdUser DEFAULT(''),
+    UpdDate DATETIME NOT NULL CONSTRAINT DF_BILRG_AptResepKerja_UpdDate DEFAULT('3000-01-01'),
+    VodUser VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_AptResepKerja_VodUser DEFAULT(''),
+    VodDate DATETIME NOT NULL CONSTRAINT DF_BILRG_AptResepKerja_VodDate DEFAULT('3000-01-01'),
+    CONSTRAINT PK_BILRG_AptResepKerja PRIMARY KEY CLUSTERED (ResepKerjaId)
+);
+GO
+CREATE UNIQUE INDEX UX_BILRG_AptResepKerja_ElectronicSource ON BILRG_AptResepKerja(SourceKind, SourceResepId) WHERE SourceKind IN (0, 1) AND SourceResepId <> '' AND VodDate = '3000-01-01';
+GO
