@@ -119,6 +119,7 @@
     <Folder Include="BrgContext\StandardFeature\Kfa\" />
     <Folder Include="InventoryContext\MutasiFeature\" />
     <Folder Include="InventoryContext\StokFeature\" />
+    <Folder Include="PaymentContext\DepositFeature" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OpCase.sql" />
@@ -333,6 +334,7 @@
     <Build Include="ChargeContext\TarifFeature\BILRG_NilaiTarif_Phase0_SourcePolicyId_Alter.sql" />
     <Build Include="ChargeContext\TarifFeature\BILRG_NilaiTarif_Phase0_UX_Variant_Index.sql" />
     <Build Include="ChargeContext\TarifFeature\BILRG_TarifOperationalState.sql" />
+    <Build Include="PaymentContext\DepositFeature\ta_trs_deposit.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="BrgContext\BrgFeature\tb_barang_satuan.sql" />

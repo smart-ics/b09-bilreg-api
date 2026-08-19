@@ -8,7 +8,7 @@ public class DepositModel : IDepositId
 {
     public DepositModel(string depositId, DateTime depositDate,
         RegReff reg, LayananReff layanan, string ketarangan,
-        decimal nilaiDeposit, AuditInfoType auditInfo)
+        decimal nilaiDeposit, AuditTrailType audit)
     {
         DepositId = depositId;
         DepositDate = depositDate;
@@ -16,7 +16,7 @@ public class DepositModel : IDepositId
         Layanan = layanan;
         Keterangan = ketarangan;
         NilaiDeposit = nilaiDeposit;
-        AuditInfo = auditInfo;
+        Audit = audit;
     }
 
     #region PROPERTY
@@ -26,13 +26,13 @@ public class DepositModel : IDepositId
     public LayananReff Layanan { get; init; }
     public string Keterangan { get; init; }
     public decimal NilaiDeposit { get; init; }
-    public AuditInfoType AuditInfo { get; init; }
+    public AuditTrailType Audit { get; init; }
     #endregion
 
-    public static DepositModel Create(RegModel reg, LayananType layanan, string keterangan, decimal nilaiDeposit, AuditInfoType auditInfo)
+    public static DepositModel Create(RegModel reg, LayananType layanan, string keterangan, decimal nilaiDeposit, AuditTrailType audit)
     {
         var newId = Nuna.Lib.AutoNumberHelper.NunaId.New("DEP");
-        return new DepositModel(newId, DateTime.Now, reg.ToReff(), layanan.ToReff(), keterangan, nilaiDeposit, auditInfo);
+        return new DepositModel(newId, DateTime.Now, reg.ToReff(), layanan.ToReff(), keterangan, nilaiDeposit, audit);
     }
 }
 
