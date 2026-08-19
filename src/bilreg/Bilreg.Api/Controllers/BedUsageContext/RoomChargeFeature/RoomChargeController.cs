@@ -8,7 +8,7 @@ namespace Bilreg.Api.Controllers.BedUsageContext.RoomChargeFeature;
 
 [Route("api/[controller]")]
 [ApiController]
-[Authorize]
+//[Authorize]
 public class RoomChargeController : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -16,6 +16,13 @@ public class RoomChargeController : ControllerBase
     public RoomChargeController(IMediator mediator)
     {
         _mediator = mediator;
+    }
+
+    [HttpPost]
+    public async Task<IActionResult>Create(RoomChargeCreateCmd cmd)
+    {
+        var result = await _mediator.Send(cmd);
+        return Ok(new JSendOk(result));
     }
     [HttpGet]
     [Route("{id}")]

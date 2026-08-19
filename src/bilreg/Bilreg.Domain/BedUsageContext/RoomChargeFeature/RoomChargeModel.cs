@@ -3,7 +3,6 @@ using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.PakaiBedFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Nuna.Lib.AutoNumberHelper;
-using System.Security.Cryptography.X509Certificates;
 
 namespace Bilreg.Domain.BedUsageContext.RoomChargeFeature;
 
@@ -36,7 +35,7 @@ public class RoomChargeModel : IRoomChargeKey
         Diskon = diskon;
         Total = total;
         Qty = qty;
-        _listKomponen = listKomponen.ToList() ?? [];
+        _listKomponen = listKomponen?.ToList() ?? [];
     }
 
     public static RoomChargeModel Create(PakaiBedModel pakaiBed, RegModel reg, 

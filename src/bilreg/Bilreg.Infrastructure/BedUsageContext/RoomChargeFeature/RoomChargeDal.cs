@@ -144,6 +144,8 @@ public class RoomChargeDal : IRoomChargeDal
         dp.AddParam("@fd_tgl_trs", dto.fd_tgl_trs, SqlDbType.VarChar);
         dp.AddParam("@fs_jam_trs", dto.fs_jam_trs, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_petugas", dto.fs_kd_petugas, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_reg", dto.fs_kd_reg, SqlDbType.VarChar);
+        dp.AddParam("@fs_kd_layanan", dto.fs_kd_layanan, SqlDbType.VarChar);
         dp.AddParam("@fs_kd_bed", dto.fs_kd_bed, SqlDbType.VarChar);
 
         dp.AddParam("@fn_tarif", dto.fn_tarif, SqlDbType.Decimal);

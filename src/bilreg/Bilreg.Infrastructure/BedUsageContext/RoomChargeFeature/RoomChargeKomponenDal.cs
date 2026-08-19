@@ -24,20 +24,26 @@ public class RoomChargeKomponenDal : IRoomChargeKomponenDal
     }
     public void Insert(IEnumerable<RoomChargeKomponenDto> listModel)
     {
+        var rows = listModel.ToList();
+        if (rows.Count == 0)
+            return;
+        
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
-        using var bcp = new SqlBulkCopy(conn);
-
         conn.Open();
-        bcp.AddMap("fs_kd_trs", "fs_kd_trs");
-        bcp.AddMap("fs_kd_detil_tarif", "fs_kd_detil_tarif");
-        bcp.AddMap("fn_tarif", "fn_tarif");
-        bcp.AddMap("fn_diskon", "fn_diskon");
-        bcp.AddMap("fn_total", "fn_total");
+        
+        var dataTable = rows.AsDataTable();
+        var destTable = "ta_trs_roomcharge2";
 
-        var fetched = listModel.ToList();
-        bcp.BatchSize = fetched.Count;
-        bcp.DestinationTableName = "ta_trs_roomcharge2";
-        bcp.WriteToServer(fetched.AsDataTable());
+        var dbColumns = SqlBulkHelper.GetTableColumns(conn, destTable);
+
+        using var bcp = new SqlBulkCopy(conn)
+        {
+            BatchSize = rows.Count,
+            DestinationTableName = destTable
+        };
+
+        SqlBulkHelper.MapColumnsCaseInsensitive(bcp, dataTable, dbColumns);
+        bcp.WriteToServer(dataTable);
     }
     
     public void Delete(IRoomChargeKey key)
