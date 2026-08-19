@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using Bilreg.Api.Authorization;
+using Bilreg.Api.Controllers.ApotekContext;
 using Bilreg.Api.Filters;
 using Bilreg.Api.SignalR;
 using Bilreg.Application.AdmisiContext.AntrianFeature;
@@ -155,6 +156,7 @@ public static class PresentationService
         services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
         services.AddSignalR();
         services.AddScoped<ICurrentUserContext, HttpCurrentUserContext>();
+        services.AddScoped<ApotekExceptionFilter>();
         services.AddScoped<AdmisiRanapEnabledFilter>();
         services.AddScoped<JourneyEndpointsEnabledFilter>();
         services.AddScoped<StockLedgerDevSmokeEnabledFilter>();

@@ -104,7 +104,7 @@ A Resep does not become a Sales Order. A completed professional decision authori
 | Invoice Item | One medication, BHP, or other catalog sales item, quantity, price, discount, item-level charges, and value within an Invoice. Every medication or BHP Invoice Item originates from exactly one Sales Order Item and represents the portion of that item billed by the invoice. |
 | BHP | A standard catalog item that may appear as a sales item. It is not a free-form invoice component. |
 | Item-level Charge | An item-specific commercial charge attached to a sales item, such as packaging or compounding fees. |
-| Invoice-level Charge | A transaction-wide commercial adjustment attached to an Invoice, such as rounding. |
+| Invoice-level Charge | A transaction-wide commercial adjustment stored as an Invoice header attribute (for example `Pembulatan`), not as a child entity. |
 | Pricing Snapshot | The immutable commercial basis used when an Invoice is established. |
 | Payer | The Patient, BPJS, insurer, company, or other party expected to bear a medication charge. |
 | Financial Charge | The financial consequence supplied to Tata Rekening from a Medication Sale. |
@@ -114,9 +114,9 @@ A Resep does not become a Sales Order. A completed professional decision authori
 | Payment Clearance | Evidence that the required payment condition has been satisfied. |
 | Coverage Clearance | Evidence that the applicable payer authorizes fulfillment without immediate Patient payment. For outpatient BPJS fulfillment, it combines a valid SEP for the encounter with item-level coverage determined from the authoritative Fornas mapping. |
 | Dispense Authorized | A policy evaluation result indicating medication preparation and dispensing may start, derived from financial and coverage evidence. It is not an aggregate, entity, source of truth, or transaction boundary. |
-| Financial Adjustment | An accountable correction to a Medication Sale or its financial consequences. |
-| Credit Note | An exception commercial document that reduces or reverses an Invoice amount when Tata Rekening no longer permits direct Invoice revision. |
-| Refund | The accountable return of previously settled funds. |
+| Financial Adjustment | An accountable correction to a Medication Sale or its financial consequences. Owned and persisted by Tata Rekening. Not an Apotek aggregate. |
+| Credit Note | An exception commercial document that reduces or reverses an Invoice amount when Tata Rekening no longer permits direct Invoice revision. Owned and persisted by Tata Rekening. Not an Apotek aggregate, entity, or table. Apotek may retain a correlation identity when Tata Rekening returns one. |
+| Refund | The accountable return of previously settled funds. Owned by Tata Rekening, with Cashier execution where settlement requires it. Not an Apotek aggregate. |
 | Dispensing | The authoritative instruction to physically fulfill one or more Sales Order Items from one Sales Order. |
 | Dispensing Item | One medication quantity to be physically fulfilled within a Dispensing. It references exactly one Sales Order Item and carries the applicable care setting and Dispense Cycle. |
 | Dispense Cycle | A defined fulfillment period or batch, especially for inpatient and Unit Dose Dispensing. |
@@ -150,7 +150,7 @@ A Resep does not become a Sales Order. A completed professional decision authori
 | Backorder | An unresolved quantity retained for later fulfillment when supply becomes available. Outpatient Pharmacy does not support Backorder. |
 | Medication Substitution | The accountable replacement of a requested medication product under applicable professional authority. |
 | Unfulfilled Medication Outcome | A final, accountable reason that an accepted medication quantity was not fulfilled. |
-| Salinan Resep | An accountable Prescription Copy record of prescribed medication or quantity not included in the Sales Order or not fulfilled, when applicable. |
+| Copy Resep | An accountable Copy Resep record of prescribed medication or quantity not included in the Sales Order or not fulfilled, when applicable. |
 | Dispense Cancellation | The accountable ending of a Dispensing before successful fulfillment. |
 | Fulfillment Expiry | The ending of a fulfillment opportunity because its permitted service period elapsed. |
 | Medication Return | The accountable return of medication previously prepared, transferred, or handed over. |
@@ -235,7 +235,7 @@ Owns Hasil Telaah Resep, Medication Substitution authorized during Telaah Resep,
 
 ### 4.3 Pharmacy Staff
 
-Coordinates accepted demand, Sales Order progression, outpatient administrative interaction, Medication Preparation, Compounding, and accountable handover within assigned authority. For outpatient fulfillment, Pharmacy Staff calls Queue Numbers, establishes Manual Mapping, communicates the calculated General Patient amount before Invoice establishment, saves the confirmed Invoice, prepares medication according to the Dispensing, and performs the pickup call. For a Jual Bebas, Pharmacy Staff accepts or declines without creating a Resep. Optional Pharmacist consultation is operational SOP guidance only and is not modeled as an approval gate. When outpatient stock cannot support full fulfillment, Pharmacy Staff includes only fulfillable items in the Sales Order and issues Salinan Resep for unfulfilled items. Pharmacy Staff shall not create Backorder, select an alternate stock source, or substitute the medication.
+Coordinates accepted demand, Sales Order progression, outpatient administrative interaction, Medication Preparation, Compounding, and accountable handover within assigned authority. For outpatient fulfillment, Pharmacy Staff calls Queue Numbers, establishes Manual Mapping, communicates the calculated General Patient amount before Invoice establishment, saves the confirmed Invoice, prepares medication according to the Dispensing, and performs the pickup call. For a Jual Bebas, Pharmacy Staff accepts or declines without creating a Resep. Optional Pharmacist consultation is operational SOP guidance only and is not modeled as an approval gate. When outpatient stock cannot support full fulfillment, Pharmacy Staff includes only fulfillable items in the Sales Order and issues Copy Resep for unfulfilled items. Pharmacy Staff shall not create Backorder, select an alternate stock source, or substitute the medication.
 
 ### 4.4 Patient or Caregiver
 
@@ -295,7 +295,7 @@ Represents the active association between an externally owned Pharmacy Queue Ent
 
 ### 5.8 Unfulfilled Medication Outcome
 
-Represents the final reason an accepted quantity was not fulfilled and identifies any Salinan Resep, return, or financial correction required. Outpatient Pharmacy does not use backorder closure.
+Represents the final reason an accepted quantity was not fulfilled and identifies any Copy Resep, return, or financial correction required. Outpatient Pharmacy does not use backorder closure.
 
 ### 5.9 Final Dispense Review Record
 
@@ -337,11 +337,15 @@ No Show resolution
 
 ### 5.14 Resep Kerja
 
-Supporting document. Pharmacy's operational copy of one Resep, created at intake from the Prescription Contract (BA-06). Telaah Resep and Sales Order establishment operate on this copy. Source revisions create a review task and do not silently rewrite the Resep Kerja. Identifier form: `ResepKerja`. Not an aggregate root.
+Supporting document. Pharmacy's operational copy of one Resep, created at intake from the Prescription Contract (BA-06). Telaah Resep and Sales Order establishment operate on this copy. The intake copy is not silently rewritten from the clinical source. Identifier form: `ResepKerja`. Not an aggregate root.
 
 ### 5.15 Jual Bebas
 
 Supporting document. One accepted retail-style medication request without a Resep. Pharmacy Staff accepts or declines it. Decline creates no record (`BR-APT-089`). Identifier form: `JualBebas`. Not an aggregate root.
+
+### 5.16 Copy Resep
+
+Supporting document. Accountable record of prescribed medication or quantity excluded from a Sales Order or not fulfilled, when applicable (`BR-APT-054`, `BR-APT-109`–`115`, `BR-APT-118`). May be issued before or after Sales Order establishment. Identifier form: `CopyResep`. Not an aggregate root.
 
 ## 6. Aggregates
 
@@ -363,11 +367,11 @@ It ensures that invoiced quantities and physical fulfillment remain traceable an
 
 **Aggregate Root:** `Invoice`
 
-The aggregate represents one Medication Sale. It keeps Invoice Items, Pricing Snapshot, Payer, item-level charges, invoice-level charges, financial disposition, Credit Notes, refunds, and Financial Charge outcome mutually consistent. General Patient verbal Purchase Confirmation is evidenced by the accountable establishment of the Invoice and is not retained as a separate object. Non-medication commercial facts use the legacy sales model: BHP as a catalog sales item, item-specific charges on the item, and transaction-wide adjustments on the invoice. No additional invoice component model exists.
+The aggregate represents one Medication Sale. It keeps Invoice Items, Pricing Snapshot, Payer, item-level charges on Invoice Items, transaction-wide commercial totals on the Invoice header, financial disposition, and Financial Charge outcome mutually consistent. It does not own Credit Notes, Refunds, or Financial Adjustment documents; those remain Tata Rekening-owned. The Invoice may retain a correlation identity to a Tata Rekening financial correction. General Patient verbal Purchase Confirmation is evidenced by the accountable establishment of the Invoice and is not retained as a separate object. Non-medication commercial facts use the legacy sales model: BHP as a catalog sales item, item-specific charges on the item, and transaction-wide adjustments as Invoice header totals. No additional invoice component model exists.
 
 An Invoice references exactly one Sales Order but may cover one or more of its Sales Order Items.
 
-The Invoice remains mutable while Tata Rekening still permits modification. Mutability is not an InvoiceStatus. After Issue, normal correction revises the same Invoice while that permission remains. Credit Notes are recorded when direct revision is no longer permitted. Apotek consumes Tata Rekening financial permission as an external business fact and does not own, calculate, or persist Financial Clearance rules.
+The Invoice remains mutable while Tata Rekening still permits modification. Mutability is not an InvoiceStatus. After Issue, normal correction revises the same Invoice while that permission remains. When direct revision is no longer permitted, financial correction is delegated to Tata Rekening. Apotek does not record an Apotek Credit Note. Apotek consumes Tata Rekening financial permission as an external business fact and does not own, calculate, or persist Financial Clearance rules.
 
 ### 6.4 Dispensing Aggregate
 
@@ -419,10 +423,10 @@ Outpatient Queue Mapping is an active relationship between an externally owned P
 - **BR-APT-021** — Every Invoice shall derive from exactly one Sales Order. Every medication Invoice Item shall originate from exactly one Sales Order Item of that Sales Order.
 - **BR-APT-022** — A Sales Order may produce zero, one, or multiple Invoices.
 - **BR-APT-023** — An Invoice may cover one or more Sales Order Items through its Invoice Items and shall preserve each Invoice Item's source Sales Order Item, billed quantity, and value.
-- **BR-APT-024** — An Invoice Item shall not introduce a free-form non-medication invoice component. BHP shall appear only as a catalog sales item. Item-specific charges shall be item-level charges. Transaction-wide adjustments shall be invoice-level charges.
+- **BR-APT-024** — An Invoice Item shall not introduce a free-form non-medication invoice component. BHP shall appear only as a catalog sales item. Item-specific charges shall be item-level charges. Transaction-wide adjustments shall be Invoice header attributes.
 - **BR-APT-025** — An Invoice shall retain the Pricing Snapshot and Payer applicable when it is established.
 - **BR-APT-026** — Invoice formation shall not prove that stock is available, transferred to Dispensing Temporary Unit, prepared, dispensed, or handed over.
-- **BR-APT-027** — Invoice mutability is governed by financial permission consumed from Tata Rekening, not by Invoice Issue or Invoice `Financially Cleared`. While Tata Rekening still permits modification, Invoice correction shall use normal Invoice revision of that same Invoice, with accountable actor and effective business time. Credit Note, Refund, and Financial Adjustment remain exception mechanisms used when Tata Rekening no longer permits direct Invoice revision. Silent replacement without that permission and accountability is forbidden. Apotek shall not define, calculate, or own the internal business rules Tata Rekening uses to determine such permission, and shall not treat Financial Clearance as an Apotek-owned object or rule set.
+- **BR-APT-027** — Invoice mutability is governed by financial permission consumed from Tata Rekening, not by Invoice Issue or Invoice `Financially Cleared`. While Tata Rekening still permits modification, Invoice correction shall use normal Invoice revision of that same Invoice, with accountable actor and effective business time. When Tata Rekening no longer permits direct Invoice revision, Credit Note, Refund, and Financial Adjustment remain exception mechanisms **owned and persisted by Tata Rekening**. Apotek shall not persist a Credit Note, Refund, or Financial Adjustment entity and shall not introduce a replacement financial-correction aggregate. Silent replacement without that permission and accountability is forbidden. Apotek shall not define, calculate, or own the internal business rules Tata Rekening uses to determine such permission, and shall not treat Financial Clearance as an Apotek-owned object or rule set.
 - **BR-APT-028** — Every Financial Charge sent to Tata Rekening shall retain Source Traceability to its Invoice and Sales Order.
 
 ### 7.4 Dispensing and dispensing
@@ -459,19 +463,19 @@ Outpatient Queue Mapping is an active relationship between an externally owned P
 - **BR-APT-051** — A Medication Shortage or Stock Discrepancy shall not alter the original Resep or erase an existing Invoice. Invoice identity remains. Revising Invoice content under `BR-APT-027` is not erasure.
 - **BR-APT-052** — A Medication Return shall identify its source Dispensing, quantity, reason, and final Inventory disposition.
 - **BR-APT-053** — Return to Stock shall occur only when Inventory accepts the returned medication under its own policy.
-- **BR-APT-054** — A Salinan Resep shall identify prescribed medication or quantity that remained unfulfilled or was excluded from the Sales Order, including items eligible for external fulfillment.
+- **BR-APT-054** — A Copy Resep shall identify prescribed medication or quantity that remained unfulfilled or was excluded from the Sales Order, including items eligible for external fulfillment.
 - **BR-APT-055** — A No-Show shall be a Pharmacy-owned outpatient policy outcome, shall not be stored as an Inventory status, and shall not be imposed on inpatient Ward Delivery.
 - **BR-APT-108** — Partial Prescription Fulfillment is permitted only for Patient Request, Stock Shortage, and Fornas Not Covered items. No other reason is recognized by the system.
-- **BR-APT-109** — For Patient Request, Pharmacy Staff may establish a Sales Order containing only selected prescription items. Excluded prescription items remain unfulfilled on the originating Prescription. The system shall support Salinan Resep for unfulfilled items.
-- **BR-APT-110** — For Stock Shortage before Sales Order establishment, Pharmacy Staff may establish a Sales Order containing only fulfillable prescription items. Fulfillable quantity is determined from Available Stock, not from Current Stock. Unavailable prescription items remain unfulfilled on the originating Prescription. The system shall support Salinan Resep for unfulfilled items. No outstanding fulfillment obligation, waiting demand, or backorder record shall be created.
+- **BR-APT-109** — For Patient Request, Pharmacy Staff may establish a Sales Order containing only selected prescription items. Excluded prescription items remain unfulfilled on the originating Prescription. The system shall support Copy Resep for unfulfilled items.
+- **BR-APT-110** — For Stock Shortage before Sales Order establishment, Pharmacy Staff may establish a Sales Order containing only fulfillable prescription items. Fulfillable quantity is determined from Available Stock, not from Current Stock. Unavailable prescription items remain unfulfilled on the originating Prescription. The system shall support Copy Resep for unfulfilled items. No outstanding fulfillment obligation, waiting demand, or backorder record shall be created.
 - **BR-APT-111** — The Pharmacist remains responsible for approving the resulting fulfillment decision when professional review is required. The system shall not automatically determine alternative substitutions or external fulfillment actions.
 - **BR-APT-112** — Partial Prescription Fulfillment partiality exists only between Prescription and Sales Order. Partiality does not exist between Sales Order and Dispensing.
 - **BR-APT-113** — A Sales Order fulfilled through one or more Dispensings is fulfillment execution and is not Partial Prescription Fulfillment policy.
 - **BR-APT-114** — Outpatient Pharmacy shall not support Backorder. A stock shortage shall not create an outstanding fulfillment obligation, waiting demand, or backorder record.
-- **BR-APT-115** — Outpatient stock shortage shall be resolved immediately through a Partial Sales Order of fulfillable items and Salinan Resep for unfulfilled prescription items. The Prescription Copy may be used by the Patient to obtain medication from another pharmacy.
+- **BR-APT-115** — Outpatient stock shortage shall be resolved immediately through a Partial Sales Order of fulfillable items and Copy Resep for unfulfilled prescription items. Copy Resep may be used by the Patient to obtain medication from another pharmacy.
 - **BR-APT-116** — When outpatient inventory is insufficient, only fulfillable prescription items may be included in the Sales Order. Unfulfillable items remain outside the Sales Order on the originating Prescription.
 - **BR-APT-117** — Outpatient Pharmacy shall not implement alternate stock source selection, fulfillment routing, inter-pharmacy sourcing, or backorder management. Quantity that may still be promised to a new Sales Order shall be evaluated as Available Stock. Available Stock SHALL NOT be treated as equivalent to Current Stock.
-- **BR-APT-118** — When an outpatient shortage is identified after Sales Order establishment or after Payment Clearance or Coverage Clearance sufficient for Dispense Authorized, the unfulfillable quantity shall receive an accountable Unfulfilled Medication Outcome and Salinan Resep when applicable. When commercial consequences exist, they shall be corrected under `BR-APT-027`. It shall not be backordered or routed to an alternate stock source.
+- **BR-APT-118** — When an outpatient shortage is identified after Sales Order establishment or after Payment Clearance or Coverage Clearance sufficient for Dispense Authorized, the unfulfillable quantity shall receive an accountable Unfulfilled Medication Outcome and Copy Resep when applicable. When commercial consequences exist, they shall be corrected under `BR-APT-027`. It shall not be backordered or routed to an alternate stock source.
 - **BR-APT-119** — Fornas validation shall classify prescription items as Covered or Not Covered.
 - **BR-APT-120** — Covered items shall follow the normal BPJS fulfillment workflow. Coverage evidence shall be sufficient for Dispense Authorized on those items.
 - **BR-APT-121** — Not Covered items shall not be automatically cancelled. Pharmacy may establish a separate Patient-Pay Sales Order for uncovered prescription items. That Patient-Pay Sales Order shall be independent of the BPJS-covered Sales Order. Uncovered items shall not remain in the BPJS fulfillment path.
@@ -481,7 +485,7 @@ Outpatient Queue Mapping is an active relationship between an externally owned P
 - **BR-APT-125** — Outpatient Pharmacy shall adopt the existing legacy sales model for non-medication commercial facts. No additional invoice component model shall be introduced.
 - **BR-APT-126** — BHP shall be treated as a standard catalog item and may appear as a sales item. BHP shall not be represented as a free-form invoice item.
 - **BR-APT-127** — Item-specific charges, including packaging and compounding fees, shall be recorded as item-level charges on the applicable sales item.
-- **BR-APT-128** — Transaction-wide adjustments, including rounding, shall be recorded as invoice-level charges on the Invoice.
+- **BR-APT-128** — Transaction-wide adjustments, including rounding, shall be recorded as Invoice header commercial totals (for example `Pembulatan`, `BiayaLain`, `DiskonLain`). They shall not be persisted as child charge records.
 - **BR-APT-129** — Authorized Recipient verification shall remain an operational responsibility of the dispensing Pharmacist and shall not be system-enforced.
 - **BR-APT-130** — During Medication Handover, the system may optionally record recipient phone number and relationship to the Patient for reference only. Recorded recipient information shall not constitute identity proof, legal authorization, or a workflow gate.
 - **BR-APT-131** — The system shall not require identity validation, legal relationship verification, document capture, or an authorization workflow as Medication Handover recipient evidence.
@@ -507,7 +511,7 @@ Outpatient Queue Mapping is an active relationship between an externally owned P
 - **BR-APT-057** — Commercial resolution shall not by itself complete physical fulfillment, and physical fulfillment shall not by itself prove financial resolution.
 - **BR-APT-058** — Material review, Invoice formation, Dispensing formation, clearance, dispensing, handover, exception, and correction decisions shall retain responsible party and effective business time.
 - **BR-APT-059** — Source Traceability shall be preserved from Resep or Jual Bebas through Sales Order, Invoice, Dispensing, and final outcomes.
-- **BR-APT-060** — A completed or cancelled business outcome shall not be erased; a later correction shall add an accountable correcting fact. Invoice revision of the same Invoice under `BR-APT-027` is an accountable correction and is not erasure of Invoice identity. When Tata Rekening no longer permits Invoice revision, the correcting fact is Credit Note, Refund, or Financial Adjustment. This rule does not apply to correcting an active Outpatient Queue Mapping, which is updated in place under `BR-APT-062`.
+- **BR-APT-060** — A completed or cancelled business outcome shall not be erased; a later correction shall add an accountable correcting fact. Invoice revision of the same Invoice under `BR-APT-027` is an accountable correction and is not erasure of Invoice identity. When Tata Rekening no longer permits Invoice revision, the correcting fact is a Tata Rekening-owned Credit Note, Refund, or Financial Adjustment. Apotek may correlate to that fact and shall not persist it as an Apotek document. This rule does not apply to correcting an active Outpatient Queue Mapping, which is updated in place under `BR-APT-062`.
 
 ### 7.8 Outpatient workflow policy
 
@@ -608,7 +612,7 @@ Issued or Financially Cleared
 
 Payment and settlement evidence remains externally owned. `Financially Cleared` may be supported by Payment Clearance or Coverage Clearance according to payer policy.
 
-Invoice lifecycle states record commercial and payment/coverage facts. They do not encode mutability. `Issued` means the Invoice is the posted commercial/charge document for collection and Financial Charge; it does not freeze Invoice content. `Financially Cleared` is not Tata Rekening Close, Finalize, or Lunas, and is not a mutation lock. While Tata Rekening still permits modification, Invoice revision remains on the same Invoice and does not require a transition to `Adjusted or Credited`. `Adjusted or Credited` is the compensating-document path used when direct Invoice revision is no longer permitted (`BR-APT-027`).
+Invoice lifecycle states record commercial and payment/coverage facts. They do not encode mutability. `Issued` means the Invoice is the posted commercial/charge document for collection and Financial Charge; it does not freeze Invoice content. `Financially Cleared` is not Tata Rekening Close, Finalize, or Lunas, and is not a mutation lock. While Tata Rekening still permits modification, Invoice revision remains on the same Invoice and does not require a transition to `Adjusted or Credited`. `Adjusted or Credited` is an Invoice disposition observed after Tata Rekening applies an exception financial correction when direct Invoice revision is no longer permitted (`BR-APT-027`). It is not an Apotek-owned Credit Note lifecycle.
 
 ### 8.4 Dispensing lifecycle
 
@@ -722,7 +726,7 @@ The pickup call is one trigger that completes the Patient Tracker queue (`In Ser
 | Dispensing Expired | The permitted fulfillment period ended without completion. |
 | Unfulfilled Medication Recorded | An accepted quantity received a final non-fulfillment outcome. |
 | Medication Returned | Medication previously prepared or supplied was returned. |
-| Invoice Credited | A Credit Note reduced or reversed an Invoice consequence because direct Invoice revision was no longer permitted. |
+| Invoice Credited | Tata Rekening applied a Credit Note that reduced or reversed an Invoice consequence because direct Invoice revision was no longer permitted. Observed by Apotek; not recorded as an Apotek Credit Note document. |
 | Refund Required | A financial resolution requires return of settled funds. |
 | Pharmacy Service Started | `Medication Preparation Started` established outpatient pharmacy `ServedAt` evidence. |
 | Sales Order Resolved | Every accepted quantity and required commercial consequence received an accountable final outcome. |

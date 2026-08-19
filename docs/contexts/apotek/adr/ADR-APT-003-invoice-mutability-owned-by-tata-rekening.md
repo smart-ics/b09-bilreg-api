@@ -14,7 +14,7 @@ That freeze was owned by the Apotek Invoice lifecycle. It was stricter than the 
 
 The project now adopts a different principle: Invoice mutability follows external financial permission owned by Tata Rekening, not automatic immutability after Issue.
 
-Related analysis: [`APOTEK-INVOICE-MUTABILITY-IMPACT-ANALYSIS.md`](../APOTEK-INVOICE-MUTABILITY-IMPACT-ANALYSIS.md), [`APOTEK-FINANCIAL-CLEARANCE-ANALYSIS.md`](../APOTEK-FINANCIAL-CLEARANCE-ANALYSIS.md).
+Related analysis (archived, not normative): [`APOTEK-INVOICE-MUTABILITY-IMPACT-ANALYSIS.md`](../archive/APOTEK-INVOICE-MUTABILITY-IMPACT-ANALYSIS.md), [`APOTEK-FINANCIAL-CLEARANCE-ANALYSIS.md`](../archive/APOTEK-FINANCIAL-CLEARANCE-ANALYSIS.md).
 
 ## Decision
 
@@ -28,7 +28,7 @@ Therefore:
 2. Invoice is **not** automatically immutable immediately after Issue.
 3. Invoice `Issued` and `Financially Cleared` remain commercial and payment/coverage facts. They are **not** mutability locks and are **not** Tata Rekening Close / Finalize / Lunas.
 4. Invoice correction SHALL use normal Invoice revision of the same Invoice while Tata Rekening still permits modification.
-5. Credit Note, Refund, and Financial Adjustment remain exception mechanisms for situations where direct Invoice revision is no longer permitted.
+5. Credit Note, Refund, and Financial Adjustment remain exception mechanisms **owned and persisted by Tata Rekening** when direct Invoice revision is no longer permitted. Apotek MUST NOT persist a Credit Note entity, own Credit Note lifecycle, or introduce a replacement financial-correction aggregate. Optional correlation on Invoice is allowed.
 6. Apotek MUST NOT define, calculate, or own the internal business rules Tata Rekening uses to determine such permissions.
 7. Apotek MUST NOT persist a Financial Clearance aggregate, status, or local substitute for Tata Rekening permission. Any last-consumed permission retained by Apotek is audit trace only; Tata Rekening remains the source of truth.
 8. Mutability SHALL NOT be modeled as a new InvoiceStatus (`Mutable` / `Frozen`). Command guards consume Tata Rekening permission at the time of correction.
@@ -40,8 +40,9 @@ This decision supersedes the Established-only freeze previously recorded in **PD
 
 ### Canonical rule impact
 
-- **BR-APT-027** becomes the two-path correction rule: revise the Invoice while permitted; use Credit Note / Refund / Financial Adjustment when not permitted.
+- **BR-APT-027** becomes the two-path correction rule: revise the Invoice while permitted; delegate Credit Note / Refund / Financial Adjustment to Tata Rekening when not permitted. Apotek does not persist those exception documents.
 - **PD-05** allows rewrite while `Established`, and after Issue while Tata Rekening still permits modification.
+- **PD-07** removes `BILRG_AptCreditNote` and Integration Task `BillingCredit` `{InvoiceId}:CN{n}`.
 - Workflows and SOPs that forced Credit Note merely because an Invoice had been issued are aligned to **BR-APT-027**.
 
 ### What this decision does not specify
@@ -61,6 +62,6 @@ Those integration details remain Tata Rekening-owned and are deferred to impleme
 ## References
 
 - [`apotek-domain.md`](../apotek-domain.md) — Invoice definition, **BR-APT-027**, Invoice lifecycle
-- [`outpatient-apotek-persistence-design.md`](../outpatient-apotek-persistence-design.md) — PD-05
+- [`outpatient-apotek-persistence-design.md`](../outpatient-apotek-persistence-design.md) — PD-05, PD-07
 - [`docs/contexts/TataRekening/01-context.md`](../../TataRekening/01-context.md) — Charge Source vs Financial Truth
 - [`docs/contexts/TataRekening/04-sop.md`](../../TataRekening/04-sop.md) — Charge Source form / change / cancel authority

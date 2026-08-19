@@ -104,7 +104,7 @@ Resep tidak berubah menjadi Sales Order. Keputusan profesional yang selesai meng
 | Invoice Item | Item Invoice | Satu obat, BHP, atau item katalog lain beserta jumlah, harga, diskon, item-level charge, dan nilai di dalam Invoice. Setiap Invoice Item obat atau BHP berasal dari tepat satu Sales Order Item dan menunjukkan bagian dari item tersebut yang ditagihkan dalam faktur. |
 | BHP | BHP | Item katalog standar yang dapat tampil sebagai item penjualan. BHP bukan komponen faktur free-form. |
 | Item-level Charge | Charge Tingkat Item | Charge komersial khusus item yang melekat pada item penjualan, misalnya biaya kemasan atau racikan. |
-| Invoice-level Charge | Charge Tingkat Faktur | Penyesuaian komersial seluruh transaksi yang melekat pada Invoice, misalnya pembulatan. |
+| Invoice-level Charge | Charge Tingkat Faktur | Penyesuaian komersial seluruh transaksi yang disimpan sebagai atribut header Invoice (misalnya `Pembulatan`), bukan sebagai entitas anak. |
 | Pricing Snapshot | Rekaman Harga Transaksi | Dasar komersial yang tidak dapat diubah dan digunakan ketika Invoice dibentuk. |
 | Payer | Penjamin | Pasien, BPJS, asuransi, perusahaan, atau pihak lain yang diharapkan menanggung charge obat. |
 | Financial Charge | Tagihan Finansial | Konsekuensi finansial yang diberikan kepada Tata Rekening dari Medication Sale. |
@@ -114,9 +114,9 @@ Resep tidak berubah menjadi Sales Order. Keputusan profesional yang selesai meng
 | Payment Clearance | Izin Pembayaran | Bukti bahwa persyaratan pembayaran yang diperlukan telah terpenuhi. |
 | Coverage Clearance | Izin Penjamin | Bukti bahwa penjamin yang berlaku mengizinkan pemenuhan tanpa pembayaran langsung dari Pasien. Untuk pemenuhan BPJS Rawat Jalan, bukti ini menggabungkan SEP yang valid untuk encounter dengan penjaminan per item berdasarkan mapping Fornas yang menjadi rujukan. |
 | Dispense Authorized | Dispense Authorized | Hasil evaluasi kebijakan yang menunjukkan Medication Preparation dan dispensing boleh dimulai, diturunkan dari evidence keuangan dan/atau coverage. Bukan aggregate, entity, business object yang dipersist, sumber kebenaran, atau transaction boundary. |
-| Financial Adjustment | Penyesuaian Finansial | Koreksi accountable terhadap Medication Sale atau konsekuensi finansialnya. |
-| Credit Note | Nota Kredit | Dokumen komersial pengecualian yang mengurangi atau membalik nilai Invoice ketika Tata Rekening tidak lagi mengizinkan revisi Invoice secara langsung. |
-| Refund | Pengembalian Dana | Pengembalian dana yang sebelumnya telah diselesaikan secara accountable. |
+| Financial Adjustment | Penyesuaian Finansial | Koreksi accountable terhadap Medication Sale atau konsekuensi finansialnya. Dimiliki dan dipersist oleh Tata Rekening. Bukan aggregate Apotek. |
+| Credit Note | Nota Kredit | Dokumen komersial pengecualian yang mengurangi atau membalik nilai Invoice ketika Tata Rekening tidak lagi mengizinkan revisi Invoice secara langsung. Dimiliki dan dipersist oleh Tata Rekening. Bukan aggregate, entity, atau tabel Apotek. Apotek boleh menyimpan identitas korelasi ketika Tata Rekening mengembalikannya. |
+| Refund | Pengembalian Dana | Pengembalian dana yang sebelumnya telah diselesaikan secara accountable. Dimiliki Tata Rekening, dengan eksekusi Kasir bila settlement memerlukannya. Bukan aggregate Apotek. |
 | Dispensing | Dispensing | Instruksi authoritative untuk memenuhi secara fisik satu atau lebih Sales Order Item dari satu Sales Order. |
 | Dispensing Item | Item Dispensing | Satu jumlah obat yang harus dipenuhi secara fisik dalam Dispensing. Item ini mereferensikan tepat satu Sales Order Item serta memuat Care Setting dan Dispense Cycle yang berlaku. |
 | Dispense Cycle | Siklus Dispensing | Periode atau batch fulfillment yang ditentukan, terutama untuk Rawat Inap dan Unit Dose Dispensing. |
@@ -150,7 +150,7 @@ Resep tidak berubah menjadi Sales Order. Keputusan profesional yang selesai meng
 | Backorder | Pemenuhan Tertunda | Jumlah unresolved yang dipertahankan untuk dipenuhi kemudian saat supply tersedia. Apotek Rawat Jalan tidak mendukung Backorder. |
 | Medication Substitution | Substitusi Obat | Penggantian accountable atas produk obat yang diminta berdasarkan authority profesional yang berlaku. |
 | Unfulfilled Medication Outcome | Outcome Obat Tidak Terpenuhi | Alasan final dan accountable bahwa jumlah obat yang diterima tidak dipenuhi. |
-| Salinan Resep | Salinan Resep | Salinan Resep (Prescription Copy) accountable untuk obat atau jumlah resep yang tidak dimasukkan ke Sales Order atau tidak dipenuhi, bila berlaku. |
+| Copy Resep | Copy Resep | Copy Resep accountable untuk obat atau jumlah resep yang tidak dimasukkan ke Sales Order atau tidak dipenuhi, bila berlaku. |
 | Dispense Cancellation | Pembatalan Dispensing | Pengakhiran accountable suatu Dispensing sebelum fulfillment berhasil. |
 | Fulfillment Expiry | Berakhirnya Pemenuhan | Berakhirnya kesempatan fulfillment karena periode layanan yang diizinkan telah lewat. |
 | Medication Return | Retur Obat | Pengembalian accountable atas obat yang sebelumnya disiapkan, dipindahkan, atau diserahkan. |
@@ -258,7 +258,7 @@ Memiliki Hasil Telaah Resep, Medication Substitution yang diotorisasi selama Tel
 
 ### 4.3 Staf Apotek
 
-Mengoordinasikan permintaan yang diterima, perkembangan Sales Order, interaksi administratif Rawat Jalan, penyiapan atau peracikan obat, dan penyerahan sesuai kewenangan. Untuk pelayanan Rawat Jalan, Staf Apotek memanggil Nomor Antrean, membuat Manual Mapping, menyampaikan nilai Pasien Umum sebelum Invoice dibentuk, menyimpan Invoice yang telah dikonfirmasi, menyiapkan obat sesuai Dispensing, dan melakukan panggilan pengambilan. Untuk Jual Bebas, Staf Apotek menerima atau menolak tanpa membentuk Resep. Konsultasi Pharmacist secara operasional bersifat opsional sebagai panduan SOP saja dan tidak dimodelkan sebagai approval gate. Ketika stok Rawat Jalan tidak mendukung pemenuhan penuh, Staf Apotek hanya memasukkan item yang dapat dipenuhi ke Sales Order dan menerbitkan Salinan Resep untuk item yang tidak dipenuhi. Staf Apotek tidak boleh membuat Backorder, memilih sumber stok alternatif, atau mengganti jenis obat.
+Mengoordinasikan permintaan yang diterima, perkembangan Sales Order, interaksi administratif Rawat Jalan, penyiapan atau peracikan obat, dan penyerahan sesuai kewenangan. Untuk pelayanan Rawat Jalan, Staf Apotek memanggil Nomor Antrean, membuat Manual Mapping, menyampaikan nilai Pasien Umum sebelum Invoice dibentuk, menyimpan Invoice yang telah dikonfirmasi, menyiapkan obat sesuai Dispensing, dan melakukan panggilan pengambilan. Untuk Jual Bebas, Staf Apotek menerima atau menolak tanpa membentuk Resep. Konsultasi Pharmacist secara operasional bersifat opsional sebagai panduan SOP saja dan tidak dimodelkan sebagai approval gate. Ketika stok Rawat Jalan tidak mendukung pemenuhan penuh, Staf Apotek hanya memasukkan item yang dapat dipenuhi ke Sales Order dan menerbitkan Copy Resep untuk item yang tidak dipenuhi. Staf Apotek tidak boleh membuat Backorder, memilih sumber stok alternatif, atau mengganti jenis obat.
 
 ### 4.4 Patient or Caregiver
 
@@ -322,7 +322,7 @@ Merepresentasikan mapping aktif antara Pharmacy Queue Entry yang dimiliki contex
 
 ### 5.9 Unfulfilled Medication Outcome
 
-Merepresentasikan alasan final suatu Accepted Quantity tidak dipenuhi dan mengidentifikasi Salinan Resep, return, atau financial correction yang diperlukan. Apotek Rawat Jalan tidak menggunakan penutupan backorder.
+Merepresentasikan alasan final suatu Accepted Quantity tidak dipenuhi dan mengidentifikasi Copy Resep, return, atau financial correction yang diperlukan. Apotek Rawat Jalan tidak menggunakan penutupan backorder.
 
 ### 5.10 Final Dispense Review Record
 
@@ -364,11 +364,15 @@ No Show resolution
 
 ### 5.15 Resep Kerja
 
-Dokumen pendukung. Salinan operasional Farmasi atas satu Resep, dibuat saat intake dari Prescription Contract (BA-06). Telaah Resep dan pembentukan Sales Order beroperasi pada salinan ini. Revisi sumber membuat tugas telaah dan tidak menulis ulang Resep Kerja secara diam-diam. Bentuk identifier: `ResepKerja`. Bukan aggregate root.
+Dokumen pendukung. Salinan operasional Farmasi atas satu Resep, dibuat saat intake dari Prescription Contract (BA-06). Telaah Resep dan pembentukan Sales Order beroperasi pada salinan ini. Salinan intake tidak ditulis ulang secara diam-diam dari sumber klinis. Bentuk identifier: `ResepKerja`. Bukan aggregate root.
 
 ### 5.16 Jual Bebas
 
 Dokumen pendukung. Satu permintaan obat gaya ritel tanpa Resep yang diterima. Staf Apotek menerima atau menolaknya. Penolakan tidak membentuk record (`BR-APT-089`). Bentuk identifier: `JualBebas`. Bukan aggregate root.
+
+### 5.17 Copy Resep
+
+Dokumen pendukung. Record accountable atas obat atau jumlah resep yang dikecualikan dari Sales Order atau tidak dipenuhi, bila berlaku (`BR-APT-054`, `BR-APT-109`–`115`, `BR-APT-118`). Dapat diterbitkan sebelum atau setelah pembentukan Sales Order. Bentuk identifier: `CopyResep`. Bukan aggregate root.
 
 ## 6. Aggregates
 
@@ -388,11 +392,11 @@ Aggregate memastikan jumlah yang ditagihkan dan pemenuhan fisik tetap dapat dite
 
 **Aggregate Root:** `Invoice`
 
-Aggregate merepresentasikan satu Medication Sale. Aggregate menjaga Invoice Item, Pricing Snapshot, Payer, item-level charge, invoice-level charge, financial disposition, Credit Note, refund, dan outcome Financial Charge tetap konsisten. Purchase Confirmation lisan Pasien Umum dibuktikan oleh pembentukan Invoice yang accountable dan tidak disimpan sebagai object terpisah. Fakta komersial non-obat menggunakan model penjualan legacy: BHP sebagai item katalog, charge khusus item pada item, dan penyesuaian seluruh transaksi pada faktur. Tidak ada model komponen faktur tambahan.
+Aggregate merepresentasikan satu Medication Sale. Aggregate menjaga Invoice Item, Pricing Snapshot, Payer, item-level charge pada Invoice Item, total komersial seluruh transaksi pada header Invoice, financial disposition, dan outcome Financial Charge tetap konsisten. Aggregate tidak memiliki dokumen Credit Note, Refund, atau Financial Adjustment; dokumen itu tetap milik Tata Rekening. Invoice boleh menyimpan identitas korelasi ke koreksi finansial Tata Rekening. Purchase Confirmation lisan Pasien Umum dibuktikan oleh pembentukan Invoice yang accountable dan tidak disimpan sebagai object terpisah. Fakta komersial non-obat menggunakan model penjualan legacy: BHP sebagai item katalog, charge khusus item pada item, dan penyesuaian seluruh transaksi sebagai total header Invoice. Tidak ada model komponen faktur tambahan.
 
 Invoice mereferensikan tepat satu Sales Order tetapi dapat mencakup satu atau lebih Sales Order Item miliknya.
 
-Invoice tetap dapat diubah selama Tata Rekening masih mengizinkan perubahan. Mutabilitas bukan InvoiceStatus. Setelah Issue, koreksi normal merevisi Invoice yang sama selama izin itu berlaku. Credit Note dicatat ketika revisi langsung tidak lagi diizinkan. Apotek mengonsumsi izin finansial Tata Rekening sebagai fakta bisnis eksternal dan tidak memiliki, menghitung, atau mempersist aturan Financial Clearance.
+Invoice tetap dapat diubah selama Tata Rekening masih mengizinkan perubahan. Mutabilitas bukan InvoiceStatus. Setelah Issue, koreksi normal merevisi Invoice yang sama selama izin itu berlaku. Ketika revisi langsung tidak lagi diizinkan, koreksi finansial didelegasikan kepada Tata Rekening. Apotek tidak mencatat Nota Kredit milik Apotek. Apotek mengonsumsi izin finansial Tata Rekening sebagai fakta bisnis eksternal dan tidak memiliki, menghitung, atau mempersist aturan Financial Clearance.
 
 ### 6.4 Dispensing Aggregate
 
@@ -444,10 +448,10 @@ Outpatient Queue Mapping merupakan mapping aktif antara Pharmacy Queue Entry yan
 - **BR-APT-021** — Setiap Invoice harus berasal dari tepat satu Sales Order. Setiap Invoice Item obat harus berasal dari tepat satu Sales Order Item dari Sales Order tersebut.
 - **BR-APT-022** — Satu Sales Order dapat menghasilkan nol, satu, atau beberapa Invoice.
 - **BR-APT-023** — Invoice dapat mencakup satu atau lebih Sales Order Item melalui Invoice Item-nya dan harus mempertahankan item sumber, jumlah yang ditagihkan, serta nilai setiap item.
-- **BR-APT-024** — Invoice Item tidak boleh memperkenalkan komponen faktur non-obat free-form. BHP hanya boleh tampil sebagai item katalog. Charge khusus item harus berupa item-level charge. Penyesuaian seluruh transaksi harus berupa invoice-level charge.
+- **BR-APT-024** — Invoice Item tidak boleh memperkenalkan komponen faktur non-obat free-form. BHP hanya boleh tampil sebagai item katalog. Charge khusus item harus berupa item-level charge. Penyesuaian seluruh transaksi harus berupa atribut header Invoice.
 - **BR-APT-025** — Invoice harus mempertahankan Pricing Snapshot dan Payer yang berlaku saat dibentuk.
 - **BR-APT-026** — Pembentukan Invoice tidak membuktikan bahwa stok tersedia, direservasi, disiapkan, didispensing, atau diserahkan.
-- **BR-APT-027** — Mutabilitas Invoice diatur oleh izin finansial yang dikonsumsi dari Tata Rekening, bukan oleh Issue Invoice atau status Invoice `Financially Cleared`. Selama Tata Rekening masih mengizinkan perubahan, koreksi Invoice harus menggunakan revisi Invoice yang sama, dengan pihak penanggung jawab dan waktu bisnis efektif yang accountable. Credit Note, Refund, dan Financial Adjustment tetap mekanisme pengecualian ketika Tata Rekening tidak lagi mengizinkan revisi Invoice secara langsung. Penggantian diam-diam tanpa izin dan akuntabilitas tersebut dilarang. Apotek tidak boleh mendefinisikan, menghitung, atau memiliki aturan bisnis internal yang dipakai Tata Rekening untuk menentukan izin itu, dan tidak boleh memperlakukan Financial Clearance sebagai objek atau kumpulan aturan milik Apotek.
+- **BR-APT-027** — Mutabilitas Invoice diatur oleh izin finansial yang dikonsumsi dari Tata Rekening, bukan oleh Issue Invoice atau status Invoice `Financially Cleared`. Selama Tata Rekening masih mengizinkan perubahan, koreksi Invoice harus menggunakan revisi Invoice yang sama, dengan pihak penanggung jawab dan waktu bisnis efektif yang accountable. Ketika Tata Rekening tidak lagi mengizinkan revisi Invoice secara langsung, Credit Note, Refund, dan Financial Adjustment tetap mekanisme pengecualian **yang dimiliki dan dipersist oleh Tata Rekening**. Apotek tidak boleh mempersist entity Credit Note, Refund, atau Financial Adjustment dan tidak boleh memperkenalkan aggregate koreksi finansial pengganti. Penggantian diam-diam tanpa izin dan akuntabilitas tersebut dilarang. Apotek tidak boleh mendefinisikan, menghitung, atau memiliki aturan bisnis internal yang dipakai Tata Rekening untuk menentukan izin itu, dan tidak boleh memperlakukan Financial Clearance sebagai objek atau kumpulan aturan milik Apotek.
 - **BR-APT-028** — Setiap Financial Charge yang dikirim ke Tata Rekening harus mempertahankan Source Traceability ke Invoice dan Sales Order sumbernya.
 
 ### 7.4 Dispensing dan dispensing
@@ -484,19 +488,19 @@ Outpatient Queue Mapping merupakan mapping aktif antara Pharmacy Queue Entry yan
 - **BR-APT-051** — Medication Shortage atau Stock Discrepancy tidak boleh mengubah Resep asli atau menghapus Invoice yang sudah ada. Identitas Invoice tetap. Merevisi isi Invoice menurut `BR-APT-027` bukan penghapusan.
 - **BR-APT-052** — Medication Return harus mengidentifikasi Dispensing sumber, jumlah, alasan, dan disposition Inventory finalnya.
 - **BR-APT-053** — Return to Stock hanya boleh terjadi ketika Inventory menerima obat retur berdasarkan kebijakannya sendiri.
-- **BR-APT-054** — Salinan Resep harus mengidentifikasi obat atau jumlah resep yang tidak dipenuhi atau dikecualikan dari Sales Order, termasuk item yang eligible untuk fulfillment eksternal.
+- **BR-APT-054** — Copy Resep harus mengidentifikasi obat atau jumlah resep yang tidak dipenuhi atau dikecualikan dari Sales Order, termasuk item yang eligible untuk fulfillment eksternal.
 - **BR-APT-055** — No-Show harus menjadi outcome kebijakan Rawat Jalan dan tidak boleh diterapkan pada Ward Delivery Rawat Inap.
 - **BR-APT-108** — Partial Prescription Fulfillment hanya diizinkan untuk Patient Request, Stock Shortage, dan item Fornas Not Covered. Tidak ada alasan lain yang diakui sistem.
-- **BR-APT-109** — Untuk Patient Request, Staf Apotek dapat membentuk Sales Order yang hanya berisi item resep yang dipilih. Item resep yang dikecualikan tetap unfulfilled pada Resep asal. Sistem harus mendukung Salinan Resep untuk item yang tidak dipenuhi.
-- **BR-APT-110** — Untuk Stock Shortage sebelum Sales Order dibentuk, Staf Apotek dapat membentuk Sales Order yang hanya berisi item resep yang dapat dipenuhi. Jumlah yang dapat dipenuhi ditentukan dari Available Stock, bukan dari Current Stock. Item yang tidak tersedia tetap unfulfilled pada Resep asal. Sistem harus mendukung Salinan Resep untuk item yang tidak dipenuhi. Tidak boleh dibentuk outstanding fulfillment obligation, waiting demand, atau backorder record.
+- **BR-APT-109** — Untuk Patient Request, Staf Apotek dapat membentuk Sales Order yang hanya berisi item resep yang dipilih. Item resep yang dikecualikan tetap unfulfilled pada Resep asal. Sistem harus mendukung Copy Resep untuk item yang tidak dipenuhi.
+- **BR-APT-110** — Untuk Stock Shortage sebelum Sales Order dibentuk, Staf Apotek dapat membentuk Sales Order yang hanya berisi item resep yang dapat dipenuhi. Jumlah yang dapat dipenuhi ditentukan dari Available Stock, bukan dari Current Stock. Item yang tidak tersedia tetap unfulfilled pada Resep asal. Sistem harus mendukung Copy Resep untuk item yang tidak dipenuhi. Tidak boleh dibentuk outstanding fulfillment obligation, waiting demand, atau backorder record.
 - **BR-APT-111** — Pharmacist tetap bertanggung jawab menyetujui keputusan fulfillment yang dihasilkan ketika review profesional diperlukan. Sistem tidak menentukan substitusi alternatif atau tindakan fulfillment eksternal secara otomatis.
 - **BR-APT-112** — Partialitas Partial Prescription Fulfillment hanya ada antara Prescription dan Sales Order. Partialitas tidak ada antara Sales Order dan Dispensing.
 - **BR-APT-113** — Sales Order yang dipenuhi melalui satu atau lebih Dispensing adalah eksekusi fulfillment dan bukan kebijakan Partial Prescription Fulfillment.
 - **BR-APT-114** — Apotek Rawat Jalan tidak mendukung Backorder. Kekurangan stok tidak boleh membentuk outstanding fulfillment obligation, waiting demand, atau backorder record.
-- **BR-APT-115** — Kekurangan stok Rawat Jalan harus diselesaikan segera melalui Partial Sales Order atas item yang dapat dipenuhi dan Salinan Resep untuk item resep yang tidak dipenuhi. Salinan Resep dapat digunakan Pasien untuk memperoleh obat dari apotek lain.
+- **BR-APT-115** — Kekurangan stok Rawat Jalan harus diselesaikan segera melalui Partial Sales Order atas item yang dapat dipenuhi dan Copy Resep untuk item resep yang tidak dipenuhi. Copy Resep dapat digunakan Pasien untuk memperoleh obat dari apotek lain.
 - **BR-APT-116** — Ketika persediaan Rawat Jalan tidak cukup, hanya item resep yang dapat dipenuhi yang boleh masuk Sales Order. Baris yang tidak dapat dipenuhi tetap di luar Sales Order pada Resep asal.
 - **BR-APT-117** — Apotek Rawat Jalan tidak mengimplementasikan pemilihan sumber stok alternatif, fulfillment routing, inter-pharmacy sourcing, atau backorder management. Jumlah yang masih dapat dijanjikan ke Sales Order baru dievaluasi sebagai Available Stock. Available Stock TIDAK BOLEH dianggap setara dengan Current Stock.
-- **BR-APT-118** — Ketika kekurangan stok Rawat Jalan teridentifikasi setelah Sales Order dibentuk atau setelah Payment Clearance atau Coverage Clearance yang cukup untuk Dispense Authorized, jumlah yang tidak dapat dipenuhi harus memperoleh Unfulfilled Medication Outcome yang accountable dan Salinan Resep bila berlaku. Ketika ada konsekuensi komersial, konsekuensi itu harus dikoreksi menurut `BR-APT-027`. Jumlah tersebut tidak boleh di-backorder atau diarahkan ke sumber stok alternatif.
+- **BR-APT-118** — Ketika kekurangan stok Rawat Jalan teridentifikasi setelah Sales Order dibentuk atau setelah Payment Clearance atau Coverage Clearance yang cukup untuk Dispense Authorized, jumlah yang tidak dapat dipenuhi harus memperoleh Unfulfilled Medication Outcome yang accountable dan Copy Resep bila berlaku. Ketika ada konsekuensi komersial, konsekuensi itu harus dikoreksi menurut `BR-APT-027`. Jumlah tersebut tidak boleh di-backorder atau diarahkan ke sumber stok alternatif.
 - **BR-APT-119** — Validasi Fornas harus mengklasifikasikan item resep sebagai Covered atau Not Covered.
 - **BR-APT-120** — Item Covered harus mengikuti workflow fulfillment BPJS normal. Evidence coverage cukup untuk Dispense Authorized pada item tersebut.
 - **BR-APT-121** — Item Not Covered tidak boleh dibatalkan secara otomatis. Farmasi boleh membentuk Patient-Pay Sales Order terpisah untuk item yang tidak dijamin. Patient-Pay Sales Order itu independen dari Sales Order yang ditanggung BPJS. Item tidak dijamin tidak boleh tetap pada jalur fulfillment BPJS.
@@ -506,7 +510,7 @@ Outpatient Queue Mapping merupakan mapping aktif antara Pharmacy Queue Entry yan
 - **BR-APT-125** — Apotek Rawat Jalan harus mengadopsi model penjualan legacy yang ada untuk fakta komersial non-obat. Tidak boleh diperkenalkan model komponen faktur tambahan.
 - **BR-APT-126** — BHP harus diperlakukan sebagai item katalog standar dan boleh tampil sebagai item penjualan. BHP tidak boleh direpresentasikan sebagai item faktur free-form.
 - **BR-APT-127** — Charge khusus item, termasuk biaya kemasan dan racikan, harus dicatat sebagai item-level charge pada item penjualan yang berlaku.
-- **BR-APT-128** — Penyesuaian seluruh transaksi, termasuk pembulatan, harus dicatat sebagai invoice-level charge pada Invoice.
+- **BR-APT-128** — Penyesuaian seluruh transaksi, termasuk pembulatan, harus dicatat sebagai total komersial header Invoice (misalnya `Pembulatan`, `BiayaLain`, `DiskonLain`). Penyesuaian tersebut tidak boleh disimpan sebagai record charge anak.
 - **BR-APT-129** — Verifikasi Authorized Recipient tetap menjadi tanggung jawab operasional Pharmacist yang menyerahkan obat dan tidak boleh ditegakkan oleh sistem.
 - **BR-APT-130** — Selama Medication Handover, sistem boleh secara opsional mencatat nomor telepon penerima dan hubungan dengan Pasien hanya sebagai referensi. Informasi penerima yang dicatat tidak merupakan bukti identitas, otorisasi hukum, atau workflow gate.
 - **BR-APT-131** — Sistem tidak boleh mensyaratkan validasi identitas, verifikasi hubungan hukum, penangkapan dokumen, atau authorization workflow sebagai evidence penerima Medication Handover.
@@ -532,7 +536,7 @@ Outpatient Queue Mapping merupakan mapping aktif antara Pharmacy Queue Entry yan
 - **BR-APT-057** — Commercial resolution tidak dengan sendirinya menyelesaikan physical fulfillment, dan physical fulfillment tidak dengan sendirinya membuktikan financial resolution.
 - **BR-APT-058** — Keputusan material mengenai review, pembentukan Invoice, pembentukan Dispensing, clearance, dispensing, handover, exception, dan correction harus mempertahankan responsible party dan effective business time.
 - **BR-APT-059** — Source Traceability harus dipertahankan dari Resep atau Jual Bebas melalui Sales Order, Invoice, Dispensing, dan final outcome.
-- **BR-APT-060** — Hasil bisnis yang sudah selesai atau dibatalkan tidak boleh dihapus; koreksi setelahnya harus menambahkan fakta koreksi yang dapat dipertanggungjawabkan. Revisi Invoice yang sama menurut `BR-APT-027` adalah koreksi accountable dan bukan penghapusan identitas Invoice. Ketika Tata Rekening tidak lagi mengizinkan revisi Invoice, fakta koreksinya adalah Credit Note, Refund, atau Financial Adjustment. Aturan ini tidak berlaku untuk koreksi Outpatient Queue Mapping yang masih aktif; mapping tersebut diperbarui langsung sesuai `BR-APT-062`.
+- **BR-APT-060** — Hasil bisnis yang sudah selesai atau dibatalkan tidak boleh dihapus; koreksi setelahnya harus menambahkan fakta koreksi yang dapat dipertanggungjawabkan. Revisi Invoice yang sama menurut `BR-APT-027` adalah koreksi accountable dan bukan penghapusan identitas Invoice. Ketika Tata Rekening tidak lagi mengizinkan revisi Invoice, fakta koreksinya adalah Credit Note, Refund, atau Financial Adjustment milik Tata Rekening. Apotek boleh mengorelasikan fakta itu dan tidak boleh mempersistnya sebagai dokumen Apotek. Aturan ini tidak berlaku untuk koreksi Outpatient Queue Mapping yang masih aktif; mapping tersebut diperbarui langsung sesuai `BR-APT-062`.
 
 ### 7.8 Kebijakan workflow Rawat Jalan
 
@@ -630,7 +634,7 @@ Issued or Financially Cleared
 
 Payment dan settlement evidence tetap dimiliki context eksternal. `Financially Cleared` dapat didukung oleh Payment Clearance atau Coverage Clearance sesuai kebijakan payer.
 
-State lifecycle Invoice mencatat fakta komersial dan pembayaran/coverage. State itu tidak merepresentasikan mutabilitas. `Issued` berarti Invoice adalah dokumen komersial/charge yang sudah diposting untuk penagihan dan Financial Charge; Issue tidak membekukan isi Invoice. `Financially Cleared` bukan Close, Finalize, atau Lunas Tata Rekening, dan bukan kunci mutasi. Selama Tata Rekening masih mengizinkan perubahan, revisi Invoice tetap pada Invoice yang sama dan tidak mensyaratkan transisi ke `Adjusted or Credited`. `Adjusted or Credited` adalah jalur dokumen kompensasi ketika revisi Invoice secara langsung tidak lagi diizinkan (`BR-APT-027`).
+State lifecycle Invoice mencatat fakta komersial dan pembayaran/coverage. State itu tidak merepresentasikan mutabilitas. `Issued` berarti Invoice adalah dokumen komersial/charge yang sudah diposting untuk penagihan dan Financial Charge; Issue tidak membekukan isi Invoice. `Financially Cleared` bukan Close, Finalize, atau Lunas Tata Rekening, dan bukan kunci mutasi. Selama Tata Rekening masih mengizinkan perubahan, revisi Invoice tetap pada Invoice yang sama dan tidak mensyaratkan transisi ke `Adjusted or Credited`. `Adjusted or Credited` adalah disposisi Invoice yang diamati setelah Tata Rekening menerapkan koreksi finansial pengecualian ketika revisi Invoice secara langsung tidak lagi diizinkan (`BR-APT-027`). Itu bukan lifecycle Nota Kredit milik Apotek.
 
 ### 8.4 Lifecycle Dispensing
 
@@ -744,7 +748,7 @@ Pickup call adalah salah satu pemicu yang menyelesaikan antrean Patient Tracker 
 | Dispensing Expired | Periode fulfillment yang diizinkan berakhir tanpa completion. |
 | Unfulfilled Medication Recorded | Accepted Quantity memperoleh outcome non-fulfillment final. |
 | Medication Returned | Obat yang sebelumnya disiapkan atau disediakan telah dikembalikan. |
-| Invoice Credited | Credit Note mengurangi atau membalik konsekuensi Invoice karena revisi Invoice secara langsung tidak lagi diizinkan. |
+| Invoice Credited | Tata Rekening menerapkan Credit Note yang mengurangi atau membalik konsekuensi Invoice karena revisi Invoice secara langsung tidak lagi diizinkan. Diamati oleh Apotek; tidak dicatat sebagai dokumen Credit Note milik Apotek. |
 | Refund Required | Financial resolution memerlukan pengembalian dana yang telah diselesaikan. |
 | Pharmacy Service Started | `Medication Preparation Started` menetapkan evidence `ServedAt` apotek Rawat Jalan. |
 | Sales Order Resolved | Setiap Accepted Quantity dan konsekuensi komersial yang diperlukan memperoleh outcome final yang accountable. |

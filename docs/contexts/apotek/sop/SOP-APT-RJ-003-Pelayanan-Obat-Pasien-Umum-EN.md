@@ -26,7 +26,7 @@ Provide a repeatable procedure for obtaining verbal Purchase Confirmation, estab
 | Pharmacy System | Subsystem | Displays Sales Order Item amounts, records the Invoice and its Invoice Items, displays Payment Clearance, evaluates Dispense Authorized, tracks preparation, and records dispense and handover. |
 | Patient Tracker | Subsystem | Records `ServedAt` at preparation start and `DoneAt` when queue completion occurs (pickup call, or No Show Resolution if the Queue Entry is still `In Service`). `DoneAt` is never reversed. |
 | Inventory | Subsystem | Supplies Mutasi, Remove Stock, and return-disposition outcomes. |
-| Tata Rekening | Subsystem | Receives Financial Charge and supplies financial permission for Invoice revision, or Credit Note / Refund / Financial Adjustment when revision is no longer permitted. |
+| Tata Rekening | Subsystem | Receives Financial Charge and supplies financial permission for Invoice revision, or Credit Note / Refund / Financial Adjustment when revision is no longer permitted. Pharmacy System does not persist those exception documents. |
 
 ## 3. Preconditions
 
@@ -73,7 +73,7 @@ Provide a repeatable procedure for obtaining verbal Purchase Confirmation, estab
 - **Pharmacy System** keeps Medication Preparation blocked while Payment Clearance is absent.
 - **Pharmacy Staff** cancels only when the displayed Invoice lifecycle and Tata Rekening permission both permit.
 - When Tata Rekening still permits modification, **Pharmacy System** revises the same Invoice with accountable actor and effective business time.
-- When Tata Rekening no longer permits modification, **Tata Rekening** supplies Financial Adjustment, Credit Note, Refund, or another exception outcome.
+- When Tata Rekening no longer permits modification, **Tata Rekening** supplies Financial Adjustment, Credit Note, Refund, or another exception outcome. **Pharmacy System** does not create or persist a Credit Note entity.
 
 ### 5.4 Shortage after Sales Order establishment
 
@@ -81,7 +81,7 @@ This exception applies when the shortage is identified **after** the Sales Order
 
 - **Pharmacy Staff** does not create Backorder, select an alternate stock source, or substitute the medication.
 - **Pharmacy Staff** does not remove items from the established Sales Order and does not rebuild it as a partial order.
-- **Pharmacy System** records the applicable Unfulfilled Medication Outcome, supports Salinan Resep for unfulfilled items, and keeps required financial consequences visible.
+- **Pharmacy System** records the applicable Unfulfilled Medication Outcome, supports Copy Resep for unfulfilled items, and keeps required financial consequences visible.
 - Commercial consequences of an existing Invoice follow `BR-APT-027`: **Pharmacy System** revises the Invoice when Tata Rekening still permits modification; otherwise **Tata Rekening** supplies Credit Note, Refund, or another exception commercial correction.
 
 ### 5.5 Final Dispense Review fails

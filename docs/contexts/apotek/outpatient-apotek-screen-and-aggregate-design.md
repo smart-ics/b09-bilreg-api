@@ -3,7 +3,7 @@
 **Artifact status:** Proposed design decision  
 **Bounded context:** Apotek (`Pelayanan Obat Pasien`)  
 **Scope:** Outpatient pharmacy  
-**Related artifacts:** [Apotek Domain](./apotek-domain.md), [Outpatient Apotek Workflow](./outpatient-apotek-workflow.md), [Outpatient Apotek SOP](./sop/DAFTAR-SOP-APT-RJ.md), [Outpatient Apotek Repository Gap Analysis](./outpatient-apotek-repository-gap-analysis-report.md) (BA-03), [Outpatient Apotek Persistence Design](./outpatient-apotek-persistence-design.md)
+**Related artifacts:** [Apotek Domain](./apotek-domain.md), [Outpatient Apotek Workflow](./outpatient-apotek-workflow.md), [Outpatient Apotek SOP](./sop/DAFTAR-SOP-APT-RJ.md), [Outpatient Apotek Repository Gap Analysis](./working/outpatient-apotek-repository-gap-analysis-report.md) (BA-03), [Outpatient Apotek Persistence Design](./outpatient-apotek-persistence-design.md)
 
 ## 1. Decision Summary
 
@@ -33,7 +33,7 @@ This decision assumes that queue-number issuance is owned by c013-kiosk-queue-di
 
 1. A pharmacy queue entry groups a Patient's counter interaction; it does not merge prescriptions, Sales Orders, Invoices, or Dispensings.
 2. Sales, physical preparation, and handover are separate accountable facts. A completed payment or queue does not prove medication handover.
-3. An Invoice must be derived from accountable Sales Order Items. Users must not manually create independent medication invoice items or free-form non-medication invoice items. BHP appears as a catalog sales item. Packaging and compounding fees are item-level charges. Rounding and other transaction-wide adjustments are invoice-level charges.
+3. An Invoice must be derived from accountable Sales Order Items. Users must not manually create independent medication invoice items or free-form non-medication invoice items. BHP appears as a catalog sales item. Packaging and compounding fees are item-level charges. Rounding and other transaction-wide adjustments are Invoice header commercial totals.
 4. Dispensing is not a status update on a Sales Order. It is executed through a separate Dispensing aggregate.
 5. The existing Patient Tracker owns pharmacy queue identity, queue number, and queue lifecycle. Outpatient Queue Mapping is a navigation/association mechanism only; it is not an aggregate root and does not own queue or medication-demand lifecycle. Apotek owns its operational and fulfillment facts on the Pharmacy aggregates (`TelaahResep`, `SalesOrder`, `Invoice`, `Dispensing`). Pharmacy Queue Close is an operational fact/event that requests Patient Tracker `Withdrawn`; it is not an aggregate.
 6. The four-screen model is an outpatient scope decision. It does not preclude inpatient, emergency, unit-dose, or future exception-focused worklists.
@@ -90,8 +90,8 @@ The Exception Worklist surfaces cases that need accountable resolution under exi
 | Pickup Expired | Collection Window elapsed; awaiting override for handover or `WF-APT-RJ-007` close |
 | Expired Medication | Authorized fulfillment expiry / `Collection Window Expired` and related Dispensing terminal outcomes |
 | Return Request | Return of prepared, transferred, or handed-over medication awaiting Inventory disposition |
-| Correction Request | Post-payment or post-handover commercial or fulfillment correction that must remain accountable. Direct Invoice revision is used when Tata Rekening still permits modification; Credit Note, Refund, or Financial Adjustment is used when it does not. Silent replacement without that permission or accountability is forbidden. |
-| Financial Consequence Pending | Credit Note, Refund, or other Tata Rekening exception outcome still outstanding after expiry or return, when Invoice revision is no longer permitted |
+| Correction Request | Post-payment or post-handover commercial or fulfillment correction that must remain accountable. Direct Invoice revision is used when Tata Rekening still permits modification; Tata Rekening-owned Credit Note, Refund, or Financial Adjustment is used when it does not. Apotek does not persist a Credit Note entity. Silent replacement without that permission or accountability is forbidden. |
+| Financial Consequence Pending | Tata Rekening Credit Note, Refund, or other Tata Rekening exception outcome still outstanding after expiry or return, when Invoice revision is no longer permitted |
 | Inventory Disposition Pending | Return to Stock or other final Inventory disposition still outstanding |
 
 Commands remain on the existing aggregates and external authorities. The worklist only selects and prioritizes work already governed by return/correction handling in this screen and by SOP APT-RJ-007 for uncollected medication.
@@ -120,8 +120,8 @@ The workbench contains four activities.
    - For General Patient quantities, capture verbal purchase confirmation and establish an Invoice from the applicable Sales Order Items.
    - For BPJS quantities, show SEP and Fornas coverage outcomes; do not request Patient payment or establish the BPJS Invoice early.
    - For mixed coverage, Fornas Not Covered items form an independent Patient-Pay Sales Order. Covered items remain on the BPJS-covered Sales Order. Do not keep uncovered lines on the BPJS fulfillment path.
-   - For Partial Prescription Fulfillment, establish a Sales Order from selected or fulfillable prescription items only when Patient Request or Stock Shortage applies. For Stock Shortage, fulfillable quantity is Available Stock, not Current Stock. Excluded lines remain on the originating prescription. Issue Salinan Resep for unfulfilled items when external fulfillment is required. Pharmacist approves when professional review is required.
-   - Submit a return or correction request rather than freely reversing a sale. When Tata Rekening still permits modification, the workbench may revise the same Invoice. When it does not, display the Credit Note, Refund, or Financial Adjustment exception path. A post-payment or post-handover return requires authorization by an authorized pharmacist according to operational policy, plus Inventory and Tata Rekening outcomes. No monetary approval threshold applies.
+   - For Partial Prescription Fulfillment, establish a Sales Order from selected or fulfillable prescription items only when Patient Request or Stock Shortage applies. For Stock Shortage, fulfillable quantity is Available Stock, not Current Stock. Excluded lines remain on the originating prescription. Issue Copy Resep for unfulfilled items when external fulfillment is required. Pharmacist approves when professional review is required.
+   - Submit a return or correction request rather than freely reversing a sale. When Tata Rekening still permits modification, the workbench may revise the same Invoice. When it does not, display the Tata Rekening Credit Note, Refund, or Financial Adjustment exception path; do not create an Apotek Credit Note. A post-payment or post-handover return requires authorization by an authorized pharmacist according to operational policy, plus Inventory and Tata Rekening outcomes. No monetary approval threshold applies.
    - Resolve Exception Worklist items through the same accountable paths: No-Show / expiry under SOP APT-RJ-007, return and correction through authorized-pharmacist outcomes, and display of pending financial or inventory consequences without inventing stock or settlement facts.
 
 Queue mapping and General Patient purchase confirmation can occur in the same counter interaction. Neither action records pharmacy `ServedAt` or `DoneAt`.
@@ -143,7 +143,7 @@ The workbench lets Pharmacy Staff:
 2. begin preparation only for authorized quantities;
 3. perform picking, counting, labelling, packaging, and compounding when required;
 4. record preparation completion and move the Dispensing to `Prepared`;
-5. record or display shortage, Salinan Resep for unfulfilled items, cancellation, and other accountable exceptions; and
+5. record or display shortage, Copy Resep for unfulfilled items, cancellation, and other accountable exceptions; and
 6. show prepared medication in Dispensing Temporary Custody until accountable handover or No Show return Mutasi.
 
 The first `Medication Preparation Started` event is Pharmacy Service Start Evidence. It causes Patient Tracker to record `ServedAt` and move the pharmacy queue entry to `In Service`.
@@ -300,7 +300,7 @@ The Apotek aggregate-root list is exactly:
 |---|---|---|
 | `TelaahResep` | Keeps the Resep Kerja source, per-item professional disposition, responsible Pharmacist, and final review outcome consistent | Original clinical prescription and prescriber clarification communications |
 | `SalesOrder` | Owns accepted demand, Sales Order Items, accepted quantity, fulfillment/unfulfilled progress, and overall resolution; reconciles commercial and fulfillment quantities | Payment settlement, inventory balance, physical preparation, or handover execution |
-| `Invoice` | Owns one medication sale, catalog sales items including BHP, item-level charges, invoice-level charges, pricing snapshot, payer, financial disposition, and commercial adjustments. Content remains mutable while Tata Rekening still permits modification. | Sales Order quantity authority, payment evidence, stock, physical dispensing, Tata Rekening permission rules, Financial Clearance, or a separate invoice-component model |
+| `Invoice` | Owns one medication sale, catalog sales items including BHP, item-level charges on Invoice Items, transaction-wide commercial totals on the Invoice header, pricing snapshot, payer, financial disposition, and commercial adjustments. Content remains mutable while Tata Rekening still permits modification. Does not own Credit Note, Refund, or Financial Adjustment documents. Optional Tata Rekening correction correlation is allowed. | Sales Order quantity authority, payment evidence, stock, physical dispensing, Tata Rekening permission rules, Financial Clearance, Credit Note lifecycle, or a separate invoice-component model |
 | `Dispensing` | Owns preparation, items, immutable final review attempts, Patient Education Acknowledgement, Collection Window Override when applicable, Medication Dispense, Medication Handover, expiry, cancellation, return, and non-fulfillment outcomes | Invoice payment settlement and authoritative stock balance |
 
 `OutpatientQueueMapping` and Pharmacy Queue Close are **not** aggregate roots. They do not appear in the catalog above.
@@ -309,8 +309,9 @@ The Apotek aggregate-root list is exactly:
 |---|---|---|---|
 | `OutpatientQueueMapping` | Navigation/association mechanism only (BA-03) | Answers operational navigation and worklist questions: which queue entry is serving this Resep Kerja or Jual Bebas, and which Resep Kerja or Jual Bebas are associated with this queue entry. Identifies Tracker Mapping or Manual Mapping. The pharmacy-side endpoint is a Resep Kerja or a Jual Bebas only. Mapping shall not target a Sales Order, Invoice, or Dispensing. After a Sales Order exists, worklists join from the mapped demand to downstream Sales Order, Invoice, and Dispensing records; those joins are not mapping targets. | Business lifecycle, workflow state, approval state, operational progress, transactional consistency, or active/inactive relationship state. Queue identity and lifecycle remain owned by Patient Tracker. Medication demand lifecycle remains owned by the Pharmacy aggregates (`SalesOrder`, `Dispensing`, and related roots). No independent consistency boundary. |
 | Pharmacy Queue Close | Operational fact/event | Pharmacy Staff fact that ends a Pharmacy Queue Entry not progressed into the pharmacy workflow. Records a mandatory close reason, responsible Pharmacy Staff, and effective business time. Requests Patient Tracker `Withdrawn` from `Waiting`. | Patient Tracker queue state itself (`Withdrawn` is set by Patient Tracker). Not an aggregate, not a queue state, and not a path that establishes a Sales Order, Dispensing, or Medication Handover. |
-| Resep Kerja | Supporting document (BA-06) | Pharmacy operational copy of one Resep created at intake from the Prescription Contract. Telaah Resep and Sales Order establishment operate on this copy. | Original CPOE or legacy Resep authority. Source revisions create a review task and do not silently rewrite the copy. Not an aggregate root. |
+| Resep Kerja | Supporting document (BA-06) | Pharmacy operational copy of one Resep created at intake from the Prescription Contract. Telaah Resep and Sales Order establishment operate on this copy. | Original CPOE or legacy Resep authority. The intake copy is not silently rewritten from the clinical source. Not an aggregate root. |
 | Jual Bebas (`JualBebas`) | Supporting document | One accepted retail-style medication request without a Resep. Decline creates no row. | Prescription review, Telaah Resep, or Pharmacist approval. Not an aggregate root. |
+| Copy Resep (`CopyResep`) | Supporting document | Accountable record of prescribed medication or quantity excluded from a Sales Order or not fulfilled, when applicable. May be issued before or after Sales Order establishment. | Sales Order quantity authority, fulfillment execution, or payment settlement. Not an aggregate root. |
 
 ### 5.3 Dispense Authorized (not an aggregate)
 
@@ -356,7 +357,7 @@ The following are required collaborators, not Apotek aggregates:
 | Inventory / Stock Ledger | Current Stock, Stock Mutasi, Remove Stock, and movement history only. Does not own Available Stock, reservation, issue, `Prepared`, handover, or No Show status. |
 | Payment / Cashier | Payment Clearance evidence |
 | SEP and Fornas authorities | BPJS eligibility and item-level Coverage Clearance evidence |
-| Tata Rekening | Financial permission for Invoice revision, Financial Charge, and Credit Note / Refund / Financial Adjustment exception outcomes |
+| Tata Rekening | Financial permission for Invoice revision, Financial Charge, and ownership of Credit Note / Refund / Financial Adjustment exception outcomes |
 
 ### 5.6 Aggregate review of the operational decisions in this artifact
 

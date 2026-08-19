@@ -1,0 +1,24 @@
+CREATE TABLE BILRG_AptSalesOrder (
+    SalesOrderId VARCHAR(12) NOT NULL CONSTRAINT DF_BILRG_AptSalesOrder_SalesOrderId DEFAULT(''),
+    SourceKind INT NOT NULL CONSTRAINT DF_BILRG_AptSalesOrder_SourceKind DEFAULT(0),
+    SourceId VARCHAR(12) NOT NULL CONSTRAINT DF_BILRG_AptSalesOrder_SourceId DEFAULT(''),
+    TelaahResepId VARCHAR(12) NOT NULL CONSTRAINT DF_BILRG_AptSalesOrder_TelaahResepId DEFAULT(''),
+    RegId VARCHAR(10) NOT NULL CONSTRAINT DF_BILRG_AptSalesOrder_RegId DEFAULT(''),
+    PasienId VARCHAR(15) NOT NULL CONSTRAINT DF_BILRG_AptSalesOrder_PasienId DEFAULT(''),
+    PasienName VARCHAR(60) NOT NULL CONSTRAINT DF_BILRG_AptSalesOrder_PasienName DEFAULT(''),
+    PayerPath INT NOT NULL CONSTRAINT DF_BILRG_AptSalesOrder_PayerPath DEFAULT(0),
+    PartialReason INT NOT NULL CONSTRAINT DF_BILRG_AptSalesOrder_PartialReason DEFAULT(0),
+    SalesOrderStatus INT NOT NULL CONSTRAINT DF_BILRG_AptSalesOrder_SalesOrderStatus DEFAULT(0),
+    ResolvedReason INT NOT NULL CONSTRAINT DF_BILRG_AptSalesOrder_ResolvedReason DEFAULT(0),
+    Version INT NOT NULL CONSTRAINT DF_BILRG_AptSalesOrder_Version DEFAULT(1),
+    CrtUser VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_AptSalesOrder_CrtUser DEFAULT(''),
+    CrtDate DATETIME NOT NULL CONSTRAINT DF_BILRG_AptSalesOrder_CrtDate DEFAULT('3000-01-01'),
+    UpdUser VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_AptSalesOrder_UpdUser DEFAULT(''),
+    UpdDate DATETIME NOT NULL CONSTRAINT DF_BILRG_AptSalesOrder_UpdDate DEFAULT('3000-01-01'),
+    VodUser VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_AptSalesOrder_VodUser DEFAULT(''),
+    VodDate DATETIME NOT NULL CONSTRAINT DF_BILRG_AptSalesOrder_VodDate DEFAULT('3000-01-01'),
+    CONSTRAINT PK_BILRG_AptSalesOrder PRIMARY KEY CLUSTERED (SalesOrderId)
+);
+GO
+CREATE UNIQUE INDEX UX_BILRG_AptSalesOrder_ActiveSourceRegPayer ON BILRG_AptSalesOrder(SourceKind, SourceId, RegId, PayerPath) WHERE SalesOrderStatus IN (0, 1) AND VodDate = '3000-01-01';
+GO
