@@ -33,7 +33,7 @@ public class PakaiBedModel : IPakaiBed
         LayananType layanan, BedType bed, TipeKamarType tipeKamar,
         KelasType kelas, decimal tarif)
     {
-        var newId = NunaId.New("PKB");
+        var newId = NunaId.NewLegacy("BE", 'A');
         var auditTrail = new AuditTrailType(masuk, AuditInfoType.Default, AuditInfoType.Default);
         return new PakaiBedModel(newId, 
             new PeriodePakaiBedType(masuk, AuditInfoType.Default),

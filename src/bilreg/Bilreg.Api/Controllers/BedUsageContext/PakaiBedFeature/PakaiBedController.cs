@@ -1,7 +1,5 @@
-using Bilreg.Api.Controllers.ChargeContext;
 using Bilreg.Api.Helpers;
 using Bilreg.Application.BedUsageContext.PakaiBedFeature.UseCases;
-using Bilreg.Application.ChargeContext.TindakanFeature.UseCases;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
