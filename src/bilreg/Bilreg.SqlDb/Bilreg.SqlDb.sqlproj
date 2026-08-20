@@ -120,6 +120,8 @@
     <Folder Include="BrgContext\StandardFeature\Kfa\" />
     <Folder Include="InventoryContext\MutasiFeature\" />
     <Folder Include="InventoryContext\StokFeature\" />
+    <Folder Include="PurchaseContext\" />
+    <Folder Include="PurchaseContext\DeliveryFeature\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OpCase.sql" />
@@ -292,6 +294,8 @@
     <None Include="InventoryContext\StockLedgerFeature\BILRG_StokLegacyScope.sql" />
     <None Include="InventoryContext\StockLedgerFeature\BILRG_StokLegacyBinding.sql" />
     <None Include="InventoryContext\StockLedgerFeature\BILRG_StockLedgerV2_Rollback.sql" />
+    <None Include="PurchaseContext\DeliveryFeature\BILRG_DeliveryOrder.sql" />
+    <None Include="PurchaseContext\DeliveryFeature\BILRG_DeliveryOrderItem.sql" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="AdmisiContext\AntrianFeature\ta_no_antrian_map.sql" />
