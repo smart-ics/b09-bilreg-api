@@ -2,14 +2,12 @@
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.PakaiBedFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
-using Nuna.Lib.AutoNumberHelper;
 
 namespace Bilreg.Domain.BedUsageContext.RoomChargeFeature;
 
 public class RoomChargeModel : IRoomChargeKey
 {
     private readonly List<RoomChargeKomponenModel> _listKomponen;
-    private const string ID_PREFIX = "RMC";
     public RoomChargeModel(
         string roomChargeId, 
         string pakaiBedId, 
@@ -41,7 +39,7 @@ public class RoomChargeModel : IRoomChargeKey
     public static RoomChargeModel Create(PakaiBedModel pakaiBed, RegModel reg, 
         LayananType layanan, BedType bed, DateTime occurredAt, string userId, IEnumerable<RoomChargeKomponenModel> listKomp)
     {
-        var newId = NunaId.New(ID_PREFIX);
+        var newId = $"{pakaiBed.PakaiBedId}-{occurredAt:MMdd}";
         var nilai = listKomp.Sum(x => x.Tarif);
         var diskon = listKomp.Sum(x => x.Diskon);
         var total = nilai - diskon;

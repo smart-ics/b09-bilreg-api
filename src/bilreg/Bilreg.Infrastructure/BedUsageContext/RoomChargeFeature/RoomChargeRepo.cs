@@ -10,11 +10,14 @@ public class RoomChargeRepo : IRoomChargeRepo
 {
     private readonly IRoomChargeDal _roomChargeDal;
     private readonly IRoomChargeKomponenDal _roomChargeKomponenDal;
-    public RoomChargeRepo(IRoomChargeDal roomChargeDal, 
-        IRoomChargeKomponenDal roomChargeKomponenDal)
+    private readonly IRoomChargeLogDal _roomChargeLogDal;
+    public RoomChargeRepo(IRoomChargeDal roomChargeDal,
+        IRoomChargeKomponenDal roomChargeKomponenDal,
+        IRoomChargeLogDal roomChargeLogDal)
     {
         _roomChargeDal = roomChargeDal;
         _roomChargeKomponenDal = roomChargeKomponenDal;
+        _roomChargeLogDal = roomChargeLogDal;
     }
 
     public void SaveChanges(RoomChargeModel model)
@@ -41,26 +44,25 @@ public class RoomChargeRepo : IRoomChargeRepo
 
         return MayBe.From(result);
     }
-
-    public void Delete(IRoomChargeKey key)
-    {
-        _roomChargeDal.Delete(key);
-        _roomChargeKomponenDal.Delete(key);
-    }
-
     public IEnumerable<RoomChargeView> ListData(IRegKey regKey)
     {
         var listDto = _roomChargeDal.ListData(regKey)?.ToList() ?? [];
         var result = listDto.Select(x => x.ToView());
         return result;
     }
-
     public IEnumerable<RoomChargeView> ListData(IPakaiBed pakaiBedKey)
     {
         var listDto = _roomChargeDal.ListData(pakaiBedKey)?.ToList() ?? [];
         var result = listDto.Select(x => x.ToView());
         return result;
     }
+    public void Delete(IRoomChargeKey key, RoomChargeModel model, DateTime occurredAt, string userId)
+    {
+        var roomChargeLog = RoomChargeLogDto.FromModel(model, true, occurredAt, userId);
 
-    
+        _roomChargeDal.Delete(key);
+        _roomChargeKomponenDal.Delete(key);
+        _roomChargeLogDal.Insert(roomChargeLog);
+
+    }
 }

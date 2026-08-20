@@ -1,4 +1,5 @@
-﻿using Bilreg.Application.BedUsageContext.RoomChargeFeature.UseCases;
+﻿using Bilreg.Api.Helpers;
+using Bilreg.Application.BedUsageContext.RoomChargeFeature.UseCases;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -50,4 +51,20 @@ public class RoomChargeController : ControllerBase
         var response = await _mediator.Send(query);
         return Ok(new JSendOk(response));
     }
+
+    [HttpDelete]
+    [Route("{id}/unCharge")]
+    public async Task<IActionResult> UnCharge(string id, [FromBody] RoomChargeDeleteBody body)
+    {
+        var userAgent = HttpHelper.GetUserAgent(Request);
+        var remoteIpAddress = HttpHelper.GetIpAddress(Request, HttpContext);
+        var cmd = new RoomChargeDeleteCmd(id, body.UserId, body.VoidReason,
+            remoteIpAddress, userAgent);
+        await _mediator.Send(cmd);
+        return Ok(new JSendOk("Done"));
+
+    }
 }
+
+
+public record RoomChargeDeleteBody(string UserId, string VoidReason);

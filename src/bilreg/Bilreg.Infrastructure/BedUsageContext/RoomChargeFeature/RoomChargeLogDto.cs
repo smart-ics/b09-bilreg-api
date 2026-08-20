@@ -15,15 +15,15 @@ decimal fn_tarif,
 decimal fn_qty,
 bool fb_status_void)
 {
-    public static RoomChargeLogDto FromModel(RoomChargeModel model, bool isVoid)
+    public static RoomChargeLogDto FromModel(RoomChargeModel model, bool isVoid, DateTime occurredAt, string userId)
     {
         return new RoomChargeLogDto(
             model.RoomChargeId,
             model.TimeCharge.ToString("yyyy-MM-dd"),
-            DateTime.Now.ToString("yyyy-MM-dd"),
-            DateTime.Now.ToString("HH:mm:ss"),
+            occurredAt.ToString("yyyy-MM-dd"),
+            occurredAt.ToString("HH:mm:ss"),
             model.UserId,
-            model.UserId,
+            userId,
             model.Reg.RegId,
             model.Layanan.LayananId,
             model.Bed.BedId,

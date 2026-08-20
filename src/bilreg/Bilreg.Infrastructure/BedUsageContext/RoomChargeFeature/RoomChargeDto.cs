@@ -2,7 +2,6 @@
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.BedUsageContext.RoomChargeFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
-using Moq;
 using System.Globalization;
 
 namespace Bilreg.Infrastructure.BedUsageContext.RoomChargeFeature;

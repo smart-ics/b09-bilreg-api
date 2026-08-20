@@ -8,8 +8,8 @@ namespace Bilreg.Application.BedUsageContext.RoomChargeFeature;
 public interface IRoomChargeRepo :
     ISaveChange<RoomChargeModel>,
     ILoadEntity<RoomChargeModel, IRoomChargeKey>,
-    IDelete<IRoomChargeKey>,
     IListData<RoomChargeView, IRegKey>,
     IListData<RoomChargeView, IPakaiBed>
 {
+    void Delete(IRoomChargeKey key, RoomChargeModel model, DateTime occurredAt, string userId);
 }
