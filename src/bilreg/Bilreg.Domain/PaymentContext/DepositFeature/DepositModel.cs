@@ -1,6 +1,7 @@
 ﻿using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.AdmisiContext.RegFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
+using Nuna.Lib.AutoNumberHelper;
 
 namespace Bilreg.Domain.PaymentContext.DepositFeature;
 
@@ -31,7 +32,7 @@ public class DepositModel : IDepositId
 
     public static DepositModel Create(RegModel reg, LayananType layanan, string keterangan, decimal nilaiDeposit, AuditTrailType audit)
     {
-        var newId = Nuna.Lib.AutoNumberHelper.NunaId.New("DEP");
+        var newId = NunaId.NewLegacy("DP", 'A');
         return new DepositModel(newId, DateTime.Now, reg.ToReff(), layanan.ToReff(), keterangan, nilaiDeposit, audit);
     }
 }
