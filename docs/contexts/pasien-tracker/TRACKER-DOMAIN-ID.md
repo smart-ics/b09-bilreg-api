@@ -378,6 +378,7 @@ Queue Entry mereferensikan Patient Tracker melalui TrackerId, tetapi tidak memil
 - **BR-TRK-038** — Timestamp lifecycle Queue harus merupakan business time yang valid. Pada simulasi Fixed Business Date, ServedAt dapat mendahului CreatedAt dan DoneAt dapat mendahului ServedAt; consumer yang menghitung durasi harus secara eksplisit menoleransi atau mengecualikan interval negatif.
 - **BR-TRK-039** — Done Queue Entry bersifat final pada V1 dan tidak boleh kembali menjadi Waiting atau In Service.
 - **BR-TRK-039a** — Feature policy yang berlaku dapat membuat Waiting Queue Entry menjadi Withdrawn ketika keikutsertaan berakhir sebelum pelayanan dimulai; Withdrawn Queue Entry bersifat final dan tidak boleh direpresentasikan sebagai pelayanan yang selesai.
+- **BR-TRK-052** — Apotek Rawat Jalan adalah feature policy yang berlaku berdasarkan `BR-TRK-039a`. Ketika Apotek mencatat Pharmacy Queue Close beserta alasan wajib untuk Waiting Pharmacy Queue Entry yang belum memasuki In Service, Patient Tracker harus membuat Queue Entry itu Withdrawn. TAKEN tidak boleh ditambahkan sebagai state Patient Tracker. State antrean tambahan tidak boleh diperkenalkan.
 
 ### 7.6 Operational time interpretation
 
@@ -576,6 +577,10 @@ Apotek melaporkan Medication Preparation Started
   → Apotek kemudian melaporkan coordinated pickup call
   → Pharmacy Queue Entry menjadi Done
   → DoneAt apotek menggunakan waktu pickup call
+
+Apotek mencatat Pharmacy Queue Close beserta alasan wajib saat Waiting
+  → Pharmacy Queue Entry menjadi Withdrawn
+  → ServedAt dan DoneAt tetap tidak ada
 ```
 
 Lifecycle antrean menggambarkan kemajuan operasional antrean apotek. Lifecycle tersebut tidak membuktikan Final Dispense Review, Patient Education, Medication Dispense, atau Medication Handover. Urutan terperinci apotek Rawat Jalan dimiliki oleh [workflow Outpatient Apotek](../apotek/outpatient-apotek-workflow-id.md).

@@ -15,6 +15,16 @@ using Bilreg.Application.LabContext.LabOwareFeature.Integration;
 using Bilreg.Application.AdmisiContext.EmrAntrianOutboundFeature;
 using Bilreg.Application.AdmisiContext.EmrAntrianOutboundFeature.Integration;
 using Bilreg.Application.AdmisiContext.RegFeature;
+using Bilreg.Application.ApotekContext.IntegrationFeature;
+using Bilreg.Application.ApotekContext.IntegrationFeature.Handlers;
+using Bilreg.Application.ApotekContext.IntegrationFeature.UseCases;
+using Bilreg.Application.ApotekContext.InvoiceFeature;
+using Bilreg.Application.ApotekContext.QueueFeature;
+using Bilreg.Application.ApotekContext.ResepKerjaFeature;
+using Bilreg.Application.ApotekContext.Shared;
+using Bilreg.Application.ApotekContext.StockPlanningFeature;
+using Bilreg.Application.ApotekContext.WorklistFeature;
+using Bilreg.Infrastructure.ApotekContext.WorklistFeature;
 using Bilreg.Application.LabContext.LabResultFeature;
 using Bilreg.Application.PaymentContext.PasienBalanceFeature;
 using Bilreg.Application.PaymentContext.TataRekeningFeature;
@@ -81,6 +91,31 @@ public static class InfrastructureService
             .AddScoped<IEmrAntrianOutboundWorklistDal, EmrAntrianOutboundWorklistDal>()
             .AddScoped<EmrAntrianOutboundProcessor>()
             .AddScoped<EmrAntrianOutboundEnqueueService>()
+            .AddScoped<AptIntegrationWorker>()
+            .AddScoped<ICollectionWindowDaysProvider, CollectionWindowDaysProvider>()
+            .AddScoped<IAvailableStockPort, FailClosedAvailableStockPort>()
+            .AddScoped<IAptAuthorizationPolicy, AuthenticatedActorAuthorizationPolicy>()
+            .AddScoped<IPrescriptionContractPort, FailClosedPrescriptionContractPort>()
+            .AddScoped<IPaymentClearancePort, FailClosedPaymentClearancePort>()
+            .AddScoped<ITataRekeningChargePort, FailClosedTataRekeningChargePort>()
+            .AddScoped<ITataRekeningInvoicePermissionPort, DenyTataRekeningInvoicePermissionPort>()
+            .AddScoped<ISepFornasPort, FailClosedSepFornasPort>()
+            .AddScoped<IIterConsumePort, FailClosedIterConsumePort>()
+            .AddScoped<IMedicationPricePort, FailClosedMedicationPricePort>()
+            .AddScoped<ITrackerPharmacyPort, TrackerPharmacyAdapter>()
+            .AddScoped<IStockPharmacyPort, StockPharmacyAdapter>()
+            .AddScoped<DispenseAuthorizedPolicy>()
+            .AddScoped<IAptWorklistDal, AptWorklistDal>()
+            .AddScoped<IAptIntegrationOpsDal, AptIntegrationOpsDal>()
+            .AddScoped<IAptIntegrationHandler, TrackerServedAtHandler>()
+            .AddScoped<IAptIntegrationHandler, TrackerDoneAtPickupHandler>()
+            .AddScoped<IAptIntegrationHandler, TrackerDoneAtNoShowHandler>()
+            .AddScoped<IAptIntegrationHandler, TrackerWithdrawnHandler>()
+            .AddScoped<IAptIntegrationHandler, StockReserveHandler>()
+            .AddScoped<IAptIntegrationHandler, StockRemoveOnHandoverHandler>()
+            .AddScoped<IAptIntegrationHandler, StockReturnNoShowHandler>()
+            .AddScoped<IAptIntegrationHandler, BillingChargeHandler>()
+            .AddScoped<IAptIntegrationHandler, IterConsumeHandler>()
             .AddScoped<IWaitingListWorklistDal, WaitingListWorklistDal>()
             .AddScoped<IRegistrationCancellationEligibilityDal, RegistrationCancellationEligibilityDal>()
             .AddScoped<IRegistrationCancellationEligibilityRepo, RegistrationCancellationEligibilityRepo>()

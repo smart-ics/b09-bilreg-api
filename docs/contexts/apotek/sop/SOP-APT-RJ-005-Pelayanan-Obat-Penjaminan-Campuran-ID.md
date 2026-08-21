@@ -14,91 +14,90 @@
 
 ## 1. Tujuan
 
-Memberikan langkah yang sama bagi petugas ketika satu pesanan obat berisi obat yang ditanggung BPJS dan obat yang harus dibayar Pasien. Kedua bagian diproses menurut penanggung biayanya masing-masing, tetapi obat yang sudah siap dapat diserahkan bersama dalam satu kali pengambilan.
+Memberikan langkah yang sama bagi petugas ketika Fornas mengklasifikasikan sebagian item resep sebagai Covered dan sebagian sebagai Not Covered. Item Covered membentuk Sales Order BPJS. Item Not Covered boleh membentuk Patient-Pay Sales Order independen. Kedua pesanan dapat diserahkan bersama dalam satu kali pengambilan.
 
 ## 2. Aktor dan Tanggung Jawab
 
 | Aktor | Jenis | Tanggung jawab |
 |---|---|---|
-| Pasien atau Keluarga Pasien | Pengguna layanan | Menyetujui atau menolak bagian yang harus dibayar sendiri, membayar setelah menyetujui, datang untuk mengambil obat, menerima edukasi, dan menerima obat bila berhak. |
-| Staf Apotek | Petugas | Memisahkan bagian tagihan BPJS dan Pasien, menyampaikan jumlah yang harus dibayar Pasien, mencatat transaksi yang disetujui, menyiapkan atau meracik obat yang sudah boleh diproses, mengoordinasikan kesiapan obat, dan memanggil Pasien. |
-| Kepala Apotek | Petugas | Menyetujui penanganan manual untuk obat yang sudah disiapkan tetapi tidak diambil Pasien. |
-| Kasir atau Sistem Pembayaran | Petugas atau subsistem | Menerima pembayaran dan mengirimkan informasi bahwa faktur Pasien Umum telah lunas. |
-| Apoteker | Petugas | Memeriksa penerima yang berhak, melakukan pemeriksaan akhir obat, dan memberikan edukasi kepada Pasien. |
-| Sistem SEP dan Fornas | Subsistem | Menyediakan hasil pemeriksaan keabsahan SEP dan jaminan untuk setiap item obat. |
-| Sistem Apotek | Subsistem | Menyimpan catatan tagihan dan persetujuan menurut penanggung biaya, membuat faktur secara terpisah, dan mengoordinasikan penyerahan obat. |
+| Pasien atau Keluarga Pasien | Pengguna layanan | Menyetujui atau menolak Patient-Pay Sales Order, membayar setelah menyetujui, datang untuk mengambil obat, menerima edukasi, dan menerima obat bila berhak. |
+| Staf Apotek | Petugas | Membentuk Sales Order BPJS untuk item Covered dan Patient-Pay Sales Order independen untuk item Not Covered, menyampaikan jumlah yang harus dibayar Pasien, mencatat transaksi yang disetujui, menyiapkan obat yang sudah boleh diproses, dan memanggil Pasien. |
+| Kepala Apotek | Petugas | Menyetujui penanganan manual untuk obat yang sudah disiapkan tetapi tidak diambil Pasien. Otorisasi oleh Apoteker yang berwenang menurut kebijakan operasional; tidak ada ambang persetujuan berdasarkan nilai uang. |
+| Kasir atau Sistem Pembayaran | Petugas atau subsistem | Menerima pembayaran dan mengirimkan informasi bahwa faktur Patient-Pay telah lunas. |
+| Apoteker | Petugas | Memeriksa penerima secara operasional, melakukan pemeriksaan akhir obat, dan mencatat Patient Education Acknowledgement. Pemeriksaan penerima tidak ditegakkan sistem. Catatan konseling rinci bersifat opsional. |
+| Sistem SEP dan Fornas | Subsistem | Mengklasifikasikan setiap item resep sebagai Covered atau Not Covered dan menyediakan keabsahan SEP. |
+| Sistem Apotek | Subsistem | Menyimpan Sales Order independen, faktur sesuai jalur payer, dan evaluasi Dispense Authorized per item. |
 | Sistem Antrian Pasien | Subsistem | Mencatat satu `ServedAt` dan satu `DoneAt` untuk antrian yang sama. |
-| Sistem Persediaan | Subsistem | Menyediakan hasil pemesanan, pengeluaran, dan keputusan pengembalian stok. |
-| Tata Rekening | Subsistem | Menerima dan menyelesaikan urusan keuangan sesuai penanggung biaya. |
+| Sistem Persediaan | Subsistem | Menyediakan hasil Mutasi, Remove Stock, dan keputusan pengembalian stok. |
+| Tata Rekening | Subsistem | Menerima Financial Charge dan memberikan izin finansial untuk merevisi faktur, atau outcome pengecualian sesuai jalur payer ketika revisi tidak lagi diizinkan. |
 
 ## 3. Prasyarat
 
 1. Semua petugas yang terlibat telah masuk ke aplikasi dan memiliki hak akses yang diperlukan.
-2. Satu pesanan apotek yang aktif memuat obat yang ditanggung BPJS dan obat yang harus dibayar Pasien.
-3. SEP masih sah dan pemetaan Fornas menunjukkan jumlah obat yang dijamin serta yang tidak dijamin.
-4. Catatan obat yang boleh diproses dan tugas untuk menyiapkan obat telah ditampilkan.
-5. Belum ada faktur Pasien Umum maupun faktur BPJS untuk bagian obat tersebut, kecuali proses dilanjutkan setelah kondisi khusus yang sudah tercatat.
+2. Fornas telah mengklasifikasikan item resep sebagai Covered atau Not Covered.
+3. SEP masih sah untuk item Covered.
+4. Item Not Covered tidak dibatalkan secara otomatis.
+5. Belum ada faktur Patient-Pay maupun faktur BPJS untuk item tersebut, kecuali proses dilanjutkan setelah kondisi khusus yang sudah tercatat.
 
 ## 4. Langkah Operasional
 
-1. **Staf Apotek** membuka permintaan obat dengan penjaminan campuran pada `Apotek Rajal`. **Staf Apotek** memeriksa jumlah obat dalam pesanan apotek dan penanggung biaya setiap jumlah obat.
-2. **Staf Apotek** mencatat secara terpisah bagian obat yang ditanggung BPJS dan bagian yang harus dibayar Pasien. Identitas dan jumlah obat yang sudah diterima tidak diubah.
-3. **Sistem SEP dan Fornas** mengirimkan hasil pemeriksaan SEP dan jaminan untuk setiap item obat. **Sistem Apotek** menampilkan persetujuan jaminan untuk jumlah obat yang ditanggung BPJS.
-4. **Sistem Apotek** menghitung dan menampilkan jumlah yang harus dibayar Pasien untuk obat yang tidak dijamin.
+1. **Sistem SEP dan Fornas** mengklasifikasikan setiap item resep sebagai Covered atau Not Covered. **Sistem Apotek** menampilkan klasifikasi tersebut.
+2. **Staf Apotek** membentuk Sales Order BPJS hanya dari item Covered. Item yang tidak dijamin tidak tetap pada jalur BPJS.
+3. **Staf Apotek** boleh membentuk Patient-Pay Sales Order terpisah untuk item Not Covered.
+4. **Sistem Apotek** menghitung dan menampilkan jumlah yang harus dibayar Pasien dari Patient-Pay Sales Order.
 5. **Staf Apotek** menyampaikan jumlah tersebut secara lisan sebelum faktur Pasien Umum dibuat.
-6. **Pasien atau Keluarga Pasien** menyatakan persetujuan lisan atas bagian obat yang harus dibayar sendiri.
-7. **Staf Apotek** mencatat transaksi yang disetujui. **Sistem Apotek** membuat faktur Pasien Umum secara terpisah untuk bagian obat yang dibayar Pasien.
-8. **Kasir atau Sistem Pembayaran** menerima pembayaran dan mengirimkan informasi pelunasan untuk faktur Pasien Umum.
-9. **Sistem Apotek** menetapkan obat sudah boleh diproses: berdasarkan persetujuan jaminan untuk bagian BPJS dan berdasarkan informasi pelunasan untuk bagian yang dibayar Pasien.
-10. **Sistem Persediaan** mengamankan stok yang diperlukan dan mengirimkan hasilnya.
-11. Setelah setiap jumlah obat yang akan diserahkan sudah boleh diproses, **Staf Apotek** memulai dan menyelesaikan penyiapan obat.
-12. Saat penyiapan obat pertama dimulai, **Sistem Apotek** mencatat `Medication Preparation Started`. **Sistem Antrian Pasien** mengubah antrian menjadi `In Service` dan mencatat satu `ServedAt`.
-13. **Sistem Apotek** menampilkan setiap tugas penyiapan obat yang akan diserahkan sebagai `Prepared` atau dengan catatan alasan yang jelas bila obat tidak dapat diserahkan.
-14. **Staf Apotek** melakukan satu kali panggilan agar Pasien mengambil obat. **Sistem Antrian Pasien** mengubah antrian yang sama menjadi `Done` dan mencatat satu `DoneAt`.
-15. Saat Pasien atau Keluarga Pasien hadir, **Apoteker** memeriksa penerima yang berhak, melakukan pemeriksaan akhir obat, dan mencatat edukasi yang perlu diberikan. Bila pemeriksaan lulus, **Sistem Apotek** menambahkan catatan pemeriksaan dan menampilkan tugas penyiapan obat berstatus `Reviewed`.
-16. Setelah mendapat persetujuan **Apoteker**, **Staf Apotek** menyerahkan obat secara fisik.
-17. Ketika obat berhasil diserahkan, **Sistem Apotek** membuat faktur BPJS untuk bagian obat yang dijamin. Aplikasi juga mencatat obat yang diberikan dan diserahkan untuk seluruh jumlah obat, serta tetap menyimpan pemisahan menurut penanggung biayanya.
-18. **Sistem Persediaan** mengirimkan catatan pengeluaran stok. **Sistem Apotek** menampilkan perkembangan akhir tugas penyiapan obat dan pesanan apotek.
+6. **Pasien atau Keluarga Pasien** menyatakan persetujuan lisan atas Patient-Pay Sales Order.
+7. **Staf Apotek** mencatat transaksi yang disetujui. **Sistem Apotek** membuat faktur Pasien Umum dari Patient-Pay Sales Order tersebut.
+8. **Kasir atau Sistem Pembayaran** menerima pembayaran dan mengirimkan informasi pelunasan untuk faktur Patient-Pay.
+9. **Sistem Apotek** mengevaluasi Dispense Authorized secara independen: item Covered dari evidence coverage; item Patient-Pay dari Payment Clearance.
+10. Setelah setiap jumlah obat yang akan diserahkan memperoleh Dispense Authorized, **Staf Apotek** memulai dan menyelesaikan penyiapan obat pada setiap Dispensing yang berlaku.
+11. Saat penyiapan obat pertama dimulai, **Sistem Apotek** mencatat `Medication Preparation Started`. **Sistem Antrian Pasien** mengubah antrian menjadi `In Service` dan mencatat satu `ServedAt`.
+12. **Sistem Apotek** menampilkan setiap tugas penyiapan obat yang akan diserahkan sebagai `Prepared` atau dengan catatan alasan yang jelas bila obat tidak dapat diserahkan.
+13. **Staf Apotek** melakukan satu kali panggilan agar Pasien mengambil obat. **Sistem Antrian Pasien** mengubah antrian yang sama menjadi `Done` dan mencatat satu `DoneAt`.
+14. Saat Pasien atau Keluarga Pasien hadir, **Apoteker** memeriksa penerima secara operasional, melakukan pemeriksaan akhir obat, dan mencatat Patient Education Acknowledgement. **Sistem Apotek** mencatat waktu edukasi dan Apoteker penanggung jawab. Catatan konseling rinci bersifat opsional. Apoteker boleh secara opsional mencatat nomor telepon penerima dan hubungan dengan Pasien sebagai referensi.
+15. Setelah mendapat persetujuan **Apoteker**, **Staf Apotek** menyerahkan obat secara fisik. Jika Pickup Expired, Apoteker berwenang harus terlebih dahulu mencatat Collection Window Override beserta alasannya.
+16. Ketika obat Sales Order BPJS berhasil diserahkan, **Sistem Apotek** membuat faktur BPJS. Aplikasi juga mencatat obat yang diberikan dan diserahkan untuk seluruh jumlah obat, serta tetap memisahkan kedua Sales Order.
+17. **Sistem Persediaan** mengirimkan catatan Remove Stock. **Sistem Apotek** menampilkan perkembangan akhir tugas penyiapan obat dan masing-masing Sales Order.
 
 ## 5. Pengecualian Operasional
 
-### 5.1 Pasien menolak bagian obat yang tidak dijamin sebelum faktur dibuat
+### 5.1 Pasien menolak Patient-Pay Sales Order sebelum faktur dibuat
 
 - **Staf Apotek** mencatat penolakan dan tidak membuat faktur Pasien Umum.
-- **Sistem Apotek** menandai bagian yang harus dibayar Pasien sebagai ditolak atau belum dialokasikan untuk penjualan. Bagian yang dijamin BPJS tetap dapat diproses secara terpisah.
+- **Sistem Apotek** mencatat outcome declined pada Patient-Pay Sales Order. Sales Order BPJS tetap dapat diproses secara independen.
 
-### 5.2 Item obat tidak memiliki jaminan Fornas yang sah
+### 5.2 Item diklasifikasikan Not Covered
 
-- **Sistem Apotek** menampilkan jumlah obat yang terdampak sebagai tidak dijamin.
-- **Staf Apotek** hanya dapat memindahkan jumlah tersebut menjadi bagian yang dibayar Pasien melalui pencatatan yang dapat dipertanggungjawabkan. **Staf Apotek** kemudian menyampaikan jumlah terbaru dan meminta persetujuan lisan ulang.
+- **Sistem Apotek** menampilkan item terdampak sebagai Not Covered dan tidak memasukkannya ke Sales Order BPJS.
+- **Staf Apotek** boleh membentuk Patient-Pay Sales Order independen, menyampaikan jumlah, dan meminta persetujuan lisan.
 
-### 5.3 Belum semua jumlah obat boleh diproses
+### 5.3 Belum semua jumlah obat memperoleh Dispense Authorized
 
-- **Sistem Apotek** mencegah penyiapan dan pengambilan bersama untuk jumlah obat yang belum mendapat persetujuan jaminan atau belum lunas.
+- **Sistem Apotek** mencegah penyiapan dan pengambilan bersama untuk jumlah obat yang belum authorized.
 - **Staf Apotek** menyelesaikan proses penjaminan atau pembayaran yang berlaku sebelum melanjutkan.
 
 ### 5.4 Pemeriksaan akhir obat tidak lulus
 
 - **Apoteker** mencatat alasan kegagalan dan jumlah obat yang terdampak serta tidak menyetujui penyerahan.
-- **Sistem Apotek** menambahkan catatan pemeriksaan yang tidak dapat diubah, lengkap dengan Apoteker dan waktu keputusan, mengembalikan tugas penyiapan obat terdampak dari `Prepared` ke `Preparing`, mencegah penyerahan bersama, dan tetap tidak membuat faktur BPJS.
-- **Staf Apotek** memperbaiki dan menyiapkan kembali obat yang terdampak. **Sistem Apotek** mengembalikan tugas tersebut ke `Prepared`, lalu **Apoteker** melakukan pemeriksaan akhir obat yang baru. Catatan pemeriksaan sebelumnya tetap terlihat dan tidak berubah.
+- **Sistem Apotek** menambahkan catatan pemeriksaan yang tidak dapat diubah, mengembalikan hanya tugas penyiapan obat terdampak dari `Prepared` ke `Preparing`, dan tidak menulis ulang Sales Order lain.
+- **Staf Apotek** memperbaiki dan menyiapkan kembali obat yang terdampak, lalu **Apoteker** melakukan pemeriksaan akhir obat yang baru.
 
 ### 5.5 Faktur yang sudah ada, obat yang tidak dapat dilayani, atau Pasien yang tidak datang memerlukan koreksi
 
-- **Sistem Apotek** tetap memisahkan urusan BPJS dan urusan bagian yang dibayar Pasien.
-- **Tata Rekening** memberikan koreksi yang diperlukan untuk bagian yang telah dibayar. Faktur BPJS tetap belum dibuat sampai obat berhasil diserahkan.
-- **Kepala Apotek** menerapkan `SOP-APT-RJ-007` untuk obat yang tidak diambil.
+- **Sistem Apotek** tetap memisahkan konsekuensi Sales Order BPJS dan Patient-Pay.
+- Faktur Patient-Pay yang sudah dibayar mengikuti `BR-APT-027`: merevisi faktur yang sama selama Tata Rekening masih mengizinkan perubahan; bila tidak, **Tata Rekening** memberikan nota kredit, pengembalian dana, atau penyesuaian keuangan. Faktur BPJS tetap belum dibuat sampai obat Sales Order BPJS berhasil diserahkan.
+- **Kepala Apotek** menerapkan `SOP-APT-RJ-007` untuk obat yang tidak diambil. Jika Queue Entry bersama sudah `Done`, `DoneAt` tidak dibalik. Jika masih `In Service` karena pickup call belum terjadi, resolusi itu boleh menyelesaikannya menjadi `Done` dan mencatat `DoneAt`.
 
 ## 6. Kriteria Penyelesaian
 
-1. Bagian obat yang ditanggung BPJS dan bagian yang dibayar Pasien tetap terlihat terpisah.
-2. Faktur Pasien Umum yang sudah lunas dan faktur BPJS yang dibuat saat obat diserahkan tampil terpisah, tetapi keduanya tetap terhubung ke pesanan apotek yang sama.
-3. Satu kali penyerahan obat mencatat seluruh jumlah obat yang berlaku dan penerima yang berhak.
-4. Pesanan apotek berstatus `Resolved`, atau tetap `Active` dengan masalah yang belum selesai ditampilkan secara jelas menurut penanggung biayanya.
+1. Item Covered dan Not Covered tetap pada Sales Order yang independen.
+2. Faktur Pasien Umum yang sudah lunas dan faktur BPJS yang dibuat saat obat diserahkan tampil terpisah dan terhubung ke Sales Order masing-masing.
+3. Satu kali penyerahan obat dapat mencatat seluruh jumlah obat yang berlaku. Nomor telepon penerima dan hubungan dengan Pasien boleh dicatat secara opsional sebagai referensi.
+4. Setiap Sales Order berstatus `Resolved`, atau tetap `Active` dengan masalah yang belum selesai ditampilkan secara jelas.
 
 ## 7. Referensi
 
-- [Domain Pelayanan Obat](../apotek-domain-id.md), khususnya `BR-APT-015`, `BR-APT-020`–`BR-APT-028`, `BR-APT-040`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-070`–`BR-APT-078`, dan `BR-APT-090`–`BR-APT-096`.
+- [Domain Pelayanan Obat](../apotek-domain-id.md), khususnya `BR-APT-011`, `BR-APT-015`, `BR-APT-020`–`BR-APT-028`, `BR-APT-040`–`BR-APT-046`, `BR-APT-056`–`BR-APT-060`, `BR-APT-070`–`BR-APT-078`, `BR-APT-090`–`BR-APT-096`, `BR-APT-108`, `BR-APT-119`–`BR-APT-124`, dan `BR-APT-129`–`BR-APT-134`, dan `BR-APT-138`–`BR-APT-142`.
 - [Alur Kerja Pelayanan Obat Rawat Jalan](../outpatient-apotek-workflow-id.md), `WF-APT-RJ-005`.
 - [Domain Sistem Antrian Pasien](../../../contexts/pasien-tracker/TRACKER-DOMAIN-ID.md).
 - [Domain Tata Rekening](../../../contexts/TataRekening/02-domain.md).

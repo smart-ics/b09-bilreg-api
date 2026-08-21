@@ -89,8 +89,8 @@ QueSelesaiPeriksa(antrianId, noUrut):
 
 ### Application
 - [`PhysicianQueueEvidence.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/AntrianFeature/PhysicianQueueEvidence.cs) — **new**; `Consult-Start` / `Consult-Done` constants; `QueueRef`; `RequireTracker`; idempotent append helpers.
-- [`QueMulaiPeriksaCmd.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/AntrianFeature/QueMulaiPeriksaCmd.cs) — inject `IPasienTrackerRepo`; after `Serve`, append Consult-Start; save queue + tracker.
-- [`QueSelesaiPeriksaCmd.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/AntrianFeature/QueSelesaiPeriksaCmd.cs) — same for `Done` + Consult-Done.
+- [`QueMulaiPeriksaCmd.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/AntrianFeature/UseCases/QueMulaiPeriksaCmd.cs) — inject `IPasienTrackerRepo`; after `Serve`, append Consult-Start; save queue + tracker.
+- [`QueSelesaiPeriksaCmd.cs`](../../../src/bilreg/Bilreg.Application/AdmisiContext/AntrianFeature/UseCases/QueSelesaiPeriksaCmd.cs) — same for `Done` + Consult-Done.
 
 ### Tests
 - [`AdmissionQueueCompleteAndMulaiPeriksaTest.cs`](../../../src/bilreg/Bilreg.Test/AdmisiContext/AntrianFeature/AdmissionQueueCompleteAndMulaiPeriksaTest.cs) — Mulai asserts `Consult-Start` + QueueRef + time; Selesai after Mulai asserts `Consult-Done`; unidentified entry throws without `SaveChanges(tracker)`.

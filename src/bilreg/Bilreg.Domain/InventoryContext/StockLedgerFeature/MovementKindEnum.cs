@@ -17,5 +17,6 @@ public enum MovementKindEnum
     SalesReturnRt = 10,     // RT
     SaleVoidDb = 11,        // DB_V
     SaleVoidDu = 12,        // DU_V
-    SaleVoidDt = 13         // DT_V
+    SaleVoidDt = 13,        // DT_V
+    DispenseIssue = 14      // Pharmacy handover removal from DTU (PD-02); not SaleIssueDu
 }

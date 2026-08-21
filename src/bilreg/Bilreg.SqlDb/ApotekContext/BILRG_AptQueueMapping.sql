@@ -1,0 +1,18 @@
+CREATE TABLE BILRG_AptQueueMapping (
+    DemandKind INT NOT NULL CONSTRAINT DF_BILRG_AptQueueMapping_DemandKind DEFAULT(0),
+    DemandId VARCHAR(12) NOT NULL CONSTRAINT DF_BILRG_AptQueueMapping_DemandId DEFAULT(''),
+    AntrianId VARCHAR(26) NOT NULL CONSTRAINT DF_BILRG_AptQueueMapping_AntrianId DEFAULT(''),
+    NoUrut INT NOT NULL CONSTRAINT DF_BILRG_AptQueueMapping_NoUrut DEFAULT(0),
+    PasienTrackerId VARCHAR(26) NOT NULL CONSTRAINT DF_BILRG_AptQueueMapping_PasienTrackerId DEFAULT(''),
+    MappingMethod INT NOT NULL CONSTRAINT DF_BILRG_AptQueueMapping_MappingMethod DEFAULT(0),
+    MappedBy VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_AptQueueMapping_MappedBy DEFAULT(''),
+    MappedAt DATETIME NOT NULL CONSTRAINT DF_BILRG_AptQueueMapping_MappedAt DEFAULT('3000-01-01'),
+    CrtUser VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_AptQueueMapping_CrtUser DEFAULT(''),
+    CrtDate DATETIME NOT NULL CONSTRAINT DF_BILRG_AptQueueMapping_CrtDate DEFAULT('3000-01-01'),
+    UpdUser VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_AptQueueMapping_UpdUser DEFAULT(''),
+    UpdDate DATETIME NOT NULL CONSTRAINT DF_BILRG_AptQueueMapping_UpdDate DEFAULT('3000-01-01'),
+    CONSTRAINT PK_BILRG_AptQueueMapping PRIMARY KEY CLUSTERED (DemandKind, DemandId)
+);
+GO
+CREATE INDEX IX_BILRG_AptQueueMapping_Queue ON BILRG_AptQueueMapping(AntrianId, NoUrut);
+GO

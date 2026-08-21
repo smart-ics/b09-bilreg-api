@@ -34,7 +34,7 @@ No production code change was required.
 
 ### 2. Receive-side test coverage
 
-Extended [`BookingAssistanceIntakeTest.cs`](../../src/bilreg/Bilreg.Test/AdmisiContext/AntrianFeature/BookingAssistanceIntakeTest.cs):
+Extended [`BookingAssistanceIntakeTest.cs`](../../../src/bilreg/Bilreg.Test/AdmisiContext/AntrianFeature/BookingAssistanceIntakeTest.cs):
 
 | Scenario | Coverage |
 |----------|----------|

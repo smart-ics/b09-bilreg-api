@@ -1,0 +1,18 @@
+CREATE TABLE BILRG_AptSalesOrderItem (
+    SalesOrderId VARCHAR(12) NOT NULL CONSTRAINT DF_BILRG_AptSalesOrderItem_SalesOrderId DEFAULT(''),
+    ItemNo INT NOT NULL CONSTRAINT DF_BILRG_AptSalesOrderItem_ItemNo DEFAULT(0),
+    SourceItemNo INT NOT NULL CONSTRAINT DF_BILRG_AptSalesOrderItem_SourceItemNo DEFAULT(0),
+    BrgId VARCHAR(20) NOT NULL CONSTRAINT DF_BILRG_AptSalesOrderItem_BrgId DEFAULT(''),
+    BrgName VARCHAR(80) NOT NULL CONSTRAINT DF_BILRG_AptSalesOrderItem_BrgName DEFAULT(''),
+    SatuanId VARCHAR(10) NOT NULL CONSTRAINT DF_BILRG_AptSalesOrderItem_SatuanId DEFAULT(''),
+    AcceptedQty DECIMAL(18,2) NOT NULL CONSTRAINT DF_BILRG_AptSalesOrderItem_AcceptedQty DEFAULT(0),
+    InvoicedQty DECIMAL(18,2) NOT NULL CONSTRAINT DF_BILRG_AptSalesOrderItem_InvoicedQty DEFAULT(0),
+    DispensedQty DECIMAL(18,2) NOT NULL CONSTRAINT DF_BILRG_AptSalesOrderItem_DispensedQty DEFAULT(0),
+    UnfulfilledQty DECIMAL(18,2) NOT NULL CONSTRAINT DF_BILRG_AptSalesOrderItem_UnfulfilledQty DEFAULT(0),
+    ItemStatus INT NOT NULL CONSTRAINT DF_BILRG_AptSalesOrderItem_ItemStatus DEFAULT(0),
+    FornasCoverage INT NOT NULL CONSTRAINT DF_BILRG_AptSalesOrderItem_FornasCoverage DEFAULT(0),
+    SepNo VARCHAR(50) NOT NULL CONSTRAINT DF_BILRG_AptSalesOrderItem_SepNo DEFAULT(''),
+    IsRacik BIT NOT NULL CONSTRAINT DF_BILRG_AptSalesOrderItem_IsRacik DEFAULT(0),
+    CONSTRAINT PK_BILRG_AptSalesOrderItem PRIMARY KEY CLUSTERED (SalesOrderId, ItemNo)
+);
+GO
