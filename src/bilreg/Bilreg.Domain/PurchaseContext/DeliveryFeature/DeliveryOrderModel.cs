@@ -154,6 +154,7 @@ public class DeliveryOrderModel : IDeliveryOrderKey
     public DeliveryOrderItemModel ReceiveItem(int itemNo, decimal qtyReceived, string userId, DateTime tglMutasi)
     {
         GuardStatus(DeliveryOrderStateEnum.Draft, DeliveryOrderStateEnum.Open);
+        GuardHasItems();
         if (qtyReceived <= 0)
             throw new ArgumentException("QtyReceived harus lebih dari 0", nameof(qtyReceived));
 
@@ -176,6 +177,13 @@ public class DeliveryOrderModel : IDeliveryOrderKey
     #endregion
 
     #region GUARD
+
+    private void GuardHasItems()
+    {
+        if (_listItem.Count == 0)
+            throw new InvalidOperationException(
+                "Delivery Order harus memiliki minimal satu item sebelum penerimaan");
+    }
 
     private void GuardDraft()
     {
