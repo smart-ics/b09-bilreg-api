@@ -120,6 +120,12 @@
     <Folder Include="BrgContext\StandardFeature\Kfa\" />
     <Folder Include="InventoryContext\MutasiFeature\" />
     <Folder Include="InventoryContext\StokFeature\" />
+    <Folder Include="BedUsageContext\RoomChargeFeature" />
+    <Folder Include="LabContext\" />
+    <Folder Include="LabContext\LabOrderFeature\" />
+    <Folder Include="LabContext\LabComponentMasterFeature\" />
+    <Folder Include="LabContext\LabComponentMasterFeature\Data\" />
+    <Folder Include="LabContext\LabTestDefinitionFeature\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BedUsageContext\KamarOperasiFeature\BILRG_OpCase.sql" />

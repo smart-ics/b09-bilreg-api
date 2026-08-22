@@ -9,6 +9,7 @@ public class ReturJualModel : IReturJualKey
 {
     private readonly List<ReturJualItemType> _listItem;
 
+    #region CREATE
     public ReturJualModel(
         string returJualId,
         PenjualanReff penjualan,
@@ -29,6 +30,18 @@ public class ReturJualModel : IReturJualKey
         _listItem = listItem.ToList();
     }
 
+    public static ReturJualModel Key(string id) => new(
+        id,
+        PenjualanModel.Default.ToReff(),
+        LayananType.Default.ToReff(),
+        string.Empty,
+        new TipeJaminanReff("-", "-"),
+        NilaiReturJualType.Default,
+        AuditTrailType.Default,
+        []);
+    #endregion
+
+    #region PROPERTIES
     public string ReturJualId { get; private set; }
     public PenjualanReff Penjualan { get; private set; }
     public LayananReff Layanan { get; private set; }
@@ -37,4 +50,6 @@ public class ReturJualModel : IReturJualKey
     public NilaiReturJualType Nilai { get; private set; }
     public AuditTrailType AuditTrail { get; private set; }
     public IEnumerable<ReturJualItemType> ListItem => _listItem;
+    #endregion
+
 }

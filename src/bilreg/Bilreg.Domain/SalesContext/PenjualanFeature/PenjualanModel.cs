@@ -40,6 +40,19 @@ public class PenjualanModel : IPenjualanKey
         _listItem = listItem.ToList();
     }
 
+    public static PenjualanModel Default => new(
+        "-", 
+        "-", 
+        RegModel.Default.ToReff(), 
+        DokterType.Default.ToReff(), 
+        LayananType.Default.ToReff(), 
+        LayananType.Default.ToReff(),
+        TipeJaminanType.Default.ToReff(),
+        TipeBrgType.Default.ToReff(),
+        NilaiPenjualanType.Default,
+        AuditTrailType.Default,
+        []);
+
     public static PenjualanModel Key(string id) => new(
         id,
         AppConst.DASH,
