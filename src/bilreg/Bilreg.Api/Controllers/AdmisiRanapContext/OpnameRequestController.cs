@@ -5,7 +5,6 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Nuna.Lib.ActionResultHelper;
-using System.Net.WebSockets;
 
 namespace Bilreg.Api.Controllers.AdmisiRanapContext;
 
@@ -54,10 +53,10 @@ public class OpnameRequestController : ControllerBase
         return Ok(new JSendOk("Done"));
     }
     
-    [HttpGet("emr-order/{emrOrderId}")]
-    public async Task<IActionResult> GetByEmrOrder(string emrOrderId)
+    [HttpGet("trs-order/{trsOrderId}")]
+    public async Task<IActionResult> GetByEmrOrder(string trsOrderId)
     {
-        var result = await _mediator.Send(new AdmGetOpnameRequestByEmrOrderIdQry(emrOrderId));
+        var result = await _mediator.Send(new AdmGetOpnameRequestByTrsOrderIdQry(trsOrderId));
         return Ok(new JSendOk(result));
         
     }

@@ -4,7 +4,6 @@ using Bilreg.Domain.BedUsageContext.RoomRateFeature;
 using Bilreg.Domain.BedUsageContext.WardFeature;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using Nuna.Lib.AutoNumberHelper;
-using Nuna.Lib.ValidationHelper;
 
 namespace Bilreg.Domain.BedUsageContext.PakaiBedFeature;
 
@@ -34,11 +33,17 @@ public class PakaiBedModel : IPakaiBed
         LayananType layanan, BedType bed, TipeKamarType tipeKamar,
         KelasType kelas, decimal tarif)
     {
-        var newId = NunaId.New("PKB");
+        var newId = NunaId.NewLegacy("BE", 'A');
+        var auditTrail = new AuditTrailType(masuk, AuditInfoType.Default, AuditInfoType.Default);
         return new PakaiBedModel(newId, 
             new PeriodePakaiBedType(masuk, AuditInfoType.Default),
             reg.ToReff(), layanan.ToReff(), bed.ToReff(), tipeKamar.ToReff(),
-            kelas.ToReff(), tarif, AuditTrailType.Default);
+            kelas.ToReff(), tarif, auditTrail);
+    }
+
+    public void Void(string userId, DateTime voidDateTime)
+    {
+        AuditTrail.Batal(userId, voidDateTime);
     }
 
 public string PakaiBedId { get; init; }

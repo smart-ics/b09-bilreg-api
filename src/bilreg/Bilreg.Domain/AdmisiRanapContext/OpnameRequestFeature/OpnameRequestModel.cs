@@ -22,7 +22,7 @@ public record OpnameRequestModel : IOpnameRequestKey
         string fulfilledRegId,
         AuditTrailType auditTrail,
         OpnameRequestInsuranceModel insurance,
-        string emrOrderId)
+        string trsOrderId)
     {
         OpnameRequestId = opnameRequestId;
         OpnameRequestStatus = opnameRequestStatus;
@@ -33,7 +33,7 @@ public record OpnameRequestModel : IOpnameRequestKey
         FulfilledRegId = fulfilledRegId;
         AuditTrail = auditTrail;
         Insurance = insurance;
-        EmrOrderId = emrOrderId;
+        TrsOrderId = trsOrderId;
     }
 
     #region CREATION
@@ -44,7 +44,7 @@ public record OpnameRequestModel : IOpnameRequestKey
         DateTime plannedDate,
         string clinicalNotes,
         string auditUserId,
-        string emrOrderId,
+        string trsOrderId,
         DateTime createdAt = default)
     {
         Guard.Against.Null(pasien);
@@ -61,7 +61,7 @@ public record OpnameRequestModel : IOpnameRequestKey
             EMPTY_REG_ID,
             AuditTrailType.Create(auditUserId, createdAt),
             OpnameRequestInsuranceModel.Default,
-            emrOrderId);
+            trsOrderId);
     }
 
     public static OpnameRequestModel Default => new(
@@ -91,7 +91,7 @@ public record OpnameRequestModel : IOpnameRequestKey
     public string FulfilledRegId { get; init; }
     public AuditTrailType AuditTrail { get; init; }
     public OpnameRequestInsuranceModel Insurance { get; private set; }
-    public string EmrOrderId { get; private set;  }
+    public string TrsOrderId { get; private set;  }
 
     #endregion
 
@@ -176,7 +176,7 @@ public record OpnameRequestModel : IOpnameRequestKey
             fulfilledRegId,
             audit,
             Insurance,
-            EmrOrderId);
+            TrsOrderId);
 
     #endregion
 }
