@@ -30,8 +30,8 @@ public record NilaiReturJualType
         var active = items.Where(x => !x.IsVoided).ToList();
         var sumSubTotalJual = active.Sum(x => x.Nilai.SubTotalJual);
         var sumSubTotalRetur = active.Sum(x => x.Nilai.SubTotalRetur);
-        var sumTax = active.Sum(x => x.Nilai.Tax);
+        var sumTax = active.Sum(x => x.Nilai.SubTotalTax);
         var grandTotal = sumSubTotalRetur + sumTax + pembulatan;
-        return new(sumSubTotalJual, sumSubTotalJual, sumTax, pembulatan, grandTotal);
+        return new(sumSubTotalJual, sumSubTotalRetur, sumTax, pembulatan, grandTotal);
     }
 }

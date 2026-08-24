@@ -36,12 +36,12 @@ public record ReturJualItemType
     public static ReturJualItemType Create(
         string returJualItemId,
         int noUrut,
-        IBrg brg,
+        BrgReff brg,
         SatuanType satuan,
         decimal qtyJual,
         decimal qtyRetur,
         NilaiItemReturType nilai)
-        => new(returJualItemId, noUrut, brg.ToReff(),satuan, qtyJual, qtyRetur, nilai, false);
+        => new(returJualItemId, noUrut, brg, satuan, qtyJual, qtyRetur, nilai, false);
 
     public void SetNoUrut(int noUrut) => NoUrut = noUrut;
 

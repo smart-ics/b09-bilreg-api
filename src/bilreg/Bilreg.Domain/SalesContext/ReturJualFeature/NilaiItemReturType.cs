@@ -1,19 +1,19 @@
 ﻿namespace Bilreg.Domain.SalesContext.ReturJualFeature;
 
-public class NilaiItemReturType
+public record NilaiItemReturType
 {
     public NilaiItemReturType(
         decimal hargaJual,
         decimal hargaRetur,
-        decimal tax,
+        decimal taxPerUnit,
         decimal subTotalJual,
         decimal subTotalRetur,
         decimal subTotalTax,
         decimal total)
     {
-        HargaRetur = hargaJual;
-        HargaJual = hargaRetur;
-        Tax = tax;
+        HargaJual = hargaJual;
+        HargaRetur = hargaRetur;
+        TaxPerUnit = taxPerUnit;
         SubTotalJual = subTotalJual;
         SubTotalRetur = subTotalRetur;
         SubTotalTax = subTotalTax;
@@ -21,7 +21,7 @@ public class NilaiItemReturType
     }
     public decimal HargaJual { get; init; }
     public decimal HargaRetur { get; init; }
-    public decimal Tax { get; init; }
+    public decimal TaxPerUnit { get; init; }
     public decimal SubTotalRetur { get; init; }
     public decimal SubTotalJual { get; init; }
     public decimal SubTotalTax { get; init; }
