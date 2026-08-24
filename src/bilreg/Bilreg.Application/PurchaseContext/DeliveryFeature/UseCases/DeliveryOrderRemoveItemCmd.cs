@@ -36,7 +36,7 @@ public class DeliveryOrderRemoveItemHandler : IRequestHandler<DeliveryOrderRemov
                 $"DeliveryOrderId '{request.DeliveryOrderId}' tidak ditemukan");
 
         var model = maybe.Value;
-        model.RemoveItem(request.ItemNo, request.UserId, _tglJamProvider.Now);
+        model.RemoveItem(request.ItemNo);
 
         using var trans = TransHelper.NewScope();
         _deliveryOrderRepo.SaveChanges(model);

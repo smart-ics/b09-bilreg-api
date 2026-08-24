@@ -68,8 +68,8 @@ public class DeliveryOrderCreateHandler
         Guard.Against.Null(request.Notes);
         Guard.Against.Null(request.ListItem);
 
-        if (_deliveryOrderRepo.IsDoNoExist(request.DoNo))
-            throw new InvalidOperationException($"DoNo '{request.DoNo}' sudah digunakan");
+        // if (_deliveryOrderRepo.IsDoNoExist(request.DoNo))
+        //     throw new InvalidOperationException($"DoNo '{request.DoNo}' sudah digunakan");
 
         var items = request.ListItem.Select(CreateItem).ToList();
         var model = DeliveryOrderModel.Create(
@@ -79,8 +79,7 @@ public class DeliveryOrderCreateHandler
             request.DoDate,
             request.Notes,
             request.UserId,
-            items,
-            _tglJamProvider.Now);
+            items);
 
         using var trans = TransHelper.NewScope();
         _deliveryOrderRepo.SaveChanges(model);

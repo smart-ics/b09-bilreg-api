@@ -63,7 +63,7 @@ public class DeliveryOrderAddItemHandler : IRequestHandler<DeliveryOrderAddItemC
             request.Item.Tax,
             request.Item.TglEd,
             request.Item.NoBatch);
-        model.AddItem(item, request.UserId, _tglJamProvider.Now);
+        model.AddItem(item);
 
         using var trans = TransHelper.NewScope();
         _deliveryOrderRepo.SaveChanges(model);
