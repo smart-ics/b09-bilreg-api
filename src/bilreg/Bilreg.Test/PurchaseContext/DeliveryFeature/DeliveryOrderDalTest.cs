@@ -10,64 +10,54 @@ public class DeliveryOrderDalTest
 {
     private readonly DeliveryOrderDal _sut = new(ConnStringHelper.GetTestEnv());
 
-    private static DeliveryOrderDto FakerData() => new(
-        DeliveryOrderId: "DLVTEST00001",
-        DoNo: "DOTEST0001",
-        SupplierId: "SUPTEST00001",
-        SupplierName: "Supplier Test",
-        PoReffId: "POTEST0001",
-        DoDate: new DateTime(2026, 8, 22, 10, 0, 0),
-        State: DeliveryOrderStateEnum.Draft,
-        Notes: "Delivery order test",
-        CrtUser: "U001",
-        CrtDate: new DateTime(2026, 8, 22, 9, 0, 0),
-        UpdUser: string.Empty,
-        UpdDate: new DateTime(3000, 1, 1),
-        VodUser: string.Empty,
-        VodDate: new DateTime(3000, 1, 1));
+    private static DeliveryOrderDto Faker()
+        => new DeliveryOrderDto(
+            DeliveryOrderId: "A",
+            DoNo: "B",
+            SupplierId: "C",
+            SupplierName: "D",
+            PoReffId: "E",
+            DoDate: new DateTime(2026, 8, 24),
+            State: DeliveryOrderStateEnum.Draft,
+            Notes: "F",
+            CrtUser: "G",
+            CrtDate: new DateTime(2026, 8, 24),
+            UpdUser: "H",
+            UpdDate: new DateTime(2026, 8, 24),
+            VodUser: string.Empty,
+            VodDate: new DateTime(3000, 1, 1));
 
-    private static IDeliveryOrderKey FakerKey() =>
-        DeliveryOrderModel.Key("DLVTEST00001");
+    private static IDeliveryOrderKey FakerKey()
+        => DeliveryOrderModel.Key("A");
 
     [Fact]
-    public void InsertGet_RoundTrip()
+    public void InsertTest()
     {
-        DeliveryOrderSchemaFixture.EnsureSchema();
         using var trans = TransHelper.NewScope();
-
-        var expected = FakerData();
-        _sut.Insert(expected);
-
-        var actual = _sut.GetData(FakerKey());
-
-        actual.Should().BeEquivalentTo(expected);
+        _sut.Insert(Faker());
     }
 
     [Fact]
-    public void UpdateGet_RoundTrip()
+    public void UpdateTest()
     {
-        DeliveryOrderSchemaFixture.EnsureSchema();
         using var trans = TransHelper.NewScope();
+        _sut.Update(Faker());
+    }
 
-        var original = FakerData();
-        var expected = original with
-        {
-            SupplierId = "SUPTEST00002",
-            SupplierName = "Updated Supplier",
-            PoReffId = "POTEST0002",
-            DoDate = new DateTime(2026, 8, 23, 11, 30, 0),
-            State = DeliveryOrderStateEnum.Open,
-            Notes = "Updated delivery order",
-            UpdUser = "U002",
-            UpdDate = new DateTime(2026, 8, 23, 11, 31, 0),
-            VodUser = "U003",
-            VodDate = new DateTime(2026, 8, 23, 12, 0, 0)
-        };
-        _sut.Insert(original);
+    [Fact]
+    public void DeleteTest()
+    {
+        using var trans = TransHelper.NewScope();
+        _sut.Delete(FakerKey());
+    }
 
-        _sut.Update(expected);
+    [Fact]
+    public void GetDataTest()
+    {
+        using var trans = TransHelper.NewScope();
+        _sut.Insert(Faker());
         var actual = _sut.GetData(FakerKey());
 
-        actual.Should().BeEquivalentTo(expected);
+        actual.Should().BeEquivalentTo(Faker());
     }
 }

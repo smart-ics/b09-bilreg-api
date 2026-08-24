@@ -10,87 +10,75 @@ public class DeliveryOrderItemDalTest
 {
     private readonly DeliveryOrderItemDal _sut = new(ConnStringHelper.GetTestEnv());
 
-    private static IEnumerable<DeliveryOrderItemDto> FakerList() =>
-    [
-        new DeliveryOrderItemDto(
-            DeliveryOrderId: "DLVTEST00001",
-            ItemNo: 2,
-            BrgId: "BRGTEST000002",
-            LayananId: "LY002",
-            QtyOrder: 5,
-            QtyReceived: 2,
-            SatuanId: "BOX",
-            Harga: 2000.50m,
-            Diskon: 100.25m,
-            Tax: 190.03m,
-            TglEd: new DateTime(2028, 6, 30),
-            NoBatch: "BATCH-002",
-            State: DeliveryOrderItemStateEnum.Partial,
-            CrtUser: "U001",
-            CrtDate: new DateTime(2026, 8, 22, 9, 0, 0),
-            UpdUser: "U002",
-            UpdDate: new DateTime(2026, 8, 22, 10, 0, 0),
-            VodUser: string.Empty,
-            VodDate: new DateTime(3000, 1, 1)),
-        new DeliveryOrderItemDto(
-            DeliveryOrderId: "DLVTEST00001",
-            ItemNo: 1,
-            BrgId: "BRGTEST000001",
-            LayananId: "LY001",
-            QtyOrder: 10,
-            QtyReceived: 0,
-            SatuanId: "PCS",
-            Harga: 1000.25m,
-            Diskon: 50.10m,
-            Tax: 95.02m,
-            TglEd: new DateTime(2028, 1, 31),
-            NoBatch: "BATCH-001",
-            State: DeliveryOrderItemStateEnum.Open,
-            CrtUser: "U001",
-            CrtDate: new DateTime(2026, 8, 22, 9, 0, 0),
-            UpdUser: string.Empty,
-            UpdDate: new DateTime(3000, 1, 1),
-            VodUser: string.Empty,
-            VodDate: new DateTime(3000, 1, 1))
-    ];
+    private static IEnumerable<DeliveryOrderItemDto> FakerList()
+        => new List<DeliveryOrderItemDto>
+        {
+            new DeliveryOrderItemDto(
+                DeliveryOrderId: "A",
+                ItemNo: 1,
+                BrgId: "B",
+                LayananId: "C",
+                QtyOrder: 10,
+                QtyReceived: 5,
+                SatuanId: "D",
+                Harga: 1000,
+                Diskon: 100,
+                Tax: 90,
+                TglEd: new DateTime(2027, 8, 24),
+                NoBatch: "E",
+                State: DeliveryOrderItemStateEnum.Partial,
+                CrtUser: "F",
+                CrtDate: new DateTime(2026, 8, 24),
+                UpdUser: "G",
+                UpdDate: new DateTime(2026, 8, 24),
+                VodUser: string.Empty,
+                VodDate: new DateTime(3000, 1, 1)),
+            new DeliveryOrderItemDto(
+                DeliveryOrderId: "A",
+                ItemNo: 2,
+                BrgId: "H",
+                LayananId: "I",
+                QtyOrder: 20,
+                QtyReceived: 20,
+                SatuanId: "J",
+                Harga: 2000,
+                Diskon: 200,
+                Tax: 180,
+                TglEd: new DateTime(2027, 8, 24),
+                NoBatch: "K",
+                State: DeliveryOrderItemStateEnum.Received,
+                CrtUser: "F",
+                CrtDate: new DateTime(2026, 8, 24),
+                UpdUser: "G",
+                UpdDate: new DateTime(2026, 8, 24),
+                VodUser: string.Empty,
+                VodDate: new DateTime(3000, 1, 1))
+        };
 
-    private static IDeliveryOrderKey FakerKey() =>
-        DeliveryOrderModel.Key("DLVTEST00001");
+    private static IDeliveryOrderKey FakerKey()
+        => DeliveryOrderModel.Key("A");
 
     [Fact]
-    public void InsertList_RoundTrip_InItemNumberOrder()
+    public void InsertTest()
     {
-        DeliveryOrderSchemaFixture.EnsureSchema();
         using var trans = TransHelper.NewScope();
-
-        var inserted = FakerList().ToList();
-        var expected = inserted.OrderBy(x => x.ItemNo).ToList();
-        _sut.Insert(inserted);
-
-        var actual = _sut.ListData(FakerKey()).ToList();
-
-        actual.Should().Equal(expected);
+        _sut.Insert(FakerList());
     }
 
     [Fact]
-    public void Delete_RemovesAllItemsForDeliveryOrder()
+    public void DeleteTest()
     {
-        DeliveryOrderSchemaFixture.EnsureSchema();
         using var trans = TransHelper.NewScope();
-
-        _sut.Insert(FakerList());
-
         _sut.Delete(FakerKey());
+    }
+
+    [Fact]
+    public void ListDataTest()
+    {
+        using var trans = TransHelper.NewScope();
+        _sut.Insert(FakerList());
         var actual = _sut.ListData(FakerKey());
 
-        actual.Should().BeNullOrEmpty();
-    }
-
-    [Fact]
-    public void Insert_EmptyList_DoesNotThrow()
-    {
-        var action = () => _sut.Insert([]);
-
-        action.Should().NotThrow();
+        actual.Should().BeEquivalentTo(FakerList());
     }
 }

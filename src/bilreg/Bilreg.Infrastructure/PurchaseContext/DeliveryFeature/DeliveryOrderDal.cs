@@ -11,6 +11,7 @@ namespace Bilreg.Infrastructure.PurchaseContext.DeliveryFeature;
 public interface IDeliveryOrderDal :
     IInsert<DeliveryOrderDto>,
     IUpdate<DeliveryOrderDto>,
+    IDelete<IDeliveryOrderKey>,
     IGetData<DeliveryOrderDto, IDeliveryOrderKey>
 {
 }
@@ -62,6 +63,19 @@ public class DeliveryOrderDal : IDeliveryOrderDal
                 DeliveryOrderId = @DeliveryOrderId
             """;
         var dp = BuildParam(dto);
+
+        using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
+        conn.Execute(sql, dp);
+    }
+
+    public void Delete(IDeliveryOrderKey key)
+    {
+        const string sql = """
+            DELETE FROM BILRG_DeliveryOrder
+            WHERE DeliveryOrderId = @DeliveryOrderId
+            """;
+        var dp = new DynamicParameters();
+        dp.AddParam("@DeliveryOrderId", key.DeliveryOrderId, SqlDbType.VarChar);
 
         using var conn = new SqlConnection(ConnStringHelper.Get(_opt));
         conn.Execute(sql, dp);
