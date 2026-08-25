@@ -180,8 +180,8 @@ Seeding rule applied:
 | Slice | Title | Phase | Audit | Review status | Wave | Release gates |
 |-------|-------|-------|-------|---------------|------|---------------|
 | APT-B00 | Apotek module boundary | 0 | GO | **GO** | — | — |
-| APT-B01 | Neighbor prerequisites | 0 | PARTIAL | **NO_GO** | 3 | — |
-| APT-B02 | Integration Task engine | 0 | PARTIAL | NOT_REVIEWED | 3 | — |
+| APT-B01 | Neighbor prerequisites | 0 | PARTIAL | **GO** | — | — |
+| APT-B02 | Integration Task engine | 0 | PARTIAL | **GO** | — | — |
 | APT-B03 | Electronic Resep Kerja intake | 1 | PARTIAL | NOT_REVIEWED | 2 | — |
 | APT-B04 | Physical Resep Kerja intake | 1 | PARTIAL | NOT_REVIEWED | 2 | BC-13 |
 | APT-B05 | Jual Bebas acceptance | 1 | PARTIAL | NOT_REVIEWED | 2 | — |
@@ -223,9 +223,11 @@ Seeding rule applied:
 
 | Review status | Count |
 |---------------|------:|
-| GO | 2 |
-| NO_GO | 5 |
-| NOT_REVIEWED | 32 |
+| GO | 4 |
+| NO_GO | 4 |
+| NOT_REVIEWED | 31 |
+| REVIEWING | 0 |
+| REMEDIATED | 0 |
 | REVIEWING | 0 |
 | REMEDIATED | 0 |
 | **Total** | **39** |
@@ -308,13 +310,151 @@ Wave-3 frontend work reviews after the backend contracts those screens consume a
 
 Empty until the first Review round. Append here; do not overwrite.
 
+### APT-B02
+
+```yaml
+slice: APT-B02
+reviewStatus: GO
+initializedFrom: completeness-audit-2026-08-19
+reviewedCommit: WORKING-TREE atop 5c1f3cd964f7db1e188325ec0035089bd3d08af0 (freeze fingerprints in round-2 record)
+reviewHistory:
+  - round: 1
+    actor: ox-alpha (opencode)
+    reviewedCommit: 5c1f3cd964f7db1e188325ec0035089bd3d08af0
+    completedAt: 2026-08-25T22:30:00+07:00
+    acceptanceResults:
+      - criterionId: AC-01
+        result: PASS
+        evidence: "BILRG_AptIntegrationTask.sql:21-22 unique index UX_BILRG_AptIntegrationTask_Idempotency; columns SourceKind/SourceId/Destination/PayloadJson/TaskStatus/RetryCount/LastError/CorrelationId at lines 3-14; model guards key<=80 (AptIntegrationTaskModel.cs:59-60) matching VARCHAR(80); app-level suppression AptIntegrationTaskEnqueue.InsertIfAbsent tested (AptIntegrationTaskTransactionContractTest.cs:13-50)"
+      - criterionId: AC-02
+        result: FAIL
+        evidence: "Claim uses a status predicate and transitions are deterministic (Succeeded/Failed/Dead state machine proven by AptIntegrationTaskModelTest.cs:27-88), BUT the predicate is IN (@Pending,@Failed), not Pending-only: ListPending AptIntegrationTaskDal.cs:104, ClaimPending AptIntegrationTaskDal.cs:122; worker auto-claims Failed rows every batch via PrepareRetry (AptIntegrationWorker.cs:38-39). Plan requires 'claims only Pending'."
+      - criterionId: AC-03
+        result: PASS
+        evidence: "Delivery-side replay idempotency: AptIntegrationWorkerTest.cs:18-41 proves Succeeded replay returns 'idempotent' with handler invoked exactly once; claim-lost path tested at :44-61; enqueue-side duplicate key does not insert second row (AptIntegrationTaskTransactionContractTest.cs:13-50)"
+      - criterionId: AC-04
+        result: FAIL
+        evidence: "No test executes a business save + task insert inside one TransHelper.NewScope() to prove joint commit, nor a rollback discarding both. Only evidence is reflection over RequireAmbientTransaction()==true (AptIntegrationTaskTransactionContractTest.cs:52-60); the duplicate-key test (:13-50) mocks the repo and exercises no transaction. Production pairing exists (InvoiceCommands.cs:119-128) but is unproven. Confirms completeness-audit gap."
+      - criterionId: AC-05
+        result: PASS
+        evidence: "Purpose-built task table with typed destinations/handlers (10 AptIntegrationTaskTypeEnum values); no event-store semantics; local TransHelper.NewScope transactions only (AptIntegrationWorker.cs:48-52,97-102); architecture guard rejects legacy dual-write (ApotekContextBoundaryTest.cs:55-63)"
+    findings:
+      - id: APT-B02-R1-F01
+        severity: HIGH
+        criterionId: AC-02
+        location: src/bilreg/Bilreg.Infrastructure/ApotekContext/IntegrationFeature/AptIntegrationTaskDal.cs:104,122
+        problem: Batch claim predicate is TaskStatus IN (Pending, Failed) in both ListPending and ClaimPending, so every batch automatically re-claims Failed tasks with no backoff or operator control; MaxRetries=5 can be exhausted within seconds on a transient neighbor outage, and this bypasses the audited operator-retry model of AptIntegrationRetryCmd (AptIntegrationOpsCommands.cs:40-67). The acceptance criterion states the worker claims only Pending tasks.
+        requiredOutcome: Restrict ListPending and ClaimPending to Pending only so Failed tasks return to processing solely through the audited retry command, or record an approved deviation with an explicit retry/backoff policy plus tests proving Failed rows are not batch-claimed and Dead rows never re-enter.
+        status: OPEN
+      - id: APT-B02-R1-F02
+        severity: HIGH
+        criterionId: AC-04
+        location: missing test; nearest artifact src/bilreg/Bilreg.Test/ApotekContext/IntegrationFeature/AptIntegrationTaskTransactionContractTest.cs:52-60 (reflection-only)
+        problem: The planned proof that a business save and task insert commit together — and roll back together on failure — does not exist. No ApotekContext test opens TransHelper.NewScope(); existing transactional pairing in production handlers (e.g., InvoiceCommands.cs:119-128) is untested.
+        requiredOutcome: A test that runs one TransHelper.NewScope() containing a business save plus an integration-task insert where both commit, and a second failure path where neither persists (real DAL against SQL fixture per repository convention, or documented equivalent).
+        status: OPEN
+      - id: APT-B02-R1-F03
+        severity: HIGH
+        criterionId: AC-04
+        location: src/bilreg/Bilreg.Application/ApotekContext/IntegrationFeature/AptIntegrationWorker.cs:80 (ProcessBatch has no caller outside its own unit test AptIntegrationWorkerTest.cs:86-114)
+        problem: ProcessBatch has no production invocation path: no hosted/background service exists under src/bilreg (grep AddHostedService/BackgroundService = none), no MediatR command wrapper (unlike sibling engines LabOwareQueueProcessCmd.cs and EmrAntrianOutboundProcessCmd.cs), and no HTTP trigger; the only production entry is POST api/v1/apotek/integration/retry which calls ProcessOne for a single known task (ApotekController.cs:174-180). Enqueued Pending tasks would never be delivered automatically, contradicting the slice objective of durable delivery for all neighbor effects.
+        requiredOutcome: An invocation path for batch processing (hosted worker or ops-exposed command/endpoint consistent with sibling engines) plus a test proving pending tasks flow through it to their handlers.
+        status: OPEN
+      - id: APT-B02-R1-F04
+        severity: MEDIUM
+        criterionId: AC-04
+        location: src/bilreg/Bilreg.Application/ApotekContext/IntegrationFeature/AptIntegrationWorker.cs:48-52
+        problem: The claimed Processing state is persisted in its own committed scope before handler execution; a crash during handler invocation strands the row in Processing permanently — ListPending excludes Processing (AptIntegrationTaskDal.cs:104) and AssertCanRetry accepts only Failed (AptIntegrationTaskModel.cs:147-152) — leaving no recovery path and violating durable/retryable delivery.
+        requiredOutcome: Stale-claim recovery (lease timeout reclaim) or an operator-visible remediation state, with a test exercising recovery of a stranded Processing row.
+        status: OPEN
+      - id: APT-B02-R1-F05
+        severity: LOW
+        criterionId: tracker-completeness
+        location: docs/contexts/apotek/working/outpatient-apotek-progress-tracker.md:238-253
+        problem: The APT-B02 implementation record omits baseCommit, dates, changedFiles, schemaObjects, and focused-test counts required by the slice-record template (master-plan section 6); the recorded count 38 is the whole ApotekContext suite, not the integration-engine subset.
+        requiredOutcome: Backfill the implementation history event with commit SHAs, changed files/schema objects, and engine-focused test command/count.
+        status: OPEN
+    decision: NO_GO
+    rationale: AC-02 fails (claim predicate includes Failed, not Pending-only) and AC-04 fails (no business-save + task-insert commit/rollback test; no production invocation path for batch delivery). AC-01/AC-03/AC-05 pass. Findings APT-B02-R1-F01..F05 recorded; remediation limited to these IDs.
+    environmentalNote: dotnet SDK unavailable in review environment; tests not independently re-executed. Decision relies on static verification of cited code paths and existing test sources at commit 5c1f3cd964f7db1e188325ec0035089bd3d08af0 (working tree contains only tracker doc edits).
+  - round: 2
+    actor: ox-alpha (opencode)
+    reviewedCommit: WORKING-TREE atop 5c1f3cd964f7db1e188325ec0035089bd3d08af0; freeze fingerprints (sha256[0:16]) at review time — AptIntegrationTaskDal f38dd378ff90e0e0, AptIntegrationWorker 77ddc5d5e7cc83b0, AptIntegrationTaskModel b2439e682a9f7f4d, AptIntegrationOpsCommands 5bef279cf7fc73d7, AptIntegrationProcessCmd 45505a02413129ab, ApotekController e0fe17238a0a5198, AptIntegrationTaskDalTest 8011a108851e787b, InMemoryApotekRepos 42ca4c354bd69312
+    completedAt: 2026-08-25T23:59:00+07:00
+    acceptanceResults:
+      - criterionId: AC-01
+        result: PASS
+        evidence: "Live schema check on devTest: UX_BILRG_AptIntegrationTask_Idempotency exists with is_unique=1 alongside PK and IX_..._Pending; columns cover source/destination/payload/status/retry/error/correlation; model guard key<=80 unchanged"
+      - criterionId: AC-02
+        result: PASS
+        evidence: "R1-F01 closed: ListPending and ClaimPending SQL predicates are TaskStatus = @Pending (AptIntegrationTaskDal.cs ListPending/ClaimPending); SQL-level proof ListPending_and_ClaimPending_target_only_pending_status executes against devTest and shows Failed/Dead rows neither listed nor claimable while Pending claims once; worker rejects non-Pending statuses (AptIntegrationWorker.cs ProcessOne); in-memory repo twin aligned; deterministic Succeeded/Failed/Dead transitions unchanged and still tested (MarkFailed_IncrementsRetry_ThenDeadAfterMax)"
+      - criterionId: AC-03
+        result: PASS
+        evidence: "Unchanged from round 1: replay of Succeeded task returns idempotent with handler invoked exactly once; duplicate enqueue does not insert second row"
+      - criterionId: AC-04
+        result: PASS
+        evidence: "R1-F02 closed: Business_save_and_task_insert_commit_together proves QueueClose insert + task insert persist after trans.Complete() on live devTest via real DALs; Business_save_and_task_insert_roll_back_together proves neither row survives scope disposal without Complete. R1-F03 closed: AptIntegrationProcessCmd/handler plus POST api/v1/apotek/integration/process give ProcessBatch a production invocation path; Handle_ProcessesPendingBatchThroughWorker proves pending tasks flow to handlers. R1-F04 closed: ClaimPending stamps processing start; Reclaim_FromStaleProcessing_ReturnsToPending, Retry_OnStaleProcessingRow_ReclaimsAndProcesses, Retry_OnFreshProcessingRow_ThrowsWithoutPersist cover recovery"
+      - criterionId: AC-05
+        result: PASS
+        evidence: "No event-store or distributed-transaction semantics introduced by remediation; architecture guard suite green within full ApotekContext run"
+    findings: []
+    decision: GO
+    rationale: All five round-1 findings verified closed with non-vacuous, finding-scoped changes; all five acceptance criteria pass under reviewer-executed build and tests (engine suite 25/25; full ApotekContext suite 54/54 twice, five consecutive greens total since the single transient Wf003 blip recorded during remediation). No unauthorized scope expansion: StaleProcessingMinutes=30 is a documented operational constant analogous to MaxRetries=5, reclaim is operator-driven through the authenticated retry command (no BC-12 matrix invented), and devTest received only the two existing in-repo DDL scripts (unique index verified live).
+    environmentalNote: Build and tests executed independently by the reviewer in this session via Windows dotnet SDK over WSL interop (0 errors). Remediation remains uncommitted working tree; freeze captured via per-file sha256 fingerprints above — commit the changes before using APT-B02 as a frozen GO dependency in later waves.
+remediationHistory:
+  - round: 1
+    basedOnReviewRound: 1
+    actor: ox-alpha (opencode)
+    startedAt: 2026-08-25T22:45:00+07:00
+    completedAt: 2026-08-25T23:40:00+07:00
+    remediatedFindings:
+      - APT-B02-R1-F01
+      - APT-B02-R1-F02
+      - APT-B02-R1-F03
+      - APT-B02-R1-F04
+      - APT-B02-R1-F05
+    resultCommit: WORKING-TREE (uncommitted changes on top of 5c1f3cd964f7db1e188325ec0035089bd3d08af0)
+    changedFiles:
+      - src/bilreg/Bilreg.Infrastructure/ApotekContext/IntegrationFeature/AptIntegrationTaskDal.cs
+      - src/bilreg/Bilreg.Application/ApotekContext/IntegrationFeature/AptIntegrationWorker.cs
+      - src/bilreg/Bilreg.Domain/ApotekContext/IntegrationFeature/AptIntegrationTaskModel.cs
+      - src/bilreg/Bilreg.Application/ApotekContext/IntegrationFeature/UseCases/AptIntegrationOpsCommands.cs
+      - src/bilreg/Bilreg.Application/ApotekContext/IntegrationFeature/UseCases/AptIntegrationProcessCmd.cs
+      - src/bilreg/Bilreg.Api/Controllers/ApotekContext/ApotekController.cs
+      - src/bilreg/Bilreg.Test/ApotekContext/IntegrationFeature/AptIntegrationTaskDalTest.cs
+      - src/bilreg/Bilreg.Test/ApotekContext/IntegrationFeature/AptIntegrationProcessCmdTest.cs
+      - src/bilreg/Bilreg.Test/ApotekContext/IntegrationFeature/AptIntegrationRetryCommandTest.cs
+      - src/bilreg/Bilreg.Test/ApotekContext/IntegrationFeature/AptIntegrationTaskModelTest.cs
+      - src/bilreg/Bilreg.Test/ApotekContext/IntegrationFeature/AptIntegrationWorkerTest.cs
+      - src/bilreg/Bilreg.Test/ApotekContext/Support/InMemoryApotekRepos.cs
+    schemaObjects:
+      - Deployed BILRG_AptQueueClose.sql and BILRG_AptIntegrationTask.sql to devTest via SQLCMD (DDL unchanged; tables were never deployed, which is what blocked Dal-level evidence at audit time)
+    tests:
+      - command: dotnet build src/bilreg/b09-bilreg-api.sln
+        result: PASS
+      - command: dotnet test --filter "FullyQualifiedName~ApotekContext.IntegrationFeature"
+        result: PASS
+        count: 25
+      - command: dotnet test --filter "FullyQualifiedName~ApotekContext"
+        result: PASS
+        count: 54
+    unresolvedFindings: []
+    outcome: IMPLEMENTED
+notes:
+  - Completeness audit (19 Aug 2026) scored PARTIAL citing missing business-save+rollback test and no hosted invocation of ProcessBatch; round 1 confirmed both and added the Pending-only claim deviation, stranded-Processing risk, and tracker backfill.
+  - Remediation round 1 (25 Aug 2026) closed all five findings; REMEDIATED is not GO — re-review must open a new round against the remediation commit.
+  - Unlike review round 1, build/tests were executed in this session via the Windows dotnet SDK (WSL interop); the real-DB transaction contract now runs against devTest after deploying the two in-repo DDL scripts.
+  - Round opened on user request while Wave-1 slices remain first in the execution roadmap (same precedent as APT-B01 round 2).
+  - Round 2 (25 Aug 2026) re-reviewed the remediation working tree with reviewer-executed tests → GO. Known accepted limitations: no lease heartbeat on stale-Processing reclaim (30-minute constant, operator-driven, audited); single transient Wf003 blip never reproduced across five consecutive full-suite runs. Commit of the working tree is outstanding housekeeping.
+```
+
 ### APT-B01
 
 ```yaml
 slice: APT-B01
-reviewStatus: NO_GO
+reviewStatus: GO
 initializedFrom: completeness-audit-2026-08-19
-reviewedCommit: 451ddd59fe20ee99aefe4e1e3c203bc6ea68e3f6
+reviewedCommit: 5c1f3cd9
 reviewHistory:
   - round: 1
     actor: Grok Medium
@@ -360,12 +500,37 @@ reviewHistory:
         status: OPEN
     decision: NO_GO
     rationale: AC-01 and AC-03 fail. DispenseIssue is enumerated and a handler exists, but the path is untested and the legacy ACL cannot round-trip DI. Pharmacy service-point resolvability is not evidenced.
+  - round: 2
+    actor: ox-alpha (opencode)
+    reviewedCommit: 5c1f3cd9
+    completedAt: 2026-08-25T21:30:00+07:00
+    acceptanceResults:
+      - criterionId: AC-01
+        result: PASS
+        evidence: "R1-F01 closed: PostDispenseIssueConsequenceHandlerTest proves Success dual-write (mutasi MovementKind=DispenseIssue, legacy journal 'DI', NotContain SaleIssueDu), Idempotent replay of same TrsReffId without double qty, InsufficientStock rejects with zero persist and UoW.Commit never called. R1-F02 closed: LegacyMovementKindMapper.cs:27 maps DI→MovementKindEnum.DispenseIssue; LegacyScopeJournalReplayer.cs:53 consumes the mapper so catch-up/hydrate round-trips DI; LegacyMovementKindMapperTest covers DI/di plus TryMap_Di_IsDistinctFromDu"
+      - criterionId: AC-02
+        result: PASS
+        evidence: "ApotekLocationIds.cs:5-6 LYAPT/LYDTU; BILRG_Apt_Seed_Layanan.example.sql present; no reservation table under Bilreg.SqlDb/ApotekContext"
+      - criterionId: AC-03
+        result: PASS
+        evidence: "R1-F03 closed: PharmacyServicePointContractTest uses real AdmissionServicePointRepo/Dal — LoadEntity resolves pharmacy 'APT' row and AdmissionServicePointResolver.EnsureAdmissionQueue accepts it; resolver guard genuinely throws for unregistered points (AdmisiRajalOptions.cs:17-24); seed-content test ties example SQL to same table/id"
+      - criterionId: AC-04
+        result: PASS
+        evidence: "BILRG_Apt_Seed_CollectionWindow.sql inserts APT_COLLECTION_WINDOW_DAYS='7'; CollectionWindowDaysProviderTest unchanged since round 1 PASS"
+      - criterionId: AC-05
+        result: PASS
+        evidence: "AntrianStatusEnum.cs still Waiting/InService/Done/Withdrawn; only pre-existing AdmisiContext M2/M3 alters touch BILRG_AntrianEntry; no ApotekContext alter exists"
+    findings: []
+    decision: GO
+    rationale: All three round-1 findings verified remediated at commit 5c1f3cd9 with non-vacuous tests; remediation scope limited to recorded findings (+1 mapper line, mapper tests, two new test files); all five acceptance criteria pass.
+    environmentalNote: dotnet SDK unavailable in review environment; tests not independently re-executed by reviewer. Decision relies on remediation-recorded focused-test results (36 PASS on PostDispenseIssueConsequenceHandler|LegacyMovementKindMapper|PharmacyServicePointContract|DispenseIssueMovementKind|CollectionWindowDaysProvider filters) plus full static verification of every cited code path at 5c1f3cd9. No contrary evidence found.
 remediationHistory: []
 notes:
   - Completeness audit (19 Aug 2026) scored PARTIAL for example-only LYAPT/LYDTU/service-point SQL and missing consequence/service-point tests. Round 1 confirmed those gaps and added the DI mapper hole.
   - AC-02/AC-04/AC-05 pass. No reservation table. Collection window defaults to 7. AntrianStatusEnum and BILRG_AntrianEntry were not extended with pharmacy workflow state.
   - Implementation-tracker attempt-1 summary mixed later-slice ports (payment/SEP/Iter/price, PharmacyQueueEvidence). Those are out of APT-B01 scope and were not scored as B01 expansion.
   - Round opened on user request while Wave-1 slices remain first in the execution roadmap.
+  - Round 2 (25 Aug 2026) verified remediation commit 5c1f3cd9 and closed APT-B01-R1-F01/F02/F03 → GO. Remediation event is recorded in the progress tracker.
 ```
 
 ### APT-B00

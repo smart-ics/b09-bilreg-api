@@ -55,10 +55,14 @@ public class AptIntegrationRetryHandler : IRequestHandler<AptIntegrationRetryCmd
         _auth.AssertCommandAllowed(nameof(AptIntegrationRetryCmd), request.UserId);
         var task = _repo.LoadEntity(AptIntegrationTaskModel.Key(request.IntegrationTaskId))
             .GetValueOrThrow($"Task '{request.IntegrationTaskId}' not found");
-        task.AssertCanRetry();
+        if (task.TaskStatus == AptIntegrationTaskStatusEnum.Processing)
+            task.ReclaimStaleProcessing(DateTime.Now);
+        else
+            task.AssertCanRetry();
         using (var trans = TransHelper.NewScope())
         {
-            task.PrepareRetry();
+            if (task.TaskStatus == AptIntegrationTaskStatusEnum.Failed)
+                task.PrepareRetry();
             _repo.SaveChanges(task);
             trans.Complete();
         }

@@ -175,6 +175,10 @@ public class ApotekController : ControllerBase
     public async Task<IActionResult> Failures([FromQuery] AptIntegrationFailureQuery query)
         => Ok(new JSendOk(await _mediator.Send(query)));
 
+    [HttpPost("integration/process")]
+    public async Task<IActionResult> Process([FromQuery] int batchSize)
+        => Ok(new JSendOk(await _mediator.Send(new AptIntegrationProcessCmd(AptActor.Require(_user), batchSize))));
+
     [HttpPost("integration/retry")]
     public async Task<IActionResult> Retry(AptIntegrationRetryCmd cmd)
         => Ok(new JSendOk(await _mediator.Send(cmd with { UserId = AptActor.Require(_user) })));

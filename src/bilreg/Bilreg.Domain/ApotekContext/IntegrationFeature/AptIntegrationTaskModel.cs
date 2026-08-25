@@ -7,6 +7,7 @@ public class AptIntegrationTaskModel : IAptIntegrationTaskKey
 {
     public const string IdPrefix = "AIT";
     public const int MaxRetries = 5;
+    public const int StaleProcessingMinutes = 30;
     private static readonly DateTime EmptyDate = new(3000, 1, 1);
 
     private AptIntegrationTaskModel(
@@ -114,6 +115,7 @@ public class AptIntegrationTaskModel : IAptIntegrationTaskKey
                 $"Task {IntegrationTaskId} berstatus {TaskStatus}; claim hanya dari Pending.");
 
         TaskStatus = AptIntegrationTaskStatusEnum.Processing;
+        ProcessedDate = DateTime.Now;
     }
 
     public void MarkSucceeded(string correlationId, DateTime processedAt = default)
@@ -155,6 +157,22 @@ public class AptIntegrationTaskModel : IAptIntegrationTaskKey
     {
         AssertCanRetry();
         TaskStatus = AptIntegrationTaskStatusEnum.Pending;
+    }
+
+    public bool IsStaleProcessing(DateTime asOf)
+        => TaskStatus == AptIntegrationTaskStatusEnum.Processing
+           && ProcessedDate != EmptyDate
+           && (asOf - ProcessedDate).TotalMinutes >= StaleProcessingMinutes;
+
+    public void ReclaimStaleProcessing(DateTime reclaimedAt = default)
+    {
+        var asOf = reclaimedAt == default ? DateTime.Now : reclaimedAt;
+        if (!IsStaleProcessing(asOf))
+            throw new InvalidOperationException(
+                $"Task {IntegrationTaskId} berstatus {TaskStatus}; reclaim hanya untuk Processing stale >= {StaleProcessingMinutes} menit.");
+
+        TaskStatus = AptIntegrationTaskStatusEnum.Pending;
+        LastError = "reclaimed from stale processing";
     }
 
     public string IntegrationTaskId { get; }

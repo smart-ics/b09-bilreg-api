@@ -83,6 +83,28 @@ public class AptIntegrationWorkerTest
     }
 
     [Fact]
+    public void ProcessOne_FailedTask_IsRejectedWithoutHandlerCall()
+    {
+        var task = AptIntegrationTaskModel.CreatePending(
+            AptIntegrationTaskTypeEnum.TrackerServedAt,
+            AptIntegrationSourceKindEnum.Dispensing,
+            "ADP000000004",
+            "ADP000000004:START",
+            AptIntegrationDestinationEnum.Tracker,
+            "{}");
+        task.ClaimPending();
+        task.MarkFailed("boom");
+        SetupLoad(task);
+        _repo.Setup(x => x.ClaimPending(It.IsAny<IAptIntegrationTaskKey>())).Returns(true);
+
+        var result = CreateSut().ProcessOne(task.IntegrationTaskId);
+
+        result.Success.Should().BeFalse();
+        result.Message.Should().Contain("Failed");
+        _handler.Calls.Should().Be(0);
+    }
+
+    [Fact]
     public void ProcessBatch_ProcessesListedPendingItems()
     {
         var t1 = AptIntegrationTaskModel.CreatePending(

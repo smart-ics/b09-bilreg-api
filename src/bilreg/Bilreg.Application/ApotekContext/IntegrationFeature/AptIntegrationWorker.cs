@@ -28,15 +28,11 @@ public class AptIntegrationWorker
         if (task.TaskStatus == AptIntegrationTaskStatusEnum.Succeeded)
             return new AptIntegrationProcessItemResult(task.IntegrationTaskId, true, "idempotent");
 
-        if (task.TaskStatus != AptIntegrationTaskStatusEnum.Pending
-            && task.TaskStatus != AptIntegrationTaskStatusEnum.Failed)
+        if (task.TaskStatus != AptIntegrationTaskStatusEnum.Pending)
         {
             return new AptIntegrationProcessItemResult(
                 task.IntegrationTaskId, false, $"Cannot process status {task.TaskStatus}");
         }
-
-        if (task.TaskStatus == AptIntegrationTaskStatusEnum.Failed)
-            task.PrepareRetry();
 
         task.ClaimPending();
         if (!_repo.ClaimPending(task))

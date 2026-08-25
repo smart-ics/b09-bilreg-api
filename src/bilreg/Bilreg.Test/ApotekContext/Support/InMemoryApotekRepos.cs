@@ -141,8 +141,15 @@ public class InMemoryIntegrationTaskRepo : IAptIntegrationTaskRepo
         return m is null ? MayBe<AptIntegrationTaskModel>.None : MayBe.From(m);
     }
     public IEnumerable<AptIntegrationTaskModel> ListPending(int batchSize)
-        => Store.Values.Where(x => x.TaskStatus is AptIntegrationTaskStatusEnum.Pending or AptIntegrationTaskStatusEnum.Failed).Take(batchSize);
-    public bool ClaimPending(IAptIntegrationTaskKey key) => true;
+        => Store.Values.Where(x => x.TaskStatus == AptIntegrationTaskStatusEnum.Pending).Take(batchSize);
+    public bool ClaimPending(IAptIntegrationTaskKey key)
+    {
+        if (!Store.TryGetValue(key.IntegrationTaskId, out var m)
+            || m.TaskStatus != AptIntegrationTaskStatusEnum.Pending)
+            return false;
+        m.ClaimPending();
+        return true;
+    }
 }
 
 public class FakePrescriptionPort : IPrescriptionContractPort
@@ -211,4 +218,19 @@ public class FakeWindow : ICollectionWindowDaysProvider
 public class AllowTrPermission : ITataRekeningInvoicePermissionPort
 {
     public bool AllowsModification(string tataRekeningChargeId) => true;
+}
+
+public class RecordingIntegrationHandler : IAptIntegrationHandler
+{
+    public AptIntegrationTaskTypeEnum TaskType => AptIntegrationTaskTypeEnum.TrackerServedAt;
+    public int Calls { get; private set; }
+    public bool Fail { get; set; }
+
+    public AptIntegrationHandleResult Handle(AptIntegrationTaskModel task)
+    {
+        Calls++;
+        return Fail
+            ? new AptIntegrationHandleResult(false, "", "boom")
+            : new AptIntegrationHandleResult(true, "corr-1", null);
+    }
 }

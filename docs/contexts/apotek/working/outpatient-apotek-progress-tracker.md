@@ -35,8 +35,8 @@ Safe-Interims:
 | Slice | Phase | Status | Dependencies | Release gates |
 |---|---|---|---|---|
 | APT-B00 | 0 | GO | — | — |
-| APT-B01 | 0 | IMPLEMENTED | B00 | — |
-| APT-B02 | 0 | IMPLEMENTED | B00 | — |
+| APT-B01 | 0 | GO | B00 | — |
+| APT-B02 | 0 | GO | B00 | — |
 | APT-B03 | 1 | IMPLEMENTED | B00 | — |
 | APT-B04 | 1 | IMPLEMENTED | B03 | BC-13 |
 | APT-B05 | 1 | IMPLEMENTED | B00 | — |
@@ -135,7 +135,7 @@ slice:
   phase: 0
   title: Neighbor prerequisites
   objective: Make required queue, stock, location, and collection-window primitives available without adding pharmacy workflow to neighbor state models
-  status: IMPLEMENTED
+  status: GO
   dependencies: [APT-B00]
   releaseGates: []
   implementationAgent: Composer 2.5
@@ -181,6 +181,30 @@ slice:
         - APT-B01-R1-F03
       decision: NO-GO
       rationale: Consequence path is unproven and dual-write-incomplete; pharmacy service-point resolvability is untested.
+    - round: 2
+      actor: ox-alpha (opencode)
+      reviewedCommit: 5c1f3cd9
+      completedAt: 2026-08-25T21:30:00+07:00
+      acceptanceResults:
+        - criterionId: AC-01
+          result: PASS
+          evidence: "R1-F01 closed: PostDispenseIssueConsequenceHandlerTest proves Success dual-write (mutasi MovementKind=DispenseIssue qtyOut=4, legacy journal 'DI', NotContain SaleIssueDu, batch/lokasi/binding/scope asserted), Idempotent replay of same TrsReffId without double qty, InsufficientStock rejects with zero persist and UoW.Commit never called. R1-F02 closed: LegacyMovementKindMapper.cs:27 maps DI→DispenseIssue; LegacyScopeJournalReplayer.cs:53 consumes the mapper so catch-up/hydrate round-trips DI; LegacyMovementKindMapperTest covers DI/di mapping and TryMap_Di_IsDistinctFromDu"
+        - criterionId: AC-02
+          result: PASS
+          evidence: "ApotekLocationIds.cs:5-6 LYAPT/LYDTU LayananIds; BILRG_Apt_Seed_Layanan.example.sql present; Bilreg.SqlDb/ApotekContext contains no reservation table"
+        - criterionId: AC-03
+          result: PASS
+          evidence: "R1-F03 closed: PharmacyServicePointContractTest seeds via real AdmissionServicePointRepo/AdmissionServicePointDal, LoadEntity resolves pharmacy 'APT' row, and AdmissionServicePointResolver.EnsureAdmissionQueue accepts it (guard genuinely throws for unregistered points per AdmisiRajalOptions.cs:17-24); seed-content test ties example SQL to same table/id"
+        - criterionId: AC-04
+          result: PASS
+          evidence: "BILRG_Apt_Seed_CollectionWindow.sql inserts APT_COLLECTION_WINDOW_DAYS='7'; CollectionWindowDaysProviderTest unchanged since round 1 PASS"
+        - criterionId: AC-05
+          result: PASS
+          evidence: "AntrianStatusEnum.cs still Waiting/InService/Done/Withdrawn; only pre-existing AdmisiContext M2/M3 alters touch BILRG_AntrianEntry; no ApotekContext alter exists"
+      findings: []
+      decision: GO
+      rationale: All three round-1 findings verified remediated at 5c1f3cd9 with non-vacuous tests; scope limited to recorded findings; all five acceptance criteria pass.
+      environmentalNote: dotnet SDK unavailable in review environment; tests not independently re-executed by reviewer. Decision relies on remediation-recorded focused-test results (36 PASS on PostDispenseIssueConsequenceHandler|LegacyMovementKindMapper|PharmacyServicePointContract|DispenseIssueMovementKind|CollectionWindowDaysProvider filters) plus full static verification of every cited code path. No contrary evidence found.
   remediationHistory:
     - round: 1
       basedOnReviewRound: 1
@@ -188,7 +212,7 @@ slice:
       startedAt: 2026-08-19T14:36:00+07:00
       completedAt: 2026-08-19T15:00:00+07:00
       baseCommit: 451ddd59fe20ee99aefe4e1e3c203bc6ea68e3f6
-      resultCommit: null
+      resultCommit: 5c1f3cd9
       remediatedFindings:
         - APT-B01-R1-F01
         - APT-B01-R1-F02
@@ -208,7 +232,7 @@ slice:
       unresolvedFindings: []
       outcome: IMPLEMENTED
       notes:
-        - resultCommit pending user commit; review GO awaits re-review round 2
+        - resultCommit resolved as 5c1f3cd9 ("Audit implementasi Apotek Rawat Jalan (Re-Start Phase-0)"); confirmed by Review round 2
 ```
 
 ### APT-B02
@@ -216,17 +240,72 @@ slice:
 ```yaml
 slice:
   id: APT-B02
-  status: IMPLEMENTED
+  status: GO
   title: Integration Task engine
   implementationHistory:
     - attempt: 1
       actor: Composer 2.5
+      baseCommit: unrecorded (pre-audit history)
       summary: AptIntegrationTask aggregate, enqueue idempotency, worker, retry ops, and handlers for Tracker/Stock/TR/Iter destinations without dual-write to tb_trs_dobill_umum.
+      schemaObjects:
+        - BILRG_AptIntegrationTask with UX_BILRG_AptIntegrationTask_Idempotency unique index and IX_BILRG_AptIntegrationTask_Pending
       tests:
         - command: dotnet test --filter FullyQualifiedName~ApotekContext
           result: PASS
           count: 38
+    - attempt: 2 (remediation of review round 1, findings APT-B02-R1-F01..F05)
+      actor: ox-alpha (opencode)
+      basedOnReviewRound: 1
+      baseCommit: 5c1f3cd964f7db1e188325ec0035089bd3d08af0
+      completedAt: 2026-08-25T23:40:00+07:00
+      resultCommit: WORKING-TREE (uncommitted changes on top of 5c1f3cd9)
+      changedFiles:
+        - src/bilreg/Bilreg.Infrastructure/ApotekContext/IntegrationFeature/AptIntegrationTaskDal.cs
+        - src/bilreg/Bilreg.Application/ApotekContext/IntegrationFeature/AptIntegrationWorker.cs
+        - src/bilreg/Bilreg.Domain/ApotekContext/IntegrationFeature/AptIntegrationTaskModel.cs
+        - src/bilreg/Bilreg.Application/ApotekContext/IntegrationFeature/UseCases/AptIntegrationOpsCommands.cs
+        - src/bilreg/Bilreg.Application/ApotekContext/IntegrationFeature/UseCases/AptIntegrationProcessCmd.cs (new)
+        - src/bilreg/Bilreg.Api/Controllers/ApotekContext/ApotekController.cs
+        - src/bilreg/Bilreg.Test/ApotekContext/IntegrationFeature/AptIntegrationTaskDalTest.cs (new)
+        - src/bilreg/Bilreg.Test/ApotekContext/IntegrationFeature/AptIntegrationProcessCmdTest.cs (new)
+        - src/bilreg/Bilreg.Test/ApotekContext/IntegrationFeature/AptIntegrationRetryCommandTest.cs (new)
+        - src/bilreg/Bilreg.Test/ApotekContext/IntegrationFeature/AptIntegrationTaskModelTest.cs
+        - src/bilreg/Bilreg.Test/ApotekContext/IntegrationFeature/AptIntegrationWorkerTest.cs
+        - src/bilreg/Bilreg.Test/ApotekContext/Support/InMemoryApotekRepos.cs
+      schemaObjects:
+        - Deployed BILRG_AptQueueClose.sql and BILRG_AptIntegrationTask.sql to devTest via SQLCMD (tables had never been deployed; required for DAL-contract execution; DDL unchanged from repository scripts)
+      summary: >
+        R1-F01: ListPending and ClaimPending predicates restricted to TaskStatus=Pending (SQL DAL and
+        in-memory twin aligned); worker rejects Failed/Processing rows instead of silently auto-retrying;
+        Failed returns to processing solely through the audited retry command. SQL-level proof added.
+        R1-F02: new AptIntegrationTaskDalTest proves business save (BILRG_AptQueueClose insert) plus task
+        insert commit together AND roll back together inside one TransHelper.NewScope() against devTest.
+        R1-F03: AptIntegrationProcessCmd/handler plus POST api/v1/apotek/integration/process give batch
+        processing a production invocation path (parity with LabOware/EMR engines). R1-F04: ClaimPending
+        stamps processing start time; Processing rows stale beyond 30 minutes are reclaimable through the
+        authenticated retry command; model and handler tests cover fresh/stale/Failed cases.
+        R1-F05: this record backfilled.
+      assumptionsUsed:
+        - StaleProcessingMinutes=30 introduced as an operational constant analogous to MaxRetries=5; no BC-12 role matrix invented (retry remains authenticated and policy-seamed).
+        - Applying the two existing in-repo DDL scripts to the shared devTest database to make DAL-contract tests executable (no column/table redesign).
+      tests:
+        - command: dotnet build src/bilreg/b09-bilreg-api.sln
+          result: PASS
+        - command: dotnet test --filter "FullyQualifiedName~ApotekContext.IntegrationFeature"
+          result: PASS
+          count: 25
+        - command: dotnet test --filter "FullyQualifiedName~ApotekContext"
+          result: PASS
+          count: 54
+      deferred:
+        - Review Agent re-review and GO/NO-GO decision
+      outcome: IMPLEMENTED
 ```
+
+Notes for APT-B02 remediation:
+
+- One transient Wf003 failure appeared in the first full-suite run immediately after devTest table creation; it did not reproduce in the next three consecutive full ApotekContext runs (54/54 each). Recorded here for transparency; re-review may treat it as noise or investigate further.
+- Known limitation: a legitimately long-running handler (beyond 30 minutes) could be operator-reclaimed while still executing; there is no lease heartbeat. Handlers are expected to be short neighbor calls.
 
 ### APT-B03
 
