@@ -34,7 +34,7 @@ Safe-Interims:
 
 | Slice | Phase | Status | Dependencies | Release gates |
 |---|---|---|---|---|
-| APT-B00 | 0 | IMPLEMENTED | — | — |
+| APT-B00 | 0 | GO | — | — |
 | APT-B01 | 0 | IMPLEMENTED | B00 | — |
 | APT-B02 | 0 | IMPLEMENTED | B00 | — |
 | APT-B03 | 1 | IMPLEMENTED | B00 | — |
@@ -87,7 +87,7 @@ slice:
   phase: 0
   title: Apotek module boundary
   objective: Establish isolated ApotekContext namespace and dependency guard
-  status: IMPLEMENTED
+  status: GO
   dependencies: []
   releaseGates: []
   implementationAgent: Composer 2.5
@@ -106,7 +106,24 @@ slice:
         - Four aggregate roots only TelaahResep SalesOrder Invoice Dispensing
       deferredItems:
         - Code review GO/NO-GO
-  reviewHistory: []
+  reviewHistory:
+    - round: 1
+      actor: Grok Medium
+      reviewedCommit: 451ddd59fe20ee99aefe4e1e3c203bc6ea68e3f6
+      completedAt: 2026-08-19T14:15:00+07:00
+      acceptanceResults:
+        - criterionId: AC-01
+          result: PASS
+          evidence: "dotnet test ...~ApotekContext.Architecture built Domain/Application/Infrastructure/Api/Test; markers + MediatR/Scrutor assembly scan register the module"
+        - criterionId: AC-02
+          result: PASS
+          evidence: "ApotekContextBoundaryTest 3/3 PASS; source scan of Application/Infrastructure ApotekContext for PenjualanModel, IPenjualanDal, TelaahModel, IStokMutasiDal, ITrsBillingDal"
+        - criterionId: AC-03
+          result: PASS
+          evidence: "No ApotekContext references to those legacy/neighbor types; slice adds isolated roots rather than mutating Penjualan/Telaah persistence"
+      findings: []
+      decision: GO
+      rationale: Boundary, registration convention, and architecture guard meet APT-B00 acceptance criteria.
   remediationHistory: []
 ```
 
@@ -115,16 +132,83 @@ slice:
 ```yaml
 slice:
   id: APT-B01
+  phase: 0
+  title: Neighbor prerequisites
+  objective: Make required queue, stock, location, and collection-window primitives available without adding pharmacy workflow to neighbor state models
   status: IMPLEMENTED
-  title: Neighbor prerequisite seams
+  dependencies: [APT-B00]
+  releaseGates: []
+  implementationAgent: Composer 2.5
+  reviewAgent: Grok Medium
   implementationHistory:
     - attempt: 1
       actor: Composer 2.5
-      summary: Fail-closed ports for stock, payment, TR permission, SEP, Iter, and price; Stock Ledger dispense-issue consequence commands; PharmacyQueueEvidence public for adapter append.
+      completedAt: 2026-08-18
+      baseCommit: bc31e45b
+      summary: DispenseIssue movement kind and PostDispenseIssueConsequenceHandler; LYAPT/LYDTU location constants; example Pharmacy Unit/DTU and BILRG_AdmServicePoint seeds; APT_COLLECTION_WINDOW_DAYS default 7.
       tests:
-        - command: dotnet test --filter FullyQualifiedName~ApotekContext
+        - command: dotnet test src/bilreg/Bilreg.Test/Bilreg.Test.csproj --filter FullyQualifiedName~ApotekContext
           result: PASS
           count: 38
+      assumptionsUsed:
+        - Pharmacy Unit/DTU and pharmacy service-point seeds may remain example-only until Ops-approved identifiers exist
+      deferredItems:
+        - Code review GO/NO-GO
+  reviewHistory:
+    - round: 1
+      actor: Grok Medium
+      reviewedCommit: 451ddd59fe20ee99aefe4e1e3c203bc6ea68e3f6
+      completedAt: 2026-08-19T14:45:00+07:00
+      acceptanceResults:
+        - criterionId: AC-01
+          result: FAIL
+          evidence: "DispenseIssue=14 distinct from SaleIssueDu=5; PostDispenseIssueConsequenceHandler exists but tests do not exercise it; LegacyMovementKindMapper has no DI mapping while handler writes LegacyKindString DI"
+        - criterionId: AC-02
+          result: PASS
+          evidence: "ApotekLocationIds LYAPT/LYDTU; BILRG_Apt_Seed_Layanan.example.sql inserts ta_layanan; no BILRG_Apt reservation table"
+        - criterionId: AC-03
+          result: FAIL
+          evidence: "BILRG_Apt_Seed_ServicePoint.example.sql targets BILRG_AdmServicePoint; no test that IAdmissionServicePointRepo/LoadEntity resolves a pharmacy service point"
+        - criterionId: AC-04
+          result: PASS
+          evidence: "CollectionWindowDaysProviderTest GetDays_WhenParameterMissing_ReturnsDefaultSeven; BILRG_Apt_Seed_CollectionWindow.sql value 7; 7/7 focused tests PASS"
+        - criterionId: AC-05
+          result: PASS
+          evidence: "AntrianStatusEnum remains Waiting/InService/Done/Withdrawn; ApotekContext SQL has no ALTER TABLE BILRG_AntrianEntry"
+      findings:
+        - APT-B01-R1-F01
+        - APT-B01-R1-F02
+        - APT-B01-R1-F03
+      decision: NO-GO
+      rationale: Consequence path is unproven and dual-write-incomplete; pharmacy service-point resolvability is untested.
+  remediationHistory:
+    - round: 1
+      basedOnReviewRound: 1
+      actor: Composer 2.5
+      startedAt: 2026-08-19T14:36:00+07:00
+      completedAt: 2026-08-19T15:00:00+07:00
+      baseCommit: 451ddd59fe20ee99aefe4e1e3c203bc6ea68e3f6
+      resultCommit: null
+      remediatedFindings:
+        - APT-B01-R1-F01
+        - APT-B01-R1-F02
+        - APT-B01-R1-F03
+      changedFiles:
+        - src/bilreg/Bilreg.Application/InventoryContext/StockLedgerFeature/LegacyMovementKindMapper.cs
+        - src/bilreg/Bilreg.Test/InventoryContext/StockLedgerFeature/LegacyMovementKindMapperTest.cs
+        - src/bilreg/Bilreg.Test/InventoryContext/StockLedgerFeature/PostDispenseIssueConsequenceHandlerTest.cs
+        - src/bilreg/Bilreg.Test/ApotekContext/Shared/PharmacyServicePointContractTest.cs
+      summary: Added DI legacy mapper entry; PostDispenseIssue consequence handler tests (success, idempotent, insufficient stock) at LYDTU; pharmacy APT service-point load/resolver contract test via IAdmissionServicePointRepo.
+      tests:
+        - command: dotnet build src/bilreg/b09-bilreg-api.sln
+          result: PASS
+        - command: dotnet test src/bilreg/Bilreg.Test/Bilreg.Test.csproj --filter "FullyQualifiedName~PostDispenseIssueConsequenceHandlerTest|FullyQualifiedName~LegacyMovementKindMapperTest|FullyQualifiedName~PharmacyServicePointContractTest|FullyQualifiedName~DispenseIssueMovementKindTest|FullyQualifiedName~CollectionWindowDaysProviderTest"
+          result: PASS
+          count: 36
+      unresolvedFindings: []
+      outcome: IMPLEMENTED
+      notes:
+        - resultCommit pending user commit; review GO awaits re-review round 2
 ```
 
 ### APT-B02

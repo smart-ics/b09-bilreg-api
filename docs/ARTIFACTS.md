@@ -189,6 +189,8 @@ Index lists **Active** and **Working** only. Historical reports live under [`doc
 | `docs/contexts/apotek/working/APOTEK-AVAILABLE-STOCK-CONCEPT-INTRODUCTION.md` | Available Stock ≠ Current Stock (formula still open: PD-09) |
 | `docs/contexts/apotek/working/outpatient-apotek-repository-gap-analysis-report.md` | Repository Gap Analysis — remaining BC-11–BC-13 |
 | `docs/contexts/apotek/working/APOTEK-RESEP-REVISION-TASK-CONSISTENCY-REPORT.md` | PD-11 — Remove `BILRG_AptResepRevisionTask` |
+| `docs/contexts/apotek/working/outpatient-apotek-completeness-audit.md` | Implementation completeness audit (19 August 2026) |
+| `docs/contexts/apotek/working/outpatient-apotek-review-tracker.md` | Outpatient Apotek review governance, registry, and execution roadmap |
 | `docs/contexts/apotek/sop/DAFTAR-SOP-APT-RJ.md` | Daftar SOP Pelayanan Obat Pasien Rawat Jalan |
 | `docs/contexts/apotek/sop/SOP-APT-RJ-001-Antrian-dan-Mapping-EN.md` | SOP APT-RJ-001 — Acquire and Map Outpatient Pharmacy Queue |
 | `docs/contexts/apotek/sop/SOP-APT-RJ-001-Antrian-dan-Mapping-ID.md` | SOP APT-RJ-001 — Menerbitkan Nomor Antrian dan Melakukan Mapping dengan Resep Kerja atau Jual Bebas |
