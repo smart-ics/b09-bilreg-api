@@ -24,7 +24,7 @@ public record NilaiReturJualType
     public static NilaiReturJualType Default => new(0, 0, 0, 0, 0);
 
     public static NilaiReturJualType RecalcFrom(
-        IEnumerable<ReturJualItemType> items,
+        IEnumerable<ReturJualItemModel> items,
         decimal pembulatan = 0)
     {
         var active = items.Where(x => !x.IsVoided).ToList();

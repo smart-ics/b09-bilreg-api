@@ -30,15 +30,16 @@ public record NilaiItemReturType
     public static NilaiItemReturType Default => new(0, 0, 0, 0, 0, 0, 0);
 
     public static NilaiItemReturType Create(
-        decimal qty,
+        decimal qtyJual,
+        decimal qtyRetur,
         decimal hargaJual,
         decimal hargaRetur,
         decimal tax)
     {
-        var subTotaJual = qty * hargaJual;
-        var subTotalRetur =  qty * hargaRetur;
-        var subTotalTax = qty * tax;
+        var subTotalJual = qtyJual * hargaJual;
+        var subTotalRetur =  qtyRetur * hargaRetur;
+        var subTotalTax = qtyRetur * tax;
         var total = subTotalRetur + subTotalTax;
-        return new(hargaJual, hargaRetur, tax, subTotaJual, subTotalRetur, subTotalTax, total);
+        return new(hargaJual, hargaRetur, tax, subTotalJual, subTotalRetur, subTotalTax, total);
     }
 }

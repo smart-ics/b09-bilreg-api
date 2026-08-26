@@ -2,9 +2,9 @@
 
 namespace Bilreg.Domain.SalesContext.ReturJualFeature;
 
-public record ReturJualItemType
+public record ReturJualItemModel
 {
-    public ReturJualItemType(
+    public ReturJualItemModel(
         string returJualItemId,
         int noUrut,
         BrgReff brg,
@@ -33,7 +33,7 @@ public record ReturJualItemType
     public NilaiItemReturType Nilai { get; private set; }
     public bool IsVoided { get; private set; }
 
-    public static ReturJualItemType Create(
+    public static ReturJualItemModel Create(
         string returJualItemId,
         int noUrut,
         BrgReff brg,
@@ -43,9 +43,14 @@ public record ReturJualItemType
         NilaiItemReturType nilai)
         => new(returJualItemId, noUrut, brg, satuan, qtyJual, qtyRetur, nilai, false);
 
-    public void SetNoUrut(int noUrut) => NoUrut = noUrut;
+    internal void SetNoUrut(int noUrut) => NoUrut = noUrut;
 
-    public void ApplyNilai(NilaiItemReturType nilai) => Nilai = nilai;
+    internal void ApplyNilai(decimal hargaRetur, decimal taxPerUnit)
+    {
+        Nilai = NilaiItemReturType.Create(QtyJual, QtyRetur, Nilai.HargaJual, hargaRetur, taxPerUnit);
+    }
 
-    public void VoidLine() => IsVoided = true;
+    internal void ChangeQtyRetur(decimal qtyRetur) => QtyRetur = qtyRetur;
+
+    internal void VoidLine() => IsVoided = true;
 }
