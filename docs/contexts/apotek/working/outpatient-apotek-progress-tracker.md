@@ -29,6 +29,7 @@ Safe-Interims:
 | BC-11 | OPEN | Canonical ServedAt/DoneAt only | APT-C01 announcements |
 | BC-12 | OPEN | Actor + audit + policy seam | Mutation endpoint rollout |
 | BC-13 | OPEN | CaptureNote/DocumentRef | Physical prescription rollout |
+| prescription-contract-adapter | OPEN | Fail-closed IPrescriptionContractPort + X-Release-Gate marker on intake-electronic | Electronic Resep Kerja intake from a live CPOE/Legacy-Resep source |
 
 ## Slice ledger
 
@@ -37,7 +38,7 @@ Safe-Interims:
 | APT-B00 | 0 | GO | — | — |
 | APT-B01 | 0 | GO | B00 | — |
 | APT-B02 | 0 | GO | B00 | — |
-| APT-B03 | 1 | IMPLEMENTED | B00 | — |
+| APT-B03 | 1 | GO | B00 | prescription-contract-adapter |
 | APT-B04 | 1 | IMPLEMENTED | B03 | BC-13 |
 | APT-B05 | 1 | IMPLEMENTED | B00 | — |
 | APT-B06 | 1 | IMPLEMENTED | B03 | — |
@@ -314,10 +315,81 @@ slice:
   id: APT-B03
   status: IMPLEMENTED
   title: Electronic Resep Kerja intake
+  releaseGates: [prescription-contract-adapter]
   implementationHistory:
     - attempt: 1
       actor: Composer 2.5
+      baseCommit: 5c1f3cd9 (Wave-1 working tree; committed as bc31e45b/451ddd59 lineage)
+      resultCommit: bc31e45b lineage, reviewed at 8af36531a0146c847627f15f5ed662b03fa1253d
+      completedAt: 2026-08-26T10:15:00+07:00 (evidence reconstructed at remediation; original dates unrecorded)
+      changedFiles:
+        - src/bilreg/Bilreg.Domain/ApotekContext/ResepKerjaFeature/ResepKerjaModel.cs
+        - src/bilreg/Bilreg.Domain/ApotekContext/ResepKerjaFeature/ResepKerjaSourceKindEnum.cs
+        - src/bilreg/Bilreg.Application/ApotekContext/ResepKerjaFeature/IPrescriptionContractPort.cs
+        - src/bilreg/Bilreg.Application/ApotekContext/ResepKerjaFeature/IResepKerjaRepo.cs
+        - src/bilreg/Bilreg.Application/ApotekContext/ResepKerjaFeature/UseCases/ResepKerjaIntakeCmd.cs
+        - src/bilreg/Bilreg.Infrastructure/ApotekContext/ResepKerjaFeature/ResepKerjaPersistence.cs
+        - src/bilreg/Bilreg.SqlDb/ApotekContext/BILRG_AptResepKerja.sql
+        - src/bilreg/Bilreg.SqlDb/ApotekContext/BILRG_AptResepKerjaItem.sql
+        - src/bilreg/Bilreg.SqlDb/ApotekContext/BILRG_AptResepKerjaComponent.sql
+        - src/bilreg/Bilreg.Api/Controllers/ApotekContext/ApotekController.cs
+      schemaObjects:
+        - BILRG_AptResepKerja with UX_BILRG_AptResepKerja_ElectronicSource unique filtered index on (SourceKind, SourceResepId)
+        - BILRG_AptResepKerjaItem
+        - BILRG_AptResepKerjaComponent
       summary: ResepKerjaModel intake from IPrescriptionContractPort with source-key idempotency; items frozen only after terminal Telaah.
+    - attempt: 2 (remediation of review round 1, findings APT-B03-R1-F01..F05)
+      actor: ox-alpha (opencode)
+      basedOnReviewRound: 1
+      baseCommit: 8af36531a0146c847627f15f5ed662b03fa1253d
+      resultCommit: WORKING-TREE (uncommitted changes on top of 8af36531)
+      completedAt: 2026-08-26T16:30:00+07:00
+      changedFiles:
+        - src/bilreg/Bilreg.Test/ApotekContext/ResepKerjaFeature/ResepKerjaDalTest.cs (new)
+        - src/bilreg/Bilreg.Test/ApotekContext/ResepKerjaFeature/Api/ResepKerjaIntakeApiTest.cs (new)
+        - src/bilreg/Bilreg.Test/ApotekContext/Support/ApotekApiWebApplicationFactory.cs (new)
+        - src/bilreg/Bilreg.Test/ApotekContext/Support/ApotekApiTestAuthHandler.cs (new)
+        - src/bilreg/Bilreg.Api/Controllers/ApotekContext/ApotekController.cs (X-Release-Gate header on intake-electronic)
+      schemaObjects:
+        - Deployed BILRG_AptResepKerja.sql, BILRG_AptResepKerjaItem.sql and BILRG_AptResepKerjaComponent.sql to devTest via SQLCMD (tables had never been deployed; required for DAL-contract execution; DDL unchanged from repository scripts; the filtered index required a QUOTED_IDENTIFIER ON session when applied via SQLCMD)
+      summary: >
+        R1-F01: new devTest-backed ResepKerjaDalTest proves full round-trip of header+items+racik
+        components through ResepKerjaRepo.SaveChanges/LoadEntity including SQL ordering by ItemNo and
+        (ItemNo, ComponentNo), and delete+reinsert item rewrite while not ItemsFrozen.
+        R1-F02: same class proves the filtered unique index rejects a duplicate (SourceKind,
+        SourceResepId) insert with SqlException 2601/2627 while distinct kinds succeed, and that after
+        Void the GetBySource/LoadBySource path returns None so documented deterministic re-intake holds.
+        R1-F03: new ResepKerjaIntakeApiTest boots the real host through ApotekApiWebApplicationFactory
+        (test auth scheme + in-memory repo/port only) and proves authenticated electronic intake returns
+        IdempotentReplay=false then true with stable ResepKerjaId, stamps audit actor from the JWT
+        principal (client-sent userId is ignored), physical intake carries X-Release-Gate BC-13 and
+        persists CaptureNote/DocumentRef, one expected domain error maps to 400 {status:fail, code:DOMAIN}
+        via ApotekExceptionFilter, and unauthenticated requests are challenged with 401.
+        R1-F04: this record backfilled. R1-F05: gate registry entry prescription-contract-adapter added
+        and intake-electronic now stamps X-Release-Gate: prescription-contract-adapter.
+      assumptionsUsed:
+        - Production electronic intake stays fail-closed behind an unconfigured prescription contract adapter; the gate ledger entry makes this operational visibility explicit without inventing the adapter contract.
+        - Client-sent userId remains part of command binding (context-wide convention) but is proven non-authoritative; identity always comes from ICurrentUserContext.
+      tests:
+        - command: dotnet build src/bilreg/b09-bilreg-api.sln
+          result: PASS
+        - command: dotnet test --filter "FullyQualifiedName~ResepKerjaDalTest"
+          result: PASS
+          count: 4
+        - command: dotnet test --filter "FullyQualifiedName~ResepKerjaIntakeApiTest"
+          result: PASS
+          count: 4
+        - command: dotnet test --filter "FullyQualifiedName~ApotekContext"
+          result: PASS
+          count: 62
+      deferred:
+        - Review Agent re-review and GO/NO-GO decision
+      outcome: IMPLEMENTED
+```
+
+Notes for APT-B03 remediation:
+
+- The API contract tests surfaced a binding consequence of the context-wide command convention: non-nullable UserId makes [ApiController] reject bodies without userId even though every handler overwrites it from the authenticated principal. Recorded here for transparency; APT-B29 (API hardening) owns any contract-wide normalization. The tests assert server-side stamping wins over client-sent values.
 ```
 
 ### APT-B04

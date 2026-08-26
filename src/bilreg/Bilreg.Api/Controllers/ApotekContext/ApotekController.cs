@@ -32,7 +32,10 @@ public class ApotekController : ControllerBase
 
     [HttpPost("resep-kerja/intake-electronic")]
     public async Task<IActionResult> IntakeElectronic(ResepKerjaIntakeElectronicCmd cmd)
-        => Ok(new JSendOk(await _mediator.Send(cmd with { UserId = AptActor.Require(_user) })));
+    {
+        Response.Headers["X-Release-Gate"] = "prescription-contract-adapter";
+        return Ok(new JSendOk(await _mediator.Send(cmd with { UserId = AptActor.Require(_user) })));
+    }
 
     [HttpPost("resep-kerja/intake-physical")]
     public async Task<IActionResult> IntakePhysical(ResepKerjaIntakePhysicalCmd cmd)

@@ -182,7 +182,7 @@ Seeding rule applied:
 | APT-B00 | Apotek module boundary | 0 | GO | **GO** | — | — |
 | APT-B01 | Neighbor prerequisites | 0 | PARTIAL | **GO** | — | — |
 | APT-B02 | Integration Task engine | 0 | PARTIAL | **GO** | — | — |
-| APT-B03 | Electronic Resep Kerja intake | 1 | PARTIAL | NOT_REVIEWED | 2 | — |
+| APT-B03 | Electronic Resep Kerja intake | 1 | PARTIAL | **GO** | — | prescription-contract-adapter |
 | APT-B04 | Physical Resep Kerja intake | 1 | PARTIAL | NOT_REVIEWED | 2 | BC-13 |
 | APT-B05 | Jual Bebas acceptance | 1 | PARTIAL | NOT_REVIEWED | 2 | — |
 | APT-B06 | Telaah Resep | 1 | PARTIAL | NOT_REVIEWED | 2 | — |
@@ -224,8 +224,8 @@ Seeding rule applied:
 | Review status | Count |
 |---------------|------:|
 | GO | 4 |
-| NO_GO | 4 |
-| NOT_REVIEWED | 31 |
+| NO_GO | 5 |
+| NOT_REVIEWED | 30 |
 | REVIEWING | 0 |
 | REMEDIATED | 0 |
 | REVIEWING | 0 |
@@ -446,6 +446,154 @@ notes:
   - Unlike review round 1, build/tests were executed in this session via the Windows dotnet SDK (WSL interop); the real-DB transaction contract now runs against devTest after deploying the two in-repo DDL scripts.
   - Round opened on user request while Wave-1 slices remain first in the execution roadmap (same precedent as APT-B01 round 2).
   - Round 2 (25 Aug 2026) re-reviewed the remediation working tree with reviewer-executed tests → GO. Known accepted limitations: no lease heartbeat on stale-Processing reclaim (30-minute constant, operator-driven, audited); single transient Wf003 blip never reproduced across five consecutive full-suite runs. Commit of the working tree is outstanding housekeeping.
+```
+
+### APT-B03
+
+```yaml
+slice: APT-B03
+reviewStatus: GO
+initializedFrom: completeness-audit-2026-08-19
+reviewedCommit: 8af36531a0146c847627f15f5ed662b03fa1253d
+reviewHistory:
+  - round: 1
+    actor: ox-alpha (opencode)
+    reviewedCommit: 8af36531a0146c847627f15f5ed662b03fa1253d (clean working tree)
+    startedAt: 2026-08-26T10:15:00+07:00
+    completedAt: 2026-08-26T11:05:00+07:00
+    reviewerExecutedVerification:
+      - command: dotnet build src/bilreg/b09-bilreg-api.sln
+        result: PASS (0 errors; 40 pre-existing warnings, none introduced by this slice)
+      - command: dotnet test src/bilreg/Bilreg.Test/Bilreg.Test.csproj --filter "FullyQualifiedName~ApotekContext"
+        result: PASS (54/54)
+    acceptanceResults:
+      - criterionId: AC-01
+        result: PASS
+        evidence: "One application port for both electronic kinds: ResepKerjaIntakeElectronicCmd carries ResepKerjaSourceKindEnum and ResepKerjaIntakeElectronicHandler loads via IPrescriptionContractPort.Load(sourceKind, sourceResepId) (ResepKerjaIntakeCmd.cs:60-87); enum distinguishes LegacyResep=0/Cpoe=1/Physical=2 (ResepKerjaSourceKindEnum.cs); physical is rejected from the electronic path and routed to its own command (:64-65). Handler behavior exercised in-memory by OutpatientApotekWorkflowTest.Electronic_intake_is_idempotent_on_source_key."
+      - criterionId: AC-02
+        result: FAIL
+        evidence: "Storage code exists and covers header (RegId/Pasien/Dokter/Layanan/Urgenitas/IterEntitled/IterConsumed/CareSetting/SourceKind/SourceResepId), per-item Iter, and racik components mapped SourceItemNo→ItemNo (ResepKerjaPersistence.cs:45-59,99-111,133-140; BILRG_AptResepKerja*.sql). BUT the planned repository-test evidence does not exist: no test instantiates ResepKerjaDal/ResepKerjaRepo anywhere in Bilreg.Test (grep confirms); no SQL round-trip of header+items+components is proven. Evidence standard requires domain/handler/repository/API-contract tests as specified in master plan."
+      - criterionId: AC-03
+        result: PASS
+        evidence: "No silent-sync path exists: intake returns the stored copy when LoadBySource hits (ResepKerjaIntakeCmd.cs:67-69) and never re-reads the contract in that branch; RewriteItems is explicit named behavior guarded by ItemsFrozen/status. Replay test proves second intake neither inserts nor mutates (_resep.Store.Should().HaveCount(1)). Residual gap (no test flips the contract between intakes) folded into APT-B03-R1-F01 remediation scope, not scored as criterion failure."
+      - criterionId: AC-04
+        result: PASS
+        evidence: "RewriteItems throws when ItemsFrozen or status != Active (ResepKerjaModel.cs:197-214,232-236); TelaahCompleteHandler freezes Resep Kerja items inside the terminal-Telaah transaction (TelaahCommands.cs:122-130); domain test covers freeze→rewrite rejection (ResepKerjaModelTest.cs:24-26); BILRG_AptResepRevisionTask is forbidden by ApotekContextBoundaryTest.cs:62 and absent from schema/code per PD-11 report."
+      - criterionId: AC-05
+        result: FAIL
+        evidence: "App-level rule is deterministic (LoadBySource check → IdempotentReplay response, proven in-memory) and DDL declares UX_BILRG_AptResepKerja_ElectronicSource on (SourceKind, SourceResepId) WHERE SourceKind IN (0,1) AND SourceResepId <> '' AND VodDate='3000-01-01' (BILRG_AptResepKerja.sql:28). BUT zero SQL/repository-level proof exists that the filtered index rejects duplicate-source inserts or that GetBySource ignores voided rows (ResepKerjaPersistence.cs:83-91); the in-memory twin InMemoryApotekRepos.LoadBySource (InMemoryApotekRepos.cs:32-36) does not replicate VodDate filtering, so the suite cannot detect divergence between test double and production semantics. Documented source-key rule is therefore unproven at its enforcement point."
+    findings:
+      - id: APT-B03-R1-F01
+        severity: HIGH
+        criterionId: AC-02
+        location: missing test; nearest artifacts src/bilreg/Bilreg.Infrastructure/ApotekContext/ResepKerjaFeature/ResepKerjaPersistence.cs:159-231 and Bilreg.SqlDb/ApotekContext/BILRG_AptResepKerja{,Item,Component}.sql
+        problem: The planned repository-test evidence is absent. No test exercises ResepKerjaRepo.SaveChanges / LoadEntity / LoadBySource against a real database, so aggregate reconstruction (DTO→model incl. items/components ordering), header/item/component persistence, and SaveChanges delete+reinsert behavior when !ItemsFrozen are unproven. Precedent exists: AptIntegrationTaskDalTest added under APT-B02 remediation runs real DALs against devTest.
+        requiredOutcome: A repository/DAL test (devTest-backed like AptIntegrationTaskDalTest) proving full round-trip of header+items+racik components, correct rehydration order, and GetBySource semantics including exclusion of voided rows.
+        status: OPEN
+      - id: APT-B03-R1-F02
+        severity: HIGH
+        criterionId: AC-05
+        location: src/bilreg/Bilreg.SqlDb/ApotekContext/BILRG_AptResepKerja.sql:28; test-double twin at src/bilreg/Bilreg.Test/ApotekContext/Support/InMemoryApotekRepos.cs:32-36
+        problem: Duplicate-source idempotency is only proven with the in-memory double, which diverges from production semantics: it does not filter voided rows and cannot exercise the unique filtered index. If the index predicate or GetBySource VodDate filter drifts, no test fails, and concurrent duplicate intake would surface as an unhandled SqlException instead of the documented deterministic outcome.
+        requiredOutcome: A SQL-level test proving (a) a second insert with same (SourceKind, SourceResepId) violates UX_BILRG_AptResepKerja_ElectronicSource while distinct sources succeed, and (b) after Void, GetBySource returns None so the documented deterministic re-intake rule holds.
+        status: OPEN
+      - id: APT-B03-R1-F03
+        severity: HIGH
+        criterionId: api-contract-evidence
+        location: missing test; nearest artifact src/bilreg/Bilreg.Api/Controllers/ApotekContext/ApotekController.cs:33-42
+        problem: The planned API-contract test evidence is absent. No test references POST api/v1/apotek/resep-kerja/intake-electronic or intake-physical; request binding, AptActor.Require authentication stamping, JSendOk response shape with IdempotentReplay, X-Release-Gate BC-13 header on physical, and ApotekExceptionFilter error mapping are all untested for this slice. Repo-wide contract-test infrastructure already exists (JwtAuthWebApplicationFactory, TataRekeningWebApplicationFactory pattern) but is not applied to Apotek endpoints.
+        requiredOutcome: An API-contract test covering authenticated electronic intake (first call → IdempotentReplay=false, replay → true with stable ResepKerjaId), physical intake gate header, and one expected-error mapping through ApotekExceptionFilter.
+        status: OPEN
+      - id: APT-B03-R1-F04
+        severity: MEDIUM
+        criterionId: tracker-completeness
+        location: docs/contexts/apotek/working/outpatient-apotek-progress-tracker.md:310-321
+        problem: Implementation record omits baseCommit, dates, changedFiles, schemaObjects, and focused-test counts required by the slice-record template (master-plan section 6); the single summary line cannot support regression-risk assessment.
+        requiredOutcome: Backfill the implementation history event with commit SHAs, changed files/schema objects, and the slice-focused test command/count.
+        status: OPEN
+      - id: APT-B03-R1-F05
+        severity: MEDIUM
+        criterionId: release-gate-visibility
+        location: src/bilreg/Bilreg.Api/Configurations/InfrastructureService.cs:98; src/bilreg/Bilreg.Application/ApotekContext/Shared/FailClosedPorts.cs:13-17; src/bilreg/Bilreg.Api/Controllers/ApotekContext/ApotekController.cs:33-35
+        problem: Production IPrescriptionContractPort is FailClosedPrescriptionContractPort, so every production electronic intake throws 'adapter is not configured'. Unlike sibling interims, this dependency is invisible operationally: intake-electronic carries no X-Release-Gate marker (intake-physical marks BC-13; sales-order/establish marks PD-09) and no gate-registry entry tracks the prescription-contract adapter, contradicting the established fail-closed-with-explicit-gate pattern.
+        requiredOutcome: Either register a release-gate ledger entry (e.g., prescription-contract-adapter) on the progress tracker gate registry plus an X-Release-Gate header on intake-electronic, or record an approved deviation explaining why production unavailability needs no gate marker.
+        status: OPEN
+    decision: NO_GO
+    rationale: AC-02 and AC-05 fail on the plan's own evidence class — required repository and API-contract tests do not exist, and the source-key rule's DB enforcement is unproven while the in-memory twin diverges from SQL semantics. AC-01/AC-03/AC-04 pass on verified code paths. Findings APT-B03-R1-F01..F05 recorded; remediation limited to these IDs.
+    environmentalNote: Build and tests executed independently by the reviewer via Windows dotnet SDK over WSL interop at clean commit 8af36531a0146c847627f15f5ed662b03fa1253d (solution build 0 errors; ApotekContext filter 54/54 PASS).
+  - round: 2
+    actor: ox-alpha (opencode)
+    reviewedCommit: WORKING-TREE (uncommitted remediation on top of 8af36531a0146c847627f15f5ed662b03fa1253d; diff = ApotekController.cs +3/-1, four new test files, two tracker docs)
+    startedAt: 2026-08-26T10:15:00+07:00
+    completedAt: 2026-08-26T10:45:00+07:00
+    reviewerExecutedVerification:
+      - command: dotnet build src/bilreg/b09-bilreg-api.sln
+        result: PASS (0 errors, 0 warnings)
+      - command: dotnet test --filter "FullyQualifiedName~ResepKerjaDalTest|FullyQualifiedName~ResepKerjaIntakeApiTest"
+        result: PASS (8/8: 4 DAL + 4 API)
+      - command: dotnet test src/bilreg/Bilreg.Test/Bilreg.Test.csproj --filter "FullyQualifiedName~ApotekContext"
+        result: "PASS 62/62 on runs 2 and 3; run 1 had one non-reproducing Wf003_general_patient_happy_path failure (see notes)"
+    acceptanceResults:
+      - criterionId: AC-01
+        result: PASS
+        evidence: "Unchanged from round 1 (one port, both electronic kinds, physical rejected from electronic path); remediation touched no intake handler/domain code — verified via working-tree diff scope."
+      - criterionId: AC-02
+        result: PASS
+        evidence: "R1-F01 closed. ResepKerjaDalTest runs real ResepKerjaRepo (ResepKerjaDal+Item+Component DALs) against devTest: RoundTrip test persists and rehydrates header fields (source/patient/reg/urgenitas/Iter/status/frozen), proves SQL ordering Items 1→2 and Components (1,1),(2,1),(2,2) from intentionally shuffled input, and SaveChanges_rewrites_items_only_while_not_frozen proves delete+reinsert rewrite while !ItemsFrozen and zero rewrite after FreezeItems (corrupt-then-load stays BOGUS)."
+      - criterionId: AC-03
+        result: PASS
+        evidence: "Unchanged from round 1 (no silent-sync path; replay returns stored copy). API01 additionally proves at contract level that second POST returns IdempotentReplay=true with stable ResepKerjaId and repo store count remains 1."
+      - criterionId: AC-04
+        result: PASS
+        evidence: "Round-1 domain-level proof unchanged; now additionally enforced at persistence level by ResepKerjaDalTest.SaveChanges_rewrites_items_only_while_not_frozen (post-FreezeItems SaveChanges leaves stored items untouched). No revision-task table introduced."
+      - criterionId: AC-05
+        result: PASS
+        evidence: "R1-F02 closed. Filtered_unique_index_rejects_duplicate_electronic_source proves a second insert with same (SourceKind=Cpoe, SourceResepId) throws SqlException 2601/2627 while same source under LegacyResep kind succeeds — exercising UX_BILRG_AptResepKerja_ElectronicSource against devTest. GetBySource_excludes_voided_rows proves after Void+SaveChanges both Dal.GetBySource returns null and Repo.LoadBySource returns None, so documented deterministic re-intake holds; index predicate VodDate='3000-01-01' means voided rows cannot collide."
+    findings: []
+    decision: GO
+    rationale: All five round-1 findings verified closed with reviewer-executed, non-vacuous evidence; remediation scope contained exactly to recorded findings (only production change is the X-Release-Gate header on intake-electronic); all five acceptance criteria pass.
+    environmentalNote: Reviewer executed build/tests via Windows dotnet SDK over WSL interop against the remediation working tree. First full-suite run failed Wf003_general_patient_happy_path once (assertion at OutpatientApotekWorkflowTest.cs:114); it passed in two consecutive subsequent full-suite runs (62/62 each) and in isolation. Same first-run-after-state-change transient previously documented under APT-B02 notes; Wf003 is an in-memory scenario untouched by this remediation. Recorded as known environmental flake, not a slice defect.
+remediationHistory:
+  - round: 1
+    basedOnReviewRound: 1
+    actor: ox-alpha (opencode)
+    startedAt: 2026-08-26T14:00:00+07:00
+    completedAt: 2026-08-26T16:30:00+07:00
+    remediatedFindings:
+      - APT-B03-R1-F01
+      - APT-B03-R1-F02
+      - APT-B03-R1-F03
+      - APT-B03-R1-F04
+      - APT-B03-R1-F05
+    resultCommit: WORKING-TREE (uncommitted changes on top of 8af36531a0146c847627f15f5ed662b03fa1253d)
+    changedFiles:
+      - src/bilreg/Bilreg.Test/ApotekContext/ResepKerjaFeature/ResepKerjaDalTest.cs (new; F01+F02)
+      - src/bilreg/Bilreg.Test/ApotekContext/ResepKerjaFeature/Api/ResepKerjaIntakeApiTest.cs (new; F03)
+      - src/bilreg/Bilreg.Test/ApotekContext/Support/ApotekApiWebApplicationFactory.cs (new; F03)
+      - src/bilreg/Bilreg.Test/ApotekContext/Support/ApotekApiTestAuthHandler.cs (new; F03)
+      - src/bilreg/Bilreg.Api/Controllers/ApotekContext/ApotekController.cs (F05)
+      - docs/contexts/apotek/working/outpatient-apotek-progress-tracker.md (F04+F05)
+    schemaObjects:
+      - Deployed BILRG_AptResepKerja{,Item,Component}.sql to devTest via SQLCMD (DDL unchanged from repository scripts); filtered index applied under QUOTED_IDENTIFIER ON session
+    tests:
+      - command: dotnet build src/bilreg/b09-bilreg-api.sln
+        result: PASS
+      - command: dotnet test --filter "FullyQualifiedName~ResepKerjaDalTest"
+        result: PASS
+        count: 4
+      - command: dotnet test --filter "FullyQualifiedName~ResepKerjaIntakeApiTest"
+        result: PASS
+        count: 4
+      - command: dotnet test --filter "FullyQualifiedName~ApotekContext"
+        result: PASS
+        count: 62
+    unresolvedFindings: []
+    outcome: IMPLEMENTED
+notes:
+  - Completeness audit (19 Aug 2026) scored PARTIAL citing missing repository/API-contract tests and fail-closed production adapter; round 1 confirmed both gaps and added the index/twin divergence, tracker backfill, and gate-visibility findings.
+  - Wave-2 order 1 review opened 26 Aug 2026; Wave-2 orders 2+ (APT-B04 onward) share the same Resep Kerja document and will likely inherit F01–F03 evidence patterns once this slice's remediation lands.
+  - Remediation round 1 (26 Aug 2026) closed all five findings; REMEDIATED is not GO — re-review must open a new round against the remediation working tree. F02/F01 evidence runs against devTest after deploying the three in-repo ResepKerja DDL scripts.
+  - Round 2 (26 Aug 2026) re-reviewed the remediation working tree with reviewer-executed build/tests → GO, closing R1-F01..F05. Known accepted observations: one non-reproducing Wf003 first-run transient (see round-2 environmentalNote); client-sent userId remains bindable but proven non-authoritative — contract-wide normalization owned by APT-B29. Commit of the working tree is outstanding housekeeping; Wave-2 orders 2+ inherit the F01–F03 evidence patterns established here.
 ```
 
 ### APT-B01
