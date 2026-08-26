@@ -1,7 +1,8 @@
-﻿using Bilreg.Domain.AdmisiContext.LayananFeature;
+﻿using Bilreg.Domain.AdmisiContext.JaminanFeature;
+using Bilreg.Domain.AdmisiContext.LayananFeature;
 using Bilreg.Domain.BrgContext.BrgFeature;
+using Bilreg.Domain.BrgContext.PricingPolicyFeature;
 using Bilreg.Domain.SalesContext.PenjualanFeature;
-using Bilreg.Domain.SalesContext.Shared;
 using Bilreg.Domain.Shared.Helpers.CommonValueObjects;
 using Nuna.Lib.AutoNumberHelper;
 
@@ -18,6 +19,7 @@ public class ReturJualModel : IReturJualKey
         LayananReff layanan,
         string reason,
         TipeJaminanReff tipeJaminan,
+        TipeBrgReff tipeBrg,
         NilaiReturJualType nilai,
         AuditTrailType auditTrail,
         IEnumerable<ReturJualItemModel> listItem)
@@ -27,6 +29,7 @@ public class ReturJualModel : IReturJualKey
         Layanan = layanan;
         Reason = reason;
         TipeJaminan = tipeJaminan;
+        TipeBrg = tipeBrg;
         Nilai = nilai;
         AuditTrail = auditTrail;
         _listItem = listItem.ToList();
@@ -38,6 +41,7 @@ public class ReturJualModel : IReturJualKey
         LayananType.Default.ToReff(),
         string.Empty,
         new TipeJaminanReff("-", "-"),
+        new TipeBrgReff("-", "-"),
         NilaiReturJualType.Default,
         AuditTrailType.Default,
         []);
@@ -48,6 +52,7 @@ public class ReturJualModel : IReturJualKey
         LayananType.Default.ToReff(),
         string.Empty,
         new TipeJaminanReff("-", "-"),
+        new TipeBrgReff("-", "-"),
         NilaiReturJualType.Default,
         AuditTrailType.Default,
         []);
@@ -62,7 +67,8 @@ public class ReturJualModel : IReturJualKey
             penjualan.ToReff(),
             layanan.ToReff(),
             reason,
-            new TipeJaminanReff(penjualan.TipeJaminan.TipeJaminanId, penjualan.TipeJaminan.TipeJaminanName),
+            penjualan.TipeJaminan,
+            penjualan.TipeBrg,
             NilaiReturJualType.Default,
             AuditTrailType.Create(userId, DateTime.Now),
             []);
@@ -75,6 +81,7 @@ public class ReturJualModel : IReturJualKey
     public LayananReff Layanan { get; private set; }
     public string Reason { get; private set; }
     public TipeJaminanReff TipeJaminan { get; private set; }
+    public TipeBrgReff TipeBrg { get; private set; }
     public NilaiReturJualType Nilai { get; private set; }
     public AuditTrailType AuditTrail { get; private set; }
     public IReadOnlyList<ReturJualItemModel> ListItem => _listItem;
