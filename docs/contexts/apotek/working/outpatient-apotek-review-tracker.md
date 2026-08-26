@@ -817,11 +817,69 @@ reviewHistory:
     decision: NO_GO
     rationale: AC-01, AC-02, and AC-04 fail on the evidence standard (planned repository/command tests absent; catalog backing and ordinary-decline behavior unproven; cancellation distinctness untested with actor identity discarded). AC-03 passes. Scope matches the approved slice with no unauthorized expansion (MarkConvertedToSalesOrder consumption belongs to APT-B08); architecture and namespace placement comply, DI registration resolves via Scrutor Nuna-marker scanning, and the authorization seam is present. Findings APT-B05-R1-F01..F05 recorded; remediation limited to these IDs.
     environmentalNote: Build and tests executed independently by the reviewer via Windows dotnet SDK over WSL interop (build 0 errors; ApotekContext suite 62/62; ~JualBebas filter 0 matches; Scenarios 8/8).
-remediationHistory: []
+  - round: 2
+    actor: ox-alpha (opencode)
+    reviewedCommit: 1877d7d1 (HEAD at re-review)
+    startedAt: 2026-08-26T14:40:00+07:00
+    completedAt: 2026-08-26T15:00:29+07:00
+    trigger: User-requested review of APT-B05 with remediationHistory still empty and all round-1 findings OPEN.
+    deltaAnalysis:
+      - git diff e5fe0255..1877d7d1 -- '*JualBebas*' is empty; working tree clean for all seven JualBebasFeature files, both BILRG_AptJualBebas SQL schemas, and the scenario test (only CRLF normalization warnings, no content change). Commits between e5fe0255 and HEAD touch APT-B04 remediation/review only. Production surface is byte-identical to the round-1 reviewed commit.
+    reviewerVerification:
+      - static: full re-read of JualBebasModel.cs, JualBebasItemModel.cs, JualBebasRequestStatusEnum.cs, IJualBebasKey.cs, JualBebasCommands.cs, IJualBebasRepo.cs, JualBebasPersistence.cs, BILRG_AptJualBebas.sql, BILRG_AptJualBebasItem.sql, ApotekController.cs (jual-bebas accept/decline-after-accept endpoints), and OutpatientApotekWorkflowTest.cs confirms every round-1 finding location verbatim — no dedicated JualBebas test suite exists in Bilreg.Test (grep: only InMemoryJualBebasRepo support class plus the accept-only misnamed scenario test at OutpatientApotekWorkflowTest.cs:58-66); DeclineAfterAccept discards actor identity into an empty-stamp UPDATE (JualBebasCommands.cs:67 → JualBebasPersistence.cs:38,80); item catalog backing remains client-supplied verbatim (JualBebasItemModel.cs:7-21); status transitions remain unconditional last-write-wins without a version predicate; progress-tracker record remains template-incomplete.
+      - tests: not re-executed this round (dotnet over WSL mount timed out during environment probe); result validity inherited from round-1 independently executed runs (ApotekContext suite 62/62 PASS; ~JualBebas filter 0 matches) because code and tests are byte-identical per delta analysis above.
+    acceptanceResults:
+      - criterionId: AC-01
+        result: FAIL (unchanged from round 1)
+      - criterionId: AC-02
+        result: FAIL (unchanged from round 1)
+      - criterionId: AC-03
+        result: PASS (unchanged from round 1)
+      - criterionId: AC-04
+        result: FAIL (unchanged from round 1)
+    findings: APT-B05-R1-F01..F05 remain OPEN verbatim; no new findings — there is no delta to review.
+    decision: NO_GO
+    rationale: Re-review of a byte-identical implementation after zero remediation; the round-1 NO_GO stands on the same evidence standard (planned repository/command tests absent, ordinary-decline behavior vacuous/unproven, decline distinctness untested with cancelling actor discarded, catalog backing unverifiable, concurrency deviation unrecorded, tracker record incomplete).
+    environmentalNote: Static verification only this round; git-diff identity proof substitutes for re-execution given unchanged bytes since the round-1 executed green run.
+remediationHistory:
+  - round: 1
+    basedOnReviewRound: 2
+    actor: ox-alpha (opencode)
+    startedAt: 2026-08-26T15:20:00+07:00
+    completedAt: 2026-08-26T16:05:00+07:00
+    baseCommit: 1877d7d1ff461e27cc034034008a91d35db4f9a3
+    resultCommit: working tree atop 1877d7d1ff461e27cc034034008a91d35db4f9a3 (uncommitted; freeze on re-review)
+    remediatedFindings:
+      - APT-B05-R1-F01
+      - APT-B05-R1-F02
+      - APT-B05-R1-F03
+      - APT-B05-R1-F04
+      - APT-B05-R1-F05
+    resolutionSummary:
+      - F01: new focused suite Bilreg.Test/ApotekContext/JualBebasFeature — JualBebasModelTest (17 facts: accept guards incl. typed ArgumentException parameter names, item guards, DeclineAfterAccept transition/actor/version, rejection matrices from Converted and Declined states, conversion gating, ApotekConcurrencyException), JualBebasCommandTest (8 facts: accept persistence one-header-plus-items, decline save/load identity round-trip, unknown-id not-found without row creation, stale ExpectedVersion conflict leaving row Accepted, AC-02 observable proof that an unaccepted demand leaves neither Jual Bebas row nor establishable Sales Order source, declined-source establish rejection, conversion via establishment blocks later decline, post-conversion establish rejected with single SO row), JualBebasDalTest (3 facts against devTest: header/items round-trip with SQL item ordering, decline actor/timestamp/Version persisted through real repo path, conversion update keeps void audit empty); misnamed scenario test renamed to Jual_bebas_accept_creates_one_header_row so name matches exercised behavior.
+      - F02: DeclineAfterAccept(actorId, declinedAt) records cancelling actor/timestamp on the model; JualBebasRepo persists them into existing VodUser/VodDate columns (void semantics per AuditTrailType.Batal precedent) and LoadEntity restores them; round-trip proven at handler level and through real DAL.
+      - F03: approved interpretation recorded in progress-tracker notes — acceptance-time catalog validation deferred (no ratified cross-context catalog port; inventing one would expand scope); BrgId authority enforced operationally downstream at pricing snapshot (IMedicationPricePort.PriceAt) and stock movements (StockReserve / DispenseIssue vs Stock Ledger) where unknown ids fail explicitly.
+      - F04: Version added to aggregate (start 1; ++ on both status transitions), persisted/restored; DeclineAfterAcceptCmd gains ExpectedVersion checked by AssertExpectedVersion → ApotekConcurrencyException, consistent with sibling SalesOrder mechanics; deviation note records that DAL-level UPDATE predicate was intentionally not added because siblings enforce at application level, flagged for APT-B29 unification.
+      - F05: progress-tracker slice record backfilled per template — commits, dates, changedFiles, schemaObjects, verification commands/testCounts, assumptions, deferred items.
+    disclosedAdditions:
+      - Test DB environment action: applied already-approved DDL scripts BILRG_AptJualBebas.sql/BILRG_AptJualBebasItem.sql to devTest (tables absent there made repository tests unrunnable; production schema design unchanged).
+      - One test expectation corrected during self-verification before recording green runs — Repeated_establishment_returns_same_active_sales_order misstated handler semantics (second establish after conversion is rejected before LoadActive idempotent return, SalesOrderCommands.cs:127-128); replaced with Establishment_rejected_after_conversion_so_no_duplicate_sales_order asserting actual approved behavior. No production code changed for this.
+    tests:
+      - command: dotnet build src/bilreg/Bilreg.Test/Bilreg.Test.csproj
+        result: PASS (0 errors)
+      - command: dotnet test --filter "FullyQualifiedName~JualBebas"
+        result: PASS
+        count: 28
+      - command: dotnet test --filter "FullyQualifiedName~ApotekContext"
+        result: PASS
+        count: 94
+    unresolvedFindings: []
+    outcome: IMPLEMENTED
 notes:
   - Completeness audit (19 Aug 2026) scored PARTIAL citing dedicated command/repository tests missing and decline-after-accept untested; round 1 confirms both and adds catalog-backing, decline-audit, and concurrency findings.
   - Repeated accept for the same RegId creates distinct ADQ ids with no duplicate guard; not scored as a finding because the plan assigns duplicate-active-key authority to Sales Order establishment (APT-B08), but noted for Wave-2 order 5 review.
   - Round opened on user request while Wave-1 slices remain first in the execution roadmap (same precedent as APT-B01 round 2 and APT-B02 round 1).
+  - Remediation round 1 (26 Aug 2026) closed F01–F05 with a new 28-test JualBebasFeature suite, decline audit persistence into VodUser/VodDate, Version concurrency consistent with siblings, recorded catalog-authority interpretation, and full record backfill; ApotekContext suite 94/94. REMEDIATION IS NOT GO — re-review must open round 3 against the remediation working tree before any status change.
 ```
 
 ### APT-B01

@@ -55,7 +55,7 @@ public class OutpatientApotekWorkflowTest
     }
 
     [Fact]
-    public async Task Ordinary_jual_bebas_decline_creates_no_row()
+    public async Task Jual_bebas_accept_creates_one_header_row()
     {
         _jb.Store.Should().BeEmpty();
         var accept = new JualBebasAcceptHandler(_jb, _auth);

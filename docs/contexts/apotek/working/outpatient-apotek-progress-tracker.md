@@ -468,10 +468,115 @@ slice:
   id: APT-B05
   status: IMPLEMENTED
   title: Jual Bebas accept and decline
+  objective: Represent accepted direct medication demand without a pharmacist-review gate
+  dependencies: [APT-B00]
+  releaseGates: []
+  baseCommit: bc31e45b9e530b7ee8124e5b9d1b81b55dd9b9df
+  currentCommit: e5fe0255c4005df5521ab6bb96bc4ab3f2cc888c (round-2 review confirmed byte-identical surface; remediation event below supersedes)
+  acceptance:
+    - id: AC-01
+      text: Accept creates one header and catalog-backed items
+      status: PASS
+      evidence: JualBebasModelTest.Accept_creates_one_accepted_header_with_version_one; JualBebasCommandTest.Accept_persists_one_header_with_catalog_items; JualBebasDalTest.RoundTrip_preserves_header_items_and_accept_audit; catalog-authority interpretation recorded in notes (approved interpretation per APT-B05-R1-F03)
+    - id: AC-02
+      text: Ordinary decline creates no Jual Bebas row and no Sales Order
+      status: PASS
+      evidence: JualBebasCommandTest.Ordinary_pre_accept_decline_leaves_no_row_and_no_establishable_source proves an unaccepted demand leaves _jb and _so stores empty and establishment from it fails not-found; pre-accept decline is the absence of accept (no command exists by design); misnamed scenario test renamed to Jual_bebas_accept_creates_one_header_row (OutpatientApotekWorkflowTest.cs)
+    - id: AC-03
+      text: Optional pharmacist consultation is not made a domain gate
+      status: PASS
+      evidence: No consultation field/gate/parameter exists in JualBegasFeature domain/application/api (round-1 verified, unchanged by remediation)
+    - id: AC-04
+      text: A later authorized cancellation is distinct from an ordinary pre-accept decline
+      status: PASS
+      evidence: JualBebasRequestStatusEnum.DeclinedAfterAccept distinct from never-created row; JualBebasModelTest.Decline_after_accept_records_actor_timestamp_and_bumps_version + Decline_rejected_from_converted_state + Second_decline_rejected + Conversion_rejected_from_declined_state; JualBebasCommandTest.Decline_after_accept_survives_save_load_roundtrip_with_actor_identity; JualBebasDalTest.Decline_after_accept_persists_actor_timestamp_and_version (VodUser/VodDate columns carry cancelling actor/timestamp)
+  verification:
+    commands:
+      - command: dotnet build src/bilreg/Bilreg.Test/Bilreg.Test.csproj (transitive Domain/Application/Infrastructure/Api)
+        result: PASS
+      - command: dotnet test --filter "FullyQualifiedName~JualBebas"
+        result: PASS
+        count: 28
+      - command: dotnet test --filter "FullyQualifiedName~ApotekContext"
+        result: PASS
+        count: 94
+    passed: true
+    testCount: 94
+    knownUnrelatedFailures: []
   implementationHistory:
     - attempt: 1
       actor: Composer 2.5
+      startedAt: 2026-08-19T11:34:21+07:00
+      completedAt: 2026-08-26T10:50:17+07:00
+      baseCommit: bc31e45b9e530b7ee8124e5b9d1b81b55dd9b9df
+      resultCommit: e5fe0255c4005df5521ab6bb96bc4ab3f2cc888c
+      changedFiles:
+        - src/bilreg/Bilreg.Domain/ApotekContext/JualBebasFeature/* (model, item model, status enum, key)
+        - src/bilreg/Bilreg.Application/ApotekContext/JualBebasFeature/IJualBebasRepo.cs, UseCases/JualBebasCommands.cs
+        - src/bilreg/Bilreg.Infrastructure/ApotekContext/JualBebasFeature/JualBebasPersistence.cs
+        - src/bilreg/Bilreg.Api/Controllers/ApotekContext/ApotekController.cs (accept + decline-after-accept endpoints)
+        - src/bilreg/Bilreg.SqlDb/ApotekContext/BILRG_AptJualBebas.sql, BILRG_AptJualBebasItem.sql
+        - src/bilreg/Bilreg.Test/ApotekContext/Support/InMemoryApotekRepos.cs, Scenarios/OutpatientApotekWorkflowTest.cs
+      schemaObjects:
+        - BILRG_AptJualBebas (header; RequestStatus Accepted/ConvertedToSalesOrder/DeclinedAfterAccept)
+        - BILRG_AptJualBebasItem (catalog-referenced lines)
       summary: Accept creates header/items; decline-after-accept is distinct from ordinary pre-accept decline; conversion to Sales Order is marked on the demand.
+      tests:
+        - command: dotnet test --filter "FullyQualifiedName~Scenarios"
+          result: PASS
+          count: 8
+      assumptionsUsed:
+        - Ordinary pre-accept decline = absence of accept; no decline command created
+        - Catalog authority deferred downstream (see notes)
+      deferred:
+        - Dedicated JualBebasFeature test suite (remediated below)
+      outcome: IMPLEMENTED
+  remediationHistory:
+    - round: 1
+      basedOnReviewRound: 2
+      actor: ox-alpha (opencode)
+      startedAt: 2026-08-26T15:20:00+07:00
+      completedAt: 2026-08-26T16:05:00+07:00
+      baseCommit: 1877d7d1ff461e27cc034034008a91d35db4f9a3
+      resultCommit: working tree atop 1877d7d1ff461e27cc034034008a91d35db4f9a3 (uncommitted; file list below)
+      remediatedFindings:
+        - APT-B05-R1-F01
+        - APT-B05-R1-F02
+        - APT-B05-R1-F03
+        - APT-B05-R1-F04
+        - APT-B05-R1-F05
+      changedFiles:
+        - src/bilreg/Bilreg.Domain/ApotekContext/JualBebasFeature/JualBebasModel.cs (Version property + AssertExpectedVersion; DeclineAfterAccept(actorId, declinedAt) records cancelling actor/timestamp; Version++ on both transitions; Rehydrate extended)
+        - src/bilreg/Bilreg.Application/ApotekContext/JualBebasFeature/UseCases/JualBebasCommands.cs (DeclineAfterAcceptCmd gains ExpectedVersion; handler asserts version then passes DateTime.Now)
+        - src/bilreg/Bilreg.Infrastructure/ApotekContext/JualBebasFeature/JualBebasPersistence.cs (Dto gains Version; UPDATE writes Version+VodUser/VodDate; LoadEntity restores Version+decline audit)
+        - src/bilreg/Bilreg.SqlDb/ApotekContext/BILRG_AptJualBebas.sql (Version INT NOT NULL DEFAULT(1) column)
+        - src/bilreg/Bilreg.Test/ApotekContext/Scenarios/OutpatientApotekWorkflowTest.cs (misnamed accept-only test renamed Jual_bebas_accept_creates_one_header_row)
+        - src/bilreg/Bilreg.Test/ApotekContext/JualBebasFeature/JualBebasModelTest.cs (new; 17 facts — guards, transitions, version conflict)
+        - src/bilreg/Bilreg.Test/ApotekContext/JualBebasFeature/JualBebasCommandTest.cs (new; 8 facts — accept persistence, decline round-trip identity, stale-version conflict, AC-02 proof, declined-source establish rejection, conversion gating, duplicate-establish rejection)
+        - src/bilreg/Bilreg.Test/ApotekContext/JualBebasFeature/JualBebasDalTest.cs (new; 3 facts — real repo round-trip incl. decline audit survival)
+        - docs/contexts/apotek/working/outpatient-apotek-progress-tracker.md (this record)
+        - docs/contexts/apotek/working/outpatient-apotek-review-tracker.md (remediation record)
+      schemaObjects:
+        - BILRG_AptJualBebas adds column Version INT NOT NULL DEFAULT(1) after RequestStatus
+      tests:
+        - command: dotnet build src/bilreg/Bilreg.Test/Bilreg.Test.csproj
+          result: PASS
+        - command: dotnet test --filter "FullyQualifiedName~JualBebas"
+          result: PASS
+          count: 28
+        - command: dotnet test --filter "FullyQualifiedName~ApotekContext"
+          result: PASS
+          count: 94
+      environmentActions:
+        - Applied approved DDL BILRG_AptJualBebas.sql + BILRG_AptJualBebasItem.sql to devTest database via sqlcmd — tables were absent there, so repository tests could not run; production schema design unchanged.
+      unresolvedFindings: []
+      outcome: IMPLEMENTED
+
+Notes for APT-B05:
+
+- F03 approved interpretation (catalog-backed items): acceptance-time validation against medication master data is deliberately deferred because this slice has no ratified cross-context catalog port and inventing one would expand scope. Item identity (BrgId) is enforced operationally at the first downstream master-data touchpoints — pricing snapshot at Invoice establishment resolves IMedicationPricePort.PriceAt(BrgId), and stock effects (StockReserve at preparation start, DispenseIssue removal on handover) resolve BrgId against the Stock Ledger — where an unknown id fails explicitly instead of being silently accepted. Recorded as the approved interpretation required by APT-B05-R1-F03; revisit if BC/PD decisions ratify an acceptance-time catalog authority.
+- F02 resolution shape: cancelling actor/timestamp persist into existing audit columns VodUser/VodDate (void semantics consistent with AuditTrailType.Batal usage on ResepKerja.Void); no new aggregate state or table was added, matching the finding's "audit columns are sufficient" requirement.
+- F04 resolution shape: JualBebas now carries Version (starts 1, increments on DeclineAfterAccept/MarkConvertedToSalesOrder), persisted and restored; decline command carries ExpectedVersion checked via AssertExpectedVersion → ApotekConcurrencyException, consistent with sibling SalesOrder mechanics. DAL-level UPDATE predicate was not added because sibling aggregates enforce concurrency at application level; flagged for unification under APT-B29's single documented conflict shape.
 ```
 
 ### APT-B06

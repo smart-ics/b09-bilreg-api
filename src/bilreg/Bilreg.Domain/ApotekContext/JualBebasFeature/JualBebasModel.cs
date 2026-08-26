@@ -17,6 +17,9 @@ public class JualBebasModel : IJualBebasKey
         string acceptedBy,
         DateTime acceptedAt,
         JualBebasRequestStatusEnum requestStatus,
+        int version,
+        string declinedBy,
+        DateTime declinedAt,
         IEnumerable<JualBebasItemModel> items)
     {
         JualBebasId = jualBebasId;
@@ -26,6 +29,9 @@ public class JualBebasModel : IJualBebasKey
         AcceptedBy = acceptedBy;
         AcceptedAt = acceptedAt;
         RequestStatus = requestStatus;
+        Version = version;
+        DeclinedBy = declinedBy;
+        DeclinedAt = declinedAt;
         _items = items.ToList();
     }
 
@@ -55,6 +61,9 @@ public class JualBebasModel : IJualBebasKey
             acceptedBy,
             acceptedAt,
             JualBebasRequestStatusEnum.Accepted,
+            version: 1,
+            declinedBy: "",
+            declinedAt: new DateTime(3000, 1, 1),
             list);
     }
 
@@ -66,22 +75,36 @@ public class JualBebasModel : IJualBebasKey
         string acceptedBy,
         DateTime acceptedAt,
         JualBebasRequestStatusEnum requestStatus,
+        int version,
+        string declinedBy,
+        DateTime declinedAt,
         IEnumerable<JualBebasItemModel> items)
-        => new(jualBebasId, regId, pasienId, pasienName, acceptedBy, acceptedAt, requestStatus, items);
+        => new(jualBebasId, regId, pasienId, pasienName, acceptedBy, acceptedAt, requestStatus,
+            version, declinedBy, declinedAt, items);
 
     public void MarkConvertedToSalesOrder()
     {
         if (RequestStatus != JualBebasRequestStatusEnum.Accepted)
             throw new ApotekDomainException("Only an accepted Jual Bebas can convert to a Sales Order.");
         RequestStatus = JualBebasRequestStatusEnum.ConvertedToSalesOrder;
+        Version++;
     }
 
-    public void DeclineAfterAccept(string actorId)
+    public void DeclineAfterAccept(string actorId, DateTime declinedAt)
     {
         Guard.Against.NullOrWhiteSpace(actorId, nameof(actorId));
         if (RequestStatus != JualBebasRequestStatusEnum.Accepted)
             throw new ApotekDomainException("Only an accepted Jual Bebas can be cancelled after accept.");
         RequestStatus = JualBebasRequestStatusEnum.DeclinedAfterAccept;
+        DeclinedBy = actorId;
+        DeclinedAt = declinedAt;
+        Version++;
+    }
+
+    public void AssertExpectedVersion(int expectedVersion)
+    {
+        if (Version != expectedVersion)
+            throw new ApotekConcurrencyException(JualBebasId, expectedVersion);
     }
 
     public string JualBebasId { get; }
@@ -91,6 +114,9 @@ public class JualBebasModel : IJualBebasKey
     public string AcceptedBy { get; }
     public DateTime AcceptedAt { get; }
     public JualBebasRequestStatusEnum RequestStatus { get; private set; }
+    public int Version { get; private set; }
+    public string DeclinedBy { get; private set; }
+    public DateTime DeclinedAt { get; private set; }
     public IReadOnlyList<JualBebasItemModel> Items => _items;
 
     private sealed record JualBebasKey(string JualBebasId) : IJualBebasKey;
