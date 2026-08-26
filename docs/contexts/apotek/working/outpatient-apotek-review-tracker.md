@@ -602,7 +602,7 @@ notes:
 slice: APT-B04
 reviewStatus: GO
 initializedFrom: completeness-audit-2026-08-19
-reviewedCommit: e5fe0255c4005df5521ab6bb96bc4ab3f2cc888c
+reviewedCommit: b720e6427dff5a6cab161a8019078572ff524336
 reviewHistory:
   - round: 1
     actor: ox-alpha (opencode)
@@ -647,6 +647,51 @@ reviewHistory:
     decision: GO
     rationale: All four acceptance criteria pass under the documented safe interim. Handler behavior is exercised through the real MediatR pipeline by ResepKerjaIntakeApiTest.API02 against an injected repo (handler+contract evidence combined, matching the accepted APT-B03 R1-F03 precedent), and model validation by ResepKerjaModelTest. Production physical rollout remains blocked by the OPEN BC-13 gate independent of this code-review GO.
     environmentalNote: dotnet SDK unavailable in this review environment; tests not independently re-executed. Decision relies on static verification of cited code paths at e5fe0255 plus the implementer-recorded green runs of dotnet build, ResepKerjaIntakeApiTest (4), and the 62-test ApotekContext suite on the identical tree (B03 remediation round 2).
+  - round: 2 (re-review of remediation)
+    actor: ox-alpha (opencode)
+    reviewedCommit: b720e6427dff5a6cab161a8019078572ff524336 ("Remediate Slice APT-B04 - Physical Resep Kerja Interim Intake"; parent e5fe0255; clean working tree — remediation record's WORKING-TREE resultCommit resolves exactly to this SHA)
+    startedAt: 2026-08-26T18:30:00+07:00
+    completedAt: 2026-08-26T19:15:00+07:00
+    scopeVerification:
+      - "git diff e5fe0255..b720e642 touches exactly the three declared files: ResepKerjaModelTest.cs, outpatient-apotek-progress-tracker.md, outpatient-apotek-review-tracker.md. Zero production code changed — BC-13 interim surface byte-identical to the round-1-reviewed state."
+      - "Disclosed addition verified non-silent: IntakePhysical_keeps_physical_source_and_capture_fields (ResepKerjaModelTest.cs:46-54) pins AC-01 behavior only."
+    acceptanceResults:
+      - criterionId: AC-01
+        result: PASS
+        evidence: "IntakePhysical guards unchanged at ResepKerjaModel.cs:122-129 (verified at b720e642); new pinning fact asserts SourceKind=Physical, SourceResepId empty, CaptureNote/DocumentRef retained. R1-F01 disposition verified: gate-registry BC-13 row now records PENDING DECISION for patient/registration existence validation with owner assigned at BC-13 closure (progress tracker :31). No seam invented."
+      - criterionId: AC-02
+        result: PASS
+        evidence: "Remediation diff contains no production change; no image/blob column, table, retention/authenticity workflow, or deduplication added — physical surface remains exactly the two PD-01 VARCHAR columns from round 1."
+      - criterionId: AC-03
+        result: PASS
+        evidence: "ApotekController.cs absent from the remediation diff → X-Release-Gate: BC-13 on POST api/v1/apotek/resep-kerja/intake-physical is identical to round-1 evidence, re-verified live at ApotekController.cs:40-43; releaseGates [BC-13] and OPEN gate registry row retained."
+      - criterionId: AC-04
+        result: PASS
+        evidence: "Electronic path untouched by remediation; Physical kind still rejected from electronic intake at domain layer (ResepKerjaModel.cs:76-77); electronic fact retained with assertions intact (renamed to Electronic_intake_is_immutable_copy_without_physical_capture_fields)."
+    findingClosureVerification:
+      - id: APT-B04-R1-F02
+        result: CLOSED
+        evidence: "Weak Throw<Exception> replaced by three split per-guard facts: blank captureNote → ArgumentException WithParameterName(captureNote) (ResepKerjaModelTest.cs:25-29); blank documentRef → ArgumentException WithParameterName(documentRef) (:31-36); empty items → ApotekDomainException WithMessage(\"Physical Resep Kerja requires at least one item.\") (:38-44) matching ResepKerjaModel.cs:128-129 exactly. Blank-field assertions match production Ardalis GuardClauseException (ArgumentException-derived) and repo-wide convention (8 prior WithParameterName occurrences across Admisi/Lab/Payment test suites). Literal deviation from the finding's 'assert ApotekDomainException' wording for blank fields is justified — asserting ApotekDomainException there would misstate production behavior; finding intent (typed exception + identified guard) satisfied without production change."
+      - id: APT-B04-R1-F03
+        result: CLOSED
+        evidence: "APT-B04 progress-tracker record backfilled per template: baseCommit bc31e45b..., resultCommit e5fe0255..., changedFiles (6), schemaObjects (CaptureNote/DocumentRef columns), focused-test commands/counts, assumptionsUsed, deferredItems."
+      - id: APT-B04-R1-F01
+        result: CLOSED
+        evidence: "Closed at exactly the required scope (decision-owner recording): PENDING DECISION text on gate-registry BC-13 row names both candidate owners (BC-13 resolution or APT-B29 via ratified port); no cross-context port or validation logic invented in this slice."
+    findings:
+      - id: APT-B04-R2-F01
+        severity: LOW
+        criterionId: tracker-process
+        location: commit b720e642 (outpatient-apotek-review-tracker.md summary table; outpatient-apotek-progress-tracker.md slice ledger)
+        problem: The remediation commit also flipped status columns — review-tracker summary APT-B04 NOT_REVIEWED→GO and progress ledger IMPLEMENTED→GO — before any re-review round existed. Remediation authority covers recorded findings only ('Review Agent alone records GO or NO-GO'; remediation may not silently broaden scope).
+        requiredOutcome: Future remediations must leave Status/decision columns untouched; Review Agent records transitions. No state correction required now — the written values matched the existing round-1 GO decision and are formally confirmed by this round against b720e642.
+        status: ACCEPTED (process observation; end state authorized by this round's own GO recording)
+    testEvidenceConsistency:
+      - "ResepKerja filter count 13 = ResepKerjaDalTest 4 + ResepKerjaIntakeApiTest 4 + ResepKerjaModelTest 5 (net +4 model facts replacing the single combined fact)."
+      - "ApotekContext suite 66 = 62 (B03-R2 baseline) + 4 net-new model facts. Arithmetic consistent with recorded runs."
+    decision: GO
+    rationale: All three round-1 observations verified closed at b720e642 with non-vacuous, convention-conforming tests; all four acceptance criteria re-verified pass on a tree whose production surface is byte-identical to the round-1-reviewed e5fe0255; tracker records complete. Production physical rollout remains blocked by the OPEN BC-13 gate independent of this code-review GO.
+    environmentalNote: dotnet SDK unavailable in this review environment; build/tests not independently re-executed. Decision relies on full static verification of every cited code path and diff at b720e642 plus the implementer-recorded green runs (dotnet build PASS, ResepKerja filter 13 PASS, ApotekContext suite 66 PASS). No contrary evidence found.
   remediationHistory:
     - round: 1
       basedOnReviewRound: 1
@@ -685,6 +730,7 @@ notes:
   - Completeness audit (19 Aug 2026) scored PARTIAL citing missing physical handler and API-contract tests; round 1 confirms the gap was closed by ResepKerjaIntakeApiTest.API02 driving the real physical handler through the host with X-Release-Gate assertion and CaptureNote/DocumentRef persistence checks.
   - Wave-2 order 2 complete; orders 3+ (APT-B05 onward) proceed.
   - Remediation round 1 (26 Aug 2026) closed F02 (typed per-guard model tests, 13 ResepKerja / 66 ApotekContext PASS), F03 (record backfill), and recorded the F01 pending decision owner on the BC-13 gate row. REMEDIATED is not GO — re-review must open a new round against the remediation working tree before closing the observations.
+  - Round 2 (26 Aug 2026) re-reviewed remediation commit b720e642 → GO; all three observations formally CLOSED (F02 split per-guard facts verified non-vacuous and convention-conforming; F03 backfill complete per template; F01 decision owner recorded on gate registry with no seam invented). Production surface byte-identical to round-1-reviewed e5fe0255. One new LOW process observation R2-F01: the remediation commit pre-flipped Status columns to GO before this round existed — values matched round-1's decision and are authorized by this recording; future remediations must not touch Status/decision columns. dotnet SDK unavailable; reviewer relied on full static verification plus implementer-recorded green runs (build PASS, ResepKerja 13, ApotekContext 66).
 ```
 
 ### APT-B05

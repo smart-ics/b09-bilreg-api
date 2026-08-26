@@ -459,6 +459,7 @@ Notes for APT-B04 remediation:
 
 - F01: patient/registration existence validation on physical intake remains unowned by design (no cross-context port exists in this slice). Decision owner is recorded as PENDING in the gate registry BC-13 row and must be resolved when BC-13 closes — fold into BC-13 resolution or APT-B29 hardening via a ratified port. No seam was invented here.
 - F02 nuance: `IntakePhysical` blank-field guards use Ardalis `Guard.Against.NullOrWhiteSpace` and throw `GuardClauseException` (asserted as `ArgumentException` with `.WithParameterName(...)`, matching repo-wide convention); only the empty-items rule throws `ApotekDomainException`. The finding's intent — pin the typed exception and identify which guard fired — is satisfied without changing production domain behavior.
+- Re-review round 2 (26 Aug 2026, review tracker) recorded GO at commit b720e6427dff5a6cab161a8019078572ff524336; the remediation record's WORKING-TREE resultCommit resolves exactly to that SHA (parent e5fe0255, clean tree). All three observations CLOSED. R1 findings are closed; production physical rollout remains blocked by the OPEN BC-13 gate.
 
 ### APT-B05
 
